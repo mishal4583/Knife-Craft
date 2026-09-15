@@ -39,9 +39,13 @@ import {
   serveCurrentOrder,
   advanceServiceSession,
   poolUnlockedByLevel,
+  batchHintFor,
   type ServiceSession,
 } from "@/game/service/ServiceManager";
 import { TEST_RECIPE_POOL } from "@/game/service/testRecipePool";
+import { getCampaignRecipe } from "@/game/recipes/campaignRecipes";
+import type { RecipeDefinition } from "@/game/recipes/recipeTypes";
+import type { LevelDefinition } from "@/game/levels/levelTypes";
 
 const STORY_INTRO_SEQUENCE = [...OPENING, ...FRESH, ...CHEF];
 
@@ -82,9 +86,9 @@ export function App() {
   // `endlessIndex` is deliberately NOT persisted — losing your place in
   // an endless rotation on reload is harmless (Law: "no FOMO"), and not
   // persisting it keeps this a pure, ephemeral UI cursor.
-  const [sessionMode, setSessionMode] = useState<"campaign" | "daily" | "endless" | "service">(
-    "campaign",
-  );
+  const [sessionMode, setSessionMode] = useState<
+    "campaign" | "daily" | "endless" | "service" | "campaign-service"
+  >("campaign");
   const [endlessIndex, setEndlessIndex] = useState(0);
 
   // Phase 2 (restaurant-service loop) — a ServiceSession is deliberately
@@ -95,6 +99,17 @@ export function App() {
   // the next "Start Service") but is lost on reload, same as
   // `endlessIndex` already is.
   const [serviceSession, setServiceSession] = useState<ServiceSession | null>(null);
+
+  // Phase 3 — a SEPARATE ServiceSession for campaign Levels 1-40's own
+  // "Level -> ServiceProfile -> RecipePool" pipeline (brief §3/§35/§36),
+  // kept apart from the Phase 2 standalone Restaurant Service harness's
+  // `serviceSession` above: a campaign session additionally tracks how
+  // many orders the ACTIVE LEVEL requires (`completedCount` vs the
+  // level's own `requiredOrders`) and, once satisfied, finishes the
+  // level through the exact same LevelManager.completeLevel/story-flush
+  // path every other campaign completion already uses — never a second
+  // completion system. Same session-only lifetime rule as `serviceSession`.
+  const [campaignServiceSession, setCampaignServiceSession] = useState<ServiceSession | null>(null);
 
   // THE LAST WISH (Claude Design final freeze) — presentation layer only,
   // additive to everything above. `showIntro` plays once, only for a
@@ -155,23 +170,25 @@ export function App() {
     });
   }, []);
 
-  // Phase 2 safety net — advanceServiceQueue only produces a null
-  // `current` when the unlocked test pool is empty (never expected once
-  // any recipe is reachable, but not impossible), and a null current
-  // has nothing for Preparation's service branch to render. Rather than
-  // silently falling through to the CAMPAIGN branch below (which would
+  // Safety net (Phase 2, extended in Phase 3 to cover campaign-service
+  // too) — advancing a queue only ever produces a null `current` when
+  // its unlocked pool is empty (never expected once any recipe is
+  // reachable, but not impossible), and a null current has nothing for
+  // Preparation's service branch to render. Rather than silently
+  // falling through to the legacy CAMPAIGN branch below (which would
   // show an unrelated level), bounce back to the Order Board.
   useEffect(() => {
-    if (
-      sessionMode === "service" &&
-      screen === "gameplay" &&
-      serviceSession &&
-      !serviceSession.current
-    ) {
+    const active =
+      sessionMode === "service"
+        ? serviceSession
+        : sessionMode === "campaign-service"
+          ? campaignServiceSession
+          : null;
+    if (active && screen === "gameplay" && !active.current) {
       setSessionMode("campaign");
       setScreen("board");
     }
-  }, [sessionMode, screen, serviceSession]);
+  }, [sessionMode, screen, serviceSession, campaignServiceSession]);
 
   const go = (s: ScreenId) => setScreen(s);
 
@@ -235,11 +252,24 @@ export function App() {
     setSave(fresh);
   }
 
-  /** Kitchen's "Today's Board" picks a level, not a raw recipe (§9.2 — same Preparation flow, different data). */
+  /**
+   * Kitchen's "Today's Board" picks a level, not a raw recipe (§9.2 —
+   * same Preparation flow, different data). Phase 3 — a level carrying
+   * `recipePoolIds` (Levels 1-40) is "Level ≠ Recipe" architecture and
+   * routes through startCampaignLevel's ServiceManager pipeline instead
+   * of the legacy fixed-preparationSteps path; every other level (41-120)
+   * behaves exactly as before.
+   */
   function onSelectLevel(levelId: string) {
+    if (!save) return;
+    persist({ ...save, levelProgress: selectLevel(levelId, save.levelProgress) });
+    const level = getLevel(levelId);
+    if (level?.recipePoolIds?.length) {
+      startCampaignLevel(level);
+      return;
+    }
     setSessionMode("campaign");
     setActiveLevelId(levelId);
-    if (save) persist({ ...save, levelProgress: selectLevel(levelId, save.levelProgress) });
   }
 
   /** Daily Order's "Accept Order" — selects today's featured level (already unlocked, see DailyOrderManager) and starts it in `daily` mode, WITHOUT touching `levelProgress.currentLevelId` (this isn't a campaign navigation, the level's own campaign position is unaffected). */
@@ -325,6 +355,89 @@ export function App() {
     if (!save || !serviceSession) return;
     const pool = poolUnlockedByLevel(TEST_RECIPE_POOL, highestReachedLevelNumber(save));
     setServiceSession((s) => (s ? advanceServiceSession(s, pool, Math.random) : s));
+  }
+
+  /** A campaign level's own recipe pool (levelTypes.ts's `recipePoolIds`), resolved against the real campaignRecipes.ts library — never against TEST_RECIPE_POOL, which is the separate Phase 2 harness's own pool. */
+  function campaignPoolFor(level: LevelDefinition | undefined): RecipeDefinition[] {
+    return (level?.recipePoolIds ?? [])
+      .map((id) => getCampaignRecipe(id))
+      .filter((r): r is RecipeDefinition => !!r);
+  }
+
+  /**
+   * Phase 3 — the campaign's own "Start Service" for a single Level
+   * 1-40 (brief §3): builds a fresh ServiceSession from that level's
+   * OWN recipe pool. No-ops if the level has no recipePoolIds (a legacy
+   * level should never reach this function — onSelectLevel only calls
+   * it after checking) or the pool resolves empty.
+   */
+  function startCampaignLevel(level: LevelDefinition) {
+    if (!save || !level.recipePoolIds?.length) return;
+    const pool = campaignPoolFor(level);
+    if (pool.length === 0) return;
+    setCampaignServiceSession(createServiceSession(level.id, pool, Math.random));
+    setActiveLevelId(level.id);
+    setSessionMode("campaign-service");
+    setScreen("gameplay");
+  }
+
+  /** Mirrors recordServiceResult exactly, for the campaign session instead of the Phase 2 harness session — same recipeProgress bookkeeping (§36 "no second recipe-progress system"), same deferred-payment rule. */
+  function recordCampaignServiceResult(score: number): number {
+    if (!save || !campaignServiceSession?.current) return 0;
+    const recipeId = campaignServiceSession.current.recipe.id;
+    const prior = save.recipeProgress[recipeId];
+    const best = Math.max(prior?.best ?? 0, score);
+    const recipeProgress = { ...save.recipeProgress, [recipeId]: { best, done: true } };
+    persist({ ...save, recipeProgress });
+    setCampaignServiceSession((s) => (s ? recordAllComponents(s) : s));
+    return 0;
+  }
+
+  /** Mirrors serveActiveServiceOrder exactly, for the campaign session. */
+  function serveCampaignOrder(): { coinsAwarded: number; reaction: string } | null {
+    if (!campaignServiceSession) return null;
+    const result = serveCurrentOrder(campaignServiceSession, Math.random);
+    if (!result) return null;
+    setCampaignServiceSession(result.session);
+    if (result.coinsAwarded > 0 && save)
+      persist({ ...save, credits: save.credits + result.coinsAwarded });
+    return { coinsAwarded: result.coinsAwarded, reaction: result.reaction };
+  }
+
+  /** "Next Customer" within a campaign level that isn't finished yet (its own requiredOrders hasn't been reached) — same queue-advance ServiceManager function the Phase 2 harness uses. */
+  function advanceCampaignQueue() {
+    if (!save || !campaignServiceSession) return;
+    const level = getLevel(campaignServiceSession.levelId);
+    const pool = campaignPoolFor(level);
+    setCampaignServiceSession((s) => (s ? advanceServiceSession(s, pool, Math.random) : s));
+  }
+
+  /**
+   * §35/§36 — a campaign level is complete once its required number of
+   * orders have been SERVED and PAID, a separate, persistent concept
+   * from the transient ServiceSession itself. Routes through the exact
+   * same LevelManager.completeLevel + story-flush path
+   * recordPreparationResult already uses for every other level, folded
+   * into one merged save object + one persist() call for the same
+   * cloud-save race-safety reason that path documents.
+   */
+  function finishCampaignLevel() {
+    if (!save || !campaignServiceSession) return;
+    const level = getLevel(campaignServiceSession.levelId);
+    if (!level) return;
+    const { progress: levelProgress, rewardCoins } = completeLevel(level.id, save.levelProgress);
+    const nextSave = { ...save, credits: save.credits + rewardCoins, levelProgress };
+    const flush = checkStoryFlush(nextSave);
+    const finalSave = flush
+      ? flush.kind === "finale"
+        ? applyFinaleSeen(nextSave)
+        : applyMilestoneFired(nextSave, flush.milestone)
+      : nextSave;
+    persist(finalSave);
+    if (flush) setStoryEvent(flush);
+    setCampaignServiceSession(null);
+    setSessionMode("campaign");
+    go("board");
   }
 
   /** Returns this run's coin reward (0 on replay) — Preparation shows it directly on OrderComplete rather than waiting a round trip through props. */
@@ -461,15 +574,36 @@ export function App() {
   const sessionExitScreen: ScreenId =
     sessionMode === "daily" ? "daily" : sessionMode === "endless" ? "endless" : "kitchen";
 
-  // Phase 2 — a service session renders through a completely separate
-  // Preparation branch (its `level` prop stays undefined; `service`
-  // takes over). Guarded on `serviceSession?.current` existing, not
-  // just `sessionMode`, so the Phase 2 safety-net effect above always
-  // gets a render tick to redirect away before this would otherwise
-  // try to render with nothing to show.
-  const showServicePrep =
-    screen === "gameplay" && sessionMode === "service" && !!serviceSession?.current;
-  const showCampaignPrep = screen === "gameplay" && sessionMode !== "service";
+  // A service session (Phase 2's standalone harness OR Phase 3's
+  // campaign pipeline) renders through the SAME Preparation branch
+  // (its `level` prop stays undefined; `service` takes over) — never
+  // two competing branches. Guarded on the active session's `current`
+  // existing, not just `sessionMode`, so the safety-net effect above
+  // always gets a render tick to redirect away before this would
+  // otherwise try to render with nothing to show.
+  const isCampaignService = sessionMode === "campaign-service";
+  const activeServiceSession = isCampaignService ? campaignServiceSession : serviceSession;
+  const currentServiceOrder =
+    sessionMode === "service" || isCampaignService ? (activeServiceSession?.current ?? null) : null;
+  const showServicePrep = screen === "gameplay" && !!currentServiceOrder;
+  const showCampaignPrep =
+    screen === "gameplay" && sessionMode !== "service" && sessionMode !== "campaign-service";
+
+  // Phase 3 — once this serve would satisfy the ACTIVE CAMPAIGN LEVEL's
+  // own `requiredOrders` (levelTypes.ts), the "Next Customer" action
+  // must finish the level (LevelManager.completeLevel + story flush)
+  // instead of just generating another order (§35/§36 — level
+  // completion is a separate concept from "an order got served").
+  // Computed off `completedCount + 1` because completedCount only
+  // increments on advance, not on serve — this is the state right
+  // after the just-served order but before that advance has happened.
+  const campaignLevelForSession = isCampaignService
+    ? getLevel(campaignServiceSession?.levelId ?? "")
+    : null;
+  const campaignWillFinishNext =
+    isCampaignService && campaignServiceSession
+      ? campaignServiceSession.completedCount + 1 >= (campaignLevelForSession?.requiredOrders ?? 1)
+      : false;
 
   return (
     <GameShell
@@ -485,26 +619,32 @@ export function App() {
         </div>
       }
     >
-      {showServicePrep && serviceSession?.current ? (
+      {showServicePrep && currentServiceOrder ? (
         <Preparation
           // Remounts for a new order the same way the campaign branch
           // remounts for a new level: the key changes ("Next Customer"
-          // -> advanceServiceQueue -> a genuinely different order id),
-          // so Preparation's internal phase/step state always starts
-          // fresh for the new customer.
-          key={serviceSession.current.order.id}
+          // -> advance -> a genuinely different order id), so
+          // Preparation's internal phase/step state always starts fresh
+          // for the new customer.
+          key={currentServiceOrder.order.id}
           service={{
-            order: serviceSession.current,
-            onServe: serveActiveServiceOrder,
-            onNextOrder: advanceServiceQueue,
+            order: currentServiceOrder,
+            onServe: isCampaignService ? serveCampaignOrder : serveActiveServiceOrder,
+            onNextOrder: isCampaignService
+              ? campaignWillFinishNext
+                ? finishCampaignLevel
+                : advanceCampaignQueue
+              : advanceServiceQueue,
+            ...(isCampaignService && campaignWillFinishNext ? { nextLabel: "Finish Level" } : {}),
+            ...(activeServiceSession ? { batchHint: batchHintFor(activeServiceSession) } : {}),
           }}
           onExit={() => {
             setSessionMode("campaign");
             go("board");
           }}
-          onComplete={recordServiceResult}
+          onComplete={isCampaignService ? recordCampaignServiceResult : recordServiceResult}
           credits={save.credits}
-          previousBest={save.recipeProgress[serviceSession.current.recipe.id]?.best ?? 0}
+          previousBest={save.recipeProgress[currentServiceOrder.recipe.id]?.best ?? 0}
           knife={equippedKnife}
           board={equippedBoard}
         />

@@ -5,7 +5,7 @@ import { BottomNav } from "./Kitchen";
 import { cn } from "@/lib/utils";
 import { getRecipeBookEntries, getRecipeBookCategories } from "@/game/levels/recipeBook";
 import { getLevel, isUnlocked, isCompleted } from "@/game/levels/LevelManager";
-import { isPrepared } from "@/game/levels/levelMastery";
+import { isLevelPrepared } from "@/game/levels/levelMastery";
 import type { UnlockRequirement } from "@/game/levels/levelTypes";
 import type { SaveData } from "@/game/SaveManager";
 
@@ -74,7 +74,7 @@ export function RecipeBook({
           {entries.map((entry) => {
             const unlocked = isUnlocked(entry.level, save.levelProgress);
             const completed = isCompleted(entry.level.id, save.levelProgress);
-            const prepared = isPrepared(save.recipeProgress, entry.level.recipeId);
+            const prepared = isLevelPrepared(save.recipeProgress, entry.level);
             const ready = unlocked && !completed;
             return (
               <button
@@ -151,7 +151,7 @@ export function RecipeDetail({
   const bookEntry = getRecipeBookEntries().find((e) => e.level.id === level.id)!;
   const unlocked = isUnlocked(level, save.levelProgress);
   const completed = isCompleted(level.id, save.levelProgress);
-  const prepared = isPrepared(save.recipeProgress, level.recipeId);
+  const prepared = isLevelPrepared(save.recipeProgress, level);
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-cream">

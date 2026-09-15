@@ -8,7 +8,8 @@
  */
 import { LEVELS, CHAPTER_TITLES } from "./levelDefinitions";
 import type { LevelDefinition } from "./levelTypes";
-import { INGREDIENTS, TECHNIQUES } from "../definitions";
+import { INGREDIENTS, TECHNIQUES, type IngredientId, type TechniqueId } from "../definitions";
+import { CAMPAIGN_RECIPES } from "../recipes/campaignRecipes";
 
 export type RecipeBookEntry = {
   /** The underlying level — Recipes.tsx uses this directly with the existing isUnlocked/isCompleted (LevelManager.ts), no parallel unlock/progress concept. */
@@ -26,17 +27,48 @@ function uniqueInOrder<T>(values: T[]): T[] {
   return [...new Set(values)];
 }
 
+/**
+ * Phase 3 — for a "Level ≠ Recipe" level (recipePoolIds set, §3/§40/§41),
+ * the level's own `preparationSteps` is only an adapter snapshot of the
+ * pool's FIRST recipe (see levelDefinitions.ts's header doc). The real
+ * Cookbook page should show every ingredient/technique/step across the
+ * WHOLE pool the player might actually be served, not just that first
+ * one — this is the migration step §41 asks for ("begin migrating the
+ * Cookbook to the real RecipeDefinition system"), scoped to what's
+ * cheap and safe: read the real recipes when they exist, fall back to
+ * the legacy `preparationSteps` derivation for every level this phase
+ * doesn't touch (41-120).
+ */
+function stepsFromPool(
+  level: LevelDefinition,
+): { ingredient: IngredientId; technique: TechniqueId; name: string }[] {
+  if (!level.recipePoolIds?.length) {
+    return level.preparationSteps.map((s) => ({
+      ingredient: s.ingredient,
+      technique: s.technique,
+      name: `${TECHNIQUES[s.technique].name} ${INGREDIENTS[s.ingredient].name}`,
+    }));
+  }
+  const pool = level.recipePoolIds
+    .map((id) => CAMPAIGN_RECIPES.find((r) => r.id === id))
+    .filter((r): r is (typeof CAMPAIGN_RECIPES)[number] => !!r);
+  return pool.flatMap((r) =>
+    r.components.map((c) => ({
+      ingredient: c.ingredientId,
+      technique: c.technique,
+      name: `${TECHNIQUES[c.technique].name} ${INGREDIENTS[c.ingredientId].name}`,
+    })),
+  );
+}
+
 function toEntry(level: LevelDefinition): RecipeBookEntry {
+  const steps = stepsFromPool(level);
   return {
     level,
     chapterTitle: CHAPTER_TITLES[level.chapter] ?? level.chapterId,
-    ingredientNames: uniqueInOrder(
-      level.preparationSteps.map((s) => INGREDIENTS[s.ingredient].name),
-    ),
-    techniqueNames: uniqueInOrder(level.preparationSteps.map((s) => TECHNIQUES[s.technique].name)),
-    steps: level.preparationSteps.map(
-      (s) => `${TECHNIQUES[s.technique].name} ${INGREDIENTS[s.ingredient].name}`,
-    ),
+    ingredientNames: uniqueInOrder(steps.map((s) => INGREDIENTS[s.ingredient].name)),
+    techniqueNames: uniqueInOrder(steps.map((s) => TECHNIQUES[s.technique].name)),
+    steps: steps.map((s) => s.name),
   };
 }
 

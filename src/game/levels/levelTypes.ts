@@ -164,4 +164,30 @@ export type LevelDefinition = {
   /** Populated on ~a dozen genuine reward levels — see LevelUnlockReward's own doc for why not every "milestone" level gets one. */
   unlockReward?: LevelUnlockReward;
   visualTheme?: string;
+  /**
+   * Phase 3 (restaurant-service campaign) — when present, this level is
+   * "Level ≠ Recipe" architecture (brief §3/§46): entering it draws a
+   * real CustomerOrder from this pool of RecipeDefinition ids (via
+   * OrderGenerator/ServiceManager — the exact Phase 2 pipeline, not a
+   * second one) instead of always running the level's own fixed
+   * `preparationSteps`. `preparationSteps`/`recipeId` above are kept as
+   * an accurate compatibility snapshot of this pool's first recipe (an
+   * adapter, per §46 — "do not delete PreparationStep until all
+   * dependent systems have been safely migrated") so recipeBook.ts,
+   * difficulty estimation, and any other reader of the old shape still
+   * gets a real, non-empty answer even before it's migrated to read
+   * `recipePoolIds` directly. Undefined on every level this phase
+   * doesn't touch (41-120), which keep working exactly as before.
+   */
+  recipePoolIds?: string[];
+  /**
+   * How many customer orders this level's service session must SERVE
+   * and PAY before the level itself counts as complete (brief §35/§36 —
+   * "a level is complete when its required service condition is
+   * complete... not recipe prepared"). Defaults to 1 when
+   * `recipePoolIds` is set and this is omitted. >1 is what a genuine
+   * multi-customer/batching level (e.g. Level 26, Level 30, Level 40)
+   * declares.
+   */
+  requiredOrders?: number;
 };

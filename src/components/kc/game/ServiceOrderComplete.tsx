@@ -24,15 +24,18 @@ export function ServiceOrderComplete({
   onNextOrder,
   onRetry,
   onExit,
+  nextLabel = "Next Customer",
 }: {
   serviceOrder: ServiceOrder;
   credits: number;
   /** Returns null if the order somehow isn't READY yet (defensive — the button that calls this is only shown once RECIPE_COMPLETED has already fired). */
   onServe: () => { coinsAwarded: number; reaction: string } | null;
-  /** Advances the queue (current->recent, next->current, new next) and remounts Preparation for the new current order. */
+  /** Advances the queue (current->recent, next->current, new next) and remounts Preparation for the new current order — OR, for a campaign level whose `requiredOrders` this serve just satisfied, finishes the level instead (App.tsx decides which; this component just shows whichever `nextLabel` App.tsx passes). */
   onNextOrder: () => void;
   onRetry: () => void;
   onExit: () => void;
+  /** Phase 3 — "Next Customer" for an open-ended service queue, or "Finish Level" for a campaign level session that's about to complete. */
+  nextLabel?: string;
 }) {
   const [served, setServed] = useState<{ coinsAwarded: number; reaction: string } | null>(null);
   const { customer, recipe } = serviceOrder;
@@ -68,7 +71,7 @@ export function ServiceOrderComplete({
             </div>
             <div className="mt-5 space-y-2">
               <KButton full onClick={onNextOrder}>
-                Next Customer
+                {nextLabel}
               </KButton>
               <KButton full variant="ghost" onClick={onExit}>
                 Back to Kitchen

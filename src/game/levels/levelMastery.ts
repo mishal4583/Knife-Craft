@@ -41,6 +41,27 @@ export function isPrepared(
 }
 
 /**
+ * Phase 3 — the Cookbook-correct version of `isPrepared` for a whole
+ * LEVEL rather than one fixed recipe id. A "Level ≠ Recipe" level
+ * (levelTypes.ts's `recipePoolIds`, brief §3/§40/§41) can be completed
+ * via any recipe the order generator actually drew from its pool —
+ * checking only the level's own compat `recipeId` would understate
+ * "Prepared" (that field is a stable bookkeeping id, not necessarily
+ * the recipe that was actually played). Checks every pool id instead;
+ * falls back to the plain `recipeId` check for every level this phase
+ * doesn't touch (41-120), which have no `recipePoolIds` at all.
+ */
+export function isLevelPrepared(
+  recipeProgress: Record<string, { best: number | null; done: boolean }>,
+  level: LevelDefinition,
+): boolean {
+  if (level.recipePoolIds?.length) {
+    return level.recipePoolIds.some((id) => isPrepared(recipeProgress, id));
+  }
+  return isPrepared(recipeProgress, level.recipeId);
+}
+
+/**
  * A level-select-only, pre-play effort label — plain words, never a
  * number, never a star, never derived from `recipeProgress`/any score
  * (that would be a mastery rating, which Law 4 rules out). Cheap

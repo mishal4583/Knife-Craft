@@ -10,6 +10,7 @@ export function GameHUD({
   counts,
   progressByAxis,
   stepLabel,
+  batchHint,
   onPause,
 }: {
   order: DailyOrder;
@@ -20,6 +21,8 @@ export function GameHUD({
   progressByAxis?: { h: number; v: number };
   /** Phase 5 — only set (and only rendered) for a multi-step session ("Step 2 of 3"); a single-step level (still the common case) shows nothing extra, matching "Level 1 should be almost immediate". */
   stepLabel?: string;
+  /** Phase 3 §16 — a one-sentence batching hint, shown as a small standalone banner (not crammed into the order card, not an overlay) so it stays readable without covering the board. */
+  batchHint?: string;
   onPause: () => void;
 }) {
   const pipRows = counts
@@ -72,7 +75,20 @@ export function GameHUD({
         </IconButton>
       </div>
 
-      <div className="absolute inset-x-0 top-[74px] z-20 flex flex-col items-center gap-1.5">
+      {batchHint ? (
+        <div className="absolute inset-x-6 top-[68px] z-20 flex justify-center">
+          <p className="paper rounded-full border border-gold/40 bg-gold/20 px-3 py-1 text-center font-hand text-[12px] leading-tight text-walnut-dark shadow-soft">
+            {batchHint}
+          </p>
+        </div>
+      ) : null}
+
+      <div
+        className={cn(
+          "absolute inset-x-0 z-20 flex flex-col items-center gap-1.5",
+          batchHint ? "top-[102px]" : "top-[74px]",
+        )}
+      >
         {pipRows.map((row, ri) => (
           <div key={ri} className="flex justify-center gap-1.5">
             {Array.from({ length: row.n }).map((_, i) => (

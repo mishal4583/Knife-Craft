@@ -23,9 +23,11 @@ import type { CustomerOrder } from "../customers/customerTypes";
 import { CUSTOMER_REACTIONS, type CustomerDefinition } from "../customers/customerTypes";
 import { randomCustomer } from "../customers/customerDefinitions";
 import type { CuisineId } from "../cuisines/cuisineTypes";
+import type { IngredientId, TechniqueId } from "../definitions";
 import type { RecipeDefinition } from "../recipes/recipeTypes";
 import type { OrganizationSession } from "../organization/organizationTypes";
 import { createPreparedOutput, assignOutput } from "../organization/organizationManager";
+import { INGREDIENTS, TECHNIQUES } from "../definitions";
 import { sessionForRecipe, isRecipeReady } from "./RecipeValidator";
 import { generateOrder } from "./OrderGenerator";
 import { createCustomerOrder, advanceOrder, payOrder } from "./CustomerOrderManager";
@@ -47,6 +49,17 @@ export type ServiceSession = {
   /** Most-recently-served last — fed straight into OrderGenerator (§54). */
   recentRecipeIds: string[];
   recentCuisineIds: (CuisineId | null)[];
+  /**
+   * Phase 3 — how many orders this session has fully SERVED and PAID so
+   * far (incremented once per advanceServiceSession call, i.e. once per
+   * genuinely completed order — never per component, never per level).
+   * Campaign levels compare this against their own `requiredOrders`
+   * (levelTypes.ts) to know when the level itself is done (§35/§36 —
+   * level completion is a separate, campaign-progression concept from
+   * "an order got served"). The Phase 2 standalone Restaurant Service
+   * harness ignores this field entirely — it has no required count.
+   */
+  completedCount: number;
 };
 
 const HISTORY_LOOKBACK = 4;
@@ -97,6 +110,7 @@ export function createServiceSession(
       recent: null,
       recentRecipeIds: [],
       recentCuisineIds: [],
+      completedCount: 0,
     };
   }
   const current = activate(buildServiceOrder(firstRecipe, rand));
@@ -109,6 +123,7 @@ export function createServiceSession(
     recent: null,
     recentRecipeIds: [firstRecipe.id],
     recentCuisineIds: [firstRecipe.cuisineId],
+    completedCount: 0,
   };
 }
 
@@ -204,6 +219,7 @@ export function advanceServiceSession(
     recent: session.current,
     recentRecipeIds,
     recentCuisineIds,
+    completedCount: session.completedCount + 1,
   };
 }
 
@@ -214,7 +230,7 @@ export function advanceServiceSession(
  */
 export function sharesComponentWithNext(
   session: ServiceSession,
-): { ingredientId: string; technique: string } | null {
+): { ingredientId: IngredientId; technique: TechniqueId } | null {
   if (!session.current || !session.next) return null;
   for (const a of session.current.recipe.components) {
     for (const b of session.next.recipe.components) {
@@ -224,4 +240,19 @@ export function sharesComponentWithNext(
     }
   }
   return null;
+}
+
+/**
+ * §16/§17 — the small, readable batching hint (a sentence, never an
+ * overlay/score) shown during prep when the CURRENT and NEXT order
+ * genuinely share a component. Pure presentation text derived straight
+ * from sharesComponentWithNext's own authoritative answer — this
+ * function never re-decides "is this batchable", only how to phrase it.
+ */
+export function batchHintFor(session: ServiceSession): string | null {
+  const shared = sharesComponentWithNext(session);
+  if (!shared || !session.next) return null;
+  const ingredientName = INGREDIENTS[shared.ingredientId].name;
+  const techniqueName = TECHNIQUES[shared.technique].name;
+  return `Batch tip: ${session.next.customer.name}'s order also needs ${ingredientName} ${techniqueName} — prepare a little extra.`;
 }

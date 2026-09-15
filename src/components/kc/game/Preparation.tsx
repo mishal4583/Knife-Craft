@@ -64,8 +64,12 @@ export function Preparation({
     order: ServiceOrder;
     /** §17/§18 — the Serve action; returns null if the order somehow isn't READY (defensive only). */
     onServe: () => { coinsAwarded: number; reaction: string } | null;
-    /** §20 — advances the queue and remounts Preparation for the new current order. */
+    /** §20 — advances the queue (or finishes a campaign level — see `nextLabel`) and remounts Preparation for the new current order. */
     onNextOrder: () => void;
+    /** Phase 3 §16 — a one-sentence batching hint ("Batch tip: ...") when the active and next order share a real component; null otherwise. Presentation only, never gameplay-affecting. */
+    batchHint?: string | null;
+    /** Label for ServiceOrderComplete's advance button — defaults to "Next Customer"; a campaign level about to complete passes "Finish Level" instead (App.tsx decides which, based on ServiceSession.completedCount vs the level's own requiredOrders). */
+    nextLabel?: string;
   };
   onExit: () => void;
   /** Returns this run's coin reward (0 on replay — Law 2 — or always 0 for a service session, where payment is deferred to the explicit Serve action) so OrderComplete can show it without a second App->Preparation round trip. */
@@ -315,6 +319,7 @@ export function Preparation({
         counts={activeTechnique.counts}
         progressByAxis={progressByAxis}
         {...(stepLabel ? { stepLabel } : {})}
+        {...(service?.batchHint ? { batchHint: service.batchHint } : {})}
         onPause={() => bridge.pauseGame()}
       />
 
@@ -405,6 +410,7 @@ export function Preparation({
             onNextOrder={service.onNextOrder}
             onRetry={restart}
             onExit={onExit}
+            {...(service.nextLabel ? { nextLabel: service.nextLabel } : {})}
           />
         ) : (
           <OrderComplete
