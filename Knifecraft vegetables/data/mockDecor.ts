@@ -1,0 +1,27 @@
+import type { Decoration } from "@/types/game";
+
+export const DECOR_CATEGORIES = [
+  "Plants",
+  "Lighting",
+  "Cookware",
+  "Shelves",
+  "Counter",
+  "Wall",
+  "Table",
+  "Special",
+];
+
+export const mockDecorations: Decoration[] = [
+  { id: "fern", name: "Window Fern", category: "Plants", glyph: "🌿", price: 60, owned: true, placed: true },
+  { id: "basil", name: "Potted Basil", category: "Plants", glyph: "🪴", price: 40, owned: true, placed: true },
+  { id: "pendant", name: "Brass Pendant", category: "Lighting", glyph: "💡", price: 180, owned: false, placed: false },
+  { id: "copper-pans", name: "Copper Pan Set", category: "Cookware", glyph: "🍳", price: 220, owned: false, placed: false },
+  { id: "clock", name: "Station Clock", category: "Wall", glyph: "🕰️", price: 130, owned: false, placed: false },
+  { id: "curtain", name: "Linen Curtain", category: "Wall", glyph: "🪟", price: 90, owned: true, placed: true },
+  { id: "espresso", name: "Espresso Bar", category: "Counter", glyph: "☕", price: 340, owned: false, placed: false },
+  { id: "sign", name: "Painted Sign", category: "Wall", glyph: "🪧", price: 150, owned: false, placed: false },
+  { id: "stoneware", name: "Stoneware Set", category: "Table", glyph: "🍽️", price: 200, owned: false, placed: false },
+  { id: "shelf", name: "Oak Shelf", category: "Shelves", glyph: "🗄️", price: 110, owned: false, placed: false },
+  { id: "apron", name: "Chef's Apron", category: "Special", glyph: "🥻", price: 260, owned: false, placed: false },
+  { id: "whetstone", name: "Brass Whetstone", category: "Special", glyph: "🪨", price: 300, owned: false, placed: false },
+];

@@ -1,0 +1,267 @@
+/**
+ * STORY_DEFINITIONS — THE LAST WISH, ported directly (data, not
+ * paraphrased) from knifecraft.html's actual `Story` IIFE
+ * (`knifecraft.html:10772`). Every beat's copy, hold time, tint, fx and
+ * card list below is copied verbatim from the source's own `OPENING`
+ * (`:10942`), `FRESH` (`:10957`), `CHEF` (`:10969`), `FINALE` (`:10977`)
+ * and `MILES` (`:10997`) arrays — not rewritten, not summarized.
+ *
+ * Two things the source has that this port intentionally does NOT carry
+ * over, because production has no equivalent system and inventing one
+ * is out of scope for this pass:
+ *
+ * - `cam` (a cinematic camera-pan system, `Camera.go(name, ms)`) —
+ *   production has no story-driven camera; every beat just renders as a
+ *   full-screen overlay over whatever's already on screen.
+ * - `onEnter` (a per-beat callback, used only by the CHEF sequence's own
+ *   last beat to call `SceneFlow.prep(); startRecipe(0)`) — production's
+ *   equivalent is simply StoryOverlay's own `onDone` callback, fired
+ *   once after the LAST beat in a sequence, which the caller (App.tsx)
+ *   already uses to decide what screen to land on next.
+ *
+ * `tint`/`veil`/`bare` are carried as data so the renderer CAN use them
+ * for a visual treatment matching the source's own (a warm/faded/clean/
+ * thriving color wash, a darkening veil behind art, hiding the normal
+ * game chrome) — StoryOverlay.tsx is where that's actually applied.
+ */
+
+/** One card shown in the Fresh-Start "your savings" beat — ported from the source's `const CARDS`. */
+export type StoryCardId = "board" | "knife" | "ing";
+
+/** One line of on-screen dialogue — ported from the source's `dlg:{who,art,say,side?}` shape. */
+export type StoryDialogue = {
+  who: string;
+  /** Key into STORY_ART (storyArt.ts) — "chef" or "you". */
+  art: "chef" | "you";
+  say: string;
+  side?: "you";
+};
+
+export type StoryBeat = {
+  tint: "sFaded" | "sDecline" | "sClean" | "sThrive";
+  /** Hides the normal game chrome behind the story overlay — every beat in this port is `bare`. */
+  bare?: boolean;
+  /** Darkens behind the beat's own art, for a scene (bedside/dining) rather than a plain color wash. */
+  veil?: boolean;
+  /** Key into STORY_ART (storyArt.ts). */
+  art?: "bedside" | "keys" | "dining";
+  /** `sProp` in the source — the keys render as a small held prop, not a full scene. Cosmetic only. */
+  artClass?: "sProp";
+  fx?: "dust" | "spark" | "coins";
+  lines?: string[];
+  quote?: string;
+  /** Present only on a beat that waits for a tap instead of auto-advancing after `hold` ms. */
+  btn?: string;
+  kicker?: string;
+  title?: string;
+  step?: string;
+  cards?: StoryCardId[];
+  dlg?: StoryDialogue;
+  /** Auto-advance delay in ms — ignored (the beat waits for `btn` instead) when `btn` is present. */
+  hold?: number;
+};
+
+/** OPENING (4 beats) — ported verbatim from knifecraft.html:10942. Runs once, on first load, via boot(). */
+export const OPENING: StoryBeat[] = [
+  {
+    tint: "sFaded",
+    bare: true,
+    hold: 4400,
+    lines: [
+      "For generations, this little restaurant belonged to your family.",
+      "Your grandparent built it from the ground up.",
+    ],
+  },
+  {
+    tint: "sDecline",
+    bare: true,
+    hold: 5600,
+    lines: [
+      "But when they became ill and could no longer run the restaurant, everything slowly fell apart.",
+      "The kitchen grew quiet.",
+      "Customers stopped coming.",
+    ],
+  },
+  {
+    tint: "sDecline",
+    bare: true,
+    veil: true,
+    art: "bedside",
+    hold: 5600,
+    lines: ["Before they passed away, they gave you the keys.", "And one last wish."],
+    quote: "“Don’t let this place disappear.”",
+  },
+  {
+    tint: "sFaded",
+    bare: true,
+    art: "keys",
+    artClass: "sProp",
+    lines: [
+      "You had never planned to run a restaurant.",
+      "You weren’t even sure you wanted to.",
+      "But this was their last wish.",
+      "So you decided to give it one last chance.",
+    ],
+    btn: "OPEN THE RESTAURANT",
+  },
+];
+
+/** FRESH — A Fresh Start (4 beats) — ported verbatim from knifecraft.html:10957. */
+export const FRESH: StoryBeat[] = [
+  {
+    tint: "sDecline",
+    bare: true,
+    kicker: "A FRESH START",
+    hold: 2900,
+    lines: ["The restaurant needs a little work before we can open."],
+  },
+  {
+    tint: "sClean",
+    bare: true,
+    step: "CLEAN",
+    fx: "dust",
+    hold: 3100,
+    lines: ["Counters wiped. Dust out the door. The light comes back."],
+  },
+  {
+    tint: "sClean",
+    bare: true,
+    step: "SMALL REPAIRS",
+    fx: "spark",
+    hold: 3100,
+    lines: ["A shelf straightened, a hinge tightened, the kitchen light switched on."],
+  },
+  {
+    tint: "sClean",
+    bare: true,
+    veil: true,
+    step: "YOUR SAVINGS",
+    fx: "coins",
+    cards: ["board", "knife", "ing"],
+    lines: ["You spent your savings to give the restaurant a chance."],
+    btn: "READY",
+  },
+];
+
+/** CHEF (5 beats) — ported verbatim from knifecraft.html:10969. Explicit role contract: the player is owner/prep cook, never the chef — the chef cooks. */
+export const CHEF: StoryBeat[] = [
+  {
+    tint: "sClean",
+    bare: true,
+    hold: 3000,
+    dlg: { who: "CHEF", art: "chef", say: "You really spent your savings on this place?" },
+  },
+  {
+    tint: "sClean",
+    bare: true,
+    hold: 2400,
+    dlg: { who: "YOU", art: "you", side: "you", say: "I promised." },
+  },
+  {
+    tint: "sClean",
+    bare: true,
+    hold: 2800,
+    dlg: { who: "CHEF", art: "chef", say: "Then we’d better make it count." },
+  },
+  {
+    tint: "sClean",
+    bare: true,
+    hold: 3200,
+    dlg: { who: "CHEF", art: "chef", say: "I’ll handle the cooking. You handle the prep." },
+  },
+  {
+    tint: "sClean",
+    kicker: "LEVEL 1",
+    title: "FIRST PREP",
+    hold: 2600,
+    lines: ["The chef sets the first ingredient on your board."],
+  },
+];
+
+/** FINALE (4 beats) — ported verbatim from knifecraft.html:10977. Gated `n >= 100 && !story.finaleSeen`. Copy freeze: "You built this." / "They would be proud." — "We did it." must never appear. */
+export const FINALE: StoryBeat[] = [
+  {
+    tint: "sThrive",
+    hold: 4200,
+    // no art — the room IS the art: the restored kitchen the player has been standing in all along.
+    lines: ["You came here to keep a promise.", "You stayed because you wanted to."],
+  },
+  {
+    tint: "sThrive",
+    hold: 4400,
+    lines: [
+      "Years ago, this place was almost forgotten.",
+      "Today, it’s the best restaurant in town.",
+    ],
+  },
+  {
+    tint: "sThrive",
+    veil: true,
+    art: "dining",
+    hold: 4600,
+    lines: ["You didn’t just inherit your grandparent’s restaurant.", "You built this."],
+  },
+  {
+    tint: "sThrive",
+    veil: true,
+    art: "dining",
+    title: "THE RESTAURANT LIVES ON",
+    quote: "They would be proud.",
+    btn: "BACK TO THE KITCHEN",
+  },
+];
+
+export type MilestoneDef = { bit: number; at: number; kicker: string; line: string };
+
+/**
+ * MILES — the first 4 entries (bits 1/2/4/8) are ported verbatim from
+ * knifecraft.html:10997, with one corrective-pass change: the first
+ * milestone's `at` moved from 8 to 10, matching the progression pass's
+ * required new-save sequence (Level 10/20/45/70/100). This is safe for
+ * existing saves: `checkStoryFlush` only ever fires a bit once
+ * (`!(mask & bit)`), so a save that already fired bit 1 at count 8 is
+ * completely unaffected (the mask already has it set, forward-only); a
+ * save that hasn't reached count 8 yet simply fires it two levels later
+ * than before — never a replay, never a re-fire.
+ *
+ * Two entries (bits 16/32) are NEW, extending the campaign's own
+ * milestone beats to the Progression pass's Chapter 11/12 (110/120) —
+ * `at` stays a count of distinct completed levels, exactly like every
+ * other entry (see StoryManager.ts's `playedCount`), so these just
+ * naturally fire once a player reaches that many completed levels,
+ * campaign-order or not.
+ */
+export const MILES: MilestoneDef[] = [
+  {
+    bit: 1,
+    at: 10,
+    kicker: "THE ROOM COMES BACK",
+    line: "It’s starting to feel like a real restaurant again.",
+  },
+  { bit: 2, at: 20, kicker: "WORD GETS AROUND", line: "People are coming back." },
+  {
+    bit: 4,
+    at: 45,
+    kicker: "SOMETHING WORTH KEEPING",
+    line: "I never thought I’d care this much about this place.",
+  },
+  { bit: 8, at: 70, kicker: "THE LAST WISH", line: "They would have loved seeing this." },
+  {
+    bit: 16,
+    at: 110,
+    kicker: "THE KITCHEN GROWS",
+    line: "There’s meat and fish on the board now. This kitchen keeps changing.",
+  },
+  {
+    bit: 32,
+    at: 120,
+    kicker: "GRAND SERVICE",
+    line: "Every station, every dish — the kitchen you built runs itself now.",
+  },
+];
+
+/** Full mask value once all 6 milestones have fired — ported verbatim from the source's own regression-harness mute value for the first 4, extended for the Progression pass's two new ones. Stays correct only while there are exactly 6 milestones. */
+export const MILES_FULL_MASK = 63;
+
+/** The finale's own gate — ported verbatim from `n >= 100`. */
+export const FINALE_AT = 100;

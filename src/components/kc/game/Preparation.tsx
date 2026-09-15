@@ -1,0 +1,364 @@
+import { useEffect, useRef, useState } from "react";
+import { GameBridge, type GameBridgeEvent } from "@/game/GameBridge";
+import { PauseManager } from "@/game/PauseManager";
+import { gameReady } from "@/game/PlayablesSDK";
+import {
+  INGREDIENTS,
+  TECHNIQUES,
+  requiredCutsFor,
+  type IngredientId,
+  type TechniqueId,
+} from "@/game/definitions";
+import { knifeOrDefault, DEFAULT_KNIFE_ID } from "@/game/knives/knifeDefinitions";
+import type { KnifeDefinition } from "@/game/knives/knifeTypes";
+import { boardOrDefault, DEFAULT_BOARD_ID } from "@/game/boards/boardDefinitions";
+import type { BoardDefinition } from "@/game/boards/boardTypes";
+import type { PrepStep } from "@/game/events";
+import type { CutPath, CutResult, GameplayPhase, QualityLabel } from "@/types/game";
+import type { LevelDefinition } from "@/game/levels/levelTypes";
+import { GameViewport } from "./GameViewport";
+import { GameHUD } from "./GameHUD";
+import { CutResultPanel } from "./CutResultPanel";
+import { KnifeReport } from "./KnifeReport";
+import { OrderComplete } from "./OrderComplete";
+import { Panel, KButton, DustMotes } from "../common/primitives";
+import kitchenBg from "@/assets/kitchen-bg.jpg";
+
+/**
+ * Preparation now consumes a LevelDefinition directly rather than a flat
+ * PrepOrder (§"make sure the Level Engine is actually consuming level
+ * data rather than the old flat PrepOrder flow") — `level.preparationSteps`
+ * IS the session's gameplay data, handed straight to GameBridge as
+ * `steps`. src/data/orders.ts/PrepOrder is no longer read by this
+ * component; it stays in the repo unused rather than deleted (see the
+ * Phase 5 report's "files changed" for why).
+ */
+export function Preparation({
+  level,
+  onExit,
+  onComplete,
+  credits,
+  previousBest,
+  knife = knifeOrDefault(DEFAULT_KNIFE_ID),
+  board = boardOrDefault(DEFAULT_BOARD_ID),
+  nextLevel,
+  onNextLevel,
+}: {
+  level: LevelDefinition;
+  onExit: () => void;
+  /** Returns this run's coin reward (0 on replay — Law 2) so OrderComplete can show it without a second App->Preparation round trip. */
+  onComplete: (score: number) => number;
+  credits: number;
+  previousBest: number;
+  knife?: KnifeDefinition;
+  board?: BoardDefinition;
+  /** The next campaign level, only when it exists AND is already unlocked — App.tsx computes this once per render, mirroring how `previousBest` is already passed down instead of looked up in here. */
+  nextLevel?: LevelDefinition | null;
+  onNextLevel?: () => void;
+}) {
+  const steps: PrepStep[] = level.preparationSteps.map((s) => ({
+    ingredientId: s.ingredient,
+    techniqueId: s.technique,
+    ...(s.chainBreak ? { chainBreak: true } : {}),
+  }));
+  const firstStep = steps[0]!;
+
+  const bridgeRef = useRef<GameBridge | null>(null);
+  if (!bridgeRef.current) bridgeRef.current = new GameBridge();
+  const bridge = bridgeRef.current;
+
+  const [phase, setPhase] = useState<GameplayPhase>("prep");
+  // The CURRENTLY ACTIVE step's ingredient/technique — updated on every
+  // STEP_STARTED, defaulting to the session's first step so the HUD is
+  // correct from the very first frame (before the scene has even booted).
+  const [activeStep, setActiveStep] = useState<{
+    index: number;
+    ingredientId: IngredientId;
+    techniqueId: TechniqueId;
+    requiredCuts: number;
+  }>({
+    index: 0,
+    ingredientId: firstStep.ingredientId,
+    techniqueId: firstStep.techniqueId,
+    requiredCuts: requiredCutsFor(TECHNIQUES[firstStep.techniqueId]),
+  });
+  const [cutProgress, setCutProgress] = useState(0);
+  const [progressByAxis, setProgressByAxis] = useState({ h: 0, v: 0 });
+  const [currentCutQuality, setCurrentCutQuality] = useState<QualityLabel | null>(null);
+  const [showHint, setShowHint] = useState(true);
+  const [paused, setPaused] = useState(false);
+  const [result, setResult] = useState<CutResult | null>(null);
+  const [rewardCoins, setRewardCoins] = useState(0);
+
+  const idealPaths = useRef<CutPath[]>([]);
+  const playerPaths = useRef<CutPath[]>([]);
+
+  useEffect(() => {
+    bridge.startPreparation({ steps, knife, board });
+
+    // Fallback only — if Phaser somehow never boots (no WebGL/canvas2d,
+    // an uncaught error inside the scene, ...), gameReady() still fires
+    // so YouTube doesn't consider the game permanently stuck loading.
+    // markReady() is idempotent; whichever path reaches it first wins.
+    let readyFired = false;
+    const markReady = () => {
+      if (readyFired) return;
+      readyFired = true;
+      gameReady();
+    };
+    const readyFallback = window.setTimeout(markReady, 4000);
+
+    const unsubscribe = bridge.subscribeToGameEvents((event: GameBridgeEvent) => {
+      if (event.type === "SCENE_READY") {
+        // The Prep screen is the game's first screen, so "Phaser has
+        // booted and is accepting input" is the true "interactive"
+        // signal (§22) — not merely "the save file resolved".
+        window.clearTimeout(readyFallback);
+        markReady();
+      } else if (event.type === "CUT_STARTED") {
+        setShowHint(false);
+      } else if (event.type === "STEP_STARTED") {
+        const { stepIndex, ingredientId, techniqueId, requiredCuts } = event.payload;
+        setActiveStep({ index: stepIndex, ingredientId, techniqueId, requiredCuts });
+        setCutProgress(0);
+        setProgressByAxis({ h: 0, v: 0 });
+      } else if (event.type === "CUT_COMPLETED") {
+        // Audio/particles/hitstop for the cut itself are triggered by the
+        // scene directly (they're gameplay feedback, not UI) — this only
+        // drives the transient toast and the HUD's progress dots.
+        const { ideal, player, cutIndex, proxyQuality, inputMode } = event.payload;
+        idealPaths.current = [...idealPaths.current, ideal];
+        playerPaths.current = [...playerPaths.current, player];
+        setCutProgress(cutIndex);
+        setProgressByAxis((prev) => ({
+          ...prev,
+          [event.payload.axis]: prev[event.payload.axis] + 1,
+        }));
+        // Tap is the relaxed, no-precision mode (§5) — the visual result
+        // IS the feedback. The "Clean cut." / "Rustic, and still lovely."
+        // toast stays reserved for swipe, the deeper mastery interaction.
+        if (inputMode === "swipe") {
+          setCurrentCutQuality(proxyQuality);
+          window.setTimeout(() => setCurrentCutQuality(null), 1100);
+        }
+      } else if (event.type === "PLATING_STARTED") {
+        // The actual plating + chef-hands sequence plays out inside the
+        // Phaser canvas (see PreparationScene) — this only keeps the
+        // HUD's phase honest. RECIPE_COMPLETED (and the Knife Report)
+        // doesn't arrive until the hands have taken the plate away,
+        // matching the reference's finishRecipe -> plating -> handoff ->
+        // showResult order.
+        setPhase("plating");
+      } else if (event.type === "RECIPE_COMPLETED") {
+        const { overall, evenness, consistency, rhythmBonus, qualityLabel } = event.payload;
+        setResult({
+          score: overall,
+          evenness,
+          consistency,
+          rhythmBonus,
+          qualityLabel,
+          idealPath: idealPaths.current,
+          playerPath: playerPaths.current,
+        });
+        setPhase("result");
+      }
+    });
+
+    const unsubscribePause = PauseManager.subscribe(setPaused);
+
+    return () => {
+      window.clearTimeout(readyFallback);
+      unsubscribe();
+      unsubscribePause();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- bridge/level/knife/board are fixed for this preparation run
+  }, []);
+
+  // Credit the result the moment the "complete" screen appears, not on
+  // its button click — otherwise OrderComplete would render one screen
+  // behind, showing credits from before this order's reward.
+  const awarded = useRef(false);
+  useEffect(() => {
+    if (phase !== "complete" || awarded.current || !result) return;
+    awarded.current = true;
+    setRewardCoins(onComplete(result.score));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- onComplete/result are stable for this run
+  }, [phase]);
+
+  function restart() {
+    idealPaths.current = [];
+    playerPaths.current = [];
+    awarded.current = false;
+    setCutProgress(0);
+    setProgressByAxis({ h: 0, v: 0 });
+    setResult(null);
+    setRewardCoins(0);
+    setPhase("prep");
+    setShowHint(true);
+    setActiveStep({
+      index: 0,
+      ingredientId: firstStep.ingredientId,
+      techniqueId: firstStep.techniqueId,
+      requiredCuts: requiredCutsFor(TECHNIQUES[firstStep.techniqueId]),
+    });
+    bridge.restartPreparation();
+  }
+
+  const activeIngredient = INGREDIENTS[activeStep.ingredientId];
+  const activeTechnique = TECHNIQUES[activeStep.techniqueId];
+  // Phase 16 — the destination-tray requirement from Levels 81-100 (§19:
+  // "small, readable, visually integrated with the cutting board... not a
+  // separate screen") is satisfied by extending the SAME step-label slot
+  // multi-ingredient levels already show ("Step 2 of 3"), not a new HUD
+  // element. Read directly off the level's own data — no bridge/scene
+  // round trip needed for a label.
+  const activeDestination = level.preparationSteps[activeStep.index]?.destination;
+  const stepLabel =
+    steps.length > 1 || activeDestination
+      ? `Step ${activeStep.index + 1} of ${steps.length}${activeDestination ? ` · for ${activeDestination}` : ""}`
+      : undefined;
+  const order = {
+    day: "Today",
+    recipeId: level.recipeId,
+    name: level.title,
+    emoji: level.emoji,
+    ingredients: level.preparationSteps.map((s) => INGREDIENTS[s.ingredient].name),
+    reward: level.reward.coins,
+    note: level.subtitle,
+  };
+
+  return (
+    <div className="relative h-full w-full overflow-hidden bg-cream">
+      <img
+        src={kitchenBg}
+        alt="Warm café kitchen with copper pans, herbs and morning light"
+        width={540}
+        height={960}
+        className="absolute inset-0 h-full w-full object-cover"
+      />
+      <div className="absolute inset-0 bg-[radial-gradient(120%_70%_at_20%_8%,rgba(255,247,232,0.5),transparent_58%)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(62,40,25,0.32)_0%,transparent_26%,transparent_52%,rgba(62,40,25,0.38)_100%)]" />
+      <DustMotes />
+
+      <GameHUD
+        order={order}
+        gameplay={{
+          phase,
+          ingredient: {
+            id: activeIngredient.id,
+            name: activeIngredient.name,
+            glyph: order.emoji,
+            technique: activeTechnique.name,
+            targetPieces: activeStep.requiredCuts,
+          },
+          technique: activeTechnique.name,
+          cutProgress,
+          currentScore: result?.score ?? 0,
+          currentCombo: 0,
+          currentCutQuality,
+          isPaused: paused,
+          lastResult: result,
+          previousBest,
+          rewardCredits: level.reward.coins,
+        }}
+        totalPieces={activeStep.requiredCuts}
+        counts={activeTechnique.counts}
+        progressByAxis={progressByAxis}
+        {...(stepLabel ? { stepLabel } : {})}
+        onPause={() => bridge.pauseGame()}
+      />
+
+      <GameViewport bridge={bridge} />
+
+      {showHint && phase === "prep" ? (
+        <div className="pointer-events-none absolute inset-x-0 bottom-[7%] z-20 flex flex-col items-center gap-2">
+          <span className="font-hand text-[19px] text-ivory/90 drop-shadow-[0_2px_4px_rgba(62,40,25,0.6)]">
+            {activeTechnique.interactionMode === "peel"
+              ? "drag to peel"
+              : activeTechnique.interactionMode === "smash"
+                ? "tap to smash"
+                : activeTechnique.interactionMode === "ring"
+                  ? "tap across the onion to cut a ring"
+                  : "tap to cut, or swipe for precision"}
+          </span>
+        </div>
+      ) : null}
+
+      <div className="absolute inset-x-0 top-[26%] z-30 flex justify-center">
+        <CutResultPanel quality={currentCutQuality} />
+      </div>
+
+      {paused ? (
+        <div className="absolute inset-0 z-40 flex items-center justify-center bg-walnut-dark/40 backdrop-blur-[3px]">
+          <Panel className="anim-pop w-[74%] p-5 text-center" tone="cream">
+            <p className="font-display text-[22px] font-black tracking-tight text-walnut-dark">
+              Paused
+            </p>
+            <p className="mt-1 font-hand text-[16px] text-walnut/70">the kitchen will wait</p>
+            <div className="mt-4 space-y-2">
+              <KButton full onClick={() => bridge.resumeGame()}>
+                Resume
+              </KButton>
+              <KButton
+                full
+                variant="cream"
+                onClick={() => {
+                  // Phase 4.5 fix: restarting from the pause overlay used to
+                  // reset gameplay state (onRestart) without ever calling
+                  // PauseManager.resume() — the scene itself stayed
+                  // Phaser-paused (tweens/update loop frozen) even though
+                  // the pause OVERLAY closed, since `paused` only flips via
+                  // PauseManager's own subscription. Resume first, always.
+                  bridge.resumeGame();
+                  restart();
+                }}
+              >
+                Restart Prep
+              </KButton>
+              <KButton
+                full
+                variant="ghost"
+                onClick={() => {
+                  // Phase 4.5 fix: this used to navigate to Kitchen without
+                  // resuming, so PauseManager stayed paused=true globally —
+                  // the NEXT Preparation mount (any level) immediately
+                  // subscribed into that stale true and rendered paused
+                  // from the first frame. Exiting a session must always
+                  // leave PauseManager unpaused behind it.
+                  bridge.resumeGame();
+                  onExit();
+                }}
+              >
+                Back to Kitchen
+              </KButton>
+            </div>
+          </Panel>
+        </div>
+      ) : null}
+
+      {phase === "result" && result ? (
+        <KnifeReport
+          dishName={level.title}
+          stepName={steps.length > 1 ? "Preparation" : activeTechnique.name}
+          result={result}
+          onRetry={restart}
+          onContinue={() => setPhase("complete")}
+        />
+      ) : null}
+
+      {phase === "complete" ? (
+        <OrderComplete
+          dishName={level.title}
+          score={result?.score ?? 0}
+          previousBest={previousBest}
+          qualityLabel={result?.qualityLabel ?? "Clean"}
+          rewardCoins={rewardCoins}
+          credits={credits}
+          onRetry={restart}
+          onKitchen={onExit}
+          {...(nextLevel && onNextLevel ? { nextLevelTitle: nextLevel.title, onNextLevel } : {})}
+        />
+      ) : null}
+    </div>
+  );
+}

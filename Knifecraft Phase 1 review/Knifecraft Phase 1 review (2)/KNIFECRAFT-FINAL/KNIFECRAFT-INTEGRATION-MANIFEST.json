@@ -1,0 +1,1998 @@
+{
+  "meta": {
+    "package": "KnifeCraft Claude Design — final freeze",
+    "authoritative_source": "knifecraft.html",
+    "source_lines": 11301,
+    "generated": "2026-09-14",
+    "status": "FROZEN",
+    "single_file": true,
+    "build_step": null,
+    "bitmap_assets": 0,
+    "external_assets": 0,
+    "note": "All art is procedural: ingredients painted to offscreen canvases, story art is inline SVG strings."
+  },
+  "rendering_constants": {
+    "PX_PER_CM": 22.5,
+    "SIZE_REF_CM": 10,
+    "SIZE_GAMMA": 0.5,
+    "SIZE_MAX_W": 0.9,
+    "SIZE_MAX_H": 0.62,
+    "SCALE_LEN": [
+      "rx",
+      "ry",
+      "rBig",
+      "rSmall",
+      "capR",
+      "depthX",
+      "depthY",
+      "spine",
+      "spineRx",
+      "skinRim"
+    ],
+    "scale_formula": "dispL = SIZE_REF_CM * (REAL_CM[id][0]/SIZE_REF_CM)^SIZE_GAMMA; target px = dispL*PX_PER_CM, short axis keeps the food's own aspect; footprint matched long-to-long and short-to-short.",
+    "plate": {
+      "PLATE_RX": 224,
+      "PLATE_RY": 172,
+      "PLATE_DY": 14,
+      "note": "20cm side plate at PX_PER_CM"
+    },
+    "must_not_change": [
+      "PX_PER_CM",
+      "SIZE_REF_CM",
+      "SIZE_GAMMA",
+      "REAL_CM entries",
+      "SCALE_LEN",
+      "ing.art snapshot (authored proportions)"
+    ]
+  },
+  "peel_system": {
+    "model": "rub-to-peel (hand travel budget)",
+    "NOT": "grid / stroke-stamp / destination-out progressive peel — that system does not exist in this source",
+    "PEEL_SHED_MS": 520,
+    "PEEL_NEED_PX": 2200,
+    "peelNeed": "PEEL_NEED_PX * (T.k || 1)",
+    "PEEL_THIN_MAX": 0.45,
+    "peelable_derived": "!!SKIN[id] && !SKIN_KEEP[id]",
+    "peelable_ids": [
+      "watermelon",
+      "coconut",
+      "pineapple"
+    ],
+    "PEEL_TONE": {
+      "pineapple": "#8A6A2A",
+      "watermelon": "#2C6531",
+      "coconut": "#8A5A2A",
+      "_fallback": "#8A6A2A"
+    },
+    "SKIN_KEEP": [
+      "beetroot",
+      "sweetpotato",
+      "mango",
+      "kiwi",
+      "pomegranate",
+      "fennel",
+      "peapod",
+      "turnip"
+    ],
+    "SKIN_WHOLE": [
+      "turnip"
+    ],
+    "skin_ids": [
+      "turnip",
+      "pomegranate",
+      "kiwi",
+      "mango",
+      "watermelon",
+      "sweetpotato",
+      "beetroot",
+      "coconut",
+      "fennel",
+      "peapod",
+      "pineapple"
+    ],
+    "gate": "canCut() = phase==='cutting' && !peelPending(); the peel step has no phase of its own",
+    "rub_rules": [
+      "distance accrues only inside the silhouette (insideSil)",
+      "rub strokes produce no blade, no ghost line and no cut on release",
+      "rasp sound throttled to 90ms",
+      "flecks capped at 90"
+    ],
+    "shell_opacity_single_source": "skinAlpha(id)",
+    "first_cut_reveal": "FALLBACK ONLY — unreachable in normal play; reached only via __kcTest.peelSet() or runStage()",
+    "forbidden": [
+      "introducing a PEELABLE list",
+      "a second shell-opacity path",
+      "putting peel state into the cut model"
+    ]
+  },
+  "techniques": {
+    "implemented": [
+      "Slice",
+      "Dice",
+      "Julienne",
+      "Chiffonade",
+      "Chop",
+      "Halve",
+      "Prep",
+      "Free"
+    ],
+    "not_implemented": [
+      "Peel",
+      "Smash",
+      "Rings",
+      "Radial",
+      "Rock Mince"
+    ],
+    "notes": {
+      "Peel": "a GATE on 3 peelable ingredients, not a technique and not a recipe",
+      "Prep": "multi-stage recipe (garden-prep, level 70)",
+      "Free": "free-cut sandbox (level 71), no objective"
+    }
+  },
+  "story": {
+    "title": "THE LAST WISH",
+    "mask_bits": 4,
+    "mask_full_value": 15,
+    "storage_keys": {
+      "introDone": "story.introDone",
+      "mask": "story.ms",
+      "finale": "story.fin",
+      "counter": "recipesPlayed"
+    },
+    "level_definition": "Save.played() — plates completed. There is no level table; level N = recipe N for the first 71, then the list repeats (nextRecipe = idx+1 mod 71).",
+    "milestones": [
+      {
+        "bit": 1,
+        "at": 8,
+        "kicker": "THE ROOM COMES BACK",
+        "line": "It’s starting to feel like a real restaurant again."
+      },
+      {
+        "bit": 2,
+        "at": 20,
+        "kicker": "WORD GETS AROUND",
+        "line": "People are coming back."
+      },
+      {
+        "bit": 4,
+        "at": 45,
+        "kicker": "SOMETHING WORTH KEEPING",
+        "line": "I never thought I’d care this much about this place."
+      },
+      {
+        "bit": 8,
+        "at": 70,
+        "kicker": "THE LAST WISH",
+        "line": "They would have loved seeing this."
+      }
+    ],
+    "finale": {
+      "at": 100,
+      "gate": "n >= 100 && story.fin !== true",
+      "beats": 4,
+      "closing_lines": [
+        "You built this.",
+        "They would be proud."
+      ],
+      "forbidden_copy": "We did it."
+    },
+    "sequences": {
+      "OPENING": 4,
+      "FRESH": 4,
+      "CHEF": 5,
+      "FINALE": 4
+    },
+    "art_assets": [
+      "bedside",
+      "keys",
+      "chef",
+      "you",
+      "dining",
+      "board",
+      "knife"
+    ],
+    "player_role": "restaurant owner and hands-on prep cook — NOT the chef; the chef cooks"
+  },
+  "roster": {
+    "claude_design_count": 42,
+    "recipe_count": 71,
+    "ingredients": [
+      {
+        "id": "tomato",
+        "name": "Tomato",
+        "shape": "ellipse",
+        "real_cm": [
+          8,
+          7.5
+        ],
+        "has_face": false,
+        "has_depth": false,
+        "has_skin": false,
+        "permanent_skin": false,
+        "peelable": false,
+        "overhang": false,
+        "resistance": "[[0,0.75],[0.12,0.30],[0.5,0.10],[0.85,0.15],[1,0.40]]",
+        "techniques": [
+          "Slice",
+          "Dice",
+          "Prep"
+        ],
+        "source": {
+          "profile": 347,
+          "paint": 5884,
+          "skin": null
+        }
+      },
+      {
+        "id": "cucumber",
+        "name": "Cucumber",
+        "shape": "capsule",
+        "real_cm": [
+          21,
+          5
+        ],
+        "has_face": false,
+        "has_depth": false,
+        "has_skin": false,
+        "permanent_skin": false,
+        "peelable": false,
+        "overhang": false,
+        "resistance": "[[0,0.40],[0.10,0.16],[0.55,0.08],[0.88,0.12],[1,0.22]]",
+        "techniques": [
+          "Slice",
+          "Prep"
+        ],
+        "source": {
+          "profile": 362,
+          "paint": 5911,
+          "skin": null
+        }
+      },
+      {
+        "id": "carrot",
+        "name": "Carrot",
+        "shape": "taper",
+        "real_cm": [
+          19,
+          3.6
+        ],
+        "has_face": false,
+        "has_depth": false,
+        "has_skin": false,
+        "permanent_skin": false,
+        "peelable": false,
+        "overhang": false,
+        "resistance": "[[0,0.95],[0.18,0.62],[0.42,0.10],[0.80,0.14],[1,0.30]]",
+        "techniques": [
+          "Julienne",
+          "Prep"
+        ],
+        "source": {
+          "profile": 378,
+          "paint": 5938,
+          "skin": null
+        }
+      },
+      {
+        "id": "basil",
+        "name": "Basil",
+        "shape": "cluster",
+        "real_cm": [
+          15,
+          10
+        ],
+        "has_face": false,
+        "has_depth": false,
+        "has_skin": false,
+        "permanent_skin": false,
+        "peelable": false,
+        "overhang": false,
+        "resistance": "[[0,0.22],[0.10,0.10],[0.55,0.05],[0.88,0.07],[1,0.14]]",
+        "techniques": [
+          "Chiffonade",
+          "Chop"
+        ],
+        "source": {
+          "profile": 398,
+          "paint": 5963,
+          "skin": null
+        }
+      },
+      {
+        "id": "parsley",
+        "name": "Parsley",
+        "shape": "cluster",
+        "real_cm": [
+          18,
+          12
+        ],
+        "has_face": false,
+        "has_depth": false,
+        "has_skin": false,
+        "permanent_skin": false,
+        "peelable": false,
+        "overhang": false,
+        "resistance": "[[0,0.20],[0.10,0.09],[0.55,0.05],[0.88,0.07],[1,0.13]]",
+        "techniques": [
+          "Chop",
+          "Chiffonade"
+        ],
+        "source": {
+          "profile": 431,
+          "paint": 6017,
+          "skin": null
+        }
+      },
+      {
+        "id": "lemon",
+        "name": "Lemon",
+        "shape": "ellipse",
+        "real_cm": [
+          8,
+          6
+        ],
+        "has_face": false,
+        "has_depth": false,
+        "has_skin": false,
+        "permanent_skin": false,
+        "peelable": false,
+        "overhang": false,
+        "resistance": "[[0,0.68],[0.14,0.26],[0.5,0.10],[0.85,0.16],[1,0.36]]",
+        "techniques": [
+          "Slice"
+        ],
+        "source": {
+          "profile": 479,
+          "paint": 6071,
+          "skin": null
+        }
+      },
+      {
+        "id": "avocado",
+        "name": "Avocado",
+        "shape": "taper",
+        "real_cm": [
+          11,
+          7.5
+        ],
+        "has_face": false,
+        "has_depth": false,
+        "has_skin": false,
+        "permanent_skin": false,
+        "peelable": false,
+        "overhang": false,
+        "resistance": "[[0,0.46],[0.14,0.26],[0.5,0.15],[0.82,0.22],[1,0.44]]",
+        "techniques": [
+          "Halve"
+        ],
+        "source": {
+          "profile": 500,
+          "paint": 6120,
+          "skin": null
+        }
+      },
+      {
+        "id": "eggplant",
+        "name": "Eggplant",
+        "shape": "taper",
+        "real_cm": [
+          20,
+          10
+        ],
+        "has_face": false,
+        "has_depth": false,
+        "has_skin": false,
+        "permanent_skin": false,
+        "peelable": false,
+        "overhang": false,
+        "resistance": "[[0,0.60],[0.14,0.28],[0.5,0.14],[0.85,0.20],[1,0.42]]",
+        "techniques": [
+          "Slice"
+        ],
+        "source": {
+          "profile": 518,
+          "paint": 6195,
+          "skin": null
+        }
+      },
+      {
+        "id": "cheddar",
+        "name": "Cheddar",
+        "shape": "block",
+        "real_cm": [
+          12,
+          7
+        ],
+        "has_face": false,
+        "has_depth": false,
+        "has_skin": false,
+        "permanent_skin": false,
+        "peelable": false,
+        "overhang": false,
+        "resistance": "[[0,0.34],[0.12,0.40],[0.5,0.44],[0.88,0.40],[1,0.30]]",
+        "techniques": [
+          "Slice"
+        ],
+        "source": {
+          "profile": 536,
+          "paint": 6248,
+          "skin": null
+        }
+      },
+      {
+        "id": "baguette",
+        "name": "Baguette",
+        "shape": "capsule",
+        "real_cm": [
+          32,
+          6.5
+        ],
+        "has_face": true,
+        "has_depth": false,
+        "has_skin": false,
+        "permanent_skin": false,
+        "peelable": false,
+        "overhang": false,
+        "resistance": "[[0,0.78],[0.10,0.30],[0.5,0.12],[0.88,0.26],[1,0.56]]",
+        "techniques": [
+          "Slice"
+        ],
+        "source": {
+          "profile": 556,
+          "paint": 6309,
+          "skin": null
+        }
+      },
+      {
+        "id": "broccoli",
+        "name": "Broccoli",
+        "shape": "cluster",
+        "real_cm": [
+          18,
+          13
+        ],
+        "has_face": false,
+        "has_depth": false,
+        "has_skin": false,
+        "permanent_skin": false,
+        "peelable": false,
+        "overhang": false,
+        "resistance": "[[0,0.44],[0.14,0.34],[0.5,0.22],[0.85,0.38],[1,0.66]]",
+        "techniques": [
+          "Chop"
+        ],
+        "source": {
+          "profile": 579,
+          "paint": 7981,
+          "skin": null
+        }
+      },
+      {
+        "id": "pear",
+        "name": "Pear",
+        "shape": "taper",
+        "real_cm": [
+          12,
+          8
+        ],
+        "has_face": false,
+        "has_depth": false,
+        "has_skin": false,
+        "permanent_skin": false,
+        "peelable": false,
+        "overhang": false,
+        "resistance": "[[0,0.62],[0.14,0.34],[0.5,0.24],[0.85,0.30],[1,0.50]]",
+        "techniques": [
+          "Slice",
+          "Halve"
+        ],
+        "source": {
+          "profile": 624,
+          "paint": 6354,
+          "skin": null
+        }
+      },
+      {
+        "id": "peach",
+        "name": "Peach",
+        "shape": "ellipse",
+        "real_cm": [
+          7.5,
+          7
+        ],
+        "has_face": false,
+        "has_depth": false,
+        "has_skin": false,
+        "permanent_skin": false,
+        "peelable": false,
+        "overhang": true,
+        "resistance": "[[0,0.50],[0.14,0.24],[0.5,0.14],[0.82,0.24],[1,0.58]]",
+        "techniques": [
+          "Halve"
+        ],
+        "source": {
+          "profile": 643,
+          "paint": 6417,
+          "skin": null
+        }
+      },
+      {
+        "id": "corn",
+        "name": "Corn",
+        "shape": "taper",
+        "real_cm": [
+          19,
+          5
+        ],
+        "has_face": false,
+        "has_depth": false,
+        "has_skin": false,
+        "permanent_skin": false,
+        "peelable": false,
+        "overhang": true,
+        "resistance": "[[0,0.44],[0.12,0.46],[0.5,0.52],[0.88,0.60],[1,0.78]]",
+        "techniques": [
+          "Slice"
+        ],
+        "source": {
+          "profile": 665,
+          "paint": 6518,
+          "skin": null
+        }
+      },
+      {
+        "id": "celery",
+        "name": "Celery",
+        "shape": "taper",
+        "real_cm": [
+          30,
+          12
+        ],
+        "has_face": false,
+        "has_depth": false,
+        "has_skin": false,
+        "permanent_skin": false,
+        "peelable": false,
+        "overhang": true,
+        "resistance": "[[0,0.56],[0.14,0.40],[0.5,0.34],[0.85,0.42],[1,0.64]]",
+        "techniques": [
+          "Julienne"
+        ],
+        "source": {
+          "profile": 686,
+          "paint": 6576,
+          "skin": null
+        }
+      },
+      {
+        "id": "mozzarella",
+        "name": "Mozzarella",
+        "shape": "taper",
+        "real_cm": [
+          10,
+          9
+        ],
+        "has_face": false,
+        "has_depth": false,
+        "has_skin": false,
+        "permanent_skin": false,
+        "peelable": false,
+        "overhang": false,
+        "resistance": "[[0,0.30],[0.12,0.34],[0.5,0.36],[0.88,0.32],[1,0.26]]",
+        "techniques": [
+          "Slice"
+        ],
+        "source": {
+          "profile": 707,
+          "paint": 6705,
+          "skin": null
+        }
+      },
+      {
+        "id": "butter",
+        "name": "Butter",
+        "shape": "block",
+        "real_cm": [
+          12,
+          5
+        ],
+        "has_face": false,
+        "has_depth": false,
+        "has_skin": false,
+        "permanent_skin": false,
+        "peelable": false,
+        "overhang": false,
+        "resistance": "[[0,0.20],[0.12,0.24],[0.5,0.26],[0.88,0.24],[1,0.18]]",
+        "techniques": [
+          "Slice"
+        ],
+        "source": {
+          "profile": 731,
+          "paint": 6802,
+          "skin": null
+        }
+      },
+      {
+        "id": "tofu",
+        "name": "Tofu",
+        "shape": "block",
+        "real_cm": [
+          10,
+          7
+        ],
+        "has_face": false,
+        "has_depth": false,
+        "has_skin": false,
+        "permanent_skin": false,
+        "peelable": false,
+        "overhang": false,
+        "resistance": "[[0,0.24],[0.12,0.28],[0.5,0.30],[0.88,0.28],[1,0.22]]",
+        "techniques": [
+          "Dice"
+        ],
+        "source": {
+          "profile": 749,
+          "paint": 6840,
+          "skin": null
+        }
+      },
+      {
+        "id": "lettuce",
+        "name": "Lettuce",
+        "shape": "cluster",
+        "real_cm": [
+          17,
+          15
+        ],
+        "has_face": false,
+        "has_depth": false,
+        "has_skin": false,
+        "permanent_skin": false,
+        "peelable": false,
+        "overhang": false,
+        "resistance": "[[0,0.26],[0.10,0.13],[0.5,0.08],[0.88,0.12],[1,0.20]]",
+        "techniques": [
+          "Chop",
+          "Chiffonade"
+        ],
+        "source": {
+          "profile": 770,
+          "paint": 6880,
+          "skin": null
+        }
+      },
+      {
+        "id": "cabbage",
+        "name": "Cabbage",
+        "shape": "ellipse",
+        "real_cm": [
+          17,
+          16
+        ],
+        "has_face": false,
+        "has_depth": false,
+        "has_skin": false,
+        "permanent_skin": false,
+        "peelable": false,
+        "overhang": false,
+        "resistance": "[[0,0.40],[0.14,0.24],[0.5,0.20],[0.85,0.28],[1,0.44]]",
+        "techniques": [
+          "Slice",
+          "Chop"
+        ],
+        "source": {
+          "profile": 807,
+          "paint": 6942,
+          "skin": null
+        }
+      },
+      {
+        "id": "cauliflower",
+        "name": "Cauliflower",
+        "shape": "cluster",
+        "real_cm": [
+          16,
+          15
+        ],
+        "has_face": false,
+        "has_depth": false,
+        "has_skin": false,
+        "permanent_skin": false,
+        "peelable": false,
+        "overhang": false,
+        "resistance": "[[0,0.46],[0.14,0.32],[0.5,0.26],[0.85,0.40],[1,0.62]]",
+        "techniques": [
+          "Chop"
+        ],
+        "source": {
+          "profile": 826,
+          "paint": 7035,
+          "skin": null
+        }
+      },
+      {
+        "id": "spinach",
+        "name": "Spinach",
+        "shape": "cluster",
+        "real_cm": [
+          20,
+          14
+        ],
+        "has_face": false,
+        "has_depth": false,
+        "has_skin": false,
+        "permanent_skin": false,
+        "peelable": false,
+        "overhang": false,
+        "resistance": "[[0,0.24],[0.10,0.11],[0.5,0.06],[0.88,0.09],[1,0.16]]",
+        "techniques": [
+          "Chop",
+          "Chiffonade"
+        ],
+        "source": {
+          "profile": 868,
+          "paint": 7114,
+          "skin": null
+        }
+      },
+      {
+        "id": "pineapple",
+        "name": "Pineapple",
+        "shape": "capsule",
+        "real_cm": [
+          33,
+          13
+        ],
+        "has_face": false,
+        "has_depth": false,
+        "has_skin": true,
+        "permanent_skin": false,
+        "peelable": true,
+        "overhang": true,
+        "resistance": "[[0,0.56],[0.14,0.28],[0.5,0.24],[0.85,0.26],[1,0.44]]",
+        "techniques": [
+          "Slice",
+          "Dice"
+        ],
+        "source": {
+          "profile": 908,
+          "paint": 7198,
+          "skin": 9026
+        }
+      },
+      {
+        "id": "asparagus",
+        "name": "Asparagus",
+        "shape": "cluster",
+        "real_cm": [
+          24,
+          8
+        ],
+        "has_face": false,
+        "has_depth": false,
+        "has_skin": false,
+        "permanent_skin": false,
+        "peelable": false,
+        "overhang": false,
+        "resistance": "[[0,0.58],[0.14,0.36],[0.5,0.30],[0.85,0.38],[1,0.55]]",
+        "techniques": [
+          "Slice",
+          "Chop"
+        ],
+        "source": {
+          "profile": 931,
+          "paint": 7240,
+          "skin": null
+        }
+      },
+      {
+        "id": "radish",
+        "name": "Radish",
+        "shape": "taper",
+        "real_cm": [
+          6,
+          3
+        ],
+        "has_face": false,
+        "has_depth": false,
+        "has_skin": false,
+        "permanent_skin": false,
+        "peelable": false,
+        "overhang": true,
+        "resistance": "[[0,0.58],[0.12,0.22],[0.5,0.12],[0.85,0.20],[1,0.42]]",
+        "techniques": [
+          "Slice",
+          "Halve"
+        ],
+        "source": {
+          "profile": 961,
+          "paint": 7307,
+          "skin": null
+        }
+      },
+      {
+        "id": "beetroot",
+        "name": "Beetroot",
+        "shape": "taper",
+        "real_cm": [
+          9,
+          8
+        ],
+        "has_face": false,
+        "has_depth": false,
+        "has_skin": true,
+        "permanent_skin": true,
+        "peelable": false,
+        "overhang": true,
+        "resistance": "[[0,0.64],[0.14,0.42],[0.5,0.36],[0.85,0.44],[1,0.60]]",
+        "techniques": [
+          "Slice",
+          "Dice"
+        ],
+        "source": {
+          "profile": 987,
+          "paint": 7374,
+          "skin": 8763
+        }
+      },
+      {
+        "id": "sweetpotato",
+        "name": "Sweet Potato",
+        "shape": "taper",
+        "real_cm": [
+          16,
+          7
+        ],
+        "has_face": false,
+        "has_depth": false,
+        "has_skin": true,
+        "permanent_skin": true,
+        "peelable": false,
+        "overhang": false,
+        "resistance": "[[0,0.62],[0.14,0.46],[0.5,0.42],[0.85,0.50],[1,0.66]]",
+        "techniques": [
+          "Slice",
+          "Dice",
+          "Halve"
+        ],
+        "source": {
+          "profile": 1009,
+          "paint": 7404,
+          "skin": 8729
+        }
+      },
+      {
+        "id": "watermelon",
+        "name": "Watermelon",
+        "shape": "ellipse",
+        "real_cm": [
+          32,
+          22
+        ],
+        "has_face": false,
+        "has_depth": false,
+        "has_skin": true,
+        "permanent_skin": false,
+        "peelable": true,
+        "overhang": false,
+        "resistance": "[[0,0.72],[0.14,0.20],[0.5,0.06],[0.85,0.10],[1,0.28]]",
+        "techniques": [
+          "Slice",
+          "Dice"
+        ],
+        "source": {
+          "profile": 1032,
+          "paint": null,
+          "skin": 8684
+        }
+      },
+      {
+        "id": "mango",
+        "name": "Mango",
+        "shape": "ellipse",
+        "real_cm": [
+          12,
+          8
+        ],
+        "has_face": false,
+        "has_depth": false,
+        "has_skin": true,
+        "permanent_skin": true,
+        "peelable": false,
+        "overhang": true,
+        "resistance": "[[0,0.40],[0.14,0.20],[0.5,0.12],[0.82,0.20],[1,0.46]]",
+        "techniques": [
+          "Slice",
+          "Dice"
+        ],
+        "source": {
+          "profile": 1053,
+          "paint": 7452,
+          "skin": 8633
+        }
+      },
+      {
+        "id": "kiwi",
+        "name": "Kiwi",
+        "shape": "ellipse",
+        "real_cm": [
+          7,
+          5
+        ],
+        "has_face": false,
+        "has_depth": false,
+        "has_skin": true,
+        "permanent_skin": true,
+        "peelable": false,
+        "overhang": false,
+        "resistance": "[[0,0.34],[0.12,0.18],[0.5,0.10],[0.85,0.16],[1,0.30]]",
+        "techniques": [
+          "Slice",
+          "Halve"
+        ],
+        "source": {
+          "profile": 1075,
+          "paint": 7490,
+          "skin": 8593
+        }
+      },
+      {
+        "id": "pomegranate",
+        "name": "Pomegranate",
+        "shape": "ellipse",
+        "real_cm": [
+          9,
+          9
+        ],
+        "has_face": false,
+        "has_depth": false,
+        "has_skin": true,
+        "permanent_skin": true,
+        "peelable": false,
+        "overhang": true,
+        "resistance": "[[0,0.58],[0.10,0.30],[0.5,0.22],[0.85,0.28],[1,0.42]]",
+        "techniques": [
+          "Halve"
+        ],
+        "source": {
+          "profile": 1095,
+          "paint": 7563,
+          "skin": 8532
+        }
+      },
+      {
+        "id": "greenbean",
+        "name": "Green Bean",
+        "shape": "cluster",
+        "real_cm": [
+          13,
+          5
+        ],
+        "has_face": false,
+        "has_depth": false,
+        "has_skin": false,
+        "permanent_skin": false,
+        "peelable": false,
+        "overhang": false,
+        "resistance": "[[0,0.50],[0.12,0.22],[0.5,0.16],[0.85,0.22],[1,0.38]]",
+        "techniques": [
+          "Slice",
+          "Chop"
+        ],
+        "source": {
+          "profile": 1122,
+          "paint": 7652,
+          "skin": null
+        }
+      },
+      {
+        "id": "grapes",
+        "name": "Grapes",
+        "shape": "cluster",
+        "real_cm": [
+          18,
+          12
+        ],
+        "has_face": false,
+        "has_depth": false,
+        "has_skin": false,
+        "permanent_skin": false,
+        "peelable": false,
+        "overhang": false,
+        "resistance": "[[0,0.28],[0.12,0.10],[0.5,0.06],[0.85,0.09],[1,0.18]]",
+        "techniques": [
+          "Slice"
+        ],
+        "source": {
+          "profile": 1152,
+          "paint": 7699,
+          "skin": null
+        }
+      },
+      {
+        "id": "coconut",
+        "name": "Coconut",
+        "shape": "ellipse",
+        "real_cm": [
+          12,
+          11
+        ],
+        "has_face": false,
+        "has_depth": false,
+        "has_skin": true,
+        "permanent_skin": false,
+        "peelable": true,
+        "overhang": false,
+        "resistance": "[[0,0.92],[0.10,0.74],[0.4,0.30],[0.7,0.34],[1,0.46]]",
+        "techniques": [
+          "Halve"
+        ],
+        "source": {
+          "profile": 1178,
+          "paint": 7725,
+          "skin": 8825
+        }
+      },
+      {
+        "id": "fennel",
+        "name": "Fennel",
+        "shape": "ellipse",
+        "real_cm": [
+          22,
+          10
+        ],
+        "has_face": false,
+        "has_depth": false,
+        "has_skin": true,
+        "permanent_skin": true,
+        "peelable": false,
+        "overhang": true,
+        "resistance": "[[0,0.56],[0.12,0.30],[0.5,0.22],[0.85,0.30],[1,0.46]]",
+        "techniques": [
+          "Slice",
+          "Chop"
+        ],
+        "source": {
+          "profile": 1197,
+          "paint": 7753,
+          "skin": 8872
+        }
+      },
+      {
+        "id": "artichoke",
+        "name": "Artichoke",
+        "shape": "cluster",
+        "real_cm": [
+          12,
+          10
+        ],
+        "has_face": false,
+        "has_depth": false,
+        "has_skin": false,
+        "permanent_skin": false,
+        "peelable": false,
+        "overhang": true,
+        "resistance": "[[0,0.66],[0.14,0.46],[0.5,0.30],[0.85,0.40],[1,0.52]]",
+        "techniques": [
+          "Halve",
+          "Chop"
+        ],
+        "source": {
+          "profile": 1220,
+          "paint": 7784,
+          "skin": null
+        }
+      },
+      {
+        "id": "peapod",
+        "name": "Pea Pod",
+        "shape": "taper",
+        "real_cm": [
+          9,
+          3
+        ],
+        "has_face": false,
+        "has_depth": false,
+        "has_skin": true,
+        "permanent_skin": true,
+        "peelable": false,
+        "overhang": true,
+        "resistance": "[[0,0.42],[0.12,0.16],[0.5,0.10],[0.85,0.14],[1,0.26]]",
+        "techniques": [
+          "Slice"
+        ],
+        "source": {
+          "profile": 1252,
+          "paint": 7851,
+          "skin": 8973
+        }
+      },
+      {
+        "id": "pumpkin",
+        "name": "Pumpkin",
+        "shape": "ellipse",
+        "real_cm": [
+          20,
+          17
+        ],
+        "has_face": false,
+        "has_depth": false,
+        "has_skin": false,
+        "permanent_skin": false,
+        "peelable": false,
+        "overhang": true,
+        "resistance": "[[0,0.70],[0.14,0.38],[0.5,0.28],[0.85,0.36],[1,0.50]]",
+        "techniques": [
+          "Slice",
+          "Dice"
+        ],
+        "source": {
+          "profile": 1274,
+          "paint": 7893,
+          "skin": null
+        }
+      },
+      {
+        "id": "turnip",
+        "name": "Turnip",
+        "shape": "ellipse",
+        "real_cm": [
+          8,
+          7.5
+        ],
+        "has_face": false,
+        "has_depth": false,
+        "has_skin": true,
+        "permanent_skin": true,
+        "peelable": false,
+        "overhang": true,
+        "resistance": "[[0,0.60],[0.12,0.26],[0.5,0.18],[0.85,0.26],[1,0.44]]",
+        "techniques": [
+          "Slice",
+          "Dice",
+          "Halve"
+        ],
+        "source": {
+          "profile": 1295,
+          "paint": 7976,
+          "skin": 8401
+        }
+      },
+      {
+        "id": "chicken",
+        "name": "Chicken Breast",
+        "shape": "fillet",
+        "real_cm": [
+          16,
+          9
+        ],
+        "has_face": true,
+        "has_depth": true,
+        "has_skin": false,
+        "permanent_skin": false,
+        "peelable": false,
+        "overhang": false,
+        "resistance": "[[0,0.44],[0.12,0.34],[0.5,0.30],[0.85,0.34],[1,0.42]]",
+        "techniques": [
+          "Slice",
+          "Dice",
+          "Julienne",
+          "Halve"
+        ],
+        "source": {
+          "profile": 1317,
+          "paint": 8061,
+          "skin": null
+        }
+      },
+      {
+        "id": "steak",
+        "name": "Ribeye Steak",
+        "shape": "fillet",
+        "real_cm": [
+          17,
+          13
+        ],
+        "has_face": true,
+        "has_depth": true,
+        "has_skin": false,
+        "permanent_skin": false,
+        "peelable": false,
+        "overhang": false,
+        "resistance": "[[0,0.52],[0.10,0.46],[0.5,0.44],[0.86,0.48],[1,0.58]]",
+        "techniques": [
+          "Slice",
+          "Dice"
+        ],
+        "source": {
+          "profile": 1353,
+          "paint": 8179,
+          "skin": null
+        }
+      },
+      {
+        "id": "salmon",
+        "name": "Salmon Fillet",
+        "shape": "fillet",
+        "real_cm": [
+          25,
+          11
+        ],
+        "has_face": true,
+        "has_depth": true,
+        "has_skin": false,
+        "permanent_skin": false,
+        "peelable": false,
+        "overhang": false,
+        "resistance": "[[0,0.40],[0.10,0.28],[0.5,0.24],[0.86,0.30],[1,0.40]]",
+        "techniques": [
+          "Slice",
+          "Dice"
+        ],
+        "source": {
+          "profile": 1380,
+          "paint": 8318,
+          "skin": null
+        }
+      }
+    ]
+  },
+  "proteins": [
+    {
+      "id": "chicken",
+      "name": "Chicken Breast",
+      "shape": "fillet",
+      "brief_name_in_request": "Chicken",
+      "real_cm": [
+        16,
+        9
+      ],
+      "has_depth": true,
+      "has_face": true,
+      "skin": null,
+      "peel": false,
+      "techniques": [
+        "Slice",
+        "Dice",
+        "Julienne",
+        "Halve"
+      ],
+      "source": {
+        "profile": 1317,
+        "paint": 8061
+      }
+    },
+    {
+      "id": "steak",
+      "name": "Ribeye Steak",
+      "shape": "fillet",
+      "brief_name_in_request": "Meat",
+      "real_cm": [
+        17,
+        13
+      ],
+      "has_depth": true,
+      "has_face": true,
+      "skin": null,
+      "peel": false,
+      "techniques": [
+        "Slice",
+        "Dice"
+      ],
+      "source": {
+        "profile": 1353,
+        "paint": 8179
+      }
+    },
+    {
+      "id": "salmon",
+      "name": "Salmon Fillet",
+      "shape": "fillet",
+      "brief_name_in_request": "Fish",
+      "real_cm": [
+        25,
+        11
+      ],
+      "has_depth": true,
+      "has_face": true,
+      "skin": null,
+      "peel": false,
+      "techniques": [
+        "Slice",
+        "Dice"
+      ],
+      "source": {
+        "profile": 1380,
+        "paint": 8318
+      }
+    }
+  ],
+  "production_only_do_not_remove": [
+    {
+      "id": "onion",
+      "name": "Onion"
+    },
+    {
+      "id": "potato",
+      "name": "Potato"
+    },
+    {
+      "id": "bellpepper",
+      "name": "Bell Pepper"
+    },
+    {
+      "id": "zucchini",
+      "name": "Zucchini"
+    },
+    {
+      "id": "mushroom",
+      "name": "Mushroom"
+    },
+    {
+      "id": "garlic",
+      "name": "Garlic"
+    },
+    {
+      "id": "strawberry",
+      "name": "Strawberry"
+    },
+    {
+      "id": "apple",
+      "name": "Apple"
+    },
+    {
+      "id": "orange",
+      "name": "Orange"
+    },
+    {
+      "id": "bread",
+      "name": "Bread"
+    }
+  ],
+  "common_ingredients_authoritative_from_claude_design": [
+    "tomato",
+    "cucumber",
+    "carrot",
+    "basil",
+    "parsley"
+  ],
+  "roster_arithmetic": {
+    "claude_design": 42,
+    "production_only": 10,
+    "overlap": 0,
+    "computed_total": 52,
+    "brief_stated_target": 49,
+    "discrepancy": "42 + 10 = 52, not 49. No id in the production-only list appears in the Claude Design roster, so there is nothing to reconcile away. Product owner must confirm the intended 49 (the only near-duplicate is Claude Design baguette vs production-only Bread)."
+  },
+  "technique_matrix": {
+    "tomato": {
+      "Slice": [
+        {
+          "lvl": 1,
+          "recipe": "tomato-slice-6",
+          "obj": "Slice \\u00d76"
+        }
+      ],
+      "Dice": [
+        {
+          "lvl": 3,
+          "recipe": "tomato-dice-3x3",
+          "obj": "Dice 3\\u00d73"
+        }
+      ],
+      "Prep": [
+        {
+          "lvl": 70,
+          "recipe": "garden-prep",
+          "obj": "Slice \\u00d74"
+        }
+      ]
+    },
+    "cucumber": {
+      "Slice": [
+        {
+          "lvl": 2,
+          "recipe": "cucumber-slice-8",
+          "obj": "Slice \\u00d78"
+        }
+      ],
+      "Prep": [
+        {
+          "lvl": 70,
+          "recipe": "garden-prep",
+          "obj": "Slice \\u00d74"
+        }
+      ]
+    },
+    "carrot": {
+      "Julienne": [
+        {
+          "lvl": 4,
+          "recipe": "carrot-julienne-10",
+          "obj": "Julienne \\u00d710"
+        }
+      ],
+      "Prep": [
+        {
+          "lvl": 70,
+          "recipe": "garden-prep",
+          "obj": "Julienne \\u00d76"
+        }
+      ]
+    },
+    "basil": {
+      "Chiffonade": [
+        {
+          "lvl": 5,
+          "recipe": "basil-chiffonade",
+          "obj": "Chiffonade \\u00d78"
+        }
+      ],
+      "Chop": [
+        {
+          "lvl": 6,
+          "recipe": "basil-chop",
+          "obj": "Chop 3\\u00d73"
+        }
+      ]
+    },
+    "parsley": {
+      "Chop": [
+        {
+          "lvl": 7,
+          "recipe": "parsley-chop",
+          "obj": "Chop 3\\u00d73"
+        }
+      ],
+      "Chiffonade": [
+        {
+          "lvl": 8,
+          "recipe": "parsley-chiffonade",
+          "obj": "Chiffonade \\u00d78"
+        }
+      ]
+    },
+    "lemon": {
+      "Slice": [
+        {
+          "lvl": 9,
+          "recipe": "lemon-slice-6",
+          "obj": "Slice \\u00d76"
+        }
+      ]
+    },
+    "avocado": {
+      "Halve": [
+        {
+          "lvl": 10,
+          "recipe": "avocado-halve",
+          "obj": "Halve"
+        }
+      ]
+    },
+    "eggplant": {
+      "Slice": [
+        {
+          "lvl": 11,
+          "recipe": "eggplant-slice-8",
+          "obj": "Slice \\u00d78"
+        }
+      ]
+    },
+    "cheddar": {
+      "Slice": [
+        {
+          "lvl": 12,
+          "recipe": "cheddar-slice-6",
+          "obj": "Slice \\u00d76"
+        }
+      ]
+    },
+    "baguette": {
+      "Slice": [
+        {
+          "lvl": 13,
+          "recipe": "baguette-slice-8",
+          "obj": "Slice \\u00d78"
+        }
+      ]
+    },
+    "broccoli": {
+      "Chop": [
+        {
+          "lvl": 14,
+          "recipe": "broccoli-chop",
+          "obj": "Chop 3\\u00d73"
+        }
+      ]
+    },
+    "pear": {
+      "Slice": [
+        {
+          "lvl": 15,
+          "recipe": "pear-slice-6",
+          "obj": "Slice \\u00d76"
+        }
+      ],
+      "Halve": [
+        {
+          "lvl": 16,
+          "recipe": "pear-halve",
+          "obj": "Halve"
+        }
+      ]
+    },
+    "peach": {
+      "Halve": [
+        {
+          "lvl": 17,
+          "recipe": "peach-halve",
+          "obj": "Halve"
+        }
+      ]
+    },
+    "corn": {
+      "Slice": [
+        {
+          "lvl": 18,
+          "recipe": "corn-slice-6",
+          "obj": "Slice \\u00d76"
+        }
+      ]
+    },
+    "celery": {
+      "Julienne": [
+        {
+          "lvl": 19,
+          "recipe": "celery-julienne-8",
+          "obj": "Julienne \\u00d78"
+        }
+      ]
+    },
+    "mozzarella": {
+      "Slice": [
+        {
+          "lvl": 20,
+          "recipe": "mozzarella-slice-6",
+          "obj": "Slice \\u00d76"
+        }
+      ]
+    },
+    "butter": {
+      "Slice": [
+        {
+          "lvl": 21,
+          "recipe": "butter-slice-6",
+          "obj": "Slice \\u00d76"
+        }
+      ]
+    },
+    "tofu": {
+      "Dice": [
+        {
+          "lvl": 22,
+          "recipe": "tofu-dice-3x3",
+          "obj": "Dice 3\\u00d73"
+        }
+      ]
+    },
+    "lettuce": {
+      "Chop": [
+        {
+          "lvl": 23,
+          "recipe": "lettuce-chop",
+          "obj": "Chop 3\\u00d73"
+        }
+      ],
+      "Chiffonade": [
+        {
+          "lvl": 24,
+          "recipe": "lettuce-chiffonade",
+          "obj": "Chiffonade \\u00d78"
+        }
+      ]
+    },
+    "cabbage": {
+      "Slice": [
+        {
+          "lvl": 25,
+          "recipe": "cabbage-slice-6",
+          "obj": "Slice \\u00d76"
+        }
+      ],
+      "Chop": [
+        {
+          "lvl": 26,
+          "recipe": "cabbage-chop",
+          "obj": "Chop 3\\u00d73"
+        }
+      ]
+    },
+    "cauliflower": {
+      "Chop": [
+        {
+          "lvl": 27,
+          "recipe": "cauliflower-chop",
+          "obj": "Chop 3\\u00d73"
+        }
+      ]
+    },
+    "spinach": {
+      "Chop": [
+        {
+          "lvl": 28,
+          "recipe": "spinach-chop",
+          "obj": "Chop 3\\u00d73"
+        }
+      ],
+      "Chiffonade": [
+        {
+          "lvl": 29,
+          "recipe": "spinach-chiffonade",
+          "obj": "Chiffonade \\u00d78"
+        }
+      ]
+    },
+    "pineapple": {
+      "Slice": [
+        {
+          "lvl": 30,
+          "recipe": "pineapple-slice-6",
+          "obj": "Slice \\u00d76"
+        }
+      ],
+      "Dice": [
+        {
+          "lvl": 31,
+          "recipe": "pineapple-dice-3x3",
+          "obj": "Dice 3\\u00d73"
+        }
+      ]
+    },
+    "asparagus": {
+      "Slice": [
+        {
+          "lvl": 32,
+          "recipe": "asparagus-slice-6",
+          "obj": "Slice \\u00d76"
+        }
+      ],
+      "Chop": [
+        {
+          "lvl": 33,
+          "recipe": "asparagus-chop-5",
+          "obj": "Chop \\u00d75"
+        }
+      ]
+    },
+    "radish": {
+      "Slice": [
+        {
+          "lvl": 34,
+          "recipe": "radish-slice-5",
+          "obj": "Slice \\u00d75"
+        }
+      ],
+      "Halve": [
+        {
+          "lvl": 35,
+          "recipe": "radish-halve",
+          "obj": "Halve"
+        }
+      ]
+    },
+    "beetroot": {
+      "Slice": [
+        {
+          "lvl": 36,
+          "recipe": "beetroot-slice-6",
+          "obj": "Slice \\u00d76"
+        }
+      ],
+      "Dice": [
+        {
+          "lvl": 37,
+          "recipe": "beetroot-dice-2x2",
+          "obj": "Dice 2\\u00d72"
+        }
+      ]
+    },
+    "sweetpotato": {
+      "Slice": [
+        {
+          "lvl": 38,
+          "recipe": "sweetpotato-slice-6",
+          "obj": "Slice \\u00d76"
+        }
+      ],
+      "Dice": [
+        {
+          "lvl": 39,
+          "recipe": "sweetpotato-dice-3x3",
+          "obj": "Dice 3\\u00d73"
+        }
+      ],
+      "Halve": [
+        {
+          "lvl": 40,
+          "recipe": "sweetpotato-halve",
+          "obj": "Halve"
+        }
+      ]
+    },
+    "watermelon": {
+      "Slice": [
+        {
+          "lvl": 41,
+          "recipe": "watermelon-slice-6",
+          "obj": "Slice \\u00d76"
+        }
+      ],
+      "Dice": [
+        {
+          "lvl": 42,
+          "recipe": "watermelon-dice-3x3",
+          "obj": "Dice 3\\u00d73"
+        }
+      ]
+    },
+    "mango": {
+      "Slice": [
+        {
+          "lvl": 43,
+          "recipe": "mango-slice-6",
+          "obj": "Slice \\u00d76"
+        }
+      ],
+      "Dice": [
+        {
+          "lvl": 44,
+          "recipe": "mango-dice-2x2",
+          "obj": "Dice 2\\u00d72"
+        }
+      ]
+    },
+    "kiwi": {
+      "Slice": [
+        {
+          "lvl": 45,
+          "recipe": "kiwi-slice-5",
+          "obj": "Slice \\u00d75"
+        }
+      ],
+      "Halve": [
+        {
+          "lvl": 46,
+          "recipe": "kiwi-halve",
+          "obj": "Halve"
+        }
+      ]
+    },
+    "pomegranate": {
+      "Halve": [
+        {
+          "lvl": 47,
+          "recipe": "pomegranate-halve",
+          "obj": "Halve"
+        }
+      ]
+    },
+    "greenbean": {
+      "Slice": [
+        {
+          "lvl": 48,
+          "recipe": "greenbean-slice-6",
+          "obj": "Slice \\u00d76"
+        }
+      ],
+      "Chop": [
+        {
+          "lvl": 49,
+          "recipe": "greenbean-chop-5",
+          "obj": "Chop \\u00d75"
+        }
+      ]
+    },
+    "grapes": {
+      "Slice": [
+        {
+          "lvl": 50,
+          "recipe": "grapes-slice-6",
+          "obj": "Slice \\u00d76"
+        }
+      ]
+    },
+    "coconut": {
+      "Halve": [
+        {
+          "lvl": 51,
+          "recipe": "coconut-halve",
+          "obj": "Halve"
+        }
+      ]
+    },
+    "fennel": {
+      "Slice": [
+        {
+          "lvl": 52,
+          "recipe": "fennel-slice-6",
+          "obj": "Slice \\u00d76"
+        }
+      ],
+      "Chop": [
+        {
+          "lvl": 53,
+          "recipe": "fennel-chop",
+          "obj": "Chop 3\\u00d73"
+        }
+      ]
+    },
+    "artichoke": {
+      "Halve": [
+        {
+          "lvl": 54,
+          "recipe": "artichoke-halve",
+          "obj": "Halve"
+        }
+      ],
+      "Chop": [
+        {
+          "lvl": 55,
+          "recipe": "artichoke-chop",
+          "obj": "Chop 3\\u00d73"
+        }
+      ]
+    },
+    "peapod": {
+      "Slice": [
+        {
+          "lvl": 56,
+          "recipe": "peapod-slice-5",
+          "obj": "Slice \\u00d75"
+        }
+      ]
+    },
+    "pumpkin": {
+      "Slice": [
+        {
+          "lvl": 57,
+          "recipe": "pumpkin-slice-6",
+          "obj": "Slice \\u00d76"
+        }
+      ],
+      "Dice": [
+        {
+          "lvl": 58,
+          "recipe": "pumpkin-dice-3x3",
+          "obj": "Dice 3\\u00d73"
+        }
+      ]
+    },
+    "turnip": {
+      "Slice": [
+        {
+          "lvl": 59,
+          "recipe": "turnip-slice-6",
+          "obj": "Slice \\u00d76"
+        }
+      ],
+      "Dice": [
+        {
+          "lvl": 60,
+          "recipe": "turnip-dice-3x3",
+          "obj": "Dice 3\\u00d73"
+        }
+      ],
+      "Halve": [
+        {
+          "lvl": 61,
+          "recipe": "turnip-halve",
+          "obj": "Halve"
+        }
+      ]
+    },
+    "chicken": {
+      "Slice": [
+        {
+          "lvl": 62,
+          "recipe": "chicken-slice-6",
+          "obj": "Slice \\u00d76"
+        }
+      ],
+      "Dice": [
+        {
+          "lvl": 63,
+          "recipe": "chicken-dice-3x3",
+          "obj": "Dice 3\\u00d73"
+        }
+      ],
+      "Julienne": [
+        {
+          "lvl": 64,
+          "recipe": "chicken-julienne-8",
+          "obj": "Julienne \\u00d78"
+        }
+      ],
+      "Halve": [
+        {
+          "lvl": 65,
+          "recipe": "chicken-halve",
+          "obj": "Halve"
+        }
+      ]
+    },
+    "steak": {
+      "Slice": [
+        {
+          "lvl": 66,
+          "recipe": "steak-slice-6",
+          "obj": "Slice \\u00d76"
+        }
+      ],
+      "Dice": [
+        {
+          "lvl": 67,
+          "recipe": "steak-dice-3x3",
+          "obj": "Dice 3\\u00d73"
+        }
+      ]
+    },
+    "salmon": {
+      "Slice": [
+        {
+          "lvl": 68,
+          "recipe": "salmon-slice-6",
+          "obj": "Slice \\u00d76"
+        }
+      ],
+      "Dice": [
+        {
+          "lvl": 69,
+          "recipe": "salmon-dice-3x3",
+          "obj": "Dice 3\\u00d73"
+        }
+      ]
+    }
+  },
+  "intentional_differences": [
+    {
+      "ingredient": "corn",
+      "status": "SOURCE-INTENTIONAL / MUST PRESERVE",
+      "detail": "painted lying along the board with a green stalk stub overhang past the butt; REAL_CM [19,5]."
+    },
+    {
+      "ingredient": "radish",
+      "status": "SOURCE-INTENTIONAL / MUST PRESERVE",
+      "detail": "drawn root-down with leaf tops as overhang past the crown; rBig/rSmall geometry, not a plain ellipse."
+    },
+    {
+      "ingredient": "mozzarella",
+      "status": "SOURCE-INTENTIONAL / MUST PRESERVE",
+      "detail": "radial-gradient ball; a cut opens a DULLER face on purpose — a shinier cut face reads as a lit sphere with a line drawn on it."
+    },
+    {
+      "ingredient": "pear",
+      "status": "SOURCE-INTENTIONAL / MUST PRESERVE",
+      "detail": "painted standing on its base, stem up as overhang."
+    },
+    {
+      "note": "None of these were changed during packaging. Do not reorient them in production to match older production art — the Claude Design orientation is the reference."
+    }
+  ],
+  "qa_hooks": {
+    "namespace": "window.__kcTest",
+    "regression": "regressStart()",
+    "result": "window.__kcRegressLast",
+    "others": [
+      "peelSet(true|false|null)",
+      "valueProbe()",
+      "runStage()"
+    ],
+    "story_hooks": [
+      "Story.report()",
+      "Story.play(name)",
+      "Story.flush()",
+      "Story.level()"
+    ]
+  }
+}

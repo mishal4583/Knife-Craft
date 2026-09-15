@@ -1,0 +1,40 @@
+import type { Technique } from "@/types/game";
+
+export const mockTechniques: Technique[] = [
+  { id: "slice", name: "Slice", glyph: "／", note: "Long, even strokes.", mastery: 92, stars: 5, unlocked: true },
+  { id: "half-moon", name: "Half-Moon", glyph: "◗", note: "Rounds, halved.", mastery: 78, stars: 4, unlocked: true },
+  { id: "chop", name: "Chop", glyph: "▮", note: "Rough and honest.", mastery: 71, stars: 3, unlocked: true },
+  { id: "dice", name: "Dice", glyph: "◧", note: "Small, square, calm.", mastery: 64, stars: 3, unlocked: true },
+  { id: "chiffonade", name: "Chiffonade", glyph: "≋", note: "Ribbons of herb.", mastery: 55, stars: 3, unlocked: true },
+  { id: "fine-dice", name: "Fine Dice", glyph: "▦", note: "Patience in miniature.", mastery: 22, stars: 1, unlocked: true },
+  {
+    id: "julienne",
+    name: "Julienne",
+    glyph: "|||",
+    note: "Matchsticks, all alike.",
+    mastery: 0,
+    stars: 0,
+    unlocked: false,
+    unlockRequirement: "Level 8",
+  },
+  {
+    id: "mince",
+    name: "Mince",
+    glyph: "⁘",
+    note: "Almost a whisper.",
+    mastery: 0,
+    stars: 0,
+    unlocked: false,
+    unlockRequirement: "Level 11",
+  },
+  {
+    id: "brunoise",
+    name: "Brunoise",
+    glyph: "⬚",
+    note: "The quiet flourish.",
+    mastery: 0,
+    stars: 0,
+    unlocked: false,
+    unlockRequirement: "Level 16",
+  },
+];

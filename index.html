@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
+    <title>KnifeCraft — Cozy Café Prep Game</title>
+    <meta
+      name="description"
+      content="A cozy arcade prep-chef game. Slice, plate and perfect your craft in a warm neighborhood café kitchen."
+    />
+    <meta name="author" content="KnifeCraft" />
+    <meta property="og:title" content="KnifeCraft — Cozy Café Prep Game" />
+    <meta
+      property="og:description"
+      content="Slice, plate and perfect your craft in a warm café kitchen."
+    />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" href="/favicon.ico" type="image/x-icon" />
+
+    <!--
+      YouTube Playables SDK — MUST be the first executable script in the
+      document, ahead of every other script tag (including the module
+      bootstrap below). Nothing here creates or wraps `window.ytgame`;
+      the SDK defines that global itself. Outside YouTube (local dev,
+      `npm run preview`) this script 404s harmlessly and every call site
+      in src/game/PlayablesSDK.ts falls back to a local no-op.
+    -->
+    <script src="https://www.youtube.com/game_api/v1"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
