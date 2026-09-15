@@ -232,6 +232,13 @@ export function sharesComponentWithNext(
   session: ServiceSession,
 ): { ingredientId: IngredientId; technique: TechniqueId } | null {
   if (!session.current || !session.next) return null;
+  // A pool with only one unlocked recipe forces `next` to repeat
+  // `current` (OrderGenerator has nothing else to offer) — that's the
+  // exact same dish, not a genuine second order sharing a component, so
+  // it must never read as a batching opportunity (live-testing Level 1
+  // found this: a single-recipe level otherwise always "shared" itself
+  // with itself).
+  if (session.current.recipe.id === session.next.recipe.id) return null;
   for (const a of session.current.recipe.components) {
     for (const b of session.next.recipe.components) {
       if (a.ingredientId === b.ingredientId && a.technique === b.technique) {
