@@ -16,11 +16,14 @@ import type { BoardDefinition } from "@/game/boards/boardTypes";
 import type { PrepStep } from "@/game/events";
 import type { CutPath, CutResult, GameplayPhase, QualityLabel } from "@/types/game";
 import type { LevelDefinition } from "@/game/levels/levelTypes";
+import type { ServiceOrder } from "@/game/service/ServiceManager";
+import { preparationStepsForRecipe } from "@/game/service/stepsForRecipe";
 import { GameViewport } from "./GameViewport";
 import { GameHUD } from "./GameHUD";
 import { CutResultPanel } from "./CutResultPanel";
 import { KnifeReport } from "./KnifeReport";
 import { OrderComplete } from "./OrderComplete";
+import { ServiceOrderComplete } from "./ServiceOrderComplete";
 import { Panel, KButton, DustMotes } from "../common/primitives";
 import kitchenBg from "@/assets/kitchen-bg.jpg";
 
@@ -32,9 +35,20 @@ import kitchenBg from "@/assets/kitchen-bg.jpg";
  * `steps`. src/data/orders.ts/PrepOrder is no longer read by this
  * component; it stays in the repo unused rather than deleted (see the
  * Phase 5 report's "files changed" for why).
+ *
+ * Phase 2 (restaurant-service loop) — `level` becomes optional and a new
+ * `service` prop bundle takes over display/steps/completion when
+ * present, so a single Preparation session can be driven by either a
+ * campaign LevelDefinition OR an active restaurant ServiceOrder without
+ * PreparationScene/GameBridge (the actual cutting engine) knowing or
+ * caring which — both ultimately resolve to the exact same
+ * PreparationStep[]/PrepStep[] shapes (see stepsForRecipe.ts). Exactly
+ * one of `level`/`service` is provided by the caller (App.tsx); this
+ * component never renders both.
  */
 export function Preparation({
   level,
+  service,
   onExit,
   onComplete,
   credits,
@@ -44,19 +58,49 @@ export function Preparation({
   nextLevel,
   onNextLevel,
 }: {
-  level: LevelDefinition;
+  level?: LevelDefinition;
+  /** Present only for a restaurant-service session (App.tsx's sessionMode === "service") — see ServiceManager.ts for the state machine behind it. */
+  service?: {
+    order: ServiceOrder;
+    /** §17/§18 — the Serve action; returns null if the order somehow isn't READY (defensive only). */
+    onServe: () => { coinsAwarded: number; reaction: string } | null;
+    /** §20 — advances the queue and remounts Preparation for the new current order. */
+    onNextOrder: () => void;
+  };
   onExit: () => void;
-  /** Returns this run's coin reward (0 on replay — Law 2) so OrderComplete can show it without a second App->Preparation round trip. */
+  /** Returns this run's coin reward (0 on replay — Law 2 — or always 0 for a service session, where payment is deferred to the explicit Serve action) so OrderComplete can show it without a second App->Preparation round trip. */
   onComplete: (score: number) => number;
   credits: number;
   previousBest: number;
   knife?: KnifeDefinition;
   board?: BoardDefinition;
-  /** The next campaign level, only when it exists AND is already unlocked — App.tsx computes this once per render, mirroring how `previousBest` is already passed down instead of looked up in here. */
+  /** The next campaign level, only when it exists AND is already unlocked — App.tsx computes this once per render, mirroring how `previousBest` is already passed down instead of looked up in here. Never set for a service session. */
   nextLevel?: LevelDefinition | null;
   onNextLevel?: () => void;
 }) {
-  const steps: PrepStep[] = level.preparationSteps.map((s) => ({
+  // The single source of "what does this session look like" — a real
+  // level's own fields, or the equivalent ones derived from the active
+  // recipe (recipeId doubles as SaveData.recipeProgress's key either
+  // way, so mastery/Cookbook tracking works identically for both — see
+  // ServiceManager/App.tsx's recordServiceResult).
+  const view = service
+    ? {
+        recipeId: service.order.recipe.id,
+        title: service.order.recipe.name,
+        subtitle: service.order.recipe.chefInstruction,
+        emoji: service.order.recipe.emoji,
+        rewardCoins: service.order.recipe.basePayment,
+        preparationSteps: preparationStepsForRecipe(service.order.recipe),
+      }
+    : {
+        recipeId: level!.recipeId,
+        title: level!.title,
+        subtitle: level!.subtitle,
+        emoji: level!.emoji,
+        rewardCoins: level!.reward.coins,
+        preparationSteps: level!.preparationSteps,
+      };
+  const steps: PrepStep[] = view.preparationSteps.map((s) => ({
     ingredientId: s.ingredient,
     techniqueId: s.technique,
     ...(s.chainBreak ? { chainBreak: true } : {}),
@@ -212,19 +256,25 @@ export function Preparation({
   // multi-ingredient levels already show ("Step 2 of 3"), not a new HUD
   // element. Read directly off the level's own data — no bridge/scene
   // round trip needed for a label.
-  const activeDestination = level.preparationSteps[activeStep.index]?.destination;
+  const activeDestination = view.preparationSteps[activeStep.index]?.destination;
   const stepLabel =
     steps.length > 1 || activeDestination
       ? `Step ${activeStep.index + 1} of ${steps.length}${activeDestination ? ` · for ${activeDestination}` : ""}`
       : undefined;
+  // Phase 2 — the header shows WHO this is for in service mode (§10/§12:
+  // "connect the chef/customer model to the active order"), rather than
+  // the generic "Today's Order" campaign/daily/endless sessions show.
+  // `note` (unused by GameHUD before this phase) now carries the chef's
+  // own short instruction (§41), data-driven from the recipe — never
+  // hardcoded here or in PreparationScene.
   const order = {
-    day: "Today",
-    recipeId: level.recipeId,
-    name: level.title,
-    emoji: level.emoji,
-    ingredients: level.preparationSteps.map((s) => INGREDIENTS[s.ingredient].name),
-    reward: level.reward.coins,
-    note: level.subtitle,
+    day: service ? `${service.order.customer.avatarEmoji} ${service.order.customer.name}` : "Today",
+    recipeId: view.recipeId,
+    name: view.title,
+    emoji: view.emoji,
+    ingredients: view.preparationSteps.map((s) => INGREDIENTS[s.ingredient].name),
+    reward: view.rewardCoins,
+    note: view.subtitle,
   };
 
   return (
@@ -259,7 +309,7 @@ export function Preparation({
           isPaused: paused,
           lastResult: result,
           previousBest,
-          rewardCredits: level.reward.coins,
+          rewardCredits: view.rewardCoins,
         }}
         totalPieces={activeStep.requiredCuts}
         counts={activeTechnique.counts}
@@ -338,7 +388,7 @@ export function Preparation({
 
       {phase === "result" && result ? (
         <KnifeReport
-          dishName={level.title}
+          dishName={view.title}
           stepName={steps.length > 1 ? "Preparation" : activeTechnique.name}
           result={result}
           onRetry={restart}
@@ -347,17 +397,28 @@ export function Preparation({
       ) : null}
 
       {phase === "complete" ? (
-        <OrderComplete
-          dishName={level.title}
-          score={result?.score ?? 0}
-          previousBest={previousBest}
-          qualityLabel={result?.qualityLabel ?? "Clean"}
-          rewardCoins={rewardCoins}
-          credits={credits}
-          onRetry={restart}
-          onKitchen={onExit}
-          {...(nextLevel && onNextLevel ? { nextLevelTitle: nextLevel.title, onNextLevel } : {})}
-        />
+        service ? (
+          <ServiceOrderComplete
+            serviceOrder={service.order}
+            credits={credits}
+            onServe={service.onServe}
+            onNextOrder={service.onNextOrder}
+            onRetry={restart}
+            onExit={onExit}
+          />
+        ) : (
+          <OrderComplete
+            dishName={view.title}
+            score={result?.score ?? 0}
+            previousBest={previousBest}
+            qualityLabel={result?.qualityLabel ?? "Clean"}
+            rewardCoins={rewardCoins}
+            credits={credits}
+            onRetry={restart}
+            onKitchen={onExit}
+            {...(nextLevel && onNextLevel ? { nextLevelTitle: nextLevel.title, onNextLevel } : {})}
+          />
+        )
       ) : null}
     </div>
   );

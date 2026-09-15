@@ -9,6 +9,7 @@ import { getCafeProgress } from "@/game/cafe/CafeProgressionManager";
 import { CAFE_MILESTONES } from "@/game/cafe/cafeDefinitions";
 import { kitchenUpgradeOrDefault } from "@/game/kitchen/kitchenUpgradeDefinitions";
 import type { SaveData } from "@/game/SaveManager";
+import type { ServiceSession } from "@/game/service/ServiceManager";
 
 /** Icon for a level's own `unlockReward.type` (levelTypes.ts) — display-only. */
 const REWARD_TYPE_ICON: Record<"knife" | "board" | "cafe_milestone" | "story", string> = {
@@ -220,6 +221,66 @@ export function Kitchen({
   );
 }
 
+/**
+ * Phase 2 — the restaurant-service loop's own current/next/recent board
+ * (brief §6/§7/§8/§9): NOT the campaign level list below it (which
+ * still lists all 120 levels for direct campaign access, §32 — the
+ * ability to select/play a campaign level is preserved). This card only
+ * ever shows one recent + one current + one next order — never the
+ * full future queue.
+ */
+function ServiceQueueCard({
+  session,
+  onStartService,
+}: {
+  session: ServiceSession | null;
+  onStartService: () => void;
+}) {
+  return (
+    <div className="mb-3 rounded-[16px] border border-copper/30 bg-ivory/50 p-3">
+      <p className="font-ui text-[9px] font-extrabold uppercase tracking-[0.2em] text-copper">
+        Restaurant Service
+      </p>
+      {session?.recent ? (
+        <p className="mt-1 font-hand text-[13px] text-walnut/55">
+          ✓ Served · {session.recent.customer.avatarEmoji} {session.recent.customer.name} ·{" "}
+          {session.recent.recipe.name}
+        </p>
+      ) : null}
+      {session?.current ? (
+        <div className="mt-1.5 flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <p className="truncate font-display text-[15px] font-black leading-none text-walnut-dark">
+              {session.current.customer.avatarEmoji} {session.current.customer.name}
+            </p>
+            <p className="truncate font-hand text-[13px] leading-tight text-walnut/70">
+              {session.current.recipe.emoji} {session.current.recipe.name}
+            </p>
+          </div>
+          <KButton size="sm" onClick={onStartService}>
+            Continue
+          </KButton>
+        </div>
+      ) : (
+        <div className="mt-1.5 flex items-center justify-between gap-2">
+          <p className="font-hand text-[13px] text-walnut/60">
+            Open the counter and start taking real orders.
+          </p>
+          <KButton size="sm" onClick={onStartService}>
+            Start Service
+          </KButton>
+        </div>
+      )}
+      {session?.next ? (
+        <p className="mt-1.5 font-hand text-[12px] text-walnut/50">
+          Next: {session.next.customer.avatarEmoji} {session.next.customer.name} ·{" "}
+          {session.next.recipe.name}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 /* ── Order Board — the full level/chapter list, moved off Kitchen Home
    (§Part 1). Same rendering the old inline panel used, unchanged. ── */
 
@@ -227,10 +288,15 @@ export function OrderBoard({
   go,
   save,
   onSelectLevel,
+  serviceSession,
+  onStartService,
 }: {
   go: (s: ScreenId) => void;
   save: SaveData;
   onSelectLevel: (levelId: string) => void;
+  /** Phase 2 — the active restaurant-service queue, or null before "Start Service" has ever been tapped. */
+  serviceSession: ServiceSession | null;
+  onStartService: () => void;
 }) {
   const levelProgress = save.levelProgress;
   const levels = getLevels();
@@ -282,6 +348,7 @@ export function OrderBoard({
               <span className="block font-hand text-[12px] text-walnut/60">no lives, no timer</span>
             </button>
           </div>
+          <ServiceQueueCard session={serviceSession} onStartService={onStartService} />
           <div className="space-y-2.5">
             {levels.map((level, i) => {
               const unlocked = isUnlocked(level, levelProgress);

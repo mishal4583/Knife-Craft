@@ -13,6 +13,15 @@
  * branching/shared-ingredient recipe (§20/§21/§44); RecipeValidator
  * turns this straight into an organizationManager.ts Destination list
  * rather than a second validation concept (§53).
+ *
+ * Phase 2 addition — `RecipeComponent.destinationId` (singular) became
+ * `destinationIds` (plural). A genuine SHARED output (brief §20/§24:
+ * "chicken prepared once, then sliced portion -> salad, diced portion
+ * -> bowl" is actually TWO components/two cuts; "one batch of toasted
+ * bread split across two diners' plates" is ONE component feeding TWO
+ * destinations at once) needs one component to satisfy more than one
+ * destination. A single-element array is the common case and behaves
+ * exactly like the old singular field did.
  */
 import type { IngredientId, TechniqueId } from "../definitions";
 import type { CuisineId } from "../cuisines/cuisineTypes";
@@ -29,8 +38,10 @@ export type RecipeComponent = {
   ingredientId: IngredientId;
   technique: TechniqueId;
   resultingState: string;
-  /** Which of this recipe's `destinations` this component belongs to. Every recipe has at least one destination ("plate" for a simple recipe), so this is never optional. */
-  destinationId: string;
+  /** Which of this recipe's `destinations` this single prepared output satisfies — one id for an ordinary component, more than one for a genuine shared output (§24). Every recipe has at least one destination ("plate" for a simple recipe), so this is never empty. */
+  destinationIds: string[];
+  /** Mirrors PreparationStep.chainBreak (levelTypes.ts) — set when this component re-prepares the SAME ingredient a second, independent time for a different destination/technique (branching, §26), so the cutting engine starts a fresh instance instead of chaining onto the previous component's pieces. */
+  chainBreak?: boolean;
 };
 
 export type RecipeDestination = {
@@ -42,6 +53,8 @@ export type RecipeDestination = {
 export type RecipeDefinition = {
   id: string;
   name: string;
+  /** Small glyph for order-board/HUD display — mirrors LevelDefinition.emoji. */
+  emoji: string;
   /** null only for Chapter 1's pre-cuisine fundamentals (§3 of Chapter 1) and for recipes derived from pre-restaurant-service campaign levels that haven't yet been re-authored into a cuisine arc (see recipeDefinitions.ts's deriveRecipeFromLevel). */
   cuisineId: CuisineId | null;
   authenticity: AuthenticityTier;

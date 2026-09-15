@@ -31,7 +31,7 @@ export function destinationsForRecipe(recipe: RecipeDefinition): Destination[] {
     recipeId: recipe.id,
     name: d.name,
     requiredIngredients: recipe.components
-      .filter((c) => c.destinationId === d.id)
+      .filter((c) => c.destinationIds.includes(d.id))
       .map((c) => ({ ingredientId: c.ingredientId, preparationState: c.resultingState })),
   }));
 }

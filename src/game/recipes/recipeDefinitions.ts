@@ -44,7 +44,11 @@ function componentsFor(
     ingredientId: s.ingredient,
     technique: s.technique,
     resultingState: s.resultingState,
-    destinationId: s.destination ?? fallbackDestination,
+    // Every existing level's own `destination` is a single name (never a
+    // shared/multi-destination one) — one-element array preserves that
+    // exactly (see recipeTypes.ts's own doc on why the field is plural).
+    destinationIds: [s.destination ?? fallbackDestination],
+    ...(s.chainBreak ? { chainBreak: true } : {}),
   }));
 }
 
@@ -63,6 +67,7 @@ export function deriveRecipeFromLevel(level: LevelDefinition): RecipeDefinition 
   return {
     id: level.recipeId,
     name: level.title,
+    emoji: level.emoji,
     cuisineId: null,
     authenticity: "B",
     components: componentsFor(level, destinations),

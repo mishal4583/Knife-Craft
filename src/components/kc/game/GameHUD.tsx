@@ -45,6 +45,15 @@ export function GameHUD({
             {gameplay.ingredient.name} · {gameplay.cutProgress}/{totalPieces}{" "}
             {gameplay.technique.toLowerCase()}
           </p>
+          {/* Phase 2 — the chef's own short instruction (§12/§41),
+              data-driven from the active recipe/level rather than
+              hardcoded here or in PreparationScene. Harmless flavor text
+              for campaign/daily/endless sessions too (level.subtitle),
+              which is why this isn't gated behind a "service mode"
+              flag. */}
+          {order.note ? (
+            <p className="mt-0.5 font-hand text-[12px] leading-snug text-copper/90">{order.note}</p>
+          ) : null}
           {stepLabel ? (
             <p className="font-ui text-[9px] font-bold uppercase tracking-[0.14em] text-copper/70">
               {stepLabel}

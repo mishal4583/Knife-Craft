@@ -6,11 +6,26 @@
  * elsewhere in this project's development. Run with:
  *   node --experimental-strip-types scripts/phase1-smoke-test.mts
  */
-import { RECIPE_LIST, getRecipe, recipesUnlockedByLevel } from "../src/game/recipes/recipeDefinitions.ts";
-import { destinationsForRecipe, sessionForRecipe, isRecipeReady } from "../src/game/service/RecipeValidator.ts";
-import { createPreparedOutput, assignOutput } from "../src/game/organization/organizationManager.ts";
+import {
+  RECIPE_LIST,
+  getRecipe,
+  recipesUnlockedByLevel,
+} from "../src/game/recipes/recipeDefinitions.ts";
+import {
+  destinationsForRecipe,
+  sessionForRecipe,
+  isRecipeReady,
+} from "../src/game/service/RecipeValidator.ts";
+import {
+  createPreparedOutput,
+  assignOutput,
+} from "../src/game/organization/organizationManager.ts";
 import { generateOrder } from "../src/game/service/OrderGenerator.ts";
-import { createCustomerOrder, advanceOrder, payOrder } from "../src/game/service/CustomerOrderManager.ts";
+import {
+  createCustomerOrder,
+  advanceOrder,
+  payOrder,
+} from "../src/game/service/CustomerOrderManager.ts";
 import { CUISINE_LIST, cuisineForChapter } from "../src/game/cuisines/cuisineDefinitions.ts";
 import { CHEF_LIST, chefsUnlockedByLevel } from "../src/game/chefs/chefDefinitions.ts";
 import { CUSTOMERS, randomCustomer } from "../src/game/customers/customerDefinitions.ts";
@@ -27,8 +42,14 @@ function assert(cond: boolean, label: string) {
 }
 
 // 1. Every existing level has a real, derived recipe.
-assert(RECIPE_LIST.length === LEVELS.length, `RECIPE_LIST has one entry per level (${RECIPE_LIST.length}/${LEVELS.length})`);
-assert(getRecipe(LEVELS[0]!.recipeId) !== undefined, "getRecipe finds Level 1's recipe by recipeId");
+assert(
+  RECIPE_LIST.length === LEVELS.length,
+  `RECIPE_LIST has one entry per level (${RECIPE_LIST.length}/${LEVELS.length})`,
+);
+assert(
+  getRecipe(LEVELS[0]!.recipeId) !== undefined,
+  "getRecipe finds Level 1's recipe by recipeId",
+);
 assert(getRecipe("does-not-exist") === undefined, "getRecipe returns undefined for an unknown id");
 
 // 2. Cuisines/chefs: exactly 9 each, chapter mapping sane.
@@ -45,7 +66,10 @@ assert(chefsUnlockedByLevel(180).length === 9, "all 9 chefs unlocked by level 18
 // 3. RecipeValidator, built on the existing organizationManager, actually
 //    gates readiness correctly for a real multi-step recipe.
 const multiStepRecipe = RECIPE_LIST.find((r) => r.components.length > 1);
-assert(!!multiStepRecipe, "at least one derived recipe has multiple components (batching precedent exists)");
+assert(
+  !!multiStepRecipe,
+  "at least one derived recipe has multiple components (batching precedent exists)",
+);
 if (multiStepRecipe) {
   let session = sessionForRecipe(multiStepRecipe);
   assert(!isRecipeReady(session), "a fresh session for a multi-step recipe is not ready");
@@ -54,9 +78,15 @@ if (multiStepRecipe) {
       ingredientId: component.ingredientId,
       preparationState: component.resultingState,
     });
-    session = assignOutput(created.session, created.output.id, component.destinationId);
+    session = created.session;
+    for (const destinationId of component.destinationIds) {
+      session = assignOutput(session, created.output.id, destinationId);
+    }
   }
-  assert(isRecipeReady(session), "session becomes ready once every component is prepared and assigned");
+  assert(
+    isRecipeReady(session),
+    "session becomes ready once every component is prepared and assigned",
+  );
 }
 
 // 4. Single-step recipe: ready after exactly one prepared+assigned output.
@@ -65,7 +95,10 @@ if (singleStepRecipe) {
   const dest = destinationsForRecipe(singleStepRecipe)[0]!;
   let session = sessionForRecipe(singleStepRecipe);
   const c = singleStepRecipe.components[0]!;
-  const created = createPreparedOutput(session, { ingredientId: c.ingredientId, preparationState: c.resultingState });
+  const created = createPreparedOutput(session, {
+    ingredientId: c.ingredientId,
+    preparationState: c.resultingState,
+  });
   session = assignOutput(created.session, created.output.id, dest.id);
   assert(isRecipeReady(session), "single-step recipe is ready after one prepared+assigned output");
 }
@@ -79,27 +112,47 @@ const branchRecipe: (typeof RECIPE_LIST)[number] = {
     { id: "bowl", name: "Bowl" },
   ],
   components: [
-    { ingredientId: "chicken", technique: "slice", resultingState: "sliced", destinationId: "salad" },
-    { ingredientId: "chicken", technique: "slice", resultingState: "sliced", destinationId: "bowl" },
+    {
+      ingredientId: "chicken",
+      technique: "slice",
+      resultingState: "sliced",
+      destinationIds: ["salad", "bowl"],
+    },
   ],
 };
 {
   let session = sessionForRecipe(branchRecipe);
-  const created = createPreparedOutput(session, { ingredientId: "chicken", preparationState: "sliced" });
+  const created = createPreparedOutput(session, {
+    ingredientId: "chicken",
+    preparationState: "sliced",
+  });
   session = assignOutput(created.session, created.output.id, "salad");
   session = assignOutput(session, created.output.id, "bowl");
-  assert(isRecipeReady(session), "one prepared output assigned to two destinations satisfies both (shared-ingredient branching)");
+  assert(
+    isRecipeReady(session),
+    "one prepared output assigned to two destinations satisfies both (shared-ingredient branching)",
+  );
 }
 
 // 6. OrderGenerator: never returns null for a non-empty pool; never returns a locked recipe.
 const unlocked = recipesUnlockedByLevel(10);
-assert(unlocked.length > 0 && unlocked.every((r) => r.unlockLevel <= 10), "recipesUnlockedByLevel(10) excludes anything above level 10");
+assert(
+  unlocked.length > 0 && unlocked.every((r) => r.unlockLevel <= 10),
+  "recipesUnlockedByLevel(10) excludes anything above level 10",
+);
 let sawImpossible = false;
 for (let i = 0; i < 200; i++) {
-  const picked = generateOrder({ unlockedRecipes: unlocked, recentRecipeIds: [], recentCuisineIds: [] });
+  const picked = generateOrder({
+    unlockedRecipes: unlocked,
+    recentRecipeIds: [],
+    recentCuisineIds: [],
+  });
   if (!picked || picked.unlockLevel > 10) sawImpossible = true;
 }
-assert(!sawImpossible, "generateOrder never returns null or a locked recipe from a valid pool (200 draws)");
+assert(
+  !sawImpossible,
+  "generateOrder never returns null or a locked recipe from a valid pool (200 draws)",
+);
 
 // 7. Order state machine: linear, payment exactly once.
 const recipe = RECIPE_LIST[0]!;
@@ -113,7 +166,10 @@ order = advanceOrder(order); // READY
 order = advanceOrder(order); // SERVED
 assert(order.status === "SERVED", "order reaches SERVED after 4 advances");
 const paid1 = payOrder(order);
-assert(paid1.coinsAwarded === recipe.basePayment, "payOrder pays exactly the recipe's basePayment on SERVED->PAID");
+assert(
+  paid1.coinsAwarded === recipe.basePayment,
+  "payOrder pays exactly the recipe's basePayment on SERVED->PAID",
+);
 const paid2 = payOrder(paid1.order);
 assert(paid2.coinsAwarded === 0, "paying an already-PAID order awards 0 (never pays twice)");
 const paid3 = payOrder(createCustomerOrder(customer.id, recipe));

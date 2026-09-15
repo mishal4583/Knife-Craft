@@ -9,6 +9,7 @@ import type { ScreenId } from "@/components/kc/data";
 import type { SaveData } from "@/game/SaveManager";
 import type { BuyKnifeResult } from "@/game/knives/KnifeManager";
 import type { BuyBoardResult } from "@/game/boards/BoardManager";
+import type { ServiceSession } from "@/game/service/ServiceManager";
 
 /**
  * Everything except the Prep/cutting screen, split into its own chunk
@@ -33,6 +34,8 @@ export function ScreensRouter({
   onSelectLevel,
   onStartDaily,
   onStartEndless,
+  serviceSession,
+  onStartService,
   buyKnife,
   buyBoard,
   setEquippedKnife,
@@ -49,6 +52,9 @@ export function ScreensRouter({
   onSelectLevel: (levelId: string) => void;
   onStartDaily: () => void;
   onStartEndless: () => void;
+  /** Phase 2 — the active restaurant-service queue (null before "Start Service" has ever been tapped) and its entry point, both threaded straight to the Order Board. */
+  serviceSession: ServiceSession | null;
+  onStartService: () => void;
   buyKnife: (id: string) => BuyKnifeResult;
   buyBoard: (id: string) => BuyBoardResult;
   setEquippedKnife: (id: string) => void;
@@ -60,7 +66,15 @@ export function ScreensRouter({
   return (
     <>
       {screen === "kitchen" ? <Kitchen go={go} save={save} onSelectLevel={onSelectLevel} /> : null}
-      {screen === "board" ? <OrderBoard go={go} save={save} onSelectLevel={onSelectLevel} /> : null}
+      {screen === "board" ? (
+        <OrderBoard
+          go={go}
+          save={save}
+          onSelectLevel={onSelectLevel}
+          serviceSession={serviceSession}
+          onStartService={onStartService}
+        />
+      ) : null}
       {screen === "shop" ? (
         <Shop go={go} save={save} buyKnife={buyKnife} buyBoard={buyBoard} />
       ) : null}
