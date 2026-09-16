@@ -1,118 +1,150 @@
 # KnifeCraft Recipe Coverage
 
-Generated at the end of Phase 4 (Campaign Levels 41–100). Reflects the full
-`CAMPAIGN_RECIPES` library (Phases 1–4 combined) via a one-off script over
+Generated at the end of Phase 5 (Campaign Levels 101–170). Reflects the full
+`CAMPAIGN_RECIPES` library (Phases 1–5 combined) via one-off scripts over
 the live data — not hand-counted.
 
 ## Totals
 
 | Metric | Count |
 |---|---|
-| Total recipes | 80 |
-| Total ingredients introduced | 32 |
+| Total recipes | 132 |
+| Total ingredients introduced | 41 |
 | Total techniques | 11 / 11 |
-| Total cuisines (real cuisine ids) | 5 |
-| Levels implemented | 100 / 250 |
-| Chapters implemented | 10 / 25 |
+| Total cuisines (real cuisine ids) | 9 |
+| Levels implemented | 170 / 250 |
+| Chapters implemented | 17 / 25 |
+| Batch-group levels (whole campaign) | 20 |
+| Batch-group levels (Levels 101–170 only) | 14 |
+| Levels using a real branch recipe (101–170 only) | 8 |
+| 2-customer-ish levels (101–170 only) | 17 |
+| 3-customer-ish levels (101–170 only) | 22 |
 
-The 5 real cuisines (Italian, French, Indian, Mediterranean, Mexican) match
-the Phase 4 brief's own "Cuisines introduced: 5/9" expected-coverage target
-exactly. A 6th bucket, `(none)`, covers the 10 earliest Phase 1–2 recipes
-(Levels 1–10 and the standalone Restaurant Service test pool) authored
-before recipes carried a `cuisineId` at all — pre-existing, not part of
-Phase 4.
-
-No protein ingredient (chicken/steak/salmon) appears in any recipe yet —
-correct and intentional: the protein-introduction curve places proteins at
-Level 101+ (Chapter 11 onward), untouched by this phase.
+All 9 cuisines (Italian, French, Indian, Mediterranean, Mexican, Japanese,
+Chinese, Thai/Southeast Asian, Korean) now exist as real cuisine
+definitions and have shipped recipes — matching the Phase 5 brief's own
+"Cuisines introduced: 9/9" target exactly. A 10th bucket, `(none)`, covers
+the 10 earliest Phase 1–2 recipes (Levels 1–10 and the standalone
+Restaurant Service test pool) authored before recipes carried a
+`cuisineId` at all — pre-existing, not part of any cuisine phase.
 
 ## Recipe count by ingredient
 
-| Ingredient | Recipes |
-|---|---|
-| tomato | 24 |
-| onion | 16 |
-| garlic | 15 |
-| carrot | 9 |
-| potato | 9 |
-| basil | 8 |
-| cucumber | 7 |
-| bread | 6 |
-| pepper | 6 |
-| celery | 4 |
-| mango | 4 |
-| parsley | 4 |
-| avocado | 3 |
-| baguette | 3 |
-| lemon | 3 |
-| mozzarella | 3 |
-| mushroom | 3 |
-| spinach | 3 |
-| zucchini | 3 |
-| cauliflower | 2 |
-| corn | 2 |
-| fennel | 2 |
-| peapod | 2 |
-| pineapple | 2 |
-| pumpkin | 2 |
-| asparagus | 1 |
-| beetroot | 1 |
-| coconut | 1 |
-| eggplant | 1 |
-| orange | 1 |
-| pomegranate | 1 |
-| sweetpotato | 1 |
+| Ingredient | Recipes | Ingredient | Recipes |
+|---|---|---|---|
+| tomato | 24 | avocado | 4 |
+| carrot | 22 | cauliflower | 4 |
+| chicken | 22 | celery | 4 |
+| garlic | 21 | parsley | 4 |
+| onion | 17 | pineapple | 4 |
+| basil | 13 | baguette | 3 |
+| pepper | 12 | lemon | 3 |
+| steak | 12 | mozzarella | 3 |
+| cucumber | 10 | tofu | 3 |
+| potato | 9 | zucchini | 3 |
+| salmon | 8 | broccoli | 2 |
+| cabbage | 7 | coconut | 2 |
+| mushroom | 7 | corn | 2 |
+| spinach | 7 | fennel | 2 |
+| bread | 6 | pumpkin | 2 |
+| mango | 6 | asparagus | 1 |
+| peapod | 5 | beetroot | 1 |
+| | | eggplant | 1 |
+| | | greenbean | 1 |
+| | | orange | 1 |
+| | | pear | 1 |
+| | | pomegranate | 1 |
+| | | radish | 1 |
+| | | sweetpotato | 1 |
 
-32 of KnifeCraft's ~52-ingredient roster are in active recipe use by Level
-100 — in line with the brief's "should follow progression, not all 52"
-expectation (§31).
+41 of KnifeCraft's ~52-ingredient roster are in active recipe use by Level
+170 — in line with the brief's "should follow progression, not all 52"
+expectation. Newly introduced this phase: tofu, radish, cabbage,
+greenbean, pear, coconut (recipe use), broccoli, cauliflower (recipe use).
 
 ## Recipe count by technique
 
 | Technique | Recipes |
 |---|---|
-| slice | 38 |
-| dice | 35 |
-| chop | 21 |
-| julienne | 12 |
-| rockMince | 8 |
-| halve | 7 |
+| slice | 74 |
+| dice | 54 |
+| chop | 38 |
+| julienne | 31 |
+| rockMince | 14 |
+| halve | 11 |
+| peel | 6 |
 | chiffonade | 5 |
-| peel | 5 |
 | radial | 4 |
 | smash | 4 |
 | rings | 3 |
 
 All 11 techniques introduced by Phase 3 (Level 40) remain in active use
-through Phase 4 — no technique regresses to zero recipes.
+through Phase 5 — no technique regresses to zero recipes, matching the
+brief's own §57 requirement.
 
 ## Recipe count by cuisine
 
 | Cuisine | Recipes |
 |---|---|
 | italian | 19 |
+| japanese | 19 |
 | french | 17 |
 | indian | 16 |
+| chinese | 14 |
+| thai | 11 |
 | (none) — pre-cuisine Phase 1–2 recipes | 10 |
 | mexican | 10 |
+| korean | 8 |
 | mediterranean | 8 |
 
 ## Recipe count by protein
 
-| Protein | Recipes |
-|---|---|
-| chicken | 0 |
-| steak | 0 |
-| salmon | 0 |
+| Protein | Recipes | Target (brief §21) |
+|---|---|---|
+| chicken | 22 | ≥ 15 ✔ |
+| steak | 12 | ≥ 15 — short by 3 |
+| salmon | 8 | ≥ 15 — short by 7 |
 
-Zero by design — see "Totals" note above. Proteins are Chapter 11's
-(Level 101+) own introduction and are out of scope for Phase 4.
+**Honest report, not padded** (per brief §22/§55's explicit instruction):
+chicken clears the target comfortably because it carries the branching
+demos in three cuisines (Japanese, Chinese, Thai, Korean each use a
+chicken branch/batch scenario) and is the "default" protein for generic
+multi-customer pools. Steak and salmon each appear in every service
+structure the brief asks for (single customer, multi-customer, batch,
+branch or shared-vegetable service) but in fewer total recipes, because:
+- Salmon is Japanese/Thai-only by design (its cuisine's own
+  `coreIngredients` — chicken and steak both appear in more cuisines'
+  ingredient lists than salmon does).
+- Adding recipes purely to hit a count, without a real service-structure
+  reason, would have violated brief §22 ("do not make every protein
+  recipe structurally identical") and §69 ("do not create recipes merely
+  to satisfy coverage"). Phase 6+ (Chapters 18+, which reuse these same 9
+  cuisine families per cuisineDefinitions.ts) is the natural place to grow
+  steak and salmon further within genuine new service scenarios.
+
+## Batching / branching / allocation coverage (Levels 101–170)
+
+- **Batching**: 14 batch-group levels (brief §34 target: ≥10) — Levels
+  115, 117, 120, 125, 132, 137, 139, 140, 152, 155, 158, 160, 166, 170.
+  Covers 3 ingredient categories as required: protein (chicken julienne/
+  dice, steak slice), vegetable (carrot julienne), and aromatic (basil +
+  garlic together).
+- **Branching**: 8 levels use a real branch recipe (brief §35 target: ≥8)
+  — `camp-chicken-protein-branch` (Levels 116, 120), `camp-steak-protein-
+  branch` (135, 139), `camp-thai-chicken-branch` (148, 158),
+  `camp-korean-chicken-branch` (168, 169).
+- **Destination allocation**: every batch-group level above allocates one
+  shared `PreparedOutput` across 2-3 named destinations; every branch
+  recipe allocates two *independent* outputs to two named destinations.
+- **Multi-customer**: 17 two-customer-ish levels and 22 three-customer-ish
+  levels across 101–170; 3 customers is normal from Chapter 14 (Chinese
+  Wok Service) onward, matching the brief's §33 suggested progression.
 
 ## How this was generated
 
-`CAMPAIGN_RECIPES` was walked once, counting each ingredient/technique a
-recipe touches at most once per recipe (a recipe using tomato twice still
-counts as 1 toward tomato's total), and grouping by `cuisineId`. The
-one-off script used to produce these numbers was not committed (throwaway,
-per this repo's `scripts/_*.mts` convention) — its logic is reproducible
-from `src/game/recipes/campaignRecipes.ts` directly.
+`CAMPAIGN_RECIPES` and `LEVELS` were walked once each via throwaway
+scripts (not committed, per this repo's `scripts/_*.mts` convention —
+their logic is reproducible directly from `src/game/recipes/
+campaignRecipes.ts` and `src/game/levels/levelDefinitions.ts`), counting
+each ingredient/technique a recipe touches at most once per recipe, and
+counting `batchGroupRecipeIds`/branch-recipe usage per level.

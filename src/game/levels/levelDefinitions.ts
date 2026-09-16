@@ -6561,7 +6561,7 @@ export const LEVELS: LevelDefinition[] = [
     recipePoolIds: [
       "camp-korean-garlic-onion-base",
       "camp-korean-steak-julienne-carrot",
-      "camp-korean-steak-cabbage",
+      "camp-korean-chicken-branch",
     ],
     requiredOrders: 3,
   },
