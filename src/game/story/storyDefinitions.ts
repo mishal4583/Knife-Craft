@@ -224,12 +224,17 @@ export type MilestoneDef = { bit: number; at: number; kicker: string; line: stri
  * save that hasn't reached count 8 yet simply fires it two levels later
  * than before — never a replay, never a re-fire.
  *
- * Two entries (bits 16/32) are NEW, extending the campaign's own
- * milestone beats to the Progression pass's Chapter 11/12 (110/120) —
- * `at` stays a count of distinct completed levels, exactly like every
- * other entry (see StoryManager.ts's `playedCount`), so these just
- * naturally fire once a player reaches that many completed levels,
- * campaign-order or not.
+ * Two entries (bits 16/32) extend the campaign's own milestone beats to
+ * the Progression pass's Chapter 11/12 (110/120). A seventh (bit 64) does
+ * the same for Phase 6's own campaign-completion point (250) — `at`
+ * stays a count of distinct completed levels, exactly like every other
+ * entry (see StoryManager.ts's `playedCount`), so these just naturally
+ * fire once a player reaches that many completed levels, campaign-order
+ * or not. This is deliberately NOT a second FINALE: FINALE/FINALE_AT
+ * below stay frozen exactly as shipped (their own copy is explicitly
+ * frozen, see FINALE's own doc) — Level 250 gets one more forward-only
+ * milestone beat, the same mechanism Levels 110/120 already used, never
+ * a second one-time finale sequence.
  */
 export const MILES: MilestoneDef[] = [
   {
@@ -258,10 +263,16 @@ export const MILES: MilestoneDef[] = [
     kicker: "GRAND SERVICE",
     line: "Every station, every dish — the kitchen you built runs itself now.",
   },
+  {
+    bit: 64,
+    at: 250,
+    kicker: "EVERY TABLE, EVERY NIGHT",
+    line: "Every kitchen this place ever held is still here, all at once.",
+  },
 ];
 
-/** Full mask value once all 6 milestones have fired — ported verbatim from the source's own regression-harness mute value for the first 4, extended for the Progression pass's two new ones. Stays correct only while there are exactly 6 milestones. */
-export const MILES_FULL_MASK = 63;
+/** Full mask value once all 7 milestones have fired — ported verbatim from the source's own regression-harness mute value for the first 4, extended for the Progression pass's two, then Phase 6's own. Stays correct only while there are exactly 7 milestones. */
+export const MILES_FULL_MASK = 127;
 
 /** The finale's own gate — ported verbatim from `n >= 100`. */
 export const FINALE_AT = 100;
