@@ -70,7 +70,10 @@ for (const r of CAMPAIGN_RECIPES) {
 }
 assert(!sawUnsupported, "1: every campaign recipe's ingredient/technique combos are engine-supported");
 assert(!dupId, "2: no duplicate recipe ids across all 80 campaign recipes");
-assert(CAMPAIGN_RECIPES.length === 80, `3: 80 total campaign recipes exist (${CAMPAIGN_RECIPES.length})`);
+// >= not === : this is a permanent regression suite spanning every phase —
+// later phases (Phase 5+) grow the library further, so a fixed count would
+// go stale by design. 80 was Phase 4's own end-of-phase total.
+assert(CAMPAIGN_RECIPES.length >= 80, `3: at least 80 total campaign recipes exist (${CAMPAIGN_RECIPES.length})`);
 
 // ===== 4: Levels 41-100 exist, exactly 60, no gaps. =====
 const levels41to100 = LEVELS.filter((l) => {
