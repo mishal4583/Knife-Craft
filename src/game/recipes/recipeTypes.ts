@@ -42,6 +42,20 @@ export type RecipeComponent = {
   destinationIds: string[];
   /** Mirrors PreparationStep.chainBreak (levelTypes.ts) — set when this component re-prepares the SAME ingredient a second, independent time for a different destination/technique (branching, §26), so the cutting engine starts a fresh instance instead of chaining onto the previous component's pieces. */
   chainBreak?: boolean;
+  /**
+   * Phase 4 — REAL batching (brief §3-§9), distinct from the recipe-level
+   * `batchable` flag below (which only ever drove `batchHintFor`'s text).
+   * When true, this exact {ingredientId, technique, resultingState}
+   * triple is eligible to satisfy the SAME requirement on another
+   * simultaneously-active order's `batchable` component too — one
+   * PreparedOutput, `assignedTo` extended to include the other order's
+   * destination as well (ServiceManager.ts's BatchGroupSession is what
+   * actually performs this; RecipeComponent only ever declares
+   * eligibility, never implements sharing itself, per §5/§6's "the
+   * service/organization system should determine whether two
+   * requirements can share one output").
+   */
+  batchable?: boolean;
 };
 
 export type RecipeDestination = {

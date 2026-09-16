@@ -40,7 +40,15 @@ import {
   advanceServiceSession,
   poolUnlockedByLevel,
   batchHintFor,
+  createBatchGroupSession,
+  recordBatchGroupComponents,
+  serveBatchGroupOrder,
+  isBatchGroupComplete,
+  currentBatchOrder,
+  nextBatchOrder,
+  batchHintForGroup,
   type ServiceSession,
+  type BatchGroupSession,
 } from "@/game/service/ServiceManager";
 import { TEST_RECIPE_POOL } from "@/game/service/testRecipePool";
 import { getCampaignRecipe } from "@/game/recipes/campaignRecipes";
@@ -87,7 +95,7 @@ export function App() {
   // an endless rotation on reload is harmless (Law: "no FOMO"), and not
   // persisting it keeps this a pure, ephemeral UI cursor.
   const [sessionMode, setSessionMode] = useState<
-    "campaign" | "daily" | "endless" | "service" | "campaign-service"
+    "campaign" | "daily" | "endless" | "service" | "campaign-service" | "batch-group"
   >("campaign");
   const [endlessIndex, setEndlessIndex] = useState(0);
 
@@ -110,6 +118,19 @@ export function App() {
   // path every other campaign completion already uses — never a second
   // completion system. Same session-only lifetime rule as `serviceSession`.
   const [campaignServiceSession, setCampaignServiceSession] = useState<ServiceSession | null>(null);
+
+  // Phase 4 — REAL batching (brief §3-§10): a level with
+  // `batchGroupRecipeIds` runs a BatchGroupSession instead of an
+  // ordinary campaign session. `batchViewOrderId` is deliberately
+  // separate from "which group order is next up" — it tracks which
+  // order's Preparation/ServiceOrderComplete screen the player is
+  // currently LOOKING AT, so serving one order shows ITS OWN reaction/
+  // payment screen first; the view only advances once the player taps
+  // "Next Customer" (never automatically, even though the underlying
+  // group state may have already made the next order READY via
+  // sharing). Same session-only lifetime rule as the other sessions.
+  const [batchGroupSession, setBatchGroupSession] = useState<BatchGroupSession | null>(null);
+  const [batchViewOrderId, setBatchViewOrderId] = useState<string | null>(null);
 
   // THE LAST WISH (Claude Design final freeze) — presentation layer only,
   // additive to everything above. `showIntro` plays once, only for a
@@ -188,7 +209,28 @@ export function App() {
       setSessionMode("campaign");
       setScreen("board");
     }
-  }, [sessionMode, screen, serviceSession, campaignServiceSession]);
+    // Phase 4 — the batch-group equivalent: no viewable order means
+    // either the group finished (finishBatchGroupLevel already clears
+    // sessionMode/screen itself, so this is a genuine no-op then) or
+    // something went wrong building it; either way, never fall through
+    // to legacy Preparation with nothing to show.
+    if (
+      sessionMode === "batch-group" &&
+      screen === "gameplay" &&
+      batchGroupSession &&
+      !batchGroupSession.orders.some((o) => o.order.id === batchViewOrderId)
+    ) {
+      setSessionMode("campaign");
+      setScreen("board");
+    }
+  }, [
+    sessionMode,
+    screen,
+    serviceSession,
+    campaignServiceSession,
+    batchGroupSession,
+    batchViewOrderId,
+  ]);
 
   const go = (s: ScreenId) => setScreen(s);
 
@@ -264,6 +306,10 @@ export function App() {
     if (!save) return;
     persist({ ...save, levelProgress: selectLevel(levelId, save.levelProgress) });
     const level = getLevel(levelId);
+    if (level?.batchGroupRecipeIds?.length) {
+      startBatchGroupLevel(level);
+      return;
+    }
     if (level?.recipePoolIds?.length) {
       startCampaignLevel(level);
       return;
@@ -440,6 +486,83 @@ export function App() {
     go("board");
   }
 
+  /**
+   * Phase 4 — starts a REAL batch group (brief §3-§10): resolves the
+   * level's `batchGroupRecipeIds` against the real campaign recipe
+   * library and builds one BatchGroupSession where all of them are
+   * simultaneously active, sharing one OrganizationSession.
+   */
+  function startBatchGroupLevel(level: LevelDefinition) {
+    if (!save || !level.batchGroupRecipeIds?.length) return;
+    const recipes = level.batchGroupRecipeIds
+      .map((id) => getCampaignRecipe(id))
+      .filter((r): r is RecipeDefinition => !!r);
+    if (recipes.length < 2) return;
+    const group = createBatchGroupSession(level.id, recipes, Math.random);
+    setBatchGroupSession(group);
+    setBatchViewOrderId(currentBatchOrder(group)?.order.id ?? null);
+    setActiveLevelId(level.id);
+    setSessionMode("batch-group");
+    setScreen("gameplay");
+  }
+
+  /** Mirrors recordCampaignServiceResult, but records into the SHARED group session for whichever order the player is currently viewing — this is what actually performs the cross-order sharing (ServiceManager.recordBatchGroupComponents). */
+  function recordBatchGroupResult(score: number): number {
+    if (!save || !batchGroupSession || !batchViewOrderId) return 0;
+    const viewed = batchGroupSession.orders.find((o) => o.order.id === batchViewOrderId);
+    if (!viewed) return 0;
+    const prior = save.recipeProgress[viewed.recipe.id];
+    const best = Math.max(prior?.best ?? 0, score);
+    const recipeProgress = { ...save.recipeProgress, [viewed.recipe.id]: { best, done: true } };
+    persist({ ...save, recipeProgress });
+    setBatchGroupSession((g) => (g ? recordBatchGroupComponents(g, batchViewOrderId) : g));
+    return 0;
+  }
+
+  /** Serves whichever order is currently VIEWED — refuses unless it's genuinely READY (ServiceManager's own guard), same exactly-once payment rule as every other mode. */
+  function serveBatchGroupViewedOrder(): { coinsAwarded: number; reaction: string } | null {
+    if (!batchGroupSession || !batchViewOrderId) return null;
+    const result = serveBatchGroupOrder(batchGroupSession, batchViewOrderId, Math.random);
+    if (!result) return null;
+    setBatchGroupSession(result.group);
+    if (result.coinsAwarded > 0 && save)
+      persist({ ...save, credits: save.credits + result.coinsAwarded });
+    return { coinsAwarded: result.coinsAwarded, reaction: result.reaction };
+  }
+
+  /** "Next Customer" within a batch group — advances the VIEW to the next order (which may already be READY, having been satisfied by the order just served — §4's whole point), or finishes the level once every group order has been served and paid. */
+  function advanceBatchGroupView() {
+    if (!save || !batchGroupSession || !batchViewOrderId) return;
+    if (isBatchGroupComplete(batchGroupSession)) {
+      finishBatchGroupLevel();
+      return;
+    }
+    const viewedIndex = batchGroupSession.orders.findIndex((o) => o.order.id === batchViewOrderId);
+    const next = batchGroupSession.orders[viewedIndex + 1] ?? nextBatchOrder(batchGroupSession);
+    setBatchViewOrderId(next?.order.id ?? null);
+  }
+
+  /** Same LevelManager.completeLevel + story-flush path finishCampaignLevel uses — a batch group finishing IS a normal campaign level completion, just reached via shared preparation instead of separate cuts. */
+  function finishBatchGroupLevel() {
+    if (!save || !batchGroupSession) return;
+    const level = getLevel(batchGroupSession.levelId);
+    if (!level) return;
+    const { progress: levelProgress, rewardCoins } = completeLevel(level.id, save.levelProgress);
+    const nextSave = { ...save, credits: save.credits + rewardCoins, levelProgress };
+    const flush = checkStoryFlush(nextSave);
+    const finalSave = flush
+      ? flush.kind === "finale"
+        ? applyFinaleSeen(nextSave)
+        : applyMilestoneFired(nextSave, flush.milestone)
+      : nextSave;
+    persist(finalSave);
+    if (flush) setStoryEvent(flush);
+    setBatchGroupSession(null);
+    setBatchViewOrderId(null);
+    setSessionMode("campaign");
+    go("board");
+  }
+
   /** Returns this run's coin reward (0 on replay) — Preparation shows it directly on OrderComplete rather than waiting a round trip through props. */
   function recordPreparationResult(score: number): number {
     if (!save) return 0;
@@ -582,12 +705,32 @@ export function App() {
   // always gets a render tick to redirect away before this would
   // otherwise try to render with nothing to show.
   const isCampaignService = sessionMode === "campaign-service";
+  const isBatchGroup = sessionMode === "batch-group";
   const activeServiceSession = isCampaignService ? campaignServiceSession : serviceSession;
+  // Phase 4 — a batch-group's "current order" is whichever one the
+  // player is VIEWING (batchViewOrderId), adapted into the same
+  // {order, customer, recipe, session} shape Preparation/
+  // ServiceOrderComplete already expect — `session` is the GROUP's one
+  // shared OrganizationSession (neither component ever reads it
+  // directly; only ServiceManager's own functions do).
+  const viewedBatchOrder =
+    isBatchGroup && batchGroupSession
+      ? (batchGroupSession.orders.find((o) => o.order.id === batchViewOrderId) ?? null)
+      : null;
   const currentServiceOrder =
-    sessionMode === "service" || isCampaignService ? (activeServiceSession?.current ?? null) : null;
+    sessionMode === "service" || isCampaignService
+      ? (activeServiceSession?.current ?? null)
+      : viewedBatchOrder && batchGroupSession
+        ? { ...viewedBatchOrder, session: batchGroupSession.session }
+        : null;
   const showServicePrep = screen === "gameplay" && !!currentServiceOrder;
   const showCampaignPrep =
-    screen === "gameplay" && sessionMode !== "service" && sessionMode !== "campaign-service";
+    screen === "gameplay" &&
+    sessionMode !== "service" &&
+    sessionMode !== "campaign-service" &&
+    sessionMode !== "batch-group";
+  const batchGroupWillFinish =
+    isBatchGroup && batchGroupSession ? isBatchGroupComplete(batchGroupSession) : false;
 
   // Phase 3 — once this serve would satisfy the ACTIVE CAMPAIGN LEVEL's
   // own `requiredOrders` (levelTypes.ts), the "Next Customer" action
@@ -629,20 +772,38 @@ export function App() {
           key={currentServiceOrder.order.id}
           service={{
             order: currentServiceOrder,
-            onServe: isCampaignService ? serveCampaignOrder : serveActiveServiceOrder,
+            onServe: isCampaignService
+              ? serveCampaignOrder
+              : isBatchGroup
+                ? serveBatchGroupViewedOrder
+                : serveActiveServiceOrder,
             onNextOrder: isCampaignService
               ? campaignWillFinishNext
                 ? finishCampaignLevel
                 : advanceCampaignQueue
-              : advanceServiceQueue,
-            ...(isCampaignService && campaignWillFinishNext ? { nextLabel: "Finish Level" } : {}),
+              : isBatchGroup
+                ? advanceBatchGroupView
+                : advanceServiceQueue,
+            ...((isCampaignService && campaignWillFinishNext) ||
+            (isBatchGroup && batchGroupWillFinish)
+              ? { nextLabel: "Finish Level" }
+              : {}),
             ...(activeServiceSession ? { batchHint: batchHintFor(activeServiceSession) } : {}),
+            ...(isBatchGroup && batchGroupSession && batchViewOrderId
+              ? { batchHint: batchHintForGroup(batchGroupSession, batchViewOrderId) }
+              : {}),
           }}
           onExit={() => {
             setSessionMode("campaign");
             go("board");
           }}
-          onComplete={isCampaignService ? recordCampaignServiceResult : recordServiceResult}
+          onComplete={
+            isCampaignService
+              ? recordCampaignServiceResult
+              : isBatchGroup
+                ? recordBatchGroupResult
+                : recordServiceResult
+          }
           credits={save.credits}
           previousBest={save.recipeProgress[currentServiceOrder.recipe.id]?.best ?? 0}
           knife={equippedKnife}

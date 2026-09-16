@@ -190,4 +190,16 @@ export type LevelDefinition = {
    * declares.
    */
   requiredOrders?: number;
+  /**
+   * Phase 4 — REAL batching (brief §3-§10). When present (2 or 3 recipe
+   * ids), this level runs a ServiceManager.BatchGroupSession instead of
+   * an ordinary `recipePoolIds` pool: those recipes' orders are all
+   * simultaneously active, sharing ONE OrganizationSession, so a
+   * `batchable: true` component cut for one order can genuinely satisfy
+   * the same requirement on another — one PreparedOutput, `assignedTo`
+   * spanning both/all orders, never two separately-cut copies. Mutually
+   * exclusive with `recipePoolIds`/`requiredOrders` — a level sets one
+   * or the other, never both.
+   */
+  batchGroupRecipeIds?: string[];
 };

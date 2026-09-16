@@ -115,7 +115,17 @@ export function Preparation({
   if (!bridgeRef.current) bridgeRef.current = new GameBridge();
   const bridge = bridgeRef.current;
 
-  const [phase, setPhase] = useState<GameplayPhase>("prep");
+  // Phase 4 (real batching, §4/§9) — an order a batch group already
+  // satisfied via a SHARED PreparedOutput arrives here already READY
+  // (recordBatchGroupComponents ran when the OTHER order was cut, never
+  // this one). Starting straight at "complete" shows the Serve screen
+  // immediately — the player is never asked to cut the same thing
+  // twice. `result`/`onComplete` simply never fire for this order (see
+  // the `awarded` effect below, guarded on `!result`), which is
+  // correct: nothing new was actually cut this run.
+  const [phase, setPhase] = useState<GameplayPhase>(
+    service?.order.order.status === "READY" ? "complete" : "prep",
+  );
   // The CURRENTLY ACTIVE step's ingredient/technique — updated on every
   // STEP_STARTED, defaulting to the session's first step so the HUD is
   // correct from the very first frame (before the scene has even booted).

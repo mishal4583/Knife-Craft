@@ -25,10 +25,15 @@ import { randomCustomer } from "../customers/customerDefinitions";
 import type { CuisineId } from "../cuisines/cuisineTypes";
 import type { IngredientId, TechniqueId } from "../definitions";
 import type { RecipeDefinition } from "../recipes/recipeTypes";
-import type { OrganizationSession } from "../organization/organizationTypes";
-import { createPreparedOutput, assignOutput } from "../organization/organizationManager";
+import type { Destination, OrganizationSession } from "../organization/organizationTypes";
+import {
+  createOrganizationSession,
+  createPreparedOutput,
+  assignOutput,
+  isDestinationComplete,
+} from "../organization/organizationManager";
 import { INGREDIENTS, TECHNIQUES } from "../definitions";
-import { sessionForRecipe, isRecipeReady } from "./RecipeValidator";
+import { sessionForRecipe, destinationsForRecipe, isRecipeReady } from "./RecipeValidator";
 import { generateOrder } from "./OrderGenerator";
 import { createCustomerOrder, advanceOrder, payOrder } from "./CustomerOrderManager";
 
@@ -262,4 +267,209 @@ export function batchHintFor(session: ServiceSession): string | null {
   const ingredientName = INGREDIENTS[shared.ingredientId].name;
   const techniqueName = TECHNIQUES[shared.technique].name;
   return `Batch tip: ${session.next.customer.name}'s order also needs ${ingredientName} ${techniqueName} — prepare a little extra.`;
+}
+
+/* ════════════════════════ Phase 4 — REAL batching ════════════════════════
+ *
+ * Phase 3's `sharesComponentWithNext`/`batchHintFor` only ever produced a
+ * sentence — the player still cut every order's components separately.
+ * Brief §3/§4: "a player performs ONE preparation action/output. That
+ * output can satisfy MULTIPLE order requirements." — verified by
+ * `assignedTo.length` on a SINGLE PreparedOutput, not two independently-
+ * synthesized ones (§53's own TEST A literally checks this).
+ *
+ * BatchGroupSession is an ADDITIVE, separate orchestration structure
+ * (not a second organizationManager — every primitive below is
+ * createOrganizationSession/createPreparedOutput/assignOutput/
+ * isDestinationComplete, the exact same functions ServiceSession already
+ * uses) for the SPECIFIC levels that declare a real batch group
+ * (levelTypes.ts's `batchGroupRecipeIds`) instead of an ordinary
+ * `recipePoolIds` pool. Every other level (the vast majority) keeps using
+ * ServiceSession/current/next/recordAllComponents completely unchanged —
+ * this is new capacity, not a replacement.
+ *
+ * The mechanism: 2-3 orders that are meant to batch together are given
+ * ONE shared OrganizationSession up front, with each order's own
+ * destination ids NAMESPACED by its order id (so two orders both using
+ * "plate" as a destination id never collide). When the player cuts one
+ * order's `batchable: true` component, the resulting PreparedOutput is
+ * assigned to that component's own destination AND to every other group
+ * order's matching `batchable` component's destination — literally the
+ * same output, `assignedTo` growing to include both/all — never two
+ * separately-synthesized copies (brief §6/§9's own distinction).
+ */
+
+export type BatchGroupOrder = {
+  order: CustomerOrder;
+  customer: CustomerDefinition;
+  recipe: RecipeDefinition;
+};
+
+export type BatchGroupSession = {
+  levelId: string;
+  /** 2 or 3 simultaneously-active orders, in the order they'll be served. Never all shown at once in the board UI (§18/§41) — see currentBatchOrder/nextBatchOrder below for what the board actually reads. */
+  orders: BatchGroupOrder[];
+  /** ONE OrganizationSession shared by every order above — destinations are namespaced `${order.id}::${destinationId}` precisely so a shared PreparedOutput's `assignedTo` can legitimately span more than one order. */
+  session: OrganizationSession;
+};
+
+function namespacedDestinations(order: BatchGroupOrder): Destination[] {
+  return destinationsForRecipe(order.recipe).map((d) => ({
+    ...d,
+    id: `${order.order.id}::${d.id}`,
+  }));
+}
+
+/** Builds a fresh batch group from 2-3 recipes (brief §10's "5 meaningful batching scenarios... at least one 3-customer" — this is what a level with `batchGroupRecipeIds` uses instead of createServiceSession). All orders start ACTIVE — a batch group's whole premise is "these customers are already seated together", not a current/next queue. */
+export function createBatchGroupSession(
+  levelId: string,
+  recipes: RecipeDefinition[],
+  rand: () => number = Math.random,
+): BatchGroupSession {
+  const orders: BatchGroupOrder[] = recipes.map((recipe) => {
+    const customer = randomCustomer(rand);
+    return { order: advanceOrder(createCustomerOrder(customer.id, recipe)), customer, recipe };
+  });
+  const destinations = orders.flatMap(namespacedDestinations);
+  return { levelId, orders, session: createOrganizationSession(destinations) };
+}
+
+/** True once every one of `order`'s OWN (namespaced) destinations is satisfied — checked against the group's shared session, so a shared output counts exactly like a privately-prepared one would. */
+function isBatchOrderReady(group: BatchGroupSession, order: BatchGroupOrder): boolean {
+  const ownIds = destinationsForRecipe(order.recipe).map((d) => `${order.order.id}::${d.id}`);
+  return ownIds.length > 0 && ownIds.every((id) => isDestinationComplete(group.session, id));
+}
+
+function syncBatchOrderStatus(group: BatchGroupSession, order: BatchGroupOrder): BatchGroupOrder {
+  let next = order.order;
+  const hasAnyOutputForOrder = group.session.outputs.some((o) =>
+    o.assignedTo.some((a) => a.startsWith(`${order.order.id}::`)),
+  );
+  if (next.status === "ACTIVE" && hasAnyOutputForOrder) next = advanceOrder(next); // ACTIVE -> PREPARING
+  if (next.status === "PREPARING" && isBatchOrderReady(group, order)) next = advanceOrder(next); // -> READY
+  return { ...order, order: next };
+}
+
+/**
+ * Called on RECIPE_COMPLETED for whichever group order the player just
+ * cut (`activeOrderId`) — mirrors `recordAllComponents` exactly, plus
+ * the real cross-order sharing brief §4 asks for: a `batchable`
+ * component's output is ALSO assigned to every other group order's
+ * matching `batchable` component (§6 — same ingredient + technique +
+ * resultingState required, never assumed compatible just because the
+ * ingredient matches).
+ */
+export function recordBatchGroupComponents(
+  group: BatchGroupSession,
+  activeOrderId: string,
+): BatchGroupSession {
+  const activeIndex = group.orders.findIndex((o) => o.order.id === activeOrderId);
+  if (activeIndex === -1) return group;
+  const activeOrder = group.orders[activeIndex]!;
+  let session = group.session;
+  for (const component of activeOrder.recipe.components) {
+    const created = createPreparedOutput(session, {
+      ingredientId: component.ingredientId,
+      preparationState: component.resultingState,
+    });
+    session = created.session;
+    for (const destinationId of component.destinationIds) {
+      session = assignOutput(
+        session,
+        created.output.id,
+        `${activeOrder.order.id}::${destinationId}`,
+      );
+    }
+    if (component.batchable) {
+      for (const other of group.orders) {
+        if (other.order.id === activeOrder.order.id) continue;
+        for (const oc of other.recipe.components) {
+          const matches =
+            oc.batchable &&
+            oc.ingredientId === component.ingredientId &&
+            oc.technique === component.technique &&
+            oc.resultingState === component.resultingState;
+          if (!matches) continue;
+          for (const destinationId of oc.destinationIds) {
+            session = assignOutput(
+              session,
+              created.output.id,
+              `${other.order.id}::${destinationId}`,
+            );
+          }
+        }
+      }
+    }
+  }
+  const groupWithUpdatedSession = { ...group, session };
+  const orders = group.orders.map((o) => syncBatchOrderStatus(groupWithUpdatedSession, o));
+  return { ...group, session, orders };
+}
+
+/** Mirrors serveCurrentOrder exactly, for one specific order within the group — refuses unless genuinely READY, pays exactly once (CustomerOrderManager's own guard), never touches any other group order's state. */
+export function serveBatchGroupOrder(
+  group: BatchGroupSession,
+  orderId: string,
+  rand: () => number = Math.random,
+): { group: BatchGroupSession; coinsAwarded: number; reaction: string } | null {
+  const index = group.orders.findIndex((o) => o.order.id === orderId);
+  if (index === -1 || group.orders[index]!.order.status !== "READY") return null;
+  const served = advanceOrder(group.orders[index]!.order); // READY -> SERVED
+  const paid = payOrder(served); // SERVED -> PAID
+  const completed = advanceOrder(paid.order); // PAID -> COMPLETED
+  const reaction =
+    CUSTOMER_REACTIONS[Math.floor(rand() * CUSTOMER_REACTIONS.length)] ?? CUSTOMER_REACTIONS[0]!;
+  const orders = group.orders.map((o, i) => (i === index ? { ...o, order: completed } : o));
+  return { group: { ...group, orders }, coinsAwarded: paid.coinsAwarded, reaction };
+}
+
+/** True once every order in the group has reached COMPLETED — the group-level equivalent of a campaign level's `requiredOrders` being satisfied. */
+export function isBatchGroupComplete(group: BatchGroupSession): boolean {
+  return group.orders.every((o) => o.order.status === "COMPLETED");
+}
+
+/** The board's CURRENT slot for a batch group (§18/§41 — still only current/next/recent are ever shown, never the whole group at once): the first order that isn't COMPLETED yet. */
+export function currentBatchOrder(group: BatchGroupSession): BatchGroupOrder | null {
+  return group.orders.find((o) => o.order.status !== "COMPLETED") ?? null;
+}
+
+/** The board's NEXT slot: the group order after the current one, whatever its status (it may already be READY from batching — §4's whole point). */
+export function nextBatchOrder(group: BatchGroupSession): BatchGroupOrder | null {
+  const current = currentBatchOrder(group);
+  if (!current) return null;
+  const index = group.orders.findIndex((o) => o.order.id === current.order.id);
+  return group.orders[index + 1] ?? null;
+}
+
+/**
+ * §8 — "THIS PREP SERVES N ORDERS", the real (not hinted) batching
+ * indicator: names every OTHER still-active group order that shares a
+ * genuine `batchable` component with the one being viewed right now.
+ * Returns null when there's truly nothing to share (never shown
+ * without a real opportunity — the same discipline Phase 3's
+ * `sharesComponentWithNext` self-match fix established).
+ */
+export function batchHintForGroup(group: BatchGroupSession, viewedOrderId: string): string | null {
+  const viewed = group.orders.find((o) => o.order.id === viewedOrderId);
+  if (!viewed) return null;
+  const partners = group.orders.filter(
+    (other) =>
+      other.order.id !== viewedOrderId &&
+      other.order.status !== "COMPLETED" &&
+      viewed.recipe.components.some(
+        (c) =>
+          c.batchable &&
+          other.recipe.components.some(
+            (oc) =>
+              oc.batchable &&
+              oc.ingredientId === c.ingredientId &&
+              oc.technique === c.technique &&
+              oc.resultingState === c.resultingState,
+          ),
+      ),
+  );
+  if (partners.length === 0) return null;
+  const names = partners.map((p) => p.customer.name).join(" and ");
+  const orderWord = partners.length > 1 ? "orders" : "order";
+  return `This prep also serves ${names}'s ${orderWord} — one preparation, ${partners.length + 1} plates.`;
 }
