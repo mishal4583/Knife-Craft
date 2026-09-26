@@ -1,58 +1,37 @@
-import type { ScreenId } from "../data";
+import type { ReactNode } from "react";
 import type { SaveData } from "@/game/SaveManager";
-import { Panel, ScreenHeader, Divider, Badge } from "../common/primitives";
-import { BusinessCash } from "./BusinessCash";
+import { Panel, Divider, Badge } from "../common/primitives";
+import { Eyebrow } from "../common/Meters";
 import { formatUsd } from "@/game/business/businessCurrency";
-import { BottomNav } from "../Kitchen";
 import { lifetimeSummary } from "@/game/business/BusinessFinanceManager";
 import type { DailyPnL } from "@/game/business/BusinessFinanceManager";
 
-function Row({
-  label,
-  value,
-  strong,
-  muted,
-}: {
-  label: string;
-  value: string;
-  strong?: boolean;
-  muted?: boolean;
-}) {
+function Line({ label, value, strong }: { label: ReactNode; value: string; strong?: boolean }) {
   return (
     <div
       className={
         strong
-          ? "flex items-center justify-between font-ui text-[13px] font-black text-walnut-dark"
-          : "flex items-center justify-between font-ui text-[12px] font-bold text-walnut/70"
+          ? "flex items-baseline justify-between gap-3 py-0.5 font-ui text-[13px] font-black text-walnut-dark"
+          : "flex items-baseline justify-between gap-3 py-0.5 font-ui text-[12px] font-bold text-walnut/70"
       }
     >
-      <span className={muted ? "text-walnut/45" : undefined}>{label}</span>
-      <span className={muted ? "text-walnut/45" : undefined}>{value}</span>
+      <span>{label}</span>
+      <span className="shrink-0 tabular-nums">{value}</span>
     </div>
   );
 }
 
 /**
- * BUSINESS_FINANCE — Economy V3 Phase 15. The Business Mode P&L screen —
- * every number here is either read live from `save.business.finance`
- * (the running accumulator, lifetime COGS and — Economy V3 Phase 16 —
- * the running `lifetime` totals BusinessFinanceManager.ts maintains,
- * which no longer depend on the 200-entry ledger window) — never a
- * second, invented financial model. TODAY's revenue/COGS/capital figures accrue live as
- * the player serves orders/buys equipment; labor and inspection fines
- * are honestly labeled "settles at End Business Day" rather than
- * showing a fabricated estimate, since that IS when this game actually
- * charges them (BusinessDayManager.endBusinessDay). The Most Recent Day
- * section shows the last fully-closed day's complete, reconciled P&L —
- * persisted (`business.finance.lastDailyPnL`), so it survives reload.
+ * BUSINESS · OPERATIONS → Finance (Economy V3 Phases 15–16). Every figure is
+ * read from `save.business.finance` (today's running totals, the last closed
+ * day's persisted P&L) or `lifetimeSummary` — never a second model. Full
+ * statements sit behind "details" so the tab stays readable at a glance.
  */
-export function BusinessFinance({ go, save }: { go: (s: ScreenId) => void; save: SaveData }) {
+export function BusinessFinance({ save }: { save: SaveData }) {
   const { dailyAccumulator, lastDailyPnL } = save.business.finance;
-  const todayGrossProfit = dailyAccumulator.revenue - dailyAccumulator.cogs;
-  const todayOperatingExpensesSoFar =
-    dailyAccumulator.maintenanceCost + dailyAccumulator.supplierCost;
-  const todayOperatingProfitSoFar = todayGrossProfit - todayOperatingExpensesSoFar;
-  const todayNetCashChangeSoFar =
+  const todayFoodMargin = dailyAccumulator.revenue - dailyAccumulator.cogs;
+  const todayRunningCosts = dailyAccumulator.maintenanceCost + dailyAccumulator.supplierCost;
+  const todayNetCash =
     dailyAccumulator.revenue -
     dailyAccumulator.inventoryPurchaseCost -
     dailyAccumulator.maintenanceCost -
@@ -61,185 +40,103 @@ export function BusinessFinance({ go, save }: { go: (s: ScreenId) => void; save:
   const lifetime = lifetimeSummary(save);
 
   return (
-    <div className="relative h-full w-full overflow-hidden bg-cream">
-      <div className="absolute inset-0 bg-[radial-gradient(90%_50%_at_50%_0%,rgba(216,168,78,0.28),transparent_60%)]" />
-      <div className="relative h-full overflow-y-auto no-scrollbar pb-24">
-        <ScreenHeader
-          title="Finance"
-          subtitle="how the business is really doing"
-          onBack={() => go("business")}
-          right={<BusinessCash cents={save.credits} />}
-        />
+    <Panel className="p-4">
+      <Eyebrow>💰 Finance</Eyebrow>
 
-        {/* ===== Cash balance hero ===== */}
-        <div className="px-4 pt-2">
-          <Panel tone="dark" className="p-4 text-center">
-            <p className="font-ui text-[10px] font-extrabold uppercase tracking-[0.2em] text-gold">
-              Business Cash
-            </p>
-            <p className="mt-1 font-display text-[32px] font-black text-ivory">
-              {formatUsd(save.credits)}
-            </p>
-          </Panel>
-        </div>
+      <p className="mt-2 font-display text-[15px] font-black text-walnut-dark">Today so far</p>
+      <Line label="Revenue" value={formatUsd(dailyAccumulator.revenue)} />
+      <Line label="Ingredients used" value={`−${formatUsd(dailyAccumulator.cogs)}`} />
+      <Line label="Repairs & supplier fees" value={`−${formatUsd(todayRunningCosts)}`} />
+      <Line
+        label="Profit so far (before tonight's pay & fines)"
+        value={formatUsd(todayFoodMargin - todayRunningCosts)}
+        strong
+      />
+      <Line label="Cash moved today" value={formatUsd(todayNetCash)} />
+      <p className="font-hand text-[12px] leading-snug text-walnut/50">
+        Stock bought ({formatUsd(dailyAccumulator.inventoryPurchaseCost)}) and equipment (
+        {formatUsd(dailyAccumulator.capitalExpenditure)}) move cash but aren't costs until used.
+      </p>
 
-        {/* ===== Today (live, in-progress) ===== */}
-        <div className="px-4 pt-4">
-          <p className="mb-2 font-display text-[16px] font-black text-walnut-dark">
-            Today (so far)
-          </p>
-          <Panel tone="cream" className="p-3">
-            <Row label="Revenue" value={formatUsd(dailyAccumulator.revenue)} />
-            <Row label="Food Cost / COGS" value={`-${formatUsd(dailyAccumulator.cogs)}`} />
-            <Divider />
-            <Row label="Gross Profit" value={formatUsd(todayGrossProfit)} strong />
-            <div className="mt-1.5" />
-            <Row label="Labor" value="settles at End Business Day" muted />
-            <Row
-              label="Operating Expenses (maintenance + supplier fees)"
-              value={`-${formatUsd(todayOperatingExpensesSoFar)}`}
-            />
-            <Row label="Inspection Fines" value="settles at End Business Day" muted />
-            <Divider />
-            <Row
-              label="Operating Profit (excl. labor/fines, not yet charged)"
-              value={formatUsd(todayOperatingProfitSoFar)}
-              strong
-            />
-            <div className="mt-1.5" />
-            <Row
-              label="Capital Investment"
-              value={formatUsd(dailyAccumulator.capitalExpenditure)}
-            />
-            <Row
-              label="Inventory Purchased (asset, not a food-cost expense)"
-              value={formatUsd(dailyAccumulator.inventoryPurchaseCost)}
-            />
-            <Divider />
-            <Row
-              label="Net Cash Change (so far, excl. labor/fines)"
-              value={formatUsd(todayNetCashChangeSoFar)}
-              strong
-            />
-          </Panel>
-        </div>
-
-        {/* ===== Most recent completed day ===== */}
-        <div className="px-4 pt-4">
-          <p className="mb-2 font-display text-[16px] font-black text-walnut-dark">
-            Most Recent Business Day
-          </p>
-          {lastDailyPnL ? (
-            <MostRecentDayPanel pnl={lastDailyPnL} />
-          ) : (
-            <Panel tone="cream" className="p-3">
-              <p className="font-hand text-[13px] text-walnut/60">
-                No Business Day has ended yet — end one from the Dashboard to see its full P&L here.
-              </p>
-            </Panel>
-          )}
-        </div>
-
-        {/* ===== Lifetime summary ===== */}
-        <div className="px-4 pt-4">
-          <p className="mb-2 font-display text-[16px] font-black text-walnut-dark">
-            {lifetime.coverage === "complete"
-              ? "Lifetime (all Business Days)"
-              : "Lifetime (since this save's earliest kept record)"}
-          </p>
-          <Panel tone="cream" className="p-3">
-            {lifetime.coverage === "partial" ? (
-              <p className="mb-2 font-hand text-[12px] leading-snug text-copper">
-                This save was started before full lifetime tracking existed, and some of its oldest
-                Business history wasn't kept. These totals begin at the earliest record the save
-                still had, and are exact from then on.
-              </p>
-            ) : null}
-            <Row label="Revenue" value={formatUsd(lifetime.cumulativeRevenue)} />
-            <Row label="Food Cost / COGS" value={`-${formatUsd(lifetime.cumulativeCogs)}`} />
-            <Row label="Gross Profit" value={formatUsd(lifetime.cumulativeGrossProfit)} />
-            <Row label="Labor" value={`-${formatUsd(lifetime.cumulativeLabor)}`} />
-            <Row
-              label="Operating Costs (maintenance + supplier fees + fines)"
-              value={`-${formatUsd(lifetime.cumulativeOperatingCosts)}`}
-            />
-            <Divider />
-            <Row
-              label="Operating Profit"
-              value={formatUsd(lifetime.cumulativeOperatingProfit)}
-              strong
-            />
-            <div className="mt-1.5" />
-            <Row
-              label="Capital Expenditure (not in operating profit)"
-              value={formatUsd(lifetime.cumulativeCapitalExpenditure)}
-            />
-            <Row
-              label="All Cash Spent (incl. ingredients + capital)"
-              value={`-${formatUsd(lifetime.cumulativeCashExpenses)}`}
-            />
-            <div className="mt-1.5" />
-            <div className="flex items-center justify-between">
-              <p className="font-ui text-[12px] font-bold text-walnut/70">Orders Served</p>
-              <Badge tone="sage">{lifetime.orderCount}</Badge>
-            </div>
-            <Row
-              label="Average Revenue / Order"
-              value={lifetime.orderCount > 0 ? formatUsd(lifetime.averageRevenuePerOrder) : "—"}
-            />
-            <Row
-              label="Food Cost %"
-              value={lifetime.cumulativeRevenue > 0 ? `${lifetime.foodCostPercent}%` : "—"}
-            />
-          </Panel>
-        </div>
-
-        <p className="px-8 pb-2 pt-4 text-center font-hand text-[12px] text-walnut/40">
-          Every figure here comes from real Business Mode transactions — generated or cancelled
-          orders, and configured-but-unsold menu prices, are never counted as revenue.
+      <Divider />
+      <p className="font-display text-[15px] font-black text-walnut-dark">Last business day</p>
+      {lastDailyPnL ? (
+        <LastDay pnl={lastDailyPnL} />
+      ) : (
+        <p className="font-hand text-[14px] text-walnut/60">
+          No business day has ended yet — its results appear here.
         </p>
+      )}
+
+      <Divider />
+      <p className="font-display text-[15px] font-black text-walnut-dark">
+        {lifetime.coverage === "complete"
+          ? "All time"
+          : "All time (since the earliest kept record)"}
+      </p>
+      <Line label="Revenue" value={formatUsd(lifetime.cumulativeRevenue)} />
+      <Line
+        label="Costs (ingredients, staff, repairs, fees, fines)"
+        value={`−${formatUsd(lifetime.cumulativeRevenue - lifetime.cumulativeOperatingProfit)}`}
+      />
+      <Line label="Profit" value={formatUsd(lifetime.cumulativeOperatingProfit)} strong />
+      <div className="mt-1 flex items-center justify-between font-ui text-[12px] font-bold text-walnut/70">
+        <span>Orders served</span>
+        <Badge tone="sage">{lifetime.orderCount}</Badge>
       </div>
-      <BottomNav active="business" go={go} />
-    </div>
+      <details className="mt-1">
+        <summary className="cursor-pointer py-2 font-ui text-[12px] font-extrabold text-copper">
+          Full all-time breakdown ▾
+        </summary>
+        <Line
+          label="Ingredients used (food cost)"
+          value={`−${formatUsd(lifetime.cumulativeCogs)}`}
+        />
+        <Line label="Revenue after ingredients" value={formatUsd(lifetime.cumulativeGrossProfit)} />
+        <Line label="Staff pay" value={`−${formatUsd(lifetime.cumulativeLabor)}`} />
+        <Line
+          label="Repairs, supplier fees & fines"
+          value={`−${formatUsd(lifetime.cumulativeOperatingCosts)}`}
+        />
+        <Line label="Equipment bought" value={formatUsd(lifetime.cumulativeCapitalExpenditure)} />
+        <Line label="All cash spent" value={`−${formatUsd(lifetime.cumulativeCashExpenses)}`} />
+        <Line
+          label="Average per order"
+          value={lifetime.orderCount > 0 ? formatUsd(lifetime.averageRevenuePerOrder) : "—"}
+        />
+        <Line
+          label="Food cost %"
+          value={lifetime.cumulativeRevenue > 0 ? `${lifetime.foodCostPercent}%` : "—"}
+        />
+      </details>
+    </Panel>
   );
 }
 
-function MostRecentDayPanel({ pnl }: { pnl: DailyPnL }) {
+function LastDay({ pnl }: { pnl: DailyPnL }) {
+  const costs = pnl.revenue - pnl.operatingProfit;
   return (
-    <Panel tone="cream" className="p-3">
-      <p className="font-ui text-[10px] font-extrabold uppercase tracking-[0.16em] text-copper">
-        P&amp;L
-      </p>
-      <Row label="Opening Cash" value={formatUsd(pnl.openingCash)} />
-      <Row label="Revenue" value={formatUsd(pnl.revenue)} />
-      <Row label="Food Cost / COGS" value={`-${formatUsd(pnl.cogs)}`} />
-      <Divider />
-      <Row label="Gross Profit" value={formatUsd(pnl.grossProfit)} strong />
-      <div className="mt-1.5" />
-      <Row label="Labor" value={`-${formatUsd(pnl.staffCost)}`} />
-      <Row label="Maintenance" value={`-${formatUsd(pnl.maintenanceCost)}`} />
-      <Row label="Supplier Cost" value={`-${formatUsd(pnl.supplierCost)}`} />
-      <Row label="Other Operating Cost" value={`-${formatUsd(pnl.otherOperatingCost)}`} muted />
-      <Row label="Inspection Fines" value={`-${formatUsd(pnl.inspectionFines)}`} />
-      <Divider />
-      <Row label="Operating Profit" value={formatUsd(pnl.operatingProfit)} strong />
-      <p className="mt-1 font-hand text-[11px] text-walnut/45">
-        Spoilage (non-cash, not in Operating Profit): {formatUsd(pnl.spoilageValue)}
-      </p>
-
-      <Divider />
-      <p className="font-ui text-[10px] font-extrabold uppercase tracking-[0.16em] text-copper">
-        Cash Flow
-      </p>
-      <Row
-        label="Inventory Purchased (asset, not food cost)"
-        value={`-${formatUsd(pnl.inventoryPurchaseCost)}`}
-      />
-      <Row label="Operating Cash Flow" value={formatUsd(pnl.operatingCashFlow)} strong />
-      <Row label="Capital Expenditure" value={`-${formatUsd(pnl.capitalExpenditure)}`} />
-      <Divider />
-      <Row label="Net Cash Change" value={formatUsd(pnl.netCashChange)} strong />
-      <Row label="Closing Cash" value={formatUsd(pnl.closingCash)} strong />
-    </Panel>
+    <>
+      <Line label="Revenue" value={formatUsd(pnl.revenue)} />
+      <Line label="Costs" value={`−${formatUsd(costs)}`} />
+      <Line label="Profit" value={formatUsd(pnl.operatingProfit)} strong />
+      <details>
+        <summary className="cursor-pointer py-2 font-ui text-[12px] font-extrabold text-copper">
+          Full day breakdown ▾
+        </summary>
+        <Line label="Opening cash" value={formatUsd(pnl.openingCash)} />
+        <Line label="Ingredients used" value={`−${formatUsd(pnl.cogs)}`} />
+        <Line label="Staff pay" value={`−${formatUsd(pnl.staffCost)}`} />
+        <Line label="Repairs" value={`−${formatUsd(pnl.maintenanceCost)}`} />
+        <Line label="Supplier fees" value={`−${formatUsd(pnl.supplierCost)}`} />
+        <Line label="Other" value={`−${formatUsd(pnl.otherOperatingCost)}`} />
+        <Line label="Inspection fines" value={`−${formatUsd(pnl.inspectionFines)}`} />
+        <Line label="Spoilage (not cash)" value={formatUsd(pnl.spoilageValue)} />
+        <Line label="Stock bought" value={`−${formatUsd(pnl.inventoryPurchaseCost)}`} />
+        <Line label="Equipment bought" value={`−${formatUsd(pnl.capitalExpenditure)}`} />
+        <Line label="Net cash change" value={formatUsd(pnl.netCashChange)} strong />
+        <Line label="Closing cash" value={formatUsd(pnl.closingCash)} strong />
+      </details>
+    </>
   );
 }

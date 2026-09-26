@@ -1,9 +1,9 @@
 import { useState } from "react";
 import type { ScreenId } from "../data";
 import type { SaveData } from "@/game/SaveManager";
-import { KButton, Panel, ScreenHeader, Divider, Badge } from "../common/primitives";
-import { BusinessCash } from "./BusinessCash";
-import { BottomNav } from "../Kitchen";
+import { KButton, Panel, Badge } from "../common/primitives";
+import { Bar, Eyebrow } from "../common/Meters";
+import { cn } from "@/lib/utils";
 import { INGREDIENTS, type IngredientId } from "@/game/definitions";
 import { INGREDIENT_EMOJI } from "@/game/knives/knifeDefinitions";
 import { businessUnitCostFor, purchaseUnitFor } from "@/game/business/businessPricing";
@@ -47,16 +47,24 @@ const PERISHABILITY_BADGE_TONE: Record<PerishabilityState, "cream" | "sage" | "c
     EXPIRED: "locked",
   };
 
+/** The ingredient registry's own categories, in shop order, with player-facing names. */
+const GROUPS: Array<{ category: string; label: string; emoji: string }> = [
+  { category: "Vegetable", label: "Vegetables", emoji: "🥕" },
+  { category: "Fruit", label: "Fruit", emoji: "🍎" },
+  { category: "Herb", label: "Herbs", emoji: "🌿" },
+  { category: "Aromatic", label: "Aromatics", emoji: "🧄" },
+  { category: "Bakery", label: "Bakery", emoji: "🥖" },
+  { category: "Dairy", label: "Dairy & Tofu", emoji: "🧀" },
+  { category: "Protein", label: "Protein", emoji: "🍗" },
+];
+
 /**
- * BUSINESS_INVENTORY — Economy V3 Phase 2. Business Mode only; reuses
- * `INGREDIENTS`/`IngredientId` directly (no second ingredient list) and
- * `businessUnitCostFor` as the ONLY source of purchase prices (never a
- * literal number typed in this file).
- *
- * Economy V3 Phase 4 (Perishability) — each "On Hand" row now shows its
- * freshness state via the existing `Badge` primitive, reading
- * `perishabilityStateFor` directly (never recomputing age/threshold math
- * inline, so this screen can't drift from perishability.ts's own rules).
+ * BUSINESS · INGREDIENTS tab (Economy V3 Phase 2 inventory, reorganised as
+ * Market-style cards). Reuses `INGREDIENTS` (no second list) and the SAME
+ * price chain the purchase itself uses — `businessUnitCostFor` → today's
+ * supplier event → contract → staff discount — never a literal price.
+ * Grouped by the registry's own `category`; within a group, what the
+ * active menu needs comes first.
  */
 export function BusinessInventory({
   go,
@@ -69,10 +77,12 @@ export function BusinessInventory({
 }) {
   const [quantities, setQuantities] = useState<Partial<Record<IngredientId, number>>>({});
   const [messages, setMessages] = useState<Partial<Record<IngredientId, string>>>({});
+  const [group, setGroup] = useState<string>("all");
 
   const owned = Object.values(save.business.inventory).filter((entry) => !!entry);
   const totalValue = inventoryValue(save.business.inventory);
   const refrigerator = getRefrigerator(save.business.refrigerator.refrigeratorId);
+  const capacity = refrigerator?.capacity ?? 0;
   const used = getInventoryUsedCapacity(save.business.inventory);
   const available = getAvailableStorageCapacity(
     save.business.inventory,
@@ -81,21 +91,14 @@ export function BusinessInventory({
   const event = eventForDay(save.business.calendar.businessDay);
   const maxQuantity = maxPurchaseQuantityFor(event);
   const spoilingTonight = new Set(stockSpoilingTonight(save));
-  // V3-16 player-experience audit: connect purchasing to the Active Menu —
-  // what the menu needs is marked and listed first (catalog order kept
-  // within each group); shelf life is shown before buying, not discovered
-  // when stock spoils.
   const menuIngredients = new Set(
     activeBusinessDishes(save.business.menuActivation).flatMap((d) =>
       businessDishRequirements(d).map((r) => r.ingredientId),
     ),
   );
   const allIngredientIds = Object.keys(INGREDIENTS) as IngredientId[];
-  const purchaseOrder = [
-    ...allIngredientIds.filter((id) => menuIngredients.has(id)),
-    ...allIngredientIds.filter((id) => !menuIngredients.has(id)),
-  ];
   const makeable = makeableDishCount(save);
+  const menuDishCount = activeBusinessDishes(save.business.menuActivation).length;
 
   function quantityFor(id: IngredientId): number {
     return quantities[id] ?? DEFAULT_PURCHASE_QUANTITY;
@@ -111,250 +114,258 @@ export function BusinessInventory({
     if (!result.ok) {
       const text =
         result.reason === "insufficientFunds"
-          ? "Not quite enough cash for that purchase."
+          ? "Not quite enough cash."
           : result.reason === "insufficientStorage"
-            ? "Not enough refrigerator space for that much."
+            ? "Not enough fridge space."
             : result.reason === "exceedsShortageLimit"
-              ? "Today's shortage limits how much you can buy at once."
+              ? "Today's shortage limits this."
               : "That purchase couldn't be made.";
       setMessages((m) => ({ ...m, [id]: text }));
       return;
     }
     setMessages((m) => ({
       ...m,
-      [id]: `Bought ${result.quantity} ${purchaseUnitFor(id)} for ${formatUsd(result.totalCost)}.`,
+      [id]: `Bought ${result.quantity} ${purchaseUnitFor(id)} · ${formatUsd(result.totalCost)}`,
     }));
   }
 
+  const groups = GROUPS.filter((g) => group === "all" || g.category === group);
+
   return (
-    <div className="relative h-full w-full overflow-hidden bg-cream">
-      <div className="absolute inset-0 bg-[radial-gradient(90%_50%_at_50%_0%,rgba(125,146,112,0.24),transparent_60%)]" />
-      <div className="relative h-full overflow-y-auto no-scrollbar pb-24">
-        <ScreenHeader
-          title="Inventory"
-          subtitle="what the restaurant has on hand"
-          onBack={() => go("business")}
-          right={<BusinessCash cents={save.credits} />}
-        />
-
-        <div className="px-4">
-          <Panel tone="dark" className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-ui text-[10px] font-extrabold uppercase tracking-[0.2em] text-gold">
-                  Total Inventory Value
-                </p>
-                <p className="font-display text-[22px] font-black leading-none text-ivory">
-                  {formatUsd(totalValue)}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="font-ui text-[10px] font-extrabold uppercase tracking-[0.2em] text-gold">
-                  Current Cash
-                </p>
-                <p className="font-display text-[22px] font-black leading-none text-ivory">
-                  {formatUsd(save.credits)}
-                </p>
-              </div>
-            </div>
-          </Panel>
+    <div className="space-y-3">
+      {/* Pantry status */}
+      <Panel className="p-4">
+        <div className="flex items-baseline justify-between gap-3">
+          <Eyebrow>❄️ {refrigerator?.name ?? "Refrigerator"} space</Eyebrow>
+          <span className="font-ui text-[12px] font-extrabold text-walnut-dark">
+            {formatQuantity(used)} / {capacity}
+          </span>
         </div>
-
-        {event ? (
-          <div className="px-4 pt-3">
-            <Panel tone="cream" className="p-3">
-              <p className="font-ui text-[10px] font-extrabold uppercase tracking-[0.2em] text-copper">
-                {event.name}
-              </p>
-              <p className="font-hand text-[13px] text-walnut/60">
-                {supplierEventSummary(
-                  event,
-                  isContractActive(
-                    save.business.supplierContract,
-                    save.business.calendar.businessDay,
-                  ),
-                )}
-              </p>
-            </Panel>
-          </div>
-        ) : null}
-
-        <div className="px-4 pt-3">
-          <Panel tone="cream" className="p-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-ui text-[10px] font-extrabold uppercase tracking-[0.2em] text-copper">
-                  {refrigerator?.name ?? "Refrigerator"}
-                </p>
-                <p className="font-hand text-[13px] text-walnut/60">
-                  {formatQuantity(used)} / {refrigerator?.capacity ?? 0} used ·{" "}
-                  {formatQuantity(available)} available
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => go("business-refrigerator")}
-                className="press rounded-full border border-walnut/20 bg-ivory px-3 py-1.5 font-ui text-[11px] font-bold text-walnut-dark"
-              >
-                Manage →
-              </button>
-            </div>
-          </Panel>
+        <div className="mt-2">
+          <Bar fraction={capacity > 0 ? used / capacity : 0} tone="sage" />
         </div>
-
-        <div className="px-4 pt-4">
-          <p className="mb-1 font-display text-[16px] font-black text-walnut-dark">On Hand</p>
-          <p
-            className={`mb-2 font-hand text-[13px] leading-snug ${makeable === 0 || spoilingTonight.size > 0 ? "text-copper" : "text-walnut/60"}`}
-          >
-            {makeable === 0
-              ? "No dish on your menu can be made from usable stock — customers can't be served until you restock."
-              : `${makeable} of the ${activeBusinessDishes(save.business.menuActivation).length} dishes on your menu can be made from usable stock.`}
-            {spoilingTonight.size > 0
-              ? ` ${spoilingTonight.size} item${spoilingTonight.size === 1 ? "" : "s"} will be discarded at End Business Day.`
-              : ""}
+        <div className="mt-2 grid grid-cols-2 gap-2 font-ui text-[12px]">
+          <p className="font-bold text-walnut/70">
+            Stock value{" "}
+            <span className="block font-display text-[16px] font-black text-walnut-dark">
+              {formatUsd(totalValue)}
+            </span>
           </p>
-          {owned.length === 0 ? (
-            <Panel className="p-4 text-center">
-              <p className="font-hand text-[15px] text-walnut/60">
-                Nothing in stock yet — buy some ingredients below.
-              </p>
-            </Panel>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {owned.map((entry) => {
-                const state = perishabilityStateFor(
-                  entry!.ingredientId,
-                  entry!.purchaseDay,
-                  save.business.calendar.businessDay,
-                );
-                return (
-                  <Panel key={entry!.ingredientId} tone="cream" className="p-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="font-display text-[14px] font-black leading-tight text-walnut-dark">
-                          {INGREDIENT_EMOJI[entry!.ingredientId]}{" "}
-                          {INGREDIENTS[entry!.ingredientId].name}
-                        </p>
-                        <p className="font-hand text-[13px] leading-tight text-walnut/60">
-                          {formatQuantity(entry!.quantity)} {purchaseUnitFor(entry!.ingredientId)} ·{" "}
-                          {formatUsd(entry!.unitCost)}/{purchaseUnitFor(entry!.ingredientId)}
-                        </p>
-                      </div>
-                      <div className="flex shrink-0 flex-col items-end gap-1">
-                        <p className="font-ui text-[13px] font-bold text-copper">
-                          {formatUsd(Math.round(entry!.quantity * entry!.unitCost))}
-                        </p>
-                        <Badge tone={PERISHABILITY_BADGE_TONE[state]}>
-                          {state.replace("_", " ")}
-                        </Badge>
-                        {spoilingTonight.has(entry!.ingredientId) ? (
-                          <p className="font-ui text-[10px] font-extrabold uppercase tracking-[0.1em] text-copper">
-                            spoils tonight
-                          </p>
-                        ) : null}
-                      </div>
-                    </div>
-                  </Panel>
-                );
-              })}
-            </div>
+          <p className="text-right font-bold text-walnut/70">
+            Space left{" "}
+            <span className="block font-display text-[16px] font-black text-walnut-dark">
+              {formatQuantity(available)}
+            </span>
+          </p>
+        </div>
+        <p
+          className={cn(
+            "mt-2 font-hand text-[14px] leading-snug",
+            makeable === 0 || spoilingTonight.size > 0 ? "text-copper" : "text-walnut/65",
           )}
-        </div>
+        >
+          {makeable === 0
+            ? "No dish on your menu can be made from your stock yet — buy what the menu needs (marked below)."
+            : `${makeable} of your ${menuDishCount} menu dishes can be made from stock right now.`}
+          {spoilingTonight.size > 0
+            ? ` ${spoilingTonight.size} item${spoilingTonight.size === 1 ? "" : "s"} spoil${spoilingTonight.size === 1 ? "s" : ""} at End Business Day.`
+            : ""}
+        </p>
+        <KButton
+          full
+          size="sm"
+          variant="ghost"
+          className="mt-2 h-12"
+          onClick={() => go("business-refrigerator")}
+        >
+          Upgrade or repair the fridge →
+        </KButton>
+      </Panel>
 
-        <Divider />
+      {event ? (
+        <Panel tone="cream" className="p-3">
+          <Eyebrow>🚚 Today · {event.name}</Eyebrow>
+          <p className="font-hand text-[14px] text-walnut/65">
+            {supplierEventSummary(
+              event,
+              isContractActive(save.business.supplierContract, save.business.calendar.businessDay),
+            )}
+          </p>
+        </Panel>
+      ) : null}
 
-        <div className="px-4 pt-2">
-          <p className="mb-2 font-display text-[16px] font-black text-walnut-dark">
-            Purchase Ingredients
-          </p>
-          <p className="mb-2 font-hand text-[13px] leading-snug text-walnut/60">
-            Ingredients your menu uses are listed first. Each one keeps only so many business days
-            before it spoils at End Business Day.
-          </p>
-          <div className="flex flex-col gap-2">
-            {purchaseOrder.map((id) => {
-              const def = INGREDIENTS[id];
-              const quantity = quantityFor(id);
-              const eventCost = eventAdjustedUnitCost(businessUnitCostFor(id), event);
-              const contractCost = event?.suspendsContractDiscount
-                ? eventCost
-                : effectiveUnitCost(
-                    eventCost,
-                    save.business.supplierContract,
-                    save.business.calendar.businessDay,
-                    quantity,
-                  );
-              const unitCost = staffUnitCostDiscount(contractCost, save.business.staff.hiredRoles);
-              const totalCost = unitCost * quantity;
-              const exceedsShortage = maxQuantity !== undefined && quantity > maxQuantity;
-              const affordable =
-                save.credits >= totalCost && quantity <= available && !exceedsShortage;
-              const message = messages[id];
+      {/* On hand */}
+      {owned.length > 0 ? (
+        <Panel className="p-4">
+          <Eyebrow>🧺 On hand</Eyebrow>
+          <div className="mt-1">
+            {owned.map((entry) => {
+              const state = perishabilityStateFor(
+                entry!.ingredientId,
+                entry!.purchaseDay,
+                save.business.calendar.businessDay,
+              );
               return (
-                <Panel key={id} tone="cream" className="p-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="font-display text-[14px] font-black leading-tight text-walnut-dark">
-                        {INGREDIENT_EMOJI[id]} {def.name}
-                      </p>
-                      <p className="font-hand text-[13px] leading-tight text-walnut/60">
-                        {formatUsd(unitCost)}/{purchaseUnitFor(id)} · keeps{" "}
-                        {shelfLifeForIngredient(id)} days
-                      </p>
-                      {menuIngredients.has(id) ? (
-                        <p className="font-ui text-[10px] font-extrabold uppercase tracking-[0.1em] text-olive">
-                          On your menu
-                        </p>
-                      ) : null}
+                <div
+                  key={entry!.ingredientId}
+                  className="flex items-center gap-2 border-b border-walnut/10 py-2 last:border-b-0"
+                >
+                  <span className="text-[20px]">{INGREDIENT_EMOJI[entry!.ingredientId]}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-ui text-[13px] font-extrabold text-walnut-dark">
+                      {INGREDIENTS[entry!.ingredientId].name}
+                    </span>
+                    <span className="block font-hand text-[13px] text-walnut/60">
+                      {formatQuantity(entry!.quantity)} {purchaseUnitFor(entry!.ingredientId)} ·{" "}
+                      {formatUsd(Math.round(entry!.quantity * entry!.unitCost))}
+                    </span>
+                  </span>
+                  <span className="flex shrink-0 flex-col items-end gap-0.5">
+                    <Badge tone={PERISHABILITY_BADGE_TONE[state]}>{state.replace("_", " ")}</Badge>
+                    {spoilingTonight.has(entry!.ingredientId) ? (
+                      <span className="font-ui text-[10px] font-extrabold uppercase text-copper">
+                        spoils tonight
+                      </span>
+                    ) : null}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </Panel>
+      ) : (
+        <Panel className="p-4 text-center">
+          <p className="font-hand text-[15px] text-walnut/60">
+            Nothing in stock yet — buy ingredients below.
+          </p>
+        </Panel>
+      )}
+
+      {/* Group filter */}
+      <div
+        className="-mx-4 flex gap-2 overflow-x-auto no-scrollbar px-4"
+        aria-label="Ingredient groups"
+      >
+        {[{ category: "all", label: "All", emoji: "🧺" }, ...GROUPS].map((g) => (
+          <button
+            key={g.category}
+            type="button"
+            onClick={() => setGroup(g.category)}
+            aria-pressed={group === g.category}
+            className={cn(
+              "press h-12 min-w-12 shrink-0 rounded-full border px-3.5 font-ui text-[12px] font-extrabold",
+              group === g.category
+                ? "wood border-walnut-dark/50 text-ivory"
+                : "card-warm border-walnut/15 text-walnut-dark",
+            )}
+          >
+            {g.emoji} {g.label}
+          </button>
+        ))}
+      </div>
+
+      {groups.map((g) => {
+        const ids = allIngredientIds.filter((id) => INGREDIENTS[id].category === g.category);
+        const ordered = [
+          ...ids.filter((id) => menuIngredients.has(id)),
+          ...ids.filter((id) => !menuIngredients.has(id)),
+        ];
+        if (ordered.length === 0) return null;
+        return (
+          <section key={g.category}>
+            <p className="mb-2 mt-1 font-display text-[16px] font-black text-walnut-dark">
+              {g.emoji} {g.label}
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              {ordered.map((id) => {
+                const def = INGREDIENTS[id];
+                const quantity = quantityFor(id);
+                const eventCost = eventAdjustedUnitCost(businessUnitCostFor(id), event);
+                const contractCost = event?.suspendsContractDiscount
+                  ? eventCost
+                  : effectiveUnitCost(
+                      eventCost,
+                      save.business.supplierContract,
+                      save.business.calendar.businessDay,
+                      quantity,
+                    );
+                const unitCost = staffUnitCostDiscount(
+                  contractCost,
+                  save.business.staff.hiredRoles,
+                );
+                const totalCost = unitCost * quantity;
+                const exceedsShortage = maxQuantity !== undefined && quantity > maxQuantity;
+                const affordable =
+                  save.credits >= totalCost && quantity <= available && !exceedsShortage;
+                const stock = save.business.inventory[id]?.quantity ?? 0;
+                const message = messages[id];
+                return (
+                  <article
+                    key={id}
+                    className="product-card flex flex-col rounded-[20px] border border-walnut/15 p-3 card-warm"
+                  >
+                    <div className="flex items-start justify-between">
+                      <span className="text-[34px] leading-none" aria-hidden>
+                        {INGREDIENT_EMOJI[id]}
+                      </span>
+                      {menuIngredients.has(id) ? <Badge tone="sage">Menu</Badge> : null}
                     </div>
-                    <div className="flex shrink-0 items-center gap-1.5">
+                    <p className="mt-1 font-display text-[14px] font-black leading-tight text-walnut-dark">
+                      {def.name}
+                    </p>
+                    <p className="font-ui text-[12px] font-extrabold text-copper">
+                      {formatUsd(unitCost)}
+                      <span className="font-bold text-walnut/60">/{purchaseUnitFor(id)}</span>
+                    </p>
+                    <p className="font-hand text-[13px] leading-tight text-walnut/60">
+                      In stock {formatQuantity(stock)} · keeps {shelfLifeForIngredient(id)} days
+                    </p>
+                    <div className="mt-2 flex items-center justify-between">
                       <button
                         type="button"
                         onClick={() => adjustQuantity(id, -1)}
-                        className="press grid h-8 w-8 place-items-center rounded-full border border-walnut/20 bg-ivory font-ui font-black text-walnut-dark"
+                        className="press grid h-12 w-12 place-items-center rounded-full border border-walnut/20 bg-ivory font-ui text-[18px] font-black text-walnut-dark"
                         aria-label={`Decrease quantity for ${def.name}`}
                       >
                         −
                       </button>
-                      <span className="w-8 text-center font-ui text-[13px] font-bold text-walnut-dark">
+                      <span className="font-ui text-[15px] font-extrabold text-walnut-dark">
                         {quantity}
                       </span>
                       <button
                         type="button"
                         onClick={() => adjustQuantity(id, 1)}
-                        className="press grid h-8 w-8 place-items-center rounded-full border border-walnut/20 bg-ivory font-ui font-black text-walnut-dark"
+                        className="press grid h-12 w-12 place-items-center rounded-full border border-walnut/20 bg-ivory font-ui text-[18px] font-black text-walnut-dark"
                         aria-label={`Increase quantity for ${def.name}`}
                       >
                         +
                       </button>
                     </div>
-                  </div>
-                  <Divider />
-                  {exceedsShortage ? (
-                    <p className="mb-1.5 text-center font-hand text-[12px] text-copper">
-                      Limited to {maxQuantity} today.
-                    </p>
-                  ) : null}
-                  {message ? (
-                    <p className="mb-1.5 text-center font-hand text-[13px] text-copper">
-                      {message}
-                    </p>
-                  ) : null}
-                  <KButton
-                    full
-                    variant={affordable ? "copper" : "ghost"}
-                    onClick={() => handlePurchase(id)}
-                  >
-                    Buy {quantity} {purchaseUnitFor(id)} · {formatUsd(totalCost)}
-                  </KButton>
-                </Panel>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-      <BottomNav active="business" go={go} />
+                    {exceedsShortage ? (
+                      <p className="mt-1 text-center font-hand text-[12px] text-copper">
+                        Limited to {maxQuantity} today.
+                      </p>
+                    ) : null}
+                    {message ? (
+                      <p className="mt-1 text-center font-hand text-[12px] leading-tight text-copper">
+                        {message}
+                      </p>
+                    ) : null}
+                    <KButton
+                      full
+                      variant={affordable ? "copper" : "ghost"}
+                      className="mt-auto h-12 px-2 text-[12px]"
+                      onClick={() => handlePurchase(id)}
+                    >
+                      Buy {quantity} {purchaseUnitFor(id)} · {formatUsd(totalCost)}
+                    </KButton>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        );
+      })}
     </div>
   );
 }

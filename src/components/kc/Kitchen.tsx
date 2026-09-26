@@ -509,11 +509,11 @@ function ScreenHeaderBoard({
 const NAV: { id: ScreenId; label: string; glyph: string }[] = [
   { id: "kitchen", label: "Kitchen", glyph: "🏠" },
   { id: "shop", label: "Market", glyph: "🛒" },
-  { id: "rack", label: "Progress", glyph: "🏆" },
   // Economy V3 Phase 1 — the Business Simulation layer's own bottom-nav
-  // destination, alongside Kitchen/Shop/Rack (see data.ts's own doc on
-  // "business" for why this is a full tab, not a Kitchen hotspot).
+  // destination (see data.ts's own doc on "business" for why this is a full
+  // tab, not a Kitchen hotspot).
   { id: "business", label: "Business", glyph: "📊" },
+  { id: "rack", label: "Progress", glyph: "🏆" },
 ];
 
 export function BottomNav({ active, go }: { active: ScreenId; go: (s: ScreenId) => void }) {

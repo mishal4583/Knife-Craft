@@ -161,12 +161,13 @@ function saveAt(n: number, extra: Partial<SaveData> = {}): SaveData {
   assert(/\{ id: "rack", label: "Progress", glyph: "🏆" \}/.test(kitchen) && /label="Progress"/.test(kitchen) && !/label="Rack"/.test(kitchen), "F2: bottom nav and Kitchen shortcut say 🏆 Progress, not Rack");
   const router = read("src/ScreensRouter.tsx");
   assert(/screen === "rack" \? <RestaurantProgress go=\{go\} save=\{save\} \/>/.test(router), "F3: the existing route now opens Restaurant Progress (no second navigation system)");
-  const shopFor = read("src/components/kc/business/BusinessShop.tsx");
+  // The old in-Business "Market" overview was folded into the Business Equipment tab.
+  const shopFor = read("src/components/kc/business/BusinessRefrigerator.tsx");
   assert(!/Rack/.test(shopFor.replace(/\/\*[\s\S]*?\*\//g, "")) && /Manage in the Market/.test(shopFor), "F4: Business points to the Market (where equipping/sharpening live), not Rack");
   const journal = read("src/components/kc/Journal.tsx");
   const settings = journal.slice(journal.indexOf("export function Settings"));
   assert(/label="Sound"/.test(settings) && !/label="Music"|label="Reduced motion"|label="Language"|label="Accessibility"|Larger cut guides|[Mm]usic by/.test(settings), "F5: Settings shows only real options (Sound + Reset Progress) and promises no music");
-  const ui = ["src/components/kc/Kitchen.tsx", "src/components/kc/RestaurantProgress.tsx", "src/components/kc/Shop.tsx", "src/components/kc/business/BusinessShop.tsx"];
+  const ui = ["src/components/kc/Kitchen.tsx", "src/components/kc/RestaurantProgress.tsx", "src/components/kc/Shop.tsx", "src/components/kc/business/BusinessRefrigerator.tsx", "src/components/kc/business/BusinessDashboard.tsx"];
   const rackText = ui.filter((f) => /[">][^"<]*\bRack\b[^"<]*["<]/.test(read(f).replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, "")));
   assert(rackText.length === 0, `F6: no player-facing "Rack" text remains${rackText.length ? " — " + rackText.join(", ") : ""}`);
 }

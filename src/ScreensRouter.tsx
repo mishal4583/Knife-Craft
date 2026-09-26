@@ -8,15 +8,8 @@ import {
   BusinessDashboard,
   type AdvanceDayResult,
 } from "@/components/kc/business/BusinessDashboard";
-import { BusinessInventory } from "@/components/kc/business/BusinessInventory";
-import { BusinessRefrigerator } from "@/components/kc/business/BusinessRefrigerator";
-import { BusinessMenu } from "@/components/kc/business/BusinessMenu";
-import { BusinessSuppliers } from "@/components/kc/business/BusinessSuppliers";
-import { BusinessStaff } from "@/components/kc/business/BusinessStaff";
-import { BusinessInspections } from "@/components/kc/business/BusinessInspections";
+import { businessTabForScreen } from "@/components/kc/business/businessTabs";
 import { BusinessService } from "@/components/kc/business/BusinessService";
-import { BusinessShop } from "@/components/kc/business/BusinessShop";
-import { BusinessFinance } from "@/components/kc/business/BusinessFinance";
 import type { PurchaseIngredientResult } from "@/game/business/BusinessInventoryManager";
 import type { PurchaseRefrigeratorResult } from "@/game/business/RefrigeratorManager";
 import type { PerformMaintenanceResult } from "@/game/business/businessMaintenance";
@@ -166,46 +159,26 @@ export function ScreensRouter({
           onResetProgress={resetProgress}
         />
       ) : null}
-      {screen === "business" ? (
+      {/* Business Mode: one Market-style screen; every business route opens its tab.
+          Rendered from one place so the screen stays mounted while switching tabs. */}
+      {businessTabForScreen(screen) ? (
         <BusinessDashboard
           go={go}
           save={save}
+          tab={businessTabForScreen(screen)!}
           onAdvanceDay={advanceBusinessDay}
           businessServiceSession={businessServiceSession}
-          onRepairRefrigerator={performRefrigeratorMaintenance}
-        />
-      ) : null}
-      {screen === "business-inventory" ? (
-        <BusinessInventory go={go} save={save} purchaseIngredient={purchaseIngredient} />
-      ) : null}
-      {screen === "business-refrigerator" ? (
-        <BusinessRefrigerator
-          go={go}
-          save={save}
+          purchaseIngredient={purchaseIngredient}
           purchaseRefrigerator={purchaseRefrigerator}
           performRefrigeratorMaintenance={performRefrigeratorMaintenance}
-        />
-      ) : null}
-      {screen === "business-menu" ? (
-        <BusinessMenu
-          go={go}
-          save={save}
           setMenuPrice={setMenuPrice}
           setBusinessDishActive={setBusinessDishActive}
-        />
-      ) : null}
-      {screen === "business-suppliers" ? (
-        <BusinessSuppliers
-          go={go}
-          save={save}
           signSupplierContract={signSupplierContract}
           cancelSupplierContract={cancelSupplierContract}
+          hireStaff={hireStaff}
+          fireStaff={fireStaff}
         />
       ) : null}
-      {screen === "business-staff" ? (
-        <BusinessStaff go={go} save={save} hireStaff={hireStaff} fireStaff={fireStaff} />
-      ) : null}
-      {screen === "business-inspections" ? <BusinessInspections go={go} save={save} /> : null}
       {screen === "business-service" ? (
         <BusinessService
           go={go}
@@ -215,8 +188,6 @@ export function ScreensRouter({
           onEnterPreparation={onEnterBusinessPreparation}
         />
       ) : null}
-      {screen === "business-shop" ? <BusinessShop go={go} save={save} /> : null}
-      {screen === "business-finance" ? <BusinessFinance go={go} save={save} /> : null}
     </>
   );
 }

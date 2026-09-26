@@ -1,27 +1,34 @@
 import { useState } from "react";
-import type { ScreenId } from "../data";
 import type { SaveData } from "@/game/SaveManager";
-import { KButton, Panel, ScreenHeader, Divider, Badge } from "../common/primitives";
-import { BusinessCash } from "./BusinessCash";
+import { KButton, Panel, Badge } from "../common/primitives";
+import { Eyebrow } from "../common/Meters";
+import { cn } from "@/lib/utils";
 import { formatUsd } from "@/game/business/businessCurrency";
-import { BottomNav } from "../Kitchen";
 import { getAllStaffDefinitions, dailyPayroll } from "@/game/business/businessStaff";
 import type { HireStaffResult, FireStaffResult } from "@/game/business/BusinessStaffManager";
 
+/** A face per role — visual only. */
+const ROLE_ICON: Record<string, string> = {
+  "prep-cook": "🧑‍🍳",
+  "line-cook": "👨‍🍳",
+  "head-chef": "👩‍🍳",
+  server: "🧑‍💼",
+  cleaner: "🧽",
+  manager: "📋",
+};
+
 /**
- * BUSINESS_STAFF — Economy V3 Phase 9. Business Mode only; reuses
- * `businessStaff.ts`'s own `getAllStaffDefinitions`/`dailyPayroll` as the
- * ONLY source of roster/payroll numbers shown here — never recomputed
- * inline. Hiring/firing are both free and immediate; the real cost is
- * the running payroll total shown at the top.
+ * BUSINESS · STAFF tab (Economy V3 Phase 9). Roster, wages and each role's
+ * effect come only from `businessStaff.ts` (`getAllStaffDefinitions`,
+ * `dailyPayroll` — which already applies the Manager's discount); hiring
+ * and letting go are free and immediate, payroll is charged at End
+ * Business Day.
  */
 export function BusinessStaff({
-  go,
   save,
   hireStaff,
   fireStaff,
 }: {
-  go: (s: ScreenId) => void;
   save: SaveData;
   hireStaff: (role: string) => HireStaffResult;
   fireStaff: (role: string) => FireStaffResult;
@@ -29,94 +36,84 @@ export function BusinessStaff({
   const [message, setMessage] = useState<string | null>(null);
   const hiredRoles = save.business.staff.hiredRoles;
   const payroll = dailyPayroll(hiredRoles);
+  const roster = getAllStaffDefinitions();
 
   function handleHire(role: string) {
     const result = hireStaff(role);
-    if (!result.ok) {
-      setMessage("That role is already hired.");
-      return;
-    }
-    setMessage(null);
+    setMessage(result.ok ? null : "That role is already hired.");
   }
 
   function handleFire(role: string) {
     const result = fireStaff(role);
-    if (!result.ok) {
-      setMessage("That role isn't hired.");
-      return;
-    }
-    setMessage(null);
+    setMessage(result.ok ? null : "That role isn't hired.");
   }
 
   return (
-    <div className="relative h-full w-full overflow-hidden bg-cream">
-      <div className="absolute inset-0 bg-[radial-gradient(90%_50%_at_50%_0%,rgba(125,146,112,0.24),transparent_60%)]" />
-      <div className="relative h-full overflow-y-auto no-scrollbar pb-24">
-        <ScreenHeader
-          title="Staff"
-          subtitle="who's running the restaurant"
-          onBack={() => go("business")}
-          right={<BusinessCash cents={save.credits} />}
-        />
-
-        <div className="px-4">
-          <Panel tone="dark" className="p-4">
-            <p className="font-ui text-[10px] font-extrabold uppercase tracking-[0.2em] text-gold">
-              Daily Payroll
-            </p>
-            <p className="font-display text-[22px] font-black leading-none text-ivory">
-              {formatUsd(payroll)} / day
-            </p>
-            <p className="mt-1.5 font-hand text-[13px] text-ivory/70">
-              Hiring is free — payroll is paid automatically each business day. If you can't cover
-              it, the whole staff is let go rather than left unpaid.
-            </p>
-          </Panel>
+    <div className="space-y-3">
+      <Panel tone="cream" className="p-4">
+        <div className="flex items-baseline justify-between gap-3">
+          <Eyebrow>🧑‍🍳 Your team</Eyebrow>
+          <span className="font-ui text-[12px] font-extrabold text-walnut-dark">
+            {hiredRoles.length} / {roster.length} hired
+          </span>
         </div>
+        <p className="mt-1 font-display text-[22px] font-black leading-none text-walnut-dark">
+          {formatUsd(payroll)}
+          <span className="font-hand text-[15px] font-normal text-walnut/60"> per day</span>
+        </p>
+        <p className="mt-1.5 font-hand text-[14px] leading-snug text-walnut/65">
+          Hiring is free — pay is charged at End Business Day. If the pay can't be covered, the
+          whole team is let go rather than left unpaid.
+        </p>
+      </Panel>
 
-        {message ? (
-          <p className="px-4 pt-2 text-center font-hand text-[14px] text-copper">{message}</p>
-        ) : null}
+      {message ? <p className="text-center font-hand text-[15px] text-copper">{message}</p> : null}
 
-        <div className="px-4 pt-3">
-          <div className="flex flex-col gap-2">
-            {getAllStaffDefinitions().map((def) => {
-              const hired = hiredRoles.includes(def.role);
-              return (
-                <Panel key={def.role} tone="cream" className="p-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="font-display text-[14px] font-black leading-tight text-walnut-dark">
-                        {def.name}
-                      </p>
-                      <p className="font-hand text-[13px] leading-tight text-walnut/60">
-                        {def.description}
-                      </p>
-                      <p className="mt-0.5 font-ui text-[11px] font-bold text-copper">
-                        {formatUsd(def.hourlyWageCents)}/hr × {def.scheduledHours}h + 25% employer
-                        burden = {formatUsd(def.salary)}/day
-                      </p>
-                    </div>
-                    {hired ? (
-                      <div className="flex shrink-0 flex-col items-end gap-1.5">
-                        <Badge tone="sage">Hired</Badge>
-                        <KButton size="sm" variant="ghost" onClick={() => handleFire(def.role)}>
-                          Let Go
-                        </KButton>
-                      </div>
-                    ) : (
-                      <KButton size="sm" onClick={() => handleHire(def.role)}>
-                        Hire
-                      </KButton>
-                    )}
-                  </div>
-                </Panel>
-              );
-            })}
-          </div>
-        </div>
+      <div className="grid grid-cols-2 gap-3">
+        {roster.map((def) => {
+          const hired = hiredRoles.includes(def.role);
+          return (
+            <article
+              key={def.role}
+              className={cn(
+                "product-card flex flex-col rounded-[20px] border p-3 card-warm",
+                hired ? "border-olive/40" : "border-walnut/15",
+              )}
+            >
+              <div className="flex items-start justify-between">
+                <span className="text-[34px] leading-none" aria-hidden>
+                  {ROLE_ICON[def.role] ?? "🧑‍🍳"}
+                </span>
+                {hired ? <Badge tone="sage">Hired</Badge> : null}
+              </div>
+              <p className="mt-1 font-display text-[14px] font-black leading-tight text-walnut-dark">
+                {def.name}
+              </p>
+              <p className="font-ui text-[12px] font-extrabold text-copper">
+                {formatUsd(def.salary)}
+                <span className="font-bold text-walnut/60">/day</span>
+              </p>
+              <p className="mt-1 rounded-[12px] bg-cream/70 px-2 py-1.5 font-hand text-[13px] leading-tight text-walnut-dark">
+                {def.description}
+              </p>
+              <p className="mt-1 font-ui text-[10px] font-bold text-walnut/50">
+                {formatUsd(def.hourlyWageCents)}/hr × {def.scheduledHours}h + 25% employer cost
+              </p>
+              <div className="mt-auto pt-2">
+                {hired ? (
+                  <KButton full variant="ghost" onClick={() => handleFire(def.role)}>
+                    Let go
+                  </KButton>
+                ) : (
+                  <KButton full onClick={() => handleHire(def.role)}>
+                    Hire
+                  </KButton>
+                )}
+              </div>
+            </article>
+          );
+        })}
       </div>
-      <BottomNav active="business" go={go} />
     </div>
   );
 }

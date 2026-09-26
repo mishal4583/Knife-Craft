@@ -1,10 +1,9 @@
 import { useState } from "react";
-import type { ScreenId } from "../data";
 import type { SaveData } from "@/game/SaveManager";
-import { Panel, ScreenHeader, Divider, Badge } from "../common/primitives";
-import { BusinessCash } from "./BusinessCash";
+import { Panel, Badge } from "../common/primitives";
+import { Eyebrow } from "../common/Meters";
+import { cn } from "@/lib/utils";
 import { formatUsd } from "@/game/business/businessCurrency";
-import { BottomNav } from "../Kitchen";
 import { getCampaignRecipe } from "@/game/recipes/campaignRecipes";
 import { BUSINESS_DISH_CATALOG, businessDishMargin } from "@/game/business/businessDishCatalog";
 import type { SetMenuPriceResult } from "@/game/business/BusinessMenuManager";
@@ -21,54 +20,40 @@ import {
   businessCustomerPayment,
   businessOrderAvailability,
 } from "@/game/business/BusinessServiceManager";
+import { defaultMenuPrice } from "@/game/business/businessMenu";
 import { getRefrigeratorCapacity } from "@/game/business/RefrigeratorManager";
 
-/** A quarter-dollar step — sensible for real USD menu pricing (Economy V3 Phase 14; the old 5-cent step was calibrated for the old prototype "coins" scale). */
+/** A quarter-dollar step — sensible for real USD menu pricing. */
 const PRICE_STEP = 25;
 
 /**
- * BUSINESS_MENU — Economy V3 Phase 5, recalibrated Phase 14. Business
- * Mode only; reuses `CAMPAIGN_RECIPES`/`RecipeDefinition` directly (no
- * second recipe list) and `businessMenu.ts`'s own `menuPriceFor`/
- * `marginFor` as the ONLY source of price/cost/margin numbers shown here
- * — never recomputed inline. Every price change persists immediately (no
- * separate "confirm" step, unlike a purchase — setting a price moves no
- * credits, so there's nothing to commit atomically against).
- *
- * Economy V3 Phase 14 — shows Menu Price / Food Cost / Food Cost % /
- * Gross Margin explicitly, per the phase brief's own accounting
- * requirement ("Do not label markup as margin"). Food Cost % (cost /
- * price) and Gross Margin (price - cost, and margin / price as a
- * percentage) are two DIFFERENT numbers, both shown — never one computed
- * and mislabeled as the other.
- *
- * Economy V3 Phase 14, Checkpoint 2 — the customer-facing list is now
- * `BUSINESS_DISH_CATALOG` (businessDishCatalog.ts's own curated, real-
- * dish-named catalog), never the raw 221-entry `CAMPAIGN_RECIPES` list —
- * a customer orders "Caprese Salad," never "Sliced Tomato Plate." Price
- * is still set/read keyed by the dish's own underlying `sourceRecipeId`
- * (via the existing `setMenuPrice`/`businessDishMargin`, which itself
- * delegates to businessMenu.ts's own `marginFor`) — the SAME single
- * pricing mechanism as before, never a second one.
+ * BUSINESS · MENU tab (Economy V3 Phases 5/14). The dish list is
+ * `BUSINESS_DISH_CATALOG`; price, food cost and margin come only from
+ * `businessDishMargin` (businessMenu.ts's `marginFor`), the suggested price
+ * from `defaultMenuPrice`, and what a customer actually pays from
+ * `businessCustomerPayment` (menu price × popularity modifier) — the same
+ * functions serving uses. Price changes persist immediately; they move no
+ * money.
  */
 export function BusinessMenu({
-  go,
   save,
   setMenuPrice,
   setBusinessDishActive,
 }: {
-  go: (s: ScreenId) => void;
   save: SaveData;
   setMenuPrice: (recipeId: string, price: number) => SetMenuPriceResult;
   setBusinessDishActive: (dishId: string, active: boolean) => SetDishActiveResult;
 }) {
   const [messages, setMessages] = useState<Partial<Record<string, string>>>({});
+  const [category, setCategory] = useState<string>("All");
   const activation = save.business.menuActivation;
   const activeDishes = activeBusinessDishes(activation);
   const fridgeCapacity = getRefrigeratorCapacity(save.business.refrigerator.refrigeratorId);
   const activeIngredientIds = [
     ...new Set(activeDishes.flatMap((d) => businessDishRequirements(d).map((r) => r.ingredientId))),
   ];
+  const categories = ["All", ...new Set(BUSINESS_DISH_CATALOG.map((d) => d.category))];
+  const shown = BUSINESS_DISH_CATALOG.filter((d) => category === "All" || d.category === category);
 
   function toggleDish(dishId: string, active: boolean) {
     const result = setBusinessDishActive(dishId, active);
@@ -82,155 +67,191 @@ export function BusinessMenu({
     }));
   }
 
-  function adjustPrice(recipeId: string, currentPrice: number, delta: number) {
-    const next = Math.max(0, currentPrice + delta);
-    const result = setMenuPrice(recipeId, next);
-    if (!result.ok) {
-      setMessages((m) => ({ ...m, [recipeId]: "That price couldn't be set." }));
-    }
+  function adjustPrice(dishId: string, recipeId: string, currentPrice: number, delta: number) {
+    const result = setMenuPrice(recipeId, Math.max(0, currentPrice + delta));
+    if (!result.ok) setMessages((m) => ({ ...m, [dishId]: "That price couldn't be set." }));
   }
 
   return (
-    <div className="relative h-full w-full overflow-hidden bg-cream">
-      <div className="absolute inset-0 bg-[radial-gradient(90%_50%_at_50%_0%,rgba(125,146,112,0.24),transparent_60%)]" />
-      <div className="relative h-full overflow-y-auto no-scrollbar pb-24">
-        <ScreenHeader
-          title="Menu"
-          subtitle="set what the restaurant charges"
-          onBack={() => go("business")}
-          right={<BusinessCash cents={save.credits} />}
-        />
-
-        <div className="px-4 pt-2">
-          <p className="mb-2 font-hand text-[14px] leading-snug text-walnut/60">
-            Choose what the restaurant sells and what it charges. Customers only order dishes that
-            are on the menu. Food cost is what a plate's ingredients cost at standard supplier
-            prices; gross margin is what's left over at your menu price. Customers actually pay your
-            menu price × a popularity modifier — that payment is the revenue recorded.
-          </p>
-          <Panel tone="dark" className="mb-3 p-3">
-            <p className="font-ui text-[10px] font-extrabold uppercase tracking-[0.2em] text-gold">
-              On the menu: {activeDishes.length} of {BUSINESS_DISH_CATALOG.length} dishes
-            </p>
-            <p className="mt-1 font-hand text-[13px] leading-snug text-ivory/70">
-              Needs {activeIngredientIds.length} ingredient
-              {activeIngredientIds.length === 1 ? "" : "s"} in stock:{" "}
-              {activeIngredientIds.map((id) => INGREDIENTS[id]?.name ?? id).join(", ")}.
-            </p>
-            <p className="mt-1 font-hand text-[12px] leading-snug text-ivory/60">
-              Your refrigerator holds {fridgeCapacity} units
-              {activeIngredientIds.length > 0
-                ? ` — about ${(Math.round((fridgeCapacity / activeIngredientIds.length) * 10) / 10).toString()} per ingredient on this menu`
-                : ""}
-              . Every order must be made from stock on hand, so a wide menu means small, frequent
-              purchases; a smaller menu means less stock to keep fresh.
-            </p>
-          </Panel>
-          <div className="flex flex-col gap-2">
-            {BUSINESS_DISH_CATALOG.map((dish) => {
-              const { price, cost, margin, foodCostPercent, grossMarginPercent } =
-                businessDishMargin(save.business.menu, dish);
-              const payment = businessCustomerPayment(save, dish);
-              const recipeId = dish.sourceRecipeId;
-              const emoji = getCampaignRecipe(recipeId)?.emoji ?? "🍽️";
-              const message = messages[dish.id];
-              const onMenu = isDishActive(activation, dish.id);
-              const needTotals = new Map<IngredientId, number>();
-              for (const r of businessDishRequirements(dish)) {
-                needTotals.set(
-                  r.ingredientId,
-                  normalizeQuantity((needTotals.get(r.ingredientId) ?? 0) + r.quantity),
-                );
-              }
-              const needs = [...needTotals];
-              const canMake = businessOrderAvailability(save, dish).available;
-              return (
-                <Panel key={dish.id} tone="cream" className={`p-3 ${onMenu ? "" : "opacity-60"}`}>
-                  <div className="mb-2 flex items-center justify-between">
-                    <Badge tone={onMenu ? "sage" : "locked"}>
-                      {onMenu ? "On menu" : "Off menu"}
-                    </Badge>
-                    <button
-                      type="button"
-                      onClick={() => toggleDish(dish.id, !onMenu)}
-                      className="press rounded-full border border-walnut/20 bg-ivory px-3 py-1 font-ui text-[11px] font-bold text-walnut-dark"
-                      aria-label={`${onMenu ? "Take" : "Put"} ${dish.name} ${onMenu ? "off" : "on"} the menu`}
-                    >
-                      {onMenu ? "Take off menu" : "Put on menu"}
-                    </button>
-                  </div>
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="font-display text-[14px] font-black leading-tight text-walnut-dark">
-                        {emoji} {dish.name}
-                      </p>
-                      <p className="font-hand text-[12px] leading-tight text-walnut/50">
-                        {dish.description}
-                      </p>
-                      <p className="font-hand text-[13px] leading-tight text-walnut/60">
-                        Food Cost {formatUsd(cost)}
-                      </p>
-                      <p
-                        className={`mt-0.5 font-ui text-[11px] font-bold leading-snug ${canMake ? "text-olive" : "text-walnut/55"}`}
-                      >
-                        {canMake ? "✓ " : ""}Needs{" "}
-                        {needs
-                          .map(
-                            ([id, q]) =>
-                              `${formatQuantity(q)} ${purchaseUnitFor(id)} ${INGREDIENTS[id]?.name ?? id}`,
-                          )
-                          .join(" · ")}
-                        {canMake ? " — in stock now" : ""}
-                      </p>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => adjustPrice(recipeId, price, -PRICE_STEP)}
-                        className="press grid h-8 w-8 place-items-center rounded-full border border-walnut/20 bg-ivory font-ui font-black text-walnut-dark"
-                        aria-label={`Decrease price for ${dish.name}`}
-                      >
-                        −
-                      </button>
-                      <span className="w-16 text-center font-ui text-[13px] font-bold text-walnut-dark">
-                        {formatUsd(price)}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => adjustPrice(recipeId, price, PRICE_STEP)}
-                        className="press grid h-8 w-8 place-items-center rounded-full border border-walnut/20 bg-ivory font-ui font-black text-walnut-dark"
-                        aria-label={`Increase price for ${dish.name}`}
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-                  <Divider />
-                  {message ? (
-                    <p className="mb-1.5 text-center font-hand text-[13px] text-copper">
-                      {message}
-                    </p>
-                  ) : null}
-                  <p className="mb-1 font-ui text-[11px] font-bold text-walnut/60">
-                    Customers pay {formatUsd(payment.customerPays)} today (menu price ×
-                    {payment.multiplier.toFixed(2)} at popularity {payment.popularity}/100)
-                  </p>
-                  <div className="flex items-center justify-between">
-                    <p className="font-ui text-[11px] font-bold text-walnut/60">
-                      Gross Margin at menu price {margin >= 0 ? "+" : ""}
-                      {formatUsd(margin)} ({grossMarginPercent}%)
-                    </p>
-                    <Badge tone={margin >= 0 ? "sage" : "copper"}>
-                      {foodCostPercent}% food cost
-                    </Badge>
-                  </div>
-                </Panel>
-              );
-            })}
-          </div>
+    <div className="space-y-3">
+      <Panel tone="cream" className="p-4">
+        <div className="flex items-baseline justify-between gap-3">
+          <Eyebrow>🍽️ On the menu</Eyebrow>
+          <span className="font-ui text-[12px] font-extrabold text-walnut-dark">
+            {activeDishes.length} / {BUSINESS_DISH_CATALOG.length} dishes
+          </span>
         </div>
+        <p className="mt-1 font-hand text-[14px] leading-snug text-walnut/70">
+          Customers only order dishes that are on. They pay your price × today's popularity
+          modifier. Your menu needs {activeIngredientIds.length} ingredient
+          {activeIngredientIds.length === 1 ? "" : "s"} in stock; the fridge holds {fridgeCapacity}{" "}
+          units — a smaller menu means less stock to keep fresh.
+        </p>
+      </Panel>
+
+      <div
+        className="-mx-4 flex gap-2 overflow-x-auto no-scrollbar px-4"
+        aria-label="Dish categories"
+      >
+        {categories.map((c) => (
+          <button
+            key={c}
+            type="button"
+            onClick={() => setCategory(c)}
+            aria-pressed={category === c}
+            className={cn(
+              "press h-12 min-w-12 shrink-0 rounded-full border px-3.5 font-ui text-[12px] font-extrabold",
+              category === c
+                ? "wood border-walnut-dark/50 text-ivory"
+                : "card-warm border-walnut/15 text-walnut-dark",
+            )}
+          >
+            {c}
+          </button>
+        ))}
       </div>
-      <BottomNav active="business" go={go} />
+
+      <div className="space-y-3">
+        {shown.map((dish) => {
+          const { price, cost, margin, foodCostPercent, grossMarginPercent } = businessDishMargin(
+            save.business.menu,
+            dish,
+          );
+          const payment = businessCustomerPayment(save, dish);
+          const recipeId = dish.sourceRecipeId;
+          const recipe = getCampaignRecipe(recipeId);
+          const suggested = recipe ? defaultMenuPrice(recipe) : price;
+          const message = messages[dish.id];
+          const onMenu = isDishActive(activation, dish.id);
+          const needTotals = new Map<IngredientId, number>();
+          for (const r of businessDishRequirements(dish)) {
+            needTotals.set(
+              r.ingredientId,
+              normalizeQuantity((needTotals.get(r.ingredientId) ?? 0) + r.quantity),
+            );
+          }
+          const canMake = businessOrderAvailability(save, dish).available;
+          return (
+            <article
+              key={dish.id}
+              className={cn(
+                "product-card rounded-[20px] border p-3 card-warm",
+                onMenu ? "border-olive/40" : "border-walnut/15",
+              )}
+            >
+              <div className="flex items-start gap-3">
+                <span
+                  className={cn("text-[34px] leading-none", !onMenu && "opacity-50 grayscale")}
+                  aria-hidden
+                >
+                  {recipe?.emoji ?? "🍽️"}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="font-display text-[15px] font-black leading-tight text-walnut-dark">
+                    {dish.name}
+                  </p>
+                  <p className="font-ui text-[10px] font-extrabold uppercase tracking-[0.14em] text-copper">
+                    {dish.category}
+                  </p>
+                  <p
+                    className={cn(
+                      "mt-0.5 font-ui text-[11px] font-bold leading-snug",
+                      canMake ? "text-olive" : "text-walnut/55",
+                    )}
+                  >
+                    {canMake ? "✓ In stock · " : "Needs "}
+                    {[...needTotals]
+                      .map(
+                        ([id, q]) =>
+                          `${formatQuantity(q)} ${purchaseUnitFor(id)} ${INGREDIENTS[id]?.name ?? id}`,
+                      )
+                      .join(" · ")}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => toggleDish(dish.id, !onMenu)}
+                  aria-pressed={onMenu}
+                  aria-label={`${onMenu ? "Take" : "Put"} ${dish.name} ${onMenu ? "off" : "on"} the menu`}
+                  className={cn(
+                    "press h-12 w-[64px] shrink-0 rounded-full border font-ui text-[12px] font-extrabold",
+                    onMenu
+                      ? "border-olive/60 bg-[linear-gradient(170deg,var(--color-sage),var(--color-olive))] text-ivory"
+                      : "border-walnut/25 bg-ivory/70 text-walnut/60",
+                  )}
+                >
+                  {onMenu ? "ON" : "OFF"}
+                </button>
+              </div>
+
+              <div className="mt-2 flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={() => adjustPrice(dish.id, recipeId, price, -PRICE_STEP)}
+                  className="press grid h-12 w-12 place-items-center rounded-full border border-walnut/20 bg-ivory font-ui text-[18px] font-black text-walnut-dark"
+                  aria-label={`Decrease price for ${dish.name}`}
+                >
+                  −
+                </button>
+                <div className="text-center">
+                  <p className="font-display text-[22px] font-black leading-none text-walnut-dark">
+                    {formatUsd(price)}
+                  </p>
+                  <p className="font-ui text-[10px] font-bold text-walnut/55">
+                    {price === suggested ? "suggested price" : `suggested ${formatUsd(suggested)}`}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => adjustPrice(dish.id, recipeId, price, PRICE_STEP)}
+                  className="press grid h-12 w-12 place-items-center rounded-full border border-walnut/20 bg-ivory font-ui text-[18px] font-black text-walnut-dark"
+                  aria-label={`Increase price for ${dish.name}`}
+                >
+                  +
+                </button>
+              </div>
+
+              {message ? (
+                <p className="mt-1 text-center font-hand text-[13px] text-copper">{message}</p>
+              ) : null}
+
+              <div className="mt-2 grid grid-cols-3 gap-2 text-center">
+                <div className="rounded-[12px] bg-cream/70 px-1 py-1.5">
+                  <p className="font-ui text-[10px] font-bold text-walnut/55">Customer pays</p>
+                  <p className="font-ui text-[12px] font-extrabold text-walnut-dark">
+                    {formatUsd(payment.customerPays)}
+                  </p>
+                </div>
+                <div className="rounded-[12px] bg-cream/70 px-1 py-1.5">
+                  <p className="font-ui text-[10px] font-bold text-walnut/55">Food cost</p>
+                  <p className="font-ui text-[12px] font-extrabold text-walnut-dark">
+                    {formatUsd(cost)}
+                  </p>
+                </div>
+                <div className="rounded-[12px] bg-cream/70 px-1 py-1.5">
+                  <p className="font-ui text-[10px] font-bold text-walnut/55">Kept per plate</p>
+                  <p
+                    className={cn(
+                      "font-ui text-[12px] font-extrabold",
+                      margin >= 0 ? "text-olive" : "text-copper",
+                    )}
+                  >
+                    {margin >= 0 ? "+" : ""}
+                    {formatUsd(margin)}
+                  </p>
+                </div>
+              </div>
+              <div className="mt-1.5 flex items-center justify-between">
+                <p className="font-ui text-[10px] font-bold text-walnut/50">
+                  × {payment.multiplier.toFixed(2)} at popularity {payment.popularity}/100 ·{" "}
+                  {grossMarginPercent}% kept
+                </p>
+                <Badge tone={margin >= 0 ? "sage" : "copper"}>{foodCostPercent}% food cost</Badge>
+              </div>
+            </article>
+          );
+        })}
+      </div>
     </div>
   );
 }

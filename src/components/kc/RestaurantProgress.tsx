@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type { ScreenId } from "./data";
 import { Badge, Coin, Divider, Panel, ScreenHeader, Stars } from "./common/primitives";
+import { Bar, Eyebrow, Row } from "./common/Meters";
 import { BottomNav } from "./Kitchen";
 import { KnifeGlyph } from "./Workshop";
 import { BoardPreview } from "./Boards";
@@ -50,50 +51,6 @@ export function RestaurantProgress({ go, save }: { go: (s: ScreenId) => void; sa
         </div>
       </div>
       <BottomNav active="rack" go={go} />
-    </div>
-  );
-}
-
-/* ── small shared bits ─────────────────────────────────── */
-
-function Eyebrow({ children, dark }: { children: ReactNode; dark?: boolean }) {
-  return (
-    <p
-      className={cn(
-        "font-ui text-[10px] font-extrabold uppercase tracking-[0.2em]",
-        dark ? "text-gold" : "text-copper",
-      )}
-    >
-      {children}
-    </p>
-  );
-}
-
-function Bar({ fraction, tone = "copper" }: { fraction: number; tone?: "copper" | "sage" }) {
-  const fill =
-    tone === "sage"
-      ? "linear-gradient(90deg,var(--color-sage),var(--color-olive))"
-      : "linear-gradient(90deg,var(--color-gold),var(--color-copper))";
-  return (
-    <span className="relative block h-[8px] w-full overflow-hidden rounded-full bg-walnut/15">
-      <span
-        className="absolute inset-y-0 left-0 rounded-full"
-        style={{
-          width: `${Math.round(Math.max(0, Math.min(1, fraction)) * 100)}%`,
-          background: fill,
-        }}
-      />
-    </span>
-  );
-}
-
-function Row({ label, value }: { label: string; value: ReactNode }) {
-  return (
-    <div className="flex items-baseline justify-between gap-3 py-1">
-      <span className="font-ui text-[12px] font-bold text-walnut/70">{label}</span>
-      <span className="text-right font-ui text-[13px] font-extrabold text-walnut-dark">
-        {value}
-      </span>
     </div>
   );
 }
