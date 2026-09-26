@@ -36,9 +36,18 @@ export function RecipeBook({
   save: SaveData;
   onOpen: (levelId: string) => void;
 }) {
-  const categories = getRecipeBookCategories();
-  const [cat, setCat] = useState(categories[0] ?? "");
-  const entries = getRecipeBookEntries().filter((e) => e.chapterTitle === cat);
+  // Only chapters the player has reached get a tab, and within a chapter
+  // only unlocked recipes plus the next locked one (as "Mystery Recipe") —
+  // upcoming dishes stay a surprise, same rule as the Order Board.
+  const allEntries = getRecipeBookEntries();
+  const reached = new Set(
+    allEntries.filter((e) => isUnlocked(e.level, save.levelProgress)).map((e) => e.chapterTitle),
+  );
+  const categories = getRecipeBookCategories().filter((c) => reached.has(c));
+  const [cat, setCat] = useState(categories[categories.length - 1] ?? "");
+  const inChapter = allEntries.filter((e) => e.chapterTitle === cat);
+  const firstLocked = inChapter.findIndex((e) => !isUnlocked(e.level, save.levelProgress));
+  const entries = firstLocked === -1 ? inChapter : inChapter.slice(0, firstLocked + 1);
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-cream">
@@ -76,6 +85,27 @@ export function RecipeBook({
             const completed = isCompleted(entry.level.id, save.levelProgress);
             const prepared = isLevelPrepared(save.recipeProgress, entry.level);
             const ready = unlocked && !completed;
+            if (!unlocked) {
+              return (
+                <div
+                  key={entry.level.id}
+                  className="flex w-full items-center gap-3 rounded-[20px] border border-dashed border-walnut/20 p-3 opacity-60"
+                >
+                  <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl border border-walnut/15 bg-cream/70 text-[26px]">
+                    🔒
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-display text-[16px] font-black leading-tight text-walnut-dark">
+                      Mystery Recipe
+                    </span>
+                    <span className="mt-1 block font-hand text-[14px] leading-tight text-walnut/60">
+                      finish the recipe above to reveal it
+                    </span>
+                  </span>
+                  <Badge tone="locked">Locked</Badge>
+                </div>
+              );
+            }
             return (
               <button
                 key={entry.level.id}

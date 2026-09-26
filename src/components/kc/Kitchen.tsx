@@ -261,6 +261,10 @@ export function OrderBoard({
   // "Next/Reward" previews (which describe early-game unlocks) give way to
   // one completion card. Before that, the hints are unchanged.
   const campaignComplete = levels.every((l) => isCompleted(l.id, levelProgress));
+  // Everything unlocked, then the first locked level as a mystery; the rest are only counted.
+  const firstLocked = levels.findIndex((l) => !isUnlocked(l, levelProgress));
+  const visibleLevels = firstLocked === -1 ? levels : levels.slice(0, firstLocked + 1);
+  const hiddenCount = levels.length - visibleLevels.length;
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-cream">
@@ -313,11 +317,39 @@ export function OrderBoard({
             </button>
           </div>
           <div className="space-y-2.5">
-            {levels.map((level, i) => {
+            {visibleLevels.map((level, i) => {
               const unlocked = isUnlocked(level, levelProgress);
+              // Upcoming levels stay a surprise: only finished levels, the
+              // current one and ONE locked "Mystery Order" are listed — no
+              // name, dish, ingredient or chapter theme until it unlocks.
+              if (!unlocked) {
+                const newChapter = i === 0 || level.chapter !== visibleLevels[i - 1]!.chapter;
+                return (
+                  <div key={level.id}>
+                    {newChapter ? (
+                      <p className="pb-1 pt-1.5 font-ui text-[10px] font-extrabold uppercase tracking-[0.18em] text-walnut/50">
+                        Chapter {level.chapter} · ???
+                      </p>
+                    ) : null}
+                    <div className="flex items-center justify-between gap-3 rounded-[16px] border border-dashed border-walnut/20 bg-ivory/30 p-2.5">
+                      <div className="opacity-60">
+                        <p className="font-display text-[16px] font-black leading-none text-walnut-dark">
+                          Mystery Order
+                        </p>
+                        <p className="font-hand text-[13px] leading-tight text-walnut/70">
+                          finish the level above to reveal it
+                        </p>
+                      </div>
+                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-walnut/10 text-[18px]">
+                        🔒
+                      </span>
+                    </div>
+                  </div>
+                );
+              }
               const canOpen = unlocked;
               const completed = isCompleted(level.id, levelProgress);
-              const prevChapter = i > 0 ? levels[i - 1]!.chapter : null;
+              const prevChapter = i > 0 ? visibleLevels[i - 1]!.chapter : null;
               const showChapterDivider = level.chapter !== prevChapter;
               // Difficulty is a pre-play word estimate
               // (levelMastery.describeDifficulty), never a performance
@@ -402,6 +434,11 @@ export function OrderBoard({
                 </div>
               );
             })}
+            {hiddenCount > 0 ? (
+              <p className="pt-1 text-center font-hand text-[15px] text-walnut/55">
+                + {hiddenCount} more {hiddenCount === 1 ? "order" : "orders"} to discover
+              </p>
+            ) : null}
           </div>
         </div>
       </div>
