@@ -37,7 +37,7 @@ export function RecipeBook({
   onOpen: (levelId: string) => void;
 }) {
   // Only chapters the player has reached get a tab, and within a chapter
-  // only unlocked recipes plus the next locked one (as "Mystery Recipe") —
+  // only unlocked recipes plus the next locked one (as "Upcoming Recipe") —
   // upcoming dishes stay a surprise, same rule as the Order Board.
   const allEntries = getRecipeBookEntries();
   const reached = new Set(
@@ -96,7 +96,7 @@ export function RecipeBook({
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block font-display text-[16px] font-black leading-tight text-walnut-dark">
-                      Mystery Recipe
+                      Upcoming Recipe
                     </span>
                     <span className="mt-1 block font-hand text-[14px] leading-tight text-walnut/60">
                       finish the recipe above to reveal it

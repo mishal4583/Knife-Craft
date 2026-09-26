@@ -320,7 +320,7 @@ export function OrderBoard({
             {visibleLevels.map((level, i) => {
               const unlocked = isUnlocked(level, levelProgress);
               // Upcoming levels stay a surprise: only finished levels, the
-              // current one and ONE locked "Mystery Order" are listed — no
+              // current one and ONE locked "Upcoming Order" are listed — no
               // name, dish, ingredient or chapter theme until it unlocks.
               if (!unlocked) {
                 const newChapter = i === 0 || level.chapter !== visibleLevels[i - 1]!.chapter;
@@ -334,7 +334,7 @@ export function OrderBoard({
                     <div className="flex items-center justify-between gap-3 rounded-[16px] border border-dashed border-walnut/20 bg-ivory/30 p-2.5">
                       <div className="opacity-60">
                         <p className="font-display text-[16px] font-black leading-none text-walnut-dark">
-                          Mystery Order
+                          Upcoming Order
                         </p>
                         <p className="font-hand text-[13px] leading-tight text-walnut/70">
                           finish the level above to reveal it

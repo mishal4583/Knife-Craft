@@ -38,6 +38,7 @@ type YtGameApi = {
     saveData?: (data: string) => Promise<void> | void;
   };
   system?: YtGameSystem;
+  engagement?: { sendScore?: (score: { value: number }) => Promise<void> };
   /** YouTube-provided ads (the only ads a Playable may show). */
   ads?: {
     /** Resolves when the request completes; makes NO guarantee an ad was shown — never reward on it. */
@@ -95,6 +96,22 @@ export function isAudioEnabled(): boolean {
 
 export function onAudioEnabledChange(cb: (enabled: boolean) => void): void {
   sdk()?.system?.onAudioEnabledChange?.(cb);
+}
+
+/**
+ * Reports the player's score to YouTube. KnifeCraft's one score dimension is
+ * CAMPAIGN LEVELS COMPLETED (0–250): it only ever grows, so YouTube's "highest
+ * score" is always the player's real progress. Integer only; failures are
+ * ignored (never affects the game).
+ */
+export function sendScore(value: number): void {
+  const send = sdk()?.engagement?.sendScore;
+  if (typeof send !== "function" || !Number.isSafeInteger(value) || value < 0) return;
+  try {
+    void Promise.resolve(send.call(sdk()!.engagement, { value })).catch(() => undefined);
+  } catch {
+    // an SDK error must never interrupt play
+  }
 }
 
 export async function loadCloudSave(): Promise<string | null> {

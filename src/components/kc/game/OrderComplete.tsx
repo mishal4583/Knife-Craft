@@ -82,14 +82,19 @@ export function OrderComplete({
             "Kitchen", rather than keep a second button that did nothing
             different. */}
         <div className="mt-5 space-y-2">
-          <KButton full onClick={onRetry}>
-            Prepare Again
-          </KButton>
+          {/* Moving on is the main action; replaying comes second. */}
           {onNextLevel && nextLevelTitle ? (
-            <KButton full variant="cream" onClick={onNextLevel}>
-              Next Level · {nextLevelTitle}
+            <KButton full onClick={onNextLevel}>
+              Next Dish · {nextLevelTitle}
             </KButton>
           ) : null}
+          <KButton
+            full
+            variant={onNextLevel && nextLevelTitle ? "cream" : "wood"}
+            onClick={onRetry}
+          >
+            Prepare Again
+          </KButton>
           <KButton full variant="ghost" onClick={onKitchen}>
             Kitchen
           </KButton>

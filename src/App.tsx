@@ -13,7 +13,12 @@ import {
   type ReplayBonusOffer,
   type ReplayBonusPhase,
 } from "@/game/ads/replayBonus";
-import { onAdActiveChange, requestRewardedAd, rewardedAdsAvailable } from "@/game/PlayablesSDK";
+import {
+  onAdActiveChange,
+  requestRewardedAd,
+  rewardedAdsAvailable,
+  sendScore,
+} from "@/game/PlayablesSDK";
 import { GameShell } from "@/components/kc/game/GameShell";
 import { type ScreenId } from "@/components/kc/data";
 import { SaveManager, type SaveData } from "@/game/SaveManager";
@@ -284,6 +289,16 @@ export function App() {
   // While a YouTube ad is in flight the game is muted (AudioManager) and a
   // shield swallows every tap, so nothing underneath can take input.
   useEffect(() => onAdActiveChange(setAdActive), []);
+
+  // YouTube score = campaign levels completed. Sent once the save loads and
+  // again each time it grows (never a lower value, never twice for the same).
+  const completedCount = save?.levelProgress.completedLevelIds.length ?? 0;
+  const lastSentScoreRef = useRef(-1);
+  useEffect(() => {
+    if (!save || completedCount <= lastSentScoreRef.current) return;
+    lastSentScoreRef.current = completedCount;
+    sendScore(completedCount);
+  }, [save, completedCount]);
 
   useEffect(() => {
     PauseManager.wireToPlatform();

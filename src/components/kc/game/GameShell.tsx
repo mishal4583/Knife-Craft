@@ -8,6 +8,16 @@ const LOGICAL_W = 540;
 const LOGICAL_H = 960;
 
 /**
+ * The narrowest width the UI is laid out for (the smallest phone it is
+ * tested at). When the fitted frame is narrower — a phone rotated to
+ * landscape, YouTube's rotate control, a small embed — the UI is laid out
+ * at this width and the whole frame is scaled down to fit, so it shrinks
+ * uniformly instead of clipping or squashing. Phaser's input reads the
+ * canvas's on-screen box, so cutting stays accurate under the scale.
+ */
+const MIN_LAYOUT_W = 320;
+
+/**
  * Contain-fit sizing — the same `scale = min(availW/W, availH/H)`
  * computation the YouTube Playables reference's own resize() example
  * uses, driven by `ResizeObserver` on the ACTUAL available box rather
@@ -112,7 +122,20 @@ export function GameShell({ children, aside }: { children: ReactNode; aside?: Re
             className="relative overflow-hidden sm:rounded-[clamp(0px,4vmin,34px)] sm:border-[3px] sm:border-[#241811] sm:shadow-[0_40px_80px_rgba(0,0,0,0.55)]"
             style={{ width: size.width, height: size.height }}
           >
-            {children}
+            {size.width >= MIN_LAYOUT_W ? (
+              children
+            ) : (
+              <div
+                className="absolute left-0 top-0 origin-top-left"
+                style={{
+                  width: MIN_LAYOUT_W,
+                  height: (size.height * MIN_LAYOUT_W) / size.width,
+                  transform: `scale(${size.width / MIN_LAYOUT_W})`,
+                }}
+              >
+                {children}
+              </div>
+            )}
           </div>
         </div>
       </div>
