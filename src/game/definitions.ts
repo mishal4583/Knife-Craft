@@ -626,7 +626,16 @@ export type IngredientId =
   // (chicken/steak/salmon — NOT "meat"/"fish", see CHICKEN_GEOMETRY's own doc)
   | "chicken"
   | "steak"
-  | "salmon";
+  | "salmon"
+  // ===== New-ingredient integration pack (5 new ids) — ported from the
+  // KNIFECRAFT-NEW-INGREDIENTS package's `01-ingredients.js`. IDs are the
+  // package's own exact ids (not the brief's descriptive placeholders):
+  // Green Chili is `chilli`, Green Onion/Scallion is `springonion`. =====
+  | "ginger"
+  | "chilli"
+  | "lime"
+  | "cilantro"
+  | "springonion";
 
 /**
  * Which Silhouette factory (ingredientShapes.ts) an ingredient's geometry
@@ -1263,7 +1272,11 @@ export const INGREDIENTS: Record<IngredientId, IngredientDefinition> = {
     category: "Vegetable",
     // Slice (Level 25) and Dice (Level 26) — same ingredient definition
     // drives both preparation states, no per-level duplication.
-    techniques: ["slice", "dice"],
+    // KnifeCraft_Level_System_v2.docx's "Zucchini & Fennel Julienne"
+    // needs `julienne` — the same generic cut-grid engine every taper
+    // ingredient's julienne already uses (carrot, cucumber, ...), no new
+    // texture/rendering.
+    techniques: ["slice", "dice", "julienne"],
     // Lies flat, near-uniform width, blunt rounded ends — same taper
     // family as cucumber (see ZUCCHINI_GEOMETRY's own doc + PreparationScene
     // reusing traceCucumberPath for its silhouette), not carrot's fat-
@@ -1407,8 +1420,15 @@ export const INGREDIENTS: Record<IngredientId, IngredientDefinition> = {
     category: "Fruit",
     // Slice (Level 35) and Radial (Level 47) — Radial is fully generic
     // over any ellipse ingredient (see TECHNIQUES.radial's own doc), no
-    // apple-specific logic anywhere.
-    techniques: ["slice", "radial"],
+    // apple-specific logic anywhere. `julienne` added for KnifeCraft_
+    // Level_System_v2.docx's "Celery & Apple Remoulade Prep" — the same
+    // generic cut engine, no new texture/rendering. `peel` added for
+    // Discrepancy #1's close-out: v2's own Recipe Index requires Apple —
+    // Peel before every Apple — Radial/Julienne step. Mandatory-first
+    // (no `peelDecoupled`), same convention as Onion/Potato/Garlic — see
+    // appleTexture.ts's own `peeled` two-state paint for the visual half
+    // of this fix.
+    techniques: ["peel", "slice", "radial", "julienne"],
     // Ported from a reference art batch as an explicit vertex polygon
     // (src/game/shapes/appleShape.ts) — two upper lobes with a central
     // stem depression at top and a calyx dimple at the base, replacing
@@ -1457,7 +1477,9 @@ export const INGREDIENTS: Record<IngredientId, IngredientDefinition> = {
     id: "orange",
     name: "Orange",
     category: "Fruit",
-    // Radial only (Level 46) — a citrus wedge cut, never a flat slice.
+    // Radial (Level 46) — a citrus wedge cut, never a flat slice. No
+    // `peel`: an orange is sold/served already peeled in this game's own
+    // abstraction (unlike Onion/Potato/Garlic).
     techniques: ["radial"],
     // Near-circular ellipse, same factory as onion — see ORANGE_GEOMETRY.
     shape: "ellipse",
@@ -1507,7 +1529,10 @@ export const INGREDIENTS: Record<IngredientId, IngredientDefinition> = {
     id: "eggplant",
     name: "Eggplant",
     category: "Vegetable",
-    techniques: ["slice"],
+    // KnifeCraft_Level_System_v2.docx's "Eggplant Masala Prep" needs
+    // `dice` — the same generic cut-grid engine every taper ingredient's
+    // dice already uses, no new texture/rendering.
+    techniques: ["slice", "dice"],
     shape: "taper",
     difficulty: 1,
     // Claude Design slices the eggplant ACROSS its length —
@@ -1874,7 +1899,11 @@ export const INGREDIENTS: Record<IngredientId, IngredientDefinition> = {
     id: "radish",
     name: "Radish",
     category: "Vegetable",
-    techniques: ["slice", "halve"],
+    // KnifeCraft_Level_System_v2.docx's "Radish & Cucumber Namasu"/"Pear
+    // & Radish Side"/"Radish & Pear Fusion Cup" need `julienne` — the
+    // same generic cut-grid engine every taper ingredient's julienne
+    // already uses, no new texture/rendering.
+    techniques: ["slice", "halve", "julienne"],
     shape: "taper",
     difficulty: 1,
     bandTopClear: 0.08,
@@ -2090,7 +2119,13 @@ export const INGREDIENTS: Record<IngredientId, IngredientDefinition> = {
     id: "artichoke",
     name: "Artichoke",
     category: "Vegetable",
-    techniques: ["halve", "chop"],
+    // KnifeCraft_Level_System_v2.docx §2.6 — "Halve then Chop" was a
+    // physically-impossible prep (Trim is the real technique, not in the
+    // 11-technique set); corrected to "Halve then Slice". `slice` added
+    // alongside the existing `chop` (kept for the pre-v2 campaign data
+    // that already uses it) — a pre-existing technique already used by
+    // other cluster-shaped ingredients (e.g. springonion), not a new one.
+    techniques: ["halve", "chop", "slice"],
     shape: "cluster",
     difficulty: 2,
     bandTopClear: 0.08,
@@ -2181,7 +2216,11 @@ export const INGREDIENTS: Record<IngredientId, IngredientDefinition> = {
     id: "pumpkin",
     name: "Pumpkin",
     category: "Vegetable",
-    techniques: ["slice", "dice"],
+    // `peel` added for Discrepancy #1's close-out — v2 requires Pumpkin —
+    // Peel before every Pumpkin — Dice step; mandatory-first, same as
+    // Onion/Potato/Garlic. See pumpkinTexture.ts's own `peeled` two-state
+    // body-gradient swap (rind vs exposed flesh) for the visual half.
+    techniques: ["peel", "slice", "dice"],
     shape: "ellipse",
     difficulty: 2,
     bandTopClear: 0.06,
@@ -2221,7 +2260,12 @@ export const INGREDIENTS: Record<IngredientId, IngredientDefinition> = {
     id: "turnip",
     name: "Turnip",
     category: "Vegetable",
-    techniques: ["slice", "dice", "halve"],
+    // `peel` added for Discrepancy #1's close-out — v2 requires Turnip —
+    // Peel before every Turnip — Dice/Halve step; mandatory-first, same
+    // as Onion/Potato/Garlic. See turnipTexture.ts's own `peeled`
+    // two-state paint (magenta cap skin vs clean pale flesh) for the
+    // visual half of this fix.
+    techniques: ["peel", "slice", "dice", "halve"],
     shape: "ellipse",
     difficulty: 1,
     bandTopClear: 0.08,
@@ -2303,7 +2347,11 @@ export const INGREDIENTS: Record<IngredientId, IngredientDefinition> = {
     id: "avocado",
     name: "Avocado",
     category: "Fruit",
-    techniques: ["halve"],
+    // KnifeCraft_Level_System_v2.docx's cut-fruit-oxidation fix (§2.8)
+    // adds a second Avocado — Slice step (paired with an acid step) to
+    // several recipes — the same generic cut engine every other ellipse
+    // ingredient's slice already uses, no new texture/rendering.
+    techniques: ["halve", "slice"],
     shape: "taper",
     difficulty: 1,
     bandTopClear: 0.06,
@@ -2343,7 +2391,16 @@ export const INGREDIENTS: Record<IngredientId, IngredientDefinition> = {
     id: "pear",
     name: "Pear",
     category: "Fruit",
-    techniques: ["slice", "halve"],
+    // KnifeCraft_Level_System_v2.docx's "Pear & Radish Side"/"Radish &
+    // Pear Fusion Cup" need `julienne` — the same generic cut engine
+    // every other ellipse ingredient's julienne already uses, no new
+    // texture/rendering beyond that. `peel` added for Discrepancy #1's
+    // close-out — v2 requires Pear — Peel before every Pear — Slice/
+    // Julienne step; mandatory-first, same as Onion/Potato/Garlic. See
+    // pearTexture.ts's own `peeled` two-state paint (yellow-green skin
+    // vs pale flesh, reusing its existing inset-flesh gradient) for the
+    // visual half.
+    techniques: ["peel", "slice", "halve", "julienne"],
     shape: "taper",
     difficulty: 1,
     bandTopClear: 0.06,
@@ -2383,7 +2440,13 @@ export const INGREDIENTS: Record<IngredientId, IngredientDefinition> = {
     id: "peach",
     name: "Peach",
     category: "Fruit",
-    techniques: ["halve"],
+    // KnifeCraft_Level_System_v2.docx's "Peach & Fennel Plate"/"Peach &
+    // Cheddar Board" need `slice` — the same generic cut engine every
+    // other ellipse ingredient's slice already uses, no new texture/
+    // rendering (this ingredient's own overhang system is unaffected —
+    // its stem/leaf still gates on `overhangGone`, independent of which
+    // cut technique triggered the first cut).
+    techniques: ["halve", "slice"],
     shape: "ellipse",
     difficulty: 1,
     bandTopClear: 0.06,
@@ -2673,8 +2736,17 @@ export const INGREDIENTS: Record<IngredientId, IngredientDefinition> = {
     name: "Coconut",
     category: "Fruit",
     // One of the source's exactly-three real peelable foods — see
-    // pineapple's own doc above for the full rationale.
-    techniques: ["peel", "halve"],
+    // pineapple's own doc above for the full rationale. KnifeCraft_
+    // Level_System_v2.docx §2.6 corrects the campaign recipe itself to
+    // "Halve then Chop" (a coconut isn't peeled) — `chop` added here so
+    // that's representable; `peel` is left in place (unused by any v2
+    // campaign recipe now, but harmless, and removing it risks the
+    // existing peelable-texture/reveal path this ingredient already has).
+    // `peelDecoupled` added alongside it: without this, `peel` staying
+    // mandatory-first would block the v2 recipe's own Halve-first chain
+    // (requiresPeelFirst()/recipePrerequisiteIssues both gate on it).
+    techniques: ["peel", "halve", "chop"],
+    peelDecoupled: true,
     shape: "ellipse",
     difficulty: 2,
     bandTopClear: 0.07,
@@ -3140,6 +3212,254 @@ export const INGREDIENTS: Record<IngredientId, IngredientDefinition> = {
       thunkVel: 0.46,
     },
   },
+  /**
+   * Ginger — a RHIZOME (cluster: one thick mass + finger knobs, see
+   * GINGER_LEAVES's own doc), and the first cluster-shaped ingredient to
+   * be peelable: the shell is `SKIN.ginger` (gingerTexture.ts) over the
+   * shaved pale base sprite. NOT peel-decoupled — like Onion/Potato/
+   * Garlic/Pineapple/Watermelon/Coconut, Peel remains mandatory-first
+   * (the package's own doc: "it is NOT in SKIN_KEEP: the shell comes off
+   * by rubbing, never by cutting"), so `peelDecoupled` is intentionally
+   * left unset here, same as those six.
+   */
+  ginger: {
+    id: "ginger",
+    name: "Ginger",
+    category: "Aromatic",
+    // KnifeCraft_Level_System_v2.docx places Ginger — Rock Mince (curry/
+    // masala bases) and Ginger — Julienne (Chicken & Cabbage Julienne,
+    // Radish & Cucumber Namasu) across many recipes. Both reuse the same
+    // generic cut-grid engine every other technique on this ingredient
+    // already does (CutGeometry.ts has no per-shape technique gating) —
+    // no new texture/rendering, no new mechanic.
+    techniques: ["peel", "slice", "chop", "rockMince", "julienne"],
+    shape: "cluster",
+    difficulty: 1,
+    bandTopClear: 0.1,
+    bandBotFrac: 0.88,
+    bandSideFrac: 0.86,
+    resistance: [
+      [0, 0.92],
+      [0.16, 0.66],
+      [0.45, 0.44],
+      [0.82, 0.5],
+      [1, 0.74],
+    ],
+    audio: {
+      filterMin: 1300,
+      filterMax: 4600,
+      transQ: 2.4,
+      transPeak: 0.3,
+      transVel: 0.26,
+      atkFast: 0.002,
+      atkSlow: 0.005,
+      transDecay: 0.028,
+      glideType: "lowpass",
+      glideMin: 420,
+      glideSpan: 480,
+      glideQ: 1.5,
+      glidePeak: 0.08,
+      glideVel: 0.06,
+      tailMs: 64,
+      tailVel: 0.42,
+      thunkHz: 84,
+      thunkDrop: 46,
+      thunkGain: 0.46,
+      thunkVel: 0.58,
+    },
+  },
+  /**
+   * Green Chili (id `chilli`, the package's own exact id) — `taper` with
+   * Eggplant's own `spine` bow (CHILLI_GEOMETRY). Not peelable — a chili
+   * has no shell, so no `peelConfig`/`peelDecoupled` here, same as
+   * Eggplant/Avocado/Pear/Corn/Celery. The calyx + crooked stalk are
+   * paint past the butt (chilliTexture.ts, same "faithful to source,
+   * invisible past the collision silhouette" treatment Corn's own stalk
+   * stub and Turnip's leaf stalks already carry — see cornTexture.ts's
+   * own doc on why: PreparationScene's piece pipeline crops every piece,
+   * including the whole uncut ingredient, to the collision silhouette's
+   * own rx/rBig bounds).
+   */
+  chilli: {
+    id: "chilli",
+    name: "Green Chili",
+    category: "Vegetable",
+    techniques: ["slice", "chop"],
+    shape: "taper",
+    difficulty: 1,
+    bandTopClear: 0.1,
+    bandBotFrac: 0.88,
+    bandSideFrac: 0.86,
+    resistance: [
+      [0, 0.52],
+      [0.1, 0.16],
+      [0.5, 0.08],
+      [0.86, 0.16],
+      [1, 0.34],
+    ],
+    audio: {
+      filterMin: 1800,
+      filterMax: 6200,
+      transQ: 2.8,
+      transPeak: 0.3,
+      transVel: 0.28,
+      atkFast: 0.002,
+      atkSlow: 0.004,
+      transDecay: 0.022,
+      glideType: "bandpass",
+      glideMin: 1500,
+      glideSpan: 2100,
+      glideQ: 1.5,
+      glidePeak: 0.09,
+      glideVel: 0.08,
+      tailMs: 70,
+      tailVel: 0.45,
+      thunkHz: 140,
+      thunkDrop: 74,
+      thunkGain: 0.24,
+      thunkVel: 0.42,
+    },
+  },
+  /**
+   * Lime — the package's own "Lemon verbatim, repalettized" fruit: same
+   * `ellipse` rind/pith/flesh scaffold (LIME_GEOMETRY, limeTexture.ts),
+   * cut with **Radial** for the exact same reason Lemon already is (a
+   * real citrus cross-section, not the package's own Slice/Halve
+   * stopgap — see LEMON_GEOMETRY's own doc) — Lemon's own geometry/
+   * techniques/texture are completely untouched.
+   */
+  lime: {
+    id: "lime",
+    name: "Lime",
+    category: "Fruit",
+    techniques: ["radial"],
+    shape: "ellipse",
+    difficulty: 2,
+    bandTopClear: 0.06,
+    bandBotFrac: 0.92,
+    bandSideFrac: 0.9,
+    resistance: [
+      [0, 0.7],
+      [0.14, 0.26],
+      [0.5, 0.1],
+      [0.85, 0.16],
+      [1, 0.36],
+    ],
+    audio: {
+      filterMin: 740,
+      filterMax: 3500,
+      transQ: 1.5,
+      transPeak: 0.27,
+      transVel: 0.32,
+      atkFast: 0.005,
+      atkSlow: 0.012,
+      transDecay: 0.042,
+      glideType: "lowpass",
+      glideMin: 480,
+      glideSpan: 1020,
+      glideQ: 1.0,
+      glidePeak: 0.14,
+      glideVel: 0.12,
+      tailMs: 200,
+      tailVel: 0.8,
+      thunkHz: 106,
+      thunkDrop: 58,
+      thunkGain: 0.36,
+      thunkVel: 0.5,
+    },
+  },
+  /**
+   * Cilantro — Parsley's own cluster primitive (CILANTRO_LEAVES), with
+   * the shared `parsleyLeafShape` blade generator's new ROUND branch
+   * (see parsleyTexture.ts) instead of Parsley's trifid path — same
+   * techniques as Parsley/Basil, a different painted leaf shape only.
+   */
+  cilantro: {
+    id: "cilantro",
+    name: "Cilantro",
+    category: "Herb",
+    techniques: ["chop", "chiffonade"],
+    shape: "cluster",
+    difficulty: 1,
+    bandTopClear: 0.08,
+    bandBotFrac: 0.9,
+    bandSideFrac: 0.88,
+    resistance: [
+      [0, 0.18],
+      [0.1, 0.08],
+      [0.55, 0.04],
+      [0.88, 0.06],
+      [1, 0.12],
+    ],
+    audio: {
+      filterMin: 1400,
+      filterMax: 5800,
+      transQ: 2.3,
+      transPeak: 0.18,
+      transVel: 0.2,
+      atkFast: 0.002,
+      atkSlow: 0.005,
+      transDecay: 0.019,
+      glideType: "bandpass",
+      glideMin: 2050,
+      glideSpan: 1500,
+      glideQ: 1.25,
+      glidePeak: 0.05,
+      glideVel: 0.05,
+      tailMs: 50,
+      tailVel: 0.3,
+      thunkHz: 164,
+      thunkDrop: 96,
+      thunkGain: 0.13,
+      thunkVel: 0.3,
+    },
+  },
+  /**
+   * Green Onion / Scallion (id `springonion`, the package's own exact
+   * id) — Asparagus's own `cluster` bundle rule, one lobe per stalk
+   * (SPRINGONION_LEAVES) — same technique pair Green Bean's cluster
+   * already uses (`slice`/`chop`), so no new shape/technique combination.
+   */
+  springonion: {
+    id: "springonion",
+    name: "Green Onion / Scallion",
+    category: "Vegetable",
+    techniques: ["slice", "chop"],
+    shape: "cluster",
+    difficulty: 1,
+    bandTopClear: 0.06,
+    bandBotFrac: 0.92,
+    bandSideFrac: 0.94,
+    resistance: [
+      [0, 0.34],
+      [0.14, 0.16],
+      [0.5, 0.12],
+      [0.85, 0.15],
+      [1, 0.3],
+    ],
+    audio: {
+      filterMin: 1150,
+      filterMax: 6000,
+      transQ: 2.4,
+      transPeak: 0.22,
+      transVel: 0.26,
+      atkFast: 0.002,
+      atkSlow: 0.006,
+      transDecay: 0.024,
+      glideType: "highpass",
+      glideMin: 1450,
+      glideSpan: 2000,
+      glideQ: 1.35,
+      glidePeak: 0.07,
+      glideVel: 0.07,
+      tailMs: 80,
+      tailVel: 0.42,
+      thunkHz: 142,
+      thunkDrop: 80,
+      thunkGain: 0.18,
+      thunkVel: 0.36,
+    },
+  },
 };
 
 // KnifeStats/DEFAULT_KNIFE (Phase 8) — removed. The authoritative knife
@@ -3216,9 +3536,9 @@ export const TOMATO_GEOMETRY = {
  * just bigger, not "cartoonishly thick").
  */
 export const CARROT_GEOMETRY = {
-  RX_FRAC: 169.92 / 540,
-  R_BIG_FRAC: 45.32 / 540,
-  R_SMALL_FRAC: 8.09 / 540,
+  RX_FRAC: 154.2 / 540,
+  R_BIG_FRAC: 43.83 / 540,
+  R_SMALL_FRAC: 8.75 / 540,
   BUTT_ROUND: 0.16,
   TIP_ROUND: 3.4,
 } as const;
@@ -3580,9 +3900,9 @@ export const MOZZARELLA_GEOMETRY = {
 } as const;
 /** Radish — a daikon, per the reference: Carrot's taper recoloured white at a stouter aspect, not a small round red radish. */
 export const RADISH_GEOMETRY = {
-  RX_FRAC: 110.44 / 540,
-  R_BIG_FRAC: 34.38 / 540,
-  R_SMALL_FRAC: 7.81 / 540,
+  RX_FRAC: 154.2 / 540,
+  R_BIG_FRAC: 43.83 / 540,
+  R_SMALL_FRAC: 8.75 / 540,
   BUTT_ROUND: 0.62,
   TIP_ROUND: 3,
   TAPER_CURVE: 0.92,
@@ -3625,6 +3945,78 @@ export const PINEAPPLE_GEOMETRY = {
   RX_FRAC: 161.33 / 540,
   CAP_R_FRAC: 101.99 / 540,
 } as const;
+
+/**
+ * ===== New-ingredient integration pack — Ginger/Green Chili/Cilantro/
+ * Green Onion/Lime, ported from KNIFECRAFT-NEW-INGREDIENTS. =====
+ *
+ * The package's own `01-ingredients.js` gives each ingredient's geometry
+ * in the SOURCE knifecraft.html's raw, pre-rescale design-canvas units —
+ * the same units TOMATO_GEOMETRY's/CARROT_GEOMETRY's own "Phase 18B-1
+ * audit" comments describe finding stale and re-deriving (their raw
+ * 148/128 and 210/56/10 were never run through the real-cm scale pass
+ * either). That pass's own exact formula (`PX_PER_CM`/`SIZE_REF_CM`/
+ * `SIZE_GAMMA` combined into a per-ingredient k-factor) was a one-time
+ * derivation done by scripts that no longer exist in this repo — only
+ * its inputs (REAL_CM, SIZE_GAMMA=0.5) and a few worked examples survive
+ * in comments, not enough to reconstruct the exact k(REAL_CM) formula
+ * with confidence. Re-deriving it wrong would silently mis-size these
+ * five ingredients relative to the other 52 — worse than not guessing.
+ *
+ * Instead, each new ingredient is scaled against the closest already-
+ * correctly-scaled PRODUCTION sibling of similar real-world size (same
+ * REAL_CM table both sides), using the one formula input that IS given
+ * outright: `scale = (newRealCmLong / anchorRealCmLong) ^ SIZE_GAMMA`
+ * (SIZE_GAMMA = 0.5), applied to the anchor's own final on-canvas size —
+ * never to a reconstructed global formula. This is the same kind of
+ * judgment call CARROT_GEOMETRY's own doc already documents making
+ * ("size-balancing correction pass... visually tiny... scaled up 1.3x")
+ * when a formula-only value read wrong in gameplay: anchored, reasoned,
+ * and checked, not invented from nothing. Anchors used (all real-cm
+ * values from the package's own README / production's existing
+ * ingredient roster):
+ *   Ginger   14x9  cluster -> anchor Basil       15x10 cluster
+ *   Cilantro 17x12 cluster -> anchor Parsley     18x12 cluster
+ *   Spring Onion 34x11 cluster/bundle -> anchor Asparagus 24x8 cluster (the
+ *     package's own doc: "asparagus's BUNDLE verbatim")
+ *   Lime     6x4.5 ellipse -> anchor Lemon        8x6  ellipse (the
+ *     package's own doc: "the LEMON verbatim... repalettized")
+ *   Green Chili 12x2.2 taper -> anchor Pea Pod    9x3  taper (closest
+ *     existing thin taper)
+ * The package's own authored shape/proportions (leaf placement, taper
+ * curve, rind/pith/flesh insets) are preserved exactly, uniformly
+ * rescaled by one factor per ingredient — never distorted per-axis.
+ */
+
+/**
+ * Green Chili — `taper` with Eggplant's own `spine` bow (see
+ * EGGPLANT_GEOMETRY). `TAPER_CURVE`/`BUTT_ROUND`/`TIP_ROUND` are
+ * dimensionless (no k-scaling, copied verbatim from the package); `rx`/
+ * `R_BIG_FRAC`/`R_SMALL_FRAC`/spine are lengths, scaled by this
+ * ingredient's own anchor factor (see the block doc above): package raw
+ * rx=198 x0.7608 = 150.64, rBig=42 x0.7608 = 31.95, rSmall=6 x0.7608 =
+ * 4.56, spine=14 x0.7608 = 10.65.
+ */
+export const CHILLI_GEOMETRY = {
+  RX_FRAC: 150.64 / 540,
+  R_BIG_FRAC: 31.95 / 540,
+  R_SMALL_FRAC: 4.56 / 540,
+  BUTT_ROUND: 0.62,
+  TIP_ROUND: 3.6,
+  TAPER_CURVE: 0.82,
+  SPINE_FRAC: 10.65 / 540,
+  SPINE_RX_FRAC: 150.64 / 540,
+} as const;
+
+/**
+ * Lime — Lemon's own `ellipse` geometry (rind/pith/flesh insets, radial
+ * segment scaffold — see limeTexture.ts), scaled down from LEMON_GEOMETRY
+ * by this ingredient's own anchor factor (see the block doc above):
+ * rx = 97.82 x (6/8)^0.5 = 84.71, ry = 77.63 x (4.5/6)^0.5 = 67.23. A
+ * genuinely separate ingredient id/geometry/texture from Lemon, not an
+ * alias — Lemon's own geometry is untouched.
+ */
+export const LIME_GEOMETRY = { RX_FRAC: 84.71 / 540, RY_FRAC: 67.23 / 540 } as const;
 
 // ---------- block (the real oblique/isometric box — depthX/depthY are the receding edge, ported directly from knifecraft.html's actual CONFIG.INGREDIENTS.{cheddar,butter,tofu}.geom, scaled by this phase's own k-factor exactly like rx/ry) ----------
 
@@ -3864,6 +4256,97 @@ export const ARTICHOKE_LEAVES: ClusterLeaf[] = [
   { dx: -50.21, dy: 76.08, rx: 30.43, ry: 23.58, rot: -2.214 },
   { dx: 0, dy: 76.08, rx: 30.43, ry: 23.58, rot: -1.571 },
   { dx: 50.21, dy: 76.08, rx: 30.43, ry: 23.58, rot: -0.928 },
+];
+
+/**
+ * Ginger — a rhizome HAND: one thick diagonal mass (`mass: true`) with
+ * four unequal fingers (`tip: true`) budding off it at different angles,
+ * plus two small unlabeled knobs, ported verbatim (same relative
+ * dx/dy/rx/ry/rot layout) from the package's `01-ingredients.js`, scaled
+ * uniformly by this ingredient's own anchor factor — see the geometry
+ * block doc above (CHILLI_GEOMETRY's neighbor) for the full derivation.
+ * `mass`/`tip` are read only by gingerTexture.ts's own paint code (contact
+ * shadows, finger-end nodes) — geometry math ignores them, same as `stem`.
+ */
+export const GINGER_LEAVES: ClusterLeaf[] = [
+  { dx: -6.63, dy: -14.2, rx: 70.99, ry: 26.5, rot: -0.15, mass: true },
+  { dx: 45.44, dy: -7.57, rx: 45.44, ry: 22.72, rot: 0.06, mass: true },
+  { dx: 35.02, dy: -40.7, rx: 28.4, ry: 17.04, rot: -0.52 },
+  { dx: 92.76, dy: 8.52, rx: 29.34, ry: 16.09, rot: 0.46, tip: true },
+  { dx: -27.45, dy: 19.88, rx: 43.54, ry: 17.98, rot: 0.3, tip: true },
+  { dx: 35.02, dy: 29.34, rx: 35.02, ry: 15.62, rot: -0.1, tip: true },
+  { dx: -71.94, dy: -5.68, rx: 34.08, ry: 16.09, rot: -0.34, tip: true },
+  { dx: 4.73, dy: -45.44, rx: 17.04, ry: 10.41, rot: -0.2 },
+];
+
+/**
+ * Cilantro — Parsley's own cluster primitive with a completely different,
+ * package-authored leaf layout: fewer, bigger fan blades (14 main +
+ * 6 mid-band/centre + 6 stems, vs. Parsley's own 20+6) painted via the
+ * shared `parsleyLeafShape` blade generator's new ROUND branch (see
+ * PreparationScene's `requiresPeelFirst`-adjacent leafRound wiring and
+ * parsleyTexture.ts's own doc) rather than Parsley's trifid path. Ported
+ * verbatim from the package, scaled uniformly by this ingredient's own
+ * anchor factor (Parsley, nearly identical real-world size) — see the
+ * geometry block doc above.
+ */
+export const CILANTRO_LEAVES: ClusterLeaf[] = [
+  { dx: -86.76, dy: -40.61, rx: 40.61, ry: 35.07, rot: -0.62 },
+  { dx: -48.0, dy: -57.23, rx: 38.77, ry: 33.23, rot: -0.14 },
+  { dx: -77.53, dy: 3.69, rx: 37.84, ry: 32.31, rot: 0.58 },
+  { dx: -5.54, dy: -75.69, rx: 41.54, ry: 36.0, rot: -0.44 },
+  { dx: 33.23, dy: -60.92, rx: 38.77, ry: 33.23, rot: 0.16 },
+  { dx: 84.92, dy: -35.07, rx: 37.84, ry: 32.31, rot: -0.3 },
+  { dx: 77.53, dy: 7.38, rx: 39.69, ry: 34.15, rot: 0.66 },
+  { dx: -60.92, dy: 42.46, rx: 39.69, ry: 34.15, rot: -0.5 },
+  { dx: -20.31, dy: 68.3, rx: 38.77, ry: 33.23, rot: 0.22 },
+  { dx: 31.38, dy: 64.61, rx: 37.84, ry: 32.31, rot: 0.52 },
+  { dx: 64.61, dy: 40.61, rx: 36.92, ry: 31.38, rot: -0.24 },
+  // MID BAND — these two exist for the centre pixel, not the silhouette
+  // (see the package's own doc: a fan blade grows to the right of its
+  // base point, so a leaf centred on the bunch centre would leave that
+  // centre in the petiole gap).
+  { dx: -31.38, dy: 1.85, rx: 40.61, ry: 35.07, rot: 0 },
+  { dx: -24.0, dy: -12.92, rx: 37.84, ry: 32.31, rot: 0.14 },
+  // One leaflet sitting ON the bunch centre — the only placement that
+  // guarantees the centre probe lands in green rather than a fan gap.
+  { dx: 0, dy: 0, rx: 38.77, ry: 33.23, rot: 0.05 },
+  { dx: 44.3, dy: 5.54, rx: 37.84, ry: 32.31, rot: 0.42 },
+  { dx: -27.69, dy: 24.0, rx: 38.77, ry: 33.23, rot: 0.6 },
+  // Six more leaflets filling the gaps between the big fans.
+  { dx: -62.77, dy: -9.23, rx: 35.07, ry: 30.46, rot: -0.86 },
+  { dx: -16.61, dy: -40.61, rx: 36.0, ry: 31.38, rot: -0.28 },
+  { dx: 57.23, dy: -12.92, rx: 35.07, ry: 30.46, rot: 0.9 },
+  { dx: 14.77, dy: 36.92, rx: 36.0, ry: 31.38, rot: 0.34 },
+  { dx: -49.84, dy: 11.08, rx: 34.15, ry: 29.54, rot: 0.18 },
+  { dx: 53.54, dy: 20.31, rx: 34.15, ry: 29.54, rot: -0.66 },
+  { dx: -37.84, dy: -18.46, rx: 42.46, ry: 2.95, rot: -0.42, stem: true },
+  { dx: 2.77, dy: -31.38, rx: 36.92, ry: 2.95, rot: 1.35, stem: true },
+  { dx: 37.84, dy: -14.77, rx: 42.46, ry: 2.95, rot: -0.38, stem: true },
+  { dx: -25.84, dy: 18.46, rx: 35.07, ry: 2.58, rot: 0.6, stem: true },
+  { dx: 22.15, dy: 24.0, rx: 35.07, ry: 2.58, rot: -0.6, stem: true },
+  { dx: -2.77, dy: 42.46, rx: 31.38, ry: 2.58, rot: 1.4, stem: true },
+];
+
+/**
+ * Spring Onion / Scallion (id `springonion`) — Asparagus's own `bundle`
+ * rule: one cluster lobe per stalk (seven, fanned), a genuine bunch
+ * rather than a single body, so a chop gives one chunk per stalk per
+ * band. Ported verbatim from the package, scaled uniformly by this
+ * ingredient's own anchor factor (Asparagus, the package's own stated
+ * "same rule" sibling) — see the geometry block doc above. The
+ * lengthwise white-bulb -> pale-sheath -> deep-green gradient and the
+ * root fringe live entirely in springOnionTexture.ts's own paint code;
+ * geometry here only carries the seven stalks' placement/size.
+ */
+export const SPRINGONION_LEAVES: ClusterLeaf[] = [
+  { dx: 5.69, dy: -59.78, rx: 128.11, ry: 13.52, rot: -0.046 },
+  { dx: 18.5, dy: -39.86, rx: 139.5, ry: 14.23, rot: -0.03 },
+  { dx: 9.96, dy: -19.93, rx: 132.38, ry: 13.88, rot: -0.014 },
+  { dx: 22.77, dy: 0, rx: 142.34, ry: 14.59, rot: 0.002 },
+  { dx: 12.81, dy: 19.93, rx: 135.23, ry: 14.23, rot: 0.018 },
+  { dx: 21.35, dy: 39.86, rx: 138.07, ry: 14.59, rot: 0.034 },
+  { dx: 7.12, dy: 59.78, rx: 126.68, ry: 13.52, rot: 0.048 },
 ];
 
 /**

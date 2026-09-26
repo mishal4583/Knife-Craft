@@ -35,7 +35,12 @@ import {
 import { INGREDIENTS, TECHNIQUES } from "../definitions";
 import { sessionForRecipe, destinationsForRecipe, isRecipeReady } from "./RecipeValidator";
 import { generateOrder } from "./OrderGenerator";
-import { createCustomerOrder, advanceOrder, payOrder } from "./CustomerOrderManager";
+import {
+  createCustomerOrder,
+  advanceOrder,
+  payOrder,
+  recordPreparationScore,
+} from "./CustomerOrderManager";
 
 export type ServiceOrder = {
   order: CustomerOrder;
@@ -47,6 +52,8 @@ export type ServiceOrder = {
 export type ServiceSession = {
   /** Anchors this service session to a campaign entry point (§32's compatibility layer) — informational only, never looked up by this module. */
   levelId: string;
+  /** KnifeCraft_Level_System_v2.docx §3.4's pay-formula input — the chapter every order built by this session is served in. `undefined` for the standalone Phase 2 harness (`levelId: "service"`), which keeps CustomerOrderManager's old static-`basePayment` behavior; a real chapter number for every campaign session (see createServiceSession's own doc). */
+  chapter?: number;
   current: ServiceOrder | null;
   next: ServiceOrder | null;
   /** The most recently COMPLETED order, or null before the first one — §9 "recent order should show a simple completed state". */
@@ -65,6 +72,21 @@ export type ServiceSession = {
    * harness ignores this field entirely — it has no required count.
    */
   completedCount: number;
+  /**
+   * Economy V2 payout wiring / campaign replay safety — true when this
+   * session was started for a campaign level ALREADY in
+   * `levelProgress.completedLevelIds` (App.tsx's startCampaignLevel,
+   * via LevelManager.isCompleted — the same existing source of truth
+   * `completeLevel`'s own `isFirstCompletion` gate already uses, not a
+   * second completion system). When true, every served order in this
+   * session settles for 0 (App.tsx's serveCampaignOrder), matching Law
+   * 2 ("replay does not pay") for the order-pool architecture exactly
+   * the way it already holds for plain campaign levels. The player still
+   * plays the level normally — only the payout is suppressed. Always
+   * `false` for the standalone Phase 2 harness (`levelId: "service"`),
+   * which has no campaign-completion concept at all.
+   */
+  isReplay: boolean;
 };
 
 const HISTORY_LOOKBACK = 4;
@@ -77,10 +99,14 @@ export function poolUnlockedByLevel(
   return pool.filter((r) => r.unlockLevel <= highestLevel);
 }
 
-function buildServiceOrder(recipe: RecipeDefinition, rand: () => number): ServiceOrder {
+function buildServiceOrder(
+  recipe: RecipeDefinition,
+  chapter: number | undefined,
+  rand: () => number,
+): ServiceOrder {
   const customer = randomCustomer(rand);
   return {
-    order: createCustomerOrder(customer.id, recipe),
+    order: createCustomerOrder(customer.id, recipe, chapter),
     customer,
     recipe,
     session: sessionForRecipe(recipe),
@@ -100,35 +126,41 @@ function pickNextRecipe(
   return generateOrder({ unlockedRecipes: pool, recentRecipeIds, recentCuisineIds }, rand);
 }
 
-/** Starts a fresh session with both CURRENT (already active) and NEXT (still pending — §8) filled in, or an empty session if the pool has nothing unlocked yet. */
+/** Starts a fresh session with both CURRENT (already active) and NEXT (still pending — §8) filled in, or an empty session if the pool has nothing unlocked yet. `chapter` — see ServiceSession's own doc; omit only for the standalone Phase 2 harness. `isReplay` — see ServiceSession's own doc; defaults to false (the standalone harness and every existing caller that hasn't been updated to pass it keep paying exactly as before). */
 export function createServiceSession(
   levelId: string,
   pool: RecipeDefinition[],
   rand: () => number = Math.random,
+  chapter?: number,
+  isReplay: boolean = false,
 ): ServiceSession {
   const firstRecipe = pickNextRecipe(pool, [], [], rand);
   if (!firstRecipe) {
     return {
       levelId,
+      ...(chapter !== undefined ? { chapter } : {}),
       current: null,
       next: null,
       recent: null,
       recentRecipeIds: [],
       recentCuisineIds: [],
       completedCount: 0,
+      isReplay,
     };
   }
-  const current = activate(buildServiceOrder(firstRecipe, rand));
+  const current = activate(buildServiceOrder(firstRecipe, chapter, rand));
   const secondRecipe = pickNextRecipe(pool, [firstRecipe.id], [firstRecipe.cuisineId], rand);
-  const next = secondRecipe ? buildServiceOrder(secondRecipe, rand) : null;
+  const next = secondRecipe ? buildServiceOrder(secondRecipe, chapter, rand) : null;
   return {
     levelId,
+    ...(chapter !== undefined ? { chapter } : {}),
     current,
     next,
     recent: null,
     recentRecipeIds: [firstRecipe.id],
     recentCuisineIds: [firstRecipe.cuisineId],
     completedCount: 0,
+    isReplay,
   };
 }
 
@@ -151,8 +183,17 @@ function syncCurrentStatus(serviceOrder: ServiceOrder): ServiceOrder {
  * which is correct because completing every one of `preparationSteps`
  * IS completing every one of the recipe's components). No-op if there
  * is no current order.
+ *
+ * `score` — Economy V2 payout wiring: stamped onto the current order
+ * (CustomerOrderManager.recordPreparationScore) here, the exact same
+ * moment App.tsx's recordCampaignServiceResult already receives it for
+ * recipeProgress bookkeeping — so it survives to serve time without a
+ * second scoring system or a new call site. Optional/defaulted (rather
+ * than required) purely so the existing phase1-7 QA scripts' calls
+ * (which never assert on payment or score) keep compiling unchanged —
+ * every real production caller (App.tsx) always passes the genuine score.
  */
-export function recordAllComponents(session: ServiceSession): ServiceSession {
+export function recordAllComponents(session: ServiceSession, score: number = 0): ServiceSession {
   if (!session.current) return session;
   let orgSession = session.current.session;
   for (const component of session.current.recipe.components) {
@@ -165,7 +206,12 @@ export function recordAllComponents(session: ServiceSession): ServiceSession {
       orgSession = assignOutput(orgSession, created.output.id, destinationId);
     }
   }
-  return { ...session, current: syncCurrentStatus({ ...session.current, session: orgSession }) };
+  const updatedCurrent = {
+    ...session.current,
+    session: orgSession,
+    order: recordPreparationScore(session.current.order, score),
+  };
+  return { ...session, current: syncCurrentStatus(updatedCurrent) };
 }
 
 /**
@@ -175,14 +221,21 @@ export function recordAllComponents(session: ServiceSession): ServiceSession {
  * structurally impossible rather than merely disallowed by convention.
  * Bundles SERVED -> PAID -> COMPLETED as one transaction (§34 —
  * acceptable when payment is tied directly to serving).
+ *
+ * `amountOverride` — Economy V2 payout wiring: forwarded straight to
+ * CustomerOrderManager.payOrder's own override (see its doc) so the
+ * caller's already-computed settlement (or 0, on a campaign replay)
+ * becomes the actual `coinsAwarded`, without this function needing to
+ * know anything about COGS/quality/chapter itself.
  */
 export function serveCurrentOrder(
   session: ServiceSession,
   rand: () => number = Math.random,
+  amountOverride?: number,
 ): { session: ServiceSession; coinsAwarded: number; reaction: string } | null {
   if (!session.current || session.current.order.status !== "READY") return null;
   const served = advanceOrder(session.current.order); // READY -> SERVED
-  const paid = payOrder(served); // SERVED -> PAID (exactly once — CustomerOrderManager's own guard)
+  const paid = payOrder(served, amountOverride); // SERVED -> PAID (exactly once — CustomerOrderManager's own guard)
   const completedOrder = advanceOrder(paid.order); // PAID -> COMPLETED
   const reaction =
     CUSTOMER_REACTIONS[Math.floor(rand() * CUSTOMER_REACTIONS.length)] ?? CUSTOMER_REACTIONS[0]!;
@@ -215,7 +268,7 @@ export function advanceServiceSession(
 
   const newCurrent = session.next ? activate(session.next) : null;
   const newNextRecipe = pickNextRecipe(pool, recentRecipeIds, recentCuisineIds, rand);
-  const newNext = newNextRecipe ? buildServiceOrder(newNextRecipe, rand) : null;
+  const newNext = newNextRecipe ? buildServiceOrder(newNextRecipe, session.chapter, rand) : null;
 
   return {
     ...session,
@@ -311,6 +364,10 @@ export type BatchGroupSession = {
   orders: BatchGroupOrder[];
   /** ONE OrganizationSession shared by every order above — destinations are namespaced `${order.id}::${destinationId}` precisely so a shared PreparedOutput's `assignedTo` can legitimately span more than one order. */
   session: OrganizationSession;
+  /** KnifeCraft_Level_System_v2.docx §3.4's pay-formula input — mirrors ServiceSession's own `chapter` field, stored here too so Economy V2 settlement (App.tsx's serveBatchGroupViewedOrder) never needs a second level lookup at serve time. Always a real chapter number for a real batch-group level (every one is a campaign level — see createBatchGroupSession's own doc). */
+  chapter?: number;
+  /** Economy V2 payout wiring / campaign replay safety — mirrors ServiceSession's own `isReplay` field and doc exactly: true when this batch-group level was already in `levelProgress.completedLevelIds` when the session started. */
+  isReplay: boolean;
 };
 
 function namespacedDestinations(order: BatchGroupOrder): Destination[] {
@@ -320,18 +377,30 @@ function namespacedDestinations(order: BatchGroupOrder): Destination[] {
   }));
 }
 
-/** Builds a fresh batch group from 2-3 recipes (brief §10's "5 meaningful batching scenarios... at least one 3-customer" — this is what a level with `batchGroupRecipeIds` uses instead of createServiceSession). All orders start ACTIVE — a batch group's whole premise is "these customers are already seated together", not a current/next queue. */
+/** Builds a fresh batch group from 2-3 recipes (brief §10's "5 meaningful batching scenarios... at least one 3-customer" — this is what a level with `batchGroupRecipeIds` uses instead of createServiceSession). All orders start ACTIVE — a batch group's whole premise is "these customers are already seated together", not a current/next queue. `chapter` — see ServiceSession's own doc; every real batch-group level (always a campaign level) passes its own chapter. `isReplay` — see BatchGroupSession's own doc; defaults to false. */
 export function createBatchGroupSession(
   levelId: string,
   recipes: RecipeDefinition[],
   rand: () => number = Math.random,
+  chapter?: number,
+  isReplay: boolean = false,
 ): BatchGroupSession {
   const orders: BatchGroupOrder[] = recipes.map((recipe) => {
     const customer = randomCustomer(rand);
-    return { order: advanceOrder(createCustomerOrder(customer.id, recipe)), customer, recipe };
+    return {
+      order: advanceOrder(createCustomerOrder(customer.id, recipe, chapter)),
+      customer,
+      recipe,
+    };
   });
   const destinations = orders.flatMap(namespacedDestinations);
-  return { levelId, orders, session: createOrganizationSession(destinations) };
+  return {
+    levelId,
+    orders,
+    session: createOrganizationSession(destinations),
+    ...(chapter !== undefined ? { chapter } : {}),
+    isReplay,
+  };
 }
 
 /** True once every one of `order`'s OWN (namespaced) destinations is satisfied — checked against the group's shared session, so a shared output counts exactly like a privately-prepared one would. */
@@ -358,10 +427,17 @@ function syncBatchOrderStatus(group: BatchGroupSession, order: BatchGroupOrder):
  * matching `batchable` component (§6 — same ingredient + technique +
  * resultingState required, never assumed compatible just because the
  * ingredient matches).
+ *
+ * `score` — Economy V2 payout wiring, mirrors recordAllComponents's own
+ * doc exactly (including why it's optional/defaulted): stamped only
+ * onto the ACTIVE order (the one just cut), never onto its batching
+ * partners, which each get their own score stamped when THEY are the
+ * active order for their own RECIPE_COMPLETED.
  */
 export function recordBatchGroupComponents(
   group: BatchGroupSession,
   activeOrderId: string,
+  score: number = 0,
 ): BatchGroupSession {
   const activeIndex = group.orders.findIndex((o) => o.order.id === activeOrderId);
   if (activeIndex === -1) return group;
@@ -402,20 +478,31 @@ export function recordBatchGroupComponents(
     }
   }
   const groupWithUpdatedSession = { ...group, session };
-  const orders = group.orders.map((o) => syncBatchOrderStatus(groupWithUpdatedSession, o));
+  const orders = group.orders.map((o, i) =>
+    syncBatchOrderStatus(
+      groupWithUpdatedSession,
+      i === activeIndex ? { ...o, order: recordPreparationScore(o.order, score) } : o,
+    ),
+  );
   return { ...group, session, orders };
 }
 
-/** Mirrors serveCurrentOrder exactly, for one specific order within the group — refuses unless genuinely READY, pays exactly once (CustomerOrderManager's own guard), never touches any other group order's state. */
+/**
+ * Mirrors serveCurrentOrder exactly, for one specific order within the
+ * group — refuses unless genuinely READY, pays exactly once
+ * (CustomerOrderManager's own guard), never touches any other group
+ * order's state. `amountOverride` — see serveCurrentOrder's own doc.
+ */
 export function serveBatchGroupOrder(
   group: BatchGroupSession,
   orderId: string,
   rand: () => number = Math.random,
+  amountOverride?: number,
 ): { group: BatchGroupSession; coinsAwarded: number; reaction: string } | null {
   const index = group.orders.findIndex((o) => o.order.id === orderId);
   if (index === -1 || group.orders[index]!.order.status !== "READY") return null;
   const served = advanceOrder(group.orders[index]!.order); // READY -> SERVED
-  const paid = payOrder(served); // SERVED -> PAID
+  const paid = payOrder(served, amountOverride); // SERVED -> PAID
   const completed = advanceOrder(paid.order); // PAID -> COMPLETED
   const reaction =
     CUSTOMER_REACTIONS[Math.floor(rand() * CUSTOMER_REACTIONS.length)] ?? CUSTOMER_REACTIONS[0]!;

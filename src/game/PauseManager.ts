@@ -8,7 +8,7 @@
  * `document.visibilitychange` / Page Visibility API — YouTube's SDK is
  * the authoritative lifecycle source per the Playables requirements.
  */
-import { onPlatformPause, onPlatformResume } from "./PlayablesSDK";
+import { isAdActive, onAdActiveChange, onPlatformPause, onPlatformResume } from "./PlayablesSDK";
 
 type Listener = (paused: boolean) => void;
 
@@ -16,13 +16,31 @@ class PauseManagerImpl {
   private paused = false;
   private listeners = new Set<Listener>();
   private wiredToPlatform = false;
+  /** YouTube paused the game while an ad was on screen (and it wasn't already paused). */
+  private pausedForAd = false;
 
   /** Registers the ytgame.system.onPause/onResume listeners exactly once. */
   wireToPlatform(): void {
     if (this.wiredToPlatform) return;
     this.wiredToPlatform = true;
-    onPlatformPause(() => this.pause());
-    onPlatformResume(() => this.resume());
+    onPlatformPause(() => {
+      if (isAdActive() && !this.paused) this.pausedForAd = true;
+      this.pause();
+    });
+    onPlatformResume(() => {
+      this.pausedForAd = false;
+      this.resume();
+    });
+    // YouTube reliably sends onPause when an ad starts but not always
+    // onResume when it ends — which would leave the game paused and silent.
+    // When an ad stops blocking the screen (answered, or released by the
+    // dead-request guard), wake the game — but only if it was YouTube's
+    // ad-time pause; a player's own pause is never undone.
+    onAdActiveChange((active) => {
+      if (active || !this.pausedForAd) return;
+      this.pausedForAd = false;
+      this.resume();
+    });
   }
 
   pause(): void {

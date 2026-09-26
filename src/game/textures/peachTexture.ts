@@ -37,6 +37,11 @@ export function paintPeachTexture(
   _opts?: unknown,
   _peeled?: boolean,
   hasCut = false,
+  // `overhangGone` — see PreparationScene.ts's EllipseRenderer.paint own
+  // doc. True once `this.cuts.length > 0`, the "stem/leaf sheds on the
+  // first cut" moment this file's own header doc describes but — before
+  // this phase's overhang port — never actually gated on anything.
+  overhangGone = false,
 ): void {
   const cx = rx + margin;
   const cy = ry + margin;
@@ -56,7 +61,7 @@ export function paintPeachTexture(
   // dimple shadow itself is painted later, on top of the finished skin.
   const stemX = cx + rx * 0.02;
   const stemTopY = cy - ry * 0.98;
-  {
+  if (!overhangGone) {
     ctx.strokeStyle = "#6E4326";
     ctx.lineWidth = 5;
     ctx.lineCap = "round";

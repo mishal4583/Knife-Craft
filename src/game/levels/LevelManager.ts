@@ -24,6 +24,7 @@
  *   SaveManager (persistence)
  */
 import { LEVELS } from "./levelDefinitions";
+import { dollars } from "../money";
 import type { LevelDefinition, UnlockRequirement } from "./levelTypes";
 
 export type LevelProgress = {
@@ -54,13 +55,8 @@ function requirementMet(req: UnlockRequirement, progress: LevelProgress): boolea
       return true;
     case "levelCompleted":
       return progress.completedLevelIds.includes(req.levelId);
-    case "chapterCompleted": {
-      const chapterLevels = LEVELS.filter((l) => l.chapter === req.chapter);
-      return (
-        chapterLevels.length > 0 &&
-        chapterLevels.every((l) => progress.completedLevelIds.includes(l.id))
-      );
-    }
+    case "chapterCompleted":
+      return isChapterComplete(req.chapter, progress);
     case "and":
       return req.requirements.every((r) => requirementMet(r, progress));
     case "or":
@@ -76,11 +72,28 @@ export function isCompleted(levelId: string, progress: LevelProgress): boolean {
   return progress.completedLevelIds.includes(levelId);
 }
 
+/**
+ * True once every level belonging to `chapter` is in `completedLevelIds`
+ * — extracted from the "chapterCompleted" unlock-requirement case above
+ * (same computation, now shared instead of duplicated) so App.tsx's
+ * chapter-boundary detection (Economy V2 Phase 4 — Kitchen Investment
+ * upkeep) can reuse this exact, already-authoritative definition of
+ * "chapter complete" rather than reimplementing it. Monotonic: once
+ * true for a given progress, stays true for any later (more-completed)
+ * progress — so a caller that only checks this on a level's OWN
+ * first-time completion (completeLevel's `isFirstCompletion`) sees the
+ * false→true transition at most once per chapter, ever.
+ */
+export function isChapterComplete(chapter: number, progress: LevelProgress): boolean {
+  const chapterLevels = LEVELS.filter((l) => l.chapter === chapter);
+  return chapterLevels.length > 0 && chapterLevels.every((l) => isCompleted(l.id, progress));
+}
+
 export type CompleteLevelResult = {
   progress: LevelProgress;
   /** True only the first time this levelId is completed — Law 2's gate. */
   isFirstCompletion: boolean;
-  /** level.reward.coins on first completion, 0 on replay (Law 2 — "replay does not pay"). */
+  /** The level's reward in wallet cents (dollars(level.reward.coins)) on first completion, 0 on replay (Law 2 — "replay does not pay"). */
   rewardCoins: number;
   /** Levels that became unlocked as a direct result of this completion (for a "New level unlocked!" toast, unused by Phase 4 UI but computed for future use). */
   newlyUnlockedLevelIds: string[];
@@ -118,7 +131,7 @@ export function completeLevel(levelId: string, progress: LevelProgress): Complet
   return {
     progress: { ...progressAfter, highestUnlockedLevelId },
     isFirstCompletion,
-    rewardCoins: isFirstCompletion ? level.reward.coins : 0,
+    rewardCoins: isFirstCompletion ? dollars(level.reward.coins) : 0,
     newlyUnlockedLevelIds,
   };
 }

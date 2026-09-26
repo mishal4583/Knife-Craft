@@ -23,11 +23,10 @@
 // The `MILESTONES` mock array used to live here (hand-picked `done`
 // booleans and invented labels like "Chiffonade"/"Sushi chapter" that
 // don't correspond to any real technique/chapter). Phase 12C replaced it
-// — Chef's Journey now reads the 5 real chapter-transition milestones
-// already authored on LEVELS (LevelDefinition.milestone, at Level
-// 10/20/30/40/50 — the same field OrderBoard already reads), with
-// unlock state coming from LevelManager.isCompleted, not a static flag.
-// See Journal.tsx's Progression component.
+// — progression is now shown on Restaurant Progress (screen id "rack"),
+// whose milestones are all derived from the save by
+// src/game/progression/restaurantProgress.ts. The separate Chef's Journey
+// screen was merged into it so there is one progression screen.
 
 // DECOR_CATEGORIES/DECOR_ITEMS (a mock kitchen-decor shelf with hardcoded
 // `owned` booleans, never backed by SaveManager) and ACHIEVEMENTS (a mock
@@ -43,7 +42,6 @@ export type ScreenId =
   | "kitchen"
   | "board"
   | "kitchen-upgrades"
-  | "progression"
   | "recipes"
   | "recipe-detail"
   | "daily"
@@ -51,7 +49,46 @@ export type ScreenId =
   | "shop"
   | "rack"
   | "settings"
-  // Phase 18A — dev/QA only, reachable only from Settings and only when
-  // QA_MODE is on (see IngredientLab.tsx's own doc) — never part of the
-  // real player-facing navigation graph.
-  | "ingredient-lab";
+  // Economy V3 Phase 1 — the Business Simulation layer's own entry point.
+  // A real bottom-nav destination (mirrors Kitchen/Shop/Rack), not a
+  // Kitchen hotspot: over the next 13 phases this screen accretes its
+  // own sections (inventory, refrigerator, menu, suppliers, staff,
+  // equipment, inspections, P&L) exactly the way Shop.tsx grew section
+  // by section across Economy V2, rather than becoming a second app.
+  | "business"
+  // Economy V3 Phase 2 — the Inventory sub-screen under Business
+  // (see BusinessDashboard.tsx's own "Business ├── Dashboard ├──
+  // Inventory" doc). Routable independently, same as "board" is its
+  // own screen under Kitchen.
+  | "business-inventory"
+  // Economy V3 Phase 3 — the Refrigerator sub-screen under Business.
+  | "business-refrigerator"
+  // Economy V3 Phase 5 — the Menu Pricing sub-screen under Business.
+  | "business-menu"
+  // Economy V3 Phase 7 — the Supplier Contracts sub-screen under Business.
+  | "business-suppliers"
+  // Economy V3 Phase 9 — the Staff sub-screen under Business.
+  | "business-staff"
+  // Economy V3 Phase 12 — the Inspections sub-screen under Business.
+  | "business-inspections"
+  // Economy V3 Phase 14 (Checkpoint 3) — the Service sub-screen under
+  // Business: shows the current Business order (a real curated dish),
+  // its live menu price, and ingredient availability, gated into the
+  // SAME "gameplay" Preparation flow every other service mode already
+  // uses once the player taps "Start Preparing" (see App.tsx's own
+  // `sessionMode === "business-service"` wiring).
+  | "business-service"
+  // Economy V3 Phase 14 (Checkpoint 5) — the categorized Business Shop:
+  // one overview hub (equipped knife/board, refrigeration, staff,
+  // suppliers) answering "why should I spend this money" for every real
+  // Business Mode investment, with links into the existing detail
+  // screens (business-refrigerator/business-staff/business-suppliers)
+  // for the deeper management flows — never a duplicate transaction
+  // engine.
+  | "business-shop"
+  // Economy V3 Phase 14 (Checkpoint... V3-15) — the Business Mode P&L
+  // screen: today's live accumulator, the most recently completed
+  // Business Day's full reconciled P&L, and lifetime figures computed
+  // directly from the existing economyLedger — see
+  // BusinessFinanceManager.ts's own doc.
+  | "business-finance";

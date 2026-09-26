@@ -6,6 +6,8 @@
  *   node /tmp/phase5.mjs
  */
 import { INGREDIENTS } from "../src/game/definitions.ts";
+// USD: an order pays its recipe's whole-dollar basePayment as wallet cents (money.ts dollars()).
+import { dollars } from "../src/game/money.ts";
 import { CAMPAIGN_RECIPES } from "../src/game/recipes/campaignRecipes.ts";
 import { LEVELS, CHAPTER_TITLES } from "../src/game/levels/levelDefinitions.ts";
 import { CUISINES } from "../src/game/cuisines/cuisineDefinitions.ts";
@@ -223,7 +225,7 @@ assert(
   group = recordBatchGroupComponents(group, group.orders[0].order.id);
   const serve1 = serveBatchGroupOrder(group, group.orders[0].order.id, () => 0);
   const serve2 = serveBatchGroupOrder(serve1!.group, group.orders[0].order.id, () => 0);
-  assert(serve1!.coinsAwarded === 100 && serve2 === null, "23: a shared protein output cannot be paid twice for the same order");
+  assert(serve1!.coinsAwarded === dollars(100) && serve2 === null, "23: a shared protein output cannot be paid twice for the same order");
 }
 
 // ===== 24: Daily Order compatibility — every recipe is structurally eligible (no locked technique on an unlocked recipe). =====

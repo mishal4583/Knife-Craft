@@ -20,9 +20,10 @@ import { getLevels, isUnlocked } from "../levels/LevelManager";
 import type { LevelProgress } from "../levels/LevelManager";
 import type { LevelDefinition } from "../levels/levelTypes";
 import type { DailyOrderProgress } from "../SaveManager";
+import { dollars } from "../money";
 
-/** The flat once-a-day bonus, paid on top of the level's own normal reward.coins — never a percentage, never scaled by performance. */
-export const DAILY_ORDER_BONUS_COINS = 50;
+/** The flat once-a-day bonus ($50), paid on top of the level's own normal reward — never a percentage, never scaled by performance. */
+export const DAILY_ORDER_BONUS_COINS = dollars(50);
 
 /** Local "YYYY-MM-DD" — a calendar day, not a timestamp, so this never depends on time-of-day or timezone drift mattering beyond "which day is it". */
 export function dailyKeyFor(date: Date): string {

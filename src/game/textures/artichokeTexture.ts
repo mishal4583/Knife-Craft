@@ -49,6 +49,15 @@ export function paintArtichokeTexture(
   ry: number,
   margin: number,
   leaves: ClusterLeaf[],
+  // Artichoke is not peelable — this slot exists only so the call site
+  // can share ClusterRenderer.paint's one (ctx,rx,ry,margin,leaves,
+  // peeled,overhangGone) signature with every other cluster ingredient.
+  _peeled?: boolean,
+  // `overhangGone` — see PreparationScene.ts's ClusterRenderer.paint own
+  // doc. True once `this.cuts.length > 0`; gates the trimmed stem stub
+  // below (the prototype's declared overhang for this ingredient) so it
+  // sheds on the first cut.
+  overhangGone = false,
 ): void {
   const cx = rx + margin;
   const cy = ry + margin;
@@ -59,30 +68,32 @@ export function paintArtichokeTexture(
   ctx.ellipse(cx, cy + ry * 0.02, rx * 0.52, ry * 0.56, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  const stemTop = cy + ry * 0.78;
-  const stem = new Path2D();
-  stem.moveTo(cx - 38, stemTop);
-  stem.lineTo(cx - 33, stemTop + 44);
-  stem.quadraticCurveTo(cx, stemTop + 54, cx + 33, stemTop + 44);
-  stem.lineTo(cx + 38, stemTop);
-  stem.closePath();
-  const sg = ctx.createLinearGradient(cx - 38, 0, cx + 38, 0);
-  sg.addColorStop(0, "#5A7A32");
-  sg.addColorStop(0.34, "#8FAC5E");
-  sg.addColorStop(0.72, "#7A9848");
-  sg.addColorStop(1, "#4E6C2A");
-  ctx.fillStyle = sg;
-  ctx.fill(stem);
-  ctx.strokeStyle = "rgba(52,76,26,0.30)";
-  ctx.lineWidth = 1.2;
-  ctx.stroke(stem);
-  ctx.strokeStyle = "rgba(240,248,210,0.30)";
-  ctx.lineWidth = 1.4;
-  for (const k of [-0.6, 0, 0.6]) {
-    ctx.beginPath();
-    ctx.moveTo(cx + k * 28, stemTop + 4);
-    ctx.lineTo(cx + k * 22, stemTop + 44);
-    ctx.stroke();
+  if (!overhangGone) {
+    const stemTop = cy + ry * 0.78;
+    const stem = new Path2D();
+    stem.moveTo(cx - 38, stemTop);
+    stem.lineTo(cx - 33, stemTop + 44);
+    stem.quadraticCurveTo(cx, stemTop + 54, cx + 33, stemTop + 44);
+    stem.lineTo(cx + 38, stemTop);
+    stem.closePath();
+    const sg = ctx.createLinearGradient(cx - 38, 0, cx + 38, 0);
+    sg.addColorStop(0, "#5A7A32");
+    sg.addColorStop(0.34, "#8FAC5E");
+    sg.addColorStop(0.72, "#7A9848");
+    sg.addColorStop(1, "#4E6C2A");
+    ctx.fillStyle = sg;
+    ctx.fill(stem);
+    ctx.strokeStyle = "rgba(52,76,26,0.30)";
+    ctx.lineWidth = 1.2;
+    ctx.stroke(stem);
+    ctx.strokeStyle = "rgba(240,248,210,0.30)";
+    ctx.lineWidth = 1.4;
+    for (const k of [-0.6, 0, 0.6]) {
+      ctx.beginPath();
+      ctx.moveTo(cx + k * 28, stemTop + 4);
+      ctx.lineTo(cx + k * 22, stemTop + 44);
+      ctx.stroke();
+    }
   }
 
   const heart = new Path2D();

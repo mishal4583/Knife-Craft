@@ -2,7 +2,24 @@ import { IconButton } from "../common/Buttons";
 import { cn } from "@/lib/utils";
 import type { DailyOrder, GameplayState } from "@/types/game";
 
-/** Minimal in-play HUD. Never overlaps the cutting area. */
+/**
+ * Minimal in-play HUD. Never overlaps the cutting area.
+ *
+ * PHASE 7.1 (Bug A) — this used to stack the order card, the batch tip,
+ * and the progress pips as three INDEPENDENT `absolute` layers, the
+ * latter two pinned at hardcoded pixel offsets (`top-[68px]`/
+ * `top-[102px]`) measured from a single-line card. The order card's real
+ * height varies with its content (day/name/ingredient line/optional
+ * `order.note`/optional `stepLabel`), so any card taller than that
+ * hardcoded guess pushed its own bottom line — usually `stepLabel`
+ * ("Step 1 of 2") — underneath the batch-tip banner. Fixed by making the
+ * whole HUD one normal-flow flex column: every element reserves its own
+ * real vertical space, so a taller card, a longer batch tip, or both
+ * together push everything below them down instead of being overlapped.
+ * The card + Pause button stay a single top row (Pause is never affected
+ * by anything below it), matching brief §4's "no second HUD system" —
+ * only the layout primitive changed, not the visual language.
+ */
 export function GameHUD({
   order,
   gameplay,
@@ -32,8 +49,8 @@ export function GameHUD({
       ]
     : [{ n: totalPieces, done: gameplay.cutProgress }];
   return (
-    <>
-      <div className="absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-2 p-3">
+    <div className="absolute inset-x-0 top-0 z-20 flex flex-col items-stretch gap-1.5 p-3">
+      <div className="flex items-start justify-between gap-2">
         <div
           className="paper max-w-[64%] -rotate-[1.4deg] rounded-[10px] border border-walnut/20 px-3 py-2 shadow-soft"
           style={{ clipPath: "polygon(0 2%, 100% 0, 99% 100%, 1% 98%)" }}
@@ -57,11 +74,6 @@ export function GameHUD({
           {order.note ? (
             <p className="mt-0.5 font-hand text-[12px] leading-snug text-copper/90">{order.note}</p>
           ) : null}
-          {stepLabel ? (
-            <p className="font-ui text-[9px] font-bold uppercase tracking-[0.14em] text-copper/70">
-              {stepLabel}
-            </p>
-          ) : null}
         </div>
 
         {/* No size override here — IconButton's own default is the
@@ -75,20 +87,26 @@ export function GameHUD({
         </IconButton>
       </div>
 
+      {/* Reserved as its own flow row (brief §2's "reserve explicit
+          vertical space for the batch tip") instead of an absolutely
+          positioned overlay — a 2-3 customer batch tip's longer text
+          wraps here and simply grows this row, never the card above or
+          the step/pips below it. */}
       {batchHint ? (
-        <div className="absolute inset-x-6 top-[68px] z-20 flex justify-center">
-          <p className="paper rounded-full border border-gold/40 bg-gold/20 px-3 py-1 text-center font-hand text-[12px] leading-tight text-walnut-dark shadow-soft">
+        <div className="flex justify-center px-2">
+          <p className="paper max-w-full rounded-2xl border border-gold/40 bg-gold/20 px-3 py-1.5 text-center font-hand text-[12px] leading-snug text-walnut-dark shadow-soft">
             {batchHint}
           </p>
         </div>
       ) : null}
 
-      <div
-        className={cn(
-          "absolute inset-x-0 z-20 flex flex-col items-center gap-1.5",
-          batchHint ? "top-[102px]" : "top-[74px]",
-        )}
-      >
+      {stepLabel ? (
+        <p className="text-center font-ui text-[9px] font-bold uppercase tracking-[0.14em] text-copper/70">
+          {stepLabel}
+        </p>
+      ) : null}
+
+      <div className="flex flex-col items-center gap-1.5">
         {pipRows.map((row, ri) => (
           <div key={ri} className="flex justify-center gap-1.5">
             {Array.from({ length: row.n }).map((_, i) => (
@@ -103,6 +121,6 @@ export function GameHUD({
           </div>
         ))}
       </div>
-    </>
+    </div>
   );
 }

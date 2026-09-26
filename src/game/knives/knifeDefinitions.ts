@@ -13,6 +13,7 @@
  * later without touching any consuming code.
  */
 import type { IngredientId, TechniqueId } from "../definitions";
+import { dollars } from "../money";
 import type {
   KnifeAnimationProfile,
   KnifeAudioProfile,
@@ -63,7 +64,7 @@ export const KNIFE_CATALOG: KnifeDefinition[] = [
       "A balanced, everyday all-rounder. Every technique in the kitchen starts here — nothing later in the collection cuts better than this, only differently.",
     style: "balanced",
     weight: "balanced",
-    price: 0,
+    price: dollars(0),
     unlockLevel: 1,
     preferredTechniques: ["slice", "dice", "chop", "halve"],
     preferredIngredients: ["tomato", "carrot", "onion"],
@@ -79,7 +80,7 @@ export const KNIFE_CATALOG: KnifeDefinition[] = [
       "A broad Japanese-style vegetable knife. Clean vegetable cuts, a slightly lighter motion, and a crisp, satisfying release — the advantage is in the feel, not the speed.",
     style: "vegetable",
     weight: "light",
-    price: 350,
+    price: dollars(350),
     unlockLevel: 10,
     preferredTechniques: ["slice", "dice", "julienne"],
     preferredIngredients: ["cucumber", "zucchini", "carrot"],
@@ -120,7 +121,7 @@ export const KNIFE_CATALOG: KnifeDefinition[] = [
       "A wide, straight-edged vegetable chopper. Best for Chop, Dice and Julienne — a heavier downward presentation and a clean, straight blade movement.",
     style: "vegetable",
     weight: "heavy",
-    price: 700,
+    price: dollars(700),
     unlockLevel: 25,
     preferredTechniques: ["chop", "dice", "julienne"],
     preferredIngredients: ["carrot", "potato", "cucumber"],
@@ -161,7 +162,7 @@ export const KNIFE_CATALOG: KnifeDefinition[] = [
       "A small, narrow blade for detail preparation — garlic, strawberries, trimming. A shorter knife movement and a lighter, more delicate contact sound.",
     style: "detail",
     weight: "light",
-    price: 500,
+    price: dollars(500),
     unlockLevel: 15,
     preferredTechniques: ["peel", "halve", "slice"],
     preferredIngredients: ["garlic", "strawberry", "potato"],
@@ -202,7 +203,7 @@ export const KNIFE_CATALOG: KnifeDefinition[] = [
       "A long serrated blade for bakery prep. A visibly toothed edge, a slightly different cut animation, and a distinct bread-cut sound.",
     style: "bread",
     weight: "balanced",
-    price: 850,
+    price: dollars(850),
     unlockLevel: 30,
     preferredTechniques: ["slice"],
     preferredIngredients: ["bread"],
@@ -243,7 +244,7 @@ export const KNIFE_CATALOG: KnifeDefinition[] = [
       "A large, heavy blade for heavy preparation — bigger vegetables, a stronger board impact, a deeper thunk. Not more powerful, just heavier.",
     style: "heavy",
     weight: "heavy",
-    price: 1100,
+    price: dollars(1100),
     unlockLevel: 40,
     preferredTechniques: ["chop", "smash"],
     preferredIngredients: ["potato", "onion", "garlic"],
@@ -284,7 +285,7 @@ export const KNIFE_CATALOG: KnifeDefinition[] = [
       "The signature blade — a rippled Damascus pattern, a balanced all-purpose feel. Nothing about it is required. The reward is simply owning something beautiful.",
     style: "signature",
     weight: "balanced",
-    price: 1800,
+    price: dollars(1800),
     unlockLevel: 50,
     preferredTechniques: ["slice", "dice", "julienne", "chop", "halve"],
     preferredIngredients: ["tomato", "apple", "orange"],
@@ -334,7 +335,7 @@ export const KNIFE_CATALOG: KnifeDefinition[] = [
       "The chef's own knife, given to you once the kitchen can run a full branching service without them. Heavier than Damascus, quieter than the Cleaver — a knife for someone who no longer needs to be told what to do with it.",
     style: "signature",
     weight: "heavy",
-    price: 2200,
+    price: dollars(2200),
     unlockLevel: 90,
     preferredTechniques: ["slice", "dice", "julienne", "chop", "halve", "rockMince"],
     preferredIngredients: ["chicken", "steak", "onion"],
@@ -448,4 +449,18 @@ export const INGREDIENT_EMOJI: Record<IngredientId, string> = {
   chicken: "🍗",
   steak: "🥩",
   salmon: "🐟",
+  // New-ingredient integration pack. `ginger` (dedicated root emoji) and
+  // `chilli` (dedicated hot-pepper emoji) have real, accurate, non-
+  // colliding Unicode glyphs. `lime`/`cilantro`/`springonion` do not —
+  // deliberately NOT reusing Lemon's 🍋 (would defeat the whole point of
+  // Lime being its own ingredient), Basil's 🌿/Parsley's 🌱 (a 3-way herb
+  // collision), or Onion's own 🧅 (confusing the two most directly), so
+  // each gets a distinct, food-adjacent placeholder instead — same
+  // precedent as Tofu's existing "⬜" a few lines up (an honest abstract
+  // stand-in where no accurate glyph exists, not a wrong food).
+  ginger: "🫚",
+  chilli: "🌶️",
+  lime: "🟢",
+  cilantro: "🍃",
+  springonion: "🎋",
 };

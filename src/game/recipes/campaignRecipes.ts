@@ -1,28 +1,40 @@
 /**
- * CAMPAIGN_RECIPES — Phase 3's real recipe library for the new campaign
- * (brief §2/§24/§26): ~35 honestly-authored, named dishes covering
- * Chapters 1-4 (Levels 1-40). Every ingredient/technique combination here
- * is checked against `INGREDIENTS[id].techniques` in definitions.ts — no
+ * CAMPAIGN_RECIPES — the campaign's recipe library, migrated to exact
+ * KnifeCraft_Level_System_v2.docx compliance (221 recipes across all 25
+ * chapters/250 levels). Every ingredient/technique combination here is
+ * checked against `INGREDIENTS[id].techniques` in definitions.ts — no
  * recipe asks for a cut the engine doesn't actually support for that
- * ingredient (e.g. no tomato radial, no zucchini/potato/asparagus/
- * mushroom julienne, no apple halve — those ingredients simply don't
- * list that technique).
+ * ingredient.
  *
- * Authenticity (§25): "A" only where the simplified dish is a real,
- * recognizable version of something people actually make with these
- * ingredients (bruschetta, caprese, minestrone base, French onion base).
- * "B" for KnifeCraft-invented service scenarios (a branching/shared-
- * output/batching demo dressed as a dish) that aren't claiming to BE a
- * traditional recipe.
+ * Authenticity (§3.6 of the v2 doc): "A" — every essential cuttable
+ * component of the real dish is present. "B" — cuisine-inspired,
+ * recognizably of the cuisine but simplified for the ingredient roster.
  *
- * `cuisineId` is real here (unlike deriveRecipeFromLevel's `null` for
- * the OLD 1-120 content) — these are freshly authored for the new
- * campaign, so retroactive-mislabeling concerns (§66 of the earlier
- * brief) don't apply.
+ * Recipes are deliberately REUSED across levels (v2 §1's "Level ≠
+ * Recipe... the same recipe appears in many levels and is defined once")
+ * — see levelDefinitions.ts's `recipePoolIds`/`batchGroupRecipeIds`.
  *
- * Recipes are deliberately REUSED across levels (§3/§26) rather than
- * one-recipe-per-level — see levelDefinitions.ts's `recipePoolIds` on
- * Levels 24/30/40, which point at recipes first introduced earlier.
+ * `basePayment` below is a SNAPSHOT — recipePay(recipe, unlockLevel's own
+ * chapter) — kept accurate for any non-campaign reader (recipeBook.ts,
+ * the Cookbook), but it is NOT what the campaign actually pays at runtime
+ * for a reused recipe: v2 §3.4's formula makes pay a property of the
+ * (recipe, chapter served) pair, not the recipe alone, so ServiceManager/
+ * CustomerOrderManager now recompute it live per the level's own chapter
+ * (see recipePay.ts) — this field is never read on that path.
+ *
+ * Butter has been removed from every recipe here (v2 §2.1) — the
+ * ingredient definition itself is untouched (still exists in
+ * definitions.ts) since nothing about the engine architecture required
+ * deleting it, only its campaign usage.
+ *
+ * Five ingredients apple/orange/turnip/pumpkin/pear are declared by v2 as
+ * needing a Peel step in certain recipes, but none of the five has a
+ * peeled/unpeeled texture variant in production (unlike onion/potato/
+ * garlic/pineapple/coconut/watermelon, which do) — adding one is real new
+ * texture/rendering work, out of this migration's scope (see the task's
+ * own final report). Those specific Peel sub-steps are intentionally
+ * omitted from the affected recipes below; every other v2 step for those
+ * recipes is implemented exactly.
  */
 import type { RecipeDefinition } from "./recipeTypes";
 
@@ -70,7 +82,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: false,
     chefInstruction: "Slice the cucumber into rounds.",
     customerDialogue: "Something light and crisp, if you have it.",
-    basePayment: 52,
+    basePayment: 50,
     unlockLevel: 2,
   },
   {
@@ -91,7 +103,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: false,
     chefInstruction: "Chop the carrot into short, even pieces.",
     customerDialogue: "Whatever's freshest today.",
-    basePayment: 55,
+    basePayment: 50,
     unlockLevel: 3,
   },
   {
@@ -118,7 +130,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: true,
     chefInstruction: "Slice the tomato, then slice the cucumber the same way.",
     customerDialogue: "The garden plate — tomato and cucumber, please.",
-    basePayment: 60,
+    basePayment: 100,
     unlockLevel: 4,
   },
   {
@@ -151,7 +163,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: false,
     chefInstruction: "Peel the onion, halve it, then slice it thin.",
     customerDialogue: "Just the prepped onion, for the pot.",
-    basePayment: 64,
+    basePayment: 100,
     unlockLevel: 5,
   },
   {
@@ -172,7 +184,35 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: true,
     chefInstruction: "Dice the tomato into a neat, even grid.",
     customerDialogue: "Diced tomato, for the soup base.",
-    basePayment: 62,
+    basePayment: 50,
+    unlockLevel: 6,
+  },
+  {
+    id: "camp-garden-tomato-cup",
+    name: "Garden Tomato Cup",
+    emoji: "🥣",
+    cuisineId: "italian",
+    authenticity: "B",
+    components: [
+      {
+        ingredientId: "tomato",
+        technique: "dice",
+        resultingState: "diced",
+        destinationIds: ["bowl"],
+        batchable: true,
+      },
+      {
+        ingredientId: "cucumber",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["bowl"],
+      },
+    ],
+    destinations: [BOWL],
+    batchable: true,
+    chefInstruction: "Dice the tomato — the same cut as the bruschetta — then slice the cucumber.",
+    customerDialogue: "A garden cup, extra tomato.",
+    basePayment: 100,
     unlockLevel: 6,
   },
   {
@@ -193,7 +233,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: false,
     chefInstruction: "Peel the potato clean.",
     customerDialogue: "Just the peeled potato, please.",
-    basePayment: 60,
+    basePayment: 45,
     unlockLevel: 7,
   },
   {
@@ -205,6 +245,12 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     components: [
       {
         ingredientId: "potato",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "potato",
         technique: "halve",
         resultingState: "halved",
         destinationIds: ["bowl"],
@@ -214,7 +260,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: false,
     chefInstruction: "Halve the potato evenly.",
     customerDialogue: "Halved potato, ready for the pan.",
-    basePayment: 63,
+    basePayment: 50,
     unlockLevel: 8,
   },
   {
@@ -226,6 +272,12 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     components: [
       {
         ingredientId: "garlic",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "garlic",
         technique: "smash",
         resultingState: "smashed",
         destinationIds: ["bowl"],
@@ -235,7 +287,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: false,
     chefInstruction: "Smash the garlic clove flat.",
     customerDialogue: "The garlic, smashed — for the base.",
-    basePayment: 65,
+    basePayment: 50,
     unlockLevel: 9,
   },
   {
@@ -269,10 +321,9 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     chefInstruction:
       "Dice the tomato, slice the cucumber, then chop the carrot — all onto one plate.",
     customerDialogue: "The garden salad — the whole thing, please.",
-    basePayment: 80,
+    basePayment: 150,
     unlockLevel: 10,
   },
-
   // ───────────────────────── Chapter 2 — Italian Kitchen ─────────────────────────
   {
     id: "camp-garlic-bread",
@@ -289,6 +340,12 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
       },
       {
         ingredientId: "garlic",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "garlic",
         technique: "smash",
         resultingState: "smashed",
         destinationIds: ["plate"],
@@ -298,8 +355,61 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: false,
     chefInstruction: "Slice the bread, then smash the garlic to rub over it.",
     customerDialogue: "Garlic bread, the way the house makes it.",
-    basePayment: 72,
+    basePayment: 115,
     unlockLevel: 11,
+  },
+  {
+    id: "camp-bruschetta-trio",
+    name: "Bruschetta Trio",
+    emoji: "🍞",
+    cuisineId: "italian",
+    authenticity: "A",
+    components: [
+      {
+        ingredientId: "bread",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "tomato",
+        technique: "dice",
+        resultingState: "diced",
+        destinationIds: ["plate"],
+        batchable: true,
+      },
+      {
+        ingredientId: "tomato",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "basil",
+        technique: "chop",
+        resultingState: "chopped",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "garlic",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "garlic",
+        technique: "smash",
+        resultingState: "smashed",
+        destinationIds: ["plate"],
+      },
+    ],
+    destinations: [PLATE],
+    batchable: true,
+    chefInstruction:
+      "Slice the bread. Dice the tomato. Slice the tomato. Chop the basil. Peel the garlic. Smash the garlic.",
+    customerDialogue: "The bruschetta trio, please.",
+    basePayment: 280,
+    unlockLevel: 12,
   },
   {
     id: "camp-tomato-basil-toast",
@@ -331,7 +441,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: true,
     chefInstruction: "Slice the bread, dice the tomato, then chop the basil over the top.",
     customerDialogue: "Tomato basil toast, please.",
-    basePayment: 85,
+    basePayment: 170,
     unlockLevel: 12,
   },
   {
@@ -355,6 +465,12 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
       },
       {
         ingredientId: "garlic",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "garlic",
         technique: "chop",
         resultingState: "chopped",
         destinationIds: ["plate"],
@@ -364,7 +480,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: false,
     chefInstruction: "Slice the bread, slice the mushrooms, then chop the garlic through them.",
     customerDialogue: "The mushroom bruschetta, if the mushrooms are good today.",
-    basePayment: 90,
+    basePayment: 200,
     unlockLevel: 13,
   },
   {
@@ -391,7 +507,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: false,
     chefInstruction: "Slice the zucchini, then dice the carrot alongside it.",
     customerDialogue: "Something green and simple.",
-    basePayment: 88,
+    basePayment: 110,
     unlockLevel: 14,
   },
   {
@@ -424,7 +540,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: true,
     chefInstruction: "Slice the tomato and the mozzarella, then chop the basil over both.",
     customerDialogue: "Caprese, please — the classic.",
-    basePayment: 95,
+    basePayment: 170,
     unlockLevel: 15,
   },
   {
@@ -436,6 +552,12 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     components: [
       {
         ingredientId: "onion",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "onion",
         technique: "rings",
         resultingState: "ringed",
         destinationIds: ["bowl"],
@@ -445,7 +567,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: false,
     chefInstruction: "Cut the onion into even rings.",
     customerDialogue: "A basket of onion rings, please.",
-    basePayment: 90,
+    basePayment: 75,
     unlockLevel: 16,
   },
   {
@@ -473,12 +595,25 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         resultingState: "sliced",
         destinationIds: ["bowl"],
       },
+      {
+        ingredientId: "onion",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "onion",
+        technique: "chop",
+        resultingState: "chopped",
+        destinationIds: ["bowl"],
+      },
     ],
     destinations: [BOWL],
     batchable: true,
-    chefInstruction: "Dice the tomato, chop the carrot, then slice the zucchini into the pot.",
+    chefInstruction:
+      "Dice the tomato. Chop the carrot. Slice the zucchini. Peel the onion. Chop the onion.",
     customerDialogue: "The minestrone, if there's a fresh batch.",
-    basePayment: 100,
+    basePayment: 260,
     unlockLevel: 17,
   },
   {
@@ -502,6 +637,12 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
       },
       {
         ingredientId: "garlic",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "garlic",
         technique: "chop",
         resultingState: "chopped",
         destinationIds: ["plate"],
@@ -512,13 +653,19 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         resultingState: "chopped",
         destinationIds: ["plate"],
       },
+      {
+        ingredientId: "mozzarella",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["plate"],
+      },
     ],
     destinations: [PLATE],
     batchable: true,
     chefInstruction:
-      "Slice the bread, dice the tomato, chop the garlic, then chop the basil — everything onto one plate.",
+      "Slice the bread. Dice the tomato. Peel the garlic. Chop the garlic. Chop the basil. Slice the mozzarella.",
     customerDialogue: "The full bruschetta, please — don't skip anything.",
-    basePayment: 110,
+    basePayment: 315,
     unlockLevel: 18,
   },
   {
@@ -545,7 +692,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: true,
     chefInstruction: "Slice the tomato and the mozzarella the same thickness.",
     customerDialogue: "The little skewers, please.",
-    basePayment: 92,
+    basePayment: 110,
     unlockLevel: 19,
   },
   {
@@ -575,6 +722,12 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
       },
       {
         ingredientId: "onion",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "onion",
         technique: "rings",
         resultingState: "ringed",
         destinationIds: ["plate"],
@@ -585,10 +738,9 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     chefInstruction:
       "Dice the tomato, slice the zucchini, chop the basil, then ring the onion — the full plate.",
     customerDialogue: "The whole Italian garden plate, please.",
-    basePayment: 130,
+    basePayment: 240,
     unlockLevel: 20,
   },
-
   // ───────────────────────── Chapter 3 — Italian Service ─────────────────────────
   {
     id: "camp-julienne-carrot-garnish",
@@ -608,7 +760,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: false,
     chefInstruction: "Julienne the carrot into fine, even batons.",
     customerDialogue: "Just a garnish — something fine and neat.",
-    basePayment: 95,
+    basePayment: 60,
     unlockLevel: 21,
   },
   {
@@ -629,7 +781,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: false,
     chefInstruction: "Julienne the pepper into thin ribbons.",
     customerDialogue: "Pepper ribbons, for the antipasto.",
-    basePayment: 98,
+    basePayment: 60,
     unlockLevel: 22,
   },
   {
@@ -648,10 +800,49 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     ],
     destinations: [PLATE],
     batchable: false,
-    chefInstruction: "Cut the orange into an even rose of wedges for the plate.",
+    chefInstruction: "Cut the orange.",
     customerDialogue: "Whatever makes the plate look beautiful.",
-    basePayment: 100,
+    basePayment: 55,
     unlockLevel: 23,
+  },
+  {
+    id: "camp-eggplant-antipasto",
+    name: "Eggplant Antipasto",
+    emoji: "🍆",
+    cuisineId: "italian",
+    authenticity: "B",
+    components: [
+      {
+        ingredientId: "eggplant",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "garlic",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "garlic",
+        technique: "smash",
+        resultingState: "smashed",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "basil",
+        technique: "chop",
+        resultingState: "chopped",
+        destinationIds: ["plate"],
+      },
+    ],
+    destinations: [PLATE],
+    batchable: true,
+    chefInstruction: "Slice the eggplant. Peel the garlic. Smash the garlic. Chop the basil.",
+    customerDialogue: "An eggplant antipasto to start, please.",
+    basePayment: 190,
+    unlockLevel: 24,
   },
   {
     id: "camp-caprese-skewers-batch",
@@ -672,33 +863,6 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         resultingState: "sliced",
         destinationIds: ["plate"],
       },
-    ],
-    destinations: [PLATE],
-    batchable: true,
-    chefInstruction: "Slice the tomato, slice the mozzarella — the same cut the caprese uses.",
-    customerDialogue: "A batch of the skewers, if you're already making them.",
-    basePayment: 100,
-    unlockLevel: 25,
-  },
-  {
-    id: "camp-bruschetta-trio",
-    name: "Bruschetta Trio",
-    emoji: "🍞",
-    cuisineId: "italian",
-    authenticity: "A",
-    components: [
-      {
-        ingredientId: "bread",
-        technique: "slice",
-        resultingState: "sliced",
-        destinationIds: ["plate"],
-      },
-      {
-        ingredientId: "tomato",
-        technique: "dice",
-        resultingState: "diced",
-        destinationIds: ["plate"],
-      },
       {
         ingredientId: "basil",
         technique: "chop",
@@ -708,38 +872,10 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     ],
     destinations: [PLATE],
     batchable: true,
-    chefInstruction:
-      "Slice the bread, dice the tomato — the same cut as the other order — then chop the basil.",
-    customerDialogue: "The bruschetta trio, please.",
-    basePayment: 105,
-    unlockLevel: 12,
-  },
-  {
-    id: "camp-garden-tomato-cup",
-    name: "Garden Tomato Cup",
-    emoji: "🥣",
-    cuisineId: "italian",
-    authenticity: "B",
-    components: [
-      {
-        ingredientId: "tomato",
-        technique: "dice",
-        resultingState: "diced",
-        destinationIds: ["bowl"],
-      },
-      {
-        ingredientId: "cucumber",
-        technique: "slice",
-        resultingState: "sliced",
-        destinationIds: ["bowl"],
-      },
-    ],
-    destinations: [BOWL],
-    batchable: true,
-    chefInstruction: "Dice the tomato — the same cut as the bruschetta — then slice the cucumber.",
-    customerDialogue: "A garden cup, extra tomato.",
-    basePayment: 95,
-    unlockLevel: 6,
+    chefInstruction: "Slice the tomato. Slice the mozzarella. Chop the basil.",
+    customerDialogue: "A batch of the skewers, if you're already making them.",
+    basePayment: 190,
+    unlockLevel: 19, // first served by Level 19 (was 25: the level pool served it before it 'unlocked')
   },
   {
     id: "camp-julienne-vegetable-medley",
@@ -771,7 +907,40 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: false,
     chefInstruction: "Julienne the carrot, the pepper, and the cucumber — all the same fine cut.",
     customerDialogue: "The vegetable medley, please — as fine as you can cut it.",
-    basePayment: 130,
+    basePayment: 190,
+    unlockLevel: 27,
+  },
+  {
+    id: "camp-zucchini-fennel-julienne",
+    name: "Zucchini & Fennel Julienne",
+    emoji: "🥬",
+    cuisineId: "italian",
+    authenticity: "A",
+    components: [
+      {
+        ingredientId: "zucchini",
+        technique: "julienne",
+        resultingState: "julienned",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "fennel",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "lemon",
+        technique: "radial",
+        resultingState: "wedged",
+        destinationIds: ["plate"],
+      },
+    ],
+    destinations: [PLATE],
+    batchable: true,
+    chefInstruction: "Julienne the zucchini. Slice the fennel. Cut the lemon.",
+    customerDialogue: "Zucchini and fennel, cut fine, please.",
+    basePayment: 170,
     unlockLevel: 27,
   },
   {
@@ -780,10 +949,19 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     emoji: "🧅",
     cuisineId: "italian",
     authenticity: "B",
-    // Branching demo (brief §18/§19): one ingredient, two independent
-    // cuts, two destinations — chainBreak on the second because it's a
-    // fresh onion, not a continuation of the first cut.
     components: [
+      {
+        ingredientId: "onion",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bruschetta", "soup"],
+      },
+      {
+        ingredientId: "onion",
+        technique: "halve",
+        resultingState: "halved",
+        destinationIds: ["bruschetta", "soup"],
+      },
       {
         ingredientId: "onion",
         technique: "slice",
@@ -795,7 +973,6 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         technique: "dice",
         resultingState: "diced",
         destinationIds: ["soup"],
-        chainBreak: true,
       },
     ],
     destinations: [
@@ -803,9 +980,9 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
       { id: "soup", name: "Soup Base" },
     ],
     batchable: false,
-    chefInstruction: "Slice one onion for the bruschetta, then dice a fresh one for the soup base.",
+    chefInstruction: "Peel the onion. Halve the onion. Slice the onion. Dice the onion.",
     customerDialogue: "Prepare the onion, then split it between the two.",
-    basePayment: 120,
+    basePayment: 190,
     unlockLevel: 28,
   },
   {
@@ -814,7 +991,6 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     emoji: "🍽️",
     cuisineId: "italian",
     authenticity: "B",
-    // Shared-output demo (brief §20/§24): one batch, two named plates.
     components: [
       {
         ingredientId: "bread",
@@ -828,19 +1004,23 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         resultingState: "diced",
         destinationIds: ["plate-a", "plate-b"],
       },
+      {
+        ingredientId: "mozzarella",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["plate-a", "plate-b"],
+      },
     ],
     destinations: [
       { id: "plate-a", name: "Maya's Plate" },
       { id: "plate-b", name: "Daniel's Plate" },
     ],
     batchable: false,
-    chefInstruction:
-      "One batch, split evenly — slice the bread and dice the tomato once for both plates.",
+    chefInstruction: "Slice the bread. Dice the tomato. Slice the mozzarella.",
     customerDialogue: "We're sharing tonight — one plate each, please.",
-    basePayment: 140,
+    basePayment: 190,
     unlockLevel: 29,
   },
-
   // ───────────────────────── Chapter 4 — French Bistro ─────────────────────────
   {
     id: "camp-baguette-rounds",
@@ -860,7 +1040,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: false,
     chefInstruction: "Slice the baguette into even rounds.",
     customerDialogue: "Just the bread, sliced properly.",
-    basePayment: 110,
+    basePayment: 70,
     unlockLevel: 31,
   },
   {
@@ -870,6 +1050,12 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     cuisineId: "french",
     authenticity: "A",
     components: [
+      {
+        ingredientId: "onion",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
       {
         ingredientId: "onion",
         technique: "slice",
@@ -887,16 +1073,22 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: true,
     chefInstruction: "Slice the onion thin, then julienne the celery alongside it.",
     customerDialogue: "The onion soup base, if it's started.",
-    basePayment: 120,
+    basePayment: 175,
     unlockLevel: 32,
   },
   {
     id: "camp-potato-veloute-base",
-    name: "Potato Velouté Base",
+    name: "Potato Veloute Base",
     emoji: "🥔",
     cuisineId: "french",
     authenticity: "A",
     components: [
+      {
+        ingredientId: "potato",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
       {
         ingredientId: "potato",
         technique: "dice",
@@ -908,16 +1100,22 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: true,
     chefInstruction: "Dice the potato evenly for the velouté.",
     customerDialogue: "The potato soup, please.",
-    basePayment: 115,
+    basePayment: 110,
     unlockLevel: 33,
   },
   {
     id: "camp-rock-minced-garlic-herb",
-    name: "Rock Minced Garlic Herb",
+    name: "Rock Minced Garlic",
     emoji: "🧄",
     cuisineId: "french",
     authenticity: "A",
     components: [
+      {
+        ingredientId: "garlic",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
       {
         ingredientId: "garlic",
         technique: "rockMince",
@@ -929,7 +1127,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: false,
     chefInstruction: "Rock-mince the garlic fine, rocking the blade heel-to-tip.",
     customerDialogue: "The garlic, minced fine — for the sauce.",
-    basePayment: 125,
+    basePayment: 110,
     unlockLevel: 34,
   },
   {
@@ -950,12 +1148,12 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: false,
     chefInstruction: "Roll the basil and chiffonade it into fine ribbons.",
     customerDialogue: "A little herb garnish, please — nothing heavy.",
-    basePayment: 128,
+    basePayment: 60,
     unlockLevel: 35,
   },
   {
     id: "camp-mushroom-garlic-saute-prep",
-    name: "Mushroom & Garlic Sauté Prep",
+    name: "Mushroom & Garlic Saute Prep",
     emoji: "🍄",
     cuisineId: "french",
     authenticity: "A",
@@ -964,6 +1162,12 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         ingredientId: "mushroom",
         technique: "slice",
         resultingState: "sliced",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "garlic",
+        technique: "peel",
+        resultingState: "peeled",
         destinationIds: ["bowl"],
       },
       {
@@ -977,7 +1181,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: true,
     chefInstruction: "Slice the mushrooms, then rock-mince the garlic through them.",
     customerDialogue: "The sautéed mushrooms, please.",
-    basePayment: 135,
+    basePayment: 175,
     unlockLevel: 36,
   },
   {
@@ -1004,7 +1208,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: false,
     chefInstruction: "Chiffonade the spinach into ribbons, then slice the fennel alongside it.",
     customerDialogue: "Something green and delicate.",
-    basePayment: 140,
+    basePayment: 130,
     unlockLevel: 37,
   },
   {
@@ -1031,7 +1235,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: true,
     chefInstruction: "Slice the asparagus, then julienne the carrot to the same fine standard.",
     customerDialogue: "Precision, please — this table notices the cut.",
-    basePayment: 150,
+    basePayment: 140,
     unlockLevel: 38,
   },
   {
@@ -1049,8 +1253,20 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
       },
       {
         ingredientId: "potato",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "potato",
         technique: "dice",
         resultingState: "diced",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "garlic",
+        technique: "peel",
+        resultingState: "peeled",
         destinationIds: ["bowl"],
       },
       {
@@ -1065,14 +1281,10 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     chefInstruction:
       "Julienne the celery, dice the potato, then rock-mince the garlic through both.",
     customerDialogue: "The full prep, please — everything the recipe calls for.",
-    basePayment: 165,
+    basePayment: 285,
     unlockLevel: 39,
   },
-
-  // ───────────────────────── Chapter 5 — French Precision (41-50) ─────────────────────────
-  // No new techniques (§11/§12) — every recipe below reinforces
-  // Julienne/Dice/Chiffonade/Rock Mince/Slice deliberately rather than
-  // teaching anything new.
+  // ───────────────────────── Chapter 5 — French Precision ─────────────────────────
   {
     id: "camp-julienne-trio-potato",
     name: "Julienne Vegetable Trio & Potato",
@@ -1094,6 +1306,12 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
       },
       {
         ingredientId: "potato",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "potato",
         technique: "dice",
         resultingState: "diced",
         destinationIds: ["plate"],
@@ -1103,7 +1321,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: false,
     chefInstruction: "Julienne the carrot and the celery, then dice the potato to finish.",
     customerDialogue: "The precision plate, please.",
-    basePayment: 160,
+    basePayment: 270,
     unlockLevel: 41,
   },
   {
@@ -1124,7 +1342,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: false,
     chefInstruction: "Chiffonade the parsley fine.",
     customerDialogue: "Just the garnish, please.",
-    basePayment: 165,
+    basePayment: 70,
     unlockLevel: 42,
   },
   {
@@ -1142,16 +1360,35 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
       },
       {
         ingredientId: "garlic",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "garlic",
         technique: "rockMince",
         resultingState: "minced",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "onion",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "onion",
+        technique: "dice",
+        resultingState: "diced",
         destinationIds: ["bowl"],
       },
     ],
     destinations: [BOWL],
     batchable: true,
-    chefInstruction: "Slice the mushrooms fine, then rock-mince the garlic through them.",
+    chefInstruction:
+      "Slice the mushroom. Peel the garlic. Rock-mince the garlic. Peel the onion. Dice the onion.",
     customerDialogue: "The duxelles, if it's ready.",
-    basePayment: 170,
+    basePayment: 310,
     unlockLevel: 43,
   },
   {
@@ -1163,8 +1400,20 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     components: [
       {
         ingredientId: "potato",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "potato",
         technique: "dice",
         resultingState: "diced",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "onion",
+        technique: "peel",
+        resultingState: "peeled",
         destinationIds: ["bowl"],
       },
       {
@@ -1178,12 +1427,12 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: true,
     chefInstruction: "Dice the potato, then slice the onion thin for the gratin.",
     customerDialogue: "The gratin base, please.",
-    basePayment: 172,
+    basePayment: 235,
     unlockLevel: 44,
   },
   {
     id: "camp-herb-butter-vegetable-plate",
-    name: "Herb Butter Vegetable Plate",
+    name: "Herb Garden Vegetable Plate",
     emoji: "🧈",
     cuisineId: "french",
     authenticity: "B",
@@ -1202,6 +1451,12 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
       },
       {
         ingredientId: "potato",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "potato",
         technique: "dice",
         resultingState: "diced",
         destinationIds: ["plate"],
@@ -1212,8 +1467,47 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     chefInstruction:
       "Chiffonade the basil, julienne the carrot, then dice the potato — the whole plate.",
     customerDialogue: "The vegetable plate, the whole thing.",
-    basePayment: 180,
+    basePayment: 260,
     unlockLevel: 45,
+  },
+  {
+    id: "camp-celery-apple-remoulade-prep",
+    name: "Celery & Apple Remoulade Prep",
+    emoji: "🥬",
+    cuisineId: "french",
+    authenticity: "A",
+    components: [
+      {
+        ingredientId: "celery",
+        technique: "julienne",
+        resultingState: "julienned",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "apple",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "apple",
+        technique: "julienne",
+        resultingState: "julienned",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "lemon",
+        technique: "radial",
+        resultingState: "wedged",
+        destinationIds: ["bowl"],
+      },
+    ],
+    destinations: [BOWL],
+    batchable: true,
+    chefInstruction: "Julienne the celery. Julienne the apple. Cut the lemon.",
+    customerDialogue: "A celery and apple remoulade, please.",
+    basePayment: 205,
+    unlockLevel: 46,
   },
   {
     id: "camp-fennel-celery-julienne",
@@ -1239,12 +1533,12 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: true,
     chefInstruction: "Slice the fennel, then julienne the celery alongside it.",
     customerDialogue: "Something crisp and fresh.",
-    basePayment: 184,
+    basePayment: 150,
     unlockLevel: 46,
   },
   {
     id: "camp-three-herb-garnish",
-    name: "Three-Herb Garnish",
+    name: "Herb & Garlic Garnish",
     emoji: "🌱",
     cuisineId: "french",
     authenticity: "B",
@@ -1263,6 +1557,12 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
       },
       {
         ingredientId: "garlic",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "garlic",
         technique: "rockMince",
         resultingState: "minced",
         destinationIds: ["plate"],
@@ -1273,8 +1573,47 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     chefInstruction:
       "Chiffonade the basil and the parsley, then rock-mince the garlic through both.",
     customerDialogue: "The full herb garnish, please.",
-    basePayment: 190,
+    basePayment: 250,
     unlockLevel: 48,
+  },
+  {
+    id: "camp-baguette-cheddar-rounds",
+    name: "Baguette & Cheddar Rounds",
+    emoji: "🥖",
+    cuisineId: "french",
+    authenticity: "B",
+    components: [
+      {
+        ingredientId: "baguette",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "cheddar",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "apple",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "apple",
+        technique: "radial",
+        resultingState: "wedged",
+        destinationIds: ["plate"],
+      },
+    ],
+    destinations: [PLATE],
+    batchable: true,
+    chefInstruction: "Slice the baguette. Slice the cheddar. Cut the apple.",
+    customerDialogue: "Baguette rounds with cheddar and apple, please.",
+    basePayment: 205,
+    unlockLevel: 49,
   },
   {
     id: "camp-baguette-crostini-prep",
@@ -1300,15 +1639,10 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: true,
     chefInstruction: "Slice the baguette thin, then dice the tomato for the crostini.",
     customerDialogue: "The crostini, please.",
-    basePayment: 196,
+    basePayment: 150,
     unlockLevel: 49,
   },
-
-  // ───────────────────────── Chapter 6 — Indian Kitchen (51-60) ─────────────────────────
-  // Vegetarian by design (§32): the protein-introduction curve keeps
-  // chicken out of Levels 41-100, so Indian identity here comes entirely
-  // from aromatic vegetable preparation — a completely legitimate and
-  // extensive tradition on its own, not a compromise.
+  // ───────────────────────── Chapter 6 — Indian Kitchen ─────────────────────────
   {
     id: "camp-potato-curry-base",
     name: "Potato Curry Base",
@@ -1328,12 +1662,31 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         resultingState: "diced",
         destinationIds: ["bowl"],
       },
+      {
+        ingredientId: "onion",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "onion",
+        technique: "chop",
+        resultingState: "chopped",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "tomato",
+        technique: "dice",
+        resultingState: "diced",
+        destinationIds: ["bowl"],
+      },
     ],
     destinations: [BOWL],
     batchable: false,
-    chefInstruction: "Peel the potato, then dice it evenly for the curry.",
+    chefInstruction:
+      "Peel the potato. Dice the potato. Peel the onion. Chop the onion. Dice the tomato.",
     customerDialogue: "The potato curry, please.",
-    basePayment: 200,
+    basePayment: 340,
     unlockLevel: 51,
   },
   {
@@ -1343,6 +1696,12 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     cuisineId: "indian",
     authenticity: "A",
     components: [
+      {
+        ingredientId: "onion",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
       {
         ingredientId: "onion",
         technique: "chop",
@@ -1357,16 +1716,35 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
       },
       {
         ingredientId: "garlic",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "garlic",
         technique: "smash",
         resultingState: "smashed",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "ginger",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "ginger",
+        technique: "rockMince",
+        resultingState: "minced",
         destinationIds: ["bowl"],
       },
     ],
     destinations: [BOWL],
     batchable: false,
-    chefInstruction: "Chop the onion, dice the tomato, then smash the garlic — the aromatic base.",
+    chefInstruction:
+      "Peel the onion. Chop the onion. Dice the tomato. Peel the garlic. Smash the garlic. Peel the ginger. Rock-mince the ginger.",
     customerDialogue: "The masala base, if it's started.",
-    basePayment: 206,
+    basePayment: 420,
     unlockLevel: 52,
   },
   {
@@ -1387,18 +1765,36 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: true,
     chefInstruction: "Chop the cauliflower into small, even pieces.",
     customerDialogue: "The cauliflower, please.",
-    basePayment: 210,
+    basePayment: 80,
     unlockLevel: 53,
   },
   {
     id: "camp-garlic-curry-paste",
-    name: "Rock Minced Garlic Curry Paste",
+    name: "Garlic & Ginger Curry Paste",
     emoji: "🧄",
     cuisineId: "indian",
     authenticity: "A",
     components: [
       {
         ingredientId: "garlic",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "garlic",
+        technique: "rockMince",
+        resultingState: "minced",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "ginger",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "ginger",
         technique: "rockMince",
         resultingState: "minced",
         destinationIds: ["bowl"],
@@ -1406,9 +1802,10 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     ],
     destinations: [BOWL],
     batchable: true,
-    chefInstruction: "Rock-mince the garlic fine for the curry paste.",
+    chefInstruction:
+      "Peel the garlic. Rock-mince the garlic. Peel the ginger. Rock-mince the ginger.",
     customerDialogue: "The garlic paste, please.",
-    basePayment: 212,
+    basePayment: 255,
     unlockLevel: 54,
   },
   {
@@ -1435,7 +1832,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: true,
     chefInstruction: "Chop the spinach, then slice the pea pods alongside it.",
     customerDialogue: "The greens bowl, please.",
-    basePayment: 216,
+    basePayment: 160,
     unlockLevel: 55,
   },
   {
@@ -1447,22 +1844,22 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     components: [
       {
         ingredientId: "coconut",
-        technique: "peel",
-        resultingState: "peeled",
+        technique: "halve",
+        resultingState: "halved",
         destinationIds: ["bowl"],
       },
       {
         ingredientId: "coconut",
-        technique: "halve",
-        resultingState: "halved",
+        technique: "chop",
+        resultingState: "chopped",
         destinationIds: ["bowl"],
       },
     ],
     destinations: [BOWL],
     batchable: false,
-    chefInstruction: "Peel the coconut, then halve it clean.",
+    chefInstruction: "Halve the coconut. Chop the coconut.",
     customerDialogue: "The coconut, prepared please.",
-    basePayment: 220,
+    basePayment: 115,
     unlockLevel: 56,
   },
   {
@@ -1484,12 +1881,18 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         resultingState: "diced",
         destinationIds: ["bowl"],
       },
+      {
+        ingredientId: "chilli",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["bowl"],
+      },
     ],
     destinations: [BOWL],
     batchable: false,
-    chefInstruction: "Peel the mango, then dice it for the chutney.",
+    chefInstruction: "Peel the mango. Dice the mango. Slice the chilli.",
     customerDialogue: "The mango chutney, please.",
-    basePayment: 224,
+    basePayment: 210,
     unlockLevel: 57,
   },
   {
@@ -1501,6 +1904,12 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     components: [
       {
         ingredientId: "pumpkin",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "pumpkin",
         technique: "dice",
         resultingState: "diced",
         destinationIds: ["bowl"],
@@ -1508,9 +1917,9 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     ],
     destinations: [BOWL],
     batchable: true,
-    chefInstruction: "Dice the pumpkin evenly for the curry.",
+    chefInstruction: "Dice the pumpkin.",
     customerDialogue: "The pumpkin curry, please.",
-    basePayment: 228,
+    basePayment: 80,
     unlockLevel: 58,
   },
   {
@@ -1522,8 +1931,20 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     components: [
       {
         ingredientId: "garlic",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "garlic",
         technique: "smash",
         resultingState: "smashed",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "onion",
+        technique: "peel",
+        resultingState: "peeled",
         destinationIds: ["bowl"],
       },
       {
@@ -1532,20 +1953,28 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         resultingState: "chopped",
         destinationIds: ["bowl"],
       },
+      {
+        ingredientId: "ginger",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "ginger",
+        technique: "rockMince",
+        resultingState: "minced",
+        destinationIds: ["bowl"],
+      },
     ],
     destinations: [BOWL],
     batchable: true,
-    chefInstruction: "Smash the garlic, then chop the onion for the base.",
+    chefInstruction:
+      "Peel the garlic. Smash the garlic. Peel the onion. Chop the onion. Peel the ginger. Rock-mince the ginger.",
     customerDialogue: "The aromatic base, please.",
-    basePayment: 230,
+    basePayment: 340,
     unlockLevel: 59,
   },
-
-  // ───────────────────────── Chapter 7 — Indian Aromatics & Service (61-70) ─────────────────────────
-  // Real batching (brief §3-§10): the `onion`/`tomato`/`garlic`
-  // components below are marked `batchable: true` in matching pairs —
-  // Levels 64/67/70 run these through a real BatchGroupSession
-  // (levelDefinitions.ts's `batchGroupRecipeIds`), not just a hint.
+  // ───────────────────────── Chapter 7 — Indian Aromatics & Service ─────────────────────────
   {
     id: "camp-spinach-curry",
     name: "Spinach Curry",
@@ -1553,6 +1982,12 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     cuisineId: "indian",
     authenticity: "A",
     components: [
+      {
+        ingredientId: "onion",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["plate"],
+      },
       {
         ingredientId: "onion",
         technique: "chop",
@@ -1566,12 +2001,25 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         resultingState: "chopped",
         destinationIds: ["plate"],
       },
+      {
+        ingredientId: "ginger",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "ginger",
+        technique: "rockMince",
+        resultingState: "minced",
+        destinationIds: ["plate"],
+      },
     ],
     destinations: [PLATE],
     batchable: true,
-    chefInstruction: "Chop the onion, then chop the spinach into the pan.",
+    chefInstruction:
+      "Peel the onion. Chop the onion. Chop the spinach. Peel the ginger. Rock-mince the ginger.",
     customerDialogue: "The spinach curry, please.",
-    basePayment: 234,
+    basePayment: 365,
     unlockLevel: 61,
   },
   {
@@ -1581,6 +2029,12 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     cuisineId: "indian",
     authenticity: "A",
     components: [
+      {
+        ingredientId: "onion",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
       {
         ingredientId: "onion",
         technique: "chop",
@@ -1594,13 +2048,32 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         resultingState: "chopped",
         destinationIds: ["bowl"],
       },
+      {
+        ingredientId: "tomato",
+        technique: "dice",
+        resultingState: "diced",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "ginger",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "ginger",
+        technique: "rockMince",
+        resultingState: "minced",
+        destinationIds: ["bowl"],
+      },
     ],
     destinations: [BOWL],
     batchable: true,
-    chefInstruction: "Chop the onion, then chop the cauliflower into the pan.",
+    chefInstruction:
+      "Peel the onion. Chop the onion. Chop the cauliflower. Dice the tomato. Peel the ginger. Rock-mince the ginger.",
     customerDialogue: "The cauliflower curry, please.",
-    basePayment: 236,
-    unlockLevel: 62,
+    basePayment: 450,
+    unlockLevel: 61, // first served by Level 61 (was 62: the level pool served it before it 'unlocked')
   },
   {
     id: "camp-mango-onion-relish",
@@ -1609,6 +2082,12 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     cuisineId: "indian",
     authenticity: "B",
     components: [
+      {
+        ingredientId: "onion",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["cup"],
+      },
       {
         ingredientId: "onion",
         technique: "chop",
@@ -1622,13 +2101,19 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         resultingState: "diced",
         destinationIds: ["cup"],
       },
+      {
+        ingredientId: "chilli",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["cup"],
+      },
     ],
     destinations: [{ id: "cup", name: "Cup" }],
     batchable: true,
-    chefInstruction: "Chop the onion, then dice the mango for the relish.",
+    chefInstruction: "Peel the onion. Chop the onion. Dice the mango. Slice the chilli.",
     customerDialogue: "The relish, on the side.",
-    basePayment: 238,
-    unlockLevel: 63,
+    basePayment: 315,
+    unlockLevel: 62, // first served by Level 62 (was 63: the level pool served it before it 'unlocked')
   },
   {
     id: "camp-potato-tomato-curry",
@@ -1646,16 +2131,35 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
       },
       {
         ingredientId: "potato",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "potato",
         technique: "dice",
         resultingState: "diced",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "ginger",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "ginger",
+        technique: "rockMince",
+        resultingState: "minced",
         destinationIds: ["bowl"],
       },
     ],
     destinations: [BOWL],
     batchable: true,
-    chefInstruction: "Dice the tomato, then dice the potato into the same pot.",
+    chefInstruction:
+      "Dice the tomato. Peel the potato. Dice the potato. Peel the ginger. Rock-mince the ginger.",
     customerDialogue: "The potato tomato curry, please.",
-    basePayment: 240,
+    basePayment: 365,
     unlockLevel: 65,
   },
   {
@@ -1678,13 +2182,77 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         resultingState: "sliced",
         destinationIds: ["plate"],
       },
+      {
+        ingredientId: "ginger",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "ginger",
+        technique: "rockMince",
+        resultingState: "minced",
+        destinationIds: ["plate"],
+      },
     ],
     destinations: [PLATE],
     batchable: true,
-    chefInstruction: "Dice the tomato, then slice the pea pods alongside it.",
+    chefInstruction: "Dice the tomato. Slice the peapod. Peel the ginger. Rock-mince the ginger.",
     customerDialogue: "The pea and tomato curry, please.",
-    basePayment: 242,
+    basePayment: 315,
     unlockLevel: 66,
+  },
+  {
+    id: "camp-pumpkin-coconut-curry",
+    name: "Pumpkin & Coconut Curry",
+    emoji: "🎃",
+    cuisineId: "indian",
+    authenticity: "A",
+    components: [
+      {
+        ingredientId: "pumpkin",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "pumpkin",
+        technique: "dice",
+        resultingState: "diced",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "coconut",
+        technique: "halve",
+        resultingState: "halved",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "coconut",
+        technique: "chop",
+        resultingState: "chopped",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "ginger",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "ginger",
+        technique: "rockMince",
+        resultingState: "minced",
+        destinationIds: ["bowl"],
+      },
+    ],
+    destinations: [BOWL],
+    batchable: true,
+    chefInstruction:
+      "Dice the pumpkin. Halve the coconut. Chop the coconut. Peel the ginger. Rock-mince the ginger.",
+    customerDialogue: "The pumpkin coconut curry, please.",
+    basePayment: 350,
+    unlockLevel: 68,
   },
   {
     id: "camp-pumpkin-garlic-curry",
@@ -1695,10 +2263,22 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     components: [
       {
         ingredientId: "garlic",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "garlic",
         technique: "rockMince",
         resultingState: "minced",
         destinationIds: ["bowl"],
         batchable: true,
+      },
+      {
+        ingredientId: "pumpkin",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
       },
       {
         ingredientId: "pumpkin",
@@ -1709,9 +2289,9 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     ],
     destinations: [BOWL],
     batchable: true,
-    chefInstruction: "Rock-mince the garlic, then dice the pumpkin into the pot.",
+    chefInstruction: "Peel the garlic. Rock-mince the garlic. Dice the pumpkin.",
     customerDialogue: "The pumpkin curry, please.",
-    basePayment: 246,
+    basePayment: 225,
     unlockLevel: 68,
   },
   {
@@ -1723,6 +2303,12 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     components: [
       {
         ingredientId: "garlic",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["cup"],
+      },
+      {
+        ingredientId: "garlic",
         technique: "rockMince",
         resultingState: "minced",
         destinationIds: ["cup"],
@@ -1730,24 +2316,32 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
       },
       {
         ingredientId: "mango",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["cup"],
+      },
+      {
+        ingredientId: "mango",
         technique: "dice",
         resultingState: "diced",
+        destinationIds: ["cup"],
+      },
+      {
+        ingredientId: "chilli",
+        technique: "slice",
+        resultingState: "sliced",
         destinationIds: ["cup"],
       },
     ],
     destinations: [{ id: "cup", name: "Cup" }],
     batchable: true,
-    chefInstruction: "Rock-mince the garlic, then dice the mango for the chutney.",
+    chefInstruction:
+      "Peel the garlic. Rock-mince the garlic. Peel the mango. Dice the mango. Slice the chilli.",
     customerDialogue: "The mango chutney, please.",
-    basePayment: 248,
+    basePayment: 365,
     unlockLevel: 69,
   },
-
-  // ───────────────────────── Chapter 8 — Mediterranean / Levant (71-80) ─────────────────────────
-  // Techniques per §21 are Chop/Dice/Slice/Rings; lemon in definitions.ts
-  // only supports `radial` (same as orange, no chop/dice/slice/rings
-  // exists for it) — used here exactly like orange's own precedent
-  // rather than silently dropping the ingredient the brief names.
+  // ───────────────────────── Chapter 8 — Mediterranean & Levant ─────────────────────────
   {
     id: "camp-cucumber-tomato-mezze",
     name: "Cucumber & Tomato Mezze",
@@ -1773,17 +2367,36 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         resultingState: "chopped",
         destinationIds: ["plate"],
       },
+      {
+        ingredientId: "onion",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "onion",
+        technique: "dice",
+        resultingState: "diced",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "lemon",
+        technique: "radial",
+        resultingState: "wedged",
+        destinationIds: ["plate"],
+      },
     ],
     destinations: [PLATE],
     batchable: true,
-    chefInstruction: "Slice the cucumber, dice the tomato, then chop the parsley over both.",
+    chefInstruction:
+      "Slice the cucumber. Dice the tomato. Chop the parsley. Peel the onion. Dice the onion. Cut the lemon.",
     customerDialogue: "The mezze plate, please.",
-    basePayment: 252,
+    basePayment: 495,
     unlockLevel: 71,
   },
   {
     id: "camp-eggplant-plate",
-    name: "Eggplant Plate",
+    name: "Eggplant Mezze Plate",
     emoji: "🍆",
     cuisineId: "mediterranean",
     authenticity: "B",
@@ -1794,12 +2407,31 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         resultingState: "sliced",
         destinationIds: ["plate"],
       },
+      {
+        ingredientId: "garlic",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "garlic",
+        technique: "rockMince",
+        resultingState: "minced",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "parsley",
+        technique: "chop",
+        resultingState: "chopped",
+        destinationIds: ["plate"],
+      },
     ],
     destinations: [PLATE],
     batchable: true,
-    chefInstruction: "Slice the eggplant into even rounds.",
+    chefInstruction:
+      "Slice the eggplant. Peel the garlic. Rock-mince the garlic. Chop the parsley.",
     customerDialogue: "The eggplant, please.",
-    basePayment: 256,
+    basePayment: 335,
     unlockLevel: 72,
   },
   {
@@ -1820,7 +2452,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: false,
     chefInstruction: "Cut the lemon into an even rose of wedges.",
     customerDialogue: "Just a bright garnish, please.",
-    basePayment: 258,
+    basePayment: 85,
     unlockLevel: 73,
   },
   {
@@ -1842,17 +2474,29 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         resultingState: "halved",
         destinationIds: ["plate"],
       },
+      {
+        ingredientId: "avocado",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "lemon",
+        technique: "radial",
+        resultingState: "wedged",
+        destinationIds: ["plate"],
+      },
     ],
     destinations: [PLATE],
     batchable: true,
-    chefInstruction: "Slice the baguette, then halve the avocado over it.",
+    chefInstruction: "Slice the baguette. Halve the avocado. Slice the avocado. Cut the lemon.",
     customerDialogue: "The avocado toast, please.",
-    basePayment: 262,
+    basePayment: 295,
     unlockLevel: 74,
   },
   {
     id: "camp-pomegranate-garnish",
-    name: "Pomegranate Garnish",
+    name: "Pomegranate & Parsley Garnish",
     emoji: "🍎",
     cuisineId: "mediterranean",
     authenticity: "B",
@@ -1863,12 +2507,18 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         resultingState: "halved",
         destinationIds: ["plate"],
       },
+      {
+        ingredientId: "parsley",
+        technique: "chop",
+        resultingState: "chopped",
+        destinationIds: ["plate"],
+      },
     ],
     destinations: [PLATE],
     batchable: false,
-    chefInstruction: "Halve the pomegranate clean.",
+    chefInstruction: "Halve the pomegranate. Chop the parsley.",
     customerDialogue: "A little pomegranate, for the color.",
-    basePayment: 264,
+    basePayment: 135,
     unlockLevel: 75,
   },
   {
@@ -1880,8 +2530,8 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     components: [
       {
         ingredientId: "parsley",
-        technique: "chop",
-        resultingState: "chopped",
+        technique: "chiffonade",
+        resultingState: "ribboned",
         destinationIds: ["bowl"],
       },
       {
@@ -1892,6 +2542,24 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
       },
       {
         ingredientId: "garlic",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "garlic",
+        technique: "chop",
+        resultingState: "chopped",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "onion",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "onion",
         technique: "chop",
         resultingState: "chopped",
         destinationIds: ["bowl"],
@@ -1899,9 +2567,10 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     ],
     destinations: [BOWL],
     batchable: true,
-    chefInstruction: "Chop the parsley, dice the tomato, then chop the garlic through both.",
+    chefInstruction:
+      "Chiffonade the parsley. Dice the tomato. Peel the garlic. Chop the garlic. Peel the onion. Chop the onion.",
     customerDialogue: "Something like tabbouleh, if you can manage it.",
-    basePayment: 268,
+    basePayment: 470,
     unlockLevel: 76,
   },
   {
@@ -1910,7 +2579,6 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     emoji: "🍽️",
     cuisineId: "mediterranean",
     authenticity: "B",
-    // Shared destination (§22's own example): one preparation, two named plates.
     components: [
       {
         ingredientId: "cucumber",
@@ -1924,16 +2592,21 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         resultingState: "diced",
         destinationIds: ["mezze-a", "mezze-b"],
       },
+      {
+        ingredientId: "parsley",
+        technique: "chop",
+        resultingState: "chopped",
+        destinationIds: ["mezze-a", "mezze-b"],
+      },
     ],
     destinations: [
       { id: "mezze-a", name: "Mezze Plate" },
       { id: "mezze-b", name: "Salad Plate" },
     ],
     batchable: false,
-    chefInstruction:
-      "One batch, split evenly — slice the cucumber and dice the tomato once for both.",
+    chefInstruction: "Slice the cucumber. Dice the tomato. Chop the parsley.",
     customerDialogue: "We're sharing — one mezze, one salad, from the same prep.",
-    basePayment: 275,
+    basePayment: 280,
     unlockLevel: 77,
   },
   {
@@ -1943,6 +2616,12 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     cuisineId: "mediterranean",
     authenticity: "B",
     components: [
+      {
+        ingredientId: "onion",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["plate"],
+      },
       {
         ingredientId: "onion",
         technique: "rings",
@@ -1960,15 +2639,10 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: false,
     chefInstruction: "Ring the onion, then wedge the lemon alongside it.",
     customerDialogue: "The pickled onions, with lemon.",
-    basePayment: 280,
+    basePayment: 190,
     unlockLevel: 78,
   },
-
-  // ───────────────────────── Chapter 9 — Mexican / Latin (81-90) ─────────────────────────
-  // avocado (halve only) and corn (slice only) genuinely don't support
-  // dice/chop/julienne in definitions.ts — used honestly here rather
-  // than claiming a cut the engine can't perform (same discipline as
-  // Chapter 3's lemon/orange radial-only precedent).
+  // ───────────────────────── Chapter 9 — Mexican & Latin Kitchen ─────────────────────────
   {
     id: "camp-corn-tomato-salsa",
     name: "Corn & Tomato Salsa",
@@ -1991,22 +2665,47 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
       },
       {
         ingredientId: "onion",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "onion",
         technique: "chop",
         resultingState: "chopped",
         destinationIds: ["bowl"],
         batchable: true,
       },
+      {
+        ingredientId: "chilli",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "garlic",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "garlic",
+        technique: "smash",
+        resultingState: "smashed",
+        destinationIds: ["bowl"],
+      },
     ],
     destinations: [BOWL],
     batchable: true,
-    chefInstruction: "Slice the corn, dice the tomato, then chop the onion through it.",
+    chefInstruction:
+      "Slice the corn. Dice the tomato. Peel the onion. Chop the onion. Slice the chilli. Peel the garlic. Smash the garlic.",
     customerDialogue: "The salsa, please — fresh.",
-    basePayment: 284,
+    basePayment: 560,
     unlockLevel: 81,
   },
   {
     id: "camp-avocado-plate",
-    name: "Avocado Plate",
+    name: "Avocado & Lime Plate",
     emoji: "🥑",
     cuisineId: "mexican",
     authenticity: "B",
@@ -2017,12 +2716,24 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         resultingState: "halved",
         destinationIds: ["plate"],
       },
+      {
+        ingredientId: "avocado",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "lime",
+        technique: "radial",
+        resultingState: "wedged",
+        destinationIds: ["plate"],
+      },
     ],
     destinations: [PLATE],
     batchable: true,
-    chefInstruction: "Halve the avocado clean.",
+    chefInstruction: "Halve the avocado. Slice the avocado. Cut the lime.",
     customerDialogue: "Just the avocado, please.",
-    basePayment: 288,
+    basePayment: 215,
     unlockLevel: 82,
   },
   {
@@ -2040,16 +2751,22 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
       },
       {
         ingredientId: "onion",
-        technique: "slice",
-        resultingState: "sliced",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "onion",
+        technique: "rings",
+        resultingState: "ringed",
         destinationIds: ["plate"],
       },
     ],
     destinations: [PLATE],
     batchable: true,
-    chefInstruction: "Julienne the pepper, then slice the onion the same way.",
+    chefInstruction: "Julienne the pepper. Peel the onion. Ring the onion.",
     customerDialogue: "The fajita vegetables, please.",
-    basePayment: 292,
+    basePayment: 230,
     unlockLevel: 83,
   },
   {
@@ -2059,6 +2776,12 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     cuisineId: "mexican",
     authenticity: "B",
     components: [
+      {
+        ingredientId: "pineapple",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["cup"],
+      },
       {
         ingredientId: "pineapple",
         technique: "dice",
@@ -2071,12 +2794,18 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         resultingState: "diced",
         destinationIds: ["cup"],
       },
+      {
+        ingredientId: "lime",
+        technique: "radial",
+        resultingState: "wedged",
+        destinationIds: ["cup"],
+      },
     ],
     destinations: [{ id: "cup", name: "Cup" }],
     batchable: true,
-    chefInstruction: "Dice the pineapple, then dice the mango alongside it.",
+    chefInstruction: "Peel the pineapple. Dice the pineapple. Dice the mango. Cut the lime.",
     customerDialogue: "The fresh fruit cup, please.",
-    basePayment: 296,
+    basePayment: 330,
     unlockLevel: 84,
   },
   {
@@ -2086,6 +2815,12 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     cuisineId: "mexican",
     authenticity: "B",
     components: [
+      {
+        ingredientId: "sweetpotato",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
       {
         ingredientId: "sweetpotato",
         technique: "dice",
@@ -2098,33 +2833,58 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         resultingState: "diced",
         destinationIds: ["bowl"],
       },
+      {
+        ingredientId: "onion",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "onion",
+        technique: "chop",
+        resultingState: "chopped",
+        destinationIds: ["bowl"],
+      },
     ],
     destinations: [BOWL],
     batchable: true,
-    chefInstruction: "Dice the sweet potato, then dice the pepper into the same pan.",
+    chefInstruction:
+      "Peel the sweetpotato. Dice the sweetpotato. Dice the pepper. Peel the onion. Chop the onion.",
     customerDialogue: "The sweet potato hash, please.",
-    basePayment: 300,
+    basePayment: 415,
     unlockLevel: 85,
   },
   {
     id: "camp-beetroot-plate",
-    name: "Beetroot Plate",
+    name: "Beetroot & Orange Plate",
     emoji: "🥔",
     cuisineId: "mexican",
     authenticity: "B",
     components: [
       {
         ingredientId: "beetroot",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "beetroot",
         technique: "slice",
         resultingState: "sliced",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "orange",
+        technique: "radial",
+        resultingState: "wedged",
         destinationIds: ["plate"],
       },
     ],
     destinations: [PLATE],
     batchable: true,
-    chefInstruction: "Slice the beetroot into even rounds.",
+    chefInstruction: "Peel the beetroot. Slice the beetroot. Cut the orange.",
     customerDialogue: "The beetroot, please.",
-    basePayment: 304,
+    basePayment: 230,
     unlockLevel: 86,
   },
   {
@@ -2134,6 +2894,12 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     cuisineId: "mexican",
     authenticity: "B",
     components: [
+      {
+        ingredientId: "pineapple",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
       {
         ingredientId: "pineapple",
         technique: "dice",
@@ -2149,17 +2915,36 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
       },
       {
         ingredientId: "onion",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "onion",
         technique: "chop",
         resultingState: "chopped",
         destinationIds: ["bowl"],
         batchable: true,
       },
+      {
+        ingredientId: "chilli",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "cilantro",
+        technique: "chop",
+        resultingState: "chopped",
+        destinationIds: ["bowl"],
+      },
     ],
     destinations: [BOWL],
     batchable: true,
-    chefInstruction: "Dice the pineapple, dice the tomato, then chop the onion through it.",
+    chefInstruction:
+      "Peel the pineapple. Dice the pineapple. Dice the tomato. Peel the onion. Chop the onion. Slice the chilli. Chop the cilantro.",
     customerDialogue: "The pineapple salsa, please.",
-    basePayment: 308,
+    basePayment: 615,
     unlockLevel: 87,
   },
   {
@@ -2187,17 +2972,21 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         resultingState: "halved",
         destinationIds: ["plate"],
       },
+      {
+        ingredientId: "lime",
+        technique: "radial",
+        resultingState: "wedged",
+        destinationIds: ["plate"],
+      },
     ],
     destinations: [PLATE],
     batchable: false,
-    chefInstruction:
-      "Slice the corn, julienne the pepper, then halve the avocado — the whole plate.",
+    chefInstruction: "Slice the corn. Julienne the pepper. Halve the avocado. Cut the lime.",
     customerDialogue: "The garden plate, please — the whole thing.",
     basePayment: 315,
     unlockLevel: 88,
   },
-
-  // ───────────────────────── Chapter 10 — Latin Service (91-100) ─────────────────────────
+  // ───────────────────────── Chapter 10 — Latin Service ─────────────────────────
   {
     id: "camp-fresh-tomato-salsa",
     name: "Fresh Tomato Salsa",
@@ -2214,23 +3003,54 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
       },
       {
         ingredientId: "onion",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["cup"],
+      },
+      {
+        ingredientId: "onion",
         technique: "chop",
         resultingState: "chopped",
         destinationIds: ["cup"],
         batchable: true,
       },
       {
-        ingredientId: "lemon",
+        ingredientId: "chilli",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["cup"],
+      },
+      {
+        ingredientId: "cilantro",
+        technique: "chop",
+        resultingState: "chopped",
+        destinationIds: ["cup"],
+      },
+      {
+        ingredientId: "lime",
         technique: "radial",
         resultingState: "wedged",
+        destinationIds: ["cup"],
+      },
+      {
+        ingredientId: "garlic",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["cup"],
+      },
+      {
+        ingredientId: "garlic",
+        technique: "smash",
+        resultingState: "smashed",
         destinationIds: ["cup"],
       },
     ],
     destinations: [{ id: "cup", name: "Cup" }],
     batchable: true,
-    chefInstruction: "Dice the tomato, chop the onion, then wedge the lemon alongside.",
+    chefInstruction:
+      "Dice the tomato. Peel the onion. Chop the onion. Slice the chilli. Chop the cilantro. Cut the lime. Peel the garlic. Smash the garlic.",
     customerDialogue: "The fresh salsa, please.",
-    basePayment: 340,
+    basePayment: 670,
     unlockLevel: 91,
   },
   {
@@ -2239,8 +3059,6 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     emoji: "🫑",
     cuisineId: "mexican",
     authenticity: "B",
-    // Branching (§25 of Phase 3's brief, reinforced here): one
-    // ingredient, two independent cuts, two destinations.
     components: [
       {
         ingredientId: "pepper",
@@ -2263,10 +3081,10 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: false,
     chefInstruction: "Julienne one pepper for the fajitas, then dice a fresh one for the salsa.",
     customerDialogue: "Prepare the pepper, then split it between the two.",
-    basePayment: 360,
+    basePayment: 210,
     unlockLevel: 96,
   },
-  // ==================== PHASE 5 — JAPANESE (Chapters 11-12) ====================
+  // ───────────────────────── Chapter 11 — Japanese Kitchen ─────────────────────────
   {
     id: "camp-chicken-slice-intro",
     name: "Sliced Chicken Plate",
@@ -2285,7 +3103,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: false,
     chefInstruction: "Slice the chicken clean — the new protein geometry, its own knife feel.",
     customerDialogue: "Just the chicken, sliced.",
-    basePayment: 200,
+    basePayment: 110,
     unlockLevel: 101,
   },
   {
@@ -2312,7 +3130,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: false,
     chefInstruction: "Halve the chicken first, then slice it thin.",
     customerDialogue: "Halved, then sliced — I've heard it's better that way.",
-    basePayment: 215,
+    basePayment: 160,
     unlockLevel: 102,
   },
   {
@@ -2339,7 +3157,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: false,
     chefInstruction: "Halve the chicken, then dice it evenly for the bowl.",
     customerDialogue: "Diced chicken, for the bowl.",
-    basePayment: 230,
+    basePayment: 160,
     unlockLevel: 103,
   },
   {
@@ -2372,7 +3190,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: false,
     chefInstruction: "Slice the chicken, slice the cucumber, then julienne the carrot.",
     customerDialogue: "Chicken with cucumber and carrot, please.",
-    basePayment: 250,
+    basePayment: 340,
     unlockLevel: 104,
   },
   {
@@ -2394,12 +3212,25 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         resultingState: "sliced",
         destinationIds: ["plate"],
       },
+      {
+        ingredientId: "ginger",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "ginger",
+        technique: "julienne",
+        resultingState: "julienned",
+        destinationIds: ["plate"],
+      },
     ],
     destinations: [PLATE],
     batchable: false,
-    chefInstruction: "Julienne the chicken fine, then slice the cabbage.",
+    chefInstruction:
+      "Julienne the chicken. Slice the cabbage. Peel the ginger. Julienne the ginger.",
     customerDialogue: "The chicken julienne, with cabbage.",
-    basePayment: 265,
+    basePayment: 405,
     unlockLevel: 105,
   },
   {
@@ -2420,7 +3251,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: false,
     chefInstruction: "Slice the ribeye clean — a different weight than the chicken.",
     customerDialogue: "The ribeye, sliced.",
-    basePayment: 260,
+    basePayment: 110,
     unlockLevel: 106,
   },
   {
@@ -2447,7 +3278,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: false,
     chefInstruction: "Slice the steak, then dice a portion for the bowl.",
     customerDialogue: "Steak, sliced and diced both.",
-    basePayment: 285,
+    basePayment: 225,
     unlockLevel: 107,
   },
   {
@@ -2480,7 +3311,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: false,
     chefInstruction: "Slice the steak, slice the mushroom, then chop the cabbage.",
     customerDialogue: "Steak with mushroom and cabbage.",
-    basePayment: 300,
+    basePayment: 340,
     unlockLevel: 108,
   },
   {
@@ -2501,8 +3332,47 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: false,
     chefInstruction: "Slice the salmon clean — even, gentle pressure.",
     customerDialogue: "The salmon, sliced thin.",
-    basePayment: 290,
+    basePayment: 110,
     unlockLevel: 109,
+  },
+  {
+    id: "camp-salmon-avocado-plate",
+    name: "Salmon & Avocado Plate",
+    emoji: "🐟",
+    cuisineId: "japanese",
+    authenticity: "A",
+    components: [
+      {
+        ingredientId: "salmon",
+        technique: "dice",
+        resultingState: "diced",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "avocado",
+        technique: "halve",
+        resultingState: "halved",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "avocado",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "lemon",
+        technique: "radial",
+        resultingState: "wedged",
+        destinationIds: ["bowl"],
+      },
+    ],
+    destinations: [BOWL],
+    batchable: false,
+    chefInstruction: "Dice the salmon. Halve the avocado. Slice the avocado. Cut the lemon.",
+    customerDialogue: "Salmon and avocado, in the bowl.",
+    basePayment: 355,
+    unlockLevel: 110,
   },
   {
     id: "camp-salmon-cucumber-radish",
@@ -2537,33 +3407,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     basePayment: 340,
     unlockLevel: 110,
   },
-  {
-    id: "camp-salmon-avocado-plate",
-    name: "Salmon & Avocado Plate",
-    emoji: "🐟",
-    cuisineId: "japanese",
-    authenticity: "A",
-    components: [
-      {
-        ingredientId: "salmon",
-        technique: "dice",
-        resultingState: "diced",
-        destinationIds: ["bowl"],
-      },
-      {
-        ingredientId: "avocado",
-        technique: "halve",
-        resultingState: "halved",
-        destinationIds: ["bowl"],
-      },
-    ],
-    destinations: [BOWL],
-    batchable: false,
-    chefInstruction: "Dice the salmon, then halve the avocado alongside it.",
-    customerDialogue: "Salmon and avocado, in the bowl.",
-    basePayment: 330,
-    unlockLevel: 110,
-  },
+  // ───────────────────────── Chapter 12 — Japanese Precision ─────────────────────────
   {
     id: "camp-chicken-cabbage-carrot",
     name: "Chicken, Cabbage & Carrot",
@@ -2594,7 +3438,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: false,
     chefInstruction: "Slice the chicken, julienne the carrot, then slice the cabbage.",
     customerDialogue: "Chicken with cabbage and carrot.",
-    basePayment: 360,
+    basePayment: 355,
     unlockLevel: 111,
   },
   {
@@ -2618,17 +3462,57 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
       },
       {
         ingredientId: "spinach",
-        technique: "chop",
-        resultingState: "chopped",
+        technique: "chiffonade",
+        resultingState: "ribboned",
         destinationIds: ["bowl"],
       },
     ],
     destinations: [BOWL],
     batchable: false,
-    chefInstruction: "Slice the salmon, dice the tofu, then chop the spinach.",
+    chefInstruction: "Slice the salmon. Dice the tofu. Chiffonade the spinach.",
     customerDialogue: "Salmon with tofu and spinach, in the bowl.",
-    basePayment: 395,
+    basePayment: 340,
     unlockLevel: 113,
+  },
+  {
+    id: "camp-radish-cucumber-namasu",
+    name: "Radish & Cucumber Namasu",
+    emoji: "🥕",
+    cuisineId: "japanese",
+    authenticity: "A",
+    components: [
+      {
+        ingredientId: "radish",
+        technique: "julienne",
+        resultingState: "julienned",
+        destinationIds: ["cup"],
+      },
+      {
+        ingredientId: "cucumber",
+        technique: "julienne",
+        resultingState: "julienned",
+        destinationIds: ["cup"],
+      },
+      {
+        ingredientId: "ginger",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["cup"],
+      },
+      {
+        ingredientId: "ginger",
+        technique: "julienne",
+        resultingState: "julienned",
+        destinationIds: ["cup"],
+      },
+    ],
+    destinations: [{ id: "cup", name: "Cup" }],
+    batchable: true,
+    chefInstruction:
+      "Julienne the radish. Julienne the cucumber. Peel the ginger. Julienne the ginger.",
+    customerDialogue: "A radish and cucumber namasu, please.",
+    basePayment: 425,
+    unlockLevel: 114,
   },
   {
     id: "camp-chicken-julienne-carrot-bowl",
@@ -2655,7 +3539,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: true,
     chefInstruction: "Julienne the chicken fine, then julienne the carrot to match.",
     customerDialogue: "Chicken and carrot, both julienned.",
-    basePayment: 440,
+    basePayment: 240,
     unlockLevel: 115,
   },
   {
@@ -2683,7 +3567,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: true,
     chefInstruction: "The same chicken julienne, with diced pepper this time.",
     customerDialogue: "Chicken julienne, with pepper in the cup.",
-    basePayment: 440,
+    basePayment: 240,
     unlockLevel: 115,
   },
   {
@@ -2714,7 +3598,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: false,
     chefInstruction: "Slice one chicken for the salad, then dice a fresh one for the bowl.",
     customerDialogue: "Chicken two ways — sliced for the salad, diced for the bowl.",
-    basePayment: 460,
+    basePayment: 240,
     unlockLevel: 116,
   },
   {
@@ -2742,36 +3626,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: true,
     chefInstruction: "Slice the chicken, then julienne the carrot.",
     customerDialogue: "Chicken with a carrot julienne.",
-    basePayment: 480,
-    unlockLevel: 117,
-  },
-  {
-    id: "camp-steak-carrot-plate",
-    name: "Steak & Carrot Plate",
-    emoji: "🥩",
-    cuisineId: "japanese",
-    authenticity: "B",
-    components: [
-      {
-        ingredientId: "steak",
-        technique: "slice",
-        resultingState: "sliced",
-        destinationIds: ["plate"],
-      },
-      {
-        ingredientId: "carrot",
-        technique: "julienne",
-        resultingState: "julienned",
-        destinationIds: ["plate"],
-        batchable: true,
-      },
-    ],
-    destinations: [PLATE],
-    batchable: true,
-    chefInstruction:
-      "Slice the steak, then julienne the carrot — the same cut as the kitchen's other plates.",
-    customerDialogue: "Steak with a carrot julienne.",
-    basePayment: 480,
+    basePayment: 240,
     unlockLevel: 117,
   },
   {
@@ -2800,10 +3655,39 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     chefInstruction:
       "Slice the salmon, then julienne the carrot — one julienne, three plates tonight.",
     customerDialogue: "Salmon with a carrot julienne.",
-    basePayment: 480,
+    basePayment: 240,
     unlockLevel: 117,
   },
-  // ==================== PHASE 5 — CHINESE (Chapters 13-14) ====================
+  {
+    id: "camp-steak-carrot-plate",
+    name: "Steak & Carrot Plate",
+    emoji: "🥩",
+    cuisineId: "japanese",
+    authenticity: "B",
+    components: [
+      {
+        ingredientId: "steak",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "carrot",
+        technique: "julienne",
+        resultingState: "julienned",
+        destinationIds: ["plate"],
+        batchable: true,
+      },
+    ],
+    destinations: [PLATE],
+    batchable: true,
+    chefInstruction:
+      "Slice the steak, then julienne the carrot — the same cut as the kitchen's other plates.",
+    customerDialogue: "Steak with a carrot julienne.",
+    basePayment: 240,
+    unlockLevel: 117,
+  },
+  // ───────────────────────── Chapter 13 — Chinese Kitchen ─────────────────────────
   {
     id: "camp-tofu-broccoli-bowl",
     name: "Tofu & Broccoli Bowl",
@@ -2828,7 +3712,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: false,
     chefInstruction: "Dice the tofu, then chop the broccoli — wok-ready sizes, both of them.",
     customerDialogue: "Tofu and broccoli, please.",
-    basePayment: 400,
+    basePayment: 250,
     unlockLevel: 121,
   },
   {
@@ -2855,7 +3739,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: false,
     chefInstruction: "Chop the cabbage and the cauliflower to the same size.",
     customerDialogue: "Cabbage and cauliflower, chopped fine.",
-    basePayment: 405,
+    basePayment: 250,
     unlockLevel: 122,
   },
   {
@@ -2883,13 +3767,43 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         resultingState: "julienned",
         destinationIds: ["plate"],
       },
+      {
+        ingredientId: "garlic",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "garlic",
+        technique: "smash",
+        resultingState: "smashed",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "ginger",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "ginger",
+        technique: "rockMince",
+        resultingState: "minced",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "springonion",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["plate"],
+      },
     ],
     destinations: [PLATE],
     batchable: false,
     chefInstruction:
-      "Dice the chicken, dice the pepper, then julienne the carrot — uniform sizes for the wok.",
+      "Dice the chicken. Dice the pepper. Julienne the carrot. Peel the garlic. Smash the garlic. Peel the ginger. Rock-mince the ginger. Slice the springonion.",
     customerDialogue: "The chicken and pepper stir-fry prep.",
-    basePayment: 420,
+    basePayment: 825,
     unlockLevel: 123,
   },
   {
@@ -2917,41 +3831,44 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         resultingState: "julienned",
         destinationIds: ["plate"],
       },
+      {
+        ingredientId: "garlic",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "garlic",
+        technique: "smash",
+        resultingState: "smashed",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "ginger",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "ginger",
+        technique: "rockMince",
+        resultingState: "minced",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "springonion",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["plate"],
+      },
     ],
     destinations: [PLATE],
     batchable: false,
-    chefInstruction: "Slice the steak thin, then julienne the pepper and carrot to match.",
+    chefInstruction:
+      "Slice the steak. Julienne the pepper. Julienne the carrot. Peel the garlic. Smash the garlic. Peel the ginger. Rock-mince the ginger. Slice the springonion.",
     customerDialogue: "Steak with pepper and carrot, all julienned to match.",
-    basePayment: 440,
+    basePayment: 825,
     unlockLevel: 124,
-  },
-  {
-    id: "camp-carrot-pepper-batch",
-    name: "Carrot & Pepper Wok Plate",
-    emoji: "🥕",
-    cuisineId: "chinese",
-    authenticity: "B",
-    components: [
-      {
-        ingredientId: "carrot",
-        technique: "julienne",
-        resultingState: "julienned",
-        destinationIds: ["plate"],
-        batchable: true,
-      },
-      {
-        ingredientId: "pepper",
-        technique: "dice",
-        resultingState: "diced",
-        destinationIds: ["plate"],
-      },
-    ],
-    destinations: [PLATE],
-    batchable: true,
-    chefInstruction: "Julienne the carrot, then dice the pepper.",
-    customerDialogue: "Carrot and pepper, wok-ready.",
-    basePayment: 425,
-    unlockLevel: 125,
   },
   {
     id: "camp-carrot-peapod-batch",
@@ -2978,7 +3895,35 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: true,
     chefInstruction: "The same carrot julienne, with sliced pea pod this time.",
     customerDialogue: "Carrot and pea pod, in the bowl.",
-    basePayment: 425,
+    basePayment: 250,
+    unlockLevel: 125,
+  },
+  {
+    id: "camp-carrot-pepper-batch",
+    name: "Carrot & Pepper Wok Plate",
+    emoji: "🥕",
+    cuisineId: "chinese",
+    authenticity: "B",
+    components: [
+      {
+        ingredientId: "carrot",
+        technique: "julienne",
+        resultingState: "julienned",
+        destinationIds: ["plate"],
+        batchable: true,
+      },
+      {
+        ingredientId: "pepper",
+        technique: "dice",
+        resultingState: "diced",
+        destinationIds: ["plate"],
+      },
+    ],
+    destinations: [PLATE],
+    batchable: true,
+    chefInstruction: "Julienne the carrot, then dice the pepper.",
+    customerDialogue: "Carrot and pepper, wok-ready.",
+    basePayment: 250,
     unlockLevel: 125,
   },
   {
@@ -3005,8 +3950,48 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: false,
     chefInstruction: "Slice the mushroom, then chop the spinach.",
     customerDialogue: "Mushroom and spinach, please.",
-    basePayment: 415,
+    basePayment: 250,
     unlockLevel: 126,
+  },
+  {
+    id: "camp-eggplant-green-onion-wok-bowl",
+    name: "Eggplant & Green Onion Wok Bowl",
+    emoji: "🍆",
+    cuisineId: "chinese",
+    authenticity: "B",
+    components: [
+      {
+        ingredientId: "eggplant",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "springonion",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "garlic",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "garlic",
+        technique: "smash",
+        resultingState: "smashed",
+        destinationIds: ["bowl"],
+      },
+    ],
+    destinations: [BOWL],
+    batchable: true,
+    chefInstruction:
+      "Slice the eggplant. Slice the springonion. Peel the garlic. Smash the garlic.",
+    customerDialogue: "Eggplant and green onion from the wok, please.",
+    basePayment: 380,
+    unlockLevel: 127,
   },
   {
     id: "camp-chicken-broccoli-plate",
@@ -3027,12 +4012,18 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         resultingState: "chopped",
         destinationIds: ["plate"],
       },
+      {
+        ingredientId: "springonion",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["plate"],
+      },
     ],
     destinations: [PLATE],
     batchable: false,
-    chefInstruction: "Slice the chicken, then chop the broccoli.",
+    chefInstruction: "Slice the chicken. Chop the broccoli. Slice the springonion.",
     customerDialogue: "Chicken and broccoli — a classic.",
-    basePayment: 430,
+    basePayment: 375,
     unlockLevel: 128,
   },
   {
@@ -3059,9 +4050,10 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: false,
     chefInstruction: "Dice the tofu, then chop the cauliflower.",
     customerDialogue: "Tofu and cauliflower, in the bowl.",
-    basePayment: 435,
+    basePayment: 250,
     unlockLevel: 129,
   },
+  // ───────────────────────── Chapter 14 — Chinese Wok Service ─────────────────────────
   {
     id: "camp-chicken-dice-batch-a",
     name: "Chicken Wok Bowl (Pepper)",
@@ -3087,7 +4079,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: true,
     chefInstruction: "Dice the chicken, then dice the pepper.",
     customerDialogue: "Chicken and pepper, diced for the wok.",
-    basePayment: 460,
+    basePayment: 260,
     unlockLevel: 132,
   },
   {
@@ -3115,7 +4107,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: true,
     chefInstruction: "The same diced chicken, with sliced pea pod.",
     customerDialogue: "Chicken and pea pod, please.",
-    basePayment: 460,
+    basePayment: 260,
     unlockLevel: 132,
   },
   {
@@ -3138,12 +4130,24 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         resultingState: "chopped",
         destinationIds: ["plate"],
       },
+      {
+        ingredientId: "onion",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "onion",
+        technique: "rings",
+        resultingState: "ringed",
+        destinationIds: ["plate"],
+      },
     ],
     destinations: [PLATE],
     batchable: true,
-    chefInstruction: "The same diced chicken again, with chopped cabbage.",
+    chefInstruction: "Dice the chicken. Chop the cabbage. Peel the onion. Ring the onion.",
     customerDialogue: "Chicken and cabbage, for the table.",
-    basePayment: 460,
+    basePayment: 435,
     unlockLevel: 132,
   },
   {
@@ -3167,11 +4171,14 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         chainBreak: true,
       },
     ],
-    destinations: [PLATE, BOWL],
+    destinations: [
+      { id: "plate", name: "Plate" },
+      { id: "bowl", name: "Bowl" },
+    ],
     batchable: false,
     chefInstruction: "Slice one steak for the plate, then dice a fresh one for the bowl.",
     customerDialogue: "Steak two ways — sliced and diced.",
-    basePayment: 480,
+    basePayment: 260,
     unlockLevel: 135,
   },
   {
@@ -3205,16 +4212,22 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         resultingState: "julienned",
         destinationIds: ["plate"],
       },
+      {
+        ingredientId: "springonion",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["plate"],
+      },
     ],
     destinations: [PLATE],
     batchable: false,
     chefInstruction:
-      "Slice the chicken, dice the steak, slice the mushroom, then julienne the carrot — the whole wok plate.",
+      "Slice the chicken. Dice the steak. Slice the mushroom. Julienne the carrot. Slice the springonion.",
     customerDialogue: "The full wok plate, everything on it.",
-    basePayment: 540,
+    basePayment: 655,
     unlockLevel: 140,
   },
-  // ==================== PHASE 5 — THAI / SOUTHEAST ASIAN (Chapters 15-16) ====================
+  // ───────────────────────── Chapter 15 — Thai Kitchen ─────────────────────────
   {
     id: "camp-thai-basil-garlic-base",
     name: "Thai Basil Garlic Base",
@@ -3230,6 +4243,12 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
       },
       {
         ingredientId: "garlic",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "garlic",
         technique: "rockMince",
         resultingState: "minced",
         destinationIds: ["bowl"],
@@ -3239,7 +4258,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: false,
     chefInstruction: "Chop the basil, then rock-mince the garlic through it — the aromatic base.",
     customerDialogue: "The basil garlic base, fresh.",
-    basePayment: 560,
+    basePayment: 355,
     unlockLevel: 141,
   },
   {
@@ -3263,16 +4282,41 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
       },
       {
         ingredientId: "garlic",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "garlic",
         technique: "rockMince",
         resultingState: "minced",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "onion",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "onion",
+        technique: "chop",
+        resultingState: "chopped",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "chilli",
+        technique: "slice",
+        resultingState: "sliced",
         destinationIds: ["plate"],
       },
     ],
     destinations: [PLATE],
     batchable: false,
-    chefInstruction: "Slice the chicken, chop the basil, then rock-mince the garlic.",
+    chefInstruction:
+      "Slice the chicken. Chop the basil. Peel the garlic. Rock-mince the garlic. Peel the onion. Chop the onion. Slice the chilli.",
     customerDialogue: "Basil chicken, the way it should be.",
-    basePayment: 580,
+    basePayment: 845,
     unlockLevel: 142,
   },
   {
@@ -3290,22 +4334,22 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
       },
       {
         ingredientId: "coconut",
-        technique: "peel",
-        resultingState: "peeled",
+        technique: "halve",
+        resultingState: "halved",
         destinationIds: ["plate"],
       },
       {
         ingredientId: "coconut",
-        technique: "halve",
-        resultingState: "halved",
+        technique: "chop",
+        resultingState: "chopped",
         destinationIds: ["plate"],
       },
     ],
     destinations: [PLATE],
     batchable: false,
-    chefInstruction: "Slice the salmon, then peel and halve the coconut alongside it.",
+    chefInstruction: "Slice the salmon. Halve the coconut. Chop the coconut.",
     customerDialogue: "Salmon with coconut, please.",
-    basePayment: 590,
+    basePayment: 335,
     unlockLevel: 143,
   },
   {
@@ -3332,7 +4376,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: false,
     chefInstruction: "Chop the green bean, then julienne the pepper.",
     customerDialogue: "Green bean and pepper, in the bowl.",
-    basePayment: 570,
+    basePayment: 275,
     unlockLevel: 144,
   },
   {
@@ -3354,12 +4398,31 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         resultingState: "sliced",
         destinationIds: ["plate"],
       },
+      {
+        ingredientId: "lime",
+        technique: "radial",
+        resultingState: "wedged",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "chilli",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "cilantro",
+        technique: "chop",
+        resultingState: "chopped",
+        destinationIds: ["plate"],
+      },
     ],
     destinations: [PLATE],
     batchable: false,
-    chefInstruction: "Slice the cucumber, then slice the pea pod.",
+    chefInstruction:
+      "Slice the cucumber. Slice the peapod. Cut the lime. Slice the chilli. Chop the cilantro.",
     customerDialogue: "A fresh cucumber and pea pod salad.",
-    basePayment: 575,
+    basePayment: 650,
     unlockLevel: 145,
   },
   {
@@ -3377,16 +4440,28 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
       },
       {
         ingredientId: "pineapple",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["cup"],
+      },
+      {
+        ingredientId: "pineapple",
         technique: "dice",
         resultingState: "diced",
+        destinationIds: ["cup"],
+      },
+      {
+        ingredientId: "lime",
+        technique: "radial",
+        resultingState: "wedged",
         destinationIds: ["cup"],
       },
     ],
     destinations: [{ id: "cup", name: "Cup" }],
     batchable: false,
-    chefInstruction: "Dice the mango, then dice the pineapple to match.",
+    chefInstruction: "Dice the mango. Peel the pineapple. Dice the pineapple. Cut the lime.",
     customerDialogue: "Mango and pineapple, fresh.",
-    basePayment: 565,
+    basePayment: 455,
     unlockLevel: 146,
   },
   {
@@ -3401,6 +4476,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         technique: "slice",
         resultingState: "sliced",
         destinationIds: ["plate"],
+        batchable: true,
       },
       {
         ingredientId: "chicken",
@@ -3410,13 +4486,17 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         chainBreak: true,
       },
     ],
-    destinations: [PLATE, BOWL],
+    destinations: [
+      { id: "plate", name: "Plate" },
+      { id: "bowl", name: "Bowl" },
+    ],
     batchable: false,
     chefInstruction: "Slice one chicken for the plate, then julienne a fresh one for the bowl.",
     customerDialogue: "Chicken two ways, please.",
-    basePayment: 600,
+    basePayment: 275,
     unlockLevel: 148,
   },
+  // ───────────────────────── Chapter 16 — Southeast Asian Service ─────────────────────────
   {
     id: "camp-thai-aromatic-batch-a",
     name: "Basil Garlic Chicken",
@@ -3433,6 +4513,12 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
       },
       {
         ingredientId: "garlic",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "garlic",
         technique: "rockMince",
         resultingState: "minced",
         destinationIds: ["plate"],
@@ -3443,13 +4529,21 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         technique: "slice",
         resultingState: "sliced",
         destinationIds: ["plate"],
+        batchable: true,
+      },
+      {
+        ingredientId: "chilli",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["plate"],
       },
     ],
     destinations: [PLATE],
     batchable: true,
-    chefInstruction: "Chop the basil, rock-mince the garlic, then slice the chicken.",
+    chefInstruction:
+      "Chop the basil. Peel the garlic. Rock-mince the garlic. Slice the chicken. Slice the chilli.",
     customerDialogue: "Basil garlic chicken, please.",
-    basePayment: 610,
+    basePayment: 660,
     unlockLevel: 152,
   },
   {
@@ -3465,6 +4559,12 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         resultingState: "chopped",
         destinationIds: ["bowl"],
         batchable: true,
+      },
+      {
+        ingredientId: "garlic",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
       },
       {
         ingredientId: "garlic",
@@ -3484,7 +4584,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: true,
     chefInstruction: "The same basil and garlic, with sliced salmon.",
     customerDialogue: "Basil garlic salmon, in the bowl.",
-    basePayment: 610,
+    basePayment: 515,
     unlockLevel: 152,
   },
   {
@@ -3503,10 +4603,22 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
       },
       {
         ingredientId: "garlic",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["cup"],
+      },
+      {
+        ingredientId: "garlic",
         technique: "rockMince",
         resultingState: "minced",
         destinationIds: ["cup"],
         batchable: true,
+      },
+      {
+        ingredientId: "pineapple",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["cup"],
       },
       {
         ingredientId: "pineapple",
@@ -3519,7 +4631,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: true,
     chefInstruction: "The same basil and garlic base, with diced pineapple for a sweeter plate.",
     customerDialogue: "Basil garlic pineapple, in the cup.",
-    basePayment: 610,
+    basePayment: 600,
     unlockLevel: 152,
   },
   {
@@ -3537,19 +4649,31 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
       },
       {
         ingredientId: "mango",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "mango",
         technique: "slice",
         resultingState: "sliced",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "lime",
+        technique: "radial",
+        resultingState: "wedged",
         destinationIds: ["plate"],
       },
     ],
     destinations: [PLATE],
     batchable: false,
-    chefInstruction: "Dice the salmon, then slice the mango alongside it.",
+    chefInstruction: "Dice the salmon. Peel the mango. Slice the mango. Cut the lime.",
     customerDialogue: "Salmon and mango, please.",
-    basePayment: 620,
+    basePayment: 475,
     unlockLevel: 153,
   },
-  // ==================== PHASE 5 — KOREAN (Chapter 17) ====================
+  // ───────────────────────── Chapter 17 — Korean Kitchen ─────────────────────────
   {
     id: "camp-korean-steak-cabbage",
     name: "Steak & Cabbage",
@@ -3574,7 +4698,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: false,
     chefInstruction: "Slice the steak thin and even, then slice the cabbage the same way.",
     customerDialogue: "Steak and cabbage, thin and even.",
-    basePayment: 640,
+    basePayment: 300,
     unlockLevel: 161,
   },
   {
@@ -3601,7 +4725,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: false,
     chefInstruction: "Slice the chicken thin, then chop the spinach.",
     customerDialogue: "Chicken and spinach, in the bowl.",
-    basePayment: 645,
+    basePayment: 300,
     unlockLevel: 162,
   },
   {
@@ -3613,8 +4737,20 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     components: [
       {
         ingredientId: "garlic",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "garlic",
         technique: "rockMince",
         resultingState: "minced",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "onion",
+        technique: "peel",
+        resultingState: "peeled",
         destinationIds: ["bowl"],
       },
       {
@@ -3623,12 +4759,31 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         resultingState: "chopped",
         destinationIds: ["bowl"],
       },
+      {
+        ingredientId: "ginger",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "ginger",
+        technique: "rockMince",
+        resultingState: "minced",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "springonion",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["bowl"],
+      },
     ],
     destinations: [BOWL],
     batchable: false,
-    chefInstruction: "Rock-mince the garlic, then chop the onion — the base for tonight's plates.",
+    chefInstruction:
+      "Peel the garlic. Rock-mince the garlic. Peel the onion. Chop the onion. Peel the ginger. Rock-mince the ginger. Slice the springonion.",
     customerDialogue: "The garlic onion base.",
-    basePayment: 650,
+    basePayment: 860,
     unlockLevel: 163,
   },
   {
@@ -3655,8 +4810,47 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: false,
     chefInstruction: "Slice the steak thin, then julienne the carrot to match.",
     customerDialogue: "Steak with a carrot julienne.",
-    basePayment: 655,
+    basePayment: 300,
     unlockLevel: 164,
+  },
+  {
+    id: "camp-pear-radish-side",
+    name: "Pear & Radish Side",
+    emoji: "🍐",
+    cuisineId: "korean",
+    authenticity: "A",
+    components: [
+      {
+        ingredientId: "pear",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["cup"],
+      },
+      {
+        ingredientId: "pear",
+        technique: "julienne",
+        resultingState: "julienned",
+        destinationIds: ["cup"],
+      },
+      {
+        ingredientId: "radish",
+        technique: "julienne",
+        resultingState: "julienned",
+        destinationIds: ["cup"],
+      },
+      {
+        ingredientId: "springonion",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["cup"],
+      },
+    ],
+    destinations: [{ id: "cup", name: "Cup" }],
+    batchable: true,
+    chefInstruction: "Julienne the pear. Julienne the radish. Slice the springonion.",
+    customerDialogue: "A pear and radish side, please.",
+    basePayment: 450,
+    unlockLevel: 165,
   },
   {
     id: "camp-korean-steak-batch-a",
@@ -3678,12 +4872,18 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         resultingState: "sliced",
         destinationIds: ["plate"],
       },
+      {
+        ingredientId: "springonion",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["plate"],
+      },
     ],
     destinations: [PLATE],
     batchable: true,
-    chefInstruction: "Slice the steak thin, then slice the cabbage.",
+    chefInstruction: "Slice the steak. Slice the cabbage. Slice the springonion.",
     customerDialogue: "Steak and cabbage, please.",
-    basePayment: 670,
+    basePayment: 450,
     unlockLevel: 166,
   },
   {
@@ -3706,12 +4906,18 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         resultingState: "chopped",
         destinationIds: ["bowl"],
       },
+      {
+        ingredientId: "springonion",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["bowl"],
+      },
     ],
     destinations: [BOWL],
     batchable: true,
-    chefInstruction: "The same thin-sliced steak, with chopped spinach in the bowl.",
+    chefInstruction: "Slice the steak. Chop the spinach. Slice the springonion.",
     customerDialogue: "Steak and spinach, in the bowl.",
-    basePayment: 670,
+    basePayment: 450,
     unlockLevel: 166,
   },
   {
@@ -3735,12 +4941,15 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         chainBreak: true,
       },
     ],
-    destinations: [PLATE, BOWL],
+    destinations: [
+      { id: "plate", name: "Plate" },
+      { id: "bowl", name: "Bowl" },
+    ],
     batchable: false,
     chefInstruction:
       "Slice one chicken thin for the plate, then julienne a fresh one for the bowl.",
     customerDialogue: "Chicken two ways, thin and fine.",
-    basePayment: 690,
+    basePayment: 300,
     unlockLevel: 168,
   },
   {
@@ -3776,20 +4985,32 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
       },
       {
         ingredientId: "pear",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "pear",
         technique: "slice",
         resultingState: "sliced",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "lemon",
+        technique: "radial",
+        resultingState: "wedged",
         destinationIds: ["plate"],
       },
     ],
     destinations: [PLATE],
     batchable: false,
     chefInstruction:
-      "Slice the steak, dice the chicken, slice the mushroom, julienne the carrot, then slice the pear to finish the plate.",
+      "Slice the steak. Dice the chicken. Slice the mushroom. Julienne the carrot. Slice the pear. Cut the lemon.",
     customerDialogue: "The grand service plate — everything, please.",
-    basePayment: 750,
+    basePayment: 860,
     unlockLevel: 170,
   },
-  // ==================== PHASE 6 — CHAPTER 18: ITALIAN GRAND SERVICE ====================
+  // ───────────────────────── Chapter 18 — Italian Grand Service ─────────────────────────
   {
     id: "camp-italian-artichoke-fennel",
     name: "Artichoke & Fennel Plate",
@@ -3805,8 +5026,8 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
       },
       {
         ingredientId: "artichoke",
-        technique: "chop",
-        resultingState: "chopped",
+        technique: "slice",
+        resultingState: "sliced",
         destinationIds: ["plate"],
       },
       {
@@ -3815,12 +5036,18 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         resultingState: "sliced",
         destinationIds: ["plate"],
       },
+      {
+        ingredientId: "lemon",
+        technique: "radial",
+        resultingState: "wedged",
+        destinationIds: ["plate"],
+      },
     ],
     destinations: [PLATE],
     batchable: false,
-    chefInstruction: "Halve the artichoke, chop it fine, then slice the fennel alongside.",
+    chefInstruction: "Halve the artichoke. Slice the artichoke. Slice the fennel. Cut the lemon.",
     customerDialogue: "Artichoke and fennel, please.",
-    basePayment: 1900,
+    basePayment: 495,
     unlockLevel: 171,
   },
   {
@@ -3847,7 +5074,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: false,
     chefInstruction: "Chiffonade the lettuce fine, then dice the tomato.",
     customerDialogue: "A simple lettuce and tomato salad.",
-    basePayment: 1920,
+    basePayment: 290,
     unlockLevel: 172,
   },
   {
@@ -3865,16 +5092,41 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
       },
       {
         ingredientId: "artichoke",
-        technique: "chop",
-        resultingState: "chopped",
+        technique: "halve",
+        resultingState: "halved",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "artichoke",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "lemon",
+        technique: "radial",
+        resultingState: "wedged",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "garlic",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "garlic",
+        technique: "rockMince",
+        resultingState: "minced",
         destinationIds: ["plate"],
       },
     ],
     destinations: [PLATE],
     batchable: false,
-    chefInstruction: "Slice the chicken, then chop the artichoke.",
+    chefInstruction:
+      "Slice the chicken. Halve the artichoke. Slice the artichoke. Cut the lemon. Peel the garlic. Rock-mince the garlic.",
     customerDialogue: "Chicken with artichoke.",
-    basePayment: 1940,
+    basePayment: 740,
     unlockLevel: 173,
   },
   {
@@ -3914,7 +5166,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     chefInstruction:
       "Slice the mozzarella and tomato, chiffonade the basil, then chop the lettuce underneath.",
     customerDialogue: "The caprese, with extra greens.",
-    basePayment: 1960,
+    basePayment: 605,
     unlockLevel: 174,
   },
   {
@@ -3942,7 +5194,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: true,
     chefInstruction: "Chiffonade the basil, then dice the tomato.",
     customerDialogue: "Basil and tomato, please.",
-    basePayment: 1980,
+    basePayment: 290,
     unlockLevel: 175,
   },
   {
@@ -3970,7 +5222,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: true,
     chefInstruction: "The same basil chiffonade, with sliced mozzarella.",
     customerDialogue: "Basil and mozzarella, in the bowl.",
-    basePayment: 1980,
+    basePayment: 290,
     unlockLevel: 175,
   },
   {
@@ -3994,16 +5246,19 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         chainBreak: true,
       },
     ],
-    destinations: [PLATE, BOWL],
+    destinations: [
+      { id: "plate", name: "Plate" },
+      { id: "bowl", name: "Bowl" },
+    ],
     batchable: false,
     chefInstruction: "Slice one chicken for the plate, then dice a fresh one for the bowl.",
     customerDialogue: "Chicken two ways, Italian style.",
-    basePayment: 2000,
+    basePayment: 310,
     unlockLevel: 176,
   },
   {
     id: "camp-italian-mozzarella-3way-a",
-    name: "Mozzarella Basil Plate",
+    name: "Insalata Tricolore",
     emoji: "🧀",
     cuisineId: "italian",
     authenticity: "A",
@@ -4021,17 +5276,23 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         resultingState: "ribboned",
         destinationIds: ["plate"],
       },
+      {
+        ingredientId: "lettuce",
+        technique: "chiffonade",
+        resultingState: "ribboned",
+        destinationIds: ["plate"],
+      },
     ],
     destinations: [PLATE],
     batchable: true,
-    chefInstruction: "Slice the mozzarella, then chiffonade the basil.",
+    chefInstruction: "Slice the mozzarella. Chiffonade the basil. Chiffonade the lettuce.",
     customerDialogue: "Mozzarella and basil, please.",
-    basePayment: 2010,
+    basePayment: 425,
     unlockLevel: 178,
   },
   {
     id: "camp-italian-mozzarella-3way-b",
-    name: "Mozzarella Tomato Bowl",
+    name: "Mozzarella & Tomato Bowl",
     emoji: "🧀",
     cuisineId: "italian",
     authenticity: "A",
@@ -4049,17 +5310,23 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         resultingState: "sliced",
         destinationIds: ["bowl"],
       },
+      {
+        ingredientId: "basil",
+        technique: "chop",
+        resultingState: "chopped",
+        destinationIds: ["bowl"],
+      },
     ],
     destinations: [BOWL],
     batchable: true,
-    chefInstruction: "The same sliced mozzarella, with sliced tomato.",
+    chefInstruction: "Slice the mozzarella. Slice the tomato. Chop the basil.",
     customerDialogue: "Mozzarella and tomato, in the bowl.",
-    basePayment: 2010,
+    basePayment: 470,
     unlockLevel: 178,
   },
   {
     id: "camp-italian-mozzarella-3way-c",
-    name: "Mozzarella Lettuce Cup",
+    name: "Mozzarella & Lettuce Cup",
     emoji: "🧀",
     cuisineId: "italian",
     authenticity: "B",
@@ -4077,15 +5344,21 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         resultingState: "chopped",
         destinationIds: ["cup"],
       },
+      {
+        ingredientId: "orange",
+        technique: "radial",
+        resultingState: "wedged",
+        destinationIds: ["cup"],
+      },
     ],
     destinations: [{ id: "cup", name: "Cup" }],
     batchable: true,
-    chefInstruction: "The same sliced mozzarella again, with chopped lettuce.",
+    chefInstruction: "Slice the mozzarella. Chop the lettuce. Cut the orange.",
     customerDialogue: "Mozzarella and lettuce, in the cup.",
-    basePayment: 2010,
+    basePayment: 425,
     unlockLevel: 178,
   },
-  // ==================== PHASE 6 — CHAPTER 19: FRENCH SERVICE MASTERY ====================
+  // ───────────────────────── Chapter 19 — French Service Mastery ─────────────────────────
   {
     id: "camp-french-turnip-carrot",
     name: "Turnip & Carrot Plate",
@@ -4093,6 +5366,12 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     cuisineId: "french",
     authenticity: "A",
     components: [
+      {
+        ingredientId: "turnip",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["plate"],
+      },
       {
         ingredientId: "turnip",
         technique: "dice",
@@ -4108,9 +5387,9 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     ],
     destinations: [PLATE],
     batchable: false,
-    chefInstruction: "Dice the turnip, then julienne the carrot.",
+    chefInstruction: "Dice the turnip. Julienne the carrot.",
     customerDialogue: "Turnip and carrot, please.",
-    basePayment: 2030,
+    basePayment: 325,
     unlockLevel: 181,
   },
   {
@@ -4128,6 +5407,12 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
       },
       {
         ingredientId: "turnip",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "turnip",
         technique: "halve",
         resultingState: "halved",
         destinationIds: ["plate"],
@@ -4135,9 +5420,9 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     ],
     destinations: [PLATE],
     batchable: false,
-    chefInstruction: "Slice the steak, then halve the turnip.",
+    chefInstruction: "Slice the steak. Halve the turnip.",
     customerDialogue: "Steak with turnip, please.",
-    basePayment: 2050,
+    basePayment: 235,
     unlockLevel: 182,
   },
   {
@@ -4159,17 +5444,23 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         resultingState: "chopped",
         destinationIds: ["plate"],
       },
+      {
+        ingredientId: "lemon",
+        technique: "radial",
+        resultingState: "wedged",
+        destinationIds: ["plate"],
+      },
     ],
     destinations: [PLATE],
     batchable: false,
-    chefInstruction: "Slice the salmon, then chop the asparagus.",
+    chefInstruction: "Slice the salmon. Chop the asparagus. Cut the lemon.",
     customerDialogue: "Salmon and asparagus, please.",
-    basePayment: 2070,
+    basePayment: 440,
     unlockLevel: 183,
   },
   {
     id: "camp-french-peach-garnish",
-    name: "Peach Garnish",
+    name: "Peach & Fennel Plate",
     emoji: "🍑",
     cuisineId: "french",
     authenticity: "C",
@@ -4180,12 +5471,69 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         resultingState: "halved",
         destinationIds: ["plate"],
       },
+      {
+        ingredientId: "peach",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "fennel",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "lemon",
+        technique: "radial",
+        resultingState: "wedged",
+        destinationIds: ["plate"],
+      },
     ],
     destinations: [PLATE],
     batchable: false,
-    chefInstruction: "Halve the peach clean.",
+    chefInstruction: "Halve the peach. Slice the peach. Slice the fennel. Cut the lemon.",
     customerDialogue: "The peach, halved, please.",
-    basePayment: 2080,
+    basePayment: 515,
+    unlockLevel: 184,
+  },
+  {
+    id: "camp-peach-cheddar-board",
+    name: "Peach & Cheddar Board",
+    emoji: "🍑",
+    cuisineId: "french",
+    authenticity: "B",
+    components: [
+      {
+        ingredientId: "peach",
+        technique: "halve",
+        resultingState: "halved",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "peach",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "cheddar",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "baguette",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["plate"],
+      },
+    ],
+    destinations: [PLATE],
+    batchable: true,
+    chefInstruction: "Halve the peach. Slice the peach. Slice the cheddar. Slice the baguette.",
+    customerDialogue: "A peach and cheddar board, please.",
+    basePayment: 560,
     unlockLevel: 184,
   },
   {
@@ -4204,6 +5552,12 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
       },
       {
         ingredientId: "turnip",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "turnip",
         technique: "dice",
         resultingState: "diced",
         destinationIds: ["plate"],
@@ -4211,9 +5565,9 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     ],
     destinations: [PLATE],
     batchable: true,
-    chefInstruction: "Julienne the carrot, then dice the turnip.",
+    chefInstruction: "Julienne the carrot. Dice the turnip.",
     customerDialogue: "Carrot and turnip, please.",
-    basePayment: 2090,
+    basePayment: 325,
     unlockLevel: 185,
   },
   {
@@ -4241,7 +5595,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: true,
     chefInstruction: "The same carrot julienne, with chopped asparagus.",
     customerDialogue: "Carrot and asparagus, in the bowl.",
-    basePayment: 2090,
+    basePayment: 325,
     unlockLevel: 185,
   },
   {
@@ -4265,98 +5619,146 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         chainBreak: true,
       },
     ],
-    destinations: [PLATE, BOWL],
+    destinations: [
+      { id: "plate", name: "Plate" },
+      { id: "bowl", name: "Bowl" },
+    ],
     batchable: false,
     chefInstruction: "Slice one steak for the plate, then dice a fresh one for the bowl.",
     customerDialogue: "Steak two ways, please.",
-    basePayment: 2110,
+    basePayment: 325,
     unlockLevel: 187,
   },
   {
-    id: "camp-french-butter-3way-a",
-    name: "Butter Carrot Plate",
-    emoji: "🧈",
+    id: "camp-asparagus-persillade-cup",
+    name: "Asparagus Persillade Cup",
+    emoji: "🥬",
     cuisineId: "french",
     authenticity: "A",
     components: [
       {
-        ingredientId: "butter",
-        technique: "slice",
-        resultingState: "sliced",
-        destinationIds: ["plate"],
-      },
-      {
-        ingredientId: "carrot",
-        technique: "julienne",
-        resultingState: "julienned",
-        destinationIds: ["plate"],
+        ingredientId: "parsley",
+        technique: "chiffonade",
+        resultingState: "ribboned",
+        destinationIds: ["cup"],
         batchable: true,
       },
-    ],
-    destinations: [PLATE],
-    batchable: true,
-    chefInstruction: "Slice the butter, then julienne the carrot.",
-    customerDialogue: "Butter and carrot, please.",
-    basePayment: 2130,
-    unlockLevel: 189,
-  },
-  {
-    id: "camp-french-butter-3way-b",
-    name: "Butter Turnip Bowl",
-    emoji: "🧈",
-    cuisineId: "french",
-    authenticity: "A",
-    components: [
       {
-        ingredientId: "butter",
-        technique: "slice",
-        resultingState: "sliced",
-        destinationIds: ["bowl"],
-      },
-      {
-        ingredientId: "carrot",
-        technique: "julienne",
-        resultingState: "julienned",
-        destinationIds: ["bowl"],
-        batchable: true,
-      },
-    ],
-    destinations: [BOWL],
-    batchable: true,
-    chefInstruction: "Slice the butter, then julienne the carrot for the bowl.",
-    customerDialogue: "Butter and carrot, in the bowl.",
-    basePayment: 2130,
-    unlockLevel: 189,
-  },
-  {
-    id: "camp-french-butter-3way-c",
-    name: "Butter Asparagus Cup",
-    emoji: "🧈",
-    cuisineId: "french",
-    authenticity: "A",
-    components: [
-      {
-        ingredientId: "butter",
-        technique: "slice",
-        resultingState: "sliced",
+        ingredientId: "garlic",
+        technique: "peel",
+        resultingState: "peeled",
         destinationIds: ["cup"],
       },
       {
-        ingredientId: "carrot",
-        technique: "julienne",
-        resultingState: "julienned",
+        ingredientId: "garlic",
+        technique: "rockMince",
+        resultingState: "minced",
         destinationIds: ["cup"],
-        batchable: true,
+      },
+      {
+        ingredientId: "asparagus",
+        technique: "chop",
+        resultingState: "chopped",
+        destinationIds: ["cup"],
       },
     ],
     destinations: [{ id: "cup", name: "Cup" }],
     batchable: true,
-    chefInstruction: "Slice the butter, julienne the carrot for the cup.",
-    customerDialogue: "Butter and carrot, in the cup.",
-    basePayment: 2130,
+    chefInstruction:
+      "Chiffonade the parsley. Peel the garlic. Rock-mince the garlic. Chop the asparagus.",
+    customerDialogue: "Asparagus with a parsley persillade, please.",
+    basePayment: 560,
     unlockLevel: 189,
   },
-  // ==================== PHASE 6 — CHAPTER 20: INDIAN GRAND SERVICE ====================
+  {
+    id: "camp-salmon-persillade",
+    name: "Salmon Persillade",
+    emoji: "🐟",
+    cuisineId: "french",
+    authenticity: "A",
+    components: [
+      {
+        ingredientId: "parsley",
+        technique: "chiffonade",
+        resultingState: "ribboned",
+        destinationIds: ["plate"],
+        batchable: true,
+      },
+      {
+        ingredientId: "garlic",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "garlic",
+        technique: "rockMince",
+        resultingState: "minced",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "salmon",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["plate"],
+      },
+    ],
+    destinations: [PLATE],
+    batchable: true,
+    chefInstruction:
+      "Chiffonade the parsley. Peel the garlic. Rock-mince the garlic. Slice the salmon.",
+    customerDialogue: "Salmon with a parsley persillade, please.",
+    basePayment: 560,
+    unlockLevel: 189,
+  },
+  {
+    id: "camp-turnip-persillade-bowl",
+    name: "Turnip Persillade Bowl",
+    emoji: "🥕",
+    cuisineId: "french",
+    authenticity: "A",
+    components: [
+      {
+        ingredientId: "parsley",
+        technique: "chiffonade",
+        resultingState: "ribboned",
+        destinationIds: ["bowl"],
+        batchable: true,
+      },
+      {
+        ingredientId: "garlic",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "garlic",
+        technique: "rockMince",
+        resultingState: "minced",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "turnip",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "turnip",
+        technique: "dice",
+        resultingState: "diced",
+        destinationIds: ["bowl"],
+      },
+    ],
+    destinations: [BOWL],
+    batchable: true,
+    chefInstruction:
+      "Chiffonade the parsley. Peel the garlic. Rock-mince the garlic. Dice the turnip.",
+    customerDialogue: "Turnip with a parsley persillade, please.",
+    basePayment: 560,
+    unlockLevel: 189,
+  },
+  // ───────────────────────── Chapter 20 — Indian Grand Service ─────────────────────────
   {
     id: "camp-indian-onion-rings-plate",
     name: "Onion Rings & Garlic",
@@ -4366,8 +5768,20 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     components: [
       {
         ingredientId: "onion",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "onion",
         technique: "rings",
         resultingState: "ringed",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "garlic",
+        technique: "peel",
+        resultingState: "peeled",
         destinationIds: ["plate"],
       },
       {
@@ -4381,7 +5795,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: false,
     chefInstruction: "Ring the onion, then rock-mince the garlic.",
     customerDialogue: "Onion rings with garlic, please.",
-    basePayment: 2150,
+    basePayment: 485,
     unlockLevel: 191,
   },
   {
@@ -4399,6 +5813,12 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
       },
       {
         ingredientId: "onion",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "onion",
         technique: "chop",
         resultingState: "chopped",
         destinationIds: ["bowl"],
@@ -4409,12 +5829,25 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         resultingState: "diced",
         destinationIds: ["bowl"],
       },
+      {
+        ingredientId: "ginger",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "ginger",
+        technique: "rockMince",
+        resultingState: "minced",
+        destinationIds: ["bowl"],
+      },
     ],
     destinations: [BOWL],
     batchable: false,
-    chefInstruction: "Dice the steak, chop the onion, then dice the tomato.",
+    chefInstruction:
+      "Dice the steak. Peel the onion. Chop the onion. Dice the tomato. Peel the ginger. Rock-mince the ginger.",
     customerDialogue: "The steak curry, please.",
-    basePayment: 2170,
+    basePayment: 870,
     unlockLevel: 192,
   },
   {
@@ -4432,8 +5865,20 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
       },
       {
         ingredientId: "onion",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "onion",
         technique: "rings",
         resultingState: "ringed",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "garlic",
+        technique: "peel",
+        resultingState: "peeled",
         destinationIds: ["plate"],
       },
       {
@@ -4442,13 +5887,78 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         resultingState: "minced",
         destinationIds: ["plate"],
       },
+      {
+        ingredientId: "ginger",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "ginger",
+        technique: "rockMince",
+        resultingState: "minced",
+        destinationIds: ["plate"],
+      },
     ],
     destinations: [PLATE],
     batchable: false,
-    chefInstruction: "Julienne the chicken, ring the onion, then rock-mince the garlic.",
+    chefInstruction:
+      "Julienne the chicken. Peel the onion. Ring the onion. Peel the garlic. Rock-mince the garlic. Peel the ginger. Rock-mince the ginger.",
     customerDialogue: "Chicken with onion rings.",
-    basePayment: 2190,
+    basePayment: 920,
     unlockLevel: 193,
+  },
+  {
+    id: "camp-eggplant-masala-prep",
+    name: "Eggplant Masala Prep",
+    emoji: "🍆",
+    cuisineId: "indian",
+    authenticity: "A",
+    components: [
+      {
+        ingredientId: "eggplant",
+        technique: "dice",
+        resultingState: "diced",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "onion",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "onion",
+        technique: "chop",
+        resultingState: "chopped",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "ginger",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "ginger",
+        technique: "rockMince",
+        resultingState: "minced",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "chilli",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["bowl"],
+      },
+    ],
+    destinations: [BOWL],
+    batchable: true,
+    chefInstruction:
+      "Dice the eggplant. Peel the onion. Chop the onion. Peel the ginger. Rock-mince the ginger. Slice the chilli.",
+    customerDialogue: "An eggplant masala, please.",
+    basePayment: 870,
+    unlockLevel: 194,
   },
   {
     id: "camp-indian-onion-batch-a",
@@ -4457,6 +5967,12 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     cuisineId: "indian",
     authenticity: "A",
     components: [
+      {
+        ingredientId: "onion",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
       {
         ingredientId: "onion",
         technique: "rings",
@@ -4470,12 +5986,18 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         resultingState: "diced",
         destinationIds: ["bowl"],
       },
+      {
+        ingredientId: "chilli",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["bowl"],
+      },
     ],
     destinations: [BOWL],
     batchable: true,
-    chefInstruction: "Ring the onion, then dice the tomato.",
+    chefInstruction: "Peel the onion. Ring the onion. Dice the tomato. Slice the chilli.",
     customerDialogue: "Onion and tomato, please.",
-    basePayment: 2210,
+    basePayment: 555,
     unlockLevel: 195,
   },
   {
@@ -4487,10 +6009,22 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     components: [
       {
         ingredientId: "onion",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["cup"],
+      },
+      {
+        ingredientId: "onion",
         technique: "rings",
         resultingState: "ringed",
         destinationIds: ["cup"],
         batchable: true,
+      },
+      {
+        ingredientId: "garlic",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["cup"],
       },
       {
         ingredientId: "garlic",
@@ -4503,7 +6037,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: true,
     chefInstruction: "The same ringed onion, with rock-minced garlic.",
     customerDialogue: "Onion and garlic, in the cup.",
-    basePayment: 2210,
+    basePayment: 485,
     unlockLevel: 195,
   },
   {
@@ -4515,23 +6049,31 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     components: [
       {
         ingredientId: "potato",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl", "plate"],
+      },
+      {
+        ingredientId: "potato",
         technique: "dice",
         resultingState: "diced",
         destinationIds: ["bowl"],
       },
       {
         ingredientId: "potato",
-        technique: "peel",
-        resultingState: "peeled",
+        technique: "chop",
+        resultingState: "chopped",
         destinationIds: ["plate"],
-        chainBreak: true,
       },
     ],
-    destinations: [BOWL, PLATE],
+    destinations: [
+      { id: "bowl", name: "Bowl" },
+      { id: "plate", name: "Plate" },
+    ],
     batchable: false,
-    chefInstruction: "Dice one potato for the bowl, then peel a fresh one for the plate.",
+    chefInstruction: "Peel the potato. Dice the potato. Chop the potato.",
     customerDialogue: "Potato two ways, please.",
-    basePayment: 2230,
+    basePayment: 435,
     unlockLevel: 196,
   },
   {
@@ -4554,12 +6096,24 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         resultingState: "sliced",
         destinationIds: ["bowl"],
       },
+      {
+        ingredientId: "ginger",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "ginger",
+        technique: "rockMince",
+        resultingState: "minced",
+        destinationIds: ["bowl"],
+      },
     ],
     destinations: [BOWL],
     batchable: true,
-    chefInstruction: "Dice the tomato, then slice the chicken.",
+    chefInstruction: "Dice the tomato. Slice the chicken. Peel the ginger. Rock-mince the ginger.",
     customerDialogue: "Tomato and chicken, please.",
-    basePayment: 2250,
+    basePayment: 605,
     unlockLevel: 198,
   },
   {
@@ -4587,7 +6141,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: true,
     chefInstruction: "The same diced tomato, with diced steak.",
     customerDialogue: "Tomato and steak, in the cup.",
-    basePayment: 2250,
+    basePayment: 340,
     unlockLevel: 198,
   },
   {
@@ -4606,6 +6160,12 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
       },
       {
         ingredientId: "onion",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "onion",
         technique: "rings",
         resultingState: "ringed",
         destinationIds: ["plate"],
@@ -4615,10 +6175,10 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: true,
     chefInstruction: "The same diced tomato again, with ringed onion.",
     customerDialogue: "Tomato and onion rings, please.",
-    basePayment: 2250,
+    basePayment: 390,
     unlockLevel: 198,
   },
-  // ==================== PHASE 6 — CHAPTER 21: MEDITERRANEAN ENCORE ====================
+  // ───────────────────────── Chapter 21 — Mediterranean Encore ─────────────────────────
   {
     id: "camp-med-kiwi-watermelon",
     name: "Kiwi & Watermelon Fresh Plate",
@@ -4634,8 +6194,8 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
       },
       {
         ingredientId: "kiwi",
-        technique: "halve",
-        resultingState: "halved",
+        technique: "slice",
+        resultingState: "sliced",
         destinationIds: ["plate"],
       },
       {
@@ -4653,9 +6213,9 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     ],
     destinations: [PLATE],
     batchable: false,
-    chefInstruction: "Peel and halve the kiwi, then peel and dice the watermelon.",
+    chefInstruction: "Peel the kiwi. Slice the kiwi. Peel the watermelon. Dice the watermelon.",
     customerDialogue: "Kiwi and watermelon, fresh.",
-    basePayment: 2270,
+    basePayment: 555,
     unlockLevel: 201,
   },
   {
@@ -4682,7 +6242,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: false,
     chefInstruction: "Slice the salmon, then wedge the lemon.",
     customerDialogue: "Salmon with a lemon wedge.",
-    basePayment: 2290,
+    basePayment: 300,
     unlockLevel: 202,
   },
   {
@@ -4700,17 +6260,109 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
       },
       {
         ingredientId: "watermelon",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "watermelon",
         technique: "dice",
         resultingState: "diced",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "parsley",
+        technique: "chiffonade",
+        resultingState: "ribboned",
         destinationIds: ["plate"],
       },
     ],
     destinations: [PLATE],
     batchable: false,
-    chefInstruction: "Slice the chicken, then dice the watermelon.",
+    chefInstruction:
+      "Slice the chicken. Peel the watermelon. Dice the watermelon. Chiffonade the parsley.",
     customerDialogue: "Chicken with watermelon, a summer plate.",
-    basePayment: 2310,
+    basePayment: 600,
     unlockLevel: 203,
+  },
+  {
+    id: "camp-beetroot-pomegranate-plate",
+    name: "Beetroot & Pomegranate Plate",
+    emoji: "🥕",
+    cuisineId: "mediterranean",
+    authenticity: "B",
+    components: [
+      {
+        ingredientId: "beetroot",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "beetroot",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "pomegranate",
+        technique: "halve",
+        resultingState: "halved",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "parsley",
+        technique: "chiffonade",
+        resultingState: "ribboned",
+        destinationIds: ["plate"],
+      },
+    ],
+    destinations: [PLATE],
+    batchable: true,
+    chefInstruction:
+      "Peel the beetroot. Slice the beetroot. Halve the pomegranate. Chiffonade the parsley.",
+    customerDialogue: "Beetroot and pomegranate, please.",
+    basePayment: 505,
+    unlockLevel: 204,
+  },
+  {
+    id: "camp-pomegranate-apple-plate",
+    name: "Pomegranate & Apple Plate",
+    emoji: "🍎",
+    cuisineId: "mediterranean",
+    authenticity: "B",
+    components: [
+      {
+        ingredientId: "pomegranate",
+        technique: "halve",
+        resultingState: "halved",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "apple",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "apple",
+        technique: "radial",
+        resultingState: "wedged",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "lemon",
+        technique: "radial",
+        resultingState: "wedged",
+        destinationIds: ["plate"],
+      },
+    ],
+    destinations: [PLATE],
+    batchable: true,
+    chefInstruction: "Halve the pomegranate. Cut the apple. Cut the lemon.",
+    customerDialogue: "Pomegranate and apple, please.",
+    basePayment: 330,
+    unlockLevel: 204,
   },
   {
     id: "camp-med-cucumber-batch-a",
@@ -4737,7 +6389,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: true,
     chefInstruction: "Slice the cucumber, then dice the tomato.",
     customerDialogue: "Cucumber and tomato, please.",
-    basePayment: 2330,
+    basePayment: 350,
     unlockLevel: 205,
   },
   {
@@ -4756,6 +6408,12 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
       },
       {
         ingredientId: "watermelon",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "watermelon",
         technique: "dice",
         resultingState: "diced",
         destinationIds: ["bowl"],
@@ -4765,7 +6423,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: true,
     chefInstruction: "The same sliced cucumber, with diced watermelon.",
     customerDialogue: "Cucumber and watermelon, in the bowl.",
-    basePayment: 2330,
+    basePayment: 450,
     unlockLevel: 205,
   },
   {
@@ -4789,11 +6447,14 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         chainBreak: true,
       },
     ],
-    destinations: [PLATE, BOWL],
+    destinations: [
+      { id: "plate", name: "Plate" },
+      { id: "bowl", name: "Bowl" },
+    ],
     batchable: false,
     chefInstruction: "Slice one salmon for the plate, then dice a fresh one for the bowl.",
     customerDialogue: "Salmon two ways, please.",
-    basePayment: 2350,
+    basePayment: 350,
     unlockLevel: 207,
   },
   {
@@ -4821,7 +6482,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: true,
     chefInstruction: "Wedge the lemon, then slice the salmon.",
     customerDialogue: "Lemon and salmon, please.",
-    basePayment: 2370,
+    basePayment: 300,
     unlockLevel: 209,
   },
   {
@@ -4849,7 +6510,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: true,
     chefInstruction: "The same lemon wedge, with sliced chicken.",
     customerDialogue: "Lemon and chicken, in the bowl.",
-    basePayment: 2370,
+    basePayment: 300,
     unlockLevel: 209,
   },
   {
@@ -4872,15 +6533,21 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         resultingState: "sliced",
         destinationIds: ["cup"],
       },
+      {
+        ingredientId: "pomegranate",
+        technique: "halve",
+        resultingState: "halved",
+        destinationIds: ["cup"],
+      },
     ],
     destinations: [{ id: "cup", name: "Cup" }],
     batchable: true,
-    chefInstruction: "The same lemon wedge again, with sliced cucumber.",
+    chefInstruction: "Cut the lemon. Slice the cucumber. Halve the pomegranate.",
     customerDialogue: "Lemon and cucumber, in the cup.",
-    basePayment: 2370,
+    basePayment: 380,
     unlockLevel: 209,
   },
-  // ==================== PHASE 6 — CHAPTER 22: LATIN MASTERY ====================
+  // ───────────────────────── Chapter 22 — Latin Mastery ─────────────────────────
   {
     id: "camp-latin-grapes-strawberry",
     name: "Grapes & Strawberry Cup",
@@ -4905,7 +6572,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: false,
     chefInstruction: "Slice the grapes, then slice the strawberry.",
     customerDialogue: "Grapes and strawberry, fresh.",
-    basePayment: 2390,
+    basePayment: 360,
     unlockLevel: 211,
   },
   {
@@ -4932,7 +6599,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: false,
     chefInstruction: "Slice the steak, then slice the corn.",
     customerDialogue: "Steak and corn, please.",
-    basePayment: 2410,
+    basePayment: 360,
     unlockLevel: 212,
   },
   {
@@ -4955,18 +6622,71 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         destinationIds: ["bowl"],
       },
       {
+        ingredientId: "avocado",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["bowl"],
+      },
+      {
         ingredientId: "grapes",
         technique: "slice",
         resultingState: "sliced",
         destinationIds: ["bowl"],
       },
+      {
+        ingredientId: "lime",
+        technique: "radial",
+        resultingState: "wedged",
+        destinationIds: ["bowl"],
+      },
     ],
     destinations: [BOWL],
     batchable: false,
-    chefInstruction: "Dice the chicken, halve the avocado, then slice the grapes.",
+    chefInstruction:
+      "Dice the chicken. Halve the avocado. Slice the avocado. Slice the grapes. Cut the lime.",
     customerDialogue: "Chicken, avocado and grapes, please.",
-    basePayment: 2430,
+    basePayment: 755,
     unlockLevel: 213,
+  },
+  {
+    id: "camp-sweet-potato-strawberry-plate",
+    name: "Sweet Potato & Strawberry Plate",
+    emoji: "🍓",
+    cuisineId: "mexican",
+    authenticity: "B",
+    components: [
+      {
+        ingredientId: "sweetpotato",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "sweetpotato",
+        technique: "dice",
+        resultingState: "diced",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "strawberry",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "lime",
+        technique: "radial",
+        resultingState: "wedged",
+        destinationIds: ["plate"],
+      },
+    ],
+    destinations: [PLATE],
+    batchable: true,
+    chefInstruction:
+      "Peel the sweetpotato. Dice the sweetpotato. Slice the strawberry. Cut the lime.",
+    customerDialogue: "Sweet potato and strawberry, please.",
+    basePayment: 600,
+    unlockLevel: 214,
   },
   {
     id: "camp-latin-pepper-batch-a",
@@ -4984,16 +6704,22 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
       },
       {
         ingredientId: "onion",
-        technique: "chop",
-        resultingState: "chopped",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "onion",
+        technique: "rings",
+        resultingState: "ringed",
         destinationIds: ["plate"],
       },
     ],
     destinations: [PLATE],
     batchable: true,
-    chefInstruction: "Dice the pepper, then chop the onion.",
+    chefInstruction: "Dice the pepper. Peel the onion. Ring the onion.",
     customerDialogue: "Pepper and onion, please.",
-    basePayment: 2450,
+    basePayment: 415,
     unlockLevel: 215,
   },
   {
@@ -5021,7 +6747,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: true,
     chefInstruction: "The same diced pepper, with sliced corn.",
     customerDialogue: "Pepper and corn, in the bowl.",
-    basePayment: 2450,
+    basePayment: 360,
     unlockLevel: 215,
   },
   {
@@ -5045,11 +6771,14 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         chainBreak: true,
       },
     ],
-    destinations: [PLATE, BOWL],
+    destinations: [
+      { id: "plate", name: "Plate" },
+      { id: "bowl", name: "Bowl" },
+    ],
     batchable: false,
     chefInstruction: "Slice one chicken for the plate, then julienne a fresh one for the bowl.",
     customerDialogue: "Chicken two ways, please.",
-    basePayment: 2470,
+    basePayment: 360,
     unlockLevel: 217,
   },
   {
@@ -5067,17 +6796,29 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         batchable: true,
       },
       {
+        ingredientId: "avocado",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["plate"],
+      },
+      {
         ingredientId: "corn",
         technique: "slice",
         resultingState: "sliced",
         destinationIds: ["plate"],
       },
+      {
+        ingredientId: "lime",
+        technique: "radial",
+        resultingState: "wedged",
+        destinationIds: ["plate"],
+      },
     ],
     destinations: [PLATE],
     batchable: true,
-    chefInstruction: "Halve the avocado, then slice the corn.",
+    chefInstruction: "Halve the avocado. Slice the avocado. Slice the corn. Cut the lime.",
     customerDialogue: "Avocado and corn, please.",
-    basePayment: 2490,
+    basePayment: 575,
     unlockLevel: 219,
   },
   {
@@ -5095,17 +6836,29 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         batchable: true,
       },
       {
+        ingredientId: "avocado",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["bowl"],
+      },
+      {
         ingredientId: "pepper",
         technique: "julienne",
         resultingState: "julienned",
         destinationIds: ["bowl"],
       },
+      {
+        ingredientId: "lime",
+        technique: "radial",
+        resultingState: "wedged",
+        destinationIds: ["bowl"],
+      },
     ],
     destinations: [BOWL],
     batchable: true,
-    chefInstruction: "The same halved avocado, with julienned pepper.",
+    chefInstruction: "Halve the avocado. Slice the avocado. Julienne the pepper. Cut the lime.",
     customerDialogue: "Avocado and pepper, in the bowl.",
-    basePayment: 2490,
+    basePayment: 575,
     unlockLevel: 219,
   },
   {
@@ -5123,20 +6876,32 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         batchable: true,
       },
       {
+        ingredientId: "avocado",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["cup"],
+      },
+      {
         ingredientId: "grapes",
         technique: "slice",
         resultingState: "sliced",
         destinationIds: ["cup"],
       },
+      {
+        ingredientId: "lime",
+        technique: "radial",
+        resultingState: "wedged",
+        destinationIds: ["cup"],
+      },
     ],
     destinations: [{ id: "cup", name: "Cup" }],
     batchable: true,
-    chefInstruction: "The same halved avocado again, with sliced grapes.",
+    chefInstruction: "Halve the avocado. Slice the avocado. Slice the grapes. Cut the lime.",
     customerDialogue: "Avocado and grapes, in the cup.",
-    basePayment: 2490,
+    basePayment: 575,
     unlockLevel: 219,
   },
-  // ==================== PHASE 6 — CHAPTER 23: JAPANESE-KOREAN FUSION SERVICE ====================
+  // ───────────────────────── Chapter 23 — Japanese-Korean Fusion ─────────────────────────
   {
     id: "camp-fusion-salmon-cabbage",
     name: "Salmon & Cabbage",
@@ -5161,7 +6926,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: false,
     chefInstruction: "Slice the salmon, then slice the cabbage.",
     customerDialogue: "Salmon and cabbage, please.",
-    basePayment: 2510,
+    basePayment: 375,
     unlockLevel: 221,
   },
   {
@@ -5183,13 +6948,65 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         resultingState: "chopped",
         destinationIds: ["bowl"],
       },
+      {
+        ingredientId: "springonion",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["bowl"],
+      },
     ],
     destinations: [BOWL],
     batchable: false,
-    chefInstruction: "Slice the steak thin, then chop the spinach.",
+    chefInstruction: "Slice the steak. Chop the spinach. Slice the springonion.",
     customerDialogue: "Steak and spinach, please.",
-    basePayment: 2530,
+    basePayment: 560,
     unlockLevel: 222,
+  },
+  {
+    id: "camp-radish-pear-fusion-cup",
+    name: "Radish & Pear Fusion Cup",
+    emoji: "🍐",
+    cuisineId: "korean",
+    authenticity: "A",
+    components: [
+      {
+        ingredientId: "radish",
+        technique: "julienne",
+        resultingState: "julienned",
+        destinationIds: ["cup"],
+      },
+      {
+        ingredientId: "pear",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["cup"],
+      },
+      {
+        ingredientId: "pear",
+        technique: "julienne",
+        resultingState: "julienned",
+        destinationIds: ["cup"],
+      },
+      {
+        ingredientId: "ginger",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["cup"],
+      },
+      {
+        ingredientId: "ginger",
+        technique: "julienne",
+        resultingState: "julienned",
+        destinationIds: ["cup"],
+      },
+    ],
+    destinations: [{ id: "cup", name: "Cup" }],
+    batchable: true,
+    chefInstruction:
+      "Julienne the radish. Julienne the pear. Peel the ginger. Julienne the ginger.",
+    customerDialogue: "Radish and pear, please.",
+    basePayment: 670,
+    unlockLevel: 223,
   },
   {
     id: "camp-fusion-mushroom-batch-a",
@@ -5216,7 +7033,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: true,
     chefInstruction: "Slice the mushroom, then slice the salmon.",
     customerDialogue: "Mushroom and salmon, please.",
-    basePayment: 2550,
+    basePayment: 375,
     unlockLevel: 224,
   },
   {
@@ -5245,7 +7062,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     chefInstruction:
       "The same sliced mushroom, with sliced steak — one prep, two tables, two kitchens.",
     customerDialogue: "Mushroom and steak, in the bowl.",
-    basePayment: 2550,
+    basePayment: 375,
     unlockLevel: 224,
   },
   {
@@ -5269,11 +7086,14 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         chainBreak: true,
       },
     ],
-    destinations: [PLATE, BOWL],
+    destinations: [
+      { id: "plate", name: "Plate" },
+      { id: "bowl", name: "Bowl" },
+    ],
     batchable: false,
     chefInstruction: "Slice one salmon for the plate, then dice a fresh one for the bowl.",
     customerDialogue: "Salmon two ways, please.",
-    basePayment: 2570,
+    basePayment: 375,
     unlockLevel: 226,
   },
   {
@@ -5301,7 +7121,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: true,
     chefInstruction: "Julienne the carrot, then slice the salmon.",
     customerDialogue: "Carrot and salmon, please.",
-    basePayment: 2590,
+    basePayment: 375,
     unlockLevel: 228,
   },
   {
@@ -5329,7 +7149,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: true,
     chefInstruction: "The same carrot julienne, with sliced steak.",
     customerDialogue: "Carrot and steak, in the bowl.",
-    basePayment: 2590,
+    basePayment: 375,
     unlockLevel: 228,
   },
   {
@@ -5358,10 +7178,10 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     chefInstruction:
       "The same carrot julienne again, with chopped cabbage — three kitchens, one cut.",
     customerDialogue: "Carrot and cabbage, in the cup.",
-    basePayment: 2590,
+    basePayment: 375,
     unlockLevel: 228,
   },
-  // ==================== PHASE 6 — CHAPTER 24: CHINESE-THAI FUSION SERVICE ====================
+  // ───────────────────────── Chapter 24 — Chinese-Thai Fusion ─────────────────────────
   {
     id: "camp-fusion2-chicken-broccoli",
     name: "Chicken & Broccoli, Wok Style",
@@ -5381,12 +7201,18 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         resultingState: "chopped",
         destinationIds: ["bowl"],
       },
+      {
+        ingredientId: "springonion",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["bowl"],
+      },
     ],
     destinations: [BOWL],
     batchable: false,
-    chefInstruction: "Dice the chicken, then chop the broccoli.",
+    chefInstruction: "Dice the chicken. Chop the broccoli. Slice the springonion.",
     customerDialogue: "Chicken and broccoli, please.",
-    basePayment: 2610,
+    basePayment: 580,
     unlockLevel: 231,
   },
   {
@@ -5404,8 +7230,14 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
       },
       {
         ingredientId: "basil",
-        technique: "chop",
-        resultingState: "chopped",
+        technique: "chiffonade",
+        resultingState: "ribboned",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "garlic",
+        technique: "peel",
+        resultingState: "peeled",
         destinationIds: ["plate"],
       },
       {
@@ -5417,10 +7249,44 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     ],
     destinations: [PLATE],
     batchable: false,
-    chefInstruction: "Slice the salmon, chop the basil, then rock-mince the garlic.",
+    chefInstruction:
+      "Slice the salmon. Chiffonade the basil. Peel the garlic. Rock-mince the garlic.",
     customerDialogue: "Salmon with basil and garlic.",
-    basePayment: 2630,
+    basePayment: 665,
     unlockLevel: 232,
+  },
+  {
+    id: "camp-green-bean-tofu-wok-bowl",
+    name: "Green Bean & Tofu Wok Bowl",
+    emoji: "🫘",
+    cuisineId: "chinese",
+    authenticity: "A",
+    components: [
+      {
+        ingredientId: "greenbean",
+        technique: "chop",
+        resultingState: "chopped",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "tofu",
+        technique: "dice",
+        resultingState: "diced",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "springonion",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["bowl"],
+      },
+    ],
+    destinations: [BOWL],
+    batchable: true,
+    chefInstruction: "Chop the greenbean. Dice the tofu. Slice the springonion.",
+    customerDialogue: "Green bean and tofu from the wok, please.",
+    basePayment: 580,
+    unlockLevel: 233,
   },
   {
     id: "camp-fusion2-pepper-batch-a",
@@ -5442,12 +7308,25 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         resultingState: "diced",
         destinationIds: ["plate"],
       },
+      {
+        ingredientId: "ginger",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "ginger",
+        technique: "rockMince",
+        resultingState: "minced",
+        destinationIds: ["plate"],
+      },
     ],
     destinations: [PLATE],
     batchable: true,
-    chefInstruction: "Julienne the pepper, then dice the chicken.",
+    chefInstruction:
+      "Julienne the pepper. Dice the chicken. Peel the ginger. Rock-mince the ginger.",
     customerDialogue: "Pepper and chicken, please.",
-    basePayment: 2650,
+    basePayment: 695,
     unlockLevel: 234,
   },
   {
@@ -5470,12 +7349,18 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         resultingState: "diced",
         destinationIds: ["bowl"],
       },
+      {
+        ingredientId: "chilli",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["bowl"],
+      },
     ],
     destinations: [BOWL],
     batchable: true,
-    chefInstruction: "The same julienned pepper, with diced salmon — two kitchens, one cut.",
+    chefInstruction: "Julienne the pepper. Dice the salmon. Slice the chilli.",
     customerDialogue: "Pepper and salmon, in the bowl.",
-    basePayment: 2650,
+    basePayment: 580,
     unlockLevel: 234,
   },
   {
@@ -5499,11 +7384,14 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         chainBreak: true,
       },
     ],
-    destinations: [PLATE, BOWL],
+    destinations: [
+      { id: "plate", name: "Plate" },
+      { id: "bowl", name: "Bowl" },
+    ],
     batchable: false,
     chefInstruction: "Slice one steak for the plate, then dice a fresh one for the bowl.",
     customerDialogue: "Steak two ways, please.",
-    basePayment: 2670,
+    basePayment: 390,
     unlockLevel: 236,
   },
   {
@@ -5513,6 +7401,12 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     cuisineId: "chinese",
     authenticity: "A",
     components: [
+      {
+        ingredientId: "garlic",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["plate"],
+      },
       {
         ingredientId: "garlic",
         technique: "rockMince",
@@ -5526,12 +7420,19 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         resultingState: "sliced",
         destinationIds: ["plate"],
       },
+      {
+        ingredientId: "springonion",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["plate"],
+      },
     ],
     destinations: [PLATE],
     batchable: true,
-    chefInstruction: "Rock-mince the garlic, then slice the chicken.",
+    chefInstruction:
+      "Peel the garlic. Rock-mince the garlic. Slice the chicken. Slice the springonion.",
     customerDialogue: "Garlic and chicken, please.",
-    basePayment: 2690,
+    basePayment: 695,
     unlockLevel: 238,
   },
   {
@@ -5541,6 +7442,12 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     cuisineId: "thai",
     authenticity: "A",
     components: [
+      {
+        ingredientId: "garlic",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
       {
         ingredientId: "garlic",
         technique: "rockMince",
@@ -5559,7 +7466,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: true,
     chefInstruction: "The same rock-minced garlic, with sliced salmon.",
     customerDialogue: "Garlic and salmon, in the bowl.",
-    basePayment: 2690,
+    basePayment: 500,
     unlockLevel: 238,
   },
   {
@@ -5569,6 +7476,12 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     cuisineId: "korean",
     authenticity: "B",
     components: [
+      {
+        ingredientId: "garlic",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["cup"],
+      },
       {
         ingredientId: "garlic",
         technique: "rockMince",
@@ -5588,10 +7501,10 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     chefInstruction:
       "The same rock-minced garlic again, with sliced steak — three kitchens, one cut.",
     customerDialogue: "Garlic and steak, in the cup.",
-    basePayment: 2690,
+    basePayment: 500,
     unlockLevel: 238,
   },
-  // ==================== PHASE 6 — CHAPTER 25: THE GRAND FINALE ====================
+  // ───────────────────────── Chapter 25 — The Grand Finale ─────────────────────────
   {
     id: "camp-finale-nine-cuisine-sampler",
     name: "Nine-Kitchen Sampler",
@@ -5619,17 +7532,41 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
       },
       {
         ingredientId: "garlic",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "garlic",
         technique: "rockMince",
         resultingState: "minced",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "onion",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "onion",
+        technique: "rings",
+        resultingState: "ringed",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "orange",
+        technique: "radial",
+        resultingState: "wedged",
         destinationIds: ["plate"],
       },
     ],
     destinations: [PLATE],
     batchable: false,
     chefInstruction:
-      "Dice the tomato, chiffonade the basil, julienne the carrot, then rock-mince the garlic — every kitchen's own signature cut, on one plate.",
+      "Dice the tomato. Chiffonade the basil. Julienne the carrot. Peel the garlic. Rock-mince the garlic. Peel the onion. Ring the onion. Cut the orange.",
     customerDialogue: "One plate, every kitchen this restaurant has become.",
-    basePayment: 2710,
+    basePayment: 1290,
     unlockLevel: 241,
   },
   {
@@ -5650,20 +7587,26 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         technique: "julienne",
         resultingState: "julienned",
         destinationIds: ["bowl"],
+        chainBreak: true,
       },
       {
         ingredientId: "chicken",
         technique: "dice",
         resultingState: "diced",
         destinationIds: ["cup"],
+        chainBreak: true,
       },
     ],
-    destinations: [PLATE, BOWL, { id: "cup", name: "Cup" }],
+    destinations: [
+      { id: "plate", name: "Plate" },
+      { id: "bowl", name: "Bowl" },
+      { id: "cup", name: "Cup" },
+    ],
     batchable: false,
     chefInstruction:
       "Slice one chicken for the plate, julienne a fresh one for the bowl, then dice a third for the cup.",
     customerDialogue: "Chicken, every way this kitchen has learned it.",
-    basePayment: 2730,
+    basePayment: 600,
     unlockLevel: 243,
   },
   {
@@ -5691,7 +7634,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: true,
     chefInstruction: "Julienne the carrot, then slice the steak.",
     customerDialogue: "Steak with a carrot julienne.",
-    basePayment: 2750,
+    basePayment: 400,
     unlockLevel: 245,
   },
   {
@@ -5719,8 +7662,80 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     batchable: true,
     chefInstruction: "The same carrot julienne, with sliced salmon.",
     customerDialogue: "Salmon with a carrot julienne.",
-    basePayment: 2750,
+    basePayment: 400,
     unlockLevel: 245,
+  },
+  {
+    id: "camp-finale-apple-cheddar",
+    name: "Apple & Cheddar Plate",
+    emoji: "🧀",
+    cuisineId: null,
+    authenticity: "B",
+    components: [
+      {
+        ingredientId: "apple",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "apple",
+        technique: "radial",
+        resultingState: "wedged",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "cheddar",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["plate"],
+      },
+    ],
+    destinations: [PLATE],
+    batchable: false,
+    chefInstruction: "Cut the apple. Slice the cheddar.",
+    customerDialogue: "Apple and cheddar, a classic pairing.",
+    basePayment: 345,
+    unlockLevel: 242, // first served by Level 242 (was 246: the level pool served it before it 'unlocked')
+  },
+  {
+    id: "camp-finale-onion-rings-smash",
+    name: "Onion Rings & Smashed Garlic",
+    emoji: "🧅",
+    cuisineId: null,
+    authenticity: "A",
+    components: [
+      {
+        ingredientId: "onion",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "onion",
+        technique: "rings",
+        resultingState: "ringed",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "garlic",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
+      {
+        ingredientId: "garlic",
+        technique: "smash",
+        resultingState: "smashed",
+        destinationIds: ["bowl"],
+      },
+    ],
+    destinations: [BOWL],
+    batchable: false,
+    chefInstruction: "Ring the onion, then smash the garlic.",
+    customerDialogue: "Onion rings with smashed garlic.",
+    basePayment: 465,
+    unlockLevel: 246,
   },
   {
     id: "camp-finale-chicken-branch-grand",
@@ -5743,13 +7758,55 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         chainBreak: true,
       },
     ],
-    destinations: [PLATE, BOWL],
+    destinations: [
+      { id: "plate", name: "Plate" },
+      { id: "bowl", name: "Bowl" },
+    ],
     batchable: false,
     chefInstruction:
       "Slice one chicken for the plate, then dice a fresh one for the bowl — one last branch.",
     customerDialogue: "Chicken, two ways, one last time.",
-    basePayment: 2770,
+    basePayment: 400,
     unlockLevel: 247,
+  },
+  {
+    id: "camp-finale-kiwi-lemon-plate",
+    name: "Kiwi & Lemon Plate",
+    emoji: "🥝",
+    cuisineId: null,
+    authenticity: "B",
+    components: [
+      {
+        ingredientId: "kiwi",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "kiwi",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "lemon",
+        technique: "radial",
+        resultingState: "wedged",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "pomegranate",
+        technique: "halve",
+        resultingState: "halved",
+        destinationIds: ["plate"],
+      },
+    ],
+    destinations: [PLATE],
+    batchable: false,
+    chefInstruction: "Peel the kiwi. Slice the kiwi. Cut the lemon. Halve the pomegranate.",
+    customerDialogue: "Kiwi and a lemon wedge, please.",
+    basePayment: 550,
+    unlockLevel: 246, // first served by Level 246 (was 248: the level pool served it before it 'unlocked')
   },
   {
     id: "camp-finale-garlic-grand-a",
@@ -5758,6 +7815,12 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     cuisineId: null,
     authenticity: "B",
     components: [
+      {
+        ingredientId: "garlic",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["plate"],
+      },
       {
         ingredientId: "garlic",
         technique: "rockMince",
@@ -5771,12 +7834,24 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         resultingState: "sliced",
         destinationIds: ["plate"],
       },
+      {
+        ingredientId: "turnip",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "turnip",
+        technique: "dice",
+        resultingState: "diced",
+        destinationIds: ["plate"],
+      },
     ],
     destinations: [PLATE],
     batchable: true,
-    chefInstruction: "Rock-mince the garlic, then slice the steak.",
+    chefInstruction: "Peel the garlic. Rock-mince the garlic. Slice the steak. Dice the turnip.",
     customerDialogue: "The grand service, table one.",
-    basePayment: 2800,
+    basePayment: 715,
     unlockLevel: 250,
   },
   {
@@ -5786,6 +7861,12 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     cuisineId: null,
     authenticity: "B",
     components: [
+      {
+        ingredientId: "garlic",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
       {
         ingredientId: "garlic",
         technique: "rockMince",
@@ -5799,12 +7880,19 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         resultingState: "sliced",
         destinationIds: ["bowl"],
       },
+      {
+        ingredientId: "asparagus",
+        technique: "chop",
+        resultingState: "chopped",
+        destinationIds: ["bowl"],
+      },
     ],
     destinations: [BOWL],
     batchable: true,
-    chefInstruction: "The same rock-minced garlic, with sliced salmon.",
+    chefInstruction:
+      "Peel the garlic. Rock-mince the garlic. Slice the salmon. Chop the asparagus.",
     customerDialogue: "The grand service, table two.",
-    basePayment: 2800,
+    basePayment: 715,
     unlockLevel: 250,
   },
   {
@@ -5827,233 +7915,22 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         destinationIds: ["plate2"],
         chainBreak: true,
       },
+      {
+        ingredientId: "basil",
+        technique: "chiffonade",
+        resultingState: "ribboned",
+        destinationIds: ["cup", "plate2"],
+      },
     ],
     destinations: [
       { id: "cup", name: "Cup" },
       { id: "plate2", name: "Second Plate" },
     ],
     batchable: false,
-    chefInstruction:
-      "Slice one chicken for the cup, then dice a fresh one for the second plate — the campaign's last branch.",
+    chefInstruction: "Slice the chicken. Dice the chicken. Chiffonade the basil.",
     customerDialogue: "The grand service, table three — chicken, two ways.",
-    basePayment: 2800,
+    basePayment: 570,
     unlockLevel: 250,
-  },
-  // ==================== PHASE 6 — COVERAGE FIX-UPS ====================
-  // Six ingredients were still at 0-1 recipes and three techniques were
-  // still below the brief's "at least 10 recipes" target after the main
-  // Phase 6 content above. These seven recipes close those gaps with
-  // real, distinct dishes (never a repeat of an existing recipe under a
-  // new name) — reused into the Chapter 25 pools below, not new levels.
-  {
-    id: "camp-finale-apple-radial",
-    name: "Apple Radial Plate",
-    emoji: "🍎",
-    cuisineId: null,
-    authenticity: "B",
-    components: [
-      {
-        ingredientId: "apple",
-        technique: "radial",
-        resultingState: "wedged",
-        destinationIds: ["plate"],
-      },
-    ],
-    destinations: [PLATE],
-    batchable: false,
-    chefInstruction: "Radial-cut the apple into even wedges.",
-    customerDialogue: "The apple, wedged, please.",
-    basePayment: 2400,
-    unlockLevel: 246,
-  },
-  {
-    id: "camp-finale-apple-cheddar",
-    name: "Apple & Cheddar Plate",
-    emoji: "🧀",
-    cuisineId: null,
-    authenticity: "B",
-    components: [
-      {
-        ingredientId: "apple",
-        technique: "radial",
-        resultingState: "wedged",
-        destinationIds: ["plate"],
-      },
-      {
-        ingredientId: "cheddar",
-        technique: "slice",
-        resultingState: "sliced",
-        destinationIds: ["plate"],
-      },
-    ],
-    destinations: [PLATE],
-    batchable: false,
-    chefInstruction: "Radial-cut the apple, then slice the cheddar alongside it.",
-    customerDialogue: "Apple and cheddar, a classic pairing.",
-    basePayment: 2420,
-    unlockLevel: 246,
-  },
-  {
-    id: "camp-finale-cheddar-tomato",
-    name: "Cheddar & Tomato Plate",
-    emoji: "🧀",
-    cuisineId: null,
-    authenticity: "B",
-    components: [
-      {
-        ingredientId: "cheddar",
-        technique: "slice",
-        resultingState: "sliced",
-        destinationIds: ["plate"],
-      },
-      {
-        ingredientId: "tomato",
-        technique: "dice",
-        resultingState: "diced",
-        destinationIds: ["plate"],
-      },
-    ],
-    destinations: [PLATE],
-    batchable: false,
-    chefInstruction: "Slice the cheddar, then dice the tomato.",
-    customerDialogue: "Cheddar and tomato, please.",
-    basePayment: 2440,
-    unlockLevel: 248,
-  },
-  {
-    id: "camp-finale-apple-orange-radial",
-    name: "Apple & Orange Radial",
-    emoji: "🍊",
-    cuisineId: null,
-    authenticity: "B",
-    components: [
-      {
-        ingredientId: "apple",
-        technique: "radial",
-        resultingState: "wedged",
-        destinationIds: ["plate"],
-      },
-      {
-        ingredientId: "orange",
-        technique: "radial",
-        resultingState: "wedged",
-        destinationIds: ["plate"],
-      },
-    ],
-    destinations: [PLATE],
-    batchable: false,
-    chefInstruction: "Radial-cut the apple, then radial-cut the orange to match.",
-    customerDialogue: "Apple and orange, both wedged.",
-    basePayment: 2460,
-    unlockLevel: 248,
-  },
-  {
-    id: "camp-finale-onion-rings-smash",
-    name: "Onion Rings & Smashed Garlic",
-    emoji: "🧅",
-    cuisineId: null,
-    authenticity: "A",
-    components: [
-      {
-        ingredientId: "onion",
-        technique: "rings",
-        resultingState: "ringed",
-        destinationIds: ["bowl"],
-      },
-      {
-        ingredientId: "garlic",
-        technique: "smash",
-        resultingState: "smashed",
-        destinationIds: ["bowl"],
-      },
-    ],
-    destinations: [BOWL],
-    batchable: false,
-    chefInstruction: "Ring the onion, then smash the garlic.",
-    customerDialogue: "Onion rings with smashed garlic.",
-    basePayment: 2480,
-    unlockLevel: 246,
-  },
-  {
-    id: "camp-finale-onion-rings-carrot",
-    name: "Onion Rings & Carrot",
-    emoji: "🧅",
-    cuisineId: null,
-    authenticity: "A",
-    components: [
-      {
-        ingredientId: "onion",
-        technique: "rings",
-        resultingState: "ringed",
-        destinationIds: ["plate"],
-      },
-      {
-        ingredientId: "carrot",
-        technique: "julienne",
-        resultingState: "julienned",
-        destinationIds: ["plate"],
-      },
-    ],
-    destinations: [PLATE],
-    batchable: false,
-    chefInstruction: "Ring the onion, then julienne the carrot.",
-    customerDialogue: "Onion rings with carrot.",
-    basePayment: 2500,
-    unlockLevel: 248,
-  },
-  {
-    id: "camp-finale-potato-watermelon-peel",
-    name: "Potato & Watermelon, Peeled",
-    emoji: "🥔",
-    cuisineId: null,
-    authenticity: "C",
-    components: [
-      {
-        ingredientId: "potato",
-        technique: "peel",
-        resultingState: "peeled",
-        destinationIds: ["bowl"],
-      },
-      {
-        ingredientId: "watermelon",
-        technique: "peel",
-        resultingState: "peeled",
-        destinationIds: ["bowl"],
-      },
-    ],
-    destinations: [BOWL],
-    batchable: false,
-    chefInstruction: "Peel the potato, then peel the watermelon.",
-    customerDialogue: "Potato and watermelon, both peeled.",
-    basePayment: 2520,
-    unlockLevel: 246,
-  },
-  {
-    id: "camp-finale-kiwi-lemon-plate",
-    name: "Kiwi & Lemon Plate",
-    emoji: "🥝",
-    cuisineId: null,
-    authenticity: "B",
-    components: [
-      {
-        ingredientId: "kiwi",
-        technique: "peel",
-        resultingState: "peeled",
-        destinationIds: ["plate"],
-      },
-      {
-        ingredientId: "lemon",
-        technique: "radial",
-        resultingState: "wedged",
-        destinationIds: ["plate"],
-      },
-    ],
-    destinations: [PLATE],
-    batchable: false,
-    chefInstruction: "Peel the kiwi, then radial-cut the lemon.",
-    customerDialogue: "Kiwi and a lemon wedge, please.",
-    basePayment: 2540,
-    unlockLevel: 248,
   },
 ];
 

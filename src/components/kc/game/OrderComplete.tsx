@@ -1,4 +1,5 @@
 import { KButton, Panel } from "../common/primitives";
+import { formatUsdChange } from "@/game/money";
 import { CurrencyPill } from "../common/Indicators";
 import type { QualityLabel } from "@/types/game";
 
@@ -35,7 +36,7 @@ export function OrderComplete({
   score: number;
   previousBest: number;
   qualityLabel: QualityLabel;
-  /** This run's coin reward — 0 on replay (Law 2), the level's reward.coins on first completion. */
+  /** This run's reward in wallet cents — 0 on replay (Law 2), the level's reward on first completion. */
   rewardCoins: number;
   credits: number;
   onRetry: () => void;
@@ -64,7 +65,7 @@ export function OrderComplete({
           </p>
         ) : null}
         {rewardCoins > 0 ? (
-          <p className="mt-3 font-hand text-[20px] text-olive">+{rewardCoins} Kitchen Coins</p>
+          <p className="mt-3 font-hand text-[20px] text-olive">{formatUsdChange(rewardCoins)}</p>
         ) : (
           <p className="mt-3 font-hand text-[15px] text-walnut/55">
             replayed for the love of cutting

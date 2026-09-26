@@ -9,6 +9,8 @@
  * and scripts/_validate-recipes.mts / _validate-levels-41-100.mts checks.
  */
 import { INGREDIENTS } from "../src/game/definitions.ts";
+// USD: an order pays its recipe's whole-dollar basePayment as wallet cents (money.ts dollars()).
+import { dollars } from "../src/game/money.ts";
 import { CAMPAIGN_RECIPES } from "../src/game/recipes/campaignRecipes.ts";
 import { LEVELS, CHAPTER_TITLES } from "../src/game/levels/levelDefinitions.ts";
 import {
@@ -229,11 +231,11 @@ assert(
   let group = createBatchGroupSession("t", [recipeA, recipeB], () => 0);
   group = recordBatchGroupComponents(group, group.orders[0].order.id);
   const serve1 = serveBatchGroupOrder(group, group.orders[0].order.id, () => 0);
-  assert(serve1 !== null && serve1.coinsAwarded === 100, "TEST D: first serve pays 100");
+  assert(serve1 !== null && serve1.coinsAwarded === dollars(100), "TEST D: first serve pays $100");
   const serve2 = serveBatchGroupOrder(serve1!.group, group.orders[0].order.id, () => 0);
   assert(serve2 === null, "TEST D: serving the same order again is refused (no double payment)");
   const serve3 = serveBatchGroupOrder(serve1!.group, group.orders[1].order.id, () => 0);
-  assert(serve3 !== null && serve3.coinsAwarded === 100, "TEST D: the OTHER order still pays its own 100 independently");
+  assert(serve3 !== null && serve3.coinsAwarded === dollars(100), "TEST D: the OTHER order still pays its own $100 independently");
   assert(isBatchGroupComplete(serve3!.group), "TEST D: group complete once both served");
 }
 

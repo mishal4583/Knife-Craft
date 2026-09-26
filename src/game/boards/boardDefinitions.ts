@@ -6,6 +6,7 @@
  * retuned later without touching any consuming code.
  */
 import type { BoardDefinition } from "./boardTypes";
+import { dollars } from "../money";
 
 export const DEFAULT_BOARD_ID = "walnut" as const;
 
@@ -16,7 +17,7 @@ export const BOARD_CATALOG: BoardDefinition[] = [
     tagline: "The one you started on",
     description: "Classic walnut preparation board — warm, dependable, and always on the counter.",
     material: "Walnut wood",
-    price: 0,
+    price: dollars(0),
     unlockLevel: 1,
     visual: {
       tone: ["#8A5B36", "#6B4226", "#4B2D19"],
@@ -29,7 +30,7 @@ export const BOARD_CATALOG: BoardDefinition[] = [
     tagline: "Pale and forgiving",
     description: "Light natural maple with a fine, even grain — a bright, airy counter presence.",
     material: "Maple wood",
-    price: 300,
+    price: dollars(300),
     unlockLevel: 10,
     visual: {
       tone: ["#E5C99A", "#D3B080", "#B99263"],
@@ -43,7 +44,7 @@ export const BOARD_CATALOG: BoardDefinition[] = [
     description:
       "Warm wood with a soft sage inset, like a windowsill herb box built into the board.",
     material: "Wood with sage inset",
-    price: 500,
+    price: dollars(500),
     unlockLevel: 20,
     visual: {
       tone: ["#C7B285", "#A78E5C", "#7A6540"],
@@ -58,7 +59,7 @@ export const BOARD_CATALOG: BoardDefinition[] = [
     description:
       "Pale Carrara marble with subtle natural veining — cool, quiet, and a little formal.",
     material: "Carrara marble",
-    price: 750,
+    price: dollars(750),
     unlockLevel: 30,
     visual: {
       tone: ["#F2EDE4", "#DCD5C8", "#BDB4A4"],
@@ -71,7 +72,7 @@ export const BOARD_CATALOG: BoardDefinition[] = [
     tagline: "Confident and deep",
     description: "Deep dark oak with heavy, pronounced grain — a serious, substantial presence.",
     material: "Dark oak wood",
-    price: 1000,
+    price: dollars(1000),
     unlockLevel: 40,
     visual: {
       tone: ["#5C4326", "#402C17", "#28190C"],
@@ -85,7 +86,7 @@ export const BOARD_CATALOG: BoardDefinition[] = [
     description:
       "Warm show wood trimmed in polished copper — the reward for a well-stocked kitchen.",
     material: "Wood with copper trim",
-    price: 1500,
+    price: dollars(1500),
     unlockLevel: 50,
     visual: {
       tone: ["#C6813F", "#A05F27", "#6B3B16"],
@@ -104,7 +105,7 @@ export const BOARD_CATALOG: BoardDefinition[] = [
     description:
       "A thick, heavy-duty block built for steak and poultry work — deep enough to take a cleaver's full weight without a second thought.",
     material: "End-grain hardwood block",
-    price: 1800,
+    price: dollars(1800),
     unlockLevel: 106,
     visual: {
       tone: ["#7A4A2E", "#5A331D", "#3A2010"],
@@ -120,7 +121,7 @@ export const BOARD_CATALOG: BoardDefinition[] = [
     description:
       "Dark slate with a faint blue-grey sheen — cool underhand, built for fish and shellfish prep.",
     material: "Slate",
-    price: 2000,
+    price: dollars(2000),
     unlockLevel: 109,
     visual: {
       tone: ["#5C6B72", "#404E54", "#28333A"],

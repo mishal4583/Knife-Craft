@@ -32,7 +32,7 @@
  * and Chapter 5 "Fine Cuts" (41-50, visual beauty as its own reward via
  * Julienne reinforcement and the new Radial technique). Every level's
  * `preparationSteps` is what actually drives its Preparation session (see
- * Preparation.tsx) — not a lookup into src/data/orders.ts. Reward curve
+ * Preparation.tsx) — not a lookup into the old (deleted) PrepOrder data. Reward curve
  * is the design doc's own ranges, gently increasing per band (Learn
  * 50-80, Combine 80-130, Transform 130-180). Unlock chain stays
  * intentionally linear across all 50 (design brief §"level unlock graph")
@@ -1004,7 +1004,7 @@ export const LEVELS: LevelDefinition[] = [
     destinations: [],
     unlockRequirements: { type: "levelCompleted", levelId: "level-23" },
     reward: { coins: 122 },
-    recipePoolIds: ["camp-caprese-plate", "camp-orange-rose-garnish"],
+    recipePoolIds: ["camp-caprese-plate", "camp-orange-rose-garnish", "camp-eggplant-antipasto"],
     requiredOrders: 1,
   },
   {
@@ -1086,8 +1086,7 @@ export const LEVELS: LevelDefinition[] = [
     destinations: [],
     unlockRequirements: { type: "levelCompleted", levelId: "level-25" },
     reward: { coins: 126 },
-    recipePoolIds: ["camp-bruschetta-trio", "camp-garden-tomato-cup"],
-    requiredOrders: 2,
+    batchGroupRecipeIds: ["camp-bruschetta-trio", "camp-garden-tomato-cup"],
   },
   {
     id: "level-27",
@@ -1130,7 +1129,7 @@ export const LEVELS: LevelDefinition[] = [
     destinations: [],
     unlockRequirements: { type: "levelCompleted", levelId: "level-26" },
     reward: { coins: 128 },
-    recipePoolIds: ["camp-julienne-vegetable-medley"],
+    recipePoolIds: ["camp-julienne-vegetable-medley", "camp-zucchini-fennel-julienne"],
     requiredOrders: 1,
   },
   {
@@ -1256,7 +1255,12 @@ export const LEVELS: LevelDefinition[] = [
     reward: { coins: 130 },
     milestone: "The Cutting Board",
     unlockReward: { type: "board", id: "marble", name: "Marble Board" },
-    recipePoolIds: ["camp-bruschetta-trio", "camp-caprese-skewers-batch", "camp-caprese-plate"],
+    recipePoolIds: [
+      "camp-bruschetta-trio",
+      "camp-caprese-skewers-batch",
+      "camp-caprese-plate",
+      "camp-eggplant-antipasto",
+    ],
     requiredOrders: 2,
   },
   {
@@ -1326,7 +1330,7 @@ export const LEVELS: LevelDefinition[] = [
     chapter: 4,
     chapterId: "french-bistro",
     type: "ORDER",
-    title: "Potato Velouté Base",
+    title: "Potato Veloute Base",
     subtitle: "Precision dice, reinforced",
     description: "An even dice on the potato — the bistro expects consistency.",
     emoji: "🥔",
@@ -1404,7 +1408,7 @@ export const LEVELS: LevelDefinition[] = [
     chapter: 4,
     chapterId: "french-bistro",
     type: "ORDER",
-    title: "Mushroom & Garlic Sauté Prep",
+    title: "Mushroom & Garlic Saute Prep",
     subtitle: "Slice and rock mince, together",
     description:
       "Sliced mushroom, rock-minced garlic through it — the sauté pan's first real order.",
@@ -1441,7 +1445,7 @@ export const LEVELS: LevelDefinition[] = [
     chapter: 4,
     chapterId: "french-bistro",
     type: "ORDER",
-    title: "Spinach & Fennel Chiffonade Plate",
+    title: "Spinach & Fennel Chiffonade",
     subtitle: "Chiffonade, reinforced",
     description: "Ribboned spinach and sliced fennel — delicate, and precise.",
     emoji: "🥬",
@@ -1477,7 +1481,7 @@ export const LEVELS: LevelDefinition[] = [
     chapter: 4,
     chapterId: "french-bistro",
     type: "ORDER",
-    title: "Asparagus & Carrot Precision Plate",
+    title: "Asparagus & Carrot Precision",
     subtitle: "A table that notices the cut",
     description: "Sliced asparagus, julienned carrot — precision as the whole point of the dish.",
     emoji: "🥕",
@@ -1754,7 +1758,7 @@ export const LEVELS: LevelDefinition[] = [
     chapter: 5,
     chapterId: "french-precision",
     type: "SERVICE",
-    title: "Herb Butter Vegetable Plate",
+    title: "Herb Garden Vegetable Plate",
     subtitle: "Three techniques, one plate",
     description:
       "Chiffonade, julienne, and dice — everything this kitchen has learned, on one plate.",
@@ -1828,7 +1832,7 @@ export const LEVELS: LevelDefinition[] = [
     destinations: [],
     unlockRequirements: { type: "levelCompleted", levelId: "level-45" },
     reward: { coins: 182 },
-    recipePoolIds: ["camp-fennel-celery-julienne"],
+    recipePoolIds: ["camp-fennel-celery-julienne", "camp-celery-apple-remoulade-prep"],
     requiredOrders: 1,
   },
   {
@@ -1872,7 +1876,7 @@ export const LEVELS: LevelDefinition[] = [
     chapter: 5,
     chapterId: "french-precision",
     type: "ORDER",
-    title: "Three-Herb Garnish",
+    title: "Herb & Garlic Garnish",
     subtitle: "Two techniques, three ingredients",
     description: "Basil and parsley chiffonade, garlic rock-minced through both.",
     emoji: "🌱",
@@ -1944,7 +1948,7 @@ export const LEVELS: LevelDefinition[] = [
     destinations: [],
     unlockRequirements: { type: "levelCompleted", levelId: "level-48" },
     reward: { coins: 194 },
-    recipePoolIds: ["camp-baguette-crostini-prep"],
+    recipePoolIds: ["camp-baguette-crostini-prep", "camp-baguette-cheddar-rounds"],
     requiredOrders: 1,
   },
   {
@@ -2110,7 +2114,7 @@ export const LEVELS: LevelDefinition[] = [
     chapter: 6,
     chapterId: "indian-kitchen",
     type: "ORDER",
-    title: "Garlic Curry Paste",
+    title: "Garlic & Ginger Curry Paste",
     subtitle: "Rock mince, reinforced",
     description: "Fine, even garlic — the base of the curry paste.",
     emoji: "🧄",
@@ -2640,7 +2644,7 @@ export const LEVELS: LevelDefinition[] = [
     destinations: [],
     unlockRequirements: { type: "levelCompleted", levelId: "level-67" },
     reward: { coins: 266 },
-    recipePoolIds: ["camp-pumpkin-garlic-curry"],
+    recipePoolIds: ["camp-pumpkin-garlic-curry", "camp-pumpkin-coconut-curry"],
     requiredOrders: 1,
   },
   {
@@ -2772,7 +2776,7 @@ export const LEVELS: LevelDefinition[] = [
     chapter: 8,
     chapterId: "mediterranean-levant",
     type: "ORDER",
-    title: "Eggplant Plate",
+    title: "Eggplant Mezze",
     subtitle: "A new ingredient",
     description: "Eggplant, sliced into even rounds.",
     emoji: "🍆",
@@ -2860,7 +2864,7 @@ export const LEVELS: LevelDefinition[] = [
     chapter: 8,
     chapterId: "mediterranean-levant",
     type: "ORDER",
-    title: "Pomegranate Garnish",
+    title: "Pomegranate & Parsley",
     subtitle: "Color for the plate",
     description: "A pomegranate, halved clean.",
     emoji: "🍎",
@@ -3041,7 +3045,11 @@ export const LEVELS: LevelDefinition[] = [
     destinations: [],
     unlockRequirements: { type: "levelCompleted", levelId: "level-78" },
     reward: { coins: 316 },
-    recipePoolIds: ["camp-cucumber-tomato-mezze", "camp-tabbouleh-inspired-base"],
+    recipePoolIds: [
+      "camp-cucumber-tomato-mezze",
+      "camp-tabbouleh-inspired-base",
+      "camp-eggplant-plate",
+    ],
     requiredOrders: 2,
   },
   {
@@ -3136,7 +3144,7 @@ export const LEVELS: LevelDefinition[] = [
     chapter: 9,
     chapterId: "mexican-latin",
     type: "ORDER",
-    title: "Avocado Plate",
+    title: "Avocado & Lime Plate",
     subtitle: "One clean cut",
     description: "A ripe avocado, halved.",
     emoji: "🥑",
@@ -3270,7 +3278,7 @@ export const LEVELS: LevelDefinition[] = [
     chapter: 9,
     chapterId: "mexican-latin",
     type: "ORDER",
-    title: "Beetroot Plate",
+    title: "Beetroot & Orange Plate",
     subtitle: "A new root vegetable",
     description: "Beetroot, sliced into even rounds.",
     emoji: "🥔",
@@ -3965,7 +3973,7 @@ export const LEVELS: LevelDefinition[] = [
     chapter: 11,
     chapterId: "japanese-kitchen",
     type: "ORDER",
-    title: "Chicken Sliced Service",
+    title: "Chicken, Diced",
     subtitle: "Chicken Breast → Halve → Dice",
     description: "The same fillet, diced this time — a bowl, not a plate.",
     emoji: "🍗",
@@ -4425,6 +4433,7 @@ export const LEVELS: LevelDefinition[] = [
       "camp-chicken-slice-intro",
       "camp-steak-slice-intro",
       "camp-salmon-slice-intro",
+      "camp-radish-cucumber-namasu",
     ],
     requiredOrders: 3,
   },
@@ -4590,6 +4599,7 @@ export const LEVELS: LevelDefinition[] = [
       "camp-chicken-cabbage-carrot",
       "camp-steak-mushroom-cabbage",
       "camp-salmon-tofu-spinach",
+      "camp-radish-cucumber-namasu",
     ],
     requiredOrders: 3,
   },
@@ -4953,7 +4963,11 @@ export const LEVELS: LevelDefinition[] = [
     destinations: [],
     unlockRequirements: { type: "levelCompleted", levelId: "level-126" },
     reward: { coins: 750 },
-    recipePoolIds: ["camp-tofu-broccoli-bowl", "camp-cabbage-cauliflower-bowl"],
+    recipePoolIds: [
+      "camp-tofu-broccoli-bowl",
+      "camp-cabbage-cauliflower-bowl",
+      "camp-eggplant-green-onion-wok-bowl",
+    ],
     requiredOrders: 2,
   },
   {
@@ -5219,6 +5233,7 @@ export const LEVELS: LevelDefinition[] = [
       "camp-tofu-broccoli-bowl",
       "camp-chicken-broccoli-plate",
       "camp-cabbage-cauliflower-bowl",
+      "camp-eggplant-green-onion-wok-bowl",
     ],
     requiredOrders: 3,
   },
@@ -5376,6 +5391,7 @@ export const LEVELS: LevelDefinition[] = [
       "camp-tofu-cauliflower-bowl",
       "camp-chicken-broccoli-plate",
       "camp-mushroom-spinach-bowl",
+      "camp-eggplant-green-onion-wok-bowl",
     ],
     requiredOrders: 3,
   },
@@ -6421,7 +6437,11 @@ export const LEVELS: LevelDefinition[] = [
     destinations: [],
     unlockRequirements: { type: "levelCompleted", levelId: "level-164" },
     reward: { coins: 1750 },
-    recipePoolIds: ["camp-korean-steak-cabbage", "camp-korean-chicken-spinach"],
+    recipePoolIds: [
+      "camp-korean-steak-cabbage",
+      "camp-korean-chicken-spinach",
+      "camp-pear-radish-side",
+    ],
     requiredOrders: 2,
   },
   {
@@ -6498,6 +6518,7 @@ export const LEVELS: LevelDefinition[] = [
       "camp-korean-steak-cabbage",
       "camp-korean-chicken-spinach",
       "camp-korean-steak-julienne-carrot",
+      "camp-pear-radish-side",
     ],
     requiredOrders: 3,
   },
@@ -6585,7 +6606,7 @@ export const LEVELS: LevelDefinition[] = [
     chapter: 17,
     chapterId: "korean-kitchen",
     type: "SERVICE",
-    title: "The Phase 5 Grand Service",
+    title: "The Korean Grand Service",
     subtitle: "Branch + Batch — three tables, a full protein kitchen",
     description:
       "The phase's finale — a grand solo plate, a real branch, and a real shared steak batch, three customers at once.",
@@ -7140,7 +7161,7 @@ export const LEVELS: LevelDefinition[] = [
     chapter: 19,
     chapterId: "french-service-mastery",
     type: "ORDER",
-    title: "Peach Garnish",
+    title: "Peach & Fennel",
     subtitle: "A quiet, simple plate",
     description: "Halve the peach clean.",
     emoji: "🍑",
@@ -7158,7 +7179,7 @@ export const LEVELS: LevelDefinition[] = [
     destinations: [],
     unlockRequirements: { type: "levelCompleted", levelId: "level-183" },
     reward: { coins: 2320 },
-    recipePoolIds: ["camp-french-peach-garnish"],
+    recipePoolIds: ["camp-french-peach-garnish", "camp-peach-cheddar-board"],
     requiredOrders: 1,
   },
   {
@@ -7314,29 +7335,37 @@ export const LEVELS: LevelDefinition[] = [
     chapter: 19,
     chapterId: "french-service-mastery",
     type: "SERVICE",
-    title: "Three Tables, Shared Butter",
+    title: "Three Tables, Shared Persillade",
     subtitle: "Real batching — three customers",
-    description: "Three customers, ONE sliced butter satisfying all three.",
-    emoji: "🧈",
-    recipeId: "camp-french-butter-3way-a",
+    description:
+      "Three customers, one shared parsley persillade batch — salmon, turnip and asparagus each finished with it.",
+    emoji: "🌿",
+    // KnifeCraft_Level_System_v2.docx §2.1 — Butter is removed from the
+    // campaign entirely (it was the only ingredient with no plausible
+    // cutting behaviour). This level's real gameplay is driven by
+    // `batchGroupRecipeIds` below (see this file's own header doc on the
+    // preparationSteps/objectives/recipeId adapter fields being a
+    // compatibility snapshot only) — updated here to describe the new
+    // shared-parsley-chiffonade batch instead of the old shared butter.
+    recipeId: "camp-salmon-persillade",
     objectives: [
-      { type: "prepareIngredient", ingredientId: "butter", technique: "slice" },
-      { type: "prepareIngredient", ingredientId: "carrot", technique: "julienne" },
+      { type: "prepareIngredient", ingredientId: "parsley", technique: "chiffonade" },
+      { type: "prepareIngredient", ingredientId: "salmon", technique: "slice" },
     ],
     preparationSteps: [
       {
-        ingredient: "butter",
+        ingredient: "parsley",
         startingState: "whole",
-        technique: "slice",
-        resultingState: "sliced",
+        technique: "chiffonade",
+        resultingState: "ribboned",
         destination: "Plate",
         optional: false,
       },
       {
-        ingredient: "carrot",
+        ingredient: "salmon",
         startingState: "whole",
-        technique: "julienne",
-        resultingState: "julienned",
+        technique: "slice",
+        resultingState: "sliced",
         destination: "Plate",
         optional: false,
       },
@@ -7345,9 +7374,9 @@ export const LEVELS: LevelDefinition[] = [
     unlockRequirements: { type: "levelCompleted", levelId: "level-188" },
     reward: { coins: 2420 },
     batchGroupRecipeIds: [
-      "camp-french-butter-3way-a",
-      "camp-french-butter-3way-b",
-      "camp-french-butter-3way-c",
+      "camp-salmon-persillade",
+      "camp-turnip-persillade-bowl",
+      "camp-asparagus-persillade-cup",
     ],
   },
   {
@@ -7388,6 +7417,7 @@ export const LEVELS: LevelDefinition[] = [
       "camp-french-turnip-carrot",
       "camp-french-steak-turnip",
       "camp-french-salmon-asparagus",
+      "camp-peach-cheddar-board",
     ],
     requiredOrders: 3,
   },
@@ -7546,7 +7576,11 @@ export const LEVELS: LevelDefinition[] = [
     destinations: [],
     unlockRequirements: { type: "levelCompleted", levelId: "level-193" },
     reward: { coins: 2580 },
-    recipePoolIds: ["camp-indian-onion-rings-plate", "camp-indian-steak-curry"],
+    recipePoolIds: [
+      "camp-indian-onion-rings-plate",
+      "camp-indian-steak-curry",
+      "camp-eggplant-masala-prep",
+    ],
     requiredOrders: 2,
   },
   {
@@ -7658,7 +7692,11 @@ export const LEVELS: LevelDefinition[] = [
     destinations: [],
     unlockRequirements: { type: "levelCompleted", levelId: "level-196" },
     reward: { coins: 2640 },
-    recipePoolIds: ["camp-indian-chicken-rings", "camp-indian-potato-branch"],
+    recipePoolIds: [
+      "camp-indian-chicken-rings",
+      "camp-indian-potato-branch",
+      "camp-eggplant-masala-prep",
+    ],
     requiredOrders: 2,
   },
   {
@@ -7936,7 +7974,12 @@ export const LEVELS: LevelDefinition[] = [
     destinations: [],
     unlockRequirements: { type: "levelCompleted", levelId: "level-203" },
     reward: { coins: 2830 },
-    recipePoolIds: ["camp-med-kiwi-watermelon", "camp-med-salmon-lemon"],
+    recipePoolIds: [
+      "camp-med-kiwi-watermelon",
+      "camp-med-salmon-lemon",
+      "camp-pomegranate-apple-plate",
+      "camp-beetroot-pomegranate-plate",
+    ],
     requiredOrders: 2,
   },
   {
@@ -8084,7 +8127,11 @@ export const LEVELS: LevelDefinition[] = [
     destinations: [],
     unlockRequirements: { type: "levelCompleted", levelId: "level-207" },
     reward: { coins: 2910 },
-    recipePoolIds: ["camp-med-kiwi-watermelon", "camp-med-salmon-branch"],
+    recipePoolIds: [
+      "camp-med-kiwi-watermelon",
+      "camp-med-salmon-branch",
+      "camp-beetroot-pomegranate-plate",
+    ],
     requiredOrders: 2,
   },
   {
@@ -8317,7 +8364,11 @@ export const LEVELS: LevelDefinition[] = [
     destinations: [],
     unlockRequirements: { type: "levelCompleted", levelId: "level-213" },
     reward: { coins: 3080 },
-    recipePoolIds: ["camp-latin-steak-corn", "camp-latin-grapes-strawberry"],
+    recipePoolIds: [
+      "camp-latin-steak-corn",
+      "camp-latin-grapes-strawberry",
+      "camp-sweet-potato-strawberry-plate",
+    ],
     requiredOrders: 2,
   },
   {
@@ -8465,7 +8516,11 @@ export const LEVELS: LevelDefinition[] = [
     destinations: [],
     unlockRequirements: { type: "levelCompleted", levelId: "level-217" },
     reward: { coins: 3160 },
-    recipePoolIds: ["camp-latin-grapes-strawberry", "camp-latin-chicken-avocado-grapes"],
+    recipePoolIds: [
+      "camp-latin-grapes-strawberry",
+      "camp-latin-chicken-avocado-grapes",
+      "camp-sweet-potato-strawberry-plate",
+    ],
     requiredOrders: 2,
   },
   {
@@ -8655,7 +8710,11 @@ export const LEVELS: LevelDefinition[] = [
     destinations: [],
     unlockRequirements: { type: "levelCompleted", levelId: "level-222" },
     reward: { coins: 3310 },
-    recipePoolIds: ["camp-fusion-salmon-cabbage", "camp-fusion-steak-spinach"],
+    recipePoolIds: [
+      "camp-fusion-salmon-cabbage",
+      "camp-fusion-steak-spinach",
+      "camp-radish-pear-fusion-cup",
+    ],
     requiredOrders: 2,
   },
   {
@@ -8803,7 +8862,11 @@ export const LEVELS: LevelDefinition[] = [
     destinations: [],
     unlockRequirements: { type: "levelCompleted", levelId: "level-226" },
     reward: { coins: 3390 },
-    recipePoolIds: ["camp-fusion-salmon-cabbage", "camp-fusion-steak-spinach"],
+    recipePoolIds: [
+      "camp-fusion-salmon-cabbage",
+      "camp-fusion-steak-spinach",
+      "camp-radish-pear-fusion-cup",
+    ],
     requiredOrders: 2,
   },
   {
@@ -9044,7 +9107,11 @@ export const LEVELS: LevelDefinition[] = [
     destinations: [],
     unlockRequirements: { type: "levelCompleted", levelId: "level-232" },
     reward: { coins: 3560 },
-    recipePoolIds: ["camp-fusion2-chicken-broccoli", "camp-fusion2-salmon-basil"],
+    recipePoolIds: [
+      "camp-fusion2-chicken-broccoli",
+      "camp-fusion2-salmon-basil",
+      "camp-green-bean-tofu-wok-bowl",
+    ],
     requiredOrders: 2,
   },
   {
@@ -9192,7 +9259,11 @@ export const LEVELS: LevelDefinition[] = [
     destinations: [],
     unlockRequirements: { type: "levelCompleted", levelId: "level-236" },
     reward: { coins: 3640 },
-    recipePoolIds: ["camp-fusion2-chicken-broccoli", "camp-fusion2-salmon-basil"],
+    recipePoolIds: [
+      "camp-fusion2-chicken-broccoli",
+      "camp-fusion2-salmon-basil",
+      "camp-green-bean-tofu-wok-bowl",
+    ],
     requiredOrders: 2,
   },
   {
@@ -9404,7 +9475,11 @@ export const LEVELS: LevelDefinition[] = [
     destinations: [],
     unlockRequirements: { type: "levelCompleted", levelId: "level-241" },
     reward: { coins: 3820 },
-    recipePoolIds: ["camp-finale-nine-cuisine-sampler", "camp-chicken-carrot-plate"],
+    recipePoolIds: [
+      "camp-finale-nine-cuisine-sampler",
+      "camp-chicken-carrot-plate",
+      "camp-finale-apple-cheddar",
+    ],
     requiredOrders: 2,
   },
   {
@@ -9564,10 +9639,9 @@ export const LEVELS: LevelDefinition[] = [
       "camp-finale-nine-cuisine-sampler",
       "camp-chicken-carrot-plate",
       "camp-steak-carrot-plate",
-      "camp-finale-apple-radial",
       "camp-finale-apple-cheddar",
       "camp-finale-onion-rings-smash",
-      "camp-finale-potato-watermelon-peel",
+      "camp-finale-kiwi-lemon-plate",
     ],
     requiredOrders: 3,
   },
@@ -9648,10 +9722,9 @@ export const LEVELS: LevelDefinition[] = [
       "camp-finale-chicken-grand",
       "camp-med-salmon-branch",
       "camp-french-steak-branch",
-      "camp-finale-cheddar-tomato",
-      "camp-finale-apple-orange-radial",
-      "camp-finale-onion-rings-carrot",
+      "camp-finale-apple-cheddar",
       "camp-finale-kiwi-lemon-plate",
+      "camp-finale-onion-rings-smash",
     ],
     requiredOrders: 3,
   },

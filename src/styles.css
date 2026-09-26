@@ -109,9 +109,12 @@
   transition:
     transform 0.35s var(--ease-cozy),
     box-shadow 0.35s var(--ease-cozy);
-  &:hover {
-    transform: translateY(-3px) rotate(-0.35deg);
-    box-shadow: var(--shadow-lift);
+  /* Only on devices that really hover — on touch screens :hover sticks after a tap. */
+  @media (hover: hover) {
+    &:hover {
+      transform: translateY(-3px) rotate(-0.35deg);
+      box-shadow: var(--shadow-lift);
+    }
   }
   &:active {
     transform: translateY(0) scale(0.99);
@@ -351,5 +354,46 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+  }
+
+  /* ── Mobile / touch ──────────────────────────────────────
+     The game is a fixed, full-screen app: no pull-to-refresh or rubber-band
+     bounce, no grey tap flash, no long-press text selection or callout
+     while swiping, no double-tap-zoom delay on controls, and the browser
+     never re-sizes text on rotation. */
+  html,
+  body {
+    overscroll-behavior: none;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+  body {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+  input,
+  textarea {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+  button,
+  a,
+  [role="button"],
+  summary {
+    touch-action: manipulation;
+  }
+  /* The cutting canvas owns every gesture on it (no scroll/zoom stealing a swipe). */
+  canvas {
+    touch-action: none;
+  }
+  img {
+    -webkit-user-drag: none;
+  }
+  /* Scrolling lists stop at their own edge instead of dragging the page. */
+  .overflow-y-auto,
+  .overflow-auto {
+    overscroll-behavior: contain;
   }
 }

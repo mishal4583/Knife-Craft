@@ -39,6 +39,12 @@ export function paintBeetrootTexture(
   margin: number,
   opts: TaperPaintOpts = {},
   hasCut = false,
+  // `overhangGone` — see PreparationScene.ts's TaperRenderer.paint own
+  // doc. Independent of `hasCut` above (which here means "peeled", driving
+  // the ringed-flesh reveal, not "has been cut"). True once
+  // `this.cuts.length > 0`; gates the root wisp + leaf crown below so
+  // they actually shed on the first cut.
+  overhangGone = false,
 ): void {
   const cx = rx + margin;
   const cy = rBig + margin;
@@ -115,73 +121,75 @@ export function paintBeetrootTexture(
   ctx.fill(); // the shine a beet's skin actually has
   ctx.restore();
 
-  const tipX = cx + rx * 0.98; // wiry root off the point, past the body
-  ctx.strokeStyle = "#3A0A1C";
-  ctx.lineWidth = 2.6;
-  ctx.lineCap = "round";
-  ctx.beginPath();
-  ctx.moveTo(tipX - 6, cy);
-  ctx.quadraticCurveTo(tipX + 22, cy - 4, tipX + 44, cy + 8);
-  ctx.stroke();
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(tipX + 14, cy + 1);
-  ctx.quadraticCurveTo(tipX + 26, cy + 12, tipX + 30, cy + 22);
-  ctx.stroke();
-
-  const bx = cx - rx * 0.86; // crown: stalks + crinkled leaves
-  const by = cy;
-  const leaves: [number, number, number, number][] = [
-    [-0.86, 116, 9, 1],
-    [-0.46, 134, 10, 0],
-    [-0.1, 142, 11, 1],
-    [0.3, 128, 10, 0],
-    [0.7, 106, 9, 1],
-  ];
-  for (const [a, len, w, back] of leaves) {
-    ctx.save();
-    ctx.translate(bx, by);
-    ctx.rotate(Math.PI + a);
-    const st = ctx.createLinearGradient(0, 0, len, 0);
-    st.addColorStop(0, "#8E1B44");
-    st.addColorStop(0.55, "#B32B5C");
-    st.addColorStop(1, "#C4416E");
-    ctx.strokeStyle = st;
-    ctx.lineWidth = w;
+  if (!overhangGone) {
+    const tipX = cx + rx * 0.98; // wiry root off the point, past the body
+    ctx.strokeStyle = "#3A0A1C";
+    ctx.lineWidth = 2.6;
     ctx.lineCap = "round";
     ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.quadraticCurveTo(len * 0.54, -w * 0.9, len * 0.74, -w * 0.3);
+    ctx.moveTo(tipX - 6, cy);
+    ctx.quadraticCurveTo(tipX + 22, cy - 4, tipX + 44, cy + 8);
     ctx.stroke();
-    ctx.save();
-    ctx.translate(len * 0.74, -w * 0.3);
-    const blade = new Path2D();
-    blade.moveTo(0, 0);
-    blade.bezierCurveTo(len * 0.1, -w * 2.4, len * 0.34, -w * 3.0, len * 0.48, -w * 0.9);
-    blade.bezierCurveTo(len * 0.4, -w * 0.2, len * 0.44, w * 2.2, len * 0.26, w * 1.8);
-    blade.bezierCurveTo(len * 0.14, w * 2.6, len * 0.04, w * 1.2, 0, 0);
-    blade.closePath();
-    const lg = ctx.createLinearGradient(0, -w * 2, len * 0.4, w * 2);
-    if (back) {
-      lg.addColorStop(0, "#3E6E28");
-      lg.addColorStop(1, "#28501B");
-    } else {
-      lg.addColorStop(0, "#57903A");
-      lg.addColorStop(1, "#356524");
-    }
-    ctx.fillStyle = lg;
-    ctx.fill(blade);
-    ctx.strokeStyle = "rgba(22,48,14,0.34)";
-    ctx.lineWidth = 1;
-    ctx.stroke(blade);
-    ctx.strokeStyle = "rgba(178,60,96,0.45)";
-    ctx.lineWidth = 1.4;
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.moveTo(len * 0.02, 0);
-    ctx.quadraticCurveTo(len * 0.24, w * 0.2, len * 0.44, -w * 0.6);
+    ctx.moveTo(tipX + 14, cy + 1);
+    ctx.quadraticCurveTo(tipX + 26, cy + 12, tipX + 30, cy + 22);
     ctx.stroke();
-    ctx.restore();
-    ctx.restore();
+
+    const bx = cx - rx * 0.86; // crown: stalks + crinkled leaves
+    const by = cy;
+    const leaves: [number, number, number, number][] = [
+      [-0.86, 116, 9, 1],
+      [-0.46, 134, 10, 0],
+      [-0.1, 142, 11, 1],
+      [0.3, 128, 10, 0],
+      [0.7, 106, 9, 1],
+    ];
+    for (const [a, len, w, back] of leaves) {
+      ctx.save();
+      ctx.translate(bx, by);
+      ctx.rotate(Math.PI + a);
+      const st = ctx.createLinearGradient(0, 0, len, 0);
+      st.addColorStop(0, "#8E1B44");
+      st.addColorStop(0.55, "#B32B5C");
+      st.addColorStop(1, "#C4416E");
+      ctx.strokeStyle = st;
+      ctx.lineWidth = w;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.quadraticCurveTo(len * 0.54, -w * 0.9, len * 0.74, -w * 0.3);
+      ctx.stroke();
+      ctx.save();
+      ctx.translate(len * 0.74, -w * 0.3);
+      const blade = new Path2D();
+      blade.moveTo(0, 0);
+      blade.bezierCurveTo(len * 0.1, -w * 2.4, len * 0.34, -w * 3.0, len * 0.48, -w * 0.9);
+      blade.bezierCurveTo(len * 0.4, -w * 0.2, len * 0.44, w * 2.2, len * 0.26, w * 1.8);
+      blade.bezierCurveTo(len * 0.14, w * 2.6, len * 0.04, w * 1.2, 0, 0);
+      blade.closePath();
+      const lg = ctx.createLinearGradient(0, -w * 2, len * 0.4, w * 2);
+      if (back) {
+        lg.addColorStop(0, "#3E6E28");
+        lg.addColorStop(1, "#28501B");
+      } else {
+        lg.addColorStop(0, "#57903A");
+        lg.addColorStop(1, "#356524");
+      }
+      ctx.fillStyle = lg;
+      ctx.fill(blade);
+      ctx.strokeStyle = "rgba(22,48,14,0.34)";
+      ctx.lineWidth = 1;
+      ctx.stroke(blade);
+      ctx.strokeStyle = "rgba(178,60,96,0.45)";
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(len * 0.02, 0);
+      ctx.quadraticCurveTo(len * 0.24, w * 0.2, len * 0.44, -w * 0.6);
+      ctx.stroke();
+      ctx.restore();
+      ctx.restore();
+    }
   }
   ctx.strokeStyle = "rgba(28,3,12,0.44)";
   ctx.lineWidth = 1.8;

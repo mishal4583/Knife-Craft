@@ -233,13 +233,27 @@ const allTechniques = new Set<string>();
 for (const r of CAMPAIGN_RECIPES) for (const c of r.components) allTechniques.add(c.technique);
 assert(allTechniques.size === 11, `25: all 11 techniques remain active across the full 250-level campaign (${allTechniques.size}/11)`);
 
-// ===== 26: all 52 ingredients now appear in at least 1 recipe (brief §7's own coverage goal). =====
+// ===== 26: all 52 Phase-6 campaign ingredients appear in at least 1 recipe (brief §7's own coverage goal). =====
+// The New-Ingredient Integration pack (Ginger/Green Chili/Lime/Cilantro/
+// Green Onion) added 5 more ingredient PROFILES this phase without
+// touching the campaign/recipe system at all — deliberately: that task's
+// own scope was "integrate the ingredients", explicitly not the later
+// Level System/recipe migration. So those 5 legitimately have 0 recipes
+// right now; excluded here rather than silently lowering this coverage
+// bar for the 52 that this phase's own brief actually committed to.
+const NEW_INGREDIENT_PACK_IDS = new Set(["ginger", "chilli", "lime", "cilantro", "springonion"]);
+// KnifeCraft_Level_System_v2.docx §2.1 removed Butter from the campaign entirely (its three
+// French recipes were replaced) — level-system-v2-qa asserts "no recipe
+// contains butter", so it is not a campaign ingredient any more.
+const REMOVED_BY_LEVEL_SYSTEM_V2 = new Set(["butter"]);
 const usedIngredients = new Set<string>();
 for (const r of CAMPAIGN_RECIPES) for (const c of r.components) usedIngredients.add(c.ingredientId);
-const allIngredientIds = Object.keys(INGREDIENTS);
+const allIngredientIds = Object.keys(INGREDIENTS).filter(
+  (id) => !NEW_INGREDIENT_PACK_IDS.has(id) && !REMOVED_BY_LEVEL_SYSTEM_V2.has(id),
+);
 assert(
   allIngredientIds.every((id) => usedIngredients.has(id)),
-  `26: all ${allIngredientIds.length} defined ingredients appear in at least 1 recipe`,
+  `26: all ${allIngredientIds.length} campaign ingredients appear in at least 1 recipe (5 New-Ingredient-Integration-pack ids excluded — not yet campaign-registered by design; Butter removed by Level System v2)`,
 );
 
 console.log(failures === 0 ? "\nALL PASS" : `\n${failures} FAILURE(S)`);

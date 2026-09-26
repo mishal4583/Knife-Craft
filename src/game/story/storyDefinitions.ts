@@ -266,8 +266,8 @@ export const MILES: MilestoneDef[] = [
   {
     bit: 64,
     at: 250,
-    kicker: "EVERY TABLE, EVERY NIGHT",
-    line: "Every kitchen this place ever held is still here, all at once.",
+    kicker: "CAMPAIGN COMPLETE",
+    line: "All 250 levels mastered. Every kitchen this place ever held is still here, all at once.",
   },
 ];
 

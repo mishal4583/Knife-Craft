@@ -30,6 +30,8 @@ import { CUISINE_LIST, cuisineForChapter } from "../src/game/cuisines/cuisineDef
 import { CHEF_LIST, chefsUnlockedByLevel } from "../src/game/chefs/chefDefinitions.ts";
 import { CUSTOMERS, randomCustomer } from "../src/game/customers/customerDefinitions.ts";
 import { LEVELS } from "../src/game/levels/levelDefinitions.ts";
+// USD: an order pays its recipe's whole-dollar basePayment as wallet cents (money.ts dollars()).
+import { dollars } from "../src/game/money.ts";
 
 let failures = 0;
 function assert(cond: boolean, label: string) {
@@ -167,8 +169,8 @@ order = advanceOrder(order); // SERVED
 assert(order.status === "SERVED", "order reaches SERVED after 4 advances");
 const paid1 = payOrder(order);
 assert(
-  paid1.coinsAwarded === recipe.basePayment,
-  "payOrder pays exactly the recipe's basePayment on SERVED->PAID",
+  paid1.coinsAwarded === dollars(recipe.basePayment),
+  "payOrder pays exactly the recipe's basePayment (in dollars) on SERVED->PAID",
 );
 const paid2 = payOrder(paid1.order);
 assert(paid2.coinsAwarded === 0, "paying an already-PAID order awards 0 (never pays twice)");

@@ -1,20 +1,42 @@
-import { Suspense, lazy, useEffect, useState } from "react";
-import { Preparation } from "@/components/kc/game/Preparation";
+import { Suspense, lazy, useEffect, useRef, useState } from "react";
+import { Preparation, preloadPreparation } from "@/components/kc/game/lazyPreparation";
+import { ReplayBonusSheet, AdPlayingShield } from "@/components/kc/ReplayBonusSheet";
+import { maybeShowInterstitial } from "@/game/ads/interstitialPolicy";
+import {
+  commitReplayBonus,
+  isReplayBonusClaimed,
+  newReplayBonusRewardId,
+  replayBonusOfferFor,
+  replayBonusesLeftToday,
+  verifyReplayBonusCommit,
+  type ReplayBonusFailure,
+  type ReplayBonusOffer,
+  type ReplayBonusPhase,
+} from "@/game/ads/replayBonus";
+import { onAdActiveChange, requestRewardedAd, rewardedAdsAvailable } from "@/game/PlayablesSDK";
 import { GameShell } from "@/components/kc/game/GameShell";
 import { type ScreenId } from "@/components/kc/data";
 import { SaveManager, type SaveData } from "@/game/SaveManager";
 import { PauseManager } from "@/game/PauseManager";
 import { AudioManager } from "@/game/AudioManager";
-import { getLevel, completeLevel, selectLevel, isUnlocked } from "@/game/levels/LevelManager";
+import {
+  getLevel,
+  completeLevel,
+  selectLevel,
+  isUnlocked,
+  isCompleted,
+} from "@/game/levels/LevelManager";
 import { LEVELS } from "@/game/levels/levelDefinitions";
 import { knifeOrDefault } from "@/game/knives/knifeDefinitions";
+import {
+  effectiveKnife,
+  upgradeKnife as upgradeKnifeFromBlacksmith,
+  type BlacksmithStat,
+} from "@/game/knives/blacksmith";
 import { buyKnife as buyKnifeFromCatalog, equipKnife } from "@/game/knives/KnifeManager";
 import { boardOrDefault } from "@/game/boards/boardDefinitions";
 import { buyBoard as buyBoardFromCatalog, equipBoard } from "@/game/boards/BoardManager";
-import {
-  syncKitchenUpgradeOwnership,
-  equipKitchenUpgrade,
-} from "@/game/kitchen/KitchenUpgradeManager";
+import { syncKitchenUpgradeOwnership } from "@/game/kitchen/KitchenUpgradeManager";
 import {
   shouldRunIntro,
   markIntroDone,
@@ -27,6 +49,12 @@ import { OPENING, FRESH, CHEF, FINALE } from "@/game/story/storyDefinitions";
 import { StoryOverlay } from "@/components/kc/story/StoryOverlay";
 import { MilestoneBanner } from "@/components/kc/story/MilestoneBanner";
 import {
+  businessAlertsFor,
+  newlyRaisedAlerts,
+  alertKeys,
+  type BusinessAlert,
+} from "@/game/business/businessAlerts";
+import {
   pickDailyLevel,
   hasClaimedToday,
   claimDaily,
@@ -38,7 +66,6 @@ import {
   recordAllComponents,
   serveCurrentOrder,
   advanceServiceSession,
-  poolUnlockedByLevel,
   batchHintFor,
   createBatchGroupSession,
   recordBatchGroupComponents,
@@ -50,10 +77,62 @@ import {
   type ServiceSession,
   type BatchGroupSession,
 } from "@/game/service/ServiceManager";
-import { TEST_RECIPE_POOL } from "@/game/service/testRecipePool";
 import { getCampaignRecipe } from "@/game/recipes/campaignRecipes";
 import type { RecipeDefinition } from "@/game/recipes/recipeTypes";
 import type { LevelDefinition } from "@/game/levels/levelTypes";
+import { computeSettlement } from "@/game/economy/EconomySettlement";
+import { dollars, formatUsdChange } from "@/game/money";
+import {
+  getKnifeSharpness,
+  applySharpnessDecay,
+  sharpenKnife as sharpenKnifeFromCatalog,
+} from "@/game/economy/sharpness";
+import { buyStaff as buyStaffFromCatalog } from "@/game/economy/StaffManager";
+import { selectSupplier as selectSupplierFromCatalog } from "@/game/economy/SupplierManager";
+import { appendLedgerEntry } from "@/game/economy/EconomyLedger";
+import type { SettlementResult } from "@/game/economy/economyTypes";
+import { purchaseIngredient as purchaseIngredientFromCatalog } from "@/game/business/BusinessInventoryManager";
+import { purchaseRefrigerator as purchaseRefrigeratorFromCatalog } from "@/game/business/RefrigeratorManager";
+import { performRefrigeratorMaintenance as performRefrigeratorMaintenanceFromCatalog } from "@/game/business/businessMaintenance";
+import type { InspectionReport } from "@/game/business/businessInspection";
+import type { InspectionFineResult } from "@/game/business/businessInspectionFines";
+import { endBusinessDay as endBusinessDayImpl } from "@/game/business/BusinessDayManager";
+import { setMenuPrice as setMenuPriceImpl } from "@/game/business/BusinessMenuManager";
+import { setDishActive as setDishActiveImpl } from "@/game/business/businessMenuActivation";
+import {
+  signContract as signContractImpl,
+  cancelContract as cancelContractImpl,
+} from "@/game/business/BusinessSupplierManager";
+import {
+  hireStaff as hireStaffImpl,
+  fireStaff as fireStaffImpl,
+} from "@/game/business/BusinessStaffManager";
+import {
+  advanceBusinessServiceSession as advanceBusinessServiceSessionImpl,
+  recordBusinessServiceComponents,
+  serveBusinessOrder,
+  nextCustomerDestination,
+  businessOrderAvailability,
+  businessCustomersToday,
+  businessServiceSessionForToday,
+} from "@/game/business/BusinessServiceManager";
+import type {
+  BusinessCustomerPayment,
+  BusinessCustomersToday,
+} from "@/game/business/BusinessServiceManager";
+import { businessDishForRecipeId } from "@/game/business/businessServiceCatalog";
+import {
+  makeSeededRand,
+  businessServiceSeedFor,
+} from "@/game/business/businessDeterministicRandom";
+import {
+  recordInventoryPurchase,
+  recordCapitalExpenditure,
+  recordMaintenanceCost,
+  recordSupplierCost,
+  computeDailyPnL,
+  DEFAULT_DAILY_ACCUMULATOR,
+} from "@/game/business/BusinessFinanceManager";
 
 const STORY_INTRO_SEQUENCE = [...OPENING, ...FRESH, ...CHEF];
 
@@ -95,28 +174,20 @@ export function App() {
   // an endless rotation on reload is harmless (Law: "no FOMO"), and not
   // persisting it keeps this a pure, ephemeral UI cursor.
   const [sessionMode, setSessionMode] = useState<
-    "campaign" | "daily" | "endless" | "service" | "campaign-service" | "batch-group"
+    "campaign" | "daily" | "endless" | "campaign-service" | "batch-group" | "business-service"
   >("campaign");
   const [endlessIndex, setEndlessIndex] = useState(0);
 
-  // Phase 2 (restaurant-service loop) — a ServiceSession is deliberately
-  // plain React state, never SaveData (§33/§40: "service order state
-  // should generally be session/transient... do not persist transient
-  // session state unless absolutely necessary"). It survives leaving
-  // Preparation ("Back to Kitchen" mid-order resumes the same queue on
-  // the next "Start Service") but is lost on reload, same as
-  // `endlessIndex` already is.
-  const [serviceSession, setServiceSession] = useState<ServiceSession | null>(null);
-
-  // Phase 3 — a SEPARATE ServiceSession for campaign Levels 1-40's own
-  // "Level -> ServiceProfile -> RecipePool" pipeline (brief §3/§35/§36),
-  // kept apart from the Phase 2 standalone Restaurant Service harness's
-  // `serviceSession` above: a campaign session additionally tracks how
+  // Phase 3 — the ServiceSession for a campaign level's own
+  // "Level -> ServiceProfile -> RecipePool" pipeline (brief §3/§35/§36).
+  // (The Phase 2 standalone Restaurant Service test harness is not
+  // reachable from the game; testRecipePool.ts is test-only.) A campaign
+  // session additionally tracks how
   // many orders the ACTIVE LEVEL requires (`completedCount` vs the
   // level's own `requiredOrders`) and, once satisfied, finishes the
   // level through the exact same LevelManager.completeLevel/story-flush
   // path every other campaign completion already uses — never a second
-  // completion system. Same session-only lifetime rule as `serviceSession`.
+  // completion system. Session-only: never persisted.
   const [campaignServiceSession, setCampaignServiceSession] = useState<ServiceSession | null>(null);
 
   // Phase 4 — REAL batching (brief §3-§10): a level with
@@ -132,6 +203,20 @@ export function App() {
   const [batchGroupSession, setBatchGroupSession] = useState<BatchGroupSession | null>(null);
   const [batchViewOrderId, setBatchViewOrderId] = useState<string | null>(null);
 
+  // Economy V3 Phase 14, Checkpoint 3 — Business Mode's own ServiceSession,
+  // built from the curated Business Dish catalog (businessServiceCatalog.ts)
+  // instead of campaign recipes — same session-only lifetime rule as
+  // `campaignServiceSession` above
+  // (never persisted; a reload simply loses in-progress queue state, never
+  // partial inventory/payment — see BusinessServiceManager.ts's own doc).
+  const [businessServiceSession, setBusinessServiceSession] = useState<ServiceSession | null>(null);
+  // CLAUDE.md §13 — deterministic, never Math.random: one seeded generator
+  // per session lifetime (reseeded from the current business day whenever
+  // a fresh session is created), reused for every generation/serve call
+  // within that same session so "same day, same sequence of actions"
+  // always reproduces the same orders.
+  const businessRandRef = useRef<(() => number) | null>(null);
+
   // THE LAST WISH (Claude Design final freeze) — presentation layer only,
   // additive to everything above. `showIntro` plays once, only for a
   // genuinely new player (see the load effect below); `storyEvent` is
@@ -143,11 +228,63 @@ export function App() {
   const [showIntro, setShowIntro] = useState(false);
   const [storyEvent, setStoryEvent] = useState<StoryFlushResult>(null);
 
+  // Economy V2 Phase 9 — the level's own completion reward
+  // (finishCampaignLevel/finishBatchGroupLevel's `rewardCoins`), shown via
+  // the SAME MilestoneBanner component the story system already uses — a
+  // separate state slot so this never collides with or depends on
+  // StoryManager's own story-only union type. (This slot used to also
+  // report Kitchen Investment chapter upkeep; that system was retired —
+  // the six kitchen backgrounds are the kitchen progression now.)
+  const [levelRewardNotice, setLevelRewardNotice] = useState<{
+    rewardCoins: number;
+  } | null>(null);
+
+  // YouTube ads. `saveRef` always holds the latest committed save, so code
+  // resuming after an `await` (a rewarded ad) reads the authoritative state,
+  // never a stale closure. The Replay Bonus's claimed/granted state is NOT
+  // stored here — it is derived from the save's ledger (replayBonus.ts).
+  const saveRef = useRef<SaveData | null>(null);
+  const [replayOffer, setReplayOffer] = useState<ReplayBonusOffer | null>(null);
+  const [replayPhase, setReplayPhase] = useState<ReplayBonusPhase>("OFFER_SHOWN");
+  const [replayFailure, setReplayFailure] = useState<ReplayBonusFailure | null>(null);
+  const replayBusyRef = useRef(false);
+  // Mirrors `replayOffer` for code resuming after an await (was the sheet closed meanwhile?).
+  const replayOfferRef = useRef<ReplayBonusOffer | null>(null);
+  replayOfferRef.current = replayOffer;
+  // A bonus that YouTube confirmed only after the player had closed the sheet
+  // (possible after the dead-request guard released the screen) — confirmed here.
+  const [lateReplayBonus, setLateReplayBonus] = useState<number | null>(null);
+  const [adActive, setAdActive] = useState(false);
+  // One id per play session (level/daily/endless start) + whether it reached a
+  // completion — so an interstitial only follows a finished session, never a
+  // mid-level quit, and each session's transition is requested at most once.
+  const playSessionRef = useRef({ id: 0, completed: false });
+  function startPlaySession() {
+    playSessionRef.current = { id: playSessionRef.current.id + 1, completed: false };
+  }
+  function markPlaySessionCompleted() {
+    playSessionRef.current = { ...playSessionRef.current, completed: true };
+  }
+
+  // Operations/Feedback checkpoint (pre-V3-16) — Business Mode's
+  // transition notifications, shown through the SAME MilestoneBanner.
+  // Alerts are derived (businessAlertsFor), never stored; a banner fires
+  // only when an alert's stable key newly appears. Evaluated only while
+  // a Business screen/session is active, so Campaign play never computes
+  // or shows Business alerts. The first evaluation after load seeds the
+  // "already seen" set silently — a reload never replays old banners.
+  const [businessNoticeQueue, setBusinessNoticeQueue] = useState<BusinessAlert[]>([]);
+  const seenBusinessAlertKeysRef = useRef<Set<string> | null>(null);
+
   // Load the save once and wire the platform pause source (§23 —
   // YouTube's onPause/onResume is the sole authority). gameReady() is
   // NOT called here — loading the save file isn't "the game is
   // interactive". Preparation calls it once Phaser's scene actually
   // finishes booting (see its SCENE_READY handler).
+  // While a YouTube ad is in flight the game is muted (AudioManager) and a
+  // shield swallows every tap, so nothing underneath can take input.
+  useEffect(() => onAdActiveChange(setAdActive), []);
+
   useEffect(() => {
     PauseManager.wireToPlatform();
     void SaveManager.load().then((loaded) => {
@@ -187,6 +324,7 @@ export function App() {
         else synced = markIntroDone(synced);
       }
       if (synced !== loaded) void SaveManager.save(synced);
+      saveRef.current = synced;
       setSave(synced);
     });
   }, []);
@@ -200,14 +338,14 @@ export function App() {
   // show an unrelated level), bounce back to the Order Board.
   useEffect(() => {
     const active =
-      sessionMode === "service"
-        ? serviceSession
-        : sessionMode === "campaign-service"
-          ? campaignServiceSession
+      sessionMode === "campaign-service"
+        ? campaignServiceSession
+        : sessionMode === "business-service"
+          ? businessServiceSession
           : null;
     if (active && screen === "gameplay" && !active.current) {
       setSessionMode("campaign");
-      setScreen("board");
+      setScreen(sessionMode === "business-service" ? "business-service" : "board");
     }
     // Phase 4 — the batch-group equivalent: no viewable order means
     // either the group finished (finishBatchGroupLevel already clears
@@ -226,20 +364,46 @@ export function App() {
   }, [
     sessionMode,
     screen,
-    serviceSession,
     campaignServiceSession,
+    businessServiceSession,
     batchGroupSession,
     batchViewOrderId,
   ]);
+
+  // Business transition notifications — see the state declaration above.
+  const inBusiness =
+    screen.startsWith("business") || (screen === "gameplay" && sessionMode === "business-service");
+  const businessOrder = businessServiceSession?.current ?? null;
+  useEffect(() => {
+    if (!inBusiness) {
+      // Leaving Business drops any not-yet-shown banners (they'd be stale
+      // by the time the player returns; the Dashboard still lists them).
+      setBusinessNoticeQueue((q) => (q.length === 0 ? q : []));
+      return;
+    }
+    if (!save) return;
+    const alerts = businessAlertsFor(
+      save,
+      businessOrder ? { orderId: businessOrder.order.id, recipeId: businessOrder.recipe.id } : null,
+    );
+    const seen = seenBusinessAlertKeysRef.current;
+    if (seen) {
+      const fresh = newlyRaisedAlerts(seen, alerts);
+      if (fresh.length > 0) setBusinessNoticeQueue((q) => [...q, ...fresh]);
+    }
+    seenBusinessAlertKeysRef.current = alertKeys(alerts);
+  }, [save, inBusiness, businessOrder]);
 
   const go = (s: ScreenId) => setScreen(s);
 
   /** The single place every save mutation flows through — also where
    * kitchen-upgrade ownership gets re-derived from level progress, so
    * crossing a new tier's unlock level (e.g. via recordPreparationResult)
-   * grants that tier immediately, live, with no separate purchase step. */
+   * grants that tier immediately, live, with no separate purchase step —
+   * and moves the kitchen onto it for good (an upgrade, not a skin). */
   function persist(next: SaveData) {
     const synced = syncKitchenUpgradeOwnership(next);
+    saveRef.current = synced;
     setSave(synced);
     void SaveManager.save(synced);
   }
@@ -255,7 +419,10 @@ export function App() {
   function buyKnife(id: string) {
     if (!save) return { ok: false as const, reason: "unknownKnife" as const };
     const result = buyKnifeFromCatalog(save, id);
-    if (result.ok) persist(result.save);
+    if (result.ok) {
+      const spent = save.credits - result.save.credits;
+      persist(appendLedgerEntry(result.save, "knife-purchase", -spent, id));
+    }
     return result;
   }
 
@@ -270,22 +437,262 @@ export function App() {
   function buyBoard(id: string) {
     if (!save) return { ok: false as const, reason: "unknownBoard" as const };
     const result = buyBoardFromCatalog(id, save);
-    if (result.ok) persist(result.save);
+    if (result.ok) {
+      const spent = save.credits - result.save.credits;
+      persist(appendLedgerEntry(result.save, "board-purchase", -spent, id));
+    }
     return result;
   }
 
-  /** Kitchen Upgrade action — routes through KitchenUpgradeManager.equipKitchenUpgrade, mirroring setEquippedKnife/setEquippedBoard. */
-  function setEquippedKitchenUpgrade(id: string) {
+  /** Rack action (Economy V2 Phase 6) — routes through sharpness.sharpenKnife, mirroring buyKnife/buyBoard exactly: atomic, deterministic cost, never touches anything on failure. */
+  function sharpenKnife(id: string) {
+    if (!save) return { ok: false as const, reason: "insufficientFunds" as const };
+    const result = sharpenKnifeFromCatalog(save, id);
+    if (result.ok) {
+      const spent = save.credits - result.save.credits;
+      persist(appendLedgerEntry(result.save, "sharpening", -spent, id));
+    }
+    return result;
+  }
+
+  /** Blacksmith action — routes through blacksmith.upgradeKnife, mirroring sharpenKnife exactly: atomic, one "blacksmith-upgrade" ledger entry on success, nothing on failure. */
+  function upgradeKnife(id: string, stat: BlacksmithStat) {
+    if (!save) return { ok: false as const, reason: "unknownKnife" as const };
+    const result = upgradeKnifeFromBlacksmith(save, id, stat);
+    if (result.ok) persist(appendLedgerEntry(result.save, "blacksmith-upgrade", -result.cost, id));
+    return result;
+  }
+
+  /** Shop action (Economy V2 Phase 7) — routes through StaffManager.buyStaff, mirroring buyKnife/buyBoard exactly. No equip step — every owned staff member's effect applies simultaneously (see StaffManager.ts's own doc). */
+  function buyStaff(id: string) {
+    if (!save) return { ok: false as const, reason: "unknownStaff" as const };
+    const result = buyStaffFromCatalog(save, id);
+    if (result.ok) {
+      const spent = save.credits - result.save.credits;
+      persist(appendLedgerEntry(result.save, "staff-purchase", -spent, id));
+    }
+    return result;
+  }
+
+  /** Shop action (Economy V2 Phase 8) — routes through SupplierManager.selectSupplier. Free, always-available selection: no cost, no unlock level, no ownership — mirrors setEquippedKnife/setEquippedBoard's "just switch it" shape more than buyKnife/buyStaff's purchase shape. */
+  function selectSupplier(id: string) {
     if (!save) return;
-    const result = equipKitchenUpgrade(id, save);
+    const result = selectSupplierFromCatalog(save, id);
     if (result.ok) persist(result.save);
   }
 
-  function toggleSetting(key: "sound" | "music" | "reducedMotion") {
+  function toggleSetting(key: "sound") {
     if (!save) return;
     const settings = { ...save.settings, [key]: !save.settings[key] };
     if (key === "sound") AudioManager.setUserSoundEnabled(settings.sound);
     persist({ ...save, settings });
+  }
+
+  /**
+   * Economy V3 Phase 1 (Business Calendar) — the player's own explicit
+   * "End Day" action; never auto-advances, mirrors the brief's own "no
+   * forced countdown timer" rule. Campaign's `levelProgress`/`credits`
+   * are completely untouched by this — the two clocks never cross.
+   *
+   * Economy V3 Phase 4 (Perishability) — now routes through
+   * BusinessDayManager.endBusinessDay, which also sweeps any stock that
+   * expired as of the new day (never a silent deletion: the swept
+   * quantity/value is returned here so the Dashboard can show exactly
+   * what spoiled). No ledger entry — spoilage is never a wallet
+   * mutation.
+   *
+   * Economy V3 Phase 6 (Popularity) — endBusinessDay also applies the
+   * day's popularity movement (from the real, currently-wired pricing/
+   * menu-variety factors) in the same atomic result.
+   *
+   * Economy V3 Phase 9 (Staff) — endBusinessDay also settles today's
+   * payroll; a real payment gets its own ledger entry here (mirrors
+   * every other real Business Mode expense — appendLedgerEntry no-ops
+   * on a 0 amount, so a staffless day creates no fake entry).
+   */
+  function advanceBusinessDay() {
+    if (!save) {
+      return {
+        spoiledQuantity: 0,
+        spoiledValue: 0,
+        spoiledIngredientIds: [] as string[],
+        popularityDelta: 0,
+        popularityScore: 50,
+        popularityBreakdown: { operations: 0, inspection: 0, service: 0, pull: 0, total: 0 },
+        expiredSupplierId: null as string | null,
+        payrollPaid: 0,
+        staffLaidOff: [] as string[],
+        inspectionReport: {
+          overall: "PASS",
+          overallReason: "All inspection categories passed.",
+          categories: [],
+        } as InspectionReport,
+        inspectionFine: { severity: "NONE", fineAmount: 0, finePaid: 0 } as InspectionFineResult,
+        dailyPnL: computeDailyPnL({
+          cashBeforeSettlement: 0,
+          closingCash: 0,
+          accumulator: { ...DEFAULT_DAILY_ACCUMULATOR },
+          staffCost: 0,
+          inspectionFines: 0,
+          spoilageValue: 0,
+        }),
+      };
+    }
+    const result = endBusinessDayImpl(save);
+    const withPayroll = appendLedgerEntry(
+      result.save,
+      "business-staff-salary",
+      -result.payrollPaid,
+    );
+    const withFine = appendLedgerEntry(
+      withPayroll,
+      "inspection-fine",
+      -result.inspectionFine.finePaid,
+    );
+    persist(withFine);
+    // Economy V3 Phase 14, Checkpoint 3 — a new business day always
+    // reseeds a fresh Business Service session/order queue, never carries
+    // yesterday's queue (or its seeded rand stream) into the new day.
+    businessRandRef.current = null;
+    setBusinessServiceSession(null);
+    maybeShowInterstitial(
+      `business-day:${withFine.business.calendar.businessDay}`,
+      withFine.levelProgress.completedLevelIds.length,
+    );
+    return {
+      spoiledQuantity: result.spoiledQuantity,
+      spoiledValue: result.spoiledValue,
+      spoiledIngredientIds: result.spoiledIngredientIds as string[],
+      popularityDelta: result.popularityDelta,
+      popularityScore: result.popularityScore,
+      popularityBreakdown: result.popularityBreakdown,
+      expiredSupplierId: result.expiredSupplierId,
+      payrollPaid: result.payrollPaid,
+      staffLaidOff: result.staffLaidOff as string[],
+      inspectionReport: result.inspectionReport,
+      inspectionFine: result.inspectionFine,
+      dailyPnL: result.dailyPnL,
+    };
+  }
+
+  /** Economy V3 Phase 2 (Business Inventory) — Business Mode's own purchase action, mirroring buyKnife/buyStaff exactly: routes through the pure manager, then records the ledger entry from the manager's own reported `totalCost` (never re-derived from a credits diff, since it's already exact). Business Mode only — Campaign never calls this. */
+  function purchaseIngredient(ingredientId: string, quantity: number) {
+    if (!save) return { ok: false as const, reason: "unknownIngredient" as const };
+    const result = purchaseIngredientFromCatalog(save, ingredientId, quantity);
+    if (result.ok) {
+      persist(
+        recordInventoryPurchase(
+          appendLedgerEntry(result.save, "inventory-purchase", -result.totalCost, ingredientId),
+          result.totalCost,
+        ),
+      );
+    }
+    return result;
+  }
+
+  /** Economy V3 Phase 3 (Refrigerator) — Business Mode's own refrigerator purchase/upgrade action, mirroring purchaseIngredient exactly. Business Mode only — Campaign never calls this. */
+  function purchaseRefrigerator(refrigeratorId: string) {
+    if (!save) return { ok: false as const, reason: "unknownRefrigerator" as const };
+    const result = purchaseRefrigeratorFromCatalog(save, refrigeratorId);
+    if (result.ok) {
+      persist(
+        recordCapitalExpenditure(
+          appendLedgerEntry(result.save, "refrigerator-purchase", -result.price, refrigeratorId),
+          result.price,
+        ),
+      );
+    }
+    return result;
+  }
+
+  /** Economy V3 Phase 11 (Maintenance + Breakdowns) — Business Mode's own refrigerator repair action, mirroring purchaseRefrigerator exactly. Business Mode only — Campaign never calls this. */
+  function performRefrigeratorMaintenance() {
+    if (!save) return { ok: false as const, reason: "alreadyOperational" as const };
+    const result = performRefrigeratorMaintenanceFromCatalog(save);
+    if (result.ok) {
+      persist(
+        recordMaintenanceCost(
+          appendLedgerEntry(result.save, "refrigerator-maintenance", -result.cost),
+          result.cost,
+        ),
+      );
+    }
+    return result;
+  }
+
+  /** Economy V3 Phase 5 (Menu Pricing) — Business Mode's own menu-price action. No ledger entry: setting a price moves no credits. Business Mode only — Campaign never calls this. */
+  function setMenuPrice(recipeId: string, price: number) {
+    if (!save) return { ok: false as const, reason: "unknownRecipe" as const };
+    const result = setMenuPriceImpl(save, recipeId, price);
+    if (result.ok) persist(result.save);
+    return result;
+  }
+
+  /**
+   * Economy V3 Phase 16 (Active Menu) — puts a Business Dish on or off the
+   * menu. No ledger entry: it moves no credits. If a waiting (current) or
+   * queued (next) order is for a dish that is now OFF the menu, the
+   * Business order queue is discarded — exactly like End Business Day
+   * already does — so the next "Open the Counter" regenerates it from the
+   * active menu only (deterministically, from the same day seed). Nothing
+   * is paid or consumed before Serve, so discarding a queue never loses
+   * money or stock. Business Mode only — Campaign never calls this.
+   */
+  function setBusinessDishActive(dishId: string, active: boolean) {
+    if (!save) return { ok: false as const, reason: "unknownDish" as const };
+    const result = setDishActiveImpl(save, dishId, active);
+    if (!result.ok) return result;
+    persist(result.save);
+    const inactive = result.save.business.menuActivation.inactiveDishIds;
+    const queued = [businessServiceSession?.current, businessServiceSession?.next];
+    const queuedOffMenu = queued.some((o) => {
+      const dish = o ? businessDishForRecipeId(o.recipe.id) : undefined;
+      return !!dish && inactive.includes(dish.id);
+    });
+    if (queuedOffMenu) {
+      businessRandRef.current = null;
+      setBusinessServiceSession(null);
+    }
+    return result;
+  }
+
+  /** Economy V3 Phase 7 (Supplier Contracts) — signing is free, mirroring Campaign's own selectSupplier ("does not move money"). No ledger entry. Business Mode only — Campaign never calls this. */
+  function signSupplierContract(supplierId: string) {
+    if (!save) return { ok: false as const, reason: "unknownSupplier" as const };
+    const result = signContractImpl(save, supplierId);
+    if (result.ok) persist(result.save);
+    return result;
+  }
+
+  /** Economy V3 Phase 7 (Supplier Contracts) — cancelling early charges the contract's own cancellationFee, recorded through the ledger from the manager's own reported `fee` (appendLedgerEntry no-ops on a 0 fee, so a free contract's cancellation creates no fake entry). Business Mode only — Campaign never calls this. */
+  function cancelSupplierContract() {
+    if (!save) return { ok: false as const, reason: "noActiveContract" as const };
+    const result = cancelContractImpl(save);
+    if (result.ok) {
+      persist(
+        recordSupplierCost(
+          appendLedgerEntry(result.save, "supplier-contract-cancellation", -result.fee),
+          result.fee,
+        ),
+      );
+    }
+    return result;
+  }
+
+  /** Economy V3 Phase 9 (Staff) — hiring is free, mirroring signSupplierContract exactly ("does not move money" — the real cost is the daily payroll endBusinessDay deducts). No ledger entry. Business Mode only — Campaign never calls this. */
+  function hireStaff(role: string) {
+    if (!save) return { ok: false as const, reason: "unknownRole" as const };
+    const result = hireStaffImpl(save, role);
+    if (result.ok) persist(result.save);
+    return result;
+  }
+
+  /** Economy V3 Phase 9 (Staff) — firing is free (no cancellation-style fee; an employee isn't under a fixed-term contract). No ledger entry. Business Mode only — Campaign never calls this. */
+  function fireStaff(role: string) {
+    if (!save) return { ok: false as const, reason: "notHired" as const };
+    const result = fireStaffImpl(save, role);
+    if (result.ok) persist(result.save);
+    return result;
   }
 
   async function resetProgress() {
@@ -304,6 +711,7 @@ export function App() {
    */
   function onSelectLevel(levelId: string) {
     if (!save) return;
+    startPlaySession();
     persist({ ...save, levelProgress: selectLevel(levelId, save.levelProgress) });
     const level = getLevel(levelId);
     if (level?.batchGroupRecipeIds?.length) {
@@ -322,6 +730,7 @@ export function App() {
   function startDaily() {
     if (!save) return;
     const level = pickDailyLevel(save.levelProgress, new Date());
+    startPlaySession();
     setSessionMode("daily");
     setActiveLevelId(level.id);
     setScreen("gameplay");
@@ -332,75 +741,137 @@ export function App() {
     if (!save) return;
     const level = pickEndlessLevel(save.levelProgress, endlessIndex);
     if (!level) return;
+    startPlaySession();
     setSessionMode("endless");
     setActiveLevelId(level.id);
     setScreen("gameplay");
   }
 
-  /** The player's current campaign reach, as a plain level number — the same `/-(\d+)$/` convention KnifeManager/BoardManager/KitchenUpgradeManager/CafeProgressionManager each already parse off `highestUnlockedLevelId` independently. */
-  function highestReachedLevelNumber(currentSave: SaveData): number {
-    return Number(currentSave.levelProgress.highestUnlockedLevelId.match(/-(\d+)$/)?.[1] ?? 0);
+  /** The one place a Business Service session's seeded rand is created/reused — a fresh generator only when none exists yet for the current session's lifetime (see the `businessRandRef` doc above). */
+  function businessRand(): () => number {
+    if (!businessRandRef.current) {
+      businessRandRef.current = makeSeededRand(
+        businessServiceSeedFor(save?.business.calendar.businessDay ?? 0),
+      );
+    }
+    return businessRandRef.current;
   }
 
   /**
-   * Restaurant Service's own "Start Service" (Phase 2) — resumes the
-   * existing queue if one is already running (a ServiceSession isn't
-   * thrown away just because the player stepped out to Kitchen),
-   * otherwise builds a fresh one from whatever of the Phase 2 test pool
-   * (testRecipePool.ts) the player has actually reached (never offers a
-   * locked recipe). No-ops if nothing in the pool is unlocked yet — the
-   * entry point itself explains that rather than opening onto an empty
-   * board.
+   * Economy V3 Phase 14, Checkpoint 3 — Business Mode's own "Start
+   * Service"/"open the counter" entry point, mirroring `startService`
+   * exactly: resumes the existing queue if one is already running,
+   * otherwise builds a fresh one from the WHOLE curated Business Dish
+   * catalog (never level-gated, never TEST_RECIPE_POOL). Navigates to the
+   * new `business-service` SCREEN (never straight into "gameplay") — the
+   * player reviews the generated order's dish/price/ingredient
+   * availability there first (the checkpoint's own explicit "ingredient
+   * availability check" gate, before an order can be accepted/started).
    */
-  function startService() {
+  function startBusinessService() {
     if (!save) return;
-    if (!serviceSession) {
-      const pool = poolUnlockedByLevel(TEST_RECIPE_POOL, highestReachedLevelNumber(save));
-      if (pool.length === 0) return;
-      setServiceSession(createServiceSession("service", pool, Math.random));
+    // Order frequency: today's queue (resumed past already-served customers
+    // after a reload), or none at all once today's customers are complete.
+    if (!businessServiceSession) {
+      setBusinessServiceSession(businessServiceSessionForToday(save, businessRand()));
     }
-    setSessionMode("service");
+    setScreen("business-service");
+  }
+
+  /** The "Start Preparing" action on the new BusinessService screen — re-verifies availability (defense in depth against a stale screen render) and only then enters the real, shared Preparation gameplay. Never bypasses Preparation with an instant calculation. */
+  function enterBusinessPreparation() {
+    if (!save || !businessServiceSession?.current) return;
+    if (businessCustomersToday(save).complete) return;
+    const dish = businessDishForRecipeId(businessServiceSession.current.recipe.id);
+    if (!dish) return;
+    if (!businessOrderAvailability(save, dish).available) return;
+    setSessionMode("business-service");
     setScreen("gameplay");
   }
 
   /**
-   * Service session's own completion handler — updates recipeProgress
-   * (best/done) exactly like every other mode so the Cookbook's existing
-   * Prepared badge works unchanged (no second recipe-progress system),
-   * then records every one of the recipe's components into the active
-   * order's Mise en Place session (organizationManager, via
-   * ServiceManager.recordAllComponents), which is what actually advances
-   * the order toward READY. Coin payment is deliberately NOT awarded
-   * here — it's held back for the explicit Serve action, so this always
-   * returns 0.
+   * Records a finished Business preparation into the Business order's own
+   * session (same deferred-payment rule as recordServiceResult).
+   *
+   * Economy V3 Phase 16 (player-experience audit, isolation fix): it no
+   * longer writes Campaign's `recipeProgress`. A Business dish is played
+   * through its SOURCE Campaign recipe (businessServiceCatalog.ts), so the
+   * old write marked an unrelated-looking Campaign recipe (e.g. Garlic
+   * Chicken -> "camp-fusion2-garlic-3way-a") as Prepared in the Cookbook
+   * and set its "previous best" — Business play changing Campaign
+   * progression display (CLAUDE.md §10). Business Mode keeps no per-recipe
+   * mastery of its own, so nothing is lost for Business.
    */
-  function recordServiceResult(score: number): number {
-    if (!save || !serviceSession?.current) return 0;
-    const recipeId = serviceSession.current.recipe.id;
-    const prior = save.recipeProgress[recipeId];
-    const best = Math.max(prior?.best ?? 0, score);
-    const recipeProgress = { ...save.recipeProgress, [recipeId]: { best, done: true } };
-    persist({ ...save, recipeProgress });
-    setServiceSession((s) => (s ? recordAllComponents(s) : s));
+  function recordBusinessServiceResult(score: number): number {
+    if (!save || !businessServiceSession?.current) return 0;
+    setBusinessServiceSession((s) => (s ? recordBusinessServiceComponents(s, score) : s));
     return 0;
   }
 
-  /** The Serve action ServiceOrderComplete calls — refuses (returns null) unless the order is genuinely READY, and can never pay twice (ServiceManager.serveCurrentOrder's own guard). */
-  function serveActiveServiceOrder(): { coinsAwarded: number; reaction: string } | null {
-    if (!serviceSession) return null;
-    const result = serveCurrentOrder(serviceSession, Math.random);
+  /**
+   * The Serve action for a Business order — the ONE atomic transaction
+   * (BusinessServiceManager.serveBusinessOrder): re-verifies availability,
+   * consumes inventory, reads the dish's CURRENT menu price, applies the
+   * popularity willingness-to-pay multiplier, pays that customer payment
+   * via the existing serveCurrentOrder (pays exactly once), and counts the
+   * order toward today's ordersServed — all in the SAME returned save this function
+   * persists with exactly one new "business-revenue" ledger entry. Refuses
+   * (returns null) on any failure — no partial charge, no partial
+   * inventory consumption, matching serveActiveServiceOrder's own
+   * "can never pay twice" guarantee.
+   */
+  function serveActiveBusinessOrder(): {
+    coinsAwarded: number;
+    reaction: string;
+    settlement?: SettlementResult | undefined;
+    isReplay?: boolean;
+    businessPayment?: BusinessCustomerPayment;
+    businessCustomers?: BusinessCustomersToday;
+  } | null {
+    if (!save || !businessServiceSession) return null;
+    const result = serveBusinessOrder(businessServiceSession, save, businessRand());
     if (!result) return null;
-    setServiceSession(result.session);
-    if (result.coinsAwarded > 0 && save)
-      persist({ ...save, credits: save.credits + result.coinsAwarded });
-    return { coinsAwarded: result.coinsAwarded, reaction: result.reaction };
+    setBusinessServiceSession(result.session);
+    persist(
+      appendLedgerEntry(result.save, "business-revenue", result.amountCharged, result.dish.id),
+    );
+    return {
+      coinsAwarded: result.amountCharged,
+      reaction: result.reaction,
+      businessPayment: result.payment,
+      businessCustomers: businessCustomersToday(result.save),
+    };
   }
 
-  /** "Next Customer" — current(COMPLETED)->recent, next->current, a new next generated. Preparation remounts itself for the new current order via its own `key` (the order id changes), no navigation needed. */
-  function advanceServiceQueue() {
-    if (!save || !serviceSession) return;
-    const pool = poolUnlockedByLevel(TEST_RECIPE_POOL, highestReachedLevelNumber(save));
-    setServiceSession((s) => (s ? advanceServiceSession(s, pool, Math.random) : s));
+  /** "Next Customer" for a Business order — mirrors advanceServiceQueue exactly, against the Business pool instead. */
+  function advanceBusinessServiceQueue() {
+    if (!save || !businessServiceSession) return;
+    // Order frequency: once today's customers are complete, no next order is
+    // generated — the queue closes and the player returns to Service.
+    if (businessCustomersToday(save).complete) {
+      setBusinessServiceSession(null);
+      setSessionMode("campaign");
+      setScreen("business-service");
+      return;
+    }
+    const next = advanceBusinessServiceSessionImpl(
+      businessServiceSession,
+      businessRand(),
+      save.business.menuActivation,
+    );
+    setBusinessServiceSession(next);
+    // Economy V3 Phase 16 (P2 correctness fix): "Next Customer" must pass
+    // the SAME accept-time ingredient gate as "Start Preparing"
+    // (enterBusinessPreparation) — previously it remounted Preparation on
+    // the new order directly, so a player could play through an order
+    // Business Inventory can't fill (Serve would then refuse it). An
+    // unavailable next order now goes to the Service screen, which shows
+    // exactly what's missing; an available one continues straight into
+    // Preparation as before.
+    if (nextCustomerDestination(save, next) === "service") {
+      setSessionMode("campaign");
+      setScreen("business-service");
+    }
   }
 
   /** A campaign level's own recipe pool (levelTypes.ts's `recipePoolIds`), resolved against the real campaignRecipes.ts library — never against TEST_RECIPE_POOL, which is the separate Phase 2 harness's own pool. */
@@ -421,7 +892,17 @@ export function App() {
     if (!save || !level.recipePoolIds?.length) return;
     const pool = campaignPoolFor(level);
     if (pool.length === 0) return;
-    setCampaignServiceSession(createServiceSession(level.id, pool, Math.random));
+    // Economy V2 replay safety (Law 2 extended to the order-pool
+    // architecture) — the SAME existing source of truth completeLevel's
+    // own isFirstCompletion gate already reads, never a second
+    // completion system. Determined once, at session start, and carried
+    // on the session itself so every order served during this run
+    // settles for 0 (serveCampaignOrder), while the player still plays
+    // the level normally.
+    const isReplay = isCompleted(level.id, save.levelProgress);
+    setCampaignServiceSession(
+      createServiceSession(level.id, pool, Math.random, level.chapter, isReplay),
+    );
     setActiveLevelId(level.id);
     setSessionMode("campaign-service");
     setScreen("gameplay");
@@ -435,19 +916,64 @@ export function App() {
     const best = Math.max(prior?.best ?? 0, score);
     const recipeProgress = { ...save.recipeProgress, [recipeId]: { best, done: true } };
     persist({ ...save, recipeProgress });
-    setCampaignServiceSession((s) => (s ? recordAllComponents(s) : s));
+    setCampaignServiceSession((s) => (s ? recordAllComponents(s, score) : s));
     return 0;
   }
 
-  /** Mirrors serveActiveServiceOrder exactly, for the campaign session. */
-  function serveCampaignOrder(): { coinsAwarded: number; reaction: string } | null {
-    if (!campaignServiceSession) return null;
-    const result = serveCurrentOrder(campaignServiceSession, Math.random);
+  /**
+   * Mirrors serveActiveServiceOrder, for the campaign session — with
+   * Economy V2 settlement replacing the raw per-order payment (§8):
+   * one served order = one computeSettlement call, using this order's
+   * OWN carried preparation score, never re-derived or double-counted.
+   * A replay session (isReplay) settles for a flat 0 — no COGS, no
+   * quality bonus, no revenue — while the serve/advance flow itself
+   * proceeds completely normally.
+   */
+  function serveCampaignOrder(): {
+    coinsAwarded: number;
+    reaction: string;
+    settlement?: SettlementResult | undefined;
+    isReplay?: boolean;
+  } | null {
+    if (!campaignServiceSession?.current) return null;
+    const { recipe, order } = campaignServiceSession.current;
+    const isReplay = campaignServiceSession.isReplay;
+    // Economy V2 Phase 9 — the full settlement breakdown is kept (not
+    // just `.netResult`) so the result UI can show it, but nothing about
+    // WHAT gets credited or WHEN changes: `amount` below is still exactly
+    // `settlement?.netResult ?? 0`, byte-identical to before this phase.
+    const settlement = isReplay
+      ? undefined
+      : computeSettlement(
+          recipe,
+          campaignServiceSession.chapter ?? 1,
+          order.preparationScore ?? 0,
+          save?.equippedKnifeId,
+          save?.equippedBoardId,
+          save ? getKnifeSharpness(save, save.equippedKnifeId) : undefined,
+          save?.ownedStaffIds,
+          save?.selectedSupplierId,
+        );
+    const amount = settlement?.netResult ?? 0;
+    const result = serveCurrentOrder(campaignServiceSession, Math.random, amount);
     if (!result) return null;
     setCampaignServiceSession(result.session);
-    if (result.coinsAwarded > 0 && save)
-      persist({ ...save, credits: save.credits + result.coinsAwarded });
-    return { coinsAwarded: result.coinsAwarded, reaction: result.reaction };
+    // Economy V2 Phase 6 — sharpness decay only ever happens on a
+    // genuine (non-replay) serve, mirroring the payout amount's own
+    // isReplay gate exactly (brief §11 — replay must never create a
+    // persistent sharpness change). Folded into the SAME persist() call
+    // as the credit award so both land atomically together.
+    if (save && !isReplay) {
+      const withCredits = { ...save, credits: save.credits + result.coinsAwarded };
+      const withLedger = appendLedgerEntry(
+        withCredits,
+        "campaign-settlement",
+        result.coinsAwarded,
+        recipe.id,
+      );
+      persist(applySharpnessDecay(withLedger, save.equippedKnifeId, recipe));
+    }
+    return { coinsAwarded: result.coinsAwarded, reaction: result.reaction, settlement, isReplay };
   }
 
   /** "Next Customer" within a campaign level that isn't finished yet (its own requiredOrders hasn't been reached) — same queue-advance ServiceManager function the Phase 2 harness uses. */
@@ -467,12 +993,129 @@ export function App() {
    * into one merged save object + one persist() call for the same
    * cloud-save race-safety reason that path documents.
    */
+  /**
+   * After a Campaign level finishes (the player pressed Finish Level): a
+   * replay may be offered the rewarded Replay Bonus; otherwise this is a
+   * natural break for an interstitial. Never both (no stacked ads), and
+   * nothing around the Campaign Finale.
+   */
+  function afterLevelFinished(
+    finalSave: SaveData,
+    level: LevelDefinition,
+    wasReplay: boolean,
+    isFinale: boolean,
+  ) {
+    markPlaySessionCompleted();
+    if (isFinale) return;
+    const offer = replayBonusOfferFor(
+      finalSave,
+      level,
+      wasReplay,
+      rewardedAdsAvailable(),
+      new Date(),
+    );
+    if (offer) {
+      setReplayOffer(offer);
+      setReplayPhase("OFFER_SHOWN");
+      setReplayFailure(null);
+      return;
+    }
+    maybeShowInterstitial(
+      `level-finish:${level.id}:${playSessionRef.current.id}`,
+      finalSave.levelProgress.completedLevelIds.length,
+    );
+  }
+
+  /**
+   * The Replay Bonus transaction. The reward is committed ONLY after
+   * requestRewardedAd resolved exactly `true`, then verified (wallet delta +
+   * exactly one ledger entry), saved, and re-read from storage; the sheet
+   * shows "Reward Granted" only once the save's ledger contains the entry.
+   * Any other outcome changes nothing. A ref (not state) blocks re-entry,
+   * so a double tap can never start a second request or a second commit.
+   */
+  async function watchReplayBonusAd() {
+    const offer = replayOffer;
+    const current = saveRef.current;
+    if (!offer || !current || replayBusyRef.current) return;
+    if (isReplayBonusClaimed(current, offer.rewardId)) return;
+    replayBusyRef.current = true;
+    // A retry after a failed/declined ad asks with a fresh reward id.
+    const attempt = replayFailure
+      ? { ...offer, rewardId: newReplayBonusRewardId(offer.levelId) }
+      : offer;
+    if (attempt !== offer) setReplayOffer(attempt);
+    const fail = (reason: ReplayBonusFailure) => {
+      setReplayFailure(reason);
+      setReplayPhase("FAILED");
+    };
+    setReplayFailure(null);
+    setReplayPhase("REQUESTING_AD");
+    try {
+      const result = await requestRewardedAd(attempt.rewardId);
+      if (result.status !== "rewarded") {
+        fail(
+          result.status === "not-rewarded"
+            ? "notRewarded"
+            : result.status === "busy"
+              ? "busy"
+              : result.status === "unavailable"
+                ? "adUnavailable"
+                : "adFailed",
+        );
+        return;
+      }
+      setReplayPhase("REWARD_COMMITTING");
+      // Read the authoritative save AFTER the ad — never the pre-ad closure.
+      const before = saveRef.current;
+      if (!before) return fail("saveFailed");
+      const commit = commitReplayBonus(before, attempt, new Date());
+      if (!commit.ok) {
+        return fail(commit.reason === "invalidAmount" ? "commitMismatch" : commit.reason);
+      }
+      const next = syncKitchenUpgradeOwnership(commit.save);
+      if (!verifyReplayBonusCommit(before, next, attempt)) return fail("commitMismatch");
+      try {
+        await SaveManager.save(next);
+      } catch {
+        await SaveManager.save(before).catch(() => undefined);
+        return fail("saveFailed");
+      }
+      const persisted = await SaveManager.readPersisted().catch(() => null);
+      const landed =
+        !!persisted &&
+        persisted.credits === next.credits &&
+        persisted.economyLedger.some(
+          (e) => e.category === "rewarded-ad" && e.description === attempt.rewardId,
+        );
+      if (!landed) {
+        await SaveManager.save(before).catch(() => undefined);
+        return fail("saveFailed");
+      }
+      saveRef.current = next;
+      setSave(next);
+      setReplayPhase("REWARD_COMMITTED");
+      if (replayOfferRef.current?.rewardId !== attempt.rewardId) setLateReplayBonus(attempt.amount);
+    } finally {
+      replayBusyRef.current = false;
+    }
+  }
+
   function finishCampaignLevel() {
     if (!save || !campaignServiceSession) return;
     const level = getLevel(campaignServiceSession.levelId);
     if (!level) return;
-    const { progress: levelProgress, rewardCoins } = completeLevel(level.id, save.levelProgress);
-    const nextSave = { ...save, credits: save.credits + rewardCoins, levelProgress };
+    const {
+      progress: levelProgress,
+      isFirstCompletion,
+      rewardCoins,
+    } = completeLevel(level.id, save.levelProgress);
+    let nextSave = { ...save, credits: save.credits + rewardCoins, levelProgress };
+    // Economy V2 Phase 9 — the completion reward is its own real wallet
+    // transaction, separate from any order settlement already recorded
+    // by serveCampaignOrder (brief §21 — "do not double-record").
+    if (rewardCoins > 0)
+      nextSave = appendLedgerEntry(nextSave, "completion-reward", rewardCoins, level.id);
     const flush = checkStoryFlush(nextSave);
     const finalSave = flush
       ? flush.kind === "finale"
@@ -481,6 +1124,11 @@ export function App() {
       : nextSave;
     persist(finalSave);
     if (flush) setStoryEvent(flush);
+    // A story banner takes priority in the same rare tick both would
+    // fire (a milestone level) — the reward itself was still credited
+    // above; only the toast is deferred.
+    else if (rewardCoins > 0) setLevelRewardNotice({ rewardCoins });
+    afterLevelFinished(finalSave, level, !isFirstCompletion, flush?.kind === "finale");
     setCampaignServiceSession(null);
     setSessionMode("campaign");
     go("board");
@@ -498,7 +1146,10 @@ export function App() {
       .map((id) => getCampaignRecipe(id))
       .filter((r): r is RecipeDefinition => !!r);
     if (recipes.length < 2) return;
-    const group = createBatchGroupSession(level.id, recipes, Math.random);
+    // Economy V2 replay safety — mirrors startCampaignLevel's own doc
+    // exactly, for the batch-group architecture.
+    const isReplay = isCompleted(level.id, save.levelProgress);
+    const group = createBatchGroupSession(level.id, recipes, Math.random, level.chapter, isReplay);
     setBatchGroupSession(group);
     setBatchViewOrderId(currentBatchOrder(group)?.order.id ?? null);
     setActiveLevelId(level.id);
@@ -515,19 +1166,59 @@ export function App() {
     const best = Math.max(prior?.best ?? 0, score);
     const recipeProgress = { ...save.recipeProgress, [viewed.recipe.id]: { best, done: true } };
     persist({ ...save, recipeProgress });
-    setBatchGroupSession((g) => (g ? recordBatchGroupComponents(g, batchViewOrderId) : g));
+    setBatchGroupSession((g) => (g ? recordBatchGroupComponents(g, batchViewOrderId, score) : g));
     return 0;
   }
 
-  /** Serves whichever order is currently VIEWED — refuses unless it's genuinely READY (ServiceManager's own guard), same exactly-once payment rule as every other mode. */
-  function serveBatchGroupViewedOrder(): { coinsAwarded: number; reaction: string } | null {
+  /**
+   * Serves whichever order is currently VIEWED — refuses unless it's
+   * genuinely READY (ServiceManager's own guard), same exactly-once
+   * payment rule as every other mode. Mirrors serveCampaignOrder's own
+   * Economy V2 settlement wiring exactly (§9): one served order = one
+   * computeSettlement call, 0 on a replay session, never settled again
+   * at finishBatchGroupLevel.
+   */
+  function serveBatchGroupViewedOrder(): {
+    coinsAwarded: number;
+    reaction: string;
+    settlement?: SettlementResult | undefined;
+    isReplay?: boolean;
+  } | null {
     if (!batchGroupSession || !batchViewOrderId) return null;
-    const result = serveBatchGroupOrder(batchGroupSession, batchViewOrderId, Math.random);
+    const viewed = batchGroupSession.orders.find((o) => o.order.id === batchViewOrderId);
+    if (!viewed) return null;
+    const isReplay = batchGroupSession.isReplay;
+    // Economy V2 Phase 9 — mirrors serveCampaignOrder's own doc exactly:
+    // the full breakdown is kept for the result UI, `amount` stays
+    // exactly `settlement?.netResult ?? 0`.
+    const settlement = isReplay
+      ? undefined
+      : computeSettlement(
+          viewed.recipe,
+          batchGroupSession.chapter ?? 1,
+          viewed.order.preparationScore ?? 0,
+          save?.equippedKnifeId,
+          save?.equippedBoardId,
+          save ? getKnifeSharpness(save, save.equippedKnifeId) : undefined,
+          save?.ownedStaffIds,
+          save?.selectedSupplierId,
+        );
+    const amount = settlement?.netResult ?? 0;
+    const result = serveBatchGroupOrder(batchGroupSession, batchViewOrderId, Math.random, amount);
     if (!result) return null;
     setBatchGroupSession(result.group);
-    if (result.coinsAwarded > 0 && save)
-      persist({ ...save, credits: save.credits + result.coinsAwarded });
-    return { coinsAwarded: result.coinsAwarded, reaction: result.reaction };
+    // Economy V2 Phase 6 — mirrors serveCampaignOrder's own doc exactly.
+    if (save && !isReplay) {
+      const withCredits = { ...save, credits: save.credits + result.coinsAwarded };
+      const withLedger = appendLedgerEntry(
+        withCredits,
+        "campaign-settlement",
+        result.coinsAwarded,
+        viewed.recipe.id,
+      );
+      persist(applySharpnessDecay(withLedger, save.equippedKnifeId, viewed.recipe));
+    }
+    return { coinsAwarded: result.coinsAwarded, reaction: result.reaction, settlement, isReplay };
   }
 
   /** "Next Customer" within a batch group — advances the VIEW to the next order (which may already be READY, having been satisfied by the order just served — §4's whole point), or finishes the level once every group order has been served and paid. */
@@ -547,8 +1238,15 @@ export function App() {
     if (!save || !batchGroupSession) return;
     const level = getLevel(batchGroupSession.levelId);
     if (!level) return;
-    const { progress: levelProgress, rewardCoins } = completeLevel(level.id, save.levelProgress);
-    const nextSave = { ...save, credits: save.credits + rewardCoins, levelProgress };
+    const {
+      progress: levelProgress,
+      isFirstCompletion,
+      rewardCoins,
+    } = completeLevel(level.id, save.levelProgress);
+    let nextSave = { ...save, credits: save.credits + rewardCoins, levelProgress };
+    // Economy V2 Phase 9 — mirrors finishCampaignLevel's own ledger doc exactly.
+    if (rewardCoins > 0)
+      nextSave = appendLedgerEntry(nextSave, "completion-reward", rewardCoins, level.id);
     const flush = checkStoryFlush(nextSave);
     const finalSave = flush
       ? flush.kind === "finale"
@@ -557,6 +1255,8 @@ export function App() {
       : nextSave;
     persist(finalSave);
     if (flush) setStoryEvent(flush);
+    else if (rewardCoins > 0) setLevelRewardNotice({ rewardCoins });
+    afterLevelFinished(finalSave, level, !isFirstCompletion, flush?.kind === "finale");
     setBatchGroupSession(null);
     setBatchViewOrderId(null);
     setSessionMode("campaign");
@@ -580,16 +1280,51 @@ export function App() {
 
     // Level completion/reward/unlock IS gated by first-completion (Law 2 —
     // "replay does not pay").
-    const { progress: levelProgress, rewardCoins } = completeLevel(
+    const { progress: levelProgress, isFirstCompletion } = completeLevel(
       activeLevel.id,
       save.levelProgress,
     );
-    const nextSave = {
+    // Economy V2 (§7) — a plain Single level has no separate serve step
+    // (unlike order-pool/batch-group), so its ONE existing payment (this
+    // level's flat reward.coins, on first completion only) IS the
+    // "recipe revenue component" the design doc means to replace: same
+    // first-completion gate as before, just computeSettlement's netResult
+    // in place of the flat reward number. 0 on replay, exactly like
+    // before. NOTE: no shipped campaign level currently reaches this
+    // code path (every one of the 250 levels declares recipePoolIds or
+    // batchGroupRecipeIds — see the final report) — kept correct for
+    // whichever future level does.
+    const recipe = getCampaignRecipe(recipeId);
+    const payout =
+      isFirstCompletion && recipe
+        ? computeSettlement(
+            recipe,
+            activeLevel.chapter,
+            score,
+            save.equippedKnifeId,
+            save.equippedBoardId,
+            getKnifeSharpness(save, save.equippedKnifeId),
+            save.ownedStaffIds,
+            save.selectedSupplierId,
+          ).netResult
+        : 0;
+    let nextSave = {
       ...save,
-      credits: save.credits + rewardCoins,
+      credits: save.credits + payout,
       recipeProgress,
       levelProgress,
     };
+    // Economy V2 Phase 9 — this path's ONE payout IS the settlement (see
+    // this function's own doc above: no separate completion-reward
+    // concept here), so exactly one ledger entry, never two.
+    if (isFirstCompletion && recipe && payout > 0) {
+      nextSave = appendLedgerEntry(nextSave, "campaign-settlement", payout, recipe.id);
+    }
+    // Economy V2 Phase 6 — sharpness decay only on a genuine first
+    // completion (never replay), mirroring serveCampaignOrder's own doc.
+    if (isFirstCompletion && recipe) {
+      nextSave = applySharpnessDecay(nextSave, save.equippedKnifeId, recipe);
+    }
     // THE LAST WISH's milestone/finale gate — ported from flush(),
     // called "after a plate is put away", reading the counter this
     // completion just advanced and nothing else. Only one event can be
@@ -610,7 +1345,8 @@ export function App() {
       : nextSave;
     persist(finalSave);
     if (flush) setStoryEvent(flush);
-    return rewardCoins;
+    markPlaySessionCompleted();
+    return payout;
   }
 
   /**
@@ -624,6 +1360,7 @@ export function App() {
    */
   function recordDailyResult(score: number): number {
     if (!save) return 0;
+    markPlaySessionCompleted();
     const recipeId = activeLevel.recipeId;
     const prior = save.recipeProgress[recipeId];
     const best = Math.max(prior?.best ?? 0, score);
@@ -632,7 +1369,13 @@ export function App() {
     const alreadyClaimed = hasClaimedToday(save.dailyOrder, now);
     const bonus = alreadyClaimed ? 0 : DAILY_ORDER_BONUS_COINS;
     const dailyOrder = alreadyClaimed ? save.dailyOrder : claimDaily(save.dailyOrder, now);
-    persist({ ...save, recipeProgress, dailyOrder, credits: save.credits + bonus });
+    const nextSave = appendLedgerEntry(
+      { ...save, recipeProgress, dailyOrder, credits: save.credits + bonus },
+      "daily-reward",
+      bonus,
+      recipeId,
+    );
+    persist(nextSave);
     return bonus;
   }
 
@@ -646,19 +1389,43 @@ export function App() {
    */
   function recordEndlessResult(score: number): number {
     if (!save) return 0;
+    markPlaySessionCompleted();
     const recipeId = activeLevel.recipeId;
     const prior = save.recipeProgress[recipeId];
     const best = Math.max(prior?.best ?? 0, score);
     const recipeProgress = { ...save.recipeProgress, [recipeId]: { best, done: true } };
     const { earned, endless } = applyEndlessEarn(
       save.endless,
-      activeLevel.reward.coins,
+      dollars(activeLevel.reward.coins),
       new Date(),
     );
-    persist({ ...save, recipeProgress, endless, credits: save.credits + earned });
+    const nextSave = appendLedgerEntry(
+      { ...save, recipeProgress, endless, credits: save.credits + earned },
+      "endless-revenue",
+      earned,
+      recipeId,
+    );
+    persist(nextSave);
     setEndlessIndex((i) => i + 1);
     return earned;
   }
+
+  // Once the first screen is up, fetch the Preparation/Phaser chunk in the
+  // background so opening a level is instant (see lazyPreparation.ts).
+  const saveLoaded = save !== null;
+  useEffect(() => {
+    if (!saveLoaded) return;
+    // An idle slot, but never later than 500 ms: on a slow phone the Kitchen's
+    // animations can keep the main thread "busy" long enough that a plain
+    // idle callback starts the download too late for a quick first tap.
+    const idle = (
+      window as Window & {
+        requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+      }
+    ).requestIdleCallback;
+    if (idle) idle(preloadPreparation, { timeout: 500 });
+    else setTimeout(preloadPreparation, 200);
+  }, [saveLoaded]);
 
   if (!save) {
     return (
@@ -668,7 +1435,8 @@ export function App() {
     );
   }
 
-  const equippedKnife = knifeOrDefault(save.equippedKnifeId);
+  // Blacksmith upgrades ride along on the knife Preparation plays with (blacksmith.effectiveKnife — the catalog knife itself when un-upgraded).
+  const equippedKnife = effectiveKnife(save, knifeOrDefault(save.equippedKnifeId));
   const equippedBoard = boardOrDefault(save.equippedBoardId);
   const previousBest = save.recipeProgress[activeLevel.recipeId]?.best ?? 0;
   // Progression pass — "Next Level" on the result screen. LEVELS is
@@ -706,7 +1474,12 @@ export function App() {
   // otherwise try to render with nothing to show.
   const isCampaignService = sessionMode === "campaign-service";
   const isBatchGroup = sessionMode === "batch-group";
-  const activeServiceSession = isCampaignService ? campaignServiceSession : serviceSession;
+  const isBusinessService = sessionMode === "business-service";
+  const activeServiceSession = isCampaignService
+    ? campaignServiceSession
+    : isBusinessService
+      ? businessServiceSession
+      : null;
   // Phase 4 — a batch-group's "current order" is whichever one the
   // player is VIEWING (batchViewOrderId), adapted into the same
   // {order, customer, recipe, session} shape Preparation/
@@ -718,7 +1491,7 @@ export function App() {
       ? (batchGroupSession.orders.find((o) => o.order.id === batchViewOrderId) ?? null)
       : null;
   const currentServiceOrder =
-    sessionMode === "service" || isCampaignService
+    isCampaignService || isBusinessService
       ? (activeServiceSession?.current ?? null)
       : viewedBatchOrder && batchGroupSession
         ? { ...viewedBatchOrder, session: batchGroupSession.session }
@@ -726,9 +1499,9 @@ export function App() {
   const showServicePrep = screen === "gameplay" && !!currentServiceOrder;
   const showCampaignPrep =
     screen === "gameplay" &&
-    sessionMode !== "service" &&
     sessionMode !== "campaign-service" &&
-    sessionMode !== "batch-group";
+    sessionMode !== "batch-group" &&
+    sessionMode !== "business-service";
   const batchGroupWillFinish =
     isBatchGroup && batchGroupSession ? isBatchGroupComplete(batchGroupSession) : false;
 
@@ -762,101 +1535,159 @@ export function App() {
         </div>
       }
     >
-      {showServicePrep && currentServiceOrder ? (
-        <Preparation
-          // Remounts for a new order the same way the campaign branch
-          // remounts for a new level: the key changes ("Next Customer"
-          // -> advance -> a genuinely different order id), so
-          // Preparation's internal phase/step state always starts fresh
-          // for the new customer.
-          key={currentServiceOrder.order.id}
-          service={{
-            order: currentServiceOrder,
-            onServe: isCampaignService
-              ? serveCampaignOrder
-              : isBatchGroup
-                ? serveBatchGroupViewedOrder
-                : serveActiveServiceOrder,
-            onNextOrder: isCampaignService
-              ? campaignWillFinishNext
-                ? finishCampaignLevel
-                : advanceCampaignQueue
-              : isBatchGroup
-                ? advanceBatchGroupView
-                : advanceServiceQueue,
-            ...((isCampaignService && campaignWillFinishNext) ||
-            (isBatchGroup && batchGroupWillFinish)
-              ? { nextLabel: "Finish Level" }
-              : {}),
-            ...(activeServiceSession ? { batchHint: batchHintFor(activeServiceSession) } : {}),
-            ...(isBatchGroup && batchGroupSession && batchViewOrderId
-              ? { batchHint: batchHintForGroup(batchGroupSession, batchViewOrderId) }
-              : {}),
-          }}
-          onExit={() => {
-            setSessionMode("campaign");
-            go("board");
-          }}
-          onComplete={
-            isCampaignService
-              ? recordCampaignServiceResult
-              : isBatchGroup
-                ? recordBatchGroupResult
-                : recordServiceResult
-          }
-          credits={save.credits}
-          previousBest={save.recipeProgress[currentServiceOrder.recipe.id]?.best ?? 0}
-          knife={equippedKnife}
-          board={equippedBoard}
-        />
-      ) : showCampaignPrep ? (
-        <Preparation
-          // Remounts Preparation whenever the active level actually
-          // changes — including "Next Level" jumping straight from one
-          // level's result screen into the next without a Kitchen visit
-          // in between, which needs Preparation's internal phase/step
-          // state to start completely fresh (its own effect only ever
-          // runs once per mount, by design — see its own "level/knife/
-          // board are fixed for this preparation run" comment).
-          key={activeLevel.id}
-          level={activeLevel}
-          onExit={() => {
-            setSessionMode("campaign");
-            go(sessionExitScreen);
-          }}
-          onComplete={sessionOnComplete}
-          credits={save.credits}
-          previousBest={previousBest}
-          knife={equippedKnife}
-          board={equippedBoard}
-          {...(nextLevel ? { nextLevel, onNextLevel: () => onSelectLevel(nextLevel.id) } : {})}
-        />
-      ) : (
-        <Suspense fallback={<LoadingScreen />}>
-          <ScreensRouter
-            screen={screen}
-            go={go}
-            save={save}
-            recipeDetailLevelId={recipeDetailLevelId}
-            onOpenRecipe={(levelId) => {
-              setRecipeDetailLevelId(levelId);
-              setScreen("recipe-detail");
+      {/* Preparation is a lazy chunk (lazyPreparation.ts) — normally already
+          preloaded by the time a level opens, so this fallback rarely shows. */}
+      <Suspense fallback={<LoadingScreen />}>
+        {showServicePrep && currentServiceOrder ? (
+          <Preparation
+            // Remounts for a new order the same way the campaign branch
+            // remounts for a new level: the key changes ("Next Customer"
+            // -> advance -> a genuinely different order id), so
+            // Preparation's internal phase/step state always starts fresh
+            // for the new customer.
+            key={currentServiceOrder.order.id}
+            service={{
+              order: currentServiceOrder,
+              onServe: isCampaignService
+                ? serveCampaignOrder
+                : isBatchGroup
+                  ? serveBatchGroupViewedOrder
+                  : serveActiveBusinessOrder,
+              onNextOrder: isCampaignService
+                ? campaignWillFinishNext
+                  ? finishCampaignLevel
+                  : advanceCampaignQueue
+                : isBatchGroup
+                  ? advanceBatchGroupView
+                  : advanceBusinessServiceQueue,
+              ...(isBusinessService ? { isBusinessOrder: true } : {}),
+              ...((isCampaignService && campaignWillFinishNext) ||
+              (isBatchGroup && batchGroupWillFinish)
+                ? { nextLabel: "Finish Level" }
+                : {}),
+              ...(activeServiceSession ? { batchHint: batchHintFor(activeServiceSession) } : {}),
+              ...(isBatchGroup && batchGroupSession && batchViewOrderId
+                ? { batchHint: batchHintForGroup(batchGroupSession, batchViewOrderId) }
+                : {}),
+              // Economy V2 Phase 9 — display-only identity for the
+              // settlement breakdown (ServiceOrderComplete resolves these
+              // to catalog names itself, exactly like Shop.tsx already
+              // does — never a computed economic value). Omitted entirely
+              // for a plain Restaurant Service order (isCampaignService/
+              // isBatchGroup both false), which never computes a
+              // settlement in the first place.
+              ...(isCampaignService || isBatchGroup
+                ? {
+                    selectedSupplierId: save.selectedSupplierId,
+                    ownedStaffIds: save.ownedStaffIds,
+                    knifeSharpnessValue: getKnifeSharpness(save, save.equippedKnifeId),
+                  }
+                : {}),
             }}
-            onSelectLevel={onSelectLevel}
-            onStartDaily={startDaily}
-            onStartEndless={startEndless}
-            serviceSession={serviceSession}
-            onStartService={startService}
-            buyKnife={buyKnife}
-            buyBoard={buyBoard}
-            setEquippedKnife={setEquippedKnife}
-            setEquippedBoard={setEquippedBoard}
-            setEquippedKitchenUpgrade={setEquippedKitchenUpgrade}
-            toggleSetting={toggleSetting}
-            resetProgress={resetProgress}
+            onExit={() => {
+              setSessionMode("campaign");
+              go(isBusinessService ? "business-service" : "board");
+            }}
+            onComplete={
+              isCampaignService
+                ? recordCampaignServiceResult
+                : isBatchGroup
+                  ? recordBatchGroupResult
+                  : recordBusinessServiceResult
+            }
+            credits={save.credits}
+            previousBest={
+              // Business orders don't read or write Campaign recipe progress (V3-16 isolation fix).
+              isBusinessService
+                ? 0
+                : (save.recipeProgress[currentServiceOrder.recipe.id]?.best ?? 0)
+            }
+            knife={equippedKnife}
+            board={equippedBoard}
           />
-        </Suspense>
-      )}
+        ) : showCampaignPrep ? (
+          <Preparation
+            // Remounts Preparation whenever the active level actually
+            // changes — including "Next Level" jumping straight from one
+            // level's result screen into the next without a Kitchen visit
+            // in between, which needs Preparation's internal phase/step
+            // state to start completely fresh (its own effect only ever
+            // runs once per mount, by design — see its own "level/knife/
+            // board are fixed for this preparation run" comment).
+            key={activeLevel.id}
+            level={activeLevel}
+            onExit={() => {
+              // A finished session (never a mid-level quit) is a natural break.
+              if (playSessionRef.current.completed) {
+                maybeShowInterstitial(
+                  `${sessionMode === "campaign" ? "level-finish" : `${sessionMode}-exit`}:${activeLevel.id}:${playSessionRef.current.id}`,
+                  save.levelProgress.completedLevelIds.length,
+                );
+              }
+              setSessionMode("campaign");
+              go(sessionExitScreen);
+            }}
+            onComplete={sessionOnComplete}
+            credits={save.credits}
+            previousBest={previousBest}
+            knife={equippedKnife}
+            board={equippedBoard}
+            {...(nextLevel
+              ? {
+                  nextLevel,
+                  onNextLevel: () => {
+                    if (playSessionRef.current.completed) {
+                      maybeShowInterstitial(
+                        `level-finish:${activeLevel.id}:${playSessionRef.current.id}`,
+                        save.levelProgress.completedLevelIds.length,
+                      );
+                    }
+                    onSelectLevel(nextLevel.id);
+                  },
+                }
+              : {})}
+          />
+        ) : (
+          <Suspense fallback={<LoadingScreen />}>
+            <ScreensRouter
+              screen={screen}
+              go={go}
+              save={save}
+              recipeDetailLevelId={recipeDetailLevelId}
+              onOpenRecipe={(levelId) => {
+                setRecipeDetailLevelId(levelId);
+                setScreen("recipe-detail");
+              }}
+              onSelectLevel={onSelectLevel}
+              onStartDaily={startDaily}
+              onStartEndless={startEndless}
+              buyKnife={buyKnife}
+              buyBoard={buyBoard}
+              sharpenKnife={sharpenKnife}
+              upgradeKnife={upgradeKnife}
+              buyStaff={buyStaff}
+              selectSupplier={selectSupplier}
+              setEquippedKnife={setEquippedKnife}
+              setEquippedBoard={setEquippedBoard}
+              toggleSetting={toggleSetting}
+              resetProgress={resetProgress}
+              advanceBusinessDay={advanceBusinessDay}
+              purchaseIngredient={purchaseIngredient}
+              purchaseRefrigerator={purchaseRefrigerator}
+              performRefrigeratorMaintenance={performRefrigeratorMaintenance}
+              setMenuPrice={setMenuPrice}
+              setBusinessDishActive={setBusinessDishActive}
+              signSupplierContract={signSupplierContract}
+              cancelSupplierContract={cancelSupplierContract}
+              hireStaff={hireStaff}
+              fireStaff={fireStaff}
+              businessServiceSession={businessServiceSession}
+              onStartBusinessService={startBusinessService}
+              onEnterBusinessPreparation={enterBusinessPreparation}
+            />
+          </Suspense>
+        )}
+      </Suspense>
       {showIntro ? (
         <StoryOverlay
           sequence={STORY_INTRO_SEQUENCE}
@@ -874,6 +1705,47 @@ export function App() {
           kicker={storyEvent.milestone.kicker}
           line={storyEvent.milestone.line}
           onDismiss={() => setStoryEvent(null)}
+        />
+      ) : null}
+      {levelRewardNotice ? (
+        <MilestoneBanner
+          kicker="Level Complete"
+          line={`${formatUsdChange(levelRewardNotice.rewardCoins)} Completion Reward`}
+          onDismiss={() => setLevelRewardNotice(null)}
+        />
+      ) : null}
+      {replayOffer ? (
+        <ReplayBonusSheet
+          amount={replayOffer.amount}
+          phase={replayPhase}
+          failure={replayFailure}
+          claimed={isReplayBonusClaimed(save, replayOffer.rewardId)}
+          leftToday={replayBonusesLeftToday(save, new Date())}
+          onWatch={() => void watchReplayBonusAd()}
+          canClose={!adActive}
+          onClose={() => {
+            // Closable unless an ad is on screen. If YouTube's answer is still
+            // pending (the dead-request guard lifted the screen block), the game
+            // keeps listening: a late `true` is still committed and confirmed.
+            if (adActive) return;
+            setReplayOffer(null);
+          }}
+        />
+      ) : null}
+      {lateReplayBonus !== null ? (
+        <MilestoneBanner
+          kicker="Reward Granted"
+          line={`${formatUsdChange(lateReplayBonus)} Replay Bonus`}
+          onDismiss={() => setLateReplayBonus(null)}
+        />
+      ) : null}
+      {adActive ? <AdPlayingShield /> : null}
+      {businessNoticeQueue[0] && inBusiness && !storyEvent && !levelRewardNotice ? (
+        <MilestoneBanner
+          key={businessNoticeQueue[0].key}
+          kicker={businessNoticeQueue[0].title}
+          line={businessNoticeQueue[0].detail.split(". ")[0]!.replace(/\.$/, "") + "."}
+          onDismiss={() => setBusinessNoticeQueue((q) => q.slice(1))}
         />
       ) : null}
     </GameShell>

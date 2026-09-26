@@ -94,7 +94,9 @@ export function GameShell({ children, aside }: { children: ReactNode; aside?: Re
   const { ref, size } = useContainFit(LOGICAL_W, LOGICAL_H);
   return (
     <div className="fixed inset-0 overflow-hidden bg-[radial-gradient(120%_80%_at_50%_0%,#3E2819,#231710_70%)]">
-      <div className="flex h-full w-full items-center justify-center gap-6 p-2 sm:p-4">
+      {/* Phone-sized screens get the game edge to edge (no margin, border or
+          rounded corners); the framed "device" look is only for wider screens. */}
+      <div className="flex h-full w-full items-center justify-center gap-6 p-0 sm:p-4">
         {aside}
         {/* The measuring box — its own rendered size (via ResizeObserver
             above) IS "the space actually available to the game", already
@@ -107,7 +109,7 @@ export function GameShell({ children, aside }: { children: ReactNode; aside?: Re
           className="flex h-full min-h-0 w-full min-w-0 flex-1 items-center justify-center"
         >
           <div
-            className="relative overflow-hidden rounded-[clamp(0px,4vmin,34px)] border-[3px] border-[#241811] shadow-[0_40px_80px_rgba(0,0,0,0.55)]"
+            className="relative overflow-hidden sm:rounded-[clamp(0px,4vmin,34px)] sm:border-[3px] sm:border-[#241811] sm:shadow-[0_40px_80px_rgba(0,0,0,0.55)]"
             style={{ width: size.width, height: size.height }}
           >
             {children}

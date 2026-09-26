@@ -7,6 +7,15 @@
  * real radial wedge geometry (that comes from actual cuts through
  * center, see PreparationScene/TECHNIQUES.radial) — it just makes the
  * rind/pith/segment read believable wherever a real cut exposes it.
+ *
+ * Discrepancy #1's close-out: `peeled` (mandatory-first, same convention
+ * as Onion/Potato — see EllipseRenderer.paint's own doc) gates ONLY the
+ * outer rind fill + its dimpled-pore texture, swapping them for the pale
+ * pith tone the pulp/segment layer already sits on. The pulp/segment/
+ * pith-core overlay below stays completely unconditional either way — it
+ * was already cosmetic and independent of both Peel and the real Radial
+ * cut geometry before this change, and stays that way: Peel never
+ * becomes a second way to trigger radial segmentation.
  */
 
 export function orangeTextureSize(
@@ -22,6 +31,7 @@ export function paintOrangeTexture(
   rx: number,
   ry: number,
   margin: number,
+  peeled = false,
 ): void {
   const cx = rx + margin;
   const cy = ry + margin;
@@ -37,12 +47,25 @@ export function paintOrangeTexture(
     ctx.closePath();
   };
 
-  const rg = ctx.createRadialGradient(cx - rx * 0.26, cy - ry * 0.3, rx * 0.16, cx, cy, rx * 1.14);
-  rg.addColorStop(0, "#FFA23C");
-  rg.addColorStop(0.55, "#F5821E");
-  rg.addColorStop(0.86, "#DA6811");
-  rg.addColorStop(1, "#B8540C");
-  ctx.fillStyle = rg;
+  if (!peeled) {
+    const rg = ctx.createRadialGradient(
+      cx - rx * 0.26,
+      cy - ry * 0.3,
+      rx * 0.16,
+      cx,
+      cy,
+      rx * 1.14,
+    );
+    rg.addColorStop(0, "#FFA23C");
+    rg.addColorStop(0.55, "#F5821E");
+    rg.addColorStop(0.86, "#DA6811");
+    rg.addColorStop(1, "#B8540C");
+    ctx.fillStyle = rg;
+  } else {
+    // Peeled: the rind is gone — the pale pith tone the segment overlay
+    // below already draws on top of is now the exposed outer surface.
+    ctx.fillStyle = "#FFE9B8";
+  }
   silPath();
   ctx.fill();
 
@@ -50,19 +73,21 @@ export function paintOrangeTexture(
   silPath();
   ctx.clip();
 
-  // Dimpled rind texture — a scatter of tiny pores, an orange's own skin.
-  ctx.globalAlpha = 0.16;
-  ctx.fillStyle = "#8F4A0C";
-  for (let i = 0; i < 46; i++) {
-    const a = (i / 46) * Math.PI * 2 + i * 0.7;
-    const r = 0.25 + ((i * 31) % 10) / 13;
-    const px = cx + Math.cos(a) * rx * r;
-    const py = cy + Math.sin(a) * ry * r;
-    ctx.beginPath();
-    ctx.ellipse(px, py, 1.6 * s, 1.6 * s, 0, 0, Math.PI * 2);
-    ctx.fill();
+  if (!peeled) {
+    // Dimpled rind texture — a scatter of tiny pores, an orange's own skin.
+    ctx.globalAlpha = 0.16;
+    ctx.fillStyle = "#8F4A0C";
+    for (let i = 0; i < 46; i++) {
+      const a = (i / 46) * Math.PI * 2 + i * 0.7;
+      const r = 0.25 + ((i * 31) % 10) / 13;
+      const px = cx + Math.cos(a) * rx * r;
+      const py = cy + Math.sin(a) * ry * r;
+      ctx.beginPath();
+      ctx.ellipse(px, py, 1.6 * s, 1.6 * s, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
   }
-  ctx.globalAlpha = 1;
 
   // A pale pith ring just inside the rind, then citrus segments radiating
   // from center — membrane lines only, the actual wedges come from real
@@ -122,7 +147,8 @@ export function paintOrangeTexture(
 
   ctx.restore();
 
-  ctx.strokeStyle = "rgba(120,60,10,0.3)";
+  // Unpeeled: a dark rind-edge line. Peeled: a paler pith-tone edge.
+  ctx.strokeStyle = peeled ? "rgba(214,170,90,0.32)" : "rgba(120,60,10,0.3)";
   ctx.lineWidth = Math.max(1.4, ry * 0.06);
   ctx.beginPath();
   ctx.ellipse(cx, cy, rx - ctx.lineWidth * 0.5, ry - ctx.lineWidth * 0.5, 0, 0, Math.PI * 2);

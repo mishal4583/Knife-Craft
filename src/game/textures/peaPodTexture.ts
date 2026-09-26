@@ -40,6 +40,11 @@ export function paintPeaPodTexture(
   margin: number,
   opts: TaperPaintOpts = {},
   hasCut = false,
+  // `overhangGone` — see PreparationScene.ts's TaperRenderer.paint own
+  // doc. Independent of `hasCut` above (which here drives the "opened
+  // pod" reveal, not "has been cut"). True once `this.cuts.length > 0`;
+  // gates the stem+tendril below so it actually sheds on the first cut.
+  overhangGone = false,
 ): void {
   const cx = rx + margin;
   const cy = rBig + margin;
@@ -126,39 +131,41 @@ export function paintPeaPodTexture(
   sil(0);
   ctx.stroke();
 
-  const bx = cx - rx * 0.99; // stem, then the tendril curl
-  const by = cy - rBig * 0.18;
-  ctx.strokeStyle = "#6E9438";
-  ctx.lineWidth = 7;
-  ctx.lineCap = "round";
-  ctx.beginPath();
-  ctx.moveTo(bx + 4, by);
-  ctx.quadraticCurveTo(bx - 16, by - 6, bx - 30, by - 12);
-  ctx.stroke();
-  ctx.strokeStyle = "#8FB255";
-  ctx.lineWidth = 3;
-  for (const d of [-0.55, 0.0, 0.5]) {
-    // dried sepal wisps at the joint
+  if (!overhangGone) {
+    const bx = cx - rx * 0.99; // stem, then the tendril curl
+    const by = cy - rBig * 0.18;
+    ctx.strokeStyle = "#6E9438";
+    ctx.lineWidth = 7;
+    ctx.lineCap = "round";
     ctx.beginPath();
-    ctx.moveTo(bx - 26, by - 11);
-    ctx.quadraticCurveTo(bx - 34 + d * 8, by - 11 + d * 16, bx - 40 + d * 14, by - 8 + d * 30);
+    ctx.moveTo(bx + 4, by);
+    ctx.quadraticCurveTo(bx - 16, by - 6, bx - 30, by - 12);
+    ctx.stroke();
+    ctx.strokeStyle = "#8FB255";
+    ctx.lineWidth = 3;
+    for (const d of [-0.55, 0.0, 0.5]) {
+      // dried sepal wisps at the joint
+      ctx.beginPath();
+      ctx.moveTo(bx - 26, by - 11);
+      ctx.quadraticCurveTo(bx - 34 + d * 8, by - 11 + d * 16, bx - 40 + d * 14, by - 8 + d * 30);
+      ctx.stroke();
+    }
+    ctx.strokeStyle = "#7FA646";
+    ctx.lineWidth = 2.6;
+    ctx.beginPath();
+    const a0 = -0.4;
+    const rr = 20;
+    const px = bx - 30;
+    const py = by - 10;
+    ctx.moveTo(px, py);
+    for (let s = 1; s <= 46; s++) {
+      // the spiral tendril
+      const a = a0 + s * 0.3;
+      const r = rr * (1 - s / 52);
+      ctx.lineTo(bx - 42 + Math.cos(a) * r, by + 6 + Math.sin(a) * r);
+    }
     ctx.stroke();
   }
-  ctx.strokeStyle = "#7FA646";
-  ctx.lineWidth = 2.6;
-  ctx.beginPath();
-  const a0 = -0.4;
-  const rr = 20;
-  const px = bx - 30;
-  const py = by - 10;
-  ctx.moveTo(px, py);
-  for (let s = 1; s <= 46; s++) {
-    // the spiral tendril
-    const a = a0 + s * 0.3;
-    const r = rr * (1 - s / 52);
-    ctx.lineTo(bx - 42 + Math.cos(a) * r, by + 6 + Math.sin(a) * r);
-  }
-  ctx.stroke();
 
   if (!hasCut) return; // uncut: 100% intact glossy pod — no split interior showing yet
 

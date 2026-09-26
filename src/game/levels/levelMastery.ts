@@ -24,6 +24,8 @@ import type { LevelDefinition } from "./levelTypes";
 import { KNIFE_CATALOG } from "../knives/knifeDefinitions";
 import { BOARD_CATALOG } from "../boards/boardDefinitions";
 import { CAFE_MILESTONES } from "../cafe/cafeDefinitions";
+import { KITCHEN_UPGRADE_CATALOG } from "../kitchen/kitchenUpgradeDefinitions";
+import { LEVELS, CHAPTER_TITLES } from "./levelDefinitions";
 
 /**
  * The Cookbook's "Prepared" stamp — a plain, permanent, binary fact (has
@@ -96,15 +98,20 @@ export type RewardPreview = {
 
 /**
  * Every real, catalog-backed reward in the game, merged into one
- * level-ordered timeline. Deliberately reads the THREE real catalogs
- * directly (knives/boards/café milestones) rather than only the levels
- * that happen to carry a literal `unlockReward` — a level with no
- * `unlockReward` of its own can still truthfully preview "here's what's
- * coming" by looking ahead on this same timeline. Kitchen upgrades are
- * excluded on purpose: every tier is granted silently/automatically
- * (KitchenUpgradeManager.syncKitchenUpgradeOwnership) with no equivalent
- * "look, a new thing" moment in any existing screen, so surfacing them
- * here would be a new kind of announcement this pass didn't ask for.
+ * level-ordered timeline. Deliberately reads the real catalogs directly
+ * (knives/boards/café milestones/kitchen backgrounds) rather than only
+ * the levels that happen to carry a literal `unlockReward` — a level with
+ * no `unlockReward` of its own can still truthfully preview "here's
+ * what's coming" by looking ahead on this same timeline. Every level
+ * comes straight from its catalog's own `unlockLevel`/`levelRequired`;
+ * nothing here invents one. The six kitchen backgrounds ARE the kitchen
+ * progression (the separate Kitchen Investment purchases were retired
+ * into them), so they appear here as real "look forward to" rewards.
+ *
+ * A name that already appears earlier on the timeline is not repeated:
+ * two background tiers share a title with an earlier café milestone
+ * ("Growing Kitchen", "Neighborhood Café"), and showing the same name
+ * twice a few levels apart would read like a duplicate reward.
  */
 function buildRewardTimeline(): RewardPreview[] {
   const entries: RewardPreview[] = [
@@ -123,8 +130,35 @@ function buildRewardTimeline(): RewardPreview[] {
       name: m.title,
       icon: "🏆",
     })),
+    ...KITCHEN_UPGRADE_CATALOG.filter((u) => u.unlockLevel > 1).map((u) => ({
+      atLevel: u.unlockLevel,
+      name: u.name,
+      icon: "🏠",
+    })),
   ];
-  return entries.sort((a, b) => a.atLevel - b.atLevel);
+  // Late game: every knife, board, café rank and kitchen stage is reached by
+  // the last entry above (Lv 120), but the campaign keeps going — each new
+  // cuisine chapter after that point is real new content, and Level 250 is
+  // the campaign's finale. Both come straight from the level data.
+  const lastCatalogReward = Math.max(...entries.map((e) => e.atLevel));
+  const chapterStarts = new Map<number, number>();
+  for (const l of LEVELS)
+    if (!chapterStarts.has(l.chapter)) chapterStarts.set(l.chapter, levelNumber(l.id));
+  for (const [chapter, first] of chapterStarts) {
+    if (first > lastCatalogReward && CHAPTER_TITLES[chapter]) {
+      entries.push({
+        atLevel: first,
+        name: `Chapter ${chapter} · ${CHAPTER_TITLES[chapter]}`,
+        icon: "📖",
+      });
+    }
+  }
+  entries.push({ atLevel: LEVELS.length, name: "Campaign Finale", icon: "🏁" });
+  // Stable sort keeps catalog order for same-level ties.
+  const seen = new Set<string>();
+  return entries
+    .sort((a, b) => a.atLevel - b.atLevel)
+    .filter((r) => (seen.has(r.name) ? false : (seen.add(r.name), true)));
 }
 
 let cachedTimeline: RewardPreview[] | null = null;
@@ -133,7 +167,29 @@ function rewardTimeline(): RewardPreview[] {
   return cachedTimeline;
 }
 
-/** The next real reward strictly ahead of `levelNumber`, or null once every catalog reward has been reached (past Level 120). */
+/** The whole merged timeline, level-ordered (read-only copy — for QA and any screen that lists it). */
+export function getRewardTimeline(): readonly RewardPreview[] {
+  return [...rewardTimeline()];
+}
+
+/** The next real reward strictly ahead of `levelNumber` — through the last cuisine chapter to the Campaign Finale (Level 250); null only once the campaign is finished. */
 export function getNextRewardPreview(levelNumber: number): RewardPreview | null {
   return rewardTimeline().find((r) => r.atLevel > levelNumber) ?? null;
+}
+
+/**
+ * The next timeline reward after `levelNumber` when — and only when — it is
+ * a kitchen background (matched on the catalog's own name AND level, so a
+ * café rank that merely shares a background's name never counts). Lets an
+ * Order Board row whose hint is taken by the level's OWN reward still
+ * announce the kitchen stage right behind it: Lv 40's Cleaver → Established
+ * Kitchen (Lv 41), Lv 70's Pasta Kitchen → Flourishing Café (Lv 71), Lv 90's
+ * Obsidian Knife → Grand Kitchen (Lv 91).
+ */
+export function getNextKitchenStagePreview(levelNumber: number): RewardPreview | null {
+  const next = getNextRewardPreview(levelNumber);
+  if (!next) return null;
+  return KITCHEN_UPGRADE_CATALOG.some((u) => u.name === next.name && u.unlockLevel === next.atLevel)
+    ? next
+    : null;
 }

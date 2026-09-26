@@ -93,6 +93,7 @@ export type Branch = {
  * a Phase 4 one. `coins` is paid exactly once, on first completion
  * (Law 2 — see LevelManager.completeLevel).
  */
+/** `coins` is the level's reward in WHOLE US DOLLARS (61 = $61.00); converted to wallet cents with money.dollars() wherever it is paid or shown. */
 export type LevelReward = { coins: number };
 
 /**
@@ -108,7 +109,7 @@ export type LevelReward = { coins: number };
  * café-progression-style), and "story" keys into an existing MILES entry
  * (storyDefinitions.ts) purely for display — no new story state. There is
  * deliberately no "decoration" variant: no decoration catalog/ownership
- * system exists in production (src/data/mockDecor.ts is unused mock data),
+ * system exists in production (the old decor mock data was deleted),
  * and inventing one is out of scope for a level-progression pass.
  */
 export type LevelUnlockReward = {
@@ -135,7 +136,7 @@ export type LevelDefinition = {
    * Phase 5 the Level Engine drives gameplay directly from
    * `preparationSteps` below (§"make sure the Level Engine is actually
    * consuming level data rather than the old flat PrepOrder flow") — this
-   * is NOT looked up against src/data/orders.ts/PrepOrder anymore. It
+   * is NOT looked up against the old (deleted) PrepOrder data. It
    * defaults to the level's own `id` for every Phase 5 campaign level;
    * kept as its own field (rather than reusing `id` directly) only
    * because a future level could legitimately want to share mastery

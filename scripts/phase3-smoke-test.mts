@@ -12,6 +12,8 @@ import {
   createServiceSession,
   recordAllComponents,
   sharesComponentWithNext,
+  createBatchGroupSession,
+  recordBatchGroupComponents,
 } from "../src/game/service/ServiceManager.ts";
 import { generateOrder } from "../src/game/service/OrderGenerator.ts";
 
@@ -132,25 +134,38 @@ for (let i = 0; i < 200; i++) {
 }
 assert(seen.size === 2, "generateOrder over a 2-recipe pool eventually produces both (200 draws)");
 
-// 14: batching — Level 26's pool (bruschetta trio + garden tomato cup) shares tomato/dice.
+// 14: batching — Level 26 (bruschetta trio + garden tomato cup) shares tomato/dice.
+// KnifeCraft_Level_System_v2.docx turned Level 26 from a random 2-order pool into a REAL
+// batch group (batchGroupRecipeIds) of the same two recipes — so this now
+// checks the stronger property: dicing the tomato once really serves both.
 const level26 = LEVELS.find((l) => l.id === "level-26")!;
-assert(
-  !!level26.recipePoolIds && level26.requiredOrders === 2,
-  "Level 26 is a real 2-order batching scenario",
+const level26Recipes = (level26.batchGroupRecipeIds ?? [])
+  .map((id) => CAMPAIGN_RECIPES.find((r) => r.id === id))
+  .filter((r): r is NonNullable<typeof r> => !!r);
+assert(level26Recipes.length === 2, "Level 26 is a real 2-order batching scenario");
+let level26Group = createBatchGroupSession("level-26", level26Recipes, () => 0);
+level26Group = recordBatchGroupComponents(level26Group, level26Group.orders[0]!.order.id);
+const sharedTomato = level26Group.session.outputs.find(
+  (o) => o.ingredientId === "tomato" && o.preparationState === "diced",
 );
-let batchSession = createServiceSession("level-26", poolFor(level26), () => 0);
-batchSession = { ...batchSession, next: { ...batchSession.next!, recipe: poolFor(level26)[1]! } };
-const shared = sharesComponentWithNext(batchSession);
 assert(
-  shared !== null && shared.ingredientId === "tomato" && shared.technique === "dice",
+  !!sharedTomato && sharedTomato.assignedTo.length === 2,
   "Level 26's pool shares a real batching opportunity (tomato/dice)",
 );
 
 // 15: branching — Onion Two Ways (Level 28).
+// Phase 7.1 (Bug B fix) gave each of this recipe's two independent onion
+// instances its own Peel step first (onion is peel-mandatory —
+// PreparationScene.requiresPeelFirst() — and stepsForRecipe.ts never
+// inserted one automatically), so this recipe now has 4 components/
+// outputs (peel+slice, peel+dice) instead of the old, actually-unplayable
+// 2 (slice, dice). The branching property under test — 2 independent,
+// non-shared destinations — is unchanged; only the honest component count
+// changed alongside the real gameplay fix.
 const onionTwoWays = CAMPAIGN_RECIPES.find((r) => r.id === "camp-onion-two-ways")!;
 assert(
-  onionTwoWays.components.length === 2 && onionTwoWays.destinations.length === 2,
-  "Onion Two Ways is a real 2-destination branching recipe",
+  onionTwoWays.components.length === 4 && onionTwoWays.destinations.length === 2,
+  "Onion Two Ways is a real 2-destination branching recipe (peel + slice, peel + dice)",
 );
 let branchSession = createServiceSession("level-28", [onionTwoWays], Math.random);
 branchSession = recordAllComponents(branchSession);
@@ -159,8 +174,8 @@ assert(
   "Onion Two Ways becomes READY once both independent cuts are recorded",
 );
 assert(
-  branchSession.current!.session.outputs.length === 2,
-  "Onion Two Ways produces 2 independent outputs (not shared)",
+  branchSession.current!.session.outputs.length === 4,
+  "Onion Two Ways produces 4 independent outputs (2 peels + 2 non-shared cuts)",
 );
 
 // 16: destination allocation — Family Antipasto for Two (Level 29), one output feeding two named destinations.
@@ -171,10 +186,13 @@ assert(
   sharedSession.current!.order.status === "READY",
   "Family Antipasto for Two becomes READY after one shared preparation pass",
 );
+// KnifeCraft_Level_System_v2.docx gave this recipe a third shared component (mozzarella);
+// the property is unchanged: ONE output per component, each feeding BOTH plates.
 assert(
-  sharedSession.current!.session.outputs.length === 2 &&
+  sharedSession.current!.session.outputs.length === familyAntipasto.components.length &&
+    familyAntipasto.components.length === 3 &&
     sharedSession.current!.session.outputs.every((o) => o.assignedTo.length === 2),
-  "each of Family Antipasto's 2 components produced exactly 1 output, each assigned to both named plates",
+  `each of Family Antipasto's ${familyAntipasto.components.length} components produced exactly 1 output, each assigned to both named plates`,
 );
 
 // 17-19: service completion / full payment / no duplicate payment — reuse Phase 2's own proven mechanics; here we

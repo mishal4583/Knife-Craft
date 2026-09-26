@@ -1,3 +1,4 @@
+import { formatUsd } from "@/game/money";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
@@ -103,36 +104,6 @@ export function Stars({ n, max = 5, size = 12 }: { n: number; max?: number; size
   );
 }
 
-export function StatBar({
-  label,
-  value,
-  tone = "copper",
-}: {
-  label: string;
-  value: number;
-  tone?: "copper" | "sage" | "gold";
-}) {
-  const fill = {
-    copper: "linear-gradient(90deg,var(--color-gold),var(--color-copper))",
-    sage: "linear-gradient(90deg,var(--color-sage),var(--color-olive))",
-    gold: "linear-gradient(90deg,var(--color-gold),var(--color-tomato))",
-  }[tone];
-  return (
-    <div className="flex items-center gap-3">
-      <span className="w-[74px] shrink-0 font-ui text-[11px] font-bold text-walnut/80">
-        {label}
-      </span>
-      <span className="relative h-[7px] flex-1 overflow-hidden rounded-full bg-walnut/15">
-        <span
-          className="absolute inset-y-0 left-0 rounded-full transition-[width] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]"
-          style={{ width: `${value}%`, background: fill }}
-        />
-      </span>
-      <span className="w-7 text-right font-ui text-[11px] font-bold text-walnut/60">{value}</span>
-    </div>
-  );
-}
-
 export function Badge({
   children,
   tone = "cream",
@@ -158,16 +129,17 @@ export function Badge({
   );
 }
 
+/** The wallet chip — the game's one money display: a "$" badge + formatUsd (n is integer US cents, see money.ts). Used by every screen header, Campaign and Business alike. */
 export function Coin({ n }: { n: number }) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-copper/30 bg-ivory/80 px-2.5 py-1 font-ui text-[12px] font-extrabold text-walnut-dark shadow-soft">
+    <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-copper/30 bg-ivory/80 px-2.5 py-1 font-ui text-[12px] font-extrabold text-walnut-dark shadow-soft">
       <span
         className="grid h-4 w-4 place-items-center rounded-full text-[8px] text-ivory"
         style={{ background: "linear-gradient(160deg,var(--color-gold),var(--color-copper))" }}
       >
-        ◈
+        $
       </span>
-      {n.toLocaleString()}
+      {formatUsd(n)}
     </span>
   );
 }
@@ -179,14 +151,21 @@ export function ScreenHeader({
   subtitle,
   onBack,
   right,
+  wrapTitle,
 }: {
   title: string;
   subtitle?: string;
   onBack?: () => void;
   right?: ReactNode;
+  /** Let a long title wrap to a second line instead of truncating (narrow phones). */
+  wrapTitle?: boolean;
 }) {
   return (
-    <header className="flex items-center gap-3 px-4 pb-2 pt-4">
+    // flex-wrap + a title column that never shrinks below its own text: on a
+    // narrow phone, when the title can't fit beside `right` (the wallet
+    // chip), the chip drops to its own right-aligned row instead of the
+    // title truncating or running underneath it. Wide screens are unchanged.
+    <header className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 pb-2 pt-4">
       {onBack ? (
         <button
           type="button"
@@ -212,15 +191,20 @@ export function ScreenHeader({
           </svg>
         </button>
       ) : null}
-      <div className="min-w-0 flex-1">
-        <h1 className="truncate font-display text-[22px] font-black leading-none tracking-tight text-walnut-dark">
+      <div className="min-w-min flex-1">
+        <h1
+          className={cn(
+            "font-display text-[22px] font-black tracking-tight text-walnut-dark",
+            wrapTitle ? "leading-[1.05]" : "truncate leading-none",
+          )}
+        >
           {title}
         </h1>
         {subtitle ? (
           <p className="mt-1 font-hand text-[15px] leading-none text-walnut/70">{subtitle}</p>
         ) : null}
       </div>
-      {right}
+      {right ? <div className="ml-auto shrink-0">{right}</div> : null}
     </header>
   );
 }

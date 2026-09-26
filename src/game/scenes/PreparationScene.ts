@@ -1,5 +1,12 @@
 import Phaser from "phaser";
+import {
+  knifeTapCadence,
+  tapBufferWindowMs,
+  peelStrokeWidthFrac,
+  tapSequenceMs,
+} from "../knives/knifeTiming";
 import { PauseManager } from "../PauseManager";
+import { withRequiredPeelSteps } from "../prepStepGuards";
 import { AudioManager } from "../AudioManager";
 import {
   ASSIST,
@@ -117,9 +124,13 @@ import {
   CHICKEN_GEOMETRY,
   STEAK_GEOMETRY,
   SALMON_GEOMETRY,
+  // New-ingredient integration pack
+  CHILLI_GEOMETRY,
+  LIME_GEOMETRY,
   type IngredientDefinition,
   type IngredientId,
   type TechniqueDefinition,
+  type TechniqueId,
   type ProteinDepthConfig,
   type ProteinDepthEdgeConfig,
   type ProteinFaceConfig,
@@ -142,6 +153,15 @@ import {
 } from "../events";
 import { computeBoardQuad, paintBoardTexture, type BoardQuad } from "../textures/boardTexture";
 import { paintTomatoTexture, tomatoTextureSize } from "../textures/tomatoTexture";
+import {
+  getPlatingArrangement,
+  seedFor,
+  pieceBoundingRadius,
+  computeFoodSafeRadius,
+  calculateCompositionBounds,
+  fitCompositionToSafeRadius,
+  computeExtraShrink,
+} from "../plating/platingArrangement";
 import {
   carrotTextureSize,
   paintCarrotTexture,
@@ -235,6 +255,20 @@ import { turnipTextureSize, paintTurnipTexture } from "../textures/turnipTexture
 import { chickenTextureSize, paintChickenTexture } from "../textures/chickenTexture";
 import { steakTextureSize, paintSteakTexture } from "../textures/steakTexture";
 import { salmonTextureSize, paintSalmonTexture } from "../textures/salmonTexture";
+// New-ingredient integration pack — Ginger/Green Chili/Cilantro/Green Onion/Lime
+import { gingerTextureSize, paintGingerTexture, gingerLeavesAt } from "../textures/gingerTexture";
+import { chilliTextureSize, paintChilliTexture } from "../textures/chilliTexture";
+import { limeTextureSize, paintLimeTexture } from "../textures/limeTexture";
+import {
+  cilantroTextureSize,
+  paintCilantroTexture,
+  cilantroLeavesAt,
+} from "../textures/cilantroTexture";
+import {
+  springOnionTextureSize,
+  paintSpringOnionTexture,
+  springOnionLeavesAt,
+} from "../textures/springOnionTexture";
 
 const PALETTE = {
   gold: 0xd8a03d, // Phase 1 palette — guides, perfect-slice spark
@@ -275,6 +309,25 @@ type EllipseRenderer = {
    * commitCut's first-cut repaint). Every ingredient that doesn't need
    * either flag simply ignores the extra argument(s).
    */
+  /**
+   * `overhangGone` — the prototype's `drawOverhang`/`geom.overhang`
+   * system (stem/crown/leaf-tops painted past the collision silhouette),
+   * ported as a bake-time flag rather than a live per-frame fade layer
+   * (production has no such layer — see redrawIngredientTexture's own
+   * doc on why every state change here is a discrete repaint, not a
+   * tween). True once `this.cuts.length > 0` (the SAME "first cut has
+   * happened" moment `commitCut`'s `if (this.cuts.length === 1)
+   * redrawIngredientTexture()` already triggers for every ingredient —
+   * see that call site's own doc), computed independently of
+   * `peeled`/`hasCut` above so it never conflicts with Mango/
+   * Pomegranate/Fennel's own peel-driven flesh reveal. Read only by the
+   * 14 ingredients with a real `geom.overhang` in the source (Peach,
+   * Corn, Celery, Pineapple, Spring Onion, Radish, Beetroot, Mango,
+   * Pomegranate, Fennel, Artichoke, Pea Pod, Pumpkin, Turnip); Green
+   * Chili has `keepOverhang: true` in the source and simply never reads
+   * this flag (its stalk/calyx always paint, every ingredient that
+   * doesn't declare an overhang ignores the extra argument too).
+   */
   paint: (
     ctx: CanvasRenderingContext2D,
     rx: number,
@@ -283,6 +336,7 @@ type EllipseRenderer = {
     opts?: EllipseModOpts,
     peeled?: boolean,
     hasCut?: boolean,
+    overhangGone?: boolean,
   ) => void;
 };
 type TaperRenderer = {
@@ -298,7 +352,13 @@ type TaperRenderer = {
     SPINE_RX_FRAC?: number;
   };
   textureSize: (rx: number, rBig: number, margin: number) => { w: number; h: number };
-  /** `hasCut` — see EllipseRenderer.paint's own doc; read only by the SKIN_KEEP taper ingredients (Beetroot, Sweet Potato, Pea Pod). */
+  /**
+   * `hasCut` — see EllipseRenderer.paint's own doc; read only by the
+   * SKIN_KEEP taper ingredients (Beetroot, Sweet Potato, Pea Pod).
+   * `overhangGone` — see EllipseRenderer.paint's own doc; read only by
+   * the taper ingredients with a real `geom.overhang` (Corn, Celery,
+   * Radish, Beetroot, Pea Pod).
+   */
   paint: (
     ctx: CanvasRenderingContext2D,
     rx: number,
@@ -309,6 +369,7 @@ type TaperRenderer = {
     margin: number,
     opts?: TaperPaintOpts,
     hasCut?: boolean,
+    overhangGone?: boolean,
   ) => void;
 };
 /** Proteins only (chicken/steak/salmon) — no `peeled`/`hasCut` slot at all: no protein has a SKIN entry or a peel step in the source, and a real cut's pale interior is a separate, per-piece system (`ProteinFaceConfig`/`paintProteinCutFace`), not baked into this shared whole-ingredient canvas. */
@@ -336,24 +397,43 @@ type FilletRenderer = {
 type CapsuleRenderer = {
   geom: { RX_FRAC: number; CAP_R_FRAC: number };
   textureSize: (rx: number, capR: number, margin: number) => { w: number; h: number };
-  /** `peeled` is read only by Pineapple (the one capsule ingredient with "peel" in its own techniques list) — Baguette's own paint function simply ignores the extra argument. */
+  /**
+   * `peeled` is read only by Pineapple (the one capsule ingredient with
+   * "peel" in its own techniques list) — Baguette's own paint function
+   * simply ignores the extra argument. `overhangGone` — see
+   * EllipseRenderer.paint's own doc; read only by Pineapple (its spiky
+   * crown, a real `geom.overhang` in the source, independent of its own
+   * peeled state).
+   */
   paint: (
     ctx: CanvasRenderingContext2D,
     rx: number,
     capR: number,
     margin: number,
     peeled?: boolean,
+    overhangGone?: boolean,
   ) => void;
 };
 type ClusterRenderer = {
   leavesAt: (scale: number) => ClusterLeaf[];
   textureSize: (rx: number, ry: number, margin: number) => { w: number; h: number };
+  /**
+   * `peeled` — see EllipseRenderer.paint's own doc for the convention;
+   * read only by Ginger (the one cluster ingredient with "peel" in its
+   * own techniques list, see definitions.ts). `overhangGone` — see
+   * EllipseRenderer.paint's own doc; read only by Artichoke and Spring
+   * Onion (both have a real `geom.overhang` in the source). Every other
+   * cluster ingredient's paint function simply ignores the extra
+   * argument(s).
+   */
   paint: (
     ctx: CanvasRenderingContext2D,
     rx: number,
     ry: number,
     margin: number,
     leaves: ClusterLeaf[],
+    peeled?: boolean,
+    overhangGone?: boolean,
   ) => void;
 };
 type BlockRenderer = {
@@ -389,6 +469,7 @@ const ELLIPSE_RENDERERS: Partial<Record<IngredientId, EllipseRenderer>> = {
   fennel: { geom: FENNEL_GEOMETRY, textureSize: fennelTextureSize, paint: paintFennelTexture },
   pumpkin: { geom: PUMPKIN_GEOMETRY, textureSize: pumpkinTextureSize, paint: paintPumpkinTexture },
   turnip: { geom: TURNIP_GEOMETRY, textureSize: turnipTextureSize, paint: paintTurnipTexture },
+  lime: { geom: LIME_GEOMETRY, textureSize: limeTextureSize, paint: paintLimeTexture },
 };
 
 const TAPER_RENDERERS: Partial<Record<IngredientId, TaperRenderer>> = {
@@ -418,6 +499,7 @@ const TAPER_RENDERERS: Partial<Record<IngredientId, TaperRenderer>> = {
     paint: paintSweetPotatoTexture,
   },
   peapod: { geom: PEAPOD_GEOMETRY, textureSize: peaPodTextureSize, paint: paintPeaPodTexture },
+  chilli: { geom: CHILLI_GEOMETRY, textureSize: chilliTextureSize, paint: paintChilliTexture },
 };
 
 /**
@@ -534,6 +616,17 @@ const CLUSTER_RENDERERS: Partial<Record<IngredientId, ClusterRenderer>> = {
     leavesAt: artichokeLeavesAt,
     textureSize: artichokeTextureSize,
     paint: paintArtichokeTexture,
+  },
+  ginger: { leavesAt: gingerLeavesAt, textureSize: gingerTextureSize, paint: paintGingerTexture },
+  cilantro: {
+    leavesAt: cilantroLeavesAt,
+    textureSize: cilantroTextureSize,
+    paint: paintCilantroTexture,
+  },
+  springonion: {
+    leavesAt: springOnionLeavesAt,
+    textureSize: springOnionTextureSize,
+    paint: paintSpringOnionTexture,
   },
 };
 
@@ -694,6 +787,40 @@ export class PreparationScene extends Phaser.Scene {
   /** Finished pieces from every CLOSED-OUT ingredient, held here until the very last step's plating — see closeOutCurrentIngredient/startPlating. */
   private platedPieceImages: Phaser.GameObjects.Image[] = [];
   /**
+   * Parallel to platedPieceImages (task: "production plating system
+   * redesign", extended by "shared-destination plating composition fix") —
+   * which ingredient/technique/destination/instance each plated image came
+   * from, recorded by closeOutCurrentIngredient at the same push site.
+   *
+   * `instanceSeq` — one value per closeOutCurrentIngredient call (see
+   * `plateInstanceSeq`), i.e. one per independently-prepared instance
+   * (chainBreak or a genuinely different ingredient both start a new one).
+   * This is what lets two same-ingredient instances (e.g. two chicken
+   * preparations, one sliced one diced) stay visually distinct sub-
+   * compositions even when they end up sharing a plate.
+   *
+   * `destination` — mirrors PrepStep.destination (events.ts) at close-out
+   * time; startPlating groups pieces by THIS (falling back to a shared
+   * default when a level never sets it, preserving the old single-plate
+   * behavior), not by ingredientId — see startPlating's own doc for why
+   * ingredientId-only grouping was wrong (it could neither split one
+   * ingredient across two destinations nor combine several ingredients
+   * that genuinely share one).
+   *
+   * Nothing about PreparedOutput/organizationManager is touched — that
+   * system tracks preparation STATE for destination bookkeeping, never
+   * pieces, and stays completely independent of this purely-visual
+   * grouping.
+   */
+  private platedPieceMeta: {
+    ingredientId: IngredientId;
+    technique: TechniqueId;
+    destination: string;
+    instanceSeq: number;
+  }[] = [];
+  /** One per closeOutCurrentIngredient call — see platedPieceMeta's own doc. Reset alongside platedPieceMeta in onStart/onRestart. */
+  private plateInstanceSeq = 0;
+  /**
    * Plating-presentation-only additions (see startPlating's own doc) —
    * one dark "thickness" duplicate Image and one soft contact-shadow
    * Graphics PER plated piece, purely additive display objects that
@@ -729,11 +856,17 @@ export class PreparationScene extends Phaser.Scene {
   private pieces: Piece[] = [];
   private pieceImages = new Map<Piece, Phaser.GameObjects.Image>();
 
-  // Plate geometry — set by startPlating(), read by drawPlateShape() and the hands sequence.
+  // Plate geometry — set by startPlating(), read by drawPlateShape() and the
+  // hands sequence. plateCx/Cy/Rx/Ry are the OVERALL bounding box across
+  // every plate (hands reach for the whole layout, one motion, exactly as
+  // before); platePlates is the new per-plate geometry (one entry per
+  // distinct plated ingredient — Phase 3/4's "one ingredient = one plate,
+  // variable count").
   private plateCx = 0;
   private plateCy = 0;
   private plateRx = 0;
   private plateRy = 0;
+  private platePlates: { cx: number; cy: number; rx: number; ry: number }[] = [];
   private hasZoomedIn = false;
   private pendingRecipePayload: RecipeCompletedPayload | null = null;
 
@@ -938,12 +1071,26 @@ export class PreparationScene extends Phaser.Scene {
   }
 
   private onStart(config: StartPreparationConfig): void {
-    this.steps = config.steps;
+    // Never start a session that can't be finished: a must-peel ingredient
+    // gets its Peel step (see prepStepGuards.ts). Idempotent, so it agrees
+    // with Preparation.tsx's own copy of the same step list.
+    this.steps = withRequiredPeelSteps(
+      config.steps,
+      (st) => ({
+        ingredient: st.ingredientId,
+        technique: st.techniqueId,
+        ...(st.chainBreak ? { chainBreak: true } : {}),
+      }),
+      (st) => ({ ...st, techniqueId: "peel" }),
+      ({ chainBreak: _drop, ...st }) => st,
+    );
     this.knifeStats = config.knife;
     this.board = config.board;
     this.closedSegments = [];
     for (const img of this.platedPieceImages) this.destroyPieceImage(img);
     this.platedPieceImages = [];
+    this.platedPieceMeta = [];
+    this.plateInstanceSeq = 0;
     for (const extra of this.platingExtras) extra.destroy();
     this.platingExtras = [];
     // Defensive (Phase 7 plating-skip): a fresh Scene mount already
@@ -970,6 +1117,8 @@ export class PreparationScene extends Phaser.Scene {
     this.closedSegments = [];
     for (const img of this.platedPieceImages) this.destroyPieceImage(img);
     this.platedPieceImages = [];
+    this.platedPieceMeta = [];
+    this.plateInstanceSeq = 0;
     for (const extra of this.platingExtras) extra.destroy();
     this.platingExtras = [];
     // A skipped plating (see skipPlating) leaves both timeScales elevated
@@ -1099,6 +1248,11 @@ export class PreparationScene extends Phaser.Scene {
 
   /** Tap/swipe/peel/smash busy-state reset shared by both a fresh ingredient and a same-ingredient chain step. */
   private resetInputState(): void {
+    // A press/drag that began on the previous step must not finish on this
+    // one (a tomato tap released after the onion arrived used to cut the
+    // unpeeled onion) — drop any in-progress gesture outright.
+    this.isDragging = false;
+    this.currentPath = [];
     this.swipeActive = false;
     this.tapBusy = false;
     this.tapSeqStartT = 0;
@@ -1223,8 +1377,21 @@ export class PreparationScene extends Phaser.Scene {
     // bands into ringBandImages as they're cut, separately from the
     // still-shrinking core in pieceImages — both feed the SAME close-out
     // fade + plating flow here, one shared plating system.
+    // One destination/instance for every piece THIS call banks — the step
+    // just finishing is still `this.steps[this.stepIndex]` (beginStep only
+    // advances `this.stepIndex` AFTER calling this), and one call here is
+    // by definition exactly one independently-prepared instance (see
+    // platedPieceMeta's own doc).
+    const destination = this.steps[this.stepIndex]?.destination ?? "";
+    const instanceSeq = this.plateInstanceSeq++;
     for (const img of [...this.pieceImages.values(), ...this.ringBandImages]) {
       this.platedPieceImages.push(img);
+      this.platedPieceMeta.push({
+        ingredientId: this.ingredientId,
+        technique: this.technique.id,
+        destination,
+        instanceSeq,
+      });
       if (opts.forPlating) {
         // Last ingredient of the recipe — keep the finished pieces exactly
         // where the cut left them, fully visible, until startPlating flies
@@ -1394,9 +1561,31 @@ export class PreparationScene extends Phaser.Scene {
    * the ingredient's own override if it has one (cucumber: "v", so a
    * tap cuts perpendicular to its length and produces rounds), else the
    * technique's own default. A swipe never consults this — its axis
-   * comes from the actual stroke direction (see finishCut's domAxis).
+   * comes from the actual stroke direction (see finishCut's domAxis) —
+   * except for the exact-diagonal tie-break below, which shares this
+   * same rule for the identical reason.
+   *
+   * Task: "julienne centering + carrot julienne cut correction" §5-8 —
+   * a PARALLEL_SNAP technique (Julienne/Chiffonade) is the one case where
+   * this default must NOT follow the generic per-ingredient axisOverride
+   * chain above: its entire purpose is cuts running PARALLEL to the
+   * ingredient's own longer visible dimension (thin strips spanning the
+   * full length), which is the OPPOSITE of what most ingredients' own
+   * axisOverride is tuned for (Slice/Chop's cross-section "rounds", e.g.
+   * cucumber/carrot's "v" override). Carrot has no axisOverride at all,
+   * so a tap-driven Julienne fell through to the technique's own generic
+   * default ("v") — cutting ACROSS its horizontal length into chopped
+   * segments instead of ALONG it into strips (root cause of the reported
+   * "carrot julienne looks chopped" bug). Deriving this from the
+   * ingredient's OWN rendered aspect ratio (`ingRx` vs `ingRy`) — not a
+   * per-ingredient hack — makes it correct for any shape generically:
+   * whichever of the ingredient's two radii is larger IS its "length",
+   * regardless of which ingredient. Slice/Chop/Dice/every other
+   * technique's own tap-default is completely unaffected — this branch
+   * only ever runs for `parallelSnap` techniques.
    */
   private tapDefaultAxis(): Axis {
+    if (this.technique.parallelSnap) return this.ingRx >= this.ingRy ? "h" : "v";
     return this.ingredient.axisOverride ?? this.technique.axis;
   }
 
@@ -1406,7 +1595,7 @@ export class PreparationScene extends Phaser.Scene {
     const h = this.scale.height;
 
     // A transient parent-container collapse — a route/screen transition,
-    // the Ingredient Lab remounting <Preparation>, an orientation flip —
+    // a new level or order remounting <Preparation>, an orientation flip —
     // makes Phaser's RESIZE-mode Scale Manager mirror a near-zero parent
     // box (it polls the parent's bounds and re-emits RESIZE on any
     // change). GameBridge's `scale.min` floors that at 1px so Phaser's own
@@ -1717,9 +1906,47 @@ export class PreparationScene extends Phaser.Scene {
     ctx.restore();
   }
 
+  /**
+   * Extra canvas headroom (added to the normal `margin` below) for the 13
+   * ingredients whose OWN overhang art was ported using literal, unscaled
+   * pixel offsets copied straight from knifecraft.html (the established
+   * convention every overhang texture in this pass follows — see e.g.
+   * peachTexture.ts's/pumpkinTexture.ts's own doc comments). The normal
+   * margin (`Math.max(rx,ry) * 0.16`) exists only for ordinary anti-
+   * aliasing bleed and is far too small to contain a whole extra stem/
+   * crown/leaf-spray reaching past the silhouette — without this, that
+   * art gets silently clipped by the canvas edge (confirmed via the
+   * Pumpkin's ported stem read as a flat clipped stub
+   * until this was added). Each value is that ingredient's own
+   * `geom.overhang`/`spriteM` extent from the prototype, in the SAME
+   * literal-pixel space its ported art already uses — not scaled by rx/ry,
+   * for the same reason the art itself isn't. Chilli is included (its
+   * calyx/stalk needs room too, keepOverhang or not); Pineapple is not
+   * (its crown is gone by the time any cut can happen — see
+   * requiresPeelFirst() — so no cosmetic overhang art was added there).
+   */
+  private static readonly OVERHANG_MARGIN_EXTRA: Partial<Record<IngredientId, number>> = {
+    peach: 76,
+    corn: 68,
+    celery: 134,
+    springonion: 46,
+    radish: 158,
+    beetroot: 168,
+    mango: 94,
+    pomegranate: 76,
+    fennel: 210,
+    artichoke: 70,
+    peapod: 96,
+    pumpkin: 190,
+    turnip: 124,
+    chilli: 128,
+  };
+
   /** Paints the active ingredient into the ONE shared source CanvasTexture every piece blits through — see textures/tomatoTexture.ts and carrotTexture.ts. */
   private redrawIngredientTexture(): void {
-    const margin = Math.max(this.ingRx, this.ingRy) * 0.16;
+    const margin =
+      Math.max(this.ingRx, this.ingRy) * 0.16 +
+      (PreparationScene.OVERHANG_MARGIN_EXTRA[this.ingredientId] ?? 0);
     let w: number;
     let h: number;
     // "organic" ingredients (Basil/Parsley) still use the exact same
@@ -1888,6 +2115,7 @@ export class PreparationScene extends Phaser.Scene {
             this.ellipseOpts,
             p,
             this.ingredient.techniques.includes("peel") ? p : this.cuts.length > 0,
+            this.cuts.length > 0,
           ),
         );
       } else if (this.ingredientId === "onion") {
@@ -1911,7 +2139,35 @@ export class PreparationScene extends Phaser.Scene {
       paintTomatoTexture(tex.context, this.ingRx, this.ingRy, margin);
     } else if (this.ingredient.shape === "cluster") {
       const cr = CLUSTER_RENDERERS[this.ingredientId]!;
-      cr.paint(tex.context, this.ingRx, this.ingRy, margin, this.clusterLeaves);
+      if (this.ingredientId === "ginger") {
+        // The one peelable cluster ingredient (see ClusterRenderer's own
+        // doc) — same paintPeelableLayer wrapping every other peelable
+        // shape family already gets (onion/potato/garlic above, taper's
+        // own fallthrough branch below), just keyed off the cluster's
+        // own bounding rx/ry and traceClusterPath for the clip silhouette
+        // instead of an ellipse/taper outline.
+        const gcx = this.ingRx + margin;
+        const gcy = this.ingRy + margin;
+        this.paintPeelableLayer(
+          tex.context,
+          (u, v) => ({ x: gcx + u * this.ingRx, y: gcy + v * this.ingRy }),
+          () => {
+            tex.context.beginPath();
+            traceClusterPath(tex.context, gcx, gcy, this.clusterLeaves, 0);
+          },
+          (c, p) => cr.paint(c, this.ingRx, this.ingRy, margin, this.clusterLeaves, p),
+        );
+      } else {
+        cr.paint(
+          tex.context,
+          this.ingRx,
+          this.ingRy,
+          margin,
+          this.clusterLeaves,
+          undefined,
+          this.cuts.length > 0,
+        );
+      }
     } else if (this.ingredient.shape === "block") {
       const br = BLOCK_RENDERERS[this.ingredientId]!;
       br.paint(tex.context, this.ingRx, this.ingRy, this.blockDepthX, this.blockDepthY, margin);
@@ -1927,7 +2183,7 @@ export class PreparationScene extends Phaser.Scene {
             tex.context.beginPath();
             traceCapsulePath(tex.context, ccx, ccy, this.ingRx, this.ingRBig, 0);
           },
-          (c, p) => cr.paint(c, this.ingRx, this.ingRBig, margin, p),
+          (c, p) => cr.paint(c, this.ingRx, this.ingRBig, margin, p, this.cuts.length > 0),
         );
       } else {
         const cucx = this.ingRx + margin;
@@ -1948,7 +2204,37 @@ export class PreparationScene extends Phaser.Scene {
       } else if (this.ingredientId === "strawberry") {
         paintStrawberryTexture(tex.context, this.ingPolyScale, margin);
       } else if (this.ingredientId === "apple") {
-        paintAppleTexture(tex.context, this.ingPolyScale, margin);
+        // Discrepancy #1's close-out: Apple gains real Peel support — the
+        // first "polygon"-shape peelable ingredient, so there's no
+        // existing polygon branch to copy; wired the same way every other
+        // shape's own special-cased peelable ingredient (Onion/Potato/
+        // Orange above) is — paintPeelableLayer, with a toCanvas/clipSil
+        // pair built from this shape's own w/h and polygon point list.
+        // The peel GESTURE machinery itself (peelHalfExtents/
+        // initPeelGrid/onPeelMove) needs no polygon-specific change at
+        // all — it already reads `this.ingRx`/`this.ingRy` and
+        // `this.silhouette.inside()` generically for every shape (see
+        // peelHalfExtents's own doc).
+        const pcx = w / 2;
+        const pcy = h / 2;
+        const prx = pcx - margin;
+        const pry = pcy - margin;
+        this.paintPeelableLayer(
+          tex.context,
+          (u, v) => ({ x: pcx + u * prx, y: pcy + v * pry }),
+          () => {
+            tex.context.beginPath();
+            tracePolygonPath(
+              tex.context,
+              pcx,
+              pcy,
+              this.ingPolyScale,
+              this.polygonGeometry().pts,
+              0,
+            );
+          },
+          (c, p) => paintAppleTexture(c, this.ingPolyScale, margin, p),
+        );
       } else {
         paintMushroomTexture(tex.context, this.ingPolyScale, margin);
       }
@@ -2057,6 +2343,7 @@ export class PreparationScene extends Phaser.Scene {
               margin,
               this.taperOpts,
               p,
+              this.cuts.length > 0,
             ),
         );
       } else {
@@ -2600,6 +2887,11 @@ export class PreparationScene extends Phaser.Scene {
    * directly, with no peel step, in 24 existing campaign level steps —
    * gating it here would silently soft-lock every one of them).
    */
+  /** True while the current ingredient still has to be peeled before any knife work — the one gate every cut/smash/ring entry point checks. */
+  private cutBlockedUntilPeeled(): boolean {
+    return this.requiresPeelFirst() && !this.peeled;
+  }
+
   private requiresPeelFirst(): boolean {
     return (
       this.ingredient.techniques.includes("peel") &&
@@ -2628,7 +2920,7 @@ export class PreparationScene extends Phaser.Scene {
     // only ever get there via this handler setting up the drag), so
     // blocking here is sufficient — no per-technique duplicate check
     // needed downstream.
-    if (this.requiresPeelFirst() && !this.peeled) return;
+    if (this.cutBlockedUntilPeeled()) return;
     const mode = this.technique.interactionMode;
     if (mode === "peel" && this.peeled) return;
     if (mode === "smash" && this.smashBusy) return;
@@ -2859,6 +3151,7 @@ export class PreparationScene extends Phaser.Scene {
   private handleTap(path: RecordedPoint[]): void {
     if (this.paused || !path.length) return;
     if (this.pendingRecipePayload) return;
+    if (this.cutBlockedUntilPeeled()) return;
 
     const mx = path.reduce((s, p) => s + p.x, 0) / path.length;
     const my = path.reduce((s, p) => s + p.y, 0) / path.length;
@@ -2883,10 +3176,15 @@ export class PreparationScene extends Phaser.Scene {
 
     if (this.tapBusy) {
       const elapsed = this.time.now - this.tapSeqStartT;
-      const bufferTail =
+      // Blacksmith Handling widens this window (bufferMult, 1.0 un-upgraded):
+      // a tap earlier in the current cut is queued as the next cut rather
+      // than dropped. Still one tap deep, still never auto-fires.
+      const bufferTail = tapBufferWindowMs(
         this.technique.knifeProfile === "chop"
           ? CHOP_KNIFE.BUFFER_TAIL_MS
-          : TAP_KNIFE.BUFFER_TAIL_MS;
+          : TAP_KNIFE.BUFFER_TAIL_MS,
+        this.knifeStats,
+      );
       if (this.tapSeqTotalMs - elapsed <= bufferTail) {
         this.queuedTap = { x: mx, y: my };
       }
@@ -2905,7 +3203,7 @@ export class PreparationScene extends Phaser.Scene {
   // is real newly-uncovered area, not raw pointer-travel distance, so
   // retracing an already-peeled patch earns no further credit (§13).
 
-  /** Which two geometry fields define this ingredient's own local extent, for both the peel coverage grid and the normalized stroke-history replay — every peelable ingredient today is either "ellipse" (ry) or "taper"/"capsule" (rBig), so this is a 2-way, shape-driven split, not a per-ingredient-id one. */
+  /** Which two geometry fields define this ingredient's own local extent, for both the peel coverage grid and the normalized stroke-history replay — every peelable ingredient is "ellipse" (ry), "taper"/"capsule" (rBig), or "polygon" (Apple — its own true bounding-box ry, set generically for every shape by layout()'s own silhouette-fit branch), so `this.ingRx`/`this.ingRy` alone are always the right pair; no per-shape or per-ingredient-id branch is needed here. */
   private peelHalfExtents(): { hw: number; hh: number } {
     // this.ingRy is kept in sync with the TRUE vertical half-extent by
     // layout() for every shape a peelable ingredient can have — an
@@ -2919,7 +3217,12 @@ export class PreparationScene extends Phaser.Scene {
   private peelConfig(): { strokeWidthFrac: number; completionThreshold: number } {
     const cfg = this.ingredient.peelConfig;
     return {
-      strokeWidthFrac: cfg?.strokeWidthFrac ?? PEEL.STROKE_WIDTH_FRAC,
+      // Blacksmith Sharpness takes a wider strip per stroke (peelWidthMult,
+      // 1.0 un-upgraded); the completion coverage below is never changed.
+      strokeWidthFrac: peelStrokeWidthFrac(
+        cfg?.strokeWidthFrac ?? PEEL.STROKE_WIDTH_FRAC,
+        this.knifeStats,
+      ),
       completionThreshold: cfg?.completionThreshold ?? PEEL.COMPLETION_THRESHOLD,
     };
   }
@@ -3330,19 +3633,11 @@ export class PreparationScene extends Phaser.Scene {
     // changing what's required to complete a cut (none of these fields
     // feed cut-position resolution — see resolveTapCut, which runs
     // BEFORE this is consulted).
-    const anim = this.knifeStats.animation;
-    return {
-      ...base,
-      PREP_MS: base.PREP_MS * anim.timingMult,
-      PAUSE_MS: base.PAUSE_MS * anim.timingMult,
-      CUT_MS: base.CUT_MS * anim.timingMult,
-      IMPACT_MS: base.IMPACT_MS * anim.timingMult,
-      RETRACT_MS: base.RETRACT_MS * anim.timingMult,
-      BUFFER_TAIL_MS: base.BUFFER_TAIL_MS * anim.timingMult,
-      HITSTOP_MS: base.HITSTOP_MS * anim.timingMult,
-      CUT_DEPTH_FRAC: base.CUT_DEPTH_FRAC * anim.depthMult,
-      ANGLE_JITTER_DEG: base.ANGLE_JITTER_DEG * anim.jitterMult,
-    };
+    // Phase 8 knife feel (animation.timingMult/depthMult/jitterMult) plus
+    // the Blacksmith's per-player tuning — Speed shortens the wind-up and
+    // recovery beats, Sharpness the pass-through beats, Handling the
+    // hitstop. The arithmetic lives in knifeTiming.ts (pure, QA-tested).
+    return knifeTapCadence(base, this.knifeStats);
   }
 
   private runTapCut(x: number, y: number): void {
@@ -3373,7 +3668,7 @@ export class PreparationScene extends Phaser.Scene {
     const seq = ++this.knifeSeq;
     this.tapBusy = true;
     this.tapSeqStartT = this.time.now;
-    this.tapSeqTotalMs = K.PREP_MS + K.PAUSE_MS + K.CUT_MS + K.IMPACT_MS + K.RETRACT_MS;
+    this.tapSeqTotalMs = tapSequenceMs(K);
 
     const w = this.scale.width;
     // Radial (Phase 7): cut.c is ALWAYS the ingredient's own center
@@ -3481,7 +3776,16 @@ export class PreparationScene extends Phaser.Scene {
                       if (this.queuedTap) {
                         const q = this.queuedTap;
                         this.queuedTap = null;
-                        this.runTapCut(q.x, q.y);
+                        // Re-validated exactly like a fresh tap: the queued
+                        // tap only ever becomes a cut on a step that still
+                        // wants one and an ingredient that may be cut.
+                        if (
+                          !this.pendingRecipePayload &&
+                          !this.cutBlockedUntilPeeled() &&
+                          this.technique.interactionMode === "cut" &&
+                          this.cuts.length - this.stepCutsAtStart < this.requiredCuts
+                        )
+                          this.runTapCut(q.x, q.y);
                       }
                     },
                   });
@@ -3818,6 +4122,8 @@ export class PreparationScene extends Phaser.Scene {
   }
 
   private finishCut(path: RecordedPoint[]): void {
+    if (this.cutBlockedUntilPeeled()) return;
+    if (this.cuts.length - this.stepCutsAtStart >= this.requiredCuts) return;
     // 1. Dominant-extent axis pick, redirected to the unfinished set for a grid technique.
     const xs = path.map((p) => p.x);
     const ys = path.map((p) => p.y);
@@ -4493,10 +4799,279 @@ export class PreparationScene extends Phaser.Scene {
   private startPlating(): void {
     this.bus.emit(EVT.PLATING_STARTED);
     const w = this.scale.width;
-    this.plateRx = PLATING.PLATE_RX_FRAC * w;
-    this.plateRy = PLATING.PLATE_RY_FRAC * w;
-    this.plateCx = this.ingCx;
-    this.plateCy = this.ingCy + this.ingRy * 0.55 + PLATING.PLATE_DY_FRAC * w;
+    const arcPx = PLATING.PLATE_ARC_FRAC * w;
+
+    // Production plating redesign (Phase 3/4) + "shared-destination plating
+    // composition fix": ONE PLATE PER DESTINATION, not per ingredient.
+    // Two grouping levels, both built from platedPieceMeta (parallel to
+    // platedPieceImages, recorded by closeOutCurrentIngredient):
+    //
+    // 1. INSTANCE — one per closeOutCurrentIngredient call (`instanceSeq`),
+    //    i.e. one per independently-prepared ingredient/technique. Two
+    //    chicken preparations (one sliced, one diced) are ALWAYS two
+    //    instances, even sharing an ingredientId — this is the exact
+    //    "preparation instance" identity the chainBreak fix established,
+    //    completely unaffected by anything below.
+    //
+    // 2. DESTINATION — `platedPieceMeta[i].destination` (PrepStep.destination,
+    //    threaded from the recipe/level's own component.destinationIds via
+    //    stepsForRecipe.ts/Preparation.tsx — the SAME name-joining already
+    //    used for "Maya's Plate & Daniel's Plate"). Root cause of the bug
+    //    this fixes: the previous grouping key was `ingredientId` alone,
+    //    which could neither (a) split ONE ingredient's two instances
+    //    across two real destinations (a chicken sliced for the plate and
+    //    a fresh one diced for the bowl got dumped onto one ingredient-
+    //    keyed plate, arranged with only the LAST technique's layout) nor
+    //    (b) combine several DIFFERENT ingredients that genuinely share
+    //    one destination (three toppings for one shared antipasto plate
+    //    rendered as three separate mini-plates instead of one composition).
+    //    Falls back to "" when a level/recipe never sets a destination
+    //    name, so every such step shares one implicit destination — the
+    //    exact single-plate behavior those levels already had.
+    const pieceImages = this.platedPieceImages;
+    const meta = this.platedPieceMeta;
+    const instanceOrder: number[] = [];
+    const instancePieces = new Map<number, Phaser.GameObjects.Image[]>();
+    const instanceTechnique = new Map<number, TechniqueId>();
+    const instanceIngredient = new Map<number, IngredientId>();
+    const instanceDestination = new Map<number, string>();
+    pieceImages.forEach((piece, i) => {
+      const m = meta[i];
+      const instanceSeq = m?.instanceSeq ?? -1;
+      if (!instancePieces.has(instanceSeq)) {
+        instanceOrder.push(instanceSeq);
+        instancePieces.set(instanceSeq, []);
+        instanceTechnique.set(instanceSeq, m?.technique ?? this.technique.id);
+        instanceIngredient.set(instanceSeq, m?.ingredientId ?? this.ingredientId);
+        instanceDestination.set(instanceSeq, m?.destination ?? "");
+      }
+      instancePieces.get(instanceSeq)!.push(piece);
+    });
+    const destinationOrder: string[] = [];
+    const destinationInstances = new Map<string, number[]>();
+    for (const instanceSeq of instanceOrder) {
+      const destination = instanceDestination.get(instanceSeq)!;
+      if (!destinationInstances.has(destination)) {
+        destinationOrder.push(destination);
+        destinationInstances.set(destination, []);
+      }
+      destinationInstances.get(destination)!.push(instanceSeq);
+    }
+    const plateCount = destinationOrder.length;
+
+    // Grid layout (Phase 4: variable count, never hardcoded) — capped at 2
+    // columns to fit the portrait board's width; a short first row absorbs
+    // the remainder so 3 plates read as "one on top, two below" exactly
+    // like 5 reads as "one, then two, then two" — the same rule at any n.
+    const rows = Math.max(1, Math.ceil(plateCount / 2));
+    const remainder = plateCount - 2 * (rows - 1);
+    const perPlateScale =
+      plateCount <= 1
+        ? 1
+        : plateCount === 2
+          ? 0.62
+          : Phaser.Math.Clamp(0.58 - (rows - 2) * 0.1, 0.32, 0.58);
+    const baseRx = PLATING.PLATE_RX_FRAC * w * perPlateScale;
+    const baseRy = PLATING.PLATE_RY_FRAC * w * perPlateScale;
+    const gridCx = this.ingCx;
+    const gridCy = this.ingCy + this.ingRy * 0.55 + PLATING.PLATE_DY_FRAC * w;
+    const rowSpacingY = baseRy * 2 * 1.12;
+    const colSpacingX = baseRx * 2 * 1.12;
+
+    this.platePlates = destinationOrder.map((_, gi) => {
+      const row = gi < remainder ? 0 : 1 + Math.floor((gi - remainder) / 2);
+      const rowCount = row === 0 ? remainder : 2;
+      const indexInRow = row === 0 ? gi : (gi - remainder) % 2;
+      const cx = gridCx + (indexInRow - (rowCount - 1) / 2) * colSpacingX;
+      const cy = gridCy + (row - (rows - 1) / 2) * rowSpacingY;
+      return { cx, cy, rx: baseRx, ry: baseRy };
+    });
+
+    // Distribution/composition pass — see platingArrangement.ts's own
+    // header doc for the full 4-step pipeline this implements (broad
+    // count-aware raw layout -> composition bounds/center -> uniform fit
+    // -> final per-piece safety clamp). Computed once per DESTINATION
+    // (=one plate): every instance sharing that destination first gets its
+    // OWN local composition (exactly the single-instance pipeline this
+    // module already had — same technique-aware arrangement, own average
+    // piece radius, own per-piece emergencyShrink), then those local
+    // compositions are offset into side-by-side "slots" (same 2-col-max
+    // grid rule as the plate-of-plates layout above, just sized to the
+    // instances' own footprints) so multiple techniques stay visually
+    // distinguishable rather than piling on top of each other — and ONLY
+    // THEN is a single calculateCompositionBounds/fitCompositionToSafeRadius
+    // pass run across ALL of that destination's pieces combined, giving
+    // the whole plate ONE center and ONE fit (task §6: "do not reuse
+    // separate group centers"). A destination with exactly one instance
+    // takes the same code path with a single zero-offset slot, so nothing
+    // changes for the (still overwhelmingly common) one-instance-per-
+    // destination case.
+    const destinationDerived = new Map<
+      string,
+      { centerX: number; centerY: number; fitScale: number; safeRadius: number }
+    >();
+    // Per-piece raw layout (technique arrangement already converted to
+    // pixels and placed in its destination's shared combined space) —
+    // computed once here so the flight loop below never re-derives it.
+    const pieceRaw = new Map<
+      Phaser.GameObjects.Image,
+      {
+        rawX: number;
+        rawY: number;
+        pieceRadius: number;
+        rotationDeg: number;
+        scaleMul: number;
+        emergencyShrink: number;
+        settleScale: number;
+        halfWidth: number;
+        halfHeight: number;
+      }
+    >();
+    destinationOrder.forEach((destination, gi) => {
+      const plate = this.platePlates[gi]!;
+      const safeRadius = computeFoodSafeRadius(plate.rx, plate.ry);
+      const instanceSeqs = destinationInstances.get(destination)!;
+
+      // Pass 1 — each instance's own local composition, exactly as the
+      // single-group pipeline already computed it, but positions stay in
+      // that instance's own LOCAL space (re-centered on its own bounds
+      // below, not yet placed on the shared plate).
+      const instanceLocal = instanceSeqs.map((instanceSeq) => {
+        const group = instancePieces.get(instanceSeq)!;
+        const technique = instanceTechnique.get(instanceSeq)!;
+        const ingredientId = instanceIngredient.get(instanceSeq)!;
+        const localCount = group.length;
+        const avgHalfDiag =
+          group.reduce((sum, p) => sum + pieceBoundingRadius(p.displayWidth, p.displayHeight), 0) /
+          Math.max(1, localCount);
+        // `settleScale`: a 1-3 piece serving (e.g. a single slice) used to
+        // shrink to a flat 0.78x and read as a lost scrap — scale UP a
+        // touch for a small serving instead, so the instance's own
+        // footprint always reads as an intentional plated portion.
+        const settleScale = Phaser.Math.Clamp(1.3 - localCount * 0.032, 0.92, 1.2);
+        // Distinct per instance (not just per ingredient) so two same-
+        // ingredient instances (e.g. one sliced, one diced) never jitter
+        // identically just because they share an ingredientId.
+        const seed = seedFor(`${ingredientId}#${instanceSeq}`);
+
+        const localPieces = group.map((piece, localIndex) => {
+          const arrangement = getPlatingArrangement({
+            technique,
+            index: localIndex,
+            count: localCount,
+            seed,
+          });
+          const rawX = arrangement.xFrac * avgHalfDiag;
+          const rawY = arrangement.yFrac * avgHalfDiag;
+          const pieceRadius =
+            pieceBoundingRadius(piece.displayWidth, piece.displayHeight) *
+            settleScale *
+            arrangement.scale;
+          // Task: "food scale + multi-instance preparation bug" §A3/A4 —
+          // the ACTUAL prepared-piece size is preserved by default
+          // (emergencyShrink === 1 for every normal piece). computeExtraShrink
+          // only trims a piece whose OWN bounding radius alone already
+          // exceeds the plate's safe area — keyed on THAT piece's own
+          // radius, never on the destination's overall combined spread, so
+          // one oversized piece still never shrinks anyone else's food.
+          const emergencyShrink = computeExtraShrink(safeRadius, pieceRadius);
+          const renderRadius = pieceRadius * emergencyShrink;
+          return {
+            piece,
+            rawX,
+            rawY,
+            radius: renderRadius,
+            rotationDeg: arrangement.rotationDeg,
+            scaleMul: arrangement.scale,
+            emergencyShrink,
+            settleScale,
+            // Task: "julienne centering fix" §1/§2 — every piece Image uses
+            // a top-left origin (createPieceImage's setOrigin(0,0)), so
+            // `piece.x/y` is a CORNER, not the composition math's assumed
+            // CENTER. Captured once here (at natural/unscaled size) so the
+            // flight loop can convert the arrangement's true intended
+            // center into the correct origin-space x/y for whatever
+            // rotation/scale that piece actually settles at — see its own
+            // doc there for why this matters far more for Julienne
+            // (large, heavily-rotated, elongated pieces) than for a
+            // near-square Dice cube.
+            halfWidth: piece.displayWidth / 2,
+            halfHeight: piece.displayHeight / 2,
+          };
+        });
+        const {
+          centerX: localCenterX,
+          centerY: localCenterY,
+          requiredRadius: localRequiredRadius,
+        } = calculateCompositionBounds(
+          localPieces.map((p) => ({ x: p.rawX, y: p.rawY, radius: p.radius })),
+        );
+        return { localPieces, localCenterX, localCenterY, localRequiredRadius };
+      });
+
+      // Pass 2 — arrange the instances themselves into side-by-side slots
+      // (same 2-col-max/remainder-first-row rule as the multi-plate grid
+      // above), spaced by the LARGEST instance's own footprint so no two
+      // neighboring instances can ever overlap regardless of how lopsided
+      // their piece counts are (e.g. 12 slices next to 6 dice).
+      const subCount = instanceLocal.length;
+      const subRows = Math.max(1, Math.ceil(subCount / 2));
+      const subRemainder = subCount - 2 * (subRows - 1);
+      const maxSubRadius = Math.max(1, ...instanceLocal.map((s) => s.localRequiredRadius));
+      const subSpacing = maxSubRadius * 2 * 1.12;
+      const combinedPieces: {
+        piece: Phaser.GameObjects.Image;
+        x: number;
+        y: number;
+        radius: number;
+      }[] = [];
+      instanceLocal.forEach((sub, si) => {
+        let dx = 0;
+        let dy = 0;
+        if (subCount > 1) {
+          const row = si < subRemainder ? 0 : 1 + Math.floor((si - subRemainder) / 2);
+          const rowCount = row === 0 ? subRemainder : 2;
+          const indexInRow = row === 0 ? si : (si - subRemainder) % 2;
+          dx = (indexInRow - (rowCount - 1) / 2) * subSpacing;
+          dy = (row - (subRows - 1) / 2) * subSpacing;
+        }
+        for (const p of sub.localPieces) {
+          const x = p.rawX - sub.localCenterX + dx;
+          const y = p.rawY - sub.localCenterY + dy;
+          pieceRaw.set(p.piece, {
+            rawX: x,
+            rawY: y,
+            pieceRadius: p.radius,
+            rotationDeg: p.rotationDeg,
+            scaleMul: p.scaleMul,
+            emergencyShrink: p.emergencyShrink,
+            settleScale: p.settleScale,
+            halfWidth: p.halfWidth,
+            halfHeight: p.halfHeight,
+          });
+          combinedPieces.push({ piece: p.piece, x, y, radius: p.radius });
+        }
+      });
+
+      // Pass 3 — ONE composition bounds/center/fit across every piece this
+      // destination combines (task §6) — never per-instance.
+      const { centerX, centerY, requiredRadius } = calculateCompositionBounds(combinedPieces);
+      // Task §A5 — fitScale ONLY tightens the arrangement's own SPACING
+      // (controlled overlap between pieces), never the pieces' own render
+      // scale (see the flight loop below, which no longer multiplies scale
+      // by fitScale). Full containment is still guaranteed, just via the
+      // per-piece position pull below rather than a group-wide shrink.
+      const fitScale = fitCompositionToSafeRadius(requiredRadius, safeRadius);
+      destinationDerived.set(destination, { centerX, centerY, fitScale, safeRadius });
+    });
+
+    // Overall bounding box across every plate — hands still reach for the
+    // whole layout in one motion (Phase 5: no new pickup interaction, the
+    // existing single RECIPE_COMPLETED handoff stays authoritative).
+    this.plateCx = gridCx;
+    this.plateCy = gridCy;
+    this.plateRx = plateCount <= 1 ? baseRx : (colSpacingX * 2 + baseRx) / 2;
+    this.plateRy = plateCount <= 1 ? baseRy : (rowSpacingY * rows) / 2;
 
     const plateIn = { t: 0 };
     this.tweens.add({
@@ -4506,66 +5081,90 @@ export class PreparationScene extends Phaser.Scene {
       onUpdate: () => this.drawPlateShape(Phaser.Math.Easing.Sine.Out(plateIn.t)),
     });
 
-    // Every step's finished pieces, not just the CURRENT ingredient's —
-    // closeOutCurrentIngredient() has already banked every earlier step's
-    // pieces here, and the caller (advanceStepOrFinish's finish branch)
-    // always closes out the LAST step too before calling finishRecipeNow,
-    // so by now this holds the whole session's output (§"multi-ingredient
-    // preparation support" — Level 4/8/10 plate several ingredients
-    // together on one shared plate, exactly like a single-ingredient
-    // level's own pieces always have).
-    const pieceImages = this.platedPieceImages;
     const n = pieceImages.length;
     const stagger = n > 1 ? Math.min(PLATING.PLATE_STAGGER_MS, 900 / (n - 1)) : 0;
-    const arcPx = PLATING.PLATE_ARC_FRAC * w;
-    const fanSpread = Math.PI * 0.5;
-
-    // Plating-composition pass (task: "improve plated food presentation") —
-    // tuning ONLY how the same pieces group once they land; the fan-angle
-    // math above (fanSpread/arcPx/stagger) and every cutting-board visual
-    // are untouched. `settleScale`: a 1-3 piece serving (e.g. a single
-    // slice) used to shrink to a flat 0.78x and read as a lost scrap in
-    // the middle of the plate — scale UP a touch instead for a small
-    // serving, scale down only moderately for a busy one, so the group's
-    // footprint always reads as an intentional plated portion rather than
-    // shrinking uniformly regardless of how much food there actually is.
-    const settleScale = Phaser.Math.Clamp(1.3 - n * 0.032, 0.92, 1.2);
-    // `radiusScale`: past ~4 pieces, pull the fan radius in so extra
-    // pieces overlap into one compact group instead of spreading thin
-    // across the whole plate — "many pieces: compact overlapping serving".
-    const radiusScale = Phaser.Math.Clamp(1 - Math.max(0, n - 4) * 0.035, 0.62, 1);
 
     pieceImages.forEach((piece, i) => {
-      const angle = n > 1 ? -fanSpread / 2 + (fanSpread * i) / (n - 1) : 0;
-      // Deterministic (index-seeded, never Math.random) small nudge —
-      // the same completed recipe plates identically every time, but the
-      // pieces don't land in an obviously-computed, perfectly even fan.
-      const jx = this.stablePlatingJitter(i, 11) * (10 / 540) * w;
-      const jy = this.stablePlatingJitter(i, 47) * (7 / 540) * w;
-      const jRot = this.stablePlatingJitter(i, 83) * 9;
-      const targetX =
-        this.plateCx +
-        Math.sin(angle) * this.plateRx * PLATING.GROUP_SPREAD_X_FRAC * radiusScale +
-        jx;
-      const targetY =
-        this.plateCy -
-        Math.cos(angle) * this.plateRy * PLATING.GROUP_SPREAD_Y_FRAC * radiusScale +
-        jy;
+      const destination = meta[i]?.destination ?? "";
+      const plateIndex = destinationOrder.indexOf(destination);
+      const plate = this.platePlates[plateIndex]!;
+      const { centerX, centerY, fitScale, safeRadius } = destinationDerived.get(destination)!;
+      const {
+        rawX,
+        rawY,
+        pieceRadius,
+        rotationDeg,
+        scaleMul,
+        emergencyShrink,
+        settleScale,
+        halfWidth,
+        halfHeight,
+      } = pieceRaw.get(piece)!;
+
+      // Distribution/composition pass — see platingArrangement.ts's own
+      // header doc: (raw position - composition center) * fitScale tightens
+      // the ARRANGEMENT's own spacing/overlap (controlled overlap, task
+      // §A5) — it never touches a piece's own rendered size (see
+      // piece.setScale below, which uses emergencyShrink, not fitScale).
+      let targetX = plate.cx + (rawX - centerX) * fitScale;
+      let targetY = plate.cy + (rawY - centerY) * fitScale;
+      // Final individual-piece safety clamp — POSITION-only. `pieceRadius`
+      // here is already each piece's real render radius (settleScale/
+      // arrangement.scale/emergencyShrink applied, fitScale never
+      // involved), so pulling this piece's TARGET position in (never its
+      // scale) is what actually guarantees `distance + realRadius <=
+      // safeRadius` for every piece, even when fitScale's spacing-only
+      // compression under-corrects for an outlier piece at the edge of a
+      // tightly packed composition.
+      const dist = Math.hypot(targetX - plate.cx, targetY - plate.cy);
+      const maxDist = Math.max(0, safeRadius - pieceRadius);
+      if (dist > maxDist && dist > 0) {
+        const pull = maxDist / dist;
+        targetX = plate.cx + (targetX - plate.cx) * pull;
+        targetY = plate.cy + (targetY - plate.cy) * pull;
+      }
       const fromX = piece.x;
       const fromY = piece.y;
       const fromAngle = piece.angle;
-      // An earlier-ingredient piece (Level 4/8/10) was faded to 0 when its
-      // ingredient was cleared off the board (closeOutCurrentIngredient) —
-      // gather it back to visible as it flies to the plate, same beat as
-      // its position/scale. The current/last ingredient's own pieces are
-      // already alpha 1, so this is a no-op for them.
+      const fromScale = piece.scale;
+      // Task: "julienne centering fix" §1/§2 — `piece.x/y` is a top-left
+      // CORNER (createPieceImage's setOrigin(0,0)), but every arrangement/
+      // composition calculation above (targetX/targetY, calculateCompositionBounds,
+      // fitCompositionToSafeRadius) is built entirely around "position =
+      // this piece's own CENTER". Converting corner -> center HERE (via
+      // the piece's own half-width/half-height, rotated by its current
+      // angle) is what makes that assumption actually true on screen —
+      // the flight loop below interpolates CENTER positions end to end,
+      // then re-derives the correct corner for whatever angle/scale that
+      // frame actually has. Rotation-invariant math (pieceBoundingRadius,
+      // the containment clamp above) already used the center correctly;
+      // only the final Phaser assignment didn't.
+      const cornerToCenterOffset = (angleDeg: number, scale: number) => {
+        const rad = Phaser.Math.DegToRad(angleDeg);
+        const hw = halfWidth * scale;
+        const hh = halfHeight * scale;
+        return {
+          x: hw * Math.cos(rad) - hh * Math.sin(rad),
+          y: hw * Math.sin(rad) + hh * Math.cos(rad),
+        };
+      };
+      const fromOffset = cornerToCenterOffset(fromAngle, fromScale);
+      const fromCenterX = fromX + fromOffset.x;
+      const fromCenterY = fromY + fromOffset.y;
+      // An earlier-ingredient piece (multi-ingredient recipe) was faded to
+      // 0 when its ingredient was cleared off the board
+      // (closeOutCurrentIngredient) — gather it back to visible as it
+      // flies to its plate, same beat as its position/scale. The
+      // current/last ingredient's own pieces are already alpha 1, so this
+      // is a no-op for them.
       const fromAlpha = piece.alpha;
-      const targetAngle = fromAngle * 0.4 + (angle * 180) / Math.PI + jRot;
+      const targetAngle = fromAngle * 0.4 + rotationDeg;
       // Later pieces render above earlier ones — a stable depth order so
       // controlled overlap still reads as a real serving (each piece
       // showing enough of itself to identify) instead of a flat tie.
       // *3 spacing keeps each piece's own thickness/shadow (see below)
-      // strictly between it and its neighbours' layers.
+      // strictly between it and its neighbours' layers. Global index (not
+      // per-plate) keeps depth ordering stable across the whole recipe.
       const baseDepth = 20 + i * 3;
       piece.setDepth(baseDepth + 2);
       const thickness = this.createPlatingThickness(piece, baseDepth + 1);
@@ -4580,11 +5179,28 @@ export class PreparationScene extends Phaser.Scene {
         delay: PLATING.PLATE_IN_MS * 0.45 + i * stagger,
         onUpdate: () => {
           const e = Phaser.Math.Easing.Cubic.Out(flight.t);
-          piece.x = fromX + (targetX - fromX) * e;
-          piece.y = fromY + (targetY - fromY) * e - arcPx * Math.sin(Math.PI * flight.t);
-          piece.angle = fromAngle + (targetAngle - fromAngle) * e;
+          const angle = fromAngle + (targetAngle - fromAngle) * e;
+          // Task §A3/A4 — the prepared piece's OWN size is preserved: no
+          // group-wide fitScale here. settleScale/scaleMul are the same
+          // small cosmetic (+/-20%/+/-8%) plating touches as before;
+          // emergencyShrink is 1 for every normal piece and only trims a
+          // piece whose own bounding radius alone can't fit the plate at
+          // all (see computeExtraShrink's own doc).
+          const scale = 1 + (settleScale * scaleMul * emergencyShrink - 1) * e;
+          // Task: "julienne centering fix" — interpolate the piece's true
+          // CENTER (arc included), then convert that center to the
+          // corner-origin x/y Phaser actually needs, using THIS frame's
+          // own angle/scale — not the pre-fix "just lerp piece.x/y
+          // directly", which silently assumed corner === center.
+          const centerX = fromCenterX + (targetX - fromCenterX) * e;
+          const centerY =
+            fromCenterY + (targetY - fromCenterY) * e - arcPx * Math.sin(Math.PI * flight.t);
+          const offset = cornerToCenterOffset(angle, scale);
+          piece.x = centerX - offset.x;
+          piece.y = centerY - offset.y;
+          piece.angle = angle;
           piece.alpha = fromAlpha + (1 - fromAlpha) * e;
-          piece.setScale(1 + (settleScale - 1) * e); // settles to the plating-only composition scale, not a flat shrink
+          piece.setScale(scale);
           this.updatePlatingThickness(thickness, piece);
           this.updatePlatingShadow(shadow, piece, piece.alpha);
         },
@@ -4599,19 +5215,6 @@ export class PreparationScene extends Phaser.Scene {
       PLATING.PLATE_SETTLE_MS;
     this.time.delayedCall(totalMs, () => this.bus.emit(EVT.PLATING_COMPLETED));
     this.time.delayedCall(Math.max(0, totalMs - SCENEFLOW.HANDS_LEAD_MS), () => this.startHands());
-  }
-
-  /**
-   * Deterministic pseudo-random in [-1, 1], seeded by a piece index plus
-   * a salt (a different salt per axis so X/Y/rotation don't all move
-   * together) — startPlating's small per-piece landing-position/rotation
-   * nudge. A classic sine-hash, not a real RNG; it doesn't need to be,
-   * this is display jitter only. Never Math.random(): the same completed
-   * recipe (same piece count/order) must plate identically every time.
-   */
-  private stablePlatingJitter(i: number, salt: number): number {
-    const s = Math.sin(i * 12.9898 + salt * 78.233) * 43758.5453;
-    return (s - Math.floor(s)) * 2 - 1;
   }
 
   /**
@@ -4690,36 +5293,27 @@ export class PreparationScene extends Phaser.Scene {
     shadow.fillEllipse(center.x, center.y + dy, w, h);
   }
 
-  /** Cream ceramic — soft shadow, subtle double rim (knifecraft.html drawPlateShape). */
+  /** Cream ceramic — soft shadow, subtle double rim (knifecraft.html drawPlateShape). One ellipse set per entry in platePlates — Phase 3/4's "one ingredient = one plate", drawn as one Graphics object since none of them overlap. */
   private drawPlateShape(alpha: number): void {
     this.plateGfx.clear();
     if (alpha <= 0.001) return;
     this.plateGfx.setAlpha(alpha);
-    this.plateGfx.fillStyle(0x3c2818, 0.22);
-    this.plateGfx.fillEllipse(
-      this.plateCx,
-      this.plateCy + 6,
-      this.plateRx * 2.04,
-      this.plateRy * 2.04,
-    );
-    this.plateGfx.fillStyle(0xf5efe4, 1);
-    this.plateGfx.fillEllipse(this.plateCx, this.plateCy, this.plateRx * 2, this.plateRy * 2);
-    this.plateGfx.fillStyle(0xfffdf9, 0.5);
-    this.plateGfx.fillEllipse(
-      this.plateCx - this.plateRx * 0.15,
-      this.plateCy - this.plateRy * 0.15,
-      this.plateRx * 1.3,
-      this.plateRy * 1.3,
-    );
-    this.plateGfx.lineStyle(1.5, 0x786854, 0.18);
-    this.plateGfx.strokeEllipse(
-      this.plateCx,
-      this.plateCy,
-      this.plateRx * 1.72,
-      this.plateRy * 1.64,
-    );
-    this.plateGfx.lineStyle(1, 0x786854, 0.22);
-    this.plateGfx.strokeEllipse(this.plateCx, this.plateCy, this.plateRx * 2, this.plateRy * 2);
+    const plates =
+      this.platePlates.length > 0
+        ? this.platePlates
+        : [{ cx: this.plateCx, cy: this.plateCy, rx: this.plateRx, ry: this.plateRy }];
+    for (const { cx, rx, cy, ry } of plates) {
+      this.plateGfx.fillStyle(0x3c2818, 0.22);
+      this.plateGfx.fillEllipse(cx, cy + 6, rx * 2.04, ry * 2.04);
+      this.plateGfx.fillStyle(0xf5efe4, 1);
+      this.plateGfx.fillEllipse(cx, cy, rx * 2, ry * 2);
+      this.plateGfx.fillStyle(0xfffdf9, 0.5);
+      this.plateGfx.fillEllipse(cx - rx * 0.15, cy - ry * 0.15, rx * 1.3, ry * 1.3);
+      this.plateGfx.lineStyle(1.5, 0x786854, 0.18);
+      this.plateGfx.strokeEllipse(cx, cy, rx * 1.72, ry * 1.64);
+      this.plateGfx.lineStyle(1, 0x786854, 0.22);
+      this.plateGfx.strokeEllipse(cx, cy, rx * 2, ry * 2);
+    }
   }
 
   /**

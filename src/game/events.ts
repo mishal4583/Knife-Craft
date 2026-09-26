@@ -58,6 +58,20 @@ export type PrepStep = {
   techniqueId: TechniqueId;
   /** Phase 16 — mirrors PreparationStep.chainBreak (levelTypes.ts) through to the scene; see that field's own doc. */
   chainBreak?: boolean;
+  /**
+   * Task: "shared-destination plating composition fix" — mirrors
+   * PreparationStep.destination (levelTypes.ts, already the join of every
+   * destination NAME this step's component satisfies — e.g. "Bowl" or
+   * "Maya's Plate & Daniel's Plate"). Previously dropped when Preparation.tsx
+   * built this scene-facing type, so PreparationScene's plating renderer
+   * had no way to know which final destination a finished piece belonged
+   * to and fell back to grouping by ingredientId alone — see
+   * startPlating()'s own doc for the bug this caused. Undefined for any
+   * step whose recipe/level never set a destination name, in which case
+   * every such step in the session shares one implicit destination (the
+   * existing single-plate default, unchanged).
+   */
+  destination?: string;
 };
 
 export type StartPreparationConfig = {

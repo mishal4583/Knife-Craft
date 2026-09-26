@@ -23,7 +23,7 @@ const TONES: readonly [string, string, string][] = [
   ["#7FBD55", "#5C9A3A", "#3F7429"],
 ];
 
-type ParsleyLeafShape = {
+export type ParsleyLeafShape = {
   walk: [number, number][];
   axes: { ang: number; len: number }[];
   fit: number;
@@ -65,8 +65,68 @@ function lobeSide(
   return out;
 }
 
-/** Ported verbatim from parsleyLeafShape() — builds the trifid blade outline and shrink-fits it inside the leaflet's own collision ellipse. */
-function parsleyLeafShape(rx: number, ry: number, seed: number): ParsleyLeafShape {
+/**
+ * Ported verbatim from parsleyLeafShape() — builds the trifid blade
+ * outline and shrink-fits it inside the leaflet's own collision ellipse.
+ *
+ * `round` (new-ingredient integration pack, 04-shared-patches.md §2) adds
+ * Cilantro's ROUND blade variant alongside this untouched trifid path:
+ * one continuous polar-form fan (an envelope over an arc, minus gaussian
+ * slits cut inward from the margin, times a crenate ripple) instead of
+ * three narrow radiating lobes — a cilantro leaflet is one webbed fan
+ * blade, which the trifid construction can't express (it always shows
+ * three detached fingers with sky between them). Same return contract
+ * (`{walk, axes, fit, bx, seed}`) either way, so the caller (paint code,
+ * fit loop, centroid, plate clip, chop) needs no branch of its own —
+ * parsley's own call sites are completely unaffected since they never
+ * pass `round`.
+ */
+export function parsleyLeafShape(
+  rx: number,
+  ry: number,
+  seed: number,
+  round = false,
+): ParsleyLeafShape {
+  if (round) {
+    const bxR = -0.62 * rx;
+    const TH = 1.15;
+    const M = 84;
+    const len = 1.2 * rx * (1 + 0.05 * h(seed, 1));
+    const SLIT = [-1.1, -0.74, -0.32, 0.32, 0.74, 1.1].map((s, i) => s + 0.035 * h(seed, i + 3));
+    const r = (th: number): number => {
+      let k = len * (1 - 0.12 * Math.pow(Math.abs(th) / TH, 2.2)); // envelope: broad arc, easing in at the sides
+      let cut = 0;
+      for (const s of SLIT) {
+        const q = (th - s) / 0.066;
+        cut += 0.26 * Math.exp(-q * q); // narrow inward slits
+      }
+      k *= Math.max(0.22, 1 - cut);
+      k *= 1 + 0.03 * Math.cos(th * 46 + 0.8 * h(seed, 2)); // crenate margin: rounded bumps, never teeth
+      return k;
+    };
+    const walk: [number, number][] = [[0, 0]];
+    for (let i = 0; i <= M; i++) {
+      const th = -TH + 2 * TH * (i / M);
+      const rr = r(th);
+      walk.push([Math.cos(th) * rr, Math.sin(th) * rr]);
+    }
+    const axes = [0, -0.53, 0.53, -0.92, 0.92, -1.2, 1.2].map((a) => ({ ang: a, len: r(a) }));
+    let fitR = 1;
+    for (let t = 0; t < 50; t++) {
+      let ok = true;
+      for (const q of walk) {
+        const x = bxR + q[0] * fitR;
+        const y = q[1] * fitR;
+        if ((x / rx) * (x / rx) + (y / ry) * (y / ry) > 1.06) {
+          ok = false;
+          break;
+        }
+      }
+      if (ok) break;
+      fitR -= 0.02;
+    }
+    return { walk, axes, fit: fitR, bx: bxR, seed };
+  }
   const bx = -0.86 * rx;
   const A = [-0.86, -0.02, 0.82];
   const LEN = [0.76, 1.0, 0.72];

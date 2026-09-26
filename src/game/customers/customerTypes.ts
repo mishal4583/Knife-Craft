@@ -40,8 +40,19 @@ export type CustomerOrder = {
   customerId: string;
   recipeId: string;
   status: OrderStatus;
-  /** Flat, deterministic payment for THIS order, copied from the recipe at generation time (§7). */
+  /** Flat, deterministic payment for THIS order, copied from the recipe at generation time (§7). Still used for Preparation's pre-serve payout preview (Preparation.tsx's `view.rewardCoins`) — the ACTUAL amount credited at serve time may differ once Economy V2 settlement is wired in (see ServiceManager.ts's serve functions and App.tsx's serveCampaignOrder/serveBatchGroupViewedOrder), same as any other settlement breakdown field never re-deriving the preview. */
   basePayment: number;
+  /**
+   * Economy V2 payout wiring — the 0-100 preparation score for THIS
+   * order, stamped once its components are recorded (recordAllComponents/
+   * recordBatchGroupComponents, called from App.tsx's recordCampaignServiceResult/
+   * recordBatchGroupResult/recordServiceResult) and read back at serve
+   * time (serveCurrentOrder/serveBatchGroupOrder) to compute the real
+   * settlement (EconomySettlement.computeSettlement). `null` until then —
+   * an order is never served before its components are recorded, so a
+   * genuinely PAID order's score is never null in practice.
+   */
+  preparationScore: number | null;
   /** Short, actionable line for the chef-instruction HUD (§41), copied from the recipe at generation time. */
   chefInstruction: string;
   createdAt: number;

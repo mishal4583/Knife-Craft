@@ -32,6 +32,11 @@ export function paintRadishTexture(
   tipRound: number,
   margin: number,
   opts: TaperPaintOpts = {},
+  _hasCut = false,
+  // `overhangGone` — see PreparationScene.ts's TaperRenderer.paint own
+  // doc. True once `this.cuts.length > 0`; gates the leaf crown below so
+  // it actually sheds on the first cut.
+  overhangGone = false,
 ): void {
   const cx = rx + margin;
   const cy = rBig + margin;
@@ -111,60 +116,63 @@ export function paintRadishTexture(
 
   // LEAF TOPS, past the crown — paint only, never part of the silhouette.
   // Pale ribbed stalks fanning out of the shoulder, each carrying a lobed
-  // blade (a lobed daikon leaf, not a smooth spade).
-  const bx = cx - rx * 0.94;
-  const by = cy;
-  const leaves: [number, number, number, number][] = [
-    [-0.92, 104, 13, 1],
-    [-0.52, 124, 15, 0],
-    [-0.14, 132, 16, 1],
-    [0.26, 120, 15, 0],
-    [0.66, 98, 13, 1],
-  ];
-  for (const [a, len, w, dark] of leaves) {
-    ctx.save();
-    ctx.translate(bx, by);
-    ctx.rotate(Math.PI + a);
-    const st = ctx.createLinearGradient(0, -w * 0.5, len, w * 0.5);
-    st.addColorStop(0, "#EFF3DC");
-    st.addColorStop(0.5, "#CFE0A4");
-    st.addColorStop(1, "#9CC066");
-    ctx.strokeStyle = st;
-    ctx.lineWidth = w * 0.42;
-    ctx.lineCap = "round";
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.quadraticCurveTo(len * 0.52, -w * 0.3, len * 0.72, -w * 0.1);
-    ctx.stroke();
-    ctx.save();
-    ctx.translate(len * 0.72, -w * 0.1);
-    const blade = new Path2D();
-    blade.moveTo(0, 0);
-    blade.bezierCurveTo(len * 0.1, -w * 1.5, len * 0.3, -w * 1.9, len * 0.44, -w * 0.5);
-    blade.bezierCurveTo(len * 0.34, -w * 0.2, len * 0.4, w * 1.4, len * 0.24, w * 1.1);
-    blade.bezierCurveTo(len * 0.12, w * 1.7, len * 0.04, w * 0.9, 0, 0);
-    blade.closePath();
-    const lg = ctx.createLinearGradient(0, -w, len * 0.4, w);
-    if (dark) {
-      lg.addColorStop(0, "#4E8232");
-      lg.addColorStop(1, "#2F5A1E");
-    } else {
-      lg.addColorStop(0, "#65A03F");
-      lg.addColorStop(1, "#3E7228");
+  // blade (a lobed daikon leaf, not a smooth spade). The whole crown is
+  // the overhang — sheds on the first cut.
+  if (!overhangGone) {
+    const bx = cx - rx * 0.94;
+    const by = cy;
+    const leaves: [number, number, number, number][] = [
+      [-0.92, 104, 13, 1],
+      [-0.52, 124, 15, 0],
+      [-0.14, 132, 16, 1],
+      [0.26, 120, 15, 0],
+      [0.66, 98, 13, 1],
+    ];
+    for (const [a, len, w, dark] of leaves) {
+      ctx.save();
+      ctx.translate(bx, by);
+      ctx.rotate(Math.PI + a);
+      const st = ctx.createLinearGradient(0, -w * 0.5, len, w * 0.5);
+      st.addColorStop(0, "#EFF3DC");
+      st.addColorStop(0.5, "#CFE0A4");
+      st.addColorStop(1, "#9CC066");
+      ctx.strokeStyle = st;
+      ctx.lineWidth = w * 0.42;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.quadraticCurveTo(len * 0.52, -w * 0.3, len * 0.72, -w * 0.1);
+      ctx.stroke();
+      ctx.save();
+      ctx.translate(len * 0.72, -w * 0.1);
+      const blade = new Path2D();
+      blade.moveTo(0, 0);
+      blade.bezierCurveTo(len * 0.1, -w * 1.5, len * 0.3, -w * 1.9, len * 0.44, -w * 0.5);
+      blade.bezierCurveTo(len * 0.34, -w * 0.2, len * 0.4, w * 1.4, len * 0.24, w * 1.1);
+      blade.bezierCurveTo(len * 0.12, w * 1.7, len * 0.04, w * 0.9, 0, 0);
+      blade.closePath();
+      const lg = ctx.createLinearGradient(0, -w, len * 0.4, w);
+      if (dark) {
+        lg.addColorStop(0, "#4E8232");
+        lg.addColorStop(1, "#2F5A1E");
+      } else {
+        lg.addColorStop(0, "#65A03F");
+        lg.addColorStop(1, "#3E7228");
+      }
+      ctx.fillStyle = lg;
+      ctx.fill(blade);
+      ctx.strokeStyle = "rgba(28,58,18,0.32)";
+      ctx.lineWidth = 1;
+      ctx.stroke(blade);
+      ctx.strokeStyle = "rgba(216,238,170,0.35)";
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(len * 0.02, 0);
+      ctx.quadraticCurveTo(len * 0.22, w * 0.1, len * 0.4, -w * 0.35);
+      ctx.stroke();
+      ctx.restore();
+      ctx.restore();
     }
-    ctx.fillStyle = lg;
-    ctx.fill(blade);
-    ctx.strokeStyle = "rgba(28,58,18,0.32)";
-    ctx.lineWidth = 1;
-    ctx.stroke(blade);
-    ctx.strokeStyle = "rgba(216,238,170,0.35)";
-    ctx.lineWidth = 1.2;
-    ctx.beginPath();
-    ctx.moveTo(len * 0.02, 0);
-    ctx.quadraticCurveTo(len * 0.22, w * 0.1, len * 0.4, -w * 0.35);
-    ctx.stroke();
-    ctx.restore();
-    ctx.restore();
   }
   ctx.strokeStyle = "rgba(150,152,130,0.40)";
   ctx.lineWidth = 1.6;

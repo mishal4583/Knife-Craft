@@ -7,6 +7,14 @@
  * widest part, where a pear's core actually sits (a wider spread reads
  * as a kiwi); the stem is a short nub on the neck's tip, kept short so it
  * reads as growing from the fruit rather than lying next to it.
+ *
+ * Discrepancy #1's close-out: `peeled` (mandatory-first, same convention
+ * as Onion/Potato/Garlic — see TaperRenderer.paint's own doc on why this
+ * slot is typed `hasCut` but means "peeled" for an ingredient with its
+ * own Peel technique) swaps the outer skin for the SAME pale flesh
+ * gradient the inset layer below already uses, and drops the
+ * yellow-green rind fill + russet freckles entirely — the interior
+ * (grit, core, seeds, stem) is untouched either way.
  */
 import { traceTaperPath, type TaperPaintOpts } from "./carrotTexture";
 
@@ -37,6 +45,7 @@ export function paintPearTexture(
   tipRound: number,
   margin: number,
   opts: TaperPaintOpts = {},
+  peeled = false,
 ): void {
   const cx = rx + margin;
   const cy = rBig + margin;
@@ -46,15 +55,6 @@ export function paintPearTexture(
     traceTaperPath(ctx, cx, cy, rrx, rrBig, rrSmall, buttRound, tipRound, pad, opts);
   };
 
-  const skin = ctx.createLinearGradient(cx - rx * 0.4, cy - rBig, cx + rx * 0.5, cy + rBig);
-  skin.addColorStop(0, "#CFDA69");
-  skin.addColorStop(0.44, "#B3C74C");
-  skin.addColorStop(1, "#8A9E33");
-  ctx.fillStyle = skin;
-  sil(rx, rBig, rSmall, 0);
-  ctx.fill();
-
-  const flesh = insetTaper(rx, rBig, rSmall, 10);
   const fg = ctx.createRadialGradient(
     cx - rx * 0.26,
     cy - rBig * 0.22,
@@ -66,6 +66,22 @@ export function paintPearTexture(
   fg.addColorStop(0, "#FCFAE2");
   fg.addColorStop(0.52, "#F5F1D2");
   fg.addColorStop(1, "#E3DDB4");
+
+  if (!peeled) {
+    const skin = ctx.createLinearGradient(cx - rx * 0.4, cy - rBig, cx + rx * 0.5, cy + rBig);
+    skin.addColorStop(0, "#CFDA69");
+    skin.addColorStop(0.44, "#B3C74C");
+    skin.addColorStop(1, "#8A9E33");
+    ctx.fillStyle = skin;
+  } else {
+    // Peeled: no yellow-green rind at all — the pale flesh gradient below
+    // IS the outer surface now, same tone the inset layer already uses.
+    ctx.fillStyle = fg;
+  }
+  sil(rx, rBig, rSmall, 0);
+  ctx.fill();
+
+  const flesh = insetTaper(rx, rBig, rSmall, 10);
   ctx.save();
   sil(rx, rBig, rSmall, 0);
   ctx.clip();
@@ -121,16 +137,18 @@ export function paintPearTexture(
   ctx.save();
   sil(rx, rBig, rSmall, 0);
   ctx.clip();
-  for (let i = 0; i < 64; i++) {
-    // russet freckles, on the SKIN only
-    const a = i * 2.399963;
-    const r = 0.62 + 0.36 * (((i * 7919) % 53) / 53);
-    const x = cx + Math.cos(a) * rx * 0.86 * r;
-    const y = cy + Math.sin(a) * rBig * 0.88 * r;
-    ctx.fillStyle = i % 3 ? "rgba(146,116,44,0.26)" : "rgba(184,152,64,0.20)";
-    ctx.beginPath();
-    ctx.arc(x, y, 1.5 + 1.7 * (((i * 104729) % 19) / 19), 0, Math.PI * 2);
-    ctx.fill();
+  if (!peeled) {
+    for (let i = 0; i < 64; i++) {
+      // russet freckles, on the SKIN only — gone once peeled
+      const a = i * 2.399963;
+      const r = 0.62 + 0.36 * (((i * 7919) % 53) / 53);
+      const x = cx + Math.cos(a) * rx * 0.86 * r;
+      const y = cy + Math.sin(a) * rBig * 0.88 * r;
+      ctx.fillStyle = i % 3 ? "rgba(146,116,44,0.26)" : "rgba(184,152,64,0.20)";
+      ctx.beginPath();
+      ctx.arc(x, y, 1.5 + 1.7 * (((i * 104729) % 19) / 19), 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
   const hl = ctx.createLinearGradient(cx - rx * 0.8, cy - rBig, cx + rx * 0.3, cy + rBig * 0.5);
   hl.addColorStop(0, "rgba(255,255,228,0.22)");
@@ -155,7 +173,9 @@ export function paintPearTexture(
   ctx.moveTo(tipX - 4, cy - rSmall * 0.2);
   ctx.quadraticCurveTo(tipX + 15, cy - rSmall * 0.56, tipX + 24, cy - rSmall * 1.1);
   ctx.stroke();
-  ctx.strokeStyle = "rgba(84,98,26,0.40)";
+  // Unpeeled: a greenish rind edge. Peeled: a neutral tan edge — no green
+  // skin left to tint it.
+  ctx.strokeStyle = peeled ? "rgba(150,130,90,0.36)" : "rgba(84,98,26,0.40)";
   ctx.lineWidth = 1.8;
   sil(rx, rBig, rSmall, 0);
   ctx.stroke();

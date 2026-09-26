@@ -38,18 +38,35 @@ function uniqueInOrder<T>(values: T[]): T[] {
  * cheap and safe: read the real recipes when they exist, fall back to
  * the legacy `preparationSteps` derivation for every level this phase
  * doesn't touch (41-120).
+ *
+ * PHASE 7.2 — `batchGroupRecipeIds` (Phase 4's real-batching levels,
+ * mutually exclusive with `recipePoolIds` per levelTypes.ts) was missing
+ * from this check, so every batch-group level (39 of them, including
+ * Level 200 and the Level 250 finale) fell into the legacy branch and
+ * showed its stale `preparationSteps` snapshot in the Cookbook — which,
+ * after Phase 7.1's Peel-prerequisite fix, no longer matches what the
+ * level actually serves (e.g. Level 250 would show "Rock Mince Garlic"
+ * with no "Peel Garlic" step). Checking both pool fields, exactly the
+ * same way ServiceManager/App.tsx already treat them as the two
+ * equivalent "this level has a real recipe pool" shapes, fixes the
+ * display without touching the pool/batch mechanism itself.
  */
 function stepsFromPool(
   level: LevelDefinition,
 ): { ingredient: IngredientId; technique: TechniqueId; name: string }[] {
-  if (!level.recipePoolIds?.length) {
+  const poolIds = level.recipePoolIds?.length
+    ? level.recipePoolIds
+    : level.batchGroupRecipeIds?.length
+      ? level.batchGroupRecipeIds
+      : null;
+  if (!poolIds) {
     return level.preparationSteps.map((s) => ({
       ingredient: s.ingredient,
       technique: s.technique,
       name: `${TECHNIQUES[s.technique].name} ${INGREDIENTS[s.ingredient].name}`,
     }));
   }
-  const pool = level.recipePoolIds
+  const pool = poolIds
     .map((id) => CAMPAIGN_RECIPES.find((r) => r.id === id))
     .filter((r): r is (typeof CAMPAIGN_RECIPES)[number] => !!r);
   return pool.flatMap((r) =>

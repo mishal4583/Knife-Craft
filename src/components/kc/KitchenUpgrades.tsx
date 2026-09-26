@@ -33,20 +33,13 @@ function KitchenUpgradePreview({
 
 /**
  * KITCHEN_UPGRADES — a real progression-milestone screen, not a shop
- * (Phase 14). Every tier the player has reached is already owned; this
- * screen's only real action is choosing which owned tier to display
- * (see kitchenUpgradeDefinitions.ts's header comment for why there's no
- * price here anymore).
+ * (Phase 14). Each tier is a permanent upgrade: reaching its level
+ * replaces the previous kitchen for good (KitchenUpgradeManager.
+ * syncKitchenUpgradeOwnership), so there is nothing to choose here —
+ * the screen shows the current kitchen, the stages already grown past,
+ * and the stages still ahead.
  */
-export function KitchenUpgrades({
-  go,
-  save,
-  setEquipped,
-}: {
-  go: (s: ScreenId) => void;
-  save: SaveData;
-  setEquipped: (id: string) => void;
-}) {
+export function KitchenUpgrades({ go, save }: { go: (s: ScreenId) => void; save: SaveData }) {
   const [selectedId, setSelectedId] = useState<string>(save.equippedKitchenUpgradeId);
   const selected =
     KITCHEN_UPGRADE_CATALOG.find((u) => u.id === selectedId) ?? KITCHEN_UPGRADE_CATALOG[0]!;
@@ -83,13 +76,13 @@ export function KitchenUpgrades({
               <KButton full variant="ghost" disabled>
                 Unlocks at Level {selected.unlockLevel}
               </KButton>
-            ) : state === "equipped" ? (
+            ) : state === "current" ? (
               <KButton full variant="sage" disabled>
                 Current Kitchen
               </KButton>
             ) : (
-              <KButton full variant="wood" onClick={() => setEquipped(selected.id)}>
-                Use This Kitchen
+              <KButton full variant="ghost" disabled>
+                Already upgraded past this
               </KButton>
             )}
           </Panel>
@@ -117,10 +110,10 @@ export function KitchenUpgrades({
                 <p className="font-display text-[13px] font-black leading-none text-walnut-dark">
                   {u.name}
                 </p>
-                {uState === "equipped" ? (
-                  <Badge tone="sage">Equipped</Badge>
-                ) : uState === "owned" ? (
-                  <Badge tone="cream">Owned</Badge>
+                {uState === "current" ? (
+                  <Badge tone="sage">Current</Badge>
+                ) : uState === "past" ? (
+                  <Badge tone="cream">Upgraded ✓</Badge>
                 ) : (
                   <Badge tone="locked">Lv {u.unlockLevel}</Badge>
                 )}

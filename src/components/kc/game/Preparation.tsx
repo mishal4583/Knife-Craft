@@ -17,6 +17,11 @@ import type { PrepStep } from "@/game/events";
 import type { CutPath, CutResult, GameplayPhase, QualityLabel } from "@/types/game";
 import type { LevelDefinition } from "@/game/levels/levelTypes";
 import type { ServiceOrder } from "@/game/service/ServiceManager";
+import type { SettlementResult } from "@/game/economy/economyTypes";
+import type {
+  BusinessCustomerPayment,
+  BusinessCustomersToday,
+} from "@/game/business/BusinessServiceManager";
 import { preparationStepsForRecipe } from "@/game/service/stepsForRecipe";
 import { GameViewport } from "./GameViewport";
 import { GameHUD } from "./GameHUD";
@@ -25,16 +30,31 @@ import { KnifeReport } from "./KnifeReport";
 import { OrderComplete } from "./OrderComplete";
 import { ServiceOrderComplete } from "./ServiceOrderComplete";
 import { Panel, KButton, DustMotes } from "../common/primitives";
+import { dollars } from "@/game/money";
+import { withRequiredPeelSteps } from "@/game/prepStepGuards";
+import type { PreparationStep } from "@/game/levels/levelTypes";
 import kitchenBg from "@/assets/kitchen-bg.jpg";
+
+/** Inserts any Peel step a must-peel ingredient is missing, so no session can soft-lock (see prepStepGuards.ts). The HUD and the scene both index this same list. */
+function completableSteps(steps: readonly PreparationStep[]): PreparationStep[] {
+  return withRequiredPeelSteps(
+    steps,
+    (s) => ({
+      ingredient: s.ingredient,
+      technique: s.technique,
+      ...(s.chainBreak ? { chainBreak: true } : {}),
+    }),
+    (s) => ({ ...s, technique: "peel", resultingState: "peeled" }),
+    ({ chainBreak: _drop, ...s }) => ({ ...s, startingState: "peeled" }),
+  );
+}
 
 /**
  * Preparation now consumes a LevelDefinition directly rather than a flat
  * PrepOrder (§"make sure the Level Engine is actually consuming level
  * data rather than the old flat PrepOrder flow") — `level.preparationSteps`
  * IS the session's gameplay data, handed straight to GameBridge as
- * `steps`. src/data/orders.ts/PrepOrder is no longer read by this
- * component; it stays in the repo unused rather than deleted (see the
- * Phase 5 report's "files changed" for why).
+ * `steps` (the old flat PrepOrder mock data has since been deleted).
  *
  * Phase 2 (restaurant-service loop) — `level` becomes optional and a new
  * `service` prop bundle takes over display/steps/completion when
@@ -62,14 +82,27 @@ export function Preparation({
   /** Present only for a restaurant-service session (App.tsx's sessionMode === "service") — see ServiceManager.ts for the state machine behind it. */
   service?: {
     order: ServiceOrder;
-    /** §17/§18 — the Serve action; returns null if the order somehow isn't READY (defensive only). */
-    onServe: () => { coinsAwarded: number; reaction: string } | null;
+    /** §17/§18 — the Serve action; returns null if the order somehow isn't READY (defensive only). Economy V2 Phase 9 — `settlement`/`isReplay` are present for a campaign/batch-group serve (never for plain Restaurant Service, which never computes a settlement) so ServiceOrderComplete can show the real breakdown without recalculating anything. */
+    onServe: () => {
+      coinsAwarded: number;
+      reaction: string;
+      settlement?: SettlementResult | undefined;
+      isReplay?: boolean;
+      businessPayment?: BusinessCustomerPayment;
+      businessCustomers?: BusinessCustomersToday;
+    } | null;
     /** §20 — advances the queue (or finishes a campaign level — see `nextLabel`) and remounts Preparation for the new current order. */
     onNextOrder: () => void;
     /** Phase 3 §16 — a one-sentence batching hint ("Batch tip: ...") when the active and next order share a real component; null otherwise. Presentation only, never gameplay-affecting. */
     batchHint?: string | null;
     /** Label for ServiceOrderComplete's advance button — defaults to "Next Customer"; a campaign level about to complete passes "Finish Level" instead (App.tsx decides which, based on ServiceSession.completedCount vs the level's own requiredOrders). */
     nextLabel?: string;
+    /** Economy V2 Phase 9 — display-only identity for the settlement breakdown (App.tsx passes the raw save fields; ServiceOrderComplete resolves them to catalog names itself, exactly like Shop.tsx already does). Omitted for plain Restaurant Service. */
+    selectedSupplierId?: string;
+    ownedStaffIds?: readonly string[];
+    knifeSharpnessValue?: number;
+    /** Economy V3 Phase 14, Checkpoint 3 — true only for a Business Mode order; forwarded to ServiceOrderComplete so its payment/running-total displays real USD instead of Kitchen Coins. Absent (falsy) for every other service kind. */
+    isBusinessOrder?: boolean;
   };
   onExit: () => void;
   /** Returns this run's coin reward (0 on replay — Law 2 — or always 0 for a service session, where payment is deferred to the explicit Serve action) so OrderComplete can show it without a second App->Preparation round trip. */
@@ -93,21 +126,27 @@ export function Preparation({
         title: service.order.recipe.name,
         subtitle: service.order.recipe.chefInstruction,
         emoji: service.order.recipe.emoji,
-        rewardCoins: service.order.recipe.basePayment,
-        preparationSteps: preparationStepsForRecipe(service.order.recipe),
+        // The order's OWN pay (computed once at order-creation time via
+        // recipePay(recipe, chapter) — see CustomerOrderManager.ts), not
+        // recipe.basePayment's static per-chapter-agnostic snapshot,
+        // which would show the wrong number for a reused recipe (v2
+        // §2.2/§3.4 — pay depends on which chapter serves it).
+        rewardCoins: service.order.order.basePayment,
+        preparationSteps: completableSteps(preparationStepsForRecipe(service.order.recipe)),
       }
     : {
         recipeId: level!.recipeId,
         title: level!.title,
         subtitle: level!.subtitle,
         emoji: level!.emoji,
-        rewardCoins: level!.reward.coins,
-        preparationSteps: level!.preparationSteps,
+        rewardCoins: dollars(level!.reward.coins),
+        preparationSteps: completableSteps(level!.preparationSteps),
       };
   const steps: PrepStep[] = view.preparationSteps.map((s) => ({
     ingredientId: s.ingredient,
     techniqueId: s.technique,
     ...(s.chainBreak ? { chainBreak: true } : {}),
+    ...(s.destination ? { destination: s.destination } : {}),
   }));
   const firstStep = steps[0]!;
 
@@ -394,7 +433,7 @@ export function Preparation({
                   onExit();
                 }}
               >
-                Back to Kitchen
+                {service?.isBusinessOrder ? "Back to Service" : "Back to Kitchen"}
               </KButton>
             </div>
           </Panel>
@@ -420,7 +459,17 @@ export function Preparation({
             onNextOrder={service.onNextOrder}
             onRetry={restart}
             onExit={onExit}
+            knife={knife}
+            board={board}
             {...(service.nextLabel ? { nextLabel: service.nextLabel } : {})}
+            {...(service.selectedSupplierId !== undefined
+              ? { selectedSupplierId: service.selectedSupplierId }
+              : {})}
+            {...(service.ownedStaffIds ? { ownedStaffIds: service.ownedStaffIds } : {})}
+            {...(service.knifeSharpnessValue !== undefined
+              ? { knifeSharpnessValue: service.knifeSharpnessValue }
+              : {})}
+            {...(service.isBusinessOrder ? { isBusinessOrder: true } : {})}
           />
         ) : (
           <OrderComplete

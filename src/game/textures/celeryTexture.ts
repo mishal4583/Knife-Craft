@@ -43,6 +43,11 @@ export function paintCeleryTexture(
   tipRound: number,
   margin: number,
   opts: TaperPaintOpts = {},
+  _hasCut = false,
+  // `overhangGone` — see PreparationScene.ts's TaperRenderer.paint own
+  // doc. True once `this.cuts.length > 0`; gates the leaf crown below so
+  // it actually sheds on the first cut.
+  overhangGone = false,
 ): void {
   const cx = rx + margin;
   const cy = rBig + margin;
@@ -195,7 +200,9 @@ export function paintCeleryTexture(
   // wider back row behind a lighter front row so the crown has mass
   // instead of reading as a paper cutout. Each rib carries its own
   // petiole out of the stalk (drawn before the blades) rather than every
-  // blade hinging from one bald point.
+  // blade hinging from one bald point. The whole crown is the overhang —
+  // sheds on the first cut.
+  if (overhangGone) return;
   const tipX = cx + rx * 0.9;
   RIBS.forEach(([a, b, bow], k) => {
     const mid = (a + b) / 2;

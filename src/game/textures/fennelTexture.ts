@@ -13,12 +13,12 @@
  * false (an uncut whole stays 100% skin) matters and where the flag
  * comes from.
  *
- * The source's stalks + feathery fronds are drawn PAST the silhouette
- * (`neckY = cy - ry*0.90` and outward) — not ported, matching
- * cornTexture.ts's/turnipTexture.ts's own documented reason: production's
- * piece-rendering pipeline crops every piece, including the whole uncut
- * ingredient, to the collision silhouette's own rx/ry bounds, so that
- * geometry would be invisible regardless.
+ * The source's stalks + feathery fronds, drawn PAST the silhouette
+ * (`neckY = cy - ry*0.90` and outward), are the prototype's declared
+ * overhang for Fennel — ported directly from that same stalk/frond math,
+ * gated on `overhangGone` (see PreparationScene.ts's EllipseRenderer.paint
+ * own doc, and turnipTexture.ts's identical port) so they shed on the
+ * first cut.
  */
 const SKIN_INSET = 14;
 
@@ -40,6 +40,12 @@ export function paintFennelTexture(
   _opts?: unknown,
   _peeled?: boolean,
   hasCut = false,
+  // `overhangGone` — see PreparationScene.ts's EllipseRenderer.paint own
+  // doc. Independent of `hasCut` above (which drives the nested-ring
+  // interior reveal, not "has been cut"). True once
+  // `this.cuts.length > 0`; gates the stalks+fronds below so they
+  // actually shed on the first cut.
+  overhangGone = false,
 ): void {
   const cx = rx + margin;
   const cy = ry + margin;
@@ -151,6 +157,76 @@ export function paintFennelTexture(
   sil();
   ctx.fill();
   ctx.restore();
+
+  // STALKS — pale at the neck, green up the shaft, each ending in a
+  // spray of fine fronds. The overhang: sheds on the first cut.
+  if (!overhangGone) {
+    const neckY = cy - ry * 0.9;
+    const stalks: [number, number, number][] = [
+      [-0.46, -0.52, 168],
+      [-0.16, -0.24, 206],
+      [0.14, 0.1, 196],
+      [0.42, 0.46, 160],
+    ];
+    for (const [sx, lean, L] of stalks) {
+      const bx = cx + sx * rx * 0.62;
+      const tipX = bx + lean * rx * 0.95;
+      const tipY = neckY - L;
+      const wBot = 15 - Math.abs(sx) * 5;
+      const wTop = wBot * 0.52;
+      const mx = (bx + tipX) / 2 - lean * rx * 0.1;
+      const my = (neckY + tipY) / 2;
+      const stalk = new Path2D();
+      stalk.moveTo(bx - wBot, neckY + 10);
+      stalk.quadraticCurveTo(mx - wTop * 1.2, my, tipX - wTop, tipY);
+      stalk.lineTo(tipX + wTop, tipY);
+      stalk.quadraticCurveTo(mx + wTop * 1.2, my, bx + wBot, neckY + 10);
+      stalk.closePath();
+      const sg = ctx.createLinearGradient(0, tipY, 0, neckY + 10);
+      sg.addColorStop(0, "#7FB63A");
+      sg.addColorStop(0.45, "#A8CF62");
+      sg.addColorStop(0.82, "#E6F0C4");
+      sg.addColorStop(1, "#F6F8E6");
+      ctx.fillStyle = sg;
+      ctx.fill(stalk);
+      ctx.strokeStyle = "rgba(112,140,64,0.34)";
+      ctx.lineWidth = 1;
+      ctx.stroke(stalk);
+      ctx.save();
+      ctx.clip(stalk);
+      ctx.strokeStyle = "rgba(255,255,240,0.34)";
+      ctx.lineWidth = 1.4;
+      for (let k = -1; k <= 1; k++) {
+        ctx.beginPath();
+        ctx.moveTo(bx + k * wBot * 0.5, neckY + 8);
+        ctx.quadraticCurveTo(mx + k * wTop * 0.5, my, tipX + k * wTop * 0.5, tipY);
+        ctx.stroke();
+      }
+      ctx.restore();
+      ctx.lineCap = "round";
+      for (let f = 0; f < 54; f++) {
+        const h1 = ((f * 7919) % 97) / 97;
+        const h2 = ((f * 6151) % 89) / 89;
+        const h3 = ((f * 911) % 83) / 83;
+        const along = h1 * 0.42;
+        const ox = tipX + (h2 - 0.5) * wTop * 1.4 + lean * rx * 0.1 * along;
+        const oy = tipY - along * L * 0.2;
+        const ang = -Math.PI / 2 + lean * 0.7 + (h3 - 0.5) * 1.9;
+        const len = 16 + 40 * h2;
+        ctx.strokeStyle = h3 > 0.55 ? "rgba(108,166,52,0.72)" : "rgba(146,196,78,0.62)";
+        ctx.lineWidth = 0.8 + 0.9 * h1;
+        ctx.beginPath();
+        ctx.moveTo(ox, oy);
+        ctx.quadraticCurveTo(
+          ox + Math.cos(ang) * len * 0.55 + (h1 - 0.5) * 10,
+          oy + Math.sin(ang) * len * 0.55,
+          ox + Math.cos(ang) * len,
+          oy + Math.sin(ang) * len,
+        );
+        ctx.stroke();
+      }
+    }
+  }
 
   ctx.strokeStyle = "rgba(168,168,148,0.42)";
   ctx.lineWidth = 1.8;

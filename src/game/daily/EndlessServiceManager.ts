@@ -27,15 +27,16 @@ import type { LevelProgress } from "../levels/LevelManager";
 import type { LevelDefinition } from "../levels/levelTypes";
 import type { EndlessProgress } from "../SaveManager";
 import { dailyKeyFor } from "./DailyOrderManager";
+import { dollars } from "../money";
 
 /**
- * The daily cap itself — roughly one late-campaign chapter's worth of
- * coins (Chapter 12's own per-level rewards run 360-650), enough for a
+ * The daily cap itself ($600) — roughly one late-campaign chapter's worth
+ * of income (Chapter 12's own per-level rewards run $360-$650), enough for a
  * real, satisfying session without becoming an unbounded faucet on top
  * of the already-generous 120-level campaign income (see the phase
  * report's economy audit).
  */
-export const ENDLESS_DAILY_COIN_CAP = 600;
+export const ENDLESS_DAILY_COIN_CAP = dollars(600);
 
 /** Every SERVICE-type level the player has actually unlocked, in campaign order — the pool Endless Service draws from. Empty until Level 91 (the first SERVICE-type level) is reached; the UI shows a plain "come back once you've unlocked a Service level" message rather than a fake empty mode. */
 export function endlessPool(progress: LevelProgress): LevelDefinition[] {

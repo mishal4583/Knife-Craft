@@ -1,11 +1,8 @@
 import type { ScreenId } from "./data";
-import { getLevels, isCompleted } from "@/game/levels/LevelManager";
-import { getCafeProgress } from "@/game/cafe/CafeProgressionManager";
-import { CAFE_MILESTONES } from "@/game/cafe/cafeDefinitions";
 import type { SaveData } from "@/game/SaveManager";
-import { KButton, Panel, ScreenHeader, Badge, Divider, Steam } from "./common/primitives";
+import { KButton, Panel, ScreenHeader, Divider, Steam } from "./common/primitives";
+import { dollars, formatUsd, formatUsdChange } from "@/game/money";
 import { BottomNav } from "./Kitchen";
-import { QA_MODE } from "@/game/qaMode";
 import { cn } from "@/lib/utils";
 import {
   pickDailyLevel,
@@ -19,133 +16,12 @@ import {
   ENDLESS_DAILY_COIN_CAP,
 } from "@/game/daily/EndlessServiceManager";
 
-/* ── Chef's Journey (progression) ──────────────────────── */
-
-/** Level ids are formatted "level-N" — the same parsing KnifeManager/BoardManager/CafeProgressionManager/KitchenUpgradeManager already use for their own level-gated logic, kept consistent rather than inventing a second "current level" concept. */
-function reachedLevelNumber(save: SaveData): number {
-  const match = /-(\d+)$/.exec(save.levelProgress.highestUnlockedLevelId);
-  return match ? Number(match[1]) : 1;
-}
-
-export function Progression({ go, save }: { go: (s: ScreenId) => void; save: SaveData }) {
-  const level = reachedLevelNumber(save);
-  const cafeProgress = getCafeProgress(save.levelProgress);
-  const currentMilestone = CAFE_MILESTONES.find((m) => m.id === cafeProgress.current);
-  const nextMilestone = CAFE_MILESTONES.find((m) => m.id === cafeProgress.next);
-
-  // Real, small, data-driven — the 5 chapter-transition milestones already
-  // authored on LEVELS (level.milestone, at Level 10/20/30/40/50), the
-  // same field OrderBoard already reads for its own "✦ unlocked" pill. No
-  // second milestone catalog: unlock/done state comes straight from
-  // isCompleted(level.id, levelProgress), never a hand-picked boolean.
-  const campaignMilestones = getLevels().filter((l) => l.milestone);
-
-  return (
-    <div className="relative h-full w-full overflow-hidden bg-cream">
-      <div className="absolute inset-0 bg-[radial-gradient(90%_45%_at_50%_0%,rgba(125,146,112,0.28),transparent_60%)]" />
-      <div className="relative h-full overflow-y-auto no-scrollbar pb-24">
-        <ScreenHeader
-          title="Chef's Journey"
-          subtitle="a craft, learned slowly"
-          onBack={() => go("kitchen")}
-        />
-
-        <div className="px-4">
-          <Panel tone="dark" className="relative overflow-hidden p-5 text-center">
-            <div className="absolute inset-0 bg-[radial-gradient(70%_80%_at_50%_0%,rgba(216,168,78,0.28),transparent_65%)]" />
-            <div className="relative">
-              <p className="font-ui text-[10px] font-extrabold uppercase tracking-[0.24em] text-gold">
-                Current Rank
-              </p>
-              <p className="font-display text-[28px] font-black leading-none text-ivory">
-                {currentMilestone?.title ?? "Humble Kitchen"}
-              </p>
-              <p className="mt-1 font-hand text-[17px] text-ivory/70">Level {level}</p>
-              {nextMilestone ? (
-                <>
-                  <div className="mt-4 flex items-center gap-3">
-                    <span className="font-ui text-[10px] font-bold text-ivory/60">
-                      {currentMilestone?.levelRequired ?? 1}
-                    </span>
-                    <span className="relative h-[9px] flex-1 overflow-hidden rounded-full bg-ivory/15">
-                      <span
-                        className="absolute inset-y-0 left-0 rounded-full"
-                        style={{
-                          width: `${Math.round(cafeProgress.progressFraction * 100)}%`,
-                          background:
-                            "linear-gradient(90deg,var(--color-gold),var(--color-copper))",
-                        }}
-                      />
-                    </span>
-                    <span className="font-ui text-[10px] font-bold text-ivory/60">
-                      {nextMilestone.levelRequired}
-                    </span>
-                  </div>
-                  <p className="mt-2 font-ui text-[11px] font-bold uppercase tracking-[0.14em] text-ivory/70">
-                    Next · {nextMilestone.title}
-                  </p>
-                </>
-              ) : (
-                <p className="mt-4 font-ui text-[11px] font-bold uppercase tracking-[0.14em] text-ivory/70">
-                  Every kitchen milestone reached
-                </p>
-              )}
-            </div>
-          </Panel>
-        </div>
-
-        <div className="px-4 pt-4">
-          <Panel className="p-4">
-            <p className="font-ui text-[10px] font-extrabold uppercase tracking-[0.2em] text-copper">
-              Milestones
-            </p>
-            <ul className="mt-3 space-y-2.5">
-              {campaignMilestones.map((m) => {
-                const done = isCompleted(m.id, save.levelProgress);
-                const match = /-(\d+)$/.exec(m.id);
-                return (
-                  <li key={m.id} className="flex items-center gap-3">
-                    <span
-                      className={cn(
-                        "grid h-6 w-6 shrink-0 place-items-center rounded-full border text-[11px]",
-                        done
-                          ? "border-olive/40 bg-sage/30 text-olive"
-                          : "border-walnut/20 bg-walnut/8 text-walnut/45",
-                      )}
-                    >
-                      {done ? "✓" : "🔒"}
-                    </span>
-                    <span
-                      className={cn(
-                        "flex-1 font-ui text-[13px] font-bold",
-                        done ? "text-walnut-dark" : "text-walnut/50",
-                      )}
-                    >
-                      {m.milestone}
-                    </span>
-                    {!done ? <Badge tone="locked">Level {match?.[1] ?? "?"}</Badge> : null}
-                  </li>
-                );
-              })}
-            </ul>
-          </Panel>
-        </div>
-
-        <p className="px-8 pb-2 pt-5 text-center font-hand text-[16px] text-walnut/50">
-          “Skill is just attention, repeated.”
-        </p>
-      </div>
-      <BottomNav active="kitchen" go={go} />
-    </div>
-  );
-}
-
 // JournalHome (the old "Chef's Journal" hub screen, plus its private
 // Stat/JournalRow helpers) was removed in Phase 15 — its rows were
 // redistributed to real homes rather than kept as one dashboard: My
-// Knives/My Boards -> Rack, My Kitchen -> Kitchen Upgrade, Market ->
-// Shop, Chef Rank -> the Kitchen HUD (already showed it) + this file's
-// Progression screen below, Settings -> the small gear icon on Kitchen
+// Knives/My Boards -> Restaurant Progress (+ the Market for equipping),
+// My Kitchen -> Kitchen Upgrade, Market -> Shop, Chef Rank -> the Kitchen
+// HUD + Restaurant Progress, Settings -> the small gear icon on Kitchen
 // Home. Its "Best Preparations" list and the ACHIEVEMENTS mock array
 // (never backed by SaveManager) had no other natural home and were
 // dropped rather than carried into a screen with nowhere left to live —
@@ -205,12 +81,12 @@ export function DailyOrder({
             <div className="space-y-2 font-ui text-[12px] font-bold text-walnut/75">
               <div className="flex justify-between">
                 <span>Reward</span>
-                <span className="text-copper">+{level.reward.coins} Kitchen Coins</span>
+                <span className="text-copper">{formatUsdChange(dollars(level.reward.coins))}</span>
               </div>
               <div className="flex justify-between">
                 <span>Today's bonus</span>
                 <span className="text-olive">
-                  {claimed ? "already claimed today" : `+${DAILY_ORDER_BONUS_COINS} Coins`}
+                  {claimed ? "already claimed today" : formatUsdChange(DAILY_ORDER_BONUS_COINS)}
                 </span>
               </div>
               <div className="flex justify-between">
@@ -280,15 +156,15 @@ export function EndlessService({
             </p>
             <div className="mt-2 space-y-2 font-ui text-[12px] font-bold text-walnut/75">
               <div className="flex justify-between">
-                <span>Coins earned today</span>
+                <span>Earned today</span>
                 <span className="text-walnut-dark">
-                  {earnedToday} / {ENDLESS_DAILY_COIN_CAP}
+                  {formatUsd(earnedToday)} / {formatUsd(ENDLESS_DAILY_COIN_CAP)}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span>Status</span>
                 <span className={capReached ? "text-walnut/50" : "text-olive"}>
-                  {capReached ? "Daily coin cap reached" : "Earning normally"}
+                  {capReached ? "Daily earnings limit reached" : "Earning normally"}
                 </span>
               </div>
             </div>
@@ -319,8 +195,8 @@ export function EndlessService({
               </p>
               <p className="mt-1 font-hand text-[15px] text-walnut/60">
                 {capReached
-                  ? "still counts toward the Cookbook — no more coins until tomorrow"
-                  : `up to +${remaining} coins left today`}
+                  ? "still counts toward the Cookbook — no more earnings until tomorrow"
+                  : `up to ${formatUsdChange(remaining)} left today`}
               </p>
               <div className="mt-4">
                 <KButton full size="lg" onClick={onStartEndless}>
@@ -348,8 +224,8 @@ export function Settings({
   onResetProgress,
 }: {
   go: (s: ScreenId) => void;
-  settings: { sound: boolean; music: boolean; reducedMotion: boolean };
-  onToggleSetting: (key: "sound" | "music" | "reducedMotion") => void;
+  settings: { sound: boolean };
+  onToggleSetting: (key: "sound") => void;
   onResetProgress: () => void;
 }) {
   return (
@@ -359,47 +235,18 @@ export function Settings({
         <div className="space-y-3 px-4">
           <Panel className="divide-y divide-walnut/10 p-1">
             <Toggle label="Sound" on={settings.sound} onToggle={() => onToggleSetting("sound")} />
-            <Toggle label="Music" on={settings.music} onToggle={() => onToggleSetting("music")} />
-            <Toggle
-              label="Reduced motion"
-              on={settings.reducedMotion}
-              onToggle={() => onToggleSetting("reducedMotion")}
-            />
-            <Row label="Language" value="English" />
-            <Row label="Accessibility" value="Larger cut guides" />
           </Panel>
           <Panel className="p-4">
             <p className="font-ui text-[10px] font-extrabold uppercase tracking-[0.2em] text-copper">
               Credits
             </p>
             <p className="mt-1.5 font-hand text-[16px] leading-snug text-walnut/70">
-              KnifeCraft — a small kitchen made by a small team. Music by the morning radio.
+              KnifeCraft — a small kitchen made by a small team.
             </p>
           </Panel>
           <KButton full variant="ghost" onClick={onResetProgress}>
             Reset Progress
           </KButton>
-          {/* Phase 18A — dev/QA only, same gating convention as Kitchen's
-              own "QA MODE" badge/level bypass (see qaMode.ts): never
-              rendered in a real `npm run build` (QA_MODE is statically
-              false there), so this button doesn't exist for a real
-              player even if they find this screen. */}
-          {QA_MODE ? (
-            <Panel className="p-4">
-              <p className="font-ui text-[10px] font-extrabold uppercase tracking-[0.2em] text-copper">
-                QA Mode
-              </p>
-              <p className="mt-1.5 font-hand text-[15px] leading-snug text-walnut/70">
-                Inspect and cut-test every production ingredient with the real rendering/cutting
-                pipeline. Does not affect progression, coins, or recipes.
-              </p>
-              <div className="mt-3">
-                <KButton full variant="sage" onClick={() => go("ingredient-lab")}>
-                  🔬 Ingredient Lab
-                </KButton>
-              </div>
-            </Panel>
-          ) : null}
         </div>
       </div>
       <BottomNav active="kitchen" go={go} />

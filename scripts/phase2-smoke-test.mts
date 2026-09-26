@@ -14,6 +14,8 @@ import {
   poolUnlockedByLevel,
 } from "../src/game/service/ServiceManager.ts";
 import { TEST_RECIPE_POOL } from "../src/game/service/testRecipePool.ts";
+// USD: an order pays its recipe's whole-dollar basePayment as wallet cents (money.ts dollars()).
+import { dollars } from "../src/game/money.ts";
 
 let failures = 0;
 function assert(cond: boolean, label: string) {
@@ -68,8 +70,8 @@ assert(
 const readyResult = serveCurrentOrder(afterComponents)!;
 assert(readyResult !== null, "serveCurrentOrder succeeds once the order is READY");
 assert(
-  readyResult.coinsAwarded === TEST_RECIPE_POOL[0]!.basePayment,
-  "serve pays exactly the recipe's basePayment",
+  readyResult.coinsAwarded === dollars(TEST_RECIPE_POOL[0]!.basePayment),
+  "serve pays exactly the recipe's basePayment (in dollars)",
 );
 assert(
   readyResult.session.current!.order.status === "COMPLETED",

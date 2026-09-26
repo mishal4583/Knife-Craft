@@ -6,7 +6,8 @@
  * Sound toggle feeds `setUserSoundEnabled`; both gates must be open for
  * anything to actually play.
  */
-import { isAudioEnabled, onAudioEnabledChange } from "./PlayablesSDK";
+import { isAdActive, isAudioEnabled, onAudioEnabledChange } from "./PlayablesSDK";
+import { PauseManager } from "./PauseManager";
 import { INGREDIENTS, PLATING, type IngredientId } from "./definitions";
 
 type AudioContextCtor = typeof AudioContext;
@@ -41,7 +42,12 @@ class AudioManagerImpl {
 
   private get enabled(): boolean {
     this.init();
-    return this.platformEnabled && this.userSoundEnabled;
+    // YouTube's audio state AND the player's Sound toggle must both allow
+    // it, and nothing plays while the game is paused (in-game or by YouTube)
+    // or while a YouTube ad is on screen.
+    return (
+      this.platformEnabled && this.userSoundEnabled && !PauseManager.isPaused() && !isAdActive()
+    );
   }
 
   private ensureContext(): AudioContext | null {

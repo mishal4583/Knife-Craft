@@ -32,6 +32,11 @@ export function paintPomegranateTexture(
   _opts?: unknown,
   _peeled?: boolean,
   hasCut = false,
+  // `overhangGone` — see PreparationScene.ts's EllipseRenderer.paint own
+  // doc. Independent of `hasCut` above (which drives the aril-chamber
+  // reveal, not "has been cut"). True once `this.cuts.length > 0`; gates
+  // the calyx crown below so it actually sheds on the first cut.
+  overhangGone = false,
 ): void {
   const cx = rx + margin;
   const cy = ry + margin;
@@ -132,44 +137,48 @@ export function paintPomegranateTexture(
   sil();
   ctx.stroke();
 
-  const calyxY = cy - ry * 0.97; // the calyx: a short neck and five dried points
-  // Painted regardless of hasCut — the dried calyx crown is part of the
-  // permanent skin, visible on an uncut fruit too (see the reference
-  // photo), not part of the "opened" flesh reveal below.
-  const neck = ctx.createLinearGradient(cx, calyxY - 16, cx, calyxY + 10);
-  neck.addColorStop(0, "#A8712E");
-  neck.addColorStop(1, "#C21F38");
-  ctx.fillStyle = neck;
-  ctx.beginPath();
-  ctx.ellipse(cx, calyxY + 2, rx * 0.17, ry * 0.075, 0, 0, Math.PI * 2);
-  ctx.fill();
-  const points: [number, number, number][] = [
-    [-20, -0.62, 34],
-    [-10, -0.28, 44],
-    [1, 0.02, 50],
-    [12, 0.3, 43],
-    [21, 0.64, 33],
-  ];
-  for (const [dx, rot, len] of points) {
-    ctx.save();
-    ctx.translate(cx + dx, calyxY - 2);
-    ctx.rotate(rot);
-    const lg = ctx.createLinearGradient(0, 0, 0, -len);
-    lg.addColorStop(0, "#8E5A24");
-    lg.addColorStop(0.55, "#A5722F");
-    lg.addColorStop(1, "#6B3E17");
-    ctx.fillStyle = lg;
+  // The calyx: a short neck and five dried points — cosmetic overhang
+  // past the shoulder. Was previously painted regardless of `hasCut`
+  // (a stale claim it's "part of the permanent skin"), but the prototype's
+  // own geom.overhang declares pomegranate for first-cut auto-removal —
+  // gated on `overhangGone` (independent of `hasCut`'s flesh-reveal role).
+  if (!overhangGone) {
+    const calyxY = cy - ry * 0.97;
+    const neck = ctx.createLinearGradient(cx, calyxY - 16, cx, calyxY + 10);
+    neck.addColorStop(0, "#A8712E");
+    neck.addColorStop(1, "#C21F38");
+    ctx.fillStyle = neck;
     ctx.beginPath();
-    ctx.moveTo(-7, 6);
-    ctx.quadraticCurveTo(-5, -len * 0.6, 0, -len);
-    ctx.quadraticCurveTo(5, -len * 0.6, 7, 6);
-    ctx.quadraticCurveTo(0, -len * 0.18, -7, 6);
-    ctx.closePath();
+    ctx.ellipse(cx, calyxY + 2, rx * 0.17, ry * 0.075, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = "rgba(70,38,12,0.55)";
-    ctx.lineWidth = 1.2;
-    ctx.stroke();
-    ctx.restore();
+    const points: [number, number, number][] = [
+      [-20, -0.62, 34],
+      [-10, -0.28, 44],
+      [1, 0.02, 50],
+      [12, 0.3, 43],
+      [21, 0.64, 33],
+    ];
+    for (const [dx, rot, len] of points) {
+      ctx.save();
+      ctx.translate(cx + dx, calyxY - 2);
+      ctx.rotate(rot);
+      const lg = ctx.createLinearGradient(0, 0, 0, -len);
+      lg.addColorStop(0, "#8E5A24");
+      lg.addColorStop(0.55, "#A5722F");
+      lg.addColorStop(1, "#6B3E17");
+      ctx.fillStyle = lg;
+      ctx.beginPath();
+      ctx.moveTo(-7, 6);
+      ctx.quadraticCurveTo(-5, -len * 0.6, 0, -len);
+      ctx.quadraticCurveTo(5, -len * 0.6, 7, 6);
+      ctx.quadraticCurveTo(0, -len * 0.18, -7, 6);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = "rgba(70,38,12,0.55)";
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+      ctx.restore();
+    }
   }
 
   if (!hasCut) return; // uncut: 100% taut scarlet skin — no arils showing yet

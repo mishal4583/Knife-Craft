@@ -11,6 +11,12 @@
  * is. The starter knife (chef) must never be secretly worse than any
  * knife unlocked later; every multiplier below stays close to 1.0 for
  * exactly that reason.
+ *
+ * Blacksmith upgrades (blacksmith.ts) follow the same law: `tuning` only
+ * speeds the tap-cut cadence, widens the tap input buffer, shortens the
+ * hitstop and widens a peel stroke. It never changes cut positions, how
+ * many cuts a step needs, peel completion coverage, grading, or payouts —
+ * every upgrade is available to every knife, including the starter chef.
  */
 import type { IngredientId, TechniqueId } from "../definitions";
 
@@ -82,6 +88,24 @@ export type KnifeVisual = {
   pattern?: "damascus";
 };
 
+/**
+ * Blacksmith tuning (blacksmith.ts) — absent on every catalog knife and on
+ * an un-upgraded knife, i.e. exactly 1.0 for all of these. PreparationScene
+ * layers them on top of `animation`:
+ *   cutMult       x CUT_MS + IMPACT_MS         (Sharpness)
+ *   peelWidthMult x the peel stroke width      (Sharpness; completion coverage unchanged)
+ *   moveMult      x PREP_MS + PAUSE_MS + RETRACT_MS   (Speed)
+ *   bufferMult    x the tap BUFFER_TAIL window (Handling)
+ *   hitstopMult   x HITSTOP_MS                 (Handling)
+ */
+export type KnifeTuning = {
+  cutMult: number;
+  peelWidthMult: number;
+  moveMult: number;
+  bufferMult: number;
+  hitstopMult: number;
+};
+
 export type KnifeDefinition = {
   id: KnifeId;
   name: string;
@@ -98,4 +122,6 @@ export type KnifeDefinition = {
   animation: KnifeAnimationProfile;
   audio: KnifeAudioProfile;
   visual: KnifeVisual;
+  /** Blacksmith upgrades — only ever set on the per-player "effective" knife (blacksmith.effectiveKnife), never in the catalog. */
+  tuning?: KnifeTuning;
 };

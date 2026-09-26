@@ -1,15 +1,21 @@
+import { useEffect } from "react";
 import { KButton, Coin, DustMotes } from "./common/primitives";
+import { gameReady } from "@/game/PlayablesSDK";
+import { dollars, formatUsdChange } from "@/game/money";
 import { KitchenBackground } from "./KitchenBackground";
 import type { ScreenId } from "./data";
 import { getLevels, isUnlocked, isCompleted, type LevelProgress } from "@/game/levels/LevelManager";
 import { CHAPTER_TITLES } from "@/game/levels/levelDefinitions";
-import { describeDifficulty, getNextRewardPreview, levelNumber } from "@/game/levels/levelMastery";
-import { QA_MODE } from "@/game/qaMode";
+import {
+  describeDifficulty,
+  getNextKitchenStagePreview,
+  getNextRewardPreview,
+  levelNumber,
+} from "@/game/levels/levelMastery";
 import { getCafeProgress } from "@/game/cafe/CafeProgressionManager";
 import { CAFE_MILESTONES } from "@/game/cafe/cafeDefinitions";
 import { kitchenUpgradeOrDefault } from "@/game/kitchen/kitchenUpgradeDefinitions";
 import type { SaveData } from "@/game/SaveManager";
-import type { ServiceSession } from "@/game/service/ServiceManager";
 
 /** Icon for a level's own `unlockReward.type` (levelTypes.ts) — display-only. */
 const REWARD_TYPE_ICON: Record<"knife" | "board" | "cafe_milestone" | "story", string> = {
@@ -23,11 +29,14 @@ function Hotspot({
   label,
   sub,
   style,
+  position,
   onClick,
 }: {
   label: string;
   sub: string;
   style: React.CSSProperties;
+  /** Vertical placement classes — short phones (< 700px tall) move a hotspot so the HUD / Today's Order card never covers it. */
+  position: string;
   onClick: () => void;
 }) {
   return (
@@ -35,7 +44,7 @@ function Hotspot({
       type="button"
       onClick={onClick}
       style={style}
-      className="press absolute -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-ivory/25 bg-walnut-dark/40 px-3 py-1.5 text-left backdrop-blur-[3px] shadow-soft"
+      className={`press absolute ${position} -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-ivory/25 bg-walnut-dark/40 px-3 py-1.5 text-left backdrop-blur-[3px] shadow-soft`}
     >
       <span className="block font-display text-[13px] font-black leading-none text-ivory">
         {label}
@@ -49,7 +58,7 @@ function Hotspot({
 function pickTodayLevel(levelProgress: LevelProgress) {
   const levels = getLevels();
   const next = levels.find(
-    (l) => (isUnlocked(l, levelProgress) || QA_MODE) && !isCompleted(l.id, levelProgress),
+    (l) => isUnlocked(l, levelProgress) && !isCompleted(l.id, levelProgress),
   );
   if (next) return next;
   const lastUnlocked = [...levels].reverse().find((l) => isUnlocked(l, levelProgress));
@@ -72,16 +81,25 @@ export function Kitchen({
   const cafeMilestoneTitle =
     CAFE_MILESTONES.find((m) => m.id === cafeProgress.current)?.title ?? "Humble Kitchen";
 
-  // Kitchen upgrades (Phase 12B) — the background is now whichever
-  // kitchen upgrade the player currently has EQUIPPED, not derived
-  // directly from level progress (see src/game/kitchen/).
+  // Kitchen upgrades (Phase 12B) — the background is the player's current
+  // kitchen: always the highest tier reached, kept in step by
+  // KitchenUpgradeManager.syncKitchenUpgradeOwnership (see src/game/kitchen/).
   const equippedUpgrade = kitchenUpgradeOrDefault(save.equippedKitchenUpgradeId);
 
   // Today's Order — a single compact card, not the full 50-level board
   // (§Part 1 "the level list must not permanently cover the Kitchen").
   const todayLevel = pickTodayLevel(levelProgress);
-  const todayUnlocked = isUnlocked(todayLevel, levelProgress) || QA_MODE;
+  const todayUnlocked = isUnlocked(todayLevel, levelProgress);
   const todayCompleted = isCompleted(todayLevel.id, levelProgress);
+  // Every level cleared: say so plainly — there is no hidden content left.
+  const campaignComplete = getLevels().every((l) => isCompleted(l.id, levelProgress));
+
+  // A returning player's first screen: once the Kitchen has actually mounted
+  // (its lazily-loaded chunk is in), the game is interactive — tell YouTube.
+  // Idempotent; Preparation signals it instead for a brand-new player.
+  useEffect(() => {
+    gameReady();
+  }, []);
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-cream">
@@ -93,7 +111,7 @@ export function Kitchen({
       <div className="absolute inset-x-0 top-0 z-20 flex items-start justify-between p-3">
         <button
           type="button"
-          onClick={() => go("progression")}
+          onClick={() => go("rack")}
           className="press rounded-2xl border border-ivory/25 bg-walnut-dark/45 px-3 py-2 text-left backdrop-blur-sm"
         >
           <p className="font-ui text-[9px] font-extrabold uppercase tracking-[0.18em] text-gold">
@@ -140,21 +158,24 @@ export function Kitchen({
           same, already-tested screen positions so the layout doesn't
           shift, just simplifies. */}
       <Hotspot
-        label="Rack"
-        sub="choose your equipment"
-        style={{ left: "26%", top: "35%" }}
+        label="Progress"
+        sub="your restaurant so far"
+        style={{ left: "26%" }}
+        position="top-[35%]"
         onClick={() => go("rack")}
       />
       <Hotspot
-        label="Shop"
-        sub="buy knives & boards"
-        style={{ left: "76%", top: "50%" }}
+        label="Market"
+        sub="tools, staff & suppliers"
+        style={{ left: "76%" }}
+        position="top-[50%] [@media(max-height:700px)]:top-[40%]"
         onClick={() => go("shop")}
       />
       <Hotspot
         label="Kitchen Upgrade"
         sub="improve your kitchen"
-        style={{ left: "50%", top: "17%" }}
+        style={{ left: "50%" }}
+        position="top-[17%] [@media(max-height:700px)]:top-[26%]"
         onClick={() => go("kitchen-upgrades")}
       />
 
@@ -175,25 +196,22 @@ export function Kitchen({
         <div className="paper anim-up relative mx-auto -rotate-[0.8deg] rounded-[18px] border border-walnut/20 p-3.5 shadow-lift">
           <div className="flex items-center justify-between">
             <p className="font-ui text-[9px] font-extrabold uppercase tracking-[0.2em] text-copper">
-              Today's Order
+              {campaignComplete ? "Campaign Complete · 250 Levels Mastered" : "Today's Order"}
             </p>
-            {QA_MODE ? (
-              <span className="rounded-full bg-walnut-dark/80 px-2 py-[2px] font-ui text-[9px] font-extrabold uppercase tracking-[0.1em] text-gold">
-                QA MODE
-              </span>
-            ) : null}
           </div>
           <div className="mt-1.5 flex items-end justify-between gap-3">
             <div className={todayUnlocked ? undefined : "opacity-50"}>
-              <p className="font-display text-[18px] font-black leading-none text-walnut-dark">
+              <p className="line-clamp-2 font-display text-[18px] font-black leading-none text-walnut-dark">
                 {todayLevel.title}
               </p>
               <p className="font-hand text-[14px] leading-tight text-walnut/70">
-                {!todayUnlocked
-                  ? "locked · finish the level before it"
-                  : todayCompleted
-                    ? "prepared already · replay pays no coins"
-                    : `ready to prepare · +${todayLevel.reward.coins} credits`}
+                {campaignComplete
+                  ? "every recipe is yours · replay any level or run your restaurant"
+                  : !todayUnlocked
+                    ? "locked · finish the level before it"
+                    : todayCompleted
+                      ? "prepared already · replay pays nothing"
+                      : `ready to prepare · ${formatUsdChange(dollars(todayLevel.reward.coins))}`}
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-2">
@@ -221,82 +239,14 @@ export function Kitchen({
   );
 }
 
-/**
- * Phase 2 — the restaurant-service loop's own current/next/recent board
- * (brief §6/§7/§8/§9): NOT the campaign level list below it (which
- * still lists all 120 levels for direct campaign access, §32 — the
- * ability to select/play a campaign level is preserved). This card only
- * ever shows one recent + one current + one next order — never the
- * full future queue.
- */
-function ServiceQueueCard({
-  session,
-  onStartService,
-}: {
-  session: ServiceSession | null;
-  onStartService: () => void;
-}) {
-  return (
-    <div className="mb-3 rounded-[16px] border border-copper/30 bg-ivory/50 p-3">
-      <p className="font-ui text-[9px] font-extrabold uppercase tracking-[0.2em] text-copper">
-        Restaurant Service
-      </p>
-      {session?.recent ? (
-        <p className="mt-1 font-hand text-[13px] text-walnut/55">
-          ✓ Served · {session.recent.customer.avatarEmoji} {session.recent.customer.name} ·{" "}
-          {session.recent.recipe.name}
-        </p>
-      ) : null}
-      {session?.current ? (
-        <div className="mt-1.5 flex items-center justify-between gap-2">
-          <div className="min-w-0">
-            <p className="truncate font-display text-[15px] font-black leading-none text-walnut-dark">
-              {session.current.customer.avatarEmoji} {session.current.customer.name}
-            </p>
-            <p className="truncate font-hand text-[13px] leading-tight text-walnut/70">
-              {session.current.recipe.emoji} {session.current.recipe.name}
-            </p>
-          </div>
-          <KButton size="sm" onClick={onStartService}>
-            Continue
-          </KButton>
-        </div>
-      ) : (
-        <div className="mt-1.5 flex items-center justify-between gap-2">
-          <p className="font-hand text-[13px] text-walnut/60">
-            Open the counter and start taking real orders.
-          </p>
-          <KButton size="sm" onClick={onStartService}>
-            Start Service
-          </KButton>
-        </div>
-      )}
-      {session?.next ? (
-        <p className="mt-1.5 font-hand text-[12px] text-walnut/50">
-          Next: {session.next.customer.avatarEmoji} {session.next.customer.name} ·{" "}
-          {session.next.recipe.name}
-        </p>
-      ) : null}
-    </div>
-  );
-}
-
-/* ── Order Board — the full level/chapter list, moved off Kitchen Home
-   (§Part 1). Same rendering the old inline panel used, unchanged. ── */
-
 export function OrderBoard({
   go,
   save,
   onSelectLevel,
-  serviceSession,
-  onStartService,
 }: {
   go: (s: ScreenId) => void;
   save: SaveData;
   onSelectLevel: (levelId: string) => void;
-  /** Phase 2 — the active restaurant-service queue, or null before "Start Service" has ever been tapped. */
-  serviceSession: ServiceSession | null;
-  onStartService: () => void;
 }) {
   const levelProgress = save.levelProgress;
   const levels = getLevels();
@@ -307,6 +257,10 @@ export function OrderBoard({
   const latestMilestone = [...levels]
     .reverse()
     .find((l) => l.milestone && isCompleted(l.id, levelProgress));
+  // After the final level there is nothing left to unlock, so the per-row
+  // "Next/Reward" previews (which describe early-game unlocks) give way to
+  // one completion card. Before that, the hints are unchanged.
+  const campaignComplete = levels.every((l) => isCompleted(l.id, levelProgress));
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-cream">
@@ -324,6 +278,16 @@ export function OrderBoard({
               room) rather than the Kitchen home card, which is already
               tightly bottom-anchored against BottomNav (see its own
               comment on a previous clipping bug). */}
+          {campaignComplete ? (
+            <div className="mb-3 rounded-[16px] border border-gold/50 bg-gold/20 p-3 text-center">
+              <p className="font-display text-[17px] font-black leading-tight text-walnut-dark">
+                🏆 Campaign Complete
+              </p>
+              <p className="mt-0.5 font-hand text-[14px] leading-snug text-walnut/75">
+                All {levels.length} levels mastered — replay any level or run your restaurant.
+              </p>
+            </div>
+          ) : null}
           <div className="mb-3 grid grid-cols-2 gap-2.5">
             <button
               type="button"
@@ -348,17 +312,10 @@ export function OrderBoard({
               <span className="block font-hand text-[12px] text-walnut/60">no lives, no timer</span>
             </button>
           </div>
-          <ServiceQueueCard session={serviceSession} onStartService={onStartService} />
           <div className="space-y-2.5">
             {levels.map((level, i) => {
               const unlocked = isUnlocked(level, levelProgress);
-              // Pre-Phase-8 QA mode: a render-only bypass — isUnlocked's
-              // own result (`unlocked`, above) still reflects the REAL
-              // progression, used for the hint text below so QA testing
-              // never lies about what a normal player would actually see.
-              // Only `canOpen` (dim/lock-icon/disabled/tap-through) is
-              // relaxed. See qaMode.ts.
-              const canOpen = unlocked || QA_MODE;
+              const canOpen = unlocked;
               const completed = isCompleted(level.id, levelProgress);
               const prevChapter = i > 0 ? levels[i - 1]!.chapter : null;
               const showChapterDivider = level.chapter !== prevChapter;
@@ -383,6 +340,12 @@ export function OrderBoard({
                 : null;
               const nextReward = ownReward ?? getNextRewardPreview(levelNumber(level.id));
               const rewardLabel = ownReward ? "Reward" : "Next";
+              // A row showing its OWN reward would otherwise hide a kitchen
+              // background unlocking right behind it (Lv 40 Cleaver → Lv 41
+              // Established Kitchen), so that one case gets a second hint.
+              const stageAfter = ownReward
+                ? getNextKitchenStagePreview(levelNumber(level.id))
+                : null;
               return (
                 <div key={level.id}>
                   {showChapterDivider ? (
@@ -397,22 +360,25 @@ export function OrderBoard({
                       </p>
                       <p className="font-hand text-[13px] leading-tight text-walnut/70">
                         {!unlocked
-                          ? QA_MODE
-                            ? "QA unlocked · normally locked"
-                            : "locked · finish the level before it"
+                          ? "locked · finish the level before it"
                           : completed
-                            ? "prepared already · replay pays no coins"
-                            : `ready to prepare · +${level.reward.coins} credits`}
+                            ? "prepared already · replay pays nothing"
+                            : `ready to prepare · ${formatUsdChange(dollars(level.reward.coins))}`}
                       </p>
                       {canOpen ? (
                         <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-0.5">
                           <span className="font-ui text-[10px] font-bold text-walnut/45">
                             {difficulty}
                           </span>
-                          {nextReward ? (
+                          {nextReward && !campaignComplete ? (
                             <span className="font-ui text-[10px] font-bold text-copper/80">
                               {nextReward.icon} {rewardLabel}: {nextReward.name}
                               {ownReward ? "" : ` · Lv ${nextReward.atLevel}`}
+                            </span>
+                          ) : null}
+                          {stageAfter && !campaignComplete ? (
+                            <span className="font-ui text-[10px] font-bold text-copper/80">
+                              {stageAfter.icon} Next: {stageAfter.name} · Lv {stageAfter.atLevel}
                             </span>
                           ) : null}
                         </div>
@@ -455,49 +421,48 @@ function ScreenHeaderBoard({
   latestMilestone?: string | undefined;
 }) {
   return (
-    <header className="flex items-start gap-3 px-4 pb-2 pt-4">
-      <button
-        type="button"
-        onClick={() => go("kitchen")}
-        aria-label="Back"
-        className="press grid h-10 w-10 shrink-0 place-items-center rounded-full border border-walnut/20 bg-ivory/85 text-walnut shadow-soft"
-      >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-          <path
-            d="M15 5l-7 7 7 7"
-            stroke="currentColor"
-            strokeWidth="2.4"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </button>
-      <div className="min-w-0 flex-1">
-        <h1 className="truncate font-display text-[22px] font-black leading-none tracking-tight text-walnut-dark">
-          Today's Board
-        </h1>
-        <div className="mt-1.5 flex items-center gap-1.5">
-          {QA_MODE ? (
-            <span className="rounded-full bg-walnut-dark/80 px-2 py-[2px] font-ui text-[9px] font-extrabold uppercase tracking-[0.1em] text-gold">
-              QA MODE
-            </span>
-          ) : null}
-          {latestMilestone ? (
-            <span className="rounded-full bg-sage/25 px-2 py-[2px] font-ui text-[9px] font-extrabold uppercase tracking-[0.1em] text-olive">
-              ✦ {latestMilestone} unlocked
-            </span>
-          ) : null}
-        </div>
+    // Buttons + wallet on the top row; the title and its pills get the full
+    // width below, so neither truncates nor collides with the icons on a
+    // 320px phone. Buttons are 48px (the Playables touch-target minimum).
+    <header className="px-4 pb-2 pt-4">
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => go("kitchen")}
+          aria-label="Back"
+          className="press grid h-12 w-12 shrink-0 place-items-center rounded-full border border-walnut/20 bg-ivory/85 text-walnut shadow-soft"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+            <path
+              d="M15 5l-7 7 7 7"
+              stroke="currentColor"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
+        <span className="flex-1" />
+        <button
+          type="button"
+          onClick={() => go("recipes")}
+          aria-label="Recipe Book"
+          className="press grid h-12 w-12 shrink-0 place-items-center rounded-full border border-walnut/20 bg-ivory/85 text-[18px] text-walnut shadow-soft"
+        >
+          📖
+        </button>
+        <Coin n={credits} />
       </div>
-      <button
-        type="button"
-        onClick={() => go("recipes")}
-        aria-label="Recipe Book"
-        className="press grid h-10 w-10 shrink-0 place-items-center rounded-full border border-walnut/20 bg-ivory/85 text-[16px] text-walnut shadow-soft"
-      >
-        📖
-      </button>
-      <Coin n={credits} />
+      <h1 className="mt-2 font-display text-[24px] font-black leading-none tracking-tight text-walnut-dark">
+        Today's Board
+      </h1>
+      {latestMilestone ? (
+        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+          <span className="rounded-full bg-sage/25 px-2 py-[2px] font-ui text-[9px] font-extrabold uppercase tracking-[0.1em] text-olive">
+            ✦ {latestMilestone} unlocked
+          </span>
+        </div>
+      ) : null}
     </header>
   );
 }
@@ -506,8 +471,12 @@ function ScreenHeaderBoard({
 
 const NAV: { id: ScreenId; label: string; glyph: string }[] = [
   { id: "kitchen", label: "Kitchen", glyph: "🏠" },
-  { id: "shop", label: "Shop", glyph: "🛒" },
-  { id: "rack", label: "Rack", glyph: "🔪" },
+  { id: "shop", label: "Market", glyph: "🛒" },
+  { id: "rack", label: "Progress", glyph: "🏆" },
+  // Economy V3 Phase 1 — the Business Simulation layer's own bottom-nav
+  // destination, alongside Kitchen/Shop/Rack (see data.ts's own doc on
+  // "business" for why this is a full tab, not a Kitchen hotspot).
+  { id: "business", label: "Business", glyph: "📊" },
 ];
 
 export function BottomNav({ active, go }: { active: ScreenId; go: (s: ScreenId) => void }) {

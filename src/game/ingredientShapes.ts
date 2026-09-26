@@ -445,6 +445,16 @@ export type ClusterLeaf = {
   /** Radians. Optional — defaults to 0 (a berry/floret with rx≈ry has no meaningful orientation). */
   rot?: number;
   stem?: boolean;
+  /**
+   * New-ingredient integration (Ginger) — cosmetic role flags only, exactly
+   * like `stem?` above: geometry math (leafInside/leafSpanX/fitClusterBounds/
+   * traceClusterPath) never reads them, they're carried here purely so
+   * gingerTexture.ts's paint code doesn't need a second parallel array to
+   * know which lobes are the main rhizome body (`mass`) vs. a finger
+   * (`tip`). Undefined/false for every other cluster ingredient.
+   */
+  mass?: boolean;
+  tip?: boolean;
 };
 
 /** A leaf's own local (u,v) frame value for a world point, relative to the leaf's own rotated center. */
@@ -538,6 +548,8 @@ export function scaleClusterLeaves(leaves: ClusterLeaf[], scale: number): Cluste
     ry: l.ry * scale,
     ...(l.rot !== undefined ? { rot: l.rot } : {}),
     ...(l.stem ? { stem: true } : {}),
+    ...(l.mass ? { mass: true } : {}),
+    ...(l.tip ? { tip: true } : {}),
   }));
 }
 

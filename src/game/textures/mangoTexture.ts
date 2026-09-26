@@ -32,6 +32,12 @@ export function paintMangoTexture(
   // hasCut) signature with every other ellipse ingredient.
   _peeled?: boolean,
   hasCut = false,
+  // `overhangGone` — see PreparationScene.ts's EllipseRenderer.paint own
+  // doc. Independent of `hasCut` above (which here means "peeled", driving
+  // the flesh+pit reveal, not "has been cut"). True once
+  // `this.cuts.length > 0`; gates the stem+leaf below so it actually
+  // sheds on the first cut.
+  overhangGone = false,
 ): void {
   const cx = rx + margin;
   const cy = ry + margin;
@@ -117,60 +123,62 @@ export function paintMangoTexture(
   ctx.fill(sil);
   ctx.restore();
 
-  const sx = cx - rx * 0.24; // stem + one leaf, past the silhouette
-  const sy = cy - ry * 0.94;
-  ctx.lineCap = "round";
-  ctx.strokeStyle = "#8A7524";
-  ctx.lineWidth = 9;
-  ctx.beginPath();
-  ctx.moveTo(sx, sy + 8);
-  ctx.quadraticCurveTo(sx - 7, sy - 24, sx + 2, sy - 46);
-  ctx.stroke();
-  ctx.strokeStyle = "rgba(232,214,128,0.55)";
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(sx - 2, sy + 6);
-  ctx.quadraticCurveTo(sx - 9, sy - 24, sx - 1, sy - 44);
-  ctx.stroke();
-  const lx = sx + 2;
-  const ly = sy - 44;
-  const leaf = new Path2D();
-  leaf.moveTo(lx, ly);
-  leaf.bezierCurveTo(lx - 44, ly - 32, lx - 112, ly - 26, lx - 142, ly + 14);
-  leaf.bezierCurveTo(lx - 100, ly + 32, lx - 38, ly + 24, lx, ly);
-  const lg = ctx.createLinearGradient(lx - 142, ly - 24, lx - 10, ly + 22);
-  lg.addColorStop(0, "#33701D");
-  lg.addColorStop(0.45, "#4F972A");
-  lg.addColorStop(1, "#74B837");
-  ctx.fillStyle = lg;
-  ctx.fill(leaf);
-  ctx.strokeStyle = "rgba(28,64,16,0.50)";
-  ctx.lineWidth = 1.6;
-  ctx.stroke(leaf);
-  ctx.save();
-  ctx.clip(leaf);
-  ctx.strokeStyle = "rgba(206,232,168,0.55)";
-  ctx.lineWidth = 2.2;
-  ctx.beginPath();
-  ctx.moveTo(lx - 4, ly + 1);
-  ctx.quadraticCurveTo(lx - 74, ly - 8, lx - 140, ly + 13);
-  ctx.stroke();
-  ctx.strokeStyle = "rgba(184,220,150,0.34)";
-  ctx.lineWidth = 1.2;
-  for (let i = 1; i <= 6; i++) {
-    const t = i / 7;
-    const bx = lx - 4 - 136 * t;
-    const by = ly + 1 + 11 * t - 9 * Math.sin(t * Math.PI);
+  if (!overhangGone) {
+    const sx = cx - rx * 0.24; // stem + one leaf, past the silhouette
+    const sy = cy - ry * 0.94;
+    ctx.lineCap = "round";
+    ctx.strokeStyle = "#8A7524";
+    ctx.lineWidth = 9;
     ctx.beginPath();
-    ctx.moveTo(bx, by);
-    ctx.lineTo(bx + 16, by - 16 - 6 * Math.sin(t * Math.PI));
+    ctx.moveTo(sx, sy + 8);
+    ctx.quadraticCurveTo(sx - 7, sy - 24, sx + 2, sy - 46);
     ctx.stroke();
+    ctx.strokeStyle = "rgba(232,214,128,0.55)";
+    ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(bx, by);
-    ctx.lineTo(bx + 14, by + 15);
+    ctx.moveTo(sx - 2, sy + 6);
+    ctx.quadraticCurveTo(sx - 9, sy - 24, sx - 1, sy - 44);
     ctx.stroke();
+    const lx = sx + 2;
+    const ly = sy - 44;
+    const leaf = new Path2D();
+    leaf.moveTo(lx, ly);
+    leaf.bezierCurveTo(lx - 44, ly - 32, lx - 112, ly - 26, lx - 142, ly + 14);
+    leaf.bezierCurveTo(lx - 100, ly + 32, lx - 38, ly + 24, lx, ly);
+    const lg = ctx.createLinearGradient(lx - 142, ly - 24, lx - 10, ly + 22);
+    lg.addColorStop(0, "#33701D");
+    lg.addColorStop(0.45, "#4F972A");
+    lg.addColorStop(1, "#74B837");
+    ctx.fillStyle = lg;
+    ctx.fill(leaf);
+    ctx.strokeStyle = "rgba(28,64,16,0.50)";
+    ctx.lineWidth = 1.6;
+    ctx.stroke(leaf);
+    ctx.save();
+    ctx.clip(leaf);
+    ctx.strokeStyle = "rgba(206,232,168,0.55)";
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.moveTo(lx - 4, ly + 1);
+    ctx.quadraticCurveTo(lx - 74, ly - 8, lx - 140, ly + 13);
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(184,220,150,0.34)";
+    ctx.lineWidth = 1.2;
+    for (let i = 1; i <= 6; i++) {
+      const t = i / 7;
+      const bx = lx - 4 - 136 * t;
+      const by = ly + 1 + 11 * t - 9 * Math.sin(t * Math.PI);
+      ctx.beginPath();
+      ctx.moveTo(bx, by);
+      ctx.lineTo(bx + 16, by - 16 - 6 * Math.sin(t * Math.PI));
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(bx, by);
+      ctx.lineTo(bx + 14, by + 15);
+      ctx.stroke();
+    }
+    ctx.restore();
   }
-  ctx.restore();
 
   if (!hasCut) return; // uncut: 100% glossy skin — no flesh or pit showing yet
 

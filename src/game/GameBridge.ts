@@ -100,7 +100,7 @@ export class GameBridge {
         height: container.clientHeight || 1,
         // RESIZE mode mirrors the parent element's box every frame. When
         // that box transiently collapses to 0 (a route/screen transition,
-        // the Ingredient Lab remounting <Preparation>, an orientation
+        // a new level or order remounting <Preparation>, an orientation
         // flip), Phaser would otherwise hand a 0x0 size straight to the
         // WebGL renderer — RenderTarget.resize(0,0) rebuilds its
         // framebuffer and the completeness check throws
@@ -152,7 +152,7 @@ export class GameBridge {
     // very next mount() re-claims. queueMicrotask runs after that whole
     // synchronous commit — so if mount() cleared `teardownScheduled`
     // meanwhile, the instance simply lives on. A real unmount (leaving
-    // Preparation, or the Ingredient Lab re-keying <Preparation>) has no
+    // Preparation, or a new level re-keying <Preparation>) has no
     // following mount() on THIS bridge, so the teardown proceeds — still
     // within the same task, long before the next frame. This is not a
     // timing hack for a render race: it is the standard way to coalesce
@@ -178,7 +178,7 @@ export class GameBridge {
     // `runDestroy()`, which is what actually destroys the renderer/scenes,
     // removes the canvas and lets the WebGL context be reclaimed.
     //
-    // The Ingredient Lab remounts <Preparation> — a whole new Phaser.Game,
+    // Every new level/order remounts <Preparation> — a whole new Phaser.Game,
     // its own WebGL context — on every ingredient / technique / reset
     // change. Left to each outgoing game's own loop step, under RAF
     // starvation those steps run far too late: the pending-destroy games

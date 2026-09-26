@@ -39,6 +39,12 @@ export function paintCornTexture(
   tipRound: number,
   margin: number,
   opts: TaperPaintOpts = {},
+  _hasCut = false,
+  // `overhangGone` — see PreparationScene.ts's TaperRenderer.paint own
+  // doc. True once `this.cuts.length > 0`; gates the stalk stub below so
+  // it actually sheds on the first cut, as this file's own header doc
+  // describes but — before this phase's overhang port — never gated on.
+  overhangGone = false,
 ): void {
   const cx = rx + margin;
   const cy = rBig + margin;
@@ -56,7 +62,7 @@ export function paintCornTexture(
   // Stalk stub off the butt — cosmetic overhang, like celery's crown: no
   // cut/span/piece sees it, and it sheds on the first cut. Drawn first so
   // the cob's own edge covers the joint.
-  {
+  if (!overhangGone) {
     const bx = cx - rx * 0.96;
     const L = 44;
     const h0 = 17;
