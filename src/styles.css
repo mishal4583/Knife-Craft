@@ -211,6 +211,68 @@
   animation: kc-shimmer 3.2s ease-in-out infinite;
 }
 
+/* Story overlay (StoryOverlay.tsx): short entrances, then a slow drift on
+   the artwork for the rest of the beat. Transform/opacity only. */
+@keyframes kc-story-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes kc-story-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes kc-story-art-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes kc-story-drift {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.035) translateY(-3px);
+  }
+}
+@utility kc-story-tint {
+  animation: kc-story-fade 0.45s ease-out both;
+}
+@utility kc-story-text {
+  animation: kc-story-rise 0.35s var(--ease-cozy) both;
+}
+@utility kc-story-art {
+  animation: kc-story-art-in 0.4s var(--ease-cozy) both;
+}
+@utility kc-story-push {
+  animation-name: kc-story-drift;
+  animation-timing-function: ease-out;
+  animation-fill-mode: forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .kc-story-text,
+  .kc-story-art {
+    animation: kc-story-fade 0.2s ease-out both;
+  }
+  .kc-story-push {
+    animation: none;
+  }
+}
+
 @utility no-scrollbar {
   scrollbar-width: none;
   &::-webkit-scrollbar {

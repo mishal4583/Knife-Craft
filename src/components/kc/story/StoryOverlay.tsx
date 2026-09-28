@@ -9,19 +9,27 @@ import { IngredientCardCanvas } from "./IngredientCardCanvas";
  * STORY_OVERLAY — plays one sequence of story beats (OPENING+FRESH+CHEF
  * for the intro, or FINALE), adapted from knifecraft.html's own
  * `render(b)`/`advance()`/`run(list,done)`/`finish()` (`:11076-11138`)
- * into React state/effects instead of imperative DOM string-building —
- * "adapt the behavior to the existing production architecture," per
- * this repo's own story-integration convention, not a port of the
- * standalone HTML sequencer itself. Beat DATA (copy, hold times, tint,
- * art, cards, dialogue) is ported verbatim in storyDefinitions.ts;
- * this component only supplies the sequencing/rendering.
+ * into React state/effects. Beat DATA lives in storyDefinitions.ts; this
+ * component only supplies the sequencing/rendering.
  *
- * A beat with no `btn` auto-advances after `hold` ms (default 3000, a
- * reasonable floor for a beat that forgot to set one); a beat WITH
- * `btn` waits for a tap on that button. Tapping anywhere else on a
- * `bare` (chrome-hidden) beat also advances early — the source's own
- * `el('story').addEventListener('click', ...)` convenience — except
- * when the tap lands on the button itself (its own handler advances).
+ * Progression:
+ *  - A beat with no `btn` advances after `hold` ms (default 3000), or on a
+ *    tap anywhere (artwork and dialogue included) once the beat has been
+ *    up for MIN_TAP_MS, so one double tap can't skip two beats.
+ *  - A beat WITH `btn` only advances through that button; screen taps
+ *    never bypass it.
+ *  - Every advance is tied to the beat it came from (`advanceFrom`), so a
+ *    timer and a tap — or two taps — landing together move one beat.
+ *  - `skippable` (the opening intro only) adds a "Skip story" button.
+ *    Finishing and skipping share one completion path (`finish`), which
+ *    runs at most once; nothing advances after it.
+ *
+ * Presentation: each beat remounts (`key={index}`) so every beat gets the
+ * same short entrance — art fades/scales in and then drifts slowly for the
+ * rest of its hold, text rises in just after it. A tint change fades the
+ * new background in over the previous one (never through to the game
+ * underneath). CSS transform/opacity only; `prefers-reduced-motion` falls
+ * back to plain fades (styles.css).
  */
 const TINT_CLASS: Record<StoryBeat["tint"], string> = {
   sFaded: "bg-[linear-gradient(180deg,#e8dcc8,#cdbfa2)]",
@@ -36,144 +44,218 @@ const CARD_LABEL: Record<StoryCardId, { name: string; tag: string }> = {
   ing: { name: "Fresh Ingredients", tag: "FIRST BATCH" },
 };
 
-export function StoryOverlay({ sequence, onDone }: { sequence: StoryBeat[]; onDone: () => void }) {
+/** A tap this soon after a beat appears is ignored (the tail of the tap that advanced to it). */
+const MIN_TAP_MS = 250;
+/** How long a button beat's artwork keeps drifting (it has no hold of its own). */
+const BUTTON_BEAT_DRIFT_MS = 6000;
+
+export type StoryEndReason = "finished" | "skipped";
+
+/** Staggered entrance for the n-th text element of a beat (ms). */
+const delay = (n: number) => ({ animationDelay: `${90 + n * 90}ms` });
+
+export function StoryOverlay({
+  sequence,
+  onDone,
+  skippable = false,
+}: {
+  sequence: StoryBeat[];
+  onDone: (reason: StoryEndReason) => void;
+  skippable?: boolean;
+}) {
   const [index, setIndex] = useState(0);
+  const [ended, setEnded] = useState(false);
   const beat = sequence[index];
-  // Guards against React StrictMode's development-only double-invocation
-  // of effects: without it, the completion effect below would call
-  // `onDone` twice for the same sequence (mount → synthetic cleanup →
-  // mount again, and this effect has no timer/subscription to make that
-  // second call a no-op the way the auto-advance effect's own
-  // `clearTimeout` cleanup does). A ref survives that double-invoke
-  // (it's the same component instance, not a real remount), so it stays
-  // a reliable "already fired" latch across it.
+  // Latched on the first completion (natural end OR skip) and never reset:
+  // a late timer, a second skip tap or React StrictMode's double-invoked
+  // effects can't call onDone twice.
   const doneRef = useRef(false);
+  const beatShownAt = useRef(0);
+
+  function finish(reason: StoryEndReason) {
+    if (doneRef.current) return;
+    doneRef.current = true;
+    setEnded(true);
+    onDone(reason);
+  }
+
+  /** Moves past beat `from` only if it is still the current beat. */
+  function advanceFrom(from: number) {
+    if (doneRef.current) return;
+    setIndex((i) => (i === from ? i + 1 : i));
+  }
 
   useEffect(() => {
-    if (!beat) return;
-    if (beat.btn) return; // waits for the button's own click instead
-    const t = setTimeout(() => setIndex((i) => i + 1), beat.hold ?? 3000);
+    beatShownAt.current = performance.now();
+    if (!beat || beat.btn) return; // a button beat waits for its button
+    const t = setTimeout(() => advanceFrom(index), beat.hold ?? 3000);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- re-arm only when the beat itself changes
   }, [index]);
 
   useEffect(() => {
-    if (index >= sequence.length && !doneRef.current) {
-      doneRef.current = true;
-      onDone();
-    }
+    if (index >= sequence.length) finish("finished");
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fire once per sequence completion
   }, [index]);
 
-  if (!beat) return null;
+  if (!beat || ended) return null;
 
-  const advance = () => setIndex((i) => i + 1);
+  const prevTint = sequence[index - 1]?.tint ?? beat.tint;
+  const lineCount = beat.lines?.length ?? 0;
+  const driftMs = beat.btn ? BUTTON_BEAT_DRIFT_MS : (beat.hold ?? 3000);
 
   return (
     <div
-      className={cn(
-        "absolute inset-0 z-50 flex flex-col items-center justify-center gap-5 px-6 text-center",
-        TINT_CLASS[beat.tint],
-      )}
+      className="absolute inset-0 z-50 overflow-hidden"
       onClick={() => {
-        if (!beat.btn) advance();
+        if (beat.btn) return;
+        if (performance.now() - beatShownAt.current < MIN_TAP_MS) return;
+        advanceFrom(index);
       }}
     >
-      {beat.kicker ? (
-        <p className="anim-pop font-ui text-[13px] font-extrabold uppercase tracking-[0.16em] text-walnut-dark/80">
-          {beat.kicker}
-        </p>
-      ) : null}
-      {beat.title ? (
-        <p className="anim-pop font-display text-[26px] font-black text-walnut-dark">
-          {beat.title}
-        </p>
-      ) : null}
-      {beat.step ? (
-        <p className="anim-pop font-ui text-[15px] font-extrabold tracking-wide text-walnut-dark/70">
-          {beat.step}
-        </p>
-      ) : null}
+      {/* Background: the previous tint underneath, the current one fading in over it. */}
+      <div className={cn("absolute inset-0", TINT_CLASS[prevTint])} />
+      <div
+        key={beat.tint}
+        className={cn("kc-story-tint absolute inset-0", TINT_CLASS[beat.tint])}
+      />
 
-      {beat.art ? (
-        <div
-          className={cn(
-            "anim-pop overflow-hidden rounded-[18px]",
-            beat.veil ? "shadow-soft" : "",
-            beat.artClass === "sProp" ? "w-[46%] max-w-[220px]" : "w-[86%] max-w-[420px]",
-          )}
-          dangerouslySetInnerHTML={{ __html: STORY_ART[beat.art] }}
-        />
-      ) : null}
+      <div
+        key={index}
+        className="relative flex h-full w-full flex-col items-center justify-center gap-5 px-6 pb-4 pt-16 text-center"
+      >
+        {beat.kicker ? (
+          <p
+            className="kc-story-text font-ui text-[13px] font-extrabold uppercase tracking-[0.16em] text-walnut-dark/80"
+            style={delay(0)}
+          >
+            {beat.kicker}
+          </p>
+        ) : null}
+        {beat.title ? (
+          <p
+            className="kc-story-text font-display text-[26px] font-black text-walnut-dark"
+            style={delay(1)}
+          >
+            {beat.title}
+          </p>
+        ) : null}
+        {beat.step ? (
+          <p
+            className="kc-story-text font-ui text-[15px] font-extrabold tracking-wide text-walnut-dark/70"
+            style={delay(0)}
+          >
+            {beat.step}
+          </p>
+        ) : null}
 
-      {beat.dlg ? (
-        <div
-          className={cn(
-            "anim-pop flex w-full max-w-[420px] items-end gap-3",
-            beat.dlg.side === "you" ? "flex-row-reverse text-right" : "text-left",
-          )}
-          onClick={(e) => e.stopPropagation()}
-        >
+        {beat.art ? (
           <div
-            className="h-[64px] w-[64px] shrink-0 overflow-hidden rounded-full border border-walnut/15 shadow-soft"
-            dangerouslySetInnerHTML={{ __html: STORY_ART[beat.dlg.art] }}
-          />
-          <Panel tone="cream" className="anim-pop px-4 py-3">
-            <p className="font-ui text-[11px] font-extrabold uppercase tracking-wide text-walnut/60">
-              {beat.dlg.who}
-            </p>
-            <p className="mt-1 font-hand text-[18px] text-walnut-dark">{beat.dlg.say}</p>
-          </Panel>
-        </div>
-      ) : null}
+            className={cn(
+              "kc-story-art overflow-hidden rounded-[18px]",
+              beat.veil ? "shadow-soft" : "",
+              beat.artClass === "sProp" ? "w-[46%] max-w-[220px]" : "w-[86%] max-w-[420px]",
+            )}
+          >
+            <div
+              className="kc-story-push"
+              style={{ animationDuration: `${driftMs}ms` }}
+              dangerouslySetInnerHTML={{ __html: STORY_ART[beat.art] }}
+            />
+          </div>
+        ) : null}
 
-      {beat.lines?.length ? (
-        <div className="max-w-[420px] space-y-2">
-          {beat.lines.map((line, i) => (
-            <p key={i} className="anim-pop font-hand text-[19px] leading-snug text-walnut-dark">
-              {line}
-            </p>
-          ))}
-        </div>
-      ) : null}
-
-      {beat.quote ? (
-        <p className="anim-pop max-w-[380px] font-hand text-[22px] italic leading-snug text-walnut-dark/90">
-          {beat.quote}
-        </p>
-      ) : null}
-
-      {beat.cards?.length ? (
-        <div className="anim-pop flex w-full max-w-[420px] justify-center gap-3">
-          {beat.cards.map((c) => (
-            <Panel key={c} tone="cream" className="w-[30%] p-2 text-center">
-              <div className="h-[46px] w-full">
-                {c === "ing" ? (
-                  <IngredientCardCanvas />
-                ) : (
-                  <div
-                    className="h-full w-full"
-                    dangerouslySetInnerHTML={{ __html: STORY_ART[c] }}
-                  />
-                )}
-              </div>
-              <p className="mt-1 font-ui text-[10px] font-bold leading-tight text-walnut-dark">
-                {CARD_LABEL[c].name}
+        {beat.dlg ? (
+          <div
+            className={cn(
+              "kc-story-text flex w-full max-w-[420px] items-end gap-3",
+              beat.dlg.side === "you" ? "flex-row-reverse text-right" : "text-left",
+            )}
+          >
+            <div
+              className="h-[64px] w-[64px] shrink-0 overflow-hidden rounded-full border border-walnut/15 shadow-soft"
+              dangerouslySetInnerHTML={{ __html: STORY_ART[beat.dlg.art] }}
+            />
+            <Panel tone="cream" className="px-4 py-3">
+              <p className="font-ui text-[11px] font-extrabold uppercase tracking-wide text-walnut/60">
+                {beat.dlg.who}
               </p>
-              <p className="font-ui text-[9px] font-extrabold uppercase tracking-wide text-sage">
-                {CARD_LABEL[c].tag}
-              </p>
+              <p className="mt-1 font-hand text-[18px] text-walnut-dark">{beat.dlg.say}</p>
             </Panel>
-          ))}
-        </div>
-      ) : null}
+          </div>
+        ) : null}
 
-      {beat.btn ? (
-        <div onClick={(e) => e.stopPropagation()}>
-          <KButton size="lg" onClick={advance}>
-            {beat.btn}
-          </KButton>
-        </div>
+        {lineCount ? (
+          <div className="max-w-[420px] space-y-2">
+            {beat.lines!.map((line, i) => (
+              <p
+                key={i}
+                className="kc-story-text font-hand text-[19px] leading-snug text-walnut-dark"
+                style={delay(i + 1)}
+              >
+                {line}
+              </p>
+            ))}
+          </div>
+        ) : null}
+
+        {beat.quote ? (
+          <p
+            className="kc-story-text max-w-[380px] font-hand text-[22px] italic leading-snug text-walnut-dark/90"
+            style={delay(lineCount + 1)}
+          >
+            {beat.quote}
+          </p>
+        ) : null}
+
+        {beat.cards?.length ? (
+          <div
+            className="kc-story-text flex w-full max-w-[420px] justify-center gap-3"
+            style={delay(lineCount + 1)}
+          >
+            {beat.cards.map((c) => (
+              <Panel key={c} tone="cream" className="w-[30%] p-2 text-center">
+                <div className="h-[46px] w-full">
+                  {c === "ing" ? (
+                    <IngredientCardCanvas />
+                  ) : (
+                    <div
+                      className="h-full w-full"
+                      dangerouslySetInnerHTML={{ __html: STORY_ART[c] }}
+                    />
+                  )}
+                </div>
+                <p className="mt-1 font-ui text-[10px] font-bold leading-tight text-walnut-dark">
+                  {CARD_LABEL[c].name}
+                </p>
+                <p className="font-ui text-[9px] font-extrabold uppercase tracking-wide text-sage">
+                  {CARD_LABEL[c].tag}
+                </p>
+              </Panel>
+            ))}
+          </div>
+        ) : null}
+
+        {beat.btn ? (
+          <div className="kc-story-text" style={delay(lineCount + 2)}>
+            <KButton size="lg" onClick={() => advanceFrom(index)}>
+              {beat.btn}
+            </KButton>
+          </div>
+        ) : null}
+      </div>
+
+      {skippable ? (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            finish("skipped");
+          }}
+          className="press absolute right-3 top-3 z-10 inline-flex h-12 min-w-12 items-center gap-1 rounded-full border border-walnut/25 bg-ivory/80 px-4 font-ui text-[12px] font-extrabold uppercase tracking-[0.12em] text-walnut-dark shadow-soft"
+        >
+          Skip story <span aria-hidden>→</span>
+        </button>
       ) : null}
     </div>
   );

@@ -232,6 +232,8 @@ export function App() {
   // progression itself."
   const [showIntro, setShowIntro] = useState(false);
   const [storyEvent, setStoryEvent] = useState<StoryFlushResult>(null);
+  // The intro ends exactly once, whether it finished or was skipped.
+  const introCompletedRef = useRef(false);
 
   // Economy V2 Phase 9 — the level's own completion reward
   // (finishCampaignLevel/finishBatchGroupLevel's `rewardCoins`), shown via
@@ -410,6 +412,20 @@ export function App() {
   }, [save, inBusiness, businessOrder]);
 
   const go = (s: ScreenId) => setScreen(s);
+
+  /**
+   * The one way the opening intro ends — played to the last beat or skipped
+   * via "Skip story". Both land in the same state: the overlay closes and
+   * `story.introDone` is saved (once), leaving the player on the Level 1 that
+   * is already mounted underneath. Nothing else in the save changes.
+   */
+  function completeIntro() {
+    if (introCompletedRef.current) return;
+    introCompletedRef.current = true;
+    setShowIntro(false);
+    const current = saveRef.current;
+    if (current && !current.story.introDone) persist(markIntroDone(current));
+  }
 
   /** The single place every save mutation flows through — also where
    * kitchen-upgrade ownership gets re-derived from level progress, so
@@ -1544,8 +1560,8 @@ export function App() {
             KnifeCraft
           </p>
           <p className="mt-2 font-ui text-[12px] leading-relaxed text-[color:var(--color-cream)]/60">
-            A cozy prep-chef arcade for YouTube Playables. Portrait-first, one thumb, no timers.
-            Swipe across the tomato to begin.
+            A cozy prep-chef arcade. Portrait-first, one thumb, no timers. Swipe across the tomato
+            to begin.
           </p>
         </div>
       }
@@ -1704,13 +1720,7 @@ export function App() {
         )}
       </Suspense>
       {showIntro ? (
-        <StoryOverlay
-          sequence={STORY_INTRO_SEQUENCE}
-          onDone={() => {
-            setShowIntro(false);
-            persist(markIntroDone(save));
-          }}
-        />
+        <StoryOverlay sequence={STORY_INTRO_SEQUENCE} skippable onDone={completeIntro} />
       ) : null}
       {storyEvent?.kind === "finale" ? (
         <StoryOverlay sequence={FINALE} onDone={() => setStoryEvent(null)} />
