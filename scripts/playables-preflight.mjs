@@ -1,14 +1,15 @@
 #!/usr/bin/env node
 /**
- * Local, best-effort preflight for a YouTube Playables static bundle.
- * This is NOT certification — it only catches the mechanical mistakes
- * described in the migration brief (§42). Run after `npm run build`.
+ * Local, best-effort preflight for the Playgama build (Bridge SDK v2).
+ * This is NOT Playgama's QA tool — it only catches mechanical mistakes
+ * (Bridge script + config present, no other external scripts, relative
+ * paths, file names, sizes). Run after `npm run build`.
  */
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative, extname } from "node:path";
 
 const DIST = join(process.cwd(), "dist");
-const YT_SDK_SRC = "https://www.youtube.com/game_api/v1";
+const YT_SDK_SRC = "https://bridge.playgama.com/v2/stable/playgama-bridge.js";
 const KB = 1024;
 const MB = KB * 1024;
 
@@ -43,7 +44,13 @@ if (indexHtml) {
 
   // ── SDK ordering ──────────────────────────────────────────────
   const sdkIndex = indexHtml.indexOf(YT_SDK_SRC);
-  check("YouTube Playables SDK <script> tag present", sdkIndex !== -1, YT_SDK_SRC);
+  check("Playgama Bridge SDK <script> tag present", sdkIndex !== -1, YT_SDK_SRC);
+  let bridgeConfigOk = false;
+  try {
+    JSON.parse(readFileSync(join(DIST, "playgama-bridge-config.json"), "utf8"));
+    bridgeConfigOk = true;
+  } catch {}
+  check("playgama-bridge-config.json next to index.html (valid JSON)", bridgeConfigOk);
 
   const scriptTagRe = /<script\b[^>]*>/gi;
   const scriptTags = [...indexHtml.matchAll(scriptTagRe)];
@@ -61,7 +68,7 @@ if (indexHtml) {
     .map((m) => /src=["']([^"']+)["']/.exec(m[0])?.[1])
     .filter((src) => src && /^https?:\/\//.test(src) && src !== YT_SDK_SRC);
   check(
-    "No external <script> tags besides the YouTube SDK",
+    "No external <script> tags besides the Bridge SDK",
     externalScriptSrcs.length === 0,
     externalScriptSrcs.join(", "),
   );
@@ -89,8 +96,8 @@ if (indexHtml) {
     contents.filter(({ text }) => re.test(text)).map(({ f }) => relative(DIST, f));
 
   check(
-    "No `window.ytgame = ...` / ytgame override",
-    grep(/window\.ytgame\s*=[^=]|window\[["']ytgame["']\]\s*=/).length === 0,
+    "No `window.bridge = ...` override (Bridge is only read, never replaced)",
+    grep(/window\.bridge\s*=[^=]|window\[["']bridge["']\]\s*=/).length === 0,
   );
   check("No Lovable URLs/references in the build output", grep(/lovable/i).length === 0);
   check("No localhost URLs in the build output", grep(/localhost/i).length === 0);
@@ -160,7 +167,7 @@ if (indexHtml) {
 
   const failed = checks.filter((c) => !c.pass);
   console.log(
-    `\n${failed.length === 0 ? "✔ All hard checks passed." : `✘ ${failed.length} check(s) failed.`} This is a local preflight only — it is not YouTube certification.\n`,
+    `\n${failed.length === 0 ? "✔ All hard checks passed." : `✘ ${failed.length} check(s) failed.`} This is a local preflight only — use Playgama's QA tool for the real check.\n`,
   );
   process.exitCode = failed.length === 0 ? 0 : 1;
 } else {

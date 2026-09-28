@@ -1,163 +1,184 @@
 /**
- * PLAYABLES_SDK — the only file allowed to touch `window.ytgame` directly.
+ * PLATFORM SDK — Playgama Bridge (v2) edition. The only file allowed to touch
+ * `window.bridge`.
  *
- * `window.ytgame` is defined by the SDK script tag in index.html (loaded
- * before any game code — see index.html). We never create, wrap, or
- * replace that global; we only read it, and only after checking it
- * actually exists. Outside YouTube (local dev, `npm run preview`, a
- * plain browser tab) `window.ytgame` is undefined and every method here
- * degrades to a harmless local no-op so the rest of the app never has
- * to branch on "am I inside YouTube?".
+ * The Bridge script is loaded from Playgama's CDN in index.html, ahead of the
+ * game bundle, and `playgama-bridge-config.json` sits next to index.html. On
+ * Playgama (and every platform Bridge supports) it routes these calls to the
+ * host's own SDK; anywhere else it runs a mock platform with safe defaults.
+ * If the script is missing entirely (unit tests, offline) every function here
+ * degrades to a harmless local no-op, so the game never branches on it.
+ *
+ * Nothing may call the Bridge before `bridge.initialize()` resolves, so every
+ * function waits on `platformReady()`; `startPlatform()` (main.tsx) kicks it
+ * off at boot.
  */
 
-type YtGameSystem = {
-  isAudioEnabled?: () => boolean;
-  onAudioEnabledChange?: (cb: (enabled: boolean) => void) => void;
-  onPause?: (cb: () => void) => void;
-  onResume?: (cb: () => void) => void;
-};
+type BridgeStateHandler<T> = (value: T) => void;
 
-type YtGameApi = {
-  /**
-   * The SDK script (loaded in index.html — see comment there) defines
-   * `window.ytgame` unconditionally, in any browser tab, whether or not
-   * the page is actually embedded as a YouTube Playable. This flag is
-   * the SDK's own signal for that distinction — it's `false` in a plain
-   * browser tab and `true` only inside the real Playables iframe.
-   * Checking mere `window.ytgame` existence (as an earlier version of
-   * this file did) is wrong: it routes every local dev/preview session
-   * into the cloud-save branch, where `game.saveData`/`loadData` are
-   * absent and every save silently no-ops instead of falling back to
-   * localStorage.
-   */
-  IN_PLAYABLES_ENV?: boolean;
-  game?: {
-    firstFrameReady?: () => void;
-    gameReady?: () => void;
-    loadData?: () => Promise<string | null> | string | null;
-    saveData?: (data: string) => Promise<void> | void;
+type Bridge = {
+  initialize: () => Promise<void>;
+  EVENT_NAME: {
+    PAUSE_STATE_CHANGED: string;
+    AUDIO_STATE_CHANGED: string;
+    INTERSTITIAL_STATE_CHANGED: string;
+    REWARDED_STATE_CHANGED: string;
   };
-  system?: YtGameSystem;
-  engagement?: { sendScore?: (score: { value: number }) => Promise<void> };
-  /** YouTube-provided ads (the only ads a Playable may show). */
-  ads?: {
-    /** Resolves when the request completes; makes NO guarantee an ad was shown — never reward on it. */
-    requestInterstitialAd?: () => Promise<void>;
-    /** Resolves `true` only if the player earned the reward, `false` if not; rejects if the request failed. */
-    requestRewardedAd?: (rewardId: string) => Promise<boolean>;
+  platform: {
+    id?: string;
+    language?: string;
+    isAudioEnabled: boolean;
+    sendMessage: (message: string) => unknown;
+    on: (event: string, handler: BridgeStateHandler<boolean>) => void;
+  };
+  storage: {
+    get: (keys: string[]) => Promise<Array<unknown>>;
+    set: (keys: string[], values: unknown[]) => Promise<void>;
+  };
+  advertisement: {
+    isInterstitialSupported: boolean;
+    isRewardedSupported: boolean;
+    showInterstitial: (placement?: string) => unknown;
+    showRewarded: (placement?: string) => unknown;
+    on: (event: string, handler: BridgeStateHandler<string>) => void;
+    off?: (event: string, handler: BridgeStateHandler<string>) => void;
   };
 };
 
 declare global {
   interface Window {
-    ytgame?: YtGameApi;
+    bridge?: Bridge;
   }
 }
 
-function sdk(): YtGameApi | null {
-  if (typeof window === "undefined" || !window.ytgame?.IN_PLAYABLES_ENV) return null;
-  return window.ytgame;
+/** Stable placement ids — one per reward TYPE, reused every time (as Bridge and YouTube require). */
+export const INTERSTITIAL_PLACEMENT = "level_completed";
+export const REWARDED_PLACEMENT = "replay_bonus";
+
+let readyPromise: Promise<Bridge | null> | null = null;
+let bridgeInstance: Bridge | null = null;
+let platformLanguage = "en";
+
+/** Starts (once) and awaits Bridge initialization. Resolves null when no Bridge is present or it failed. */
+export function platformReady(): Promise<Bridge | null> {
+  if (readyPromise) return readyPromise;
+  const b = typeof window !== "undefined" ? window.bridge : undefined;
+  if (!b) {
+    readyPromise = Promise.resolve(null);
+    return readyPromise;
+  }
+  readyPromise = b
+    .initialize()
+    .then(() => {
+      bridgeInstance = b;
+      // Required step: read platform.language once after initialization. KnifeCraft
+      // ships in English only, so its text stays English for every language.
+      platformLanguage = typeof b.platform.language === "string" ? b.platform.language : "en";
+      wireLifecycle(b);
+      return b;
+    })
+    .catch(() => null);
+  return readyPromise;
 }
 
-export const isInsideYouTube = (): boolean => sdk() !== null;
-
-/** Call once the first visible frame (loading state) is on screen. */
-export function firstFrameReady(): void {
-  sdk()?.game?.firstFrameReady?.();
+/** Called once at boot (main.tsx). */
+export function startPlatform(): void {
+  void platformReady();
 }
 
-/** Call once the game is actually interactive. Idempotent: the Kitchen (a returning player's first screen) and Preparation (a new player's first screen) both call it; only the first call reaches YouTube. */
+/** The host platform's language (ISO 639-1). The game's text is English for every value. */
+export function getPlatformLanguage(): string {
+  return platformLanguage;
+}
+
+/** True once the Bridge is initialized (the game then saves through Bridge storage). */
+export function hasPlatform(): boolean {
+  return bridgeInstance !== null;
+}
+
+/** Sends `game_ready` once the game is interactive. Idempotent. */
 let gameReadySent = false;
 export function gameReady(): void {
   if (gameReadySent) return;
   gameReadySent = true;
-  sdk()?.game?.gameReady?.();
+  void platformReady().then((b) => b?.platform.sendMessage("game_ready"));
 }
 
-/**
- * YouTube is the authoritative lifecycle source: no `document.hidden` /
- * `visibilitychange` listener anywhere in this codebase. Outside YouTube
- * these simply never fire, which is correct — there is no second pause
- * system waiting to take over.
- */
+/* ── Pause + audio (required: subscribe to both) ─────────────────────── */
+
+const pauseCallbacks = new Set<() => void>();
+const resumeCallbacks = new Set<() => void>();
+const audioCallbacks = new Set<(enabled: boolean) => void>();
+
+function wireLifecycle(b: Bridge): void {
+  b.platform.on(b.EVENT_NAME.PAUSE_STATE_CHANGED, (isPaused) => {
+    (isPaused ? pauseCallbacks : resumeCallbacks).forEach((cb) => cb());
+  });
+  b.platform.on(b.EVENT_NAME.AUDIO_STATE_CHANGED, (isEnabled) => {
+    audioCallbacks.forEach((cb) => cb(!!isEnabled));
+  });
+  // The event only fires on later changes — apply the starting state now.
+  const enabled = !!b.platform.isAudioEnabled;
+  audioCallbacks.forEach((cb) => cb(enabled));
+}
+
 export function onPlatformPause(cb: () => void): void {
-  sdk()?.system?.onPause?.(cb);
+  pauseCallbacks.add(cb);
 }
 
 export function onPlatformResume(cb: () => void): void {
-  sdk()?.system?.onResume?.(cb);
+  resumeCallbacks.add(cb);
 }
 
 export function isAudioEnabled(): boolean {
-  const s = sdk();
-  if (!s?.system?.isAudioEnabled) return true; // sane default outside YouTube
-  return s.system.isAudioEnabled();
+  return bridgeInstance ? !!bridgeInstance.platform.isAudioEnabled : true;
 }
 
 export function onAudioEnabledChange(cb: (enabled: boolean) => void): void {
-  sdk()?.system?.onAudioEnabledChange?.(cb);
+  audioCallbacks.add(cb);
+  if (bridgeInstance) cb(!!bridgeInstance.platform.isAudioEnabled);
 }
 
-/**
- * Reports the player's score to YouTube. KnifeCraft's one score dimension is
- * CAMPAIGN LEVELS COMPLETED (0–250): it only ever grows, so YouTube's "highest
- * score" is always the player's real progress. Integer only; failures are
- * ignored (never affects the game).
- */
-export function sendScore(value: number): void {
-  const send = sdk()?.engagement?.sendScore;
-  if (typeof send !== "function" || !Number.isSafeInteger(value) || value < 0) return;
-  try {
-    void Promise.resolve(send.call(sdk()!.engagement, { value })).catch(() => undefined);
-  } catch {
-    // an SDK error must never interrupt play
-  }
-}
+/* ── Storage (required: never localStorage directly) ─────────────────── */
 
+export const SAVE_KEY = "knifecraft_save";
+
+/** The save string from Bridge storage (null if none yet). Null when there is no Bridge. */
 export async function loadCloudSave(): Promise<string | null> {
-  const s = sdk();
-  if (!s?.game?.loadData) return null;
-  const result = await s.game.loadData();
-  return result ?? null;
+  const b = await platformReady();
+  if (!b) return null;
+  const [value] = await b.storage.get([SAVE_KEY]);
+  if (value === null || value === undefined) return null;
+  return typeof value === "string" ? value : JSON.stringify(value);
 }
 
 export async function saveCloudSave(data: string): Promise<void> {
-  const s = sdk();
-  if (!s?.game?.saveData) return;
-  await s.game.saveData(data);
+  const b = await platformReady();
+  if (!b) return;
+  await b.storage.set([SAVE_KEY], [data]);
 }
 
-/* ── YouTube ads ───────────────────────────────────────────────────────
- * The only ad code in the game. Ads exist only inside the real Playables
- * environment (IN_PLAYABLES_ENV) with the ads API present — anywhere else
- * both functions report "unavailable" and nothing is shown or granted.
- *
- * NO TIMEOUT ON THE REWARD. YouTube reports a rewarded ad's result only
- * after the player closes the ad, and real ads run 15–30 s or more, so a
- * reward is earned only when requestRewardedAd() itself resolves exactly
- * `true` — however long that takes. (A short timeout here is exactly the
- * bug that shipped in another game: the timer answered "no reward" first,
- * the real `true` arrived later with nothing listening, and the player was
- * sent back to the same ad prompt. Test suites use instant fake ads, so
- * only a long-ad test catches it — see scripts/playables-ads-qa.mts.)
- *
- * Two separate things are tracked while an ad request is open:
- *  - the REQUEST LOCK (`adInFlight`): one ad at a time, so a double tap,
- *    re-render or navigation can't open two ads or two reward flows. For a
- *    rewarded ad it is held until YouTube answers, so a late `true` is
- *    still received and committed.
- *  - the SCREEN BLOCK (`adBlocking`, what isAdActive() reports): mutes the
- *    game and shields input while the ad is on screen. If YouTube never
- *    answers at all, it is released after AD_UI_RELEASE_MS so the game can
- *    never be soft-locked behind a dead request. That release NEVER grants
- *    anything; for an interstitial it also frees the request lock.
- * When the block ends (answer or release), onAdActiveChange(false) fires —
- * PauseManager uses it to wake the game if YouTube paused it for the ad
- * but never sent the matching resume.
+/** Scores: no Playgama leaderboard is configured for KnifeCraft, so this is a no-op. */
+export function sendScore(value: number): void {
+  void value;
+}
+
+/* ── Ads ─────────────────────────────────────────────────────────────────
+ * Same rules as the YouTube build:
+ *  - NO TIMEOUT ON THE REWARD. A reward is earned only when Bridge reports
+ *    the rewarded ad's state `rewarded` — never because it closed or time passed.
+ *  - One ad at a time (REQUEST LOCK), so a double tap can't open two.
+ *  - A SCREEN BLOCK mutes and shields the game while the ad is up; if an ad
+ *    never answers it is lifted after AD_UI_RELEASE_MS (never grants anything).
+ *  - If an ad never even STARTS (no state change at all within
+ *    AD_START_TIMEOUT_MS — e.g. the platform's own interval skipped it), the
+ *    request ends as "not shown". Once an ad has started there is no limit.
+ * Bridge fires the platform pause/audio events around ads; onAdActiveChange
+ * lets PauseManager wake the game if a platform forgets to resume.
  */
 
-/** Only guards a request that never answers — far longer than any real ad. Never used to decide a reward. */
 export const AD_UI_RELEASE_MS = 120_000;
+export const AD_START_TIMEOUT_MS = 30_000;
 
 let adInFlight = false;
 let adBlocking = false;
@@ -171,10 +192,6 @@ function setAdBlocking(active: boolean): void {
   adActiveListeners.forEach((l) => l(active));
 }
 
-/**
- * Opens the lock + screen block for one request and returns its release
- * functions. `releaseUi` is armed on a timer only as the dead-request guard.
- */
 function beginAd(releaseLockOnTimeout: boolean): { end: () => void } {
   adInFlight = true;
   setAdBlocking(true);
@@ -195,17 +212,14 @@ function beginAd(releaseLockOnTimeout: boolean): { end: () => void } {
   };
 }
 
-/** True while a YouTube ad is (as far as we know) on screen — the game mutes and blocks input meanwhile. */
 export function isAdActive(): boolean {
   return adBlocking;
 }
 
-/** True while an ad request is still waiting for YouTube's answer (even after the screen block was released). */
 export function isAdRequestPending(): boolean {
   return adInFlight;
 }
 
-/** Epoch ms when the most recent ad stopped blocking the screen (0 = none this session) — for "never right after another ad". */
 export function lastAdSettledTime(): number {
   return lastAdSettledAt;
 }
@@ -216,29 +230,48 @@ export function onAdActiveChange(cb: (active: boolean) => void): () => void {
 }
 
 export function interstitialAdsAvailable(): boolean {
-  return typeof sdk()?.ads?.requestInterstitialAd === "function";
+  return !!bridgeInstance?.advertisement.isInterstitialSupported;
 }
 
 export function rewardedAdsAvailable(): boolean {
-  return typeof sdk()?.ads?.requestRewardedAd === "function";
+  return !!bridgeInstance?.advertisement.isRewardedSupported;
 }
 
 export type InterstitialResult = "requested" | "unavailable" | "busy" | "failed";
 
-/** Asks YouTube for an interstitial. Never throws and never blocks the caller's flow: gameplay continues whatever happens. */
+/** Shows an interstitial at a natural break. Never throws, never blocks the caller. */
 export async function requestInterstitialAd(): Promise<InterstitialResult> {
-  const request = sdk()?.ads?.requestInterstitialAd;
-  if (typeof request !== "function") return "unavailable";
+  const b = bridgeInstance;
+  if (!b || !b.advertisement.isInterstitialSupported) return "unavailable";
   if (adInFlight) return "busy";
   const ad = beginAd(true);
-  try {
-    await request.call(sdk()!.ads);
-    return "requested";
-  } catch {
-    return "failed";
-  } finally {
-    ad.end();
-  }
+  const result = await new Promise<InterstitialResult>((resolve) => {
+    let started = false;
+    let done = false;
+    const finish = (r: InterstitialResult) => {
+      if (done) return;
+      done = true;
+      clearTimeout(noStart);
+      b.advertisement.off?.(b.EVENT_NAME.INTERSTITIAL_STATE_CHANGED, onState);
+      resolve(r);
+    };
+    const onState = (state: string) => {
+      if (state === "loading" || state === "opened") started = true;
+      else if (state === "closed") finish("requested");
+      else if (state === "failed") finish("failed");
+    };
+    const noStart = setTimeout(() => {
+      if (!started) finish("failed");
+    }, AD_START_TIMEOUT_MS);
+    b.advertisement.on(b.EVENT_NAME.INTERSTITIAL_STATE_CHANGED, onState);
+    try {
+      b.advertisement.showInterstitial(INTERSTITIAL_PLACEMENT);
+    } catch {
+      finish("failed");
+    }
+  });
+  ad.end();
+  return result;
 }
 
 export type RewardedResult =
@@ -249,22 +282,49 @@ export type RewardedResult =
   | { status: "unavailable" };
 
 /**
- * Asks YouTube for a rewarded ad and waits — with no time limit — for its
- * answer. `rewarded` is returned ONLY when the SDK resolved with exactly
- * `true`; `false`, a non-boolean, a rejection or a missing API are all "no
- * reward". The caller commits the reward itself, after this returns.
+ * Shows the rewarded ad and waits — with no limit once it has started — for
+ * Bridge's outcome: `rewarded` only when the state `rewarded` was reported
+ * before the ad closed. `rewardId` is the game's own transaction id (for the
+ * caller's ledger); the platform always gets the stable REWARDED_PLACEMENT.
  */
 export async function requestRewardedAd(rewardId: string): Promise<RewardedResult> {
-  const request = sdk()?.ads?.requestRewardedAd;
-  if (typeof request !== "function") return { status: "unavailable" };
+  void rewardId;
+  const b = bridgeInstance;
+  if (!b || !b.advertisement.isRewardedSupported) return { status: "unavailable" };
   if (adInFlight) return { status: "busy" };
   const ad = beginAd(false);
-  try {
-    const earned: unknown = await request.call(sdk()!.ads, rewardId);
-    return earned === true ? { status: "rewarded" } : { status: "not-rewarded" };
-  } catch {
-    return { status: "failed" };
-  } finally {
-    ad.end();
-  }
+  const result = await new Promise<RewardedResult>((resolve) => {
+    let started = false;
+    let earned = false;
+    let done = false;
+    const finish = (r: RewardedResult) => {
+      if (done) return;
+      done = true;
+      clearTimeout(noStart);
+      b.advertisement.off?.(b.EVENT_NAME.REWARDED_STATE_CHANGED, onState);
+      resolve(r);
+    };
+    const onState = (state: string) => {
+      if (state === "loading" || state === "opened") started = true;
+      else if (state === "rewarded") {
+        started = true;
+        earned = true;
+      } else if (state === "closed") {
+        finish(earned ? { status: "rewarded" } : { status: "not-rewarded" });
+      } else if (state === "failed") {
+        finish(earned ? { status: "rewarded" } : { status: "failed" });
+      }
+    };
+    const noStart = setTimeout(() => {
+      if (!started) finish({ status: "failed" });
+    }, AD_START_TIMEOUT_MS);
+    b.advertisement.on(b.EVENT_NAME.REWARDED_STATE_CHANGED, onState);
+    try {
+      b.advertisement.showRewarded(REWARDED_PLACEMENT);
+    } catch {
+      finish({ status: "failed" });
+    }
+  });
+  ad.end();
+  return result;
 }

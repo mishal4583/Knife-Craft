@@ -8,7 +8,7 @@
  * shape so a save written on one can still be read after a platform
  * switch (e.g. testing locally, then re-testing inside YouTube).
  */
-import { isInsideYouTube, loadCloudSave, saveCloudSave } from "./PlayablesSDK";
+import { loadCloudSave, platformReady, saveCloudSave } from "./PlayablesSDK";
 import { DEFAULT_LEVEL_PROGRESS, type LevelProgress } from "./levels/LevelManager";
 import { DEFAULT_SUPPLIER_ID } from "./economy/supplierDefinitions";
 import type { EconomyLedgerEntry } from "./economy/ledgerTypes";
@@ -262,9 +262,11 @@ class SaveManagerImpl {
   async load(): Promise<SaveData> {
     if (this.cache) return this.cache;
 
+    // Playgama: saves go through Bridge storage (never localStorage directly).
+    // Plain localStorage is only the fallback when no Bridge exists at all.
     let raw: string | null = null;
-    if (isInsideYouTube()) {
-      raw = await loadCloudSave();
+    if (await platformReady()) {
+      raw = await loadCloudSave().catch(() => null);
     } else if (typeof localStorage !== "undefined") {
       raw = localStorage.getItem(STORAGE_KEY);
     }
@@ -315,7 +317,7 @@ class SaveManagerImpl {
   async save(data: SaveData): Promise<void> {
     this.cache = data;
     const serialized = JSON.stringify(data);
-    if (isInsideYouTube()) {
+    if (await platformReady()) {
       await saveCloudSave(serialized);
       return;
     }
@@ -332,7 +334,7 @@ class SaveManagerImpl {
    */
   async readPersisted(): Promise<Pick<SaveData, "credits" | "economyLedger"> | null> {
     let raw: string | null = null;
-    if (isInsideYouTube()) raw = await loadCloudSave();
+    if (await platformReady()) raw = await loadCloudSave();
     else if (typeof localStorage !== "undefined") raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     try {

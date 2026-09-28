@@ -22,14 +22,11 @@
     <link rel="icon" href="/favicon.ico" type="image/x-icon" />
 
     <!--
-      YouTube Playables SDK — MUST be the first executable script in the
-      document, ahead of every other script tag (including the module
-      bootstrap below). Nothing here creates or wraps `window.ytgame`;
-      the SDK defines that global itself. Outside YouTube (local dev,
-      `npm run preview`) this script 404s harmlessly and every call site
-      in src/game/PlayablesSDK.ts falls back to a local no-op.
+      Playgama Bridge SDK (v2) — loaded from Playgama's CDN before the game
+      bundle; it reads ./playgama-bridge-config.json. The only external
+      resource the game loads. See src/game/PlayablesSDK.ts.
     -->
-    <script src="https://www.youtube.com/game_api/v1"></script>
+    <script src="https://bridge.playgama.com/v2/stable/playgama-bridge.js"></script>
   </head>
   <body>
     <div id="root"></div>

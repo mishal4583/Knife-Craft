@@ -55,11 +55,11 @@ export function ReplayBonusSheet({
             Replay Bonus · {formatUsd(amount)}
           </p>
           <p className="mt-1 font-hand text-[15px] leading-snug text-walnut/70">
-            Replays don't pay — but you can watch a short YouTube ad to earn a bonus for this one.
+            Replays don't pay — but you can watch a short ad to earn a bonus for this one.
           </p>
           {phase === "REQUESTING_AD" && canClose ? (
             <p className="mt-3 rounded-[12px] bg-walnut/8 px-3 py-2 font-ui text-[12px] font-bold text-walnut/80">
-              Still waiting for YouTube. You can keep playing — if the ad finishes, your bonus is
+              Still waiting for the ad. You can keep playing — if the ad finishes, your bonus is
               added automatically.
             </p>
           ) : null}
