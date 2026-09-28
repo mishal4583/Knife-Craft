@@ -1,0 +1,371 @@
+
+YouTube Playables Requirements for Games
+Learn about the criteria we use when selecting games for YouTube Playables, from technical requirements to genre and quality standards.
+In our previous article, we broke down what YouTube Playables is and why this platform opens up entirely new horizons for developers. Indeed, YouTube Playables offers massive reach, but success requires navigating a highly specific set of platform rules and audience expectations. 
+Youtube Playables is actively growing at a rapid pace, though it is currently available only in limited locations: the USA, Canada, Australia, the UK, India, Malaysia, Turkey, Japan and some countries from Europe
+Success on YouTube Playables comes down to how naturally your game fits the platform's rhythm. Users discover games while browsing video content, so the first few seconds matter: fast loading, intuitive controls, and a clear hook help a game feel like a natural extension of the YouTube experience, rather than an interruption.
+That is exactly why we put together this detailed guide. Here, you will learn about the criteria we use when selecting games for YouTube Playables, from technical requirements to genre and quality standards. We will outline the essential technical constraints, quality benchmarks, and monetization rules your title must meet to get approved.
+
+Access Playables through the side menu or via youtube.com/playables
+Genre and Gameplay: The Philosophy of Instant Fun
+When developing for YouTube, you have to think about how users consume content. Just like the videos on the platform, the most popular games are the ones that are easy to instantly understand and jump into. The best games on the platform hook users immediately, clearly explain what is going on, and keep players hooked for the duration of their session.
+Because of this environment, the most popular genres on Playables are Action, Racing, Simulation, and Arcade. While it doesn't mean that games of other genres can't find their audience, it does mean that their chances are slimmer.
+However, there is a golden rule that is far more important than genre: simplicity of gameplay.
+YouTube Playables users typically browse and play in short, spontaneous sessions between watching videos. Because of this, games that offer immediate, intuitive gameplay tend to perform best — they fit naturally into how people already use the platform. More complex titles can absolutely succeed, but they usually need to front-load their most accessible mechanics to capture attention quickly.
+
+Does that mean deeper games have no place here? Not at all. Midcore and strategy games possess a powerful hidden advantage: exceptionally high engagement and playtime. While casual players might dip in and out, dedicated players of deeper genres stick around for much longer sessions. Under YouTube's specific ecosystem - where traditional in-app purchases are completely prohibited (at least in 2026) - a high average playtime translates directly into stable, substantial, and long-term ad revenue.
+But if your goal is the mass-market top charts, keeping it simple remains your best bet. Take puzzle games as an example. There are very popular puzzles on the platform, but if you take a closer look, you will see that they are not complex quizzes or clever head-scratchers. Instead, they are simple matching or drawing games that don't require a lot of deep thinking and are easily solvable at a glance. Great examples of this include Thief Puzzle, Emoji Puzzle, and Draw Bridge.
+
+1 million gameplays per week on YouTube - easy. Popular titles hit 10+ million within a few months
+That simplicity rule is relevant for every single genre:
+Action: Think mostly runners or fighting games, like Ladder Master or Supreme Duelist.
+Arcade: Focus on .io style games, like Hole.io.
+Racing: Obstacle racing is king here, seen in games like MR RACER, Deadly Descent and Race Master 3D.
+Simulation: Lean into hypercasual tycoons and evolution games, like Evolution Simulator and Gym Boss.
+Ultimately, for a game to have a good chance of being selected for YouTube, it should be a simulation, puzzle, racing, action, or arcade game with a distinct hypercasual quality to it. Generally, if your game features a thought-out progression where new mechanics are added every few levels, difficulty rises gradually, and new fun challenges are consistently presented to the player, you are in the clear.
+What Won’t Work
+We generally advise against:
+Games that require time or effort to understand and get into, such as Backpack Battles or Gearshift One.
+Trivia, word, board, RPG, and strategy games - unless you can find a way to make them truly hypercasual.
+Music and rhythm games (like Tile Jumper 3D), as the YouTube audience currently doesn't seem interested in them.
+Simple puzzle games that copy existing titles without a meaningful gameplay twist.
+Games with a strong AI-generated look. More and more AI-made games are appearing on the platform, but so far, we haven’t seen a single title with an obvious AI-generated visual style become a real success.
+Technical Requirements
+When a user is scrolling through their YouTube feed, their attention span is measured in fractions of a second. If your game takes too long to load or interrupts their viewing flow, they will scroll away. This is exactly why YouTube's technical constraints are so strict - they are designed to protect the player's seamless experience.
+To get your game on the platform, you must strictly adhere to the following technical rules:
+1. The 30MB Initial Size Limits
+On YouTube, speed is everything.
+Initial Load: Your game's initial load (often called the “initial build” or “initial bundle”) - which includes all resources that load before GameReady is called - must be less than 30 MB. YouTube absolutely does not allow games that have more than 30 megabytes loaded initially.
+File Size Limits: Additionally, no individual file within your build can be larger than 30 megabytes. If you have files exceeding this limit, you must reduce their size or divide them into smaller ones. Your ZIP archive can be quite large overall - up to 200 MB.
+No Compression: YouTube does not allow any compression. A decompression fallback, however, is fine.
+2. No External Calls. 
+YouTube operates as a highly secure, closed ecosystem to keep users safely within the app. Because of this, YouTube does not allow any calls outside of YouTube itself. This strict rule means your game will not be able to:
+Send external analytics reports.
+Connect to external multiplayer servers.
+Process standard in-game purchases.
+3. Playing Nice with the Platform (Core Interactions) 
+Your game operates inside the native YouTube app, which means it must flawlessly obey the platform's commands to ensure correct interaction.
+GameReady State: The GameReady signal must be sent only when the player can actually interact with the game. Do not fire it prematurely during an unplayable loading sequence.
+Pause and Mute Logic: When your game receives a pause command from the platform, it must immediately pause all rendering, sound, and gameplay. Similarly, the game must turn off all sound the exact moment it receives a mute command from the platform. Moreover, your in-game sound settings shouldn’t ever override the platform's native settings.
+Saving Progress: Player retention relies on saving progress. Your saves must work correctly, and to achieve this within YouTube's ecosystem, you must be sure to use storage methods.
+Ad Calls (Interstitials & Rewarded): You need to hook up standard interstitial and rewarded ad triggers. However, since monetization is rolling out gradually and is not yet enabled in every single location, your code must always check whether ad placements are supported by the platform before attempting to fire them.
+Implementing these methods is straightforward whether you're using the YouTube SDK directly or a universal SDK like Playgama Bridge.
+When it comes to the look and feel of your game, the bar is set high. We only consider games for YouTube that are of good overall quality. Simply put, we are looking for the type of games that deserve to potentially be played by millions of players.
+To meet these standards, your game must pass a strict set of visual and functional quality checks:
+Vibrant and Professional Visuals: We are looking for colorful, readable visuals with dynamic animations. You must ensure there are no visual artifacts and absolutely no low-effort assets.
+
+Games with simple graphics can still resonate with audiences, but having polished, high-quality visuals significantly improves your chances of success
+Clear and Functional UI: Your user interface should be legible and functional, but not overwhelming. Bright, colorful, and easily readable interfaces perform best. Conversely, UI that is dark, small, and hard to comprehend at a glance will not pass our review.
+
+Eye-catching visuals combined with zero complex onboarding are a solid bet that players won't bounce within the first 30 seconds
+Flawless Scaling Across Devices: Players will access your game on a wide variety of screens and devices. Therefore, your game requires correct scaling of game elements and text for different aspect ratios: 1:1, 16:9, and 9:16.
+
+Testing how the game renders across different frame sizes is a solid idea before going live
+Zero-Tolerance for Bugs: It goes without saying, but there can be no bugs that break the game, hinder the gameplay, or simply look bad.
+The Copyright Minefield 
+Beyond just looking good, your game’s assets must be legally bulletproof. YouTube has very strict copyright rules. If anything looks or sounds like it could infringe on an intellectual property, YouTube will probably flag it.
+If your build currently features characters, skins, or pictures that are copied from or heavily inspired by other franchises or games like Roblox, you should immediately replace them with something generic or original, made by you. The exact same rule goes for copyrighted music or tracks that sound similar to it. On a platform this large, playing it safe with original assets is the only way to go.
+Engagement and Monetization
+Beyond just looking good and functioning perfectly, your game needs to hold the audience's attention and generate revenue within YouTube's unique framework.
+Engagement Metrics and Progression 
+In terms of hard metrics, we are generally looking for games that achieve around 10 minutes of average playtime. However, these benchmarks are not set in stone. If a game falls slightly short of that but we believe it has strong potential on YouTube, we can still give it a chance.
+
+Aside from the raw numbers, the game must be inherently engaging. Just like viral YouTube videos, the best games on the platform hook users, let them easily jump in, explain what is going on, and keep players hooked for the duration of the experience. 
+Generally, you are in the clear if your game features a thought-out progression where new mechanics are added every few levels, difficulty rises gradually, and new fun challenges are consistently presented to the player. This is especially true if all of that progression is confirmed by data.
+Monetization Rules 
+When it comes to making money, you have to adapt your strategy to the platform's isolated ecosystem. Because YouTube doesn't allow external calls, in-app purchases, banners, and intrinsic ads simply don't work.
+When designing your ad flow, remember that timers before interstitials are also strictly forbidden. Otherwise, the best practices for implementing interstitial and rewarded ads for YouTube are exactly the same as detailed in our comprehensive guide on monetization, where you can see exactly what we consider good monetization.
+Let’s look at the actual revenue numbers. Some of our games earned $15,000 in net revenue within their first month — and that's after all platform commissions are deducted.
+The most impressive part? These numbers are happening right now, even while monetization is still in a gradual rollout phase and isn't fully enabled in every country yet. As the platform opens up globally, the earning ceiling is only going to rise.
+Not bad, right?
+----
+Before you hit submit, ensure your game passes this final check:
+Size Limits: Your initial load must be less than 30 MB, and each individual file in the build must be less than 30 MB.
+Technical Constraints: YouTube does not allow any compression or external calls (no external analytics or multiplayer servers).
+Platform Integration: The game must instantly pause rendering and turn off all sound when receiving the respective commands from the platform.
+Gameplay Philosophy: Focus on simplicity. Your title should ideally be a simulation, racing, or action/arcade game with a distinct hypercasual quality to it.
+Visuals & IP: Ensure colorful, readable visuals with correct scaling across 1:1, 16:9, and 9:16 aspect ratios. Most importantly, adhere to YouTube's very strict copyright rules by using 100% original or appropriately licensed assets.
+Performance: Aim for a strong, data-backed progression loop and around 10 minutes of average playtime.
+How Playgama Helps You Succeed
+Launching a game successfully on YouTube Playables comes with a collective set of challenges, from meeting strict technical guidelines to navigating platform verification. Playgama supports developers throughout this process with integration resources, technical guidance, help with YouTube-specific creatives and content, and expanded distribution reach across our existing player base.
+From our observations, Playables recommendations function very similarly to regular video recommendations. If a user plays one game, YouTube starts showing them more games from the same publisher or developer more frequently. It creates a kind of network effect, where successful releases help subsequent games build their audience faster.
+That's why a strong portfolio on the platform starts working for itself. On our end, we amplify this effect: we bring the first players to new releases through Playgama, our YouTube community, our Discord for players, and other social channels, as well as through our own ad network. This helps games get their first sessions faster, hit the recommendations, and start pulling in organic traffic.
+Here is what we bring to the table:
+Multi-Platform Reach: We go far beyond YouTube. We publish your game across dozens of major gaming platforms worldwide, including our own portal, Playgama.com, maximizing your traffic from day one.
+Proven Scale on YouTube: As of 2026, Playgama is a top-3 global leader for uploaded games on YouTube and ranks number 1 for total gameplays on the platform. We know exactly how to handle and scale YouTube traffic.
+Progressive Revenue Splits: We believe in rewarding success. Developers retain anywhere from 70% to 90% of total earnings across all platforms, while Playgama’s take drops from 30% down to 10%. The higher your collective portfolio's total earnings go, the more the scale tilts in your favor.
+No Exclusivity Required: We do not demand exclusive rights to your titles. Distributing your game through us doesn't tie your hands - you remain the absolute owner of your content and are completely free to publish it on any other platforms or sites as you see fit.
+We're running paid traffic on games from our ad network, supporting launches with YouTube videos (we have over 500K subscribers on YouTube).
+The bottom line: You focus on creating a great game. We support you with technical integration, help with YouTube-specific content and creatives, manage multi-platform monetization, and drive additional traffic to your title through our established player base. Let’s team up and get your game out there!
+How to Publish Your Game on YouTube Playables
+Learn how to publish your game on YouTube Playables. A complete developer guide covering portal access, SDK, testing, certification, and monetization.
+YouTube Playables lets developers launch HTML5 games directly inside the YouTube app and website, reaching over two billion users without forcing players to install anything. If you have a web-ready game, getting it live on the platform is straightforward - provided you follow Google's technical and content requirements. This guide walks you through the entire flow from engine compatibility to certification.
+
+Understanding YouTube Playables & Supported Engines
+YouTube Playables are lightweight, instant-play games that run inside the YouTube ecosystem. They must be built as self-contained HTML5 experiences: all assets bundled in a ZIP archive, no external network calls, and an initial load size under 30 MB. The platform supports modern web standards such as WebGL and Canvas, which means most web-first engines work out of the box.Supported engines and frameworks include:
+Unity and Godot (WebGL export)
+Cocos Creator, Construct, GameMaker, Defold, GDevelop
+Native JS engines like Phaser, PlayCanvas, and LayaAir
+Portrait orientation is mandatory; landscape is optional but recommended for cross-device coverage. Target platforms are Android S+ and iOS 14+, with Chrome and Safari as the primary browsers.
+Prerequisites and Developer Portal Access
+There are two strategic ways to get your game onto YouTube Playables. They differ in speed, requirements, and the amount of work you handle yourself.
+The direct route
+You can apply to Google for direct access to the YouTube Playables Developer Portal. You will need to submit an interest form and wait for YouTube to approve your account - a process that can take weeks or even months. Once approved, you must hold Channel Manager permissions in YouTube Studio, integrate the official YouTube Playables SDK, check the requirements, and handle every stage of testing, certification, and live operations yourself.
+The partner route
+Another path is to publish through an established partner that already operates a verified portal account, a live game catalog, and an active user base. Even then, you still need to integrate an SDK - either the partner's own wrapper or YouTube's native kit - and meet all standard platform requirements. 
+
+The Playgama Advantage
+Playgama is an official YouTube Playables partner, top-3 global leader for uploaded games on YouTube and ranks number 1 for total gameplays on the platform in 2026. You integrate the Playgama Bridge SDK — a single kit that already includes the required YouTube bindings — which covers the technical layer while you proceed through the standard platform onboarding.
+The real benefit is multi-platform distribution. The same Bridge SDK also publishes your game to MSN, Xiaomi, Y8, TikTok, and 10+ other instant-game platforms without extra code. On top of that, Playgama drives additional traffic to your title through its own user base and paid acquisition campaigns, meaning your game does not rely solely on YouTube's organic discovery.
+In addition to distribution, Playgama also operates its own browser games portal with a large player base across tier countries.
+How to Publish Through Playgama
+Getting live via Playgama takes three steps:
+Integrate the SDK. Add Playgama Bridge to your project. It supports Unity, Godot, Cocos, Construct, and native JS engines. Documentation and code samples are included.
+Create an account and upload your game as a ZIP archive.
+Let Playgama handle the rest. The team runs QA using official YouTube Test Suite, checks your game against all platform requirements, and gives you specific recommendations if anything needs tweaking, whether it is orientation handling, asset bundling, or session length optimization. Once the build is clean, Playgama submits it for certification and communicates directly with YouTube's partnership team on your behalf. 
+Playgama also helps with creative optimization, data-driven recommendations for retention and monetization, and transparent revenue sharing.
+The YouTube Playables Market in 2026
+YouTube Playables is still a wide-open market. The service is live in high-value countries - the United States, United Kingdom, Canada, Australia, Malaysia, Turkey, India, Japan and some countries from Europe - with roughly 1000 games currently available from all developers combined. That is a fraction of the catalog on mobile app stores, which means low competition and strong visibility for new titles.
+Monetization is already rolling out. YouTube's pilot program serves interstitial and rewarded ads to a growing share of the audience, and revenue sharing is active. Because the platform sits inside an app with over two billion signed-in users, the ceiling for monetization is effectively unlimited.
+Frequently Asked Questions
+Publishing on YouTube Playables requires the right build, the correct portal permissions, and a clean testing cycle. Playgama provides hands-on support with QA, creative optimization for the platform, and direct communication with YouTube's partnership team — all as part of the standard publishing workflow.
+Ready to reach two billion users? Start by integrating the Playgama Bridge SDK and uploading your build at developer.playgama.com.
+Last updated 1 month ago
+
+> For the complete documentation index, see [llms.txt](https://wiki.playgama.com/playgama/llms.txt). Markdown versions of documentation pages are available by appending `.md` to page URLs; this page is available as [Markdown](https://wiki.playgama.com/playgama/bridge-sdk/getting-started.md).
+# Getting started
+{% hint style="info" %}
+You are reading the documentation for Bridge SDK **v2**. If you need the obsolete v1 documentation, see [Documentation (v1)](https://wiki.playgama.com/playgama/bridge-sdk-v1).
+{% endhint %}
+{% hint style="info" %}
+We recommend using AI agents to integrate the SDK: just send your agent the [LLMS](https://wiki.playgama.com/playgama/bridge-sdk.md) link and ask it to fully integrate the SDK into your game.
+{% endhint %}
+**Playgama Bridge is a unified SDK for publishing HTML5 games on multiple platforms with a single integration.**
+Integrate once: Bridge handles platform-specific differences for ads, storage, payments, leaderboards, and more. SDK integration is required for submission; during submission, you choose which platforms to publish on.
+## How Bridge works
+When your game runs on a supported platform, Bridge automatically loads that platform's native scripts and routes API calls to it. In unsupported environments, including local development, Bridge uses a mock platform: calls return safe defaults (`false`, `reject`, etc.) instead of throwing, so you can develop and debug before publishing.
+This means **you write the same code for every platform**. Differences are handled inside the SDK.
+## Engine support
+Bridge ships official packages for these engines. JS Core contains the shared SDK logic; engine packages are thin wrappers around it.
+* **JS Core** — works in any web engine (PlayCanvas, Phaser, LayaAir, etc.)
+* **Unity**
+* **Construct 3**
+* **GDevelop**
+* **Godot** (3.x and 4.x)
+* **GameMaker**
+* **Defold**
+* **Cocos Creator**
+* **Scratch**
+See [Setup](/playgama/bridge-sdk/setup.md) for installation instructions per engine.
+## Required steps
+Every game must also implement the required steps. See the full list with exact methods in [API → Required steps](/playgama/bridge-sdk/api.md#required-steps).
+## Supported platforms
+Currently the SDK is integrated with the following platforms. Publishing on more platforms gives your game more reach with the same codebase.
+* <img src="https://1088849411-files.gitbook.io/~/files/v0/b/gitbook-x-prod.appspot.com/o/spaces%2F5ukgSPDBOdbQp4FYtbz1%2Fuploads%2FbVrimM1fPGv6ko1jZEc8%2Ffenniv-avatar.png?alt=media&amp;token=52720693-1c2d-41f7-ba2c-ad96d0f5c0dd" alt="" data-size="line"> [Playgama](https://playgama.com/) <mark style="color:purple;background-color:purple;">default</mark>
+* <img src="https://1088849411-files.gitbook.io/~/files/v0/b/gitbook-x-prod.appspot.com/o/spaces%2F5ukgSPDBOdbQp4FYtbz1%2Fuploads%2FvHClPQTGUnWQ4MY8LhsM%2Flogo-plated-256x256.png?alt=media&amp;token=8c5e0ea6-8764-4804-8979-a38627ccd52f" alt="" data-size="line"> [Microsoft Store](https://apps.microsoft.com/home?hl=en-US)
+* <img src="https://1088849411-files.gitbook.io/~/files/v0/b/gitbook-x-prod.appspot.com/o/spaces%2F5ukgSPDBOdbQp4FYtbz1%2Fuploads%2FbGC25gdFBK3ahJl1FCAQ%2Fimage.png?alt=media&amp;token=53b141f2-5a46-4b74-8327-88c44b0cb0fc" alt="" data-size="line"> [Facebook](https://www.facebook.com/gaming/play/)
+* <img src="https://1088849411-files.gitbook.io/~/files/v0/b/gitbook-x-prod.appspot.com/o/spaces%2F5ukgSPDBOdbQp4FYtbz1%2Fuploads%2FoF8NGdarnMyjcM3JENFG%2Fyoutube-icon.png?alt=media&amp;token=9d7572d3-7850-42b6-a0ba-48238c7ad1e7" alt="" data-size="line"> [YouTube](https://www.youtube.com/playables)
+* <img src="https://1088849411-files.gitbook.io/~/files/v0/b/gitbook-x-prod.appspot.com/o/spaces%2F5ukgSPDBOdbQp4FYtbz1%2Fuploads%2FVvMDxtKX8BFDRS0M7SKq%2Fdownload.png?alt=media&amp;token=c676a454-13bd-4568-b6fe-392637235b9c" alt="" data-size="line"> [Discord](https://discord.com/gaming)
+* <img src="https://1088849411-files.gitbook.io/~/files/v0/b/gitbook-x-prod.appspot.com/o/spaces%2F5ukgSPDBOdbQp4FYtbz1%2Fuploads%2F4zyIxrMxbafNhuSlCR1j%2FScreenshot%202025-09-05%20at%2014.24.27.png?alt=media&amp;token=957ad68a-cfe2-4127-ba94-8cdcc7000559" alt="" data-size="line"> [Huawei](https://appgallery.huawei.com/Categories)
+* <img src="https://1088849411-files.gitbook.io/~/files/v0/b/gitbook-x-prod.appspot.com/o/spaces%2F5ukgSPDBOdbQp4FYtbz1%2Fuploads%2FYdDcwBNkZfyUxGP04zIt%2Fimage.png?alt=media&amp;token=55e022ef-0ff4-4d8f-b3c9-d02f49bc68d7" alt="" data-size="line"> [Xiaomi](https://global.app.mi.com/details?lo=ES\&la=en\&id=com.xiaomi.glgm)
+* <img src="https://1088849411-files.gitbook.io/~/files/v0/b/gitbook-x-prod.appspot.com/o/spaces%2F5ukgSPDBOdbQp4FYtbz1%2Fuploads%2FaRTgZOHrs8ayKMAseapM%2FReddit_Logo.png?alt=media&amp;token=4662b550-edc9-4b4d-bdfc-65a72e4b0f6d" alt="" data-size="line"> [Reddit](https://www.reddit.com/r/GamesOnReddit/)
+* <img src="https://1088849411-files.gitbook.io/~/files/v0/b/gitbook-x-prod.appspot.com/o/spaces%2F5ukgSPDBOdbQp4FYtbz1%2Fuploads%2FAyXsmbtkfDO8XRh2zBF4%2FimagesMSN.jpeg?alt=media&amp;token=883b926a-9720-4fd0-99ff-1505fd7d73bc" alt="" data-size="line"> [MSN](https://msn.com/en-us/play)
+* <img src="https://1088849411-files.gitbook.io/~/files/v0/b/gitbook-x-prod.appspot.com/o/spaces%2F5ukgSPDBOdbQp4FYtbz1%2Fuploads%2FvQQCZSXGiKYsVSumrGCv%2Funnamed.webp?alt=media&amp;token=a1be5d82-3148-4134-adbf-74083790cd2c" alt="" data-size="line"> [GameSnacks](https://gamesnacks.com/)
+* <img src="https://1088849411-files.gitbook.io/~/files/v0/b/gitbook-x-prod.appspot.com/o/spaces%2F5ukgSPDBOdbQp4FYtbz1%2Fuploads%2FoNHAxutXso4iMyxbltk7%2Fdownload%20(1).png?alt=media&amp;token=100cd977-7625-49cd-9464-db453638044f" alt="" data-size="line"> [JioGames](https://play.jiogames.com/)
+* <img src="https://1088849411-files.gitbook.io/~/files/v0/b/gitbook-x-prod.appspot.com/o/spaces%2F5ukgSPDBOdbQp4FYtbz1%2Fuploads%2FRluNfAR1frGkJDSfc901%2F9aa2b4a7be334dd6d75441f2debda29c8d69f851.png?alt=media&amp;token=c95fb51d-ba3b-4245-93ac-9f42dfed24d4" alt="" data-size="line"> [Y8](https://y8.com)
+* <img src="https://1088849411-files.gitbook.io/~/files/v0/b/gitbook-x-prod.appspot.com/o/spaces%2F5ukgSPDBOdbQp4FYtbz1%2Fuploads%2FIrvOT2pfZDvD4FbkH6B5%2Fimage.png?alt=media&amp;token=836f2948-231a-4f5f-8945-2c3f30363ac0" alt="" data-size="line"> [Lagged](https://lagged.com)
+* <img src="https://1088849411-files.gitbook.io/~/files/v0/b/gitbook-x-prod.appspot.com/o/spaces%2F5ukgSPDBOdbQp4FYtbz1%2Fuploads%2FYKuitkgdA9fMpfSi69q3%2Fimage.png?alt=media&amp;token=3c4d11ef-6a80-4932-ac0e-2e1930cb3524" alt="" data-size="line"> [Game Distribution](https://gamedistribution.com/)
+* <img src="https://1088849411-files.gitbook.io/~/files/v0/b/gitbook-x-prod.appspot.com/o/spaces%2F5ukgSPDBOdbQp4FYtbz1%2Fuploads%2FSdiAd0fYI8p31eRIe0S0%2Fimage.png?alt=media&amp;token=aa39215f-ac0d-473a-884c-1ceeb24a6188" alt="" data-size="line"> [Crazy Games](https://www.crazygames.com/)
+* <img src="https://1088849411-files.gitbook.io/~/files/v0/b/gitbook-x-prod.appspot.com/o/spaces%2F5ukgSPDBOdbQp4FYtbz1%2Fuploads%2FCus9gxLemDHaEPOGv8Hr%2Fimage.png?alt=media&amp;token=4f873768-8152-49a9-a325-72ab64398a50" alt="" data-size="line"> [Playhop](https://playhop.com/)
+* <img src="https://1088849411-files.gitbook.io/~/files/v0/b/gitbook-x-prod.appspot.com/o/spaces%2F5ukgSPDBOdbQp4FYtbz1%2Fuploads%2Fgit-blob-89d8223264cfb4a7349989cb8d93470eba679a9e%2Fyandex-logo.png?alt=media" alt="" data-size="line"> [Yandex Games](https://yandex.com/games/)
+* <img src="https://1088849411-files.gitbook.io/~/files/v0/b/gitbook-x-prod.appspot.com/o/spaces%2F5ukgSPDBOdbQp4FYtbz1%2Fuploads%2Fmu3WGwSwzxoF1ECQhHpo%2Fimage.png?alt=media&amp;token=e098f36d-65f6-4a3b-b6d9-6b902cb0862d" alt="" data-size="line"> [Poki](https://poki.com)
+* <img src="https://1088849411-files.gitbook.io/~/files/v0/b/gitbook-x-prod.appspot.com/o/spaces%2F5ukgSPDBOdbQp4FYtbz1%2Fuploads%2FsejzuXFMQjcPtkAOMzuT%2Fdlightek.png?alt=media&amp;token=6aff6b7a-e4db-48b2-9e83-147ce1d79ec2" alt="" data-size="line"> [Dlightek / Aha Games](https://aha.game/)
+After you publish on Playgama, your game also enters our distribution network through a shareable link. Partners can pick up that link and embed the game on their own sites.
+> For the complete documentation index, see [llms.txt](https://wiki.playgama.com/playgama/llms.txt). Markdown versions of documentation pages are available by appending `.md` to page URLs; this page is available as [Markdown](https://wiki.playgama.com/playgama/mcp.md).
+# MCP Server: Publish Games from Your AI Agent
+Connect Codex, Claude Code, Cursor, VS Code or claude.ai to your Playgama cabinet: create a game, upload builds and covers, edit in-app items, publish a sandbox.
+The Playgama MCP server connects your AI coding agent — Codex, Claude Code, Cursor and others — to your Playgama developer cabinet. Instead of switching to the browser to fill in the game form, upload a new build or fix a price in the in-app catalog, you ask the agent to do it from the project you are already working in.
+It is a remote server built on the [Model Context Protocol](https://modelcontextprotocol.io), an open standard for how an AI assistant discovers and calls tools.
+**Endpoint:** `https://developer.playgama.com/api/mcp`
+## What you can do with it
+* **Create a game and fill in its form** — title, description, how-to-play, supported devices and languages, screen orientation, distribution.
+* **Upload a build** — the agent packs the zip, uploads it and adds it to the game's form, then polls until unpacking and Bridge SDK analysis are finished.
+* **Publish to a sandbox** — a public link anyone can play, without moderation, for playtesting and sharing a work in progress. Like every game on Playgama, the build must have the Playgama Bridge SDK integrated.
+* **Bring players to the sandbox** — share the game on any platform and get a free boost: an ad campaign built from the game's covers that sends players to the sandbox link.
+* **Upload covers** — square, portrait and landscape, checked against the exact size the form requires.
+* **Manage the in-app catalog** — read the products, change one, write the whole catalog back.
+* **Create and edit leaderboards** — the same tags your game passes to the Bridge SDK.
+* **Test before submitting** — get a QA Tool link for an uploaded build, or for a game you are serving from `localhost`.
+* **Read moderation feedback** — the correspondence on a game and whether it can be submitted right now.
+Submitting a game to moderation is deliberately **not** on this surface — see [What a connected agent can and cannot do](#what-a-connected-agent-can-and-cannot-do).
+## Before you start
+* A [Playgama developer account](https://developer.playgama.com/) with the sign-up finished. Until it is, the cabinet refuses the connection — there would be no games for the agent to reach.
+* One of the supported clients: **Codex**, **Claude Code**, **Cursor**, **VS Code** (with Copilot / MCP support), **claude.ai** or **Claude Desktop**.
+* **A game with the Playgama Bridge SDK integrated.** Bridge is required for every game on Playgama — the sandbox included. If your game does not have it yet, ask the agent to integrate it before the first upload: `get_bridge_sdk_docs` serves the [Bridge SDK docs](/playgama/bridge-sdk/getting-started.md), and the [Game checklist](/playgama/mcp/game-checklist.md) lists the required steps in order.
+There is no token to create or copy. The server uses OAuth: your client finds the sign-in from the endpoint, opens the cabinet in your browser, and you allow the connection there.
+## Step 1. Add the server to your client
+The [MCP page in the cabinet](https://developer.playgama.com/mcp) shows the same snippets with the endpoint filled in.
+{% tabs %}
+{% tab title="Codex" %}
+Run this once:
+```bash
+codex mcp add 'playgama-developer-cabinet' --url 'https://developer.playgama.com/api/mcp'
+```
+Codex opens the browser to sign in right away.
+{% endtab %}
+{% tab title="Claude Code" %}
+Run this once:
+```bash
+claude mcp add --transport 'http' 'playgama-developer-cabinet' 'https://developer.playgama.com/api/mcp'
+```
+Then run `/mcp` inside Claude Code, pick `playgama-developer-cabinet` and choose to authenticate.
+{% endtab %}
+{% tab title="Cursor" %}
+Add this to `~/.cursor/mcp.json`:
+```json
+{
+  "mcpServers": {
+    "playgama-developer-cabinet": {
+      "type": "http",
+      "url": "https://developer.playgama.com/api/mcp"
+    }
+  }
+}
+```
+Cursor asks you to sign in when it first connects to the server.
+{% endtab %}
+{% tab title="VS Code" %}
+Add this to `.vscode/mcp.json`:
+```json
+{
+  "servers": {
+    "playgama-developer-cabinet": {
+      "type": "http",
+      "url": "https://developer.playgama.com/api/mcp"
+    }
+  }
+}
+```
+The file holds no secret, so it is safe to commit. VS Code asks you to sign in when it starts the server.
+{% endtab %}
+{% tab title="claude.ai / Claude Desktop" %}
+Open **Settings → Connectors → Add custom connector** and enter the endpoint `https://developer.playgama.com/api/mcp`. Then click **Connect** on the new connector.
+{% endtab %}
+{% endtabs %}
+## Step 2. Allow the connection
+The client opens a page on `developer.playgama.com` in your browser.
+1. Sign in to the cabinet if you are not signed in yet.
+2. Check what the page shows: the **account** and **organization** the agent will act for, the **agent** asking, **where it returns** after you answer, and what it will be able to do.
+3. Click **Allow**. The browser hands control back to the client, and the agent is connected.
+{% hint style="warning" %}
+Allow only a connection you started yourself. If the page opens without you having just added the server — or it names an agent or a return address you do not recognise — click **Deny**.
+{% endhint %}
+The request on that page is valid for 10 minutes. If it has expired, start the connection again from the client.
+{% hint style="info" %}
+The server registers under the name `playgama-developer-cabinet`. Keep it as-is — clients use it as an identifier, and the name says which environment this is, so connecting more than one Playgama deployment from the same machine does not overwrite the other.
+{% endhint %}
+## Step 3. Check that it works
+Ask the agent:
+> List my games on Playgama.
+If the connection is good, it calls `list_applications` and answers with your games. A brand-new account has none yet, and an empty list is just as good an answer — the connection works, and you can ask the agent to create the first game right away:
+> Create a game called "Coin Town" on Playgama — it is made with Unity.
+If the agent reports an authentication error instead, see [Troubleshooting](#troubleshooting).
+## What a connected agent can and cannot do
+**A connected agent reaches exactly the games you see in your cabinet, and nothing else.**
+<table><thead><tr><th width="220">Can</th><th>Tools</th></tr></thead><tbody><tr><td>Read your games</td><td><code>list_applications</code>, <code>get_application</code>, <code>get_submission_state</code>, <code>list_moderation_comments</code>, <code>get_archive_qa_tool_link</code>, <code>get_local_game_qa_tool_link</code>, <code>get_sandbox_state</code>, <code>get_sandbox_share</code>, <code>get_sandbox_traffic</code>, <code>get_launch_steps</code></td></tr><tr><td>Create new games</td><td><code>create_application</code></td></tr><tr><td>Edit the game form</td><td><code>update_application_form</code></td></tr><tr><td>Manage the in-app catalog</td><td><code>list_in_app_products</code>, <code>replace_in_app_products</code></td></tr><tr><td>Create and edit leaderboards</td><td><code>list_leaderboards</code>, <code>create_leaderboard</code>, <code>update_leaderboard</code></td></tr><tr><td>Upload game builds</td><td><code>start_archive_upload</code>, <code>get_archive_status</code>, <code>confirm_archive_upload</code></td></tr><tr><td>Upload cover images</td><td><code>start_cover_upload</code>, <code>confirm_cover_upload</code></td></tr><tr><td>Publish a game to the sandbox: a public link, no moderation</td><td><code>publish_sandbox</code></td></tr><tr><td>Bring players to the sandbox with an ad campaign that cannot be undone</td><td><code>start_sandbox_traffic</code></td></tr><tr><td>Read the Playgama Bridge SDK docs</td><td><code>get_bridge_sdk_docs</code></td></tr></tbody></table>
+Deliberately withheld — these stay actions a human takes in the cabinet:
+* **Submit a game to moderation.** The agent prepares everything; you press the button.
+* **Roll a game back to the last submitted version.** It would erase changes made in the browser too, not only the agent's own.
+* **Upload or delete screenshots and other assets**, and remove any attachment from the form.
+* **Delete a leaderboard.** Deleting takes its scores with it and cannot be undone.
+* **See payouts.** Financial data is not on this surface at all.
+Deleted games are not part of this surface: they never appear in a list, and every tool refuses their id.
+The full list with parameters is in the [Tools reference](/playgama/mcp/tools.md).
+## A typical session
+Uploading a new version of a game, end to end:
+> Take the build in `./dist`, zip it, upload it to my game "Coin Town" as version 1.4.2, and tell me when it has finished processing.
+The agent finds the game with `list_applications` and reads `get_launch_steps` for it — its path in order and the step it is on — reading it again after each step. It calls `start_archive_upload`, PUTs the zip itself, calls `confirm_archive_upload`, then polls `get_archive_status` until it reports `DONE` or `FAILED`, and reads back the Bridge SDK analysis — a build in which the SDK was not detected is fixed and uploaded again, never published.
+Other things worth asking for:
+> Read the moderation comments on Coin Town and fix what they asked for in the form.
+> Test this game locally — I'm serving it on `http://localhost:5503/`.
+> Add a consumable product `coins_500` for $4.99 to Coin Town's catalog.
+> Which of my games can be submitted to moderation right now, and what is blocking the rest?
+When the agent is done, open the game in the cabinet, click **Test Game** to run the QA Tool, and then **Submit Game**.
+## The sandbox
+A **sandbox** is a public page where anyone with the link plays the build you uploaded — no submit, no certification, no moderation. It is meant for playtesting and for showing a work in progress; the main Playgama catalog is still reached only through moderation.
+> Publish the latest build of Coin Town to its sandbox and give me the link.
+The agent calls `publish_sandbox` only with an archive that has finished unpacking and in which the Bridge SDK analysis found the SDK. The Playgama Bridge SDK is required for every game, the sandbox included: if the analysis did not detect it, the agent does not publish — it tells you, hands you the QA Tool certification link that shows why the SDK did not start, fixes the integration with `get_bridge_sdk_docs` and uploads a new build. After the publish it hands you the `url` from the answer, then offers you the ready post and share links from `get_sandbox_share`. What is worth knowing before you ask for it:
+* **The game goes live immediately.** There is no draft state and no review step.
+* **One sandbox per game, and its address never changes.** Re-publishing replaces what is live and keeps the players' saved progress, because the origin stays the same.
+* **A repeat is safe.** Publishing the same archive with the same form again writes nothing and answers the link that is already live.
+* **Three publications per rolling hour.** Enough for iterating by hand, low enough to stop an agent that publishes on every loop. Only publications that actually change something count.
+* **A sandbox can be blocked.** If it is, the page stops serving and `publish_sandbox` is refused until the block is lifted.
+* **The cabinet publishes to the same sandbox.** The game's page has a publish button beside **Test Game** and shows the live link with the build that is on it, so a sandbox the agent published is visible — and replaceable — in the browser too.
+A published sandbox still has no players until someone shares the link. To bring some:
+> Bring traffic to Coin Town's sandbox.
+The agent reads `get_sandbox_traffic` — whether the game is eligible and what the package is — and helps you share the game with the post and links from `get_sandbox_share`. Once you have posted, it asks you to paste the links to your published posts, and when you agree to the run it calls `start_sandbox_traffic` with them. It creates an ad campaign in the Playgama DSP with banners cut from the game's covers, pointed at the sandbox page, and follows the run it started until it leaves `PENDING`.
+* **Free traffic is a bonus for sharing the game.** Post about it on any platform and give the agent one to three public HTTPS post links — one is enough, and more posts do not make the boost bigger. The links are checked for format, not content; the agent never posts for you and must not make links up.
+* **Once per game, for up to three games per organization over its lifetime.** Earlier free launches without sharing do not use this bonus. How long a boost serves and how many bonuses are left come from the `offer` the agent reads — ask it to show you before it starts. Paid traffic is available in the cabinet; MCP does not purchase it.
+* **A started run cannot be undone.** It spends its budget over its window.
+* **It needs covers and the Bridge SDK.** The banners are cut from the covers of the live revision, and traffic goes only to a build in which the Bridge SDK was found — upload covers and publish again first.
+* **Whether a run can start is the current verdict.** `get_sandbox_traffic` answers it, campaign capacity included; earlier free or paid campaigns can run alongside the share bonus. A run that failed gives the bonus back, so starting again with the same post links is safe.
+## Security
+* **Verify the endpoint.** The only official address is `https://developer.playgama.com/api/mcp`. Take snippets from the [MCP page in the cabinet](https://developer.playgama.com/mcp), not from third-party marketplaces.
+* **Check the consent page before you allow.** It is always on `developer.playgama.com`, and it names the account, the agent and where it returns. A page elsewhere asking for your cabinet password is not ours.
+* **See and revoke connected agents.** The [MCP page](https://developer.playgama.com/mcp) lists every agent connected to your account, when it was connected and when it last refreshed its access. **Revoke** cuts it off on its very next call; to use it again, connect it again.
+* **Access renews itself and lapses on its own.** The agent's access lasts an hour and the client renews it quietly; an agent unused for 30 days has to connect again. Each client keeps its own connection, so a laptop and claude.ai are two lines you can revoke separately.
+* **Nothing to leak into a repository.** No config above holds a secret. The client keeps its access in its own storage.
+* **Connecting an agent gives it the access the "Can" list describes.** Review what it is about to do — keep your client's confirmation prompts on for write operations. Every write tool on this surface is annotated as destructive precisely so your client asks before running it.
+* **Two capabilities reach outside the cabinet.** `publish-sandbox` puts a game in public, and `start-sandbox-traffic` starts an ad campaign that sends players to it and cannot be undone. Each has its own line on the consent page. If you do not want an agent publishing or advertising anything at all, do not ask it to — and review the call when it does.
+* **Beware of prompt injection.** Text your agent reads — a moderation comment, an issue, a web page — can contain instructions aimed at your tools. Do not let an agent act on untrusted text without review.
+* **An agent you do not recognise is a reason to revoke.** If the list shows a connection you did not make, or one still refreshing after you stopped using it, revoke it.
+## Limits and behaviour worth knowing
+* **A form save is partial.** A field the agent leaves out keeps its stored value. Enum arrays (devices, languages, excluded platforms) are replaced whole.
+* **The in-app catalog write is not partial.** `replace_in_app_products` takes the target state: a product left out is deleted. The agent must read the catalog first and pass its `checksum` back, so a change someone made in the browser meanwhile cannot be silently overwritten — the call is refused instead.
+* **Uploads never travel through MCP.** Both archives and covers are three steps: start (you get a URL signed for one hour, for exactly that byte length and content type), PUT the file yourself, confirm. Limits: **300 MB** per build zip, **10 MB** per cover.
+* **A new archive is added, not swapped in.** Every archive stays in the form next to the earlier ones, which is why builds should be named with their version. Removing one is a human action in the cabinet.
+* **A cover replaces the one in its slot** — square 800×800, portrait 1080×1920, landscape 1920×1080, PNG or JPEG, exactly those dimensions.
+* **A sandbox publication is public and immediate**, capped at 3 changing publications per rolling hour per game. Re-publishing the same thing writes nothing.
+* **Free sandbox traffic is a share bonus** — once per game, for up to three games per organization over its lifetime; earlier free launches without sharing do not count. `start_sandbox_traffic` takes 1–3 public post links. Whether a run can start now is what `get_sandbox_traffic` answers, and the package is in its `offer`.
+* **`list_applications` takes paging only** — no status filter and no search, 20 rows by default and 100 at most. The order is fixed (newest first), so paging visits every game exactly once. Games with an empty title are not listed, matching the cabinet.
+* **A refusal is an answer, not a failure.** Business errors (a field that failed validation, a game that is not yours, a stale catalog checksum) come back as readable tool results the agent can act on.
+* **The transport is stateless Streamable HTTP over `POST`.** No session is kept between calls, and one request may carry at most 32 JSON-RPC messages — relevant only if you write your own client; the supported clients call tools one at a time.
+* **A failed write may still have landed.** If the server answers 5xx or the connection drops during a write, the outcome is genuinely unknown — the agent is told so and should read the state back rather than retrying blindly.
+## Troubleshooting
+<table><thead><tr><th width="260">What you see</th><th>What to do</th></tr></thead><tbody><tr><td>Every call fails with 401, or the client says it needs to authenticate</td><td>The agent was revoked, or it went unused for 30 days. Connect it again from the client — in Claude Code through <code>/mcp</code>.</td></tr><tr><td>The browser never opens</td><td>Run the connect step again; most clients print the sign-in link, which you can open by hand. Make sure the client config has only <code>type</code> and <code>url</code>.</td></tr><tr><td>The consent page says the request has expired, was already answered or cannot be found</td><td>The request lives 10 minutes and can be answered once, by the account that opened it. Start the connection again from the client.</td></tr><tr><td>The consent page refuses because there is no organization</td><td>The registration is not finished, so the agent would reach no games. Finish it in the cabinet and connect again.</td></tr><tr><td>The client reports <code>invalid_redirect_uri</code> when connecting</td><td>That client returns to an address the server does not accept yet. Use one of the supported clients, and tell <a href="mailto:developer.success@playgama.com">developer.success@playgama.com</a> which client you tried.</td></tr><tr><td>Your config still sends an <code>Authorization</code> header with a <code>pgm_mcp_</code> token</td><td>It keeps working for now. Remove the header and connect again as in Step 1.</td></tr><tr><td>A tool answers 403 for a game you own</td><td>The id belongs to someone else's account, or the game is deleted. Re-read the id from <code>list_applications</code>.</td></tr><tr><td>A game is missing from <code>list_applications</code></td><td>It has no title yet, or it is deleted. An untitled draft is still reachable if the agent already has its id — give the agent the id from the cabinet URL.</td></tr><tr><td><code>confirm_archive_upload</code> / <code>confirm_cover_upload</code> answers 409</td><td>Nothing is stored at the upload URL yet: the PUT did not finish. Retry the PUT, or start the upload again if the hour has passed.</td></tr><tr><td>A cover confirm answers 422</td><td>The file is not the format the upload was started as, not the exact size of its slot, or not a complete image. Fix the file and start a new upload.</td></tr><tr><td>The catalog replace answers 409</td><td>The catalog changed since it was read. The agent should read it again, re-apply the change and retry.</td></tr><tr><td><code>publish_sandbox</code> is refused</td><td><code>ARCHIVE_PENDING</code> — the build has not finished unpacking (poll <code>get_archive_status</code>; if it already says <code>DONE</code>, the archive cannot be served — upload it again); <code>ARCHIVE_FAILED</code> — the zip could not be used, upload a fixed one; <code>NO_TITLE</code> — fill in the game's title first; <code>RATE_LIMITED</code> — 3 publications in the last hour, wait; <code>BLOCKED</code> — the sandbox was blocked, contact support.</td></tr><tr><td>The agent will not publish: the Bridge SDK was not detected in the build</td><td>That is the rule, not a fault: every game needs the Playgama Bridge SDK, the sandbox included. Open the certification link from <code>get_archive_qa_tool_link</code> — its Build Startup section shows why the SDK did not start — fix the integration (the agent reads the docs with <code>get_bridge_sdk_docs</code>) and upload a new build.</td></tr><tr><td><code>start_sandbox_traffic</code> is refused</td><td><code>SHARE_REQUIRED</code> — no post links were passed: share the game and give the agent 1–3 public post links; <code>INVALID_POST_URL</code> — a link is not a valid public HTTPS URL, or the same link is given twice; <code>NO_SITE</code> — publish to the sandbox first; <code>NO_COVERS</code> — upload covers and publish again; <code>ANALYSIS_PENDING</code> — the build is still being analyzed, ask again shortly; <code>NO_BRIDGE</code> — integrate the Bridge SDK (the agent reads the docs with <code>get_bridge_sdk_docs</code>) and publish again; <code>RUN_IN_PROGRESS</code> — a campaign is already pending or live, or campaign capacity is full; <code>PAYMENT_REQUIRED</code> — the game's share bonus is used, paid traffic is in the cabinet; <code>ORG_LIMIT</code> — the organization has used its three share bonuses, lifetime; <code>BLOCKED</code> — the sandbox was blocked; <code>DSP_DISABLED</code> — not available right now. The full list is in the <a href="/playgama/mcp/tools.md#get_sandbox_traffic">Tools reference</a>.</td></tr><tr><td>A traffic run shows <code>FAILED</code></td><td>Its <code>failureReason</code> says why. The share bonus was given back, so fix the cause and start again with the same post links.</td></tr><tr><td>The client reports the server does not support <code>GET</code>/<code>DELETE</code></td><td>Expected: the transport is stateless Streamable HTTP over <code>POST</code> only. Make sure the client is configured with type <code>http</code>, not <code>sse</code>.</td></tr></tbody></table>
+My GamesReportsPayoutsQA toolMCPInvite & earnGet SupportSolotov Studio
+S
+MCP server
+Use your boosts with AI
+Your agent can apply an invite code, check your boosts, and start one for a game.
+Try: “Apply invite code …” or “Use my free boost for this game.”
+What a connected agent can do
+Can
+Read your games
+Create new games
+Edit the game form
+Manage the in-app catalog
+Manage leaderboards
+Upload game builds
+Upload cover images
+Publish a game to the sandbox
+Promote the sandbox with ads
+Read your invite link and referral boosts
+Apply an invite code to your studio
+Read the Playgama Bridge SDK docs
+Can’t
+Submit a game to moderation
+Upload or delete screenshots and other assets, remove attachments from the form
+Roll a game back to the last submitted version
+Delete leaderboards
+See payouts
+
+Connect a client
+Endpoint
+https://developer.playgama.com/api/mcp
+Copy
+CodexClaude CodeCursorVS Code
+codex mcp add 'playgama-developer-cabinet' --url 'https://developer.playgama.com/api/mcp'
+Copy
+Brand AssetsSDK DocsAboutTerms & Conditions© 2024-2026 Playgama
+

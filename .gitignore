@@ -6,3 +6,10 @@ dist-ssr/
 .env.local
 .DS_Store
 Thumbs.db
+
+# Release zips (built from dist/, uploaded to Playgama)
+releases/
+# E2E test output and throwaway Chrome profiles
+tools/e2e/out/
+tools/e2e/profile-*/
+.claude/settings.local.json

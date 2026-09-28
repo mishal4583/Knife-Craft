@@ -1,520 +1,263 @@
-# KNIFECRAFT — CLAUDE PROJECT INSTRUCTIONS
+# KNIFECRAFT — PLAYGAMA EDITION — CLAUDE PROJECT INSTRUCTIONS
 
-## PROJECT
+## 0. READ FIRST
 
-Project name: KnifeCraft
+This repository (`D:\WORKS\GAMES\Playgama\KnifeCraft`) is now the **primary
+KnifeCraft codebase**. The game ships through **Playgama**, which distributes
+it to its own catalog and to partner platforms (CrazyGames, Yandex, MSN,
+GameDistribution, YouTube Playables, TikTok, …). We do **not** deploy
+directly to YouTube Playables any more.
 
-Project path:
+The old repository `D:\WORKS\GAMES\Knife Craft` (the YouTube Playables build,
+GitHub `mishal4583/Knife-Craft`) is retired. Do not edit it; do not push this
+repo to its GitHub remote. Its history is included here (branch `main` starts
+from its last commit `1af591f`; the ref `youtube-original/main` points to it).
 
-D:\WORKS\GAMES\Knife Craft
+Before starting work, read:
 
-Technology:
+- `docs/HANDOFF.md` — where the project stands, what was done in the previous
+  sessions, the Playgama cabinet state, open issues and next steps.
+- `docs/playgama/` — Playgama requirements and Bridge SDK docs.
+- `docs/ECONOMY_V3_MASTER_SPEC.md` / `docs/ECONOMY_V3_EXECUTION_PROTOCOL.md`
+  only when a task touches the economy.
 
-- React 19
-- Vite
-- TypeScript
-- Phaser 3
-
-KnifeCraft is an existing production game.
-
-This is NOT a new project.
-
-Do not rewrite the game architecture.
-
-Do not create a second game engine.
-
-Do not create duplicate gameplay systems.
-
-Before making changes, inspect the existing repository and understand the current architecture.
+This is an existing production game. Do not rewrite the architecture, do not
+create a second engine, and do not duplicate existing systems.
 
 ---
 
-# 1. REQUIRED DOCUMENTS
+## 1. PROJECT
 
-Before implementing Economy V3, read:
-
-docs/ECONOMY_V3_MASTER_SPEC.md
-
-and:
-
-docs/ECONOMY_V3_EXECUTION_PROTOCOL.md
-
-The Word document:
-
-docs/ECONOMY_V3_MASTER_SPEC.docx
-
-is the human-readable copy of the same master specification.
-
-The Markdown specification is the machine-facing source for repository execution.
-
-If the Word and Markdown documents ever differ, use the Markdown version for execution and report the discrepancy.
+- React 19 + Vite + TypeScript + Tailwind v4, Phaser 3.90 for the cutting
+  gameplay (lazy-loaded `Preparation` chunk).
+- Portrait-first (9:16 logical 540×960, `GameShell` contain-fits it).
+- 250 campaign levels (25 chapters), Market (knives, boards, staff,
+  suppliers, ingredients, Blacksmith), Restaurant Progress, Business Mode
+  (Economy V3), opening story + milestones + finale.
+- One wallet in **USD cents** (`SaveData.credits`), every movement in
+  `SaveData.economyLedger`.
 
 ---
 
-# 2. EXISTING CORE ARCHITECTURE
+## 2. PLATFORM: PLAYGAMA BRIDGE (v2)
 
-Preserve and reuse the existing:
-
-- React application
-- Phaser 3
-- GameBridge
-- PreparationScene
-- events.ts
-- SaveManager
-- Ingredient registry
-- Recipe system
-- RecipeComponent
-- OrganizationManager
-- PreparedOutput
-- RecipeValidator
-- OrderGenerator
-- CustomerOrderManager
-- ServiceManager
-- EconomySettlement
-- EconomyLedger
-- existing equipment systems
-- existing staff systems
-- existing supplier systems
-- existing campaign systems
-- existing UI primitives
-- existing routing/navigation
-
-Do not replace these systems simply to implement Economy V3.
-
----
-
-# 3. ECONOMY V2 IS FROZEN
-
-Economy V2 has already been implemented and validated.
-
-Do not intentionally change Economy V2.
-
-Locked Campaign baseline:
-
-Revenue:
-
-165,140
-
-Completion Rewards:
-
-330,691
-
-COGS:
-
-37,620
-
-Quality Bonus:
-
-3,315
-
-Honest Chef Net:
-
-461,526
-
-Any unexplained change to these values is a regression.
-
-If Economy V3 requires a compatibility change, investigate it carefully and document it.
-
-Do not simply change expected test values.
+- The Bridge script is loaded from Playgama's CDN in `index.html`
+  (`https://bridge.playgama.com/v2/stable/playgama-bridge.js`) before the
+  game bundle. `public/playgama-bridge-config.json` sits next to
+  `index.html` (interstitial/rewarded placement fallbacks, 60 s minimum
+  between interstitials).
+- `src/game/PlayablesSDK.ts` is the **only** file that touches
+  `window.bridge`. Everything else calls its exports (`platformReady`,
+  `startPlatform`, `gameReady`, pause/audio hooks, `loadCloudSave` /
+  `saveCloudSave`, `requestInterstitialAd`, `requestRewardedAd`, …).
+  The export names are kept from the YouTube build on purpose — callers did
+  not change.
+- `bridge.initialize()` must resolve before any other Bridge call
+  (`platformReady()` awaits it). `game_ready` is sent once, when Level 1's
+  scene is ready or the Kitchen mounts.
+- Saves go through **Bridge storage** (key `knifecraft_save`), never
+  `localStorage` directly (plain localStorage is only the fallback when no
+  Bridge exists). Outside Playgama the Bridge runs a local "mock" platform
+  whose storage is backed by localStorage.
+- Ads: interstitials only at natural breaks through
+  `src/game/ads/interstitialPolicy.ts` (none before 10 completed levels,
+  1 per 3 transitions, 3-min cooldown); rewarded = the Replay Bonus
+  (`src/game/ads/replayBonus.ts`), granted only when Bridge reports the
+  `rewarded` state, committed through the ledger. Locally the mock platform
+  reports ads as unsupported.
+- The Bridge SDK is required for every build. **Never publish a build in
+  which Playgama did not detect the SDK.**
+- Language: English only (the game reads `platform.language` and stays EN).
 
 ---
 
-# 4. ECONOMY V3 ARCHITECTURE
+## 3. PLAYGAMA DEPLOYMENT (MCP)
 
-Economy V3 is a separate Business Simulation layer.
+The Playgama Developer Cabinet MCP server is `playgama-developer-cabinet`
+(`https://developer.playgama.com/api/mcp`, add with
+`claude mcp add --transport http playgama-developer-cabinet https://developer.playgama.com/api/mcp`,
+then authenticate via `/mcp`). Never ask for the developer's password.
 
-It must use:
-
-SaveData.business
-
-The current structure is:
-
-SaveData
-└── business: BusinessState
-├── calendar
-│ └── businessDay
-│
-└── inventory
-└── ingredientId → InventoryEntry
-
-Future V3 systems must extend BusinessState.
-
-Do NOT create:
-
-- another top-level SaveData field for each V3 system
-- another save file
-- another wallet
-- another ledger
-- another ingredient registry
-- another recipe registry
-- another preparation engine
-- another event bus
+- Game: **KnifeCraft**, applicationId `cmuiim0sh1qcalc0hiuw6xwlp`.
+- Always start with `get_launch_steps` and re-read it after each step.
+- New build: `npm run build` → zip `dist/` (index.html at the zip root,
+  forward-slash paths) → `start_archive_upload` (name archives with the
+  version, e.g. `knifecraft-playgama-1.0.1`) → PUT → `confirm_archive_upload`
+  → poll `get_archive_status` until processing is DONE and `state` is
+  resolved. On PROBLEM or NOT_CHECKED tell the developer `state.message`
+  verbatim. `bridgeSdk` must be FOUND.
+- `publish_sandbox` (public immediately, no moderation) and
+  `start_sandbox_traffic` (spends budget) — **always ask the developer
+  first.** Hand out links from the tool answers; never build URLs.
+- QA Tool links: always request them with `get_archive_qa_tool_link`
+  (never build them). Moderation submission is done by a human in the
+  cabinet after certification in the QA Tool.
+- Covers live in `playgama/covers/` (`source/` originals,
+  `upload/` exact-size files: square 800×800, portrait 1080×1920,
+  landscape 1920×1080).
 
 ---
 
-# 5. COMPLETED V3 PHASES
+## 4. BUILD, PREFLIGHT, RELEASE
 
-These are already complete:
+```
+npm ci                      # first time
+npm run dev                 # dev server
+npm run build               # -> dist/
+npm run preflight           # local platform checks (Bridge script/config, sizes, no orientation lock, safe names)
+npx vite preview            # serve dist/ on http://localhost:4173 for browser tests
+```
 
-V3-1 — Business Calendar
-
-V3-2 — Business Inventory
-
-Do not redo these phases.
-
-Preserve their behavior.
-
-The next incomplete phase is currently:
-
-V3-3 — Refrigerator / Storage
-
-However, always inspect the repository and current phase status before assuming the next phase.
+Release zip: zip the **contents** of `dist/` (index.html at the root, no
+spaces in names) into `releases/KnifeCraft-Playgama-v<version>.zip`
+(`releases/` is gitignored). Verify the zip lists `index.html` at the root
+and `playgama-bridge-config.json` beside it before uploading.
 
 ---
 
-# 6. V3 PHASE ORDER
+## 5. QA
 
-The required order is:
+Focused suites (`npx tsx scripts/<name>.mts`):
 
-V3-1 — Business Calendar
-V3-2 — Business Inventory
-V3-3 — Refrigerator / Storage
-V3-4 — Perishability
-V3-5 — Menu Pricing
-V3-6 — Popularity + Demand
-V3-7 — Supplier Contracts
-V3-8 — Supplier Events
-V3-9 — Staff Expansion
-V3-10 — Equipment Condition
-V3-11 — Maintenance + Breakdowns
-V3-12 — Inspections
-V3-13 — Inspection Fines
-V3-14 — Business Revenue & Service + Real-World Business Model
-V3-15 — Business P&L + Final Balancing
-V3-16 — Final Economy V3 Audit / Ship Readiness
+- `story-intro-qa` — intro pacing, Skip story, story save semantics.
+- `playables-ads-qa` — Bridge ads (interstitial policy, rewarded Replay Bonus).
+- `economy-v2-final-qa`, `economy-v2-qa`, `economy-v2-settlement-ledger-qa`
+  — Economy V2 frozen baseline (some checks use `git diff`, so run them in
+  this git repo).
+- `campaign-integrity-qa`, `restaurant-progress-qa`, `business-ux-qa`,
+  `progression-preview-qa`, `usd-currency-qa`, `phase7-2-smoke-test`,
+  plus the other `scripts/*-qa.mts` / `business-*-qa.mts` suites.
 
-V3-14 was added after V3-13: the master specification's own Business Day
-Flow (docs/ECONOMY_V3_MASTER_SPEC.md §19) has always described a Business
-Mode revenue path (Open Restaurant -> Customers Generate Orders -> Existing
-Preparation System -> Existing Quality System -> Serve -> Consume Business
-Inventory -> Revenue/Settlement), but the original 14-phase sequence never
-assigned a phase to build it — every phase from V3-6 onward deferred it as a
-forward hook with no real caller. An economic audit confirmed zero
-revenue-generating code exists anywhere in Business Mode. V3-14 closes that
-gap (and recalibrates Business Mode's prototype prices to real-world USD
-benchmarks) before V3-15's own P&L can mean anything. V3-16 is the final
-ship-readiness audit, previously folded into "after V3-14" language in this
-file and in the master spec — now its own explicit phase.
+Gates for any change: TypeScript (`npx tsc --noEmit -p .`), ESLint on
+`src scripts tools` (0 errors; 6 pre-existing warnings in `src/components/ui`),
+Prettier, build, preflight, the relevant QA, and a browser check.
 
-V3-16 is the final Economy V3 phase. Do not create a V3-17.
+Browser tests: `tools/e2e/` (headless Chrome via `puppeteer-core`; see
+`tools/e2e/README.md`). Run `npm install` inside `tools/e2e` once.
 
-Never skip a dependency.
+Known pre-existing failures (document, do not "fix" by weakening):
+
+- `playables-ads-qa` B12/B13 (Replay Bonus daily cap): the test pins
+  `NOW` to 2026-09-26 while ledger entries carry the real `Date.now()`, so
+  the check depends on the calendar date. Fix the test's clock, not the cap.
 
 ---
 
-# 7. PHASE EXECUTION RULE
+## 6. EXISTING CORE ARCHITECTURE — PRESERVE AND REUSE
 
-For every phase:
+React app, Phaser 3, `GameBridge`, `PreparationScene`, `events.ts`,
+`SaveManager`, Ingredient registry, Recipe system (`campaignRecipes.ts`),
+`RecipeComponent`, `OrganizationManager`, `PreparedOutput`,
+`RecipeValidator`, `OrderGenerator`, `CustomerOrderManager`,
+`ServiceManager`, `EconomySettlement`, `EconomyLedger`, equipment / staff /
+supplier / campaign systems, `StoryManager` + `StoryOverlay`, existing UI
+primitives (`src/components/kc/common/primitives.tsx`, `Meters.tsx`) and
+routing (`ScreensRouter.tsx`, `ScreenId`).
 
-1. Inspect the current repository.
-2. Read the corresponding phase specification.
-3. Inspect related existing systems.
-4. Implement the phase.
-5. Create or update focused QA.
-6. Run focused QA.
-7. Run TypeScript.
-8. Run ESLint.
-9. Run build.
-10. Run preflight.
-11. Run relevant Economy V2 regression.
-12. Run relevant non-economy regression.
-13. Perform browser verification when required.
-14. Check for console errors.
-15. Verify SaveData migration.
-16. Verify Campaign independence.
-17. Verify ledger integrity.
-18. Verify no negative cash/inventory.
-19. Verify determinism.
-20. Only after all gates pass, mark the phase complete.
-21. Continue automatically to the next phase.
+Single sources of truth: ingredient quantities = Business Inventory;
+ingredient definitions = Ingredient Registry; recipes = Recipe System;
+wallet = `SaveData.credits`; money movements = `EconomyLedger`;
+preparation = PreparationScene; events = `events.ts`; platform =
+`PlayablesSDK.ts`; persistence = `SaveManager`. Do not duplicate any of them.
 
 ---
 
-# 8. FAILURE RULE
+## 7. ECONOMY RULES
 
-If a critical test fails:
+### Economy V2 is frozen
 
-STOP.
+Locked Campaign baseline (enforced by `economy-v2-final-qa`):
 
-Do not continue to the next phase.
+- Revenue 165,140 · Completion Rewards 330,691 · COGS 37,620 ·
+  Quality Bonus 3,315 · Honest Chef Net 461,526
 
-Investigate the failure.
+Any unexplained change is a regression. Investigate; never just update the
+expected values.
 
-Fix the actual implementation problem.
+### Economy V3 (Business Mode)
 
-Run the failed test again.
+All V3 phases (V3-1 … V3-16) shipped in the release candidate. V3 lives in
+`SaveData.business` (`BusinessState`) — extend it; never add another
+top-level save field, save file, wallet, ledger, registry, engine or event
+bus. Campaign must never require any Business system (inventory,
+refrigerator, perishability, pricing, contracts, supplier events, salaries,
+equipment condition, inspections, fines, operating costs).
 
-Then rerun all relevant regression tests.
+### Safety, determinism, ledger, migration
 
-Only continue after the phase passes.
-
-Do not build later systems on top of a broken earlier phase.
-
----
-
-# 9. NEVER CHEAT THE TESTS
-
-Never:
-
-- delete a failing test
-- weaken an assertion
-- change expected values merely to make a test pass
-- skip a regression suite without documenting why
-- suppress console errors
-- hide errors
-- bypass the ledger
-- bypass SaveManager
-- bypass the existing wallet
-- create fake success states
-- claim browser testing occurred when it did not
-- claim a simulation occurred when it did not
-
-Existing stale tests may be documented if they are genuinely pre-existing.
-
-Do not silently remove them.
+- Never allow credits < 0, inventory < 0, storage capacity < 0, negative
+  menu price / equipment condition / popularity. No debt, no permanent
+  bankruptcy, no economic soft-lock.
+- Business Mode is deterministic: no uncontrolled `Math.random()` for
+  prices, supplier events, spoilage, popularity, demand, inspections,
+  failures or money — use the seeded generator.
+- Every real wallet movement has exactly one ledger entry; failed
+  transactions create none. Opening cash + signed ledger = closing cash.
+- Preserve old saves (no `business` field, older V3 shapes, legacy
+  settings keys). Never discard known fields; use the nested migration
+  pattern in `SaveManager`.
 
 ---
 
-# 10. BUSINESS MODE VS CAMPAIGN MODE
+## 8. NEVER CHEAT THE TESTS
 
-Campaign Mode remains the controlled 250-level progression.
-
-Campaign must NOT require:
-
-- Business Inventory
-- Refrigerator
-- Perishability
-- Menu Pricing
-- Supplier Contracts
-- Supplier Events
-- Business Staff Salaries
-- Business Equipment Condition
-- Business Inspections
-- Business Fines
-- Business Daily Operating Costs
-
-Business Mode is where the realistic restaurant simulation exists.
-
-Business Mode may use all of the above.
+Never delete a failing test, weaken an assertion, change expected values to
+make a test pass, skip a regression suite without documenting why, suppress
+or hide console errors, bypass the ledger / SaveManager / wallet /
+PlayablesSDK, create fake success states, or claim a browser test or
+simulation that did not happen. Pre-existing stale tests are documented,
+not silently removed.
 
 ---
 
-# 11. SINGLE SOURCE OF TRUTH
+## 9. STORY SYSTEM (current state)
 
-Ingredient quantities:
-
-Existing Business Inventory.
-
-Ingredient definitions:
-
-Existing Ingredient Registry.
-
-Recipes:
-
-Existing Recipe System.
-
-Wallet:
-
-Existing SaveData credits/wallet.
-
-Financial transactions:
-
-Existing EconomyLedger.
-
-Preparation:
-
-Existing PreparationScene / preparation architecture.
-
-Events:
-
-Existing events.ts.
-
-Do not duplicate any of these.
+- Opening intro = `OPENING + FRESH + CHEF` in
+  `src/game/story/storyDefinitions.ts`: 14 beats, 21.5 s of timed beats
+  (7.6 / 6.0 / 7.9 s) + the OPEN THE RESTAURANT and READY buttons
+  (re-paced from the original 38.7 s / 13 beats).
+- `StoryOverlay` (`src/components/kc/story/StoryOverlay.tsx`): per-beat
+  advancing (a timer and a tap, or two taps, move one beat), taps ignored
+  for 250 ms after a beat appears, button beats only advance via their
+  button, CSS-only transitions (`kc-story-*` in `styles.css`) with a
+  `prefers-reduced-motion` fallback.
+- **Skip story →** (top-right, 48 px) exists only on the opening intro.
+  Finishing and skipping share one completion path
+  (`StoryOverlay.finish` → `App.completeIntro`) that sets only
+  `story.introDone = true`, once.
+- Milestones (Level 10/20/45/70/110/120/250) and the Level-100 finale are
+  unchanged. `SaveData.story = { introDone, milestoneMask, finaleSeen }` —
+  no new fields.
+- Intro screenshots: `playgama/screenshots/intro/`.
 
 ---
 
-# 12. ECONOMIC SAFETY
+## 10. UI
 
-Never allow:
-
-credits < 0
-
-inventory quantity < 0
-
-storage capacity < 0
-
-negative menu price
-
-negative equipment condition
-
-negative popularity
-
-Never create debt.
-
-Never create permanent bankruptcy.
-
-Never create a game-ending economic soft-lock.
-
-Every financial mutation must be traceable.
+Use the existing KnifeCraft UI primitives and visual identity (warm
+painted kitchens, wood/paper, Fraunces / Nunito / Caveat bundled locally).
+Touch targets ≥ 48 px. Test at 320×568, 360×640, 390×844, 430×900,
+768×1024. Do not add animation libraries or large assets; prefer CSS
+transform/opacity. No external fonts, video or network requests at runtime
+(only the Bridge CDN script).
 
 ---
 
-# 13. DETERMINISM
+## 11. REPOSITORY LAYOUT (additions for Playgama)
 
-Economy V3 must be deterministic.
+```
+playgama/covers/source/        original cover art (Poster, Icon, Landscape, portrait crop)
+playgama/covers/upload/        exact-size files uploaded to the Playgama form
+playgama/screenshots/intro/    the 14 intro screens + Level 1 after the intro
+docs/HANDOFF.md                project status and history for new sessions
+docs/playgama/                 Playgama requirements + Bridge SDK docs (reference)
+tools/e2e/                     headless-Chrome checks (Bridge-aware harness)
+releases/                      built zips (gitignored)
+public/playgama-bridge-config.json
+```
 
-Do not use uncontrolled Math.random() for:
-
-- prices
-- supplier events
-- spoilage
-- popularity
-- demand
-- inspections
-- equipment failures
-- financial calculations
-
-If a random-like event is genuinely required, use an explicit deterministic/seeded mechanism and document it.
-
----
-
-# 14. LEDGER
-
-Use:
-
-SaveData.economyLedger
-
-Do not create a second ledger.
-
-Every real wallet movement must correspond to the correct ledger entry.
-
-Failed transactions must create no financial ledger movement.
-
-Do not create meaningless duplicate entries.
-
-At the end of V3, financial reconciliation must satisfy:
-
-Opening Cash +
-Signed Ledger Cash Flow
-=
-
-Closing Cash
-
----
-
-# 15. SAVE MIGRATION
-
-All V3 systems must preserve old saves.
-
-Test:
-
-- no business field
-- V3-1 save
-- V3-2 save
-- current V3 save
-- future-compatible BusinessState
-
-Never discard known BusinessState fields during migration.
-
-Use the nested migration pattern already established by V3-1.
-
----
-
-# 16. UI
-
-Use existing KnifeCraft UI primitives.
-
-Do not redesign the application.
-
-Business Mode should eventually contain:
-
-- Business Dashboard
-- Inventory
-- Refrigerator
-- Menu
-- Suppliers
-- Staff
-- Equipment
-- Calendar
-- Inspections
-- Financial Summary
-
-Do not create fake functionality merely to fill navigation.
-
----
-
-# 17. FINAL AUDIT
-
-After V3-16 (the final Economy V3 phase):
-
-Perform the complete audit described in:
-
-docs/ECONOMY_V3_MASTER_SPEC.md
-
-The final report must include:
-
-- all phase statuses
-- architecture
-- BusinessState
-- Save migration
-- inventory
-- refrigerator
-- perishability
-- pricing
-- popularity
-- demand
-- supplier contracts
-- supplier events
-- staff
-- equipment
-- maintenance
-- breakdowns
-- inspections
-- fines
-- business revenue/order/service pipeline
-- real-world pricing calibration (ingredients, menu, refrigeration, staff, inspection/compliance)
-- Business Dish catalog
-- Kitchen Investments audit
-- Shop reorganization
-- P&L
-- ledger
-- QA
-- browser verification
-- simulations
-- Economy V2 regression
-- known issues
-- remaining risks
-
-Never claim an unperformed test passed.
-
----
-
-# 18. EXECUTION COMMAND
-
-The intended initial instruction is:
-
-"Read CLAUDE.md, docs/ECONOMY_V3_MASTER_SPEC.md, and docs/ECONOMY_V3_EXECUTION_PROTOCOL.md.
-
-Inspect the current KnifeCraft repository.
-
-Determine the first incomplete Economy V3 phase.
-
-Execute Economy V3 sequentially.
-
-After every successful phase, automatically continue to the next phase.
-
-If a critical test fails, stop and investigate.
-
-After V3-16 (the final Economy V3 phase), perform the complete final audit and generate the detailed final report.
-
-Do not claim unperformed tests were passed."
+Reference-only folders carried from the original repo (not part of the
+build): `Knifecraft vegetables/`, `Knifecraft Phase 1 review/`, `Shop UI/`,
+`knifecraft_kitchen_webp/`, `Market.png`, `*.docx`, `*.md` audits.
+`.github/workflows/deploy.yml` is the old GitHub Pages workflow of the
+retired repo; it does nothing here unless this repo gets a GitHub remote.

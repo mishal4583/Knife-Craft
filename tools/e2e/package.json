@@ -1,0 +1,9 @@
+{
+  "name": "knifecraft-e2e",
+  "private": true,
+  "type": "module",
+  "description": "Headless-Chrome checks against a built KnifeCraft (npx vite preview). Test tooling only — not part of the game bundle.",
+  "dependencies": {
+    "puppeteer-core": "^23.11.1"
+  }
+}
