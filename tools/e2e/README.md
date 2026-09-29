@@ -21,6 +21,7 @@ profiles to `tools/e2e/profile-*` (both gitignored).
 | `pgbridge.mjs` | Bridge loads + initializes, `game_ready` sent once, saves go through Bridge storage, only the Bridge CDN is contacted |
 | `audit10.mjs` | Plays a brand-new player through the intro and Levels 1–10 with real input; records every transition, reward, ledger entry, memory |
 | `audit10b.mjs` | Level 2 edge cases: Serve → Back to Kitchen (bug G1), pause exit, reload mid-level, Prep Again, Level 1 replay flow |
+| `levelflow.mjs` | Regression for G1/G2: a fresh player's Level 1 runs Serve → Finish Level (settlement + $50 reward, Level Complete); Serve → Back to Kitchen completes the level once and a retry pays nothing; pause exit pays nothing. Exits 1 on failure |
 | `storyaudit.mjs` | Story presentation measurements per beat and viewport (animations, layout, taps, CPU) |
 
 `harness.mjs` is Bridge-aware: `boot(page, save)` seeds a save through

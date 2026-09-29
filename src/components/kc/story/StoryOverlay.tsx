@@ -6,8 +6,8 @@ import type { StoryBeat, StoryCardId } from "@/game/story/storyDefinitions";
 import { IngredientCardCanvas } from "./IngredientCardCanvas";
 
 /**
- * STORY_OVERLAY — plays one sequence of story beats (OPENING+FRESH+CHEF
- * for the intro, or FINALE), adapted from knifecraft.html's own
+ * STORY_OVERLAY — plays one sequence of story beats (the FINALE; the
+ * opening intro is CinematicIntro.tsx), adapted from knifecraft.html's own
  * `render(b)`/`advance()`/`run(list,done)`/`finish()` (`:11076-11138`)
  * into React state/effects. Beat DATA lives in storyDefinitions.ts; this
  * component only supplies the sequencing/rendering.
@@ -20,9 +20,8 @@ import { IngredientCardCanvas } from "./IngredientCardCanvas";
  *    never bypass it.
  *  - Every advance is tied to the beat it came from (`advanceFrom`), so a
  *    timer and a tap — or two taps — landing together move one beat.
- *  - `skippable` (the opening intro only) adds a "Skip story" button.
- *    Finishing and skipping share one completion path (`finish`), which
- *    runs at most once; nothing advances after it.
+ *  - Finishing shares one completion path (`finish`), which runs at most
+ *    once; nothing advances after it.
  *
  * Presentation: each beat remounts (`key={index}`) so every beat gets the
  * same short entrance — art fades/scales in and then drifts slowly for the
@@ -57,11 +56,9 @@ const delay = (n: number) => ({ animationDelay: `${90 + n * 90}ms` });
 export function StoryOverlay({
   sequence,
   onDone,
-  skippable = false,
 }: {
   sequence: StoryBeat[];
   onDone: (reason: StoryEndReason) => void;
-  skippable?: boolean;
 }) {
   const [index, setIndex] = useState(0);
   const [ended, setEnded] = useState(false);
@@ -244,19 +241,6 @@ export function StoryOverlay({
           </div>
         ) : null}
       </div>
-
-      {skippable ? (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            finish("skipped");
-          }}
-          className="press absolute right-3 top-3 z-10 inline-flex h-12 min-w-12 items-center gap-1 rounded-full border border-walnut/25 bg-ivory/80 px-4 font-ui text-[12px] font-extrabold uppercase tracking-[0.12em] text-walnut-dark shadow-soft"
-        >
-          Skip story <span aria-hidden>→</span>
-        </button>
-      ) : null}
     </div>
   );
 }

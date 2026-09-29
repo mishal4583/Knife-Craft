@@ -273,6 +273,103 @@
   }
 }
 
+/* Intro cinematic (CinematicIntro.tsx): crossfades, a slow camera on each
+   painted scene (scale var(--kc-cam-from) -> var(--kc-cam-to), then hold),
+   subtitles, and the outro push into the tomato while the film fades into
+   Level 1. Durations come from introCinematic.ts via inline styles.
+   Transform/opacity only. */
+@keyframes kc-cine-camera {
+  from {
+    transform: scale(var(--kc-cam-from, 1));
+  }
+  to {
+    transform: scale(var(--kc-cam-to, 1));
+  }
+}
+@keyframes kc-cine-light {
+  0%,
+  55% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0.1;
+  }
+}
+@keyframes kc-cine-push {
+  from {
+    transform: none;
+  }
+  to {
+    transform: var(--kc-cine-push);
+  }
+}
+@keyframes kc-cine-line-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes kc-cine-line-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@utility kc-cine-in {
+  animation: kc-story-fade 300ms ease-out both;
+}
+@utility kc-cine-camera {
+  animation-name: kc-cine-camera;
+  animation-timing-function: cubic-bezier(0.3, 0, 0.3, 1);
+  animation-fill-mode: both;
+  will-change: transform;
+}
+@utility kc-cine-light {
+  animation-name: kc-cine-light;
+  animation-timing-function: ease-in;
+  animation-fill-mode: both;
+}
+@utility kc-cine-push {
+  animation-name: kc-cine-push;
+  animation-timing-function: cubic-bezier(0.5, 0, 0.9, 0.6);
+  animation-fill-mode: both;
+}
+@utility kc-cine-outro {
+  animation-name: kc-cine-line-out;
+  animation-timing-function: ease-in;
+  animation-fill-mode: both;
+}
+@utility kc-cine-line {
+  animation: kc-cine-line-in 220ms ease-out both;
+}
+@utility kc-cine-line-out {
+  animation: kc-cine-line-out 200ms ease-in both;
+}
+@utility kc-cine-skip {
+  animation: kc-story-fade 400ms ease-out both;
+}
+/* A platform pause freezes the film with the clock. */
+.kc-cine-paused,
+.kc-cine-paused * {
+  animation-play-state: paused !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .kc-cine-camera,
+  .kc-cine-light,
+  .kc-cine-push {
+    animation: none;
+  }
+  .kc-cine-line {
+    animation: kc-story-fade 200ms ease-out both;
+  }
+}
+
 @utility no-scrollbar {
   scrollbar-width: none;
   &::-webkit-scrollbar {

@@ -50,8 +50,9 @@ import {
   applyMilestoneFired,
   type StoryFlushResult,
 } from "@/game/story/StoryManager";
-import { OPENING, FRESH, CHEF, FINALE } from "@/game/story/storyDefinitions";
+import { FINALE } from "@/game/story/storyDefinitions";
 import { StoryOverlay } from "@/components/kc/story/StoryOverlay";
+import { CinematicIntro } from "@/components/kc/story/CinematicIntro";
 import { MilestoneBanner } from "@/components/kc/story/MilestoneBanner";
 import {
   businessAlertsFor,
@@ -139,8 +140,6 @@ import {
   DEFAULT_DAILY_ACCUMULATOR,
 } from "@/game/business/BusinessFinanceManager";
 
-const STORY_INTRO_SEQUENCE = [...OPENING, ...FRESH, ...CHEF];
-
 // Split away from the initial bundle — Preparation (and the Phaser it
 // pulls in) is needed immediately since Prep is the first screen, but
 // Kitchen/Workshop/Recipes/... aren't needed until the player navigates
@@ -148,6 +147,38 @@ const STORY_INTRO_SEQUENCE = [...OPENING, ...FRESH, ...CHEF];
 const ScreensRouter = lazy(() =>
   import("./ScreensRouter").then((m) => ({ default: m.ScreensRouter })),
 );
+
+/** A campaign level's own recipe pool (levelTypes.ts's `recipePoolIds`), resolved against the real campaignRecipes.ts library — never against TEST_RECIPE_POOL, which is the separate Phase 2 harness's own pool. */
+function campaignPoolFor(level: LevelDefinition | undefined): RecipeDefinition[] {
+  return (level?.recipePoolIds ?? [])
+    .map((id) => getCampaignRecipe(id))
+    .filter((r): r is RecipeDefinition => !!r);
+}
+
+/**
+ * The one way a campaign level's ServiceSession is built — used by
+ * startCampaignLevel AND by the first-ever launch (the load effect), so
+ * Level 1 on a fresh save runs the same customer/Serve/Finish Level
+ * pipeline as every replay of it. Null when the level has no pool.
+ *
+ * Economy V2 replay safety (Law 2 extended to the order-pool
+ * architecture) — `isReplay` reads the SAME existing source of truth
+ * completeLevel's own isFirstCompletion gate already reads, never a
+ * second completion system. Determined once, at session start, and
+ * carried on the session itself so every order served during this run
+ * settles for 0 (serveCampaignOrder), while the player still plays the
+ * level normally.
+ */
+function buildCampaignServiceSession(
+  level: LevelDefinition,
+  levelProgress: SaveData["levelProgress"],
+): ServiceSession | null {
+  if (!level.recipePoolIds?.length) return null;
+  const pool = campaignPoolFor(level);
+  if (pool.length === 0) return null;
+  const isReplay = isCompleted(level.id, levelProgress);
+  return createServiceSession(level.id, pool, Math.random, level.chapter, isReplay);
+}
 
 function LoadingScreen() {
   return (
@@ -320,6 +351,19 @@ export function App() {
         loaded.levelProgress.currentLevelId === LEVELS[0]!.id;
       setScreen(isFreshSave ? "gameplay" : "kitchen");
       setActiveLevelId(loaded.levelProgress.currentLevelId);
+      // A fresh save's Level 1 runs the SAME service pipeline
+      // (customer -> Serve -> Finish Level) as picking Level 1 from the
+      // Order Board (onSelectLevel -> startCampaignLevel), so the first
+      // play pays the order settlement AND the completion reward and
+      // shows Level Complete. Only a level without a recipe pool falls
+      // back to the legacy fixed-steps Preparation.
+      if (isFreshSave) {
+        const firstSession = buildCampaignServiceSession(LEVELS[0]!, loaded.levelProgress);
+        if (firstSession) {
+          setCampaignServiceSession(firstSession);
+          setSessionMode("campaign-service");
+        }
+      }
       // Kitchen-upgrade ownership is a deterministic function of level
       // progress (Phase 14), never a one-time purchase — re-derive it on
       // every load so a save that reached a new tier's level in a prior
@@ -414,8 +458,8 @@ export function App() {
   const go = (s: ScreenId) => setScreen(s);
 
   /**
-   * The one way the opening intro ends — played to the last beat or skipped
-   * via "Skip story". Both land in the same state: the overlay closes and
+   * The one way the opening intro ends — the cinematic played out (it fades
+   * into Level 1) or skipped via SKIP. Both land in the same state: it closes and
    * `story.introDone` is saved (once), leaving the player on the Level 1 that
    * is already mounted underneath. Nothing else in the save changes.
    */
@@ -905,35 +949,19 @@ export function App() {
     }
   }
 
-  /** A campaign level's own recipe pool (levelTypes.ts's `recipePoolIds`), resolved against the real campaignRecipes.ts library — never against TEST_RECIPE_POOL, which is the separate Phase 2 harness's own pool. */
-  function campaignPoolFor(level: LevelDefinition | undefined): RecipeDefinition[] {
-    return (level?.recipePoolIds ?? [])
-      .map((id) => getCampaignRecipe(id))
-      .filter((r): r is RecipeDefinition => !!r);
-  }
-
   /**
    * Phase 3 — the campaign's own "Start Service" for a single Level
    * 1-40 (brief §3): builds a fresh ServiceSession from that level's
-   * OWN recipe pool. No-ops if the level has no recipePoolIds (a legacy
-   * level should never reach this function — onSelectLevel only calls
-   * it after checking) or the pool resolves empty.
+   * OWN recipe pool (buildCampaignServiceSession). No-ops if the level
+   * has no recipePoolIds (a legacy level should never reach this
+   * function — onSelectLevel only calls it after checking) or the pool
+   * resolves empty.
    */
   function startCampaignLevel(level: LevelDefinition) {
-    if (!save || !level.recipePoolIds?.length) return;
-    const pool = campaignPoolFor(level);
-    if (pool.length === 0) return;
-    // Economy V2 replay safety (Law 2 extended to the order-pool
-    // architecture) — the SAME existing source of truth completeLevel's
-    // own isFirstCompletion gate already reads, never a second
-    // completion system. Determined once, at session start, and carried
-    // on the session itself so every order served during this run
-    // settles for 0 (serveCampaignOrder), while the player still plays
-    // the level normally.
-    const isReplay = isCompleted(level.id, save.levelProgress);
-    setCampaignServiceSession(
-      createServiceSession(level.id, pool, Math.random, level.chapter, isReplay),
-    );
+    if (!save) return;
+    const session = buildCampaignServiceSession(level, save.levelProgress);
+    if (!session) return;
+    setCampaignServiceSession(session);
     setActiveLevelId(level.id);
     setSessionMode("campaign-service");
     setScreen("gameplay");
@@ -1551,6 +1579,15 @@ export function App() {
     isCampaignService && campaignServiceSession
       ? campaignServiceSession.completedCount + 1 >= (campaignLevelForSession?.requiredOrders ?? 1)
       : false;
+  // The level's required orders have ACTUALLY been served and paid (the
+  // current order counts once serveCurrentOrder moved it to COMPLETED) —
+  // what decides whether leaving the level finishes it (G1).
+  const campaignLevelSatisfied =
+    isCampaignService && campaignServiceSession
+      ? campaignServiceSession.completedCount +
+          (campaignServiceSession.current?.order.status === "COMPLETED" ? 1 : 0) >=
+        (campaignLevelForSession?.requiredOrders ?? 1)
+      : false;
 
   return (
     <GameShell
@@ -1616,6 +1653,18 @@ export function App() {
                 : {}),
             }}
             onExit={() => {
+              // Leaving a campaign level whose required orders are already
+              // served and paid completes it through the same path as
+              // "Finish Level" — otherwise the level stays unfinished and a
+              // retry would settle its orders again as a first play.
+              if (campaignLevelSatisfied) {
+                finishCampaignLevel();
+                return;
+              }
+              if (batchGroupWillFinish) {
+                finishBatchGroupLevel();
+                return;
+              }
               setSessionMode("campaign");
               go(isBusinessService ? "business-service" : "board");
             }}
@@ -1719,9 +1768,7 @@ export function App() {
           </Suspense>
         )}
       </Suspense>
-      {showIntro ? (
-        <StoryOverlay sequence={STORY_INTRO_SEQUENCE} skippable onDone={completeIntro} />
-      ) : null}
+      {showIntro ? <CinematicIntro onDone={completeIntro} /> : null}
       {storyEvent?.kind === "finale" ? (
         <StoryOverlay sequence={FINALE} onDone={() => setStoryEvent(null)} />
       ) : null}

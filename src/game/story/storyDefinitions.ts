@@ -2,9 +2,8 @@
  * STORY_DEFINITIONS — THE LAST WISH, ported directly (data, not
  * paraphrased) from knifecraft.html's actual `Story` IIFE
  * (`knifecraft.html:10772`). `FINALE` (`:10977`) and `MILES` (`:10997`)
- * are copied verbatim from the source. The opening intro (`OPENING`/`FRESH`/
- * `CHEF`) started the same way and was later re-paced — same story, tighter
- * copy and shorter holds (see the note above `OPENING`).
+ * are copied verbatim from the source. The opening intro started as beats
+ * here too and is now the painted cinematic (introCinematic.ts).
  *
  * Two things the source has that this port intentionally does NOT carry
  * over, because production has no equivalent system and inventing one
@@ -62,132 +61,10 @@ export type StoryBeat = {
 };
 
 /*
- * THE OPENING INTRO (OPENING + FRESH + CHEF, played as one sequence) — the
- * pacing pass: the same story (the family restaurant, its decline, the last
- * wish and the keys, the reopening on your savings, the chef who cooks while
- * you prep, Level 1), told in tighter copy with shorter holds so a player
- * who never taps reaches Level 1 in about 21.5 s of timed beats (was 38.7 s)
- * plus the two button beats. Beat count 13 -> 14 only because the chef’s
- * closing line now gets its own short beat; every beat is shorter.
- * FINALE and MILES below are unchanged.
+ * The opening intro is no longer a beat sequence: it is the painted
+ * cinematic in introCinematic.ts (played by CinematicIntro.tsx). The
+ * beats below (FINALE) still play through StoryOverlay.
  */
-
-/** Part 1 — Opening (4 beats, ~7.6 s timed + the OPEN THE RESTAURANT button). */
-export const OPENING: StoryBeat[] = [
-  {
-    tint: "sFaded",
-    bare: true,
-    hold: 2600,
-    lines: [
-      "For generations, this little restaurant was ours.",
-      "Your grandparent built it from the ground up.",
-    ],
-  },
-  {
-    tint: "sDecline",
-    bare: true,
-    hold: 2000,
-    lines: ["The kitchen grew quiet.", "The tables stayed empty."],
-  },
-  {
-    tint: "sDecline",
-    bare: true,
-    veil: true,
-    art: "bedside",
-    hold: 3000,
-    lines: ["Before they were gone, they placed the keys in your hand.", "They had one last wish."],
-    quote: "“Keep it alive.”",
-  },
-  {
-    tint: "sFaded",
-    bare: true,
-    art: "keys",
-    artClass: "sProp",
-    lines: ["You never planned to run a restaurant.", "But some promises are worth keeping."],
-    btn: "OPEN THE RESTAURANT",
-  },
-];
-
-/** Part 2 — A Fresh Start (4 beats, ~6.0 s timed + the READY button). */
-export const FRESH: StoryBeat[] = [
-  {
-    tint: "sDecline",
-    bare: true,
-    kicker: "A FRESH START",
-    hold: 2400,
-    lines: [
-      "The place is still standing.",
-      "Now it needs someone willing to bring it back to life.",
-    ],
-  },
-  {
-    tint: "sClean",
-    bare: true,
-    step: "CLEAN",
-    fx: "dust",
-    hold: 1800,
-    lines: ["Counters clean. Dust gone. The kitchen feels alive again."],
-  },
-  {
-    tint: "sClean",
-    bare: true,
-    step: "SMALL REPAIRS",
-    fx: "spark",
-    hold: 1800,
-    lines: ["A few repairs. A little work. Enough to open the doors."],
-  },
-  {
-    tint: "sClean",
-    bare: true,
-    veil: true,
-    step: "YOUR SAVINGS",
-    fx: "coins",
-    cards: ["board", "knife", "ing"],
-    lines: ["You put almost everything you had into this place.", "Not much.", "But it’s a start."],
-    btn: "READY",
-  },
-];
-
-/** Part 3 — The Chef (6 beats, ~7.9 s timed, then Level 1). Explicit role contract: the player is owner/prep cook, never the chef — the chef cooks. */
-export const CHEF: StoryBeat[] = [
-  {
-    tint: "sClean",
-    bare: true,
-    hold: 1400,
-    dlg: { who: "CHEF", art: "chef", say: "You spent your savings on this?" },
-  },
-  {
-    tint: "sClean",
-    bare: true,
-    hold: 1000,
-    dlg: { who: "YOU", art: "you", side: "you", say: "Every last bit." },
-  },
-  {
-    tint: "sClean",
-    bare: true,
-    hold: 1300,
-    dlg: { who: "CHEF", art: "chef", say: "Then we’d better not waste it." },
-  },
-  {
-    tint: "sClean",
-    bare: true,
-    hold: 1700,
-    dlg: { who: "CHEF", art: "chef", say: "I’ll handle the cooking. You handle the prep." },
-  },
-  {
-    tint: "sClean",
-    bare: true,
-    hold: 1200,
-    dlg: { who: "CHEF", art: "chef", say: "Let’s bring this place back." },
-  },
-  {
-    tint: "sClean",
-    kicker: "LEVEL 1",
-    title: "FIRST PREP",
-    hold: 1300,
-    lines: ["The first order is waiting.", "Let’s get to work."],
-  },
-];
 
 /** FINALE (4 beats) — ported verbatim from knifecraft.html:10977. Gated `n >= 100 && !story.finaleSeen`. Copy freeze: "You built this." / "They would be proud." — "We did it." must never appear. */
 export const FINALE: StoryBeat[] = [

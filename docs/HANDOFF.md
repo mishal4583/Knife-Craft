@@ -63,18 +63,17 @@ conversation.
 
 Priority order as agreed in the audit (P0 = before wide release):
 
-- **P0 — G1: Serve → "Back to Kitchen" without "Finish Level"** pays the
-  order settlement but never completes the level; every retry counts as a
-  first play and pays again (reproduced: +$45 twice on Level 2). Cause:
-  the service `onExit` in `App.tsx` never finishes the level and replay
-  detection only reads `completedLevelIds`.
-- **P0 — G2: first-ever Level 1 runs the legacy path**
-  (`App.tsx` load effect sets `screen="gameplay"` without
-  `onSelectLevel`/`startCampaignLevel`): no customer/Serve, pays only the
-  $48 settlement, the $50 completion reward is never paid, no Level Complete
-  banner; replays of Level 1 use the normal service path.
-  Check the Economy V2 simulation before/after fixing (baseline must not move
-  unexplained).
+- ~~P0 — G1~~ **fixed 2026-09-29**: leaving a campaign level (Served
+  screen or pause menu) after its required orders are served and paid now
+  completes it through `finishCampaignLevel` / `finishBatchGroupLevel`, so a
+  retry is a replay and pays nothing. Still open (needs a decision, would
+  need persisted partial progress): on a `requiredOrders: 2` level, leaving
+  after the 1st of 2 orders and retrying pays that 1st order again.
+- ~~P0 — G2~~ **fixed 2026-09-29**: a fresh save's Level 1 is built with
+  `buildCampaignServiceSession` (same as `startCampaignLevel`), so the first
+  play has the customer/Serve/Finish Level flow, pays $48 + the $50 reward
+  and shows Level Complete. Economy V2 QA output unchanged (Honest net
+  $461,526). Browser regression: `tools/e2e/levelflow.mjs`.
 - P1: "Back to Kitchen" (Served screen + pause menu) actually goes to the
   Order Board; next level's Prepare button is below the fold from Level 6
   (no auto-scroll); Level 10's +$80 toast is replaced by the story
@@ -112,7 +111,8 @@ Not implemented (from the audits, all CSS/asset-free):
 
 ## 6. Next steps (suggested order)
 
-1. Fix P0 G1 and G2 (with focused QA + Economy V2 regression).
+1. ~~Fix P0 G1 and G2~~ (done 2026-09-29). No release zip until the intro
+   story rework and bug fixes are finished (developer's instruction).
 2. Build, zip `releases/KnifeCraft-Playgama-v1.0.1.zip`, upload as archive
    `knifecraft-playgama-1.0.1`, confirm Bridge FOUND / state PASSED.
 3. Ask the developer, then `publish_sandbox` the new archive (the sandbox
@@ -125,7 +125,7 @@ Not implemented (from the audits, all CSS/asset-free):
 ## 7. Useful facts
 
 - Starting wallet $1,240.00 (124,000 cents). Levels 1–10 on a first run pay
-  $667 in order settlements + $586 completion rewards (with G2's missing $50).
+  $667 in order settlements + $636 completion rewards (after the G2 fix).
 - Intro timing: Part 1 7.6 s, Part 2 6.0 s, Part 3 7.9 s; measured live
   22.4 s including two prompt button presses; Skip closes in ~130 ms.
 - Bundle impact of the story change: main JS +~0.4 KB gz, CSS +~0.2 KB gz.
