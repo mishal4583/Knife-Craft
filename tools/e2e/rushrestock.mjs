@@ -2,7 +2,7 @@
 // A returning player whose only menu dish (Garden Salad) is missing carrot:
 //   1. the Operations "Current Order Blocked" card shows ⚡ Rush Restock with its price,
 //      no ad button (the local mock platform can't show rewarded ads) and Go to Market;
-//   2. paying cash stocks the carrot, charges exactly Market + 25%, writes one
+//   2. paying cash stocks the carrot, charges exactly Market ($0.80) + 25%, writes one
 //      inventory-purchase ledger entry and unblocks the order (Service: "Everything's in stock");
 //   3. with a stubbed rewarded ad, 🎬 Watch Ad restocks free (no money, no ledger entry);
 //      a declined ad restocks nothing.
@@ -63,7 +63,7 @@ const OFF_MENU = [
   "biz-thai-basil-salmon",
   "biz-greek-lemon-chicken",
 ];
-const DAY = 7; // no supplier event: carrot is $1.00 in the Market
+const DAY = 7; // no supplier event: carrot is $0.80 in the Market
 const blockedSave = (credits) =>
   seedSave({
     version: 2,
@@ -124,17 +124,17 @@ check(
   /Missing:.*Carrot/i.test(t),
   t.match(/Missing:[^.]*/)?.[0],
 );
-check("1b Service offers Rush Restock with its price", /Rush Restock · \$1\.25/.test(t));
+check("1b Service offers Rush Restock with its price", /Rush Restock · \$1\.00/.test(t));
 check("1c no ad button on the local mock platform (rewarded ads unsupported)", !/Watch Ad/.test(t));
 check("1d Go to Market stays available", /Go to Market/.test(t));
-check("1e the fee is explained", /Market price \$1\.00 \+ 25% rush fee/.test(t));
+check("1e the fee is explained", /Market price \$0\.80 \+ 25% rush fee/.test(t));
 await shot(page, "rush-1-service-blocked");
 
 await operationsTab();
 t = await flat(page);
 check(
   "1f Operations 'Current Order Blocked' card carries the same Rush Restock button",
-  /Current Order Blocked/.test(t) && /Rush Restock · \$1\.25/.test(t),
+  /Current Order Blocked/.test(t) && /Rush Restock · \$1\.00/.test(t),
 );
 await shot(page, "rush-2-operations-blocked");
 
@@ -143,21 +143,21 @@ await clickButton(page, /Rush Restock · /);
 await sleep(700);
 const after = await readSave(page);
 t = await flat(page);
-check("2a cash: $1.25 charged (carrot $1.00 + 25%)", before.credits - after.credits === 125, {
+check("2a cash: $1.00 charged (carrot $0.80 + 25%)", before.credits - after.credits === 100, {
   before: before.credits,
   after: after.credits,
 });
 check(
   "2b carrot stocked (1 unit at the rush price)",
   after.business.inventory.carrot?.quantity === 1 &&
-    after.business.inventory.carrot?.unitCost === 125,
+    after.business.inventory.carrot?.unitCost === 100,
   after.business.inventory.carrot,
 );
 const newEntries = inventoryCount(after).slice(inventoryCount(before).length);
 check(
-  "2c exactly one inventory-purchase ledger entry, −$1.25 for carrot",
+  "2c exactly one inventory-purchase ledger entry, −$1.00 for carrot",
   newEntries.length === 1 &&
-    newEntries[0].amount === -125 &&
+    newEntries[0].amount === -100 &&
     newEntries[0].description === "carrot",
   newEntries,
 );
@@ -172,12 +172,12 @@ check(
 await shot(page, "rush-3-service-unblocked");
 
 // Not enough cash: the button is disabled and says why.
-await boot(page, blockedSave(100));
+await boot(page, blockedSave(99));
 await openBlockedOrder();
 t = await flat(page);
 check(
-  "2f with $1.00, Rush Restock ($1.25) explains the shortfall",
-  /Rush Restock costs \$1\.25 — you have \$1\.00/.test(t),
+  "2f with $0.99, Rush Restock ($1.00) explains the shortfall",
+  /Rush Restock costs \$1\.00 — you have \$0\.99/.test(t),
 );
 const poorBefore = await readSave(page);
 await clickButton(page, /Rush Restock · /);

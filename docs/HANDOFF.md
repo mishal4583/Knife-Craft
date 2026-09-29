@@ -74,6 +74,9 @@ conversation.
    interstitial after 3 levels, 150 s between interstitials (config floor
    120 s), one placement per ad spot, Bridge level messages. QA:
    `playables-ads-qa` (E, E6, A4b, F11, H) + `tools/e2e/adsflow.mjs`.
+11. Business → Ingredients: per-ingredient prices, unused ingredients hidden
+   behind "Show 20 more", wallet preview on every card, "Not enough money —
+   need $X more". e2e: `tools/e2e/ingredients.mjs`.
 
 ## 4. Open issues from the Level 1–10 audit (not fixed yet)
 

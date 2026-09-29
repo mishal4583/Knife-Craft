@@ -38,11 +38,8 @@
  * Every ingredient also gets a real PURCHASE UNIT (lb/piece) — an
  * existing `BusinessInventory` "quantity" of N for an ingredient now
  * means "N of that real unit" (N lb of tomato, N loaves of bread), never
- * an abstract unlabeled count. This is a per-CATEGORY unit, the same
- * "derive from category" pattern as the price itself — not a per-
- * ingredient hand-tuned table, which would be 57+ individually-researched
- * numbers for a game that needs a believable, not laboratory-precise,
- * economy.
+ * an abstract unlabeled count. The unit is per CATEGORY; the price is per
+ * INGREDIENT (see INGREDIENT_UNIT_COST_CENTS below).
  */
 import type { IngredientId } from "../definitions";
 import { INGREDIENTS } from "../definitions";
@@ -68,37 +65,87 @@ export function purchaseUnitFor(ingredientId: IngredientId): PurchaseUnit {
 }
 
 /**
- * Whole US cents per real unit (per lb, or per piece) — see this file's
- * own header for the exact retail-price -> ~65%-wholesale-estimate
- * methodology and docs/ECONOMY_V3_MASTER_SPEC.md §24 for every source.
+ * Whole US cents per real unit (per lb, or per piece) — per INGREDIENT.
  *
- *   Vegetable ($1.50/lb retail blended average, BLS/FRED tomato $2.49/lb
- *     May 2026 + cheaper staples like onion/potato/carrot ~$0.80-1.20/lb)
- *     -> ~$0.98/lb wholesale, rounded to $1.00/lb = 100c/lb.
- *   Fruit ($2.00/lb retail blended average) -> ~$1.30/lb = 130c/lb.
- *   Protein ($6.50/lb retail-equivalent restaurant-grade chicken/beef/
- *     fish blended average) -> ~$4.20/lb, rounded to $4.50/lb = 450c/lb.
- *   Dairy ($5.00/lb retail blended average for cheese/butter/tofu) ->
- *     ~$3.25/lb = 325c/lb.
- *   Bakery ($3.50/loaf retail) -> ~$2.25/piece = 225c/piece.
- *   Aromatic ($5.50/lb retail for garlic/ginger, pricier per lb than
- *     staple vegetables) -> ~$3.55/lb, rounded to $3.50/lb = 350c/lb.
- *   Herb ($2.50/bunch retail) -> ~$1.60/piece = 160c/piece.
+ * Every price uses the same method as before (this file's header): an
+ * approximate 2026 U.S. retail price for that ingredient, times the ~65%
+ * restaurant/wholesale ratio, rounded to 10 cents. The first version used
+ * one price per category (all vegetables $1.00/lb, all protein $4.50/lb), so
+ * potatoes cost the same as asparagus and chicken the same as ribeye. The
+ * category averages stay close to the old flat values, and menu prices
+ * follow ingredient cost (businessMenu.ts: price = cost / 30% food cost),
+ * so every dish keeps its margin percentage.
+ *
+ *   ingredient      retail ≈      → wholesale (cents)
  */
-const CATEGORY_BASE_UNIT_COST_CENTS: Record<string, number> = {
-  Protein: 450,
-  Dairy: 325,
-  Bakery: 225,
-  Fruit: 130,
-  Vegetable: 100,
-  Aromatic: 350,
-  Herb: 160,
+const INGREDIENT_UNIT_COST_CENTS: Record<IngredientId, number> = {
+  // Vegetables (per lb)
+  tomato: 100, // $1.55 retail (BLS field-grown tomato average)
+  carrot: 80, // $1.20
+  cucumber: 90, // $1.40
+  onion: 70, // $1.10
+  potato: 60, // $0.95
+  mushroom: 260, // $4.00
+  pepper: 160, // $2.45 (bell pepper)
+  zucchini: 100, // $1.55
+  eggplant: 110, // $1.70
+  broccoli: 140, // $2.15
+  corn: 70, // $1.10
+  celery: 90, // $1.40
+  lettuce: 110, // $1.70
+  cabbage: 50, // $0.80
+  cauliflower: 130, // $2.00
+  spinach: 240, // $3.70
+  asparagus: 260, // $4.00
+  radish: 120, // $1.85
+  beetroot: 90, // $1.40
+  sweetpotato: 80, // $1.25
+  greenbean: 140, // $2.15
+  fennel: 160, // $2.45
+  artichoke: 220, // $3.40
+  peapod: 230, // $3.55
+  pumpkin: 60, // $0.95
+  turnip: 80, // $1.25
+  chilli: 150, // $2.30
+  springonion: 160, // $2.45
+  // Fruit (per lb)
+  strawberry: 200, // $3.10
+  apple: 110, // $1.70
+  orange: 90, // $1.40
+  lemon: 120, // $1.85
+  avocado: 160, // $2.45
+  pear: 110, // $1.70
+  peach: 120, // $1.85
+  pineapple: 50, // $0.80
+  watermelon: 40, // $0.60
+  mango: 100, // $1.55
+  kiwi: 160, // $2.45
+  pomegranate: 160, // $2.45
+  grapes: 170, // $2.60
+  coconut: 100, // $1.55
+  lime: 120, // $1.85
+  // Herbs (per bunch)
+  basil: 180, // $2.75
+  parsley: 90, // $1.40
+  cilantro: 80, // $1.25
+  // Aromatics (per lb)
+  garlic: 320, // $4.90
+  ginger: 260, // $4.00
+  // Bakery (per piece)
+  bread: 220, // $3.40 loaf
+  baguette: 190, // $2.90
+  // Dairy & tofu (per lb)
+  cheddar: 360, // $5.55
+  mozzarella: 340, // $5.25
+  butter: 300, // $4.60
+  tofu: 160, // $2.45
+  // Protein (per lb)
+  chicken: 320, // $4.90 boneless breast
+  steak: 950, // $14.60 ribeye
+  salmon: 650, // $10.00 fillet
 };
-
-const DEFAULT_BASE_UNIT_COST_CENTS = 100;
 
 /** The deterministic base purchase cost, in whole US cents, for one real unit (see `purchaseUnitFor`) of `ingredientId` — the single source every purchase UI/action reads from, never a literal number typed inline. */
 export function businessUnitCostFor(ingredientId: IngredientId): number {
-  const category = INGREDIENTS[ingredientId].category;
-  return CATEGORY_BASE_UNIT_COST_CENTS[category] ?? DEFAULT_BASE_UNIT_COST_CENTS;
+  return INGREDIENT_UNIT_COST_CENTS[ingredientId];
 }

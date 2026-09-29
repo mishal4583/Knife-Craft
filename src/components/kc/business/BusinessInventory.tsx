@@ -34,6 +34,8 @@ import {
   supplierEventSummary,
 } from "@/game/business/businessAlerts";
 import { activeBusinessDishes } from "@/game/business/businessMenuActivation";
+import { BUSINESS_DISH_CATALOG } from "@/game/business/businessDishCatalog";
+import { notEnoughMoneyText } from "@/game/economy/wallet";
 import {
   DEFAULT_PURCHASE_QUANTITY,
   stepPurchaseQuantity,
@@ -46,6 +48,19 @@ const PERISHABILITY_BADGE_TONE: Record<PerishabilityState, "cream" | "sage" | "c
     NEAR_EXPIRY: "copper",
     EXPIRED: "locked",
   };
+
+/** Every ingredient at least one Business dish uses — the only ones worth stocking. */
+const DISH_INGREDIENTS = new Set<IngredientId>(
+  BUSINESS_DISH_CATALOG.flatMap((d) => businessDishRequirements(d).map((r) => r.ingredientId)),
+);
+
+/** From this quantity on, the card phrases the balance as "You'll have $X remaining". */
+const LARGE_PURCHASE_QUANTITY = 25;
+
+/** A balance for the card: whole dollars when there are no cents ("$1,332"), else "$1,332.40". */
+function balanceText(cents: number): string {
+  return formatUsd(cents).replace(/\.00$/, "");
+}
 
 /** The ingredient registry's own categories, in shop order, with player-facing names. */
 const GROUPS: Array<{ category: string; label: string; emoji: string }> = [
@@ -78,6 +93,7 @@ export function BusinessInventory({
   const [quantities, setQuantities] = useState<Partial<Record<IngredientId, number>>>({});
   const [messages, setMessages] = useState<Partial<Record<IngredientId, string>>>({});
   const [group, setGroup] = useState<string>("all");
+  const [showUnused, setShowUnused] = useState(false);
 
   const owned = Object.values(save.business.inventory).filter((entry) => !!entry);
   const totalValue = inventoryValue(save.business.inventory);
@@ -104,6 +120,20 @@ export function BusinessInventory({
     return quantities[id] ?? DEFAULT_PURCHASE_QUANTITY;
   }
 
+  /** Today's unit price — the same chain the purchase itself runs (BusinessInventoryManager). */
+  function unitCostFor(id: IngredientId, quantity: number): number {
+    const eventCost = eventAdjustedUnitCost(businessUnitCostFor(id), event);
+    const contractCost = event?.suspendsContractDiscount
+      ? eventCost
+      : effectiveUnitCost(
+          eventCost,
+          save.business.supplierContract,
+          save.business.calendar.businessDay,
+          quantity,
+        );
+    return staffUnitCostDiscount(contractCost, save.business.staff.hiredRoles);
+  }
+
   function adjustQuantity(id: IngredientId, direction: 1 | -1) {
     setQuantities((q) => ({ ...q, [id]: stepPurchaseQuantity(quantityFor(id), direction) }));
   }
@@ -114,7 +144,7 @@ export function BusinessInventory({
     if (!result.ok) {
       const text =
         result.reason === "insufficientFunds"
-          ? "Not quite enough cash."
+          ? notEnoughMoneyText(unitCostFor(id, quantity) * quantity, save.credits)
           : result.reason === "insufficientStorage"
             ? "Not enough fridge space."
             : result.reason === "exceedsShortageLimit"
@@ -130,6 +160,7 @@ export function BusinessInventory({
   }
 
   const groups = GROUPS.filter((g) => group === "all" || g.category === group);
+  const unusedCount = allIngredientIds.filter((id) => !DISH_INGREDIENTS.has(id)).length;
 
   return (
     <div className="space-y-3">
@@ -265,7 +296,12 @@ export function BusinessInventory({
       </div>
 
       {groups.map((g) => {
-        const ids = allIngredientIds.filter((id) => INGREDIENTS[id].category === g.category);
+        // Ingredients no Business dish uses are hidden unless asked for — they
+        // could only be bought to spoil.
+        const ids = allIngredientIds.filter(
+          (id) =>
+            INGREDIENTS[id].category === g.category && (showUnused || DISH_INGREDIENTS.has(id)),
+        );
         const ordered = [
           ...ids.filter((id) => menuIngredients.has(id)),
           ...ids.filter((id) => !menuIngredients.has(id)),
@@ -280,23 +316,12 @@ export function BusinessInventory({
               {ordered.map((id) => {
                 const def = INGREDIENTS[id];
                 const quantity = quantityFor(id);
-                const eventCost = eventAdjustedUnitCost(businessUnitCostFor(id), event);
-                const contractCost = event?.suspendsContractDiscount
-                  ? eventCost
-                  : effectiveUnitCost(
-                      eventCost,
-                      save.business.supplierContract,
-                      save.business.calendar.businessDay,
-                      quantity,
-                    );
-                const unitCost = staffUnitCostDiscount(
-                  contractCost,
-                  save.business.staff.hiredRoles,
-                );
+                const unitCost = unitCostFor(id, quantity);
                 const totalCost = unitCost * quantity;
                 const exceedsShortage = maxQuantity !== undefined && quantity > maxQuantity;
-                const affordable =
-                  save.credits >= totalCost && quantity <= available && !exceedsShortage;
+                const canPay = save.credits >= totalCost;
+                const affordable = canPay && quantity <= available && !exceedsShortage;
+                const remaining = save.credits - totalCost;
                 const stock = save.business.inventory[id]?.quantity ?? 0;
                 const message = messages[id];
                 return (
@@ -308,7 +333,11 @@ export function BusinessInventory({
                       <span className="text-[34px] leading-none" aria-hidden>
                         {INGREDIENT_EMOJI[id]}
                       </span>
-                      {menuIngredients.has(id) ? <Badge tone="sage">Menu</Badge> : null}
+                      {menuIngredients.has(id) ? (
+                        <Badge tone="sage">Menu</Badge>
+                      ) : !DISH_INGREDIENTS.has(id) ? (
+                        <Badge tone="locked">No dish</Badge>
+                      ) : null}
                     </div>
                     <p className="mt-1 font-display text-[14px] font-black leading-tight text-walnut-dark">
                       {def.name}
@@ -359,6 +388,19 @@ export function BusinessInventory({
                     >
                       Buy {quantity} {purchaseUnitFor(id)} · {formatUsd(totalCost)}
                     </KButton>
+                    {/* What the purchase does to the wallet, before the tap. */}
+                    <p
+                      className={cn(
+                        "mt-1 text-center font-ui text-[11px] font-bold leading-tight",
+                        canPay ? "text-walnut/65" : "text-copper",
+                      )}
+                    >
+                      {!canPay
+                        ? notEnoughMoneyText(totalCost, save.credits)
+                        : quantity >= LARGE_PURCHASE_QUANTITY
+                          ? `You'll have ${balanceText(remaining)} remaining`
+                          : `${balanceText(save.credits)} → ${balanceText(remaining)}`}
+                    </p>
                   </article>
                 );
               })}
@@ -366,6 +408,21 @@ export function BusinessInventory({
           </section>
         );
       })}
+
+      {unusedCount > 0 ? (
+        <KButton
+          full
+          size="sm"
+          variant="ghost"
+          className="h-12"
+          aria-pressed={showUnused}
+          onClick={() => setShowUnused((v) => !v)}
+        >
+          {showUnused
+            ? "Hide ingredients no dish uses"
+            : `Show ${unusedCount} more ingredients (no dish uses them)`}
+        </KButton>
+      ) : null}
     </div>
   );
 }

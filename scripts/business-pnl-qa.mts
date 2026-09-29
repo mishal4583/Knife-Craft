@@ -17,6 +17,8 @@ import { DEFAULT_SAVE, type SaveData } from "../src/game/SaveManager.ts";
 import { DEFAULT_LEVEL_PROGRESS } from "../src/game/levels/LevelManager.ts";
 import { DEFAULT_BUSINESS_STATE } from "../src/game/business/businessTypes.ts";
 import { addStock, getQuantity } from "../src/game/business/businessInventory.ts";
+// G2 compares COGS with the list-price cost basis, so its stock is bought at the list price.
+import { businessUnitCostFor } from "../src/game/business/businessPricing.ts";
 import {
   createBusinessServiceSession,
   recordBusinessServiceComponents,
@@ -120,8 +122,8 @@ function fullSaladInventory(day: number) {
   return inv;
 }
 function fullBreadInventory(day: number) {
-  let inv = addStock({}, "bread", 10, 225, day);
-  inv = addStock(inv, "garlic", 10, 350, day);
+  let inv = addStock({}, "bread", 10, businessUnitCostFor("bread"), day);
+  inv = addStock(inv, "garlic", 10, businessUnitCostFor("garlic"), day);
   return inv;
 }
 

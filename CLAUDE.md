@@ -196,7 +196,7 @@ expected values.
 ### Economy V2.5 — Final Wealth (approved rebalance)
 
 Goal: a completionist finishes Level 250 owning everything with
-$100k–$150k left (simulated: **$111,531** with occasional Business days;
+$100k–$150k left (simulated: **$111,405** with occasional Business days;
 $109,534 campaign-only). `scripts/economy-v25-simulation.mts`,
 `scripts/economy-v25-qa.mts` and `scripts/economy-final-qa.mts` prove it
 with the real functions.
@@ -237,9 +237,16 @@ with the real functions.
 - **Endless Service** — unlocks after Level 250 (`isEndlessUnlocked`);
   pays each service level's `paidLevelReward`, capped $600/day.
 - **Business scale** — inspection fines $55 / $105 (Chicago schedule ÷5);
-  staff paid for a 2-hour service shift (cleaner 1.5 h). A no-staff
-  Business nets ~$75/day; hiring staff is currently a net cost (their
-  popularity/discount effects earn less than their wages).
+  staff paid for a 2-hour service shift (cleaner 1.5 h). Ingredient prices
+  are per ingredient (`business/businessPricing.ts`, ~65% of 2026 U.S.
+  retail, e.g. potato $0.60/lb, tomato $1.00, salmon $6.50, ribeye $9.50);
+  menu prices follow at 30% food cost. A no-staff Business nets ~$70/day;
+  hiring staff is currently a net cost (their popularity/discount effects
+  earn less than their wages).
+- **Business → Ingredients tab** lists only ingredients a Business dish
+  uses (37 of 57; "Show 20 more" reveals the rest, badged "No dish"). Each
+  card shows the wallet effect before the tap — "$1,332 → $1,327", from
+  25 units "You'll have $X remaining", or "Not enough money — need $X more."
 - **Recurring caps** — Replay Bonus 20% of the paid reward, $10–$200,
   3/day; Endless $600/day; Today's Special $50/day.
 - **Wallet invariant** — `economy/wallet.ts`: credits are whole cents and
