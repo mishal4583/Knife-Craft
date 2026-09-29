@@ -33,10 +33,14 @@ const newLedger = (b, a) =>
 const { browser, page, logs } = await launch();
 
 async function skipIntro() {
-  await page.waitForFunction(() => /Skip story/i.test(document.body.innerText), {
+  // The cinematic intro's SKIP control appears after INTRO_SKIP_AFTER_MS.
+  await page.waitForFunction(() => !!document.querySelector('[aria-label="Skip intro"]'), {
     timeout: 30000,
   });
-  await clickButton(page, /Skip story/i);
+  await page.evaluate(() => document.querySelector('[aria-label="Skip intro"]').click());
+  await page.waitForFunction(() => !document.querySelector("[data-intro-scene]"), {
+    timeout: 10000,
+  });
   await sleep(800);
 }
 async function waitHud() {
