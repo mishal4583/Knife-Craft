@@ -13,6 +13,7 @@
 import type { SaveData } from "../SaveManager";
 import { KITCHEN_UPGRADE_CATALOG, findKitchenUpgrade } from "./kitchenUpgradeDefinitions";
 import type { KitchenUpgradeDefinition } from "./kitchenUpgradeTypes";
+import { debitWallet } from "../economy/wallet";
 
 /** Level ids are formatted "level-N" — the same parsing Knife/Board/CafeProgressionManager already use for their own level-gated unlocks. */
 function highestReachedLevelNumber(save: SaveData): number {
@@ -35,38 +36,35 @@ export function isKitchenUpgradeLevelUnlocked(id: string, save: SaveData): boole
 }
 
 export type KitchenUpgradeState =
-  /** The kitchen the player has now — the highest tier reached. */
+  /** The kitchen the player has now — the highest tier built. */
   | "current"
   /** An earlier tier the kitchen has already grown past. */
   | "past"
+  /** Level reached and the previous tier built — can be built now (if affordable). */
+  | "available"
+  /** Level reached, but the previous tier isn't built yet. */
+  | "needsPrevious"
   /** Level requirement not yet met — shown as LOCKED. */
   | "locked";
 
 export function getKitchenUpgradeState(id: string, save: SaveData): KitchenUpgradeState {
   if (save.equippedKitchenUpgradeId === id) return "current";
   if (isKitchenUpgradeOwned(id, save)) return "past";
-  return "locked";
+  if (!isKitchenUpgradeLevelUnlocked(id, save)) return "locked";
+  const index = KITCHEN_UPGRADE_CATALOG.findIndex((u) => u.id === id);
+  const previous = index > 0 ? KITCHEN_UPGRADE_CATALOG[index - 1]! : null;
+  return previous && !isKitchenUpgradeOwned(previous.id, save) ? "needsPrevious" : "available";
 }
 
 /**
- * The one place that grants kitchen-upgrade ownership. Pure and
- * idempotent — safe to call on every save mutation and on every load, so
- * ownership is always a deterministic function of level progress, never
- * a one-time purchase action tied to a particular session. Never removes
- * a tier the player already owns (e.g. after a hand-edited/downgraded
- * save).
- *
- * It also moves the kitchen onto the highest tier owned — an upgrade is
- * permanent, so reaching Established Kitchen replaces Growing Kitchen for
- * good. An older save that had picked an earlier tier is moved forward
- * the next time it loads; nothing ever moves it back.
+ * Economy V2.5 — keeps the kitchen on the highest tier the player OWNS
+ * (catalog order), so building a tier moves the kitchen onto it for good.
+ * It no longer grants tiers by level: tiers are bought
+ * (purchaseKitchenUpgrade). Returns `save` itself when nothing changes.
  */
 export function syncKitchenUpgradeOwnership(save: SaveData): SaveData {
-  const highest = highestReachedLevelNumber(save);
   const owned = new Set(save.ownedKitchenUpgradeIds);
-  for (const def of KITCHEN_UPGRADE_CATALOG) {
-    if (highest >= def.unlockLevel) owned.add(def.id);
-  }
+  owned.add(KITCHEN_UPGRADE_CATALOG[0]!.id);
   // Preserve catalog order rather than insertion order — keeps
   // ownedKitchenUpgradeIds readable in the saved JSON, and makes the last
   // owned entry the highest tier.
@@ -82,6 +80,64 @@ export function syncKitchenUpgradeOwnership(save: SaveData): SaveData {
   )
     return save;
   return { ...save, ownedKitchenUpgradeIds, equippedKitchenUpgradeId: current };
+}
+
+/** Save version from which kitchen tiers are bought instead of granted by level. */
+export const KITCHEN_DEVELOPMENT_SAVE_VERSION = 3;
+
+/**
+ * One-time migration for saves written before Economy V2.5, when every
+ * tier was granted free on reaching its level: such a save keeps every
+ * tier its level entitled it to (even if it was never re-saved after
+ * reaching it), then moves to the current version. Idempotent — a save at
+ * the current version is returned unchanged.
+ */
+export function migrateKitchenDevelopment(save: SaveData): SaveData {
+  if (save.version >= KITCHEN_DEVELOPMENT_SAVE_VERSION) return save;
+  const highest = highestReachedLevelNumber(save);
+  const owned = new Set(save.ownedKitchenUpgradeIds);
+  for (const def of KITCHEN_UPGRADE_CATALOG) {
+    if (highest >= def.unlockLevel) owned.add(def.id);
+  }
+  return syncKitchenUpgradeOwnership({
+    ...save,
+    version: KITCHEN_DEVELOPMENT_SAVE_VERSION,
+    ownedKitchenUpgradeIds: [...owned],
+  });
+}
+
+export type PurchaseKitchenUpgradeResult =
+  | { ok: true; save: SaveData; price: number }
+  | {
+      ok: false;
+      reason:
+        "unknownUpgrade" | "alreadyOwned" | "notUnlocked" | "needsPrevious" | "insufficientFunds";
+    };
+
+/**
+ * Builds one kitchen tier — atomic, mirroring KnifeManager.buyKnife: either
+ * credits drop by exactly its price AND it becomes the current kitchen, or
+ * nothing changes. Tiers are built in order (each grows the previous one),
+ * only once their level is reached, and never on credit — the caller
+ * (App.tsx) records the "kitchen-investment-purchase" ledger entry.
+ */
+export function purchaseKitchenUpgrade(save: SaveData, id: string): PurchaseKitchenUpgradeResult {
+  const def = findKitchenUpgrade(id);
+  if (!def) return { ok: false, reason: "unknownUpgrade" };
+  const state = getKitchenUpgradeState(id, save);
+  if (state === "current" || state === "past") return { ok: false, reason: "alreadyOwned" };
+  if (state === "locked") return { ok: false, reason: "notUnlocked" };
+  if (state === "needsPrevious") return { ok: false, reason: "needsPrevious" };
+  const paid = debitWallet(save, def.price);
+  if (!paid.ok) return { ok: false, reason: "insufficientFunds" };
+  return {
+    ok: true,
+    save: syncKitchenUpgradeOwnership({
+      ...paid.save,
+      ownedKitchenUpgradeIds: [...save.ownedKitchenUpgradeIds, def.id],
+    }),
+    price: def.price,
+  };
 }
 
 export function getOwnedKitchenUpgrades(save: SaveData): KitchenUpgradeDefinition[] {

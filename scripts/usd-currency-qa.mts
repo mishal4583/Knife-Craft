@@ -24,6 +24,7 @@ const memoryStore = new Map<string, string>();
   length: 0,
 } as Storage;
 
+import { paidLevelReward } from "../src/game/levels/levelRewards.ts";
 import fs from "node:fs";
 import path from "node:path";
 import { dollars, formatUsd, formatUsdChange } from "../src/game/money.ts";
@@ -102,10 +103,11 @@ const read = (rel: string) => fs.readFileSync(path.resolve(ROOT, rel), "utf8");
   let allExact = true;
   for (const level of LEVELS) {
     const r = completeLevel(level.id, progress);
-    if (r.isFirstCompletion && r.rewardCoins !== level.reward.coins * 100) allExact = false;
+    // Economy V2.5: a level pays its paid reward (levelRewards.ts) — still whole dollars in cents.
+    if (r.isFirstCompletion && (r.rewardCoins !== paidLevelReward(level) || r.rewardCoins % 100 !== 0)) allExact = false;
     progress = r.progress;
   }
-  assert(allExact, "D: all 250 level rewards pay their old amount as dollars (61 → $61.00)");
+  assert(allExact, "D: all 250 level rewards pay their paid reward as whole dollars in cents (61 → $61.00 at 100%)");
   const lvl1 = LEVELS[0]!;
   assert(formatUsdChange(completeLevel(lvl1.id, { ...DEFAULT_LEVEL_PROGRESS }).rewardCoins) === `+$${lvl1.reward.coins}.00`, `D2: Level 1 reward reads +$${lvl1.reward.coins}.00`);
   let settleExact = true;
@@ -165,11 +167,12 @@ const read = (rel: string) => fs.readFileSync(path.resolve(ROOT, rel), "utf8");
   const old = { ...v1(21519), knifeUpgrades: { chef: { sharpness: 3, speed: 1, handling: 2 } }, ownedKnifeIds: ["chef", "santoku"] };
   localStorage.setItem("knifecraft.save.v1", JSON.stringify(old));
   const loaded = await SaveManager.load();
-  assert(loaded.version === 2 && formatUsd(loaded.credits) === "$21,519.00", `F8: a Campaign-earned old wallet of 21,519 loads as $21,519.00 (got ${formatUsd(loaded.credits)})`);
+  // version 3 = USD (v2) + Economy V2.5 kitchen development (v3), both migrations run once.
+  assert(loaded.version === 3 && formatUsd(loaded.credits) === "$21,519.00", `F8: a Campaign-earned old wallet of 21,519 loads as $21,519.00 (got ${formatUsd(loaded.credits)})`);
   assert(JSON.stringify(loaded.knifeUpgrades) === JSON.stringify(old.knifeUpgrades) && loaded.ownedKnifeIds.length === 2, "F9: knives and Blacksmith progress untouched");
   await SaveManager.save(loaded);
   const raw = JSON.parse(localStorage.getItem("knifecraft.save.v1")!) as SaveData;
-  assert(raw.version === 2 && raw.credits === loaded.credits && migrateMoneyToUsd(raw).credits === loaded.credits, "F10: save → reload keeps exactly the same dollar amount (no second conversion)");
+  assert(raw.version === 3 && raw.credits === loaded.credits && migrateMoneyToUsd(raw).credits === loaded.credits, "F10: save → reload keeps exactly the same dollar amount (no second conversion)");
 }
 
 // ===== G: no coin/cent wording or bare money in player-facing UI =====

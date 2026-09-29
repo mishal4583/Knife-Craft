@@ -28,7 +28,7 @@ type Bridge = {
     id?: string;
     language?: string;
     isAudioEnabled: boolean;
-    sendMessage: (message: string) => unknown;
+    sendMessage: (message: string, options?: Record<string, string>) => unknown;
     on: (event: string, handler: BridgeStateHandler<boolean>) => void;
   };
   storage: {
@@ -51,9 +51,27 @@ declare global {
   }
 }
 
-/** Stable placement ids — one per reward TYPE, reused every time (as Bridge and YouTube require). */
-export const INTERSTITIAL_PLACEMENT = "level_completed";
-export const REWARDED_PLACEMENT = "replay_bonus";
+/**
+ * Stable placement ids — one per ad SPOT, reused every time (never a
+ * per-offer id). Each is listed under `advertisement.*.placements` in
+ * public/playgama-bridge-config.json, so revenue can be split by spot.
+ */
+export const AD_PLACEMENT = {
+  /** Interstitial after a finished level / session (level finish, Back to Kitchen, Next Level). */
+  levelCompleted: "level_completed",
+  /** Interstitial after closing a Business day. */
+  businessDayEnd: "business_day_end",
+  /** Rewarded: the Replay Bonus. */
+  replayBonus: "replay_bonus",
+  /** Rewarded: a free Rush Restock for a blocked Business order. */
+  rushRestock: "rush_restock",
+} as const;
+export type InterstitialPlacement =
+  typeof AD_PLACEMENT.levelCompleted | typeof AD_PLACEMENT.businessDayEnd;
+export type RewardedPlacement = typeof AD_PLACEMENT.replayBonus | typeof AD_PLACEMENT.rushRestock;
+/** The defaults (also the config's placementFallback values). */
+export const INTERSTITIAL_PLACEMENT: InterstitialPlacement = AD_PLACEMENT.levelCompleted;
+export const REWARDED_PLACEMENT: RewardedPlacement = AD_PLACEMENT.replayBonus;
 
 let readyPromise: Promise<Bridge | null> | null = null;
 let bridgeInstance: Bridge | null = null;
@@ -102,6 +120,64 @@ export function gameReady(): void {
   if (gameReadySent) return;
   gameReadySent = true;
   void platformReady().then((b) => b?.platform.sendMessage("game_ready"));
+}
+
+/* ── Level lifecycle messages (recommended by the Bridge platform docs) ── */
+
+/**
+ * `world` groups levels (a campaign chapter, "todays-special", "endless",
+ * "business"); `level` is the level number (or the Business day). Sent as
+ * Bridge's `{ world, level }` options, strings as in the docs' example.
+ */
+export type LevelContext = { world: string; level: string };
+
+/** The level currently being played, or null between levels. */
+let openLevel: LevelContext | null = null;
+let levelPausedSent = false;
+
+function sendPlatformMessage(message: string, ctx: LevelContext): void {
+  void platformReady().then((b) => {
+    try {
+      void Promise.resolve(b?.platform.sendMessage(message, { ...ctx })).catch(() => {});
+    } catch {
+      // A platform that can't take the message is a silent no-op.
+    }
+  });
+}
+
+/** `level_started` — the player entered a level (campaign, Today's Special, Endless, a Business order). */
+export function levelStarted(ctx: LevelContext): void {
+  openLevel = { ...ctx };
+  levelPausedSent = false;
+  sendPlatformMessage("level_started", openLevel);
+}
+
+/** `level_completed` — the level open since levelStarted was finished. Once per start. */
+export function levelCompleted(): void {
+  if (!openLevel) return;
+  sendPlatformMessage("level_completed", openLevel);
+  openLevel = null;
+  levelPausedSent = false;
+}
+
+/** `level_paused` — the player opened the in-game pause menu during a level. */
+export function levelPaused(): void {
+  if (!openLevel || levelPausedSent) return;
+  levelPausedSent = true;
+  sendPlatformMessage("level_paused", openLevel);
+}
+
+/** `level_resumed` — the player left the pause menu back into the level. */
+export function levelResumed(): void {
+  if (!openLevel || !levelPausedSent) return;
+  levelPausedSent = false;
+  sendPlatformMessage("level_resumed", openLevel);
+}
+
+/** Leaving a level without finishing it: no message (KnifeCraft has no fail state), just closes it. */
+export function levelAbandoned(): void {
+  openLevel = null;
+  levelPausedSent = false;
 }
 
 /* ── Pause + audio (required: subscribe to both) ─────────────────────── */
@@ -240,7 +316,9 @@ export function rewardedAdsAvailable(): boolean {
 export type InterstitialResult = "requested" | "unavailable" | "busy" | "failed";
 
 /** Shows an interstitial at a natural break. Never throws, never blocks the caller. */
-export async function requestInterstitialAd(): Promise<InterstitialResult> {
+export async function requestInterstitialAd(
+  placement: InterstitialPlacement = INTERSTITIAL_PLACEMENT,
+): Promise<InterstitialResult> {
   const b = bridgeInstance;
   if (!b || !b.advertisement.isInterstitialSupported) return "unavailable";
   if (adInFlight) return "busy";
@@ -265,7 +343,7 @@ export async function requestInterstitialAd(): Promise<InterstitialResult> {
     }, AD_START_TIMEOUT_MS);
     b.advertisement.on(b.EVENT_NAME.INTERSTITIAL_STATE_CHANGED, onState);
     try {
-      b.advertisement.showInterstitial(INTERSTITIAL_PLACEMENT);
+      b.advertisement.showInterstitial(placement);
     } catch {
       finish("failed");
     }
@@ -285,9 +363,13 @@ export type RewardedResult =
  * Shows the rewarded ad and waits — with no limit once it has started — for
  * Bridge's outcome: `rewarded` only when the state `rewarded` was reported
  * before the ad closed. `rewardId` is the game's own transaction id (for the
- * caller's ledger); the platform always gets the stable REWARDED_PLACEMENT.
+ * caller's ledger); the platform gets the stable placement of the spot
+ * (AD_PLACEMENT), never a per-offer id.
  */
-export async function requestRewardedAd(rewardId: string): Promise<RewardedResult> {
+export async function requestRewardedAd(
+  rewardId: string,
+  placement: RewardedPlacement = REWARDED_PLACEMENT,
+): Promise<RewardedResult> {
   void rewardId;
   const b = bridgeInstance;
   if (!b || !b.advertisement.isRewardedSupported) return { status: "unavailable" };
@@ -320,7 +402,7 @@ export async function requestRewardedAd(rewardId: string): Promise<RewardedResul
     }, AD_START_TIMEOUT_MS);
     b.advertisement.on(b.EVENT_NAME.REWARDED_STATE_CHANGED, onState);
     try {
-      b.advertisement.showRewarded(REWARDED_PLACEMENT);
+      b.advertisement.showRewarded(placement);
     } catch {
       finish({ status: "failed" });
     }

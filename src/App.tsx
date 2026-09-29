@@ -14,11 +14,17 @@ import {
   type ReplayBonusPhase,
 } from "@/game/ads/replayBonus";
 import {
+  AD_PLACEMENT,
+  levelAbandoned,
+  levelCompleted,
+  levelStarted,
   onAdActiveChange,
   requestRewardedAd,
   rewardedAdsAvailable,
   sendScore,
+  type LevelContext,
 } from "@/game/PlayablesSDK";
+import { levelNumber } from "@/game/levels/levelMastery";
 import { GameShell } from "@/components/kc/game/GameShell";
 import { type ScreenId } from "@/components/kc/data";
 import { SaveManager, type SaveData } from "@/game/SaveManager";
@@ -41,7 +47,16 @@ import {
 import { buyKnife as buyKnifeFromCatalog, equipKnife } from "@/game/knives/KnifeManager";
 import { boardOrDefault } from "@/game/boards/boardDefinitions";
 import { buyBoard as buyBoardFromCatalog, equipBoard } from "@/game/boards/BoardManager";
-import { syncKitchenUpgradeOwnership } from "@/game/kitchen/KitchenUpgradeManager";
+import {
+  purchaseKitchenUpgrade,
+  syncKitchenUpgradeOwnership,
+} from "@/game/kitchen/KitchenUpgradeManager";
+import {
+  FAMILY_LEGACY_ID,
+  grantEarnedMilestoneRewards,
+  type MilestoneDefinition,
+} from "@/game/progression/milestoneRewards";
+import { walletInvariantViolation } from "@/game/economy/wallet";
 import {
   shouldRunIntro,
   markIntroDone,
@@ -67,6 +82,7 @@ import {
   DAILY_ORDER_BONUS_COINS,
 } from "@/game/daily/DailyOrderManager";
 import { pickEndlessLevel, applyEndlessEarn } from "@/game/daily/EndlessServiceManager";
+import { paidLevelReward } from "@/game/levels/levelRewards";
 import {
   createServiceSession,
   recordAllComponents,
@@ -97,7 +113,10 @@ import { buyStaff as buyStaffFromCatalog } from "@/game/economy/StaffManager";
 import { selectSupplier as selectSupplierFromCatalog } from "@/game/economy/SupplierManager";
 import { appendLedgerEntry } from "@/game/economy/EconomyLedger";
 import type { SettlementResult } from "@/game/economy/economyTypes";
-import { purchaseIngredient as purchaseIngredientFromCatalog } from "@/game/business/BusinessInventoryManager";
+import {
+  purchaseIngredient as purchaseIngredientFromCatalog,
+  rushRestock,
+} from "@/game/business/BusinessInventoryManager";
 import { purchaseRefrigerator as purchaseRefrigeratorFromCatalog } from "@/game/business/RefrigeratorManager";
 import { performRefrigeratorMaintenance as performRefrigeratorMaintenanceFromCatalog } from "@/game/business/businessMaintenance";
 import type { InspectionReport } from "@/game/business/businessInspection";
@@ -127,6 +146,11 @@ import type {
   BusinessCustomersToday,
 } from "@/game/business/BusinessServiceManager";
 import { businessDishForRecipeId } from "@/game/business/businessServiceCatalog";
+import {
+  newRushRestockRewardId,
+  type RushRestockOutcome,
+  type RushRestockPayment,
+} from "@/game/business/businessRushRestock";
 import {
   makeSeededRand,
   businessServiceSeedFor,
@@ -186,6 +210,36 @@ function LoadingScreen() {
       <p className="font-hand text-[26px] text-walnut/70">warming the kitchen…</p>
     </div>
   );
+}
+
+/** One banner per payout: several milestones paid together (e.g. an older save's first load) are summed into one line. */
+type MilestoneNotice = { id: string; label: string; reward: number; legacy: boolean };
+function milestoneNoticeFor(granted: readonly MilestoneDefinition[]): MilestoneNotice {
+  const reward = granted.reduce((sum, m) => sum + m.reward, 0);
+  const finale = granted.find((m) => m.id === FAMILY_LEGACY_ID);
+  const id = granted.map((m) => m.id).join("+");
+  if (finale) {
+    // Level 250: CAMPAIGN COMPLETE · 250 / 250 · FINAL REWARD · Endless Service unlocked.
+    const others = reward - finale.reward;
+    return {
+      id,
+      label: `250 / 250 · Final Reward ${formatUsdChange(finale.reward)}${
+        others > 0 ? ` (+ milestones ${formatUsdChange(others)})` : ""
+      } · Endless Service unlocked`,
+      reward,
+      legacy: true,
+    };
+  }
+  if (granted.length === 1) {
+    const only = granted[0]!;
+    return { id, label: `${only.label} · ${formatUsdChange(only.reward)}`, reward, legacy: false };
+  }
+  return {
+    id,
+    label: `${granted.length} milestones reached · ${formatUsdChange(reward)}`,
+    reward,
+    legacy: false,
+  };
 }
 
 export function App() {
@@ -277,7 +331,7 @@ export function App() {
     rewardCoins: number;
   } | null>(null);
 
-  // YouTube ads. `saveRef` always holds the latest committed save, so code
+  // Platform ads (Playgama Bridge). `saveRef` always holds the latest committed save, so code
   // resuming after an `await` (a rewarded ad) reads the authoritative state,
   // never a stale closure. The Replay Bonus's claimed/granted state is NOT
   // stored here — it is derived from the save's ledger (replayBonus.ts).
@@ -289,19 +343,28 @@ export function App() {
   // Mirrors `replayOffer` for code resuming after an await (was the sheet closed meanwhile?).
   const replayOfferRef = useRef<ReplayBonusOffer | null>(null);
   replayOfferRef.current = replayOffer;
-  // A bonus that YouTube confirmed only after the player had closed the sheet
+  // A bonus the platform confirmed only after the player had closed the sheet
   // (possible after the dead-request guard released the screen) — confirmed here.
   const [lateReplayBonus, setLateReplayBonus] = useState<number | null>(null);
   const [adActive, setAdActive] = useState(false);
+  // Economy V2.5 — milestone rewards just paid, shown one at a time.
+  const [milestoneNoticeQueue, setMilestoneNoticeQueue] = useState<MilestoneNotice[]>([]);
+  // Rush Restock's ad path resumes after an await: it reads the CURRENT order
+  // from this ref (was it served or replaced while the ad played?).
+  const rushAdBusyRef = useRef(false);
+  const businessSessionRef = useRef<ServiceSession | null>(null);
   // One id per play session (level/daily/endless start) + whether it reached a
   // completion — so an interstitial only follows a finished session, never a
   // mid-level quit, and each session's transition is requested at most once.
+  // It also drives the Bridge level messages (level_started / level_completed).
   const playSessionRef = useRef({ id: 0, completed: false });
-  function startPlaySession() {
+  function startPlaySession(where: LevelContext) {
     playSessionRef.current = { id: playSessionRef.current.id + 1, completed: false };
+    levelStarted(where);
   }
   function markPlaySessionCompleted() {
     playSessionRef.current = { ...playSessionRef.current, completed: true };
+    levelCompleted();
   }
 
   // Operations/Feedback checkpoint (pre-V3-16) — Business Mode's
@@ -315,15 +378,15 @@ export function App() {
   const seenBusinessAlertKeysRef = useRef<Set<string> | null>(null);
 
   // Load the save once and wire the platform pause source (§23 —
-  // YouTube's onPause/onResume is the sole authority). gameReady() is
+  // the Bridge's pause state is the sole authority). gameReady() is
   // NOT called here — loading the save file isn't "the game is
   // interactive". Preparation calls it once Phaser's scene actually
   // finishes booting (see its SCENE_READY handler).
-  // While a YouTube ad is in flight the game is muted (AudioManager) and a
+  // While a platform ad is in flight the game is muted (AudioManager) and a
   // shield swallows every tap, so nothing underneath can take input.
   useEffect(() => onAdActiveChange(setAdActive), []);
 
-  // YouTube score = campaign levels completed. Sent once the save loads and
+  // Platform score = campaign levels completed. Sent once the save loads and
   // again each time it grows (never a lower value, never twice for the same).
   const completedCount = save?.levelProgress.completedLevelIds.length ?? 0;
   const lastSentScoreRef = useRef(-1);
@@ -364,11 +427,10 @@ export function App() {
           setSessionMode("campaign-service");
         }
       }
-      // Kitchen-upgrade ownership is a deterministic function of level
-      // progress (Phase 14), never a one-time purchase — re-derive it on
-      // every load so a save that reached a new tier's level in a prior
-      // session (or was seeded/edited directly) is always correct, not
-      // just saves that happened to visit the Kitchen Upgrades screen.
+      // Economy V2.5 — kitchen tiers are bought (Restaurant Development);
+      // this only keeps the kitchen on the highest tier owned. Saves from
+      // before V2.5 already got their level-earned tiers in
+      // SaveManager.load (migrateKitchenDevelopment).
       let synced = syncKitchenUpgradeOwnership(loaded);
       // THE LAST WISH's intro (ported from boot()) is a "how you got
       // here" origin scene — only a genuinely brand-new player should
@@ -384,6 +446,15 @@ export function App() {
         if (isFreshSave) setShowIntro(true);
         else synced = markIntroDone(synced);
       }
+      // Economy V2.5 — a milestone reached but not yet claimed (e.g. the
+      // game closed between completing Level 250 and saving its reward) is
+      // paid once, now. Saves from before V2.5 had their reached milestones
+      // claimed without payment by the one-time migration in
+      // SaveManager.load (economyMigration.ts), so they get no windfall.
+      const loadGrant = grantEarnedMilestoneRewards(synced);
+      synced = loadGrant.save;
+      if (loadGrant.granted.length > 0)
+        setMilestoneNoticeQueue([milestoneNoticeFor(loadGrant.granted)]);
       if (synced !== loaded) void SaveManager.save(synced);
       saveRef.current = synced;
       setSave(synced);
@@ -435,6 +506,7 @@ export function App() {
   const inBusiness =
     screen.startsWith("business") || (screen === "gameplay" && sessionMode === "business-service");
   const businessOrder = businessServiceSession?.current ?? null;
+  businessSessionRef.current = businessServiceSession;
   useEffect(() => {
     if (!inBusiness) {
       // Leaving Business drops any not-yet-shown banners (they'd be stale
@@ -471,16 +543,38 @@ export function App() {
     if (current && !current.story.introDone) persist(markIntroDone(current));
   }
 
-  /** The single place every save mutation flows through — also where
-   * kitchen-upgrade ownership gets re-derived from level progress, so
-   * crossing a new tier's unlock level (e.g. via recordPreparationResult)
-   * grants that tier immediately, live, with no separate purchase step —
-   * and moves the kitchen onto it for good (an upgrade, not a skin). */
+  /** The single place every save mutation flows through: keeps the kitchen
+   * on the highest tier owned, pays any milestone this change reached
+   * (Economy V2.5), and refuses a save whose wallet breaks the invariant
+   * (never negative, whole cents — economy/wallet.ts). */
   function persist(next: SaveData) {
     const synced = syncKitchenUpgradeOwnership(next);
-    saveRef.current = synced;
-    setSave(synced);
-    void SaveManager.save(synced);
+    // Economy V2.5 — a milestone reached by this change is paid right here,
+    // once (milestoneRewards.ts: the ledger entry is the record).
+    const { save: rewarded, granted } = grantEarnedMilestoneRewards(synced);
+    // The one save funnel refuses money the game can't have (economy/wallet.ts).
+    const violation = walletInvariantViolation(rewarded);
+    if (violation) {
+      console.error(`[economy] save refused: ${violation}`);
+      return;
+    }
+    saveRef.current = rewarded;
+    setSave(rewarded);
+    void SaveManager.save(rewarded);
+    if (granted.length > 0) setMilestoneNoticeQueue((q) => [...q, milestoneNoticeFor(granted)]);
+  }
+
+  /** Economy V2.5 — Restaurant Development: build the next kitchen tier (KitchenUpgradeManager.purchaseKitchenUpgrade), recorded as "kitchen-investment-purchase". */
+  function buildKitchenUpgrade(id: string) {
+    // The latest persisted save (not the render closure): a double tap
+    // before re-render sees the tier already built and buys nothing.
+    const current = saveRef.current;
+    if (!current) return { ok: false as const, reason: "unknownUpgrade" as const };
+    const result = purchaseKitchenUpgrade(current, id);
+    if (result.ok) {
+      persist(appendLedgerEntry(result.save, "kitchen-investment-purchase", -result.price, id));
+    }
+    return result;
   }
 
   /** Rack action (Phase 15) — routes through KnifeManager.equipKnife itself rather than an inline persist, so "owned" is checked in one place, not duplicated. */
@@ -633,6 +727,7 @@ export function App() {
     maybeShowInterstitial(
       `business-day:${withFine.business.calendar.businessDay}`,
       withFine.levelProgress.completedLevelIds.length,
+      AD_PLACEMENT.businessDayEnd,
     );
     return {
       spoiledQuantity: result.spoiledQuantity,
@@ -655,14 +750,95 @@ export function App() {
     if (!save) return { ok: false as const, reason: "unknownIngredient" as const };
     const result = purchaseIngredientFromCatalog(save, ingredientId, quantity);
     if (result.ok) {
-      persist(
-        recordInventoryPurchase(
-          appendLedgerEntry(result.save, "inventory-purchase", -result.totalCost, ingredientId),
-          result.totalCost,
-        ),
-      );
+      persistIngredientPurchases(result.save, [{ ingredientId, totalCost: result.totalCost }]);
     }
     return result;
+  }
+
+  /**
+   * The one place an ingredient purchase is recorded — a Market purchase or
+   * a cash Rush Restock: one "inventory-purchase" ledger entry per
+   * ingredient (its exact cost, described by the ingredient id), and the
+   * total added to today's inventory cost in the Business P&L.
+   */
+  function persistIngredientPurchases(
+    next: SaveData,
+    lines: ReadonlyArray<{ ingredientId: string; totalCost: number }>,
+  ) {
+    let recorded = next;
+    for (const line of lines) {
+      recorded = appendLedgerEntry(
+        recorded,
+        "inventory-purchase",
+        -line.totalCost,
+        line.ingredientId,
+      );
+    }
+    persist(
+      recordInventoryPurchase(
+        recorded,
+        lines.reduce((sum, line) => sum + line.totalCost, 0),
+      ),
+    );
+  }
+
+  /**
+   * Rush Restock (businessRushRestock.ts) — stocks exactly what the current
+   * customer's dish is missing, without a trip to the Market. "cash" pays
+   * today's Market price + the rush fee and records one "inventory-purchase"
+   * entry per ingredient, like purchaseIngredient above. "ad" shows a
+   * rewarded ad first and, only when Bridge reports `rewarded`, stocks the
+   * same units free (no money moves, so no ledger entry). The ad path reads
+   * the save and the current order AFTER the ad, never the pre-ad closure.
+   */
+  async function rushRestockCurrentOrder(payment: RushRestockPayment): Promise<RushRestockOutcome> {
+    const orderId = businessSessionRef.current?.current?.order.id;
+    const dishFor = () => {
+      const current = businessSessionRef.current?.current;
+      return current && current.order.id === orderId
+        ? businessDishForRecipeId(current.recipe.id)
+        : undefined;
+    };
+    if (!orderId || !dishFor() || !saveRef.current) return { ok: false, reason: "notBlocked" };
+    if (payment === "cash") {
+      const result = rushRestock(saveRef.current, dishFor()!, "cash");
+      if (!result.ok) return result;
+      persistIngredientPurchases(
+        result.save,
+        result.lines.map((line) => ({
+          ingredientId: line.ingredientId,
+          totalCost: line.rushTotal,
+        })),
+      );
+      return { ok: true, payment: "cash", totalCost: result.totalCost };
+    }
+    if (rushAdBusyRef.current) return { ok: false, reason: "busy" };
+    rushAdBusyRef.current = true;
+    try {
+      const ad = await requestRewardedAd(newRushRestockRewardId(), AD_PLACEMENT.rushRestock);
+      if (ad.status !== "rewarded") {
+        return {
+          ok: false,
+          reason:
+            ad.status === "not-rewarded"
+              ? "notRewarded"
+              : ad.status === "busy"
+                ? "busy"
+                : ad.status === "unavailable"
+                  ? "adUnavailable"
+                  : "adFailed",
+        };
+      }
+      const dish = dishFor();
+      const latest = saveRef.current;
+      if (!dish || !latest) return { ok: false, reason: "orderChanged" };
+      const result = rushRestock(latest, dish, "ad");
+      if (!result.ok) return result;
+      persist(result.save);
+      return { ok: true, payment: "ad", totalCost: 0 };
+    } finally {
+      rushAdBusyRef.current = false;
+    }
   }
 
   /** Economy V3 Phase 3 (Refrigerator) — Business Mode's own refrigerator purchase/upgrade action, mirroring purchaseIngredient exactly. Business Mode only — Campaign never calls this. */
@@ -786,9 +962,12 @@ export function App() {
    */
   function onSelectLevel(levelId: string) {
     if (!save) return;
-    startPlaySession();
-    persist({ ...save, levelProgress: selectLevel(levelId, save.levelProgress) });
     const level = getLevel(levelId);
+    startPlaySession({
+      world: `chapter-${level?.chapter ?? 1}`,
+      level: String(levelNumber(levelId)),
+    });
+    persist({ ...save, levelProgress: selectLevel(levelId, save.levelProgress) });
     if (level?.batchGroupRecipeIds?.length) {
       startBatchGroupLevel(level);
       return;
@@ -805,7 +984,7 @@ export function App() {
   function startDaily() {
     if (!save) return;
     const level = pickDailyLevel(save.levelProgress, new Date());
-    startPlaySession();
+    startPlaySession({ world: "todays-special", level: String(levelNumber(level.id)) });
     setSessionMode("daily");
     setActiveLevelId(level.id);
     setScreen("gameplay");
@@ -816,7 +995,7 @@ export function App() {
     if (!save) return;
     const level = pickEndlessLevel(save.levelProgress, endlessIndex);
     if (!level) return;
-    startPlaySession();
+    startPlaySession({ world: "endless", level: String(levelNumber(level.id)) });
     setSessionMode("endless");
     setActiveLevelId(level.id);
     setScreen("gameplay");
@@ -860,6 +1039,9 @@ export function App() {
     const dish = businessDishForRecipeId(businessServiceSession.current.recipe.id);
     if (!dish) return;
     if (!businessOrderAvailability(save, dish).available) return;
+    // A Business order is its own short level for the Bridge's level messages
+    // (no play session: Business interstitials follow the day's end only).
+    levelStarted({ world: "business", level: String(save.business.calendar.businessDay) });
     setSessionMode("business-service");
     setScreen("gameplay");
   }
@@ -880,6 +1062,7 @@ export function App() {
   function recordBusinessServiceResult(score: number): number {
     if (!save || !businessServiceSession?.current) return 0;
     setBusinessServiceSession((s) => (s ? recordBusinessServiceComponents(s, score) : s));
+    levelCompleted();
     return 0;
   }
 
@@ -1455,7 +1638,7 @@ export function App() {
     const recipeProgress = { ...save.recipeProgress, [recipeId]: { best, done: true } };
     const { earned, endless } = applyEndlessEarn(
       save.endless,
-      dollars(activeLevel.reward.coins),
+      paidLevelReward(activeLevel),
       new Date(),
     );
     const nextSave = appendLedgerEntry(
@@ -1697,6 +1880,8 @@ export function App() {
             key={activeLevel.id}
             level={activeLevel}
             onExit={() => {
+              // Leaving an unfinished level closes it without a level message.
+              levelAbandoned();
               // A finished session (never a mid-level quit) is a natural break.
               if (playSessionRef.current.completed) {
                 maybeShowInterstitial(
@@ -1755,6 +1940,9 @@ export function App() {
               purchaseIngredient={purchaseIngredient}
               purchaseRefrigerator={purchaseRefrigerator}
               performRefrigeratorMaintenance={performRefrigeratorMaintenance}
+              rushRestock={rushRestockCurrentOrder}
+              buildKitchenUpgrade={buildKitchenUpgrade}
+              rushAdAvailable={rewardedAdsAvailable()}
               setMenuPrice={setMenuPrice}
               setBusinessDishActive={setBusinessDishActive}
               signSupplierContract={signSupplierContract}
@@ -1796,7 +1984,7 @@ export function App() {
           onWatch={() => void watchReplayBonusAd()}
           canClose={!adActive}
           onClose={() => {
-            // Closable unless an ad is on screen. If YouTube's answer is still
+            // Closable unless an ad is on screen. If the platform's answer is still
             // pending (the dead-request guard lifted the screen block), the game
             // keeps listening: a late `true` is still committed and confirmed.
             if (adActive) return;
@@ -1812,6 +2000,14 @@ export function App() {
         />
       ) : null}
       {adActive ? <AdPlayingShield /> : null}
+      {milestoneNoticeQueue[0] && !storyEvent && !levelRewardNotice && !showIntro ? (
+        <MilestoneBanner
+          key={milestoneNoticeQueue[0].id}
+          kicker={milestoneNoticeQueue[0].legacy ? "🏆 Campaign Complete" : "Milestone reached"}
+          line={milestoneNoticeQueue[0].label}
+          onDismiss={() => setMilestoneNoticeQueue((q) => q.slice(1))}
+        />
+      ) : null}
       {businessNoticeQueue[0] && inBusiness && !storyEvent && !levelRewardNotice ? (
         <MilestoneBanner
           key={businessNoticeQueue[0].key}

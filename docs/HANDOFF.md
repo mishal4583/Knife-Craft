@@ -58,6 +58,25 @@ conversation.
    `scripts/story-intro-qa.mts` (63 checks) + `tools/e2e/introskip.mjs`.
 6. This repo set up as the primary one: git history, CLAUDE.md, this file,
    covers / screenshots / Playgama docs / release zip moved in, e2e tools.
+7. Intro cinematic (13.6 s), Business Rush Restock (cash +25% or a rewarded
+   ad), Economy V2.5 (paid kitchen development, reward schedule, milestone
+   rewards, $50,000 Final Reward) — on branch `claude/sharp-wright-emfu2j`.
+8. Final economy rebalance + save migration fix: `SaveData.economy`
+   (version, claimed/waived milestones, exact lifetime totals); old saves
+   migrated once on load with NO milestone windfall and no kitchen charge;
+   Progress shows historical figures; Endless unlocks after Level 250;
+   Business fines ÷5 and 2-hour staff shifts; "Not enough money — need $X
+   more" on every purchase. QA: `scripts/economy-final-qa.mts`. Open: Business
+   staff still cost more than they earn (see CLAUDE.md §7 Business scale).
+9. Cooking clip after every dish (CLAUDE.md §9): skippable 3.75 s film between
+   the plate hand-off and the Knife Report. e2e: `tools/e2e/cookingclip.mjs`.
+10. Ads aligned with Playgama's requirements + monetization guide: first
+   interstitial after 3 levels, 150 s between interstitials (config floor
+   120 s), one placement per ad spot, Bridge level messages. QA:
+   `playables-ads-qa` (E, E6, A4b, F11, H) + `tools/e2e/adsflow.mjs`.
+11. Business → Ingredients: per-ingredient prices, unused ingredients hidden
+   behind "Show 20 more", wallet preview on every card, "Not enough money —
+   need $X more". e2e: `tools/e2e/ingredients.mjs`.
 
 ## 4. Open issues from the Level 1–10 audit (not fixed yet)
 

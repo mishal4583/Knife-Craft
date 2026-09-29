@@ -1,7 +1,8 @@
 /**
  * AUDIO_MANAGER — tiny Web Audio synthesis, no bundled audio files.
  *
- * Respects `ytgame.system.isAudioEnabled()` / `onAudioEnabledChange()` —
+ * Respects the platform's audio state (Bridge `platform.isAudioEnabled` /
+ * AUDIO_STATE_CHANGED, via PlayablesSDK `isAudioEnabled` / `onAudioEnabledChange`) —
  * it never assumes browser audio state on its own. The Settings screen's
  * Sound toggle feeds `setUserSoundEnabled`; both gates must be open for
  * anything to actually play.
@@ -40,11 +41,16 @@ class AudioManagerImpl {
     this.userSoundEnabled = enabled;
   }
 
+  /** Whether sound may play right now (platform audio, the Sound setting, not paused, no ad). Media elements outside Web Audio — the cooking clip — follow the same rule. */
+  get soundAllowed(): boolean {
+    return this.enabled;
+  }
+
   private get enabled(): boolean {
     this.init();
-    // YouTube's audio state AND the player's Sound toggle must both allow
-    // it, and nothing plays while the game is paused (in-game or by YouTube)
-    // or while a YouTube ad is on screen.
+    // The platform's audio state AND the player's Sound toggle must both allow
+    // it, and nothing plays while the game is paused (in-game or by the
+    // platform) or while a platform ad is on screen.
     return (
       this.platformEnabled && this.userSoundEnabled && !PauseManager.isPaused() && !isAdActive()
     );

@@ -112,7 +112,7 @@ function failureMessage(failure: ReplayBonusFailure): string {
   }
 }
 
-/** Covers the whole game while a YouTube ad is in flight, so no tap reaches anything underneath. */
+/** Covers the whole game while a platform ad is in flight, so no tap reaches anything underneath. */
 export function AdPlayingShield() {
   return (
     <div

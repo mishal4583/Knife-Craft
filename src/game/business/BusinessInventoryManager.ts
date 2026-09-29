@@ -13,7 +13,7 @@ import type { SaveData } from "../SaveManager";
 import type { IngredientId } from "../definitions";
 import { INGREDIENTS } from "../definitions";
 import { businessUnitCostFor } from "./businessPricing";
-import { addStock } from "./businessInventory";
+import { addStock, normalizeQuantity } from "./businessInventory";
 import { canStoreQuantity } from "./RefrigeratorManager";
 import { effectiveUnitCost } from "./businessSupplierContract";
 import {
@@ -23,6 +23,17 @@ import {
 } from "./businessSupplierEvents";
 import { staffUnitCostDiscount } from "./businessStaff";
 import { applyStockingWear } from "./businessEquipmentCondition";
+import { usableQuantity } from "./perishability";
+import { businessDishRequirements } from "./businessServiceCatalog";
+import { businessOrderAvailability } from "./BusinessServiceManager";
+import type { BusinessDish } from "./businessDishCatalog";
+import {
+  rushUnitCost,
+  type RushRestockLine,
+  type RushRestockPayment,
+  type RushRestockPlan,
+  type RushRestockResult,
+} from "./businessRushRestock";
 
 export type PurchaseIngredientResult =
   | { ok: true; save: SaveData; quantity: number; unitCost: number; totalCost: number }
@@ -38,6 +49,34 @@ export type PurchaseIngredientResult =
 
 function isKnownIngredient(id: string): id is IngredientId {
   return Object.prototype.hasOwnProperty.call(INGREDIENTS, id);
+}
+
+/**
+ * What one unit of `ingredientId` costs today when `quantity` units are
+ * bought at once — the pricing layers described on `purchaseIngredient`
+ * below (category base -> today's supplier event -> the active contract's
+ * discount -> a hired Prep Cook's discount). `null` when today's shortage
+ * event caps a single purchase below `quantity`. The one place this price
+ * is computed; rushRestockPlan below prices its rush fee on top of it.
+ */
+export function todaysUnitCost(
+  save: SaveData,
+  ingredientId: IngredientId,
+  quantity: number,
+): number | null {
+  const event = eventForDay(save.business.calendar.businessDay);
+  const maxQuantity = maxPurchaseQuantityFor(event);
+  if (maxQuantity !== undefined && quantity > maxQuantity) return null;
+  const eventCost = eventAdjustedUnitCost(businessUnitCostFor(ingredientId), event);
+  const contractCost = event?.suspendsContractDiscount
+    ? eventCost
+    : effectiveUnitCost(
+        eventCost,
+        save.business.supplierContract,
+        save.business.calendar.businessDay,
+        quantity,
+      );
+  return staffUnitCostDiscount(contractCost, save.business.staff.hiredRoles);
 }
 
 /**
@@ -83,21 +122,8 @@ export function purchaseIngredient(
 ): PurchaseIngredientResult {
   if (!isKnownIngredient(ingredientId)) return { ok: false, reason: "unknownIngredient" };
   if (!Number.isInteger(quantity) || quantity <= 0) return { ok: false, reason: "invalidQuantity" };
-  const event = eventForDay(save.business.calendar.businessDay);
-  const maxQuantity = maxPurchaseQuantityFor(event);
-  if (maxQuantity !== undefined && quantity > maxQuantity) {
-    return { ok: false, reason: "exceedsShortageLimit" };
-  }
-  const eventCost = eventAdjustedUnitCost(businessUnitCostFor(ingredientId), event);
-  const contractCost = event?.suspendsContractDiscount
-    ? eventCost
-    : effectiveUnitCost(
-        eventCost,
-        save.business.supplierContract,
-        save.business.calendar.businessDay,
-        quantity,
-      );
-  const unitCost = staffUnitCostDiscount(contractCost, save.business.staff.hiredRoles);
+  const unitCost = todaysUnitCost(save, ingredientId, quantity);
+  if (unitCost === null) return { ok: false, reason: "exceedsShortageLimit" };
   const totalCost = quantity * unitCost;
   if (save.credits < totalCost) return { ok: false, reason: "insufficientFunds" };
   if (
@@ -128,4 +154,114 @@ export function purchaseIngredient(
     unitCost,
     totalCost,
   };
+}
+
+/**
+ * What restocking `dish` right now would buy, or a failure reason when it
+ * can't be priced (the dish isn't blocked, or today's shortage caps a
+ * purchase below the shortfall). Read-only — the UI shows its prices.
+ */
+export function rushRestockPlan(
+  save: SaveData,
+  dish: BusinessDish,
+):
+  | { ok: true; plan: RushRestockPlan }
+  | { ok: false; reason: "notBlocked" | "exceedsShortageLimit" } {
+  const availability = businessOrderAvailability(save, dish);
+  if (availability.available) return { ok: false, reason: "notBlocked" };
+  const day = save.business.calendar.businessDay;
+  const needed = new Map<IngredientId, number>();
+  for (const r of businessDishRequirements(dish)) {
+    needed.set(r.ingredientId, normalizeQuantity((needed.get(r.ingredientId) ?? 0) + r.quantity));
+  }
+  const lines: RushRestockLine[] = [];
+  for (const ingredientId of availability.missing) {
+    const shortfall = normalizeQuantity(
+      (needed.get(ingredientId) ?? 0) - usableQuantity(save.business.inventory, ingredientId, day),
+    );
+    const quantity = Math.max(1, Math.ceil(shortfall));
+    const marketUnitCost = todaysUnitCost(save, ingredientId, quantity);
+    if (marketUnitCost === null) return { ok: false, reason: "exceedsShortageLimit" };
+    const unit = rushUnitCost(marketUnitCost);
+    lines.push({
+      ingredientId,
+      quantity,
+      marketUnitCost,
+      rushUnitCost: unit,
+      rushTotal: quantity * unit,
+    });
+  }
+  return {
+    ok: true,
+    plan: {
+      lines,
+      totalQuantity: lines.reduce((s, l) => s + l.quantity, 0),
+      cashCost: lines.reduce((s, l) => s + l.rushTotal, 0),
+      marketCost: lines.reduce((s, l) => s + l.quantity * l.marketUnitCost, 0),
+    },
+  };
+}
+
+/**
+ * RUSH RESTOCK (businessRushRestock.ts) — stocks exactly what `dish` is
+ * missing, without a trip to the Market. Same rules as purchaseIngredient
+ * above: today's Market price (`todaysUnitCost`, + RUSH_RESTOCK_FEE for
+ * cash), fridge capacity, today's shortage limit, fridge wear per unit.
+ * Stock is bought in whole units (a fractional shortfall rounds up). An ad
+ * restock is free and stocked at a unit cost of 0 — the player paid
+ * nothing, which is what its food cost later reports. The caller (App.tsx)
+ * records the cash restock's ledger entries, one "inventory-purchase" per
+ * ingredient, exactly like a Market purchase; the ad restock moves no
+ * money and has none.
+ *
+ * Stocks exactly what `dish` is missing — paid in cash with the rush fee,
+ * or free after a rewarded ad. All-or-nothing: on any failure the save is
+ * returned untouched (no credits, no stock, no fridge wear).
+ */
+export function rushRestock(
+  save: SaveData,
+  dish: BusinessDish,
+  payment: RushRestockPayment,
+): RushRestockResult {
+  const planned = rushRestockPlan(save, dish);
+  if (!planned.ok) return planned;
+  const { plan } = planned;
+  const totalCost = payment === "cash" ? plan.cashCost : 0;
+  if (save.credits < totalCost) return { ok: false, reason: "insufficientFunds" };
+  if (
+    !canStoreQuantity(
+      save.business.inventory,
+      save.business.refrigerator.refrigeratorId,
+      plan.totalQuantity,
+    )
+  ) {
+    return { ok: false, reason: "insufficientStorage" };
+  }
+  const day = save.business.calendar.businessDay;
+  let inventory = save.business.inventory;
+  for (const line of plan.lines) {
+    inventory = addStock(
+      inventory,
+      line.ingredientId,
+      line.quantity,
+      payment === "cash" ? line.rushUnitCost : 0,
+      day,
+    );
+  }
+  const next: SaveData = {
+    ...save,
+    credits: save.credits - totalCost,
+    business: {
+      ...save.business,
+      inventory,
+      equipmentCondition: applyStockingWear(save.business.equipmentCondition, plan.totalQuantity),
+    },
+  };
+  // Buying the shortfall can still leave an order blocked when old stock of
+  // the same ingredient has expired (the merged entry stays expired). Never
+  // charge for a restock that doesn't unblock the order.
+  if (!businessOrderAvailability(next, dish).available) {
+    return { ok: false, reason: "wouldNotUnblock" };
+  }
+  return { ok: true, save: next, payment, lines: plan.lines, totalCost };
 }

@@ -2,6 +2,7 @@ import { Kitchen, OrderBoard } from "@/components/kc/Kitchen";
 import { Shop } from "@/components/kc/Shop";
 import { RestaurantProgress } from "@/components/kc/RestaurantProgress";
 import { KitchenUpgrades } from "@/components/kc/KitchenUpgrades";
+import type { PurchaseKitchenUpgradeResult } from "@/game/kitchen/KitchenUpgradeManager";
 import { RecipeBook, RecipeDetail } from "@/components/kc/Recipes";
 import { Settings, DailyOrder, EndlessService } from "@/components/kc/Journal";
 import {
@@ -13,6 +14,7 @@ import { BusinessService } from "@/components/kc/business/BusinessService";
 import type { PurchaseIngredientResult } from "@/game/business/BusinessInventoryManager";
 import type { PurchaseRefrigeratorResult } from "@/game/business/RefrigeratorManager";
 import type { PerformMaintenanceResult } from "@/game/business/businessMaintenance";
+import type { RushRestockOutcome, RushRestockPayment } from "@/game/business/businessRushRestock";
 import type { SetMenuPriceResult } from "@/game/business/BusinessMenuManager";
 import type { SetDishActiveResult } from "@/game/business/businessMenuActivation";
 import type {
@@ -66,6 +68,9 @@ export function ScreensRouter({
   purchaseIngredient,
   purchaseRefrigerator,
   performRefrigeratorMaintenance,
+  rushRestock,
+  rushAdAvailable,
+  buildKitchenUpgrade,
   setMenuPrice,
   setBusinessDishActive,
   signSupplierContract,
@@ -102,6 +107,12 @@ export function ScreensRouter({
   purchaseRefrigerator: (refrigeratorId: string) => PurchaseRefrigeratorResult;
   /** Economy V3 Phase 11 — Business Mode's own refrigerator maintenance/repair action. */
   performRefrigeratorMaintenance: () => PerformMaintenanceResult;
+  /** Rush Restock — stock what the current order is missing (cash + rush fee, or free after an ad). */
+  rushRestock: (payment: RushRestockPayment) => Promise<RushRestockOutcome>;
+  /** Whether the platform can show a rewarded ad right now (hides the ad option when it can't). */
+  rushAdAvailable: boolean;
+  /** Economy V2.5 — Restaurant Development: build a kitchen tier. */
+  buildKitchenUpgrade: (id: string) => PurchaseKitchenUpgradeResult;
   /** Economy V3 Phase 5 — Business Mode's own menu-price action. */
   setMenuPrice: (recipeId: string, price: number) => SetMenuPriceResult;
   /** Economy V3 Phase 16 — Business Mode's own Active Menu on/off action. */
@@ -137,7 +148,9 @@ export function ScreensRouter({
       ) : null}
       {/* "rack" is the internal screen id; the player-facing screen is Restaurant Progress. */}
       {screen === "rack" ? <RestaurantProgress go={go} save={save} /> : null}
-      {screen === "kitchen-upgrades" ? <KitchenUpgrades go={go} save={save} /> : null}
+      {screen === "kitchen-upgrades" ? (
+        <KitchenUpgrades go={go} save={save} buildKitchenUpgrade={buildKitchenUpgrade} />
+      ) : null}
       {screen === "recipes" ? <RecipeBook go={go} save={save} onOpen={onOpenRecipe} /> : null}
       {screen === "recipe-detail" ? (
         <RecipeDetail
@@ -171,6 +184,8 @@ export function ScreensRouter({
           purchaseIngredient={purchaseIngredient}
           purchaseRefrigerator={purchaseRefrigerator}
           performRefrigeratorMaintenance={performRefrigeratorMaintenance}
+          rushRestock={rushRestock}
+          rushAdAvailable={rushAdAvailable}
           setMenuPrice={setMenuPrice}
           setBusinessDishActive={setBusinessDishActive}
           signSupplierContract={signSupplierContract}
@@ -186,6 +201,8 @@ export function ScreensRouter({
           businessServiceSession={businessServiceSession}
           onStartService={onStartBusinessService}
           onEnterPreparation={onEnterBusinessPreparation}
+          rushRestock={rushRestock}
+          rushAdAvailable={rushAdAvailable}
         />
       ) : null}
     </>

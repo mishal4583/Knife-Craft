@@ -13,7 +13,6 @@ const LINES = [
   "Then we’d better make it count.",
   "I’ll handle the cooking.",
   "You handle the prep.",
-  "Your first order.",
   "Let’s get to work.",
 ];
 const R = [];
@@ -82,8 +81,14 @@ await page.evaluateOnNewDocument(() => {
 });
 
 async function fresh(w = 390, h = 844) {
+  // Leaving a page mid-download (e.g. the viewport checks, ~1 s into the film)
+  // cancels its in-flight images/chunks/CSS, which would show up in check 9c.
+  await page.waitForNetworkIdle({ idleTime: 300, timeout: 15000 }).catch(() => {});
   await page.setViewport({ width: w, height: h });
-  await page.goto(URL0, { waitUntil: "domcontentloaded" });
+  // Let the first load settle before clearing storage and reloading: a reload
+  // on DOMContentLoaded cancels the Bridge config fetch and lazy chunks still
+  // in flight, and those cancellations would show up in check 9c.
+  await page.goto(URL0, { waitUntil: "networkidle0" });
   await page.evaluate(() => localStorage.clear());
   await page.reload({ waitUntil: "domcontentloaded" });
   await page.waitForSelector(OV, { timeout: 20000 });
@@ -143,8 +148,8 @@ const c1 = await cine();
 const total = c1.end - c1.start;
 const firstImg = c1.events.find((e) => e.imgs > 0)?.t ?? 0;
 check(
-  total - firstImg > 20900 && total - firstImg < 22400,
-  "1b film runs ≈21.4 s once Scene 1 is on screen",
+  total - firstImg > 13100 && total - firstImg < 14600,
+  "1b film runs ≈13.6 s once Scene 1 is on screen",
   `${((total - firstImg) / 1000).toFixed(2)} s (+${firstImg.toFixed(0)} ms image load)`,
 );
 const sceneOrder = [...new Set(c1.events.map((e) => e.scene))];

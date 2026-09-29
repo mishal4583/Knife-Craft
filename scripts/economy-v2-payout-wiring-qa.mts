@@ -11,6 +11,7 @@
  *
  * Run: npx tsx scripts/economy-v2-payout-wiring-qa.mts
  */
+import { paidLevelReward } from "../src/game/levels/levelRewards.ts";
 import * as fs from "node:fs";
 // USD: wallet amounts are integer cents; Campaign formulas (recipePay, level rewards) are whole dollars (money.ts).
 import { dollars } from "../src/game/money.ts";
@@ -183,7 +184,8 @@ function bodyOf(fnName: string): string {
   const level = getLevel("level-114")!;
   const r1 = completeLevel(level.id, DEFAULT_LEVEL_PROGRESS);
   const r2 = completeLevel(level.id, r1.progress);
-  assert(r1.rewardCoins === dollars(level.reward.coins) && r1.rewardCoins > 0, "7a: first completion pays the level's own flat reward (in dollars)");
+  // Economy V2.5: the paid reward is the stored one × its band's share (Level 114: 40%).
+  assert(r1.rewardCoins === paidLevelReward(level) && r1.rewardCoins === dollars(Math.round(level.reward.coins * 0.4)) && r1.rewardCoins > 0, "7a: first completion pays the level's paid reward (levelRewards.ts — 40% of its stored reward at Level 114, in dollars)");
   assert(r2.rewardCoins === 0, "7: replaying the same level a second time pays 0 level-completion bonus");
 }
 

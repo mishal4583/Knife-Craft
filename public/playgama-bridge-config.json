@@ -1,11 +1,19 @@
 {
     "advertisement": {
-        "minimumDelayBetweenInterstitial": 60,
+        "minimumDelayBetweenInterstitial": 120,
         "interstitial": {
-            "placementFallback": "level_completed"
+            "placementFallback": "level_completed",
+            "placements": [
+                { "id": "level_completed" },
+                { "id": "business_day_end" }
+            ]
         },
         "rewarded": {
-            "placementFallback": "replay_bonus"
+            "placementFallback": "replay_bonus",
+            "placements": [
+                { "id": "replay_bonus" },
+                { "id": "rush_restock" }
+            ]
         }
     }
 }

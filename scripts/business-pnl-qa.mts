@@ -17,6 +17,8 @@ import { DEFAULT_SAVE, type SaveData } from "../src/game/SaveManager.ts";
 import { DEFAULT_LEVEL_PROGRESS } from "../src/game/levels/LevelManager.ts";
 import { DEFAULT_BUSINESS_STATE } from "../src/game/business/businessTypes.ts";
 import { addStock, getQuantity } from "../src/game/business/businessInventory.ts";
+// G2 compares COGS with the list-price cost basis, so its stock is bought at the list price.
+import { businessUnitCostFor } from "../src/game/business/businessPricing.ts";
 import {
   createBusinessServiceSession,
   recordBusinessServiceComponents,
@@ -120,8 +122,8 @@ function fullSaladInventory(day: number) {
   return inv;
 }
 function fullBreadInventory(day: number) {
-  let inv = addStock({}, "bread", 10, 225, day);
-  inv = addStock(inv, "garlic", 10, 350, day);
+  let inv = addStock({}, "bread", 10, businessUnitCostFor("bread"), day);
+  inv = addStock(inv, "garlic", 10, businessUnitCostFor("garlic"), day);
   return inv;
 }
 
@@ -243,7 +245,7 @@ function sessionReadyFor(recipeId: string): ServiceSession {
 
   const oneStaff = saveAt({ credits: 100000, business: { ...DEFAULT_BUSINESS_STATE, calendar: { businessDay: 1 }, staff: { hiredRoles: ["prep-cook"] } } });
   const r1 = endBusinessDayComposed(oneStaff);
-  assert(r1.payrollPaid === 16000, `I2: Prep Cook's payroll is charged exactly ($16.00/hr x 8h x 1.25 burden = $160.00, got ${r1.payrollPaid}c)`);
+  assert(r1.payrollPaid === 4000, `I2: Prep Cook's payroll is charged exactly ($16.00/hr x 2h service shift x 1.25 burden = $40.00, got ${r1.payrollPaid}c)`);
   assert(r1.dailyPnL.staffCost === r1.payrollPaid, "I3: the P&L's staffCost line matches the actual paid payroll exactly");
   const staffLedger = businessLedgerEntries(r1.save.economyLedger).filter((e) => e.category === "business-staff-salary");
   assert(staffLedger.length === 1 && staffLedger[0]!.amount === -r1.payrollPaid, "I4: exactly one business-staff-salary ledger entry, matching the P&L exactly");
@@ -252,7 +254,7 @@ function sessionReadyFor(recipeId: string): ServiceSession {
   const r2 = endBusinessDayComposed(multiStaff);
   const withoutManager = saveAt({ credits: 100000, business: { ...DEFAULT_BUSINESS_STATE, calendar: { businessDay: 1 }, staff: { hiredRoles: ["prep-cook", "line-cook"] } } });
   const r2b = endBusinessDayComposed(withoutManager);
-  assert(r2.payrollPaid < r2b.payrollPaid + 24000, "I5: adding a Manager (who discounts the rest of payroll) does not simply add its own full wage on top with no discount applied");
+  assert(r2.payrollPaid < r2b.payrollPaid + 6000, "I5: adding a Manager (who discounts the rest of payroll) does not simply add its own full wage on top with no discount applied");
 
   const insufficientCash = saveAt({ credits: 50, business: { ...DEFAULT_BUSINESS_STATE, calendar: { businessDay: 1 }, staff: { hiredRoles: ["prep-cook", "line-cook", "head-chef", "server", "cleaner", "manager"] } } });
   const r3 = endBusinessDayComposed(insufficientCash);

@@ -226,7 +226,7 @@ for (const score of [0, 50, 100]) {
   const start = { ...saladOnly(50), levelProgress: DEFAULT_SAVE.levelProgress, recipeProgress: { "camp-garlic-bread": { best: 91 } } as never };
   const day = playDay(start);
   const closed = endBusinessDay(day.save).save;
-  const nonBusiness = (x: SaveData) => JSON.stringify(Object.fromEntries(Object.entries(x).filter(([k]) => !["business", "credits", "economyLedger"].includes(k))));
+  const nonBusiness = (x: SaveData) => JSON.stringify(Object.fromEntries(Object.entries({ ...x, economy: { ...x.economy, lifetime: {} } }).filter(([k]) => !["business", "credits", "economyLedger"].includes(k))));
   assert(nonBusiness(day.save) === nonBusiness(start) && nonBusiness(closed) === nonBusiness(start), "I: a full Business Day (to the customer limit) and its close change no Campaign field");
   for (const f of ["src/game/service/ServiceManager.ts", "src/game/service/CustomerOrderManager.ts", "src/game/economy/EconomySettlement.ts", "src/game/recipes/recipePay.ts"]) {
     assert(!/orderFrequency|BASE_CUSTOMERS_PER_DAY|businessCustomersToday/.test(read(f)), `I2: ${f} has no order-frequency reference — Campaign/shared order logic unchanged`);
@@ -239,7 +239,7 @@ for (const score of [0, 50, 100]) {
   const v2 = spawnSync("npx", ["tsx", JSON.stringify(path.resolve(import.meta.dirname, "economy-v2-campaign-simulation.mts"))], { encoding: "utf8", shell: true });
   const honest = v2.stdout.slice(v2.stdout.indexOf("SIMULATION HONEST"), v2.stdout.indexOf("Total net campaign result") + 60);
   const has = (label: string, value: string) => new RegExp(`${label}:\\s*${value}(?![\\d,])`).test(honest);
-  assert(v2.status === 0 && has("Gross recipe revenue", "\\$165,140\\.00") && has("Level-completion rewards", "\\$330,691\\.00") && has("Total COGS", "\\$37,620\\.00") && has("Total quality bonuses", "\\$3,315\\.00") && has("Total net campaign result", "\\$461,526\\.00"), "I4: Economy V2 freeze exact — $165,140.00 / $330,691.00 / $37,620.00 / $3,315.00 / $461,526.00");
+  assert(v2.status === 0 && has("Gross recipe revenue", "\\$165,140\\.00") && has("Level-completion rewards", "\\$77,581\\.00") && has("Total COGS", "\\$37,620\\.00") && has("Total quality bonuses", "\\$3,315\\.00") && has("Total net campaign result", "\\$208,416\\.00"), "I4: Economy V2 freeze exact — $165,140.00 / $77,581.00 / $37,620.00 / $3,315.00 / $208,416.00 (V2.5 completion rewards)");
 }
 
 // ===== J: ledger. =====

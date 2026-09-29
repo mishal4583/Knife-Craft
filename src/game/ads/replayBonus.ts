@@ -1,7 +1,7 @@
 /**
  * REPLAY_BONUS — the one rewarded-ad feature: after REPLAYING an already
  * completed Campaign level (which normally pays nothing), the player may
- * choose to watch a YouTube rewarded ad for a small bonus.
+ * choose to watch a rewarded ad (Playgama Bridge) for a small bonus.
  *
  * Source of truth = the save's ledger. A claimed bonus IS a "rewarded-ad"
  * ledger entry whose `description` is that offer's unique reward id; the
@@ -26,12 +26,15 @@ import type { LevelDefinition } from "../levels/levelTypes";
 import { appendLedgerEntry } from "../economy/EconomyLedger";
 import type { EconomyLedgerEntry } from "../economy/ledgerTypes";
 import { dollars } from "../money";
+import { paidLevelReward } from "../levels/levelRewards";
 import { dailyKeyFor } from "../daily/DailyOrderManager";
 
 /** Bonus = this share of the level's own first-completion reward… */
 export const REPLAY_BONUS_SHARE = 0.2;
-/** …rounded to whole dollars, never below this (cents). */
+/** …rounded to whole dollars, never below this (cents)… */
 export const REPLAY_BONUS_MIN = dollars(10);
+/** …and never above this (cents) — Economy V2.5: at most $200 × 3/day = $600/day from Replay Bonuses. */
+export const REPLAY_BONUS_MAX = dollars(200);
 /** Rewarded Replay Bonuses per calendar day (device-local day, like Today's Special). */
 export const REPLAY_BONUS_DAILY_CAP = 3;
 
@@ -50,10 +53,10 @@ export type ReplayBonusFailure =
   | "commitMismatch"
   | "saveFailed";
 
-/** The bonus for replaying `level`, in cents: 20% of its first-completion reward, whole dollars, min $10. */
-export function replayBonusAmount(level: Pick<LevelDefinition, "reward">): number {
-  const share = dollars(level.reward.coins) * REPLAY_BONUS_SHARE;
-  return Math.max(REPLAY_BONUS_MIN, Math.round(share / 100) * 100);
+/** The bonus for replaying `level`, in cents: 20% of its paid first-completion reward (levelRewards.ts), whole dollars, min $10, max $200. */
+export function replayBonusAmount(level: Pick<LevelDefinition, "id" | "reward">): number {
+  const share = paidLevelReward(level) * REPLAY_BONUS_SHARE;
+  return Math.min(REPLAY_BONUS_MAX, Math.max(REPLAY_BONUS_MIN, Math.round(share / 100) * 100));
 }
 
 /** A fresh, unguessable id for one offer. Contains no user data — only the level id and a random UUID. */

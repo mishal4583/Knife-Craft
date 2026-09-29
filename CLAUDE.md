@@ -59,12 +59,20 @@ create a second engine, and do not duplicate existing systems.
   `localStorage` directly (plain localStorage is only the fallback when no
   Bridge exists). Outside Playgama the Bridge runs a local "mock" platform
   whose storage is backed by localStorage.
-- Ads: interstitials only at natural breaks through
-  `src/game/ads/interstitialPolicy.ts` (none before 10 completed levels,
-  1 per 3 transitions, 3-min cooldown); rewarded = the Replay Bonus
-  (`src/game/ads/replayBonus.ts`), granted only when Bridge reports the
-  `rewarded` state, committed through the ledger. Locally the mock platform
-  reports ads as unsupported.
+- Ads (Playgama monetization guide + Bridge docs): interstitials only at
+  natural breaks through `src/game/ads/interstitialPolicy.ts` — none before
+  3 completed levels, then any natural break once 150 s (the guide's
+  120–240 s) have passed since the last ad of any kind; the config's
+  `minimumDelayBetweenInterstitial` is 120. Rewarded = the Replay Bonus
+  (`src/game/ads/replayBonus.ts`) and Business Rush Restock, granted only
+  when Bridge reports the `rewarded` state. One placement per ad spot
+  (`AD_PLACEMENT`, listed in the config): `level_completed`,
+  `business_day_end`, `replay_bonus`, `rush_restock`. Locally the mock
+  platform reports ads as unsupported.
+- Level messages: `level_started` / `level_completed` (App play sessions
+  and Business orders) and `level_paused` / `level_resumed` (in-game pause
+  menu), with `{ world, level }` (world = `chapter-N`, `todays-special`,
+  `endless` or `business`). No `level_failed`: the game has no fail state.
 - The Bridge SDK is required for every build. **Never publish a build in
   which Playgama did not detect the SDK.**
 - Language: English only (the game reads `platform.language` and stays EN).
@@ -124,6 +132,15 @@ Focused suites (`npx tsx scripts/<name>.mts`):
 - `economy-v2-final-qa`, `economy-v2-qa`, `economy-v2-settlement-ledger-qa`
   — Economy V2 frozen baseline (some checks use `git diff`, so run them in
   this git repo).
+- `economy-v25-qa` (+ `economy-v25-simulation`) — V2.5 final-wealth target,
+  wallet safety, milestone/Family Legacy once-only, recurring caps, $0
+  recovery, 365-day Business runs.
+- `economy-final-qa` — the final rebalance + save migration: reward scaling
+  (A), affordability (B), no negative money (C), kitchen migration (D),
+  milestone migration (E), migration idempotence (F), Level 250 (G),
+  Endless unlock (H), Progress/historical accounting (I, J) and the
+  four-profile simulation table (K: Normal, Completionist, Aggressive
+  Spender, Existing Save).
 - `campaign-integrity-qa`, `restaurant-progress-qa`, `business-ux-qa`,
   `progression-preview-qa`, `usd-currency-qa`, `phase7-2-smoke-test`,
   plus the other `scripts/*-qa.mts` / `business-*-qa.mts` suites.
@@ -164,15 +181,78 @@ preparation = PreparationScene; events = `events.ts`; platform =
 
 ## 7. ECONOMY RULES
 
-### Economy V2 is frozen
+### Economy V2 is frozen (with the approved V2.5 completion-reward change)
 
 Locked Campaign baseline (enforced by `economy-v2-final-qa`):
 
-- Revenue 165,140 · Completion Rewards 330,691 · COGS 37,620 ·
-  Quality Bonus 3,315 · Honest Chef Net 461,526
+- Revenue 165,140 · Completion Rewards 77,581 · COGS 37,620 ·
+  Quality Bonus 3,315 · Honest Chef Net 208,416
 
+(Completion Rewards were 330,691 and the net 461,526 before Economy V2.5;
+that one line changed by the approved rebalance below. Nothing else moved.)
 Any unexplained change is a regression. Investigate; never just update the
 expected values.
+
+### Economy V2.5 — Final Wealth (approved rebalance)
+
+Goal: a completionist finishes Level 250 owning everything with
+$100k–$150k left (simulated: **$111,405** with occasional Business days;
+$109,534 campaign-only). `scripts/economy-v25-simulation.mts`,
+`scripts/economy-v25-qa.mts` and `scripts/economy-final-qa.mts` prove it
+with the real functions.
+
+- **Level rewards** — `levels/levelRewards.ts` `paidLevelReward(level)` is
+  the ONE rule for what a level pays (stored `reward.coins` untouched):
+  100% L1–20, 90% 21–40, 75% 41–60, 60% 61–80, 50% 81–100, 40% 101–120,
+  30% 121–160, 20% 161–200, 15% 201–249, 100% L250. Payout, Kitchen/Journal/
+  Preparation displays, Progress, Endless and the Replay Bonus all use it.
+- **Restaurant Development** — kitchen tiers are bought, in order, once
+  their level is reached: Growing $20k (L21), Established $25k (L41),
+  Neighborhood Café $25k (L51), Flourishing $30k (L71), Grand $35k (L91)
+  = $135k (`KitchenUpgradeManager.purchaseKitchenUpgrade`, ledger
+  `kitchen-investment-purchase`, Kitchen Upgrade screen). Save version 3:
+  older saves keep every tier their level had earned
+  (`migrateKitchenDevelopment`).
+- **Milestone rewards** — the 22 Progress milestones each pay once
+  (`progression/milestoneRewards.ts`, $38,200) and Level 250 pays the
+  **Final Reward (Family Legacy) $50,000**, unscaled. "Completed" is
+  derived from the save; "claimed" is `SaveData.economy.claimedMilestoneIds`
+  (plus the never-trimmed `milestone-reward` / `family-legacy` ledger
+  entries). Only reached AND unclaimed milestones pay, on every `persist`
+  and on load.
+- **Economy migration** — `SaveData.economy` (`economy/economyState.ts`,
+  `version` = ECONOMY_VERSION 1). A save without it predates V2.5 and is
+  migrated ONCE in `SaveManager.load` (`progression/economyMigration.ts`,
+  written back immediately; idempotent): balance, items, kitchens and
+  Business untouched; milestones it had already reached are claimed
+  WITHOUT payment (`waivedMilestoneIds` — no retroactive ~$85k windfall);
+  lifetime totals are reconstructed from what the save records.
+- **Historical accounting** — `economy.lifetime` is the exact running
+  total of every ledger category (updated by `appendLedgerEntry`, never
+  trimmed). Progress's "Level rewards earned" / "Invested in your
+  restaurant" / milestone figures read it — never today's rates. An old
+  save's level rewards = the stored rewards it was paid in full; its free
+  kitchens count $0. The reward-curve chart is the one current-rate
+  figure and is labelled so.
+- **Endless Service** — unlocks after Level 250 (`isEndlessUnlocked`);
+  pays each service level's `paidLevelReward`, capped $600/day.
+- **Business scale** — inspection fines $55 / $105 (Chicago schedule ÷5);
+  staff paid for a 2-hour service shift (cleaner 1.5 h). Ingredient prices
+  are per ingredient (`business/businessPricing.ts`, ~65% of 2026 U.S.
+  retail, e.g. potato $0.60/lb, tomato $1.00, salmon $6.50, ribeye $9.50);
+  menu prices follow at 30% food cost. A no-staff Business nets ~$70/day;
+  hiring staff is currently a net cost (their popularity/discount effects
+  earn less than their wages).
+- **Business → Ingredients tab** lists only ingredients a Business dish
+  uses (37 of 57; "Show 20 more" reveals the rest, badged "No dish"). Each
+  card shows the wallet effect before the tap — "$1,332 → $1,327", from
+  25 units "You'll have $X remaining", or "Not enough money — need $X more."
+- **Recurring caps** — Replay Bonus 20% of the paid reward, $10–$200,
+  3/day; Endless $600/day; Today's Special $50/day.
+- **Wallet invariant** — `economy/wallet.ts`: credits are whole cents and
+  never < 0. Every expense is all-or-nothing (`debitWallet` or the
+  manager's own balance guard); App `persist` and `SaveManager.save`
+  refuse a wallet that breaks the invariant. No debt, no bankruptcy.
 
 ### Economy V3 (Business Mode)
 
@@ -212,23 +292,30 @@ not silently removed.
 
 ## 9. STORY SYSTEM (current state)
 
-- Opening intro = `OPENING + FRESH + CHEF` in
-  `src/game/story/storyDefinitions.ts`: 14 beats, 21.5 s of timed beats
-  (7.6 / 6.0 / 7.9 s) + the OPEN THE RESTAURANT and READY buttons
-  (re-paced from the original 38.7 s / 13 beats).
-- `StoryOverlay` (`src/components/kc/story/StoryOverlay.tsx`): per-beat
-  advancing (a timer and a tap, or two taps, move one beat), taps ignored
-  for 250 ms after a beat appears, button beats only advance via their
-  button, CSS-only transitions (`kc-story-*` in `styles.css`) with a
-  `prefers-reduced-motion` fallback.
-- **Skip story →** (top-right, 48 px) exists only on the opening intro.
+- Opening intro = the painted cinematic: `src/game/story/introCinematic.ts`
+  (data: 7 scenes 1/2/3A/3B/3C/4/5, 13.6 s incl. a 0.8 s push into the
+  tomato that fades into the already-running Level 1) played by
+  `src/components/kc/story/CinematicIntro.tsx` (one rAF clock, taps step
+  one line/scene, 250 ms tap guard, pause-aware, reduced-motion fallback).
+- **SKIP ›** (top-right, 48 px, after 1 s) is the only early exit.
   Finishing and skipping share one completion path
-  (`StoryOverlay.finish` → `App.completeIntro`) that sets only
-  `story.introDone = true`, once.
+  (`CinematicIntro.finish` → `App.completeIntro`) that sets only
+  `story.introDone = true`, once. `StoryOverlay` still plays the finale.
 - Milestones (Level 10/20/45/70/110/120/250) and the Level-100 finale are
   unchanged. `SaveData.story = { introDone, milestoneMask, finaleSeen }` —
   no new fields.
 - Intro screenshots: `playgama/screenshots/intro/`.
+- **Cooking clip** — after EVERY preparation, once the chef's hands have
+  carried the plate away (RECIPE_COMPLETED) and before the Knife Report,
+  `src/components/kc/game/CookingClip.tsx` plays the 3.75 s chef-cooking
+  film (`src/assets/video/chef-cooking.webm` + `.mp4` fallback, 540×960,
+  ~0.65 MB each; poster `.webp`). It buffers from PLATING_STARTED, is
+  skippable (SKIP › or a tap, 300 ms guard), pauses with PauseManager,
+  is muted unless `AudioManager.soundAllowed`, and falls straight through
+  on error / stall / `prefers-reduced-motion`. The source's AI watermark
+  (centre 600,1160 of 720×1280) is painted out with ffmpeg `delogo` and the
+  SKIP › pill sits over that spot. Source upload:
+  `gemini_generated_video_aa3f242a - Trim.mp4` (on `main`).
 
 ---
 
@@ -239,7 +326,7 @@ painted kitchens, wood/paper, Fraunces / Nunito / Caveat bundled locally).
 Touch targets ≥ 48 px. Test at 320×568, 360×640, 390×844, 430×900,
 768×1024. Do not add animation libraries or large assets; prefer CSS
 transform/opacity. No external fonts, video or network requests at runtime
-(only the Bridge CDN script).
+(only the Bridge CDN script); the one bundled video is the cooking clip (§9).
 
 ---
 

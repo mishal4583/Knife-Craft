@@ -349,7 +349,7 @@ type Totals = { revenue: number; cogs: number; purchases: number; spoilage: numb
 function simulate(p: Profile, days: number) {
   const startCash = p.startCash ?? START_CASH;
   let save: SaveData = { ...DEFAULT_SAVE, credits: startCash, economyLedger: [], business: { ...DEFAULT_BUSINESS_STATE } };
-  const campaignBefore = JSON.stringify(Object.fromEntries(Object.entries(save).filter(([k]) => !["business", "credits", "economyLedger"].includes(k))));
+  const campaignBefore = JSON.stringify(Object.fromEntries(Object.entries({ ...save, economy: { ...save.economy, lifetime: {} } }).filter(([k]) => !["business", "credits", "economyLedger"].includes(k))));
   if (p.menu) {
     for (const dish of BUSINESS_DISH_CATALOG) {
       if (p.menu.includes(dish.id)) continue;
@@ -438,7 +438,7 @@ function simulate(p: Profile, days: number) {
     if (servedToday === 0) { t.zeroServeDays++; zeroStreak++; t.longestZeroStreak = Math.max(t.longestZeroStreak, zeroStreak); } else zeroStreak = 0;
     if (CHECKPOINTS.includes(d)) snapshots[d] = { ...t, cash: save.credits, popularity: save.business.popularity.score };
   }
-  const campaignAfter = JSON.stringify(Object.fromEntries(Object.entries(save).filter(([k]) => !["business", "credits", "economyLedger"].includes(k))));
+  const campaignAfter = JSON.stringify(Object.fromEntries(Object.entries({ ...save, economy: { ...save.economy, lifetime: {} } }).filter(([k]) => !["business", "credits", "economyLedger"].includes(k))));
   if (campaignBefore !== campaignAfter) invariantViolations.push("Campaign state changed");
   const businessCats = ["business-revenue", "inventory-purchase", "refrigerator-purchase", "refrigerator-maintenance", "supplier-contract-cancellation", "business-staff-salary", "inspection-fine"];
   if (save.economyLedger.some((e) => !businessCats.includes(e.category))) invariantViolations.push("non-Business ledger entry created");

@@ -39,14 +39,22 @@ async function stroke(page, x0, y0, x1, y1, steps = 14) {
   await page.mouse.up();
 }
 
-/** Plays the current recipe to its Knife Report. Returns a log of what it did. */
-export async function playToReport(page, { tapInterval = 140, maxMs = 90000 } = {}) {
+/**
+ * Plays the current recipe to its Knife Report. Returns a log of what it did.
+ * `until` (a page predicate) stops early once true — e.g. when the cooking clip appears.
+ */
+export async function playToReport(page, { tapInterval = 140, maxMs = 90000, until } = {}) {
   const log = [];
   const t0 = Date.now();
   let lastKey = "",
     stuck = 0,
     peelIdx = 0;
+  const stop = async () => !!until && (await page.evaluate(until));
   while (Date.now() - t0 < maxMs) {
+    if (await stop()) {
+      log.push("stopped");
+      return { ok: true, log, stopped: true };
+    }
     const s = await stepInfo(page);
     if (s.report) {
       log.push("report");
@@ -81,7 +89,7 @@ export async function playToReport(page, { tapInterval = 140, maxMs = 90000 } = 
       // step complete: wait for the plate to appear, then drag the prepared ingredient onto it
       await sleep(900);
       const again = await stepInfo(page);
-      if (again.report) continue;
+      if (again.report || (await stop())) continue;
       if (`${again.ingredient}|${again.n}|${again.m}|${again.tech}|${again.step}` === key) {
         await stroke(page, CX, CY, PLATE.x, PLATE.y, 18);
         await sleep(1500);

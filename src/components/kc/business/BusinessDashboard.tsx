@@ -1,5 +1,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import type { ScreenId } from "../data";
+import { RushRestockActions } from "./RushRestockActions";
+import type { RushRestockOutcome, RushRestockPayment } from "@/game/business/businessRushRestock";
 import type { SaveData } from "@/game/SaveManager";
 import type { ServiceSession } from "@/game/service/ServiceManager";
 import { KButton, Panel, ScreenHeader, Divider, Stars } from "../common/primitives";
@@ -134,6 +136,8 @@ export function BusinessDashboard({
   cancelSupplierContract,
   hireStaff,
   fireStaff,
+  rushRestock,
+  rushAdAvailable,
 }: {
   go: (s: ScreenId) => void;
   save: SaveData;
@@ -149,6 +153,8 @@ export function BusinessDashboard({
   cancelSupplierContract: () => CancelContractResult;
   hireStaff: (role: string) => HireStaffResult;
   fireStaff: (role: string) => FireStaffResult;
+  rushRestock: (payment: RushRestockPayment) => Promise<RushRestockOutcome>;
+  rushAdAvailable: boolean;
 }) {
   const [dayResult, setDayResult] = useState<AdvanceDayResult | null>(null);
   const [repairMessage, setRepairMessage] = useState<string | null>(null);
@@ -173,6 +179,8 @@ export function BusinessDashboard({
       go(alert.action.screen);
       return;
     }
+    // Rush Restock renders its own buttons (RushRestockActions), never this one.
+    if (alert.action.kind === "rush-restock") return;
     const result = performRefrigeratorMaintenance();
     setRepairMessage(
       result.ok
@@ -267,6 +275,8 @@ export function BusinessDashboard({
               alerts={alerts}
               repairMessage={repairMessage}
               onAlertAction={runAlertAction}
+              rushRestock={rushRestock}
+              rushAdAvailable={rushAdAvailable}
             />
           ) : null}
         </div>
@@ -920,11 +930,17 @@ function Operations({
   alerts,
   repairMessage,
   onAlertAction,
+  rushRestock,
+  rushAdAvailable,
 }: Shared & {
   alerts: BusinessAlert[];
   repairMessage: string | null;
   onAlertAction: (a: BusinessAlert) => void;
+  rushRestock: (payment: RushRestockPayment) => Promise<RushRestockOutcome>;
+  rushAdAvailable: boolean;
 }) {
+  const blockedOrder = businessServiceSession?.current;
+  const blockedDish = blockedOrder ? businessDishForRecipeId(blockedOrder.recipe.id) : undefined;
   const actionable = alerts.filter((a) => a.severity !== "ok");
   const allClear = alerts.filter((a) => a.severity === "ok");
   const pnl = preview.dailyPnL;
@@ -958,7 +974,17 @@ function Operations({
                 <p className="mt-0.5 font-hand text-[14px] leading-snug text-walnut/70">
                   {alert.detail}
                 </p>
-                {alert.action ? (
+                {alert.action?.kind === "rush-restock" ? (
+                  blockedDish ? (
+                    <RushRestockActions
+                      save={save}
+                      dish={blockedDish}
+                      go={go}
+                      rushRestock={rushRestock}
+                      rushAdAvailable={rushAdAvailable}
+                    />
+                  ) : null
+                ) : alert.action ? (
                   <KButton
                     full
                     variant={alert.action.kind === "repair-refrigerator" ? "copper" : "cream"}

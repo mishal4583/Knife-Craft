@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
+import { paidLevelReward } from "@/game/levels/levelRewards";
 import { GameBridge, type GameBridgeEvent } from "@/game/GameBridge";
 import { PauseManager } from "@/game/PauseManager";
-import { gameReady } from "@/game/PlayablesSDK";
+import { gameReady, levelPaused, levelResumed } from "@/game/PlayablesSDK";
 import {
   INGREDIENTS,
   TECHNIQUES,
@@ -27,6 +28,7 @@ import { GameViewport } from "./GameViewport";
 import { GameHUD } from "./GameHUD";
 import { CutResultPanel } from "./CutResultPanel";
 import { KnifeReport } from "./KnifeReport";
+import { CookingClip } from "./CookingClip";
 import { OrderComplete } from "./OrderComplete";
 import { ServiceOrderComplete } from "./ServiceOrderComplete";
 import { Panel, KButton, DustMotes } from "../common/primitives";
@@ -139,7 +141,7 @@ export function Preparation({
         title: level!.title,
         subtitle: level!.subtitle,
         emoji: level!.emoji,
-        rewardCoins: dollars(level!.reward.coins),
+        rewardCoins: paidLevelReward(level!),
         preparationSteps: completableSteps(level!.preparationSteps),
       };
   const steps: PrepStep[] = view.preparationSteps.map((s) => ({
@@ -186,6 +188,9 @@ export function Preparation({
   const [paused, setPaused] = useState(false);
   const [result, setResult] = useState<CutResult | null>(null);
   const [rewardCoins, setRewardCoins] = useState(0);
+  // The cooking film after every dish: "off", buffering while the plate is
+  // plated ("ready"), then "playing" once the hands have taken it away.
+  const [cooking, setCooking] = useState<"off" | "ready" | "playing">("off");
 
   const idealPaths = useRef<CutPath[]>([]);
   const playerPaths = useRef<CutPath[]>([]);
@@ -195,7 +200,7 @@ export function Preparation({
 
     // Fallback only — if Phaser somehow never boots (no WebGL/canvas2d,
     // an uncaught error inside the scene, ...), gameReady() still fires
-    // so YouTube doesn't consider the game permanently stuck loading.
+    // so the platform doesn't consider the game permanently stuck loading.
     // markReady() is idempotent; whichever path reaches it first wins.
     let readyFired = false;
     const markReady = () => {
@@ -246,6 +251,7 @@ export function Preparation({
         // matching the reference's finishRecipe -> plating -> handoff ->
         // showResult order.
         setPhase("plating");
+        setCooking("ready");
       } else if (event.type === "RECIPE_COMPLETED") {
         const { overall, evenness, consistency, rhythmBonus, qualityLabel } = event.payload;
         setResult({
@@ -257,7 +263,8 @@ export function Preparation({
           idealPath: idealPaths.current,
           playerPath: playerPaths.current,
         });
-        setPhase("result");
+        // The chef cooks the dish (CookingClip), then the Knife Report.
+        setCooking("playing");
       }
     });
 
@@ -290,6 +297,7 @@ export function Preparation({
     setProgressByAxis({ h: 0, v: 0 });
     setResult(null);
     setRewardCoins(0);
+    setCooking("off");
     setPhase("prep");
     setShowHint(true);
     setActiveStep({
@@ -369,7 +377,10 @@ export function Preparation({
         progressByAxis={progressByAxis}
         {...(stepLabel ? { stepLabel } : {})}
         {...(service?.batchHint ? { batchHint: service.batchHint } : {})}
-        onPause={() => bridge.pauseGame()}
+        onPause={() => {
+          bridge.pauseGame();
+          levelPaused();
+        }}
       />
 
       <GameViewport bridge={bridge} />
@@ -400,7 +411,13 @@ export function Preparation({
             </p>
             <p className="mt-1 font-hand text-[16px] text-walnut/70">the kitchen will wait</p>
             <div className="mt-4 space-y-2">
-              <KButton full onClick={() => bridge.resumeGame()}>
+              <KButton
+                full
+                onClick={() => {
+                  bridge.resumeGame();
+                  levelResumed();
+                }}
+              >
                 Resume
               </KButton>
               <KButton
@@ -414,6 +431,7 @@ export function Preparation({
                   // the pause OVERLAY closed, since `paused` only flips via
                   // PauseManager's own subscription. Resume first, always.
                   bridge.resumeGame();
+                  levelResumed();
                   restart();
                 }}
               >
@@ -438,6 +456,16 @@ export function Preparation({
             </div>
           </Panel>
         </div>
+      ) : null}
+
+      {cooking !== "off" ? (
+        <CookingClip
+          playing={cooking === "playing"}
+          onDone={() => {
+            setCooking("off");
+            setPhase("result");
+          }}
+        />
       ) : null}
 
       {phase === "result" && result ? (

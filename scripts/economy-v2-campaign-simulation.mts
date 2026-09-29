@@ -24,6 +24,7 @@
  */
 import * as fs from "node:fs";
 import * as path from "node:path";
+import * as os from "node:os";
 import { pathToFileURL } from "node:url";
 import { getCampaignRecipe } from "../src/game/recipes/campaignRecipes.ts";
 import { LEVELS } from "../src/game/levels/levelDefinitions.ts";
@@ -576,7 +577,9 @@ for (const [label, score] of Object.entries(SCORE)) {
   scenarios[label] = simulateCampaign(score, false);
 }
 
-const outDir = "C:/Users/HP/AppData/Local/Temp/claude/D--WORKS-GAMES-Knife-Craft/caca1e04-20c0-4aa5-b74e-81fa426eabb6/scratchpad";
+// Per-level JSON for deeper analysis — the OS temp folder (a hard-coded Windows path here used to
+// create a stray "C:" folder inside the repo on other systems).
+const outDir = path.join(os.tmpdir(), "knifecraft-economy-simulation");
 try {
   fs.mkdirSync(outDir, { recursive: true });
   for (const [label, { results }] of Object.entries(scenarios)) {

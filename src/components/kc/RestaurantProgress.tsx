@@ -8,7 +8,7 @@ import { BoardPreview } from "./Boards";
 import { KitchenBackground } from "./KitchenBackground";
 import { cn } from "@/lib/utils";
 import type { SaveData } from "@/game/SaveManager";
-import { formatUsd } from "@/game/money";
+import { formatUsd, formatUsdChange } from "@/game/money";
 import {
   popularityStars,
   restaurantProgress,
@@ -144,12 +144,30 @@ function NextGoal({ p }: { p: Progress }) {
         </>
       ) : (
         <>
-          <p className="mt-1 font-display text-[19px] font-black leading-tight text-walnut-dark">
+          <p className="mt-1 font-display text-[21px] font-black uppercase leading-tight tracking-wide text-walnut-dark">
             🏆 Campaign Complete
           </p>
-          <p className="font-hand text-[15px] text-walnut/70">
-            All {p.level.total} levels mastered. You've completed the KnifeCraft journey — replay
-            any level or continue running your restaurant.
+          <p className="font-ui text-[13px] font-extrabold text-walnut-dark">
+            {p.level.completed} / {p.level.total}
+          </p>
+          <p className="mt-2 font-ui text-[11px] font-extrabold uppercase tracking-[0.18em] text-copper">
+            Final Reward · Family Legacy
+          </p>
+          {p.familyLegacy.waived ? (
+            <p className="font-hand text-[15px] leading-snug text-walnut/70">
+              You finished the campaign before the Final Reward existed, so it wasn't paid.
+            </p>
+          ) : (
+            <p className="font-display text-[26px] font-black leading-tight text-olive">
+              {formatUsdChange(p.familyLegacy.reward)}
+            </p>
+          )}
+          <p className="mt-1 font-display text-[16px] font-black text-walnut-dark">
+            Your restaurant is yours.
+          </p>
+          <p className="mt-1 font-hand text-[15px] text-walnut/70">
+            All {p.level.total} levels mastered. Endless Service is now unlocked — ongoing earnings
+            every day — alongside Business Mode and Today's Special.
           </p>
         </>
       )}
@@ -299,20 +317,41 @@ function Earnings({ p }: { p: Progress }) {
     <Panel className="p-4">
       <Eyebrow>💰 Restaurant earnings</Eyebrow>
       <div className="mt-1 divide-y divide-walnut/10">
-        <Row label="Current balance" value={formatUsd(p.money.balance)} />
+        <Row label="Current cash" value={formatUsd(p.money.balance)} />
         <Row label="Level rewards earned" value={formatUsd(p.money.levelRewards)} />
+        <Row label="Milestone rewards" value={formatUsd(p.money.milestoneRewards)} />
+        <Row
+          label="Final Reward (Level 250)"
+          value={
+            p.familyLegacy.paid
+              ? formatUsd(p.money.familyLegacy)
+              : p.familyLegacy.waived
+                ? "finished before it existed"
+                : "at Level 250"
+          }
+        />
         <Row label="Business revenue" value={formatUsd(p.money.businessRevenue)} />
       </div>
       <Divider />
+      <div className="divide-y divide-walnut/10">
+        <Row label="Invested in your restaurant" value={formatUsd(p.money.restaurantInvestment)} />
+        <Row label="Business running costs" value={formatUsd(p.money.businessCosts)} />
+        <Row label="Total spent" value={formatUsd(p.money.totalSpent)} />
+        <Row label="Remaining wealth" value={formatUsd(p.money.balance)} />
+      </div>
+      <Divider />
       <p className="mb-1 font-ui text-[10px] font-extrabold uppercase tracking-[0.16em] text-walnut/55">
-        Level rewards, cumulative by level
+        Level rewards at today's rates, cumulative by level
       </p>
       <EarningsChart p={p} />
       <p className="mt-1 font-hand text-[13px] leading-snug text-walnut/60">
-        Every level pays its reward once, on first completion — this line only ever grows as you
-        progress.
+        What each completed level pays at today's reward rates — the reward curve, not a record of
+        past payouts (those are "Level rewards earned" above).
         {p.money.businessCoverage === "partial"
           ? " Business revenue counts from your earliest saved record."
+          : ""}
+        {p.historySince === "migration"
+          ? " Your totals from before the economy update were reconstructed from your progress: levels paid their full reward back then, and kitchen stages you received free count as $0."
           : ""}
       </p>
     </Panel>
@@ -369,7 +408,7 @@ function EarningsChart({ p }: { p: Progress }) {
             fontFamily="var(--font-ui)"
             fontWeight={700}
           >
-            {formatUsd(maxY * f).replace(/\.00$/, "")}
+            {formatUsd(Math.round((maxY * f) / 100) * 100).replace(/\.00$/, "")}
           </text>
         </g>
       ))}
@@ -555,10 +594,13 @@ function Milestones({ p }: { p: Progress }) {
   return (
     <Panel className="p-4">
       <Eyebrow>🎯 Milestones</Eyebrow>
+      <p className="mt-0.5 font-hand text-[13px] leading-snug text-walnut/60">
+        Each milestone pays its reward once, the moment you reach it.
+      </p>
       <ul className="mt-2 space-y-1.5">
         {p.milestones.map((m) => (
           <li
-            key={m.label}
+            key={m.id}
             className={cn(
               "flex items-center gap-2 font-ui text-[13px]",
               m.done ? "font-extrabold text-walnut-dark" : "font-bold text-walnut/45",
@@ -569,6 +611,14 @@ function Milestones({ p }: { p: Progress }) {
             </span>
             <span className="min-w-0 flex-1">{m.label}</span>
             {!m.done && m.atLevel ? <Badge tone="locked">Lv {m.atLevel}</Badge> : null}
+            <span
+              className={cn(
+                "shrink-0 text-right font-ui text-[12px] font-extrabold",
+                m.paid ? "text-olive" : "text-walnut/45",
+              )}
+            >
+              {m.waived ? "✓ earlier" : `${m.paid ? "✓ " : ""}${formatUsdChange(m.reward)}`}
+            </span>
           </li>
         ))}
       </ul>

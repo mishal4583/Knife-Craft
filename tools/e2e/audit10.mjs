@@ -74,8 +74,8 @@ for (let i = 0; i < 40; i++) {
     continue;
   }
   const s = await stepInfo(page);
-  // The re-paced intro shows "Skip story" on every beat until it closes.
-  const introGone = await page.evaluate(() => !/Skip story/i.test(document.body.innerText));
+  // The cinematic intro stays mounted (data-intro-scene) until it closes.
+  const introGone = await page.evaluate(() => !document.querySelector("[data-intro-scene]"));
   if (s.m && introGone) break;
   await sleep(1000);
 }

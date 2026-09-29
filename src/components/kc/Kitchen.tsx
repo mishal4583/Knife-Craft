@@ -1,7 +1,9 @@
 import { useEffect } from "react";
+import { ENDLESS_DAILY_COIN_CAP, isEndlessUnlocked } from "@/game/daily/EndlessServiceManager";
+import { paidLevelReward } from "@/game/levels/levelRewards";
 import { KButton, Coin, DustMotes } from "./common/primitives";
 import { gameReady } from "@/game/PlayablesSDK";
-import { dollars, formatUsdChange } from "@/game/money";
+import { dollars, formatUsd, formatUsdChange } from "@/game/money";
 import { KitchenBackground } from "./KitchenBackground";
 import type { ScreenId } from "./data";
 import { getLevels, isUnlocked, isCompleted, type LevelProgress } from "@/game/levels/LevelManager";
@@ -95,7 +97,7 @@ export function Kitchen({
   const campaignComplete = getLevels().every((l) => isCompleted(l.id, levelProgress));
 
   // A returning player's first screen: once the Kitchen has actually mounted
-  // (its lazily-loaded chunk is in), the game is interactive — tell YouTube.
+  // (its lazily-loaded chunk is in), the game is interactive — tell the platform.
   // Idempotent; Preparation signals it instead for a brand-new player.
   useEffect(() => {
     gameReady();
@@ -211,7 +213,7 @@ export function Kitchen({
                     ? "locked · finish the level before it"
                     : todayCompleted
                       ? "prepared already · replay pays nothing"
-                      : `ready to prepare · ${formatUsdChange(dollars(todayLevel.reward.coins))}`}
+                      : `ready to prepare · ${formatUsdChange(paidLevelReward(todayLevel))}`}
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-2">
@@ -313,7 +315,11 @@ export function OrderBoard({
               <span className="mt-1 block font-display text-[13px] font-black text-walnut-dark">
                 Endless Service
               </span>
-              <span className="block font-hand text-[12px] text-walnut/60">no lives, no timer</span>
+              <span className="block font-hand text-[12px] text-walnut/60">
+                {isEndlessUnlocked(levelProgress)
+                  ? `ongoing earnings · up to ${formatUsd(ENDLESS_DAILY_COIN_CAP).replace(/\.00$/, "")}/day`
+                  : "🔒 unlocks after Level 250"}
+              </span>
             </button>
           </div>
           <div className="space-y-2.5">
@@ -395,7 +401,7 @@ export function OrderBoard({
                           ? "locked · finish the level before it"
                           : completed
                             ? "prepared already · replay pays nothing"
-                            : `ready to prepare · ${formatUsdChange(dollars(level.reward.coins))}`}
+                            : `ready to prepare · ${formatUsdChange(paidLevelReward(level))}`}
                       </p>
                       {canOpen ? (
                         <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-0.5">
