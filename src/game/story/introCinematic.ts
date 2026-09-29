@@ -1,17 +1,20 @@
 /**
- * INTRO CINEMATIC — the opening intro as one short film (≈21.4 s) over the
+ * INTRO CINEMATIC — the opening intro as one short film (≈13.6 s) over the
  * seven painted scenes in `src/assets/story/`. DATA ONLY: which image each
  * scene shows, how long it lasts, its crossfade, its camera move and its
  * subtitle lines. `CinematicIntro.tsx` plays it; `introTimeline()` below
  * turns it into the one clock the controller runs on.
  *
- *   SCENE 1  key from the grandparents   3.5 s
- *   SCENE 2  the forgotten kitchen       3.0 s
+ *   SCENE 1  key from the grandparents   2.6 s
+ *   SCENE 2  the forgotten kitchen       1.8 s
  *   SCENE 3A clean   ┐
- *   SCENE 3B repair  ├ montage          3 × 1.5 s, fast crossfades
+ *   SCENE 3B repair  ├ montage          0.8 + 0.8 + 0.9 s, fast crossfades
  *   SCENE 3C restore ┘
- *   SCENE 4  the chef                    6.0 s
- *   SCENE 5  the first order             3.5 s + 0.9 s outro
+ *   SCENE 4  the chef                    3.5 s
+ *   SCENE 5  the first order             2.4 s + 0.8 s outro
+ *
+ * Kept short on purpose: Playgama counts a visit that leaves before 30 s as
+ * a bounce, so the player should be cutting by ~14 s, not ~21 s.
  *   → the camera pushes into the tomato and the film fades into the real
  *     Level 1 underneath (never a Scene 6 image, never a loading screen).
  *
@@ -61,74 +64,74 @@ export const INTRO_SCENES: IntroScene[] = [
   {
     id: "scene1",
     alt: "Your grandparents place the restaurant's key in your hand.",
-    duration: 3500,
-    crossfadeMs: 400,
-    camera: { from: 1, to: 1.04, ms: 2500, origin: "50% 40%" },
+    duration: 2600,
+    crossfadeMs: 350,
+    camera: { from: 1, to: 1.04, ms: 2000, origin: "50% 40%" },
     lines: [
-      { text: "They placed the keys in your hand.", at: 300, until: 1800 },
-      { text: "“Keep it alive.”", at: 1950, until: 3250 },
+      { text: "They placed the keys in your hand.", at: 200, until: 1400 },
+      { text: "“Keep it alive.”", at: 1500, until: 2400 },
     ],
   },
   {
     id: "scene2",
     alt: "You step into the old, forgotten kitchen.",
-    duration: 3000,
+    duration: 1800,
     crossfadeMs: 300,
-    camera: { from: 1.03, to: 1, ms: 3000, origin: "50% 45%" },
-    lines: [{ text: "The kitchen had grown quiet.", at: 400, until: 2700 }],
+    camera: { from: 1.03, to: 1, ms: 1800, origin: "50% 45%" },
+    lines: [{ text: "The kitchen had grown quiet.", at: 200, until: 1600 }],
   },
   {
     id: "scene3A",
     alt: "You clean the dusty counters.",
-    duration: 1500,
-    crossfadeMs: 300,
-    camera: { from: 1, to: 1.03, ms: 1500, origin: "50% 50%" },
+    duration: 800,
+    crossfadeMs: 250,
+    camera: { from: 1, to: 1.03, ms: 800, origin: "50% 50%" },
     lines: [],
   },
   {
     id: "scene3B",
     alt: "You open the windows and repair the kitchen.",
-    duration: 1500,
-    crossfadeMs: 180,
-    camera: { from: 1.045, to: 1, ms: 1500, origin: "40% 40%" },
+    duration: 800,
+    crossfadeMs: 150,
+    camera: { from: 1.045, to: 1, ms: 800, origin: "40% 40%" },
     lightUp: true,
     lines: [],
   },
   {
     id: "scene3C",
     alt: "The restored kitchen, warm and ready.",
-    duration: 1500,
-    crossfadeMs: 180,
-    // Moves for 1.1 s, then holds its final frame ~0.4 s before Scene 4.
-    camera: { from: 1.03, to: 1, ms: 1100, origin: "50% 50%" },
+    duration: 900,
+    crossfadeMs: 150,
+    // Moves for 0.6 s, then holds its final frame 0.3 s before Scene 4.
+    camera: { from: 1.03, to: 1, ms: 600, origin: "50% 50%" },
     lines: [],
   },
   {
     id: "scene4",
     alt: "The old chef greets you across the counter.",
-    duration: 6000,
+    duration: 3500,
     crossfadeMs: 300,
     // Starts wide and creeps toward the chef's face.
-    camera: { from: 1, to: 1.03, ms: 6000, origin: "31% 35%" },
+    camera: { from: 1, to: 1.03, ms: 3500, origin: "31% 35%" },
     lines: [
-      { speaker: "CHEF", text: "You spent your savings on this?", at: 700, until: 2000 },
-      { speaker: "YOU", text: "Every last bit.", at: 2400, until: 3100 },
-      { speaker: "CHEF", text: "Then we’d better make it count.", at: 3500, until: 5500 },
+      { speaker: "CHEF", text: "You spent your savings on this?", at: 300, until: 1500 },
+      { speaker: "YOU", text: "Every last bit.", at: 1600, until: 2200 },
+      { speaker: "CHEF", text: "Then we’d better make it count.", at: 2300, until: 3300 },
     ],
   },
   {
     id: "scene5",
     alt: "The chef sets a tomato on your cutting board: your first order.",
-    duration: 3500,
+    duration: 2400,
     crossfadeMs: 300,
-    camera: { from: 1, to: 1.02, ms: 3500, origin: TOMATO_ORIGIN },
+    camera: { from: 1, to: 1.02, ms: 2400, origin: TOMATO_ORIGIN },
     // Each line holds until the next one replaces it (easier to read than
-    // blank gaps at this pace); the last one rides the outro fade.
+    // blank gaps at this pace); the last one rides the outro fade. The order
+    // card on the Level 1 HUD names the first order, so no line for it here.
     lines: [
-      { speaker: "CHEF", text: "I’ll handle the cooking.", at: 500, until: 1500 },
-      { speaker: "CHEF", text: "You handle the prep.", at: 1500, until: 2500 },
-      { speaker: "CHEF", text: "Your first order.", at: 2500, until: 3200 },
-      { speaker: "CHEF", text: "Let’s get to work.", at: 3200, until: 3500 },
+      { speaker: "CHEF", text: "I’ll handle the cooking.", at: 250, until: 1100 },
+      { speaker: "CHEF", text: "You handle the prep.", at: 1100, until: 1900 },
+      { speaker: "CHEF", text: "Let’s get to work.", at: 1900, until: 2400 },
     ],
   },
 ];
@@ -140,9 +143,9 @@ export const INTRO_SCENES: IntroScene[] = [
  */
 export const INTRO_OUTRO = {
   /** Total outro length; the cinematic ends (onDone) when it's over. */
-  ms: 900,
+  ms: 800,
   /** The fade starts this long into the outro and runs to its end. */
-  fadeDelayMs: 300,
+  fadeDelayMs: 250,
   origin: TOMATO_ORIGIN,
   /** Final transform of Scene 5: tomato (44.7%, 67.8%) → Level 1's tomato (50%, 50.2%). */
   transform: "translate(5.3%, -17.6%) scale(2.4)",

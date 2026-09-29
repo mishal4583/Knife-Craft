@@ -3,8 +3,9 @@
  * introCinematic.ts) and its SKIP control.
  *
  *  A. Film: the seven painted scenes in order (1, 2, 3A, 3B, 3C, 4, 5), the
- *     spec timings (3.5 / 3.0 / 1.5 × 3 / 6.0 / 3.5 s + a 0.9 s push into the
- *     tomato ≈ 21.4 s), fast montage crossfades, subtle camera moves, the
+ *     short timings (2.6 / 1.8 / 0.8 + 0.8 + 0.9 / 3.5 / 2.4 s + a 0.8 s push
+ *     into the tomato = 13.6 s — the player is cutting well inside Playgama's
+ *     30 s bounce window), fast montage crossfades, subtle camera moves, the
  *     chef/player dialogue on its beats, SKIP after ~1 s, taps that only step
  *     forward, and the bundled images at their native 941 × 1672 size.
  *  B. Unchanged: FINALE and the 7 milestones (text, thresholds, bits).
@@ -71,21 +72,21 @@ assert(
 );
 const durations = INTRO_SCENES.map((sc) => sc.duration).join();
 assert(
-  durations === "3500,3000,1500,1500,1500,6000,3500",
-  `A2: scene lengths 3.5 / 3.0 / 1.5 / 1.5 / 1.5 / 6.0 / 3.5 s (got ${durations})`,
+  durations === "2600,1800,800,800,900,3500,2400",
+  `A2: scene lengths 2.6 / 1.8 / 0.8 / 0.8 / 0.9 / 3.5 / 2.4 s (got ${durations})`,
 );
 const tl = introTimeline();
 assert(
-  tl.outroAt === 20500 && tl.total === 20500 + INTRO_OUTRO.ms,
-  `A3: Scene 5 ends at 20.5 s, then the outro (got ${tl.outroAt} ms, total ${tl.total} ms)`,
+  tl.outroAt === 12800 && tl.total === 12800 + INTRO_OUTRO.ms,
+  `A3: Scene 5 ends at 12.8 s, then the outro (got ${tl.outroAt} ms, total ${tl.total} ms)`,
 );
 assert(
-  tl.total >= 21000 && tl.total <= 22500,
-  `A4: whole film ${tl.total / 1000} s — the tight ~21–22.5 s target`,
+  tl.total >= 13000 && tl.total <= 14000,
+  `A4: whole film ${tl.total / 1000} s — playing by ~14 s, well inside the 30 s bounce window`,
 );
 assert(
-  JSON.stringify(tl.sceneStarts) === JSON.stringify([0, 3500, 6500, 8000, 9500, 11000, 17000]),
-  `A5: scenes start at 0 / 3.5 / 6.5 / 8 / 9.5 / 11 / 17 s (got ${tl.sceneStarts.join()})`,
+  JSON.stringify(tl.sceneStarts) === JSON.stringify([0, 2600, 4400, 5200, 6000, 6900, 10400]),
+  `A5: scenes start at 0 / 2.6 / 4.4 / 5.2 / 6.0 / 6.9 / 10.4 s (got ${tl.sceneStarts.join()})`,
 );
 const montage = [byId.scene3B!, byId.scene3C!].map((sc) => sc.crossfadeMs);
 assert(
@@ -113,8 +114,8 @@ assert(
   "A9: every scene has a subtle camera move (scale within 1.00–1.05, never past the scene)",
 );
 assert(
-  byId.scene1!.camera.ms === 2500 && byId.scene1!.camera.to > byId.scene1!.camera.from,
-  "A10: Scene 1 pushes in slowly for 2.5 s, then holds 1 s",
+  byId.scene1!.camera.ms === 2000 && byId.scene1!.camera.to > byId.scene1!.camera.from,
+  "A10: Scene 1 pushes in slowly for 2 s, then holds 0.6 s",
 );
 assert(
   byId.scene3B!.lightUp === true &&
@@ -126,13 +127,13 @@ const lines = (id: string) =>
   byId[id]!.lines.map((l) => `${l.speaker ?? "-"}|${l.text}|${l.at}`).join(" / ");
 assert(
   lines("scene4") ===
-    "CHEF|You spent your savings on this?|700 / YOU|Every last bit.|2400 / CHEF|Then we’d better make it count.|3500",
-  `A12: Scene 4 dialogue on the spec beats (0.7 / 2.4 / 3.5 s): ${lines("scene4")}`,
+    "CHEF|You spent your savings on this?|300 / YOU|Every last bit.|1600 / CHEF|Then we’d better make it count.|2300",
+  `A12: Scene 4 dialogue on its beats (0.3 / 1.6 / 2.3 s): ${lines("scene4")}`,
 );
 assert(
   lines("scene5") ===
-    "CHEF|I’ll handle the cooking.|500 / CHEF|You handle the prep.|1500 / CHEF|Your first order.|2500 / CHEF|Let’s get to work.|3200",
-  `A13: Scene 5 dialogue on the spec beats (0.5 / 1.5 / 2.5 / 3.2 s) — the chef cooks, you prep`,
+    "CHEF|I’ll handle the cooking.|250 / CHEF|You handle the prep.|1100 / CHEF|Let’s get to work.|1900",
+  `A13: Scene 5 dialogue on its beats (0.25 / 1.1 / 1.9 s) — the chef cooks, you prep`,
 );
 assert(
   byId.scene1!.lines.length > 0 && byId.scene1!.lines.every((l) => !l.speaker),
@@ -161,11 +162,11 @@ assert(
 );
 assert(INTRO_SKIP_AFTER_MS === 1000, `A18: SKIP appears after ${INTRO_SKIP_AFTER_MS} ms`);
 assert(
-  INTRO_OUTRO.fadeDelayMs === 300 &&
-    INTRO_OUTRO.ms === 900 &&
+  INTRO_OUTRO.fadeDelayMs === 250 &&
+    INTRO_OUTRO.ms === 800 &&
     /scale\(\d/.test(INTRO_OUTRO.transform) &&
     INTRO_OUTRO.origin === byId.scene5!.camera.origin,
-  "A19: outro pushes into the tomato from 3.5 s and fades into Level 1 from 3.8 s",
+  "A19: outro pushes into the tomato after Scene 5 and fades into Level 1 0.25 s later",
 );
 let t = 0;
 let taps = 0;
@@ -181,8 +182,8 @@ assert(
 );
 assert(
   sceneAt(tl, 0) === 0 &&
-    sceneAt(tl, 10999) === 4 &&
-    sceneAt(tl, 11000) === 5 &&
+    sceneAt(tl, 6899) === 4 &&
+    sceneAt(tl, 6900) === 5 &&
     sceneAt(tl, tl.total) === 6,
   "A21: the clock maps time to the right scene (and stays on Scene 5 through the outro)",
 );
