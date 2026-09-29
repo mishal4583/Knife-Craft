@@ -58,6 +58,16 @@ conversation.
    `scripts/story-intro-qa.mts` (63 checks) + `tools/e2e/introskip.mjs`.
 6. This repo set up as the primary one: git history, CLAUDE.md, this file,
    covers / screenshots / Playgama docs / release zip moved in, e2e tools.
+7. Intro cinematic (13.6 s), Business Rush Restock (cash +25% or a rewarded
+   ad), Economy V2.5 (paid kitchen development, reward schedule, milestone
+   rewards, $50,000 Final Reward) — on branch `claude/sharp-wright-emfu2j`.
+8. Final economy rebalance + save migration fix: `SaveData.economy`
+   (version, claimed/waived milestones, exact lifetime totals); old saves
+   migrated once on load with NO milestone windfall and no kitchen charge;
+   Progress shows historical figures; Endless unlocks after Level 250;
+   Business fines ÷5 and 2-hour staff shifts; "Not enough money — need $X
+   more" on every purchase. QA: `scripts/economy-final-qa.mts`. Open: Business
+   staff still cost more than they earn (see CLAUDE.md §7 Business scale).
 
 ## 4. Open issues from the Level 1–10 audit (not fixed yet)
 

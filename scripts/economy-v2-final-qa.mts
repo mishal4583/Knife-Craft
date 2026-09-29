@@ -81,6 +81,8 @@ const recipe = CAMPAIGN_RECIPES[30]!;
     // Blacksmith knife upgrades (src/game/knives/blacksmith.ts) — a Campaign
     // knife feature stored next to knifeSharpness, not an Economy V3 system.
     "knifeUpgrades",
+    // Economy V2.5 (approved): migration version, milestone claims and exact lifetime ledger totals.
+    "economy",
   ];
   const actualFields = Object.keys(DEFAULT_SAVE);
   for (const f of expectedFields) {

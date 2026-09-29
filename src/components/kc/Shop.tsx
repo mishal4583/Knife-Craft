@@ -31,6 +31,7 @@ import { getSupplierModifier } from "@/game/economy/supplier";
 import { ingredientBaselineCost } from "@/game/economy/ingredientCostRegistry";
 import { dollars, formatUsd, formatUsdChange } from "@/game/money";
 import { ledgerTotals, LEDGER_CATEGORY_LABEL } from "@/game/economy/EconomyLedger";
+import { notEnoughMoneyText } from "@/game/economy/wallet";
 import {
   getKnifeSharpness,
   sharpnessLabel,
@@ -117,8 +118,6 @@ const categoryCopy: Record<ShopCategory, { title: string; description: string }>
   blacksmith: { title: "Blacksmith", description: "Forge your knife. Cut faster. Cut better." },
 };
 
-const NOT_ENOUGH = "Not quite enough money yet.";
-
 type CardAction =
   | { kind: "buy"; label: string; onClick: () => void; disabled?: boolean }
   | { kind: "equip"; onClick: () => void }
@@ -180,10 +179,12 @@ export function Shop({
   function purchaseMessage(
     result: { ok: boolean; reason?: string },
     name: string,
+    price: number,
     unlockLevel?: number,
   ) {
     if (result.ok) return setNotice(`${name} purchased!`);
-    if (result.reason === "insufficientFunds") return setNotice(NOT_ENOUGH);
+    if (result.reason === "insufficientFunds")
+      return setNotice(notEnoughMoneyText(price, save.credits));
     if (result.reason === "notUnlocked" && unlockLevel)
       return setNotice(`${name} unlocks at Level ${unlockLevel}.`);
     setNotice(`${name} couldn't be bought right now.`);
@@ -225,7 +226,8 @@ export function Shop({
                   : {
                       kind: "buy",
                       label: "Buy",
-                      onClick: () => purchaseMessage(buyKnife(k.id), k.name, k.unlockLevel),
+                      onClick: () =>
+                        purchaseMessage(buyKnife(k.id), k.name, k.price, k.unlockLevel),
                     },
         };
       });
@@ -260,7 +262,8 @@ export function Shop({
                   : {
                       kind: "buy",
                       label: "Buy",
-                      onClick: () => purchaseMessage(buyBoard(b.id), b.name, b.unlockLevel),
+                      onClick: () =>
+                        purchaseMessage(buyBoard(b.id), b.name, b.price, b.unlockLevel),
                     },
         };
       });
@@ -284,7 +287,8 @@ export function Shop({
                 : {
                     kind: "buy",
                     label: "Hire",
-                    onClick: () => purchaseMessage(buyStaff(st.id), st.name, st.unlockLevel),
+                    onClick: () =>
+                      purchaseMessage(buyStaff(st.id), st.name, st.price, st.unlockLevel),
                   },
         };
       });
@@ -602,12 +606,13 @@ function Blacksmith({
   const levels = getKnifeUpgrades(save, knife.id);
   const condition = getKnifeSharpness(save, knife.id);
 
-  function report(result: UpgradeKnifeResult, stat: BlacksmithStat) {
+  function report(result: UpgradeKnifeResult, stat: BlacksmithStat, cost: number) {
     if (result.ok)
       setNotice(
         `${forgeCopy[stat].name} forged to level ${result.level}! Your ${knife.name} feels it on the board.`,
       );
-    else if (result.reason === "insufficientFunds") setNotice(NOT_ENOUGH);
+    else if (result.reason === "insufficientFunds")
+      setNotice(notEnoughMoneyText(cost, save.credits));
     else if (result.reason === "maxLevel")
       setNotice(`${forgeCopy[stat].name} is already mastered.`);
     else setNotice("The blacksmith can only work on a knife you own.");
@@ -711,7 +716,11 @@ function Blacksmith({
             disabled={condition >= 100 || save.credits < SHARPEN_COST}
             onClick={() => {
               const r = sharpenKnife(knife.id);
-              setNotice(r.ok ? `${knife.name} is freshly sharpened.` : NOT_ENOUGH);
+              setNotice(
+                r.ok
+                  ? `${knife.name} is freshly sharpened.`
+                  : notEnoughMoneyText(SHARPEN_COST, save.credits),
+              );
             }}
           >
             Sharpen · {formatUsd(SHARPEN_COST)}
@@ -744,10 +753,15 @@ function Blacksmith({
                   full
                   size="sm"
                   disabled={maxed || save.credits < (cost ?? Infinity)}
-                  onClick={() => report(upgradeKnife(knife.id, stat), stat)}
+                  onClick={() => report(upgradeKnife(knife.id, stat), stat, cost ?? 0)}
                 >
                   {maxed ? "Mastered" : `Upgrade · ${formatUsd(cost ?? 0)}`}
                 </KButton>
+                {!maxed && save.credits < (cost ?? 0) && (
+                  <p className="text-center font-hand text-[13px] text-walnut/65">
+                    {notEnoughMoneyText(cost ?? 0, save.credits)}
+                  </p>
+                )}
               </div>
             </Panel>
           );

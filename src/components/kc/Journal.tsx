@@ -146,7 +146,7 @@ export function EndlessService({
       <div className="relative flex h-full flex-col overflow-y-auto no-scrollbar pb-24">
         <ScreenHeader
           title="Endless Service"
-          subtitle="one order after another, for as long as you like"
+          subtitle="ongoing earnings after the campaign"
           onBack={() => go("kitchen")}
         />
 
@@ -183,9 +183,14 @@ export function EndlessService({
         <div className="flex flex-1 flex-col justify-center px-4">
           {pool.length === 0 ? (
             <Panel className="p-5 text-center">
-              <p className="font-hand text-[16px] leading-snug text-walnut/65">
-                Come back once you've unlocked a Service-style level — Chapter 10's "Chef's Service"
-                is the first.
+              <p className="text-[40px] leading-none">🔒</p>
+              <p className="mt-2 font-display text-[17px] font-black text-walnut-dark">
+                Unlocks after Level 250
+              </p>
+              <p className="mt-1 font-hand text-[16px] leading-snug text-walnut/65">
+                Endless Service is an ongoing earning mode for after the campaign: serve orders from
+                the campaign's service levels, one after another, and earn up to{" "}
+                {formatUsd(ENDLESS_DAILY_COIN_CAP)} every day.
               </p>
             </Panel>
           ) : (

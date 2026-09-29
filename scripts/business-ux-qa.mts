@@ -111,13 +111,14 @@ function playedSave(): SaveData {
   assert(JSON.stringify(REFRIGERATOR_CATALOG.map((r) => [r.id, r.price, r.capacity])) === JSON.stringify([["basic-refrigerator", 0, 40], ["commercial-refrigerator", 200000, 80], ["professional-refrigerator", 480000, 140]]), "J: refrigerators unchanged (free/40, $2,000/80, $4,800/140)");
   assert(maintenanceCostFor(59) === 15000 && maintenanceCostFor(0) === 40000 && maintenanceCostFor(100) === null, "J2: maintenance unchanged ($150 service, $400 repair)");
   const staff = Object.fromEntries(Object.entries(BUSINESS_STAFF_CATALOG).map(([k, v]) => [k, v.salary]));
-  assert(JSON.stringify(staff) === JSON.stringify({ "prep-cook": 16000, "line-cook": 18140, "head-chef": 28000, server: 15000, cleaner: 11250, manager: 24000 }), "K: staff salaries unchanged");
+  // Economy V2.5 (approved): staff are paid for one 2-hour service shift (Cleaner 1.5 h) at unchanged hourly wages.
+  assert(JSON.stringify(staff) === JSON.stringify({ "prep-cook": 4000, "line-cook": 4535, "head-chef": 7000, server: 3750, cleaner: 2813, manager: 6000 }), "K: staff salaries = hourly wage × service shift × 1.25 ($40 / $45.35 / $70 / $37.50 / $28.13 / $60)");
   const sup = Object.fromEntries(Object.entries(SUPPLIER_CONTRACT_CATALOG).map(([k, t]) => [k, [t.discount, t.minimumOrder, t.contractLength, t.cancellationFee, t.deliveryTime, t.qualityModifier]]));
   assert(JSON.stringify(sup) === JSON.stringify({ "local-market": [0.05, 5, 10, 0, 0, 0], "wholesale-supplier": [0.2, 25, 21, 12000, 1, -0.05], "premium-supplier": [0.05, 5, 14, 6000, 0, 0.15] }), "L: supplier contract terms unchanged");
   assert(Object.keys(SUPPLIER_EVENT_CATALOG).length === 6, "L2: the same 6 supplier events (none added)");
   const prices = BUSINESS_DISH_CATALOG.map((d) => defaultMenuPrice(getCampaignRecipe(d.sourceRecipeId)!));
   assert(BUSINESS_DISH_CATALOG.length === 35 && prices.reduce((a, b) => a + b, 0) === 56218 && prices[0] === 1000 && Math.max(...prices) === 3093, `M: 35 dishes, default menu prices unchanged (sum ${prices.reduce((a, b) => a + b, 0)})`);
-  assert(repeatedWarningFineAmount() === 27500 && failFineAmount() === 52500, "N: inspection fines unchanged ($275 small, $525 large)");
+  assert(repeatedWarningFineAmount() === 5500 && failFineAmount() === 10500, "N: inspection fines at the V2.5 scale ($55 small, $105 large — Chicago's schedule ÷ 5)");
 }
 
 // ===== O–P: actions still wired to the existing mechanics =====
@@ -146,7 +147,7 @@ function playedSave(): SaveData {
 
 // ===== T–V: one wallet, no new save fields =====
 {
-  assert(JSON.stringify(Object.keys(DEFAULT_SAVE)) === JSON.stringify(["version", "credits", "equippedKnifeId", "equippedBoardId", "ownedKnifeIds", "ownedBoardIds", "ownedKitchenUpgradeIds", "equippedKitchenUpgradeId", "ownedKitchenInvestmentIds", "knifeSharpness", "knifeUpgrades", "ownedStaffIds", "selectedSupplierId", "economyLedger", "recipeProgress", "settings", "levelProgress", "story", "dailyOrder", "endless", "business"]), "U/V: no new top-level save fields");
+  assert(JSON.stringify(Object.keys(DEFAULT_SAVE)) === JSON.stringify(["version", "credits", "equippedKnifeId", "equippedBoardId", "ownedKnifeIds", "ownedBoardIds", "ownedKitchenUpgradeIds", "equippedKitchenUpgradeId", "economy", "ownedKitchenInvestmentIds", "knifeSharpness", "knifeUpgrades", "ownedStaffIds", "selectedSupplierId", "economyLedger", "recipeProgress", "settings", "levelProgress", "story", "dailyOrder", "endless", "business"]), "U/V: no new top-level save fields");
   assert(JSON.stringify(Object.keys(DEFAULT_SAVE.business)) === JSON.stringify(["calendar", "inventory", "refrigerator", "spoilage", "menu", "popularity", "supplierContract", "staff", "equipmentCondition", "inspectionFines", "finance", "menuActivation"]), "V2: no new Business save fields");
   assert(/<BusinessCash cents=\{save\.credits\}/.test(dash) && !/coins?\b/i.test(code(dash).replace(/reward\.coins/g, "")), "T: Business shows the one shared wallet (save.credits), no coin/second currency");
 }

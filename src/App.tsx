@@ -210,16 +210,29 @@ function LoadingScreen() {
 type MilestoneNotice = { id: string; label: string; reward: number; legacy: boolean };
 function milestoneNoticeFor(granted: readonly MilestoneDefinition[]): MilestoneNotice {
   const reward = granted.reduce((sum, m) => sum + m.reward, 0);
-  const legacy = granted.some((m) => m.id === FAMILY_LEGACY_ID);
-  if (granted.length === 1) return { id: granted[0]!.id, label: granted[0]!.label, reward, legacy };
-  const others = granted.length - (legacy ? 1 : 0);
+  const finale = granted.find((m) => m.id === FAMILY_LEGACY_ID);
+  const id = granted.map((m) => m.id).join("+");
+  if (finale) {
+    // Level 250: CAMPAIGN COMPLETE · 250 / 250 · FINAL REWARD · Endless Service unlocked.
+    const others = reward - finale.reward;
+    return {
+      id,
+      label: `250 / 250 · Final Reward ${formatUsdChange(finale.reward)}${
+        others > 0 ? ` (+ milestones ${formatUsdChange(others)})` : ""
+      } · Endless Service unlocked`,
+      reward,
+      legacy: true,
+    };
+  }
+  if (granted.length === 1) {
+    const only = granted[0]!;
+    return { id, label: `${only.label} · ${formatUsdChange(only.reward)}`, reward, legacy: false };
+  }
   return {
-    id: granted.map((m) => m.id).join("+"),
-    label: legacy
-      ? `Level 250 complete + ${others} milestone${others === 1 ? "" : "s"}`
-      : `${granted.length} milestones reached`,
+    id,
+    label: `${granted.length} milestones reached · ${formatUsdChange(reward)}`,
     reward,
-    legacy,
+    legacy: false,
   };
 }
 
@@ -424,8 +437,11 @@ export function App() {
         if (isFreshSave) setShowIntro(true);
         else synced = markIntroDone(synced);
       }
-      // Economy V2.5 — milestones an existing save had already reached are
-      // paid once, now (never again: the ledger records each payment).
+      // Economy V2.5 — a milestone reached but not yet claimed (e.g. the
+      // game closed between completing Level 250 and saving its reward) is
+      // paid once, now. Saves from before V2.5 had their reached milestones
+      // claimed without payment by the one-time migration in
+      // SaveManager.load (economyMigration.ts), so they get no windfall.
       const loadGrant = grantEarnedMilestoneRewards(synced);
       synced = loadGrant.save;
       if (loadGrant.granted.length > 0)
@@ -541,8 +557,11 @@ export function App() {
 
   /** Economy V2.5 — Restaurant Development: build the next kitchen tier (KitchenUpgradeManager.purchaseKitchenUpgrade), recorded as "kitchen-investment-purchase". */
   function buildKitchenUpgrade(id: string) {
-    if (!save) return { ok: false as const, reason: "unknownUpgrade" as const };
-    const result = purchaseKitchenUpgrade(save, id);
+    // The latest persisted save (not the render closure): a double tap
+    // before re-render sees the tier already built and buys nothing.
+    const current = saveRef.current;
+    if (!current) return { ok: false as const, reason: "unknownUpgrade" as const };
+    const result = purchaseKitchenUpgrade(current, id);
     if (result.ok) {
       persist(appendLedgerEntry(result.save, "kitchen-investment-purchase", -result.price, id));
     }
@@ -1965,8 +1984,8 @@ export function App() {
       {milestoneNoticeQueue[0] && !storyEvent && !levelRewardNotice && !showIntro ? (
         <MilestoneBanner
           key={milestoneNoticeQueue[0].id}
-          kicker={milestoneNoticeQueue[0].legacy ? "🏆 Family Legacy" : "Milestone reached"}
-          line={`${milestoneNoticeQueue[0].label} · ${formatUsdChange(milestoneNoticeQueue[0].reward)}`}
+          kicker={milestoneNoticeQueue[0].legacy ? "🏆 Campaign Complete" : "Milestone reached"}
+          line={milestoneNoticeQueue[0].label}
           onDismiss={() => setMilestoneNoticeQueue((q) => q.slice(1))}
         />
       ) : null}

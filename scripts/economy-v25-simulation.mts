@@ -20,7 +20,11 @@
 import { pathToFileURL } from "node:url";
 import { DEFAULT_SAVE, type SaveData } from "../src/game/SaveManager.ts";
 import { LEVELS } from "../src/game/levels/levelDefinitions.ts";
-import { DEFAULT_LEVEL_PROGRESS, completeLevel } from "../src/game/levels/LevelManager.ts";
+import {
+  DEFAULT_LEVEL_PROGRESS,
+  completeLevel,
+  isCompleted,
+} from "../src/game/levels/LevelManager.ts";
 import { appendLedgerEntry } from "../src/game/economy/EconomyLedger.ts";
 import type { LedgerCategory } from "../src/game/economy/ledgerTypes.ts";
 import { KNIFE_CATALOG } from "../src/game/knives/knifeDefinitions.ts";
@@ -48,6 +52,40 @@ import {
 import { getCampaignRecipe } from "../src/game/recipes/campaignRecipes.ts";
 import { getRecipe } from "../src/game/recipes/recipeDefinitions.ts";
 import { endBusinessDay } from "../src/game/business/BusinessDayManager.ts";
+import { hireStaff } from "../src/game/business/BusinessStaffManager.ts";
+import { purchaseIngredient } from "../src/game/business/BusinessInventoryManager.ts";
+import {
+  advanceBusinessServiceSession,
+  businessCustomersToday,
+  businessOrderAvailability,
+  createBusinessServiceSession,
+  recordBusinessServiceComponents,
+  serveBusinessOrder,
+} from "../src/game/business/BusinessServiceManager.ts";
+import {
+  businessDishRequirements,
+  businessDishForRecipeId,
+} from "../src/game/business/businessServiceCatalog.ts";
+import {
+  makeSeededRand,
+  businessServiceSeedFor,
+} from "../src/game/business/businessDeterministicRandom.ts";
+import { usableQuantity } from "../src/game/business/perishability.ts";
+import { getAvailableStorageCapacity } from "../src/game/business/RefrigeratorManager.ts";
+import {
+  eventForDay,
+  maxPurchaseQuantityFor,
+} from "../src/game/business/businessSupplierEvents.ts";
+import { setDishActive } from "../src/game/business/businessMenuActivation.ts";
+import { BUSINESS_DISH_CATALOG } from "../src/game/business/businessDishCatalog.ts";
+import {
+  recordInventoryPurchase,
+  recordMaintenanceCost,
+} from "../src/game/business/BusinessFinanceManager.ts";
+import {
+  maintenanceStatusFor,
+  performRefrigeratorMaintenance,
+} from "../src/game/business/businessMaintenance.ts";
 import { grantEarnedMilestoneRewards } from "../src/game/progression/milestoneRewards.ts";
 import { formatUsd } from "../src/game/money.ts";
 import { simulateCampaign, type LevelResult } from "./economy-v2-campaign-simulation.mts";
@@ -70,6 +108,8 @@ export type RunReport = {
   missing: string[];
   save: SaveData;
   cashAtLevel: number[];
+  /** Level at which each knife/board/staff/kitchen tier was bought (buyEverything runs). */
+  boughtAtLevel: Record<string, number>;
 };
 
 /** Mirrors App.tsx: the manager returns a new save; App records the ledger entry. */
@@ -218,8 +258,12 @@ function buyAttempts(): BuyAttempt[] {
   return attempts;
 }
 
-function buyEverythingAffordable(run: Tracker, save: SaveData): SaveData {
-  const attempts = buyAttempts();
+function buyEverythingAffordable(
+  run: Tracker,
+  save: SaveData,
+  filter: (label: string) => boolean = () => true,
+): SaveData {
+  const attempts = buyAttempts().filter((a) => filter(a.label));
   for (let guard = 0; guard < 500; guard++) {
     let bought = false;
     for (const a of attempts) {
@@ -240,6 +284,108 @@ function payMilestones(run: Tracker, save: SaveData): SaveData {
   if (g.granted.length)
     run.check(`milestones ${g.granted.map((m) => m.id).join(",")}`, save, g.save);
   return g.save;
+}
+
+/** The six-dish menu a simulated Business player runs (everything else off the menu). */
+export const BUSINESS_FOCUS_MENU = [
+  "biz-garden-salad",
+  "biz-tomato-bruschetta",
+  "biz-garlic-bread",
+  "biz-potato-curry",
+  "biz-spinach-curry",
+  "biz-greek-lemon-chicken",
+];
+
+export function focusBusinessMenu(save: SaveData): SaveData {
+  for (const dish of BUSINESS_DISH_CATALOG) {
+    if (BUSINESS_FOCUS_MENU.includes(dish.id)) continue;
+    const r = setDishActive(save, dish.id, false);
+    if (r.ok) save = r.save;
+  }
+  return save;
+}
+
+function needTotals(dishId: string): Array<[string, number]> {
+  const dish = BUSINESS_DISH_CATALOG.find((d) => d.id === dishId)!;
+  const m = new Map<string, number>();
+  for (const r of businessDishRequirements(dish))
+    m.set(r.ingredientId, (m.get(r.ingredientId) ?? 0) + r.quantity);
+  return [...m];
+}
+
+/**
+ * One real Business day played the way a sensible player does: repair the
+ * fridge when it stops being operational, serve today's customers (the
+ * popularity-driven target), buying just the stock each order needs, then
+ * close the day (payroll + inspection fine). Every movement is recorded
+ * like App.tsx records it. Returns the new save and the customers served.
+ */
+export function playBusinessDay(save: SaveData): { save: SaveData; served: number } {
+  if (
+    maintenanceStatusFor(save.business.equipmentCondition.refrigeratorCondition) !== "OPERATIONAL"
+  ) {
+    const r = performRefrigeratorMaintenance(save);
+    if (r.ok)
+      save = recordMaintenanceCost(
+        appendLedgerEntry(r.save, "refrigerator-maintenance", -r.cost),
+        r.cost,
+      );
+  }
+  const day = save.business.calendar.businessDay;
+  const rand = makeSeededRand(businessServiceSeedFor(day));
+  let session = createBusinessServiceSession(rand, save.business.menuActivation);
+  let served = 0;
+  const target = businessCustomersToday(save).target;
+  while (served < target && session.current) {
+    const dish = businessDishForRecipeId(session.current.recipe.id)!;
+    if (!businessOrderAvailability(save, dish).available) {
+      const cap = maxPurchaseQuantityFor(eventForDay(day));
+      for (const [id, need] of needTotals(dish.id)) {
+        const have = usableQuantity(save.business.inventory, id as never, day);
+        if (have >= need) continue;
+        let qty = Math.max(3, Math.ceil(need - have));
+        if (cap !== undefined) qty = Math.min(qty, cap);
+        qty = Math.min(
+          qty,
+          Math.floor(
+            getAvailableStorageCapacity(
+              save.business.inventory,
+              save.business.refrigerator.refrigeratorId,
+            ),
+          ),
+        );
+        if (qty <= 0) continue;
+        const r = purchaseIngredient(save, id, qty);
+        if (r.ok)
+          save = recordInventoryPurchase(
+            appendLedgerEntry(r.save, "inventory-purchase", -r.totalCost, id),
+            r.totalCost,
+          );
+      }
+      if (!businessOrderAvailability(save, dish).available) break;
+    }
+    const result = serveBusinessOrder(recordBusinessServiceComponents(session, 80), save, rand);
+    if (!result) break;
+    save = appendLedgerEntry(result.save, "business-revenue", result.amountCharged, result.dish.id);
+    served++;
+    session = advanceBusinessServiceSession(result.session, rand, save.business.menuActivation);
+  }
+  const end = endBusinessDay(save);
+  save = appendLedgerEntry(
+    appendLedgerEntry(end.save, "business-staff-salary", -end.payrollPaid),
+    "inspection-fine",
+    -end.inspectionFine.finePaid,
+  );
+  return { save, served };
+}
+
+/** Hires Business staff (no wallet movement at hiring — wages are paid at each day's close). */
+export function hireBusinessStaff(save: SaveData, roles: readonly string[]): SaveData {
+  for (const role of roles) {
+    const r = hireStaff(save, role as never);
+    if (r.ok) save = r.save;
+  }
+  return save;
 }
 
 /** What a finished player would still need to buy (empty = owns everything). */
@@ -272,6 +418,14 @@ export type CampaignOptions = {
   /** Close one real Business day after Level 10 (the "first Business day" milestone). */
   runBusinessDay: boolean;
   startCredits?: number;
+  /** Continue an existing save (already loaded + migrated) instead of a new one. */
+  startSave?: SaveData;
+  /** Only buy what this accepts (labels as in `buyAttempts`: "knife x", "kitchen y", "blacksmith", …). */
+  buyFilter?: (label: string) => boolean;
+  /** From Level 10 on, play one full Business day (playBusinessDay) after every Nth level. */
+  businessEvery?: number;
+  /** Business staff hired before the first played Business day. */
+  businessStaff?: readonly string[];
 };
 
 /**
@@ -305,18 +459,24 @@ export function runCampaign(opts: CampaignOptions): RunReport {
   };
 
   const run = new Tracker();
-  const start = opts.startCredits ?? DEFAULT_SAVE.credits;
-  let save: SaveData = {
+  let save: SaveData = opts.startSave ?? {
     ...DEFAULT_SAVE,
-    credits: start,
+    credits: opts.startCredits ?? DEFAULT_SAVE.credits,
     economyLedger: [],
     selectedSupplierId: opts.supplierId ?? DEFAULT_SAVE.selectedSupplierId,
   };
+  const start = save.credits;
   run.minCash = start;
   const cashAtLevel: number[] = [];
-  let progress = DEFAULT_LEVEL_PROGRESS;
+  const boughtAtLevel: Record<string, number> = {};
+  let progress = save.levelProgress ?? DEFAULT_LEVEL_PROGRESS;
+  let businessStarted = false;
 
   LEVELS.forEach((level, i) => {
+    if (isCompleted(level.id, progress)) {
+      cashAtLevel.push(save.credits);
+      return;
+    }
     const result = runFor(save.ownedStaffIds)[i]!;
     // Settlement income and the completion reward, recorded like App.tsx.
     const settlement = result.netResult - result.levelCompletionReward;
@@ -347,7 +507,28 @@ export function runCampaign(opts: CampaignOptions): RunReport {
       run.check("business day", save, next2);
       save = payMilestones(run, next2);
     }
-    if (opts.buyEverything) save = buyEverythingAffordable(run, save);
+    if (opts.businessEvery && i >= 9 && (i + 1) % opts.businessEvery === 0) {
+      if (!businessStarted) {
+        save = hireBusinessStaff(focusBusinessMenu(save), opts.businessStaff ?? []);
+        businessStarted = true;
+      }
+      const before = save;
+      save = playBusinessDay(save).save;
+      run.check(`business day after ${level.id}`, before, save);
+      save = payMilestones(run, save);
+    }
+    if (opts.buyEverything) {
+      const owned = (s: SaveData) =>
+        new Set([
+          ...s.ownedKnifeIds.map((id) => `knife ${id}`),
+          ...s.ownedBoardIds.map((id) => `board ${id}`),
+          ...s.ownedStaffIds.map((id) => `staff ${id}`),
+          ...s.ownedKitchenUpgradeIds.map((id) => `kitchen ${id}`),
+        ]);
+      const had = owned(save);
+      save = buyEverythingAffordable(run, save, opts.buyFilter);
+      for (const label of owned(save)) if (!had.has(label)) boughtAtLevel[label] = i + 1;
+    }
     cashAtLevel.push(save.credits);
   });
 
@@ -366,6 +547,7 @@ export function runCampaign(opts: CampaignOptions): RunReport {
     missing,
     save,
     cashAtLevel,
+    boughtAtLevel,
   };
 }
 

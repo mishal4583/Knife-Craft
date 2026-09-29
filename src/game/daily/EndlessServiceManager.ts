@@ -10,9 +10,10 @@
  * grading — every session is an ordinary Preparation run.
  *
  * THE ECONOMY RULE this file exists to enforce: a daily coin CAP.
- * Before the cap, each completion pays that level's own normal
- * `reward.coins` (the SAME designed reward curve every campaign level
- * already uses — never a new number invented for this mode). Once the
+ * Before the cap, each completion pays that level's own paid reward
+ * (levelRewards.ts `paidLevelReward` — the SAME reward curve every
+ * campaign level uses, never a new number invented for this mode).
+ * Economy V2.5: it unlocks after Level 250 (`isEndlessUnlocked`). Once the
  * running daily total would meet or exceed the cap, coin payouts stop
  * entirely for the rest of that calendar day — never negative, never
  * partial-then-more, just 0. The mode itself never stops: a completion
@@ -22,7 +23,7 @@
  * out in once coins are capped, and the brief is explicit that inventing
  * one is out of scope.
  */
-import { getLevels, isUnlocked } from "../levels/LevelManager";
+import { getLevels, isCompleted, isUnlocked } from "../levels/LevelManager";
 import type { LevelProgress } from "../levels/LevelManager";
 import type { LevelDefinition } from "../levels/levelTypes";
 import type { EndlessProgress } from "../SaveManager";
@@ -38,8 +39,18 @@ import { dollars } from "../money";
  */
 export const ENDLESS_DAILY_COIN_CAP = dollars(600);
 
-/** Every SERVICE-type level the player has actually unlocked, in campaign order — the pool Endless Service draws from. Empty until Level 91 (the first SERVICE-type level) is reached; the UI shows a plain "come back once you've unlocked a Service level" message rather than a fake empty mode. */
+/**
+ * Economy V2.5 — Endless Service is the post-campaign earning mode: it
+ * unlocks once all 250 campaign levels are complete, so it can never be
+ * used to fund the campaign itself.
+ */
+export function isEndlessUnlocked(progress: LevelProgress): boolean {
+  return getLevels().every((l) => isCompleted(l.id, progress));
+}
+
+/** Every SERVICE-type level, in campaign order — the pool Endless Service draws from once the campaign is complete (empty before; the UI then explains that it unlocks after Level 250). Payouts rise through the rotation, since later service levels pay more. */
 export function endlessPool(progress: LevelProgress): LevelDefinition[] {
+  if (!isEndlessUnlocked(progress)) return [];
   return getLevels().filter((l) => l.type === "SERVICE" && isUnlocked(l, progress));
 }
 

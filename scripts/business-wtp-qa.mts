@@ -259,7 +259,7 @@ for (const score of [0, 50, 100]) {
   assert(JSON.stringify(users.sort()) === JSON.stringify(["game/business/BusinessServiceManager.ts", "game/business/DemandManager.ts"]), `P3: willingnessToPayMultiplierFor is defined once and called from exactly one place (${users.join(", ")})`);
   const campaign = { ...stocked(100), levelProgress: DEFAULT_SAVE.levelProgress, recipeProgress: { "camp-garlic-bread": { best: 91 } } as never };
   const after = serveViaApp(campaign)!;
-  const nonBusiness = (x: SaveData) => JSON.stringify(Object.fromEntries(Object.entries(x).filter(([k]) => !["business", "credits", "economyLedger"].includes(k))));
+  const nonBusiness = (x: SaveData) => JSON.stringify(Object.fromEntries(Object.entries({ ...x, economy: { ...x.economy, lifetime: {} } }).filter(([k]) => !["business", "credits", "economyLedger"].includes(k))));
   assert(nonBusiness(after.save) === nonBusiness(campaign), "P4: a WTP serve changes no Campaign field");
 }
 

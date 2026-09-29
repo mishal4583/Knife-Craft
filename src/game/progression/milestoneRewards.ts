@@ -1,24 +1,25 @@
 /**
  * MILESTONE REWARDS — Economy V2.5. The 22 restaurant milestones the
- * Progress screen already tracked (all derived from the save: levels
- * completed, knives owned, kitchen tiers built, the first Blacksmith
- * upgrade, the first staff hire, the first Business day) now each pay a
- * one-time reward. The last one, finishing Level 250, is the FAMILY
- * LEGACY: $50,000.
+ * Progress screen tracks (all derived from the save: levels completed,
+ * knives owned, kitchen tiers built, the first Blacksmith upgrade, the
+ * first staff hire, the first Business day) each pay a one-time reward.
+ * The last one, finishing Level 250, is the campaign's FINAL REWARD
+ * ($50,000 — ledger category "family-legacy"), paid in full (the level
+ * reward schedule never scales it).
  *
- * Source of truth = the ledger. A milestone has been paid exactly when the
- * ledger holds a "milestone-reward" (or, for the finale, "family-legacy")
- * entry whose description is that milestone's id. No extra save field; the
- * ledger keeps these entries forever (EconomyLedger never trims them — at
- * most 22 exist), so reloading, replaying Level 250, recomputing progress
- * or any number of calls can never pay one twice.
+ * Completed vs claimed: "reached" is derived from the save every time;
+ * "claimed" is stored — `SaveData.economy.claimedMilestoneIds` (economy/
+ * economyState.ts). A milestone is paid only when reached AND not claimed,
+ * and paying it claims it in the same step, alongside a ledger entry
+ * (description = milestone id; EconomyLedger never trims these). A paid
+ * ledger entry also counts as claimed, so either record alone stops a
+ * second payment — reloading, replaying Level 250, recomputing progress or
+ * any number of calls can never pay one twice.
  *
- * `grantEarnedMilestoneRewards` is pure and idempotent: it pays every
- * reached-but-unpaid milestone (credits + one ledger entry each) and
- * returns the save unchanged when there is nothing to pay. App.tsx runs it
- * on every persist, so a milestone is paid the moment it is reached — and
- * an older save that had already reached some is paid for them once, on
- * its next save.
+ * Old saves: milestones a save had already reached under the old economy
+ * are claimed WITHOUT payment by its one-time migration
+ * (economyMigration.ts, `waivedMilestoneIds`) — no retroactive windfall.
+ * `grantEarnedMilestoneRewards` refuses to run before that migration.
  */
 import type { SaveData } from "../SaveManager";
 import { dollars } from "../money";
@@ -28,6 +29,7 @@ import { KITCHEN_UPGRADE_CATALOG } from "../kitchen/kitchenUpgradeDefinitions";
 import { KNIFE_CATALOG } from "../knives/knifeDefinitions";
 import { getKnifeUpgrades, knifeLevel } from "../knives/blacksmith";
 import { appendLedgerEntry } from "../economy/EconomyLedger";
+import { ECONOMY_VERSION } from "../economy/economyState";
 import type { LedgerCategory } from "../economy/ledgerTypes";
 
 /** The ledger category of every ordinary milestone reward. */
@@ -159,7 +161,7 @@ export const MILESTONES: readonly MilestoneDefinition[] = [
   },
   {
     id: FAMILY_LEGACY_ID,
-    label: `Campaign complete (${TOTAL_LEVELS} levels) — Family Legacy`,
+    label: `Campaign complete (${TOTAL_LEVELS} / ${TOTAL_LEVELS}) — Final Reward`,
     reward: FAMILY_LEGACY_REWARD,
     atLevel: TOTAL_LEVELS,
     done: (f) => f.completed >= f.totalLevels,
@@ -205,16 +207,33 @@ export function paidMilestoneIds(save: SaveData): Set<string> {
   );
 }
 
-export type MilestoneStatus = MilestoneDefinition & { reached: boolean; paid: boolean };
+export type MilestoneStatus = MilestoneDefinition & {
+  /** The milestone is done (derived from the save). */
+  reached: boolean;
+  /** Its reward is settled — paid, or waived by the V2.5 migration. Never paid again. */
+  claimed: boolean;
+  /** The ledger shows it paid. */
+  paid: boolean;
+  /** Reached under the old economy, before rewards existed — settled without payment. */
+  waived: boolean;
+};
 
-/** Every milestone with whether it is reached and whether its reward has been paid. */
+/** Every milestone: reached (from the save) and claimed/paid/waived (from economy + ledger). */
 export function milestoneStatuses(save: SaveData): MilestoneStatus[] {
   const facts = factsFor(save);
   const paid = paidMilestoneIds(save);
-  return MILESTONES.map((m) => ({ ...m, reached: m.done(facts), paid: paid.has(m.id) }));
+  const claimed = new Set(save.economy?.claimedMilestoneIds ?? []);
+  const waived = new Set(save.economy?.waivedMilestoneIds ?? []);
+  return MILESTONES.map((m) => ({
+    ...m,
+    reached: m.done(facts),
+    claimed: claimed.has(m.id) || paid.has(m.id),
+    paid: paid.has(m.id),
+    waived: waived.has(m.id),
+  }));
 }
 
-/** Total milestone rewards already paid (ledger-exact — these entries are never trimmed). */
+/** Milestone rewards and the Final Reward actually paid (the never-trimmed ledger entries). */
 export function milestoneRewardsPaid(save: SaveData): { milestones: number; familyLegacy: number } {
   let milestones = 0;
   let familyLegacy = 0;
@@ -226,16 +245,19 @@ export function milestoneRewardsPaid(save: SaveData): { milestones: number; fami
 }
 
 /**
- * Pays every reached, unpaid milestone: credits rise by exactly its reward
- * and one ledger entry records it. Idempotent — calling it again (or on a
- * reload) pays nothing more. Returns the same `save` object when nothing
- * is due.
+ * Pays every reached milestone that isn't claimed yet: credits rise by
+ * exactly its reward, one ledger entry records it, and it is marked
+ * claimed. Idempotent — calling it again (or on any reload) pays nothing
+ * more. Never runs on a save that hasn't had its V2.5 migration yet (that
+ * migration decides what an old save had already reached — see
+ * economyMigration.ts). Returns the same `save` when nothing is due.
  */
 export function grantEarnedMilestoneRewards(save: SaveData): {
   save: SaveData;
   granted: MilestoneDefinition[];
 } {
-  const due = milestoneStatuses(save).filter((m) => m.reached && !m.paid);
+  if ((save.economy?.version ?? 0) < ECONOMY_VERSION) return { save, granted: [] };
+  const due = milestoneStatuses(save).filter((m) => m.reached && !m.claimed);
   if (due.length === 0) return { save, granted: [] };
   let next = save;
   for (const m of due) {
@@ -245,6 +267,13 @@ export function grantEarnedMilestoneRewards(save: SaveData): {
       m.reward,
       m.id,
     );
+    next = {
+      ...next,
+      economy: {
+        ...next.economy,
+        claimedMilestoneIds: [...next.economy.claimedMilestoneIds, m.id],
+      },
+    };
   }
   return { save: next, granted: due };
 }

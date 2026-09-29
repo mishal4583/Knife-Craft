@@ -8,6 +8,12 @@
  * shape so a save written on one can still be read after a platform
  * switch (e.g. testing locally, then re-testing inside YouTube).
  */
+import { migrateEconomy } from "./progression/economyMigration";
+import {
+  DEFAULT_ECONOMY_STATE,
+  LEGACY_ECONOMY_STATE,
+  type EconomyState,
+} from "./economy/economyState";
 import { loadCloudSave, platformReady, saveCloudSave } from "./PlayablesSDK";
 import { DEFAULT_LEVEL_PROGRESS, type LevelProgress } from "./levels/LevelManager";
 import { DEFAULT_SUPPLIER_ID } from "./economy/supplierDefinitions";
@@ -41,13 +47,20 @@ export type SaveData = {
    * Phase 12B — kitchen upgrades (the six kitchen background images) are
    * a real owned/equipped collection, mirroring ownedBoardIds/
    * equippedBoardId in shape. Fresh save owns/equips "humble-kitchen"
-   * only. Phase 14 — ownership is granted automatically by reaching a
-   * tier's unlock level (KitchenUpgradeManager.syncKitchenUpgradeOwnership,
-   * re-run on every load and every save mutation), never purchased —
-   * only the equipped tier is a real player choice. See src/game/kitchen/.
+   * only. Economy V2.5 — every later tier is bought (Restaurant
+   * Development, KitchenUpgradeManager.purchaseKitchenUpgrade); saves
+   * from before V2.5 keep the tiers their level had granted for free
+   * (migrateKitchenDevelopment). See src/game/kitchen/.
    */
   ownedKitchenUpgradeIds: string[];
   equippedKitchenUpgradeId: string;
+  /**
+   * Economy V2.5 — migration version, milestone claims and exact lifetime
+   * ledger totals (economy/economyState.ts). A save written before V2.5
+   * has no `economy` and loads as LEGACY_ECONOMY_STATE (version 0), which
+   * progression/economyMigration.ts migrates exactly once.
+   */
+  economy: EconomyState;
   /**
    * Economy V2 Phase 4 — Kitchen Investments (src/game/kitchen/
    * kitchenInvestmentDefinitions.ts): a SEPARATE, real shop-purchased
@@ -224,6 +237,12 @@ export const DEFAULT_SAVE: SaveData = {
   ownedBoardIds: ["walnut"],
   ownedKitchenUpgradeIds: ["humble-kitchen"],
   equippedKitchenUpgradeId: "humble-kitchen",
+  economy: {
+    ...DEFAULT_ECONOMY_STATE,
+    claimedMilestoneIds: [],
+    waivedMilestoneIds: [],
+    lifetime: {},
+  },
   ownedKitchenInvestmentIds: [],
   knifeSharpness: {},
   knifeUpgrades: {},
@@ -302,6 +321,11 @@ class SaveManagerImpl {
       const merged: SaveData = {
         ...DEFAULT_SAVE,
         ...partial,
+        // Economy V2.5 — a save without `economy` predates V2.5: version 0,
+        // migrated exactly once below (never the fresh-save default).
+        economy: partial.economy
+          ? { ...DEFAULT_ECONOMY_STATE, ...partial.economy }
+          : { ...LEGACY_ECONOMY_STATE, lifetime: {} },
         business: {
           ...DEFAULT_SAVE.business,
           ...partial.business,
@@ -316,7 +340,19 @@ class SaveManagerImpl {
       };
       // Version-1 saves stored Campaign money in whole units that now mean
       // dollars; convert them to the wallet's cent unit exactly once.
-      this.cache = migrateKitchenDevelopment(migrateMoneyToUsd(merged));
+      // Economy V2.5 — order matters: USD cents, then the kitchen tiers an
+      // old save had earned, then the one-time economy migration (which
+      // needs to know whether the save predates V2.5 — its stored version).
+      const savedBeforeV25 = merged.version < KITCHEN_DEVELOPMENT_SAVE_VERSION;
+      this.cache = migrateEconomy(
+        migrateKitchenDevelopment(migrateMoneyToUsd(merged)),
+        savedBeforeV25,
+      );
+      // The economy migration is written back at once, so it runs once —
+      // not again on every load until the player's next save. (It is also
+      // idempotent on its own: re-migrating the same old save pays nothing.)
+      if (this.cache.economy.version !== merged.economy.version)
+        void this.save(this.cache).catch(() => {});
     } catch {
       this.cache = { ...DEFAULT_SAVE };
     }

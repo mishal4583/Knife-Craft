@@ -226,7 +226,7 @@ for (const score of [0, 50, 100]) {
   const start = { ...saladOnly(50), levelProgress: DEFAULT_SAVE.levelProgress, recipeProgress: { "camp-garlic-bread": { best: 91 } } as never };
   const day = playDay(start);
   const closed = endBusinessDay(day.save).save;
-  const nonBusiness = (x: SaveData) => JSON.stringify(Object.fromEntries(Object.entries(x).filter(([k]) => !["business", "credits", "economyLedger"].includes(k))));
+  const nonBusiness = (x: SaveData) => JSON.stringify(Object.fromEntries(Object.entries({ ...x, economy: { ...x.economy, lifetime: {} } }).filter(([k]) => !["business", "credits", "economyLedger"].includes(k))));
   assert(nonBusiness(day.save) === nonBusiness(start) && nonBusiness(closed) === nonBusiness(start), "I: a full Business Day (to the customer limit) and its close change no Campaign field");
   for (const f of ["src/game/service/ServiceManager.ts", "src/game/service/CustomerOrderManager.ts", "src/game/economy/EconomySettlement.ts", "src/game/recipes/recipePay.ts"]) {
     assert(!/orderFrequency|BASE_CUSTOMERS_PER_DAY|businessCustomersToday/.test(read(f)), `I2: ${f} has no order-frequency reference — Campaign/shared order logic unchanged`);

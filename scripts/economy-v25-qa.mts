@@ -54,30 +54,8 @@ import { cancelContract, signContract } from "../src/game/business/BusinessSuppl
 import { hireStaff } from "../src/game/business/BusinessStaffManager.ts";
 import { ALL_STAFF_ROLES, dailyPayroll } from "../src/game/business/businessStaff.ts";
 import { endBusinessDay } from "../src/game/business/BusinessDayManager.ts";
-import {
-  advanceBusinessServiceSession,
-  businessOrderAvailability,
-  createBusinessServiceSession,
-  recordBusinessServiceComponents,
-  serveBusinessOrder,
-} from "../src/game/business/BusinessServiceManager.ts";
-import {
-  businessDishRequirements,
-  businessDishForRecipeId,
-} from "../src/game/business/businessServiceCatalog.ts";
-import {
-  makeSeededRand,
-  businessServiceSeedFor,
-} from "../src/game/business/businessDeterministicRandom.ts";
-import { usableQuantity } from "../src/game/business/perishability.ts";
-import { getAvailableStorageCapacity } from "../src/game/business/RefrigeratorManager.ts";
-import {
-  eventForDay,
-  maxPurchaseQuantityFor,
-} from "../src/game/business/businessSupplierEvents.ts";
-import { setDishActive } from "../src/game/business/businessMenuActivation.ts";
-import { BUSINESS_DISH_CATALOG } from "../src/game/business/businessDishCatalog.ts";
-import { recordInventoryPurchase } from "../src/game/business/BusinessFinanceManager.ts";
+import { migrateEconomy } from "../src/game/progression/economyMigration.ts";
+import { LEGACY_ECONOMY_STATE } from "../src/game/economy/economyState.ts";
 import {
   FAMILY_LEGACY_ID,
   FAMILY_LEGACY_REWARD,
@@ -103,7 +81,13 @@ import {
   claimDaily,
   hasClaimedToday,
 } from "../src/game/daily/DailyOrderManager.ts";
-import { fmt, runCampaign, type RunReport } from "./economy-v25-simulation.mts";
+import {
+  fmt,
+  focusBusinessMenu,
+  playBusinessDay,
+  runCampaign,
+  type RunReport,
+} from "./economy-v25-simulation.mts";
 
 let failures = 0;
 function assert(cond: unknown, msg: string) {
@@ -337,13 +321,20 @@ console.log("C. Family Legacy + milestones");
     new Set(milestoneIds).size === milestoneIds.length,
     "C7 (8): each milestone reward appears once",
   );
-  // An existing (pre-V2.5) save at Level 250 with no legacy entry gets it exactly once.
-  const oldFinished = migrateKitchenDevelopment({ ...completedSave(250), version: 2 });
+  // An existing (pre-V2.5) save that had already finished Level 250 finished it before the
+  // Final Reward existed: the one-time economy migration marks it claimed (waived) — no
+  // retroactive $50,000 windfall — and nothing is paid on later loads either.
+  const oldFinished = migrateEconomy(
+    migrateKitchenDevelopment({ ...completedSave(250), version: 2, economy: LEGACY_ECONOMY_STATE }),
+    true,
+  );
   const oldGrant = grantEarnedMilestoneRewards(oldFinished);
   assert(
-    legacyEntries(oldGrant.save).length === 1 &&
-      grantEarnedMilestoneRewards(oldGrant.save).granted.length === 0,
-    "C8: an older save that had already finished Level 250 receives the Family Legacy once, never again",
+    legacyEntries(oldGrant.save).length === 0 &&
+      oldGrant.granted.length === 0 &&
+      oldFinished.economy.waivedMilestoneIds.includes(FAMILY_LEGACY_ID) &&
+      oldGrant.save.credits === completedSave(250).credits,
+    "C8: an older save that had already finished Level 250 gets no retroactive Final Reward (waived by the one-time migration), never later either",
   );
   assert(
     MILESTONES.filter((m) => m.id === FAMILY_LEGACY_ID).length === 1 &&
@@ -454,21 +445,6 @@ console.log("E. Poor player and $0 player");
 
 // ========== F. Business ==========
 console.log("F. Business — no debt, 365 days, recovery");
-const FOCUS_MENU = [
-  "biz-garden-salad",
-  "biz-tomato-bruschetta",
-  "biz-garlic-bread",
-  "biz-potato-curry",
-  "biz-spinach-curry",
-  "biz-greek-lemon-chicken",
-];
-function needTotals(dishId: string): Array<[string, number]> {
-  const dish = BUSINESS_DISH_CATALOG.find((d) => d.id === dishId)!;
-  const m = new Map<string, number>();
-  for (const r of businessDishRequirements(dish))
-    m.set(r.ingredientId, (m.get(r.ingredientId) ?? 0) + r.quantity);
-  return [...m];
-}
 function businessYear(opts: {
   name: string;
   startCash: number;
@@ -482,11 +458,7 @@ function businessYear(opts: {
     economyLedger: [],
     business: { ...DEFAULT_BUSINESS_STATE },
   };
-  for (const dish of BUSINESS_DISH_CATALOG) {
-    if (FOCUS_MENU.includes(dish.id)) continue;
-    const r = setDishActive(save, dish.id, false);
-    if (r.ok) save = r.save;
-  }
+  save = focusBusinessMenu(save);
   for (const role of opts.hires) {
     const r = hireStaff(save, role);
     if (r.ok) save = r.save;
@@ -510,55 +482,10 @@ function businessYear(opts: {
         "endless-revenue",
         opts.outsideIncomePerDay,
       );
-    const day = save.business.calendar.businessDay;
-    const rand = makeSeededRand(businessServiceSeedFor(day));
-    let session = createBusinessServiceSession(rand, save.business.menuActivation);
-    let served = 0;
-    while (served < 8 && session.current) {
-      const dish = businessDishForRecipeId(session.current.recipe.id)!;
-      if (!businessOrderAvailability(save, dish).available) {
-        const cap = maxPurchaseQuantityFor(eventForDay(day));
-        for (const [id, need] of needTotals(dish.id)) {
-          const have = usableQuantity(save.business.inventory, id as never, day);
-          if (have >= need) continue;
-          let qty = Math.max(3, Math.ceil(need - have));
-          if (cap !== undefined) qty = Math.min(qty, cap);
-          qty = Math.min(
-            qty,
-            Math.floor(
-              getAvailableStorageCapacity(
-                save.business.inventory,
-                save.business.refrigerator.refrigeratorId,
-              ),
-            ),
-          );
-          if (qty <= 0) continue;
-          const r = purchaseIngredient(save, id, qty);
-          if (r.ok)
-            save = recordInventoryPurchase(
-              appendLedgerEntry(r.save, "inventory-purchase", -r.totalCost, id),
-              r.totalCost,
-            );
-        }
-        if (!businessOrderAvailability(save, dish).available) break;
-      }
-      const result = serveBusinessOrder(recordBusinessServiceComponents(session, 80), save, rand);
-      if (!result) break;
-      save = appendLedgerEntry(
-        result.save,
-        "business-revenue",
-        result.amountCharged,
-        result.dish.id,
-      );
-      served++;
-      session = advanceBusinessServiceSession(result.session, rand, save.business.menuActivation);
-    }
-    const end = endBusinessDay(save);
-    save = appendLedgerEntry(
-      appendLedgerEntry(end.save, "business-staff-salary", -end.payrollPaid),
-      "inspection-fine",
-      -end.inspectionFine.finePaid,
-    );
+    // One real Business day, played as a sensible player plays it (repairs, today's customers).
+    const played = playBusinessDay(save);
+    save = played.save;
+    const served = played.served;
     const added = save.economyLedger.filter((e) => !ids.has(e.id));
     if (before + added.reduce((t, e) => t + e.amount, 0) !== save.credits) reconcile++;
     for (const e of added) {

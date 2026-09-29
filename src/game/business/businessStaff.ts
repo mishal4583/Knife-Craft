@@ -82,11 +82,22 @@ export type BusinessStaffDefinition = {
  * category earning noticeably more than "Cooks"); Server uses a
  * full-service-equivalent base wage (this game has no tip mechanic, so a
  * server's real base-plus-tips economics are simplified to one full
- * wage); Cleaner works a shorter (6-hour) shift than the full kitchen
- * roles. Every non-BLS-cited figure here is a labeled estimate, not an
+ * wage); Cleaner works a shorter shift than the kitchen roles (Economy
+ * V2.5: every role is paid for one service shift — SERVICE_SHIFT_HOURS below). Every non-BLS-cited figure here is a labeled estimate, not an
  * individually-fetched source, consistent with §24's own methodology.
  */
 const EMPLOYER_BURDEN_MULTIPLIER = 1.25;
+
+/**
+ * Economy V2.5 — hours paid per Business day. A KnifeCraft Business day is
+ * ONE service of 4–12 guests, not a full trading day, so staff are paid for
+ * that service shift at their (unchanged, real-world) hourly wage: 2 hours,
+ * 1.5 for the Cleaner (who worked the shorter shift before too). At the old
+ * 8-hour day every hire cost more than the restaurant's whole daily revenue
+ * (~$130) and was laid off within weeks in the 365-day simulation.
+ */
+const SERVICE_SHIFT_HOURS = 2;
+const CLEANER_SHIFT_HOURS = 1.5;
 
 function dailySalaryFor(hourlyWageCents: number, scheduledHours: number): number {
   return Math.round(hourlyWageCents * scheduledHours * EMPLOYER_BURDEN_MULTIPLIER);
@@ -114,48 +125,48 @@ export const BUSINESS_STAFF_CATALOG: Record<BusinessStaffRole, BusinessStaffDefi
     name: "Prep Cook",
     description: `Buys and preps carefully — ${pct(PREP_COOK_PURCHASE_DISCOUNT)} off every ingredient purchase.`,
     hourlyWageCents: 1600,
-    scheduledHours: 8,
-    salary: dailySalaryFor(1600, 8),
+    scheduledHours: SERVICE_SHIFT_HOURS,
+    salary: dailySalaryFor(1600, SERVICE_SHIFT_HOURS),
   },
   "line-cook": {
     role: "line-cook",
     name: "Line Cook",
     description: `Keeps service steady — +${LINE_COOK_POPULARITY_BOOST} popularity each business day.`,
     hourlyWageCents: 1814,
-    scheduledHours: 8,
-    salary: dailySalaryFor(1814, 8),
+    scheduledHours: SERVICE_SHIFT_HOURS,
+    salary: dailySalaryFor(1814, SERVICE_SHIFT_HOURS),
   },
   "head-chef": {
     role: "head-chef",
     name: "Head Chef",
     description: `The biggest reputation boost on staff — +${HEAD_CHEF_POPULARITY_BOOST} popularity each business day.`,
     hourlyWageCents: 2800,
-    scheduledHours: 8,
-    salary: dailySalaryFor(2800, 8),
+    scheduledHours: SERVICE_SHIFT_HOURS,
+    salary: dailySalaryFor(2800, SERVICE_SHIFT_HOURS),
   },
   server: {
     role: "server",
     name: "Server",
     description: `Attentive front-of-house — +${SERVER_POPULARITY_BOOST} popularity each business day.`,
     hourlyWageCents: 1500,
-    scheduledHours: 8,
-    salary: dailySalaryFor(1500, 8),
+    scheduledHours: SERVICE_SHIFT_HOURS,
+    salary: dailySalaryFor(1500, SERVICE_SHIFT_HOURS),
   },
   cleaner: {
     role: "cleaner",
     name: "Cleaner",
     description: `Kitchen Cleanliness always passes inspection, and recorded spoilage losses are ${pct(CLEANER_SPOILAGE_VALUE_REDUCTION)} lower.`,
     hourlyWageCents: 1500,
-    scheduledHours: 6,
-    salary: dailySalaryFor(1500, 6),
+    scheduledHours: CLEANER_SHIFT_HOURS,
+    salary: dailySalaryFor(1500, CLEANER_SHIFT_HOURS),
   },
   manager: {
     role: "manager",
     name: "Manager",
     description: `Runs a tighter ship — ${pct(MANAGER_PAYROLL_DISCOUNT)} off everyone else's daily pay.`,
     hourlyWageCents: 2400,
-    scheduledHours: 8,
-    salary: dailySalaryFor(2400, 8),
+    scheduledHours: SERVICE_SHIFT_HOURS,
+    salary: dailySalaryFor(2400, SERVICE_SHIFT_HOURS),
   },
 };
 

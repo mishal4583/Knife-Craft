@@ -127,6 +127,12 @@ Focused suites (`npx tsx scripts/<name>.mts`):
 - `economy-v25-qa` (+ `economy-v25-simulation`) — V2.5 final-wealth target,
   wallet safety, milestone/Family Legacy once-only, recurring caps, $0
   recovery, 365-day Business runs.
+- `economy-final-qa` — the final rebalance + save migration: reward scaling
+  (A), affordability (B), no negative money (C), kitchen migration (D),
+  milestone migration (E), migration idempotence (F), Level 250 (G),
+  Endless unlock (H), Progress/historical accounting (I, J) and the
+  four-profile simulation table (K: Normal, Completionist, Aggressive
+  Spender, Existing Save).
 - `campaign-integrity-qa`, `restaurant-progress-qa`, `business-ux-qa`,
   `progression-preview-qa`, `usd-currency-qa`, `phase7-2-smoke-test`,
   plus the other `scripts/*-qa.mts` / `business-*-qa.mts` suites.
@@ -182,8 +188,9 @@ expected values.
 ### Economy V2.5 — Final Wealth (approved rebalance)
 
 Goal: a completionist finishes Level 250 owning everything with
-$100k–$120k left (simulated: **$109,534**; normal player $105,627).
-`scripts/economy-v25-simulation.mts` + `scripts/economy-v25-qa.mts` prove it
+$100k–$150k left (simulated: **$111,531** with occasional Business days;
+$109,534 campaign-only). `scripts/economy-v25-simulation.mts`,
+`scripts/economy-v25-qa.mts` and `scripts/economy-final-qa.mts` prove it
 with the real functions.
 
 - **Level rewards** — `levels/levelRewards.ts` `paidLevelReward(level)` is
@@ -200,10 +207,31 @@ with the real functions.
   (`migrateKitchenDevelopment`).
 - **Milestone rewards** — the 22 Progress milestones each pay once
   (`progression/milestoneRewards.ts`, $38,200) and Level 250 pays the
-  **Family Legacy $50,000**. The ledger entry (`milestone-reward` /
-  `family-legacy`, description = milestone id) is the record; those
-  entries are never trimmed, so nothing can pay twice. Paid on every
-  `persist` and on load (older saves get reached milestones once).
+  **Final Reward (Family Legacy) $50,000**, unscaled. "Completed" is
+  derived from the save; "claimed" is `SaveData.economy.claimedMilestoneIds`
+  (plus the never-trimmed `milestone-reward` / `family-legacy` ledger
+  entries). Only reached AND unclaimed milestones pay, on every `persist`
+  and on load.
+- **Economy migration** — `SaveData.economy` (`economy/economyState.ts`,
+  `version` = ECONOMY_VERSION 1). A save without it predates V2.5 and is
+  migrated ONCE in `SaveManager.load` (`progression/economyMigration.ts`,
+  written back immediately; idempotent): balance, items, kitchens and
+  Business untouched; milestones it had already reached are claimed
+  WITHOUT payment (`waivedMilestoneIds` — no retroactive ~$85k windfall);
+  lifetime totals are reconstructed from what the save records.
+- **Historical accounting** — `economy.lifetime` is the exact running
+  total of every ledger category (updated by `appendLedgerEntry`, never
+  trimmed). Progress's "Level rewards earned" / "Invested in your
+  restaurant" / milestone figures read it — never today's rates. An old
+  save's level rewards = the stored rewards it was paid in full; its free
+  kitchens count $0. The reward-curve chart is the one current-rate
+  figure and is labelled so.
+- **Endless Service** — unlocks after Level 250 (`isEndlessUnlocked`);
+  pays each service level's `paidLevelReward`, capped $600/day.
+- **Business scale** — inspection fines $55 / $105 (Chicago schedule ÷5);
+  staff paid for a 2-hour service shift (cleaner 1.5 h). A no-staff
+  Business nets ~$75/day; hiring staff is currently a net cost (their
+  popularity/discount effects earn less than their wages).
 - **Recurring caps** — Replay Bonus 20% of the paid reward, $10–$200,
   3/day; Endless $600/day; Today's Special $50/day.
 - **Wallet invariant** — `economy/wallet.ts`: credits are whole cents and

@@ -57,7 +57,7 @@ function saveAt(overrides: Partial<SaveData>): SaveData {
 // ===== C: determineInspectionFine — exact documented amounts, and the all-or-nothing affordability rule. =====
 // NOTE (Phase 14 stale-precondition fix, documented): inspection fine
 // amounts were recalibrated from prototype "coins" (100/300) to real
-// USD cents (27,500/52,500 = $275/$525, the City of Chicago's own 2026
+// USD cents (27,500/52,500 = $55/$105, the City of Chicago's own 2026
 // fine schedule — see businessInspectionFines.ts's own doc). Every
 // affected `credits` value below is bumped/recomputed to preserve each
 // test's original intent (exact fine amount, exact boundary, exact
@@ -68,22 +68,22 @@ function saveAt(overrides: Partial<SaveData>): SaveData {
   const minorWarning = determineInspectionFine("WARNING", null, 100_000);
   assert(minorWarning.severity === "NONE" && minorWarning.fineAmount === 0 && minorWarning.finePaid === 0, "C2: a first-time WARNING costs exactly nothing");
   const repeatedWarning = determineInspectionFine("WARNING", "WARNING", 100_000);
-  assert(repeatedWarning.severity === "SMALL" && repeatedWarning.fineAmount === 27_500 && repeatedWarning.finePaid === 27_500, `C3: a repeated WARNING costs exactly the documented $275 small fine (got ${repeatedWarning.fineAmount})`);
+  assert(repeatedWarning.severity === "SMALL" && repeatedWarning.fineAmount === 5_500 && repeatedWarning.finePaid === 5_500, `C3: a repeated WARNING costs exactly the documented $55 small fine (got ${repeatedWarning.fineAmount})`);
   const fail = determineInspectionFine("FAIL", null, 100_000);
-  assert(fail.severity === "LARGE" && fail.fineAmount === 52_500 && fail.finePaid === 52_500, `C4: a FAIL costs exactly the documented $525 larger fine (got ${fail.fineAmount})`);
+  assert(fail.severity === "LARGE" && fail.fineAmount === 10_500 && fail.finePaid === 10_500, `C4: a FAIL costs exactly the documented $105 larger fine (got ${fail.fineAmount})`);
   assert(fail.fineAmount > repeatedWarning.fineAmount, "C5: the larger (Major) fine is strictly greater than the small (Repeated) fine");
 }
 {
   // C-boundary: paying EXACTLY the fine amount (0 left over) still succeeds — never rejected merely for being tight.
-  const exact = determineInspectionFine("FAIL", null, 52_500);
-  assert(exact.finePaid === 52_500, "C6: exactly enough credits still pays the full fine");
-  const oneShort = determineInspectionFine("FAIL", null, 52_499);
+  const exact = determineInspectionFine("FAIL", null, 10_500);
+  assert(exact.finePaid === 10_500, "C6: exactly enough credits still pays the full fine");
+  const oneShort = determineInspectionFine("FAIL", null, 10_499);
   assert(oneShort.finePaid === 0, "C7: one credit short of the fine waives it entirely — never a partial charge");
 }
 {
   // C-unaffordable: an unaffordable fine is waived, never partial, never negative.
   const unaffordable = determineInspectionFine("FAIL", null, 0);
-  assert(unaffordable.severity === "LARGE" && unaffordable.fineAmount === 52_500 && unaffordable.finePaid === 0, "C8: an unaffordable FAIL still reports the documented severity/amount, but pays exactly 0");
+  assert(unaffordable.severity === "LARGE" && unaffordable.fineAmount === 10_500 && unaffordable.finePaid === 0, "C8: an unaffordable FAIL still reports the documented severity/amount, but pays exactly 0");
 }
 
 // ===== D: endBusinessDay integration — PASS pays no fine. =====
@@ -112,8 +112,8 @@ function saveAt(overrides: Partial<SaveData>): SaveData {
   assert(day1.inspectionFine.finePaid === 0, "F: precondition — day 1's WARNING is the first occurrence, no fine");
   const day2 = endBusinessDay(day1.save); // condition is still 45 (POOR) — nothing repaired it
   assert(day2.inspectionReport.overall === "WARNING", "F2: precondition — day 2 is also a WARNING (condition never changes on its own)");
-  assert(day2.inspectionFine.severity === "SMALL" && day2.inspectionFine.finePaid === 27_500, `F3: day 2's REPEATED WARNING pays exactly the documented $275 small fine (got ${day2.inspectionFine.finePaid})`);
-  assert(day2.save.credits === 100_000 - 27_500, `F4: credits drop by exactly the small fine on day 2 (got ${day2.save.credits})`);
+  assert(day2.inspectionFine.severity === "SMALL" && day2.inspectionFine.finePaid === 5_500, `F3: day 2's REPEATED WARNING pays exactly the documented $55 small fine (got ${day2.inspectionFine.finePaid})`);
+  assert(day2.save.credits === 100_000 - 5_500, `F4: credits drop by exactly the small fine on day 2 (got ${day2.save.credits})`);
 }
 
 // ===== G: endBusinessDay integration — FAIL always pays the larger fine, even on a save's very first day. =====
@@ -121,22 +121,22 @@ function saveAt(overrides: Partial<SaveData>): SaveData {
   const save = saveAt({ credits: 100_000, business: { ...DEFAULT_BUSINESS_STATE, calendar: { businessDay: 3 }, equipmentCondition: { refrigeratorCondition: 5 } } }); // BROKEN -> FAIL
   const result = endBusinessDay(save);
   assert(result.inspectionReport.overall === "FAIL", "G: precondition — a BROKEN fridge triggers a FAIL inspection");
-  assert(result.inspectionFine.severity === "LARGE" && result.inspectionFine.finePaid === 52_500, `G2: a FAIL pays exactly the documented $525 larger fine on its very first occurrence (got ${result.inspectionFine.finePaid})`);
-  assert(result.save.credits === 47_500, `G3: credits drop by exactly the larger fine (100,000-52,500=47,500, got ${result.save.credits})`);
+  assert(result.inspectionFine.severity === "LARGE" && result.inspectionFine.finePaid === 10_500, `G2: a FAIL pays exactly the documented $105 larger fine on its very first occurrence (got ${result.inspectionFine.finePaid})`);
+  assert(result.save.credits === 89_500, `G3: credits drop by exactly the larger fine (100,000-10,500=89,500, got ${result.save.credits})`);
 }
 {
-  // G-repeated-fail: a repeated FAIL still fines exactly the SAME documented amount — no invented Critical escalation. credits sized to comfortably afford BOTH consecutive $525 fines.
+  // G-repeated-fail: a repeated FAIL still fines exactly the SAME documented amount — no invented Critical escalation. credits sized to comfortably afford BOTH consecutive $105 fines.
   const save = saveAt({ credits: 200_000, business: { ...DEFAULT_BUSINESS_STATE, calendar: { businessDay: 3 }, equipmentCondition: { refrigeratorCondition: 5 } } });
   const day1 = endBusinessDay(save);
   const day2 = endBusinessDay(day1.save);
-  assert(day2.inspectionReport.overall === "FAIL" && day2.inspectionFine.finePaid === 52_500, `G4: a second consecutive FAIL still fines exactly $525, unchanged (got ${day2.inspectionFine.finePaid})`);
+  assert(day2.inspectionReport.overall === "FAIL" && day2.inspectionFine.finePaid === 10_500, `G4: a second consecutive FAIL still fines exactly $105, unchanged (got ${day2.inspectionFine.finePaid})`);
 }
 
 // ===== H: insufficient-funds behavior — an unaffordable fine is waived, never partial, never negative. =====
 {
-  const save = saveAt({ credits: 50, business: { ...DEFAULT_BUSINESS_STATE, calendar: { businessDay: 3 }, equipmentCondition: { refrigeratorCondition: 5 } } }); // FAIL costs $525, only 50 available
+  const save = saveAt({ credits: 50, business: { ...DEFAULT_BUSINESS_STATE, calendar: { businessDay: 3 }, equipmentCondition: { refrigeratorCondition: 5 } } }); // FAIL costs $105, only 50 available
   const result = endBusinessDay(save);
-  assert(result.inspectionFine.severity === "LARGE" && result.inspectionFine.fineAmount === 52_500, "H: precondition — the documented fine is still $525 even though it can't be paid");
+  assert(result.inspectionFine.severity === "LARGE" && result.inspectionFine.fineAmount === 10_500, "H: precondition — the documented fine is still $105 even though it can't be paid");
   assert(result.inspectionFine.finePaid === 0, "H2: an unaffordable fine is waived entirely — never a partial charge");
   assert(result.save.credits === 50, "H3: credits are completely untouched when the fine can't be covered");
   assert(result.save.credits >= 0, "H4: credits never go negative");
@@ -144,25 +144,25 @@ function saveAt(overrides: Partial<SaveData>): SaveData {
 
 // ===== I: exact affordability boundary via endBusinessDay (post-payroll credits). =====
 {
-  const save = saveAt({ credits: 52_500, business: { ...DEFAULT_BUSINESS_STATE, calendar: { businessDay: 3 }, equipmentCondition: { refrigeratorCondition: 5 } } }); // exactly enough for the $525 fine, no staff
+  const save = saveAt({ credits: 10_500, business: { ...DEFAULT_BUSINESS_STATE, calendar: { businessDay: 3 }, equipmentCondition: { refrigeratorCondition: 5 } } }); // exactly enough for the $105 fine, no staff
   const result = endBusinessDay(save);
-  assert(result.inspectionFine.finePaid === 52_500 && result.save.credits === 0, `I: exactly enough credits pays the full fine and leaves credits at exactly 0 (got finePaid=${result.inspectionFine.finePaid}, credits=${result.save.credits})`);
+  assert(result.inspectionFine.finePaid === 10_500 && result.save.credits === 0, `I: exactly enough credits pays the full fine and leaves credits at exactly 0 (got finePaid=${result.inspectionFine.finePaid}, credits=${result.save.credits})`);
 }
 {
-  const save = saveAt({ credits: 52_499, business: { ...DEFAULT_BUSINESS_STATE, calendar: { businessDay: 3 }, equipmentCondition: { refrigeratorCondition: 5 } } });
+  const save = saveAt({ credits: 10_499, business: { ...DEFAULT_BUSINESS_STATE, calendar: { businessDay: 3 }, equipmentCondition: { refrigeratorCondition: 5 } } });
   const result = endBusinessDay(save);
-  assert(result.inspectionFine.finePaid === 0 && result.save.credits === 52_499, "I2: one credit short of the fine waives it and leaves credits completely untouched");
+  assert(result.inspectionFine.finePaid === 0 && result.save.credits === 10_499, "I2: one credit short of the fine waives it and leaves credits completely untouched");
 }
 {
   // I-post-payroll: the fine is assessed against credits AFTER payroll, so an affordable-before-payroll but unaffordable-after-payroll fine is correctly waived.
   const save = saveAt({
-    credits: 68_500,
-    business: { ...DEFAULT_BUSINESS_STATE, calendar: { businessDay: 3 }, equipmentCondition: { refrigeratorCondition: 5 }, staff: { hiredRoles: ["prep-cook"] } }, // payroll $160 (16,000c), leaving exactly $525 (52,500c) for the fine
+    credits: 14_500,
+    business: { ...DEFAULT_BUSINESS_STATE, calendar: { businessDay: 3 }, equipmentCondition: { refrigeratorCondition: 5 }, staff: { hiredRoles: ["prep-cook"] } }, // payroll $40 (4,000c — V2.5 service shift), leaving exactly $105 (10,500c) for the fine
   });
   const result = endBusinessDay(save);
-  assert(result.payrollPaid === 16_000, "I3: precondition — payroll of $160 is paid first");
-  assert(result.inspectionFine.finePaid === 52_500, `I4: the fine is correctly assessed against the POST-payroll $525 remaining, and is exactly affordable (got ${result.inspectionFine.finePaid})`);
-  assert(result.save.credits === 0, "I5: credits reflect both deductions correctly (68,500-16,000-52,500=0)");
+  assert(result.payrollPaid === 4_000, "I3: precondition — payroll of $40 is paid first");
+  assert(result.inspectionFine.finePaid === 10_500, `I4: the fine is correctly assessed against the POST-payroll $105 remaining, and is exactly affordable (got ${result.inspectionFine.finePaid})`);
+  assert(result.save.credits === 0, "I5: credits reflect both deductions correctly (14,500-4,000-10,500=0)");
 }
 
 // ===== J: atomic wallet mutation — the fine is the ONLY thing that moves credits during a FAIL inspection; ledger entries are the caller's job (App.tsx), not endBusinessDay's own. =====
@@ -182,9 +182,9 @@ function saveAt(overrides: Partial<SaveData>): SaveData {
   const newEntries = withLedger.economyLedger.length - save.economyLedger.length;
   assert(newEntries === 1, `K: a real FAIL fine creates EXACTLY one ledger entry (got ${newEntries})`);
   const entry = withLedger.economyLedger[withLedger.economyLedger.length - 1]!;
-  assert(entry.category === "inspection-fine" && entry.amount === -52_500, "K2: the ledger entry has the correct category and exact signed amount");
+  assert(entry.category === "inspection-fine" && entry.amount === -10_500, "K2: the ledger entry has the correct category and exact signed amount");
   const totals = ledgerTotals(withLedger.economyLedger);
-  assert(totals.byCategory["inspection-fine"] === -52_500, "K3: ledgerTotals correctly aggregates the new category");
+  assert(totals.byCategory["inspection-fine"] === -10_500, "K3: ledgerTotals correctly aggregates the new category");
 }
 {
   // K-zero: a PASS day's zero fine creates NO ledger entry — appendLedgerEntry's own 0-amount no-op.
@@ -218,8 +218,8 @@ function saveAt(overrides: Partial<SaveData>): SaveData {
   const day1 = endBusinessDay(save);
   const day2 = endBusinessDay(day1.save);
   assert(day1.save.business.calendar.businessDay !== day2.save.business.calendar.businessDay, "L4: precondition — the two calls represent two genuinely different business days");
-  assert(day1.inspectionFine.finePaid === 52_500 && day2.inspectionFine.finePaid === 52_500, "L5: each of the two distinct days is fined independently and correctly — never a skipped or doubled charge");
-  assert(day2.save.credits === 200_000 - 52_500 - 52_500, `L6: total credits across both real days reflect exactly two separate $525 fines (got ${day2.save.credits})`);
+  assert(day1.inspectionFine.finePaid === 10_500 && day2.inspectionFine.finePaid === 10_500, "L5: each of the two distinct days is fined independently and correctly — never a skipped or doubled charge");
+  assert(day2.save.credits === 200_000 - 10_500 - 10_500, `L6: total credits across both real days reflect exactly two separate $105 fines (got ${day2.save.credits})`);
 }
 
 // ===== M: interaction with popularity — the fine and the popularity effect are independent; paying (or waiving) a fine never changes popularity math. =====
@@ -238,7 +238,7 @@ function saveAt(overrides: Partial<SaveData>): SaveData {
     business: { ...DEFAULT_BUSINESS_STATE, calendar: { businessDay: 3 }, equipmentCondition: { refrigeratorCondition: 5 } },
   });
   const result = endBusinessDay(save);
-  assert(result.inspectionFine.finePaid === 52_500, "N: precondition — a real fine is charged");
+  assert(result.inspectionFine.finePaid === 10_500, "N: precondition — a real fine is charged");
   assert(JSON.stringify(result.save.levelProgress) === JSON.stringify(save.levelProgress), "N2: levelProgress is byte-identical before/after a FAIL fine");
   assert(JSON.stringify(result.save.knifeSharpness) === JSON.stringify(save.knifeSharpness), "N3: Campaign's own knifeSharpness is byte-identical before/after");
   assert(typeof getEquipmentModifier === "function", "N4: equipmentSpecialization.ts's own function still exists and is callable, completely independent of this phase's files");

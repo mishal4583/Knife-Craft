@@ -48,6 +48,7 @@
  * failed purchase/settlement (which never reaches persist()) can never
  * leave a dangling ledger entry, and a successful one can never skip it.
  */
+import { addToLifetime } from "./economyState";
 import type { SaveData } from "../SaveManager";
 import type { EconomyLedgerEntry, LedgerCategory } from "./ledgerTypes";
 
@@ -96,7 +97,8 @@ export function appendLedgerEntry(
     ...(description ? { description } : {}),
   };
   const economyLedger = trimLedger([...save.economyLedger, entry], entry.timestamp);
-  return { ...save, economyLedger };
+  // Economy V2.5 — the never-trimmed lifetime total of this category (economyState.ts).
+  return { ...save, economyLedger, economy: addToLifetime(save.economy, category, amount) };
 }
 
 /**

@@ -20,6 +20,7 @@
  *     bug elsewhere can never persist negative money.
  */
 import type { SaveData } from "../SaveManager";
+import { formatUsd } from "../money";
 
 /** Null when `credits` is valid; otherwise why it isn't. */
 export function walletInvariantViolation(save: Pick<SaveData, "credits">): string | null {
@@ -44,4 +45,14 @@ export function debitWallet(save: SaveData, amount: number): DebitResult {
   if (!Number.isInteger(amount) || amount < 0) return { ok: false, reason: "invalidAmount" };
   if (save.credits < amount) return { ok: false, reason: "insufficientFunds" };
   return { ok: true, save: { ...save, credits: save.credits - amount }, amount };
+}
+
+/** How far `credits` is from `price` (0 when affordable). */
+export function shortfall(price: number, credits: number): number {
+  return Math.max(0, price - credits);
+}
+
+/** The one insufficient-funds line every purchase shows: "Not enough money — need $X more." */
+export function notEnoughMoneyText(price: number, credits: number): string {
+  return `Not enough money — need ${formatUsd(shortfall(price, credits))} more.`;
 }

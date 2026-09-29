@@ -297,7 +297,7 @@ function closeDay(save: SaveData): SaveData {
 // ===== I: Campaign isolation + Economy V2 freeze. =====
 {
   const s = { ...baseSave(50), levelProgress: DEFAULT_SAVE.levelProgress, recipeProgress: { "camp-garlic-bread": { bestScore: 91 } } as never };
-  const nonBusiness = (x: SaveData) => JSON.stringify(Object.fromEntries(Object.entries(x).filter(([k]) => !["business", "credits", "economyLedger"].includes(k))));
+  const nonBusiness = (x: SaveData) => JSON.stringify(Object.fromEntries(Object.entries({ ...x, economy: { ...x.economy, lifetime: {} } }).filter(([k]) => !["business", "credits", "economyLedger"].includes(k))));
   const after = closeDay(serveToday(s, 5).save);
   assert(nonBusiness(after) === nonBusiness(s), "I: serving + closing a D2 day changes no Campaign field (levelProgress, recipeProgress, ...)");
   const v2 = spawnSync("npx", ["tsx", JSON.stringify(path.resolve(import.meta.dirname, "economy-v2-campaign-simulation.mts"))], { encoding: "utf8", shell: true });

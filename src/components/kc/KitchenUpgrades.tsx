@@ -12,6 +12,7 @@ import {
   type PurchaseKitchenUpgradeResult,
 } from "@/game/kitchen/KitchenUpgradeManager";
 import { formatUsd } from "@/game/money";
+import { notEnoughMoneyText } from "@/game/economy/wallet";
 import type { SaveData } from "@/game/SaveManager";
 
 /** A small real preview of the upgrade's own background image — unlike Boards/Knives (which have no real photo, only a CSS-gradient stand-in), a kitchen upgrade's true identity IS one of the six finished images, so the card just shows a cropped, scaled copy of it. */
@@ -109,7 +110,7 @@ export function KitchenUpgrades({
                 </KButton>
                 <p className="mt-2 text-center font-hand text-[14px] text-walnut/65">
                   {shortfall > 0
-                    ? `Current balance ${formatUsd(save.credits)} — need ${formatUsd(shortfall)} more.`
+                    ? `${notEnoughMoneyText(selected.price, save.credits)} Balance ${formatUsd(save.credits)}.`
                     : "A permanent investment in your restaurant."}
                 </p>
               </>

@@ -147,18 +147,27 @@ function NextGoal({ p }: { p: Progress }) {
           <p className="mt-1 font-display text-[21px] font-black uppercase leading-tight tracking-wide text-walnut-dark">
             🏆 Campaign Complete
           </p>
+          <p className="font-ui text-[13px] font-extrabold text-walnut-dark">
+            {p.level.completed} / {p.level.total}
+          </p>
           <p className="mt-2 font-ui text-[11px] font-extrabold uppercase tracking-[0.18em] text-copper">
-            Family Legacy
+            Final Reward · Family Legacy
           </p>
-          <p className="font-display text-[26px] font-black leading-tight text-olive">
-            {formatUsdChange(p.familyLegacy.reward)}
-          </p>
+          {p.familyLegacy.waived ? (
+            <p className="font-hand text-[15px] leading-snug text-walnut/70">
+              You finished the campaign before the Final Reward existed, so it wasn't paid.
+            </p>
+          ) : (
+            <p className="font-display text-[26px] font-black leading-tight text-olive">
+              {formatUsdChange(p.familyLegacy.reward)}
+            </p>
+          )}
           <p className="mt-1 font-display text-[16px] font-black text-walnut-dark">
             Your restaurant is yours.
           </p>
           <p className="mt-1 font-hand text-[15px] text-walnut/70">
-            All {p.level.total} levels mastered. Keep your kitchen busy with Business Mode, Endless
-            Service and Today's Special.
+            All {p.level.total} levels mastered. Endless Service is now unlocked — ongoing earnings
+            every day — alongside Business Mode and Today's Special.
           </p>
         </>
       )}
@@ -312,8 +321,14 @@ function Earnings({ p }: { p: Progress }) {
         <Row label="Level rewards earned" value={formatUsd(p.money.levelRewards)} />
         <Row label="Milestone rewards" value={formatUsd(p.money.milestoneRewards)} />
         <Row
-          label="Family Legacy"
-          value={p.familyLegacy.paid ? formatUsd(p.money.familyLegacy) : "at Level 250"}
+          label="Final Reward (Level 250)"
+          value={
+            p.familyLegacy.paid
+              ? formatUsd(p.money.familyLegacy)
+              : p.familyLegacy.waived
+                ? "finished before it existed"
+                : "at Level 250"
+          }
         />
         <Row label="Business revenue" value={formatUsd(p.money.businessRevenue)} />
       </div>
@@ -326,14 +341,17 @@ function Earnings({ p }: { p: Progress }) {
       </div>
       <Divider />
       <p className="mb-1 font-ui text-[10px] font-extrabold uppercase tracking-[0.16em] text-walnut/55">
-        Level rewards, cumulative by level
+        Level rewards at today's rates, cumulative by level
       </p>
       <EarningsChart p={p} />
       <p className="mt-1 font-hand text-[13px] leading-snug text-walnut/60">
-        Every level pays its reward once, on first completion — this line only ever grows as you
-        progress.
+        What each completed level pays at today's reward rates — the reward curve, not a record of
+        past payouts (those are "Level rewards earned" above).
         {p.money.businessCoverage === "partial"
           ? " Business revenue counts from your earliest saved record."
+          : ""}
+        {p.historySince === "migration"
+          ? " Your totals from before the economy update were reconstructed from your progress: levels paid their full reward back then, and kitchen stages you received free count as $0."
           : ""}
       </p>
     </Panel>
@@ -599,8 +617,7 @@ function Milestones({ p }: { p: Progress }) {
                 m.paid ? "text-olive" : "text-walnut/45",
               )}
             >
-              {m.paid ? "✓ " : ""}
-              {formatUsdChange(m.reward)}
+              {m.waived ? "✓ earlier" : `${m.paid ? "✓ " : ""}${formatUsdChange(m.reward)}`}
             </span>
           </li>
         ))}

@@ -1,8 +1,9 @@
 import { useEffect } from "react";
+import { ENDLESS_DAILY_COIN_CAP, isEndlessUnlocked } from "@/game/daily/EndlessServiceManager";
 import { paidLevelReward } from "@/game/levels/levelRewards";
 import { KButton, Coin, DustMotes } from "./common/primitives";
 import { gameReady } from "@/game/PlayablesSDK";
-import { dollars, formatUsdChange } from "@/game/money";
+import { dollars, formatUsd, formatUsdChange } from "@/game/money";
 import { KitchenBackground } from "./KitchenBackground";
 import type { ScreenId } from "./data";
 import { getLevels, isUnlocked, isCompleted, type LevelProgress } from "@/game/levels/LevelManager";
@@ -314,7 +315,11 @@ export function OrderBoard({
               <span className="mt-1 block font-display text-[13px] font-black text-walnut-dark">
                 Endless Service
               </span>
-              <span className="block font-hand text-[12px] text-walnut/60">no lives, no timer</span>
+              <span className="block font-hand text-[12px] text-walnut/60">
+                {isEndlessUnlocked(levelProgress)
+                  ? `ongoing earnings · up to ${formatUsd(ENDLESS_DAILY_COIN_CAP).replace(/\.00$/, "")}/day`
+                  : "🔒 unlocks after Level 250"}
+              </span>
             </button>
           </div>
           <div className="space-y-2.5">

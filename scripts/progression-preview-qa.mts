@@ -96,10 +96,12 @@ const INVESTMENT_NAMES = ["Prep Station Upgrade", "Storage Rack", "Service Count
     .filter((f) => !ledgerDefs.has(f) && !f.startsWith("src/game/kitchen/"))
     .filter((f) => /"investment-upkeep"|chargeChapterUpkeep|buyKitchenInvestment/.test(code(f)));
   assert(upkeep.length === 0, `B: nothing in src writes investment upkeep (found: ${upkeep.join(", ") || "none"})`);
+  // A WRITE is an appendLedgerEntry(…, "kitchen-investment-purchase", …) call; reading the category (Progress, migration) isn't one.
+  const writes = (f: string) => code(f).match(/appendLedgerEntry\([^;]*?"kitchen-investment-purchase"/g) ?? [];
   const purchaseWriters = srcFiles("src")
     .filter((f) => !ledgerDefs.has(f))
-    .filter((f) => /"kitchen-investment-purchase"/.test(code(f)));
-  const appSites = (code("src/App.tsx").match(/"kitchen-investment-purchase"/g) ?? []).length;
+    .filter((f) => writes(f).length > 0);
+  const appSites = writes("src/App.tsx").length;
   assert(JSON.stringify(purchaseWriters) === JSON.stringify(["src/App.tsx"]) && appSites === 1, `B1: kitchen development is recorded at exactly one site, App.tsx (found: ${purchaseWriters.join(", ")}, ${appSites} site(s))`);
   const importers = srcFiles("src")
     .filter((f) => !f.startsWith("src/game/kitchen/kitchenInvestment") && !f.startsWith("src/game/kitchen/KitchenInvestment"))
@@ -178,7 +180,7 @@ const INVESTMENT_NAMES = ["Prep Station Upgrade", "Storage Rack", "Service Count
 {
   assert(
     JSON.stringify(Object.keys(DEFAULT_SAVE)) ===
-      JSON.stringify(["version", "credits", "equippedKnifeId", "equippedBoardId", "ownedKnifeIds", "ownedBoardIds", "ownedKitchenUpgradeIds", "equippedKitchenUpgradeId", "ownedKitchenInvestmentIds", "knifeSharpness", "knifeUpgrades", "ownedStaffIds", "selectedSupplierId", "economyLedger", "recipeProgress", "settings", "levelProgress", "story", "dailyOrder", "endless", "business"]),
+      JSON.stringify(["version", "credits", "equippedKnifeId", "equippedBoardId", "ownedKnifeIds", "ownedBoardIds", "ownedKitchenUpgradeIds", "equippedKitchenUpgradeId", "economy", "ownedKitchenInvestmentIds", "knifeSharpness", "knifeUpgrades", "ownedStaffIds", "selectedSupplierId", "economyLedger", "recipeProgress", "settings", "levelProgress", "story", "dailyOrder", "endless", "business"]),
     "E: SaveData fields unchanged (no new field; the legacy field is kept so old saves load)",
   );
   // A real pre-change save: owns investments, has paid upkeep, has progress everywhere.

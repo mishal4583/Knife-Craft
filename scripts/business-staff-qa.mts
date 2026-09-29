@@ -145,15 +145,17 @@ function saveAt(overrides: Partial<SaveData>): SaveData {
 // recalibrated from prototype "coins" to real US-cents payroll (hourly
 // wage x scheduled hours + 25% employer burden — see businessStaff.ts's
 // own doc): prep-cook 16,000c/day, cleaner 11,250c/day, manager
-// 24,000c/day, server 15,000c/day. The exact numbers below are updated
+// 24,000c/day, server 15,000c/day. Economy V2.5 (approved): paid for one
+// 2-hour service shift (Cleaner 1.5 h) at the same hourly wages —
+// prep-cook 4,000c, cleaner 2,813c, manager 6,000c, server 3,750c. The exact numbers below are updated
 // accordingly; the test's own intent (exact sums, the Manager's own
 // discount formula) is unchanged.
 {
   assert(dailyPayroll([]) === 0, "H: no staff means zero payroll");
-  assert(dailyPayroll(["prep-cook"]) === 16_000, "H2: a single role's payroll is exactly its own salary");
-  assert(dailyPayroll(["prep-cook", "cleaner"]) === 27_250, `H3: two roles (no manager) sum exactly (16,000+11,250=27,250, got ${dailyPayroll(["prep-cook", "cleaner"])})`);
+  assert(dailyPayroll(["prep-cook"]) === 4_000, "H2: a single role's payroll is exactly its own salary");
+  assert(dailyPayroll(["prep-cook", "cleaner"]) === 6_813, `H3: two roles (no manager) sum exactly (4,000+2,813=6,813, got ${dailyPayroll(["prep-cook", "cleaner"])})`);
   const withManager = dailyPayroll(["prep-cook", "manager"]);
-  const expected = Math.round(16_000 * 0.9) + 24_000; // prep-cook discounted, manager's own salary untouched
+  const expected = Math.round(4_000 * 0.9) + 6_000; // prep-cook discounted, manager's own salary untouched
   assert(withManager === expected, `H4: a Manager discounts every OTHER role's salary by 10%, never their own (got ${withManager}, expected ${expected})`);
 }
 
@@ -164,8 +166,8 @@ function saveAt(overrides: Partial<SaveData>): SaveData {
     business: { ...DEFAULT_BUSINESS_STATE, calendar: { businessDay: 1 }, staff: { hiredRoles: ["prep-cook"] } },
   });
   const result = endBusinessDay(save);
-  assert(result.payrollPaid === 16_000, `I: a single Prep Cook's payroll is deducted exactly (got ${result.payrollPaid})`);
-  assert(result.save.credits === 34_000, `I2: credits reflect exactly the payroll deduction (50,000-16,000=34,000, got ${result.save.credits})`);
+  assert(result.payrollPaid === 4_000, `I: a single Prep Cook's payroll is deducted exactly (got ${result.payrollPaid})`);
+  assert(result.save.credits === 46_000, `I2: credits reflect exactly the payroll deduction (50,000-4,000=46,000, got ${result.save.credits})`);
   assert(result.staffLaidOff.length === 0, "I3: an affordable payroll never lays anyone off");
   assert(result.save.business.staff.hiredRoles.includes("prep-cook"), "I4: staff remains employed after an affordable payroll");
 }
@@ -210,7 +212,7 @@ function saveAt(overrides: Partial<SaveData>): SaveData {
   const newEntries = withLedger.economyLedger.length - save.economyLedger.length;
   assert(newEntries === 1, `K: a real payroll payment creates EXACTLY one ledger entry (got ${newEntries})`);
   const entry = withLedger.economyLedger[withLedger.economyLedger.length - 1]!;
-  assert(entry.category === "business-staff-salary" && entry.amount === -15_000, "K2: the ledger entry has the correct category and exact signed amount");
+  assert(entry.category === "business-staff-salary" && entry.amount === -3_750, "K2: the ledger entry has the correct category and exact signed amount");
 }
 
 // ===== L: persistence — a hired roster survives a JSON save/load round-trip. =====

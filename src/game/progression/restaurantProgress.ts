@@ -31,7 +31,9 @@ import {
 } from "../knives/blacksmith";
 import { STAFF_CATALOG } from "../economy/staffDefinitions";
 import { paidLevelReward } from "../levels/levelRewards";
-import { FAMILY_LEGACY_REWARD, milestoneRewardsPaid, milestoneStatuses } from "./milestoneRewards";
+import { FAMILY_LEGACY_ID, FAMILY_LEGACY_REWARD, milestoneStatuses } from "./milestoneRewards";
+import { lifetimeTotal } from "../economy/economyState";
+import type { LedgerCategory } from "../economy/ledgerTypes";
 
 /** Upgrade steps one knife can take: 3 stats × (5 − 1) levels. */
 export const UPGRADE_STEPS_PER_KNIFE =
@@ -72,39 +74,9 @@ export type Milestone = {
   reward: number;
   /** True once the ledger shows the reward paid. */
   paid: boolean;
+  /** Reached under the old economy (before rewards existed) — settled without payment. */
+  waived: boolean;
 };
-
-/**
- * What the player has invested in their restaurant, priced from what they
- * own today (every one of these is a one-time, permanent purchase): knives,
- * boards, campaign staff, Blacksmith steps and kitchen tiers. Refrigerators
- * are added by the caller from Business's own lifetime capital total.
- */
-export function restaurantInvestmentOf(save: SaveData): number {
-  const knives = KNIFE_CATALOG.filter((k) => save.ownedKnifeIds.includes(k.id)).reduce(
-    (s, k) => s + k.price,
-    0,
-  );
-  const boards = BOARD_CATALOG.filter((b) => save.ownedBoardIds.includes(b.id)).reduce(
-    (s, b) => s + b.price,
-    0,
-  );
-  const staff = STAFF_CATALOG.filter((m) => save.ownedStaffIds.includes(m.id)).reduce(
-    (s, m) => s + m.price,
-    0,
-  );
-  const kitchen = KITCHEN_UPGRADE_CATALOG.filter((u) =>
-    save.ownedKitchenUpgradeIds.includes(u.id),
-  ).reduce((s, u) => s + u.price, 0);
-  let blacksmith = 0;
-  for (const id of save.ownedKnifeIds) {
-    const levels = getKnifeUpgrades(save, id);
-    for (const stat of BLACKSMITH_STATS) {
-      for (let l = MIN_UPGRADE_LEVEL; l < levels[stat]; l++) blacksmith += upgradeCost(l) ?? 0;
-    }
-  }
-  return knives + boards + staff + kitchen + blacksmith;
-}
 
 /** Popularity 0–100 as a 0–5 star rating (display only, rounded to the nearest star). */
 export function popularityStars(popularity: number): number {
@@ -188,25 +160,35 @@ export function restaurantProgress(save: SaveData) {
     unlocked: reachedLevel >= b.unlockLevel,
   }));
 
-  // Money — only figures the game can state exactly.
-  //  • Level rewards: every completed level paid its own fixed reward exactly
-  //    once (replays pay nothing), so this lifetime total is exact.
-  //  • Business revenue: Business Mode's own lifetime total (not limited by
-  //    the 200-entry ledger window).
-  const levelRewards = completed.reduce((s, l) => s + paidLevelReward(l), 0);
+  // Money — Economy V2.5: HISTORICAL figures are what actually happened,
+  // read from the save's exact lifetime ledger totals (economy/
+  // economyState.ts — updated by every ledger write, never trimmed; for a
+  // save migrated from before V2.5 they were reconstructed from its own
+  // progress, see economyMigration.ts). They are never recalculated with
+  // today's reward rates. Business figures are Business Mode's own
+  // lifetime totals.
+  const total = (c: LedgerCategory) => lifetimeTotal(save.economy, c);
+  const levelRewards = total("completion-reward");
   const lifetime = save.business.finance.lifetime;
   const businessRevenue = lifetime.revenue;
-  // Economy V2.5 — every figure below is exact: milestone/Family Legacy
-  // entries are never trimmed from the ledger, investment is priced from
-  // what the player owns, and Business uses its own lifetime totals.
-  const rewardsPaid = milestoneRewardsPaid(save);
   const businessCosts =
     lifetime.inventoryPurchaseCost +
     lifetime.staffCost +
     lifetime.maintenanceCost +
     lifetime.supplierCost +
     lifetime.inspectionFines;
-  const restaurantInvestment = restaurantInvestmentOf(save) + lifetime.capitalExpenditure;
+  const restaurantInvestment = -(
+    total("knife-purchase") +
+    total("board-purchase") +
+    total("staff-purchase") +
+    total("blacksmith-upgrade") +
+    total("kitchen-investment-purchase") +
+    total("refrigerator-purchase")
+  );
+  const finale = milestoneStatuses(save).find((m) => m.id === FAMILY_LEGACY_ID)!;
+  // CURRENT-RATE figure (clearly labelled on screen): each completed level's
+  // reward at today's rates (levelRewards.ts) — a chart of the reward curve,
+  // not of historical payouts.
   const rewardCurve = completed
     .map((l) => ({ level: levelNumber(l.id), reward: paidLevelReward(l) }))
     .sort((a, b) => a.level - b.level)
@@ -234,6 +216,7 @@ export function restaurantProgress(save: SaveData) {
     ...(m.atLevel !== undefined ? { atLevel: m.atLevel } : {}),
     reward: m.reward,
     paid: m.paid,
+    waived: m.waived,
   }));
 
   return {
@@ -275,13 +258,20 @@ export function restaurantProgress(save: SaveData) {
       businessRevenue,
       businessCosts,
       businessCoverage: save.business.finance.lifetime.coverage,
-      milestoneRewards: rewardsPaid.milestones,
-      familyLegacy: rewardsPaid.familyLegacy,
+      milestoneRewards: total("milestone-reward"),
+      familyLegacy: total("family-legacy"),
       restaurantInvestment,
       totalSpent: restaurantInvestment + businessCosts,
       rewardCurve,
     },
-    familyLegacy: { reward: FAMILY_LEGACY_REWARD, paid: rewardsPaid.familyLegacy > 0 },
+    familyLegacy: {
+      reward: FAMILY_LEGACY_REWARD,
+      paid: finale.paid,
+      /** The campaign was finished before the Final Reward existed (old save) — never paid. */
+      waived: finale.waived,
+    },
+    /** "migration" — the historical totals were reconstructed when this save moved to Economy V2.5. */
+    historySince: save.economy?.lifetimeSince ?? "start",
     nextGoal,
     milestones,
     benchmark: cityBenchmark(popularity),

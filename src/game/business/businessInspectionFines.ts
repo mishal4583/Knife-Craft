@@ -54,6 +54,14 @@
  * so a fine reads as a real, government-grounded, but proportionate
  * consequence — never a bankruptcy trap.
  *
+ * Economy V2.5 SCALE: those schedule amounts assume a full restaurant
+ * (~100 covers a day); a KnifeCraft Business day is one service of 4–12
+ * guests, and at full size fines alone cost more per day ($47–58) than a
+ * well-run restaurant earned (365-day simulation, business-final-audit-qa
+ * §21). Fines are now the Chicago schedule scaled to one fifth — the same
+ * SMALL:LARGE ratio — $55 and $105: still the largest routine penalty, far
+ * less than a day's revenue.
+ *
  * Economic safety (CLAUDE.md, and this phase's own brief): every real
  * financial mutation elsewhere in this codebase is strictly ALL-OR-
  * NOTHING on insufficient funds — a purchase is rejected outright, and
@@ -80,8 +88,8 @@ export const DEFAULT_INSPECTION_FINE_STATE: BusinessInspectionFineState = {
 
 export type FineSeverity = "NONE" | "SMALL" | "LARGE";
 
-const SMALL_FINE = 27_500;
-const LARGE_FINE = 52_500;
+const SMALL_FINE = 5_500;
+const LARGE_FINE = 10_500;
 
 const FINE_AMOUNT_BY_SEVERITY: Record<FineSeverity, number> = {
   NONE: 0,
