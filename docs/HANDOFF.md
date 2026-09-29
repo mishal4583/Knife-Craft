@@ -77,6 +77,9 @@ conversation.
 11. Business → Ingredients: per-ingredient prices, unused ingredients hidden
    behind "Show 20 more", wallet preview on every card, "Not enough money —
    need $X more". e2e: `tools/e2e/ingredients.mjs`.
+12. Every ingredient on a menu: 13 new Business dishes (48 total), incl.
+   Ribeye with Herb Butter on the Business-only recipe; the hide toggle
+   removed. `setMenuPrice` now uses `getCampaignRecipe`.
 
 ## 4. Open issues from the Level 1–10 audit (not fixed yet)
 

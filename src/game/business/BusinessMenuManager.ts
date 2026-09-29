@@ -10,7 +10,7 @@
  * isn't one, exactly like ending the business day isn't).
  */
 import type { SaveData } from "../SaveManager";
-import { CAMPAIGN_RECIPES } from "../recipes/campaignRecipes";
+import { getCampaignRecipe } from "../recipes/campaignRecipes";
 
 export type SetMenuPriceResult =
   | { ok: true; save: SaveData; recipeId: string; price: number }
@@ -24,7 +24,8 @@ export type SetMenuPriceResult =
  * non-integer value is rejected.
  */
 export function setMenuPrice(save: SaveData, recipeId: string, price: number): SetMenuPriceResult {
-  const recipe = CAMPAIGN_RECIPES.find((r) => r.id === recipeId);
+  // The recipe system's own lookup (campaign + Business-only recipes).
+  const recipe = getCampaignRecipe(recipeId);
   if (!recipe) return { ok: false, reason: "unknownRecipe" };
   if (!Number.isInteger(price) || price < 0) return { ok: false, reason: "invalidPrice" };
   return {

@@ -208,7 +208,7 @@ const FOCUS_MENU = ["biz-garden-salad", "biz-tomato-lettuce-salad", "biz-kachumb
   assert(base.business.menuActivation.inactiveDishIds.length === 0 && activeBusinessDishes(base.business.menuActivation).length === BUSINESS_DISH_CATALOG.length, "H: a fresh save has every dish on the menu");
   const oldJson = JSON.parse(JSON.stringify({ ...base, business: (({ menuActivation: _m, ...rest }) => rest)(base.business) })) as Partial<SaveData>;
   const migrated = { ...DEFAULT_SAVE, ...oldJson, business: { ...DEFAULT_SAVE.business, ...oldJson.business } } as SaveData;
-  assert(Array.isArray(migrated.business.menuActivation.inactiveDishIds) && activeBusinessDishes(migrated.business.menuActivation).length === 35, "H2: a pre-V3-16 save (no menuActivation field) migrates to all 35 dishes ON");
+  assert(Array.isArray(migrated.business.menuActivation.inactiveDishIds) && activeBusinessDishes(migrated.business.menuActivation).length === BUSINESS_DISH_CATALOG.length && BUSINESS_DISH_CATALOG.length === 48, "H2: a pre-V3-16 save (no menuActivation field) migrates to all 48 dishes ON");
   let save = base;
   for (const dish of BUSINESS_DISH_CATALOG) {
     if (FOCUS_MENU.includes(dish.id)) continue;

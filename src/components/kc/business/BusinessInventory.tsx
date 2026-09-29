@@ -34,7 +34,6 @@ import {
   supplierEventSummary,
 } from "@/game/business/businessAlerts";
 import { activeBusinessDishes } from "@/game/business/businessMenuActivation";
-import { BUSINESS_DISH_CATALOG } from "@/game/business/businessDishCatalog";
 import { notEnoughMoneyText } from "@/game/economy/wallet";
 import {
   DEFAULT_PURCHASE_QUANTITY,
@@ -48,11 +47,6 @@ const PERISHABILITY_BADGE_TONE: Record<PerishabilityState, "cream" | "sage" | "c
     NEAR_EXPIRY: "copper",
     EXPIRED: "locked",
   };
-
-/** Every ingredient at least one Business dish uses — the only ones worth stocking. */
-const DISH_INGREDIENTS = new Set<IngredientId>(
-  BUSINESS_DISH_CATALOG.flatMap((d) => businessDishRequirements(d).map((r) => r.ingredientId)),
-);
 
 /** From this quantity on, the card phrases the balance as "You'll have $X remaining". */
 const LARGE_PURCHASE_QUANTITY = 25;
@@ -93,7 +87,6 @@ export function BusinessInventory({
   const [quantities, setQuantities] = useState<Partial<Record<IngredientId, number>>>({});
   const [messages, setMessages] = useState<Partial<Record<IngredientId, string>>>({});
   const [group, setGroup] = useState<string>("all");
-  const [showUnused, setShowUnused] = useState(false);
 
   const owned = Object.values(save.business.inventory).filter((entry) => !!entry);
   const totalValue = inventoryValue(save.business.inventory);
@@ -160,7 +153,6 @@ export function BusinessInventory({
   }
 
   const groups = GROUPS.filter((g) => group === "all" || g.category === group);
-  const unusedCount = allIngredientIds.filter((id) => !DISH_INGREDIENTS.has(id)).length;
 
   return (
     <div className="space-y-3">
@@ -296,12 +288,7 @@ export function BusinessInventory({
       </div>
 
       {groups.map((g) => {
-        // Ingredients no Business dish uses are hidden unless asked for — they
-        // could only be bought to spoil.
-        const ids = allIngredientIds.filter(
-          (id) =>
-            INGREDIENTS[id].category === g.category && (showUnused || DISH_INGREDIENTS.has(id)),
-        );
+        const ids = allIngredientIds.filter((id) => INGREDIENTS[id].category === g.category);
         const ordered = [
           ...ids.filter((id) => menuIngredients.has(id)),
           ...ids.filter((id) => !menuIngredients.has(id)),
@@ -333,11 +320,7 @@ export function BusinessInventory({
                       <span className="text-[34px] leading-none" aria-hidden>
                         {INGREDIENT_EMOJI[id]}
                       </span>
-                      {menuIngredients.has(id) ? (
-                        <Badge tone="sage">Menu</Badge>
-                      ) : !DISH_INGREDIENTS.has(id) ? (
-                        <Badge tone="locked">No dish</Badge>
-                      ) : null}
+                      {menuIngredients.has(id) ? <Badge tone="sage">Menu</Badge> : null}
                     </div>
                     <p className="mt-1 font-display text-[14px] font-black leading-tight text-walnut-dark">
                       {def.name}
@@ -408,21 +391,6 @@ export function BusinessInventory({
           </section>
         );
       })}
-
-      {unusedCount > 0 ? (
-        <KButton
-          full
-          size="sm"
-          variant="ghost"
-          className="h-12"
-          aria-pressed={showUnused}
-          onClick={() => setShowUnused((v) => !v)}
-        >
-          {showUnused
-            ? "Hide ingredients no dish uses"
-            : `Show ${unusedCount} more ingredients (no dish uses them)`}
-        </KButton>
-      ) : null}
     </div>
   );
 }

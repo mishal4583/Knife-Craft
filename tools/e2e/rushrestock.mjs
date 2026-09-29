@@ -62,6 +62,19 @@ const OFF_MENU = [
   "biz-thai-basil-chicken",
   "biz-thai-basil-salmon",
   "biz-greek-lemon-chicken",
+  "biz-zucchini-fennel-salad",
+  "biz-celery-apple-salad",
+  "biz-cucumber-pomegranate-salad",
+  "biz-beet-orange-salad",
+  "biz-peach-cheddar-board",
+  "biz-cabbage-cauliflower-stirfry",
+  "biz-ribeye-herb-butter",
+  "biz-carne-asada-corn",
+  "biz-turnips-persillade",
+  "biz-sweet-potato-hash",
+  "biz-mango-pineapple-cup",
+  "biz-kiwi-watermelon-plate",
+  "biz-strawberry-grape-cup",
 ];
 const DAY = 7; // no supplier event: carrot is $0.80 in the Market
 const blockedSave = (credits) =>

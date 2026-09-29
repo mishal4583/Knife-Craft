@@ -2813,7 +2813,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     name: "Sweet Potato Hash",
     emoji: "🍠",
     cuisineId: "mexican",
-    authenticity: "B",
+    authenticity: "A",
     components: [
       {
         ingredientId: "sweetpotato",
@@ -2859,7 +2859,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     name: "Beetroot & Orange Plate",
     emoji: "🥔",
     cuisineId: "mexican",
-    authenticity: "B",
+    authenticity: "A",
     components: [
       {
         ingredientId: "beetroot",
@@ -5502,7 +5502,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     name: "Peach & Cheddar Board",
     emoji: "🍑",
     cuisineId: "french",
-    authenticity: "B",
+    authenticity: "A",
     components: [
       {
         ingredientId: "peach",
@@ -6184,7 +6184,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     name: "Kiwi & Watermelon Fresh Plate",
     emoji: "🥝",
     cuisineId: "mediterranean",
-    authenticity: "B",
+    authenticity: "A",
     components: [
       {
         ingredientId: "kiwi",
@@ -6553,7 +6553,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     name: "Grapes & Strawberry Cup",
     emoji: "🍇",
     cuisineId: "mexican",
-    authenticity: "B",
+    authenticity: "A",
     components: [
       {
         ingredientId: "grapes",
@@ -7934,6 +7934,65 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
   },
 ];
 
+/**
+ * Recipes that only Business Mode serves — kept OUT of CAMPAIGN_RECIPES so
+ * the campaign's content stays exactly as frozen (221 recipes, no butter).
+ * Same type and the same lookup (getCampaignRecipe) as every campaign
+ * recipe; no level uses them.
+ *   camp-ribeye-herb-butter — Business "Ribeye with Herb Butter" (steak
+ *   maître d'hôtel), the dish that puts Butter on a menu.
+ */
+export const BUSINESS_ONLY_RECIPES: RecipeDefinition[] = [
+  {
+    id: "camp-ribeye-herb-butter",
+    name: "Ribeye with Parsley Butter",
+    emoji: "🥩",
+    cuisineId: "french",
+    authenticity: "A",
+    components: [
+      {
+        ingredientId: "steak",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "butter",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "parsley",
+        technique: "chiffonade",
+        resultingState: "ribboned",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "garlic",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "garlic",
+        technique: "rockMince",
+        resultingState: "minced",
+        destinationIds: ["plate"],
+      },
+    ],
+    destinations: [PLATE],
+    batchable: false,
+    chefInstruction:
+      "Slice the steak. Slice the butter. Chiffonade the parsley. Peel the garlic. Rock-mince the garlic.",
+    customerDialogue: "The ribeye with parsley butter, please.",
+    basePayment: 600,
+    unlockLevel: 106,
+  },
+];
+
 export function getCampaignRecipe(id: string): RecipeDefinition | undefined {
-  return CAMPAIGN_RECIPES.find((r) => r.id === id);
+  return (
+    CAMPAIGN_RECIPES.find((r) => r.id === id) ?? BUSINESS_ONLY_RECIPES.find((r) => r.id === id)
+  );
 }
