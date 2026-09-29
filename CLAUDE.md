@@ -124,6 +124,9 @@ Focused suites (`npx tsx scripts/<name>.mts`):
 - `economy-v2-final-qa`, `economy-v2-qa`, `economy-v2-settlement-ledger-qa`
   — Economy V2 frozen baseline (some checks use `git diff`, so run them in
   this git repo).
+- `economy-v25-qa` (+ `economy-v25-simulation`) — V2.5 final-wealth target,
+  wallet safety, milestone/Family Legacy once-only, recurring caps, $0
+  recovery, 365-day Business runs.
 - `campaign-integrity-qa`, `restaurant-progress-qa`, `business-ux-qa`,
   `progression-preview-qa`, `usd-currency-qa`, `phase7-2-smoke-test`,
   plus the other `scripts/*-qa.mts` / `business-*-qa.mts` suites.
@@ -164,15 +167,49 @@ preparation = PreparationScene; events = `events.ts`; platform =
 
 ## 7. ECONOMY RULES
 
-### Economy V2 is frozen
+### Economy V2 is frozen (with the approved V2.5 completion-reward change)
 
 Locked Campaign baseline (enforced by `economy-v2-final-qa`):
 
-- Revenue 165,140 · Completion Rewards 330,691 · COGS 37,620 ·
-  Quality Bonus 3,315 · Honest Chef Net 461,526
+- Revenue 165,140 · Completion Rewards 77,581 · COGS 37,620 ·
+  Quality Bonus 3,315 · Honest Chef Net 208,416
 
+(Completion Rewards were 330,691 and the net 461,526 before Economy V2.5;
+that one line changed by the approved rebalance below. Nothing else moved.)
 Any unexplained change is a regression. Investigate; never just update the
 expected values.
+
+### Economy V2.5 — Final Wealth (approved rebalance)
+
+Goal: a completionist finishes Level 250 owning everything with
+$100k–$120k left (simulated: **$109,534**; normal player $105,627).
+`scripts/economy-v25-simulation.mts` + `scripts/economy-v25-qa.mts` prove it
+with the real functions.
+
+- **Level rewards** — `levels/levelRewards.ts` `paidLevelReward(level)` is
+  the ONE rule for what a level pays (stored `reward.coins` untouched):
+  100% L1–20, 90% 21–40, 75% 41–60, 60% 61–80, 50% 81–100, 40% 101–120,
+  30% 121–160, 20% 161–200, 15% 201–249, 100% L250. Payout, Kitchen/Journal/
+  Preparation displays, Progress, Endless and the Replay Bonus all use it.
+- **Restaurant Development** — kitchen tiers are bought, in order, once
+  their level is reached: Growing $20k (L21), Established $25k (L41),
+  Neighborhood Café $25k (L51), Flourishing $30k (L71), Grand $35k (L91)
+  = $135k (`KitchenUpgradeManager.purchaseKitchenUpgrade`, ledger
+  `kitchen-investment-purchase`, Kitchen Upgrade screen). Save version 3:
+  older saves keep every tier their level had earned
+  (`migrateKitchenDevelopment`).
+- **Milestone rewards** — the 22 Progress milestones each pay once
+  (`progression/milestoneRewards.ts`, $38,200) and Level 250 pays the
+  **Family Legacy $50,000**. The ledger entry (`milestone-reward` /
+  `family-legacy`, description = milestone id) is the record; those
+  entries are never trimmed, so nothing can pay twice. Paid on every
+  `persist` and on load (older saves get reached milestones once).
+- **Recurring caps** — Replay Bonus 20% of the paid reward, $10–$200,
+  3/day; Endless $600/day; Today's Special $50/day.
+- **Wallet invariant** — `economy/wallet.ts`: credits are whole cents and
+  never < 0. Every expense is all-or-nothing (`debitWallet` or the
+  manager's own balance guard); App `persist` and `SaveManager.save`
+  refuse a wallet that breaks the invariant. No debt, no bankruptcy.
 
 ### Economy V3 (Business Mode)
 
@@ -212,19 +249,15 @@ not silently removed.
 
 ## 9. STORY SYSTEM (current state)
 
-- Opening intro = `OPENING + FRESH + CHEF` in
-  `src/game/story/storyDefinitions.ts`: 14 beats, 21.5 s of timed beats
-  (7.6 / 6.0 / 7.9 s) + the OPEN THE RESTAURANT and READY buttons
-  (re-paced from the original 38.7 s / 13 beats).
-- `StoryOverlay` (`src/components/kc/story/StoryOverlay.tsx`): per-beat
-  advancing (a timer and a tap, or two taps, move one beat), taps ignored
-  for 250 ms after a beat appears, button beats only advance via their
-  button, CSS-only transitions (`kc-story-*` in `styles.css`) with a
-  `prefers-reduced-motion` fallback.
-- **Skip story →** (top-right, 48 px) exists only on the opening intro.
+- Opening intro = the painted cinematic: `src/game/story/introCinematic.ts`
+  (data: 7 scenes 1/2/3A/3B/3C/4/5, 13.6 s incl. a 0.8 s push into the
+  tomato that fades into the already-running Level 1) played by
+  `src/components/kc/story/CinematicIntro.tsx` (one rAF clock, taps step
+  one line/scene, 250 ms tap guard, pause-aware, reduced-motion fallback).
+- **SKIP ›** (top-right, 48 px, after 1 s) is the only early exit.
   Finishing and skipping share one completion path
-  (`StoryOverlay.finish` → `App.completeIntro`) that sets only
-  `story.introDone = true`, once.
+  (`CinematicIntro.finish` → `App.completeIntro`) that sets only
+  `story.introDone = true`, once. `StoryOverlay` still plays the finale.
 - Milestones (Level 10/20/45/70/110/120/250) and the Level-100 finale are
   unchanged. `SaveData.story = { introDone, milestoneMask, finaleSeen }` —
   no new fields.

@@ -109,10 +109,22 @@ export function appendLedgerEntry(
  */
 const RETAIN_REWARDED_AD_MS = 36 * 60 * 60 * 1000;
 
+/**
+ * Economy V2.5 — milestone rewards and the Family Legacy are kept forever:
+ * each entry IS the record that the reward was paid
+ * (progression/milestoneRewards.ts), so trimming one would let it be paid
+ * again. There are at most 22 of them, so the window stays bounded.
+ */
+const PERMANENT_CATEGORIES: ReadonlySet<LedgerCategory> = new Set<LedgerCategory>([
+  "milestone-reward",
+  "family-legacy",
+]);
+
 function trimLedger(entries: EconomyLedgerEntry[], now: number): EconomyLedgerEntry[] {
   if (entries.length <= MAX_LEDGER_ENTRIES) return entries;
   const retained = (e: EconomyLedgerEntry) =>
-    e.category === "rewarded-ad" && now - e.timestamp < RETAIN_REWARDED_AD_MS;
+    PERMANENT_CATEGORIES.has(e.category) ||
+    (e.category === "rewarded-ad" && now - e.timestamp < RETAIN_REWARDED_AD_MS);
   const keepCount = Math.max(0, MAX_LEDGER_ENTRIES - entries.filter(retained).length);
   const others = entries.filter((e) => !retained(e));
   const keptOthers = new Set(others.slice(others.length - keepCount));
@@ -179,7 +191,7 @@ export const LEDGER_CATEGORY_LABEL: Record<LedgerCategory, string> = {
   "investment-upkeep": "Kitchen Investment Upkeep",
   "knife-purchase": "Knife Purchase",
   "board-purchase": "Board Purchase",
-  "kitchen-investment-purchase": "Kitchen Investment",
+  "kitchen-investment-purchase": "Restaurant Development",
   "staff-purchase": "Staff Hire",
   sharpening: "Sharpening",
   "blacksmith-upgrade": "Blacksmith Upgrade",
@@ -191,4 +203,6 @@ export const LEDGER_CATEGORY_LABEL: Record<LedgerCategory, string> = {
   "inspection-fine": "Inspection Fine",
   "business-revenue": "Business Order Revenue",
   "rewarded-ad": "Replay Bonus (ad)",
+  "milestone-reward": "Milestone Reward",
+  "family-legacy": "Family Legacy",
 };

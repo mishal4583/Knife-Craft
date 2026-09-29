@@ -20,6 +20,8 @@ export type KitchenUpgradeDefinition = {
   description: string;
   /** Numeric level requirement — 1 means available from the start. */
   unlockLevel: number;
+  /** Economy V2.5 — what building this tier costs, in wallet cents (0 for the starting kitchen). */
+  price: number;
   /** Which of the six background images this upgrade displays once equipped. */
   asset: KitchenSkinId;
 };

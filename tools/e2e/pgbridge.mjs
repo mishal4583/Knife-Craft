@@ -65,7 +65,16 @@ await page.evaluate(async () => {
     version: 2,
     credits: 123400,
     story: { introDone: true, milestoneMask: 0, finaleSeen: false },
-    economyLedger: [],
+    // Its one reached milestone (First dish served) was already paid — so loading adds nothing.
+    economyLedger: [
+      {
+        id: "seed-first-dish",
+        timestamp: 0,
+        category: "milestone-reward",
+        amount: 10000,
+        description: "first-dish",
+      },
+    ],
     levelProgress: {
       currentLevelId: "level-10",
       highestUnlockedLevelId: "level-10",
@@ -118,14 +127,19 @@ const after = await page.evaluate(async () =>
     (await window.bridge.storage.get(["knifecraft_save"]))[0],
   ),
 );
+// Economy V2.5: the $350 Santoku also pays its one-time $100 "Santoku in your kit" milestone.
+const santokuMilestone = after.economyLedger.filter((e) => e.description === "knife-santoku");
 check(
-  before - after.credits === 35000 && after.ownedKnifeIds.includes("santoku"),
-  `Buying the Santoku saves through Bridge storage (${before} → ${after.credits} cents)`,
+  before - after.credits === 35000 - 10000 &&
+    after.ownedKnifeIds.includes("santoku") &&
+    santokuMilestone.length === 1 &&
+    santokuMilestone[0].amount === 10000,
+  `Buying the Santoku saves through Bridge storage (${before} → ${after.credits} cents: −$350 + $100 milestone)`,
 );
 await page.reload({ waitUntil: "networkidle0" });
 await sleep(2000);
 t = await text(page);
-check(/\$884\.00/.test(t), "Reload keeps the purchase ($884.00)");
+check(/\$984\.00/.test(t), "Reload keeps the purchase ($984.00)");
 // pause/audio events reach the game
 const paused = await page.evaluate(async () => {
   const b = window.bridge;

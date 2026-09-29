@@ -14,12 +14,21 @@ import { DEFAULT_SUPPLIER_ID } from "./economy/supplierDefinitions";
 import type { EconomyLedgerEntry } from "./economy/ledgerTypes";
 import { DEFAULT_BUSINESS_STATE, type BusinessState } from "./business/businessTypes";
 import { migrateBusinessFinanceState } from "./business/BusinessFinanceManager";
-import { migrateMoneyToUsd, USD_SAVE_VERSION } from "./economy/usdMigration";
+import { migrateMoneyToUsd } from "./economy/usdMigration";
+import { walletInvariantViolation } from "./economy/wallet";
+import {
+  KITCHEN_DEVELOPMENT_SAVE_VERSION,
+  migrateKitchenDevelopment,
+} from "./kitchen/KitchenUpgradeManager";
 import { dollars } from "./money";
 
 const STORAGE_KEY = "knifecraft.save.v1";
-/** 2 — money is US dollars, stored as integer cents (economy/usdMigration.ts converts version-1 saves once). */
-const SAVE_VERSION = USD_SAVE_VERSION;
+/**
+ * 2 — money is US dollars, stored as integer cents (economy/usdMigration.ts converts version-1 saves once).
+ * 3 — Economy V2.5: kitchen tiers are bought, not granted by level
+ *     (KitchenUpgradeManager.migrateKitchenDevelopment keeps what older saves had earned).
+ */
+const SAVE_VERSION = KITCHEN_DEVELOPMENT_SAVE_VERSION;
 
 export type SaveData = {
   version: number;
@@ -307,7 +316,7 @@ class SaveManagerImpl {
       };
       // Version-1 saves stored Campaign money in whole units that now mean
       // dollars; convert them to the wallet's cent unit exactly once.
-      this.cache = migrateMoneyToUsd(merged);
+      this.cache = migrateKitchenDevelopment(migrateMoneyToUsd(merged));
     } catch {
       this.cache = { ...DEFAULT_SAVE };
     }
@@ -315,6 +324,9 @@ class SaveManagerImpl {
   }
 
   async save(data: SaveData): Promise<void> {
+    // Economy V2.5 — never persist money the game can't have (economy/wallet.ts).
+    const violation = walletInvariantViolation(data);
+    if (violation) throw new Error(`Refusing to save: ${violation}`);
     this.cache = data;
     const serialized = JSON.stringify(data);
     if (await platformReady()) {

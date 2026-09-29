@@ -24,7 +24,7 @@
  *   SaveManager (persistence)
  */
 import { LEVELS } from "./levelDefinitions";
-import { dollars } from "../money";
+import { paidLevelReward } from "./levelRewards";
 import type { LevelDefinition, UnlockRequirement } from "./levelTypes";
 
 export type LevelProgress = {
@@ -93,7 +93,7 @@ export type CompleteLevelResult = {
   progress: LevelProgress;
   /** True only the first time this levelId is completed — Law 2's gate. */
   isFirstCompletion: boolean;
-  /** The level's reward in wallet cents (dollars(level.reward.coins)) on first completion, 0 on replay (Law 2 — "replay does not pay"). */
+  /** The level's paid completion reward in wallet cents (levelRewards.ts `paidLevelReward`) on first completion, 0 on replay (Law 2 — "replay does not pay"). */
   rewardCoins: number;
   /** Levels that became unlocked as a direct result of this completion (for a "New level unlocked!" toast, unused by Phase 4 UI but computed for future use). */
   newlyUnlockedLevelIds: string[];
@@ -131,7 +131,7 @@ export function completeLevel(levelId: string, progress: LevelProgress): Complet
   return {
     progress: { ...progressAfter, highestUnlockedLevelId },
     isFirstCompletion,
-    rewardCoins: isFirstCompletion ? dollars(level.reward.coins) : 0,
+    rewardCoins: isFirstCompletion ? paidLevelReward(level) : 0,
     newlyUnlockedLevelIds,
   };
 }

@@ -182,7 +182,9 @@ await platformReady();
 {
   const amount = replayBonusAmount(level10);
   assert(amount === Math.max(1000, Math.round((level10.reward.coins * 100 * 0.2) / 100) * 100) && amount % 100 === 0, `B: bonus = 20% of the level's reward, whole dollars, min $10 (Level 10 → $${amount / 100})`);
-  assert(replayBonusAmount(LEVELS[0]!) === 1000 && replayBonusAmount(LEVELS[249]!) === 100000, "B2: Level 1 → $10 (minimum), Level 250 → $1,000");
+  // Economy V2.5: the bonus is capped at $200 (3/day → at most $600/day).
+  assert(replayBonusAmount(LEVELS[0]!) === 1000 && replayBonusAmount(LEVELS[249]!) === 20000, "B2: Level 1 → $10 (minimum), Level 250 → $200 (the V2.5 cap; 20% of its $5,000 would be $1,000)");
+  assert(LEVELS.every((l) => { const a = replayBonusAmount(l); return a >= 1000 && a <= 20000 && a % 100 === 0; }), "B2b: every level's Replay Bonus is whole dollars within $10–$200");
   const id = newReplayBonusRewardId("level-10");
   assert(id.startsWith(`${REWARD_ID_PREFIX}level-10-`) && id !== newReplayBonusRewardId("level-10") && !/@|user|name/i.test(id), "B3: reward ids are unique, prefixed, and carry no user data");
 

@@ -9,7 +9,9 @@ import type { KitchenUpgradeDefinition } from "@/game/kitchen/kitchenUpgradeType
 import {
   getKitchenUpgradeState,
   type KitchenUpgradeState,
+  type PurchaseKitchenUpgradeResult,
 } from "@/game/kitchen/KitchenUpgradeManager";
+import { formatUsd } from "@/game/money";
 import type { SaveData } from "@/game/SaveManager";
 
 /** A small real preview of the upgrade's own background image — unlike Boards/Knives (which have no real photo, only a CSS-gradient stand-in), a kitchen upgrade's true identity IS one of the six finished images, so the card just shows a cropped, scaled copy of it. */
@@ -32,25 +34,40 @@ function KitchenUpgradePreview({
 }
 
 /**
- * KITCHEN_UPGRADES — a real progression-milestone screen, not a shop
- * (Phase 14). Each tier is a permanent upgrade: reaching its level
- * replaces the previous kitchen for good (KitchenUpgradeManager.
- * syncKitchenUpgradeOwnership), so there is nothing to choose here —
- * the screen shows the current kitchen, the stages already grown past,
- * and the stages still ahead.
+ * KITCHEN_UPGRADES — Restaurant Development (Economy V2.5). Each tier
+ * after the first is a permanent investment: reaching its level makes it
+ * available, and the player builds the tiers in order when they can afford
+ * them (KitchenUpgradeManager.purchaseKitchenUpgrade — all or nothing,
+ * never on credit). Building a tier moves the kitchen onto it for good.
+ * Nothing in the game requires any tier; they are the restaurant growing.
  */
-export function KitchenUpgrades({ go, save }: { go: (s: ScreenId) => void; save: SaveData }) {
-  const [selectedId, setSelectedId] = useState<string>(save.equippedKitchenUpgradeId);
+export function KitchenUpgrades({
+  go,
+  save,
+  buildKitchenUpgrade,
+}: {
+  go: (s: ScreenId) => void;
+  save: SaveData;
+  buildKitchenUpgrade: (id: string) => PurchaseKitchenUpgradeResult;
+}) {
+  const [selectedId, setSelectedId] = useState<string>(
+    () =>
+      KITCHEN_UPGRADE_CATALOG.find((u) => getKitchenUpgradeState(u.id, save) === "available")?.id ??
+      save.equippedKitchenUpgradeId,
+  );
   const selected =
     KITCHEN_UPGRADE_CATALOG.find((u) => u.id === selectedId) ?? KITCHEN_UPGRADE_CATALOG[0]!;
   const state = getKitchenUpgradeState(selected.id, save);
+  const selectedIndex = KITCHEN_UPGRADE_CATALOG.findIndex((u) => u.id === selected.id);
+  const previous = selectedIndex > 0 ? KITCHEN_UPGRADE_CATALOG[selectedIndex - 1]! : null;
+  const shortfall = Math.max(0, selected.price - save.credits);
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-cream">
       <div className="relative h-full overflow-y-auto no-scrollbar pb-24">
         <ScreenHeader
           title="Kitchen Upgrades"
-          subtitle="the whole room, growing with you"
+          subtitle="restaurant development"
           onBack={() => go("kitchen")}
           right={<Coin n={save.credits} />}
         />
@@ -74,8 +91,28 @@ export function KitchenUpgrades({ go, save }: { go: (s: ScreenId) => void; save:
             <Divider />
             {state === "locked" ? (
               <KButton full variant="ghost" disabled>
-                Unlocks at Level {selected.unlockLevel}
+                Unlocks at Level {selected.unlockLevel} · {formatUsd(selected.price)}
               </KButton>
+            ) : state === "needsPrevious" ? (
+              <KButton full variant="ghost" disabled>
+                Build the {previous?.name} first
+              </KButton>
+            ) : state === "available" ? (
+              <>
+                <KButton
+                  full
+                  variant="copper"
+                  disabled={shortfall > 0}
+                  onClick={() => buildKitchenUpgrade(selected.id)}
+                >
+                  🔨 Build · {formatUsd(selected.price)}
+                </KButton>
+                <p className="mt-2 text-center font-hand text-[14px] text-walnut/65">
+                  {shortfall > 0
+                    ? `Current balance ${formatUsd(save.credits)} — need ${formatUsd(shortfall)} more.`
+                    : "A permanent investment in your restaurant."}
+                </p>
+              </>
             ) : state === "current" ? (
               <KButton full variant="sage" disabled>
                 Current Kitchen
@@ -114,8 +151,10 @@ export function KitchenUpgrades({ go, save }: { go: (s: ScreenId) => void; save:
                   <Badge tone="sage">Current</Badge>
                 ) : uState === "past" ? (
                   <Badge tone="cream">Upgraded ✓</Badge>
-                ) : (
+                ) : uState === "locked" ? (
                   <Badge tone="locked">Lv {u.unlockLevel}</Badge>
+                ) : (
+                  <Badge tone="copper">{formatUsd(u.price)}</Badge>
                 )}
               </button>
             );
@@ -123,7 +162,7 @@ export function KitchenUpgrades({ go, save }: { go: (s: ScreenId) => void; save:
         </div>
 
         <p className="px-6 pb-2 pt-5 text-center font-hand text-[15px] text-walnut/50">
-          I upgraded my kitchen.
+          Build your restaurant, one room at a time.
         </p>
       </div>
       <BottomNav active="kitchen" go={go} />

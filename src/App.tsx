@@ -41,7 +41,16 @@ import {
 import { buyKnife as buyKnifeFromCatalog, equipKnife } from "@/game/knives/KnifeManager";
 import { boardOrDefault } from "@/game/boards/boardDefinitions";
 import { buyBoard as buyBoardFromCatalog, equipBoard } from "@/game/boards/BoardManager";
-import { syncKitchenUpgradeOwnership } from "@/game/kitchen/KitchenUpgradeManager";
+import {
+  purchaseKitchenUpgrade,
+  syncKitchenUpgradeOwnership,
+} from "@/game/kitchen/KitchenUpgradeManager";
+import {
+  FAMILY_LEGACY_ID,
+  grantEarnedMilestoneRewards,
+  type MilestoneDefinition,
+} from "@/game/progression/milestoneRewards";
+import { walletInvariantViolation } from "@/game/economy/wallet";
 import {
   shouldRunIntro,
   markIntroDone,
@@ -67,6 +76,7 @@ import {
   DAILY_ORDER_BONUS_COINS,
 } from "@/game/daily/DailyOrderManager";
 import { pickEndlessLevel, applyEndlessEarn } from "@/game/daily/EndlessServiceManager";
+import { paidLevelReward } from "@/game/levels/levelRewards";
 import {
   createServiceSession,
   recordAllComponents,
@@ -196,6 +206,23 @@ function LoadingScreen() {
   );
 }
 
+/** One banner per payout: several milestones paid together (e.g. an older save's first load) are summed into one line. */
+type MilestoneNotice = { id: string; label: string; reward: number; legacy: boolean };
+function milestoneNoticeFor(granted: readonly MilestoneDefinition[]): MilestoneNotice {
+  const reward = granted.reduce((sum, m) => sum + m.reward, 0);
+  const legacy = granted.some((m) => m.id === FAMILY_LEGACY_ID);
+  if (granted.length === 1) return { id: granted[0]!.id, label: granted[0]!.label, reward, legacy };
+  const others = granted.length - (legacy ? 1 : 0);
+  return {
+    id: granted.map((m) => m.id).join("+"),
+    label: legacy
+      ? `Level 250 complete + ${others} milestone${others === 1 ? "" : "s"}`
+      : `${granted.length} milestones reached`,
+    reward,
+    legacy,
+  };
+}
+
 export function App() {
   const [save, setSave] = useState<SaveData | null>(null);
   // "kitchen" is a safe placeholder only — the `!save` loading gate below
@@ -301,6 +328,8 @@ export function App() {
   // (possible after the dead-request guard released the screen) — confirmed here.
   const [lateReplayBonus, setLateReplayBonus] = useState<number | null>(null);
   const [adActive, setAdActive] = useState(false);
+  // Economy V2.5 — milestone rewards just paid, shown one at a time.
+  const [milestoneNoticeQueue, setMilestoneNoticeQueue] = useState<MilestoneNotice[]>([]);
   // Rush Restock's ad path resumes after an await: it reads the CURRENT order
   // from this ref (was it served or replaced while the ad played?).
   const rushAdBusyRef = useRef(false);
@@ -376,11 +405,10 @@ export function App() {
           setSessionMode("campaign-service");
         }
       }
-      // Kitchen-upgrade ownership is a deterministic function of level
-      // progress (Phase 14), never a one-time purchase — re-derive it on
-      // every load so a save that reached a new tier's level in a prior
-      // session (or was seeded/edited directly) is always correct, not
-      // just saves that happened to visit the Kitchen Upgrades screen.
+      // Economy V2.5 — kitchen tiers are bought (Restaurant Development);
+      // this only keeps the kitchen on the highest tier owned. Saves from
+      // before V2.5 already got their level-earned tiers in
+      // SaveManager.load (migrateKitchenDevelopment).
       let synced = syncKitchenUpgradeOwnership(loaded);
       // THE LAST WISH's intro (ported from boot()) is a "how you got
       // here" origin scene — only a genuinely brand-new player should
@@ -396,6 +424,12 @@ export function App() {
         if (isFreshSave) setShowIntro(true);
         else synced = markIntroDone(synced);
       }
+      // Economy V2.5 — milestones an existing save had already reached are
+      // paid once, now (never again: the ledger records each payment).
+      const loadGrant = grantEarnedMilestoneRewards(synced);
+      synced = loadGrant.save;
+      if (loadGrant.granted.length > 0)
+        setMilestoneNoticeQueue([milestoneNoticeFor(loadGrant.granted)]);
       if (synced !== loaded) void SaveManager.save(synced);
       saveRef.current = synced;
       setSave(synced);
@@ -484,16 +518,35 @@ export function App() {
     if (current && !current.story.introDone) persist(markIntroDone(current));
   }
 
-  /** The single place every save mutation flows through — also where
-   * kitchen-upgrade ownership gets re-derived from level progress, so
-   * crossing a new tier's unlock level (e.g. via recordPreparationResult)
-   * grants that tier immediately, live, with no separate purchase step —
-   * and moves the kitchen onto it for good (an upgrade, not a skin). */
+  /** The single place every save mutation flows through: keeps the kitchen
+   * on the highest tier owned, pays any milestone this change reached
+   * (Economy V2.5), and refuses a save whose wallet breaks the invariant
+   * (never negative, whole cents — economy/wallet.ts). */
   function persist(next: SaveData) {
     const synced = syncKitchenUpgradeOwnership(next);
-    saveRef.current = synced;
-    setSave(synced);
-    void SaveManager.save(synced);
+    // Economy V2.5 — a milestone reached by this change is paid right here,
+    // once (milestoneRewards.ts: the ledger entry is the record).
+    const { save: rewarded, granted } = grantEarnedMilestoneRewards(synced);
+    // The one save funnel refuses money the game can't have (economy/wallet.ts).
+    const violation = walletInvariantViolation(rewarded);
+    if (violation) {
+      console.error(`[economy] save refused: ${violation}`);
+      return;
+    }
+    saveRef.current = rewarded;
+    setSave(rewarded);
+    void SaveManager.save(rewarded);
+    if (granted.length > 0) setMilestoneNoticeQueue((q) => [...q, milestoneNoticeFor(granted)]);
+  }
+
+  /** Economy V2.5 — Restaurant Development: build the next kitchen tier (KitchenUpgradeManager.purchaseKitchenUpgrade), recorded as "kitchen-investment-purchase". */
+  function buildKitchenUpgrade(id: string) {
+    if (!save) return { ok: false as const, reason: "unknownUpgrade" as const };
+    const result = purchaseKitchenUpgrade(save, id);
+    if (result.ok) {
+      persist(appendLedgerEntry(result.save, "kitchen-investment-purchase", -result.price, id));
+    }
+    return result;
   }
 
   /** Rack action (Phase 15) — routes through KnifeManager.equipKnife itself rather than an inline persist, so "owned" is checked in one place, not duplicated. */
@@ -1549,7 +1602,7 @@ export function App() {
     const recipeProgress = { ...save.recipeProgress, [recipeId]: { best, done: true } };
     const { earned, endless } = applyEndlessEarn(
       save.endless,
-      dollars(activeLevel.reward.coins),
+      paidLevelReward(activeLevel),
       new Date(),
     );
     const nextSave = appendLedgerEntry(
@@ -1850,6 +1903,7 @@ export function App() {
               purchaseRefrigerator={purchaseRefrigerator}
               performRefrigeratorMaintenance={performRefrigeratorMaintenance}
               rushRestock={rushRestockCurrentOrder}
+              buildKitchenUpgrade={buildKitchenUpgrade}
               rushAdAvailable={rewardedAdsAvailable()}
               setMenuPrice={setMenuPrice}
               setBusinessDishActive={setBusinessDishActive}
@@ -1908,6 +1962,14 @@ export function App() {
         />
       ) : null}
       {adActive ? <AdPlayingShield /> : null}
+      {milestoneNoticeQueue[0] && !storyEvent && !levelRewardNotice && !showIntro ? (
+        <MilestoneBanner
+          key={milestoneNoticeQueue[0].id}
+          kicker={milestoneNoticeQueue[0].legacy ? "🏆 Family Legacy" : "Milestone reached"}
+          line={`${milestoneNoticeQueue[0].label} · ${formatUsdChange(milestoneNoticeQueue[0].reward)}`}
+          onDismiss={() => setMilestoneNoticeQueue((q) => q.slice(1))}
+        />
+      ) : null}
       {businessNoticeQueue[0] && inBusiness && !storyEvent && !levelRewardNotice ? (
         <MilestoneBanner
           key={businessNoticeQueue[0].key}

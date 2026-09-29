@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { paidLevelReward } from "@/game/levels/levelRewards";
 import { KButton, Coin, DustMotes } from "./common/primitives";
 import { gameReady } from "@/game/PlayablesSDK";
 import { dollars, formatUsdChange } from "@/game/money";
@@ -211,7 +212,7 @@ export function Kitchen({
                     ? "locked · finish the level before it"
                     : todayCompleted
                       ? "prepared already · replay pays nothing"
-                      : `ready to prepare · ${formatUsdChange(dollars(todayLevel.reward.coins))}`}
+                      : `ready to prepare · ${formatUsdChange(paidLevelReward(todayLevel))}`}
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-2">
@@ -395,7 +396,7 @@ export function OrderBoard({
                           ? "locked · finish the level before it"
                           : completed
                             ? "prepared already · replay pays nothing"
-                            : `ready to prepare · ${formatUsdChange(dollars(level.reward.coins))}`}
+                            : `ready to prepare · ${formatUsdChange(paidLevelReward(level))}`}
                       </p>
                       {canOpen ? (
                         <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-0.5">

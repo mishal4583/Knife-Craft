@@ -1,4 +1,5 @@
 import type { ScreenId } from "./data";
+import { paidLevelReward } from "@/game/levels/levelRewards";
 import type { SaveData } from "@/game/SaveManager";
 import { KButton, Panel, ScreenHeader, Divider, Steam } from "./common/primitives";
 import { dollars, formatUsd, formatUsdChange } from "@/game/money";
@@ -81,7 +82,7 @@ export function DailyOrder({
             <div className="space-y-2 font-ui text-[12px] font-bold text-walnut/75">
               <div className="flex justify-between">
                 <span>Reward</span>
-                <span className="text-copper">{formatUsdChange(dollars(level.reward.coins))}</span>
+                <span className="text-copper">{formatUsdChange(paidLevelReward(level))}</span>
               </div>
               <div className="flex justify-between">
                 <span>Today's bonus</span>

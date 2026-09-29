@@ -68,6 +68,24 @@ const blockedSave = (credits) =>
   seedSave({
     version: 2,
     credits,
+    // Its reached milestones (First dish served, First Business day — it is on Day 7) were already
+    // paid — so loading adds nothing.
+    economyLedger: [
+      {
+        id: "seed-first-business-day",
+        timestamp: 0,
+        category: "milestone-reward",
+        amount: 30000,
+        description: "first-business-day",
+      },
+      {
+        id: "seed-first-dish",
+        timestamp: 0,
+        category: "milestone-reward",
+        amount: 10000,
+        description: "first-dish",
+      },
+    ],
     business: {
       calendar: { businessDay: DAY },
       inventory: {

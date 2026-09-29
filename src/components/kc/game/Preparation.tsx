@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { paidLevelReward } from "@/game/levels/levelRewards";
 import { GameBridge, type GameBridgeEvent } from "@/game/GameBridge";
 import { PauseManager } from "@/game/PauseManager";
 import { gameReady } from "@/game/PlayablesSDK";
@@ -139,7 +140,7 @@ export function Preparation({
         title: level!.title,
         subtitle: level!.subtitle,
         emoji: level!.emoji,
-        rewardCoins: dollars(level!.reward.coins),
+        rewardCoins: paidLevelReward(level!),
         preparationSteps: completableSteps(level!.preparationSteps),
       };
   const steps: PrepStep[] = view.preparationSteps.map((s) => ({

@@ -35,12 +35,13 @@ const memoryStore = new Map<string, string>();
   length: 0,
 } as Storage;
 
+import { dollars } from "../src/game/money.ts";
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { DEFAULT_SAVE, SaveManager, type SaveData } from "../src/game/SaveManager.ts";
 import { KITCHEN_UPGRADE_CATALOG } from "../src/game/kitchen/kitchenUpgradeDefinitions.ts";
-import { getKitchenUpgradeState, syncKitchenUpgradeOwnership } from "../src/game/kitchen/KitchenUpgradeManager.ts";
+import { getKitchenUpgradeState, migrateKitchenDevelopment, purchaseKitchenUpgrade, syncKitchenUpgradeOwnership } from "../src/game/kitchen/KitchenUpgradeManager.ts";
 import { KNIFE_CATALOG } from "../src/game/knives/knifeDefinitions.ts";
 import { BOARD_CATALOG } from "../src/game/boards/boardDefinitions.ts";
 import { CAFE_MILESTONES } from "../src/game/cafe/cafeDefinitions.ts";
@@ -86,13 +87,20 @@ const INVESTMENT_NAMES = ["Prep Station Upgrade", "Storage Rack", "Service Count
   assert(!/Benefit|Appears in your kitchen|Installed/.test(shop), "A5: no leftover investment wording (Benefit / Appears in your kitchen / Installed)");
 }
 
-// ===== B: no investment money movement anywhere in the game =====
+// ===== B: no investment UPKEEP anywhere; kitchen development is bought at exactly one site =====
+// Economy V2.5 (approved): kitchen tiers are paid Restaurant Development, recorded as
+// "kitchen-investment-purchase" — only by App.tsx's buildKitchenUpgrade. Recurring upkeep stays banned.
 {
   const ledgerDefs = new Set(["src/game/economy/EconomyLedger.ts", "src/game/economy/ledgerTypes.ts"]);
-  const writers = srcFiles("src")
+  const upkeep = srcFiles("src")
     .filter((f) => !ledgerDefs.has(f) && !f.startsWith("src/game/kitchen/"))
-    .filter((f) => /"investment-upkeep"|"kitchen-investment-purchase"|chargeChapterUpkeep|buyKitchenInvestment/.test(code(f)));
-  assert(writers.length === 0, `B: nothing in src writes investment upkeep or purchases (found: ${writers.join(", ") || "none"})`);
+    .filter((f) => /"investment-upkeep"|chargeChapterUpkeep|buyKitchenInvestment/.test(code(f)));
+  assert(upkeep.length === 0, `B: nothing in src writes investment upkeep (found: ${upkeep.join(", ") || "none"})`);
+  const purchaseWriters = srcFiles("src")
+    .filter((f) => !ledgerDefs.has(f))
+    .filter((f) => /"kitchen-investment-purchase"/.test(code(f)));
+  const appSites = (code("src/App.tsx").match(/"kitchen-investment-purchase"/g) ?? []).length;
+  assert(JSON.stringify(purchaseWriters) === JSON.stringify(["src/App.tsx"]) && appSites === 1, `B1: kitchen development is recorded at exactly one site, App.tsx (found: ${purchaseWriters.join(", ")}, ${appSites} site(s))`);
   const importers = srcFiles("src")
     .filter((f) => !f.startsWith("src/game/kitchen/kitchenInvestment") && !f.startsWith("src/game/kitchen/KitchenInvestment"))
     .filter((f) => /kitchen\/(KitchenInvestmentManager|kitchenInvestmentDefinitions|kitchenInvestmentTypes)/.test(code(f)));
@@ -258,14 +266,19 @@ const INVESTMENT_NAMES = ["Prep Station Upgrade", "Storage Rack", "Service Count
   });
   const fresh = at(1);
   assert(syncKitchenUpgradeOwnership(fresh) === fresh && fresh.equippedKitchenUpgradeId === "humble-kitchen", "K: a new player starts in Humble Kitchen (sync changes nothing)");
+  // Economy V2.5: reaching Lv 21 only makes Growing Kitchen AVAILABLE; building it moves the kitchen.
   const reached = syncKitchenUpgradeOwnership(at(21));
-  assert(reached.equippedKitchenUpgradeId === "growing-kitchen", `K2: reaching Lv 21 moves the kitchen to Growing Kitchen (got ${reached.equippedKitchenUpgradeId})`);
+  assert(reached.equippedKitchenUpgradeId === "humble-kitchen" && getKitchenUpgradeState("growing-kitchen", reached) === "available", `K2: reaching Lv 21 makes Growing Kitchen available to build — the level alone grants nothing (got ${reached.equippedKitchenUpgradeId})`);
+  const built = purchaseKitchenUpgrade({ ...reached, credits: dollars(20_000) }, "growing-kitchen");
+  assert(built.ok && built.save.equippedKitchenUpgradeId === "growing-kitchen" && built.save.credits === 0, "K2b: building it for exactly $20,000 moves the kitchen to Growing Kitchen and leaves $0");
   const picked = at(45, { ownedKitchenUpgradeIds: ["humble-kitchen", "growing-kitchen", "established-kitchen"], equippedKitchenUpgradeId: "humble-kitchen" });
   const moved = syncKitchenUpgradeOwnership(picked);
   assert(moved.equippedKitchenUpgradeId === "established-kitchen", "K3: an old save that had switched back to Humble Kitchen at Lv 45 is moved forward to Established Kitchen");
   assert(syncKitchenUpgradeOwnership(moved) === moved, "K4: sync is idempotent (no change on a second pass)");
-  const grand = syncKitchenUpgradeOwnership(at(91));
-  assert(grand.equippedKitchenUpgradeId === "grand-kitchen" && grand.ownedKitchenUpgradeIds.length === 6, "K5: Lv 91 → Grand Kitchen, all six stages reached");
+  // A save from before V2.5 (version 2) keeps every tier its level had already earned for free.
+  const grand = migrateKitchenDevelopment({ ...at(91), version: 2 });
+  assert(grand.equippedKitchenUpgradeId === "grand-kitchen" && grand.ownedKitchenUpgradeIds.length === 6 && grand.version === 3, "K5: a pre-V2.5 save at Lv 91 migrates to Grand Kitchen with all six stages (version 3)");
+  assert(syncKitchenUpgradeOwnership(at(91)).equippedKitchenUpgradeId === "humble-kitchen", "K5b: a V2.5 save at Lv 91 that built nothing is still in Humble Kitchen");
   const regressed = syncKitchenUpgradeOwnership({ ...grand, levelProgress: { ...grand.levelProgress, highestUnlockedLevelId: "level-30" } });
   assert(regressed.equippedKitchenUpgradeId === "grand-kitchen" && regressed.ownedKitchenUpgradeIds.length === 6, "K6: never moves back — a lower level number (e.g. edited save) keeps Grand Kitchen");
   assert(
@@ -290,8 +303,8 @@ const INVESTMENT_NAMES = ["Prep Station Upgrade", "Storage Rack", "Service Count
   const honest = v2.stdout.slice(v2.stdout.indexOf("SIMULATION HONEST"), v2.stdout.indexOf("Total net campaign result") + 60);
   const has = (label: string, value: string) => new RegExp(`${label}:\\s*${value}(?![\\d,])`).test(honest);
   assert(
-    v2.status === 0 && has("Gross recipe revenue", "\\$165,140\\.00") && has("Level-completion rewards", "\\$330,691\\.00") && has("Total COGS", "\\$37,620\\.00") && has("Total quality bonuses", "\\$3,315\\.00") && has("Total net campaign result", "\\$461,526\\.00"),
-    "G: Economy V2 freeze exact — $165,140.00 / $330,691.00 / $37,620.00 / $3,315.00 / $461,526.00",
+    v2.status === 0 && has("Gross recipe revenue", "\\$165,140\\.00") && has("Level-completion rewards", "\\$77,581\\.00") && has("Total COGS", "\\$37,620\\.00") && has("Total quality bonuses", "\\$3,315\\.00") && has("Total net campaign result", "\\$208,416\\.00"),
+    "G: Economy V2 freeze exact — $165,140.00 / $77,581.00 / $37,620.00 / $3,315.00 / $208,416.00 (V2.5 completion rewards)",
   );
 }
 

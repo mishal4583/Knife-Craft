@@ -8,7 +8,7 @@
  */
 import { DEFAULT_SAVE, type SaveData } from "../src/game/SaveManager.ts";
 // USD: every wallet/settlement amount is integer US cents (money.ts). The frozen Economy V2 figures are
-// the original numbers read as dollars — $165,140.00 / $330,691.00 / $37,620.00 / $3,315.00 / $461,526.00.
+// the original numbers read as dollars — $165,140.00 / $77,581.00 / $37,620.00 / $3,315.00 / $208,416.00 (V2.5 completion rewards).
 import { dollars } from "../src/game/money.ts";
 import { DEFAULT_LEVEL_PROGRESS } from "../src/game/levels/LevelManager.ts";
 import { CAMPAIGN_RECIPES } from "../src/game/recipes/campaignRecipes.ts";
@@ -194,7 +194,7 @@ function saveAt(overrides: Partial<SaveData>): SaveData {
     { grossRecipeRevenue: 0, completionRewards: 0, cogs: 0, qualityBonus: 0 },
   );
   assert(totals.grossRecipeRevenue === dollars(165140), `L: recipe revenue unchanged at $165,140.00 (got ${totals.grossRecipeRevenue})`);
-  assert(totals.completionRewards === dollars(330691), `L: completion rewards unchanged at $330,691.00 (got ${totals.completionRewards})`);
+  assert(totals.completionRewards === dollars(77581), `L: completion rewards at the V2.5 locked $77,581.00 (got ${totals.completionRewards})`);
   assert(totals.cogs === dollars(37620), `L: baseline COGS unchanged at $37,620.00 (got ${totals.cogs})`);
   assert(totals.qualityBonus === dollars(3315), `L: quality bonus unchanged at $3,315.00 (got ${totals.qualityBonus})`);
 }

@@ -25,6 +25,7 @@ const memoryStore = new Map<string, string>();
   length: 0,
 } as Storage;
 
+import { paidLevelReward } from "../src/game/levels/levelRewards.ts";
 import fs from "node:fs";
 import path from "node:path";
 import { DEFAULT_SAVE, type SaveData } from "../src/game/SaveManager.ts";
@@ -34,7 +35,7 @@ import { CAFE_MILESTONES } from "../src/game/cafe/cafeDefinitions.ts";
 import { KITCHEN_UPGRADE_CATALOG } from "../src/game/kitchen/kitchenUpgradeDefinitions.ts";
 import { KNIFE_CATALOG } from "../src/game/knives/knifeDefinitions.ts";
 import { BOARD_CATALOG } from "../src/game/boards/boardDefinitions.ts";
-import { syncKitchenUpgradeOwnership } from "../src/game/kitchen/KitchenUpgradeManager.ts";
+import { migrateKitchenDevelopment, syncKitchenUpgradeOwnership } from "../src/game/kitchen/KitchenUpgradeManager.ts";
 import { dollars, formatUsd } from "../src/game/money.ts";
 import { getCafeProgress } from "../src/game/cafe/CafeProgressionManager.ts";
 import { STAFF_CATALOG } from "../src/game/economy/staffDefinitions.ts";
@@ -64,9 +65,15 @@ function saveAt(n: number, extra: Partial<SaveData> = {}): SaveData {
   const base = structuredClone(DEFAULT_SAVE);
   const done = LEVELS.slice(0, n).map((l) => l.id);
   const next = LEVELS[Math.min(n, LEVELS.length - 1)]!.id;
+  // Economy V2.5: kitchen tiers are bought. These fixtures model a player who built every
+  // tier as soon as it unlocked (exactly what the pre-V2.5 migration grants), unless `extra`
+  // says otherwise.
   return syncKitchenUpgradeOwnership({
-    ...base,
-    levelProgress: { ...base.levelProgress, completedLevelIds: done, currentLevelId: next, highestUnlockedLevelId: next },
+    ...migrateKitchenDevelopment({
+      ...base,
+      version: 2,
+      levelProgress: { ...base.levelProgress, completedLevelIds: done, currentLevelId: next, highestUnlockedLevelId: next },
+    }),
     ...extra,
   });
 }
@@ -114,9 +121,10 @@ function saveAt(n: number, extra: Partial<SaveData> = {}): SaveData {
   const s = saveAt(40, { credits: 21519 });
   s.business = { ...s.business, finance: { ...s.business.finance, lifetime: { ...s.business.finance.lifetime, revenue: 281550 } } };
   const p = restaurantProgress(s);
-  const exactRewards = LEVELS.slice(0, 40).reduce((t, l) => t + dollars(l.reward.coins), 0);
+  // Economy V2.5: each level pays its paid reward (levelRewards.ts), not the stored one.
+  const exactRewards = LEVELS.slice(0, 40).reduce((t, l) => t + paidLevelReward(l), 0);
   assert(p.money.balance === 21519 && formatUsd(p.money.balance) === "$215.19", "C: balance is the wallet, shown as $215.19");
-  assert(p.money.levelRewards === exactRewards, `C2: level rewards = the exact sum of the 40 completed levels' rewards (${formatUsd(exactRewards)})`);
+  assert(p.money.levelRewards === exactRewards, `C2: level rewards = the exact sum of the 40 completed levels' paid rewards (${formatUsd(exactRewards)})`);
   assert(p.money.businessRevenue === 281550 && formatUsd(p.money.businessRevenue) === "$2,815.50", "C3: Business revenue is Business Mode's lifetime total ($2,815.50)");
   const curve = p.money.rewardCurve;
   assert(curve.length === 40 && curve.every((q, i) => i === 0 || (q.level > curve[i - 1]!.level && q.cumulative > curve[i - 1]!.cumulative)) && curve[curve.length - 1]!.cumulative === exactRewards, "C4: earnings chart = cumulative real level rewards, one point per completed level, ending at the total");
@@ -129,7 +137,7 @@ function saveAt(n: number, extra: Partial<SaveData> = {}): SaveData {
   const m = (label: string) => p.milestones.find((x) => x.label === label)?.done;
   assert(m("Completed 10 levels") === true && m("Completed 50 levels") === true && m("Completed 100 levels") === false, "D: level milestones follow completed levels");
   assert(m("Santoku in your kit") === true && m("Damascus Knife in your kit") === true && m("Nakiri in your kit") === false, "D2: knife milestones follow real ownership");
-  assert(m("Campaign complete (250 levels)") === false && restaurantProgress(saveAt(250)).milestones.every((x) => x.label.startsWith("Completed") ? x.done : true), "D3: the campaign milestone is only done at 250");
+  assert(p.milestones.find((x) => x.id === "campaign-complete")?.done === false && restaurantProgress(saveAt(250)).milestones.every((x) => x.label.startsWith("Completed") ? x.done : true), "D3: the campaign milestone is only done at 250");
   const b84 = cityBenchmark(84);
   assert(JSON.stringify(b84.map((r) => r.name)) === JSON.stringify(["Golden Spoon", "Hearth & Herb", "The Green Table", "Your Restaurant", "Cozy Cravings", "Copper Pot Bistro", "Corner Crumb"]) && b84[3]!.rank === 4 && b84[3]!.isPlayer, "D4: popularity 84 places Your Restaurant 4th among the benchmark");
   assert(cityBenchmark(99)[0]!.isPlayer && cityBenchmark(0)[CITY_BENCHMARK.length]!.isPlayer && cityBenchmark(86)[3]!.isPlayer, "D5: top / bottom / exact-tie placements are deterministic (a tie ranks below the benchmark)");
@@ -209,7 +217,7 @@ function saveAt(n: number, extra: Partial<SaveData> = {}): SaveData {
   assert(all250.milestones.filter((x) => x.label !== "First Business day completed").every((x) => x.done), "G15: at 250 with every knife/staff and one upgrade, every milestone except the Business-day one is done (that needs a real Business day)");
   const screen = read("src/components/kc/RestaurantProgress.tsx");
   assert(/title=\{"🏆\u00a0Restaurant Progress"\}/.test(screen) && /wrapTitle/.test(screen) && /Local restaurant rankings/.test(screen) && /<Stars n=\{popularityStars\(r\.popularity\)\}/.test(screen), "G16: header '🏆 Restaurant Progress' (wraps on narrow phones); rankings labelled local, with a star rating per restaurant");
-  assert(/All \{p\.level\.total\} levels mastered/.test(screen) && /continue running your restaurant/.test(screen), "G17: Campaign Complete says 'All 250 levels mastered … continue running your restaurant'");
+  assert(/All \{p\.level\.total\} levels mastered/.test(screen) && /Family Legacy/.test(screen) && /Your restaurant is yours\./.test(screen) && !/richest|number one|#1/i.test(screen), "G17: Campaign Complete shows the Family Legacy reward and 'Your restaurant is yours.' (no unsupported 'richest'/'#1' claim)");
   const data = read("src/components/kc/data.ts");
   const router = read("src/ScreensRouter.tsx");
   const kitchen = read("src/components/kc/Kitchen.tsx");

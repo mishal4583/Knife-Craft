@@ -2,6 +2,7 @@ import { Kitchen, OrderBoard } from "@/components/kc/Kitchen";
 import { Shop } from "@/components/kc/Shop";
 import { RestaurantProgress } from "@/components/kc/RestaurantProgress";
 import { KitchenUpgrades } from "@/components/kc/KitchenUpgrades";
+import type { PurchaseKitchenUpgradeResult } from "@/game/kitchen/KitchenUpgradeManager";
 import { RecipeBook, RecipeDetail } from "@/components/kc/Recipes";
 import { Settings, DailyOrder, EndlessService } from "@/components/kc/Journal";
 import {
@@ -69,6 +70,7 @@ export function ScreensRouter({
   performRefrigeratorMaintenance,
   rushRestock,
   rushAdAvailable,
+  buildKitchenUpgrade,
   setMenuPrice,
   setBusinessDishActive,
   signSupplierContract,
@@ -109,6 +111,8 @@ export function ScreensRouter({
   rushRestock: (payment: RushRestockPayment) => Promise<RushRestockOutcome>;
   /** Whether the platform can show a rewarded ad right now (hides the ad option when it can't). */
   rushAdAvailable: boolean;
+  /** Economy V2.5 — Restaurant Development: build a kitchen tier. */
+  buildKitchenUpgrade: (id: string) => PurchaseKitchenUpgradeResult;
   /** Economy V3 Phase 5 — Business Mode's own menu-price action. */
   setMenuPrice: (recipeId: string, price: number) => SetMenuPriceResult;
   /** Economy V3 Phase 16 — Business Mode's own Active Menu on/off action. */
@@ -144,7 +148,9 @@ export function ScreensRouter({
       ) : null}
       {/* "rack" is the internal screen id; the player-facing screen is Restaurant Progress. */}
       {screen === "rack" ? <RestaurantProgress go={go} save={save} /> : null}
-      {screen === "kitchen-upgrades" ? <KitchenUpgrades go={go} save={save} /> : null}
+      {screen === "kitchen-upgrades" ? (
+        <KitchenUpgrades go={go} save={save} buildKitchenUpgrade={buildKitchenUpgrade} />
+      ) : null}
       {screen === "recipes" ? <RecipeBook go={go} save={save} onOpen={onOpenRecipe} /> : null}
       {screen === "recipe-detail" ? (
         <RecipeDetail
