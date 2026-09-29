@@ -1,4 +1,6 @@
 import type { ScreenId } from "../data";
+import { RushRestockActions } from "./RushRestockActions";
+import type { RushRestockOutcome, RushRestockPayment } from "@/game/business/businessRushRestock";
 import type { SaveData } from "@/game/SaveManager";
 import type { ServiceSession } from "@/game/service/ServiceManager";
 import { KButton, Panel, ScreenHeader, Divider, Badge } from "../common/primitives";
@@ -58,12 +60,16 @@ export function BusinessService({
   businessServiceSession,
   onStartService,
   onEnterPreparation,
+  rushRestock,
+  rushAdAvailable,
 }: {
   go: (s: ScreenId) => void;
   save: SaveData;
   businessServiceSession: ServiceSession | null;
   onStartService: () => void;
   onEnterPreparation: () => void;
+  rushRestock: (payment: RushRestockPayment) => Promise<RushRestockOutcome>;
+  rushAdAvailable: boolean;
 }) {
   const order = businessServiceSession?.current;
   const dish = order ? businessDishForRecipeId(order.recipe.id) : undefined;
@@ -217,9 +223,15 @@ export function BusinessService({
                       .join(", ")}
                     . Restock before this order can be accepted.
                   </p>
-                  <KButton full variant="cream" onClick={() => go("business-inventory")}>
-                    Manage Inventory →
-                  </KButton>
+                  {dish ? (
+                    <RushRestockActions
+                      save={save}
+                      dish={dish}
+                      go={go}
+                      rushRestock={rushRestock}
+                      rushAdAvailable={rushAdAvailable}
+                    />
+                  ) : null}
                 </>
               )}
               <div className="mt-3 flex justify-center">

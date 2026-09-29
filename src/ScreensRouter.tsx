@@ -13,6 +13,7 @@ import { BusinessService } from "@/components/kc/business/BusinessService";
 import type { PurchaseIngredientResult } from "@/game/business/BusinessInventoryManager";
 import type { PurchaseRefrigeratorResult } from "@/game/business/RefrigeratorManager";
 import type { PerformMaintenanceResult } from "@/game/business/businessMaintenance";
+import type { RushRestockOutcome, RushRestockPayment } from "@/game/business/businessRushRestock";
 import type { SetMenuPriceResult } from "@/game/business/BusinessMenuManager";
 import type { SetDishActiveResult } from "@/game/business/businessMenuActivation";
 import type {
@@ -66,6 +67,8 @@ export function ScreensRouter({
   purchaseIngredient,
   purchaseRefrigerator,
   performRefrigeratorMaintenance,
+  rushRestock,
+  rushAdAvailable,
   setMenuPrice,
   setBusinessDishActive,
   signSupplierContract,
@@ -102,6 +105,10 @@ export function ScreensRouter({
   purchaseRefrigerator: (refrigeratorId: string) => PurchaseRefrigeratorResult;
   /** Economy V3 Phase 11 — Business Mode's own refrigerator maintenance/repair action. */
   performRefrigeratorMaintenance: () => PerformMaintenanceResult;
+  /** Rush Restock — stock what the current order is missing (cash + rush fee, or free after an ad). */
+  rushRestock: (payment: RushRestockPayment) => Promise<RushRestockOutcome>;
+  /** Whether the platform can show a rewarded ad right now (hides the ad option when it can't). */
+  rushAdAvailable: boolean;
   /** Economy V3 Phase 5 — Business Mode's own menu-price action. */
   setMenuPrice: (recipeId: string, price: number) => SetMenuPriceResult;
   /** Economy V3 Phase 16 — Business Mode's own Active Menu on/off action. */
@@ -171,6 +178,8 @@ export function ScreensRouter({
           purchaseIngredient={purchaseIngredient}
           purchaseRefrigerator={purchaseRefrigerator}
           performRefrigeratorMaintenance={performRefrigeratorMaintenance}
+          rushRestock={rushRestock}
+          rushAdAvailable={rushAdAvailable}
           setMenuPrice={setMenuPrice}
           setBusinessDishActive={setBusinessDishActive}
           signSupplierContract={signSupplierContract}
@@ -186,6 +195,8 @@ export function ScreensRouter({
           businessServiceSession={businessServiceSession}
           onStartService={onStartBusinessService}
           onEnterPreparation={onEnterBusinessPreparation}
+          rushRestock={rushRestock}
+          rushAdAvailable={rushAdAvailable}
         />
       ) : null}
     </>

@@ -97,7 +97,10 @@ import { buyStaff as buyStaffFromCatalog } from "@/game/economy/StaffManager";
 import { selectSupplier as selectSupplierFromCatalog } from "@/game/economy/SupplierManager";
 import { appendLedgerEntry } from "@/game/economy/EconomyLedger";
 import type { SettlementResult } from "@/game/economy/economyTypes";
-import { purchaseIngredient as purchaseIngredientFromCatalog } from "@/game/business/BusinessInventoryManager";
+import {
+  purchaseIngredient as purchaseIngredientFromCatalog,
+  rushRestock,
+} from "@/game/business/BusinessInventoryManager";
 import { purchaseRefrigerator as purchaseRefrigeratorFromCatalog } from "@/game/business/RefrigeratorManager";
 import { performRefrigeratorMaintenance as performRefrigeratorMaintenanceFromCatalog } from "@/game/business/businessMaintenance";
 import type { InspectionReport } from "@/game/business/businessInspection";
@@ -127,6 +130,11 @@ import type {
   BusinessCustomersToday,
 } from "@/game/business/BusinessServiceManager";
 import { businessDishForRecipeId } from "@/game/business/businessServiceCatalog";
+import {
+  newRushRestockRewardId,
+  type RushRestockOutcome,
+  type RushRestockPayment,
+} from "@/game/business/businessRushRestock";
 import {
   makeSeededRand,
   businessServiceSeedFor,
@@ -293,6 +301,10 @@ export function App() {
   // (possible after the dead-request guard released the screen) — confirmed here.
   const [lateReplayBonus, setLateReplayBonus] = useState<number | null>(null);
   const [adActive, setAdActive] = useState(false);
+  // Rush Restock's ad path resumes after an await: it reads the CURRENT order
+  // from this ref (was it served or replaced while the ad played?).
+  const rushAdBusyRef = useRef(false);
+  const businessSessionRef = useRef<ServiceSession | null>(null);
   // One id per play session (level/daily/endless start) + whether it reached a
   // completion — so an interstitial only follows a finished session, never a
   // mid-level quit, and each session's transition is requested at most once.
@@ -435,6 +447,7 @@ export function App() {
   const inBusiness =
     screen.startsWith("business") || (screen === "gameplay" && sessionMode === "business-service");
   const businessOrder = businessServiceSession?.current ?? null;
+  businessSessionRef.current = businessServiceSession;
   useEffect(() => {
     if (!inBusiness) {
       // Leaving Business drops any not-yet-shown banners (they'd be stale
@@ -655,14 +668,95 @@ export function App() {
     if (!save) return { ok: false as const, reason: "unknownIngredient" as const };
     const result = purchaseIngredientFromCatalog(save, ingredientId, quantity);
     if (result.ok) {
-      persist(
-        recordInventoryPurchase(
-          appendLedgerEntry(result.save, "inventory-purchase", -result.totalCost, ingredientId),
-          result.totalCost,
-        ),
-      );
+      persistIngredientPurchases(result.save, [{ ingredientId, totalCost: result.totalCost }]);
     }
     return result;
+  }
+
+  /**
+   * The one place an ingredient purchase is recorded — a Market purchase or
+   * a cash Rush Restock: one "inventory-purchase" ledger entry per
+   * ingredient (its exact cost, described by the ingredient id), and the
+   * total added to today's inventory cost in the Business P&L.
+   */
+  function persistIngredientPurchases(
+    next: SaveData,
+    lines: ReadonlyArray<{ ingredientId: string; totalCost: number }>,
+  ) {
+    let recorded = next;
+    for (const line of lines) {
+      recorded = appendLedgerEntry(
+        recorded,
+        "inventory-purchase",
+        -line.totalCost,
+        line.ingredientId,
+      );
+    }
+    persist(
+      recordInventoryPurchase(
+        recorded,
+        lines.reduce((sum, line) => sum + line.totalCost, 0),
+      ),
+    );
+  }
+
+  /**
+   * Rush Restock (businessRushRestock.ts) — stocks exactly what the current
+   * customer's dish is missing, without a trip to the Market. "cash" pays
+   * today's Market price + the rush fee and records one "inventory-purchase"
+   * entry per ingredient, like purchaseIngredient above. "ad" shows a
+   * rewarded ad first and, only when Bridge reports `rewarded`, stocks the
+   * same units free (no money moves, so no ledger entry). The ad path reads
+   * the save and the current order AFTER the ad, never the pre-ad closure.
+   */
+  async function rushRestockCurrentOrder(payment: RushRestockPayment): Promise<RushRestockOutcome> {
+    const orderId = businessSessionRef.current?.current?.order.id;
+    const dishFor = () => {
+      const current = businessSessionRef.current?.current;
+      return current && current.order.id === orderId
+        ? businessDishForRecipeId(current.recipe.id)
+        : undefined;
+    };
+    if (!orderId || !dishFor() || !saveRef.current) return { ok: false, reason: "notBlocked" };
+    if (payment === "cash") {
+      const result = rushRestock(saveRef.current, dishFor()!, "cash");
+      if (!result.ok) return result;
+      persistIngredientPurchases(
+        result.save,
+        result.lines.map((line) => ({
+          ingredientId: line.ingredientId,
+          totalCost: line.rushTotal,
+        })),
+      );
+      return { ok: true, payment: "cash", totalCost: result.totalCost };
+    }
+    if (rushAdBusyRef.current) return { ok: false, reason: "busy" };
+    rushAdBusyRef.current = true;
+    try {
+      const ad = await requestRewardedAd(newRushRestockRewardId());
+      if (ad.status !== "rewarded") {
+        return {
+          ok: false,
+          reason:
+            ad.status === "not-rewarded"
+              ? "notRewarded"
+              : ad.status === "busy"
+                ? "busy"
+                : ad.status === "unavailable"
+                  ? "adUnavailable"
+                  : "adFailed",
+        };
+      }
+      const dish = dishFor();
+      const latest = saveRef.current;
+      if (!dish || !latest) return { ok: false, reason: "orderChanged" };
+      const result = rushRestock(latest, dish, "ad");
+      if (!result.ok) return result;
+      persist(result.save);
+      return { ok: true, payment: "ad", totalCost: 0 };
+    } finally {
+      rushAdBusyRef.current = false;
+    }
   }
 
   /** Economy V3 Phase 3 (Refrigerator) — Business Mode's own refrigerator purchase/upgrade action, mirroring purchaseIngredient exactly. Business Mode only — Campaign never calls this. */
@@ -1755,6 +1849,8 @@ export function App() {
               purchaseIngredient={purchaseIngredient}
               purchaseRefrigerator={purchaseRefrigerator}
               performRefrigeratorMaintenance={performRefrigeratorMaintenance}
+              rushRestock={rushRestockCurrentOrder}
+              rushAdAvailable={rewardedAdsAvailable()}
               setMenuPrice={setMenuPrice}
               setBusinessDishActive={setBusinessDishActive}
               signSupplierContract={signSupplierContract}

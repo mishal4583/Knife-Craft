@@ -50,7 +50,9 @@ export type BusinessAlertScreen =
 
 export type BusinessAlertAction =
   | { kind: "navigate"; label: string; screen: BusinessAlertScreen }
-  | { kind: "repair-refrigerator"; label: string };
+  | { kind: "repair-refrigerator"; label: string }
+  /** Rush Restock the current order's missing ingredients (cash + rush fee, or free after an ad) — businessRushRestock.ts. */
+  | { kind: "rush-restock"; label: string };
 
 export type BusinessAlert = {
   /** Stable identity of the underlying condition — used to fire a notification only when the condition newly appears, never on every render. */
@@ -304,7 +306,7 @@ export function businessAlertsFor(
         severity: "warning",
         title: "Current Order Blocked",
         detail: `A customer wants ${currentDish.name} — missing ${ingredientNames(missing)}. It can't be accepted until you restock.`,
-        action: { kind: "navigate", label: "Restock", screen: "business-inventory" },
+        action: { kind: "rush-restock", label: "Restock" },
         notify: true,
       });
     }
