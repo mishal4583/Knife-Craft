@@ -40,6 +40,11 @@ class AudioManagerImpl {
     this.userSoundEnabled = enabled;
   }
 
+  /** Whether sound may play right now (platform audio, the Sound setting, not paused, no ad). Media elements outside Web Audio — the cooking clip — follow the same rule. */
+  get soundAllowed(): boolean {
+    return this.enabled;
+  }
+
   private get enabled(): boolean {
     this.init();
     // YouTube's audio state AND the player's Sound toggle must both allow

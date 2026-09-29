@@ -290,6 +290,15 @@ not silently removed.
   unchanged. `SaveData.story = { introDone, milestoneMask, finaleSeen }` —
   no new fields.
 - Intro screenshots: `playgama/screenshots/intro/`.
+- **Cooking clip** — after EVERY preparation, once the chef's hands have
+  carried the plate away (RECIPE_COMPLETED) and before the Knife Report,
+  `src/components/kc/game/CookingClip.tsx` plays the 3.75 s chef-cooking
+  film (`src/assets/video/chef-cooking.webm` + `.mp4` fallback, 540×960,
+  ~0.65 MB each; poster `.webp`). It buffers from PLATING_STARTED, is
+  skippable (SKIP › or a tap, 300 ms guard), pauses with PauseManager,
+  is muted unless `AudioManager.soundAllowed`, and falls straight through
+  on error / stall / `prefers-reduced-motion`. Source upload:
+  `gemini_generated_video_aa3f242a - Trim.mp4` (on `main`).
 
 ---
 
@@ -300,7 +309,7 @@ painted kitchens, wood/paper, Fraunces / Nunito / Caveat bundled locally).
 Touch targets ≥ 48 px. Test at 320×568, 360×640, 390×844, 430×900,
 768×1024. Do not add animation libraries or large assets; prefer CSS
 transform/opacity. No external fonts, video or network requests at runtime
-(only the Bridge CDN script).
+(only the Bridge CDN script); the one bundled video is the cooking clip (§9).
 
 ---
 

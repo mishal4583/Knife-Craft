@@ -68,6 +68,8 @@ conversation.
    Business fines ÷5 and 2-hour staff shifts; "Not enough money — need $X
    more" on every purchase. QA: `scripts/economy-final-qa.mts`. Open: Business
    staff still cost more than they earn (see CLAUDE.md §7 Business scale).
+9. Cooking clip after every dish (CLAUDE.md §9): skippable 3.75 s film between
+   the plate hand-off and the Knife Report. e2e: `tools/e2e/cookingclip.mjs`.
 
 ## 4. Open issues from the Level 1–10 audit (not fixed yet)
 
