@@ -10,8 +10,12 @@
  *     idempotent by transaction id, daily cap, claimed state derived from ledger.
  *  C. Persistence through Bridge storage: commit → save → re-read → reload.
  *  D. Ledger: reconciles; recent rewarded-ad entries survive trimming.
- *  E. Interstitial gate: first 10 levels, every 3rd transition, cooldown,
- *     duplicates, ad-active, unavailable.
+ *  E. Interstitial gate (Playgama monetization guide): none before 3 completed
+ *     levels, then any natural break once 150 s (inside the recommended
+ *     120–240 s) have passed since the last ad; duplicates, ad-active,
+ *     unavailable; the Bridge config (120 s floor, one placement per ad spot).
+ *  H. Level messages: level_started / level_paused / level_resumed /
+ *     level_completed with { world, level }, each once, never outside a level.
  *  F. Production safety (source scan).
  *  G. Real ad lengths (simulated clock): a 150 s rewarded ad still pays; an ad
  *     that never starts ends "not shown" (30 s); one that started but never
@@ -46,6 +50,8 @@ const fake = {
   rewarded: ((emit) => { emit("opened"); emit("rewarded"); emit("closed"); }) as AdScript,
   interstitial: ((emit) => { emit("opened"); emit("closed"); }) as AdScript,
   placements: [] as string[],
+  interstitialPlacements: [] as string[],
+  messages: [] as Array<[string, unknown]>,
   calls: 0,
 };
 const EVENT_NAME = {
@@ -57,7 +63,7 @@ const EVENT_NAME = {
 const bridge = {
   initialize: async () => {},
   EVENT_NAME,
-  platform: { id: "mock", language: "en", isAudioEnabled: true, sendMessage: () => {}, on },
+  platform: { id: "mock", language: "en", isAudioEnabled: true, sendMessage: (m: string, o?: unknown) => void fake.messages.push([m, o]), on },
   storage: {
     get: async (keys: string[]) => keys.map((k) => storage.get(k) ?? null),
     set: async (keys: string[], values: unknown[]) => keys.forEach((k, i) => storage.set(k, values[i])),
@@ -67,8 +73,8 @@ const bridge = {
     get isRewardedSupported() { return fake.rewardedSupported; },
     showInterstitial: (placement: string) => {
       fake.calls++;
+      fake.interstitialPlacements.push(placement);
       fake.interstitial((st) => fire(EVENT_NAME.INTERSTITIAL_STATE_CHANGED, st));
-      void placement;
     },
     showRewarded: (placement: string) => {
       fake.calls++;
@@ -86,8 +92,15 @@ import path from "node:path";
 import { DEFAULT_SAVE, SaveManager, type SaveData } from "../src/game/SaveManager.ts";
 import { LEVELS } from "../src/game/levels/levelDefinitions.ts";
 import {
+  AD_PLACEMENT,
+  INTERSTITIAL_PLACEMENT,
   interstitialAdsAvailable,
   isAdActive,
+  levelAbandoned,
+  levelCompleted,
+  levelPaused,
+  levelResumed,
+  levelStarted,
   onAdActiveChange,
   platformReady,
   requestInterstitialAd,
@@ -109,7 +122,6 @@ import {
 } from "../src/game/ads/replayBonus.ts";
 import {
   INTERSTITIAL_COOLDOWN_MS,
-  INTERSTITIAL_EVERY_N_TRANSITIONS,
   INTERSTITIAL_MIN_COMPLETED_LEVELS,
   decideInterstitial,
   type InterstitialPolicyState,
@@ -158,6 +170,13 @@ await platformReady();
     assert(r.status === want, `A3: Bridge ${label} → ${want}`);
   }
   assert(fake.placements.length > 0 && fake.placements.every((p) => p === REWARDED_PLACEMENT), `A4: the platform always receives the stable placement '${REWARDED_PLACEMENT}' (never a per-offer id)`);
+  fake.placements = [];
+  fake.rewarded = (e) => { e("opened"); e("rewarded"); e("closed"); };
+  const rush = await requestRewardedAd("rush-1", AD_PLACEMENT.rushRestock);
+  fake.interstitialPlacements = [];
+  await requestInterstitialAd();
+  await requestInterstitialAd(AD_PLACEMENT.businessDayEnd);
+  assert(rush.status === "rewarded" && JSON.stringify(fake.placements) === JSON.stringify(["rush_restock"]) && JSON.stringify(fake.interstitialPlacements) === JSON.stringify(["level_completed", "business_day_end"]) && INTERSTITIAL_PLACEMENT === "level_completed", "A4b: each ad spot reports its own placement — rush_restock, level_completed (default), business_day_end");
 
   let emit!: Emit;
   fake.rewarded = (e) => { emit = e; e("opened"); };
@@ -269,33 +288,47 @@ await platformReady();
 
 // ===== E: interstitial gate =====
 {
-  const fresh = (): InterstitialPolicyState => ({ transitionsSinceAd: 0, handled: new Set() });
+  const fresh = (): InterstitialPolicyState => ({ handled: new Set() });
   const base = { completedLevels: 20, now: 10_000_000, lastAdSettledAt: 0, adActive: false, available: true };
+  // A session of natural breaks: ad, then 10 s / 100 s / 150 s / 200 s after it.
   let st = fresh();
   const shows: boolean[] = [];
-  for (let i = 1; i <= 9; i++) {
-    const r = decideInterstitial(st, { ...base, transitionId: `t${i}` });
+  let lastAd = 0;
+  for (const [i, gap] of [[1, 0], [2, 10_000], [3, 100_000], [4, 150_000], [5, 10_000], [6, 200_000]] as const) {
+    const now = base.now + i * 1_000_000;
+    const r = decideInterstitial(st, { ...base, transitionId: `t${i}`, now, lastAdSettledAt: gap === 0 ? 0 : lastAd === 0 ? 0 : now - gap });
     st = r.state;
     shows.push(r.decision.show);
+    if (r.decision.show) lastAd = now;
   }
-  assert(JSON.stringify(shows) === JSON.stringify([false, false, true, false, false, true, false, false, true]) && INTERSTITIAL_EVERY_N_TRANSITIONS === 3, "E: at most one interstitial every 3 completed transitions");
+  assert(JSON.stringify(shows) === JSON.stringify([true, false, false, true, false, true]) && INTERSTITIAL_COOLDOWN_MS === 150_000 && INTERSTITIAL_COOLDOWN_MS >= 120_000 && INTERSTITIAL_COOLDOWN_MS <= 240_000, "E: past the first levels, any natural break shows an interstitial once 150 s (Playgama's 120–240 s range) have passed since the last ad");
   st = fresh();
-  let early = 0;
-  for (let i = 0; i < 12; i++) {
+  const byLevels: boolean[] = [];
+  for (let i = 0; i <= 3; i++) {
     const r = decideInterstitial(st, { ...base, completedLevels: i, transitionId: `e${i}` });
     st = r.state;
-    if (r.decision.show) early++;
+    byLevels.push(r.decision.show);
   }
-  assert(early === 0 && INTERSTITIAL_MIN_COMPLETED_LEVELS === 10, "E2: no interstitial while fewer than 10 Campaign levels are completed (and those transitions don't count)");
-  st = { transitionsSinceAd: 2, handled: new Set() };
+  assert(JSON.stringify(byLevels) === JSON.stringify([false, false, false, true]) && INTERSTITIAL_MIN_COMPLETED_LEVELS === 3, "E2: no interstitial before 3 Campaign levels are completed (the intro and first levels stay ad-free); the first natural break after that may show one");
+  st = fresh();
   const dup1 = decideInterstitial(st, { ...base, transitionId: "same" });
   const dup2 = decideInterstitial(dup1.state, { ...base, transitionId: "same" });
   assert(dup1.decision.show && !dup2.decision.show && (dup2.decision as { reason: string }).reason === "duplicate", "E3: the same transition (re-render, repeat click, back/forward) is handled once");
-  const cd = decideInterstitial({ transitionsSinceAd: 5, handled: new Set() }, { ...base, transitionId: "c", lastAdSettledAt: base.now - INTERSTITIAL_COOLDOWN_MS + 1000 });
+  const cd = decideInterstitial(fresh(), { ...base, transitionId: "c", lastAdSettledAt: base.now - INTERSTITIAL_COOLDOWN_MS + 1000 });
   assert(!cd.decision.show && (cd.decision as { reason: string }).reason === "cooldown", "E4: cooldown since the last ad of any kind (never straight after a rewarded ad)");
-  const act = decideInterstitial({ transitionsSinceAd: 5, handled: new Set() }, { ...base, transitionId: "a", adActive: true });
-  const un = decideInterstitial({ transitionsSinceAd: 5, handled: new Set() }, { ...base, transitionId: "u", available: false });
+  const act = decideInterstitial(fresh(), { ...base, transitionId: "a", adActive: true });
+  const un = decideInterstitial(fresh(), { ...base, transitionId: "u", available: false });
   assert(!act.decision.show && !un.decision.show, "E5: never while another ad is active; never without the SDK ads API");
+  const cfg = JSON.parse(read("public/playgama-bridge-config.json")) as {
+    advertisement: {
+      minimumDelayBetweenInterstitial: number;
+      interstitial: { placementFallback: string; placements: Array<{ id: string }> };
+      rewarded: { placementFallback: string; placements: Array<{ id: string }> };
+    };
+  };
+  const ad = cfg.advertisement;
+  const ids = (l: Array<{ id: string }>) => l.map((p) => p.id).sort().join();
+  assert(ad.minimumDelayBetweenInterstitial === 120 && ad.interstitial.placementFallback === INTERSTITIAL_PLACEMENT && ad.rewarded.placementFallback === REWARDED_PLACEMENT && ids(ad.interstitial.placements) === [AD_PLACEMENT.levelCompleted, AD_PLACEMENT.businessDayEnd].sort().join() && ids(ad.rewarded.placements) === [AD_PLACEMENT.replayBonus, AD_PLACEMENT.rushRestock].sort().join(), "E6: Bridge config — 120 s minimum between interstitials, every ad spot listed as its own placement, fallbacks = the defaults");
 }
 
 // ===== F: production safety (source) =====
@@ -324,6 +357,7 @@ await platformReady();
   assert(fake.length === 0, `F8: no fake SDK / simulated ad anywhere in src${fake.length ? " — " + fake.join(", ") : ""}`);
   assert(!/maybeShowInterstitial/.test(read("src/components/kc/game/Preparation.tsx")) && (app.match(/maybeShowInterstitial\(/g) ?? []).length === 4, "F9: interstitials are requested only from the 4 transition handlers (never from gameplay/Preparation)");
   assert(/if \(isFinale\) return;/.test(app), "F10: nothing ad-related around the Campaign Finale");
+  assert(/`business-day:\$\{[^`]*\}`,\s*[^,]+,\s*AD_PLACEMENT\.businessDayEnd,/.test(app) && /requestRewardedAd\(newRushRestockRewardId\(\), AD_PLACEMENT\.rushRestock\)/.test(app), "F11: the Business-day interstitial uses 'business_day_end' and Rush Restock uses 'rush_restock'");
 }
 
 // ===== G: real ad lengths + wake-after-ad (simulated clock) =====
@@ -377,6 +411,31 @@ await platformReady();
   emit("rewarded"); emit("closed"); await ad3; await flush();
   assert(!PauseManager.isPaused(), "G9: when the platform does resume, the game is simply running afterwards");
   mock.timers.reset();
+}
+
+// ===== H: level messages =====
+{
+  const flush = async () => { for (let i = 0; i < 5; i++) await Promise.resolve(); };
+  fake.messages = [];
+  levelPaused(); levelResumed(); levelCompleted(); await flush();
+  assert(fake.messages.length === 0, "H1: nothing is sent outside a level");
+  const where = { world: "chapter-2", level: "14" };
+  levelStarted(where); levelPaused(); levelPaused(); levelResumed(); levelResumed(); levelCompleted(); levelCompleted(); await flush();
+  const got = fake.messages.map(([m, o]) => `${m} ${JSON.stringify(o)}`);
+  const w = JSON.stringify(where);
+  assert(JSON.stringify(got) === JSON.stringify([`level_started ${w}`, `level_paused ${w}`, `level_resumed ${w}`, `level_completed ${w}`]), `H2: started → paused → resumed → completed, each once, with { world, level } (${got.join(" | ")})`);
+  fake.messages = [];
+  levelStarted({ world: "business", level: "7" }); levelAbandoned(); levelCompleted(); await flush();
+  assert(fake.messages.length === 1 && fake.messages[0]![0] === "level_started", "H3: leaving a level unfinished sends no completion (KnifeCraft has no fail state)");
+  const sdkApp = read("src/App.tsx");
+  const prep = read("src/components/kc/game/Preparation.tsx");
+  assert(/levelStarted\(where\)/.test(sdkApp) && /levelCompleted\(\);/.test(sdkApp) && /levelAbandoned\(\);/.test(sdkApp) && /bridge\.pauseGame\(\);\s*levelPaused\(\);/.test(prep) && /bridge\.resumeGame\(\);\s*levelResumed\(\);/.test(prep), "H4: wired — level start/complete in App's play sessions + Business orders, pause/resume from the in-game pause menu");
+  const orig = bridge.platform.sendMessage;
+  bridge.platform.sendMessage = () => { throw new Error("unsupported"); };
+  let threw = false;
+  try { levelStarted(where); levelCompleted(); await flush(); } catch { threw = true; }
+  bridge.platform.sendMessage = orig;
+  assert(!threw, "H5: a platform that rejects the message never breaks the game");
 }
 
 console.log(failures === 0 ? "\nPLAYGAMA ADS QA: ALL PASS" : `\nPLAYGAMA ADS QA: ${failures} FAILURE(S)`);

@@ -70,6 +70,10 @@ conversation.
    staff still cost more than they earn (see CLAUDE.md §7 Business scale).
 9. Cooking clip after every dish (CLAUDE.md §9): skippable 3.75 s film between
    the plate hand-off and the Knife Report. e2e: `tools/e2e/cookingclip.mjs`.
+10. Ads aligned with Playgama's requirements + monetization guide: first
+   interstitial after 3 levels, 150 s between interstitials (config floor
+   120 s), one placement per ad spot, Bridge level messages. QA:
+   `playables-ads-qa` (E, E6, A4b, F11, H) + `tools/e2e/adsflow.mjs`.
 
 ## 4. Open issues from the Level 1–10 audit (not fixed yet)
 

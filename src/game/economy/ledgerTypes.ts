@@ -43,7 +43,7 @@ export type LedgerCategory =
   | "inspection-fine"
   /** Economy V3 Phase 14 (Checkpoint 3) — Business Mode order revenue (BusinessServiceManager.serveBusinessOrder, applied by App.tsx's serveActiveBusinessOrder). Distinct from Campaign's "service-revenue" — this is a real Business Dish sold at its own current menu price, never Restaurant Service's flat basePayment. COGS is never charged here: the ingredients were already paid for at "inventory-purchase" time, so this entry is revenue only, exactly once per successful serve. */
   | "business-revenue"
-  /** YouTube Playables rewarded ad — the optional Campaign Replay Bonus (src/game/ads/replayBonus.ts). Written ONLY after ytgame.ads.requestRewardedAd() resolved exactly `true`; `description` is that ad's unique reward id, which makes the entry itself the record that the bonus was claimed (no separate save field). Its own category so ad income is always measurable apart from the Economy V2 Campaign baseline. */
+  /** Platform rewarded ad (Playgama Bridge) — the optional Campaign Replay Bonus (src/game/ads/replayBonus.ts). Written ONLY after requestRewardedAd() reported the Bridge state `rewarded`; `description` is that ad's unique reward id, which makes the entry itself the record that the bonus was claimed (no separate save field). Its own category so ad income is always measurable apart from the Economy V2 Campaign baseline. */
   | "rewarded-ad"
   /** Economy V2.5 — a one-time Restaurant Progress milestone reward (progression/milestoneRewards.ts). `description` is the milestone id; the entry itself is the record that it was paid, and EconomyLedger never trims it. */
   | "milestone-reward"

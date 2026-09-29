@@ -85,7 +85,7 @@ export class GameBridge {
       }
       // The scene has finished create() and registered its input
       // handlers — this, not "the save file loaded", is the actual
-      // "game is interactive" signal §22 wants ytgame.game.gameReady()
+      // "game is interactive" signal §22 wants the platform's game_ready
       // tied to.
       this.publish({ type: "SCENE_READY" });
     });
@@ -131,7 +131,7 @@ export class GameBridge {
     // no config flag disables it in this version) — a second, competing
     // pause system. Detach those specific listeners immediately so
     // PauseManager (fed only by the in-game button and
-    // ytgame.system.onPause/onResume) is the sole authority, per §23.
+    // the Bridge's pause state) is the sole authority, per §23.
     // The underlying DOM listeners stay installed and harmless; nothing
     // is subscribed to react to them anymore.
     // (removeAllListeners is safe here — nothing else in this codebase

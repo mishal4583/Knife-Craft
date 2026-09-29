@@ -375,8 +375,8 @@ class SaveManagerImpl {
   }
 
   /**
-   * Reads back what is ACTUALLY persisted (YouTube cloud save, or
-   * localStorage outside YouTube), bypassing the in-memory cache — used to
+   * Reads back what is ACTUALLY persisted (Bridge storage, or
+   * localStorage when no Bridge exists), bypassing the in-memory cache — used to
    * confirm a write really landed before the game tells the player so
    * (the Replay Bonus). Null if nothing readable is stored.
    */

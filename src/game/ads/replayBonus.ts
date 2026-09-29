@@ -1,7 +1,7 @@
 /**
  * REPLAY_BONUS — the one rewarded-ad feature: after REPLAYING an already
  * completed Campaign level (which normally pays nothing), the player may
- * choose to watch a YouTube rewarded ad for a small bonus.
+ * choose to watch a rewarded ad (Playgama Bridge) for a small bonus.
  *
  * Source of truth = the save's ledger. A claimed bonus IS a "rewarded-ad"
  * ledger entry whose `description` is that offer's unique reward id; the

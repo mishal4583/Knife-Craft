@@ -1,11 +1,11 @@
 /**
  * PAUSE_MANAGER — the single source of truth for "is the game paused".
  *
- * Both the in-game Pause button and `ytgame.system.onPause/onResume`
+ * Both the in-game Pause button and the Bridge's PAUSE_STATE_CHANGED
  * call the same `pause()` / `resume()` here. Nothing downstream (the
  * Phaser scene, AudioManager) can tell which one triggered it, and
  * nothing keeps a second, competing pause flag. Explicitly NOT wired to
- * `document.visibilitychange` / Page Visibility API — YouTube's SDK is
+ * `document.visibilitychange` / Page Visibility API — the platform SDK is
  * the authoritative lifecycle source per the Playables requirements.
  */
 import { isAdActive, onAdActiveChange, onPlatformPause, onPlatformResume } from "./PlayablesSDK";
@@ -16,10 +16,10 @@ class PauseManagerImpl {
   private paused = false;
   private listeners = new Set<Listener>();
   private wiredToPlatform = false;
-  /** YouTube paused the game while an ad was on screen (and it wasn't already paused). */
+  /** The platform paused the game while an ad was on screen (and it wasn't already paused). */
   private pausedForAd = false;
 
-  /** Registers the ytgame.system.onPause/onResume listeners exactly once. */
+  /** Registers the platform pause/resume listeners exactly once. */
   wireToPlatform(): void {
     if (this.wiredToPlatform) return;
     this.wiredToPlatform = true;
@@ -31,10 +31,10 @@ class PauseManagerImpl {
       this.pausedForAd = false;
       this.resume();
     });
-    // YouTube reliably sends onPause when an ad starts but not always
-    // onResume when it ends — which would leave the game paused and silent.
+    // A platform may send the pause when an ad starts but not always the
+    // resume when it ends — which would leave the game paused and silent.
     // When an ad stops blocking the screen (answered, or released by the
-    // dead-request guard), wake the game — but only if it was YouTube's
+    // dead-request guard), wake the game — but only if it was the platform's
     // ad-time pause; a player's own pause is never undone.
     onAdActiveChange((active) => {
       if (active || !this.pausedForAd) return;

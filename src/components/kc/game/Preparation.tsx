@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { paidLevelReward } from "@/game/levels/levelRewards";
 import { GameBridge, type GameBridgeEvent } from "@/game/GameBridge";
 import { PauseManager } from "@/game/PauseManager";
-import { gameReady } from "@/game/PlayablesSDK";
+import { gameReady, levelPaused, levelResumed } from "@/game/PlayablesSDK";
 import {
   INGREDIENTS,
   TECHNIQUES,
@@ -200,7 +200,7 @@ export function Preparation({
 
     // Fallback only — if Phaser somehow never boots (no WebGL/canvas2d,
     // an uncaught error inside the scene, ...), gameReady() still fires
-    // so YouTube doesn't consider the game permanently stuck loading.
+    // so the platform doesn't consider the game permanently stuck loading.
     // markReady() is idempotent; whichever path reaches it first wins.
     let readyFired = false;
     const markReady = () => {
@@ -377,7 +377,10 @@ export function Preparation({
         progressByAxis={progressByAxis}
         {...(stepLabel ? { stepLabel } : {})}
         {...(service?.batchHint ? { batchHint: service.batchHint } : {})}
-        onPause={() => bridge.pauseGame()}
+        onPause={() => {
+          bridge.pauseGame();
+          levelPaused();
+        }}
       />
 
       <GameViewport bridge={bridge} />
@@ -408,7 +411,13 @@ export function Preparation({
             </p>
             <p className="mt-1 font-hand text-[16px] text-walnut/70">the kitchen will wait</p>
             <div className="mt-4 space-y-2">
-              <KButton full onClick={() => bridge.resumeGame()}>
+              <KButton
+                full
+                onClick={() => {
+                  bridge.resumeGame();
+                  levelResumed();
+                }}
+              >
                 Resume
               </KButton>
               <KButton
@@ -422,6 +431,7 @@ export function Preparation({
                   // the pause OVERLAY closed, since `paused` only flips via
                   // PauseManager's own subscription. Resume first, always.
                   bridge.resumeGame();
+                  levelResumed();
                   restart();
                 }}
               >

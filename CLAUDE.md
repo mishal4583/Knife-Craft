@@ -59,12 +59,20 @@ create a second engine, and do not duplicate existing systems.
   `localStorage` directly (plain localStorage is only the fallback when no
   Bridge exists). Outside Playgama the Bridge runs a local "mock" platform
   whose storage is backed by localStorage.
-- Ads: interstitials only at natural breaks through
-  `src/game/ads/interstitialPolicy.ts` (none before 10 completed levels,
-  1 per 3 transitions, 3-min cooldown); rewarded = the Replay Bonus
-  (`src/game/ads/replayBonus.ts`), granted only when Bridge reports the
-  `rewarded` state, committed through the ledger. Locally the mock platform
-  reports ads as unsupported.
+- Ads (Playgama monetization guide + Bridge docs): interstitials only at
+  natural breaks through `src/game/ads/interstitialPolicy.ts` — none before
+  3 completed levels, then any natural break once 150 s (the guide's
+  120–240 s) have passed since the last ad of any kind; the config's
+  `minimumDelayBetweenInterstitial` is 120. Rewarded = the Replay Bonus
+  (`src/game/ads/replayBonus.ts`) and Business Rush Restock, granted only
+  when Bridge reports the `rewarded` state. One placement per ad spot
+  (`AD_PLACEMENT`, listed in the config): `level_completed`,
+  `business_day_end`, `replay_bonus`, `rush_restock`. Locally the mock
+  platform reports ads as unsupported.
+- Level messages: `level_started` / `level_completed` (App play sessions
+  and Business orders) and `level_paused` / `level_resumed` (in-game pause
+  menu), with `{ world, level }` (world = `chapter-N`, `todays-special`,
+  `endless` or `business`). No `level_failed`: the game has no fail state.
 - The Bridge SDK is required for every build. **Never publish a build in
   which Playgama did not detect the SDK.**
 - Language: English only (the game reads `platform.language` and stays EN).

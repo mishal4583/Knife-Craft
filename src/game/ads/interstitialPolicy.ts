@@ -3,31 +3,35 @@
  *
  * Called only from explicit player actions at natural break points (never
  * from render or an effect), each with a stable `transitionId` naming that
- * one transition (e.g. "level-finish:level-12:<session>"). Rules:
+ * one transition (e.g. "level-finish:level-12:<session>"). Rules, from
+ * Playgama's monetization guide (docs/playgama): start "after the first
+ * few levels", and keep interstitials "between 120 and 240 seconds" apart.
  *  - never before the player has completed INTERSTITIAL_MIN_COMPLETED_LEVELS
- *    campaign levels;
- *  - at most one ad every INTERSTITIAL_EVERY_N_TRANSITIONS eligible transitions;
- *  - at least INTERSTITIAL_COOLDOWN_MS since the last ad of ANY kind settled
- *    (so never straight after a rewarded ad), and never while one is active;
+ *    campaign levels (the intro and first levels stay ad-free);
+ *  - after that, any natural break may show one, as long as at least
+ *    INTERSTITIAL_COOLDOWN_MS has passed since the last ad of ANY kind
+ *    settled (so never straight after a rewarded ad), and never while one
+ *    is active. Bridge's own minimumDelayBetweenInterstitial (120 s,
+ *    playgama-bridge-config.json) is the platform-side floor;
  *  - a transitionId is handled at most once, so a re-render, a repeated
  *    click or navigating back and forth can't request the same ad twice.
  * State is per session, in memory — nothing is saved. A missing, failed or
  * unshown ad changes nothing: the caller has already moved on.
  */
 import {
+  INTERSTITIAL_PLACEMENT,
   interstitialAdsAvailable,
   isAdActive,
   lastAdSettledTime,
   requestInterstitialAd,
+  type InterstitialPlacement,
 } from "../PlayablesSDK";
 
-export const INTERSTITIAL_MIN_COMPLETED_LEVELS = 10;
-export const INTERSTITIAL_EVERY_N_TRANSITIONS = 3;
-export const INTERSTITIAL_COOLDOWN_MS = 3 * 60 * 1000;
+export const INTERSTITIAL_MIN_COMPLETED_LEVELS = 3;
+/** 150 s — inside Playgama's recommended 120–240 s between interstitials. */
+export const INTERSTITIAL_COOLDOWN_MS = 150 * 1000;
 
 export type InterstitialPolicyState = {
-  /** Eligible transitions counted since the last ad (or session start). */
-  transitionsSinceAd: number;
   /** transitionIds already handled this session. */
   handled: Set<string>;
 };
@@ -36,7 +40,7 @@ export type InterstitialDecision =
   | { show: true }
   | {
       show: false;
-      reason: "duplicate" | "tooEarly" | "frequency" | "cooldown" | "adActive" | "unavailable";
+      reason: "duplicate" | "tooEarly" | "cooldown" | "adActive" | "unavailable";
     };
 
 export type InterstitialInput = {
@@ -57,35 +61,31 @@ export function decideInterstitial(
     return { decision: { show: false, reason: "duplicate" }, state };
   }
   const handled = new Set(state.handled).add(input.transitionId);
-  const no = (
-    reason: Exclude<InterstitialDecision, { show: true }>["reason"],
-    counted: boolean,
-  ) => ({
+  const no = (reason: Exclude<InterstitialDecision, { show: true }>["reason"]) => ({
     decision: { show: false as const, reason },
-    state: { handled, transitionsSinceAd: state.transitionsSinceAd + (counted ? 1 : 0) },
+    state: { handled },
   });
-  if (!input.available) return no("unavailable", false);
-  // The first levels are the player's first impression: no ads, and they don't count.
-  if (input.completedLevels < INTERSTITIAL_MIN_COMPLETED_LEVELS) return no("tooEarly", false);
-  const count = state.transitionsSinceAd + 1;
-  if (count < INTERSTITIAL_EVERY_N_TRANSITIONS) return no("frequency", true);
-  if (input.adActive) return no("adActive", true);
+  if (!input.available) return no("unavailable");
+  // The first levels are the player's first impression: no ads yet.
+  if (input.completedLevels < INTERSTITIAL_MIN_COMPLETED_LEVELS) return no("tooEarly");
+  if (input.adActive) return no("adActive");
   if (input.lastAdSettledAt > 0 && input.now - input.lastAdSettledAt < INTERSTITIAL_COOLDOWN_MS) {
-    return no("cooldown", true);
+    return no("cooldown");
   }
-  return { decision: { show: true }, state: { handled, transitionsSinceAd: 0 } };
+  return { decision: { show: true }, state: { handled } };
 }
 
-let policyState: InterstitialPolicyState = { transitionsSinceAd: 0, handled: new Set() };
+let policyState: InterstitialPolicyState = { handled: new Set() };
 
 /**
- * Records one natural transition and, if the policy allows, asks YouTube
- * for an interstitial. Fire-and-forget: never awaited by navigation, never
- * throws, returns the decision for QA.
+ * Records one natural transition and, if the policy allows, asks the Bridge
+ * for an interstitial at `placement`. Fire-and-forget: never awaited by
+ * navigation, never throws, returns the decision for QA.
  */
 export function maybeShowInterstitial(
   transitionId: string,
   completedLevels: number,
+  placement: InterstitialPlacement = INTERSTITIAL_PLACEMENT,
 ): InterstitialDecision {
   const { decision, state } = decideInterstitial(policyState, {
     transitionId,
@@ -96,6 +96,6 @@ export function maybeShowInterstitial(
     available: interstitialAdsAvailable(),
   });
   policyState = state;
-  if (decision.show) void requestInterstitialAd();
+  if (decision.show) void requestInterstitialAd(placement);
   return decision;
 }

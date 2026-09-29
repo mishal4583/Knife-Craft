@@ -14,11 +14,17 @@ import {
   type ReplayBonusPhase,
 } from "@/game/ads/replayBonus";
 import {
+  AD_PLACEMENT,
+  levelAbandoned,
+  levelCompleted,
+  levelStarted,
   onAdActiveChange,
   requestRewardedAd,
   rewardedAdsAvailable,
   sendScore,
+  type LevelContext,
 } from "@/game/PlayablesSDK";
+import { levelNumber } from "@/game/levels/levelMastery";
 import { GameShell } from "@/components/kc/game/GameShell";
 import { type ScreenId } from "@/components/kc/data";
 import { SaveManager, type SaveData } from "@/game/SaveManager";
@@ -325,7 +331,7 @@ export function App() {
     rewardCoins: number;
   } | null>(null);
 
-  // YouTube ads. `saveRef` always holds the latest committed save, so code
+  // Platform ads (Playgama Bridge). `saveRef` always holds the latest committed save, so code
   // resuming after an `await` (a rewarded ad) reads the authoritative state,
   // never a stale closure. The Replay Bonus's claimed/granted state is NOT
   // stored here — it is derived from the save's ledger (replayBonus.ts).
@@ -337,7 +343,7 @@ export function App() {
   // Mirrors `replayOffer` for code resuming after an await (was the sheet closed meanwhile?).
   const replayOfferRef = useRef<ReplayBonusOffer | null>(null);
   replayOfferRef.current = replayOffer;
-  // A bonus that YouTube confirmed only after the player had closed the sheet
+  // A bonus the platform confirmed only after the player had closed the sheet
   // (possible after the dead-request guard released the screen) — confirmed here.
   const [lateReplayBonus, setLateReplayBonus] = useState<number | null>(null);
   const [adActive, setAdActive] = useState(false);
@@ -350,12 +356,15 @@ export function App() {
   // One id per play session (level/daily/endless start) + whether it reached a
   // completion — so an interstitial only follows a finished session, never a
   // mid-level quit, and each session's transition is requested at most once.
+  // It also drives the Bridge level messages (level_started / level_completed).
   const playSessionRef = useRef({ id: 0, completed: false });
-  function startPlaySession() {
+  function startPlaySession(where: LevelContext) {
     playSessionRef.current = { id: playSessionRef.current.id + 1, completed: false };
+    levelStarted(where);
   }
   function markPlaySessionCompleted() {
     playSessionRef.current = { ...playSessionRef.current, completed: true };
+    levelCompleted();
   }
 
   // Operations/Feedback checkpoint (pre-V3-16) — Business Mode's
@@ -369,15 +378,15 @@ export function App() {
   const seenBusinessAlertKeysRef = useRef<Set<string> | null>(null);
 
   // Load the save once and wire the platform pause source (§23 —
-  // YouTube's onPause/onResume is the sole authority). gameReady() is
+  // the Bridge's pause state is the sole authority). gameReady() is
   // NOT called here — loading the save file isn't "the game is
   // interactive". Preparation calls it once Phaser's scene actually
   // finishes booting (see its SCENE_READY handler).
-  // While a YouTube ad is in flight the game is muted (AudioManager) and a
+  // While a platform ad is in flight the game is muted (AudioManager) and a
   // shield swallows every tap, so nothing underneath can take input.
   useEffect(() => onAdActiveChange(setAdActive), []);
 
-  // YouTube score = campaign levels completed. Sent once the save loads and
+  // Platform score = campaign levels completed. Sent once the save loads and
   // again each time it grows (never a lower value, never twice for the same).
   const completedCount = save?.levelProgress.completedLevelIds.length ?? 0;
   const lastSentScoreRef = useRef(-1);
@@ -718,6 +727,7 @@ export function App() {
     maybeShowInterstitial(
       `business-day:${withFine.business.calendar.businessDay}`,
       withFine.levelProgress.completedLevelIds.length,
+      AD_PLACEMENT.businessDayEnd,
     );
     return {
       spoiledQuantity: result.spoiledQuantity,
@@ -805,7 +815,7 @@ export function App() {
     if (rushAdBusyRef.current) return { ok: false, reason: "busy" };
     rushAdBusyRef.current = true;
     try {
-      const ad = await requestRewardedAd(newRushRestockRewardId());
+      const ad = await requestRewardedAd(newRushRestockRewardId(), AD_PLACEMENT.rushRestock);
       if (ad.status !== "rewarded") {
         return {
           ok: false,
@@ -952,9 +962,12 @@ export function App() {
    */
   function onSelectLevel(levelId: string) {
     if (!save) return;
-    startPlaySession();
-    persist({ ...save, levelProgress: selectLevel(levelId, save.levelProgress) });
     const level = getLevel(levelId);
+    startPlaySession({
+      world: `chapter-${level?.chapter ?? 1}`,
+      level: String(levelNumber(levelId)),
+    });
+    persist({ ...save, levelProgress: selectLevel(levelId, save.levelProgress) });
     if (level?.batchGroupRecipeIds?.length) {
       startBatchGroupLevel(level);
       return;
@@ -971,7 +984,7 @@ export function App() {
   function startDaily() {
     if (!save) return;
     const level = pickDailyLevel(save.levelProgress, new Date());
-    startPlaySession();
+    startPlaySession({ world: "todays-special", level: String(levelNumber(level.id)) });
     setSessionMode("daily");
     setActiveLevelId(level.id);
     setScreen("gameplay");
@@ -982,7 +995,7 @@ export function App() {
     if (!save) return;
     const level = pickEndlessLevel(save.levelProgress, endlessIndex);
     if (!level) return;
-    startPlaySession();
+    startPlaySession({ world: "endless", level: String(levelNumber(level.id)) });
     setSessionMode("endless");
     setActiveLevelId(level.id);
     setScreen("gameplay");
@@ -1026,6 +1039,9 @@ export function App() {
     const dish = businessDishForRecipeId(businessServiceSession.current.recipe.id);
     if (!dish) return;
     if (!businessOrderAvailability(save, dish).available) return;
+    // A Business order is its own short level for the Bridge's level messages
+    // (no play session: Business interstitials follow the day's end only).
+    levelStarted({ world: "business", level: String(save.business.calendar.businessDay) });
     setSessionMode("business-service");
     setScreen("gameplay");
   }
@@ -1046,6 +1062,7 @@ export function App() {
   function recordBusinessServiceResult(score: number): number {
     if (!save || !businessServiceSession?.current) return 0;
     setBusinessServiceSession((s) => (s ? recordBusinessServiceComponents(s, score) : s));
+    levelCompleted();
     return 0;
   }
 
@@ -1863,6 +1880,8 @@ export function App() {
             key={activeLevel.id}
             level={activeLevel}
             onExit={() => {
+              // Leaving an unfinished level closes it without a level message.
+              levelAbandoned();
               // A finished session (never a mid-level quit) is a natural break.
               if (playSessionRef.current.completed) {
                 maybeShowInterstitial(
@@ -1965,7 +1984,7 @@ export function App() {
           onWatch={() => void watchReplayBonusAd()}
           canClose={!adActive}
           onClose={() => {
-            // Closable unless an ad is on screen. If YouTube's answer is still
+            // Closable unless an ad is on screen. If the platform's answer is still
             // pending (the dead-request guard lifted the screen block), the game
             // keeps listening: a late `true` is still committed and confirmed.
             if (adActive) return;

@@ -97,7 +97,7 @@ export function Kitchen({
   const campaignComplete = getLevels().every((l) => isCompleted(l.id, levelProgress));
 
   // A returning player's first screen: once the Kitchen has actually mounted
-  // (its lazily-loaded chunk is in), the game is interactive — tell YouTube.
+  // (its lazily-loaded chunk is in), the game is interactive — tell the platform.
   // Idempotent; Preparation signals it instead for a brand-new player.
   useEffect(() => {
     gameReady();
