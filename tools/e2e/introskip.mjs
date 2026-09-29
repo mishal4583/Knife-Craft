@@ -83,7 +83,10 @@ await page.evaluateOnNewDocument(() => {
 
 async function fresh(w = 390, h = 844) {
   await page.setViewport({ width: w, height: h });
-  await page.goto(URL0, { waitUntil: "domcontentloaded" });
+  // Let the first load settle before clearing storage and reloading: a reload
+  // on DOMContentLoaded cancels the Bridge config fetch and lazy chunks still
+  // in flight, and those cancellations would show up in check 9c.
+  await page.goto(URL0, { waitUntil: "networkidle0" });
   await page.evaluate(() => localStorage.clear());
   await page.reload({ waitUntil: "domcontentloaded" });
   await page.waitForSelector(OV, { timeout: 20000 });
