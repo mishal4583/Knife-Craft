@@ -1,6 +1,6 @@
 // The cooking clip after every dish, in the built game:
 //   1. after the chef's hands take the plate, the clip appears (Knife Report not yet shown), the
-//      video really plays, SKIP › is offered, and when it ends the Knife Report follows;
+//      video really plays, SKIP › is offered over the old watermark corner, and when it ends the Knife Report follows;
 //   2. "Prep Again" → the clip plays again for the next dish; SKIP › goes straight to the report;
 //   3. a tap anywhere on the clip also skips it;
 //   4. with Sound off in Settings the clip is muted; with Sound on it plays with sound.
@@ -55,6 +55,23 @@ check(
     const b = document.querySelector('[aria-label="Skip cooking"]');
     const r = b?.getBoundingClientRect();
     return !!r && r.width >= 48 && r.height >= 48;
+  }),
+);
+check(
+  "1d2 SKIP › covers the corner where the source film's AI watermark was (the whole mark)",
+  await page.evaluate(() => {
+    const clip = document.querySelector('[data-testid="cooking-clip"]').getBoundingClientRect();
+    const pill = document.querySelector('[aria-label="Skip cooking"] span').getBoundingClientRect();
+    // The mark: centre (600, 1160), ~50 px wide in the 720×1280 source.
+    const cx = clip.left + (600 / 720) * clip.width;
+    const cy = clip.top + (1160 / 1280) * clip.height;
+    const half = (28 / 720) * clip.width;
+    return (
+      pill.left <= cx - half &&
+      pill.right >= cx + half &&
+      pill.top <= cy - half &&
+      pill.bottom >= cy + half
+    );
   }),
 );
 check("1e with Sound on, the clip plays with sound", v1 && v1.muted === false, v1);

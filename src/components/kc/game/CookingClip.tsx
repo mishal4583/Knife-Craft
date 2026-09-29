@@ -7,7 +7,8 @@
  * - Mounted as soon as plating starts (`playing` false: invisible, only
  *   buffering), so it is ready when the hands leave. Bundled locally
  *   (WebM VP9 first, H.264 MP4 fallback) — no network request.
- * - Skippable: the SKIP › control or a tap anywhere (after a 300 ms guard,
+ * - Skippable: the SKIP › control (bottom-right, over the painted-out
+ *   watermark) or a tap anywhere (after a 300 ms guard,
  *   so the tap that fast-forwarded the plating doesn't also skip the film).
  * - Pause-aware (PauseManager: the in-game pause and the platform's), and
  *   its sound follows the game's own rule (AudioManager.soundAllowed).
@@ -27,6 +28,13 @@ const TAP_GUARD_MS = 300;
 const START_TIMEOUT_MS = 2500;
 /** Hard ceiling of unpaused play time — the clip is 3.75 s. */
 const MAX_PLAY_MS = 7000;
+/**
+ * Where the source film's AI watermark sat (its centre, as a fraction of the
+ * 9:16 frame, which the game frame matches exactly): painted out of the
+ * encoded files with ffmpeg `delogo`, and covered by the SKIP control.
+ */
+const WATERMARK_X = 600 / 720;
+const WATERMARK_Y = 1160 / 1280;
 
 export function CookingClip({ playing, onDone }: { playing: boolean; onDone: () => void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -133,18 +141,23 @@ export function CookingClip({ playing, onDone }: { playing: boolean; onDone: () 
           }}
         />
       </video>
-      {playing && !leaving ? (
+      {playing ? (
+        // Sits exactly over the corner where the source film carried an AI
+        // watermark (painted out of the files too, see WATERMARK_*), and
+        // stays through the fade-out so that corner is never bare.
         <button
           type="button"
           aria-label="Skip cooking"
+          disabled={leaving}
           onClick={(e) => {
             e.stopPropagation();
             finish();
           }}
-          className="absolute right-1 top-1 z-10 flex h-[52px] min-w-[52px] items-center justify-center px-2"
+          style={{ left: `${WATERMARK_X * 100}%`, top: `${WATERMARK_Y * 100}%` }}
+          className="absolute z-10 flex h-[52px] min-w-[84px] -translate-x-1/2 -translate-y-1/2 items-center justify-center"
         >
-          <span className="rounded-full bg-black/30 px-3 py-1.5 font-ui text-[12px] font-extrabold uppercase tracking-[0.16em] text-[#fff6e6]/90">
-            Skip <span aria-hidden>›</span>
+          <span className="flex h-[38px] items-center rounded-full bg-walnut-dark/60 px-4 font-ui text-[13px] font-extrabold uppercase tracking-[0.16em] text-[#fff6e6] shadow-[0_2px_8px_rgba(0,0,0,0.25)] backdrop-blur-md">
+            Skip <span aria-hidden>&nbsp;›</span>
           </span>
         </button>
       ) : null}

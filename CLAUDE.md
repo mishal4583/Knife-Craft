@@ -297,7 +297,9 @@ not silently removed.
   ~0.65 MB each; poster `.webp`). It buffers from PLATING_STARTED, is
   skippable (SKIP › or a tap, 300 ms guard), pauses with PauseManager,
   is muted unless `AudioManager.soundAllowed`, and falls straight through
-  on error / stall / `prefers-reduced-motion`. Source upload:
+  on error / stall / `prefers-reduced-motion`. The source's AI watermark
+  (centre 600,1160 of 720×1280) is painted out with ffmpeg `delogo` and the
+  SKIP › pill sits over that spot. Source upload:
   `gemini_generated_video_aa3f242a - Trim.mp4` (on `main`).
 
 ---
