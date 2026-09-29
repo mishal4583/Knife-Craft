@@ -142,7 +142,7 @@ check(
 );
 
 // ---------- 3: the next break right after it: cooldown ----------
-await clickButton(page, /Back to Kitchen|Kitchen/);
+await clickButton(page, /Back to (Kitchen|Orders)|Kitchen/);
 await sleep(800);
 check("3a no second interstitial within 150 s", (await ads()).length === 1, await ads());
 

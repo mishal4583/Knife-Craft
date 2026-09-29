@@ -111,7 +111,7 @@ await freshPlayer(page);
 await skipIntro();
 const g1a = await playAndServe();
 check("G1.1 fresh Level 1 (second run) uses the service flow", g1a.flow === "service", g1a);
-await clickButton(page, /^Back to Kitchen$/);
+await clickButton(page, /^Back to (Kitchen|Orders)$/);
 await sleep(1500);
 const g1 = await readSave(page);
 const g1Ledger = newLedger(null, g1);
@@ -166,7 +166,7 @@ for (let run = 1; run <= 2; run++) {
   const b = await readSave(page);
   await openFromBoard("Fresh Cucumber");
   const r = await playAndServe();
-  await clickButton(page, /^Back to Kitchen$/);
+  await clickButton(page, /^Back to (Kitchen|Orders)$/);
   await sleep(1500);
   const a = await readSave(page);
   const led = newLedger(b, a);
@@ -206,7 +206,7 @@ for (let run = 1; run <= 2; run++) {
       ?.click(),
   );
   await sleep(600);
-  await clickButton(page, /^Back to Kitchen$/);
+  await clickButton(page, /^Back to (Kitchen|Orders)$/);
   await sleep(1000);
   const a = await readSave(page);
   check(
