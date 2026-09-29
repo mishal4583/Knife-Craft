@@ -126,7 +126,8 @@ for (let lv = 1; lv <= 10; lv++) {
     await clickButton(page, /^Serve to /);
     await sleep(900);
     L.served =
-      (await text(page)).replace(/\s+/g, " ").match(/SERVED.*?Back to Kitchen/i)?.[0] ?? null;
+      (await text(page)).replace(/\s+/g, " ").match(/SERVED.*?Back to (Kitchen|Orders)/i)?.[0] ??
+      null;
     await page.evaluate(() => document.querySelector("details summary")?.click());
     await sleep(200);
     L.settlement = (

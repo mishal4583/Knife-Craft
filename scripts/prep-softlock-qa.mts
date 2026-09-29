@@ -25,7 +25,7 @@ import path from "node:path";
 import { INGREDIENTS, TECHNIQUES, requiredCutsFor, type IngredientId, type TechniqueId } from "../src/game/definitions.ts";
 import { mustPeelBefore, withRequiredPeelSteps } from "../src/game/prepStepGuards.ts";
 import { LEVELS } from "../src/game/levels/levelDefinitions.ts";
-import { CAMPAIGN_RECIPES } from "../src/game/recipes/campaignRecipes.ts";
+import { BUSINESS_ONLY_RECIPES, CAMPAIGN_RECIPES, getCampaignRecipe } from "../src/game/recipes/campaignRecipes.ts";
 import { TEST_RECIPE_POOL } from "../src/game/service/testRecipePool.ts";
 import { preparationStepsForRecipe } from "../src/game/service/stepsForRecipe.ts";
 import { BUSINESS_DISH_CATALOG } from "../src/game/business/businessDishCatalog.ts";
@@ -101,7 +101,7 @@ function checkSource(label: string, steps: readonly S[], problems: string[]) {
   }
 }
 {
-  const recipeSteps = (id: string): S[] => preparationStepsForRecipe(CAMPAIGN_RECIPES.find((r) => r.id === id)!).map((s) => ({ ingredient: s.ingredient, technique: s.technique, ...(s.chainBreak ? { chainBreak: true } : {}) }));
+  const recipeSteps = (id: string): S[] => preparationStepsForRecipe(getCampaignRecipe(id)!).map((s) => ({ ingredient: s.ingredient, technique: s.technique, ...(s.chainBreak ? { chainBreak: true } : {}) }));
   const sources: Array<[string, S[]]> = [
     ...CAMPAIGN_RECIPES.map((r) => [`campaign recipe ${r.id}`, recipeSteps(r.id)] as [string, S[]]),
     ...TEST_RECIPE_POOL.map((r) => [`service recipe ${r.id}`, preparationStepsForRecipe(r).map((s) => ({ ingredient: s.ingredient, technique: s.technique }))] as [string, S[]]),
@@ -116,7 +116,7 @@ function checkSource(label: string, steps: readonly S[], problems: string[]) {
   }
   assert(problems.length === 0, `B: all ${sources.length} step lists (${CAMPAIGN_RECIPES.length} campaign recipes, ${TEST_RECIPE_POOL.length} service recipes, ${BUSINESS_DISH_CATALOG.length} business dishes, ${LEVELS.length} levels) are completable after normalization${problems.length ? " — " + problems.slice(0, 5).join("; ") : ""}`);
   console.log(`     (${fixedCount} step lists were soft-locks before the fix and now get their Peel step)`);
-  assert(CAMPAIGN_RECIPES.every((r) => stuckAt(recipeSteps(r.id)) === -1), "B2: every campaign recipe (the ones campaign orders and Business dishes actually play) was already completable — no campaign content changes");
+  assert([...CAMPAIGN_RECIPES, ...BUSINESS_ONLY_RECIPES].every((r) => stuckAt(recipeSteps(r.id)) === -1), "B2: every campaign recipe and Business-only recipe (the ones campaign orders and Business dishes actually play) was already completable — no campaign content changes");
 }
 
 // ===== D: scene input gates =====
@@ -137,7 +137,8 @@ function checkSource(label: string, steps: readonly S[], problems: string[]) {
 {
   assert(/withRequiredPeelSteps\(/.test(read("src/game/scenes/PreparationScene.ts")) && /this\.steps = withRequiredPeelSteps\(/.test(read("src/game/scenes/PreparationScene.ts")), "E: the scene normalizes its steps on start");
   const prep = read("src/components/kc/game/Preparation.tsx");
-  assert((prep.match(/completableSteps\(/g) ?? []).length >= 3, "E2: Preparation.tsx normalizes both campaign-level and service/business step lists (the HUD indexes the same list the scene plays)");
+  // One normalization over both step sources (service/business recipe, or the campaign level), used by both views.
+  assert(/const givenSteps = service\s*\?\s*preparationStepsForRecipe\(service\.order\.recipe\)\s*:\s*level!\.preparationSteps;/.test(prep) && /const playableSteps = completableSteps\(givenSteps\);/.test(prep) && (prep.match(/preparationSteps: playableSteps,/g) ?? []).length === 2, "E2: Preparation.tsx normalizes both campaign-level and service/business step lists (the HUD indexes the same list the scene plays)");
 }
 
 console.log(failures === 0 ? "\nPREP SOFT-LOCK QA: ALL PASS" : `\nPREP SOFT-LOCK QA: ${failures} FAILURE(S)`);

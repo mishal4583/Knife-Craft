@@ -267,6 +267,18 @@ export function OrderBoard({
   const firstLocked = levels.findIndex((l) => !isUnlocked(l, levelProgress));
   const visibleLevels = firstLocked === -1 ? levels : levels.slice(0, firstLocked + 1);
   const hiddenCount = levels.length - visibleLevels.length;
+  // The level to play next: the first unlocked one not yet completed.
+  const nextLevelId = visibleLevels.find(
+    (l) => isUnlocked(l, levelProgress) && !isCompleted(l.id, levelProgress),
+  )?.id;
+  // Open the board on that level — as levels are completed it would
+  // otherwise sit below the fold under the finished ones.
+  useEffect(() => {
+    if (!nextLevelId) return;
+    document
+      .querySelector(`[data-level-row="${nextLevelId}"]`)
+      ?.scrollIntoView({ block: "center" });
+  }, [nextLevelId]);
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-cream">
@@ -377,7 +389,11 @@ export function OrderBoard({
                   }
                 : null;
               const nextReward = ownReward ?? getNextRewardPreview(levelNumber(level.id));
-              const rewardLabel = ownReward ? "Reward" : "Next";
+              // A knife or board a level "unlocks" becomes BUYABLE in the Market —
+              // it is never handed over, so the row says so rather than "Reward".
+              const marketUnlock =
+                level.unlockReward?.type === "knife" || level.unlockReward?.type === "board";
+              const rewardLabel = ownReward ? "Unlocks" : "Next";
               // A row showing its OWN reward would otherwise hide a kitchen
               // background unlocking right behind it (Lv 40 Cleaver → Lv 41
               // Established Kitchen), so that one case gets a second hint.
@@ -385,7 +401,7 @@ export function OrderBoard({
                 ? getNextKitchenStagePreview(levelNumber(level.id))
                 : null;
               return (
-                <div key={level.id}>
+                <div key={level.id} data-level-row={level.id}>
                   {showChapterDivider ? (
                     <p className="pb-1 pt-1.5 font-ui text-[10px] font-extrabold uppercase tracking-[0.18em] text-walnut/50">
                       Chapter {level.chapter} · {CHAPTER_TITLES[level.chapter] ?? level.chapterId}
@@ -411,7 +427,11 @@ export function OrderBoard({
                           {nextReward && !campaignComplete ? (
                             <span className="font-ui text-[10px] font-bold text-copper/80">
                               {nextReward.icon} {rewardLabel}: {nextReward.name}
-                              {ownReward ? "" : ` · Lv ${nextReward.atLevel}`}
+                              {ownReward
+                                ? marketUnlock
+                                  ? " in the Market"
+                                  : ""
+                                : ` · Lv ${nextReward.atLevel}`}
                             </span>
                           ) : null}
                           {stageAfter && !campaignComplete ? (

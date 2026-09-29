@@ -66,7 +66,7 @@ for (let run = 1; run <= 2; run++) {
       .filter((x) => x.offsetParent)
       .map((x) => x.textContent.trim()),
   );
-  await clickButton(page, /^Back to Kitchen$/);
+  await clickButton(page, /^Back to (Kitchen|Orders)$/);
   await sleep(1200);
   const landed = (await text(page)).replace(/\s+/g, " ").slice(0, 120);
   const a = await readSave(page);
@@ -106,10 +106,10 @@ const pauseText = (await text(page)).replace(/\s+/g, " ");
 note(
   "B pause overlay",
   /Paused/.test(pauseText)
-    ? pauseText.match(/Paused.*?Back to Kitchen/)?.[0]
+    ? pauseText.match(/Paused.*?Back to (Kitchen|Orders)/)?.[0]
     : "pause button not found: " + pauseText.slice(0, 150),
 );
-await clickButton(page, /^Back to Kitchen$/);
+await clickButton(page, /^Back to (Kitchen|Orders)$/);
 await sleep(1000);
 note("B pause→Back to Kitchen lands on", (await text(page)).replace(/\s+/g, " ").slice(0, 120));
 

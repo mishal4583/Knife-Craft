@@ -77,6 +77,16 @@ conversation.
 11. Business → Ingredients: per-ingredient prices, unused ingredients hidden
    behind "Show 20 more", wallet preview on every card, "Not enough money —
    need $X more". e2e: `tools/e2e/ingredients.mjs`.
+12. Every ingredient on a menu: 13 new Business dishes (48 total), incl.
+   Ribeye with Herb Butter on the Business-only recipe; the hide toggle
+   removed. `setMenuPrice` now uses `getCampaignRecipe`.
+13. Release v1.1.0 (`releases/KnifeCraft-Playgama-v1.1.0.zip`): deep check
+   (all QA, all e2e, fresh-player L1–10 audit) + the P1 flow fixes in §4.
+   Metrics at the time (1.0.0 sandbox, 26–28 Sep): 310 sessions, game_ready
+   88.4%, 30 s+ 36.1%, bounce 63.9%, D1 3.64%, avg load 2.6 s. A fresh
+   player's game_ready fires ~0.6 s after load locally, ~5 s on a slow
+   mobile connection — the next lever for the 11.6% who never reach it is
+   the first-load size (P2).
 
 ## 4. Open issues from the Level 1–10 audit (not fixed yet)
 
@@ -93,13 +103,14 @@ Priority order as agreed in the audit (P0 = before wide release):
   play has the customer/Serve/Finish Level flow, pays $48 + the $50 reward
   and shows Level Complete. Economy V2 QA output unchanged (Honest net
   $461,526). Browser regression: `tools/e2e/levelflow.mjs`.
-- P1: "Back to Kitchen" (Served screen + pause menu) actually goes to the
-  Order Board; next level's Prepare button is below the fold from Level 6
-  (no auto-scroll); Level 10's +$80 toast is replaced by the story
-  milestone banner; Level 10 "Reward: Santoku" is not granted (it becomes
-  buyable for $350 when Level 10 unlocks); order payout and completion reward
-  are shown separately (never a total); Levels 8/9 instructions omit the
-  Peel step; peel shows no progress ("0/1 peel" until done).
+- P1 **fixed 2026-09-29 (v1.1.0)**: the campaign exit button now says "Back
+  to Orders" (it goes to the Order Board); the Order Board opens scrolled to
+  the next level; knife/board rows say "Unlocks: X in the Market" instead of
+  "Reward: X"; any instruction that omits a peel step is prefixed "Peel the
+  X first." (43 recipes, incl. Levels 8/9).
+- P1 still open: Level 10's +$80 toast is replaced by the story milestone
+  banner; order payout and completion reward are shown separately (never a
+  total); peel shows no progress ("0/1 peel" until done).
 - P2: first-load bundle (main 782 KB / Phaser chunk 1.44 MB raw), Business
   code in the main bundle, stale "Next: Santoku · Lv 10" hints, Knife Report
   copy, faint destination label under the HUD card, nav highlights Kitchen on

@@ -52,6 +52,28 @@ function completableSteps(steps: readonly PreparationStep[]): PreparationStep[] 
 }
 
 /**
+ * The instruction shown in the HUD. Some recipes/levels peel an ingredient
+ * their text never mentions (Level 8 "Halve the potato evenly.", Level 9's
+ * garlic), and completableSteps can add a required Peel too. The
+ * instruction then says so first — "Peel the potato first." — so the text
+ * matches what the player actually has to do. An ingredient counts as
+ * mentioned when one clause of the text names both "peel" and it.
+ */
+function withPeelNote(instruction: string, steps: readonly PreparationStep[]): string {
+  const clauses = instruction.toLowerCase().split(/[.;,]/);
+  const unmentioned = [
+    ...new Set(
+      steps
+        .filter((s) => s.technique === "peel")
+        .map((s) => INGREDIENTS[s.ingredient].name.toLowerCase()),
+    ),
+  ].filter((name) => !clauses.some((c) => c.includes("peel") && c.includes(name)));
+  if (unmentioned.length === 0) return instruction;
+  const names = unmentioned.map((n) => `the ${n}`).join(" and ");
+  return `Peel ${names} first. ${instruction}`.trim();
+}
+
+/**
  * Preparation now consumes a LevelDefinition directly rather than a flat
  * PrepOrder (§"make sure the Level Engine is actually consuming level
  * data rather than the old flat PrepOrder flow") — `level.preparationSteps`
@@ -122,11 +144,15 @@ export function Preparation({
   // recipe (recipeId doubles as SaveData.recipeProgress's key either
   // way, so mastery/Cookbook tracking works identically for both — see
   // ServiceManager/App.tsx's recordServiceResult).
+  const givenSteps = service
+    ? preparationStepsForRecipe(service.order.recipe)
+    : level!.preparationSteps;
+  const playableSteps = completableSteps(givenSteps);
   const view = service
     ? {
         recipeId: service.order.recipe.id,
         title: service.order.recipe.name,
-        subtitle: service.order.recipe.chefInstruction,
+        subtitle: withPeelNote(service.order.recipe.chefInstruction, playableSteps),
         emoji: service.order.recipe.emoji,
         // The order's OWN pay (computed once at order-creation time via
         // recipePay(recipe, chapter) — see CustomerOrderManager.ts), not
@@ -134,15 +160,15 @@ export function Preparation({
         // which would show the wrong number for a reused recipe (v2
         // §2.2/§3.4 — pay depends on which chapter serves it).
         rewardCoins: service.order.order.basePayment,
-        preparationSteps: completableSteps(preparationStepsForRecipe(service.order.recipe)),
+        preparationSteps: playableSteps,
       }
     : {
         recipeId: level!.recipeId,
         title: level!.title,
-        subtitle: level!.subtitle,
+        subtitle: withPeelNote(level!.subtitle, playableSteps),
         emoji: level!.emoji,
         rewardCoins: paidLevelReward(level!),
-        preparationSteps: completableSteps(level!.preparationSteps),
+        preparationSteps: playableSteps,
       };
   const steps: PrepStep[] = view.preparationSteps.map((s) => ({
     ingredientId: s.ingredient,
@@ -451,7 +477,11 @@ export function Preparation({
                   onExit();
                 }}
               >
-                {service?.isBusinessOrder ? "Back to Service" : "Back to Kitchen"}
+                {service?.isBusinessOrder
+                  ? "Back to Service"
+                  : service
+                    ? "Back to Orders"
+                    : "Back to Kitchen"}
               </KButton>
             </div>
           </Panel>

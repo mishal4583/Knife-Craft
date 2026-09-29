@@ -120,7 +120,7 @@ function playedSave(): SaveData {
   assert(JSON.stringify(sup) === JSON.stringify({ "local-market": [0.05, 5, 10, 0, 0, 0], "wholesale-supplier": [0.2, 25, 21, 12000, 1, -0.05], "premium-supplier": [0.05, 5, 14, 6000, 0, 0.15] }), "L: supplier contract terms unchanged");
   assert(Object.keys(SUPPLIER_EVENT_CATALOG).length === 6, "L2: the same 6 supplier events (none added)");
   const prices = BUSINESS_DISH_CATALOG.map((d) => defaultMenuPrice(getCampaignRecipe(d.sourceRecipeId)!));
-  assert(BUSINESS_DISH_CATALOG.length === 35 && prices.reduce((a, b) => a + b, 0) === 59854 && prices[0] === 900 && Math.max(...prices) === 3633, `M: 35 dishes, default menu prices locked (follow the per-ingredient prices at 30% food cost) (sum ${prices.reduce((a, b) => a + b, 0)})`);
+  assert(BUSINESS_DISH_CATALOG.length === 48 && prices.reduce((a, b) => a + b, 0) === 81893 && prices[0] === 900 && Math.max(...prices) === 4520, `M: 48 dishes (13 added so every ingredient is on a menu), default menu prices locked (follow the per-ingredient prices at 30% food cost) (sum ${prices.reduce((a, b) => a + b, 0)})`);
   assert(repeatedWarningFineAmount() === 5500 && failFineAmount() === 10500, "N: inspection fines at the V2.5 scale ($55 small, $105 large — Chicago's schedule ÷ 5)");
 }
 

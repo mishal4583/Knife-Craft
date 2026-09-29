@@ -220,7 +220,7 @@ export function ServiceOrderComplete({
                 </KButton>
               )}
               <KButton full variant="ghost" onClick={onExit}>
-                {isBusinessOrder ? "Back to Service" : "Back to Kitchen"}
+                {isBusinessOrder ? "Back to Service" : "Back to Orders"}
               </KButton>
             </div>
           </>
@@ -237,7 +237,7 @@ export function ServiceOrderComplete({
                 Prepare Again
               </KButton>
               <KButton full variant="ghost" onClick={onExit}>
-                {isBusinessOrder ? "Back to Service" : "Back to Kitchen"}
+                {isBusinessOrder ? "Back to Service" : "Back to Orders"}
               </KButton>
             </div>
           </>

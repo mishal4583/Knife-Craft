@@ -49,7 +49,8 @@
 import { getCampaignRecipe } from "../recipes/campaignRecipes";
 import { recipeCostBasis, defaultMenuPrice, marginFor, type BusinessMenu } from "./businessMenu";
 
-export type BusinessDishCategory = "Salad" | "Appetizer" | "Curry" | "Stir-Fry" | "Entree" | "Side";
+export type BusinessDishCategory =
+  "Salad" | "Appetizer" | "Curry" | "Stir-Fry" | "Entree" | "Side" | "Dessert";
 
 export type BusinessDish = {
   id: string;
@@ -395,6 +396,124 @@ export const BUSINESS_DISH_CATALOG: BusinessDish[] = [
     cuisineId: "mediterranean",
     sourceRecipeId: "camp-med-lemon-3way-b",
     portion: "1 plate (serves 1)",
+  },
+  // ─────────── Every ingredient on a menu (13 dishes added so all 57 are used) ───────────
+  {
+    id: "biz-zucchini-fennel-salad",
+    name: "Shaved Zucchini & Fennel Salad",
+    description: "Ribbons of zucchini and fennel with a squeeze of lemon.",
+    category: "Salad",
+    cuisineId: "italian",
+    sourceRecipeId: "camp-zucchini-fennel-julienne",
+    portion: "1 plate (serves 1)",
+  },
+  {
+    id: "biz-celery-apple-salad",
+    name: "Celery & Apple Salad",
+    description: "Crisp celery and apple matchsticks brightened with lemon.",
+    category: "Salad",
+    cuisineId: "french",
+    sourceRecipeId: "camp-celery-apple-remoulade-prep",
+    portion: "1 bowl (serves 1)",
+  },
+  {
+    id: "biz-cucumber-pomegranate-salad",
+    name: "Cucumber & Pomegranate Salad",
+    description: "Cool cucumber, pomegranate jewels and lemon — a Mediterranean side salad.",
+    category: "Salad",
+    cuisineId: "mediterranean",
+    sourceRecipeId: "camp-med-lemon-3way-c",
+    portion: "1 cup (serves 1)",
+  },
+  {
+    id: "biz-beet-orange-salad",
+    name: "Beet & Orange Salad",
+    description: "Earthy beetroot with sweet orange — a classic winter salad.",
+    category: "Salad",
+    cuisineId: "mexican",
+    sourceRecipeId: "camp-beetroot-plate",
+    portion: "1 plate (serves 1)",
+  },
+  {
+    id: "biz-peach-cheddar-board",
+    name: "Peach & Cheddar Board",
+    description: "Sharp cheddar, ripe peach and sliced baguette to share.",
+    category: "Appetizer",
+    cuisineId: "french",
+    sourceRecipeId: "camp-peach-cheddar-board",
+    portion: "1 board (serves 1-2)",
+  },
+  {
+    id: "biz-cabbage-cauliflower-stirfry",
+    name: "Stir-Fried Cabbage & Cauliflower",
+    description: "Cabbage and cauliflower tossed hot in the wok.",
+    category: "Stir-Fry",
+    cuisineId: "chinese",
+    sourceRecipeId: "camp-cabbage-cauliflower-bowl",
+    portion: "1 bowl (serves 1)",
+  },
+  {
+    id: "biz-ribeye-herb-butter",
+    name: "Ribeye with Herb Butter",
+    description: "Sliced ribeye topped with garlic and parsley butter — steak maître d'hôtel.",
+    category: "Entree",
+    cuisineId: "french",
+    sourceRecipeId: "camp-ribeye-herb-butter",
+    portion: "1 plate (serves 1)",
+  },
+  {
+    id: "biz-carne-asada-corn",
+    name: "Carne Asada with Corn",
+    description: "Sliced grilled steak with sweet corn.",
+    category: "Entree",
+    cuisineId: "mexican",
+    sourceRecipeId: "camp-latin-steak-corn",
+    portion: "1 plate (serves 1)",
+  },
+  {
+    id: "biz-turnips-persillade",
+    name: "Turnips Persillade",
+    description: "Diced turnip finished with garlic and parsley.",
+    category: "Side",
+    cuisineId: "french",
+    sourceRecipeId: "camp-turnip-persillade-bowl",
+    portion: "1 bowl (serves 1)",
+  },
+  {
+    id: "biz-sweet-potato-hash",
+    name: "Sweet Potato Hash",
+    description: "Sweet potato, bell pepper and onion, pan-crisped.",
+    category: "Side",
+    cuisineId: "mexican",
+    sourceRecipeId: "camp-sweetpotato-hash",
+    portion: "1 bowl (serves 1)",
+  },
+  {
+    id: "biz-mango-pineapple-cup",
+    name: "Mango & Pineapple Fruit Cup",
+    description: "Mango and pineapple with a squeeze of lime.",
+    category: "Dessert",
+    cuisineId: "thai",
+    sourceRecipeId: "camp-thai-mango-pineapple",
+    portion: "1 cup (serves 1)",
+  },
+  {
+    id: "biz-kiwi-watermelon-plate",
+    name: "Kiwi & Watermelon Fruit Plate",
+    description: "Chilled watermelon and kiwi, sliced to share.",
+    category: "Dessert",
+    cuisineId: "mediterranean",
+    sourceRecipeId: "camp-med-kiwi-watermelon",
+    portion: "1 plate (serves 1-2)",
+  },
+  {
+    id: "biz-strawberry-grape-cup",
+    name: "Strawberry & Grape Fruit Cup",
+    description: "Fresh strawberries and grapes — a light, sweet finish.",
+    category: "Dessert",
+    cuisineId: "mexican",
+    sourceRecipeId: "camp-latin-grapes-strawberry",
+    portion: "1 cup (serves 1)",
   },
 ];
 

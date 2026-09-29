@@ -236,14 +236,15 @@ const INVESTMENT_NAMES = ["Prep Station Upgrade", "Storage Rack", "Service Count
   // Rebuild every row's hints the way Kitchen.tsx renders them.
   const rows = getLevels().map((l) => {
     const n = levelNumber(l.id);
-    const main = l.unlockReward ? `Reward: ${l.unlockReward.name}` : (() => { const r = getNextRewardPreview(n); return r ? `Next: ${r.name} · Lv ${r.atLevel}` : null; })();
+    const main = l.unlockReward ? `Unlocks: ${l.unlockReward.name}${l.unlockReward.type === "knife" || l.unlockReward.type === "board" ? " in the Market" : ""}` : (() => { const r = getNextRewardPreview(n); return r ? `Next: ${r.name} · Lv ${r.atLevel}` : null; })();
     const stage = l.unlockReward ? getNextKitchenStagePreview(n) : null;
     return { n, main, extra: stage ? `Next: ${stage.name} · Lv ${stage.atLevel}` : null };
   });
   const extras = rows.filter((r) => r.extra).map((r) => `${r.n}→${r.extra}`);
   console.log("     second hints:", JSON.stringify(extras));
   const at = (n: number) => rows.find((r) => r.n === n)!;
-  assert(at(40).main === "Reward: Cleaver" && at(40).extra === "Next: Established Kitchen · Lv 41", `H1: Lv 40 shows "${at(40).main}" + "${at(40).extra}"`);
+  // A knife/board is only unlocked for purchase, never handed over, so the row says "Unlocks … in the Market".
+  assert(at(40).main === "Unlocks: Cleaver in the Market" && at(40).extra === "Next: Established Kitchen · Lv 41", `H1: Lv 40 shows "${at(40).main}" + "${at(40).extra}"`);
   assert(at(70).extra === "Next: Flourishing Café · Lv 71", `H2: Lv 70 shows "${at(70).main}" + "${at(70).extra}"`);
   assert(at(90).extra === "Next: Grand Kitchen · Lv 91", `H3: Lv 90 shows "${at(90).main}" + "${at(90).extra}"`);
   assert(JSON.stringify(extras) === JSON.stringify(["40→Next: Established Kitchen · Lv 41", "70→Next: Flourishing Café · Lv 71", "90→Next: Grand Kitchen · Lv 91"]), "H4: exactly those three rows gain a second hint — every other row is unchanged");

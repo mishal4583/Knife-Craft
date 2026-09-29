@@ -243,10 +243,18 @@ with the real functions.
   menu prices follow at 30% food cost. A no-staff Business nets ~$70/day;
   hiring staff is currently a net cost (their popularity/discount effects
   earn less than their wages).
-- **Business → Ingredients tab** lists only ingredients a Business dish
-  uses (37 of 57; "Show 20 more" reveals the rest, badged "No dish"). Each
-  card shows the wallet effect before the tap — "$1,332 → $1,327", from
-  25 units "You'll have $X remaining", or "Not enough money — need $X more."
+- **Business menu = 48 dishes**, and every one of the 57 ingredients is used
+  by at least one (enforced by `business-dish-catalog-qa` A4). 13 were added
+  for that: 7 on existing "A" recipes, 5 on "B" campaign recipes re-graded
+  to "A" as genuine dishes (beet & orange, sweet potato hash, peach &
+  cheddar board, kiwi & watermelon, strawberry & grape), and **Ribeye with
+  Herb Butter** on the one Business-only recipe
+  (`BUSINESS_ONLY_RECIPES` in `campaignRecipes.ts`, found by
+  `getCampaignRecipe`; kept out of `CAMPAIGN_RECIPES`, so the campaign stays
+  frozen at 221 recipes with no butter). New "Dessert" category.
+- **Business → Ingredients tab** shows all 57. Each card shows the wallet
+  effect before the tap — "$1,332 → $1,327", from 25 units "You'll have $X
+  remaining", or "Not enough money — need $X more."
 - **Recurring caps** — Replay Bonus 20% of the paid reward, $10–$200,
   3/day; Endless $600/day; Today's Special $50/day.
 - **Wallet invariant** — `economy/wallet.ts`: credits are whole cents and

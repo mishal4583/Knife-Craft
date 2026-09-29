@@ -14,7 +14,11 @@
  *
  * Run: npx tsx scripts/business-dish-catalog-qa.mts
  */
-import { CAMPAIGN_RECIPES, getCampaignRecipe } from "../src/game/recipes/campaignRecipes.ts";
+import { BUSINESS_ONLY_RECIPES, CAMPAIGN_RECIPES, getCampaignRecipe } from "../src/game/recipes/campaignRecipes.ts";
+import { LEVELS } from "../src/game/levels/levelDefinitions.ts";
+import { setMenuPrice } from "../src/game/business/BusinessMenuManager.ts";
+import { DEFAULT_SAVE } from "../src/game/SaveManager.ts";
+import { businessDishRequirements } from "../src/game/business/businessServiceCatalog.ts";
 import { INGREDIENTS } from "../src/game/definitions.ts";
 import {
   BUSINESS_DISH_CATALOG,
@@ -38,9 +42,23 @@ function assert(cond: boolean, label: string) {
 
 // ===== A: every Business Dish maps to a real, currently-existing Campaign recipe. =====
 {
-  const campaignIds = new Set(CAMPAIGN_RECIPES.map((r) => r.id));
-  const missing = BUSINESS_DISH_CATALOG.filter((d) => !campaignIds.has(d.sourceRecipeId));
-  assert(missing.length === 0, `A: every Business Dish's sourceRecipeId exists in CAMPAIGN_RECIPES (${missing.length} missing: ${missing.map((d) => d.id).join(", ")})`);
+  // The recipe system = CAMPAIGN_RECIPES + BUSINESS_ONLY_RECIPES (recipes only Business serves,
+  // kept out of the frozen campaign list — today just the butter dish's).
+  const recipeIds = new Set([...CAMPAIGN_RECIPES, ...BUSINESS_ONLY_RECIPES].map((r) => r.id));
+  const missing = BUSINESS_DISH_CATALOG.filter((d) => !recipeIds.has(d.sourceRecipeId));
+  assert(missing.length === 0, `A: every Business Dish's sourceRecipeId exists in the recipe system (${missing.length} missing: ${missing.map((d) => d.id).join(", ")})`);
+  const levelRecipeIds = new Set(LEVELS.flatMap((l) => [l.recipeId, ...(l.recipePoolIds ?? []), ...(l.batchGroupRecipeIds ?? [])]));
+  assert(
+    BUSINESS_ONLY_RECIPES.length === 1 &&
+      BUSINESS_ONLY_RECIPES.every((r) => !levelRecipeIds.has(r.id) && !CAMPAIGN_RECIPES.some((c) => c.id === r.id)) &&
+      BUSINESS_ONLY_RECIPES.every((r) => BUSINESS_DISH_CATALOG.some((d) => d.sourceRecipeId === r.id)),
+    "A3: Business-only recipes are used by no campaign level, never duplicate a campaign recipe, and each backs a Business dish",
+  );
+  const used = new Set(BUSINESS_DISH_CATALOG.flatMap((d) => businessDishRequirements(d).map((r) => r.ingredientId)));
+  const unused = Object.keys(INGREDIENTS).filter((id) => !used.has(id as never));
+  const priced = setMenuPrice(structuredClone(DEFAULT_SAVE), "camp-ribeye-herb-butter", 4800);
+  assert(priced.ok && priced.save.business.menu["camp-ribeye-herb-butter"] === 4800, "A5: a Business-only dish's menu price can be set like any other (setMenuPrice finds its recipe)");
+  assert(unused.length === 0, `A4: every one of the ${Object.keys(INGREDIENTS).length} ingredients is used by at least one Business dish${unused.length ? " — unused: " + unused.join(", ") : ""}`);
 }
 {
   // A2: every source recipe is genuinely tagged authenticity "A" — never a lower-tier recipe smuggled in.
