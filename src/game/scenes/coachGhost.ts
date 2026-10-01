@@ -64,8 +64,8 @@ function ripple(g: Phaser.GameObjects.Graphics, x: number, y: number, r: number,
 }
 
 /**
- * A see-through chef's knife whose cutting edge runs from (ex0,ey0) to
- * (ex1,ey1), lifted `lift` px along the edge's upward normal.
+ * A see-through chef's knife whose cutting edge lies on (ex0,ey0)–(ex1,ey1),
+ * handle towards the player, lifted `lift` px along the edge's upward normal.
  */
 function ghostKnife(
   g: Phaser.GameObjects.Graphics,
@@ -77,6 +77,14 @@ function ghostKnife(
   alpha: number,
 ) {
   if (alpha <= 0) return;
+  // The heel (and the handle behind it) sits at the end nearer the player:
+  // the lower end on screen, or the left end of a flat cut — the way the
+  // real knife rests, handle towards us, tip pointing away.
+  const flat = Math.abs(ey1 - ey0) < Math.abs(ex1 - ex0) * 0.25;
+  if (flat ? ex0 > ex1 : ey0 < ey1) {
+    [ex0, ex1] = [ex1, ex0];
+    [ey0, ey1] = [ey1, ey0];
+  }
   const len = Math.hypot(ex1 - ex0, ey1 - ey0) || 1;
   const ux = (ex1 - ex0) / len;
   const uy = (ey1 - ey0) / len;
