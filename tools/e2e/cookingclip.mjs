@@ -5,9 +5,10 @@
 //   3. a tap anywhere on the clip also skips it;
 //   4. with Sound off in Settings the clip is muted; with Sound on it plays with sound;
 //   5. salads get the salad film (Level 10, Simple Garden Salad — the harness default save);
-//      every other dish the chef-cooking film (Level 58, Pumpkin Curry Dice);
+//      stove-cooked dishes the chef-cooking film (Level 36, Mushroom & Garlic Saute Prep);
 //   6. fruit dishes get the fruit-cup film (Level 84, Pineapple & Mango Fresh Cup);
-//   7. cut-and-plate dishes get the plating film (Level 3, Carrot Chop Bowl).
+//   7. cut-and-plate dishes get the plating film (Level 3, Carrot Chop Bowl);
+//   8. curries get the curry-pot film (Level 58, Pumpkin Curry Dice).
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import { launch, boot, seedSave, sleep, clickButton, shot, save } from "./harness.mjs";
 import { playToReport, stepInfo } from "./solver.mjs";
@@ -124,18 +125,18 @@ await boot(
   page,
   seedSave({
     levelProgress: {
-      currentLevelId: "level-58",
-      highestUnlockedLevelId: "level-58",
-      completedLevelIds: Array.from({ length: 57 }, (_, i) => `level-${i + 1}`),
+      currentLevelId: "level-36",
+      highestUnlockedLevelId: "level-36",
+      completedLevelIds: Array.from({ length: 35 }, (_, i) => `level-${i + 1}`),
     },
   }),
 );
 await clickButton(page, /Prepare$/);
-check("5a Level 58 (Pumpkin Curry Dice): clip shown", await cookUntilClip());
+check("5a Level 36 (Mushroom & Garlic Saute Prep): clip shown", await cookUntilClip());
 await sleep(800);
 const v5 = await video(page);
 check(
-  "5b a cooked dish plays the chef-cooking film, not the salad film",
+  "5b a cooked dish plays the chef-cooking film, not the curry or salad film",
   (await page.evaluate(
     () => document.querySelector('[data-testid="cooking-clip"]').dataset.kind,
   )) === "cooked" &&
@@ -203,6 +204,34 @@ check(
 await shot(page, "cooking-7-plated");
 await page.waitForFunction(() => /KNIFE REPORT/.test(document.body.innerText), { timeout: 8000 });
 check("7c when it ends, the Knife Report follows", await page.evaluate(clipGone));
+
+// ---------- 8. a curry gets the curry-pot film ----------
+await boot(
+  page,
+  seedSave({
+    levelProgress: {
+      currentLevelId: "level-58",
+      highestUnlockedLevelId: "level-58",
+      completedLevelIds: Array.from({ length: 57 }, (_, i) => `level-${i + 1}`),
+    },
+  }),
+);
+await clickButton(page, /Prepare$/);
+check("8a Level 58 (Pumpkin Curry Dice): clip shown", await cookUntilClip());
+await sleep(800);
+const v8 = await video(page);
+check(
+  "8b a curry plays the curry-pot film",
+  (await page.evaluate(
+    () => document.querySelector('[data-testid="cooking-clip"]').dataset.kind,
+  )) === "curry" &&
+    /^chef-curry/.test(v8?.src ?? "") &&
+    v8.t > 0.2,
+  v8,
+);
+await shot(page, "cooking-8-curry");
+await page.waitForFunction(() => /KNIFE REPORT/.test(document.body.innerText), { timeout: 8000 });
+check("8c when it ends, the Knife Report follows", await page.evaluate(clipGone));
 
 check("console has no errors", logs.filter((l) => /^error|pageerror/i.test(l)).length === 0, logs);
 save("cookingclip-result.json", results);

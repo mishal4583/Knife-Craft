@@ -109,9 +109,14 @@ conversation.
    75 recipes) play `chef-plating.*` — 3.84 s from the 10 s `Plating.mp4`
    (tomato slices into a bowl → herbs + pull-back over the plated counter;
    the stove intro and the over-the-shoulder shot dropped). Heated dishes
-   keep the stove film. e2e: `cookingclip.mjs` 7a–7c. Next planned: a
-   curry-pot film for the curry / masala / chutney / soup-base dishes
-   (17 recipes, Levels 51–69, the 7 Business curries).
+   keep the stove film. e2e: `cookingclip.mjs` 7a–7c.
+18. Curry-pot cooking clip: curry / masala / chutney / soup-base dishes
+   (18 recipes, Levels 51–69, the 7 Business curries) play `chef-curry.*` —
+   3.67 s from the 10 s `Curry.mp4` (spoon stirring the curry → the chef
+   over the big steaming pot; the wok intro, the face close-up and the
+   side view dropped). e2e: `cookingclip.mjs` 8a–8c (the stove check
+   moved to Level 36, since Level 58 is now a curry). Possible later: a
+   bread/bruschetta film (9 recipes still on the stove film).
 
 ## 4. Open issues from the Level 1–10 audit (not fixed yet)
 
