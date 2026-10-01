@@ -75,30 +75,75 @@ function decodePng(buf) {
   return { w, h, bpp, px: out };
 }
 
-/** The ghost fingertip: the centroid of near-white, unsaturated pixels on the board (CSS px). */
+/**
+ * The ghost fingertip: a compact, round blob of near-white pixels on the board (CSS px).
+ * White pixels are grouped into connected blobs (on a 4-px grid); the real resting knife's
+ * shine and the ghost knife's long thin edge are other blobs, so only a small blob about as
+ * wide as it is tall counts.
+ */
 async function findFingertip(page) {
   const dpr = await page.evaluate(() => devicePixelRatio);
-  for (let i = 0; i < 24; i++) {
+  const C = 4; // grid cell, device px
+  for (let i = 0; i < 40; i++) {
     const { w, h, bpp, px } = decodePng(Buffer.from(await page.screenshot({ type: "png" })));
-    let sx = 0,
-      sy = 0,
-      n = 0;
-    // The board area only (the card and HUD are DOM, outside this band).
-    for (let y = Math.floor(h * 0.36); y < h * 0.66; y++) {
+    const top = Math.floor(h * 0.36),
+      bottom = Math.floor(h * 0.66);
+    const gw = Math.ceil(w / C),
+      gh = Math.ceil((bottom - top) / C);
+    const cell = new Int32Array(gw * gh);
+    for (let y = top; y < bottom; y++) {
       for (let x = 0; x < w; x++) {
         const k = (y * w + x) * bpp;
-        const r = px[k],
-          g = px[k + 1],
-          b = px[k + 2];
-        if (r > 238 && g > 238 && b > 238) {
-          sx += x;
-          sy += y;
-          n++;
+        if (px[k] > 238 && px[k + 1] > 238 && px[k + 2] > 238) {
+          cell[Math.floor((y - top) / C) * gw + Math.floor(x / C)]++;
         }
       }
     }
-    if (n > 60) return { x: sx / n / dpr, y: sy / n / dpr, n };
-    await sleep(90);
+    const seen = new Uint8Array(gw * gh);
+    for (let start = 0; start < cell.length; start++) {
+      if (!cell[start] || seen[start]) continue;
+      const stack = [start];
+      seen[start] = 1;
+      let n = 0,
+        sx = 0,
+        sy = 0,
+        x0 = Infinity,
+        x1 = -Infinity,
+        y0 = Infinity,
+        y1 = -Infinity;
+      while (stack.length) {
+        const c = stack.pop();
+        const cx = c % gw,
+          cy = (c - cx) / gw;
+        n += cell[c];
+        sx += cell[c] * (cx + 0.5) * C;
+        sy += cell[c] * ((cy + 0.5) * C + top);
+        x0 = Math.min(x0, cx);
+        x1 = Math.max(x1, cx);
+        y0 = Math.min(y0, cy);
+        y1 = Math.max(y1, cy);
+        for (const [dx, dy] of [
+          [1, 0],
+          [-1, 0],
+          [0, 1],
+          [0, -1],
+        ]) {
+          const nx = cx + dx,
+            ny = cy + dy;
+          const nc = ny * gw + nx;
+          if (nx >= 0 && nx < gw && ny >= 0 && ny < gh && cell[nc] && !seen[nc]) {
+            seen[nc] = 1;
+            stack.push(nc);
+          }
+        }
+      }
+      const bw = ((x1 - x0 + 1) * C) / dpr,
+        bh = ((y1 - y0 + 1) * C) / dpr;
+      if (n > 40 && bw < 50 && bh < 50 && bw > 0.6 * bh && bh > 0.6 * bw) {
+        return { x: sx / n / dpr, y: sy / n / dpr, n, box: [Math.round(bw), Math.round(bh)] };
+      }
+    }
+    await sleep(70);
   }
   return null;
 }

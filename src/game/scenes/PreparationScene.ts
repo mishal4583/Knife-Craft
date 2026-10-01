@@ -8,6 +8,7 @@ import {
 import { PauseManager } from "../PauseManager";
 import { withRequiredPeelSteps } from "../prepStepGuards";
 import { drawCoachGhost, COACH_CYCLE_MS, type CoachTarget } from "./coachGhost";
+import { knifeProfile, quadraticPoints } from "./knifeProfile";
 import { COACH_FIRST_DELAY_MS, COACH_IDLE_MS, COACH_TAUGHT_IDLE_MS } from "../coaching";
 import { AudioManager } from "../AudioManager";
 import {
@@ -5540,7 +5541,13 @@ export class PreparationScene extends Phaser.Scene {
       this.coachGfx.clear();
       return;
     }
-    drawCoachGhost(this.coachGfx, this.coachTarget, t, this.scale.width);
+    drawCoachGhost(
+      this.coachGfx,
+      this.coachTarget,
+      t,
+      this.scale.width,
+      this.knifeStats.animation.blade,
+    );
   }
 
   /**
@@ -5678,6 +5685,8 @@ export class PreparationScene extends Phaser.Scene {
       y1: sp.y1,
       tx: sp.x0 + (sp.x1 - sp.x0) * f,
       ty: sp.y0 + (sp.y1 - sp.y0) * f,
+      cx,
+      cy,
     };
   }
 
@@ -5743,20 +5752,15 @@ export class PreparationScene extends Phaser.Scene {
     // drawn on top of it.
     const shape = this.knifeStats.animation.blade;
     const visual = this.knifeStats.visual;
-    const bladeLen = shape.bladeLenFrac * this.scale.width;
-    const bladeH = shape.bladeHFrac * this.scale.width;
-    const handleLen = shape.handleLenFrac * this.scale.width;
-    const heel = shape.heelAt * bladeLen;
-    const spineBend = shape.spineBendFrac * bladeLen;
-    const spineControlX = shape.spineControlXFrac * bladeLen;
-    const tip = shape.tipFrac * bladeLen;
-    const bellyControlX = shape.bellyControlXFrac * bladeLen;
+    // The shared silhouette (knifeProfile.ts) — the coaching ghost draws the same one.
+    const profile = knifeProfile(shape, this.scale.width);
+    const { bladeLen, bladeH, handleLen, heel, spineBend, tip } = profile;
     // Graphics has no save/restore or canvas-transform stack in this Phaser
     // version — position/rotate/scale the GameObject itself instead, and
     // draw the path in its local space. The blade is drawn shifted up by
     // half its own height so local y=0 is the cutting EDGE, which is what
     // ends up riding the seam once the object is positioned on it.
-    const edge = bladeH * 0.5;
+    const edge = profile.edge;
 
     const g = this.knifeGfx;
     g.setAlpha(alpha);
@@ -5767,28 +5771,8 @@ export class PreparationScene extends Phaser.Scene {
     // Blade — steel fill, curved edge via short sampled segments (Graphics has no quadraticCurveTo).
     g.fillStyle(visual.bladeColor, 1);
     g.beginPath();
-    g.moveTo(heel, -bladeH * 0.5 - edge);
-    g.lineTo(spineBend, -bladeH * 0.5 - edge);
-    const curvePts = quadraticPoints(
-      spineBend,
-      -bladeH * 0.4 - edge,
-      spineControlX,
-      -bladeH * 0.4 - edge,
-      tip,
-      bladeH * shape.tipRiseFrac - edge,
-      6,
-    );
-    for (const p of curvePts) g.lineTo(p.x, p.y);
-    const curvePts2 = quadraticPoints(
-      tip,
-      bladeH * shape.tipRiseFrac - edge,
-      bellyControlX,
-      bladeH * shape.bellyFrac - edge,
-      heel,
-      bladeH * 0.5 - edge,
-      6,
-    );
-    for (const p of curvePts2) g.lineTo(p.x, p.y);
+    g.moveTo(profile.outline[0]!.x, profile.outline[0]!.y);
+    for (const p of profile.outline.slice(1)) g.lineTo(p.x, p.y);
     g.closePath();
     g.fillPath();
 
@@ -5858,28 +5842,6 @@ export class PreparationScene extends Phaser.Scene {
       g.fillCircle(heel - 7 - handleLen * rx, -edge, 1.8);
     }
   }
-}
-
-/** A short quadratic-bezier polyline — Phaser Graphics has no native curveTo, so the blade's curved edge is sampled. */
-function quadraticPoints(
-  x0: number,
-  y0: number,
-  cx: number,
-  cy: number,
-  x1: number,
-  y1: number,
-  steps: number,
-): { x: number; y: number }[] {
-  const pts: { x: number; y: number }[] = [];
-  for (let i = 1; i <= steps; i++) {
-    const t = i / steps;
-    const mt = 1 - t;
-    pts.push({
-      x: mt * mt * x0 + 2 * mt * t * cx + t * t * x1,
-      y: mt * mt * y0 + 2 * mt * t * cy + t * t * y1,
-    });
-  }
-  return pts;
 }
 
 /** knifecraft.html resistAt/revealProgress: time fraction -> spatial progress, skin drags, flesh glides. */

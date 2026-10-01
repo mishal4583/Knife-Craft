@@ -375,9 +375,12 @@ not silently removed.
   (`scenes/coachGhost.ts`, its own Graphics layer at depth 29) exactly where
   the next tap would really cut, using the same axis, slot and position rules
   as `resolveTapCut`:
-  - cutting: the line glows, a see-through knife (handle towards the
-    player: at the lower end, or the left of a flat cut) comes down onto it, and a
-    fingertip taps it with a ripple;
+  - cutting: the line glows; a see-through copy of the equipped knife
+    (the same `scenes/knifeProfile.ts` silhouette the real knife is drawn
+    from) brings its glowing sharp edge down onto the line and slices
+    through it tip-first, with the handle towards the player (lower end, or
+    left for a flat cut) and the spine away from the food; then a fingertip
+    taps the line with a ripple;
   - Peel: a fingertip sweeps across the skin that's left (the peel grid row
     with the most skin);
   - Smash: a press with a ripple;

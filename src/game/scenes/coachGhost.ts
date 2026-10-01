@@ -5,8 +5,9 @@
  * (the exact spot its own tap resolution would cut next), this draws HOW,
  * as one looping cycle of COACH_CYCLE_MS:
  *
- * - "cut": the line glows; a see-through knife drops onto it, the same
- *   plunge a tap makes; a fingertip taps the line with a ripple.
+ * - "cut": the line glows; a see-through copy of the equipped knife brings
+ *   its sharp edge down onto it and slices through, tip first (the stretch
+ *   the edge touches lights up); then a fingertip taps the line.
  * - "drag": a fingertip sweeps across the skin that is left, leaving a
  *   pale trail (Peel).
  * - "press": a fingertip presses with a ripple; for Rings the next ring
@@ -16,11 +17,25 @@
  * alpha so they read as a ghost on every board and ingredient.
  */
 import type Phaser from "phaser";
+import type { KnifeBladeShape } from "../knives/knifeTypes";
+import { knifeProfile, type KnifeProfile } from "./knifeProfile";
 
 export const COACH_CYCLE_MS = 2200;
 
 export type CoachTarget =
-  | { kind: "cut"; x0: number; y0: number; x1: number; y1: number; tx: number; ty: number }
+  | {
+      kind: "cut";
+      x0: number;
+      y0: number;
+      x1: number;
+      y1: number;
+      /** Where the demonstration taps. */
+      tx: number;
+      ty: number;
+      /** The ingredient's centre — the knife's spine faces away from it. */
+      cx: number;
+      cy: number;
+    }
   | { kind: "drag"; x0: number; y0: number; x1: number; y1: number; width: number }
   | {
       kind: "press";
@@ -64,65 +79,80 @@ function ripple(g: Phaser.GameObjects.Graphics, x: number, y: number, r: number,
 }
 
 /**
- * A see-through chef's knife whose cutting edge lies on (ex0,ey0)–(ex1,ey1),
- * handle towards the player, lifted `lift` px along the edge's upward normal.
+ * A see-through copy of the equipped knife (the same knifeProfile the real
+ * knife is drawn from), its curved cutting edge on the cut line, slicing.
+ * `along` = how far (px) the heel sits along the line from its near end;
+ * `lift` = how far the edge is still above the line, on the spine side.
+ * Handle towards the player: at the line's lower end, or its left end for
+ * a flat cut. The spine faces away from the ingredient's centre, so the
+ * sharp edge is what meets the food.
  */
 function ghostKnife(
   g: Phaser.GameObjects.Graphics,
-  ex0: number,
-  ey0: number,
-  ex1: number,
-  ey1: number,
+  cut: Extract<CoachTarget, { kind: "cut" }>,
+  profile: KnifeProfile,
+  along: number,
   lift: number,
   alpha: number,
-) {
-  if (alpha <= 0) return;
-  // The heel (and the handle behind it) sits at the end nearer the player:
-  // the lower end on screen, or the left end of a flat cut — the way the
-  // real knife rests, handle towards us, tip pointing away.
-  const flat = Math.abs(ey1 - ey0) < Math.abs(ex1 - ex0) * 0.25;
-  if (flat ? ex0 > ex1 : ey0 < ey1) {
-    [ex0, ex1] = [ex1, ex0];
-    [ey0, ey1] = [ey1, ey0];
-  }
-  const len = Math.hypot(ex1 - ex0, ey1 - ey0) || 1;
-  const ux = (ex1 - ex0) / len;
-  const uy = (ey1 - ey0) / len;
-  // Upward normal: the side with the smaller y (or smaller x for a vertical edge).
-  let nx = uy;
-  let ny = -ux;
-  if (ny > 0 || (Math.abs(ny) < 1e-6 && nx > 0)) {
+): { from: number; to: number } {
+  const { x0, y0, x1, y1 } = cutNearEnd(cut);
+  const len = Math.hypot(x1 - x0, y1 - y0) || 1;
+  const ux = (x1 - x0) / len;
+  const uy = (y1 - y0) / len;
+  // Spine side: away from the ingredient's centre (or up, for a cut through it).
+  let nx = -uy;
+  let ny = ux;
+  const away = ((x0 + x1) / 2 - cut.cx) * nx + ((y0 + y1) / 2 - cut.cy) * ny;
+  if (Math.abs(away) > 2 ? away < 0 : ny > 0) {
     nx = -nx;
     ny = -ny;
   }
-  const h = Math.max(10, len * 0.16);
-  const P = (along: number, up: number) => ({
-    x: ex0 + ux * along + nx * (up + lift),
-    y: ey0 + uy * along + ny * (up + lift),
+  // Local (x along heel→tip, y with the blade body at y < 0) → world.
+  const ox = x0 + ux * (along - profile.heel) + nx * lift;
+  const oy = y0 + uy * (along - profile.heel) + ny * lift;
+  const P = (p: { x: number; y: number }) => ({
+    x: ox + ux * p.x - nx * p.y,
+    y: oy + uy * p.x - ny * p.y,
   });
-  const blade = [
-    P(0, 0),
-    P(len * 0.72, 0),
-    P(len * 0.9, h * 0.25),
-    P(len, h * 0.62),
-    P(len * 0.86, h),
-    P(0, h),
-  ];
-  g.fillStyle(GHOST, 0.32 * alpha);
-  g.fillPoints(blade, true);
-  g.lineStyle(2, GHOST, 0.85 * alpha);
-  g.strokePoints(blade, true);
-  // Handle, behind the heel.
-  const handle = [
-    P(-len * 0.04, h * 0.15),
-    P(-len * 0.38, h * 0.2),
-    P(-len * 0.38, h * 0.85),
-    P(-len * 0.04, h * 0.9),
-  ];
-  g.fillStyle(GHOST, 0.22 * alpha);
-  g.fillPoints(handle, true);
-  g.lineStyle(2, GHOST, 0.6 * alpha);
-  g.strokePoints(handle, true);
+  if (alpha > 0) {
+    const { bladeH, heel, handleLen, edge } = profile;
+    const rect = (x: number, y: number, w: number, h: number) =>
+      [
+        { x, y },
+        { x: x + w, y },
+        { x: x + w, y: y + h },
+        { x, y: y + h },
+      ].map(P);
+    // Handle and bolster, behind the heel.
+    const handle = rect(heel - 7 - handleLen, -bladeH * 0.45 - edge, handleLen, bladeH * 0.9);
+    g.fillStyle(GHOST, 0.2 * alpha);
+    g.fillPoints(handle, true);
+    g.lineStyle(1.5, GHOST, 0.6 * alpha);
+    g.strokePoints(handle, true);
+    g.fillStyle(GHOST, 0.45 * alpha);
+    g.fillPoints(rect(heel - 7, -bladeH * 0.5 - edge, 7, bladeH), true);
+    // Blade body.
+    const blade = profile.outline.map(P);
+    g.fillStyle(GHOST, 0.3 * alpha);
+    g.fillPoints(blade, true);
+    g.lineStyle(1.5, GHOST, 0.7 * alpha);
+    g.strokePoints(blade, true);
+    // The sharp edge — the part that cuts — glows.
+    const edgePts = profile.cuttingEdge.map(P);
+    g.lineStyle(5, GLOW, 0.35 * alpha);
+    g.strokePoints(edgePts, false);
+    g.lineStyle(2, GHOST, 0.95 * alpha);
+    g.strokePoints(edgePts, false);
+  }
+  // The stretch of the line the edge covers right now (0..len, from the near end).
+  return { from: Math.max(0, along), to: Math.min(len, along + profile.tip - profile.heel) };
+}
+
+/** The cut line ordered from its near end (lower on screen, or left for a flat cut) — the same order ghostKnife uses. */
+function cutNearEnd(cut: Extract<CoachTarget, { kind: "cut" }>) {
+  const { x0, y0, x1, y1 } = cut;
+  const flat = Math.abs(y1 - y0) < Math.abs(x1 - x0) * 0.25;
+  return (flat ? x0 > x1 : y0 < y1) ? { x0: x1, y0: y1, x1: x0, y1: y0 } : { x0, y0, x1, y1 };
 }
 
 /** Draws frame `t` (0..COACH_CYCLE_MS) of the demonstration for `target`; `w` is the scene width. */
@@ -131,6 +161,7 @@ export function drawCoachGhost(
   target: CoachTarget,
   t: number,
   w: number,
+  blade: KnifeBladeShape,
 ): void {
   g.clear();
   const fingerR = Math.max(12, w * 0.032);
@@ -142,22 +173,35 @@ export function drawCoachGhost(
     g.lineBetween(target.x0, target.y0, target.x1, target.y1);
     g.lineStyle(3, GLOW, 0.65 + 0.3 * pulse);
     g.lineBetween(target.x0, target.y0, target.x1, target.y1);
-    // How: the knife comes down onto it — from a little above and closer to
-    // the camera (larger), landing with its edge on the line at any angle.
+    // How: the knife's sharp edge comes down onto the line, then slices
+    // through — the blade pushed forward, tip first, along the cut.
+    const profile = knifeProfile(blade, w);
     const lineLen = Math.hypot(target.x1 - target.x0, target.y1 - target.y0);
-    const drop = easeInOut(span(t, 150, 850));
-    const knifeAlpha = span(t, 0, 250) * (1 - span(t, 1150, 1450));
-    const grow = 1.12 + 0.3 * (1 - drop); // a little longer than the cut, larger while "up"
-    const mx = (target.x0 + target.x1) / 2;
-    const my = (target.y0 + target.y1) / 2 - (1 - drop) * Math.max(30, lineLen * 0.35);
-    const hx = ((target.x1 - target.x0) / 2) * grow;
-    const hy = ((target.y1 - target.y0) / 2) * grow;
-    ghostKnife(g, mx - hx, my - hy, mx + hx, my + hy, 0, knifeAlpha);
+    const edgeLen = profile.tip - profile.heel;
+    const knifeAlpha = span(t, 0, 200) * (1 - span(t, 1150, 1400));
+    const lower = easeInOut(span(t, 150, 450));
+    const slice = easeInOut(span(t, 450, 1100));
+    // The edge's middle starts behind the line's middle and passes beyond it.
+    const along = lineLen / 2 - edgeLen / 2 + (slice - 0.5) * edgeLen * 0.5;
+    const lift = (1 - lower) * Math.max(18, profile.bladeH * 1.2);
+    const covered = ghostKnife(g, target, profile, along, lift, knifeAlpha);
+    if (lower >= 1 && knifeAlpha > 0 && covered.to > covered.from) {
+      // Where the edge touches, the line lights up: this is the cut.
+      const k0 = covered.from / lineLen;
+      const k1 = covered.to / lineLen;
+      const nearEnd = cutNearEnd(target);
+      const ax = nearEnd.x0 + (nearEnd.x1 - nearEnd.x0) * k0;
+      const ay = nearEnd.y0 + (nearEnd.y1 - nearEnd.y0) * k0;
+      const bx = nearEnd.x0 + (nearEnd.x1 - nearEnd.x0) * k1;
+      const by = nearEnd.y0 + (nearEnd.y1 - nearEnd.y0) * k1;
+      g.lineStyle(5, GHOST, 0.75 * knifeAlpha);
+      g.lineBetween(ax, ay, bx, by);
+    }
     // …because the finger taps the line.
-    const fingerAlpha = span(t, 650, 850) * (1 - span(t, 1500, 1750));
-    const press = span(t, 850, 950) * (1 - span(t, 1050, 1200));
+    const fingerAlpha = span(t, 1150, 1300) * (1 - span(t, 1900, 2150));
+    const press = span(t, 1300, 1400) * (1 - span(t, 1500, 1650));
     finger(g, target.tx, target.ty, fingerR, fingerAlpha, press);
-    ripple(g, target.tx, target.ty, fingerR, span(t, 880, 1550));
+    ripple(g, target.tx, target.ty, fingerR, span(t, 1330, 2000));
     return;
   }
 
