@@ -5,7 +5,8 @@
 //   3. a tap anywhere on the clip also skips it;
 //   4. with Sound off in Settings the clip is muted; with Sound on it plays with sound;
 //   5. salads get the salad film (Level 10, Simple Garden Salad — the harness default save);
-//      every other dish the chef-cooking film (Level 58, Pumpkin Curry Dice).
+//      every other dish the chef-cooking film (Level 58, Pumpkin Curry Dice);
+//   6. fruit dishes get the fruit-cup film (Level 84, Pineapple & Mango Fresh Cup).
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import { launch, boot, seedSave, sleep, clickButton, shot, save } from "./harness.mjs";
 import { playToReport, stepInfo } from "./solver.mjs";
@@ -144,6 +145,35 @@ check(
 await shot(page, "cooking-5-cooked");
 await page.waitForFunction(() => /KNIFE REPORT/.test(document.body.innerText), { timeout: 8000 });
 check("5c when it ends, the Knife Report follows", await page.evaluate(clipGone));
+
+// ---------- 6. a fruit dish gets the fruit-cup film ----------
+await boot(
+  page,
+  seedSave({
+    levelProgress: {
+      currentLevelId: "level-84",
+      highestUnlockedLevelId: "level-84",
+      completedLevelIds: Array.from({ length: 83 }, (_, i) => `level-${i + 1}`),
+    },
+  }),
+);
+await clickButton(page, /Prepare$/);
+check("6a Level 84 (Pineapple & Mango Fresh Cup): clip shown", await cookUntilClip());
+await sleep(800);
+const v6 = await video(page);
+check(
+  "6b a fruit dish plays the fruit-cup film",
+  (await page.evaluate(
+    () => document.querySelector('[data-testid="cooking-clip"]').dataset.kind,
+  )) === "fruit" &&
+    /^chef-fruit/.test(v6?.src ?? "") &&
+    v6.t > 0.2 &&
+    Math.abs(v6.duration - 3.84) < 0.1,
+  v6,
+);
+await shot(page, "cooking-6-fruit");
+await page.waitForFunction(() => /KNIFE REPORT/.test(document.body.innerText), { timeout: 8000 });
+check("6c when it ends, the Knife Report follows", await page.evaluate(clipGone));
 
 check("console has no errors", logs.filter((l) => /^error|pageerror/i.test(l)).length === 0, logs);
 save("cookingclip-result.json", results);

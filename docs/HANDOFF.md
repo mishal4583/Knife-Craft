@@ -100,6 +100,10 @@ conversation.
    (`chef-salad.*`, from `Salads.mp4`, watermark painted out like the first
    clip); every other dish keeps the chef-cooking film. `dishKindFor` in
    `src/game/recipes/dishKind.ts`. e2e: `cookingclip.mjs` 1e2 + 5a–5c.
+16. Fruit-cup cooking clip: fruit dishes (all-fruit recipes + Business
+   Desserts) play `chef-fruit.*` — 3.84 s cut from the 8 s `Fruit cups.mp4`
+   (spooning shot → honey drizzle; the wide intro and mint garnish shots
+   dropped), watermark painted out. e2e: `cookingclip.mjs` 6a–6c.
 
 ## 4. Open issues from the Level 1–10 audit (not fixed yet)
 

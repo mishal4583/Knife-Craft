@@ -1,7 +1,8 @@
 /**
  * COOKING CLIP — the short painted-kitchen film of the chef finishing the
- * dish (portrait 540×960), shown after every preparation — the salad film
- * (2.97 s) for salads, the chef-cooking film (3.75 s) for every other dish: once the
+ * dish (portrait 540×960), shown after every preparation — the fruit-cup
+ * film (3.84 s) for fruit dishes, the salad film (2.97 s) for salads, the
+ * chef-cooking film (3.75 s) for every other dish: once the
  * chef's hands have carried the plate away (RECIPE_COMPLETED) and before
  * the Knife Report.
  *
@@ -26,9 +27,13 @@ import cookingPoster from "@/assets/video/chef-cooking-poster.webp";
 import saladWebm from "@/assets/video/chef-salad.webm";
 import saladMp4 from "@/assets/video/chef-salad.mp4";
 import saladPoster from "@/assets/video/chef-salad-poster.webp";
+import fruitWebm from "@/assets/video/chef-fruit.webm";
+import fruitMp4 from "@/assets/video/chef-fruit.mp4";
+import fruitPoster from "@/assets/video/chef-fruit-poster.webp";
 
-/** One film per kind of dish (dishKindFor): the chef tossing a salad, or cooking at the stove. */
+/** One film per kind of dish (dishKindFor): fruit cups with a honey drizzle, the chef tossing a salad, or cooking at the stove. */
 const CLIPS: Record<DishKind, { webm: string; mp4: string; poster: string }> = {
+  fruit: { webm: fruitWebm, mp4: fruitMp4, poster: fruitPoster },
   salad: { webm: saladWebm, mp4: saladMp4, poster: saladPoster },
   cooked: { webm: cookingWebm, mp4: cookingMp4, poster: cookingPoster },
 };
@@ -37,10 +42,10 @@ const CLIPS: Record<DishKind, { webm: string; mp4: string; poster: string }> = {
 const TAP_GUARD_MS = 300;
 /** If the film hasn't started this long after it should play (and the game isn't paused), move on. */
 const START_TIMEOUT_MS = 2500;
-/** Hard ceiling of unpaused play time — the clips run 2.97 s and 3.75 s. */
+/** Hard ceiling of unpaused play time — the clips run 2.97–3.84 s. */
 const MAX_PLAY_MS = 7000;
 /**
- * Where the source films' AI watermark sat (the same spot in both) (its centre, as a fraction of the
+ * Where the source films' AI watermark sat (the same spot in all three) (its centre, as a fraction of the
  * 9:16 frame, which the game frame matches exactly): painted out of the
  * encoded files with ffmpeg `delogo`, and covered by the SKIP control.
  */
