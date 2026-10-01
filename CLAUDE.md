@@ -375,19 +375,21 @@ not silently removed.
   (`scenes/coachGhost.ts`, its own Graphics layer at depth 29) exactly where
   the next tap would really cut, using the same axis, slot and position rules
   as `resolveTapCut`:
-  - cutting: the line glows; a see-through copy of the equipped knife
-    (the same `scenes/knifeProfile.ts` silhouette the real knife is drawn
-    from) brings its glowing sharp edge down onto the line and slices
-    through it tip-first, with the handle towards the player (lower end, or
-    left for a flat cut) and the spine away from the food; then a fingertip
-    taps the line with a ripple;
+  - cutting: the line glows, then a 3 s loop shows both ways to cut, each
+    labelled by the fingertip. **SWIPE**: the fingertip draws along the
+    line while a see-through copy of the equipped knife (the same
+    `scenes/knifeProfile.ts` silhouette as the real knife) brings its
+    glowing sharp edge down and slices through tip-first. **TAP**: the
+    fingertip taps with a ripple and the knife chops straight down onto the
+    line. The handle points towards the player (lower end, or left for a
+    flat cut) and the spine away from the food;
   - Peel: a fingertip sweeps across the skin that's left (the peel grid row
     with the most skin);
   - Smash: a press with a ripple;
   - Rings: a tap plus the next ring glowing.
   The scene emits `EVT.COACH` → GameBridge `COACH` → Preparation shows
-  `COACH_TEXT[technique]` (title, how, why, plus a swipe tip on cutting
-  steps). The card is `pointer-events-none`.
+  `COACH_TEXT[technique]` (title, how, why; on cutting steps also
+  `CUT_WAYS`: TAP / SWIPE rows with the same labels). The card is `pointer-events-none`.
   - **Taught** steps (demonstrated 0.7 s after the step starts, then after
     4 s idle): every step of Levels 1–5, and each technique in the first two
     campaign levels that use it. That counts the level's steps, its order

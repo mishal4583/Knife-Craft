@@ -73,27 +73,27 @@ export function taughtTechniques(
 export const COACH_TEXT: Record<TechniqueId, { title: string; how: string; why: string }> = {
   slice: {
     title: "How to slice",
-    how: "Tap the glowing line — the knife cuts right there. Work across the whole thing.",
+    how: "Cut on the glowing line, then the next one — work across the whole thing.",
     why: "Even slices cook evenly and look neat on the plate.",
   },
   dice: {
     title: "How to dice",
-    how: "Tap the glowing lines one way, then across them, to make little squares.",
+    how: "Cut the glowing lines one way, then across them, to make little squares.",
     why: "Same-size cubes cook at the same speed.",
   },
   julienne: {
     title: "How to julienne",
-    how: "Tap the glowing lines one after another — every cut runs the same way.",
+    how: "Cut the glowing lines one after another — every cut runs the same way.",
     why: "Thin matchsticks cook fast and stay crisp.",
   },
   chop: {
     title: "How to chop",
-    how: "Tap the glowing lines quickly — chopping is about rhythm.",
+    how: "Cut the glowing lines quickly — chopping is about rhythm.",
     why: "Rough, bite-size pieces are perfect for bowls and stews.",
   },
   halve: {
     title: "How to halve",
-    how: "Tap the glowing line once to cut it in two.",
+    how: "One cut on the glowing line splits it in two.",
     why: "A flat half sits steady on the board for the next cuts.",
   },
   peel: {
@@ -113,20 +113,26 @@ export const COACH_TEXT: Record<TechniqueId, { title: string; how: string; why: 
   },
   radial: {
     title: "How to cut wedges",
-    how: "Tap the glowing line through the middle — every cut passes the center.",
+    how: "Cut the glowing line through the middle — every cut passes the center.",
     why: "Cutting through the center makes equal wedges.",
   },
   rockMince: {
     title: "How to mince",
-    how: "Tap again and again across the glowing lines to rock the blade.",
+    how: "Cut the glowing lines again and again — rock the blade until it is fine.",
     why: "A fine mince spreads its flavor through the whole dish.",
   },
   chiffonade: {
     title: "How to chiffonade",
-    how: "Tap the glowing lines one by one to cut the rolled leaves into ribbons.",
+    how: "Cut the glowing lines one by one to turn the rolled leaves into ribbons.",
     why: "Thin ribbons of herbs look delicate and taste fresh.",
   },
 };
 
-/** Shown under the how-to line on cutting steps: the precise, advanced input. */
-export const SWIPE_TIP = "Tip: swipe along the line for a precise cut.";
+/**
+ * Shown on cutting steps under the how-to line: the two ways to cut, with
+ * the same labels the ghost shows by its fingertip (SWIPE, then TAP).
+ */
+export const CUT_WAYS: ReadonlyArray<{ label: string; text: string }> = [
+  { label: "TAP", text: "the line — the knife chops straight down." },
+  { label: "SWIPE", text: "along it — guide the blade for the neatest cut." },
+];

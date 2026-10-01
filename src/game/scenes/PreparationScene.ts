@@ -7,7 +7,7 @@ import {
 } from "../knives/knifeTiming";
 import { PauseManager } from "../PauseManager";
 import { withRequiredPeelSteps } from "../prepStepGuards";
-import { drawCoachGhost, COACH_CYCLE_MS, type CoachTarget } from "./coachGhost";
+import { drawCoachGhost, coachCycleMs, type CoachTarget } from "./coachGhost";
 import { knifeProfile, quadraticPoints } from "./knifeProfile";
 import { COACH_FIRST_DELAY_MS, COACH_IDLE_MS, COACH_TAUGHT_IDLE_MS } from "../coaching";
 import { AudioManager } from "../AudioManager";
@@ -846,6 +846,7 @@ export class PreparationScene extends Phaser.Scene {
   // session teaches; a taught step demonstrates at once, every step after
   // a pause without input. Never touches cut, peel or scoring state.
   private coachGfx!: Phaser.GameObjects.Graphics;
+  private coachLabel!: Phaser.GameObjects.Text;
   private coachTeach = new Set<string>();
   private coachStepT = 0;
   private coachInputT = 0;
@@ -1009,6 +1010,17 @@ export class PreparationScene extends Phaser.Scene {
     this.seamGfx = this.add.graphics();
     this.knifeGfx = this.add.graphics();
     this.coachGfx = this.add.graphics();
+    this.coachLabel = this.add
+      .text(0, 0, "", {
+        fontFamily: "Nunito, sans-serif",
+        fontSize: "13px",
+        fontStyle: "900",
+        color: "#ffd36b",
+        stroke: "#3e2819",
+        strokeThickness: 4,
+      })
+      .setOrigin(0, 0.5)
+      .setVisible(false);
     this.plateGfx = this.add.graphics();
 
     // Chef's hands — drawn once in local space (see drawHandShape), then
@@ -1032,6 +1044,7 @@ export class PreparationScene extends Phaser.Scene {
     this.plateGfx.setDepth(18);
     this.knifeGfx.setDepth(30);
     this.coachGfx.setDepth(29);
+    this.coachLabel.setDepth(29);
     this.handL.setDepth(40);
     this.handR.setDepth(40);
 
@@ -5507,7 +5520,10 @@ export class PreparationScene extends Phaser.Scene {
   }
 
   private setCoachVisible(visible: boolean): void {
-    if (!visible) this.coachGfx?.clear();
+    if (!visible) {
+      this.coachGfx?.clear();
+      this.coachLabel?.setVisible(false);
+    }
     if (visible === this.coachVisible) return;
     this.coachVisible = visible;
     if (visible) {
@@ -5531,23 +5547,34 @@ export class PreparationScene extends Phaser.Scene {
     }
     this.setCoachVisible(true);
     let t = now - this.coachCycleT;
-    if (t >= COACH_CYCLE_MS) {
+    const cycle = this.coachTarget ? coachCycleMs(this.coachTarget) : 0;
+    if (t >= cycle) {
       // A new loop: re-aim at whatever is next now.
-      this.coachCycleT = now - (t % COACH_CYCLE_MS);
-      t = now - this.coachCycleT;
+      this.coachCycleT = now;
+      t = 0;
       this.coachTarget = this.coachTargetNow();
     }
     if (!this.coachTarget) {
       this.coachGfx.clear();
+      this.coachLabel.setVisible(false);
       return;
     }
-    drawCoachGhost(
+    const label = drawCoachGhost(
       this.coachGfx,
       this.coachTarget,
       t,
       this.scale.width,
       this.knifeStats.animation.blade,
     );
+    if (label) {
+      this.coachLabel
+        .setText(label.text)
+        .setPosition(label.x, label.y)
+        .setAlpha(label.alpha)
+        .setVisible(true);
+    } else {
+      this.coachLabel.setVisible(false);
+    }
   }
 
   /**

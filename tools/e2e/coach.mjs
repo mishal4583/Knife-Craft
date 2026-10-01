@@ -2,7 +2,8 @@
 //   1. a brand-new player (intro skipped) gets Level 1's "How to slice" card and the ghost
 //      demonstration at once;
 //   2. tapping exactly where the ghost fingertip taps makes a real cut, and the card goes away;
-//   3. left idle, the demonstration comes back (taught step: after ~4 s);
+//   3. left idle, the demonstration comes back (taught step: after ~4 s), and swiping along
+//      the demonstrated line (the SWIPE half of the loop) also makes a real cut;
 //   4. Level 1 still plays through to the Knife Report with coaching on;
 //   5. Level 5 teaches each step as it comes: "How to peel", then "How to halve";
 //   6. a later level (Level 12) shows nothing at first, only after ~8 s without input.
@@ -182,6 +183,25 @@ check("2b tapping where the ghost taps makes a real cut", afterTap.n === (before
 check("2c the card goes away on touch", (await card(page)) === null);
 await sleep(5200);
 check("3a left idle, the demonstration comes back", /HOW TO SLICE/i.test((await card(page)) ?? ""));
+// SWIPE, the other way the ghost shows: drag along the (vertical) line through the fingertip.
+const beforeSwipe = await stepInfo(page);
+const tip2 = await findFingertip(page);
+if (tip2) {
+  await page.mouse.move(tip2.x, tip2.y - 70);
+  await page.mouse.down();
+  for (let k = 1; k <= 16; k++) {
+    await page.mouse.move(tip2.x, tip2.y - 70 + (140 * k) / 16);
+    await sleep(12);
+  }
+  await page.mouse.up();
+  await sleep(900);
+}
+const afterSwipe = await stepInfo(page);
+check(
+  "3b swiping along the demonstrated line also makes a real cut",
+  !!tip2 && afterSwipe.n === (beforeSwipe.n ?? 0) + 1,
+  { tip2, before: beforeSwipe.n, after: afterSwipe.n },
+);
 const played = await playToReport(page, { maxMs: 90000 });
 check("4a Level 1 still plays through to the Knife Report", played.ok, played.log.slice(-3));
 check("4b no card on the Knife Report", (await card(page)) === null);

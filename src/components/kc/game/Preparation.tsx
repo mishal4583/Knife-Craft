@@ -30,7 +30,7 @@ import { CutResultPanel } from "./CutResultPanel";
 import { KnifeReport } from "./KnifeReport";
 import { CookingClip } from "./CookingClip";
 import { dishKindFor } from "@/game/recipes/dishKind";
-import { taughtTechniques, COACH_TEXT, SWIPE_TIP } from "@/game/coaching";
+import { taughtTechniques, COACH_TEXT, CUT_WAYS } from "@/game/coaching";
 import { OrderComplete } from "./OrderComplete";
 import { ServiceOrderComplete } from "./ServiceOrderComplete";
 import { Panel, KButton, DustMotes } from "../common/primitives";
@@ -450,7 +450,16 @@ export function Preparation({
               {COACH_TEXT[activeTechnique.id].why}
             </p>
             {activeTechnique.interactionMode === "cut" ? (
-              <p className="mt-1 font-ui text-[11px] font-bold text-ivory/55">{SWIPE_TIP}</p>
+              <div className="mt-1.5 space-y-0.5 text-left font-ui text-[12px] font-bold leading-snug text-ivory/80">
+                {CUT_WAYS.map((way) => (
+                  <p key={way.label}>
+                    <span className="mr-1.5 inline-block min-w-[44px] rounded-full bg-gold/20 px-1.5 text-center text-[10px] font-extrabold tracking-[0.1em] text-gold">
+                      {way.label}
+                    </span>
+                    {way.text}
+                  </p>
+                ))}
+              </div>
             ) : null}
           </div>
         </div>

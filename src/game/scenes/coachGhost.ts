@@ -3,11 +3,13 @@
  * PreparationScene on its own Graphics layer, above the ingredient and
  * guides and under the real knife. Pure drawing: the scene works out WHERE
  * (the exact spot its own tap resolution would cut next), this draws HOW,
- * as one looping cycle of COACH_CYCLE_MS:
+ * as one looping cycle (coachCycleMs):
  *
- * - "cut": the line glows; a see-through copy of the equipped knife brings
- *   its sharp edge down onto it and slices through, tip first (the stretch
- *   the edge touches lights up); then a fingertip taps the line.
+ * - "cut": the line glows, then both ways to cut it, labelled. SWIPE: a
+ *   fingertip draws along the line while a see-through copy of the
+ *   equipped knife brings its sharp edge down onto it and slices through,
+ *   tip first. TAP: the fingertip taps the line and the knife chops
+ *   straight down onto it. The stretch the edge touches lights up.
  * - "drag": a fingertip sweeps across the skin that is left, leaving a
  *   pale trail (Peel).
  * - "press": a fingertip presses with a ripple; for Rings the next ring
@@ -155,17 +157,35 @@ function cutNearEnd(cut: Extract<CoachTarget, { kind: "cut" }>) {
   return (flat ? x0 > x1 : y0 < y1) ? { x0: x1, y0: y1, x1: x0, y1: y0 } : { x0, y0, x1, y1 };
 }
 
-/** Draws frame `t` (0..COACH_CYCLE_MS) of the demonstration for `target`; `w` is the scene width. */
+/** A label drawn by the scene next to the fingertip: which gesture this part of the loop shows. */
+export type CoachLabel = { text: string; x: number; y: number; alpha: number };
+
+/** How long one loop of the demonstration for `target` lasts. */
+export function coachCycleMs(target: CoachTarget): number {
+  return target.kind === "cut" ? COACH_CUT_CYCLE_MS : COACH_CYCLE_MS;
+}
+
+/** Cutting demonstrates both inputs: SWIPE (0–SWIPE_PART_MS) then TAP. */
+const SWIPE_PART_MS = 1500;
+export const COACH_CUT_CYCLE_MS = 3000;
+
+/**
+ * Draws frame `t` (0..coachCycleMs) of the demonstration for `target`; `w`
+ * is the scene width, `blade` the equipped knife's shape. Returns the label
+ * to show by the fingertip (or null).
+ */
 export function drawCoachGhost(
   g: Phaser.GameObjects.Graphics,
   target: CoachTarget,
   t: number,
   w: number,
   blade: KnifeBladeShape,
-): void {
+): CoachLabel | null {
   g.clear();
   const fingerR = Math.max(12, w * 0.032);
   const pulse = 0.5 + 0.5 * Math.sin((t / COACH_CYCLE_MS) * Math.PI * 4);
+  const label = (text: string, x: number, y: number, alpha: number): CoachLabel | null =>
+    alpha > 0 ? { text, x: x + fingerR * 1.5, y: y - fingerR * 1.7, alpha } : null;
 
   if (target.kind === "cut") {
     // Where: the glowing line.
@@ -173,36 +193,52 @@ export function drawCoachGhost(
     g.lineBetween(target.x0, target.y0, target.x1, target.y1);
     g.lineStyle(3, GLOW, 0.65 + 0.3 * pulse);
     g.lineBetween(target.x0, target.y0, target.x1, target.y1);
-    // How: the knife's sharp edge comes down onto the line, then slices
-    // through — the blade pushed forward, tip first, along the cut.
     const profile = knifeProfile(blade, w);
-    const lineLen = Math.hypot(target.x1 - target.x0, target.y1 - target.y0);
+    const line = cutNearEnd(target);
+    const lineLen = Math.hypot(line.x1 - line.x0, line.y1 - line.y0);
+    const at = (d: number) => {
+      const k = Math.max(0, Math.min(1, d / lineLen));
+      return { x: line.x0 + (line.x1 - line.x0) * k, y: line.y0 + (line.y1 - line.y0) * k };
+    };
     const edgeLen = profile.tip - profile.heel;
-    const knifeAlpha = span(t, 0, 200) * (1 - span(t, 1150, 1400));
-    const lower = easeInOut(span(t, 150, 450));
-    const slice = easeInOut(span(t, 450, 1100));
-    // The edge's middle starts behind the line's middle and passes beyond it.
-    const along = lineLen / 2 - edgeLen / 2 + (slice - 0.5) * edgeLen * 0.5;
-    const lift = (1 - lower) * Math.max(18, profile.bladeH * 1.2);
-    const covered = ghostKnife(g, target, profile, along, lift, knifeAlpha);
-    if (lower >= 1 && knifeAlpha > 0 && covered.to > covered.from) {
-      // Where the edge touches, the line lights up: this is the cut.
-      const k0 = covered.from / lineLen;
-      const k1 = covered.to / lineLen;
-      const nearEnd = cutNearEnd(target);
-      const ax = nearEnd.x0 + (nearEnd.x1 - nearEnd.x0) * k0;
-      const ay = nearEnd.y0 + (nearEnd.y1 - nearEnd.y0) * k0;
-      const bx = nearEnd.x0 + (nearEnd.x1 - nearEnd.x0) * k1;
-      const by = nearEnd.y0 + (nearEnd.y1 - nearEnd.y0) * k1;
-      g.lineStyle(5, GHOST, 0.75 * knifeAlpha);
-      g.lineBetween(ax, ay, bx, by);
+    const lightUp = (covered: { from: number; to: number }, alpha: number) => {
+      if (alpha <= 0 || covered.to <= covered.from) return;
+      const a = at(covered.from);
+      const b = at(covered.to);
+      g.lineStyle(5, GHOST, 0.75 * alpha);
+      g.lineBetween(a.x, a.y, b.x, b.y);
+    };
+
+    if (t < SWIPE_PART_MS) {
+      // SWIPE: the finger draws along the line and the knife slices with
+      // it — the edge comes down onto the line, then cuts through tip first.
+      const knifeAlpha = span(t, 0, 200) * (1 - span(t, 1200, 1450));
+      const lower = easeInOut(span(t, 150, 400));
+      const slice = easeInOut(span(t, 400, 1150));
+      const along = lineLen / 2 - edgeLen / 2 + (slice - 0.5) * edgeLen * 0.5;
+      const lift = (1 - lower) * Math.max(18, profile.bladeH * 1.2);
+      const covered = ghostKnife(g, target, profile, along, lift, knifeAlpha);
+      if (lower >= 1) lightUp(covered, knifeAlpha);
+      // The fingertip rides the line from the near end to the far end.
+      const fingerAlpha = span(t, 250, 400) * (1 - span(t, 1150, 1350));
+      const f = at(lineLen * (0.12 + 0.76 * slice));
+      finger(g, f.x, f.y, fingerR, fingerAlpha, 0.6);
+      return label("SWIPE", f.x, f.y, fingerAlpha);
     }
-    // …because the finger taps the line.
-    const fingerAlpha = span(t, 1150, 1300) * (1 - span(t, 1900, 2150));
-    const press = span(t, 1300, 1400) * (1 - span(t, 1500, 1650));
+
+    // TAP: the finger taps the line and the knife chops straight down on it.
+    const t2 = t - SWIPE_PART_MS;
+    const fingerAlpha = span(t2, 0, 150) * (1 - span(t2, 1000, 1250));
+    const press = span(t2, 200, 300) * (1 - span(t2, 450, 600));
+    const knifeAlpha = span(t2, 150, 300) * (1 - span(t2, 950, 1200));
+    const chop = easeInCubic(span(t2, 280, 460));
+    const lift = (1 - chop) * Math.max(30, profile.bladeH * 2.4);
+    const along = lineLen / 2 - edgeLen / 2;
+    const covered = ghostKnife(g, target, profile, along, lift, knifeAlpha);
+    if (chop >= 1) lightUp(covered, knifeAlpha);
     finger(g, target.tx, target.ty, fingerR, fingerAlpha, press);
-    ripple(g, target.tx, target.ty, fingerR, span(t, 1330, 2000));
-    return;
+    ripple(g, target.tx, target.ty, fingerR, span(t2, 230, 900));
+    return label("TAP", target.tx, target.ty, fingerAlpha);
   }
 
   if (target.kind === "drag") {
@@ -217,7 +253,7 @@ export function drawCoachGhost(
       g.lineBetween(target.x0, target.y0, x, y);
     }
     finger(g, x, y, fingerR, alpha, k > 0 && k < 1 ? 0.6 : 0);
-    return;
+    return label("DRAG", x, y, alpha);
   }
 
   if (target.ring) {
@@ -230,4 +266,10 @@ export function drawCoachGhost(
   finger(g, target.x, target.y, fingerR, alpha, press);
   ripple(g, target.x, target.y, fingerR, span(t, 480, 1250));
   ripple(g, target.x, target.y, fingerR * 1.6, span(t, 620, 1400));
+  return label(target.ring ? "TAP" : "PRESS", target.x, target.y, alpha);
+}
+
+/** A quick, accelerating chop. */
+function easeInCubic(k: number): number {
+  return k * k * k;
 }
