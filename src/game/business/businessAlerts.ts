@@ -45,6 +45,8 @@ export type BusinessAlertScreen =
   | "business-suppliers"
   | "business-staff"
   | "business-inventory"
+  /** The Market's Ingredients tab — where stock is bought (Business → Inventory only monitors it). */
+  | "shop-ingredients"
   | "business-service"
   | "business-finance";
 
@@ -320,7 +322,7 @@ export function businessAlertsFor(
           severity: "warning",
           title: "No Dish Can Be Made",
           detail: `Your usable stock can't make any of the ${menuSize} dishes on your menu — no customer can be served until you restock. You can buy as little as one unit, and a smaller menu needs fewer different ingredients.`,
-          action: { kind: "navigate", label: "Restock", screen: "business-inventory" },
+          action: { kind: "navigate", label: "Restock in Market", screen: "shop-ingredients" },
           notify: true,
         }
       : {

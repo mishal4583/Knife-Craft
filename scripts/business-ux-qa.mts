@@ -138,12 +138,16 @@ function playedSave(): SaveData {
   assert(routes.every((r) => businessTabForScreen(r) !== null) && Object.values(BUSINESS_TAB_SCREEN).every((sc) => businessTabForScreen(sc) !== null), "S1: every existing Business route opens a tab (alerts, the Market's pantry link and the service back button keep working)");
   assert((router.match(/<BusinessDashboard/g) ?? []).length === 1 && !/<BusinessInventory|<BusinessMenu|<BusinessStaff|<BusinessSuppliers|<BusinessRefrigerator|<BusinessInspections|<BusinessFinance|BusinessShop/.test(router), "S2: one Business screen in the router — no duplicate old screens");
   assert(!fs.existsSync(path.resolve(ROOT, "src/components/kc/business/BusinessShop.tsx")), "S3: the old in-Business 'Market' overview is gone (no second shop)");
-  const tabs = ["Overview", "Ingredients", "Equipment", "Staff", "Suppliers", "Menu", "Operations"];
-  assert(tabs.every((t) => dash.includes(`label: "${t}"`)), "S4: the seven tabs: Overview · Ingredients · Equipment · Staff · Suppliers · Menu · Operations");
-  const ui = ["BusinessInventory", "BusinessMenu"].map((f) => read(`src/components/kc/business/${f}.tsx`)).join("\n");
-  assert((ui.match(/h-12 w-12/g) ?? []).length >= 4 && /h-12 w-\[64px\]/.test(ui) && /press h-12 min-w-12 shrink-0 rounded-full/.test(ui), "S5: steppers, ON/OFF toggles and filter chips are 48 px touch targets");
-  const inv = read("src/components/kc/business/BusinessInventory.tsx");
-  assert(["Vegetables", "Fruit", "Herbs", "Aromatics", "Bakery", "Dairy & Tofu", "Protein"].every((g) => inv.includes(`label: "${g}"`)), "S6: ingredients grouped: Vegetables · Fruit · Herbs · Aromatics · Bakery · Dairy & Tofu · Protein");
+  // Market rework: Business → Ingredients became Business → Inventory (monitoring only); buying moved to Market → Ingredients.
+  const tabs = ["Overview", "Inventory", "Equipment", "Staff", "Suppliers", "Menu", "Operations"];
+  assert(tabs.every((t) => dash.includes(`label: "${t}"`)) && !dash.includes(`label: "Ingredients"`), "S4: the seven tabs: Overview · Inventory · Equipment · Staff · Suppliers · Menu · Operations");
+  const ui = ["src/components/kc/MarketIngredients.tsx", "src/components/kc/business/BusinessMenu.tsx"].map(read).join("\n");
+  assert((ui.match(/h-12 w-12/g) ?? []).length >= 4 && /h-12 w-\[64px\]/.test(ui) && /press h-12 min-w-12 shrink-0 rounded-full/.test(ui), "S5: steppers (Market → Ingredients), ON/OFF toggles and filter chips are 48 px touch targets");
+  const groups = read("src/game/business/inventoryAnalytics.ts");
+  const market = read("src/components/kc/MarketIngredients.tsx");
+  assert(["Vegetables", "Fruit", "Herbs", "Aromatics", "Bakery", "Dairy & Tofu", "Protein"].every((g) => groups.includes(`label: "${g}"`)) && /INGREDIENT_GROUPS/.test(market), "S6: Market ingredients grouped: Vegetables · Fruit · Herbs · Aromatics · Bakery · Dairy & Tofu · Protein (one shared list)");
+  const inv = code(read("src/components/kc/business/BusinessInventory.tsx"));
+  assert(!/purchaseIngredient|purchaseQuote|todaysUnitCost|Increase quantity|>\s*Buy \{|stepPurchaseQuantity/.test(inv) && /openMarketIngredients/.test(inv), "S8: Business → Inventory has no purchase controls — only links to the Market");
   const menu = read("src/components/kc/business/BusinessMenu.tsx");
   assert(/new Set\(BUSINESS_DISH_CATALOG\.map\(\(d\) => d\.category\)\)/.test(menu), "S7: menu category filters come from the real dish catalog");
 }

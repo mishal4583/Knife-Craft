@@ -96,6 +96,15 @@ export type BusinessDailyAccumulator = {
    * dailyAccumulator default merge).
    */
   ordersServed: number;
+  /**
+   * Ingredient purchases made since the current Business Day began — one per
+   * "inventory-purchase" ledger entry (a Market purchase is one, a cash Rush
+   * Restock one per ingredient). Not money: Business → Inventory reads it
+   * for "Purchases" / "Average purchase" (inventoryAnalytics.ts). A save
+   * written before this field existed migrates it as 0
+   * (migrateBusinessFinanceState's own dailyAccumulator default merge).
+   */
+  inventoryPurchases: number;
 };
 
 export const DEFAULT_DAILY_ACCUMULATOR: BusinessDailyAccumulator = {
@@ -106,6 +115,7 @@ export const DEFAULT_DAILY_ACCUMULATOR: BusinessDailyAccumulator = {
   supplierCost: 0,
   capitalExpenditure: 0,
   ordersServed: 0,
+  inventoryPurchases: 0,
 };
 
 /**
@@ -217,7 +227,10 @@ export function recordRevenueAndCogs(save: SaveData, revenue: number, cogs: numb
 
 function recordAccumulatorDelta(
   save: SaveData,
-  key: keyof Omit<BusinessDailyAccumulator, "revenue" | "cogs" | "ordersServed">,
+  key: keyof Omit<
+    BusinessDailyAccumulator,
+    "revenue" | "cogs" | "ordersServed" | "inventoryPurchases"
+  >,
   amount: number,
 ): SaveData {
   if (amount === 0) return save;
@@ -239,8 +252,27 @@ function recordAccumulatorDelta(
 }
 
 /** Called by App.tsx's purchaseIngredient wrapper on a successful purchase only — mirrors that wrapper's own "only on success" ledger-append gating. */
-export function recordInventoryPurchase(save: SaveData, totalCost: number): SaveData {
-  return recordAccumulatorDelta(save, "inventoryPurchaseCost", totalCost);
+export function recordInventoryPurchase(
+  save: SaveData,
+  totalCost: number,
+  purchases = 1,
+): SaveData {
+  const recorded = recordAccumulatorDelta(save, "inventoryPurchaseCost", totalCost);
+  if (totalCost === 0 || purchases <= 0) return recorded;
+  const finance = recorded.business.finance;
+  return {
+    ...recorded,
+    business: {
+      ...recorded.business,
+      finance: {
+        ...finance,
+        dailyAccumulator: {
+          ...finance.dailyAccumulator,
+          inventoryPurchases: (finance.dailyAccumulator.inventoryPurchases ?? 0) + purchases,
+        },
+      },
+    },
+  };
 }
 
 /** Called by App.tsx's purchaseRefrigerator wrapper on a successful purchase only. */

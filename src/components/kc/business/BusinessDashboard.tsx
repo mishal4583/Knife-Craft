@@ -31,7 +31,6 @@ import { getSupplier } from "@/game/economy/supplierDefinitions";
 import type { InspectionReport } from "@/game/business/businessInspection";
 import type { InspectionFineResult } from "@/game/business/businessInspectionFines";
 import type { PerformMaintenanceResult } from "@/game/business/businessMaintenance";
-import type { PurchaseIngredientResult } from "@/game/business/BusinessInventoryManager";
 import type { PurchaseRefrigeratorResult } from "@/game/business/RefrigeratorManager";
 import type { SetMenuPriceResult } from "@/game/business/BusinessMenuManager";
 import type { SetDishActiveResult } from "@/game/business/businessMenuActivation";
@@ -81,7 +80,7 @@ export type AdvanceDayResult = {
 
 const TABS: Array<{ id: BusinessTab; label: string; emoji: string }> = [
   { id: "overview", label: "Overview", emoji: "📊" },
-  { id: "ingredients", label: "Ingredients", emoji: "🧺" },
+  { id: "inventory", label: "Inventory", emoji: "🧺" },
   { id: "equipment", label: "Equipment", emoji: "❄️" },
   { id: "staff", label: "Staff", emoji: "🧑‍🍳" },
   { id: "suppliers", label: "Suppliers", emoji: "🚚" },
@@ -127,7 +126,6 @@ export function BusinessDashboard({
   tab,
   onAdvanceDay,
   businessServiceSession,
-  purchaseIngredient,
   purchaseRefrigerator,
   performRefrigeratorMaintenance,
   setMenuPrice,
@@ -144,7 +142,6 @@ export function BusinessDashboard({
   tab: BusinessTab;
   onAdvanceDay: () => AdvanceDayResult;
   businessServiceSession: ServiceSession | null;
-  purchaseIngredient: (ingredientId: string, quantity: number) => PurchaseIngredientResult;
   purchaseRefrigerator: (refrigeratorId: string) => PurchaseRefrigeratorResult;
   performRefrigeratorMaintenance: () => PerformMaintenanceResult;
   setMenuPrice: (recipeId: string, price: number) => SetMenuPriceResult;
@@ -241,9 +238,7 @@ export function BusinessDashboard({
           {tab === "overview" ? (
             <Overview {...shared} needsAttention={needsAttention.length} />
           ) : null}
-          {tab === "ingredients" ? (
-            <BusinessInventory go={go} save={save} purchaseIngredient={purchaseIngredient} />
-          ) : null}
+          {tab === "inventory" ? <BusinessInventory go={go} save={save} /> : null}
           {tab === "equipment" ? (
             <BusinessRefrigerator
               go={go}

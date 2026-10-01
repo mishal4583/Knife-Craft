@@ -1,4 +1,4 @@
-import { useState } from "react";
+import type { ReactNode } from "react";
 import type { ScreenId } from "../data";
 import type { SaveData } from "@/game/SaveManager";
 import { KButton, Panel, Badge } from "../common/primitives";
@@ -6,39 +6,25 @@ import { Bar, Eyebrow } from "../common/Meters";
 import { cn } from "@/lib/utils";
 import { INGREDIENTS, type IngredientId } from "@/game/definitions";
 import { INGREDIENT_EMOJI } from "@/game/knives/knifeDefinitions";
-import { businessUnitCostFor, purchaseUnitFor } from "@/game/business/businessPricing";
+import { purchaseUnitFor } from "@/game/business/businessPricing";
 import { formatUsd } from "@/game/business/businessCurrency";
-import { inventoryValue, formatQuantity } from "@/game/business/businessInventory";
-import type { PurchaseIngredientResult } from "@/game/business/BusinessInventoryManager";
-import { getRefrigerator } from "@/game/business/refrigeratorDefinitions";
+import { formatQuantity } from "@/game/business/businessInventory";
+import type { PerishabilityState } from "@/game/business/perishability";
+import { eventForDay } from "@/game/business/businessSupplierEvents";
+import { isContractActive } from "@/game/business/businessSupplierContract";
+import { supplierEventSummary } from "@/game/business/businessAlerts";
 import {
-  getInventoryUsedCapacity,
-  getAvailableStorageCapacity,
-} from "@/game/business/RefrigeratorManager";
-import {
-  perishabilityStateFor,
-  shelfLifeForIngredient,
-  type PerishabilityState,
-} from "@/game/business/perishability";
-import { businessDishRequirements } from "@/game/business/businessServiceCatalog";
-import { effectiveUnitCost, isContractActive } from "@/game/business/businessSupplierContract";
-import {
-  eventForDay,
-  eventAdjustedUnitCost,
-  maxPurchaseQuantityFor,
-} from "@/game/business/businessSupplierEvents";
-import { staffUnitCostDiscount } from "@/game/business/businessStaff";
-import {
-  stockSpoilingTonight,
-  makeableDishCount,
-  supplierEventSummary,
-} from "@/game/business/businessAlerts";
-import { activeBusinessDishes } from "@/game/business/businessMenuActivation";
-import { notEnoughMoneyText } from "@/game/economy/wallet";
-import {
-  DEFAULT_PURCHASE_QUANTITY,
-  stepPurchaseQuantity,
-} from "@/game/business/businessPurchaseQuantity";
+  expiringSoon,
+  fridgeStatus,
+  ingredientConsumption,
+  inventorySummary,
+  lowStockItems,
+  menuReadiness,
+  onHandItems,
+  purchasingStats,
+  type OnHandItem,
+} from "@/game/business/inventoryAnalytics";
+import { openMarketIngredients } from "../marketFocus";
 
 const PERISHABILITY_BADGE_TONE: Record<PerishabilityState, "cream" | "sage" | "copper" | "locked"> =
   {
@@ -48,152 +34,126 @@ const PERISHABILITY_BADGE_TONE: Record<PerishabilityState, "cream" | "sage" | "c
     EXPIRED: "locked",
   };
 
-/** From this quantity on, the card phrases the balance as "You'll have $X remaining". */
-const LARGE_PURCHASE_QUANTITY = 25;
+/** How many ranked rows the Most needed / Most used lists show. */
+const TOP_ROWS = 5;
 
-/** A balance for the card: whole dollars when there are no cents ("$1,332"), else "$1,332.40". */
-function balanceText(cents: number): string {
-  return formatUsd(cents).replace(/\.00$/, "");
+function name(id: IngredientId): string {
+  return INGREDIENTS[id].name;
 }
 
-/** The ingredient registry's own categories, in shop order, with player-facing names. */
-const GROUPS: Array<{ category: string; label: string; emoji: string }> = [
-  { category: "Vegetable", label: "Vegetables", emoji: "🥕" },
-  { category: "Fruit", label: "Fruit", emoji: "🍎" },
-  { category: "Herb", label: "Herbs", emoji: "🌿" },
-  { category: "Aromatic", label: "Aromatics", emoji: "🧄" },
-  { category: "Bakery", label: "Bakery", emoji: "🥖" },
-  { category: "Dairy", label: "Dairy & Tofu", emoji: "🧀" },
-  { category: "Protein", label: "Protein", emoji: "🍗" },
-];
+function qty(id: IngredientId, quantity: number): string {
+  return `${formatQuantity(quantity)} ${purchaseUnitFor(id)}`;
+}
 
-/**
- * BUSINESS · INGREDIENTS tab (Economy V3 Phase 2 inventory, reorganised as
- * Market-style cards). Reuses `INGREDIENTS` (no second list) and the SAME
- * price chain the purchase itself uses — `businessUnitCostFor` → today's
- * supplier event → contract → staff discount — never a literal price.
- * Grouped by the registry's own `category`; within a group, what the
- * active menu needs comes first.
- */
-export function BusinessInventory({
+function daysLeftText(item: OnHandItem): string {
+  if (item.daysLeft === 0) return "Expired";
+  if (item.daysLeft === 1) return "Spoils tonight";
+  return `${item.daysLeft} days left`;
+}
+
+function plural(n: number, word: string, many = `${word}s`): string {
+  return `${n} ${n === 1 ? word : many}`;
+}
+
+function Stat({
+  label,
+  value,
+  sub,
+}: {
+  label: string;
+  value: ReactNode;
+  sub?: string | undefined;
+}) {
+  return (
+    <div className="min-w-0 rounded-[14px] border border-walnut/10 bg-ivory/60 px-2.5 py-2">
+      <p className="truncate font-ui text-[10px] font-extrabold uppercase tracking-[0.06em] text-walnut/60">
+        {label}
+      </p>
+      <p className="truncate font-display text-[16px] font-black leading-tight text-walnut-dark">
+        {value}
+      </p>
+      {sub ? (
+        <p className="truncate font-hand text-[12px] leading-tight text-walnut/60">{sub}</p>
+      ) : null}
+    </div>
+  );
+}
+
+/** The one purchase-related control Business has: navigation to the Market. */
+function MarketLink({
   go,
-  save,
-  purchaseIngredient,
+  id,
+  label,
+  className,
 }: {
   go: (s: ScreenId) => void;
-  save: SaveData;
-  purchaseIngredient: (ingredientId: string, quantity: number) => PurchaseIngredientResult;
+  id?: IngredientId;
+  label: string;
+  className?: string;
 }) {
-  const [quantities, setQuantities] = useState<Partial<Record<IngredientId, number>>>({});
-  const [messages, setMessages] = useState<Partial<Record<IngredientId, string>>>({});
-  const [group, setGroup] = useState<string>("all");
-
-  const owned = Object.values(save.business.inventory).filter((entry) => !!entry);
-  const totalValue = inventoryValue(save.business.inventory);
-  const refrigerator = getRefrigerator(save.business.refrigerator.refrigeratorId);
-  const capacity = refrigerator?.capacity ?? 0;
-  const used = getInventoryUsedCapacity(save.business.inventory);
-  const available = getAvailableStorageCapacity(
-    save.business.inventory,
-    save.business.refrigerator.refrigeratorId,
+  return (
+    <KButton
+      size="sm"
+      variant="ghost"
+      className={cn("h-12 shrink-0 px-3 text-[12px]", className)}
+      onClick={() => openMarketIngredients(go, id)}
+    >
+      {label}
+    </KButton>
   );
-  const event = eventForDay(save.business.calendar.businessDay);
-  const maxQuantity = maxPurchaseQuantityFor(event);
-  const spoilingTonight = new Set(stockSpoilingTonight(save));
-  const menuIngredients = new Set(
-    activeBusinessDishes(save.business.menuActivation).flatMap((d) =>
-      businessDishRequirements(d).map((r) => r.ingredientId),
-    ),
-  );
-  const allIngredientIds = Object.keys(INGREDIENTS) as IngredientId[];
-  const makeable = makeableDishCount(save);
-  const menuDishCount = activeBusinessDishes(save.business.menuActivation).length;
+}
 
-  function quantityFor(id: IngredientId): number {
-    return quantities[id] ?? DEFAULT_PURCHASE_QUANTITY;
-  }
-
-  /** Today's unit price — the same chain the purchase itself runs (BusinessInventoryManager). */
-  function unitCostFor(id: IngredientId, quantity: number): number {
-    const eventCost = eventAdjustedUnitCost(businessUnitCostFor(id), event);
-    const contractCost = event?.suspendsContractDiscount
-      ? eventCost
-      : effectiveUnitCost(
-          eventCost,
-          save.business.supplierContract,
-          save.business.calendar.businessDay,
-          quantity,
-        );
-    return staffUnitCostDiscount(contractCost, save.business.staff.hiredRoles);
-  }
-
-  function adjustQuantity(id: IngredientId, direction: 1 | -1) {
-    setQuantities((q) => ({ ...q, [id]: stepPurchaseQuantity(quantityFor(id), direction) }));
-  }
-
-  function handlePurchase(id: IngredientId) {
-    const quantity = quantityFor(id);
-    const result = purchaseIngredient(id, quantity);
-    if (!result.ok) {
-      const text =
-        result.reason === "insufficientFunds"
-          ? notEnoughMoneyText(unitCostFor(id, quantity) * quantity, save.credits)
-          : result.reason === "insufficientStorage"
-            ? "Not enough fridge space."
-            : result.reason === "exceedsShortageLimit"
-              ? "Today's shortage limits this."
-              : "That purchase couldn't be made.";
-      setMessages((m) => ({ ...m, [id]: text }));
-      return;
-    }
-    setMessages((m) => ({
-      ...m,
-      [id]: `Bought ${result.quantity} ${purchaseUnitFor(id)} · ${formatUsd(result.totalCost)}`,
-    }));
-  }
-
-  const groups = GROUPS.filter((g) => group === "all" || g.category === group);
+/**
+ * BUSINESS · INVENTORY — what's in the restaurant fridge and what it means
+ * for service: freshness, low stock against today's menu demand, menu
+ * readiness, waste, purchasing and consumption. Monitoring only — stock is
+ * bought in the Market (Market → Ingredients); the only purchase-related
+ * controls here navigate there. Every figure comes from
+ * inventoryAnalytics.ts over existing state; nothing is stored or invented.
+ */
+export function BusinessInventory({ go, save }: { go: (s: ScreenId) => void; save: SaveData }) {
+  const fridge = fridgeStatus(save);
+  const onHand = onHandItems(save);
+  const readiness = menuReadiness(save);
+  const low = lowStockItems(save);
+  const expiring = expiringSoon(save);
+  const summary = inventorySummary(save);
+  const purchasing = purchasingStats(save);
+  const consumption = ingredientConsumption(save);
+  const spoilingTonight = onHand.filter((i) => i.spoilsTonight);
+  const day = save.business.calendar.businessDay;
+  const event = eventForDay(day);
 
   return (
     <div className="space-y-3">
-      {/* Pantry status */}
+      <p className="font-hand text-[15px] leading-snug text-walnut/70">
+        Track your stock, freshness and restaurant supply needs.
+      </p>
+
+      {/* Fridge status */}
       <Panel className="p-4">
         <div className="flex items-baseline justify-between gap-3">
-          <Eyebrow>❄️ {refrigerator?.name ?? "Refrigerator"} space</Eyebrow>
+          <Eyebrow>❄️ {fridge.name}</Eyebrow>
           <span className="font-ui text-[12px] font-extrabold text-walnut-dark">
-            {formatQuantity(used)} / {capacity}
+            {formatQuantity(fridge.used)} / {fridge.capacity}
           </span>
         </div>
         <div className="mt-2">
-          <Bar fraction={capacity > 0 ? used / capacity : 0} tone="sage" />
+          <Bar fraction={fridge.usage} tone="sage" />
         </div>
-        <div className="mt-2 grid grid-cols-2 gap-2 font-ui text-[12px]">
-          <p className="font-bold text-walnut/70">
-            Stock value{" "}
-            <span className="block font-display text-[16px] font-black text-walnut-dark">
-              {formatUsd(totalValue)}
-            </span>
-          </p>
-          <p className="text-right font-bold text-walnut/70">
-            Space left{" "}
-            <span className="block font-display text-[16px] font-black text-walnut-dark">
-              {formatQuantity(available)}
-            </span>
-          </p>
+        <div className="mt-2 grid grid-cols-3 gap-2" data-testid="fridge-status">
+          <Stat label="Value" value={formatUsd(fridge.stockValue)} sub="in stock" />
+          <Stat label="Space" value={formatQuantity(fridge.available)} sub="left" />
+          <Stat label="Ready" value={`${readiness.ready} / ${readiness.total}`} sub="dishes" />
         </div>
-        <p
-          className={cn(
-            "mt-2 font-hand text-[14px] leading-snug",
-            makeable === 0 || spoilingTonight.size > 0 ? "text-copper" : "text-walnut/65",
-          )}
-        >
-          {makeable === 0
-            ? "No dish on your menu can be made from your stock yet — buy what the menu needs (marked below)."
-            : `${makeable} of your ${menuDishCount} menu dishes can be made from stock right now.`}
-          {spoilingTonight.size > 0
-            ? ` ${spoilingTonight.size} item${spoilingTonight.size === 1 ? "" : "s"} spoil${spoilingTonight.size === 1 ? "s" : ""} at End Business Day.`
-            : ""}
-        </p>
+        {spoilingTonight.length > 0 ? (
+          <p className="mt-2 font-ui text-[12px] font-extrabold text-copper">
+            ⚠{" "}
+            {spoilingTonight.length === 1
+              ? `${name(spoilingTonight[0]!.id)} spoils tonight`
+              : `${spoilingTonight.length} ingredients spoil tonight`}
+          </p>
+        ) : null}
         <KButton
           full
           size="sm"
@@ -205,192 +165,286 @@ export function BusinessInventory({
         </KButton>
       </Panel>
 
-      {event ? (
-        <Panel tone="cream" className="p-3">
-          <Eyebrow>🚚 Today · {event.name}</Eyebrow>
-          <p className="font-hand text-[14px] text-walnut/65">
-            {supplierEventSummary(
-              event,
-              isContractActive(save.business.supplierContract, save.business.calendar.businessDay),
-            )}
-          </p>
-        </Panel>
-      ) : null}
-
       {/* On hand */}
-      {owned.length > 0 ? (
+      {onHand.length > 0 ? (
         <Panel className="p-4">
           <Eyebrow>🧺 On hand</Eyebrow>
-          <div className="mt-1">
-            {owned.map((entry) => {
-              const state = perishabilityStateFor(
-                entry!.ingredientId,
-                entry!.purchaseDay,
-                save.business.calendar.businessDay,
-              );
-              return (
-                <div
-                  key={entry!.ingredientId}
-                  className="flex items-center gap-2 border-b border-walnut/10 py-2 last:border-b-0"
-                >
-                  <span className="text-[20px]">{INGREDIENT_EMOJI[entry!.ingredientId]}</span>
+          <div className="mt-1" data-testid="on-hand">
+            {onHand.map((item) => (
+              <div
+                key={item.id}
+                data-ingredient={item.id}
+                className="border-b border-walnut/10 py-2 last:border-b-0"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-[20px]" aria-hidden>
+                    {INGREDIENT_EMOJI[item.id]}
+                  </span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-ui text-[13px] font-extrabold text-walnut-dark">
-                      {INGREDIENTS[entry!.ingredientId].name}
+                      {name(item.id)}
                     </span>
                     <span className="block font-hand text-[13px] text-walnut/60">
-                      {formatQuantity(entry!.quantity)} {purchaseUnitFor(entry!.ingredientId)} ·{" "}
-                      {formatUsd(Math.round(entry!.quantity * entry!.unitCost))}
+                      {qty(item.id, item.quantity)} · {formatUsd(item.value)}
                     </span>
                   </span>
-                  <span className="flex shrink-0 flex-col items-end gap-0.5">
-                    <Badge tone={PERISHABILITY_BADGE_TONE[state]}>{state.replace("_", " ")}</Badge>
-                    {spoilingTonight.has(entry!.ingredientId) ? (
-                      <span className="font-ui text-[10px] font-extrabold uppercase text-copper">
-                        spoils tonight
-                      </span>
-                    ) : null}
+                  <Badge tone={PERISHABILITY_BADGE_TONE[item.state]}>
+                    {item.state.replace("_", " ")}
+                  </Badge>
+                </div>
+                <div className="mt-1 flex items-center gap-2 pl-7">
+                  <span className="w-20 shrink-0">
+                    <Bar
+                      fraction={item.daysLeft / item.shelfLife}
+                      tone={item.daysLeft <= 1 ? "copper" : "sage"}
+                    />
+                  </span>
+                  <span
+                    className={cn(
+                      "font-ui text-[11px] font-bold",
+                      item.daysLeft <= 1 ? "text-copper" : "text-walnut/65",
+                    )}
+                  >
+                    {item.spoilsTonight ? "⚠ " : ""}
+                    {daysLeftText(item)}
                   </span>
                 </div>
-              );
-            })}
+                <p className="truncate pl-7 font-hand text-[12px] leading-tight text-walnut/60">
+                  {item.usedIn.length > 0
+                    ? `Used in: ${item.usedIn
+                        .slice(0, 2)
+                        .map((d) => d.name)
+                        .join(
+                          ", ",
+                        )}${item.usedIn.length > 2 ? ` +${item.usedIn.length - 2} more` : ""}`
+                    : "Not used by today's menu"}
+                </p>
+              </div>
+            ))}
           </div>
         </Panel>
       ) : (
         <Panel className="p-4 text-center">
-          <p className="font-hand text-[15px] text-walnut/60">
-            Nothing in stock yet — buy ingredients below.
+          <p className="font-hand text-[15px] leading-snug text-walnut/65">
+            Your fridge is empty. Buy ingredients from the Market to start serving Business orders.
           </p>
+          <MarketLink go={go} label="Go to Market →" className="mt-2 w-full" />
         </Panel>
       )}
 
-      {/* Group filter */}
-      <div
-        className="-mx-4 flex gap-2 overflow-x-auto no-scrollbar px-4"
-        aria-label="Ingredient groups"
-      >
-        {[{ category: "all", label: "All", emoji: "🧺" }, ...GROUPS].map((g) => (
-          <button
-            key={g.category}
-            type="button"
-            onClick={() => setGroup(g.category)}
-            aria-pressed={group === g.category}
-            className={cn(
-              "press h-12 min-w-12 shrink-0 rounded-full border px-3.5 font-ui text-[12px] font-extrabold",
-              group === g.category
-                ? "wood border-walnut-dark/50 text-ivory"
-                : "card-warm border-walnut/15 text-walnut-dark",
-            )}
-          >
-            {g.emoji} {g.label}
-          </button>
-        ))}
-      </div>
+      {/* Low stock */}
+      {low.length > 0 ? (
+        <Panel className="p-4">
+          <Eyebrow>⚠️ Low stock</Eyebrow>
+          <p className="font-hand text-[13px] leading-snug text-walnut/60">
+            Less than today's customers are expected to use.
+          </p>
+          <div className="mt-1" data-testid="low-stock">
+            {low.map((item) => (
+              <div
+                key={item.id}
+                data-ingredient={item.id}
+                className="flex items-center gap-2 border-b border-walnut/10 py-2 last:border-b-0"
+              >
+                <span className="text-[20px]" aria-hidden>
+                  {INGREDIENT_EMOJI[item.id]}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-ui text-[13px] font-extrabold text-walnut-dark">
+                    {name(item.id)} · {qty(item.id, item.usable)}
+                  </span>
+                  <span className="block font-hand text-[12px] leading-tight text-walnut/60">
+                    Estimated {plural(item.dishesLeft, "dish", "dishes")} remaining
+                  </span>
+                </span>
+                <MarketLink go={go} id={item.id} label="Buy in Market →" />
+              </div>
+            ))}
+          </div>
+        </Panel>
+      ) : null}
 
-      {groups.map((g) => {
-        const ids = allIngredientIds.filter((id) => INGREDIENTS[id].category === g.category);
-        const ordered = [
-          ...ids.filter((id) => menuIngredients.has(id)),
-          ...ids.filter((id) => !menuIngredients.has(id)),
-        ];
-        if (ordered.length === 0) return null;
-        return (
-          <section key={g.category}>
-            <p className="mb-2 mt-1 font-display text-[16px] font-black text-walnut-dark">
-              {g.emoji} {g.label}
+      {/* Menu readiness */}
+      <Panel className="p-4">
+        <div className="flex items-baseline justify-between gap-3">
+          <Eyebrow>🍳 Menu readiness</Eyebrow>
+          <span
+            className="font-ui text-[12px] font-extrabold text-walnut-dark"
+            data-testid="menu-ready"
+          >
+            {readiness.ready} / {readiness.total} dishes ready
+          </span>
+        </div>
+        <div className="mt-2">
+          <Bar fraction={readiness.total > 0 ? readiness.ready / readiness.total : 0} />
+        </div>
+        {readiness.mostNeeded.length > 0 ? (
+          <>
+            <p className="mt-2 font-ui text-[11px] font-extrabold uppercase tracking-[0.08em] text-walnut/60">
+              Most needed ingredients
             </p>
-            <div className="grid grid-cols-2 gap-3">
-              {ordered.map((id) => {
-                const def = INGREDIENTS[id];
-                const quantity = quantityFor(id);
-                const unitCost = unitCostFor(id, quantity);
-                const totalCost = unitCost * quantity;
-                const exceedsShortage = maxQuantity !== undefined && quantity > maxQuantity;
-                const canPay = save.credits >= totalCost;
-                const affordable = canPay && quantity <= available && !exceedsShortage;
-                const remaining = save.credits - totalCost;
-                const stock = save.business.inventory[id]?.quantity ?? 0;
-                const message = messages[id];
-                return (
-                  <article
-                    key={id}
-                    className="product-card flex flex-col rounded-[20px] border border-walnut/15 p-3 card-warm"
-                  >
-                    <div className="flex items-start justify-between">
-                      <span className="text-[34px] leading-none" aria-hidden>
-                        {INGREDIENT_EMOJI[id]}
-                      </span>
-                      {menuIngredients.has(id) ? <Badge tone="sage">Menu</Badge> : null}
-                    </div>
-                    <p className="mt-1 font-display text-[14px] font-black leading-tight text-walnut-dark">
-                      {def.name}
-                    </p>
-                    <p className="font-ui text-[12px] font-extrabold text-copper">
-                      {formatUsd(unitCost)}
-                      <span className="font-bold text-walnut/60">/{purchaseUnitFor(id)}</span>
-                    </p>
-                    <p className="font-hand text-[13px] leading-tight text-walnut/60">
-                      In stock {formatQuantity(stock)} · keeps {shelfLifeForIngredient(id)} days
-                    </p>
-                    <div className="mt-2 flex items-center justify-between">
-                      <button
-                        type="button"
-                        onClick={() => adjustQuantity(id, -1)}
-                        className="press grid h-12 w-12 place-items-center rounded-full border border-walnut/20 bg-ivory font-ui text-[18px] font-black text-walnut-dark"
-                        aria-label={`Decrease quantity for ${def.name}`}
-                      >
-                        −
-                      </button>
-                      <span className="font-ui text-[15px] font-extrabold text-walnut-dark">
-                        {quantity}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => adjustQuantity(id, 1)}
-                        className="press grid h-12 w-12 place-items-center rounded-full border border-walnut/20 bg-ivory font-ui text-[18px] font-black text-walnut-dark"
-                        aria-label={`Increase quantity for ${def.name}`}
-                      >
-                        +
-                      </button>
-                    </div>
-                    {exceedsShortage ? (
-                      <p className="mt-1 text-center font-hand text-[12px] text-copper">
-                        Limited to {maxQuantity} today.
-                      </p>
-                    ) : null}
-                    {message ? (
-                      <p className="mt-1 text-center font-hand text-[12px] leading-tight text-copper">
-                        {message}
-                      </p>
-                    ) : null}
-                    <KButton
-                      full
-                      variant={affordable ? "copper" : "ghost"}
-                      className="mt-auto h-12 px-2 text-[12px]"
-                      onClick={() => handlePurchase(id)}
-                    >
-                      Buy {quantity} {purchaseUnitFor(id)} · {formatUsd(totalCost)}
-                    </KButton>
-                    {/* What the purchase does to the wallet, before the tap. */}
-                    <p
-                      className={cn(
-                        "mt-1 text-center font-ui text-[11px] font-bold leading-tight",
-                        canPay ? "text-walnut/65" : "text-copper",
-                      )}
-                    >
-                      {!canPay
-                        ? notEnoughMoneyText(totalCost, save.credits)
-                        : quantity >= LARGE_PURCHASE_QUANTITY
-                          ? `You'll have ${balanceText(remaining)} remaining`
-                          : `${balanceText(save.credits)} → ${balanceText(remaining)}`}
-                    </p>
-                  </article>
-                );
-              })}
+            <div className="mt-1 flex flex-wrap gap-2" data-testid="most-needed">
+              {readiness.mostNeeded.slice(0, TOP_ROWS).map((n) => (
+                <button
+                  key={n.id}
+                  type="button"
+                  data-ingredient={n.id}
+                  onClick={() => openMarketIngredients(go, n.id)}
+                  className="press flex h-12 items-center gap-1.5 rounded-full border border-walnut/15 px-3 font-ui text-[12px] font-extrabold text-walnut-dark card-warm"
+                  aria-label={`${name(n.id)}: needed by ${plural(n.blocks, "dish", "dishes")}. Buy in Market`}
+                >
+                  <span aria-hidden>{INGREDIENT_EMOJI[n.id]}</span>
+                  {name(n.id)}
+                  <span className="text-walnut/55">· {n.blocks}</span>
+                </button>
+              ))}
             </div>
-          </section>
-        );
-      })}
+            <p className="mt-1 font-hand text-[12px] text-walnut/55">
+              The number is how many menu dishes are waiting for it. Tap to buy it in the Market.
+            </p>
+          </>
+        ) : readiness.total > 0 ? (
+          <p className="mt-2 font-hand text-[13px] text-walnut/65">
+            Every dish on your menu can be made from stock.
+          </p>
+        ) : null}
+      </Panel>
+
+      {/* Expiring soon */}
+      {expiring.length > 0 ? (
+        <Panel className="p-4">
+          <Eyebrow>⏳ Expiring soon</Eyebrow>
+          <div className="mt-1" data-testid="expiring-soon">
+            {expiring.map((item) => (
+              <div
+                key={item.id}
+                data-ingredient={item.id}
+                className="flex items-center justify-between gap-2 border-b border-walnut/10 py-1.5 font-ui text-[12px] last:border-b-0"
+              >
+                <span className="min-w-0 truncate font-extrabold text-walnut-dark">
+                  {INGREDIENT_EMOJI[item.id]} {name(item.id)} · {qty(item.id, item.quantity)}
+                </span>
+                <span
+                  className={cn(
+                    "shrink-0 font-bold",
+                    item.daysLeft <= 1 ? "text-copper" : "text-walnut/65",
+                  )}
+                >
+                  {daysLeftText(item)}
+                </span>
+              </div>
+            ))}
+          </div>
+          <p className="mt-1 font-hand text-[12px] text-walnut/55">
+            Serve dishes that use these first — spoiled stock is thrown out at End Business Day.
+          </p>
+        </Panel>
+      ) : null}
+
+      {/* Inventory analytics */}
+      <Panel className="p-4">
+        <Eyebrow>📊 Inventory analytics</Eyebrow>
+        <div className="mt-2 grid grid-cols-2 gap-2" data-testid="inventory-analytics">
+          <Stat label="Stock value" value={formatUsd(summary.stockValue)} />
+          <Stat
+            label="Ingredients stocked"
+            value={`${summary.stocked} / ${summary.ingredientCount}`}
+          />
+          <Stat label="Fridge usage" value={`${Math.round(summary.fridgeUsage * 100)}%`} />
+          <Stat
+            label="Waste (all time)"
+            value={formatUsd(summary.wasteValue)}
+            sub={
+              summary.lastDayWasteValue === null
+                ? `${formatQuantity(summary.wasteQuantity)} units spoiled`
+                : `Last day ${formatUsd(summary.lastDayWasteValue)}`
+            }
+          />
+        </div>
+      </Panel>
+
+      {/* Purchasing */}
+      <Panel className="p-4">
+        <Eyebrow>💰 Purchasing</Eyebrow>
+        <div className="mt-2 grid grid-cols-2 gap-2" data-testid="purchasing">
+          <Stat
+            label="This Business Day"
+            value={formatUsd(purchasing.businessDaySpent)}
+            sub={
+              purchasing.businessDayPurchases === null
+                ? undefined
+                : plural(purchasing.businessDayPurchases, "purchase")
+            }
+          />
+          <Stat
+            label="Average purchase"
+            value={
+              purchasing.averagePurchase === null ? "—" : formatUsd(purchasing.averagePurchase)
+            }
+          />
+          <Stat
+            label="Spent today"
+            value={formatUsd(purchasing.todaySpent)}
+            sub={plural(purchasing.todayPurchases, "purchase")}
+          />
+          <Stat
+            label="All time"
+            value={formatUsd(purchasing.lifetimeSpent)}
+            sub={
+              purchasing.lastBusinessDaySpent === null
+                ? undefined
+                : `Last day ${formatUsd(purchasing.lastBusinessDaySpent)}`
+            }
+          />
+        </div>
+      </Panel>
+
+      {/* Most used */}
+      <Panel className="p-4">
+        <Eyebrow>🔥 Most used</Eyebrow>
+        {consumption.items.length > 0 ? (
+          <>
+            <div className="mt-1" data-testid="most-used">
+              {consumption.items.slice(0, TOP_ROWS).map((item) => (
+                <div
+                  key={item.id}
+                  data-ingredient={item.id}
+                  className="flex items-center justify-between gap-2 border-b border-walnut/10 py-1.5 font-ui text-[12px] last:border-b-0"
+                >
+                  <span className="min-w-0 truncate font-extrabold text-walnut-dark">
+                    {INGREDIENT_EMOJI[item.id]} {name(item.id)}
+                  </span>
+                  <span className="shrink-0 font-bold text-walnut/65">
+                    {qty(item.id, item.quantity)} · {plural(item.orders, "order")}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <p className="mt-1 font-hand text-[12px] text-walnut/55">
+              From your last {plural(consumption.orders, "paid order")}.
+            </p>
+          </>
+        ) : (
+          <p className="mt-1 font-hand text-[13px] text-walnut/60">
+            Nothing served yet — serve Business orders to see what your kitchen uses most.
+          </p>
+        )}
+      </Panel>
+
+      {/* Supplier today */}
+      <Panel tone="cream" className="p-3">
+        <div className="flex items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <Eyebrow>🚚 {event ? `Today · ${event.name}` : "Suppliers · quiet day"}</Eyebrow>
+            <p className="font-hand text-[13px] leading-snug text-walnut/65">
+              {event
+                ? supplierEventSummary(event, isContractActive(save.business.supplierContract, day))
+                : "Regular prices today."}
+            </p>
+          </div>
+          <MarketLink go={go} label="Shop Market →" />
+        </div>
+      </Panel>
     </div>
   );
 }

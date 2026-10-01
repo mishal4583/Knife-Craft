@@ -141,6 +141,10 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   Endless unlock (H), Progress/historical accounting (I, J) and the
   four-profile simulation table (K: Normal, Completionist, Aggressive
   Spender, Existing Save).
+- `inventory-market-qa` — the Market/Inventory split (checks 1–16: no buy
+  controls in Business, purchase maths, fridge, low stock, expiry,
+  purchasing/consumption analytics, supplier modifiers, contracts, funds,
+  fridge full, 57 ingredients, 48 dishes, Business-only recipe, old saves).
 - `campaign-integrity-qa`, `restaurant-progress-qa`, `business-ux-qa`,
   `progression-preview-qa`, `usd-currency-qa`, `phase7-2-smoke-test`,
   plus the other `scripts/*-qa.mts` / `business-*-qa.mts` suites.
@@ -252,9 +256,26 @@ with the real functions.
   (`BUSINESS_ONLY_RECIPES` in `campaignRecipes.ts`, found by
   `getCampaignRecipe`; kept out of `CAMPAIGN_RECIPES`, so the campaign stays
   frozen at 221 recipes with no butter). New "Dessert" category.
-- **Business → Ingredients tab** shows all 57. Each card shows the wallet
-  effect before the tap — "$1,332 → $1,327", from 25 units "You'll have $X
-  remaining", or "Not enough money — need $X more."
+- **Market = procurement, Business = monitoring.** Business stock is bought
+  ONLY in **Market → Ingredients** (`MarketIngredients.tsx`): all 57 in
+  category groups, today's supplier event, contract and Prep Cook pricing
+  through `purchaseQuote` (BusinessInventoryManager — the SAME verdict
+  `purchaseIngredient` makes, on top of `todaysUnitCost`). Each card shows
+  the wallet effect before the tap — "$1,332 → $1,327", from 25 units
+  "You'll have $X remaining", "Not enough money — need $X more.", or "Not
+  enough fridge space. You have N units of fridge space left."
+  **Business → Inventory** (`BusinessInventory.tsx`, tab id `inventory`,
+  route `business-inventory`) has NO purchase controls: fridge status,
+  On hand (freshness, days left, Used in), Low stock (threshold = today's
+  customer target × the active menu's need), Menu readiness + Most needed,
+  Expiring soon, Inventory analytics, Purchasing, Most used. All figures
+  come from `business/inventoryAnalytics.ts` over existing state; Most used
+  is derived from "business-revenue" ledger entries (dish id × its
+  requirements). The only purchase-related controls navigate to the Market
+  (`openMarketIngredients` in `kc/marketFocus.ts` → route
+  `shop-ingredients`, optionally preselecting an ingredient). The daily
+  accumulator's `inventoryPurchases` counts purchases (one per
+  "inventory-purchase" ledger entry; old saves migrate it as 0).
 - **Recurring caps** — Replay Bonus 20% of the paid reward, $10–$200,
   3/day; Endless $600/day; Today's Special $50/day.
 - **Wallet invariant** — `economy/wallet.ts`: credits are whole cents and
