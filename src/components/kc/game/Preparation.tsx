@@ -30,6 +30,7 @@ import { CutResultPanel } from "./CutResultPanel";
 import { KnifeReport } from "./KnifeReport";
 import { CookingClip } from "./CookingClip";
 import { dishKindFor } from "@/game/recipes/dishKind";
+import { taughtTechniques, COACH_TEXT, SWIPE_TIP } from "@/game/coaching";
 import { OrderComplete } from "./OrderComplete";
 import { ServiceOrderComplete } from "./ServiceOrderComplete";
 import { Panel, KButton, DustMotes } from "../common/primitives";
@@ -94,6 +95,7 @@ function withPeelNote(instruction: string, steps: readonly PreparationStep[]): s
 export function Preparation({
   level,
   service,
+  coachLevelId,
   onExit,
   onComplete,
   credits,
@@ -104,6 +106,8 @@ export function Preparation({
   onNextLevel,
 }: {
   level?: LevelDefinition;
+  /** The campaign level a service session plays (Level 1 runs as a customer order too) — decides which techniques it teaches (coaching.ts). Omitted for Restaurant Service / Business. */
+  coachLevelId?: string;
   /** Present only for a restaurant-service session (App.tsx's sessionMode === "service") — see ServiceManager.ts for the state machine behind it. */
   service?: {
     order: ServiceOrder;
@@ -212,6 +216,8 @@ export function Preparation({
   const [progressByAxis, setProgressByAxis] = useState({ h: 0, v: 0 });
   const [currentCutQuality, setCurrentCutQuality] = useState<QualityLabel | null>(null);
   const [showHint, setShowHint] = useState(true);
+  // The ghost demonstration is on the board (the scene says when) — show its how-to card.
+  const [coachVisible, setCoachVisible] = useState(false);
   const [paused, setPaused] = useState(false);
   const [result, setResult] = useState<CutResult | null>(null);
   const [rewardCoins, setRewardCoins] = useState(0);
@@ -223,7 +229,20 @@ export function Preparation({
   const playerPaths = useRef<CutPath[]>([]);
 
   useEffect(() => {
-    bridge.startPreparation({ steps, knife, board });
+    // Campaign levels teach their new techniques (coaching.ts); Restaurant
+    // Service and Business only get the demonstration when idle.
+    const campaignId = coachLevelId ?? level?.id;
+    bridge.startPreparation({
+      steps,
+      knife,
+      board,
+      teach: campaignId
+        ? taughtTechniques(
+            campaignId,
+            steps.map((s) => s.techniqueId),
+          )
+        : [],
+    });
 
     // Fallback only — if Phaser somehow never boots (no WebGL/canvas2d,
     // an uncaught error inside the scene, ...), gameReady() still fires
@@ -244,6 +263,9 @@ export function Preparation({
         // signal (§22) — not merely "the save file resolved".
         window.clearTimeout(readyFallback);
         markReady();
+      } else if (event.type === "COACH") {
+        setCoachVisible(event.payload.visible);
+        if (event.payload.visible) setShowHint(false);
       } else if (event.type === "CUT_STARTED") {
         setShowHint(false);
       } else if (event.type === "STEP_STARTED") {
@@ -412,7 +434,27 @@ export function Preparation({
 
       <GameViewport bridge={bridge} />
 
-      {showHint && phase === "prep" ? (
+      {coachVisible && phase === "prep" ? (
+        <div
+          className="pointer-events-none absolute inset-x-0 bottom-[6%] z-20 flex justify-center px-4"
+          data-testid="coach-card"
+        >
+          <div className="anim-pop w-full max-w-[400px] rounded-[18px] border border-gold/40 bg-walnut-dark/80 px-4 py-3 text-center shadow-lift backdrop-blur-[2px]">
+            <p className="font-ui text-[11px] font-extrabold uppercase tracking-[0.14em] text-gold">
+              {COACH_TEXT[activeTechnique.id].title}
+            </p>
+            <p className="mt-0.5 font-ui text-[15px] font-bold leading-snug text-ivory">
+              {COACH_TEXT[activeTechnique.id].how}
+            </p>
+            <p className="mt-1 font-hand text-[15px] leading-snug text-ivory/75">
+              {COACH_TEXT[activeTechnique.id].why}
+            </p>
+            {activeTechnique.interactionMode === "cut" ? (
+              <p className="mt-1 font-ui text-[11px] font-bold text-ivory/55">{SWIPE_TIP}</p>
+            ) : null}
+          </div>
+        </div>
+      ) : showHint && phase === "prep" ? (
         <div className="pointer-events-none absolute inset-x-0 bottom-[7%] z-20 flex flex-col items-center gap-2">
           <span className="font-hand text-[19px] text-ivory/90 drop-shadow-[0_2px_4px_rgba(62,40,25,0.6)]">
             {activeTechnique.interactionMode === "peel"

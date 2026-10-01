@@ -7,6 +7,8 @@ import {
 } from "../knives/knifeTiming";
 import { PauseManager } from "../PauseManager";
 import { withRequiredPeelSteps } from "../prepStepGuards";
+import { drawCoachGhost, COACH_CYCLE_MS, type CoachTarget } from "./coachGhost";
+import { COACH_FIRST_DELAY_MS, COACH_IDLE_MS, COACH_TAUGHT_IDLE_MS } from "../coaching";
 import { AudioManager } from "../AudioManager";
 import {
   ASSIST,
@@ -838,6 +840,18 @@ export class PreparationScene extends Phaser.Scene {
   private guideGfx!: Phaser.GameObjects.Graphics;
   private seamGfx!: Phaser.GameObjects.Graphics; // committed cut marks + live in-stroke seam preview
   private knifeGfx!: Phaser.GameObjects.Graphics;
+  // Beginner coaching (coaching.ts / coachGhost.ts): the ghost
+  // demonstration's own layer and state. `coachTeach` = the techniques the
+  // session teaches; a taught step demonstrates at once, every step after
+  // a pause without input. Never touches cut, peel or scoring state.
+  private coachGfx!: Phaser.GameObjects.Graphics;
+  private coachTeach = new Set<string>();
+  private coachStepT = 0;
+  private coachInputT = 0;
+  private coachTouched = false;
+  private coachVisible = false;
+  private coachCycleT = 0;
+  private coachTarget: CoachTarget | null = null;
   private plateGfx!: Phaser.GameObjects.Graphics;
   private handL!: Phaser.GameObjects.Graphics;
   private handR!: Phaser.GameObjects.Graphics;
@@ -993,6 +1007,7 @@ export class PreparationScene extends Phaser.Scene {
     this.guideGfx = this.add.graphics();
     this.seamGfx = this.add.graphics();
     this.knifeGfx = this.add.graphics();
+    this.coachGfx = this.add.graphics();
     this.plateGfx = this.add.graphics();
 
     // Chef's hands — drawn once in local space (see drawHandShape), then
@@ -1015,6 +1030,7 @@ export class PreparationScene extends Phaser.Scene {
     this.seamGfx.setDepth(16);
     this.plateGfx.setDepth(18);
     this.knifeGfx.setDepth(30);
+    this.coachGfx.setDepth(29);
     this.handL.setDepth(40);
     this.handR.setDepth(40);
 
@@ -1086,6 +1102,7 @@ export class PreparationScene extends Phaser.Scene {
     );
     this.knifeStats = config.knife;
     this.board = config.board;
+    this.coachTeach = new Set(config.teach ?? []);
     this.closedSegments = [];
     for (const img of this.platedPieceImages) this.destroyPieceImage(img);
     this.platedPieceImages = [];
@@ -1192,6 +1209,10 @@ export class PreparationScene extends Phaser.Scene {
       techniqueId: this.technique.id,
       requiredCuts: this.requiredCuts,
     });
+    this.coachStepT = this.time.now;
+    this.coachInputT = this.time.now;
+    this.coachTouched = false;
+    this.setCoachVisible(false);
   }
 
   /** A same-ingredient chain step (e.g. halve -> slice): pieces/cuts persist, only the technique's own guide slots and per-step input state reset. */
@@ -2902,6 +2923,9 @@ export class PreparationScene extends Phaser.Scene {
 
   private onPointerDown(pointer: Phaser.Input.Pointer): void {
     if (this.paused) return;
+    this.coachTouched = true;
+    this.coachInputT = this.time.now;
+    this.setCoachVisible(false);
     // Plating-skip (Phase 7): pendingRecipePayload is non-null for
     // EXACTLY the window between the last action of the session finishing
     // (finishRecipeNow) and the chef's hands leaving with the plate
@@ -2998,6 +3022,7 @@ export class PreparationScene extends Phaser.Scene {
   }
 
   private onPointerMove(pointer: Phaser.Input.Pointer): void {
+    if (pointer.isDown) this.coachInputT = this.time.now;
     if (this.paused) return;
     const mode = this.technique.interactionMode;
     if (mode === "peel") {
@@ -5466,6 +5491,194 @@ export class PreparationScene extends Phaser.Scene {
   override update(_time: number, _delta: number): void {
     if (this.paused) return;
     this.drawKnife();
+    this.updateCoach();
+  }
+
+  /** True while the current step can't take a demonstration: input in flight, the step already done, or the plate on its way. */
+  private coachBlocked(): boolean {
+    if (this.pendingRecipePayload || this.tapBusy || this.isDragging || this.peeling) return true;
+    if (this.cutBlockedUntilPeeled()) return true;
+    const mode = this.technique.interactionMode;
+    if (mode === "peel") return this.peeled;
+    if (mode === "smash") return this.smashBusy;
+    if (mode === "ring") return this.ringBusy || this.ringTapsDone >= this.requiredCuts;
+    return this.cuts.length - this.stepCutsAtStart >= this.requiredCuts;
+  }
+
+  private setCoachVisible(visible: boolean): void {
+    if (!visible) this.coachGfx?.clear();
+    if (visible === this.coachVisible) return;
+    this.coachVisible = visible;
+    if (visible) {
+      this.coachCycleT = this.time.now;
+      this.coachTarget = this.coachTargetNow();
+    }
+    this.bus.emit(EVT.COACH, { visible, techniqueId: this.technique.id });
+  }
+
+  /** Shows/advances/hides the ghost demonstration — see coaching.ts for when. */
+  private updateCoach(): void {
+    const now = this.time.now;
+    const taught = this.coachTeach.has(this.technique.id);
+    const due =
+      taught && !this.coachTouched
+        ? now - this.coachStepT >= COACH_FIRST_DELAY_MS
+        : now - this.coachInputT >= (taught ? COACH_TAUGHT_IDLE_MS : COACH_IDLE_MS);
+    if (!due || this.coachBlocked()) {
+      this.setCoachVisible(false);
+      return;
+    }
+    this.setCoachVisible(true);
+    let t = now - this.coachCycleT;
+    if (t >= COACH_CYCLE_MS) {
+      // A new loop: re-aim at whatever is next now.
+      this.coachCycleT = now - (t % COACH_CYCLE_MS);
+      t = now - this.coachCycleT;
+      this.coachTarget = this.coachTargetNow();
+    }
+    if (!this.coachTarget) {
+      this.coachGfx.clear();
+      return;
+    }
+    drawCoachGhost(this.coachGfx, this.coachTarget, t, this.scale.width);
+  }
+
+  /**
+   * Where the demonstration points: the cut a tap would make next (the same
+   * axis, slot and position rules resolveTapCut uses), the skin still left
+   * to peel, the middle to smash, or the next ring. Read-only.
+   */
+  private coachTargetNow(): CoachTarget | null {
+    const mode = this.technique.interactionMode;
+    const cx = this.ingCx;
+    const cy = this.ingCy;
+    if (mode === "smash") return { kind: "press", x: cx, y: cy };
+    if (mode === "ring") {
+      const frac = Math.max(1 / RINGS.RING_COUNT, this.ringRadiusFrac - 1 / RINGS.RING_COUNT);
+      return {
+        kind: "press",
+        x: cx,
+        y: cy,
+        ring: { cx, cy, rx: this.ingRx * frac, ry: this.ingRy * frac },
+      };
+    }
+    if (mode === "peel") {
+      // The grid row with the most skin left; sweep across its inside cells.
+      const cols = this.peelGridCols;
+      const rows = this.peelGridRows;
+      let bestRow = -1;
+      let bestLeft = 0;
+      for (let gy = 0; gy < rows; gy++) {
+        let left = 0;
+        for (let gx = 0; gx < cols; gx++) {
+          const i = gy * cols + gx;
+          if (this.peelGridInside[i] && !this.peelGrid[i]) left++;
+        }
+        if (left > bestLeft) {
+          bestLeft = left;
+          bestRow = gy;
+        }
+      }
+      const { hw, hh } = this.peelHalfExtents();
+      if (bestRow < 0) {
+        return {
+          kind: "drag",
+          x0: cx - hw * 0.6,
+          y0: cy,
+          x1: cx + hw * 0.6,
+          y1: cy,
+          width: hh * 0.4,
+        };
+      }
+      let lo = cols;
+      let hi = -1;
+      for (let gx = 0; gx < cols; gx++) {
+        if (this.peelGridInside[bestRow * cols + gx]) {
+          lo = Math.min(lo, gx);
+          hi = Math.max(hi, gx);
+        }
+      }
+      const u = (gx: number) => ((gx + 0.5) / cols) * 2 - 1;
+      const y = cy + (((bestRow + 0.5) / rows) * 2 - 1) * hh;
+      return {
+        kind: "drag",
+        x0: cx + u(lo) * hw,
+        y0: y,
+        x1: cx + u(hi) * hw,
+        y1: y,
+        width: Math.max(14, hh * 0.4),
+      };
+    }
+
+    // Cutting.
+    let cut: { axis: Axis; c: number; slope: number } | null = null;
+    if (this.technique.radialSnap) {
+      const n = requiredCutsFor(this.technique);
+      const fold = (deg: number) => ((deg % 180) + 180) % 180;
+      const used = new Array<boolean>(n).fill(false);
+      for (const k of this.cuts) {
+        const a = fold(lineAngleDeg(k.axis, k.slope));
+        let best = 0;
+        let bestGap = Infinity;
+        for (let i = 0; i < n; i++) {
+          const d = Math.abs(a - (180 * i) / n);
+          const g = Math.min(d, 180 - d);
+          if (g < bestGap) {
+            bestGap = g;
+            best = i;
+          }
+        }
+        used[best] = true;
+      }
+      const pick = used.findIndex((u) => !u);
+      if (pick < 0) return null;
+      const rad = (((180 * pick) / n) * Math.PI) / 180;
+      cut =
+        Math.abs(Math.cos(rad)) >= Math.abs(Math.sin(rad))
+          ? { axis: "h", c: cy, slope: Math.tan(rad) }
+          : { axis: "v", c: cx, slope: Math.cos(rad) / Math.sin(rad) };
+    } else {
+      const axis = liveAxis(this.tapDefaultAxis(), this.technique.counts, this.cuts);
+      const slope = this.cuts.length ? this.guideSlope[axis] : 0;
+      const band = this.bandFor(axis);
+      const positions = this.guides[axis].length
+        ? this.guides[axis]
+        : idealPositions(band.lo, band.hi, requiredCutsFor(this.technique));
+      if (this.technique.continuousTap) {
+        const existing = this.cuts.filter((k) => k.axis === axis).map((k) => k.c);
+        const minGap = (band.hi - band.lo) * TAP_KNIFE.MIN_GAP_FRAC;
+        const aim = positions.find((p) => existing.every((e) => Math.abs(e - p) > minGap));
+        const c =
+          aim === undefined
+            ? null
+            : resolveContinuousPosition(
+                band,
+                existing,
+                aim,
+                TAP_KNIFE.MIN_EDGE_FRAC,
+                TAP_KNIFE.MIN_GAP_FRAC,
+              );
+        if (c == null) return null;
+        cut = { axis, c, slope };
+      } else {
+        const used = this.usedGuide[axis] ?? [];
+        const idx = positions.findIndex((_, i) => !used[i]);
+        if (idx < 0) return null;
+        cut = { axis, c: positions[idx]!, slope };
+      }
+    }
+    const sp = visibleSeamSpanFor(cut, this.silhouette);
+    // Radial: tap partway out along the spoke (a dead-centre tap has no direction).
+    const f = this.technique.radialSnap ? 0.78 : 0.5;
+    return {
+      kind: "cut",
+      x0: sp.x0,
+      y0: sp.y0,
+      x1: sp.x1,
+      y1: sp.y1,
+      tx: sp.x0 + (sp.x1 - sp.x0) * f,
+      ty: sp.y0 + (sp.y1 - sp.y0) * f,
+    };
   }
 
   /** Ported from knifecraft.html drawKnifeBody/drawKnife: a curved blade + walnut handle, edge riding the seam. */

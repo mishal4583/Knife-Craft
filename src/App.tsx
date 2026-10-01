@@ -1798,6 +1798,7 @@ export function App() {
             // Preparation's internal phase/step state always starts fresh
             // for the new customer.
             key={currentServiceOrder.order.id}
+            {...(isCampaignService || isBatchGroup ? { coachLevelId: activeLevel.id } : {})}
             service={{
               order: currentServiceOrder,
               onServe: isCampaignService

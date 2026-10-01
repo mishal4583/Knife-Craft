@@ -18,7 +18,7 @@
  *   chutney, minestrone, velouté, soup, French onion, dal, stew), or the
  *   Business dish is a Curry.
  * - Cooked: a Protein ingredient (chicken, steak, salmon), a cooking word
- *   in the dish's or recipe's name (curry, masala, stir-fry, wok, sauté,
+ *   in the dish's or recipe's name (stir-fry, wok, sauté,
  *   rings, gratin, bread, toast, bruschetta, …), or the Business dish is a
  *   Stir-Fry or Entree.
  * - Plated: everything else.

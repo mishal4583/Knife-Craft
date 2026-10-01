@@ -141,6 +141,10 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   Endless unlock (H), Progress/historical accounting (I, J) and the
   four-profile simulation table (K: Normal, Completionist, Aggressive
   Spender, Existing Save).
+- `coaching-qa` — beginner coaching: every technique has a how-to card,
+  Levels 1–5 teach everything, each technique is taught where it is
+  introduced (and at most twice after Level 5), timing, and the ghost never
+  touches cut/peel/score state.
 - `inventory-market-qa` — the Market/Inventory split (checks 1–16: no buy
   controls in Business, purchase maths, fridge, low stock, expiry,
   purchasing/consumption analytics, supplier modifiers, contracts, funds,
@@ -365,6 +369,33 @@ not silently removed.
   `delogo` (`x=562:y=1122:w=76:h=76`, then scale 540:960; H.264 crf 27 /
   VP9 crf 38), and the SKIP › pill sits over that spot. Source uploads:
   `gemini_generated_video_aa3f242a - Trim.mp4`, `Salads.mp4`, `Fruit cups.mp4`, `Plating.mp4`, `Curry.mp4` (on `main`).
+
+- **Beginner coaching** (`src/game/coaching.ts`) — a ghost demonstration
+  on the board plus a how-to card. PreparationScene draws it
+  (`scenes/coachGhost.ts`, its own Graphics layer at depth 29) exactly where
+  the next tap would really cut, using the same axis, slot and position rules
+  as `resolveTapCut`:
+  - cutting: the line glows, a see-through knife comes down onto it, and a
+    fingertip taps it with a ripple;
+  - Peel: a fingertip sweeps across the skin that's left (the peel grid row
+    with the most skin);
+  - Smash: a press with a ripple;
+  - Rings: a tap plus the next ring glowing.
+  The scene emits `EVT.COACH` → GameBridge `COACH` → Preparation shows
+  `COACH_TEXT[technique]` (title, how, why, plus a swipe tip on cutting
+  steps). The card is `pointer-events-none`.
+  - **Taught** steps (demonstrated 0.7 s after the step starts, then after
+    4 s idle): every step of Levels 1–5, and each technique in the first two
+    campaign levels that use it. That counts the level's steps, its order
+    pool and inserted peels, so e.g. dice 6/10, smash 9/11, rings 16/20,
+    julienne 21/22, radial 23/24, rock-mince 34/36 and chiffonade 35/37.
+  - Every other step, including Restaurant Service and Business: only after
+    8 s without input.
+  - Campaign service sessions pass `coachLevelId`; every campaign level,
+    Level 1 included, runs as a service order.
+  - It reads cut and peel state only and never commits, consumes a guide
+    slot or affects scoring (`coaching-qa` F).
+  - No save state: coaching is derived from the level.
 
 ---
 

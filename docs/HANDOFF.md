@@ -117,6 +117,12 @@ conversation.
    side view dropped). e2e: `cookingclip.mjs` 8a–8c (the stove check
    moved to Level 36, since Level 58 is now a curry). Possible later: a
    bread/bruschetta film (9 recipes still on the stove film).
+19. Beginner coaching (CLAUDE.md §9): a ghost demonstration on the board
+   shows exactly where and how to cut/peel/smash/ring, with a how-to card
+   (what to do + why). Taught in Levels 1–5 and wherever a technique is
+   new; otherwise only when the player is idle 8 s. QA: `coaching-qa`;
+   e2e: `tools/e2e/coach.mjs` (finds the ghost fingertip in a screenshot,
+   taps there and checks a real cut lands). Bread film still to come.
 
 ## 4. Open issues from the Level 1–10 audit (not fixed yet)
 

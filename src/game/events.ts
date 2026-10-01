@@ -38,6 +38,7 @@ export const EVT = {
   CHEF_TAKE_COMPLETED: "evt:chefTakeCompleted",
   RECIPE_COMPLETED: "evt:recipeCompleted",
   SCENE_READY: "evt:sceneReady",
+  COACH: "evt:coach",
 } as const;
 
 /**
@@ -78,7 +79,12 @@ export type StartPreparationConfig = {
   steps: PrepStep[];
   knife: KnifeDefinition;
   board: BoardDefinition;
+  /** Techniques whose steps are TAUGHT with the ghost demonstration (coaching.ts). Every other step only demonstrates after a longer pause without input. */
+  teach?: TechniqueId[];
 };
+
+/** Scene -> Bridge -> React: the ghost demonstration appeared/disappeared, so the HUD's how-to card shows with it. */
+export type CoachPayload = { visible: boolean; techniqueId: TechniqueId };
 
 /** Scene -> Bridge -> React: which step is now active, so the HUD can show the right ingredient/technique/progress without the whole session being one fixed pair (§ "step-aware HUD"). */
 export type StepStartedPayload = {
