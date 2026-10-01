@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import type { ScreenId } from "./data";
 import { BottomNav } from "./Kitchen";
 import { KnifeGlyph } from "./Workshop";
@@ -27,9 +27,10 @@ import { STAFF_CATALOG } from "@/game/economy/staffDefinitions";
 import { getStaffPurchaseState, type BuyStaffResult } from "@/game/economy/StaffManager";
 import { SUPPLIER_CATALOG } from "@/game/economy/supplierDefinitions";
 import { getSelectedSupplierId } from "@/game/economy/SupplierManager";
-import { getSupplierModifier } from "@/game/economy/supplier";
-import { ingredientBaselineCost } from "@/game/economy/ingredientCostRegistry";
-import { dollars, formatUsd, formatUsdChange } from "@/game/money";
+import { formatUsd, formatUsdChange } from "@/game/money";
+import type { PurchaseIngredientResult } from "@/game/business/BusinessInventoryManager";
+import { MarketIngredients } from "./MarketIngredients";
+import { peekMarketFocus, clearMarketFocus } from "./marketFocus";
 import { ledgerTotals, LEDGER_CATEGORY_LABEL } from "@/game/economy/EconomyLedger";
 import { notEnoughMoneyText } from "@/game/economy/wallet";
 import {
@@ -86,7 +87,8 @@ function artFor(...names: string[]): string | undefined {
 const HEADER_ART = artFor("market-header");
 const BLACKSMITH_ART = artFor("blacksmith", "blacksmith-market");
 
-type ShopCategory = "knives" | "boards" | "staff" | "suppliers" | "ingredients" | "blacksmith";
+export type ShopCategory =
+  "knives" | "boards" | "staff" | "suppliers" | "ingredients" | "blacksmith";
 
 const categories: Array<{ id: ShopCategory; label: string; emoji: string }> = [
   { id: "knives", label: "Knives", emoji: "🔪" },
@@ -113,7 +115,7 @@ const categoryCopy: Record<ShopCategory, { title: string; description: string }>
   },
   ingredients: {
     title: "Fresh Ingredients",
-    description: "What your supplier charges for each ingredient you cook with.",
+    description: "Stock your restaurant fridge at today's supplier prices.",
   },
   blacksmith: { title: "Blacksmith", description: "Forge your knife. Cut faster. Cut better." },
 };
@@ -156,6 +158,8 @@ export function Shop({
   equipBoard,
   sharpenKnife,
   upgradeKnife,
+  purchaseIngredient,
+  initialCategory = "knives",
 }: {
   go: (s: ScreenId) => void;
   save: SaveData;
@@ -167,9 +171,19 @@ export function Shop({
   equipBoard: (id: string) => void;
   sharpenKnife: (id: string) => SharpenKnifeResult;
   upgradeKnife: (id: string, stat: BlacksmithStat) => UpgradeKnifeResult;
+  /** Business stock — the Ingredients tab is where it is bought (MarketIngredients). */
+  purchaseIngredient: (ingredientId: string, quantity: number) => PurchaseIngredientResult;
+  /** "shop-ingredients" opens the Market on Ingredients (Business → Market links). */
+  initialCategory?: ShopCategory;
 }) {
-  const [category, setCategory] = useState<ShopCategory>("knives");
-  const [notice, setNotice] = useState("Welcome back, Chef. What can I get for you?");
+  const [category, setCategory] = useState<ShopCategory>(initialCategory);
+  const [notice, setNotice] = useState(
+    initialCategory === "knives"
+      ? "Welcome back, Chef. What can I get for you?"
+      : categoryCopy[initialCategory].description,
+  );
+  const [focusId] = useState(peekMarketFocus);
+  useEffect(clearMarketFocus, []);
 
   function selectCategory(next: ShopCategory) {
     setCategory(next);
@@ -396,7 +410,12 @@ export function Shop({
           </SectionTitle>
 
           {category === "ingredients" ? (
-            <IngredientPrices save={save} go={go} />
+            <MarketIngredients
+              save={save}
+              purchaseIngredient={purchaseIngredient}
+              focusId={focusId}
+              setNotice={setNotice}
+            />
           ) : category === "blacksmith" ? (
             <Blacksmith
               save={save}
@@ -491,63 +510,6 @@ function ProductCard({ card }: { card: Card }) {
         )}
       </div>
     </article>
-  );
-}
-
-/**
- * Campaign has no ingredient purchasing: each recipe's ingredients are paid
- * automatically at settlement (EconomySettlement — baseline cost, scaled by
- * chapter, adjusted by the chosen supplier). This tab shows those real
- * baseline prices; stock you BUY and keep lives in Business Mode's pantry.
- */
-function IngredientPrices({ save, go }: { save: SaveData; go: (s: ScreenId) => void }) {
-  const supplierId = getSelectedSupplierId(save);
-  const modifier = getSupplierModifier(supplierId);
-  const supplier = SUPPLIER_CATALOG.find((s) => s.id === supplierId);
-  const ids = Object.keys(INGREDIENTS) as IngredientId[];
-  return (
-    <Panel className="p-4">
-      <p className="font-hand text-[15px] leading-snug text-walnut/75">
-        In the kitchen, ingredients are paid for automatically as you cook each recipe. These are{" "}
-        <strong className="text-walnut-dark">{supplier?.name ?? "your supplier"}</strong>'s base
-        prices per ingredient
-        {modifier === 0
-          ? ""
-          : ` (${modifier > 0 ? "+" : ""}${Math.round(modifier * 100)}% vs standard)`}
-        ; later chapters scale them up. Stocking a restaurant pantry happens in Business Mode.
-      </p>
-      <Divider />
-      <div>
-        {ids.map((id) => {
-          const def = INGREDIENTS[id];
-          const cost = dollars(ingredientBaselineCost(id) * (1 + modifier));
-          return (
-            <div
-              className="ingredient-card flex items-center gap-3 border-b border-walnut/10 py-2 last:border-b-0"
-              key={id}
-            >
-              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-cream/80 text-[20px]">
-                {INGREDIENT_EMOJI[id] ?? "🥕"}
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block font-ui text-[13px] font-extrabold text-walnut-dark">
-                  {def.name}
-                </span>
-                <span className="block font-hand text-[13px] capitalize text-walnut/60">
-                  {def.category}
-                </span>
-              </span>
-              <span className="font-ui text-[13px] font-extrabold text-walnut-dark">
-                {formatUsd(cost)}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-      <KButton full variant="ghost" className="mt-3" onClick={() => go("business-inventory")}>
-        🧺 Stock the restaurant pantry (Business Mode)
-      </KButton>
-    </Panel>
   );
 }
 

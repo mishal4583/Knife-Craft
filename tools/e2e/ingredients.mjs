@@ -1,12 +1,15 @@
-// Business → Ingredients in the built game:
-//   1. all 57 ingredients are listed — every one is used by a Business dish (Butter included, on
-//      the Ribeye with Herb Butter); nothing is hidden or marked "No dish";
+// Ingredients in the built game — Market buys, Business monitors:
+//   0. Business → Inventory has no purchase controls (empty state: "Go to Market →");
+//   1. Market → Ingredients lists all 57 ingredients (nothing hidden, no "No dish"); Business →
+//      Inventory's "Go to Market →" opens it;
 //   2. prices are per ingredient (potato $0.60, tomato $1.00, asparagus $2.60, salmon $6.50);
 //   3. every card shows what the purchase does to the wallet: "$1,332 → $1,327" for 5 lb,
 //      "You'll have $1,307 remaining" from 25 lb, and "Not enough money — need $X more." when short;
-//   4. buying moves the wallet by exactly the card's total (one ledger entry);
+//   4. buying moves the wallet by exactly the card's total (one ledger entry), and Business →
+//      Inventory shows the stock straight away; a "Most needed" chip deep-links to its card;
+//   4f. a full fridge: "Not enough fridge space. You have N units of fridge space left.";
 //   5. the Butter dish (Ribeye with Herb Butter) cooks end to end: order → cut → Knife Report →
-//      served, paid, and its butter taken from stock.
+//      served, paid, and its butter taken from stock; Most used then lists butter.
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import {
   launch,
@@ -42,12 +45,26 @@ const cards = () =>
       ]),
     ),
   );
-async function openIngredients() {
+async function openInventory() {
   await clickButton(page, /Business$/);
+  await sleep(600);
+  await clickButton(page, /Inventory$/);
+  await sleep(600);
+}
+async function openIngredients() {
+  await clickButton(page, /Market$/);
   await sleep(600);
   await clickButton(page, /Ingredients$/);
   await sleep(600);
 }
+const buyButtons = () =>
+  page.evaluate(
+    () =>
+      [...document.querySelectorAll("button")].filter((b) =>
+        /^Buy \d|Increase quantity/.test(b.textContent.trim() + (b.getAttribute("aria-label") ?? "")),
+      ).length,
+  );
+const flat = async () => (await text(page)).replace(/\s+/g, " ");
 /** Clicks a card's + button `n` times. */
 async function plus(name, n) {
   for (let i = 0; i < n; i++) {
@@ -58,13 +75,33 @@ async function plus(name, n) {
   }
 }
 
-// ---------- 1 + 2 + 3 ----------
+// ---------- 0 + 1: Business monitors, Market buys ----------
 await boot(page, businessSave(133_200)); // $1,332.00
-await openIngredients();
+await openInventory();
+let t = await flat();
+check(
+  "0a Business → Inventory: no buy controls, empty-fridge text and Go to Market",
+  (await buyButtons()) === 0 &&
+    /Track your stock, freshness and restaurant supply needs\./.test(t) &&
+    /Your fridge is empty\. Buy ingredients from the Market/.test(t) &&
+    /Go to Market →/.test(t) &&
+    /Inventory analytics/i.test(t) &&
+    /Purchasing/i.test(t) &&
+    /Most used/i.test(t),
+  t.slice(0, 300),
+);
+await shot(page, "ingredients-0-inventory-empty");
+await clickButton(page, /^Go to Market →$/);
+await sleep(700);
+t = await flat();
+check(
+  "0b Go to Market → opens the Market on Fresh Ingredients",
+  /Fresh Ingredients/.test(t) && (await page.evaluate(() => document.querySelectorAll("article.product-card").length)) === 57,
+);
 let c = await cards();
 const names = Object.keys(c);
 check(
-  "1a all 57 ingredients are listed (every one is on a Business menu), none hidden",
+  "1a all 57 ingredients are listed in Market → Ingredients, none hidden",
   names.length === 57 &&
     names.includes("Butter") &&
     names.includes("Ribeye Steak") &&
@@ -73,9 +110,9 @@ check(
   names.length,
 );
 check(
-  "1b menu dishes use them: with the full menu on, Butter and Watermelon carry the Menu badge",
-  /MENU|Menu/.test(c["Butter"]) && /MENU|Menu/.test(c["Watermelon"]),
-  { butter: c["Butter"]?.slice(0, 60) },
+  "1b cards say how many menu dishes use them (Butter: 1 menu dish)",
+  /1 menu dish\b/.test(c["Butter"]) && /menu dish/.test(c["Watermelon"]),
+  { butter: c["Butter"]?.slice(0, 80) },
 );
 check(
   "2a prices are per ingredient",
@@ -118,6 +155,31 @@ check(
     added[0].amount === -2_500,
   { before: before.credits, after: after.credits, added },
 );
+await openInventory();
+t = await flat();
+check(
+  "4b Business → Inventory shows it at once: Tomato 25 lb · $25.00, fridge 25 / 40, purchasing $25.00",
+  /Tomato 25 lb · \$25\.00/.test(t) && /25 \/ 40/.test(t) && /This Business Day \$25\.00 1 purchase/i.test(t),
+  t.slice(0, 600),
+);
+await shot(page, "ingredients-4-inventory");
+// Most needed → deep link to that ingredient's Market card.
+const chip = await page.evaluate(() => {
+  const b = document.querySelector('[data-testid="most-needed"] button');
+  b?.click();
+  return b?.getAttribute("data-ingredient");
+});
+await sleep(800);
+const focused = await page.evaluate(() => {
+  const a = document.querySelector("article.product-card.ring-2");
+  const r = a?.getBoundingClientRect();
+  return a ? { id: a.getAttribute("data-ingredient"), visible: r.top >= 0 && r.bottom <= innerHeight } : null;
+});
+check(
+  "4c a Most needed chip opens the Market on that ingredient's card, in view",
+  !!chip && focused?.id === chip && focused.visible,
+  { chip, focused },
+);
 
 // ---------- 3c: not enough money ----------
 await boot(page, businessSave(300)); // $3.00
@@ -141,6 +203,35 @@ check(
   JSON.stringify(await readSave(page)) === JSON.stringify(poor),
 );
 await shot(page, "ingredients-3-short");
+
+// ---------- 4f: fridge full ----------
+await boot(
+  page,
+  seedSave({
+    version: 2,
+    credits: 50_000,
+    business: {
+      calendar: { businessDay: DAY },
+      inventory: { onion: { ingredientId: "onion", quantity: 38, unitCost: 100, purchaseDay: DAY } },
+    },
+  }),
+);
+await openIngredients();
+c = await cards();
+check(
+  "4f fridge full: the card says so and how much space is left",
+  /Not enough fridge space\. You have 2 units of fridge space left\./.test(c["Tomato"]),
+  c["Tomato"],
+);
+const full = await readSave(page);
+await page.evaluate(() => {
+  const card = [...document.querySelectorAll("article.product-card")].find(
+    (a) => a.querySelector("p")?.textContent?.trim() === "Tomato",
+  );
+  [...card.querySelectorAll("button")].find((b) => /^Buy /.test(b.textContent.trim()))?.click();
+});
+await sleep(500);
+check("4g pressing Buy anyway changes nothing", JSON.stringify(await readSave(page)) === JSON.stringify(full));
 
 // ---------- 5: the Butter dish, cooked for real ----------
 // Every Business dish id (businessDishCatalog.ts); all but the butter dish go off the menu.
@@ -248,6 +339,12 @@ check(
     (served.business.inventory.butter?.quantity ?? 0) < 5,
   { paid, butter: served.business.inventory.butter?.quantity },
 );
+
+await clickButton(page, /^Back to Service$/);
+await sleep(600);
+await openInventory();
+t = await flat();
+check("5d Most used lists butter from the served order", /Most used.{0,200}Butter/i.test(t), t.match(/Most used.{0,200}/i)?.[0] ?? t.slice(0, 200));
 
 check("console has no errors", logs.filter((l) => /^error|pageerror/i.test(l)).length === 0, logs);
 save("ingredients-result.json", results);

@@ -47,6 +47,10 @@ export type ScreenId =
   | "daily"
   | "endless"
   | "shop"
+  // The Market opened on its Ingredients tab (Business → "Go to Market" /
+  // "Buy in Market →", see marketFocus.ts). Same Shop screen, different
+  // starting category.
+  | "shop-ingredients"
   | "rack"
   | "settings"
   // Economy V3 Phase 1 — the Business Simulation layer's own entry point.

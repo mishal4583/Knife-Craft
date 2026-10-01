@@ -778,6 +778,7 @@ export function App() {
       recordInventoryPurchase(
         recorded,
         lines.reduce((sum, line) => sum + line.totalCost, 0),
+        lines.length,
       ),
     );
   }

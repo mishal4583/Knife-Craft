@@ -256,6 +256,17 @@ check(
 check("3e the order unblocks", /Everything's in stock/.test(t));
 await shot(page, "rush-4-after-ad");
 
+// ---------- Go to Market → the Market's Ingredients tab (buying lives there) ----------
+await boot(page, blockedSave(50000));
+await openBlockedOrder();
+await clickButton(page, /^Go to Market →$/);
+await sleep(700);
+check(
+  "9a Go to Market → opens Market → Fresh Ingredients with all 57 cards",
+  /Fresh Ingredients/.test(await flat(page)) &&
+    (await page.evaluate(() => document.querySelectorAll("article.product-card").length)) === 57,
+);
+
 check("console has no errors", logs.filter((l) => /^error|pageerror/i.test(l)).length === 0, logs);
 save("rushrestock-result.json", results);
 await browser.close();

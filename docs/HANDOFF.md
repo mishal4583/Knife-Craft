@@ -87,6 +87,15 @@ conversation.
    player's game_ready fires ~0.6 s after load locally, ~5 s on a slow
    mobile connection — the next lever for the 11.6% who never reach it is
    the first-load size (P2).
+14. Business Ingredients + Market rework: buying moved to Market →
+   Ingredients (`MarketIngredients.tsx`, `purchaseQuote`); Business →
+   Ingredients became Business → Inventory, a read-only dashboard (fridge,
+   on hand, low stock, readiness + most needed, expiring soon, analytics,
+   purchasing, most used — `inventoryAnalytics.ts`) whose only purchase
+   controls link to the Market (deep link `shop-ingredients`, ingredient
+   preselected). Rush Restock's "Go to Market" and the "No Dish Can Be Made"
+   alert now open the Market. QA: `inventory-market-qa`, business-ux-qa
+   S4–S6/S8; e2e: `ingredients.mjs` (rewritten), `rushrestock.mjs` 9a.
 
 ## 4. Open issues from the Level 1–10 audit (not fixed yet)
 

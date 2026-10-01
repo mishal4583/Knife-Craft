@@ -14,7 +14,7 @@ import type { IngredientId } from "../definitions";
 import { INGREDIENTS } from "../definitions";
 import { businessUnitCostFor } from "./businessPricing";
 import { addStock, normalizeQuantity } from "./businessInventory";
-import { canStoreQuantity } from "./RefrigeratorManager";
+import { canStoreQuantity, getAvailableStorageCapacity } from "./RefrigeratorManager";
 import { effectiveUnitCost } from "./businessSupplierContract";
 import {
   eventForDay,
@@ -79,6 +79,54 @@ export function todaysUnitCost(
   return staffUnitCostDiscount(contractCost, save.business.staff.hiredRoles);
 }
 
+export type PurchaseQuote = {
+  /** Today's unit price at this quantity (todaysUnitCost); for a quantity over today's shortage cap, the price the cap itself would pay — shown, never charged. */
+  unitCost: number;
+  totalCost: number;
+  /** What `purchaseIngredient` would answer right now — the SAME checks, in the same order (shortage cap -> wallet -> fridge space). */
+  verdict: "ok" | "exceedsShortageLimit" | "insufficientFunds" | "insufficientStorage";
+  /** Today's single-purchase cap (Temporary Shortage), or undefined. */
+  maxQuantity: number | undefined;
+  /** `save.credits - totalCost` — negative when the wallet is short. */
+  remainingCredits: number;
+  /** Fridge units free right now (RefrigeratorManager). */
+  availableStorage: number;
+};
+
+/**
+ * The Market's purchase preview for `quantity` of `ingredientId` — the ONE
+ * decision `purchaseIngredient` below also makes, so what a card promises
+ * before the tap is exactly what the tap does. Read-only.
+ */
+export function purchaseQuote(
+  save: SaveData,
+  ingredientId: IngredientId,
+  quantity: number,
+): PurchaseQuote {
+  const maxQuantity = maxPurchaseQuantityFor(eventForDay(save.business.calendar.businessDay));
+  const capped = todaysUnitCost(save, ingredientId, quantity);
+  const unitCost =
+    capped ?? todaysUnitCost(save, ingredientId, Math.min(quantity, maxQuantity ?? quantity)) ?? 0;
+  const totalCost = quantity * unitCost;
+  const refrigeratorId = save.business.refrigerator.refrigeratorId;
+  const verdict: PurchaseQuote["verdict"] =
+    capped === null
+      ? "exceedsShortageLimit"
+      : save.credits < totalCost
+        ? "insufficientFunds"
+        : !canStoreQuantity(save.business.inventory, refrigeratorId, quantity)
+          ? "insufficientStorage"
+          : "ok";
+  return {
+    unitCost,
+    totalCost,
+    verdict,
+    maxQuantity,
+    remainingCredits: save.credits - totalCost,
+    availableStorage: getAvailableStorageCapacity(save.business.inventory, refrigeratorId),
+  };
+}
+
 /**
  * Atomic (brief: "Atomically deduct wallet credits... Add inventory"):
  * either credits drop by exactly `quantity * businessUnitCostFor(id)`
@@ -122,15 +170,9 @@ export function purchaseIngredient(
 ): PurchaseIngredientResult {
   if (!isKnownIngredient(ingredientId)) return { ok: false, reason: "unknownIngredient" };
   if (!Number.isInteger(quantity) || quantity <= 0) return { ok: false, reason: "invalidQuantity" };
-  const unitCost = todaysUnitCost(save, ingredientId, quantity);
-  if (unitCost === null) return { ok: false, reason: "exceedsShortageLimit" };
-  const totalCost = quantity * unitCost;
-  if (save.credits < totalCost) return { ok: false, reason: "insufficientFunds" };
-  if (
-    !canStoreQuantity(save.business.inventory, save.business.refrigerator.refrigeratorId, quantity)
-  ) {
-    return { ok: false, reason: "insufficientStorage" };
-  }
+  const quote = purchaseQuote(save, ingredientId, quantity);
+  if (quote.verdict !== "ok") return { ok: false, reason: quote.verdict };
+  const { unitCost, totalCost } = quote;
   const inventory = addStock(
     save.business.inventory,
     ingredientId,

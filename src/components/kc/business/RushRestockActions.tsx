@@ -10,6 +10,7 @@ import {
   type RushRestockPayment,
 } from "@/game/business/businessRushRestock";
 import { rushRestockPlan } from "@/game/business/BusinessInventoryManager";
+import { openMarketIngredients } from "../marketFocus";
 
 /**
  * Rush Restock buttons for a blocked order — shown wherever a blocked
@@ -35,7 +36,7 @@ export function RushRestockActions({
   const [message, setMessage] = useState<string | null>(null);
   const planned = rushRestockPlan(save, dish);
   const market = (
-    <KButton full variant="ghost" onClick={() => go("business-inventory")}>
+    <KButton full variant="ghost" onClick={() => openMarketIngredients(go)}>
       Go to Market →
     </KButton>
   );

@@ -132,8 +132,11 @@ export function ScreensRouter({
     <>
       {screen === "kitchen" ? <Kitchen go={go} save={save} onSelectLevel={onSelectLevel} /> : null}
       {screen === "board" ? <OrderBoard go={go} save={save} onSelectLevel={onSelectLevel} /> : null}
-      {screen === "shop" ? (
+      {screen === "shop" || screen === "shop-ingredients" ? (
         <Shop
+          key={screen}
+          initialCategory={screen === "shop-ingredients" ? "ingredients" : "knives"}
+          purchaseIngredient={purchaseIngredient}
           go={go}
           save={save}
           buyKnife={buyKnife}
@@ -181,7 +184,6 @@ export function ScreensRouter({
           tab={businessTabForScreen(screen)!}
           onAdvanceDay={advanceBusinessDay}
           businessServiceSession={businessServiceSession}
-          purchaseIngredient={purchaseIngredient}
           purchaseRefrigerator={purchaseRefrigerator}
           performRefrigeratorMaintenance={performRefrigeratorMaintenance}
           rushRestock={rushRestock}
