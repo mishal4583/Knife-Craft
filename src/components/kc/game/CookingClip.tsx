@@ -1,6 +1,7 @@
 /**
- * COOKING CLIP — the short painted-kitchen film of the chef cooking the
- * dish (3.75 s, portrait 540×960), shown after every preparation: once the
+ * COOKING CLIP — the short painted-kitchen film of the chef finishing the
+ * dish (portrait 540×960), shown after every preparation — the salad film
+ * (2.97 s) for salads, the chef-cooking film (3.75 s) for every other dish: once the
  * chef's hands have carried the plate away (RECIPE_COMPLETED) and before
  * the Knife Report.
  *
@@ -18,25 +19,44 @@
 import { useEffect, useRef, useState } from "react";
 import { AudioManager } from "@/game/AudioManager";
 import { PauseManager } from "@/game/PauseManager";
-import clipWebm from "@/assets/video/chef-cooking.webm";
-import clipMp4 from "@/assets/video/chef-cooking.mp4";
-import clipPoster from "@/assets/video/chef-cooking-poster.webp";
+import type { DishKind } from "@/game/recipes/dishKind";
+import cookingWebm from "@/assets/video/chef-cooking.webm";
+import cookingMp4 from "@/assets/video/chef-cooking.mp4";
+import cookingPoster from "@/assets/video/chef-cooking-poster.webp";
+import saladWebm from "@/assets/video/chef-salad.webm";
+import saladMp4 from "@/assets/video/chef-salad.mp4";
+import saladPoster from "@/assets/video/chef-salad-poster.webp";
+
+/** One film per kind of dish (dishKindFor): the chef tossing a salad, or cooking at the stove. */
+const CLIPS: Record<DishKind, { webm: string; mp4: string; poster: string }> = {
+  salad: { webm: saladWebm, mp4: saladMp4, poster: saladPoster },
+  cooked: { webm: cookingWebm, mp4: cookingMp4, poster: cookingPoster },
+};
 
 /** Taps sooner than this after the film appears are ignored (carry-over from the plating skip). */
 const TAP_GUARD_MS = 300;
 /** If the film hasn't started this long after it should play (and the game isn't paused), move on. */
 const START_TIMEOUT_MS = 2500;
-/** Hard ceiling of unpaused play time — the clip is 3.75 s. */
+/** Hard ceiling of unpaused play time — the clips run 2.97 s and 3.75 s. */
 const MAX_PLAY_MS = 7000;
 /**
- * Where the source film's AI watermark sat (its centre, as a fraction of the
+ * Where the source films' AI watermark sat (the same spot in both) (its centre, as a fraction of the
  * 9:16 frame, which the game frame matches exactly): painted out of the
  * encoded files with ffmpeg `delogo`, and covered by the SKIP control.
  */
 const WATERMARK_X = 600 / 720;
 const WATERMARK_Y = 1160 / 1280;
 
-export function CookingClip({ playing, onDone }: { playing: boolean; onDone: () => void }) {
+export function CookingClip({
+  playing,
+  kind,
+  onDone,
+}: {
+  playing: boolean;
+  kind: DishKind;
+  onDone: () => void;
+}) {
+  const clip = CLIPS[kind];
   const videoRef = useRef<HTMLVideoElement>(null);
   const doneRef = useRef(false);
   const shownAt = useRef(0);
@@ -109,6 +129,7 @@ export function CookingClip({ playing, onDone }: { playing: boolean; onDone: () 
       aria-label="The chef cooks your dish"
       aria-hidden={!playing}
       data-testid="cooking-clip"
+      data-kind={kind}
       onClick={() => {
         if (playing && performance.now() - shownAt.current >= TAP_GUARD_MS) finish();
       }}
@@ -122,7 +143,7 @@ export function CookingClip({ playing, onDone }: { playing: boolean; onDone: () 
         playsInline
         muted
         preload="auto"
-        poster={clipPoster}
+        poster={clip.poster}
         disablePictureInPicture
         onPlaying={() => setStarted(true)}
         onEnded={finish}
@@ -131,9 +152,9 @@ export function CookingClip({ playing, onDone }: { playing: boolean; onDone: () 
         }}
         className="absolute inset-0 h-full w-full object-cover"
       >
-        <source src={clipWebm} type="video/webm" />
+        <source src={clip.webm} type="video/webm" />
         <source
-          src={clipMp4}
+          src={clip.mp4}
           type="video/mp4"
           // The last <source> failing is reported here, not on <video>.
           onError={() => {

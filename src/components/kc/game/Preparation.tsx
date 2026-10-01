@@ -29,6 +29,7 @@ import { GameHUD } from "./GameHUD";
 import { CutResultPanel } from "./CutResultPanel";
 import { KnifeReport } from "./KnifeReport";
 import { CookingClip } from "./CookingClip";
+import { dishKindFor } from "@/game/recipes/dishKind";
 import { OrderComplete } from "./OrderComplete";
 import { ServiceOrderComplete } from "./ServiceOrderComplete";
 import { Panel, KButton, DustMotes } from "../common/primitives";
@@ -491,6 +492,7 @@ export function Preparation({
       {cooking !== "off" ? (
         <CookingClip
           playing={cooking === "playing"}
+          kind={dishKindFor(view.recipeId, view.title)}
           onDone={() => {
             setCooking("off");
             setPhase("result");

@@ -3,7 +3,9 @@
 //      video really plays, SKIP › is offered over the old watermark corner, and when it ends the Knife Report follows;
 //   2. "Prep Again" → the clip plays again for the next dish; SKIP › goes straight to the report;
 //   3. a tap anywhere on the clip also skips it;
-//   4. with Sound off in Settings the clip is muted; with Sound on it plays with sound.
+//   4. with Sound off in Settings the clip is muted; with Sound on it plays with sound;
+//   5. salads get the salad film (Level 10, Simple Garden Salad — the harness default save);
+//      every other dish the chef-cooking film (Level 58, Pumpkin Curry Dice).
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import { launch, boot, seedSave, sleep, clickButton, shot, save } from "./harness.mjs";
 import { playToReport, stepInfo } from "./solver.mjs";
@@ -74,6 +76,13 @@ check(
     );
   }),
 );
+check(
+  "1e2 Level 10 (Simple Garden Salad) plays the salad film",
+  (await page.evaluate(
+    () => document.querySelector('[data-testid="cooking-clip"]').dataset.kind,
+  )) === "salad" && /^chef-salad/.test(v1?.src ?? ""),
+  v1?.src,
+);
 check("1e with Sound on, the clip plays with sound", v1 && v1.muted === false, v1);
 await shot(page, "cooking-1-clip");
 await page.waitForFunction(() => /KNIFE REPORT/.test(document.body.innerText), { timeout: 8000 });
@@ -107,6 +116,34 @@ await sleep(700);
 const v4 = await video(page);
 check("4b with Sound off the clip is muted (and still plays)", v4?.muted === true && v4.t > 0, v4);
 await page.evaluate(() => document.querySelector('[aria-label="Skip cooking"]').click());
+
+// ---------- 5. a cooked dish gets the cooking film ----------
+await boot(
+  page,
+  seedSave({
+    levelProgress: {
+      currentLevelId: "level-58",
+      highestUnlockedLevelId: "level-58",
+      completedLevelIds: Array.from({ length: 57 }, (_, i) => `level-${i + 1}`),
+    },
+  }),
+);
+await clickButton(page, /Prepare$/);
+check("5a Level 58 (Pumpkin Curry Dice): clip shown", await cookUntilClip());
+await sleep(800);
+const v5 = await video(page);
+check(
+  "5b a cooked dish plays the chef-cooking film, not the salad film",
+  (await page.evaluate(
+    () => document.querySelector('[data-testid="cooking-clip"]').dataset.kind,
+  )) === "cooked" &&
+    /^chef-cooking/.test(v5?.src ?? "") &&
+    v5.t > 0.2,
+  v5,
+);
+await shot(page, "cooking-5-cooked");
+await page.waitForFunction(() => /KNIFE REPORT/.test(document.body.innerText), { timeout: 8000 });
+check("5c when it ends, the Knife Report follows", await page.evaluate(clipGone));
 
 check("console has no errors", logs.filter((l) => /^error|pageerror/i.test(l)).length === 0, logs);
 save("cookingclip-result.json", results);

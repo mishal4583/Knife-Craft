@@ -61,7 +61,9 @@ const buyButtons = () =>
   page.evaluate(
     () =>
       [...document.querySelectorAll("button")].filter((b) =>
-        /^Buy \d|Increase quantity/.test(b.textContent.trim() + (b.getAttribute("aria-label") ?? "")),
+        /^Buy \d|Increase quantity/.test(
+          b.textContent.trim() + (b.getAttribute("aria-label") ?? ""),
+        ),
       ).length,
   );
 const flat = async () => (await text(page)).replace(/\s+/g, " ");
@@ -96,7 +98,8 @@ await sleep(700);
 t = await flat();
 check(
   "0b Go to Market → opens the Market on Fresh Ingredients",
-  /Fresh Ingredients/.test(t) && (await page.evaluate(() => document.querySelectorAll("article.product-card").length)) === 57,
+  /Fresh Ingredients/.test(t) &&
+    (await page.evaluate(() => document.querySelectorAll("article.product-card").length)) === 57,
 );
 let c = await cards();
 const names = Object.keys(c);
@@ -159,7 +162,9 @@ await openInventory();
 t = await flat();
 check(
   "4b Business → Inventory shows it at once: Tomato 25 lb · $25.00, fridge 25 / 40, purchasing $25.00",
-  /Tomato 25 lb · \$25\.00/.test(t) && /25 \/ 40/.test(t) && /This Business Day \$25\.00 1 purchase/i.test(t),
+  /Tomato 25 lb · \$25\.00/.test(t) &&
+    /25 \/ 40/.test(t) &&
+    /This Business Day \$25\.00 1 purchase/i.test(t),
   t.slice(0, 600),
 );
 await shot(page, "ingredients-4-inventory");
@@ -173,7 +178,9 @@ await sleep(800);
 const focused = await page.evaluate(() => {
   const a = document.querySelector("article.product-card.ring-2");
   const r = a?.getBoundingClientRect();
-  return a ? { id: a.getAttribute("data-ingredient"), visible: r.top >= 0 && r.bottom <= innerHeight } : null;
+  return a
+    ? { id: a.getAttribute("data-ingredient"), visible: r.top >= 0 && r.bottom <= innerHeight }
+    : null;
 });
 check(
   "4c a Most needed chip opens the Market on that ingredient's card, in view",
@@ -212,7 +219,9 @@ await boot(
     credits: 50_000,
     business: {
       calendar: { businessDay: DAY },
-      inventory: { onion: { ingredientId: "onion", quantity: 38, unitCost: 100, purchaseDay: DAY } },
+      inventory: {
+        onion: { ingredientId: "onion", quantity: 38, unitCost: 100, purchaseDay: DAY },
+      },
     },
   }),
 );
@@ -231,7 +240,10 @@ await page.evaluate(() => {
   [...card.querySelectorAll("button")].find((b) => /^Buy /.test(b.textContent.trim()))?.click();
 });
 await sleep(500);
-check("4g pressing Buy anyway changes nothing", JSON.stringify(await readSave(page)) === JSON.stringify(full));
+check(
+  "4g pressing Buy anyway changes nothing",
+  JSON.stringify(await readSave(page)) === JSON.stringify(full),
+);
 
 // ---------- 5: the Butter dish, cooked for real ----------
 // Every Business dish id (businessDishCatalog.ts); all but the butter dish go off the menu.
@@ -344,7 +356,11 @@ await clickButton(page, /^Back to Service$/);
 await sleep(600);
 await openInventory();
 t = await flat();
-check("5d Most used lists butter from the served order", /Most used.{0,200}Butter/i.test(t), t.match(/Most used.{0,200}/i)?.[0] ?? t.slice(0, 200));
+check(
+  "5d Most used lists butter from the served order",
+  /Most used.{0,200}Butter/i.test(t),
+  t.match(/Most used.{0,200}/i)?.[0] ?? t.slice(0, 200),
+);
 
 check("console has no errors", logs.filter((l) => /^error|pageerror/i.test(l)).length === 0, logs);
 save("ingredients-result.json", results);

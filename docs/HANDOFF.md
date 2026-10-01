@@ -96,6 +96,10 @@ conversation.
    preselected). Rush Restock's "Go to Market" and the "No Dish Can Be Made"
    alert now open the Market. QA: `inventory-market-qa`, business-ux-qa
    S4–S6/S8; e2e: `ingredients.mjs` (rewritten), `rushrestock.mjs` 9a.
+15. Salad cooking clip: salads play the chef tossing a salad
+   (`chef-salad.*`, from `Salads.mp4`, watermark painted out like the first
+   clip); every other dish keeps the chef-cooking film. `dishKindFor` in
+   `src/game/recipes/dishKind.ts`. e2e: `cookingclip.mjs` 1e2 + 5a–5c.
 
 ## 4. Open issues from the Level 1–10 audit (not fixed yet)
 

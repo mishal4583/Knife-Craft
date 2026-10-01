@@ -336,15 +336,22 @@ not silently removed.
 - Intro screenshots: `playgama/screenshots/intro/`.
 - **Cooking clip** — after EVERY preparation, once the chef's hands have
   carried the plate away (RECIPE_COMPLETED) and before the Knife Report,
-  `src/components/kc/game/CookingClip.tsx` plays the 3.75 s chef-cooking
-  film (`src/assets/video/chef-cooking.webm` + `.mp4` fallback, 540×960,
-  ~0.65 MB each; poster `.webp`). It buffers from PLATING_STARTED, is
+  `src/components/kc/game/CookingClip.tsx` plays a short chef film: the
+  **salad film** for salads (`src/assets/video/chef-salad.webm` + `.mp4`,
+  2.97 s, ~0.25 MB each) and the **chef-cooking film** for every other dish
+  (`chef-cooking.webm` + `.mp4`, 3.75 s, ~0.65 MB each); 540×960, each with
+  a `-poster.webp`. `src/game/recipes/dishKind.ts` `dishKindFor(recipeId,
+  name)` decides: a salad when the dish's or its recipe's name says
+  "Salad"/"Slaw", or the Business dish made from the recipe is a Salad
+  (14 campaign recipes, 9 campaign levels incl. Level 10). The clip
+  buffers from PLATING_STARTED, is
   skippable (SKIP › or a tap, 300 ms guard), pauses with PauseManager,
   is muted unless `AudioManager.soundAllowed`, and falls straight through
-  on error / stall / `prefers-reduced-motion`. The source's AI watermark
-  (centre 600,1160 of 720×1280) is painted out with ffmpeg `delogo` and the
-  SKIP › pill sits over that spot. Source upload:
-  `gemini_generated_video_aa3f242a - Trim.mp4` (on `main`).
+  on error / stall / `prefers-reduced-motion`. Both sources carry the same
+  AI watermark (centre 600,1160 of 720×1280), painted out with ffmpeg
+  `delogo` (`x=562:y=1122:w=76:h=76`, then scale 540:960; H.264 crf 27 /
+  VP9 crf 38), and the SKIP › pill sits over that spot. Source uploads:
+  `gemini_generated_video_aa3f242a - Trim.mp4` and `Salads.mp4` (on `main`).
 
 ---
 
@@ -355,7 +362,7 @@ painted kitchens, wood/paper, Fraunces / Nunito / Caveat bundled locally).
 Touch targets ≥ 48 px. Test at 320×568, 360×640, 390×844, 430×900,
 768×1024. Do not add animation libraries or large assets; prefer CSS
 transform/opacity. No external fonts, video or network requests at runtime
-(only the Bridge CDN script); the one bundled video is the cooking clip (§9).
+(only the Bridge CDN script); the bundled videos are the two cooking clips (§9).
 
 ---
 
