@@ -1,7 +1,9 @@
 /**
  * Which cooking clip (CookingClip) a finished dish gets: the fruit-cup film
- * for fruit dishes, the salad film for salads, the chef-cooking film for
- * everything else.
+ * for fruit dishes, the salad film for salads, the chef-cooking (stove)
+ * film for dishes that are cooked, and the plating film for everything that
+ * is only cut and plated (Levels 1–9's plates and bowls, garnishes, salsas,
+ * skewers, antipasti, prep bases).
  *
  * - Fruit: every ingredient of its recipe is a Fruit (the Ingredient
  *   Registry's own category — fruit cups, fruit plates, a lemon garnish),
@@ -11,6 +13,11 @@
  *   Business Mode dish made from its recipe is listed as a Salad or named
  *   one (businessDishCatalog) — e.g. Campaign's "Caprese Plate" is served
  *   in Business as Caprese Salad.
+ * - Cooked: a Protein ingredient (chicken, steak, salmon), a cooking word
+ *   in the dish's or recipe's name (curry, masala, stir-fry, wok, sauté,
+ *   rings, soup, gratin, bread, toast, bruschetta, …), or the Business
+ *   dish is a Curry, Stir-Fry or Entree.
+ * - Plated: everything else.
  *
  * Derived from the existing recipe, ingredient and dish data; nothing is stored.
  */
@@ -18,12 +25,21 @@ import { INGREDIENTS } from "../definitions";
 import { BUSINESS_DISH_CATALOG } from "../business/businessDishCatalog";
 import { getCampaignRecipe } from "./campaignRecipes";
 
-export type DishKind = "fruit" | "salad" | "cooked";
+export type DishKind = "fruit" | "salad" | "cooked" | "plated";
 
 const SALAD_NAME = /\b(salad|slaw)\b/i;
 
 const SALAD_RECIPE_IDS: ReadonlySet<string> = new Set(
   BUSINESS_DISH_CATALOG.filter((d) => d.category === "Salad" || SALAD_NAME.test(d.name)).map(
+    (d) => d.sourceRecipeId,
+  ),
+);
+
+const COOKED_NAME =
+  /curry|masala|chutney|minestrone|velout|soup|french onion|stir|wok|saut|\bfr(y|ied)\b|rings|gratin|duxelles|hash|persillade|bread|toast|bruschetta|crostini|fajita/i;
+
+const COOKED_RECIPE_IDS: ReadonlySet<string> = new Set(
+  BUSINESS_DISH_CATALOG.filter((d) => ["Curry", "Stir-Fry", "Entree"].includes(d.category)).map(
     (d) => d.sourceRecipeId,
   ),
 );
@@ -39,9 +55,12 @@ export function dishKindFor(recipeId: string, dishName: string): DishKind {
     recipe.components.length > 0 &&
     recipe.components.every((c) => INGREDIENTS[c.ingredientId]?.category === "Fruit");
   if (allFruit || DESSERT_RECIPE_IDS.has(recipeId)) return "fruit";
-  return SALAD_RECIPE_IDS.has(recipeId) ||
-    SALAD_NAME.test(dishName) ||
-    SALAD_NAME.test(recipe?.name ?? "")
-    ? "salad"
-    : "cooked";
+  const names = `${dishName} ${recipe?.name ?? ""}`;
+  if (SALAD_RECIPE_IDS.has(recipeId) || SALAD_NAME.test(names)) return "salad";
+  const hasProtein = !!recipe?.components.some(
+    (c) => INGREDIENTS[c.ingredientId]?.category === "Protein",
+  );
+  return hasProtein || COOKED_RECIPE_IDS.has(recipeId) || COOKED_NAME.test(names)
+    ? "cooked"
+    : "plated";
 }

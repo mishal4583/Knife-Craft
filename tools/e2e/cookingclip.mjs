@@ -6,7 +6,8 @@
 //   4. with Sound off in Settings the clip is muted; with Sound on it plays with sound;
 //   5. salads get the salad film (Level 10, Simple Garden Salad — the harness default save);
 //      every other dish the chef-cooking film (Level 58, Pumpkin Curry Dice);
-//   6. fruit dishes get the fruit-cup film (Level 84, Pineapple & Mango Fresh Cup).
+//   6. fruit dishes get the fruit-cup film (Level 84, Pineapple & Mango Fresh Cup);
+//   7. cut-and-plate dishes get the plating film (Level 3, Carrot Chop Bowl).
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import { launch, boot, seedSave, sleep, clickButton, shot, save } from "./harness.mjs";
 import { playToReport, stepInfo } from "./solver.mjs";
@@ -174,6 +175,34 @@ check(
 await shot(page, "cooking-6-fruit");
 await page.waitForFunction(() => /KNIFE REPORT/.test(document.body.innerText), { timeout: 8000 });
 check("6c when it ends, the Knife Report follows", await page.evaluate(clipGone));
+
+// ---------- 7. a cut-and-plate dish gets the plating film ----------
+await boot(
+  page,
+  seedSave({
+    levelProgress: {
+      currentLevelId: "level-3",
+      highestUnlockedLevelId: "level-3",
+      completedLevelIds: ["level-1", "level-2"],
+    },
+  }),
+);
+await clickButton(page, /Prepare$/);
+check("7a Level 3 (Carrot Chop Bowl): clip shown", await cookUntilClip());
+await sleep(800);
+const v7 = await video(page);
+check(
+  "7b a cut-and-plate dish plays the plating film",
+  (await page.evaluate(
+    () => document.querySelector('[data-testid="cooking-clip"]').dataset.kind,
+  )) === "plated" &&
+    /^chef-plating/.test(v7?.src ?? "") &&
+    v7.t > 0.2,
+  v7,
+);
+await shot(page, "cooking-7-plated");
+await page.waitForFunction(() => /KNIFE REPORT/.test(document.body.innerText), { timeout: 8000 });
+check("7c when it ends, the Knife Report follows", await page.evaluate(clipGone));
 
 check("console has no errors", logs.filter((l) => /^error|pageerror/i.test(l)).length === 0, logs);
 save("cookingclip-result.json", results);

@@ -104,6 +104,14 @@ conversation.
    Desserts) play `chef-fruit.*` — 3.84 s cut from the 8 s `Fruit cups.mp4`
    (spooning shot → honey drizzle; the wide intro and mint garnish shots
    dropped), watermark painted out. e2e: `cookingclip.mjs` 6a–6c.
+17. Plating cooking clip: dishes that are only cut and plated (Levels 1–9's
+   plates and bowls, garnishes, salsas, skewers, antipasti, prep bases —
+   75 recipes) play `chef-plating.*` — 3.84 s from the 10 s `Plating.mp4`
+   (tomato slices into a bowl → herbs + pull-back over the plated counter;
+   the stove intro and the over-the-shoulder shot dropped). Heated dishes
+   keep the stove film. e2e: `cookingclip.mjs` 7a–7c. Next planned: a
+   curry-pot film for the curry / masala / chutney / soup-base dishes
+   (17 recipes, Levels 51–69, the 7 Business curries).
 
 ## 4. Open issues from the Level 1–10 audit (not fixed yet)
 

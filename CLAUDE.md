@@ -336,25 +336,29 @@ not silently removed.
 - Intro screenshots: `playgama/screenshots/intro/`.
 - **Cooking clip** — after EVERY preparation, once the chef's hands have
   carried the plate away (RECIPE_COMPLETED) and before the Knife Report,
-  `src/components/kc/game/CookingClip.tsx` plays a short chef film: the
-  **fruit-cup film** for fruit dishes (`chef-fruit.*`, 3.84 s, from
-  `Fruit cups.mp4` — its 2.13–4.46 s spooning shot cut to the 6.50–8.00 s
-  honey-drizzle shot), the **salad film** for salads (`chef-salad.*`,
-  2.97 s, from `Salads.mp4`) and the **chef-cooking film** for every other
-  dish (`chef-cooking.*`, 3.75 s); each 540×960 WebM + MP4 (~0.25–0.65 MB)
-  with a `-poster.webp`. `src/game/recipes/dishKind.ts` `dishKindFor(recipeId,
-  name)` decides: **fruit** when every ingredient is a Fruit or the
-  Business dish is a Dessert (11 recipes, 8 levels incl. Level 84);
-  **salad** when the dish's or its recipe's name says "Salad"/"Slaw" or
-  the Business dish is a Salad (9 levels incl. Level 10). The clip
+  `src/components/kc/game/CookingClip.tsx` plays one of four short chef
+  films, each 540×960 WebM + MP4 (~0.25–0.65 MB) with a `-poster.webp`:
+  **fruit-cup** (`chef-fruit.*`, 3.84 s, from `Fruit cups.mp4`: 2.13–4.46 s
+  spooning → 6.50–8.00 s honey drizzle), **salad** (`chef-salad.*`, 2.97 s,
+  from `Salads.mp4`), **plating** (`chef-plating.*`, 3.84 s, from
+  `Plating.mp4`: 1.42–3.25 s tomato slices into a bowl → 8.0–10.0 s herbs
+  and the pull-back over the plated counter) and **chef-cooking** (stove,
+  `chef-cooking.*`, 3.75 s). `src/game/recipes/dishKind.ts` `dishKindFor(recipeId,
+  name)` decides, in order: **fruit** (every ingredient a Fruit, or a
+  Business Dessert — 11 recipes, Level 84); **salad** ("Salad"/"Slaw" in the
+  dish/recipe name, or a Business Salad — 14 recipes, Level 10);
+  **cooked** (a Protein ingredient, a cooking word in the name — curry,
+  masala, stir-fry, wok, sauté, rings, soup, gratin, bread, toast,
+  bruschetta… — or a Business Curry/Stir-Fry/Entree — 121 recipes);
+  else **plated** (cut-and-plate dishes — 75 recipes incl. Levels 1–9). The clip
   buffers from PLATING_STARTED, is
   skippable (SKIP › or a tap, 300 ms guard), pauses with PauseManager,
   is muted unless `AudioManager.soundAllowed`, and falls straight through
-  on error / stall / `prefers-reduced-motion`. All three sources carry the same
+  on error / stall / `prefers-reduced-motion`. All four sources carry the same
   AI watermark (centre 600,1160 of 720×1280), painted out with ffmpeg
   `delogo` (`x=562:y=1122:w=76:h=76`, then scale 540:960; H.264 crf 27 /
   VP9 crf 38), and the SKIP › pill sits over that spot. Source uploads:
-  `gemini_generated_video_aa3f242a - Trim.mp4`, `Salads.mp4`, `Fruit cups.mp4` (on `main`).
+  `gemini_generated_video_aa3f242a - Trim.mp4`, `Salads.mp4`, `Fruit cups.mp4`, `Plating.mp4` (on `main`).
 
 ---
 
@@ -365,7 +369,7 @@ painted kitchens, wood/paper, Fraunces / Nunito / Caveat bundled locally).
 Touch targets ≥ 48 px. Test at 320×568, 360×640, 390×844, 430×900,
 768×1024. Do not add animation libraries or large assets; prefer CSS
 transform/opacity. No external fonts, video or network requests at runtime
-(only the Bridge CDN script); the bundled videos are the three cooking clips (§9).
+(only the Bridge CDN script); the bundled videos are the four cooking clips (§9).
 
 ---
 
