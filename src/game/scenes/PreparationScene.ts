@@ -8,7 +8,7 @@ import {
 import { PauseManager } from "../PauseManager";
 import { withRequiredPeelSteps } from "../prepStepGuards";
 import { drawCoachGhost, coachCycleMs, type CoachTarget } from "./coachGhost";
-import { knifeProfile, quadraticPoints } from "./knifeProfile";
+import { knifeProfile, paintKnife, quadraticPoints } from "./knifeProfile";
 import { COACH_FIRST_DELAY_MS, COACH_IDLE_MS, COACH_TAUGHT_IDLE_MS } from "../coaching";
 import { AudioManager } from "../AudioManager";
 import {
@@ -1454,37 +1454,26 @@ export class PreparationScene extends Phaser.Scene {
   }
 
   /**
-   * Where the knife rests when nobody's mid-cut (§10) — right of the
-   * ingredient's own edge, a little below its center, angled as if set
-   * down, never floating above the vegetable. Derived from the
-   * ingredient's own computed bounds every time, never a fixed screen
-   * coordinate (§26).
+   * Where the knife rests when nobody's mid-cut (§10): lying flat, centred
+   * under the ingredient — on the board just below it, or, when the
+   * ingredient leaves no room there, on the counter just in front of the
+   * board — the whole knife in view and never across the food, the way a
+   * cook sets it down. Derived from the ingredient's own bounds and the
+   * EQUIPPED knife's own size every time (knifeProfile), never a fixed
+   * screen coordinate (§26).
    */
   private idleKnifePose(): { x: number; y: number; rot: number } {
     const w = this.scale.width;
-    const blade = this.knifeStats.animation.blade;
-    const bladeLen = blade.bladeLenFrac * w;
-    // At the idle angle the heel trails behind the pivot — for a wide
-    // ingredient (tomato) that's a graze at most, but for a narrow one
-    // (cucumber) the same fixed offset let it sweep back across the
-    // whole body. Guarantee the heel itself clears the ingredient's edge
-    // before adding the resting-beside-it gap, so this holds for any
-    // width instead of only the ingredient it was tuned against. Uses the
-    // EQUIPPED knife's own blade length/heel (Phase 8) — a short paring
-    // blade rests closer to the ingredient than a long bread knife.
-    const heelReach =
-      Math.abs(blade.heelAt) * bladeLen * Math.cos(Phaser.Math.DegToRad(TAP_KNIFE.IDLE_ANGLE_DEG));
-    // reachX, not ingRx directly — a profile whose amplitude/taper pushes
-    // past 1.0 (a mushroom cap wider than its own base radius) can
-    // genuinely extend further right at some heights than ingRx alone
-    // says; resting the idle knife against ingRx alone risked a visible
-    // overlap with a real ingredient's own silhouette. Falls back to
-    // ingRx for every shape where that's still exact.
-    const clearRx = this.silhouette.reachX ?? this.ingRx;
+    const profile = knifeProfile(this.knifeStats.animation.blade, w);
+    const butt = Math.min(...profile.handle.map((p) => p.x));
+    const reachY = this.silhouette.reachY ?? this.ingRy;
+    // y is the cutting edge; the blade body sits above it.
+    const belowFood = this.ingCy + reachY + w * 0.012 + profile.bladeH;
+    const onCounter = this.boardPolyBotY + w * 0.02 + profile.bladeH;
     return {
-      x: this.ingCx + clearRx + heelReach + TAP_KNIFE.IDLE_OFFSET_X_FRAC * w,
-      y: this.ingCy + TAP_KNIFE.IDLE_OFFSET_Y_FRAC * w,
-      rot: Phaser.Math.DegToRad(TAP_KNIFE.IDLE_ANGLE_DEG),
+      x: this.ingCx - (butt + profile.tip) / 2,
+      y: belowFood <= this.boardPolyBotY - w * 0.02 ? belowFood : onCounter,
+      rot: 0,
     };
   }
 
@@ -5781,93 +5770,27 @@ export class PreparationScene extends Phaser.Scene {
     const visual = this.knifeStats.visual;
     // The shared silhouette (knifeProfile.ts) — the coaching ghost draws the same one.
     const profile = knifeProfile(shape, this.scale.width);
-    const { bladeLen, bladeH, handleLen, heel, spineBend, tip } = profile;
     // Graphics has no save/restore or canvas-transform stack in this Phaser
     // version — position/rotate/scale the GameObject itself instead, and
     // draw the path in its local space. The blade is drawn shifted up by
     // half its own height so local y=0 is the cutting EDGE, which is what
     // ends up riding the seam once the object is positioned on it.
-    const edge = profile.edge;
-
     const g = this.knifeGfx;
     g.setAlpha(alpha);
     g.setPosition(this.knife.x, this.knife.y + liftY);
     g.setRotation(this.knife.rot);
     g.setScale(this.knife.dirSign, 1);
 
-    // Blade — steel fill, curved edge via short sampled segments (Graphics has no quadraticCurveTo).
-    g.fillStyle(visual.bladeColor, 1);
-    g.beginPath();
-    g.moveTo(profile.outline[0]!.x, profile.outline[0]!.y);
-    for (const p of profile.outline.slice(1)) g.lineTo(p.x, p.y);
-    g.closePath();
-    g.fillPath();
-
-    // Damascus signature ripple — a handful of faint wavy bands along the
-    // blade face, purely cosmetic (no image assets, cheap Graphics
-    // strokes only). Every other knife skips this block entirely.
-    if (visual.pattern === "damascus") {
-      for (let i = 0; i < 4; i++) {
-        const t = 0.18 + i * 0.2;
-        const bandPts = quadraticPoints(
-          heel + (spineBend - heel) * t,
-          -bladeH * 0.32 + bladeH * 0.14 * ((i % 2) * 2 - 1),
-          spineBend + (tip - spineBend) * 0.5,
-          bladeH * (0.05 + 0.1 * (i % 2)),
-          tip * 0.94,
-          bladeH * shape.tipRiseFrac * 0.6,
-          8,
-        );
-        g.lineStyle(1, i % 2 === 0 ? 0xffffff : 0x8a8f96, 0.16);
-        g.beginPath();
-        g.moveTo(heel, -bladeH * 0.32 + bladeH * 0.14 * ((i % 2) * 2 - 1));
-        for (const p of bandPts) g.lineTo(p.x, p.y);
-        g.strokePath();
-      }
-    }
-
-    // Bread's serration — a row of small sawtooth notches along the
-    // cutting edge, layered on top of the same smooth edge curve. Visual
-    // identity only, per the brief ("do NOT add actual complicated
-    // serration physics — the identity can be visual/audio").
-    if (shape.serrated) {
-      const teeth = 12;
-      const edgeY0 = bladeH * 0.5 - edge;
-      const toothH = bladeH * 0.14;
-      g.fillStyle(visual.bladeColor, 1);
-      for (let i = 0; i < teeth; i++) {
-        const t0 = 0.08 + (i / teeth) * 0.8;
-        const t1 = 0.08 + ((i + 0.6) / teeth) * 0.8;
-        const x0 = heel + (tip - heel) * t0;
-        const x1 = heel + (tip - heel) * t1;
-        const xm = (x0 + x1) / 2;
-        g.beginPath();
-        g.moveTo(x0, edgeY0);
-        g.lineTo(xm, edgeY0 + toothH);
-        g.lineTo(x1, edgeY0);
-        g.closePath();
-        g.fillPath();
-      }
-    }
-
-    g.lineStyle(1.4, visual.edgeHighlight, 0.85);
-    g.lineBetween(heel, bladeH * 0.46 - edge, tip - 2, bladeH * shape.tipRiseFrac * 0.9 - edge);
-
-    // Bolster + handle.
-    g.fillStyle(visual.bolsterColor, 1);
-    g.fillRect(heel - 7, -bladeH * 0.5 - edge, 7, bladeH);
-    g.fillStyle(visual.handleColor, 1);
-    g.fillRoundedRect(
-      heel - 7 - handleLen,
-      -bladeH * 0.45 - edge,
-      handleLen,
-      bladeH * 0.9,
-      bladeH * 0.42,
-    );
-    g.fillStyle(visual.rivetColor, 1);
-    for (const rx of [0.3, 0.7]) {
-      g.fillCircle(heel - 7 - handleLen * rx, -edge, 1.8);
-    }
+    // A soft shadow falls down-right on the board whatever the knife's
+    // angle: the world-space offset, turned into the Graphics' local space.
+    const sw = this.scale.width * 0.008;
+    const cos = Math.cos(this.knife.rot);
+    const sin = Math.sin(this.knife.rot);
+    const shadow = {
+      x: (sw * 0.6 * cos + sw * sin) * this.knife.dirSign,
+      y: -sw * 0.6 * sin + sw * cos,
+    };
+    paintKnife(g, profile, shape, visual, shadow);
   }
 }
 

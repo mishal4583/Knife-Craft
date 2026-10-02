@@ -23,17 +23,22 @@ import type {
 
 export const DEFAULT_KNIFE_ID = "chef" as const;
 
-/** The chef's-knife blade shape reproduces the ORIGINAL hardcoded drawKnife()/KNIFE_GEOMETRY constants exactly — pixel-identical default silhouette. */
+/**
+ * The chef's knife. Proportions follow a real 8-inch chef's knife: the blade
+ * about a fifth as tall as it is long at the heel, the handle a little over
+ * half the blade's length (every knife below is sized the same way from its
+ * real counterpart).
+ */
 const CHEF_ANIMATION: KnifeAnimationProfile = {
   blade: {
-    bladeLenFrac: 188 / 540,
-    bladeHFrac: 23 / 540,
-    handleLenFrac: 66 / 540,
+    bladeLenFrac: 196 / 540,
+    bladeHFrac: 42 / 540,
+    handleLenFrac: 108 / 540,
     heelAt: -0.32,
     spineBendFrac: 0.4,
     spineControlXFrac: 0.58,
     tipFrac: 0.68,
-    tipRiseFrac: 0.3,
+    tipRiseFrac: -0.2,
     bellyControlXFrac: 0.28,
     bellyFrac: 0.58,
     serrated: false,
@@ -86,9 +91,9 @@ export const KNIFE_CATALOG: KnifeDefinition[] = [
     preferredIngredients: ["cucumber", "zucchini", "carrot"],
     animation: {
       blade: {
-        bladeLenFrac: 172 / 540,
-        bladeHFrac: 32 / 540,
-        handleLenFrac: 60 / 540,
+        bladeLenFrac: 180 / 540,
+        bladeHFrac: 48 / 540,
+        handleLenFrac: 102 / 540,
         heelAt: -0.3,
         spineBendFrac: 0.42,
         spineControlXFrac: 0.6,
@@ -127,9 +132,9 @@ export const KNIFE_CATALOG: KnifeDefinition[] = [
     preferredIngredients: ["carrot", "potato", "cucumber"],
     animation: {
       blade: {
-        bladeLenFrac: 175 / 540,
-        bladeHFrac: 36 / 540,
-        handleLenFrac: 58 / 540,
+        bladeLenFrac: 180 / 540,
+        bladeHFrac: 54 / 540,
+        handleLenFrac: 100 / 540,
         heelAt: -0.28,
         spineBendFrac: 0.6,
         spineControlXFrac: 0.78,
@@ -168,14 +173,14 @@ export const KNIFE_CATALOG: KnifeDefinition[] = [
     preferredIngredients: ["garlic", "strawberry", "potato"],
     animation: {
       blade: {
-        bladeLenFrac: 96 / 540,
-        bladeHFrac: 14 / 540,
-        handleLenFrac: 54 / 540,
+        bladeLenFrac: 104 / 540,
+        bladeHFrac: 22 / 540,
+        handleLenFrac: 80 / 540,
         heelAt: -0.34,
         spineBendFrac: 0.38,
         spineControlXFrac: 0.56,
         tipFrac: 0.62,
-        tipRiseFrac: 0.34,
+        tipRiseFrac: -0.16,
         bellyControlXFrac: 0.26,
         bellyFrac: 0.6,
         serrated: false,
@@ -209,14 +214,14 @@ export const KNIFE_CATALOG: KnifeDefinition[] = [
     preferredIngredients: ["bread"],
     animation: {
       blade: {
-        bladeLenFrac: 210 / 540,
-        bladeHFrac: 20 / 540,
-        handleLenFrac: 64 / 540,
+        bladeLenFrac: 224 / 540,
+        bladeHFrac: 30 / 540,
+        handleLenFrac: 106 / 540,
         heelAt: -0.3,
         spineBendFrac: 0.36,
         spineControlXFrac: 0.56,
         tipFrac: 0.72,
-        tipRiseFrac: 0.26,
+        tipRiseFrac: 0.04,
         bellyControlXFrac: 0.26,
         bellyFrac: 0.54,
         serrated: true,
@@ -250,9 +255,9 @@ export const KNIFE_CATALOG: KnifeDefinition[] = [
     preferredIngredients: ["potato", "onion", "garlic"],
     animation: {
       blade: {
-        bladeLenFrac: 150 / 540,
-        bladeHFrac: 46 / 540,
-        handleLenFrac: 56 / 540,
+        bladeLenFrac: 164 / 540,
+        bladeHFrac: 76 / 540,
+        handleLenFrac: 96 / 540,
         heelAt: -0.26,
         spineBendFrac: 0.62,
         spineControlXFrac: 0.8,
@@ -291,14 +296,14 @@ export const KNIFE_CATALOG: KnifeDefinition[] = [
     preferredIngredients: ["tomato", "apple", "orange"],
     animation: {
       blade: {
-        bladeLenFrac: 192 / 540,
-        bladeHFrac: 24 / 540,
-        handleLenFrac: 68 / 540,
+        bladeLenFrac: 200 / 540,
+        bladeHFrac: 43 / 540,
+        handleLenFrac: 110 / 540,
         heelAt: -0.32,
         spineBendFrac: 0.4,
         spineControlXFrac: 0.58,
         tipFrac: 0.7,
-        tipRiseFrac: 0.3,
+        tipRiseFrac: -0.2,
         bellyControlXFrac: 0.28,
         bellyFrac: 0.58,
         serrated: false,
@@ -341,14 +346,14 @@ export const KNIFE_CATALOG: KnifeDefinition[] = [
     preferredIngredients: ["chicken", "steak", "onion"],
     animation: {
       blade: {
-        bladeLenFrac: 196 / 540,
-        bladeHFrac: 30 / 540,
-        handleLenFrac: 64 / 540,
+        bladeLenFrac: 204 / 540,
+        bladeHFrac: 44 / 540,
+        handleLenFrac: 112 / 540,
         heelAt: -0.3,
         spineBendFrac: 0.46,
         spineControlXFrac: 0.62,
         tipFrac: 0.78,
-        tipRiseFrac: 0.22,
+        tipRiseFrac: -0.12,
         bellyControlXFrac: 0.3,
         bellyFrac: 0.54,
         serrated: false,

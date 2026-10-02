@@ -1,4 +1,5 @@
 import type { KnifeDefinition } from "@/game/knives/knifeTypes";
+import { knifeProfile, type Pt } from "@/game/scenes/knifeProfile";
 
 /**
  * Phase 15 — the old standalone Workshop screen (buy + equip in one
@@ -22,129 +23,134 @@ function shade(n: number, amt: number): string {
 }
 
 /**
- * A real per-knife silhouette (Phase 8) — built from the SAME blade-shape
- * construction PreparationScene.drawKnife() uses (heel -> straight spine
- * -> curve to tip -> curve back along the edge -> heel), just rendered as
- * an SVG path instead of Phaser Graphics. Previously this glyph was a
- * single fixed path with a `tone` prop that only ever changed a gradient
- * id — every knife looked identical. Now length/height/heel/tip/belly
- * genuinely vary per knife, so a paring knife reads as short and thin, a
- * cleaver as short and tall, a bread knife as long and straight.
+ * A real per-knife picture for the Market and Progress — the SAME geometry
+ * the game draws the knife from (scenes/knifeProfile.ts: blade outline,
+ * cutting edge, spine, bolster, tapered handle, rivets), rendered as SVG
+ * with gradients, scaled to fit. A paring knife reads as short and slim, a
+ * cleaver as short and tall, a bread knife as long with a toothed edge.
  */
 export function KnifeGlyph({ knife, size = 120 }: { knife: KnifeDefinition; size?: number }) {
   const shape = knife.animation.blade;
   const visual = knife.visual;
-  const LEN_SCALE = 402;
-  const H_SCALE = 470;
-  const CENTER_Y = 55;
-
-  const bladeLen = shape.bladeLenFrac * LEN_SCALE;
-  const bladeH = shape.bladeHFrac * H_SCALE;
-  const edge = bladeH * 0.5;
-  const heel = shape.heelAt * bladeLen;
-  const tip = shape.tipFrac * bladeLen;
-  const spineBend = shape.spineBendFrac * bladeLen;
-  const spineControlX = shape.spineControlXFrac * bladeLen;
-  const bellyControlX = shape.bellyControlXFrac * bladeLen;
-  const handleLen = shape.handleLenFrac * LEN_SCALE;
-  const handleLeft = heel - 7 - handleLen;
-
-  const offsetX = 120 - (handleLeft + tip) / 2;
-  const X = (x: number) => offsetX + x;
-  const topY = CENTER_Y + (-bladeH * 0.5 - edge);
-  const ctrl1Y = CENTER_Y + (-bladeH * 0.4 - edge);
-  const tipY = CENTER_Y + (bladeH * shape.tipRiseFrac - edge);
-  const ctrl2Y = CENTER_Y + (bladeH * shape.bellyFrac - edge);
-  const bottomY = CENTER_Y + (bladeH * 0.5 - edge);
-
-  const bladePath =
-    `M ${X(heel)} ${topY} L ${X(spineBend)} ${topY} ` +
-    `Q ${X(spineControlX)} ${ctrl1Y} ${X(tip)} ${tipY} ` +
-    `Q ${X(bellyControlX)} ${ctrl2Y} ${X(heel)} ${bottomY} Z`;
+  const p = knifeProfile(shape, 540);
+  const all = [...p.outline, ...p.handle, ...p.bolster];
+  const minX = Math.min(...all.map((q) => q.x));
+  const maxX = Math.max(...all.map((q) => q.x));
+  const minY = Math.min(...all.map((q) => q.y));
+  const maxY = Math.max(...all.map((q) => q.y));
+  // Fit into the 240×100 view box with a margin, centred.
+  const k = Math.min(224 / (maxX - minX), 84 / (maxY - minY));
+  const ox = 120 - ((minX + maxX) / 2) * k;
+  const oy = 50 - ((minY + maxY) / 2) * k;
+  const pt = (q: Pt) => `${(ox + q.x * k).toFixed(1)} ${(oy + q.y * k).toFixed(1)}`;
+  const path = (pts: Pt[], close = true) => `M ${pts.map(pt).join(" L ")}${close ? " Z" : ""}`;
+  const H = p.bladeH;
+  const bevel = [
+    ...p.cuttingEdge,
+    ...p.cuttingEdge
+      .slice()
+      .reverse()
+      .map((q, i, arr) => ({
+        x: q.x,
+        y: q.y - H * 0.3 * Math.min(1, (1 - i / (arr.length - 1)) * 1.6),
+      })),
+  ];
+  const sx = p.heel + (p.tip - p.heel) * 0.42;
+  const sheen = [
+    { x: sx, y: -H * 0.96 },
+    { x: sx + H * 0.34, y: -H * 0.96 },
+    { x: sx + H * 0.06, y: -H * 0.06 },
+    { x: sx - H * 0.28, y: -H * 0.06 },
+  ];
+  const teeth = shape.serrated
+    ? Array.from({ length: 14 }, (_, i) => {
+        const x0 = p.heel + (p.tip - p.heel) * (0.06 + (i / 14) * 0.82);
+        const x1 = p.heel + (p.tip - p.heel) * (0.06 + ((i + 0.6) / 14) * 0.82);
+        return path([
+          { x: x0, y: 0 },
+          { x: (x0 + x1) / 2, y: H * 0.13 },
+          { x: x1, y: 0 },
+        ]);
+      }).join(" ")
+    : null;
 
   const gradId = `blade-${knife.id}`;
   const handleGradId = `handle-${knife.id}`;
-
-  const teeth =
-    shape.serrated &&
-    Array.from({ length: 10 }, (_, i) => {
-      const t0 = 0.1 + (i / 10) * 0.78;
-      const t1 = 0.1 + ((i + 0.6) / 10) * 0.78;
-      const x0 = X(heel + (tip - heel) * t0);
-      const x1 = X(heel + (tip - heel) * t1);
-      const xm = (x0 + x1) / 2;
-      return `M ${x0} ${bottomY} L ${xm} ${bottomY + bladeH * 0.16} L ${x1} ${bottomY} Z`;
-    }).join(" ");
 
   return (
     <svg width={size} height={size * 0.42} viewBox="0 0 240 100" aria-hidden>
       <defs>
         <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={shade(visual.bladeColor, 0.5)} />
+          <stop offset="0%" stopColor={shade(visual.bladeColor, 0.45)} />
           <stop offset="55%" stopColor={toHex(visual.bladeColor)} />
-          <stop offset="100%" stopColor={shade(visual.bladeColor, -0.3)} />
+          <stop offset="100%" stopColor={shade(visual.bladeColor, -0.25)} />
         </linearGradient>
         <linearGradient id={handleGradId} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={shade(visual.handleColor, 0.25)} />
-          <stop offset="100%" stopColor={shade(visual.handleColor, -0.3)} />
+          <stop offset="0%" stopColor={shade(visual.handleColor, 0.3)} />
+          <stop offset="55%" stopColor={toHex(visual.handleColor)} />
+          <stop offset="100%" stopColor={shade(visual.handleColor, -0.35)} />
         </linearGradient>
       </defs>
-
       <path
-        d={bladePath}
+        d={path(p.handle)}
+        fill={`url(#${handleGradId})`}
+        stroke={shade(visual.handleColor, -0.5)}
+        strokeWidth="1"
+      />
+      {p.rivets.map((r, i) => (
+        <circle
+          key={i}
+          cx={ox + r.x * k}
+          cy={oy + r.y * k}
+          r={Math.max(1.6, p.rivetR * k)}
+          fill={toHex(visual.rivetColor)}
+          stroke={shade(visual.rivetColor, -0.4)}
+          strokeWidth="0.6"
+        />
+      ))}
+      <path
+        d={path(p.outline)}
         fill={`url(#${gradId})`}
-        stroke={shade(visual.bladeColor, -0.4)}
-        strokeWidth="1.2"
+        stroke={shade(visual.bladeColor, -0.45)}
+        strokeWidth="1"
         strokeLinejoin="round"
       />
-      {teeth ? <path d={teeth} fill={toHex(visual.bladeColor)} /> : null}
-      <line
-        x1={X(heel)}
-        y1={bottomY - bladeH * 0.06}
-        x2={X(tip) - 2}
-        y2={tipY + bladeH * 0.08}
-        stroke={toHex(visual.edgeHighlight)}
-        strokeWidth="1.4"
-        opacity="0.55"
-      />
+      <path d={path(bevel)} fill={shade(visual.bladeColor, -0.14)} opacity="0.9" />
+      <path d={path(sheen)} fill="#ffffff" opacity="0.18" />
       {visual.pattern === "damascus"
-        ? [0, 1, 2].map((i) => (
-            <path
-              key={i}
-              d={`M ${X(heel)} ${topY + bladeH * (0.2 + i * 0.25)} Q ${X(spineControlX)} ${topY + bladeH * (0.05 + i * 0.25)} ${X(tip) - 6} ${tipY + bladeH * 0.15}`}
-              fill="none"
-              stroke={i % 2 === 0 ? "#ffffff" : "#7c828a"}
-              strokeWidth="0.8"
-              opacity="0.25"
-            />
-          ))
+        ? [0, 1, 2, 3].map((i) => {
+            const y = -H * (0.28 + i * 0.16);
+            return (
+              <path
+                key={i}
+                d={path(
+                  [
+                    { x: p.heel + 4, y },
+                    { x: (p.heel + p.tip) / 2, y: y + H * 0.1 * (i % 2 ? -1 : 1) },
+                    { x: p.tip * 0.9, y: y * 0.5 },
+                  ],
+                  false,
+                )}
+                fill="none"
+                stroke={i % 2 === 0 ? "#ffffff" : "#7c828a"}
+                strokeWidth="0.8"
+                opacity="0.3"
+              />
+            );
+          })
         : null}
-
-      <rect
-        x={X(heel - 7)}
-        y={topY}
-        width="7"
-        height={bladeH}
-        rx="1.5"
-        fill={toHex(visual.bolsterColor)}
+      {teeth ? <path d={teeth} fill={shade(visual.bladeColor, -0.1)} /> : null}
+      <path
+        d={path(p.cuttingEdge, false)}
+        fill="none"
+        stroke={toHex(visual.edgeHighlight)}
+        strokeWidth="1.3"
       />
       <path
-        d={`M ${X(handleLeft)} ${CENTER_Y - bladeH * 0.45} h ${handleLen} a 10 10 0 0 1 0 ${bladeH * 0.9} h -${handleLen} a 10 10 0 0 1 0 -${bladeH * 0.9} z`}
-        fill={`url(#${handleGradId})`}
-      />
-      <circle
-        cx={X(handleLeft + handleLen * 0.3)}
-        cy={CENTER_Y - edge}
-        r="3"
-        fill={toHex(visual.rivetColor)}
-        opacity="0.85"
-      />
-      <circle
-        cx={X(handleLeft + handleLen * 0.7)}
-        cy={CENTER_Y - edge}
-        r="3"
-        fill={toHex(visual.rivetColor)}
-        opacity="0.85"
+        d={path(p.bolster)}
+        fill={toHex(visual.bolsterColor)}
+        stroke={shade(visual.bolsterColor, -0.45)}
+        strokeWidth="0.8"
       />
     </svg>
   );

@@ -47,7 +47,7 @@ export type KnifeBladeShape = {
   spineControlXFrac: number;
   /** Fraction of bladeLen where the tip point sits. */
   tipFrac: number;
-  /** Tip Y offset coefficient (x bladeH) — how far the tip rises above centerline. */
+  /** Where the tip sits: (tipRiseFrac − 0.5) × bladeH from the cutting edge — negative values lift the point toward the spine (a chef's knife), positive keep it low (a santoku's sheepsfoot, a cleaver's square front). */
   tipRiseFrac: number;
   /** Fraction of bladeLen for the cutting-edge curve's control point. */
   bellyControlXFrac: number;

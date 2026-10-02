@@ -308,12 +308,9 @@ export const TECHNIQUES: Record<TechniqueId, TechniqueDefinition> = {
  * bounds, never a fixed screen coordinate (§26 of the design brief).
  */
 export const TAP_KNIFE = {
-  // Idle: resting on the board beside the ingredient, not over it (§10) —
-  // right of its edge and a little below its center, never above (an
-  // idle knife floating above the vegetable reads as about to strike).
-  IDLE_OFFSET_X_FRAC: 0.09, // past the ingredient's right edge
-  IDLE_OFFSET_Y_FRAC: 0.05, // below the ingredient's center
-  IDLE_ANGLE_DEG: -20,
+  // Idle: lying flat below the ingredient, never over it (§10) — see
+  // PreparationScene.idleKnifePose (derived from the ingredient's bounds
+  // and the equipped knife's own size, so no constants here).
   // Prep: lifted above the cut point, leaning slightly toward it (§7).
   PREP_OFFSET_X_FRAC: 0.03,
   PREP_ABOVE_FRAC: 0.16,

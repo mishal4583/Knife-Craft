@@ -403,6 +403,24 @@ not silently removed.
     slot or affects scoring (`coaching-qa` F).
   - No save state: coaching is derived from the level.
 
+- **Knives (look and size)** — every knife is drawn from ONE geometry and
+  painter, `src/game/scenes/knifeProfile.ts`:
+  - `knifeProfile`: blade outline, cutting edge and spine; a metal
+    bolster; a tapered handle with its top in line with the spine, a palm
+    swell and a rounded butt; rivets.
+  - `paintKnife`: shadow, wood handle with grain and rivets, steel with a
+    grind bevel, sheen, honed edge and spine.
+  - It is used by the in-game knife (PreparationScene.drawKnife), the
+    coaching ghost and the Market icon (`KnifeGlyph`, the same shapes as
+    SVG).
+  - Proportions follow the real knives (`knifeDefinitions.ts`, in 1/540 of
+    the scene width): the chef's blade is about 1/5 as tall as it is long,
+    with the handle a little over half the blade, and a negative
+    `tipRiseFrac` lifts the point toward the spine.
+  - The resting knife lies flat, centred under the ingredient: on the board
+    below it, or on the counter in front of the board when there's no
+    room — never across the food.
+
 ---
 
 ## 10. UI

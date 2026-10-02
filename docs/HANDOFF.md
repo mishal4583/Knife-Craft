@@ -123,6 +123,11 @@ conversation.
    new; otherwise only when the player is idle 8 s. QA: `coaching-qa`;
    e2e: `tools/e2e/coach.mjs` (finds the ghost fingertip in a screenshot,
    taps there and checks a real cut lands). Bread film still to come.
+20. Realistic knives (CLAUDE.md §9 "Knives"): real proportions for all
+   8 knives, one shared geometry + painter (`scenes/knifeProfile.ts`) for
+   the in-game knife, the coaching ghost (SWIPE then TAP demo) and the
+   Market icon; the resting knife lies flat below the food (or on the
+   counter in front of the board).
 
 ## 4. Open issues from the Level 1–10 audit (not fixed yet)
 

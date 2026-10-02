@@ -117,22 +117,14 @@ function ghostKnife(
     y: oy + uy * p.x - ny * p.y,
   });
   if (alpha > 0) {
-    const { bladeH, heel, handleLen, edge } = profile;
-    const rect = (x: number, y: number, w: number, h: number) =>
-      [
-        { x, y },
-        { x: x + w, y },
-        { x: x + w, y: y + h },
-        { x, y: y + h },
-      ].map(P);
-    // Handle and bolster, behind the heel.
-    const handle = rect(heel - 7 - handleLen, -bladeH * 0.45 - edge, handleLen, bladeH * 0.9);
+    // Handle and bolster, behind the heel (the same outlines as the real knife).
+    const handle = profile.handle.map(P);
     g.fillStyle(GHOST, 0.2 * alpha);
     g.fillPoints(handle, true);
     g.lineStyle(1.5, GHOST, 0.6 * alpha);
     g.strokePoints(handle, true);
     g.fillStyle(GHOST, 0.45 * alpha);
-    g.fillPoints(rect(heel - 7, -bladeH * 0.5 - edge, 7, bladeH), true);
+    g.fillPoints(profile.bolster.map(P), true);
     // Blade body.
     const blade = profile.outline.map(P);
     g.fillStyle(GHOST, 0.3 * alpha);
