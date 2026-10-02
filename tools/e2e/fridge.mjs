@@ -165,8 +165,11 @@ const cap = await page.evaluate(
 );
 const z = await zones();
 check(
-  "1a Basic Refrigerator · 23 / 40 units · 37°F",
-  /Basic Refrigerator/.test(await text(page)) && /23 \/ 40 units/.test(cap) && /37°F/.test(cap),
+  "1a Basic Refrigerator · 23 / 40 units · Refrigerated (a status, never a temperature)",
+  /Basic Refrigerator/.test(await text(page)) &&
+    /23 \/ 40 units/.test(cap) &&
+    /Refrigerated/.test(cap) &&
+    !/°/.test(await text(page)),
   cap,
 );
 check(

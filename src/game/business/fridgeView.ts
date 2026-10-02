@@ -216,8 +216,12 @@ export type FridgeView = {
   condition: number;
   conditionBand: ConditionBand;
   maintenance: MaintenanceStatus;
-  /** The reach-in's set point (food-safe ≤ 40 °F). Display only; the game models condition, not temperature. */
-  setPointF: number;
+  /**
+   * The cooling status line: "Refrigerated", "Needs service" or "Broken",
+   * straight from the maintenance status. Deliberately not a temperature —
+   * the game models fridge condition, not degrees.
+   */
+  cooling: string;
   items: FridgeItem[];
   zones: Array<{ zone: FridgeZone; items: FridgeItem[] }>;
   attention: FridgeAttention[];
@@ -225,7 +229,11 @@ export type FridgeView = {
   unknown: string[];
 };
 
-export const FRIDGE_SET_POINT_F = 37;
+export const FRIDGE_COOLING_LABEL: Record<MaintenanceStatus, string> = {
+  OPERATIONAL: "Refrigerated",
+  NEEDS_SERVICE: "Needs service",
+  BROKEN: "Broken",
+};
 
 const ATTENTION_ORDER: Record<FridgeAttentionReason, number> = {
   expired: 0,
@@ -310,6 +318,7 @@ export function fridgeView(save: SaveData): FridgeView {
   );
 
   const condition = business.equipmentCondition.refrigeratorCondition;
+  const maintenance = maintenanceStatusFor(condition);
   return {
     tier: tiers[rank]!,
     nextTier: tiers[rank + 1] ?? null,
@@ -321,8 +330,8 @@ export function fridgeView(save: SaveData): FridgeView {
     stockValue: status.stockValue,
     condition,
     conditionBand: conditionBandFor(condition),
-    maintenance: maintenanceStatusFor(condition),
-    setPointF: FRIDGE_SET_POINT_F,
+    maintenance,
+    cooling: FRIDGE_COOLING_LABEL[maintenance],
     items,
     zones: FRIDGE_ZONES.map((zone) => ({
       zone,

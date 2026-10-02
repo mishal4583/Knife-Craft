@@ -303,6 +303,17 @@ with the real functions.
   `shop-ingredients`, optionally preselecting an ingredient). The daily
   accumulator's `inventoryPurchases` counts purchases (one per
   "inventory-purchase" ledger entry; old saves migrate it as 0).
+- **HARD RULE — Business Inventory is read-only.** Business → Inventory
+  (the physical fridge included) is a read-only representation of the
+  player's actual saved inventory. It must never keep its own stock,
+  prices, money, freshness or any other economy state; every figure comes
+  from the existing save/economy systems (`business.inventory`,
+  perishability, pricing, `RefrigeratorManager`, the ledger). Market is
+  the ONLY place ingredients are bought; Business → Equipment is the ONLY
+  place fridge upgrades and repairs happen. Flow: Market buys → Inventory
+  observes → Menu consumes → Business analyzes → Equipment improves
+  capacity/operation. Guarded by `business-ux-qa` S8, `inventory-market-qa`
+  1 and `fridge-view-qa` H1/I1.
 - **Physical fridge** (refrigerator UI handoff, a UI integration — not
   V3-17) tops Business → Inventory: `kc/business/fridge/PhysicalFridge.tsx`
   + `.css`, fed by the read-only adapter `business/fridgeView.ts`. An open
@@ -312,8 +323,10 @@ with the real functions.
   tray or sauce rack). One label per ingredient (quantity, aggregate
   freshness from the weighted `purchaseDay`, days left); production tiers
   (Basic 40 / Commercial 80 / Professional 140, prices from
-  `refrigeratorDefinitions`) — each bigger and steelier; 37°F is the
-  displayed set point only. Tapping a label shows value, paid price and
+  `refrigeratorDefinitions`) — each bigger and steelier. The cooling line
+  is a status from the real condition ("Refrigerated" / "Needs service" /
+  "Broken"), never a temperature: the game does not simulate degrees, so
+  no °F/°C may appear. Tapping a label shows value, paid price and
   the menu dishes that use it. Its actions only navigate: Restock / "Buy
   more" → Market → Ingredients (`openMarketIngredients`), Upgrade / Service
   / Repair → Business → Equipment (`business-refrigerator`, which owns

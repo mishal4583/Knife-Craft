@@ -73,6 +73,9 @@
   font-weight: 800;
   color: color-mix(in oklab, var(--color-walnut) 85%, transparent);
 }
+.kcf-head__warn {
+  color: var(--color-copper);
+}
 .kcf-cap {
   margin-top: 4px;
   height: 8px;

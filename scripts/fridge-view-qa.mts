@@ -138,6 +138,31 @@ const ALL_IDS = Object.keys(INGREDIENTS) as IngredientId[];
   );
 }
 
+// ===== B4: cooling is a status, never a temperature =====
+{
+  const at = (refrigeratorCondition: number) =>
+    F.fridgeView(
+      saveWith(
+        {},
+        {
+          equipmentCondition: {
+            ...DEFAULT_BUSINESS_STATE.equipmentCondition,
+            refrigeratorCondition,
+          },
+        },
+      ),
+    ).cooling;
+  const ui = read("src/components/kc/business/fridge/PhysicalFridge.tsx");
+  const adapter = read("src/game/business/fridgeView.ts");
+  assert(
+    at(100) === "Refrigerated" &&
+      at(50) === "Needs service" &&
+      at(0) === "Broken" &&
+      !/°|setPoint|temperature/i.test(code(ui) + code(adapter)),
+    "B4: cooling shows Refrigerated / Needs service / Broken from the real condition — no simulated-looking temperature",
+  );
+}
+
 // ===== C + D: stock and freshness =====
 {
   const s = saveWith({

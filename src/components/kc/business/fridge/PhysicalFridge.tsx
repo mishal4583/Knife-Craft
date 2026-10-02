@@ -260,7 +260,13 @@ export function PhysicalFridge({
           <p className="kcf-head__meta" data-testid="fridge-capacity">
             {formatQuantity(view.used)} / {view.capacity} units
             <span aria-hidden> · </span>
-            <span data-testid="fridge-temperature">{view.setPointF}°F</span>
+            <span
+              data-testid="fridge-cooling"
+              className={cn(view.maintenance !== "OPERATIONAL" && "kcf-head__warn")}
+            >
+              {view.maintenance === "OPERATIONAL" ? "❄️ " : "⚠ "}
+              {view.cooling}
+            </span>
           </p>
           <div
             className={cn("kcf-cap", full && "kcf-cap--full")}

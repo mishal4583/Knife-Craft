@@ -178,6 +178,10 @@ conversation.
      in-fridge buying.
    - Fixed: the door handle no longer covers or steals taps at 375×642.
      Shelves pan sideways only when they overflow, with touch and mouse.
+   - Developer review: approved as built. The fixed 37°F was replaced by a
+     cooling status from the real condition (Refrigerated / Needs service
+     / Broken) so players don't think temperature is simulated. The
+     read-only rule is now a hard rule in `CLAUDE.md` §7.
    - QA: `fridge-view-qa`, `tools/e2e/fridge.mjs` (375×642 plus
      320/360/390/430/768).
 26. Business Supplies (developer's Shop UI production handoff). This is a
