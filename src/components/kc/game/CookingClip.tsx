@@ -2,7 +2,8 @@
  * COOKING CLIP — the short painted-kitchen film of the chef finishing the
  * dish (portrait 540×960), shown after every preparation — the fruit-cup
  * film (3.84 s) for fruit dishes, the salad film (2.97 s) for salads, the
- * curry-pot film (3.67 s) for curries and pot dishes, the chef-cooking
+ * curry-pot film (3.67 s) for curries and pot dishes, the bread film
+ * (4.0 s) for bread dishes, the chef-cooking
  * film (3.75 s) for other cooked dishes and the plating film
  * (3.84 s) for dishes that are only cut and plated: once the
  * chef's hands have carried the plate away (RECIPE_COMPLETED) and before
@@ -38,12 +39,16 @@ import platingPoster from "@/assets/video/chef-plating-poster.webp";
 import curryWebm from "@/assets/video/chef-curry.webm";
 import curryMp4 from "@/assets/video/chef-curry.mp4";
 import curryPoster from "@/assets/video/chef-curry-poster.webp";
+import breadWebm from "@/assets/video/chef-bread.webm";
+import breadMp4 from "@/assets/video/chef-bread.mp4";
+import breadPoster from "@/assets/video/chef-bread-poster.webp";
 
-/** One film per kind of dish (dishKindFor): fruit cups with a honey drizzle, the chef tossing a salad, stirring a curry pot, cooking at the stove, or plating cut vegetables. */
+/** One film per kind of dish (dishKindFor): fruit cups with a honey drizzle, the chef tossing a salad, stirring a curry pot, topping bruschetta, cooking at the stove, or plating cut vegetables. */
 const CLIPS: Record<DishKind, { webm: string; mp4: string; poster: string }> = {
   fruit: { webm: fruitWebm, mp4: fruitMp4, poster: fruitPoster },
   salad: { webm: saladWebm, mp4: saladMp4, poster: saladPoster },
   curry: { webm: curryWebm, mp4: curryMp4, poster: curryPoster },
+  bread: { webm: breadWebm, mp4: breadMp4, poster: breadPoster },
   cooked: { webm: cookingWebm, mp4: cookingMp4, poster: cookingPoster },
   plated: { webm: platingWebm, mp4: platingMp4, poster: platingPoster },
 };

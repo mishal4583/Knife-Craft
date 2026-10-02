@@ -1,8 +1,9 @@
 /**
  * Which cooking clip (CookingClip) a finished dish gets: the fruit-cup film
  * for fruit dishes, the salad film for salads, the curry-pot film for
- * curries and pot dishes, the chef-cooking (stove) film for other cooked
- * dishes, and the plating film for everything that
+ * curries and pot dishes, the bread film for bread dishes, the
+ * chef-cooking (stove) film for other cooked dishes, and the plating film
+ * for everything that
  * is only cut and plated (Levels 1–9's plates and bowls, garnishes, salsas,
  * skewers, antipasti, prep bases).
  *
@@ -17,6 +18,9 @@
  * - Curry: a pot word in the dish's or recipe's name (curry, masala,
  *   chutney, minestrone, velouté, soup, French onion, dal, stew), or the
  *   Business dish is a Curry.
+ * - Bread: its recipe uses bread or a baguette, or its name says bread,
+ *   toast, bruschetta or crostini (garlic bread, bruschetta, crostini, the
+ *   antipasto board).
  * - Cooked: a Protein ingredient (chicken, steak, salmon), a cooking word
  *   in the dish's or recipe's name (stir-fry, wok, sauté,
  *   rings, gratin, bread, toast, bruschetta, …), or the Business dish is a
@@ -29,7 +33,7 @@ import { INGREDIENTS } from "../definitions";
 import { BUSINESS_DISH_CATALOG } from "../business/businessDishCatalog";
 import { getCampaignRecipe } from "./campaignRecipes";
 
-export type DishKind = "fruit" | "salad" | "curry" | "cooked" | "plated";
+export type DishKind = "fruit" | "salad" | "curry" | "bread" | "cooked" | "plated";
 
 const SALAD_NAME = /\b(salad|slaw)\b/i;
 
@@ -41,6 +45,9 @@ const SALAD_RECIPE_IDS: ReadonlySet<string> = new Set(
 
 const COOKED_NAME =
   /stir|wok|saut|\bfr(y|ied)\b|rings|gratin|duxelles|hash|persillade|bread|toast|bruschetta|crostini|fajita/i;
+
+const BREAD_INGREDIENTS: ReadonlySet<string> = new Set(["bread", "baguette"]);
+const BREAD_NAME = /bread|toast|bruschetta|crostini/i;
 
 const CURRY_NAME = /curry|masala|chutney|minestrone|velout|soup|french onion|\bdal\b|stew/i;
 
@@ -68,6 +75,11 @@ export function dishKindFor(recipeId: string, dishName: string): DishKind {
   const names = `${dishName} ${recipe?.name ?? ""}`;
   if (SALAD_RECIPE_IDS.has(recipeId) || SALAD_NAME.test(names)) return "salad";
   if (CURRY_RECIPE_IDS.has(recipeId) || CURRY_NAME.test(names)) return "curry";
+  if (
+    recipe?.components.some((c) => BREAD_INGREDIENTS.has(c.ingredientId)) ||
+    BREAD_NAME.test(names)
+  )
+    return "bread";
   const hasProtein = !!recipe?.components.some(
     (c) => INGREDIENTS[c.ingredientId]?.category === "Protein",
   );

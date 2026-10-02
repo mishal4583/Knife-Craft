@@ -8,7 +8,8 @@
 //      stove-cooked dishes the chef-cooking film (Level 36, Mushroom & Garlic Saute Prep);
 //   6. fruit dishes get the fruit-cup film (Level 84, Pineapple & Mango Fresh Cup);
 //   7. cut-and-plate dishes get the plating film (Level 3, Carrot Chop Bowl);
-//   8. curries get the curry-pot film (Level 58, Pumpkin Curry Dice).
+//   8. curries get the curry-pot film (Level 58, Pumpkin Curry Dice);
+//   9. bread dishes get the bread film (Level 11, Garlic Bread).
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import { launch, boot, seedSave, sleep, clickButton, shot, save } from "./harness.mjs";
 import { playToReport, stepInfo } from "./solver.mjs";
@@ -232,6 +233,34 @@ check(
 await shot(page, "cooking-8-curry");
 await page.waitForFunction(() => /KNIFE REPORT/.test(document.body.innerText), { timeout: 8000 });
 check("8c when it ends, the Knife Report follows", await page.evaluate(clipGone));
+
+// ---------- 9. a bread dish gets the bread film ----------
+await boot(
+  page,
+  seedSave({
+    levelProgress: {
+      currentLevelId: "level-11",
+      highestUnlockedLevelId: "level-11",
+      completedLevelIds: Array.from({ length: 10 }, (_, i) => `level-${i + 1}`),
+    },
+  }),
+);
+await clickButton(page, /Prepare$/);
+check("9a Level 11 (Garlic Bread): clip shown", await cookUntilClip());
+await sleep(800);
+const v9 = await video(page);
+check(
+  "9b a bread dish plays the bread film",
+  (await page.evaluate(
+    () => document.querySelector('[data-testid="cooking-clip"]').dataset.kind,
+  )) === "bread" &&
+    /^chef-bread/.test(v9?.src ?? "") &&
+    v9.t > 0.2,
+  v9,
+);
+await shot(page, "cooking-9-bread");
+await page.waitForFunction(() => /KNIFE REPORT/.test(document.body.innerText), { timeout: 8000 });
+check("9c when it ends, the Knife Report follows", await page.evaluate(clipGone));
 
 check("console has no errors", logs.filter((l) => /^error|pageerror/i.test(l)).length === 0, logs);
 save("cookingclip-result.json", results);

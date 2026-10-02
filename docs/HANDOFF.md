@@ -158,6 +158,12 @@ conversation.
    - `tools/e2e/coach.mjs` clears long straight white runs before looking
      for the ghost fingertip, because the ghost knife's edge lies through
      it.
+25. Bread cooking clip: `Bread.mp4` (10 s) cut to 3.0–7.0 s (tomato
+   spooned onto toast → the finished crostini board), watermark painted
+   out, 540×960 WebM/MP4 + poster (`chef-bread.*`). `dishKindFor` "bread"
+   (bread/baguette ingredient, or bread/toast/bruschetta/crostini in the
+   name), checked after curry and before the stove film: 11 recipes. e2e
+   `cookingclip.mjs` 9a–9c (Level 11, Garlic Bread).
 24. Cutting rules (developer's `Knife_Rules.docx` + review). See
    `docs/KNIFE_RULES.md`.
    - Every cut goes across the food, vertical lines like Level 1.

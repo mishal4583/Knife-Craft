@@ -353,7 +353,7 @@ not silently removed.
 - Intro screenshots: `playgama/screenshots/intro/`.
 - **Cooking clip** — after EVERY preparation, once the chef's hands have
   carried the plate away (RECIPE_COMPLETED) and before the Knife Report,
-  `src/components/kc/game/CookingClip.tsx` plays one of five short chef
+  `src/components/kc/game/CookingClip.tsx` plays one of six short chef
   films, each 540×960 WebM + MP4 (~0.25–0.65 MB) with a `-poster.webp`:
   **fruit-cup** (`chef-fruit.*`, 3.84 s, from `Fruit cups.mp4`: 2.13–4.46 s
   spooning → 6.50–8.00 s honey drizzle), **salad** (`chef-salad.*`, 2.97 s,
@@ -361,7 +361,9 @@ not silently removed.
   `Plating.mp4`: 1.42–3.25 s tomato slices into a bowl → 8.0–10.0 s herbs
   and the pull-back over the plated counter), **curry-pot**
   (`chef-curry.*`, 3.67 s, from `Curry.mp4`: 2.04–3.96 s spoon stirring the
-  curry → 6.04–7.79 s the chef over the big steaming pot) and
+  curry → 6.04–7.79 s the chef over the big steaming pot), **bread**
+  (`chef-bread.*`, 4.0 s, from `Bread.mp4`: 3.0–7.0 s — tomato spooned
+  onto toasted bread, then hands finishing the crostini board) and
   **chef-cooking** (stove,
   `chef-cooking.*`, 3.75 s). `src/game/recipes/dishKind.ts` `dishKindFor(recipeId,
   name)` decides, in order: **fruit** (every ingredient a Fruit, or a
@@ -370,6 +372,9 @@ not silently removed.
   **curry** (curry, masala, chutney, minestrone, velouté, soup, French
   onion, dal, stew in the name, or a Business Curry — 18 recipes,
   Levels 51–69, Level 58);
+  **bread** (the recipe uses bread or a baguette, or bread, toast,
+  bruschetta or crostini in the name — 11 recipes, Levels 11–13, 18, 26,
+  29, 30, 49, 74, 80; e2e Level 11);
   **cooked** (a Protein ingredient, a cooking word in the name — stir-fry,
   wok, sauté, rings, gratin, bread, toast, bruschetta… — or a Business
   Stir-Fry/Entree — 103 recipes, Level 36);
@@ -377,11 +382,11 @@ not silently removed.
   buffers from PLATING_STARTED, is
   skippable (SKIP › or a tap, 300 ms guard), pauses with PauseManager,
   is muted unless `AudioManager.soundAllowed`, and falls straight through
-  on error / stall / `prefers-reduced-motion`. All five sources carry the same
+  on error / stall / `prefers-reduced-motion`. All six sources carry the same
   AI watermark (centre 600,1160 of 720×1280), painted out with ffmpeg
   `delogo` (`x=562:y=1122:w=76:h=76`, then scale 540:960; H.264 crf 27 /
   VP9 crf 38), and the SKIP › pill sits over that spot. Source uploads:
-  `gemini_generated_video_aa3f242a - Trim.mp4`, `Salads.mp4`, `Fruit cups.mp4`, `Plating.mp4`, `Curry.mp4` (on `main`).
+  `gemini_generated_video_aa3f242a - Trim.mp4`, `Salads.mp4`, `Fruit cups.mp4`, `Plating.mp4`, `Curry.mp4`, `Bread.mp4` (on `main`).
 
 - **Beginner coaching** (`src/game/coaching.ts`) — a ghost demonstration
   on the board plus a how-to card. PreparationScene draws it
@@ -515,7 +520,7 @@ painted kitchens, wood/paper, Fraunces / Nunito / Caveat bundled locally).
 Touch targets ≥ 48 px. Test at 320×568, 360×640, 390×844, 430×900,
 768×1024. Do not add animation libraries or large assets; prefer CSS
 transform/opacity. No external fonts, video or network requests at runtime
-(only the Bridge CDN script); the bundled videos are the five cooking clips (§9).
+(only the Bridge CDN script); the bundled videos are the six cooking clips (§9).
 
 ---
 
