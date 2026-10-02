@@ -11,6 +11,26 @@ import type { KnifeBladeShape, KnifeVisual } from "../knives/knifeTypes";
 
 export type Pt = { x: number; y: number };
 
+/** How far a cut line may lean from horizontal before the knife comes ACROSS it instead of along it. */
+const ALONG_MAX_DEG = 40;
+/** The blade's slight tip-down tilt when it comes down across a cut, like a cook's slicing stroke. */
+export const CROSS_TILT_DEG = 10;
+
+/**
+ * The knife's rotation (radians) for cutting a line at `lineAngleDeg`, with
+ * its sharp edge always leading into the food (local +y = the edge side
+ * faces down the screen, the way the knife moves):
+ * - a near-horizontal line: the blade lies along it, edge down;
+ * - a steeper line (slicing a loaf into rounds, wedges): the blade comes
+ *   down ACROSS it, edge first, tip tilted slightly down — never upright
+ *   with the handle leading.
+ */
+export function cuttingRot(lineAngleDeg: number): number {
+  let a = ((lineAngleDeg % 180) + 180) % 180;
+  if (a > 90) a -= 180;
+  return ((Math.abs(a) <= ALONG_MAX_DEG ? a : CROSS_TILT_DEG) * Math.PI) / 180;
+}
+
 /** A short quadratic-bezier polyline — Phaser Graphics has no native curveTo, so curves are sampled. */
 export function quadraticPoints(
   x0: number,
@@ -161,7 +181,7 @@ export function shade(c: number, amount: number): number {
  * breaks lines this thin into dots, a fill doesn't. `w` = band width (px),
  * laid on the side given by `side` (-1 = towards negative y).
  */
-function band(pts: Pt[], w: number, side: 1 | -1): Pt[] {
+export function band(pts: Pt[], w: number, side: 1 | -1): Pt[] {
   const shifted = pts.map((q, i) => {
     const a = pts[Math.max(0, i - 1)]!;
     const b = pts[Math.min(pts.length - 1, i + 1)]!;

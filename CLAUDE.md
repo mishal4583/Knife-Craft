@@ -378,13 +378,12 @@ not silently removed.
   the next tap would really cut, using the same axis, slot and position rules
   as `resolveTapCut`:
   - cutting: the line glows, then a 3 s loop shows both ways to cut, each
-    labelled by the fingertip. **SWIPE**: the fingertip draws along the
-    line while a see-through copy of the equipped knife (the same
-    `scenes/knifeProfile.ts` silhouette as the real knife) brings its
-    glowing sharp edge down and slices through tip-first. **TAP**: the
-    fingertip taps with a ripple and the knife chops straight down onto the
-    line. The handle points towards the player (lower end, or left for a
-    flat cut) and the spine away from the food;
+    labelled by the fingertip. A see-through copy of the equipped knife
+    (the same `scenes/knifeProfile.ts` silhouette as the real knife) is
+    held in the real cutting pose (`cuttingRot`, below). **SWIPE**: the
+    fingertip draws along the line and the knife's glowing edge travels
+    with it, edge first. **TAP**: the fingertip taps with a ripple and the
+    knife chops straight down onto the line;
   - Peel: a fingertip sweeps across the skin that's left (the peel grid row
     with the most skin);
   - Smash: a press with a ripple;
@@ -435,6 +434,15 @@ not silently removed.
   - The resting knife lies flat, centred under the ingredient: on the board
     below it, or on the counter in front of the board when there's no
     room — never across the food.
+  - **Cutting pose — the sharp edge leads** (`cuttingRot(lineAngleDeg)` in
+    `knifeProfile.ts`, used by the tap cut, the swipe knife and the
+    ghost). The edge always faces down into the food and the spine stays
+    up, never the handle first:
+    - on a line within 40° of horizontal, the knife lies along the line;
+    - on a steeper line (a vertical slice), it lies across the line, handle
+      left, tilted 10° tip-down, like a real knife slicing through a
+      carrot.
+    - A steep swipe uses the same pose.
 
 ---
 

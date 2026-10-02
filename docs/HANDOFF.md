@@ -134,6 +134,10 @@ conversation.
    back after a pause only if the player is stuck (no progress on the
    step); the one-line gesture hint only to Level 10. QA `coaching-qa`
    E2/F3/F4; e2e `coach.mjs` 3a, 6a, 7a (Order Board replay), 8a.
+22. The knife cuts edge-first: on vertical/steep lines the tap and swipe
+   knife (and the coaching ghost) hold it across the line, edge down,
+   tilted 10° tip-down, instead of standing it upright handle-first
+   (`cuttingRot` in `scenes/knifeProfile.ts`).
 
 ## 4. Open issues from the Level 1–10 audit (not fixed yet)
 

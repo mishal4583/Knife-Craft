@@ -8,7 +8,7 @@ import {
 import { PauseManager } from "../PauseManager";
 import { withRequiredPeelSteps } from "../prepStepGuards";
 import { drawCoachGhost, coachCycleMs, type CoachTarget } from "./coachGhost";
-import { knifeProfile, paintKnife, quadraticPoints } from "./knifeProfile";
+import { cuttingRot, knifeProfile, paintKnife, quadraticPoints } from "./knifeProfile";
 import { COACH_FIRST_DELAY_MS, COACH_STUCK_IDLE_MS } from "../coaching";
 import { AudioManager } from "../AudioManager";
 import {
@@ -3082,6 +3082,18 @@ export class PreparationScene extends Phaser.Scene {
 
     const dx = last.x - base.x;
     const dy = last.y - base.y;
+    if (Math.abs(dy) > Math.abs(dx) * Math.tan(Phaser.Math.DegToRad(50))) {
+      // A steep stroke (down through the food): the blade goes across it,
+      // edge first and leading, tip to the right — not upright along it.
+      this.knife.targetRot = cuttingRot(90);
+      this.knife.dirSign = 1;
+      this.knife.dirLatch = null;
+      if (!this.knife.rotInit) {
+        this.knife.rot = this.knife.targetRot;
+        this.knife.rotInit = true;
+      }
+      return;
+    }
     let rot = Math.atan2(dy, dx);
     if (rot > Math.PI / 2) rot -= Math.PI;
     else if (rot < -Math.PI / 2) rot += Math.PI;
@@ -3728,7 +3740,9 @@ export class PreparationScene extends Phaser.Scene {
     const cutY = cutPoint.y + K.CUT_DEPTH_FRAC * w;
     const cutAngleDeg = lineAngleDeg(cut.axis, cut.slope);
     const jitterDeg = Phaser.Math.FloatBetween(-K.ANGLE_JITTER_DEG, K.ANGLE_JITTER_DEG);
-    const cutRot = Phaser.Math.DegToRad(cutAngleDeg + jitterDeg);
+    // The sharp edge leads into the food: along a flat cut, across a steep one
+    // (cuttingRot) — the knife never comes down handle-first.
+    const cutRot = cuttingRot(cutAngleDeg + jitterDeg);
 
     if (!this.knife)
       this.knife = {
