@@ -165,6 +165,9 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   cash identity with ingredient analytics food-only, savings never money,
   saves/migration (real `SaveManager.load`), Campaign independence and
   wiring. Browser: `tools/e2e/supplies.mjs` (375×642).
+- `fridge-view-qa` — the physical fridge in Business → Inventory (ids,
+  zones, production tiers, aggregate freshness, attention, unknown ids,
+  navigation-only actions, handle never takes a tap, 48 px targets).
 - `inventory-market-qa` — the Market/Inventory split (checks 1–16: no buy
   controls in Business, purchase maths, fridge, low stock, expiry,
   purchasing/consumption analytics, supplier modifiers, contracts, funds,
@@ -289,8 +292,8 @@ with the real functions.
   "You'll have $X remaining", "Not enough money — need $X more.", or "Not
   enough fridge space. You have N units of fridge space left."
   **Business → Inventory** (`BusinessInventory.tsx`, tab id `inventory`,
-  route `business-inventory`) has NO purchase controls: fridge status,
-  On hand (freshness, days left, Used in), Low stock (threshold = today's
+  route `business-inventory`) has NO purchase controls: the physical
+  fridge (below), fridge status, On hand (freshness, days left, Used in), Low stock (threshold = today's
   customer target × the active menu's need), Menu readiness + Most needed,
   Expiring soon, Inventory analytics, Purchasing, Most used. All figures
   come from `business/inventoryAnalytics.ts` over existing state; Most used
@@ -300,6 +303,26 @@ with the real functions.
   `shop-ingredients`, optionally preselecting an ingredient). The daily
   accumulator's `inventoryPurchases` counts purchases (one per
   "inventory-purchase" ledger entry; old saves migrate it as 0).
+- **Physical fridge** (refrigerator UI handoff, a UI integration — not
+  V3-17) tops Business → Inventory: `kc/business/fridge/PhysicalFridge.tsx`
+  + `.css`, fed by the read-only adapter `business/fridgeView.ts`. An open
+  reach-in: Dairy & Tofu on the top shelf, Vegetables in the middle, Meat,
+  Fish & Bread low, Fruit and Greens & Herbs crisper drawers, Butter and
+  Aromatics in the door (production has no eggs, sauces or oils, so no egg
+  tray or sauce rack). One label per ingredient (quantity, aggregate
+  freshness from the weighted `purchaseDay`, days left); production tiers
+  (Basic 40 / Commercial 80 / Professional 140, prices from
+  `refrigeratorDefinitions`) — each bigger and steelier; 37°F is the
+  displayed set point only. Tapping a label shows value, paid price and
+  the menu dishes that use it. Its actions only navigate: Restock / "Buy
+  more" → Market → Ingredients (`openMarketIngredients`), Upgrade / Service
+  / Repair → Business → Equipment (`business-refrigerator`, which owns
+  `purchaseRefrigerator` and maintenance). The door handle is decorative
+  (`pointer-events: none`, in the door's own 18 px edge); shelves pan
+  sideways only when they overflow (› cue; touch and mouse drag) without
+  blocking vertical scroll. Unknown inventory ids are listed, never
+  dropped. `HANDOFF_INGREDIENT_ID_MAP` maps the handoff's 57 ids.
+  QA: `fridge-view-qa`, `tools/e2e/fridge.mjs`.
 - **Recurring caps** — Replay Bonus 20% of the paid reward, $10–$200,
   3/day; Endless $600/day; Today's Special $50/day.
 - **Wallet invariant** — `economy/wallet.ts`: credits are whole cents and

@@ -25,6 +25,8 @@ import {
   type OnHandItem,
 } from "@/game/business/inventoryAnalytics";
 import { openMarketIngredients } from "../marketFocus";
+import { fridgeView } from "@/game/business/fridgeView";
+import { PhysicalFridge } from "./fridge/PhysicalFridge";
 
 const PERISHABILITY_BADGE_TONE: Record<PerishabilityState, "cream" | "sage" | "copper" | "locked"> =
   {
@@ -120,7 +122,6 @@ export function BusinessInventory({ go, save }: { go: (s: ScreenId) => void; sav
   const summary = inventorySummary(save);
   const purchasing = purchasingStats(save);
   const consumption = ingredientConsumption(save);
-  const spoilingTonight = onHand.filter((i) => i.spoilsTonight);
   const day = save.business.calendar.businessDay;
   const event = eventForDay(day);
 
@@ -130,40 +131,17 @@ export function BusinessInventory({ go, save }: { go: (s: ScreenId) => void; sav
         Track your stock, freshness and restaurant supply needs.
       </p>
 
-      {/* Fridge status */}
-      <Panel className="p-4">
-        <div className="flex items-baseline justify-between gap-3">
-          <Eyebrow>❄️ {fridge.name}</Eyebrow>
-          <span className="font-ui text-[12px] font-extrabold text-walnut-dark">
-            {formatQuantity(fridge.used)} / {fridge.capacity}
-          </span>
-        </div>
-        <div className="mt-2">
-          <Bar fraction={fridge.usage} tone="sage" />
-        </div>
-        <div className="mt-2 grid grid-cols-3 gap-2" data-testid="fridge-status">
-          <Stat label="Value" value={formatUsd(fridge.stockValue)} sub="in stock" />
-          <Stat label="Space" value={formatQuantity(fridge.available)} sub="left" />
-          <Stat label="Ready" value={`${readiness.ready} / ${readiness.total}`} sub="dishes" />
-        </div>
-        {spoilingTonight.length > 0 ? (
-          <p className="mt-2 font-ui text-[12px] font-extrabold text-copper">
-            ⚠{" "}
-            {spoilingTonight.length === 1
-              ? `${name(spoilingTonight[0]!.id)} spoils tonight`
-              : `${spoilingTonight.length} ingredients spoil tonight`}
-          </p>
-        ) : null}
-        <KButton
-          full
-          size="sm"
-          variant="ghost"
-          className="mt-2 h-12"
-          onClick={() => go("business-refrigerator")}
-        >
-          Upgrade or repair the fridge →
-        </KButton>
-      </Panel>
+      {/* The physical fridge: shelves, drawers and door filled from the save */}
+      <PhysicalFridge
+        view={fridgeView(save)}
+        onRestock={(id) => openMarketIngredients(go, id)}
+        onEquipment={() => go("business-refrigerator")}
+      />
+      <div className="grid grid-cols-3 gap-2" data-testid="fridge-status">
+        <Stat label="Value" value={formatUsd(fridge.stockValue)} sub="in stock" />
+        <Stat label="Space" value={formatQuantity(fridge.available)} sub="left" />
+        <Stat label="Ready" value={`${readiness.ready} / ${readiness.total}`} sub="dishes" />
+      </div>
 
       {/* On hand */}
       {onHand.length > 0 ? (

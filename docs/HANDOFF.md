@@ -158,6 +158,28 @@ conversation.
    - `tools/e2e/coach.mjs` clears long straight white runs before looking
      for the ghost fingertip, because the ghost knife's edge lies through
      it.
+27. Physical refrigerator (developer's refrigerator UI handoff). A UI
+   integration, NOT V3-17: no save field, price, ledger category or
+   action was added.
+   - Business → Inventory now opens on an open reach-in
+     (`kc/business/fridge/PhysicalFridge.tsx` + `.css`), fed by the
+     read-only adapter `business/fridgeView.ts`, built from
+     `business.inventory`, perishability, `lowStockItems`, the active
+     menu, `refrigeratorDefinitions` and equipment condition.
+   - Zones: Dairy & Tofu (top), Vegetables, Meat · Fish · Bread, Fruit
+     and Greens & Herbs drawers, and Butter and Aromatics door bins. There
+     is no egg tray or sauce rack because the game has none of those.
+   - Restock and "Buy more" go to Market → Ingredients; Upgrade, Service
+     and Repair go to Business → Equipment. The fridge buys nothing
+     itself, which keeps the "Business → Inventory has no purchase
+     controls" rule (`business-ux-qa` S8, `inventory-market-qa` 1).
+   - Not used from the handoff: its mock tiers (30-slot "My Fridge"),
+     slot counting, prices, demo inventory, mirror state, coins and
+     in-fridge buying.
+   - Fixed: the door handle no longer covers or steals taps at 375×642.
+     Shelves pan sideways only when they overflow, with touch and mouse.
+   - QA: `fridge-view-qa`, `tools/e2e/fridge.mjs` (375×642 plus
+     320/360/390/430/768).
 26. Business Supplies (developer's Shop UI production handoff). This is a
    separately authorized extension, NOT V3-17: master spec §25, with a
    note in the execution protocol.
