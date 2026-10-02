@@ -197,6 +197,8 @@ export type FridgeAttention = {
 export type FridgeTier = {
   id: string;
   name: string;
+  /** The catalog's own line ("A two-door reach-in, built for a busier kitchen."). */
+  description: string;
   capacity: number;
   price: number;
   approxCubicFeet: number;
@@ -247,6 +249,7 @@ function tierOf(rank: number): FridgeTier {
   return {
     id: def.id,
     name: def.name,
+    description: def.description,
     capacity: def.capacity,
     price: def.price,
     approxCubicFeet: def.approxCubicFeet,

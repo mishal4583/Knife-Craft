@@ -17,6 +17,7 @@ import {
   DECAY_DIVISOR,
   type ConditionBand,
 } from "@/game/business/businessEquipmentCondition";
+import { FridgeMini } from "./fridge/PhysicalFridge";
 import {
   maintenanceStatusFor,
   maintenanceCostFor,
@@ -31,12 +32,13 @@ const CONDITION_BADGE_TONE: Record<ConditionBand, "cream" | "sage" | "copper" | 
   BROKEN: "locked",
 };
 
-/** Bigger fridge, more doors — a visual cue only. */
-const FRIDGE_ICON: Record<string, string> = {
-  "basic-refrigerator": "🧊",
-  "commercial-refrigerator": "❄️",
-  "professional-refrigerator": "🏔️",
-};
+/** Catalog position of a model: 0 Basic, 1 Commercial, 2 Professional (its drawing). */
+function rankOf(id: string): number {
+  return Math.max(
+    0,
+    REFRIGERATOR_CATALOG.findIndex((r) => r.id === id),
+  );
+}
 
 /**
  * BUSINESS · EQUIPMENT tab (Economy V3 Phase 3 refrigerator + Phase 10/11
@@ -107,9 +109,15 @@ export function BusinessRefrigerator({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <Eyebrow>Your refrigerator</Eyebrow>
-            <p className="font-display text-[18px] font-black leading-tight text-walnut-dark">
-              {FRIDGE_ICON[current?.id ?? ""] ?? "❄️"} {current?.name ?? "Refrigerator"}
+            <p className="flex items-center gap-3 font-display text-[18px] font-black leading-tight text-walnut-dark">
+              <FridgeMini rank={rankOf(current?.id ?? "")} />
+              {current?.name ?? "Refrigerator"}
             </p>
+            {current ? (
+              <p className="mt-0.5 font-hand text-[14px] leading-tight text-walnut/65">
+                {current.description}
+              </p>
+            ) : null}
           </div>
           <Badge tone={CONDITION_BADGE_TONE[conditionBand]}>{conditionBand}</Badge>
         </div>
@@ -169,8 +177,8 @@ export function BusinessRefrigerator({
                 isCurrent ? "border-copper/50" : "border-walnut/15",
               )}
             >
-              <span className="text-center text-[40px] leading-none" aria-hidden>
-                {FRIDGE_ICON[def.id] ?? "❄️"}
+              <span className="grid h-[84px] place-items-center">
+                <FridgeMini rank={rankOf(def.id)} className="kcf-mini--lg" />
               </span>
               <p className="mt-1 text-center font-display text-[14px] font-black leading-tight text-walnut-dark">
                 {def.name}
@@ -181,7 +189,12 @@ export function BusinessRefrigerator({
               <div className="mt-2 space-y-1 rounded-[12px] bg-cream/70 px-2 py-1.5 font-ui text-[11px]">
                 <div className="flex justify-between">
                   <span className="text-walnut/60">Capacity</span>
-                  <span className="font-extrabold text-walnut-dark">{def.capacity} units</span>
+                  <span className="font-extrabold text-walnut-dark">
+                    {def.capacity} units
+                    {!isCurrent && def.capacity > capacity ? (
+                      <span className="ml-1 text-olive">▲ +{def.capacity - capacity}</span>
+                    ) : null}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-walnut/60">Size</span>

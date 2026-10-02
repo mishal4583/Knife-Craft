@@ -180,6 +180,13 @@ conversation.
      Shelves pan sideways only when they overflow, with touch and mouse.
    - The fridge replaces the old On hand list (developer: "replace the
      current on hand with proper refrigerator and stocks inside it").
+   - Second handoff (with `design-assets/` mockups for the three models):
+     the fridge was redrawn after them — enamel Basic with the door open
+     on the right, stainless two-door Commercial and three-door
+     Professional with both doors open, crates with cream tags, wooden
+     signs, glass drawers; the steel models pan sideways on a phone; the
+     Equipment cards use the same drawings. `tools/e2e/fridgeshots.mjs`
+     captures all three for visual review.
    - Developer review: approved as built. The fixed 37°F was replaced by a
      cooling status from the real condition (Refrigerated / Needs service
      / Broken) so players don't think temperature is simulated. The

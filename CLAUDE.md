@@ -325,7 +325,19 @@ with the real functions.
   tray or sauce rack). One label per ingredient (quantity, aggregate
   freshness from the weighted `purchaseDay`, days left); production tiers
   (Basic 40 / Commercial 80 / Professional 140, prices from
-  `refrigeratorDefinitions`) — each bigger and steelier. The cooling line
+  `refrigeratorDefinitions`), drawn after the developer's design
+  references (refrigerator handoff `design-assets/`, CSS only — the 3 MB
+  mockups carry sample numbers and are not shipped): **Basic** a vintage
+  cream-enamel single-door with its door open on the right; **Commercial**
+  a stainless two-door reach-in (two compartments, both doors open: Butter
+  left, Aromatics right); **Professional** three compartments (Dairy +
+  Meat/Fish/Bread · Vegetables · Greens + Fruit drawer). Food sits in
+  wooden crates (1–3 pieces shown by quantity) with cream tags, zone names
+  on wooden signs, glass shelves and crisper drawers, tabs as a 4-wide
+  wooden grid. The Basic always fits its frame; the wide steel models pan
+  sideways inside it ("›" cue + "Swipe to see every door →"). Business →
+  Equipment's cards use the same small drawings (`FridgeMini`) and show
+  the capacity gain (▲ +40). The cooling line
   is a status from the real condition ("Refrigerated" / "Needs service" /
   "Broken"), never a temperature: the game does not simulate degrees, so
   no °F/°C may appear. Tapping a label shows value, paid price and

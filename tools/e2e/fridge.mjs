@@ -2,17 +2,19 @@
 //   1. it is drawn from the save: production model/capacity (Basic, 40 units), used space,
 //      the set temperature, and every stocked ingredient in its zone (dairy top shelf,
 //      vegetables middle, fruit/greens drawers, butter/aromatics in the door);
-//   2. the door handle covers no item and takes no tap: every item's centre hits the item;
+//   2. no door handle covers an item or takes a tap: every item's centre hits the item;
 //   3. tapping an item (touch AND mouse) opens its details: quantity, freshness, value,
 //      paid price and the menu dishes that use it;
-//   4. an overflowing shelf shows the "›" cue and pans sideways with a touch swipe and a mouse
-//      drag (the drag opens nothing); a vertical swipe on the shelf still scrolls the page;
+//   4. the Basic fits its frame; the wide steel Professional shows the "›" cue and pans
+//      sideways with a touch swipe and a mouse drag (the drag opens nothing), while a vertical
+//      swipe on it still scrolls the page;
 //   5. category tabs filter what the shelves show;
 //   6. Needs Attention lists the expiring stock; Restock opens Market → Ingredients on it,
 //      and buying there shows in the fridge straight away (one ledger entry, nothing bought
 //      by the fridge itself); Upgrade opens Business → Equipment;
-//   7. Commercial and Professional fridges look bigger (taller shelves) and keep their own
-//      capacities (80, 140);
+//   7. the three models after the design references: Basic one compartment + one open door,
+//      Commercial two compartments + two doors, Professional three + two, each wider, with
+//      production capacities 40/80/140;
 //   8. at 320×568 · 360×640 · 390×844 · 430×900 · 768×1024: no horizontal page scroll and
 //      the handle stays clear of the items; no console errors.
 // Prints PASS/FAIL per check and exits 1 on any failure.
@@ -103,8 +105,8 @@ const zones = () =>
 /** Handle vs items: overlaps, and whether each visible item's centre hits the item itself. */
 const handleCheck = () =>
   page.evaluate(() => {
-    const handle = document.querySelector('[data-testid="fridge-handle"]');
-    const h = handle.getBoundingClientRect();
+    const handles = [...document.querySelectorAll('[data-testid="fridge-handle"]')];
+    const rects = handles.map((x) => x.getBoundingClientRect());
     const overlaps = [];
     const blocked = [];
     const fridge = document.querySelector('[data-testid="physical-fridge"]');
@@ -120,7 +122,11 @@ const handleCheck = () =>
         bottom: r0.bottom,
       };
       if (r.right - r.left < 4) continue;
-      if (r.right > h.left && r.left < h.right && r.bottom > h.top && r.top < h.bottom)
+      if (
+        rects.some(
+          (h) => r.right > h.left && r.left < h.right && r.bottom > h.top && r.top < h.bottom,
+        )
+      )
         overlaps.push(b.getAttribute("data-fridge-item"));
       const cx = (r0.left + r0.right) / 2;
       const cy = (r0.top + r0.bottom) / 2;
@@ -132,13 +138,14 @@ const handleCheck = () =>
       if (hit && fridge.contains(hit) && !b.contains(hit))
         blocked.push(b.getAttribute("data-fridge-item"));
     }
-    const hc = document.elementFromPoint((h.left + h.right) / 2, (h.top + h.bottom) / 2);
-    return {
-      overlaps,
-      blocked,
-      handleTakesTap: hc === handle,
-      handle: { w: Math.round(h.width), h: Math.round(h.height) },
-    };
+    const handleTakesTap = handles.some((handle, i) => {
+      const h = rects[i];
+      const x = (h.left + h.right) / 2;
+      const y = (h.top + h.bottom) / 2;
+      if (x < 0 || x > innerWidth || y < 0 || y > innerHeight) return false;
+      return document.elementFromPoint(x, y) === handle;
+    });
+    return { overlaps, blocked, handleTakesTap, handles: handles.length };
   });
 const centreOf = (sel) =>
   page.evaluate((sel) => {
@@ -189,7 +196,7 @@ await shot(page, "fridge-1-basic-375x642");
 // ---------- 2. The door handle ----------
 const hc = await handleCheck();
 check(
-  "2 the door handle covers no item and takes no tap; every item's centre hits the item",
+  "2 no door handle covers an item or takes a tap; every item's centre hits the item",
   hc.overlaps.length === 0 && hc.blocked.length === 0 && !hc.handleTakesTap,
   hc,
 );
@@ -227,68 +234,19 @@ check("3c the details scroll into view under the fridge", detailInView);
 await shot(page, "fridge-2-detail");
 await clickButton(page, /✕/);
 
-// ---------- 4. Pan ----------
-const pan = () =>
-  page.evaluate(() => {
-    const zone = document.querySelector('[data-fridge-zone="vegetables"]');
-    const track = zone.querySelector(".kcf-pan__track");
-    zone.scrollIntoView({ block: "center" });
-    const r = track.getBoundingClientRect();
-    return {
-      overflow: zone.querySelector(".kcf-pan").getAttribute("data-overflow"),
-      cue: !!zone.querySelector(".kcf-pan__cue"),
-      left: track.scrollLeft,
-      x: r.left + r.width * 0.75,
-      y: (r.top + r.bottom) / 2,
-    };
-  });
-const scroller = () =>
-  page.evaluate(() => {
-    let el = document.querySelector('[data-testid="physical-fridge"]');
-    while (
-      el &&
-      !(el.scrollHeight > el.clientHeight + 1 && /auto|scroll/.test(getComputedStyle(el).overflowY))
-    )
-      el = el.parentElement;
-    return el ? el.scrollTop : (document.scrollingElement?.scrollTop ?? 0);
-  });
-let s0 = await pan();
-check("4a the vegetable shelf overflows and shows the › cue", s0.overflow === "true" && s0.cue, s0);
-await swipe(s0.x, s0.y, -160, 0);
-await sleep(500);
-const s1 = await page.evaluate(
-  () => document.querySelector('[data-fridge-zone="vegetables"] .kcf-pan__track').scrollLeft,
-);
-check("4b a touch swipe pans the shelf sideways", s1 > s0.left + 40, {
-  before: s0.left,
-  after: s1,
+// ---------- 4a. The Basic fits its frame ----------
+const basicFit = await page.evaluate(() => {
+  const track = document.querySelector(".kcf-stage .kcf-pan__track");
+  return {
+    overflow: document.querySelector(".kcf-stage").getAttribute("data-overflow"),
+    fits: track.scrollWidth <= track.clientWidth + 2,
+  };
 });
-s0 = await pan();
-const top0 = await scroller();
-await swipe(s0.x, s0.y, 0, -180);
-await sleep(500);
-const top1 = await scroller();
-check("4c a vertical swipe on the shelf still scrolls the page", top1 > top0 + 40, { top0, top1 });
-await page.evaluate(() => {
-  document.querySelector('[data-fridge-zone="vegetables"] .kcf-pan__track').scrollLeft = 0;
-});
-await sleep(200);
-s0 = await pan();
-const leftBefore = s0.left;
-await page.mouse.move(s0.x, s0.y);
-await page.mouse.down();
-for (let i = 1; i <= 8; i++) await page.mouse.move(s0.x - i * 15, s0.y);
-await page.mouse.up();
-await sleep(400);
-const afterDrag = await page.evaluate(
-  () => document.querySelector('[data-fridge-zone="vegetables"] .kcf-pan__track').scrollLeft,
-);
 check(
-  "4d a mouse drag pans the shelf too, and the drag opens no item",
-  afterDrag > leftBefore + 40 && (await detail()) === "",
-  { leftBefore, afterDrag },
+  "4a the Basic fits its frame: no sideways pan, no cue",
+  basicFit.overflow === "false" && basicFit.fits,
+  basicFit,
 );
-await shot(page, "fridge-3-panned");
 
 // ---------- 5. Tabs ----------
 await fridgeTop();
@@ -360,12 +318,10 @@ const shelfH = () =>
     const f = document.querySelector('[data-testid="physical-fridge"]');
     return {
       tier: f?.getAttribute("data-tier"),
-      shelf: Math.round(
-        document.querySelector('[data-fridge-zone="dairy"]').getBoundingClientRect().height,
-      ),
-      door: Math.round(
-        document.querySelector('[data-testid="fridge-door"]').getBoundingClientRect().width,
-      ),
+      compartments: f.querySelectorAll(".kcf-cabinet").length,
+      doors: f.querySelectorAll('[data-testid="fridge-door"]').length,
+      width: Math.round(document.querySelector('[data-testid="fridge-unit"]').scrollWidth),
+      steel: !!f.querySelector(".kcf-topper"),
       cap: document.querySelector('[data-testid="fridge-capacity"]')?.textContent ?? "",
     };
   });
@@ -389,15 +345,97 @@ await sleep(500);
 const professional = await shelfH();
 await shot(page, "fridge-5-professional");
 check(
-  "7 Basic → Commercial → Professional: bigger shelves and door, production capacities 40/80/140",
-  basic.shelf < commercial.shelf &&
-    commercial.shelf < professional.shelf &&
-    basic.door < commercial.door &&
-    commercial.door < professional.door &&
+  "7 Basic 1 compartment + 1 door (enamel) → Commercial 2 + 2 → Professional 3 + 2 (steel), each wider; 40/80/140",
+  basic.compartments === 1 &&
+    basic.doors === 1 &&
+    !basic.steel &&
+    commercial.compartments === 2 &&
+    commercial.doors === 2 &&
+    commercial.steel &&
+    professional.compartments === 3 &&
+    professional.doors === 2 &&
+    professional.steel &&
+    basic.width < commercial.width &&
+    commercial.width < professional.width &&
     /\/ 40 units/.test(basic.cap) &&
     /\/ 80 units/.test(commercial.cap) &&
     /\/ 140 units/.test(professional.cap),
   { basic, commercial, professional },
+);
+
+// ---------- 4b–d. The Professional pans ----------
+const pan = () =>
+  page.evaluate(() => {
+    const stage = document.querySelector(".kcf-stage");
+    const track = stage.querySelector(".kcf-pan__track");
+    document.querySelector('[data-fridge-zone="vegetables"]').scrollIntoView({ block: "center" });
+    const r = track.getBoundingClientRect();
+    return {
+      overflow: stage.getAttribute("data-overflow"),
+      cue: !!stage.querySelector(":scope > .kcf-pan__cue"),
+      hint: stage.querySelector(".kcf-pan__hint")?.textContent ?? "",
+      left: track.scrollLeft,
+      x: r.left + r.width * 0.6,
+      y: Math.min(innerHeight * 0.5, (r.top + r.bottom) / 2),
+    };
+  });
+const stageLeft = () =>
+  page.evaluate(() => document.querySelector(".kcf-stage .kcf-pan__track").scrollLeft);
+const scroller = () =>
+  page.evaluate(() => {
+    let el = document.querySelector('[data-testid="physical-fridge"]');
+    while (
+      el &&
+      !(el.scrollHeight > el.clientHeight + 1 && /auto|scroll/.test(getComputedStyle(el).overflowY))
+    )
+      el = el.parentElement;
+    return el ? el.scrollTop : (document.scrollingElement?.scrollTop ?? 0);
+  });
+let s0 = await pan();
+check(
+  "4b the Professional is wider than the phone: the › cue and a swipe hint show",
+  s0.overflow === "true" && s0.cue && /Swipe/.test(s0.hint),
+  s0,
+);
+await swipe(s0.x, s0.y, -160, 0);
+await sleep(500);
+const s1 = await stageLeft();
+check("4c a touch swipe pans the fridge sideways", s1 > s0.left + 40, {
+  before: s0.left,
+  after: s1,
+});
+s0 = await pan();
+const top0 = await scroller();
+await swipe(s0.x, s0.y, 0, -180);
+await sleep(500);
+const top1 = await scroller();
+check("4d a vertical swipe on the fridge still scrolls the page", top1 > top0 + 40, { top0, top1 });
+await page.evaluate(() => {
+  document.querySelector(".kcf-stage .kcf-pan__track").scrollLeft = 0;
+});
+await sleep(200);
+s0 = await pan();
+const leftBefore = s0.left;
+await page.mouse.move(s0.x, s0.y);
+await page.mouse.down();
+for (let i = 1; i <= 8; i++) await page.mouse.move(s0.x - i * 15, s0.y);
+await page.mouse.up();
+await sleep(400);
+const afterDrag = await stageLeft();
+check(
+  "4e a mouse drag pans it too, and the drag opens no item",
+  afterDrag > leftBefore + 40 && (await detail()) === "",
+  { leftBefore, afterDrag },
+);
+await shot(page, "fridge-3-panned");
+const hcPro = await handleCheck();
+check(
+  "4f Professional: both door handles clear of every item, neither takes a tap",
+  hcPro.handles === 2 &&
+    hcPro.overlaps.length === 0 &&
+    hcPro.blocked.length === 0 &&
+    !hcPro.handleTakesTap,
+  hcPro,
 );
 
 // ---------- 8. Other phones ----------
