@@ -28,8 +28,8 @@ const HAND_HYSTERESIS = 0.25;
  * the spine and a sliver of the face. The handle stays nearly round. At rest
  * it lies flat (1).
  */
-export const CUT_SQUASH = 0.45;
-const HANDLE_TOP_THICK = 0.85;
+export const CUT_SQUASH = 0.32;
+const HANDLE_TOP_THICK = 0.78;
 
 /**
  * The knife's tip direction (radians, screen space) for cutting along a line
@@ -64,13 +64,21 @@ export function poseForTipDir(tipDir: number): { rot: number; sign: number } {
   return { rot: Math.atan2(Math.sin(r), Math.cos(r)), sign: -1 };
 }
 
+/**
+ * Where along the edge (fraction of heel → tip) the tap knife meets the
+ * middle of the cut line. Below 0.5 the blade sits further up the line
+ * (further along its tip), so the knife covers the food and its handle
+ * doesn't hang far down the board.
+ */
+export const TAP_CONTACT_FRAC = 0.22;
+
 /** The tap slice's back-and-forth travel along the line, as a fraction of the blade. */
 export const TAP_SLICE_FRAC = 0.08;
 
 /**
  * The tap stroke at progress `s` (0..1, the CUT phase). The knife lies on
- * the cut line, its tip along `tipDir` (knifeTipDir), and the middle of its
- * edge on `centre`.
+ * the cut line, its tip along `tipDir` (knifeTipDir), and the point
+ * TAP_CONTACT_FRAC along its edge on `centre`.
  * - s 0 → 0.3: it comes down the last `hop` px onto the line, already in
  *   place (s = 0 is the hover pose it snaps to first).
  * - s 0.3 → 1: one short slicing stroke along the line, forward then back
@@ -89,7 +97,7 @@ export function tapStrokePose(
   const land = Math.min(1, s / 0.3);
   const t = Math.max(0, (s - 0.3) / 0.7);
   const slide = tip * TAP_SLICE_FRAC * Math.sin(t * Math.PI * 2);
-  const along = tip * 0.5 - slide; // the edge point on `centre`
+  const along = tip * TAP_CONTACT_FRAC - slide; // the edge point on `centre`
   return {
     x: centre.x - ux * along,
     y: centre.y - uy * along - hop * (1 - land * land),

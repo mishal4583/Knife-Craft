@@ -459,16 +459,18 @@ not silently removed.
       - Vertical cut: tip up, handle down.
       - Horizontal cut: tip left, handle right.
       - A "\" diagonal: tip upper left.
-    - **Seen from above** (`topViewProfile`, `CUT_SQUASH` 0.45): while it
+    - **Seen from above** (`topViewProfile`, `CUT_SQUASH` 0.32): while it
       cuts, the knife stands on its edge. The blade is foreshortened, so
       you see the spine and a sliver of the face, never the flat side; the
       handle stays round. At rest it lies flat (full profile). A leftward
       tip is drawn mirrored (`poseForTipDir`), never upside down. When the
       knife has to face the other way, dirSign eases through 0, so it
       turns over in the hand.
-    - **Tap** (`tapStrokePose`): the knife snaps onto the line, the middle
-      of its edge at the line's middle over the food, with no per-cut
-      tilt. It lands and makes one short back-and-forth slice along the
+    - **Tap** (`tapStrokePose`): the knife snaps onto the line, with no
+      per-cut tilt. The point `TAP_CONTACT_FRAC` (0.22) along its edge sits
+      at the line's middle over the food, so the blade covers the food and
+      the handle doesn't hang down the board. The knife waits poised in
+      the same place between cuts. It lands and makes one short back-and-forth slice along the
       line (8% of the blade). The cut is committed at the end of the
       stroke: 285 ms (slice) / 150 ms (chop) after the tap, using the
       existing TAP_KNIFE / CHOP_KNIFE timings. Then it lifts (Chop to its

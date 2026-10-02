@@ -38,6 +38,7 @@ import {
   tapStrokePose,
   topViewProfile,
   TAP_SLICE_FRAC,
+  TAP_CONTACT_FRAC,
 } from "../src/game/scenes/knifeProfile.ts";
 import { lineAngleDeg } from "../src/game/CutGeometry.ts";
 import { TAP_KNIFE, CHOP_KNIFE } from "../src/game/definitions.ts";
@@ -120,8 +121,8 @@ for (const a of [0, 90, 45, -60, 12]) {
     const p = tapStrokePose(centre, d, tip, hop, s);
     const want = poseForTipDir(d);
     if (Math.abs(p.rot - want.rot) > EPS || p.sign !== want.sign) cBad.push(`turns@${a}`);
-    const mx = p.x + ux * tip * 0.5;
-    const my = p.y + uy * tip * 0.5;
+    const mx = p.x + ux * tip * TAP_CONTACT_FRAC;
+    const my = p.y + uy * tip * TAP_CONTACT_FRAC;
     const perp = Math.abs((mx - centre.x) * -uy + (my - centre.y) * ux);
     const along = (mx - centre.x) * ux + (my - centre.y) * uy;
     if (s >= 0.3 && perp > 1e-6) cBad.push(`off-line@${a}:${s.toFixed(2)}`);
