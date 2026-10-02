@@ -69,24 +69,24 @@ export function knifeProfile(shape: KnifeBladeShape, width: number): KnifeProfil
   const edge = bladeH * 0.5;
   const top = -bladeH * 0.5 - edge; // = -bladeH: the spine line
   const tipY = bladeH * shape.tipRiseFrac - edge;
-  const spineCurve = quadraticPoints(
-    spineBend,
-    top + bladeH * 0.1,
-    spineControlX,
-    top + bladeH * 0.1,
+  // Spine: straight from the heel, then one smooth curve (horizontal where it
+  // leaves the straight part — no step) down to the point.
+  const spineCurve = quadraticPoints(spineBend, top, spineControlX, top, tip, tipY, 12);
+  // Edge: flat from the heel to where the belly begins, then one smooth sweep
+  // up to the point (again no kink where it starts).
+  const bellyStart = Math.max(heel + (tip - heel) * 0.3, bellyControlX);
+  const bellyPts = quadraticPoints(
+    bellyStart,
+    0,
+    bellyStart + (tip - bellyStart) * 0.6,
+    0,
     tip,
     tipY,
-    8,
+    16,
   );
-  const belly = quadraticPoints(
-    tip,
-    tipY,
-    bellyControlX,
-    bladeH * shape.bellyFrac - edge,
-    heel,
-    bladeH * 0.5 - edge,
-    10,
-  );
+  // The outline runs heel → spine → tip → back along the edge to the heel.
+  const edgeToTip: Pt[] = [{ x: heel, y: 0 }, { x: bellyStart, y: 0 }, ...bellyPts];
+  const belly = edgeToTip.slice(0, -1).reverse();
 
   // Bolster: a short metal block at the heel, as tall as the spine-side
   // part of the blade where the handle meets it.
@@ -94,9 +94,13 @@ export function knifeProfile(shape: KnifeBladeShape, width: number): KnifeProfil
   const bolsterW = Math.max(5, handleLen * 0.07);
   const neckTop = top + bladeH * 0.04;
   const neckBottom = Math.min(neckTop + handleH * 1.08, -bladeH * 0.12);
+  // A full bolster: the whole heel height, with a small finger guard just
+  // below the edge, tapering back to the handle's neck.
   const bolster: Pt[] = [
     { x: heel + 1, y: top },
-    { x: heel + 1, y: Math.min(neckBottom + bladeH * 0.12, -1) },
+    { x: heel + 1 + bladeH * 0.06, y: top + bladeH * 0.5 },
+    { x: heel + 1, y: bladeH * 0.06 },
+    { x: heel - bolsterW * 0.4, y: bladeH * 0.08 },
     { x: heel - bolsterW, y: neckBottom },
     { x: heel - bolsterW, y: neckTop },
   ];
@@ -136,7 +140,7 @@ export function knifeProfile(shape: KnifeBladeShape, width: number): KnifeProfil
     tip,
     edge,
     outline: [{ x: heel, y: top }, { x: spineBend, y: top }, ...spineCurve, ...belly],
-    cuttingEdge: [{ x: tip, y: tipY }, ...belly].reverse(),
+    cuttingEdge: edgeToTip,
     spine: [{ x: heel, y: top }, { x: spineBend, y: top }, ...spineCurve],
     bolster,
     handle,
@@ -153,9 +157,53 @@ export function shade(c: number, amount: number): number {
 }
 
 /**
+ * A thin band along a polyline, as a filled polygon: Phaser's WebGL stroke
+ * breaks lines this thin into dots, a fill doesn't. `w` = band width (px),
+ * laid on the side given by `side` (-1 = towards negative y).
+ */
+function band(pts: Pt[], w: number, side: 1 | -1): Pt[] {
+  const shifted = pts.map((q, i) => {
+    const a = pts[Math.max(0, i - 1)]!;
+    const b = pts[Math.min(pts.length - 1, i + 1)]!;
+    const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+    // Normal pointing to `side` in y.
+    let nx = -(b.y - a.y) / len;
+    let ny = (b.x - a.x) / len;
+    if (ny * side < 0) {
+      nx = -nx;
+      ny = -ny;
+    }
+    return { x: q.x + nx * w, y: q.y + ny * w };
+  });
+  return [...pts, ...shifted.reverse()];
+}
+
+/** Fills `pts` as an outline: the shape in `dark` grown by `w` px in every direction (no stroke). */
+function outlineFill(
+  g: Phaser.GameObjects.Graphics,
+  pts: Pt[],
+  w: number,
+  dark: number,
+  alpha: number,
+) {
+  g.fillStyle(dark, alpha);
+  for (const [dx, dy] of [
+    [w, 0],
+    [-w, 0],
+    [0, w],
+    [0, -w],
+  ] as const) {
+    g.fillPoints(
+      pts.map((q) => ({ x: q.x + dx, y: q.y + dy })),
+      true,
+    );
+  }
+}
+
+/**
  * Paints the knife in `g`'s local space (the caller positions/rotates the
  * Graphics). `shadow` = the world-space drop-shadow offset already turned
- * into local space, or null for none.
+ * into local space, or null for none. Only fills — no thin strokes.
  */
 export function paintKnife(
   g: Phaser.GameObjects.Graphics,
@@ -166,6 +214,7 @@ export function paintKnife(
 ): void {
   const H = p.bladeH;
   const move = (pts: Pt[], d: Pt) => pts.map((q) => ({ x: q.x + d.x, y: q.y + d.y }));
+  const line = Math.max(0.8, H * 0.03);
 
   // Soft shadow on the board.
   if (shadow) {
@@ -181,6 +230,7 @@ export function paintKnife(
   }
 
   // Handle — wood, darker underside, a highlight along the top, grain.
+  outlineFill(g, p.handle, line, shade(visual.handleColor, -0.55), 0.9);
   g.fillStyle(shade(visual.handleColor, -0.18), 1);
   g.fillPoints(p.handle, true);
   const hTop = p.handle.slice(0, 15);
@@ -190,20 +240,22 @@ export function paintKnife(
   }));
   g.fillStyle(visual.handleColor, 1);
   g.fillPoints([...hTop, ...hMid.slice().reverse()], true);
-  g.lineStyle(Math.max(1, H * 0.05), shade(visual.handleColor, 0.35), 0.75);
-  g.strokePoints(move(hTop.slice(1, -2), { x: 0, y: H * 0.05 }), false);
-  g.lineStyle(1, shade(visual.handleColor, -0.3), 0.35);
-  for (const f of [0.38, 0.62]) {
-    g.strokePoints(
-      hTop.slice(2, -3).map((q, i) => ({
-        x: q.x,
-        y: q.y + (hMid[i + 2]!.y - q.y) * 2 * f + Math.sin(i * 0.9 + f * 7) * 0.6,
-      })),
-      false,
+  g.fillStyle(shade(visual.handleColor, 0.35), 0.6);
+  g.fillPoints(band(move(hTop.slice(1, -2), { x: 0, y: H * 0.04 }), H * 0.05, 1), true);
+  for (const f of [0.4, 0.66]) {
+    g.fillStyle(shade(visual.handleColor, -0.32), 0.35);
+    g.fillPoints(
+      band(
+        hTop.slice(2, -3).map((q, i) => ({
+          x: q.x,
+          y: q.y + (hMid[i + 2]!.y - q.y) * 2 * f + Math.sin(i * 0.9 + f * 7) * 0.5,
+        })),
+        Math.max(0.6, H * 0.02),
+        1,
+      ),
+      true,
     );
   }
-  g.lineStyle(1, shade(visual.handleColor, -0.5), 0.8);
-  g.strokePoints(p.handle, true);
   for (const r of p.rivets) {
     g.fillStyle(shade(visual.rivetColor, -0.35), 1);
     g.fillCircle(r.x, r.y, p.rivetR + 0.6);
@@ -214,62 +266,50 @@ export function paintKnife(
   }
 
   // Blade — steel, a darker grind bevel along the edge, a sheen, a bright
-  // honed edge and a crisp spine.
+  // honed edge and a lit spine.
+  outlineFill(g, p.outline, line, shade(visual.bladeColor, -0.5), 0.9);
   g.fillStyle(visual.bladeColor, 1);
   g.fillPoints(p.outline, true);
-  const bevelH = H * 0.3;
-  const bevel = [
-    ...p.cuttingEdge,
-    ...p.cuttingEdge
-      .slice()
-      .reverse()
-      .map((q, i, arr) => {
-        // The bevel narrows to nothing at the tip.
-        const k = 1 - i / (arr.length - 1);
-        return { x: q.x, y: q.y - bevelH * Math.min(1, k * 1.6) };
-      }),
-  ];
-  g.fillStyle(shade(visual.bladeColor, -0.14), 1);
-  g.fillPoints(bevel, true);
-  // Upper flat catches the light.
-  g.fillStyle(0xffffff, 0.16);
+  // Grind bevel: a band above the edge, narrowing to nothing at the point.
+  const edgePts = p.cuttingEdge;
+  const bevelTop = edgePts.map((q, i) => {
+    const k = 1 - i / (edgePts.length - 1); // 1 at the heel → 0 at the point
+    return { x: q.x, y: q.y - H * 0.3 * Math.min(1, k * 1.8) };
+  });
+  g.fillStyle(shade(visual.bladeColor, -0.13), 1);
+  g.fillPoints([...edgePts, ...bevelTop.slice().reverse()], true);
+  // The lit spine flat — along the straight part of the spine only.
+  const sp0 = p.spine[0]!;
+  const sp1 = p.spine[1]!;
+  g.fillStyle(0xffffff, 0.2);
+  g.fillRect(sp0.x + 1, sp0.y + line, sp1.x - sp0.x - 2, H * 0.16);
+  // A diagonal sheen across the blade, inside the straight part.
+  const sx = p.heel + (p.spineBend - p.heel) * 0.6;
+  g.fillStyle(0xffffff, 0.13);
   g.fillPoints(
     [
-      ...p.spine.slice(0, -2),
-      ...p.spine
-        .slice(0, -2)
-        .reverse()
-        .map((q) => ({ x: q.x, y: q.y + H * 0.22 })),
-    ],
-    true,
-  );
-  // A diagonal sheen across the blade.
-  const sx = p.heel + (p.tip - p.heel) * 0.42;
-  g.fillStyle(0xffffff, 0.14);
-  g.fillPoints(
-    [
-      { x: sx, y: -H * 0.96 },
-      { x: sx + H * 0.34, y: -H * 0.96 },
-      { x: sx + H * 0.06, y: -H * 0.06 },
-      { x: sx - H * 0.28, y: -H * 0.06 },
+      { x: sx, y: -H * 0.94 },
+      { x: sx + H * 0.32, y: -H * 0.94 },
+      { x: sx + H * 0.06, y: -H * 0.32 },
+      { x: sx - H * 0.26, y: -H * 0.32 },
     ],
     true,
   );
 
   if (visual.pattern === "damascus") {
     for (let i = 0; i < 5; i++) {
-      const y = -H * (0.25 + i * 0.14);
+      const y = -H * (0.38 + i * 0.11);
       const pts = quadraticPoints(
         p.heel + 4,
         y,
-        (p.heel + p.tip) / 2,
-        y + H * 0.12 * (i % 2 === 0 ? 1 : -1),
-        p.tip * 0.9,
-        y * 0.5,
+        (p.heel + p.spineBend) / 2,
+        y + H * 0.06 * (i % 2 === 0 ? 1 : -1),
+        p.spineBend,
+        y,
         10,
       );
-      g.lineStyle(1, i % 2 === 0 ? 0xffffff : 0x6f767e, 0.18);
-      g.strokePoints([{ x: p.heel + 4, y }, ...pts], false);
+      g.fillStyle(i % 2 === 0 ? 0xffffff : 0x6f767e, 0.2);
+      g.fillPoints(band([{ x: p.heel + 4, y }, ...pts], Math.max(0.7, H * 0.025), 1), true);
     }
   }
 
@@ -286,27 +326,15 @@ export function paintKnife(
     }
   }
 
-  // The honed edge and the spine.
-  g.lineStyle(1.6, visual.edgeHighlight, 0.95);
-  g.strokePoints(p.cuttingEdge, false);
-  g.lineStyle(1.2, shade(visual.bladeColor, 0.45), 0.9);
-  g.strokePoints(move(p.spine, { x: 0, y: 1 }), false);
-  g.lineStyle(1, shade(visual.bladeColor, -0.45), 0.85);
-  g.strokePoints(p.outline, true);
+  // The honed edge: a bright line just inside the edge.
+  g.fillStyle(visual.edgeHighlight, 0.9);
+  g.fillPoints(band(edgePts, Math.max(1, H * 0.045), -1), true);
 
-  // Bolster — polished metal.
+  // Bolster — polished metal, with a highlight on its upper half.
+  outlineFill(g, p.bolster, line, shade(visual.bolsterColor, -0.5), 0.9);
   g.fillStyle(visual.bolsterColor, 1);
   g.fillPoints(p.bolster, true);
+  const b = p.bolster;
   g.fillStyle(0xffffff, 0.35);
-  g.fillPoints(
-    [
-      p.bolster[0]!,
-      { x: p.bolster[0]!.x, y: p.bolster[0]!.y + H * 0.18 },
-      { x: p.bolster[3]!.x, y: p.bolster[3]!.y + H * 0.14 },
-      p.bolster[3]!,
-    ],
-    true,
-  );
-  g.lineStyle(1, shade(visual.bolsterColor, -0.45), 0.9);
-  g.strokePoints(p.bolster, true);
+  g.fillPoints([b[0]!, b[1]!, { x: b[4]!.x, y: (b[4]!.y + b[5]!.y) / 2 }, b[5]!], true);
 }

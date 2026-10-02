@@ -416,7 +416,15 @@ not silently removed.
     bolster; a tapered handle with its top in line with the spine, a palm
     swell and a rounded butt; rivets.
   - `paintKnife`: shadow, wood handle with grain and rivets, steel with a
-    grind bevel, sheen, honed edge and spine.
+    grind bevel, sheen, honed edge and spine. It uses fills only: Phaser's
+    WebGL stroke breaks lines this thin into dots (an edge that looked
+    serrated), so outlines and edge lines are filled bands.
+  - Blade shape: a straight spine that curves smoothly down to the point;
+    an edge that is flat from the heel and then sweeps up (the belly
+    starts at `bellyControlXFrac`); a full bolster with a finger guard.
+    - Chef / Damascus / Obsidian / paring: the point sits near the spine.
+    - Santoku: sheepsfoot, the point at edge level.
+    - Nakiri, cleaver: a square front (`tipRiseFrac` 0.5).
   - It is used by the in-game knife (PreparationScene.drawKnife), the
     coaching ghost and the Market icon (`KnifeGlyph`, the same shapes as
     SVG).

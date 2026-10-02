@@ -49,10 +49,8 @@ export type KnifeBladeShape = {
   tipFrac: number;
   /** Where the tip sits: (tipRiseFrac − 0.5) × bladeH from the cutting edge — negative values lift the point toward the spine (a chef's knife), positive keep it low (a santoku's sheepsfoot, a cleaver's square front). */
   tipRiseFrac: number;
-  /** Fraction of bladeLen for the cutting-edge curve's control point. */
+  /** Where the cutting edge stops being flat and its belly starts sweeping up to the point (fraction of bladeLen from the pivot). */
   bellyControlXFrac: number;
-  /** Belly Y offset coefficient (x bladeH) — how far the edge bulges below centerline. */
-  bellyFrac: number;
   /** Bread only — draws a small sawtooth notch line along the cutting edge. Visual only, no cut-geometry change. */
   serrated: boolean;
 };
