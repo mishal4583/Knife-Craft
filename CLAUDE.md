@@ -444,6 +444,10 @@ not silently removed.
     the scene width): the chef's blade is about 1/5 as tall as it is long,
     with the handle a little over half the blade, and a negative
     `tipRiseFrac` lifts the point toward the spine.
+  - Every knife is drawn `KNIFE_DRAW_SCALE` (1.2×) that size (developer:
+    "a little longer and bigger"). Blade, height, handle and the handle's
+    thickness limits all scale together. It affects drawing only, never
+    the cut geometry.
   - The resting knife lies flat, centred under the ingredient: on the board
     below it, or on the counter in front of the board when there's no
     room — never across the food.

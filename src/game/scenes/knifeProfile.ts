@@ -176,10 +176,18 @@ export type KnifeProfile = {
 };
 
 /** `width` = the scene width the blade fractions are measured against. */
+/**
+ * How big every knife is drawn on the board, relative to the real-knife
+ * proportions in knifeDefinitions.ts (the developer asked for a longer,
+ * bigger knife). It scales length, height and handle alike, so each
+ * knife's shape is unchanged; only drawing uses it, never the cut geometry.
+ */
+export const KNIFE_DRAW_SCALE = 1.2;
+
 export function knifeProfile(shape: KnifeBladeShape, width: number): KnifeProfile {
-  const bladeLen = shape.bladeLenFrac * width;
-  const bladeH = shape.bladeHFrac * width;
-  const handleLen = shape.handleLenFrac * width;
+  const bladeLen = shape.bladeLenFrac * width * KNIFE_DRAW_SCALE;
+  const bladeH = shape.bladeHFrac * width * KNIFE_DRAW_SCALE;
+  const handleLen = shape.handleLenFrac * width * KNIFE_DRAW_SCALE;
   const heel = shape.heelAt * bladeLen;
   const spineBend = shape.spineBendFrac * bladeLen;
   const spineControlX = shape.spineControlXFrac * bladeLen;
@@ -209,7 +217,10 @@ export function knifeProfile(shape: KnifeBladeShape, width: number): KnifeProfil
 
   // Bolster: a short metal block at the heel, as tall as the spine-side
   // part of the blade where the handle meets it.
-  const handleH = Math.min(Math.max(bladeH * 0.56, width * 0.026), width * 0.05);
+  const handleH = Math.min(
+    Math.max(bladeH * 0.56, width * 0.026 * KNIFE_DRAW_SCALE),
+    width * 0.05 * KNIFE_DRAW_SCALE,
+  );
   const bolsterW = Math.max(5, handleLen * 0.07);
   const neckTop = top + bladeH * 0.04;
   const neckBottom = Math.min(neckTop + handleH * 1.08, -bladeH * 0.12);
