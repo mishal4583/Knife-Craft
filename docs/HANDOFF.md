@@ -141,6 +141,12 @@ conversation.
    the original one again: the knife turns to the cut line's angle and
    comes down onto it (tap), or follows the finger (swipe). Do not
    re-introduce either pose without asking.
+23. Edge-first slicing stroke (the developer's tomato reference): the tap
+   knife is diagonal, pivots about the handle end, rocks down 14° while
+   sliding forward, and its sharp edge meets the cut. Steep cuts (bread)
+   are crossed at 30°–45°, flat cuts nearly along the line. The steep swipe
+   and the ghost match. `cutContactRot` / `cutStrokePose` in
+   `scenes/knifeProfile.ts`; guarded by `scripts/knife-stroke-qa.mts`.
 
 ## 4. Open issues from the Level 1–10 audit (not fixed yet)
 

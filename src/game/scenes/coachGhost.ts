@@ -5,11 +5,15 @@
  * (the exact spot its own tap resolution would cut next), this draws HOW,
  * as one looping cycle (coachCycleMs):
  *
- * - "cut": the line glows, then both ways to cut it, labelled. SWIPE: a
- *   fingertip draws along the line while a see-through copy of the
- *   equipped knife brings its sharp edge down onto it and slices through,
- *   tip first. TAP: the fingertip taps the line and the knife chops
- *   straight down onto it. The stretch the edge touches lights up.
+ * - "cut": the line glows, then both ways to cut it, labelled, with a
+ *   see-through copy of the equipped knife moving exactly as the real one
+ *   does (knifeProfile cutContactRot / cutStrokePose). SWIPE: a fingertip
+ *   draws along the line. On a flat line the knife slices along it. On a
+ *   steep line it crosses the line diagonally, with the middle of its edge
+ *   on the fingertip. TAP: the fingertip taps the line and the knife makes
+ *   the real tap stroke: poised with the tip raised, it rocks down about
+ *   the handle end, sliding forward, and its edge goes through the line.
+ *   The cut lights up.
  * - "drag": a fingertip sweeps across the skin that is left, leaving a
  *   pale trail (Peel).
  * - "press": a fingertip presses with a ripple; for Rings the next ring
@@ -20,7 +24,14 @@
  */
 import type Phaser from "phaser";
 import type { KnifeBladeShape } from "../knives/knifeTypes";
-import { knifeProfile, type KnifeProfile } from "./knifeProfile";
+import {
+  cutContactRot,
+  cutStrokePose,
+  knifeProfile,
+  swipeContactAlong,
+  type KnifePose,
+  type KnifeProfile,
+} from "./knifeProfile";
 
 export const COACH_CYCLE_MS = 2200;
 
@@ -116,30 +127,60 @@ function ghostKnife(
     x: ox + ux * p.x - nx * p.y,
     y: oy + uy * p.x - ny * p.y,
   });
-  if (alpha > 0) {
-    // Handle and bolster, behind the heel (the same outlines as the real knife).
-    const handle = profile.handle.map(P);
-    g.fillStyle(GHOST, 0.2 * alpha);
-    g.fillPoints(handle, true);
-    g.lineStyle(1.5, GHOST, 0.6 * alpha);
-    g.strokePoints(handle, true);
-    g.fillStyle(GHOST, 0.45 * alpha);
-    g.fillPoints(profile.bolster.map(P), true);
-    // Blade body.
-    const blade = profile.outline.map(P);
-    g.fillStyle(GHOST, 0.3 * alpha);
-    g.fillPoints(blade, true);
-    g.lineStyle(1.5, GHOST, 0.7 * alpha);
-    g.strokePoints(blade, true);
-    // The sharp edge — the part that cuts — glows.
-    const edgePts = profile.cuttingEdge.map(P);
-    g.lineStyle(5, GLOW, 0.35 * alpha);
-    g.strokePoints(edgePts, false);
-    g.lineStyle(2, GHOST, 0.95 * alpha);
-    g.strokePoints(edgePts, false);
-  }
+  paintGhostKnife(g, profile, P, alpha);
   // The stretch of the line the edge covers right now (0..len, from the near end).
   return { from: Math.max(0, along), to: Math.min(len, along + profile.tip - profile.heel) };
+}
+
+/** Draws the see-through knife, `P` mapping its local points (knifeProfile) to the board. */
+function paintGhostKnife(
+  g: Phaser.GameObjects.Graphics,
+  profile: KnifeProfile,
+  P: (p: { x: number; y: number }) => { x: number; y: number },
+  alpha: number,
+): void {
+  if (alpha <= 0) return;
+  // Handle and bolster, behind the heel (the same outlines as the real knife).
+  const handle = profile.handle.map(P);
+  g.fillStyle(GHOST, 0.2 * alpha);
+  g.fillPoints(handle, true);
+  g.lineStyle(1.5, GHOST, 0.6 * alpha);
+  g.strokePoints(handle, true);
+  g.fillStyle(GHOST, 0.45 * alpha);
+  g.fillPoints(profile.bolster.map(P), true);
+  // Blade body.
+  const blade = profile.outline.map(P);
+  g.fillStyle(GHOST, 0.3 * alpha);
+  g.fillPoints(blade, true);
+  g.lineStyle(1.5, GHOST, 0.7 * alpha);
+  g.strokePoints(blade, true);
+  // The sharp edge — the part that cuts — glows.
+  const edgePts = profile.cuttingEdge.map(P);
+  g.lineStyle(5, GLOW, 0.35 * alpha);
+  g.strokePoints(edgePts, false);
+  g.lineStyle(2, GHOST, 0.95 * alpha);
+  g.strokePoints(edgePts, false);
+}
+
+/**
+ * The see-through knife at a pose from knifeProfile (cutStrokePose, or a
+ * steep swipe's diagonal), turned about its handle-end pivot exactly as
+ * PreparationScene turns the real knife.
+ */
+function ghostKnifePose(
+  g: Phaser.GameObjects.Graphics,
+  profile: KnifeProfile,
+  pose: KnifePose,
+  alpha: number,
+): void {
+  const c = Math.cos(pose.rot);
+  const s = Math.sin(pose.rot);
+  paintGhostKnife(
+    g,
+    profile,
+    (p) => ({ x: pose.x + p.x * c - p.y * s, y: pose.y + p.x * s + p.y * c }),
+    alpha,
+  );
 }
 
 /** The cut line ordered from its near end (lower on screen, or left for a flat cut) — the same order ghostKnife uses. */
@@ -201,6 +242,38 @@ export function drawCoachGhost(
       g.lineBetween(a.x, a.y, b.x, b.y);
     };
 
+    // The same angle the real knife meets this line at (cutContactRot).
+    const lineDeg = (Math.atan2(line.y1 - line.y0, line.x1 - line.x0) * 180) / Math.PI;
+    const contactRot = cutContactRot(lineDeg);
+    let flatDeg = ((lineDeg % 180) + 180) % 180;
+    if (flatDeg > 90) flatDeg -= 180;
+    const steep = Math.abs(flatDeg) > 45;
+
+    if (t < SWIPE_PART_MS && steep) {
+      // SWIPE on a steep line: the knife crosses it diagonally like the
+      // real swipe's knife, handle lower left and the middle of its edge
+      // on the fingertip, cutting down the line with it.
+      const knifeAlpha = span(t, 0, 200) * (1 - span(t, 1200, 1450));
+      const slice = easeInOut(span(t, 300, 1150));
+      const fingerAlpha = span(t, 150, 300) * (1 - span(t, 1150, 1350));
+      const d = lineLen * (0.92 - 0.84 * slice);
+      const f = at(d);
+      const along = swipeContactAlong(profile.tip);
+      ghostKnifePose(
+        g,
+        profile,
+        {
+          x: f.x - Math.cos(contactRot) * along,
+          y: f.y - Math.sin(contactRot) * along,
+          rot: contactRot,
+        },
+        knifeAlpha,
+      );
+      if (slice > 0) lightUp({ from: d, to: lineLen * 0.92 }, knifeAlpha);
+      finger(g, f.x, f.y, fingerR, fingerAlpha, 0.6);
+      return label("SWIPE", f.x, f.y, fingerAlpha);
+    }
+
     if (t < SWIPE_PART_MS) {
       // SWIPE: the finger draws along the line and the knife slices with
       // it — the edge comes down onto the line, then cuts through tip first.
@@ -218,16 +291,20 @@ export function drawCoachGhost(
       return label("SWIPE", f.x, f.y, fingerAlpha);
     }
 
-    // TAP: the finger taps the line and the knife chops straight down on it.
+    // TAP: the finger taps the line and the knife makes the real tap
+    // cut's stroke (cutStrokePose): poised above the food with the tip
+    // raised, it rocks down about the handle end and slides forward, so the
+    // sharp edge goes through the line.
     const t2 = t - SWIPE_PART_MS;
     const fingerAlpha = span(t2, 0, 150) * (1 - span(t2, 1000, 1250));
     const press = span(t2, 200, 300) * (1 - span(t2, 450, 600));
     const knifeAlpha = span(t2, 150, 300) * (1 - span(t2, 950, 1200));
-    const chop = easeInCubic(span(t2, 280, 460));
-    const lift = (1 - chop) * Math.max(30, profile.bladeH * 2.4);
-    const along = lineLen / 2 - edgeLen / 2;
-    const covered = ghostKnife(g, target, profile, along, lift, knifeAlpha);
-    if (chop >= 1) lightUp(covered, knifeAlpha);
+    const k = easeInOut(span(t2, 300, 620));
+    const mid = { x: (line.x0 + line.x1) / 2, y: (line.y0 + line.y1) / 2 };
+    const from = { x: mid.x + w * 0.03, y: Math.min(line.y0, line.y1) - w * 0.16 };
+    const to = { x: mid.x, y: mid.y + w * 0.03 };
+    ghostKnifePose(g, profile, cutStrokePose(from, to, contactRot, profile.tip, k), knifeAlpha);
+    if (k >= 1) lightUp({ from: 0, to: lineLen }, knifeAlpha);
     finger(g, target.tx, target.ty, fingerR, fingerAlpha, press);
     ripple(g, target.tx, target.ty, fingerR, span(t2, 230, 900));
     return label("TAP", target.tx, target.ty, fingerAlpha);
@@ -259,9 +336,4 @@ export function drawCoachGhost(
   ripple(g, target.x, target.y, fingerR, span(t, 480, 1250));
   ripple(g, target.x, target.y, fingerR * 1.6, span(t, 620, 1400));
   return label(target.ring ? "TAP" : "PRESS", target.x, target.y, alpha);
-}
-
-/** A quick, accelerating chop. */
-function easeInCubic(k: number): number {
-  return k * k * k;
 }

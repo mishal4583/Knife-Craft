@@ -141,6 +141,9 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   Endless unlock (H), Progress/historical accounting (I, J) and the
   four-profile simulation table (K: Normal, Completionist, Aggressive
   Spender, Existing Save).
+- `knife-stroke-qa` — the cutting stroke: the edge faces the food at every
+  angle, steep cuts crossed diagonally, pivot at the handle end, rock +
+  slide; tap cut, steep swipe and ghost all use it.
 - `coaching-qa` — beginner coaching: every technique has a how-to card,
   Levels 1–5 teach everything, each later technique is taught only in the
   level that introduces it, the stuck rule (back only with no progress),
@@ -381,10 +384,11 @@ not silently removed.
     labelled by the fingertip. **SWIPE**: the fingertip draws along the
     line while a see-through copy of the equipped knife (the same
     `scenes/knifeProfile.ts` silhouette as the real knife) brings its
-    glowing sharp edge down and slices through tip-first. **TAP**: the
-    fingertip taps with a ripple and the knife chops straight down onto the
-    line. The handle points towards the player (lower end, or left for a
-    flat cut) and the spine away from the food;
+    glowing sharp edge down and slices through tip-first. On a steep line
+    it crosses diagonally instead, with the middle of the edge on the
+    fingertip, exactly like the real swipe. **TAP**: the fingertip taps
+    with a ripple and the knife makes the real tap stroke
+    (`cutStrokePose`, below);
   - Peel: a fingertip sweeps across the skin that's left (the peel grid row
     with the most skin);
   - Smash: a press with a ripple;
@@ -435,6 +439,29 @@ not silently removed.
   - The resting knife lies flat, centred under the ingredient: on the board
     below it, or on the counter in front of the board when there's no
     room — never across the food.
+  - **Cutting stroke**: `cutContactRot` / `cutStrokePose` in
+    `knifeProfile.ts`. The reference is a chef slicing a tomato: the knife
+    is diagonal and its sharp edge enters the food.
+    - The knife's pivot (local origin) is the heel of the edge by the
+      bolster, so it turns about the handle end.
+    - Flat cut: the knife lies nearly along the line, up to 14° off it.
+    - Steep cut (the bread loaf): the knife crosses the line diagonally,
+      30°–45° off it (45° when vertical), with the handle lower left and
+      the tip up-right. It is never upright along the line and never flat
+      across it.
+    - The edge always faces down into the food.
+    - The tap stroke: poised above the food with the tip raised 14°, the
+      knife rocks down about the pivot while sliding forward a little
+      under a quarter of the blade, and the edge's cutting point travels
+      onto the cut line. The cut is committed at contact (the cut
+      geometry is unchanged). Then a short follow-through, and a lift
+      (Chop goes back to the top of its stroke; Slice goes to the rest
+      pose).
+    - A steep swipe holds the same diagonal, with the middle of the edge on
+      the finger (`KnifeState.contactAlong`).
+    - The coaching ghost uses the same functions.
+    - `scripts/knife-stroke-qa.mts` checks every angle, the pivot, the
+      rock and slide, and the wiring.
 
 ---
 

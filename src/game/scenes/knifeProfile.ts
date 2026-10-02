@@ -11,6 +11,90 @@ import type { KnifeBladeShape, KnifeVisual } from "../knives/knifeTypes";
 
 export type Pt = { x: number; y: number };
 
+/**
+ * How a cook holds the knife over the board, seen from above: tip up and to
+ * the right, handle toward the player's lower left (the "/" of a chef's
+ * slicing grip). Every cut leans the knife toward this angle.
+ */
+const HAND_DEG = -40;
+/** How far the knife may lean off a flat cut line (it mostly lies along it) and off a steep one. */
+const FLAT_LEAN_MAX_DEG = 14;
+const STEEP_LEAN_MIN_DEG = 30;
+const STEEP_LEAN_MAX_DEG = 45;
+/** Never turned so far that the sharp edge stops facing down the screen, toward the food. */
+const EDGE_DOWN_LIMIT_DEG = -80;
+/** The rock: at the top of a stroke the tip is raised this much about the handle-end pivot. */
+export const STROKE_ROCK_DEG = 14;
+
+const rad = (d: number) => (d * Math.PI) / 180;
+
+/**
+ * The knife's rotation (radians) at the moment its edge goes through a cut
+ * line at `lineAngleDeg`. The knife's local origin — the pivot every pose
+ * turns about — is the heel of the edge beside the bolster, so it turns
+ * around the handle end, never the blade's middle.
+ *
+ * - A flat cut (within 45° of horizontal): the blade lies nearly along the
+ *   line, tip right, leaning up to 14° toward the hand angle.
+ * - A steep cut (a vertical slice through a loaf): the blade crosses the
+ *   line diagonally, 30°–45° off it (45° for a vertical cut). The handle
+ *   is at the lower left and the tip is up and to the right, like the knife
+ *   in a real slicing grip. It is never upright along the line, and never
+ *   flat across it.
+ *
+ * The sharp edge (local +y) always faces down the screen, into the food.
+ */
+export function cutContactRot(lineAngleDeg: number): number {
+  let a = ((lineAngleDeg % 180) + 180) % 180;
+  if (a > 90) a -= 180; // (-90, 90]
+  const steep = Math.abs(a) > 45;
+  // The line's direction with the tip right (flat) or up (steep).
+  const dir = steep ? (a <= 0 ? a : a - 180) : a;
+  // A steep line always lies clockwise of the hand angle, so it leans
+  // clockwise, at least 30°, so it is never nearly along the cut.
+  const lean = steep
+    ? Math.max(STEEP_LEAN_MIN_DEG, Math.min(STEEP_LEAN_MAX_DEG, HAND_DEG - dir))
+    : Math.max(-FLAT_LEAN_MAX_DEG, Math.min(FLAT_LEAN_MAX_DEG, HAND_DEG - dir));
+  return rad(Math.max(EDGE_DOWN_LIMIT_DEG, dir + lean));
+}
+
+/** Where the knife is drawn: its pivot (local origin, the heel of the edge) and rotation. */
+export type KnifePose = { x: number; y: number; rot: number };
+
+/**
+ * One slicing stroke, at progress `k` (0 = poised above the food, 1 = the
+ * edge through the cut; a little over 1 is the follow-through). This is
+ * the motion of the tap cut (PreparationScene.runTapCut) and the coaching
+ * ghost's TAP demonstration:
+ *
+ * - The cutting point of the edge travels from `from` (above the food) to
+ *   `to` (on the cut line, just past it), so the sharp edge is what meets
+ *   the ingredient.
+ * - The knife rocks about the handle-end pivot: it starts with the tip
+ *   raised STROKE_ROCK_DEG and comes down to `contactRot` (cutContactRot).
+ * - At the same time it slides forward along its own length, a little under
+ *   a quarter of the blade, so the cutting point moves from near the
+ *   middle toward the heel. That is a slice, not a stab or a press.
+ */
+export function cutStrokePose(
+  from: Pt,
+  to: Pt,
+  contactRot: number,
+  tip: number,
+  k: number,
+): KnifePose {
+  const rot = Math.max(rad(-85), contactRot - rad(STROKE_ROCK_DEG) * (1 - k));
+  const along = tip * (0.62 - 0.22 * k);
+  const cx = from.x + (to.x - from.x) * k;
+  const cy = from.y + (to.y - from.y) * k;
+  return { x: cx - Math.cos(rot) * along, y: cy - Math.sin(rot) * along, rot };
+}
+
+/** Where along the edge (px from the pivot) a swipe's knife meets the finger on a steep stroke. */
+export function swipeContactAlong(tip: number): number {
+  return tip * 0.5;
+}
+
 /** A short quadratic-bezier polyline — Phaser Graphics has no native curveTo, so curves are sampled. */
 export function quadraticPoints(
   x0: number,

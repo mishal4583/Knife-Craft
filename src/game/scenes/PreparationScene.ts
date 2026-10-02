@@ -8,7 +8,14 @@ import {
 import { PauseManager } from "../PauseManager";
 import { withRequiredPeelSteps } from "../prepStepGuards";
 import { drawCoachGhost, coachCycleMs, type CoachTarget } from "./coachGhost";
-import { knifeProfile, paintKnife, quadraticPoints } from "./knifeProfile";
+import {
+  cutContactRot,
+  cutStrokePose,
+  knifeProfile,
+  paintKnife,
+  quadraticPoints,
+  swipeContactAlong,
+} from "./knifeProfile";
 import { COACH_FIRST_DELAY_MS, COACH_STUCK_IDLE_MS } from "../coaching";
 import { AudioManager } from "../AudioManager";
 import {
@@ -729,6 +736,14 @@ type KnifeState = {
   phase: KnifePhase;
   enterT: number;
   exitT: number;
+  /**
+   * How far along the edge (px from the pivot) the point at (x, y) is. 0 =
+   * the pivot itself. A steep swipe puts the middle of the edge on the
+   * finger, so the blade crosses the cut there. It eases toward
+   * targetContactAlong while swiping.
+   */
+  contactAlong?: number;
+  targetContactAlong?: number;
 };
 
 /** Cumulative drag distance from the gesture's first point before it counts as a swipe rather than a tap candidate (§29's "defer swipe activation"). */
@@ -3082,6 +3097,26 @@ export class PreparationScene extends Phaser.Scene {
 
     const dx = last.x - base.x;
     const dy = last.y - base.y;
+    if (Math.abs(dy) > Math.abs(dx) * Math.tan(Phaser.Math.DegToRad(50))) {
+      // A steep stroke (slicing a loaf into rounds): the knife crosses it
+      // diagonally the way the tap cut's knife meets a steep line
+      // (cutContactRot), handle lower left, edge toward the food, with
+      // the middle of the edge on the finger. It is never upright along
+      // the stroke.
+      this.knife.targetRot = cutContactRot(Phaser.Math.RadToDeg(Math.atan2(dy, dx)));
+      this.knife.targetContactAlong = swipeContactAlong(
+        knifeProfile(this.knifeStats.animation.blade, this.scale.width).tip,
+      );
+      this.knife.dirSign = 1;
+      this.knife.dirLatch = null;
+      if (!this.knife.rotInit) {
+        this.knife.rot = this.knife.targetRot;
+        this.knife.contactAlong = this.knife.targetContactAlong;
+        this.knife.rotInit = true;
+      }
+      return;
+    }
+    this.knife.targetContactAlong = 0;
     let rot = Math.atan2(dy, dx);
     if (rot > Math.PI / 2) rot -= Math.PI;
     else if (rot < -Math.PI / 2) rot += Math.PI;
@@ -3716,19 +3751,27 @@ export class PreparationScene extends Phaser.Scene {
         ? { x: this.ingCx, y: cut.c }
         : { x: cut.c, y: this.ingCy };
     // Formula per §7: approach from above the ingredient's own top, never
-    // a fixed screen Y. §8: the blade's rest angle follows the CUT
-    // LINE's own direction (this already matches how a straight swipe of
-    // the same axis renders — rot=0 is a horizontal edge, ~90° is a
-    // vertical one), with only a tiny, subtle per-cut jitter on top —
-    // never enough to look misaligned.
+    // a fixed screen Y. The stroke itself (knifeProfile.cutStrokePose) is a
+    // real slice: the knife's pivot is the heel by the handle, the edge's
+    // cutting point travels from above the food down into the cut, and the
+    // knife rocks down about that pivot while sliding forward along its
+    // length. Its angle at contact (cutContactRot) lies nearly along a flat
+    // cut and crosses a steep one diagonally, handle lower left, with the
+    // sharp edge always facing the food. There's a small per-cut jitter on
+    // top (§8). Only the drawing moves: the cut itself is `cut`, committed
+    // at contact.
     const ingredientTopY = this.ingCy - this.ingRy;
-    const prepX = cutPoint.x + K.PREP_OFFSET_X_FRAC * w;
-    const prepY = ingredientTopY - K.PREP_ABOVE_FRAC * w;
-    const cutX = cutPoint.x;
-    const cutY = cutPoint.y + K.CUT_DEPTH_FRAC * w;
+    const strokeFrom = {
+      x: cutPoint.x + K.PREP_OFFSET_X_FRAC * w,
+      y: ingredientTopY - K.PREP_ABOVE_FRAC * w,
+    };
+    const strokeTo = { x: cutPoint.x, y: cutPoint.y + K.CUT_DEPTH_FRAC * w };
     const cutAngleDeg = lineAngleDeg(cut.axis, cut.slope);
     const jitterDeg = Phaser.Math.FloatBetween(-K.ANGLE_JITTER_DEG, K.ANGLE_JITTER_DEG);
-    const cutRot = Phaser.Math.DegToRad(cutAngleDeg + jitterDeg);
+    const cutRot = cutContactRot(cutAngleDeg) + Phaser.Math.DegToRad(jitterDeg);
+    const tipX = knifeProfile(this.knifeStats.animation.blade, w).tip;
+    const poseAt = (k: number) => cutStrokePose(strokeFrom, strokeTo, cutRot, tipX, k);
+    const prep = poseAt(0);
 
     if (!this.knife)
       this.knife = {
@@ -3743,13 +3786,19 @@ export class PreparationScene extends Phaser.Scene {
       };
     const g = this.knife; // stable reference the whole chain tweens against
     g.dirSign = 1;
+    g.contactAlong = 0; // the stroke poses the pivot itself
+    g.targetContactAlong = 0;
     g.phase = "tapPrep";
+
+    // Drives the knife through the stroke (k = cutStrokePose's progress).
+    const stroke = { k: 0 };
+    const followStroke = () => Object.assign(g, poseAt(stroke.k));
 
     this.tweens.add({
       targets: g,
-      x: prepX,
-      y: prepY,
-      rot: cutRot,
+      x: prep.x,
+      y: prep.y,
+      rot: prep.rot,
       duration: K.PREP_MS,
       ease: Phaser.Math.Easing.Sine.Out,
       onComplete: () => {
@@ -3759,23 +3808,24 @@ export class PreparationScene extends Phaser.Scene {
           if (seq !== this.knifeSeq) return;
           g.phase = "tapCut";
           this.tweens.add({
-            targets: g,
-            x: cutX,
-            y: cutY,
+            targets: stroke,
+            k: 1,
             duration: K.CUT_MS,
             ease: Phaser.Math.Easing.Sine.InOut,
+            onUpdate: followStroke,
             onComplete: () => {
               if (seq !== this.knifeSeq) return;
               // Blade at contact — the actual cut happens here (§9/§12's "thunk").
               this.commitCut(cut, { velocity: 0.55, inputMode: "tap" });
               g.phase = "tapImpact";
-              const overshootY = cutY + K.CUT_DEPTH_FRAC * w * 0.6;
+              // A short follow-through on the same stroke, then back.
               this.tweens.add({
-                targets: g,
-                y: overshootY,
+                targets: stroke,
+                k: 1.08,
                 duration: K.IMPACT_MS / 2,
                 ease: Phaser.Math.Easing.Quadratic.Out,
                 yoyo: true,
+                onUpdate: followStroke,
                 onComplete: () => {
                   if (seq !== this.knifeSeq) return;
                   g.phase = "tapRetract";
@@ -3784,9 +3834,10 @@ export class PreparationScene extends Phaser.Scene {
                   // pose between strikes the way Slice does (§"rhythmic,
                   // repeated strikes" — reads as chop-chop-chop, not a
                   // series of separate deliberate slices).
-                  const retract = isChop
-                    ? { x: cutX, y: cutY - K.PREP_ABOVE_FRAC * w, rot: cutRot }
-                    : this.idleKnifePose();
+                  // Either way the knife lifts off the cut first: chop
+                  // back to the top of its stroke, slice out to the rest
+                  // pose.
+                  const retract = isChop ? prep : this.idleKnifePose();
                   this.tweens.add({
                     targets: g,
                     x: retract.x,
@@ -5735,6 +5786,9 @@ export class PreparationScene extends Phaser.Scene {
       this.knife.phase === "exit"
     ) {
       this.knife.rot += (this.knife.targetRot - this.knife.rot) * K.KNIFE_ROT_LERP;
+      const along = this.knife.contactAlong ?? 0;
+      this.knife.contactAlong =
+        along + ((this.knife.targetContactAlong ?? 0) - along) * K.KNIFE_ROT_LERP;
     }
 
     let alpha = 1;
@@ -5758,6 +5812,8 @@ export class PreparationScene extends Phaser.Scene {
         this.knife.y = idle.y;
         this.knife.rot = idle.rot;
         this.knife.targetRot = idle.rot;
+        this.knife.contactAlong = 0;
+        this.knife.targetContactAlong = 0;
         this.knife.phase = "idle";
         this.knife.enterT = now;
       }
@@ -5789,7 +5845,11 @@ export class PreparationScene extends Phaser.Scene {
     // ends up riding the seam once the object is positioned on it.
     const g = this.knifeGfx;
     g.setAlpha(alpha);
-    g.setPosition(this.knife.x, this.knife.y + liftY);
+    const along = (this.knife.contactAlong ?? 0) * this.knife.dirSign;
+    g.setPosition(
+      this.knife.x - Math.cos(this.knife.rot) * along,
+      this.knife.y - Math.sin(this.knife.rot) * along + liftY,
+    );
     g.setRotation(this.knife.rot);
     g.setScale(this.knife.dirSign, 1);
 
