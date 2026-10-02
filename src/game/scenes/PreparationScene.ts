@@ -9,13 +9,15 @@ import { PauseManager } from "../PauseManager";
 import { withRequiredPeelSteps } from "../prepStepGuards";
 import { drawCoachGhost, coachCycleMs, type CoachTarget } from "./coachGhost";
 import {
+  CUT_SQUASH,
   knifeProfile,
+  knifeTipDir,
   paintKnife,
+  poseForTipDir,
   quadraticPoints,
   swipeContactAlong,
-  swipeKnifeDir,
-  tapCutRot,
   tapStrokePose,
+  topViewProfile,
 } from "./knifeProfile";
 import { COACH_FIRST_DELAY_MS, COACH_STUCK_IDLE_MS } from "../coaching";
 import { AudioManager } from "../AudioManager";
@@ -745,6 +747,16 @@ type KnifeState = {
    */
   contactAlong?: number;
   targetContactAlong?: number;
+  /** Swipe: the dirSign the knife is easing toward (it turns over through 0). */
+  targetSign?: number;
+  /** Swipe: the current tip direction (radians), kept for knifeTipDir's hysteresis. */
+  tipDir?: number;
+  /**
+   * The top-view foreshortening (topViewProfile): CUT_SQUASH while it cuts
+   * (stood on its edge), 1 at rest (lying flat). Eases toward targetSquash.
+   */
+  squash?: number;
+  targetSquash?: number;
 };
 
 /** Cumulative drag distance from the gesture's first point before it counts as a swipe rather than a tap candidate (§29's "defer swipe activation"). */
@@ -3034,6 +3046,7 @@ export class PreparationScene extends Phaser.Scene {
       dirSign: 1,
       dirLatch: null,
       rotInit: false,
+      targetSquash: CUT_SQUASH,
       phase: "enter",
       enterT: this.time.now,
       exitT: 0,
@@ -3076,10 +3089,8 @@ export class PreparationScene extends Phaser.Scene {
   /**
    * knifecraft.html's blade-direction logic: direction is measured against a
    * point at least DIR_BASELINE_PX back (not the immediately previous sample —
-   * that's sampling noise, not intent). The knife then points the way the
-   * drag goes, tip leading (swipeKnifeDir): it turns continuously, mirrors
-   * so the edge stays underneath, and dirSign (which way the point-end
-   * faces) only flips on a true reversal.
+   * that's sampling noise, not intent). The knife lies along the drag, held
+   * from the cook's right hand (knifeTipDir / poseForTipDir).
    */
   private updateKnifeDirection(): void {
     if (!this.knife) return;
@@ -3098,33 +3109,34 @@ export class PreparationScene extends Phaser.Scene {
 
     const dx = last.x - base.x;
     const dy = last.y - base.y;
-    // The knife follows the drag like a pointer (swipeKnifeDir): along the
-    // drag, tip leading, turning continuously with it, with the middle of
-    // its edge on the finger. Drag right to left and the tip points and
-    // moves left.
-    const { rot, sign, rebase } = swipeKnifeDir(dx, dy, this.knife.rot);
-    if (rebase) {
-      // Turned past vertical: same tip direction, edge back underneath.
-      this.knife.rot += rebase;
-      this.knife.dirSign = sign;
-      this.knife.dirLatch = { dx, dy };
-    }
-    this.knife.targetRot = rot;
+    // The knife moves with the finger along the drag, held the way the
+    // cook holds it: along the drag line, tip away from the right hand
+    // (knifeTipDir), so right to left is a push cut and left to right a pull
+    // cut. The middle of its edge is on the finger, and it is stood on its
+    // edge (top view). It turns continuously with the drag's line. When it
+    // has to face the other way it turns over in the hand (dirSign eases
+    // through 0).
+    const tipDir = knifeTipDir(Math.atan2(dy, dx), this.knife.tipDir);
+    this.knife.tipDir = tipDir;
+    const { rot, sign } = poseForTipDir(tipDir);
     this.knife.targetContactAlong = swipeContactAlong(
       knifeProfile(this.knifeStats.animation.blade, this.scale.width).tip,
     );
-    // The mirror only flips on a true reversal of the drag, not on sampling
-    // noise.
-    if (!this.knife.dirLatch) {
+    this.knife.targetSquash = CUT_SQUASH;
+    this.knife.dirLatch = null;
+    if (this.knife.rotInit && Math.abs(rot - this.knife.rot) > Math.PI / 2) {
+      // Crossing vertical: the same tip direction, drawn the other way round
+      // (on a knife stood on its edge this is barely visible).
+      this.knife.rot = rot;
       this.knife.dirSign = sign;
-      this.knife.dirLatch = { dx, dy };
-    } else if (this.knife.dirLatch.dx * dx + this.knife.dirLatch.dy * dy < 0) {
-      this.knife.dirSign = sign;
-      this.knife.dirLatch = { dx, dy };
     }
+    this.knife.targetRot = rot;
+    this.knife.targetSign = sign;
     if (!this.knife.rotInit) {
       this.knife.rot = rot; // enters already facing travel — no swing-in from horizontal
+      this.knife.dirSign = sign;
       this.knife.contactAlong = this.knife.targetContactAlong;
+      this.knife.squash = CUT_SQUASH;
       this.knife.rotInit = true;
     }
   }
@@ -3741,9 +3753,11 @@ export class PreparationScene extends Phaser.Scene {
       : cut.axis === "h"
         ? { x: this.ingCx, y: cut.c }
         : { x: cut.c, y: this.ingCy };
-    // The knife snaps EXACTLY onto the cut line (tapCutRot): a horizontal
-    // cut gets a fully horizontal knife, tip right; a vertical cut gets a
-    // fully vertical knife, handle down, tip up. No per-cut tilt. The
+    // The knife snaps EXACTLY onto the cut line, held from the cook's right
+    // hand (knifeTipDir): a vertical cut gets a fully vertical knife, tip up,
+    // handle down; a horizontal cut a fully horizontal one, tip left,
+    // handle right. It is stood on its edge (seen from above,
+    // topViewProfile). No per-cut tilt. The
     // middle of its edge sits on the line, at the line's middle over the
     // food. For a radial cut, whose line runs through the centre, that is
     // the point on the line nearest the tap, so the blade lands where the
@@ -3751,9 +3765,9 @@ export class PreparationScene extends Phaser.Scene {
     // the line (tapStrokePose), and the cut is committed at the end of the
     // stroke. Only the drawing moves; the cut itself is `cut`.
     const cutAngleDeg = lineAngleDeg(cut.axis, cut.slope);
-    const cutRot = tapCutRot(cutAngleDeg);
-    const ux = Math.cos(cutRot);
-    const uy = Math.sin(cutRot);
+    const tipDir = knifeTipDir(Phaser.Math.DegToRad(cutAngleDeg));
+    const ux = Math.cos(tipDir);
+    const uy = Math.sin(tipDir);
     const onLine = this.technique.radialSnap
       ? (() => {
           const d = (cutPoint.x - this.ingCx) * ux + (cutPoint.y - this.ingCy) * uy;
@@ -3762,7 +3776,7 @@ export class PreparationScene extends Phaser.Scene {
       : cutPoint;
     const tipX = knifeProfile(this.knifeStats.animation.blade, w).tip;
     const hop = K.PREP_ABOVE_FRAC * w * 0.35;
-    const poseAt = (k: number) => tapStrokePose(onLine, cutRot, tipX, hop, k);
+    const poseAt = (k: number) => tapStrokePose(onLine, tipDir, tipX, hop, k);
     const prep = poseAt(0);
 
     if (!this.knife)
@@ -3777,20 +3791,29 @@ export class PreparationScene extends Phaser.Scene {
         exitT: 0,
       };
     const g = this.knife; // stable reference the whole chain tweens against
-    g.dirSign = 1;
     g.contactAlong = 0; // the stroke poses the pivot itself
     g.targetContactAlong = 0;
+    g.targetSquash = CUT_SQUASH; // stood on its edge while it cuts
     g.phase = "tapPrep";
 
     // Drives the knife through the stroke (k = tapStrokePose's progress).
     const stroke = { k: 0 };
-    const followStroke = () => Object.assign(g, poseAt(stroke.k));
+    const followStroke = () => {
+      const p = poseAt(stroke.k);
+      g.x = p.x;
+      g.y = p.y;
+      g.rot = p.rot;
+      g.dirSign = p.sign;
+    };
 
+    // Snap into place. dirSign tweens through 0 when the knife has to face
+    // the other way, so it turns over in the hand instead of spinning.
     this.tweens.add({
       targets: g,
       x: prep.x,
       y: prep.y,
       rot: prep.rot,
+      dirSign: prep.sign,
       duration: K.PREP_MS,
       ease: Phaser.Math.Easing.Sine.Out,
       onComplete: () => {
@@ -3826,12 +3849,14 @@ export class PreparationScene extends Phaser.Scene {
                   // Either way the knife lifts off the cut first: chop
                   // back to the top of its stroke, slice out to the rest
                   // pose.
-                  const retract = isChop ? prep : this.idleKnifePose();
+                  const retract = isChop ? prep : { ...this.idleKnifePose(), sign: 1 };
+                  if (!isChop) g.targetSquash = 1; // laid back down flat
                   this.tweens.add({
                     targets: g,
                     x: retract.x,
                     y: retract.y,
                     rot: retract.rot,
+                    dirSign: retract.sign,
                     duration: K.RETRACT_MS,
                     ease: Phaser.Math.Easing.Sine.InOut,
                     onComplete: () => {
@@ -5778,7 +5803,11 @@ export class PreparationScene extends Phaser.Scene {
       const along = this.knife.contactAlong ?? 0;
       this.knife.contactAlong =
         along + ((this.knife.targetContactAlong ?? 0) - along) * K.KNIFE_ROT_LERP;
+      if (this.knife.targetSign !== undefined)
+        this.knife.dirSign += (this.knife.targetSign - this.knife.dirSign) * K.KNIFE_ROT_LERP;
     }
+    const sq = this.knife.squash ?? 1;
+    this.knife.squash = sq + ((this.knife.targetSquash ?? 1) - sq) * 0.3;
 
     let alpha = 1;
     let liftY = 0;
@@ -5803,6 +5832,11 @@ export class PreparationScene extends Phaser.Scene {
         this.knife.targetRot = idle.rot;
         this.knife.contactAlong = 0;
         this.knife.targetContactAlong = 0;
+        this.knife.dirSign = 1;
+        delete this.knife.targetSign;
+        delete this.knife.tipDir;
+        this.knife.squash = 1;
+        this.knife.targetSquash = 1;
         this.knife.phase = "idle";
         this.knife.enterT = now;
       }
@@ -5826,7 +5860,7 @@ export class PreparationScene extends Phaser.Scene {
     const shape = this.knifeStats.animation.blade;
     const visual = this.knifeStats.visual;
     // The shared silhouette (knifeProfile.ts) — the coaching ghost draws the same one.
-    const profile = knifeProfile(shape, this.scale.width);
+    const profile = topViewProfile(knifeProfile(shape, this.scale.width), this.knife.squash ?? 1);
     // Graphics has no save/restore or canvas-transform stack in this Phaser
     // version — position/rotate/scale the GameObject itself instead, and
     // draw the path in its local space. The blade is drawn shifted up by

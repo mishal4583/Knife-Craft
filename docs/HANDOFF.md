@@ -141,20 +141,23 @@ conversation.
    the original one again: the knife turns to the cut line's angle and
    comes down onto it (tap), or follows the finger (swipe). Do not
    re-introduce either pose without asking.
-23. Knife cutting motion, the developer's final rules (they replace the
-   diagonal "rocking" stroke of ac0e7a5):
-   - Tap cut: the knife lies exactly on the cut line. Horizontal cut,
-     horizontal knife; vertical cut, vertical knife with the handle down.
-     It lands, makes a short back-and-forth slice along the line, and the
-     cut opens at the end of the stroke.
-   - Swipe: the knife follows the drag like a pointer, tip leading, with
-     the middle of the edge under the finger.
+23. Knife cutting motion, from the developer's point-of-view tomato photos:
+   - The knife lies along the cut, held from the cook's right hand at the
+     lower right: vertical cut, tip up; horizontal cut, tip left and handle
+     right.
+   - While it cuts it is seen from above, standing on its edge
+     (foreshortened blade, round handle). At rest it lies flat.
+   - Tap: the knife snaps onto the line, lands, makes a short
+     back-and-forth slice, and the cut opens at the end of the stroke.
+   - Swipe: the knife moves with the finger along the drag, with the same
+     grip (push or pull).
    - The coaching ghost matches.
-   - Code: `tapCutRot` / `tapStrokePose` / `swipeKnifeDir` in
-     `scenes/knifeProfile.ts`. Guarded by `scripts/knife-stroke-qa.mts`.
+   - Code: `knifeTipDir` / `poseForTipDir` / `tapStrokePose` /
+     `topViewProfile` in `scenes/knifeProfile.ts`.
+   - Guarded by `scripts/knife-stroke-qa.mts`.
    - `tools/e2e/coach.mjs` clears long straight white runs before looking
-     for the ghost fingertip, because the ghost knife's edge now lies
-     through it.
+     for the ghost fingertip, because the ghost knife's edge lies through
+     it.
 
 ## 4. Open issues from the Level 1–10 audit (not fixed yet)
 

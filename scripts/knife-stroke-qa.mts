@@ -1,35 +1,47 @@
 /**
- * KNIFE_STROKE_QA — how the knife moves when it cuts
- * (scenes/knifeProfile.ts tapCutRot / tapStrokePose / swipeKnifeDir, used
- * by PreparationScene's tap cut and swipe knife and by the coaching ghost).
- * The developer's rules:
+ * KNIFE_STROKE_QA — how the knife looks and moves when it cuts
+ * (scenes/knifeProfile.ts knifeTipDir / poseForTipDir / tapStrokePose /
+ * topViewProfile, used by PreparationScene's tap cut, swipe knife and draw,
+ * and by the coaching ghost). The reference is the developer's point-of-view
+ * photos of a cook slicing a tomato. The knife is held in the right hand at
+ * the lower right, lies along the cut, and is seen from above standing on
+ * its edge.
  *
- *   A. Tap cut: the knife lies EXACTLY on the cut line — a horizontal cut
- *      gets a fully horizontal knife (tip right), a vertical cut a fully
- *      vertical knife (handle down, tip up); every other line, along it.
- *   B. Tap stroke: it snaps into that orientation, lands on the line, makes
- *      one short back-and-forth slice along it (never across it, never
- *      turning), the middle of its edge on the line; the cut is committed at
- *      the end of the stroke, within 0.2–0.35 s of the tap.
- *   C. Swipe: the knife follows the drag like a pointer — along the drag,
- *      TIP LEADING (drag right→left: the tip points and moves left), in
- *      every direction, turning continuously; the sharp edge stays on the
- *      lower side (never more than 100° from horizontal).
- *   D. Wiring: the tap cut, the swipe and the ghost all use these.
+ *   A. Tap: the knife lies exactly on the cut line, held from the right hand.
+ *      - vertical cut: tip up, handle down;
+ *      - horizontal cut: tip left, handle right;
+ *      - "\" diagonal: tip upper left;
+ *      - the tip never points at the cook's hand.
+ *   B. It is drawn with the tip that way round. The rotation stays within a
+ *      quarter turn; a leftward tip is mirrored, never upside down.
+ *   C. The tap stroke: it snaps on, lands on the line, makes a short
+ *      back-and-forth slice along it without turning, and the cut is
+ *      committed at the end of the stroke, within 0.35 s.
+ *   D. Swipe: the knife lies along the drag, held from the right hand. Right
+ *      to left is a push, so the tip leads; left to right is a pull. Down or
+ *      up, the knife is vertical, tip up. It holds steady near the tie.
+ *   E. Seen from above while cutting: the blade is foreshortened to
+ *      CUT_SQUASH (it stands on its edge, so the flat face is not what
+ *      shows), the handle stays round, and at rest it lies flat.
+ *   F. Wiring: the tap cut, the swipe, the drawing and the ghost all use these.
  *
  * Run: npx tsx scripts/knife-stroke-qa.mts
  */
 import fs from "node:fs";
 import path from "node:path";
 import {
+  CUT_SQUASH,
+  knifeProfile,
+  knifeTipDir,
+  poseForTipDir,
   swipeContactAlong,
-  swipeKnifeDir,
-  tapCutRot,
   tapStrokePose,
+  topViewProfile,
   TAP_SLICE_FRAC,
 } from "../src/game/scenes/knifeProfile.ts";
 import { lineAngleDeg } from "../src/game/CutGeometry.ts";
 import { TAP_KNIFE, CHOP_KNIFE } from "../src/game/definitions.ts";
+import { knifeOrDefault, DEFAULT_KNIFE_ID } from "../src/game/knives/knifeDefinitions.ts";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const read = (f: string) => fs.readFileSync(path.resolve(ROOT, f), "utf8");
@@ -42,73 +54,94 @@ function assert(cond: boolean, label: string, detail?: unknown) {
 }
 const EPS = 1e-9;
 const rad = (d: number) => (d * Math.PI) / 180;
+const near = (a: number, b: number) =>
+  Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b))) < 1e-6;
 
-// A. Orientation.
-assert(Math.abs(tapCutRot(0)) < EPS, "A1. horizontal cut → fully horizontal knife, tip right");
-const v = tapCutRot(90);
+// A. Tap orientation.
 assert(
-  Math.abs(Math.cos(v)) < EPS && Math.sin(v) < 0,
-  "A2. vertical cut → fully vertical knife, handle down, tip up",
+  near(knifeTipDir(rad(90)), rad(-90)) && near(knifeTipDir(rad(-90)), rad(-90)),
+  "A1. vertical cut: tip up, handle down (either way the line runs)",
 );
 assert(
-  Math.abs(tapCutRot(-90) - v) < EPS && Math.abs(tapCutRot(180)) < EPS,
-  "A3. the same line drawn either way gets the same knife",
+  near(knifeTipDir(0), Math.PI) && near(knifeTipDir(Math.PI), Math.PI),
+  "A2. horizontal cut: tip left, handle right (the right hand)",
 );
-const notOn: number[] = [];
+assert(
+  near(knifeTipDir(rad(45)), rad(-135)),
+  "A3. a \\ diagonal: tip upper left, handle lower right",
+);
+const aBad: string[] = [];
 for (let a = -180; a <= 180; a += 0.5) {
-  if (Math.abs(Math.sin(tapCutRot(a) - rad(a))) > 1e-9) notOn.push(a);
+  const d = knifeTipDir(rad(a));
+  if (Math.abs(Math.sin(d - rad(a))) > 1e-9) aBad.push(`${a}: not on line`);
+  if (Math.cos(d) * -0.6 + Math.sin(d) * -0.8 < -1e-9) aBad.push(`${a}: tip at the hand`);
 }
-const eBad: string[] = [];
 for (const axis of ["h", "v"] as const)
   for (let sl = -3; sl <= 3; sl += 0.05) {
     const a = lineAngleDeg(axis, sl);
-    if (Math.abs(Math.sin(tapCutRot(a) - rad(a))) > 1e-9) eBad.push(`${axis}:${sl.toFixed(2)}`);
+    if (Math.abs(Math.sin(knifeTipDir(rad(a)) - rad(a))) > 1e-9)
+      aBad.push(`${axis}:${sl.toFixed(2)}`);
   }
 assert(
-  notOn.length === 0 && eBad.length === 0,
-  "A4. every cut line the game makes: the knife lies exactly on it",
-  { notOn: notOn.slice(0, 5), eBad: eBad.slice(0, 5) },
+  aBad.length === 0,
+  "A4. every cut line the game makes: the knife on it, tip away from the hand",
+  aBad.slice(0, 5),
 );
 
-// B. The tap stroke.
+// B. Drawn the right way round.
+const bBad: number[] = [];
+for (let d = -180; d < 180; d += 1) {
+  const { rot, sign } = poseForTipDir(rad(d));
+  if (
+    !near(Math.atan2(sign * Math.sin(rot), sign * Math.cos(rot)), rad(d)) ||
+    Math.abs(rot) > Math.PI / 2 + 1e-9
+  )
+    bBad.push(d);
+}
+assert(
+  bBad.length === 0,
+  "B. the drawn tip points along the tip direction; a leftward tip is mirrored, never upside down",
+  bBad.slice(0, 5),
+);
+
+// C. The tap stroke.
 const tip = 120;
 const centre = { x: 270, y: 480 };
 const hop = 30;
-const bad: string[] = [];
+const cBad: string[] = [];
 let forward = false;
 let back = false;
-let prevAlong = 0;
-for (const a of [0, 90, 30, -60, 12]) {
-  const rot = tapCutRot(a);
-  const ux = Math.cos(rot);
-  const uy = Math.sin(rot);
+for (const a of [0, 90, 45, -60, 12]) {
+  const d = knifeTipDir(rad(a));
+  const ux = Math.cos(d);
+  const uy = Math.sin(d);
+  let prev = 0;
   for (let s = 0; s <= 1.0001; s += 0.02) {
-    const p = tapStrokePose(centre, rot, tip, hop, s);
-    if (Math.abs(p.rot - rot) > EPS) bad.push(`rot@${a}:${s}`);
-    // Edge point under the middle of the blade, after landing (s ≥ 0.3).
+    const p = tapStrokePose(centre, d, tip, hop, s);
+    const want = poseForTipDir(d);
+    if (Math.abs(p.rot - want.rot) > EPS || p.sign !== want.sign) cBad.push(`turns@${a}`);
     const mx = p.x + ux * tip * 0.5;
     const my = p.y + uy * tip * 0.5;
     const perp = Math.abs((mx - centre.x) * -uy + (my - centre.y) * ux);
-    if (s >= 0.3 && perp > 1e-6) bad.push(`off-line@${a}:${s.toFixed(2)}`);
     const along = (mx - centre.x) * ux + (my - centre.y) * uy;
-    if (s >= 0.3 && Math.abs(along) > tip * TAP_SLICE_FRAC + 1e-6) bad.push(`slide@${a}`);
+    if (s >= 0.3 && perp > 1e-6) cBad.push(`off-line@${a}:${s.toFixed(2)}`);
+    if (s >= 0.3 && Math.abs(along) > tip * TAP_SLICE_FRAC + 1e-6) cBad.push(`slide@${a}`);
     if (a === 0 && s > 0.3) {
-      if (along > prevAlong + 1e-9) forward = true;
-      if (along < prevAlong - 1e-9) back = true;
+      if (along > prev + 1e-9) forward = true;
+      if (along < prev - 1e-9) back = true;
     }
-    if (a === 0) prevAlong = along;
+    prev = along;
   }
-  const end = tapStrokePose(centre, rot, tip, hop, 1);
-  const start = tapStrokePose(centre, rot, tip, hop, 0);
-  if (Math.abs(end.x + ux * tip * 0.5 - centre.x) > 1e-6) bad.push(`end@${a}`);
-  if (!(start.y < end.y - hop * 0.9)) bad.push(`no-landing@${a}`);
+  const start = tapStrokePose(centre, d, tip, hop, 0);
+  const end = tapStrokePose(centre, d, tip, hop, 1);
+  if (!(start.y < end.y - hop * 0.9)) cBad.push(`no-landing@${a}`);
 }
 assert(
-  bad.length === 0,
-  "B1. the knife never turns, lands on the line and stays on it",
-  bad.slice(0, 6),
+  cBad.length === 0,
+  "C1. the knife lands on the line and stays on it, never turning",
+  cBad.slice(0, 6),
 );
-assert(forward && back, "B2. a short back-and-forth slice along the line (not a press)");
+assert(forward && back, "C2. a short back-and-forth slice along the line");
 for (const [name, K] of [
   ["slice", TAP_KNIFE],
   ["chop", CHOP_KNIFE],
@@ -116,76 +149,86 @@ for (const [name, K] of [
   const toCut = K.PREP_MS + K.PAUSE_MS + K.CUT_MS;
   assert(
     toCut >= 120 && toCut <= 350,
-    `B3. ${name}: the cut lands at the end of the stroke, ${toCut} ms after the tap (≤ 0.35 s)`,
+    `C3. ${name}: the cut lands at the end of the stroke, ${toCut} ms after the tap`,
   );
 }
 
-// C. Swipe — tip leading in every direction.
-const dirs: [string, number, number][] = [
-  ["right→left", -1, 0],
-  ["left→right", 1, 0],
-  ["top→bottom", 0, 1],
-  ["bottom→top", 0, -1],
-  ["down-left", -1, 1],
-  ["up-right", 1, -1],
-  ["down-right", 1, 1],
-  ["up-left", -1, -1],
-];
-const cBad: string[] = [];
-for (const [name, dx, dy] of dirs) {
-  for (const cur of [0, rad(80), rad(-80), rad(30)]) {
-    const { rot, sign } = swipeKnifeDir(dx, dy, cur);
-    const len = Math.hypot(dx, dy);
-    const tx = sign * Math.cos(rot);
-    const ty = sign * Math.sin(rot);
-    if (Math.abs(tx - dx / len) > 1e-9 || Math.abs(ty - dy / len) > 1e-9)
-      cBad.push(`${name} from ${Math.round((cur * 180) / Math.PI)}°`);
-    if (Math.abs(rot) > rad(100) + 1e-9) cBad.push(`${name}: edge on top`);
-  }
-}
+// D. Swipe.
+const drag = (dx: number, dy: number, prev?: number) => knifeTipDir(Math.atan2(dy, dx), prev);
+const dRL = drag(-1, 0);
 assert(
-  cBad.length === 0,
-  "C1. drag in any direction: the knife's tip points and leads that way",
-  cBad,
-);
-// A drag curving from right through down to left turns the knife continuously.
-let cur = 0;
-let maxStep = 0;
-let edgeTop = false;
-for (let deg = 0; deg <= 180; deg += 3) {
-  const { rot, rebase } = swipeKnifeDir(Math.cos(rad(deg)), Math.sin(rad(deg)), cur);
-  const base = cur + rebase;
-  maxStep = Math.max(maxStep, Math.abs(rot - base));
-  if (Math.abs(rot) > rad(100) + 1e-9) edgeTop = true;
-  cur = rot;
-}
-assert(
-  maxStep <= rad(3) + 1e-9 && !edgeTop,
-  "C2. a curving drag turns the knife continuously, edge kept underneath",
-  { maxStepDeg: (maxStep * 180) / Math.PI },
+  near(dRL, Math.PI),
+  "D1. drag right → left: tip left, so the tip leads the way the finger moves (a push cut)",
 );
 assert(
-  swipeContactAlong(tip) === tip * 0.5,
-  "C3. the middle of the edge is under the finger (the tip ahead of it)",
+  near(drag(1, 0), Math.PI),
+  "D2. drag left → right: same grip, tip left, handle right (a pull cut)",
+);
+assert(
+  near(drag(0, 1), rad(-90)) && near(drag(0, -1), rad(-90)),
+  "D3. drag up or down: the knife vertical, tip up, handle down",
+);
+const dBad: string[] = [];
+for (let a = -180; a < 180; a += 1) {
+  const d = drag(Math.cos(rad(a)), Math.sin(rad(a)));
+  if (Math.abs(Math.sin(d - rad(a))) > 1e-9) dBad.push(`${a}`);
+}
+assert(dBad.length === 0, "D4. the knife always lies along the drag", dBad.slice(0, 5));
+// Near the tie (a line square to "away from the hand") it keeps its way round.
+const tie = Math.atan2(-0.6, 0.8); // up-right shallow line
+const held = drag(Math.cos(tie + 0.05), Math.sin(tie + 0.05), tie - 0.05);
+const held2 = drag(Math.cos(tie - 0.05), Math.sin(tie - 0.05), held);
+const free1 = drag(Math.cos(tie + 0.05), Math.sin(tie + 0.05));
+const free2 = drag(Math.cos(tie - 0.05), Math.sin(tie - 0.05));
+assert(
+  Math.cos(held - held2) > 0.9 && Math.cos(free1 - free2) < -0.9,
+  "D5. near the tie the knife keeps its way round (without that it would flip 180°)",
+);
+assert(swipeContactAlong(tip) === tip * 0.5, "D6. the middle of the edge is under the finger");
+
+// E. Seen from above.
+const prof = knifeProfile(knifeOrDefault(DEFAULT_KNIFE_ID).animation.blade, 540);
+const top = topViewProfile(prof, CUT_SQUASH);
+const height = (pts: { y: number }[]) =>
+  Math.max(...pts.map((q) => q.y)) - Math.min(...pts.map((q) => q.y));
+assert(
+  CUT_SQUASH >= 0.3 &&
+    CUT_SQUASH <= 0.6 &&
+    Math.abs(height(top.outline) / height(prof.outline) - CUT_SQUASH) < 1e-6,
+  `E1. while cutting the blade is foreshortened to ${CUT_SQUASH} (stood on its edge, seen from above)`,
+);
+assert(height(top.handle) / height(prof.handle) >= 0.8, "E2. the handle stays round");
+assert(topViewProfile(prof, 1) === prof, "E3. at rest the knife lies flat (full profile)");
+assert(
+  Math.max(...top.cuttingEdge.map((q) => Math.abs(q.y))) <=
+    Math.max(...prof.cuttingEdge.map((q) => Math.abs(q.y))) * CUT_SQUASH + 1e-6 &&
+    top.cuttingEdge.slice(0, 2).every((q) => q.y === 0),
+  "E4. the edge stays on the cut line",
 );
 
-// D. Wiring.
+// F. Wiring.
 const scene = read("src/game/scenes/PreparationScene.ts");
 const ghost = read("src/game/scenes/coachGhost.ts");
 const i = scene.indexOf("private runTapCut(");
-const tapCut = scene.slice(i, i + 7000);
+const tapCut = scene.slice(i, i + 8000);
 assert(
-  /tapCutRot\(cutAngleDeg\)/.test(tapCut) && /tapStrokePose\(/.test(tapCut),
-  "D1. the tap cut uses tapCutRot + tapStrokePose (no per-cut tilt)",
+  /knifeTipDir\(/.test(tapCut) &&
+    /tapStrokePose\(/.test(tapCut) &&
+    /targetSquash = CUT_SQUASH/.test(tapCut),
+  "F1. the tap cut: knifeTipDir + tapStrokePose, stood on its edge",
 );
 const j = scene.indexOf("private updateKnifeDirection(");
 assert(
-  /swipeKnifeDir\(dx, dy/.test(scene.slice(j, j + 3000)),
-  "D2. the swipe knife uses swipeKnifeDir",
+  /knifeTipDir\(Math\.atan2\(dy, dx\)/.test(scene.slice(j, j + 3000)),
+  "F2. the swipe knife uses knifeTipDir",
 );
 assert(
-  /tapCutRot\(/.test(ghost) && /tapStrokePose\(/.test(ghost) && /swipeContactAlong\(/.test(ghost),
-  "D3. the coaching ghost shows the same tap and swipe",
+  /topViewProfile\(knifeProfile\(/.test(scene),
+  "F3. the knife is drawn through topViewProfile",
+);
+assert(
+  /knifeTipDir\(/.test(ghost) && /tapStrokePose\(/.test(ghost) && /topViewProfile\(/.test(ghost),
+  "F4. the coaching ghost shows the same knife and motion",
 );
 
 console.log(

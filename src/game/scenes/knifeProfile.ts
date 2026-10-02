@@ -11,48 +11,81 @@ import type { KnifeBladeShape, KnifeVisual } from "../knives/knifeTypes";
 
 export type Pt = { x: number; y: number };
 
-const rad = (d: number) => (d * Math.PI) / 180;
+/**
+ * The cook holds the knife in the RIGHT hand, at the lower right of the
+ * board (the player's point of view). So along any cut the tip points away
+ * from that hand: up and to the left. A vertical cut puts the tip up; a
+ * horizontal cut puts the tip left, handle right; a "\" diagonal puts the
+ * tip upper left.
+ */
+const AWAY_FROM_HAND = { x: -0.6, y: -0.8 };
+/** Near the tie (a line square to AWAY_FROM_HAND), keep the knife's previous way round. */
+const HAND_HYSTERESIS = 0.25;
 
 /**
- * Tap cut: the knife's rotation (radians) lying EXACTLY on a cut line at
- * `lineAngleDeg`, its edge on the line.
- * - A horizontal cut gets a fully horizontal knife: tip right, handle left
- *   (any line within 45° of horizontal: rot = the line's angle).
- * - A vertical cut gets a fully vertical knife: handle down toward the
- *   player, tip up (steeper lines: tip up the screen, -45° … -135°).
+ * While it cuts, the knife is seen from above standing on its edge: the
+ * blade is foreshortened to this fraction of its side-on height, so you see
+ * the spine and a sliver of the face. The handle stays nearly round. At rest
+ * it lies flat (1).
  */
-export function tapCutRot(lineAngleDeg: number): number {
-  let a = ((lineAngleDeg % 180) + 180) % 180;
-  if (a > 90) a -= 180; // (-90, 90]
-  return rad(Math.abs(a) <= 45 ? a : a < 0 ? a : a - 180);
+export const CUT_SQUASH = 0.45;
+const HANDLE_TOP_THICK = 0.85;
+
+/**
+ * The knife's tip direction (radians, screen space) for cutting along a line
+ * at `lineAngle` (radians, either way along it): along the line, pointing away
+ * from the cook's right hand. Pass the previous tip direction to keep it
+ * steady while a swipe's line hovers near the tie.
+ */
+export function knifeTipDir(lineAngle: number, prevTipDir?: number): number {
+  let d = lineAngle;
+  const score = Math.cos(d) * AWAY_FROM_HAND.x + Math.sin(d) * AWAY_FROM_HAND.y;
+  if (score < 0) d += Math.PI;
+  if (prevTipDir !== undefined && Math.abs(score) < HAND_HYSTERESIS) {
+    const keep = Math.cos(d - prevTipDir) >= 0 ? d : d + Math.PI;
+    d = keep;
+  }
+  return Math.atan2(Math.sin(d), Math.cos(d));
 }
 
-/** Where the knife is drawn: its pivot (local origin, the heel of the edge by the handle) and rotation. */
-export type KnifePose = { x: number; y: number; rot: number };
+/** Where and how the knife is drawn: pivot (local origin), rotation, mirror (sign) and top-view squash. */
+export type KnifePose = { x: number; y: number; rot: number; sign: number };
+
+/**
+ * The Graphics rotation + mirror that point the tip along `tipDir`. The
+ * rotation stays within a quarter turn of horizontal (the spine on top). A
+ * tip pointing left is drawn mirrored (sign -1) rather than upside-down.
+ */
+export function poseForTipDir(tipDir: number): { rot: number; sign: number } {
+  if (Math.cos(tipDir) >= -1e-9) {
+    return { rot: Math.atan2(Math.sin(tipDir), Math.cos(tipDir)), sign: 1 };
+  }
+  const r = tipDir + Math.PI;
+  return { rot: Math.atan2(Math.sin(r), Math.cos(r)), sign: -1 };
+}
 
 /** The tap slice's back-and-forth travel along the line, as a fraction of the blade. */
 export const TAP_SLICE_FRAC = 0.08;
 
 /**
- * The tap stroke at progress `s` (0..1, the CUT phase), the knife lying on
- * the cut line at `rot` (tapCutRot) with the middle of its edge on
- * `centre`:
- * - s 0 → 0.3: it lands. The knife comes down the last `hop` px onto the
- *   line, already in the line's orientation (s = 0 is the hover pose the
- *   knife snaps to first).
+ * The tap stroke at progress `s` (0..1, the CUT phase). The knife lies on
+ * the cut line, its tip along `tipDir` (knifeTipDir), and the middle of its
+ * edge on `centre`.
+ * - s 0 → 0.3: it comes down the last `hop` px onto the line, already in
+ *   place (s = 0 is the hover pose it snaps to first).
  * - s 0.3 → 1: one short slicing stroke along the line, forward then back
- *   (TAP_SLICE_FRAC of the blade), like a real knife making contact.
- * The rotation never changes: the knife stays exactly on the line.
+ *   (TAP_SLICE_FRAC of the blade).
+ * The direction never changes.
  */
 export function tapStrokePose(
   centre: Pt,
-  rot: number,
+  tipDir: number,
   tip: number,
   hop: number,
   s: number,
 ): KnifePose {
-  const ux = Math.cos(rot);
-  const uy = Math.sin(rot);
+  const ux = Math.cos(tipDir);
+  const uy = Math.sin(tipDir);
   const land = Math.min(1, s / 0.3);
   const t = Math.max(0, (s - 0.3) / 0.7);
   const slide = tip * TAP_SLICE_FRAC * Math.sin(t * Math.PI * 2);
@@ -60,7 +93,7 @@ export function tapStrokePose(
   return {
     x: centre.x - ux * along,
     y: centre.y - uy * along - hop * (1 - land * land),
-    rot,
+    ...poseForTipDir(tipDir),
   };
 }
 
@@ -70,36 +103,31 @@ export function swipeContactAlong(tip: number): number {
 }
 
 /**
- * Swipe: the knife follows the drag like a pointer. It lies along the drag
- * (dx, dy) with its TIP LEADING. Drag right to left and the tip points left
- * and travels left; drag down and it points down.
- * - `rot` is kept within a quarter turn of `currentRot`, so the knife turns
- *   continuously with the drag instead of snapping.
- * - `sign` mirrors the knife (-1) when the tip must point the other way
- *   along `rot`. That keeps the sharp edge on the lower side for a drag to
- *   the left, never the spine.
- * - `rebase` (0 or ±π) is set when a curving drag turns the knife more than
- *   100° from horizontal, which would put the edge on top. The caller adds
- *   it to the knife's current rotation. With the mirror flipped the tip
- *   points the same way, and the edge is back on the lower side.
+ * `p` seen from above with the knife standing on its edge. The blade (and
+ * bolster) are squashed to `squash` of their side-on height about the edge
+ * line. The handle keeps most of its thickness (it's round), re-centred on
+ * the squashed blade. `squash` 1 returns `p` as it is: the knife lying flat
+ * at rest.
  */
-export function swipeKnifeDir(
-  dx: number,
-  dy: number,
-  currentRot: number,
-): { rot: number; sign: 1 | -1; rebase: number } {
-  let rot = Math.atan2(dy, dx);
-  if (rot > Math.PI / 2) rot -= Math.PI;
-  else if (rot < -Math.PI / 2) rot += Math.PI;
-  while (rot - currentRot > Math.PI / 2) rot -= Math.PI;
-  while (currentRot - rot > Math.PI / 2) rot += Math.PI;
-  let rebase = 0;
-  if (Math.abs(rot) > rad(100)) {
-    rebase = rot > 0 ? -Math.PI : Math.PI;
-    rot += rebase;
-  }
-  const sign = dx * Math.cos(rot) + dy * Math.sin(rot) >= 0 ? 1 : -1;
-  return { rot, sign, rebase };
+export function topViewProfile(p: KnifeProfile, squash: number): KnifeProfile {
+  if (squash >= 0.999) return p;
+  const blade = (pts: Pt[]) => pts.map((q) => ({ x: q.x, y: q.y * squash }));
+  const hc = p.handle.reduce((acc, q) => acc + q.y, 0) / p.handle.length;
+  const thick = squash + (1 - squash) * HANDLE_TOP_THICK;
+  const handleY = (y: number) => hc * squash + (y - hc) * thick;
+  return {
+    ...p,
+    bladeH: p.bladeH * squash,
+    edge: p.edge * squash,
+    outline: blade(p.outline),
+    cuttingEdge: blade(p.cuttingEdge),
+    spine: blade(p.spine),
+    bolster: blade(p.bolster),
+    handle: p.handle.map((q) => ({ x: q.x, y: handleY(q.y) })),
+    // Rivets sit on the handle's sides: out of sight from above.
+    rivets: p.rivets.map((q) => ({ x: q.x, y: handleY(q.y) })),
+    rivetR: p.rivetR * squash,
+  };
 }
 
 /** A short quadratic-bezier polyline — Phaser Graphics has no native curveTo, so curves are sampled. */
