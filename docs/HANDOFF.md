@@ -178,6 +178,8 @@ conversation.
      in-fridge buying.
    - Fixed: the door handle no longer covers or steals taps at 375×642.
      Shelves pan sideways only when they overflow, with touch and mouse.
+   - The fridge replaces the old On hand list (developer: "replace the
+     current on hand with proper refrigerator and stocks inside it").
    - Developer review: approved as built. The fixed 37°F was replaced by a
      cooling status from the real condition (Refrigerated / Needs service
      / Broken) so players don't think temperature is simulated. The

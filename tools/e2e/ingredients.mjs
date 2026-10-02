@@ -161,12 +161,24 @@ check(
 );
 await openInventory();
 t = await flat();
+// The physical fridge is the on-hand view: the tomato sits on its Vegetables shelf.
+const tomatoLabel = await page.evaluate(
+  () =>
+    document
+      .querySelector('[data-fridge-zone="vegetables"] [data-fridge-item="tomato"]')
+      ?.getAttribute("aria-label") ?? "",
+);
+const fridgeValue = await page.evaluate(
+  () =>
+    document.querySelector('[data-testid="fridge-status"]')?.textContent.replace(/\s+/g, " ") ?? "",
+);
 check(
-  "4b Business → Inventory shows it at once: Tomato 25 lb · $25.00, fridge 25 / 40, purchasing $25.00",
-  /Tomato 25 lb · \$25\.00/.test(t) &&
+  "4b Business → Inventory shows it at once: Tomato 25 lb in the fridge · $25.00, fridge 25 / 40, purchasing $25.00",
+  /^Tomato: 25 lb, /.test(tomatoLabel) &&
+    /Value\s*\$25\.00/.test(fridgeValue) &&
     /25 \/ 40/.test(t) &&
     /This Business Day \$25\.00 1 purchase/i.test(t),
-  t.slice(0, 600),
+  { tomatoLabel, fridgeValue, t: t.slice(0, 300) },
 );
 await shot(page, "ingredients-4-inventory");
 // Most needed → deep link to that ingredient's Market card.

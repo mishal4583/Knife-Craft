@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import type { ScreenId } from "../data";
 import type { SaveData } from "@/game/SaveManager";
-import { KButton, Panel, Badge } from "../common/primitives";
+import { KButton, Panel } from "../common/primitives";
 import { Bar, Eyebrow } from "../common/Meters";
 import { cn } from "@/lib/utils";
 import { INGREDIENTS, type IngredientId } from "@/game/definitions";
@@ -9,7 +9,6 @@ import { INGREDIENT_EMOJI } from "@/game/knives/knifeDefinitions";
 import { purchaseUnitFor } from "@/game/business/businessPricing";
 import { formatUsd } from "@/game/business/businessCurrency";
 import { formatQuantity } from "@/game/business/businessInventory";
-import type { PerishabilityState } from "@/game/business/perishability";
 import { eventForDay } from "@/game/business/businessSupplierEvents";
 import { isContractActive } from "@/game/business/businessSupplierContract";
 import { supplierEventSummary } from "@/game/business/businessAlerts";
@@ -27,14 +26,6 @@ import {
 import { openMarketIngredients } from "../marketFocus";
 import { fridgeView } from "@/game/business/fridgeView";
 import { PhysicalFridge } from "./fridge/PhysicalFridge";
-
-const PERISHABILITY_BADGE_TONE: Record<PerishabilityState, "cream" | "sage" | "copper" | "locked"> =
-  {
-    FRESH: "sage",
-    AGING: "cream",
-    NEAR_EXPIRY: "copper",
-    EXPIRED: "locked",
-  };
 
 /** How many ranked rows the Most needed / Most used lists show. */
 const TOP_ROWS = 5;
@@ -143,72 +134,15 @@ export function BusinessInventory({ go, save }: { go: (s: ScreenId) => void; sav
         <Stat label="Ready" value={`${readiness.ready} / ${readiness.total}`} sub="dishes" />
       </div>
 
-      {/* On hand */}
-      {onHand.length > 0 ? (
-        <Panel className="p-4">
-          <Eyebrow>🧺 On hand</Eyebrow>
-          <div className="mt-1" data-testid="on-hand">
-            {onHand.map((item) => (
-              <div
-                key={item.id}
-                data-ingredient={item.id}
-                className="border-b border-walnut/10 py-2 last:border-b-0"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="text-[20px]" aria-hidden>
-                    {INGREDIENT_EMOJI[item.id]}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate font-ui text-[13px] font-extrabold text-walnut-dark">
-                      {name(item.id)}
-                    </span>
-                    <span className="block font-hand text-[13px] text-walnut/60">
-                      {qty(item.id, item.quantity)} · {formatUsd(item.value)}
-                    </span>
-                  </span>
-                  <Badge tone={PERISHABILITY_BADGE_TONE[item.state]}>
-                    {item.state.replace("_", " ")}
-                  </Badge>
-                </div>
-                <div className="mt-1 flex items-center gap-2 pl-7">
-                  <span className="w-20 shrink-0">
-                    <Bar
-                      fraction={item.daysLeft / item.shelfLife}
-                      tone={item.daysLeft <= 1 ? "copper" : "sage"}
-                    />
-                  </span>
-                  <span
-                    className={cn(
-                      "font-ui text-[11px] font-bold",
-                      item.daysLeft <= 1 ? "text-copper" : "text-walnut/65",
-                    )}
-                  >
-                    {item.spoilsTonight ? "⚠ " : ""}
-                    {daysLeftText(item)}
-                  </span>
-                </div>
-                <p className="truncate pl-7 font-hand text-[12px] leading-tight text-walnut/60">
-                  {item.usedIn.length > 0
-                    ? `Used in: ${item.usedIn
-                        .slice(0, 2)
-                        .map((d) => d.name)
-                        .join(
-                          ", ",
-                        )}${item.usedIn.length > 2 ? ` +${item.usedIn.length - 2} more` : ""}`
-                    : "Not used by today's menu"}
-                </p>
-              </div>
-            ))}
-          </div>
-        </Panel>
-      ) : (
+      {/* The fridge IS the on-hand view; an empty fridge points to the Market. */}
+      {onHand.length === 0 ? (
         <Panel className="p-4 text-center">
           <p className="font-hand text-[15px] leading-snug text-walnut/65">
             Your fridge is empty. Buy ingredients from the Market to start serving Business orders.
           </p>
           <MarketLink go={go} label="Go to Market →" className="mt-2 w-full" />
         </Panel>
-      )}
+      ) : null}
 
       {/* Low stock */}
       {low.length > 0 ? (

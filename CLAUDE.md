@@ -293,7 +293,9 @@ with the real functions.
   enough fridge space. You have N units of fridge space left."
   **Business → Inventory** (`BusinessInventory.tsx`, tab id `inventory`,
   route `business-inventory`) has NO purchase controls: the physical
-  fridge (below), fridge status, On hand (freshness, days left, Used in), Low stock (threshold = today's
+  fridge (below) — which IS the on-hand view (the old On hand list is gone;
+  freshness, days left and Used in are on the fridge labels and their
+  details) — fridge status, Low stock (threshold = today's
   customer target × the active menu's need), Menu readiness + Most needed,
   Expiring soon, Inventory analytics, Purchasing, Most used. All figures
   come from `business/inventoryAnalytics.ts` over existing state; Most used
