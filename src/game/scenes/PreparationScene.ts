@@ -8,13 +8,7 @@ import {
 import { PauseManager } from "../PauseManager";
 import { withRequiredPeelSteps } from "../prepStepGuards";
 import { drawCoachGhost, coachCycleMs, type CoachTarget } from "./coachGhost";
-import {
-  cuttingRot,
-  cuttingStroke,
-  knifeProfile,
-  paintKnife,
-  quadraticPoints,
-} from "./knifeProfile";
+import { knifeProfile, paintKnife, quadraticPoints } from "./knifeProfile";
 import { COACH_FIRST_DELAY_MS, COACH_STUCK_IDLE_MS } from "../coaching";
 import { AudioManager } from "../AudioManager";
 import {
@@ -3088,19 +3082,6 @@ export class PreparationScene extends Phaser.Scene {
 
     const dx = last.x - base.x;
     const dy = last.y - base.y;
-    if (Math.abs(dy) > Math.abs(dx) * Math.tan(Phaser.Math.DegToRad(50))) {
-      // A steep stroke (slicing a loaf into rounds): the blade lies ALONG
-      // it, handle toward the player, tip up the screen (cuttingRot) — it
-      // moves the way the finger moves, never sideways across the cut.
-      this.knife.targetRot = cuttingRot(Phaser.Math.RadToDeg(Math.atan2(dy, dx)));
-      this.knife.dirSign = 1;
-      this.knife.dirLatch = null;
-      if (!this.knife.rotInit) {
-        this.knife.rot = this.knife.targetRot;
-        this.knife.rotInit = true;
-      }
-      return;
-    }
     let rot = Math.atan2(dy, dx);
     if (rot > Math.PI / 2) rot -= Math.PI;
     else if (rot < -Math.PI / 2) rot += Math.PI;
@@ -3718,31 +3699,36 @@ export class PreparationScene extends Phaser.Scene {
     this.tapSeqTotalMs = tapSequenceMs(K);
 
     const w = this.scale.width;
-    // The knife slices ALONG the cut (cuttingStroke): the blade lies on the
-    // line, handle at the player's end, and slides tip-first through the
-    // food — for a vertical cut it moves vertically, like a bread knife in a
-    // real slice, never sideways across the cut. The stroke is centred on
-    // the line's middle over the ingredient (a radial cut's line runs
-    // through the centre; cut.c is that centre).
-    const lineCentre = cut.axis === "h" ? { x: this.ingCx, y: cut.c } : { x: cut.c, y: this.ingCy };
+    // Radial (Phase 7): cut.c is ALWAYS the ingredient's own center
+    // (ingCy for axis "h", ingCx for axis "v" — see resolveRadialTap's
+    // own doc, a radial cut is a line THROUGH center, so it carries no
+    // real position, only an angle via slope). Deriving cutPoint from
+    // axis/c the way every other technique does would make the knife's
+    // animated strike target the exact same center point regardless of
+    // where the player tapped — only its rotation would ever change,
+    // which reads as "every tap cuts in the same place" even though the
+    // underlying Cut geometry (and the resulting pieces) genuinely
+    // differ. Using the real tap position directly fixes that — the
+    // blade visibly strikes near wherever was actually tapped.
+    const cutPoint = this.technique.radialSnap
+      ? { x, y }
+      : cut.axis === "h"
+        ? { x: this.ingCx, y: cut.c }
+        : { x: cut.c, y: this.ingCy };
+    // Formula per §7: approach from above the ingredient's own top, never
+    // a fixed screen Y. §8: the blade's rest angle follows the CUT
+    // LINE's own direction (this already matches how a straight swipe of
+    // the same axis renders — rot=0 is a horizontal edge, ~90° is a
+    // vertical one), with only a tiny, subtle per-cut jitter on top —
+    // never enough to look misaligned.
+    const ingredientTopY = this.ingCy - this.ingRy;
+    const prepX = cutPoint.x + K.PREP_OFFSET_X_FRAC * w;
+    const prepY = ingredientTopY - K.PREP_ABOVE_FRAC * w;
+    const cutX = cutPoint.x;
+    const cutY = cutPoint.y + K.CUT_DEPTH_FRAC * w;
     const cutAngleDeg = lineAngleDeg(cut.axis, cut.slope);
     const jitterDeg = Phaser.Math.FloatBetween(-K.ANGLE_JITTER_DEG, K.ANGLE_JITTER_DEG);
-    const alongRot = cuttingRot(cutAngleDeg + jitterDeg);
-    const halfLen =
-      1 /
-      Math.hypot(
-        Math.cos(alongRot) / Math.max(1, this.ingRx),
-        Math.sin(alongRot) / Math.max(1, this.ingRy),
-      );
-    const tipX = knifeProfile(this.knifeStats.animation.blade, w).tip;
-    const stroke = cuttingStroke(lineCentre, cutAngleDeg + jitterDeg, halfLen, tipX);
-    const cutRot = stroke.rot;
-    const ux = Math.cos(cutRot);
-    const uy = Math.sin(cutRot);
-    const prepX = stroke.from.x;
-    const prepY = stroke.from.y;
-    const cutX = stroke.to.x;
-    const cutY = stroke.to.y;
+    const cutRot = Phaser.Math.DegToRad(cutAngleDeg + jitterDeg);
 
     if (!this.knife)
       this.knife = {
@@ -3783,12 +3769,10 @@ export class PreparationScene extends Phaser.Scene {
               // Blade at contact — the actual cut happens here (§9/§12's "thunk").
               this.commitCut(cut, { velocity: 0.55, inputMode: "tap" });
               g.phase = "tapImpact";
-              // A last push along the line as the blade finishes the slice.
-              const follow = K.CUT_DEPTH_FRAC * w * 0.6;
+              const overshootY = cutY + K.CUT_DEPTH_FRAC * w * 0.6;
               this.tweens.add({
                 targets: g,
-                x: cutX + ux * follow,
-                y: cutY + uy * follow,
+                y: overshootY,
                 duration: K.IMPACT_MS / 2,
                 ease: Phaser.Math.Easing.Quadratic.Out,
                 yoyo: true,
@@ -3801,11 +3785,7 @@ export class PreparationScene extends Phaser.Scene {
                   // repeated strikes" — reads as chop-chop-chop, not a
                   // series of separate deliberate slices).
                   const retract = isChop
-                    ? {
-                        x: cutX - ux * K.PREP_ABOVE_FRAC * w,
-                        y: cutY - uy * K.PREP_ABOVE_FRAC * w,
-                        rot: cutRot,
-                      }
+                    ? { x: cutX, y: cutY - K.PREP_ABOVE_FRAC * w, rot: cutRot }
                     : this.idleKnifePose();
                   this.tweens.add({
                     targets: g,

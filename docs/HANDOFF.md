@@ -134,12 +134,13 @@ conversation.
    back after a pause only if the player is stuck (no progress on the
    step); the one-line gesture hint only to Level 10. QA `coaching-qa`
    E2/F3/F4; e2e `coach.mjs` 3a, 6a, 7a (Order Board replay), 8a.
-22. The knife cuts ALONG the cut line, like a bread knife in a real slice:
-   on a vertical cut the knife is vertical (handle toward the player, tip
-   up) and slides up the line; the tap cut, swipe and coaching ghost share
-   `cuttingRot` / `cuttingStroke` (`scenes/knifeProfile.ts`). Guarded by
-   `scripts/knife-stroke-qa.mts` (every angle + wiring). An intermediate
-   "across the line" pose was wrong and is gone.
+22. Knife cutting motion: two experiments were tried and reverted at the
+   developer's request ("use old knife mechanics, it is better"): laying
+   the knife ACROSS steep cuts (04e3675) and sliding it ALONG the cut line
+   tip-first (612e204, "feels like a sword penetrating"). The motion is
+   the original one again: the knife turns to the cut line's angle and
+   comes down onto it (tap), or follows the finger (swipe). Do not
+   re-introduce either pose without asking.
 
 ## 4. Open issues from the Level 1–10 audit (not fixed yet)
 

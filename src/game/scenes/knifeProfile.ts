@@ -11,56 +11,6 @@ import type { KnifeBladeShape, KnifeVisual } from "../knives/knifeTypes";
 
 export type Pt = { x: number; y: number };
 
-/** Lines steeper than this (from horizontal) point the knife's tip UP the screen instead of right. */
-const STEEP_FROM_DEG = 45;
-
-/**
- * The knife's rotation (radians) for cutting a line at `lineAngleDeg`: the
- * blade lies ALONG the cut line, the way a cook's knife lies in the slice it
- * is making (seen from above, the blade and the cut are one line), with the
- * handle at the player's end and the tip pointing away:
- * - a line within 45° of horizontal: tip to the right (rot = the line's angle);
- * - a steeper line (slicing a loaf into rounds): tip up the screen, handle
- *   toward the player (rot -45° … -135°, exactly -90° for a vertical cut).
- * The knife never lies across the cut and never moves across it — see
- * cuttingStroke, and `scripts/knife-stroke-qa.mts`, which checks both for
- * every angle.
- */
-export function cuttingRot(lineAngleDeg: number): number {
-  let a = ((lineAngleDeg % 180) + 180) % 180;
-  if (a > 90) a -= 180; // (-90, 90]
-  const deg = Math.abs(a) <= STEEP_FROM_DEG ? a : a < 0 ? a : a - 180;
-  return (deg * Math.PI) / 180;
-}
-
-/** A slicing stroke: the knife's rotation, and where its local origin (the heel of the edge) starts and ends. */
-export type CutStroke = { rot: number; from: Pt; to: Pt };
-
-/**
- * The knife's slicing stroke for a cut line through `centre` at
- * `lineAngleDeg`, `halfLen` px of it over the food, for a blade `bladeLen`
- * px long (heel → tip): the blade lies on the line (cuttingRot, edge on the
- * line) and slides ALONG it, tip first, from just into the near end of the
- * food until the tip is past the far end — like the bread knife in a real
- * slice, never sideways across the cut. Used by the real tap cut
- * (PreparationScene.runTapCut) and the coaching ghost.
- */
-export function cuttingStroke(
-  centre: Pt,
-  lineAngleDeg: number,
-  halfLen: number,
-  bladeLen: number,
-): CutStroke {
-  const rot = cuttingRot(lineAngleDeg);
-  const ux = Math.cos(rot);
-  const uy = Math.sin(rot);
-  const at = (tipAlong: number) => ({
-    x: centre.x + ux * (tipAlong - bladeLen),
-    y: centre.y + uy * (tipAlong - bladeLen),
-  });
-  return { rot, from: at(-halfLen * 0.45), to: at(halfLen + bladeLen * 0.08) };
-}
-
 /** A short quadratic-bezier polyline — Phaser Graphics has no native curveTo, so curves are sampled. */
 export function quadraticPoints(
   x0: number,
@@ -211,7 +161,7 @@ export function shade(c: number, amount: number): number {
  * breaks lines this thin into dots, a fill doesn't. `w` = band width (px),
  * laid on the side given by `side` (-1 = towards negative y).
  */
-export function band(pts: Pt[], w: number, side: 1 | -1): Pt[] {
+function band(pts: Pt[], w: number, side: 1 | -1): Pt[] {
   const shifted = pts.map((q, i) => {
     const a = pts[Math.max(0, i - 1)]!;
     const b = pts[Math.min(pts.length - 1, i + 1)]!;
