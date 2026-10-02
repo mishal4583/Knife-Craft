@@ -147,6 +147,11 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   short slice, cut at the end of the stroke within 0.35 s; swipe moves
   with the finger along the drag (push/pull), steady near the tie; tap,
   swipe, drawing and ghost all use it.
+- `cut-rules-qa` — the developer's cutting rules (`docs/KNIFE_RULES.md`)
+  for every cutting step of all 250 levels + Endless: cut lines across the
+  food (vertical, Level 1 style; horizontal only for julienne, Dice's cross
+  cuts or a tall food), right-to-left order, knife poised on the last cut
+  between cuts and laid down at step end, cards teach right to left.
 - `coaching-qa` — beginner coaching: every technique has a how-to card,
   Levels 1–5 teach everything, each later technique is taught only in the
   level that introduces it, the stuck rule (back only with no progress),
@@ -479,6 +484,21 @@ not silently removed.
       - a diagonal "rocking" stroke;
       - the knife across or along steep cuts.
     - `scripts/knife-stroke-qa.mts` checks all of this, plus the wiring.
+  - **Cut plan** (`src/game/cutPlan.ts`; the rules and their sources are
+    in `docs/KNIFE_RULES.md`).
+    - Direction (`primaryCutAxis`): cut lines run ACROSS the food, i.e.
+      vertical lines like Level 1's tomato. Horizontal lines only for
+      julienne's lengthwise strips (`cutsLengthwise`), Dice's cross cuts
+      (after its vertical slices) and a food taller than 1.35 × its width.
+      An ingredient's `axisOverride` still wins. `technique.axis` is no
+      longer consulted.
+    - Order (`nextCutIndex` / `nextOpenPosition`): right to left, the claw
+      hand stepping back. Horizontal sets start nearest the cook. The
+      coaching ghost and the cards teach it. A tap still cuts where it lands.
+    - Between cuts the knife stays poised on the last cut, stood on its
+      edge (`runTapCut`'s stepDone, `poiseKnifeOn` after a swipe). It is
+      laid down when the step ends (`layKnifeDown` in `beginStep`).
+    - `scripts/cut-rules-qa.mts` checks every level.
 
 ---
 

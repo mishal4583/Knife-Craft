@@ -31,6 +31,7 @@
  * generically (and also fixes zucchini's julienne, which shares the
  * exact same "taper axisOverride tuned for Slice" shape).
  */
+import { primaryCutAxis } from "../src/game/cutPlan.ts";
 import {
   type Cut,
   type Piece,
@@ -59,14 +60,19 @@ function assert(cond: boolean, label: string) {
   const carrot = INGREDIENTS.carrot;
   const julienne = TECHNIQUES.julienne;
   assert(
-    carrot.techniques.includes("julienne") && julienne.parallelSnap === true && julienne.guideType === "parallel-free",
+    carrot.techniques.includes("julienne") &&
+      julienne.parallelSnap === true &&
+      julienne.guideType === "parallel-free",
     "1: carrot supports julienne, and julienne is still the same parallel-snap technique (not re-implemented)",
   );
 }
 
 // ===== 6: existing cut count / validation semantics are unchanged — julienne.requiredCuts is still exactly 10, untouched by this fix (§10). =====
 {
-  assert(TECHNIQUES.julienne.requiredCuts === 10, `6: julienne.requiredCuts is still 10 (got ${TECHNIQUES.julienne.requiredCuts}) — this fix never touched requiredCutsFor/recipe validation`);
+  assert(
+    TECHNIQUES.julienne.requiredCuts === 10,
+    `6: julienne.requiredCuts is still 10 (got ${TECHNIQUES.julienne.requiredCuts}) — this fix never touched requiredCutsFor/recipe validation`,
+  );
 }
 
 /** A carrot-proportioned taper silhouette (real makeTaperSilhouette, not a stand-in) — wide crown, narrow tip, lying flat (rx >> ry), matching carrot's real geometry family (see ingredientShapes.ts's own doc: "cucumber lies flat exactly like carrot does"). */
@@ -83,12 +89,22 @@ function parallelSnapDefaultAxis(ingRx: number, ingRy: number): "h" | "v" {
 {
   const sil = carrotLikeSilhouette();
   const axis = parallelSnapDefaultAxis(sil.rx, sil.ry);
-  assert(axis === "h" && sil.rx > sil.ry, `2: a carrot-proportioned silhouette (rx=${sil.rx}, ry=${sil.ry}) resolves the parallel-snap default axis to "h" (cuts parallel to its length)`);
+  assert(
+    axis === "h" && sil.rx > sil.ry,
+    `2: a carrot-proportioned silhouette (rx=${sil.rx}, ry=${sil.ry}) resolves the parallel-snap default axis to "h" (cuts parallel to its length)`,
+  );
 }
 
 /** Applies `count` parallel cuts of the given axis, evenly spaced across the correct cross-axis band, to a fresh whole silhouette — mirrors finishCut/resolveTapCut's own end-to-end effect on `this.cuts`/pieces, without needing PreparationScene's input-handling machinery. */
-function applyParallelCuts(sil: ReturnType<typeof carrotLikeSilhouette>, axis: "h" | "v", count: number): Piece[] {
-  const band = axis === "h" ? { lo: sil.cy - sil.ry * 0.85, hi: sil.cy + sil.ry * 0.85 } : { lo: sil.cx - sil.rx * 0.85, hi: sil.cx + sil.rx * 0.85 };
+function applyParallelCuts(
+  sil: ReturnType<typeof carrotLikeSilhouette>,
+  axis: "h" | "v",
+  count: number,
+): Piece[] {
+  const band =
+    axis === "h"
+      ? { lo: sil.cy - sil.ry * 0.85, hi: sil.cy + sil.ry * 0.85 }
+      : { lo: sil.cx - sil.rx * 0.85, hi: sil.cx + sil.rx * 0.85 };
   const positions = idealPositions(band.lo, band.hi, count);
   let pieces: Piece[] = [{ cons: [] }];
   for (const c of positions) {
@@ -107,24 +123,34 @@ let hAspects: number[] = [];
 {
   const sil = carrotLikeSilhouette();
   const pieces = applyParallelCuts(sil, "h", 10);
-  const bounds = pieces.map((p) => boundsOf(p, sil)).filter((b): b is NonNullable<typeof b> => b !== null);
+  const bounds = pieces
+    .map((p) => boundsOf(p, sil))
+    .filter((b): b is NonNullable<typeof b> => b !== null);
   hAspects = bounds.map((b) => (b.x1 - b.x0) / Math.max(1, b.y1 - b.y0));
   const allElongated = hAspects.length > 0 && hAspects.every((a) => a > 3);
-  assert(allElongated, `3: every axis="h" piece has a long/thin aspect ratio > 3 (got [${hAspects.map((a) => a.toFixed(1)).join(", ")}])`);
+  assert(
+    allElongated,
+    `3: every axis="h" piece has a long/thin aspect ratio > 3 (got [${hAspects.map((a) => a.toFixed(1)).join(", ")}])`,
+  );
 }
 
 // ===== 5: multiple julienne pieces are actually produced (not collapsed to one blob). =====
 {
   const sil = carrotLikeSilhouette();
   const pieces = applyParallelCuts(sil, "h", 10);
-  assert(pieces.length >= 8, `5: 10 parallel cuts produce multiple distinct pieces (got ${pieces.length})`);
+  assert(
+    pieces.length >= 8,
+    `5: 10 parallel cuts produce multiple distinct pieces (got ${pieces.length})`,
+  );
 }
 
 // ===== 4: Carrot Julienne (axis "h") is measurably NOT equivalent to the old buggy axis ("v", cross-section chop geometry) — the two produce very different, easily-distinguished aspect ratios for the exact same silhouette/cut count. =====
 {
   const sil = carrotLikeSilhouette();
   const vPieces = applyParallelCuts(sil, "v", 10);
-  const vBounds = vPieces.map((p) => boundsOf(p, sil)).filter((b): b is NonNullable<typeof b> => b !== null);
+  const vBounds = vPieces
+    .map((p) => boundsOf(p, sil))
+    .filter((b): b is NonNullable<typeof b> => b !== null);
   const vAspects = vBounds.map((b) => (b.x1 - b.x0) / Math.max(1, b.y1 - b.y0));
   const avgH = hAspects.reduce((a, b) => a + b, 0) / hAspects.length;
   const avgV = vAspects.reduce((a, b) => a + b, 0) / Math.max(1, vAspects.length);
@@ -139,7 +165,10 @@ let hAspects: number[] = [];
   const sil = carrotLikeSilhouette();
   const a = applyParallelCuts(sil, "h", 10).map((p) => boundsOf(p, sil));
   const b = applyParallelCuts(sil, "h", 10).map((p) => boundsOf(p, sil));
-  assert(JSON.stringify(a) === JSON.stringify(b), "13: julienne cut geometry is deterministic for the same inputs");
+  assert(
+    JSON.stringify(a) === JSON.stringify(b),
+    "13: julienne cut geometry is deterministic for the same inputs",
+  );
 }
 
 // ===== 12: no Math.random() in the touched axis-resolution code. =====
@@ -147,45 +176,82 @@ let hAspects: number[] = [];
   const src = fs.readFileSync("src/game/scenes/PreparationScene.ts", "utf8");
   const fnStart = src.indexOf("private tapDefaultAxis()");
   const fnBody = src.slice(fnStart, src.indexOf("\n  }", fnStart));
-  assert(!fnBody.includes("Math.random("), "12: tapDefaultAxis() (the fixed function) contains no Math.random()");
+  assert(
+    !fnBody.includes("Math.random("),
+    "12: tapDefaultAxis() (the fixed function) contains no Math.random()",
+  );
 }
 
-// ===== 11: the fix is generic (shape-derived), not a carrot-specific hack — structural check that tapDefaultAxis() branches on `this.technique.parallelSnap` and ingRx/ingRy, never on `this.ingredientId === "carrot"`. =====
+// ===== 11: the fix is generic (shape-derived), not a carrot-specific hack. Since the developer's
+// cutting rules (docs/KNIFE_RULES.md), tapDefaultAxis() delegates to cutPlan.primaryCutAxis, whose
+// lengthwise branch (julienne, `cutsLengthwise`) is the same shape-derived rule. Checked both
+// structurally (no ingredient-specific branch anywhere in the path) and behaviourally. =====
 {
   const src = fs.readFileSync("src/game/scenes/PreparationScene.ts", "utf8");
   const fnStart = src.indexOf("private tapDefaultAxis()");
   const fnBody = src.slice(fnStart, src.indexOf("\n  }", fnStart) + 4);
+  const plan = fs.readFileSync("src/game/cutPlan.ts", "utf8");
+  const planFn = plan.slice(
+    plan.indexOf("export function primaryCutAxis("),
+    plan.indexOf("export function nextCutIndex("),
+  );
   assert(
-    fnBody.includes("this.technique.parallelSnap") &&
-      fnBody.includes("this.ingRx") &&
-      fnBody.includes("this.ingRy") &&
+    fnBody.includes("primaryCutAxis(this.technique, this.ingredient, this.ingRx, this.ingRy)") &&
+      planFn.includes('if (technique.cutsLengthwise) return rx >= ry ? "h" : "v";') &&
       !fnBody.includes('"carrot"') &&
-      !fnBody.includes("ingredientId ==="),
-    "11: tapDefaultAxis()'s parallelSnap branch is shape-derived (ingRx/ingRy) and ingredient-agnostic — no carrot-specific (or any other ingredient-specific) special case",
+      !fnBody.includes("ingredientId ===") &&
+      !planFn.includes("ingredientId") &&
+      TECHNIQUES.julienne.cutsLengthwise === true &&
+      primaryCutAxis(TECHNIQUES.julienne, INGREDIENTS.carrot, 150, 45) === "h" &&
+      primaryCutAxis(TECHNIQUES.julienne, INGREDIENTS.carrot, 45, 150) === "v",
+    "11: julienne's default axis is shape-derived (ingRx/ingRy, via primaryCutAxis's lengthwise branch) and ingredient-agnostic — no carrot-specific (or any other ingredient-specific) special case",
   );
 }
 
 // ===== Every OTHER julienne-supporting ingredient benefits from the same generic fix — audit every ingredient whose techniques include "julienne". =====
 {
-  const julienneIngredients = Object.values(INGREDIENTS).filter((i) => i.techniques.includes("julienne"));
-  assert(julienneIngredients.length >= 5, `julienne is supported by ${julienneIngredients.length} ingredients — the fix in tapDefaultAxis() applies uniformly to all of them (no per-ingredient branch exists to miss one)`);
+  const julienneIngredients = Object.values(INGREDIENTS).filter((i) =>
+    i.techniques.includes("julienne"),
+  );
+  assert(
+    julienneIngredients.length >= 5,
+    `julienne is supported by ${julienneIngredients.length} ingredients — the fix in tapDefaultAxis() applies uniformly to all of them (no per-ingredient branch exists to miss one)`,
+  );
 }
 
-// ===== Slice/Chop/Dice/every other technique's own tap-default axis is completely unaffected — regression guard: axisOverride is still consulted for non-parallelSnap techniques exactly as before. =====
+// ===== 13b: every other technique's tap-default axis. The original rule here was
+// "axisOverride ?? technique.axis"; the developer's cutting rules (docs/KNIFE_RULES.md) replaced
+// the technique.axis fallback with "across the food" (vertical lines, Level 1 style; horizontal
+// only for a clearly tall food). What is kept: an ingredient's own axisOverride still wins for
+// every non-lengthwise technique, and the julienne fix above is untouched. =====
 {
   const src = fs.readFileSync("src/game/scenes/PreparationScene.ts", "utf8");
   const fnStart = src.indexOf("private tapDefaultAxis()");
   const fnBody = src.slice(fnStart, src.indexOf("\n  }", fnStart) + 4);
+  const others = (["slice", "chop", "dice", "halve", "rockMince", "chiffonade"] as const).map(
+    (id) => TECHNIQUES[id],
+  );
   assert(
-    fnBody.includes("this.ingredient.axisOverride ?? this.technique.axis"),
-    "13b: the original axisOverride ?? technique.axis fallback is still exactly there for every non-parallelSnap technique (Slice/Chop/Dice/etc. completely unaffected)",
+    fnBody.includes("primaryCutAxis(") &&
+      others.every(
+        (t) =>
+          primaryCutAxis(t, { axisOverride: "h" }, 1, 1) === "h" &&
+          primaryCutAxis(t, { axisOverride: "v" }, 1, 1) === "v" &&
+          primaryCutAxis(t, {}, 1.4, 1) === "v",
+      ),
+    "13b: for every non-julienne technique an ingredient's axisOverride still wins; otherwise the cut runs across the food (developer's cutting rules)",
   );
 }
 
 // ============ ISSUE 1 — JULIENNE PLATING CENTERING FIX ============
 
 /** Mirrors PreparationScene's new `cornerToCenterOffset` exactly. */
-function cornerToCenterOffset(angleDeg: number, scale: number, halfWidth: number, halfHeight: number) {
+function cornerToCenterOffset(
+  angleDeg: number,
+  scale: number,
+  halfWidth: number,
+  halfHeight: number,
+) {
   const rad = (angleDeg * Math.PI) / 180;
   const hw = halfWidth * scale;
   const hh = halfHeight * scale;
@@ -202,8 +268,14 @@ function cornerToCenterOffset(angleDeg: number, scale: number, halfWidth: number
   const offset = cornerToCenterOffset(angle, scale, halfWidth, halfHeight);
   const corner = { x: desiredCenter.x - offset.x, y: desiredCenter.y - offset.y };
   const recoveredCenter = { x: corner.x + offset.x, y: corner.y + offset.y };
-  const drift = Math.hypot(recoveredCenter.x - desiredCenter.x, recoveredCenter.y - desiredCenter.y);
-  assert(drift < 1e-9, `7: the corner<->center conversion round-trips exactly for an elongated, rotated Julienne piece (drift=${drift})`);
+  const drift = Math.hypot(
+    recoveredCenter.x - desiredCenter.x,
+    recoveredCenter.y - desiredCenter.y,
+  );
+  assert(
+    drift < 1e-9,
+    `7: the corner<->center conversion round-trips exactly for an elongated, rotated Julienne piece (drift=${drift})`,
+  );
 }
 
 // ===== 7b: for a genuinely elongated piece at Julienne's real rotation, the corner-vs-center offset is LARGE (this is why the bug was visible for Julienne specifically, not for a near-square Dice cube). =====
@@ -212,7 +284,10 @@ function cornerToCenterOffset(angleDeg: number, scale: number, halfWidth: number
   const offsetDiceLike = cornerToCenterOffset(10, 1, 20, 20); // a near-square dice cube at a small rotation
   const magJulienne = Math.hypot(offsetJulienne.x, offsetJulienne.y);
   const magDice = Math.hypot(offsetDiceLike.x, offsetDiceLike.y);
-  assert(magJulienne > magDice * 2, `7b: an elongated Julienne piece's corner-to-center offset (${magJulienne.toFixed(1)}px) is far larger than a near-square Dice piece's (${magDice.toFixed(1)}px) — confirms why the pre-fix bug was dramatic for Julienne and easy to miss for Dice`);
+  assert(
+    magJulienne > magDice * 2,
+    `7b: an elongated Julienne piece's corner-to-center offset (${magJulienne.toFixed(1)}px) is far larger than a near-square Dice piece's (${magDice.toFixed(1)}px) — confirms why the pre-fix bug was dramatic for Julienne and easy to miss for Dice`,
+  );
 }
 
 // ===== 8: full composition remains centered — build a synthetic Julienne-like set of elongated, rotated pieces, apply the SAME corner correction the real flight loop now does, and confirm the recomputed bounds of their true CENTERS (not corners) sit at plate-center, unlike the pre-fix corner-based math would show. =====
@@ -224,7 +299,7 @@ function cornerToCenterOffset(angleDeg: number, scale: number, halfWidth: number
   // Positions mirror getPlatingArrangement's own julienne case: a band along x, small jitter in y.
   const centers = Array.from({ length: n }, (_, i) => ({
     x: (i / (n - 1) - 0.5) * 1.7 * 1.4 * halfWidth,
-    y: (Math.sin(i * 12.9898) * 0.3) * halfHeight,
+    y: Math.sin(i * 12.9898) * 0.3 * halfHeight,
   }));
   // The FIXED pipeline: corner = center - offset, then recompute true center from that corner (as the flight loop's onUpdate now effectively guarantees at rest).
   const recoveredCenters = centers.map((c) => {
@@ -256,21 +331,30 @@ function cornerToCenterOffset(angleDeg: number, scale: number, halfWidth: number
 {
   const src = fs.readFileSync("src/game/scenes/PreparationScene.ts", "utf8");
   const scaleLine = src.split("\n").find((l) => /const scale = .*emergencyShrink/.test(l)) ?? "";
-  assert(scaleLine.includes("settleScale") && scaleLine.includes("scaleMul") && !scaleLine.includes("halfWidth"), `10: the piece's rendered scale expression is unchanged by the centering fix (found: "${scaleLine.trim()}")`);
+  assert(
+    scaleLine.includes("settleScale") &&
+      scaleLine.includes("scaleMul") &&
+      !scaleLine.includes("halfWidth"),
+    `10: the piece's rendered scale expression is unchanged by the centering fix (found: "${scaleLine.trim()}")`,
+  );
 }
 
 // ===== 9b: no duplicate piece rendering was introduced by this fix — still exactly one platedPieceImages.push call site. =====
 {
   const src = fs.readFileSync("src/game/scenes/PreparationScene.ts", "utf8");
   const pushSites = [...src.matchAll(/platedPieceImages\.push/g)].length;
-  assert(pushSites === 1, `9b: exactly one call site pushes into platedPieceImages (got ${pushSites})`);
+  assert(
+    pushSites === 1,
+    `9b: exactly one call site pushes into platedPieceImages (got ${pushSites})`,
+  );
 }
 
 // ===== Multi-output same-destination grouping (the prior fix) still works — structural: destinationDerived/destinationOrder grouping logic is untouched by this centering change. =====
 {
   const src = fs.readFileSync("src/game/scenes/PreparationScene.ts", "utf8");
   assert(
-    src.includes("destinationDerived.get(destination)!") && src.includes("destinationOrder.forEach((destination, gi)"),
+    src.includes("destinationDerived.get(destination)!") &&
+      src.includes("destinationOrder.forEach((destination, gi)"),
     "the shared-destination grouping fix (destinationDerived/destinationOrder) is untouched by this centering change",
   );
 }

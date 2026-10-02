@@ -57,6 +57,12 @@ export type TechniqueDefinition = {
   /** Julienne: cut 1 sets a direction, every later cut is forced parallel to it. */
   parallelSnap: boolean;
   /**
+   * Julienne: the cut lines run ALONG the food's length (lengthwise slabs
+   * that become strips), not across it like every other cut. cutPlan.ts
+   * primaryCutAxis reads this.
+   */
+  cutsLengthwise?: true;
+  /**
    * Phase 7 addition — Radial (Apple/Orange only). A radial cut is an
    * ORDINARY half-plane Cut whose position is pinned through the
    * ingredient's own center instead of snapped to a guide slot — a line
@@ -157,6 +163,7 @@ export const TECHNIQUES: Record<TechniqueId, TechniqueDefinition> = {
     counts: null,
     perpSnap: false,
     parallelSnap: true,
+    cutsLengthwise: true,
     tolOverride: { evennessTol: 1.9, consistencyCvTol: 1.5 },
     continuousTap: false,
     interactionMode: "cut",

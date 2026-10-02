@@ -8,8 +8,10 @@ import {
 import { PauseManager } from "../PauseManager";
 import { withRequiredPeelSteps } from "../prepStepGuards";
 import { drawCoachGhost, coachCycleMs, type CoachTarget } from "./coachGhost";
+import { nextCutIndex, nextOpenPosition, primaryCutAxis } from "../cutPlan";
 import {
   CUT_SQUASH,
+  type KnifePose,
   knifeProfile,
   knifeTipDir,
   paintKnife,
@@ -1255,6 +1257,8 @@ export class PreparationScene extends Phaser.Scene {
     this.coachInputT = this.time.now;
     this.coachTouched = false;
     this.setCoachVisible(false);
+    // A new step: the knife that waited on the last cut is laid down.
+    this.layKnifeDown();
   }
 
   /** A same-ingredient chain step (e.g. halve -> slice): pieces/cuts persist, only the technique's own guide slots and per-step input state reset. */
@@ -1636,9 +1640,14 @@ export class PreparationScene extends Phaser.Scene {
    * technique's own tap-default is completely unaffected — this branch
    * only ever runs for `parallelSnap` techniques.
    */
+  /**
+   * The axis of this step's first set of cut lines (cutPlan.primaryCutAxis):
+   * across the food (vertical lines, like Level 1's tomato) unless the cut
+   * can't be made that way. Julienne's lengthwise strips and a tall food get
+   * horizontal lines.
+   */
   private tapDefaultAxis(): Axis {
-    if (this.technique.parallelSnap) return this.ingRx >= this.ingRy ? "h" : "v";
-    return this.ingredient.axisOverride ?? this.technique.axis;
+    return primaryCutAxis(this.technique, this.ingredient, this.ingRx, this.ingRy);
   }
 
   /** Recomputes every pixel position from current canvas size — called on resize. */
@@ -3038,17 +3047,21 @@ export class PreparationScene extends Phaser.Scene {
     this.knifeSeq++; // invalidate any in-flight tap sequence's stale callbacks (§29)
     this.tapBusy = false;
     this.queuedTap = null;
+    // Picked up from where it was poised on the last cut: already in the
+    // hand, so no fade-in.
+    const poised = !!this.knife && (this.knife.squash ?? 1) < 1;
     this.knife = {
       x,
       y,
       rot: this.knife?.rot ?? 0,
       targetRot: 0,
-      dirSign: 1,
+      dirSign: this.knife?.dirSign ?? 1,
       dirLatch: null,
       rotInit: false,
       targetSquash: CUT_SQUASH,
+      ...(poised ? { squash: this.knife!.squash! } : {}),
       phase: "enter",
-      enterT: this.time.now,
+      enterT: poised ? this.time.now - KNIFE_GEOMETRY.KNIFE_ENTER_MS : this.time.now,
       exitT: 0,
     };
   }
@@ -3202,7 +3215,19 @@ export class PreparationScene extends Phaser.Scene {
       return;
     }
 
+    const cutsBefore = this.cuts.length;
+    const stepBefore = this.stepIndex;
     this.finishCut(path);
+    // A swipe that cut and left the step unfinished: the knife settles on
+    // the cut it made instead of fading back to the board.
+    if (
+      this.cuts.length > cutsBefore &&
+      this.stepIndex === stepBefore &&
+      !this.pendingRecipePayload &&
+      this.technique.interactionMode === "cut"
+    ) {
+      this.poiseKnifeOn(this.cuts[this.cuts.length - 1]!, last);
+    }
   }
 
   /**
@@ -3706,6 +3731,109 @@ export class PreparationScene extends Phaser.Scene {
     return knifeTapCadence(base, this.knifeStats);
   }
 
+  /**
+   * The tap stroke for `cut` (knifeProfile.tapStrokePose at progress k).
+   * k = 0 is also the poised pose the knife waits in on its last cut.
+   *
+   * The knife snaps EXACTLY onto the cut line, held from the cook's right
+   * hand (knifeTipDir):
+   * - a vertical cut gets a fully vertical knife, tip up, handle down;
+   * - a horizontal cut gets a fully horizontal one, tip left, handle right.
+   *
+   * It is stood on its edge (seen from above, topViewProfile), with no
+   * per-cut tilt. The middle of its edge sits on the line, at the line's
+   * middle over the food. For a radial cut, whose line runs through the
+   * centre, that is the point on the line nearest `near` (the tap, or a
+   * swipe's end), so the blade is where the player cut.
+   */
+  private cutStrokeFor(cut: Cut, near: { x: number; y: number }): (k: number) => KnifePose {
+    const w = this.scale.width;
+    const K = this.tapTiming();
+    const cutPoint = this.technique.radialSnap
+      ? near
+      : cut.axis === "h"
+        ? { x: this.ingCx, y: cut.c }
+        : { x: cut.c, y: this.ingCy };
+    const tipDir = knifeTipDir(Phaser.Math.DegToRad(lineAngleDeg(cut.axis, cut.slope)));
+    const ux = Math.cos(tipDir);
+    const uy = Math.sin(tipDir);
+    const onLine = this.technique.radialSnap
+      ? (() => {
+          const d = (cutPoint.x - this.ingCx) * ux + (cutPoint.y - this.ingCy) * uy;
+          return { x: this.ingCx + ux * d, y: this.ingCy + uy * d };
+        })()
+      : cutPoint;
+    const tipX = knifeProfile(this.knifeStats.animation.blade, w).tip;
+    const hop = K.PREP_ABOVE_FRAC * w * 0.35;
+    return (k: number) => tapStrokePose(onLine, tipDir, tipX, hop, k);
+  }
+
+  /**
+   * Lays the knife back down flat on its rest pose (idleKnifePose). This
+   * happens when a step ends; between the cuts of one step it stays poised
+   * on the last cut. It does nothing while a swipe holds the knife, or when
+   * the knife is already lying down.
+   */
+  private layKnifeDown(): void {
+    const g = this.knife;
+    if (!g || g.phase === "enter" || g.phase === "active" || g.phase === "exit") return;
+    if (g.phase === "idle" && (g.squash ?? 1) >= 0.999 && (g.targetSquash ?? 1) >= 1) return;
+    const seq = ++this.knifeSeq;
+    const idle = this.idleKnifePose();
+    g.targetSquash = 1;
+    g.phase = "tapRetract";
+    this.tweens.add({
+      targets: g,
+      x: idle.x,
+      y: idle.y,
+      rot: idle.rot,
+      dirSign: 1,
+      duration: this.tapTiming().RETRACT_MS,
+      ease: Phaser.Math.Easing.Sine.InOut,
+      onComplete: () => {
+        if (seq !== this.knifeSeq) return;
+        g.phase = "idle";
+        g.targetRot = idle.rot;
+      },
+    });
+  }
+
+  /**
+   * After a swipe that cut and left the step unfinished, the knife doesn't
+   * vanish back to its rest pose. It settles poised on the cut it just made,
+   * stood on its edge, ready for the next cut.
+   */
+  private poiseKnifeOn(cut: Cut, near: { x: number; y: number }): void {
+    const g = this.knife;
+    if (!g) return;
+    const seq = ++this.knifeSeq;
+    const pose = this.cutStrokeFor(cut, near)(0);
+    // Fold the finger offset into the pivot so nothing jumps.
+    const along = (g.contactAlong ?? 0) * g.dirSign;
+    g.x -= Math.cos(g.rot) * along;
+    g.y -= Math.sin(g.rot) * along;
+    g.phase = "tapRetract"; // tween-driven, fully visible
+    g.contactAlong = 0;
+    g.targetContactAlong = 0;
+    g.targetSquash = CUT_SQUASH;
+    delete g.targetSign;
+    this.tweens.add({
+      targets: g,
+      x: pose.x,
+      y: pose.y,
+      rot: pose.rot,
+      dirSign: pose.sign,
+      duration: this.tapTiming().RETRACT_MS,
+      ease: Phaser.Math.Easing.Sine.Out,
+      onComplete: () => {
+        if (seq !== this.knifeSeq) return;
+        g.phase = "idle";
+        g.targetRot = pose.rot;
+        g.enterT = this.time.now - KNIFE_GEOMETRY.KNIFE_ENTER_MS - 1;
+      },
+    });
+  }
+
   private runTapCut(x: number, y: number): void {
     const cut = this.resolveTapCut(x, y);
     if (!cut) {
@@ -3748,35 +3876,7 @@ export class PreparationScene extends Phaser.Scene {
     // underlying Cut geometry (and the resulting pieces) genuinely
     // differ. Using the real tap position directly fixes that — the
     // blade visibly strikes near wherever was actually tapped.
-    const cutPoint = this.technique.radialSnap
-      ? { x, y }
-      : cut.axis === "h"
-        ? { x: this.ingCx, y: cut.c }
-        : { x: cut.c, y: this.ingCy };
-    // The knife snaps EXACTLY onto the cut line, held from the cook's right
-    // hand (knifeTipDir): a vertical cut gets a fully vertical knife, tip up,
-    // handle down; a horizontal cut a fully horizontal one, tip left,
-    // handle right. It is stood on its edge (seen from above,
-    // topViewProfile). No per-cut tilt. The
-    // middle of its edge sits on the line, at the line's middle over the
-    // food. For a radial cut, whose line runs through the centre, that is
-    // the point on the line nearest the tap, so the blade lands where the
-    // player tapped. It lands, makes one short back-and-forth slice along
-    // the line (tapStrokePose), and the cut is committed at the end of the
-    // stroke. Only the drawing moves; the cut itself is `cut`.
-    const cutAngleDeg = lineAngleDeg(cut.axis, cut.slope);
-    const tipDir = knifeTipDir(Phaser.Math.DegToRad(cutAngleDeg));
-    const ux = Math.cos(tipDir);
-    const uy = Math.sin(tipDir);
-    const onLine = this.technique.radialSnap
-      ? (() => {
-          const d = (cutPoint.x - this.ingCx) * ux + (cutPoint.y - this.ingCy) * uy;
-          return { x: this.ingCx + ux * d, y: this.ingCy + uy * d };
-        })()
-      : cutPoint;
-    const tipX = knifeProfile(this.knifeStats.animation.blade, w).tip;
-    const hop = K.PREP_ABOVE_FRAC * w * 0.35;
-    const poseAt = (k: number) => tapStrokePose(onLine, tipDir, tipX, hop, k);
+    const poseAt = this.cutStrokeFor(cut, { x, y });
     const prep = poseAt(0);
 
     if (!this.knife)
@@ -3831,7 +3931,9 @@ export class PreparationScene extends Phaser.Scene {
             onComplete: () => {
               if (seq !== this.knifeSeq) return;
               // Blade at contact — the actual cut happens here (§9/§12's "thunk").
+              const stepBefore = this.stepIndex;
               this.commitCut(cut, { velocity: 0.55, inputMode: "tap" });
+              const stepDone = this.stepIndex !== stepBefore || !!this.pendingRecipePayload;
               g.phase = "tapImpact";
               // A beat with the blade resting in the cut, then the lift.
               this.tweens.add({
@@ -3846,11 +3948,12 @@ export class PreparationScene extends Phaser.Scene {
                   // pose between strikes the way Slice does (§"rhythmic,
                   // repeated strikes" — reads as chop-chop-chop, not a
                   // series of separate deliberate slices).
-                  // Either way the knife lifts off the cut first: chop
-                  // back to the top of its stroke, slice out to the rest
-                  // pose.
-                  const retract = isChop ? prep : { ...this.idleKnifePose(), sign: 1 };
-                  if (!isChop) g.targetSquash = 1; // laid back down flat
+                  // The knife lifts off the cut and stays poised on it,
+                  // ready for the next cut, instead of going back to the
+                  // board. When this cut finished the step, it is laid
+                  // down flat on its rest pose.
+                  const retract = stepDone ? { ...this.idleKnifePose(), sign: 1 } : prep;
+                  if (stepDone) g.targetSquash = 1;
                   this.tweens.add({
                     targets: g,
                     x: retract.x,
@@ -5747,7 +5850,8 @@ export class PreparationScene extends Phaser.Scene {
       if (this.technique.continuousTap) {
         const existing = this.cuts.filter((k) => k.axis === axis).map((k) => k.c);
         const minGap = (band.hi - band.lo) * TAP_KNIFE.MIN_GAP_FRAC;
-        const aim = positions.find((p) => existing.every((e) => Math.abs(e - p) > minGap));
+        // Right to left (nearest the cook first for horizontal lines).
+        const aim = nextOpenPosition(positions, existing, minGap);
         const c =
           aim === undefined
             ? null
@@ -5762,7 +5866,8 @@ export class PreparationScene extends Phaser.Scene {
         cut = { axis, c, slope };
       } else {
         const used = this.usedGuide[axis] ?? [];
-        const idx = positions.findIndex((_, i) => !used[i]);
+        // Right to left (nearest the cook first for horizontal lines).
+        const idx = nextCutIndex(used, positions.length);
         if (idx < 0) return null;
         cut = { axis, c: positions[idx]!, slope };
       }

@@ -211,11 +211,14 @@ const scene = read("src/game/scenes/PreparationScene.ts");
 const ghost = read("src/game/scenes/coachGhost.ts");
 const i = scene.indexOf("private runTapCut(");
 const tapCut = scene.slice(i, i + 8000);
+const h = scene.indexOf("private cutStrokeFor(");
+const stroke = scene.slice(h, scene.indexOf("private layKnifeDown(", h));
 assert(
-  /knifeTipDir\(/.test(tapCut) &&
-    /tapStrokePose\(/.test(tapCut) &&
-    /targetSquash = CUT_SQUASH/.test(tapCut),
-  "F1. the tap cut: knifeTipDir + tapStrokePose, stood on its edge",
+  /this\.cutStrokeFor\(cut, \{ x, y \}\)/.test(tapCut) &&
+    /targetSquash = CUT_SQUASH/.test(tapCut) &&
+    /knifeTipDir\(/.test(stroke) &&
+    /tapStrokePose\(/.test(stroke),
+  "F1. the tap cut: knifeTipDir + tapStrokePose (cutStrokeFor), stood on its edge",
 );
 const j = scene.indexOf("private updateKnifeDirection(");
 assert(

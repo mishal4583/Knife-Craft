@@ -158,6 +158,22 @@ conversation.
    - `tools/e2e/coach.mjs` clears long straight white runs before looking
      for the ghost fingertip, because the ghost knife's edge lies through
      it.
+24. Cutting rules (developer's `Knife_Rules.docx` + review). See
+   `docs/KNIFE_RULES.md`.
+   - Every cut goes across the food, vertical lines like Level 1.
+     Horizontal lines only for julienne strips, Dice's cross cuts or a
+     tall food.
+   - Order: right to left.
+   - The knife stays poised on the last cut and is laid down at step end.
+   - Code: `src/game/cutPlan.ts`. Guarded for all 250 levels + Endless by
+     `scripts/cut-rules-qa.mts`.
+   - `julienne-fix-qa` checks 11/13b were moved from the old
+     `tapDefaultAxis` source text to the same invariants on
+     `primaryCutAxis`. 13b's old "Slice/Chop/Dice use technique.axis"
+     rule was replaced on purpose by the developer's rule.
+   - `coach.mjs` now searches the food band only (38–60% height) and needs
+     a ring-like blob. The ghost knife's handle hangs below the food on a
+     vertical cut.
 
 ## 4. Open issues from the Level 1–10 audit (not fixed yet)
 

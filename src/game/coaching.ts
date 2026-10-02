@@ -82,22 +82,22 @@ export function showsBeginnerHint(coachLevelId: string | undefined): boolean {
 export const COACH_TEXT: Record<TechniqueId, { title: string; how: string; why: string }> = {
   slice: {
     title: "How to slice",
-    how: "Cut on the glowing line, then the next one — work across the whole thing.",
+    how: "Start at the right end and cut each glowing line, working left — hold the food with your other hand in a claw grip.",
     why: "Even slices cook evenly and look neat on the plate.",
   },
   dice: {
     title: "How to dice",
-    how: "Cut the glowing lines one way, then across them, to make little squares.",
+    how: "Slice the glowing lines from right to left, then cut across them to make little squares.",
     why: "Same-size cubes cook at the same speed.",
   },
   julienne: {
     title: "How to julienne",
-    how: "Cut the glowing lines one after another — every cut runs the same way.",
+    how: "Cut it lengthwise into thin slabs, one glowing line after another — every cut runs the same way.",
     why: "Thin matchsticks cook fast and stay crisp.",
   },
   chop: {
     title: "How to chop",
-    how: "Cut the glowing lines quickly — chopping is about rhythm.",
+    how: "Chop the glowing lines quickly, from right to left — chopping is about rhythm.",
     why: "Rough, bite-size pieces are perfect for bowls and stews.",
   },
   halve: {
@@ -127,12 +127,12 @@ export const COACH_TEXT: Record<TechniqueId, { title: string; how: string; why: 
   },
   rockMince: {
     title: "How to mince",
-    how: "Cut the glowing lines again and again — rock the blade until it is fine.",
+    how: "Cut the glowing lines from right to left, again and again — rock the blade until it is fine.",
     why: "A fine mince spreads its flavor through the whole dish.",
   },
   chiffonade: {
     title: "How to chiffonade",
-    how: "Cut the glowing lines one by one to turn the rolled leaves into ribbons.",
+    how: "Slice across the roll from right to left — each glowing line becomes a ribbon.",
     why: "Thin ribbons of herbs look delicate and taste fresh.",
   },
 };

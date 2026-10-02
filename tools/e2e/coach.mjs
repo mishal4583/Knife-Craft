@@ -79,20 +79,23 @@ function decodePng(buf) {
 }
 
 /**
- * The ghost fingertip: a compact, round blob of near-white pixels on the board (CSS px).
+ * The ghost fingertip: a compact, round blob of near-white pixels on the food (CSS px),
+ * searched in the band where the food sits (38–60% of the height): the ghost knife's
+ * handle now hangs below the food on a vertical cut line.
  * Long straight white runs (over 30 CSS px in a row or column) are cleared first. That
  * removes the ghost knife's edge, which lies on the cut line right through the
  * fingertip, but keeps the fingertip's ring. The rest is grouped into connected blobs
- * (on a 4-px grid). The real resting knife's shine is another blob, so only a small
- * blob about as wide as it is tall counts.
+ * (on a 4-px grid). Only a small blob about as wide as it is tall, and ring-like (under
+ * 45% of its box white), counts: the fingertip is a thin white ring round a see-through
+ * pad, while the real knife's shine and the ghost knife's solid bolster are other blobs.
  */
 async function findFingertip(page) {
   const dpr = await page.evaluate(() => devicePixelRatio);
   const C = 4; // grid cell, device px
   for (let i = 0; i < 40; i++) {
     const { w, h, bpp, px } = decodePng(Buffer.from(await page.screenshot({ type: "png" })));
-    const top = Math.floor(h * 0.36),
-      bottom = Math.floor(h * 0.66);
+    const top = Math.floor(h * 0.38),
+      bottom = Math.floor(h * 0.6);
     const gw = Math.ceil(w / C),
       gh = Math.ceil((bottom - top) / C);
     const white = new Uint8Array(w * h);
@@ -176,7 +179,14 @@ async function findFingertip(page) {
       }
       const bw = ((x1 - x0 + 1) * C) / dpr,
         bh = ((y1 - y0 + 1) * C) / dpr;
-      if (n > 40 && bw < 50 && bh < 50 && bw > 0.6 * bh && bh > 0.6 * bw) {
+      if (
+        n > 40 &&
+        bw < 50 &&
+        bh < 50 &&
+        bw > 0.6 * bh &&
+        bh > 0.6 * bw &&
+        n < 0.45 * bw * bh * dpr * dpr
+      ) {
         return { x: sx / n / dpr, y: sy / n / dpr, n, box: [Math.round(bw), Math.round(bh)] };
       }
     }
