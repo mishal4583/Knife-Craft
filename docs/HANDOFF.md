@@ -141,12 +141,20 @@ conversation.
    the original one again: the knife turns to the cut line's angle and
    comes down onto it (tap), or follows the finger (swipe). Do not
    re-introduce either pose without asking.
-23. Edge-first slicing stroke (the developer's tomato reference): the tap
-   knife is diagonal, pivots about the handle end, rocks down 14° while
-   sliding forward, and its sharp edge meets the cut. Steep cuts (bread)
-   are crossed at 30°–45°, flat cuts nearly along the line. The steep swipe
-   and the ghost match. `cutContactRot` / `cutStrokePose` in
-   `scenes/knifeProfile.ts`; guarded by `scripts/knife-stroke-qa.mts`.
+23. Knife cutting motion, the developer's final rules (they replace the
+   diagonal "rocking" stroke of ac0e7a5):
+   - Tap cut: the knife lies exactly on the cut line. Horizontal cut,
+     horizontal knife; vertical cut, vertical knife with the handle down.
+     It lands, makes a short back-and-forth slice along the line, and the
+     cut opens at the end of the stroke.
+   - Swipe: the knife follows the drag like a pointer, tip leading, with
+     the middle of the edge under the finger.
+   - The coaching ghost matches.
+   - Code: `tapCutRot` / `tapStrokePose` / `swipeKnifeDir` in
+     `scenes/knifeProfile.ts`. Guarded by `scripts/knife-stroke-qa.mts`.
+   - `tools/e2e/coach.mjs` clears long straight white runs before looking
+     for the ghost fingertip, because the ghost knife's edge now lies
+     through it.
 
 ## 4. Open issues from the Level 1–10 audit (not fixed yet)
 

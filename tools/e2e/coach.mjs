@@ -80,9 +80,11 @@ function decodePng(buf) {
 
 /**
  * The ghost fingertip: a compact, round blob of near-white pixels on the board (CSS px).
- * White pixels are grouped into connected blobs (on a 4-px grid); the real resting knife's
- * shine and the ghost knife's long thin edge are other blobs, so only a small blob about as
- * wide as it is tall counts.
+ * Long straight white runs (over 30 CSS px in a row or column) are cleared first. That
+ * removes the ghost knife's edge, which lies on the cut line right through the
+ * fingertip, but keeps the fingertip's ring. The rest is grouped into connected blobs
+ * (on a 4-px grid). The real resting knife's shine is another blob, so only a small
+ * blob about as wide as it is tall counts.
  */
 async function findFingertip(page) {
   const dpr = await page.evaluate(() => devicePixelRatio);
@@ -93,11 +95,43 @@ async function findFingertip(page) {
       bottom = Math.floor(h * 0.66);
     const gw = Math.ceil(w / C),
       gh = Math.ceil((bottom - top) / C);
-    const cell = new Int32Array(gw * gh);
+    const white = new Uint8Array(w * h);
     for (let y = top; y < bottom; y++) {
       for (let x = 0; x < w; x++) {
         const k = (y * w + x) * bpp;
-        if (px[k] > 238 && px[k + 1] > 238 && px[k + 2] > 238) {
+        white[y * w + x] = px[k] > 238 && px[k + 1] > 238 && px[k + 2] > 238 ? 1 : 0;
+      }
+    }
+    const RUN = 30 * dpr;
+    const keep = white.slice();
+    for (let y = top; y < bottom; y++) {
+      for (let x = 0; x < w;) {
+        if (!white[y * w + x]) {
+          x++;
+          continue;
+        }
+        let e = x;
+        while (e < w && white[y * w + e]) e++;
+        if (e - x > RUN) for (let i = x; i < e; i++) keep[y * w + i] = 0;
+        x = e;
+      }
+    }
+    for (let x = 0; x < w; x++) {
+      for (let y = top; y < bottom;) {
+        if (!white[y * w + x]) {
+          y++;
+          continue;
+        }
+        let e = y;
+        while (e < bottom && white[e * w + x]) e++;
+        if (e - y > RUN) for (let i = y; i < e; i++) keep[i * w + x] = 0;
+        y = e;
+      }
+    }
+    const cell = new Int32Array(gw * gh);
+    for (let y = top; y < bottom; y++) {
+      for (let x = 0; x < w; x++) {
+        if (keep[y * w + x]) {
           cell[Math.floor((y - top) / C) * gw + Math.floor(x / C)]++;
         }
       }

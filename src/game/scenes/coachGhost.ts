@@ -7,13 +7,12 @@
  *
  * - "cut": the line glows, then both ways to cut it, labelled, with a
  *   see-through copy of the equipped knife moving exactly as the real one
- *   does (knifeProfile cutContactRot / cutStrokePose). SWIPE: a fingertip
- *   draws along the line. On a flat line the knife slices along it. On a
- *   steep line it crosses the line diagonally, with the middle of its edge
- *   on the fingertip. TAP: the fingertip taps the line and the knife makes
- *   the real tap stroke: poised with the tip raised, it rocks down about
- *   the handle end, sliding forward, and its edge goes through the line.
- *   The cut lights up.
+ *   does. It lies exactly on the line (tapCutRot), fully horizontal or fully
+ *   vertical (tip up). SWIPE: a fingertip draws along the line and the knife
+ *   follows it like a pointer, tip leading, the middle of its edge on the
+ *   fingertip. TAP: the fingertip taps and the knife snaps onto the line,
+ *   lands and makes a short slice along it (tapStrokePose). The cut lights
+ *   up.
  * - "drag": a fingertip sweeps across the skin that is left, leaving a
  *   pale trail (Peel).
  * - "press": a fingertip presses with a ripple; for Rings the next ring
@@ -25,10 +24,10 @@
 import type Phaser from "phaser";
 import type { KnifeBladeShape } from "../knives/knifeTypes";
 import {
-  cutContactRot,
-  cutStrokePose,
   knifeProfile,
   swipeContactAlong,
+  tapCutRot,
+  tapStrokePose,
   type KnifePose,
   type KnifeProfile,
 } from "./knifeProfile";
@@ -91,47 +90,6 @@ function ripple(g: Phaser.GameObjects.Graphics, x: number, y: number, r: number,
   g.strokeCircle(x, y, r * (1 + 1.8 * easeOut(k)));
 }
 
-/**
- * A see-through copy of the equipped knife (the same knifeProfile the real
- * knife is drawn from), its curved cutting edge on the cut line, slicing.
- * `along` = how far (px) the heel sits along the line from its near end;
- * `lift` = how far the edge is still above the line, on the spine side.
- * Handle towards the player: at the line's lower end, or its left end for
- * a flat cut. The spine faces away from the ingredient's centre, so the
- * sharp edge is what meets the food.
- */
-function ghostKnife(
-  g: Phaser.GameObjects.Graphics,
-  cut: Extract<CoachTarget, { kind: "cut" }>,
-  profile: KnifeProfile,
-  along: number,
-  lift: number,
-  alpha: number,
-): { from: number; to: number } {
-  const { x0, y0, x1, y1 } = cutNearEnd(cut);
-  const len = Math.hypot(x1 - x0, y1 - y0) || 1;
-  const ux = (x1 - x0) / len;
-  const uy = (y1 - y0) / len;
-  // Spine side: away from the ingredient's centre (or up, for a cut through it).
-  let nx = -uy;
-  let ny = ux;
-  const away = ((x0 + x1) / 2 - cut.cx) * nx + ((y0 + y1) / 2 - cut.cy) * ny;
-  if (Math.abs(away) > 2 ? away < 0 : ny > 0) {
-    nx = -nx;
-    ny = -ny;
-  }
-  // Local (x along heel→tip, y with the blade body at y < 0) → world.
-  const ox = x0 + ux * (along - profile.heel) + nx * lift;
-  const oy = y0 + uy * (along - profile.heel) + ny * lift;
-  const P = (p: { x: number; y: number }) => ({
-    x: ox + ux * p.x - nx * p.y,
-    y: oy + uy * p.x - ny * p.y,
-  });
-  paintGhostKnife(g, profile, P, alpha);
-  // The stretch of the line the edge covers right now (0..len, from the near end).
-  return { from: Math.max(0, along), to: Math.min(len, along + profile.tip - profile.heel) };
-}
-
 /** Draws the see-through knife, `P` mapping its local points (knifeProfile) to the board. */
 function paintGhostKnife(
   g: Phaser.GameObjects.Graphics,
@@ -163,8 +121,8 @@ function paintGhostKnife(
 }
 
 /**
- * The see-through knife at a pose from knifeProfile (cutStrokePose, or a
- * steep swipe's diagonal), turned about its handle-end pivot exactly as
+ * The see-through knife at a pose from knifeProfile (tapStrokePose, or the
+ * swipe's pointer pose), turned about its handle-end pivot exactly as
  * PreparationScene turns the real knife.
  */
 function ghostKnifePose(
@@ -183,11 +141,12 @@ function ghostKnifePose(
   );
 }
 
-/** The cut line ordered from its near end (lower on screen, or left for a flat cut) — the same order ghostKnife uses. */
+/** The cut line ordered the way the knife's tip points on it (tapCutRot): the handle end first. */
 function cutNearEnd(cut: Extract<CoachTarget, { kind: "cut" }>) {
   const { x0, y0, x1, y1 } = cut;
-  const flat = Math.abs(y1 - y0) < Math.abs(x1 - x0) * 0.25;
-  return (flat ? x0 > x1 : y0 < y1) ? { x0: x1, y0: y1, x1: x0, y1: y0 } : { x0, y0, x1, y1 };
+  const rot = tapCutRot((Math.atan2(y1 - y0, x1 - x0) * 180) / Math.PI);
+  const forward = (x1 - x0) * Math.cos(rot) + (y1 - y0) * Math.sin(rot) >= 0;
+  return forward ? { x0, y0, x1, y1 } : { x0: x1, y0: y1, x1: x0, y1: y0 };
 }
 
 /** A label drawn by the scene next to the fingertip: which gesture this part of the loop shows. */
@@ -233,78 +192,47 @@ export function drawCoachGhost(
       const k = Math.max(0, Math.min(1, d / lineLen));
       return { x: line.x0 + (line.x1 - line.x0) * k, y: line.y0 + (line.y1 - line.y0) * k };
     };
-    const edgeLen = profile.tip - profile.heel;
-    const lightUp = (covered: { from: number; to: number }, alpha: number) => {
-      if (alpha <= 0 || covered.to <= covered.from) return;
-      const a = at(covered.from);
-      const b = at(covered.to);
+    const lightUp = (from: number, to: number, alpha: number) => {
+      if (alpha <= 0 || to <= from) return;
+      const a = at(from);
+      const b = at(to);
       g.lineStyle(5, GHOST, 0.75 * alpha);
       g.lineBetween(a.x, a.y, b.x, b.y);
     };
-
-    // The same angle the real knife meets this line at (cutContactRot).
+    // The knife lies exactly on the line, as the real one does (tapCutRot):
+    // fully horizontal on a horizontal cut, fully vertical (tip up) on a
+    // vertical one.
     const lineDeg = (Math.atan2(line.y1 - line.y0, line.x1 - line.x0) * 180) / Math.PI;
-    const contactRot = cutContactRot(lineDeg);
-    let flatDeg = ((lineDeg % 180) + 180) % 180;
-    if (flatDeg > 90) flatDeg -= 180;
-    const steep = Math.abs(flatDeg) > 45;
+    const rot = tapCutRot(lineDeg);
+    const ux = Math.cos(rot);
+    const uy = Math.sin(rot);
 
-    if (t < SWIPE_PART_MS && steep) {
-      // SWIPE on a steep line: the knife crosses it diagonally like the
-      // real swipe's knife, handle lower left and the middle of its edge
-      // on the fingertip, cutting down the line with it.
+    if (t < SWIPE_PART_MS) {
+      // SWIPE: the fingertip draws along the line and the knife follows it
+      // like a pointer: tip leading the way the finger moves, the middle of
+      // its edge on the fingertip (as the real swipe knife).
       const knifeAlpha = span(t, 0, 200) * (1 - span(t, 1200, 1450));
       const slice = easeInOut(span(t, 300, 1150));
       const fingerAlpha = span(t, 150, 300) * (1 - span(t, 1150, 1350));
-      const d = lineLen * (0.92 - 0.84 * slice);
+      const d = lineLen * (0.08 + 0.84 * slice);
       const f = at(d);
       const along = swipeContactAlong(profile.tip);
-      ghostKnifePose(
-        g,
-        profile,
-        {
-          x: f.x - Math.cos(contactRot) * along,
-          y: f.y - Math.sin(contactRot) * along,
-          rot: contactRot,
-        },
-        knifeAlpha,
-      );
-      if (slice > 0) lightUp({ from: d, to: lineLen * 0.92 }, knifeAlpha);
+      ghostKnifePose(g, profile, { x: f.x - ux * along, y: f.y - uy * along, rot }, knifeAlpha);
+      if (slice > 0) lightUp(lineLen * 0.08, d, knifeAlpha);
       finger(g, f.x, f.y, fingerR, fingerAlpha, 0.6);
       return label("SWIPE", f.x, f.y, fingerAlpha);
     }
 
-    if (t < SWIPE_PART_MS) {
-      // SWIPE: the finger draws along the line and the knife slices with
-      // it — the edge comes down onto the line, then cuts through tip first.
-      const knifeAlpha = span(t, 0, 200) * (1 - span(t, 1200, 1450));
-      const lower = easeInOut(span(t, 150, 400));
-      const slice = easeInOut(span(t, 400, 1150));
-      const along = lineLen / 2 - edgeLen / 2 + (slice - 0.5) * edgeLen * 0.5;
-      const lift = (1 - lower) * Math.max(18, profile.bladeH * 1.2);
-      const covered = ghostKnife(g, target, profile, along, lift, knifeAlpha);
-      if (lower >= 1) lightUp(covered, knifeAlpha);
-      // The fingertip rides the line from the near end to the far end.
-      const fingerAlpha = span(t, 250, 400) * (1 - span(t, 1150, 1350));
-      const f = at(lineLen * (0.12 + 0.76 * slice));
-      finger(g, f.x, f.y, fingerR, fingerAlpha, 0.6);
-      return label("SWIPE", f.x, f.y, fingerAlpha);
-    }
-
-    // TAP: the finger taps the line and the knife makes the real tap
-    // cut's stroke (cutStrokePose): poised above the food with the tip
-    // raised, it rocks down about the handle end and slides forward, so the
-    // sharp edge goes through the line.
+    // TAP: the fingertip taps the line; the knife snaps onto it, lands and
+    // makes the real tap cut's short slice along it (tapStrokePose).
     const t2 = t - SWIPE_PART_MS;
     const fingerAlpha = span(t2, 0, 150) * (1 - span(t2, 1000, 1250));
     const press = span(t2, 200, 300) * (1 - span(t2, 450, 600));
     const knifeAlpha = span(t2, 150, 300) * (1 - span(t2, 950, 1200));
-    const k = easeInOut(span(t2, 300, 620));
+    const k = span(t2, 300, 650);
     const mid = { x: (line.x0 + line.x1) / 2, y: (line.y0 + line.y1) / 2 };
-    const from = { x: mid.x + w * 0.03, y: Math.min(line.y0, line.y1) - w * 0.16 };
-    const to = { x: mid.x, y: mid.y + w * 0.03 };
-    ghostKnifePose(g, profile, cutStrokePose(from, to, contactRot, profile.tip, k), knifeAlpha);
-    if (k >= 1) lightUp({ from: 0, to: lineLen }, knifeAlpha);
+    ghostKnifePose(g, profile, tapStrokePose(mid, rot, profile.tip, w * 0.056, k), knifeAlpha);
+    if (k >= 1) lightUp(0, lineLen, knifeAlpha);
     finger(g, target.tx, target.ty, fingerR, fingerAlpha, press);
     ripple(g, target.tx, target.ty, fingerR, span(t2, 230, 900));
     return label("TAP", target.tx, target.ty, fingerAlpha);

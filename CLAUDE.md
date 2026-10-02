@@ -141,9 +141,10 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   Endless unlock (H), Progress/historical accounting (I, J) and the
   four-profile simulation table (K: Normal, Completionist, Aggressive
   Spender, Existing Save).
-- `knife-stroke-qa` — the cutting stroke: the edge faces the food at every
-  angle, steep cuts crossed diagonally, pivot at the handle end, rock +
-  slide; tap cut, steep swipe and ghost all use it.
+- `knife-stroke-qa` — the cutting motion: tap knife exactly on the line
+  (horizontal / vertical handle-down), land + short slice, cut at the end
+  of the stroke within 0.35 s; swipe knife follows the drag tip-first in
+  every direction, edge underneath; tap, swipe and ghost all use it.
 - `coaching-qa` — beginner coaching: every technique has a how-to card,
   Levels 1–5 teach everything, each later technique is taught only in the
   level that introduces it, the stuck rule (back only with no progress),
@@ -384,11 +385,10 @@ not silently removed.
     labelled by the fingertip. **SWIPE**: the fingertip draws along the
     line while a see-through copy of the equipped knife (the same
     `scenes/knifeProfile.ts` silhouette as the real knife) brings its
-    glowing sharp edge down and slices through tip-first. On a steep line
-    it crosses diagonally instead, with the middle of the edge on the
-    fingertip, exactly like the real swipe. **TAP**: the fingertip taps
-    with a ripple and the knife makes the real tap stroke
-    (`cutStrokePose`, below);
+    glowing sharp edge along the line, tip leading, with the middle of the
+    edge on the fingertip, exactly like the real swipe. **TAP**: the
+    fingertip taps with a ripple and the knife makes the real tap stroke
+    (`tapStrokePose`, below);
   - Peel: a fingertip sweeps across the skin that's left (the peel grid row
     with the most skin);
   - Smash: a press with a ripple;
@@ -439,29 +439,32 @@ not silently removed.
   - The resting knife lies flat, centred under the ingredient: on the board
     below it, or on the counter in front of the board when there's no
     room — never across the food.
-  - **Cutting stroke**: `cutContactRot` / `cutStrokePose` in
-    `knifeProfile.ts`. The reference is a chef slicing a tomato: the knife
-    is diagonal and its sharp edge enters the food.
-    - The knife's pivot (local origin) is the heel of the edge by the
-      bolster, so it turns about the handle end.
-    - Flat cut: the knife lies nearly along the line, up to 14° off it.
-    - Steep cut (the bread loaf): the knife crosses the line diagonally,
-      30°–45° off it (45° when vertical), with the handle lower left and
-      the tip up-right. It is never upright along the line and never flat
-      across it.
-    - The edge always faces down into the food.
-    - The tap stroke: poised above the food with the tip raised 14°, the
-      knife rocks down about the pivot while sliding forward a little
-      under a quarter of the blade, and the edge's cutting point travels
-      onto the cut line. The cut is committed at contact (the cut
-      geometry is unchanged). Then a short follow-through, and a lift
-      (Chop goes back to the top of its stroke; Slice goes to the rest
-      pose).
-    - A steep swipe holds the same diagonal, with the middle of the edge on
-      the finger (`KnifeState.contactAlong`).
+  - **Cutting motion** (the developer's rules; `knifeProfile.ts`).
+    - **Tap cut** (`tapCutRot` / `tapStrokePose`): the knife lies EXACTLY
+      on the cut line, its edge on the line and the middle of the edge at
+      the line's middle over the food.
+      - Horizontal cut: fully horizontal knife, tip right.
+      - Vertical cut: fully vertical knife, handle down, tip up.
+      - Any other line: along it.
+      - No per-cut tilt.
+      - The stroke: it snaps into that orientation and lands on the line.
+        It makes one short back-and-forth slice along it (8% of the
+        blade), and only then is the cut committed. With the existing
+        TAP_KNIFE / CHOP_KNIFE timings that is 285 ms / 150 ms after the
+        tap. It then lifts (Chop to its hover pose, Slice to rest).
+    - **Swipe** (`swipeKnifeDir`): the knife follows the drag like a
+      pointer.
+      - It lies along the drag with the TIP LEADING: drag right to left
+        and the tip points and moves left; drag down and it points down.
+      - The middle of the edge is under the finger.
+      - It turns continuously with the drag. It mirrors so the edge stays
+        on the lower side; past 100° from horizontal it re-bases half a
+        turn, same tip direction.
+    - The pivot (local origin) is the heel of the edge by the bolster.
     - The coaching ghost uses the same functions.
-    - `scripts/knife-stroke-qa.mts` checks every angle, the pivot, the
-      rock and slide, and the wiring.
+    - Two earlier variants were rejected and are gone: a diagonal "rocking"
+      stroke, and the knife across or along steep cuts.
+    - `scripts/knife-stroke-qa.mts` checks all of this, plus the wiring.
 
 ---
 

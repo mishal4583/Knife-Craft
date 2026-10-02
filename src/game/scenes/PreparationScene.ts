@@ -9,12 +9,13 @@ import { PauseManager } from "../PauseManager";
 import { withRequiredPeelSteps } from "../prepStepGuards";
 import { drawCoachGhost, coachCycleMs, type CoachTarget } from "./coachGhost";
 import {
-  cutContactRot,
-  cutStrokePose,
   knifeProfile,
   paintKnife,
   quadraticPoints,
   swipeContactAlong,
+  swipeKnifeDir,
+  tapCutRot,
+  tapStrokePose,
 } from "./knifeProfile";
 import { COACH_FIRST_DELAY_MS, COACH_STUCK_IDLE_MS } from "../coaching";
 import { AudioManager } from "../AudioManager";
@@ -3075,10 +3076,10 @@ export class PreparationScene extends Phaser.Scene {
   /**
    * knifecraft.html's blade-direction logic: direction is measured against a
    * point at least DIR_BASELINE_PX back (not the immediately previous sample —
-   * that's sampling noise, not intent), the target rotation stays within
-   * +/-90 deg of horizontal (edge always down) by taking the nearest
-   * equivalent angle rather than snapping the long way round, and dirSign
-   * (which way the blade point-end faces) only flips on a true reversal.
+   * that's sampling noise, not intent). The knife then points the way the
+   * drag goes, tip leading (swipeKnifeDir): it turns continuously, mirrors
+   * so the edge stays underneath, and dirSign (which way the point-end
+   * faces) only flips on a true reversal.
    */
   private updateKnifeDirection(): void {
     if (!this.knife) return;
@@ -3097,43 +3098,33 @@ export class PreparationScene extends Phaser.Scene {
 
     const dx = last.x - base.x;
     const dy = last.y - base.y;
-    if (Math.abs(dy) > Math.abs(dx) * Math.tan(Phaser.Math.DegToRad(50))) {
-      // A steep stroke (slicing a loaf into rounds): the knife crosses it
-      // diagonally the way the tap cut's knife meets a steep line
-      // (cutContactRot), handle lower left, edge toward the food, with
-      // the middle of the edge on the finger. It is never upright along
-      // the stroke.
-      this.knife.targetRot = cutContactRot(Phaser.Math.RadToDeg(Math.atan2(dy, dx)));
-      this.knife.targetContactAlong = swipeContactAlong(
-        knifeProfile(this.knifeStats.animation.blade, this.scale.width).tip,
-      );
-      this.knife.dirSign = 1;
-      this.knife.dirLatch = null;
-      if (!this.knife.rotInit) {
-        this.knife.rot = this.knife.targetRot;
-        this.knife.contactAlong = this.knife.targetContactAlong;
-        this.knife.rotInit = true;
-      }
-      return;
+    // The knife follows the drag like a pointer (swipeKnifeDir): along the
+    // drag, tip leading, turning continuously with it, with the middle of
+    // its edge on the finger. Drag right to left and the tip points and
+    // moves left.
+    const { rot, sign, rebase } = swipeKnifeDir(dx, dy, this.knife.rot);
+    if (rebase) {
+      // Turned past vertical: same tip direction, edge back underneath.
+      this.knife.rot += rebase;
+      this.knife.dirSign = sign;
+      this.knife.dirLatch = { dx, dy };
     }
-    this.knife.targetContactAlong = 0;
-    let rot = Math.atan2(dy, dx);
-    if (rot > Math.PI / 2) rot -= Math.PI;
-    else if (rot < -Math.PI / 2) rot += Math.PI;
-    while (rot - this.knife.rot > Math.PI / 2) rot -= Math.PI;
-    while (this.knife.rot - rot > Math.PI / 2) rot += Math.PI;
     this.knife.targetRot = rot;
-
-    const travel = (Math.abs(dx) >= Math.abs(dy) ? dx >= 0 : dy >= 0) ? 1 : -1;
+    this.knife.targetContactAlong = swipeContactAlong(
+      knifeProfile(this.knifeStats.animation.blade, this.scale.width).tip,
+    );
+    // The mirror only flips on a true reversal of the drag, not on sampling
+    // noise.
     if (!this.knife.dirLatch) {
-      this.knife.dirSign = travel;
+      this.knife.dirSign = sign;
       this.knife.dirLatch = { dx, dy };
     } else if (this.knife.dirLatch.dx * dx + this.knife.dirLatch.dy * dy < 0) {
-      this.knife.dirSign = travel;
+      this.knife.dirSign = sign;
       this.knife.dirLatch = { dx, dy };
     }
     if (!this.knife.rotInit) {
       this.knife.rot = rot; // enters already facing travel — no swing-in from horizontal
+      this.knife.contactAlong = this.knife.targetContactAlong;
       this.knife.rotInit = true;
     }
   }
@@ -3750,27 +3741,28 @@ export class PreparationScene extends Phaser.Scene {
       : cut.axis === "h"
         ? { x: this.ingCx, y: cut.c }
         : { x: cut.c, y: this.ingCy };
-    // Formula per §7: approach from above the ingredient's own top, never
-    // a fixed screen Y. The stroke itself (knifeProfile.cutStrokePose) is a
-    // real slice: the knife's pivot is the heel by the handle, the edge's
-    // cutting point travels from above the food down into the cut, and the
-    // knife rocks down about that pivot while sliding forward along its
-    // length. Its angle at contact (cutContactRot) lies nearly along a flat
-    // cut and crosses a steep one diagonally, handle lower left, with the
-    // sharp edge always facing the food. There's a small per-cut jitter on
-    // top (§8). Only the drawing moves: the cut itself is `cut`, committed
-    // at contact.
-    const ingredientTopY = this.ingCy - this.ingRy;
-    const strokeFrom = {
-      x: cutPoint.x + K.PREP_OFFSET_X_FRAC * w,
-      y: ingredientTopY - K.PREP_ABOVE_FRAC * w,
-    };
-    const strokeTo = { x: cutPoint.x, y: cutPoint.y + K.CUT_DEPTH_FRAC * w };
+    // The knife snaps EXACTLY onto the cut line (tapCutRot): a horizontal
+    // cut gets a fully horizontal knife, tip right; a vertical cut gets a
+    // fully vertical knife, handle down, tip up. No per-cut tilt. The
+    // middle of its edge sits on the line, at the line's middle over the
+    // food. For a radial cut, whose line runs through the centre, that is
+    // the point on the line nearest the tap, so the blade lands where the
+    // player tapped. It lands, makes one short back-and-forth slice along
+    // the line (tapStrokePose), and the cut is committed at the end of the
+    // stroke. Only the drawing moves; the cut itself is `cut`.
     const cutAngleDeg = lineAngleDeg(cut.axis, cut.slope);
-    const jitterDeg = Phaser.Math.FloatBetween(-K.ANGLE_JITTER_DEG, K.ANGLE_JITTER_DEG);
-    const cutRot = cutContactRot(cutAngleDeg) + Phaser.Math.DegToRad(jitterDeg);
+    const cutRot = tapCutRot(cutAngleDeg);
+    const ux = Math.cos(cutRot);
+    const uy = Math.sin(cutRot);
+    const onLine = this.technique.radialSnap
+      ? (() => {
+          const d = (cutPoint.x - this.ingCx) * ux + (cutPoint.y - this.ingCy) * uy;
+          return { x: this.ingCx + ux * d, y: this.ingCy + uy * d };
+        })()
+      : cutPoint;
     const tipX = knifeProfile(this.knifeStats.animation.blade, w).tip;
-    const poseAt = (k: number) => cutStrokePose(strokeFrom, strokeTo, cutRot, tipX, k);
+    const hop = K.PREP_ABOVE_FRAC * w * 0.35;
+    const poseAt = (k: number) => tapStrokePose(onLine, cutRot, tipX, hop, k);
     const prep = poseAt(0);
 
     if (!this.knife)
@@ -3790,7 +3782,7 @@ export class PreparationScene extends Phaser.Scene {
     g.targetContactAlong = 0;
     g.phase = "tapPrep";
 
-    // Drives the knife through the stroke (k = cutStrokePose's progress).
+    // Drives the knife through the stroke (k = tapStrokePose's progress).
     const stroke = { k: 0 };
     const followStroke = () => Object.assign(g, poseAt(stroke.k));
 
@@ -3818,14 +3810,11 @@ export class PreparationScene extends Phaser.Scene {
               // Blade at contact — the actual cut happens here (§9/§12's "thunk").
               this.commitCut(cut, { velocity: 0.55, inputMode: "tap" });
               g.phase = "tapImpact";
-              // A short follow-through on the same stroke, then back.
+              // A beat with the blade resting in the cut, then the lift.
               this.tweens.add({
                 targets: stroke,
-                k: 1.08,
-                duration: K.IMPACT_MS / 2,
-                ease: Phaser.Math.Easing.Quadratic.Out,
-                yoyo: true,
-                onUpdate: followStroke,
+                k: 1,
+                duration: K.IMPACT_MS,
                 onComplete: () => {
                   if (seq !== this.knifeSeq) return;
                   g.phase = "tapRetract";
