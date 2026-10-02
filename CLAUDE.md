@@ -158,6 +158,13 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   first play only (no replay/Today's Special/Endless/Service/Business),
   the one-line hint only to Level 10, and the ghost never touches
   cut/peel/score state.
+- `business-supplies-qa` — Business Supplies (§7, master spec §25): the
+  catalog (50 sourced lines, ×0.65, no prep knives/boards, not
+  ingredients), the purchase with ONE ledger entry (equipment vs
+  packaging), atomic failures, packaging use per order → COGS, the P&L
+  cash identity with ingredient analytics food-only, savings never money,
+  saves/migration (real `SaveManager.load`), Campaign independence and
+  wiring. Browser: `tools/e2e/supplies.mjs` (375×642).
 - `inventory-market-qa` — the Market/Inventory split (checks 1–16: no buy
   controls in Business, purchase maths, fridge, low stock, expiry,
   purchasing/consumption analytics, supplier modifiers, contracts, funds,
@@ -308,6 +315,45 @@ top-level save field, save file, wallet, ledger, registry, engine or event
 bus. Campaign must never require any Business system (inventory,
 refrigerator, perishability, pricing, contracts, supplier events, salaries,
 equipment condition, inspections, fines, operating costs).
+
+### Business Supplies (separately authorized extension — not V3-17)
+
+Master spec §25. V3's phase sequence stays closed; this is its own scope
+with its own gates.
+
+- **Catalog** — `business/businessSupplies.ts`: 50 lines.
+  - Culinary smallwares 18, tableware 17, takeaway packaging 15.
+  - Every retail pack price comes from a WebstaurantStore product page
+    (retrieved 2026-10-02, recorded per line and in §25).
+  - Game price = round(retail × 0.65), the ingredient rule.
+  - No prep knives or cutting boards (they stay in Knives / Cutting
+    Boards). Never ingredients, never in the fridge.
+- **Data** — `SaveData.business.supplies` = `{ stock: { id: { units,
+  costBasis } }, lifetime per section }`.
+  - New and old saves start empty (no prototype opening stock).
+  - `migrateBusinessSuppliesState` in `SaveManager.load`.
+- **Purchase** — Market only (`MarketSupplies.tsx` → App `purchaseSupply`
+  → `BusinessSuppliesManager.purchaseSupply`).
+  - All-or-nothing: known id, 1–99 whole packs, funds.
+  - Then exactly ONE ledger entry and one persist.
+  - Smallwares and tableware: `supply-equipment-purchase`, capital
+    (`capitalExpenditure`), never used up.
+  - Packaging: `supply-packaging-purchase`, a stock asset with its own
+    `packagingPurchaseCost` accumulator/lifetime line. Ingredient
+    purchasing analytics stay food-only.
+- **Packaging use** — every served Business order uses one container and
+  one carry bag (priority lists, first in stock), inside
+  `serveBusinessOrder`.
+  - Their cost basis is added to that order's COGS.
+  - None in stock: none used, never blocking.
+- **Business → Supplies** (`BusinessSupplies.tsx`, route
+  `business-supplies`) is monitoring only:
+  - on hand, stock value (cost basis), spent, and saved vs retail (all
+    time); plus used by orders for packaging;
+  - low packaging (below today's customers);
+  - the stock list;
+  - "Restock … in the Market →" (`openMarketSupplies` → `shop-supplies`).
+- **Saved vs retail** = retail value − paid: a display metric, never money.
 
 ### Safety, determinism, ledger, migration
 

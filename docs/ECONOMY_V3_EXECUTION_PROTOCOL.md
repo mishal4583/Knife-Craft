@@ -38,6 +38,13 @@ The implementation must continue until:
 - final audit is complete
 - final report is generated
 
+After V3-16: Economy V3's phase sequence is closed and is never extended
+with a "V3-17". A later, separately authorized change to the shipped
+Business Mode gets its own section in the master spec, with its scope,
+data, accounting and gates, and runs every gate the master spec requires.
+The first is §25 Business Supplies (smallwares, tableware, takeaway
+packaging). It does not reopen or renumber any V3 phase.
+
 ---
 
 # 2. EXECUTION MODEL

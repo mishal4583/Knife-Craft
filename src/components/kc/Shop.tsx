@@ -30,6 +30,9 @@ import { getSelectedSupplierId } from "@/game/economy/SupplierManager";
 import { formatUsd, formatUsdChange } from "@/game/money";
 import type { PurchaseIngredientResult } from "@/game/business/BusinessInventoryManager";
 import { MarketIngredients } from "./MarketIngredients";
+import { MarketSupplies } from "./MarketSupplies";
+import type { PurchaseSupplyResult } from "@/game/business/BusinessSuppliesManager";
+import { SUPPLY_SECTIONS, type SupplySection } from "@/game/business/businessSupplies";
 import { peekMarketFocus, clearMarketFocus } from "./marketFocus";
 import { ledgerTotals, LEDGER_CATEGORY_LABEL } from "@/game/economy/EconomyLedger";
 import { notEnoughMoneyText } from "@/game/economy/wallet";
@@ -88,7 +91,18 @@ const HEADER_ART = artFor("market-header");
 const BLACKSMITH_ART = artFor("blacksmith", "blacksmith-market");
 
 export type ShopCategory =
-  "knives" | "boards" | "staff" | "suppliers" | "ingredients" | "blacksmith";
+  | "knives"
+  | "boards"
+  | "staff"
+  | "suppliers"
+  | "ingredients"
+  | "blacksmith"
+  // Business Supplies (master spec §25): smallwares, tableware, takeaway packaging.
+  | SupplySection;
+
+function isSupplySection(c: ShopCategory): c is SupplySection {
+  return c === "culinary" || c === "service" || c === "packaging";
+}
 
 const categories: Array<{ id: ShopCategory; label: string; emoji: string }> = [
   { id: "knives", label: "Knives", emoji: "🔪" },
@@ -97,6 +111,13 @@ const categories: Array<{ id: ShopCategory; label: string; emoji: string }> = [
   { id: "suppliers", label: "Suppliers", emoji: "🚚" },
   { id: "ingredients", label: "Ingredients", emoji: "🧺" },
   { id: "blacksmith", label: "Blacksmith", emoji: "⚒️" },
+  { id: "culinary", label: SUPPLY_SECTIONS.culinary.short, emoji: SUPPLY_SECTIONS.culinary.emoji },
+  { id: "service", label: SUPPLY_SECTIONS.service.short, emoji: SUPPLY_SECTIONS.service.emoji },
+  {
+    id: "packaging",
+    label: SUPPLY_SECTIONS.packaging.short,
+    emoji: SUPPLY_SECTIONS.packaging.emoji,
+  },
 ];
 
 const categoryCopy: Record<ShopCategory, { title: string; description: string }> = {
@@ -118,6 +139,18 @@ const categoryCopy: Record<ShopCategory, { title: string; description: string }>
     description: "Stock your restaurant fridge at today's supplier prices.",
   },
   blacksmith: { title: "Blacksmith", description: "Forge your knife. Cut faster. Cut better." },
+  culinary: {
+    title: SUPPLY_SECTIONS.culinary.title,
+    description: "Back of house · pots, pans and prep tools for your restaurant kitchen.",
+  },
+  service: {
+    title: SUPPLY_SECTIONS.service.title,
+    description: "Front of house · cutlery, plates and glasses to set every table.",
+  },
+  packaging: {
+    title: SUPPLY_SECTIONS.packaging.title,
+    description: "Takeaway · every Business order goes out in a container and a bag.",
+  },
 };
 
 type CardAction =
@@ -159,6 +192,7 @@ export function Shop({
   sharpenKnife,
   upgradeKnife,
   purchaseIngredient,
+  purchaseSupply,
   initialCategory = "knives",
 }: {
   go: (s: ScreenId) => void;
@@ -173,6 +207,8 @@ export function Shop({
   upgradeKnife: (id: string, stat: BlacksmithStat) => UpgradeKnifeResult;
   /** Business stock — the Ingredients tab is where it is bought (MarketIngredients). */
   purchaseIngredient: (ingredientId: string, quantity: number) => PurchaseIngredientResult;
+  /** Business supplies — bought in their three Market sections (MarketSupplies). */
+  purchaseSupply: (supplyId: string, packs: number) => PurchaseSupplyResult;
   /** "shop-ingredients" opens the Market on Ingredients (Business → Market links). */
   initialCategory?: ShopCategory;
 }) {
@@ -414,6 +450,14 @@ export function Shop({
               save={save}
               purchaseIngredient={purchaseIngredient}
               focusId={focusId}
+              setNotice={setNotice}
+            />
+          ) : isSupplySection(category) ? (
+            <MarketSupplies
+              key={category}
+              save={save}
+              section={category}
+              purchaseSupply={purchaseSupply}
               setNotice={setNotice}
             />
           ) : category === "blacksmith" ? (

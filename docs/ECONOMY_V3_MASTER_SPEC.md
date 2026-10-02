@@ -1073,3 +1073,203 @@ U.S.-benchmark abstraction rather than presented as universal:
 V3-14's own implementation documents exactly which of these it uses for its
 regulatory/permit cost, scheduled-inspection cost, corrective-action cost,
 reinspection cost, and statutory-penalty figures, and why.
+
+---
+
+# 25. BUSINESS SUPPLIES — SEPARATELY AUTHORIZED EXTENSION (NOT A V3 PHASE)
+
+Status: shipped 2026-10-02, after V3-16.
+
+Authorization: the developer's "integrate culinary, tableware, and takeaway
+supplies" brief (Shop UI production handoff), confirmed in session with
+these decisions:
+
+- prices are researched real prices at the ~65% rule;
+- packaging is used one container and one bag per order.
+
+This is **not V3-17**. §18 still holds: Economy V3's phase sequence ended
+with V3-16 and is not reopened. This section documents a self-contained
+extension of the shipped Business Mode, with its own gates. It does not
+change any V3 phase's scope or results.
+
+## Scope
+
+Three Market sections and one Business tab:
+
+| Section | Lines | Groups | Kind |
+| --- | --- | --- | --- |
+| Culinary & Kitchen Smallwares (back of house) | 18 | Cookware · Prep utensils · Bakeware & storage · Measuring & safety | durable equipment |
+| Cutlery, Crockery & Tableware (front of house) | 17 | Cutlery · Crockery · Glassware & hollowware · Table accessories | durable equipment |
+| Parcel & Takeaway Supplies | 15 | Containers · Boxes & wraps · Bags & carriers · Securing & hygiene | consumable stock |
+
+- Prep knives and cutting boards are not supplies; they stay in the
+  Market's Knives / Cutting Boards sections. Dinner and steak knives are
+  tableware.
+- Supplies are never ingredients. They are not in `INGREDIENTS`, never
+  go in the refrigerator, have no freshness and use no fridge capacity.
+- Campaign never reads supplies.
+
+## Data (one nested field, as §3 requires)
+
+- `SaveData.business.supplies` (`businessSupplies.ts`) =
+  `{ stock: { [id]: { units, costBasis } }, lifetime: { [section]: { spent, retailValue, purchases, unitsUsed, usedCost } } }`.
+  - `units` are pieces/sets/sheets on hand.
+  - `costBasis` is the whole cents actually paid for exactly those units.
+- New saves start empty. The prototype's opening stock is not shipped.
+- `migrateBusinessSuppliesState` (SaveManager.load):
+  - a save from before supplies opens empty;
+  - known lines and totals are kept, unknown lines dropped;
+  - malformed or negative numbers become 0;
+  - it is idempotent.
+- No second wallet, ledger, save file or localStorage store.
+
+## Prices (sourced, dated)
+
+- Each line's retail price is the real price of that exact pack on
+  WebstaurantStore, retrieved 2026-10-02. Its product page is recorded in
+  the catalog and in the table below.
+- Game price = round(retail × 0.65) in whole US cents. This is the same
+  documented restaurant-procurement rule as Business ingredients (§24,
+  `businessPricing.ts`).
+- "Saved vs retail" = retail value of the packs bought − what was paid.
+  It is a derived display metric, per section, all time. It is never
+  money and never credited.
+**Culinary & Kitchen Smallwares** (Back of house)
+
+| Line | Pack | Retail | Game price | Source product |
+| --- | --- | --- | --- | --- |
+| Stock pot · 20 qt | 1 piece | $58.99 | $38.34 | [Vigor SS1 Series 20 Qt. Stainless Steel Aluminum-Clad Stock Pot with Cover](https://www.webstaurantstore.com/vigor-20-qt-heavy-duty-stainless-steel-aluminum-clad-stock-pot-with-cover/473SSPOT20.html) |
+| Saucepan · 3 qt | 1 piece | $25.49 | $16.57 | [Vigor SS1 Series 3 Qt. Stainless Steel Saucier Pan with Cover](https://www.webstaurantstore.com/vigor-3-qt-stainless-steel-saucier-pan-with-aluminum-clad-bottom/473SSAUCIER3.html) |
+| Fry pan · 10 in | 1 piece | $9.34 | $6.07 | [Choice 10" Aluminum Fry Pan](https://www.webstaurantstore.com/choice-10-aluminum-fry-pan/407FRYPAN.html) |
+| Sauté pan · 5 qt | 1 piece | $40.99 | $26.64 | [Vigor SS1 Series 5 Qt. Stainless Steel Saute Pan with Lid and Helper Handle](https://www.webstaurantstore.com/5-qt-stainless-steel-saute-pan-with-lid-and-helper-handle/922SSAU5.html) |
+| Utility tongs · 12 in | 1 piece | $4.99 | $3.24 | [Choice 12" Heavy-Duty One-Piece Stainless Steel Scalloped Tongs](https://www.webstaurantstore.com/tong-12-utility-s-s-hd-1pc-scallop-nsf/407OPUT12.html) |
+| High-heat turner · 12 in | 1 piece | $5.61 | $3.65 | [TableCraft H3905GY 12" High Heat Flexible Silicone Slotted Spatula / Turner](https://www.webstaurantstore.com/tablecraft-h3905gy-12-high-heat-gray-flexible-silicone-slotted-spatula-turner/808H3905GY.html) |
+| Ladle · 8 oz | 1 piece | $3.99 | $2.59 | [Choice 8 oz. One-Piece Stainless Steel Ladle](https://www.webstaurantstore.com/choice-8-oz-one-piece-stainless-steel-ladle/407OPL8.html) |
+| Piano whisk · 12 in | 1 piece | $4.49 | $2.92 | [Choice 12" Stainless Steel Piano Whip / Whisk](https://www.webstaurantstore.com/choice-12-stainless-steel-piano-whip-whisk/407PW12.html) |
+| Vegetable peeler | 1 piece | $3.19 | $2.07 | [Choice 6" Smooth Vegetable Peeler with Stainless Steel Blade](https://www.webstaurantstore.com/choice-6-smooth-vegetable-peeler-with-stainless-steel-blade/407PVSSM2.html) |
+| Box grater · 4-sided | 1 piece | $4.99 | $3.24 | [Choice 9" 4-Sided Stainless Steel Box Grater](https://www.webstaurantstore.com/choice-9-4-sided-stainless-steel-box-grater/4074SDGTR.html) |
+| Fine mesh skimmers · 5 in | 6 pieces | $20.94 | $13.61 | [Choice 5" Square Fine Mesh Reinforced Skimmer ($3.49 each, sold in 6s)](https://www.webstaurantstore.com/skimmer-square-nickel-plated-metal-sqr-fine-mesh-reinf-5/407SKMSQ5.html) |
+| Sheet pan · full size | 1 piece | $6.99 | $4.54 | [Choice Full Size 18" x 26" 19 Gauge Aluminum Bun / Sheet Pan](https://www.webstaurantstore.com/choice-full-size-18-x-26-19-gauge-wire-in-rim-aluminum-bun-pan-sheet-pan/407BUNFULL.html) |
+| Mixing bowl · 5 qt | 1 piece | $2.79 | $1.81 | [Choice 5 Qt. Standard Stainless Steel Mixing Bowl](https://www.webstaurantstore.com/choice-5-qt-standard-stainless-steel-mixing-bowl/407SSMXB5.html) |
+| Storage container + lid · 4 qt | 1 set | $6.98 | $4.54 | [Choice 4 Qt. Clear Square Polycarbonate Food Storage Container ($5.99) + Choice 2/4 Qt. lid ($0.99)](https://www.webstaurantstore.com/choice-4-qt-clear-square-polycarbonate-food-storage-container-with-green-gradations/176SQRCL4.html) |
+| Measuring cup set · 4 pc | 1 set | $5.49 | $3.57 | [Choice 4-Piece Stainless Steel Measuring Cup Set with Wire Handles](https://www.webstaurantstore.com/choice-4-piece-stainless-steel-measuring-cup-set-with-wire-handles/4074PCMCWH.html) |
+| Digital portion scale · 11 lb | 1 piece | $23.49 | $15.27 | [Taylor 1020NFS 11 lb. Digital Portion Control Scale](https://www.webstaurantstore.com/taylor-1020nfs-11-lb-digital-portion-control-scale-for-dry-and-liquid-measuring/6081020NFS.html) |
+| Probe thermometer | 1 piece | $7.79 | $5.06 | [Choice 5" Digital Pocket Probe Thermometer](https://www.webstaurantstore.com/choice-5-digital-pocket-probe-thermometer-58-572-degrees-fahrenheit/914DRT450.html) |
+| Oven mitts · 15 in | 1 pair | $5.99 | $3.89 | [Choice 15" Flame Retardant Oven Mitts](https://www.webstaurantstore.com/choice-15-flame-retardant-conventional-style-oven-mitts/160FLAME15.html) |
+
+**Cutlery, Crockery & Tableware** (Front of house)
+
+| Line | Pack | Retail | Game price | Source product |
+| --- | --- | --- | --- | --- |
+| Dinner forks | 12 pieces | $6.99 | $4.54 | [Choice Milton 7 5/8" 18/0 Stainless Steel Dinner Fork - 12/Pack](https://www.webstaurantstore.com/choice-milton-7-5-8-18-0-stainless-steel-medium-weight-dinner-fork-pack/267270005M.html) |
+| Salad / dessert forks | 12 pieces | $4.59 | $2.98 | [Choice Milton 6 1/2" 18/0 Stainless Steel Salad Fork - 12/Pack](https://www.webstaurantstore.com/choice-milton-6-1-2-18-0-stainless-steel-medium-weight-salad-fork-pack/267270006M.html) |
+| Dinner knives | 12 pieces | $9.99 | $6.49 | [Choice Milton 9" 18/0 Stainless Steel Dinner Knife - 12/Pack](https://www.webstaurantstore.com/choice-milton-8-7-8-18-0-stainless-steel-medium-weight-dinner-knife-case/267270008.html) |
+| Steak knives | 12 pieces | $6.29 | $4.09 | [Choice 4 3/8" Steak Knife with Natural Wood Euro Handle - 12/Case](https://www.webstaurantstore.com/choice-4-3-8-stainless-steel-steak-knife-with-natural-wood-euro-handle-and-pointed-tip-case/17630111.html) |
+| Teaspoons | 12 pieces | $4.29 | $2.79 | [Choice Milton 6 5/8" 18/0 Stainless Steel Teaspoon - 12/Pack](https://www.webstaurantstore.com/choice-milton-6-5-8-18-0-stainless-steel-medium-weight-teaspoon-pack/267270001M.html) |
+| Soup spoons | 12 pieces | $5.49 | $3.57 | [Choice Milton 6 3/8" 18/0 Stainless Steel Bouillon Spoon - 12/Pack](https://www.webstaurantstore.com/choice-milton-6-3-8-18-0-stainless-steel-medium-weight-bouillon-spoon-pack/267270002M.html) |
+| Dinner plates · 10½ in | 12 pieces | $56.99 | $37.04 | [Acopa 10 1/2" Round Bright White Coupe Stoneware Plate - 12/Case](https://www.webstaurantstore.com/acopa-10-1-2-round-bright-white-coupe-china-plate-case/303BWCOP16.html) |
+| Side plates · 7¼ in | 36 pieces | $67.99 | $44.19 | [Acopa 7 1/4" Round Bright White Coupe Stoneware Plate - 36/Case](https://www.webstaurantstore.com/acopa-7-1-4-round-bright-white-coupe-stoneware-plate-case/303BWCOP7.html) |
+| Soup / pasta bowls · 16 oz | 12 pieces | $72.99 | $47.44 | [Acopa 16 oz. Bright White Wide Rim Stoneware Soup and Pasta Bowl - 12/Case](https://www.webstaurantstore.com/acopa-16-oz-bright-white-wide-rim-rolled-edge-rim-china-soup-and-pasta-bowl-case/303BWREB16.html) |
+| Dessert plates · 8 in | 6 pieces | $21.99 | $14.29 | [Acopa 8" Round Bright White Coupe Stoneware Plate - 6/Pack](https://www.webstaurantstore.com/acopa-8-round-bright-white-coupe-china-plate-pack/999BWCOP22.html) |
+| Water glasses · 12 oz | 12 pieces | $18.49 | $12.02 | [Acopa Straight Up 12 oz. Rocks / Double Old Fashioned Glass - 12/Case](https://www.webstaurantstore.com/acopa-12-oz-double-rocks-old-fashioned-glass-case/5535611R.html) |
+| Highball glasses · 12 oz | 12 pieces | $25.99 | $16.89 | [Acopa Radiance 12 oz. Highball Glass - 12/Case](https://www.webstaurantstore.com/acopa-radiance-12-oz-high-ball-glass-case/5539012HB.html) |
+| Coffee cups + saucers · 7 oz | 36 sets | $79.48 | $51.66 | [Acopa 7 oz. Bright White Stackable Stoneware Cup - 36/Case ($40.49) + Acopa 6" Saucer - 36/Case ($38.99)](https://www.webstaurantstore.com/acopa-7-oz-bright-white-rolled-edge-stackable-china-cup-case/303BWRESTKC7.html) |
+| Water pitcher · 60 oz | 1 piece | $3.49 | $2.27 | [Choice 60 oz. Clear SAN Plastic Beverage Pitcher](https://www.webstaurantstore.com/choice-60-oz-clear-san-plastic-beverage-pitcher/999SAN60CLR.html) |
+| Salt & pepper shakers | 4 shakers | $7.69 | $5.00 | [TableCraft 163S&P 1.5 oz. Glass Salt and Pepper Shaker - 4/Pack](https://www.webstaurantstore.com/tablecraft-163sp-1-5-oz-nostalgia-glass-salt-and-pepper-shaker-with-stainless-steel-top-case/808163SP6DZ.html) |
+| Napkin dispenser | 1 piece | $4.99 | $3.24 | [Choice Stainless Steel Low-Fold Napkin Dispenser](https://www.webstaurantstore.com/choice-stainless-steel-low-fold-napkin-dispenser/176NDLSS.html) |
+| Menu / card holder · 8 in | 1 piece | $1.69 | $1.10 | [Choice 8" Chrome Menu / Card Holder](https://www.webstaurantstore.com/choice-8-chrome-menu-card-holder/176CH8RB.html) |
+
+**Parcel & Takeaway Supplies** (Packaging)
+
+| Line | Pack | Retail | Game price | Source product |
+| --- | --- | --- | --- | --- |
+| Microwavable containers + lids · 32 oz | 150 pieces | $27.99 | $18.19 | [Choice 32 oz. Black Round Microwavable Container with Lid - 150/Case](https://www.webstaurantstore.com/choice-32-oz-black-7-1-4-round-microwavable-heavyweight-container-with-lid-case/129MCR32B.html) |
+| Foil containers + lids · 2¼ lb | 250 pieces | $66.99 | $43.54 | [Choice 2.25 lb. Oblong Foil Take-Out Container with Board Lid - 250/Case](https://www.webstaurantstore.com/choice-2-25-lb-oblong-take-out-container-with-board-lid-case/612LOB225LBC.html) |
+| 3-compartment meal trays + lids | 150 pieces | $61.49 | $39.97 | [Choice 36 oz. Black 3-Compartment Rectangular Microwavable Container with Lid - 150/Case](https://www.webstaurantstore.com/choice-32-oz-black-9-3-4-x-7-1-4-x-2-3-compartment-rectangular-microwavable-heavy-weight-container-with-lid-case/129MCS323CB.html) |
+| Kraft take-out boxes · #8 | 300 pieces | $43.49 | $28.27 | [Choice Kraft Microwavable Folded Paper #8 Take-Out Container - 300/Case](https://www.webstaurantstore.com/choice-6-x-4-5-8-x-2-1-2-kraft-microwavable-folded-paper-8-take-out-container-case/795PTOKFT8.html) |
+| Burger clamshells · 4 in | 500 pieces | $52.49 | $34.12 | [4" x 4" x 3" White Paper Clamshell Take-Out Container - 500/Case](https://www.webstaurantstore.com/4-x-4-x-3-white-paper-clamshell-take-out-container-case/1509080.html) |
+| Deli wrap paper · 12×12 | 1000 sheets | $20.49 | $13.32 | [Choice 12" x 12" White Basket Liner / Deli Wrap - 1,000/Pack](https://www.webstaurantstore.com/choice-12-x-12-white-basket-liner-deli-wrap-pack/9993003536WH.html) |
+| Kraft deli sheets · 12×12 | 1000 sheets | $22.99 | $14.94 | [Choice 12" x 12" Natural Kraft Basket Liner / Deli Wrap - 1,000/Pack](https://www.webstaurantstore.com/choice-12-x-12-natural-kraft-basket-liner-deli-wrap-case/1503003536.html) |
+| Kraft paper bags with handles | 250 bags | $46.49 | $30.22 | [Choice 10" x 6 3/4" x 12" Natural Kraft Paper Shopping Bag with Handles - 250/Case](https://www.webstaurantstore.com/choice-10-x-6-3-4-x-12-natural-kraft-paper-shopping-bag-with-handles-case/433BR10712C.html) |
+| Plastic carry-out bags | 1000 bags | $26.49 | $17.22 | [Choice 1/6 Standard Size White "Thank You" Medium-Duty Plastic T-Shirt Bag - 1,000/Case](https://www.webstaurantstore.com/1-6-size-59-mil-white-thank-you-plastic-t-shirt-bag-case/433NHT101H.html) |
+| Tissue cubes · 90 sheets | 36 boxes | $30.99 | $20.14 | [Choice 90 Sheet 2-Ply Facial Tissue Cube - 36/Case](https://www.webstaurantstore.com/choice-2-ply-facial-tissue-cube-case/5002FCCUBE.html) |
+| Paper napkins · 1-ply | 4000 napkins | $13.99 | $9.09 | [Choice 1-Ply White Beverage / Cocktail Napkin - 4,000/Case](https://www.webstaurantstore.com/choice-1-ply-white-beverage-cocktail-napkin-case/5001BNAP.html) |
+| Moist towelettes | 1000 wipes | $18.49 | $12.02 | [4" x 6" Lemon Scented Moist Towelette / Wet Nap - 1,000/Case](https://www.webstaurantstore.com/4-x-6-lemon-scented-moist-towelette-wet-nap-case/433WETEC.html) |
+| Wrapped cutlery kits | 250 kits | $14.49 | $9.42 | [Choice Medium Weight White Wrapped Plastic Cutlery Set with Napkin - 250/Case](https://www.webstaurantstore.com/choice-individually-wrapped-medium-weight-white-plastic-cutlery-set-with-napkin-case/346WKFSNM.html) |
+| Wrapped toothpicks | 1000 pieces | $7.69 | $5.00 | [Choice 2 1/2" Plain Plastic Wrapped Round Toothpicks - 1,000/Box](https://www.webstaurantstore.com/choice-2-1-2-plain-plastic-wrapped-round-toothpicks-in-dispenser-box-box/500WWTPPLAS.html) |
+| Tamper-evident labels | 250 labels | $7.89 | $5.13 | [Choice TamperSafe 3" x 1" White Paper Tamper-Evident Label - 250/Roll](https://www.webstaurantstore.com/tampersafe-1-x-3-white-paper-tamper-evident-label-roll/322TE1X3WPA.html) |
+
+## Transactions and accounting
+
+- **Purchase** (`BusinessSuppliesManager.purchaseSupply`, Market only).
+  - It validates the item, a whole pack count from 1 to 99, and funds
+    (`debitWallet`) before anything changes.
+  - A failure changes nothing: no wallet, stock, finance or ledger change.
+  - There is no storage limit (supplies aren't food).
+  - `App.purchaseSupply` writes exactly ONE ledger entry and the matching
+    P&L record, then persists once.
+- **Smallwares and tableware**: ledger `supply-equipment-purchase`.
+  - Durable equipment, i.e. capital (`capitalExpenditure`, like the
+    refrigerator).
+  - Never an operating expense, never used up.
+- **Packaging**: ledger `supply-packaging-purchase`.
+  - A stock asset with its own accumulator/lifetime line,
+    `packagingPurchaseCost`. It is kept separate so ingredient purchasing
+    analytics stay food-only.
+  - Each successfully served Business order uses one container (32 oz
+    microwavable → kraft box → foil → 3-compartment → burger clamshell,
+    first in stock) and one carry bag (kraft paper → plastic). This
+    happens in `serveBusinessOrder`, after the ingredients.
+  - Their cost-basis share is added to that order's COGS.
+  - With none in stock the order uses none. Packaging never blocks or
+    delays a serve.
+- Daily P&L:
+  - packaging bought is in the cash-flow view, not the P&L;
+  - equipment is capital;
+  - packaging used is in COGS;
+  - Opening cash + signed ledger = closing cash still holds.
+
+## UI
+
+- **Market**: three category tabs next to the existing six (Smallwares ·
+  Tableware · Takeaway). Each has group filter chips (48 px) and
+  two-column cards (`MarketSupplies.tsx`). A card shows:
+  - pack price and retail price;
+  - "N owned" (equipment) or "N left" (packaging);
+  - a pack stepper (48 px);
+  - "Buy · $X";
+  - the wallet line "$A → $B" or "Not enough money — need $X more.".
+- **Business → Supplies** (`BusinessSupplies.tsx`, route
+  `business-supplies`), monitoring only, with no purchase controls:
+  - a section switcher;
+  - on hand, stock value (cost basis), spent, and saved vs retail
+    (all time); plus used by orders for packaging;
+  - a low-packaging alert (below today's customer target);
+  - a filtered stock list;
+  - "Restock … in the Market →" (`openMarketSupplies` → `shop-supplies`).
+
+## Gates
+
+- `scripts/business-supplies-qa.mts` (A–H):
+  - catalog;
+  - purchase and ledger;
+  - atomic failures;
+  - packaging use;
+  - finance;
+  - savings never money;
+  - saves and migration, including the real `SaveManager.load`;
+  - Campaign independence and wiring.
+- `tools/e2e/supplies.mjs`:
+  - 375×642 viewport;
+  - sections and counts;
+  - exact wallet and one ledger entry per purchase;
+  - Business shows the saved stock;
+  - reload persistence;
+  - insufficient funds;
+  - no horizontal scroll;
+  - no console errors.
+- `business-ux-qa` V2 and `inventory-market-qa` 16c pin the exact Business
+  field list. They now list `supplies` as the one reviewed addition; any
+  other new field still fails them.
+- The full QA sweep, typecheck, lint, build and preflight run as for any
+  change.

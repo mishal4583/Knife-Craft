@@ -85,8 +85,17 @@ export type BusinessDailyAccumulator = {
   maintenanceCost: number;
   /** Sum of `supplier-contract-cancellation` ledger amounts since the current Business Day began. */
   supplierCost: number;
-  /** Sum of `refrigerator-purchase` ledger amounts since the current Business Day began — CAPITAL, never ordinary operating expense. */
+  /** Sum of `refrigerator-purchase` and `supply-equipment-purchase` ledger amounts since the current Business Day began — CAPITAL, never ordinary operating expense. */
   capitalExpenditure: number;
+  /**
+   * Cash spent on takeaway packaging (`supply-packaging-purchase`) since the
+   * current Business Day began. Like ingredients, an asset purchase, never
+   * itself a P&L expense; its cost becomes COGS only when a served order
+   * uses it. Kept apart from `inventoryPurchaseCost` so the ingredient
+   * purchasing figures (inventoryAnalytics.purchasingStats) stay food-only.
+   * A save written before supplies existed migrates it as 0.
+   */
+  packagingPurchaseCost: number;
   /**
    * Economy V3 Phase 16 (popularity model D2) — Business orders successfully
    * served since the current Business Day began (a $0 dish counts). Not
@@ -114,6 +123,7 @@ export const DEFAULT_DAILY_ACCUMULATOR: BusinessDailyAccumulator = {
   maintenanceCost: 0,
   supplierCost: 0,
   capitalExpenditure: 0,
+  packagingPurchaseCost: 0,
   ordersServed: 0,
   inventoryPurchases: 0,
 };
@@ -134,8 +144,10 @@ export type BusinessLifetimeTotals = {
   maintenanceCost: number;
   supplierCost: number;
   inspectionFines: number;
-  /** Refrigerator purchases — capital, never operating expense. */
+  /** Refrigerator and supply-equipment purchases — capital, never operating expense. */
   capitalExpenditure: number;
+  /** Takeaway packaging bought — a stock asset, never an operating expense (see the accumulator's own field). */
+  packagingPurchaseCost: number;
   /**
    * "complete" — every Business transaction this save ever made is in the
    * totals. "partial" — the save was migrated from a point where some
@@ -155,6 +167,7 @@ export const DEFAULT_LIFETIME_TOTALS: BusinessLifetimeTotals = {
   supplierCost: 0,
   inspectionFines: 0,
   capitalExpenditure: 0,
+  packagingPurchaseCost: 0,
   coverage: "complete",
 };
 
@@ -275,9 +288,14 @@ export function recordInventoryPurchase(
   };
 }
 
-/** Called by App.tsx's purchaseRefrigerator wrapper on a successful purchase only. */
+/** Called by App.tsx's purchaseRefrigerator and purchaseSupply (smallwares/tableware) wrappers on a successful purchase only. */
 export function recordCapitalExpenditure(save: SaveData, price: number): SaveData {
   return recordAccumulatorDelta(save, "capitalExpenditure", price);
+}
+
+/** Called by App.tsx's purchaseSupply wrapper on a successful takeaway-packaging purchase only. */
+export function recordPackagingPurchase(save: SaveData, cost: number): SaveData {
+  return recordAccumulatorDelta(save, "packagingPurchaseCost", cost);
 }
 
 /** Called by App.tsx's performRefrigeratorMaintenance wrapper on a successful repair only. */
@@ -336,9 +354,11 @@ export type DailyPnL = {
   spoilageValue: number;
   /** Cash Flow view — the ACTUAL cash outflow for ingredients bought today (an asset purchase, never a P&L expense). */
   inventoryPurchaseCost: number;
-  /** Cash Flow view — revenue - inventoryPurchaseCost - staffCost - maintenanceCost - supplierCost - otherOperatingCost - inspectionFines (excludes capital). */
+  /** Cash Flow view — takeaway packaging bought today (an asset purchase, never a P&L expense). Absent from a P&L saved before supplies existed (read it as 0). */
+  packagingPurchaseCost?: number;
+  /** Cash Flow view — revenue - inventoryPurchaseCost - packagingPurchaseCost - staffCost - maintenanceCost - supplierCost - otherOperatingCost - inspectionFines (excludes capital). */
   operatingCashFlow: number;
-  /** Cash Flow view — refrigerator purchases today; capital, never ordinary operating expense. */
+  /** Cash Flow view — refrigerator and supply-equipment purchases today; capital, never ordinary operating expense. */
   capitalExpenditure: number;
   /** closingCash - openingCash. `closingCash` is the real, directly-read `save.credits`; `openingCash` is reconstructed from it by reversing this day's own accumulator deltas (see `computeDailyPnL`'s own doc for why `cashBeforeSettlement` alone is NOT the day's true opening balance). */
   netCashChange: number;
@@ -390,6 +410,7 @@ export function computeDailyPnL(params: {
     cashBeforeSettlement -
     accumulator.revenue +
     accumulator.inventoryPurchaseCost +
+    (accumulator.packagingPurchaseCost ?? 0) +
     accumulator.maintenanceCost +
     accumulator.supplierCost +
     accumulator.capitalExpenditure;
@@ -405,6 +426,7 @@ export function computeDailyPnL(params: {
   const operatingCashFlow =
     accumulator.revenue -
     accumulator.inventoryPurchaseCost -
+    (accumulator.packagingPurchaseCost ?? 0) -
     staffCost -
     accumulator.maintenanceCost -
     accumulator.supplierCost -
@@ -423,6 +445,7 @@ export function computeDailyPnL(params: {
     operatingProfit,
     spoilageValue,
     inventoryPurchaseCost: accumulator.inventoryPurchaseCost,
+    packagingPurchaseCost: accumulator.packagingPurchaseCost ?? 0,
     operatingCashFlow,
     capitalExpenditure: accumulator.capitalExpenditure,
     netCashChange: closingCash - openingCash,
@@ -430,11 +453,13 @@ export function computeDailyPnL(params: {
   };
 }
 
-/** The 7 real Business Mode ledger categories — never Campaign's own (see file header). The one place this filter is defined; every lifetime figure below reuses it. */
+/** The real Business Mode ledger categories — never Campaign's own (see file header). The one place this filter is defined; every lifetime figure below reuses it. */
 const BUSINESS_LEDGER_CATEGORIES: readonly LedgerCategory[] = [
   "business-revenue",
   "inventory-purchase",
   "refrigerator-purchase",
+  "supply-equipment-purchase",
+  "supply-packaging-purchase",
   "refrigerator-maintenance",
   "supplier-contract-cancellation",
   "business-staff-salary",
@@ -511,7 +536,8 @@ function lifetimeTotalsFromLedger(
     maintenanceCost: sum("refrigerator-maintenance"),
     supplierCost: sum("supplier-contract-cancellation"),
     inspectionFines: sum("inspection-fine"),
-    capitalExpenditure: sum("refrigerator-purchase"),
+    capitalExpenditure: sum("refrigerator-purchase") + sum("supply-equipment-purchase"),
+    packagingPurchaseCost: sum("supply-packaging-purchase"),
   };
 }
 

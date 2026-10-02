@@ -8,6 +8,7 @@
  * shape so a save written on one can still be read after a platform
  * switch (e.g. testing locally, then re-testing inside YouTube).
  */
+import { migrateBusinessSuppliesState } from "./business/businessSupplies";
 import { migrateEconomy } from "./progression/economyMigration";
 import {
   DEFAULT_ECONOMY_STATE,
@@ -336,6 +337,9 @@ class SaveManagerImpl {
             partial.business?.finance,
             Array.isArray(partial.economyLedger) ? partial.economyLedger : [],
           ),
+          // Business Supplies — a save from before supplies existed opens
+          // with empty stock; a stored one keeps every known item.
+          supplies: migrateBusinessSuppliesState(partial.business?.supplies),
         },
       };
       // Version-1 saves stored Campaign money in whole units that now mean

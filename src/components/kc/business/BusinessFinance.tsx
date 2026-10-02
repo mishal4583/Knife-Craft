@@ -34,6 +34,7 @@ export function BusinessFinance({ save }: { save: SaveData }) {
   const todayNetCash =
     dailyAccumulator.revenue -
     dailyAccumulator.inventoryPurchaseCost -
+    (dailyAccumulator.packagingPurchaseCost ?? 0) -
     dailyAccumulator.maintenanceCost -
     dailyAccumulator.supplierCost -
     dailyAccumulator.capitalExpenditure;
@@ -45,7 +46,7 @@ export function BusinessFinance({ save }: { save: SaveData }) {
 
       <p className="mt-2 font-display text-[15px] font-black text-walnut-dark">Today so far</p>
       <Line label="Revenue" value={formatUsd(dailyAccumulator.revenue)} />
-      <Line label="Ingredients used" value={`−${formatUsd(dailyAccumulator.cogs)}`} />
+      <Line label="Ingredients & packaging used" value={`−${formatUsd(dailyAccumulator.cogs)}`} />
       <Line label="Repairs & supplier fees" value={`−${formatUsd(todayRunningCosts)}`} />
       <Line
         label="Profit so far (before tonight's pay & fines)"
@@ -54,7 +55,8 @@ export function BusinessFinance({ save }: { save: SaveData }) {
       />
       <Line label="Cash moved today" value={formatUsd(todayNetCash)} />
       <p className="font-hand text-[12px] leading-snug text-walnut/50">
-        Stock bought ({formatUsd(dailyAccumulator.inventoryPurchaseCost)}) and equipment (
+        Stock bought ({formatUsd(dailyAccumulator.inventoryPurchaseCost)}), packaging (
+        {formatUsd(dailyAccumulator.packagingPurchaseCost ?? 0)}) and equipment (
         {formatUsd(dailyAccumulator.capitalExpenditure)}) move cash but aren't costs until used.
       </p>
 
@@ -125,7 +127,7 @@ function LastDay({ pnl }: { pnl: DailyPnL }) {
           Full day breakdown ▾
         </summary>
         <Line label="Opening cash" value={formatUsd(pnl.openingCash)} />
-        <Line label="Ingredients used" value={`−${formatUsd(pnl.cogs)}`} />
+        <Line label="Ingredients & packaging used" value={`−${formatUsd(pnl.cogs)}`} />
         <Line label="Staff pay" value={`−${formatUsd(pnl.staffCost)}`} />
         <Line label="Repairs" value={`−${formatUsd(pnl.maintenanceCost)}`} />
         <Line label="Supplier fees" value={`−${formatUsd(pnl.supplierCost)}`} />
@@ -133,6 +135,7 @@ function LastDay({ pnl }: { pnl: DailyPnL }) {
         <Line label="Inspection fines" value={`−${formatUsd(pnl.inspectionFines)}`} />
         <Line label="Spoilage (not cash)" value={formatUsd(pnl.spoilageValue)} />
         <Line label="Stock bought" value={`−${formatUsd(pnl.inventoryPurchaseCost)}`} />
+        <Line label="Packaging bought" value={`−${formatUsd(pnl.packagingPurchaseCost ?? 0)}`} />
         <Line label="Equipment bought" value={`−${formatUsd(pnl.capitalExpenditure)}`} />
         <Line label="Net cash change" value={formatUsd(pnl.netCashChange)} strong />
         <Line label="Closing cash" value={formatUsd(pnl.closingCash)} strong />

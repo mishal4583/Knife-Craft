@@ -44,6 +44,7 @@ import {
   DEFAULT_MENU_ACTIVATION_STATE,
   type BusinessMenuActivationState,
 } from "./businessMenuActivation";
+import { defaultSuppliesState, type BusinessSuppliesState } from "./businessSupplies";
 
 export type BusinessState = {
   calendar: BusinessCalendar;
@@ -69,6 +70,8 @@ export type BusinessState = {
   finance: BusinessFinanceState;
   /** Economy V3 Phase 16 — which Business Dishes are ON the menu (orders are generated only from these). See businessMenuActivation.ts's own doc for why this is not stored inside `menu`. */
   menuActivation: BusinessMenuActivationState;
+  /** Business Supplies (master spec §25, a separately authorized extension — not an Economy V3 phase): culinary smallwares, tableware and takeaway packaging bought in the Market. See businessSupplies.ts's own doc for why this is not part of `inventory`. */
+  supplies: BusinessSuppliesState;
 };
 
 export const DEFAULT_BUSINESS_STATE: BusinessState = {
@@ -89,4 +92,5 @@ export const DEFAULT_BUSINESS_STATE: BusinessState = {
     lifetime: { ...DEFAULT_BUSINESS_FINANCE_STATE.lifetime },
   },
   menuActivation: { inactiveDishIds: [...DEFAULT_MENU_ACTIVATION_STATE.inactiveDishIds] },
+  supplies: defaultSuppliesState(),
 };

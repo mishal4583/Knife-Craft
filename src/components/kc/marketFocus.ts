@@ -1,4 +1,5 @@
 import type { IngredientId } from "@/game/definitions";
+import type { SupplySection } from "@/game/business/businessSupplies";
 import type { ScreenId } from "./data";
 
 /**
@@ -22,4 +23,19 @@ export function peekMarketFocus(): IngredientId | null {
 /** Called once the Market has opened, so a later plain visit starts unfocused. */
 export function clearMarketFocus() {
   pending = null;
+}
+
+/**
+ * Business → Supplies → Market deep link: which supply section the
+ * Market opens on (navigation state only, never saved).
+ */
+let pendingSupplySection: SupplySection = "culinary";
+
+export function openMarketSupplies(go: (s: ScreenId) => void, section: SupplySection) {
+  pendingSupplySection = section;
+  go("shop-supplies");
+}
+
+export function peekSupplySection(): SupplySection {
+  return pendingSupplySection;
 }

@@ -33,6 +33,10 @@ export type LedgerCategory =
   | "inventory-purchase"
   /** Economy V3 Phase 3 — Business Mode refrigerator purchase/upgrade (RefrigeratorManager.purchaseRefrigerator). */
   | "refrigerator-purchase"
+  /** Business Supplies (master spec §25) — a Market purchase of culinary smallwares or tableware (BusinessSuppliesManager.purchaseSupply). Durable equipment: capital in the Business P&L, like the refrigerator. `description` is the supply id. */
+  | "supply-equipment-purchase"
+  /** Business Supplies (master spec §25) — a Market purchase of takeaway packaging (BusinessSuppliesManager.purchaseSupply). A stock asset: it becomes COGS only when a served order uses it. `description` is the supply id. */
+  | "supply-packaging-purchase"
   /** Economy V3 Phase 7 — Business Mode early supplier-contract cancellation fee (BusinessSupplierManager.cancelContract). Signing a contract itself moves no money and never appears here. */
   | "supplier-contract-cancellation"
   /** Economy V3 Phase 9 — Business Mode daily staff payroll (BusinessDayManager.endBusinessDay). Distinct from Campaign's own "staff-purchase" category — Campaign staff is purchase-only and never has a recurring cost. Hiring/firing a Business Mode employee itself moves no money and never appears here. */

@@ -23,6 +23,7 @@ import {
   text,
 } from "./harness.mjs";
 import { playToReport } from "./solver.mjs";
+import { ALL_DISH_IDS } from "./businessDishes.mjs";
 
 const results = [];
 const check = (id, ok, detail) => {
@@ -246,57 +247,7 @@ check(
 );
 
 // ---------- 5: the Butter dish, cooked for real ----------
-// Every Business dish id (businessDishCatalog.ts); all but the butter dish go off the menu.
-const ALL_DISH_IDS = [
-  "biz-garden-salad",
-  "biz-caprese-salad",
-  "biz-caprese-skewers",
-  "biz-insalata-di-pomodoro",
-  "biz-tomato-lettuce-salad",
-  "biz-fennel-artichoke-salad",
-  "biz-kachumber-salad",
-  "biz-thai-cucumber-salad",
-  "biz-korean-pear-radish-salad",
-  "biz-salmon-avocado-salad",
-  "biz-avocado-corn-salad",
-  "biz-garlic-bread",
-  "biz-tomato-bruschetta",
-  "biz-tomato-basil-crostini",
-  "biz-mushroom-bruschetta",
-  "biz-sauteed-garlic-mushrooms",
-  "biz-asparagus-persillade",
-  "biz-spinach-curry",
-  "biz-cauliflower-curry",
-  "biz-potato-curry",
-  "biz-pea-tomato-curry",
-  "biz-pumpkin-coconut-curry",
-  "biz-eggplant-masala",
-  "biz-tomato-chicken-curry",
-  "biz-tofu-broccoli-stirfry",
-  "biz-chicken-broccoli",
-  "biz-green-bean-tofu-stirfry",
-  "biz-black-pepper-chicken",
-  "biz-garlic-chicken",
-  "biz-salmon-sashimi",
-  "biz-salmon-asparagus",
-  "biz-salmon-persillade",
-  "biz-thai-basil-chicken",
-  "biz-thai-basil-salmon",
-  "biz-greek-lemon-chicken",
-  "biz-zucchini-fennel-salad",
-  "biz-celery-apple-salad",
-  "biz-cucumber-pomegranate-salad",
-  "biz-beet-orange-salad",
-  "biz-peach-cheddar-board",
-  "biz-cabbage-cauliflower-stirfry",
-  "biz-ribeye-herb-butter",
-  "biz-carne-asada-corn",
-  "biz-turnips-persillade",
-  "biz-sweet-potato-hash",
-  "biz-mango-pineapple-cup",
-  "biz-kiwi-watermelon-plate",
-  "biz-strawberry-grape-cup",
-];
+// All but the butter dish go off the menu.
 const stock = Object.fromEntries(
   ["steak", "butter", "parsley", "garlic"].map((id) => [
     id,

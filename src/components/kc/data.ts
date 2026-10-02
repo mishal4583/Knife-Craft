@@ -51,6 +51,9 @@ export type ScreenId =
   // "Buy in Market →", see marketFocus.ts). Same Shop screen, different
   // starting category.
   | "shop-ingredients"
+  // The Market opened on one of its supply sections (Business → Supplies →
+  // "Restock", see marketFocus.ts openMarketSupplies).
+  | "shop-supplies"
   | "rack"
   | "settings"
   // Economy V3 Phase 1 — the Business Simulation layer's own entry point.
@@ -65,6 +68,9 @@ export type ScreenId =
   // Inventory" doc). Routable independently, same as "board" is its
   // own screen under Kitchen.
   | "business-inventory"
+  // Business Supplies — Business → Supplies (smallwares, tableware,
+  // takeaway packaging), monitoring only; bought in the Market.
+  | "business-supplies"
   // Economy V3 Phase 3 — the Refrigerator sub-screen under Business.
   | "business-refrigerator"
   // Economy V3 Phase 5 — the Menu Pricing sub-screen under Business.

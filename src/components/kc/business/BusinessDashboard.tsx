@@ -18,6 +18,7 @@ import { BottomNav } from "../Kitchen";
 import { BUSINESS_TAB_SCREEN, type BusinessTab } from "./businessTabs";
 import { BusinessCash } from "./BusinessCash";
 import { BusinessInventory } from "./BusinessInventory";
+import { BusinessSupplies } from "./BusinessSupplies";
 import { BusinessRefrigerator } from "./BusinessRefrigerator";
 import { BusinessStaff } from "./BusinessStaff";
 import { BusinessSuppliers } from "./BusinessSuppliers";
@@ -81,6 +82,7 @@ export type AdvanceDayResult = {
 const TABS: Array<{ id: BusinessTab; label: string; emoji: string }> = [
   { id: "overview", label: "Overview", emoji: "📊" },
   { id: "inventory", label: "Inventory", emoji: "🧺" },
+  { id: "supplies", label: "Supplies", emoji: "📦" },
   { id: "equipment", label: "Equipment", emoji: "❄️" },
   { id: "staff", label: "Staff", emoji: "🧑‍🍳" },
   { id: "suppliers", label: "Suppliers", emoji: "🚚" },
@@ -239,6 +241,7 @@ export function BusinessDashboard({
             <Overview {...shared} needsAttention={needsAttention.length} />
           ) : null}
           {tab === "inventory" ? <BusinessInventory go={go} save={save} /> : null}
+          {tab === "supplies" ? <BusinessSupplies go={go} save={save} /> : null}
           {tab === "equipment" ? (
             <BusinessRefrigerator
               go={go}

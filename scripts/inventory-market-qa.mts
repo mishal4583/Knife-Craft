@@ -619,8 +619,11 @@ function buy(save: SaveData, id: string, qty: number) {
         "inspectionFines",
         "finance",
         "menuActivation",
+        // The authorized Business Supplies extension (master spec §25,
+        // business-supplies-qa) — the only field added since this check.
+        "supplies",
       ]),
-    "16c: no new Business save fields",
+    "16c: no new Business save fields (beyond the authorized `supplies`, §25)",
   );
 }
 

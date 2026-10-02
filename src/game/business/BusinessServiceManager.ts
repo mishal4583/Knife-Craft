@@ -65,6 +65,7 @@
  * DemandManager's existing `orderFrequencyMultiplierFor`; see
  * `businessCustomersToday` below.
  */
+import { takePackagingForOrder } from "./BusinessSuppliesManager";
 import type { SaveData } from "../SaveManager";
 import type { IngredientId } from "../definitions";
 import type { ServiceSession } from "../service/ServiceManager";
@@ -315,8 +316,10 @@ export type ServeBusinessOrderResult = {
   reaction: string;
   /** Always 0 since popularity model D2 (Economy V3 Phase 16): a serve counts toward today's ordersServed; popularity moves once, at End Business Day. */
   popularityDelta: number;
-  /** Economy V3 Phase 15 — the real ingredient cost this serve recognized (already folded into `save.business.finance`); exposed here so a caller (or QA) never needs to re-derive it from the save diff. */
+  /** Economy V3 Phase 15 — the real cost this serve recognized (already folded into `save.business.finance`): its ingredients plus, since Business Supplies, any packaging it used. Exposed so a caller (or QA) never needs to re-derive it from the save diff. */
   cogsCharged: number;
+  /** Business Supplies — the packaging this order went out in (a container and a bag, when in stock). */
+  packagingUsed: string[];
 };
 
 /**
@@ -351,9 +354,14 @@ export function serveBusinessOrder(
   // recipeCostBasis, is the authoritative "what did this actually
   // cost" number) — computed before consumeUsableIngredients removes
   // the very stock it needs to read.
-  const cogs = realCogsFor(save.business.inventory, requirements);
+  const ingredientCogs = realCogsFor(save.business.inventory, requirements);
   const consumed = consumeUsableIngredients(save.business.inventory, requirements, businessDay);
   if (!consumed.ok) return null;
+  // Business Supplies: the order goes out in one container and one carry
+  // bag if any are in stock (never required). Their cost basis is this
+  // order's packaging COGS: a stock asset becomes cost when it is used.
+  const packaging = takePackagingForOrder(save.business.supplies);
+  const cogs = ingredientCogs + packaging.cost;
   const payment = businessCustomerPayment(save, dish);
   const served = serveCurrentOrder(session, rand, payment.customerPays);
   if (!served) return null;
@@ -366,7 +374,11 @@ export function serveBusinessOrder(
     {
       ...save,
       credits: save.credits + served.coinsAwarded,
-      business: { ...save.business, inventory: consumed.inventory },
+      business: {
+        ...save.business,
+        inventory: consumed.inventory,
+        supplies: packaging.supplies,
+      },
     },
     served.coinsAwarded,
     cogs,
@@ -380,5 +392,6 @@ export function serveBusinessOrder(
     reaction: served.reaction,
     popularityDelta,
     cogsCharged: cogs,
+    packagingUsed: packaging.used.map((u) => u.id),
   };
 }

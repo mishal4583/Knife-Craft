@@ -158,6 +158,24 @@ conversation.
    - `tools/e2e/coach.mjs` clears long straight white runs before looking
      for the ghost fingertip, because the ghost knife's edge lies through
      it.
+26. Business Supplies (developer's Shop UI production handoff). This is a
+   separately authorized extension, NOT V3-17: master spec §25, with a
+   note in the execution protocol.
+   - Three Market sections, Smallwares · Tableware · Takeaway: 50 lines,
+     each with a sourced WebstaurantStore pack price (2026-10-02) at the
+     ingredient rule, ×0.65.
+   - A Business → Supplies tab showing saved stock, stock value, spend and
+     saved vs retail.
+   - Accounting: smallwares/tableware are capital; packaging is a stock
+     asset; one container and one bag are used per served Business order,
+     and their cost goes to COGS.
+   - Data: one nested save field, `business.supplies`. Old saves open
+     empty.
+   - QA: `business-supplies-qa`, `tools/e2e/supplies.mjs`.
+   - `business-ux-qa` V2 / `inventory-market-qa` 16c now list `supplies`
+     as the one reviewed new Business field.
+   - The prototype's prices, reference prices and opening stock were not
+     used.
 25. Bread cooking clip: `Bread.mp4` (10 s) cut to 3.0–7.0 s (tomato
    spooned onto toast → the finished crostini board), watermark painted
    out, 540×960 WebM/MP4 + poster (`chef-bread.*`). `dishKindFor` "bread"

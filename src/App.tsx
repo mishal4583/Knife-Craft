@@ -118,6 +118,8 @@ import {
   rushRestock,
 } from "@/game/business/BusinessInventoryManager";
 import { purchaseRefrigerator as purchaseRefrigeratorFromCatalog } from "@/game/business/RefrigeratorManager";
+import { purchaseSupply as purchaseSupplyFromCatalog } from "@/game/business/BusinessSuppliesManager";
+import { isConsumableSupply } from "@/game/business/businessSupplies";
 import { performRefrigeratorMaintenance as performRefrigeratorMaintenanceFromCatalog } from "@/game/business/businessMaintenance";
 import type { InspectionReport } from "@/game/business/businessInspection";
 import type { InspectionFineResult } from "@/game/business/businessInspectionFines";
@@ -157,6 +159,7 @@ import {
 } from "@/game/business/businessDeterministicRandom";
 import {
   recordInventoryPurchase,
+  recordPackagingPurchase,
   recordCapitalExpenditure,
   recordMaintenanceCost,
   recordSupplierCost,
@@ -840,6 +843,34 @@ export function App() {
     } finally {
       rushAdBusyRef.current = false;
     }
+  }
+
+  /**
+   * Business Supplies — a Market purchase of smallwares, tableware or
+   * takeaway packaging, mirroring purchaseRefrigerator: the pure manager
+   * decides (all-or-nothing), then ONE ledger entry for its exact cost, the
+   * Business P&L record (smallwares/tableware: capital; packaging: a stock
+   * asset), and one persist. A failed purchase changes nothing. Business
+   * Mode only — Campaign never calls this.
+   */
+  function purchaseSupply(supplyId: string, packs: number) {
+    if (!save) return { ok: false as const, reason: "unknownSupply" as const };
+    const result = purchaseSupplyFromCatalog(save, supplyId, packs);
+    if (result.ok) {
+      const packaging = isConsumableSupply(result.item);
+      const recorded = appendLedgerEntry(
+        result.save,
+        packaging ? "supply-packaging-purchase" : "supply-equipment-purchase",
+        -result.totalCost,
+        result.item.id,
+      );
+      persist(
+        packaging
+          ? recordPackagingPurchase(recorded, result.totalCost)
+          : recordCapitalExpenditure(recorded, result.totalCost),
+      );
+    }
+    return result;
   }
 
   /** Economy V3 Phase 3 (Refrigerator) — Business Mode's own refrigerator purchase/upgrade action, mirroring purchaseIngredient exactly. Business Mode only — Campaign never calls this. */
@@ -1950,6 +1981,7 @@ export function App() {
               resetProgress={resetProgress}
               advanceBusinessDay={advanceBusinessDay}
               purchaseIngredient={purchaseIngredient}
+              purchaseSupply={purchaseSupply}
               purchaseRefrigerator={purchaseRefrigerator}
               performRefrigeratorMaintenance={performRefrigeratorMaintenance}
               rushRestock={rushRestockCurrentOrder}

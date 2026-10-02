@@ -1,7 +1,14 @@
 import type { ScreenId } from "../data";
 
 export type BusinessTab =
-  "overview" | "inventory" | "equipment" | "staff" | "suppliers" | "menu" | "operations";
+  | "overview"
+  | "inventory"
+  | "supplies"
+  | "equipment"
+  | "staff"
+  | "suppliers"
+  | "menu"
+  | "operations";
 
 /**
  * The Business screen ids (existing routes) and the tab each one opens.
@@ -12,6 +19,7 @@ export type BusinessTab =
 export const BUSINESS_TAB_SCREEN: Record<BusinessTab, ScreenId> = {
   overview: "business",
   inventory: "business-inventory",
+  supplies: "business-supplies",
   equipment: "business-refrigerator",
   staff: "business-staff",
   suppliers: "business-suppliers",
@@ -25,6 +33,8 @@ export function businessTabForScreen(screen: ScreenId): BusinessTab | null {
       return "overview";
     case "business-inventory":
       return "inventory";
+    case "business-supplies":
+      return "supplies";
     case "business-refrigerator":
     case "business-shop":
       return "equipment";

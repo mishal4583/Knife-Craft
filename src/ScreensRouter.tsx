@@ -12,6 +12,8 @@ import {
 import { businessTabForScreen } from "@/components/kc/business/businessTabs";
 import { BusinessService } from "@/components/kc/business/BusinessService";
 import type { PurchaseIngredientResult } from "@/game/business/BusinessInventoryManager";
+import type { PurchaseSupplyResult } from "@/game/business/BusinessSuppliesManager";
+import { peekSupplySection } from "@/components/kc/marketFocus";
 import type { PurchaseRefrigeratorResult } from "@/game/business/RefrigeratorManager";
 import type { PerformMaintenanceResult } from "@/game/business/businessMaintenance";
 import type { RushRestockOutcome, RushRestockPayment } from "@/game/business/businessRushRestock";
@@ -66,6 +68,7 @@ export function ScreensRouter({
   resetProgress,
   advanceBusinessDay,
   purchaseIngredient,
+  purchaseSupply,
   purchaseRefrigerator,
   performRefrigeratorMaintenance,
   rushRestock,
@@ -103,6 +106,7 @@ export function ScreensRouter({
   advanceBusinessDay: () => AdvanceDayResult;
   /** Economy V3 Phase 2 — Business Mode's own ingredient purchase action. */
   purchaseIngredient: (ingredientId: string, quantity: number) => PurchaseIngredientResult;
+  purchaseSupply: (supplyId: string, packs: number) => PurchaseSupplyResult;
   /** Economy V3 Phase 3 — Business Mode's own refrigerator purchase/upgrade action. */
   purchaseRefrigerator: (refrigeratorId: string) => PurchaseRefrigeratorResult;
   /** Economy V3 Phase 11 — Business Mode's own refrigerator maintenance/repair action. */
@@ -132,11 +136,18 @@ export function ScreensRouter({
     <>
       {screen === "kitchen" ? <Kitchen go={go} save={save} onSelectLevel={onSelectLevel} /> : null}
       {screen === "board" ? <OrderBoard go={go} save={save} onSelectLevel={onSelectLevel} /> : null}
-      {screen === "shop" || screen === "shop-ingredients" ? (
+      {screen === "shop" || screen === "shop-ingredients" || screen === "shop-supplies" ? (
         <Shop
           key={screen}
-          initialCategory={screen === "shop-ingredients" ? "ingredients" : "knives"}
+          initialCategory={
+            screen === "shop-ingredients"
+              ? "ingredients"
+              : screen === "shop-supplies"
+                ? peekSupplySection()
+                : "knives"
+          }
           purchaseIngredient={purchaseIngredient}
+          purchaseSupply={purchaseSupply}
           go={go}
           save={save}
           buyKnife={buyKnife}

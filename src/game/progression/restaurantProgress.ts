@@ -173,6 +173,7 @@ export function restaurantProgress(save: SaveData) {
   const businessRevenue = lifetime.revenue;
   const businessCosts =
     lifetime.inventoryPurchaseCost +
+    (lifetime.packagingPurchaseCost ?? 0) +
     lifetime.staffCost +
     lifetime.maintenanceCost +
     lifetime.supplierCost +
