@@ -142,6 +142,6 @@ export const COACH_TEXT: Record<TechniqueId, { title: string; how: string; why: 
  * the same labels the ghost shows by its fingertip (SWIPE, then TAP).
  */
 export const CUT_WAYS: ReadonlyArray<{ label: string; text: string }> = [
-  { label: "TAP", text: "the line — the knife chops straight down." },
+  { label: "TAP", text: "the line — the knife slices along it for you." },
   { label: "SWIPE", text: "along it — guide the blade for the neatest cut." },
 ];

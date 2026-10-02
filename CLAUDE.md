@@ -141,6 +141,8 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   Endless unlock (H), Progress/historical accounting (I, J) and the
   four-profile simulation table (K: Normal, Completionist, Aggressive
   Spender, Existing Save).
+- `knife-stroke-qa` — the knife lies along every cut line and slides
+  along it (never across it); tap cut, swipe and ghost share the rule.
 - `coaching-qa` — beginner coaching: every technique has a how-to card,
   Levels 1–5 teach everything, each later technique is taught only in the
   level that introduces it, the stuck rule (back only with no progress),
@@ -380,10 +382,10 @@ not silently removed.
   - cutting: the line glows, then a 3 s loop shows both ways to cut, each
     labelled by the fingertip. A see-through copy of the equipped knife
     (the same `scenes/knifeProfile.ts` silhouette as the real knife) is
-    held in the real cutting pose (`cuttingRot`, below). **SWIPE**: the
-    fingertip draws along the line and the knife's glowing edge travels
-    with it, edge first. **TAP**: the fingertip taps with a ripple and the
-    knife chops straight down onto the line;
+    held in the real cutting pose: along the cut line (`cuttingRot`,
+    below). **SWIPE**: the fingertip draws along the line with the knife
+    riding on it. **TAP**: the fingertip taps with a ripple and the knife
+    makes the real tap cut's slice along the line (`cuttingStroke`);
   - Peel: a fingertip sweeps across the skin that's left (the peel grid row
     with the most skin);
   - Smash: a press with a ripple;
@@ -434,15 +436,21 @@ not silently removed.
   - The resting knife lies flat, centred under the ingredient: on the board
     below it, or on the counter in front of the board when there's no
     room — never across the food.
-  - **Cutting pose — the sharp edge leads** (`cuttingRot(lineAngleDeg)` in
-    `knifeProfile.ts`, used by the tap cut, the swipe knife and the
-    ghost). The edge always faces down into the food and the spine stays
-    up, never the handle first:
-    - on a line within 40° of horizontal, the knife lies along the line;
-    - on a steeper line (a vertical slice), it lies across the line, handle
-      left, tilted 10° tip-down, like a real knife slicing through a
-      carrot.
-    - A steep swipe uses the same pose.
+  - **The knife cuts ALONG the cut line** — seen from above, the blade and
+    the cut are one line, as with a real bread knife slicing a loaf. One
+    rule, `cuttingRot` / `cuttingStroke` in `knifeProfile.ts`, is used by the
+    tap cut, the swipe knife and the ghost:
+    - The blade lies on the line with its edge on the line and the handle
+      at the player's end. A flat cut (within 45° of horizontal) has the
+      tip to the right. A steeper cut has the tip up the screen, so a
+      vertical cut means a vertical knife.
+    - The tap stroke slides along the line, tip first, from just inside
+      the food's near end until the tip is past the far end.
+    - A swipe lays the knife along the finger's own stroke.
+    - The knife never lies across the cut or moves sideways across it.
+      `scripts/knife-stroke-qa.mts` checks every angle, every axis/slope
+      cut, and that all three callers use the shared rule. Any change to
+      the knife's motion must keep it passing.
 
 ---
 
