@@ -1,18 +1,22 @@
 /**
  * Beginner coaching — the ghost demonstration PreparationScene plays on the
- * board (a glowing line where the next cut goes, a see-through knife
- * dropping onto it and a fingertip tapping it; a fingertip sweeping the
- * skin for Peel; a press for Smash; a tap and the next ring for Rings) and
- * the HUD's how-to card that appears with it.
+ * board (a glowing line where the next cut goes; a see-through knife and a
+ * fingertip showing SWIPE, then TAP; a fingertip sweeping the skin for
+ * Peel; a press for Smash; a tap and the next ring for Rings) and the HUD's
+ * how-to card that appears with it.
  *
- * Which steps are TAUGHT (the demonstration plays as soon as the step
- * starts and until the first touch, then again after a short pause): every
- * step of Levels 1–5, and each technique in the first two campaign levels
- * that use it — in the level's own steps or in any recipe its customers can
- * order, a Peel the game inserts before cutting included. Every other
- * step — later levels, Restaurant Service, Business — still gets the
- * demonstration after a longer pause without input, for a player who is
- * stuck. Derived from the level data; nothing is stored.
+ * Shown only to beginners, and only when it helps:
+ * - only in a campaign level played for the FIRST time (App passes
+ *   `coachLevelId` only then — never on a replay, Today's Special, Endless,
+ *   Restaurant Service or Business);
+ * - only for TAUGHT techniques: every step of Levels 1–5, and each
+ *   technique in the one campaign level that introduces it (its steps, its
+ *   order pool and inserted peels counted);
+ * - on such a step it plays as the step starts and hides on the first
+ *   touch; it returns after a pause only while the player has made NO
+ *   progress on that step (stuck). Once they've cut or peeled anything it
+ *   stays away for that step.
+ * Derived from the level data and the step's own progress; nothing is stored.
  */
 import type { TechniqueId } from "./definitions";
 import type { LevelDefinition } from "./levels/levelTypes";
@@ -24,13 +28,13 @@ import { getCampaignRecipe } from "./recipes/campaignRecipes";
 /** Every step of Levels 1..TEACH_ALL_THROUGH_LEVEL is taught. */
 export const TEACH_ALL_THROUGH_LEVEL = 5;
 /** Each technique is taught in this many of the first campaign levels that use it. */
-export const TEACH_FIRST_LEVELS = 2;
+export const TEACH_FIRST_LEVELS = 1;
+/** The plain one-line gesture hint ("tap to cut, or swipe for precision") shows only up to this level. */
+export const BEGINNER_HINT_THROUGH_LEVEL = 10;
 /** A taught step's demonstration starts this long after the step begins. */
 export const COACH_FIRST_DELAY_MS = 700;
-/** After a touch, a taught step demonstrates again after this long without input. */
-export const COACH_TAUGHT_IDLE_MS = 4000;
-/** Any other step demonstrates after this long without input. */
-export const COACH_IDLE_MS = 8000;
+/** A taught step the player hasn't made any progress on demonstrates again after this long without input. */
+export const COACH_STUCK_IDLE_MS = 4000;
 
 function techniquesUsedBy(level: LevelDefinition): Set<TechniqueId> {
   const used = new Set<TechniqueId>();
@@ -67,6 +71,11 @@ export function taughtTechniques(
   return [...new Set(techniques)].filter(
     (t) => n <= TEACH_ALL_THROUGH_LEVEL || (FIRST_LEVELS.get(t) ?? []).includes(n),
   );
+}
+
+/** Whether the plain one-line gesture hint shows: a beginner level played for the first time. */
+export function showsBeginnerHint(coachLevelId: string | undefined): boolean {
+  return !!coachLevelId && levelNumber(coachLevelId) <= BEGINNER_HINT_THROUGH_LEVEL;
 }
 
 /** The how-to card: what to do, and why a chef cuts it that way. */

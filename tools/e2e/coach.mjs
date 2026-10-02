@@ -2,11 +2,13 @@
 //   1. a brand-new player (intro skipped) gets Level 1's "How to slice" card and the ghost
 //      demonstration at once;
 //   2. tapping exactly where the ghost fingertip taps makes a real cut, and the card goes away;
-//   3. left idle, the demonstration comes back (taught step: after ~4 s), and swiping along
-//      the demonstrated line (the SWIPE half of the loop) also makes a real cut;
+//   3. once the player has cut, it stays away even when they pause (only shown when needed);
 //   4. Level 1 still plays through to the Knife Report with coaching on;
 //   5. Level 5 teaches each step as it comes: "How to peel", then "How to halve";
-//   6. a later level (Level 12) shows nothing at first, only after ~8 s without input.
+//   6. a later level (Level 12) never shows it, even after a long pause;
+//   7. a replayed beginner level (Level 4, already completed) shows no coaching or hint;
+//   8. a stuck player (touched, but no progress) gets it back; on Level 2 swiping along the
+//      demonstrated line (the SWIPE half of the loop) also makes a real cut.
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import zlib from "node:zlib";
 import { launch, boot, freshPlayer, seedSave, sleep, clickButton, shot, save } from "./harness.mjs";
@@ -181,26 +183,10 @@ check("2b tapping where the ghost taps makes a real cut", afterTap.n === (before
   after: afterTap.n,
 });
 check("2c the card goes away on touch", (await card(page)) === null);
-await sleep(5200);
-check("3a left idle, the demonstration comes back", /HOW TO SLICE/i.test((await card(page)) ?? ""));
-// SWIPE, the other way the ghost shows: drag along the (vertical) line through the fingertip.
-const beforeSwipe = await stepInfo(page);
-const tip2 = await findFingertip(page);
-if (tip2) {
-  await page.mouse.move(tip2.x, tip2.y - 70);
-  await page.mouse.down();
-  for (let k = 1; k <= 16; k++) {
-    await page.mouse.move(tip2.x, tip2.y - 70 + (140 * k) / 16);
-    await sleep(12);
-  }
-  await page.mouse.up();
-  await sleep(900);
-}
-const afterSwipe = await stepInfo(page);
+await sleep(5500);
 check(
-  "3b swiping along the demonstrated line also makes a real cut",
-  !!tip2 && afterSwipe.n === (beforeSwipe.n ?? 0) + 1,
-  { tip2, before: beforeSwipe.n, after: afterSwipe.n },
+  "3a after a real cut, a pause brings nothing back (the player knows how)",
+  (await card(page)) === null,
 );
 const played = await playToReport(page, { maxMs: 90000 });
 check("4a Level 1 still plays through to the Knife Report", played.ok, played.log.slice(-3));
@@ -244,20 +230,63 @@ check(
 );
 await shot(page, "coach-5-halve");
 
-// ---------- 6: a later level only after idling ----------
+// ---------- 6: a later level: never ----------
 await boot(page, at(12));
 await clickButton(page, /Prepare$/);
-await sleep(3000);
-check("6a Level 12: no card at first (nothing new to learn)", (await card(page)) === null);
-await page
-  .waitForFunction(() => !!document.querySelector('[data-testid="coach-card"]'), {
-    timeout: 9000,
-  })
-  .catch(() => {});
+await sleep(9500);
+check("6a Level 12: no coaching, even after a long pause", (await card(page)) === null);
+
+// ---------- 7: a replayed beginner level ----------
+// Level 4 is already completed; the player picks it on the Order Board ("Replay").
+await boot(page, at(6));
+await clickButton(page, /See all orders/);
+await sleep(800);
+await page.evaluate(() =>
+  [...document.querySelectorAll('[data-level-row="level-4"] button')]
+    .find((b) => /Replay/.test(b.textContent))
+    ?.click(),
+);
+await sleep(6000);
+const replaying = (await stepInfo(page)).ingredient !== null;
 check(
-  "6b after ~8 s without input the demonstration appears",
-  (await card(page)) !== null,
-  await card(page),
+  "7a replaying Level 4 (already completed): no coaching card and no gesture hint",
+  replaying &&
+    (await card(page)) === null &&
+    !(await page.evaluate(() => /tap to cut, or swipe/.test(document.body.innerText))),
+  { replaying },
+);
+
+// ---------- 8: stuck → it comes back; SWIPE also cuts ----------
+await boot(page, at(2));
+await clickButton(page, /Prepare$/);
+await page.waitForFunction(() => !!document.querySelector('[data-testid="coach-card"]'), {
+  timeout: 5000,
+});
+await page.mouse.click(30, 300); // a touch off the food: no progress
+await sleep(400);
+const hidden = (await card(page)) === null;
+await sleep(4600);
+check(
+  "8a a touch that made no progress hides it; still stuck after a pause, it comes back",
+  hidden && /HOW TO SLICE/i.test((await card(page)) ?? ""),
+);
+const beforeSwipe = await stepInfo(page);
+const tip2 = await findFingertip(page);
+if (tip2) {
+  await page.mouse.move(tip2.x, tip2.y - 70);
+  await page.mouse.down();
+  for (let k = 1; k <= 16; k++) {
+    await page.mouse.move(tip2.x, tip2.y - 70 + (140 * k) / 16);
+    await sleep(12);
+  }
+  await page.mouse.up();
+  await sleep(900);
+}
+const afterSwipe = await stepInfo(page);
+check(
+  "8b swiping along the demonstrated line also makes a real cut",
+  !!tip2 && afterSwipe.n === (beforeSwipe.n ?? 0) + 1,
+  { tip2, before: beforeSwipe.n, after: afterSwipe.n },
 );
 
 check("console has no errors", logs.filter((l) => /^error|pageerror/i.test(l)).length === 0, logs);

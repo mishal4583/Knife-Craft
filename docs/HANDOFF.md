@@ -128,6 +128,12 @@ conversation.
    the in-game knife, the coaching ghost (SWIPE then TAP demo) and the
    Market icon; the resting knife lies flat below the food (or on the
    counter in front of the board).
+21. Coaching only for beginners, only when needed: first play of a
+   campaign level only (never replays / Today's Special / Endless /
+   Service / Business), Levels 1–5 + each technique's introducing level,
+   back after a pause only if the player is stuck (no progress on the
+   step); the one-line gesture hint only to Level 10. QA `coaching-qa`
+   E2/F3/F4; e2e `coach.mjs` 3a, 6a, 7a (Order Board replay), 8a.
 
 ## 4. Open issues from the Level 1–10 audit (not fixed yet)
 

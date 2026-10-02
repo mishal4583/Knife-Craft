@@ -15,8 +15,9 @@ import {
   TEACH_ALL_THROUGH_LEVEL,
   taughtTechniques,
   COACH_FIRST_DELAY_MS,
-  COACH_TAUGHT_IDLE_MS,
-  COACH_IDLE_MS,
+  COACH_STUCK_IDLE_MS,
+  BEGINNER_HINT_THROUGH_LEVEL,
+  showsBeginnerHint,
 } from "../src/game/coaching.ts";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
@@ -45,7 +46,7 @@ assert(
   "B: every step of Levels 1–5 is taught",
 );
 
-// C: every technique is taught in its first two levels — and the first is the level that introduces it.
+// C: every technique is taught in the level that introduces it — and the first is the level that introduces it.
 const taughtAt = new Map<TechniqueId, number[]>();
 for (const l of LEVELS) {
   const n = levelNumber(l.id);
@@ -66,22 +67,36 @@ assert(
     .join(", ")})`,
 );
 assert(
-  [...taughtAt.values()].every((levels) => levels.length <= 2),
-  "C2: after Level 5 each technique is taught in at most two levels",
+  [...taughtAt.values()].every((levels) => levels.length === 1) &&
+    [...taughtAt.values()].flat().length === late.length,
+  `C2: after Level 5 each new technique is taught once, in the level that introduces it — and nothing else (${[...taughtAt.values()].flat().join(", ")})`,
 );
 
 // D: a level teaches only what its session asks for; later levels teach nothing new.
 assert(
   JSON.stringify(taughtTechniques("level-1", ["slice"])) === '["slice"]' &&
     taughtTechniques("level-150", ALL).length === 0,
-  "D: the session's own techniques only; Level 150 teaches nothing (idle hint only)",
+  "D: the session's own techniques only; Level 150 teaches nothing",
 );
 
-// E: timing.
+// E: only when it helps — timing and the stuck rule.
 assert(
-  COACH_FIRST_DELAY_MS < 1500 && COACH_TAUGHT_IDLE_MS < COACH_IDLE_MS && COACH_IDLE_MS <= 10000,
-  `E: taught steps demonstrate after ${COACH_FIRST_DELAY_MS} ms, again after ${COACH_TAUGHT_IDLE_MS} ms idle; others after ${COACH_IDLE_MS} ms idle`,
+  COACH_FIRST_DELAY_MS < 1500 && COACH_STUCK_IDLE_MS <= 6000,
+  `E: a taught step demonstrates after ${COACH_FIRST_DELAY_MS} ms, then only if the player is stuck (no progress, ${COACH_STUCK_IDLE_MS} ms idle)`,
 );
+{
+  const scene = read("src/game/scenes/PreparationScene.ts");
+  const fn = scene.slice(
+    scene.indexOf("private updateCoach"),
+    scene.indexOf("private coachTargetNow"),
+  );
+  assert(
+    /this\.coachTeach\.has\(this\.technique\.id\) &&/.test(fn) &&
+      /!this\.coachStepProgressed\(\) && now - this\.coachInputT >= COACH_STUCK_IDLE_MS/.test(fn) &&
+      !/COACH_IDLE_MS/.test(scene),
+    "E2: an untaught step never demonstrates; a taught one returns only while no progress has been made",
+  );
+}
 
 // F: wiring — the scene only draws; the demonstration never changes cut/peel/score state.
 const scene = read("src/game/scenes/PreparationScene.ts");
@@ -108,8 +123,20 @@ assert(
 );
 const app = read("src/App.tsx");
 assert(
-  /coachLevelId: activeLevel\.id/.test(app),
-  "F3: campaign service sessions (Level 1 included) pass their level for coaching",
+  /\(isCampaignService \|\| isBatchGroup \|\| sessionMode === "campaign"\) &&\s*save &&\s*!save\.levelProgress\.completedLevelIds\.includes\(activeLevel\.id\)/.test(
+    app,
+  ) &&
+    (app.match(/\{\.\.\.\(coachLevelId \? \{ coachLevelId \} : \{\}\)\}/g) ?? []).length === 2 &&
+    /const campaignId = coachLevelId;/.test(prep),
+  "F3: coaching only in a campaign level played for the first time — never a replay, Today's Special, Endless, Restaurant Service or Business",
+);
+assert(
+  showsBeginnerHint("level-1") &&
+    showsBeginnerHint(`level-${BEGINNER_HINT_THROUGH_LEVEL}`) &&
+    !showsBeginnerHint(`level-${BEGINNER_HINT_THROUGH_LEVEL + 1}`) &&
+    !showsBeginnerHint(undefined) &&
+    /showHint && phase === "prep" && showsBeginnerHint\(coachLevelId\)/.test(prep),
+  `F4: the plain one-line gesture hint shows only in Levels 1–${BEGINNER_HINT_THROUGH_LEVEL} on a first play`,
 );
 
 console.log(failures === 0 ? "\nCOACHING QA: ALL PASS" : `\nCOACHING QA: ${failures} FAILURE(S)`);

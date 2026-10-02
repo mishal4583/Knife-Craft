@@ -9,7 +9,7 @@ import { PauseManager } from "../PauseManager";
 import { withRequiredPeelSteps } from "../prepStepGuards";
 import { drawCoachGhost, coachCycleMs, type CoachTarget } from "./coachGhost";
 import { knifeProfile, paintKnife, quadraticPoints } from "./knifeProfile";
-import { COACH_FIRST_DELAY_MS, COACH_IDLE_MS, COACH_TAUGHT_IDLE_MS } from "../coaching";
+import { COACH_FIRST_DELAY_MS, COACH_STUCK_IDLE_MS } from "../coaching";
 import { AudioManager } from "../AudioManager";
 import {
   ASSIST,
@@ -5522,14 +5522,26 @@ export class PreparationScene extends Phaser.Scene {
     this.bus.emit(EVT.COACH, { visible, techniqueId: this.technique.id });
   }
 
+  /** True once the player has made any progress on the current step (a cut, some peel, a ring, a smash). */
+  private coachStepProgressed(): boolean {
+    return (
+      this.cuts.length - this.stepCutsAtStart > 0 ||
+      this.peelCoveredCells > 0 ||
+      this.ringTapsDone > 0 ||
+      this.smashBusy
+    );
+  }
+
   /** Shows/advances/hides the ghost demonstration — see coaching.ts for when. */
   private updateCoach(): void {
     const now = this.time.now;
-    const taught = this.coachTeach.has(this.technique.id);
+    // Only taught steps of a first-time beginner level, and only while it helps:
+    // at the start until the first touch, then again only if the player is stuck.
     const due =
-      taught && !this.coachTouched
+      this.coachTeach.has(this.technique.id) &&
+      (!this.coachTouched
         ? now - this.coachStepT >= COACH_FIRST_DELAY_MS
-        : now - this.coachInputT >= (taught ? COACH_TAUGHT_IDLE_MS : COACH_IDLE_MS);
+        : !this.coachStepProgressed() && now - this.coachInputT >= COACH_STUCK_IDLE_MS);
     if (!due || this.coachBlocked()) {
       this.setCoachVisible(false);
       return;

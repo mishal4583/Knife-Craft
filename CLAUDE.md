@@ -142,9 +142,11 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   four-profile simulation table (K: Normal, Completionist, Aggressive
   Spender, Existing Save).
 - `coaching-qa` — beginner coaching: every technique has a how-to card,
-  Levels 1–5 teach everything, each technique is taught where it is
-  introduced (and at most twice after Level 5), timing, and the ghost never
-  touches cut/peel/score state.
+  Levels 1–5 teach everything, each later technique is taught only in the
+  level that introduces it, the stuck rule (back only with no progress),
+  first play only (no replay/Today's Special/Endless/Service/Business),
+  the one-line hint only to Level 10, and the ghost never touches
+  cut/peel/score state.
 - `inventory-market-qa` — the Market/Inventory split (checks 1–16: no buy
   controls in Business, purchase maths, fridge, low stock, expiry,
   purchasing/consumption analytics, supplier modifiers, contracts, funds,
@@ -390,15 +392,20 @@ not silently removed.
   The scene emits `EVT.COACH` → GameBridge `COACH` → Preparation shows
   `COACH_TEXT[technique]` (title, how, why; on cutting steps also
   `CUT_WAYS`: TAP / SWIPE rows with the same labels). The card is `pointer-events-none`.
-  - **Taught** steps (demonstrated 0.7 s after the step starts, then after
-    4 s idle): every step of Levels 1–5, and each technique in the first two
-    campaign levels that use it. That counts the level's steps, its order
-    pool and inserted peels, so e.g. dice 6/10, smash 9/11, rings 16/20,
-    julienne 21/22, radial 23/24, rock-mince 34/36 and chiffonade 35/37.
-  - Every other step, including Restaurant Service and Business: only after
-    8 s without input.
-  - Campaign service sessions pass `coachLevelId`; every campaign level,
-    Level 1 included, runs as a service order.
+  - **Only for beginners, only when needed:**
+    - It runs only in a campaign level played for the FIRST time. App
+      passes `coachLevelId` only then, so there's none on a replay, Today's
+      Special, Endless, Restaurant Service or Business.
+    - Only TAUGHT steps get it: every step of Levels 1–5, and each new
+      technique in the one level that introduces it (dice 6, smash 9,
+      rings 16, julienne 21, radial 23, rock-mince 34, chiffonade 35).
+    - On such a step it plays 0.7 s after the step starts and hides on the
+      first touch. It returns after 4 s idle only while the player has
+      made NO progress on that step (stuck). After a cut or some peel it
+      stays away.
+    - Untaught steps never show it.
+    - The plain one-line gesture hint shows only in Levels 1–10 on a first
+      play (`showsBeginnerHint`).
   - It reads cut and peel state only and never commits, consumes a guide
     slot or affects scoring (`coaching-qa` F).
   - No save state: coaching is derived from the level.

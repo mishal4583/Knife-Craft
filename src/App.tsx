@@ -1717,6 +1717,15 @@ export function App() {
   // otherwise try to render with nothing to show.
   const isCampaignService = sessionMode === "campaign-service";
   const isBatchGroup = sessionMode === "batch-group";
+  // Beginner coaching (coaching.ts) runs only in a campaign level being
+  // played for the first time — never on a replay, Today's Special, Endless,
+  // Restaurant Service or Business.
+  const coachLevelId =
+    (isCampaignService || isBatchGroup || sessionMode === "campaign") &&
+    save &&
+    !save.levelProgress.completedLevelIds.includes(activeLevel.id)
+      ? activeLevel.id
+      : undefined;
   const isBusinessService = sessionMode === "business-service";
   const activeServiceSession = isCampaignService
     ? campaignServiceSession
@@ -1798,7 +1807,7 @@ export function App() {
             // Preparation's internal phase/step state always starts fresh
             // for the new customer.
             key={currentServiceOrder.order.id}
-            {...(isCampaignService || isBatchGroup ? { coachLevelId: activeLevel.id } : {})}
+            {...(coachLevelId ? { coachLevelId } : {})}
             service={{
               order: currentServiceOrder,
               onServe: isCampaignService
@@ -1881,6 +1890,7 @@ export function App() {
             // board are fixed for this preparation run" comment).
             key={activeLevel.id}
             level={activeLevel}
+            {...(coachLevelId ? { coachLevelId } : {})}
             onExit={() => {
               // Leaving an unfinished level closes it without a level message.
               levelAbandoned();

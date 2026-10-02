@@ -30,7 +30,7 @@ import { CutResultPanel } from "./CutResultPanel";
 import { KnifeReport } from "./KnifeReport";
 import { CookingClip } from "./CookingClip";
 import { dishKindFor } from "@/game/recipes/dishKind";
-import { taughtTechniques, COACH_TEXT, CUT_WAYS } from "@/game/coaching";
+import { taughtTechniques, showsBeginnerHint, COACH_TEXT, CUT_WAYS } from "@/game/coaching";
 import { OrderComplete } from "./OrderComplete";
 import { ServiceOrderComplete } from "./ServiceOrderComplete";
 import { Panel, KButton, DustMotes } from "../common/primitives";
@@ -106,7 +106,7 @@ export function Preparation({
   onNextLevel,
 }: {
   level?: LevelDefinition;
-  /** The campaign level a service session plays (Level 1 runs as a customer order too) — decides which techniques it teaches (coaching.ts). Omitted for Restaurant Service / Business. */
+  /** The campaign level being played for the FIRST time (App decides) — which techniques it teaches (coaching.ts). Omitted for replays, Today's Special, Endless, Restaurant Service and Business: no coaching there. */
   coachLevelId?: string;
   /** Present only for a restaurant-service session (App.tsx's sessionMode === "service") — see ServiceManager.ts for the state machine behind it. */
   service?: {
@@ -231,7 +231,7 @@ export function Preparation({
   useEffect(() => {
     // Campaign levels teach their new techniques (coaching.ts); Restaurant
     // Service and Business only get the demonstration when idle.
-    const campaignId = coachLevelId ?? level?.id;
+    const campaignId = coachLevelId;
     bridge.startPreparation({
       steps,
       knife,
@@ -463,7 +463,7 @@ export function Preparation({
             ) : null}
           </div>
         </div>
-      ) : showHint && phase === "prep" ? (
+      ) : showHint && phase === "prep" && showsBeginnerHint(coachLevelId) ? (
         <div className="pointer-events-none absolute inset-x-0 bottom-[7%] z-20 flex flex-col items-center gap-2">
           <span className="font-hand text-[19px] text-ivory/90 drop-shadow-[0_2px_4px_rgba(62,40,25,0.6)]">
             {activeTechnique.interactionMode === "peel"
