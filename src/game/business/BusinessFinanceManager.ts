@@ -108,7 +108,7 @@ export type BusinessDailyAccumulator = {
   /**
    * Ingredient purchases made since the current Business Day began — one per
    * "inventory-purchase" ledger entry (a Market purchase is one, a cash Rush
-   * Restock one per ingredient). Not money: Business → Inventory reads it
+   * Restock one per ingredient). Not money: the Inventory screen reads it
    * for "Purchases" / "Average purchase" (inventoryAnalytics.ts). A save
    * written before this field existed migrates it as 0
    * (migrateBusinessFinanceState's own dailyAccumulator default merge).

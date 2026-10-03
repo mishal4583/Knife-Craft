@@ -46,8 +46,6 @@ for (const id of ["basic", "commercial", "professional"]) {
       },
     }),
   );
-  await clickButton(page, /Business$/);
-  await sleep(600);
   await clickButton(page, /Inventory$/);
   await sleep(900);
   await page.evaluate(() =>

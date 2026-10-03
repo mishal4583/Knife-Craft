@@ -35,7 +35,7 @@ function Stat({ label, value, note }: { label: string; value: string; note: stri
 
 /**
  * BUSINESS · SUPPLIES — monitoring only (no purchase controls, like
- * Business → Inventory): what's on the shelf, what it cost, what was spent
+ * the Inventory screen): what's on the shelf, what it cost, what was spent
  * and how much that saved against retail. Every figure is read from
  * `save.business.supplies` (BusinessSuppliesManager.supplySectionSummary);
  * restocking navigates to the Market.

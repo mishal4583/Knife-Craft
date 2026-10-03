@@ -17,7 +17,7 @@ import {
   DECAY_DIVISOR,
   type ConditionBand,
 } from "@/game/business/businessEquipmentCondition";
-import { FridgeMini } from "./fridge/PhysicalFridge";
+import { FridgeMini } from "../inventory/fridge/PhysicalFridge";
 import {
   maintenanceStatusFor,
   maintenanceCostFor,

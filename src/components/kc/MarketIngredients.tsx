@@ -46,7 +46,7 @@ function fridgeSpaceText(available: number): string {
  * price, verdict and wallet line comes from `purchaseQuote`, the same
  * decision `purchaseIngredient` makes (today's supplier event → the active
  * contract → a hired Prep Cook), so the card never promises what the tap
- * won't do. Business → Inventory only monitors this stock.
+ * won't do. Inventory (bottom bar) only monitors this stock.
  */
 export function MarketIngredients({
   save,

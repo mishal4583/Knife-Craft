@@ -4,25 +4,9 @@ import { INGREDIENT_EMOJI } from "@/game/knives/knifeDefinitions";
 import { purchaseUnitFor } from "@/game/business/businessPricing";
 import { formatUsd } from "@/game/business/businessCurrency";
 import { formatQuantity } from "@/game/business/businessInventory";
-import { INGREDIENT_GROUPS } from "@/game/business/inventoryAnalytics";
 import type { IngredientId } from "@/game/definitions";
-import type {
-  FridgeAttentionReason,
-  FridgeItem,
-  FridgeView,
-  FridgeZone,
-  FridgeZoneId,
-} from "@/game/business/fridgeView";
+import type { FridgeItem, FridgeView, FridgeZone, FridgeZoneId } from "@/game/business/fridgeView";
 import "./PhysicalFridge.css";
-
-const TABS = ["All", ...INGREDIENT_GROUPS.map((g) => g.label)];
-
-const REASON_TEXT: Record<FridgeAttentionReason, string> = {
-  expired: "Expired",
-  "spoils-tonight": "Spoils tonight",
-  expiring: "Use soon",
-  low: "Low for today",
-};
 
 /** One row inside a compartment: a shelf, or a row of crisper drawers. */
 type Row = { shelf: FridgeZoneId } | { drawers: FridgeZoneId[] };
@@ -398,45 +382,31 @@ export function FridgeMini({ rank, className }: { rank: number; className?: stri
 }
 
 /**
- * The physical refrigerator at the top of Business → Inventory, drawn after
- * the design references: the current model's appliance standing open, its
- * shelves, crisper drawers and door bins filled from the save
- * (fridgeView.ts). Display and navigation only — the parent passes
- * `onRestock` (→ Market → Ingredients) and `onEquipment` (→ Business →
- * Equipment, where upgrades and repairs are bought); nothing here moves
+ * The physical refrigerator on the Inventory screen, drawn after the design
+ * references: the current model's appliance standing open, its shelves,
+ * crisper drawers and door bins filled from the save (fridgeView.ts).
+ * Display only. Tapping an item calls `onSelect` (the Inventory screen shows
+ * its details); the header's button calls `onEquipment` (Business →
+ * Equipment, where upgrades and repairs are bought). Nothing here moves
  * money, stock or the save.
  */
 export function PhysicalFridge({
   view,
-  onRestock,
+  selectedId,
+  onSelect,
   onEquipment,
 }: {
   view: FridgeView;
-  onRestock: (id?: IngredientId) => void;
+  selectedId: IngredientId | null;
+  onSelect: (id: IngredientId) => void;
   onEquipment: () => void;
 }) {
-  const [tab, setTab] = useState("All");
-  const [selectedId, setSelectedId] = useState<IngredientId | null>(null);
-  const filtered = tab !== "All";
   const byZone = useMemo(() => {
     const map = new Map<FridgeZoneId, { zone: FridgeZone; items: FridgeItem[] }>();
-    for (const z of view.zones)
-      map.set(z.zone.id, {
-        zone: z.zone,
-        items: filtered ? z.items.filter((i) => i.group === tab) : z.items,
-      });
+    for (const z of view.zones) map.set(z.zone.id, { zone: z.zone, items: z.items });
     return map;
-  }, [view.zones, filtered, tab]);
-  const selected = view.items.find((i) => i.id === selectedId) ?? null;
+  }, [view.zones]);
   const full = view.available <= 0;
-  const select = (id: IngredientId) => setSelectedId((cur) => (cur === id ? null : id));
-  const detailRef = useRef<HTMLDivElement>(null);
-  // Bring the tapped item's details into view (they sit under the fridge).
-  useEffect(() => {
-    if (!selectedId) return;
-    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    detailRef.current?.scrollIntoView({ block: "nearest", behavior: reduce ? "auto" : "smooth" });
-  }, [selectedId]);
 
   const layout = LAYOUTS[view.tier.id] ?? LAYOUTS["basic-refrigerator"]!;
   const zoneOf = (id: FridgeZoneId) => byZone.get(id)!.zone;
@@ -445,10 +415,10 @@ export function PhysicalFridge({
     zone: zoneOf(id),
     items: itemsOf(id),
     selected: selectedId,
-    onSelect: select,
-    filtered,
+    onSelect,
+    filtered: false,
   });
-  const doorProps = { selected: selectedId, onSelect: select, filtered, itemsOf, zoneOf };
+  const doorProps = { selected: selectedId, onSelect, filtered: false, itemsOf, zoneOf };
   const steel = view.tier.rank > 0;
   const statusClass = view.maintenance !== "OPERATIONAL" && "kcf-head__warn";
 
@@ -460,7 +430,7 @@ export function PhysicalFridge({
     >
       {/* The model's wooden sign */}
       <div className="kcf-plaque">
-        <p className="kcf-plaque__name">{view.tier.name}</p>
+        <p className="kcf-plaque__name">❄️ {view.tier.name}</p>
         <p className="kcf-plaque__line">{view.tier.description}</p>
       </div>
 
@@ -468,7 +438,6 @@ export function PhysicalFridge({
       <div className="kcf-head">
         <div className="kcf-head__model">
           <p className="kcf-head__meta" data-testid="fridge-capacity">
-            <span aria-hidden>🧺 </span>
             {formatQuantity(view.used)} / {view.capacity} units
             <span aria-hidden> · </span>
             <span data-testid="fridge-cooling" className={cn(statusClass)}>
@@ -486,6 +455,9 @@ export function PhysicalFridge({
           >
             <span style={{ width: `${Math.round(view.usage * 100)}%` }} />
           </div>
+          <p className="kcf-head__free" data-testid="fridge-available">
+            {formatQuantity(view.available)} units available
+          </p>
         </div>
         <button
           type="button"
@@ -495,35 +467,19 @@ export function PhysicalFridge({
         >
           {view.maintenance !== "OPERATIONAL"
             ? view.maintenance === "BROKEN"
-              ? "Repair →"
-              : "Service →"
+              ? "Repair Refrigerator →"
+              : "Service Refrigerator →"
             : view.nextTier
-              ? "Upgrade →"
-              : "Equipment →"}
+              ? "Upgrade Refrigerator →"
+              : "View Equipment →"}
           <small>
             {view.maintenance !== "OPERATIONAL"
               ? `Condition ${view.condition}/100`
               : view.nextTier
-                ? `${view.nextTier.capacity} units · ${formatUsd(view.nextTier.price)}`
+                ? `${view.nextTier.name.replace(" Refrigerator", "")} · ${view.nextTier.capacity} units · ${formatUsd(view.nextTier.price)}`
                 : "Top model"}
           </small>
         </button>
-      </div>
-
-      {/* Category tabs */}
-      <div className="kcf-tabs" role="tablist" aria-label="Show in the fridge">
-        {TABS.map((t) => (
-          <button
-            key={t}
-            type="button"
-            role="tab"
-            aria-selected={tab === t}
-            className={cn("kcf-tab press", tab === t && "kcf-tab--active")}
-            onClick={() => setTab(t)}
-          >
-            {t}
-          </button>
-        ))}
       </div>
 
       {/* The open appliance */}
@@ -574,115 +530,6 @@ export function PhysicalFridge({
           Unrecognised stock (not shown on the shelves): {view.unknown.join(", ")}
         </p>
       ) : null}
-
-      {/* Secondary details for the tapped item */}
-      {selected ? (
-        <div ref={detailRef} className="kcf-detail" data-testid="fridge-detail" aria-live="polite">
-          <div className="kcf-detail__head">
-            <span className="kcf-detail__icon" aria-hidden>
-              {INGREDIENT_EMOJI[selected.id]}
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="kcf-detail__name">
-                {selected.name} · {qty(selected.id, selected.quantity)}
-              </p>
-              <p
-                className={cn(
-                  "kcf-detail__fresh",
-                  selected.attention && selected.attention !== "low" && "kcf-detail__fresh--warn",
-                )}
-              >
-                {selected.state.replace("_", " ").toLowerCase()} · {daysText(selected.daysLeft)} ·{" "}
-                {formatUsd(selected.value)} in stock
-              </p>
-            </div>
-            <button
-              type="button"
-              className="kcf-detail__close press"
-              aria-label="Close details"
-              onClick={() => setSelectedId(null)}
-            >
-              ✕
-            </button>
-          </div>
-          <p className="kcf-detail__line">
-            Paid {formatUsd(selected.unitCost)}/{purchaseUnitFor(selected.id)} on average ·{" "}
-            {selected.group}
-          </p>
-          <p className="kcf-detail__line">
-            {selected.usedIn.length > 0
-              ? `Used in ${selected.usedIn.length} menu dish${selected.usedIn.length === 1 ? "" : "es"}: ${selected.usedIn.slice(0, 3).join(", ")}${selected.usedIn.length > 3 ? ` +${selected.usedIn.length - 3} more` : ""}`
-              : "Not used by today's menu"}
-          </p>
-          <button
-            type="button"
-            className="kcf-btn press"
-            onClick={() => onRestock(selected.id)}
-            data-testid="fridge-detail-restock"
-          >
-            Buy more in the Market →
-          </button>
-        </div>
-      ) : null}
-
-      {/* Needs attention */}
-      <div className="kcf-attention" data-testid="fridge-attention">
-        <div className="kcf-attention__head">
-          <p className="kcf-attention__title">
-            {view.attention.length > 0 ? (
-              <>
-                <span className="kcf-attention__bang" aria-hidden>
-                  !
-                </span>
-                Needs Attention
-                <span className="kcf-zone__count">{view.attention.length}</span>
-              </>
-            ) : (
-              "✓ Nothing needs attention"
-            )}
-          </p>
-          <button
-            type="button"
-            className="kcf-restock press"
-            onClick={() => onRestock(view.attention[0]?.id)}
-            data-testid="fridge-restock"
-          >
-            📦 Restock in the Market →
-          </button>
-        </div>
-        {view.attention.length > 0 ? (
-          <Pan label="Items that need attention" className="kcf-attention__pan">
-            {view.attention.map((a) => {
-              const item = view.items.find((i) => i.id === a.id);
-              return (
-                <button
-                  key={a.id}
-                  type="button"
-                  data-attention={a.id}
-                  className={cn("kcf-att press", `kcf-att--${a.reason}`)}
-                  onClick={() => setSelectedId(a.id)}
-                >
-                  <span className="kcf-att__icon" aria-hidden>
-                    {INGREDIENT_EMOJI[a.id]}
-                  </span>
-                  <span className="kcf-att__text">
-                    <strong>{a.name}</strong>
-                    <b>{qty(a.id, a.quantity)}</b>
-                    <span className="kcf-att__bar" aria-hidden>
-                      <span
-                        style={{
-                          width: `${Math.max(6, Math.round((item?.freshness ?? 0) * 100))}%`,
-                        }}
-                      />
-                    </span>
-                    <em>{REASON_TEXT[a.reason]}</em>
-                  </span>
-                </button>
-              );
-            })}
-          </Pan>
-        ) : null}
-      </div>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { Kitchen, OrderBoard } from "@/components/kc/Kitchen";
 import { Shop } from "@/components/kc/Shop";
 import { RestaurantProgress } from "@/components/kc/RestaurantProgress";
+import { InventoryScreen } from "@/components/kc/inventory/InventoryScreen";
 import { KitchenUpgrades } from "@/components/kc/KitchenUpgrades";
 import type { PurchaseKitchenUpgradeResult } from "@/game/kitchen/KitchenUpgradeManager";
 import { RecipeBook, RecipeDetail } from "@/components/kc/Recipes";
@@ -162,6 +163,7 @@ export function ScreensRouter({
       ) : null}
       {/* "rack" is the internal screen id; the player-facing screen is Restaurant Progress. */}
       {screen === "rack" ? <RestaurantProgress go={go} save={save} /> : null}
+      {screen === "inventory" ? <InventoryScreen go={go} save={save} /> : null}
       {screen === "kitchen-upgrades" ? (
         <KitchenUpgrades go={go} save={save} buildKitchenUpgrade={buildKitchenUpgrade} />
       ) : null}

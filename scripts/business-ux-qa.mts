@@ -293,7 +293,9 @@ function playedSave(): SaveData {
   const router = read("src/ScreensRouter.tsx");
   const routes: ScreenId[] = [
     "business",
-    "business-inventory",
+    // "business-inventory" is gone: Inventory is its own bottom-bar section ("inventory"),
+    // and the alerts that used to open it now open that screen (checked just below).
+    "business-supplies",
     "business-refrigerator",
     "business-menu",
     "business-suppliers",
@@ -307,6 +309,14 @@ function playedSave(): SaveData {
       Object.values(BUSINESS_TAB_SCREEN).every((sc) => businessTabForScreen(sc) !== null),
     "S1: every existing Business route opens a tab (alerts, the Market's pantry link and the service back button keep working)",
   );
+  const alerts = read("src/game/business/businessAlerts.ts");
+  assert(
+    businessTabForScreen("inventory") === null &&
+      /screen === "inventory" \? <InventoryScreen/.test(router) &&
+      !/business-inventory/.test(alerts) &&
+      /screen: "inventory"/.test(alerts),
+    "S1b: Inventory is its own screen (not a Business tab); inventory alerts open it",
+  );
   assert(
     (router.match(/<BusinessDashboard/g) ?? []).length === 1 &&
       !/<BusinessInventory|<BusinessMenu|<BusinessStaff|<BusinessSuppliers|<BusinessRefrigerator|<BusinessInspections|<BusinessFinance|BusinessShop/.test(
@@ -319,10 +329,14 @@ function playedSave(): SaveData {
     "S3: the old in-Business 'Market' overview is gone (no second shop)",
   );
   // Market rework: Business → Ingredients became Business → Inventory (monitoring only); buying moved to Market → Ingredients.
-  const tabs = ["Overview", "Inventory", "Equipment", "Staff", "Suppliers", "Menu", "Operations"];
+  // Inventory restructure: Inventory left Business for its own bottom-bar section (stock control);
+  // Business keeps performance. Supplies joined with Business Supplies.
+  const tabs = ["Overview", "Supplies", "Equipment", "Staff", "Suppliers", "Menu", "Operations"];
   assert(
-    tabs.every((t) => dash.includes(`label: "${t}"`)) && !dash.includes(`label: "Ingredients"`),
-    "S4: the seven tabs: Overview · Inventory · Equipment · Staff · Suppliers · Menu · Operations",
+    tabs.every((t) => dash.includes(`label: "${t}"`)) &&
+      !dash.includes(`label: "Ingredients"`) &&
+      !dash.includes(`label: "Inventory"`),
+    "S4: the seven tabs: Overview · Supplies · Equipment · Staff · Suppliers · Menu · Operations (no Inventory)",
   );
   const ui = [
     "src/components/kc/MarketIngredients.tsx",
@@ -344,12 +358,12 @@ function playedSave(): SaveData {
     ) && /INGREDIENT_GROUPS/.test(market),
     "S6: Market ingredients grouped: Vegetables · Fruit · Herbs · Aromatics · Bakery · Dairy & Tofu · Protein (one shared list)",
   );
-  const inv = code(read("src/components/kc/business/BusinessInventory.tsx"));
+  const inv = code(read("src/components/kc/inventory/InventoryScreen.tsx"));
   assert(
     !/purchaseIngredient|purchaseQuote|todaysUnitCost|Increase quantity|>\s*Buy \{|stepPurchaseQuantity/.test(
       inv,
     ) && /openMarketIngredients/.test(inv),
-    "S8: Business → Inventory has no purchase controls — only links to the Market",
+    "S8: Inventory has no purchase controls — only links to the Market",
   );
   const menu = read("src/components/kc/business/BusinessMenu.tsx");
   assert(

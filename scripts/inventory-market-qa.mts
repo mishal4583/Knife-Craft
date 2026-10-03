@@ -76,21 +76,23 @@ function buy(save: SaveData, id: string, qty: number) {
   return { ...r, save: recordInventoryPurchase(withLedger, r.totalCost, 1) };
 }
 
-// ===== 1: no buy controls in Business → Inventory =====
+// ===== 1: no buy controls in Inventory =====
 {
-  const inv = code(read("src/components/kc/business/BusinessInventory.tsx"));
+  // The stock-control screen moved from Business → Inventory to its own bottom-bar section.
+  const inv = code(read("src/components/kc/inventory/InventoryScreen.tsx"));
   const dash = code(read("src/components/kc/business/BusinessDashboard.tsx"));
   assert(
     !/purchaseIngredient|purchaseQuote|todaysUnitCost|stepPurchaseQuantity|Increase quantity|Buy \{/.test(
       inv,
     ) && !/purchaseIngredient/.test(dash),
-    "1: Business → Inventory has no purchase controls or purchase action",
+    "1: Inventory has no purchase controls or purchase action",
   );
   assert(
     /Go to Market →/.test(inv) &&
-      /Buy in Market →/.test(inv) &&
-      /Shop Market →/.test(inv) &&
-      /openMarketIngredients/.test(inv),
+      /Restock in Market →/.test(inv) &&
+      /Restock →/.test(inv) &&
+      /openMarketIngredients\(go, id\)/.test(inv) &&
+      /openMarketIngredients\(go, n\.id\)/.test(inv),
     "1b: its only purchase-related controls navigate to the Market",
   );
   const shop = read("src/components/kc/Shop.tsx");
@@ -134,7 +136,7 @@ function buy(save: SaveData, id: string, qty: number) {
         onHand[0]!.quantity === 5 &&
         onHand[0]!.value === 500 &&
         onHand[0]!.state === "FRESH",
-      "3: Business → Inventory's On hand reads the new stock immediately (same save)",
+      "3: Inventory's on-hand stock reads the new stock immediately (same save)",
     );
     assert(
       A.inventorySummary(r.save).stocked === 1 && A.inventorySummary(r.save).stockValue === 500,

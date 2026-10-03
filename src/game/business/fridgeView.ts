@@ -1,6 +1,6 @@
 /**
  * FRIDGE_VIEW — the read-only display adapter behind the physical
- * refrigerator in Business → Inventory (`kc/business/fridge/PhysicalFridge`).
+ * refrigerator on the Inventory screen (`kc/inventory/fridge/PhysicalFridge`).
  * It turns state that already exists into "what sits where in the fridge":
  *
  *   stock, value, paid price   business.inventory (one aggregate entry per ingredient)
@@ -26,8 +26,8 @@ import {
 } from "./perishability";
 import { conditionBandFor, type ConditionBand } from "./businessEquipmentCondition";
 import { maintenanceStatusFor, type MaintenanceStatus } from "./businessMaintenance";
+import { inventoryStatusFor, type InventoryStatus } from "./inventoryStatus";
 import {
-  EXPIRING_SOON_DAYS,
   INGREDIENT_GROUPS,
   activeDishesUsing,
   fridgeStatus,
@@ -181,6 +181,8 @@ export type FridgeItem = {
   daysLeft: number;
   /** daysLeft / shelfLife, 0–1 — the label's freshness bar. */
   freshness: number;
+  /** The central stock status (inventoryStatus.ts). */
+  status: InventoryStatus;
   attention: FridgeAttentionReason | null;
   usedIn: string[];
 };
@@ -257,17 +259,20 @@ function tierOf(rank: number): FridgeTier {
   };
 }
 
-function freshnessReason(daysLeft: number): FridgeAttentionReason | null {
-  if (daysLeft <= 0) return "expired";
-  if (daysLeft === 1) return "spoils-tonight";
-  if (daysLeft <= EXPIRING_SOON_DAYS) return "expiring";
-  return null;
-}
+/** The fridge tag's attention marker, from the one central status (inventoryStatus.ts). */
+const ATTENTION_FOR_STATUS: Record<InventoryStatus, FridgeAttentionReason | null> = {
+  expired: "expired",
+  spoils_today: "spoils-tonight",
+  critical: "low",
+  expiring: "expiring",
+  low: "low",
+  healthy: null,
+};
 
 export function fridgeView(save: SaveData): FridgeView {
   const business = save.business;
   const day = business.calendar.businessDay;
-  const status = fridgeStatus(save);
+  const fridge = fridgeStatus(save);
   const rank = Math.max(
     0,
     REFRIGERATOR_CATALOG.findIndex((r) => r.id === business.refrigerator.refrigeratorId),
@@ -286,6 +291,7 @@ export function fridgeView(save: SaveData): FridgeView {
     }
     const shelfLife = shelfLifeForIngredient(id);
     const daysLeft = Math.max(0, shelfLife - ageInDays(entry.purchaseDay, day));
+    const status = inventoryStatusFor(daysLeft, low.get(id));
     items.push({
       id,
       name: INGREDIENTS[id].name,
@@ -298,7 +304,8 @@ export function fridgeView(save: SaveData): FridgeView {
       shelfLife,
       daysLeft,
       freshness: shelfLife > 0 ? Math.min(1, daysLeft / shelfLife) : 0,
-      attention: freshnessReason(daysLeft) ?? (low.has(id) ? "low" : null),
+      status,
+      attention: ATTENTION_FOR_STATUS[status],
       usedIn: activeDishesUsing(save, id).map((d) => d.name),
     });
   }
@@ -326,11 +333,11 @@ export function fridgeView(save: SaveData): FridgeView {
     tier: tiers[rank]!,
     nextTier: tiers[rank + 1] ?? null,
     tiers,
-    used: status.used,
-    capacity: status.capacity,
-    available: status.available,
-    usage: status.usage,
-    stockValue: status.stockValue,
+    used: fridge.used,
+    capacity: fridge.capacity,
+    available: fridge.available,
+    usage: fridge.usage,
+    stockValue: fridge.stockValue,
     condition,
     conditionBand: conditionBandFor(condition),
     maintenance,

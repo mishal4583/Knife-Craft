@@ -1,5 +1,5 @@
 // Ingredients in the built game — Market buys, Business monitors:
-//   0. Business → Inventory has no purchase controls (empty state: "Go to Market →");
+//   0. Inventory (bottom bar) has no purchase controls (empty state: "Go to Market →");
 //   1. Market → Ingredients lists all 57 ingredients (nothing hidden, no "No dish"); Business →
 //      Inventory's "Go to Market →" opens it;
 //   2. prices are per ingredient (potato $0.60, tomato $1.00, asparagus $2.60, salmon $6.50);
@@ -46,10 +46,15 @@ const cards = () =>
       ]),
     ),
   );
+/** Inventory is its own bottom-bar section (stock control), between Market and Business. */
 async function openInventory() {
+  await clickButton(page, /Inventory$/);
+  await sleep(700);
+}
+async function openOperations() {
   await clickButton(page, /Business$/);
   await sleep(600);
-  await clickButton(page, /Inventory$/);
+  await clickButton(page, /Operations\d*$/); // the tab may carry an alert count
   await sleep(600);
 }
 async function openIngredients() {
@@ -83,14 +88,12 @@ await boot(page, businessSave(133_200)); // $1,332.00
 await openInventory();
 let t = await flat();
 check(
-  "0a Business → Inventory: no buy controls, empty-fridge text and Go to Market",
+  "0a Inventory: no buy controls, empty-fridge text and Go to Market",
   (await buyButtons()) === 0 &&
-    /Track your stock, freshness and restaurant supply needs\./.test(t) &&
+    /Manage your restaurant stock/.test(t) &&
     /Your fridge is empty\. Buy ingredients from the Market/.test(t) &&
     /Go to Market →/.test(t) &&
-    /Inventory analytics/i.test(t) &&
-    /Purchasing/i.test(t) &&
-    /Most used/i.test(t),
+    /Stock analytics/i.test(t),
   t.slice(0, 300),
 );
 await shot(page, "ingredients-0-inventory-empty");
@@ -168,17 +171,16 @@ const tomatoLabel = await page.evaluate(
       .querySelector('[data-fridge-zone="vegetables"] [data-fridge-item="tomato"]')
       ?.getAttribute("aria-label") ?? "",
 );
-const fridgeValue = await page.evaluate(
+const stockCard = await page.evaluate(
   () =>
-    document.querySelector('[data-testid="fridge-status"]')?.textContent.replace(/\s+/g, " ") ?? "",
+    document.querySelector('[data-inventory-item="tomato"]')?.innerText.replace(/\s+/g, " ") ?? "",
 );
 check(
-  "4b Business → Inventory shows it at once: Tomato 25 lb in the fridge · $25.00, fridge 25 / 40, purchasing $25.00",
+  "4b Inventory shows it at once: Tomato 25 lb in the fridge and in All Inventory · $25.00, fridge 25 / 40",
   /^Tomato: 25 lb, /.test(tomatoLabel) &&
-    /Value\s*\$25\.00/.test(fridgeValue) &&
-    /25 \/ 40/.test(t) &&
-    /This Business Day \$25\.00 1 purchase/i.test(t),
-  { tomatoLabel, fridgeValue, t: t.slice(0, 300) },
+    /25 lb · \$1\.00 \/ lb · \$25\.00/.test(stockCard) &&
+    /25 \/ 40/.test(t),
+  { tomatoLabel, stockCard, t: t.slice(0, 300) },
 );
 await shot(page, "ingredients-4-inventory");
 // Most needed → deep link to that ingredient's Market card.
@@ -199,6 +201,13 @@ check(
   "4c a Most needed chip opens the Market on that ingredient's card, in view",
   !!chip && focused?.id === chip && focused.visible,
   { chip, focused },
+);
+await openOperations();
+t = await flat();
+check(
+  "4d Business → Operations shows the purchase: This Business Day $25.00, 1 purchase",
+  /This Business Day \$25\.00 1 purchase/i.test(t) && /Ingredient purchasing/i.test(t),
+  t.slice(0, 300),
 );
 
 // ---------- 3c: not enough money ----------
@@ -317,12 +326,16 @@ check(
 
 await clickButton(page, /^Back to Service$/);
 await sleep(600);
-await openInventory();
+await openOperations();
 t = await flat();
 check(
-  "5d Most used lists butter from the served order",
-  /Most used.{0,200}Butter/i.test(t),
-  t.match(/Most used.{0,200}/i)?.[0] ?? t.slice(0, 200),
+  "5d Business → Operations: Ingredients used lists butter, Best-selling dishes the ribeye",
+  /Ingredients used.{0,200}Butter/i.test(t) &&
+    /Best-selling dishes.{0,120}Ribeye with Herb Butter/i.test(t),
+  {
+    used: t.match(/Ingredients used.{0,200}/i)?.[0],
+    best: t.match(/Best-selling dishes.{0,120}/i)?.[0],
+  },
 );
 
 check("console has no errors", logs.filter((l) => /^error|pageerror/i.test(l)).length === 0, logs);

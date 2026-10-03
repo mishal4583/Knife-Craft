@@ -165,9 +165,15 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   cash identity with ingredient analytics food-only, savings never money,
   saves/migration (real `SaveManager.load`), Campaign independence and
   wiring. Browser: `tools/e2e/supplies.mjs` (375×642).
-- `fridge-view-qa` — the physical fridge in Business → Inventory (ids,
+- `fridge-view-qa` — the physical fridge on the Inventory screen (ids,
   zones, production tiers, aggregate freshness, attention, unknown ids,
   navigation-only actions, handle never takes a tap, 48 px targets).
+- `inventory-screen-qa` — the Inventory section: 5-item bottom bar, no
+  Business Inventory tab or `business-inventory` route (N), all 57
+  ingredients with the save's quantity/cost/freshness and fridge (A), the
+  one status rule (S), Needs Attention (T), sorting (O), read-only +
+  navigation (R), existing saves through the real `SaveManager.load` (C).
+  Browser: `tools/e2e/inventory.mjs` (320–1024 px).
 - `inventory-market-qa` — the Market/Inventory split (checks 1–16: no buy
   controls in Business, purchase maths, fridge, low stock, expiry,
   purchasing/consumption analytics, supplier modifiers, contracts, funds,
@@ -283,46 +289,81 @@ with the real functions.
   (`BUSINESS_ONLY_RECIPES` in `campaignRecipes.ts`, found by
   `getCampaignRecipe`; kept out of `CAMPAIGN_RECIPES`, so the campaign stays
   frozen at 221 recipes with no butter). New "Dessert" category.
-- **Market = procurement, Business = monitoring.** Business stock is bought
-  ONLY in **Market → Ingredients** (`MarketIngredients.tsx`): all 57 in
-  category groups, today's supplier event, contract and Prep Cook pricing
-  through `purchaseQuote` (BusinessInventoryManager — the SAME verdict
-  `purchaseIngredient` makes, on top of `todaysUnitCost`). Each card shows
-  the wallet effect before the tap — "$1,332 → $1,327", from 25 units
-  "You'll have $X remaining", "Not enough money — need $X more.", or "Not
-  enough fridge space. You have N units of fridge space left."
-  **Business → Inventory** (`BusinessInventory.tsx`, tab id `inventory`,
-  route `business-inventory`) has NO purchase controls: the physical
-  fridge (below) — which IS the on-hand view (the old On hand list is gone;
-  freshness, days left and Used in are on the fridge labels and their
-  details) — fridge status, Low stock (threshold = today's
-  customer target × the active menu's need), Menu readiness + Most needed,
-  Expiring soon, Inventory analytics, Purchasing, Most used. All figures
-  come from `business/inventoryAnalytics.ts` over existing state; Most used
-  is derived from "business-revenue" ledger entries (dish id × its
-  requirements). The only purchase-related controls navigate to the Market
-  (`openMarketIngredients` in `kc/marketFocus.ts` → route
-  `shop-ingredients`, optionally preselecting an ingredient). The daily
-  accumulator's `inventoryPurchases` counts purchases (one per
-  "inventory-purchase" ledger entry; old saves migrate it as 0).
-- **HARD RULE — Business Inventory is read-only.** Business → Inventory
-  (the physical fridge included) is a read-only representation of the
-  player's actual saved inventory. It must never keep its own stock,
-  prices, money, freshness or any other economy state; every figure comes
-  from the existing save/economy systems (`business.inventory`,
-  perishability, pricing, `RefrigeratorManager`, the ledger). Market is
-  the ONLY place ingredients are bought; Business → Equipment is the ONLY
-  place fridge upgrades and repairs happen. Flow: Market buys → Inventory
-  observes → Menu consumes → Business analyzes → Equipment improves
-  capacity/operation. Guarded by `business-ux-qa` S8, `inventory-market-qa`
-  1 and `fridge-view-qa` H1/I1.
+- **Market = purchase, Inventory = stock control, Business = performance.**
+  Five bottom-bar sections: Kitchen · Market · Inventory · Business ·
+  Progress (`NAV` in `Kitchen.tsx`).
+  - **Market → Ingredients** (`MarketIngredients.tsx`) is the ONLY place
+    Business stock is bought: all 57 in category groups, today's supplier
+    event, contract and Prep Cook pricing through `purchaseQuote`
+    (BusinessInventoryManager — the SAME verdict `purchaseIngredient`
+    makes, on top of `todaysUnitCost`). Each card shows the wallet effect
+    before the tap — "$1,332 → $1,327", from 25 units "You'll have $X
+    remaining", "Not enough money — need $X more.", or "Not enough fridge
+    space. You have N units of fridge space left."
+  - **Inventory** (bottom bar, screen id `inventory`,
+    `kc/inventory/InventoryScreen.tsx`) answers "what do I have?" and has NO
+    purchase controls. In order:
+    - header + wallet, "Fridge: <model> · used / capacity";
+    - summary cards: Total Stock (units, stock value), Running Low
+      (`lowStockItems`), Expiring Soon (`expiringSoon`), Ready to Cook
+      (`menuReadiness`, x / 48);
+    - Needs Attention, grouped most urgent first (Expired · Spoils tonight ·
+      Running low · Low for today's menu · Expiring soon), first group open,
+      3 rows each + "View all", every row with Restock →;
+    - the physical fridge (below);
+    - Ready to Cook + Most needed ingredients;
+    - All Inventory: filters (All + the 7 Market groups), sort (Status —
+      needs attention first — Quantity, Freshness, Value, Name), compact
+      cards (qty, average cost, value, freshness, today's menu need,
+      status, Restock →);
+    - Stock analytics (stock value, stocked x/57, fridge usage, waste);
+    - links: Restock in Market → (`openMarketIngredients` →
+      `shop-ingredients`, optionally preselecting the ingredient), Upgrade
+      Refrigerator → (Business → Equipment), View Business Performance →
+      (Business → Overview).
+    - Tapping a crate or card opens a detail sheet above the bottom bar: in
+      stock, freshness, days remaining, average cost, stock value, today's
+      requirement and what's left after today's service (only for menu
+      ingredients, from `menuDemand.perDay`), used by.
+  - The view model is `business/inventoryView.ts` (`InventoryItemView`,
+    `InventorySummaryView`, attention groups, `sortInventory`) over
+    `fridgeView.ts` + `inventoryAnalytics.ts`. Statuses come from ONE rule,
+    `business/inventoryStatus.ts` (expired › spoils tonight › critical ›
+    expiring › low › healthy), with no threshold of its own: days left from
+    perishability (≤ `EXPIRING_SOON_DAYS` = expiring), low =
+    `lowStockItems`, critical = low that can't cover one average order
+    (`dishesLeft < 1`). Each status shows a marker AND a word.
+  - **Business** (7 tabs: Overview · Supplies · Equipment · Staff ·
+    Suppliers · Menu · Operations) answers "how is my restaurant
+    performing?". Overview adds "Today at a glance" (orders, revenue per
+    dish, margin — from today's P&L and `ordersServed`); Operations holds
+    Best-selling dishes (`dishSales`, from "business-revenue" ledger
+    entries), Ingredient purchasing (`purchasingStats`) and Ingredients used
+    (`ingredientConsumption`) — moved from the old Business → Inventory tab,
+    which no longer exists (no `business-inventory` route; inventory alerts
+    open `inventory`). The game keeps only the last completed day's P&L, so
+    there are no weekly/monthly figures.
+  - The daily accumulator's `inventoryPurchases` counts purchases (one per
+    "inventory-purchase" ledger entry; old saves migrate it as 0).
+- **HARD RULE — Inventory is read-only.** The Inventory screen (the
+  physical fridge included) is a read-only representation of the player's
+  actual saved inventory. It must never keep its own stock, prices, money,
+  freshness or any other economy state (only view selections: filter,
+  sort, the open item); every figure comes from the existing save/economy
+  systems (`business.inventory`, perishability, pricing,
+  `RefrigeratorManager`, the ledger). Market is the ONLY place ingredients
+  are bought; Business → Equipment is the ONLY place fridge upgrades and
+  repairs happen. Flow: Market buys → Inventory observes → Menu consumes →
+  Business analyzes → Equipment improves capacity/operation. Guarded by
+  `business-ux-qa` S8, `inventory-market-qa` 1, `fridge-view-qa` H1/I1 and
+  `inventory-screen-qa` R1–R4.
 - **Physical fridge** (refrigerator UI handoff, a UI integration — not
-  V3-17) tops Business → Inventory: `kc/business/fridge/PhysicalFridge.tsx`
+  V3-17) on the Inventory screen: `kc/inventory/fridge/PhysicalFridge.tsx`
   + `.css`, fed by the read-only adapter `business/fridgeView.ts`. An open
   reach-in: Dairy & Tofu on the top shelf, Vegetables in the middle, Meat,
   Fish & Bread low, Fruit and Greens & Herbs crisper drawers, Butter and
   Aromatics in the door (production has no eggs, sauces or oils, so no egg
-  tray or sauce rack). One label per ingredient (quantity, aggregate
+  tray or sauce rack). One crate per ingredient (quantity, aggregate
   freshness from the weighted `purchaseDay`, days left); production tiers
   (Basic 40 / Commercial 80 / Professional 140, prices from
   `refrigeratorDefinitions`), drawn after the developer's design
@@ -333,23 +374,23 @@ with the real functions.
   left, Aromatics right); **Professional** three compartments (Dairy +
   Meat/Fish/Bread · Vegetables · Greens + Fruit drawer). Food sits in
   wooden crates (1–3 pieces shown by quantity) with cream tags, zone names
-  on wooden signs, glass shelves and crisper drawers, tabs as a 4-wide
-  wooden grid. The Basic always fits its frame; the wide steel models pan
-  sideways inside it ("›" cue + "Swipe to see every door →"). Business →
-  Equipment's cards use the same small drawings (`FridgeMini`) and show
-  the capacity gain (▲ +40). The cooling line
-  is a status from the real condition ("Refrigerated" / "Needs service" /
-  "Broken"), never a temperature: the game does not simulate degrees, so
-  no °F/°C may appear. Tapping a label shows value, paid price and
-  the menu dishes that use it. Its actions only navigate: Restock / "Buy
-  more" → Market → Ingredients (`openMarketIngredients`), Upgrade / Service
-  / Repair → Business → Equipment (`business-refrigerator`, which owns
-  `purchaseRefrigerator` and maintenance). The door handle is decorative
-  (`pointer-events: none`, in the door's own 18 px edge); shelves pan
-  sideways only when they overflow (› cue; touch and mouse drag) without
-  blocking vertical scroll. Unknown inventory ids are listed, never
-  dropped. `HANDOFF_INGREDIENT_ID_MAP` maps the handoff's 57 ids.
-  QA: `fridge-view-qa`, `tools/e2e/fridge.mjs`.
+  on wooden signs, glass shelves and crisper drawers. Its header shows the
+  model, used / capacity, units available and the cooling line, a status
+  from the real condition ("Refrigerated" / "Needs service" / "Broken"),
+  never a temperature (the game does not simulate degrees, so no °F/°C may
+  appear), and "Upgrade / Service / Repair Refrigerator →" (Business →
+  Equipment, `business-refrigerator`, which owns `purchaseRefrigerator`
+  and maintenance). The fridge is display only: a tap calls `onSelect`
+  (the Inventory screen's detail sheet). The Basic always fits its frame;
+  the wide steel models pan sideways inside it ("›" cue + "Swipe to see
+  every door →", touch and mouse drag) without blocking vertical scroll.
+  The door handle is decorative (`pointer-events: none`, in the door's own
+  18 px edge). Business → Equipment's cards use the same small drawings
+  (`FridgeMini`) and show the capacity gain (▲ +40). Unknown inventory ids
+  are listed, never dropped. `HANDOFF_INGREDIENT_ID_MAP` maps the
+  handoff's 57 ids.
+  QA: `fridge-view-qa`, `inventory-screen-qa`, `tools/e2e/fridge.mjs`,
+  `tools/e2e/inventory.mjs`.
 - **Recurring caps** — Replay Bonus 20% of the paid reward, $10–$200,
   3/day; Endless $600/day; Today's Special $50/day.
 - **Wallet invariant** — `economy/wallet.ts`: credits are whole cents and

@@ -535,6 +535,9 @@ function ScreenHeaderBoard({
 const NAV: { id: ScreenId; label: string; glyph: string }[] = [
   { id: "kitchen", label: "Kitchen", glyph: "🏠" },
   { id: "shop", label: "Market", glyph: "🛒" },
+  // Inventory — stock control (what the restaurant has), between where it's
+  // bought (Market) and how the restaurant performs (Business).
+  { id: "inventory", label: "Inventory", glyph: "📦" },
   // Economy V3 Phase 1 — the Business Simulation layer's own bottom-nav
   // destination (see data.ts's own doc on "business" for why this is a full
   // tab, not a Kitchen hotspot).
@@ -552,7 +555,7 @@ export function BottomNav({ active, go }: { active: ScreenId; go: (s: ScreenId) 
             key={n.id}
             type="button"
             onClick={() => go(n.id)}
-            className="press flex min-w-[64px] flex-col items-center gap-0.5 rounded-2xl px-3 py-1.5"
+            className="press flex min-h-12 min-w-[56px] flex-col items-center justify-center gap-0.5 rounded-2xl px-2 py-1.5"
             style={on ? { background: "rgba(246,232,204,0.14)" } : undefined}
           >
             <span

@@ -1,5 +1,5 @@
 /**
- * INVENTORY_ANALYTICS — read-only selectors for Business → Inventory (the
+ * INVENTORY_ANALYTICS — read-only selectors for the Inventory screen (the
  * monitoring dashboard) and Market → Ingredients (procurement). Every
  * figure is DERIVED from state that already exists — `business.inventory`,
  * the refrigerator, perishability, the active menu, the finance
@@ -325,4 +325,33 @@ export function ingredientConsumption(save: SaveData): IngredientConsumption {
         INGREDIENTS[a.id].name.localeCompare(INGREDIENTS[b.id].name),
     );
   return { orders, items };
+}
+
+export type DishSales = {
+  /** Paid Business orders the ledger still holds (the ledger keeps its most recent entries). */
+  orders: number;
+  /** Served dishes, best-selling first: orders and the revenue they brought, whole cents. */
+  dishes: Array<{ id: string; name: string; orders: number; revenue: number }>;
+};
+
+/**
+ * Best-selling dishes, from the same "business-revenue" ledger entries
+ * ingredientConsumption reads (each names the dish served and its price).
+ * No second record.
+ */
+export function dishSales(save: SaveData): DishSales {
+  const sold = new Map<string, { name: string; orders: number; revenue: number }>();
+  let orders = 0;
+  for (const entry of save.economyLedger) {
+    if (entry.category !== "business-revenue" || !entry.description) continue;
+    const dish = getBusinessDish(entry.description);
+    if (!dish) continue;
+    orders++;
+    const s = sold.get(dish.id) ?? { name: dish.name, orders: 0, revenue: 0 };
+    sold.set(dish.id, { ...s, orders: s.orders + 1, revenue: s.revenue + entry.amount });
+  }
+  const dishes = [...sold]
+    .map(([id, s]) => ({ id, ...s }))
+    .sort((a, b) => b.orders - a.orders || b.revenue - a.revenue || a.name.localeCompare(b.name));
+  return { orders, dishes };
 }

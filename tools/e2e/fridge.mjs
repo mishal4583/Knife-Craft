@@ -1,14 +1,14 @@
-// The physical refrigerator in Business → Inventory, in the built game, on a 375×642 phone:
+// The physical refrigerator on the Inventory screen, in the built game, on a 375×642 phone:
 //   1. it is drawn from the save: production model/capacity (Basic, 40 units), used space,
 //      the set temperature, and every stocked ingredient in its zone (dairy top shelf,
 //      vegetables middle, fruit/greens drawers, butter/aromatics in the door);
 //   2. no door handle covers an item or takes a tap: every item's centre hits the item;
-//   3. tapping an item (touch AND mouse) opens its details: quantity, freshness, value,
-//      paid price and the menu dishes that use it;
+//   3. tapping an item (touch AND mouse) opens the Inventory screen's details: quantity,
+//      freshness, days left, average cost, value and the menu dishes that use it;
 //   4. the Basic fits its frame; the wide steel Professional shows the "›" cue and pans
 //      sideways with a touch swipe and a mouse drag (the drag opens nothing), while a vertical
 //      swipe on it still scrolls the page;
-//   5. category tabs filter what the shelves show;
+//   5. the All Inventory filters show one group;
 //   6. Needs Attention lists the expiring stock; Restock opens Market → Ingredients on it,
 //      and buying there shows in the fridge straight away (one ledger entry, nothing bought
 //      by the fridge itself); Upgrade opens Business → Equipment;
@@ -80,9 +80,8 @@ async function swipe(x, y, dx, dy) {
   await page.touchscreen.touchEnd();
 }
 
+/** Inventory is its own bottom-bar section; the fridge sits on it. */
 async function openInventory() {
-  await clickButton(page, /Business$/);
-  await sleep(600);
   await clickButton(page, /Inventory$/);
   await sleep(700);
 }
@@ -157,7 +156,8 @@ const centreOf = (sel) =>
 const detail = () =>
   page.evaluate(
     () =>
-      document.querySelector('[data-testid="fridge-detail"]')?.innerText.replace(/\s+/g, " ") ?? "",
+      document.querySelector('[data-testid="inventory-detail"]')?.innerText.replace(/\s+/g, " ") ??
+      "",
   );
 const noHScroll = () =>
   page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
@@ -208,31 +208,46 @@ await sleep(400);
 const butter = await detail();
 check(
   "3a a touch tap on the butter (in the door, beside the handle) opens its details",
-  /Butter · 1 lb/.test(butter) &&
-    /\$4\.00 in stock/.test(butter) &&
-    /Used in|Not used/.test(butter),
+  /Butter/.test(butter) &&
+    /In stock 1 lb/.test(butter) &&
+    /Stock value \$4\.00/.test(butter) &&
+    /Used by/i.test(butter),
   butter,
 );
+// The sheet is modal: close it before tapping the next item.
+await page.evaluate(() =>
+  document
+    .querySelector('[data-testid="inventory-detail"] button[aria-label="Close details"]')
+    ?.click(),
+);
+await sleep(300);
 p = await centreOf('[data-fridge-item="cheddar"]');
 await page.mouse.click(p.x, p.y);
 await sleep(400);
 const cheddar = await detail();
 check(
-  "3b a mouse click on the cheddar shows quantity, freshness, value, paid price and dishes",
-  /Cheddar · 2 lb/.test(cheddar) &&
-    /4 days left/.test(cheddar) &&
-    /\$9\.00 in stock/.test(cheddar) &&
-    /Paid \$4\.50\/lb on average/.test(cheddar) &&
-    /Used in \d+ menu dish/.test(cheddar),
+  "3b a mouse click on the cheddar shows quantity, freshness, value, average cost and dishes",
+  /In stock 2 lb/.test(cheddar) &&
+    /Freshness Fresh/.test(cheddar) &&
+    /Days remaining 4 days left/.test(cheddar) &&
+    /Average cost \$4\.50 \/ lb/.test(cheddar) &&
+    /Stock value \$9\.00/.test(cheddar) &&
+    /Used by Peach & Cheddar Board/i.test(cheddar),
   cheddar,
 );
 const detailInView = await page.evaluate(() => {
-  const r = document.querySelector('[data-testid="fridge-detail"]').getBoundingClientRect();
-  return r.top >= 0 && r.top < innerHeight - 80;
+  const r = document.querySelector('[data-testid="inventory-detail"]').getBoundingClientRect();
+  const nav = document.querySelector("nav.absolute")?.getBoundingClientRect();
+  return r.top >= 0 && r.bottom <= innerHeight && (!nav || r.bottom <= nav.top + 1);
 });
-check("3c the details scroll into view under the fridge", detailInView);
+check("3c the details open on screen, above the bottom bar", detailInView);
 await shot(page, "fridge-2-detail");
-await clickButton(page, /✕/);
+await page.evaluate(() =>
+  document
+    .querySelector('[data-testid="inventory-detail"] button[aria-label="Close details"]')
+    ?.click(),
+);
+await sleep(300);
 
 // ---------- 4a. The Basic fits its frame ----------
 const basicFit = await page.evaluate(() => {
@@ -248,18 +263,23 @@ check(
   basicFit,
 );
 
-// ---------- 5. Tabs ----------
-await fridgeTop();
-await clickButton(page, /^Fruit$/);
+// ---------- 5. Filters (All Inventory) ----------
+await clickButton(page, /^Fruit \d+$/);
 await sleep(400);
-const fruitOnly = Object.values(await zones()).flat();
-check("5 the Fruit tab shows only fruit", fruitOnly.join() === "apple", fruitOnly);
-await clickButton(page, /^All$/);
+const fruitOnly = await page.evaluate(() =>
+  [...document.querySelectorAll("[data-inventory-item]")].map((a) =>
+    a.getAttribute("data-inventory-item"),
+  ),
+);
+check("5 the Fruit filter shows only fruit", fruitOnly.join() === "apple", fruitOnly);
+await clickButton(page, /^All \d+$/);
 await sleep(300);
 
 // ---------- 6. Attention, Restock, Upgrade ----------
 const att = await page.evaluate(() =>
-  [...document.querySelectorAll("[data-attention]")].map((b) => b.getAttribute("data-attention")),
+  [...document.querySelectorAll("[data-attention-item]")].map((b) =>
+    b.getAttribute("data-attention-item"),
+  ),
 );
 check(
   "6a Needs Attention lists the chicken (spoils tonight) before the basil (use soon)",
@@ -267,7 +287,10 @@ check(
   att,
 );
 const before = await readSave(page);
-await clickButton(page, /Restock in the Market →/);
+await page.evaluate(() => {
+  const row = document.querySelector('[data-attention-item="chicken"]');
+  [...row.querySelectorAll("button")].find((b) => /Restock/.test(b.textContent))?.click();
+});
 await sleep(900);
 const focused = await page.evaluate(
   () =>
@@ -304,7 +327,7 @@ check(
     chickenLabel.includes(`${bought.business.inventory.chicken.quantity} lb`),
   { added: added.map((e) => e.category), chickenLabel },
 );
-await clickButton(page, /^Upgrade →/);
+await clickButton(page, /^Upgrade Refrigerator →/);
 await sleep(800);
 check(
   "6d Upgrade opens Business → Equipment (the refrigerator catalog)",

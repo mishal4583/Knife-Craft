@@ -44,8 +44,9 @@ export type BusinessAlertScreen =
   | "business-inspections"
   | "business-suppliers"
   | "business-staff"
-  | "business-inventory"
-  /** The Market's Ingredients tab — where stock is bought (Business → Inventory only monitors it). */
+  /** Inventory (bottom bar) — the restaurant's stock control. */
+  | "inventory"
+  /** The Market's Ingredients tab — where stock is bought (Inventory only monitors it). */
   | "shop-ingredients"
   | "business-service"
   | "business-finance";
@@ -281,7 +282,7 @@ export function businessAlertsFor(
       severity: "warning",
       title: "Stock Spoils Tonight",
       detail: `${ingredientNames(spoilingTonight)} will be discarded at End Business Day. Use it in orders today.`,
-      action: { kind: "navigate", label: "View Inventory", screen: "business-inventory" },
+      action: { kind: "navigate", label: "View Inventory", screen: "inventory" },
       notify: true,
     });
   }
@@ -292,7 +293,7 @@ export function businessAlertsFor(
       severity: "info",
       title: "Nearing Expiry",
       detail: `${ingredientNames(nearExpiry)} — best used soon. Holding stock this close to its shelf life shows up as an Ingredient Expiry WARNING at inspection, and a WARNING two days running is fined ${formatUsd(repeatedWarningFineAmount())}.`,
-      action: { kind: "navigate", label: "View Inventory", screen: "business-inventory" },
+      action: { kind: "navigate", label: "View Inventory", screen: "inventory" },
       notify: false,
     });
   }

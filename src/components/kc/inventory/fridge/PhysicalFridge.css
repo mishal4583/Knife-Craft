@@ -1,5 +1,5 @@
 /*
- * The physical refrigerator in Business → Inventory (PhysicalFridge.tsx),
+ * The physical refrigerator on the Inventory screen (PhysicalFridge.tsx),
  * drawn after the developer's design references (refrigerator handoff,
  * design-assets/): a warm, painted kitchen appliance standing open.
  *   Basic        — a vintage enamel single-door fridge, the door open on
@@ -113,6 +113,12 @@
 .kcf-head__warn {
   color: var(--color-copper);
 }
+.kcf-head__free {
+  margin-top: 3px;
+  font-size: 12px;
+  font-weight: 800;
+  color: color-mix(in oklab, var(--color-walnut) 80%, transparent);
+}
 .kcf-cap {
   margin-top: 5px;
   height: 9px;
@@ -152,35 +158,6 @@
   font-size: 10px;
   font-weight: 800;
   opacity: 0.9;
-}
-
-/* ---------- category tabs: a grid of wooden buttons ---------- */
-.kcf-tabs {
-  margin-top: 10px;
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
-}
-.kcf-tab {
-  height: 48px;
-  min-width: 48px;
-  overflow: hidden;
-  border-radius: 12px;
-  border: 1px solid var(--kcf-tag-edge);
-  background: linear-gradient(180deg, #fcf5e3, #efe0bf);
-  padding: 0 4px;
-  font-family: var(--font-ui);
-  font-size: 12px;
-  font-weight: 800;
-  line-height: 1.1;
-  color: var(--color-walnut-dark);
-  box-shadow: 0 2px 0 rgba(150, 110, 60, 0.35);
-}
-.kcf-tab--active {
-  border-color: var(--kcf-green-dark);
-  background: linear-gradient(180deg, #6b9a4c, var(--kcf-green));
-  color: #fbf6e6;
-  box-shadow: 0 2px 0 var(--kcf-green-dark);
 }
 
 /* ---------- pan frame ---------- */
@@ -425,13 +402,6 @@
   font-family: var(--font-hand);
   font-size: 14px;
   color: color-mix(in oklab, var(--color-walnut) 50%, transparent);
-}
-.kcf-zone__count {
-  margin-left: 6px;
-  border-radius: 999px;
-  background: color-mix(in oklab, var(--color-walnut) 14%, transparent);
-  padding: 0 7px;
-  font-size: 11px;
 }
 
 .kcf-drawers {
@@ -722,191 +692,11 @@
   transform: scale(1.9);
 }
 
-/* ---------- detail, attention ---------- */
 .kcf-unknown {
   margin-top: 8px;
   font-family: var(--font-hand);
   font-size: 13px;
   color: var(--color-copper);
-}
-.kcf-detail,
-.kcf-attention {
-  margin-top: 10px;
-  border-radius: 16px;
-  border: 1px solid var(--kcf-tag-edge);
-  background: var(--kcf-tag);
-  padding: 10px;
-  box-shadow: inset 0 -2px 0 rgba(150, 110, 60, 0.15);
-}
-.kcf-detail__head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.kcf-detail__icon {
-  font-size: 30px;
-}
-.kcf-detail__name {
-  font-family: var(--font-ui);
-  font-size: 14px;
-  font-weight: 900;
-}
-.kcf-detail__fresh {
-  font-family: var(--font-ui);
-  font-size: 12px;
-  font-weight: 700;
-  color: color-mix(in oklab, var(--color-walnut) 75%, transparent);
-}
-.kcf-detail__fresh::first-letter {
-  text-transform: uppercase;
-}
-.kcf-detail__fresh--warn {
-  color: var(--kcf-red);
-}
-.kcf-detail__close {
-  display: grid;
-  width: 48px;
-  height: 48px;
-  flex-shrink: 0;
-  place-items: center;
-  border-radius: 999px;
-  font-size: 16px;
-  font-weight: 900;
-}
-.kcf-detail__line {
-  margin-top: 4px;
-  font-family: var(--font-hand);
-  font-size: 14px;
-  line-height: 1.2;
-  color: color-mix(in oklab, var(--color-walnut) 80%, transparent);
-}
-.kcf-btn {
-  margin-top: 8px;
-  display: flex;
-  width: 100%;
-  height: 48px;
-  align-items: center;
-  justify-content: center;
-  border-radius: 14px;
-  border: 2px solid var(--kcf-wood-dark);
-  background: linear-gradient(180deg, #a9703e, var(--kcf-wood-dark));
-  font-family: var(--font-ui);
-  font-size: 13px;
-  font-weight: 900;
-  color: #fbf2dc;
-  box-shadow: 0 2px 0 #4a2c14;
-}
-.kcf-attention__head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-.kcf-attention__title {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-family: var(--font-ui);
-  font-size: 15px;
-  font-weight: 900;
-  color: var(--kcf-red);
-}
-.kcf-attention__bang {
-  display: grid;
-  width: 22px;
-  height: 22px;
-  place-items: center;
-  border-radius: 999px;
-  background: var(--kcf-red);
-  color: #fff;
-  font-size: 14px;
-}
-.kcf-restock {
-  display: flex;
-  min-height: 48px;
-  align-items: center;
-  border-radius: 12px;
-  border: 2px solid #4a2c14;
-  background: linear-gradient(180deg, #8a5a32, #5e3a1c);
-  padding: 0 12px;
-  font-family: var(--font-ui);
-  font-size: 13px;
-  font-weight: 900;
-  color: #fbf2dc;
-  box-shadow: 0 2px 0 #3a2210;
-}
-.kcf-attention__pan {
-  margin: 8px -4px 0;
-}
-.kcf-attention__pan > .kcf-pan__track {
-  padding: 2px 4px 4px;
-}
-.kcf-att {
-  display: flex;
-  min-height: 48px;
-  width: 148px;
-  flex-shrink: 0;
-  align-items: center;
-  gap: 8px;
-  border-radius: 14px;
-  border: 1px solid var(--kcf-tag-edge);
-  background: #fffaf0;
-  padding: 8px 10px;
-  text-align: left;
-  box-shadow: 0 2px 3px rgba(60, 40, 20, 0.15);
-}
-.kcf-att__icon {
-  font-size: 32px;
-  line-height: 1;
-}
-.kcf-att__text {
-  display: flex;
-  min-width: 0;
-  flex: 1;
-  flex-direction: column;
-  font-family: var(--font-ui);
-  line-height: 1.15;
-}
-.kcf-att__text strong {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 13px;
-  font-weight: 900;
-  color: var(--color-walnut-dark);
-}
-.kcf-att__text b {
-  font-size: 12px;
-  font-weight: 900;
-  color: var(--color-walnut-dark);
-}
-.kcf-att__bar {
-  display: block;
-  height: 5px;
-  margin: 3px 0 2px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: color-mix(in oklab, var(--color-walnut) 14%, transparent);
-}
-.kcf-att__bar > span {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, #f0a35a, #d9702f);
-}
-.kcf-att__text em {
-  font-size: 11px;
-  font-style: normal;
-  font-weight: 800;
-  color: var(--color-copper);
-}
-.kcf-att--expired .kcf-att__text em,
-.kcf-att--spoils-tonight .kcf-att__text em {
-  color: var(--kcf-red);
-}
-.kcf-att--low .kcf-att__text em {
-  color: color-mix(in oklab, var(--color-walnut) 75%, transparent);
 }
 
 /* Narrow phones: smaller sign and tabs. */
@@ -924,9 +714,6 @@
   }
   .kcf-plaque__name {
     font-size: 17px;
-  }
-  .kcf-tab {
-    font-size: 11px;
   }
 }
 

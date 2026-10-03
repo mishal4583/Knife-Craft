@@ -1,6 +1,6 @@
 /**
- * FRIDGE_VIEW_QA — the physical refrigerator in Business → Inventory
- * (fridgeView.ts + kc/business/fridge/PhysicalFridge). Checks it against the
+ * FRIDGE_VIEW_QA — the physical refrigerator on the Inventory screen
+ * (fridgeView.ts + kc/inventory/fridge/PhysicalFridge). Checks it against the
  * real production state and functions:
  *
  *   A  the design handoff's 57 ingredient ids map explicitly to production;
@@ -152,7 +152,7 @@ const ALL_IDS = Object.keys(INGREDIENTS) as IngredientId[];
         },
       ),
     ).cooling;
-  const ui = read("src/components/kc/business/fridge/PhysicalFridge.tsx");
+  const ui = read("src/components/kc/inventory/fridge/PhysicalFridge.tsx");
   const adapter = read("src/game/business/fridgeView.ts");
   assert(
     at(100) === "Refrigerated" &&
@@ -199,7 +199,7 @@ const ALL_IDS = Object.keys(INGREDIENTS) as IngredientId[];
         const i = v.items.find((x) => x.id === o.id)!;
         return i.daysLeft === o.daysLeft && i.state === o.state && i.value === o.value;
       }),
-    "D1: one item per ingredient, with the same freshness as Business → Inventory's On hand",
+    "D1: one item per ingredient, with the same freshness as inventoryAnalytics.onHandItems",
   );
   const chicken = v.items.find((i) => i.id === "chicken")!;
   const cheddar = v.items.find((i) => i.id === "cheddar")!;
@@ -278,10 +278,10 @@ const ALL_IDS = Object.keys(INGREDIENTS) as IngredientId[];
 
 // ===== H: UI only navigates =====
 {
-  const ui = code(read("src/components/kc/business/fridge/PhysicalFridge.tsx"));
+  const ui = code(read("src/components/kc/inventory/fridge/PhysicalFridge.tsx"));
   const adapter = code(read("src/game/business/fridgeView.ts")).replace(/^import type .*$/gm, "");
-  const css = read("src/components/kc/business/fridge/PhysicalFridge.css");
-  const inv = code(read("src/components/kc/business/BusinessInventory.tsx"));
+  const css = read("src/components/kc/inventory/fridge/PhysicalFridge.css");
+  const inv = code(read("src/components/kc/inventory/InventoryScreen.tsx"));
   const banned =
     /purchaseIngredient|purchaseQuote|todaysUnitCost|purchaseRefrigerator|performRefrigeratorMaintenance|debitWallet|appendLedgerEntry|credits|localStorage|sessionStorage|setItem|persist\(|Math\.random|SaveManager/;
   assert(
@@ -290,9 +290,12 @@ const ALL_IDS = Object.keys(INGREDIENTS) as IngredientId[];
   );
   assert(
     /<PhysicalFridge/.test(inv) &&
-      /onRestock=\{\(id\) => openMarketIngredients\(go, id\)\}/.test(inv) &&
-      /onEquipment=\{\(\) => go\("business-refrigerator"\)\}/.test(inv),
-    "H2: Restock opens Market → Ingredients; Upgrade/Repair opens Business → Equipment",
+      /onEquipment=\{toEquipment\}/.test(inv) &&
+      /const toEquipment = \(\) => go\(BUSINESS_TAB_SCREEN\.equipment\)/.test(inv) &&
+      /openMarketIngredients\(go, id\)/.test(inv) &&
+      /onEquipment/.test(ui) &&
+      !/openMarketIngredients|go\(/.test(ui),
+    "H2: the fridge's Upgrade/Repair opens Business → Equipment; the Inventory screen's Restock opens Market → Ingredients",
   );
   const handle = css.match(/\.kcf-door__handle\s*\{[^}]*\}/)?.[0] ?? "";
   const door = css.match(/\.kcf-door\s*\{[^}]*\}/)?.[0] ?? "";
@@ -313,14 +316,24 @@ const ALL_IDS = Object.keys(INGREDIENTS) as IngredientId[];
         0,
     );
   assert(
-    px(".kcf-tab", "height") >= 48 &&
-      px(".kcf-item", "min-height") >= 48 &&
+    px(".kcf-item", "min-height") >= 48 &&
       px(".kcf-item--compact", "width") >= 48 &&
-      px(".kcf-btn", "height") >= 48 &&
-      px(".kcf-head__upgrade", "min-height") >= 48 &&
-      px(".kcf-att", "min-height") >= 48 &&
-      px(".kcf-detail__close", "height") >= 48,
+      px(".kcf-head__upgrade", "min-height") >= 48,
     "H5: every fridge control is a ≥ 48 px touch target",
+  );
+}
+
+// ===== I: read-only representation (CLAUDE.md hard rule) =====
+{
+  const adapter = code(read("src/game/business/fridgeView.ts"));
+  const ui = code(read("src/components/kc/inventory/fridge/PhysicalFridge.tsx"));
+  assert(
+    !/useState<[^>]*(Stack|Inventory|Entry)|setInventory|setStock|mirror/i.test(ui) &&
+      !/business\.inventory\s*=[^=]|\.quantity\s*[-+]?=[^=]|\.unitCost\s*=[^=]|\.purchaseDay\s*=[^=]/.test(
+        adapter + ui,
+      ) &&
+      !/unitPrice|basePrice|priceFor|perishDays|slots/.test(adapter + ui),
+    "I1: the fridge keeps no stock, price, money or freshness of its own — everything comes from the save",
   );
 }
 

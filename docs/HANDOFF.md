@@ -158,6 +158,33 @@ conversation.
    - `tools/e2e/coach.mjs` clears long straight white runs before looking
      for the ghost fingertip, because the ghost knife's edge lies through
      it.
+28. Separate Inventory section + Business restructure (developer brief). A UI and
+   navigation change only: no economy value, save field, migration or purchase
+   path was added or changed.
+   - Bottom bar: Kitchen · Market · Inventory · Business · Progress
+     (5 sections; 📦 Inventory between Market and Business).
+   - Inventory (`kc/inventory/InventoryScreen.tsx`, screen `inventory`) is the
+     stock-control screen: fridge pill, summary cards (Total Stock, Running
+     Low, Expiring Soon, Ready to Cook), grouped Needs Attention, the physical
+     fridge, Ready to Cook + Most needed, All Inventory (filters + sort),
+     stock analytics, and a detail sheet per item. Restock → Market →
+     Ingredients; Upgrade Refrigerator → Business → Equipment; View Business
+     Performance → Business → Overview.
+   - One view model, `business/inventoryView.ts`, and one status rule,
+     `business/inventoryStatus.ts` (reused by `fridgeView.ts`), both over the
+     existing selectors; no second inventory state.
+   - Business lost its Inventory tab (7 tabs now) and the
+     `business-inventory` route; `BusinessInventory.tsx` was removed.
+     Purchasing and Most used moved to Business → Operations (now
+     "Ingredient purchasing" / "Ingredients used", plus Best-selling dishes);
+     Overview gained "Today at a glance".
+   - The fridge files moved to `kc/inventory/fridge/`; the fridge became
+     display-only (its own tabs, Needs Attention and detail panel moved to
+     the screen).
+   - QA: new `inventory-screen-qa`, `tools/e2e/inventory.mjs`; updated
+     `business-ux-qa` S1/S4/S8, `inventory-market-qa` 1, `fridge-view-qa`
+     H2/H5 (+ I1, which an earlier commit had claimed but never added),
+     `tools/e2e/fridge.mjs`, `ingredients.mjs`, `fridgeshots.mjs`.
 27. Physical refrigerator (developer's refrigerator UI handoff). A UI
    integration, NOT V3-17: no save field, price, ledger category or
    action was added.

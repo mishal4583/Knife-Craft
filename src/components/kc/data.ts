@@ -55,6 +55,10 @@ export type ScreenId =
   // "Restock", see marketFocus.ts openMarketSupplies).
   | "shop-supplies"
   | "rack"
+  // Inventory — the restaurant's stock control, its own bottom-bar section
+  // between Market and Business (InventoryScreen.tsx). Read-only over
+  // save.business.inventory; buying stays in the Market.
+  | "inventory"
   | "settings"
   // Economy V3 Phase 1 — the Business Simulation layer's own entry point.
   // A real bottom-nav destination (mirrors Kitchen/Shop/Rack), not a
@@ -63,11 +67,6 @@ export type ScreenId =
   // equipment, inspections, P&L) exactly the way Shop.tsx grew section
   // by section across Economy V2, rather than becoming a second app.
   | "business"
-  // Economy V3 Phase 2 — the Inventory sub-screen under Business
-  // (see BusinessDashboard.tsx's own "Business ├── Dashboard ├──
-  // Inventory" doc). Routable independently, same as "board" is its
-  // own screen under Kitchen.
-  | "business-inventory"
   // Business Supplies — Business → Supplies (smallwares, tableware,
   // takeaway packaging), monitoring only; bought in the Market.
   | "business-supplies"
