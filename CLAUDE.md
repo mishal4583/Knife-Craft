@@ -390,7 +390,13 @@ with the real functions.
   left, Aromatics right); **Professional** three compartments (Dairy +
   Meat/Fish/Bread · Vegetables · Greens + Fruit drawer). Food sits in
   wooden crates (1–3 pieces shown by quantity) with cream tags, zone names
-  on wooden signs, glass shelves and crisper drawers. Its header shows the
+  on wooden signs, glass shelves and crisper drawers. Every shelf and drawer
+  holds at least two crates per row (developer: arrange two to a row rather
+  than make the fridge taller): steel compartments are 214 px, Basic crates
+  shrink to 64 px on narrow phones (set on `.kcf-unit` — a container query
+  can't style its own container), and drawers sit side by side only while
+  each still fits two crates, otherwise they stack full width
+  (`fridge.mjs` check 9). Its header shows the
   model, used / capacity, units available and the cooling line, a status
   from the real condition ("Refrigerated" / "Needs service" / "Broken"),
   never a temperature (the game does not simulate degrees, so no °F/°C may

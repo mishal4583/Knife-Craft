@@ -615,7 +615,7 @@ export function InventoryScreen({
               </div>
 
               {/* The physical fridge */}
-              <div ref={fridgeRef} className="scroll-mt-3">
+              <div ref={fridgeRef} className="-mx-2 scroll-mt-3">
                 <PhysicalFridge
                   view={view.fridge}
                   selectedId={selectedId}

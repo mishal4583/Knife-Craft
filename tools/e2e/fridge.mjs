@@ -488,6 +488,71 @@ check(
   Object.values(perSize).every((s) => !s.hScroll && s.overlaps === 0 && s.blocked === 0),
   perSize,
 );
+// ---------- 9. Two crates per row ----------
+// Developer: arrange the food two to a row instead of making the fridge taller.
+const FULL = Object.fromEntries(
+  [
+    "apple",
+    "avocado",
+    "lemon",
+    "orange",
+    "pear",
+    "strawberry",
+    "cheddar",
+    "mozzarella",
+    "tofu",
+    "tomato",
+    "carrot",
+    "cucumber",
+    "onion",
+    "potato",
+    "chicken",
+    "salmon",
+    "steak",
+    "bread",
+    "basil",
+    "lettuce",
+    "spinach",
+  ].map((id) => entry(id, 5)),
+);
+const perRow = {};
+for (const [w, h] of [
+  [320, 568],
+  [375, 642],
+]) {
+  for (const tier of ["basic", "commercial", "professional"]) {
+    await page.setViewport({ width: w, height: h, deviceScaleFactor: 1, hasTouch: true });
+    await boot(
+      page,
+      seedSave({
+        version: 2,
+        credits: 100_000,
+        business: {
+          calendar: { businessDay: DAY },
+          inventory: FULL,
+          refrigerator: { refrigeratorId: `${tier}-refrigerator` },
+        },
+      }),
+    );
+    await openInventory();
+    perRow[`${tier}@${w}`] = await page.evaluate(() => {
+      const out = {};
+      for (const z of document.querySelectorAll(".kcf-cabinet [data-fridge-zone]")) {
+        const tops = [...z.querySelectorAll("[data-fridge-item]")].map((b) =>
+          Math.round(b.getBoundingClientRect().top),
+        );
+        const rows = tops.reduce((m, t) => ((m[t] = (m[t] ?? 0) + 1), m), {});
+        out[z.getAttribute("data-fridge-zone")] = Math.max(0, ...Object.values(rows));
+      }
+      return out;
+    });
+  }
+}
+check(
+  "9 every shelf and drawer holds two crates per row (Basic, Commercial, Professional at 320 and 375 px)",
+  Object.values(perRow).every((zones) => Object.values(zones).every((n) => n >= 2)),
+  perRow,
+);
 check(
   "8b console has no errors",
   logs.filter((l) => /^error|pageerror/i.test(l)).length === 0,
