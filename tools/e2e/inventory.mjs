@@ -349,6 +349,26 @@ check(
   },
 );
 await shot(page, "inventory-6-supplies");
+// Restock on the packaging alert jumps to that exact line in the Market (like ingredients).
+await page.evaluate(() =>
+  [...document.querySelectorAll('[data-supply-attention="packaging-coverage"] button')]
+    .find((b) => /Restock/.test(b.textContent))
+    ?.click(),
+);
+await sleep(900);
+const supplyFocus = await page.evaluate(() => {
+  const a = document.querySelector("article.product-card.ring-2[data-supply]");
+  const r = a?.getBoundingClientRect();
+  return a
+    ? { id: a.getAttribute("data-supply"), visible: r.top >= 0 && r.bottom <= innerHeight }
+    : null;
+});
+check(
+  "6e Restock on a supply opens the Market on that exact line, in view",
+  supplyFocus?.id === "microwave-containers" && supplyFocus.visible,
+  supplyFocus,
+);
+await openInventory();
 await page.evaluate(() => document.querySelector('[data-inventory-kind="ingredients"]').click());
 await sleep(300);
 

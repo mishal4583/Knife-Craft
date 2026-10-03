@@ -184,8 +184,8 @@ const ALL_IDS = Object.keys(INGREDIENTS) as IngredientId[];
       code2,
     ) &&
       /openMarketSupplies\(go, section\)/.test(code2) &&
-      /openMarketSupplies\(go, item\.section\)/.test(code2),
-    "U4: Inventory → Supplies buys nothing; Restock opens the Market's supply section",
+      /openMarketSupplies\(go, item\.section, item\.id\)/.test(code2),
+    "U4: Inventory → Supplies buys nothing; Restock opens the Market on that exact supply line",
   );
   assert(
     /supplyUnits\(supplies, item\.id\) > 0 && isLowSupply\(supplies, item, customers\)/.test(

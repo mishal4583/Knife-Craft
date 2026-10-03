@@ -16,6 +16,8 @@ import {
   type SupplySection,
 } from "@/game/business/businessSupplies";
 import {
+  ORDER_BAG_PRIORITY,
+  ORDER_CONTAINER_PRIORITY,
   isLowSupply,
   packagingOrdersCovered,
   supplySectionSummary,
@@ -151,7 +153,14 @@ export function InventorySupplies({ go, save }: { go: (s: ScreenId) => void; sav
                 size="sm"
                 variant="copper"
                 className="h-12 shrink-0 px-3 text-[12px]"
-                onClick={() => openMarketSupplies(go, "packaging")}
+                onClick={() =>
+                  // Jump to whichever runs out first: the top container line or the top bag line.
+                  openMarketSupplies(
+                    go,
+                    "packaging",
+                    containers <= bags ? ORDER_CONTAINER_PRIORITY[0] : ORDER_BAG_PRIORITY[0],
+                  )
+                }
               >
                 Restock →
               </KButton>
@@ -178,7 +187,7 @@ export function InventorySupplies({ go, save }: { go: (s: ScreenId) => void; sav
                 size="sm"
                 variant="copper"
                 className="h-12 shrink-0 px-3 text-[12px]"
-                onClick={() => openMarketSupplies(go, item.section)}
+                onClick={() => openMarketSupplies(go, item.section, item.id)}
               >
                 Restock →
               </KButton>

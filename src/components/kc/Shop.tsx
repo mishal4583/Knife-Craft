@@ -31,7 +31,12 @@ import { MarketIngredients } from "./MarketIngredients";
 import { MarketSupplies } from "./MarketSupplies";
 import type { PurchaseSupplyResult } from "@/game/business/BusinessSuppliesManager";
 import { SUPPLY_SECTIONS, type SupplySection } from "@/game/business/businessSupplies";
-import { peekMarketFocus, clearMarketFocus } from "./marketFocus";
+import {
+  peekMarketFocus,
+  clearMarketFocus,
+  peekSupplyFocus,
+  clearSupplyFocus,
+} from "./marketFocus";
 import { ledgerTotals, LEDGER_CATEGORY_LABEL } from "@/game/economy/EconomyLedger";
 import { notEnoughMoneyText } from "@/game/economy/wallet";
 import {
@@ -104,7 +109,7 @@ function isSupplySection(c: ShopCategory): c is SupplySection {
 const categories: Array<{ id: ShopCategory; label: string; emoji: string }> = [
   { id: "knives", label: "Knives", emoji: "🔪" },
   { id: "boards", label: "Cutting Boards", emoji: "🪵" },
-  { id: "suppliers", label: "Suppliers", emoji: "🚚" },
+  { id: "suppliers", label: "Campaign Supplier", emoji: "🚚" },
   { id: "ingredients", label: "Ingredients", emoji: "🧺" },
   { id: "blacksmith", label: "Blacksmith", emoji: "⚒️" },
   { id: "culinary", label: SUPPLY_SECTIONS.culinary.short, emoji: SUPPLY_SECTIONS.culinary.emoji },
@@ -126,8 +131,9 @@ const categoryCopy: Record<ShopCategory, { title: string; description: string }>
     description: "A reliable surface makes every chop cleaner and every service smoother.",
   },
   suppliers: {
-    title: "Suppliers",
-    description: "Choose who stocks your kitchen — cheaper in bulk, or carefully sourced.",
+    title: "Campaign Supplier",
+    description:
+      "Choose who stocks your kitchen for campaign dishes — cheaper in bulk, or carefully sourced. Restaurant supplier contracts are in Business → Suppliers.",
   },
   ingredients: {
     title: "Fresh Ingredients",
@@ -212,7 +218,11 @@ export function Shop({
       : categoryCopy[initialCategory].description,
   );
   const [focusId] = useState(peekMarketFocus);
-  useEffect(clearMarketFocus, []);
+  const [supplyFocusId] = useState(peekSupplyFocus);
+  useEffect(() => {
+    clearMarketFocus();
+    clearSupplyFocus();
+  }, []);
 
   function selectCategory(next: ShopCategory) {
     setCategory(next);
@@ -425,6 +435,7 @@ export function Shop({
               key={category}
               save={save}
               section={category}
+              focusId={supplyFocusId}
               purchaseSupply={purchaseSupply}
               setNotice={setNotice}
             />

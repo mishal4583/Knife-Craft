@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Badge, KButton, Panel } from "./common/primitives";
 import { cn } from "@/lib/utils";
 import type { SaveData } from "@/game/SaveManager";
@@ -35,16 +35,26 @@ function balanceText(cents: number): string {
 export function MarketSupplies({
   save,
   section,
+  focusId = null,
   purchaseSupply,
   setNotice,
 }: {
   save: SaveData;
   section: SupplySection;
+  /** Preselected by an Inventory → Market link: its group opens and the card scrolls into view. */
+  focusId?: SupplyId | null;
   purchaseSupply: (supplyId: string, packs: number) => PurchaseSupplyResult;
   setNotice: (text: string) => void;
 }) {
   const meta = SUPPLY_SECTIONS[section];
-  const [group, setGroup] = useState<string>("All");
+  const focusItem = focusId
+    ? SUPPLY_CATALOG.find((i) => i.id === focusId && i.section === section)
+    : undefined;
+  const [group, setGroup] = useState<string>(focusItem?.group ?? "All");
+  const focusRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    focusRef.current?.scrollIntoView({ block: "center" });
+  }, []);
   const [packs, setPacks] = useState<Partial<Record<SupplyId, number>>>({});
   const [messages, setMessages] = useState<Partial<Record<SupplyId, string>>>({});
   const supplies = save.business.supplies;
@@ -129,8 +139,14 @@ export function MarketSupplies({
           return (
             <article
               key={item.id}
+              ref={item.id === focusItem?.id ? focusRef : undefined}
               data-supply={item.id}
-              className="product-card flex flex-col rounded-[20px] border border-walnut/15 p-3 card-warm"
+              className={cn(
+                "product-card flex flex-col rounded-[20px] border p-3 card-warm",
+                item.id === focusItem?.id
+                  ? "border-copper ring-2 ring-copper/60"
+                  : "border-walnut/15",
+              )}
             >
               <div className="flex items-start justify-between">
                 <span className="text-[30px] leading-none" aria-hidden>

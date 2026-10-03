@@ -1,5 +1,5 @@
 import type { IngredientId } from "@/game/definitions";
-import type { SupplySection } from "@/game/business/businessSupplies";
+import type { SupplyId, SupplySection } from "@/game/business/businessSupplies";
 import type { ScreenId } from "./data";
 
 /**
@@ -27,13 +27,30 @@ export function clearMarketFocus() {
 
 /**
  * Inventory → Supplies → Market deep link: which supply section the
- * Market opens on (navigation state only, never saved).
+ * Market opens on and, optionally, the supply line to preselect (its group
+ * opens and the card scrolls into view, like ingredients). Navigation
+ * state only, never saved.
  */
 let pendingSupplySection: SupplySection = "culinary";
+let pendingSupplyId: SupplyId | null = null;
 
-export function openMarketSupplies(go: (s: ScreenId) => void, section: SupplySection) {
+export function openMarketSupplies(
+  go: (s: ScreenId) => void,
+  section: SupplySection,
+  supplyId?: SupplyId,
+) {
   pendingSupplySection = section;
+  pendingSupplyId = supplyId ?? null;
   go("shop-supplies");
+}
+
+/** The supply line to preselect (read during render, like peekMarketFocus). */
+export function peekSupplyFocus(): SupplyId | null {
+  return pendingSupplyId;
+}
+
+export function clearSupplyFocus() {
+  pendingSupplyId = null;
 }
 
 export function peekSupplySection(): SupplySection {

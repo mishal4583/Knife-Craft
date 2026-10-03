@@ -1,5 +1,5 @@
 // All staff lives in Business, on a 375×642 phone:
-//   1. the Market has no Staff tab (Knives · Cutting Boards · Suppliers · Ingredients ·
+//   1. the Market has no Staff tab (Knives · Cutting Boards · Campaign Supplier · Ingredients ·
 //      Blacksmith · Smallwares · Tableware · Takeaway);
 //   2. Business → Staff shows the waged team (6 roles) and the Kitchen helpers (3 one-time
 //      hires: Prep Assistant, Quality Chef, Kitchen Assistant) with their real prices and
