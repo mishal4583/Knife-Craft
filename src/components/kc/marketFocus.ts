@@ -26,7 +26,7 @@ export function clearMarketFocus() {
 }
 
 /**
- * Business → Supplies → Market deep link: which supply section the
+ * Inventory → Supplies → Market deep link: which supply section the
  * Market opens on (navigation state only, never saved).
  */
 let pendingSupplySection: SupplySection = "culinary";

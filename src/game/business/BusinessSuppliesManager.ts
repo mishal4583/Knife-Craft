@@ -243,3 +243,18 @@ export function supplySectionSummary(
     usedCost: totals.usedCost,
   };
 }
+
+/**
+ * How many takeaway orders the packaging on hand still covers: each served
+ * order uses one container and one bag (takePackagingForOrder), so it is the
+ * smaller of the two totals across their priority lists.
+ */
+export function packagingOrdersCovered(supplies: BusinessSuppliesState): {
+  containers: number;
+  bags: number;
+  orders: number;
+} {
+  const containers = ORDER_CONTAINER_PRIORITY.reduce((n, id) => n + supplyUnits(supplies, id), 0);
+  const bags = ORDER_BAG_PRIORITY.reduce((n, id) => n + supplyUnits(supplies, id), 0);
+  return { containers, bags, orders: Math.min(containers, bags) };
+}

@@ -104,7 +104,9 @@ const ALL_IDS = Object.keys(INGREDIENTS) as IngredientId[];
   const data = code(read("src/components/kc/data.ts"));
   assert(
     /\| "inventory"/.test(data) &&
-      /screen === "inventory" \? <InventoryScreen go=\{go\} save=\{save\} \/>/.test(router) &&
+      /screen === "inventory" \|\| screen === "inventory-supplies" \? \(\s*<InventoryScreen/.test(
+        router,
+      ) &&
       businessTabForScreen("inventory") === null,
     "N3: Inventory is its own screen, opened straight from the bottom bar",
   );
@@ -123,6 +125,75 @@ const ALL_IDS = Object.keys(INGREDIENTS) as IngredientId[];
     stale.length === 0 &&
       !fs.existsSync(path.resolve(ROOT, "src/components/kc/business/BusinessInventory.tsx")),
     'N5: no "business-inventory" route or old BusinessInventory screen is left',
+  );
+  const screen = read("src/components/kc/inventory/InventoryScreen.tsx");
+  assert(
+    /\| "inventory-supplies"/.test(data) &&
+      !/business-supplies/.test(data) &&
+      /initialKind=\{screen === "inventory-supplies" \? "supplies" : "ingredients"\}/.test(
+        router,
+      ) &&
+      /kind === "supplies" \? \(\s*<InventorySupplies/.test(screen) &&
+      !dash.includes(`label: "Supplies"`) &&
+      !("supplies" in BUSINESS_TAB_SCREEN) &&
+      !fs.existsSync(path.resolve(ROOT, "src/components/kc/business/BusinessSupplies.tsx")),
+    "N6: Inventory holds every kind of stock — Ingredients | Supplies; Business has no Supplies tab",
+  );
+}
+
+// ===== U: supplies (smallwares, tableware & cutlery, takeaway parcels) =====
+{
+  const { SUPPLY_CATALOG } = await import("../src/game/business/businessSupplies.ts");
+  const M = await import("../src/game/business/BusinessSuppliesManager.ts");
+  const { businessCustomersToday } = await import("../src/game/business/BusinessServiceManager.ts");
+  const s = saveWith();
+  const supplies = {
+    ...s.business.supplies,
+    stock: {
+      "dinner-forks": { units: 24, costBasis: 1_200 },
+      "microwave-containers": { units: 30, costBasis: 363 },
+      "kraft-boxes": { units: 5, costBasis: 100 },
+      "paper-bags": { units: 12, costBasis: 144 },
+    },
+  };
+  const cover = M.packagingOrdersCovered(supplies);
+  assert(
+    cover.containers === 35 && cover.bags === 12 && cover.orders === 12,
+    "U1: takeaway orders covered = the smaller of containers and bags on hand (35 vs 12 → 12)",
+  );
+  const customers = businessCustomersToday({ ...s, business: { ...s.business, supplies } }).target;
+  const low = SUPPLY_CATALOG.filter((item) => M.isLowSupply(supplies, item, customers));
+  assert(
+    low.every((i) => i.section === "packaging") &&
+      !low.some((i) => i.id === "dinner-forks") &&
+      low.some((i) => i.id === "foil-containers"),
+    "U2: only packaging can be low (cutlery and other equipment is owned, never used up)",
+  );
+  const ui = read("src/components/kc/inventory/InventorySupplies.tsx");
+  assert(
+    /SUPPLY_CATALOG\.filter\(\(item\) => item\.section === section\)/.test(ui) &&
+      SUPPLY_CATALOG.length === 50 &&
+      ["culinary", "service", "packaging"].every((sec) =>
+        SUPPLY_CATALOG.some((i) => i.section === sec),
+      ),
+    "U3: all 50 supply lines (smallwares, tableware & cutlery, takeaway) can be shown",
+  );
+  const code2 = code(ui).replace(/^import type .*$/gm, "");
+  assert(
+    !/purchaseSupply|supplyQuote|debitWallet|appendLedgerEntry|persist\(|localStorage|setItem/.test(
+      code2,
+    ) &&
+      /openMarketSupplies\(go, section\)/.test(code2) &&
+      /openMarketSupplies\(go, item\.section\)/.test(code2),
+    "U4: Inventory → Supplies buys nothing; Restock opens the Market's supply section",
+  );
+  assert(
+    /supplyUnits\(supplies, item\.id\) > 0 && isLowSupply\(supplies, item, customers\)/.test(
+      code2,
+    ) &&
+      /ordersCovered < customers/.test(code2) &&
+      /lowAll\.slice\(0, 3\)/.test(code2),
+    "U5: supplies Needs Attention stays short — one coverage alert, then only stocked lines running low (3 + View all)",
   );
 }
 

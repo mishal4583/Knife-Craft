@@ -1,7 +1,7 @@
 /**
  * BUSINESS_SUPPLIES_QA — the Business Supplies extension (master spec §25):
  * culinary smallwares, tableware and takeaway packaging, bought in the
- * Market and monitored in Business → Supplies. Run against the real
+ * Market and monitored in Inventory → Supplies. Run against the real
  * production functions:
  *
  *   A. Catalog: 50 lines (18 / 17 / 15), the requested groups, no prep
@@ -498,20 +498,26 @@ function appPurchase(save: SaveData, id: string, packs: number) {
       /<MarketSupplies/.test(shop),
     "H2. the Market has the three supply sections next to its own Knives and Cutting Boards",
   );
-  const biz = read("src/components/kc/business/BusinessSupplies.tsx").replace(/\/\/.*$/gm, "");
+  // Supplies stock moved from Business → Supplies to Inventory → Supplies; its spending
+  // history (spent, saved vs retail, used by orders) to Business → Operations.
+  const biz = read("src/components/kc/inventory/InventorySupplies.tsx").replace(/\/\/.*$/gm, "");
+  const ops = read("src/components/kc/business/BusinessAnalytics.tsx").replace(/\/\/.*$/gm, "");
   assert(
     !/purchaseSupply|supplyQuote|More packs|Fewer packs/.test(biz) &&
       /openMarketSupplies/.test(biz) &&
-      /supplySectionSummary/.test(biz),
-    "H3. Business → Supplies shows saved stock and analytics, with no purchase controls (restock links to the Market)",
+      /supplySectionSummary/.test(biz) &&
+      !/purchaseSupply|supplyQuote/.test(ops) &&
+      /supplySectionSummary/.test(ops),
+    "H3. Inventory → Supplies shows saved stock, Business → Operations the spending — neither has purchase controls (restock links to the Market)",
   );
   const tabs = read("src/components/kc/business/businessTabs.ts");
   const data = read("src/components/kc/data.ts");
   assert(
-    /supplies: "business-supplies"/.test(tabs) &&
-      /\| "business-supplies"/.test(data) &&
+    !/supplies/.test(tabs) &&
+      !/business-supplies/.test(data) &&
+      /\| "inventory-supplies"/.test(data) &&
       /\| "shop-supplies"/.test(data),
-    "H4. routes: Business → Supplies tab and the Market's supply deep link",
+    "H4. routes: Inventory → Supplies (no Business Supplies tab) and the Market's supply deep link",
   );
   const app = read("src/App.tsx");
   const wrapper = app.slice(

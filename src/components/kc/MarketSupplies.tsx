@@ -29,7 +29,7 @@ function balanceText(cents: number): string {
  * MARKET · SUPPLIES — one of the three supply sections (smallwares,
  * tableware, takeaway packaging). Every price and verdict comes from
  * `supplyQuote`, the same numbers `purchaseSupply` uses, so the card never
- * promises what the tap won't do. Business → Supplies shows the same saved
+ * promises what the tap won't do. Inventory → Supplies shows the same saved
  * stock and spending.
  */
 export function MarketSupplies({
@@ -80,7 +80,7 @@ export function MarketSupplies({
     }
     const bought = `Bought ${result.units} ${unitLabel(item, result.units)} · ${formatUsd(result.totalCost)}`;
     setMessages((m) => ({ ...m, [id]: bought }));
-    setNotice(`${item.name}: ${bought}. It's in Business → Supplies.`);
+    setNotice(`${item.name}: ${bought}. It's in Inventory → Supplies.`);
   }
 
   return (

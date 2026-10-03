@@ -4,7 +4,8 @@
 //   2. buying dinner plates moves the wallet by exactly the card's total, adds exactly ONE
 //      "supply-equipment-purchase" ledger entry and 12 plates to save-backed Business stock;
 //      takeaway containers use "supply-packaging-purchase";
-//   3. Business → Supplies shows that saved stock and the spend straight away, with no purchase
+//   3. Inventory → Supplies shows that saved stock (and Business → Operations the spend) straight
+//      away, with no purchase
 //      controls; its "Restock" opens the Market on the same section;
 //   4. after a reload the stock is still there;
 //   5. not enough money: the card says so, and a tap changes nothing (no ledger entry);
@@ -135,18 +136,21 @@ check(
 );
 await shot(page, "supplies-1-market");
 
-// ---------- 3. Business → Supplies ----------
-await clickButton(page, /Business$/);
-await sleep(600);
-await clickButton(page, /Supplies$/);
-await sleep(600);
+// ---------- 3. Inventory → Supplies (stock) and Business → Operations (spend) ----------
+async function openInventorySupplies() {
+  await clickButton(page, /Inventory$/);
+  await sleep(700);
+  await page.evaluate(() => document.querySelector('[data-inventory-kind="supplies"]')?.click());
+  await sleep(500);
+}
+await openInventorySupplies();
 const bizButtons = await page.evaluate(() =>
-  [...document.querySelectorAll('[data-testid="business-supplies"] button')].map((b) =>
+  [...document.querySelectorAll('[data-testid="inventory-supplies"] button')].map((b) =>
     b.textContent.trim(),
   ),
 );
 check(
-  "3a Business → Supplies has no purchase controls",
+  "3a Inventory → Supplies has no purchase controls",
   !bizButtons.some((t) => /^Buy|^[−+]$/.test(t)),
   bizButtons,
 );
@@ -157,6 +161,11 @@ const row = await page.evaluate(
     document.querySelector('[data-supply-row="dinner-plates"]')?.innerText.replace(/\s+/g, " ") ??
     "",
 );
+await shot(page, "supplies-2-inventory");
+await clickButton(page, /Business$/);
+await sleep(600);
+await clickButton(page, /Operations\d*$/);
+await sleep(600);
 const analytics = await page.evaluate(
   () =>
     document
@@ -164,14 +173,17 @@ const analytics = await page.evaluate(
       ?.textContent.replace(/\s+/g, " ") ?? "",
 );
 check(
-  "3b the saved plates and the spend show in Business straight away",
+  "3b the saved plates show in Inventory → Supplies, the spend in Business → Operations, straight away",
   /\b12\b/.test(row) &&
     /owned/i.test(row) &&
     analytics.includes(`$${(platePrice / 100).toFixed(2)}`) &&
     /1 Market order/.test(analytics),
   { row, analytics },
 );
-await shot(page, "supplies-2-business");
+await shot(page, "supplies-3-operations");
+await openInventorySupplies();
+await clickButton(page, /TablewareFront of house$/);
+await sleep(400);
 await clickButton(page, /Restock Tableware in the Market/);
 await sleep(700);
 check(
@@ -185,10 +197,7 @@ await page.waitForFunction(() => document.querySelectorAll("button").length > 3,
   timeout: 20000,
 });
 const reloaded = await readSave(page);
-await clickButton(page, /Business$/);
-await sleep(600);
-await clickButton(page, /Supplies$/);
-await sleep(500);
+await openInventorySupplies();
 await clickButton(page, /TakeawayPackaging$/);
 await sleep(400);
 const boxRow = await page.evaluate(

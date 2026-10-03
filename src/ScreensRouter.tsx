@@ -163,7 +163,14 @@ export function ScreensRouter({
       ) : null}
       {/* "rack" is the internal screen id; the player-facing screen is Restaurant Progress. */}
       {screen === "rack" ? <RestaurantProgress go={go} save={save} /> : null}
-      {screen === "inventory" ? <InventoryScreen go={go} save={save} /> : null}
+      {screen === "inventory" || screen === "inventory-supplies" ? (
+        <InventoryScreen
+          key={screen}
+          go={go}
+          save={save}
+          initialKind={screen === "inventory-supplies" ? "supplies" : "ingredients"}
+        />
+      ) : null}
       {screen === "kitchen-upgrades" ? (
         <KitchenUpgrades go={go} save={save} buildKitchenUpgrade={buildKitchenUpgrade} />
       ) : null}

@@ -8,6 +8,8 @@ import { purchaseUnitFor } from "@/game/business/businessPricing";
 import { formatUsd } from "@/game/business/businessCurrency";
 import { formatQuantity } from "@/game/business/businessInventory";
 import type { DailyPnL } from "@/game/business/BusinessFinanceManager";
+import { SUPPLY_SECTIONS, SUPPLY_SECTION_ORDER } from "@/game/business/businessSupplies";
+import { supplySectionSummary } from "@/game/business/BusinessSuppliesManager";
 import {
   dishSales,
   ingredientConsumption,
@@ -150,6 +152,8 @@ export function OperationsAnalytics({ save }: { save: SaveData }) {
         </div>
       </Panel>
 
+      <SupplyPurchasing save={save} />
+
       <Panel className="p-4">
         <Eyebrow>🔥 Ingredients used</Eyebrow>
         {consumption.items.length > 0 ? (
@@ -182,5 +186,53 @@ export function OperationsAnalytics({ save }: { save: SaveData }) {
         )}
       </Panel>
     </>
+  );
+}
+
+/**
+ * BUSINESS · OPERATIONS — what was spent on supplies (moved here from the
+ * old Business → Supplies tab; the stock itself is on Inventory → Supplies):
+ * per section, all time — spent, Market orders, and saved vs retail (a
+ * display metric, never money); packaging also shows what served orders
+ * used. All from `business.supplies.lifetime` (supplySectionSummary).
+ */
+function SupplyPurchasing({ save }: { save: SaveData }) {
+  const rows = SUPPLY_SECTION_ORDER.map((section) => ({
+    section,
+    meta: SUPPLY_SECTIONS[section],
+    summary: supplySectionSummary(save.business.supplies, section),
+  }));
+  const packaging = rows.find((r) => r.section === "packaging")!.summary;
+  return (
+    <Panel className="p-4">
+      <Eyebrow>🧰 Supply purchasing</Eyebrow>
+      <div className="mt-1" data-testid="supplies-analytics">
+        {rows.map(({ section, meta, summary }) => (
+          <div
+            key={section}
+            data-supply-section={section}
+            className="border-b border-walnut/10 py-2 last:border-b-0"
+          >
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="font-ui text-[13px] font-extrabold text-walnut-dark">
+                <span aria-hidden>{meta.emoji}</span> {meta.short}
+              </span>
+              <span className="font-display text-[15px] font-black text-walnut-dark tabular-nums">
+                {formatUsd(summary.spent)}
+              </span>
+            </div>
+            <p className="font-hand text-[13px] leading-tight text-walnut/60">
+              {plural(summary.purchases, "Market order")}, all time · saved{" "}
+              {formatUsd(summary.savedVsRetail)} vs retail
+            </p>
+          </div>
+        ))}
+      </div>
+      <p className="mt-1 font-hand text-[13px] leading-snug text-walnut/60">
+        Served orders have used {packaging.unitsUsed.toLocaleString("en-US")} packaging units (
+        {formatUsd(packaging.usedCost)} of cost, counted in each order's COGS). Saved vs retail is a
+        wholesale discount, not cash.
+      </p>
+    </Panel>
   );
 }

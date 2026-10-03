@@ -169,7 +169,9 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   zones, production tiers, aggregate freshness, attention, unknown ids,
   navigation-only actions, handle never takes a tap, 48 px targets).
 - `inventory-screen-qa` — the Inventory section: 5-item bottom bar, no
-  Business Inventory tab or `business-inventory` route (N), all 57
+  Business Inventory/Supplies tab or `business-inventory` route, the
+  Ingredients | Supplies switch (N), supplies coverage/low/all 50 lines/
+  read-only (U), all 57
   ingredients with the save's quantity/cost/freshness and fridge (A), the
   one status rule (S), Needs Attention (T), sorting (O), read-only +
   navigation (R), existing saves through the real `SaveManager.load` (C).
@@ -301,8 +303,11 @@ with the real functions.
     remaining", "Not enough money — need $X more.", or "Not enough fridge
     space. You have N units of fridge space left."
   - **Inventory** (bottom bar, screen id `inventory`,
-    `kc/inventory/InventoryScreen.tsx`) answers "what do I have?" and has NO
-    purchase controls. In order:
+    `kc/inventory/InventoryScreen.tsx`) answers "what do I have?" — EVERY
+    kind of stock — and has NO purchase controls. A switch at the top picks
+    **🥕 Ingredients** (food in the fridge, below) or **🍽️ Supplies**
+    (`InventorySupplies.tsx`, screen id `inventory-supplies` opens on it).
+    The Ingredients view, in order:
     - header + wallet, "Fridge: <model> · used / capacity";
     - summary cards: Total Stock (units, stock value), Running Low
       (`lowStockItems`), Expiring Soon (`expiringSoon`), Ready to Cook
@@ -333,15 +338,26 @@ with the real functions.
     perishability (≤ `EXPIRING_SOON_DAYS` = expiring), low =
     `lowStockItems`, critical = low that can't cover one average order
     (`dishesLeft < 1`). Each status shows a marker AND a word.
-  - **Business** (7 tabs: Overview · Supplies · Equipment · Staff ·
-    Suppliers · Menu · Operations) answers "how is my restaurant
-    performing?". Overview adds "Today at a glance" (orders, revenue per
-    dish, margin — from today's P&L and `ordersServed`); Operations holds
-    Best-selling dishes (`dishSales`, from "business-revenue" ledger
-    entries), Ingredient purchasing (`purchasingStats`) and Ingredients used
-    (`ingredientConsumption`) — moved from the old Business → Inventory tab,
-    which no longer exists (no `business-inventory` route; inventory alerts
-    open `inventory`). The game keeps only the last completed day's P&L, so
+  - The Supplies view: summary cards (Supplies on hand x/50 lines, Stock
+    value at cost basis, Running low, Takeaway orders covered =
+    `packagingOrdersCovered`, the smaller of containers and bags on hand);
+    Needs Attention kept short (one "Packaging covers N of today's M
+    orders" alert, then only packaging lines you stock that `isLowSupply`
+    flags, 3 + View all); Smallwares · Tableware (cutlery, crockery,
+    glassware) · Takeaway (parcels: containers, boxes, bags) with group
+    filters and the stock list (Low / In stock / Owned / None, marker +
+    word); "Restock … in the Market →" (`openMarketSupplies`).
+  - **Business** (6 tabs: Overview · Equipment · Staff · Suppliers · Menu ·
+    Operations) answers "how is my restaurant performing?". Overview adds
+    "Today at a glance" (orders, revenue per dish, margin — from today's
+    P&L and `ordersServed`); Operations holds Best-selling dishes
+    (`dishSales`, from "business-revenue" ledger entries), Supply
+    purchasing (per section: spent, Market orders, saved vs retail;
+    packaging used by orders), Ingredient purchasing (`purchasingStats`)
+    and Ingredients used (`ingredientConsumption`) — moved from the old
+    Business → Inventory and Business → Supplies tabs, which no longer
+    exist (no `business-inventory` / `business-supplies` routes; inventory
+    alerts open `inventory`). The game keeps only the last completed day's P&L, so
     there are no weekly/monthly figures.
   - The daily accumulator's `inventoryPurchases` counts purchases (one per
     "inventory-purchase" ledger entry; old saves migrate it as 0).
@@ -437,13 +453,15 @@ with its own gates.
   `serveBusinessOrder`.
   - Their cost basis is added to that order's COGS.
   - None in stock: none used, never blocking.
-- **Business → Supplies** (`BusinessSupplies.tsx`, route
-  `business-supplies`) is monitoring only:
-  - on hand, stock value (cost basis), spent, and saved vs retail (all
-    time); plus used by orders for packaging;
-  - low packaging (below today's customers);
+- **Inventory → Supplies** (`kc/inventory/InventorySupplies.tsx`, screen
+  `inventory-supplies`) is monitoring only:
+  - on hand, stock value (cost basis), running low, takeaway orders
+    covered;
+  - low packaging (below today's customers) and packaging coverage;
   - the stock list;
   - "Restock … in the Market →" (`openMarketSupplies` → `shop-supplies`).
+  - Spending (spent, saved vs retail, used by orders) is on Business →
+    Operations ("Supply purchasing").
 - **Saved vs retail** = retail value − paid: a display metric, never money.
 
 ### Safety, determinism, ledger, migration

@@ -158,6 +158,23 @@ conversation.
    - `tools/e2e/coach.mjs` clears long straight white runs before looking
      for the ghost fingertip, because the ghost knife's edge lies through
      it.
+29. Inventory holds every kind of stock (developer: "in inventory i need all
+   kinds of stocks include cutlery, parcels and all those things"; chose to
+   MOVE Business → Supplies rather than show it twice).
+   - Inventory has an Ingredients | Supplies switch; Supplies
+     (`kc/inventory/InventorySupplies.tsx`, screen `inventory-supplies`)
+     shows smallwares, tableware & cutlery and takeaway parcels: summary
+     cards (on hand, stock value, running low, takeaway orders covered),
+     a short Needs Attention (packaging coverage + stocked lines running
+     low), section/group filters and the stock list. Restock → Market.
+   - Business is down to 6 tabs (Supplies tab and `business-supplies`
+     route removed, `BusinessSupplies.tsx` deleted); supply spending moved
+     to Business → Operations ("Supply purchasing").
+   - New `packagingOrdersCovered` in BusinessSuppliesManager (min of
+     containers and bags on hand). No save, price or economy change.
+   - QA: `inventory-screen-qa` N6 + U1–U5; `business-supplies-qa` H3/H4,
+     `business-ux-qa` S1/S4 follow the move; e2e `inventory.mjs` 6d and
+     `supplies.mjs` section 3–4 read Inventory → Supplies / Operations.
 28. Separate Inventory section + Business restructure (developer brief). A UI and
    navigation change only: no economy value, save field, migration or purchase
    path was added or changed.

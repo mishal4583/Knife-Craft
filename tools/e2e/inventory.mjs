@@ -104,9 +104,9 @@ const bizTabs = await page.evaluate(() =>
   ),
 );
 check(
-  "1c Business: Overview · Supplies · Equipment · Staff · Suppliers · Menu · Operations (no Inventory)",
+  "1c Business: Overview · Equipment · Staff · Suppliers · Menu · Operations (no Inventory or Supplies)",
   bizTabs.map((t) => t.replace(/^\S+\s/, "")).join() ===
-    "Overview,Supplies,Equipment,Staff,Suppliers,Menu,Operations",
+    "Overview,Equipment,Staff,Suppliers,Menu,Operations",
   bizTabs,
 );
 
@@ -298,6 +298,59 @@ check(
   "6c View Business Performance opens Business → Overview",
   /Restaurant health/i.test(t) && /Today at a glance/i.test(t),
 );
+
+// ---------- 6d. Supplies: every other kind of stock ----------
+await openInventory();
+await page.evaluate(() => document.querySelector('[data-inventory-kind="supplies"]').click());
+await sleep(500);
+const rows = () =>
+  page.evaluate(() =>
+    [...document.querySelectorAll("[data-supply-row]")].map((r) =>
+      r.getAttribute("data-supply-row"),
+    ),
+  );
+const smallwares = await rows();
+const supSummary = await page.evaluate(
+  () =>
+    document.querySelector('[data-testid="supplies-summary"]')?.innerText.replace(/\s+/g, " ") ??
+    "",
+);
+await clickButton(page, /TablewareFront of house$/);
+await sleep(300);
+const tableware = await rows();
+await clickButton(page, /TakeawayPackaging$/);
+await sleep(300);
+const takeaway = await rows();
+const supAttention = await page.evaluate(() =>
+  [...document.querySelectorAll("[data-supply-attention]")].map((r) =>
+    r.getAttribute("data-supply-attention"),
+  ),
+);
+const supButtons = await page.evaluate(() =>
+  [...document.querySelectorAll('[data-testid="inventory-supplies"] button')].map((b) =>
+    b.textContent.trim(),
+  ),
+);
+check(
+  "6d Inventory → Supplies: 18 smallwares, 17 tableware incl. cutlery, 15 takeaway parcels; summary cards; one packaging alert (not 15); nothing to buy",
+  smallwares.length === 18 &&
+    tableware.length === 17 &&
+    tableware.includes("dinner-forks") &&
+    takeaway.length === 15 &&
+    /Supplies on hand/.test(supSummary) &&
+    /Takeaway orders covered/.test(supSummary) &&
+    !supButtons.some((t) => /^Buy|^[−+]$/.test(t)) &&
+    supAttention.join() === "packaging-coverage",
+  {
+    smallwares: smallwares.length,
+    tableware: tableware.length,
+    takeaway: takeaway.length,
+    supSummary,
+  },
+);
+await shot(page, "inventory-6-supplies");
+await page.evaluate(() => document.querySelector('[data-inventory-kind="ingredients"]').click());
+await sleep(300);
 
 // ---------- 7. The save is untouched ----------
 const after = await readSave(page);

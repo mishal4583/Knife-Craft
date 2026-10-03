@@ -1,6 +1,6 @@
 /**
  * BUSINESS_SUPPLIES — the restaurant's non-food stock, bought in the
- * Market and monitored in Business → Supplies. A separately authorized
+ * Market and monitored in Inventory → Supplies. A separately authorized
  * extension of the shipped Business Mode, not an Economy V3 phase (see
  * docs/ECONOMY_V3_MASTER_SPEC.md §25):
  *

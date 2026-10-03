@@ -27,6 +27,7 @@ import {
 import { BUSINESS_TAB_SCREEN } from "../business/businessTabs";
 import { openMarketIngredients } from "../marketFocus";
 import { PhysicalFridge } from "./fridge/PhysicalFridge";
+import { InventorySupplies } from "./InventorySupplies";
 
 /** How many rows each Needs Attention group shows before "View all". */
 const ATTENTION_PREVIEW = 3;
@@ -416,7 +417,23 @@ function DetailSheet({
  * Restock opens Market → Ingredients, Upgrade/Repair opens Business →
  * Equipment.
  */
-export function InventoryScreen({ go, save }: { go: (s: ScreenId) => void; save: SaveData }) {
+export type InventoryKind = "ingredients" | "supplies";
+
+const KINDS: ReadonlyArray<{ id: InventoryKind; label: string; icon: string; sub: string }> = [
+  { id: "ingredients", label: "Ingredients", icon: "🥕", sub: "food in the fridge" },
+  { id: "supplies", label: "Supplies", icon: "🍽️", sub: "smallwares · cutlery · parcels" },
+];
+
+export function InventoryScreen({
+  go,
+  save,
+  initialKind = "ingredients",
+}: {
+  go: (s: ScreenId) => void;
+  save: SaveData;
+  initialKind?: InventoryKind;
+}) {
+  const [kind, setKind] = useState<InventoryKind>(initialKind);
   const view = useMemo(() => inventoryView(save), [save]);
   const analytics = inventorySummary(save);
   const [selectedId, setSelectedId] = useState<IngredientId | null>(null);
@@ -460,295 +477,336 @@ export function InventoryScreen({ go, save }: { go: (s: ScreenId) => void; save:
         />
 
         <div className="space-y-3 px-4">
-          {/* Current fridge */}
-          <button
-            type="button"
-            onClick={() => scrollTo(fridgeRef.current)}
-            data-testid="inventory-fridge-pill"
-            className="press flex min-h-12 w-full items-center justify-between gap-3 rounded-[16px] border border-walnut/15 px-3 py-2 text-left card-warm"
-          >
-            <span className="font-ui text-[13px] font-extrabold text-walnut-dark">
-              ❄️ Fridge: {s.fridgeShortName}
-            </span>
-            <span className="font-display text-[16px] font-black text-walnut-dark tabular-nums">
-              {formatQuantity(s.used)} / {s.capacity} units
-            </span>
-          </button>
-
-          {/* Summary */}
-          <div className="grid grid-cols-2 gap-3" data-testid="inventory-summary">
-            <SummaryCard
-              icon="📦"
-              label="Total Stock"
-              value={`${formatQuantity(s.used)} / ${s.capacity} units`}
-              sub={`${formatUsd(s.stockValue)} stock value`}
-              testId="summary-stock"
-              onClick={() => scrollTo(fridgeRef.current)}
-            />
-            <SummaryCard
-              icon="⚠️"
-              label="Running Low"
-              value={`${s.runningLow} item${s.runningLow === 1 ? "" : "s"}`}
-              sub="below today's menu need"
-              testId="summary-low"
-              onClick={() => scrollTo(attentionRef.current)}
-            />
-            <SummaryCard
-              icon="⏳"
-              label="Expiring Soon"
-              value={`${s.expiringSoon} item${s.expiringSoon === 1 ? "" : "s"}`}
-              sub={`within ${EXPIRING_SOON_DAYS} Business Days`}
-              testId="summary-expiring"
-              onClick={() => scrollTo(attentionRef.current)}
-            />
-            <SummaryCard
-              icon="🍽"
-              label="Ready to Cook"
-              value={`${s.readyDishes} / ${s.menuDishes} dishes`}
-              sub="on today's menu"
-              testId="summary-ready"
-              onClick={() => scrollTo(readyRef.current)}
-            />
-          </div>
-
-          {/* Needs attention */}
-          <div ref={attentionRef} className="scroll-mt-3">
-            <Panel className="p-4">
-              <div data-testid="inventory-attention">
-                <Eyebrow>⚠️ Needs Attention</Eyebrow>
-                {view.attention.length > 0 ? (
-                  <>
-                    <div className="mt-2 flex flex-wrap gap-1.5" data-testid="attention-counts">
-                      {view.attention.map((g) => (
-                        <span
-                          key={g.id}
-                          className="rounded-full border border-walnut/15 bg-ivory/70 px-2.5 py-1 font-ui text-[12px] font-extrabold text-walnut-dark"
-                        >
-                          <span aria-hidden>{g.marker}</span> {g.items.length} {g.title}
-                        </span>
-                      ))}
-                    </div>
-                    <div className="mt-2 space-y-2">
-                      {view.attention.map((g, i) => (
-                        <AttentionGroup
-                          key={g.id}
-                          group={g}
-                          go={go}
-                          onOpen={setSelectedId}
-                          open={i === 0}
-                        />
-                      ))}
-                    </div>
-                    <KButton
-                      full
-                      size="sm"
-                      variant="ghost"
-                      className="mt-2 h-12"
-                      onClick={() => {
-                        setFilter("All");
-                        setSort("status");
-                        scrollTo(allRef.current);
-                      }}
-                    >
-                      View All Inventory Issues →
-                    </KButton>
-                  </>
-                ) : (
-                  <p className="mt-1 font-hand text-[15px] leading-snug text-olive">
-                    ✓ Nothing needs attention — everything in stock is fresh and covers today's
-                    menu.
-                  </p>
+          {/* What kind of stock: food (the fridge) or supplies (smallwares, tableware, takeaway) */}
+          <div className="grid grid-cols-2 gap-2" role="tablist" aria-label="Kind of stock">
+            {KINDS.map((k) => (
+              <button
+                key={k.id}
+                type="button"
+                role="tab"
+                aria-selected={kind === k.id}
+                data-inventory-kind={k.id}
+                onClick={() => {
+                  setKind(k.id);
+                  setSelectedId(null);
+                }}
+                className={cn(
+                  "press flex min-h-[60px] flex-col items-center justify-center rounded-[18px] border px-2 py-1.5",
+                  kind === k.id
+                    ? "wood border-walnut-dark/50 text-ivory shadow-soft"
+                    : "card-warm border-walnut/15 text-walnut-dark",
                 )}
-              </div>
-            </Panel>
-          </div>
-
-          {/* The physical fridge */}
-          <div ref={fridgeRef} className="scroll-mt-3">
-            <PhysicalFridge
-              view={view.fridge}
-              selectedId={selectedId}
-              onSelect={setSelectedId}
-              onEquipment={toEquipment}
-            />
-          </div>
-
-          {view.items.length === 0 ? (
-            <Panel className="p-4 text-center">
-              <p className="font-hand text-[15px] leading-snug text-walnut/65">
-                Your fridge is empty. Buy ingredients from the Market to start serving Business
-                orders.
-              </p>
-              <RestockButton go={go} label="Go to Market →" className="mt-2 w-full" />
-            </Panel>
-          ) : null}
-
-          {/* Ready to cook */}
-          <div ref={readyRef} className="scroll-mt-3">
-            <Panel className="p-4">
-              <div className="flex items-baseline justify-between gap-3">
-                <Eyebrow>🍽 Ready to Cook</Eyebrow>
-                <span
-                  className="font-ui text-[12px] font-extrabold text-walnut-dark"
-                  data-testid="menu-ready"
-                >
-                  {s.readyDishes} / {s.menuDishes} dishes ready
+              >
+                <span className="font-ui text-[14px] font-extrabold leading-tight">
+                  <span aria-hidden>{k.icon}</span> {k.label}
                 </span>
+                <span className="font-ui text-[10px] font-bold leading-tight opacity-75">
+                  {k.sub}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {kind === "supplies" ? (
+            <InventorySupplies go={go} save={save} />
+          ) : (
+            <>
+              {/* Current fridge */}
+              <button
+                type="button"
+                onClick={() => scrollTo(fridgeRef.current)}
+                data-testid="inventory-fridge-pill"
+                className="press flex min-h-12 w-full items-center justify-between gap-3 rounded-[16px] border border-walnut/15 px-3 py-2 text-left card-warm"
+              >
+                <span className="font-ui text-[13px] font-extrabold text-walnut-dark">
+                  ❄️ Fridge: {s.fridgeShortName}
+                </span>
+                <span className="font-display text-[16px] font-black text-walnut-dark tabular-nums">
+                  {formatQuantity(s.used)} / {s.capacity} units
+                </span>
+              </button>
+
+              {/* Summary */}
+              <div className="grid grid-cols-2 gap-3" data-testid="inventory-summary">
+                <SummaryCard
+                  icon="📦"
+                  label="Total Stock"
+                  value={`${formatQuantity(s.used)} / ${s.capacity} units`}
+                  sub={`${formatUsd(s.stockValue)} stock value`}
+                  testId="summary-stock"
+                  onClick={() => scrollTo(fridgeRef.current)}
+                />
+                <SummaryCard
+                  icon="⚠️"
+                  label="Running Low"
+                  value={`${s.runningLow} item${s.runningLow === 1 ? "" : "s"}`}
+                  sub="below today's menu need"
+                  testId="summary-low"
+                  onClick={() => scrollTo(attentionRef.current)}
+                />
+                <SummaryCard
+                  icon="⏳"
+                  label="Expiring Soon"
+                  value={`${s.expiringSoon} item${s.expiringSoon === 1 ? "" : "s"}`}
+                  sub={`within ${EXPIRING_SOON_DAYS} Business Days`}
+                  testId="summary-expiring"
+                  onClick={() => scrollTo(attentionRef.current)}
+                />
+                <SummaryCard
+                  icon="🍽"
+                  label="Ready to Cook"
+                  value={`${s.readyDishes} / ${s.menuDishes} dishes`}
+                  sub="on today's menu"
+                  testId="summary-ready"
+                  onClick={() => scrollTo(readyRef.current)}
+                />
               </div>
-              <div className="mt-2">
-                <Bar fraction={s.menuDishes > 0 ? s.readyDishes / s.menuDishes : 0} />
+
+              {/* Needs attention */}
+              <div ref={attentionRef} className="scroll-mt-3">
+                <Panel className="p-4">
+                  <div data-testid="inventory-attention">
+                    <Eyebrow>⚠️ Needs Attention</Eyebrow>
+                    {view.attention.length > 0 ? (
+                      <>
+                        <div className="mt-2 flex flex-wrap gap-1.5" data-testid="attention-counts">
+                          {view.attention.map((g) => (
+                            <span
+                              key={g.id}
+                              className="rounded-full border border-walnut/15 bg-ivory/70 px-2.5 py-1 font-ui text-[12px] font-extrabold text-walnut-dark"
+                            >
+                              <span aria-hidden>{g.marker}</span> {g.items.length} {g.title}
+                            </span>
+                          ))}
+                        </div>
+                        <div className="mt-2 space-y-2">
+                          {view.attention.map((g, i) => (
+                            <AttentionGroup
+                              key={g.id}
+                              group={g}
+                              go={go}
+                              onOpen={setSelectedId}
+                              open={i === 0}
+                            />
+                          ))}
+                        </div>
+                        <KButton
+                          full
+                          size="sm"
+                          variant="ghost"
+                          className="mt-2 h-12"
+                          onClick={() => {
+                            setFilter("All");
+                            setSort("status");
+                            scrollTo(allRef.current);
+                          }}
+                        >
+                          View All Inventory Issues →
+                        </KButton>
+                      </>
+                    ) : (
+                      <p className="mt-1 font-hand text-[15px] leading-snug text-olive">
+                        ✓ Nothing needs attention — everything in stock is fresh and covers today's
+                        menu.
+                      </p>
+                    )}
+                  </div>
+                </Panel>
               </div>
-              {view.mostNeeded.length > 0 ? (
-                <>
-                  <p className="mt-2 font-ui text-[11px] font-extrabold uppercase tracking-[0.08em] text-walnut/60">
-                    Most needed ingredients
+
+              {/* The physical fridge */}
+              <div ref={fridgeRef} className="scroll-mt-3">
+                <PhysicalFridge
+                  view={view.fridge}
+                  selectedId={selectedId}
+                  onSelect={setSelectedId}
+                  onEquipment={toEquipment}
+                />
+              </div>
+
+              {view.items.length === 0 ? (
+                <Panel className="p-4 text-center">
+                  <p className="font-hand text-[15px] leading-snug text-walnut/65">
+                    Your fridge is empty. Buy ingredients from the Market to start serving Business
+                    orders.
                   </p>
-                  <div className="mt-1 flex flex-wrap gap-2" data-testid="most-needed">
-                    {view.mostNeeded.slice(0, 5).map((n) => (
+                  <RestockButton go={go} label="Go to Market →" className="mt-2 w-full" />
+                </Panel>
+              ) : null}
+
+              {/* Ready to cook */}
+              <div ref={readyRef} className="scroll-mt-3">
+                <Panel className="p-4">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <Eyebrow>🍽 Ready to Cook</Eyebrow>
+                    <span
+                      className="font-ui text-[12px] font-extrabold text-walnut-dark"
+                      data-testid="menu-ready"
+                    >
+                      {s.readyDishes} / {s.menuDishes} dishes ready
+                    </span>
+                  </div>
+                  <div className="mt-2">
+                    <Bar fraction={s.menuDishes > 0 ? s.readyDishes / s.menuDishes : 0} />
+                  </div>
+                  {view.mostNeeded.length > 0 ? (
+                    <>
+                      <p className="mt-2 font-ui text-[11px] font-extrabold uppercase tracking-[0.08em] text-walnut/60">
+                        Most needed ingredients
+                      </p>
+                      <div className="mt-1 flex flex-wrap gap-2" data-testid="most-needed">
+                        {view.mostNeeded.slice(0, 5).map((n) => (
+                          <button
+                            key={n.id}
+                            type="button"
+                            data-ingredient={n.id}
+                            onClick={() => openMarketIngredients(go, n.id)}
+                            className="press flex h-12 items-center gap-1.5 rounded-full border border-walnut/15 px-3 font-ui text-[12px] font-extrabold text-walnut-dark card-warm"
+                            aria-label={`${INGREDIENTS[n.id].name}: needed by ${n.blocks} dish${n.blocks === 1 ? "" : "es"}. Restock in Market`}
+                          >
+                            <span aria-hidden>{INGREDIENT_EMOJI[n.id]}</span>
+                            {INGREDIENTS[n.id].name}
+                            <span className="text-walnut/55">· {n.blocks}</span>
+                          </button>
+                        ))}
+                      </div>
+                      <p className="mt-1 font-hand text-[12px] text-walnut/55">
+                        The number is how many menu dishes are waiting for it. Tap to restock it in
+                        the Market.
+                      </p>
+                    </>
+                  ) : s.menuDishes > 0 ? (
+                    <p className="mt-2 font-hand text-[13px] text-walnut/65">
+                      Every dish on your menu can be made from stock.
+                    </p>
+                  ) : null}
+                </Panel>
+              </div>
+
+              {/* All inventory */}
+              <div ref={allRef} className="scroll-mt-3" data-testid="inventory-all">
+                <Panel className="p-4">
+                  <Eyebrow>🧺 All Inventory</Eyebrow>
+                  <div
+                    className="-mx-4 mt-2 flex gap-2 overflow-x-auto no-scrollbar px-4"
+                    role="tablist"
+                    aria-label="Filter inventory"
+                  >
+                    {[{ label: "All", count: view.items.length }, ...groups].map((g) => (
                       <button
-                        key={n.id}
+                        key={g.label}
                         type="button"
-                        data-ingredient={n.id}
-                        onClick={() => openMarketIngredients(go, n.id)}
-                        className="press flex h-12 items-center gap-1.5 rounded-full border border-walnut/15 px-3 font-ui text-[12px] font-extrabold text-walnut-dark card-warm"
-                        aria-label={`${INGREDIENTS[n.id].name}: needed by ${n.blocks} dish${n.blocks === 1 ? "" : "es"}. Restock in Market`}
+                        role="tab"
+                        aria-selected={filter === g.label}
+                        onClick={() => setFilter(g.label)}
+                        className={cn(
+                          "press h-12 min-w-12 shrink-0 rounded-full border px-3.5 font-ui text-[12px] font-extrabold",
+                          filter === g.label
+                            ? "wood border-walnut-dark/50 text-ivory"
+                            : "card-warm border-walnut/15 text-walnut-dark",
+                        )}
                       >
-                        <span aria-hidden>{INGREDIENT_EMOJI[n.id]}</span>
-                        {INGREDIENTS[n.id].name}
-                        <span className="text-walnut/55">· {n.blocks}</span>
+                        {g.label} <span className="opacity-70 tabular-nums">{g.count}</span>
                       </button>
                     ))}
                   </div>
-                  <p className="mt-1 font-hand text-[12px] text-walnut/55">
-                    The number is how many menu dishes are waiting for it. Tap to restock it in the
-                    Market.
-                  </p>
-                </>
-              ) : s.menuDishes > 0 ? (
-                <p className="mt-2 font-hand text-[13px] text-walnut/65">
-                  Every dish on your menu can be made from stock.
-                </p>
-              ) : null}
-            </Panel>
-          </div>
-
-          {/* All inventory */}
-          <div ref={allRef} className="scroll-mt-3" data-testid="inventory-all">
-            <Panel className="p-4">
-              <Eyebrow>🧺 All Inventory</Eyebrow>
-              <div
-                className="-mx-4 mt-2 flex gap-2 overflow-x-auto no-scrollbar px-4"
-                role="tablist"
-                aria-label="Filter inventory"
-              >
-                {[{ label: "All", count: view.items.length }, ...groups].map((g) => (
-                  <button
-                    key={g.label}
-                    type="button"
-                    role="tab"
-                    aria-selected={filter === g.label}
-                    onClick={() => setFilter(g.label)}
-                    className={cn(
-                      "press h-12 min-w-12 shrink-0 rounded-full border px-3.5 font-ui text-[12px] font-extrabold",
-                      filter === g.label
-                        ? "wood border-walnut-dark/50 text-ivory"
-                        : "card-warm border-walnut/15 text-walnut-dark",
+                  <label className="mt-2 flex items-center justify-end gap-2 font-ui text-[12px] font-extrabold text-walnut/70">
+                    Sort by
+                    <select
+                      id="inventory-sort"
+                      value={sort}
+                      onChange={(e) => setSort(e.target.value as InventorySort)}
+                      className="h-12 rounded-[12px] border border-walnut/20 bg-ivory px-3 font-ui text-[13px] font-extrabold text-walnut-dark"
+                    >
+                      {INVENTORY_SORTS.map((o) => (
+                        <option key={o.id} value={o.id}>
+                          {o.id === "status" ? "Status (needs attention first)" : o.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <div className="mt-2 space-y-2" data-testid="inventory-list">
+                    {list.length > 0 ? (
+                      list.map((item) => (
+                        <StockCard
+                          key={item.ingredientId}
+                          item={item}
+                          go={go}
+                          onOpen={setSelectedId}
+                        />
+                      ))
+                    ) : (
+                      <p className="py-2 text-center font-hand text-[14px] text-walnut/60">
+                        {view.items.length === 0
+                          ? "Nothing in stock yet."
+                          : `No ${filter.toLowerCase()} in stock.`}
+                      </p>
                     )}
-                  >
-                    {g.label} <span className="opacity-70 tabular-nums">{g.count}</span>
-                  </button>
-                ))}
+                  </div>
+                </Panel>
               </div>
-              <label className="mt-2 flex items-center justify-end gap-2 font-ui text-[12px] font-extrabold text-walnut/70">
-                Sort by
-                <select
-                  id="inventory-sort"
-                  value={sort}
-                  onChange={(e) => setSort(e.target.value as InventorySort)}
-                  className="h-12 rounded-[12px] border border-walnut/20 bg-ivory px-3 font-ui text-[13px] font-extrabold text-walnut-dark"
-                >
-                  {INVENTORY_SORTS.map((o) => (
-                    <option key={o.id} value={o.id}>
-                      {o.id === "status" ? "Status (needs attention first)" : o.label}
-                    </option>
+
+              {/* Stock analytics */}
+              <Panel className="p-4">
+                <Eyebrow>📊 Stock analytics</Eyebrow>
+                <div className="mt-2 grid grid-cols-2 gap-2" data-testid="inventory-analytics">
+                  {[
+                    { label: "Stock value", value: formatUsd(analytics.stockValue) },
+                    {
+                      label: "Ingredients stocked",
+                      value: `${analytics.stocked} / ${analytics.ingredientCount}`,
+                    },
+                    { label: "Fridge usage", value: `${Math.round(analytics.fridgeUsage * 100)}%` },
+                    {
+                      label: "Waste (all time)",
+                      value: formatUsd(analytics.wasteValue),
+                      sub:
+                        analytics.lastDayWasteValue === null
+                          ? `${formatQuantity(analytics.wasteQuantity)} units spoiled`
+                          : `Last day ${formatUsd(analytics.lastDayWasteValue)}`,
+                    },
+                  ].map((stat) => (
+                    <div
+                      key={stat.label}
+                      className="min-w-0 rounded-[14px] border border-walnut/10 bg-ivory/60 px-2.5 py-2"
+                    >
+                      <p className="truncate font-ui text-[10px] font-extrabold uppercase tracking-[0.06em] text-walnut/60">
+                        {stat.label}
+                      </p>
+                      <p className="truncate font-display text-[16px] font-black leading-tight text-walnut-dark">
+                        {stat.value}
+                      </p>
+                      {stat.sub ? (
+                        <p className="truncate font-hand text-[12px] leading-tight text-walnut/60">
+                          {stat.sub}
+                        </p>
+                      ) : null}
+                    </div>
                   ))}
-                </select>
-              </label>
-              <div className="mt-2 space-y-2" data-testid="inventory-list">
-                {list.length > 0 ? (
-                  list.map((item) => (
-                    <StockCard key={item.ingredientId} item={item} go={go} onOpen={setSelectedId} />
-                  ))
-                ) : (
-                  <p className="py-2 text-center font-hand text-[14px] text-walnut/60">
-                    {view.items.length === 0
-                      ? "Nothing in stock yet."
-                      : `No ${filter.toLowerCase()} in stock.`}
-                  </p>
-                )}
-              </div>
-            </Panel>
-          </div>
-
-          {/* Stock analytics */}
-          <Panel className="p-4">
-            <Eyebrow>📊 Stock analytics</Eyebrow>
-            <div className="mt-2 grid grid-cols-2 gap-2" data-testid="inventory-analytics">
-              {[
-                { label: "Stock value", value: formatUsd(analytics.stockValue) },
-                {
-                  label: "Ingredients stocked",
-                  value: `${analytics.stocked} / ${analytics.ingredientCount}`,
-                },
-                { label: "Fridge usage", value: `${Math.round(analytics.fridgeUsage * 100)}%` },
-                {
-                  label: "Waste (all time)",
-                  value: formatUsd(analytics.wasteValue),
-                  sub:
-                    analytics.lastDayWasteValue === null
-                      ? `${formatQuantity(analytics.wasteQuantity)} units spoiled`
-                      : `Last day ${formatUsd(analytics.lastDayWasteValue)}`,
-                },
-              ].map((stat) => (
-                <div
-                  key={stat.label}
-                  className="min-w-0 rounded-[14px] border border-walnut/10 bg-ivory/60 px-2.5 py-2"
-                >
-                  <p className="truncate font-ui text-[10px] font-extrabold uppercase tracking-[0.06em] text-walnut/60">
-                    {stat.label}
-                  </p>
-                  <p className="truncate font-display text-[16px] font-black leading-tight text-walnut-dark">
-                    {stat.value}
-                  </p>
-                  {stat.sub ? (
-                    <p className="truncate font-hand text-[12px] leading-tight text-walnut/60">
-                      {stat.sub}
-                    </p>
-                  ) : null}
                 </div>
-              ))}
-            </div>
-          </Panel>
+              </Panel>
 
-          {/* Where to go next */}
-          <div className="grid gap-2">
-            <RestockButton go={go} className="w-full" />
-            <KButton full size="sm" variant="cream" className="h-12" onClick={toEquipment}>
-              Upgrade Refrigerator →
-            </KButton>
-            <KButton
-              full
-              size="sm"
-              variant="ghost"
-              className="h-12"
-              onClick={() => go(BUSINESS_TAB_SCREEN.overview)}
-            >
-              View Business Performance →
-            </KButton>
-          </div>
+              {/* Where to go next */}
+              <div className="grid gap-2">
+                <RestockButton go={go} className="w-full" />
+                <KButton full size="sm" variant="cream" className="h-12" onClick={toEquipment}>
+                  Upgrade Refrigerator →
+                </KButton>
+                <KButton
+                  full
+                  size="sm"
+                  variant="ghost"
+                  className="h-12"
+                  onClick={() => go(BUSINESS_TAB_SCREEN.overview)}
+                >
+                  View Business Performance →
+                </KButton>
+              </div>
+            </>
+          )}
           <p className="px-4 pb-2 text-center font-hand text-[14px] text-walnut/45">
-            Inventory shows what you have. Buy stock in the Market; upgrade or repair the fridge in
-            Business → Equipment.
+            Inventory shows what you have. Buy ingredients and supplies in the Market; upgrade or
+            repair the fridge in Business → Equipment.
           </p>
         </div>
       </div>

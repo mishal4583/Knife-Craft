@@ -17,7 +17,6 @@ import {
 import { BottomNav } from "../Kitchen";
 import { BUSINESS_TAB_SCREEN, type BusinessTab } from "./businessTabs";
 import { BusinessCash } from "./BusinessCash";
-import { BusinessSupplies } from "./BusinessSupplies";
 import { BusinessRefrigerator } from "./BusinessRefrigerator";
 import { OperationsAnalytics, TodayAtAGlance } from "./BusinessAnalytics";
 import { BusinessStaff } from "./BusinessStaff";
@@ -81,7 +80,6 @@ export type AdvanceDayResult = {
 
 const TABS: Array<{ id: BusinessTab; label: string; emoji: string }> = [
   { id: "overview", label: "Overview", emoji: "📊" },
-  { id: "supplies", label: "Supplies", emoji: "📦" },
   { id: "equipment", label: "Equipment", emoji: "❄️" },
   { id: "staff", label: "Staff", emoji: "🧑‍🍳" },
   { id: "suppliers", label: "Suppliers", emoji: "🚚" },
@@ -202,7 +200,7 @@ export function BusinessDashboard({
           right={<BusinessCash cents={save.credits} />}
         />
 
-        <nav className="category-tabs grid grid-cols-4 gap-2 px-4" aria-label="Business sections">
+        <nav className="category-tabs grid grid-cols-3 gap-2 px-4" aria-label="Business sections">
           {TABS.map((item) => {
             const active = tab === item.id;
             const badge = item.id === "operations" && needsAttention.length > 0;
@@ -239,7 +237,6 @@ export function BusinessDashboard({
           {tab === "overview" ? (
             <Overview {...shared} needsAttention={needsAttention.length} />
           ) : null}
-          {tab === "supplies" ? <BusinessSupplies go={go} save={save} /> : null}
           {tab === "equipment" ? (
             <BusinessRefrigerator
               go={go}

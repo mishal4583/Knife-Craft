@@ -295,7 +295,6 @@ function playedSave(): SaveData {
     "business",
     // "business-inventory" is gone: Inventory is its own bottom-bar section ("inventory"),
     // and the alerts that used to open it now open that screen (checked just below).
-    "business-supplies",
     "business-refrigerator",
     "business-menu",
     "business-suppliers",
@@ -312,7 +311,9 @@ function playedSave(): SaveData {
   const alerts = read("src/game/business/businessAlerts.ts");
   assert(
     businessTabForScreen("inventory") === null &&
-      /screen === "inventory" \? <InventoryScreen/.test(router) &&
+      /screen === "inventory" \|\| screen === "inventory-supplies" \? \(\s*<InventoryScreen/.test(
+        router,
+      ) &&
       !/business-inventory/.test(alerts) &&
       /screen: "inventory"/.test(alerts),
     "S1b: Inventory is its own screen (not a Business tab); inventory alerts open it",
@@ -330,13 +331,15 @@ function playedSave(): SaveData {
   );
   // Market rework: Business → Ingredients became Business → Inventory (monitoring only); buying moved to Market → Ingredients.
   // Inventory restructure: Inventory left Business for its own bottom-bar section (stock control);
-  // Business keeps performance. Supplies joined with Business Supplies.
-  const tabs = ["Overview", "Supplies", "Equipment", "Staff", "Suppliers", "Menu", "Operations"];
+  // Business keeps performance.
+  // Supplies moved too: Inventory shows every kind of stock (food + supplies).
+  const tabs = ["Overview", "Equipment", "Staff", "Suppliers", "Menu", "Operations"];
   assert(
     tabs.every((t) => dash.includes(`label: "${t}"`)) &&
       !dash.includes(`label: "Ingredients"`) &&
-      !dash.includes(`label: "Inventory"`),
-    "S4: the seven tabs: Overview · Supplies · Equipment · Staff · Suppliers · Menu · Operations (no Inventory)",
+      !dash.includes(`label: "Inventory"`) &&
+      !dash.includes(`label: "Supplies"`),
+    "S4: the six tabs: Overview · Equipment · Staff · Suppliers · Menu · Operations (no Inventory or Supplies)",
   );
   const ui = [
     "src/components/kc/MarketIngredients.tsx",
