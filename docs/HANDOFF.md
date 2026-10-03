@@ -158,6 +158,17 @@ conversation.
    - `tools/e2e/coach.mjs` clears long straight white runs before looking
      for the ghost fingertip, because the ghost knife's edge lies through
      it.
+31. Staff only in Business (developer: "remove the staff from market keep them
+   only in bussiness"; chose to MOVE the campaign kitchen helpers, not remove
+   them). The Market's Staff tab is gone (8 tabs); Business → Staff shows the
+   waged team, then "Kitchen helpers" (`KitchenHelpers.tsx`) with the same
+   catalog, prices, unlock levels and `buyStaff` purchase. No economy change.
+   QA: `business-ux-qa` S9, `progression-preview-qa` A4 (expected Market
+   categories updated on purpose), e2e `staff.mjs`.
+30. Fridge: two crates per row on every shelf and drawer (steel
+   compartments 214 px, drawers stack when two crates won't fit side by
+   side, Basic's narrow crate size fixed); the fridge is a little wider.
+   e2e `fridge.mjs` check 9.
 29. Inventory holds every kind of stock (developer: "in inventory i need all
    kinds of stocks include cutlery, parcels and all those things"; chose to
    MOVE Business → Supplies rather than show it twice).

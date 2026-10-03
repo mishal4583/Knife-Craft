@@ -23,8 +23,6 @@ import {
   KNIFE_SPECIALIZATION_LABEL,
   BOARD_SPECIALIZATION_LABEL,
 } from "@/game/economy/equipmentSpecialization";
-import { STAFF_CATALOG } from "@/game/economy/staffDefinitions";
-import { getStaffPurchaseState, type BuyStaffResult } from "@/game/economy/StaffManager";
 import { SUPPLIER_CATALOG } from "@/game/economy/supplierDefinitions";
 import { getSelectedSupplierId } from "@/game/economy/SupplierManager";
 import { formatUsd, formatUsdChange } from "@/game/money";
@@ -58,7 +56,7 @@ import {
 /**
  * SHOP — the one purchase destination. Every item, price, ownership state
  * and action is KnifeCraft's own — the SAME catalogs and the SAME App.tsx
- * actions the Rack uses (buyKnife/buyBoard/buyStaff/selectSupplier,
+ * actions the Rack uses (buyKnife/buyBoard/selectSupplier,
  * equipKnife/equipBoard, sharpenKnife) plus the Blacksmith's upgradeKnife.
  * One wallet (save.credits, US dollars — see money.ts), one ledger, one save.
  *
@@ -93,7 +91,6 @@ const BLACKSMITH_ART = artFor("blacksmith", "blacksmith-market");
 export type ShopCategory =
   | "knives"
   | "boards"
-  | "staff"
   | "suppliers"
   | "ingredients"
   | "blacksmith"
@@ -107,7 +104,6 @@ function isSupplySection(c: ShopCategory): c is SupplySection {
 const categories: Array<{ id: ShopCategory; label: string; emoji: string }> = [
   { id: "knives", label: "Knives", emoji: "🔪" },
   { id: "boards", label: "Cutting Boards", emoji: "🪵" },
-  { id: "staff", label: "Staff", emoji: "🧑‍🍳" },
   { id: "suppliers", label: "Suppliers", emoji: "🚚" },
   { id: "ingredients", label: "Ingredients", emoji: "🧺" },
   { id: "blacksmith", label: "Blacksmith", emoji: "⚒️" },
@@ -129,7 +125,6 @@ const categoryCopy: Record<ShopCategory, { title: string; description: string }>
     title: "Cutting Boards",
     description: "A reliable surface makes every chop cleaner and every service smoother.",
   },
-  staff: { title: "Staff", description: "Hire talented people to help across every recipe." },
   suppliers: {
     title: "Suppliers",
     description: "Choose who stocks your kitchen — cheaper in bulk, or carefully sourced.",
@@ -185,7 +180,6 @@ export function Shop({
   save,
   buyKnife,
   buyBoard,
-  buyStaff,
   selectSupplier,
   equipKnife,
   equipBoard,
@@ -199,7 +193,6 @@ export function Shop({
   save: SaveData;
   buyKnife: (id: string) => BuyKnifeResult;
   buyBoard: (id: string) => BuyBoardResult;
-  buyStaff: (id: string) => BuyStaffResult;
   selectSupplier: (id: string) => void;
   equipKnife: (id: string) => void;
   equipBoard: (id: string) => void;
@@ -318,31 +311,6 @@ export function Shop({
         };
       });
     }
-    if (c === "staff") {
-      return STAFF_CATALOG.map((st) => {
-        const state = getStaffPurchaseState(save, st.id);
-        return {
-          id: st.id,
-          name: st.name,
-          description: st.description,
-          visual: <EmojiVisual emoji={st.id === "quality-chef" ? "👨‍🍳" : "🧑‍🍳"} />,
-          stats: [["Works on", "Every recipe"]],
-          price: formatUsd(st.price),
-          locked: state === "locked",
-          action:
-            state === "owned"
-              ? { kind: "owned", label: "Hired" }
-              : state === "locked"
-                ? { kind: "locked", label: `Unlocks at Level ${st.unlockLevel}` }
-                : {
-                    kind: "buy",
-                    label: "Hire",
-                    onClick: () =>
-                      purchaseMessage(buyStaff(st.id), st.name, st.price, st.unlockLevel),
-                  },
-        };
-      });
-    }
     // suppliers — a free SELECTION (Economy V2 Phase 8), never a purchase.
     const selected = getSelectedSupplierId(save);
     return SUPPLIER_CATALOG.map((sup) => ({
@@ -382,7 +350,7 @@ export function Shop({
       <div className="relative h-full overflow-y-auto no-scrollbar pb-24">
         <ScreenHeader
           title="Market"
-          subtitle="tools, staff & suppliers"
+          subtitle="tools, ingredients & suppliers"
           onBack={() => go("kitchen")}
           right={<Coin n={save.credits} />}
         />

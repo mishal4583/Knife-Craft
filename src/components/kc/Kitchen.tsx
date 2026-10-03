@@ -168,7 +168,7 @@ export function Kitchen({
       />
       <Hotspot
         label="Market"
-        sub="tools, staff & suppliers"
+        sub="tools, ingredients & suppliers"
         style={{ left: "76%" }}
         position="top-[50%] [@media(max-height:700px)]:top-[40%]"
         onClick={() => go("shop")}

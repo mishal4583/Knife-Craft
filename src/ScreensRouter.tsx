@@ -153,7 +153,6 @@ export function ScreensRouter({
           save={save}
           buyKnife={buyKnife}
           buyBoard={buyBoard}
-          buyStaff={buyStaff}
           selectSupplier={selectSupplier}
           equipKnife={setEquippedKnife}
           equipBoard={setEquippedBoard}
@@ -213,6 +212,7 @@ export function ScreensRouter({
           signSupplierContract={signSupplierContract}
           cancelSupplierContract={cancelSupplierContract}
           hireStaff={hireStaff}
+          buyStaff={buyStaff}
           fireStaff={fireStaff}
         />
       ) : null}

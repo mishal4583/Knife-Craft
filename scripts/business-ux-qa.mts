@@ -368,6 +368,30 @@ function playedSave(): SaveData {
     ) && /openMarketIngredients/.test(inv),
     "S8: Inventory has no purchase controls — only links to the Market",
   );
+  // Staff lives only in Business: the Market's Staff tab is gone and its kitchen helpers
+  // (StaffManager.buyStaff, unchanged) are hired in Business → Staff.
+  const shopSrc = code(read("src/components/kc/Shop.tsx"));
+  const staffTab = code(read("src/components/kc/business/BusinessStaff.tsx"));
+  const helpers = code(read("src/components/kc/business/KitchenHelpers.tsx"));
+  const routerSrc = read("src/ScreensRouter.tsx");
+  const shopCall = routerSrc.slice(
+    routerSrc.indexOf("<Shop"),
+    routerSrc.indexOf("/>", routerSrc.indexOf("<Shop")),
+  );
+  const dashCall = routerSrc.slice(
+    routerSrc.indexOf("<BusinessDashboard"),
+    routerSrc.indexOf("/>", routerSrc.indexOf("<BusinessDashboard")),
+  );
+  assert(
+    !/id: "staff"|STAFF_CATALOG|buyStaff|getStaffPurchaseState/.test(shopSrc) &&
+      !/buyStaff/.test(shopCall) &&
+      /buyStaff=\{buyStaff\}/.test(dashCall) &&
+      /<KitchenHelpers save=\{save\} buyStaff=\{buyStaff\} \/>/.test(staffTab) &&
+      /STAFF_CATALOG\.map/.test(helpers) &&
+      /getStaffPurchaseState\(save, st\.id\)/.test(helpers) &&
+      /buyStaff\(id\)/.test(helpers),
+    "S9: staff lives only in Business — no Market Staff tab; the kitchen helpers are hired in Business → Staff through the same buyStaff",
+  );
   const menu = read("src/components/kc/business/BusinessMenu.tsx");
   assert(
     /new Set\(BUSINESS_DISH_CATALOG\.map\(\(d\) => d\.category\)\)/.test(menu),

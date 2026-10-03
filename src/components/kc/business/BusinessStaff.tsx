@@ -6,6 +6,8 @@ import { cn } from "@/lib/utils";
 import { formatUsd } from "@/game/business/businessCurrency";
 import { getAllStaffDefinitions, dailyPayroll } from "@/game/business/businessStaff";
 import type { HireStaffResult, FireStaffResult } from "@/game/business/BusinessStaffManager";
+import type { BuyStaffResult } from "@/game/economy/StaffManager";
+import { KitchenHelpers } from "./KitchenHelpers";
 
 /** A face per role — visual only. */
 const ROLE_ICON: Record<string, string> = {
@@ -18,7 +20,9 @@ const ROLE_ICON: Record<string, string> = {
 };
 
 /**
- * BUSINESS · STAFF tab (Economy V3 Phase 9). Roster, wages and each role's
+ * BUSINESS · STAFF tab (Economy V3 Phase 9) — all of the restaurant's
+ * staff: the waged team below, then the one-time kitchen helpers
+ * (KitchenHelpers, moved here from the Market). Roster, wages and each role's
  * effect come only from `businessStaff.ts` (`getAllStaffDefinitions`,
  * `dailyPayroll` — which already applies the Manager's discount); hiring
  * and letting go are free and immediate, payroll is charged at End
@@ -28,10 +32,13 @@ export function BusinessStaff({
   save,
   hireStaff,
   fireStaff,
+  buyStaff,
 }: {
   save: SaveData;
   hireStaff: (role: string) => HireStaffResult;
   fireStaff: (role: string) => FireStaffResult;
+  /** The kitchen helpers' one-time hire (App.buyStaff → StaffManager.buyStaff). */
+  buyStaff: (id: string) => BuyStaffResult;
 }) {
   const [message, setMessage] = useState<string | null>(null);
   const hiredRoles = save.business.staff.hiredRoles;
@@ -114,6 +121,7 @@ export function BusinessStaff({
           );
         })}
       </div>
+      <KitchenHelpers save={save} buyStaff={buyStaff} />
     </div>
   );
 }

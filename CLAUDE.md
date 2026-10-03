@@ -31,8 +31,8 @@ create a second engine, and do not duplicate existing systems.
 - React 19 + Vite + TypeScript + Tailwind v4, Phaser 3.90 for the cutting
   gameplay (lazy-loaded `Preparation` chunk).
 - Portrait-first (9:16 logical 540×960, `GameShell` contain-fits it).
-- 250 campaign levels (25 chapters), Market (knives, boards, staff,
-  suppliers, ingredients, Blacksmith), Restaurant Progress, Business Mode
+- 250 campaign levels (25 chapters), Market (knives, boards, suppliers,
+  ingredients, Blacksmith, supplies), Restaurant Progress, Business Mode
   (Economy V3), opening story + milestones + finale.
 - One wallet in **USD cents** (`SaveData.credits`), every movement in
   `SaveData.economyLedger`.
@@ -348,7 +348,13 @@ with the real functions.
     filters and the stock list (Low / In stock / Owned / None, marker +
     word); "Restock … in the Market →" (`openMarketSupplies`).
   - **Business** (6 tabs: Overview · Equipment · Staff · Suppliers · Menu ·
-    Operations) answers "how is my restaurant performing?". Overview adds
+    Operations) answers "how is my restaurant performing?". ALL staff lives
+    in Business → Staff: the waged team (6 roles) and the **Kitchen
+    helpers** (`KitchenHelpers.tsx` — Prep Assistant $3,000 L20, Quality
+    Chef $6,000 L45, Kitchen Assistant $4,000 L65; one-time, no wages;
+    same `App.buyStaff` → `StaffManager.buyStaff`, one "staff-purchase"
+    ledger entry). The Market has no Staff tab (developer request);
+    `business-ux-qa` S9, `progression-preview-qa` A4, e2e `staff.mjs`. Overview adds
     "Today at a glance" (orders, revenue per dish, margin — from today's
     P&L and `ordersServed`); Operations holds Best-selling dishes
     (`dishSales`, from "business-revenue" ledger entries), Supply

@@ -31,6 +31,7 @@ import { getSupplier } from "@/game/economy/supplierDefinitions";
 import type { InspectionReport } from "@/game/business/businessInspection";
 import type { InspectionFineResult } from "@/game/business/businessInspectionFines";
 import type { PerformMaintenanceResult } from "@/game/business/businessMaintenance";
+import type { BuyStaffResult } from "@/game/economy/StaffManager";
 import type { PurchaseRefrigeratorResult } from "@/game/business/RefrigeratorManager";
 import type { SetMenuPriceResult } from "@/game/business/BusinessMenuManager";
 import type { SetDishActiveResult } from "@/game/business/businessMenuActivation";
@@ -133,6 +134,7 @@ export function BusinessDashboard({
   cancelSupplierContract,
   hireStaff,
   fireStaff,
+  buyStaff,
   rushRestock,
   rushAdAvailable,
 }: {
@@ -149,6 +151,7 @@ export function BusinessDashboard({
   cancelSupplierContract: () => CancelContractResult;
   hireStaff: (role: string) => HireStaffResult;
   fireStaff: (role: string) => FireStaffResult;
+  buyStaff: (id: string) => BuyStaffResult;
   rushRestock: (payment: RushRestockPayment) => Promise<RushRestockOutcome>;
   rushAdAvailable: boolean;
 }) {
@@ -246,7 +249,12 @@ export function BusinessDashboard({
             />
           ) : null}
           {tab === "staff" ? (
-            <BusinessStaff save={save} hireStaff={hireStaff} fireStaff={fireStaff} />
+            <BusinessStaff
+              save={save}
+              hireStaff={hireStaff}
+              fireStaff={fireStaff}
+              buyStaff={buyStaff}
+            />
           ) : null}
           {tab === "suppliers" ? (
             <BusinessSuppliers

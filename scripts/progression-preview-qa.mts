@@ -83,7 +83,9 @@ const INVESTMENT_NAMES = ["Prep Station Upgrade", "Storage Rack", "Service Count
   assert(!/KitchenInvestment|kitchenInvestment|KITCHEN_INVESTMENT/.test(shop), "A2: the Shop no longer imports or renders Kitchen Investments");
   assert(!/buyKitchenInvestment/.test(shop) && !/buyKitchenInvestment/.test(code("src/ScreensRouter.tsx")) && !/buyKitchenInvestment/.test(code("src/App.tsx")), "A3: no buyKitchenInvestment action exists in App, router or Shop");
   const cats = [...read("src/components/kc/Shop.tsx").matchAll(/\{ id: "([a-z]+)", label: "([^"]+)"/g)].map((m) => m[1]);
-  assert(JSON.stringify(cats) === JSON.stringify(["knives", "boards", "staff", "suppliers", "ingredients", "blacksmith"]), `A4: remaining categories intact: ${cats.join(", ")}`);
+  // Developer request: staff lives only in Business (Business → Staff → Kitchen helpers), so the
+  // Market's "staff" category was removed on purpose; every other category is unchanged.
+  assert(JSON.stringify(cats) === JSON.stringify(["knives", "boards", "suppliers", "ingredients", "blacksmith"]) && !cats.includes("staff"), `A4: remaining categories intact (Staff moved to Business): ${cats.join(", ")}`);
   assert(!/Benefit|Appears in your kitchen|Installed/.test(shop), "A5: no leftover investment wording (Benefit / Appears in your kitchen / Installed)");
 }
 
