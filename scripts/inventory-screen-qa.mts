@@ -413,6 +413,85 @@ const ALL_IDS = Object.keys(INGREDIENTS) as IngredientId[];
   );
 }
 
+// ===== D: Throw Out Expired =====
+{
+  const D = await import("../src/game/business/discardExpired.ts");
+  const { endBusinessDay } = await import("../src/game/business/BusinessDayManager.ts");
+  const { migrateBusinessFinanceState } =
+    await import("../src/game/business/BusinessFinanceManager.ts");
+  const stock: Stock = {
+    cheddar: { quantity: 2, unitCost: 450, purchaseDay: DAY - 4 }, // expired today
+    salmon: { quantity: 1, unitCost: 650, purchaseDay: DAY - 3 }, // expired today
+    basil: { quantity: 1, unitCost: 300, purchaseDay: DAY - 2 }, // spoils tonight (still usable)
+    potato: { quantity: 10, unitCost: 60, purchaseDay: DAY }, // fresh
+  };
+  const s0 = saveWith(stock, {
+    equipmentCondition: { ...DEFAULT_BUSINESS_STATE.equipmentCondition, refrigeratorCondition: 40 },
+  });
+  const r = D.discardExpiredStock(s0);
+  assert(
+    r.ok &&
+      r.ingredientIds.sort().join() === "cheddar,salmon" &&
+      !r.save.business.inventory.cheddar &&
+      !r.save.business.inventory.salmon &&
+      JSON.stringify(r.save.business.inventory.basil) ===
+        JSON.stringify(s0.business.inventory.basil) &&
+      JSON.stringify(r.save.business.inventory.potato) ===
+        JSON.stringify(s0.business.inventory.potato),
+    "D1: Throw Out Expired removes only expired stock — spoiling-tonight and fresh stock stay",
+  );
+  assert(
+    r.ok &&
+      r.save.credits === s0.credits &&
+      r.save.economyLedger.length === s0.economyLedger.length &&
+      r.value === D.wasteValueFor(s0, 2 * 450 + 650) &&
+      r.save.business.spoilage.totalSpoiledValue ===
+        s0.business.spoilage.totalSpoiledValue + r.value &&
+      r.save.business.finance.dailyAccumulator.discardedValue === r.value &&
+      r.save.business.finance.dailyAccumulator.discardedQuantity === 3,
+    "D2: it's waste, not money — no credits or ledger change; recorded with End Business Day's multipliers",
+  );
+  const waited = endBusinessDay(s0);
+  const early = endBusinessDay((r as { ok: true; save: SaveData }).save);
+  assert(
+    JSON.stringify(early.inspectionReport) === JSON.stringify(waited.inspectionReport) &&
+      early.dailyPnL.spoilageValue === waited.dailyPnL.spoilageValue &&
+      early.spoiledQuantity === waited.spoiledQuantity &&
+      early.spoiledValue === waited.spoiledValue &&
+      early.save.credits === waited.save.credits &&
+      JSON.stringify(early.save.business.inventory) ===
+        JSON.stringify(waited.save.business.inventory) &&
+      JSON.stringify(early.save.business.spoilage) ===
+        JSON.stringify(waited.save.business.spoilage) &&
+      early.save.business.popularity.score === waited.save.business.popularity.score &&
+      early.save.business.finance.dailyAccumulator.discardedValue === 0,
+    "D3: throwing out early then ending the day = just ending the day (inspection, waste, P&L, cash, inventory, popularity)",
+  );
+  const none = D.discardExpiredStock(
+    saveWith({ potato: { quantity: 10, unitCost: 60, purchaseDay: DAY } }),
+  );
+  assert(!none.ok && none.reason === "nothingExpired", "D4: nothing expired → nothing happens");
+  const migrated = migrateBusinessFinanceState(
+    {
+      dailyAccumulator: {
+        revenue: 5,
+        cogs: 0,
+        inventoryPurchaseCost: 0,
+        maintenanceCost: 0,
+        supplierCost: 0,
+        capitalExpenditure: 0,
+      },
+    },
+    [],
+  );
+  assert(
+    migrated.dailyAccumulator.discardedQuantity === 0 &&
+      migrated.dailyAccumulator.discardedValue === 0 &&
+      migrated.dailyAccumulator.revenue === 5,
+    "D5: a save from before Throw Out Expired migrates its counters as 0",
+  );
+}
+
 // ===== C: save compatibility =====
 {
   const stored = saveWith(

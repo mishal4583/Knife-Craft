@@ -16,6 +16,7 @@ import type { PurchaseIngredientResult } from "@/game/business/BusinessInventory
 import type { PurchaseSupplyResult } from "@/game/business/BusinessSuppliesManager";
 import { peekSupplySection } from "@/components/kc/marketFocus";
 import type { PurchaseRefrigeratorResult } from "@/game/business/RefrigeratorManager";
+import type { DiscardExpiredResult } from "@/game/business/discardExpired";
 import type { PerformMaintenanceResult } from "@/game/business/businessMaintenance";
 import type { RushRestockOutcome, RushRestockPayment } from "@/game/business/businessRushRestock";
 import type { SetMenuPriceResult } from "@/game/business/BusinessMenuManager";
@@ -71,6 +72,7 @@ export function ScreensRouter({
   purchaseIngredient,
   purchaseSupply,
   purchaseRefrigerator,
+  throwOutExpired,
   performRefrigeratorMaintenance,
   rushRestock,
   rushAdAvailable,
@@ -110,6 +112,8 @@ export function ScreensRouter({
   purchaseSupply: (supplyId: string, packs: number) => PurchaseSupplyResult;
   /** Economy V3 Phase 3 — Business Mode's own refrigerator purchase/upgrade action. */
   purchaseRefrigerator: (refrigeratorId: string) => PurchaseRefrigeratorResult;
+  /** Inventory → Throw Out Expired (discardExpired.ts). */
+  throwOutExpired: () => DiscardExpiredResult;
   /** Economy V3 Phase 11 — Business Mode's own refrigerator maintenance/repair action. */
   performRefrigeratorMaintenance: () => PerformMaintenanceResult;
   /** Rush Restock — stock what the current order is missing (cash + rush fee, or free after an ad). */
@@ -168,6 +172,7 @@ export function ScreensRouter({
           go={go}
           save={save}
           initialKind={screen === "inventory-supplies" ? "supplies" : "ingredients"}
+          throwOutExpired={throwOutExpired}
         />
       ) : null}
       {screen === "kitchen-upgrades" ? (

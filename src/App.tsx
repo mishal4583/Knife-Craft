@@ -118,6 +118,7 @@ import {
   rushRestock,
 } from "@/game/business/BusinessInventoryManager";
 import { purchaseRefrigerator as purchaseRefrigeratorFromCatalog } from "@/game/business/RefrigeratorManager";
+import { discardExpiredStock } from "@/game/business/discardExpired";
 import { purchaseSupply as purchaseSupplyFromCatalog } from "@/game/business/BusinessSuppliesManager";
 import { isConsumableSupply } from "@/game/business/businessSupplies";
 import { performRefrigeratorMaintenance as performRefrigeratorMaintenanceFromCatalog } from "@/game/business/businessMaintenance";
@@ -870,6 +871,14 @@ export function App() {
           : recordCapitalExpenditure(recorded, result.totalCost),
       );
     }
+    return result;
+  }
+
+  /** Inventory → Throw Out Expired (discardExpired.ts): removes only expired stock and records it as waste. No money moves, so no ledger entry. */
+  function throwOutExpired() {
+    if (!save) return { ok: false as const, reason: "nothingExpired" as const };
+    const result = discardExpiredStock(save);
+    if (result.ok) persist(result.save);
     return result;
   }
 
@@ -1983,6 +1992,7 @@ export function App() {
               purchaseIngredient={purchaseIngredient}
               purchaseSupply={purchaseSupply}
               purchaseRefrigerator={purchaseRefrigerator}
+              throwOutExpired={throwOutExpired}
               performRefrigeratorMaintenance={performRefrigeratorMaintenance}
               rushRestock={rushRestockCurrentOrder}
               buildKitchenUpgrade={buildKitchenUpgrade}

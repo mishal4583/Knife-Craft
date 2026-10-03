@@ -191,11 +191,9 @@ Prettier, build, preflight, the relevant QA, and a browser check.
 Browser tests: `tools/e2e/` (headless Chrome via `puppeteer-core`; see
 `tools/e2e/README.md`). Run `npm install` inside `tools/e2e` once.
 
-Known pre-existing failures (document, do not "fix" by weakening):
-
-- `playables-ads-qa` B12/B13 (Replay Bonus daily cap): the test pins
-  `NOW` to 2026-09-26 while ledger entries carry the real `Date.now()`, so
-  the check depends on the calendar date. Fix the test's clock, not the cap.
+Known pre-existing failures (document, do not "fix" by weakening): none
+at present. (`playables-ads-qa` B12/B13 depended on the calendar date; the
+test now pins `Date.now` to its `NOW` for section B — the cap is unchanged.)
 
 ---
 
@@ -379,6 +377,14 @@ with the real functions.
   Business analyzes → Equipment improves capacity/operation. Guarded by
   `business-ux-qa` S8, `inventory-market-qa` 1, `fridge-view-qa` H1/I1 and
   `inventory-screen-qa` R1–R4.
+  - The ONE exception: **Throw Out Expired** (`business/discardExpired.ts`,
+    a two-step confirm under Needs Attention). It runs End Business Day's
+    own sweep early: only expired entries go, valued with the same
+    multipliers, recorded as waste (spoilage totals + the day's
+    `discardedQuantity` / `discardedValue`, which End Business Day adds to
+    its sweep for the inspection and the P&L waste line). No credits move,
+    no ledger entry. Guarded by `inventory-screen-qa` D1–D5 and e2e
+    `inventory.mjs` 7b.
 - **Physical fridge** (refrigerator UI handoff, a UI integration — not
   V3-17) on the Inventory screen: `kc/inventory/fridge/PhysicalFridge.tsx`
   + `.css`, fed by the read-only adapter `business/fridgeView.ts`. An open

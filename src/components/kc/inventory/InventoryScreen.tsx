@@ -28,6 +28,7 @@ import { BUSINESS_TAB_SCREEN } from "../business/businessTabs";
 import { openMarketIngredients } from "../marketFocus";
 import { PhysicalFridge } from "./fridge/PhysicalFridge";
 import { InventorySupplies } from "./InventorySupplies";
+import { expiredStockPreview, type DiscardExpiredResult } from "@/game/business/discardExpired";
 
 /** How many rows each Needs Attention group shows before "View all". */
 const ATTENTION_PREVIEW = 3;
@@ -155,7 +156,7 @@ function AttentionRow({
 }) {
   const usableLine =
     item.status === "expired"
-      ? `${qty(item)} · 0 ${item.unit} usable · thrown out at End Business Day`
+      ? `${qty(item)} · 0 ${item.unit} usable · throw it out now or it goes at End Business Day`
       : item.status === "spoils_today"
         ? `${qty(item)} left · spoils at End Business Day`
         : item.status === "expiring"
@@ -424,14 +425,91 @@ const KINDS: ReadonlyArray<{ id: InventoryKind; label: string; icon: string; sub
   { id: "supplies", label: "Supplies", icon: "🍽️", sub: "smallwares · cutlery · parcels" },
 ];
 
+/**
+ * Throw Out Expired (discardExpired.ts): removes only expired stock now and
+ * records it as waste, exactly as End Business Day would. It can't be
+ * undone, so the first tap asks; the second does it.
+ */
+function ThrowOutExpired({
+  save,
+  throwOutExpired,
+}: {
+  save: SaveData;
+  throwOutExpired: () => DiscardExpiredResult;
+}) {
+  const preview = expiredStockPreview(save);
+  const [confirming, setConfirming] = useState(false);
+  const [done, setDone] = useState<string | null>(null);
+  if (preview.count === 0) {
+    return done ? (
+      <p className="mt-2 font-hand text-[14px] text-olive" aria-live="polite">
+        {done}
+      </p>
+    ) : null;
+  }
+  const what = `${preview.count} expired item${preview.count === 1 ? "" : "s"}`;
+  return (
+    <div
+      className="mt-2 rounded-[14px] border border-tomato/30 bg-tomato/5 p-2.5"
+      data-testid="throw-out-expired"
+    >
+      {confirming ? (
+        <>
+          <p className="font-ui text-[13px] font-extrabold text-walnut-dark">
+            Throw out {what}? It frees {formatQuantity(preview.quantity)} units of fridge space and
+            counts {formatUsd(preview.value)} as waste. This can't be undone.
+          </p>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <KButton
+              size="sm"
+              variant="ghost"
+              className="h-12"
+              onClick={() => setConfirming(false)}
+            >
+              Keep them
+            </KButton>
+            <KButton
+              size="sm"
+              variant="copper"
+              className="h-12"
+              onClick={() => {
+                const r = throwOutExpired();
+                setConfirming(false);
+                if (r.ok)
+                  setDone(
+                    `🗑 Threw out ${formatQuantity(r.quantity)} units — ${formatUsd(r.value)} recorded as waste.`,
+                  );
+              }}
+            >
+              Yes, throw out
+            </KButton>
+          </div>
+        </>
+      ) : (
+        <KButton
+          full
+          size="sm"
+          variant="copper"
+          className="h-12"
+          onClick={() => setConfirming(true)}
+        >
+          🗑 Throw Out Expired ({preview.count})
+        </KButton>
+      )}
+    </div>
+  );
+}
+
 export function InventoryScreen({
   go,
   save,
   initialKind = "ingredients",
+  throwOutExpired,
 }: {
   go: (s: ScreenId) => void;
   save: SaveData;
   initialKind?: InventoryKind;
+  throwOutExpired: () => DiscardExpiredResult;
 }) {
   const [kind, setKind] = useState<InventoryKind>(initialKind);
   const view = useMemo(() => inventoryView(save), [save]);
@@ -567,6 +645,7 @@ export function InventoryScreen({
                 <Panel className="p-4">
                   <div data-testid="inventory-attention">
                     <Eyebrow>⚠️ Needs Attention</Eyebrow>
+                    <ThrowOutExpired save={save} throwOutExpired={throwOutExpired} />
                     {view.attention.length > 0 ? (
                       <>
                         <div className="mt-2 flex flex-wrap gap-1.5" data-testid="attention-counts">

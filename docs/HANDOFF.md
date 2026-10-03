@@ -158,6 +158,18 @@ conversation.
    - `tools/e2e/coach.mjs` clears long straight white runs before looking
      for the ghost fingertip, because the ghost knife's edge lies through
      it.
+32. Developer decision batch (#1–26), on the feature branch only (no direct
+   pushes to `main`; merge when the developer approves):
+   - #4 `playables-ads-qa` B12/B13: section B pins `Date.now` to `NOW`
+     (B14 checks the reset a day later). The cap is unchanged.
+   - #8 The Market's supplier tab is now "Campaign Supplier"; Business →
+     Suppliers is unchanged (`business-ux-qa` S10).
+   - #15 Supplies "Restock" jumps to the exact Market line (ring +
+     scroll; `openMarketSupplies(go, section, supplyId)`; e2e 6e).
+   - #9 Throw Out Expired in Inventory (`business/discardExpired.ts`): the
+     End Business Day sweep run early, recorded as waste, no money or
+     ledger change; throwing out early then ending the day equals just
+     ending the day (`inventory-screen-qa` D1–D5, e2e `inventory.mjs` 7b).
 31. Staff only in Business (developer: "remove the staff from market keep them
    only in bussiness"; chose to MOVE the campaign kitchen helpers, not remove
    them). The Market's Staff tab is gone (8 tabs); Business → Staff shows the

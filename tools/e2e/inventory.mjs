@@ -376,6 +376,43 @@ await sleep(300);
 const after = await readSave(page);
 check("7 visiting Inventory changes nothing in the save", essentials(after) === essentials(before));
 
+// ---------- 7b. Throw Out Expired ----------
+await openInventory();
+const tBefore = await readSave(page);
+const firstTap = await page.evaluate(() => {
+  const box = document.querySelector('[data-testid="throw-out-expired"]');
+  box?.querySelector("button")?.click();
+  return box?.innerText.replace(/\s+/g, " ") ?? "";
+});
+await sleep(300);
+const confirmText = await page.evaluate(
+  () =>
+    document.querySelector('[data-testid="throw-out-expired"]')?.innerText.replace(/\s+/g, " ") ??
+    "",
+);
+const unchangedAfterFirstTap = essentials(await readSave(page)) === essentials(tBefore);
+await clickButton(page, /^Yes, throw out$/);
+await sleep(600);
+const tAfter = await readSave(page);
+const stillListed = await page.evaluate(
+  () => !!document.querySelector('[data-inventory-item="cheddar"]'),
+);
+check(
+  "7b Throw Out Expired asks first, then removes only the expired cheddar: no money or ledger change, waste recorded",
+  /Throw Out Expired \(1\)/.test(firstTap) &&
+    /can't be undone/.test(confirmText) &&
+    unchangedAfterFirstTap &&
+    !tAfter.business.inventory.cheddar &&
+    !!tAfter.business.inventory.basil &&
+    !!tAfter.business.inventory.potato &&
+    tAfter.credits === tBefore.credits &&
+    tAfter.economyLedger.length === tBefore.economyLedger.length &&
+    tAfter.business.spoilage.totalSpoiledValue > tBefore.business.spoilage.totalSpoiledValue &&
+    tAfter.business.finance.dailyAccumulator.discardedQuantity === 2 &&
+    !stillListed,
+  { firstTap, confirmText, spoilage: tAfter.business.spoilage },
+);
+
 // ---------- 8. Sizes ----------
 const sizes = [
   [320, 568],

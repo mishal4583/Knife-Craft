@@ -114,6 +114,16 @@ export type BusinessDailyAccumulator = {
    * (migrateBusinessFinanceState's own dailyAccumulator default merge).
    */
   inventoryPurchases: number;
+  /**
+   * Expired stock the player threw out today with Inventory's "Throw Out
+   * Expired" (discardExpired.ts), and its waste value (whole cents, End
+   * Business Day's multipliers). Not money. End Business Day adds both to
+   * its own spoilage sweep so the day's inspection and P&L waste line are
+   * the same as if the stock had waited for the night. A save written
+   * before this field existed migrates them as 0.
+   */
+  discardedQuantity: number;
+  discardedValue: number;
 };
 
 export const DEFAULT_DAILY_ACCUMULATOR: BusinessDailyAccumulator = {
@@ -126,6 +136,8 @@ export const DEFAULT_DAILY_ACCUMULATOR: BusinessDailyAccumulator = {
   packagingPurchaseCost: 0,
   ordersServed: 0,
   inventoryPurchases: 0,
+  discardedQuantity: 0,
+  discardedValue: 0,
 };
 
 /**
@@ -242,7 +254,12 @@ function recordAccumulatorDelta(
   save: SaveData,
   key: keyof Omit<
     BusinessDailyAccumulator,
-    "revenue" | "cogs" | "ordersServed" | "inventoryPurchases"
+    | "revenue"
+    | "cogs"
+    | "ordersServed"
+    | "inventoryPurchases"
+    | "discardedQuantity"
+    | "discardedValue"
   >,
   amount: number,
 ): SaveData {
