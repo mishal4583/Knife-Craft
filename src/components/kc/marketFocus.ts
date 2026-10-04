@@ -9,10 +9,22 @@ import type { ScreenId } from "./data";
  * card. Navigation state only — never saved.
  */
 let pending: IngredientId | null = null;
+let pendingQuantity: number | null = null;
 
-export function openMarketIngredients(go: (s: ScreenId) => void, ingredientId?: IngredientId) {
+/** `quantity` (whole units) presets that card's quantity, e.g. exactly what a Pre-Service Check is missing. */
+export function openMarketIngredients(
+  go: (s: ScreenId) => void,
+  ingredientId?: IngredientId,
+  quantity?: number,
+) {
   pending = ingredientId ?? null;
+  pendingQuantity = ingredientId && quantity && quantity > 0 ? Math.ceil(quantity) : null;
   go("shop-ingredients");
+}
+
+/** The preset quantity for the focused ingredient, if one was asked for. */
+export function peekMarketQuantity(): number | null {
+  return pendingQuantity;
 }
 
 /** The ingredient to preselect (read during render — pure, so StrictMode's double render sees it too). */
@@ -23,6 +35,7 @@ export function peekMarketFocus(): IngredientId | null {
 /** Called once the Market has opened, so a later plain visit starts unfocused. */
 export function clearMarketFocus() {
   pending = null;
+  pendingQuantity = null;
 }
 
 /**

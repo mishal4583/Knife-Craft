@@ -52,15 +52,20 @@ export function MarketIngredients({
   save,
   purchaseIngredient,
   focusId,
+  focusQuantity = null,
   setNotice,
 }: {
   save: SaveData;
   purchaseIngredient: (ingredientId: string, quantity: number) => PurchaseIngredientResult;
   /** Preselected by a Business → Market link: its group opens and the card scrolls into view. */
   focusId: IngredientId | null;
+  /** The focused card's starting quantity (a Pre-Service Check's exact shortfall). */
+  focusQuantity?: number | null;
   setNotice: (text: string) => void;
 }) {
-  const [quantities, setQuantities] = useState<Partial<Record<IngredientId, number>>>({});
+  const [quantities, setQuantities] = useState<Partial<Record<IngredientId, number>>>(() =>
+    focusId && focusQuantity ? { [focusId]: focusQuantity } : {},
+  );
   const [messages, setMessages] = useState<Partial<Record<IngredientId, string>>>({});
   const [group, setGroup] = useState<string>(
     focusId ? (INGREDIENTS[focusId]?.category ?? "all") : "all",

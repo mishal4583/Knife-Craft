@@ -16,6 +16,7 @@ profiles to `tools/e2e/profile-*` (both gitignored).
 
 | Script | What it checks |
 |---|---|
+| `restaurantstock.mjs` | **Restaurant test build only** (`VITE_RESTAURANT_MODE=1 npx vite build --outDir <dir>`, serve it, point `KC_URL` at it): Level 5 has no check; Level 30 with an empty fridge opens the Pre-Service Check, Restock → Market preset to the missing units → Buy → back pill, START SERVICE; serving takes exactly the order's stock with only the settlement as a money entry; $0 → Grandma's pantry; 320×568 fit |
 | `paidorders.mjs` | Level 30 (2 orders): serve the 1st, leave, retry → the retry carries on, 2 settlements in all (not 3), completion reward once, paid entry cleared |
 | `finale.mjs` | The finale after the 100th level: a real Bridge pause holds its beat (animations frozen, taps ignored) and it resumes with the time left; "BACK TO THE KITCHEN" lands on Kitchen home; nothing paid twice |
 | `introskip.mjs` | Opening intro: natural finish time, Skip story (double tap, mid-transition, button beat, last-timer race), button beats, reload, existing saves, 6 viewports, network hosts, console errors |

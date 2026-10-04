@@ -16,5 +16,13 @@
  *    QA exercises them whatever the switch says;
  *  - it stays false until every phase, the save migration, the economy
  *    pass, QA and real-device testing are done and the developer approves.
+ *
+ * Build-controlled: a normal build (`npm run build`, every release) has it
+ * OFF. Only a test build made with `VITE_RESTAURANT_MODE=1 npm run build`
+ * turns it on, so the restaurant can be played in the browser tests before
+ * release. Vite inlines the value, so a release bundle carries `false`.
+ * Outside Vite (tsx QA scripts) `import.meta.env` is absent: off. (Vite only
+ * substitutes the plain `import.meta.env.VITE_…` form, never `?.`.)
  */
-export const RESTAURANT_MODE: boolean = false;
+export const RESTAURANT_MODE: boolean =
+  typeof import.meta.env !== "undefined" && import.meta.env.VITE_RESTAURANT_MODE === "1";

@@ -87,6 +87,14 @@ export type ServiceSession = {
    * which has no campaign-completion concept at all.
    */
   isReplay: boolean;
+  /**
+   * Unified Restaurant (restaurant/serviceTickets.ts): the level's orders,
+   * rolled before service so the Pre-Service Check knows exactly what they
+   * need. When present, the session serves them in this order (current =
+   * tickets[completedCount], next = the one after) instead of picking each
+   * next order at random. Absent = the classic random queue.
+   */
+  tickets?: RecipeDefinition[];
 };
 
 const HISTORY_LOOKBACK = 4;
@@ -267,7 +275,9 @@ export function advanceServiceSession(
   );
 
   const newCurrent = session.next ? activate(session.next) : null;
-  const newNextRecipe = pickNextRecipe(pool, recentRecipeIds, recentCuisineIds, rand);
+  const newNextRecipe = session.tickets
+    ? (session.tickets[session.completedCount + 2] ?? null)
+    : pickNextRecipe(pool, recentRecipeIds, recentCuisineIds, rand);
   const newNext = newNextRecipe ? buildServiceOrder(newNextRecipe, session.chapter, rand) : null;
 
   return {
@@ -508,6 +518,37 @@ export function serveBatchGroupOrder(
     CUSTOMER_REACTIONS[Math.floor(rand() * CUSTOMER_REACTIONS.length)] ?? CUSTOMER_REACTIONS[0]!;
   const orders = group.orders.map((o, i) => (i === index ? { ...o, order: completed } : o));
   return { group: { ...group, orders }, coinsAwarded: paid.coinsAwarded, reaction };
+}
+
+/**
+ * A session that serves a level's rolled tickets in order (see the
+ * `tickets` field), starting after the `alreadyServed` orders a previous
+ * try paid for. Null when there is nothing left to serve.
+ */
+export function createTicketedServiceSession(
+  levelId: string,
+  tickets: RecipeDefinition[],
+  alreadyServed: number,
+  rand: () => number = Math.random,
+  chapter?: number,
+  isReplay: boolean = false,
+): ServiceSession | null {
+  const start = Math.max(0, Math.floor(alreadyServed));
+  const first = tickets[start];
+  if (!first) return null;
+  const second = tickets[start + 1];
+  return {
+    levelId,
+    ...(chapter !== undefined ? { chapter } : {}),
+    current: activate(buildServiceOrder(first, chapter, rand)),
+    next: second ? buildServiceOrder(second, chapter, rand) : null,
+    recent: null,
+    recentRecipeIds: tickets.slice(0, start + 1).map((r) => r.id),
+    recentCuisineIds: tickets.slice(0, start + 1).map((r) => r.cuisineId),
+    completedCount: start,
+    isReplay,
+    tickets,
+  };
 }
 
 /**

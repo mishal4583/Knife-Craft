@@ -9,7 +9,7 @@ Status key: OPEN (not yet built), BUILT (exists, not balanced).
 | # | Interaction | Status | Why it needs the economy pass |
 |---|---|---|---|
 | P0 | **Remove double food-cost charging** after the unified restaurant system is implemented. The campaign settlement still deducts its built-in COGS (~$34.6k over 250 levels) while the player also buys real stock (~$2.2k at Market prices). Developer decision 2026-10-04: keep both in this phase, no hidden rewards or refunds. Target for the pass: level revenue → real ingredient consumption → supplies → actual profit. | OPEN | Formulas must not change in this phase. |
-| 1 | Campaign ingredient consumption | OPEN | Real stock costs are tiny next to campaign pay (a ~$1 tomato in a ~$45 order). |
+| 1 | Campaign ingredient consumption | BUILT (phases 3–4, behind the switch) | Real stock costs are tiny next to campaign pay (a ~$1 tomato in a ~$45 order). |
 | 2 | Napkins / tissues per order | OPEN | Cost per order, pack sizes. |
 | 3 | Dishwashing liquid (new line, retail × 0.65) | OPEN | New item; usage rate per dine-in service. |
 | 4 | Cleaning supplies (new line, retail × 0.65) | OPEN | New item; usage and effect. |
@@ -25,6 +25,8 @@ Status key: OPEN (not yet built), BUILT (exists, not balanced).
 | 14 | Endless revenue through the Business engine (menu prices) instead of level rewards with a $600/day cap | OPEN | Endless income changes completely. |
 | 15 | Random orders and demand (customers per day) | OPEN | Volume drives all of the above. |
 | 16 | Starter supplies for existing saves (goods, no money) | OPEN | Their value. |
+| 17 | **Grandma's pantry** (Pre-Service Check safety net): only when the wallet can't cover the missing stock, the exact missing quantities at cost 0, opt-in, no ledger | BUILT (phase 4) | Free food is value; how often it may be used. |
+| 18 | Market buys whole units; a recipe may need 0.025 lb of garlic, so a service buys 1 lb and keeps the rest | BUILT | Leftover value and spoilage of part-used units. |
 
 Questions the pass must answer (spec §48): can a player afford required
 items; can they go into debt (never); money left after L250; Endless

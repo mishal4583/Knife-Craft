@@ -33,6 +33,7 @@ import type { PurchaseSupplyResult } from "@/game/business/BusinessSuppliesManag
 import { SUPPLY_SECTIONS, type SupplySection } from "@/game/business/businessSupplies";
 import {
   peekMarketFocus,
+  peekMarketQuantity,
   clearMarketFocus,
   peekSupplyFocus,
   clearSupplyFocus,
@@ -218,6 +219,7 @@ export function Shop({
       : categoryCopy[initialCategory].description,
   );
   const [focusId] = useState(peekMarketFocus);
+  const [focusQuantity] = useState(peekMarketQuantity);
   const [supplyFocusId] = useState(peekSupplyFocus);
   useEffect(() => {
     clearMarketFocus();
@@ -428,6 +430,7 @@ export function Shop({
               save={save}
               purchaseIngredient={purchaseIngredient}
               focusId={focusId}
+              focusQuantity={focusQuantity}
               setNotice={setNotice}
             />
           ) : isSupplySection(category) ? (

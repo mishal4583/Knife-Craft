@@ -227,7 +227,8 @@ console.log("F. Wiring");
   assert(
     (app.match(/!mayPayOrder\(save\.levelProgress, level, (recipe|viewed\.recipe)\.id\)/g) ?? [])
       .length === 2 &&
-      (app.match(/levelProgress: withPaidOrder\(\s*save\.levelProgress,/g) ?? []).length === 2,
+      (app.match(/levelProgress: withPaidOrder\(\s*(save|base)\.levelProgress,/g) ?? []).length ===
+        2,
     "F2: both serve paths pay only an owed order and record it in the same save",
   );
   assert(

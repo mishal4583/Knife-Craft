@@ -158,6 +158,18 @@ conversation.
    - `tools/e2e/coach.mjs` clears long straight white runs before looking
      for the ghost fingertip, because the ghost knife's edge lies through
      it.
+33. **Unified Restaurant** (developer spec 2026-10-04: Campaign + Business as
+   one restaurant, systems first, economy later). Plan and status:
+   `docs/RESTAURANT_INTEGRATION_AUDIT.md`; unbalanced economy items:
+   `docs/ECONOMY_TODO.md` (P0: food is charged twice until the economy
+   pass). Everything is behind ONE build switch,
+   `src/game/config/restaurantMode.ts` (`VITE_RESTAURANT_MODE=1` test
+   builds only; release builds are unchanged). Done: phases 1–4 (audit;
+   unlock table; campaign orders use real stock from L11; rolled service
+   tickets; Pre-Service Check with Restock → Market preset, Throw Out
+   Expired, Grandma's pantry). QA `restaurant-unlocks-qa`,
+   `restaurant-stock-qa`, e2e `restaurantstock.mjs`. Next: phase 5 (day
+   clock + freshness from L21, fridge warnings).
 32. Developer decision batch (#1–26), on the feature branch only (no direct
    pushes to `main`; merge when the developer approves):
    - #4 `playables-ads-qa` B12/B13: section B pins `Date.now` to `NOW`

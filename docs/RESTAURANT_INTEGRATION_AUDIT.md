@@ -245,5 +245,28 @@ Each phase ends with tsc, ESLint, Prettier, build, preflight, the full QA
 sweep, its own browser check, a commit and a push to the feature branch.
 `main` is only touched when you approve a merge.
 
+### Progress
+
+| Phase | State | Commit / QA |
+|---|---|---|
+| 1 Audit | done | this document |
+| 2 Foundations | done | `restaurant-unlocks-qa` |
+| 3 Campaign uses real stock | done (behind the switch) | `restaurant-stock-qa`, e2e `restaurantstock.mjs` |
+| 4 Pre-Service Check | done (behind the switch) | same |
+| 5–14 | to do | — |
+
+Found while building 3–4:
+
+- The switch is build-controlled (`VITE_RESTAURANT_MODE=1` test builds only).
+  Vite substitutes only the plain `import.meta.env.VITE_…` form; the
+  optional-chaining form silently folded to off.
+- The Order Board / Kitchen buttons call `go("gameplay")` right after
+  selecting a level; `App.go` ignores that jump while a check is opening.
+- Freshness is ONE weighted average per ingredient (`addStock`), so fresh
+  stock bought on top of expired stock makes the expired part look usable
+  again. This is pre-existing Business behaviour; the pantry throws out
+  expired stock first, and the check asks for it before Start. A real fix
+  (per-batch stock) is an architecture change for later.
+
 The Economy TODO (spec §48) is started at `docs/ECONOMY_TODO.md` with the
 items known now and grows with every phase.

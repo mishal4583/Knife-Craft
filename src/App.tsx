@@ -83,6 +83,10 @@ import {
 } from "@/game/daily/DailyOrderManager";
 import { pickEndlessLevel, applyEndlessEarn } from "@/game/daily/EndlessServiceManager";
 import { paidLevelReward } from "@/game/levels/levelRewards";
+import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
+import { ticketsFor } from "@/game/restaurant/serviceTickets";
+import { consumeCampaignOrderStock } from "@/game/restaurant/campaignStock";
+import { serviceCheckFor, serviceNeedsAttention } from "@/game/restaurant/preServiceCheck";
 import {
   mayPayOrder,
   ordersRequired,
@@ -103,6 +107,7 @@ import {
   nextBatchOrder,
   batchHintForGroup,
   withOrdersAlreadyServed,
+  createTicketedServiceSession,
   withBatchOrdersAlreadyServed,
   type ServiceSession,
   type BatchGroupSession,
@@ -180,6 +185,12 @@ import {
 // pulls in) is needed immediately since Prep is the first screen, but
 // Kitchen/Workshop/Recipes/... aren't needed until the player navigates
 // there (§31).
+// Unified Restaurant (RESTAURANT_MODE only): its own chunk, never in the main bundle.
+const ServiceCheckLayer = lazy(() =>
+  import("@/components/kc/restaurant/ServiceCheckLayer").then((m) => ({
+    default: m.ServiceCheckLayer,
+  })),
+);
 const ScreensRouter = lazy(() =>
   import("./ScreensRouter").then((m) => ({ default: m.ScreensRouter })),
 );
@@ -213,6 +224,19 @@ function buildCampaignServiceSession(
   const pool = campaignPoolFor(level);
   if (pool.length === 0) return null;
   const isReplay = isCompleted(level.id, levelProgress);
+  // Unified Restaurant: a first play serves the level's rolled tickets (the
+  // ones the Pre-Service Check listed), after any orders already paid.
+  if (RESTAURANT_MODE && !isReplay) {
+    const { tickets } = ticketsFor(levelProgress, level);
+    return createTicketedServiceSession(
+      level.id,
+      tickets,
+      paidOrdersFor(levelProgress, level.id).length,
+      Math.random,
+      level.chapter,
+      false,
+    );
+  }
   const session = createServiceSession(level.id, pool, Math.random, level.chapter, isReplay);
   // A retry carries on: orders already served and paid stay counted.
   return isReplay
@@ -270,6 +294,13 @@ export function App() {
   const [screen, setScreen] = useState<ScreenId>("kitchen");
   const [recipeDetailLevelId, setRecipeDetailLevelId] = useState<string>(LEVELS[0]!.id);
   const [activeLevelId, setActiveLevelId] = useState(LEVELS[0]!.id);
+  /** Unified Restaurant: the level whose Pre-Service Check is open (null = none). */
+  const [serviceCheckLevelId, setServiceCheckLevelIdState] = useState<string | null>(null);
+  const serviceCheckRef = useRef<string | null>(null);
+  const setServiceCheckLevelId = (id: string | null) => {
+    serviceCheckRef.current = id;
+    setServiceCheckLevelIdState(id);
+  };
   const activeLevel = getLevel(activeLevelId) ?? LEVELS[0]!;
   // Corrective pass — Daily Order / Endless Service both replay an
   // EXISTING campaign level through this exact same Preparation flow;
@@ -543,7 +574,13 @@ export function App() {
     seenBusinessAlertKeysRef.current = alertKeys(alerts);
   }, [save, inBusiness, businessOrder]);
 
-  const go = (s: ScreenId) => setScreen(s);
+  // A Pre-Service Check that just opened (onSelectLevel) holds the level back:
+  // the Order Board / Kitchen buttons call go("gameplay") right after
+  // selecting a level, and that must not skip the check.
+  const go = (s: ScreenId) => {
+    if (s === "gameplay" && serviceCheckRef.current) return;
+    setScreen(s);
+  };
 
   /**
    * The one way the opening intro ends — the cinematic played out (it fades
@@ -1015,6 +1052,26 @@ export function App() {
    */
   function onSelectLevel(levelId: string) {
     if (!save) return;
+    // Unified Restaurant: a service whose stock needs attention opens the
+    // Pre-Service Check first (nothing starts until the player does).
+    if (RESTAURANT_MODE) {
+      const level = getLevel(levelId);
+      const pending = level ? serviceCheckFor(save, level) : null;
+      if (pending && serviceNeedsAttention(pending)) {
+        if (pending.progress !== save.levelProgress)
+          persist({ ...save, levelProgress: pending.progress });
+        setServiceCheckLevelId(levelId);
+        // The check shows over the Order Board / Kitchen (e.g. after "Next Level").
+        if (screen !== "board" && screen !== "kitchen") go("board");
+        return;
+      }
+    }
+    beginLevel(levelId);
+  }
+
+  /** Starts a campaign level (after its Pre-Service Check, when it had one). */
+  function beginLevel(levelId: string) {
+    if (!save) return;
     const level = getLevel(levelId);
     startPlaySession({
       world: `chapter-${level?.chapter ?? 1}`,
@@ -1241,6 +1298,15 @@ export function App() {
       !save ||
       !level ||
       !mayPayOrder(save.levelProgress, level, recipe.id);
+    // Unified Restaurant: from Level 11 the order uses real stock, taken in
+    // the same save as its payment; without the stock nothing is served or
+    // paid. The pay itself is unchanged (Economy TODO P0).
+    const stock =
+      RESTAURANT_MODE && save && level
+        ? consumeCampaignOrderStock(save, levelNumber(level.id), recipe, !isReplay)
+        : null;
+    if (stock && !stock.ok) return null;
+    const base = stock?.ok ? stock.save : save;
     // Economy V2 Phase 9 — the full settlement breakdown is kept (not
     // just `.netResult`) so the result UI can show it, but nothing about
     // WHAT gets credited or WHEN changes: `amount` below is still exactly
@@ -1266,11 +1332,11 @@ export function App() {
     // isReplay gate exactly (brief §11 — replay must never create a
     // persistent sharpness change). Folded into the SAME persist() call
     // as the credit award so both land atomically together.
-    if (save && !isReplay) {
+    if (base && !isReplay) {
       const withCredits = {
-        ...save,
-        credits: save.credits + result.coinsAwarded,
-        levelProgress: withPaidOrder(save.levelProgress, campaignServiceSession.levelId, recipe.id),
+        ...base,
+        credits: base.credits + result.coinsAwarded,
+        levelProgress: withPaidOrder(base.levelProgress, campaignServiceSession.levelId, recipe.id),
       };
       const withLedger = appendLedgerEntry(
         withCredits,
@@ -1278,7 +1344,7 @@ export function App() {
         result.coinsAwarded,
         recipe.id,
       );
-      persist(applySharpnessDecay(withLedger, save.equippedKnifeId, recipe));
+      persist(applySharpnessDecay(withLedger, base.equippedKnifeId, recipe));
     }
     return { coinsAwarded: result.coinsAwarded, reaction: result.reaction, settlement, isReplay };
   }
@@ -1532,6 +1598,13 @@ export function App() {
       !save ||
       !level ||
       !mayPayOrder(save.levelProgress, level, viewed.recipe.id);
+    // Unified Restaurant: real stock, as serveCampaignOrder.
+    const stock =
+      RESTAURANT_MODE && save && level
+        ? consumeCampaignOrderStock(save, levelNumber(level.id), viewed.recipe, !isReplay)
+        : null;
+    if (stock && !stock.ok) return null;
+    const base = stock?.ok ? stock.save : save;
     // Economy V2 Phase 9 — mirrors serveCampaignOrder's own doc exactly:
     // the full breakdown is kept for the result UI, `amount` stays
     // exactly `settlement?.netResult ?? 0`.
@@ -1552,12 +1625,12 @@ export function App() {
     if (!result) return null;
     setBatchGroupSession(result.group);
     // Economy V2 Phase 6 — mirrors serveCampaignOrder's own doc exactly.
-    if (save && !isReplay) {
+    if (base && !isReplay) {
       const withCredits = {
-        ...save,
-        credits: save.credits + result.coinsAwarded,
+        ...base,
+        credits: base.credits + result.coinsAwarded,
         levelProgress: withPaidOrder(
-          save.levelProgress,
+          base.levelProgress,
           batchGroupSession.levelId,
           viewed.recipe.id,
         ),
@@ -1568,7 +1641,7 @@ export function App() {
         result.coinsAwarded,
         viewed.recipe.id,
       );
-      persist(applySharpnessDecay(withLedger, save.equippedKnifeId, viewed.recipe));
+      persist(applySharpnessDecay(withLedger, base.equippedKnifeId, viewed.recipe));
     }
     return { coinsAwarded: result.coinsAwarded, reaction: result.reaction, settlement, isReplay };
   }
@@ -2075,6 +2148,24 @@ export function App() {
           </Suspense>
         )}
       </Suspense>
+      {RESTAURANT_MODE && serviceCheckLevelId && save ? (
+        <Suspense fallback={null}>
+          <ServiceCheckLayer
+            save={save}
+            levelId={serviceCheckLevelId}
+            screen={screen}
+            go={go}
+            onStart={() => {
+              const id = serviceCheckLevelId;
+              setServiceCheckLevelId(null);
+              beginLevel(id);
+            }}
+            onClose={() => setServiceCheckLevelId(null)}
+            onThrowOutExpired={() => void throwOutExpired()}
+            onUsePantry={(next) => persist(next)}
+          />
+        </Suspense>
+      ) : null}
       {showIntro ? <CinematicIntro onDone={completeIntro} /> : null}
       {storyEvent?.kind === "finale" ? (
         <StoryOverlay sequence={FINALE} onDone={finishFinale} />

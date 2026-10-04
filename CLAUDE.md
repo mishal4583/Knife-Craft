@@ -143,6 +143,21 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   L151, efficiency L181, advanced L201, full management L221, grand
   preparation L241), and stock needs for every recipe
   (`restaurant/recipeRequirements.ts`, the rule Business dishes use too).
+- `restaurant-stock-qa` — Unified Restaurant phases 3–4 (switch ON
+  paths, tested as pure functions): rolled service tickets
+  (`restaurant/serviceTickets.ts`, seeded per level, saved in
+  `levelProgress.tickets`, dropped on completion, served in order by
+  `createTicketedServiceSession`); campaign orders take their recipe's real
+  stock from `business.inventory` on serve from Level 11
+  (`restaurant/campaignStock.ts`), exactly once, never expired, never on a
+  replay, with no money or ledger change (order pay unchanged — Economy
+  TODO P0); the Pre-Service Check (`restaurant/preServiceCheck.ts`,
+  `kc/restaurant/*`): need / usable / whole units at the Market's own
+  price, wallet and fridge verdicts, Restock → the Market preset to that
+  ingredient and quantity, Grandma's pantry only when the wallet can't
+  cover it (goods, no money). Browser: `tools/e2e/restaurantstock.mjs`
+  against a **test build** `VITE_RESTAURANT_MODE=1 npx vite build --outDir
+  <dir>` (a normal build always has the switch off).
 - `story-pause-qa` — the finale and milestone banners stop their timers
   (and animations, and finale taps) while paused, resuming with the time
   left (`PausableCountdown` on a fake clock); the finale's "BACK TO THE
