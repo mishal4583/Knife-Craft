@@ -151,7 +151,7 @@ What that means, measured:
   (median $4.60), so they sell for ~$6–45 (median ~$15) per plate.
 - Today the campaign pays ~$215k over 250 levels (orders + level rewards),
   plus $38k milestones and $50k at L250. Featured tickets alone at menu prices
-  would earn ~$20–25k. The rest has to come from **running the restaurant**:
+  would earn ~$15–25k (2–4 guests a ticket, plus tips). The rest has to come from **running the restaurant**:
   menu orders served by you and the brigade, growing with your menu, staff,
   popularity and kitchen tier, which is what a real restaurant's income is.
 - Level rewards become **reviews and reputation**: smaller, quality-based
