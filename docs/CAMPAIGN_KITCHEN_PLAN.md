@@ -1,6 +1,8 @@
 # Campaign Kitchen — running the restaurant inside the 250 levels
 
-Status: **PROPOSAL, not approved.** Written 2026-10-04 at the developer's
+Status: **SUPERSEDED by `docs/ONE_RESTAURANT_PLAN.md`** (2026-10-04, the developer
+chose one combined mode). Kept for its measurements and curriculum.
+Original status: proposal, not approved. Written 2026-10-04 at the developer's
 request: "let the user buy necessary stocks before the levels … for the first
 10 levels let the stock be purchased already while knife and cutting board are
 bought. After that player has to buy ingredients, culinary, cutlery, parcel
