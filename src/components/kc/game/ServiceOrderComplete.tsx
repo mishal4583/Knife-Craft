@@ -129,6 +129,7 @@ export function ServiceOrderComplete({
   ownedStaffIds,
   knifeSharpnessValue,
   isBusinessOrder = false,
+  extraAction,
 }: {
   serviceOrder: ServiceOrder;
   credits: number;
@@ -148,6 +149,8 @@ export function ServiceOrderComplete({
   knifeSharpnessValue?: number;
   /** Economy V3 Phase 14, Checkpoint 3 — additive, defaults to false so every existing caller (plain Restaurant Service, campaign-service, batch-group) renders byte-identical to before. When true, shows the payment/running-total in real USD (`formatUsd`/`BusinessCash`) instead of "Kitchen Coins"/`CurrencyPill` — a Business order's `coinsAwarded` is already real US cents (what the customer paid: menu price × the popularity modifier), never KnifeCraft's coin currency. */
   isBusinessOrder?: boolean;
+  /** Unified Restaurant: an optional second action after a serve (a menu guest). Absent everywhere else. */
+  extraAction?: { label: string; onClick: () => void; disabled?: boolean } | undefined;
 }) {
   const [served, setServed] = useState<ServeResult | null>(null);
   const { customer, recipe } = serviceOrder;
@@ -219,6 +222,17 @@ export function ServiceOrderComplete({
                   {nextLabel}
                 </KButton>
               )}
+              {extraAction ? (
+                <KButton
+                  full
+                  variant="sage"
+                  className="h-auto min-h-12 py-2 leading-tight"
+                  disabled={!!extraAction.disabled}
+                  onClick={extraAction.onClick}
+                >
+                  {extraAction.label}
+                </KButton>
+              ) : null}
               <KButton full variant="ghost" onClick={onExit}>
                 {isBusinessOrder ? "Back to Service" : "Back to Orders"}
               </KButton>

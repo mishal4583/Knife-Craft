@@ -132,6 +132,8 @@ export function Preparation({
     knifeSharpnessValue?: number;
     /** Economy V3 Phase 14, Checkpoint 3 — true only for a Business Mode order; forwarded to ServiceOrderComplete so its payment/running-total displays real USD instead of Kitchen Coins. Absent (falsy) for every other service kind. */
     isBusinessOrder?: boolean;
+    /** Unified Restaurant: an optional second action after a serve (a menu guest). */
+    extraAction?: { label: string; onClick: () => void; disabled?: boolean };
   };
   onExit: () => void;
   /** Returns this run's coin reward (0 on replay — Law 2 — or always 0 for a service session, where payment is deferred to the explicit Serve action) so OrderComplete can show it without a second App->Preparation round trip. */
@@ -581,6 +583,7 @@ export function Preparation({
               ? { knifeSharpnessValue: service.knifeSharpnessValue }
               : {})}
             {...(service.isBusinessOrder ? { isBusinessOrder: true } : {})}
+            {...(service.extraAction ? { extraAction: service.extraAction } : {})}
           />
         ) : (
           <OrderComplete

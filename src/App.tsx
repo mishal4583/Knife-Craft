@@ -88,6 +88,9 @@ import { ticketsFor } from "@/game/restaurant/serviceTickets";
 import { consumeCampaignOrderStock } from "@/game/restaurant/campaignStock";
 import { servicePlanFor, servicePlanNeedsSheet } from "@/game/restaurant/preServiceCheck";
 import { closeDay, openDay, recordService, restaurantDayOf } from "@/game/restaurant/restaurantDay";
+import { nextMenuGuest, withMenuGuestServed } from "@/game/restaurant/menuGuests";
+import { businessCustomerPayment } from "@/game/business/BusinessServiceManager";
+import { recordRevenueAndCogs } from "@/game/business/BusinessFinanceManager";
 import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
 import {
   mayPayOrder,
@@ -110,6 +113,7 @@ import {
   batchHintForGroup,
   withOrdersAlreadyServed,
   createTicketedServiceSession,
+  withExtraTicket,
   withBatchOrdersAlreadyServed,
   type ServiceSession,
   type BatchGroupSession,
@@ -118,7 +122,7 @@ import { getCampaignRecipe } from "@/game/recipes/campaignRecipes";
 import type { RecipeDefinition } from "@/game/recipes/recipeTypes";
 import type { LevelDefinition } from "@/game/levels/levelTypes";
 import { computeSettlement } from "@/game/economy/EconomySettlement";
-import { dollars, formatUsdChange } from "@/game/money";
+import { dollars, formatUsd, formatUsdChange } from "@/game/money";
 import {
   getKnifeSharpness,
   applySharpnessDecay,
@@ -1310,6 +1314,14 @@ export function App() {
     // A replay pays nothing, and neither does an order the level no longer
     // owes (its required orders were all paid before — levels/paidOrders.ts).
     const level = getLevel(campaignServiceSession.levelId);
+    // Unified Restaurant: an order past the level's own is a menu guest.
+    if (
+      RESTAURANT_MODE &&
+      level &&
+      campaignServiceSession.tickets &&
+      campaignServiceSession.completedCount >= ordersRequired(level)
+    )
+      return serveMenuGuestOrder(level, recipe);
     const isReplay =
       campaignServiceSession.isReplay ||
       !save ||
@@ -1364,6 +1376,55 @@ export function App() {
       persist(applySharpnessDecay(withLedger, base.equippedKnifeId, recipe));
     }
     return { coinsAwarded: result.coinsAwarded, reaction: result.reaction, settlement, isReplay };
+  }
+
+  /**
+   * Unified Restaurant (phase D): a menu guest pays the dish's menu price
+   * through the existing Business payment rule, uses its real stock (from
+   * Level 11), and is recorded as restaurant revenue — one ledger entry,
+   * the day's P&L, and the guest count saved in the same persist (so a
+   * guest is never paid twice). No campaign settlement, reward or
+   * paid-order record.
+   */
+  function serveMenuGuestOrder(level: LevelDefinition, recipe: RecipeDefinition) {
+    if (!save || !campaignServiceSession) return null;
+    const dish = businessDishForRecipeId(recipe.id);
+    if (!dish) return null;
+    const stock = consumeCampaignOrderStock(save, levelNumber(level.id), recipe, true);
+    if (!stock.ok) return null;
+    const pays = businessCustomerPayment(stock.save, dish).customerPays;
+    const result = serveCurrentOrder(campaignServiceSession, Math.random, pays);
+    if (!result) return null;
+    setCampaignServiceSession(result.session);
+    const paid = recordRevenueAndCogs(
+      {
+        ...stock.save,
+        credits: stock.save.credits + result.coinsAwarded,
+        levelProgress: withMenuGuestServed(stock.save.levelProgress, level.id),
+      },
+      result.coinsAwarded,
+      stock.cost,
+    );
+    persist(appendLedgerEntry(paid, "business-revenue", result.coinsAwarded, dish.id));
+    return {
+      coinsAwarded: result.coinsAwarded,
+      reaction: result.reaction,
+      settlement: undefined,
+      isReplay: false,
+    };
+  }
+
+  /** Unified Restaurant (phase D): brings in the next menu guest as one more ticket of this service. */
+  function takeMenuGuest() {
+    if (!save || !campaignServiceSession) return;
+    const level = getLevel(campaignServiceSession.levelId);
+    const guest = level ? nextMenuGuest(save, level) : null;
+    if (!guest || !guest.inStock) return;
+    setCampaignServiceSession((s) =>
+      s && s.current?.order.status === "COMPLETED"
+        ? advanceServiceSession(withExtraTicket(s, guest.recipe), [], Math.random)
+        : s,
+    );
   }
 
   /** "Next Customer" within a campaign level that isn't finished yet (its own requiredOrders hasn't been reached) — same queue-advance ServiceManager function the Phase 2 harness uses. */
@@ -1973,6 +2034,18 @@ export function App() {
   // The level's required orders have ACTUALLY been served and paid (the
   // current order counts once serveCurrentOrder moved it to COMPLETED) —
   // what decides whether leaving the level finishes it (G1).
+  // Unified Restaurant (phase D): once the level's own orders are served, a
+  // menu guest can be taken (optional; Finish Level stays).
+  const menuGuest =
+    RESTAURANT_MODE &&
+    save &&
+    isCampaignService &&
+    campaignServiceSession?.tickets &&
+    campaignLevelForSession &&
+    campaignServiceSession.current?.order.status === "COMPLETED" &&
+    campaignWillFinishNext
+      ? nextMenuGuest(save, campaignLevelForSession)
+      : null;
   const campaignLevelSatisfied =
     isCampaignService && campaignServiceSession
       ? campaignServiceSession.completedCount +
@@ -2021,6 +2094,20 @@ export function App() {
                   ? advanceBatchGroupView
                   : advanceBusinessServiceQueue,
               ...(isBusinessService ? { isBusinessOrder: true } : {}),
+              ...(menuGuest
+                ? {
+                    extraAction: menuGuest.inStock
+                      ? {
+                          label: `🍽️ Menu guest ${menuGuest.number}/${menuGuest.total}: ${menuGuest.dish.name} · ${formatUsd(menuGuest.pays)}`,
+                          onClick: takeMenuGuest,
+                        }
+                      : {
+                          label: `Menu guest wants ${menuGuest.dish.name} — not in stock`,
+                          onClick: () => {},
+                          disabled: true,
+                        },
+                  }
+                : {}),
               ...((isCampaignService && campaignWillFinishNext) ||
               (isBatchGroup && batchGroupWillFinish)
                 ? { nextLabel: "Finish Level" }

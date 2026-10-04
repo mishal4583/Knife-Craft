@@ -172,6 +172,19 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   spoilage, from L91 End Business Day exactly; old saves default to Day 1.
   Browser: `tools/e2e/restaurantday.mjs` (restaurant test build).
   The game map is `docs/GAME_MAP.md`.
+- `restaurant-guests-qa` — phase D, orders from the ACTIVE MENU inside
+  campaign services (`restaurant/menuGuests.ts`): after a level's own orders
+  (unchanged, deterministic) the service can take menu guests (none before
+  L6; 1/2/3/4/5 from L6/21/51/121/201, `MENU_GUESTS_SCHEDULE`), optional,
+  one at a time ("🍽️ Menu guest n/N: dish · $price" next to Finish Level).
+  At EVERY level 6–250 a guest orders only an unlocked, active dish; a dish
+  switched off never appears; seeded per level; the count is saved
+  (`levelProgress.menuGuests`) so no guest is paid twice; none on replays or
+  batch groups; a guest pays the dish's menu price (`businessCustomerPayment`)
+  with ONE "business-revenue" entry and uses real stock from L11
+  (`App.serveMenuGuestOrder`). `business-final-audit-qa` F2 and
+  `business-wtp-qa` H2 name the two revenue writers (Business serve, menu
+  guest). Browser: `tools/e2e/restaurantguests.mjs` (restaurant test build).
 - `story-pause-qa` — the finale and milestone banners stop their timers
   (and animations, and finale taps) while paused, resuming with the time
   left (`PausableCountdown` on a fake clock); the finale's "BACK TO THE

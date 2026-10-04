@@ -552,6 +552,25 @@ export function createTicketedServiceSession(
 }
 
 /**
+ * Unified Restaurant menu guests: appends `recipe` as one more ticket of a
+ * ticketed session; if nothing is queued after the current order it becomes
+ * the next order, so the usual advance brings it in. No-op for a session
+ * without tickets.
+ */
+export function withExtraTicket(
+  session: ServiceSession,
+  recipe: RecipeDefinition,
+  rand: () => number = Math.random,
+): ServiceSession {
+  if (!session.tickets) return session;
+  return {
+    ...session,
+    tickets: [...session.tickets, recipe],
+    next: session.next ?? buildServiceOrder(recipe, session.chapter, rand),
+  };
+}
+
+/**
  * A retry of an unfinished level (levels/paidOrders.ts): the orders already
  * served and paid count as done. A service session starts with them
  * counted; nothing is paid or re-served.

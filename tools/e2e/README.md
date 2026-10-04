@@ -16,6 +16,7 @@ profiles to `tools/e2e/profile-*` (both gitignored).
 
 | Script | What it checks |
 |---|---|
+| `restaurantguests.mjs` | **Restaurant test build only**: Level 8 offers "Menu guest 1/1: <menu dish> · $price" next to Finish Level; the guest is cooked in the same service, pays exactly that price with one business-revenue entry, the count is saved; Finish completes once; a replay has no guest; Level 30 with only its own stock shows the guest's dish as not in stock (disabled) |
 | `restaurantday.mjs` | **Restaurant test build only**: Day 1 opening card (Lunch L5 / Dinner L6), a mid-day level starts at once, Closing Time after the last service (services, chores, count) blocks the next level, Close → Day 2 (no clock or money change before L21), Day 2 opening card, Menu at L7 (3 active, 45 locked, no switches), 320×568 fit |
 | `restaurantstock.mjs` | **Restaurant test build only** (`VITE_RESTAURANT_MODE=1 npx vite build --outDir <dir>`, serve it, point `KC_URL` at it): Level 5 has no check; Level 30 with an empty fridge opens the Pre-Service Check, Restock → Market preset to the missing units → Buy → back pill, START SERVICE; serving takes exactly the order's stock with only the settlement as a money entry; $0 → Grandma's pantry; 320×568 fit |
 | `paidorders.mjs` | Level 30 (2 orders): serve the 1st, leave, retry → the retry carries on, 2 settlements in all (not 3), completion reward once, paid entry cleared |

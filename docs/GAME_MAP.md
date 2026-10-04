@@ -38,13 +38,15 @@ CAREER (Levels 1–250) — each level is one SERVICE of the restaurant day
   L41  staff                                    L201 master
   L51  cuisines + specialist chefs              L241 Grand Service → L250 finale
   Menu: 2 dishes at L1 → 48 by L241 (restaurant/restaurantProgression.ts)
+  Menu guests: after a level's own orders, 1–5 optional customers order from
+  the active menu (from L6) — cooked in the same service, paid at menu price
 
 ENDLESS RESTAURANT (after Level 250) — the same restaurant, open-ended days,
   orders from the active menu (phase L; not built yet)
 ```
 
 Not yet built in the restaurant (see `docs/RESTAURANT_INTEGRATION_AUDIT.md`):
-menu orders inside levels (phase D), supplies use (G), bulk buying (H), staff
+supplies use (G), bulk buying (H), staff
 requirements (I), specialist chefs (J), Endless Restaurant (L), the separate
 Business service entry's removal and the Restaurant name (L), migration (M).
 

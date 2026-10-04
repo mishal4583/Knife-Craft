@@ -173,7 +173,12 @@ conversation.
    the Menu screen's active / locked view, and the day clock (opening card,
    services, Closing Time, Day N+1). QA `restaurant-menu-qa`,
    `restaurant-day-qa`, e2e `restaurantday.mjs`. Game map: `docs/GAME_MAP.md`.
-   Next: phase D (menu orders from the active menu inside levels).
+   Phase D: menu guests — after a level's own orders, optional customers
+   ordering from the active menu (1–5 per service from L6), menu price,
+   real stock, one business-revenue entry, never paid twice
+   (`restaurant/menuGuests.ts`, `restaurant-guests-qa`, e2e
+   `restaurantguests.mjs`). Known pre-existing issue: a resize after serving
+   drops the result panel. Next: supplies use (phase G) and bulk buying.
 32. Developer decision batch (#1–26), on the feature branch only (no direct
    pushes to `main`; merge when the developer approves):
    - #4 `playables-ads-qa` B12/B13: section B pins `Date.now` to `NOW`

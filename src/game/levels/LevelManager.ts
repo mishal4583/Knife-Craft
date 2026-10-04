@@ -28,6 +28,7 @@ import { paidLevelReward } from "./levelRewards";
 import type { LevelDefinition, UnlockRequirement } from "./levelTypes";
 import { withoutPaidOrders } from "./paidOrders";
 import { withoutServiceTickets } from "../restaurant/serviceTickets";
+import { withoutMenuGuests } from "../restaurant/menuGuests";
 
 export type LevelProgress = {
   /** The level the player last selected/played — a UI convenience, not an unlock gate. */
@@ -47,6 +48,8 @@ export type LevelProgress = {
    * level's entry is dropped when it completes.
    */
   tickets?: Record<string, string[]>;
+  /** Unified Restaurant: menu guests already served in a level not finished yet (restaurant/menuGuests.ts). */
+  menuGuests?: Record<string, number>;
 };
 
 export const DEFAULT_LEVEL_PROGRESS: LevelProgress = {
@@ -143,8 +146,11 @@ export function completeLevel(levelId: string, progress: LevelProgress): Complet
     : progress.highestUnlockedLevelId;
 
   return {
-    progress: withoutServiceTickets(
-      withoutPaidOrders({ ...progressAfter, highestUnlockedLevelId }, levelId),
+    progress: withoutMenuGuests(
+      withoutServiceTickets(
+        withoutPaidOrders({ ...progressAfter, highestUnlockedLevelId }, levelId),
+        levelId,
+      ),
       levelId,
     ),
     isFirstCompletion,

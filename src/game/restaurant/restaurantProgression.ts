@@ -389,3 +389,25 @@ export const CLOSING_CHORES: readonly { id: string; label: string; fromLevel: nu
   { id: "dining-room", label: "Clear and set the dining room", fromLevel: 31 },
   { id: "count", label: "Count the day's takings", fromLevel: 1 },
 ];
+
+// ── Menu guests (phase D) ───────────────────────────────────────────────
+
+/**
+ * Menu guests per service, by level: after a level's own orders are served,
+ * this many extra customers can order from the active menu (optional). None
+ * before L6: the L1–5 tutorial teaches the techniques the menu dishes use.
+ */
+export const MENU_GUESTS_SCHEDULE: readonly { fromLevel: number; guests: number }[] = [
+  { fromLevel: 6, guests: 1 },
+  { fromLevel: 21, guests: 2 },
+  { fromLevel: 51, guests: 3 },
+  { fromLevel: 121, guests: 4 },
+  { fromLevel: 201, guests: 5 },
+];
+
+/** How many menu guests a service of `levelNumber` can take (0 before L6). */
+export function menuGuestsPerService(levelNumber: number): number {
+  let guests = 0;
+  for (const s of MENU_GUESTS_SCHEDULE) if (levelNumber >= s.fromLevel) guests = s.guests;
+  return guests;
+}

@@ -294,7 +294,22 @@ moved the menu to Level 1, re-ordered the systems and added a day clock.
 | B Central progression data | done (behind the switch) | `restaurant-menu-qa`, `restaurant-unlocks-qa` |
 | C Early menu progression | done (behind the switch) | `restaurant-menu-qa`, e2e `restaurantday.mjs` 5 |
 | 5 Day clock (opening, services, closing, Day N+1) | done (behind the switch) | `restaurant-day-qa`, e2e `restaurantday.mjs` |
-| D–N (menu orders, supplies, bulk buying, staff, specialists, Endless, migration, QA) | to do | — |
+| D Menu orders inside levels (menu guests) | done (behind the switch) | `restaurant-guests-qa`, e2e `restaurantguests.mjs` |
+| E–N (supplies, bulk buying, staff, specialists, Endless, migration, QA) | to do | — |
+
+Phase D notes:
+
+- A level's own orders are unchanged (they teach); menu guests come after
+  them, optional, from the active menu only. Batch-group levels take no
+  guests yet.
+- A guest is restaurant revenue at the dish's menu price (the Business
+  payment rule), so the two pay models now meet in one service (Economy
+  TODO #13). `business-final-audit-qa` F2 / `business-wtp-qa` H2 now name
+  the two revenue writers instead of one.
+- Found while testing (pre-existing, not changed here): a window resize
+  after serving drops the result panel and shows the served order again at
+  its first step; "Back to Orders" still finishes the level. Suggested as a
+  separate task.
 
 Found while building 3–4:
 

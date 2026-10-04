@@ -21,7 +21,7 @@ Status key: OPEN (not yet built), BUILT (exists, not balanced).
 | 10 | Fridge upgrades as campaign needs | OPEN | $2,000 / $4,800 against a buy-everything player's $10–31 around L20–50. |
 | 11 | Equipment condition and maintenance in the campaign | OPEN | Recurring cost. |
 | 12 | Waste / spoilage in the campaign | OPEN | Lost stock value. |
-| 13 | Menu orders inside campaign levels (menu prices) next to level settlements | OPEN | Two price models in one service. |
+| 13 | Menu orders inside campaign levels (menu prices) next to level settlements — menu guests pay `businessCustomerPayment` (menu price × popularity), up to 1–5 per service | BUILT (phase D) | Two price models in one service. |
 | 14 | Endless revenue through the Business engine (menu prices) instead of level rewards with a $600/day cap | OPEN | Endless income changes completely. |
 | 15 | Random orders and demand (customers per day) | OPEN | Volume drives all of the above. |
 | 16 | Starter supplies for existing saves (goods, no money) | OPEN | Their value. |

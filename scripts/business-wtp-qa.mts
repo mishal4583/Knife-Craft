@@ -43,7 +43,11 @@ import { setMenuPrice } from "../src/game/business/BusinessMenuManager.ts";
 import { appendLedgerEntry } from "../src/game/economy/EconomyLedger.ts";
 import { endBusinessDay } from "../src/game/business/BusinessDayManager.ts";
 import { endOfDayPopularity } from "../src/game/business/PopularityManager.ts";
-import { serveCurrentOrder, createServiceSession, recordAllComponents } from "../src/game/service/ServiceManager.ts";
+import {
+  serveCurrentOrder,
+  createServiceSession,
+  recordAllComponents,
+} from "../src/game/service/ServiceManager.ts";
 import { getCampaignRecipe } from "../src/game/recipes/campaignRecipes.ts";
 import type { ServiceSession } from "../src/game/service/ServiceManager.ts";
 
@@ -61,7 +65,11 @@ function assert(cond: boolean, label: string) {
 const SALAD = getBusinessDish("biz-garden-salad")!;
 const SALAD_RECIPE = SALAD.sourceRecipeId;
 
-function stocked(score: number, overrides: Partial<SaveData> = {}, menu: Record<string, number> = {}): SaveData {
+function stocked(
+  score: number,
+  overrides: Partial<SaveData> = {},
+  menu: Record<string, number> = {},
+): SaveData {
   let inv = addStock({}, "tomato", 20, 100, 1);
   inv = addStock(inv, "cucumber", 20, 100, 1);
   inv = addStock(inv, "carrot", 20, 100, 1);
@@ -70,7 +78,13 @@ function stocked(score: number, overrides: Partial<SaveData> = {}, menu: Record<
     credits: 10_000,
     economyLedger: [],
     ...overrides,
-    business: { ...DEFAULT_BUSINESS_STATE, calendar: { businessDay: 1 }, inventory: inv, menu, popularity: { score } },
+    business: {
+      ...DEFAULT_BUSINESS_STATE,
+      calendar: { businessDay: 1 },
+      inventory: inv,
+      menu,
+      popularity: { score },
+    },
   };
 }
 
@@ -97,10 +111,21 @@ function withPrice(save: SaveData, price: number): SaveData {
 
 // ===== A: exact multipliers. =====
 {
-  const expected: [number, number][] = [[0, 0.9], [20, 0.96], [40, 1.02], [50, 1.05], [60, 1.08], [80, 1.14], [100, 1.2]];
+  const expected: [number, number][] = [
+    [0, 0.9],
+    [20, 0.96],
+    [40, 1.02],
+    [50, 1.05],
+    [60, 1.08],
+    [80, 1.14],
+    [100, 1.2],
+  ];
   for (const [score, m] of expected) {
     const p = businessCustomerPayment(stocked(score), SALAD);
-    assert(willingnessToPayMultiplierFor(score) === m && p.multiplier === m && p.popularity === score, `A: popularity ${score} -> ×${m.toFixed(2)} (the existing function, read unchanged)`);
+    assert(
+      willingnessToPayMultiplierFor(score) === m && p.multiplier === m && p.popularity === score,
+      `A: popularity ${score} -> ×${m.toFixed(2)} (the existing function, read unchanged)`,
+    );
   }
 }
 
@@ -113,8 +138,18 @@ function withPrice(save: SaveData, price: number): SaveData {
     [810, 50, 851, "$8.10 × 1.05 = $8.505 -> $8.51 (half-up)"],
     [1000, 20, 960, "$10.00 × 0.96 = $9.60"],
     [1999, 60, 2159, "$19.99 × 1.08 = $21.5892 -> $21.59"],
-    [1075, 12, 1011, "$10.75 × 0.94 = $10.105 -> $10.11 (exact half-cent; naive floating point gives $10.10)"],
-    [50, 75, 57, "$0.50 × 1.13 = $0.565 -> $0.57 (exact half-cent; naive floating point gives $0.56)"],
+    [
+      1075,
+      12,
+      1011,
+      "$10.75 × 0.94 = $10.105 -> $10.11 (exact half-cent; naive floating point gives $10.10)",
+    ],
+    [
+      50,
+      75,
+      57,
+      "$0.50 × 1.13 = $0.565 -> $0.57 (exact half-cent; naive floating point gives $0.56)",
+    ],
     [1, 50, 1, "$0.01 × 1.05 -> $0.01"],
   ];
   for (const [price, score, pays, label] of cases) {
@@ -124,11 +159,18 @@ function withPrice(save: SaveData, price: number): SaveData {
 }
 
 // ===== C / D / E: popularity 0, 50, 100 through a REAL serve. =====
-for (const [score, pct, tag] of [[0, 90, "C"], [50, 105, "D"], [100, 120, "E"]] as const) {
+for (const [score, pct, tag] of [
+  [0, 90, "C"],
+  [50, 105, "D"],
+  [100, 120, "E"],
+] as const) {
   for (const price of [1000, 2000, 667]) {
     const served = serveViaApp(withPrice(stocked(score), price))!;
     const exact = Math.round((price * pct) / 100);
-    assert(served.r.amountCharged === exact && served.save.credits === 10_000 + exact, `${tag}: popularity ${score} pays ${pct}% of a ${price}c menu price = ${exact}c (got ${served.r.amountCharged})`);
+    assert(
+      served.r.amountCharged === exact && served.save.credits === 10_000 + exact,
+      `${tag}: popularity ${score} pays ${pct}% of a ${price}c menu price = ${exact}c (got ${served.r.amountCharged})`,
+    );
   }
 }
 
@@ -136,8 +178,18 @@ for (const [score, pct, tag] of [[0, 90, "C"], [50, 105, "D"], [100, 120, "E"]] 
 for (const score of [0, 50, 100]) {
   const save = withPrice(stocked(score), 0);
   const served = serveViaApp(save)!;
-  assert(!!served && served.r.payment.menuPrice === 0 && served.r.amountCharged === 0 && served.save.credits === save.credits, `F: a $0 dish at popularity ${score} is served for $0 — cash unchanged`);
-  assert(served.save.business.finance.dailyAccumulator.revenue === 0 && served.save.business.finance.dailyAccumulator.ordersServed === 1, `F2: the $0 serve records $0 revenue and still counts as served (popularity ${score})`);
+  assert(
+    !!served &&
+      served.r.payment.menuPrice === 0 &&
+      served.r.amountCharged === 0 &&
+      served.save.credits === save.credits,
+    `F: a $0 dish at popularity ${score} is served for $0 — cash unchanged`,
+  );
+  assert(
+    served.save.business.finance.dailyAccumulator.revenue === 0 &&
+      served.save.business.finance.dailyAccumulator.ordersServed === 1,
+    `F2: the $0 serve records $0 revenue and still counts as served (popularity ${score})`,
+  );
 }
 
 // ===== G: payment happens exactly once. =====
@@ -145,18 +197,38 @@ for (const score of [0, 50, 100]) {
   const save = stocked(80);
   const first = serveBusinessOrder(readySalad(), save, makeSeededRand(1))!;
   const again = serveBusinessOrder(first.session, first.save, makeSeededRand(1));
-  assert(first.session.current?.order.status !== "READY" && again === null, "G: the same order can't be served (or paid) a second time");
-  assert(first.save.credits - save.credits === first.amountCharged, "G2: credits moved by exactly one customer payment");
+  assert(
+    first.session.current?.order.status !== "READY" && again === null,
+    "G: the same order can't be served (or paid) a second time",
+  );
+  assert(
+    first.save.credits - save.credits === first.amountCharged,
+    "G2: credits moved by exactly one customer payment",
+  );
 }
 
 // ===== H: exactly one business-revenue ledger entry, for the customer payment. =====
 {
   const served = serveViaApp(stocked(60))!;
   const rev = served.save.economyLedger.filter((e) => e.category === "business-revenue");
-  assert(rev.length === 1 && rev[0]!.amount === served.r.payment.customerPays && served.save.economyLedger.length === 1, `H: exactly one business-revenue entry of ${served.r.payment.customerPays}c and nothing else`);
+  assert(
+    rev.length === 1 &&
+      rev[0]!.amount === served.r.payment.customerPays &&
+      served.save.economyLedger.length === 1,
+    `H: exactly one business-revenue entry of ${served.r.payment.customerPays}c and nothing else`,
+  );
   const app = fs.readFileSync(path.resolve(import.meta.dirname, "..", "src", "App.tsx"), "utf8");
+  // Unified Restaurant (phase D): the menu guest (serveMenuGuestOrder) is the
+  // one other, deliberate writer; the Business serve still writes exactly once.
   const sites = app.match(/appendLedgerEntry\([^)]*"business-revenue"[^)]*\)/g) ?? [];
-  assert(sites.length === 1 && /"business-revenue", result\.amountCharged,/.test(sites[0]!), `H2: App.tsx appends business-revenue at exactly one call site, from result.amountCharged (found ${sites.length})`);
+  const businessSites = sites.filter((s) => /"business-revenue", result\.amountCharged,/.test(s));
+  const guestSites = sites.filter((s) =>
+    /appendLedgerEntry\(paid, "business-revenue", result\.coinsAwarded, dish\.id\)/.test(s),
+  );
+  assert(
+    sites.length === 2 && businessSites.length === 1 && guestSites.length === 1,
+    `H2: App.tsx appends business-revenue at the Business serve (from result.amountCharged) and the menu guest only, once each (found ${sites.length})`,
+  );
 }
 
 // ===== I: Finance receives the customer payment. =====
@@ -164,15 +236,31 @@ for (const score of [0, 50, 100]) {
   const save = withPrice(stocked(100), 1500);
   const served = serveViaApp(save)!;
   const f = served.save.business.finance;
-  assert(served.r.amountCharged === 1800 && f.dailyAccumulator.revenue === 1800 && f.lifetime.revenue - save.business.finance.lifetime.revenue === 1800 && f.lifetime.orderCount - save.business.finance.lifetime.orderCount === 1, "I: today's and lifetime revenue both gain exactly the 1800c customer payment ($15.00 × 1.20)");
+  assert(
+    served.r.amountCharged === 1800 &&
+      f.dailyAccumulator.revenue === 1800 &&
+      f.lifetime.revenue - save.business.finance.lifetime.revenue === 1800 &&
+      f.lifetime.orderCount - save.business.finance.lifetime.orderCount === 1,
+    "I: today's and lifetime revenue both gain exactly the 1800c customer payment ($15.00 × 1.20)",
+  );
 }
 
 // ===== J: COGS is unchanged by WTP. =====
 {
   const lo = serveViaApp(stocked(0))!;
   const hi = serveViaApp(stocked(100))!;
-  assert(lo.r.cogsCharged === 300 && hi.r.cogsCharged === 300 && lo.save.business.finance.dailyAccumulator.cogs === hi.save.business.finance.dailyAccumulator.cogs, "J: COGS is 300c (real ingredient cost) at popularity 0 and 100 alike");
-  assert(JSON.stringify(lo.save.business.inventory) === JSON.stringify(hi.save.business.inventory) && getQuantity(lo.save.business.inventory, "tomato") === 19, "J2: inventory consumption is identical regardless of the multiplier");
+  assert(
+    lo.r.cogsCharged === 300 &&
+      hi.r.cogsCharged === 300 &&
+      lo.save.business.finance.dailyAccumulator.cogs ===
+        hi.save.business.finance.dailyAccumulator.cogs,
+    "J: COGS is 300c (real ingredient cost) at popularity 0 and 100 alike",
+  );
+  assert(
+    JSON.stringify(lo.save.business.inventory) === JSON.stringify(hi.save.business.inventory) &&
+      getQuantity(lo.save.business.inventory, "tomato") === 19,
+    "J2: inventory consumption is identical regardless of the multiplier",
+  );
   assert(lo.r.amountCharged !== hi.r.amountCharged, "J3: only the customer payment differs");
 }
 
@@ -180,43 +268,103 @@ for (const score of [0, 50, 100]) {
 {
   const save = withPrice(stocked(90), 1234);
   const served = serveViaApp(save)!;
-  assert(JSON.stringify(served.save.business.menu) === JSON.stringify(save.business.menu) && businessDishPrice(served.save.business.menu, SALAD) === 1234 && served.r.payment.menuPrice === 1234, "K: the menu price stays 1234c — only what the customer pays is multiplied");
+  assert(
+    JSON.stringify(served.save.business.menu) === JSON.stringify(save.business.menu) &&
+      businessDishPrice(served.save.business.menu, SALAD) === 1234 &&
+      served.r.payment.menuPrice === 1234,
+    "K: the menu price stays 1234c — only what the customer pays is multiplied",
+  );
 }
 
 // ===== L: popularity clamped; unsafe values are safe. =====
 {
-  const at = (score: unknown) => businessCustomerPayment({ ...stocked(50), business: { ...stocked(50).business, popularity: { score: score as number } } }, SALAD);
-  assert(at(-20).customerPays === at(0).customerPays && at(-20).popularity === 0, "L: a negative popularity pays exactly like 0");
-  assert(at(150).customerPays === at(100).customerPays && at(150).popularity === 100, "L2: popularity above 100 pays exactly like 100");
-  assert(at(-Infinity).popularity === 0 && at(Infinity).popularity === 100, "L3: ±Infinity clamp to 0 / 100");
+  const at = (score: unknown) =>
+    businessCustomerPayment(
+      {
+        ...stocked(50),
+        business: { ...stocked(50).business, popularity: { score: score as number } },
+      },
+      SALAD,
+    );
+  assert(
+    at(-20).customerPays === at(0).customerPays && at(-20).popularity === 0,
+    "L: a negative popularity pays exactly like 0",
+  );
+  assert(
+    at(150).customerPays === at(100).customerPays && at(150).popularity === 100,
+    "L2: popularity above 100 pays exactly like 100",
+  );
+  assert(
+    at(-Infinity).popularity === 0 && at(Infinity).popularity === 100,
+    "L3: ±Infinity clamp to 0 / 100",
+  );
   for (const bad of [NaN, undefined, null, "80", {}]) {
     const p = at(bad);
-    assert(Number.isFinite(p.customerPays) && Number.isInteger(p.customerPays) && p.popularity === 50 && p.multiplier === willingnessToPayMultiplierFor(50), `L4: unsafe popularity ${typeof bad === "string" ? JSON.stringify(bad) : bad !== null && typeof bad === "object" ? "{}" : String(bad)} falls back to the default 50 — a finite whole-cent payment`);
+    assert(
+      Number.isFinite(p.customerPays) &&
+        Number.isInteger(p.customerPays) &&
+        p.popularity === 50 &&
+        p.multiplier === willingnessToPayMultiplierFor(50),
+      `L4: unsafe popularity ${typeof bad === "string" ? JSON.stringify(bad) : bad !== null && typeof bad === "object" ? "{}" : String(bad)} falls back to the default 50 — a finite whole-cent payment`,
+    );
   }
-  assert(popularityForPayment(42.6) === 43 && popularityForPayment(NaN) === 50, "L5: fractional scores round like the existing clamp; NaN falls back to 50");
-  const corrupt = { ...stocked(50), business: { ...stocked(50).business, popularity: { score: NaN } } };
+  assert(
+    popularityForPayment(42.6) === 43 && popularityForPayment(NaN) === 50,
+    "L5: fractional scores round like the existing clamp; NaN falls back to 50",
+  );
+  const corrupt = {
+    ...stocked(50),
+    business: { ...stocked(50).business, popularity: { score: NaN } },
+  };
   const served = serveViaApp(corrupt)!;
-  assert(Number.isFinite(served.save.credits) && served.save.credits === corrupt.credits + served.r.amountCharged, "L6: a corrupt saved popularity can't corrupt cash on a real serve");
-  const noPop = { ...stocked(50), business: { ...stocked(50).business, popularity: undefined as never } };
-  assert(Number.isFinite(businessCustomerPayment(noPop, SALAD).customerPays), "L7: a save with no popularity object at all still pays a finite amount");
+  assert(
+    Number.isFinite(served.save.credits) &&
+      served.save.credits === corrupt.credits + served.r.amountCharged,
+    "L6: a corrupt saved popularity can't corrupt cash on a real serve",
+  );
+  const noPop = {
+    ...stocked(50),
+    business: { ...stocked(50).business, popularity: undefined as never },
+  };
+  assert(
+    Number.isFinite(businessCustomerPayment(noPop, SALAD).customerPays),
+    "L7: a save with no popularity object at all still pays a finite amount",
+  );
 }
 
 // ===== M: determinism. =====
 {
   const a = serveViaApp(withPrice(stocked(37), 1111))!;
   const b = serveViaApp(JSON.parse(JSON.stringify(withPrice(stocked(37), 1111))) as SaveData)!;
-  assert(a.r.amountCharged === b.r.amountCharged && JSON.stringify(a.r.payment) === JSON.stringify(b.r.payment), `M: same popularity + same menu price -> the same payment (${a.r.amountCharged}c), also after a save/reload round-trip`);
+  assert(
+    a.r.amountCharged === b.r.amountCharged &&
+      JSON.stringify(a.r.payment) === JSON.stringify(b.r.payment),
+    `M: same popularity + same menu price -> the same payment (${a.r.amountCharged}c), also after a save/reload round-trip`,
+  );
 }
 
 // ===== N: D2 unchanged. =====
 {
   const save = stocked(70);
   const served = serveViaApp(save)!;
-  assert(served.r.popularityDelta === 0 && served.save.business.popularity.score === 70, "N: serving does not change popularity");
-  assert(served.save.business.finance.dailyAccumulator.ordersServed === 1, "N2: ordersServed increments exactly once");
-  const expected = endOfDayPopularity(served.save, endBusinessDay(served.save).inspectionReport.overall, 1);
+  assert(
+    served.r.popularityDelta === 0 && served.save.business.popularity.score === 70,
+    "N: serving does not change popularity",
+  );
+  assert(
+    served.save.business.finance.dailyAccumulator.ordersServed === 1,
+    "N2: ordersServed increments exactly once",
+  );
+  const expected = endOfDayPopularity(
+    served.save,
+    endBusinessDay(served.save).inspectionReport.overall,
+    1,
+  );
   const closed = endBusinessDay(served.save);
-  assert(closed.popularityScore === expected.score && closed.popularityBreakdown.service === 3, "N3: popularity changes only at End Business Day, by the unchanged D2 formula");
+  assert(
+    closed.popularityScore === expected.score && closed.popularityBreakdown.service === 3,
+    "N3: popularity changes only at End Business Day, by the unchanged D2 formula",
+  );
 }
 
 // ===== O: end-of-day P&L stays internally consistent with WTP revenue. =====
@@ -231,12 +379,35 @@ for (const score of [0, 50, 100]) {
   }
   const end = endBusinessDay(save);
   const p = end.dailyPnL;
-  const revenueLedger = save.economyLedger.filter((e) => e.category === "business-revenue").reduce((a, e) => a + e.amount, 0);
-  assert(payments.every((x) => x === 1710) && p.revenue === 3 * 1710 && revenueLedger === p.revenue, "O: P&L revenue = the three 1710c customer payments = the revenue ledger entries");
-  assert(p.cogs === 900 && p.grossProfit === p.revenue - p.cogs && p.operatingProfit === p.grossProfit - p.staffCost - p.maintenanceCost - p.supplierCost - p.otherOperatingCost - p.inspectionFines, "O2: COGS 900c; gross and operating profit follow the unchanged P&L formulas");
-  const closedSave = appendLedgerEntry(appendLedgerEntry(end.save, "business-staff-salary", -end.payrollPaid), "inspection-fine", -end.inspectionFine.finePaid);
+  const revenueLedger = save.economyLedger
+    .filter((e) => e.category === "business-revenue")
+    .reduce((a, e) => a + e.amount, 0);
+  assert(
+    payments.every((x) => x === 1710) && p.revenue === 3 * 1710 && revenueLedger === p.revenue,
+    "O: P&L revenue = the three 1710c customer payments = the revenue ledger entries",
+  );
+  assert(
+    p.cogs === 900 &&
+      p.grossProfit === p.revenue - p.cogs &&
+      p.operatingProfit ===
+        p.grossProfit -
+          p.staffCost -
+          p.maintenanceCost -
+          p.supplierCost -
+          p.otherOperatingCost -
+          p.inspectionFines,
+    "O2: COGS 900c; gross and operating profit follow the unchanged P&L formulas",
+  );
+  const closedSave = appendLedgerEntry(
+    appendLedgerEntry(end.save, "business-staff-salary", -end.payrollPaid),
+    "inspection-fine",
+    -end.inspectionFine.finePaid,
+  );
   const ledgerSum = closedSave.economyLedger.reduce((a, e) => a + e.amount, 0);
-  assert(opening + ledgerSum === closedSave.credits && p.openingCash === opening, "O3: opening cash + signed ledger = closing cash");
+  assert(
+    opening + ledgerSum === closedSave.credits && p.openingCash === opening,
+    "O3: opening cash + signed ledger = closing cash",
+  );
 }
 
 // ===== P: Campaign / shared payment path untouched. =====
@@ -245,41 +416,121 @@ for (const score of [0, 50, 100]) {
   let session = createServiceSession("qa-campaign", [recipe], makeSeededRand(3));
   session = recordAllComponents(session, 80);
   const paid = serveCurrentOrder(session, makeSeededRand(3), 321);
-  assert(!!paid && paid.coinsAwarded === 321, "P: the shared serveCurrentOrder still pays exactly the amount it is given (no multiplier inside it)");
-  const shared = ["src/game/service/ServiceManager.ts", "src/game/service/CustomerOrderManager.ts", "src/game/economy/EconomySettlement.ts", "src/game/recipes/recipePay.ts"];
+  assert(
+    !!paid && paid.coinsAwarded === 321,
+    "P: the shared serveCurrentOrder still pays exactly the amount it is given (no multiplier inside it)",
+  );
+  const shared = [
+    "src/game/service/ServiceManager.ts",
+    "src/game/service/CustomerOrderManager.ts",
+    "src/game/economy/EconomySettlement.ts",
+    "src/game/recipes/recipePay.ts",
+  ];
   for (const f of shared) {
     const file = path.resolve(import.meta.dirname, "..", f);
     const src = fs.existsSync(file) ? fs.readFileSync(file, "utf8") : "";
-    assert(src.length > 0 && !/willingnessToPay|DemandManager|businessCustomerPayment/.test(src), `P2: ${f} has no WTP reference — Campaign/shared payment logic is not multiplied`);
+    assert(
+      src.length > 0 && !/willingnessToPay|DemandManager|businessCustomerPayment/.test(src),
+      `P2: ${f} has no WTP reference — Campaign/shared payment logic is not multiplied`,
+    );
   }
-  const users = [...fs.readdirSync(path.resolve(import.meta.dirname, "..", "src"), { recursive: true }) as string[]]
+  const users = [
+    ...(fs.readdirSync(path.resolve(import.meta.dirname, "..", "src"), {
+      recursive: true,
+    }) as string[]),
+  ]
     .filter((f) => /\.(ts|tsx)$/.test(f))
-    .filter((f) => /willingnessToPayMultiplierFor\(/.test(fs.readFileSync(path.resolve(import.meta.dirname, "..", "src", f), "utf8")))
+    .filter((f) =>
+      /willingnessToPayMultiplierFor\(/.test(
+        fs.readFileSync(path.resolve(import.meta.dirname, "..", "src", f), "utf8"),
+      ),
+    )
     .map((f) => f.replace(/\\/g, "/"));
-  assert(JSON.stringify(users.sort()) === JSON.stringify(["game/business/BusinessServiceManager.ts", "game/business/DemandManager.ts"]), `P3: willingnessToPayMultiplierFor is defined once and called from exactly one place (${users.join(", ")})`);
-  const campaign = { ...stocked(100), levelProgress: DEFAULT_SAVE.levelProgress, recipeProgress: { "camp-garlic-bread": { best: 91 } } as never };
+  assert(
+    JSON.stringify(users.sort()) ===
+      JSON.stringify(["game/business/BusinessServiceManager.ts", "game/business/DemandManager.ts"]),
+    `P3: willingnessToPayMultiplierFor is defined once and called from exactly one place (${users.join(", ")})`,
+  );
+  const campaign = {
+    ...stocked(100),
+    levelProgress: DEFAULT_SAVE.levelProgress,
+    recipeProgress: { "camp-garlic-bread": { best: 91 } } as never,
+  };
   const after = serveViaApp(campaign)!;
-  const nonBusiness = (x: SaveData) => JSON.stringify(Object.fromEntries(Object.entries({ ...x, economy: { ...x.economy, lifetime: {} } }).filter(([k]) => !["business", "credits", "economyLedger"].includes(k))));
-  assert(nonBusiness(after.save) === nonBusiness(campaign), "P4: a WTP serve changes no Campaign field");
+  const nonBusiness = (x: SaveData) =>
+    JSON.stringify(
+      Object.fromEntries(
+        Object.entries({ ...x, economy: { ...x.economy, lifetime: {} } }).filter(
+          ([k]) => !["business", "credits", "economyLedger"].includes(k),
+        ),
+      ),
+    );
+  assert(
+    nonBusiness(after.save) === nonBusiness(campaign),
+    "P4: a WTP serve changes no Campaign field",
+  );
 }
 
 // ===== Q: exact Economy V2 freeze. =====
 {
-  const v2 = spawnSync("npx", ["tsx", JSON.stringify(path.resolve(import.meta.dirname, "economy-v2-campaign-simulation.mts"))], { encoding: "utf8", shell: true });
-  const honest = v2.stdout.slice(v2.stdout.indexOf("SIMULATION HONEST"), v2.stdout.indexOf("Total net campaign result") + 60);
-  const has = (label: string, value: string) => new RegExp(`${label}:\\s*${value}(?![\\d,])`).test(honest);
-  assert(v2.status === 0 && has("Gross recipe revenue", "\\$165,140\\.00") && has("Level-completion rewards", "\\$77,581\\.00") && has("Total COGS", "\\$37,620\\.00") && has("Total quality bonuses", "\\$3,315\\.00") && has("Total net campaign result", "\\$208,416\\.00"), "Q: Economy V2 freeze exact — $165,140.00 / $77,581.00 / $37,620.00 / $3,315.00 / $208,416.00 (V2.5 completion rewards)");
+  const v2 = spawnSync(
+    "npx",
+    [
+      "tsx",
+      JSON.stringify(path.resolve(import.meta.dirname, "economy-v2-campaign-simulation.mts")),
+    ],
+    { encoding: "utf8", shell: true },
+  );
+  const honest = v2.stdout.slice(
+    v2.stdout.indexOf("SIMULATION HONEST"),
+    v2.stdout.indexOf("Total net campaign result") + 60,
+  );
+  const has = (label: string, value: string) =>
+    new RegExp(`${label}:\\s*${value}(?![\\d,])`).test(honest);
+  assert(
+    v2.status === 0 &&
+      has("Gross recipe revenue", "\\$165,140\\.00") &&
+      has("Level-completion rewards", "\\$77,581\\.00") &&
+      has("Total COGS", "\\$37,620\\.00") &&
+      has("Total quality bonuses", "\\$3,315\\.00") &&
+      has("Total net campaign result", "\\$208,416\\.00"),
+    "Q: Economy V2 freeze exact — $165,140.00 / $77,581.00 / $37,620.00 / $3,315.00 / $208,416.00 (V2.5 completion rewards)",
+  );
 }
 
 // ===== U: UI wording — the customer payment is never called simply "the menu price". =====
 {
-  const read = (f: string) => fs.readFileSync(path.resolve(import.meta.dirname, "..", "src", "components", "kc", f), "utf8");
-  const ui = ["business/BusinessService.tsx", "business/BusinessMenu.tsx", "business/BusinessDashboard.tsx", "game/ServiceOrderComplete.tsx"].map(read).join("\n");
-  assert(!/pays your menu price and|at your menu prices\./i.test(ui), "U: no Business screen says serving 'pays your menu price'");
-  assert(/BusinessPaymentLines payment=\{payment\}/.test(read("business/BusinessService.tsx")) && /BusinessPaymentLines payment=\{served\.businessPayment\} paid/.test(read("game/ServiceOrderComplete.tsx")), "U2: the Service screen and the served card both show Menu Price × Modifier = Customer Pays");
+  const read = (f: string) =>
+    fs.readFileSync(path.resolve(import.meta.dirname, "..", "src", "components", "kc", f), "utf8");
+  const ui = [
+    "business/BusinessService.tsx",
+    "business/BusinessMenu.tsx",
+    "business/BusinessDashboard.tsx",
+    "game/ServiceOrderComplete.tsx",
+  ]
+    .map(read)
+    .join("\n");
+  assert(
+    !/pays your menu price and|at your menu prices\./i.test(ui),
+    "U: no Business screen says serving 'pays your menu price'",
+  );
+  assert(
+    /BusinessPaymentLines payment=\{payment\}/.test(read("business/BusinessService.tsx")) &&
+      /BusinessPaymentLines payment=\{served\.businessPayment\} paid/.test(
+        read("game/ServiceOrderComplete.tsx"),
+      ),
+    "U2: the Service screen and the served card both show Menu Price × Modifier = Customer Pays",
+  );
   const lines = read("business/BusinessPaymentLines.tsx");
-  assert(["Menu Price", "Popularity", "Customer Modifier", "Customer Pays", "Customer Paid"].every((t) => lines.includes(t)), "U3: the breakdown names Menu Price, Popularity, Customer Modifier and Customer Pays/Paid");
+  assert(
+    ["Menu Price", "Popularity", "Customer Modifier", "Customer Pays", "Customer Paid"].every((t) =>
+      lines.includes(t),
+    ),
+    "U3: the breakdown names Menu Price, Popularity, Customer Modifier and Customer Pays/Paid",
+  );
 }
 
-console.log(failures === 0 ? "\nBUSINESS WTP QA: ALL PASS" : `\nBUSINESS WTP QA: ${failures} FAILURE(S)`);
+console.log(
+  failures === 0 ? "\nBUSINESS WTP QA: ALL PASS" : `\nBUSINESS WTP QA: ${failures} FAILURE(S)`,
+);
 process.exit(failures === 0 ? 0 : 1);
