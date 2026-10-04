@@ -1,0 +1,32 @@
+# Economy TODO — for the economy pass after the Unified Restaurant
+
+Spec §48: every new economic interaction the restaurant integration creates
+is listed here and **not balanced now**. Prices, rewards, wages and formulas
+stay as they are until the separate economy simulation.
+
+Status key: OPEN (not yet built), BUILT (exists, not balanced).
+
+| # | Interaction | Status | Why it needs the economy pass |
+|---|---|---|---|
+| P0 | **Campaign food charged twice** — the settlement still deducts its abstract COGS (~$34.6k over 250 levels) while the player now buys real stock (~$2.2k at Market prices, more with guests) | OPEN | Formulas must not change in this phase. The pass must pick one food cost. |
+| 1 | Campaign ingredient consumption | OPEN | Real stock costs are tiny next to campaign pay (a ~$1 tomato in a ~$45 order). |
+| 2 | Napkins / tissues per order | OPEN | Cost per order, pack sizes. |
+| 3 | Dishwashing liquid (new line, retail × 0.65) | OPEN | New item; usage rate per dine-in service. |
+| 4 | Cleaning supplies (new line, retail × 0.65) | OPEN | New item; usage and effect. |
+| 5 | Tableware breakage / replacement | OPEN | Reusable today; any loss rate is a cost. |
+| 6 | Takeaway packaging in campaign orders | OPEN | Same packs as Business; share of takeaway orders. |
+| 7 | Staff wages during the campaign | OPEN | Waged staff currently cost more than they earn. |
+| 8 | Two staff systems (one-time helpers vs waged roles) | OPEN | Which one survives, and its value. |
+| 9 | Two supplier systems (campaign COGS ±10% vs Business contracts/events) | OPEN | One supplier effect. |
+| 10 | Fridge upgrades as campaign needs | OPEN | $2,000 / $4,800 against a buy-everything player's $10–31 around L20–50. |
+| 11 | Equipment condition and maintenance in the campaign | OPEN | Recurring cost. |
+| 12 | Waste / spoilage in the campaign | OPEN | Lost stock value. |
+| 13 | Menu orders inside campaign levels (menu prices) next to level settlements | OPEN | Two price models in one service. |
+| 14 | Endless revenue through the Business engine (menu prices) instead of level rewards with a $600/day cap | OPEN | Endless income changes completely. |
+| 15 | Random orders and demand (customers per day) | OPEN | Volume drives all of the above. |
+| 16 | Starter supplies for existing saves (goods, no money) | OPEN | Their value. |
+
+Questions the pass must answer (spec §48): can a player afford required
+items; can they go into debt (never); money left after L250; Endless
+profitability; staff cost; supply prices; expansion cost; random order
+earnings; a completionist's final wealth.
