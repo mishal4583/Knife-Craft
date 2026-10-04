@@ -354,9 +354,11 @@
 @utility kc-cine-skip {
   animation: kc-story-fade 400ms ease-out both;
 }
-/* A platform pause freezes the film with the clock. */
+/* A platform pause freezes the film with the clock (and the finale/banners with their timers). */
 .kc-cine-paused,
-.kc-cine-paused * {
+.kc-cine-paused *,
+.kc-story-paused,
+.kc-story-paused * {
   animation-play-state: paused !important;
 }
 @media (prefers-reduced-motion: reduce) {

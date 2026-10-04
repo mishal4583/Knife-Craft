@@ -128,6 +128,11 @@ and `playgama-bridge-config.json` beside it before uploading.
 Focused suites (`npx tsx scripts/<name>.mts`):
 
 - `story-intro-qa` — intro pacing, Skip story, story save semantics.
+- `story-pause-qa` — the finale and milestone banners stop their timers
+  (and animations, and finale taps) while paused, resuming with the time
+  left (`PausableCountdown` on a fake clock); the finale's "BACK TO THE
+  KITCHEN" ends on Kitchen home. Browser: `tools/e2e/finale.mjs` (a real
+  Bridge pause mid-finale).
 - `playables-ads-qa` — Bridge ads (interstitial policy, rewarded Replay Bonus).
 - `economy-v2-final-qa`, `economy-v2-qa`, `economy-v2-settlement-ledger-qa`
   — Economy V2 frozen baseline (some checks use `git diff`, so run them in
@@ -520,6 +525,13 @@ not silently removed.
   Finishing and skipping share one completion path
   (`CinematicIntro.finish` → `App.completeIntro`) that sets only
   `story.introDone = true`, once. `StoryOverlay` still plays the finale.
+- **Story pause** — the finale's beat timers and the milestone banners'
+  dismiss timer count unpaused time only (`usePausableTimeout` over
+  `game/story/pausableCountdown.ts`, following `PauseManager`); while
+  paused their CSS animations freeze (`kc-story-paused`) and finale taps are
+  ignored. The finale's last button, "BACK TO THE KITCHEN", ends on the
+  Kitchen home screen (`App.finishFinale`; developer decision #21). Every
+  path that plays the finale has already paid and saved the level.
 - Milestones (Level 10/20/45/70/110/120/250) and the Level-100 finale are
   unchanged. `SaveData.story = { introDone, milestoneMask, finaleSeen }` —
   no new fields.

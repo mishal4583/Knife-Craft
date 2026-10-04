@@ -170,6 +170,13 @@ conversation.
      End Business Day sweep run early, recorded as waste, no money or
      ledger change; throwing out early then ending the day equals just
      ending the day (`inventory-screen-qa` D1–D5, e2e `inventory.mjs` 7b).
+   - #21 The finale's "BACK TO THE KITCHEN" now goes to Kitchen home
+     (`App.finishFinale`; it used to leave the player on the Order Board).
+   - #22 Story timers stop while paused: the finale's beats and the
+     milestone banners run on `PausableCountdown` (`usePausableTimeout` +
+     `PauseManager`), animations freeze, finale taps are ignored
+     (`story-pause-qa`, e2e `finale.mjs`; `story-intro-qa` D8 updated to
+     the approved exit).
 31. Staff only in Business (developer: "remove the staff from market keep them
    only in bussiness"; chose to MOVE the campaign kitchen helpers, not remove
    them). The Market's Staff tab is gone (8 tabs); Business → Staff shows the
@@ -337,8 +344,6 @@ reduced-motion fallback, double-tap / tap-through protections.
 
 Not implemented (from the audits, all CSS/asset-free):
 
-- Story timers do not pause on a platform pause (subscribe `StoryOverlay`
-  to `PauseManager`; freeze CSS animations with a paused class).
 - Reuse the already-downloaded `kitchen-bg.jpg` as the story background
   plate so the last beat dissolves straight into Level 1 (same image).
 - Render the existing `fx` data (dust/spark/coins) with CSS particles;
@@ -347,8 +352,6 @@ Not implemented (from the audits, all CSS/asset-free):
   better contrast on the dark "decline" tint.
 - Milestone banners: a story variant placed below screen headers, queued
   after the Level Complete toast instead of replacing it.
-- Finale: its button says "BACK TO THE KITCHEN" but leaves the player on
-  the Order Board (one-line navigation change — needs the developer's OK).
 - Pause the Level 1 scene underneath the intro after SCENE_READY (it costs
   ~19% main thread while hidden) — never delay `gameReady`.
 

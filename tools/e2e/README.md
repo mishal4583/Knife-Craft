@@ -16,6 +16,7 @@ profiles to `tools/e2e/profile-*` (both gitignored).
 
 | Script | What it checks |
 |---|---|
+| `finale.mjs` | The finale after the 100th level: a real Bridge pause holds its beat (animations frozen, taps ignored) and it resumes with the time left; "BACK TO THE KITCHEN" lands on Kitchen home; nothing paid twice |
 | `introskip.mjs` | Opening intro: natural finish time, Skip story (double tap, mid-transition, button beat, last-timer race), button beats, reload, existing saves, 6 viewports, network hosts, console errors |
 | `introshots.mjs` | Captures every intro screen into `playgama/screenshots/intro/` |
 | `pgbridge.mjs` | Bridge loads + initializes, `game_ready` sent once, saves go through Bridge storage, only the Bridge CDN is contacted |

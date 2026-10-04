@@ -1546,6 +1546,20 @@ export function App() {
     go("board");
   }
 
+  /**
+   * The finale's last beat is "BACK TO THE KITCHEN", so it ends on the
+   * Kitchen home screen. Every path that plays the finale has already
+   * paid and saved the level (and skips its interstitial), so leaving the
+   * finished preparation or the Order Board here loses nothing; the level
+   * is closed like any other exit.
+   */
+  function finishFinale() {
+    setStoryEvent(null);
+    levelAbandoned();
+    setSessionMode("campaign");
+    go("kitchen");
+  }
+
   /** Returns this run's coin reward (0 on replay) — Preparation shows it directly on OrderComplete rather than waiting a round trip through props. */
   function recordPreparationResult(score: number): number {
     if (!save) return 0;
@@ -2012,7 +2026,7 @@ export function App() {
       </Suspense>
       {showIntro ? <CinematicIntro onDone={completeIntro} /> : null}
       {storyEvent?.kind === "finale" ? (
-        <StoryOverlay sequence={FINALE} onDone={() => setStoryEvent(null)} />
+        <StoryOverlay sequence={FINALE} onDone={finishFinale} />
       ) : null}
       {storyEvent?.kind === "milestone" ? (
         <MilestoneBanner
