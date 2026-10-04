@@ -8,7 +8,7 @@ Status key: OPEN (not yet built), BUILT (exists, not balanced).
 
 | # | Interaction | Status | Why it needs the economy pass |
 |---|---|---|---|
-| P0 | **Campaign food charged twice** — the settlement still deducts its abstract COGS (~$34.6k over 250 levels) while the player now buys real stock (~$2.2k at Market prices, more with guests) | OPEN | Formulas must not change in this phase. The pass must pick one food cost. |
+| P0 | **Remove double food-cost charging** after the unified restaurant system is implemented. The campaign settlement still deducts its built-in COGS (~$34.6k over 250 levels) while the player also buys real stock (~$2.2k at Market prices). Developer decision 2026-10-04: keep both in this phase, no hidden rewards or refunds. Target for the pass: level revenue → real ingredient consumption → supplies → actual profit. | OPEN | Formulas must not change in this phase. |
 | 1 | Campaign ingredient consumption | OPEN | Real stock costs are tiny next to campaign pay (a ~$1 tomato in a ~$45 order). |
 | 2 | Napkins / tissues per order | OPEN | Cost per order, pack sizes. |
 | 3 | Dishwashing liquid (new line, retail × 0.65) | OPEN | New item; usage rate per dine-in service. |

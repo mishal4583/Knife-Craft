@@ -134,6 +134,15 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   requires, completing it clears the entry, old saves load unchanged.
   Browser: `tools/e2e/paidorders.mjs` (Level 30: serve 1 of 2, leave,
   retry → 2 settlements, not 3).
+- `restaurant-unlocks-qa` — Unified Restaurant foundations
+  (`docs/RESTAURANT_INTEGRATION_AUDIT.md`): the ONE build switch
+  `src/game/config/restaurantMode.ts` `RESTAURANT_MODE` (false; no other
+  restaurant flag; restaurant modules never read it), the unlock table
+  `src/game/restaurant/unlocks.ts` (stock L11, fridge L21, equipment L41,
+  dine-in L61, cleaning + staff L81, suppliers L101, menu L121, takeaway
+  L151, efficiency L181, advanced L201, full management L221, grand
+  preparation L241), and stock needs for every recipe
+  (`restaurant/recipeRequirements.ts`, the rule Business dishes use too).
 - `story-pause-qa` — the finale and milestone banners stop their timers
   (and animations, and finale taps) while paused, resuming with the time
   left (`PausableCountdown` on a fake clock); the finale's "BACK TO THE

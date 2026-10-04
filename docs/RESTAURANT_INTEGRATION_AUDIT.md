@@ -177,22 +177,49 @@ Menu, Operations) as the Restaurant's back office; `DailyOrderManager`.
 
 ---
 
-## 17. Conflicts and risks — decisions needed
+## 17. Conflicts and risks
+
+**Decided by the developer on 2026-10-04** (answers to the four open
+questions; the defaults below stand for the rest):
+
+- **#3 Food charged twice:** keep both. Do not change any payout, reward,
+  recipe cost or economy number; no hidden rewards or automatic refunds.
+  P0 of the Economy TODO. The campaign must still never soft-lock on stock:
+  show exactly what is missing, the amount needed, the capacity needed,
+  warn before expiry, allow disposal, announce requirements ahead, and give
+  an affordable path.
+- **#7 Business days before L250:** removed. Levels 1–250 are the only
+  progression and the only campaign income; Business becomes management UI
+  (Overview, Inventory, Fridge, Supplies, Equipment, Staff, Suppliers, Menu,
+  Operations, Analytics), not a playable mode. Menu / random orders appear
+  inside levels, especially from L121. Open restaurant days only in Endless
+  after L250, on the same systems.
+- **#1 Staff:** only in Restaurant → Staff, never in the Market. The waged
+  staff and the campaign kitchen helpers become ONE Restaurant Staff system;
+  current effects, wages and prices unchanged.
+- **#12 Build safety:** one central build-time switch,
+  `src/game/config/restaurantMode.ts` → `RESTAURANT_MODE` (false until every
+  phase, migration, economy, QA and real-device testing are done and
+  approved). No other feature flags; no player-facing setting; old systems
+  stay until the full system passes QA.
+
+| # | Conflict | Resolution |
+|---|---|---|
 
 | # | Conflict | My default unless you say otherwise |
 |---|---|---|
-| 1 | Spec §36 lists **Staff in the Market**; on 2026-10-03 you asked to remove staff from the Market and keep them in Business only. | Keep staff in **Restaurant → Staff** (your latest explicit request). |
+| 1 | Spec §36 lists **Staff in the Market**; on 2026-10-03 you asked to remove staff from the Market and keep them in Business only. | **Decided:** Restaurant → Staff only, one Staff system. |
 | 2 | Spec §2 nav: Kitchen · Market · Restaurant/Progress; §35 keeps Inventory separate. | Kitchen · Market · Inventory · **Restaurant** (was Business) · Progress. |
-| 3 | **Food is charged twice.** The campaign settlement keeps deducting its abstract COGS (formulas must not change), and the player now also pays for real stock. | Keep both for now, show the stock cost on the report, and make it **P0 in the Economy TODO**. |
+| 3 | **Food is charged twice.** The campaign settlement keeps deducting its abstract COGS (formulas must not change), and the player now also pays for real stock. | **Decided:** keep both, P0 in the Economy TODO, no compensation. |
 | 4 | **Two staff systems, two supplier systems.** Spec: one conceptual system, keep campaign COGS effects until the economy pass. | One Staff screen and one Suppliers screen; both data sets kept underneath; effects unchanged. |
 | 5 | **No day clock in the campaign**, so food never ages. | From the freshness unlock (L21) a restaurant day = **2 levels** (lunch + dinner); the evening review runs the unlocked parts of `endBusinessDay`. |
 | 6 | **Dish soap and cleaning supplies** don't exist; adding them needs prices, and the spec forbids changing prices. | Add 2 lines priced like every other line (WebstaurantStore retail × 0.65, source recorded), flagged in the Economy TODO. |
-| 7 | **Business days before L250.** Today anyone can run Business days for money; spec §30: nothing may fund the campaign except the campaign. | The separate Business service entry goes. Menu orders inside levels (from L121) replace it; open Business days only in Endless. |
+| 7 | **Business days before L250.** Today anyone can run Business days for money; spec §30: nothing may fund the campaign except the campaign. | **Decided:** no pre-250 Business days; menu orders inside levels from L121; open days only in Endless. |
 | 8 | **Existing players and new requirements.** A Level 120 save suddenly needs plates, napkins and dish soap it never bought. | A one-time starter set of the supplies their chapter needs (goods, no money), as §46 allows. |
 | 9 | **Endless pay changes nature**: today the level reward up to $600/day; as a restaurant it earns menu prices through the Business engine. | Use the existing Business payment formula (no new numbers); flag in the Economy TODO. |
 | 10 | The spec's **unlock schedule** puts takeaway at L151–180 and the menu at L121–150, but Business packaging and menus exist today. | Follow the spec's schedule for the campaign; before a system's unlock its stock is ignored, never wasted. |
 | 11 | **CLAUDE.md** says "Campaign must never require any Business system", and suites guard it (`business-supplies-qa` H1, `inventory-market-qa`, `business-ux-qa`, `campaign-integrity-qa`). | Rewrite that rule to the new design once you approve, and change those checks on purpose (never delete them). |
-| 12 | **Size and safety.** This touches both order engines, saves, navigation and most of the 61 suites. | Build behind one code switch (`RESTAURANT_MODE`, off on `main` until the batch is done) so every merge stays shippable. |
+| 12 | **Size and safety.** This touches both order engines, saves, navigation and most of the 61 suites. | **Decided:** one central `RESTAURANT_MODE` switch, off until everything is approved. |
 
 ---
 
