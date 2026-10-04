@@ -128,6 +128,12 @@ and `playgama-bridge-config.json` beside it before uploading.
 Focused suites (`npx tsx scripts/<name>.mts`):
 
 - `story-intro-qa` — intro pacing, Skip story, story save semantics.
+- `campaign-paid-orders-qa` — a multi-order level (or batch group) saves
+  each order it pays (`levelProgress.paidOrders`, `levels/paidOrders.ts`):
+  a retry carries on from there, a level never pays more orders than it
+  requires, completing it clears the entry, old saves load unchanged.
+  Browser: `tools/e2e/paidorders.mjs` (Level 30: serve 1 of 2, leave,
+  retry → 2 settlements, not 3).
 - `story-pause-qa` — the finale and milestone banners stop their timers
   (and animations, and finale taps) while paused, resuming with the time
   left (`PausableCountdown` on a fake clock); the finale's "BACK TO THE

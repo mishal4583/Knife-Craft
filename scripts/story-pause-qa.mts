@@ -206,8 +206,8 @@ const flushes = [
 ];
 const allFlushes = [...app.matchAll(/setStoryEvent\(flush\)/g)];
 assert(
-  allFlushes.length === 3 && flushes.length === 3,
-  "K2: all three finale paths save the level before the finale shows",
+  allFlushes.length === 2 && flushes.length === allFlushes.length,
+  "K2: both finale paths (completeCampaignLevel, recordPreparationResult) save the level before the finale shows",
 );
 assert(
   /if \(isFinale\) return;/.test(app),

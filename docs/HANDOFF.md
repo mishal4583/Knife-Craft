@@ -170,6 +170,17 @@ conversation.
      End Business Day sweep run early, recorded as waste, no money or
      ledger change; throwing out early then ending the day equals just
      ending the day (`inventory-screen-qa` D1–D5, e2e `inventory.mjs` 7b).
+   - #5 Multi-order levels save their paid orders
+     (`levelProgress.paidOrders[levelId]` = recipe ids, written in the same
+     persist as the payment; `levels/paidOrders.ts`). A retry starts with
+     them counted (service: `withOrdersAlreadyServed`; batch group: those
+     customers already served, `withBatchOrdersAlreadyServed`); an order
+     pays only while the level still owes one (`mayPayOrder`);
+     `completeLevel` clears the entry. A level whose orders were all paid
+     but never finished completes on its next start. The two finish paths
+     now share `completeCampaignLevel`. QA `campaign-paid-orders-qa`, e2e
+     `paidorders.mjs` (it fails on the old build: the retry needed 2 more
+     orders); `story-pause-qa` K2 counts the merged path.
    - #21 The finale's "BACK TO THE KITCHEN" now goes to Kitchen home
      (`App.finishFinale`; it used to leave the player on the Order Board).
    - #22 Story timers stop while paused: the finale's beats and the
@@ -315,9 +326,10 @@ Priority order as agreed in the audit (P0 = before wide release):
 - ~~P0 — G1~~ **fixed 2026-09-29**: leaving a campaign level (Served
   screen or pause menu) after its required orders are served and paid now
   completes it through `finishCampaignLevel` / `finishBatchGroupLevel`, so a
-  retry is a replay and pays nothing. Still open (needs a decision, would
-  need persisted partial progress): on a `requiredOrders: 2` level, leaving
-  after the 1st of 2 orders and retrying pays that 1st order again.
+  retry is a replay and pays nothing. The partial case is fixed too
+  (developer decision #5): each paid order is saved in
+  `levelProgress.paidOrders`, so leaving after the 1st of 2 orders and
+  retrying carries on from the 2nd instead of paying the 1st again.
 - ~~P0 — G2~~ **fixed 2026-09-29**: a fresh save's Level 1 is built with
   `buildCampaignServiceSession` (same as `startCampaignLevel`), so the first
   play has the customer/Serve/Finish Level flow, pays $48 + the $50 reward

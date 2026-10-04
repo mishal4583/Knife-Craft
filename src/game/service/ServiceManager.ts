@@ -510,6 +510,30 @@ export function serveBatchGroupOrder(
   return { group: { ...group, orders }, coinsAwarded: paid.coinsAwarded, reaction };
 }
 
+/**
+ * A retry of an unfinished level (levels/paidOrders.ts): the orders already
+ * served and paid count as done. A service session starts with them
+ * counted; nothing is paid or re-served.
+ */
+export function withOrdersAlreadyServed(session: ServiceSession, count: number): ServiceSession {
+  return { ...session, completedCount: Math.max(session.completedCount, Math.floor(count)) };
+}
+
+/** The batch-group form: each customer whose recipe was already paid starts COMPLETED (one per id). */
+export function withBatchOrdersAlreadyServed(
+  group: BatchGroupSession,
+  paidRecipeIds: readonly string[],
+): BatchGroupSession {
+  const left = [...paidRecipeIds];
+  const orders = group.orders.map((o) => {
+    const i = left.indexOf(o.recipe.id);
+    if (i === -1) return o;
+    left.splice(i, 1);
+    return { ...o, order: { ...o.order, status: "COMPLETED" as const } };
+  });
+  return { ...group, orders };
+}
+
 /** True once every order in the group has reached COMPLETED — the group-level equivalent of a campaign level's `requiredOrders` being satisfied. */
 export function isBatchGroupComplete(group: BatchGroupSession): boolean {
   return group.orders.every((o) => o.order.status === "COMPLETED");

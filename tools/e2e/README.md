@@ -16,6 +16,7 @@ profiles to `tools/e2e/profile-*` (both gitignored).
 
 | Script | What it checks |
 |---|---|
+| `paidorders.mjs` | Level 30 (2 orders): serve the 1st, leave, retry → the retry carries on, 2 settlements in all (not 3), completion reward once, paid entry cleared |
 | `finale.mjs` | The finale after the 100th level: a real Bridge pause holds its beat (animations frozen, taps ignored) and it resumes with the time left; "BACK TO THE KITCHEN" lands on Kitchen home; nothing paid twice |
 | `introskip.mjs` | Opening intro: natural finish time, Skip story (double tap, mid-transition, button beat, last-timer race), button beats, reload, existing saves, 6 viewports, network hosts, console errors |
 | `introshots.mjs` | Captures every intro screen into `playgama/screenshots/intro/` |

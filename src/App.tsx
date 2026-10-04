@@ -84,6 +84,12 @@ import {
 import { pickEndlessLevel, applyEndlessEarn } from "@/game/daily/EndlessServiceManager";
 import { paidLevelReward } from "@/game/levels/levelRewards";
 import {
+  mayPayOrder,
+  ordersRequired,
+  paidOrdersFor,
+  withPaidOrder,
+} from "@/game/levels/paidOrders";
+import {
   createServiceSession,
   recordAllComponents,
   serveCurrentOrder,
@@ -96,6 +102,8 @@ import {
   currentBatchOrder,
   nextBatchOrder,
   batchHintForGroup,
+  withOrdersAlreadyServed,
+  withBatchOrdersAlreadyServed,
   type ServiceSession,
   type BatchGroupSession,
 } from "@/game/service/ServiceManager";
@@ -205,7 +213,11 @@ function buildCampaignServiceSession(
   const pool = campaignPoolFor(level);
   if (pool.length === 0) return null;
   const isReplay = isCompleted(level.id, levelProgress);
-  return createServiceSession(level.id, pool, Math.random, level.chapter, isReplay);
+  const session = createServiceSession(level.id, pool, Math.random, level.chapter, isReplay);
+  // A retry carries on: orders already served and paid stay counted.
+  return isReplay
+    ? session
+    : withOrdersAlreadyServed(session, paidOrdersFor(levelProgress, level.id).length);
 }
 
 function LoadingScreen() {
@@ -1183,6 +1195,7 @@ export function App() {
    */
   function startCampaignLevel(level: LevelDefinition) {
     if (!save) return;
+    if (levelAlreadyPaidInFull(level)) return;
     const session = buildCampaignServiceSession(level, save.levelProgress);
     if (!session) return;
     setCampaignServiceSession(session);
@@ -1220,7 +1233,14 @@ export function App() {
   } | null {
     if (!campaignServiceSession?.current) return null;
     const { recipe, order } = campaignServiceSession.current;
-    const isReplay = campaignServiceSession.isReplay;
+    // A replay pays nothing, and neither does an order the level no longer
+    // owes (its required orders were all paid before — levels/paidOrders.ts).
+    const level = getLevel(campaignServiceSession.levelId);
+    const isReplay =
+      campaignServiceSession.isReplay ||
+      !save ||
+      !level ||
+      !mayPayOrder(save.levelProgress, level, recipe.id);
     // Economy V2 Phase 9 — the full settlement breakdown is kept (not
     // just `.netResult`) so the result UI can show it, but nothing about
     // WHAT gets credited or WHEN changes: `amount` below is still exactly
@@ -1247,7 +1267,11 @@ export function App() {
     // persistent sharpness change). Folded into the SAME persist() call
     // as the credit award so both land atomically together.
     if (save && !isReplay) {
-      const withCredits = { ...save, credits: save.credits + result.coinsAwarded };
+      const withCredits = {
+        ...save,
+        credits: save.credits + result.coinsAwarded,
+        levelProgress: withPaidOrder(save.levelProgress, campaignServiceSession.levelId, recipe.id),
+      };
       const withLedger = appendLedgerEntry(
         withCredits,
         "campaign-settlement",
@@ -1388,6 +1412,20 @@ export function App() {
     if (!save || !campaignServiceSession) return;
     const level = getLevel(campaignServiceSession.levelId);
     if (!level) return;
+    completeCampaignLevel(level);
+    setCampaignServiceSession(null);
+    setSessionMode("campaign");
+    go("board");
+  }
+
+  /**
+   * The one completion path for an order-pool or batch-group level (Finish
+   * Level, leaving a satisfied level, or a retry of a level whose orders
+   * were all paid already): LevelManager.completeLevel + the completion
+   * reward + the story flush, folded into one save and one persist().
+   */
+  function completeCampaignLevel(level: LevelDefinition) {
+    if (!save) return;
     const {
       progress: levelProgress,
       isFirstCompletion,
@@ -1412,9 +1450,21 @@ export function App() {
     // above; only the toast is deferred.
     else if (rewardCoins > 0) setLevelRewardNotice({ rewardCoins });
     afterLevelFinished(finalSave, level, !isFirstCompletion, flush?.kind === "finale");
-    setCampaignServiceSession(null);
+  }
+
+  /**
+   * Every order the level needs was served and paid on an earlier try, but
+   * the level never completed (the game closed in between): there is
+   * nothing left to serve, so it completes now instead of starting a run
+   * that could only re-serve paid orders. Returns true when it did.
+   */
+  function levelAlreadyPaidInFull(level: LevelDefinition): boolean {
+    if (!save || isCompleted(level.id, save.levelProgress)) return false;
+    if (paidOrdersFor(save.levelProgress, level.id).length < ordersRequired(level)) return false;
+    completeCampaignLevel(level);
     setSessionMode("campaign");
     go("board");
+    return true;
   }
 
   /**
@@ -1432,7 +1482,12 @@ export function App() {
     // Economy V2 replay safety — mirrors startCampaignLevel's own doc
     // exactly, for the batch-group architecture.
     const isReplay = isCompleted(level.id, save.levelProgress);
-    const group = createBatchGroupSession(level.id, recipes, Math.random, level.chapter, isReplay);
+    if (levelAlreadyPaidInFull(level)) return;
+    const fresh = createBatchGroupSession(level.id, recipes, Math.random, level.chapter, isReplay);
+    // A retry carries on: customers already served and paid stay served.
+    const group = isReplay
+      ? fresh
+      : withBatchOrdersAlreadyServed(fresh, paidOrdersFor(save.levelProgress, level.id));
     setBatchGroupSession(group);
     setBatchViewOrderId(currentBatchOrder(group)?.order.id ?? null);
     setActiveLevelId(level.id);
@@ -1470,7 +1525,13 @@ export function App() {
     if (!batchGroupSession || !batchViewOrderId) return null;
     const viewed = batchGroupSession.orders.find((o) => o.order.id === batchViewOrderId);
     if (!viewed) return null;
-    const isReplay = batchGroupSession.isReplay;
+    // Mirrors serveCampaignOrder: a replay, or a customer already paid, pays nothing.
+    const level = getLevel(batchGroupSession.levelId);
+    const isReplay =
+      batchGroupSession.isReplay ||
+      !save ||
+      !level ||
+      !mayPayOrder(save.levelProgress, level, viewed.recipe.id);
     // Economy V2 Phase 9 — mirrors serveCampaignOrder's own doc exactly:
     // the full breakdown is kept for the result UI, `amount` stays
     // exactly `settlement?.netResult ?? 0`.
@@ -1492,7 +1553,15 @@ export function App() {
     setBatchGroupSession(result.group);
     // Economy V2 Phase 6 — mirrors serveCampaignOrder's own doc exactly.
     if (save && !isReplay) {
-      const withCredits = { ...save, credits: save.credits + result.coinsAwarded };
+      const withCredits = {
+        ...save,
+        credits: save.credits + result.coinsAwarded,
+        levelProgress: withPaidOrder(
+          save.levelProgress,
+          batchGroupSession.levelId,
+          viewed.recipe.id,
+        ),
+      };
       const withLedger = appendLedgerEntry(
         withCredits,
         "campaign-settlement",
@@ -1521,25 +1590,7 @@ export function App() {
     if (!save || !batchGroupSession) return;
     const level = getLevel(batchGroupSession.levelId);
     if (!level) return;
-    const {
-      progress: levelProgress,
-      isFirstCompletion,
-      rewardCoins,
-    } = completeLevel(level.id, save.levelProgress);
-    let nextSave = { ...save, credits: save.credits + rewardCoins, levelProgress };
-    // Economy V2 Phase 9 — mirrors finishCampaignLevel's own ledger doc exactly.
-    if (rewardCoins > 0)
-      nextSave = appendLedgerEntry(nextSave, "completion-reward", rewardCoins, level.id);
-    const flush = checkStoryFlush(nextSave);
-    const finalSave = flush
-      ? flush.kind === "finale"
-        ? applyFinaleSeen(nextSave)
-        : applyMilestoneFired(nextSave, flush.milestone)
-      : nextSave;
-    persist(finalSave);
-    if (flush) setStoryEvent(flush);
-    else if (rewardCoins > 0) setLevelRewardNotice({ rewardCoins });
-    afterLevelFinished(finalSave, level, !isFirstCompletion, flush?.kind === "finale");
+    completeCampaignLevel(level);
     setBatchGroupSession(null);
     setBatchViewOrderId(null);
     setSessionMode("campaign");
