@@ -21,6 +21,7 @@ profiles to `tools/e2e/profile-*` (both gitignored).
 | `restaurantstock.mjs` | **Restaurant test build only** (`VITE_RESTAURANT_MODE=1 npx vite build --outDir <dir>`, serve it, point `KC_URL` at it): Level 5 has no check; Level 30 with an empty fridge opens the Pre-Service Check, Restock → Market preset to the missing units → Buy → back pill, START SERVICE; serving takes exactly the order's stock with only the settlement as a money entry; $0 → Grandma's pantry; 320×568 fit |
 | `paidorders.mjs` | Level 30 (2 orders): serve the 1st, leave, retry → the retry carries on, 2 settlements in all (not 3), completion reward once, paid entry cleared |
 | `finale.mjs` | The finale after the 100th level: a real Bridge pause holds its beat (animations frozen, taps ignored) and it resumes with the time left; "BACK TO THE KITCHEN" lands on Kitchen home; nothing paid twice |
+| `resize.mjs` | Resizes/rotations never restart the game: Kitchen home, mid-cut (Level 8, peel done) and the served result panel survive 320×568 → 768×1024 → 430×900; Finish Level still completes once |
 | `introskip.mjs` | Opening intro: natural finish time, Skip story (double tap, mid-transition, button beat, last-timer race), button beats, reload, existing saves, 6 viewports, network hosts, console errors |
 | `introshots.mjs` | Captures every intro screen into `playgama/screenshots/intro/` |
 | `pgbridge.mjs` | Bridge loads + initializes, `game_ready` sent once, saves go through Bridge storage, only the Bridge CDN is contacted |

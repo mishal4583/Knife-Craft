@@ -340,6 +340,13 @@ conversation.
      a ring-like blob. The ghost knife's handle hangs below the food on a
      vertical cut.
 
+26. Mobile resize/rotation bug: `GameShell` rendered its children bare at
+   ≥ 320 px and inside a scaled wrapper below that, so crossing 320 px
+   (rotation, a narrow phone's keyboard, a window resize) remounted the
+   whole app below it: a served order came back at its first step and the
+   result panel vanished. Now one wrapper always exists and only its style
+   changes. e2e `tools/e2e/resize.mjs`.
+
 ## 4. Open issues from the Level 1–10 audit (not fixed yet)
 
 Priority order as agreed in the audit (P0 = before wide release):

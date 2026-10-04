@@ -306,10 +306,11 @@ Phase D notes:
   payment rule), so the two pay models now meet in one service (Economy
   TODO #13). `business-final-audit-qa` F2 / `business-wtp-qa` H2 now name
   the two revenue writers instead of one.
-- Found while testing (pre-existing, not changed here): a window resize
-  after serving drops the result panel and shows the served order again at
-  its first step; "Back to Orders" still finishes the level. Suggested as a
-  separate task.
+- Found while testing (pre-existing): a window resize after serving
+  dropped the result panel and showed the served order again at its first
+  step. Cause: `GameShell` swapped its element tree when the frame crossed
+  320 px wide (wrapper ↔ no wrapper), which remounted the whole game. Fixed
+  with one stable wrapper (only its style changes); e2e `resize.mjs`.
 
 Found while building 3–4:
 

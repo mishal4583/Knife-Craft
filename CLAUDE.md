@@ -190,6 +190,9 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   left (`PausableCountdown` on a fake clock); the finale's "BACK TO THE
   KITCHEN" ends on Kitchen home. Browser: `tools/e2e/finale.mjs` (a real
   Bridge pause mid-finale).
+- Browser `tools/e2e/resize.mjs` — a resize or rotation (320 ↔ 768 ↔ 430
+  px) never restarts the game: `GameShell` keeps ONE wrapper and changes
+  only its style (swapping the tree remounted everything).
 - `playables-ads-qa` — Bridge ads (interstitial policy, rewarded Replay Bonus).
 - `economy-v2-final-qa`, `economy-v2-qa`, `economy-v2-settlement-ledger-qa`
   — Economy V2 frozen baseline (some checks use `git diff`, so run them in
