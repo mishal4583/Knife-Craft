@@ -245,6 +245,43 @@ Each phase ends with tsc, ESLint, Prettier, build, preflight, the full QA
 sweep, its own browser check, a commit and a push to the feature branch.
 `main` is only touched when you approve a merge.
 
+### Progression & Early Menu spec (2026-10-04) — phase A audit
+
+The developer's second spec ("Unified Restaurant Progression & Early Menu")
+moved the menu to Level 1, re-ordered the systems and added a day clock.
+
+- **Exists / reused:** `BUSINESS_DISH_CATALOG` (48 dishes, each from one
+  campaign recipe) is THE menu; `business.menuActivation` (dishes switched
+  OFF, so new dishes arrive on); the Business menu screen; End Business Day;
+  the freshness clock `business.calendar`; coaching's technique-teaching
+  levels; the phase 2–4 modules.
+- **Added:** `restaurant/restaurantProgression.ts` (the ONE table: systems,
+  menu unlocks, menu targets, cuisines + specialists, day schedule, closing
+  chores; `unlocks.ts` re-exports it), `restaurant/restaurantMenu.ts`
+  (unlocked / locked / active menu, orderability), `restaurant/restaurantDay.ts`
+  (the day clock), the opening card in the Pre-Service Check, the Closing
+  Time sheet, the Menu screen's restaurant view, `coaching.techniqueFirstLevel`.
+- **Conflicts found:**
+  1. No Business dish's recipe appears in a level before L10, so "unlock a
+     dish when its level teaches it" gives 0 dishes at L1 (target 2). The
+     menu is a curated schedule instead, under checked rules (techniques
+     taught — L1–5 tutorial counts for the 2 starter dishes —, cuisine
+     open, meat L101 / fish L109 / ribeye L106). Every band of the target
+     curve is met at every level.
+  2. Fixed campaign tickets vs menu-only orders: a level's own teaching
+     orders stay exactly as they are (deterministic); "customers order only
+     from the active menu" applies to the menu orders of phase D.
+  3. The first spec's schedule (menu at L121, staff L81 …) is replaced;
+     `restaurant-unlocks-qa` follows the new one on purpose.
+  4. The Business screen is still titled "Business" (renaming to Restaurant
+     is phase L).
+  5. Days before L21 don't age food (freshness is taught at L21), so the
+     day number and the freshness clock only move together from L21.
+- **Tests protecting these systems:** `business-dish-catalog-qa`,
+  `business-ux-qa` (S7 now reads the pool), `inventory-market-qa`,
+  `economy-v3-*`, `restaurant-unlocks-qa`, `restaurant-stock-qa`, plus the new
+  `restaurant-menu-qa`, `restaurant-day-qa`, e2e `restaurantday.mjs`.
+
 ### Progress
 
 | Phase | State | Commit / QA |
@@ -253,7 +290,11 @@ sweep, its own browser check, a commit and a push to the feature branch.
 | 2 Foundations | done | `restaurant-unlocks-qa` |
 | 3 Campaign uses real stock | done (behind the switch) | `restaurant-stock-qa`, e2e `restaurantstock.mjs` |
 | 4 Pre-Service Check | done (behind the switch) | same |
-| 5–14 | to do | — |
+| A Audit (progression spec) | done | above |
+| B Central progression data | done (behind the switch) | `restaurant-menu-qa`, `restaurant-unlocks-qa` |
+| C Early menu progression | done (behind the switch) | `restaurant-menu-qa`, e2e `restaurantday.mjs` 5 |
+| 5 Day clock (opening, services, closing, Day N+1) | done (behind the switch) | `restaurant-day-qa`, e2e `restaurantday.mjs` |
+| D–N (menu orders, supplies, bulk buying, staff, specialists, Endless, migration, QA) | to do | — |
 
 Found while building 3–4:
 

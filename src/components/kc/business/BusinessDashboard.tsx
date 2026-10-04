@@ -1,3 +1,5 @@
+import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
+import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
 import { useMemo, useState, type ReactNode } from "react";
 import type { ScreenId } from "../data";
 import { RushRestockActions } from "./RushRestockActions";
@@ -268,6 +270,9 @@ export function BusinessDashboard({
               save={save}
               setMenuPrice={setMenuPrice}
               setBusinessDishActive={setBusinessDishActive}
+              {...(RESTAURANT_MODE
+                ? { restaurantLevel: restaurantLevelOf(save.levelProgress) }
+                : {})}
             />
           ) : null}
           {tab === "operations" ? (

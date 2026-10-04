@@ -62,6 +62,11 @@ const FIRST_LEVELS: ReadonlyMap<TechniqueId, readonly number[]> = (() => {
   return first;
 })();
 
+/** The first campaign level that uses `technique` (where it is taught); undefined if none does. */
+export function techniqueFirstLevel(technique: TechniqueId): number | undefined {
+  return FIRST_LEVELS.get(technique)?.[0];
+}
+
 /** Of `techniques` (what this session actually asks for), the ones campaign level `levelId` teaches with the ghost demonstration. */
 export function taughtTechniques(
   levelId: string,

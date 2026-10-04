@@ -86,7 +86,9 @@ import { paidLevelReward } from "@/game/levels/levelRewards";
 import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
 import { ticketsFor } from "@/game/restaurant/serviceTickets";
 import { consumeCampaignOrderStock } from "@/game/restaurant/campaignStock";
-import { serviceCheckFor, serviceNeedsAttention } from "@/game/restaurant/preServiceCheck";
+import { servicePlanFor, servicePlanNeedsSheet } from "@/game/restaurant/preServiceCheck";
+import { closeDay, openDay, recordService, restaurantDayOf } from "@/game/restaurant/restaurantDay";
+import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
 import {
   mayPayOrder,
   ordersRequired,
@@ -190,6 +192,9 @@ const ServiceCheckLayer = lazy(() =>
   import("@/components/kc/restaurant/ServiceCheckLayer").then((m) => ({
     default: m.ServiceCheckLayer,
   })),
+);
+const ClosingTime = lazy(() =>
+  import("@/components/kc/restaurant/ClosingTime").then((m) => ({ default: m.ClosingTime })),
 );
 const ScreensRouter = lazy(() =>
   import("./ScreensRouter").then((m) => ({ default: m.ScreensRouter })),
@@ -297,6 +302,8 @@ export function App() {
   /** Unified Restaurant: the level whose Pre-Service Check is open (null = none). */
   const [serviceCheckLevelId, setServiceCheckLevelIdState] = useState<string | null>(null);
   const serviceCheckRef = useRef<string | null>(null);
+  /** Closing time is due: the level just selected waits (its go("gameplay") is ignored). */
+  const closingHoldRef = useRef(false);
   const setServiceCheckLevelId = (id: string | null) => {
     serviceCheckRef.current = id;
     setServiceCheckLevelIdState(id);
@@ -578,7 +585,7 @@ export function App() {
   // the Order Board / Kitchen buttons call go("gameplay") right after
   // selecting a level, and that must not skip the check.
   const go = (s: ScreenId) => {
-    if (s === "gameplay" && serviceCheckRef.current) return;
+    if (s === "gameplay" && (serviceCheckRef.current || closingHoldRef.current)) return;
     setScreen(s);
   };
 
@@ -1052,12 +1059,21 @@ export function App() {
    */
   function onSelectLevel(levelId: string) {
     if (!save) return;
+    closingHoldRef.current = false;
     // Unified Restaurant: a service whose stock needs attention opens the
     // Pre-Service Check first (nothing starts until the player does).
     if (RESTAURANT_MODE) {
       const level = getLevel(levelId);
-      const pending = level ? serviceCheckFor(save, level) : null;
-      if (pending && serviceNeedsAttention(pending)) {
+      const firstPlay = !!level && !isCompleted(level.id, save.levelProgress);
+      // Closing time comes before the next day's first service (the Closing
+      // Time sheet shows over the Order Board / Kitchen until it is done).
+      if (firstPlay && restaurantDayOf(save).closingDue) {
+        closingHoldRef.current = true;
+        if (screen !== "board" && screen !== "kitchen") setScreen("board");
+        return;
+      }
+      const pending = level ? servicePlanFor(save, level) : null;
+      if (pending && servicePlanNeedsSheet(pending)) {
         if (pending.progress !== save.levelProgress)
           persist({ ...save, levelProgress: pending.progress });
         setServiceCheckLevelId(levelId);
@@ -1069,15 +1085,16 @@ export function App() {
     beginLevel(levelId);
   }
 
-  /** Starts a campaign level (after its Pre-Service Check, when it had one). */
-  function beginLevel(levelId: string) {
-    if (!save) return;
+  /** Starts a campaign level (after its Pre-Service Check, when it had one). `from`: the save to build on (e.g. with the day just opened). */
+  function beginLevel(levelId: string, from?: SaveData) {
+    const base = from ?? save;
+    if (!base) return;
     const level = getLevel(levelId);
     startPlaySession({
       world: `chapter-${level?.chapter ?? 1}`,
       level: String(levelNumber(levelId)),
     });
-    persist({ ...save, levelProgress: selectLevel(levelId, save.levelProgress) });
+    persist({ ...base, levelProgress: selectLevel(levelId, base.levelProgress) });
     if (level?.batchGroupRecipeIds?.length) {
       startBatchGroupLevel(level);
       return;
@@ -1498,6 +1515,9 @@ export function App() {
       rewardCoins,
     } = completeLevel(level.id, save.levelProgress);
     let nextSave = { ...save, credits: save.credits + rewardCoins, levelProgress };
+    // Unified Restaurant: a first completion is one service of the day.
+    if (RESTAURANT_MODE && isFirstCompletion)
+      nextSave = recordService(nextSave, levelNumber(level.id));
     // Economy V2 Phase 9 — the completion reward is its own real wallet
     // transaction, separate from any order settlement already recorded
     // by serveCampaignOrder (brief §21 — "do not double-record").
@@ -2148,6 +2168,22 @@ export function App() {
           </Suspense>
         )}
       </Suspense>
+      {RESTAURANT_MODE &&
+      save &&
+      restaurantDayOf(save).closingDue &&
+      (screen === "board" || screen === "kitchen") &&
+      storyEvent?.kind !== "finale" ? (
+        <Suspense fallback={null}>
+          <ClosingTime
+            save={save}
+            restaurantLevel={restaurantLevelOf(save.levelProgress)}
+            onClose={() => {
+              closingHoldRef.current = false;
+              persist(closeDay(save, restaurantLevelOf(save.levelProgress)));
+            }}
+          />
+        </Suspense>
+      ) : null}
       {RESTAURANT_MODE && serviceCheckLevelId && save ? (
         <Suspense fallback={null}>
           <ServiceCheckLayer
@@ -2155,10 +2191,10 @@ export function App() {
             levelId={serviceCheckLevelId}
             screen={screen}
             go={go}
-            onStart={() => {
+            onStart={(opensDay) => {
               const id = serviceCheckLevelId;
               setServiceCheckLevelId(null);
-              beginLevel(id);
+              beginLevel(id, opensDay ? openDay(save, levelNumber(id)) : undefined);
             }}
             onClose={() => setServiceCheckLevelId(null)}
             onThrowOutExpired={() => void throwOutExpired()}

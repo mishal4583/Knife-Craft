@@ -77,19 +77,22 @@ const sheet = () =>
   });
 const inHud = () => page.evaluate(() => /·\s*\d+\/\d+\s+[a-z-]+/i.test(document.body.innerText));
 
-// ---------- 1. Level 5: no check ----------
+// ---------- 1. Level 5: no stock check (only the day's opening card) ----------
 await boot(page, saveAt(5, 5000));
 await openLevel("Onion Basics");
 let l5 = await sheet();
+await clickButton(page, /^OPEN THE RESTAURANT$/);
 const l5Hud = await page
   .waitForFunction(() => /·\s*\d+\/\d+\s+[a-z-]+/i.test(document.body.innerText), {
     timeout: 15000,
   })
   .then(() => true)
   .catch(() => false);
-check("1 Level 5 (before stock) starts without a Pre-Service Check", l5 === null && l5Hud, {
-  l5Hud,
-});
+check(
+  "1 Level 5 (before stock): only the opening card, no ingredients, then the level starts",
+  !!l5 && l5.rows.length === 0 && /Opening time/i.test(l5.text) && l5Hud,
+  { l5Hud, text: l5?.text.slice(0, 120) },
+);
 
 // ---------- 2. Level 30, empty fridge ----------
 await boot(page, saveAt(30, 5000));
@@ -144,11 +147,13 @@ check(
 );
 check(
   "2c once everything is bought every row is ✓ and START SERVICE is open",
-  !!after && after.rows.every((r) => r.status === "ok") && /START SERVICE/.test(after.text),
+  !!after &&
+    after.rows.every((r) => r.status === "ok") &&
+    /OPEN THE RESTAURANT|START SERVICE/.test(after.text),
   after,
 );
 const bought = await readSave(page);
-await clickButton(page, /^START SERVICE$/);
+await clickButton(page, /^(OPEN THE RESTAURANT|START SERVICE)$/);
 await sleep(1200);
 check("2d START SERVICE starts the level", await inHud());
 

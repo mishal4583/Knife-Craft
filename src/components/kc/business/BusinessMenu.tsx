@@ -22,6 +22,13 @@ import {
 } from "@/game/business/BusinessServiceManager";
 import { defaultMenuPrice } from "@/game/business/businessMenu";
 import { getRefrigeratorCapacity } from "@/game/business/RefrigeratorManager";
+import {
+  activeMenuDishes,
+  lockedMenuDishes,
+  playerChoosesMenu,
+  unlockedMenuDishes,
+} from "@/game/restaurant/restaurantMenu";
+import { MENU_CHOICE_LEVEL, cuisineFor } from "@/game/restaurant/restaurantProgression";
 
 /** A quarter-dollar step — sensible for real USD menu pricing. */
 const PRICE_STEP = 25;
@@ -34,26 +41,45 @@ const PRICE_STEP = 25;
  * `businessCustomerPayment` (menu price × popularity modifier) — the same
  * functions serving uses. Price changes persist immediately; they move no
  * money.
+ *
+ * Unified Restaurant (`restaurantLevel` given, RESTAURANT_MODE only): the
+ * menu grows with the campaign (restaurant/restaurantMenu.ts). It lists the
+ * ACTIVE dishes, then the unlocked ones switched off, then the LOCKED ones
+ * with the level they join; before MENU_CHOICE_LEVEL the menu runs itself
+ * (every unlocked dish on, no switches).
  */
 export function BusinessMenu({
   save,
   setMenuPrice,
   setBusinessDishActive,
+  restaurantLevel,
 }: {
   save: SaveData;
   setMenuPrice: (recipeId: string, price: number) => SetMenuPriceResult;
   setBusinessDishActive: (dishId: string, active: boolean) => SetDishActiveResult;
+  /** The restaurant's campaign level (Unified Restaurant only). */
+  restaurantLevel?: number;
 }) {
   const [messages, setMessages] = useState<Partial<Record<string, string>>>({});
   const [category, setCategory] = useState<string>("All");
   const activation = save.business.menuActivation;
-  const activeDishes = activeBusinessDishes(activation);
+  const restaurant = restaurantLevel !== undefined;
+  const pool = restaurant ? unlockedMenuDishes(restaurantLevel) : BUSINESS_DISH_CATALOG;
+  const activeDishes = restaurant
+    ? activeMenuDishes(activation, restaurantLevel)
+    : activeBusinessDishes(activation);
+  const activeIds = new Set(activeDishes.map((d) => d.id));
+  const chooses = !restaurant || playerChoosesMenu(restaurantLevel);
+  const locked = restaurant ? lockedMenuDishes(restaurantLevel) : [];
   const fridgeCapacity = getRefrigeratorCapacity(save.business.refrigerator.refrigeratorId);
   const activeIngredientIds = [
     ...new Set(activeDishes.flatMap((d) => businessDishRequirements(d).map((r) => r.ingredientId))),
   ];
-  const categories = ["All", ...new Set(BUSINESS_DISH_CATALOG.map((d) => d.category))];
-  const shown = BUSINESS_DISH_CATALOG.filter((d) => category === "All" || d.category === category);
+  const categories = ["All", ...new Set(pool.map((d) => d.category))];
+  const shown = pool
+    .filter((d) => category === "All" || d.category === category)
+    // The restaurant lists what is on first, then what is off.
+    .sort((a, b) => (restaurant ? Number(activeIds.has(b.id)) - Number(activeIds.has(a.id)) : 0));
 
   function toggleDish(dishId: string, active: boolean) {
     const result = setBusinessDishActive(dishId, active);
@@ -76,11 +102,20 @@ export function BusinessMenu({
     <div className="space-y-3">
       <Panel tone="cream" className="p-4">
         <div className="flex items-baseline justify-between gap-3">
-          <Eyebrow>🍽️ On the menu</Eyebrow>
-          <span className="font-ui text-[12px] font-extrabold text-walnut-dark">
-            {activeDishes.length} / {BUSINESS_DISH_CATALOG.length} dishes
+          <Eyebrow>{restaurant ? "🍽️ Active today" : "🍽️ On the menu"}</Eyebrow>
+          <span
+            className="font-ui text-[12px] font-extrabold text-walnut-dark"
+            data-testid="menu-active-count"
+          >
+            {activeDishes.length} / {pool.length} dishes
           </span>
         </div>
+        {restaurant && !chooses ? (
+          <p className="mt-1 font-hand text-[14px] leading-snug text-walnut/70">
+            Every dish you unlock goes straight on the menu. From Level {MENU_CHOICE_LEVEL} you
+            choose which dishes customers can order.
+          </p>
+        ) : null}
         <p className="mt-1 font-hand text-[14px] leading-snug text-walnut/70">
           Customers only order dishes that are on. They pay your price × today's popularity
           modifier. Your menu needs {activeIngredientIds.length} ingredient
@@ -122,7 +157,7 @@ export function BusinessMenu({
           const recipe = getCampaignRecipe(recipeId);
           const suggested = recipe ? defaultMenuPrice(recipe) : price;
           const message = messages[dish.id];
-          const onMenu = isDishActive(activation, dish.id);
+          const onMenu = restaurant ? activeIds.has(dish.id) : isDishActive(activation, dish.id);
           const needTotals = new Map<IngredientId, number>();
           for (const r of businessDishRequirements(dish)) {
             needTotals.set(
@@ -134,6 +169,8 @@ export function BusinessMenu({
           return (
             <article
               key={dish.id}
+              data-menu-dish={dish.id}
+              data-menu-on={onMenu ? "true" : "false"}
               className={cn(
                 "product-card rounded-[20px] border p-3 card-warm",
                 onMenu ? "border-olive/40" : "border-walnut/15",
@@ -168,20 +205,26 @@ export function BusinessMenu({
                       .join(" · ")}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => toggleDish(dish.id, !onMenu)}
-                  aria-pressed={onMenu}
-                  aria-label={`${onMenu ? "Take" : "Put"} ${dish.name} ${onMenu ? "off" : "on"} the menu`}
-                  className={cn(
-                    "press h-12 w-[64px] shrink-0 rounded-full border font-ui text-[12px] font-extrabold",
-                    onMenu
-                      ? "border-olive/60 bg-[linear-gradient(170deg,var(--color-sage),var(--color-olive))] text-ivory"
-                      : "border-walnut/25 bg-ivory/70 text-walnut/60",
-                  )}
-                >
-                  {onMenu ? "ON" : "OFF"}
-                </button>
+                {!chooses ? (
+                  <span className="grid h-12 w-[64px] shrink-0 place-items-center rounded-full border border-olive/60 bg-[linear-gradient(170deg,var(--color-sage),var(--color-olive))] font-ui text-[12px] font-extrabold text-ivory">
+                    ON
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => toggleDish(dish.id, !onMenu)}
+                    aria-pressed={onMenu}
+                    aria-label={`${onMenu ? "Take" : "Put"} ${dish.name} ${onMenu ? "off" : "on"} the menu`}
+                    className={cn(
+                      "press h-12 w-[64px] shrink-0 rounded-full border font-ui text-[12px] font-extrabold",
+                      onMenu
+                        ? "border-olive/60 bg-[linear-gradient(170deg,var(--color-sage),var(--color-olive))] text-ivory"
+                        : "border-walnut/25 bg-ivory/70 text-walnut/60",
+                    )}
+                  >
+                    {onMenu ? "ON" : "OFF"}
+                  </button>
+                )}
               </div>
 
               <div className="mt-2 flex items-center justify-between gap-2">
@@ -252,6 +295,34 @@ export function BusinessMenu({
           );
         })}
       </div>
+
+      {locked.length > 0 ? (
+        <div data-testid="menu-locked">
+          <Panel tone="cream" className="p-4">
+            <Eyebrow>🔒 Locked</Eyebrow>
+            <ul className="mt-2 divide-y divide-walnut/10">
+              {locked.map(({ dish, unlockLevel, cuisine }) => {
+                const specialist = cuisineFor(dish.cuisineId).specialist;
+                return (
+                  <li
+                    key={dish.id}
+                    className="flex min-h-12 items-center justify-between gap-3 py-1.5"
+                    data-menu-locked={dish.id}
+                  >
+                    <span className="min-w-0 font-ui text-[13px] font-bold text-walnut/70">
+                      🔒 {dish.name}
+                    </span>
+                    <span className="shrink-0 text-right font-ui text-[11px] font-extrabold text-walnut/55">
+                      Level {unlockLevel} · {cuisine}
+                      {specialist ? <span className="block">needs {specialist.title}</span> : null}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </Panel>
+        </div>
+      ) : null}
     </div>
   );
 }

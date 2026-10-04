@@ -158,6 +158,20 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   cover it (goods, no money). Browser: `tools/e2e/restaurantstock.mjs`
   against a **test build** `VITE_RESTAURANT_MODE=1 npx vite build --outDir
   <dir>` (a normal build always has the switch off).
+- `restaurant-menu-qa` — the menu from Level 1
+  (`restaurant/restaurantProgression.ts` MENU_UNLOCKS + `restaurantMenu.ts`):
+  2 dishes at L1, the developer's target band met at EVERY level, all 48 by
+  L241; rules (techniques taught, cuisine open, meat L101 / fish L109 /
+  ribeye L106); cuisines with specialist chefs from L51, announced 5 levels
+  ahead; active menu (runs itself before L51, never empty, locked never
+  orderable); level/recipe/dish data untouched.
+- `restaurant-day-qa` — the restaurant day clock (`restaurant/restaurantDay.ts`):
+  Lunch + Dinner (+ Breakfast from L51); opening card; services = first
+  completions; Closing Time before the next level (chores, the day's count);
+  before L21 only the day number moves, from L21 the freshness clock and
+  spoilage, from L91 End Business Day exactly; old saves default to Day 1.
+  Browser: `tools/e2e/restaurantday.mjs` (restaurant test build).
+  The game map is `docs/GAME_MAP.md`.
 - `story-pause-qa` — the finale and milestone banners stop their timers
   (and animations, and finale taps) while paused, resuming with the time
   left (`PausableCountdown` on a fake clock); the finale's "BACK TO THE

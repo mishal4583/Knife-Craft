@@ -1,7 +1,7 @@
 import type { SaveData } from "@/game/SaveManager";
 import type { ScreenId } from "@/components/kc/data";
 import { getLevel } from "@/game/levels/LevelManager";
-import { serviceCheckFor } from "@/game/restaurant/preServiceCheck";
+import { servicePlanFor } from "@/game/restaurant/preServiceCheck";
 import { pantryForMissing } from "@/game/restaurant/campaignStock";
 import { openMarketIngredients } from "@/components/kc/marketFocus";
 import { PreServiceCheck } from "./PreServiceCheck";
@@ -12,7 +12,8 @@ import { PreServiceCheck } from "./PreServiceCheck";
  * the player restocks in the Market it shrinks to a "Back to the check"
  * pill, so buying and returning is one tap each way. Everything is read
  * from the save on every render, so a purchase or a throw-out updates it
- * at once.
+ * at once. When the level opens a new day, the sheet is the opening card
+ * and START opens the restaurant (`onStart(true)`).
  */
 export function ServiceCheckLayer({
   save,
@@ -28,15 +29,17 @@ export function ServiceCheckLayer({
   levelId: string;
   screen: ScreenId;
   go: (s: ScreenId) => void;
-  onStart: () => void;
+  /** `opensDay`: this start opens the restaurant day. */
+  onStart: (opensDay: boolean) => void;
   onClose: () => void;
   onThrowOutExpired: () => void;
   onUsePantry: (next: SaveData) => void;
 }) {
   const level = getLevel(levelId);
-  const pending = level ? serviceCheckFor(save, level) : null;
-  if (!pending) return null;
-  const n = pending.levelNumber;
+  const plan = level ? servicePlanFor(save, level) : null;
+  if (!plan) return null;
+  const n = plan.levelNumber;
+  const check = plan.check;
 
   if (screen === "shop" || screen === "shop-ingredients") {
     return (
@@ -57,21 +60,24 @@ export function ServiceCheckLayer({
   return (
     <PreServiceCheck
       levelNumber={n}
-      day={save.business.calendar.businessDay}
+      day={plan.day}
       credits={save.credits}
-      tickets={pending.tickets}
-      check={pending.check}
-      onStart={onStart}
+      tickets={plan.tickets}
+      check={check}
+      opening={plan.opening}
+      onStart={() => onStart(!!plan.opening)}
       onRestock={(id) =>
         openMarketIngredients(
           go,
           id,
-          pending.check.missingRows.find((r) => r.ingredientId === id)?.buyUnits,
+          check.applies
+            ? check.missingRows.find((r) => r.ingredientId === id)?.buyUnits
+            : undefined,
         )
       }
       onThrowOutExpired={onThrowOutExpired}
       onUsePantry={() => {
-        const next = pantryForMissing(save, pending.check);
+        const next = pantryForMissing(save, check);
         if (next) onUsePantry(next);
       }}
       onUpgradeFridge={() => go("business-refrigerator")}

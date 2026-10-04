@@ -17,6 +17,7 @@ import { levelNumber } from "../levels/levelMastery";
 import { paidOrdersFor } from "../levels/paidOrders";
 import { ticketsFor } from "./serviceTickets";
 import { serviceStockCheck, serviceUsesStock, type ServiceStockCheck } from "./campaignStock";
+import { opensNewDay, restaurantDayOf, todaysServices, type DayService } from "./restaurantDay";
 
 export type PendingService = {
   level: LevelDefinition;
@@ -42,4 +43,43 @@ export function serviceCheckFor(save: SaveData, level: LevelDefinition): Pending
 /** True when the check must be shown before the service starts. */
 export function serviceNeedsAttention(pending: PendingService | null): boolean {
   return !!pending && (!pending.check.ready || pending.check.hasExpired);
+}
+
+/**
+ * The whole pre-service sheet for a first play of `level`: the stock check
+ * (from L11) AND, when this level opens a new restaurant day, the opening
+ * card (Day N and its services). Null for a replay.
+ */
+export type ServicePlan = {
+  level: LevelDefinition;
+  levelNumber: number;
+  tickets: RecipeDefinition[];
+  check: ServiceStockCheck;
+  progress: LevelProgress;
+  day: number;
+  /** Today's services when this level opens the day; null mid-day. */
+  opening: DayService[] | null;
+};
+
+export function servicePlanFor(save: SaveData, level: LevelDefinition): ServicePlan | null {
+  if (isCompleted(level.id, save.levelProgress)) return null;
+  const n = levelNumber(level.id);
+  const { tickets, progress } = ticketsFor(save.levelProgress, level);
+  const remaining = tickets.slice(paidOrdersFor(progress, level.id).length);
+  return {
+    level,
+    levelNumber: n,
+    tickets: remaining,
+    check: serviceStockCheck(save, n, remaining),
+    progress,
+    day: restaurantDayOf(save).day,
+    opening: opensNewDay(save) ? todaysServices(save, n) : null,
+  };
+}
+
+/** The sheet shows when the day opens or the stock needs attention. */
+export function servicePlanNeedsSheet(plan: ServicePlan | null): boolean {
+  if (!plan) return false;
+  if (plan.opening) return true;
+  return plan.check.applies && (!plan.check.ready || plan.check.hasExpired);
 }

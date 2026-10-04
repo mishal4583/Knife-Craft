@@ -1,3 +1,4 @@
+import type { RestaurantDayState } from "../restaurant/restaurantDay";
 /**
  * BUSINESS_TYPES — Economy V3's own persisted-state container. A single
  * new field on SaveData (`business: BusinessState`), mirroring how every
@@ -72,6 +73,12 @@ export type BusinessState = {
   menuActivation: BusinessMenuActivationState;
   /** Business Supplies (master spec §25, a separately authorized extension — not an Economy V3 phase): culinary smallwares, tableware and takeaway packaging bought in the Market. See businessSupplies.ts's own doc for why this is not part of `inventory`. */
   supplies: BusinessSuppliesState;
+  /**
+   * Unified Restaurant (RESTAURANT_MODE): the restaurant's day clock — day
+   * number, services done, opening/closing (restaurant/restaurantDay.ts).
+   * Optional: older saves and the classic game don't have it (default Day 1).
+   */
+  restaurantDay?: RestaurantDayState;
 };
 
 export const DEFAULT_BUSINESS_STATE: BusinessState = {

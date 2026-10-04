@@ -168,8 +168,12 @@ conversation.
    unlock table; campaign orders use real stock from L11; rolled service
    tickets; Pre-Service Check with Restock → Market preset, Throw Out
    Expired, Grandma's pantry). QA `restaurant-unlocks-qa`,
-   `restaurant-stock-qa`, e2e `restaurantstock.mjs`. Next: phase 5 (day
-   clock + freshness from L21, fridge warnings).
+   `restaurant-stock-qa`, e2e `restaurantstock.mjs`. Then (progression & early menu spec): central
+   `restaurantProgression.ts`, the menu from L1 (2 → 48 dishes by L241),
+   the Menu screen's active / locked view, and the day clock (opening card,
+   services, Closing Time, Day N+1). QA `restaurant-menu-qa`,
+   `restaurant-day-qa`, e2e `restaurantday.mjs`. Game map: `docs/GAME_MAP.md`.
+   Next: phase D (menu orders from the active menu inside levels).
 32. Developer decision batch (#1–26), on the feature branch only (no direct
    pushes to `main`; merge when the developer approves):
    - #4 `playables-ads-qa` B12/B13: section B pins `Date.now` to `NOW`

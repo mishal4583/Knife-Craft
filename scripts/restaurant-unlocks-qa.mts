@@ -82,20 +82,25 @@ assert(
 );
 
 console.log("U. Unlock table");
+// The schedule is the developer's "Unified Restaurant Progression & Early
+// Menu" spec (2026-10-04, §5), which replaced the first schedule on purpose:
+// the menu and the restaurant day from Level 1, pantry 11, fridge 21,
+// dine-in + supplies 31, staff 41, cuisines 51, takeaway 71, full operation
+// 91, expansion 121, established 161, master 201, Grand Service 241.
 const expected: [RestaurantSystemId, number][] = [
+  ["menu", 1],
+  ["restaurant-day", 1],
   ["ingredient-stock", 11],
   ["fridge-freshness", 21],
-  ["kitchen-equipment", 41],
-  ["dine-in", 61],
-  ["cleaning", 81],
-  ["staff", 81],
-  ["suppliers", 101],
-  ["menu", 121],
-  ["takeaway", 151],
-  ["efficiency", 181],
-  ["advanced-operations", 201],
-  ["full-management", 221],
-  ["grand-preparation", 241],
+  ["dine-in", 31],
+  ["staff", 41],
+  ["cuisines", 51],
+  ["takeaway", 71],
+  ["full-operation", 91],
+  ["expansion", 121],
+  ["established", 161],
+  ["master", 201],
+  ["grand-service", 241],
 ];
 assert(
   RESTAURANT_SYSTEMS.map((s) => `${s.id}@${s.firstLevel}`).join() ===
@@ -103,8 +108,13 @@ assert(
   "U1: systems and first levels follow the spec's §5 schedule, in order",
 );
 assert(
-  liveSystems(10).length === 0 && liveSystems(1).length === 0,
-  "U2: Levels 1–10 use no restaurant system",
+  liveSystems(1)
+    .map((s) => s.id)
+    .join() === "menu,restaurant-day" &&
+    liveSystems(10)
+      .map((s) => s.id)
+      .join() === "menu,restaurant-day",
+  "U2: Levels 1–10 have only the menu and the restaurant day (no stock or management)",
 );
 assert(
   RESTAURANT_SYSTEMS.every((s) => s.title.length > 0 && s.covers.length > 0 && s.intro.length > 10),
@@ -124,9 +134,9 @@ assert(
   liveSystems(LAST_CAMPAIGN_LEVEL).length === RESTAURANT_SYSTEMS.length &&
     nextSystemAfter(10)?.id === "ingredient-stock" &&
     nextSystemAfter(241) === null &&
-    systemsIntroducedAt(81)
+    systemsIntroducedAt(1)
       .map((s) => s.id)
-      .join() === "cleaning,staff",
+      .join() === "menu,restaurant-day",
   "U5: everything is live by L250; 'coming up' and 'introduced at' agree with the table",
 );
 

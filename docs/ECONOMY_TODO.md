@@ -26,6 +26,9 @@ Status key: OPEN (not yet built), BUILT (exists, not balanced).
 | 15 | Random orders and demand (customers per day) | OPEN | Volume drives all of the above. |
 | 16 | Starter supplies for existing saves (goods, no money) | OPEN | Their value. |
 | 17 | **Grandma's pantry** (Pre-Service Check safety net): only when the wallet can't cover the missing stock, the exact missing quantities at cost 0, opt-in, no ledger | BUILT (phase 4) | Free food is value; how often it may be used. |
+| 19 | **Closing time** before L91 moves no money; from L91 it is End Business Day (payroll, fines, P&L) | BUILT (phase 5) | When daily costs start in the career. |
+| 20 | Menu prices of the newly unlocked early dishes (the existing 30% food-cost rule) | BUILT | Early menu income once menu orders pay (phase D). |
+| 21 | Bulk discounts (1–9 / 10–49 / 50–99 / 100+) | OPEN | Percentages are configurable, not set. |
 | 18 | Market buys whole units; a recipe may need 0.025 lb of garlic, so a service buys 1 lb and keeps the rest | BUILT | Leftover value and spoilage of part-used units. |
 
 Questions the pass must answer (spec §48): can a player afford required

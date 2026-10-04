@@ -406,7 +406,11 @@ function playedSave(): SaveData {
   );
   const menu = read("src/components/kc/business/BusinessMenu.tsx");
   assert(
-    /new Set\(BUSINESS_DISH_CATALOG\.map\(\(d\) => d\.category\)\)/.test(menu),
+    // Unified Restaurant: the categories come from `pool`, which is the
+    // catalog (or, in the restaurant, its unlocked dishes).
+    /const pool = restaurant \? unlockedMenuDishes\(restaurantLevel\) : BUSINESS_DISH_CATALOG;/.test(
+      menu,
+    ) && /new Set\(pool\.map\(\(d\) => d\.category\)\)/.test(menu),
     "S7: menu category filters come from the real dish catalog",
   );
 }

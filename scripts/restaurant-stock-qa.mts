@@ -325,11 +325,11 @@ console.log("W. Wiring");
         app,
       ) &&
       /if \(RESTAURANT_MODE && !isReplay\) \{\s*const \{ tickets \} = ticketsFor/.test(app) &&
-      /if \(RESTAURANT_MODE\) \{[\s\S]{0,200}serviceCheckFor\(save, level\)/.test(app),
+      /if \(RESTAURANT_MODE\) \{[\s\S]{0,900}servicePlanFor\(save, level\)/.test(app),
     "W1: every restaurant path in App is behind RESTAURANT_MODE (serve, batch serve, tickets, check)",
   );
   assert(
-    /onRestock=\{\(id\) =>\s*openMarketIngredients\(\s*go,\s*id,\s*pending\.check\.missingRows\.find\(\(r\) => r\.ingredientId === id\)\?\.buyUnits,?\s*\)/.test(
+    /onRestock=\{\(id\) =>\s*openMarketIngredients\(\s*go,\s*id,\s*check\.applies\s*\?\s*check\.missingRows\.find\(\(r\) => r\.ingredientId === id\)\?\.buyUnits\s*:\s*undefined,?\s*\)/.test(
       layer,
     ),
     "C/W2: Restock opens the Market on that exact ingredient, preset to the missing whole units",
