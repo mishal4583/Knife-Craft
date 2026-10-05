@@ -1,17 +1,13 @@
-import { Kitchen, OrderBoard } from "@/components/kc/Kitchen";
+import { Suspense, lazy } from "react";
+import { Kitchen, OrderBoard, BottomNav } from "@/components/kc/Kitchen";
 import { Shop } from "@/components/kc/Shop";
 import { RestaurantProgress } from "@/components/kc/RestaurantProgress";
-import { InventoryScreen } from "@/components/kc/inventory/InventoryScreen";
 import { KitchenUpgrades } from "@/components/kc/KitchenUpgrades";
 import type { PurchaseKitchenUpgradeResult } from "@/game/kitchen/KitchenUpgradeManager";
 import { RecipeBook, RecipeDetail } from "@/components/kc/Recipes";
 import { Settings, DailyOrder, EndlessService } from "@/components/kc/Journal";
-import {
-  BusinessDashboard,
-  type AdvanceDayResult,
-} from "@/components/kc/business/BusinessDashboard";
+import type { AdvanceDayResult } from "@/components/kc/business/BusinessDashboard";
 import { businessTabForScreen } from "@/components/kc/business/businessTabs";
-import { BusinessService } from "@/components/kc/business/BusinessService";
 import type { PurchaseIngredientResult } from "@/game/business/BusinessInventoryManager";
 import type { PurchaseSupplyResult } from "@/game/business/BusinessSuppliesManager";
 import { peekSupplySection } from "@/components/kc/marketFocus";
@@ -34,6 +30,33 @@ import type { SharpenKnifeResult } from "@/game/economy/sharpness";
 import type { BlacksmithStat, UpgradeKnifeResult } from "@/game/knives/blacksmith";
 import type { BuyStaffResult } from "@/game/economy/StaffManager";
 import type { ServiceSession } from "@/game/service/ServiceManager";
+
+// The Restaurant screens load as their own chunk the first time one opens (task #24).
+const loadRestaurantScreens = () => import("@/components/kc/restaurantScreens");
+const BusinessDashboard = lazy(() =>
+  loadRestaurantScreens().then((m) => ({ default: m.BusinessDashboard })),
+);
+const BusinessService = lazy(() =>
+  loadRestaurantScreens().then((m) => ({ default: m.BusinessService })),
+);
+const InventoryScreen = lazy(() =>
+  loadRestaurantScreens().then((m) => ({ default: m.InventoryScreen })),
+);
+
+/** Shown for the moment the Restaurant chunk takes to arrive: the screen's own frame, never a blank. */
+function RestaurantLoading({ go, active }: { go: (s: ScreenId) => void; active: ScreenId }) {
+  return (
+    <div
+      className="relative h-full w-full overflow-hidden bg-cream"
+      data-testid="restaurant-loading"
+    >
+      <div className="grid h-full place-items-center pb-24">
+        <p className="font-hand text-[18px] text-walnut/60">Opening the restaurant…</p>
+      </div>
+      <BottomNav active={active} go={go} />
+    </div>
+  );
+}
 
 /**
  * Everything except the Prep/cutting screen, split into its own chunk
@@ -167,13 +190,15 @@ export function ScreensRouter({
       {/* "rack" is the internal screen id; the player-facing screen is Restaurant Progress. */}
       {screen === "rack" ? <RestaurantProgress go={go} save={save} /> : null}
       {screen === "inventory" || screen === "inventory-supplies" ? (
-        <InventoryScreen
-          key={screen}
-          go={go}
-          save={save}
-          initialKind={screen === "inventory-supplies" ? "supplies" : "ingredients"}
-          throwOutExpired={throwOutExpired}
-        />
+        <Suspense fallback={<RestaurantLoading go={go} active="inventory" />}>
+          <InventoryScreen
+            key={screen}
+            go={go}
+            save={save}
+            initialKind={screen === "inventory-supplies" ? "supplies" : "ingredients"}
+            throwOutExpired={throwOutExpired}
+          />
+        </Suspense>
       ) : null}
       {screen === "kitchen-upgrades" ? (
         <KitchenUpgrades go={go} save={save} buildKitchenUpgrade={buildKitchenUpgrade} />
@@ -202,36 +227,40 @@ export function ScreensRouter({
       {/* Business Mode: one Market-style screen; every business route opens its tab.
           Rendered from one place so the screen stays mounted while switching tabs. */}
       {businessTabForScreen(screen) ? (
-        <BusinessDashboard
-          go={go}
-          save={save}
-          tab={businessTabForScreen(screen)!}
-          onAdvanceDay={advanceBusinessDay}
-          businessServiceSession={businessServiceSession}
-          purchaseRefrigerator={purchaseRefrigerator}
-          performRefrigeratorMaintenance={performRefrigeratorMaintenance}
-          rushRestock={rushRestock}
-          rushAdAvailable={rushAdAvailable}
-          setMenuPrice={setMenuPrice}
-          setBusinessDishActive={setBusinessDishActive}
-          signSupplierContract={signSupplierContract}
-          cancelSupplierContract={cancelSupplierContract}
-          selectSupplier={selectSupplier}
-          hireStaff={hireStaff}
-          buyStaff={buyStaff}
-          fireStaff={fireStaff}
-        />
+        <Suspense fallback={<RestaurantLoading go={go} active="business" />}>
+          <BusinessDashboard
+            go={go}
+            save={save}
+            tab={businessTabForScreen(screen)!}
+            onAdvanceDay={advanceBusinessDay}
+            businessServiceSession={businessServiceSession}
+            purchaseRefrigerator={purchaseRefrigerator}
+            performRefrigeratorMaintenance={performRefrigeratorMaintenance}
+            rushRestock={rushRestock}
+            rushAdAvailable={rushAdAvailable}
+            setMenuPrice={setMenuPrice}
+            setBusinessDishActive={setBusinessDishActive}
+            signSupplierContract={signSupplierContract}
+            cancelSupplierContract={cancelSupplierContract}
+            selectSupplier={selectSupplier}
+            hireStaff={hireStaff}
+            buyStaff={buyStaff}
+            fireStaff={fireStaff}
+          />
+        </Suspense>
       ) : null}
       {screen === "business-service" ? (
-        <BusinessService
-          go={go}
-          save={save}
-          businessServiceSession={businessServiceSession}
-          onStartService={onStartBusinessService}
-          onEnterPreparation={onEnterBusinessPreparation}
-          rushRestock={rushRestock}
-          rushAdAvailable={rushAdAvailable}
-        />
+        <Suspense fallback={<RestaurantLoading go={go} active="business" />}>
+          <BusinessService
+            go={go}
+            save={save}
+            businessServiceSession={businessServiceSession}
+            onStartService={onStartBusinessService}
+            onEnterPreparation={onEnterBusinessPreparation}
+            rushRestock={rushRestock}
+            rushAdAvailable={rushAdAvailable}
+          />
+        </Suspense>
       ) : null}
     </>
   );
