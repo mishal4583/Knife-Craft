@@ -298,7 +298,7 @@ moved the menu to Level 1, re-ordered the systems and added a day clock.
 | G Consumable supplies (place settings, napkins, dish soap, cleaning liquid, takeaway packaging) | done (behind the switch) | `restaurant-supplies-qa`, e2e `restaurantsupplies.mjs` |
 | Brief 2026-10-05: menu from L11 on the developer's curve, tied to cuisine chapters; restaurant news; staff requirements + specialist chefs; bulk buying; Inventory NEEDS ATTENTION; fridge warnings; one restaurant before L250, Endless Restaurant after | done (behind the switch) | `restaurant-menu-qa`, `restaurant-progression-qa`, e2e `restaurantprogression.mjs` |
 | M Save migration (starter crate, once, no money) | done (behind the switch) | `restaurant-migration-qa`, e2e `restaurantmigration.mjs` |
-| N final QA | to do | — |
+| N Final QA (campaign simulation, widths, regression, report) | done | `restaurant-campaign-sim-qa`, e2e `restaurantwidths.mjs`, `docs/RESTAURANT_QA_REPORT.md` |
 
 Phase M notes:
 

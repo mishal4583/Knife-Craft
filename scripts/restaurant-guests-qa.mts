@@ -48,6 +48,14 @@ import {
   createServiceSession,
 } from "../src/game/service/ServiceManager.ts";
 import { rollServiceTickets } from "../src/game/restaurant/serviceTickets.ts";
+import {
+  guestStockFor,
+  servicePlanFor,
+  servicePlanNeedsSheet,
+} from "../src/game/restaurant/preServiceCheck.ts";
+import { purchaseIngredient } from "../src/game/business/BusinessInventoryManager.ts";
+import { openDay } from "../src/game/restaurant/restaurantDay.ts";
+import { restaurantAttention } from "../src/game/restaurant/restaurantAttention.ts";
 
 let failures = 0;
 function assert(cond: unknown, msg: string) {
@@ -180,6 +188,59 @@ console.log("N. The next guest");
     nextMenuGuest(saveAt(12), lv(12))!.inStock === true &&
       nextMenuGuest(saveAt(40), lv(40))!.inStock === false,
     "N4: in stock always before L15 (menu without stock at L11–14); from L15 the guest needs the dish's stock",
+  );
+}
+
+console.log("K. The guests' stock in the Pre-Service Check (phase N)");
+{
+  // Found by restaurant-campaign-sim-qa: the check stocked only the level's own orders, so a
+  // guest's dish was almost never in stock (4 guests in 250 levels). The check now lists them.
+  const n = 40;
+  const lv40 = lv(n);
+  const base = openDay(saveAt(n), n);
+  const tickets = rollServiceTickets(lv40);
+  const g = guestStockFor(base, lv40, n, tickets);
+  const plan = servicePlanFor(base, lv40)!;
+  assert(
+    g.dishes.length === menuGuestQueue(base, lv40).length &&
+      g.rows.length > 0 &&
+      g.rows.every((r) => r.buyUnits > 0 && r.cost > 0),
+    "K1: the check lists today's guests and the extra stock their dishes need, at the Market's price",
+  );
+  // Buy the level's own stock only: the sheet may still list guests, but it isn't forced open by them.
+  let own = base;
+  if (plan.check.applies)
+    for (const r of plan.check.missingRows) {
+      const b = purchaseIngredient(own, r.ingredientId, r.buyUnits);
+      if (b.ok) own = b.save;
+    }
+  const ownPlan = servicePlanFor(own, lv40)!;
+  assert(
+    ownPlan.check.applies &&
+      ownPlan.check.ready &&
+      ownPlan.guests.rows.length > 0 &&
+      // The guest rows never change whether the sheet opens or START is allowed.
+      servicePlanNeedsSheet(ownPlan) ===
+        servicePlanNeedsSheet({ ...ownPlan, guests: { dishes: [], rows: [] } }) &&
+      servicePlanNeedsSheet(plan) ===
+        servicePlanNeedsSheet({ ...plan, guests: { dishes: [], rows: [] } }),
+    "K2: guest stock is optional — with the own orders stocked, missing guest stock never blocks or opens the check",
+  );
+  let all = own;
+  for (const r of ownPlan.guests.rows) {
+    const b = purchaseIngredient(all, r.ingredientId, r.buyUnits);
+    if (b.ok) all = b.save;
+  }
+  const after = servicePlanFor(all, lv40)!;
+  const first = nextMenuGuest(all, lv40);
+  assert(
+    after.guests.rows.length === 0 && after.check.applies && after.check.ready && !!first?.inStock,
+    "K3: buying exactly those rows stocks every guest (no double counting with the own orders)",
+  );
+  const att = restaurantAttention(own);
+  assert(
+    att.rows.some((r) => r.id.startsWith("guest:") && r.severity === "low"),
+    "K4: Inventory recommends the guests' stock as a low (optional) row",
   );
 }
 

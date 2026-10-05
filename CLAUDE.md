@@ -191,7 +191,9 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   (`levelProgress.menuGuests`) so no guest is paid twice; none on replays or
   batch groups; a guest pays the dish's menu price (`businessCustomerPayment`)
   with ONE "business-revenue" entry and uses real stock from L15
-  (`App.serveMenuGuestOrder`). `business-final-audit-qa` F2 and
+  (`App.serveMenuGuestOrder`). The Pre-Service Check lists today's guests
+  and their extra stock as OPTIONAL rows (`guestStockFor`; never blocking,
+  never opening the sheet; Inventory recommends them as "low") — K1–K4. `business-final-audit-qa` F2 and
   `business-wtp-qa` H2 name the two revenue writers (Business serve, menu
   guest). Browser: `tools/e2e/restaurantguests.mjs` (restaurant test build).
 - `restaurant-supplies-qa` — phase G, consumable supplies in a service
@@ -249,6 +251,17 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   real `SaveManager.load`; the release build never migrates. Browser:
   `tools/e2e/restaurantmigration.mjs` (seeds an unstamped save; the other
   restaurant e2e tests seed `MOVED_IN_BUSINESS` so they get no crate).
+- `restaurant-campaign-sim-qa` — phase N: the whole campaign, L1 → 250,
+  through the real restaurant functions (the Pre-Service Check, buying,
+  pantry, spares, free hiring, the wash-up, every order's stock + supplies +
+  settlement, menu guests, completion, closing; every change through a
+  mirror of `App.persist`) for three players — diligent, broke ($0 before
+  every level) and an old save moving in at L120 — with invariants after
+  every level: it could start, credits ≥ 0, opening cash + ledger = cash,
+  no negative stock, fridge within capacity. Prints each player's money
+  flows. Report: `docs/RESTAURANT_QA_REPORT.md`. Browser:
+  `tools/e2e/restaurantwidths.mjs` (every restaurant screen at 320–768 px:
+  no sideways scroll, buttons ≥ 48 px).
 - `story-pause-qa` — the finale and milestone banners stop their timers
   (and animations, and finale taps) while paused, resuming with the time
   left (`PausableCountdown` on a fake clock); the finale's "BACK TO THE

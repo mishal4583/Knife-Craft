@@ -98,6 +98,12 @@ export type MenuGuest = {
   inStock: boolean;
 };
 
+/** The guests still to come in this service (the queue after those already served). */
+export function remainingMenuGuests(save: SaveData, level: LevelDefinition): RecipeDefinition[] {
+  if (isCompleted(level.id, save.levelProgress)) return [];
+  return menuGuestQueue(save, level).slice(menuGuestsServed(save.levelProgress, level.id));
+}
+
 /** The next menu guest for a first play of `level`, or null (none left, replay, none at this level). */
 export function nextMenuGuest(save: SaveData, level: LevelDefinition): MenuGuest | null {
   if (isCompleted(level.id, save.levelProgress)) return null;

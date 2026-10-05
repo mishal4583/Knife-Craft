@@ -20,6 +20,9 @@ import { serviceStockCheck, serviceUsesStock, type ServiceStockCheck } from "./c
 import { opensNewDay, restaurantDayOf, todaysServices, type DayService } from "./restaurantDay";
 import { hasNewsToShow, restaurantNewsAt, type RestaurantNews } from "./restaurantNews";
 import { unseenStarterCrate, type KitLine } from "./restaurantMigration";
+import { remainingMenuGuests } from "./menuGuests";
+import { purchaseQuote } from "../business/BusinessInventoryManager";
+import type { IngredientId } from "../definitions";
 import { serviceShape, staffRequirementsFor, type StaffRequirement } from "./staffRequirements";
 import {
   orderServiceFor,
@@ -79,7 +82,49 @@ export type ServicePlan = {
   staff: StaffRequirement[];
   /** Phase M: the starter crate an existing save received, until the player has seen it. */
   welcome: KitLine[] | null;
+  /** Today's menu guests and the extra stock their dishes need (optional — never blocks). */
+  guests: GuestStock;
 };
+
+/** One ingredient the menu guests need beyond the level's own orders: whole Market units. */
+export type GuestStockRow = { ingredientId: IngredientId; buyUnits: number; cost: number };
+
+export type GuestStock = {
+  /** The guests still to come (recipe names, in order). */
+  dishes: string[];
+  /** What to buy so every guest can be served (empty when stocked or before stock, L15). */
+  rows: GuestStockRow[];
+};
+
+/**
+ * Phase N: the menu guests' stock, as optional rows. The need of the level's
+ * own orders AND its guests together, minus the own orders' need, so buying
+ * these rows never double-counts. Priced at the Market's own price.
+ */
+export function guestStockFor(
+  save: SaveData,
+  level: LevelDefinition,
+  n: number,
+  tickets: readonly RecipeDefinition[],
+): GuestStock {
+  const guests = remainingMenuGuests(save, level);
+  const dishes = guests.map((r) => r.name);
+  const all = serviceStockCheck(save, n, [...tickets, ...guests]);
+  const own = serviceStockCheck(save, n, tickets);
+  if (!all.applies || !own.applies || guests.length === 0) return { dishes, rows: [] };
+  const ownBuy = new Map(own.missingRows.map((r) => [r.ingredientId, r.buyUnits]));
+  const rows: GuestStockRow[] = [];
+  for (const r of all.missingRows) {
+    const extra = r.buyUnits - (ownBuy.get(r.ingredientId) ?? 0);
+    if (extra <= 0) continue;
+    rows.push({
+      ingredientId: r.ingredientId,
+      buyUnits: extra,
+      cost: purchaseQuote(save, r.ingredientId, extra).totalCost,
+    });
+  }
+  return { dishes, rows };
+}
 
 export function servicePlanFor(save: SaveData, level: LevelDefinition): ServicePlan | null {
   if (isCompleted(level.id, save.levelProgress)) return null;
@@ -101,6 +146,7 @@ export function servicePlanFor(save: SaveData, level: LevelDefinition): ServiceP
     news: restaurantNewsAt(n),
     staff: staffRequirementsFor(save, n, serviceShape(save, n, remaining, services)),
     welcome: unseenStarterCrate(save),
+    guests: guestStockFor(save, level, n, remaining),
   };
 }
 

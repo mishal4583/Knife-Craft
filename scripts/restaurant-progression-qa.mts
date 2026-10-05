@@ -359,7 +359,8 @@ console.log("I. Inventory: restaurant Needs Attention");
       plan.check.applies &&
       plan.check.missingRows.every((r) => ids.includes(`ingredient:${r.ingredientId}`)) &&
       a.rows
-        .filter((r) => r.kind === "ingredient")
+        // The level's own orders; the menu guests' optional rows are "guest:" (restaurant-guests-qa K4).
+        .filter((r) => r.id.startsWith("ingredient:"))
         .every((r) => /remaining \(Level 35 needs/.test(r.text)),
     "I1: the next service's missing ingredients, worded 'X — N remaining (Level L needs M)'",
   );

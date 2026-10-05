@@ -374,6 +374,15 @@ conversation.
    `restaurantmigration.mjs`; restaurant e2e seeds use
    `MOVED_IN_BUSINESS`.
 
+30. Unified Restaurant phase N (final QA): `restaurant-campaign-sim-qa`
+   plays L1 → 250 through the real restaurant functions for a diligent, a
+   broke and a moving-in player with invariants after every level (no
+   soft-lock, no negative money, ledger = cash); `restaurantwidths.mjs`
+   checks every restaurant screen at 320–768 px. Fixed: menu guests were
+   almost never in stock (4 in 250 levels) — the check now lists their
+   stock as optional rows (689 guests). Report and economy findings:
+   `docs/RESTAURANT_QA_REPORT.md`.
+
 ## 4. Open issues from the Level 1–10 audit (not fixed yet)
 
 Priority order as agreed in the audit (P0 = before wide release):

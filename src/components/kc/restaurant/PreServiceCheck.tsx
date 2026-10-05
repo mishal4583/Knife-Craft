@@ -21,6 +21,7 @@ import type { RestaurantNews } from "@/game/restaurant/restaurantNews";
 import type { StaffRequirement } from "@/game/restaurant/staffRequirements";
 import type { FridgeUsage } from "@/game/restaurant/fridgeUsage";
 import type { KitLine } from "@/game/restaurant/restaurantMigration";
+import type { GuestStock } from "@/game/restaurant/preServiceCheck";
 import { getSupplyItem as supplyItemOf } from "@/game/business/businessSupplies";
 
 /**
@@ -72,6 +73,8 @@ export function PreServiceCheck({
   onHireStaff = () => {},
   fridge = null,
   welcome = null,
+  guests = null,
+  onRestockGuest = () => {},
 }: {
   levelNumber: number;
   day: number;
@@ -100,6 +103,9 @@ export function PreServiceCheck({
   fridge?: FridgeUsage | null;
   /** Phase M: the starter crate an existing save received (shown until a service starts). */
   welcome?: readonly KitLine[] | null;
+  /** Today's menu guests and their optional stock (never blocks START). */
+  guests?: GuestStock | null;
+  onRestockGuest?: (ingredientId: IngredientId, units: number) => void;
 }) {
   const stock = check.applies ? check : null;
   const sup = supplies.applies ? supplies : null;
@@ -316,6 +322,44 @@ export function PreServiceCheck({
                 </div>
               ) : null}
             </>
+          ) : null}
+
+          {stock && guests && guests.dishes.length > 0 ? (
+            <div className="mt-3" data-testid="psc-guests">
+              <p className="font-ui text-[12px] font-extrabold uppercase tracking-wide text-walnut/60">
+                🍽️ Menu guests today · optional
+              </p>
+              <p className="font-ui text-[12px] text-walnut/70">
+                {guests.dishes.join(", ")} — they order after your own orders.
+                {guests.rows.length === 0 ? " ✓ Stocked for every guest." : " Stock for them:"}
+              </p>
+              {guests.rows.length > 0 ? (
+                <ul className="mt-1 divide-y divide-walnut/10">
+                  {guests.rows.map((row) => (
+                    <li
+                      key={row.ingredientId}
+                      className="flex min-h-12 items-center gap-2 py-1.5"
+                      data-psc-guest-ingredient={row.ingredientId}
+                    >
+                      <span className="text-[20px]" aria-hidden>
+                        {INGREDIENT_EMOJI[row.ingredientId]}
+                      </span>
+                      <p className="min-w-0 flex-1 font-ui text-[14px] font-bold text-walnut-dark">
+                        {INGREDIENTS[row.ingredientId].name}
+                      </p>
+                      <KButton
+                        size="sm"
+                        variant="ghost"
+                        className="min-h-12"
+                        onClick={() => onRestockGuest(row.ingredientId, row.buyUnits)}
+                      >
+                        Restock {row.buyUnits} · {formatUsd(row.cost)}
+                      </KButton>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
           ) : null}
 
           {stock?.hasExpired ? (

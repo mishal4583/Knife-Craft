@@ -35,6 +35,13 @@ Status key: OPEN (not yet built), BUILT (exists, not balanced).
 | 25 | Dish soap low at ≤ 8 washes, cleaning liquid at ≤ 3 closings (warnings only) | BUILT | Usage rates and thresholds. |
 | 18 | Market buys whole units; a recipe may need 0.025 lb of garlic, so a service buys 1 lb and keeps the rest | BUILT | Leftover value and spoilage of part-used units. |
 
+Phase N simulation (`scripts/restaurant-campaign-sim-qa.mts`, report in
+`docs/RESTAURANT_QA_REPORT.md`): a diligent player ends L250 with ~$272k
+(wages ~$21.6k, ingredients ~$5.6k, fines ~$5.6k, menu revenue ~$11.7k from
+689 guests); a player at $0 before every level still finishes on Grandma's
+pantry/spares and free re-hiring (staff effectively unpaid); the Basic
+fridge (40) is enough for every service.
+
 Questions the pass must answer (spec §48): can a player afford required
 items; can they go into debt (never); money left after L250; Endless
 profitability; staff cost; supply prices; expansion cost; random order

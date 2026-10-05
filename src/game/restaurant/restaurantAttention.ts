@@ -90,6 +90,16 @@ export function restaurantAttention(save: SaveData): RestaurantAttention {
     }
   }
   if (plan) {
+    // Phase N: the menu guests' stock — optional, so "low", and not in the recommended cost.
+    for (const g of plan.guests.rows)
+      if (!rows.some((r) => r.id === `ingredient:${g.ingredientId}`))
+        rows.push({
+          id: `guest:${g.ingredientId}`,
+          kind: "ingredient",
+          severity: "low",
+          text: `${INGREDIENTS[g.ingredientId].name} — ${g.buyUnits} more for today's menu guests (optional)`,
+          action: { to: "ingredient", id: g.ingredientId, quantity: g.buyUnits },
+        });
     for (const r of plan.staff.filter((x) => !x.met))
       rows.push({
         id: `staff:${r.id}`,

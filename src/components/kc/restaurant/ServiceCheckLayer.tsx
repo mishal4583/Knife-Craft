@@ -98,6 +98,8 @@ export function ServiceCheckLayer({
       }
       news={plan.news}
       welcome={plan.welcome}
+      guests={plan.guests}
+      onRestockGuest={(id, units) => openMarketIngredients(go, id, units)}
       staff={plan.staff}
       onHireStaff={() => go("business-staff")}
       fridge={isSystemLive("fridge-freshness", n) ? fridgeUsage(save) : null}

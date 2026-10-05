@@ -53,7 +53,8 @@ ENDLESS RESTAURANT (after Level 250) — the same restaurant, open-ended days
 ```
 
 Not yet built in the restaurant (see `docs/RESTAURANT_INTEGRATION_AUDIT.md`):
-the final QA pass (N). Existing saves move in once with a starter crate
+nothing — phases A–N are done (final QA: `docs/RESTAURANT_QA_REPORT.md`).
+Existing saves move in once with a starter crate
 (phase M, `restaurant/restaurantMigration.ts`).
 
 ## Classic (switch OFF, the release today)
