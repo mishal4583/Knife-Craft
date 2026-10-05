@@ -759,3 +759,85 @@
     animation: none;
   }
 }
+
+/* ---- Phone view: one door or compartment at a time (task #14) ---------- */
+.kcf-pager__bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 2px 0 8px;
+}
+.kcf-pager__btn {
+  flex: 0 0 48px;
+  height: 48px;
+  border-radius: 14px;
+  border: 1px solid rgba(62, 40, 25, 0.25);
+  background: rgba(255, 250, 240, 0.85);
+  color: var(--color-walnut-dark);
+  font-size: 26px;
+  font-weight: 900;
+  line-height: 1;
+}
+.kcf-pager__btn:disabled {
+  opacity: 0.35;
+}
+.kcf-pager__title {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  line-height: 1.15;
+}
+.kcf-pager__name {
+  font-family: var(--font-display, serif);
+  font-weight: 900;
+  font-size: 15px;
+  color: var(--color-walnut-dark);
+}
+.kcf-pager__count {
+  font-size: 11px;
+  font-weight: 800;
+  color: rgba(62, 40, 25, 0.6);
+}
+.kcf-pager__swipe {
+  touch-action: pan-y;
+}
+.kcf-pager__dots {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+.kcf-pager__dots span {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(62, 40, 25, 0.22);
+}
+.kcf-pager__dots .kcf-pager__dot--on {
+  background: var(--color-copper);
+}
+/* A page fills the frame: the door or the compartment takes the full width. */
+.kcf--paged .kcf-unit--paged {
+  width: 100%;
+  min-width: 0;
+}
+.kcf--paged .kcf-unit--paged .kcf-cabinet,
+.kcf--paged .kcf-unit--paged .kcf-door {
+  flex: 1 1 auto;
+  width: auto;
+}
+.kcf-viewtoggle {
+  display: block;
+  margin: 8px auto 0;
+  min-height: 48px;
+  padding: 0 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(62, 40, 25, 0.2);
+  background: rgba(255, 250, 240, 0.7);
+  color: rgba(62, 40, 25, 0.8);
+  font-size: 12px;
+  font-weight: 800;
+}
