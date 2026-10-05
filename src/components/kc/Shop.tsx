@@ -1,3 +1,4 @@
+import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
 import { useEffect, useState, type ReactNode } from "react";
 import type { ScreenId } from "./data";
 import { BottomNav } from "./Kitchen";
@@ -121,6 +122,15 @@ const categories: Array<{ id: ShopCategory; label: string; emoji: string }> = [
     emoji: SUPPLY_SECTIONS.packaging.emoji,
   },
 ];
+
+/**
+ * Unified Restaurant phase 7: in the restaurant build the ingredient supplier
+ * is chosen on Restaurant → Suppliers (it sets Market prices), so the Market
+ * has no supplier tab. The release build keeps its Campaign Supplier tab.
+ */
+const shopCategories = RESTAURANT_MODE
+  ? categories.filter((c) => c.id !== "suppliers")
+  : categories;
 
 const categoryCopy: Record<ShopCategory, { title: string; description: string }> = {
   knives: {
@@ -362,7 +372,9 @@ export function Shop({
       <div className="relative h-full overflow-y-auto no-scrollbar pb-24">
         <ScreenHeader
           title="Market"
-          subtitle="tools, ingredients & suppliers"
+          subtitle={
+            RESTAURANT_MODE ? "tools, ingredients & supplies" : "tools, ingredients & suppliers"
+          }
           onBack={() => go("kitchen")}
           right={<Coin n={save.credits} />}
         />
@@ -394,7 +406,7 @@ export function Shop({
           className="category-tabs grid grid-cols-3 gap-2 px-4 pt-3"
           aria-label="Shop categories"
         >
-          {categories.map((item) => {
+          {shopCategories.map((item) => {
             const active = category === item.id;
             return (
               <button
@@ -432,6 +444,7 @@ export function Shop({
               focusId={focusId}
               focusQuantity={focusQuantity}
               setNotice={setNotice}
+              {...(RESTAURANT_MODE ? { onChangeSupplier: () => go("business-suppliers") } : {})}
             />
           ) : isSupplySection(category) ? (
             <MarketSupplies

@@ -134,6 +134,7 @@ export function BusinessDashboard({
   setBusinessDishActive,
   signSupplierContract,
   cancelSupplierContract,
+  selectSupplier,
   hireStaff,
   fireStaff,
   buyStaff,
@@ -151,6 +152,8 @@ export function BusinessDashboard({
   setBusinessDishActive: (dishId: string, active: boolean) => SetDishActiveResult;
   signSupplierContract: (supplierId: string) => SignContractResult;
   cancelSupplierContract: () => CancelContractResult;
+  /** Restaurant build: the ingredient supplier is chosen on the Suppliers tab (phase 7). */
+  selectSupplier: (id: string) => void;
   /** A role or (restaurant build) a specialist chef id; only `ok` is read. */
   hireStaff: (role: string) => { ok: boolean };
   fireStaff: (role: string) => { ok: boolean };
@@ -200,8 +203,8 @@ export function BusinessDashboard({
       <div className="absolute inset-0 bg-[radial-gradient(90%_50%_at_50%_0%,rgba(216,168,78,0.28),transparent_60%)]" />
       <div className="relative h-full overflow-y-auto no-scrollbar pb-24">
         <ScreenHeader
-          title="Business"
-          subtitle="your restaurant"
+          title={RESTAURANT_MODE ? "Restaurant" : "Business"}
+          subtitle={RESTAURANT_MODE ? "your back office" : "your restaurant"}
           onBack={() => go("kitchen")}
           right={<BusinessCash cents={save.credits} />}
         />
@@ -264,6 +267,7 @@ export function BusinessDashboard({
               save={save}
               signSupplierContract={signSupplierContract}
               cancelSupplierContract={cancelSupplierContract}
+              selectSupplier={selectSupplier}
             />
           ) : null}
           {tab === "menu" ? (
@@ -289,7 +293,9 @@ export function BusinessDashboard({
         </div>
 
         <p className="px-8 pb-2 pt-5 text-center font-hand text-[14px] text-walnut/45">
-          Business runs on its own calendar and shares your one wallet with the kitchen.
+          {RESTAURANT_MODE
+            ? "One restaurant, one wallet: every level you cook is a service here."
+            : "Business runs on its own calendar and shares your one wallet with the kitchen."}
         </p>
       </div>
       <BottomNav active="business" go={go} />

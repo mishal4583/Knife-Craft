@@ -299,6 +299,31 @@ moved the menu to Level 1, re-ordered the systems and added a day clock.
 | Brief 2026-10-05: menu from L11 on the developer's curve, tied to cuisine chapters; restaurant news; staff requirements + specialist chefs; bulk buying; Inventory NEEDS ATTENTION; fridge warnings; one restaurant before L250, Endless Restaurant after | done (behind the switch) | `restaurant-menu-qa`, `restaurant-progression-qa`, e2e `restaurantprogression.mjs` |
 | M Save migration (starter crate, once, no money) | done (behind the switch) | `restaurant-migration-qa`, e2e `restaurantmigration.mjs` |
 | N Final QA (campaign simulation, widths, regression, report) | done | `restaurant-campaign-sim-qa`, e2e `restaurantwidths.mjs`, `docs/RESTAURANT_QA_REPORT.md` |
+| Economy pass (P0, item effects on real stock, Endless Restaurant demand) | done (behind the switch) | `restaurant-economy-pass-qa`, `restaurant-endless-qa` |
+| 7 One back office (Staff, Suppliers, Equipment) | done (behind the switch) | `restaurant-backoffice-qa`, e2e `restaurantbackoffice.mjs` |
+
+Phase 7 notes (one back office, conflict 4):
+
+- **Staff** was already one screen (Restaurant → Staff: the six waged roles,
+  the kitchen helpers, the specialist chefs). Nothing changed.
+- **Suppliers**: the ingredient supplier (`SaveData.selectedSupplierId`:
+  Local / Wholesale −10% / Premium +10%), which since the economy pass sets
+  Market ingredient prices, moved from the Market's "Campaign Supplier" tab
+  to Restaurant → Suppliers, above the contracts and today's supplier
+  conditions. Each card shows a tomato's Market price with that supplier
+  (the Market's own quote); choosing stays free (App.selectSupplier, no
+  money, no ledger). The Market has no supplier tab in the restaurant build;
+  its Ingredients view names the supplier and links to the tab. The release
+  build keeps its Campaign Supplier tab.
+- **Equipment**: restaurant development (the kitchen tiers) shown above the
+  fridge — current tier, built x / 5, the next tier with its price and level
+  — read-only, built on the Kitchen Upgrade screen.
+- The back office is titled "Restaurant" ("your back office") in the
+  restaurant build; its footer no longer says Business runs on its own
+  calendar.
+- View model: `restaurant/restaurantBackOffice.ts` (pure). Data and effects
+  unchanged. Open (economy): Premium is strictly costlier with no benefit
+  (`supplierDefinitions.ts` says so on purpose) — Economy TODO #9.
 
 Phase M notes:
 

@@ -1,5 +1,7 @@
 import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
 import { restaurantQuote } from "@/game/restaurant/restaurantEconomy";
+import { supplierPriceNote } from "@/game/restaurant/restaurantBackOffice";
+import { getSelectedSupplierId } from "@/game/economy/SupplierManager";
 import { BulkPresets } from "./BulkPresets";
 import { useEffect, useRef, useState } from "react";
 import { Badge, KButton, Panel } from "./common/primitives";
@@ -57,6 +59,7 @@ export function MarketIngredients({
   focusId,
   focusQuantity = null,
   setNotice,
+  onChangeSupplier,
 }: {
   save: SaveData;
   purchaseIngredient: (ingredientId: string, quantity: number) => PurchaseIngredientResult;
@@ -65,6 +68,8 @@ export function MarketIngredients({
   /** The focused card's starting quantity (a Pre-Service Check's exact shortfall). */
   focusQuantity?: number | null;
   setNotice: (text: string) => void;
+  /** Restaurant build: opens Restaurant → Suppliers, where the ingredient supplier is chosen (phase 7). */
+  onChangeSupplier?: () => void;
 }) {
   const [quantities, setQuantities] = useState<Partial<Record<IngredientId, number>>>(() =>
     focusId && focusQuantity ? { [focusId]: focusQuantity } : {},
@@ -127,10 +132,32 @@ export function MarketIngredients({
             {formatQuantity(fridge.available)} free
           </span>
         </div>
-        <p className="mt-1 font-hand text-[14px] leading-snug text-walnut/65">
-          Stock bought here goes into your Business fridge for Business orders. Campaign recipes pay
-          for their ingredients automatically as you cook.
-        </p>
+        {RESTAURANT_MODE ? (
+          <>
+            <p className="mt-1 font-hand text-[14px] leading-snug text-walnut/65">
+              Stock bought here goes into your restaurant fridge; every order you cook uses it.
+            </p>
+            <div
+              className="mt-2 flex flex-wrap items-center justify-between gap-2"
+              data-testid="market-supplier"
+            >
+              <span className="font-ui text-[11px] font-bold text-walnut/70">
+                🚚 Supplier: {getSupplier(getSelectedSupplierId(save))?.name ?? "Local Market"}
+                {supplierPriceNote(save)}
+              </span>
+              {onChangeSupplier ? (
+                <KButton size="md" variant="ghost" onClick={onChangeSupplier}>
+                  Change supplier →
+                </KButton>
+              ) : null}
+            </div>
+          </>
+        ) : (
+          <p className="mt-1 font-hand text-[14px] leading-snug text-walnut/65">
+            Stock bought here goes into your Business fridge for Business orders. Campaign recipes
+            pay for their ingredients automatically as you cook.
+          </p>
+        )}
         {contractActive && contract ? (
           <p className="mt-1 font-ui text-[11px] font-bold text-walnut/70">
             📜 {getSupplier(contract.supplierId)?.name ?? "Supplier"} contract: −

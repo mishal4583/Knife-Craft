@@ -284,6 +284,17 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   completionist save through the real Business engine: minimum $78/day,
   medium $135, full menu + thin staff $276, fully staffed $452 (E2:
   $300–$600), overstaffed −$262 (E3: < $150); cash = ledger, never < 0.
+- `restaurant-backoffice-qa` — phase 7, one back office (restaurant
+  build; `restaurant/restaurantBackOffice.ts`): the ingredient supplier
+  (`selectedSupplierId`, Local / Wholesale / Premium) is chosen on
+  Restaurant → Suppliers above the contracts, each card priced by the
+  Market's own quote, free (no money, no ledger); the Market has no supplier
+  tab there and its Ingredients names the supplier with "Change supplier →";
+  Equipment shows restaurant development (kitchen tiers: current, built
+  x / 5, next) read-only above the fridge, linking to Kitchen Upgrade; Staff
+  was already one screen; the back office is titled "Restaurant". The
+  release build keeps the Campaign Supplier tab and the "Business" title.
+  Browser: `tools/e2e/restaurantbackoffice.mjs` (restaurant test build).
 - `story-pause-qa` — the finale and milestone banners stop their timers
   (and animations, and finale taps) while paused, resuming with the time
   left (`PausableCountdown` on a fake clock); the finale's "BACK TO THE

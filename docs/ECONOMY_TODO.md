@@ -17,7 +17,7 @@ Status key: OPEN (not yet built), BUILT (exists, not balanced).
 | 6 | Takeaway packaging in campaign orders (~30% of orders from L71: container + bag) | BUILT (phase G) | Same packs as Business; takeaway share. |
 | 7 | Staff wages during the campaign — staff are now REQUIRED as the restaurant grows (Prep Cook L41, Server L46, Line Cook L61, Cleaner L91, Head Chef L121, Manager L161, by service size; `restaurant/staffRequirements.ts`). Hiring is free; wages are paid only at closing from L91 (End Business Day), so L41–90 staff cost nothing | BUILT (behind the switch) | Waged staff cost more than they earn; free staff before L91 is a gap. |
 | 8 | Two staff systems (one-time helpers vs waged roles) | OPEN | Which one survives, and its value. |
-| 9 | Two supplier systems (campaign COGS ±10% vs Business contracts/events) | BUILT (restaurant build: the Campaign Supplier's ±10% now sets Market ingredient prices, row 26) | Contracts/events still stack on top; one supplier effect eventually. |
+| 9 | Two supplier systems (campaign COGS ±10% vs Business contracts/events) | BUILT (restaurant build: the ingredient supplier's ±10% sets Market ingredient prices, row 26; chosen on Restaurant → Suppliers next to the contracts, phase 7) | Contracts/events still stack on top. Premium (+10%) has no benefit at all — strictly worse than Local; give it one (quality bonus? freshness?) or drop it. |
 | 10 | Fridge upgrades as campaign needs | OPEN | $2,000 / $4,800 against a buy-everything player's $10–31 around L20–50. |
 | 11 | Equipment condition and maintenance in the campaign | OPEN | Recurring cost. |
 | 12 | Waste / spoilage in the campaign | OPEN | Lost stock value. |

@@ -396,6 +396,15 @@ conversation.
    before L91). `restaurant-economy-pass-qa`, docs/ECONOMY_TODO.md rows
    26–27.
 
+32. Unified Restaurant phase 7 — one back office (restaurant build):
+   Staff was already one screen; the ingredient supplier moved from the
+   Market's "Campaign Supplier" tab to Restaurant → Suppliers (free choice,
+   it sets Market prices; the Market names it and links there); Equipment
+   shows restaurant development (kitchen tiers) above the fridge; the back
+   office is titled "Restaurant". `restaurant/restaurantBackOffice.ts`,
+   `restaurant-backoffice-qa`, e2e `restaurantbackoffice.mjs`. Release
+   build unchanged.
+
 ## 4. Open issues from the Level 1–10 audit (not fixed yet)
 
 Priority order as agreed in the audit (P0 = before wide release):

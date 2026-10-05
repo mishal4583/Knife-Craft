@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
+import { RestaurantDevelopmentCard } from "../restaurant/RestaurantDevelopmentCard";
 import type { ScreenId } from "../data";
 import type { SaveData } from "@/game/SaveManager";
 import { KButton, Panel, Badge } from "../common/primitives";
@@ -104,6 +106,7 @@ export function BusinessRefrigerator({
 
   return (
     <div className="space-y-3">
+      {RESTAURANT_MODE ? <RestaurantDevelopmentCard save={save} go={go} /> : null}
       {/* Your fridge */}
       <Panel tone="cream" className="p-4">
         <div className="flex items-start justify-between gap-3">

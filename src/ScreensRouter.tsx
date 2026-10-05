@@ -216,6 +216,7 @@ export function ScreensRouter({
           setBusinessDishActive={setBusinessDishActive}
           signSupplierContract={signSupplierContract}
           cancelSupplierContract={cancelSupplierContract}
+          selectSupplier={selectSupplier}
           hireStaff={hireStaff}
           buyStaff={buyStaff}
           fireStaff={fireStaff}
