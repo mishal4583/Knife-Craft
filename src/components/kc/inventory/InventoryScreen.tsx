@@ -1,3 +1,5 @@
+import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
+import { RestaurantAttentionPanel } from "./RestaurantAttentionPanel";
 import { useMemo, useRef, useState, type ReactNode } from "react";
 import type { ScreenId } from "../data";
 import type { SaveData } from "@/game/SaveManager";
@@ -555,6 +557,8 @@ export function InventoryScreen({
         />
 
         <div className="space-y-3 px-4">
+          {/* Unified Restaurant: one urgent list for the whole restaurant (read-only, navigation only). */}
+          {RESTAURANT_MODE ? <RestaurantAttentionPanel save={save} go={go} /> : null}
           {/* What kind of stock: food (the fridge) or supplies (smallwares, tableware, takeaway) */}
           <div className="grid grid-cols-2 gap-2" role="tablist" aria-label="Kind of stock">
             {KINDS.map((k) => (

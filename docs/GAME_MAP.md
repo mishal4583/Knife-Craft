@@ -22,7 +22,7 @@ KNIFECRAFT
 │                             Blacksmith · smallwares · tableware · takeaway
 │                             (the ONLY place anything is bought; no Staff tab)
 ├── Inventory                 what the restaurant has: fridge + ingredients | supplies
-├── Business (→ "Restaurant") management, not a mode: Overview · Equipment · Staff ·
+├── Restaurant (was Business) management, not a mode: Overview · Equipment · Staff ·
 │                             Suppliers · Menu · Operations
 └── Progress                  restaurant stage, milestones, Endless unlock
 
@@ -31,25 +31,29 @@ CAREER (Levels 1–250) — each level is one SERVICE of the restaurant day
              ─► … the day's services (Lunch + Dinner; + Breakfast from L51)
              ─► CLOSING TIME (chores, the day's count, spoiled food) ─► Day N+1
 
-  L1   menu (2 dishes) + the restaurant day     L71  takeaway (~30% of orders: box + bag)
-  L11  pantry: real ingredient stock            L91  full operation (closing = End Business Day)
-  L21  fridge + freshness (food ages)           L121 expansion
-  L31  dine-in: place settings, napkins,       L161 established
-       dish soap, cleaning liquid
-  L41  staff                                    L201 master
-  L51  cuisines + specialist chefs              L241 Grand Service → L250 finale
-  Menu: 2 dishes at L1 → 48 by L241 (restaurant/restaurantProgression.ts)
+  L1   cooking fundamentals + the restaurant day
+  L11  the menu (4 dishes) + menu guests          L71  takeaway (~30% of orders: box + bag)
+  L15  ingredient stock                           L91  bigger restaurant (closing = End Business Day)
+  L21  fridge + freshness (food ages)             L121 full restaurant management
+  L31  dine-in: place settings, napkins,          L161 established
+       dish soap, cleaning liquid                 L201 master
+  L41  staff (Prep Cook; Server L46; Line Cook    L241 Grand Service → L250 finale
+       L61; Cleaner L91; Head Chef L121; Manager L161)
+  L51  cuisines with specialist chefs (Indian 51, Mediterranean 71, Mexican 81,
+       Japanese 101, Chinese 121, Thai 141, Korean 161 — one Asian Chef)
+  Menu: 4 dishes at L11 → 48 by L161 (restaurant/restaurantProgression.ts)
   Menu guests: after a level's own orders, 1–5 optional customers order from
-  the active menu (from L6) — cooked in the same service, paid at menu price
+  the active menu (from L11) — cooked in the same service, paid at menu price
+  Market: bulk presets 5/25/50/100 with provisional discounts (consumables)
+  Inventory: ⚠️ NEEDS ATTENTION across food, supplies, bottles, fridge, staff
 
-ENDLESS RESTAURANT (after Level 250) — the same restaurant, open-ended days,
-  orders from the active menu (phase L; not built yet)
+ENDLESS RESTAURANT (after Level 250) — the same restaurant, open-ended days
+  on the Business engine (open, serve menu orders, end the day). Before L250
+  there is no separate Business Day.
 ```
 
 Not yet built in the restaurant (see `docs/RESTAURANT_INTEGRATION_AUDIT.md`):
-bulk buying (H), staff
-requirements (I), specialist chefs (J), Endless Restaurant (L), the separate
-Business service entry's removal and the Restaurant name (L), migration (M).
+migration of existing saves (M) and the final QA pass (N).
 
 ## Classic (switch OFF, the release today)
 

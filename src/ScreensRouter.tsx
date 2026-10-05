@@ -130,8 +130,8 @@ export function ScreensRouter({
   signSupplierContract: (supplierId: string) => SignContractResult;
   cancelSupplierContract: () => CancelContractResult;
   /** Economy V3 Phase 9 — Business Mode's own staff hire/fire actions. */
-  hireStaff: (role: string) => HireStaffResult;
-  fireStaff: (role: string) => FireStaffResult;
+  hireStaff: (role: string) => { ok: boolean };
+  fireStaff: (role: string) => { ok: boolean };
   /** Economy V3 Phase 14, Checkpoint 3 — Business Mode's own order/service session and its two entry actions ("open the counter" and "start preparing this order"). */
   businessServiceSession: ServiceSession | null;
   onStartBusinessService: () => void;

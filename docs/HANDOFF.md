@@ -356,6 +356,16 @@ conversation.
    `restaurant-supplies-qa`, e2e `restaurantsupplies.mjs`. Details:
    `docs/RESTAURANT_INTEGRATION_AUDIT.md` (Phase G notes).
 
+28. Unified Restaurant, developer brief 2026-10-05 (behind RESTAURANT_MODE):
+   the menu opens at L11 (4 dishes) on the developer's curve to 48 at
+   L161, tied to the cuisine chapters, with restaurant news in the
+   Pre-Service Check; staff requirements by service size and specialist
+   chefs; bulk buying (5/25/50/100, provisional discounts); Inventory's
+   restaurant-wide ⚠️ NEEDS ATTENTION; fridge warnings; no Business Day
+   before L250, the Endless Restaurant after. Fixed: closing from L91 now
+   writes End Business Day's ledger entries. `restaurant-progression-qa`,
+   e2e `restaurantprogression.mjs`. Details in the audit's notes.
+
 ## 4. Open issues from the Level 1–10 audit (not fixed yet)
 
 Priority order as agreed in the audit (P0 = before wide release):

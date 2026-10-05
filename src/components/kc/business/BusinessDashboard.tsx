@@ -1,3 +1,4 @@
+import { ENDLESS_RESTAURANT_NAME, businessDayAllowed } from "@/game/restaurant/endlessRestaurant";
 import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
 import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
 import { useMemo, useState, type ReactNode } from "react";
@@ -41,7 +42,6 @@ import type {
   SignContractResult,
   CancelContractResult,
 } from "@/game/business/BusinessSupplierManager";
-import type { HireStaffResult, FireStaffResult } from "@/game/business/BusinessStaffManager";
 import { formatUsd } from "@/game/business/businessCurrency";
 import type { DailyPnL } from "@/game/business/BusinessFinanceManager";
 import type { PopularityDayBreakdown } from "@/game/business/PopularityManager";
@@ -151,8 +151,9 @@ export function BusinessDashboard({
   setBusinessDishActive: (dishId: string, active: boolean) => SetDishActiveResult;
   signSupplierContract: (supplierId: string) => SignContractResult;
   cancelSupplierContract: () => CancelContractResult;
-  hireStaff: (role: string) => HireStaffResult;
-  fireStaff: (role: string) => FireStaffResult;
+  /** A role or (restaurant build) a specialist chef id; only `ok` is read. */
+  hireStaff: (role: string) => { ok: boolean };
+  fireStaff: (role: string) => { ok: boolean };
   buyStaff: (id: string) => BuyStaffResult;
   rushRestock: (payment: RushRestockPayment) => Promise<RushRestockOutcome>;
   rushAdAvailable: boolean;
@@ -352,15 +353,21 @@ function Overview({
       />
       <RankCard save={save} go={go} />
       <MoneyBreakdown pnl={today} />
-      <BusinessDayCard save={save} businessServiceSession={businessServiceSession} />
-      {dayResult ? <DaySummary result={dayResult} day={businessDay - 1} go={go} /> : null}
-      <Milestones save={save} />
-      <DayActions
-        save={save}
-        go={go}
-        businessServiceSession={businessServiceSession}
-        endDay={endDay}
-      />
+      {businessDayAllowed(RESTAURANT_MODE, save.levelProgress) ? (
+        <>
+          <BusinessDayCard save={save} businessServiceSession={businessServiceSession} />
+          {dayResult ? <DaySummary result={dayResult} day={businessDay - 1} go={go} /> : null}
+          <Milestones save={save} />
+          <DayActions
+            save={save}
+            go={go}
+            businessServiceSession={businessServiceSession}
+            endDay={endDay}
+          />
+        </>
+      ) : (
+        <OneRestaurantNote />
+      )}
     </div>
   );
 }
@@ -691,6 +698,30 @@ function MoneyBreakdown({ pnl }: { pnl: DailyPnL }) {
   );
 }
 
+/**
+ * Unified Restaurant (RESTAURANT_MODE) before Level 250: there is ONE
+ * restaurant — the campaign — so there is no separate Business Day to open.
+ * Its menu orders, stock, supplies, staff and day all run in the campaign's
+ * services; the Endless Restaurant (this Business engine) opens after L250.
+ */
+function OneRestaurantNote() {
+  return (
+    <Panel className="p-4">
+      <div data-testid="one-restaurant-note">
+        <Eyebrow>🍽️ One restaurant</Eyebrow>
+        <p className="mt-1 font-hand text-[15px] leading-snug text-walnut-dark">
+          Your restaurant runs through the campaign: every level is a service, with menu orders,
+          stock, supplies and staff. Play the next level from the Kitchen.
+        </p>
+        <p className="mt-1 font-ui text-[12px] font-bold text-walnut/60">
+          🔒 The {ENDLESS_RESTAURANT_NAME} — open-ended days with everything you built — opens after
+          Level 250.
+        </p>
+      </div>
+    </Panel>
+  );
+}
+
 function BusinessDayCard({
   save,
   businessServiceSession,
@@ -704,7 +735,10 @@ function BusinessDayCard({
   const popularity = save.business.popularity.score;
   return (
     <Panel className="p-4">
-      <Eyebrow>🍽️ Business Day {save.business.calendar.businessDay}</Eyebrow>
+      <Eyebrow>
+        🍽️ {RESTAURANT_MODE ? ENDLESS_RESTAURANT_NAME : "Business"} Day{" "}
+        {save.business.calendar.businessDay}
+      </Eyebrow>
       <div className="mt-2 flex items-baseline justify-between font-ui text-[12px] font-bold text-walnut/75">
         <span>Customers Today</span>
         <span className="font-extrabold text-walnut-dark">
@@ -787,7 +821,12 @@ function DayActions({
         variant={customers.complete ? "cream" : "wood"}
         onClick={() => go("business-service")}
       >
-        🍽️ {hasOrder ? "Go to Service →" : "Open Restaurant →"}
+        🍽️{" "}
+        {hasOrder
+          ? "Go to Service →"
+          : RESTAURANT_MODE
+            ? `Open the ${ENDLESS_RESTAURANT_NAME} →`
+            : "Open Restaurant →"}
       </KButton>
       <KButton full size="lg" variant={customers.complete ? "wood" : "cream"} onClick={endDay}>
         End Business Day →
@@ -1084,9 +1123,16 @@ function Operations({
             contract ends tonight.
           </p>
         ) : null}
-        <KButton full size="lg" className="mt-3" onClick={endDay}>
-          End Business Day →
-        </KButton>
+        {businessDayAllowed(RESTAURANT_MODE, save.levelProgress) ? (
+          <KButton full size="lg" className="mt-3" onClick={endDay}>
+            End Business Day →
+          </KButton>
+        ) : (
+          <p className="mt-3 font-hand text-[14px] leading-snug text-walnut/70">
+            Your restaurant's day ends at closing time after its services. The open-ended{" "}
+            {ENDLESS_RESTAURANT_NAME} opens after Level 250.
+          </p>
+        )}
       </Panel>
 
       {dayResult ? (

@@ -1,3 +1,5 @@
+import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
+import { ENDLESS_RESTAURANT_NAME } from "@/game/restaurant/endlessRestaurant";
 import { useEffect } from "react";
 import { ENDLESS_DAILY_COIN_CAP, isEndlessUnlocked } from "@/game/daily/EndlessServiceManager";
 import { paidLevelReward } from "@/game/levels/levelRewards";
@@ -320,17 +322,22 @@ export function OrderBoard({
             </button>
             <button
               type="button"
-              onClick={() => go("endless")}
+              // Unified Restaurant: after L250 the restaurant carries on as the Endless
+              // Restaurant (the Business engine, opened from the Restaurant tab).
+              onClick={() => go(RESTAURANT_MODE ? "business" : "endless")}
+              data-testid="endless-tile"
               className="press rounded-[16px] border border-sage/40 bg-sage/15 p-3 text-left"
             >
               <span className="block text-[20px]">🍽️</span>
               <span className="mt-1 block font-display text-[13px] font-black text-walnut-dark">
-                Endless Service
+                {RESTAURANT_MODE ? ENDLESS_RESTAURANT_NAME : "Endless Service"}
               </span>
               <span className="block font-hand text-[12px] text-walnut/60">
-                {isEndlessUnlocked(levelProgress)
-                  ? `ongoing earnings · up to ${formatUsd(ENDLESS_DAILY_COIN_CAP).replace(/\.00$/, "")}/day`
-                  : "🔒 unlocks after Level 250"}
+                {!isEndlessUnlocked(levelProgress)
+                  ? "🔒 unlocks after Level 250"
+                  : RESTAURANT_MODE
+                    ? "your restaurant, open every day"
+                    : `ongoing earnings · up to ${formatUsd(ENDLESS_DAILY_COIN_CAP).replace(/\.00$/, "")}/day`}
               </span>
             </button>
           </div>
@@ -541,7 +548,8 @@ const NAV: { id: ScreenId; label: string; glyph: string }[] = [
   // Economy V3 Phase 1 — the Business Simulation layer's own bottom-nav
   // destination (see data.ts's own doc on "business" for why this is a full
   // tab, not a Kitchen hotspot).
-  { id: "business", label: "Business", glyph: "📊" },
+  // Unified Restaurant: Campaign and Business are one restaurant, so the tab is "Restaurant".
+  { id: "business", label: RESTAURANT_MODE ? "Restaurant" : "Business", glyph: "📊" },
   { id: "rack", label: "Progress", glyph: "🏆" },
 ];
 

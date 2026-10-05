@@ -2,10 +2,14 @@
  * RESTAURANT MENU QA — Unified Restaurant progression phases A–C (developer
  * spec "Unified Restaurant Progression & Early Menu", 2026-10-04).
  *
- *  M. The menu schedule (restaurant/restaurantProgression.ts MENU_UNLOCKS):
- *     Level 1 already has a real menu (2 dishes); the size stays inside the
- *     developer's target band at EVERY level 1–250; all 48 dishes by L241,
- *     each once; never all at once.
+ *  M. The menu schedule (restaurant/restaurantProgression.ts MENU_UNLOCKS),
+ *     the developer's curve of 2026-10-05: no menu in the L1–10
+ *     fundamentals, 4 dishes at L11 … 48 at L161; at every curve point the
+ *     size is min(target, what the rules allow) and never ahead of it; the
+ *     only misses are where the catalog runs out (no dish is invented).
+ *  T. Tied to cuisines: each specialist cuisine opens with its campaign
+ *     chapter and its first dishes arrive as soon as they legally can; the
+ *     news explains the menu chain and announces cuisines 5 levels ahead.
  *  R. Its rules: a dish never before its knife techniques are taught (the
  *     L1–5 tutorial counts for the starter dishes), never before its
  *     cuisine opens, chicken/steak from L101, salmon from L109, the ribeye
@@ -25,7 +29,8 @@ import fs from "node:fs";
 import path from "node:path";
 import {
   MENU_UNLOCKS,
-  MENU_TARGETS,
+  MENU_CURVE,
+  menuTargetAt,
   MENU_CHOICE_LEVEL,
   CUISINES,
   CUISINE_NOTICE_LEVELS,
@@ -48,6 +53,7 @@ import { CAMPAIGN_RECIPES, getCampaignRecipe } from "../src/game/recipes/campaig
 import { LEVELS } from "../src/game/levels/levelDefinitions.ts";
 import { techniqueFirstLevel, TEACH_ALL_THROUGH_LEVEL } from "../src/game/coaching.ts";
 import { mustPeelBefore } from "../src/game/prepStepGuards.ts";
+import { restaurantNewsAt } from "../src/game/restaurant/restaurantNews.ts";
 
 let failures = 0;
 function assert(cond: unknown, msg: string) {
@@ -61,35 +67,126 @@ const root = path.resolve(import.meta.dirname, "..");
 const read = (p: string) => fs.readFileSync(path.join(root, p), "utf8");
 const dishIds = BUSINESS_DISH_CATALOG.map((d) => d.id);
 
-console.log("M. Schedule");
+/** The earliest level a dish may join under the three rules (R below checks the schedule keeps them). */
+function earliestLegal(dish: (typeof BUSINESS_DISH_CATALOG)[number]): number {
+  const recipe = getCampaignRecipe(dish.sourceRecipeId)!;
+  let at = 1;
+  for (const c of recipe.components)
+    for (const t of [
+      c.technique,
+      ...(mustPeelBefore(c.ingredientId, c.technique) ? ["peel"] : []),
+    ]) {
+      const taught =
+        techniqueFirstLevel(t as Parameters<typeof techniqueFirstLevel>[0]) ?? Infinity;
+      if (taught > TEACH_ALL_THROUGH_LEVEL) at = Math.max(at, taught);
+    }
+  at = Math.max(at, cuisineFor(dish.cuisineId).firstLevel);
+  const ing = new Set(recipe.components.map((c) => c.ingredientId));
+  if (ing.has("chicken") || ing.has("steak")) at = Math.max(at, 101);
+  if (ing.has("salmon")) at = Math.max(at, 109);
+  if (dish.id === "biz-ribeye-herb-butter") at = Math.max(at, 106);
+  return at;
+}
+const legalBy = (lv: number) => BUSINESS_DISH_CATALOG.filter((d) => earliestLegal(d) <= lv).length;
+
+console.log("M. Schedule (developer curve 2026-10-05)");
 assert(
-  menuDishIdsAt(1).join() === "biz-caprese-salad,biz-mushroom-bruschetta",
-  "M1: Level 1 already has a real menu: Caprese Salad and Mushroom Bruschetta",
+  menuDishIdsAt(10).length === 0 &&
+    menuDishIdsAt(11).join() ===
+      "biz-caprese-salad,biz-mushroom-bruschetta,biz-garden-salad,biz-garlic-bread" &&
+    menuTargetAt(10) === 0 &&
+    menuTargetAt(11) === 4,
+  "M1: no menu in the L1–10 fundamentals; it opens at L11 with 4 dishes the player can already cut",
 );
-const bad: string[] = [];
-for (let lv = 1; lv <= 250; lv++) {
-  const band = MENU_TARGETS.find((b) => lv >= b.from && lv <= b.to)!;
-  const n = menuDishIdsAt(lv).length;
-  if (n < band.min || n > band.max) bad.push(`L${lv}: ${n} (target ${band.min}–${band.max})`);
+const curveMisses: string[] = [];
+for (const p of MENU_CURVE) {
+  const want = Math.min(p.dishes, legalBy(p.level));
+  const n = menuDishIdsAt(p.level).length;
+  if (n !== want) curveMisses.push(`L${p.level}: ${n} (want ${want} of ${p.dishes})`);
 }
 assert(
-  bad.length === 0,
-  `M2: the menu size is inside the target band at every level 1–250 ${bad.slice(0, 3).join("; ")}`,
+  curveMisses.length === 0 &&
+    MENU_CURVE.map((p) => `${p.level}:${p.dishes}`).join() ===
+      "11:4,15:6,20:8,25:10,31:12,41:15,51:18,61:21,71:25,81:29,91:33,101:36,111:39,121:42,141:45,161:48",
+  `M2: at every point of the developer's curve the menu has min(target, dishes the rules allow) ${curveMisses.join("; ")}`,
+);
+const over: string[] = [];
+for (let lv = 1; lv <= 250; lv++)
+  if (menuDishIdsAt(lv).length > menuTargetAt(lv))
+    over.push(`L${lv}: ${menuDishIdsAt(lv).length} > ${menuTargetAt(lv)}`);
+assert(
+  over.length === 0,
+  `M2b: the menu never runs ahead of the curve ${over.slice(0, 3).join("; ")}`,
+);
+const shortfalls = MENU_CURVE.filter((p) => legalBy(p.level) < p.dishes).map((p) => p.level);
+assert(
+  shortfalls.join() === "20,25,31,91,101,111",
+  `M2c: the only points the catalog can't reach are L20/25/31 (techniques) and L91/101/111 (meat and fish) — ${shortfalls.join()}`,
 );
 const scheduled = MENU_UNLOCKS.flatMap((u) => [...u.dishIds]);
 assert(
   scheduled.length === 48 &&
     new Set(scheduled).size === 48 &&
     scheduled.every((id) => dishIds.includes(id)) &&
-    menuDishIdsAt(241).length === 48 &&
-    menuDishIdsAt(240).length === 47,
-  "M3: all 48 catalog dishes are scheduled once, the last at L241",
+    menuDishIdsAt(161).length === 48 &&
+    menuDishIdsAt(160).length === 45,
+  "M3: all 48 catalog dishes are scheduled once, the full menu at L161",
 );
 assert(
-  MENU_UNLOCKS.every((u) => u.dishIds.length <= 2) &&
-    MENU_UNLOCKS.every((u, i) => i === 0 || u.level > MENU_UNLOCKS[i - 1]!.level),
-  "M4: never more than 2 dishes at once; unlock levels strictly increase",
+  MENU_UNLOCKS.every((u, i) => i === 0 || u.level > MENU_UNLOCKS[i - 1]!.level) &&
+    MENU_UNLOCKS.every((u) => u.why.length > 10),
+  "M4: unlock levels strictly increase; every unlock says why its dishes were added",
 );
+
+console.log("T. Tied to cuisine progression");
+{
+  const firstDish = (cuisineGroup: string) =>
+    Math.min(
+      ...BUSINESS_DISH_CATALOG.filter((d) => cuisineFor(d.cuisineId).id === cuisineGroup).map((d) =>
+        dishUnlockLevel(d.id)!,
+      ),
+    );
+  const firstLegal = (cuisineGroup: string) =>
+    Math.min(
+      ...BUSINESS_DISH_CATALOG.filter((d) => cuisineFor(d.cuisineId).id === cuisineGroup).map(
+        earliestLegal,
+      ),
+    );
+  const misses = CUISINES.filter((c) => c.firstLevel > 1)
+    .filter((c) => firstDish(c.id) !== firstLegal(c.id))
+    .map((c) => `${c.id}: ${firstDish(c.id)} vs ${firstLegal(c.id)}`);
+  assert(
+    misses.length === 0,
+    `T1: each cuisine's first dishes join the menu the first level they legally can (its chapter, or fish/meat) ${misses.join("; ")}`,
+  );
+  const campaignFirst = new Map<string, number>();
+  for (const l of LEVELS)
+    for (const id of [...(l.recipePoolIds ?? []), ...(l.batchGroupRecipeIds ?? [])]) {
+      const k = getCampaignRecipe(id)?.cuisineId ?? "home";
+      const n = Number(l.id.split("-")[1]);
+      if (!campaignFirst.has(k) || campaignFirst.get(k)! > n) campaignFirst.set(k, n);
+    }
+  const chapterMisses = CUISINES.filter((c) => c.specialist)
+    .flatMap((c) => c.cuisineIds.map((k) => [c, k] as const))
+    .filter(([c, k]) => campaignFirst.get(k) !== c.firstLevel)
+    .map(([c, k]) => `${k}: opens L${c.firstLevel}, chapter L${campaignFirst.get(k)}`);
+  assert(
+    chapterMisses.length === 0,
+    `T2: every specialist cuisine opens with its campaign chapter ${chapterMisses.join("; ")}`,
+  );
+  const news11 = restaurantNewsAt(11);
+  const news51 = restaurantNewsAt(51);
+  assert(
+    news11.chain?.join(" → ") ===
+      "Menu → Customer Order → Inventory → Preparation → Service → Revenue" &&
+      news11.dishes.length === 4 &&
+      !!news11.dishWhy &&
+      news51.cuisines.some((c) => c.name === "Indian" && c.specialist === "Indian Chef") &&
+      restaurantNewsAt(46).comingUp.some((c) => c.level === 51 && /Indian/.test(c.text)) &&
+      restaurantNewsAt(12).chain === null,
+    "T3: the news explains the menu chain at L11, new dishes with their reason, and a cuisine (with its chef) 5 levels ahead",
+  );
+}
 
 console.log("R. Rules");
 const ruleBreaks: string[] = [];
@@ -142,7 +239,7 @@ console.log("A. Active menu");
   const none = { inactiveDishIds: [] as string[] };
   const offEarly = { inactiveDishIds: ["biz-caprese-salad"] };
   assert(
-    activeMenuDishes(offEarly, 10).length === 3 && activeMenuDishes(none, 10).length === 3,
+    activeMenuDishes(offEarly, 12).length === 4 && activeMenuDishes(none, 12).length === 4,
     "A1: before the menu choice level every unlocked dish is on (saved switches ignored)",
   );
   const lv = MENU_CHOICE_LEVEL;
@@ -159,11 +256,12 @@ console.log("A. Active menu");
     activeMenuDishes(allOff, lv).length === unlocked.length,
     "A3: never empty: all off counts as all on",
   );
-  const lockedId = lockedMenuDishes(10)[0]!.dish.id;
+  const lockedId = lockedMenuDishes(12)[0]!.dish.id;
   assert(
-    !canOrderDish(none, 10, lockedId) &&
-      !canOrderDish(none, 200, "biz-thai-basil-salmon") &&
-      canOrderDish(none, 241, "biz-thai-basil-salmon"),
+    !canOrderDish(none, 12, lockedId) &&
+      !canOrderDish(none, 10, "biz-caprese-salad") &&
+      !canOrderDish(none, 160, "biz-thai-basil-salmon") &&
+      canOrderDish(none, 161, "biz-thai-basil-salmon"),
     "A4: a locked dish is never orderable, whatever the saved switches say",
   );
   assert(
@@ -177,7 +275,7 @@ console.log("A. Active menu");
       currentLevelId: "level-3",
       highestUnlockedLevelId: "level-12",
       completedLevelIds: [],
-    }) === 12 && dishesUnlockedAt(51).length === 2,
+    }) === 12 && dishesUnlockedAt(51).length === 3,
     "A6: the restaurant's level is the furthest level reached",
   );
 }

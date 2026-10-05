@@ -61,8 +61,10 @@ export const SERVICE_SUPPLY_RULES = {
   cleanerPerClosing: 10,
   /** Share of a level's orders that are takeaway, once takeaway is open. */
   takeawayShare: 0.3,
-  /** A bottle with this many services (or fewer) left is "low". */
-  lowServicesLeft: 3,
+  /** Dish soap with this many washes (or fewer) left is "low" (a warning, never a block). */
+  lowWashesLeft: 8,
+  /** Cleaning liquid with this many closings (or fewer) left is "low". */
+  lowClosingsLeft: 3,
 } as const;
 
 export type RestaurantSuppliesState = {
@@ -156,7 +158,10 @@ export function bottleView(save: SaveData, id: BottleId): BottleView {
     status:
       servicesLeft === 0
         ? "empty"
-        : servicesLeft <= SERVICE_SUPPLY_RULES.lowServicesLeft
+        : servicesLeft <=
+            (id === "dish-soap"
+              ? SERVICE_SUPPLY_RULES.lowWashesLeft
+              : SERVICE_SUPPLY_RULES.lowClosingsLeft)
           ? "low"
           : "ok",
   };

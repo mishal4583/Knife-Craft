@@ -137,18 +137,19 @@ Focused suites (`npx tsx scripts/<name>.mts`):
 - `restaurant-unlocks-qa` — Unified Restaurant foundations
   (`docs/RESTAURANT_INTEGRATION_AUDIT.md`): the ONE build switch
   `src/game/config/restaurantMode.ts` `RESTAURANT_MODE` (false; no other
-  restaurant flag; restaurant modules never read it), the unlock table
-  `src/game/restaurant/unlocks.ts` (stock L11, fridge L21, equipment L41,
-  dine-in L61, cleaning + staff L81, suppliers L101, menu L121, takeaway
-  L151, efficiency L181, advanced L201, full management L221, grand
-  preparation L241), and stock needs for every recipe
+  restaurant flag; restaurant modules never read it), the system table
+  `restaurant/restaurantProgression.ts` (developer teaching sequence
+  2026-10-05: cooking fundamentals + the day L1, menu L11, ingredient stock
+  L15, fridge L21, dine-in L31, staff L41, cuisines L51, takeaway L71,
+  bigger restaurant L91, full management L121, established L161, master
+  L201, Grand Service L241), and stock needs for every recipe
   (`restaurant/recipeRequirements.ts`, the rule Business dishes use too).
 - `restaurant-stock-qa` — Unified Restaurant phases 3–4 (switch ON
   paths, tested as pure functions): rolled service tickets
   (`restaurant/serviceTickets.ts`, seeded per level, saved in
   `levelProgress.tickets`, dropped on completion, served in order by
   `createTicketedServiceSession`); campaign orders take their recipe's real
-  stock from `business.inventory` on serve from Level 11
+  stock from `business.inventory` on serve from Level 15
   (`restaurant/campaignStock.ts`), exactly once, never expired, never on a
   replay, with no money or ledger change (order pay unchanged — Economy
   TODO P0); the Pre-Service Check (`restaurant/preServiceCheck.ts`,
@@ -158,12 +159,20 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   cover it (goods, no money). Browser: `tools/e2e/restaurantstock.mjs`
   against a **test build** `VITE_RESTAURANT_MODE=1 npx vite build --outDir
   <dir>` (a normal build always has the switch off).
-- `restaurant-menu-qa` — the menu from Level 1
-  (`restaurant/restaurantProgression.ts` MENU_UNLOCKS + `restaurantMenu.ts`):
-  2 dishes at L1, the developer's target band met at EVERY level, all 48 by
-  L241; rules (techniques taught, cuisine open, meat L101 / fish L109 /
-  ribeye L106); cuisines with specialist chefs from L51, announced 5 levels
-  ahead; active menu (runs itself before L51, never empty, locked never
+- `restaurant-menu-qa` — the menu (`restaurant/restaurantProgression.ts`
+  MENU_CURVE / MENU_UNLOCKS + `restaurantMenu.ts`), the developer's curve of
+  2026-10-05: no menu in the L1–10 fundamentals; 4 dishes at L11, 6/8/10/12/
+  15/18/21/25/29/33/36/39/42/45/48 at L15/20/25/31/41/51/61/71/81/91/101/
+  111/121/141/161. At every point the menu has min(target, what the rules
+  allow) and never runs ahead; it misses only at L20/25/31 (techniques) and
+  L91/101/111 (meat L101, ribeye L106, fish L109) — no dish is invented.
+  Each specialist cuisine opens with its campaign chapter (Indian 51,
+  Mediterranean 71, Mexican 81, Japanese 101, Chinese 121, Thai 141,
+  Korean 161; one Asian Chef for the four Asian chapters) and its first
+  dishes arrive as soon as they legally can; every unlock says why
+  (`MENU_UNLOCKS.why`, shown by `restaurant/restaurantNews.ts` with the
+  L11 chain Menu → Customer Order → Inventory → Preparation → Service →
+  Revenue); active menu (runs itself before L51, never empty, locked never
   orderable); level/recipe/dish data untouched.
 - `restaurant-day-qa` — the restaurant day clock (`restaurant/restaurantDay.ts`):
   Lunch + Dinner (+ Breakfast from L51); opening card; services = first
@@ -175,13 +184,13 @@ Focused suites (`npx tsx scripts/<name>.mts`):
 - `restaurant-guests-qa` — phase D, orders from the ACTIVE MENU inside
   campaign services (`restaurant/menuGuests.ts`): after a level's own orders
   (unchanged, deterministic) the service can take menu guests (none before
-  L6; 1/2/3/4/5 from L6/21/51/121/201, `MENU_GUESTS_SCHEDULE`), optional,
+  the menu opens; 1/2/3/4/5 from L11/21/51/121/201, `MENU_GUESTS_SCHEDULE`), optional,
   one at a time ("🍽️ Menu guest n/N: dish · $price" next to Finish Level).
-  At EVERY level 6–250 a guest orders only an unlocked, active dish; a dish
+  At EVERY level 11–250 a guest orders only an unlocked, active dish; a dish
   switched off never appears; seeded per level; the count is saved
   (`levelProgress.menuGuests`) so no guest is paid twice; none on replays or
   batch groups; a guest pays the dish's menu price (`businessCustomerPayment`)
-  with ONE "business-revenue" entry and uses real stock from L11
+  with ONE "business-revenue" entry and uses real stock from L15
   (`App.serveMenuGuestOrder`). `business-final-audit-qa` F2 and
   `business-wtp-qa` H2 name the two revenue writers (Business serve, menu
   guest). Browser: `tools/e2e/restaurantguests.mjs` (restaurant test build).
@@ -194,12 +203,38 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   a replay, never blocking there. Dish soap / cleaning liquid are gallon
   bottles (`business.restaurantSupplies` = open-bottle %, settings washing;
   sealed bottles = stock): soap per wash-up (after a service and at start),
-  cleaning liquid per closing; "~N services left", low / empty. The
+  cleaning liquid per closing; "~N washes / closings remaining", low at
+  ≤ 8 washes / ≤ 3 closings, empty. The
   Pre-Service Check's Supplies section: settings and packaging block,
   napkins and bottles warn; Restock → the Market line; Grandma's spares
   (cost 0, no money/ledger) only when the wallet can't cover what blocks.
   Menu guests need a clean setting. No money moves when supplies are used.
   Browser: `tools/e2e/restaurantsupplies.mjs` (restaurant test build).
+- `restaurant-progression-qa` — the developer's 2026-10-05 brief:
+  staff requirements (`restaurant/staffRequirements.ts`, `STAFF_RULES`:
+  Prep Cook L41 with ≥ 3 orders, Server L46 with ≥ 2 tables, Line Cook L61
+  with ≥ 4 orders, Cleaner L91, Head Chef L121 with ≥ 3 specialist
+  cuisines, Manager L161 with a team of ≥ 5; the specialist chef of every
+  specialist cuisine on the active menu or in the tickets), announced 5
+  levels ahead, shown with the reason in the Pre-Service Check, blocking
+  START until hired (hiring is free — no soft-lock); specialist chefs in the
+  optional `business.restaurantStaff`, hired on Restaurant → Staff, paid at
+  closing from L91 (one "business-staff-salary" entry each, laid off if the
+  wallet can't cover them; wage = the Line Cook's figure, not balanced);
+  closing from L91 writes End Business Day's payroll and fine ledger
+  entries (it used to move money without them); bulk buying
+  (`restaurant/bulkBuying.ts`: presets 5/25/50/100, provisional tiers
+  3/5/8 % from 25/50/100, the last price layer, consumables only, up to 100
+  supply packs, one ledger entry; the classic purchase is unchanged);
+  Inventory's ⚠️ NEEDS ATTENTION (`restaurant/restaurantAttention.ts`,
+  `RestaurantAttentionPanel`): the next service's missing ingredients and
+  supplies with its recommended restock, napkins, dish soap, cleaning
+  liquid, fridge and staff, urgent first, read-only, navigation only;
+  fridge usage (`restaurant/fridgeUsage.ts`, nearly full at 85 %) in the
+  check from L21; no separate Business Day before L250 and the Endless
+  Restaurant after (`restaurant/endlessRestaurant.ts`; the Business tab is
+  "Restaurant" in the test build). Browser:
+  `tools/e2e/restaurantprogression.mjs` (restaurant test build).
 - `story-pause-qa` — the finale and milestone banners stop their timers
   (and animations, and finale taps) while paused, resuming with the time
   left (`PausableCountdown` on a fake clock); the finale's "BACK TO THE

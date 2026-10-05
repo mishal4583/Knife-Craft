@@ -77,14 +77,15 @@ const lv = (n: number) => getLevel(`level-${n}`)!;
 
 console.log("G. Schedule");
 assert(
-  menuGuestsPerService(5) === 0 &&
-    menuGuestsPerService(6) === 1 &&
+  // 2026-10-05: customers order from a menu, so guests start when the menu opens (L11).
+  menuGuestsPerService(10) === 0 &&
+    menuGuestsPerService(11) === 1 &&
     menuGuestsPerService(21) === 2 &&
     menuGuestsPerService(51) === 3 &&
     menuGuestsPerService(121) === 4 &&
     menuGuestsPerService(250) === 5 &&
-    menuGuestQueue(saveAt(5), lv(5)).length === 0,
-  "G1: no guests in the L1–5 tutorial; 1 / 2 / 3 / 4 / 5 from L6 / 21 / 51 / 121 / 201",
+    menuGuestQueue(saveAt(10), lv(10)).length === 0,
+  "G1: no guests before the menu opens; 1 / 2 / 3 / 4 / 5 from L11 / 21 / 51 / 121 / 201",
 );
 
 console.log("M. Menu control");
@@ -130,7 +131,7 @@ console.log("M. Menu control");
         .join() && menuGuestQueue(saveAt(40), lv(40)).length === 2,
     "M3: the same level brings the same guests (deterministic)",
   );
-  const early = menuGuestQueue(saveAt(10, ["biz-garden-salad"]), lv(10));
+  const early = menuGuestQueue(saveAt(12, ["biz-garden-salad"]), lv(12));
   assert(
     early.length === 1,
     "M4: before the menu-choice level the menu runs itself (a saved switch is ignored)",
@@ -176,9 +177,9 @@ console.log("N. The next guest");
     "N3: completing the level drops the guest count",
   );
   assert(
-    nextMenuGuest(saveAt(8), lv(8))!.inStock === true &&
+    nextMenuGuest(saveAt(12), lv(12))!.inStock === true &&
       nextMenuGuest(saveAt(40), lv(40))!.inStock === false,
-    "N4: in stock always before L11; from L11 the guest needs the dish's stock",
+    "N4: in stock always before L15 (menu without stock at L11–14); from L15 the guest needs the dish's stock",
   );
 }
 

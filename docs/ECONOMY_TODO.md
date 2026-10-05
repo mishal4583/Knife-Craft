@@ -15,7 +15,7 @@ Status key: OPEN (not yet built), BUILT (exists, not balanced).
 | 4 | Cleaning liquid (new line: $51.49 / 4 gal retail × 0.65; 10% per closing) | BUILT (phase G) | Usage rate and effect (none yet beyond the warning; inspections later?). |
 | 5 | Tableware: reusable place settings (plate + fork + knife) with washing; no breakage | BUILT (phase G) | Any loss rate is a cost. Grandma's spare settings (cost 0) when the wallet can't cover them. |
 | 6 | Takeaway packaging in campaign orders (~30% of orders from L71: container + bag) | BUILT (phase G) | Same packs as Business; takeaway share. |
-| 7 | Staff wages during the campaign | OPEN | Waged staff currently cost more than they earn. |
+| 7 | Staff wages during the campaign — staff are now REQUIRED as the restaurant grows (Prep Cook L41, Server L46, Line Cook L61, Cleaner L91, Head Chef L121, Manager L161, by service size; `restaurant/staffRequirements.ts`). Hiring is free; wages are paid only at closing from L91 (End Business Day), so L41–90 staff cost nothing | BUILT (behind the switch) | Waged staff cost more than they earn; free staff before L91 is a gap. |
 | 8 | Two staff systems (one-time helpers vs waged roles) | OPEN | Which one survives, and its value. |
 | 9 | Two supplier systems (campaign COGS ±10% vs Business contracts/events) | OPEN | One supplier effect. |
 | 10 | Fridge upgrades as campaign needs | OPEN | $2,000 / $4,800 against a buy-everything player's $10–31 around L20–50. |
@@ -28,7 +28,11 @@ Status key: OPEN (not yet built), BUILT (exists, not balanced).
 | 17 | **Grandma's pantry** (Pre-Service Check safety net): only when the wallet can't cover the missing stock, the exact missing quantities at cost 0, opt-in, no ledger | BUILT (phase 4) | Free food is value; how often it may be used. |
 | 19 | **Closing time** before L91 moves no money; from L91 it is End Business Day (payroll, fines, P&L) | BUILT (phase 5) | When daily costs start in the career. |
 | 20 | Menu prices of the newly unlocked early dishes (the existing 30% food-cost rule) | BUILT | Early menu income once menu orders pay (phase D). |
-| 21 | Bulk discounts (1–9 / 10–49 / 50–99 / 100+) | OPEN | Percentages are configurable, not set. |
+| 21 | Bulk discounts — presets 5/25/50/100, PROVISIONAL tiers 3 % from 25, 5 % from 50, 8 % from 100 (`restaurant/bulkBuying.ts`), ingredients and consumable supplies, up to 100 supply packs | BUILT (behind the switch) | The real tiers; how they interact with contracts and the Prep Cook discount. |
+| 22 | Specialist chefs (Indian 51, Mediterranean 71, Mexican 81, Asian 101): free to hire, daily wage = the Line Cook's existing figure, paid at closing from L91 (one `business-staff-salary` entry each; laid off if unaffordable) | BUILT (behind the switch) | Their wage, and whether they earn their keep. |
+| 23 | Menu revenue now starts at L11 (the menu opens there; menu guests from L11 instead of L6) | BUILT (behind the switch) | Early menu income next to level pay. |
+| 24 | Grandma's spares (place settings / packaging at cost 0 when the wallet can't cover what blocks a service) | BUILT (phase G) | Free goods, like the pantry (#17). |
+| 25 | Dish soap low at ≤ 8 washes, cleaning liquid at ≤ 3 closings (warnings only) | BUILT | Usage rates and thresholds. |
 | 18 | Market buys whole units; a recipe may need 0.025 lb of garlic, so a service buys 1 lb and keeps the rest | BUILT | Leftover value and spoilage of part-used units. |
 
 Questions the pass must answer (spec §48): can a player afford required

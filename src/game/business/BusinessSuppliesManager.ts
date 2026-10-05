@@ -12,6 +12,7 @@
  */
 import type { SaveData } from "../SaveManager";
 import { debitWallet } from "../economy/wallet";
+import { discountedUnitCost } from "../restaurant/bulkBuying";
 import {
   SUPPLY_CATALOG,
   getSupplyItem,
@@ -38,10 +39,21 @@ export type SupplyQuote = {
   retailCost: number;
   remainingCredits: number;
   verdict: "ok" | "insufficientFunds";
+  /** Unified Restaurant bulk discount applied to the pack price (0 in the classic game). */
+  bulkDiscount: number;
 };
 
-export function supplyQuote(save: SaveData, item: SupplyItem, packs: number): SupplyQuote {
-  const packPrice = supplyPackPrice(item);
+export function supplyQuote(
+  save: SaveData,
+  item: SupplyItem,
+  packs: number,
+  /** Unified Restaurant bulk discount (restaurant/bulkBuying.ts); 0 = none. */
+  bulkDiscount = 0,
+): SupplyQuote {
+  const packPrice =
+    bulkDiscount > 0
+      ? discountedUnitCost(supplyPackPrice(item), bulkDiscount)
+      : supplyPackPrice(item);
   const totalCost = packPrice * packs;
   return {
     item,
@@ -52,6 +64,7 @@ export function supplyQuote(save: SaveData, item: SupplyItem, packs: number): Su
     retailCost: item.retailPackCents * packs,
     remainingCredits: save.credits - totalCost,
     verdict: save.credits >= totalCost ? "ok" : "insufficientFunds",
+    bulkDiscount,
   };
 }
 
@@ -71,12 +84,15 @@ export function purchaseSupply(
   save: SaveData,
   supplyId: string,
   packs: number,
+  /** Unified Restaurant wholesale buying: a bulk discount and a larger pack limit. */
+  bulk: { discount: number; maxPacks: number } = { discount: 0, maxPacks: MAX_SUPPLY_PACKS },
 ): PurchaseSupplyResult {
   const item = getSupplyItem(supplyId);
   if (!item) return { ok: false, reason: "unknownSupply" };
-  if (!Number.isInteger(packs) || packs < 1 || packs > MAX_SUPPLY_PACKS)
+  if (!Number.isInteger(packs) || packs < 1 || packs > bulk.maxPacks)
     return { ok: false, reason: "invalidQuantity" };
-  const quote = supplyQuote(save, item, packs);
+  if (!(bulk.discount >= 0 && bulk.discount < 1)) return { ok: false, reason: "invalidQuantity" };
+  const quote = supplyQuote(save, item, packs, bulk.discount);
   const debit = debitWallet(save, quote.totalCost);
   if (!debit.ok) return { ok: false, reason: "insufficientFunds" };
   const supplies = save.business.supplies;

@@ -5,9 +5,11 @@ import { Eyebrow } from "../common/Meters";
 import { cn } from "@/lib/utils";
 import { formatUsd } from "@/game/business/businessCurrency";
 import { getAllStaffDefinitions, dailyPayroll } from "@/game/business/businessStaff";
-import type { HireStaffResult, FireStaffResult } from "@/game/business/BusinessStaffManager";
 import type { BuyStaffResult } from "@/game/economy/StaffManager";
 import { KitchenHelpers } from "./KitchenHelpers";
+import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
+import { SPECIALIST_CHEFS, restaurantStaffOf } from "@/game/restaurant/staffRequirements";
+import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
 
 /** A face per role — visual only. */
 const ROLE_ICON: Record<string, string> = {
@@ -35,8 +37,9 @@ export function BusinessStaff({
   buyStaff,
 }: {
   save: SaveData;
-  hireStaff: (role: string) => HireStaffResult;
-  fireStaff: (role: string) => FireStaffResult;
+  /** A role or (restaurant build) a specialist chef id; only `ok` is read. */
+  hireStaff: (role: string) => { ok: boolean };
+  fireStaff: (role: string) => { ok: boolean };
   /** The kitchen helpers' one-time hire (App.buyStaff → StaffManager.buyStaff). */
   buyStaff: (id: string) => BuyStaffResult;
 }) {
@@ -121,7 +124,79 @@ export function BusinessStaff({
           );
         })}
       </div>
+      {RESTAURANT_MODE ? (
+        <SpecialistChefs save={save} onHire={handleHire} onFire={handleFire} />
+      ) : null}
       <KitchenHelpers save={save} buyStaff={buyStaff} />
     </div>
+  );
+}
+
+/**
+ * Unified Restaurant (RESTAURANT_MODE): the specialist chefs a cuisine needs
+ * (restaurant/staffRequirements.ts). Free to hire; from Level 91 their wage
+ * is paid at closing. A chef is hireable once its first cuisine has opened.
+ */
+function SpecialistChefs({
+  save,
+  onHire,
+  onFire,
+}: {
+  save: SaveData;
+  onHire: (id: string) => void;
+  onFire: (id: string) => void;
+}) {
+  const level = restaurantLevelOf(save.levelProgress);
+  const hired = new Set(restaurantStaffOf(save).specialists);
+  return (
+    <Panel className="p-4">
+      <div data-testid="specialist-chefs">
+        <Eyebrow>🌍 Specialist chefs</Eyebrow>
+        <p className="mt-1 font-hand text-[14px] leading-snug text-walnut/65">
+          Each new cuisine needs its own chef. Hiring is free; from Level 91 their pay is charged at
+          closing.
+        </p>
+        <ul className="mt-2 divide-y divide-walnut/10">
+          {SPECIALIST_CHEFS.map((chef) => {
+            const open = level >= chef.firstLevel;
+            const isHired = hired.has(chef.id);
+            return (
+              <li
+                key={chef.id}
+                className="flex min-h-12 items-center gap-2 py-2"
+                data-specialist={chef.id}
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="font-ui text-[14px] font-bold text-walnut-dark">
+                    {chef.title} {isHired ? <Badge tone="sage">Hired</Badge> : null}
+                  </p>
+                  <p className="font-ui text-[12px] text-walnut/60">
+                    {chef.cuisines.join(" · ")} · {formatUsd(chef.dailyWage)}/day
+                  </p>
+                </div>
+                {!open ? (
+                  <span className="font-ui text-[12px] font-bold text-walnut/50">
+                    Level {chef.firstLevel}
+                  </span>
+                ) : isHired ? (
+                  <KButton
+                    size="sm"
+                    variant="ghost"
+                    className="min-h-12"
+                    onClick={() => onFire(chef.id)}
+                  >
+                    Let go
+                  </KButton>
+                ) : (
+                  <KButton size="sm" className="min-h-12" onClick={() => onHire(chef.id)}>
+                    Hire
+                  </KButton>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    </Panel>
   );
 }

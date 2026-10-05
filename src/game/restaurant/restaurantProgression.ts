@@ -6,9 +6,9 @@
  *
  *  - SYSTEMS: which restaurant system is live from which level.
  *  - MENU_UNLOCKS: when each of the 48 menu dishes (BUSINESS_DISH_CATALOG,
- *    the one menu) joins the menu. Curated to the developer's target curve
- *    (2 dishes at L1 … 48 by L241) under three rules, checked by
- *    `restaurant-menu-qa`:
+ *    the one menu) joins the menu. Curated to the developer's MENU_CURVE
+ *    (2026-10-05: the menu opens at L11 with 4 dishes … 48 by L161) under
+ *    three rules, checked by `restaurant-menu-qa`:
  *      1. a dish never comes before every knife technique it needs is
  *         taught (coaching's first-use level); Levels 1–5 are the tutorial
  *         that teaches all the basics, so the two starter dishes count as
@@ -65,14 +65,6 @@ export type RestaurantSystem = {
 /** In unlock order (spec §5). */
 export const RESTAURANT_SYSTEMS: readonly RestaurantSystem[] = [
   {
-    id: "menu",
-    firstLevel: 1,
-    stage: "Apprentice Restaurant",
-    title: "Your menu",
-    covers: "The dishes your restaurant sells; customers order from it",
-    intro: "Every restaurant starts with a menu. Ours has two dishes — let's cook them well.",
-  },
-  {
     id: "restaurant-day",
     firstLevel: 1,
     stage: "Apprentice Restaurant",
@@ -81,8 +73,18 @@ export const RESTAURANT_SYSTEMS: readonly RestaurantSystem[] = [
     intro: "We open, we cook, and at the end of the day we clean up and close.",
   },
   {
-    id: "ingredient-stock",
+    id: "menu",
     firstLevel: 11,
+    stage: "Opening Menu",
+    title: "Your menu",
+    covers:
+      "Menu → customer order → inventory → preparation → service → revenue: customers order from the menu",
+    intro:
+      "You know the basics now. A restaurant needs a menu — customers order what's on it, and we earn from what we serve.",
+  },
+  {
+    id: "ingredient-stock",
+    firstLevel: 15,
     stage: "Pantry",
     title: "Ingredient stock",
     covers: "Buying ingredients in the Market, stock quantities and restocking",
@@ -131,18 +133,20 @@ export const RESTAURANT_SYSTEMS: readonly RestaurantSystem[] = [
   {
     id: "full-operation",
     firstLevel: 91,
-    stage: "Full Restaurant",
-    title: "Full restaurant operation",
-    covers: "Menu, stock, fridge, supplies, takeaway, staff, suppliers and costs together",
+    stage: "Bigger Restaurant",
+    title: "A bigger restaurant",
+    covers:
+      "A bigger menu, fridge and team; the day now ends with the full day-end (wages, inspection, the day's P&L)",
     intro: "This is a real restaurant now. Every part of it matters.",
   },
   {
     id: "expansion",
     firstLevel: 121,
-    stage: "Expansion",
-    title: "Restaurant expansion",
-    covers: "A bigger menu, more cuisines and busier services",
-    intro: "We're growing. More dishes, more guests.",
+    stage: "Full Management",
+    title: "Full restaurant management",
+    covers:
+      "Menu, stock, fridge, supplies, takeaway, staff, suppliers and costs — all yours to run",
+    intro: "We're growing. More dishes, more guests, and every decision is yours.",
   },
   {
     id: "established",
@@ -223,6 +227,7 @@ export const CUISINES: readonly CuisineUnlock[] = [
   { id: "home", name: "Home Kitchen", cuisineIds: ["home"], firstLevel: 1, specialist: null },
   { id: "italian", name: "Italian", cuisineIds: ["italian"], firstLevel: 1, specialist: null },
   { id: "french", name: "French Bistro", cuisineIds: ["french"], firstLevel: 31, specialist: null },
+  // From L51 each cuisine opens with its campaign chapter and needs its specialist chef.
   {
     id: "indian",
     name: "Indian",
@@ -234,21 +239,43 @@ export const CUISINES: readonly CuisineUnlock[] = [
     id: "mediterranean",
     name: "Mediterranean",
     cuisineIds: ["mediterranean"],
-    firstLevel: 61,
+    firstLevel: 71,
     specialist: { id: "mediterranean-chef", title: "Mediterranean Chef" },
   },
   {
     id: "mexican",
     name: "Mexican",
     cuisineIds: ["mexican"],
-    firstLevel: 71,
+    firstLevel: 81,
     specialist: { id: "mexican-chef", title: "Mexican Chef" },
   },
+  // One Asian Chef for the four Asian chapters (open decision: one chef or four).
   {
-    id: "asian",
-    name: "Asian",
-    cuisineIds: ["chinese", "japanese", "thai", "korean"],
+    id: "japanese",
+    name: "Japanese",
+    cuisineIds: ["japanese"],
+    firstLevel: 101,
+    specialist: { id: "asian-chef", title: "Asian Chef" },
+  },
+  {
+    id: "chinese",
+    name: "Chinese",
+    cuisineIds: ["chinese"],
     firstLevel: 121,
+    specialist: { id: "asian-chef", title: "Asian Chef" },
+  },
+  {
+    id: "thai",
+    name: "Thai",
+    cuisineIds: ["thai"],
+    firstLevel: 141,
+    specialist: { id: "asian-chef", title: "Asian Chef" },
+  },
+  {
+    id: "korean",
+    name: "Korean",
+    cuisineIds: ["korean"],
+    firstLevel: 161,
     specialist: { id: "asian-chef", title: "Asian Chef" },
   },
 ];
@@ -279,69 +306,158 @@ export function cuisineComingUp(levelNumber: number): CuisineUnlock | null {
 
 // ── Menu ────────────────────────────────────────────────────────────────
 
-/** Level → the dishes (BusinessDish ids) that join the menu there. */
-export const MENU_UNLOCKS: readonly { level: number; dishIds: readonly string[] }[] = [
-  { level: 1, dishIds: ["biz-caprese-salad", "biz-mushroom-bruschetta"] },
-  { level: 6, dishIds: ["biz-garden-salad"] },
-  { level: 11, dishIds: ["biz-garlic-bread"] },
-  { level: 16, dishIds: ["biz-tomato-bruschetta"] },
-  { level: 21, dishIds: ["biz-tomato-basil-crostini"] },
-  { level: 26, dishIds: ["biz-caprese-skewers"] },
-  { level: 31, dishIds: ["biz-peach-cheddar-board"] },
-  { level: 34, dishIds: ["biz-zucchini-fennel-salad"] },
-  { level: 37, dishIds: ["biz-celery-apple-salad"] },
-  { level: 41, dishIds: ["biz-fennel-artichoke-salad"] },
-  { level: 44, dishIds: ["biz-sauteed-garlic-mushrooms"] },
-  { level: 47, dishIds: ["biz-insalata-di-pomodoro"] },
-  { level: 51, dishIds: ["biz-spinach-curry", "biz-potato-curry"] },
-  { level: 55, dishIds: ["biz-tomato-lettuce-salad"] },
-  { level: 61, dishIds: ["biz-cauliflower-curry", "biz-kachumber-salad"] },
-  { level: 66, dishIds: ["biz-kiwi-watermelon-plate"] },
-  { level: 71, dishIds: ["biz-strawberry-grape-cup", "biz-sweet-potato-hash"] },
-  { level: 76, dishIds: ["biz-pea-tomato-curry"] },
-  { level: 81, dishIds: ["biz-cucumber-pomegranate-salad"] },
-  { level: 86, dishIds: ["biz-avocado-corn-salad"] },
-  { level: 91, dishIds: ["biz-pumpkin-coconut-curry"] },
-  { level: 96, dishIds: ["biz-beet-orange-salad", "biz-asparagus-persillade"] },
-  { level: 101, dishIds: ["biz-tomato-chicken-curry"] },
-  { level: 106, dishIds: ["biz-ribeye-herb-butter"] },
-  { level: 109, dishIds: ["biz-salmon-asparagus"] },
-  { level: 113, dishIds: ["biz-greek-lemon-chicken"] },
-  { level: 117, dishIds: ["biz-carne-asada-corn"] },
-  { level: 121, dishIds: ["biz-tofu-broccoli-stirfry", "biz-cabbage-cauliflower-stirfry"] },
-  { level: 131, dishIds: ["biz-turnips-persillade"] },
-  { level: 141, dishIds: ["biz-eggplant-masala"] },
-  { level: 146, dishIds: ["biz-thai-cucumber-salad"] },
-  { level: 151, dishIds: ["biz-mango-pineapple-cup"] },
-  { level: 161, dishIds: ["biz-salmon-persillade"] },
-  { level: 171, dishIds: ["biz-chicken-broccoli"] },
-  { level: 176, dishIds: ["biz-korean-pear-radish-salad"] },
-  { level: 181, dishIds: ["biz-salmon-sashimi"] },
-  { level: 201, dishIds: ["biz-green-bean-tofu-stirfry"] },
-  { level: 206, dishIds: ["biz-salmon-avocado-salad"] },
-  { level: 211, dishIds: ["biz-thai-basil-chicken"] },
-  { level: 221, dishIds: ["biz-black-pepper-chicken"] },
-  { level: 231, dishIds: ["biz-garlic-chicken"] },
-  { level: 241, dishIds: ["biz-thai-basil-salmon"] },
+/**
+ * The developer's menu curve (2026-10-05): the menu opens at L11 with about
+ * 4 dishes and grows to all 48 by L161. A point is the menu size wanted FROM
+ * that level. Where the existing catalog can't reach a point under the
+ * three rules (no dish is invented), the schedule holds the most it legally
+ * can and catches up later — `restaurant-menu-qa` checks the schedule hits
+ * min(target, dishes legally available) at every point.
+ */
+export const MENU_CURVE: readonly { level: number; dishes: number }[] = [
+  { level: 11, dishes: 4 },
+  { level: 15, dishes: 6 },
+  { level: 20, dishes: 8 },
+  { level: 25, dishes: 10 },
+  { level: 31, dishes: 12 },
+  { level: 41, dishes: 15 },
+  { level: 51, dishes: 18 },
+  { level: 61, dishes: 21 },
+  { level: 71, dishes: 25 },
+  { level: 81, dishes: 29 },
+  { level: 91, dishes: 33 },
+  { level: 101, dishes: 36 },
+  { level: 111, dishes: 39 },
+  { level: 121, dishes: 42 },
+  { level: 141, dishes: 45 },
+  { level: 161, dishes: 48 },
 ];
 
-/** The developer's target menu size per level band (spec §2), for QA and the Progress screen. */
-export const MENU_TARGETS: readonly { from: number; to: number; min: number; max: number }[] = [
-  { from: 1, to: 5, min: 2, max: 2 },
-  { from: 6, to: 10, min: 3, max: 3 },
-  { from: 11, to: 20, min: 4, max: 5 },
-  { from: 21, to: 30, min: 6, max: 7 },
-  { from: 31, to: 40, min: 8, max: 10 },
-  { from: 41, to: 50, min: 11, max: 13 },
-  { from: 51, to: 60, min: 14, max: 16 },
-  { from: 61, to: 80, min: 17, max: 22 },
-  { from: 81, to: 100, min: 23, max: 27 },
-  { from: 101, to: 120, min: 28, max: 32 },
-  { from: 121, to: 150, min: 33, max: 37 },
-  { from: 151, to: 180, min: 38, max: 41 },
-  { from: 181, to: 210, min: 42, max: 44 },
-  { from: 211, to: 240, min: 45, max: 47 },
-  { from: 241, to: 250, min: 48, max: Infinity },
+/** The developer's target menu size at `levelNumber` (0 before the menu opens). */
+export function menuTargetAt(levelNumber: number): number {
+  let n = 0;
+  for (const p of MENU_CURVE) if (levelNumber >= p.level) n = p.dishes;
+  return n;
+}
+
+/**
+ * Level → the dishes (BusinessDish ids) that join the menu there, and why
+ * (the line the restaurant news shows). Each cuisine's first dishes arrive
+ * the level the cuisine opens; meat (L101), the ribeye (L106) and fish
+ * (L109) when they reach the campaign.
+ */
+export const MENU_UNLOCKS: readonly { level: number; dishIds: readonly string[]; why: string }[] = [
+  {
+    level: 11,
+    dishIds: [
+      "biz-caprese-salad",
+      "biz-mushroom-bruschetta",
+      "biz-garden-salad",
+      "biz-garlic-bread",
+    ],
+    why: "Four dishes you already know how to cut: slices, dice and a smashed garlic clove.",
+  },
+  {
+    level: 15,
+    dishIds: ["biz-caprese-skewers", "biz-tomato-bruschetta"],
+    why: "Two more Italian starters from the same ingredients.",
+  },
+  {
+    level: 20,
+    dishIds: ["biz-tomato-basil-crostini"],
+    why: "Your diced tomatoes are good enough for crostini now.",
+  },
+  {
+    level: 25,
+    dishIds: ["biz-fennel-artichoke-salad", "biz-zucchini-fennel-salad"],
+    why: "You learned julienne and radial cuts — salads that need them join the menu.",
+  },
+  {
+    level: 31,
+    dishIds: ["biz-peach-cheddar-board", "biz-celery-apple-salad"],
+    why: "The French bistro chapter opens: our first French dishes.",
+  },
+  {
+    level: 35,
+    dishIds: ["biz-sauteed-garlic-mushrooms"],
+    why: "Rock-mincing makes sautéed garlic mushrooms possible.",
+  },
+  {
+    level: 41,
+    dishIds: ["biz-insalata-di-pomodoro", "biz-tomato-lettuce-salad", "biz-asparagus-persillade"],
+    why: "Chiffonade dishes join the menu, as the restaurant gets busier.",
+  },
+  {
+    level: 51,
+    dishIds: ["biz-spinach-curry", "biz-potato-curry", "biz-turnips-persillade"],
+    why: "The Indian chapter opens with our first curries — the Indian Chef cooks them.",
+  },
+  {
+    level: 61,
+    dishIds: ["biz-cauliflower-curry", "biz-pea-tomato-curry", "biz-pumpkin-coconut-curry"],
+    why: "The Indian kitchen has settled in: three more curries.",
+  },
+  {
+    level: 71,
+    dishIds: [
+      "biz-kachumber-salad",
+      "biz-kiwi-watermelon-plate",
+      "biz-cucumber-pomegranate-salad",
+      "biz-eggplant-masala",
+    ],
+    why: "The Mediterranean chapter opens (with the Mediterranean Chef), and one more curry.",
+  },
+  {
+    level: 81,
+    dishIds: [
+      "biz-avocado-corn-salad",
+      "biz-beet-orange-salad",
+      "biz-sweet-potato-hash",
+      "biz-strawberry-grape-cup",
+    ],
+    why: "The Mexican chapter opens: four dishes for the Mexican Chef.",
+  },
+  {
+    level: 101,
+    dishIds: ["biz-tomato-chicken-curry", "biz-greek-lemon-chicken", "biz-carne-asada-corn"],
+    why: "Meat arrives in the kitchen: chicken and steak dishes.",
+  },
+  {
+    level: 106,
+    dishIds: ["biz-ribeye-herb-butter"],
+    why: "The Butcher Block is ready for a ribeye.",
+  },
+  {
+    level: 109,
+    dishIds: ["biz-salmon-asparagus", "biz-salmon-persillade", "biz-salmon-avocado-salad"],
+    why: "Fresh salmon arrives: fish dishes, and the first Japanese one for the Asian Chef.",
+  },
+  {
+    level: 111,
+    dishIds: ["biz-salmon-sashimi"],
+    why: "The Asian Chef's salmon sashimi joins the menu.",
+  },
+  {
+    level: 121,
+    dishIds: [
+      "biz-tofu-broccoli-stirfry",
+      "biz-cabbage-cauliflower-stirfry",
+      "biz-chicken-broccoli",
+      "biz-green-bean-tofu-stirfry",
+      "biz-black-pepper-chicken",
+    ],
+    why: "The Chinese chapter opens: five stir-fries for the Asian Chef.",
+  },
+  {
+    level: 141,
+    dishIds: ["biz-thai-cucumber-salad", "biz-mango-pineapple-cup", "biz-thai-basil-chicken"],
+    why: "The Thai chapter opens: three Thai dishes.",
+  },
+  {
+    level: 161,
+    dishIds: ["biz-korean-pear-radish-salad", "biz-garlic-chicken", "biz-thai-basil-salmon"],
+    why: "The Korean chapter opens — and the full menu of 48 is ready.",
+  },
 ];
 
 const UNLOCK_LEVEL = new Map<string, number>(
@@ -361,6 +477,11 @@ export function menuDishIdsAt(levelNumber: number): string[] {
 /** Dishes that join the menu at exactly `levelNumber`. */
 export function dishesUnlockedAt(levelNumber: number): string[] {
   return MENU_UNLOCKS.filter((u) => u.level === levelNumber).flatMap((u) => [...u.dishIds]);
+}
+
+/** Why the dishes of `levelNumber` were added (the news line), or null. */
+export function menuUnlockReasonAt(levelNumber: number): string | null {
+  return MENU_UNLOCKS.find((u) => u.level === levelNumber)?.why ?? null;
 }
 
 /** Before this level the menu runs itself (every unlocked dish on); from it the player chooses. */
@@ -395,10 +516,10 @@ export const CLOSING_CHORES: readonly { id: string; label: string; fromLevel: nu
 /**
  * Menu guests per service, by level: after a level's own orders are served,
  * this many extra customers can order from the active menu (optional). None
- * before L6: the L1–5 tutorial teaches the techniques the menu dishes use.
+ * before the menu opens (L11): customers order from a menu.
  */
 export const MENU_GUESTS_SCHEDULE: readonly { fromLevel: number; guests: number }[] = [
-  { fromLevel: 6, guests: 1 },
+  { fromLevel: 11, guests: 1 },
   { fromLevel: 21, guests: 2 },
   { fromLevel: 51, guests: 3 },
   { fromLevel: 121, guests: 4 },

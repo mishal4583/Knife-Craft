@@ -153,13 +153,14 @@ console.log("A/B/D/V. Stock use");
   const s5 = saveAt(5);
   const none = consumeCampaignOrderStock(s5, 5, r5, true);
   assert(
-    !serviceUsesStock(10) &&
-      serviceUsesStock(11) &&
+    // 2026-10-05 teaching sequence: stock from L15 (the menu opens at L11 first).
+    !serviceUsesStock(14) &&
+      serviceUsesStock(15) &&
       none.ok &&
       none.used === false &&
       none.save === s5 &&
       serviceCheckFor(s5, lv5) === null,
-    "A1: Levels 1–10 use no stock and have no check",
+    "A1: Levels 1–14 use no stock and have no check (stock from L15)",
   );
   const [t1] = rollServiceTickets(pool30);
   const before = stocked(saveAt(30), [t1!], 1);

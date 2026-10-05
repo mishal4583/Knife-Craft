@@ -1,10 +1,10 @@
 // Unified Restaurant phase D — menu guests, in a real browser, on a RESTAURANT_MODE test build
 // (VITE_RESTAURANT_MODE=1; a normal build never has it on).
-//   1. Level 8: after its own order is served, the result shows Finish Level AND
-//      "Menu guest 1/1: <dish from the menu> · $price".
+//   1. Level 12: after its own order is served, the result shows Finish Level AND
+//      "Menu guest 1/1: <dish from the menu> · $price" (guests start when the menu opens, L11).
 //   2. Taking the guest brings a new order of that dish into the same service (cut as usual).
 //   3. Serving the guest pays exactly the shown price with ONE "business-revenue" entry and
-//      saves the guest count; the guest's dish is on the Level 8 menu; no guest button after it.
+//      saves the guest count; the guest's dish is on the Level 12 menu; no guest button after it.
 //   4. Finish Level completes the level once (its own completion reward), the guest count is
 //      dropped, and a replay offers no guest.
 //   5. Level 30 with an empty fridge (stock from L11): the guest button says the dish isn't in
@@ -22,7 +22,7 @@ const flat = async () => (await text(page)).replace(/\s+/g, " ");
 const { browser, page, logs } = await launch();
 // GameShell draws the game at a fixed 540×960 logical size and scales it to the screen, so
 // the result panel wraps the same at every phone width; the solver needs the default viewport.
-const MENU_AT_8 = ["Caprese Salad", "Mushroom Bruschetta", "Garden Salad"];
+const MENU_AT_12 = ["Caprese Salad", "Mushroom Bruschetta", "Garden Salad", "Garlic Bread"];
 
 async function prepare(title) {
   await page.evaluate(() =>
@@ -86,9 +86,9 @@ const saveAt = (n, credits) =>
     story: { introDone: true, milestoneMask: 127, finaleSeen: false },
   });
 
-// ---------- 1. Level 8: the guest is offered after the level's own order ----------
-await boot(page, saveAt(8, 5000));
-await prepare("Halved Potato");
+// ---------- 1. Level 12: the guest is offered after the level's own order ----------
+await boot(page, saveAt(12, 5000));
+await prepare("Tomato Basil Toast");
 const own = await cookAndServe();
 const offer = await guestButton();
 const finishShown = /Finish Level/.test(await flat());
@@ -98,13 +98,13 @@ const price = Math.round(
   Number((/\$([\d,]+\.\d\d)/.exec(offer?.text ?? "")?.[1] ?? "0").replace(/,/g, "")) * 100,
 );
 check(
-  "1 after Level 8's own order: Finish Level and 'Menu guest 1/1: <menu dish> · $price'",
+  "1 after Level 12's own order: Finish Level and 'Menu guest 1/1: <menu dish> · $price'",
   own &&
     finishShown &&
     !!offer &&
     !offer.disabled &&
     /Menu guest 1\/1/.test(offer.text) &&
-    MENU_AT_8.includes(dishName),
+    MENU_AT_12.includes(dishName),
   { offer, dishName, finishShown },
 );
 
@@ -146,7 +146,7 @@ check(
     entries[0].category === "business-revenue" &&
     entries[0].amount === price &&
     after.credits - before.credits === price &&
-    after.levelProgress.menuGuests?.["level-8"] === 1 &&
+    after.levelProgress.menuGuests?.["level-12"] === 1 &&
     afterOffer === null &&
     /Finish Level/.test(await flat()),
   { entries, price, guests: after.levelProgress.menuGuests, afterOffer },
@@ -157,13 +157,13 @@ await clickButton(page, /^Finish Level$/);
 await sleep(1800);
 const done = await readSave(page);
 const reward = done.economyLedger.filter(
-  (e) => e.category === "completion-reward" && e.description === "level-8",
+  (e) => e.category === "completion-reward" && e.description === "level-12",
 ).length;
 check(
-  "4a Finish Level completes Level 8 once and drops the guest count",
-  done.levelProgress.completedLevelIds.includes("level-8") &&
+  "4a Finish Level completes Level 12 once and drops the guest count",
+  done.levelProgress.completedLevelIds.includes("level-12") &&
     reward === 1 &&
-    done.levelProgress.menuGuests?.["level-8"] === undefined,
+    done.levelProgress.menuGuests?.["level-12"] === undefined,
   { reward, menuGuests: done.levelProgress.menuGuests },
 );
 const closing = await page.evaluate(() => !!document.querySelector('[data-testid="closing-time"]'));
@@ -171,7 +171,7 @@ if (closing) {
   await clickButton(page, /^Close for the night/);
   await sleep(600);
 }
-await prepare("Halved Potato");
+await prepare("Tomato Basil Toast");
 await cookAndServe();
 check("4b a replay offers no menu guest", (await guestButton()) === null);
 

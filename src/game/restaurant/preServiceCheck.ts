@@ -18,6 +18,8 @@ import { paidOrdersFor } from "../levels/paidOrders";
 import { ticketsFor } from "./serviceTickets";
 import { serviceStockCheck, serviceUsesStock, type ServiceStockCheck } from "./campaignStock";
 import { opensNewDay, restaurantDayOf, todaysServices, type DayService } from "./restaurantDay";
+import { hasNewsToShow, restaurantNewsAt, type RestaurantNews } from "./restaurantNews";
+import { serviceShape, staffRequirementsFor, type StaffRequirement } from "./staffRequirements";
 import {
   orderServiceFor,
   serviceSuppliesCheck,
@@ -54,7 +56,7 @@ export function serviceNeedsAttention(pending: PendingService | null): boolean {
 
 /**
  * The whole pre-service sheet for a first play of `level`: the stock check
- * (from L11) AND, when this level opens a new restaurant day, the opening
+ * (from L15) AND, when this level opens a new restaurant day, the opening
  * card (Day N and its services). Null for a replay.
  */
 export type ServicePlan = {
@@ -70,6 +72,10 @@ export type ServicePlan = {
   services: (OrderService | null)[];
   /** Place settings, napkins, packaging, dish soap, cleaning liquid (phase G). */
   supplies: ServiceSuppliesCheck;
+  /** What's new at this level and what's coming (restaurantNews.ts). */
+  news: RestaurantNews;
+  /** The staff this service needs (staffRequirements.ts); an unmet one blocks START. */
+  staff: StaffRequirement[];
 };
 
 export function servicePlanFor(save: SaveData, level: LevelDefinition): ServicePlan | null {
@@ -89,13 +95,22 @@ export function servicePlanFor(save: SaveData, level: LevelDefinition): ServiceP
     opening: opensNewDay(save) ? todaysServices(save, n) : null,
     services,
     supplies: serviceSuppliesCheck(save, n, services),
+    news: restaurantNewsAt(n),
+    staff: staffRequirementsFor(save, n, serviceShape(save, n, remaining, services)),
   };
 }
 
-/** The sheet shows when the day opens or the stock or supplies need attention. */
+/** True when every staff requirement of the plan is met. */
+export function staffReady(plan: ServicePlan): boolean {
+  return plan.staff.every((r) => r.met);
+}
+
+/** The sheet shows when the day opens, something new arrives, or stock, staff or supplies need attention. */
 export function servicePlanNeedsSheet(plan: ServicePlan | null): boolean {
   if (!plan) return false;
   if (plan.opening) return true;
+  if (hasNewsToShow(plan.news)) return true;
+  if (!staffReady(plan)) return true;
   if (suppliesNeedAttention(plan.supplies)) return true;
   return plan.check.applies && (!plan.check.ready || plan.check.hasExpired);
 }

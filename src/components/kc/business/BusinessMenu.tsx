@@ -28,7 +28,11 @@ import {
   playerChoosesMenu,
   unlockedMenuDishes,
 } from "@/game/restaurant/restaurantMenu";
-import { MENU_CHOICE_LEVEL, cuisineFor } from "@/game/restaurant/restaurantProgression";
+import {
+  MENU_CHOICE_LEVEL,
+  cuisineFor,
+  restaurantSystem,
+} from "@/game/restaurant/restaurantProgression";
 
 /** A quarter-dollar step — sensible for real USD menu pricing. */
 const PRICE_STEP = 25;
@@ -110,7 +114,16 @@ export function BusinessMenu({
             {activeDishes.length} / {pool.length} dishes
           </span>
         </div>
-        {restaurant && !chooses ? (
+        {restaurant && pool.length === 0 ? (
+          <p
+            className="mt-1 font-hand text-[14px] leading-snug text-walnut/70"
+            data-testid="menu-opens-at"
+          >
+            The menu opens at Level {restaurantSystem("menu").firstLevel}, once you know the basic
+            cuts: customers order from it, and every order is cooked from your stock.
+          </p>
+        ) : null}
+        {restaurant && !chooses && pool.length > 0 ? (
           <p className="mt-1 font-hand text-[14px] leading-snug text-walnut/70">
             Every dish you unlock goes straight on the menu. From Level {MENU_CHOICE_LEVEL} you
             choose which dishes customers can order.

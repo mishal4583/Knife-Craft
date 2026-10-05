@@ -6,8 +6,8 @@
 //      the chores, the day's count; the next level can't start until the restaurant closes.
 //   4. "Close for the night" → Day 2; the next level opens Day 2. Before L21 the freshness
 //      clock doesn't move and no money moves.
-//   5. Restaurant → Menu at the restaurant's level (L7): 3 active dishes, the rest locked
-//      with their level; the early menu has no on/off switches.
+//   5. Restaurant → Menu at the restaurant's level (L7): the menu isn't open yet (it opens
+//      at L11 with 4 dishes — 2026-10-05), all 48 dishes listed locked with their level.
 //   6. 320×568: the closing sheet fits, no sideways scroll, buttons ≥ 48 px.
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import {
@@ -198,7 +198,8 @@ await sleep(400);
 // ---------- 5. Menu ----------
 await page.evaluate(() =>
   [...document.querySelectorAll("nav button")]
-    .find((x) => x.textContent.includes("Business"))
+    // The restaurant build calls the Business tab "Restaurant".
+    .find((x) => x.textContent.includes("Restaurant"))
     ?.click(),
 );
 await sleep(700);
@@ -214,16 +215,19 @@ const menu = await page.evaluate(() => ({
     /^(ON|OFF)$/.test(b.textContent.trim()),
   ).length,
   firstLocked: document.querySelector("[data-menu-locked]")?.textContent.replace(/\s+/g, " "),
+  opensAt: document
+    .querySelector('[data-testid="menu-opens-at"]')
+    ?.textContent.replace(/\s+/g, " "),
   page: document.body.innerText.replace(/\s+/g, " ").slice(0, 300),
 }));
 await shot(page, "restaurant-menu-l7");
 check(
-  "5 the menu at Level 7: 3 active dishes, 45 locked with their level, no switches yet",
-  menu.count === "3 / 3 dishes" &&
-    menu.dishes.length === 3 &&
-    menu.dishes.includes("biz-caprese-salad") &&
-    menu.dishes.includes("biz-garden-salad") &&
-    menu.locked === 45 &&
+  // 2026-10-05: Levels 1–10 are cooking fundamentals; the menu opens at L11 with 4 dishes.
+  "5 the menu at Level 7: not open yet ('opens at Level 11'), all 48 dishes locked with their level, no switches",
+  menu.count === "0 / 0 dishes" &&
+    menu.dishes.length === 0 &&
+    /opens at Level 11/.test(menu.opensAt ?? "") &&
+    menu.locked === 48 &&
     menu.switches === 0 &&
     /Level 11/.test(menu.firstLocked ?? ""),
   menu,

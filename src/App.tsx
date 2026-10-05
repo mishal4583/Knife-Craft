@@ -96,6 +96,9 @@ import {
   washUp,
 } from "@/game/restaurant/serviceSupplies";
 import { isSystemLive } from "@/game/restaurant/restaurantProgression";
+import { fireSpecialist, getSpecialist, hireSpecialist } from "@/game/restaurant/staffRequirements";
+import { BULK_MAX_PACKS, bulkDiscountFor } from "@/game/restaurant/bulkBuying";
+import { businessDayAllowed } from "@/game/restaurant/endlessRestaurant";
 import { businessCustomerPayment } from "@/game/business/BusinessServiceManager";
 import { recordRevenueAndCogs } from "@/game/business/BusinessFinanceManager";
 import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
@@ -146,7 +149,7 @@ import {
 import { purchaseRefrigerator as purchaseRefrigeratorFromCatalog } from "@/game/business/RefrigeratorManager";
 import { discardExpiredStock } from "@/game/business/discardExpired";
 import { purchaseSupply as purchaseSupplyFromCatalog } from "@/game/business/BusinessSuppliesManager";
-import { isConsumableSupply } from "@/game/business/businessSupplies";
+import { getSupplyItem, isConsumableSupply } from "@/game/business/businessSupplies";
 import { performRefrigeratorMaintenance as performRefrigeratorMaintenanceFromCatalog } from "@/game/business/businessMaintenance";
 import type { InspectionReport } from "@/game/business/businessInspection";
 import type { InspectionFineResult } from "@/game/business/businessInspectionFines";
@@ -597,6 +600,13 @@ export function App() {
   // selecting a level, and that must not skip the check.
   const go = (s: ScreenId) => {
     if (s === "gameplay" && (serviceCheckRef.current || closingHoldRef.current)) return;
+    // Unified Restaurant: no separate Business Day before Level 250 (the Endless Restaurant opens after it).
+    if (
+      s === "business-service" &&
+      saveRef.current &&
+      !businessDayAllowed(RESTAURANT_MODE, saveRef.current.levelProgress)
+    )
+      return;
     setScreen(s);
   };
 
@@ -819,7 +829,13 @@ export function App() {
   /** Economy V3 Phase 2 (Business Inventory) — Business Mode's own purchase action, mirroring buyKnife/buyStaff exactly: routes through the pure manager, then records the ledger entry from the manager's own reported `totalCost` (never re-derived from a credits diff, since it's already exact). Business Mode only — Campaign never calls this. */
   function purchaseIngredient(ingredientId: string, quantity: number) {
     if (!save) return { ok: false as const, reason: "unknownIngredient" as const };
-    const result = purchaseIngredientFromCatalog(save, ingredientId, quantity);
+    // Unified Restaurant: wholesale buying (restaurant/bulkBuying.ts), the same discount the card quoted.
+    const result = purchaseIngredientFromCatalog(
+      save,
+      ingredientId,
+      quantity,
+      RESTAURANT_MODE ? bulkDiscountFor(quantity) : 0,
+    );
     if (result.ok) {
       persistIngredientPurchases(result.save, [{ ingredientId, totalCost: result.totalCost }]);
     }
@@ -923,7 +939,15 @@ export function App() {
    */
   function purchaseSupply(supplyId: string, packs: number) {
     if (!save) return { ok: false as const, reason: "unknownSupply" as const };
-    const result = purchaseSupplyFromCatalog(save, supplyId, packs);
+    const item = getSupplyItem(supplyId);
+    const result = purchaseSupplyFromCatalog(
+      save,
+      supplyId,
+      packs,
+      RESTAURANT_MODE && item && isConsumableSupply(item)
+        ? { discount: bulkDiscountFor(packs), maxPacks: BULK_MAX_PACKS }
+        : undefined,
+    );
     if (result.ok) {
       const packaging = isConsumableSupply(result.item);
       const recorded = appendLedgerEntry(
@@ -1039,16 +1063,27 @@ export function App() {
   }
 
   /** Economy V3 Phase 9 (Staff) — hiring is free, mirroring signSupplierContract exactly ("does not move money" — the real cost is the daily payroll endBusinessDay deducts). No ledger entry. Business Mode only — Campaign never calls this. */
-  function hireStaff(role: string) {
-    if (!save) return { ok: false as const, reason: "unknownRole" as const };
+  function hireStaff(role: string): { ok: boolean } {
+    if (!save) return { ok: false };
+    // Unified Restaurant: a specialist chef (restaurant/staffRequirements.ts), free to hire.
+    if (RESTAURANT_MODE && getSpecialist(role)) {
+      const hired = hireSpecialist(save, role, restaurantLevelOf(save.levelProgress));
+      if (hired.ok) persist(hired.save);
+      return hired;
+    }
     const result = hireStaffImpl(save, role);
     if (result.ok) persist(result.save);
     return result;
   }
 
   /** Economy V3 Phase 9 (Staff) — firing is free (no cancellation-style fee; an employee isn't under a fixed-term contract). No ledger entry. Business Mode only — Campaign never calls this. */
-  function fireStaff(role: string) {
-    if (!save) return { ok: false as const, reason: "notHired" as const };
+  function fireStaff(role: string): { ok: boolean } {
+    if (!save) return { ok: false };
+    if (RESTAURANT_MODE && getSpecialist(role)) {
+      const next = fireSpecialist(save, role);
+      if (next !== save) persist(next);
+      return { ok: next !== save };
+    }
     const result = fireStaffImpl(save, role);
     if (result.ok) persist(result.save);
     return result;
@@ -1166,6 +1201,8 @@ export function App() {
    */
   function startBusinessService() {
     if (!save) return;
+    // Unified Restaurant: the Business engine runs only as the Endless Restaurant (after L250).
+    if (!businessDayAllowed(RESTAURANT_MODE, save.levelProgress)) return;
     // Order frequency: today's queue (resumed past already-served customers
     // after a reload), or none at all once today's customers are complete.
     if (!businessServiceSession) {

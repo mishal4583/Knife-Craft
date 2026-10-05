@@ -3,7 +3,7 @@
  * (Unified Restaurant phases 3–4).
  *
  *  - `serviceStockCheck`: the Pre-Service Check's ingredient rows. For a
- *    level whose service uses stock (`ingredient-stock`, Level 11 on), what
+ *    level whose service uses stock (`ingredient-stock`, Level 15 on), what
  *    its tickets need, what is usable (fresh, never expired), what is
  *    missing, how many whole units the Market would sell to cover it, at
  *    what price (the Market's own `purchaseQuote`), and whether the wallet

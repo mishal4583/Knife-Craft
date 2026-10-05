@@ -5,6 +5,8 @@ import { servicePlanFor } from "@/game/restaurant/preServiceCheck";
 import { pantryForMissing } from "@/game/restaurant/campaignStock";
 import { grandmasSpares } from "@/game/restaurant/serviceSupplies";
 import { getSupplyItem } from "@/game/business/businessSupplies";
+import { fridgeUsage } from "@/game/restaurant/fridgeUsage";
+import { isSystemLive } from "@/game/restaurant/restaurantProgression";
 import { openMarketIngredients, openMarketSupplies } from "@/components/kc/marketFocus";
 import { PreServiceCheck } from "./PreServiceCheck";
 
@@ -43,7 +45,12 @@ export function ServiceCheckLayer({
   const n = plan.levelNumber;
   const check = plan.check;
 
-  if (screen === "shop" || screen === "shop-ingredients" || screen === "shop-supplies") {
+  if (
+    screen === "shop" ||
+    screen === "shop-ingredients" ||
+    screen === "shop-supplies" ||
+    screen === "business-staff"
+  ) {
     return (
       <div className="pointer-events-none absolute inset-x-0 bottom-[84px] z-40 flex justify-center px-4">
         <button
@@ -89,6 +96,10 @@ export function ServiceCheckLayer({
       onRestockSupply={(id) =>
         openMarketSupplies(go, getSupplyItem(id)?.section ?? "packaging", id)
       }
+      news={plan.news}
+      staff={plan.staff}
+      onHireStaff={() => go("business-staff")}
+      fridge={isSystemLive("fridge-freshness", n) ? fridgeUsage(save) : null}
       onBorrowSpares={() => {
         const next = grandmasSpares(save, plan.supplies);
         if (next) onUsePantry(next);

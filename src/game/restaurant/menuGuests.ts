@@ -15,7 +15,7 @@
  *  - the guest is cooked with the existing cutting engine as an extra ticket
  *    of the same service, pays the dish's menu price through the existing
  *    Business payment rule (`businessCustomerPayment`), uses real stock from
- *    Level 11 like any order, and is recorded as restaurant revenue
+ *    Level 15 like any order, and is recorded as restaurant revenue
  *    ("business-revenue", the day's P&L) — prices are not changed here
  *    (Economy TODO #13, #20);
  *  - guests served are saved per level (`levelProgress.menuGuests`), so
@@ -94,7 +94,7 @@ export type MenuGuest = {
   total: number;
   /** What the guest pays (the dish's menu price through the Business payment rule). */
   pays: number;
-  /** The stock for this dish is on hand (always true before Level 11). */
+  /** The stock for this dish is on hand (always true before Level 15). */
   inStock: boolean;
 };
 

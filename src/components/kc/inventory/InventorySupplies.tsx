@@ -154,7 +154,7 @@ export function InventorySupplies({ go, save }: { go: (s: ScreenId) => void; sav
             <div className="mt-1 divide-y divide-walnut/10">
               <SupplyBottle
                 bottle={bottleView(save, "dish-soap")}
-                per="service"
+                per="wash"
                 onRestock={() => openMarketSupplies(go, "packaging", "dish-soap")}
               />
               <SupplyBottle

@@ -22,7 +22,7 @@ export function SupplyBottle({
   onRestock,
 }: {
   bottle: BottleView;
-  /** What one use is: "service" (soap) or "closing" (cleaning liquid). */
+  /** What one use is: "wash" (dish soap: one wash-up) or "closing" (cleaning liquid). */
   per: string;
   onRestock?: () => void;
 }) {
@@ -44,7 +44,7 @@ export function SupplyBottle({
       </div>
       <div className="min-w-0 flex-1">
         <p className="font-ui text-[14px] font-bold text-walnut-dark">
-          {NAME[bottle.id]} · {level}%{bottle.spare > 0 ? ` + ${bottle.spare} spare` : ""}
+          {NAME[bottle.id]} — {level}%{bottle.spare > 0 ? ` + ${bottle.spare} spare` : ""}
         </p>
         <p
           className={cn(
@@ -53,10 +53,10 @@ export function SupplyBottle({
           )}
         >
           {bottle.status === "empty"
-            ? `⛔ Empty — buy more`
+            ? `⛔ Empty — buy another bottle`
             : `${bottle.status === "low" ? "⚠️ Low · " : ""}~${bottle.servicesLeft} ${
-                bottle.servicesLeft === 1 ? per : `${per}s`
-              } left`}
+                bottle.servicesLeft === 1 ? per : `${per}${per.endsWith("sh") ? "es" : "s"}`
+              } remaining`}
         </p>
       </div>
       {onRestock && bottle.status !== "ok" ? (

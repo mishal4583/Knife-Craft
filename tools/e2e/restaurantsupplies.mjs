@@ -160,14 +160,14 @@ const s2 = await sheet();
 const newEntries = bought.economyLedger.slice(before.economyLedger.length);
 const soap = s2?.bottles.find((b) => b.id === "dish-soap");
 check(
-  "2 Restock opens the exact Market line; 5 purchases = 5 ledger entries; the check is ready; soap shows ~N services",
+  "2 Restock opens the exact Market line; 5 purchases = 5 ledger entries; the check is ready; soap shows ~N washes remaining",
   focus.every(Boolean) &&
     newEntries.length === 5 &&
     newEntries.every((e) => /^supply-/.test(e.category)) &&
     s2?.supplies.every((r) => r.status === "ok") &&
     s2?.startDisabled === false &&
     soap?.status === "ok" &&
-    /~\d+ services left/.test(soap.text),
+    /~\d+ washes remaining/.test(soap.text),
   { focus, entries: newEntries.map((e) => e.category), s2: s2?.supplies, soap },
 );
 
@@ -224,8 +224,9 @@ check(
   "4 Inventory → Supplies shows 12 clean place settings, the soap at 95% and the empty cleaning liquid",
   !!inv &&
     /Place settings: 12 clean/.test(inv) &&
-    /Dish soap · 95%/.test(inv) &&
-    /Cleaning liquid · 0%/.test(inv),
+    /Dish soap — 95%/.test(inv) &&
+    /~79 washes remaining/.test(inv) &&
+    /Cleaning liquid — 0%/.test(inv),
   inv,
 );
 

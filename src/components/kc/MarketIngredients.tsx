@@ -1,3 +1,6 @@
+import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
+import { bulkDiscountFor } from "@/game/restaurant/bulkBuying";
+import { BulkPresets } from "./BulkPresets";
 import { useEffect, useRef, useState } from "react";
 import { Badge, KButton, Panel } from "./common/primitives";
 import { cn } from "@/lib/utils";
@@ -87,9 +90,12 @@ export function MarketIngredients({
     return quantities[id] ?? DEFAULT_PURCHASE_QUANTITY;
   }
 
+  /** Unified Restaurant: the bulk discount App's purchase applies too (0 in the classic game). */
+  const bulk = (quantity: number) => (RESTAURANT_MODE ? bulkDiscountFor(quantity) : 0);
+
   function handlePurchase(id: IngredientId) {
     const quantity = quantityFor(id);
-    const quote = purchaseQuote(save, id, quantity);
+    const quote = purchaseQuote(save, id, quantity, bulk(quantity));
     const result = purchaseIngredient(id, quantity);
     if (!result.ok) {
       const text =
@@ -183,7 +189,7 @@ export function MarketIngredients({
               {ids.map((id) => {
                 const def = INGREDIENTS[id];
                 const quantity = quantityFor(id);
-                const quote = purchaseQuote(save, id, quantity);
+                const quote = purchaseQuote(save, id, quantity, bulk(quantity));
                 const unit = purchaseUnitFor(id);
                 const stock = save.business.inventory[id]?.quantity ?? 0;
                 const dishes = activeDishesUsing(save, id).length;
@@ -243,6 +249,22 @@ export function MarketIngredients({
                         +
                       </button>
                     </div>
+                    {RESTAURANT_MODE ? (
+                      <BulkPresets
+                        value={quantity}
+                        label={unit}
+                        onPick={(q) => setQuantities((qs) => ({ ...qs, [id]: q }))}
+                      />
+                    ) : null}
+                    {quote.bulkDiscount > 0 ? (
+                      <p
+                        className="mt-1 text-center font-ui text-[11px] font-bold text-olive"
+                        data-testid="bulk-saving"
+                      >
+                        Bulk −{Math.round(quote.bulkDiscount * 100)}% · saves{" "}
+                        {formatUsd(quote.listTotal - quote.totalCost)}
+                      </p>
+                    ) : null}
                     {message ? (
                       <p className="mt-1 text-center font-hand text-[12px] leading-tight text-copper">
                         {message}

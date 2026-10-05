@@ -17,6 +17,9 @@ import type {
 import type { SupplyId } from "@/game/business/businessSupplies";
 import { getSupplyItem } from "@/game/business/businessSupplies";
 import { SupplyBottle } from "./SupplyBottle";
+import type { RestaurantNews } from "@/game/restaurant/restaurantNews";
+import type { StaffRequirement } from "@/game/restaurant/staffRequirements";
+import type { FridgeUsage } from "@/game/restaurant/fridgeUsage";
 
 /**
  * PRE_SERVICE_CHECK (Unified Restaurant spec §6, §24–25) — shown before a
@@ -36,7 +39,7 @@ import { SupplyBottle } from "./SupplyBottle";
  *
  * Phase 5: it is also the day's OPENING card. When a level opens a new
  * restaurant day it always shows ("Day N · Opening time", the day's services
- * by name and level) and its button opens the restaurant; before Level 11
+ * by name and level) and its button opens the restaurant; before Level 15
  * there is no stock to check, so it is only the opening card.
  *
  * Phase G (from dine-in, L31): a Supplies section — clean place settings,
@@ -62,6 +65,10 @@ export function PreServiceCheck({
   supplies = { applies: false },
   onRestockSupply = () => {},
   onBorrowSpares = () => {},
+  news = null,
+  staff = [],
+  onHireStaff = () => {},
+  fridge = null,
 }: {
   levelNumber: number;
   day: number;
@@ -81,13 +88,22 @@ export function PreServiceCheck({
   supplies?: ServiceSuppliesCheck;
   onRestockSupply?: (id: SupplyId) => void;
   onBorrowSpares?: () => void;
+  /** What's new at this level and what's coming. */
+  news?: RestaurantNews | null;
+  /** This service's staff requirements; an unmet one blocks START. */
+  staff?: readonly StaffRequirement[];
+  onHireStaff?: () => void;
+  /** The fridge's fill, from the fridge stage (L21); null before. */
+  fridge?: FridgeUsage | null;
 }) {
   const stock = check.applies ? check : null;
   const sup = supplies.applies ? supplies : null;
   const fridgeShort = !!stock && stock.storageNeeded > stock.storageFree;
   const canStart =
     (!stock || (stock.ready && !stock.rows.some((r) => r.expired > 0 && r.usable < r.needed))) &&
-    (!sup || sup.ready);
+    (!sup || sup.ready) &&
+    staff.every((r) => r.met);
+  const staffMissing = staff.filter((r) => !r.met);
   return (
     <div
       className="absolute inset-0 z-40 flex items-end justify-center"
@@ -111,6 +127,13 @@ export function PreServiceCheck({
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-3">
+          {news &&
+          (news.systems.length > 0 ||
+            news.dishes.length > 0 ||
+            news.cuisines.length > 0 ||
+            news.comingUp.length > 0) ? (
+            <NewsCard news={news} />
+          ) : null}
           {opening ? (
             <div
               className="mb-2 rounded-2xl border border-walnut/15 bg-ivory/70 p-3"
@@ -161,6 +184,79 @@ export function PreServiceCheck({
             </>
           ) : null}
 
+          {staff.length > 0 ? (
+            <>
+              <p className="mt-3 font-ui text-[12px] font-extrabold uppercase tracking-wide text-walnut/60">
+                Staff for this service
+              </p>
+              <ul className="mt-1 divide-y divide-walnut/10" data-testid="psc-staff">
+                {staff.map((r) => (
+                  <li
+                    key={r.id}
+                    className="flex min-h-12 items-center gap-2 py-1.5"
+                    data-psc-staff={r.id}
+                    data-psc-status={r.met ? "ok" : "missing"}
+                  >
+                    <span className="text-[20px]" aria-hidden>
+                      {r.kind === "specialist" ? "👩‍🍳" : "🧑‍🍳"}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-ui text-[14px] font-bold text-walnut-dark">{r.title}</p>
+                      <p
+                        className={cn(
+                          "font-ui text-[12px]",
+                          r.met ? "text-walnut/60" : "text-tomato",
+                        )}
+                      >
+                        {r.why}
+                      </p>
+                    </div>
+                    {r.met ? (
+                      <span className="font-ui text-[13px] font-extrabold text-sage">
+                        ✓ On staff
+                      </span>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+              {staffMissing.length > 0 ? (
+                <KButton
+                  size="sm"
+                  variant="copper"
+                  className="mt-2 h-auto min-h-12 py-2 leading-tight"
+                  onClick={onHireStaff}
+                >
+                  Hire {staffMissing.map((r) => r.title).join(", ")} → Staff (free to hire)
+                </KButton>
+              ) : null}
+            </>
+          ) : null}
+
+          {fridge && fridge.status !== "ok" ? (
+            <div
+              className="mt-3 rounded-2xl border border-tomato/30 bg-tomato/10 p-3"
+              data-testid="psc-fridge"
+              data-fridge-status={fridge.status}
+            >
+              <p className="font-ui text-[13px] font-bold text-walnut-dark">
+                {fridge.status === "full" ? "⛔ Fridge full" : "⚠️ Fridge nearly full"} ·{" "}
+                {fridge.used} / {fridge.capacity} units
+              </p>
+              <p className="font-ui text-[12px] text-walnut/70">
+                {fridge.free} units of space left. Use what you have, throw out expired food, or
+                upgrade the refrigerator.
+              </p>
+              <KButton
+                size="sm"
+                variant="ghost"
+                className="mt-2 min-h-12"
+                onClick={onUpgradeFridge}
+              >
+                Manage fridge →
+              </KButton>
+            </div>
+          ) : null}
+
           {sup ? (
             <>
               <p className="mt-3 font-ui text-[12px] font-extrabold uppercase tracking-wide text-walnut/60">
@@ -175,7 +271,7 @@ export function PreServiceCheck({
               <div className="divide-y divide-walnut/10" data-testid="psc-bottles">
                 <SupplyBottle
                   bottle={sup.soap}
-                  per="service"
+                  per="wash"
                   onRestock={() => onRestockSupply("dish-soap")}
                 />
                 <SupplyBottle
@@ -321,6 +417,55 @@ function IngredientRow({
         </KButton>
       )}
     </li>
+  );
+}
+
+function NewsCard({ news }: { news: RestaurantNews }) {
+  const fresh = news.systems.length > 0 || news.dishes.length > 0 || news.cuisines.length > 0;
+  return (
+    <div
+      className="mb-2 rounded-2xl border border-copper/30 bg-[linear-gradient(170deg,var(--color-ivory),rgba(214,160,90,0.12))] p-3"
+      data-testid="psc-news"
+    >
+      <p className="font-ui text-[12px] font-extrabold uppercase tracking-wide text-copper">
+        📰 {fresh ? "New at your restaurant" : "Coming up"}
+      </p>
+      {news.systems.map((s) => (
+        <div key={s.id} className="mt-1" data-news-system={s.id}>
+          <p className="font-ui text-[14px] font-extrabold text-walnut-dark">{s.title}</p>
+          <p className="font-hand text-[16px] leading-snug text-walnut">“{s.intro}”</p>
+        </div>
+      ))}
+      {news.chain ? (
+        <p className="mt-1 font-ui text-[12px] font-bold text-walnut-dark" data-testid="psc-chain">
+          {news.chain.join(" → ")}
+        </p>
+      ) : null}
+      {news.cuisines.map((c) => (
+        <p key={c.name} className="mt-1 font-ui text-[13px] font-bold text-walnut-dark">
+          🌍 {c.name} cuisine opens{c.specialist ? ` · needs the ${c.specialist}` : ""}
+        </p>
+      ))}
+      {news.dishes.length > 0 ? (
+        <div className="mt-1" data-testid="psc-news-dishes">
+          <p className="font-ui text-[13px] font-bold text-walnut-dark">
+            🍽️ New on the menu: {news.dishes.map((d) => d.name).join(", ")}
+          </p>
+          {news.dishWhy ? (
+            <p className="font-ui text-[12px] text-walnut/70">{news.dishWhy}</p>
+          ) : null}
+        </div>
+      ) : null}
+      {news.comingUp.length > 0 ? (
+        <ul className="mt-1 space-y-0.5" data-testid="psc-coming-up">
+          {news.comingUp.map((c) => (
+            <li key={`${c.level}-${c.text}`} className="font-ui text-[12px] text-walnut/70">
+              Level {c.level}: {c.text}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
   );
 }
 

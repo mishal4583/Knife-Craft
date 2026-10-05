@@ -1,5 +1,6 @@
 import type { RestaurantDayState } from "../restaurant/restaurantDay";
 import type { RestaurantSuppliesState } from "../restaurant/serviceSupplies";
+import type { RestaurantStaffState } from "../restaurant/staffRequirements";
 /**
  * BUSINESS_TYPES — Economy V3's own persisted-state container. A single
  * new field on SaveData (`business: BusinessState`), mirroring how every
@@ -87,6 +88,12 @@ export type BusinessState = {
    * Optional: older saves and the classic game don't have it.
    */
   restaurantSupplies?: RestaurantSuppliesState;
+  /**
+   * Unified Restaurant (RESTAURANT_MODE): the specialist chefs hired for the
+   * cuisines (restaurant/staffRequirements.ts). Optional; the classic
+   * six-role `staff` is unchanged.
+   */
+  restaurantStaff?: RestaurantStaffState;
 };
 
 export const DEFAULT_BUSINESS_STATE: BusinessState = {

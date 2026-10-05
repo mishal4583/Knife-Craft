@@ -82,15 +82,16 @@ assert(
 );
 
 console.log("U. Unlock table");
-// The schedule is the developer's "Unified Restaurant Progression & Early
-// Menu" spec (2026-10-04, §5), which replaced the first schedule on purpose:
-// the menu and the restaurant day from Level 1, pantry 11, fridge 21,
-// dine-in + supplies 31, staff 41, cuisines 51, takeaway 71, full operation
-// 91, expansion 121, established 161, master 201, Grand Service 241.
+// The schedule is the developer's teaching sequence of 2026-10-05 §10, which
+// replaced the 2026-10-04 one on purpose (the menu then opened at L1, stock
+// at L11): cooking fundamentals and the restaurant day from Level 1, the
+// menu at 11, ingredient stock 15, fridge 21, dine-in + supplies 31, staff
+// 41, cuisines 51, takeaway 71, the bigger restaurant 91, full management
+// 121, established 161, master 201, Grand Service 241.
 const expected: [RestaurantSystemId, number][] = [
-  ["menu", 1],
   ["restaurant-day", 1],
-  ["ingredient-stock", 11],
+  ["menu", 11],
+  ["ingredient-stock", 15],
   ["fridge-freshness", 21],
   ["dine-in", 31],
   ["staff", 41],
@@ -110,11 +111,14 @@ assert(
 assert(
   liveSystems(1)
     .map((s) => s.id)
-    .join() === "menu,restaurant-day" &&
+    .join() === "restaurant-day" &&
     liveSystems(10)
       .map((s) => s.id)
-      .join() === "menu,restaurant-day",
-  "U2: Levels 1–10 have only the menu and the restaurant day (no stock or management)",
+      .join() === "restaurant-day" &&
+    liveSystems(14)
+      .map((s) => s.id)
+      .join() === "restaurant-day,menu",
+  "U2: Levels 1–10 are cooking fundamentals (only the restaurant day); the menu alone at 11–14",
 );
 assert(
   RESTAURANT_SYSTEMS.every((s) => s.title.length > 0 && s.covers.length > 0 && s.intro.length > 10),
@@ -132,11 +136,12 @@ assert(
 );
 assert(
   liveSystems(LAST_CAMPAIGN_LEVEL).length === RESTAURANT_SYSTEMS.length &&
-    nextSystemAfter(10)?.id === "ingredient-stock" &&
+    nextSystemAfter(10)?.id === "menu" &&
+    nextSystemAfter(11)?.id === "ingredient-stock" &&
     nextSystemAfter(241) === null &&
     systemsIntroducedAt(1)
       .map((s) => s.id)
-      .join() === "menu,restaurant-day",
+      .join() === "restaurant-day",
   "U5: everything is live by L250; 'coming up' and 'introduced at' agree with the table",
 );
 

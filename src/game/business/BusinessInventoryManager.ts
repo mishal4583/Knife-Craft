@@ -9,6 +9,7 @@
  * function never touches `SaveData.economyLedger` directly, the same
  * way buyKnife/buyStaff never do either.
  */
+import { discountedUnitCost } from "../restaurant/bulkBuying";
 import type { SaveData } from "../SaveManager";
 import type { IngredientId } from "../definitions";
 import { INGREDIENTS } from "../definitions";
@@ -91,6 +92,10 @@ export type PurchaseQuote = {
   remainingCredits: number;
   /** Fridge units free right now (RefrigeratorManager). */
   availableStorage: number;
+  /** Unified Restaurant bulk discount applied (a fraction; 0 in the classic game). */
+  bulkDiscount: number;
+  /** The same quantity before the bulk discount (equals totalCost without one). */
+  listTotal: number;
 };
 
 /**
@@ -102,11 +107,14 @@ export function purchaseQuote(
   save: SaveData,
   ingredientId: IngredientId,
   quantity: number,
+  /** Unified Restaurant bulk discount (restaurant/bulkBuying.ts) — the LAST layer; 0 = none. */
+  bulkDiscount = 0,
 ): PurchaseQuote {
   const maxQuantity = maxPurchaseQuantityFor(eventForDay(save.business.calendar.businessDay));
   const capped = todaysUnitCost(save, ingredientId, quantity);
-  const unitCost =
+  const listUnitCost =
     capped ?? todaysUnitCost(save, ingredientId, Math.min(quantity, maxQuantity ?? quantity)) ?? 0;
+  const unitCost = bulkDiscount > 0 ? discountedUnitCost(listUnitCost, bulkDiscount) : listUnitCost;
   const totalCost = quantity * unitCost;
   const refrigeratorId = save.business.refrigerator.refrigeratorId;
   const verdict: PurchaseQuote["verdict"] =
@@ -124,6 +132,8 @@ export function purchaseQuote(
     maxQuantity,
     remainingCredits: save.credits - totalCost,
     availableStorage: getAvailableStorageCapacity(save.business.inventory, refrigeratorId),
+    bulkDiscount,
+    listTotal: quantity * listUnitCost,
   };
 }
 
@@ -167,10 +177,13 @@ export function purchaseIngredient(
   save: SaveData,
   ingredientId: string,
   quantity: number,
+  /** Unified Restaurant bulk discount (the same one the quote showed); 0 = none. */
+  bulkDiscount = 0,
 ): PurchaseIngredientResult {
   if (!isKnownIngredient(ingredientId)) return { ok: false, reason: "unknownIngredient" };
   if (!Number.isInteger(quantity) || quantity <= 0) return { ok: false, reason: "invalidQuantity" };
-  const quote = purchaseQuote(save, ingredientId, quantity);
+  if (!(bulkDiscount >= 0 && bulkDiscount < 1)) return { ok: false, reason: "invalidQuantity" };
+  const quote = purchaseQuote(save, ingredientId, quantity, bulkDiscount);
   if (quote.verdict !== "ok") return { ok: false, reason: quote.verdict };
   const { unitCost, totalCost } = quote;
   const inventory = addStock(

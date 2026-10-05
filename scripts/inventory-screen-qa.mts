@@ -89,12 +89,20 @@ const ALL_IDS = Object.keys(INGREDIENTS) as IngredientId[];
 {
   const nav = read("src/components/kc/Kitchen.tsx");
   const labels = [
-    ...nav.matchAll(/\{ id: "([a-z-]+)", label: "([^"]+)", glyph: "([^"]+)" \}/g),
+    // The Business tab's label is "Restaurant" only in the Unified Restaurant test build
+    // (RESTAURANT_MODE); the release build reads the classic label checked here.
+    ...nav.matchAll(
+      /\{ id: "([a-z-]+)", label: (?:RESTAURANT_MODE \? "Restaurant" : )?"([^"]+)", glyph: "([^"]+)" \}/g,
+    ),
   ].map((m) => `${m[1]}:${m[2]}`);
   assert(
     labels.join() ===
       "kitchen:Kitchen,shop:Market,inventory:Inventory,business:Business,rack:Progress",
     "N1: the bottom bar has 5 sections — Kitchen · Market · Inventory · Business · Progress",
+  );
+  assert(
+    /label: RESTAURANT_MODE \? "Restaurant" : "Business"/.test(nav),
+    "N1b: in the restaurant build the Business tab is called Restaurant (one restaurant)",
   );
   assert(
     /min-h-12/.test(nav.match(/export function BottomNav[\s\S]*?<\/nav>/)?.[0] ?? ""),

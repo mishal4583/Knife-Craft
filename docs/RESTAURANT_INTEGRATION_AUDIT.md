@@ -296,7 +296,43 @@ moved the menu to Level 1, re-ordered the systems and added a day clock.
 | 5 Day clock (opening, services, closing, Day N+1) | done (behind the switch) | `restaurant-day-qa`, e2e `restaurantday.mjs` |
 | D Menu orders inside levels (menu guests) | done (behind the switch) | `restaurant-guests-qa`, e2e `restaurantguests.mjs` |
 | G Consumable supplies (place settings, napkins, dish soap, cleaning liquid, takeaway packaging) | done (behind the switch) | `restaurant-supplies-qa`, e2e `restaurantsupplies.mjs` |
-| H–N (bulk buying, staff, specialists, Endless, migration, QA) | to do | — |
+| Brief 2026-10-05: menu from L11 on the developer's curve, tied to cuisine chapters; restaurant news; staff requirements + specialist chefs; bulk buying; Inventory NEEDS ATTENTION; fridge warnings; one restaurant before L250, Endless Restaurant after | done (behind the switch) | `restaurant-menu-qa`, `restaurant-progression-qa`, e2e `restaurantprogression.mjs` |
+| M migration, N final QA | to do | — |
+
+Notes on the 2026-10-05 brief:
+
+- Teaching sequence (replaces the 2026-10-04 table): L1–10 cooking
+  fundamentals (the day clock only), L11 menu, L15 ingredient stock, L21
+  fridge, L31 dine-in, L41 staff, L51 cuisines, L71 takeaway, L91 bigger
+  restaurant (closing = End Business Day), L121 full management, L241
+  Grand Service. Suites that encoded the old schedule were updated on
+  purpose (`restaurant-unlocks-qa` U1/U2/U5, `restaurant-stock-qa` A1,
+  `restaurant-guests-qa` G1/M4/N4, `restaurant-menu-qa` M/A, e2e
+  `restaurantday` 5 and `restaurantguests` → Level 12).
+- Menu curve: hits the developer's numbers everywhere the 48 dishes allow;
+  short only at L20/25/31 (techniques taught later) and L91/101/111 (meat
+  L101, fish L109). No recipe was invented.
+- Cuisine opening levels now follow the campaign chapters (Mediterranean
+  61→71, Mexican 71→81, the Asian group split into Japanese 101, Chinese
+  121, Thai 141, Korean 161 — one Asian Chef, still an open decision).
+- Restaurant news (`restaurantNews.ts`) in the Pre-Service Check: what's
+  new at the level and why, and what's coming within 5 levels; the check
+  opens for it on a first play.
+- Staff: requirements scale with the service (orders, tables, cuisines,
+  team) and are announced 5 levels ahead; hiring is free, so a requirement
+  can't soft-lock. Specialist chefs are restaurant staff
+  (`business.restaurantStaff`); the classic six-role catalog is unchanged.
+- Found and fixed: closing from L91 ran End Business Day without its
+  payroll / fine ledger entries (phase 5); it now writes the same entries
+  App does.
+- Bulk buying: an optional discount argument on the existing purchase
+  functions (0 = the classic price); the restaurant build passes it.
+- Inventory: one restaurant-wide ⚠️ NEEDS ATTENTION list at the top
+  (read-only, navigation only), recommending exactly what the next
+  service's check would buy.
+- Before L250 the restaurant build has no separate Business Day (the
+  Business tab — "Restaurant" — shows a note; the route and start refuse);
+  after L250 the same engine is the Endless Restaurant.
 
 Phase G notes:
 

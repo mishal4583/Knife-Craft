@@ -24,7 +24,9 @@
  *    Business uses) advances one day and stock that expired is thrown out,
  *    recorded as waste with End Business Day's own multipliers; no money;
  *  - from full operation (L91) closing IS End Business Day (payroll,
- *    inspection, popularity, the day's P&L), the existing function;
+ *    inspection, popularity, the day's P&L), the existing function, with
+ *    the same payroll / fine ledger entries App writes for it, and the
+ *    specialist chefs' wages (staffRequirements.ts);
  *  - from dine-in (L31) the wipe-down uses cleaning liquid
  *    (serviceSupplies.ts; none left is a warning, never a block).
  *
@@ -41,6 +43,8 @@ import { endBusinessDay } from "../business/BusinessDayManager";
 import { wasteValueFor } from "../business/discardExpired";
 import { CLOSING_CHORES, isSystemLive, servicesForDayAt } from "./restaurantProgression";
 import { bottleView, closingWipeDown, type BottleView } from "./serviceSupplies";
+import { paySpecialists } from "./staffRequirements";
+import { appendLedgerEntry } from "../economy/EconomyLedger";
 
 export type RestaurantDayState = {
   /** The restaurant's day number, from 1. */
@@ -179,7 +183,16 @@ export function closeDay(save: SaveData, levelNumber: number): SaveData {
   if (!d.closingDue) return save;
   let next = save;
   if (isSystemLive("full-operation", levelNumber)) {
-    next = endBusinessDay(save).save;
+    // The same two ledger entries App's End Business Day writes, so every
+    // wallet movement of the day-end has its entry (zero amounts are skipped).
+    const result = endBusinessDay(save);
+    next = appendLedgerEntry(
+      appendLedgerEntry(result.save, "business-staff-salary", -result.payrollPaid),
+      "inspection-fine",
+      -result.inspectionFine.finePaid,
+    );
+    // Specialist chefs (staffRequirements.ts): their wages, one entry each.
+    next = paySpecialists(next, levelNumber).save;
   } else if (isSystemLive("fridge-freshness", levelNumber)) {
     const calendar = advanceBusinessDay(save.business.calendar);
     const swept = clearExpiredStock(save.business.inventory, calendar.businessDay);
