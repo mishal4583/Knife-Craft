@@ -89,6 +89,13 @@ import { consumeCampaignOrderStock } from "@/game/restaurant/campaignStock";
 import { servicePlanFor, servicePlanNeedsSheet } from "@/game/restaurant/preServiceCheck";
 import { closeDay, openDay, recordService, restaurantDayOf } from "@/game/restaurant/restaurantDay";
 import { nextMenuGuest, withMenuGuestServed } from "@/game/restaurant/menuGuests";
+import {
+  cleanSettings,
+  orderServiceFor,
+  takeOrderSupplies,
+  washUp,
+} from "@/game/restaurant/serviceSupplies";
+import { isSystemLive } from "@/game/restaurant/restaurantProgression";
 import { businessCustomerPayment } from "@/game/business/BusinessServiceManager";
 import { recordRevenueAndCogs } from "@/game/business/BusinessFinanceManager";
 import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
@@ -1091,9 +1098,13 @@ export function App() {
 
   /** Starts a campaign level (after its Pre-Service Check, when it had one). `from`: the save to build on (e.g. with the day just opened). */
   function beginLevel(levelId: string, from?: SaveData) {
-    const base = from ?? save;
+    let base = from ?? save;
     if (!base) return;
     const level = getLevel(levelId);
+    // Unified Restaurant (phase G): the wash-up before a service — settings
+    // left dirty (no soap last time) are washed now if there's soap.
+    if (RESTAURANT_MODE && level && !isCompleted(level.id, base.levelProgress))
+      base = washUp(base, levelNumber(level.id)).save;
     startPlaySession({
       world: `chapter-${level?.chapter ?? 1}`,
       level: String(levelNumber(levelId)),
@@ -1335,7 +1346,20 @@ export function App() {
         ? consumeCampaignOrderStock(save, levelNumber(level.id), recipe, !isReplay)
         : null;
     if (stock && !stock.ok) return null;
-    const base = stock?.ok ? stock.save : save;
+    // Unified Restaurant (phase G): the order's place setting + napkin, or
+    // takeaway packaging, taken automatically (never blocking here).
+    const base =
+      RESTAURANT_MODE && level && save && !isReplay
+        ? takeOrderSupplies(
+            stock?.ok ? stock.save : save,
+            orderServiceFor(
+              levelNumber(level.id),
+              paidOrdersFor(save.levelProgress, level.id).length,
+            ),
+          )
+        : stock?.ok
+          ? stock.save
+          : save;
     // Economy V2 Phase 9 — the full settlement breakdown is kept (not
     // just `.netResult`) so the result UI can show it, but nothing about
     // WHAT gets credited or WHEN changes: `amount` below is still exactly
@@ -1392,15 +1416,20 @@ export function App() {
     if (!dish) return null;
     const stock = consumeCampaignOrderStock(save, levelNumber(level.id), recipe, true);
     if (!stock.ok) return null;
+    // A menu guest eats in (phase G): a place setting and a napkin from L31.
+    const withSupplies = takeOrderSupplies(
+      stock.save,
+      isSystemLive("dine-in", levelNumber(level.id)) ? "dine-in" : null,
+    );
     const pays = businessCustomerPayment(stock.save, dish).customerPays;
     const result = serveCurrentOrder(campaignServiceSession, Math.random, pays);
     if (!result) return null;
     setCampaignServiceSession(result.session);
     const paid = recordRevenueAndCogs(
       {
-        ...stock.save,
-        credits: stock.save.credits + result.coinsAwarded,
-        levelProgress: withMenuGuestServed(stock.save.levelProgress, level.id),
+        ...withSupplies,
+        credits: withSupplies.credits + result.coinsAwarded,
+        levelProgress: withMenuGuestServed(withSupplies.levelProgress, level.id),
       },
       result.coinsAwarded,
       stock.cost,
@@ -1414,12 +1443,17 @@ export function App() {
     };
   }
 
+  /** Phase G: from dine-in (L31) a menu guest needs a clean place setting. */
+  function guestHasSetting(s: SaveData, level: LevelDefinition): boolean {
+    return !isSystemLive("dine-in", levelNumber(level.id)) || cleanSettings(s) > 0;
+  }
+
   /** Unified Restaurant (phase D): brings in the next menu guest as one more ticket of this service. */
   function takeMenuGuest() {
     if (!save || !campaignServiceSession) return;
     const level = getLevel(campaignServiceSession.levelId);
     const guest = level ? nextMenuGuest(save, level) : null;
-    if (!guest || !guest.inStock) return;
+    if (!guest || !guest.inStock || (level && !guestHasSetting(save, level))) return;
     setCampaignServiceSession((s) =>
       s && s.current?.order.status === "COMPLETED"
         ? advanceServiceSession(withExtraTicket(s, guest.recipe), [], Math.random)
@@ -1577,8 +1611,9 @@ export function App() {
     } = completeLevel(level.id, save.levelProgress);
     let nextSave = { ...save, credits: save.credits + rewardCoins, levelProgress };
     // Unified Restaurant: a first completion is one service of the day.
+    // Phase G: then the wash-up (dish soap) for the settings it used.
     if (RESTAURANT_MODE && isFirstCompletion)
-      nextSave = recordService(nextSave, levelNumber(level.id));
+      nextSave = washUp(recordService(nextSave, levelNumber(level.id)), levelNumber(level.id)).save;
     // Economy V2 Phase 9 — the completion reward is its own real wallet
     // transaction, separate from any order settlement already recorded
     // by serveCampaignOrder (brief §21 — "do not double-record").
@@ -1685,7 +1720,19 @@ export function App() {
         ? consumeCampaignOrderStock(save, levelNumber(level.id), viewed.recipe, !isReplay)
         : null;
     if (stock && !stock.ok) return null;
-    const base = stock?.ok ? stock.save : save;
+    // Unified Restaurant (phase G): supplies, as serveCampaignOrder.
+    const base =
+      RESTAURANT_MODE && level && save && !isReplay
+        ? takeOrderSupplies(
+            stock?.ok ? stock.save : save,
+            orderServiceFor(
+              levelNumber(level.id),
+              paidOrdersFor(save.levelProgress, level.id).length,
+            ),
+          )
+        : stock?.ok
+          ? stock.save
+          : save;
     // Economy V2 Phase 9 — mirrors serveCampaignOrder's own doc exactly:
     // the full breakdown is kept for the result UI, `amount` stays
     // exactly `settlement?.netResult ?? 0`.
@@ -2096,16 +2143,22 @@ export function App() {
               ...(isBusinessService ? { isBusinessOrder: true } : {}),
               ...(menuGuest
                 ? {
-                    extraAction: menuGuest.inStock
+                    extraAction: !guestHasSetting(save, campaignLevelForSession!)
                       ? {
-                          label: `🍽️ Menu guest ${menuGuest.number}/${menuGuest.total}: ${menuGuest.dish.name} · ${formatUsd(menuGuest.pays)}`,
-                          onClick: takeMenuGuest,
-                        }
-                      : {
-                          label: `Menu guest wants ${menuGuest.dish.name} — not in stock`,
+                          label: `Menu guest wants ${menuGuest.dish.name} — no clean place setting`,
                           onClick: () => {},
                           disabled: true,
-                        },
+                        }
+                      : menuGuest.inStock
+                        ? {
+                            label: `🍽️ Menu guest ${menuGuest.number}/${menuGuest.total}: ${menuGuest.dish.name} · ${formatUsd(menuGuest.pays)}`,
+                            onClick: takeMenuGuest,
+                          }
+                        : {
+                            label: `Menu guest wants ${menuGuest.dish.name} — not in stock`,
+                            onClick: () => {},
+                            disabled: true,
+                          },
                   }
                 : {}),
               ...((isCampaignService && campaignWillFinishNext) ||

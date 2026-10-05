@@ -31,10 +31,11 @@ CAREER (Levels 1–250) — each level is one SERVICE of the restaurant day
              ─► … the day's services (Lunch + Dinner; + Breakfast from L51)
              ─► CLOSING TIME (chores, the day's count, spoiled food) ─► Day N+1
 
-  L1   menu (2 dishes) + the restaurant day     L71  takeaway
+  L1   menu (2 dishes) + the restaurant day     L71  takeaway (~30% of orders: box + bag)
   L11  pantry: real ingredient stock            L91  full operation (closing = End Business Day)
   L21  fridge + freshness (food ages)           L121 expansion
-  L31  dine-in + supplies                       L161 established
+  L31  dine-in: place settings, napkins,       L161 established
+       dish soap, cleaning liquid
   L41  staff                                    L201 master
   L51  cuisines + specialist chefs              L241 Grand Service → L250 finale
   Menu: 2 dishes at L1 → 48 by L241 (restaurant/restaurantProgression.ts)
@@ -46,7 +47,7 @@ ENDLESS RESTAURANT (after Level 250) — the same restaurant, open-ended days,
 ```
 
 Not yet built in the restaurant (see `docs/RESTAURANT_INTEGRATION_AUDIT.md`):
-supplies use (G), bulk buying (H), staff
+bulk buying (H), staff
 requirements (I), specialist chefs (J), Endless Restaurant (L), the separate
 Business service entry's removal and the Restaurant name (L), migration (M).
 

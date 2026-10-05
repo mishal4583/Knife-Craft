@@ -185,6 +185,21 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   (`App.serveMenuGuestOrder`). `business-final-audit-qa` F2 and
   `business-wtp-qa` H2 name the two revenue writers (Business serve, menu
   guest). Browser: `tools/e2e/restaurantguests.mjs` (restaurant test build).
+- `restaurant-supplies-qa` — phase G, consumable supplies in a service
+  (`restaurant/serviceSupplies.ts`, every number in `SERVICE_SUPPLY_RULES`):
+  nothing before dine-in (L31); every order dine-in until L71, then a seeded
+  ~30% takeaway. Dine-in: a clean place setting (plate + fork + knife,
+  reusable → washing) and a napkin; takeaway: container + bag
+  (`takePackagingForOrder`) + napkin; taken automatically on serve, never on
+  a replay, never blocking there. Dish soap / cleaning liquid are gallon
+  bottles (`business.restaurantSupplies` = open-bottle %, settings washing;
+  sealed bottles = stock): soap per wash-up (after a service and at start),
+  cleaning liquid per closing; "~N services left", low / empty. The
+  Pre-Service Check's Supplies section: settings and packaging block,
+  napkins and bottles warn; Restock → the Market line; Grandma's spares
+  (cost 0, no money/ledger) only when the wallet can't cover what blocks.
+  Menu guests need a clean setting. No money moves when supplies are used.
+  Browser: `tools/e2e/restaurantsupplies.mjs` (restaurant test build).
 - `story-pause-qa` — the finale and milestone banners stop their timers
   (and animations, and finale taps) while paused, resuming with the time
   left (`PausableCountdown` on a fake clock); the finale's "BACK TO THE
@@ -235,7 +250,7 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   navigation-only actions, handle never takes a tap, 48 px targets).
 - `inventory-screen-qa` — the Inventory section: 5-item bottom bar, no
   Business Inventory/Supplies tab or `business-inventory` route, the
-  Ingredients | Supplies switch (N), supplies coverage/low/all 50 lines/
+  Ingredients | Supplies switch (N), supplies coverage/low/all 52 lines/
   read-only (U), all 57
   ingredients with the save's quantity/cost/freshness and fridge (A), the
   one status rule (S), Needs Attention (T), sorting (O), read-only +
@@ -401,7 +416,7 @@ with the real functions.
     perishability (≤ `EXPIRING_SOON_DAYS` = expiring), low =
     `lowStockItems`, critical = low that can't cover one average order
     (`dishesLeft < 1`). Each status shows a marker AND a word.
-  - The Supplies view: summary cards (Supplies on hand x/50 lines, Stock
+  - The Supplies view: summary cards (Supplies on hand x/52 lines, Stock
     value at cost basis, Running low, Takeaway orders covered =
     `packagingOrdersCovered`, the smaller of containers and bags on hand);
     Needs Attention kept short (one "Packaging covers N of today's M
@@ -511,8 +526,12 @@ equipment condition, inspections, fines, operating costs).
 Master spec §25. V3's phase sequence stays closed; this is its own scope
 with its own gates.
 
-- **Catalog** — `business/businessSupplies.ts`: 50 lines.
-  - Culinary smallwares 18, tableware 17, takeaway packaging 15.
+- **Catalog** — `business/businessSupplies.ts`: 52 lines.
+  - Culinary smallwares 18, tableware 17, takeaway packaging & hygiene 17
+    (dish soap and cleaning liquid added by Unified Restaurant phase G, in
+    "Securing & hygiene"; their prices are from WebstaurantStore's listing
+    on 2026-10-04 — re-check them in the economy pass). A bottle line is
+    "low" only with no bottle in stock.
   - Every retail pack price comes from a WebstaurantStore product page
     (retrieved 2026-10-02, recorded per line and in §25).
   - Game price = round(retail × 0.65), the ingredient rule.

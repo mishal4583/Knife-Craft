@@ -228,7 +228,9 @@ console.log("W. Wiring");
   );
   assert(
     /consumeCampaignOrderStock\(save, levelNumber\(level\.id\), recipe, true\)/.test(app) &&
-      /levelProgress: withMenuGuestServed\(stock\.save\.levelProgress, level\.id\)/.test(app) &&
+      // Phase G: the guest's place setting + napkin are taken from that same save first.
+      /const withSupplies = takeOrderSupplies\(\s*stock\.save,/.test(app) &&
+      /levelProgress: withMenuGuestServed\(withSupplies\.levelProgress, level\.id\)/.test(app) &&
       /persist\(appendLedgerEntry\(paid, "business-revenue", result\.coinsAwarded, dish\.id\)\)/.test(
         app,
       ),

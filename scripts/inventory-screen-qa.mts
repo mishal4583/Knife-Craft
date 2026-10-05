@@ -172,11 +172,12 @@ const ALL_IDS = Object.keys(INGREDIENTS) as IngredientId[];
   const ui = read("src/components/kc/inventory/InventorySupplies.tsx");
   assert(
     /SUPPLY_CATALOG\.filter\(\(item\) => item\.section === section\)/.test(ui) &&
-      SUPPLY_CATALOG.length === 50 &&
+      // 52 since phase G (dish soap + cleaning liquid, audit decision 6).
+      SUPPLY_CATALOG.length === 52 &&
       ["culinary", "service", "packaging"].every((sec) =>
         SUPPLY_CATALOG.some((i) => i.section === sec),
       ),
-    "U3: all 50 supply lines (smallwares, tableware & cutlery, takeaway) can be shown",
+    "U3: all 52 supply lines (smallwares, tableware & cutlery, takeaway) can be shown",
   );
   const code2 = code(ui).replace(/^import type .*$/gm, "");
   assert(

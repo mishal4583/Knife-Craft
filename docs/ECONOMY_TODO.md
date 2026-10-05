@@ -10,11 +10,11 @@ Status key: OPEN (not yet built), BUILT (exists, not balanced).
 |---|---|---|---|
 | P0 | **Remove double food-cost charging** after the unified restaurant system is implemented. The campaign settlement still deducts its built-in COGS (~$34.6k over 250 levels) while the player also buys real stock (~$2.2k at Market prices). Developer decision 2026-10-04: keep both in this phase, no hidden rewards or refunds. Target for the pass: level revenue → real ingredient consumption → supplies → actual profit. | OPEN | Formulas must not change in this phase. |
 | 1 | Campaign ingredient consumption | BUILT (phases 3–4, behind the switch) | Real stock costs are tiny next to campaign pay (a ~$1 tomato in a ~$45 order). |
-| 2 | Napkins / tissues per order | OPEN | Cost per order, pack sizes. |
-| 3 | Dishwashing liquid (new line, retail × 0.65) | OPEN | New item; usage rate per dine-in service. |
-| 4 | Cleaning supplies (new line, retail × 0.65) | OPEN | New item; usage and effect. |
-| 5 | Tableware breakage / replacement | OPEN | Reusable today; any loss rate is a cost. |
-| 6 | Takeaway packaging in campaign orders | OPEN | Same packs as Business; share of takeaway orders. |
+| 2 | Napkins per order (1 per dine-in or takeaway order, from L31) | BUILT (phase G) | Cost per order, pack sizes; no P&L line in the campaign. |
+| 3 | Dish soap (new line: $50.99 / 4 gal retail × 0.65; 5% of a gallon per wash-up) | BUILT (phase G) | Usage rate; price read from the store's search listing — re-check the product page. |
+| 4 | Cleaning liquid (new line: $51.49 / 4 gal retail × 0.65; 10% per closing) | BUILT (phase G) | Usage rate and effect (none yet beyond the warning; inspections later?). |
+| 5 | Tableware: reusable place settings (plate + fork + knife) with washing; no breakage | BUILT (phase G) | Any loss rate is a cost. Grandma's spare settings (cost 0) when the wallet can't cover them. |
+| 6 | Takeaway packaging in campaign orders (~30% of orders from L71: container + bag) | BUILT (phase G) | Same packs as Business; takeaway share. |
 | 7 | Staff wages during the campaign | OPEN | Waged staff currently cost more than they earn. |
 | 8 | Two staff systems (one-time helpers vs waged roles) | OPEN | Which one survives, and its value. |
 | 9 | Two supplier systems (campaign COGS ±10% vs Business contracts/events) | OPEN | One supplier effect. |

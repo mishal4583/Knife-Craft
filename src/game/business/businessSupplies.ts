@@ -8,7 +8,9 @@
  *   bakeware/storage, measuring/safety.
  * - **Tableware** (front of house): flatware, crockery, glassware,
  *   table accessories.
- * - **Takeaway packaging**: containers, boxes/wraps, bags, hygiene.
+ * - **Takeaway packaging**: containers, boxes/wraps, bags, hygiene
+ *   (napkins, tissues, and — Unified Restaurant phase G — dish soap and
+ *   cleaning liquid, used a little at a time from an open bottle).
  *
  * Deliberately NOT ingredients: nothing here is in `INGREDIENTS`, goes in
  * the refrigerator, spoils, or uses fridge capacity. Prep knives and
@@ -83,7 +85,9 @@ export type SupplyId =
   | "wet-wipes"
   | "cutlery-packs"
   | "toothpicks"
-  | "tamper-labels";
+  | "tamper-labels"
+  | "dish-soap"
+  | "cleaning-liquid";
 
 export type SupplyItem = {
   id: SupplyId;
@@ -856,7 +860,48 @@ export const SUPPLY_CATALOG: readonly SupplyItem[] = [
       url: `${W}tampersafe-1-x-3-white-paper-tamper-evident-label-roll/322TE1X3WPA.html`,
     },
   },
+  // ---- Takeaway: Securing & hygiene — cleaning (Unified Restaurant phase G) ----
+  // Bottles: the restaurant uses them a little at a time (restaurant/serviceSupplies.ts).
+  // These two prices were read from WebstaurantStore's own listing on 2026-10-04 (search
+  // index; the product page itself could not be opened from the build machine) — re-check
+  // them in the economy pass (docs/ECONOMY_TODO.md #3, #4).
+  {
+    id: "dish-soap",
+    name: "Dish soap · pot & pan",
+    section: "packaging",
+    group: "Securing & hygiene",
+    icon: "🧴",
+    packSize: 4,
+    unit: ["gallon bottle", "gallon bottles"],
+    retailPackCents: 5099,
+    source: {
+      product: "Noble Pan Pro I 1 Gallon / 128 oz. Concentrated Pot & Pan Soap - 4/Case",
+      url: `${W}noble-chemical-pan-pro-i-1-gallon-128-oz-pot-pan-soap-case/147PANPROI1G.html`,
+    },
+  },
+  {
+    id: "cleaning-liquid",
+    name: "Cleaning liquid · all-purpose",
+    section: "packaging",
+    group: "Securing & hygiene",
+    icon: "🧽",
+    packSize: 4,
+    unit: ["gallon bottle", "gallon bottles"],
+    retailPackCents: 5149,
+    source: {
+      product:
+        "Noble 1 Gallon / 128 oz. All Surf All Purpose Concentrated Liquid Cleaner (Non-Butyl) - 4/Case",
+      url: `${W}noble-chemical-1-gallon-128-oz-all-surf-all-purpose-liquid-cleaner-non-butyl-case/147ALLSURF1G.html`,
+    },
+  },
 ];
+
+/** Lines used a little at a time from an open bottle (restaurant/serviceSupplies.ts), never one per order. */
+export const BOTTLE_SUPPLY_IDS: readonly SupplyId[] = ["dish-soap", "cleaning-liquid"];
+
+export function isBottleSupply(item: SupplyItem): boolean {
+  return BOTTLE_SUPPLY_IDS.includes(item.id);
+}
 
 const BY_ID = new Map<string, SupplyItem>(SUPPLY_CATALOG.map((item) => [item.id, item]));
 

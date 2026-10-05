@@ -295,7 +295,34 @@ moved the menu to Level 1, re-ordered the systems and added a day clock.
 | C Early menu progression | done (behind the switch) | `restaurant-menu-qa`, e2e `restaurantday.mjs` 5 |
 | 5 Day clock (opening, services, closing, Day N+1) | done (behind the switch) | `restaurant-day-qa`, e2e `restaurantday.mjs` |
 | D Menu orders inside levels (menu guests) | done (behind the switch) | `restaurant-guests-qa`, e2e `restaurantguests.mjs` |
-| E–N (supplies, bulk buying, staff, specialists, Endless, migration, QA) | to do | — |
+| G Consumable supplies (place settings, napkins, dish soap, cleaning liquid, takeaway packaging) | done (behind the switch) | `restaurant-supplies-qa`, e2e `restaurantsupplies.mjs` |
+| H–N (bulk buying, staff, specialists, Endless, migration, QA) | to do | — |
+
+Phase G notes:
+
+- `restaurant/serviceSupplies.ts`, every number in `SERVICE_SUPPLY_RULES`
+  (napkins per order 1, soap 5% of a gallon per wash-up, cleaning liquid
+  10% per closing, takeaway share 30%, "low" at ≤ 3 services left).
+- Dine-in from L31: one clean place setting (dinner plate + fork + knife,
+  reusable) and a napkin per order; used settings wait in "washing" until
+  the wash-up (after the service, and again when the next one starts) uses
+  dish soap. Takeaway from L71: a seeded ~30% of a level's orders; one
+  container + one bag (Business's own rule) + a napkin. Menu guests eat in.
+- Only what a service can't run without blocks: clean settings and
+  takeaway packaging. Napkins, soap and cleaning liquid warn (no soap →
+  settings stay dirty, which then shows as short settings). When the wallet
+  can't cover what blocks, Grandma lends her spares (goods at cost 0, no
+  money, no ledger — the pantry rule), so nothing soft-locks.
+- Two catalog lines (decision 6): dish soap $50.99 and cleaning liquid
+  $51.49 a case of 4 gallons at retail, × 0.65. The product pages can't be
+  opened from the build machine; the prices are WebstaurantStore's own
+  search listing (2026-10-04), recorded in the code — re-check them.
+- Using supplies moves no money and writes no ledger entry; opening a
+  bottle or using a napkin/package moves its cost basis to the packaging
+  "used" totals (the same as Business packaging). No P&L line in the
+  campaign (Economy TODO #2–6).
+- Existing saves at L31+ have no tableware: the first check asks for it
+  (or Grandma's spares). A starter set for old saves is phase M (decision 8).
 
 Phase D notes:
 

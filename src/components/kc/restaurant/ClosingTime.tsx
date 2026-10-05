@@ -4,6 +4,7 @@ import type { SaveData } from "@/game/SaveManager";
 import { INGREDIENTS } from "@/game/definitions";
 import { formatUsd } from "@/game/money";
 import { closingPreview } from "@/game/restaurant/restaurantDay";
+import { SupplyBottle } from "./SupplyBottle";
 
 /**
  * CLOSING TIME (Unified Restaurant phase 5, behind RESTAURANT_MODE) — after
@@ -79,6 +80,18 @@ export function ClosingTime({
                 ? `Spoiled tonight: ${p.spoiled.ingredientIds.map((id) => INGREDIENTS[id]?.name ?? id).join(", ")} (${formatUsd(p.spoiled.value)} of food)`
                 : "Nothing spoiled today."}
             </p>
+          ) : null}
+
+          {p.cleaner ? (
+            <div className="mt-2" data-testid="closing-cleaner">
+              <SupplyBottle bottle={p.cleaner} per="closing" />
+              {p.cleaner.status === "empty" ? (
+                <p className="font-ui text-[12px] text-tomato">
+                  No cleaning liquid: the wipe-down is done with water tonight. Buy some in the
+                  Market → Takeaway → Securing &amp; hygiene.
+                </p>
+              ) : null}
+            </div>
           ) : null}
 
           <div

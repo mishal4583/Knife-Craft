@@ -250,7 +250,8 @@ console.log("W. Wiring");
 {
   const app = read("src/App.tsx");
   assert(
-    /if \(RESTAURANT_MODE && isFirstCompletion\)\s*nextSave = recordService\(nextSave, levelNumber\(level\.id\)\);/.test(
+    // Phase G wraps the count in the wash-up (serviceSupplies.washUp); the guard is the same.
+    /if \(RESTAURANT_MODE && isFirstCompletion\)\s*nextSave = (?:washUp\(\s*)?recordService\(nextSave, levelNumber\(level\.id\)\)/.test(
       app,
     ),
     "W1: a service is counted only on a first completion, only under RESTAURANT_MODE",

@@ -24,7 +24,9 @@
  *    Business uses) advances one day and stock that expired is thrown out,
  *    recorded as waste with End Business Day's own multipliers; no money;
  *  - from full operation (L91) closing IS End Business Day (payroll,
- *    inspection, popularity, the day's P&L), the existing function.
+ *    inspection, popularity, the day's P&L), the existing function;
+ *  - from dine-in (L31) the wipe-down uses cleaning liquid
+ *    (serviceSupplies.ts; none left is a warning, never a block).
  *
  * Replays, Today's Special and Endless never count services. State lives in
  * `business.restaurantDay` (old saves get the default: Day 1, not open).
@@ -38,6 +40,7 @@ import { normalizeQuantity } from "../business/businessInventory";
 import { endBusinessDay } from "../business/BusinessDayManager";
 import { wasteValueFor } from "../business/discardExpired";
 import { CLOSING_CHORES, isSystemLive, servicesForDayAt } from "./restaurantProgression";
+import { bottleView, closingWipeDown, type BottleView } from "./serviceSupplies";
 
 export type RestaurantDayState = {
   /** The restaurant's day number, from 1. */
@@ -133,6 +136,8 @@ export type ClosingPreview = {
   spoiled: { quantity: number; value: number; ingredientIds: IngredientId[] } | null;
   /** Closing runs the full End Business Day (payroll, inspection, P&L). */
   fullDayEnd: boolean;
+  /** The wipe-down's cleaning liquid (from dine-in, L31); null before. */
+  cleaner: BottleView | null;
 };
 
 /** What the Closing Time screen shows for the day that's ending (read-only). */
@@ -160,6 +165,7 @@ export function closingPreview(save: SaveData, levelNumber: number): ClosingPrev
     cashNow: save.credits,
     spoiled,
     fullDayEnd: isSystemLive("full-operation", levelNumber),
+    cleaner: isSystemLive("dine-in", levelNumber) ? bottleView(save, "cleaning-liquid") : null,
   };
 }
 
@@ -199,5 +205,6 @@ export function closeDay(save: SaveData, levelNumber: number): SaveData {
       },
     };
   }
+  next = closingWipeDown(next, levelNumber).save;
   return withDay(next, { ...DEFAULT_RESTAURANT_DAY_STATE, day: d.day + 1 });
 }

@@ -302,7 +302,8 @@ conversation.
 26. Business Supplies (developer's Shop UI production handoff). This is a
    separately authorized extension, NOT V3-17: master spec §25, with a
    note in the execution protocol.
-   - Three Market sections, Smallwares · Tableware · Takeaway: 50 lines,
+   - Three Market sections, Smallwares · Tableware · Takeaway: 50 lines
+     (52 since Unified Restaurant phase G: dish soap, cleaning liquid),
      each with a sourced WebstaurantStore pack price (2026-10-02) at the
      ingredient rule, ×0.65.
    - A Business → Supplies tab showing saved stock, stock value, spend and
@@ -346,6 +347,14 @@ conversation.
    whole app below it: a served order came back at its first step and the
    result panel vanished. Now one wrapper always exists and only its style
    changes. e2e `tools/e2e/resize.mjs`.
+
+27. Unified Restaurant phase G (behind RESTAURANT_MODE): consumable
+   supplies in a service — place settings with washing, napkins, dish soap
+   and cleaning liquid as bottles (% and ~N services left), takeaway
+   packaging from L71; Pre-Service Check Supplies section, Grandma's spares,
+   Inventory → Supplies "For service" panel, Closing Time's cleaning liquid.
+   `restaurant-supplies-qa`, e2e `restaurantsupplies.mjs`. Details:
+   `docs/RESTAURANT_INTEGRATION_AUDIT.md` (Phase G notes).
 
 ## 4. Open issues from the Level 1–10 audit (not fixed yet)
 

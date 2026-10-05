@@ -9,6 +9,14 @@ import { purchaseUnitFor } from "@/game/business/businessPricing";
 import { formatUsd } from "@/game/money";
 import type { ServiceStockCheck, StockRow } from "@/game/restaurant/campaignStock";
 import type { DayService } from "@/game/restaurant/restaurantDay";
+import type {
+  OrderService,
+  ServiceSuppliesCheck,
+  SupplyCheckRow,
+} from "@/game/restaurant/serviceSupplies";
+import type { SupplyId } from "@/game/business/businessSupplies";
+import { getSupplyItem } from "@/game/business/businessSupplies";
+import { SupplyBottle } from "./SupplyBottle";
 
 /**
  * PRE_SERVICE_CHECK (Unified Restaurant spec §6, §24–25) — shown before a
@@ -30,6 +38,12 @@ import type { DayService } from "@/game/restaurant/restaurantDay";
  * restaurant day it always shows ("Day N · Opening time", the day's services
  * by name and level) and its button opens the restaurant; before Level 11
  * there is no stock to check, so it is only the opening card.
+ *
+ * Phase G (from dine-in, L31): a Supplies section — clean place settings,
+ * takeaway containers and bags (from L71), napkins, and the dish-soap and
+ * cleaning-liquid bottles. Only missing settings / packaging block START;
+ * napkins and bottles warn. Restock → the Market's Supplies on that line;
+ * when the wallet can't cover what blocks, Grandma lends her spares.
  */
 export function PreServiceCheck({
   levelNumber,
@@ -44,6 +58,10 @@ export function PreServiceCheck({
   onUsePantry,
   onUpgradeFridge,
   onClose,
+  services = [],
+  supplies = { applies: false },
+  onRestockSupply = () => {},
+  onBorrowSpares = () => {},
 }: {
   levelNumber: number;
   day: number;
@@ -58,11 +76,18 @@ export function PreServiceCheck({
   onUsePantry: () => void;
   onUpgradeFridge: () => void;
   onClose: () => void;
+  /** Each ticket's dine-in / takeaway (phase G). */
+  services?: readonly (OrderService | null)[];
+  supplies?: ServiceSuppliesCheck;
+  onRestockSupply?: (id: SupplyId) => void;
+  onBorrowSpares?: () => void;
 }) {
   const stock = check.applies ? check : null;
+  const sup = supplies.applies ? supplies : null;
   const fridgeShort = !!stock && stock.storageNeeded > stock.storageFree;
   const canStart =
-    !stock || (stock.ready && !stock.rows.some((r) => r.expired > 0 && r.usable < r.needed));
+    (!stock || (stock.ready && !stock.rows.some((r) => r.expired > 0 && r.usable < r.needed))) &&
+    (!sup || sup.ready);
   return (
     <div
       className="absolute inset-0 z-40 flex items-end justify-center"
@@ -113,6 +138,12 @@ export function PreServiceCheck({
             {tickets.map((r, i) => (
               <li key={`${r.id}-${i}`} className="font-ui text-[14px] font-bold text-walnut-dark">
                 {r.name}
+                {services[i] === "takeaway" ? (
+                  <span className="font-ui text-[12px] font-extrabold text-copper">
+                    {" "}
+                    · 🥡 takeaway
+                  </span>
+                ) : null}
               </li>
             ))}
           </ul>
@@ -127,6 +158,57 @@ export function PreServiceCheck({
                   <IngredientRow key={row.ingredientId} row={row} onRestock={onRestock} />
                 ))}
               </ul>
+            </>
+          ) : null}
+
+          {sup ? (
+            <>
+              <p className="mt-3 font-ui text-[12px] font-extrabold uppercase tracking-wide text-walnut/60">
+                Supplies · {sup.dineIn} dine-in
+                {sup.takeaway > 0 ? ` · ${sup.takeaway} takeaway` : ""}
+              </p>
+              <ul className="mt-1 divide-y divide-walnut/10" data-testid="psc-supplies">
+                {sup.rows.map((row) => (
+                  <SupplyRow key={row.id} row={row} onRestock={onRestockSupply} />
+                ))}
+              </ul>
+              <div className="divide-y divide-walnut/10" data-testid="psc-bottles">
+                <SupplyBottle
+                  bottle={sup.soap}
+                  per="service"
+                  onRestock={() => onRestockSupply("dish-soap")}
+                />
+                <SupplyBottle
+                  bottle={sup.cleaner}
+                  per="closing"
+                  onRestock={() => onRestockSupply("cleaning-liquid")}
+                />
+              </div>
+              {!sup.ready ? (
+                <div
+                  className="mt-2 rounded-2xl border border-walnut/15 bg-ivory/70 p-3"
+                  data-testid="psc-supplies-summary"
+                >
+                  <p className="font-ui text-[13px] font-bold text-walnut-dark">
+                    The service can't start without these · {formatUsd(sup.missingCost)}
+                  </p>
+                  {!sup.affordable ? (
+                    <>
+                      <p className="mt-1 font-ui text-[13px] font-bold text-tomato">
+                        Not enough money — need {formatUsd(sup.missingCost - credits)} more.
+                      </p>
+                      <KButton
+                        size="sm"
+                        variant="sage"
+                        className="mt-2 h-auto min-h-12 py-2 leading-tight"
+                        onClick={onBorrowSpares}
+                      >
+                        🧺 Borrow Grandma's spares (free, just what's missing)
+                      </KButton>
+                    </>
+                  ) : null}
+                </div>
+              ) : null}
             </>
           ) : null}
 
@@ -236,6 +318,47 @@ function IngredientRow({
           onClick={() => onRestock(row.ingredientId)}
         >
           Restock {row.buyUnits} · {formatUsd(row.quote?.totalCost ?? 0)}
+        </KButton>
+      )}
+    </li>
+  );
+}
+
+function SupplyRow({ row, onRestock }: { row: SupplyCheckRow; onRestock: (id: SupplyId) => void }) {
+  const ok = row.missing === 0;
+  const item = getSupplyItem(row.id);
+  return (
+    <li
+      className="flex min-h-12 items-center gap-2 py-1.5"
+      data-psc-supply={row.id}
+      data-psc-status={ok ? "ok" : row.blocking ? "missing" : "warning"}
+    >
+      <span className="text-[20px]" aria-hidden>
+        {item?.icon}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="font-ui text-[14px] font-bold text-walnut-dark">{row.label}</p>
+        <p
+          className={cn(
+            "font-ui text-[12px]",
+            ok ? "text-walnut/60" : row.blocking ? "text-tomato" : "text-copper",
+          )}
+        >
+          Need {row.need} · have {row.have}
+          {row.dirty > 0 ? ` (+${row.dirty} waiting for soap)` : ""}
+          {!ok && !row.blocking ? " · ⚠️ guests go without" : ""}
+        </p>
+      </div>
+      {ok ? (
+        <span className="font-ui text-[13px] font-extrabold text-sage">✓ Ready</span>
+      ) : (
+        <KButton
+          size="sm"
+          variant={row.blocking ? "copper" : "ghost"}
+          className="min-h-12"
+          onClick={() => onRestock(row.id)}
+        >
+          Restock {row.packs} · {formatUsd(row.cost)}
         </KButton>
       )}
     </li>

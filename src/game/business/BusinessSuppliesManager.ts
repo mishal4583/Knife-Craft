@@ -15,6 +15,7 @@ import { debitWallet } from "../economy/wallet";
 import {
   SUPPLY_CATALOG,
   getSupplyItem,
+  isBottleSupply,
   isConsumableSupply,
   supplyPackPrice,
   type BusinessSuppliesState,
@@ -133,7 +134,7 @@ export type PackagingUse = {
 };
 
 /** Removes one unit of `id`, taking its share of the cost basis (rounded; the last unit takes what's left). */
-function takeOne(
+export function takeOne(
   stock: BusinessSuppliesState["stock"],
   id: SupplyId,
 ): { stock: BusinessSuppliesState["stock"]; cost: number } | null {
@@ -191,13 +192,16 @@ export function supplyUnits(supplies: BusinessSuppliesState, id: SupplyId): numb
 
 /**
  * A packaging line is low when it can't cover today's customers (one unit
- * each). Durable equipment is never "low": it isn't used up.
+ * each). Durable equipment is never "low": it isn't used up. A bottle line
+ * (dish soap, cleaning liquid) lasts many services, so it is low only with
+ * no bottle in stock.
  */
 export function isLowSupply(
   supplies: BusinessSuppliesState,
   item: SupplyItem,
   customersToday: number,
 ): boolean {
+  if (isBottleSupply(item)) return supplyUnits(supplies, item.id) < 1;
   return isConsumableSupply(item) && supplyUnits(supplies, item.id) < Math.max(1, customersToday);
 }
 

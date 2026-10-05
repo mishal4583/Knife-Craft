@@ -3,7 +3,9 @@ import type { ScreenId } from "@/components/kc/data";
 import { getLevel } from "@/game/levels/LevelManager";
 import { servicePlanFor } from "@/game/restaurant/preServiceCheck";
 import { pantryForMissing } from "@/game/restaurant/campaignStock";
-import { openMarketIngredients } from "@/components/kc/marketFocus";
+import { grandmasSpares } from "@/game/restaurant/serviceSupplies";
+import { getSupplyItem } from "@/game/business/businessSupplies";
+import { openMarketIngredients, openMarketSupplies } from "@/components/kc/marketFocus";
 import { PreServiceCheck } from "./PreServiceCheck";
 
 /**
@@ -41,7 +43,7 @@ export function ServiceCheckLayer({
   const n = plan.levelNumber;
   const check = plan.check;
 
-  if (screen === "shop" || screen === "shop-ingredients") {
+  if (screen === "shop" || screen === "shop-ingredients" || screen === "shop-supplies") {
     return (
       <div className="pointer-events-none absolute inset-x-0 bottom-[84px] z-40 flex justify-center px-4">
         <button
@@ -82,6 +84,15 @@ export function ServiceCheckLayer({
       }}
       onUpgradeFridge={() => go("business-refrigerator")}
       onClose={onClose}
+      services={plan.services}
+      supplies={plan.supplies}
+      onRestockSupply={(id) =>
+        openMarketSupplies(go, getSupplyItem(id)?.section ?? "packaging", id)
+      }
+      onBorrowSpares={() => {
+        const next = grandmasSpares(save, plan.supplies);
+        if (next) onUsePantry(next);
+      }}
     />
   );
 }

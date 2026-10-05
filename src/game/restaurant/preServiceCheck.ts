@@ -18,6 +18,13 @@ import { paidOrdersFor } from "../levels/paidOrders";
 import { ticketsFor } from "./serviceTickets";
 import { serviceStockCheck, serviceUsesStock, type ServiceStockCheck } from "./campaignStock";
 import { opensNewDay, restaurantDayOf, todaysServices, type DayService } from "./restaurantDay";
+import {
+  orderServiceFor,
+  serviceSuppliesCheck,
+  suppliesNeedAttention,
+  type OrderService,
+  type ServiceSuppliesCheck,
+} from "./serviceSupplies";
 
 export type PendingService = {
   level: LevelDefinition;
@@ -59,13 +66,19 @@ export type ServicePlan = {
   day: number;
   /** Today's services when this level opens the day; null mid-day. */
   opening: DayService[] | null;
+  /** Each remaining ticket's dine-in / takeaway (null before L31: no supplies). */
+  services: (OrderService | null)[];
+  /** Place settings, napkins, packaging, dish soap, cleaning liquid (phase G). */
+  supplies: ServiceSuppliesCheck;
 };
 
 export function servicePlanFor(save: SaveData, level: LevelDefinition): ServicePlan | null {
   if (isCompleted(level.id, save.levelProgress)) return null;
   const n = levelNumber(level.id);
   const { tickets, progress } = ticketsFor(save.levelProgress, level);
-  const remaining = tickets.slice(paidOrdersFor(progress, level.id).length);
+  const paid = paidOrdersFor(progress, level.id).length;
+  const remaining = tickets.slice(paid);
+  const services = remaining.map((_, i) => orderServiceFor(n, paid + i));
   return {
     level,
     levelNumber: n,
@@ -74,12 +87,15 @@ export function servicePlanFor(save: SaveData, level: LevelDefinition): ServiceP
     progress,
     day: restaurantDayOf(save).day,
     opening: opensNewDay(save) ? todaysServices(save, n) : null,
+    services,
+    supplies: serviceSuppliesCheck(save, n, services),
   };
 }
 
-/** The sheet shows when the day opens or the stock needs attention. */
+/** The sheet shows when the day opens or the stock or supplies need attention. */
 export function servicePlanNeedsSheet(plan: ServicePlan | null): boolean {
   if (!plan) return false;
   if (plan.opening) return true;
+  if (suppliesNeedAttention(plan.supplies)) return true;
   return plan.check.applies && (!plan.check.ready || plan.check.hasExpired);
 }

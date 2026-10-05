@@ -25,6 +25,14 @@ import {
 } from "@/game/business/BusinessSuppliesManager";
 import { businessCustomersToday } from "@/game/business/BusinessServiceManager";
 import { openMarketSupplies } from "../marketFocus";
+import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
+import {
+  bottleView,
+  cleanSettings,
+  restaurantSuppliesOf,
+  settingsOwned,
+} from "@/game/restaurant/serviceSupplies";
+import { SupplyBottle } from "../restaurant/SupplyBottle";
 
 type SupplyStatus = "low" | "in-stock" | "owned" | "none";
 
@@ -128,6 +136,36 @@ export function InventorySupplies({ go, save }: { go: (s: ScreenId) => void; sav
           sub={`${containers} containers · ${bags} bags`}
         />
       </div>
+
+      {RESTAURANT_MODE ? (
+        // Unified Restaurant (phase G): what a service uses up — read-only.
+        <div data-testid="supplies-restaurant">
+          <Panel className="p-4">
+            <Eyebrow>🍽️ For service</Eyebrow>
+            <p className="mt-1 font-ui text-[14px] font-bold text-walnut-dark">
+              Place settings: {cleanSettings(save)} clean
+              {restaurantSuppliesOf(save).washing > 0
+                ? ` · ${Math.min(restaurantSuppliesOf(save).washing, settingsOwned(save))} waiting to be washed`
+                : ""}
+            </p>
+            <p className="font-ui text-[12px] text-walnut/60">
+              A plate, a fork and a knife per dine-in guest; washed after each service.
+            </p>
+            <div className="mt-1 divide-y divide-walnut/10">
+              <SupplyBottle
+                bottle={bottleView(save, "dish-soap")}
+                per="service"
+                onRestock={() => openMarketSupplies(go, "packaging", "dish-soap")}
+              />
+              <SupplyBottle
+                bottle={bottleView(save, "cleaning-liquid")}
+                per="closing"
+                onRestock={() => openMarketSupplies(go, "packaging", "cleaning-liquid")}
+              />
+            </div>
+          </Panel>
+        </div>
+      ) : null}
 
       <Panel className="p-4">
         <div data-testid="supplies-attention">

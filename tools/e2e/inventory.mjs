@@ -332,11 +332,11 @@ const supButtons = await page.evaluate(() =>
   ),
 );
 check(
-  "6d Inventory → Supplies: 18 smallwares, 17 tableware incl. cutlery, 15 takeaway parcels; summary cards; one packaging alert (not 15); nothing to buy",
+  "6d Inventory → Supplies: 18 smallwares, 17 tableware incl. cutlery, 17 takeaway & hygiene (dish soap and cleaning liquid since phase G); summary cards; one packaging alert (not 17); nothing to buy",
   smallwares.length === 18 &&
     tableware.length === 17 &&
     tableware.includes("dinner-forks") &&
-    takeaway.length === 15 &&
+    takeaway.length === 17 &&
     /Supplies on hand/.test(supSummary) &&
     /Takeaway orders covered/.test(supSummary) &&
     !supButtons.some((t) => /^Buy|^[−+]$/.test(t)) &&
