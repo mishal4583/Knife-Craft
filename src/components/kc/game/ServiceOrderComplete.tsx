@@ -1,3 +1,4 @@
+import { foodFromStock } from "@/game/restaurant/restaurantEconomy";
 import { useState } from "react";
 import { KButton, Panel } from "../common/primitives";
 import { CurrencyPill } from "../common/Indicators";
@@ -63,7 +64,12 @@ function SettlementBreakdown({
         <Row label="Recipe Earnings" value={settlement.revenue} />
         <Row label="Quality Bonus" value={settlement.qualityBonus} />
         <div className="my-1 h-px bg-walnut/10" />
-        <Row label="Ingredient COGS" value={-settlement.finalCOGS} />
+        {foodFromStock(settlement) ? (
+          // Unified Restaurant: the ingredients came from your own stock, paid in the Market.
+          <p className="text-walnut/60">Ingredients · from your stock (paid in the Market)</p>
+        ) : (
+          <Row label="Ingredient COGS" value={-settlement.finalCOGS} />
+        )}
         {supplier ? (
           <Row label={`Supplier · ${supplier.name}`} value={settlement.supplierCOGSAdjustment} />
         ) : null}

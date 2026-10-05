@@ -262,6 +262,15 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   flows. Report: `docs/RESTAURANT_QA_REPORT.md`. Browser:
   `tools/e2e/restaurantwidths.mjs` (every restaurant screen at 320–768 px:
   no sideways scroll, buttons ≥ 48 px).
+- `restaurant-economy-pass-qa` — the economy pass (restaurant build only):
+  P0 (`restaurant/restaurantEconomy.ts`) — a campaign order pays recipe
+  earnings + quality bonus, its food being the real stock bought in the
+  Market (no built-in food cost; boosts to the quality bonus kept; the
+  release settlement unchanged); measured with the full simulation
+  (`scripts/restaurantCampaignSim.mts`), a completionist owns everything at
+  L250 with $129,324 (target $100k–$150k; $95,082 with the double charge);
+  no soft-lock, cash = ledger. Prints the Endless Restaurant's daily
+  profit (an open decision).
 - `story-pause-qa` — the finale and milestone banners stop their timers
   (and animations, and finale taps) while paused, resuming with the time
   left (`PausableCountdown` on a fake clock); the finale's "BACK TO THE

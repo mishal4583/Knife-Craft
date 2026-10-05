@@ -50,7 +50,17 @@ fines without ledger entries (fixed in the 2026-10-05 brief); the resize
 remount (fixed before phase G); "Restock to start" when only staff were
 missing (phase M).
 
-## Findings for the economy pass (not changed — docs/ECONOMY_TODO.md)
+## Economy pass (after phase N)
+
+- **P0 fixed**: no double food cost in the restaurant (orders pay earnings +
+  quality bonus; the food is the real stock). A completionist who buys
+  everything now ends L250 with **$129,324** — inside the approved
+  $100k–$150k (it was $95,082). `restaurant-economy-pass-qa`.
+- Open with numbers: the Endless Restaurant loses ~$200/day with the
+  campaign's team (+~$30/day with none) vs the classic Endless Service's
+  $600/day; item food-cost savings vanish under P0.
+
+## Findings for the economy pass (as found in phase N — see above for what changed)
 
 - **Wages dominate the restaurant's costs**: ~$21.6k of wages against ~$5.6k
   of ingredients for the diligent player. Staff are free before L91 (wages

@@ -383,6 +383,13 @@ conversation.
    stock as optional rows (689 guests). Report and economy findings:
    `docs/RESTAURANT_QA_REPORT.md`.
 
+31. Economy pass (restaurant build): P0 — no double food cost
+   (`restaurant/restaurantEconomy.ts`); the completionist now ends L250 with
+   $129,324 (target $100k–$150k; was $95,082). The simulation is a module
+   (`scripts/restaurantCampaignSim.mts`) shared by the sim and economy QA.
+   Open decisions: Endless Restaurant profitability (−$200/day with the
+   team), item effects under P0. `restaurant-economy-pass-qa`.
+
 ## 4. Open issues from the Level 1–10 audit (not fixed yet)
 
 Priority order as agreed in the audit (P0 = before wide release):

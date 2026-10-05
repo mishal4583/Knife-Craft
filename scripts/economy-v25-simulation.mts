@@ -168,7 +168,7 @@ type BuyAttempt = {
 };
 
 /** Everything purchasable, in the order a keen player buys it. */
-function buyAttempts(): BuyAttempt[] {
+export function buyAttempts(): BuyAttempt[] {
   const attempts: BuyAttempt[] = [];
   for (const k of KNIFE_CATALOG.filter((k) => k.price > 0)) {
     attempts.push({

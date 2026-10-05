@@ -100,6 +100,7 @@ import { fireSpecialist, getSpecialist, hireSpecialist } from "@/game/restaurant
 import { BULK_MAX_PACKS, bulkDiscountFor } from "@/game/restaurant/bulkBuying";
 import { businessDayAllowed } from "@/game/restaurant/endlessRestaurant";
 import { markStarterCrateSeen } from "@/game/restaurant/restaurantMigration";
+import { restaurantSettlement } from "@/game/restaurant/restaurantEconomy";
 import { businessCustomerPayment } from "@/game/business/BusinessServiceManager";
 import { recordRevenueAndCogs } from "@/game/business/BusinessFinanceManager";
 import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
@@ -1402,7 +1403,7 @@ export function App() {
     // just `.netResult`) so the result UI can show it, but nothing about
     // WHAT gets credited or WHEN changes: `amount` below is still exactly
     // `settlement?.netResult ?? 0`, byte-identical to before this phase.
-    const settlement = isReplay
+    const computed = isReplay
       ? undefined
       : computeSettlement(
           recipe,
@@ -1414,6 +1415,9 @@ export function App() {
           save?.ownedStaffIds,
           save?.selectedSupplierId,
         );
+    // Unified Restaurant (economy pass P0): the food was bought as real stock,
+    // so the built-in food cost isn't charged again (restaurantEconomy.ts).
+    const settlement = computed && RESTAURANT_MODE ? restaurantSettlement(computed) : computed;
     const amount = settlement?.netResult ?? 0;
     const result = serveCurrentOrder(campaignServiceSession, Math.random, amount);
     if (!result) return null;
@@ -1774,7 +1778,7 @@ export function App() {
     // Economy V2 Phase 9 — mirrors serveCampaignOrder's own doc exactly:
     // the full breakdown is kept for the result UI, `amount` stays
     // exactly `settlement?.netResult ?? 0`.
-    const settlement = isReplay
+    const computed = isReplay
       ? undefined
       : computeSettlement(
           viewed.recipe,
@@ -1786,6 +1790,9 @@ export function App() {
           save?.ownedStaffIds,
           save?.selectedSupplierId,
         );
+    // Unified Restaurant (economy pass P0): the food was bought as real stock,
+    // so the built-in food cost isn't charged again (restaurantEconomy.ts).
+    const settlement = computed && RESTAURANT_MODE ? restaurantSettlement(computed) : computed;
     const amount = settlement?.netResult ?? 0;
     const result = serveBatchGroupOrder(batchGroupSession, batchViewOrderId, Math.random, amount);
     if (!result) return null;

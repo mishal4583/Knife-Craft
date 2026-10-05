@@ -8,7 +8,7 @@ Status key: OPEN (not yet built), BUILT (exists, not balanced).
 
 | # | Interaction | Status | Why it needs the economy pass |
 |---|---|---|---|
-| P0 | **Remove double food-cost charging** after the unified restaurant system is implemented. The campaign settlement still deducts its built-in COGS (~$34.6k over 250 levels) while the player also buys real stock (~$2.2k at Market prices). Developer decision 2026-10-04: keep both in this phase, no hidden rewards or refunds. Target for the pass: level revenue → real ingredient consumption → supplies → actual profit. | OPEN | Formulas must not change in this phase. |
+| P0 | **Double food-cost charging — FIXED in the economy pass (restaurant build).** A campaign order pays recipe earnings + quality bonus; the built-in food cost isn't deducted, because the real stock was bought in the Market (`restaurant/restaurantEconomy.ts`, App's two serve paths, result screen "Ingredients · from your stock"). The release build's settlement and the frozen V2 baseline are unchanged. A completionist who buys everything ends L250 with **$129,324** (was $95,082; approved target $100k–$150k). Side effect for the developer to decide: knives, boards, kitchen helpers and the Campaign Supplier lose their food-cost savings in the restaurant (their quality-bonus boosts stay). | BUILT | `restaurant-economy-pass-qa`. |
 | 1 | Campaign ingredient consumption | BUILT (phases 3–4, behind the switch) | Real stock costs are tiny next to campaign pay (a ~$1 tomato in a ~$45 order). |
 | 2 | Napkins per order (1 per dine-in or takeaway order, from L31) | BUILT (phase G) | Cost per order, pack sizes; no P&L line in the campaign. |
 | 3 | Dish soap (new line: $50.99 / 4 gal retail × 0.65; 5% of a gallon per wash-up) | BUILT (phase G) | Usage rate; price read from the store's search listing — re-check the product page. |
@@ -41,6 +41,20 @@ Phase N simulation (`scripts/restaurant-campaign-sim-qa.mts`, report in
 689 guests); a player at $0 before every level still finishes on Grandma's
 pantry/spares and free re-hiring (staff effectively unpaid); the Basic
 fridge (40) is enough for every service.
+
+Economy pass (2026-10-05), measured with the full restaurant simulation
+(`scripts/restaurant-economy-pass-qa.mts`): P0 fixed and in band (above).
+Still open, with numbers, for the developer:
+
+- **Endless Restaurant profitability**: after L250 the Business engine with
+  the team the campaign required (6 roles, $259/day payroll) loses about
+  **$200/day**; with no staff it earns about **$30/day** (~8 customers),
+  against the classic Endless Service's up to $600/day. Specialist chefs
+  aren't paid in the Business day yet.
+- **Item effects under P0**: knives/boards/helpers/supplier keep only their
+  quality-bonus boosts.
+- **Staff before L91** stay free (the completionist is in band without
+  them; charging them would lower it).
 
 Questions the pass must answer (spec §48): can a player afford required
 items; can they go into debt (never); money left after L250; Endless
