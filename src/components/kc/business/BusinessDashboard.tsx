@@ -27,6 +27,7 @@ import { BusinessSuppliers } from "./BusinessSuppliers";
 import { BusinessMenu } from "./BusinessMenu";
 import { BusinessInspections } from "./BusinessInspections";
 import { BusinessFinance } from "./BusinessFinance";
+import { BusinessHistory } from "./BusinessHistory";
 import { cn } from "@/lib/utils";
 import { dayOfWeekFor, businessWeekFor } from "@/game/business/businessCalendar";
 import { formatQuantity } from "@/game/business/businessInventory";
@@ -1147,6 +1148,7 @@ function Operations({
 
       <BusinessInspections save={save} />
       <BusinessFinance save={save} />
+      <BusinessHistory save={save} />
       <OperationsAnalytics save={save} />
     </div>
   );

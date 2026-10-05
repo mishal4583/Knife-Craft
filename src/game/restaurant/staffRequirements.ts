@@ -31,6 +31,7 @@ import type { RecipeDefinition } from "../recipes/recipeTypes";
 import { BUSINESS_STAFF_CATALOG, type BusinessStaffRole } from "../business/businessStaff";
 import { debitWallet } from "../economy/wallet";
 import { appendLedgerEntry } from "../economy/EconomyLedger";
+import { addSpecialistWagesToLatestDay } from "../business/businessDayHistory";
 import { activeMenuDishes } from "./restaurantMenu";
 import { CUISINES, isSystemLive, menuGuestsPerService } from "./restaurantProgression";
 import type { OrderService } from "./serviceSupplies";
@@ -193,6 +194,8 @@ export function paySpecialists(
   let next = debit.save;
   for (const id of specialists)
     next = appendLedgerEntry(next, "business-staff-salary", -getSpecialist(id)!.dailyWage, id);
+  // Paid right after End Business Day: part of that day's wages in the 30-day history.
+  next = addSpecialistWagesToLatestDay(next, total);
   return { save: next, paid: total, laidOff: [] };
 }
 
