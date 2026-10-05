@@ -97,6 +97,7 @@ export function ServiceCheckLayer({
         openMarketSupplies(go, getSupplyItem(id)?.section ?? "packaging", id)
       }
       news={plan.news}
+      welcome={plan.welcome}
       staff={plan.staff}
       onHireStaff={() => go("business-staff")}
       fridge={isSystemLive("fridge-freshness", n) ? fridgeUsage(save) : null}

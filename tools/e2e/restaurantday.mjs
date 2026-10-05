@@ -11,6 +11,7 @@
 //   6. 320×568: the closing sheet fits, no sideways scroll, buttons ≥ 48 px.
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import {
+  MOVED_IN_BUSINESS,
   launch,
   boot,
   seedSave,
@@ -93,6 +94,7 @@ async function playLevel() {
 await boot(
   page,
   seedSave({
+    business: MOVED_IN_BUSINESS,
     credits: 5000,
     levelProgress: {
       currentLevelId: "level-5",

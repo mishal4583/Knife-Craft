@@ -10,7 +10,17 @@
 //   5. Level 30 with an empty fridge (stock from L11): the guest button says the dish isn't in
 //      stock and is disabled.
 // Prints PASS/FAIL per check and exits 1 on any failure.
-import { launch, boot, seedSave, sleep, clickButton, readSave, shot, text } from "./harness.mjs";
+import {
+  MOVED_IN_BUSINESS,
+  launch,
+  boot,
+  seedSave,
+  sleep,
+  clickButton,
+  readSave,
+  shot,
+  text,
+} from "./harness.mjs";
 import { playToReport } from "./solver.mjs";
 
 const results = [];
@@ -77,6 +87,7 @@ const guestButton = () =>
   });
 const saveAt = (n, credits) =>
   seedSave({
+    business: MOVED_IN_BUSINESS,
     credits,
     levelProgress: {
       currentLevelId: `level-${n}`,

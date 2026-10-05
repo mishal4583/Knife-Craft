@@ -297,7 +297,30 @@ moved the menu to Level 1, re-ordered the systems and added a day clock.
 | D Menu orders inside levels (menu guests) | done (behind the switch) | `restaurant-guests-qa`, e2e `restaurantguests.mjs` |
 | G Consumable supplies (place settings, napkins, dish soap, cleaning liquid, takeaway packaging) | done (behind the switch) | `restaurant-supplies-qa`, e2e `restaurantsupplies.mjs` |
 | Brief 2026-10-05: menu from L11 on the developer's curve, tied to cuisine chapters; restaurant news; staff requirements + specialist chefs; bulk buying; Inventory NEEDS ATTENTION; fridge warnings; one restaurant before L250, Endless Restaurant after | done (behind the switch) | `restaurant-menu-qa`, `restaurant-progression-qa`, e2e `restaurantprogression.mjs` |
-| M migration, N final QA | to do | — |
+| M Save migration (starter crate, once, no money) | done (behind the switch) | `restaurant-migration-qa`, e2e `restaurantmigration.mjs` |
+| N final QA | to do | — |
+
+Phase M notes:
+
+- `restaurant/restaurantMigration.ts`, run by `SaveManager.load` (and on
+  reset and for a fresh save) only in the restaurant build, after the
+  economy migration, written back at once. Stamped in
+  `business.restaurantMigration` (version 1), so it runs once.
+- Kept as they are: levels, credits, ledger, economy, items, kitchens,
+  Business stock, staff, menu switches, prices, contracts, calendar and
+  history — they become the restaurant's. No money, no ledger entry.
+- Starter crate ("Welcome to your restaurant", goods at cost 0, only
+  topping up), for the systems the save is already past: ingredients for
+  the next 3 services (never past the fridge) from L15; place settings for
+  a service, napkins to 100, one bottle each of dish soap and cleaning
+  liquid from L31; takeaway containers and bags from L71. Staff need
+  nothing (hiring is free; the check asks). A fresh save is only stamped.
+- The welcome shows in the Pre-Service Check until a service starts.
+- Not done: the plan's "Endless progress converted to stars" — the
+  Endless Restaurant runs on the Business engine and has no stars; an old
+  save's Endless Service history stays in its ledger.
+- The START button now names the blocker ("Restock to start" / "Hire staff
+  to start").
 
 Notes on the 2026-10-05 brief:
 

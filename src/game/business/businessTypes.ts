@@ -1,6 +1,7 @@
 import type { RestaurantDayState } from "../restaurant/restaurantDay";
 import type { RestaurantSuppliesState } from "../restaurant/serviceSupplies";
 import type { RestaurantStaffState } from "../restaurant/staffRequirements";
+import type { RestaurantMigrationState } from "../restaurant/restaurantMigration";
 /**
  * BUSINESS_TYPES — Economy V3's own persisted-state container. A single
  * new field on SaveData (`business: BusinessState`), mirroring how every
@@ -94,6 +95,12 @@ export type BusinessState = {
    * six-role `staff` is unchanged.
    */
   restaurantStaff?: RestaurantStaffState;
+  /**
+   * Unified Restaurant (RESTAURANT_MODE): the one-time move of this save into
+   * the unified restaurant and its starter crate
+   * (restaurant/restaurantMigration.ts). Optional; absent = not moved yet.
+   */
+  restaurantMigration?: RestaurantMigrationState;
 };
 
 export const DEFAULT_BUSINESS_STATE: BusinessState = {

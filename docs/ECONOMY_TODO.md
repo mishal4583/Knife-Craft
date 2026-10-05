@@ -24,7 +24,7 @@ Status key: OPEN (not yet built), BUILT (exists, not balanced).
 | 13 | Menu orders inside campaign levels (menu prices) next to level settlements — menu guests pay `businessCustomerPayment` (menu price × popularity), up to 1–5 per service | BUILT (phase D) | Two price models in one service. |
 | 14 | Endless revenue through the Business engine (menu prices) instead of level rewards with a $600/day cap | OPEN | Endless income changes completely. |
 | 15 | Random orders and demand (customers per day) | OPEN | Volume drives all of the above. |
-| 16 | Starter supplies for existing saves (goods, no money) | OPEN | Their value. |
+| 16 | Starter crate for existing saves (phase M): the next 3 services' ingredients, place settings, 100 napkins, a bottle of soap and of cleaning liquid, takeaway packaging — goods at cost 0, once | BUILT (behind the switch) | Their value; ingredients at cost 0 lower the average unit cost. |
 | 17 | **Grandma's pantry** (Pre-Service Check safety net): only when the wallet can't cover the missing stock, the exact missing quantities at cost 0, opt-in, no ledger | BUILT (phase 4) | Free food is value; how often it may be used. |
 | 19 | **Closing time** before L91 moves no money; from L91 it is End Business Day (payroll, fines, P&L) | BUILT (phase 5) | When daily costs start in the career. |
 | 20 | Menu prices of the newly unlocked early dishes (the existing 30% food-cost rule) | BUILT | Early menu income once menu orders pay (phase D). |

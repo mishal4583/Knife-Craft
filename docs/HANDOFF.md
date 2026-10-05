@@ -366,6 +366,14 @@ conversation.
    writes End Business Day's ledger entries. `restaurant-progression-qa`,
    e2e `restaurantprogression.mjs`. Details in the audit's notes.
 
+29. Unified Restaurant phase M (behind RESTAURANT_MODE): existing saves
+   move into the unified restaurant once on load (stamped
+   `business.restaurantMigration`), keeping everything, with a one-time
+   starter crate of goods at cost 0 for the systems they're already past
+   and a "Welcome to your restaurant" note. `restaurant-migration-qa`, e2e
+   `restaurantmigration.mjs`; restaurant e2e seeds use
+   `MOVED_IN_BUSINESS`.
+
 ## 4. Open issues from the Level 1–10 audit (not fixed yet)
 
 Priority order as agreed in the audit (P0 = before wide release):

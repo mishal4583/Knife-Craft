@@ -10,7 +10,16 @@
 //      and the service can start.
 //   5. 320×568: the sheet fits, no sideways scroll, every button ≥ 48 px.
 // Prints PASS/FAIL per check and exits 1 on any failure.
-import { launch, boot, seedSave, sleep, clickButton, readSave, shot } from "./harness.mjs";
+import {
+  MOVED_IN_BUSINESS,
+  launch,
+  boot,
+  seedSave,
+  sleep,
+  clickButton,
+  readSave,
+  shot,
+} from "./harness.mjs";
 import { playToReport } from "./solver.mjs";
 
 const results = [];
@@ -23,6 +32,7 @@ const { browser, page, logs } = await launch();
 const doneUpTo = (n) => Array.from({ length: n - 1 }, (_, i) => `level-${i + 1}`);
 const saveAt = (n, credits) =>
   seedSave({
+    business: MOVED_IN_BUSINESS,
     credits,
     levelProgress: {
       currentLevelId: `level-${n}`,

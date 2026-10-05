@@ -37,6 +37,16 @@ export async function launch() {
 }
 
 /** A returning player at Level 10 (levels 1-9 done). `version: 1` saves are migrated on load (credits x100 into USD cents). */
+/**
+ * Unified Restaurant phase M: a seeded save marked as already moved into the
+ * unified restaurant, so the restaurant test build gives it no starter crate
+ * (tests that check an empty fridge or missing plates need it).
+ * `restaurantmigration.mjs` seeds without it on purpose.
+ */
+export const MOVED_IN_BUSINESS = {
+  restaurantMigration: { version: 1, atLevel: 1, kit: [], seen: true },
+};
+
 export function seedSave(overrides = {}) {
   const completed = Array.from({ length: 9 }, (_, i) => `level-${i + 1}`);
   return {

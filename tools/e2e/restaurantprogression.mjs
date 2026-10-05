@@ -13,7 +13,16 @@
 //      Kitchen tile says "Endless Restaurant 🔒"; after Level 250 it opens the Endless Restaurant.
 //   7. 320×568: the check with news and staff fits (no sideways scroll).
 // Prints PASS/FAIL per check and exits 1 on any failure.
-import { launch, boot, seedSave, sleep, clickButton, readSave, shot } from "./harness.mjs";
+import {
+  MOVED_IN_BUSINESS,
+  launch,
+  boot,
+  seedSave,
+  sleep,
+  clickButton,
+  readSave,
+  shot,
+} from "./harness.mjs";
 
 const results = [];
 const check = (id, ok, detail) => {
@@ -25,6 +34,7 @@ const { browser, page, logs } = await launch();
 // Test saves are version 1: credits are whole dollars there (×100 on load).
 const saveAt = (n, dollars, extra = {}) =>
   seedSave({
+    business: MOVED_IN_BUSINESS,
     credits: dollars,
     levelProgress: {
       currentLevelId: `level-${n}`,
@@ -215,7 +225,7 @@ let staff = await page.evaluate(() =>
 const startDisabled = await page.evaluate(
   () =>
     [...document.querySelectorAll('[data-testid="pre-service-check"] button')].find((b) =>
-      /Restock to start|START SERVICE|OPEN THE RESTAURANT/.test(b.textContent),
+      /Restock to start|Hire staff to start|START SERVICE|OPEN THE RESTAURANT/.test(b.textContent),
     )?.disabled,
 );
 await shot(page, "restaurant-staff-check");

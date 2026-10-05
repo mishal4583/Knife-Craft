@@ -99,6 +99,7 @@ import { isSystemLive } from "@/game/restaurant/restaurantProgression";
 import { fireSpecialist, getSpecialist, hireSpecialist } from "@/game/restaurant/staffRequirements";
 import { BULK_MAX_PACKS, bulkDiscountFor } from "@/game/restaurant/bulkBuying";
 import { businessDayAllowed } from "@/game/restaurant/endlessRestaurant";
+import { markStarterCrateSeen } from "@/game/restaurant/restaurantMigration";
 import { businessCustomerPayment } from "@/game/business/BusinessServiceManager";
 import { recordRevenueAndCogs } from "@/game/business/BusinessFinanceManager";
 import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
@@ -1139,7 +1140,7 @@ export function App() {
     // Unified Restaurant (phase G): the wash-up before a service — settings
     // left dirty (no soap last time) are washed now if there's soap.
     if (RESTAURANT_MODE && level && !isCompleted(level.id, base.levelProgress))
-      base = washUp(base, levelNumber(level.id)).save;
+      base = markStarterCrateSeen(washUp(base, levelNumber(level.id)).save);
     startPlaySession({
       world: `chapter-${level?.chapter ?? 1}`,
       level: String(levelNumber(levelId)),

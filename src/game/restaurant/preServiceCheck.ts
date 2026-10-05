@@ -19,6 +19,7 @@ import { ticketsFor } from "./serviceTickets";
 import { serviceStockCheck, serviceUsesStock, type ServiceStockCheck } from "./campaignStock";
 import { opensNewDay, restaurantDayOf, todaysServices, type DayService } from "./restaurantDay";
 import { hasNewsToShow, restaurantNewsAt, type RestaurantNews } from "./restaurantNews";
+import { unseenStarterCrate, type KitLine } from "./restaurantMigration";
 import { serviceShape, staffRequirementsFor, type StaffRequirement } from "./staffRequirements";
 import {
   orderServiceFor,
@@ -76,6 +77,8 @@ export type ServicePlan = {
   news: RestaurantNews;
   /** The staff this service needs (staffRequirements.ts); an unmet one blocks START. */
   staff: StaffRequirement[];
+  /** Phase M: the starter crate an existing save received, until the player has seen it. */
+  welcome: KitLine[] | null;
 };
 
 export function servicePlanFor(save: SaveData, level: LevelDefinition): ServicePlan | null {
@@ -97,6 +100,7 @@ export function servicePlanFor(save: SaveData, level: LevelDefinition): ServiceP
     supplies: serviceSuppliesCheck(save, n, services),
     news: restaurantNewsAt(n),
     staff: staffRequirementsFor(save, n, serviceShape(save, n, remaining, services)),
+    welcome: unseenStarterCrate(save),
   };
 }
 
@@ -110,6 +114,7 @@ export function servicePlanNeedsSheet(plan: ServicePlan | null): boolean {
   if (!plan) return false;
   if (plan.opening) return true;
   if (hasNewsToShow(plan.news)) return true;
+  if (plan.welcome) return true;
   if (!staffReady(plan)) return true;
   if (suppliesNeedAttention(plan.supplies)) return true;
   return plan.check.applies && (!plan.check.ready || plan.check.hasExpired);

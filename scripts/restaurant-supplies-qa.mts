@@ -535,10 +535,10 @@ console.log("R. Wiring");
     "R2: a menu guest eats in (setting + napkin) and can't be taken without a clean setting",
   );
   assert(
-    /if \(RESTAURANT_MODE && level && !isCompleted\(level\.id, base\.levelProgress\)\)\s*base = washUp\(base, levelNumber\(level\.id\)\)\.save;/.test(
+    /if \(RESTAURANT_MODE && level && !isCompleted\(level\.id, base\.levelProgress\)\)\s*base = (?:markStarterCrateSeen\()?washUp\(base, levelNumber\(level\.id\)\)\.save\)?;/.test(
       app,
     ) && /nextSave = washUp\(\s*recordService\(nextSave, levelNumber\(level\.id\)\)/.test(app),
-    "R3: the wash-up runs when a first play starts and after a service",
+    "R3: the wash-up runs when a first play starts (phase M also marks the starter crate seen there) and after a service",
   );
   const day = read("src/game/restaurant/restaurantDay.ts");
   assert(

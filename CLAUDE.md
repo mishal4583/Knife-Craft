@@ -235,6 +235,20 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   Restaurant after (`restaurant/endlessRestaurant.ts`; the Business tab is
   "Restaurant" in the test build). Browser:
   `tools/e2e/restaurantprogression.mjs` (restaurant test build).
+- `restaurant-migration-qa` — phase M (`restaurant/restaurantMigration.ts`):
+  in the restaurant build `SaveManager.load` (and reset / a fresh save)
+  moves every save into the unified restaurant ONCE, stamped in the
+  optional `business.restaurantMigration`, and writes it back. Nothing is
+  lost and no money or ledger moves. A save already past a system gets a
+  one-time starter crate at cost 0, only topping up: the next 3 services'
+  ingredients (never past the fridge) from L15; place settings for a
+  service, napkins to 100, a bottle of dish soap and of cleaning liquid from
+  L31; takeaway containers and bags (≥ 10) from L71. A fresh save is only
+  stamped. The Pre-Service Check welcomes the player ("Welcome to your
+  restaurant") until a service starts. Saves of every era load through the
+  real `SaveManager.load`; the release build never migrates. Browser:
+  `tools/e2e/restaurantmigration.mjs` (seeds an unstamped save; the other
+  restaurant e2e tests seed `MOVED_IN_BUSINESS` so they get no crate).
 - `story-pause-qa` — the finale and milestone banners stop their timers
   (and animations, and finale taps) while paused, resuming with the time
   left (`PausableCountdown` on a fake clock); the finale's "BACK TO THE

@@ -14,7 +14,17 @@
 //   6. Level 31 with $1: Grandma's spares lend exactly the missing settings (no money, no
 //      ledger) and the service can start.
 // Prints PASS/FAIL per check and exits 1 on any failure.
-import { launch, boot, seedSave, sleep, clickButton, readSave, shot, text } from "./harness.mjs";
+import {
+  MOVED_IN_BUSINESS,
+  launch,
+  boot,
+  seedSave,
+  sleep,
+  clickButton,
+  readSave,
+  shot,
+  text,
+} from "./harness.mjs";
 import { playToReport } from "./solver.mjs";
 
 const results = [];
@@ -27,6 +37,7 @@ const { browser, page, logs } = await launch();
 
 const saveAt = (n, credits) =>
   seedSave({
+    business: MOVED_IN_BUSINESS,
     credits,
     levelProgress: {
       currentLevelId: `level-${n}`,
@@ -68,7 +79,7 @@ const sheet = () =>
     const el = document.querySelector('[data-testid="pre-service-check"]');
     if (!el) return null;
     const start = [...el.querySelectorAll("button")].find((b) =>
-      /OPEN THE RESTAURANT|START SERVICE|Restock to start/.test(b.textContent),
+      /OPEN THE RESTAURANT|START SERVICE|Restock to start|Hire staff to start/.test(b.textContent),
     );
     return {
       supplies: [...el.querySelectorAll("[data-psc-supply]")].map((r) => ({

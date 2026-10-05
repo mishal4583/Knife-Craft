@@ -10,6 +10,8 @@
  */
 import { migrateBusinessSuppliesState } from "./business/businessSupplies";
 import { migrateEconomy } from "./progression/economyMigration";
+import { RESTAURANT_MODE } from "./config/restaurantMode";
+import { migrateToUnifiedRestaurant } from "./restaurant/restaurantMigration";
 import {
   DEFAULT_ECONOMY_STATE,
   LEGACY_ECONOMY_STATE,
@@ -280,6 +282,16 @@ export const DEFAULT_SAVE: SaveData = {
   },
 };
 
+/**
+ * Unified Restaurant phase M: in the restaurant build every save moves into
+ * the unified restaurant once (restaurant/restaurantMigration.ts — a fresh
+ * save is only stamped; an existing one may get a starter crate of goods, no
+ * money). The release build never runs it.
+ */
+function intoRestaurant(save: SaveData): SaveData {
+  return RESTAURANT_MODE ? migrateToUnifiedRestaurant(save) : save;
+}
+
 function isSaveData(value: unknown): value is SaveData {
   return typeof value === "object" && value !== null && "version" in value && "credits" in value;
 }
@@ -301,7 +313,7 @@ class SaveManagerImpl {
     }
 
     if (!raw) {
-      this.cache = { ...DEFAULT_SAVE };
+      this.cache = intoRestaurant({ ...DEFAULT_SAVE });
       return this.cache;
     }
 
@@ -355,7 +367,12 @@ class SaveManagerImpl {
       // The economy migration is written back at once, so it runs once —
       // not again on every load until the player's next save. (It is also
       // idempotent on its own: re-migrating the same old save pays nothing.)
-      if (this.cache.economy.version !== merged.economy.version)
+      // Unified Restaurant (restaurant build only): the one-time move into the
+      // unified restaurant and its starter crate, written back at once too.
+      const migrated = intoRestaurant(this.cache);
+      const movedIn = migrated !== this.cache;
+      this.cache = migrated;
+      if (this.cache.economy.version !== merged.economy.version || movedIn)
         void this.save(this.cache).catch(() => {});
     } catch {
       this.cache = { ...DEFAULT_SAVE };
@@ -403,7 +420,7 @@ class SaveManagerImpl {
   }
 
   async reset(): Promise<SaveData> {
-    const fresh = { ...DEFAULT_SAVE };
+    const fresh = intoRestaurant({ ...DEFAULT_SAVE });
     await this.save(fresh);
     return fresh;
   }

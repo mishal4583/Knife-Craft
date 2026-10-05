@@ -20,6 +20,8 @@ import { SupplyBottle } from "./SupplyBottle";
 import type { RestaurantNews } from "@/game/restaurant/restaurantNews";
 import type { StaffRequirement } from "@/game/restaurant/staffRequirements";
 import type { FridgeUsage } from "@/game/restaurant/fridgeUsage";
+import type { KitLine } from "@/game/restaurant/restaurantMigration";
+import { getSupplyItem as supplyItemOf } from "@/game/business/businessSupplies";
 
 /**
  * PRE_SERVICE_CHECK (Unified Restaurant spec §6, §24–25) — shown before a
@@ -69,6 +71,7 @@ export function PreServiceCheck({
   staff = [],
   onHireStaff = () => {},
   fridge = null,
+  welcome = null,
 }: {
   levelNumber: number;
   day: number;
@@ -95,6 +98,8 @@ export function PreServiceCheck({
   onHireStaff?: () => void;
   /** The fridge's fill, from the fridge stage (L21); null before. */
   fridge?: FridgeUsage | null;
+  /** Phase M: the starter crate an existing save received (shown until a service starts). */
+  welcome?: readonly KitLine[] | null;
 }) {
   const stock = check.applies ? check : null;
   const sup = supplies.applies ? supplies : null;
@@ -104,6 +109,10 @@ export function PreServiceCheck({
     (!sup || sup.ready) &&
     staff.every((r) => r.met);
   const staffMissing = staff.filter((r) => !r.met);
+  /** What blocks START, for its label: stock or supplies first, otherwise staff. */
+  const stockOrSuppliesShort =
+    (!!stock && (!stock.ready || stock.rows.some((r) => r.expired > 0 && r.usable < r.needed))) ||
+    (!!sup && !sup.ready);
   return (
     <div
       className="absolute inset-0 z-40 flex items-end justify-center"
@@ -127,6 +136,7 @@ export function PreServiceCheck({
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-3">
+          {welcome ? <WelcomeCrate kit={welcome} /> : null}
           {news &&
           (news.systems.length > 0 ||
             news.dishes.length > 0 ||
@@ -369,7 +379,13 @@ export function PreServiceCheck({
             Back
           </KButton>
           <KButton full className="min-h-12" disabled={!canStart} onClick={onStart}>
-            {canStart ? (opening ? "OPEN THE RESTAURANT" : "START SERVICE") : "Restock to start"}
+            {canStart
+              ? opening
+                ? "OPEN THE RESTAURANT"
+                : "START SERVICE"
+              : stockOrSuppliesShort
+                ? "Restock to start"
+                : "Hire staff to start"}
           </KButton>
         </div>
       </div>
@@ -417,6 +433,32 @@ function IngredientRow({
         </KButton>
       )}
     </li>
+  );
+}
+
+/** Phase M: what an existing save found when it moved into the unified restaurant. */
+function WelcomeCrate({ kit }: { kit: readonly KitLine[] }) {
+  const lines = kit.map((k) =>
+    k.kind === "ingredient"
+      ? `${k.units} ${INGREDIENTS[k.id].name}`
+      : `${k.units.toLocaleString("en-US")} × ${supplyItemOf(k.id)?.name ?? k.id}`,
+  );
+  return (
+    <div
+      className="mb-2 rounded-2xl border border-olive/40 bg-[linear-gradient(170deg,var(--color-ivory),rgba(120,140,60,0.12))] p-3"
+      data-testid="psc-welcome"
+    >
+      <p className="font-ui text-[12px] font-extrabold uppercase tracking-wide text-olive">
+        🎁 Welcome to your restaurant
+      </p>
+      <p className="font-hand text-[16px] leading-snug text-walnut">
+        “Your kitchen is a real restaurant now — stock, supplies and a team. I packed you a starter
+        crate so you can keep cooking.” — Grandma
+      </p>
+      <p className="mt-1 font-ui text-[12px] text-walnut/70">
+        Free, once: {lines.join(" · ")}. After this, the Market is where you restock.
+      </p>
+    </div>
   );
 }
 
