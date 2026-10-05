@@ -45,7 +45,7 @@ import { getKitchenUpgradeState, migrateKitchenDevelopment, purchaseKitchenUpgra
 import { KNIFE_CATALOG } from "../src/game/knives/knifeDefinitions.ts";
 import { BOARD_CATALOG } from "../src/game/boards/boardDefinitions.ts";
 import { CAFE_MILESTONES } from "../src/game/cafe/cafeDefinitions.ts";
-import { getNextKitchenStagePreview, getNextRewardPreview, getRewardTimeline, levelNumber } from "../src/game/levels/levelMastery.ts";
+import { getNextKitchenStagePreview, getNextRewardPreview, getRewardTimeline, levelNumber, opensInMarket } from "../src/game/levels/levelMastery.ts";
 import { getLevels } from "../src/game/levels/LevelManager.ts";
 import { CHAPTER_TITLES } from "../src/game/levels/levelDefinitions.ts";
 
@@ -111,7 +111,7 @@ const INVESTMENT_NAMES = ["Prep Station Upgrade", "Storage Rack", "Service Count
   assert(importers.length === 0, `B2: no game module imports the retired investment modules (found: ${importers.join(", ") || "none"})`);
   const app = code("src/App.tsx");
   assert(!/upkeep/i.test(app), "B3: App.tsx has no chapter-upkeep path left");
-  assert(/"completion-reward", rewardCoins/.test(app) && /setLevelRewardNotice\(\{ rewardCoins \}\)/.test(app), "B4: the completion reward + its banner are unchanged apart from dropping the upkeep line");
+  assert(/"completion-reward", rewardCoins/.test(app) && /setLevelRewardNotice\(\{ rewardCoins, orderCoins \}\)/.test(app), "B4: the completion reward + its banner are unchanged apart from dropping the upkeep line (and, Level 1–10 UX pass, the banner's display-only order payout)");
   const ledger = read("src/game/economy/EconomyLedger.ts");
   assert(/"investment-upkeep"/.test(ledger) && /"kitchen-investment-purchase"/.test(ledger), "B5: legacy ledger categories are still labelled, so old saves' history still displays");
 }
@@ -238,11 +238,13 @@ const INVESTMENT_NAMES = ["Prep Station Upgrade", "Storage Rack", "Service Count
   // Rebuild every row's hints the way Kitchen.tsx renders them.
   const rows = getLevels().map((l) => {
     const n = levelNumber(l.id);
-    const main = l.unlockReward ? `Unlocks: ${l.unlockReward.name}${l.unlockReward.type === "knife" || l.unlockReward.type === "board" ? " in the Market" : ""}` : (() => { const r = getNextRewardPreview(n); return r ? `Next: ${r.name} · Lv ${r.atLevel}` : null; })();
+    const main = l.unlockReward ? `Unlocks: ${l.unlockReward.name}${l.unlockReward.type === "knife" || l.unlockReward.type === "board" ? " in the Market" : ""}` : (() => { const r = getNextRewardPreview(n); return r ? `Next: ${r.name}${opensInMarket(r) ? " in the Market" : ""} · Lv ${r.atLevel}` : null; })();
     const stage = l.unlockReward ? getNextKitchenStagePreview(n) : null;
     return { n, main, extra: stage ? `Next: ${stage.name} · Lv ${stage.atLevel}` : null };
   });
   const extras = rows.filter((r) => r.extra).map((r) => `${r.n}→${r.extra}`);
+  // Level 1–10 UX pass: a knife/board preview says where it opens ("Next: Santoku in the Market · Lv 10").
+  assert(rows[0]!.main === "Next: Santoku in the Market · Lv 10" && /opensInMarket\(nextReward\) \? " in the Market" : ""/.test(board), `H9: Level 1's row reads "${rows[0]!.main}" — a knife opens in the Market, it isn't handed over`);
   console.log("     second hints:", JSON.stringify(extras));
   const at = (n: number) => rows.find((r) => r.n === n)!;
   // A knife/board is only unlocked for purchase, never handed over, so the row says "Unlocks … in the Market".

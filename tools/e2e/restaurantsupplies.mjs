@@ -185,9 +185,12 @@ check(
 // ---------- 3. Serve: a setting and a napkin; finish: the wash-up ----------
 await clickButton(page, /^(OPEN THE RESTAURANT|START SERVICE)$/);
 await sleep(900);
-await page.waitForFunction(() => /·\s*\d+\/\d+\s+[a-z-]+/i.test(document.body.innerText), {
-  timeout: 30000,
-});
+await page.waitForFunction(
+  () => /·\s*(?:\d+\/\d+\s+[a-z-]+|\d+% peeled)/i.test(document.body.innerText),
+  {
+    timeout: 30000,
+  },
+);
 const played = await playToReport(page, { maxMs: 150000 });
 await clickButton(page, /^Continue$/);
 await sleep(900);
@@ -249,9 +252,12 @@ if (await page.evaluate(() => !!document.querySelector('[data-testid="pre-servic
   await clickButton(page, /^(OPEN THE RESTAURANT|START SERVICE)$/);
   await sleep(900);
 }
-await page.waitForFunction(() => /·\s*\d+\/\d+\s+[a-z-]+/i.test(document.body.innerText), {
-  timeout: 30000,
-});
+await page.waitForFunction(
+  () => /·\s*(?:\d+\/\d+\s+[a-z-]+|\d+% peeled)/i.test(document.body.innerText),
+  {
+    timeout: 30000,
+  },
+);
 await playToReport(page, { maxMs: 150000 });
 await clickButton(page, /^Continue$/);
 await sleep(900);

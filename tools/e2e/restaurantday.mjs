@@ -62,7 +62,8 @@ async function prepare(title) {
   }, title);
   await sleep(900);
 }
-const inHud = () => page.evaluate(() => /·\s*\d+\/\d+\s+[a-z-]+/i.test(document.body.innerText));
+const inHud = () =>
+  page.evaluate(() => /·\s*(?:\d+\/\d+\s+[a-z-]+|\d+% peeled)/i.test(document.body.innerText));
 const sheetText = () =>
   page.evaluate(
     () =>
@@ -76,9 +77,12 @@ const closingText = () =>
       null,
   );
 async function playLevel() {
-  await page.waitForFunction(() => /·\s*\d+\/\d+\s+[a-z-]+/i.test(document.body.innerText), {
-    timeout: 30000,
-  });
+  await page.waitForFunction(
+    () => /·\s*(?:\d+\/\d+\s+[a-z-]+|\d+% peeled)/i.test(document.body.innerText),
+    {
+      timeout: 30000,
+    },
+  );
   const played = await playToReport(page, { maxMs: 120000 });
   await clickButton(page, /^Continue$/);
   await sleep(900);

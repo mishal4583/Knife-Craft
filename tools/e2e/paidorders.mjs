@@ -49,9 +49,12 @@ async function openLevel30() {
       }
     }
   });
-  await page.waitForFunction(() => /·\s*\d+\/\d+\s+[a-z-]+/i.test(document.body.innerText), {
-    timeout: 30000,
-  });
+  await page.waitForFunction(
+    () => /·\s*(?:\d+\/\d+\s+[a-z-]+|\d+% peeled)/i.test(document.body.innerText),
+    {
+      timeout: 30000,
+    },
+  );
 }
 async function playAndServe() {
   const played = await playToReport(page, { maxMs: 150000 });

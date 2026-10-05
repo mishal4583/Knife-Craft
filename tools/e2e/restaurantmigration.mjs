@@ -144,7 +144,9 @@ if (missing.length) {
 }
 await clickButton(page, /^(OPEN THE RESTAURANT|START SERVICE)$/);
 await sleep(1200);
-const started = await page.evaluate(() => /·\s*\d+\/\d+\s+[a-z-]+/i.test(document.body.innerText));
+const started = await page.evaluate(() =>
+  /·\s*(?:\d+\/\d+\s+[a-z-]+|\d+% peeled)/i.test(document.body.innerText),
+);
 const afterStart = await readSave(page);
 check(
   "4 once the service starts the welcome is marked seen and never shows again",

@@ -11,6 +11,7 @@ import {
   type StartPreparationConfig,
   type StepStartedPayload,
   type CoachPayload,
+  type PeelProgressPayload,
 } from "./events";
 import type { KnifeDefinition } from "./knives/knifeTypes";
 import type { BoardDefinition } from "./boards/boardTypes";
@@ -32,7 +33,8 @@ export type GameBridgeEvent =
   | { type: "CHEF_TAKE_STARTED" }
   | { type: "CHEF_TAKE_COMPLETED" }
   | { type: "RECIPE_COMPLETED"; payload: RecipeCompletedPayload }
-  | { type: "COACH"; payload: CoachPayload };
+  | { type: "COACH"; payload: CoachPayload }
+  | { type: "PEEL_PROGRESS"; payload: PeelProgressPayload };
 
 type Listener = (event: GameBridgeEvent) => void;
 
@@ -70,6 +72,9 @@ export class GameBridge {
       this.publish({ type: "CUT_COMPLETED", payload }),
     );
     this.bus.on(EVT.COACH, (payload: CoachPayload) => this.publish({ type: "COACH", payload }));
+    this.bus.on(EVT.PEEL_PROGRESS, (payload: PeelProgressPayload) =>
+      this.publish({ type: "PEEL_PROGRESS", payload }),
+    );
     this.bus.on(EVT.STEP_STARTED, (payload: StepStartedPayload) =>
       this.publish({ type: "STEP_STARTED", payload }),
     );

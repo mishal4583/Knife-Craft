@@ -83,6 +83,7 @@ import {
 } from "@/game/daily/DailyOrderManager";
 import { pickEndlessLevel, applyEndlessEarn } from "@/game/daily/EndlessServiceManager";
 import { paidLevelReward } from "@/game/levels/levelRewards";
+import { levelOrderEarnings } from "@/game/levels/levelEarnings";
 import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
 import { ticketsFor } from "@/game/restaurant/serviceTickets";
 import { consumeCampaignOrderStock } from "@/game/restaurant/campaignStock";
@@ -404,6 +405,8 @@ export function App() {
   // the six kitchen backgrounds are the kitchen progression now.)
   const [levelRewardNotice, setLevelRewardNotice] = useState<{
     rewardCoins: number;
+    /** What this level's orders paid (levelOrderEarnings), or null when it can't be read. */
+    orderCoins: number | null;
   } | null>(null);
 
   // Platform ads (Playgama Bridge). `saveRef` always holds the latest committed save, so code
@@ -1658,6 +1661,8 @@ export function App() {
    */
   function completeCampaignLevel(level: LevelDefinition) {
     if (!save) return;
+    // Read before completion clears the level's paid-order record (display only).
+    const orderCoins = levelOrderEarnings(save, level.id);
     const {
       progress: levelProgress,
       isFirstCompletion,
@@ -1681,10 +1686,10 @@ export function App() {
       : nextSave;
     persist(finalSave);
     if (flush) setStoryEvent(flush);
-    // A story banner takes priority in the same rare tick both would
-    // fire (a milestone level) — the reward itself was still credited
-    // above; only the toast is deferred.
-    else if (rewardCoins > 0) setLevelRewardNotice({ rewardCoins });
+    // Level 1–10 UX pass: a story banner (Level 10's milestone) no longer
+    // swallows the reward — the Level Complete notice waits for it to be
+    // dismissed (it renders only while no story event is showing).
+    if (rewardCoins > 0) setLevelRewardNotice({ rewardCoins, orderCoins });
     afterLevelFinished(finalSave, level, !isFirstCompletion, flush?.kind === "finale");
   }
 
@@ -2410,10 +2415,29 @@ export function App() {
           onDismiss={() => setStoryEvent(null)}
         />
       ) : null}
-      {levelRewardNotice ? (
+      {levelRewardNotice && !storyEvent ? (
         <MilestoneBanner
           kicker="Level Complete"
           line={`${formatUsdChange(levelRewardNotice.rewardCoins)} Completion Reward`}
+          {...(levelRewardNotice.orderCoins
+            ? {
+                rows: [
+                  { label: "Order payout", value: formatUsdChange(levelRewardNotice.orderCoins) },
+                  {
+                    label: "Completion reward",
+                    value: formatUsdChange(levelRewardNotice.rewardCoins),
+                  },
+                  {
+                    label: "Earned this level",
+                    value: formatUsdChange(
+                      levelRewardNotice.orderCoins + levelRewardNotice.rewardCoins,
+                    ),
+                    strong: true,
+                  },
+                ],
+                ms: 5600,
+              }
+            : {})}
           onDismiss={() => setLevelRewardNotice(null)}
         />
       ) : null}

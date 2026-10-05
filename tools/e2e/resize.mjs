@@ -72,9 +72,12 @@ await page.evaluate(() => {
     }
   }
 });
-await page.waitForFunction(() => /·\s*\d+\/\d+\s+[a-z-]+/i.test(document.body.innerText), {
-  timeout: 30000,
-});
+await page.waitForFunction(
+  () => /·\s*(?:\d+\/\d+\s+[a-z-]+|\d+% peeled)/i.test(document.body.innerText),
+  {
+    timeout: 30000,
+  },
+);
 await sleep(800);
 // Real progress: play until the peel step is finished and step 2 (halve) is on screen.
 await playToReport(page, {

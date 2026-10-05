@@ -7,6 +7,7 @@ import { KnifeGlyph } from "./Workshop";
 import { BoardPreview } from "./Boards";
 import { KitchenBackground } from "./KitchenBackground";
 import { cn } from "@/lib/utils";
+import { opensInMarket } from "@/game/levels/levelMastery";
 import type { SaveData } from "@/game/SaveManager";
 import { formatUsd, formatUsdChange } from "@/game/money";
 import {
@@ -132,7 +133,11 @@ function NextGoal({ p }: { p: Progress }) {
           <p className="mt-1 font-display text-[19px] font-black leading-tight text-walnut-dark">
             {goal.icon} {goal.name}
           </p>
-          <p className="font-hand text-[15px] text-walnut/70">Unlocks at Level {goal.atLevel}</p>
+          <p className="font-hand text-[15px] text-walnut/70">
+            {opensInMarket(goal)
+              ? `Unlocks in the Market at Level ${goal.atLevel}`
+              : `Unlocks at Level ${goal.atLevel}`}
+          </p>
           <div className="mt-2 flex items-center gap-2">
             <span className="flex-1">
               <Bar fraction={Math.min(p.level.current, goal.atLevel) / goal.atLevel} tone="sage" />

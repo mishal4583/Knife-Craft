@@ -46,9 +46,12 @@ async function openFromBoard(title) {
       }
     }
   }, title);
-  await page.waitForFunction(() => /·\s*\d+\/\d+\s+[a-z-]+/i.test(document.body.innerText), {
-    timeout: 30000,
-  });
+  await page.waitForFunction(
+    () => /·\s*(?:\d+\/\d+\s+[a-z-]+|\d+% peeled)/i.test(document.body.innerText),
+    {
+      timeout: 30000,
+    },
+  );
 }
 
 // A. Serve, then "Back to Kitchen" instead of "Finish Level" — twice.
@@ -122,7 +125,7 @@ for (let i = 0; i < 3; i++) {
   await page.mouse.click(cx - 50 + i * 20, cy);
   await sleep(200);
 }
-const mid = (await text(page)).match(/·\s*\d+\/\d+\s+[a-z-]+/i)?.[0];
+const mid = (await text(page)).match(/·\s*(?:\d+\/\d+\s+[a-z-]+|\d+% peeled)/i)?.[0];
 await page.reload({ waitUntil: "networkidle0" });
 await sleep(2000);
 const a = await readSave(page);
@@ -133,12 +136,12 @@ note("C reload mid-level", {
   credits: a.credits,
 });
 
-// D. Knife Report "Prep Again" then finish — paid once?
+// D. Knife Report "Prepare Again" then finish — paid once?
 await boot(page, base);
 const d0 = await readSave(page);
 await openFromBoard("Fresh Cucumber");
 await playToReport(page);
-await clickButton(page, /^Prep Again$/);
+await clickButton(page, /^Prepare Again$/);
 await sleep(1200);
 await playToReport(page);
 await clickButton(page, /^Continue$/);

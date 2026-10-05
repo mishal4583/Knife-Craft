@@ -66,9 +66,12 @@ async function prepare(title) {
   }
 }
 async function cookAndServe() {
-  await page.waitForFunction(() => /·\s*\d+\/\d+\s+[a-z-]+/i.test(document.body.innerText), {
-    timeout: 30000,
-  });
+  await page.waitForFunction(
+    () => /·\s*(?:\d+\/\d+\s+[a-z-]+|\d+% peeled)/i.test(document.body.innerText),
+    {
+      timeout: 30000,
+    },
+  );
   const played = await playToReport(page, { maxMs: 150000 });
   await clickButton(page, /^Continue$/);
   await sleep(900);
@@ -141,7 +144,7 @@ await sleep(1200);
 const inOrder = await flat();
 check(
   "2 the guest's order comes into the same service",
-  /·\s*\d+\/\d+\s+[a-z-]+/i.test(inOrder) && !/Finish Level/.test(inOrder),
+  /·\s*(?:\d+\/\d+\s+[a-z-]+|\d+% peeled)/i.test(inOrder) && !/Finish Level/.test(inOrder),
 );
 
 // ---------- 3. Serving the guest ----------

@@ -74,7 +74,7 @@ await page.evaluateOnNewDocument(() => {
         skip: skip === "true",
         outro: outro === "true",
         imgs: +imgs,
-        hud: /·\s*\d+\/\d+\s+[a-z-]+/i.test(document.body.innerText),
+        hud: /·\s*(?:\d+\/\d+\s+[a-z-]+|\d+% peeled)/i.test(document.body.innerText),
       });
     }
   }).observe(document, { childList: true, subtree: true, attributes: true });
@@ -105,7 +105,7 @@ const state = async () => {
       scene: o?.getAttribute("data-intro-scene") ?? null,
       line: o?.querySelector("[aria-live] .kc-cine-line p:last-child")?.textContent ?? null,
       skip: !!o?.querySelector('[aria-label="Skip intro"]'),
-      hud: /·\s*\d+\/\d+\s+[a-z-]+/i.test(document.body.innerText),
+      hud: /·\s*(?:\d+\/\d+\s+[a-z-]+|\d+% peeled)/i.test(document.body.innerText),
       canvas: !!document.querySelector("canvas"),
       writes: window.__introDoneWrites,
     };

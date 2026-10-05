@@ -69,9 +69,12 @@ const ads = () => page.evaluate(() => window.__ads);
 /** Plays the current campaign level to its end: every order, then Finish Level. */
 async function playLevel() {
   for (let order = 0; order < 8; order++) {
-    await page.waitForFunction(() => /·\s*\d+\/\d+\s+[a-z-]+/i.test(document.body.innerText), {
-      timeout: 30000,
-    });
+    await page.waitForFunction(
+      () => /·\s*(?:\d+\/\d+\s+[a-z-]+|\d+% peeled)/i.test(document.body.innerText),
+      {
+        timeout: 30000,
+      },
+    );
     await playToReport(page);
     await clickButton(page, /^Continue$/);
     await sleep(900);

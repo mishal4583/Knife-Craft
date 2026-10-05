@@ -1,7 +1,7 @@
 // The cooking clip after every dish, in the built game:
 //   1. after the chef's hands take the plate, the clip appears (Knife Report not yet shown), the
 //      video really plays, SKIP › is offered over the old watermark corner, and when it ends the Knife Report follows;
-//   2. "Prep Again" → the clip plays again for the next dish; SKIP › goes straight to the report;
+//   2. "Prepare Again" → the clip plays again for the next dish; SKIP › goes straight to the report;
 //   3. a tap anywhere on the clip also skips it;
 //   4. with Sound off in Settings the clip is muted; with Sound on it plays with sound;
 //   5. salads get the salad film (Level 10, Simple Garden Salad — the harness default save);
@@ -40,9 +40,12 @@ const { browser, page, logs } = await launch();
 
 /** Plays the dish on screen until the clip appears. */
 async function cookUntilClip() {
-  await page.waitForFunction(() => /·\s*\d+\/\d+\s+[a-z-]+/i.test(document.body.innerText), {
-    timeout: 30000,
-  });
+  await page.waitForFunction(
+    () => /·\s*(?:\d+\/\d+\s+[a-z-]+|\d+% peeled)/i.test(document.body.innerText),
+    {
+      timeout: 30000,
+    },
+  );
   const r = await playToReport(page, { until: clipShown });
   return r.stopped === true;
 }
@@ -96,7 +99,7 @@ check(
 );
 
 // ---------- 2. next dish: clip again, SKIP ----------
-await clickButton(page, /^Prep Again$/);
+await clickButton(page, /^Prepare Again$/);
 check("2a the next dish gets the clip too", await cookUntilClip());
 await sleep(500);
 const t0 = Date.now();
@@ -105,7 +108,7 @@ await page.waitForFunction(() => /KNIFE REPORT/.test(document.body.innerText), {
 check("2b SKIP › goes straight to the Knife Report", Date.now() - t0 < 1500, Date.now() - t0);
 
 // ---------- 3. tap to skip ----------
-await clickButton(page, /^Prep Again$/);
+await clickButton(page, /^Prepare Again$/);
 check("3a clip shown", await cookUntilClip());
 await sleep(600);
 await page.mouse.click(215, 500);

@@ -39,6 +39,8 @@ export const EVT = {
   RECIPE_COMPLETED: "evt:recipeCompleted",
   SCENE_READY: "evt:sceneReady",
   COACH: "evt:coach",
+  /** Peel steps only: how much of the skin is off (read-only HUD feedback; the peel itself is unchanged). */
+  PEEL_PROGRESS: "evt:peelProgress",
 } as const;
 
 /**
@@ -85,6 +87,9 @@ export type StartPreparationConfig = {
 
 /** Scene -> Bridge -> React: the ghost demonstration appeared/disappeared, so the HUD's how-to card shows with it. */
 export type CoachPayload = { visible: boolean; techniqueId: TechniqueId };
+
+/** Scene -> Bridge -> React: a peel step's progress, 0–1 of the way to done (covered cells ÷ the completion threshold). Display only. */
+export type PeelProgressPayload = { fraction: number };
 
 /** Scene -> Bridge -> React: which step is now active, so the HUD can show the right ingredient/technique/progress without the whole session being one fixed pair (§ "step-aware HUD"). */
 export type StepStartedPayload = {

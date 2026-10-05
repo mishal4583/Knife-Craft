@@ -85,7 +85,8 @@ const sheet = () =>
       text: el.innerText.replace(/\s+/g, " "),
     };
   });
-const inHud = () => page.evaluate(() => /·\s*\d+\/\d+\s+[a-z-]+/i.test(document.body.innerText));
+const inHud = () =>
+  page.evaluate(() => /·\s*(?:\d+\/\d+\s+[a-z-]+|\d+% peeled)/i.test(document.body.innerText));
 
 // ---------- 1. Level 5: no stock check (only the day's opening card) ----------
 await boot(page, saveAt(5, 5000));
@@ -93,7 +94,7 @@ await openLevel("Onion Basics");
 let l5 = await sheet();
 await clickButton(page, /^OPEN THE RESTAURANT$/);
 const l5Hud = await page
-  .waitForFunction(() => /·\s*\d+\/\d+\s+[a-z-]+/i.test(document.body.innerText), {
+  .waitForFunction(() => /·\s*(?:\d+\/\d+\s+[a-z-]+|\d+% peeled)/i.test(document.body.innerText), {
     timeout: 15000,
   })
   .then(() => true)

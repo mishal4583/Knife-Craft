@@ -50,9 +50,12 @@ await page.evaluate(() => {
     }
   }
 });
-await page.waitForFunction(() => /·\s*\d+\/\d+\s+[a-z-]+/i.test(document.body.innerText), {
-  timeout: 30000,
-});
+await page.waitForFunction(
+  () => /·\s*(?:\d+\/\d+\s+[a-z-]+|\d+% peeled)/i.test(document.body.innerText),
+  {
+    timeout: 30000,
+  },
+);
 const played = await playToReport(page);
 await clickButton(page, /^Continue$/);
 await sleep(900);

@@ -20,11 +20,14 @@ import { usePausableTimeout, usePaused } from "./usePausableTimeout";
 export function MilestoneBanner({
   kicker,
   line,
+  rows,
   onDismiss,
   ms = 4200,
 }: {
   kicker: string;
   line: string;
+  /** Optional label / value lines under `line` (the Level Complete earnings breakdown). */
+  rows?: ReadonlyArray<{ label: string; value: string; strong?: boolean }>;
   onDismiss: () => void;
   ms?: number;
 }) {
@@ -45,6 +48,24 @@ export function MilestoneBanner({
           {kicker}
         </p>
         <p className="mt-1 font-hand text-[17px] leading-snug text-walnut-dark">{line}</p>
+        {rows?.length ? (
+          <div
+            className="mt-2 space-y-0.5 border-t border-walnut/15 pt-2 font-ui text-[13px] font-bold text-walnut/75"
+            data-testid="banner-rows"
+          >
+            {rows.map((r) => (
+              <div
+                key={r.label}
+                className={cn("flex justify-between gap-4", r.strong && "text-walnut-dark")}
+              >
+                <span>{r.label}</span>
+                <span className={r.strong ? "font-extrabold text-olive" : "text-olive"}>
+                  {r.value}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : null}
       </Panel>
     </div>
   );

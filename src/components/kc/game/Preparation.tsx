@@ -220,6 +220,8 @@ export function Preparation({
   const [showHint, setShowHint] = useState(true);
   // The ghost demonstration is on the board (the scene says when) — show its how-to card.
   const [coachVisible, setCoachVisible] = useState(false);
+  // A peel step's progress (0–1) from the scene's PEEL_PROGRESS — HUD feedback only.
+  const [peelFraction, setPeelFraction] = useState(0);
   const [paused, setPaused] = useState(false);
   const [result, setResult] = useState<CutResult | null>(null);
   const [rewardCoins, setRewardCoins] = useState(0);
@@ -268,6 +270,8 @@ export function Preparation({
       } else if (event.type === "COACH") {
         setCoachVisible(event.payload.visible);
         if (event.payload.visible) setShowHint(false);
+      } else if (event.type === "PEEL_PROGRESS") {
+        setPeelFraction(event.payload.fraction);
       } else if (event.type === "CUT_STARTED") {
         setShowHint(false);
       } else if (event.type === "STEP_STARTED") {
@@ -275,6 +279,7 @@ export function Preparation({
         setActiveStep({ index: stepIndex, ingredientId, techniqueId, requiredCuts });
         setCutProgress(0);
         setProgressByAxis({ h: 0, v: 0 });
+        setPeelFraction(0);
       } else if (event.type === "CUT_COMPLETED") {
         // Audio/particles/hitstop for the cut itself are triggered by the
         // scene directly (they're gameplay feedback, not UI) — this only
@@ -369,10 +374,14 @@ export function Preparation({
   // element. Read directly off the level's own data — no bridge/scene
   // round trip needed for a label.
   const activeDestination = view.preparationSteps[activeStep.index]?.destination;
+  // Level 1–10 UX pass: no "Step 1 of 1" on a single-step level — only where
+  // the food goes ("For Bowl"); a multi-step session keeps "Step 2 of 3 · for Bowl".
   const stepLabel =
-    steps.length > 1 || activeDestination
+    steps.length > 1
       ? `Step ${activeStep.index + 1} of ${steps.length}${activeDestination ? ` · for ${activeDestination}` : ""}`
-      : undefined;
+      : activeDestination
+        ? `For ${activeDestination}`
+        : undefined;
   // Phase 2 — the header shows WHO this is for in service mode (§10/§12:
   // "connect the chef/customer model to the active order"), rather than
   // the generic "Today's Order" campaign/daily/endless sessions show.
@@ -426,6 +435,9 @@ export function Preparation({
         totalPieces={activeStep.requiredCuts}
         counts={activeTechnique.counts}
         progressByAxis={progressByAxis}
+        {...(activeTechnique.interactionMode === "peel"
+          ? { peelFraction: cutProgress >= activeStep.requiredCuts ? 1 : peelFraction }
+          : {})}
         {...(stepLabel ? { stepLabel } : {})}
         {...(service?.batchHint ? { batchHint: service.batchHint } : {})}
         onPause={() => {

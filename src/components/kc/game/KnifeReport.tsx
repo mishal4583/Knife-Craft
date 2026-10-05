@@ -1,4 +1,5 @@
 import { KButton, Divider } from "../common/primitives";
+import { ENCOURAGEMENT } from "@/game/qualityCopy";
 import { StatRow } from "../common/Indicators";
 import { CutPathViz } from "./CutPathViz";
 import type { CutResult } from "@/types/game";
@@ -40,8 +41,10 @@ export function KnifeReport({
         <p className="mt-2 text-center font-display text-[30px] font-black leading-tight text-walnut-dark">
           {result.qualityLabel}
         </p>
+        {/* Level 1–10 UX pass: the line follows the grade (the same words as the
+            per-cut toast) instead of "looked lovely" for every result. */}
         <p className="text-center font-hand text-[18px] text-olive">
-          that {stepName.toLowerCase()} looked lovely.
+          {ENCOURAGEMENT[result.qualityLabel]}
         </p>
 
         <Divider />
@@ -56,7 +59,7 @@ export function KnifeReport({
                 Rhythm
               </span>
               <span className="flex-1 truncate font-hand text-[13px] text-walnut/50">
-                steady pace
+                {result.rhythmBonus > 0 ? "steady pace" : "a steady pace adds a bonus"}
               </span>
               <span className="w-[62px] shrink-0 text-right font-ui text-[11px] font-extrabold text-olive">
                 +{result.rhythmBonus}
@@ -68,7 +71,7 @@ export function KnifeReport({
 
         <div className="mt-4 flex gap-2">
           <KButton variant="cream" full onClick={onRetry}>
-            Prep Again
+            Prepare Again
           </KButton>
           <KButton full onClick={onContinue}>
             Continue

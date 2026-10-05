@@ -14,6 +14,7 @@ import {
   describeDifficulty,
   getNextKitchenStagePreview,
   getNextRewardPreview,
+  opensInMarket,
   levelNumber,
 } from "@/game/levels/levelMastery";
 import { getCafeProgress } from "@/game/cafe/CafeProgressionManager";
@@ -438,7 +439,7 @@ export function OrderBoard({
                                 ? marketUnlock
                                   ? " in the Market"
                                   : ""
-                                : ` · Lv ${nextReward.atLevel}`}
+                                : `${opensInMarket(nextReward) ? " in the Market" : ""} · Lv ${nextReward.atLevel}`}
                             </span>
                           ) : null}
                           {stageAfter && !campaignComplete ? (
@@ -475,7 +476,7 @@ export function OrderBoard({
           </div>
         </div>
       </div>
-      <BottomNav active="kitchen" go={go} />
+      <BottomNav active={null} go={go} />
     </div>
   );
 }
@@ -553,7 +554,12 @@ const NAV: { id: ScreenId; label: string; glyph: string }[] = [
   { id: "rack", label: "Progress", glyph: "🏆" },
 ];
 
-export function BottomNav({ active, go }: { active: ScreenId; go: (s: ScreenId) => void }) {
+/**
+ * `active` = the bottom-bar section the screen belongs to, or null for a
+ * screen that is none of the five (the Order Board: Level 1–10 UX pass — it
+ * used to light up Kitchen, as if the player were on the Kitchen home).
+ */
+export function BottomNav({ active, go }: { active: ScreenId | null; go: (s: ScreenId) => void }) {
   return (
     <nav className="absolute inset-x-0 bottom-0 z-30 flex items-center justify-around border-t border-walnut-dark/40 bg-[linear-gradient(180deg,rgba(62,40,25,0.82),rgba(45,41,36,0.95))] px-2 pb-3 pt-2 backdrop-blur-sm">
       {NAV.map((n) => {

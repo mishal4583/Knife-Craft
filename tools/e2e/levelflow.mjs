@@ -44,9 +44,12 @@ async function skipIntro() {
   await sleep(800);
 }
 async function waitHud() {
-  await page.waitForFunction(() => /·\s*\d+\/\d+\s+[a-z-]+/i.test(document.body.innerText), {
-    timeout: 30000,
-  });
+  await page.waitForFunction(
+    () => /·\s*(?:\d+\/\d+\s+[a-z-]+|\d+% peeled)/i.test(document.body.innerText),
+    {
+      timeout: 30000,
+    },
+  );
 }
 async function playAndServe() {
   await waitHud();
