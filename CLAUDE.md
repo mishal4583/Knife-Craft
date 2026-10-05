@@ -295,6 +295,33 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   was already one screen; the back office is titled "Restaurant". The
   release build keeps the Campaign Supplier tab and the "Business" title.
   Browser: `tools/e2e/restaurantbackoffice.mjs` (restaurant test build).
+- `level-ux-qa` — the Level 1–10 UX pass (presentation only): Level
+  Complete waits for a story banner (Level 10's milestone) and lists Order
+  payout + Completion reward + Earned this level (`levels/levelEarnings.ts`,
+  read from the ledger the serves wrote; null rather than a wrong total when
+  trimmed); peel progress "N% peeled" from a read-only `PEEL_PROGRESS`
+  event (the scene's existing coverage count; peel unchanged); the Order
+  Board lights no bottom-bar section; knife/board previews say "in the
+  Market"; the Knife Report's line follows the grade (`game/qualityCopy.ts`),
+  "Prepare Again"; no "Step 1 of 1", the step line sits on the HUD card.
+  Browser: `tools/e2e/levelux.mjs`.
+- `business-history-qa` — the 30-day restaurant history
+  (`business/businessDayHistory.ts`): first day, several days, 30 kept, the
+  31st drops the oldest, save/load, an old save without history (empty, no
+  money/ledger change), End Business Day identical with or without it,
+  specialist wages added to that day (restaurant build), malformed data
+  cleaned, one writer. Browser: `tools/e2e/history.mjs`.
+- `lazy-load-qa` — the Restaurant screens (back office, Restaurant Service,
+  Inventory + fridge) are ONE lazy chunk (`kc/restaurantScreens.ts`) with an
+  "Opening the restaurant…" state; nothing imports them statically; the
+  built `index.html` never loads it. Browser: `tools/e2e/lazyload.mjs`
+  (both builds).
+- `unused-assets-qa` — every tracked `src/assets` file is referenced (or a
+  documented original: `src/assets/shop/`); `kitchen$f` and `tomato.webp`
+  stay removed.
+- Browser `tools/e2e/fridgepager.mjs` — the phone fridge, one compartment at
+  a time (320–430 px, both steel models, touch and mouse; all pages = the
+  wide view's data).
 - `story-pause-qa` — the finale and milestone banners stop their timers
   (and animations, and finale taps) while paused, resuming with the time
   left (`PausableCountdown` on a fake clock); the finale's "BACK TO THE
@@ -536,8 +563,12 @@ with the real functions.
     and Ingredients used (`ingredientConsumption`) — moved from the old
     Business → Inventory and Business → Supplies tabs, which no longer
     exist (no `business-inventory` / `business-supplies` routes; inventory
-    alerts open `inventory`). The game keeps only the last completed day's P&L, so
-    there are no weekly/monthly figures.
+    alerts open `inventory`). The last completed day's full P&L is
+    `lastDailyPnL`; the latest 30 completed days are kept in the optional
+    `business.finance.history` (`business/businessDayHistory.ts`, written
+    only by `closeBusinessDay` from the day's own DailyPnL + orders served;
+    a save without it has an empty history) and listed on Operations ("Last
+    30 days"). There are no weekly/monthly roll-ups beyond that.
   - The daily accumulator's `inventoryPurchases` counts purchases (one per
     "inventory-purchase" ledger entry; old saves migrate it as 0).
 - **HARD RULE — Inventory is read-only.** The Inventory screen (the
@@ -590,9 +621,16 @@ with the real functions.
   appear), and "Upgrade / Service / Repair Refrigerator →" (Business →
   Equipment, `business-refrigerator`, which owns `purchaseRefrigerator`
   and maintenance). The fridge is display only: a tap calls `onSelect`
-  (the Inventory screen's detail sheet). The Basic always fits its frame;
-  the wide steel models pan sideways inside it ("›" cue + "Swipe to see
-  every door →", touch and mouse drag) without blocking vertical scroll.
+  (the Inventory screen's detail sheet). The Basic always fits its frame.
+  On a phone (below the 768 px breakpoint) a steel model wider than its
+  frame shows ONE door or compartment at a time (task #14): "‹ name n / N
+  ›", 48 px buttons, a sideways swipe or mouse drag (never opening an
+  item), page dots, opening on the first compartment; vertical scroll
+  still works. On a tablet/desktop the wide steel models pan sideways
+  inside the frame ("›" cue + "Swipe to see every door →", touch and mouse
+  drag) without blocking vertical scroll. A "Show the whole fridge" / "One
+  door at a time" toggle switches wherever it doesn't fit. Same crates,
+  data and actions in both views (`fridgepager.mjs`).
   The door handle is decorative (`pointer-events: none`, in the door's own
   18 px edge). Business → Equipment's cards use the same small drawings
   (`FridgeMini`) and show the capacity gain (▲ +40). Unknown inventory ids

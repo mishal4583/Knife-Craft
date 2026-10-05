@@ -405,6 +405,32 @@ conversation.
    `restaurant-backoffice-qa`, e2e `restaurantbackoffice.mjs`. Release
    build unchanged.
 
+33. Level 1–10 UX pass (presentation only, both builds): Level Complete
+   waits for a story banner and shows Order payout / Completion reward /
+   Earned this level (read from the ledger, `levels/levelEarnings.ts`);
+   peel progress "N% peeled" (a read-only `PEEL_PROGRESS` event from the
+   scene's existing coverage count); the Order Board lights no bottom-bar
+   section; knife/board previews say "in the Market"; Knife Report line
+   follows the grade (`game/qualityCopy.ts`), "Prepare Again"; no "Step 1
+   of 1" and the step/destination line sits on the HUD card.
+   `level-ux-qa`, e2e `levelux.mjs`. Knife/cutting untouched.
+34. Phone fridge (both builds): below 768 px a steel fridge wider than its
+   frame shows one door/compartment at a time ("‹ name n / N ›", swipe,
+   48 px buttons); tablets/desktop keep the wide panning appliance; a
+   "Show the whole fridge" toggle. e2e `fridgepager.mjs`; `fridge.mjs`
+   checks the wide view at 768×1024.
+35. 30-day restaurant history (both builds): `business.finance.history`
+   (optional, latest 30 completed days, written by `closeBusinessDay` from
+   the day's own DailyPnL + orders; specialist wages added in the restaurant
+   build); "Last 30 days" on Operations. No money, ledger or settlement
+   change. `business-history-qa`, e2e `history.mjs`.
+36. Lazy Restaurant screens + asset cleanup: the back office, Restaurant
+   Service and Inventory are one lazy chunk (`kc/restaurantScreens.ts`;
+   ScreensRouter 216 → 98 KB) with an "Opening the restaurant…" state;
+   `src/assets/kitchen$f` (a copy of kitchen/skin-06.webp) and
+   `src/assets/tomato.webp` removed after a full reference scan.
+   `lazy-load-qa`, `unused-assets-qa`, e2e `lazyload.mjs`.
+
 ## 4. Open issues from the Level 1–10 audit (not fixed yet)
 
 Priority order as agreed in the audit (P0 = before wide release):
@@ -426,14 +452,19 @@ Priority order as agreed in the audit (P0 = before wide release):
   the next level; knife/board rows say "Unlocks: X in the Market" instead of
   "Reward: X"; any instruction that omits a peel step is prefixed "Peel the
   X first." (43 recipes, incl. Levels 8/9).
-- P1 still open: Level 10's +$80 toast is replaced by the story milestone
-  banner; order payout and completion reward are shown separately (never a
-  total); peel shows no progress ("0/1 peel" until done).
-- P2: first-load bundle (main 782 KB / Phaser chunk 1.44 MB raw), Business
-  code in the main bundle, stale "Next: Santoku · Lv 10" hints, Knife Report
-  copy, faint destination label under the HUD card, nav highlights Kitchen on
-  the Order Board, unused tracked assets `src/assets/kitchen$f` and
-  `src/assets/tomato.webp`.
+- ~~P1~~ **fixed 2026-10-05** (item 33): Level 10's reward notice now waits
+  for the story banner instead of being dropped; Level Complete lists Order
+  payout + Completion reward + Earned this level; peel steps show "N%
+  peeled" and a bar.
+- P2 — fixed 2026-10-05 (items 33–36): stale "Next: Santoku · Lv 10" hints
+  (now "… in the Market · Lv 10"), Knife Report copy, the faint label under
+  the HUD card, the Kitchen highlight on the Order Board, the unused assets
+  `src/assets/kitchen$f` and `src/assets/tomato.webp` (removed), and the
+  Restaurant UI in the startup path (now a lazy chunk).
+- P2 still open: the first-load bundle itself — the startup chunks still
+  carry the game data (levels, recipes, definitions) and the Business game
+  logic App/SaveManager need to load and save; Phaser stays its own lazy
+  1.46 MB chunk.
 
 ## 5. Story presentation — remaining recommendations
 

@@ -301,6 +301,7 @@ moved the menu to Level 1, re-ordered the systems and added a day clock.
 | N Final QA (campaign simulation, widths, regression, report) | done | `restaurant-campaign-sim-qa`, e2e `restaurantwidths.mjs`, `docs/RESTAURANT_QA_REPORT.md` |
 | Economy pass (P0, item effects on real stock, Endless Restaurant demand) | done (behind the switch) | `restaurant-economy-pass-qa`, `restaurant-endless-qa` |
 | 7 One back office (Staff, Suppliers, Equipment) | done (behind the switch) | `restaurant-backoffice-qa`, e2e `restaurantbackoffice.mjs` |
+| Cleanup before the next gameplay phase: Level 1–10 UX pass, phone fridge (one compartment at a time), 30-day history, lazy Restaurant screens, unused assets | done (both builds — explicitly requested) | `level-ux-qa`, `business-history-qa`, `lazy-load-qa`, `unused-assets-qa`; e2e `levelux`, `fridgepager`, `history`, `lazyload` |
 
 Phase 7 notes (one back office, conflict 4):
 

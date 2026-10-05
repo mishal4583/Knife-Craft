@@ -110,9 +110,10 @@ const ALL_IDS = Object.keys(INGREDIENTS) as IngredientId[];
   );
   const router = read("src/ScreensRouter.tsx");
   const data = code(read("src/components/kc/data.ts"));
+  // Lazy-load (task #24): the route may wrap it in its Suspense loading state; it is still its own screen.
   assert(
     /\| "inventory"/.test(data) &&
-      /screen === "inventory" \|\| screen === "inventory-supplies" \? \(\s*<InventoryScreen/.test(
+      /screen === "inventory" \|\| screen === "inventory-supplies" \? \(\s*(?:<Suspense fallback=\{<RestaurantLoading go=\{go\} active="inventory" \/>\}>\s*)?<InventoryScreen/.test(
         router,
       ) &&
       businessTabForScreen("inventory") === null,

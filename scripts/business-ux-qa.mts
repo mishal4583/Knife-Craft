@@ -309,9 +309,10 @@ function playedSave(): SaveData {
     "S1: every existing Business route opens a tab (alerts, the Market's pantry link and the service back button keep working)",
   );
   const alerts = read("src/game/business/businessAlerts.ts");
+  // Lazy-load (task #24): the route may wrap it in its Suspense loading state; it is still its own screen.
   assert(
     businessTabForScreen("inventory") === null &&
-      /screen === "inventory" \|\| screen === "inventory-supplies" \? \(\s*<InventoryScreen/.test(
+      /screen === "inventory" \|\| screen === "inventory-supplies" \? \(\s*(?:<Suspense fallback=\{<RestaurantLoading go=\{go\} active="inventory" \/>\}>\s*)?<InventoryScreen/.test(
         router,
       ) &&
       !/business-inventory/.test(alerts) &&
