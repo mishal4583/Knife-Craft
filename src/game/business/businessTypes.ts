@@ -1,3 +1,7 @@
+import type { RestaurantDayState } from "../restaurant/restaurantDay";
+import type { RestaurantSuppliesState } from "../restaurant/serviceSupplies";
+import type { RestaurantStaffState } from "../restaurant/staffRequirements";
+import type { RestaurantMigrationState } from "../restaurant/restaurantMigration";
 /**
  * BUSINESS_TYPES — Economy V3's own persisted-state container. A single
  * new field on SaveData (`business: BusinessState`), mirroring how every
@@ -72,6 +76,31 @@ export type BusinessState = {
   menuActivation: BusinessMenuActivationState;
   /** Business Supplies (master spec §25, a separately authorized extension — not an Economy V3 phase): culinary smallwares, tableware and takeaway packaging bought in the Market. See businessSupplies.ts's own doc for why this is not part of `inventory`. */
   supplies: BusinessSuppliesState;
+  /**
+   * Unified Restaurant (RESTAURANT_MODE): the restaurant's day clock — day
+   * number, services done, opening/closing (restaurant/restaurantDay.ts).
+   * Optional: older saves and the classic game don't have it (default Day 1).
+   */
+  restaurantDay?: RestaurantDayState;
+  /**
+   * Unified Restaurant (RESTAURANT_MODE): the open dish-soap and
+   * cleaning-liquid bottles and the place settings waiting to be washed
+   * (restaurant/serviceSupplies.ts; the stock itself is `supplies`).
+   * Optional: older saves and the classic game don't have it.
+   */
+  restaurantSupplies?: RestaurantSuppliesState;
+  /**
+   * Unified Restaurant (RESTAURANT_MODE): the specialist chefs hired for the
+   * cuisines (restaurant/staffRequirements.ts). Optional; the classic
+   * six-role `staff` is unchanged.
+   */
+  restaurantStaff?: RestaurantStaffState;
+  /**
+   * Unified Restaurant (RESTAURANT_MODE): the one-time move of this save into
+   * the unified restaurant and its starter crate
+   * (restaurant/restaurantMigration.ts). Optional; absent = not moved yet.
+   */
+  restaurantMigration?: RestaurantMigrationState;
 };
 
 export const DEFAULT_BUSINESS_STATE: BusinessState = {

@@ -1,5 +1,5 @@
 // Business Supplies in the built game (master spec §25), on a 375×642 phone viewport:
-//   1. the Market shows the three supply sections (Smallwares 18 · Tableware 17 · Takeaway 15)
+//   1. the Market shows the three supply sections (Smallwares 18 · Tableware 17 · Takeaway 17 — dish soap and cleaning liquid since phase G)
 //      next to its own Knives and Cutting Boards;
 //   2. buying dinner plates moves the wallet by exactly the card's total, adds exactly ONE
 //      "supply-equipment-purchase" ledger entry and 12 plates to save-backed Business stock;
@@ -87,8 +87,8 @@ for (const label of ["Smallwares", "Tableware", "Takeaway"]) {
   counts[label] = await cardCount();
 }
 check(
-  "1b 18 smallwares · 17 tableware · 15 takeaway lines",
-  counts.Smallwares === 18 && counts.Tableware === 17 && counts.Takeaway === 15,
+  "1b 18 smallwares · 17 tableware · 17 takeaway & hygiene lines",
+  counts.Smallwares === 18 && counts.Tableware === 17 && counts.Takeaway === 17,
   counts,
 );
 const noHScroll = await page.evaluate(

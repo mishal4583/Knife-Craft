@@ -12,9 +12,11 @@
  */
 import type { SaveData } from "../SaveManager";
 import { debitWallet } from "../economy/wallet";
+import { discountedUnitCost } from "../restaurant/bulkBuying";
 import {
   SUPPLY_CATALOG,
   getSupplyItem,
+  isBottleSupply,
   isConsumableSupply,
   supplyPackPrice,
   type BusinessSuppliesState,
@@ -37,10 +39,21 @@ export type SupplyQuote = {
   retailCost: number;
   remainingCredits: number;
   verdict: "ok" | "insufficientFunds";
+  /** Unified Restaurant bulk discount applied to the pack price (0 in the classic game). */
+  bulkDiscount: number;
 };
 
-export function supplyQuote(save: SaveData, item: SupplyItem, packs: number): SupplyQuote {
-  const packPrice = supplyPackPrice(item);
+export function supplyQuote(
+  save: SaveData,
+  item: SupplyItem,
+  packs: number,
+  /** Unified Restaurant bulk discount (restaurant/bulkBuying.ts); 0 = none. */
+  bulkDiscount = 0,
+): SupplyQuote {
+  const packPrice =
+    bulkDiscount > 0
+      ? discountedUnitCost(supplyPackPrice(item), bulkDiscount)
+      : supplyPackPrice(item);
   const totalCost = packPrice * packs;
   return {
     item,
@@ -51,6 +64,7 @@ export function supplyQuote(save: SaveData, item: SupplyItem, packs: number): Su
     retailCost: item.retailPackCents * packs,
     remainingCredits: save.credits - totalCost,
     verdict: save.credits >= totalCost ? "ok" : "insufficientFunds",
+    bulkDiscount,
   };
 }
 
@@ -70,12 +84,15 @@ export function purchaseSupply(
   save: SaveData,
   supplyId: string,
   packs: number,
+  /** Unified Restaurant wholesale buying: a bulk discount and a larger pack limit. */
+  bulk: { discount: number; maxPacks: number } = { discount: 0, maxPacks: MAX_SUPPLY_PACKS },
 ): PurchaseSupplyResult {
   const item = getSupplyItem(supplyId);
   if (!item) return { ok: false, reason: "unknownSupply" };
-  if (!Number.isInteger(packs) || packs < 1 || packs > MAX_SUPPLY_PACKS)
+  if (!Number.isInteger(packs) || packs < 1 || packs > bulk.maxPacks)
     return { ok: false, reason: "invalidQuantity" };
-  const quote = supplyQuote(save, item, packs);
+  if (!(bulk.discount >= 0 && bulk.discount < 1)) return { ok: false, reason: "invalidQuantity" };
+  const quote = supplyQuote(save, item, packs, bulk.discount);
   const debit = debitWallet(save, quote.totalCost);
   if (!debit.ok) return { ok: false, reason: "insufficientFunds" };
   const supplies = save.business.supplies;
@@ -133,7 +150,7 @@ export type PackagingUse = {
 };
 
 /** Removes one unit of `id`, taking its share of the cost basis (rounded; the last unit takes what's left). */
-function takeOne(
+export function takeOne(
   stock: BusinessSuppliesState["stock"],
   id: SupplyId,
 ): { stock: BusinessSuppliesState["stock"]; cost: number } | null {
@@ -191,13 +208,16 @@ export function supplyUnits(supplies: BusinessSuppliesState, id: SupplyId): numb
 
 /**
  * A packaging line is low when it can't cover today's customers (one unit
- * each). Durable equipment is never "low": it isn't used up.
+ * each). Durable equipment is never "low": it isn't used up. A bottle line
+ * (dish soap, cleaning liquid) lasts many services, so it is low only with
+ * no bottle in stock.
  */
 export function isLowSupply(
   supplies: BusinessSuppliesState,
   item: SupplyItem,
   customersToday: number,
 ): boolean {
+  if (isBottleSupply(item)) return supplyUnits(supplies, item.id) < 1;
   return isConsumableSupply(item) && supplyUnits(supplies, item.id) < Math.max(1, customersToday);
 }
 

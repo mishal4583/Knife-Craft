@@ -128,6 +128,208 @@ and `playgama-bridge-config.json` beside it before uploading.
 Focused suites (`npx tsx scripts/<name>.mts`):
 
 - `story-intro-qa` — intro pacing, Skip story, story save semantics.
+- `campaign-paid-orders-qa` — a multi-order level (or batch group) saves
+  each order it pays (`levelProgress.paidOrders`, `levels/paidOrders.ts`):
+  a retry carries on from there, a level never pays more orders than it
+  requires, completing it clears the entry, old saves load unchanged.
+  Browser: `tools/e2e/paidorders.mjs` (Level 30: serve 1 of 2, leave,
+  retry → 2 settlements, not 3).
+- `restaurant-unlocks-qa` — Unified Restaurant foundations
+  (`docs/RESTAURANT_INTEGRATION_AUDIT.md`): the ONE build switch
+  `src/game/config/restaurantMode.ts` `RESTAURANT_MODE` (false; no other
+  restaurant flag; restaurant modules never read it), the system table
+  `restaurant/restaurantProgression.ts` (developer teaching sequence
+  2026-10-05: cooking fundamentals + the day L1, menu L11, ingredient stock
+  L15, fridge L21, dine-in L31, staff L41, cuisines L51, takeaway L71,
+  bigger restaurant L91, full management L121, established L161, master
+  L201, Grand Service L241), and stock needs for every recipe
+  (`restaurant/recipeRequirements.ts`, the rule Business dishes use too).
+- `restaurant-stock-qa` — Unified Restaurant phases 3–4 (switch ON
+  paths, tested as pure functions): rolled service tickets
+  (`restaurant/serviceTickets.ts`, seeded per level, saved in
+  `levelProgress.tickets`, dropped on completion, served in order by
+  `createTicketedServiceSession`); campaign orders take their recipe's real
+  stock from `business.inventory` on serve from Level 15
+  (`restaurant/campaignStock.ts`), exactly once, never expired, never on a
+  replay, with no money or ledger change (order pay unchanged — Economy
+  TODO P0); the Pre-Service Check (`restaurant/preServiceCheck.ts`,
+  `kc/restaurant/*`): need / usable / whole units at the Market's own
+  price, wallet and fridge verdicts, Restock → the Market preset to that
+  ingredient and quantity, Grandma's pantry only when the wallet can't
+  cover it (goods, no money). Browser: `tools/e2e/restaurantstock.mjs`
+  against a **test build** `VITE_RESTAURANT_MODE=1 npx vite build --outDir
+  <dir>` (a normal build always has the switch off).
+- `restaurant-menu-qa` — the menu (`restaurant/restaurantProgression.ts`
+  MENU_CURVE / MENU_UNLOCKS + `restaurantMenu.ts`), the developer's curve of
+  2026-10-05: no menu in the L1–10 fundamentals; 4 dishes at L11, 6/8/10/12/
+  15/18/21/25/29/33/36/39/42/45/48 at L15/20/25/31/41/51/61/71/81/91/101/
+  111/121/141/161. At every point the menu has min(target, what the rules
+  allow) and never runs ahead; it misses only at L20/25/31 (techniques) and
+  L91/101/111 (meat L101, ribeye L106, fish L109) — no dish is invented.
+  Each specialist cuisine opens with its campaign chapter (Indian 51,
+  Mediterranean 71, Mexican 81, Japanese 101, Chinese 121, Thai 141,
+  Korean 161; one Asian Chef for the four Asian chapters) and its first
+  dishes arrive as soon as they legally can; every unlock says why
+  (`MENU_UNLOCKS.why`, shown by `restaurant/restaurantNews.ts` with the
+  L11 chain Menu → Customer Order → Inventory → Preparation → Service →
+  Revenue); active menu (runs itself before L51, never empty, locked never
+  orderable); level/recipe/dish data untouched.
+- `restaurant-day-qa` — the restaurant day clock (`restaurant/restaurantDay.ts`):
+  Lunch + Dinner (+ Breakfast from L51); opening card; services = first
+  completions; Closing Time before the next level (chores, the day's count);
+  before L21 only the day number moves, from L21 the freshness clock and
+  spoilage, from L91 End Business Day exactly; old saves default to Day 1.
+  Browser: `tools/e2e/restaurantday.mjs` (restaurant test build).
+  The game map is `docs/GAME_MAP.md`.
+- `restaurant-guests-qa` — phase D, orders from the ACTIVE MENU inside
+  campaign services (`restaurant/menuGuests.ts`): after a level's own orders
+  (unchanged, deterministic) the service can take menu guests (none before
+  the menu opens; 1/2/3/4/5 from L11/21/51/121/201, `MENU_GUESTS_SCHEDULE`), optional,
+  one at a time ("🍽️ Menu guest n/N: dish · $price" next to Finish Level).
+  At EVERY level 11–250 a guest orders only an unlocked, active dish; a dish
+  switched off never appears; seeded per level; the count is saved
+  (`levelProgress.menuGuests`) so no guest is paid twice; none on replays or
+  batch groups; a guest pays the dish's menu price (`businessCustomerPayment`)
+  with ONE "business-revenue" entry and uses real stock from L15
+  (`App.serveMenuGuestOrder`). The Pre-Service Check lists today's guests
+  and their extra stock as OPTIONAL rows (`guestStockFor`; never blocking,
+  never opening the sheet; Inventory recommends them as "low") — K1–K4. `business-final-audit-qa` F2 and
+  `business-wtp-qa` H2 name the two revenue writers (Business serve, menu
+  guest). Browser: `tools/e2e/restaurantguests.mjs` (restaurant test build).
+- `restaurant-supplies-qa` — phase G, consumable supplies in a service
+  (`restaurant/serviceSupplies.ts`, every number in `SERVICE_SUPPLY_RULES`):
+  nothing before dine-in (L31); every order dine-in until L71, then a seeded
+  ~30% takeaway. Dine-in: a clean place setting (plate + fork + knife,
+  reusable → washing) and a napkin; takeaway: container + bag
+  (`takePackagingForOrder`) + napkin; taken automatically on serve, never on
+  a replay, never blocking there. Dish soap / cleaning liquid are gallon
+  bottles (`business.restaurantSupplies` = open-bottle %, settings washing;
+  sealed bottles = stock): soap per wash-up (after a service and at start),
+  cleaning liquid per closing; "~N washes / closings remaining", low at
+  ≤ 8 washes / ≤ 3 closings, empty. The
+  Pre-Service Check's Supplies section: settings and packaging block,
+  napkins and bottles warn; Restock → the Market line; Grandma's spares
+  (cost 0, no money/ledger) only when the wallet can't cover what blocks.
+  Menu guests need a clean setting. No money moves when supplies are used.
+  Browser: `tools/e2e/restaurantsupplies.mjs` (restaurant test build).
+- `restaurant-progression-qa` — the developer's 2026-10-05 brief:
+  staff requirements (`restaurant/staffRequirements.ts`, `STAFF_RULES`:
+  Prep Cook L41 with ≥ 3 orders, Server L46 with ≥ 2 tables, Line Cook L61
+  with ≥ 4 orders, Cleaner L91, Head Chef L121 with ≥ 3 specialist
+  cuisines, Manager L161 with a team of ≥ 5; the specialist chef of every
+  specialist cuisine on the active menu or in the tickets), announced 5
+  levels ahead, shown with the reason in the Pre-Service Check, blocking
+  START until hired (hiring is free — no soft-lock); specialist chefs in the
+  optional `business.restaurantStaff`, hired on Restaurant → Staff, paid at
+  closing from L91 (one "business-staff-salary" entry each, laid off if the
+  wallet can't cover them; wage = the Line Cook's figure, not balanced);
+  closing from L91 writes End Business Day's payroll and fine ledger
+  entries (it used to move money without them); bulk buying
+  (`restaurant/bulkBuying.ts`: presets 5/25/50/100, provisional tiers
+  3/5/8 % from 25/50/100, the last price layer, consumables only, up to 100
+  supply packs, one ledger entry; the classic purchase is unchanged);
+  Inventory's ⚠️ NEEDS ATTENTION (`restaurant/restaurantAttention.ts`,
+  `RestaurantAttentionPanel`): the next service's missing ingredients and
+  supplies with its recommended restock, napkins, dish soap, cleaning
+  liquid, fridge and staff, urgent first, read-only, navigation only;
+  fridge usage (`restaurant/fridgeUsage.ts`, nearly full at 85 %) in the
+  check from L21; no separate Business Day before L250 and the Endless
+  Restaurant after (`restaurant/endlessRestaurant.ts`; the Business tab is
+  "Restaurant" in the test build). Browser:
+  `tools/e2e/restaurantprogression.mjs` (restaurant test build).
+- `restaurant-migration-qa` — phase M (`restaurant/restaurantMigration.ts`):
+  in the restaurant build `SaveManager.load` (and reset / a fresh save)
+  moves every save into the unified restaurant ONCE, stamped in the
+  optional `business.restaurantMigration`, and writes it back. Nothing is
+  lost and no money or ledger moves. A save already past a system gets a
+  one-time starter crate at cost 0, only topping up: the next 3 services'
+  ingredients (never past the fridge) from L15; place settings for a
+  service, napkins to 100, a bottle of dish soap and of cleaning liquid from
+  L31; takeaway containers and bags (≥ 10) from L71. A fresh save is only
+  stamped. The Pre-Service Check welcomes the player ("Welcome to your
+  restaurant") until a service starts. Saves of every era load through the
+  real `SaveManager.load`; the release build never migrates. Browser:
+  `tools/e2e/restaurantmigration.mjs` (seeds an unstamped save; the other
+  restaurant e2e tests seed `MOVED_IN_BUSINESS` so they get no crate).
+- `restaurant-campaign-sim-qa` — phase N: the whole campaign, L1 → 250,
+  through the real restaurant functions (the Pre-Service Check, buying,
+  pantry, spares, free hiring, the wash-up, every order's stock + supplies +
+  settlement, menu guests, completion, closing; every change through a
+  mirror of `App.persist`) for three players — diligent, broke ($0 before
+  every level) and an old save moving in at L120 — with invariants after
+  every level: it could start, credits ≥ 0, opening cash + ledger = cash,
+  no negative stock, fridge within capacity. Prints each player's money
+  flows. Report: `docs/RESTAURANT_QA_REPORT.md`. Browser:
+  `tools/e2e/restaurantwidths.mjs` (every restaurant screen at 320–768 px:
+  no sideways scroll, buttons ≥ 48 px).
+- `restaurant-economy-pass-qa` — the economy pass (restaurant build only):
+  P0 (`restaurant/restaurantEconomy.ts`) — a campaign order pays recipe
+  earnings + quality bonus, its food being the real stock bought in the
+  Market (no built-in food cost; boosts to the quality bonus kept; the
+  release settlement unchanged); measured with the full simulation
+  (`scripts/restaurantCampaignSim.mts`), a completionist owns everything at
+  L250 with $128,063 (target $100k–$150k; $94,393 with the double charge);
+  no soft-lock, cash = ledger. X: item effects on real stock (values
+  unchanged): knife/board/helper savings and a dull knife's penalty scale
+  the stock an order uses (`stockUseFor`; the Pre-Service Check plans
+  exactly what the serve uses, a knife that dulls mid-service never
+  blocks), the Campaign Supplier's ±10% sets Market ingredient prices
+  (`supplierPriceFactor`, `restaurantQuote`; classic quote unchanged).
+- `restaurant-endless-qa` — the Endless Restaurant after L250
+  (`restaurant/endlessDemand.ts`, `ENDLESS_DEMAND_RULES`): customers =
+  min(demand: 8 × popularity × (1 + cookable dishes ÷ 8), a specialist
+  dish only with its chef; capacity: chef + roles + specialists), only for a
+  migrated restaurant save (classic Business demand unchanged); specialists
+  paid at End Business Day. Five restaurants × 30 days from the L250
+  completionist save through the real Business engine: minimum $78/day,
+  medium $135, full menu + thin staff $276, fully staffed $452 (E2:
+  $300–$600), overstaffed −$262 (E3: < $150); cash = ledger, never < 0.
+- `restaurant-backoffice-qa` — phase 7, one back office (restaurant
+  build; `restaurant/restaurantBackOffice.ts`): the ingredient supplier
+  (`selectedSupplierId`, Local / Wholesale / Premium) is chosen on
+  Restaurant → Suppliers above the contracts, each card priced by the
+  Market's own quote, free (no money, no ledger); the Market has no supplier
+  tab there and its Ingredients names the supplier with "Change supplier →";
+  Equipment shows restaurant development (kitchen tiers: current, built
+  x / 5, next) read-only above the fridge, linking to Kitchen Upgrade; Staff
+  was already one screen; the back office is titled "Restaurant". The
+  release build keeps the Campaign Supplier tab and the "Business" title.
+  Browser: `tools/e2e/restaurantbackoffice.mjs` (restaurant test build).
+- `level-ux-qa` — the Level 1–10 UX pass (presentation only): Level
+  Complete waits for a story banner (Level 10's milestone) and lists Order
+  payout + Completion reward + Earned this level (`levels/levelEarnings.ts`,
+  read from the ledger the serves wrote; null rather than a wrong total when
+  trimmed); peel progress "N% peeled" from a read-only `PEEL_PROGRESS`
+  event (the scene's existing coverage count; peel unchanged); the Order
+  Board lights no bottom-bar section; knife/board previews say "in the
+  Market"; the Knife Report's line follows the grade (`game/qualityCopy.ts`),
+  "Prepare Again"; no "Step 1 of 1", the step line sits on the HUD card.
+  Browser: `tools/e2e/levelux.mjs`.
+- `business-history-qa` — the 30-day restaurant history
+  (`business/businessDayHistory.ts`): first day, several days, 30 kept, the
+  31st drops the oldest, save/load, an old save without history (empty, no
+  money/ledger change), End Business Day identical with or without it,
+  specialist wages added to that day (restaurant build), malformed data
+  cleaned, one writer. Browser: `tools/e2e/history.mjs`.
+- `lazy-load-qa` — the Restaurant screens (back office, Restaurant Service,
+  Inventory + fridge) are ONE lazy chunk (`kc/restaurantScreens.ts`) with an
+  "Opening the restaurant…" state; nothing imports them statically; the
+  built `index.html` never loads it. Browser: `tools/e2e/lazyload.mjs`
+  (both builds).
+- `unused-assets-qa` — every tracked `src/assets` file is referenced (or a
+  documented original: `src/assets/shop/`); `kitchen$f` and `tomato.webp`
+  stay removed.
+- Browser `tools/e2e/fridgepager.mjs` — the phone fridge, one compartment at
+  a time (320–430 px, both steel models, touch and mouse; all pages = the
+  wide view's data).
+- `story-pause-qa` — the finale and milestone banners stop their timers
+  (and animations, and finale taps) while paused, resuming with the time
+  left (`PausableCountdown` on a fake clock); the finale's "BACK TO THE
+  KITCHEN" ends on Kitchen home. Browser: `tools/e2e/finale.mjs` (a real
+  Bridge pause mid-finale).
+- Browser `tools/e2e/resize.mjs` — a resize or rotation (320 ↔ 768 ↔ 430
+  px) never restarts the game: `GameShell` keeps ONE wrapper and changes
+  only its style (swapping the tree remounted everything).
 - `playables-ads-qa` — Bridge ads (interstitial policy, rewarded Replay Bonus).
 - `economy-v2-final-qa`, `economy-v2-qa`, `economy-v2-settlement-ledger-qa`
   — Economy V2 frozen baseline (some checks use `git diff`, so run them in
@@ -170,7 +372,7 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   navigation-only actions, handle never takes a tap, 48 px targets).
 - `inventory-screen-qa` — the Inventory section: 5-item bottom bar, no
   Business Inventory/Supplies tab or `business-inventory` route, the
-  Ingredients | Supplies switch (N), supplies coverage/low/all 50 lines/
+  Ingredients | Supplies switch (N), supplies coverage/low/all 52 lines/
   read-only (U), all 57
   ingredients with the save's quantity/cost/freshness and fridge (A), the
   one status rule (S), Needs Attention (T), sorting (O), read-only +
@@ -191,11 +393,9 @@ Prettier, build, preflight, the relevant QA, and a browser check.
 Browser tests: `tools/e2e/` (headless Chrome via `puppeteer-core`; see
 `tools/e2e/README.md`). Run `npm install` inside `tools/e2e` once.
 
-Known pre-existing failures (document, do not "fix" by weakening):
-
-- `playables-ads-qa` B12/B13 (Replay Bonus daily cap): the test pins
-  `NOW` to 2026-09-26 while ledger entries carry the real `Date.now()`, so
-  the check depends on the calendar date. Fix the test's clock, not the cap.
+Known pre-existing failures (document, do not "fix" by weakening): none
+at present. (`playables-ads-qa` B12/B13 depended on the calendar date; the
+test now pins `Date.now` to its `NOW` for section B — the cap is unchanged.)
 
 ---
 
@@ -338,7 +538,7 @@ with the real functions.
     perishability (≤ `EXPIRING_SOON_DAYS` = expiring), low =
     `lowStockItems`, critical = low that can't cover one average order
     (`dishesLeft < 1`). Each status shows a marker AND a word.
-  - The Supplies view: summary cards (Supplies on hand x/50 lines, Stock
+  - The Supplies view: summary cards (Supplies on hand x/52 lines, Stock
     value at cost basis, Running low, Takeaway orders covered =
     `packagingOrdersCovered`, the smaller of containers and bags on hand);
     Needs Attention kept short (one "Packaging covers N of today's M
@@ -363,8 +563,12 @@ with the real functions.
     and Ingredients used (`ingredientConsumption`) — moved from the old
     Business → Inventory and Business → Supplies tabs, which no longer
     exist (no `business-inventory` / `business-supplies` routes; inventory
-    alerts open `inventory`). The game keeps only the last completed day's P&L, so
-    there are no weekly/monthly figures.
+    alerts open `inventory`). The last completed day's full P&L is
+    `lastDailyPnL`; the latest 30 completed days are kept in the optional
+    `business.finance.history` (`business/businessDayHistory.ts`, written
+    only by `closeBusinessDay` from the day's own DailyPnL + orders served;
+    a save without it has an empty history) and listed on Operations ("Last
+    30 days"). There are no weekly/monthly roll-ups beyond that.
   - The daily accumulator's `inventoryPurchases` counts purchases (one per
     "inventory-purchase" ledger entry; old saves migrate it as 0).
 - **HARD RULE — Inventory is read-only.** The Inventory screen (the
@@ -379,6 +583,14 @@ with the real functions.
   Business analyzes → Equipment improves capacity/operation. Guarded by
   `business-ux-qa` S8, `inventory-market-qa` 1, `fridge-view-qa` H1/I1 and
   `inventory-screen-qa` R1–R4.
+  - The ONE exception: **Throw Out Expired** (`business/discardExpired.ts`,
+    a two-step confirm under Needs Attention). It runs End Business Day's
+    own sweep early: only expired entries go, valued with the same
+    multipliers, recorded as waste (spoilage totals + the day's
+    `discardedQuantity` / `discardedValue`, which End Business Day adds to
+    its sweep for the inspection and the P&L waste line). No credits move,
+    no ledger entry. Guarded by `inventory-screen-qa` D1–D5 and e2e
+    `inventory.mjs` 7b.
 - **Physical fridge** (refrigerator UI handoff, a UI integration — not
   V3-17) on the Inventory screen: `kc/inventory/fridge/PhysicalFridge.tsx`
   + `.css`, fed by the read-only adapter `business/fridgeView.ts`. An open
@@ -409,9 +621,16 @@ with the real functions.
   appear), and "Upgrade / Service / Repair Refrigerator →" (Business →
   Equipment, `business-refrigerator`, which owns `purchaseRefrigerator`
   and maintenance). The fridge is display only: a tap calls `onSelect`
-  (the Inventory screen's detail sheet). The Basic always fits its frame;
-  the wide steel models pan sideways inside it ("›" cue + "Swipe to see
-  every door →", touch and mouse drag) without blocking vertical scroll.
+  (the Inventory screen's detail sheet). The Basic always fits its frame.
+  On a phone (below the 768 px breakpoint) a steel model wider than its
+  frame shows ONE door or compartment at a time (task #14): "‹ name n / N
+  ›", 48 px buttons, a sideways swipe or mouse drag (never opening an
+  item), page dots, opening on the first compartment; vertical scroll
+  still works. On a tablet/desktop the wide steel models pan sideways
+  inside the frame ("›" cue + "Swipe to see every door →", touch and mouse
+  drag) without blocking vertical scroll. A "Show the whole fridge" / "One
+  door at a time" toggle switches wherever it doesn't fit. Same crates,
+  data and actions in both views (`fridgepager.mjs`).
   The door handle is decorative (`pointer-events: none`, in the door's own
   18 px edge). Business → Equipment's cards use the same small drawings
   (`FridgeMini`) and show the capacity gain (▲ +40). Unknown inventory ids
@@ -440,8 +659,12 @@ equipment condition, inspections, fines, operating costs).
 Master spec §25. V3's phase sequence stays closed; this is its own scope
 with its own gates.
 
-- **Catalog** — `business/businessSupplies.ts`: 50 lines.
-  - Culinary smallwares 18, tableware 17, takeaway packaging 15.
+- **Catalog** — `business/businessSupplies.ts`: 52 lines.
+  - Culinary smallwares 18, tableware 17, takeaway packaging & hygiene 17
+    (dish soap and cleaning liquid added by Unified Restaurant phase G, in
+    "Securing & hygiene"; their prices are from WebstaurantStore's listing
+    on 2026-10-04 — re-check them in the economy pass). A bottle line is
+    "low" only with no bottle in stock.
   - Every retail pack price comes from a WebstaurantStore product page
     (retrieved 2026-10-02, recorded per line and in §25).
   - Game price = round(retail × 0.65), the ingredient rule.
@@ -514,6 +737,13 @@ not silently removed.
   Finishing and skipping share one completion path
   (`CinematicIntro.finish` → `App.completeIntro`) that sets only
   `story.introDone = true`, once. `StoryOverlay` still plays the finale.
+- **Story pause** — the finale's beat timers and the milestone banners'
+  dismiss timer count unpaused time only (`usePausableTimeout` over
+  `game/story/pausableCountdown.ts`, following `PauseManager`); while
+  paused their CSS animations freeze (`kc-story-paused`) and finale taps are
+  ignored. The finale's last button, "BACK TO THE KITCHEN", ends on the
+  Kitchen home screen (`App.finishFinale`; developer decision #21). Every
+  path that plays the finale has already paid and saved the level.
 - Milestones (Level 10/20/45/70/110/120/250) and the Level-100 finale are
   unchanged. `SaveData.story = { introDone, milestoneMask, finaleSeen }` —
   no new fields.

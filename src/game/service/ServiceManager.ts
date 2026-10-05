@@ -87,6 +87,14 @@ export type ServiceSession = {
    * which has no campaign-completion concept at all.
    */
   isReplay: boolean;
+  /**
+   * Unified Restaurant (restaurant/serviceTickets.ts): the level's orders,
+   * rolled before service so the Pre-Service Check knows exactly what they
+   * need. When present, the session serves them in this order (current =
+   * tickets[completedCount], next = the one after) instead of picking each
+   * next order at random. Absent = the classic random queue.
+   */
+  tickets?: RecipeDefinition[];
 };
 
 const HISTORY_LOOKBACK = 4;
@@ -267,7 +275,9 @@ export function advanceServiceSession(
   );
 
   const newCurrent = session.next ? activate(session.next) : null;
-  const newNextRecipe = pickNextRecipe(pool, recentRecipeIds, recentCuisineIds, rand);
+  const newNextRecipe = session.tickets
+    ? (session.tickets[session.completedCount + 2] ?? null)
+    : pickNextRecipe(pool, recentRecipeIds, recentCuisineIds, rand);
   const newNext = newNextRecipe ? buildServiceOrder(newNextRecipe, session.chapter, rand) : null;
 
   return {
@@ -508,6 +518,80 @@ export function serveBatchGroupOrder(
     CUSTOMER_REACTIONS[Math.floor(rand() * CUSTOMER_REACTIONS.length)] ?? CUSTOMER_REACTIONS[0]!;
   const orders = group.orders.map((o, i) => (i === index ? { ...o, order: completed } : o));
   return { group: { ...group, orders }, coinsAwarded: paid.coinsAwarded, reaction };
+}
+
+/**
+ * A session that serves a level's rolled tickets in order (see the
+ * `tickets` field), starting after the `alreadyServed` orders a previous
+ * try paid for. Null when there is nothing left to serve.
+ */
+export function createTicketedServiceSession(
+  levelId: string,
+  tickets: RecipeDefinition[],
+  alreadyServed: number,
+  rand: () => number = Math.random,
+  chapter?: number,
+  isReplay: boolean = false,
+): ServiceSession | null {
+  const start = Math.max(0, Math.floor(alreadyServed));
+  const first = tickets[start];
+  if (!first) return null;
+  const second = tickets[start + 1];
+  return {
+    levelId,
+    ...(chapter !== undefined ? { chapter } : {}),
+    current: activate(buildServiceOrder(first, chapter, rand)),
+    next: second ? buildServiceOrder(second, chapter, rand) : null,
+    recent: null,
+    recentRecipeIds: tickets.slice(0, start + 1).map((r) => r.id),
+    recentCuisineIds: tickets.slice(0, start + 1).map((r) => r.cuisineId),
+    completedCount: start,
+    isReplay,
+    tickets,
+  };
+}
+
+/**
+ * Unified Restaurant menu guests: appends `recipe` as one more ticket of a
+ * ticketed session; if nothing is queued after the current order it becomes
+ * the next order, so the usual advance brings it in. No-op for a session
+ * without tickets.
+ */
+export function withExtraTicket(
+  session: ServiceSession,
+  recipe: RecipeDefinition,
+  rand: () => number = Math.random,
+): ServiceSession {
+  if (!session.tickets) return session;
+  return {
+    ...session,
+    tickets: [...session.tickets, recipe],
+    next: session.next ?? buildServiceOrder(recipe, session.chapter, rand),
+  };
+}
+
+/**
+ * A retry of an unfinished level (levels/paidOrders.ts): the orders already
+ * served and paid count as done. A service session starts with them
+ * counted; nothing is paid or re-served.
+ */
+export function withOrdersAlreadyServed(session: ServiceSession, count: number): ServiceSession {
+  return { ...session, completedCount: Math.max(session.completedCount, Math.floor(count)) };
+}
+
+/** The batch-group form: each customer whose recipe was already paid starts COMPLETED (one per id). */
+export function withBatchOrdersAlreadyServed(
+  group: BatchGroupSession,
+  paidRecipeIds: readonly string[],
+): BatchGroupSession {
+  const left = [...paidRecipeIds];
+  const orders = group.orders.map((o) => {
+    const i = left.indexOf(o.recipe.id);
+    if (i === -1) return o;
+    left.splice(i, 1);
+    return { ...o, order: { ...o.order, status: "COMPLETED" as const } };
+  });
+  return { ...group, orders };
 }
 
 /** True once every order in the group has reached COMPLETED — the group-level equivalent of a campaign level's `requiredOrders` being satisfied. */

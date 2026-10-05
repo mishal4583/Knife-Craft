@@ -1,4 +1,7 @@
-import { useState } from "react";
+import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
+import { BULK_MAX_PACKS, bulkDiscountFor } from "@/game/restaurant/bulkBuying";
+import { BulkPresets } from "./BulkPresets";
+import { useEffect, useRef, useState } from "react";
 import { Badge, KButton, Panel } from "./common/primitives";
 import { cn } from "@/lib/utils";
 import type { SaveData } from "@/game/SaveManager";
@@ -9,6 +12,7 @@ import {
   SUPPLY_PRICES_RETRIEVED,
   SUPPLY_SECTIONS,
   isConsumableSupply,
+  supplyPackPrice,
   unitLabel,
   type SupplyId,
   type SupplySection,
@@ -35,16 +39,26 @@ function balanceText(cents: number): string {
 export function MarketSupplies({
   save,
   section,
+  focusId = null,
   purchaseSupply,
   setNotice,
 }: {
   save: SaveData;
   section: SupplySection;
+  /** Preselected by an Inventory → Market link: its group opens and the card scrolls into view. */
+  focusId?: SupplyId | null;
   purchaseSupply: (supplyId: string, packs: number) => PurchaseSupplyResult;
   setNotice: (text: string) => void;
 }) {
   const meta = SUPPLY_SECTIONS[section];
-  const [group, setGroup] = useState<string>("All");
+  const focusItem = focusId
+    ? SUPPLY_CATALOG.find((i) => i.id === focusId && i.section === section)
+    : undefined;
+  const [group, setGroup] = useState<string>(focusItem?.group ?? "All");
+  const focusRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    focusRef.current?.scrollIntoView({ block: "center" });
+  }, []);
   const [packs, setPacks] = useState<Partial<Record<SupplyId, number>>>({});
   const [messages, setMessages] = useState<Partial<Record<SupplyId, string>>>({});
   const supplies = save.business.supplies;
@@ -56,17 +70,25 @@ export function MarketSupplies({
     return packs[id] ?? 1;
   }
 
+  /** Unified Restaurant wholesale buying: consumables only (the same rule App's purchase uses). */
+  const wholesale = (item: (typeof SUPPLY_CATALOG)[number]) =>
+    RESTAURANT_MODE && isConsumableSupply(item);
+  const bulk = (item: (typeof SUPPLY_CATALOG)[number], n: number) =>
+    wholesale(item) ? bulkDiscountFor(n) : 0;
+
   function step(id: SupplyId, delta: number) {
+    const item = SUPPLY_CATALOG.find((i) => i.id === id)!;
+    const max = wholesale(item) ? BULK_MAX_PACKS : MAX_SUPPLY_PACKS;
     setPacks((p) => ({
       ...p,
-      [id]: Math.min(MAX_SUPPLY_PACKS, Math.max(1, packsFor(id) + delta)),
+      [id]: Math.min(max, Math.max(1, packsFor(id) + delta)),
     }));
   }
 
   function handleBuy(id: SupplyId) {
     const item = SUPPLY_CATALOG.find((i) => i.id === id)!;
     const n = packsFor(id);
-    const quote = supplyQuote(save, item, n);
+    const quote = supplyQuote(save, item, n, bulk(item, n));
     const result = purchaseSupply(id, n);
     if (!result.ok) {
       setMessages((m) => ({
@@ -123,14 +145,20 @@ export function MarketSupplies({
       <div className="grid grid-cols-2 gap-3">
         {items.map((item) => {
           const n = packsFor(item.id);
-          const quote = supplyQuote(save, item, n);
+          const quote = supplyQuote(save, item, n, bulk(item, n));
           const onHand = supplyUnits(supplies, item.id);
           const message = messages[item.id];
           return (
             <article
               key={item.id}
+              ref={item.id === focusItem?.id ? focusRef : undefined}
               data-supply={item.id}
-              className="product-card flex flex-col rounded-[20px] border border-walnut/15 p-3 card-warm"
+              className={cn(
+                "product-card flex flex-col rounded-[20px] border p-3 card-warm",
+                item.id === focusItem?.id
+                  ? "border-copper ring-2 ring-copper/60"
+                  : "border-walnut/15",
+              )}
             >
               <div className="flex items-start justify-between">
                 <span className="text-[30px] leading-none" aria-hidden>
@@ -180,6 +208,22 @@ export function MarketSupplies({
                   +
                 </button>
               </div>
+              {wholesale(item) ? (
+                <BulkPresets
+                  value={n}
+                  label="packs"
+                  onPick={(q) => setPacks((p) => ({ ...p, [item.id]: q }))}
+                />
+              ) : null}
+              {quote.bulkDiscount > 0 ? (
+                <p
+                  className="mt-1 text-center font-ui text-[11px] font-bold text-olive"
+                  data-testid="bulk-saving"
+                >
+                  Bulk −{Math.round(quote.bulkDiscount * 100)}% · saves{" "}
+                  {formatUsd(supplyPackPrice(item) * n - quote.totalCost)}
+                </p>
+              ) : null}
               {message ? (
                 <p className="mt-1 text-center font-hand text-[12px] leading-tight text-copper">
                   {message}

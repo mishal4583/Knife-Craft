@@ -90,9 +90,12 @@ for (let lv = 1; lv <= 10; lv++) {
   // wait for the HUD step counter (scene ready)
   const tReady = Date.now();
   await page
-    .waitForFunction(() => /·\s*\d+\/\d+\s+[a-z-]+/i.test(document.body.innerText), {
-      timeout: 30000,
-    })
+    .waitForFunction(
+      () => /·\s*(?:\d+\/\d+\s+[a-z-]+|\d+% peeled)/i.test(document.body.innerText),
+      {
+        timeout: 30000,
+      },
+    )
     .catch(() => {});
   L.msToHud = Date.now() - tReady;
   L.hudText = (await text(page)).replace(/\s+/g, " ").slice(0, 300);
@@ -195,9 +198,12 @@ for (let lv = 1; lv <= 10; lv++) {
         b?.click();
       });
     await page
-      .waitForFunction(() => /·\s*\d+\/\d+\s+[a-z-]+/i.test(document.body.innerText), {
-        timeout: 30000,
-      })
+      .waitForFunction(
+        () => /·\s*(?:\d+\/\d+\s+[a-z-]+|\d+% peeled)/i.test(document.body.innerText),
+        {
+          timeout: 30000,
+        },
+      )
       .catch(() => {});
     R.levels[R.levels.length - 1].msBoardToNextHud = Date.now() - tStart;
   }

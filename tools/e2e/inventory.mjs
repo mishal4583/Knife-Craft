@@ -332,11 +332,11 @@ const supButtons = await page.evaluate(() =>
   ),
 );
 check(
-  "6d Inventory → Supplies: 18 smallwares, 17 tableware incl. cutlery, 15 takeaway parcels; summary cards; one packaging alert (not 15); nothing to buy",
+  "6d Inventory → Supplies: 18 smallwares, 17 tableware incl. cutlery, 17 takeaway & hygiene (dish soap and cleaning liquid since phase G); summary cards; one packaging alert (not 17); nothing to buy",
   smallwares.length === 18 &&
     tableware.length === 17 &&
     tableware.includes("dinner-forks") &&
-    takeaway.length === 15 &&
+    takeaway.length === 17 &&
     /Supplies on hand/.test(supSummary) &&
     /Takeaway orders covered/.test(supSummary) &&
     !supButtons.some((t) => /^Buy|^[−+]$/.test(t)) &&
@@ -349,12 +349,69 @@ check(
   },
 );
 await shot(page, "inventory-6-supplies");
+// Restock on the packaging alert jumps to that exact line in the Market (like ingredients).
+await page.evaluate(() =>
+  [...document.querySelectorAll('[data-supply-attention="packaging-coverage"] button')]
+    .find((b) => /Restock/.test(b.textContent))
+    ?.click(),
+);
+await sleep(900);
+const supplyFocus = await page.evaluate(() => {
+  const a = document.querySelector("article.product-card.ring-2[data-supply]");
+  const r = a?.getBoundingClientRect();
+  return a
+    ? { id: a.getAttribute("data-supply"), visible: r.top >= 0 && r.bottom <= innerHeight }
+    : null;
+});
+check(
+  "6e Restock on a supply opens the Market on that exact line, in view",
+  supplyFocus?.id === "microwave-containers" && supplyFocus.visible,
+  supplyFocus,
+);
+await openInventory();
 await page.evaluate(() => document.querySelector('[data-inventory-kind="ingredients"]').click());
 await sleep(300);
 
 // ---------- 7. The save is untouched ----------
 const after = await readSave(page);
 check("7 visiting Inventory changes nothing in the save", essentials(after) === essentials(before));
+
+// ---------- 7b. Throw Out Expired ----------
+await openInventory();
+const tBefore = await readSave(page);
+const firstTap = await page.evaluate(() => {
+  const box = document.querySelector('[data-testid="throw-out-expired"]');
+  box?.querySelector("button")?.click();
+  return box?.innerText.replace(/\s+/g, " ") ?? "";
+});
+await sleep(300);
+const confirmText = await page.evaluate(
+  () =>
+    document.querySelector('[data-testid="throw-out-expired"]')?.innerText.replace(/\s+/g, " ") ??
+    "",
+);
+const unchangedAfterFirstTap = essentials(await readSave(page)) === essentials(tBefore);
+await clickButton(page, /^Yes, throw out$/);
+await sleep(600);
+const tAfter = await readSave(page);
+const stillListed = await page.evaluate(
+  () => !!document.querySelector('[data-inventory-item="cheddar"]'),
+);
+check(
+  "7b Throw Out Expired asks first, then removes only the expired cheddar: no money or ledger change, waste recorded",
+  /Throw Out Expired \(1\)/.test(firstTap) &&
+    /can't be undone/.test(confirmText) &&
+    unchangedAfterFirstTap &&
+    !tAfter.business.inventory.cheddar &&
+    !!tAfter.business.inventory.basil &&
+    !!tAfter.business.inventory.potato &&
+    tAfter.credits === tBefore.credits &&
+    tAfter.economyLedger.length === tBefore.economyLedger.length &&
+    tAfter.business.spoilage.totalSpoiledValue > tBefore.business.spoilage.totalSpoiledValue &&
+    tAfter.business.finance.dailyAccumulator.discardedQuantity === 2 &&
+    !stillListed,
+  { firstTap, confirmText, spoilage: tAfter.business.spoilage },
+);
 
 // ---------- 8. Sizes ----------
 const sizes = [

@@ -1,3 +1,5 @@
+import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
+import { ENDLESS_RESTAURANT_NAME } from "@/game/restaurant/endlessRestaurant";
 import { useEffect } from "react";
 import { ENDLESS_DAILY_COIN_CAP, isEndlessUnlocked } from "@/game/daily/EndlessServiceManager";
 import { paidLevelReward } from "@/game/levels/levelRewards";
@@ -12,6 +14,7 @@ import {
   describeDifficulty,
   getNextKitchenStagePreview,
   getNextRewardPreview,
+  opensInMarket,
   levelNumber,
 } from "@/game/levels/levelMastery";
 import { getCafeProgress } from "@/game/cafe/CafeProgressionManager";
@@ -320,17 +323,22 @@ export function OrderBoard({
             </button>
             <button
               type="button"
-              onClick={() => go("endless")}
+              // Unified Restaurant: after L250 the restaurant carries on as the Endless
+              // Restaurant (the Business engine, opened from the Restaurant tab).
+              onClick={() => go(RESTAURANT_MODE ? "business" : "endless")}
+              data-testid="endless-tile"
               className="press rounded-[16px] border border-sage/40 bg-sage/15 p-3 text-left"
             >
               <span className="block text-[20px]">🍽️</span>
               <span className="mt-1 block font-display text-[13px] font-black text-walnut-dark">
-                Endless Service
+                {RESTAURANT_MODE ? ENDLESS_RESTAURANT_NAME : "Endless Service"}
               </span>
               <span className="block font-hand text-[12px] text-walnut/60">
-                {isEndlessUnlocked(levelProgress)
-                  ? `ongoing earnings · up to ${formatUsd(ENDLESS_DAILY_COIN_CAP).replace(/\.00$/, "")}/day`
-                  : "🔒 unlocks after Level 250"}
+                {!isEndlessUnlocked(levelProgress)
+                  ? "🔒 unlocks after Level 250"
+                  : RESTAURANT_MODE
+                    ? "your restaurant, open every day"
+                    : `ongoing earnings · up to ${formatUsd(ENDLESS_DAILY_COIN_CAP).replace(/\.00$/, "")}/day`}
               </span>
             </button>
           </div>
@@ -431,7 +439,7 @@ export function OrderBoard({
                                 ? marketUnlock
                                   ? " in the Market"
                                   : ""
-                                : ` · Lv ${nextReward.atLevel}`}
+                                : `${opensInMarket(nextReward) ? " in the Market" : ""} · Lv ${nextReward.atLevel}`}
                             </span>
                           ) : null}
                           {stageAfter && !campaignComplete ? (
@@ -468,7 +476,7 @@ export function OrderBoard({
           </div>
         </div>
       </div>
-      <BottomNav active="kitchen" go={go} />
+      <BottomNav active={null} go={go} />
     </div>
   );
 }
@@ -541,11 +549,17 @@ const NAV: { id: ScreenId; label: string; glyph: string }[] = [
   // Economy V3 Phase 1 — the Business Simulation layer's own bottom-nav
   // destination (see data.ts's own doc on "business" for why this is a full
   // tab, not a Kitchen hotspot).
-  { id: "business", label: "Business", glyph: "📊" },
+  // Unified Restaurant: Campaign and Business are one restaurant, so the tab is "Restaurant".
+  { id: "business", label: RESTAURANT_MODE ? "Restaurant" : "Business", glyph: "📊" },
   { id: "rack", label: "Progress", glyph: "🏆" },
 ];
 
-export function BottomNav({ active, go }: { active: ScreenId; go: (s: ScreenId) => void }) {
+/**
+ * `active` = the bottom-bar section the screen belongs to, or null for a
+ * screen that is none of the five (the Order Board: Level 1–10 UX pass — it
+ * used to light up Kitchen, as if the player were on the Kitchen home).
+ */
+export function BottomNav({ active, go }: { active: ScreenId | null; go: (s: ScreenId) => void }) {
   return (
     <nav className="absolute inset-x-0 bottom-0 z-30 flex items-center justify-around border-t border-walnut-dark/40 bg-[linear-gradient(180deg,rgba(62,40,25,0.82),rgba(45,41,36,0.95))] px-2 pb-3 pt-2 backdrop-blur-sm">
       {NAV.map((n) => {

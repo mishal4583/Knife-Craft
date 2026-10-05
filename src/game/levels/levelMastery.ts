@@ -172,6 +172,15 @@ export function getRewardTimeline(): readonly RewardPreview[] {
   return [...rewardTimeline()];
 }
 
+/**
+ * True for a knife or board preview: those are only unlocked for purchase in
+ * the Market, never handed over, so every hint says "in the Market" (the
+ * Level 1–10 UX pass: "Next: Santoku · Lv 10" read like a free reward).
+ */
+export function opensInMarket(r: RewardPreview): boolean {
+  return r.icon === "🔪" || r.icon === "🪵";
+}
+
 /** The next real reward strictly ahead of `levelNumber` — through the last cuisine chapter to the Campaign Finale (Level 250); null only once the campaign is finished. */
 export function getNextRewardPreview(levelNumber: number): RewardPreview | null {
   return rewardTimeline().find((r) => r.atLevel > levelNumber) ?? null;

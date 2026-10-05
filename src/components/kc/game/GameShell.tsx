@@ -122,20 +122,25 @@ export function GameShell({ children, aside }: { children: ReactNode; aside?: Re
             className="relative overflow-hidden sm:rounded-[clamp(0px,4vmin,34px)] sm:border-[3px] sm:border-[#241811] sm:shadow-[0_40px_80px_rgba(0,0,0,0.55)]"
             style={{ width: size.width, height: size.height }}
           >
-            {size.width >= MIN_LAYOUT_W ? (
-              children
-            ) : (
-              <div
-                className="absolute left-0 top-0 origin-top-left"
-                style={{
-                  width: MIN_LAYOUT_W,
-                  height: (size.height * MIN_LAYOUT_W) / size.width,
-                  transform: `scale(${size.width / MIN_LAYOUT_W})`,
-                }}
-              >
-                {children}
-              </div>
-            )}
+            {/* ONE wrapper at every size: switching between "children" and a
+                wrapped tree when a resize or rotation crossed MIN_LAYOUT_W
+                changed the element tree, so React remounted the whole game
+                (the cutting scene, the order, a served order's result panel).
+                Now a resize only changes this wrapper's size and scale. */}
+            <div
+              className="absolute left-0 top-0 origin-top-left"
+              style={
+                size.width >= MIN_LAYOUT_W
+                  ? { width: "100%", height: "100%" }
+                  : {
+                      width: MIN_LAYOUT_W,
+                      height: (size.height * MIN_LAYOUT_W) / size.width,
+                      transform: `scale(${size.width / MIN_LAYOUT_W})`,
+                    }
+              }
+            >
+              {children}
+            </div>
           </div>
         </div>
       </div>

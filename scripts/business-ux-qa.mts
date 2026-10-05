@@ -309,9 +309,10 @@ function playedSave(): SaveData {
     "S1: every existing Business route opens a tab (alerts, the Market's pantry link and the service back button keep working)",
   );
   const alerts = read("src/game/business/businessAlerts.ts");
+  // Lazy-load (task #24): the route may wrap it in its Suspense loading state; it is still its own screen.
   assert(
     businessTabForScreen("inventory") === null &&
-      /screen === "inventory" \|\| screen === "inventory-supplies" \? \(\s*<InventoryScreen/.test(
+      /screen === "inventory" \|\| screen === "inventory-supplies" \? \(\s*(?:<Suspense fallback=\{<RestaurantLoading go=\{go\} active="inventory" \/>\}>\s*)?<InventoryScreen/.test(
         router,
       ) &&
       !/business-inventory/.test(alerts) &&
@@ -370,9 +371,13 @@ function playedSave(): SaveData {
   );
   // Staff lives only in Business: the Market's Staff tab is gone and its kitchen helpers
   // (StaffManager.buyStaff, unchanged) are hired in Business → Staff.
-  const shopSrc = code(read("src/components/kc/Shop.tsx"));
-  const staffTab = code(read("src/components/kc/business/BusinessStaff.tsx"));
-  const helpers = code(read("src/components/kc/business/KitchenHelpers.tsx"));
+  // Strips only real comments (a `/**` block or a line starting with `//`): the shared code()
+  // helper also eats from a "/*" inside a string or class name, which hid most of Shop.tsx.
+  const realCode = (src: string) =>
+    src.replace(/^\s*\/\*\*[\s\S]*?\*\//gm, "").replace(/^\s*\/\/.*$/gm, "");
+  const shopSrc = realCode(read("src/components/kc/Shop.tsx"));
+  const staffTab = realCode(read("src/components/kc/business/BusinessStaff.tsx"));
+  const helpers = realCode(read("src/components/kc/business/KitchenHelpers.tsx"));
   const routerSrc = read("src/ScreensRouter.tsx");
   const shopCall = routerSrc.slice(
     routerSrc.indexOf("<Shop"),
@@ -392,9 +397,21 @@ function playedSave(): SaveData {
       /buyStaff\(id\)/.test(helpers),
     "S9: staff lives only in Business — no Market Staff tab; the kitchen helpers are hired in Business → Staff through the same buyStaff",
   );
+  assert(
+    /\{ id: "suppliers", label: "Campaign Supplier"/.test(shopSrc) &&
+      /title: "Campaign Supplier"/.test(shopSrc) &&
+      /\{ id: "suppliers", label: "Suppliers"/.test(
+        read("src/components/kc/business/BusinessDashboard.tsx"),
+      ),
+    "S10: the Market's supplier choice is labelled Campaign Supplier; Business → Suppliers keeps restaurant contracts",
+  );
   const menu = read("src/components/kc/business/BusinessMenu.tsx");
   assert(
-    /new Set\(BUSINESS_DISH_CATALOG\.map\(\(d\) => d\.category\)\)/.test(menu),
+    // Unified Restaurant: the categories come from `pool`, which is the
+    // catalog (or, in the restaurant, its unlocked dishes).
+    /const pool = restaurant \? unlockedMenuDishes\(restaurantLevel\) : BUSINESS_DISH_CATALOG;/.test(
+      menu,
+    ) && /new Set\(pool\.map\(\(d\) => d\.category\)\)/.test(menu),
     "S7: menu category filters come from the real dish catalog",
   );
 }

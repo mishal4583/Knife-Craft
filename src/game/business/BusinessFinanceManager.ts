@@ -73,6 +73,12 @@ import type { IngredientId } from "../definitions";
 import type { BusinessInventory, IngredientRequirement } from "./businessInventory";
 import type { EconomyLedgerEntry, LedgerCategory } from "../economy/ledgerTypes";
 import { MAX_LEDGER_ENTRIES } from "../economy/EconomyLedger";
+import {
+  dayRecordFrom,
+  sanitizeDayHistory,
+  withDayRecord,
+  type BusinessDayRecord,
+} from "./businessDayHistory";
 
 export type BusinessDailyAccumulator = {
   /** Sum of `business-revenue` ledger amounts since the current Business Day began. */
@@ -114,6 +120,16 @@ export type BusinessDailyAccumulator = {
    * (migrateBusinessFinanceState's own dailyAccumulator default merge).
    */
   inventoryPurchases: number;
+  /**
+   * Expired stock the player threw out today with Inventory's "Throw Out
+   * Expired" (discardExpired.ts), and its waste value (whole cents, End
+   * Business Day's multipliers). Not money. End Business Day adds both to
+   * its own spoilage sweep so the day's inspection and P&L waste line are
+   * the same as if the stock had waited for the night. A save written
+   * before this field existed migrates them as 0.
+   */
+  discardedQuantity: number;
+  discardedValue: number;
 };
 
 export const DEFAULT_DAILY_ACCUMULATOR: BusinessDailyAccumulator = {
@@ -126,6 +142,8 @@ export const DEFAULT_DAILY_ACCUMULATOR: BusinessDailyAccumulator = {
   packagingPurchaseCost: 0,
   ordersServed: 0,
   inventoryPurchases: 0,
+  discardedQuantity: 0,
+  discardedValue: 0,
 };
 
 /**
@@ -179,6 +197,8 @@ export type BusinessFinanceState = {
   lastDailyPnL: DailyPnL | null;
   /** Economy V3 Phase 16 — running lifetime totals independent of the 200-entry ledger window. See `BusinessLifetimeTotals`. */
   lifetime: BusinessLifetimeTotals;
+  /** The latest 30 completed days, oldest first (businessDayHistory.ts). Optional: a save without it has an empty history. */
+  history?: BusinessDayRecord[];
 };
 
 export const DEFAULT_BUSINESS_FINANCE_STATE: BusinessFinanceState = {
@@ -242,7 +262,12 @@ function recordAccumulatorDelta(
   save: SaveData,
   key: keyof Omit<
     BusinessDailyAccumulator,
-    "revenue" | "cogs" | "ordersServed" | "inventoryPurchases"
+    | "revenue"
+    | "cogs"
+    | "ordersServed"
+    | "inventoryPurchases"
+    | "discardedQuantity"
+    | "discardedValue"
   >,
   amount: number,
 ): SaveData {
@@ -316,6 +341,13 @@ export function recordSupplierCost(save: SaveData, fee: number): SaveData {
  * starting.
  */
 export function closeBusinessDay(save: SaveData, dailyPnL: DailyPnL): SaveData {
+  // The 30-day history (task #10): the day that just closed — the calendar
+  // has already moved on — from this same P&L and its order count.
+  const record = dayRecordFrom(
+    save.business.calendar.businessDay - 1,
+    dailyPnL,
+    save.business.finance.dailyAccumulator.ordersServed ?? 0,
+  );
   return {
     ...save,
     business: {
@@ -324,6 +356,7 @@ export function closeBusinessDay(save: SaveData, dailyPnL: DailyPnL): SaveData {
         ...save.business.finance,
         dailyAccumulator: { ...DEFAULT_DAILY_ACCUMULATOR },
         lastDailyPnL: dailyPnL,
+        history: withDayRecord(save.business.finance.history, record),
         // Payroll and inspection fines settle only here, once per End Business Day.
         lifetime: {
           ...save.business.finance.lifetime,
@@ -569,11 +602,15 @@ export function migrateBusinessFinanceState(
 ): BusinessFinanceState {
   const raw = (stored && typeof stored === "object" ? stored : {}) as Partial<BusinessFinanceState>;
   const hadFinance = stored !== undefined && stored !== null;
+  // The 30-day history: kept when well-formed; a save without one stays without (empty history).
+  const history = sanitizeDayHistory(raw.history);
+  const { history: _rawHistory, ...rest } = raw;
   const base: BusinessFinanceState = {
     ...DEFAULT_BUSINESS_FINANCE_STATE,
-    ...raw,
+    ...rest,
     dailyAccumulator: { ...DEFAULT_DAILY_ACCUMULATOR, ...raw.dailyAccumulator },
     lifetime: { ...DEFAULT_LIFETIME_TOTALS },
+    ...(history ? { history } : {}),
   };
   if (raw.lifetime) return { ...base, lifetime: { ...DEFAULT_LIFETIME_TOTALS, ...raw.lifetime } };
   const windowMayHaveDropped = ledger.length >= MAX_LEDGER_ENTRIES;

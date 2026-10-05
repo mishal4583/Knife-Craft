@@ -315,9 +315,16 @@ assert(
   /\{showIntro \? <CinematicIntro onDone=\{completeIntro\} \/> : null\}/.test(app),
   "D7: App plays the cinematic over the already-mounted game, ending in completeIntro",
 );
+// The finale's exit changed on purpose (developer decision #21: "BACK TO
+// THE KITCHEN" goes to Kitchen home); scripts/story-pause-qa.mts and
+// tools/e2e/finale.mjs cover it.
 assert(
-  /<StoryOverlay sequence=\{FINALE\} onDone=\{\(\) => setStoryEvent\(null\)\} \/>/.test(app),
-  "D8: the finale overlay has no Skip button and is otherwise unchanged",
+  /<StoryOverlay sequence=\{FINALE\} onDone=\{finishFinale\} \/>/.test(app) &&
+    /function finishFinale\(\) \{\s*setStoryEvent\(null\);\s*levelAbandoned\(\);\s*setSessionMode\("campaign"\);\s*go\("kitchen"\);\s*\}/.test(
+      app,
+    ) &&
+    !/aria-label="Skip|>\s*SKIP|>\s*Skip/.test(read("src/components/kc/story/StoryOverlay.tsx")),
+  "D8: the finale overlay has no Skip button and ends on the Kitchen home screen",
 );
 assert(
   /function completeIntro\(\) \{\s*if \(introCompletedRef\.current\) return;\s*introCompletedRef\.current = true;\s*setShowIntro\(false\);\s*const current = saveRef\.current;\s*if \(current && !current\.story\.introDone\) persist\(markIntroDone\(current\)\);/.test(

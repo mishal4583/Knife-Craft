@@ -1,3 +1,4 @@
+import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
 import { useEffect, useState, type ReactNode } from "react";
 import type { ScreenId } from "./data";
 import { BottomNav } from "./Kitchen";
@@ -31,7 +32,13 @@ import { MarketIngredients } from "./MarketIngredients";
 import { MarketSupplies } from "./MarketSupplies";
 import type { PurchaseSupplyResult } from "@/game/business/BusinessSuppliesManager";
 import { SUPPLY_SECTIONS, type SupplySection } from "@/game/business/businessSupplies";
-import { peekMarketFocus, clearMarketFocus } from "./marketFocus";
+import {
+  peekMarketFocus,
+  peekMarketQuantity,
+  clearMarketFocus,
+  peekSupplyFocus,
+  clearSupplyFocus,
+} from "./marketFocus";
 import { ledgerTotals, LEDGER_CATEGORY_LABEL } from "@/game/economy/EconomyLedger";
 import { notEnoughMoneyText } from "@/game/economy/wallet";
 import {
@@ -104,7 +111,7 @@ function isSupplySection(c: ShopCategory): c is SupplySection {
 const categories: Array<{ id: ShopCategory; label: string; emoji: string }> = [
   { id: "knives", label: "Knives", emoji: "🔪" },
   { id: "boards", label: "Cutting Boards", emoji: "🪵" },
-  { id: "suppliers", label: "Suppliers", emoji: "🚚" },
+  { id: "suppliers", label: "Campaign Supplier", emoji: "🚚" },
   { id: "ingredients", label: "Ingredients", emoji: "🧺" },
   { id: "blacksmith", label: "Blacksmith", emoji: "⚒️" },
   { id: "culinary", label: SUPPLY_SECTIONS.culinary.short, emoji: SUPPLY_SECTIONS.culinary.emoji },
@@ -116,6 +123,15 @@ const categories: Array<{ id: ShopCategory; label: string; emoji: string }> = [
   },
 ];
 
+/**
+ * Unified Restaurant phase 7: in the restaurant build the ingredient supplier
+ * is chosen on Restaurant → Suppliers (it sets Market prices), so the Market
+ * has no supplier tab. The release build keeps its Campaign Supplier tab.
+ */
+const shopCategories = RESTAURANT_MODE
+  ? categories.filter((c) => c.id !== "suppliers")
+  : categories;
+
 const categoryCopy: Record<ShopCategory, { title: string; description: string }> = {
   knives: {
     title: "Knives",
@@ -126,8 +142,9 @@ const categoryCopy: Record<ShopCategory, { title: string; description: string }>
     description: "A reliable surface makes every chop cleaner and every service smoother.",
   },
   suppliers: {
-    title: "Suppliers",
-    description: "Choose who stocks your kitchen — cheaper in bulk, or carefully sourced.",
+    title: "Campaign Supplier",
+    description:
+      "Choose who stocks your kitchen for campaign dishes — cheaper in bulk, or carefully sourced. Restaurant supplier contracts are in Business → Suppliers.",
   },
   ingredients: {
     title: "Fresh Ingredients",
@@ -212,7 +229,12 @@ export function Shop({
       : categoryCopy[initialCategory].description,
   );
   const [focusId] = useState(peekMarketFocus);
-  useEffect(clearMarketFocus, []);
+  const [focusQuantity] = useState(peekMarketQuantity);
+  const [supplyFocusId] = useState(peekSupplyFocus);
+  useEffect(() => {
+    clearMarketFocus();
+    clearSupplyFocus();
+  }, []);
 
   function selectCategory(next: ShopCategory) {
     setCategory(next);
@@ -350,7 +372,9 @@ export function Shop({
       <div className="relative h-full overflow-y-auto no-scrollbar pb-24">
         <ScreenHeader
           title="Market"
-          subtitle="tools, ingredients & suppliers"
+          subtitle={
+            RESTAURANT_MODE ? "tools, ingredients & supplies" : "tools, ingredients & suppliers"
+          }
           onBack={() => go("kitchen")}
           right={<Coin n={save.credits} />}
         />
@@ -382,7 +406,7 @@ export function Shop({
           className="category-tabs grid grid-cols-3 gap-2 px-4 pt-3"
           aria-label="Shop categories"
         >
-          {categories.map((item) => {
+          {shopCategories.map((item) => {
             const active = category === item.id;
             return (
               <button
@@ -418,13 +442,16 @@ export function Shop({
               save={save}
               purchaseIngredient={purchaseIngredient}
               focusId={focusId}
+              focusQuantity={focusQuantity}
               setNotice={setNotice}
+              {...(RESTAURANT_MODE ? { onChangeSupplier: () => go("business-suppliers") } : {})}
             />
           ) : isSupplySection(category) ? (
             <MarketSupplies
               key={category}
               save={save}
               section={category}
+              focusId={supplyFocusId}
               purchaseSupply={purchaseSupply}
               setNotice={setNotice}
             />

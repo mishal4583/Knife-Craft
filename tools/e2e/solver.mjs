@@ -11,6 +11,17 @@ export async function stepInfo(page) {
   return page.evaluate(() => {
     const t = document.body.innerText;
     const m = t.match(/([A-Za-z][A-Za-z ]*?)\s*·\s*(\d+)\/(\d+)\s+([a-z-]+)/i);
+    // A peel step shows "Garlic · 34% peeled" (Level 1–10 UX pass): done at 100%.
+    const p = m ? null : t.match(/([A-Za-z][A-Za-z ]*?)\s*·\s*(\d+)% peeled/i);
+    if (p)
+      return {
+        report: /KNIFE REPORT/.test(t),
+        ingredient: p[1],
+        n: +p[2] >= 100 ? 1 : 0,
+        m: 1,
+        tech: "peel",
+        step: (t.match(/STEP (\d+) OF (\d+)/) || []).slice(1).map(Number),
+      };
     return {
       report: /KNIFE REPORT/.test(t),
       ingredient: m?.[1] ?? null,

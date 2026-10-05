@@ -5,14 +5,15 @@
 //   2. no door handle covers an item or takes a tap: every item's centre hits the item;
 //   3. tapping an item (touch AND mouse) opens the Inventory screen's details: quantity,
 //      freshness, days left, average cost, value and the menu dishes that use it;
-//   4. the Basic fits its frame; the wide steel Professional shows the "›" cue and pans
-//      sideways with a touch swipe and a mouse drag (the drag opens nothing), while a vertical
-//      swipe on it still scrolls the page;
+//   4. the Basic fits its frame; on a tablet (768×1024, the wide view — phones page one
+//      compartment at a time, tools/e2e/fridgepager.mjs) the wide steel Professional shows the
+//      "›" cue and pans sideways with a touch swipe and a mouse drag (the drag opens nothing),
+//      while a vertical swipe on it still scrolls the page;
 //   5. the All Inventory filters show one group;
 //   6. Needs Attention lists the expiring stock; Restock opens Market → Ingredients on it,
 //      and buying there shows in the fridge straight away (one ledger entry, nothing bought
 //      by the fridge itself); Upgrade opens Business → Equipment;
-//   7. the three models after the design references: Basic one compartment + one open door,
+//   7. (tablet, the wide view) the three models after the design references: Basic one compartment + one open door,
 //      Commercial two compartments + two doors, Professional three + two, each wider, with
 //      production capacities 40/80/140;
 //   8. at 320×568 · 360×640 · 390×844 · 430×900 · 768×1024: no horizontal page scroll and
@@ -336,6 +337,9 @@ check(
 );
 
 // ---------- 7. Tier visuals ----------
+// The wide appliance is the tablet/desktop view (a phone pages one compartment at a time —
+// fridgepager.mjs), so the models are compared, and the Professional panned, at 768×1024.
+await page.setViewport({ width: 768, height: 1024, deviceScaleFactor: 1, hasTouch: true });
 const shelfH = () =>
   page.evaluate(() => {
     const f = document.querySelector('[data-testid="physical-fridge"]');
@@ -535,17 +539,43 @@ for (const [w, h] of [
       }),
     );
     await openInventory();
-    perRow[`${tier}@${w}`] = await page.evaluate(() => {
-      const out = {};
-      for (const z of document.querySelectorAll(".kcf-cabinet [data-fridge-zone]")) {
-        const tops = [...z.querySelectorAll("[data-fridge-item]")].map((b) =>
-          Math.round(b.getBoundingClientRect().top),
-        );
-        const rows = tops.reduce((m, t) => ((m[t] = (m[t] ?? 0) + 1), m), {});
-        out[z.getAttribute("data-fridge-zone")] = Math.max(0, ...Object.values(rows));
-      }
-      return out;
-    });
+    // A phone shows one compartment at a time: step through every page (from the first).
+    const out = {};
+    while (
+      await page.evaluate(
+        () =>
+          !document.querySelector('[aria-label="Previous compartment"]')?.disabled &&
+          !!document.querySelector('[aria-label="Previous compartment"]'),
+      )
+    )
+      await page.evaluate(() =>
+        document.querySelector('[aria-label="Previous compartment"]').click(),
+      );
+    for (let guard = 0; guard < 8; guard++) {
+      Object.assign(
+        out,
+        await page.evaluate(() => {
+          const o = {};
+          for (const z of document.querySelectorAll(".kcf-cabinet [data-fridge-zone]")) {
+            const tops = [...z.querySelectorAll("[data-fridge-item]")].map((b) =>
+              Math.round(b.getBoundingClientRect().top),
+            );
+            const rows = tops.reduce((m, t) => ((m[t] = (m[t] ?? 0) + 1), m), {});
+            o[z.getAttribute("data-fridge-zone")] = Math.max(0, ...Object.values(rows));
+          }
+          return o;
+        }),
+      );
+      const next = await page.evaluate(() => {
+        const b = document.querySelector('[aria-label="Next compartment"]');
+        if (!b || b.disabled) return false;
+        b.click();
+        return true;
+      });
+      if (!next) break;
+      await sleep(150);
+    }
+    perRow[`${tier}@${w}`] = out;
   }
 }
 check(

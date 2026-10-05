@@ -1,4 +1,12 @@
-import { useEffect, useMemo, useRef, useState, type PointerEvent, type ReactNode } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent,
+  type ReactNode,
+} from "react";
 import { cn } from "@/lib/utils";
 import { INGREDIENT_EMOJI } from "@/game/knives/knifeDefinitions";
 import { purchaseUnitFor } from "@/game/business/businessPricing";
@@ -381,6 +389,132 @@ export function FridgeMini({ rank, className }: { rank: number; className?: stri
   );
 }
 
+/** True below the 768 px tablet breakpoint (a phone), following resizes and rotations. */
+function useNarrowViewport(): boolean {
+  const query = "(max-width: 767px)";
+  const [narrow, setNarrow] = useState(() =>
+    typeof window === "undefined" || !window.matchMedia ? false : window.matchMedia(query).matches,
+  );
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mq = window.matchMedia(query);
+    const update = () => setNarrow(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  return narrow;
+}
+
+/** One page of the phone view: a door, or one compartment (Unified Restaurant cleanup, task #14). */
+type Page =
+  | { kind: "door"; side: "left" | "right"; zones: FridgeZoneId[] }
+  | { kind: "cabinet"; rows: Row[] };
+
+function pagesOf(layout: Layout): Page[] {
+  return [
+    ...(layout.leftDoor.length
+      ? [{ kind: "door" as const, side: "left" as const, zones: layout.leftDoor }]
+      : []),
+    ...layout.compartments.map((rows) => ({ kind: "cabinet" as const, rows })),
+    ...(layout.rightDoor.length
+      ? [{ kind: "door" as const, side: "right" as const, zones: layout.rightDoor }]
+      : []),
+  ];
+}
+
+function zonesOfPage(page: Page): FridgeZoneId[] {
+  return page.kind === "door"
+    ? page.zones
+    : page.rows.flatMap((r) => ("shelf" in r ? [r.shelf] : r.drawers));
+}
+
+/**
+ * One page at a time, for a phone where the open steel fridge is wider than
+ * the screen: "‹ Dairy & Tofu · Meat, Fish & Bread  2 / 5 ›", previous/next
+ * buttons and a sideways swipe (a vertical swipe still scrolls the page —
+ * `touch-action: pan-y`). A swipe never counts as a tap on an item.
+ */
+function Pager({
+  names,
+  index,
+  setIndex,
+  children,
+}: {
+  names: string[];
+  index: number;
+  setIndex: (i: number) => void;
+  children: ReactNode;
+}) {
+  const start = useRef<{ x: number; y: number } | null>(null);
+  const last = names.length - 1;
+  const turnTo = (i: number) => setIndex(Math.max(0, Math.min(last, i)));
+  const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
+    start.current = { x: e.clientX, y: e.clientY };
+  };
+  const onPointerUp = (e: PointerEvent<HTMLDivElement>) => {
+    const s0 = start.current;
+    start.current = null;
+    if (!s0) return;
+    const dx = e.clientX - s0.x;
+    const dy = e.clientY - s0.y;
+    if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    // Swallow the click that ends a swipe so it never opens an item.
+    const swallow = (ev: Event) => {
+      ev.stopPropagation();
+      ev.preventDefault();
+    };
+    window.addEventListener("click", swallow, { capture: true, once: true });
+    setTimeout(() => window.removeEventListener("click", swallow, { capture: true }), 0);
+    turnTo(index + (dx < 0 ? 1 : -1));
+  };
+  return (
+    <div className="kcf-pager" data-testid="fridge-pager">
+      <div className="kcf-pager__bar">
+        <button
+          type="button"
+          className="kcf-pager__btn press"
+          aria-label="Previous compartment"
+          disabled={index === 0}
+          onClick={() => turnTo(index - 1)}
+        >
+          ‹
+        </button>
+        <p className="kcf-pager__title" aria-live="polite">
+          <span className="kcf-pager__name" data-testid="fridge-page-name">
+            {names[index]}
+          </span>
+          <span className="kcf-pager__count" data-testid="fridge-page-count">
+            {index + 1} / {names.length}
+          </span>
+        </p>
+        <button
+          type="button"
+          className="kcf-pager__btn press"
+          aria-label="Next compartment"
+          disabled={index === last}
+          onClick={() => turnTo(index + 1)}
+        >
+          ›
+        </button>
+      </div>
+      <div
+        className="kcf-pager__swipe"
+        onPointerDown={onPointerDown}
+        onPointerUp={onPointerUp}
+        onPointerCancel={() => (start.current = null)}
+      >
+        {children}
+      </div>
+      <p className="kcf-pager__dots" aria-hidden>
+        {names.map((n, i) => (
+          <span key={n + i} className={cn(i === index && "kcf-pager__dot--on")} />
+        ))}
+      </p>
+    </div>
+  );
+}
+
 /**
  * The physical refrigerator on the Inventory screen, drawn after the design
  * references: the current model's appliance standing open, its shelves,
@@ -422,11 +556,61 @@ export function PhysicalFridge({
   const steel = view.tier.rank > 0;
   const statusClass = view.maintenance !== "OPERATIONAL" && "kcf-head__warn";
 
+  // Phone view (task #14): below the 768 px tablet breakpoint, a steel model
+  // that is wider than its frame shows one door or compartment at a time
+  // instead of panning sideways. Tablets and desktops keep the wide, panning
+  // appliance. A small toggle switches between the two wherever the fridge
+  // doesn't fit. The wide view is measured; it pages only when it overflows.
+  const rootRef = useRef<HTMLDivElement>(null);
+  const naturalWidth = useRef(0);
+  const [overflows, setOverflows] = useState(false);
+  const [prefer, setPrefer] = useState<"auto" | "wide" | "paged">("auto");
+  const narrow = useNarrowViewport();
+  const paged = steel && overflows && (prefer === "paged" || (prefer === "auto" && narrow));
+  // Opens on the first compartment (dairy on top), not the door bins.
+  const firstCabinet = layout.leftDoor.length > 0 ? 1 : 0;
+  const [page, setPage] = useState(firstCabinet);
+  const pages = useMemo(() => pagesOf(layout), [layout]);
+  const pageNames = pages.map((p) => {
+    const labels = zonesOfPage(p).map((id) => zoneOf(id).label);
+    return p.kind === "door" ? `Door · ${labels.join(" & ")}` : labels.join(" · ");
+  });
+  useLayoutEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    // The wide view: does the appliance overflow its frame? The paged view:
+    // would the measured wide appliance fit again (a rotation, a wider frame)?
+    const measure = () => {
+      if (!steel) return setOverflows(false);
+      if (paged) {
+        if (root.clientWidth >= naturalWidth.current + 2) setOverflows(false);
+        return;
+      }
+      const unit = root.querySelector<HTMLElement>('[data-testid="fridge-unit"]');
+      const track = root.querySelector<HTMLElement>(".kcf-stage .kcf-pan__track");
+      if (!unit || !track) return;
+      const over = unit.scrollWidth > track.clientWidth + 2;
+      if (over) naturalWidth.current = unit.scrollWidth;
+      setOverflows(over);
+    };
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(root);
+    return () => ro.disconnect();
+  }, [steel, paged, view]);
+  useEffect(() => {
+    if (page > pages.length - 1) setPage(firstCabinet);
+  }, [page, pages.length, firstCabinet]);
+  const current = pages[Math.min(page, pages.length - 1)]!;
+
   return (
     <div
-      className={cn("kcf", `kcf--${view.tier.id}`)}
+      ref={rootRef}
+      className={cn("kcf", `kcf--${view.tier.id}`, paged && "kcf--paged")}
       data-testid="physical-fridge"
       data-tier={view.tier.id}
+      data-paged={paged ? "true" : "false"}
     >
       {/* The model's wooden sign */}
       <div className="kcf-plaque">
@@ -482,48 +666,95 @@ export function PhysicalFridge({
         </button>
       </div>
 
-      {/* The open appliance */}
-      <Pan
-        label={`${view.tier.name}, open`}
-        className="kcf-stage"
-        hint={steel ? "Swipe to see every door →" : undefined}
-      >
-        <div className="kcf-unit" data-testid="fridge-unit">
-          {steel ? (
-            <div className="kcf-topper" aria-hidden>
-              <span className="kcf-topper__vent" />
-              <span className={cn("kcf-topper__display", statusClass)}>
-                ❄ {view.maintenance === "OPERATIONAL" ? "COOL" : "CHECK"}
-              </span>
-            </div>
-          ) : null}
-          <div className="kcf-body">
-            {layout.leftDoor.length > 0 ? (
-              <Door side="left" zones={layout.leftDoor} props={doorProps} />
-            ) : null}
-            {layout.compartments.map((rows, ci) => (
-              <div key={ci} className="kcf-cabinet">
-                <span className="kcf-cabinet__light" aria-hidden />
-                {rows.map((row) =>
-                  "shelf" in row ? (
-                    <Shelf key={row.shelf} {...zoneProps(row.shelf)} />
-                  ) : (
-                    <div key={row.drawers.join()} className="kcf-drawers">
-                      {row.drawers.map((id) => (
-                        <Drawer key={id} {...zoneProps(id)} />
-                      ))}
-                    </div>
-                  ),
+      {/* The open appliance — one page at a time on a phone (task #14) */}
+      {paged ? (
+        <Pager names={pageNames} index={Math.min(page, pages.length - 1)} setIndex={setPage}>
+          <div className="kcf-stage" data-overflow="false">
+            <div className="kcf-unit kcf-unit--paged" data-testid="fridge-unit">
+              <div className="kcf-topper" aria-hidden>
+                <span className="kcf-topper__vent" />
+                <span className={cn("kcf-topper__display", statusClass)}>
+                  ❄ {view.maintenance === "OPERATIONAL" ? "COOL" : "CHECK"}
+                </span>
+              </div>
+              <div className="kcf-body">
+                {current.kind === "door" ? (
+                  <Door side={current.side} zones={current.zones} props={doorProps} />
+                ) : (
+                  <div className="kcf-cabinet">
+                    <span className="kcf-cabinet__light" aria-hidden />
+                    {current.rows.map((row) =>
+                      "shelf" in row ? (
+                        <Shelf key={row.shelf} {...zoneProps(row.shelf)} />
+                      ) : (
+                        <div key={row.drawers.join()} className="kcf-drawers">
+                          {row.drawers.map((id) => (
+                            <Drawer key={id} {...zoneProps(id)} />
+                          ))}
+                        </div>
+                      ),
+                    )}
+                  </div>
                 )}
               </div>
-            ))}
-            {layout.rightDoor.length > 0 ? (
-              <Door side="right" zones={layout.rightDoor} props={doorProps} />
-            ) : null}
+              <div className="kcf-kick" aria-hidden />
+            </div>
           </div>
-          {steel ? <div className="kcf-kick" aria-hidden /> : null}
-        </div>
-      </Pan>
+        </Pager>
+      ) : (
+        <Pan
+          label={`${view.tier.name}, open`}
+          className="kcf-stage"
+          hint={steel ? "Swipe to see every door →" : undefined}
+        >
+          <div className="kcf-unit" data-testid="fridge-unit">
+            {steel ? (
+              <div className="kcf-topper" aria-hidden>
+                <span className="kcf-topper__vent" />
+                <span className={cn("kcf-topper__display", statusClass)}>
+                  ❄ {view.maintenance === "OPERATIONAL" ? "COOL" : "CHECK"}
+                </span>
+              </div>
+            ) : null}
+            <div className="kcf-body">
+              {layout.leftDoor.length > 0 ? (
+                <Door side="left" zones={layout.leftDoor} props={doorProps} />
+              ) : null}
+              {layout.compartments.map((rows, ci) => (
+                <div key={ci} className="kcf-cabinet">
+                  <span className="kcf-cabinet__light" aria-hidden />
+                  {rows.map((row) =>
+                    "shelf" in row ? (
+                      <Shelf key={row.shelf} {...zoneProps(row.shelf)} />
+                    ) : (
+                      <div key={row.drawers.join()} className="kcf-drawers">
+                        {row.drawers.map((id) => (
+                          <Drawer key={id} {...zoneProps(id)} />
+                        ))}
+                      </div>
+                    ),
+                  )}
+                </div>
+              ))}
+              {layout.rightDoor.length > 0 ? (
+                <Door side="right" zones={layout.rightDoor} props={doorProps} />
+              ) : null}
+            </div>
+            {steel ? <div className="kcf-kick" aria-hidden /> : null}
+          </div>
+        </Pan>
+      )}
+
+      {steel && overflows ? (
+        <button
+          type="button"
+          className="kcf-viewtoggle press"
+          data-testid="fridge-view-toggle"
+          onClick={() => setPrefer(paged ? "wide" : "paged")}
+        >
+          {paged ? "Show the whole fridge ⇆" : "One door at a time"}
+        </button>
+      ) : null}
 
       {view.unknown.length > 0 ? (
         <p className="kcf-unknown" data-testid="fridge-unknown">

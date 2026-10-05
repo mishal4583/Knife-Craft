@@ -4,6 +4,7 @@ import { KButton, Panel } from "@/components/kc/common/primitives";
 import { STORY_ART } from "@/game/story/storyArt";
 import type { StoryBeat, StoryCardId } from "@/game/story/storyDefinitions";
 import { IngredientCardCanvas } from "./IngredientCardCanvas";
+import { usePausableTimeout, usePaused } from "./usePausableTimeout";
 
 /**
  * STORY_OVERLAY — plays one sequence of story beats (the FINALE; the
@@ -20,6 +21,9 @@ import { IngredientCardCanvas } from "./IngredientCardCanvas";
  *    never bypass it.
  *  - Every advance is tied to the beat it came from (`advanceFrom`), so a
  *    timer and a tap — or two taps — landing together move one beat.
+ *  - A platform pause (PauseManager) stops the beat's timer — the rest of
+ *    its hold runs after the resume — freezes every animation and ignores
+ *    taps, so nothing moves on while the player is away.
  *  - Finishing shares one completion path (`finish`), which runs at most
  *    once; nothing advances after it.
  *
@@ -82,13 +86,19 @@ export function StoryOverlay({
     setIndex((i) => (i === from ? i + 1 : i));
   }
 
+  const paused = usePaused();
+
   useEffect(() => {
     beatShownAt.current = performance.now();
-    if (!beat || beat.btn) return; // a button beat waits for its button
-    const t = setTimeout(() => advanceFrom(index), beat.hold ?? 3000);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- re-arm only when the beat itself changes
   }, [index]);
+
+  // A button beat waits for its button; any other beat advances after its
+  // hold of unpaused time.
+  usePausableTimeout(
+    () => advanceFrom(index),
+    beat && !beat.btn ? (beat.hold ?? 3000) : null,
+    index,
+  );
 
   useEffect(() => {
     if (index >= sequence.length) finish("finished");
@@ -103,9 +113,10 @@ export function StoryOverlay({
 
   return (
     <div
-      className="absolute inset-0 z-50 overflow-hidden"
+      className={cn("absolute inset-0 z-50 overflow-hidden", paused && "kc-story-paused")}
+      data-story-paused={paused ? "true" : undefined}
       onClick={() => {
-        if (beat.btn) return;
+        if (beat.btn || paused) return;
         if (performance.now() - beatShownAt.current < MIN_TAP_MS) return;
         advanceFrom(index);
       }}

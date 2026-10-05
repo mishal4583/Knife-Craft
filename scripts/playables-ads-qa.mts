@@ -198,6 +198,11 @@ await platformReady();
 }
 
 // ===== B: Replay Bonus commit =====
+// The ledger stamps entries with Date.now() (appendLedgerEntry), and the daily cap counts them by
+// calendar day. Pin the clock to NOW for this section so the stamps and the "today" the checks ask
+// about are the same day — otherwise B12/B13 only passed on 2026-09-26. The cap itself is unchanged.
+const realDateNow = Date.now;
+Date.now = () => NOW.getTime();
 {
   const amount = replayBonusAmount(level10);
   assert(amount === Math.max(1000, Math.round((level10.reward.coins * 100 * 0.2) / 100) * 100) && amount % 100 === 0, `B: bonus = 20% of the level's reward, whole dollars, min $10 (Level 10 → $${amount / 100})`);
@@ -233,10 +238,15 @@ await platformReady();
   const capped = commitReplayBonus(s, late, NOW);
   assert(!capped.ok && capped.reason === "dailyCapReached", "B13: a commit past the cap is refused even if an offer was open");
   const tomorrow = new Date(NOW.getTime() + 24 * 3600 * 1000);
-  // today's entries are stamped with the real clock (appendLedgerEntry uses Date.now()); count them against the real day
-  const realNow = new Date();
-  assert(replayBonusesClaimedToday(s, realNow) === REPLAY_BONUS_DAILY_CAP && replayBonusesClaimedToday(s, new Date(realNow.getTime() + 24 * 3600 * 1000)) === 0 && !!tomorrow, "B14: the cap resets the next calendar day (derived from ledger timestamps — no new save field)");
+  assert(
+    s.economyLedger.filter((e) => e.category === "rewarded-ad").every((e) => e.timestamp === NOW.getTime()) &&
+      replayBonusesClaimedToday(s, NOW) === REPLAY_BONUS_DAILY_CAP &&
+      replayBonusesClaimedToday(s, tomorrow) === 0 &&
+      replayBonusOfferFor(s, level10, true, true, tomorrow) !== null,
+    "B14: the cap resets the next calendar day (derived from ledger timestamps — no new save field)",
+  );
 }
+Date.now = realDateNow;
 
 // ===== C: persistence through Bridge storage, failures change nothing =====
 {

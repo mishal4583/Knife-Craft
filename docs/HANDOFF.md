@@ -158,6 +158,57 @@ conversation.
    - `tools/e2e/coach.mjs` clears long straight white runs before looking
      for the ghost fingertip, because the ghost knife's edge lies through
      it.
+33. **Unified Restaurant** (developer spec 2026-10-04: Campaign + Business as
+   one restaurant, systems first, economy later). Plan and status:
+   `docs/RESTAURANT_INTEGRATION_AUDIT.md`; unbalanced economy items:
+   `docs/ECONOMY_TODO.md` (P0: food is charged twice until the economy
+   pass). Everything is behind ONE build switch,
+   `src/game/config/restaurantMode.ts` (`VITE_RESTAURANT_MODE=1` test
+   builds only; release builds are unchanged). Done: phases 1–4 (audit;
+   unlock table; campaign orders use real stock from L11; rolled service
+   tickets; Pre-Service Check with Restock → Market preset, Throw Out
+   Expired, Grandma's pantry). QA `restaurant-unlocks-qa`,
+   `restaurant-stock-qa`, e2e `restaurantstock.mjs`. Then (progression & early menu spec): central
+   `restaurantProgression.ts`, the menu from L1 (2 → 48 dishes by L241),
+   the Menu screen's active / locked view, and the day clock (opening card,
+   services, Closing Time, Day N+1). QA `restaurant-menu-qa`,
+   `restaurant-day-qa`, e2e `restaurantday.mjs`. Game map: `docs/GAME_MAP.md`.
+   Phase D: menu guests — after a level's own orders, optional customers
+   ordering from the active menu (1–5 per service from L6), menu price,
+   real stock, one business-revenue entry, never paid twice
+   (`restaurant/menuGuests.ts`, `restaurant-guests-qa`, e2e
+   `restaurantguests.mjs`). Known pre-existing issue: a resize after serving
+   drops the result panel. Next: supplies use (phase G) and bulk buying.
+32. Developer decision batch (#1–26), on the feature branch only (no direct
+   pushes to `main`; merge when the developer approves):
+   - #4 `playables-ads-qa` B12/B13: section B pins `Date.now` to `NOW`
+     (B14 checks the reset a day later). The cap is unchanged.
+   - #8 The Market's supplier tab is now "Campaign Supplier"; Business →
+     Suppliers is unchanged (`business-ux-qa` S10).
+   - #15 Supplies "Restock" jumps to the exact Market line (ring +
+     scroll; `openMarketSupplies(go, section, supplyId)`; e2e 6e).
+   - #9 Throw Out Expired in Inventory (`business/discardExpired.ts`): the
+     End Business Day sweep run early, recorded as waste, no money or
+     ledger change; throwing out early then ending the day equals just
+     ending the day (`inventory-screen-qa` D1–D5, e2e `inventory.mjs` 7b).
+   - #5 Multi-order levels save their paid orders
+     (`levelProgress.paidOrders[levelId]` = recipe ids, written in the same
+     persist as the payment; `levels/paidOrders.ts`). A retry starts with
+     them counted (service: `withOrdersAlreadyServed`; batch group: those
+     customers already served, `withBatchOrdersAlreadyServed`); an order
+     pays only while the level still owes one (`mayPayOrder`);
+     `completeLevel` clears the entry. A level whose orders were all paid
+     but never finished completes on its next start. The two finish paths
+     now share `completeCampaignLevel`. QA `campaign-paid-orders-qa`, e2e
+     `paidorders.mjs` (it fails on the old build: the retry needed 2 more
+     orders); `story-pause-qa` K2 counts the merged path.
+   - #21 The finale's "BACK TO THE KITCHEN" now goes to Kitchen home
+     (`App.finishFinale`; it used to leave the player on the Order Board).
+   - #22 Story timers stop while paused: the finale's beats and the
+     milestone banners run on `PausableCountdown` (`usePausableTimeout` +
+     `PauseManager`), animations freeze, finale taps are ignored
+     (`story-pause-qa`, e2e `finale.mjs`; `story-intro-qa` D8 updated to
+     the approved exit).
 31. Staff only in Business (developer: "remove the staff from market keep them
    only in bussiness"; chose to MOVE the campaign kitchen helpers, not remove
    them). The Market's Staff tab is gone (8 tabs); Business → Staff shows the
@@ -251,7 +302,8 @@ conversation.
 26. Business Supplies (developer's Shop UI production handoff). This is a
    separately authorized extension, NOT V3-17: master spec §25, with a
    note in the execution protocol.
-   - Three Market sections, Smallwares · Tableware · Takeaway: 50 lines,
+   - Three Market sections, Smallwares · Tableware · Takeaway: 50 lines
+     (52 since Unified Restaurant phase G: dish soap, cleaning liquid),
      each with a sourced WebstaurantStore pack price (2026-10-02) at the
      ingredient rule, ×0.65.
    - A Business → Supplies tab showing saved stock, stock value, spend and
@@ -289,6 +341,96 @@ conversation.
      a ring-like blob. The ghost knife's handle hangs below the food on a
      vertical cut.
 
+26. Mobile resize/rotation bug: `GameShell` rendered its children bare at
+   ≥ 320 px and inside a scaled wrapper below that, so crossing 320 px
+   (rotation, a narrow phone's keyboard, a window resize) remounted the
+   whole app below it: a served order came back at its first step and the
+   result panel vanished. Now one wrapper always exists and only its style
+   changes. e2e `tools/e2e/resize.mjs`.
+
+27. Unified Restaurant phase G (behind RESTAURANT_MODE): consumable
+   supplies in a service — place settings with washing, napkins, dish soap
+   and cleaning liquid as bottles (% and ~N services left), takeaway
+   packaging from L71; Pre-Service Check Supplies section, Grandma's spares,
+   Inventory → Supplies "For service" panel, Closing Time's cleaning liquid.
+   `restaurant-supplies-qa`, e2e `restaurantsupplies.mjs`. Details:
+   `docs/RESTAURANT_INTEGRATION_AUDIT.md` (Phase G notes).
+
+28. Unified Restaurant, developer brief 2026-10-05 (behind RESTAURANT_MODE):
+   the menu opens at L11 (4 dishes) on the developer's curve to 48 at
+   L161, tied to the cuisine chapters, with restaurant news in the
+   Pre-Service Check; staff requirements by service size and specialist
+   chefs; bulk buying (5/25/50/100, provisional discounts); Inventory's
+   restaurant-wide ⚠️ NEEDS ATTENTION; fridge warnings; no Business Day
+   before L250, the Endless Restaurant after. Fixed: closing from L91 now
+   writes End Business Day's ledger entries. `restaurant-progression-qa`,
+   e2e `restaurantprogression.mjs`. Details in the audit's notes.
+
+29. Unified Restaurant phase M (behind RESTAURANT_MODE): existing saves
+   move into the unified restaurant once on load (stamped
+   `business.restaurantMigration`), keeping everything, with a one-time
+   starter crate of goods at cost 0 for the systems they're already past
+   and a "Welcome to your restaurant" note. `restaurant-migration-qa`, e2e
+   `restaurantmigration.mjs`; restaurant e2e seeds use
+   `MOVED_IN_BUSINESS`.
+
+30. Unified Restaurant phase N (final QA): `restaurant-campaign-sim-qa`
+   plays L1 → 250 through the real restaurant functions for a diligent, a
+   broke and a moving-in player with invariants after every level (no
+   soft-lock, no negative money, ledger = cash); `restaurantwidths.mjs`
+   checks every restaurant screen at 320–768 px. Fixed: menu guests were
+   almost never in stock (4 in 250 levels) — the check now lists their
+   stock as optional rows (689 guests). Report and economy findings:
+   `docs/RESTAURANT_QA_REPORT.md`.
+
+31. Economy pass (restaurant build): P0 — no double food cost
+   (`restaurant/restaurantEconomy.ts`); the completionist now ends L250 with
+   $129,324 (target $100k–$150k; was $95,082). The simulation is a module
+   (`scripts/restaurantCampaignSim.mts`) shared by the sim and economy QA.
+   Then (developer answers of 2026-10-05): item effects on REAL stock —
+   knife/board/helper savings and the dull-knife penalty scale the stock an
+   order uses, the Campaign Supplier sets Market prices (values unchanged;
+   completionist $128,063); the Endless Restaurant's demand scales with what
+   was built (`restaurant/endlessDemand.ts`): fully staffed $452/day, minimum
+   $78, overstaffed −$262 (`restaurant-endless-qa`). Wages unchanged (free
+   before L91). `restaurant-economy-pass-qa`, docs/ECONOMY_TODO.md rows
+   26–27.
+
+32. Unified Restaurant phase 7 — one back office (restaurant build):
+   Staff was already one screen; the ingredient supplier moved from the
+   Market's "Campaign Supplier" tab to Restaurant → Suppliers (free choice,
+   it sets Market prices; the Market names it and links there); Equipment
+   shows restaurant development (kitchen tiers) above the fridge; the back
+   office is titled "Restaurant". `restaurant/restaurantBackOffice.ts`,
+   `restaurant-backoffice-qa`, e2e `restaurantbackoffice.mjs`. Release
+   build unchanged.
+
+33. Level 1–10 UX pass (presentation only, both builds): Level Complete
+   waits for a story banner and shows Order payout / Completion reward /
+   Earned this level (read from the ledger, `levels/levelEarnings.ts`);
+   peel progress "N% peeled" (a read-only `PEEL_PROGRESS` event from the
+   scene's existing coverage count); the Order Board lights no bottom-bar
+   section; knife/board previews say "in the Market"; Knife Report line
+   follows the grade (`game/qualityCopy.ts`), "Prepare Again"; no "Step 1
+   of 1" and the step/destination line sits on the HUD card.
+   `level-ux-qa`, e2e `levelux.mjs`. Knife/cutting untouched.
+34. Phone fridge (both builds): below 768 px a steel fridge wider than its
+   frame shows one door/compartment at a time ("‹ name n / N ›", swipe,
+   48 px buttons); tablets/desktop keep the wide panning appliance; a
+   "Show the whole fridge" toggle. e2e `fridgepager.mjs`; `fridge.mjs`
+   checks the wide view at 768×1024.
+35. 30-day restaurant history (both builds): `business.finance.history`
+   (optional, latest 30 completed days, written by `closeBusinessDay` from
+   the day's own DailyPnL + orders; specialist wages added in the restaurant
+   build); "Last 30 days" on Operations. No money, ledger or settlement
+   change. `business-history-qa`, e2e `history.mjs`.
+36. Lazy Restaurant screens + asset cleanup: the back office, Restaurant
+   Service and Inventory are one lazy chunk (`kc/restaurantScreens.ts`;
+   ScreensRouter 216 → 98 KB) with an "Opening the restaurant…" state;
+   `src/assets/kitchen$f` (a copy of kitchen/skin-06.webp) and
+   `src/assets/tomato.webp` removed after a full reference scan.
+   `lazy-load-qa`, `unused-assets-qa`, e2e `lazyload.mjs`.
+
 ## 4. Open issues from the Level 1–10 audit (not fixed yet)
 
 Priority order as agreed in the audit (P0 = before wide release):
@@ -296,9 +438,10 @@ Priority order as agreed in the audit (P0 = before wide release):
 - ~~P0 — G1~~ **fixed 2026-09-29**: leaving a campaign level (Served
   screen or pause menu) after its required orders are served and paid now
   completes it through `finishCampaignLevel` / `finishBatchGroupLevel`, so a
-  retry is a replay and pays nothing. Still open (needs a decision, would
-  need persisted partial progress): on a `requiredOrders: 2` level, leaving
-  after the 1st of 2 orders and retrying pays that 1st order again.
+  retry is a replay and pays nothing. The partial case is fixed too
+  (developer decision #5): each paid order is saved in
+  `levelProgress.paidOrders`, so leaving after the 1st of 2 orders and
+  retrying carries on from the 2nd instead of paying the 1st again.
 - ~~P0 — G2~~ **fixed 2026-09-29**: a fresh save's Level 1 is built with
   `buildCampaignServiceSession` (same as `startCampaignLevel`), so the first
   play has the customer/Serve/Finish Level flow, pays $48 + the $50 reward
@@ -309,14 +452,19 @@ Priority order as agreed in the audit (P0 = before wide release):
   the next level; knife/board rows say "Unlocks: X in the Market" instead of
   "Reward: X"; any instruction that omits a peel step is prefixed "Peel the
   X first." (43 recipes, incl. Levels 8/9).
-- P1 still open: Level 10's +$80 toast is replaced by the story milestone
-  banner; order payout and completion reward are shown separately (never a
-  total); peel shows no progress ("0/1 peel" until done).
-- P2: first-load bundle (main 782 KB / Phaser chunk 1.44 MB raw), Business
-  code in the main bundle, stale "Next: Santoku · Lv 10" hints, Knife Report
-  copy, faint destination label under the HUD card, nav highlights Kitchen on
-  the Order Board, unused tracked assets `src/assets/kitchen$f` and
-  `src/assets/tomato.webp`.
+- ~~P1~~ **fixed 2026-10-05** (item 33): Level 10's reward notice now waits
+  for the story banner instead of being dropped; Level Complete lists Order
+  payout + Completion reward + Earned this level; peel steps show "N%
+  peeled" and a bar.
+- P2 — fixed 2026-10-05 (items 33–36): stale "Next: Santoku · Lv 10" hints
+  (now "… in the Market · Lv 10"), Knife Report copy, the faint label under
+  the HUD card, the Kitchen highlight on the Order Board, the unused assets
+  `src/assets/kitchen$f` and `src/assets/tomato.webp` (removed), and the
+  Restaurant UI in the startup path (now a lazy chunk).
+- P2 still open: the first-load bundle itself — the startup chunks still
+  carry the game data (levels, recipes, definitions) and the Business game
+  logic App/SaveManager need to load and save; Phaser stays its own lazy
+  1.46 MB chunk.
 
 ## 5. Story presentation — remaining recommendations
 
@@ -325,8 +473,6 @@ reduced-motion fallback, double-tap / tap-through protections.
 
 Not implemented (from the audits, all CSS/asset-free):
 
-- Story timers do not pause on a platform pause (subscribe `StoryOverlay`
-  to `PauseManager`; freeze CSS animations with a paused class).
 - Reuse the already-downloaded `kitchen-bg.jpg` as the story background
   plate so the last beat dissolves straight into Level 1 (same image).
 - Render the existing `fx` data (dust/spark/coins) with CSS particles;
@@ -335,8 +481,6 @@ Not implemented (from the audits, all CSS/asset-free):
   better contrast on the dark "decline" tint.
 - Milestone banners: a story variant placed below screen headers, queued
   after the Level Complete toast instead of replacing it.
-- Finale: its button says "BACK TO THE KITCHEN" but leaves the player on
-  the Order Board (one-line navigation change — needs the developer's OK).
 - Pause the Level 1 scene underneath the intro after SCENE_READY (it costs
   ~19% main thread while hidden) — never delay `gameReady`.
 

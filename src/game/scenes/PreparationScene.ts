@@ -3486,6 +3486,15 @@ export class PreparationScene extends Phaser.Scene {
         if (this.peelCoveredCells > before && Math.random() < 0.45) {
           this.spawnPeelFleck(p.x, p.y, Math.atan2(p.y - q.y, p.x - q.x));
         }
+        // HUD feedback only (read-only): how far the skin is towards done.
+        if (this.peelCoveredCells > before) {
+          this.bus.emit(EVT.PEEL_PROGRESS, {
+            fraction: Math.min(
+              1,
+              this.peelCoveredCells / (this.peelTotalCells * this.peelConfig().completionThreshold),
+            ),
+          });
+        }
       }
     }
     this.lastValidPeelPoint = inside ? p : null;

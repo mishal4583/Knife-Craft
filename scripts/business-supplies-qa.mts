@@ -4,7 +4,7 @@
  * Market and monitored in Inventory → Supplies. Run against the real
  * production functions:
  *
- *   A. Catalog: 50 lines (18 / 17 / 15), the requested groups, no prep
+ *   A. Catalog: 52 lines (18 / 17 / 17 — dish soap and cleaning liquid since phase G), the requested groups, no prep
  *      knives or cutting boards, never ingredients; every price sourced and
  *      dated, game price = round(retail × 0.65).
  *   B. A purchase: wallet − exact cost, stock + packSize × packs, cost
@@ -117,13 +117,15 @@ function appPurchase(save: SaveData, id: string, packs: number) {
 {
   const count = (s: string) => SUPPLY_CATALOG.filter((i) => i.section === s).length;
   assert(
-    SUPPLY_CATALOG.length === 50 &&
+    // Unified Restaurant phase G added dish soap and cleaning liquid to the packaging
+    // section's "Securing & hygiene" group (audit decision 6): 50 → 52, 15 → 17.
+    SUPPLY_CATALOG.length === 52 &&
       count("culinary") === 18 &&
       count("service") === 17 &&
-      count("packaging") === 15,
-    "A1. 50 supply lines: 18 culinary smallwares, 17 tableware, 15 takeaway packaging",
+      count("packaging") === 17,
+    "A1. 52 supply lines: 18 culinary smallwares, 17 tableware, 17 takeaway packaging & hygiene",
   );
-  assert(new Set(SUPPLY_CATALOG.map((i) => i.id)).size === 50, "A2. every supply id is unique");
+  assert(new Set(SUPPLY_CATALOG.map((i) => i.id)).size === 52, "A2. every supply id is unique");
   assert(
     SUPPLY_CATALOG.every((i) => SUPPLY_SECTIONS[i.section].groups.includes(i.group)) &&
       Object.values(SUPPLY_SECTIONS).every((s) =>

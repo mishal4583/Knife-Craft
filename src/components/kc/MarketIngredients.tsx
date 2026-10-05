@@ -1,3 +1,8 @@
+import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
+import { restaurantQuote } from "@/game/restaurant/restaurantEconomy";
+import { supplierPriceNote } from "@/game/restaurant/restaurantBackOffice";
+import { getSelectedSupplierId } from "@/game/economy/SupplierManager";
+import { BulkPresets } from "./BulkPresets";
 import { useEffect, useRef, useState } from "react";
 import { Badge, KButton, Panel } from "./common/primitives";
 import { cn } from "@/lib/utils";
@@ -52,15 +57,23 @@ export function MarketIngredients({
   save,
   purchaseIngredient,
   focusId,
+  focusQuantity = null,
   setNotice,
+  onChangeSupplier,
 }: {
   save: SaveData;
   purchaseIngredient: (ingredientId: string, quantity: number) => PurchaseIngredientResult;
   /** Preselected by a Business → Market link: its group opens and the card scrolls into view. */
   focusId: IngredientId | null;
+  /** The focused card's starting quantity (a Pre-Service Check's exact shortfall). */
+  focusQuantity?: number | null;
   setNotice: (text: string) => void;
+  /** Restaurant build: opens Restaurant → Suppliers, where the ingredient supplier is chosen (phase 7). */
+  onChangeSupplier?: () => void;
 }) {
-  const [quantities, setQuantities] = useState<Partial<Record<IngredientId, number>>>({});
+  const [quantities, setQuantities] = useState<Partial<Record<IngredientId, number>>>(() =>
+    focusId && focusQuantity ? { [focusId]: focusQuantity } : {},
+  );
   const [messages, setMessages] = useState<Partial<Record<IngredientId, string>>>({});
   const [group, setGroup] = useState<string>(
     focusId ? (INGREDIENTS[focusId]?.category ?? "all") : "all",
@@ -82,9 +95,13 @@ export function MarketIngredients({
     return quantities[id] ?? DEFAULT_PURCHASE_QUANTITY;
   }
 
+  /** Unified Restaurant: the restaurant's price (bulk discount + Campaign Supplier), the same App's purchase charges. */
+  const quoteFor = (id: IngredientId, quantity: number) =>
+    RESTAURANT_MODE ? restaurantQuote(save, id, quantity) : purchaseQuote(save, id, quantity);
+
   function handlePurchase(id: IngredientId) {
     const quantity = quantityFor(id);
-    const quote = purchaseQuote(save, id, quantity);
+    const quote = quoteFor(id, quantity);
     const result = purchaseIngredient(id, quantity);
     if (!result.ok) {
       const text =
@@ -115,10 +132,32 @@ export function MarketIngredients({
             {formatQuantity(fridge.available)} free
           </span>
         </div>
-        <p className="mt-1 font-hand text-[14px] leading-snug text-walnut/65">
-          Stock bought here goes into your Business fridge for Business orders. Campaign recipes pay
-          for their ingredients automatically as you cook.
-        </p>
+        {RESTAURANT_MODE ? (
+          <>
+            <p className="mt-1 font-hand text-[14px] leading-snug text-walnut/65">
+              Stock bought here goes into your restaurant fridge; every order you cook uses it.
+            </p>
+            <div
+              className="mt-2 flex flex-wrap items-center justify-between gap-2"
+              data-testid="market-supplier"
+            >
+              <span className="font-ui text-[11px] font-bold text-walnut/70">
+                🚚 Supplier: {getSupplier(getSelectedSupplierId(save))?.name ?? "Local Market"}
+                {supplierPriceNote(save)}
+              </span>
+              {onChangeSupplier ? (
+                <KButton size="md" variant="ghost" onClick={onChangeSupplier}>
+                  Change supplier →
+                </KButton>
+              ) : null}
+            </div>
+          </>
+        ) : (
+          <p className="mt-1 font-hand text-[14px] leading-snug text-walnut/65">
+            Stock bought here goes into your Business fridge for Business orders. Campaign recipes
+            pay for their ingredients automatically as you cook.
+          </p>
+        )}
         {contractActive && contract ? (
           <p className="mt-1 font-ui text-[11px] font-bold text-walnut/70">
             📜 {getSupplier(contract.supplierId)?.name ?? "Supplier"} contract: −
@@ -178,7 +217,7 @@ export function MarketIngredients({
               {ids.map((id) => {
                 const def = INGREDIENTS[id];
                 const quantity = quantityFor(id);
-                const quote = purchaseQuote(save, id, quantity);
+                const quote = quoteFor(id, quantity);
                 const unit = purchaseUnitFor(id);
                 const stock = save.business.inventory[id]?.quantity ?? 0;
                 const dishes = activeDishesUsing(save, id).length;
@@ -238,6 +277,22 @@ export function MarketIngredients({
                         +
                       </button>
                     </div>
+                    {RESTAURANT_MODE ? (
+                      <BulkPresets
+                        value={quantity}
+                        label={unit}
+                        onPick={(q) => setQuantities((qs) => ({ ...qs, [id]: q }))}
+                      />
+                    ) : null}
+                    {quote.bulkDiscount > 0 ? (
+                      <p
+                        className="mt-1 text-center font-ui text-[11px] font-bold text-olive"
+                        data-testid="bulk-saving"
+                      >
+                        Bulk −{Math.round(quote.bulkDiscount * 100)}% · saves{" "}
+                        {formatUsd(quote.listTotal - quote.totalCost)}
+                      </p>
+                    ) : null}
                     {message ? (
                       <p className="mt-1 text-center font-hand text-[12px] leading-tight text-copper">
                         {message}

@@ -26,6 +26,7 @@ export function GameHUD({
   totalPieces,
   counts,
   progressByAxis,
+  peelFraction,
   stepLabel,
   batchHint,
   onPause,
@@ -36,6 +37,8 @@ export function GameHUD({
   /** Non-null only for a grid technique (Dice) — knifecraft.html's updateHud() shows one pip row per axis instead of one combined row. */
   counts?: { h: number; v: number } | null;
   progressByAxis?: { h: number; v: number };
+  /** Peel steps only: how much of the skin is off, 0–1 (the scene's PEEL_PROGRESS). Shown as "% peeled" and a filling bar instead of a "0/1" count that only moves when the peel is done. */
+  peelFraction?: number;
   /** Phase 5 — only set (and only rendered) for a multi-step session ("Step 2 of 3"); a single-step level (still the common case) shows nothing extra, matching "Level 1 should be almost immediate". */
   stepLabel?: string;
   /** Phase 3 §16 — a one-sentence batching hint, shown as a small standalone banner (not crammed into the order card, not an overlay) so it stays readable without covering the board. */
@@ -62,8 +65,16 @@ export function GameHUD({
             {order.name}
           </p>
           <p className="font-hand text-[14px] leading-tight text-walnut/80">
-            {gameplay.ingredient.name} · {gameplay.cutProgress}/{totalPieces}{" "}
-            {gameplay.technique.toLowerCase()}
+            {peelFraction !== undefined ? (
+              <span data-testid="peel-progress">
+                {gameplay.ingredient.name} · {Math.round(peelFraction * 100)}% peeled
+              </span>
+            ) : (
+              <>
+                {gameplay.ingredient.name} · {gameplay.cutProgress}/{totalPieces}{" "}
+                {gameplay.technique.toLowerCase()}
+              </>
+            )}
           </p>
           {/* Phase 2 — the chef's own short instruction (§12/§41),
               data-driven from the active recipe/level rather than
@@ -73,6 +84,17 @@ export function GameHUD({
               flag. */}
           {order.note ? (
             <p className="mt-0.5 font-hand text-[12px] leading-snug text-copper/90">{order.note}</p>
+          ) : null}
+          {/* Level 1–10 UX pass: the step / destination line sits on the card
+              (it used to float under it at 9 px, 70% opacity — barely legible
+              over the kitchen art). Still normal flow, no overlay. */}
+          {stepLabel ? (
+            <p
+              className="mt-1 font-ui text-[10px] font-extrabold uppercase tracking-[0.12em] text-walnut/70"
+              data-testid="hud-step"
+            >
+              {stepLabel}
+            </p>
           ) : null}
         </div>
 
@@ -100,13 +122,27 @@ export function GameHUD({
         </div>
       ) : null}
 
-      {stepLabel ? (
-        <p className="text-center font-ui text-[9px] font-bold uppercase tracking-[0.14em] text-copper/70">
-          {stepLabel}
-        </p>
+      {peelFraction !== undefined ? (
+        <div className="flex justify-center">
+          <div
+            className="h-[4px] w-40 overflow-hidden rounded-full bg-ivory/35"
+            role="progressbar"
+            aria-label="Peel progress"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(peelFraction * 100)}
+          >
+            <div
+              className="h-full rounded-full bg-gold transition-[width] duration-200"
+              style={{ width: `${Math.round(peelFraction * 100)}%` }}
+            />
+          </div>
+        </div>
       ) : null}
 
-      <div className="flex flex-col items-center gap-1.5">
+      <div
+        className={cn("flex flex-col items-center gap-1.5", peelFraction !== undefined && "hidden")}
+      >
         {pipRows.map((row, ri) => (
           <div key={ri} className="flex justify-center gap-1.5">
             {Array.from({ length: row.n }).map((_, i) => (

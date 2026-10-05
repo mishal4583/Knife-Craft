@@ -116,11 +116,18 @@ export function endBusinessDay(save: SaveData): EndBusinessDayResult {
     spoiledIngredientIds,
     spoiledValue: rawSpoiledValue,
   } = clearExpiredStock(save.business.inventory, nextCalendar.businessDay);
-  const spoiledValue = Math.round(
+  const sweptValue = Math.round(
     rawSpoiledValue *
       staffSpoilageValueMultiplier(save.business.staff.hiredRoles) *
       refrigeratorSpoilagePenaltyMultiplier(save.business.equipmentCondition.refrigeratorCondition),
   );
+  // Stock thrown out earlier today (Inventory → Throw Out Expired, discardExpired.ts) is part of
+  // the day's waste: already in the lifetime totals, so only the day's figures add it here.
+  const discarded = save.business.finance.dailyAccumulator;
+  const daySpoiledQuantity = normalizeQuantity(
+    spoiledQuantity + (discarded.discardedQuantity ?? 0),
+  );
+  const spoiledValue = sweptValue + (discarded.discardedValue ?? 0);
   const currentContract = save.business.supplierContract;
   let supplierContract = currentContract;
   let expiredSupplierId: string | null = null;
@@ -138,7 +145,7 @@ export function endBusinessDay(save: SaveData): EndBusinessDayResult {
     totalSpoiledQuantity: normalizeQuantity(
       save.business.spoilage.totalSpoiledQuantity + spoiledQuantity,
     ),
-    totalSpoiledValue: save.business.spoilage.totalSpoiledValue + spoiledValue,
+    totalSpoiledValue: save.business.spoilage.totalSpoiledValue + sweptValue,
   };
   const postMutationSave: SaveData = {
     ...save,
@@ -153,7 +160,7 @@ export function endBusinessDay(save: SaveData): EndBusinessDayResult {
     },
   };
   // Economy V3 Phase 16: Kitchen Cleanliness judges THIS day's own sweep, never the lifetime total (see businessInspection.ts).
-  const inspectionReport = inspectBusiness(postMutationSave, spoiledQuantity);
+  const inspectionReport = inspectBusiness(postMutationSave, daySpoiledQuantity);
   const inspectionFine = determineInspectionFine(
     inspectionReport.overall,
     save.business.inspectionFines.lastInspectionResult,
@@ -192,7 +199,7 @@ export function endBusinessDay(save: SaveData): EndBusinessDayResult {
       },
       dailyPnL,
     ),
-    spoiledQuantity,
+    spoiledQuantity: daySpoiledQuantity,
     spoiledValue,
     spoiledIngredientIds,
     popularityDelta,

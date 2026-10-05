@@ -89,7 +89,11 @@ const ALL_IDS = Object.keys(INGREDIENTS) as IngredientId[];
 {
   const nav = read("src/components/kc/Kitchen.tsx");
   const labels = [
-    ...nav.matchAll(/\{ id: "([a-z-]+)", label: "([^"]+)", glyph: "([^"]+)" \}/g),
+    // The Business tab's label is "Restaurant" only in the Unified Restaurant test build
+    // (RESTAURANT_MODE); the release build reads the classic label checked here.
+    ...nav.matchAll(
+      /\{ id: "([a-z-]+)", label: (?:RESTAURANT_MODE \? "Restaurant" : )?"([^"]+)", glyph: "([^"]+)" \}/g,
+    ),
   ].map((m) => `${m[1]}:${m[2]}`);
   assert(
     labels.join() ===
@@ -97,14 +101,19 @@ const ALL_IDS = Object.keys(INGREDIENTS) as IngredientId[];
     "N1: the bottom bar has 5 sections — Kitchen · Market · Inventory · Business · Progress",
   );
   assert(
+    /label: RESTAURANT_MODE \? "Restaurant" : "Business"/.test(nav),
+    "N1b: in the restaurant build the Business tab is called Restaurant (one restaurant)",
+  );
+  assert(
     /min-h-12/.test(nav.match(/export function BottomNav[\s\S]*?<\/nav>/)?.[0] ?? ""),
     "N2: bottom-bar buttons are 48 px tall",
   );
   const router = read("src/ScreensRouter.tsx");
   const data = code(read("src/components/kc/data.ts"));
+  // Lazy-load (task #24): the route may wrap it in its Suspense loading state; it is still its own screen.
   assert(
     /\| "inventory"/.test(data) &&
-      /screen === "inventory" \|\| screen === "inventory-supplies" \? \(\s*<InventoryScreen/.test(
+      /screen === "inventory" \|\| screen === "inventory-supplies" \? \(\s*(?:<Suspense fallback=\{<RestaurantLoading go=\{go\} active="inventory" \/>\}>\s*)?<InventoryScreen/.test(
         router,
       ) &&
       businessTabForScreen("inventory") === null,
@@ -172,11 +181,12 @@ const ALL_IDS = Object.keys(INGREDIENTS) as IngredientId[];
   const ui = read("src/components/kc/inventory/InventorySupplies.tsx");
   assert(
     /SUPPLY_CATALOG\.filter\(\(item\) => item\.section === section\)/.test(ui) &&
-      SUPPLY_CATALOG.length === 50 &&
+      // 52 since phase G (dish soap + cleaning liquid, audit decision 6).
+      SUPPLY_CATALOG.length === 52 &&
       ["culinary", "service", "packaging"].every((sec) =>
         SUPPLY_CATALOG.some((i) => i.section === sec),
       ),
-    "U3: all 50 supply lines (smallwares, tableware & cutlery, takeaway) can be shown",
+    "U3: all 52 supply lines (smallwares, tableware & cutlery, takeaway) can be shown",
   );
   const code2 = code(ui).replace(/^import type .*$/gm, "");
   assert(
@@ -184,8 +194,8 @@ const ALL_IDS = Object.keys(INGREDIENTS) as IngredientId[];
       code2,
     ) &&
       /openMarketSupplies\(go, section\)/.test(code2) &&
-      /openMarketSupplies\(go, item\.section\)/.test(code2),
-    "U4: Inventory → Supplies buys nothing; Restock opens the Market's supply section",
+      /openMarketSupplies\(go, item\.section, item\.id\)/.test(code2),
+    "U4: Inventory → Supplies buys nothing; Restock opens the Market on that exact supply line",
   );
   assert(
     /supplyUnits\(supplies, item\.id\) > 0 && isLowSupply\(supplies, item, customers\)/.test(
@@ -410,6 +420,85 @@ const ALL_IDS = Object.keys(INGREDIENTS) as IngredientId[];
     !/useState<[^>]*(Inventory|Stock|Entry)\b[^>]*>/.test(screen.replace(/InventorySort/g, "")) &&
       !/newInventoryState|setInventory|setStock/.test(screen + view),
     "R4: no second inventory state — only view selections (filter, sort, the open item)",
+  );
+}
+
+// ===== D: Throw Out Expired =====
+{
+  const D = await import("../src/game/business/discardExpired.ts");
+  const { endBusinessDay } = await import("../src/game/business/BusinessDayManager.ts");
+  const { migrateBusinessFinanceState } =
+    await import("../src/game/business/BusinessFinanceManager.ts");
+  const stock: Stock = {
+    cheddar: { quantity: 2, unitCost: 450, purchaseDay: DAY - 4 }, // expired today
+    salmon: { quantity: 1, unitCost: 650, purchaseDay: DAY - 3 }, // expired today
+    basil: { quantity: 1, unitCost: 300, purchaseDay: DAY - 2 }, // spoils tonight (still usable)
+    potato: { quantity: 10, unitCost: 60, purchaseDay: DAY }, // fresh
+  };
+  const s0 = saveWith(stock, {
+    equipmentCondition: { ...DEFAULT_BUSINESS_STATE.equipmentCondition, refrigeratorCondition: 40 },
+  });
+  const r = D.discardExpiredStock(s0);
+  assert(
+    r.ok &&
+      r.ingredientIds.sort().join() === "cheddar,salmon" &&
+      !r.save.business.inventory.cheddar &&
+      !r.save.business.inventory.salmon &&
+      JSON.stringify(r.save.business.inventory.basil) ===
+        JSON.stringify(s0.business.inventory.basil) &&
+      JSON.stringify(r.save.business.inventory.potato) ===
+        JSON.stringify(s0.business.inventory.potato),
+    "D1: Throw Out Expired removes only expired stock — spoiling-tonight and fresh stock stay",
+  );
+  assert(
+    r.ok &&
+      r.save.credits === s0.credits &&
+      r.save.economyLedger.length === s0.economyLedger.length &&
+      r.value === D.wasteValueFor(s0, 2 * 450 + 650) &&
+      r.save.business.spoilage.totalSpoiledValue ===
+        s0.business.spoilage.totalSpoiledValue + r.value &&
+      r.save.business.finance.dailyAccumulator.discardedValue === r.value &&
+      r.save.business.finance.dailyAccumulator.discardedQuantity === 3,
+    "D2: it's waste, not money — no credits or ledger change; recorded with End Business Day's multipliers",
+  );
+  const waited = endBusinessDay(s0);
+  const early = endBusinessDay((r as { ok: true; save: SaveData }).save);
+  assert(
+    JSON.stringify(early.inspectionReport) === JSON.stringify(waited.inspectionReport) &&
+      early.dailyPnL.spoilageValue === waited.dailyPnL.spoilageValue &&
+      early.spoiledQuantity === waited.spoiledQuantity &&
+      early.spoiledValue === waited.spoiledValue &&
+      early.save.credits === waited.save.credits &&
+      JSON.stringify(early.save.business.inventory) ===
+        JSON.stringify(waited.save.business.inventory) &&
+      JSON.stringify(early.save.business.spoilage) ===
+        JSON.stringify(waited.save.business.spoilage) &&
+      early.save.business.popularity.score === waited.save.business.popularity.score &&
+      early.save.business.finance.dailyAccumulator.discardedValue === 0,
+    "D3: throwing out early then ending the day = just ending the day (inspection, waste, P&L, cash, inventory, popularity)",
+  );
+  const none = D.discardExpiredStock(
+    saveWith({ potato: { quantity: 10, unitCost: 60, purchaseDay: DAY } }),
+  );
+  assert(!none.ok && none.reason === "nothingExpired", "D4: nothing expired → nothing happens");
+  const migrated = migrateBusinessFinanceState(
+    {
+      dailyAccumulator: {
+        revenue: 5,
+        cogs: 0,
+        inventoryPurchaseCost: 0,
+        maintenanceCost: 0,
+        supplierCost: 0,
+        capitalExpenditure: 0,
+      },
+    },
+    [],
+  );
+  assert(
+    migrated.dailyAccumulator.discardedQuantity === 0 &&
+      migrated.dailyAccumulator.discardedValue === 0 &&
+      migrated.dailyAccumulator.revenue === 5,
+    "D5: a save from before Throw Out Expired migrates its counters as 0",
   );
 }
 

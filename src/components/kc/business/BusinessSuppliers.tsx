@@ -14,6 +14,8 @@ import { supplierMarketToday, supplierEventSummary } from "@/game/business/busin
 import { SUPPLIER_EVENT_CATALOG } from "@/game/business/businessSupplierEvents";
 import { getAvailableStorageCapacity } from "@/game/business/RefrigeratorManager";
 import { formatQuantity } from "@/game/business/businessInventory";
+import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
+import { IngredientSupplier } from "../restaurant/IngredientSupplier";
 
 const SUPPLIER_ICON: Record<string, string> = {
   "local-market": "🏪",
@@ -37,10 +39,13 @@ export function BusinessSuppliers({
   save,
   signSupplierContract,
   cancelSupplierContract,
+  selectSupplier,
 }: {
   save: SaveData;
   signSupplierContract: (supplierId: string) => SignContractResult;
   cancelSupplierContract: () => CancelContractResult;
+  /** Restaurant build: the ingredient supplier lives here (phase 7), not in the Market. */
+  selectSupplier?: (id: string) => void;
 }) {
   const [message, setMessage] = useState<string | null>(null);
   const currentDay = save.business.calendar.businessDay;
@@ -86,6 +91,9 @@ export function BusinessSuppliers({
 
   return (
     <div className="space-y-3">
+      {RESTAURANT_MODE && selectSupplier ? (
+        <IngredientSupplier save={save} selectSupplier={selectSupplier} />
+      ) : null}
       {/* Today's supplier conditions */}
       <Panel className="p-4">
         <div className="flex items-baseline justify-between gap-2">

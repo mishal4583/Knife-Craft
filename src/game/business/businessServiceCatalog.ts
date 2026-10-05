@@ -32,7 +32,7 @@ import type { RecipeDefinition } from "../recipes/recipeTypes";
 import { getCampaignRecipe } from "../recipes/campaignRecipes";
 import { BUSINESS_DISH_CATALOG, type BusinessDish } from "./businessDishCatalog";
 import type { IngredientRequirement } from "./businessInventory";
-import { recipePortionFractionFor } from "./businessPortionModel";
+import { recipeRequirements } from "../restaurant/recipeRequirements";
 
 /**
  * One shadow `RecipeDefinition` per Business Dish, keyed by the SAME id
@@ -93,8 +93,6 @@ export function businessDishRequirements(dish: BusinessDish): IngredientRequirem
   // whole purchase unit, so an Aromatic dish's real COGS ran up to 7x
   // its menu food cost and 4 dishes lost money on every serve at their
   // suggested price — contradicting this function's own invariant above.
-  return recipe.components.map((c) => ({
-    ingredientId: c.ingredientId,
-    quantity: recipePortionFractionFor(c.ingredientId),
-  }));
+  // The one requirements rule, shared with campaign orders (restaurant/recipeRequirements.ts).
+  return recipeRequirements(recipe);
 }
