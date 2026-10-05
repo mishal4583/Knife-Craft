@@ -56,9 +56,20 @@ missing (phase M).
   quality bonus; the food is the real stock). A completionist who buys
   everything now ends L250 with **$129,324** — inside the approved
   $100k–$150k (it was $95,082). `restaurant-economy-pass-qa`.
-- Open with numbers: the Endless Restaurant loses ~$200/day with the
-  campaign's team (+~$30/day with none) vs the classic Endless Service's
-  $600/day; item food-cost savings vanish under P0.
+- **Item effects on real stock**: knives, boards, kitchen helpers and a
+  dull knife change the stock an order uses; the Campaign Supplier sets
+  Market prices (values unchanged). Completionist **$128,063**.
+- **Endless Restaurant** (was −$200/day with the campaign's team): demand
+  now scales with the menu the team can cook, capped by the team's capacity
+  (`restaurant-endless-qa`, 30 days each from the L250 save):
+
+  | Restaurant | Customers/day | Net/day |
+  |---|---|---|
+  | Minimum viable (chef alone, 6 dishes) | 9.8 | $78 |
+  | Medium (Prep Cook, Server, Line Cook; 20 dishes) | 24.0 | $135 |
+  | Full menu, thin staff (Prep Cook, Server) | 29.7 | $276 |
+  | Fully staffed (6 roles + 4 specialists; 48 dishes) | 68.7 | **$452** |
+  | Overstaffed (full team; 6 dishes) | 17.8 | −$262 |
 
 ## Findings for the economy pass (as found in phase N — see above for what changed)
 

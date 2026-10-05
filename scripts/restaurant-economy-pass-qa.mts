@@ -25,7 +25,25 @@ import path from "node:path";
 import { run, freshRestaurantSave, $ } from "./restaurantCampaignSim.mts";
 import { missingPurchases, playBusinessDay } from "./economy-v25-simulation.mts";
 import { computeSettlement } from "../src/game/economy/EconomySettlement.ts";
-import { foodFromStock, restaurantSettlement } from "../src/game/restaurant/restaurantEconomy.ts";
+import {
+  foodFromStock,
+  restaurantQuote,
+  restaurantSettlement,
+  stockUseFor,
+  supplierPriceFactor,
+} from "../src/game/restaurant/restaurantEconomy.ts";
+import { DEFAULT_SAVE, type SaveData } from "../src/game/SaveManager.ts";
+import { getEquipmentModifier } from "../src/game/economy/equipmentSpecialization.ts";
+import { addStock } from "../src/game/business/businessInventory.ts";
+import {
+  consumeCampaignOrderStock,
+  orderRequirements,
+  serviceStockCheck,
+} from "../src/game/restaurant/campaignStock.ts";
+import {
+  purchaseIngredient,
+  purchaseQuote,
+} from "../src/game/business/BusinessInventoryManager.ts";
 import { CAMPAIGN_RECIPES } from "../src/game/recipes/campaignRecipes.ts";
 
 let failures = 0;
@@ -65,6 +83,108 @@ console.log("P. P0 — no double food cost");
     JSON.stringify(computeSettlement(recipe, 3, 92)).length > 0 &&
       base.netResult === Math.max(0, base.revenue - base.finalCOGS + base.qualityBonus),
     "P3: the release settlement (EconomySettlement) is unchanged — economy-v2-final-qa guards its baseline",
+  );
+}
+
+console.log('X. Item effects on real stock (developer: "move to real stock")');
+{
+  const base = { ...structuredClone(DEFAULT_SAVE), credits: 1_000_000 } as SaveData;
+  const veg = CAMPAIGN_RECIPES.find(
+    (r) => getEquipmentModifier("santoku", "walnut", r).cogsReductionPct > 0,
+  )!;
+  const plain = stockUseFor(base, veg);
+  const knife = stockUseFor({ ...base, equippedKnifeId: "santoku" }, veg);
+  const helper = stockUseFor({ ...base, ownedStaffIds: ["prep-assistant"] }, veg);
+  const dull = stockUseFor(
+    { ...base, knifeSharpness: { ...base.knifeSharpness, [base.equippedKnifeId]: 0 } },
+    veg,
+  );
+  assert(
+    plain.factor === 1 &&
+      Math.abs(
+        knife.factor - (1 - getEquipmentModifier("santoku", "walnut", veg).cogsReductionPct),
+      ) < 1e-9 &&
+      Math.abs(helper.factor - 0.97) < 1e-9 &&
+      Math.abs(dull.factor - 1.05) < 1e-9 &&
+      dull.floor === 1,
+    `X1: the same percentages now scale the stock an order uses — knife ${knife.factor.toFixed(2)}, Prep Assistant ${helper.factor.toFixed(2)}, a dull knife ${dull.factor.toFixed(2)} (floor ${dull.floor})`,
+  );
+  const n = 40;
+  const stocked = (save: SaveData) => {
+    let inv = save.business.inventory;
+    for (const c of veg.components) inv = addStock(inv, c.ingredientId, 5, 100, 1);
+    return { ...save, business: { ...save.business, inventory: inv } };
+  };
+  const used = (save: SaveData) => {
+    const r = consumeCampaignOrderStock(stocked(save), n, veg, true);
+    if (!r.ok) return Infinity;
+    return r.requirements.reduce((t, q) => t + q.quantity, 0);
+  };
+  const santokuSave = { ...base, equippedKnifeId: "santoku", ownedKnifeIds: ["chef", "santoku"] };
+  const plannedNeed = (save: SaveData) => {
+    const c = serviceStockCheck(save, n, [veg]);
+    return c.applies ? c.rows.reduce((t, r) => t + r.needed, 0) : -1;
+  };
+  assert(
+    used(santokuSave) < used(base) &&
+      Math.abs(plannedNeed(santokuSave) - used(santokuSave)) < 1e-6 &&
+      Math.abs(plannedNeed(base) - used(base)) < 1e-6,
+    "X2: a better knife uses less real stock, and the Pre-Service Check plans exactly what the serve uses",
+  );
+  // The knife dulls during a service: a serve never blocks while the floor is in stock.
+  const planned = orderRequirements(base, veg);
+  let tight = base;
+  for (const r of planned)
+    tight = {
+      ...tight,
+      business: {
+        ...tight.business,
+        inventory: addStock(tight.business.inventory, r.ingredientId, r.quantity, 100, 1),
+      },
+    };
+  const dulled = {
+    ...tight,
+    knifeSharpness: { ...tight.knifeSharpness, [tight.equippedKnifeId]: 0 },
+  };
+  const served = consumeCampaignOrderStock(dulled, n, veg, true);
+  assert(
+    served.ok,
+    "X3: a knife that dulled after the check never blocks a serve — the extra waste comes only from stock that's there",
+  );
+  const local = restaurantQuote(base, "tomato", 10);
+  const wholesale = restaurantQuote(
+    { ...base, selectedSupplierId: "wholesale-supplier" },
+    "tomato",
+    10,
+  );
+  const premium = restaurantQuote(
+    { ...base, selectedSupplierId: "premium-supplier" },
+    "tomato",
+    10,
+  );
+  const bought = purchaseIngredient(
+    { ...base, selectedSupplierId: "wholesale-supplier" },
+    "tomato",
+    10,
+    0,
+    supplierPriceFactor({ ...base, selectedSupplierId: "wholesale-supplier" }),
+  );
+  assert(
+    wholesale.unitCost === Math.round(local.unitCost * 0.9) &&
+      premium.unitCost === Math.round(local.unitCost * 1.1) &&
+      bought.ok &&
+      bought.totalCost === wholesale.totalCost &&
+      purchaseQuote(base, "tomato", 10).unitCost === local.unitCost,
+    `X4: the Campaign Supplier now sets Market prices — tomato ${$(local.unitCost)} local, ${$(wholesale.unitCost)} wholesale, ${$(premium.unitCost)} premium; the purchase charges the quote; the classic quote is unchanged`,
+  );
+  const app = read("src/App.tsx");
+  const market = read("src/components/kc/MarketIngredients.tsx");
+  assert(
+    /RESTAURANT_MODE \? supplierPriceFactor\(save\) : 1/.test(app) &&
+      /RESTAURANT_MODE \? restaurantQuote\(save, id, quantity\) : purchaseQuote\(save, id, quantity\)/.test(
+        market,
+      ),
+    "X5: the Market card and the purchase use the same restaurant price, only in the restaurant build",
   );
 }
 

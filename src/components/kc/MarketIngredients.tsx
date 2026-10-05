@@ -1,5 +1,5 @@
 import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
-import { bulkDiscountFor } from "@/game/restaurant/bulkBuying";
+import { restaurantQuote } from "@/game/restaurant/restaurantEconomy";
 import { BulkPresets } from "./BulkPresets";
 import { useEffect, useRef, useState } from "react";
 import { Badge, KButton, Panel } from "./common/primitives";
@@ -90,12 +90,13 @@ export function MarketIngredients({
     return quantities[id] ?? DEFAULT_PURCHASE_QUANTITY;
   }
 
-  /** Unified Restaurant: the bulk discount App's purchase applies too (0 in the classic game). */
-  const bulk = (quantity: number) => (RESTAURANT_MODE ? bulkDiscountFor(quantity) : 0);
+  /** Unified Restaurant: the restaurant's price (bulk discount + Campaign Supplier), the same App's purchase charges. */
+  const quoteFor = (id: IngredientId, quantity: number) =>
+    RESTAURANT_MODE ? restaurantQuote(save, id, quantity) : purchaseQuote(save, id, quantity);
 
   function handlePurchase(id: IngredientId) {
     const quantity = quantityFor(id);
-    const quote = purchaseQuote(save, id, quantity, bulk(quantity));
+    const quote = quoteFor(id, quantity);
     const result = purchaseIngredient(id, quantity);
     if (!result.ok) {
       const text =
@@ -189,7 +190,7 @@ export function MarketIngredients({
               {ids.map((id) => {
                 const def = INGREDIENTS[id];
                 const quantity = quantityFor(id);
-                const quote = purchaseQuote(save, id, quantity, bulk(quantity));
+                const quote = quoteFor(id, quantity);
                 const unit = purchaseUnitFor(id);
                 const stock = save.business.inventory[id]?.quantity ?? 0;
                 const dishes = activeDishesUsing(save, id).length;

@@ -104,7 +104,10 @@ import {
   migrateToUnifiedRestaurant,
 } from "../src/game/restaurant/restaurantMigration.ts";
 import { buyAttempts } from "./economy-v25-simulation.mts";
-import { restaurantSettlement } from "../src/game/restaurant/restaurantEconomy.ts";
+import {
+  restaurantSettlement,
+  supplierPriceFactor,
+} from "../src/game/restaurant/restaurantEconomy.ts";
 
 export const $ = (c: number) =>
   `$${(c / 100).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
@@ -147,7 +150,7 @@ function persist(next: SaveData, stats: Stats, where: string): SaveData {
 
 /** Buys `units` of an ingredient the way App.purchaseIngredient records it. */
 function buyIngredient(s: SaveData, id: string, units: number) {
-  const r = purchaseIngredient(s, id, units, bulkDiscountFor(units));
+  const r = purchaseIngredient(s, id, units, bulkDiscountFor(units), supplierPriceFactor(s));
   if (!r.ok) return { s, ok: false as const, reason: r.reason };
   const recorded = appendLedgerEntry(r.save, "inventory-purchase", -r.totalCost, id);
   return { s: recordInventoryPurchase(recorded, r.totalCost, 1), ok: true as const };

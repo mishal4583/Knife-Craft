@@ -20,9 +20,29 @@
  * everything ends Level 250 with ~$129k (target $100k–$150k, Economy V2.5);
  * with the double charge it was ~$95k.
  *
- * Pure; nothing reads RESTAURANT_MODE (App applies it in the restaurant build).
+ * ITEM EFFECTS ON REAL STOCK (developer 2026-10-05: "Move to real stock").
+ * The percentages that lowered the built-in food cost now act on the real
+ * ingredients — the values are unchanged and logged in docs/ECONOMY_TODO.md:
+ *  - knife + board specialisation (equipmentSpecialization.ts), the Prep
+ *    Assistant / Kitchen Assistant (staff.ts) and a dull knife's penalty
+ *    (sharpness.ts) scale the stock an order USES (`stockUseFor`);
+ *  - the Campaign Supplier's modifier (supplier.ts: Wholesale −10%,
+ *    Premium +10%) scales Market INGREDIENT PRICES (`restaurantQuote`).
+ * Quality effects stay quality-bonus boosts in the settlement.
+ *
+ * Pure; nothing reads RESTAURANT_MODE (App and the Market apply it in the
+ * restaurant build; the restaurant's own modules always use it).
  */
 import type { SettlementResult } from "../economy/economyTypes";
+import type { SaveData } from "../SaveManager";
+import type { RecipeDefinition } from "../recipes/recipeTypes";
+import type { IngredientId } from "../definitions";
+import { getEquipmentModifier } from "../economy/equipmentSpecialization";
+import { getKnifeSharpness, getSharpnessModifier } from "../economy/sharpness";
+import { getStaffModifier } from "../economy/staff";
+import { getSupplierModifier } from "../economy/supplier";
+import { purchaseQuote, type PurchaseQuote } from "../business/BusinessInventoryManager";
+import { bulkDiscountFor } from "./bulkBuying";
 
 /** The restaurant's view of an order's settlement: earnings + quality bonus, food cost from stock. */
 export function restaurantSettlement(settlement: SettlementResult): SettlementResult {
@@ -42,4 +62,50 @@ export function restaurantSettlement(settlement: SettlementResult): SettlementRe
 /** True for a settlement whose food came from the restaurant's own stock (no built-in food cost). */
 export function foodFromStock(settlement: SettlementResult): boolean {
   return !settlement.transactions.some((t) => t.type === "INGREDIENT_COGS");
+}
+
+/**
+ * How much of an order's recipe stock is really used, as a factor of the
+ * recipe's portion (1 = as written):
+ *  - `factor`: knife/board and kitchen-helper savings × the dull-knife
+ *    penalty at today's sharpness — what the Pre-Service Check plans with;
+ *  - `floor`: the same without the sharpness penalty. Sharpness only drops
+ *    during a service, so a later order may need a little more than planned;
+ *    a serve then takes the extra only from stock that is there and never
+ *    blocks while the floor is covered (the check guarantees at least it).
+ */
+export function stockUseFor(
+  save: SaveData,
+  recipe: RecipeDefinition,
+): { factor: number; floor: number } {
+  const equipment = getEquipmentModifier(save.equippedKnifeId, save.equippedBoardId, recipe);
+  const helpers = getStaffModifier(save.ownedStaffIds, recipe);
+  const floor = (1 - equipment.cogsReductionPct) * (1 - helpers.cogsReductionPct);
+  const dull = getSharpnessModifier(getKnifeSharpness(save, save.equippedKnifeId));
+  return { factor: floor * (1 + dull), floor };
+}
+
+/** The Campaign Supplier's effect on Market ingredient prices (1 + its modifier). */
+export function supplierPriceFactor(save: SaveData): number {
+  return 1 + getSupplierModifier(save.selectedSupplierId);
+}
+
+/**
+ * The restaurant's price for buying `quantity` of an ingredient: the
+ * Market's own quote with the supplier factor and the bulk discount. The
+ * Market card, the purchase, the Pre-Service Check and Inventory all use it,
+ * so every shown price is what the tap charges.
+ */
+export function restaurantQuote(
+  save: SaveData,
+  ingredientId: IngredientId,
+  quantity: number,
+): PurchaseQuote {
+  return purchaseQuote(
+    save,
+    ingredientId,
+    quantity,
+    bulkDiscountFor(quantity),
+    supplierPriceFactor(save),
+  );
 }

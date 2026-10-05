@@ -268,9 +268,22 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   Market (no built-in food cost; boosts to the quality bonus kept; the
   release settlement unchanged); measured with the full simulation
   (`scripts/restaurantCampaignSim.mts`), a completionist owns everything at
-  L250 with $129,324 (target $100k–$150k; $95,082 with the double charge);
-  no soft-lock, cash = ledger. Prints the Endless Restaurant's daily
-  profit (an open decision).
+  L250 with $128,063 (target $100k–$150k; $94,393 with the double charge);
+  no soft-lock, cash = ledger. X: item effects on real stock (values
+  unchanged): knife/board/helper savings and a dull knife's penalty scale
+  the stock an order uses (`stockUseFor`; the Pre-Service Check plans
+  exactly what the serve uses, a knife that dulls mid-service never
+  blocks), the Campaign Supplier's ±10% sets Market ingredient prices
+  (`supplierPriceFactor`, `restaurantQuote`; classic quote unchanged).
+- `restaurant-endless-qa` — the Endless Restaurant after L250
+  (`restaurant/endlessDemand.ts`, `ENDLESS_DEMAND_RULES`): customers =
+  min(demand: 8 × popularity × (1 + cookable dishes ÷ 8), a specialist
+  dish only with its chef; capacity: chef + roles + specialists), only for a
+  migrated restaurant save (classic Business demand unchanged); specialists
+  paid at End Business Day. Five restaurants × 30 days from the L250
+  completionist save through the real Business engine: minimum $78/day,
+  medium $135, full menu + thin staff $276, fully staffed $452 (E2:
+  $300–$600), overstaffed −$262 (E3: < $150); cash = ledger, never < 0.
 - `story-pause-qa` — the finale and milestone banners stop their timers
   (and animations, and finale taps) while paused, resuming with the time
   left (`PausableCountdown` on a fake clock); the finale's "BACK TO THE

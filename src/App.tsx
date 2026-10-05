@@ -96,11 +96,16 @@ import {
   washUp,
 } from "@/game/restaurant/serviceSupplies";
 import { isSystemLive } from "@/game/restaurant/restaurantProgression";
-import { fireSpecialist, getSpecialist, hireSpecialist } from "@/game/restaurant/staffRequirements";
+import {
+  fireSpecialist,
+  getSpecialist,
+  hireSpecialist,
+  paySpecialists,
+} from "@/game/restaurant/staffRequirements";
 import { BULK_MAX_PACKS, bulkDiscountFor } from "@/game/restaurant/bulkBuying";
 import { businessDayAllowed } from "@/game/restaurant/endlessRestaurant";
 import { markStarterCrateSeen } from "@/game/restaurant/restaurantMigration";
-import { restaurantSettlement } from "@/game/restaurant/restaurantEconomy";
+import { restaurantSettlement, supplierPriceFactor } from "@/game/restaurant/restaurantEconomy";
 import { businessCustomerPayment } from "@/game/business/BusinessServiceManager";
 import { recordRevenueAndCogs } from "@/game/business/BusinessFinanceManager";
 import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
@@ -796,11 +801,16 @@ export function App() {
       "business-staff-salary",
       -result.payrollPaid,
     );
-    const withFine = appendLedgerEntry(
+    const fined = appendLedgerEntry(
       withPayroll,
       "inspection-fine",
       -result.inspectionFine.finePaid,
     );
+    // Unified Restaurant: the Endless Restaurant pays its specialist chefs too
+    // (one "business-staff-salary" entry each; let go if unaffordable).
+    const withFine = RESTAURANT_MODE
+      ? paySpecialists(fined, restaurantLevelOf(fined.levelProgress)).save
+      : fined;
     persist(withFine);
     // Economy V3 Phase 14, Checkpoint 3 — a new business day always
     // reseeds a fresh Business Service session/order queue, never carries
@@ -837,6 +847,8 @@ export function App() {
       ingredientId,
       quantity,
       RESTAURANT_MODE ? bulkDiscountFor(quantity) : 0,
+      // Economy pass: the Campaign Supplier's modifier acts on Market prices.
+      RESTAURANT_MODE ? supplierPriceFactor(save) : 1,
     );
     if (result.ok) {
       persistIngredientPurchases(result.save, [{ ingredientId, totalCost: result.totalCost }]);

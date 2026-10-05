@@ -21,7 +21,7 @@ import { opensNewDay, restaurantDayOf, todaysServices, type DayService } from ".
 import { hasNewsToShow, restaurantNewsAt, type RestaurantNews } from "./restaurantNews";
 import { unseenStarterCrate, type KitLine } from "./restaurantMigration";
 import { remainingMenuGuests } from "./menuGuests";
-import { purchaseQuote } from "../business/BusinessInventoryManager";
+import { restaurantQuote } from "./restaurantEconomy";
 import type { IngredientId } from "../definitions";
 import { serviceShape, staffRequirementsFor, type StaffRequirement } from "./staffRequirements";
 import {
@@ -120,7 +120,7 @@ export function guestStockFor(
     rows.push({
       ingredientId: r.ingredientId,
       buyUnits: extra,
-      cost: purchaseQuote(save, r.ingredientId, extra).totalCost,
+      cost: restaurantQuote(save, r.ingredientId, extra).totalCost,
     });
   }
   return { dishes, rows };

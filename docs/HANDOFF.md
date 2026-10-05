@@ -387,8 +387,14 @@ conversation.
    (`restaurant/restaurantEconomy.ts`); the completionist now ends L250 with
    $129,324 (target $100k–$150k; was $95,082). The simulation is a module
    (`scripts/restaurantCampaignSim.mts`) shared by the sim and economy QA.
-   Open decisions: Endless Restaurant profitability (−$200/day with the
-   team), item effects under P0. `restaurant-economy-pass-qa`.
+   Then (developer answers of 2026-10-05): item effects on REAL stock —
+   knife/board/helper savings and the dull-knife penalty scale the stock an
+   order uses, the Campaign Supplier sets Market prices (values unchanged;
+   completionist $128,063); the Endless Restaurant's demand scales with what
+   was built (`restaurant/endlessDemand.ts`): fully staffed $452/day, minimum
+   $78, overstaffed −$262 (`restaurant-endless-qa`). Wages unchanged (free
+   before L91). `restaurant-economy-pass-qa`, docs/ECONOMY_TODO.md rows
+   26–27.
 
 ## 4. Open issues from the Level 1–10 audit (not fixed yet)
 

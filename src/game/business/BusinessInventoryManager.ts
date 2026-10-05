@@ -109,11 +109,17 @@ export function purchaseQuote(
   quantity: number,
   /** Unified Restaurant bulk discount (restaurant/bulkBuying.ts) — the LAST layer; 0 = none. */
   bulkDiscount = 0,
+  /** Unified Restaurant: the Campaign Supplier's price factor (restaurant/restaurantEconomy.ts); 1 = none. */
+  supplierFactor = 1,
 ): PurchaseQuote {
   const maxQuantity = maxPurchaseQuantityFor(eventForDay(save.business.calendar.businessDay));
   const capped = todaysUnitCost(save, ingredientId, quantity);
-  const listUnitCost =
+  const marketUnitCost =
     capped ?? todaysUnitCost(save, ingredientId, Math.min(quantity, maxQuantity ?? quantity)) ?? 0;
+  const listUnitCost =
+    supplierFactor === 1
+      ? marketUnitCost
+      : Math.max(0, Math.round(marketUnitCost * supplierFactor));
   const unitCost = bulkDiscount > 0 ? discountedUnitCost(listUnitCost, bulkDiscount) : listUnitCost;
   const totalCost = quantity * unitCost;
   const refrigeratorId = save.business.refrigerator.refrigeratorId;
@@ -179,11 +185,14 @@ export function purchaseIngredient(
   quantity: number,
   /** Unified Restaurant bulk discount (the same one the quote showed); 0 = none. */
   bulkDiscount = 0,
+  /** Unified Restaurant supplier price factor (the same one the quote showed); 1 = none. */
+  supplierFactor = 1,
 ): PurchaseIngredientResult {
   if (!isKnownIngredient(ingredientId)) return { ok: false, reason: "unknownIngredient" };
   if (!Number.isInteger(quantity) || quantity <= 0) return { ok: false, reason: "invalidQuantity" };
   if (!(bulkDiscount >= 0 && bulkDiscount < 1)) return { ok: false, reason: "invalidQuantity" };
-  const quote = purchaseQuote(save, ingredientId, quantity, bulkDiscount);
+  if (!(supplierFactor > 0 && supplierFactor < 2)) return { ok: false, reason: "invalidQuantity" };
+  const quote = purchaseQuote(save, ingredientId, quantity, bulkDiscount, supplierFactor);
   if (quote.verdict !== "ok") return { ok: false, reason: quote.verdict };
   const { unitCost, totalCost } = quote;
   const inventory = addStock(

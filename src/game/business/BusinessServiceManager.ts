@@ -66,6 +66,7 @@
  * `businessCustomersToday` below.
  */
 import { takePackagingForOrder } from "./BusinessSuppliesManager";
+import { endlessDemandFor, usesRestaurantDemand } from "../restaurant/endlessDemand";
 import type { SaveData } from "../SaveManager";
 import type { IngredientId } from "../definitions";
 import type { ServiceSession } from "../service/ServiceManager";
@@ -263,7 +264,11 @@ export function businessCustomersToday(save: SaveData): BusinessCustomersToday {
   const popularity = popularityForPayment(save.business.popularity?.score);
   const multiplier = orderFrequencyMultiplierFor(popularity);
   const hundredths = Math.round(multiplier * 100);
-  const target = Math.round((BASE_CUSTOMERS_PER_DAY * hundredths) / 100);
+  const classic = Math.round((BASE_CUSTOMERS_PER_DAY * hundredths) / 100);
+  // Unified Restaurant: a save that has moved into the restaurant (the
+  // Endless Restaurant after L250) gets demand that grows with its menu and
+  // is capped by its team (restaurant/endlessDemand.ts). Classic saves: unchanged.
+  const target = usesRestaurantDemand(save) ? endlessDemandFor(save, classic).customers : classic;
   const rawServed = save.business.finance.dailyAccumulator.ordersServed;
   const served = typeof rawServed === "number" && Number.isFinite(rawServed) ? rawServed : 0;
   return {

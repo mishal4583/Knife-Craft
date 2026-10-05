@@ -35,12 +35,33 @@ import {
   type IngredientRequirement,
 } from "../business/businessInventory";
 import { consumeUsableIngredients, usableQuantity } from "../business/perishability";
-import { purchaseQuote, type PurchaseQuote } from "../business/BusinessInventoryManager";
+import type { PurchaseQuote } from "../business/BusinessInventoryManager";
 import { realCogsFor } from "../business/BusinessFinanceManager";
 import { getAvailableStorageCapacity } from "../business/RefrigeratorManager";
 import { discardExpiredStock } from "../business/discardExpired";
 import { isSystemLive } from "./unlocks";
-import { recipeRequirements, requirementsForRecipes } from "./recipeRequirements";
+import { recipeRequirements, sumRequirements } from "./recipeRequirements";
+import { restaurantQuote, stockUseFor } from "./restaurantEconomy";
+
+/**
+ * Economy pass ("move to real stock"): the stock an order really uses —
+ * its recipe portion × `stockUseFor` (knife/board/helper savings, a dull
+ * knife's extra waste). `which` = "factor" (planned) or "floor" (the most
+ * a serve may fall back to).
+ */
+export function orderRequirements(
+  save: SaveData,
+  recipe: RecipeDefinition,
+  which: "factor" | "floor" = "factor",
+): IngredientRequirement[] {
+  const k = stockUseFor(save, recipe)[which];
+  return sumRequirements(
+    recipeRequirements(recipe).map((r) => ({
+      ingredientId: r.ingredientId,
+      quantity: normalizeQuantity(r.quantity * k),
+    })),
+  );
+}
 
 export type StockRow = {
   ingredientId: IngredientId;
@@ -89,7 +110,9 @@ export function serviceStockCheck(
   if (!serviceUsesStock(levelNumber)) return { applies: false };
   const day = save.business.calendar.businessDay;
   const inventory = save.business.inventory;
-  const rows: StockRow[] = requirementsForRecipes(tickets).map(({ ingredientId, quantity }) => {
+  const rows: StockRow[] = sumRequirements(
+    tickets.flatMap((recipe) => orderRequirements(save, recipe)),
+  ).map(({ ingredientId, quantity }) => {
     const onHand = getQuantity(inventory, ingredientId);
     const usable = usableQuantity(inventory, ingredientId, day);
     const missing = normalizeQuantity(Math.max(0, quantity - usable));
@@ -102,7 +125,7 @@ export function serviceStockCheck(
       expired: normalizeQuantity(onHand - usable),
       missing,
       buyUnits,
-      quote: buyUnits > 0 ? purchaseQuote(save, ingredientId, buyUnits) : null,
+      quote: buyUnits > 0 ? restaurantQuote(save, ingredientId, buyUnits) : null,
     };
   });
   const missingRows = rows.filter((r) => r.missing > 0);
@@ -138,17 +161,24 @@ export function consumeCampaignOrderStock(
 ): ConsumeOrderStockResult {
   if (!owesOrder || !serviceUsesStock(levelNumber))
     return { ok: true, save, used: false, cost: 0, requirements: [] };
-  const requirements = recipeRequirements(recipe);
+  // Planned use; where today's stock is short of it (a knife dulled during
+  // the service), the serve uses what's there, never less than the floor.
   const inventory = save.business.inventory;
-  const cost = realCogsFor(inventory, requirements);
-  const consumed = consumeUsableIngredients(
-    inventory,
-    requirements,
-    save.business.calendar.businessDay,
+  const day = save.business.calendar.businessDay;
+  const floor = new Map(
+    orderRequirements(save, recipe, "floor").map((r) => [r.ingredientId, r.quantity]),
   );
+  const requirements = orderRequirements(save, recipe).map((r) => {
+    const usable = usableQuantity(inventory, r.ingredientId, day);
+    const least = floor.get(r.ingredientId) ?? r.quantity;
+    return usable < r.quantity && usable >= least
+      ? { ingredientId: r.ingredientId, quantity: usable }
+      : r;
+  });
+  const cost = realCogsFor(inventory, requirements);
+  const consumed = consumeUsableIngredients(inventory, requirements, day);
   if (!consumed.ok) {
-    const day = save.business.calendar.businessDay;
-    const missing = requirementsForRecipes([recipe])
+    const missing = requirements
       .filter((r) => usableQuantity(inventory, r.ingredientId, day) < r.quantity)
       .map((r) => r.ingredientId);
     return { ok: false, reason: "missingStock", missing };
