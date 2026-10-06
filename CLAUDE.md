@@ -275,6 +275,11 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   exactly what the serve uses, a knife that dulls mid-service never
   blocks), the Campaign Supplier's ±10% sets Market ingredient prices
   (`supplierPriceFactor`, `restaurantQuote`; classic quote unchanged).
+  Y: Premium supplier extras (developer 2026-10-06, PROVISIONAL —
+  `SUPPLIER_EFFECTS`): its stock starts ageing 1 day later (recorded as
+  bought a day on; age clamps at 0) and orders get +2 % of earnings as
+  quality bonus; Local and Wholesale have none; the release purchase is
+  unchanged.
 - `restaurant-endless-qa` — the Endless Restaurant after L250
   (`restaurant/endlessDemand.ts`, `ENDLESS_DEMAND_RULES`): customers =
   min(demand: 8 × popularity × (1 + cookable dishes ÷ 8), a specialist
@@ -292,9 +297,21 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   tab there and its Ingredients names the supplier with "Change supplier →";
   Equipment shows restaurant development (kitchen tiers: current, built
   x / 5, next) read-only above the fridge, linking to Kitchen Upgrade; Staff
-  was already one screen; the back office is titled "Restaurant". The
+  is one screen in two teams — Kitchen Team (the one-time helpers) then
+  Restaurant Team (waged roles + specialist chefs); the back office is
+  titled "Restaurant". The
   release build keeps the Campaign Supplier tab and the "Business" title.
   Browser: `tools/e2e/restaurantbackoffice.mjs` (restaurant test build).
+- `restaurant-endgame-qa` — the next gameplay phase's architecture, as pure
+  modules NOT yet wired into a day, a screen or the release build:
+  `restaurant/restaurantEvents.ts` (Dinner Rush, Large Group, Today's
+  Special — `RESTAURANT_EVENT_RULES`, provisional; deterministic per Business
+  Day; the special is an active, cookable menu dish and its bonus is the
+  existing once-a-day $50; `demandWithEvents` never below the plain demand,
+  capped by capacity) and `restaurant/restaurantStanding.ts` (rank = café
+  rank, stage = restaurant stage, Restaurant Complete when every level incl.
+  250 is done → Endless Restaurant, nothing reset; Endless stars 0–3 a day,
+  status only, never money). The Endless economy is unchanged.
 - `level-ux-qa` — the Level 1–10 UX pass (presentation only): Level
   Complete waits for a story banner (Level 10's milestone) and lists Order
   payout + Completion reward + Earned this level (`levels/levelEarnings.ts`,

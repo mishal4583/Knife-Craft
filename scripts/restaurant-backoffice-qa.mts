@@ -146,6 +146,19 @@ console.log("T. Staff is one screen");
   );
 }
 
+{
+  const staff = read("src/components/kc/business/BusinessStaff.tsx");
+  assert(
+    /const restaurantTeams = RESTAURANT_MODE;/.test(staff) &&
+      /id="kitchen-team"/.test(staff) &&
+      /id="restaurant-team"/.test(staff) &&
+      staff.indexOf('id="kitchen-team"') < staff.indexOf("<KitchenHelpers") &&
+      staff.indexOf("<KitchenHelpers") < staff.indexOf('id="restaurant-team"') &&
+      /restaurantTeams \? \(\s*<SpecialistChefs[\s\S]*?\) : \(\s*<KitchenHelpers/.test(staff),
+    "T2: restaurant build — one Staff screen in two teams: Kitchen Team (one-time helpers) then Restaurant Team (waged roles + specialist chefs); the release keeps its layout",
+  );
+}
+
 console.log("W. Wiring and the release build");
 {
   // Raw: Shop.tsx has an import.meta.glob("…/**/*…") path a comment stripper would misread.

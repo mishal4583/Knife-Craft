@@ -187,11 +187,15 @@ export function purchaseIngredient(
   bulkDiscount = 0,
   /** Unified Restaurant supplier price factor (the same one the quote showed); 1 = none. */
   supplierFactor = 1,
+  /** Unified Restaurant: days this stock starts ageing later (a Premium supplier's longer freshness); 0 = none. */
+  freshnessBonusDays = 0,
 ): PurchaseIngredientResult {
   if (!isKnownIngredient(ingredientId)) return { ok: false, reason: "unknownIngredient" };
   if (!Number.isInteger(quantity) || quantity <= 0) return { ok: false, reason: "invalidQuantity" };
   if (!(bulkDiscount >= 0 && bulkDiscount < 1)) return { ok: false, reason: "invalidQuantity" };
   if (!(supplierFactor > 0 && supplierFactor < 2)) return { ok: false, reason: "invalidQuantity" };
+  if (!(Number.isInteger(freshnessBonusDays) && freshnessBonusDays >= 0 && freshnessBonusDays <= 7))
+    return { ok: false, reason: "invalidQuantity" };
   const quote = purchaseQuote(save, ingredientId, quantity, bulkDiscount, supplierFactor);
   if (quote.verdict !== "ok") return { ok: false, reason: quote.verdict };
   const { unitCost, totalCost } = quote;
@@ -200,7 +204,7 @@ export function purchaseIngredient(
     ingredientId,
     quantity,
     unitCost,
-    save.business.calendar.businessDay,
+    save.business.calendar.businessDay + freshnessBonusDays,
   );
   const equipmentCondition = applyStockingWear(save.business.equipmentCondition, quantity);
   return {

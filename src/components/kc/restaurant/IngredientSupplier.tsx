@@ -69,6 +69,21 @@ export function IngredientSupplier({
                 <p className="font-hand text-[13px] leading-tight text-walnut/65">
                   {change(c.priceChange)} · {example} {formatUsd(c.exampleUnitCost)} a unit
                 </p>
+                {c.freshnessBonusDays > 0 || c.qualityBonusPct > 0 ? (
+                  <p
+                    className="font-ui text-[11px] font-bold text-olive"
+                    data-testid="supplier-extras"
+                  >
+                    {[
+                      c.freshnessBonusDays > 0
+                        ? `stays fresh ${c.freshnessBonusDays} day${c.freshnessBonusDays === 1 ? "" : "s"} longer`
+                        : null,
+                      c.qualityBonusPct > 0 ? "a small quality bonus" : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </p>
+                ) : null}
               </div>
               {c.current ? (
                 <Badge tone="sage">Current</Badge>

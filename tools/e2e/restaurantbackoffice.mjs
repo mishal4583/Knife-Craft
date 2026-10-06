@@ -122,6 +122,27 @@ check(
   m3,
 );
 
+// ---------- 3b. Staff: two teams on one screen ----------
+await nav("Restaurant");
+await sleep(600);
+await clickIn('nav[aria-label="Business sections"]', /Staff/);
+await sleep(700);
+const teams = await page.evaluate(() => {
+  const k = document.querySelector('[data-testid="kitchen-team"]');
+  const r = document.querySelector('[data-testid="restaurant-team"]');
+  return {
+    kitchen: !!k,
+    restaurant: !!r,
+    order: !!k && !!r && !!(k.compareDocumentPosition(r) & Node.DOCUMENT_POSITION_FOLLOWING),
+    chefs: !!document.querySelector('[data-testid="specialist-chefs"]'),
+  };
+});
+check(
+  "3b Staff is one screen in two teams: Kitchen Team, then Restaurant Team (with the specialist chefs)",
+  teams.kitchen && teams.restaurant && teams.order && teams.chefs,
+  teams,
+);
+
 // ---------- 4. Equipment: restaurant development ----------
 await nav("Restaurant");
 await sleep(700);

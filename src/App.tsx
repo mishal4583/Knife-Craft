@@ -106,7 +106,11 @@ import {
 import { BULK_MAX_PACKS, bulkDiscountFor } from "@/game/restaurant/bulkBuying";
 import { businessDayAllowed } from "@/game/restaurant/endlessRestaurant";
 import { markStarterCrateSeen } from "@/game/restaurant/restaurantMigration";
-import { restaurantSettlement, supplierPriceFactor } from "@/game/restaurant/restaurantEconomy";
+import {
+  supplierEffects,
+  restaurantSettlement,
+  supplierPriceFactor,
+} from "@/game/restaurant/restaurantEconomy";
 import { businessCustomerPayment } from "@/game/business/BusinessServiceManager";
 import { recordRevenueAndCogs } from "@/game/business/BusinessFinanceManager";
 import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
@@ -852,6 +856,8 @@ export function App() {
       RESTAURANT_MODE ? bulkDiscountFor(quantity) : 0,
       // Economy pass: the Campaign Supplier's modifier acts on Market prices.
       RESTAURANT_MODE ? supplierPriceFactor(save) : 1,
+      // Premium supplier: longer freshness (supplierEffects, provisional).
+      RESTAURANT_MODE ? supplierEffects(save).freshnessBonusDays : 0,
     );
     if (result.ok) {
       persistIngredientPurchases(result.save, [{ ingredientId, totalCost: result.totalCost }]);
@@ -1432,7 +1438,10 @@ export function App() {
         );
     // Unified Restaurant (economy pass P0): the food was bought as real stock,
     // so the built-in food cost isn't charged again (restaurantEconomy.ts).
-    const settlement = computed && RESTAURANT_MODE ? restaurantSettlement(computed) : computed;
+    const settlement =
+      computed && RESTAURANT_MODE
+        ? restaurantSettlement(computed, save ? supplierEffects(save).qualityBonusPct : 0)
+        : computed;
     const amount = settlement?.netResult ?? 0;
     const result = serveCurrentOrder(campaignServiceSession, Math.random, amount);
     if (!result) return null;
@@ -1809,7 +1818,10 @@ export function App() {
         );
     // Unified Restaurant (economy pass P0): the food was bought as real stock,
     // so the built-in food cost isn't charged again (restaurantEconomy.ts).
-    const settlement = computed && RESTAURANT_MODE ? restaurantSettlement(computed) : computed;
+    const settlement =
+      computed && RESTAURANT_MODE
+        ? restaurantSettlement(computed, save ? supplierEffects(save).qualityBonusPct : 0)
+        : computed;
     const amount = settlement?.netResult ?? 0;
     const result = serveBatchGroupOrder(batchGroupSession, batchViewOrderId, Math.random, amount);
     if (!result) return null;

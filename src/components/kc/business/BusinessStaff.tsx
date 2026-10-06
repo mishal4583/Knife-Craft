@@ -58,8 +58,27 @@ export function BusinessStaff({
     setMessage(result.ok ? null : "That role isn't hired.");
   }
 
+  // Unified Restaurant: ONE Staff screen in two teams — the Kitchen Team
+  // (one-time helpers, permanent, no wages) and the Restaurant Team (waged
+  // roles + specialist chefs; pay from Level 91). Same data and actions.
+  const restaurantTeams = RESTAURANT_MODE;
   return (
     <div className="space-y-3">
+      {restaurantTeams ? (
+        <>
+          <TeamHeading
+            id="kitchen-team"
+            title="🔪 Kitchen Team"
+            line="One-time hires that stay for good — no wages."
+          />
+          <KitchenHelpers save={save} buyStaff={buyStaff} />
+          <TeamHeading
+            id="restaurant-team"
+            title="🍽️ Restaurant Team"
+            line="Waged staff. Hiring is free; from Level 91 their pay is charged at closing."
+          />
+        </>
+      ) : null}
       <Panel tone="cream" className="p-4">
         <div className="flex items-baseline justify-between gap-3">
           <Eyebrow>🧑‍🍳 Your team</Eyebrow>
@@ -124,10 +143,21 @@ export function BusinessStaff({
           );
         })}
       </div>
-      {RESTAURANT_MODE ? (
+      {restaurantTeams ? (
         <SpecialistChefs save={save} onHire={handleHire} onFire={handleFire} />
-      ) : null}
-      <KitchenHelpers save={save} buyStaff={buyStaff} />
+      ) : (
+        <KitchenHelpers save={save} buyStaff={buyStaff} />
+      )}
+    </div>
+  );
+}
+
+/** A team's heading on the unified Staff screen (restaurant build). */
+function TeamHeading({ id, title, line }: { id: string; title: string; line: string }) {
+  return (
+    <div className="px-1 pt-1" data-testid={id}>
+      <p className="font-display text-[18px] font-black text-walnut-dark">{title}</p>
+      <p className="font-hand text-[14px] leading-snug text-walnut/65">{line}</p>
     </div>
   );
 }

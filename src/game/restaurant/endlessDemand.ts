@@ -67,14 +67,19 @@ export type EndlessDemand = {
   customers: number;
 };
 
+/** The active menu's dishes the team can cook (a specialist cuisine only with its chef hired). */
+export function cookableMenuDishes(save: SaveData) {
+  const chefs = new Set(save.business.restaurantStaff?.specialists ?? []);
+  return activeMenuDishes(save.business.menuActivation, LAST_CAMPAIGN_LEVEL).filter((d) => {
+    const specialist = cuisineFor(d.cuisineId).specialist;
+    return !specialist || chefs.has(specialist.id);
+  });
+}
+
 /** Today's demand, capacity and customers for a restaurant save (`classicCustomers` = 8 × popularity). */
 export function endlessDemandFor(save: SaveData, classicCustomers: number): EndlessDemand {
   const R = ENDLESS_DEMAND_RULES;
-  const chefs = new Set(save.business.restaurantStaff?.specialists ?? []);
-  const dishes = activeMenuDishes(save.business.menuActivation, LAST_CAMPAIGN_LEVEL).filter((d) => {
-    const specialist = cuisineFor(d.cuisineId).specialist;
-    return !specialist || chefs.has(specialist.id);
-  }).length;
+  const dishes = cookableMenuDishes(save).length;
   const demand = Math.round(classicCustomers * (1 + dishes / R.dishesPerBase));
   const roles = save.business.staff.hiredRoles;
   const specialists = save.business.restaurantStaff?.specialists?.length ?? 0;

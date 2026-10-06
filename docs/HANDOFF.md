@@ -431,6 +431,25 @@ conversation.
    `src/assets/tomato.webp` removed after a full reference scan.
    `lazy-load-qa`, `unused-assets-qa`, e2e `lazyload.mjs`.
 
+37. Developer decisions of 2026-10-06 (restaurant build unless noted):
+   Premium supplier kept with provisional extras (+1 day freshness, +2 %
+   quality bonus; `restaurantEconomy.SUPPLIER_EFFECTS`); the Staff screen
+   in two teams (Kitchen Team / Restaurant Team); asset audit written
+   (`docs/ASSET_AUDIT.md`: USED / POTENTIALLY USED / SAFE TO REMOVE).
+   Confirmed as already built: staff free before L91, specialist wage
+   placeholder, bulk tiers 3/5/8 %, item effects on real stock, one Asian
+   Chef, 2 services a day (3 from L51), menu curation from L51 (never
+   permanent), no menu guests in batch groups. `restaurant-economy-pass-qa`
+   Y, `restaurant-backoffice-qa` T2.
+38. Next gameplay phase prepared (pure, NOT wired, no economy change):
+   `restaurant/restaurantEvents.ts` (Dinner Rush, Large Group, Today's
+   Special as a restaurant event re-using the existing $50/day bonus),
+   `restaurant/restaurantStanding.ts` (rank, stage, Restaurant Complete at
+   L250 → Endless Restaurant, Endless stars as status only),
+   `endlessDemand.cookableMenuDishes` extracted (logic unchanged).
+   `restaurant-endgame-qa`. Next: wire events into the Endless day, show
+   the standing and stars on Restaurant Progress, keep stars long-term.
+
 ## 4. Open issues from the Level 1–10 audit (not fixed yet)
 
 Priority order as agreed in the audit (P0 = before wide release):

@@ -23,7 +23,7 @@ import { SUPPLIER_CATALOG } from "../economy/supplierDefinitions";
 import { getSelectedSupplierId } from "../economy/SupplierManager";
 import { KITCHEN_UPGRADE_CATALOG } from "../kitchen/kitchenUpgradeDefinitions";
 import { getKitchenUpgradeState, type KitchenUpgradeState } from "../kitchen/KitchenUpgradeManager";
-import { restaurantQuote } from "./restaurantEconomy";
+import { SUPPLIER_EFFECTS, restaurantQuote } from "./restaurantEconomy";
 
 /** The ingredient each supplier card prices as its example. */
 export const SUPPLIER_EXAMPLE_INGREDIENT: IngredientId = "tomato";
@@ -36,6 +36,9 @@ export type SupplierChoiceView = {
   priceChange: number;
   /** One unit of the example ingredient in the Market with this supplier, in cents. */
   exampleUnitCost: number;
+  /** Extra days its stock stays fresh, and its extra quality bonus (restaurantEconomy.SUPPLIER_EFFECTS, provisional). */
+  freshnessBonusDays: number;
+  qualityBonusPct: number;
   current: boolean;
 };
 
@@ -53,6 +56,8 @@ export function supplierChoices(save: SaveData): SupplierChoiceView[] {
       1,
     ).unitCost,
     current: s.id === selected,
+    freshnessBonusDays: SUPPLIER_EFFECTS[s.id]?.freshnessBonusDays ?? 0,
+    qualityBonusPct: SUPPLIER_EFFECTS[s.id]?.qualityBonusPct ?? 0,
   }));
 }
 

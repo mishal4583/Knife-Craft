@@ -29,7 +29,9 @@ import {
   foodFromStock,
   restaurantQuote,
   restaurantSettlement,
+  SUPPLIER_EFFECTS,
   stockUseFor,
+  supplierEffects,
   supplierPriceFactor,
 } from "../src/game/restaurant/restaurantEconomy.ts";
 import { DEFAULT_SAVE, type SaveData } from "../src/game/SaveManager.ts";
@@ -45,6 +47,7 @@ import {
   purchaseQuote,
 } from "../src/game/business/BusinessInventoryManager.ts";
 import { CAMPAIGN_RECIPES } from "../src/game/recipes/campaignRecipes.ts";
+import { shelfLifeForIngredient, usableQuantity } from "../src/game/business/perishability.ts";
 
 let failures = 0;
 function assert(cond: unknown, msg: string) {
@@ -188,6 +191,79 @@ console.log('X. Item effects on real stock (developer: "move to real stock")');
   );
 }
 
+console.log(
+  "Y. Supplier effects beyond price (developer 2026-10-06: keep Premium — provisional values)",
+);
+{
+  const recipe = CAMPAIGN_RECIPES[0]!;
+  const base = computeSettlement(recipe, 3, 92);
+  const local = restaurantSettlement(base);
+  const premium = restaurantSettlement(
+    base,
+    supplierEffects({ ...DEFAULT_SAVE, selectedSupplierId: "premium-supplier" } as SaveData)
+      .qualityBonusPct,
+  );
+  const extra = Math.round(base.revenue * SUPPLIER_EFFECTS["premium-supplier"]!.qualityBonusPct);
+  assert(
+    JSON.stringify(restaurantSettlement(base, 0)) === JSON.stringify(local) &&
+      premium.qualityBonus === local.qualityBonus + extra &&
+      premium.netResult === local.netResult + extra &&
+      premium.transactions.reduce((t, x) => t + x.amount, 0) ===
+        local.transactions.reduce((t, x) => t + x.amount, 0) + extra &&
+      extra > 0,
+    `Y1: Premium adds a small quality bonus (+${extra}¢ on a ${base.revenue}¢ order); Local / Wholesale add nothing`,
+  );
+  const wholesale = supplierEffects({
+    ...DEFAULT_SAVE,
+    selectedSupplierId: "wholesale-supplier",
+  } as SaveData);
+  const localFx = supplierEffects(DEFAULT_SAVE as SaveData);
+  assert(
+    wholesale.freshnessBonusDays === 0 &&
+      wholesale.qualityBonusPct === 0 &&
+      localFx.freshnessBonusDays === 0 &&
+      localFx.qualityBonusPct === 0 &&
+      SUPPLIER_EFFECTS["premium-supplier"]!.freshnessBonusDays > 0,
+    "Y2: only Premium has extras; Wholesale stays the cheapest, Local the balanced baseline",
+  );
+  const shop = { ...structuredClone(DEFAULT_SAVE), credits: 1_000_000 } as SaveData;
+  const day = shop.business.calendar.businessDay;
+  const plain = purchaseIngredient(shop, "basil", 2);
+  const fresh = purchaseIngredient(
+    shop,
+    "basil",
+    2,
+    0,
+    1,
+    SUPPLIER_EFFECTS["premium-supplier"]!.freshnessBonusDays,
+  );
+  const shelf = shelfLifeForIngredient("basil");
+  const lastUsable = (s: SaveData) => {
+    let d = day;
+    while (usableQuantity(s.business.inventory, "basil", d) > 0 && d < day + 60) d++;
+    return d - 1;
+  };
+  assert(
+    plain.ok &&
+      fresh.ok &&
+      plain.totalCost === fresh.totalCost &&
+      lastUsable(fresh.save) ===
+        lastUsable(plain.save) + SUPPLIER_EFFECTS["premium-supplier"]!.freshnessBonusDays &&
+      lastUsable(plain.save) === day + shelf - 1,
+    `Y3: Premium stock stays usable ${SUPPLIER_EFFECTS["premium-supplier"]!.freshnessBonusDays} day longer at the same price (through the existing perishability rules)`,
+  );
+  assert(
+    !purchaseIngredient(shop, "basil", 2, 0, 1, -1).ok &&
+      !purchaseIngredient(shop, "basil", 2, 0, 1, 0.5).ok,
+    "Y4: a bad freshness bonus is refused (the purchase stays all-or-nothing)",
+  );
+  const app = read("src/App.tsx");
+  assert(
+    /RESTAURANT_MODE \? supplierEffects\(save\)\.freshnessBonusDays : 0/.test(app),
+    "Y5: the purchase passes Premium's freshness only in the restaurant build (release purchases unchanged)",
+  );
+}
+
 console.log("T. The approved target, measured with the full restaurant simulation");
 const after = run(
   "completionist (economy pass)",
@@ -231,8 +307,11 @@ console.log("W. Wiring");
 {
   const app = read("src/App.tsx");
   assert(
-    (app.match(/computed && RESTAURANT_MODE \? restaurantSettlement\(computed\) : computed/g) ?? [])
-      .length === 2,
+    (
+      app.match(
+        /computed && RESTAURANT_MODE\s*\?\s*restaurantSettlement\(computed, save \? supplierEffects\(save\)\.qualityBonusPct : 0\)\s*:\s*computed/g,
+      ) ?? []
+    ).length === 2,
     "W1: both campaign serve paths apply P0, only under RESTAURANT_MODE",
   );
   const ui = read("src/components/kc/game/ServiceOrderComplete.tsx");

@@ -44,8 +44,38 @@ import { getSupplierModifier } from "../economy/supplier";
 import { purchaseQuote, type PurchaseQuote } from "../business/BusinessInventoryManager";
 import { bulkDiscountFor } from "./bulkBuying";
 
-/** The restaurant's view of an order's settlement: earnings + quality bonus, food cost from stock. */
-export function restaurantSettlement(settlement: SettlementResult): SettlementResult {
+/**
+ * The restaurant's view of an order's settlement: earnings + quality bonus,
+ * food cost from stock. `supplierQualityBonusPct` is the ingredient
+ * supplier's extra quality bonus (Premium — SUPPLIER_EFFECTS, provisional),
+ * a share of the order's earnings added to its quality bonus; 0 = none.
+ */
+export function restaurantSettlement(
+  settlement: SettlementResult,
+  supplierQualityBonusPct = 0,
+): SettlementResult {
+  const extra =
+    supplierQualityBonusPct > 0 ? Math.round(settlement.revenue * supplierQualityBonusPct) : 0;
+  const qualityBonus = settlement.qualityBonus + extra;
+  let transactions = settlement.transactions.filter((t) => t.type !== "INGREDIENT_COGS");
+  if (extra > 0) {
+    const bonus = transactions.find((t) => t.type === "QUALITY_BONUS");
+    const revenueLine = transactions.find((t) => t.type === "RECIPE_REVENUE");
+    transactions = bonus
+      ? transactions.map((t) => (t === bonus ? { ...t, amount: t.amount + extra } : t))
+      : revenueLine
+        ? [
+            ...transactions,
+            {
+              ...revenueLine,
+              id: `${revenueLine.id}-supplier`,
+              type: "QUALITY_BONUS",
+              amount: extra,
+              context: "supplier",
+            },
+          ]
+        : transactions;
+  }
   return {
     ...settlement,
     finalCOGS: 0,
@@ -54,9 +84,40 @@ export function restaurantSettlement(settlement: SettlementResult): SettlementRe
     sharpnessCOGSPenalty: 0,
     staffCOGSSavings: 0,
     yieldSavings: 0,
-    netResult: settlement.revenue + settlement.qualityBonus,
-    transactions: settlement.transactions.filter((t) => t.type !== "INGREDIENT_COGS"),
+    qualityBonus,
+    netResult: settlement.revenue + qualityBonus,
+    transactions,
   };
+}
+
+/**
+ * The ingredient supplier's effects beyond price in the restaurant
+ * (developer 2026-10-06: keep Premium; it costs ~+10% and gives longer
+ * freshness and a small quality benefit). PROVISIONAL values — the exact
+ * numbers are for the final economy pass (docs/ECONOMY_TODO.md):
+ *  - freshnessBonusDays: stock bought from this supplier starts ageing that
+ *    many days later (it is recorded as bought that many days on — age is
+ *    clamped at 0 — so expiry, spoilage, "days left" and the Market all read
+ *    it through the existing perishability rules);
+ *  - qualityBonusPct: a share of each campaign order's earnings added to its
+ *    quality bonus.
+ * Local Market is the balanced baseline, Wholesale the cheapest (no extras).
+ */
+export const SUPPLIER_EFFECTS: Record<
+  string,
+  { freshnessBonusDays: number; qualityBonusPct: number }
+> = {
+  "local-market": { freshnessBonusDays: 0, qualityBonusPct: 0 },
+  "wholesale-supplier": { freshnessBonusDays: 0, qualityBonusPct: 0 },
+  "premium-supplier": { freshnessBonusDays: 1, qualityBonusPct: 0.02 },
+};
+
+/** The current ingredient supplier's freshness and quality effects (zeros for an unknown id). */
+export function supplierEffects(save: SaveData): {
+  freshnessBonusDays: number;
+  qualityBonusPct: number;
+} {
+  return SUPPLIER_EFFECTS[save.selectedSupplierId] ?? { freshnessBonusDays: 0, qualityBonusPct: 0 };
 }
 
 /** True for a settlement whose food came from the restaurant's own stock (no built-in food cost). */
