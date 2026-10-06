@@ -58,6 +58,8 @@ export type BusinessDayRecord = {
   customersServed: number;
   /** revenue ÷ orders, whole cents; null on a day with no orders. */
   averageOrderValue: number | null;
+  /** Endless Restaurant only: the day's stars (0–3, status only — restaurantStanding.ts). */
+  stars?: number;
 };
 
 /** A day's record from its settlement (`DailyPnL`) and its order count. */
@@ -134,7 +136,9 @@ export function sanitizeDayHistory(raw: unknown): BusinessDayRecord[] | undefine
       typeof r === "object" &&
       NUMBER_FIELDS.every((k) => Number.isFinite((r as Record<string, unknown>)[k])) &&
       ((r as BusinessDayRecord).averageOrderValue === null ||
-        Number.isFinite((r as BusinessDayRecord).averageOrderValue)),
+        Number.isFinite((r as BusinessDayRecord).averageOrderValue)) &&
+      ((r as BusinessDayRecord).stars === undefined ||
+        Number.isFinite((r as BusinessDayRecord).stars)),
   );
   return ok.slice(-HISTORY_DAYS);
 }

@@ -15,6 +15,12 @@ import {
   restaurantProgress,
   type RestaurantProgress as Progress,
 } from "@/game/progression/restaurantProgress";
+import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
+import {
+  ENDLESS_STARS_PER_DAY,
+  endlessStarsOf,
+  restaurantStanding,
+} from "@/game/restaurant/restaurantStanding";
 
 /**
  * RESTAURANT PROGRESS — the game's progression screen (it replaced the old
@@ -39,6 +45,7 @@ export function RestaurantProgress({ go, save }: { go: (s: ScreenId) => void; sa
 
         <div className="space-y-3 px-4">
           <RankHero p={p} />
+          {RESTAURANT_MODE ? <StandingCard save={save} /> : null}
           <Summary p={p} />
           <NextGoal p={p} />
           <PopularityCard p={p} />
@@ -90,6 +97,54 @@ function RankHero({ p }: { p: Progress }) {
           </p>
         )}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Restaurant build: the restaurant's standing (restaurantStanding — stage,
+ * Restaurant Complete, the Endless Restaurant) and its lifetime Endless
+ * stars (status only, never money). Read-only.
+ */
+function StandingCard({ save }: { save: SaveData }) {
+  const s = restaurantStanding(save.levelProgress);
+  const stars = endlessStarsOf(save);
+  return (
+    <div data-testid="restaurant-standing">
+      <Panel className="p-4">
+        <Eyebrow>🍽️ Restaurant standing</Eyebrow>
+        <div className="mt-1 divide-y divide-walnut/10">
+          <Row label="Rank" value={s.rank} />
+          <Row label="Stage" value={`${s.stage} · ${s.stageNumber} / ${s.stageCount}`} />
+          {s.nextStage ? (
+            <Row label="Next stage" value={`${s.nextStage.stage} · Level ${s.nextStage.level}`} />
+          ) : null}
+          <Row label="Restaurant Complete" value={s.complete ? "✅ Yes" : "Not yet"} />
+          <Row label="Endless Restaurant" value={s.endlessUnlocked ? "🔓 Open" : "🔒 Locked"} />
+        </div>
+        {s.endlessUnlocked ? (
+          <div className="mt-3 rounded-[16px] bg-gold/15 p-3" data-testid="endless-stars">
+            <p className="font-ui text-[11px] font-extrabold uppercase tracking-[0.14em] text-walnut/60">
+              Endless stars
+            </p>
+            <p className="mt-0.5 font-display text-[22px] font-black leading-tight text-walnut-dark">
+              ★ {stars.total}
+            </p>
+            <p className="font-ui text-[12px] font-bold text-walnut/75">
+              {stars.days} {stars.days === 1 ? "day" : "days"} run · best day {stars.bestDay} /{" "}
+              {ENDLESS_STARS_PER_DAY}
+            </p>
+            <p className="mt-1 font-hand text-[13px] leading-snug text-walnut/65">
+              Up to {ENDLESS_STARS_PER_DAY} a day: profitable, busy (no guest turned away) and clean
+              (inspection passed). Stars show your standing — they are not money.
+            </p>
+          </div>
+        ) : (
+          <p className="mt-2 font-hand text-[14px] leading-snug text-walnut/70">
+            Complete all 250 campaign levels to unlock Endless Restaurant.
+          </p>
+        )}
+      </Panel>
     </div>
   );
 }

@@ -24,6 +24,7 @@ import { getSelectedSupplierId } from "../economy/SupplierManager";
 import { KITCHEN_UPGRADE_CATALOG } from "../kitchen/kitchenUpgradeDefinitions";
 import { getKitchenUpgradeState, type KitchenUpgradeState } from "../kitchen/KitchenUpgradeManager";
 import { SUPPLIER_EFFECTS, restaurantQuote } from "./restaurantEconomy";
+import { kitchenTierPrice } from "./restaurantInvestments";
 
 /** The ingredient each supplier card prices as its example. */
 export const SUPPLIER_EXAMPLE_INGREDIENT: IngredientId = "tomato";
@@ -99,7 +100,7 @@ export function restaurantDevelopment(save: SaveData): RestaurantDevelopmentView
     next: nextDef
       ? {
           name: nextDef.name,
-          price: nextDef.price,
+          price: kitchenTierPrice(nextDef, save),
           unlockLevel: nextDef.unlockLevel,
           state: getKitchenUpgradeState(nextDef.id, save),
         }

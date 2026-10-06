@@ -29,6 +29,7 @@ import type { LevelDefinition, UnlockRequirement } from "./levelTypes";
 import { withoutPaidOrders } from "./paidOrders";
 import { withoutServiceTickets } from "../restaurant/serviceTickets";
 import { withoutMenuGuests } from "../restaurant/menuGuests";
+import { withoutEmergency } from "../restaurant/emergencyService";
 
 export type LevelProgress = {
   /** The level the player last selected/played — a UI convenience, not an unlock gate. */
@@ -50,6 +51,12 @@ export type LevelProgress = {
   tickets?: Record<string, string[]>;
   /** Unified Restaurant: menu guests already served in a level not finished yet (restaurant/menuGuests.ts). */
   menuGuests?: Record<string, number>;
+  /**
+   * Unified Restaurant: levels whose service ran on Grandma's emergency goods
+   * (restaurant/emergencyService.ts) — their orders earn no quality bonus.
+   * Absent on older saves; a level's entry is dropped when it completes.
+   */
+  emergency?: Record<string, true>;
 };
 
 export const DEFAULT_LEVEL_PROGRESS: LevelProgress = {
@@ -146,9 +153,12 @@ export function completeLevel(levelId: string, progress: LevelProgress): Complet
     : progress.highestUnlockedLevelId;
 
   return {
-    progress: withoutMenuGuests(
-      withoutServiceTickets(
-        withoutPaidOrders({ ...progressAfter, highestUnlockedLevelId }, levelId),
+    progress: withoutEmergency(
+      withoutMenuGuests(
+        withoutServiceTickets(
+          withoutPaidOrders({ ...progressAfter, highestUnlockedLevelId }, levelId),
+          levelId,
+        ),
         levelId,
       ),
       levelId,

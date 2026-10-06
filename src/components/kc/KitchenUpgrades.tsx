@@ -13,6 +13,11 @@ import {
 } from "@/game/kitchen/KitchenUpgradeManager";
 import { formatUsd } from "@/game/money";
 import { notEnoughMoneyText } from "@/game/economy/wallet";
+import {
+  isRestaurantSave,
+  kitchenTierBenefit,
+  kitchenTierPrice,
+} from "@/game/restaurant/restaurantInvestments";
 import type { SaveData } from "@/game/SaveManager";
 
 /** A small real preview of the upgrade's own background image — unlike Boards/Knives (which have no real photo, only a CSS-gradient stand-in), a kitchen upgrade's true identity IS one of the six finished images, so the card just shows a cropped, scaled copy of it. */
@@ -61,7 +66,7 @@ export function KitchenUpgrades({
   const state = getKitchenUpgradeState(selected.id, save);
   const selectedIndex = KITCHEN_UPGRADE_CATALOG.findIndex((u) => u.id === selected.id);
   const previous = selectedIndex > 0 ? KITCHEN_UPGRADE_CATALOG[selectedIndex - 1]! : null;
-  const shortfall = Math.max(0, selected.price - save.credits);
+  const shortfall = Math.max(0, kitchenTierPrice(selected, save) - save.credits);
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-cream">
@@ -87,12 +92,21 @@ export function KitchenUpgrades({
                 <p className="mt-1 font-hand text-[16px] leading-tight text-walnut/70">
                   {selected.description}
                 </p>
+                {isRestaurantSave(save) && kitchenTierBenefit(selected.id) ? (
+                  <p
+                    className="mt-1 font-ui text-[12px] font-extrabold text-olive"
+                    data-testid="kitchen-benefit"
+                  >
+                    {kitchenTierBenefit(selected.id)}
+                  </p>
+                ) : null}
               </div>
             </div>
             <Divider />
             {state === "locked" ? (
               <KButton full variant="ghost" disabled>
-                Unlocks at Level {selected.unlockLevel} · {formatUsd(selected.price)}
+                Unlocks at Level {selected.unlockLevel} ·{" "}
+                {formatUsd(kitchenTierPrice(selected, save))}
               </KButton>
             ) : state === "needsPrevious" ? (
               <KButton full variant="ghost" disabled>
@@ -106,11 +120,11 @@ export function KitchenUpgrades({
                   disabled={shortfall > 0}
                   onClick={() => buildKitchenUpgrade(selected.id)}
                 >
-                  🔨 Build · {formatUsd(selected.price)}
+                  🔨 Build · {formatUsd(kitchenTierPrice(selected, save))}
                 </KButton>
                 <p className="mt-2 text-center font-hand text-[14px] text-walnut/65">
                   {shortfall > 0
-                    ? `${notEnoughMoneyText(selected.price, save.credits)} Balance ${formatUsd(save.credits)}.`
+                    ? `${notEnoughMoneyText(kitchenTierPrice(selected, save), save.credits)} Balance ${formatUsd(save.credits)}.`
                     : "A permanent investment in your restaurant."}
                 </p>
               </>
@@ -155,7 +169,7 @@ export function KitchenUpgrades({
                 ) : uState === "locked" ? (
                   <Badge tone="locked">Lv {u.unlockLevel}</Badge>
                 ) : (
-                  <Badge tone="copper">{formatUsd(u.price)}</Badge>
+                  <Badge tone="copper">{formatUsd(kitchenTierPrice(u, save))}</Badge>
                 )}
               </button>
             );

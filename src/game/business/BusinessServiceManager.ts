@@ -67,6 +67,12 @@
  */
 import { takePackagingForOrder } from "./BusinessSuppliesManager";
 import { endlessDemandFor, usesRestaurantDemand } from "../restaurant/endlessDemand";
+import {
+  demandWithEvents,
+  endlessEventsActive,
+  eventsForDay,
+  featuredPool,
+} from "../restaurant/restaurantEvents";
 import type { SaveData } from "../SaveManager";
 import type { IngredientId } from "../definitions";
 import type { ServiceSession } from "../service/ServiceManager";
@@ -83,7 +89,7 @@ import {
   businessDishForRecipeId,
   businessDishRequirements,
 } from "./businessServiceCatalog";
-import { businessDishPrice } from "./businessDishCatalog";
+import { businessDishPrice, getBusinessDish } from "./businessDishCatalog";
 import { orderFrequencyMultiplierFor, willingnessToPayMultiplierFor } from "./DemandManager";
 import { clampScore, DEFAULT_POPULARITY_STATE } from "./businessPopularity";
 import type { BusinessDish } from "./businessDishCatalog";
@@ -95,16 +101,22 @@ import {
 
 const BUSINESS_SERVICE_LEVEL_ID = "business-service";
 
+/** Endless Restaurant only: the day's featured dish (Today's Special) and its share of orders. */
+export type FeaturedDish = { recipeId: string; share: number };
+
+function dayPool(menuActivation: BusinessMenuActivationState, featured?: FeaturedDish) {
+  const pool = businessServicePool(activeBusinessDishes(menuActivation));
+  return featured ? featuredPool(pool, featured.recipeId, featured.share) : pool;
+}
+
 /** A fresh Business Mode session — the pool is the player's ACTIVE menu (Economy V3 Phase 16; the whole 35-dish catalog when `menuActivation` is omitted or every dish is on), never level-gated. `rand` must be a deterministic, session-scoped generator (see businessDeterministicRandom.ts) — never `Math.random` directly. */
 export function createBusinessServiceSession(
   rand: () => number,
   menuActivation: BusinessMenuActivationState = DEFAULT_MENU_ACTIVATION_STATE,
+  /** Endless Restaurant: Today's Special drawn more often (absent everywhere else — unchanged). */
+  featured?: FeaturedDish,
 ): ServiceSession {
-  return createServiceSession(
-    BUSINESS_SERVICE_LEVEL_ID,
-    businessServicePool(activeBusinessDishes(menuActivation)),
-    rand,
-  );
+  return createServiceSession(BUSINESS_SERVICE_LEVEL_ID, dayPool(menuActivation, featured), rand);
 }
 
 /** Advances current->recent, next->current, generates a new next — identical to Restaurant Service's own queue advance, against the CURRENT active menu. */
@@ -112,12 +124,24 @@ export function advanceBusinessServiceSession(
   session: ServiceSession,
   rand: () => number,
   menuActivation: BusinessMenuActivationState = DEFAULT_MENU_ACTIVATION_STATE,
+  featured?: FeaturedDish,
 ): ServiceSession {
-  return advanceServiceSession(
-    session,
-    businessServicePool(activeBusinessDishes(menuActivation)),
-    rand,
+  return advanceServiceSession(session, dayPool(menuActivation, featured), rand);
+}
+
+/**
+ * The Endless Restaurant's featured dish for today (restaurantEvents:
+ * Today's Special), as the session option — undefined for any other save
+ * (the campaign's services, the classic Business Day), so they are unchanged.
+ */
+export function endlessFeaturedFor(save: SaveData): FeaturedDish | undefined {
+  if (!endlessEventsActive(save)) return undefined;
+  const special = eventsForDay(save, save.business.calendar.businessDay).find(
+    (e) => e.id === "todays-special",
   );
+  if (!special || special.id !== "todays-special") return undefined;
+  const dish = getBusinessDish(special.dishId);
+  return dish ? { recipeId: dish.sourceRecipeId, share: special.featuredShare } : undefined;
 }
 
 /** Records this run's cut components into the session's own organization/quality state — the EXISTING function, unwrapped, since it's already generic over any ServiceSession. Exported here only so callers never need to import ServiceManager.ts directly for Business Mode's own flow. */
@@ -255,6 +279,12 @@ export type BusinessCustomersToday = {
   popularity: number;
   multiplier: number;
   target: number;
+  /**
+   * The guests who want to eat today before the team's capacity caps them
+   * (the Endless Restaurant's demand with the day's events; = target
+   * elsewhere). The Endless BUSY star asks that all of them were served.
+   */
+  demand: number;
   served: number;
   remaining: number;
   complete: boolean;
@@ -268,13 +298,24 @@ export function businessCustomersToday(save: SaveData): BusinessCustomersToday {
   // Unified Restaurant: a save that has moved into the restaurant (the
   // Endless Restaurant after L250) gets demand that grows with its menu and
   // is capped by its team (restaurant/endlessDemand.ts). Classic saves: unchanged.
-  const target = usesRestaurantDemand(save) ? endlessDemandFor(save, classic).customers : classic;
+  // The Endless Restaurant (all 250 levels done): the day's events raise the
+  // demand (restaurantEvents.demandWithEvents); the team's capacity still caps it.
+  const restaurant = usesRestaurantDemand(save)
+    ? endlessEventsActive(save)
+      ? demandWithEvents(
+          endlessDemandFor(save, classic),
+          eventsForDay(save, save.business.calendar.businessDay),
+        )
+      : endlessDemandFor(save, classic)
+    : null;
+  const target = restaurant ? restaurant.customers : classic;
   const rawServed = save.business.finance.dailyAccumulator.ordersServed;
   const served = typeof rawServed === "number" && Number.isFinite(rawServed) ? rawServed : 0;
   return {
     popularity,
     multiplier,
     target,
+    demand: restaurant ? restaurant.demand : classic,
     served,
     remaining: Math.max(0, target - served),
     complete: served >= target,
@@ -296,7 +337,8 @@ export function businessServiceSessionForToday(
 ): ServiceSession | null {
   const today = businessCustomersToday(save);
   if (today.complete) return null;
-  let session = createBusinessServiceSession(rand, save.business.menuActivation);
+  const featured = endlessFeaturedFor(save);
+  let session = createBusinessServiceSession(rand, save.business.menuActivation, featured);
   for (let i = 0; i < today.served && session.current; i++) {
     session = advanceBusinessServiceSession(
       {
@@ -305,6 +347,7 @@ export function businessServiceSessionForToday(
       },
       rand,
       save.business.menuActivation,
+      featured,
     );
   }
   return session;

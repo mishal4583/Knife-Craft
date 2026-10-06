@@ -447,8 +447,40 @@ conversation.
    `restaurant/restaurantStanding.ts` (rank, stage, Restaurant Complete at
    L250 → Endless Restaurant, Endless stars as status only),
    `endlessDemand.cookableMenuDishes` extracted (logic unchanged).
-   `restaurant-endgame-qa`. Next: wire events into the Endless day, show
-   the standing and stars on Restaurant Progress, keep stars long-term.
+   `restaurant-endgame-qa`.
+39. Prepared systems connected (2026-10-06, restaurant build only; release
+   unchanged): Endless events drive the Endless day's customers
+   (`businessCustomersToday`), Today's Special is weighted into the order
+   pool and pays the EXISTING $50 once a calendar day
+   (`App.payTodaysSpecial`), the events show on Restaurant → Overview and
+   Service (`EndlessDayEvents`); End Business Day awards 0–3 Endless stars
+   (profitable / busy = the day's customer target / clean = inspection
+   passed), kept for life in `business.endlessStars` and per day on the
+   history record; Restaurant Progress shows the restaurant standing, the
+   Endless lock line and the lifetime stars. Fridge pressure studied with
+   the current values (`restaurant-fridge-pressure-qa`,
+   `docs/RESTAURANT_FRIDGE_PRESSURE.md`): the fridge never binds in the
+   campaign, so NO value was changed — the lever is a design decision for
+   the economy pass. Favicon is relative (`./favicon.ico`). Bug found by
+   the browser test and fixed: the event rules copied the $50 constant at
+   module load and showed "$NaN" in the bundle (now read when used).
+   Endless with events (30 days, `restaurant-endless-qa`): $132 / $209 /
+   $344 / $519 / −$189 a day (was $78 / $135 / $276 / $452 / −$262; the
+   $50 bonus is most of the change). Browser:
+   `tools/e2e/restaurantendless.mjs`.
+40. FINAL ECONOMY PASS (2026-10-06, restaurant saves only; release
+   untouched; `docs/ECONOMY_FINAL.md`): target ≥ $150k at L250 for a
+   completionist (preferred $160k–$175k) → $168,348 (was $128,063). Kitchen
+   tiers $110k (was $135k) with +1.5–7 % restaurant quality and guest seats;
+   equipment quality ≤ 5 % (Blacksmith now worth something); service
+   capacity caps menu guests; Emergency Service (no quality bonus on a
+   pantry/spares service); whole-day stocking card (the bigger fridges now
+   fill: 101/140 at L250); Today's Special 15 % of the day's revenue ≤ $50 at
+   closing; BUSY star = the whole demand (one-chef restaurant 58/90, was 88).
+   Saver unchanged ($307,353). QA `restaurant-final-economy-qa`, browser
+   `restauranteconomy.mjs`. Open: Premium is still money-best (+$3.2k),
+   Wholesale worth only +$679, campaign wages not earned back in the
+   campaign.
 
 ## 4. Open issues from the Level 1–10 audit (not fixed yet)
 

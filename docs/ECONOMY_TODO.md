@@ -18,7 +18,7 @@ Status key: OPEN (not yet built), BUILT (exists, not balanced).
 | 7 | Staff wages during the campaign — staff are now REQUIRED as the restaurant grows (Prep Cook L41, Server L46, Line Cook L61, Cleaner L91, Head Chef L121, Manager L161, by service size; `restaurant/staffRequirements.ts`). Hiring is free; wages are paid only at closing from L91 (End Business Day), so L41–90 staff cost nothing | BUILT (behind the switch) | Waged staff cost more than they earn; free staff before L91 is a gap. |
 | 8 | Two staff systems (one-time helpers vs waged roles) | OPEN | Which one survives, and its value. |
 | 9 | Two supplier systems (campaign COGS ±10% vs Business contracts/events) | BUILT (restaurant build: the ingredient supplier's ±10% sets Market ingredient prices, row 26; chosen on Restaurant → Suppliers, phase 7). **Premium kept** (developer 2026-10-06): +10% price, stock stays fresh **+1 day** and orders get a **+2% quality bonus** (`restaurantEconomy.SUPPLIER_EFFECTS`, PROVISIONAL) | Exact Premium percentages in the final economy pass; Wholesale stays cheapest, Local the baseline. Contracts/events still stack on top. |
-| 10 | Fridge upgrades as campaign needs | OPEN | $2,000 / $4,800 against a buy-everything player's $10–31 around L20–50. |
+| 10 | Fridge upgrades as campaign needs — **final pass: whole-day stocking** (`preServiceCheck.dayStockFor`) fills the bigger fridges (completionist peak 21.5/40 at L50, 61/140 at L91, 101/140 at L250); service-by-service stocking still fits the Basic | BUILT | $2,000 / $4,800 against a buy-everything player's $10–31 around L20–50. |
 | 11 | Equipment condition and maintenance in the campaign | OPEN | Recurring cost. |
 | 12 | Waste / spoilage in the campaign | OPEN | Lost stock value. |
 | 13 | Menu orders inside campaign levels (menu prices) next to level settlements — menu guests pay `businessCustomerPayment` (menu price × popularity), up to 1–5 per service | BUILT (phase D) | Two price models in one service. |
@@ -35,8 +35,9 @@ Status key: OPEN (not yet built), BUILT (exists, not balanced).
 | 25 | Dish soap low at ≤ 8 washes, cleaning liquid at ≤ 3 closings (warnings only) | BUILT | Usage rates and thresholds. |
 | 26 | **Item effects on real stock** (developer 2026-10-05). Values UNCHANGED, now acting on real ingredients (`restaurant/restaurantEconomy.ts`): knife + board specialisation 3–4 % less stock per matching category (`MAX_TOTAL_COGS_REDUCTION` 8 %; their quality boosts up to 3 % stay quality bonus); Prep Assistant 3 %, Kitchen Assistant 4 % less stock (`MAX_STAFF` 6 %; Quality Chef +1 % quality bonus stays); a dull knife up to +5 % stock (`MAX_SHARPNESS_PENALTY`; a serve never blocks while the un-dulled amount is in stock); Campaign Supplier Wholesale −10 % / Premium +10 % on Market ingredient prices (`supplierPriceFactor`, the purchase charges exactly the card's quote). Completionist $129,324 → $128,063. | BUILT (behind the switch) | Exact percentages in a later tuning pass (developer: "do not rebalance yet"). `restaurant-economy-pass-qa` X1–X5. |
 | 27 | **Endless Restaurant demand** (developer: "Scale demand"). Customers/day = min(DEMAND, CAPACITY): DEMAND = classic 8 × popularity (0.5–1.5) × (1 + cookable dishes ÷ 8), a specialist-cuisine dish counting only while its chef is hired; CAPACITY = chef 10 + Prep Cook 10, Line Cook 13, Head Chef 10, Server 13, Cleaner 3, Manager 5 + 6 per specialist (`ENDLESS_DEMAND_RULES`). Costs untouched (real ingredients at Market prices, packaging, wages incl. specialists — now paid at End Business Day — fines, maintenance). Only saves stamped by the restaurant migration; classic Business demand unchanged. | BUILT (behind the switch) | Five restaurants, 30 days each from the L250 completionist save (`restaurant-endless-qa`): minimum viable **$78/day**, medium **$135**, full menu + thin staff **$276**, fully staffed **$452** (target $300–$600), overstaffed with a 6-dish menu **−$262**. Wages themselves are not rebalanced. |
-| 28 | **Endless Restaurant events** (`restaurant/restaurantEvents.ts`, prepared, NOT wired): Dinner Rush 20 % of days × 1.3 demand, Large Group 15 % of days +6 guests, Today's Special every day (a featured cookable dish, 25 % of orders; its bonus = the existing once-a-day $50, never a second one) — all PROVISIONAL | BUILT (data only) | Values and how the featured share pays, when events are switched on. |
-| 29 | **Endless stars** (`restaurant/restaurantStanding.ts`): up to 3 a day — profitable, busy (≥ 40 orders, PROVISIONAL), clean (no waste); status only, never money | BUILT (data only) | Thresholds; where stars are kept long-term (the 30-day history holds 30 days). |
+| 28 | **Endless Restaurant events** (`restaurant/restaurantEvents.ts`, CONNECTED 2026-10-06, restaurant build, Endless days only): Dinner Rush 20 % of days × 1.3 demand, Large Group 15 % of days +6 guests (capacity still caps both), Today's Special every day — a featured cookable dish weighted 25 % in the order pool (~17 % of orders after the order generator's variety rule), its bonus = the existing once-a-day $50 through the daily claim, never a second one — all PROVISIONAL | BUILT (connected) | 30 days from the L250 completionist (`restaurant-endless-qa`, one Business Day per calendar day = the most bonuses): minimum $132/day (was $78), medium $209 ($135), thin staff $344 ($276), fully staffed **$519** ($452; target $300–$600 still met), overstaffed −$189 (−$262). $50/day of each is the Today's Special bonus; the minimum restaurant is near the "< $150" line. Tune the bonus/event values in the economy pass. |
+| 29 | **Endless stars** (`restaurant/restaurantStanding.ts`, CONNECTED): up to 3 a day — PROFITABLE (profit > 0 incl. specialist wages), BUSY (the day's customer target served), CLEAN (inspection passed, with orders); lifetime in `business.endlessStars`, per day on the history record; status only, never money | BUILT (connected) | Stars are easy for a small restaurant: the minimum viable one earned 88 / 90 in 30 days (its capacity-capped target of 10 is easy to serve), the fully staffed one 89, the overstaffed one 60. Whether BUSY should measure the demand instead of the capped target is a design call. |
+| 30 | **Fridge pressure** (`restaurant-fridge-pressure-qa`, `docs/RESTAURANT_FRIDGE_PRESSURE.md`): with the current values the fridge never binds in the campaign (a diligent player stays on the Basic 40 to L250, peak 70 %); an Endless fully staffed day uses ~272 units (about twice the 140 Professional) but restocking order by order keeps the peak at 16 % | MEASURED, no change | The only natural lever is how much a player stocks at once (per service vs per day) — a gameplay/economy decision, not made here. |
 | 18 | Market buys whole units; a recipe may need 0.025 lb of garlic, so a service buys 1 lb and keeps the rest | BUILT | Leftover value and spoilage of part-used units. |
 
 Phase N simulation (`scripts/restaurant-campaign-sim-qa.mts`, report in
@@ -58,6 +59,35 @@ Still open, with numbers, for the developer:
 - **Staff before L91** stay free (developer: payroll starts at L91; the
   completionist stays ~$128k). Exact wages, demand and consumption are tuned
   together later.
+
+## Final economy pass (2026-10-06) — `docs/ECONOMY_FINAL.md`
+
+Approved target: a completionist ends L250 with **≥ $150,000** (preferred
+$160k–$175k), no Endless income. Restaurant saves only (the release economy
+is unchanged). Measured by `scripts/economy-final-sim.mts`, accepted by
+`restaurant-final-economy-qa`:
+
+- completionist $128,063 → **$168,348** (Wholesale $169,027, Premium
+  $171,582); saver $307,353 (unchanged); gap $179k → $139k;
+- kitchen tiers $135k → **$110k** with +1.5 / 3 / 4 / 5 / 7 % restaurant
+  quality and +1 / +1 / +2 guest seats (rows 26 / 27 context);
+- equipment quality ≤ 5 % by ownership (Blacksmith 2 %, knife roll 1 %,
+  board set 1 %, helpers 0.5 % each) — the Blacksmith now returns $3.1k;
+- service capacity caps menu guests (chef 2 + 1 per cook/server/Head
+  Chef/specialist); staff capacity is worth 416 guests / $5.0k against $21.6k
+  of campaign wages (row 7 stays open: wages pay back in Endless);
+- Emergency Service: a service run on Grandma's pantry/spares earns no
+  quality bonus (rows 17, 24);
+- whole-day stocking (row 10);
+- Today's Special 15 % of the day's revenue ≤ $50 at closing (row 28:
+  minimum restaurant $132 → $112/day, the bonus 22 % of its day);
+- BUSY star = the whole demand (row 29: one-chef restaurant 88 → 58 / 90).
+
+Still open after the pass: Premium remains money-best (+$3.2k over Local —
+lower its quality share to ~1 % or raise its price if it must not be);
+Wholesale is worth +$679 (food is ~3 % of order pay); campaign wages are not
+earned back in the campaign; bulk tiers matter mainly through whole-day
+stocking.
 
 Questions the pass must answer (spec §48): can a player afford required
 items; can they go into debt (never); money left after L250; Endless

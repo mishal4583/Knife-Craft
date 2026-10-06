@@ -75,7 +75,7 @@ import { discardExpiredStock } from "../src/game/business/discardExpired.ts";
 import { hireStaff } from "../src/game/business/BusinessStaffManager.ts";
 import { businessCustomerPayment } from "../src/game/business/BusinessServiceManager.ts";
 import { businessDishForRecipeId } from "../src/game/business/businessServiceCatalog.ts";
-import { servicePlanFor } from "../src/game/restaurant/preServiceCheck.ts";
+import { dayStockFor, servicePlanFor } from "../src/game/restaurant/preServiceCheck.ts";
 import {
   consumeCampaignOrderStock,
   pantryForMissing,
@@ -95,7 +95,13 @@ import {
 } from "../src/game/restaurant/serviceSupplies.ts";
 import { hireSpecialist, getSpecialist } from "../src/game/restaurant/staffRequirements.ts";
 import { bulkDiscountFor, BULK_MAX_PACKS } from "../src/game/restaurant/bulkBuying.ts";
-import { nextMenuGuest, withMenuGuestServed } from "../src/game/restaurant/menuGuests.ts";
+import {
+  menuGuestCapacity,
+  nextMenuGuest,
+  withMenuGuestServed,
+} from "../src/game/restaurant/menuGuests.ts";
+import { menuGuestsPerService } from "../src/game/restaurant/restaurantProgression.ts";
+import { kitchenGuestSeats } from "../src/game/restaurant/restaurantInvestments.ts";
 import { restaurantLevelOf } from "../src/game/restaurant/restaurantMenu.ts";
 import { isSystemLive } from "../src/game/restaurant/restaurantProgression.ts";
 import { levelNumber } from "../src/game/levels/levelMastery.ts";
@@ -105,9 +111,16 @@ import {
 } from "../src/game/restaurant/restaurantMigration.ts";
 import { buyAttempts } from "./economy-v25-simulation.mts";
 import {
+  restaurantQualityBonusPct,
   restaurantSettlement,
+  supplierEffects,
   supplierPriceFactor,
 } from "../src/game/restaurant/restaurantEconomy.ts";
+import { restaurantQuality } from "../src/game/restaurant/restaurantInvestments.ts";
+import {
+  isEmergencyService,
+  markEmergencyService,
+} from "../src/game/restaurant/emergencyService.ts";
 
 export const $ = (c: number) =>
   `$${(c / 100).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
@@ -120,7 +133,22 @@ export type Profile = "diligent" | "broke" | "completionist";
  * charge). By default the simulation runs what the restaurant build does
  * (restaurantEconomy.restaurantSettlement, P0).
  */
-export type SimOptions = { profile: Profile; legacyFoodCost?: boolean };
+export type SimOptions = {
+  profile: Profile;
+  legacyFoodCost?: boolean;
+  /** Read-only observer (the fridge-pressure study): sees every recorded step; never changes play. */
+  observe?: (where: string, s: SaveData) => void;
+  /** Called after each level (and its shopping) — checkpoints for the economy studies. */
+  onLevel?: (n: number, s: SaveData, stats: Stats) => void;
+  /** What a completionist-style player buys after each level: everything (default) or only the kitchen tiers. */
+  shop?: "all" | "kitchen";
+  /** "sensible": also hires the optional team that lets the restaurant take more menu guests. */
+  staffing?: "required" | "sensible";
+  /** Stock the whole day in one go when it fits the fridge and the wallet (preServiceCheck.dayStockFor). */
+  dayStock?: boolean;
+  /** A prudent completionist keeps this much cash after every purchase (cents); 0 = buys greedily. */
+  reserve?: number;
+};
 export type Stats = {
   levels: number;
   blocked: string[];
@@ -134,6 +162,13 @@ export type Stats = {
   guests: number;
   closings: number;
   ordersServed: number;
+  /** The campaign orders' recipe earnings and quality bonus (restaurant settlement). */
+  orderEarnings: number;
+  qualityBonus: number;
+  /** The quality bonus each investment added (recipe earnings × its share), and the emergency orders. */
+  qualityBy: Record<string, number>;
+  emergencyOrders: number;
+  observe?: (where: string, s: SaveData) => void;
 };
 
 const lifetimeSum = (s: SaveData) =>
@@ -145,6 +180,7 @@ function persist(next: SaveData, stats: Stats, where: string): SaveData {
   const { save } = grantEarnedMilestoneRewards(synced);
   const v = walletInvariantViolation(save);
   if (v) stats.invariant.push(`${where}: ${v}`);
+  stats.observe?.(where, save);
   return save;
 }
 
@@ -225,7 +261,29 @@ function playLevel(save: SaveData, n: number, opts: SimOptions, stats: Stats): S
     }
   }
 
-  // Stock.
+  // Sensible staffing: hire an optional cook or server when the menu's guests
+  // (schedule + the kitchen's seats) would exceed what the team can serve.
+  if (opts.staffing === "sensible") {
+    for (const role of ["prep-cook", "server", "line-cook", "head-chef"]) {
+      const want = menuGuestsPerService(n) + kitchenGuestSeats(s);
+      if (want <= menuGuestCapacity(s)) break;
+      if (s.business.staff.hiredRoles.includes(role as never)) continue;
+      const hired = hireStaff(s, role);
+      if (hired.ok) {
+        s = hired.save;
+        stats.hires++;
+      }
+    }
+  }
+  // Stock: the whole day at once when the fridge and wallet allow (bulk prices).
+  if (opts.dayStock && profile === "diligent") {
+    const day = dayStockFor(s, level);
+    if (day && day.fits && day.affordable)
+      for (const row of day.rows) {
+        const bought = buyIngredient(s, row.ingredientId, row.buyUnits);
+        if (bought.ok) s = persist(bought.s, stats, `${where} buy`);
+      }
+  }
   replan();
   if (plan.check.applies && plan.check.hasExpired) {
     const d = discardExpiredStock(s);
@@ -265,7 +323,7 @@ function playLevel(save: SaveData, n: number, opts: SimOptions, stats: Stats): S
   if (plan.check.applies && !plan.check.ready) {
     const pantry = pantryForMissing(s, plan.check);
     if (pantry) {
-      s = pantry;
+      s = markEmergencyService(pantry, level.id);
       stats.pantry++;
       replan();
     }
@@ -294,7 +352,7 @@ function playLevel(save: SaveData, n: number, opts: SimOptions, stats: Stats): S
   if (plan.supplies.applies && !plan.supplies.ready) {
     const spares = grandmasSpares(s, plan.supplies);
     if (spares) {
-      s = spares;
+      s = markEmergencyService(spares, level.id);
       stats.spares++;
       replan();
     }
@@ -339,9 +397,29 @@ function playLevel(save: SaveData, n: number, opts: SimOptions, stats: Stats): S
     );
     // P0 (economy pass): the restaurant build pays earnings + quality bonus;
     // the food was bought as real stock (restaurantEconomy.restaurantSettlement).
-    const amount = opts.legacyFoodCost
-      ? settlement.netResult
-      : restaurantSettlement(settlement).netResult;
+    // Mirrors App: the supplier's quality extra rides on the restaurant settlement.
+    const settled = opts.legacyFoodCost
+      ? settlement
+      : restaurantSettlement(settlement, restaurantQualityBonusPct(base), {
+          emergency: isEmergencyService(base.levelProgress, level.id),
+        });
+    const amount = settled.netResult;
+    stats.orderEarnings += settled.revenue;
+    stats.qualityBonus += settled.qualityBonus;
+    if (isEmergencyService(base.levelProgress, level.id)) stats.emergencyOrders++;
+    else if (!opts.legacyFoodCost) {
+      const q = restaurantQuality(base);
+      const parts: Record<string, number> = {
+        kitchen: q.kitchen,
+        blacksmith: q.equipment.blacksmith,
+        knives: q.equipment.knives,
+        boards: q.equipment.boards,
+        helpers: q.equipment.helpers,
+        supplier: supplierEffects(base).qualityBonusPct,
+      };
+      for (const [k, pct] of Object.entries(parts))
+        stats.qualityBy[k] = (stats.qualityBy[k] ?? 0) + Math.round(settled.revenue * pct);
+    }
     const paid = appendLedgerEntry(
       {
         ...base,
@@ -388,7 +466,8 @@ function playLevel(save: SaveData, n: number, opts: SimOptions, stats: Stats): S
   if (isFirstCompletion) next = washUp(recordService(next, n), n).save;
   if (rewardCoins > 0) next = appendLedgerEntry(next, "completion-reward", rewardCoins, level.id);
   s = persist(next, stats, `${where} complete`);
-  if (opts.profile === "completionist") s = buyEverything(s, stats, where);
+  if (opts.profile === "completionist")
+    s = buyEverything(s, stats, where, opts.shop ?? "all", opts.reserve ?? 0);
   if (!isCompleted(level.id, s.levelProgress)) stats.blocked.push(`${where}: not completed`);
   else stats.levels++;
   return s;
@@ -436,6 +515,11 @@ export function run(
     guests: 0,
     closings: 0,
     ordersServed: 0,
+    orderEarnings: 0,
+    qualityBonus: 0,
+    qualityBy: {},
+    emergencyOrders: 0,
+    observe: opts.observe,
   };
   let s = start;
   const startCash = s.credits;
@@ -443,6 +527,7 @@ export function run(
   for (let n = from; n <= 250; n++) {
     s = playLevel(s, n, opts, stats);
     checkInvariants(s, startCash, startLifetime, stats, `L${n}`);
+    opts.onLevel?.(n, s, stats);
     if (stats.blocked.length > 0) break;
   }
   // The day after Level 250 closes like any other.
@@ -478,14 +563,20 @@ export function run(
 }
 
 /** The completionist's shopping (economy-v25-simulation's own list, in its order), recorded like App. */
-function buyEverything(save: SaveData, stats: Stats, where: string): SaveData {
+function buyEverything(
+  save: SaveData,
+  stats: Stats,
+  where: string,
+  shop: "all" | "kitchen" = "all",
+  reserve = 0,
+): SaveData {
   let s = save;
-  const attempts = buyAttempts();
+  const attempts = buyAttempts().filter((a) => shop === "all" || a.label.startsWith("kitchen"));
   for (let guard = 0; guard < 500; guard++) {
     let bought = false;
     for (const a of attempts) {
       const r = a.run(s);
-      if (!r) continue;
+      if (!r || r.save.credits < reserve) continue;
       s = persist(
         appendLedgerEntry(r.save, r.category, -r.cost, r.id),
         stats,

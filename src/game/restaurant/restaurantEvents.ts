@@ -1,9 +1,18 @@
 /**
  * RESTAURANT_EVENTS — the Endless Restaurant's events (developer
- * 2026-10-06), prepared as DATA + pure functions; NOT yet wired into a day.
- * The Endless Restaurant's approved provisional economy (endlessDemand.ts:
- * ~$452/day fully staffed) is untouched until events are switched on in the
- * next gameplay phase and tuned in the final economy pass.
+ * 2026-10-06): DATA + pure functions, connected to the Endless Restaurant
+ * day (2026-10-06, integration phase) — only for a save in the unified
+ * restaurant whose campaign is complete (`endlessEventsActive`), so campaign
+ * services and the classic Business Day never see them:
+ *  - demand: BusinessServiceManager.businessCustomersToday applies
+ *    `demandWithEvents` to the Endless demand (capacity still caps it);
+ *  - Today's Special: the day's order pool carries the featured dish more
+ *    often (`featuredPool`; ~17% of orders after the generator's variety
+ *    rule); serving it (`withTodaysSpecialServed`) earns, at End Business
+ *    Day, 15 % of the day's restaurant revenue capped at the EXISTING
+ *    once-per-calendar-day $50 (`todaysSpecialBonus`; App, the same claim as
+ *    the classic Today's Special: never twice a day).
+ * Values are unchanged and provisional until the final economy pass.
  *
  *  - DINNER RUSH: more customers that day (tests stock and staff capacity);
  *  - LARGE GROUP: a party arriving together (tests prep and service
@@ -23,7 +32,9 @@ import type { SaveData } from "../SaveManager";
 import { makeSeededRand } from "../business/businessDeterministicRandom";
 import type { BusinessDish } from "../business/businessDishCatalog";
 import { DAILY_ORDER_BONUS_COINS } from "../daily/DailyOrderManager";
-import { cookableMenuDishes, type EndlessDemand } from "./endlessDemand";
+import { isEndlessUnlocked } from "../daily/EndlessServiceManager";
+import type { RecipeDefinition } from "../recipes/recipeTypes";
+import { cookableMenuDishes, usesRestaurantDemand, type EndlessDemand } from "./endlessDemand";
 
 export type RestaurantEventId = "dinner-rush" | "large-group" | "todays-special";
 
@@ -48,10 +59,29 @@ export const RESTAURANT_EVENT_RULES = {
     line: "One dish is featured today — guests ask for it.",
     /** Every day has one while the menu has a cookable dish. */
     chance: 1,
-    /** Share of the day's orders that ask for the featured dish (PROVISIONAL). */
+    /**
+     * The featured dish's weight in the day's order pool (PROVISIONAL). The
+     * existing order generator's variety rule (a recipe ordered in the last 3
+     * weighs ×0.2) trims what guests actually order: measured ~17% of a day's
+     * orders, vs ~2% for any other dish (restaurant-endgame-qa D3).
+     */
     featuredShare: 0.25,
-    /** The existing once-a-day Today's Special bonus — the same one, never a second. */
-    dailyBonus: DAILY_ORDER_BONUS_COINS,
+    /**
+     * The existing once-a-day Today's Special bonus — the same one, never a
+     * second — is its CAP. Read when used (a getter): in the bundle this
+     * module can load before DailyOrderManager, so copying the constant here
+     * gave NaN.
+     */
+    get dailyBonus(): number {
+      return DAILY_ORDER_BONUS_COINS;
+    },
+    /**
+     * Final economy pass: the bonus is this share of the day's restaurant
+     * revenue, capped at `dailyBonus`, paid at End Business Day when the
+     * featured dish was served that day (a flat $50 was 36 % of a tiny
+     * restaurant's day; the bigger ones still reach the cap).
+     */
+    bonusShare: 0.15,
   },
 } as const;
 
@@ -88,7 +118,7 @@ export function eventsForDay(save: SaveData, businessDay: number): RestaurantEve
       id: "todays-special",
       dishId: special.id,
       featuredShare: R["todays-special"].featuredShare,
-      dailyBonus: R["todays-special"].dailyBonus,
+      dailyBonus: DAILY_ORDER_BONUS_COINS,
     });
   return events;
 }
@@ -97,7 +127,7 @@ export function eventsForDay(save: SaveData, businessDay: number): RestaurantEve
  * A day's demand with its events applied: Dinner Rush multiplies demand,
  * a Large Group adds its guests; the team's capacity still caps the
  * customers, so an event only pays if the restaurant can serve it. Never
- * below the plain demand, never negative. (Not wired yet — see the header.)
+ * below the plain demand, never negative.
  */
 export function demandWithEvents(
   base: EndlessDemand,
@@ -110,4 +140,44 @@ export function demandWithEvents(
   }
   demand = Math.max(base.demand, demand, 0);
   return { ...base, demand, customers: Math.min(demand, base.capacity) };
+}
+
+/** True when the day's events apply: a unified-restaurant save past Level 250 (the Endless Restaurant). */
+export function endlessEventsActive(save: SaveData): boolean {
+  return usesRestaurantDemand(save) && isEndlessUnlocked(save.levelProgress);
+}
+
+/**
+ * The day's order pool with the featured dish drawn ~`share` of the time:
+ * extra copies of its recipe are added (the order picker draws each pool
+ * entry with equal weight). The pool is returned unchanged when the dish
+ * isn't on it, the share is 0, or there is only one dish.
+ */
+export function featuredPool(
+  pool: readonly RecipeDefinition[],
+  recipeId: string,
+  share: number,
+): RecipeDefinition[] {
+  const featured = pool.find((r) => r.id === recipeId);
+  if (!featured || !(share > 0 && share < 1) || pool.length < 2) return [...pool];
+  const copies = Math.max(0, Math.round((share * (pool.length - 1)) / (1 - share)) - 1);
+  return [...pool, ...Array.from({ length: copies }, () => featured)];
+}
+
+/** The Today's Special bonus for a day's restaurant revenue: its share, capped at the existing $50. */
+export function todaysSpecialBonus(revenue: number): number {
+  const R = RESTAURANT_EVENT_RULES["todays-special"];
+  return Math.max(0, Math.min(R.dailyBonus, Math.round(Math.max(0, revenue) * R.bonusShare)));
+}
+
+/**
+ * Notes that today's featured dish was served (the bonus is paid at End
+ * Business Day). Only on an Endless day, only for the featured dish; any
+ * other serve returns the save unchanged. Moves no money.
+ */
+export function withTodaysSpecialServed(save: SaveData, dishId: string): SaveData {
+  const day = save.business.calendar.businessDay;
+  if (!endlessEventsActive(save) || todaysSpecialDish(save, day)?.id !== dishId) return save;
+  if (save.business.todaysSpecialServedDay === day) return save;
+  return { ...save, business: { ...save.business, todaysSpecialServedDay: day } };
 }

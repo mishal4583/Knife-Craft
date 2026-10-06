@@ -21,7 +21,7 @@ import type { RestaurantNews } from "@/game/restaurant/restaurantNews";
 import type { StaffRequirement } from "@/game/restaurant/staffRequirements";
 import type { FridgeUsage } from "@/game/restaurant/fridgeUsage";
 import type { KitLine } from "@/game/restaurant/restaurantMigration";
-import type { GuestStock } from "@/game/restaurant/preServiceCheck";
+import type { DayStock, GuestStock } from "@/game/restaurant/preServiceCheck";
 import { getSupplyItem as supplyItemOf } from "@/game/business/businessSupplies";
 
 /**
@@ -75,6 +75,8 @@ export function PreServiceCheck({
   welcome = null,
   guests = null,
   onRestockGuest = () => {},
+  dayStock = null,
+  onRestockDay = () => {},
 }: {
   levelNumber: number;
   day: number;
@@ -106,6 +108,9 @@ export function PreServiceCheck({
   /** Today's menu guests and their optional stock (never blocks START). */
   guests?: GuestStock | null;
   onRestockGuest?: (ingredientId: IngredientId, units: number) => void;
+  /** Final economy pass: the whole day's stock (optional — never blocks START). */
+  dayStock?: DayStock | null;
+  onRestockDay?: (ingredientId: IngredientId, units: number) => void;
 }) {
   const stock = check.applies ? check : null;
   const sup = supplies.applies ? supplies : null;
@@ -317,6 +322,10 @@ export function PreServiceCheck({
                       >
                         🧺 Borrow Grandma's spares (free, just what's missing)
                       </KButton>
+                      <p className="mt-1 font-ui text-[12px] text-walnut/70">
+                        Emergency Service: this service's orders earn their pay but no quality
+                        bonus.
+                      </p>
                     </>
                   ) : null}
                 </div>
@@ -362,6 +371,62 @@ export function PreServiceCheck({
             </div>
           ) : null}
 
+          {stock && dayStock && dayStock.rows.length > 0 ? (
+            <div
+              className="mt-3 rounded-2xl border border-walnut/15 bg-ivory/70 p-3"
+              data-testid="psc-day-stock"
+            >
+              <p className="font-ui text-[12px] font-extrabold uppercase tracking-wide text-walnut/60">
+                🗓️ Stock the whole day · optional
+              </p>
+              <p className="font-ui text-[12px] text-walnut/70">
+                Everything for today's {dayStock.levels.length} services (Levels{" "}
+                {dayStock.levels.join(", ")}) in one go: {dayStock.totalUnits} units ·{" "}
+                {formatUsd(dayStock.totalCost)}
+                {dayStock.bulkSaving > 0
+                  ? ` · the bulk price saves ${formatUsd(dayStock.bulkSaving)}`
+                  : ""}
+                .
+              </p>
+              <p
+                className={cn(
+                  "mt-1 font-ui text-[12px] font-bold",
+                  dayStock.fits ? "text-olive" : "text-copper",
+                )}
+              >
+                {dayStock.fits
+                  ? `✓ Fits your fridge (${dayStock.storageFree} units free).`
+                  : `Needs ${dayStock.totalUnits} units — your fridge has ${dayStock.storageFree} free. Keep stocking service by service, or get a bigger fridge.`}
+              </p>
+              {dayStock.fits ? (
+                <ul className="mt-1 divide-y divide-walnut/10">
+                  {dayStock.rows.map((row) => (
+                    <li
+                      key={row.ingredientId}
+                      className="flex min-h-12 items-center gap-2 py-1.5"
+                      data-psc-day-ingredient={row.ingredientId}
+                    >
+                      <span className="text-[20px]" aria-hidden>
+                        {INGREDIENT_EMOJI[row.ingredientId]}
+                      </span>
+                      <p className="min-w-0 flex-1 font-ui text-[14px] font-bold text-walnut-dark">
+                        {INGREDIENTS[row.ingredientId].name}
+                      </p>
+                      <KButton
+                        size="sm"
+                        variant="ghost"
+                        className="min-h-12"
+                        onClick={() => onRestockDay(row.ingredientId, row.buyUnits)}
+                      >
+                        Restock {row.buyUnits} · {formatUsd(row.cost)}
+                      </KButton>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+          ) : null}
+
           {stock?.hasExpired ? (
             <div className="mt-3 rounded-2xl border border-tomato/30 bg-tomato/10 p-3">
               <p className="font-ui text-[13px] font-bold text-walnut-dark">
@@ -396,6 +461,13 @@ export function PreServiceCheck({
                   <KButton size="sm" variant="sage" className="mt-2 min-h-12" onClick={onUsePantry}>
                     🧺 Use Grandma's pantry (free, this service only)
                   </KButton>
+                  <p
+                    className="mt-1 font-ui text-[12px] text-walnut/70"
+                    data-testid="psc-emergency-note"
+                  >
+                    Emergency Service: this service's orders earn their pay but no quality bonus.
+                    Stocking up yourself is better.
+                  </p>
                 </>
               ) : null}
               {fridgeShort ? (

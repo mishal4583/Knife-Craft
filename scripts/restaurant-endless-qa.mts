@@ -40,6 +40,7 @@ import {
   businessCustomersToday,
   businessOrderAvailability,
   createBusinessServiceSession,
+  endlessFeaturedFor,
   recordBusinessServiceComponents,
   serveBusinessOrder,
 } from "../src/game/business/BusinessServiceManager.ts";
@@ -59,6 +60,22 @@ import { paySpecialists } from "../src/game/restaurant/staffRequirements.ts";
 import { bulkDiscountFor } from "../src/game/restaurant/bulkBuying.ts";
 import { supplierPriceFactor } from "../src/game/restaurant/restaurantEconomy.ts";
 import { endlessDemandFor, ENDLESS_DEMAND_RULES } from "../src/game/restaurant/endlessDemand.ts";
+import {
+  endlessEventsActive,
+  eventsForDay,
+  todaysSpecialBonus,
+  withTodaysSpecialServed,
+} from "../src/game/restaurant/restaurantEvents.ts";
+import {
+  endlessStarsOf,
+  recordEndlessDayStars,
+  starsForDay,
+} from "../src/game/restaurant/restaurantStanding.ts";
+import {
+  DAILY_ORDER_BONUS_COINS,
+  claimDaily,
+  hasClaimedToday,
+} from "../src/game/daily/DailyOrderManager.ts";
 import { businessDayAllowed } from "../src/game/restaurant/endlessRestaurant.ts";
 import {
   maintenanceStatusFor,
@@ -77,9 +94,30 @@ function assert(cond: unknown, msg: string) {
 const lifetimeSum = (s: SaveData) =>
   Object.values(s.economy.lifetime ?? {}).reduce((n, v) => n + (v ?? 0), 0);
 
-/** One Endless Restaurant day, as the game plays it. */
-export function playDay(save: SaveData): { save: SaveData; served: number; problems: string[] } {
+/** Day 1 of the simulated calendar: one Business Day per calendar day (the most Today's Special bonuses a player can get). */
+const SIM_DATE0 = Date.UTC(2026, 0, 1, 12);
+
+/**
+ * One Endless Restaurant day, as the game plays it (App.tsx): the day's
+ * events (demand via businessCustomersToday, Today's Special in the order
+ * pool), Today's Special's existing once-a-day bonus, End Business Day and
+ * the day's stars. `events: false` replays the pre-integration day (no
+ * featured dish, no bonus, plain demand) for comparison.
+ */
+export function playDay(
+  save: SaveData,
+  opts: { events?: boolean; observe?: (where: string, s: SaveData) => void } = {},
+): {
+  save: SaveData;
+  served: number;
+  problems: string[];
+  specialBonus: number;
+  stars: number;
+  starParts: { profitable: boolean; busy: boolean; clean: boolean } | null;
+} {
+  const useEvents = opts.events !== false;
   const problems: string[] = [];
+  let specialBonus = 0;
   let s = save;
   if (maintenanceStatusFor(s.business.equipmentCondition.refrigeratorCondition) !== "OPERATIONAL") {
     const r = performRefrigeratorMaintenance(s);
@@ -91,9 +129,20 @@ export function playDay(save: SaveData): { save: SaveData; served: number; probl
   }
   const day = s.business.calendar.businessDay;
   const rand = makeSeededRand(businessServiceSeedFor(day));
-  let session = createBusinessServiceSession(rand, s.business.menuActivation);
+  const featured = useEvents ? endlessFeaturedFor(s) : undefined;
+  const wanted = businessCustomersToday(s).demand;
+  const now = new Date(SIM_DATE0 + day * 86_400_000);
+  let session = createBusinessServiceSession(rand, s.business.menuActivation, featured);
   let served = 0;
-  const target = businessCustomersToday(s).target;
+  const target = useEvents
+    ? businessCustomersToday(s).target
+    : endlessDemandFor(
+        s,
+        businessCustomersToday({
+          ...s,
+          business: { ...s.business, restaurantMigration: undefined },
+        }).target,
+      ).customers;
   while (served < target && session.current) {
     const dish = businessDishForRecipeId(session.current.recipe.id)!;
     if (!businessOrderAvailability(s, dish).available) {
@@ -114,31 +163,74 @@ export function playDay(save: SaveData): { save: SaveData; served: number; probl
           bulkDiscountFor(qty),
           supplierPriceFactor(s),
         );
-        if (r.ok)
+        if (r.ok) {
           s = recordInventoryPurchase(
             appendLedgerEntry(r.save, "inventory-purchase", -r.totalCost, req.ingredientId),
             r.totalCost,
             1,
           );
+          opts.observe?.("buy", s);
+        }
       }
       if (!businessOrderAvailability(s, dish).available) break;
     }
     const result = serveBusinessOrder(recordBusinessServiceComponents(session, 85), s, rand);
     if (!result) break;
     s = appendLedgerEntry(result.save, "business-revenue", result.amountCharged, result.dish.id);
+    // App.serveActiveBusinessOrder: note that today's featured dish was served (paid at closing).
+    if (useEvents) s = withTodaysSpecialServed(s, result.dish.id);
     served++;
-    session = advanceBusinessServiceSession(result.session, rand, s.business.menuActivation);
+    opts.observe?.("serve", s);
+    session = advanceBusinessServiceSession(
+      result.session,
+      rand,
+      s.business.menuActivation,
+      featured,
+    );
   }
   const end = endBusinessDay(s);
+  opts.observe?.("closing", end.save);
   s = appendLedgerEntry(
     appendLedgerEntry(end.save, "business-staff-salary", -end.payrollPaid),
     "inspection-fine",
     -end.inspectionFine.finePaid,
   );
   s = paySpecialists(s, 250).save;
+  // App.advanceBusinessDay: the day's stars (status only).
+  let stars = 0;
+  let starParts: { profitable: boolean; busy: boolean; clean: boolean } | null = null;
+  const closed = s.business.finance.history?.at(-1);
+  if (useEvents && endlessEventsActive(s) && closed) {
+    const d = starsForDay({
+      profit: closed.profit,
+      ordersServed: closed.ordersServed,
+      customersWanted: wanted,
+      inspectionPassed: end.inspectionReport.overall !== "FAIL",
+    });
+    stars = d.stars;
+    starParts = { profitable: d.profitable, busy: d.busy, clean: d.clean };
+    s = recordEndlessDayStars(s, d);
+  }
+  // App.advanceBusinessDay: Today's Special's bonus — 15 % of the day's revenue, ≤ $50, once a calendar day.
+  if (
+    useEvents &&
+    endlessEventsActive(s) &&
+    closed &&
+    s.business.todaysSpecialServedDay === day &&
+    !hasClaimedToday(s.dailyOrder, now)
+  ) {
+    specialBonus = todaysSpecialBonus(closed.revenue);
+    if (specialBonus > 0)
+      s = appendLedgerEntry(
+        { ...s, credits: s.credits + specialBonus, dailyOrder: claimDaily(s.dailyOrder, now) },
+        "daily-reward",
+        specialBonus,
+        "todays-special",
+      );
+  }
   const v = walletInvariantViolation(s);
   if (v) problems.push(v);
-  return { save: s, served, problems };
+  return { save: s, served, problems, specialBonus, stars, starParts };
 }
 
 /** A restaurant config on top of the L250 save. */
@@ -166,7 +258,7 @@ export const ALL_ROLES = ["prep-cook", "server", "line-cook", "cleaner", "head-c
 export const ALL_CHEFS = ["indian-chef", "mediterranean-chef", "mexican-chef", "asian-chef"];
 
 /** The five restaurants, 30 days each, from the L250 save; returns net/day and customers/day per config. */
-export function runEndlessConfigs(L250: SaveData, log = true) {
+export function runEndlessConfigs(L250: SaveData, log = true, events = true) {
   const configs: Array<[string, SaveData]> = [
     ["1 Minimum viable (chef alone, 6 dishes)", configure(L250, [], [], 6)],
     [
@@ -183,28 +275,50 @@ export function runEndlessConfigs(L250: SaveData, log = true) {
     ],
     ["5 Overstaffed (6 roles + 4 specialists; 6 dishes)", configure(L250, ALL_ROLES, ALL_CHEFS, 6)],
   ];
-  const results: Array<{ name: string; perDay: number; customers: number; problems: string[] }> =
-    [];
+  const results: Array<{
+    name: string;
+    perDay: number;
+    customers: number;
+    problems: string[];
+    bonus: number;
+    stars: number;
+    eventDays: { rush: number; group: number };
+  }> = [];
   for (const [name, start] of configs) {
     let s = start;
     const startCash = s.credits;
     const startLifetime = lifetimeSum(s);
     let customers = 0;
+    let bonus = 0;
+    let stars = 0;
+    const eventDays = { rush: 0, group: 0 };
     const problems: string[] = [];
     for (let d = 0; d < 30; d++) {
-      const r = playDay(s);
+      if (events) {
+        const ev = eventsForDay(s, s.business.calendar.businessDay);
+        if (ev.some((e) => e.id === "dinner-rush")) eventDays.rush++;
+        if (ev.some((e) => e.id === "large-group")) eventDays.group++;
+      }
+      const capacity = endlessDemandFor(s, 0).capacity;
+      const r = playDay(s, { events });
       s = r.save;
       customers += r.served;
+      bonus += r.specialBonus;
+      stars += r.stars;
+      if (r.served > capacity) problems.push(`day ${d}: served beyond the team's capacity`);
       problems.push(...r.problems);
       if (startCash + (lifetimeSum(s) - startLifetime) !== s.credits)
         problems.push(`day ${d}: cash ≠ ledger`);
     }
     const perDay = Math.round((s.credits - startCash) / 30);
     const dm = endlessDemandFor(start, 8);
-    results.push({ name, perDay, customers: customers / 30, problems });
+    const life = endlessStarsOf(s);
+    if (events && (life.total !== stars || life.days !== 30))
+      problems.push("lifetime stars ≠ the days' stars");
+    results.push({ name, perDay, customers: customers / 30, problems, bonus, stars, eventDays });
     if (log)
       console.log(
-        `  ${name}: ${$(perDay)}/day net · ${(customers / 30).toFixed(1)} customers/day (cookable ${dm.cookableDishes} dishes, demand ${dm.demand}, capacity ${dm.capacity} at the start) · popularity ${start.business.popularity.score} → ${s.business.popularity.score}`,
+        `  ${name}: ${$(perDay)}/day net · ${(customers / 30).toFixed(1)} customers/day (cookable ${dm.cookableDishes} dishes, demand ${dm.demand}, capacity ${dm.capacity} at the start) · popularity ${start.business.popularity.score} → ${s.business.popularity.score}${events ? ` · rush ${eventDays.rush} / group ${eventDays.group} days · Today's Special bonus ${$(bonus)} · ★ ${stars} (best ${life.bestDay})` : ""}`,
       );
   }
   return results;
@@ -220,6 +334,9 @@ if (isMain) {
   console.log(
     `Endless Restaurant, 30 days each, from the L250 completionist save (${$(L250.credits)}). Rules: ${JSON.stringify(ENDLESS_DEMAND_RULES)}`,
   );
+  console.log("Before the integration (no events, no featured dish, no bonus):");
+  const plainList = runEndlessConfigs(L250, true, false);
+  console.log("Connected Endless day (events, Today's Special, stars):");
   const list = runEndlessConfigs(L250);
   const results = Object.fromEntries(list.map((r) => [r.name, r]));
   console.log("Checks");
@@ -244,6 +361,12 @@ if (isMain) {
     businessDayAllowed(true, L250.levelProgress),
     "E5: the Endless Restaurant is open after Level 250",
   );
+  assert(
+    list.every((r) => r.bonus <= 30 * DAILY_ORDER_BONUS_COINS) &&
+      list.every((r, i) => r.customers >= plainList[i]!.customers) &&
+      list.every((r) => r.stars <= 90),
+    `E7: events never lower a day's customers; Today's Special pays at most the existing ${$(DAILY_ORDER_BONUS_COINS)} a day (${list.map((r) => $(r.bonus)).join(" / ")} over 30 days); ≤ 3 stars a day (${list.map((r) => r.stars).join(" / ")})`,
+  );
 
   {
     const svc = fs.readFileSync("src/game/business/BusinessServiceManager.ts", "utf8");
@@ -252,12 +375,12 @@ if (isMain) {
       .readFileSync("src/game/restaurant/endlessDemand.ts", "utf8")
       .replace(/\/\*[\s\S]*?\*\//g, "");
     assert(
-      /usesRestaurantDemand\(save\) \? endlessDemandFor\(save, classic\)\.customers : classic/.test(
+      /const restaurant = usesRestaurantDemand\(save\)\s*\?\s*endlessEventsActive\(save\)\s*\?\s*demandWithEvents\(\s*endlessDemandFor\(save, classic\),\s*eventsForDay\(save, save\.business\.calendar\.businessDay\),?\s*\)\s*:\s*endlessDemandFor\(save, classic\)\s*:\s*null;\s*const target = restaurant \? restaurant\.customers : classic;/.test(
         svc,
       ) &&
         /RESTAURANT_MODE\s*\?\s*paySpecialists\(fined/.test(app) &&
         !/RESTAURANT_MODE|Math\.random/.test(mod),
-      "E6: wiring — the day's customers use this rule only for a restaurant save (classic demand otherwise); App pays the specialists at End Business Day only in the restaurant build; the rule never reads the switch",
+      "E6: wiring — the day's customers use this rule only for a restaurant save, with the day's events only in the Endless Restaurant (classic demand otherwise); App pays the specialists at End Business Day only in the restaurant build; the rule never reads the switch",
     );
   }
 

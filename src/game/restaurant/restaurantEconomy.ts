@@ -43,17 +43,40 @@ import { getStaffModifier } from "../economy/staff";
 import { getSupplierModifier } from "../economy/supplier";
 import { purchaseQuote, type PurchaseQuote } from "../business/BusinessInventoryManager";
 import { bulkDiscountFor } from "./bulkBuying";
+import { restaurantQuality } from "./restaurantInvestments";
 
 /**
  * The restaurant's view of an order's settlement: earnings + quality bonus,
- * food cost from stock. `supplierQualityBonusPct` is the ingredient
- * supplier's extra quality bonus (Premium — SUPPLIER_EFFECTS, provisional),
- * a share of the order's earnings added to its quality bonus; 0 = none.
+ * food cost from stock. `supplierQualityBonusPct` is the restaurant's extra
+ * quality share (`restaurantQualityBonusPct`: the Premium supplier, the
+ * kitchen tiers and the equipment owned), a share of the order's earnings
+ * added to its quality bonus; 0 = none. `emergency`: the service ran on
+ * Grandma's goods — earnings only, no quality bonus.
  */
 export function restaurantSettlement(
   settlement: SettlementResult,
   supplierQualityBonusPct = 0,
+  opts: { emergency?: boolean } = {},
 ): SettlementResult {
+  // EMERGENCY SERVICE (final economy pass): a service run on Grandma's
+  // emergency goods earns its recipe earnings but no quality bonus at all —
+  // stocking properly is better, running out is never game over.
+  if (opts.emergency) {
+    return {
+      ...settlement,
+      finalCOGS: 0,
+      supplierCOGSAdjustment: 0,
+      equipmentCOGSSavings: 0,
+      sharpnessCOGSPenalty: 0,
+      staffCOGSSavings: 0,
+      yieldSavings: 0,
+      qualityBonus: 0,
+      netResult: settlement.revenue,
+      transactions: settlement.transactions.filter(
+        (t) => t.type !== "INGREDIENT_COGS" && t.type !== "QUALITY_BONUS",
+      ),
+    };
+  }
   const extra =
     supplierQualityBonusPct > 0 ? Math.round(settlement.revenue * supplierQualityBonusPct) : 0;
   const qualityBonus = settlement.qualityBonus + extra;
@@ -169,4 +192,14 @@ export function restaurantQuote(
     bulkDiscountFor(quantity),
     supplierPriceFactor(save),
   );
+}
+
+/**
+ * The extra quality share a campaign order earns in the restaurant: the
+ * ingredient supplier's (Premium) + the kitchen tiers built + the equipment
+ * owned (restaurantInvestments.ts). Never applied to anything but the
+ * campaign order's settlement.
+ */
+export function restaurantQualityBonusPct(save: SaveData): number {
+  return supplierEffects(save).qualityBonusPct + restaurantQuality(save).total;
 }

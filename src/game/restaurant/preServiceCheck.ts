@@ -20,7 +20,9 @@ import { serviceStockCheck, serviceUsesStock, type ServiceStockCheck } from "./c
 import { opensNewDay, restaurantDayOf, todaysServices, type DayService } from "./restaurantDay";
 import { hasNewsToShow, restaurantNewsAt, type RestaurantNews } from "./restaurantNews";
 import { unseenStarterCrate, type KitLine } from "./restaurantMigration";
-import { remainingMenuGuests } from "./menuGuests";
+import { menuGuestQueue, remainingMenuGuests } from "./menuGuests";
+import { bulkDiscountFor } from "./bulkBuying";
+import { getLevel } from "../levels/LevelManager";
 import { restaurantQuote } from "./restaurantEconomy";
 import type { IngredientId } from "../definitions";
 import { serviceShape, staffRequirementsFor, type StaffRequirement } from "./staffRequirements";
@@ -164,4 +166,86 @@ export function servicePlanNeedsSheet(plan: ServicePlan | null): boolean {
   if (!staffReady(plan)) return true;
   if (suppliesNeedAttention(plan.supplies)) return true;
   return plan.check.applies && (!plan.check.ready || plan.check.hasExpired);
+}
+
+/**
+ * WHOLE-DAY STOCKING (final economy pass): the stock every service still to
+ * come TODAY needs — this level's remaining orders and menu guests, then
+ * each later service's orders and guests — bought in one go. The Market
+ * sells it at the bulk price of the whole quantity, so a day's stock reaches
+ * the 25 / 50 / 100-unit tiers a single service rarely does, and rounds up
+ * to whole units once instead of once a service. It needs the fridge room
+ * for the whole day: a small fridge simply keeps buying service by service
+ * (never blocking). Null when stock isn't used yet or only this service is
+ * left today.
+ */
+export type DayStockRow = {
+  ingredientId: IngredientId;
+  buyUnits: number;
+  /** The Market's price for buying `buyUnits` at once (bulk discount included). */
+  cost: number;
+};
+
+export type DayStock = {
+  /** The services the day's stock covers (this one first). */
+  levels: number[];
+  rows: DayStockRow[];
+  totalUnits: number;
+  totalCost: number;
+  /** What the bulk discount takes off `totalCost` (vs the same units at the plain price). */
+  bulkSaving: number;
+  storageFree: number;
+  /** The whole day's stock fits in the fridge now. */
+  fits: boolean;
+  affordable: boolean;
+};
+
+export function dayStockFor(save: SaveData, level: LevelDefinition): DayStock | null {
+  const n = levelNumber(level.id);
+  if (isCompleted(level.id, save.levelProgress) || !serviceUsesStock(n)) return null;
+  const later = todaysServices(save, n)
+    .filter((s) => !s.done && s.levelNumber > n)
+    .map((s) => getLevel(`level-${s.levelNumber}`))
+    .filter((l): l is LevelDefinition => !!l && !isCompleted(l.id, save.levelProgress));
+  if (later.length === 0) return null;
+  const { tickets, progress } = ticketsFor(save.levelProgress, level);
+  const recipes: RecipeDefinition[] = [
+    ...tickets.slice(paidOrdersFor(progress, level.id).length),
+    ...remainingMenuGuests(save, level),
+  ];
+  for (const l of later)
+    recipes.push(...ticketsFor(save.levelProgress, l).tickets, ...menuGuestQueue(save, l));
+  const check = serviceStockCheck(save, n, recipes);
+  if (!check.applies) return null;
+  const rows: DayStockRow[] = check.missingRows.map((r) => ({
+    ingredientId: r.ingredientId,
+    buyUnits: r.buyUnits,
+    cost: r.quote?.totalCost ?? 0,
+  }));
+  const totalCost = rows.reduce((t, r) => t + r.cost, 0);
+  const plain = rows.reduce(
+    (t, r) => t + (restaurantQuoteAtPlainPrice(save, r.ingredientId, r.buyUnits) ?? r.cost),
+    0,
+  );
+  return {
+    levels: [n, ...later.map((l) => levelNumber(l.id))],
+    rows,
+    totalUnits: check.storageNeeded,
+    totalCost,
+    bulkSaving: Math.max(0, plain - totalCost),
+    storageFree: check.storageFree,
+    fits: check.storageNeeded <= check.storageFree,
+    affordable: save.credits >= totalCost,
+  };
+}
+
+/** The Market's price for `units` without the bulk discount (what buying them a few at a time would cost). */
+function restaurantQuoteAtPlainPrice(
+  save: SaveData,
+  ingredientId: IngredientId,
+  units: number,
+): number | null {
+  const q = restaurantQuote(save, ingredientId, units);
+  const discount = bulkDiscountFor(units);
+  return discount > 0 ? Math.round(q.totalCost / (1 - discount)) : q.totalCost;
 }

@@ -12,6 +12,7 @@
  */
 import type { SaveData } from "../SaveManager";
 import { KITCHEN_UPGRADE_CATALOG, findKitchenUpgrade } from "./kitchenUpgradeDefinitions";
+import { kitchenTierPrice } from "../restaurant/restaurantInvestments";
 import type { KitchenUpgradeDefinition } from "./kitchenUpgradeTypes";
 import { debitWallet } from "../economy/wallet";
 
@@ -128,7 +129,9 @@ export function purchaseKitchenUpgrade(save: SaveData, id: string): PurchaseKitc
   if (state === "current" || state === "past") return { ok: false, reason: "alreadyOwned" };
   if (state === "locked") return { ok: false, reason: "notUnlocked" };
   if (state === "needsPrevious") return { ok: false, reason: "needsPrevious" };
-  const paid = debitWallet(save, def.price);
+  // The unified restaurant prices its tiers lower (restaurantInvestments.ts); a release save pays the catalog price.
+  const price = kitchenTierPrice(def, save);
+  const paid = debitWallet(save, price);
   if (!paid.ok) return { ok: false, reason: "insufficientFunds" };
   return {
     ok: true,
@@ -136,7 +139,7 @@ export function purchaseKitchenUpgrade(save: SaveData, id: string): PurchaseKitc
       ...paid.save,
       ownedKitchenUpgradeIds: [...save.ownedKitchenUpgradeIds, def.id],
     }),
-    price: def.price,
+    price,
   };
 }
 

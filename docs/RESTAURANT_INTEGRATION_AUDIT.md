@@ -303,6 +303,7 @@ moved the menu to Level 1, re-ordered the systems and added a day clock.
 | 7 One back office (Staff, Suppliers, Equipment) | done (behind the switch) | `restaurant-backoffice-qa`, e2e `restaurantbackoffice.mjs` |
 | Cleanup before the next gameplay phase: Level 1–10 UX pass, phone fridge (one compartment at a time), 30-day history, lazy Restaurant screens, unused assets | done (both builds — explicitly requested) | `level-ux-qa`, `business-history-qa`, `lazy-load-qa`, `unused-assets-qa`; e2e `levelux`, `fridgepager`, `history`, `lazyload` |
 | Decisions 2026-10-06: Premium extras, Staff in two teams; next phase prepared (events, Today's Special, standing/rank/stage, Restaurant Complete, Endless stars — pure modules, not wired) | done (behind the switch / not wired) | `restaurant-economy-pass-qa` Y, `restaurant-backoffice-qa` T2, `restaurant-endgame-qa` |
+| Connected 2026-10-06: Endless events in the day's demand and order pool, Today's Special = the existing $50 once a day, event card (Overview, Service), Endless stars at End Business Day (lifetime `business.endlessStars` + per-day history), Restaurant Progress standing + lock line + stars; fridge pressure measured (no change); favicon relative | done (restaurant build; release unchanged) | `restaurant-endgame-qa` D/R/P/W, `restaurant-endless-qa` E6/E7, `restaurant-fridge-pressure-qa`, e2e `restaurantendless.mjs` |
 
 Phase 7 notes (one back office, conflict 4):
 

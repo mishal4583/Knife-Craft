@@ -268,7 +268,8 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   Market (no built-in food cost; boosts to the quality bonus kept; the
   release settlement unchanged); measured with the full simulation
   (`scripts/restaurantCampaignSim.mts`), a completionist owns everything at
-  L250 with $128,063 (target $100k–$150k; $94,393 with the double charge);
+  L250 with $168,352 after the final economy pass (floor ≥ $150k, preferred
+  $160k–$175k; $121,268 with the double charge);
   no soft-lock, cash = ledger. X: item effects on real stock (values
   unchanged): knife/board/helper savings and a dull knife's penalty scale
   the stock an order uses (`stockUseFor`; the Pre-Service Check plans
@@ -286,9 +287,14 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   dish only with its chef; capacity: chef + roles + specialists), only for a
   migrated restaurant save (classic Business demand unchanged); specialists
   paid at End Business Day. Five restaurants × 30 days from the L250
-  completionist save through the real Business engine: minimum $78/day,
-  medium $135, full menu + thin staff $276, fully staffed $452 (E2:
-  $300–$600), overstaffed −$262 (E3: < $150); cash = ledger, never < 0.
+  completionist save through the real Business engine. Before the events
+  (plain day): minimum $78/day, medium $135, full menu + thin staff $276,
+  fully staffed $452, overstaffed −$262. The connected day (events, Today's
+  Special's $50 once a day, stars; E2: $300–$600, E3: < $150): $132, $209,
+  $344, $519, −$189; after the final economy pass (Today's Special 15 % of
+  the day's revenue ≤ $50, from the new L250 save): $112, $208, $327, $518,
+  −$187; E7: events never lower customers, ≤ $50 bonus and ≤ 3 stars a day.
+  Cash = ledger, never < 0.
 - `restaurant-backoffice-qa` — phase 7, one back office (restaurant
   build; `restaurant/restaurantBackOffice.ts`): the ingredient supplier
   (`selectedSupplierId`, Local / Wholesale / Premium) is chosen on
@@ -302,16 +308,67 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   titled "Restaurant". The
   release build keeps the Campaign Supplier tab and the "Business" title.
   Browser: `tools/e2e/restaurantbackoffice.mjs` (restaurant test build).
-- `restaurant-endgame-qa` — the next gameplay phase's architecture, as pure
-  modules NOT yet wired into a day, a screen or the release build:
-  `restaurant/restaurantEvents.ts` (Dinner Rush, Large Group, Today's
-  Special — `RESTAURANT_EVENT_RULES`, provisional; deterministic per Business
-  Day; the special is an active, cookable menu dish and its bonus is the
-  existing once-a-day $50; `demandWithEvents` never below the plain demand,
-  capped by capacity) and `restaurant/restaurantStanding.ts` (rank = café
-  rank, stage = restaurant stage, Restaurant Complete when every level incl.
-  250 is done → Endless Restaurant, nothing reset; Endless stars 0–3 a day,
-  status only, never money). The Endless economy is unchanged.
+- `restaurant-endgame-qa` — the Endless Restaurant's events, standing and
+  stars, CONNECTED (2026-10-06; restaurant build, Endless days only):
+  `restaurant/restaurantEvents.ts` (Dinner Rush 20 % ×1.3 demand, Large
+  Group 15 % +6, Today's Special every day — `RESTAURANT_EVENT_RULES`,
+  provisional; deterministic per Business Day) applies only when
+  `endlessEventsActive` (a unified-restaurant save past L250):
+  `businessCustomersToday` = `demandWithEvents` (never below the plain
+  demand, capped by capacity); the featured dish is weighted into the day's
+  order pool (`featuredPool` / `endlessFeaturedFor`; 25 % weight, ~17 % of
+  orders after the generator's variety rule); serving it is noted
+  (`withTodaysSpecialServed`, optional `business.todaysSpecialServedDay`)
+  and End Business Day pays 15 % of the day's restaurant revenue capped at
+  the EXISTING $50 through the daily claim (`App.payTodaysSpecial`,
+  `todaysSpecialBonus`: `hasClaimedToday` → `claimDaily`, one "daily-reward"
+  entry, never twice a calendar day).
+  Shown by `kc/business/EndlessDayEvents.tsx` on Restaurant → Overview and
+  Service only (never during cutting). `restaurant/restaurantStanding.ts`:
+  rank = café rank, stage = restaurant stage, Restaurant Complete at L250 →
+  Endless, nothing reset — Restaurant Progress' "Restaurant standing" card
+  (restaurant build; locked line "Complete all 250 campaign levels to unlock
+  Endless Restaurant."). Endless stars 0–3 a day, status only, never money:
+  PROFITABLE (the day's profit incl. specialist wages > 0), BUSY (no guest
+  turned away: the day's DEMAND before the team's capacity —
+  `businessCustomersToday().demand`, read before the day closes — served;
+  final economy pass), CLEAN (the day's inspection not FAIL, with orders). Awarded by `App.advanceBusinessDay`
+  (`recordEndlessDayStars`), shown on the day summary; lifetime
+  `{total, days, bestDay}` in the optional `business.endlessStars` (absent
+  = 0; never rolled off), the day's stars on its history record (optional
+  `stars`). Browser: `tools/e2e/restaurantendless.mjs` (restaurant test
+  build, 320–430 px).
+- `restaurant-fridge-pressure-qa` — the fridge study (read-only, over the
+  real simulations): the completionist and a diligent player through the
+  campaign (L11/31/51/71/91/121/161/181/250) and two Endless restaurants;
+  invariants only (no soft-lock, never over capacity but Grandma's goods).
+  Findings and the decision in `docs/RESTAURANT_FRIDGE_PRESSURE.md`.
+- `restaurant-final-economy-qa` — the FINAL ECONOMY PASS (2026-10-06,
+  restaurant saves only — stamped by the restaurant migration; the release
+  economy is untouched; `docs/ECONOMY_FINAL.md`): T the completionist (every
+  item, all 250 levels, no Endless) ends L250 ≥ $150k — $168,348 Local,
+  $169,027 Wholesale, $171,582 Premium (preferred $160k–$175k); saver
+  $307,353; S no soft-lock, cash = ledger, never < 0, a prudent completionist
+  (keeps $500) never needs Grandma; V every investment returns quality bonus;
+  R the rules (`restaurant/restaurantInvestments.ts`
+  `RESTAURANT_INVESTMENT_RULES`: kitchen tiers $16k/$20k/$21k/$24k/$29k =
+  $110k with +1.5/3/4/5/7 % restaurant quality on campaign order earnings
+  and +1/+1/+2 menu-guest seats from the Café/Flourishing/Grand; equipment
+  quality ≤ 5 % by ownership — Blacksmith mastery 2 %, knife roll 1 %, board
+  set 1 %, Prep/Kitchen Assistant 0.5 % each; `restaurantQualityBonusPct` =
+  supplier + kitchen + equipment on the settlement's quality bonus only;
+  `menuGuests.GUEST_CAPACITY_RULES`: guests = min(schedule + seats, chef 2 +
+  1 per cook/server/Head Chef/specialist), staff requirements still read the
+  schedule; Emergency Service (`restaurant/emergencyService.ts`, optional
+  `levelProgress.emergency`): a service run on Grandma's pantry/spares earns
+  no quality bonus; whole-day stocking (`preServiceCheck.dayStockFor`, the
+  check's "Stock the whole day" card, Restock → the Market at the day's
+  quantity); Today's Special 15 % ≤ $50; BUSY = demand); X release saves pay
+  the catalog prices; W wiring; O old saves. Simulations:
+  `scripts/economy-final-sim.mts` (seven players, checkpoint tables),
+  `economy-final-candidates.mts` (the sweep), `economy-final-endless.mts`.
+  Browser: `tools/e2e/restauranteconomy.mjs` (restaurant test build,
+  320–430 px).
 - `level-ux-qa` — the Level 1–10 UX pass (presentation only): Level
   Complete waits for a story banner (Level 10's milestone) and lists Order
   payout + Completion reward + Earned this level (`levels/levelEarnings.ts`,

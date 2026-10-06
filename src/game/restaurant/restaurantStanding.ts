@@ -11,12 +11,13 @@
  *  - RESTAURANT COMPLETE: every campaign level done (Level 250 included —
  *    isEndlessUnlocked, the existing rule). It unlocks the Endless
  *    Restaurant as a CONTINUATION: nothing is reset;
- *  - ENDLESS STARS: status earned by Endless Restaurant days
- *    (ENDLESS_STAR_RULES, provisional). Stars are progression only — no
+ *  - ENDLESS STARS: status earned by Endless Restaurant days (starsForDay,
+ *    from the day's own profit, customer target and inspection), kept for
+ *    life in `business.endlessStars`. Stars are progression only — no
  *    function here returns money, and nothing can spend them.
  *
- * Pure; nothing reads RESTAURANT_MODE. Not yet shown on screen (the next
- * gameplay phase wires it into Restaurant Progress).
+ * Pure; nothing reads RESTAURANT_MODE. Shown on Restaurant Progress and
+ * awarded by App.advanceBusinessDay (restaurant build, Endless days only).
  */
 import type { SaveData } from "../SaveManager";
 import type { LevelProgress } from "../levels/LevelManager";
@@ -82,17 +83,29 @@ export function isRestaurantComplete(save: SaveData): boolean {
 }
 
 /**
- * ENDLESS STARS — up to three per completed Endless Restaurant day, from
- * that day's own record (businessDayHistory). PROVISIONAL thresholds, tuned
- * in the final economy pass:
- *  ★ a profitable day;
- *  ★ a busy day: at least `busyOrders` orders served;
- *  ★ a clean day: no waste (nothing spoiled or thrown out).
+ * ENDLESS STARS — up to three per completed Endless Restaurant day, read
+ * from results the day already produces (no new threshold, no new economy):
+ *  ★ PROFITABLE — the day's profit (its settlement's operating profit,
+ *    specialist wages included) is above 0;
+ *  ★ BUSY — no guest was turned away: every guest who wanted to eat that
+ *    day (the demand BEFORE the team's capacity caps it — final economy
+ *    pass; a capped target let a one-chef restaurant earn it every day)
+ *    was served;
+ *  ★ CLEAN — the day's inspection passed (End Business Day's existing
+ *    inspection, which judges cleanliness from the day's own waste).
+ * Stars are STATUS ONLY: nothing here reads or writes the wallet or the
+ * ledger, and they can't be spent.
  */
-export const ENDLESS_STAR_RULES = {
-  busyOrders: 40,
-  maxPerDay: 3,
-} as const;
+export const ENDLESS_STARS_PER_DAY = 3;
+
+export type DayStarInputs = {
+  profit: number;
+  ordersServed: number;
+  /** The guests who wanted to eat that day, before the team's capacity (businessCustomersToday().demand). */
+  customersWanted: number;
+  /** The day's inspection result passed (End Business Day's own report). */
+  inspectionPassed: boolean;
+};
 
 export type DayStars = {
   stars: number;
@@ -102,25 +115,67 @@ export type DayStars = {
 };
 
 /** The stars a completed day earns (status only; never money). */
-export function starsForDay(record: BusinessDayRecord): DayStars {
-  const profitable = record.profit > 0;
-  const busy = record.ordersServed >= ENDLESS_STAR_RULES.busyOrders;
-  const clean = record.waste === 0 && record.ordersServed > 0;
+export function starsForDay(day: DayStarInputs): DayStars {
+  const profitable = day.profit > 0;
+  const busy = day.customersWanted > 0 && day.ordersServed >= day.customersWanted;
+  const clean = day.inspectionPassed && day.ordersServed > 0;
   const stars = [profitable, busy, clean].filter(Boolean).length;
-  return { stars: Math.min(stars, ENDLESS_STAR_RULES.maxPerDay), profitable, busy, clean };
+  return { stars: Math.min(stars, ENDLESS_STARS_PER_DAY), profitable, busy, clean };
 }
 
-/** The Endless stars a run of days earns, and the best day (status only). */
-export function starsForDays(records: readonly BusinessDayRecord[]): {
+/** Lifetime Endless stars, kept in `business.endlessStars` (never rolled off with the 30-day history). */
+export type EndlessStarsState = {
+  /** All stars earned. */
   total: number;
-  best: number;
-} {
-  let total = 0;
-  let best = 0;
-  for (const r of records) {
-    const s = starsForDay(r).stars;
-    total += s;
-    best = Math.max(best, s);
-  }
-  return { total, best };
+  /** Endless days completed. */
+  days: number;
+  /** The best single day (0–3). */
+  bestDay: number;
+};
+
+const ZERO_STARS: EndlessStarsState = { total: 0, days: 0, bestDay: 0 };
+
+const whole = (n: unknown, max = Number.MAX_SAFE_INTEGER) =>
+  typeof n === "number" && Number.isFinite(n) ? Math.min(max, Math.max(0, Math.floor(n))) : 0;
+
+/** The lifetime stars of a save — zeros when it has none (an older save) or the value is damaged. */
+export function endlessStarsOf(save: SaveData): EndlessStarsState {
+  const raw = save.business.endlessStars;
+  if (!raw || typeof raw !== "object") return { ...ZERO_STARS };
+  return {
+    total: whole(raw.total),
+    days: whole(raw.days),
+    bestDay: whole(raw.bestDay, ENDLESS_STARS_PER_DAY),
+  };
+}
+
+/**
+ * Records one completed Endless day's stars: adds them to the lifetime total
+ * (and the day count / best day), and notes them on that day's record in the
+ * 30-day history (its latest entry). Touches nothing else — no money, no
+ * ledger, no stock.
+ */
+export function recordEndlessDayStars(save: SaveData, day: DayStars): SaveData {
+  const life = endlessStarsOf(save);
+  const history = save.business.finance.history;
+  const latest = history?.[history.length - 1];
+  return {
+    ...save,
+    business: {
+      ...save.business,
+      endlessStars: {
+        total: life.total + day.stars,
+        days: life.days + 1,
+        bestDay: Math.max(life.bestDay, day.stars),
+      },
+      ...(history && latest
+        ? {
+            finance: {
+              ...save.business.finance,
+              history: [...history.slice(0, -1), { ...latest, stars: day.stars }],
+            },
+          }
+        : {}),
+    },
+  };
 }

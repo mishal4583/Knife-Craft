@@ -26,6 +26,8 @@ import {
   businessOrderAvailability,
 } from "@/game/business/BusinessServiceManager";
 import { BusinessPaymentLines } from "./BusinessPaymentLines";
+import { EndlessDayEvents } from "./EndlessDayEvents";
+import { usesRestaurantDemand } from "@/game/restaurant/endlessDemand";
 
 const FLOW_STEPS = [
   "Order",
@@ -137,11 +139,23 @@ export function BusinessService({
               </p>
             </div>
             <p className="font-hand text-[13px] leading-snug text-walnut/60">
-              {customers.remaining} remaining · popularity {customers.popularity}/100 brings{" "}
-              {customers.target} customers today (×{customers.multiplier.toFixed(2)} of{" "}
-              {BASE_CUSTOMERS_PER_DAY}).
+              {usesRestaurantDemand(save) ? (
+                // Endless Restaurant: the target (businessCustomersToday) comes from the
+                // restaurant's demand, today's events and the team's capacity — not popularity alone.
+                <>
+                  {customers.remaining} remaining · Today's expected customers: {customers.target} —
+                  set by your popularity, menu and today's events, up to what your team can serve.
+                </>
+              ) : (
+                <>
+                  {customers.remaining} remaining · popularity {customers.popularity}/100 brings{" "}
+                  {customers.target} customers today (×{customers.multiplier.toFixed(2)} of{" "}
+                  {BASE_CUSTOMERS_PER_DAY}).
+                </>
+              )}
             </p>
           </Panel>
+          <EndlessDayEvents save={save} />
           {customers.complete ? (
             <Panel className="p-4 text-center">
               <p className="font-display text-[17px] font-black text-walnut-dark">

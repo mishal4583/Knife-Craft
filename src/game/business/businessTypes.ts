@@ -2,6 +2,7 @@ import type { RestaurantDayState } from "../restaurant/restaurantDay";
 import type { RestaurantSuppliesState } from "../restaurant/serviceSupplies";
 import type { RestaurantStaffState } from "../restaurant/staffRequirements";
 import type { RestaurantMigrationState } from "../restaurant/restaurantMigration";
+import type { EndlessStarsState } from "../restaurant/restaurantStanding";
 /**
  * BUSINESS_TYPES — Economy V3's own persisted-state container. A single
  * new field on SaveData (`business: BusinessState`), mirroring how every
@@ -101,6 +102,19 @@ export type BusinessState = {
    * (restaurant/restaurantMigration.ts). Optional; absent = not moved yet.
    */
   restaurantMigration?: RestaurantMigrationState;
+  /**
+   * Unified Restaurant (RESTAURANT_MODE): the Endless Restaurant's lifetime
+   * stars — STATUS ONLY, never money (restaurant/restaurantStanding.ts).
+   * Kept apart from the 30-day history so they never roll off. Optional;
+   * absent = 0.
+   */
+  endlessStars?: EndlessStarsState;
+  /**
+   * Endless Restaurant: the Business Day on which today's featured dish
+   * (Today's Special) was served — its bonus is paid at that day's End
+   * Business Day (restaurantEvents.todaysSpecialBonus). Absent = not served.
+   */
+  todaysSpecialServedDay?: number;
 };
 
 export const DEFAULT_BUSINESS_STATE: BusinessState = {

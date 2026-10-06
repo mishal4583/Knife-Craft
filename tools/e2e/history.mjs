@@ -5,7 +5,8 @@
 //   3. ending the day moved no money beyond its own settlement (no staff, no orders: credits
 //      unchanged, no ledger entry);
 //   4. 320×568 · 360×640 · 375×642 · 390×844 · 430×932 · 768×1024: no sideways scroll, every
-//      day row ≥ 48 px tall; no page errors.
+//      day row ≥ 48 px tall; Overview's day card keeps the classic "Today's target: popularity … base
+//      customers" line (the Endless wording is restaurant-build only); no page errors.
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import { launch, boot, seedSave, sleep, clickButton, readSave, shot } from "./harness.mjs";
 
@@ -69,6 +70,10 @@ const tab = (re) =>
   );
 // Close any day-result panel, then open Operations.
 await page.keyboard.press("Escape");
+await tab(/Overview/);
+await sleep(800);
+// Overview's "Today's service" day card (BusinessDayCard).
+const opsText = await page.evaluate(() => document.body.innerText.replace(/\s+/g, " "));
 await tab(/Operations/);
 await sleep(800);
 await page.evaluate(() =>
@@ -147,6 +152,13 @@ check(
   fit,
 );
 const errors = logs.filter((l) => /pageerror|error:/.test(l) && !/favicon/.test(l));
+check(
+  '4b Overview day card keeps the classic customer wording ("Today\'s target: popularity … base customers"), never the Endless line',
+  /Today's target: popularity \d+\/100 × \d\.\d\d of 8 base customers = \d+\. \d+ remaining\./.test(
+    opsText,
+  ) && !/Today's expected customers/.test(opsText),
+  opsText.match(/Today's target: popularity [^=]*= \d+\. \d+ remaining\./)?.[0],
+);
 check("5 no page errors", errors.length === 0, errors.slice(0, 5));
 await browser.close();
 const failed = results.filter((r) => !r.ok);

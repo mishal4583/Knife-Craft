@@ -280,7 +280,7 @@ const before = run(
   false,
 );
 console.log(
-  `    completionist at L250: ${$(before.s.credits)} with the double charge → ${$(after.s.credits)} after the pass (target $100,000–$150,000)`,
+  `    completionist at L250: ${$(before.s.credits)} with the double charge → ${$(after.s.credits)} after the pass (final economy target: ≥ $150,000, preferred $160k–$175k — docs/ECONOMY_FINAL.md)`,
 );
 {
   assert(
@@ -288,12 +288,13 @@ console.log(
     "T1: the completionist owns everything at Level 250",
   );
   assert(
-    after.s.credits >= 100_000_00 && after.s.credits <= 150_000_00,
-    `T2: and finishes with ${$(after.s.credits)} — inside the approved $100k–$150k band`,
+    after.s.credits >= 150_000_00,
+    // The final economy pass (2026-10-06) replaced the $100k–$150k band with a ≥ $150k floor.
+    `T2: and finishes with ${$(after.s.credits)} — at or above the approved $150,000 floor`,
   );
   assert(
-    before.s.credits < 100_000_00 && after.s.credits > before.s.credits,
-    `T3: the double charge left it below the band (${$(before.s.credits)}); the pass fixes that`,
+    before.s.credits < 150_000_00 && after.s.credits > before.s.credits,
+    `T3: the double charge leaves it below the floor (${$(before.s.credits)}); P0 fixes that`,
   );
 }
 
@@ -309,7 +310,7 @@ console.log("W. Wiring");
   assert(
     (
       app.match(
-        /computed && RESTAURANT_MODE\s*\?\s*restaurantSettlement\(computed, save \? supplierEffects\(save\)\.qualityBonusPct : 0\)\s*:\s*computed/g,
+        /computed && RESTAURANT_MODE\s*\?\s*restaurantSettlement\(computed, save \? restaurantQualityBonusPct\(save\) : 0, \{[\s\S]*?\}\)\s*:\s*computed/g,
       ) ?? []
     ).length === 2,
     "W1: both campaign serve paths apply P0, only under RESTAURANT_MODE",

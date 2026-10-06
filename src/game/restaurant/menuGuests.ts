@@ -4,8 +4,9 @@
  * must come from dishes actually available on the player's menu").
  *
  * A level's own orders stay exactly as designed (deterministic, they teach).
- * Once they are served, the service can take up to `menuGuestsPerService`
- * extra guests, one at a time and optional (Finish Level stays available):
+ * Once they are served, the service can take up to `menuGuestsFor` extra
+ * guests (the schedule + the kitchen's seats, capped by the team's
+ * capacity), one at a time and optional (Finish Level stays available):
  *
  *  - each guest orders a dish from the active menu at the level being
  *    played (`activeMenuRecipes`: unlocked AND switched on; a locked or
@@ -39,12 +40,13 @@ import { businessCustomerPayment } from "../business/BusinessServiceManager";
 import { activeMenuRecipes } from "./restaurantMenu";
 import { menuGuestsPerService } from "./restaurantProgression";
 import { serviceStockCheck } from "./campaignStock";
+import { kitchenGuestSeats } from "./restaurantInvestments";
 
 /** The guests a service of `level` brings, in order (pure; same every time for the same menu). */
 export function menuGuestQueue(save: SaveData, level: LevelDefinition): RecipeDefinition[] {
   if (level.batchGroupRecipeIds?.length) return [];
   const n = levelNumber(level.id);
-  const count = menuGuestsPerService(n);
+  const count = menuGuestsFor(save, n);
   const pool = activeMenuRecipes(save.business.menuActivation, n);
   if (count === 0 || pool.length === 0) return [];
   const rand = makeSeededRand(n * 104729 + 17);
@@ -62,6 +64,42 @@ export function menuGuestQueue(save: SaveData, level: LevelDefinition): RecipeDe
     guests.push(pick);
   }
   return guests;
+}
+
+/**
+ * SERVICE CAPACITY (final economy pass): how many menu guests the team can
+ * serve in one service — the chef handles 2, each cook, server or Head Chef
+ * one more, each specialist chef one more (cleaners and managers run the
+ * restaurant, they don't serve guests). Every number is here.
+ */
+export const GUEST_CAPACITY_RULES = {
+  chef: 2,
+  perRole: { "prep-cook": 1, "line-cook": 1, server: 1, "head-chef": 1 } as Record<string, number>,
+  perSpecialist: 1,
+};
+
+export function menuGuestCapacity(save: SaveData): number {
+  const R = GUEST_CAPACITY_RULES;
+  const roles = save.business.staff?.hiredRoles ?? [];
+  const specialists = save.business.restaurantStaff?.specialists?.length ?? 0;
+  return (
+    R.chef +
+    roles.reduce((n, role) => n + (R.perRole[role] ?? 0), 0) +
+    specialists * R.perSpecialist
+  );
+}
+
+/**
+ * The menu guests a service of level `n` takes: the level's guest demand
+ * (`menuGuestsPerService`, the developer's schedule) plus the seats the
+ * kitchen tiers built add (`kitchenGuestSeats`), never more than the team
+ * can serve (`menuGuestCapacity`). 0 before the menu opens. The staff
+ * requirements still read the schedule alone, so they never depend on this.
+ */
+export function menuGuestsFor(save: SaveData, n: number): number {
+  const demand = menuGuestsPerService(n);
+  if (demand <= 0) return 0;
+  return Math.min(demand + kitchenGuestSeats(save), menuGuestCapacity(save));
 }
 
 export function menuGuestsServed(progress: LevelProgress, levelId: string): number {

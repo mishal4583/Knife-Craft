@@ -84,6 +84,13 @@ import {
 import { pickEndlessLevel, applyEndlessEarn } from "@/game/daily/EndlessServiceManager";
 import { paidLevelReward } from "@/game/levels/levelRewards";
 import { levelOrderEarnings } from "@/game/levels/levelEarnings";
+import {
+  endlessEventsActive,
+  todaysSpecialBonus,
+  withTodaysSpecialServed,
+} from "@/game/restaurant/restaurantEvents";
+import { isEmergencyService } from "@/game/restaurant/emergencyService";
+import { recordEndlessDayStars, starsForDay } from "@/game/restaurant/restaurantStanding";
 import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
 import { ticketsFor } from "@/game/restaurant/serviceTickets";
 import { consumeCampaignOrderStock } from "@/game/restaurant/campaignStock";
@@ -109,6 +116,7 @@ import { markStarterCrateSeen } from "@/game/restaurant/restaurantMigration";
 import {
   supplierEffects,
   restaurantSettlement,
+  restaurantQualityBonusPct,
   supplierPriceFactor,
 } from "@/game/restaurant/restaurantEconomy";
 import { businessCustomerPayment } from "@/game/business/BusinessServiceManager";
@@ -184,6 +192,7 @@ import {
   businessOrderAvailability,
   businessCustomersToday,
   businessServiceSessionForToday,
+  endlessFeaturedFor,
 } from "@/game/business/BusinessServiceManager";
 import type {
   BusinessCustomerPayment,
@@ -802,6 +811,9 @@ export function App() {
         }),
       };
     }
+    // The guests who wanted to eat today, read before the day closes (an Endless day's BUSY star).
+    const customersWanted = businessCustomersToday(save).demand;
+    const closingDay = save.business.calendar.businessDay;
     const result = endBusinessDayImpl(save);
     const withPayroll = appendLedgerEntry(
       result.save,
@@ -815,9 +827,27 @@ export function App() {
     );
     // Unified Restaurant: the Endless Restaurant pays its specialist chefs too
     // (one "business-staff-salary" entry each; let go if unaffordable).
-    const withFine = RESTAURANT_MODE
+    const paidDay = RESTAURANT_MODE
       ? paySpecialists(fined, restaurantLevelOf(fined.levelProgress)).save
       : fined;
+    // Endless Restaurant: the day's stars (status only — no money, no ledger),
+    // read from the closed day's own record and inspection.
+    const closedDay = paidDay.business.finance.history?.at(-1);
+    const dayStars =
+      RESTAURANT_MODE && endlessEventsActive(paidDay) && closedDay
+        ? starsForDay({
+            profit: closedDay.profit,
+            ordersServed: closedDay.ordersServed,
+            customersWanted,
+            inspectionPassed: result.inspectionReport.overall !== "FAIL",
+          })
+        : null;
+    const starred = dayStars ? recordEndlessDayStars(paidDay, dayStars) : paidDay;
+    const { save: withFine, bonus: specialBonus } = payTodaysSpecial(
+      starred,
+      closingDay,
+      closedDay?.revenue ?? 0,
+    );
     persist(withFine);
     // Economy V3 Phase 14, Checkpoint 3 — a new business day always
     // reseeds a fresh Business Service session/order queue, never carries
@@ -842,6 +872,8 @@ export function App() {
       inspectionReport: result.inspectionReport,
       inspectionFine: result.inspectionFine,
       dailyPnL: result.dailyPnL,
+      ...(dayStars ? { endlessStars: dayStars } : {}),
+      ...(specialBonus > 0 ? { todaysSpecialBonus: specialBonus } : {}),
     };
   }
 
@@ -1269,6 +1301,41 @@ export function App() {
   }
 
   /**
+   * Endless Restaurant: Today's Special's bonus, at End Business Day — 15 %
+   * of the day's restaurant revenue capped at the EXISTING $50
+   * (restaurantEvents.todaysSpecialBonus), only when the featured dish was
+   * served that day, through the same once-per-calendar-day claim as the
+   * classic daily order (hasClaimedToday / claimDaily, one "daily-reward"
+   * entry): never twice a day, never a second bonus. Any other day, build or
+   * save: unchanged, no bonus.
+   */
+  function payTodaysSpecial(
+    s: SaveData,
+    closedDay: number,
+    revenue: number,
+  ): { save: SaveData; bonus: number } {
+    const now = new Date();
+    if (
+      !RESTAURANT_MODE ||
+      !endlessEventsActive(s) ||
+      s.business.todaysSpecialServedDay !== closedDay ||
+      hasClaimedToday(s.dailyOrder, now)
+    )
+      return { save: s, bonus: 0 };
+    const bonus = todaysSpecialBonus(revenue);
+    if (bonus <= 0) return { save: s, bonus: 0 };
+    return {
+      save: appendLedgerEntry(
+        { ...s, credits: s.credits + bonus, dailyOrder: claimDaily(s.dailyOrder, now) },
+        "daily-reward",
+        bonus,
+        "todays-special",
+      ),
+      bonus,
+    };
+  }
+
+  /**
    * The Serve action for a Business order — the ONE atomic transaction
    * (BusinessServiceManager.serveBusinessOrder): re-verifies availability,
    * consumes inventory, reads the dish's CURRENT menu price, applies the
@@ -1292,9 +1359,11 @@ export function App() {
     const result = serveBusinessOrder(businessServiceSession, save, businessRand());
     if (!result) return null;
     setBusinessServiceSession(result.session);
-    persist(
+    const paid = withTodaysSpecialServed(
       appendLedgerEntry(result.save, "business-revenue", result.amountCharged, result.dish.id),
+      result.dish.id,
     );
+    persist(paid);
     return {
       coinsAwarded: result.amountCharged,
       reaction: result.reaction,
@@ -1318,6 +1387,8 @@ export function App() {
       businessServiceSession,
       businessRand(),
       save.business.menuActivation,
+      // Endless Restaurant: Today's Special drawn more often (undefined elsewhere).
+      endlessFeaturedFor(save),
     );
     setBusinessServiceSession(next);
     // Economy V3 Phase 16 (P2 correctness fix): "Next Customer" must pass
@@ -1440,7 +1511,10 @@ export function App() {
     // so the built-in food cost isn't charged again (restaurantEconomy.ts).
     const settlement =
       computed && RESTAURANT_MODE
-        ? restaurantSettlement(computed, save ? supplierEffects(save).qualityBonusPct : 0)
+        ? restaurantSettlement(computed, save ? restaurantQualityBonusPct(save) : 0, {
+            // Final economy pass: a service run on Grandma's goods earns no quality bonus.
+            emergency: !!save && !!level && isEmergencyService(save.levelProgress, level.id),
+          })
         : computed;
     const amount = settlement?.netResult ?? 0;
     const result = serveCurrentOrder(campaignServiceSession, Math.random, amount);
@@ -1820,7 +1894,10 @@ export function App() {
     // so the built-in food cost isn't charged again (restaurantEconomy.ts).
     const settlement =
       computed && RESTAURANT_MODE
-        ? restaurantSettlement(computed, save ? supplierEffects(save).qualityBonusPct : 0)
+        ? restaurantSettlement(computed, save ? restaurantQualityBonusPct(save) : 0, {
+            // Final economy pass: a service run on Grandma's goods earns no quality bonus.
+            emergency: !!save && !!level && isEmergencyService(save.levelProgress, level.id),
+          })
         : computed;
     const amount = settlement?.netResult ?? 0;
     const result = serveBatchGroupOrder(batchGroupSession, batchViewOrderId, Math.random, amount);

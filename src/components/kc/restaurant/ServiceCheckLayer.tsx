@@ -1,9 +1,10 @@
 import type { SaveData } from "@/game/SaveManager";
 import type { ScreenId } from "@/components/kc/data";
 import { getLevel } from "@/game/levels/LevelManager";
-import { servicePlanFor } from "@/game/restaurant/preServiceCheck";
+import { dayStockFor, servicePlanFor } from "@/game/restaurant/preServiceCheck";
 import { pantryForMissing } from "@/game/restaurant/campaignStock";
 import { grandmasSpares } from "@/game/restaurant/serviceSupplies";
+import { markEmergencyService } from "@/game/restaurant/emergencyService";
 import { getSupplyItem } from "@/game/business/businessSupplies";
 import { fridgeUsage } from "@/game/restaurant/fridgeUsage";
 import { isSystemLive } from "@/game/restaurant/restaurantProgression";
@@ -87,7 +88,8 @@ export function ServiceCheckLayer({
       onThrowOutExpired={onThrowOutExpired}
       onUsePantry={() => {
         const next = pantryForMissing(save, check);
-        if (next) onUsePantry(next);
+        // Final economy pass: the service now runs on emergency goods (no quality bonus).
+        if (next) onUsePantry(markEmergencyService(next, plan.level.id));
       }}
       onUpgradeFridge={() => go("business-refrigerator")}
       onClose={onClose}
@@ -100,12 +102,14 @@ export function ServiceCheckLayer({
       welcome={plan.welcome}
       guests={plan.guests}
       onRestockGuest={(id, units) => openMarketIngredients(go, id, units)}
+      dayStock={dayStockFor(save, plan.level)}
+      onRestockDay={(id, units) => openMarketIngredients(go, id, units)}
       staff={plan.staff}
       onHireStaff={() => go("business-staff")}
       fridge={isSystemLive("fridge-freshness", n) ? fridgeUsage(save) : null}
       onBorrowSpares={() => {
         const next = grandmasSpares(save, plan.supplies);
-        if (next) onUsePantry(next);
+        if (next) onUsePantry(markEmergencyService(next, plan.level.id));
       }}
     />
   );

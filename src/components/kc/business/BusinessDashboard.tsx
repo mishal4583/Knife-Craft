@@ -61,6 +61,9 @@ import {
   type BusinessAlertSeverity,
 } from "@/game/business/businessAlerts";
 import { DEFAULT_REFRIGERATOR_ID } from "@/game/business/refrigeratorDefinitions";
+import { EndlessDayEvents } from "./EndlessDayEvents";
+import { usesRestaurantDemand } from "@/game/restaurant/endlessDemand";
+import { ENDLESS_STARS_PER_DAY, type DayStars } from "@/game/restaurant/restaurantStanding";
 import {
   popularityMood,
   popularityStars,
@@ -80,6 +83,10 @@ export type AdvanceDayResult = {
   inspectionReport: InspectionReport;
   inspectionFine: InspectionFineResult;
   dailyPnL: DailyPnL;
+  /** Endless Restaurant days only (restaurant build): the day's stars — status, never money. */
+  endlessStars?: DayStars;
+  /** Endless Restaurant: Today's Special's bonus paid at this End Business Day (cents). */
+  todaysSpecialBonus?: number;
 };
 
 const TABS: Array<{ id: BusinessTab; label: string; emoji: string }> = [
@@ -343,6 +350,8 @@ function Overview({
         needsAttention={needsAttention}
         onAttention={() => go(BUSINESS_TAB_SCREEN.operations)}
       />
+      {/* Endless Restaurant only: today's events (renders nothing on any other day). */}
+      <EndlessDayEvents save={save} compact />
       <KpiCards
         revenue={revenue}
         costs={costs}
@@ -766,9 +775,20 @@ function BusinessDayCard({
         <Bar fraction={popularity / 100} />
       </div>
       <p className="mt-2 font-hand text-[13px] leading-snug text-walnut/60">
-        Today's target: popularity {customers.popularity}/100 × {customers.multiplier.toFixed(2)} of{" "}
-        {BASE_CUSTOMERS_PER_DAY} base customers = {customers.target}. {customers.remaining}{" "}
-        remaining.
+        {usesRestaurantDemand(save) ? (
+          // Endless Restaurant: the target (businessCustomersToday) comes from the restaurant's
+          // demand, today's events and the team's capacity — not the classic popularity formula.
+          <>
+            Today's expected customers: {customers.target} — set by your popularity, menu and
+            today's events, up to what your team can serve. {customers.remaining} remaining.
+          </>
+        ) : (
+          <>
+            Today's target: popularity {customers.popularity}/100 ×{" "}
+            {customers.multiplier.toFixed(2)} of {BASE_CUSTOMERS_PER_DAY} base customers ={" "}
+            {customers.target}. {customers.remaining} remaining.
+          </>
+        )}
       </p>
       {customers.complete ? (
         <p className="mt-1 font-hand text-[15px] leading-snug text-walnut/75">
@@ -945,7 +965,31 @@ function DaySummary({
         <div className="flex justify-between">
           <span>Closing cash</span>
           <span className="font-extrabold text-walnut-dark">{formatUsd(pnl.closingCash)}</span>
-        </div>
+        </div>{" "}
+        {result.todaysSpecialBonus ? (
+          <div className="flex justify-between" data-testid="day-special-bonus">
+            <span>Today's Special bonus</span>
+            <span className="font-extrabold text-walnut-dark">
+              +{formatUsd(result.todaysSpecialBonus)}
+            </span>
+          </div>
+        ) : null}
+        {result.endlessStars ? (
+          <div className="flex justify-between" data-testid="day-stars">
+            <span>Stars</span>
+            <span className="font-extrabold text-walnut-dark">
+              {"★".repeat(result.endlessStars.stars)}
+              {"☆".repeat(ENDLESS_STARS_PER_DAY - result.endlessStars.stars)} ·{" "}
+              {[
+                result.endlessStars.profitable ? "profitable" : null,
+                result.endlessStars.busy ? "busy" : null,
+                result.endlessStars.clean ? "clean" : null,
+              ]
+                .filter(Boolean)
+                .join(", ") || "none today"}
+            </span>
+          </div>
+        ) : null}
       </div>
       {result.staffLaidOff.length > 0 ? (
         <p className="mt-1 font-hand text-[14px] text-copper">
