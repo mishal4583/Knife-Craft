@@ -1,5 +1,5 @@
 // The Endless Restaurant, connected (2026-10-06), in a real browser on a RESTAURANT_MODE test
-// build (VITE_RESTAURANT_MODE=1; a normal build never has it on):
+// build (the default build — the restaurant is on unless VITE_RESTAURANT_MODE=0):
 //   1. Business Day 4 (a Dinner Rush) after Level 250: Restaurant → Overview shows today's events
 //      (Dinner Rush + Today's Special with its dish and the bonus line: 15% of the day's revenue at
 //      closing, up to the existing $50 — final economy pass); the Service screen

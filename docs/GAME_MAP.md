@@ -1,13 +1,11 @@
 # KnifeCraft — game map
 
-How the game is organised. Two builds exist while the Unified Restaurant is
-under construction (one build switch, `src/game/config/restaurantMode.ts`):
+How the game is organised (one build switch, `src/game/config/restaurantMode.ts`):
 
-- **Release build** (`npm run build`, switch OFF): the shipped game. Its map
-  is the "classic" column below.
-- **Restaurant test build** (`VITE_RESTAURANT_MODE=1`, switch ON): the
-  Unified Restaurant. When it is approved and released, the classic column
-  goes away.
+- **The game** (`npm run build`, GitHub Pages, Playgama zips — switch ON since
+  2026-10-08): the Unified Restaurant below.
+- **Classic build** (`VITE_RESTAURANT_MODE=0`, switch OFF): the old separate
+  modes, kept for the classic browser tests. Its map is the last section.
 
 ## One restaurant (switch ON)
 
@@ -57,7 +55,7 @@ nothing — phases A–N are done (final QA: `docs/RESTAURANT_QA_REPORT.md`).
 Existing saves move in once with a starter crate
 (phase M, `restaurant/restaurantMigration.ts`).
 
-## Classic (switch OFF, the release today)
+## Classic (switch OFF — `VITE_RESTAURANT_MODE=0` only)
 
 - **Campaign**: 250 levels, no stock; pay = a set amount minus a built-in food
   cost, plus level rewards and milestones.

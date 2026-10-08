@@ -1,5 +1,5 @@
 // Unified Restaurant phase 5 (the day clock) + the early menu, in a real browser, on a
-// RESTAURANT_MODE test build (VITE_RESTAURANT_MODE=1; a normal build never has it on).
+// RESTAURANT_MODE test build (the default build — the restaurant is on unless VITE_RESTAURANT_MODE=0).
 //   1. Level 5 opens Day 1: the opening card lists Lunch · Level 5 and Dinner · Level 6.
 //   2. Level 6 (the same day) starts with no sheet.
 //   3. After the day's last service, Closing Time shows over the Order Board: the services,

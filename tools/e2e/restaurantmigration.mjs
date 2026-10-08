@@ -1,5 +1,5 @@
 // Unified Restaurant phase M — an existing save moves into the unified restaurant, in a real
-// browser, on a RESTAURANT_MODE test build (VITE_RESTAURANT_MODE=1). The save is seeded the way
+// browser, on a RESTAURANT_MODE build (the default — on unless VITE_RESTAURANT_MODE=0). The save is seeded the way
 // an older build wrote it (no `restaurantMigration` stamp — NOT MOVED_IN_BUSINESS).
 //   1. Level 60 (Indian Kitchen Service): the first load gives a one-time starter crate —
 //      ingredients for the next services, place settings, napkins, a bottle of dish soap and of

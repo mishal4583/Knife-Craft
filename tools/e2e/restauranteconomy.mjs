@@ -1,5 +1,5 @@
 // The final economy pass (docs/ECONOMY_FINAL.md) in a real browser. KC_URL = a RESTAURANT_MODE
-// test build (VITE_RESTAURANT_MODE=1). The release build's prices are checked by economyv25.mjs
+// build (the default — on unless VITE_RESTAURANT_MODE=0). The classic build's prices (VITE_RESTAURANT_MODE=0) are checked by economyv25.mjs
 // (Growing Kitchen "Build · $20,000").
 //   1. Kitchen Upgrade (restaurant): Growing Kitchen costs $16,000 and says what it gives
 //      ("+1.5% restaurant quality on order earnings"); building it writes ONE

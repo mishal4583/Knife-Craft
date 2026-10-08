@@ -1,5 +1,5 @@
 // Unified Restaurant phase 7 — one back office, in a real browser, on a RESTAURANT_MODE test
-// build (VITE_RESTAURANT_MODE=1; a normal build never has it on).
+// build (the default build — the restaurant is on unless VITE_RESTAURANT_MODE=0).
 //   1. The Market has no supplier tab; Ingredients names the current supplier (Local Market) and
 //      the tomato card shows the Local price; "Change supplier →" opens Restaurant → Suppliers.
 //   2. Restaurant → Suppliers: the ingredient supplier sits above the contracts; choosing

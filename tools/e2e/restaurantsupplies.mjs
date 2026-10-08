@@ -1,5 +1,5 @@
 // Unified Restaurant phase G — consumable supplies, in a real browser, on a RESTAURANT_MODE
-// test build (VITE_RESTAURANT_MODE=1; a normal build never has it on).
+// test build (the default build — the restaurant is on unless VITE_RESTAURANT_MODE=0).
 //   1. Level 31 (dine-in starts), nothing bought: the Pre-Service Check lists Supplies — the
 //      plate, fork and knife block (START disabled), napkins only warn, and the dish-soap and
 //      cleaning-liquid bottles show "Empty".

@@ -499,9 +499,10 @@ console.log("W. The switch");
   );
   assert(
     read("src/game/config/restaurantMode.ts").includes(
-      'import.meta.env.VITE_RESTAURANT_MODE === "1"',
+      'import.meta.env.VITE_RESTAURANT_MODE !== "0"',
     ),
-    "W2: still one build switch, off unless VITE_RESTAURANT_MODE=1",
+    // Developer decision 2026-10-08: the restaurant is the game — on in every build.
+    "W2: still one build switch, ON unless VITE_RESTAURANT_MODE=0 (the classic build)",
   );
 }
 

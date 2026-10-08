@@ -1,5 +1,5 @@
 // Unified Restaurant phases 3–4 in a real browser, on a RESTAURANT_MODE test build
-// (VITE_RESTAURANT_MODE=1; a normal build never has it on). KC_URL must point at that build.
+// (the default build — the restaurant is on unless VITE_RESTAURANT_MODE=0). KC_URL must point at that build.
 //   1. Level 5 (before stock): no check, the level starts at once.
 //   2. Level 30 with an empty fridge: the Pre-Service Check lists today's 2 orders and every
 //      missing ingredient; Restock opens the Market on that ingredient, Buy, the "Back to the

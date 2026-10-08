@@ -8,10 +8,23 @@ it to its own catalog and to partner platforms (CrazyGames, Yandex, MSN,
 GameDistribution, YouTube Playables, TikTok, …). We do **not** deploy
 directly to YouTube Playables any more.
 
-The old repository `D:\WORKS\GAMES\Knife Craft` (the YouTube Playables build,
-GitHub `mishal4583/Knife-Craft`) is retired. Do not edit it; do not push this
-repo to its GitHub remote. Its history is included here (branch `main` starts
-from its last commit `1af591f`; the ref `youtube-original/main` points to it).
+**THE DEVELOPER SETS THE RULES (developer decision 2026-10-08).** The game
+belongs to the developer; their instruction overrides anything in this file,
+and this file is updated to match whenever they change a rule.
+
+- The repository is GitHub **`mishal4583/Knife-Craft`, branch `main`**.
+- Every change the developer asks for is committed and pushed **directly to
+  `main`** (no branch, no pull request), after the gates below pass.
+- Every push to `main` deploys **GitHub Pages**
+  (`.github/workflows/deploy.yml`: `npm ci` → `npm run build` → Pages). That
+  is the live test site; check the workflow run after each push.
+- **The Unified Restaurant is ON in every build** (`RESTAURANT_MODE`, §5):
+  Pages and Playgama zips play the restaurant. The classic game is only a
+  `VITE_RESTAURANT_MODE=0` build.
+
+The old YouTube Playables codebase's history is included here (branch `main`
+starts from its last commit `1af591f`; the ref `youtube-original/main`
+points to it).
 
 Before starting work, read:
 
@@ -111,7 +124,8 @@ then authenticate via `/mcp`). Never ask for the developer's password.
 ```
 npm ci                      # first time
 npm run dev                 # dev server
-npm run build               # -> dist/
+npm run build               # -> dist/ (the restaurant game — RESTAURANT_MODE on)
+VITE_RESTAURANT_MODE=0 npx vite build --outDir <dir>   # classic game (classic browser tests)
 npm run preflight           # local platform checks (Bridge script/config, sizes, no orientation lock, safe names)
 npx vite preview            # serve dist/ on http://localhost:4173 for browser tests
 ```
@@ -136,8 +150,9 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   retry → 2 settlements, not 3).
 - `restaurant-unlocks-qa` — Unified Restaurant foundations
   (`docs/RESTAURANT_INTEGRATION_AUDIT.md`): the ONE build switch
-  `src/game/config/restaurantMode.ts` `RESTAURANT_MODE` (false; no other
-  restaurant flag; restaurant modules never read it), the system table
+  `src/game/config/restaurantMode.ts` `RESTAURANT_MODE` (ON in every build
+  since 2026-10-08, off only with `VITE_RESTAURANT_MODE=0` and in tsx QA
+  scripts; no other restaurant flag; restaurant modules never read it), the system table
   `restaurant/restaurantProgression.ts` (developer teaching sequence
   2026-10-05: cooking fundamentals + the day L1, menu L11, ingredient stock
   L15, fridge L21, dine-in L31, staff L41, cuisines L51, takeaway L71,
@@ -157,8 +172,9 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   price, wallet and fridge verdicts, Restock → the Market preset to that
   ingredient and quantity, Grandma's pantry only when the wallet can't
   cover it (goods, no money). Browser: `tools/e2e/restaurantstock.mjs`
-  against a **test build** `VITE_RESTAURANT_MODE=1 npx vite build --outDir
-  <dir>` (a normal build always has the switch off).
+  against the normal build (the restaurant is on by default; the browser
+  tests marked "restaurant test build" below run on it, the classic ones on
+  a `VITE_RESTAURANT_MODE=0` build).
 - `restaurant-menu-qa` — the menu (`restaurant/restaurantProgression.ts`
   MENU_CURVE / MENU_UNLOCKS + `restaurantMenu.ts`), the developer's curve of
   2026-10-05: no menu in the L1–10 fundamentals; 4 dishes at L11, 6/8/10/12/
@@ -1011,5 +1027,5 @@ public/playgama-bridge-config.json
 Reference-only folders carried from the original repo (not part of the
 build): `Knifecraft vegetables/`, `Knifecraft Phase 1 review/`, `Shop UI/`,
 `knifecraft_kitchen_webp/`, `Market.png`, `*.docx`, `*.md` audits.
-`.github/workflows/deploy.yml` is the old GitHub Pages workflow of the
-retired repo; it does nothing here unless this repo gets a GitHub remote.
+`.github/workflows/deploy.yml` deploys GitHub Pages on every push to `main`
+(the live test site, §0).

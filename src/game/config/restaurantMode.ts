@@ -13,16 +13,16 @@
  *  - it is an engineering switch, never a player-facing setting;
  *  - only wiring (App, router, screens) reads it. The restaurant modules in
  *    src/game/restaurant/ are pure and take their inputs as parameters, so
- *    QA exercises them whatever the switch says;
- *  - it stays false until every phase, the save migration, the economy
- *    pass, QA and real-device testing are done and the developer approves.
+ *    QA exercises them whatever the switch says.
  *
- * Build-controlled: a normal build (`npm run build`, every release) has it
- * OFF. Only a test build made with `VITE_RESTAURANT_MODE=1 npm run build`
- * turns it on, so the restaurant can be played in the browser tests before
- * release. Vite inlines the value, so a release bundle carries `false`.
- * Outside Vite (tsx QA scripts) `import.meta.env` is absent: off. (Vite only
- * substitutes the plain `import.meta.env.VITE_…` form, never `?.`.)
+ * ON BY DEFAULT (developer decision 2026-10-08: the unified restaurant is
+ * the game). Every build — `npm run build`, GitHub Pages, Playgama zips —
+ * has it ON. A classic build (the old separate Campaign / Business Mode /
+ * Endless Service) is made with `VITE_RESTAURANT_MODE=0 npm run build`; the
+ * classic browser tests use one. Vite inlines the value. Outside Vite (tsx
+ * QA scripts) `import.meta.env` is absent: off, so the scripts keep testing
+ * the classic paths and the restaurant modules as pure functions. (Vite
+ * only substitutes the plain `import.meta.env.VITE_…` form, never `?.`.)
  */
 export const RESTAURANT_MODE: boolean =
-  typeof import.meta.env !== "undefined" && import.meta.env.VITE_RESTAURANT_MODE === "1";
+  typeof import.meta.env !== "undefined" && import.meta.env.VITE_RESTAURANT_MODE !== "0";

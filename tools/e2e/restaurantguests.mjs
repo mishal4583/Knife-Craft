@@ -1,5 +1,5 @@
 // Unified Restaurant phase D — menu guests, in a real browser, on a RESTAURANT_MODE test build
-// (VITE_RESTAURANT_MODE=1; a normal build never has it on).
+// (the default build — the restaurant is on unless VITE_RESTAURANT_MODE=0).
 //   1. Level 12: after its own order is served, the result shows Finish Level AND
 //      "Menu guest 1/1: <dish from the menu> · $price" (guests start when the menu opens, L11).
 //   2. Taking the guest brings a new order of that dish into the same service (cut as usual).

@@ -1,5 +1,5 @@
 // Unified Restaurant — the developer's 2026-10-05 brief, in a real browser, on a
-// RESTAURANT_MODE test build (VITE_RESTAURANT_MODE=1; a normal build never has it on).
+// RESTAURANT_MODE test build (the default build — the restaurant is on unless VITE_RESTAURANT_MODE=0).
 //   1. Level 11: the Pre-Service Check's news opens the menu (4 dishes) and explains the chain
 //      Menu → Customer Order → Inventory → Preparation → Service → Revenue.
 //   2. Level 35, empty fridge: Inventory's ⚠️ NEEDS ATTENTION lists the next service's missing
