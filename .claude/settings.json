@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push origin main)",
+      "Bash(git push -u origin main)",
+      "Bash(git fetch:*)",
+      "Bash(git pull origin main)",
+      "Bash(npm run build)",
+      "Bash(npm run preflight)",
+      "Bash(npx tsc --noEmit -p .)",
+      "Bash(npx tsx scripts/*)"
+    ]
+  }
+}
