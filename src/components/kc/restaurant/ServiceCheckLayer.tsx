@@ -10,6 +10,12 @@ import { fridgeUsage } from "@/game/restaurant/fridgeUsage";
 import { isSystemLive } from "@/game/restaurant/restaurantProgression";
 import { openMarketIngredients, openMarketSupplies } from "@/components/kc/marketFocus";
 import { PreServiceCheck } from "./PreServiceCheck";
+import { measureOf } from "@/game/business/measure";
+import {
+  quickRestock,
+  quickRestockPlan,
+  type QuickRestockLine,
+} from "@/game/restaurant/quickRestock";
 
 /**
  * Where the open Pre-Service Check shows (Unified Restaurant, behind
@@ -29,6 +35,7 @@ export function ServiceCheckLayer({
   onClose,
   onThrowOutExpired,
   onUsePantry,
+  onQuickRestock,
 }: {
   save: SaveData;
   levelId: string;
@@ -39,6 +46,8 @@ export function ServiceCheckLayer({
   onClose: () => void;
   onThrowOutExpired: () => void;
   onUsePantry: (next: SaveData) => void;
+  /** Quick restock bought: App records one ledger entry per ingredient and saves. */
+  onQuickRestock: (next: SaveData, lines: readonly QuickRestockLine[]) => void;
 }) {
   const level = getLevel(levelId);
   const plan = level ? servicePlanFor(save, level) : null;
@@ -107,6 +116,12 @@ export function ServiceCheckLayer({
       staff={plan.staff}
       onHireStaff={() => go("business-staff")}
       fridge={isSystemLive("fridge-freshness", n) ? fridgeUsage(save) : null}
+      measure={measureOf(save)}
+      quickRestock={quickRestockPlan(save, check)}
+      onQuickRestock={() => {
+        const r = quickRestock(save, check);
+        if (r.ok) onQuickRestock(r.save, r.lines);
+      }}
       onBorrowSpares={() => {
         const next = grandmasSpares(save, plan.supplies);
         if (next) onUsePantry(markEmergencyService(next, plan.level.id));

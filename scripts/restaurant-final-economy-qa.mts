@@ -137,9 +137,11 @@ console.log("V. Investment value");
   );
   const c250 = atL(R.C!, 250);
   const a250 = atL(R.A!, 250);
+  // Realistic portions (developer 2026-10-08) need about 2.5× less fridge than a pound per step:
+  // before them the completionist peaked at L91 61 / L250 102 of 140; now about 35 / 51.
   assert(
-    c250.fridgePeak > 80 && atL(R.C!, 91).fridgePeak > 40 && a250.fridgePeak <= 40,
-    `V3: whole-day stocking fills the bigger fridges (completionist L91 ${atL(R.C!, 91).fridgePeak}, L250 ${c250.fridgePeak} of ${c250.fridgeCap}); service-by-service stocking still fits the Basic (saver ${a250.fridgePeak}/40)`,
+    c250.fridgePeak > 40 && c250.fridgePeak <= c250.fridgeCap && a250.fridgePeak <= 40,
+    `V3: whole-day stocking outgrows the Basic fridge by L250 (completionist L91 ${atL(R.C!, 91).fridgePeak}, L250 ${c250.fridgePeak} of ${c250.fridgeCap}); service-by-service stocking still fits the Basic (saver ${a250.fridgePeak}/40)`,
   );
   assert(
     R.E!.stats.qualityBy.supplier! > 0 && R.D!.final > R.C!.final,

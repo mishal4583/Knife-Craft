@@ -9,7 +9,7 @@ import {
 } from "react";
 import { cn } from "@/lib/utils";
 import { INGREDIENT_EMOJI } from "@/game/knives/knifeDefinitions";
-import { purchaseUnitFor } from "@/game/business/businessPricing";
+import { displayMeasure, formatStockAmount, itemCount } from "@/game/business/measure";
 import { formatUsd } from "@/game/business/businessCurrency";
 import { formatQuantity } from "@/game/business/businessInventory";
 import type { IngredientId } from "@/game/definitions";
@@ -60,8 +60,20 @@ const LAYOUTS: Record<string, Layout> = {
   },
 };
 
+/** A crate's amount in the player's measure (Settings → Weights). */
 function qty(id: IngredientId, quantity: number): string {
-  return `${formatQuantity(quantity)} ${purchaseUnitFor(id)}`;
+  return formatStockAmount(id, quantity, displayMeasure());
+}
+
+/** The amount on a crate tag: the number, then its unit small. */
+function TagQty({ id, quantity }: { id: IngredientId; quantity: number }) {
+  const [n, ...unit] = qty(id, quantity).split(" ");
+  return (
+    <>
+      {n}
+      <small> {unit.join(" ")}</small>
+    </>
+  );
 }
 
 function daysText(daysLeft: number): string {
@@ -71,9 +83,11 @@ function daysText(daysLeft: number): string {
 }
 
 /** How many pieces the crate shows: a hint of how full it is, from the real quantity. */
-function pileSize(quantity: number): number {
-  if (quantity < 2) return 1;
-  if (quantity < 5) return 2;
+/** 1–3 pieces drawn in a crate: how many whole items it holds (a 0.6 lb crate of tomatoes shows 2). */
+function pileSize(id: IngredientId, quantity: number): number {
+  const items = itemCount(id, quantity);
+  if (items < 1.5) return 1;
+  if (items < 2.5) return 2;
   return 3;
 }
 
@@ -205,8 +219,8 @@ function Crate({
         selected && "kcf-item--selected",
       )}
     >
-      <span className={cn("kcf-pile", `kcf-pile--${pileSize(item.quantity)}`)} aria-hidden>
-        {Array.from({ length: pileSize(item.quantity) }, (_, i) => (
+      <span className={cn("kcf-pile", `kcf-pile--${pileSize(item.id, item.quantity)}`)} aria-hidden>
+        {Array.from({ length: pileSize(item.id, item.quantity) }, (_, i) => (
           <span key={i}>{emoji}</span>
         ))}
       </span>
@@ -215,8 +229,7 @@ function Crate({
         <span className="kcf-tag__name">{item.name}</span>
         <span className="kcf-tag__row">
           <span className="kcf-tag__qty">
-            {formatQuantity(item.quantity)}
-            <small> {purchaseUnitFor(item.id)}</small>
+            <TagQty id={item.id} quantity={item.quantity} />
           </span>
           <span className="kcf-tag__days">{item.daysLeft <= 0 ? "exp" : `${item.daysLeft}d`}</span>
         </span>
@@ -258,8 +271,7 @@ function BinItem({
       <span className="kcf-tag kcf-tag--bin">
         <span className="kcf-tag__name">{item.name}</span>
         <span className="kcf-tag__qty">
-          {formatQuantity(item.quantity)}
-          <small> {purchaseUnitFor(item.id)}</small>
+          <TagQty id={item.id} quantity={item.quantity} />
         </span>
         <span className="kcf-tag__fresh" aria-hidden>
           <span style={{ width: `${Math.max(4, Math.round(item.freshness * 100))}%` }} />

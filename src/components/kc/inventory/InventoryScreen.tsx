@@ -11,6 +11,14 @@ import { INGREDIENTS, type IngredientId } from "@/game/definitions";
 import { INGREDIENT_EMOJI } from "@/game/knives/knifeDefinitions";
 import { formatUsd } from "@/game/business/businessCurrency";
 import { formatQuantity } from "@/game/business/businessInventory";
+import {
+  displayMeasure,
+  formatStockAmount,
+  inMeasure,
+  itemCountText,
+  marketUnitLabel,
+  pricePerMarketUnit,
+} from "@/game/business/measure";
 import type { PerishabilityState } from "@/game/business/perishability";
 import {
   EXPIRING_SOON_DAYS,
@@ -49,14 +57,22 @@ const STATUS_PILL: Record<"sage" | "gold" | "copper" | "tomato", string> = {
   tomato: "border-tomato/40 bg-tomato/12 text-tomato",
 };
 
-function qty(item: { quantity: number; unit: string }): string {
-  return `${formatQuantity(item.quantity)} ${item.unit}`;
+/** A stock amount in the player's measure (Settings → Weights): "0.6 lb", "0.27 kg", "1 loaf". */
+function qty(item: { ingredientId: IngredientId; quantity: number }): string {
+  return formatStockAmount(item.ingredientId, item.quantity, displayMeasure());
+}
+
+/** What one Market unit of the item is called in the player's measure: "lb", "kg", "loaf". */
+function unitOf(item: { ingredientId: IngredientId }): string {
+  return marketUnitLabel(item.ingredientId, displayMeasure());
 }
 
 /** An estimate (today's requirement, what's left after service): one decimal, never false precision. */
-function approx(n: number, unit: string): string {
-  if (n > 0 && n < 0.05) return `< 0.1 ${unit}`;
-  return `${Number(n.toFixed(1)).toLocaleString("en-US")} ${unit}`;
+function approx(n: number, item: { ingredientId: IngredientId }): string {
+  const v = inMeasure(item.ingredientId, n, displayMeasure());
+  const unit = unitOf(item);
+  if (v > 0 && v < 0.05) return `< 0.1 ${unit}`;
+  return `${Number(v.toFixed(1)).toLocaleString("en-US")} ${unit}`;
 }
 
 function daysText(days: number): string {
@@ -158,7 +174,7 @@ function AttentionRow({
 }) {
   const usableLine =
     item.status === "expired"
-      ? `${qty(item)} · 0 ${item.unit} usable · throw it out now or it goes at End Business Day`
+      ? `${qty(item)} · 0 ${unitOf(item)} usable · throw it out now or it goes at End Business Day`
       : item.status === "spoils_today"
         ? `${qty(item)} left · spoils at End Business Day`
         : item.status === "expiring"
@@ -191,7 +207,7 @@ function AttentionRow({
           {item.todayRequirement !== undefined &&
           (item.status === "critical" || item.status === "low") ? (
             <span className="block font-hand text-[13px] leading-tight text-walnut/70">
-              Today's menu needs ≈ {approx(item.todayRequirement, item.unit)}
+              Today's menu needs ≈ {approx(item.todayRequirement, item)}
             </span>
           ) : null}
         </span>
@@ -275,7 +291,9 @@ function StockCard({
             <StatusPill status={item.status} />
           </span>
           <span className="block font-ui text-[12px] font-bold text-walnut/70 tabular-nums">
-            {qty(item)} · {formatUsd(item.unitPrice)} / {item.unit} · {formatUsd(item.stockValue)}
+            {qty(item)} ·{" "}
+            {formatUsd(pricePerMarketUnit(item.ingredientId, item.unitPrice, displayMeasure()))} /{" "}
+            {unitOf(item)} · {formatUsd(item.stockValue)}
           </span>
           <span className="mt-1 flex items-center gap-2">
             <span className="w-16 shrink-0">
@@ -292,7 +310,7 @@ function StockCard({
       <div className="mt-1 flex items-center gap-2 border-t border-walnut/10 pt-1.5">
         <span className="min-w-0 flex-1 font-hand text-[13px] leading-tight text-walnut/65">
           {item.todayRequirement !== undefined
-            ? `Today's menu: ≈ ${approx(item.todayRequirement, item.unit)} needed`
+            ? `Today's menu: ≈ ${approx(item.todayRequirement, item)} needed`
             : "Not on today's menu"}
         </span>
         <RestockButton go={go} id={item.ingredientId} label="Restock →" />
@@ -359,7 +377,12 @@ function DetailSheet({
           </button>
         </div>
         <div className="mt-2">
-          <DetailRow label="In stock">{qty(item)}</DetailRow>
+          <DetailRow label="In stock">
+            {qty(item)}
+            {itemCountText(item.ingredientId, item.quantity)
+              ? ` (${itemCountText(item.ingredientId, item.quantity)})`
+              : ""}
+          </DetailRow>
           <div className="border-b border-walnut/10 py-1.5">
             <div className="flex items-baseline justify-between">
               <span className="font-ui text-[12px] font-bold text-walnut/60">Freshness</span>
@@ -373,16 +396,17 @@ function DetailSheet({
           </div>
           <DetailRow label="Days remaining">{daysText(item.daysRemaining)}</DetailRow>
           <DetailRow label="Average cost">
-            {formatUsd(item.unitPrice)} / {item.unit}
+            {formatUsd(pricePerMarketUnit(item.ingredientId, item.unitPrice, displayMeasure()))} /{" "}
+            {unitOf(item)}
           </DetailRow>
           <DetailRow label="Stock value">{formatUsd(item.stockValue)}</DetailRow>
           {item.todayRequirement !== undefined ? (
             <>
               <DetailRow label="Today's requirement">
-                ≈ {approx(item.todayRequirement, item.unit)}
+                ≈ {approx(item.todayRequirement, item)}
               </DetailRow>
               <DetailRow label="After today's service">
-                ≈ {approx(item.afterToday ?? 0, item.unit)}
+                ≈ {approx(item.afterToday ?? 0, item)}
               </DetailRow>
             </>
           ) : null}

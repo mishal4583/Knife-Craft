@@ -1,3 +1,4 @@
+import type { Measure } from "@/game/business/measure";
 import type { ScreenId } from "./data";
 import { paidLevelReward } from "@/game/levels/levelRewards";
 import type { SaveData } from "@/game/SaveManager";
@@ -227,13 +228,17 @@ export function Settings({
   go,
   settings,
   onToggleSetting,
+  onSetMeasure,
   onResetProgress,
 }: {
   go: (s: ScreenId) => void;
-  settings: { sound: boolean };
+  settings: { sound: boolean; measure?: Measure };
   onToggleSetting: (key: "sound") => void;
+  /** Restaurant build: pick lb or kg for weighed ingredients (absent in the classic build). */
+  onSetMeasure?: ((measure: Measure) => void) | undefined;
   onResetProgress: () => void;
 }) {
+  const measure: Measure = settings.measure === "kg" ? "kg" : "lb";
   return (
     <div className="relative h-full w-full overflow-hidden bg-cream">
       <div className="relative h-full overflow-y-auto no-scrollbar pb-24">
@@ -242,6 +247,40 @@ export function Settings({
           <Panel className="divide-y divide-walnut/10 p-1">
             <Toggle label="Sound" on={settings.sound} onToggle={() => onToggleSetting("sound")} />
           </Panel>
+          {onSetMeasure ? (
+            <div data-testid="measure-setting">
+              <Panel className="p-3">
+                <p className="font-ui text-[13px] font-bold text-walnut-dark">Weights</p>
+                <p className="font-hand text-[14px] leading-snug text-walnut/65">
+                  How the Market, the fridge and your orders weigh ingredients.
+                </p>
+                <div className="mt-2 grid grid-cols-2 gap-2" role="radiogroup" aria-label="Weights">
+                  {(
+                    [
+                      ["lb", "Pounds (lb)"],
+                      ["kg", "Kilograms (kg)"],
+                    ] as const
+                  ).map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      role="radio"
+                      aria-checked={measure === value}
+                      onClick={() => onSetMeasure(value)}
+                      className={cn(
+                        "press h-12 rounded-2xl border font-ui text-[13px] font-extrabold",
+                        measure === value
+                          ? "wood border-walnut-dark/50 text-ivory"
+                          : "card-warm border-walnut/15 text-walnut-dark",
+                      )}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </Panel>
+            </div>
+          ) : null}
           <Panel className="p-4">
             <p className="font-ui text-[10px] font-extrabold uppercase tracking-[0.2em] text-copper">
               Credits

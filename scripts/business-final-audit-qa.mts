@@ -142,15 +142,15 @@ function needTotals(dishId: string): Map<IngredientId, number> {
   );
   const bread = needTotals("biz-garlic-bread");
   assert(
-    bread.get("garlic") === 0.05 && bread.get("bread") === 1,
-    "A3: Garlic Bread draws 0.05 lb garlic (2 x 0.025 Aromatic portion) + 1 bread — the same portions its price is built on",
+    bread.get("garlic") === 0.025 && bread.get("bread") === 0.25,
+    "A3: Garlic Bread draws one garlic serving (0.025 lb — peel + smash of the SAME cloves) + a quarter loaf — realistic portions (developer 2026-10-08), the same ones its food cost is built on",
   );
 }
 
-// ===== B: fractional stock — 20 Garlic Breads use exactly 1 lb of garlic, with no float drift, and the 21st is refused. =====
+// ===== B: fractional stock — 40 Garlic Breads use exactly 1 lb of garlic (0.025 lb each), with no float drift, and the 41st is refused. =====
 {
   let inv = addStock({}, "garlic", 1, 350, 1);
-  inv = addStock(inv, "bread", 21, 225, 1);
+  inv = addStock(inv, "bread", 11, 225, 1);
   const dish = getBusinessDish("biz-garlic-bread")!;
   let served = 0;
   let save: SaveData = {
@@ -158,8 +158,8 @@ function needTotals(dishId: string): Map<IngredientId, number> {
     credits: 0,
     business: { ...DEFAULT_BUSINESS_STATE, calendar: { businessDay: 1 }, inventory: inv },
   };
-  for (let i = 0; i < 25; i++) {
-    // Order frequency (Economy V3 Phase 16): a day brings a limited number of customers, so the 20 serves
+  for (let i = 0; i < 45; i++) {
+    // Order frequency (Economy V3 Phase 16): a day brings a limited number of customers, so the 40 serves
     // span real Business Days — each closed with the real End Business Day.
     if (businessCustomersToday(save).complete) save = endBusinessDay(save).save;
     if (!businessOrderAvailability(save, dish).available) break;
@@ -174,16 +174,19 @@ function needTotals(dishId: string): Map<IngredientId, number> {
     save = result.save;
     served++;
   }
-  assert(served === 20, `B: exactly 20 Garlic Breads served from 1 lb of garlic (got ${served})`);
+  assert(served === 40, `B: exactly 40 Garlic Breads served from 1 lb of garlic (got ${served})`);
   assert(
     getQuantity(save.business.inventory, "garlic") === 0 && !save.business.inventory.garlic,
     "B2: the garlic entry is removed exactly at zero — no 0.000000001 float residue",
   );
-  assert(getQuantity(save.business.inventory, "bread") === 1, "B3: bread drew exactly 1 per serve");
+  assert(
+    getQuantity(save.business.inventory, "bread") === 1,
+    "B3: bread drew exactly a quarter loaf per serve (11 − 40 × 0.25 = 1)",
+  );
   const avail = businessOrderAvailability(save, dish);
   assert(
     !avail.available && JSON.stringify(avail.missing) === '["garlic"]',
-    "B4: the 21st order is refused and names only garlic as missing",
+    "B4: the 41st order is refused and names only garlic as missing",
   );
 }
 
@@ -490,8 +493,8 @@ const FOCUS_MENU = [
       assert(
         s.economyLedger.filter((e) => e.category === "business-revenue").length === 1 &&
           s.business.finance.dailyAccumulator.revenue === customerPaysAt50(1234) &&
-          s.business.finance.dailyAccumulator.cogs === 300,
-        "H15: exactly one revenue entry; P&L revenue = the customer payment and COGS 300c (3 x $1.00 veg) are consistent",
+          s.business.finance.dailyAccumulator.cogs === 75,
+        "H15: exactly one revenue entry; P&L revenue = the customer payment and COGS 75c (a 0.3 lb tomato + 0.3 lb cucumber + 0.15 lb carrot at $1.00/lb) are consistent",
       );
     }
   }

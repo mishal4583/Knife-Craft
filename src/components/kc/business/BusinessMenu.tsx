@@ -15,6 +15,7 @@ import {
 import { businessDishRequirements } from "@/game/business/businessServiceCatalog";
 import { INGREDIENTS, type IngredientId } from "@/game/definitions";
 import { formatQuantity, normalizeQuantity } from "@/game/business/businessInventory";
+import { displayMeasure, formatStockAmount } from "@/game/business/measure";
 import { purchaseUnitFor } from "@/game/business/businessPricing";
 import {
   businessCustomerPayment,
@@ -213,7 +214,7 @@ export function BusinessMenu({
                     {[...needTotals]
                       .map(
                         ([id, q]) =>
-                          `${formatQuantity(q)} ${purchaseUnitFor(id)} ${INGREDIENTS[id]?.name ?? id}`,
+                          `${formatStockAmount(id, q, displayMeasure())} ${INGREDIENTS[id]?.name ?? id}`,
                       )
                       .join(" · ")}
                   </p>

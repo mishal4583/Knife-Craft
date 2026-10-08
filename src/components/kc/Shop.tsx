@@ -203,6 +203,7 @@ export function Shop({
   sharpenKnife,
   upgradeKnife,
   purchaseIngredient,
+  purchaseIngredients,
   purchaseSupply,
   initialCategory = "knives",
 }: {
@@ -217,6 +218,11 @@ export function Shop({
   upgradeKnife: (id: string, stat: BlacksmithStat) => UpgradeKnifeResult;
   /** Business stock — the Ingredients tab is where it is bought (MarketIngredients). */
   purchaseIngredient: (ingredientId: string, quantity: number) => PurchaseIngredientResult;
+  purchaseIngredients?: (lines: ReadonlyArray<{ ingredientId: string; quantity: number }>) => {
+    bought: number;
+    skipped: number;
+    totalCost: number;
+  };
   /** Business supplies — bought in their three Market sections (MarketSupplies). */
   purchaseSupply: (supplyId: string, packs: number) => PurchaseSupplyResult;
   /** "shop-ingredients" opens the Market on Ingredients (Business → Market links). */
@@ -441,6 +447,7 @@ export function Shop({
             <MarketIngredients
               save={save}
               purchaseIngredient={purchaseIngredient}
+              {...(purchaseIngredients ? { purchaseIngredients } : {})}
               focusId={focusId}
               focusQuantity={focusQuantity}
               setNotice={setNotice}

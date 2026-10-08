@@ -13,6 +13,7 @@
  * Run: npx tsx scripts/business-pnl-qa.mts
  */
 import { willingnessToPayMultiplierFor } from "../src/game/business/DemandManager.ts";
+import { INGREDIENT_MEASURES } from "../src/game/business/ingredientMeasures.ts";
 import { DEFAULT_SAVE, type SaveData } from "../src/game/SaveManager.ts";
 import { DEFAULT_LEVEL_PROGRESS } from "../src/game/levels/LevelManager.ts";
 import { DEFAULT_BUSINESS_STATE } from "../src/game/business/businessTypes.ts";
@@ -158,7 +159,7 @@ function sessionReadyFor(recipeId: string): ServiceSession {
   const revenueEntries = businessLedgerEntries(withLedger.economyLedger).filter((e) => e.category === "business-revenue");
   assert(revenueEntries.length === 1 && revenueEntries[0]!.amount === customerPaysAt50(price), `B2: exactly one business-revenue ledger entry for the exact customer payment (${customerPaysAt50(price)}c from menu price ${price}c)`);
   assert(withLedger.business.finance.dailyAccumulator.revenue === result.amountCharged && result.amountCharged === customerPaysAt50(price), "B3: the daily accumulator's revenue matches the amount charged exactly");
-  const realCost = realCogsFor(save.business.inventory, [{ ingredientId: "tomato", quantity: 1 }, { ingredientId: "cucumber", quantity: 1 }, { ingredientId: "carrot", quantity: 1 }]);
+  const realCost = realCogsFor(save.business.inventory, (["tomato", "cucumber", "carrot"] as const).map((ingredientId) => ({ ingredientId, quantity: INGREDIENT_MEASURES[ingredientId].serving })));
   assert(withLedger.business.finance.dailyAccumulator.cogs === realCost, `B4: the daily accumulator's COGS matches the real ingredient cost (${realCost}c)`);
   assert(withLedger.business.finance.lifetimeCogs === realCost, "B5: lifetimeCogs accumulates the same amount");
 }
@@ -230,10 +231,10 @@ function sessionReadyFor(recipeId: string): ServiceSession {
   const save = saveAt({ credits: 1000, business: { ...DEFAULT_BUSINESS_STATE, calendar: { businessDay: 1 }, inventory: fullSaladInventory(1) } });
   const session = sessionReadyFor(SALAD_RECIPE_ID);
   const result = serveBusinessOrder(session, save, Math.random)!;
-  assert(getQuantity(result.save.business.inventory, "tomato") === 9, "H: tomato inventory decreases by exactly 1 (beginning 10 -> ending 9)");
-  assert(getQuantity(result.save.business.inventory, "cucumber") === 9, "H2: cucumber likewise");
-  assert(getQuantity(result.save.business.inventory, "carrot") === 9, "H3: carrot likewise");
-  assert(result.cogsCharged === 300, `H4: COGS for Garden Salad (1 tomato + 1 cucumber + 1 carrot, each 100c) is exactly 300c (got ${result.cogsCharged})`);
+  assert(getQuantity(result.save.business.inventory, "tomato") === 9.7, "H: tomato inventory decreases by exactly one 0.3 lb tomato (beginning 10 -> ending 9.7)");
+  assert(getQuantity(result.save.business.inventory, "cucumber") === 9.7, "H2: cucumber by half a cucumber (0.3 lb)");
+  assert(getQuantity(result.save.business.inventory, "carrot") === 9.85, "H3: carrot by one 0.15 lb carrot");
+  assert(result.cogsCharged === 75, `H4: COGS for Garden Salad (0.3 lb tomato + 0.3 lb cucumber + 0.15 lb carrot, each 100c/lb) is exactly 75c (got ${result.cogsCharged})`);
   assert(result.cogsCharged !== 0, "H5: a purchased-but-not-yet-consumed inventory value is never confused with COGS (COGS is only ever recognized at actual consumption, never at purchase)");
 }
 

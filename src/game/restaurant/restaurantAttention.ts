@@ -17,6 +17,7 @@
  * Read-only (the Inventory rule): every figure comes from the save and the
  * existing systems. Pure; nothing reads RESTAURANT_MODE.
  */
+import { formatStockAmount, marketUnitLabel, measureOf } from "../business/measure";
 import type { SaveData } from "../SaveManager";
 import type { IngredientId } from "../definitions";
 import { INGREDIENTS } from "../definitions";
@@ -63,6 +64,7 @@ export function restaurantAttention(save: SaveData): RestaurantAttention {
     level && !isCompleted(level.id, save.levelProgress) ? servicePlanFor(save, level) : null;
   const n = plan?.levelNumber ?? levelNumber(save.levelProgress.highestUnlockedLevelId);
   let recommendedCost = 0;
+  const measure = measureOf(save);
 
   if (plan?.check.applies) {
     for (const r of plan.check.missingRows) {
@@ -70,7 +72,7 @@ export function restaurantAttention(save: SaveData): RestaurantAttention {
         id: `ingredient:${r.ingredientId}`,
         kind: "ingredient",
         severity: "urgent",
-        text: `${INGREDIENTS[r.ingredientId].name} — ${formatQuantity(r.usable)} remaining (Level ${plan.levelNumber} needs ${formatQuantity(r.needed)})`,
+        text: `${INGREDIENTS[r.ingredientId].name} — ${formatStockAmount(r.ingredientId, r.usable, measure)} remaining (Level ${plan.levelNumber} needs ${formatStockAmount(r.ingredientId, r.needed, measure)})`,
         action: { to: "ingredient", id: r.ingredientId, quantity: r.buyUnits },
       });
       recommendedCost += r.quote?.totalCost ?? 0;
@@ -97,7 +99,7 @@ export function restaurantAttention(save: SaveData): RestaurantAttention {
           id: `guest:${g.ingredientId}`,
           kind: "ingredient",
           severity: "low",
-          text: `${INGREDIENTS[g.ingredientId].name} — ${g.buyUnits} more for today's menu guests (optional)`,
+          text: `${INGREDIENTS[g.ingredientId].name} — ${g.buyUnits} ${marketUnitLabel(g.ingredientId, measure, g.buyUnits)} more for today's menu guests (optional)`,
           action: { to: "ingredient", id: g.ingredientId, quantity: g.buyUnits },
         });
     for (const r of plan.staff.filter((x) => !x.met))

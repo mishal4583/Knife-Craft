@@ -14,6 +14,8 @@
  *
  * Run: npx tsx scripts/business-p2-qa.mts
  */
+import { normalizeQuantity } from "../src/game/business/businessInventory.ts";
+import { INGREDIENT_MEASURES } from "../src/game/business/ingredientMeasures.ts";
 import { DEFAULT_SAVE, type SaveData } from "../src/game/SaveManager.ts";
 import { DEFAULT_BUSINESS_STATE } from "../src/game/business/businessTypes.ts";
 import { addStock, getQuantity } from "../src/game/business/businessInventory.ts";
@@ -134,7 +136,7 @@ function twoDishMenu(save: SaveData): SaveData {
   const served = serveBusinessOrder(saladSession!, save, makeSeededRand(1))!;
   const after = appendLedgerEntry(served.save, "business-revenue", served.amountCharged, served.dish.id);
   assert(serveBusinessOrder(served.session, after, makeSeededRand(1)) === null, "A7: the same order can't be paid twice");
-  assert(after.economyLedger.length === 1 && after.credits === 100_000 + served.amountCharged && getQuantity(after.business.inventory, "tomato") === 4, "A8: exactly one payment, one ledger entry, one unit of each ingredient consumed");
+  assert(after.economyLedger.length === 1 && after.credits === 100_000 + served.amountCharged && getQuantity(after.business.inventory, "tomato") === normalizeQuantity(5 - INGREDIENT_MEASURES.tomato.serving), "A8: exactly one payment, one ledger entry, one plate's serving of each ingredient consumed (a 0.3 lb tomato)");
   assert(Object.values(after.business.inventory).every((e) => !e || e.quantity > 0), "A9: no inventory quantity is ever zero/negative");
 }
 

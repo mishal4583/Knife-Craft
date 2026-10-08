@@ -345,13 +345,16 @@ if (isMain) {
     Object.values(results).every((r) => r.problems.length === 0),
     "E1: money never < 0 and the ledger matches the cash every day, in every restaurant",
   );
+  // Bands since the realistic portions (developer 2026-10-08): a plate now uses a 0.3 lb tomato,
+  // not a pound, so food is ~10 % of the menu price instead of ~30 % and every day keeps more.
+  // Before it: E2 $300–$600 (measured $519), E3 both < $150 ($112, −$187).
   assert(
-    v(3).perDay >= 300_00 && v(3).perDay <= 600_00,
-    `E2: the fully developed, properly staffed restaurant earns $300–$600 a day (${$(v(3).perDay)})`,
+    v(3).perDay >= 600_00 && v(3).perDay <= 900_00,
+    `E2: the fully developed, properly staffed restaurant earns $600–$900 a day (${$(v(3).perDay)})`,
   );
   assert(
-    v(0).perDay < 150_00 && v(4).perDay < 150_00,
-    `E3: a minimal or overstaffed restaurant earns little or loses money (${$(v(0).perDay)}, ${$(v(4).perDay)})`,
+    v(0).perDay < 200_00 && v(4).perDay < 0,
+    `E3: a minimal restaurant earns little (< $200: ${$(v(0).perDay)}) and an overstaffed one loses money (${$(v(4).perDay)})`,
   );
   assert(
     v(0).perDay < v(1).perDay && v(1).perDay < v(3).perDay && v(2).perDay < v(3).perDay,

@@ -16,6 +16,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { normalizeQuantity } from "../src/game/business/businessInventory.ts";
+import { INGREDIENT_MEASURES } from "../src/game/business/ingredientMeasures.ts";
 import { DEFAULT_SAVE, type SaveData } from "../src/game/SaveManager.ts";
 import { DEFAULT_BUSINESS_STATE } from "../src/game/business/businessTypes.ts";
 import { addStock, getQuantity } from "../src/game/business/businessInventory.ts";
@@ -165,7 +167,7 @@ for (const [score, target] of [[0, 4], [50, 8], [100, 12]] as const) {
   const smuggled = recordBusinessServiceComponents(businessServiceSessionForToday(saladOnly(50), makeSeededRand(9))!, 80);
   const refused = serveBusinessOrder(smuggled, s, makeSeededRand(9));
   assert(refused === null, "D3: serveBusinessOrder refuses a 9th order at 8/8");
-  assert(s.credits === full.save.credits && getQuantity(s.business.inventory, "tomato") === 13 - 8 && s.economyLedger.filter((e) => e.category === "business-revenue").length === 8, "D4: no payment, no ingredient consumed, no 9th revenue entry");
+  assert(s.credits === full.save.credits && getQuantity(s.business.inventory, "tomato") === normalizeQuantity(13 - 8 * INGREDIENT_MEASURES.tomato.serving) && s.economyLedger.filter((e) => e.category === "business-revenue").length === 8, "D4: no payment, no ingredient consumed (8 plates × one 0.3 lb tomato), no 9th revenue entry");
   const app = read("src/App.tsx");
   const fn = (name: string) => app.slice(app.indexOf(`function ${name}(`), app.indexOf("\n  }\n", app.indexOf(`function ${name}(`)));
   assert(/businessCustomersToday\(save\)\.complete/.test(fn("enterBusinessPreparation")), "D5: App — Start Preparing is refused once today's customers are complete (no preparation starts)");

@@ -33,6 +33,7 @@
  * Pure; nothing reads RESTAURANT_MODE (App and the Market apply it in the
  * restaurant build; the restaurant's own modules always use it).
  */
+import { lbPerMarketUnit, measureOf } from "../business/measure";
 import type { SettlementResult } from "../economy/economyTypes";
 import type { SaveData } from "../SaveManager";
 import type { RecipeDefinition } from "../recipes/recipeTypes";
@@ -175,10 +176,12 @@ export function supplierPriceFactor(save: SaveData): number {
 }
 
 /**
- * The restaurant's price for buying `quantity` of an ingredient: the
- * Market's own quote with the supplier factor and the bulk discount. The
- * Market card, the purchase, the Pre-Service Check and Inventory all use it,
- * so every shown price is what the tap charges.
+ * The restaurant's price for buying `quantity` whole Market units of an
+ * ingredient — lb or kg as the player chose in Settings (business/measure.ts;
+ * a piece for loaves and bunches): the Market's own quote with the supplier
+ * factor and the bulk discount. The Market card, the purchase, the
+ * Pre-Service Check and Inventory all use it, so every shown price is what
+ * the tap charges.
  */
 export function restaurantQuote(
   save: SaveData,
@@ -191,6 +194,7 @@ export function restaurantQuote(
     quantity,
     bulkDiscountFor(quantity),
     supplierPriceFactor(save),
+    lbPerMarketUnit(ingredientId, measureOf(save)),
   );
 }
 

@@ -19,6 +19,9 @@ import {
 } from "../src/game/business/businessMenu.ts";
 import { setMenuPrice } from "../src/game/business/BusinessMenuManager.ts";
 import { businessUnitCostFor } from "../src/game/business/businessPricing.ts";
+import { INGREDIENT_MEASURES } from "../src/game/business/ingredientMeasures.ts";
+import { recipePortionFractionFor } from "../src/game/business/businessPortionModel.ts";
+import { ingredientInstancesFor } from "../src/game/economy/EconomySettlement.ts";
 import { DEFAULT_BUSINESS_STATE } from "../src/game/business/businessTypes.ts";
 
 let failures = 0;
@@ -43,11 +46,16 @@ const sampleRecipe = CAMPAIGN_RECIPES[0]!;
   assert(Object.keys(DEFAULT_BUSINESS_STATE.menu).length === 0, "A2: DEFAULT_BUSINESS_STATE.menu is empty");
 }
 
-// ===== B: recipeCostBasis — sums businessUnitCostFor across every component, not deduped. =====
+// ===== B: recipeCostBasis — the real plate: one serving per physical item prepared, at its unit price (developer 2026-10-08). =====
 {
   const cost = recipeCostBasis(sampleRecipe);
-  const expected = sampleRecipe.components.reduce((sum, c) => sum + businessUnitCostFor(c.ingredientId), 0);
-  assert(cost === expected, `B: recipeCostBasis matches the sum of every component's businessUnitCostFor (got ${cost}, expected ${expected})`);
+  const expected = ingredientInstancesFor(sampleRecipe).reduce((sum, item) => sum + Math.round(businessUnitCostFor(item.ingredientId) * INGREDIENT_MEASURES[item.ingredientId].serving), 0);
+  assert(cost === expected, `B: recipeCostBasis matches one serving per prepared item × its businessUnitCostFor (got ${cost}, expected ${expected})`);
+  // The onion chain (peel → halve → slice of ONE onion) is one onion, not three.
+  const chain = CAMPAIGN_RECIPES.find((r) => r.id === "camp-onion-prep-chain")!;
+  assert(recipeCostBasis(chain) === Math.round(businessUnitCostFor("onion") * INGREDIENT_MEASURES.onion.serving), `B3: one onion peeled, halved and sliced costs one onion (${recipeCostBasis(chain)}c), not three`);
+  // Menu prices keep their calibration: the old per-component basis ÷ 30 %.
+  assert(CAMPAIGN_RECIPES.every((r) => defaultMenuPrice(r) === Math.max(1, Math.round(r.components.reduce((sum, c) => sum + Math.round(businessUnitCostFor(c.ingredientId) * recipePortionFractionFor(c.ingredientId)), 0) / 0.3))), "B4: every default menu price is unchanged (the Economy V3 calibration: per-component basis ÷ 30 %)");
   assert(Number.isInteger(cost) && cost > 0, "B2: cost basis is a positive integer for a real recipe");
 }
 

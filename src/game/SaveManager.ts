@@ -138,7 +138,8 @@ export type SaveData = {
   economyLedger: EconomyLedgerEntry[];
   recipeProgress: Record<string, { best: number | null; done: boolean }>;
   /** Only `sound` is a real setting. `music`/`reducedMotion` are legacy keys kept so older saves round-trip unchanged; nothing reads them. */
-  settings: { sound: boolean; music: boolean; reducedMotion: boolean };
+  /** `measure` (optional, developer 2026-10-08): the player's unit for weighed ingredients — absent = "lb" (business/measure.ts). */
+  settings: { sound: boolean; music: boolean; reducedMotion: boolean; measure?: "lb" | "kg" };
   /**
    * Level Engine progression (Phase 4 — design doc §15). Added as a field
    * on the SAME save blob, not a second storage system. Old saves parsed

@@ -173,16 +173,16 @@ function buy(save: SaveData, id: string, qty: number) {
   );
   const tomatoDay = demand.get("tomato")!.perDay;
   const lowStock = {
-    tomato: { ingredientId: "tomato" as const, quantity: 1, unitCost: 100, purchaseDay: day },
+    tomato: { ingredientId: "tomato" as const, quantity: 0.3, unitCost: 100, purchaseDay: day },
   };
   const low = A.lowStockItems(saveWith({ business: { inventory: lowStock } }));
   const t = low.find((i) => i.id === "tomato");
   assert(
-    tomatoDay > 1 &&
+    tomatoDay > 0.3 &&
       !!t &&
       t.threshold === tomatoDay &&
-      t.dishesLeft === Math.floor(1 / demand.get("tomato")!.perOrder),
-    `5b: 1 tomato against ${tomatoDay.toFixed(2)} expected today is low — "Estimated ${t?.dishesLeft} dishes remaining"`,
+      t.dishesLeft === Math.floor(0.3 / demand.get("tomato")!.perOrder),
+    `5b: one tomato (0.3 lb) against ${tomatoDay.toFixed(2)} lb expected today is low — "Estimated ${t?.dishesLeft} dishes remaining"`,
   );
   const plenty = {
     tomato: {

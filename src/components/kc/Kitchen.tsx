@@ -81,10 +81,15 @@ export function Kitchen({
 }) {
   const levelProgress = save.levelProgress;
 
-  // Café progression (Phase 10A) — the "Prep Cook" HUD badge.
+  // Café progression (Phase 10A) — the restaurant rank card at the top left.
   const cafeProgress = getCafeProgress(levelProgress);
   const cafeMilestoneTitle =
     CAFE_MILESTONES.find((m) => m.id === cafeProgress.current)?.title ?? "Humble Kitchen";
+  const rankNumber = Math.max(
+    1,
+    CAFE_MILESTONES.findIndex((m) => m.id === cafeProgress.current) + 1,
+  );
+  const nextRank = CAFE_MILESTONES.find((m) => m.id === cafeProgress.next) ?? null;
 
   // Kitchen upgrades (Phase 12B) — the background is the player's current
   // kitchen: always the highest tier reached, kept in step by
@@ -117,13 +122,16 @@ export function Kitchen({
         <button
           type="button"
           onClick={() => go("rack")}
-          className="press rounded-2xl border border-ivory/25 bg-walnut-dark/45 px-3 py-2 text-left backdrop-blur-sm"
+          data-testid="kitchen-rank"
+          className="press min-w-0 rounded-2xl border border-ivory/25 bg-walnut-dark/45 px-3 py-2 text-left backdrop-blur-sm"
         >
+          {/* The restaurant's rank (developer 2026-10-08): which of the ranks it
+              holds, its name, the bar to the next one and when that comes. */}
           <p className="font-ui text-[9px] font-extrabold uppercase tracking-[0.18em] text-gold">
-            Prep Cook
+            Restaurant rank · {rankNumber}/{CAFE_MILESTONES.length}
           </p>
           <p className="font-display text-[15px] font-black leading-none text-ivory">
-            {cafeMilestoneTitle}
+            🏆 {cafeMilestoneTitle}
           </p>
           <span className="mt-1.5 block h-[4px] w-24 overflow-hidden rounded-full bg-ivory/25">
             <span
@@ -134,6 +142,11 @@ export function Kitchen({
               }}
             />
           </span>
+          <p className="mt-1 max-w-[150px] truncate font-ui text-[9px] font-bold leading-none text-ivory/70">
+            {nextRank
+              ? `Next: ${nextRank.title} · Lv ${nextRank.levelRequired}`
+              : "Highest rank reached"}
+          </p>
         </button>
         <div className="flex items-center gap-2">
           <Coin n={save.credits} />
@@ -222,6 +235,9 @@ export function Kitchen({
             <div className="flex shrink-0 items-center gap-2">
               <span className="text-[24px]">{todayUnlocked ? todayLevel.emoji : "🔒"}</span>
               <KButton
+                // Prepare (a new order) is the green "go" button; Replay is a quiet
+                // outlined one, so the two never look alike (developer 2026-10-08).
+                variant={todayCompleted ? "ghost" : "sage"}
                 disabled={!todayUnlocked}
                 onClick={() => {
                   if (!todayUnlocked) return;
@@ -454,6 +470,7 @@ export function OrderBoard({
                       <span className="text-[20px]">{canOpen ? level.emoji : "🔒"}</span>
                       <KButton
                         size="sm"
+                        variant={completed ? "ghost" : "sage"}
                         disabled={!canOpen}
                         onClick={() => {
                           if (!canOpen) return;

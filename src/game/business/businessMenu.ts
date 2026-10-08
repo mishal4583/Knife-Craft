@@ -19,6 +19,7 @@
 import type { RecipeDefinition } from "../recipes/recipeTypes";
 import { businessUnitCostFor } from "./businessPricing";
 import { recipePortionFractionFor } from "./businessPortionModel";
+import { recipeRequirements } from "../restaurant/recipeRequirements";
 
 /** Keyed by `RecipeDefinition.id`. Only recipes the player has explicitly priced are present. */
 export type BusinessMenu = Partial<Record<string, number>>;
@@ -40,24 +41,20 @@ export const DEFAULT_BUSINESS_MENU: BusinessMenu = {};
 const TARGET_FOOD_COST_PERCENT = 0.3;
 
 /**
- * sum(businessUnitCostFor(component.ingredientId) * recipePortionFractionFor(...))
- * across EVERY component, not deduped — each component is one real
- * physical preparation of that ingredient (recipeTypes.ts's own doc),
- * so a recipe that uses the same ingredient in two components
- * genuinely costs two portions' worth. Deterministic, purely
- * data-driven off the existing ingredient registry +
- * businessPricing.ts's category table.
+ * The MENU PRICE BASIS (Economy V3 Phase 14, Checkpoint 4): sum of
+ * businessUnitCostFor(component) * recipePortionFractionFor(component) across
+ * EVERY component, rounded to the cent per component. It is what Business
+ * menu prices were calibrated on (real U.S. menu prices, $12–22 a plate at
+ * a 30% target), and it stays the basis of `defaultMenuPrice` so every
+ * dish keeps the price it has always had.
  *
- * Economy V3 Phase 14, Checkpoint 4 — each component now charges a
- * realistic RECIPE-PORTION fraction of its purchase unit
- * (businessPortionModel.ts's own doc has the full methodology/
- * per-category rationale), not a full purchase unit per component.
- * Rounded to the nearest cent per component before summing, so this
- * stays exact integer-cents arithmetic throughout (never a running
- * fractional-cent total). In whole US cents (Phase 14 — see
- * businessPricing.ts's own doc).
+ * Since the realistic portions (developer 2026-10-08) it is NOT the food a
+ * plate uses: that is `recipeCostBasis` below (a Caprese uses a 0.3 lb
+ * tomato and 4 oz of mozzarella, not a pound of each). Re-deriving prices
+ * from those smaller plates would sell a Caprese for about $4, so prices
+ * keep this basis and the restaurant's real food cost is simply lower.
  */
-export function recipeCostBasis(recipe: RecipeDefinition): number {
+export function menuPriceBasis(recipe: RecipeDefinition): number {
   return recipe.components.reduce(
     (sum, c) =>
       sum +
@@ -66,9 +63,23 @@ export function recipeCostBasis(recipe: RecipeDefinition): number {
   );
 }
 
-/** A deterministic, data-driven suggested price (whole US cents) — never player-facing as "the" price, just the fallback until the player sets their own. Always >= 1 (brief: "Non-negative", and a free menu item is never a useful default). Derived from the real, cited TARGET_FOOD_COST_PERCENT, not an unsourced multiplier. */
+/**
+ * The real food cost of one plate, in whole US cents: every item the recipe
+ * prepares (restaurant/recipeRequirements.ts — one serving per physical
+ * item) at the Market's base unit price, rounded to the cent per item. This
+ * is exactly what serving the dish takes out of stock at those prices, so
+ * the Menu's food cost and margin are what the P&L will really see.
+ */
+export function recipeCostBasis(recipe: RecipeDefinition): number {
+  return recipeRequirements(recipe).reduce(
+    (sum, r) => sum + Math.round(businessUnitCostFor(r.ingredientId) * r.quantity),
+    0,
+  );
+}
+
+/** A deterministic, data-driven suggested price (whole US cents) — never player-facing as "the" price, just the fallback until the player sets their own. Always >= 1 (brief: "Non-negative", and a free menu item is never a useful default). Derived from the real, cited TARGET_FOOD_COST_PERCENT on the menu price basis, not an unsourced multiplier. */
 export function defaultMenuPrice(recipe: RecipeDefinition): number {
-  return Math.max(1, Math.round(recipeCostBasis(recipe) / TARGET_FOOD_COST_PERCENT));
+  return Math.max(1, Math.round(menuPriceBasis(recipe) / TARGET_FOOD_COST_PERCENT));
 }
 
 /** The one place "what does this recipe currently sell for" is resolved — every UI reads this, never `menu[id]` directly, so a missing entry can't silently render as `undefined`/`NaN`. */

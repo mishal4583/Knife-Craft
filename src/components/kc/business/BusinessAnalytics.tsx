@@ -7,6 +7,7 @@ import { INGREDIENT_EMOJI } from "@/game/knives/knifeDefinitions";
 import { purchaseUnitFor } from "@/game/business/businessPricing";
 import { formatUsd } from "@/game/business/businessCurrency";
 import { formatQuantity } from "@/game/business/businessInventory";
+import { displayMeasure, formatStockAmount } from "@/game/business/measure";
 import type { DailyPnL } from "@/game/business/BusinessFinanceManager";
 import { SUPPLY_SECTIONS, SUPPLY_SECTION_ORDER } from "@/game/business/businessSupplies";
 import { supplySectionSummary } from "@/game/business/BusinessSuppliesManager";
@@ -169,7 +170,7 @@ export function OperationsAnalytics({ save }: { save: SaveData }) {
                     {INGREDIENT_EMOJI[item.id]} {name(item.id)}
                   </span>
                   <span className="shrink-0 font-bold text-walnut/65">
-                    {formatQuantity(item.quantity)} {purchaseUnitFor(item.id)} ·{" "}
+                    {formatStockAmount(item.id, item.quantity, displayMeasure())} ·{" "}
                     {plural(item.orders, "order")}
                   </span>
                 </div>

@@ -3,6 +3,7 @@ import { restaurantQuote } from "@/game/restaurant/restaurantEconomy";
 import { supplierPriceNote } from "@/game/restaurant/restaurantBackOffice";
 import { getSelectedSupplierId } from "@/game/economy/SupplierManager";
 import { BulkPresets } from "./BulkPresets";
+import { MarketPlanPanel } from "./MarketPlanPanel";
 import { useEffect, useRef, useState } from "react";
 import { Badge, KButton, Panel } from "./common/primitives";
 import { cn } from "@/lib/utils";
@@ -10,8 +11,13 @@ import type { SaveData } from "@/game/SaveManager";
 import { INGREDIENTS, type IngredientId } from "@/game/definitions";
 import { INGREDIENT_EMOJI } from "@/game/knives/knifeDefinitions";
 import { formatUsd } from "@/game/money";
-import { purchaseUnitFor } from "@/game/business/businessPricing";
 import { formatQuantity } from "@/game/business/businessInventory";
+import {
+  formatStockAmount,
+  marketUnitCountText,
+  marketUnitLabel,
+  measureOf,
+} from "@/game/business/measure";
 import { shelfLifeForIngredient } from "@/game/business/perishability";
 import {
   purchaseQuote,
@@ -56,6 +62,7 @@ function fridgeSpaceText(available: number): string {
 export function MarketIngredients({
   save,
   purchaseIngredient,
+  purchaseIngredients,
   focusId,
   focusQuantity = null,
   setNotice,
@@ -63,6 +70,12 @@ export function MarketIngredients({
 }: {
   save: SaveData;
   purchaseIngredient: (ingredientId: string, quantity: number) => PurchaseIngredientResult;
+  /** Restaurant build: the plan's "Buy all" (App.purchaseIngredients). */
+  purchaseIngredients?: (lines: ReadonlyArray<{ ingredientId: string; quantity: number }>) => {
+    bought: number;
+    skipped: number;
+    totalCost: number;
+  };
   /** Preselected by a Business → Market link: its group opens and the card scrolls into view. */
   focusId: IngredientId | null;
   /** The focused card's starting quantity (a Pre-Service Check's exact shortfall). */
@@ -90,6 +103,8 @@ export function MarketIngredients({
   const contractActive = isContractActive(contract, day);
   const prepCook = isHired(save.business.staff, "prep-cook");
   const fridge = fridgeStatus(save);
+  // Restaurant build: weighed ingredients in the player's lb / kg (Settings); classic: lb.
+  const measure = RESTAURANT_MODE ? measureOf(save) : "lb";
 
   function quantityFor(id: IngredientId): number {
     return quantities[id] ?? DEFAULT_PURCHASE_QUANTITY;
@@ -115,7 +130,7 @@ export function MarketIngredients({
       setMessages((m) => ({ ...m, [id]: text }));
       return;
     }
-    const bought = `Bought ${result.quantity} ${purchaseUnitFor(id)} ${INGREDIENTS[id].name} · ${formatUsd(result.totalCost)}`;
+    const bought = `Bought ${result.quantity} ${marketUnitLabel(id, measure, result.quantity)} ${INGREDIENTS[id].name} · ${formatUsd(result.totalCost)}`;
     setMessages((m) => ({ ...m, [id]: bought }));
     setNotice(`${bought}. It's in your Business fridge.`);
   }
@@ -172,6 +187,15 @@ export function MarketIngredients({
         ) : null}
       </Panel>
 
+      {RESTAURANT_MODE ? (
+        <MarketPlanPanel
+          save={save}
+          purchaseIngredient={purchaseIngredient}
+          {...(purchaseIngredients ? { purchaseIngredients } : {})}
+          setNotice={setNotice}
+        />
+      ) : null}
+
       {event ? (
         <Panel tone="cream" className="p-3">
           <p className="font-ui text-[11px] font-extrabold uppercase tracking-[0.12em] text-copper">
@@ -218,7 +242,9 @@ export function MarketIngredients({
                 const def = INGREDIENTS[id];
                 const quantity = quantityFor(id);
                 const quote = quoteFor(id, quantity);
-                const unit = purchaseUnitFor(id);
+                const unit = marketUnitLabel(id, measure, quantity);
+                const perUnit = marketUnitLabel(id, measure, 1);
+                const count = marketUnitCountText(id, measure);
                 const stock = save.business.inventory[id]?.quantity ?? 0;
                 const dishes = activeDishesUsing(save, id).length;
                 const message = messages[id];
@@ -238,7 +264,7 @@ export function MarketIngredients({
                         {INGREDIENT_EMOJI[id]}
                       </span>
                       {stock > 0 ? (
-                        <Badge tone="sage">{formatQuantity(stock)} in stock</Badge>
+                        <Badge tone="sage">{formatStockAmount(id, stock, measure)} in stock</Badge>
                       ) : null}
                     </div>
                     <p className="mt-1 font-display text-[14px] font-black leading-tight text-walnut-dark">
@@ -246,8 +272,16 @@ export function MarketIngredients({
                     </p>
                     <p className="font-ui text-[12px] font-extrabold text-copper">
                       {formatUsd(quote.unitCost)}
-                      <span className="font-bold text-walnut/60">/{unit}</span>
+                      <span className="font-bold text-walnut/60">/{perUnit}</span>
                     </p>
+                    {count ? (
+                      <p
+                        className="font-ui text-[11px] font-bold leading-tight text-walnut/55"
+                        data-testid="unit-count"
+                      >
+                        {count}
+                      </p>
+                    ) : null}
                     <p className="font-hand text-[13px] leading-tight text-walnut/60">
                       Keeps {shelfLifeForIngredient(id)} days
                       {dishes > 0 ? ` · ${dishes} menu dish${dishes === 1 ? "" : "es"}` : ""}
@@ -280,7 +314,7 @@ export function MarketIngredients({
                     {RESTAURANT_MODE ? (
                       <BulkPresets
                         value={quantity}
-                        label={unit}
+                        label={marketUnitLabel(id, measure, 2)}
                         onPick={(q) => setQuantities((qs) => ({ ...qs, [id]: q }))}
                       />
                     ) : null}

@@ -24,6 +24,8 @@ import type {
 import type { HireStaffResult, FireStaffResult } from "@/game/business/BusinessStaffManager";
 import type { ScreenId } from "@/components/kc/data";
 import type { SaveData } from "@/game/SaveManager";
+import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
+import type { Measure } from "@/game/business/measure";
 import type { BuyKnifeResult } from "@/game/knives/KnifeManager";
 import type { BuyBoardResult } from "@/game/boards/BoardManager";
 import type { SharpenKnifeResult } from "@/game/economy/sharpness";
@@ -90,9 +92,11 @@ export function ScreensRouter({
   setEquippedKnife,
   setEquippedBoard,
   toggleSetting,
+  setMeasure,
   resetProgress,
   advanceBusinessDay,
   purchaseIngredient,
+  purchaseIngredients,
   purchaseSupply,
   purchaseRefrigerator,
   throwOutExpired,
@@ -127,11 +131,19 @@ export function ScreensRouter({
   setEquippedKnife: (id: string) => void;
   setEquippedBoard: (id: string) => void;
   toggleSetting: (key: "sound") => void;
+  /** Settings: weighed ingredients in lb or kg (business/measure.ts). */
+  setMeasure: (measure: Measure) => void;
   resetProgress: () => void;
   /** Economy V3 Phase 1 — the player's own explicit "End Business Day" action. */
   advanceBusinessDay: () => AdvanceDayResult;
   /** Economy V3 Phase 2 — Business Mode's own ingredient purchase action. */
   purchaseIngredient: (ingredientId: string, quantity: number) => PurchaseIngredientResult;
+  /** Restaurant Market plan: buy several lines at once. */
+  purchaseIngredients?: (lines: ReadonlyArray<{ ingredientId: string; quantity: number }>) => {
+    bought: number;
+    skipped: number;
+    totalCost: number;
+  };
   purchaseSupply: (supplyId: string, packs: number) => PurchaseSupplyResult;
   /** Economy V3 Phase 3 — Business Mode's own refrigerator purchase/upgrade action. */
   purchaseRefrigerator: (refrigeratorId: string) => PurchaseRefrigeratorResult;
@@ -175,6 +187,7 @@ export function ScreensRouter({
                 : "knives"
           }
           purchaseIngredient={purchaseIngredient}
+          {...(purchaseIngredients ? { purchaseIngredients } : {})}
           purchaseSupply={purchaseSupply}
           go={go}
           save={save}
@@ -221,6 +234,7 @@ export function ScreensRouter({
           go={go}
           settings={save.settings}
           onToggleSetting={toggleSetting}
+          onSetMeasure={RESTAURANT_MODE ? setMeasure : undefined}
           onResetProgress={resetProgress}
         />
       ) : null}

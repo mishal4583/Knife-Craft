@@ -24,6 +24,7 @@ import {
 } from "./businessSupplierEvents";
 import { staffUnitCostDiscount } from "./businessStaff";
 import { applyStockingWear } from "./businessEquipmentCondition";
+import { LB_PER_KG, isWeighed } from "./measure";
 import { usableQuantity } from "./perishability";
 import { businessDishRequirements } from "./businessServiceCatalog";
 import { businessOrderAvailability } from "./BusinessServiceManager";
@@ -37,7 +38,17 @@ import {
 } from "./businessRushRestock";
 
 export type PurchaseIngredientResult =
-  | { ok: true; save: SaveData; quantity: number; unitCost: number; totalCost: number }
+  | {
+      ok: true;
+      save: SaveData;
+      /** Whole Market units bought (lb / kg / pieces). */
+      quantity: number;
+      /** Price of one Market unit. */
+      unitCost: number;
+      totalCost: number;
+      /** Stock added, in the purchase unit (lb or pieces) — equals `quantity` unless bought by the kg. */
+      stockQuantity: number;
+    }
   | {
       ok: false;
       reason:
@@ -96,6 +107,8 @@ export type PurchaseQuote = {
   bulkDiscount: number;
   /** The same quantity before the bulk discount (equals totalCost without one). */
   listTotal: number;
+  /** Stock these Market units add, in the purchase unit (lb or pieces). */
+  stockQuantity: number;
 };
 
 /**
@@ -111,15 +124,27 @@ export function purchaseQuote(
   bulkDiscount = 0,
   /** Unified Restaurant: the Campaign Supplier's price factor (restaurant/restaurantEconomy.ts); 1 = none. */
   supplierFactor = 1,
+  /**
+   * Stock in one Market unit (business/measure.ts `lbPerMarketUnit`): 1 when
+   * `quantity` counts purchase units (lb or pieces — the classic game),
+   * 2.20462 when it counts kilograms of a weighed ingredient. The kg price is
+   * the per-lb price × 2.20462, rounded to the cent, and the bulk discount
+   * comes off that.
+   */
+  lbPerUnit = 1,
 ): PurchaseQuote {
+  const stockQuantity = lbPerUnit === 1 ? quantity : normalizeQuantity(quantity * lbPerUnit);
   const maxQuantity = maxPurchaseQuantityFor(eventForDay(save.business.calendar.businessDay));
-  const capped = todaysUnitCost(save, ingredientId, quantity);
+  const capped = todaysUnitCost(save, ingredientId, stockQuantity);
   const marketUnitCost =
-    capped ?? todaysUnitCost(save, ingredientId, Math.min(quantity, maxQuantity ?? quantity)) ?? 0;
-  const listUnitCost =
+    capped ??
+    todaysUnitCost(save, ingredientId, Math.min(stockQuantity, maxQuantity ?? stockQuantity)) ??
+    0;
+  const listLbCost =
     supplierFactor === 1
       ? marketUnitCost
       : Math.max(0, Math.round(marketUnitCost * supplierFactor));
+  const listUnitCost = lbPerUnit === 1 ? listLbCost : Math.round(listLbCost * lbPerUnit);
   const unitCost = bulkDiscount > 0 ? discountedUnitCost(listUnitCost, bulkDiscount) : listUnitCost;
   const totalCost = quantity * unitCost;
   const refrigeratorId = save.business.refrigerator.refrigeratorId;
@@ -128,7 +153,7 @@ export function purchaseQuote(
       ? "exceedsShortageLimit"
       : save.credits < totalCost
         ? "insufficientFunds"
-        : !canStoreQuantity(save.business.inventory, refrigeratorId, quantity)
+        : !canStoreQuantity(save.business.inventory, refrigeratorId, stockQuantity)
           ? "insufficientStorage"
           : "ok";
   return {
@@ -140,6 +165,7 @@ export function purchaseQuote(
     availableStorage: getAvailableStorageCapacity(save.business.inventory, refrigeratorId),
     bulkDiscount,
     listTotal: quantity * listUnitCost,
+    stockQuantity,
   };
 }
 
@@ -189,6 +215,8 @@ export function purchaseIngredient(
   supplierFactor = 1,
   /** Unified Restaurant: days this stock starts ageing later (a Premium supplier's longer freshness); 0 = none. */
   freshnessBonusDays = 0,
+  /** Stock in one Market unit: 1 (lb / pieces) or LB_PER_KG for kilograms of a weighed ingredient (purchaseQuote). */
+  lbPerUnit = 1,
 ): PurchaseIngredientResult {
   if (!isKnownIngredient(ingredientId)) return { ok: false, reason: "unknownIngredient" };
   if (!Number.isInteger(quantity) || quantity <= 0) return { ok: false, reason: "invalidQuantity" };
@@ -196,17 +224,28 @@ export function purchaseIngredient(
   if (!(supplierFactor > 0 && supplierFactor < 2)) return { ok: false, reason: "invalidQuantity" };
   if (!(Number.isInteger(freshnessBonusDays) && freshnessBonusDays >= 0 && freshnessBonusDays <= 7))
     return { ok: false, reason: "invalidQuantity" };
-  const quote = purchaseQuote(save, ingredientId, quantity, bulkDiscount, supplierFactor);
+  if (lbPerUnit !== 1 && !(lbPerUnit === LB_PER_KG && isWeighed(ingredientId)))
+    return { ok: false, reason: "invalidQuantity" };
+  const quote = purchaseQuote(
+    save,
+    ingredientId,
+    quantity,
+    bulkDiscount,
+    supplierFactor,
+    lbPerUnit,
+  );
   if (quote.verdict !== "ok") return { ok: false, reason: quote.verdict };
-  const { unitCost, totalCost } = quote;
+  const { unitCost, totalCost, stockQuantity } = quote;
+  // Stock keeps its cost per purchase unit (per lb): what was paid ÷ the stock it bought.
+  const stockUnitCost = lbPerUnit === 1 ? unitCost : Math.round(totalCost / stockQuantity);
   const inventory = addStock(
     save.business.inventory,
     ingredientId,
-    quantity,
-    unitCost,
+    stockQuantity,
+    stockUnitCost,
     save.business.calendar.businessDay + freshnessBonusDays,
   );
-  const equipmentCondition = applyStockingWear(save.business.equipmentCondition, quantity);
+  const equipmentCondition = applyStockingWear(save.business.equipmentCondition, stockQuantity);
   return {
     ok: true,
     save: {
@@ -221,6 +260,7 @@ export function purchaseIngredient(
     quantity,
     unitCost,
     totalCost,
+    stockQuantity,
   };
 }
 

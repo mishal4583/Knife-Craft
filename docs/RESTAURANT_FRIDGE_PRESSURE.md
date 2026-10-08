@@ -1,5 +1,10 @@
 # Fridge pressure: measurement and decision (2026-10-06)
 
+> **Update 2026-10-08 — realistic portions.** Stock per plate fell ~2.5× (a 0.3 lb tomato, not a
+> pound per technique step), so the completionist's fridge peak is now L91 35 / L250 51 of 140
+> (was 61 / 102): the bigger fridges matter later. Whether to shrink capacities is open for the
+> developer (docs/HANDOFF.md, item 42). The numbers below are the 2026-10-06 measurement.
+
 The brief: measure with the current values first, then make the smallest
 evidence-based change. No fixed-level forcing, no capacity cuts, no
 soft-locks.

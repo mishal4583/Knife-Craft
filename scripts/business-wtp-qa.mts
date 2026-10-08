@@ -250,15 +250,15 @@ for (const score of [0, 50, 100]) {
   const lo = serveViaApp(stocked(0))!;
   const hi = serveViaApp(stocked(100))!;
   assert(
-    lo.r.cogsCharged === 300 &&
-      hi.r.cogsCharged === 300 &&
+    lo.r.cogsCharged === 75 &&
+      hi.r.cogsCharged === 75 &&
       lo.save.business.finance.dailyAccumulator.cogs ===
         hi.save.business.finance.dailyAccumulator.cogs,
-    "J: COGS is 300c (real ingredient cost) at popularity 0 and 100 alike",
+    "J: COGS is 75c (real ingredient cost: a 0.3 lb tomato + 0.3 lb cucumber + 0.15 lb carrot at $1.00/lb) at popularity 0 and 100 alike",
   );
   assert(
     JSON.stringify(lo.save.business.inventory) === JSON.stringify(hi.save.business.inventory) &&
-      getQuantity(lo.save.business.inventory, "tomato") === 19,
+      getQuantity(lo.save.business.inventory, "tomato") === 19.7,
     "J2: inventory consumption is identical regardless of the multiplier",
   );
   assert(lo.r.amountCharged !== hi.r.amountCharged, "J3: only the customer payment differs");
@@ -387,7 +387,7 @@ for (const score of [0, 50, 100]) {
     "O: P&L revenue = the three 1710c customer payments = the revenue ledger entries",
   );
   assert(
-    p.cogs === 900 &&
+    p.cogs === 3 * 75 &&
       p.grossProfit === p.revenue - p.cogs &&
       p.operatingProfit ===
         p.grossProfit -
@@ -396,7 +396,7 @@ for (const score of [0, 50, 100]) {
           p.supplierCost -
           p.otherOperatingCost -
           p.inspectionFines,
-    "O2: COGS 900c; gross and operating profit follow the unchanged P&L formulas",
+    "O2: COGS 225c (3 × 75c); gross and operating profit follow the unchanged P&L formulas",
   );
   const closedSave = appendLedgerEntry(
     appendLedgerEntry(end.save, "business-staff-salary", -end.payrollPaid),

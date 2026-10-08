@@ -13,6 +13,7 @@
  * Run: npx tsx scripts/business-operations-qa.mts
  */
 import { willingnessToPayMultiplierFor } from "../src/game/business/DemandManager.ts";
+import { INGREDIENT_MEASURES } from "../src/game/business/ingredientMeasures.ts";
 import { DEFAULT_SAVE, type SaveData } from "../src/game/SaveManager.ts";
 import { DEFAULT_LEVEL_PROGRESS } from "../src/game/levels/LevelManager.ts";
 import { DEFAULT_BUSINESS_STATE } from "../src/game/business/businessTypes.ts";
@@ -280,7 +281,10 @@ const find = (alerts: BusinessAlert[], prefix: string) => alerts.find((a) => a.k
 
 // ===== G: order → preparation → serve → payment → revenue → popularity, and the alert layer follows it. =====
 {
-  const save = healthySave({ inventory: saladInventory(QUIET_DAY, 1) });
+  // Exactly ONE plate's stock (realistic portions, developer 2026-10-08: a tomato 0.3 lb, a cucumber half 0.3 lb, a carrot 0.15 lb).
+  let onePlate: BusinessInventory = {};
+  for (const id of ["tomato", "cucumber", "carrot"] as const) onePlate = addStock(onePlate, id, INGREDIENT_MEASURES[id].serving, 100, QUIET_DAY);
+  const save = healthySave({ inventory: onePlate });
   const session = sessionReadyFor(SALAD_RECIPE_ID);
   const price = businessDishPrice(save.business.menu, SALAD_DISH);
   const served = serveBusinessOrder(session, save, makeSeededRand(1))!;

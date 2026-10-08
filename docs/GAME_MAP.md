@@ -42,7 +42,10 @@ CAREER (Levels 1–250) — each level is one SERVICE of the restaurant day
   Menu: 4 dishes at L11 → 48 by L161 (restaurant/restaurantProgression.ts)
   Menu guests: after a level's own orders, 1–5 optional customers order from
   the active menu (from L11) — cooked in the same service, paid at menu price
-  Market: bulk presets 5/25/50/100 with provisional discounts (consumables)
+  Market: bulk presets 5/25/50/100 with provisional discounts (consumables);
+  Plan ahead (today / 2 / 3 days of services, today's menu first, fridge-sized)
+  Pre-Service Check: Restock → Market, or ⚡ Quick restock (exact shortfall, +25 %)
+  Portions are real (a 0.3 lb tomato); Settings → Weights: lb or kg
   Inventory: ⚠️ NEEDS ATTENTION across food, supplies, bottles, fridge, staff
 
 ENDLESS RESTAURANT (after Level 250) — the same restaurant, open-ended days

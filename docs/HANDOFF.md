@@ -1,6 +1,6 @@
 # KnifeCraft — Handoff (Playgama edition)
 
-Last updated: 2026-09-29. Written at the end of the Claude Code session that
+Last updated: 2026-10-08. Written at the end of the Claude Code session that
 created this repository, so the next session can continue without the old
 conversation.
 
@@ -481,6 +481,44 @@ conversation.
    `restauranteconomy.mjs`. Open: Premium is still money-best (+$3.2k),
    Wholesale worth only +$679, campaign wages not earned back in the
    campaign.
+41. DEVELOPER RULES + RESTAURANT ON (2026-10-08): the developer sets the
+   rules; every requested change goes straight to `main` and deploys
+   GitHub Pages; `RESTAURANT_MODE` is on in every build (classic =
+   `VITE_RESTAURANT_MODE=0`). Plating skip: an extra tap right after the
+   last cut no longer fast-forwards the plating (1.2 s guard), a skip plays
+   no chime burst, the cooking clip ignores taps for 0.8 s
+   (`tools/e2e/platingskip.mjs`).
+42. MEASURES, QUICK RESTOCK, MARKET PLAN (developer 2026-10-08,
+   `restaurant-measures-qa`, browser `restaurantmeasures.mjs`):
+   - Prepare is green (sage), Replay outlined (ghost) — Kitchen card, Order
+     Board, Recipe Book. The Kitchen's top-left card shows the restaurant
+     rank ("Restaurant rank · n/13", 🏆 name, "Next: … · Lv …").
+   - REALISTIC PORTIONS: `business/ingredientMeasures.ts` gives every
+     ingredient its item weight and a plate serving (a tomato 0.3 lb — more
+     than 3 to the lb). A plate uses one serving per PHYSICAL item (the
+     scene's chain rule): an onion peeled, halved and sliced used 3 lb
+     before, now 0.35 lb. Menu prices are unchanged (`menuPriceBasis`); the
+     real food cost (`recipeCostBasis`) is now ~10 % of the price. Effects,
+     measured: completionist $168,348 → $174,503 (Premium $177,373, saver
+     $313,237); Endless days $151 / $286 / $423 / $799 / −$106 (were $112 /
+     $208 / $327 / $518 / −$187) — the E2/E3 bands were moved to
+     $600–$900 / < $200, < $0; the fridge fills ~2.5× slower (completionist
+     peak L250 51/140, was 102), so the bigger fridges matter later. The
+     classic Business QA checks that pinned "1 lb per step" (Garden Salad
+     COGS 300c → 75c, Garlic Bread 0.05 → 0.025 lb garlic, …) were
+     rewritten to the new portions at the same strictness. OPEN for the
+     developer: keep the higher Endless income and the lighter fridge, or
+     rebalance (e.g. smaller fridges, lower Endless demand).
+   - Settings → Weights: pounds or kilograms (`settings.measure`, optional;
+     restaurant build). The Market sells whole kg (per-lb price × 2.20462),
+     every amount on every screen follows the choice (`business/measure.ts`,
+     "≈ 3 tomatoes" counts, crate piles from the item count).
+   - Quick Restock in the Pre-Service Check: exactly the missing stock at
+     the Market price + 25 % (Rush Restock's fee), with the extra shown as a
+     warning; one ledger entry per ingredient.
+   - Market → Ingredients → Plan ahead: Today / 2 days / 3 days of upcoming
+     services, today's menu first, within the fridge's free space, nothing
+     that would spoil first; Buy per line or Buy all.
 
 ## 4. Open issues from the Level 1–10 audit (not fixed yet)
 

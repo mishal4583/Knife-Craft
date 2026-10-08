@@ -42,6 +42,7 @@ import { discardExpiredStock } from "../business/discardExpired";
 import { isSystemLive } from "./unlocks";
 import { recipeRequirements, sumRequirements } from "./recipeRequirements";
 import { restaurantQuote, stockUseFor } from "./restaurantEconomy";
+import { marketUnitsCovering, measureOf, stockForMarketUnits } from "../business/measure";
 
 /**
  * Economy pass ("move to real stock"): the stock an order really uses —
@@ -74,7 +75,7 @@ export type StockRow = {
   /** On hand but expired: it can't be served and should be thrown out. */
   expired: number;
   missing: number;
-  /** Whole units the Market sells to cover `missing` (purchases are whole units). */
+  /** Whole Market units (lb / kg / pieces, the player's measure) that cover `missing`. */
   buyUnits: number;
   /** The Market's own answer for buying `buyUnits` now (null when nothing is missing). */
   quote: PurchaseQuote | null;
@@ -110,13 +111,15 @@ export function serviceStockCheck(
   if (!serviceUsesStock(levelNumber)) return { applies: false };
   const day = save.business.calendar.businessDay;
   const inventory = save.business.inventory;
+  const measure = measureOf(save);
   const rows: StockRow[] = sumRequirements(
     tickets.flatMap((recipe) => orderRequirements(save, recipe)),
   ).map(({ ingredientId, quantity }) => {
     const onHand = getQuantity(inventory, ingredientId);
     const usable = usableQuantity(inventory, ingredientId, day);
     const missing = normalizeQuantity(Math.max(0, quantity - usable));
-    const buyUnits = missing > 0 ? Math.ceil(missing - 1e-9) : 0;
+    // Whole Market units (lb, kg or pieces — the player's measure) that cover what is missing.
+    const buyUnits = marketUnitsCovering(ingredientId, missing, measure);
     return {
       ingredientId,
       needed: quantity,
@@ -130,7 +133,12 @@ export function serviceStockCheck(
   });
   const missingRows = rows.filter((r) => r.missing > 0);
   const missingCost = missingRows.reduce((sum, r) => sum + (r.quote?.totalCost ?? 0), 0);
-  const storageNeeded = missingRows.reduce((sum, r) => sum + r.buyUnits, 0);
+  const storageNeeded = normalizeQuantity(
+    missingRows.reduce(
+      (sum, r) => sum + stockForMarketUnits(r.ingredientId, r.buyUnits, measure),
+      0,
+    ),
+  );
   return {
     applies: true,
     rows,

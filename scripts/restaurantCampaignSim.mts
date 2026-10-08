@@ -58,7 +58,11 @@ import { syncKitchenUpgradeOwnership } from "../src/game/kitchen/KitchenUpgradeM
 import { grantEarnedMilestoneRewards } from "../src/game/progression/milestoneRewards.ts";
 import { purchaseIngredient } from "../src/game/business/BusinessInventoryManager.ts";
 import { purchaseSupply } from "../src/game/business/BusinessSuppliesManager.ts";
-import { getSupplyItem, isConsumableSupply } from "../src/game/business/businessSupplies.ts";
+import {
+  getSupplyItem,
+  isConsumableSupply,
+  supplyPackPrice,
+} from "../src/game/business/businessSupplies.ts";
 import {
   recordCapitalExpenditure,
   recordInventoryPurchase,
@@ -278,7 +282,9 @@ function playLevel(save: SaveData, n: number, opts: SimOptions, stats: Stats): S
   // Stock: the whole day at once when the fridge and wallet allow (bulk prices).
   if (opts.dayStock && profile === "diligent") {
     const day = dayStockFor(s, level);
-    if (day && day.fits && day.affordable)
+    // Optional: a prudent player (reserve) stocks the whole day only while it keeps its reserve.
+    const reserve = opts.reserve ?? 0;
+    if (day && day.fits && day.affordable && s.credits - day.totalCost >= reserve)
       for (const row of day.rows) {
         const bought = buyIngredient(s, row.ingredientId, row.buyUnits);
         if (bought.ok) s = persist(bought.s, stats, `${where} buy`);
@@ -576,7 +582,9 @@ function buyEverything(
     let bought = false;
     for (const a of attempts) {
       const r = a.run(s);
-      if (!r || r.save.credits < reserve) continue;
+      // A prudent player's $500 is left AFTER the next service's own needs
+      // (its stock, its supplies, an empty bottle), not spent on them.
+      if (!r || r.save.credits < reserve + (reserve > 0 ? nextServiceNeeds(r.save) : 0)) continue;
       s = persist(
         appendLedgerEntry(r.save, r.category, -r.cost, r.id),
         stats,
@@ -588,6 +596,21 @@ function buyEverything(
     if (!bought) break;
   }
   return s;
+}
+
+/** What the next service will have to buy before it can start (stock + blocking supplies + empty bottles), at the Market's price. */
+function nextServiceNeeds(save: SaveData): number {
+  // The level played next: the furthest one unlocked (the one just finished is complete).
+  const level = getLevel(save.levelProgress.highestUnlockedLevelId);
+  const plan = level ? servicePlanFor(save, level) : null;
+  if (!plan) return 0;
+  let cost = plan.check.applies ? plan.check.missingCost : 0;
+  if (plan.supplies.applies) {
+    cost += plan.supplies.missingCost;
+    for (const b of [plan.supplies.soap, plan.supplies.cleaner])
+      if (b.spare === 0 && b.status !== "ok") cost += supplyPackPrice(getSupplyItem(b.id)!);
+  }
+  return cost;
 }
 
 /** A fresh restaurant save (moved in, intro done). */

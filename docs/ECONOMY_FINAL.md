@@ -1,5 +1,10 @@
 # Final economy design pass (2026-10-06) — restaurant build
 
+> **Update 2026-10-08 — realistic portions.** A plate now uses one real serving per item
+> prepared (`business/ingredientMeasures.ts`: a 0.3 lb tomato, not a pound per technique step), so
+> ingredient spending fell by ~60 %. Re-measured: completionist **$174,503** (Wholesale $174,765,
+> Premium $177,373), saver $313,237. The tables below are the 2026-10-06 measurement.
+
 The brief set three goals:
 
 - A true completionist (all 250 levels, every item bought) must reach Level 250 with **at least

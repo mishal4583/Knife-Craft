@@ -5,7 +5,13 @@ import type { IngredientId } from "@/game/definitions";
 import { INGREDIENTS } from "@/game/definitions";
 import { INGREDIENT_EMOJI } from "@/game/knives/knifeDefinitions";
 import { formatQuantity } from "@/game/business/businessInventory";
-import { purchaseUnitFor } from "@/game/business/businessPricing";
+import {
+  formatStockAmount,
+  itemCountText,
+  marketUnitLabel,
+  type Measure,
+} from "@/game/business/measure";
+import { QUICK_RESTOCK_FEE, type QuickRestockPlan } from "@/game/restaurant/quickRestock";
 import { formatUsd } from "@/game/money";
 import type { ServiceStockCheck, StockRow } from "@/game/restaurant/campaignStock";
 import type { DayService } from "@/game/restaurant/restaurantDay";
@@ -77,6 +83,9 @@ export function PreServiceCheck({
   onRestockGuest = () => {},
   dayStock = null,
   onRestockDay = () => {},
+  measure = "lb",
+  quickRestock = null,
+  onQuickRestock = () => {},
 }: {
   levelNumber: number;
   day: number;
@@ -111,6 +120,11 @@ export function PreServiceCheck({
   /** Final economy pass: the whole day's stock (optional — never blocks START). */
   dayStock?: DayStock | null;
   onRestockDay?: (ingredientId: IngredientId, units: number) => void;
+  /** Settings: weighed ingredients in lb or kg. */
+  measure?: Measure;
+  /** Quick restock: exactly the missing stock now, at a higher price (quickRestock.ts). */
+  quickRestock?: QuickRestockPlan | null;
+  onQuickRestock?: () => void;
 }) {
   const stock = check.applies ? check : null;
   const sup = supplies.applies ? supplies : null;
@@ -199,7 +213,12 @@ export function PreServiceCheck({
               </p>
               <ul className="mt-1 divide-y divide-walnut/10" data-testid="psc-ingredients">
                 {stock.rows.map((row) => (
-                  <IngredientRow key={row.ingredientId} row={row} onRestock={onRestock} />
+                  <IngredientRow
+                    key={row.ingredientId}
+                    row={row}
+                    measure={measure}
+                    onRestock={onRestock}
+                  />
                 ))}
               </ul>
             </>
@@ -362,7 +381,9 @@ export function PreServiceCheck({
                         className="min-h-12"
                         onClick={() => onRestockGuest(row.ingredientId, row.buyUnits)}
                       >
-                        Restock {row.buyUnits} · {formatUsd(row.cost)}
+                        Restock {row.buyUnits}{" "}
+                        {marketUnitLabel(row.ingredientId, measure, row.buyUnits)} ·{" "}
+                        {formatUsd(row.cost)}
                       </KButton>
                     </li>
                   ))}
@@ -381,8 +402,8 @@ export function PreServiceCheck({
               </p>
               <p className="font-ui text-[12px] text-walnut/70">
                 Everything for today's {dayStock.levels.length} services (Levels{" "}
-                {dayStock.levels.join(", ")}) in one go: {dayStock.totalUnits} units ·{" "}
-                {formatUsd(dayStock.totalCost)}
+                {dayStock.levels.join(", ")}) in one go: {formatQuantity(dayStock.totalUnits)} units
+                · {formatUsd(dayStock.totalCost)}
                 {dayStock.bulkSaving > 0
                   ? ` · the bulk price saves ${formatUsd(dayStock.bulkSaving)}`
                   : ""}
@@ -395,8 +416,8 @@ export function PreServiceCheck({
                 )}
               >
                 {dayStock.fits
-                  ? `✓ Fits your fridge (${dayStock.storageFree} units free).`
-                  : `Needs ${dayStock.totalUnits} units — your fridge has ${dayStock.storageFree} free. Keep stocking service by service, or get a bigger fridge.`}
+                  ? `✓ Fits your fridge (${formatQuantity(dayStock.storageFree)} units free).`
+                  : `Needs ${formatQuantity(dayStock.totalUnits)} units — your fridge has ${formatQuantity(dayStock.storageFree)} free. Keep stocking service by service, or get a bigger fridge.`}
               </p>
               {dayStock.fits ? (
                 <ul className="mt-1 divide-y divide-walnut/10">
@@ -418,7 +439,9 @@ export function PreServiceCheck({
                         className="min-h-12"
                         onClick={() => onRestockDay(row.ingredientId, row.buyUnits)}
                       >
-                        Restock {row.buyUnits} · {formatUsd(row.cost)}
+                        Restock {row.buyUnits}{" "}
+                        {marketUnitLabel(row.ingredientId, measure, row.buyUnits)} ·{" "}
+                        {formatUsd(row.cost)}
                       </KButton>
                     </li>
                   ))}
@@ -453,6 +476,37 @@ export function PreServiceCheck({
                 {stock.missingRows.length === 1 ? "item" : "items"} · {formatUsd(stock.missingCost)}
               </p>
               <p className="font-ui text-[12px] text-walnut/70">You have {formatUsd(credits)}.</p>
+              {quickRestock && quickRestock.affordable ? (
+                <div
+                  className="mt-2 rounded-2xl border border-copper/40 bg-gold/10 p-2.5"
+                  data-testid="psc-quick-restock"
+                >
+                  <KButton
+                    size="sm"
+                    variant="copper"
+                    full
+                    className="h-auto min-h-12 py-2 leading-tight"
+                    disabled={!quickRestock.fits}
+                    onClick={onQuickRestock}
+                  >
+                    ⚡ Quick restock just what's missing · {formatUsd(quickRestock.totalCost)}
+                  </KButton>
+                  <p
+                    className="mt-1.5 font-ui text-[12px] font-bold leading-snug text-copper"
+                    data-testid="psc-quick-warning"
+                  >
+                    ⚠️ Costs {formatUsd(quickRestock.extraCost)} more than the Market (+
+                    {Math.round(QUICK_RESTOCK_FEE * 100)}%). Restock in the Market before the
+                    service to save.
+                  </p>
+                  {!quickRestock.fits ? (
+                    <p className="mt-1 font-ui text-[12px] font-bold text-tomato">
+                      Not enough fridge space for it ({formatQuantity(quickRestock.storageFree)}{" "}
+                      units free).
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
               {!stock.affordable ? (
                 <>
                   <p className="mt-1 font-ui text-[13px] font-bold text-tomato">
@@ -511,13 +565,15 @@ export function PreServiceCheck({
 
 function IngredientRow({
   row,
+  measure,
   onRestock,
 }: {
   row: StockRow;
+  measure: Measure;
   onRestock: (id: IngredientId) => void;
 }) {
-  const unit = purchaseUnitFor(row.ingredientId);
   const ok = row.missing === 0;
+  const count = itemCountText(row.ingredientId, row.needed);
   return (
     <li
       className="flex min-h-12 items-center gap-2 py-1.5"
@@ -532,8 +588,12 @@ function IngredientRow({
           {INGREDIENTS[row.ingredientId].name}
         </p>
         <p className={cn("font-ui text-[12px]", ok ? "text-walnut/60" : "text-tomato")}>
-          Need {formatQuantity(row.needed)} {unit} · have {formatQuantity(row.usable)}
-          {row.expired > 0 ? ` (+${formatQuantity(row.expired)} expired)` : ""}
+          Need {formatStockAmount(row.ingredientId, row.needed, measure)}
+          {count ? ` (${count})` : ""} · have{" "}
+          {formatStockAmount(row.ingredientId, row.usable, measure)}
+          {row.expired > 0
+            ? ` (+${formatStockAmount(row.ingredientId, row.expired, measure)} expired)`
+            : ""}
         </p>
       </div>
       {ok ? (
@@ -545,7 +605,8 @@ function IngredientRow({
           className="min-h-12"
           onClick={() => onRestock(row.ingredientId)}
         >
-          Restock {row.buyUnits} · {formatUsd(row.quote?.totalCost ?? 0)}
+          Restock {row.buyUnits} {marketUnitLabel(row.ingredientId, measure, row.buyUnits)} ·{" "}
+          {formatUsd(row.quote?.totalCost ?? 0)}
         </KButton>
       )}
     </li>

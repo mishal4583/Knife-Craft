@@ -200,6 +200,13 @@ import type {
 } from "@/game/business/BusinessServiceManager";
 import { businessDishForRecipeId } from "@/game/business/businessServiceCatalog";
 import {
+  lbPerMarketUnit,
+  measureOf,
+  setDisplayMeasure,
+  type Measure,
+} from "@/game/business/measure";
+import { INGREDIENTS, type IngredientId } from "@/game/definitions";
+import {
   newRushRestockRewardId,
   type RushRestockOutcome,
   type RushRestockPayment,
@@ -324,6 +331,8 @@ function milestoneNoticeFor(granted: readonly MilestoneDefinition[]): MilestoneN
 
 export function App() {
   const [save, setSave] = useState<SaveData | null>(null);
+  // Settings → Weights: what every screen shows this render (business/measure.ts; display only).
+  setDisplayMeasure(RESTAURANT_MODE && save ? measureOf(save) : "lb");
   // "kitchen" is a safe placeholder only — the `!save` loading gate below
   // always renders LoadingScreen until the save has actually resolved, so
   // this initial value is never shown. The real choice (fresh save →
@@ -754,6 +763,12 @@ export function App() {
     if (result.ok) persist(result.save);
   }
 
+  /** Settings: the unit weighed ingredients are shown and sold in (business/measure.ts). */
+  function setMeasure(measure: Measure) {
+    if (!save || measureOf(save) === measure) return;
+    persist({ ...save, settings: { ...save.settings, measure } });
+  }
+
   function toggleSetting(key: "sound") {
     if (!save) return;
     const settings = { ...save.settings, [key]: !save.settings[key] };
@@ -878,23 +893,58 @@ export function App() {
   }
 
   /** Economy V3 Phase 2 (Business Inventory) — Business Mode's own purchase action, mirroring buyKnife/buyStaff exactly: routes through the pure manager, then records the ledger entry from the manager's own reported `totalCost` (never re-derived from a credits diff, since it's already exact). Business Mode only — Campaign never calls this. */
-  function purchaseIngredient(ingredientId: string, quantity: number) {
-    if (!save) return { ok: false as const, reason: "unknownIngredient" as const };
-    // Unified Restaurant: wholesale buying (restaurant/bulkBuying.ts), the same discount the card quoted.
-    const result = purchaseIngredientFromCatalog(
+  /** One Market purchase on `from` — the restaurant's bulk price, supplier, freshness and lb/kg (classic: the plain price). */
+  function buyOn(save: SaveData, ingredientId: string, quantity: number) {
+    return purchaseIngredientFromCatalog(
       save,
       ingredientId,
       quantity,
+      // Unified Restaurant: wholesale buying (restaurant/bulkBuying.ts), the same discount the card quoted.
       RESTAURANT_MODE ? bulkDiscountFor(quantity) : 0,
       // Economy pass: the Campaign Supplier's modifier acts on Market prices.
       RESTAURANT_MODE ? supplierPriceFactor(save) : 1,
       // Premium supplier: longer freshness (supplierEffects, provisional).
       RESTAURANT_MODE ? supplierEffects(save).freshnessBonusDays : 0,
+      // Settings: kilograms or pounds (business/measure.ts) — the same unit the card quoted.
+      RESTAURANT_MODE && Object.prototype.hasOwnProperty.call(INGREDIENTS, ingredientId)
+        ? lbPerMarketUnit(ingredientId as IngredientId, measureOf(save))
+        : 1,
     );
+  }
+
+  /** Economy V3 Phase 2 (Business Inventory) — Business Mode's own purchase action, mirroring buyKnife/buyStaff exactly: routes through the pure manager, then records the ledger entry from the manager's own reported `totalCost` (never re-derived from a credits diff, since it's already exact). Business Mode only — Campaign never calls this. */
+  function purchaseIngredient(ingredientId: string, quantity: number) {
+    if (!save) return { ok: false as const, reason: "unknownIngredient" as const };
+    const result = buyOn(save, ingredientId, quantity);
     if (result.ok) {
       persistIngredientPurchases(result.save, [{ ingredientId, totalCost: result.totalCost }]);
     }
     return result;
+  }
+
+  /**
+   * The Market plan's "Buy all" (restaurant/marketPlan.ts): each line is an
+   * ordinary Market purchase, made one after another on the latest save
+   * (so every quote sees the money and fridge space the earlier lines used),
+   * then saved once — one "inventory-purchase" entry per line bought. A line
+   * the wallet or fridge can no longer take is skipped, never half-bought.
+   */
+  function purchaseIngredients(lines: ReadonlyArray<{ ingredientId: string; quantity: number }>) {
+    if (!save) return { bought: 0, skipped: lines.length, totalCost: 0 };
+    let next = save;
+    const recorded: { ingredientId: string; totalCost: number }[] = [];
+    for (const line of lines) {
+      const r = buyOn(next, line.ingredientId, line.quantity);
+      if (!r.ok) continue;
+      next = r.save;
+      recorded.push({ ingredientId: line.ingredientId, totalCost: r.totalCost });
+    }
+    if (recorded.length > 0) persistIngredientPurchases(next, recorded);
+    return {
+      bought: recorded.length,
+      skipped: lines.length - recorded.length,
+      totalCost: recorded.reduce((t, l) => t + l.totalCost, 0),
+    };
   }
 
   /**
@@ -2436,9 +2486,11 @@ export function App() {
               setEquippedKnife={setEquippedKnife}
               setEquippedBoard={setEquippedBoard}
               toggleSetting={toggleSetting}
+              setMeasure={setMeasure}
               resetProgress={resetProgress}
               advanceBusinessDay={advanceBusinessDay}
               purchaseIngredient={purchaseIngredient}
+              purchaseIngredients={purchaseIngredients}
               purchaseSupply={purchaseSupply}
               purchaseRefrigerator={purchaseRefrigerator}
               throwOutExpired={throwOutExpired}
@@ -2490,6 +2542,15 @@ export function App() {
             onClose={() => setServiceCheckLevelId(null)}
             onThrowOutExpired={() => void throwOutExpired()}
             onUsePantry={(next) => persist(next)}
+            onQuickRestock={(next, lines) =>
+              persistIngredientPurchases(
+                next,
+                lines
+                  // A line too small to cost a cent moves no money, so it has no entry.
+                  .filter((l) => l.cost > 0)
+                  .map((l) => ({ ingredientId: l.ingredientId, totalCost: l.cost })),
+              )
+            }
           />
         </Suspense>
       ) : null}

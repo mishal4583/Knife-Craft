@@ -17,6 +17,7 @@ import {
 } from "@/game/business/businessServiceCatalog";
 import { usableQuantity } from "@/game/business/perishability";
 import { formatQuantity } from "@/game/business/businessInventory";
+import { displayMeasure, formatStockAmount } from "@/game/business/measure";
 import { realCogsFor } from "@/game/business/BusinessFinanceManager";
 import { orderCompletedDelta } from "@/game/business/PopularityManager";
 import {
@@ -204,8 +205,9 @@ export function BusinessService({
                         <span
                           className={`font-ui text-[12px] font-bold tabular-nums ${have >= need ? "text-olive" : "text-copper"}`}
                         >
-                          {have >= need ? "✓" : "✗"} need {formatQuantity(need)} · have{" "}
-                          {formatQuantity(have)}
+                          {have >= need ? "✓" : "✗"} need{" "}
+                          {formatStockAmount(id, need, displayMeasure())} · have{" "}
+                          {formatStockAmount(id, have, displayMeasure())}
                         </span>
                       </div>
                     );

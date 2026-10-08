@@ -68,16 +68,13 @@ export function businessDishForRecipeId(recipeId: string): BusinessDish | undefi
 }
 
 /**
- * The real, quantity-aware ingredient requirements a Business order for
- * this dish needs — ONE requirement entry per component occurrence,
- * deliberately NOT deduped, mirroring businessMenu.ts's own
- * `recipeCostBasis` exactly (which already charges twice for an
- * ingredient used in two components): the inventory drawn down for a
- * serve must match the same real-usage counting the menu price was
- * already calibrated against, or the two would silently disagree.
+ * The real ingredient requirements a Business order for this dish needs:
+ * the ONE requirements rule shared with campaign orders
+ * (restaurant/recipeRequirements.ts — one plate serving per physical item
+ * prepared, developer 2026-10-08), so the stock drawn for a serve is what
+ * businessMenu.ts's `recipeCostBasis` reports as the dish's food cost.
  * `consumeUsableIngredients`/`hasUsableIngredients` (perishability.ts)
- * already pre-sum same-ingredient requirements internally — this
- * function never needs to dedupe/sum itself.
+ * pre-sum same-ingredient requirements internally.
  */
 export function businessDishRequirements(dish: BusinessDish): IngredientRequirement[] {
   const recipe = getCampaignRecipe(dish.sourceRecipeId);
@@ -86,13 +83,5 @@ export function businessDishRequirements(dish: BusinessDish): IngredientRequirem
       `businessServiceCatalog: BusinessDish ${dish.id} references unknown recipe ${dish.sourceRecipeId}`,
     );
   }
-  // Economy V3 Phase 16 (final audit, P1 fix): each component draws down
-  // the SAME documented portion fraction recipeCostBasis prices it at
-  // (businessPortionModel.ts — 0.025 lb per Aromatic step, 1 whole unit
-  // for every other category). Before this fix every component drew a
-  // whole purchase unit, so an Aromatic dish's real COGS ran up to 7x
-  // its menu food cost and 4 dishes lost money on every serve at their
-  // suggested price — contradicting this function's own invariant above.
-  // The one requirements rule, shared with campaign orders (restaurant/recipeRequirements.ts).
   return recipeRequirements(recipe);
 }

@@ -284,8 +284,9 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   Market (no built-in food cost; boosts to the quality bonus kept; the
   release settlement unchanged); measured with the full simulation
   (`scripts/restaurantCampaignSim.mts`), a completionist owns everything at
-  L250 with $168,352 after the final economy pass (floor ≥ $150k, preferred
-  $160k–$175k; $121,268 with the double charge);
+  L250 with $174,503 after the realistic portions of 2026-10-08 ($168,352
+  before them; floor ≥ $150k, preferred $160k–$175k; $121,268 with the
+  double charge);
   no soft-lock, cash = ledger. X: item effects on real stock (values
   unchanged): knife/board/helper savings and a dull knife's penalty scale
   the stock an order uses (`stockUseFor`; the Pre-Service Check plans
@@ -309,8 +310,11 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   Special's $50 once a day, stars; E2: $300–$600, E3: < $150): $132, $209,
   $344, $519, −$189; after the final economy pass (Today's Special 15 % of
   the day's revenue ≤ $50, from the new L250 save): $112, $208, $327, $518,
-  −$187; E7: events never lower customers, ≤ $50 bonus and ≤ 3 stars a day.
-  Cash = ledger, never < 0.
+  −$187; with the realistic portions (2026-10-08: food ~10 % of the menu
+  price instead of ~30 %) $151, $286, $423, $799, −$106, so the bands are
+  now E2 $600–$900 and E3 minimal < $200, overstaffed < $0 (developer's
+  call — see docs/HANDOFF.md); E7: events never lower customers, ≤ $50
+  bonus and ≤ 3 stars a day. Cash = ledger, never < 0.
 - `restaurant-backoffice-qa` — phase 7, one back office (restaurant
   build; `restaurant/restaurantBackOffice.ts`): the ingredient supplier
   (`selectedSupplierId`, Local / Wholesale / Premium) is chosen on
@@ -362,10 +366,14 @@ Focused suites (`npx tsx scripts/<name>.mts`):
 - `restaurant-final-economy-qa` — the FINAL ECONOMY PASS (2026-10-06,
   restaurant saves only — stamped by the restaurant migration; the release
   economy is untouched; `docs/ECONOMY_FINAL.md`): T the completionist (every
-  item, all 250 levels, no Endless) ends L250 ≥ $150k — $168,348 Local,
-  $169,027 Wholesale, $171,582 Premium (preferred $160k–$175k); saver
-  $307,353; S no soft-lock, cash = ledger, never < 0, a prudent completionist
-  (keeps $500) never needs Grandma; V every investment returns quality bonus;
+  item, all 250 levels, no Endless) ends L250 ≥ $150k — $174,503 Local,
+  $174,765 Wholesale, $177,373 Premium since the realistic portions
+  (2026-10-08; before: $168,348 / $169,027 / $171,582; preferred
+  $160k–$175k); saver $313,237 ($307,353); S no soft-lock, cash = ledger,
+  never < 0, a prudent completionist (keeps $500 after every purchase,
+  the next service's needs included) never needs Grandma; V every
+  investment returns quality bonus; V3 whole-day stocking outgrows the
+  Basic fridge by L250 (realistic portions need ~2.5× less fridge);
   R the rules (`restaurant/restaurantInvestments.ts`
   `RESTAURANT_INVESTMENT_RULES`: kitchen tiers $16k/$20k/$21k/$24k/$29k =
   $110k with +1.5/3/4/5/7 % restaurant quality on campaign order earnings
@@ -385,6 +393,33 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   `economy-final-candidates.mts` (the sweep), `economy-final-endless.mts`.
   Browser: `tools/e2e/restauranteconomy.mjs` (restaurant test build,
   320–430 px).
+- `restaurant-measures-qa` — the developer's brief of 2026-10-08
+  (restaurant build): M realistic portions (`business/ingredientMeasures.ts`
+  — every one of the 57 ingredients has `pieceLb` (a tomato 0.3 lb: more
+  than 3 to the lb) and a plate `serving`; `recipeRequirements` = one
+  serving per PHYSICAL item prepared, `EconomySettlement.ingredientInstancesFor`,
+  the cutting scene's chain rule; menu prices unchanged); U units
+  (`business/measure.ts`: lb ↔ kg, "loaf"/"bunch", "0.6 lb", "≈ 3 tomatoes",
+  whole Market units covering a shortfall); K kilograms (Settings → Weights,
+  the optional `settings.measure`, absent = lb, restaurant build only: the
+  Market sells whole kg at the per-lb price × 2.20462, 1 kg = 2.205 lb of
+  stock, 1.5 kg and a loaf by the kg refused; the Pre-Service Check's
+  Restock counts kg; every screen shows the chosen measure through
+  `setDisplayMeasure`, which App sets each render); Q Quick Restock
+  (`restaurant/quickRestock.ts`: in the Pre-Service Check's "Missing" box,
+  exactly the shortfall, today's Market price + `RUSH_RESTOCK_FEE` 25 %, the
+  extra shown as a warning, all-or-nothing on money and fridge, one
+  "inventory-purchase" entry per ingredient via `persistIngredientPurchases`);
+  P the Market plan (`restaurant/marketPlan.ts`, `kc/MarketPlanPanel.tsx` at
+  the top of Market → Ingredients: Today / 2 days / 3 days of services —
+  today's still to come, then the day schedule; after L250 the Endless menu
+  demand — tickets after paid orders + menu guests via `orderRequirements`,
+  fridge stock first while fresh, nothing planned to spoil, today first,
+  never more than the fridge's free space ("no room" for the rest); a Buy
+  per line and "Buy all" (`App.purchaseIngredients`, one entry per line));
+  W wiring, plus the Kitchen's restaurant rank ("Restaurant rank · n/13",
+  the café rank, next rank) and Prepare (sage) vs Replay (ghost). Browser:
+  `tools/e2e/restaurantmeasures.mjs` (restaurant test build, 320–430 px).
 - `level-ux-qa` — the Level 1–10 UX pass (presentation only): Level
   Complete waits for a story banner (Level 10's milestone) and lists Order
   payout + Completion reward + Earned this level (`levels/levelEarnings.ts`,
@@ -569,7 +604,13 @@ with the real functions.
   staff paid for a 2-hour service shift (cleaner 1.5 h). Ingredient prices
   are per ingredient (`business/businessPricing.ts`, ~65% of 2026 U.S.
   retail, e.g. potato $0.60/lb, tomato $1.00, salmon $6.50, ribeye $9.50);
-  menu prices follow at 30% food cost. A no-staff Business nets ~$70/day;
+  menu prices follow at 30% food cost of the Economy V3 per-component basis
+  (`businessMenu.menuPriceBasis`, unchanged). Since 2026-10-08 a plate uses
+  REALISTIC PORTIONS (`business/ingredientMeasures.ts`: one serving per
+  physical item prepared — a 0.3 lb tomato, 0.025 lb of garlic, a quarter
+  loaf; peel → halve → slice of one onion is one onion), so the real food
+  cost (`recipeCostBasis`, what the P&L sees) is ~10 % of the menu price.
+  A no-staff Business nets ~$70/day (before the realistic portions);
   hiring staff is currently a net cost (their popularity/discount effects
   earn less than their wages).
 - **Business menu = 48 dishes**, and every one of the 57 ingredients is used

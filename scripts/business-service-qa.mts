@@ -87,7 +87,7 @@ function sessionReadyForGarlicBread(save: SaveData) {
   assert(!!DISH, "A: precondition — biz-garlic-bread resolves in the catalog");
   assert(businessDishForRecipeId(RECIPE_ID)?.id === DISH.id, "A2: businessDishForRecipeId reverse-maps back to the same dish");
   const reqs = businessDishRequirements(DISH);
-  assert(reqs.length === 3, `A3: camp-garlic-bread's 3 components (bread, garlic x2) produce 3 non-deduped requirement entries (got ${reqs.length})`);
+  assert(reqs.length === 2 && reqs[0]!.ingredientId === "bread" && reqs[1]!.ingredientId === "garlic", `A3: camp-garlic-bread's 3 components (bread, garlic peel + smash) are 2 prepared items — the garlic is peeled and smashed as ONE set of cloves (got ${reqs.length})`);
   const save = saveAt({ business: { ...DEFAULT_BUSINESS_STATE, calendar: { businessDay: 1 }, inventory: fullyStockedInventory(1) } });
   assert(businessOrderAvailability(save, DISH).available, "A4: a fully-stocked inventory reports the order as available");
 }
@@ -117,8 +117,8 @@ function sessionReadyForGarlicBread(save: SaveData) {
 // ===== D: insufficient inventory — genuinely not enough (not expired). =====
 {
   let inv = addStock({}, "bread", 10, 225, 1);
-  // V3-16: a Garlic Bread draws 2 x 0.025 lb = 0.05 lb of garlic (businessPortionModel.ts) — 0.025 lb is genuinely short.
-  inv = addStock(inv, "garlic", 0.025, 350, 1);
+  // A Garlic Bread draws one garlic serving, 0.025 lb (realistic portions, ingredientMeasures.ts) — 0.02 lb is genuinely short.
+  inv = addStock(inv, "garlic", 0.02, 350, 1);
   const save = saveAt({ business: { ...DEFAULT_BUSINESS_STATE, calendar: { businessDay: 1 }, inventory: inv } });
   assert(!businessOrderAvailability(save, DISH).available, "D: insufficient (but fresh) garlic stock makes the order unavailable");
   const served = serveBusinessOrder(sessionReadyForGarlicBread(save), save, Math.random);
@@ -155,8 +155,8 @@ function sessionReadyForGarlicBread(save: SaveData) {
     assert(result.amountCharged === customerPaysAt50(price) && result.payment.menuPrice === price && result.payment.customerPays === result.amountCharged, `G2: the amount charged is exactly the current menu price × the popularity-50 modifier (got ${result.amountCharged}, expected ${customerPaysAt50(price)})`);
     assert(typeof result.reaction === "string" && result.reaction.length > 0, "G3: a real customer reaction line is returned");
     assert(result.save.credits === 1000 + customerPaysAt50(price), `G4: credits increase by exactly the amount charged (got ${result.save.credits})`);
-    assert(getQuantity(result.save.business.inventory, "bread") === 9, "G5: bread inventory decreases by exactly 1");
-    assert(getQuantity(result.save.business.inventory, "garlic") === 9.95, "G6: garlic inventory decreases by exactly 0.05 lb — both garlic components (2 x the 0.025 lb Aromatic portion), correctly summed");
+    assert(getQuantity(result.save.business.inventory, "bread") === 9.75, "G5: bread inventory decreases by exactly a quarter loaf");
+    assert(getQuantity(result.save.business.inventory, "garlic") === 9.975, "G6: garlic inventory decreases by exactly 0.025 lb — the peel and the smash are the same cloves, drawn once");
     assert(result.dish.id === DISH.id, "G7: the result names the correct Business Dish");
   }
 }
@@ -272,13 +272,13 @@ function sessionReadyForGarlicBread(save: SaveData) {
 // ===== Q: inventory atomicity — a multi-ingredient dish where one ingredient is short leaves BOTH ingredients completely untouched (never a partial consumption). =====
 {
   let inv = addStock({}, "bread", 10, 225, 1);
-  inv = addStock(inv, "garlic", 0.025, 350, 1); // short: the dish needs 0.05 lb (V3-16 portion draw-down)
+  inv = addStock(inv, "garlic", 0.02, 350, 1); // short: the dish needs 0.025 lb (one garlic serving)
   const save = saveAt({ business: { ...DEFAULT_BUSINESS_STATE, calendar: { businessDay: 1 }, inventory: inv } });
   const session = sessionReadyForGarlicBread(save);
   const result = serveBusinessOrder(session, save, Math.random);
   assert(result === null, "Q: precondition — the short order is refused");
   assert(getQuantity(save.business.inventory, "bread") === 10, "Q2: bread (which WAS sufficient) is not partially consumed either");
-  assert(getQuantity(save.business.inventory, "garlic") === 0.025, "Q3: garlic remains at its original (short) quantity — atomic, never partially drawn down");
+  assert(getQuantity(save.business.inventory, "garlic") === 0.02, "Q3: garlic remains at its original (short) quantity — atomic, never partially drawn down");
 }
 
 // ===== R: revenue atomicity — exactly one credits movement per successful serve, equal to the menu price, never split, never doubled. =====

@@ -142,7 +142,7 @@ function stockedSave(credits = 5_000_000): SaveData {
   assert(life.cumulativeRevenue === revenue, `A: lifetime revenue survives the window — ${life.cumulativeRevenue}c === the ${revenue}c customers paid (the ledger window alone holds only ${windowRevenue}c)`);
   assert(windowRevenue < life.cumulativeRevenue, "A2: proof of the old bug — the ledger window under-reports lifetime revenue");
   assert(life.orderCount === 250, `B: lifetime order count survives the window (${life.orderCount}; the window holds only ${businessLedgerEntries(save.economyLedger).length} revenue entries)`);
-  assert(life.cumulativeCogs === 250 * 300 && save.business.finance.lifetimeCogs === 250 * 300, "C: lifetime COGS = 250 x 300c (3 x $1.00 vegetables), unchanged model");
+  assert(life.cumulativeCogs === 250 * 75 && save.business.finance.lifetimeCogs === 250 * 75, "C: lifetime COGS = 250 x 75c (a 0.3 lb tomato + 0.3 lb cucumber + 0.15 lb carrot at $1.00/lb — realistic portions), unchanged model");
   assert(life.cumulativeGrossProfit === life.cumulativeRevenue - life.cumulativeCogs && life.cumulativeOperatingProfit === life.cumulativeGrossProfit - life.cumulativeLabor - life.cumulativeOperatingCosts, "D: gross profit = revenue - COGS and operating profit = GP - labor - opex, over the same time span");
   assert(life.cumulativeRevenue === revenue && save.business.finance.lifetime.revenue === revenue, "H: 250 Campaign settlements (+64c each, same ledger, same wallet) added nothing to Business lifetime totals");
   assert(reconciled && start.credits + revenue + 250 * 64 - closeCosts === save.credits, "L: every step reconciles (credits before + signed new ledger entries = credits after), and the wallet ends at start + Business revenue + Campaign income - day-close payroll/fines");
@@ -222,7 +222,7 @@ function stockedSave(credits = 5_000_000): SaveData {
   const oldJson = JSON.stringify({ ...s, business: { ...s.business, finance: oldFinance } });
   const m1 = migrateBusinessFinanceState(JSON.parse(oldJson).business.finance, JSON.parse(oldJson).economyLedger);
   assert(m1.lifetime.revenue === 3 * price && m1.lifetime.orderCount === 3 && m1.lifetime.inventoryPurchaseCost === 500 && m1.lifetime.coverage === "complete", "M: a pre-remediation save with an un-rolled ledger is seeded EXACTLY from it and marked complete");
-  assert(m1.lifetimeCogs === 900 && JSON.stringify(m1.lastDailyPnL) === JSON.stringify(s.business.finance.lastDailyPnL), "M2: existing lifetime COGS and last-day P&L are kept intact");
+  assert(m1.lifetimeCogs === 3 * 75 && JSON.stringify(m1.lastDailyPnL) === JSON.stringify(s.business.finance.lastDailyPnL), "M2: existing lifetime COGS and last-day P&L are kept intact");
   // At the cap: history may already be gone -> partial, never invented.
   const full = Array.from({ length: MAX_LEDGER_ENTRIES }, (_, i) => ({ id: `x${i}`, timestamp: i, category: (i % 2 ? "business-revenue" : "campaign-settlement") as "business-revenue", amount: 100 }));
   const m2 = migrateBusinessFinanceState(oldFinance, full);
@@ -235,7 +235,7 @@ function stockedSave(credits = 5_000_000): SaveData {
   // The REAL SaveManager.load() path.
   localStorage.setItem("knifecraft.save.v1", oldJson);
   const loaded = await SaveManager.load();
-  assert(loaded.business.finance.lifetime.revenue === 3 * price && loaded.business.finance.lifetime.coverage === "complete" && loaded.business.finance.lifetimeCogs === 900, "M6: SaveManager.load() migrates a real pre-remediation save through the same path");
+  assert(loaded.business.finance.lifetime.revenue === 3 * price && loaded.business.finance.lifetime.coverage === "complete" && loaded.business.finance.lifetimeCogs === 3 * 75, "M6: SaveManager.load() migrates a real pre-remediation save through the same path");
   assert(Array.isArray(loaded.business.menuActivation.inactiveDishIds) && loaded.credits === s.credits, "M7: every other field (menu activation default, credits) loads unchanged");
 }
 

@@ -10,10 +10,11 @@
  *     241; in order; every system has a title, what it covers and a story
  *     line; the helpers agree with the table.
  *  R. Recipe requirements: every one of the 221 campaign recipes (and the
- *     Business-only one) has stock requirements, one per component, every
- *     quantity positive and every ingredient known; Business dishes draw
- *     exactly the same stock as before (businessDishRequirements now uses
- *     the same rule); summing keeps the totals.
+ *     Business-only one) has stock requirements, one per physical item
+ *     prepared, each its plate serving (realistic portions, developer
+ *     2026-10-08), every ingredient known; Business dishes draw the same
+ *     stock (businessDishRequirements uses the same rule); summing keeps
+ *     the totals.
  *  N. Nothing changes with the switch off: no game file reads the switch
  *     yet, and no restaurant module reads it at all.
  *
@@ -43,7 +44,8 @@ import {
 } from "../src/game/recipes/campaignRecipes.ts";
 import { BUSINESS_DISH_CATALOG } from "../src/game/business/businessDishCatalog.ts";
 import { businessDishRequirements } from "../src/game/business/businessServiceCatalog.ts";
-import { recipePortionFractionFor } from "../src/game/business/businessPortionModel.ts";
+import { INGREDIENT_MEASURES } from "../src/game/business/ingredientMeasures.ts";
+import { ingredientInstancesFor } from "../src/game/economy/EconomySettlement.ts";
 import { INGREDIENTS } from "../src/game/definitions.ts";
 
 let failures = 0;
@@ -151,23 +153,28 @@ assert(
   CAMPAIGN_RECIPES.length === 221 &&
     all.every((r) => {
       const req = recipeRequirements(r);
+      const items = ingredientInstancesFor(r);
       return (
-        req.length === r.components.length &&
+        req.length === items.length &&
         req.length > 0 &&
-        req.every((q) => q.quantity > 0 && q.ingredientId in INGREDIENTS)
+        req.every(
+          (q, i) => q.ingredientId === items[i]!.ingredientId && q.ingredientId in INGREDIENTS,
+        )
       );
     }),
-  "R1: all 221 campaign recipes (+ the Business-only one) have stock needs, one per component",
+  "R1: all 221 campaign recipes (+ the Business-only one) have stock needs, one per PHYSICAL item prepared (consecutive steps on the same ingredient are one item unless chainBreak)",
 );
 assert(
   all.every((r) =>
     recipeRequirements(r).every(
-      (q, i) =>
-        q.ingredientId === r.components[i]!.ingredientId &&
-        q.quantity === recipePortionFractionFor(q.ingredientId),
+      (q) => q.quantity === INGREDIENT_MEASURES[q.ingredientId].serving && q.quantity > 0,
     ),
-  ),
-  "R2: each component uses the portion rule (Aromatic 0.025, others one unit)",
+  ) &&
+    recipeRequirements(CAMPAIGN_RECIPES.find((r) => r.id === "camp-onion-prep-chain")!).length ===
+      1 &&
+    Object.values(INGREDIENT_MEASURES).every((m) => m.pieceLb > 0 && m.serving > 0) &&
+    INGREDIENT_MEASURES.tomato.pieceLb <= 1 / 3,
+  "R2: each item uses its plate serving (ingredientMeasures.ts: a 0.3 lb tomato — more than 3 to the lb — 0.025 lb garlic, a quarter loaf); peel → halve → slice of one onion is one onion",
 );
 assert(
   BUSINESS_DISH_CATALOG.length === 48 &&

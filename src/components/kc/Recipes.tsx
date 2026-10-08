@@ -278,6 +278,7 @@ export function RecipeDetail({
           <KButton
             full
             size="lg"
+            variant={completed ? "ghost" : "sage"}
             disabled={!unlocked}
             onClick={() => {
               if (!unlocked) return;
