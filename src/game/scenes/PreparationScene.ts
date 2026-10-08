@@ -540,6 +540,13 @@ const PROTEIN_DEPTH_DIR = { x: 0.16, y: 1 };
 // own baked colors, so it reads as "this piece's own material, in
 // shadow" rather than a flat generic drop-shadow color regardless of
 // what's being plated (cucumber green, carrot orange, chicken pink, ...).
+/**
+ * A tap during plating skips it only this long after the last action
+ * finished: an extra tap right after the final cut is a carry-over, not a
+ * request to skip (developer report 2026-10-08).
+ */
+const PLATING_SKIP_GUARD_MS = 1200;
+
 const PLATING_THICKNESS_TINT = 0x6b5a46;
 // Side-wall thickness as a fraction of the piece's own on-screen size
 // (min of its display width/height) — "proportional to the piece size",
@@ -915,6 +922,10 @@ export class PreparationScene extends Phaser.Scene {
   private platePlates: { cx: number; cy: number; rx: number; ry: number }[] = [];
   private hasZoomedIn = false;
   private pendingRecipePayload: RecipeCompletedPayload | null = null;
+  /** Scene time (ms) before which a tap can't skip the plating — see onPointerDown. */
+  private platingSkipAllowedAt = 0;
+  /** True once skipPlating ran: the fast-forwarded plate chimes stay silent. */
+  private platingSkipped = false;
 
   // Layout — recomputed in pixels on every resize.
   private ingCx = 0;
@@ -1158,6 +1169,7 @@ export class PreparationScene extends Phaser.Scene {
     // defaults both to 1, but reset explicitly rather than trust that.
     this.tweens.timeScale = 1;
     this.time.timeScale = 1;
+    this.platingSkipped = false;
     this.beginStep(0); // fresh (index 0 has no previous step) — lays out geometry/texture and resets pieces
     // Fresh entry only — Retry/Prep Again (onRestart alone, below) must
     // stay instant and does NOT replay the kitchen-view push-in.
@@ -1188,6 +1200,7 @@ export class PreparationScene extends Phaser.Scene {
     // a sped-up run.
     this.tweens.timeScale = 1;
     this.time.timeScale = 1;
+    this.platingSkipped = false;
     this.beginStep(0);
   }
 
@@ -2973,8 +2986,11 @@ export class PreparationScene extends Phaser.Scene {
     // — never during real cutting. A tap here used to just silently no-op
     // (every technique's own guard below already blocks it); now it fast-
     // forwards straight to Dish Complete instead — see skipPlating().
+    // Not for the first PLATING_SKIP_GUARD_MS, though (developer report
+    // 2026-10-08): one extra tap after the last cut skipped the plating and
+    // the chef taking the plate by accident.
     if (this.pendingRecipePayload) {
-      this.skipPlating();
+      if (this.time.now >= this.platingSkipAllowedAt) this.skipPlating();
       return;
     }
     // A real onion/potato/garlic is peeled before it's cut, smashed, or
@@ -4564,6 +4580,7 @@ export class PreparationScene extends Phaser.Scene {
       seg.cuts.map((c) => this.toPercentPath(visibleSeamSpanFor(c, seg.silhouette))),
     );
     this.pendingRecipePayload = { ...grade, idealPaths, playerPaths };
+    this.platingSkipAllowedAt = this.time.now + PLATING_SKIP_GUARD_MS;
     this.time.delayedCall(PLATING_START_DELAY_MS, () => this.startPlating());
   }
 
@@ -5409,7 +5426,11 @@ export class PreparationScene extends Phaser.Scene {
           this.updatePlatingThickness(thickness, piece);
           this.updatePlatingShadow(shadow, piece, piece.alpha);
         },
-        onComplete: () => AudioManager.playPlateChime(i),
+        // A skipped plating lands every piece within a few frames: that
+        // burst of chimes was the harsh noise on skip, so it stays silent.
+        onComplete: () => {
+          if (!this.platingSkipped) AudioManager.playPlateChime(i);
+        },
       });
     });
 
@@ -5628,6 +5649,7 @@ export class PreparationScene extends Phaser.Scene {
    */
   private skipPlating(): void {
     const FAST_FORWARD = 12;
+    this.platingSkipped = true;
     this.tweens.timeScale = FAST_FORWARD;
     this.time.timeScale = FAST_FORWARD;
   }

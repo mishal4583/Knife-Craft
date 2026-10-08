@@ -1,8 +1,9 @@
-// The cooking clip after every dish, in the built game:
+// The cooking clip after every dish, in the built game (a classic build, VITE_RESTAURANT_MODE=0 —
+// the restaurant build opens the day first; tools/e2e/platingskip.mjs runs on the restaurant build):
 //   1. after the chef's hands take the plate, the clip appears (Knife Report not yet shown), the
 //      video really plays, SKIP › is offered over the old watermark corner, and when it ends the Knife Report follows;
 //   2. "Prepare Again" → the clip plays again for the next dish; SKIP › goes straight to the report;
-//   3. a tap anywhere on the clip also skips it;
+//   3. a tap anywhere on the clip also skips it (not in its first 800 ms — a stray tap);
 //   4. with Sound off in Settings the clip is muted; with Sound on it plays with sound;
 //   5. salads get the salad film (Level 10, Simple Garden Salad — the harness default save);
 //      stove-cooked dishes the chef-cooking film (Level 36, Mushroom & Garlic Saute Prep);
@@ -110,7 +111,11 @@ check("2b SKIP › goes straight to the Knife Report", Date.now() - t0 < 1500, D
 // ---------- 3. tap to skip ----------
 await clickButton(page, /^Prepare Again$/);
 check("3a clip shown", await cookUntilClip());
-await sleep(600);
+await sleep(200);
+await page.mouse.click(215, 500); // a stray tap inside the 800 ms guard
+await sleep(300);
+check("3a2 a tap in the first 800 ms is ignored", await page.evaluate(clipShown));
+await sleep(500);
 await page.mouse.click(215, 500);
 await page.waitForFunction(() => /KNIFE REPORT/.test(document.body.innerText), { timeout: 3000 });
 check("3b a tap on the clip skips it", await page.evaluate(clipGone));

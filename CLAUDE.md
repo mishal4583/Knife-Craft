@@ -867,7 +867,11 @@ not silently removed.
   Stir-Fry/Entree — 103 recipes, Level 36);
   else **plated** (cut-and-plate dishes — 75 recipes incl. Levels 1–9). The clip
   buffers from PLATING_STARTED, is
-  skippable (SKIP › or a tap, 300 ms guard), pauses with PauseManager,
+  skippable (SKIP › or a tap, 800 ms guard), pauses with PauseManager,
+  (the plating and the chef taking the plate before it can be fast-forwarded
+  by a tap only from 1.2 s after the last action — `PLATING_SKIP_GUARD_MS`,
+  so an extra tap after the last cut does nothing — and a skipped plating
+  plays no plate chimes; browser `tools/e2e/platingskip.mjs`),
   is muted unless `AudioManager.soundAllowed`, and falls straight through
   on error / stall / `prefers-reduced-motion`. All six sources carry the same
   AI watermark (centre 600,1160 of 720×1280), painted out with ffmpeg

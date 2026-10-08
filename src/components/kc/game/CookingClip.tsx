@@ -13,8 +13,8 @@
  *   buffering), so it is ready when the hands leave. Bundled locally
  *   (WebM VP9 first, H.264 MP4 fallback) — no network request.
  * - Skippable: the SKIP › control (bottom-right, over the painted-out
- *   watermark) or a tap anywhere (after a 300 ms guard,
- *   so the tap that fast-forwarded the plating doesn't also skip the film).
+ *   watermark) or a tap anywhere (after an 800 ms guard, so a stray tap
+ *   left over from the cutting or the plating doesn't also skip the film).
  * - Pause-aware (PauseManager: the in-game pause and the platform's), and
  *   its sound follows the game's own rule (AudioManager.soundAllowed).
  * - Never blocks the game: an unplayable/erroring/stalled video, or a
@@ -53,8 +53,8 @@ const CLIPS: Record<DishKind, { webm: string; mp4: string; poster: string }> = {
   plated: { webm: platingWebm, mp4: platingMp4, poster: platingPoster },
 };
 
-/** Taps sooner than this after the film appears are ignored (carry-over from the plating skip). */
-const TAP_GUARD_MS = 300;
+/** Taps sooner than this after the film appears are ignored (carry-over taps from the cutting or the plating skip). */
+const TAP_GUARD_MS = 800;
 /** If the film hasn't started this long after it should play (and the game isn't paused), move on. */
 const START_TIMEOUT_MS = 2500;
 /** Hard ceiling of unpaused play time — the clips run 2.97–3.84 s. */
