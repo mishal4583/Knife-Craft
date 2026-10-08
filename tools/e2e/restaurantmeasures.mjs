@@ -103,6 +103,13 @@ const quick = await page.evaluate(
     document.querySelector('[data-testid="psc-quick-restock"]')?.innerText.replace(/\s+/g, " ") ??
     "",
 );
+const missingCost = money(
+  (
+    await page.evaluate(
+      () => document.querySelector('[data-testid="psc-summary"]')?.innerText ?? "",
+    )
+  ).match(/Missing: \d+ items? · (\$[\d.,]+)/)?.[1] ?? "0",
+);
 await page.evaluate(() =>
   document.querySelector('[data-testid="psc-quick-restock"]')?.scrollIntoView({ block: "center" }),
 );
@@ -115,14 +122,15 @@ check(
   rows.slice(0, 3),
 );
 check(
-  "2b Quick Restock is offered with a warning that it costs more than the Market",
-  /Quick restock just what's missing · \$[\d.,]+/.test(quick) &&
-    /more than the Market \(\+25%\)/.test(quick),
-  quick,
+  "2b Quick Restock is offered, dearer than the Market's own price for the same stock, with a warning",
+  /Quick restock here · \$[\d.,]+/.test(quick) &&
+    /more than in the Market \(\+25%\)/.test(quick) &&
+    money(quick.match(/here · (\$[\d.,]+)/)?.[1] ?? "0") > missingCost,
+  { quick, missingCost },
 );
 const before = await readSave(page);
-const shown = money(quick.match(/missing · (\$[\d.,]+)/)?.[1] ?? "0");
-await clickButton(page, /Quick restock just what's missing/);
+const shown = money(quick.match(/here · (\$[\d.,]+)/)?.[1] ?? "0");
+await clickButton(page, /Quick restock here/);
 await sleep(900);
 const after = await readSave(page);
 const newEntries = purchases(after).length - purchases(before).length;
@@ -158,10 +166,28 @@ check(
   /\$[\d.]+\/kg/.test(tomatoCard) && /1 kg ≈ 7 tomatoes/.test(tomatoCard),
   tomatoCard.slice(0, 120),
 );
-// Buy 1 kg (− down to 1 from the default).
-for (let i = 0; i < 5; i++)
+// The card starts at 1 kg (restaurant default); − three times goes ¼ at a time to ¼ kg.
+for (let i = 0; i < 3; i++)
   await page.evaluate(() =>
     document.querySelector('[aria-label="Decrease quantity for Tomato"]')?.click(),
+  );
+await sleep(200);
+const quarter = await page.evaluate(() => {
+  const card = document.querySelector('[data-ingredient="tomato"]');
+  return (
+    [...card.querySelectorAll("button")]
+      .find((b) => /^Buy /.test(b.textContent.trim()))
+      ?.textContent.trim() ?? ""
+  );
+});
+check(
+  "3b2 the Market sells ¼ kg steps (− − − from 1 kg)",
+  /^Buy 0\.25 kg · \$/.test(quarter),
+  quarter,
+);
+for (let i = 0; i < 3; i++)
+  await page.evaluate(() =>
+    document.querySelector('[aria-label="Increase quantity for Tomato"]')?.click(),
   );
 await sleep(300);
 const buyText = await page.evaluate(() => {
@@ -247,6 +273,62 @@ check(
     lines: planLines,
     after: p3after.text.slice(-80),
   },
+);
+
+// ---------- 4c. Audit fixes ----------
+await boot(page, saveAt(20, 5_000_00));
+const card = await page.evaluate(() => document.body.innerText.replace(/\s+/g, " "));
+await clickButton(page, /^Prepare$/);
+await sleep(1200);
+const guide = await page.evaluate(
+  () => document.querySelector('[data-testid="psc-first-restock"]')?.innerText ?? "",
+);
+await clickButton(page, /Buy everything in the Market/);
+await sleep(1200);
+const planNow = await plan();
+const hint = await page.evaluate(
+  () => !!document.querySelector('[data-testid="market-plan-hint"]'),
+);
+await shot(page, "measures-buy-all-market");
+check(
+  "4c the Kitchen card shows what the level pays (about +$…), a first-time player gets Grandma's shopping guide, and Buy everything opens the Market plan on Today with a hint",
+  /ready to prepare · about \+\$[\d.,]+/.test(card) &&
+    /first shopping trip/i.test(guide) &&
+    planNow?.checked === "Today" &&
+    planNow.rows.length > 0 &&
+    hint,
+  {
+    card: card.match(/ready to prepare[^A-Z]*/)?.[0],
+    guide: guide.slice(0, 40),
+    plan: planNow?.checked,
+    hint,
+  },
+);
+await navTo("Restaurant");
+await sleep(1500);
+const overview = await page.evaluate(() => document.body.innerText.replace(/\s+/g, " "));
+check(
+  "4d before Level 250 the Restaurant Overview shows the campaign day, not the Business Day tools",
+  /Your restaurant today/i.test(overview) &&
+    !/Business Day \d/.test(overview) &&
+    !/IF YOU END THE DAY NOW/i.test(overview),
+  overview.slice(0, 160),
+);
+await page.evaluate(() => document.querySelector('[aria-label="Settings"]')?.click());
+await navTo("Kitchen");
+await sleep(500);
+await page.evaluate(() => document.querySelector('[aria-label="Settings"]')?.click());
+await sleep(600);
+await clickButton(page, /^Reduced motion/);
+await sleep(500);
+const reduced = await page.evaluate(() =>
+  document.documentElement.classList.contains("kc-reduced-motion"),
+);
+const rs = await readSave(page);
+check(
+  "4e Settings → Reduced motion is saved and calms the animations",
+  reduced && rs.settings.reducedMotion === true,
+  { reduced, saved: rs.settings },
 );
 
 // ---------- 5. Widths ----------

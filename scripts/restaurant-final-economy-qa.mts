@@ -87,9 +87,10 @@ console.log("T. The Level-250 target (no Endless income)");
     c.final >= dollars(150_000) && R.D!.final >= dollars(150_000) && R.E!.final >= dollars(150_000),
     `T1: completionist ≥ $150,000 — Local ${$(c.final)}, Wholesale ${$(R.D!.final)}, Premium ${$(R.E!.final)}`,
   );
+  // Developer 2026-10-08: only the floor matters — the preferred band's $175k upper limit is dropped.
   assert(
-    c.final >= dollars(160_000) && c.final <= dollars(175_000),
-    `T2: completionist in the preferred $160k–$175k (${$(c.final)})`,
+    c.final >= dollars(160_000),
+    `T2: completionist at least the preferred $160k (no upper limit, developer 2026-10-08) (${$(c.final)})`,
   );
   const owns = c.save;
   assert(

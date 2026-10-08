@@ -519,6 +519,23 @@ conversation.
    - Market → Ingredients → Plan ahead: Today / 2 days / 3 days of upcoming
      services, today's menu first, within the fridge's free space, nothing
      that would spoil first; Buy per line or Buy all.
+43. AUDIT FIXES (2026-10-08, developer: "fix all"; `restaurant-measures-qa`
+   A1–A6, U4, K7, browser `restaurantmeasures.mjs` 3b2, 4c–4e):
+   Quick Restock now costs the Market's price for the same amount + 25 %
+   (it had been cheaper than the Market); the Market sells ¼ lb / ¼ kg
+   steps (garlic for 5 cloves = ¼ lb), bulky produce sold whole (developer's
+   fridge choice); levels show what they pay ("about +$363", was the
+   completion reward only); the Restaurant Overview before L250 shows the
+   campaign day instead of Business Day tools; Progress drops Business
+   popularity before L250 and says "Kitchen upgrade"; rank card fixed at
+   320 px; supply packs say "1 pack of 12"; "Buy everything in the Market"
+   + folded optional sections + Grandma's first-shopping-trip guide;
+   board hints only on the next level; Settings → Reduced motion; Plan
+   ahead first on a shorter Market banner. Economy: completionist $174,950
+   (preferred band's upper limit dropped by the developer — only the $150k
+   floor counts), saver $314,400, Endless $151 / $293 / $436 / $849 / −$95,
+   fridge peak L250 47.4 of 140. Tried and rejected: lowering Endless demand
+   (made a chef-alone restaurant out-earn a medium one).
 
 ## 4. Open issues from the Level 1–10 audit (not fixed yet)
 

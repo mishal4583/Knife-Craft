@@ -11,15 +11,36 @@ import type { ScreenId } from "./data";
 let pending: IngredientId | null = null;
 let pendingQuantity: number | null = null;
 
-/** `quantity` (whole units) presets that card's quantity, e.g. exactly what a Pre-Service Check is missing. */
+/** `quantity` (Market units) presets that card's quantity, e.g. exactly what a Pre-Service Check is missing. */
 export function openMarketIngredients(
   go: (s: ScreenId) => void,
   ingredientId?: IngredientId,
   quantity?: number,
 ) {
   pending = ingredientId ?? null;
-  pendingQuantity = ingredientId && quantity && quantity > 0 ? Math.ceil(quantity) : null;
+  // Kept as given: the restaurant's Market sells ¼ lb / ¼ kg steps (business/measure.ts).
+  pendingQuantity = ingredientId && quantity && quantity > 0 ? quantity : null;
+  pendingPlan = false;
   go("shop-ingredients");
+}
+
+/**
+ * Pre-Service Check → "Buy everything in the Market": the Ingredients tab
+ * opens on its Plan ahead panel set to Today, whose Buy all buys exactly the
+ * service's missing stock at Market prices (audit 2026-10-08).
+ */
+let pendingPlan = false;
+
+export function openMarketPlan(go: (s: ScreenId) => void) {
+  pending = null;
+  pendingQuantity = null;
+  pendingPlan = true;
+  go("shop-ingredients");
+}
+
+/** True when the Market should open on its plan (read during render). */
+export function peekMarketPlan(): boolean {
+  return pendingPlan;
 }
 
 /** The preset quantity for the focused ingredient, if one was asked for. */
@@ -36,6 +57,7 @@ export function peekMarketFocus(): IngredientId | null {
 export function clearMarketFocus() {
   pending = null;
   pendingQuantity = null;
+  pendingPlan = false;
 }
 
 /**

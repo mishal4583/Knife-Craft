@@ -201,6 +201,7 @@ import type {
 import { businessDishForRecipeId } from "@/game/business/businessServiceCatalog";
 import {
   lbPerMarketUnit,
+  marketStep,
   measureOf,
   setDisplayMeasure,
   type Measure,
@@ -333,6 +334,10 @@ export function App() {
   const [save, setSave] = useState<SaveData | null>(null);
   // Settings → Weights: what every screen shows this render (business/measure.ts; display only).
   setDisplayMeasure(RESTAURANT_MODE && save ? measureOf(save) : "lb");
+  // Settings → Reduced motion: calm animations everywhere (styles.css .kc-reduced-motion).
+  useEffect(() => {
+    document.documentElement.classList.toggle("kc-reduced-motion", !!save?.settings.reducedMotion);
+  }, [save?.settings.reducedMotion]);
   // "kitchen" is a safe placeholder only — the `!save` loading gate below
   // always renders LoadingScreen until the save has actually resolved, so
   // this initial value is never shown. The real choice (fresh save →
@@ -769,7 +774,7 @@ export function App() {
     persist({ ...save, settings: { ...save.settings, measure } });
   }
 
-  function toggleSetting(key: "sound") {
+  function toggleSetting(key: "sound" | "reducedMotion") {
     if (!save) return;
     const settings = { ...save.settings, [key]: !save.settings[key] };
     if (key === "sound") AudioManager.setUserSoundEnabled(settings.sound);
@@ -908,6 +913,10 @@ export function App() {
       // Settings: kilograms or pounds (business/measure.ts) — the same unit the card quoted.
       RESTAURANT_MODE && Object.prototype.hasOwnProperty.call(INGREDIENTS, ingredientId)
         ? lbPerMarketUnit(ingredientId as IngredientId, measureOf(save))
+        : 1,
+      // The restaurant's Market sells weighed goods by the ¼ lb / ¼ kg (business/measure.ts).
+      RESTAURANT_MODE && Object.prototype.hasOwnProperty.call(INGREDIENTS, ingredientId)
+        ? marketStep(ingredientId as IngredientId)
         : 1,
     );
   }

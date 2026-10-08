@@ -3,6 +3,8 @@ import { ENDLESS_RESTAURANT_NAME } from "@/game/restaurant/endlessRestaurant";
 import { useEffect } from "react";
 import { ENDLESS_DAILY_COIN_CAP, isEndlessUnlocked } from "@/game/daily/EndlessServiceManager";
 import { paidLevelReward } from "@/game/levels/levelRewards";
+import { levelPayPreview } from "@/game/restaurant/levelPayPreview";
+import type { LevelDefinition } from "@/game/levels/levelTypes";
 import { KButton, Coin, DustMotes } from "./common/primitives";
 import { gameReady } from "@/game/PlayablesSDK";
 import { dollars, formatUsd, formatUsdChange } from "@/game/money";
@@ -57,6 +59,19 @@ function Hotspot({
       <span className="block font-hand text-[13px] leading-tight text-gold/90">{sub}</span>
     </button>
   );
+}
+
+/**
+ * What a level pays, for its "ready to prepare" line (audit 2026-10-08): the
+ * restaurant shows its orders + completion reward ("about +$363"); the classic
+ * game keeps the completion reward it always showed.
+ */
+function payText(
+  save: SaveData,
+  level: Parameters<typeof paidLevelReward>[0] & LevelDefinition,
+): string {
+  const pay = RESTAURANT_MODE ? levelPayPreview(save, level) : null;
+  return pay ? `about ${formatUsdChange(pay.total)}` : formatUsdChange(paidLevelReward(level));
 }
 
 /** The single "what should I prepare next" level — the first unlocked-but-not-completed level in campaign order, falling back to the furthest reached one once everything's done. Shared by the compact Kitchen Home card and OrderBoard's own header context. */
@@ -123,14 +138,17 @@ export function Kitchen({
           type="button"
           onClick={() => go("rack")}
           data-testid="kitchen-rank"
-          className="press min-w-0 rounded-2xl border border-ivory/25 bg-walnut-dark/45 px-3 py-2 text-left backdrop-blur-sm"
+          // One line each, never wider than the room the wallet and Settings leave
+          // (audit 2026-10-08: at 320 px it wrapped into the Kitchen Upgrade sign).
+          className="press mr-2 min-w-0 max-w-[60%] shrink rounded-2xl border border-ivory/25 bg-walnut-dark/45 px-3 py-2 text-left backdrop-blur-sm"
         >
           {/* The restaurant's rank (developer 2026-10-08): which of the ranks it
               holds, its name, the bar to the next one and when that comes. */}
-          <p className="font-ui text-[9px] font-extrabold uppercase tracking-[0.18em] text-gold">
-            Restaurant rank · {rankNumber}/{CAFE_MILESTONES.length}
+          <p className="truncate whitespace-nowrap font-ui text-[9px] font-extrabold uppercase tracking-[0.14em] text-gold">
+            <span className="hidden min-[380px]:inline">Restaurant </span>rank · {rankNumber}/
+            {CAFE_MILESTONES.length}
           </p>
-          <p className="font-display text-[15px] font-black leading-none text-ivory">
+          <p className="truncate whitespace-nowrap font-display text-[15px] font-black leading-tight text-ivory">
             🏆 {cafeMilestoneTitle}
           </p>
           <span className="mt-1.5 block h-[4px] w-24 overflow-hidden rounded-full bg-ivory/25">
@@ -142,13 +160,13 @@ export function Kitchen({
               }}
             />
           </span>
-          <p className="mt-1 max-w-[150px] truncate font-ui text-[9px] font-bold leading-none text-ivory/70">
+          <p className="mt-1 truncate whitespace-nowrap font-ui text-[9px] font-bold leading-none text-ivory/70">
             {nextRank
               ? `Next: ${nextRank.title} · Lv ${nextRank.levelRequired}`
               : "Highest rank reached"}
           </p>
         </button>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <Coin n={save.credits} />
           {/* Settings — Phase 15 dissolved the Journal hub, so this is the
               one small persistent entry point Step 7 asks for ("keep
@@ -229,7 +247,7 @@ export function Kitchen({
                     ? "locked · finish the level before it"
                     : todayCompleted
                       ? "prepared already · replay pays nothing"
-                      : `ready to prepare · ${formatUsdChange(paidLevelReward(todayLevel))}`}
+                      : `ready to prepare · ${payText(save, todayLevel)}`}
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-2">
@@ -441,9 +459,9 @@ export function OrderBoard({
                           ? "locked · finish the level before it"
                           : completed
                             ? "prepared already · replay pays nothing"
-                            : `ready to prepare · ${formatUsdChange(paidLevelReward(level))}`}
+                            : `ready to prepare · ${payText(save, level)}`}
                       </p>
-                      {canOpen ? (
+                      {canOpen && !completed ? (
                         <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-0.5">
                           <span className="font-ui text-[10px] font-bold text-walnut/45">
                             {difficulty}

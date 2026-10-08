@@ -91,7 +91,20 @@ async function prepare(title) {
   }, title);
   await sleep(1000);
 }
+// The day's ingredient list is folded behind "Show N ingredients" (audit 2026-10-08).
 const day = () =>
+  page
+    .evaluate(() => {
+      const el = document.querySelector('[data-testid="psc-day-stock"]');
+      if (!el) return null;
+      [...el.querySelectorAll("button")]
+        .find((b) => /^Show \d+ ingredients$/.test(b.textContent.trim()))
+        ?.click();
+      return null;
+    })
+    .then(() => sleep(300))
+    .then(() => dayRows());
+const dayRows = () =>
   page.evaluate(() => {
     const el = document.querySelector('[data-testid="psc-day-stock"]');
     if (!el) return null;

@@ -232,8 +232,8 @@ export function Settings({
   onResetProgress,
 }: {
   go: (s: ScreenId) => void;
-  settings: { sound: boolean; measure?: Measure };
-  onToggleSetting: (key: "sound") => void;
+  settings: { sound: boolean; reducedMotion: boolean; measure?: Measure };
+  onToggleSetting: (key: "sound" | "reducedMotion") => void;
   /** Restaurant build: pick lb or kg for weighed ingredients (absent in the classic build). */
   onSetMeasure?: ((measure: Measure) => void) | undefined;
   onResetProgress: () => void;
@@ -246,6 +246,11 @@ export function Settings({
         <div className="space-y-3 px-4">
           <Panel className="divide-y divide-walnut/10 p-1">
             <Toggle label="Sound" on={settings.sound} onToggle={() => onToggleSetting("sound")} />
+            <Toggle
+              label="Reduced motion"
+              on={settings.reducedMotion}
+              onToggle={() => onToggleSetting("reducedMotion")}
+            />
           </Panel>
           {onSetMeasure ? (
             <div data-testid="measure-setting">
@@ -305,7 +310,7 @@ function Toggle({ label, on, onToggle }: { label: string; on?: boolean; onToggle
       type="button"
       onClick={onToggle}
       aria-pressed={on}
-      className="flex w-full items-center justify-between px-3 py-3 text-left"
+      className="flex min-h-12 w-full items-center justify-between px-3 py-3 text-left"
     >
       <span className="font-ui text-[13px] font-bold text-walnut-dark">{label}</span>
       <span

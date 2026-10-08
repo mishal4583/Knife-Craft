@@ -138,7 +138,7 @@ for (const row of first?.rows ?? []) {
   }, row.id);
   await sleep(500);
   visited.push({ id: row.id, ...market });
-  const units = /^Restock (\d+)/.exec(row.restock)?.[1];
+  const units = /^Restock ([\d.]+)/.exec(row.restock)?.[1];
   if (
     !market.card ||
     !market.pill ||

@@ -34,6 +34,7 @@ import type { PurchaseSupplyResult } from "@/game/business/BusinessSuppliesManag
 import { SUPPLY_SECTIONS, type SupplySection } from "@/game/business/businessSupplies";
 import {
   peekMarketFocus,
+  peekMarketPlan,
   peekMarketQuantity,
   clearMarketFocus,
   peekSupplyFocus,
@@ -237,6 +238,7 @@ export function Shop({
   const [focusId] = useState(peekMarketFocus);
   const [focusQuantity] = useState(peekMarketQuantity);
   const [supplyFocusId] = useState(peekSupplyFocus);
+  const [planFocus] = useState(peekMarketPlan);
   useEffect(() => {
     clearMarketFocus();
     clearSupplyFocus();
@@ -392,7 +394,12 @@ export function Shop({
               <img
                 src={HEADER_ART}
                 alt="A friendly merchant behind the counter of a warm wooden kitchen market"
-                className="block h-[168px] w-full object-cover object-top"
+                // Restaurant Ingredients: a shorter banner so the Plan ahead panel is on
+                // screen (audit 2026-10-08: it sat below the fold).
+                className={cn(
+                  "block w-full object-cover object-top",
+                  RESTAURANT_MODE && category === "ingredients" ? "h-[96px]" : "h-[168px]",
+                )}
               />
             ) : (
               <div className="grid h-[140px] place-items-center">
@@ -450,6 +457,7 @@ export function Shop({
               {...(purchaseIngredients ? { purchaseIngredients } : {})}
               focusId={focusId}
               focusQuantity={focusQuantity}
+              focusPlan={planFocus}
               setNotice={setNotice}
               {...(RESTAURANT_MODE ? { onChangeSupplier: () => go("business-suppliers") } : {})}
             />

@@ -284,7 +284,7 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   Market (no built-in food cost; boosts to the quality bonus kept; the
   release settlement unchanged); measured with the full simulation
   (`scripts/restaurantCampaignSim.mts`), a completionist owns everything at
-  L250 with $174,503 after the realistic portions of 2026-10-08 ($168,352
+  L250 with $174,950 after the realistic portions of 2026-10-08 ($168,352
   before them; floor ≥ $150k, preferred $160k–$175k; $121,268 with the
   double charge);
   no soft-lock, cash = ledger. X: item effects on real stock (values
@@ -311,7 +311,7 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   $344, $519, −$189; after the final economy pass (Today's Special 15 % of
   the day's revenue ≤ $50, from the new L250 save): $112, $208, $327, $518,
   −$187; with the realistic portions (2026-10-08: food ~10 % of the menu
-  price instead of ~30 %) $151, $286, $423, $799, −$106, so the bands are
+  price instead of ~30 %) $151, $293, $436, $849, −$95, so the bands are
   now E2 $600–$900 and E3 minimal < $200, overstaffed < $0 (developer's
   call — see docs/HANDOFF.md); E7: events never lower customers, ≤ $50
   bonus and ≤ 3 stars a day. Cash = ledger, never < 0.
@@ -366,14 +366,16 @@ Focused suites (`npx tsx scripts/<name>.mts`):
 - `restaurant-final-economy-qa` — the FINAL ECONOMY PASS (2026-10-06,
   restaurant saves only — stamped by the restaurant migration; the release
   economy is untouched; `docs/ECONOMY_FINAL.md`): T the completionist (every
-  item, all 250 levels, no Endless) ends L250 ≥ $150k — $174,503 Local,
-  $174,765 Wholesale, $177,373 Premium since the realistic portions
-  (2026-10-08; before: $168,348 / $169,027 / $171,582; preferred
-  $160k–$175k); saver $313,237 ($307,353); S no soft-lock, cash = ledger,
+  item, all 250 levels, no Endless) ends L250 ≥ $150k — $174,950 Local,
+  $175,173 Wholesale, $178,025 Premium with the realistic portions, ¼-lb
+  buying and bulky items sold whole (2026-10-08; before: $168,348 /
+  $169,027 / $171,582); T2 ≥ $160k with NO upper limit (developer
+  2026-10-08: only the floor matters); saver $314,400 ($307,353); S no soft-lock, cash = ledger,
   never < 0, a prudent completionist (keeps $500 after every purchase,
   the next service's needs included) never needs Grandma; V every
   investment returns quality bonus; V3 whole-day stocking outgrows the
-  Basic fridge by L250 (realistic portions need ~2.5× less fridge);
+  Basic fridge by L250 (peak L91 28.7, L250 47.4 of 140 — bulky produce sold
+  whole keeps the fridge in play; developer 2026-10-08, no capacity cuts);
   R the rules (`restaurant/restaurantInvestments.ts`
   `RESTAURANT_INVESTMENT_RULES`: kitchen tiers $16k/$20k/$21k/$24k/$29k =
   $110k with +1.5/3/4/5/7 % restaurant quality on campaign order earnings
@@ -400,14 +402,20 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   serving per PHYSICAL item prepared, `EconomySettlement.ingredientInstancesFor`,
   the cutting scene's chain rule; menu prices unchanged); U units
   (`business/measure.ts`: lb ↔ kg, "loaf"/"bunch", "0.6 lb", "≈ 3 tomatoes",
-  whole Market units covering a shortfall); K kilograms (Settings → Weights,
+  the Market's smallest step — ¼ lb / ¼ kg for weighed goods
+  (`marketStep`, `stepMarketQuantity` ¼ → 1 → 5; `purchaseIngredient`'s
+  optional `step`, classic stays whole units), whole pieces for loaves and
+  bunches, and BULKY PRODUCE SOLD WHOLE (`soldWhole`: an item of ≥ 1 lb —
+  watermelon, pumpkin, pineapple, cabbage, cauliflower, coconut, lettuce,
+  eggplant — one item of `pieceLb` per Market unit in lb or kg); K kilograms (Settings → Weights,
   the optional `settings.measure`, absent = lb, restaurant build only: the
   Market sells whole kg at the per-lb price × 2.20462, 1 kg = 2.205 lb of
   stock, 1.5 kg and a loaf by the kg refused; the Pre-Service Check's
   Restock counts kg; every screen shows the chosen measure through
   `setDisplayMeasure`, which App sets each render); Q Quick Restock
   (`restaurant/quickRestock.ts`: in the Pre-Service Check's "Missing" box,
-  exactly the shortfall, today's Market price + `RUSH_RESTOCK_FEE` 25 %, the
+  the check's Restock amount at the Market's own price for it +
+  `RUSH_RESTOCK_FEE` 25 %, so always dearer than the Market (audit fix), the
   extra shown as a warning, all-or-nothing on money and fridge, one
   "inventory-purchase" entry per ingredient via `persistIngredientPurchases`);
   P the Market plan (`restaurant/marketPlan.ts`, `kc/MarketPlanPanel.tsx` at
@@ -417,6 +425,19 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   fridge stock first while fresh, nothing planned to spoil, today first,
   never more than the fridge's free space ("no room" for the rest); a Buy
   per line and "Buy all" (`App.purchaseIngredients`, one entry per line));
+  A the audit fixes of 2026-10-08: the level's pay on the Kitchen card and
+  Order Board (`restaurant/levelPayPreview.ts`: owed orders at `recipePay` +
+  completion — "about +$363"), Order Board hints only on the level to play,
+  the rank card one line at 320 px, supply restock "1 pack of 12"
+  (`packsText`), "🛒 Buy everything in the Market →" (`openMarketPlan`: the
+  Market's plan on Today with a hint), optional guest / whole-day sections
+  folded, Grandma's first-shopping-trip guide until the first ingredient is
+  bought (`restaurant/firstRestock.ts`, derived), the Restaurant Overview
+  before L250 = the campaign day (`CampaignDayCard`; no Business Day,
+  popularity forecast or "end the day"), Progress without Business
+  popularity before L250 and "Kitchen upgrade" vs rank, Settings → Reduced
+  motion (`settings.reducedMotion`, `.kc-reduced-motion` on <html>), a
+  shorter Market banner on Ingredients with Plan ahead first;
   W wiring, plus the Kitchen's restaurant rank ("Restaurant rank · n/13",
   the café rank, next rank) and Prepare (sage) vs Replay (ghost). Browser:
   `tools/e2e/restaurantmeasures.mjs` (restaurant test build, 320–430 px).

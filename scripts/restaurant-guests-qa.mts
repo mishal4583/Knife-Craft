@@ -20,6 +20,7 @@
  *
  * Run: npx tsx scripts/restaurant-guests-qa.mts
  */
+import { lbPerMarketUnit, marketStep } from "../src/game/business/measure.ts";
 import fs from "node:fs";
 import path from "node:path";
 import { DEFAULT_SAVE, type SaveData } from "../src/game/SaveManager.ts";
@@ -211,7 +212,16 @@ console.log("K. The guests' stock in the Pre-Service Check (phase N)");
   let own = base;
   if (plan.check.applies)
     for (const r of plan.check.missingRows) {
-      const b = purchaseIngredient(own, r.ingredientId, r.buyUnits);
+      const b = purchaseIngredient(
+        own,
+        r.ingredientId,
+        r.buyUnits,
+        0,
+        1,
+        0,
+        lbPerMarketUnit(r.ingredientId, "lb"),
+        marketStep(r.ingredientId),
+      );
       if (b.ok) own = b.save;
     }
   const ownPlan = servicePlanFor(own, lv40)!;
@@ -228,7 +238,16 @@ console.log("K. The guests' stock in the Pre-Service Check (phase N)");
   );
   let all = own;
   for (const r of ownPlan.guests.rows) {
-    const b = purchaseIngredient(all, r.ingredientId, r.buyUnits);
+    const b = purchaseIngredient(
+      all,
+      r.ingredientId,
+      r.buyUnits,
+      0,
+      1,
+      0,
+      lbPerMarketUnit(r.ingredientId, "lb"),
+      marketStep(r.ingredientId),
+    );
     if (b.ok) all = b.save;
   }
   const after = servicePlanFor(all, lv40)!;

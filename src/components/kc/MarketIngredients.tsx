@@ -17,6 +17,7 @@ import {
   marketUnitCountText,
   marketUnitLabel,
   measureOf,
+  stepMarketQuantity,
 } from "@/game/business/measure";
 import { shelfLifeForIngredient } from "@/game/business/perishability";
 import {
@@ -65,6 +66,7 @@ export function MarketIngredients({
   purchaseIngredients,
   focusId,
   focusQuantity = null,
+  focusPlan = false,
   setNotice,
   onChangeSupplier,
 }: {
@@ -80,6 +82,8 @@ export function MarketIngredients({
   focusId: IngredientId | null;
   /** The focused card's starting quantity (a Pre-Service Check's exact shortfall). */
   focusQuantity?: number | null;
+  /** Opened from the Pre-Service Check's "Buy everything in the Market": the plan opens on Today. */
+  focusPlan?: boolean;
   setNotice: (text: string) => void;
   /** Restaurant build: opens Restaurant → Suppliers, where the ingredient supplier is chosen (phase 7). */
   onChangeSupplier?: () => void;
@@ -106,8 +110,13 @@ export function MarketIngredients({
   // Restaurant build: weighed ingredients in the player's lb / kg (Settings); classic: lb.
   const measure = RESTAURANT_MODE ? measureOf(save) : "lb";
 
+  /** − / +: the restaurant steps by ¼ for weighed goods (business/measure.ts); classic whole units. */
+  const stepFor = (id: IngredientId, q: number, dir: 1 | -1) =>
+    RESTAURANT_MODE ? stepMarketQuantity(id, q, dir) : stepPurchaseQuantity(q, dir);
+
   function quantityFor(id: IngredientId): number {
-    return quantities[id] ?? DEFAULT_PURCHASE_QUANTITY;
+    // Restaurant: one lb / kg / piece to start (a plate uses a 0.3 lb tomato); classic: 5.
+    return quantities[id] ?? (RESTAURANT_MODE ? 1 : DEFAULT_PURCHASE_QUANTITY);
   }
 
   /** Unified Restaurant: the restaurant's price (bulk discount + Campaign Supplier), the same App's purchase charges. */
@@ -139,6 +148,15 @@ export function MarketIngredients({
 
   return (
     <div className="space-y-3">
+      {RESTAURANT_MODE ? (
+        <MarketPlanPanel
+          save={save}
+          purchaseIngredient={purchaseIngredient}
+          {...(purchaseIngredients ? { purchaseIngredients } : {})}
+          setNotice={setNotice}
+          focused={focusPlan}
+        />
+      ) : null}
       <Panel className="p-3">
         <div className="flex items-center justify-between gap-2 font-ui text-[12px] font-extrabold text-walnut-dark">
           <span>❄️ {fridge.name}</span>
@@ -186,15 +204,6 @@ export function MarketIngredients({
           </p>
         ) : null}
       </Panel>
-
-      {RESTAURANT_MODE ? (
-        <MarketPlanPanel
-          save={save}
-          purchaseIngredient={purchaseIngredient}
-          {...(purchaseIngredients ? { purchaseIngredients } : {})}
-          setNotice={setNotice}
-        />
-      ) : null}
 
       {event ? (
         <Panel tone="cream" className="p-3">
@@ -290,7 +299,7 @@ export function MarketIngredients({
                       <button
                         type="button"
                         onClick={() =>
-                          setQuantities((q) => ({ ...q, [id]: stepPurchaseQuantity(quantity, -1) }))
+                          setQuantities((q) => ({ ...q, [id]: stepFor(id, quantity, -1) }))
                         }
                         className="press grid h-12 w-12 place-items-center rounded-full border border-walnut/20 bg-ivory font-ui text-[18px] font-black text-walnut-dark"
                         aria-label={`Decrease quantity for ${def.name}`}
@@ -303,7 +312,7 @@ export function MarketIngredients({
                       <button
                         type="button"
                         onClick={() =>
-                          setQuantities((q) => ({ ...q, [id]: stepPurchaseQuantity(quantity, 1) }))
+                          setQuantities((q) => ({ ...q, [id]: stepFor(id, quantity, 1) }))
                         }
                         className="press grid h-12 w-12 place-items-center rounded-full border border-walnut/20 bg-ivory font-ui text-[18px] font-black text-walnut-dark"
                         aria-label={`Increase quantity for ${def.name}`}

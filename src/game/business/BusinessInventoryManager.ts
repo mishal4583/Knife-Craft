@@ -24,7 +24,14 @@ import {
 } from "./businessSupplierEvents";
 import { staffUnitCostDiscount } from "./businessStaff";
 import { applyStockingWear } from "./businessEquipmentCondition";
-import { LB_PER_KG, isWeighed } from "./measure";
+import {
+  LB_PER_KG,
+  WEIGHED_MARKET_STEP,
+  isMarketQuantity,
+  isWeighed,
+  lbPerMarketUnit,
+  soldWhole,
+} from "./measure";
 import { usableQuantity } from "./perishability";
 import { businessDishRequirements } from "./businessServiceCatalog";
 import { businessOrderAvailability } from "./BusinessServiceManager";
@@ -146,7 +153,8 @@ export function purchaseQuote(
       : Math.max(0, Math.round(marketUnitCost * supplierFactor));
   const listUnitCost = lbPerUnit === 1 ? listLbCost : Math.round(listLbCost * lbPerUnit);
   const unitCost = bulkDiscount > 0 ? discountedUnitCost(listUnitCost, bulkDiscount) : listUnitCost;
-  const totalCost = quantity * unitCost;
+  // Whole cents: a ¼-unit purchase (restaurant build) can land on half a cent.
+  const totalCost = Math.round(quantity * unitCost);
   const refrigeratorId = save.business.refrigerator.refrigeratorId;
   const verdict: PurchaseQuote["verdict"] =
     capped === null
@@ -164,7 +172,7 @@ export function purchaseQuote(
     remainingCredits: save.credits - totalCost,
     availableStorage: getAvailableStorageCapacity(save.business.inventory, refrigeratorId),
     bulkDiscount,
-    listTotal: quantity * listUnitCost,
+    listTotal: Math.round(quantity * listUnitCost),
     stockQuantity,
   };
 }
@@ -217,14 +225,29 @@ export function purchaseIngredient(
   freshnessBonusDays = 0,
   /** Stock in one Market unit: 1 (lb / pieces) or LB_PER_KG for kilograms of a weighed ingredient (purchaseQuote). */
   lbPerUnit = 1,
+  /**
+   * The smallest Market amount: 1 (whole units — the classic game) or, in the
+   * restaurant, ¼ for a weighed ingredient (business/measure.ts `marketStep`).
+   */
+  step = 1,
 ): PurchaseIngredientResult {
   if (!isKnownIngredient(ingredientId)) return { ok: false, reason: "unknownIngredient" };
-  if (!Number.isInteger(quantity) || quantity <= 0) return { ok: false, reason: "invalidQuantity" };
+  if (
+    step !== 1 &&
+    !(step === WEIGHED_MARKET_STEP && isWeighed(ingredientId) && !soldWhole(ingredientId))
+  )
+    return { ok: false, reason: "invalidQuantity" };
+  if (!isMarketQuantity(quantity, step)) return { ok: false, reason: "invalidQuantity" };
   if (!(bulkDiscount >= 0 && bulkDiscount < 1)) return { ok: false, reason: "invalidQuantity" };
   if (!(supplierFactor > 0 && supplierFactor < 2)) return { ok: false, reason: "invalidQuantity" };
   if (!(Number.isInteger(freshnessBonusDays) && freshnessBonusDays >= 0 && freshnessBonusDays <= 7))
     return { ok: false, reason: "invalidQuantity" };
-  if (lbPerUnit !== 1 && !(lbPerUnit === LB_PER_KG && isWeighed(ingredientId)))
+  // Market units: 1 (lb / pieces), a kilogram of a weighed good, or one whole bulky item.
+  if (
+    lbPerUnit !== 1 &&
+    !(lbPerUnit === LB_PER_KG && isWeighed(ingredientId) && !soldWhole(ingredientId)) &&
+    !(soldWhole(ingredientId) && lbPerUnit === lbPerMarketUnit(ingredientId, "lb"))
+  )
     return { ok: false, reason: "invalidQuantity" };
   const quote = purchaseQuote(
     save,
@@ -237,7 +260,10 @@ export function purchaseIngredient(
   if (quote.verdict !== "ok") return { ok: false, reason: quote.verdict };
   const { unitCost, totalCost, stockQuantity } = quote;
   // Stock keeps its cost per purchase unit (per lb): what was paid ÷ the stock it bought.
-  const stockUnitCost = lbPerUnit === 1 ? unitCost : Math.round(totalCost / stockQuantity);
+  const stockUnitCost =
+    lbPerUnit === 1 && Number.isInteger(quantity)
+      ? unitCost
+      : Math.round(totalCost / stockQuantity);
   const inventory = addStock(
     save.business.inventory,
     ingredientId,

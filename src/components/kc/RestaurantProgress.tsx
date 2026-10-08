@@ -48,7 +48,7 @@ export function RestaurantProgress({ go, save }: { go: (s: ScreenId) => void; sa
           {RESTAURANT_MODE ? <StandingCard save={save} /> : null}
           <Summary p={p} />
           <NextGoal p={p} />
-          <PopularityCard p={p} />
+          {RESTAURANT_MODE && !p.campaignComplete ? null : <PopularityCard p={p} />}
           <CampaignCard p={p} />
           <Earnings p={p} />
           <Benchmark p={p} />
@@ -150,6 +150,7 @@ function StandingCard({ save }: { save: SaveData }) {
 }
 
 function Summary({ p }: { p: Progress }) {
+  const campaignRestaurant = RESTAURANT_MODE && !p.campaignComplete;
   return (
     <Panel className="p-4">
       <Eyebrow>{p.restaurantName}</Eyebrow>
@@ -158,20 +159,30 @@ function Summary({ p }: { p: Progress }) {
         <Row label="Chapters" value={`${p.chapter.completed} / ${p.chapter.total} completed`} />
         <Row label="Recipes cooked" value={`${p.recipes.cooked} / ${p.recipes.total}`} />
         <Row label="Restaurant rank" value={p.rank.title} />
-        <Row label="Kitchen" value={p.kitchen.current} />
+        {/* "Kitchen upgrade" (the building) so it can't be confused with the rank's
+            "… Kitchen" names (audit 2026-10-08: Growing Kitchen vs Humble Kitchen). */}
+        <Row label="Kitchen upgrade" value={p.kitchen.current} />
         <Row label="Knives" value={`${p.knivesOwned} / ${p.knives.length}`} />
         <Row label="Boards" value={`${p.boardsOwned} / ${p.boards.length}`} />
         <Row label="Staff" value={`${p.staff.hired} / ${p.staff.total}`} />
         <Row label="Blacksmith" value={`${p.blacksmith.upgradeSteps} upgrades`} />
-        <Row label="Popularity" value={`${p.popularity} / 100`} />
-        <Row
-          label="Business"
-          value={
-            p.business.daysRun > 0
-              ? `Day ${p.business.day} · ${p.business.daysRun} days run`
-              : "Not opened yet"
-          }
-        />
+        {/* Restaurant build before L250: popularity and the Business Day belong to
+            the Endless Restaurant, which isn't open yet. */}
+        {campaignRestaurant ? (
+          <Row label="Endless Restaurant" value="Opens after Level 250" />
+        ) : (
+          <>
+            <Row label="Popularity" value={`${p.popularity} / 100`} />
+            <Row
+              label="Business"
+              value={
+                p.business.daysRun > 0
+                  ? `Day ${p.business.day} · ${p.business.daysRun} days run`
+                  : "Not opened yet"
+              }
+            />
+          </>
+        )}
         <Row label="Level rewards earned" value={formatUsd(p.money.levelRewards)} />
       </div>
     </Panel>

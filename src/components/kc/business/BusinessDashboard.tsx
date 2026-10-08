@@ -3,6 +3,7 @@ import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
 import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
 import { useMemo, useState, type ReactNode } from "react";
 import type { ScreenId } from "../data";
+import { restaurantDayOf, todaysServices } from "@/game/restaurant/restaurantDay";
 import { RushRestockActions } from "./RushRestockActions";
 import type { RushRestockOutcome, RushRestockPayment } from "@/game/business/businessRushRestock";
 import type { SaveData } from "@/game/SaveManager";
@@ -338,6 +339,20 @@ function Overview({
   const last = save.business.finance.lastDailyPnL;
   const popularity = save.business.popularity.score;
   const { businessDay } = save.business.calendar;
+
+  // Unified Restaurant before Level 250 (audit 2026-10-08): the campaign IS
+  // the restaurant, so the Overview shows ITS day (services, money since the
+  // day opened) — not the Endless Restaurant's Business Day, its popularity
+  // forecast or "end the day" figures, which can't be used yet.
+  if (!businessDayAllowed(RESTAURANT_MODE, save.levelProgress)) {
+    return (
+      <div className="space-y-3">
+        <CampaignDayCard save={save} go={go} />
+        <RankCard save={save} go={go} />
+        <OneRestaurantNote />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">
@@ -720,6 +735,44 @@ function MoneyBreakdown({ pnl }: { pnl: DailyPnL }) {
  * Its menu orders, stock, supplies, staff and day all run in the campaign's
  * services; the Endless Restaurant (this Business engine) opens after L250.
  */
+/** The campaign restaurant's day: its services (done / to come) and the money it has made since it opened. */
+function CampaignDayCard({ save, go }: { save: SaveData; go: (s: ScreenId) => void }) {
+  const d = restaurantDayOf(save);
+  const next = restaurantLevelOf(save.levelProgress);
+  const services = todaysServices(save, next);
+  const since = d.opened && d.openingCredits !== null ? save.credits - d.openingCredits : null;
+  return (
+    <div
+      className="relative overflow-hidden rounded-[26px] border border-walnut-dark/50 wood p-4 shadow-lift"
+      data-testid="campaign-day"
+    >
+      <Eyebrow dark>🍽️ Your restaurant today</Eyebrow>
+      <p className="mt-1 font-display text-[24px] font-black leading-none text-ivory">
+        Day {d.day}
+        <span className="ml-2 font-hand text-[17px] font-normal text-gold/90">
+          {d.closingDue ? "closing time" : d.opened ? "open" : "opens with your next level"}
+        </span>
+      </p>
+      <ul className="mt-2 space-y-1">
+        {services.map((sv) => (
+          <li key={sv.name} className="font-ui text-[13px] font-bold text-ivory/90">
+            {sv.done ? "✓" : "•"} {sv.name} · Level {sv.levelNumber}
+          </li>
+        ))}
+      </ul>
+      {since !== null ? (
+        <p className="mt-2 font-ui text-[13px] font-extrabold text-gold">
+          Since opening: {since >= 0 ? "+" : "−"}
+          {formatUsd(Math.abs(since))}
+        </p>
+      ) : null}
+      <KButton variant="copper" full className="mt-3 min-h-12" onClick={() => go("kitchen")}>
+        {d.closingDue ? "Close the restaurant →" : "Play the next service →"}
+      </KButton>
+    </div>
+  );
+}
+
 function OneRestaurantNote() {
   return (
     <Panel className="p-4">

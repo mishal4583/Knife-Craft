@@ -5,14 +5,16 @@
  * (show the cost is high as a warning) — or else go to the Market and buy
  * the stock beforehand."
  *
- *  - Amount: each missing ingredient's exact shortfall (to 0.001 of a lb /
- *    piece) — never a whole unit more.
- *  - Price: today's Market price for that ingredient (supplier event,
- *    contract, Prep Cook and the Campaign Supplier's factor — no bulk
- *    discount) plus the same `RUSH_RESTOCK_FEE` (+25 %) Business Rush
- *    Restock charges, rounded to the cent per line. The plan also says what
- *    the same stock costs in the Market, so the sheet can warn how much more
- *    this is.
+ *  - Amount: what the Market would sell for each missing ingredient — the
+ *    check's own Restock amount (the shortfall rounded up to the Market's
+ *    smallest step: ¼ lb / ¼ kg, or a whole piece).
+ *  - Price: exactly what the Market charges for that amount
+ *    (`restaurantQuote`: today's price, supplier, bulk) plus the same
+ *    `RUSH_RESTOCK_FEE` (+25 %) Business Rush Restock charges, rounded to
+ *    the cent per line — so it is ALWAYS dearer than going to the Market
+ *    (audit 2026-10-08: it used to buy the exact shortfall at +25 % and came
+ *    out cheaper than the Market's whole pounds). The plan says how much
+ *    more, for the sheet's warning.
  *  - All-or-nothing, like a Market purchase: the wallet must cover it and
  *    the fridge must hold it, else nothing changes. The caller (App) records
  *    one "inventory-purchase" ledger entry per ingredient, exactly like
@@ -23,26 +25,22 @@
 import type { SaveData } from "../SaveManager";
 import type { IngredientId } from "../definitions";
 import { addStock, normalizeQuantity } from "../business/businessInventory";
-import { purchaseQuote } from "../business/BusinessInventoryManager";
 import { RUSH_RESTOCK_FEE, rushUnitCost } from "../business/businessRushRestock";
 import { canStoreQuantity, getAvailableStorageCapacity } from "../business/RefrigeratorManager";
 import { applyStockingWear } from "../business/businessEquipmentCondition";
 import type { ServiceStockCheck } from "./campaignStock";
-import { supplierPriceFactor } from "./restaurantEconomy";
 
 export const QUICK_RESTOCK_FEE = RUSH_RESTOCK_FEE;
 
 export type QuickRestockLine = {
   ingredientId: IngredientId;
-  /** The exact shortfall, in the purchase unit (lb or pieces). */
+  /** Stock added, in the purchase unit (lb or pieces) — the Market amount below. */
   quantity: number;
-  /** Today's Market price of one purchase unit (no bulk discount). */
-  marketUnitCost: number;
-  /** One purchase unit with the quick-restock fee. */
-  unitCost: number;
-  /** What this line costs (whole cents). */
+  /** Market units (lb / kg / pieces, in ¼ steps for weighed goods) — what Restock would buy. */
+  marketUnits: number;
+  /** What this line costs (whole cents): the Market's price + the fee. */
   cost: number;
-  /** The same stock at the Market price (whole cents). */
+  /** The same amount in the Market (whole cents). */
   marketCost: number;
 };
 
@@ -65,22 +63,16 @@ export function quickRestockPlan(
   check: ServiceStockCheck,
 ): QuickRestockPlan | null {
   if (!check.applies || check.missingRows.length === 0) return null;
-  const factor = supplierPriceFactor(save);
   const lines: QuickRestockLine[] = [];
   for (const row of check.missingRows) {
-    const quantity = normalizeQuantity(row.missing);
-    if (!(quantity > 0)) continue;
-    const quote = purchaseQuote(save, row.ingredientId, quantity, 0, factor);
-    if (quote.verdict === "exceedsShortageLimit") return null;
-    const marketUnitCost = quote.unitCost;
-    const unitCost = rushUnitCost(marketUnitCost);
+    if (!(row.buyUnits > 0) || !row.quote) continue;
+    if (row.quote.verdict === "exceedsShortageLimit") return null;
     lines.push({
       ingredientId: row.ingredientId,
-      quantity,
-      marketUnitCost,
-      unitCost,
-      cost: Math.round(quantity * unitCost),
-      marketCost: Math.round(quantity * marketUnitCost),
+      quantity: row.quote.stockQuantity,
+      marketUnits: row.buyUnits,
+      cost: rushUnitCost(row.quote.totalCost),
+      marketCost: row.quote.totalCost,
     });
   }
   if (lines.length === 0) return null;
@@ -117,7 +109,13 @@ export function quickRestock(save: SaveData, check: ServiceStockCheck): QuickRes
   const day = save.business.calendar.businessDay;
   let inventory = save.business.inventory;
   for (const line of plan.lines)
-    inventory = addStock(inventory, line.ingredientId, line.quantity, line.unitCost, day);
+    inventory = addStock(
+      inventory,
+      line.ingredientId,
+      line.quantity,
+      Math.round(line.cost / line.quantity),
+      day,
+    );
   return {
     ok: true,
     save: {

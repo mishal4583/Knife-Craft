@@ -923,6 +923,12 @@ export function unitLabel(item: SupplyItem, n: number): string {
   return n === 1 ? item.unit[0] : item.unit[1];
 }
 
+/** What `packs` Market packs of a line are, in words: "1 pack of 12", "2 packs of 500", "1 bottle" (audit 2026-10-08: "Restock 1" hid that 1 was a case). */
+export function packsText(item: SupplyItem, packs: number): string {
+  if (item.packSize === 1) return `${packs} ${unitLabel(item, packs)}`;
+  return `${packs} ${packs === 1 ? "pack" : "packs"} of ${item.packSize.toLocaleString("en-US")}`;
+}
+
 /** Units on hand and what was actually paid for exactly those units (whole cents). */
 export type SupplyStock = { units: number; costBasis: number };
 

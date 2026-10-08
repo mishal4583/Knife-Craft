@@ -137,7 +137,7 @@ export type SaveData = {
    */
   economyLedger: EconomyLedgerEntry[];
   recipeProgress: Record<string, { best: number | null; done: boolean }>;
-  /** Only `sound` is a real setting. `music`/`reducedMotion` are legacy keys kept so older saves round-trip unchanged; nothing reads them. */
+  /** `sound` and `reducedMotion` (Settings → Reduced motion, audit 2026-10-08) are real settings; `music` is a legacy key kept so older saves round-trip unchanged (the game has no music). */
   /** `measure` (optional, developer 2026-10-08): the player's unit for weighed ingredients — absent = "lb" (business/measure.ts). */
   settings: { sound: boolean; music: boolean; reducedMotion: boolean; measure?: "lb" | "kg" };
   /**

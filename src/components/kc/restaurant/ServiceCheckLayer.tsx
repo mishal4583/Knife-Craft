@@ -8,8 +8,13 @@ import { markEmergencyService } from "@/game/restaurant/emergencyService";
 import { getSupplyItem } from "@/game/business/businessSupplies";
 import { fridgeUsage } from "@/game/restaurant/fridgeUsage";
 import { isSystemLive } from "@/game/restaurant/restaurantProgression";
-import { openMarketIngredients, openMarketSupplies } from "@/components/kc/marketFocus";
+import {
+  openMarketIngredients,
+  openMarketPlan,
+  openMarketSupplies,
+} from "@/components/kc/marketFocus";
 import { PreServiceCheck } from "./PreServiceCheck";
+import { hasBoughtIngredients } from "@/game/restaurant/firstRestock";
 import { measureOf } from "@/game/business/measure";
 import {
   quickRestock,
@@ -117,6 +122,8 @@ export function ServiceCheckLayer({
       onHireStaff={() => go("business-staff")}
       fridge={isSystemLive("fridge-freshness", n) ? fridgeUsage(save) : null}
       measure={measureOf(save)}
+      onBuyAllInMarket={() => openMarketPlan(go)}
+      firstRestock={!hasBoughtIngredients(save)}
       quickRestock={quickRestockPlan(save, check)}
       onQuickRestock={() => {
         const r = quickRestock(save, check);

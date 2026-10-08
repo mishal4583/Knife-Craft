@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { KButton, Panel } from "./common/primitives";
 import { cn } from "@/lib/utils";
 import type { SaveData } from "@/game/SaveManager";
@@ -32,6 +32,7 @@ export function MarketPlanPanel({
   purchaseIngredient,
   purchaseIngredients,
   setNotice,
+  focused = false,
 }: {
   save: SaveData;
   purchaseIngredient: (ingredientId: string, quantity: number) => PurchaseIngredientResult;
@@ -41,8 +42,14 @@ export function MarketPlanPanel({
     totalCost: number;
   };
   setNotice: (text: string) => void;
+  /** Opened from the Pre-Service Check: start on Today and scroll here. */
+  focused?: boolean;
 }) {
-  const [days, setDays] = useState<number>(2);
+  const [days, setDays] = useState<number>(focused ? 1 : 2);
+  const ref = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (focused) ref.current?.scrollIntoView({ block: "start" });
+  }, [focused]);
   const [showAll, setShowAll] = useState(false);
   const measure = measureOf(save);
   const plan = marketPlanFor(save, days);
@@ -72,7 +79,7 @@ export function MarketPlanPanel({
   }
 
   return (
-    <div data-testid="market-plan">
+    <div data-testid="market-plan" ref={ref}>
       <Panel tone="cream" className="p-3">
         <p className="font-ui text-[11px] font-extrabold uppercase tracking-[0.12em] text-copper">
           🗓️ Plan ahead
@@ -81,6 +88,14 @@ export function MarketPlanPanel({
           What your next services need that the fridge doesn't have — today's menu first, only as
           much as fits ({formatQuantity(plan.storageFree)} units free).
         </p>
+        {focused ? (
+          <p
+            className="mt-1 font-ui text-[12px] font-extrabold text-copper"
+            data-testid="market-plan-hint"
+          >
+            👉 Tap Buy all, then ↩ Back to the Pre-Service Check.
+          </p>
+        ) : null}
         <div className="mt-2 grid grid-cols-3 gap-2" role="radiogroup" aria-label="Plan ahead for">
           {MARKET_PLAN_DAYS.map((d) => (
             <button

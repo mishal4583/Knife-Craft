@@ -178,7 +178,8 @@ function saveAt(n: number, extra: Partial<SaveData> = {}): SaveData {
   assert(!/Rack/.test(shopFor.replace(/\/\*[\s\S]*?\*\//g, "")) && /Manage in the Market/.test(shopFor), "F4: Business points to the Market (where equipping/sharpening live), not Rack");
   const journal = read("src/components/kc/Journal.tsx");
   const settings = journal.slice(journal.indexOf("export function Settings"));
-  assert(/label="Sound"/.test(settings) && !/label="Music"|label="Reduced motion"|label="Language"|label="Accessibility"|Larger cut guides|[Mm]usic by/.test(settings), "F5: Settings shows only real options (Sound + Reset Progress) and promises no music");
+  // Reduced motion became a real option (audit 2026-10-08): it is allowed only because App wires it.
+  assert(/label="Sound"/.test(settings) && /label="Reduced motion"/.test(settings) && /classList\.toggle\("kc-reduced-motion"/.test(read("src/App.tsx")) && !/label="Music"|label="Language"|label="Accessibility"|Larger cut guides|[Mm]usic by/.test(settings), "F5: Settings shows only real options (Sound, Reduced motion — wired — and Reset Progress) and promises no music");
   const ui = ["src/components/kc/Kitchen.tsx", "src/components/kc/RestaurantProgress.tsx", "src/components/kc/Shop.tsx", "src/components/kc/business/BusinessRefrigerator.tsx", "src/components/kc/business/BusinessDashboard.tsx"];
   const rackText = ui.filter((f) => /[">][^"<]*\bRack\b[^"<]*["<]/.test(read(f).replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, "")));
   assert(rackText.length === 0, `F6: no player-facing "Rack" text remains${rackText.length ? " — " + rackText.join(", ") : ""}`);

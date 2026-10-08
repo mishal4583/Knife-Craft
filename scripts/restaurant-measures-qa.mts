@@ -35,6 +35,12 @@ const memoryStore = new Map<string, string>();
   length: 0,
 } as Storage;
 
+import { levelPayPreview } from "../src/game/restaurant/levelPayPreview.ts";
+import { hasBoughtIngredients } from "../src/game/restaurant/firstRestock.ts";
+import { getSupplyItem, packsText } from "../src/game/business/businessSupplies.ts";
+import { recipePay } from "../src/game/recipes/recipePay.ts";
+import { paidLevelReward } from "../src/game/levels/levelRewards.ts";
+import { dollars } from "../src/game/money.ts";
 import fs from "node:fs";
 import path from "node:path";
 import { DEFAULT_SAVE, SaveManager, type SaveData } from "../src/game/SaveManager.ts";
@@ -50,6 +56,11 @@ import {
   marketUnitLabel,
   marketUnitsCovering,
   measureOf,
+  lbPerMarketUnit,
+  marketStep,
+  soldWhole,
+  stepMarketQuantity,
+  WEIGHED_MARKET_STEP,
 } from "../src/game/business/measure.ts";
 import { recipeRequirements } from "../src/game/restaurant/recipeRequirements.ts";
 import { defaultMenuPrice } from "../src/game/business/businessMenu.ts";
@@ -181,11 +192,52 @@ console.log("U. Units");
   assert(
     marketUnitLabel("tomato", "kg") === "kg" &&
       marketUnitLabel("bread", "kg", 2) === "loaves" &&
-      marketUnitsCovering("tomato", 0.6, "lb") === 1 &&
-      marketUnitsCovering("tomato", 2.3, "kg") === 2 &&
+      marketUnitsCovering("tomato", 0.6, "lb") === 0.75 &&
+      marketUnitsCovering("garlic", 0.05, "lb") === 0.25 &&
+      marketUnitsCovering("tomato", 2.3, "kg") === 1.25 &&
       marketUnitsCovering("tomato", 2.2, "kg") === 1 &&
-      marketUnitsCovering("tomato", 0, "kg") === 0,
-    "U3: labels and the fewest whole Market units that cover a shortfall (2.2 lb = 1 kg, 2.3 lb = 2 kg)",
+      marketUnitsCovering("bread", 0.25, "kg") === 1 &&
+      marketUnitsCovering("tomato", 0, "kg") === 0 &&
+      stepMarketQuantity("tomato", 0.25, -1) === 0.25 &&
+      stepMarketQuantity("tomato", 0.75, 1) === 1 &&
+      stepMarketQuantity("tomato", 1, 1) === 2 &&
+      stepMarketQuantity("tomato", 1, -1) === 0.75 &&
+      stepMarketQuantity("tomato", 5, 1) === 10 &&
+      stepMarketQuantity("bread", 1, -1) === 1,
+    "U3: labels; the Market's smallest step is ¼ lb / ¼ kg for weighed goods, a whole piece otherwise (garlic for 5 cloves = 0.25 lb, not 1 lb); the stepper goes ¼ → 1 → 5",
+  );
+}
+
+{
+  // U4 — bulky produce is sold whole (developer 2026-10-08): one item, in either measure.
+  const s = saveAt(20);
+  const melon = purchaseIngredient(
+    s,
+    "watermelon",
+    1,
+    0,
+    1,
+    0,
+    lbPerMarketUnit("watermelon", "kg"),
+    marketStep("watermelon"),
+  );
+  const quarter = purchaseIngredient(s, "watermelon", 0.25, 0, 1, 0, 1, WEIGHED_MARKET_STEP);
+  assert(
+    soldWhole("watermelon") &&
+      soldWhole("pumpkin") &&
+      soldWhole("cabbage") &&
+      !soldWhole("tomato") &&
+      !soldWhole("broccoli") &&
+      marketUnitLabel("watermelon", "kg") === "watermelon" &&
+      marketStep("watermelon") === 1 &&
+      lbPerMarketUnit("watermelon", "kg") === INGREDIENT_MEASURES.watermelon.pieceLb &&
+      marketUnitsCovering("watermelon", 0.75, "lb") === 1 &&
+      marketUnitCountText("watermelon", "lb") === "sold whole · 1 watermelon ≈ 10 lb" &&
+      melon.ok &&
+      melon.stockQuantity === 10 &&
+      melon.totalCost === 10 * businessUnitCostFor("watermelon") &&
+      !quarter.ok,
+    "U4: bulky produce (an item of 1 lb or more) is sold whole — 1 watermelon = 10 lb at the per-lb price, never ¼ lb, in lb or kg",
   );
 }
 
@@ -241,8 +293,12 @@ console.log("K. Kilograms");
           r.buyUnits === marketUnitsCovering(r.ingredientId, r.missing, "kg") &&
           r.quote!.totalCost === restaurantQuote(kg(s), r.ingredientId, r.buyUnits).totalCost,
       ) &&
-      lbCheck.missingRows.every((r) => r.buyUnits === Math.ceil(r.missing - 1e-9)),
-    "K5: the Pre-Service Check's Restock counts whole kg in kg mode and whole lb otherwise, priced by the same quote",
+      lbCheck.missingRows.every(
+        (r) =>
+          r.buyUnits === marketUnitsCovering(r.ingredientId, r.missing, "lb") &&
+          r.buyUnits < r.missing + marketStep(r.ingredientId) + 1e-9,
+      ),
+    "K5: the Pre-Service Check's Restock counts ¼ kg in kg mode and ¼ lb otherwise (never a whole step more than needed), priced by the same quote",
   );
   // SaveManager caches its first load, so one real load per run: a kg save.
   localStorage.setItem("knifecraft.save.v1", JSON.stringify(kg(s)));
@@ -251,6 +307,24 @@ console.log("K. Kilograms");
   assert(
     loaded.settings.measure === "kg" && measureOf({ settings: oldSettings }) === "lb",
     "K6: the setting survives a real SaveManager.load; a save without it reads lb",
+  );
+}
+
+{
+  const s = saveAt(20);
+  const q = purchaseIngredient(s, "garlic", 0.25, 0, 1, 0, 1, WEIGHED_MARKET_STEP);
+  const odd = purchaseIngredient(s, "garlic", 0.3, 0, 1, 0, 1, WEIGHED_MARKET_STEP);
+  const loaf = purchaseIngredient(s, "bread", 1, 0, 1, 0, 1, WEIGHED_MARKET_STEP);
+  const classic = purchaseIngredient(s, "garlic", 0.25);
+  assert(
+    q.ok &&
+      q.stockQuantity === 0.25 &&
+      q.totalCost === Math.round(0.25 * businessUnitCostFor("garlic")) &&
+      getQuantity(q.save.business.inventory, "garlic") === 0.25 &&
+      !odd.ok &&
+      !loaf.ok &&
+      !classic.ok,
+    "K7: the restaurant sells ¼ lb of garlic for a quarter of the price; 0.3 lb, a loaf in quarters and a classic ¼ purchase are refused",
   );
 }
 
@@ -265,14 +339,17 @@ console.log("Q. Quick Restock");
       plan.lines.every((l) => {
         const row = check.missingRows.find((r) => r.ingredientId === l.ingredientId)!;
         return (
-          l.quantity === row.missing &&
-          l.unitCost === Math.round(l.marketUnitCost * (1 + QUICK_RESTOCK_FEE)) &&
-          l.cost === Math.round(l.quantity * l.unitCost)
+          l.marketUnits === row.buyUnits &&
+          l.quantity === row.quote!.stockQuantity &&
+          l.marketCost === row.quote!.totalCost &&
+          l.cost === Math.round(l.marketCost * (1 + QUICK_RESTOCK_FEE)) &&
+          l.cost > l.marketCost
         );
       }) &&
+      plan.marketCost === check.missingCost &&
       plan.extraCost === plan.totalCost - plan.marketCost &&
-      plan.extraCost > 0,
-    `Q1: exactly the missing stock (not whole units), at today's price + ${QUICK_RESTOCK_FEE * 100} % — ${plan?.lines.length} lines, ${plan?.totalCost}c, ${plan?.extraCost}c more than the Market`,
+      plan.totalCost > check.missingCost,
+    `Q1: the same amount the Market would sell, at the Market's price + ${QUICK_RESTOCK_FEE * 100} % — always dearer than going to the Market (${plan?.totalCost}c vs ${check.applies ? check.missingCost : 0}c)`,
   );
   const r = quickRestock(save, check);
   const after = r.ok ? checkAt(r.save, 20).check : null;
@@ -284,7 +361,7 @@ console.log("Q. Quick Restock");
       plan.lines.every(
         (l) => getQuantity(r.save.business.inventory, l.ingredientId) === l.quantity,
       ),
-    "Q2: it takes exactly its cost, adds exactly the shortfall, and the check is ready",
+    "Q2: it takes exactly its cost, adds exactly the Market amount, and the check is ready",
   );
   const broke = quickRestock({ ...save, credits: plan.totalCost - 1 }, check);
   assert(
@@ -340,7 +417,16 @@ console.log("P. Market plan");
   // Buy the whole plan the way "Buy all" does: today's service is then ready.
   let bought = s;
   for (const row of p1.rows) {
-    const b = purchaseIngredient(bought, row.ingredientId, row.buyUnits);
+    const b = purchaseIngredient(
+      bought,
+      row.ingredientId,
+      row.buyUnits,
+      0,
+      1,
+      0,
+      lbPerMarketUnit(row.ingredientId, "lb"),
+      marketStep(row.ingredientId),
+    );
     if (b.ok) bought = b.save;
   }
   const level31 = getLevel("level-31")!;
@@ -406,7 +492,7 @@ console.log("W. Wiring");
     "W2: Settings → Weights only in the restaurant build; every screen shows the chosen measure",
   );
   assert(
-    /Restaurant rank · \{rankNumber\}\/\{CAFE_MILESTONES\.length\}/.test(kitchen) &&
+    /Restaurant <\/span>rank · \{rankNumber\}\/\s*\{CAFE_MILESTONES\.length\}/.test(kitchen) &&
       (kitchen.match(/variant=\{(todayCompleted|completed) \? "ghost" : "sage"\}/g) ?? [])
         .length === 2,
     "W3: the Kitchen shows the restaurant rank; Prepare (green) and Replay (outlined) look different",
@@ -416,6 +502,81 @@ console.log("W. Wiring");
       (m) => !/RESTAURANT_MODE/.test(m.replace(/\/\*[\s\S]*?\*\//g, "")) && !/Math\.random/.test(m),
     ),
     "W4: the new modules never read RESTAURANT_MODE or Math.random",
+  );
+}
+
+console.log("A. Audit fixes (2026-10-08)");
+{
+  // A1 — a level's pay preview = its owed orders at recipe price + the completion reward.
+  const s = saveAt(12);
+  const level = getLevel("level-12")!;
+  const pay = levelPayPreview(s, level)!;
+  const { tickets } = ticketsFor(s.levelProgress, level);
+  const orders = tickets.reduce((t, r) => t + dollars(recipePay(r, level.chapter)), 0);
+  const replay = levelPayPreview(
+    {
+      ...s,
+      levelProgress: {
+        ...s.levelProgress,
+        completedLevelIds: [...s.levelProgress.completedLevelIds, "level-12"],
+      },
+    },
+    level,
+  );
+  assert(
+    pay.orders === orders &&
+      pay.completion === paidLevelReward(level) &&
+      pay.total === orders + pay.completion &&
+      pay.total > pay.completion &&
+      replay === null,
+    `A1: Level 12 shows what it pays — orders ${pay.orders}c + completion ${pay.completion}c (it used to show only the completion); a replay shows nothing`,
+  );
+  // A2 — the first restock guide ends once the player has bought, or has stock.
+  const fresh = saveAt(15);
+  const bought = purchaseIngredient(fresh, "tomato", 1);
+  assert(
+    !hasBoughtIngredients(fresh) && bought.ok && hasBoughtIngredients(bought.save),
+    "A2: Grandma's first-restock guide shows until the first ingredient is bought (or stocked)",
+  );
+  // A3 — supply packs say what they hold.
+  assert(
+    packsText(getSupplyItem("dinner-plates")!, 1) === "1 pack of 12" &&
+      packsText(getSupplyItem("dinner-plates")!, 2) === "2 packs of 12" &&
+      packsText(getSupplyItem("dish-soap")!, 1) === "1 pack of 4",
+    'A3: supply restock says the pack size ("1 pack of 12", not "1")',
+  );
+  const kitchen = read("src/components/kc/Kitchen.tsx");
+  const dashboard = read("src/components/kc/business/BusinessDashboard.tsx");
+  const progress = read("src/components/kc/RestaurantProgress.tsx");
+  const app = read("src/App.tsx");
+  const journal = read("src/components/kc/Journal.tsx");
+  const layer = read("src/components/kc/restaurant/ServiceCheckLayer.tsx");
+  const check = read("src/components/kc/restaurant/PreServiceCheck.tsx");
+  const shop = read("src/components/kc/Shop.tsx");
+  assert(
+    /ready to prepare · \$\{payText\(save, todayLevel\)\}/.test(kitchen) &&
+      /ready to prepare · \$\{payText\(save, level\)\}/.test(kitchen) &&
+      /\{canOpen && !completed \? \(/.test(kitchen) &&
+      /max-w-\[60%\]/.test(kitchen),
+    "A4: the Kitchen card and Order Board show the level's pay; hints only on the level to play; the rank card is width-capped",
+  );
+  assert(
+    /if \(!businessDayAllowed\(RESTAURANT_MODE, save\.levelProgress\)\) \{[\s\S]*?<CampaignDayCard/.test(
+      dashboard,
+    ) &&
+      /label="Kitchen upgrade"/.test(progress) &&
+      /RESTAURANT_MODE && !p\.campaignComplete \? null : <PopularityCard/.test(progress),
+    "A5: before Level 250 the Restaurant Overview shows the campaign day (no Business Day tools) and Progress drops the Business popularity; Kitchen upgrade vs rank names",
+  );
+  assert(
+    /classList\.toggle\("kc-reduced-motion"/.test(app) &&
+      /label="Reduced motion"/.test(journal) &&
+      /onBuyAllInMarket=\{\(\) => openMarketPlan\(go\)\}/.test(layer) &&
+      /firstRestock=\{!hasBoughtIngredients\(save\)\}/.test(layer) &&
+      /setShowGuests/.test(check) &&
+      /setShowDay/.test(check) &&
+      /h-\[96px\]/.test(shop),
+    "A6: Settings → Reduced motion; Buy everything in the Market (plan on Today); first-restock guide; optional sections folded; a short Market banner on Ingredients",
   );
 }
 

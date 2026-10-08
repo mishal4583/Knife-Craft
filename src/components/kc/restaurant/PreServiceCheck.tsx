@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { KButton } from "@/components/kc/common/primitives";
 import { cn } from "@/lib/utils";
 import type { RecipeDefinition } from "@/game/recipes/recipeTypes";
@@ -21,7 +22,7 @@ import type {
   SupplyCheckRow,
 } from "@/game/restaurant/serviceSupplies";
 import type { SupplyId } from "@/game/business/businessSupplies";
-import { getSupplyItem } from "@/game/business/businessSupplies";
+import { getSupplyItem, packsText } from "@/game/business/businessSupplies";
 import { SupplyBottle } from "./SupplyBottle";
 import type { RestaurantNews } from "@/game/restaurant/restaurantNews";
 import type { StaffRequirement } from "@/game/restaurant/staffRequirements";
@@ -86,6 +87,8 @@ export function PreServiceCheck({
   measure = "lb",
   quickRestock = null,
   onQuickRestock = () => {},
+  onBuyAllInMarket = null,
+  firstRestock = false,
 }: {
   levelNumber: number;
   day: number;
@@ -125,7 +128,14 @@ export function PreServiceCheck({
   /** Quick restock: exactly the missing stock now, at a higher price (quickRestock.ts). */
   quickRestock?: QuickRestockPlan | null;
   onQuickRestock?: () => void;
+  /** "Buy everything in the Market →": the Market's plan on Today (normal prices, audit 2026-10-08). */
+  onBuyAllInMarket?: (() => void) | null;
+  /** The player has never bought an ingredient: Grandma walks them through the first restock. */
+  firstRestock?: boolean;
 }) {
+  // Optional sections start folded so START and what blocks it stay in view.
+  const [showGuests, setShowGuests] = useState(false);
+  const [showDay, setShowDay] = useState(false);
   const stock = check.applies ? check : null;
   const sup = supplies.applies ? supplies : null;
   const fridgeShort = !!stock && stock.storageNeeded > stock.storageFree;
@@ -205,6 +215,25 @@ export function PreServiceCheck({
               </li>
             ))}
           </ul>
+
+          {stock && !stock.ready && firstRestock ? (
+            <div
+              className="mt-3 rounded-2xl border-2 border-copper/60 bg-gold/15 p-3"
+              data-testid="psc-first-restock"
+            >
+              <p className="font-ui text-[12px] font-extrabold uppercase tracking-wide text-copper">
+                👵 Grandma's first shopping trip
+              </p>
+              <ol className="mt-1 list-decimal space-y-0.5 pl-5 font-ui text-[13px] font-bold text-walnut-dark">
+                <li>Tap 🛒 Buy everything in the Market below.</li>
+                <li>In the Market, tap Buy all — it buys what today's services need.</li>
+                <li>Tap ↩ Back to the Pre-Service Check, then start the service.</li>
+              </ol>
+              <p className="mt-1 font-hand text-[15px] leading-snug text-walnut/75">
+                “Buy before you cook, and only what you'll use — fresh food doesn't wait.”
+              </p>
+            </div>
+          ) : null}
 
           {stock ? (
             <>
@@ -362,6 +391,16 @@ export function PreServiceCheck({
                 {guests.rows.length === 0 ? " ✓ Stocked for every guest." : " Stock for them:"}
               </p>
               {guests.rows.length > 0 ? (
+                <KButton
+                  size="sm"
+                  variant="ghost"
+                  className="mt-1 min-h-12"
+                  onClick={() => setShowGuests((v) => !v)}
+                >
+                  {showGuests ? "Hide" : `Show ${guests.rows.length} ingredients`}
+                </KButton>
+              ) : null}
+              {guests.rows.length > 0 && showGuests ? (
                 <ul className="mt-1 divide-y divide-walnut/10">
                   {guests.rows.map((row) => (
                     <li
@@ -420,6 +459,16 @@ export function PreServiceCheck({
                   : `Needs ${formatQuantity(dayStock.totalUnits)} units — your fridge has ${formatQuantity(dayStock.storageFree)} free. Keep stocking service by service, or get a bigger fridge.`}
               </p>
               {dayStock.fits ? (
+                <KButton
+                  size="sm"
+                  variant="ghost"
+                  className="mt-1 min-h-12"
+                  onClick={() => setShowDay((v) => !v)}
+                >
+                  {showDay ? "Hide" : `Show ${dayStock.rows.length} ingredients`}
+                </KButton>
+              ) : null}
+              {dayStock.fits && showDay ? (
                 <ul className="mt-1 divide-y divide-walnut/10">
                   {dayStock.rows.map((row) => (
                     <li
@@ -476,6 +525,17 @@ export function PreServiceCheck({
                 {stock.missingRows.length === 1 ? "item" : "items"} · {formatUsd(stock.missingCost)}
               </p>
               <p className="font-ui text-[12px] text-walnut/70">You have {formatUsd(credits)}.</p>
+              {onBuyAllInMarket && stock.affordable ? (
+                <KButton
+                  size="sm"
+                  variant="sage"
+                  full
+                  className="mt-2 h-auto min-h-12 py-2 leading-tight"
+                  onClick={onBuyAllInMarket}
+                >
+                  🛒 Buy everything in the Market →
+                </KButton>
+              ) : null}
               {quickRestock && quickRestock.affordable ? (
                 <div
                   className="mt-2 rounded-2xl border border-copper/40 bg-gold/10 p-2.5"
@@ -489,15 +549,15 @@ export function PreServiceCheck({
                     disabled={!quickRestock.fits}
                     onClick={onQuickRestock}
                   >
-                    ⚡ Quick restock just what's missing · {formatUsd(quickRestock.totalCost)}
+                    ⚡ Quick restock here · {formatUsd(quickRestock.totalCost)}
                   </KButton>
                   <p
                     className="mt-1.5 font-ui text-[12px] font-bold leading-snug text-copper"
                     data-testid="psc-quick-warning"
                   >
-                    ⚠️ Costs {formatUsd(quickRestock.extraCost)} more than the Market (+
-                    {Math.round(QUICK_RESTOCK_FEE * 100)}%). Restock in the Market before the
-                    service to save.
+                    ⚠️ The same stock costs {formatUsd(quickRestock.extraCost)} more than in the
+                    Market (+{Math.round(QUICK_RESTOCK_FEE * 100)}%). Buying in the Market before
+                    the service saves it.
                   </p>
                   {!quickRestock.fits ? (
                     <p className="mt-1 font-ui text-[12px] font-bold text-tomato">
@@ -722,7 +782,7 @@ function SupplyRow({ row, onRestock }: { row: SupplyCheckRow; onRestock: (id: Su
           className="min-h-12"
           onClick={() => onRestock(row.id)}
         >
-          Restock {row.packs} · {formatUsd(row.cost)}
+          Restock {item ? packsText(item, row.packs) : row.packs} · {formatUsd(row.cost)}
         </KButton>
       )}
     </li>

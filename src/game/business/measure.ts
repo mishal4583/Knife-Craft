@@ -37,8 +37,22 @@ export function isWeighed(ingredientId: IngredientId): boolean {
   return purchaseUnitFor(ingredientId) === "lb";
 }
 
+/**
+ * Bulky produce is sold WHOLE (developer 2026-10-08: "sell bulky items
+ * whole"): a weighed ingredient whose one item weighs a pound or more — a
+ * watermelon, pumpkin, pineapple, cabbage, cauliflower, coconut, lettuce,
+ * eggplant — is bought by the item, as a real market sells it, never by the
+ * ¼ lb. Its Market unit is one item of `pieceLb` lb in either measure.
+ */
+export const WHOLE_ITEM_MIN_LB = 1;
+
+export function soldWhole(ingredientId: IngredientId): boolean {
+  return isWeighed(ingredientId) && measureFor(ingredientId).pieceLb >= WHOLE_ITEM_MIN_LB;
+}
+
 /** Stock (lb, or pieces) in ONE Market unit of `ingredientId` in this measure. */
 export function lbPerMarketUnit(ingredientId: IngredientId, measure: Measure): number {
+  if (soldWhole(ingredientId)) return measureFor(ingredientId).pieceLb;
   return measure === "kg" && isWeighed(ingredientId) ? LB_PER_KG : 1;
 }
 
@@ -51,19 +65,56 @@ export function stockForMarketUnits(
   return normalizeQuantity(units * lbPerMarketUnit(ingredientId, measure));
 }
 
-/** The fewest whole Market units that cover `stock` (0 for none). */
+/**
+ * The smallest amount the restaurant's Market sells (developer 2026-10-08,
+ * "you can't buy 5 cloves of garlic by the pound"): a quarter of a lb or kg
+ * for weighed goods, one piece for loaves, baguettes and bunches. The
+ * classic build keeps whole units.
+ */
+export const WEIGHED_MARKET_STEP = 0.25;
+
+export function marketStep(ingredientId: IngredientId): number {
+  return isWeighed(ingredientId) && !soldWhole(ingredientId) ? WEIGHED_MARKET_STEP : 1;
+}
+
+/** True when `quantity` is a positive whole number of `step`s (1 or ¼). */
+export function isMarketQuantity(quantity: number, step: number): boolean {
+  if (!(Number.isFinite(quantity) && quantity > 0)) return false;
+  const n = quantity / step;
+  return Math.abs(n - Math.round(n)) < 1e-9;
+}
+
+/** The fewest Market steps (¼ lb / ¼ kg, or whole pieces) that cover `stock` (0 for none). */
 export function marketUnitsCovering(
   ingredientId: IngredientId,
   stock: number,
   measure: Measure,
 ): number {
   if (!(stock > 0)) return 0;
-  return Math.ceil(stock / lbPerMarketUnit(ingredientId, measure) - 1e-9);
+  const step = marketStep(ingredientId);
+  return Math.ceil(stock / lbPerMarketUnit(ingredientId, measure) / step - 1e-9) * step;
+}
+
+/**
+ * The Market card's − / + stepper in the restaurant: ¼ at a time up to 1,
+ * then 1 at a time up to 5, then 5 at a time (pieces: 1 up to 5, then 5);
+ * never below one step.
+ */
+export function stepMarketQuantity(
+  ingredientId: IngredientId,
+  current: number,
+  direction: 1 | -1,
+): number {
+  const step = marketStep(ingredientId);
+  const up = current < 1 ? step : current < 5 ? 1 : 5;
+  const down = current <= 1 ? step : current <= 5 ? 1 : 5;
+  const next = direction === 1 ? current + up : current - down;
+  return Math.max(step, Math.round(next / step) * step);
 }
 
 /** What a Market unit is called: "lb" / "kg", or the piece ("loaf", "bunch", "baguette"). */
 export function marketUnitLabel(ingredientId: IngredientId, measure: Measure, units = 1): string {
-  if (isWeighed(ingredientId)) return measure;
+  if (isWeighed(ingredientId) && !soldWhole(ingredientId)) return measure;
   const m = measureFor(ingredientId);
   return units === 1 ? m.noun : m.plural;
 }
@@ -108,6 +159,10 @@ export function itemCountText(ingredientId: IngredientId, stock: number): string
 
 /** "1 lb ≈ 3 tomatoes" / "1 kg ≈ 7 tomatoes" — what one Market unit holds; null for piece goods. */
 export function marketUnitCountText(ingredientId: IngredientId, measure: Measure): string | null {
+  if (soldWhole(ingredientId)) {
+    const m = measureFor(ingredientId);
+    return `sold whole · 1 ${m.noun} ≈ ${formatStockAmount(ingredientId, m.pieceLb, measure)}`;
+  }
   const count = itemCountText(ingredientId, lbPerMarketUnit(ingredientId, measure));
   return count ? `1 ${measure} ${count}` : null;
 }

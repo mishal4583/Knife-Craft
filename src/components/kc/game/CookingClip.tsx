@@ -95,8 +95,9 @@ export function CookingClip({
     if (!playing) return;
     shownAt.current = performance.now();
     const reduced =
-      typeof window.matchMedia === "function" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      document.documentElement.classList.contains("kc-reduced-motion") ||
+      (typeof window.matchMedia === "function" &&
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches);
     const video = videoRef.current;
     if (reduced || !video) {
       finish();

@@ -42,7 +42,11 @@ const memoryStore = new Map<string, string>();
   length: 0,
 } as Storage;
 
+import { dailyPayroll, BUSINESS_STAFF_CATALOG } from "../src/game/business/businessStaff.ts";
+import { SPECIALIST_WAGE_FROM_ROLE } from "../src/game/restaurant/staffRequirements.ts";
 import { DEFAULT_SAVE, type SaveData } from "../src/game/SaveManager.ts";
+import { lbPerMarketUnit, marketStep } from "../src/game/business/measure.ts";
+import type { IngredientId } from "../src/game/definitions.ts";
 import {
   getLevel,
   completeLevel,
@@ -190,7 +194,17 @@ function persist(next: SaveData, stats: Stats, where: string): SaveData {
 
 /** Buys `units` of an ingredient the way App.purchaseIngredient records it. */
 function buyIngredient(s: SaveData, id: string, units: number) {
-  const r = purchaseIngredient(s, id, units, bulkDiscountFor(units), supplierPriceFactor(s));
+  // As App.buyOn: the restaurant Market sells weighed goods by the ¼ (business/measure.ts).
+  const r = purchaseIngredient(
+    s,
+    id,
+    units,
+    bulkDiscountFor(units),
+    supplierPriceFactor(s),
+    0,
+    lbPerMarketUnit(id as IngredientId, "lb"),
+    marketStep(id as IngredientId),
+  );
   if (!r.ok) return { s, ok: false as const, reason: r.reason };
   const recorded = appendLedgerEntry(r.save, "inventory-purchase", -r.totalCost, id);
   return { s: recordInventoryPurchase(recorded, r.totalCost, 1), ok: true as const };
@@ -321,6 +335,8 @@ function playLevel(save: SaveData, n: number, opts: SimOptions, stats: Stats): S
   // The menu guests' optional stock (phase N): a diligent player buys it too.
   if (profile === "diligent") {
     for (const g of plan.guests.rows) {
+      // Optional stock: a prudent player (reserve) buys it only while it keeps its reserve.
+      if (s.credits - g.cost < (opts.reserve ?? 0)) continue;
       const bought = buyIngredient(s, g.ingredientId, g.buyUnits);
       if (bought.ok) s = persist(bought.s, stats, `${where} guest stock`);
     }
@@ -609,6 +625,13 @@ function nextServiceNeeds(save: SaveData): number {
     cost += plan.supplies.missingCost;
     for (const b of [plan.supplies.soap, plan.supplies.cleaner])
       if (b.spare === 0 && b.status !== "ok") cost += supplyPackPrice(getSupplyItem(b.id)!);
+  }
+  // A closing due before the next service pays the day's wages (from L91): keep them too.
+  if (restaurantDayOf(save).closingDue && isSystemLive("full-operation", plan.levelNumber)) {
+    cost += dailyPayroll(save.business.staff.hiredRoles);
+    cost +=
+      (save.business.restaurantStaff?.specialists?.length ?? 0) *
+      BUSINESS_STAFF_CATALOG[SPECIALIST_WAGE_FROM_ROLE].salary;
   }
   return cost;
 }

@@ -558,3 +558,24 @@
     overscroll-behavior: contain;
   }
 }
+
+/* Settings → Reduced motion (audit 2026-10-08): the same calm versions as the
+   system's prefers-reduced-motion, switched on by the game's own setting
+   (App puts .kc-reduced-motion on <html>). */
+html.kc-reduced-motion .kc-story-text,
+html.kc-reduced-motion .kc-story-art {
+  animation: kc-story-fade 0.2s ease-out both;
+}
+html.kc-reduced-motion .kc-story-push,
+html.kc-reduced-motion .kc-cine-camera,
+html.kc-reduced-motion .kc-cine-light,
+html.kc-reduced-motion .kc-cine-push,
+html.kc-reduced-motion .kcf-cabinet,
+html.kc-reduced-motion .kcf-door,
+html.kc-reduced-motion .kcf-item,
+html.kc-reduced-motion .kcf-pan__cue {
+  animation: none;
+}
+html.kc-reduced-motion .kc-cine-line {
+  animation: kc-story-fade 200ms ease-out both;
+}

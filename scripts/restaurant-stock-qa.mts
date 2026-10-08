@@ -24,6 +24,7 @@
  *
  * Run: npx tsx scripts/restaurant-stock-qa.mts
  */
+import { marketUnitsCovering } from "../src/game/business/measure.ts";
 import fs from "node:fs";
 import path from "node:path";
 import { DEFAULT_SAVE, type SaveData } from "../src/game/SaveManager.ts";
@@ -239,7 +240,11 @@ console.log("K. Pre-Service Check");
     check.applies &&
     check.missingRows.every((r) => {
       const q = purchaseQuote(empty, r.ingredientId, r.buyUnits);
-      return r.buyUnits === Math.ceil(r.missing - 1e-9) && r.quote?.totalCost === q.totalCost;
+      // The restaurant Market sells weighed goods by the ¼ lb (audit 2026-10-08), pieces whole.
+      return (
+        r.buyUnits === marketUnitsCovering(r.ingredientId, r.missing, "lb") &&
+        r.quote?.totalCost === q.totalCost
+      );
     });
   assert(
     check.applies &&
@@ -248,7 +253,7 @@ console.log("K. Pre-Service Check");
       quoteOk &&
       check.missingCost === check.missingRows.reduce((s, r) => s + r.quote!.totalCost, 0) &&
       check.affordable,
-    "K1: empty fridge: every ingredient missing, whole units at the Market's own price, affordable",
+    "K1: empty fridge: every ingredient missing, the Market's smallest steps (¼ lb, whole pieces) at its own price, affordable",
   );
   const full = stocked(empty, tickets);
   const ready = serviceStockCheck(full, 30, tickets);
