@@ -5,12 +5,12 @@ export function CurrencyPill({ amount, className }: { amount: number; className?
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border border-copper/30 bg-ivory/85 px-2.5 py-1 font-ui text-[12px] font-extrabold text-walnut-dark shadow-soft",
+        "inline-flex items-center gap-1.5 rounded-full border border-copper/30 bg-ivory/85 px-2.5 py-1 font-ui text-[13.5px] font-extrabold text-walnut-dark shadow-soft",
         className,
       )}
     >
       <span
-        className="grid h-4 w-4 place-items-center rounded-full text-[8px] text-ivory"
+        className="grid h-4 w-4 place-items-center rounded-full text-[9px] text-ivory"
         style={{ background: "linear-gradient(160deg,var(--color-gold),var(--color-copper))" }}
         aria-hidden
       >
@@ -65,13 +65,13 @@ export function StatRow({
 }) {
   return (
     <div className="flex items-center gap-3">
-      <span className="w-[68px] shrink-0 font-ui text-[11px] font-bold text-walnut/80">
+      <span className="w-[68px] shrink-0 font-ui text-[12.5px] font-bold text-walnut/80">
         {label}
       </span>
       <span className="flex-1">
         <ProgressBar value={value} tone={tone} />
       </span>
-      <span className="w-[62px] text-right font-ui text-[11px] font-extrabold text-walnut-dark">
+      <span className="w-[62px] text-right font-ui text-[12.5px] font-extrabold text-walnut-dark">
         {value}
         {typeof next === "number" ? (
           <span className={next > value ? "text-olive" : "text-walnut/40"}> → {next}</span>

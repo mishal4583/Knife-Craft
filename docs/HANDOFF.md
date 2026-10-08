@@ -536,6 +536,16 @@ conversation.
    floor counts), saver $314,400, Endless $151 / $293 / $436 / $849 / −$95,
    fridge peak L250 47.4 of 140. Tried and rejected: lowering Endless demand
    (made a chef-alone restaurant out-earn a medium one).
+44. BIGGER TEXT (developer 2026-10-08: "the description and all needs a
+   little more size … in every page and section", keeping the font colours
+   and styles): every React screen's small text grew ~12–15 % (8→9, 9→10.5,
+   10→11.5, 11→12.5, 12→13.5, 13→14.5, 14→15.5, 15→16.5, 16→17, 17→18 px;
+   18 px+ headings unchanged), the handwritten Caveat lines ~2 px more
+   (14→16), the fridge's labels +0.5–1.5 px; Market → Plan ahead's Buy
+   buttons stack "Buy 2 baguettes" over the price so rows fit at 320 px.
+   Browser: `restaurantwidths.mjs` + `restaurantmeasures.mjs` on it, no
+   sideways scroll at 320–768 px. The Phaser cutting HUD is not React and is
+   unchanged.
 
 ## 4. Open issues from the Level 1–10 audit (not fixed yet)
 

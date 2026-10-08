@@ -32,7 +32,7 @@ export function ClosingTime({
       <div className="absolute inset-0 bg-walnut-dark/55 backdrop-blur-[2px]" />
       <div className="anim-up relative m-3 flex max-h-[calc(100%-24px)] w-[calc(100%-24px)] flex-col rounded-[26px] border border-walnut/20 bg-[linear-gradient(170deg,var(--color-ivory),var(--color-cream))] shadow-lift">
         <div className="px-5 pb-2 pt-4">
-          <p className="font-ui text-[12px] font-extrabold uppercase tracking-[0.14em] text-walnut/60">
+          <p className="font-ui text-[13.5px] font-extrabold uppercase tracking-[0.14em] text-walnut/60">
             Day {p.day} · Closing time
           </p>
           <p className="font-display text-[22px] font-black text-walnut-dark">
@@ -43,13 +43,13 @@ export function ClosingTime({
         <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-3">
           <ul className="space-y-0.5" data-testid="closing-services">
             {p.services.map((s) => (
-              <li key={s.name} className="font-ui text-[14px] font-bold text-walnut-dark">
+              <li key={s.name} className="font-ui text-[15.5px] font-bold text-walnut-dark">
                 ✓ {s.name} · Level {s.levelNumber}
               </li>
             ))}
           </ul>
 
-          <p className="mt-3 font-ui text-[12px] font-extrabold uppercase tracking-wide text-walnut/60">
+          <p className="mt-3 font-ui text-[13.5px] font-extrabold uppercase tracking-wide text-walnut/60">
             Closing chores
           </p>
           <ul className="mt-1 space-y-1" data-testid="closing-chores">
@@ -57,7 +57,7 @@ export function ClosingTime({
               <li
                 key={c.id}
                 data-chore={c.id}
-                className="kc-story-text flex items-center gap-2 font-ui text-[14px] text-walnut-dark"
+                className="kc-story-text flex items-center gap-2 font-ui text-[15.5px] text-walnut-dark"
                 style={{ animationDelay: `${150 + i * 180}ms` }}
               >
                 <span className="text-sage" aria-hidden>
@@ -71,7 +71,7 @@ export function ClosingTime({
           {p.spoiled ? (
             <p
               className={cn(
-                "mt-3 font-ui text-[13px] font-bold",
+                "mt-3 font-ui text-[14.5px] font-bold",
                 p.spoiled.quantity > 0 ? "text-tomato" : "text-walnut/70",
               )}
               data-testid="closing-spoiled"
@@ -86,7 +86,7 @@ export function ClosingTime({
             <div className="mt-2" data-testid="closing-cleaner">
               <SupplyBottle bottle={p.cleaner} per="closing" />
               {p.cleaner.status === "empty" ? (
-                <p className="font-ui text-[12px] text-tomato">
+                <p className="font-ui text-[13.5px] text-tomato">
                   No cleaning liquid: the wipe-down is done with water tonight. Buy some in the
                   Market → Takeaway → Securing &amp; hygiene.
                 </p>
@@ -98,11 +98,11 @@ export function ClosingTime({
             className="mt-3 rounded-2xl border border-walnut/15 bg-ivory/70 p-3"
             data-testid="closing-count"
           >
-            <p className="font-ui text-[12px] font-extrabold uppercase tracking-wide text-walnut/60">
+            <p className="font-ui text-[13.5px] font-extrabold uppercase tracking-wide text-walnut/60">
               Today's count
             </p>
             {p.cashAtOpening !== null ? (
-              <p className="font-ui text-[14px] font-bold text-walnut-dark">
+              <p className="font-ui text-[15.5px] font-bold text-walnut-dark">
                 {formatUsd(p.cashAtOpening)} at opening → {formatUsd(p.cashNow)} now
                 {change !== null ? (
                   <span className={cn("ml-1", change >= 0 ? "text-olive" : "text-tomato")}>
@@ -112,12 +112,12 @@ export function ClosingTime({
                 ) : null}
               </p>
             ) : (
-              <p className="font-ui text-[14px] font-bold text-walnut-dark">
+              <p className="font-ui text-[15.5px] font-bold text-walnut-dark">
                 {formatUsd(p.cashNow)} in the till
               </p>
             )}
             {p.fullDayEnd ? (
-              <p className="mt-1 font-ui text-[12px] text-walnut/70">
+              <p className="mt-1 font-ui text-[13.5px] text-walnut/70">
                 Closing pays the staff and closes the day's accounts.
               </p>
             ) : null}

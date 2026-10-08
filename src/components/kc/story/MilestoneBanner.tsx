@@ -44,13 +44,13 @@ export function MilestoneBanner({
       data-story-paused={paused ? "true" : undefined}
     >
       <Panel tone="cream" className="max-w-[360px] px-5 py-3 text-center shadow-soft">
-        <p className="font-ui text-[11px] font-extrabold uppercase tracking-[0.14em] text-gold">
+        <p className="font-ui text-[12.5px] font-extrabold uppercase tracking-[0.14em] text-gold">
           {kicker}
         </p>
-        <p className="mt-1 font-hand text-[17px] leading-snug text-walnut-dark">{line}</p>
+        <p className="mt-1 font-hand text-[19px] leading-snug text-walnut-dark">{line}</p>
         {rows?.length ? (
           <div
-            className="mt-2 space-y-0.5 border-t border-walnut/15 pt-2 font-ui text-[13px] font-bold text-walnut/75"
+            className="mt-2 space-y-0.5 border-t border-walnut/15 pt-2 font-ui text-[14.5px] font-bold text-walnut/75"
             data-testid="banner-rows"
           >
             {rows.map((r) => (

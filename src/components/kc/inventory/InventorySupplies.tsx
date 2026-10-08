@@ -66,13 +66,13 @@ function Card({
 }) {
   return (
     <div className="min-h-[84px] rounded-[20px] border border-walnut/15 p-3 card-warm">
-      <p className="font-ui text-[11px] font-extrabold text-walnut/65">
+      <p className="font-ui text-[12.5px] font-extrabold text-walnut/65">
         <span aria-hidden>{icon}</span> {label}
       </p>
       <p className="mt-0.5 font-display text-[19px] font-black leading-tight text-walnut-dark tabular-nums">
         {value}
       </p>
-      <p className="font-hand text-[13px] leading-tight text-walnut/60">{sub}</p>
+      <p className="font-hand text-[15px] leading-tight text-walnut/60">{sub}</p>
     </div>
   );
 }
@@ -142,13 +142,13 @@ export function InventorySupplies({ go, save }: { go: (s: ScreenId) => void; sav
         <div data-testid="supplies-restaurant">
           <Panel className="p-4">
             <Eyebrow>🍽️ For service</Eyebrow>
-            <p className="mt-1 font-ui text-[14px] font-bold text-walnut-dark">
+            <p className="mt-1 font-ui text-[15.5px] font-bold text-walnut-dark">
               Place settings: {cleanSettings(save)} clean
               {restaurantSuppliesOf(save).washing > 0
                 ? ` · ${Math.min(restaurantSuppliesOf(save).washing, settingsOwned(save))} waiting to be washed`
                 : ""}
             </p>
-            <p className="font-ui text-[12px] text-walnut/60">
+            <p className="font-ui text-[13.5px] text-walnut/60">
               A plate, a fork and a knife per dine-in guest; washed after each service.
             </p>
             <div className="mt-1 divide-y divide-walnut/10">
@@ -179,10 +179,10 @@ export function InventorySupplies({ go, save }: { go: (s: ScreenId) => void; sav
                 🥡
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block font-ui text-[13px] font-extrabold text-walnut-dark">
+                <span className="block font-ui text-[14.5px] font-extrabold text-walnut-dark">
                   🟠 Packaging covers {ordersCovered} of today's {customers} orders
                 </span>
-                <span className="block font-hand text-[13px] leading-tight text-walnut/70">
+                <span className="block font-hand text-[15px] leading-tight text-walnut/70">
                   Each served order uses one container and one bag · {containers} containers ·{" "}
                   {bags} bags on hand
                 </span>
@@ -190,7 +190,7 @@ export function InventorySupplies({ go, save }: { go: (s: ScreenId) => void; sav
               <KButton
                 size="sm"
                 variant="copper"
-                className="h-12 shrink-0 px-3 text-[12px]"
+                className="h-12 shrink-0 px-3 text-[13.5px]"
                 onClick={() =>
                   // Jump to whichever runs out first: the top container line or the top bag line.
                   openMarketSupplies(
@@ -214,17 +214,17 @@ export function InventorySupplies({ go, save }: { go: (s: ScreenId) => void; sav
                 {item.icon}
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block truncate font-ui text-[13px] font-extrabold text-walnut-dark">
+                <span className="block truncate font-ui text-[14.5px] font-extrabold text-walnut-dark">
                   {item.name}
                 </span>
-                <span className="block font-hand text-[13px] leading-tight text-walnut/70">
+                <span className="block font-hand text-[15px] leading-tight text-walnut/70">
                   🟡 Low · {supplyUnits(supplies, item.id)} left for today's {customers} customers
                 </span>
               </span>
               <KButton
                 size="sm"
                 variant="copper"
-                className="h-12 shrink-0 px-3 text-[12px]"
+                className="h-12 shrink-0 px-3 text-[13.5px]"
                 onClick={() => openMarketSupplies(go, item.section, item.id)}
               >
                 Restock →
@@ -235,13 +235,13 @@ export function InventorySupplies({ go, save }: { go: (s: ScreenId) => void; sav
             <button
               type="button"
               onClick={() => setAllLow((v) => !v)}
-              className="press mt-1 h-12 w-full rounded-[12px] font-ui text-[12px] font-extrabold text-copper"
+              className="press mt-1 h-12 w-full rounded-[12px] font-ui text-[13.5px] font-extrabold text-copper"
             >
               {allLow ? "Show fewer" : `View all ${lowAll.length} →`}
             </button>
           ) : null}
           {ordersCovered >= customers && lowAll.length === 0 ? (
-            <p className="mt-1 font-hand text-[15px] leading-snug text-olive">
+            <p className="mt-1 font-hand text-[17px] leading-snug text-olive">
               ✓ Enough packaging for today's customers.
             </p>
           ) : null}
@@ -268,10 +268,10 @@ export function InventorySupplies({ go, save }: { go: (s: ScreenId) => void; sav
             <span className="text-[18px] leading-none" aria-hidden>
               {SUPPLY_SECTIONS[s].emoji}
             </span>
-            <span className="font-ui text-[11px] font-extrabold leading-tight">
+            <span className="font-ui text-[12.5px] font-extrabold leading-tight">
               {SUPPLY_SECTIONS[s].short}
             </span>
-            <span className="font-ui text-[9px] font-bold leading-tight opacity-75">
+            <span className="font-ui text-[10.5px] font-bold leading-tight opacity-75">
               {SUPPLY_SECTIONS[s].kicker}
             </span>
           </button>
@@ -279,13 +279,13 @@ export function InventorySupplies({ go, save }: { go: (s: ScreenId) => void; sav
       </div>
 
       <Panel className="p-4">
-        <p className="font-ui text-[10px] font-extrabold uppercase tracking-[0.2em] text-copper">
+        <p className="font-ui text-[11.5px] font-extrabold uppercase tracking-[0.2em] text-copper">
           {meta.kicker}
         </p>
-        <p className="font-display text-[17px] font-black leading-tight text-walnut-dark">
+        <p className="font-display text-[18px] font-black leading-tight text-walnut-dark">
           {meta.title}
         </p>
-        <p className="mt-1 font-hand text-[13px] leading-snug text-walnut/60">
+        <p className="mt-1 font-hand text-[15px] leading-snug text-walnut/60">
           {consumable
             ? "Every served Business order uses one container and one bag."
             : "Equipment lasts: it's bought once and never used up."}
@@ -302,7 +302,7 @@ export function InventorySupplies({ go, save }: { go: (s: ScreenId) => void; sav
               onClick={() => setGroup(g)}
               aria-pressed={group === g}
               className={cn(
-                "press h-12 min-w-12 shrink-0 rounded-full border px-3.5 font-ui text-[12px] font-extrabold",
+                "press h-12 min-w-12 shrink-0 rounded-full border px-3.5 font-ui text-[13.5px] font-extrabold",
                 group === g
                   ? "wood border-walnut-dark/50 text-ivory"
                   : "card-warm border-walnut/15 text-walnut-dark",
@@ -333,10 +333,10 @@ export function InventorySupplies({ go, save }: { go: (s: ScreenId) => void; sav
                   {item.icon}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-ui text-[13px] font-extrabold text-walnut-dark">
+                  <p className="truncate font-ui text-[14.5px] font-extrabold text-walnut-dark">
                     {item.name}
                   </p>
-                  <p className="font-ui text-[11px] font-bold text-walnut/60">
+                  <p className="font-ui text-[12.5px] font-bold text-walnut/60">
                     {item.group} · {formatUsd(supplyPackPrice(item))} /{" "}
                     {item.packSize === 1 ? unitLabel(item, 1) : `pack of ${item.packSize}`}
                   </p>
@@ -351,7 +351,7 @@ export function InventorySupplies({ go, save }: { go: (s: ScreenId) => void; sav
                   </div>
                 </div>
                 <div className="shrink-0 text-right">
-                  <p className="font-display text-[16px] font-black leading-none text-walnut-dark tabular-nums">
+                  <p className="font-display text-[17px] font-black leading-none text-walnut-dark tabular-nums">
                     {units.toLocaleString("en-US")}
                   </p>
                   <Badge tone={STATUS[status].tone}>

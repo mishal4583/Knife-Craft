@@ -53,10 +53,10 @@ function Hotspot({
       style={style}
       className={`press absolute ${position} -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-ivory/25 bg-walnut-dark/40 px-3 py-1.5 text-left backdrop-blur-[3px] shadow-soft`}
     >
-      <span className="block font-display text-[13px] font-black leading-none text-ivory">
+      <span className="block font-display text-[14.5px] font-black leading-none text-ivory">
         {label}
       </span>
-      <span className="block font-hand text-[13px] leading-tight text-gold/90">{sub}</span>
+      <span className="block font-hand text-[15px] leading-tight text-gold/90">{sub}</span>
     </button>
   );
 }
@@ -144,11 +144,11 @@ export function Kitchen({
         >
           {/* The restaurant's rank (developer 2026-10-08): which of the ranks it
               holds, its name, the bar to the next one and when that comes. */}
-          <p className="truncate whitespace-nowrap font-ui text-[9px] font-extrabold uppercase tracking-[0.14em] text-gold">
+          <p className="truncate whitespace-nowrap font-ui text-[10.5px] font-extrabold uppercase tracking-[0.14em] text-gold">
             <span className="hidden min-[380px]:inline">Restaurant </span>rank · {rankNumber}/
             {CAFE_MILESTONES.length}
           </p>
-          <p className="truncate whitespace-nowrap font-display text-[15px] font-black leading-tight text-ivory">
+          <p className="truncate whitespace-nowrap font-display text-[16.5px] font-black leading-tight text-ivory">
             🏆 {cafeMilestoneTitle}
           </p>
           <span className="mt-1.5 block h-[4px] w-24 overflow-hidden rounded-full bg-ivory/25">
@@ -160,7 +160,7 @@ export function Kitchen({
               }}
             />
           </span>
-          <p className="mt-1 truncate whitespace-nowrap font-ui text-[9px] font-bold leading-none text-ivory/70">
+          <p className="mt-1 truncate whitespace-nowrap font-ui text-[10.5px] font-bold leading-none text-ivory/70">
             {nextRank
               ? `Next: ${nextRank.title} · Lv ${nextRank.levelRequired}`
               : "Highest rank reached"}
@@ -181,7 +181,7 @@ export function Kitchen({
             // button box, glyph stays visually the same size, centered.
             className="press grid h-12 w-12 shrink-0 place-items-center rounded-full border border-ivory/25 bg-walnut-dark/45 text-ivory backdrop-blur-sm"
           >
-            <span aria-hidden className="text-[15px]">
+            <span aria-hidden className="text-[16.5px]">
               ⚙️
             </span>
           </button>
@@ -231,7 +231,7 @@ export function Kitchen({
       <div className="absolute inset-x-0 bottom-[104px] z-20 px-5">
         <div className="paper anim-up relative mx-auto -rotate-[0.8deg] rounded-[18px] border border-walnut/20 p-3.5 shadow-lift">
           <div className="flex items-center justify-between">
-            <p className="font-ui text-[9px] font-extrabold uppercase tracking-[0.2em] text-copper">
+            <p className="font-ui text-[10.5px] font-extrabold uppercase tracking-[0.2em] text-copper">
               {campaignComplete ? "Campaign Complete · 250 Levels Mastered" : "Today's Order"}
             </p>
           </div>
@@ -240,7 +240,7 @@ export function Kitchen({
               <p className="line-clamp-2 font-display text-[18px] font-black leading-none text-walnut-dark">
                 {todayLevel.title}
               </p>
-              <p className="font-hand text-[14px] leading-tight text-walnut/70">
+              <p className="font-hand text-[16px] leading-tight text-walnut/70">
                 {campaignComplete
                   ? "every recipe is yours · replay any level or run your restaurant"
                   : !todayUnlocked
@@ -335,10 +335,10 @@ export function OrderBoard({
               comment on a previous clipping bug). */}
           {campaignComplete ? (
             <div className="mb-3 rounded-[16px] border border-gold/50 bg-gold/20 p-3 text-center">
-              <p className="font-display text-[17px] font-black leading-tight text-walnut-dark">
+              <p className="font-display text-[18px] font-black leading-tight text-walnut-dark">
                 🏆 Campaign Complete
               </p>
-              <p className="mt-0.5 font-hand text-[14px] leading-snug text-walnut/75">
+              <p className="mt-0.5 font-hand text-[16px] leading-snug text-walnut/75">
                 All {levels.length} levels mastered — replay any level or run your restaurant.
               </p>
             </div>
@@ -350,10 +350,10 @@ export function OrderBoard({
               className="press rounded-[16px] border border-copper/30 bg-gold/15 p-3 text-left"
             >
               <span className="block text-[20px]">📅</span>
-              <span className="mt-1 block font-display text-[13px] font-black text-walnut-dark">
+              <span className="mt-1 block font-display text-[14.5px] font-black text-walnut-dark">
                 Today's Special
               </span>
-              <span className="block font-hand text-[12px] text-walnut/60">one featured order</span>
+              <span className="block font-hand text-[14px] text-walnut/60">one featured order</span>
             </button>
             <button
               type="button"
@@ -364,10 +364,10 @@ export function OrderBoard({
               className="press rounded-[16px] border border-sage/40 bg-sage/15 p-3 text-left"
             >
               <span className="block text-[20px]">🍽️</span>
-              <span className="mt-1 block font-display text-[13px] font-black text-walnut-dark">
+              <span className="mt-1 block font-display text-[14.5px] font-black text-walnut-dark">
                 {RESTAURANT_MODE ? ENDLESS_RESTAURANT_NAME : "Endless Service"}
               </span>
-              <span className="block font-hand text-[12px] text-walnut/60">
+              <span className="block font-hand text-[14px] text-walnut/60">
                 {!isEndlessUnlocked(levelProgress)
                   ? "🔒 unlocks after Level 250"
                   : RESTAURANT_MODE
@@ -387,16 +387,16 @@ export function OrderBoard({
                 return (
                   <div key={level.id}>
                     {newChapter ? (
-                      <p className="pb-1 pt-1.5 font-ui text-[10px] font-extrabold uppercase tracking-[0.18em] text-walnut/50">
+                      <p className="pb-1 pt-1.5 font-ui text-[11.5px] font-extrabold uppercase tracking-[0.18em] text-walnut/50">
                         Chapter {level.chapter} · ???
                       </p>
                     ) : null}
                     <div className="flex items-center justify-between gap-3 rounded-[16px] border border-dashed border-walnut/20 bg-ivory/30 p-2.5">
                       <div className="opacity-60">
-                        <p className="font-display text-[16px] font-black leading-none text-walnut-dark">
+                        <p className="font-display text-[17px] font-black leading-none text-walnut-dark">
                           Upcoming Order
                         </p>
-                        <p className="font-hand text-[13px] leading-tight text-walnut/70">
+                        <p className="font-hand text-[15px] leading-tight text-walnut/70">
                           finish the level above to reveal it
                         </p>
                       </div>
@@ -445,16 +445,16 @@ export function OrderBoard({
               return (
                 <div key={level.id} data-level-row={level.id}>
                   {showChapterDivider ? (
-                    <p className="pb-1 pt-1.5 font-ui text-[10px] font-extrabold uppercase tracking-[0.18em] text-walnut/50">
+                    <p className="pb-1 pt-1.5 font-ui text-[11.5px] font-extrabold uppercase tracking-[0.18em] text-walnut/50">
                       Chapter {level.chapter} · {CHAPTER_TITLES[level.chapter] ?? level.chapterId}
                     </p>
                   ) : null}
                   <div className="flex items-end justify-between gap-3 rounded-[16px] border border-walnut/10 bg-ivory/40 p-2.5">
                     <div className={canOpen ? undefined : "opacity-50"}>
-                      <p className="font-display text-[16px] font-black leading-none text-walnut-dark">
+                      <p className="font-display text-[17px] font-black leading-none text-walnut-dark">
                         {level.title}
                       </p>
-                      <p className="font-hand text-[13px] leading-tight text-walnut/70">
+                      <p className="font-hand text-[15px] leading-tight text-walnut/70">
                         {!unlocked
                           ? "locked · finish the level before it"
                           : completed
@@ -463,11 +463,11 @@ export function OrderBoard({
                       </p>
                       {canOpen && !completed ? (
                         <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-0.5">
-                          <span className="font-ui text-[10px] font-bold text-walnut/45">
+                          <span className="font-ui text-[11.5px] font-bold text-walnut/45">
                             {difficulty}
                           </span>
                           {nextReward && !campaignComplete ? (
-                            <span className="font-ui text-[10px] font-bold text-copper/80">
+                            <span className="font-ui text-[11.5px] font-bold text-copper/80">
                               {nextReward.icon} {rewardLabel}: {nextReward.name}
                               {ownReward
                                 ? marketUnlock
@@ -477,7 +477,7 @@ export function OrderBoard({
                             </span>
                           ) : null}
                           {stageAfter && !campaignComplete ? (
-                            <span className="font-ui text-[10px] font-bold text-copper/80">
+                            <span className="font-ui text-[11.5px] font-bold text-copper/80">
                               {stageAfter.icon} Next: {stageAfter.name} · Lv {stageAfter.atLevel}
                             </span>
                           ) : null}
@@ -504,7 +504,7 @@ export function OrderBoard({
               );
             })}
             {hiddenCount > 0 ? (
-              <p className="pt-1 text-center font-hand text-[15px] text-walnut/55">
+              <p className="pt-1 text-center font-hand text-[17px] text-walnut/55">
                 + {hiddenCount} more {hiddenCount === 1 ? "order" : "orders"} to discover
               </p>
             ) : null}
@@ -564,7 +564,7 @@ function ScreenHeaderBoard({
       </h1>
       {latestMilestone ? (
         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-          <span className="rounded-full bg-sage/25 px-2 py-[2px] font-ui text-[9px] font-extrabold uppercase tracking-[0.1em] text-olive">
+          <span className="rounded-full bg-sage/25 px-2 py-[2px] font-ui text-[10.5px] font-extrabold uppercase tracking-[0.1em] text-olive">
             ✦ {latestMilestone} unlocked
           </span>
         </div>
@@ -608,13 +608,13 @@ export function BottomNav({ active, go }: { active: ScreenId | null; go: (s: Scr
             style={on ? { background: "rgba(246,232,204,0.14)" } : undefined}
           >
             <span
-              className="text-[17px]"
+              className="text-[18px]"
               style={{ filter: on ? "none" : "grayscale(0.5)", opacity: on ? 1 : 0.72 }}
             >
               {n.glyph}
             </span>
             <span
-              className="font-ui text-[10px] font-extrabold tracking-wide"
+              className="font-ui text-[11.5px] font-extrabold leading-[14px] tracking-wide"
               style={{ color: on ? "var(--color-gold)" : "rgba(246,232,204,0.62)" }}
             >
               {n.label}

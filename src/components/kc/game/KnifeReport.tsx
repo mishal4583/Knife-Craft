@@ -32,10 +32,10 @@ export function KnifeReport({
   return (
     <div className="absolute inset-0 z-40 flex items-end bg-walnut-dark/45 backdrop-blur-[3px]">
       <div className="anim-up paper m-3 w-[calc(100%-24px)] rounded-[26px] border border-walnut/20 p-5 shadow-lift">
-        <p className="text-center font-ui text-[10px] font-extrabold uppercase tracking-[0.22em] text-copper">
+        <p className="text-center font-ui text-[11.5px] font-extrabold uppercase tracking-[0.22em] text-copper">
           Knife Report
         </p>
-        <p className="text-center font-hand text-[16px] text-walnut/70">
+        <p className="text-center font-hand text-[18px] text-walnut/70">
           {dishName} · {stepName}
         </p>
         <p className="mt-2 text-center font-display text-[30px] font-black leading-tight text-walnut-dark">
@@ -55,13 +55,13 @@ export function KnifeReport({
             <StatRow label="Consistency" value={result.consistency} />
             {/* Rhythm is a bonus, never a percentage — it can only add to the score, never subtract. */}
             <div className="flex items-center gap-3">
-              <span className="w-[68px] shrink-0 font-ui text-[11px] font-bold text-walnut/80">
+              <span className="w-[68px] shrink-0 font-ui text-[12.5px] font-bold text-walnut/80">
                 Rhythm
               </span>
-              <span className="flex-1 truncate font-hand text-[13px] text-walnut/50">
+              <span className="flex-1 truncate font-hand text-[15px] text-walnut/50">
                 {result.rhythmBonus > 0 ? "steady pace" : "a steady pace adds a bonus"}
               </span>
-              <span className="w-[62px] shrink-0 text-right font-ui text-[11px] font-extrabold text-olive">
+              <span className="w-[62px] shrink-0 text-right font-ui text-[12.5px] font-extrabold text-olive">
                 +{result.rhythmBonus}
               </span>
             </div>

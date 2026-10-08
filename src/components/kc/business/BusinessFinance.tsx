@@ -11,8 +11,8 @@ function Line({ label, value, strong }: { label: ReactNode; value: string; stron
     <div
       className={
         strong
-          ? "flex items-baseline justify-between gap-3 py-0.5 font-ui text-[13px] font-black text-walnut-dark"
-          : "flex items-baseline justify-between gap-3 py-0.5 font-ui text-[12px] font-bold text-walnut/70"
+          ? "flex items-baseline justify-between gap-3 py-0.5 font-ui text-[14.5px] font-black text-walnut-dark"
+          : "flex items-baseline justify-between gap-3 py-0.5 font-ui text-[13.5px] font-bold text-walnut/70"
       }
     >
       <span>{label}</span>
@@ -44,7 +44,7 @@ export function BusinessFinance({ save }: { save: SaveData }) {
     <Panel className="p-4">
       <Eyebrow>💰 Finance</Eyebrow>
 
-      <p className="mt-2 font-display text-[15px] font-black text-walnut-dark">Today so far</p>
+      <p className="mt-2 font-display text-[16.5px] font-black text-walnut-dark">Today so far</p>
       <Line label="Revenue" value={formatUsd(dailyAccumulator.revenue)} />
       <Line label="Ingredients & packaging used" value={`−${formatUsd(dailyAccumulator.cogs)}`} />
       <Line label="Repairs & supplier fees" value={`−${formatUsd(todayRunningCosts)}`} />
@@ -54,24 +54,24 @@ export function BusinessFinance({ save }: { save: SaveData }) {
         strong
       />
       <Line label="Cash moved today" value={formatUsd(todayNetCash)} />
-      <p className="font-hand text-[12px] leading-snug text-walnut/50">
+      <p className="font-hand text-[14px] leading-snug text-walnut/50">
         Stock bought ({formatUsd(dailyAccumulator.inventoryPurchaseCost)}), packaging (
         {formatUsd(dailyAccumulator.packagingPurchaseCost ?? 0)}) and equipment (
         {formatUsd(dailyAccumulator.capitalExpenditure)}) move cash but aren't costs until used.
       </p>
 
       <Divider />
-      <p className="font-display text-[15px] font-black text-walnut-dark">Last business day</p>
+      <p className="font-display text-[16.5px] font-black text-walnut-dark">Last business day</p>
       {lastDailyPnL ? (
         <LastDay pnl={lastDailyPnL} />
       ) : (
-        <p className="font-hand text-[14px] text-walnut/60">
+        <p className="font-hand text-[16px] text-walnut/60">
           No business day has ended yet — its results appear here.
         </p>
       )}
 
       <Divider />
-      <p className="font-display text-[15px] font-black text-walnut-dark">
+      <p className="font-display text-[16.5px] font-black text-walnut-dark">
         {lifetime.coverage === "complete"
           ? "All time"
           : "All time (since the earliest kept record)"}
@@ -82,12 +82,12 @@ export function BusinessFinance({ save }: { save: SaveData }) {
         value={`−${formatUsd(lifetime.cumulativeRevenue - lifetime.cumulativeOperatingProfit)}`}
       />
       <Line label="Profit" value={formatUsd(lifetime.cumulativeOperatingProfit)} strong />
-      <div className="mt-1 flex items-center justify-between font-ui text-[12px] font-bold text-walnut/70">
+      <div className="mt-1 flex items-center justify-between font-ui text-[13.5px] font-bold text-walnut/70">
         <span>Orders served</span>
         <Badge tone="sage">{lifetime.orderCount}</Badge>
       </div>
       <details className="mt-1">
-        <summary className="cursor-pointer py-2 font-ui text-[12px] font-extrabold text-copper">
+        <summary className="cursor-pointer py-2 font-ui text-[13.5px] font-extrabold text-copper">
           Full all-time breakdown ▾
         </summary>
         <Line
@@ -123,7 +123,7 @@ function LastDay({ pnl }: { pnl: DailyPnL }) {
       <Line label="Costs" value={`−${formatUsd(costs)}`} />
       <Line label="Profit" value={formatUsd(pnl.operatingProfit)} strong />
       <details>
-        <summary className="cursor-pointer py-2 font-ui text-[12px] font-extrabold text-copper">
+        <summary className="cursor-pointer py-2 font-ui text-[13.5px] font-extrabold text-copper">
           Full day breakdown ▾
         </summary>
         <Line label="Opening cash" value={formatUsd(pnl.openingCash)} />

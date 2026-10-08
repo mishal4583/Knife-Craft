@@ -15,7 +15,7 @@ const cost = (amount: number) => (amount > 0 ? `−${formatUsd(amount)}` : forma
 
 function Line({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-baseline justify-between gap-3 font-ui text-[12px] font-bold text-walnut/70">
+    <div className="flex items-baseline justify-between gap-3 font-ui text-[13.5px] font-bold text-walnut/70">
       <span>{label}</span>
       <span className="shrink-0 tabular-nums">{value}</span>
     </div>
@@ -46,13 +46,13 @@ export function BusinessHistory({ save }: { save: SaveData }) {
       <Panel className="p-4">
         <Eyebrow>📅 Last {HISTORY_DAYS} days</Eyebrow>
         {days.length === 0 ? (
-          <p className="mt-1 font-hand text-[14px] text-walnut/60">
+          <p className="mt-1 font-hand text-[16px] text-walnut/60">
             No business day has ended yet — each completed day is kept here (the latest{" "}
             {HISTORY_DAYS}).
           </p>
         ) : (
           <>
-            <p className="mt-1 font-hand text-[13px] leading-snug text-walnut/60">
+            <p className="mt-1 font-hand text-[15px] leading-snug text-walnut/60">
               {days.length} day{days.length === 1 ? "" : "s"}: {formatUsd(totals.revenue)} revenue ·{" "}
               {formatUsd(totals.costs)} costs · {formatUsd(totals.profit)} profit · {totals.orders}{" "}
               orders
@@ -87,7 +87,7 @@ function DayRow({
     <div className="rounded-[12px] bg-cream/60" data-history-day={d.day}>
       <button
         type="button"
-        className="flex min-h-12 w-full items-center justify-between gap-2 px-3 text-left font-ui text-[12px] font-bold text-walnut-dark"
+        className="flex min-h-12 w-full items-center justify-between gap-2 px-3 text-left font-ui text-[13.5px] font-bold text-walnut-dark"
         aria-expanded={open}
         onClick={onToggle}
       >

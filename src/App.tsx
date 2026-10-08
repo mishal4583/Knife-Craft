@@ -2317,7 +2317,7 @@ export function App() {
           <p className="font-hand text-[26px] leading-tight text-[color:var(--color-gold)]">
             KnifeCraft
           </p>
-          <p className="mt-2 font-ui text-[12px] leading-relaxed text-[color:var(--color-cream)]/60">
+          <p className="mt-2 font-ui text-[13.5px] leading-relaxed text-[color:var(--color-cream)]/60">
             A cozy prep-chef arcade. Portrait-first, one thumb, no timers. Swipe across the tomato
             to begin.
           </p>

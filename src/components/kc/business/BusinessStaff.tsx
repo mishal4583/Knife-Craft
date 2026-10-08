@@ -82,21 +82,21 @@ export function BusinessStaff({
       <Panel tone="cream" className="p-4">
         <div className="flex items-baseline justify-between gap-3">
           <Eyebrow>🧑‍🍳 Your team</Eyebrow>
-          <span className="font-ui text-[12px] font-extrabold text-walnut-dark">
+          <span className="font-ui text-[13.5px] font-extrabold text-walnut-dark">
             {hiredRoles.length} / {roster.length} hired
           </span>
         </div>
         <p className="mt-1 font-display text-[22px] font-black leading-none text-walnut-dark">
           {formatUsd(payroll)}
-          <span className="font-hand text-[15px] font-normal text-walnut/60"> per day</span>
+          <span className="font-hand text-[17px] font-normal text-walnut/60"> per day</span>
         </p>
-        <p className="mt-1.5 font-hand text-[14px] leading-snug text-walnut/65">
+        <p className="mt-1.5 font-hand text-[16px] leading-snug text-walnut/65">
           Hiring is free — pay is charged at End Business Day. If the pay can't be covered, the
           whole team is let go rather than left unpaid.
         </p>
       </Panel>
 
-      {message ? <p className="text-center font-hand text-[15px] text-copper">{message}</p> : null}
+      {message ? <p className="text-center font-hand text-[17px] text-copper">{message}</p> : null}
 
       <div className="grid grid-cols-2 gap-3">
         {roster.map((def) => {
@@ -115,17 +115,17 @@ export function BusinessStaff({
                 </span>
                 {hired ? <Badge tone="sage">Hired</Badge> : null}
               </div>
-              <p className="mt-1 font-display text-[14px] font-black leading-tight text-walnut-dark">
+              <p className="mt-1 font-display text-[15.5px] font-black leading-tight text-walnut-dark">
                 {def.name}
               </p>
-              <p className="font-ui text-[12px] font-extrabold text-copper">
+              <p className="font-ui text-[13.5px] font-extrabold text-copper">
                 {formatUsd(def.salary)}
                 <span className="font-bold text-walnut/60">/day</span>
               </p>
-              <p className="mt-1 rounded-[12px] bg-cream/70 px-2 py-1.5 font-hand text-[13px] leading-tight text-walnut-dark">
+              <p className="mt-1 rounded-[12px] bg-cream/70 px-2 py-1.5 font-hand text-[15px] leading-tight text-walnut-dark">
                 {def.description}
               </p>
-              <p className="mt-1 font-ui text-[10px] font-bold text-walnut/50">
+              <p className="mt-1 font-ui text-[11.5px] font-bold text-walnut/50">
                 {formatUsd(def.hourlyWageCents)}/hr × {def.scheduledHours}h + 25% employer cost
               </p>
               <div className="mt-auto pt-2">
@@ -157,7 +157,7 @@ function TeamHeading({ id, title, line }: { id: string; title: string; line: str
   return (
     <div className="px-1 pt-1" data-testid={id}>
       <p className="font-display text-[18px] font-black text-walnut-dark">{title}</p>
-      <p className="font-hand text-[14px] leading-snug text-walnut/65">{line}</p>
+      <p className="font-hand text-[16px] leading-snug text-walnut/65">{line}</p>
     </div>
   );
 }
@@ -182,7 +182,7 @@ function SpecialistChefs({
     <Panel className="p-4">
       <div data-testid="specialist-chefs">
         <Eyebrow>🌍 Specialist chefs</Eyebrow>
-        <p className="mt-1 font-hand text-[14px] leading-snug text-walnut/65">
+        <p className="mt-1 font-hand text-[16px] leading-snug text-walnut/65">
           Each new cuisine needs its own chef. Hiring is free; from Level 91 their pay is charged at
           closing.
         </p>
@@ -197,15 +197,15 @@ function SpecialistChefs({
                 data-specialist={chef.id}
               >
                 <div className="min-w-0 flex-1">
-                  <p className="font-ui text-[14px] font-bold text-walnut-dark">
+                  <p className="font-ui text-[15.5px] font-bold text-walnut-dark">
                     {chef.title} {isHired ? <Badge tone="sage">Hired</Badge> : null}
                   </p>
-                  <p className="font-ui text-[12px] text-walnut/60">
+                  <p className="font-ui text-[13.5px] text-walnut/60">
                     {chef.cuisines.join(" · ")} · {formatUsd(chef.dailyWage)}/day
                   </p>
                 </div>
                 {!open ? (
-                  <span className="font-ui text-[12px] font-bold text-walnut/50">
+                  <span className="font-ui text-[13.5px] font-bold text-walnut/50">
                     Level {chef.firstLevel}
                   </span>
                 ) : isHired ? (

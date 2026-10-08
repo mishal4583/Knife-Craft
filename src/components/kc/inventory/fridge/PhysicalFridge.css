@@ -116,7 +116,7 @@
 }
 .kcf-head__free {
   margin-top: 3px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 800;
   color: color-mix(in oklab, var(--color-walnut) 80%, transparent);
 }
@@ -156,7 +156,7 @@
   box-shadow: 0 2px 0 var(--kcf-green-dark);
 }
 .kcf-head__upgrade small {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   opacity: 0.9;
 }
@@ -288,7 +288,7 @@
   background: #1d2427;
   padding: 2px 8px;
   font-family: var(--font-ui);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 900;
   letter-spacing: 0.08em;
   color: #8fd3ff;
@@ -376,7 +376,7 @@
   white-space: nowrap;
   text-overflow: ellipsis;
   font-family: var(--font-ui);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -387,7 +387,7 @@
   display: block;
   padding: 2px 3px;
   white-space: normal;
-  font-size: 9px;
+  font-size: 10px;
   letter-spacing: 0;
   text-align: center;
   line-height: 1.15;
@@ -557,7 +557,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 10px;
+  font-size: 10.5px;
   font-weight: 900;
   line-height: 1.2;
 }
@@ -567,18 +567,18 @@
   justify-content: space-between;
 }
 .kcf-tag__qty {
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 900;
   line-height: 1.15;
   white-space: nowrap;
 }
 .kcf-tag__qty small {
-  font-size: 8.5px;
+  font-size: 9px;
   font-weight: 800;
   opacity: 0.7;
 }
 .kcf-tag__days {
-  font-size: 9.5px;
+  font-size: 10px;
   font-weight: 900;
   color: color-mix(in oklab, var(--color-walnut) 70%, transparent);
 }
@@ -637,7 +637,7 @@
 }
 .kcf-tag--bin .kcf-tag__name {
   max-width: 100%;
-  font-size: 9px;
+  font-size: 9.5px;
 }
 .kcf-tag--bin .kcf-tag__fresh {
   width: 100%;
@@ -797,7 +797,7 @@
   color: var(--color-walnut-dark);
 }
 .kcf-pager__count {
-  font-size: 11px;
+  font-size: 12.5px;
   font-weight: 800;
   color: rgba(62, 40, 25, 0.6);
 }
@@ -838,6 +838,6 @@
   border: 1px solid rgba(62, 40, 25, 0.2);
   background: rgba(255, 250, 240, 0.7);
   color: rgba(62, 40, 25, 0.8);
-  font-size: 12px;
+  font-size: 13.5px;
   font-weight: 800;
 }

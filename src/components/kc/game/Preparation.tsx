@@ -454,20 +454,20 @@ export function Preparation({
           data-testid="coach-card"
         >
           <div className="anim-pop w-full max-w-[400px] rounded-[18px] border border-gold/40 bg-walnut-dark/80 px-4 py-3 text-center shadow-lift backdrop-blur-[2px]">
-            <p className="font-ui text-[11px] font-extrabold uppercase tracking-[0.14em] text-gold">
+            <p className="font-ui text-[12.5px] font-extrabold uppercase tracking-[0.14em] text-gold">
               {COACH_TEXT[activeTechnique.id].title}
             </p>
-            <p className="mt-0.5 font-ui text-[15px] font-bold leading-snug text-ivory">
+            <p className="mt-0.5 font-ui text-[16.5px] font-bold leading-snug text-ivory">
               {COACH_TEXT[activeTechnique.id].how}
             </p>
-            <p className="mt-1 font-hand text-[15px] leading-snug text-ivory/75">
+            <p className="mt-1 font-hand text-[17px] leading-snug text-ivory/75">
               {COACH_TEXT[activeTechnique.id].why}
             </p>
             {activeTechnique.interactionMode === "cut" ? (
-              <div className="mt-1.5 space-y-0.5 text-left font-ui text-[12px] font-bold leading-snug text-ivory/80">
+              <div className="mt-1.5 space-y-0.5 text-left font-ui text-[13.5px] font-bold leading-snug text-ivory/80">
                 {CUT_WAYS.map((way) => (
                   <p key={way.label}>
-                    <span className="mr-1.5 inline-block min-w-[44px] rounded-full bg-gold/20 px-1.5 text-center text-[10px] font-extrabold tracking-[0.1em] text-gold">
+                    <span className="mr-1.5 inline-block min-w-[44px] rounded-full bg-gold/20 px-1.5 text-center text-[11.5px] font-extrabold tracking-[0.1em] text-gold">
                       {way.label}
                     </span>
                     {way.text}
@@ -501,7 +501,7 @@ export function Preparation({
             <p className="font-display text-[22px] font-black tracking-tight text-walnut-dark">
               Paused
             </p>
-            <p className="mt-1 font-hand text-[16px] text-walnut/70">the kitchen will wait</p>
+            <p className="mt-1 font-hand text-[18px] text-walnut/70">the kitchen will wait</p>
             <div className="mt-4 space-y-2">
               <KButton
                 full

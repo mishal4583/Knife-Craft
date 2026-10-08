@@ -187,7 +187,7 @@ type Card = {
 /** Small uppercase copper label — the same section label Business and Rack use. */
 function Eyebrow({ children }: { children: ReactNode }) {
   return (
-    <p className="font-ui text-[10px] font-extrabold uppercase tracking-[0.2em] text-copper">
+    <p className="font-ui text-[11.5px] font-extrabold uppercase tracking-[0.2em] text-copper">
       {children}
     </p>
   );
@@ -407,7 +407,7 @@ export function Shop({
               </div>
             )}
             <div className="absolute inset-x-0 bottom-0 bg-[linear-gradient(180deg,transparent,rgba(46,28,16,0.82))] px-4 pb-2.5 pt-8">
-              <p className="font-hand text-[17px] leading-tight text-ivory" aria-live="polite">
+              <p className="font-hand text-[19px] leading-tight text-ivory" aria-live="polite">
                 ✦ {notice}
               </p>
             </div>
@@ -437,7 +437,7 @@ export function Shop({
                 <span className="text-[20px] leading-none" aria-hidden>
                   {item.emoji}
                 </span>
-                <span className="font-ui text-[11px] font-extrabold leading-tight">
+                <span className="font-ui text-[12.5px] font-extrabold leading-tight">
                   {item.label}
                 </span>
               </button>
@@ -523,22 +523,22 @@ function ProductCard({ card }: { card: Card }) {
       >
         {card.visual}
       </div>
-      <p className="mt-1 text-center font-display text-[14px] font-black leading-tight text-walnut-dark">
+      <p className="mt-1 text-center font-display text-[15.5px] font-black leading-tight text-walnut-dark">
         {card.name}
       </p>
-      <p className="mt-0.5 line-clamp-3 text-center font-hand text-[14px] leading-tight text-walnut/70">
+      <p className="mt-0.5 line-clamp-3 text-center font-hand text-[16px] leading-tight text-walnut/70">
         {card.description}
       </p>
       <div className="mt-2 space-y-1 rounded-[12px] bg-cream/70 px-2 py-1.5">
         {card.stats.map(([label, value]) => (
-          <div key={label} className="flex justify-between gap-2 font-ui text-[10px]">
+          <div key={label} className="flex justify-between gap-2 font-ui text-[11.5px]">
             <span className="text-walnut/60">{label}</span>
             <span className="text-right font-extrabold capitalize text-walnut-dark">{value}</span>
           </div>
         ))}
       </div>
       <div className="mt-auto pt-2">
-        <p className="mb-1.5 text-center font-ui text-[13px] font-extrabold text-walnut-dark">
+        <p className="mb-1.5 text-center font-ui text-[14.5px] font-extrabold text-walnut-dark">
           {card.price}
         </p>
         {action.kind === "equipped" ? (
@@ -637,7 +637,7 @@ function Blacksmith({
   return (
     <div className="space-y-3">
       <Panel className="p-4">
-        <p className="font-ui text-[12px] leading-snug text-walnut/80">
+        <p className="font-ui text-[13.5px] leading-snug text-walnut/80">
           Upgrade your knife to cut faster and catch more of your taps.{" "}
           <strong className="text-walnut-dark">
             Upgrades are permanent and belong to the knife you forge
@@ -667,7 +667,7 @@ function Blacksmith({
             <p className="font-display text-[19px] font-black leading-tight text-walnut-dark">
               {knife.name}
             </p>
-            <p className="font-ui text-[11px] font-bold uppercase tracking-wide text-copper">
+            <p className="font-ui text-[12.5px] font-bold uppercase tracking-wide text-copper">
               ★ Level {knifeLevel(levels)}
             </p>
           </div>
@@ -675,14 +675,14 @@ function Blacksmith({
             <KnifeGlyph knife={knife} size={84} />
           </div>
         </div>
-        <p className="mt-1 font-hand text-[14px] leading-tight text-walnut/70">
+        <p className="mt-1 font-hand text-[16px] leading-tight text-walnut/70">
           Slices every {forgePreview(knife, levels, "speed").now.cycleMs} ms when tapping fast ·
           each knife keeps its own upgrades
         </p>
         <div className="mt-3 space-y-2">
           {BLACKSMITH_STATS.map((stat) => (
             <div key={stat} className="flex items-center gap-3">
-              <span className="w-[82px] shrink-0 font-ui text-[11px] font-bold text-walnut/80">
+              <span className="w-[82px] shrink-0 font-ui text-[12.5px] font-bold text-walnut/80">
                 {forgeCopy[stat].emoji} {forgeCopy[stat].name}
               </span>
               <span className="relative h-[7px] flex-1 overflow-hidden rounded-full bg-walnut/15">
@@ -691,7 +691,7 @@ function Blacksmith({
                   style={{ width: `${(levels[stat] / MAX_UPGRADE_LEVEL) * 100}%` }}
                 />
               </span>
-              <span className="w-8 text-right font-ui text-[11px] font-bold text-walnut/60">
+              <span className="w-8 text-right font-ui text-[12.5px] font-bold text-walnut/60">
                 {levels[stat]}/{MAX_UPGRADE_LEVEL}
               </span>
             </div>
@@ -705,7 +705,7 @@ function Blacksmith({
                 type="button"
                 onClick={() => setKnifeId(k.id)}
                 className={cn(
-                  "press rounded-full border px-2.5 py-[3px] font-ui text-[11px] font-bold",
+                  "press rounded-full border px-2.5 py-[3px] font-ui text-[12.5px] font-bold",
                   k.id === knife.id
                     ? "wood border-walnut-dark/50 text-ivory"
                     : "border-walnut/15 bg-cream/70 text-walnut-dark",
@@ -718,9 +718,9 @@ function Blacksmith({
         ) : null}
         <Divider />
         <div className="flex items-center justify-between gap-3">
-          <p className="font-ui text-[11px] font-bold text-walnut/70">
+          <p className="font-ui text-[12.5px] font-bold text-walnut/70">
             Edge condition {condition}/100 · {sharpnessLabel(condition)}
-            <span className="mt-0.5 block font-hand text-[13px] font-normal leading-tight text-walnut/60">
+            <span className="mt-0.5 block font-hand text-[15px] font-normal leading-tight text-walnut/60">
               Wears with use; a dull edge wastes a little more of each ingredient. Sharpening
               restores it — upgrades never wear off.
             </span>
@@ -753,15 +753,15 @@ function Blacksmith({
           return (
             <Panel key={stat} className="p-4">
               <div className="flex items-center justify-between gap-3">
-                <p className="font-display text-[17px] font-black leading-tight text-walnut-dark">
+                <p className="font-display text-[18px] font-black leading-tight text-walnut-dark">
                   <span aria-hidden>{emoji}</span> {name}
                 </p>
                 <Badge tone={maxed ? "sage" : "copper"}>
                   {maxed ? `Level ${level} · Mastered` : `Level ${level} → ${level + 1}`}
                 </Badge>
               </div>
-              <p className="mt-1 font-hand text-[14px] leading-tight text-walnut/70">{detail}</p>
-              <p className="mt-2 rounded-[12px] bg-cream/70 px-3 py-1.5 font-ui text-[11px] font-bold text-walnut-dark">
+              <p className="mt-1 font-hand text-[16px] leading-tight text-walnut/70">{detail}</p>
+              <p className="mt-2 rounded-[12px] bg-cream/70 px-3 py-1.5 font-ui text-[12.5px] font-bold text-walnut-dark">
                 {previewText(stat, forgePreview(knife, levels, stat))}
               </p>
               <div className="mt-3 space-y-2">
@@ -774,7 +774,7 @@ function Blacksmith({
                   {maxed ? "Mastered" : `Upgrade · ${formatUsd(cost ?? 0)}`}
                 </KButton>
                 {!maxed && save.credits < (cost ?? 0) && (
-                  <p className="text-center font-hand text-[13px] text-walnut/65">
+                  <p className="text-center font-hand text-[15px] text-walnut/65">
                     {notEnoughMoneyText(cost ?? 0, save.credits)}
                   </p>
                 )}
@@ -797,7 +797,7 @@ function LedgerSummary({ save }: { save: SaveData }) {
         <summary className="cursor-pointer list-none">
           <Eyebrow>Economy summary ▾</Eyebrow>
         </summary>
-        <div className="mt-2 space-y-1.5 font-ui text-[12px] font-bold text-walnut/80">
+        <div className="mt-2 space-y-1.5 font-ui text-[13.5px] font-bold text-walnut/80">
           <div className="flex justify-between">
             <span>Total income</span>
             <span className="text-olive">{formatUsdChange(totals.totalIncome)}</span>

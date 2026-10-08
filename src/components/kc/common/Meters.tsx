@@ -13,7 +13,7 @@ export function Eyebrow({ children, dark }: { children: ReactNode; dark?: boolea
   return (
     <p
       className={cn(
-        "font-ui text-[10px] font-extrabold uppercase tracking-[0.2em]",
+        "font-ui text-[11.5px] font-extrabold uppercase tracking-[0.2em]",
         dark ? "text-gold" : "text-copper",
       )}
     >
@@ -57,8 +57,8 @@ export function Bar({
 export function Row({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="flex items-baseline justify-between gap-3 py-1">
-      <span className="font-ui text-[12px] font-bold text-walnut/70">{label}</span>
-      <span className="text-right font-ui text-[13px] font-extrabold text-walnut-dark">
+      <span className="font-ui text-[13.5px] font-bold text-walnut/70">{label}</span>
+      <span className="text-right font-ui text-[14.5px] font-extrabold text-walnut-dark">
         {value}
       </span>
     </div>
@@ -179,7 +179,7 @@ function compactUsd(cents: number): string {
 /** Legend chips for MoneyBars. */
 export function MoneyLegend() {
   return (
-    <div className="mt-1 flex flex-wrap justify-center gap-x-3 gap-y-1 font-ui text-[10px] font-extrabold text-walnut/70">
+    <div className="mt-1 flex flex-wrap justify-center gap-x-3 gap-y-1 font-ui text-[11.5px] font-extrabold text-walnut/70">
       {(
         [
           ["revenue", "Revenue"],
@@ -219,7 +219,7 @@ export function StackedBar({ segments }: { segments: Segment[] }) {
       </div>
       <div className="mt-2 space-y-1">
         {parts.map((s) => (
-          <div key={s.label} className="flex items-center gap-2 font-ui text-[12px]">
+          <div key={s.label} className="flex items-center gap-2 font-ui text-[13.5px]">
             <span
               className="inline-block h-2.5 w-2.5 shrink-0 rounded-sm"
               style={{ background: s.color }}

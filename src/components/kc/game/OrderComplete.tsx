@@ -49,7 +49,7 @@ export function OrderComplete({
   return (
     <div className="absolute inset-0 z-50 grid place-items-center bg-walnut-dark/55 backdrop-blur-[3px]">
       <Panel tone="cream" className="anim-pop w-[82%] p-6 text-center">
-        <p className="font-ui text-[10px] font-extrabold uppercase tracking-[0.24em] text-copper">
+        <p className="font-ui text-[11.5px] font-extrabold uppercase tracking-[0.24em] text-copper">
           Order Complete
         </p>
         <p className="mt-1 font-display text-[24px] font-black tracking-tight text-walnut-dark">
@@ -60,14 +60,14 @@ export function OrderComplete({
           {qualityLabel}
         </p>
         {isBest ? (
-          <p className="mt-2 font-ui text-[10px] font-extrabold uppercase tracking-[0.2em] text-copper">
+          <p className="mt-2 font-ui text-[11.5px] font-extrabold uppercase tracking-[0.2em] text-copper">
             ✦ Your best plate yet
           </p>
         ) : null}
         {rewardCoins > 0 ? (
           <p className="mt-3 font-hand text-[20px] text-olive">{formatUsdChange(rewardCoins)}</p>
         ) : (
-          <p className="mt-3 font-hand text-[15px] text-walnut/55">
+          <p className="mt-3 font-hand text-[17px] text-walnut/55">
             replayed for the love of cutting
           </p>
         )}

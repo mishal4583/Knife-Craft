@@ -58,13 +58,13 @@ export function GameHUD({
           className="paper max-w-[64%] -rotate-[1.4deg] rounded-[10px] border border-walnut/20 px-3 py-2 shadow-soft"
           style={{ clipPath: "polygon(0 2%, 100% 0, 99% 100%, 1% 98%)" }}
         >
-          <p className="font-ui text-[9px] font-extrabold uppercase tracking-[0.18em] text-copper">
+          <p className="font-ui text-[10.5px] font-extrabold uppercase tracking-[0.18em] text-copper">
             {order.day}'s Order
           </p>
-          <p className="truncate font-display text-[15px] font-black leading-tight text-walnut-dark">
+          <p className="truncate font-display text-[16.5px] font-black leading-tight text-walnut-dark">
             {order.name}
           </p>
-          <p className="font-hand text-[14px] leading-tight text-walnut/80">
+          <p className="font-hand text-[16px] leading-tight text-walnut/80">
             {peelFraction !== undefined ? (
               <span data-testid="peel-progress">
                 {gameplay.ingredient.name} · {Math.round(peelFraction * 100)}% peeled
@@ -83,14 +83,14 @@ export function GameHUD({
               which is why this isn't gated behind a "service mode"
               flag. */}
           {order.note ? (
-            <p className="mt-0.5 font-hand text-[12px] leading-snug text-copper/90">{order.note}</p>
+            <p className="mt-0.5 font-hand text-[14px] leading-snug text-copper/90">{order.note}</p>
           ) : null}
           {/* Level 1–10 UX pass: the step / destination line sits on the card
               (it used to float under it at 9 px, 70% opacity — barely legible
               over the kitchen art). Still normal flow, no overlay. */}
           {stepLabel ? (
             <p
-              className="mt-1 font-ui text-[10px] font-extrabold uppercase tracking-[0.12em] text-walnut/70"
+              className="mt-1 font-ui text-[11.5px] font-extrabold uppercase tracking-[0.12em] text-walnut/70"
               data-testid="hud-step"
             >
               {stepLabel}
@@ -116,7 +116,7 @@ export function GameHUD({
           the step/pips below it. */}
       {batchHint ? (
         <div className="flex justify-center px-2">
-          <p className="paper max-w-full rounded-2xl border border-gold/40 bg-gold/20 px-3 py-1.5 text-center font-hand text-[12px] leading-snug text-walnut-dark shadow-soft">
+          <p className="paper max-w-full rounded-2xl border border-gold/40 bg-gold/20 px-3 py-1.5 text-center font-hand text-[14px] leading-snug text-walnut-dark shadow-soft">
             {batchHint}
           </p>
         </div>

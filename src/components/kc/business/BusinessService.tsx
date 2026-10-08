@@ -111,18 +111,18 @@ export function BusinessService({
               {FLOW_STEPS.map((step, i) => (
                 <span key={step} className="flex items-center gap-1">
                   <span
-                    className={`rounded-full px-2 py-0.5 font-ui text-[10px] font-extrabold uppercase tracking-[0.1em] ${i === stepIndex ? "bg-copper text-ivory" : i < stepIndex ? "text-olive" : "text-walnut/45"}`}
+                    className={`rounded-full px-2 py-0.5 font-ui text-[11.5px] font-extrabold uppercase tracking-[0.1em] ${i === stepIndex ? "bg-copper text-ivory" : i < stepIndex ? "text-olive" : "text-walnut/45"}`}
                   >
                     {i < stepIndex ? "✓ " : ""}
                     {step}
                   </span>
                   {i < FLOW_STEPS.length - 1 ? (
-                    <span className="text-[10px] text-walnut/35">→</span>
+                    <span className="text-[11.5px] text-walnut/35">→</span>
                   ) : null}
                 </span>
               ))}
             </div>
-            <p className="mt-1.5 text-center font-hand text-[13px] leading-snug text-walnut/60">
+            <p className="mt-1.5 text-center font-hand text-[15px] leading-snug text-walnut/60">
               The customer pays your menu price × a popularity modifier, and that payment is the
               revenue recorded. Serving uses the stock. A day with service earns +
               {orderCompletedDelta({ onTime: true })} popularity at close. Served today:{" "}
@@ -132,14 +132,14 @@ export function BusinessService({
           </Panel>
           <Panel className="mb-3 p-3">
             <div className="flex items-center justify-between">
-              <p className="font-ui text-[11px] font-extrabold uppercase tracking-[0.14em] text-walnut/60">
+              <p className="font-ui text-[12.5px] font-extrabold uppercase tracking-[0.14em] text-walnut/60">
                 Customers Today
               </p>
-              <p className="font-display text-[16px] font-black text-walnut-dark">
+              <p className="font-display text-[17px] font-black text-walnut-dark">
                 {customers.served} / {customers.target} served
               </p>
             </div>
-            <p className="font-hand text-[13px] leading-snug text-walnut/60">
+            <p className="font-hand text-[15px] leading-snug text-walnut/60">
               {usesRestaurantDemand(save) ? (
                 // Endless Restaurant: the target (businessCustomersToday) comes from the
                 // restaurant's demand, today's events and the team's capacity — not popularity alone.
@@ -159,10 +159,10 @@ export function BusinessService({
           <EndlessDayEvents save={save} />
           {customers.complete ? (
             <Panel className="p-4 text-center">
-              <p className="font-display text-[17px] font-black text-walnut-dark">
+              <p className="font-display text-[18px] font-black text-walnut-dark">
                 Today's customers are complete.
               </p>
-              <p className="mt-1 font-hand text-[14px] leading-snug text-walnut/70">
+              <p className="mt-1 font-hand text-[16px] leading-snug text-walnut/70">
                 No more customers will arrive today. End the Business Day from the Dashboard.
               </p>
               <Divider />
@@ -172,7 +172,7 @@ export function BusinessService({
             </Panel>
           ) : !order || !dish ? (
             <Panel className="p-4 text-center">
-              <p className="font-hand text-[15px] leading-snug text-walnut/70">
+              <p className="font-hand text-[17px] leading-snug text-walnut/70">
                 Nobody's waiting yet. Open the counter to take your first real order.
               </p>
               <Divider />
@@ -182,13 +182,13 @@ export function BusinessService({
             </Panel>
           ) : (
             <Panel className="p-4">
-              <p className="font-ui text-[10px] font-extrabold uppercase tracking-[0.2em] text-copper">
+              <p className="font-ui text-[11.5px] font-extrabold uppercase tracking-[0.2em] text-copper">
                 {order.customer.avatarEmoji} {order.customer.name} wants
               </p>
               <p className="mt-1.5 font-display text-[20px] font-black leading-tight text-walnut-dark">
                 {emoji} {dish.name}
               </p>
-              <p className="font-hand text-[13px] leading-tight text-walnut/60">
+              <p className="font-hand text-[15px] leading-tight text-walnut/60">
                 {dish.description}
               </p>
               <Divider />
@@ -199,11 +199,11 @@ export function BusinessService({
                     const have = usableQuantity(save.business.inventory, id, businessDay);
                     return (
                       <div key={id} className="flex items-center justify-between py-0.5">
-                        <span className="font-hand text-[14px] text-walnut/70">
+                        <span className="font-hand text-[16px] text-walnut/70">
                           {INGREDIENT_EMOJI[id] ?? ""} {INGREDIENTS[id]?.name ?? id}
                         </span>
                         <span
-                          className={`font-ui text-[12px] font-bold tabular-nums ${have >= need ? "text-olive" : "text-copper"}`}
+                          className={`font-ui text-[13.5px] font-bold tabular-nums ${have >= need ? "text-olive" : "text-copper"}`}
                         >
                           {have >= need ? "✓" : "✗"} need{" "}
                           {formatStockAmount(id, need, displayMeasure())} · have{" "}
@@ -215,7 +215,7 @@ export function BusinessService({
                 </div>
               ) : null}
               {availability?.available ? (
-                <p className="mt-1 font-hand text-[13px] leading-snug text-walnut/60">
+                <p className="mt-1 font-hand text-[15px] leading-snug text-walnut/60">
                   Food cost {formatUsd(cogs)} from your stock → margin{" "}
                   {formatUsd(customerPays - cogs)} on this plate.
                 </p>
@@ -223,7 +223,7 @@ export function BusinessService({
               <Divider />
               {availability?.available ? (
                 <>
-                  <p className="mb-2 text-center font-hand text-[14px] text-olive">
+                  <p className="mb-2 text-center font-hand text-[16px] text-olive">
                     Everything's in stock. Ready when you are.
                   </p>
                   <KButton full onClick={onEnterPreparation}>
@@ -232,7 +232,7 @@ export function BusinessService({
                 </>
               ) : (
                 <>
-                  <p className="mb-2 text-center font-hand text-[14px] text-copper">
+                  <p className="mb-2 text-center font-hand text-[16px] text-copper">
                     Missing:{" "}
                     {(availability && !availability.available ? availability.missing : [])
                       .map((id) => `${INGREDIENT_EMOJI[id] ?? ""} ${INGREDIENTS[id]?.name ?? id}`)

@@ -117,7 +117,7 @@ export function BusinessRefrigerator({
               {current?.name ?? "Refrigerator"}
             </p>
             {current ? (
-              <p className="mt-0.5 font-hand text-[14px] leading-tight text-walnut/65">
+              <p className="mt-0.5 font-hand text-[16px] leading-tight text-walnut/65">
                 {current.description}
               </p>
             ) : null}
@@ -125,7 +125,7 @@ export function BusinessRefrigerator({
           <Badge tone={CONDITION_BADGE_TONE[conditionBand]}>{conditionBand}</Badge>
         </div>
 
-        <div className="mt-3 flex items-baseline justify-between font-ui text-[12px] font-bold text-walnut/75">
+        <div className="mt-3 flex items-baseline justify-between font-ui text-[13.5px] font-bold text-walnut/75">
           <span>Space used</span>
           <span className="font-extrabold text-walnut-dark">
             {formatQuantity(used)} / {capacity}
@@ -134,18 +134,18 @@ export function BusinessRefrigerator({
         <div className="mt-1">
           <Bar fraction={capacity > 0 ? used / capacity : 0} tone="sage" />
         </div>
-        <p className="mt-1 font-hand text-[13px] text-walnut/60">
+        <p className="mt-1 font-hand text-[15px] text-walnut/60">
           {formatQuantity(available)} free
         </p>
 
-        <div className="mt-3 flex items-baseline justify-between font-ui text-[12px] font-bold text-walnut/75">
+        <div className="mt-3 flex items-baseline justify-between font-ui text-[13.5px] font-bold text-walnut/75">
           <span>Condition</span>
           <span className="font-extrabold text-walnut-dark">{condition} / 100</span>
         </div>
         <div className="mt-1">
           <Bar fraction={condition / 100} />
         </div>
-        <p className="mt-1 font-hand text-[13px] leading-snug text-walnut/60">
+        <p className="mt-1 font-hand text-[15px] leading-snug text-walnut/60">
           Buying stock wears it (1 point per {DECAY_DIVISOR} units). Below 60 it needs service (
           {formatUsd(maintenanceCostFor(59) ?? 0)}); below 20 it breaks (
           {formatUsd(maintenanceCostFor(0) ?? 0)} repair). A worn fridge costs popularity, raises
@@ -157,17 +157,17 @@ export function BusinessRefrigerator({
             {maintenanceCost !== null ? formatUsd(maintenanceCost) : ""}
           </KButton>
         ) : (
-          <p className="mt-2 font-ui text-[12px] font-extrabold text-olive">✓ Working well</p>
+          <p className="mt-2 font-ui text-[13.5px] font-extrabold text-olive">✓ Working well</p>
         )}
       </Panel>
 
       {message ? (
-        <p className="text-center font-hand text-[15px] text-copper" aria-live="polite">
+        <p className="text-center font-hand text-[17px] text-copper" aria-live="polite">
           {message}
         </p>
       ) : null}
 
-      <p className="font-display text-[16px] font-black text-walnut-dark">Refrigerators</p>
+      <p className="font-display text-[17px] font-black text-walnut-dark">Refrigerators</p>
       <div className="grid grid-cols-1 gap-3 min-[400px]:grid-cols-2">
         {REFRIGERATOR_CATALOG.map((def) => {
           const isCurrent = def.id === save.business.refrigerator.refrigeratorId;
@@ -183,13 +183,13 @@ export function BusinessRefrigerator({
               <span className="grid h-[84px] place-items-center">
                 <FridgeMini rank={rankOf(def.id)} className="kcf-mini--lg" />
               </span>
-              <p className="mt-1 text-center font-display text-[14px] font-black leading-tight text-walnut-dark">
+              <p className="mt-1 text-center font-display text-[15.5px] font-black leading-tight text-walnut-dark">
                 {def.name}
               </p>
-              <p className="mt-0.5 text-center font-hand text-[13px] leading-tight text-walnut/65">
+              <p className="mt-0.5 text-center font-hand text-[15px] leading-tight text-walnut/65">
                 {def.description}
               </p>
-              <div className="mt-2 space-y-1 rounded-[12px] bg-cream/70 px-2 py-1.5 font-ui text-[11px]">
+              <div className="mt-2 space-y-1 rounded-[12px] bg-cream/70 px-2 py-1.5 font-ui text-[12.5px]">
                 <div className="flex justify-between">
                   <span className="text-walnut/60">Capacity</span>
                   <span className="font-extrabold text-walnut-dark">
@@ -206,7 +206,7 @@ export function BusinessRefrigerator({
                   </span>
                 </div>
               </div>
-              <p className="mt-2 text-center font-ui text-[13px] font-extrabold text-walnut-dark">
+              <p className="mt-2 text-center font-ui text-[14.5px] font-extrabold text-walnut-dark">
                 {def.price > 0 ? formatUsd(def.price) : "Included"}
               </p>
               <div className="mt-auto pt-1.5">
@@ -225,7 +225,7 @@ export function BusinessRefrigerator({
                   </KButton>
                 )}
                 {!isCurrent && tooSmall ? (
-                  <p className="mt-1 text-center font-hand text-[12px] text-copper">
+                  <p className="mt-1 text-center font-hand text-[14px] text-copper">
                     Too small for your {formatQuantity(used)} units.
                   </p>
                 ) : null}
@@ -234,14 +234,14 @@ export function BusinessRefrigerator({
           );
         })}
       </div>
-      <p className="text-center font-hand text-[14px] text-walnut/50">
+      <p className="text-center font-hand text-[16px] text-walnut/50">
         Upgrading keeps everything already in the fridge.
       </p>
 
       {/* Campaign gear lives in the Market — one shop, no second one here. */}
       <Panel className="p-4">
         <Eyebrow>🔪 Knives, boards & sharpening</Eyebrow>
-        <p className="mt-1 font-hand text-[14px] leading-snug text-walnut/70">
+        <p className="mt-1 font-hand text-[16px] leading-snug text-walnut/70">
           Your knives and boards are shared with the kitchen. Buying and equipping happen in the
           Market, sharpening at the Market's Blacksmith.
         </p>

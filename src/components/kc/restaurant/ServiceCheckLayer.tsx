@@ -72,7 +72,7 @@ export function ServiceCheckLayer({
           type="button"
           data-testid="psc-back"
           onClick={() => go("board")}
-          className="press pointer-events-auto min-h-12 rounded-full border border-walnut-dark/40 bg-[linear-gradient(170deg,var(--color-gold),var(--color-copper))] px-5 font-ui text-[14px] font-extrabold text-ivory shadow-lift"
+          className="press pointer-events-auto min-h-12 rounded-full border border-walnut-dark/40 bg-[linear-gradient(170deg,var(--color-gold),var(--color-copper))] px-5 font-ui text-[15.5px] font-extrabold text-ivory shadow-lift"
         >
           ↩ Back to Level {n} Pre-Service Check
         </button>

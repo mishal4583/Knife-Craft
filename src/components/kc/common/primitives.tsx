@@ -26,9 +26,9 @@ export function KButton({
   const base =
     "press relative inline-flex items-center justify-center gap-2 rounded-2xl font-ui font-extrabold tracking-wide select-none";
   const sizes = {
-    sm: "h-9 px-4 text-[12px]",
-    md: "h-12 px-6 text-[14px]",
-    lg: "h-14 px-7 text-[15px]",
+    sm: "h-9 px-4 text-[13.5px]",
+    md: "h-12 px-6 text-[15.5px]",
+    lg: "h-14 px-7 text-[16.5px]",
   }[size];
   const variants = {
     wood: "wood text-ivory shadow-soft border border-walnut-dark/50",
@@ -77,7 +77,7 @@ export function SectionTitle({ children, sub }: { children: ReactNode; sub?: str
       <h2 className="font-display text-[19px] font-black leading-tight tracking-tight text-walnut-dark">
         {children}
       </h2>
-      {sub ? <p className="font-ui text-[11px] text-walnut/70">{sub}</p> : null}
+      {sub ? <p className="font-ui text-[12.5px] text-walnut/70">{sub}</p> : null}
     </div>
   );
 }
@@ -120,7 +120,7 @@ export function Badge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full border px-2.5 py-[3px] font-ui text-[10px] font-bold uppercase tracking-[0.08em]",
+        "inline-flex items-center gap-1 rounded-full border px-2.5 py-[3px] font-ui text-[11.5px] font-bold uppercase tracking-[0.08em]",
         tones,
       )}
     >
@@ -132,9 +132,9 @@ export function Badge({
 /** The wallet chip — the game's one money display: a "$" badge + formatUsd (n is integer US cents, see money.ts). Used by every screen header, Campaign and Business alike. */
 export function Coin({ n }: { n: number }) {
   return (
-    <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-copper/30 bg-ivory/80 px-2.5 py-1 font-ui text-[12px] font-extrabold text-walnut-dark shadow-soft">
+    <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-copper/30 bg-ivory/80 px-2.5 py-1 font-ui text-[13.5px] font-extrabold text-walnut-dark shadow-soft">
       <span
-        className="grid h-4 w-4 place-items-center rounded-full text-[8px] text-ivory"
+        className="grid h-4 w-4 place-items-center rounded-full text-[9px] text-ivory"
         style={{ background: "linear-gradient(160deg,var(--color-gold),var(--color-copper))" }}
       >
         $
@@ -201,7 +201,7 @@ export function ScreenHeader({
           {title}
         </h1>
         {subtitle ? (
-          <p className="mt-1 font-hand text-[15px] leading-none text-walnut/70">{subtitle}</p>
+          <p className="mt-1 font-hand text-[17px] leading-none text-walnut/70">{subtitle}</p>
         ) : null}
       </div>
       {right ? <div className="ml-auto shrink-0">{right}</div> : null}

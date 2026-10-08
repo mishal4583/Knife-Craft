@@ -1074,6 +1074,10 @@ Touch targets ≥ 48 px. Test at 320×568, 360×640, 390×844, 430×900,
 768×1024. Do not add animation libraries or large assets; prefer CSS
 transform/opacity. No external fonts, video or network requests at runtime
 (only the Bridge CDN script); the bundled videos are the six cooking clips (§9).
+Text sizes (developer 2026-10-08, "a little more size"): the React UI's
+small text was enlarged ~12–15 % (descriptions and secondary lines 12.5–
+15.5 px, badges 11.5 px, nothing below 9 px; Caveat lines +2 px, 14–18 px);
+new UI uses the same sizes, never the old 10–12 px body text.
 
 ---
 

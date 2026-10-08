@@ -134,7 +134,7 @@ export function StoryOverlay({
       >
         {beat.kicker ? (
           <p
-            className="kc-story-text font-ui text-[13px] font-extrabold uppercase tracking-[0.16em] text-walnut-dark/80"
+            className="kc-story-text font-ui text-[14.5px] font-extrabold uppercase tracking-[0.16em] text-walnut-dark/80"
             style={delay(0)}
           >
             {beat.kicker}
@@ -150,7 +150,7 @@ export function StoryOverlay({
         ) : null}
         {beat.step ? (
           <p
-            className="kc-story-text font-ui text-[15px] font-extrabold tracking-wide text-walnut-dark/70"
+            className="kc-story-text font-ui text-[16.5px] font-extrabold tracking-wide text-walnut-dark/70"
             style={delay(0)}
           >
             {beat.step}
@@ -185,7 +185,7 @@ export function StoryOverlay({
               dangerouslySetInnerHTML={{ __html: STORY_ART[beat.dlg.art] }}
             />
             <Panel tone="cream" className="px-4 py-3">
-              <p className="font-ui text-[11px] font-extrabold uppercase tracking-wide text-walnut/60">
+              <p className="font-ui text-[12.5px] font-extrabold uppercase tracking-wide text-walnut/60">
                 {beat.dlg.who}
               </p>
               <p className="mt-1 font-hand text-[18px] text-walnut-dark">{beat.dlg.say}</p>
@@ -233,10 +233,10 @@ export function StoryOverlay({
                     />
                   )}
                 </div>
-                <p className="mt-1 font-ui text-[10px] font-bold leading-tight text-walnut-dark">
+                <p className="mt-1 font-ui text-[11.5px] font-bold leading-tight text-walnut-dark">
                   {CARD_LABEL[c].name}
                 </p>
-                <p className="font-ui text-[9px] font-extrabold uppercase tracking-wide text-sage">
+                <p className="font-ui text-[10.5px] font-extrabold uppercase tracking-wide text-sage">
                   {CARD_LABEL[c].tag}
                 </p>
               </Panel>

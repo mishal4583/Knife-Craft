@@ -57,10 +57,10 @@ function SettlementBreakdown({
 
   return (
     <details className="mt-3 text-left">
-      <summary className="cursor-pointer text-center font-ui text-[11px] font-extrabold uppercase tracking-[0.16em] text-copper">
+      <summary className="cursor-pointer text-center font-ui text-[12.5px] font-extrabold uppercase tracking-[0.16em] text-copper">
         Settlement Breakdown
       </summary>
-      <div className="mt-2 space-y-1.5 rounded-[14px] bg-cream/70 p-3 font-ui text-[12px] font-bold text-walnut/80">
+      <div className="mt-2 space-y-1.5 rounded-[14px] bg-cream/70 p-3 font-ui text-[13.5px] font-bold text-walnut/80">
         <Row label="Recipe Earnings" value={settlement.revenue} />
         <Row label="Quality Bonus" value={settlement.qualityBonus} />
         <div className="my-1 h-px bg-walnut/10" />
@@ -169,7 +169,7 @@ export function ServiceOrderComplete({
   return (
     <div className="absolute inset-0 z-50 grid place-items-center bg-walnut-dark/55 backdrop-blur-[3px]">
       <Panel tone="cream" className="anim-pop w-[82%] p-6 text-center">
-        <p className="font-ui text-[10px] font-extrabold uppercase tracking-[0.24em] text-copper">
+        <p className="font-ui text-[11.5px] font-extrabold uppercase tracking-[0.24em] text-copper">
           {served ? "Served" : "Order Ready"}
         </p>
         <p className="mt-1 font-display text-[24px] font-black tracking-tight text-walnut-dark">
@@ -186,7 +186,7 @@ export function ServiceOrderComplete({
                 economically-zero, never inferred from coinsAwarded === 0
                 (a genuine settlement can also floor at 0, rarely). */}
             {served.isReplay ? (
-              <p className="mt-3 font-ui text-[11px] font-extrabold uppercase tracking-[0.16em] text-walnut/50">
+              <p className="mt-3 font-ui text-[12.5px] font-extrabold uppercase tracking-[0.16em] text-walnut/50">
                 Replay — no money earned, no campaign economy progress
               </p>
             ) : isBusinessOrder && served.businessPayment ? (
@@ -212,13 +212,13 @@ export function ServiceOrderComplete({
               />
             ) : null}
             {isBusinessOrder && served.businessCustomers ? (
-              <p className="mt-3 font-ui text-[11px] font-bold uppercase tracking-[0.14em] text-walnut/60">
+              <p className="mt-3 font-ui text-[12.5px] font-bold uppercase tracking-[0.14em] text-walnut/60">
                 Customers today {served.businessCustomers.served} /{" "}
                 {served.businessCustomers.target} served
               </p>
             ) : null}
             {isBusinessOrder && served.businessCustomers?.complete ? (
-              <p className="mt-1 font-hand text-[15px] leading-snug text-walnut/70">
+              <p className="mt-1 font-hand text-[17px] leading-snug text-walnut/70">
                 Today's customers are complete. No more customers will arrive today.
               </p>
             ) : null}
@@ -246,7 +246,7 @@ export function ServiceOrderComplete({
           </>
         ) : (
           <>
-            <p className="mt-2 font-hand text-[16px] text-walnut/70">
+            <p className="mt-2 font-hand text-[18px] text-walnut/70">
               Everything's prepared — {customer.name} is waiting.
             </p>
             <div className="mt-5 space-y-2">

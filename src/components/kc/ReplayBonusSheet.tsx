@@ -37,7 +37,7 @@ export function ReplayBonusSheet({
           <p className="mt-2 font-display text-[22px] font-black text-walnut-dark">
             Reward Granted! {formatUsdChange(amount)}
           </p>
-          <p className="mt-1 font-hand text-[16px] text-walnut/70">
+          <p className="mt-1 font-hand text-[18px] text-walnut/70">
             Your Replay Bonus is in your wallet.
           </p>
           <div className="mt-4">
@@ -48,24 +48,24 @@ export function ReplayBonusSheet({
         </div>
       ) : (
         <div className="text-center" data-testid="replay-bonus-offer">
-          <p className="font-ui text-[10px] font-extrabold uppercase tracking-[0.2em] text-copper">
+          <p className="font-ui text-[11.5px] font-extrabold uppercase tracking-[0.2em] text-copper">
             Level replayed
           </p>
           <p className="mt-1 font-display text-[20px] font-black leading-tight text-walnut-dark">
             Replay Bonus · {formatUsd(amount)}
           </p>
-          <p className="mt-1 font-hand text-[15px] leading-snug text-walnut/70">
+          <p className="mt-1 font-hand text-[17px] leading-snug text-walnut/70">
             Replays don't pay — but you can watch a short ad to earn a bonus for this one.
           </p>
           {phase === "REQUESTING_AD" && canClose ? (
-            <p className="mt-3 rounded-[12px] bg-walnut/8 px-3 py-2 font-ui text-[12px] font-bold text-walnut/80">
+            <p className="mt-3 rounded-[12px] bg-walnut/8 px-3 py-2 font-ui text-[13.5px] font-bold text-walnut/80">
               Still waiting for the ad. You can keep playing — if the ad finishes, your bonus is
               added automatically.
             </p>
           ) : null}
           {phase === "FAILED" && failure ? (
             <p
-              className="mt-3 rounded-[12px] bg-walnut/8 px-3 py-2 font-ui text-[12px] font-bold text-walnut/80"
+              className="mt-3 rounded-[12px] bg-walnut/8 px-3 py-2 font-ui text-[13.5px] font-bold text-walnut/80"
               data-testid="replay-bonus-failed"
             >
               {failureMessage(failure)}
@@ -85,7 +85,7 @@ export function ReplayBonusSheet({
               {busy ? "Keep playing" : "No thanks"}
             </KButton>
           </div>
-          <p className="mt-2 font-ui text-[10px] font-bold text-walnut/50">
+          <p className="mt-2 font-ui text-[11.5px] font-bold text-walnut/50">
             {leftToday} Replay Bonus{leftToday === 1 ? "" : "es"} left today
           </p>
         </div>

@@ -44,7 +44,7 @@ export function RushRestockActions({
     return (
       <div className="mt-2 space-y-2">
         {planned.reason === "exceedsShortageLimit" ? (
-          <p className="font-hand text-[13px] leading-snug text-copper">
+          <p className="font-hand text-[15px] leading-snug text-copper">
             Today's supplier shortage limits purchases — buy what you can in the Market.
           </p>
         ) : null}
@@ -82,13 +82,13 @@ export function RushRestockActions({
           {busy === "ad" ? "Loading ad…" : "🎬 Watch Ad · Restock Free"}
         </KButton>
       ) : null}
-      <p className="text-center font-hand text-[13px] leading-snug text-walnut/65">
+      <p className="text-center font-hand text-[15px] leading-snug text-walnut/65">
         {canAfford
           ? `Market price ${formatUsd(plan.marketCost)} + ${Math.round(RUSH_RESTOCK_FEE * 100)}% rush fee — buys only what this order needs.`
           : `Rush Restock costs ${formatUsd(plan.cashCost)} — you have ${formatUsd(save.credits)}.`}
       </p>
       {message ? (
-        <p className="text-center font-hand text-[14px] leading-snug text-copper">{message}</p>
+        <p className="text-center font-hand text-[16px] leading-snug text-copper">{message}</p>
       ) : null}
       {market}
     </div>

@@ -162,7 +162,7 @@ export function PreServiceCheck({
       <div className="anim-up relative m-3 flex max-h-[calc(100%-24px)] w-[calc(100%-24px)] flex-col rounded-[26px] border border-walnut/20 bg-[linear-gradient(170deg,var(--color-ivory),var(--color-cream))] shadow-lift">
         <div className="px-5 pb-2 pt-4">
           <span className="mx-auto mb-3 block h-1 w-10 rounded-full bg-walnut/20" />
-          <p className="font-ui text-[12px] font-extrabold uppercase tracking-[0.14em] text-walnut/60">
+          <p className="font-ui text-[13.5px] font-extrabold uppercase tracking-[0.14em] text-walnut/60">
             Day {day} · {opening ? "Opening time" : `Level ${levelNumber}`}
           </p>
           <p className="font-display text-[22px] font-black text-walnut-dark">
@@ -184,30 +184,30 @@ export function PreServiceCheck({
               className="mb-2 rounded-2xl border border-walnut/15 bg-ivory/70 p-3"
               data-testid="psc-opening"
             >
-              <p className="font-ui text-[12px] font-extrabold uppercase tracking-wide text-walnut/60">
+              <p className="font-ui text-[13.5px] font-extrabold uppercase tracking-wide text-walnut/60">
                 Today's services
               </p>
               <ul className="mt-1 space-y-0.5">
                 {opening.map((s) => (
-                  <li key={s.name} className="font-ui text-[14px] font-bold text-walnut-dark">
+                  <li key={s.name} className="font-ui text-[15.5px] font-bold text-walnut-dark">
                     {s.name} · Level {s.levelNumber}
                   </li>
                 ))}
               </ul>
-              <p className="mt-1 font-ui text-[12px] text-walnut/70">
+              <p className="mt-1 font-ui text-[13.5px] text-walnut/70">
                 After the last service it's closing time: clean up and count the day.
               </p>
             </div>
           ) : null}
-          <p className="mt-1 font-ui text-[12px] font-extrabold uppercase tracking-wide text-walnut/60">
+          <p className="mt-1 font-ui text-[13.5px] font-extrabold uppercase tracking-wide text-walnut/60">
             {opening ? `Level ${levelNumber} · today's orders` : "Today's orders"}
           </p>
           <ul className="mt-1 space-y-0.5" data-testid="psc-orders">
             {tickets.map((r, i) => (
-              <li key={`${r.id}-${i}`} className="font-ui text-[14px] font-bold text-walnut-dark">
+              <li key={`${r.id}-${i}`} className="font-ui text-[15.5px] font-bold text-walnut-dark">
                 {r.name}
                 {services[i] === "takeaway" ? (
-                  <span className="font-ui text-[12px] font-extrabold text-copper">
+                  <span className="font-ui text-[13.5px] font-extrabold text-copper">
                     {" "}
                     · 🥡 takeaway
                   </span>
@@ -221,15 +221,15 @@ export function PreServiceCheck({
               className="mt-3 rounded-2xl border-2 border-copper/60 bg-gold/15 p-3"
               data-testid="psc-first-restock"
             >
-              <p className="font-ui text-[12px] font-extrabold uppercase tracking-wide text-copper">
+              <p className="font-ui text-[13.5px] font-extrabold uppercase tracking-wide text-copper">
                 👵 Grandma's first shopping trip
               </p>
-              <ol className="mt-1 list-decimal space-y-0.5 pl-5 font-ui text-[13px] font-bold text-walnut-dark">
+              <ol className="mt-1 list-decimal space-y-0.5 pl-5 font-ui text-[14.5px] font-bold text-walnut-dark">
                 <li>Tap 🛒 Buy everything in the Market below.</li>
                 <li>In the Market, tap Buy all — it buys what today's services need.</li>
                 <li>Tap ↩ Back to the Pre-Service Check, then start the service.</li>
               </ol>
-              <p className="mt-1 font-hand text-[15px] leading-snug text-walnut/75">
+              <p className="mt-1 font-hand text-[17px] leading-snug text-walnut/75">
                 “Buy before you cook, and only what you'll use — fresh food doesn't wait.”
               </p>
             </div>
@@ -237,7 +237,7 @@ export function PreServiceCheck({
 
           {stock ? (
             <>
-              <p className="mt-3 font-ui text-[12px] font-extrabold uppercase tracking-wide text-walnut/60">
+              <p className="mt-3 font-ui text-[13.5px] font-extrabold uppercase tracking-wide text-walnut/60">
                 Ingredients
               </p>
               <ul className="mt-1 divide-y divide-walnut/10" data-testid="psc-ingredients">
@@ -255,7 +255,7 @@ export function PreServiceCheck({
 
           {staff.length > 0 ? (
             <>
-              <p className="mt-3 font-ui text-[12px] font-extrabold uppercase tracking-wide text-walnut/60">
+              <p className="mt-3 font-ui text-[13.5px] font-extrabold uppercase tracking-wide text-walnut/60">
                 Staff for this service
               </p>
               <ul className="mt-1 divide-y divide-walnut/10" data-testid="psc-staff">
@@ -270,10 +270,10 @@ export function PreServiceCheck({
                       {r.kind === "specialist" ? "👩‍🍳" : "🧑‍🍳"}
                     </span>
                     <div className="min-w-0 flex-1">
-                      <p className="font-ui text-[14px] font-bold text-walnut-dark">{r.title}</p>
+                      <p className="font-ui text-[15.5px] font-bold text-walnut-dark">{r.title}</p>
                       <p
                         className={cn(
-                          "font-ui text-[12px]",
+                          "font-ui text-[13.5px]",
                           r.met ? "text-walnut/60" : "text-tomato",
                         )}
                       >
@@ -281,7 +281,7 @@ export function PreServiceCheck({
                       </p>
                     </div>
                     {r.met ? (
-                      <span className="font-ui text-[13px] font-extrabold text-sage">
+                      <span className="font-ui text-[14.5px] font-extrabold text-sage">
                         ✓ On staff
                       </span>
                     ) : null}
@@ -307,11 +307,11 @@ export function PreServiceCheck({
               data-testid="psc-fridge"
               data-fridge-status={fridge.status}
             >
-              <p className="font-ui text-[13px] font-bold text-walnut-dark">
+              <p className="font-ui text-[14.5px] font-bold text-walnut-dark">
                 {fridge.status === "full" ? "⛔ Fridge full" : "⚠️ Fridge nearly full"} ·{" "}
                 {fridge.used} / {fridge.capacity} units
               </p>
-              <p className="font-ui text-[12px] text-walnut/70">
+              <p className="font-ui text-[13.5px] text-walnut/70">
                 {fridge.free} units of space left. Use what you have, throw out expired food, or
                 upgrade the refrigerator.
               </p>
@@ -328,7 +328,7 @@ export function PreServiceCheck({
 
           {sup ? (
             <>
-              <p className="mt-3 font-ui text-[12px] font-extrabold uppercase tracking-wide text-walnut/60">
+              <p className="mt-3 font-ui text-[13.5px] font-extrabold uppercase tracking-wide text-walnut/60">
                 Supplies · {sup.dineIn} dine-in
                 {sup.takeaway > 0 ? ` · ${sup.takeaway} takeaway` : ""}
               </p>
@@ -354,12 +354,12 @@ export function PreServiceCheck({
                   className="mt-2 rounded-2xl border border-walnut/15 bg-ivory/70 p-3"
                   data-testid="psc-supplies-summary"
                 >
-                  <p className="font-ui text-[13px] font-bold text-walnut-dark">
+                  <p className="font-ui text-[14.5px] font-bold text-walnut-dark">
                     The service can't start without these · {formatUsd(sup.missingCost)}
                   </p>
                   {!sup.affordable ? (
                     <>
-                      <p className="mt-1 font-ui text-[13px] font-bold text-tomato">
+                      <p className="mt-1 font-ui text-[14.5px] font-bold text-tomato">
                         Not enough money — need {formatUsd(sup.missingCost - credits)} more.
                       </p>
                       <KButton
@@ -370,7 +370,7 @@ export function PreServiceCheck({
                       >
                         🧺 Borrow Grandma's spares (free, just what's missing)
                       </KButton>
-                      <p className="mt-1 font-ui text-[12px] text-walnut/70">
+                      <p className="mt-1 font-ui text-[13.5px] text-walnut/70">
                         Emergency Service: this service's orders earn their pay but no quality
                         bonus.
                       </p>
@@ -383,10 +383,10 @@ export function PreServiceCheck({
 
           {stock && guests && guests.dishes.length > 0 ? (
             <div className="mt-3" data-testid="psc-guests">
-              <p className="font-ui text-[12px] font-extrabold uppercase tracking-wide text-walnut/60">
+              <p className="font-ui text-[13.5px] font-extrabold uppercase tracking-wide text-walnut/60">
                 🍽️ Menu guests today · optional
               </p>
-              <p className="font-ui text-[12px] text-walnut/70">
+              <p className="font-ui text-[13.5px] text-walnut/70">
                 {guests.dishes.join(", ")} — they order after your own orders.
                 {guests.rows.length === 0 ? " ✓ Stocked for every guest." : " Stock for them:"}
               </p>
@@ -411,7 +411,7 @@ export function PreServiceCheck({
                       <span className="text-[20px]" aria-hidden>
                         {INGREDIENT_EMOJI[row.ingredientId]}
                       </span>
-                      <p className="min-w-0 flex-1 font-ui text-[14px] font-bold text-walnut-dark">
+                      <p className="min-w-0 flex-1 font-ui text-[15.5px] font-bold text-walnut-dark">
                         {INGREDIENTS[row.ingredientId].name}
                       </p>
                       <KButton
@@ -436,10 +436,10 @@ export function PreServiceCheck({
               className="mt-3 rounded-2xl border border-walnut/15 bg-ivory/70 p-3"
               data-testid="psc-day-stock"
             >
-              <p className="font-ui text-[12px] font-extrabold uppercase tracking-wide text-walnut/60">
+              <p className="font-ui text-[13.5px] font-extrabold uppercase tracking-wide text-walnut/60">
                 🗓️ Stock the whole day · optional
               </p>
-              <p className="font-ui text-[12px] text-walnut/70">
+              <p className="font-ui text-[13.5px] text-walnut/70">
                 Everything for today's {dayStock.levels.length} services (Levels{" "}
                 {dayStock.levels.join(", ")}) in one go: {formatQuantity(dayStock.totalUnits)} units
                 · {formatUsd(dayStock.totalCost)}
@@ -450,7 +450,7 @@ export function PreServiceCheck({
               </p>
               <p
                 className={cn(
-                  "mt-1 font-ui text-[12px] font-bold",
+                  "mt-1 font-ui text-[13.5px] font-bold",
                   dayStock.fits ? "text-olive" : "text-copper",
                 )}
               >
@@ -479,7 +479,7 @@ export function PreServiceCheck({
                       <span className="text-[20px]" aria-hidden>
                         {INGREDIENT_EMOJI[row.ingredientId]}
                       </span>
-                      <p className="min-w-0 flex-1 font-ui text-[14px] font-bold text-walnut-dark">
+                      <p className="min-w-0 flex-1 font-ui text-[15.5px] font-bold text-walnut-dark">
                         {INGREDIENTS[row.ingredientId].name}
                       </p>
                       <KButton
@@ -501,7 +501,7 @@ export function PreServiceCheck({
 
           {stock?.hasExpired ? (
             <div className="mt-3 rounded-2xl border border-tomato/30 bg-tomato/10 p-3">
-              <p className="font-ui text-[13px] font-bold text-walnut-dark">
+              <p className="font-ui text-[14.5px] font-bold text-walnut-dark">
                 Some stock has expired and can't be served.
               </p>
               <KButton
@@ -520,11 +520,11 @@ export function PreServiceCheck({
               className="mt-3 rounded-2xl border border-walnut/15 bg-ivory/70 p-3"
               data-testid="psc-summary"
             >
-              <p className="font-ui text-[13px] font-bold text-walnut-dark">
+              <p className="font-ui text-[14.5px] font-bold text-walnut-dark">
                 Missing: {stock.missingRows.length}{" "}
                 {stock.missingRows.length === 1 ? "item" : "items"} · {formatUsd(stock.missingCost)}
               </p>
-              <p className="font-ui text-[12px] text-walnut/70">You have {formatUsd(credits)}.</p>
+              <p className="font-ui text-[13.5px] text-walnut/70">You have {formatUsd(credits)}.</p>
               {onBuyAllInMarket && stock.affordable ? (
                 <KButton
                   size="sm"
@@ -552,7 +552,7 @@ export function PreServiceCheck({
                     ⚡ Quick restock here · {formatUsd(quickRestock.totalCost)}
                   </KButton>
                   <p
-                    className="mt-1.5 font-ui text-[12px] font-bold leading-snug text-copper"
+                    className="mt-1.5 font-ui text-[13.5px] font-bold leading-snug text-copper"
                     data-testid="psc-quick-warning"
                   >
                     ⚠️ The same stock costs {formatUsd(quickRestock.extraCost)} more than in the
@@ -560,7 +560,7 @@ export function PreServiceCheck({
                     the service saves it.
                   </p>
                   {!quickRestock.fits ? (
-                    <p className="mt-1 font-ui text-[12px] font-bold text-tomato">
+                    <p className="mt-1 font-ui text-[13.5px] font-bold text-tomato">
                       Not enough fridge space for it ({formatQuantity(quickRestock.storageFree)}{" "}
                       units free).
                     </p>
@@ -569,14 +569,14 @@ export function PreServiceCheck({
               ) : null}
               {!stock.affordable ? (
                 <>
-                  <p className="mt-1 font-ui text-[13px] font-bold text-tomato">
+                  <p className="mt-1 font-ui text-[14.5px] font-bold text-tomato">
                     Not enough money — need {formatUsd(stock.missingCost - credits)} more.
                   </p>
                   <KButton size="sm" variant="sage" className="mt-2 min-h-12" onClick={onUsePantry}>
                     🧺 Use Grandma's pantry (free, this service only)
                   </KButton>
                   <p
-                    className="mt-1 font-ui text-[12px] text-walnut/70"
+                    className="mt-1 font-ui text-[13.5px] text-walnut/70"
                     data-testid="psc-emergency-note"
                   >
                     Emergency Service: this service's orders earn their pay but no quality bonus.
@@ -586,7 +586,7 @@ export function PreServiceCheck({
               ) : null}
               {fridgeShort ? (
                 <>
-                  <p className="mt-1 font-ui text-[13px] font-bold text-tomato">
+                  <p className="mt-1 font-ui text-[14.5px] font-bold text-tomato">
                     Your refrigerator is full: this needs {stock.storageNeeded} units,{" "}
                     {stock.storageFree} free.
                   </p>
@@ -644,10 +644,10 @@ function IngredientRow({
         {INGREDIENT_EMOJI[row.ingredientId]}
       </span>
       <div className="min-w-0 flex-1">
-        <p className="font-ui text-[14px] font-bold text-walnut-dark">
+        <p className="font-ui text-[15.5px] font-bold text-walnut-dark">
           {INGREDIENTS[row.ingredientId].name}
         </p>
-        <p className={cn("font-ui text-[12px]", ok ? "text-walnut/60" : "text-tomato")}>
+        <p className={cn("font-ui text-[13.5px]", ok ? "text-walnut/60" : "text-tomato")}>
           Need {formatStockAmount(row.ingredientId, row.needed, measure)}
           {count ? ` (${count})` : ""} · have{" "}
           {formatStockAmount(row.ingredientId, row.usable, measure)}
@@ -657,7 +657,7 @@ function IngredientRow({
         </p>
       </div>
       {ok ? (
-        <span className="font-ui text-[13px] font-extrabold text-sage">✓ Ready</span>
+        <span className="font-ui text-[14.5px] font-extrabold text-sage">✓ Ready</span>
       ) : (
         <KButton
           size="sm"
@@ -685,14 +685,14 @@ function WelcomeCrate({ kit }: { kit: readonly KitLine[] }) {
       className="mb-2 rounded-2xl border border-olive/40 bg-[linear-gradient(170deg,var(--color-ivory),rgba(120,140,60,0.12))] p-3"
       data-testid="psc-welcome"
     >
-      <p className="font-ui text-[12px] font-extrabold uppercase tracking-wide text-olive">
+      <p className="font-ui text-[13.5px] font-extrabold uppercase tracking-wide text-olive">
         🎁 Welcome to your restaurant
       </p>
-      <p className="font-hand text-[16px] leading-snug text-walnut">
+      <p className="font-hand text-[18px] leading-snug text-walnut">
         “Your kitchen is a real restaurant now — stock, supplies and a team. I packed you a starter
         crate so you can keep cooking.” — Grandma
       </p>
-      <p className="mt-1 font-ui text-[12px] text-walnut/70">
+      <p className="mt-1 font-ui text-[13.5px] text-walnut/70">
         Free, once: {lines.join(" · ")}. After this, the Market is where you restock.
       </p>
     </div>
@@ -706,39 +706,42 @@ function NewsCard({ news }: { news: RestaurantNews }) {
       className="mb-2 rounded-2xl border border-copper/30 bg-[linear-gradient(170deg,var(--color-ivory),rgba(214,160,90,0.12))] p-3"
       data-testid="psc-news"
     >
-      <p className="font-ui text-[12px] font-extrabold uppercase tracking-wide text-copper">
+      <p className="font-ui text-[13.5px] font-extrabold uppercase tracking-wide text-copper">
         📰 {fresh ? "New at your restaurant" : "Coming up"}
       </p>
       {news.systems.map((s) => (
         <div key={s.id} className="mt-1" data-news-system={s.id}>
-          <p className="font-ui text-[14px] font-extrabold text-walnut-dark">{s.title}</p>
-          <p className="font-hand text-[16px] leading-snug text-walnut">“{s.intro}”</p>
+          <p className="font-ui text-[15.5px] font-extrabold text-walnut-dark">{s.title}</p>
+          <p className="font-hand text-[18px] leading-snug text-walnut">“{s.intro}”</p>
         </div>
       ))}
       {news.chain ? (
-        <p className="mt-1 font-ui text-[12px] font-bold text-walnut-dark" data-testid="psc-chain">
+        <p
+          className="mt-1 font-ui text-[13.5px] font-bold text-walnut-dark"
+          data-testid="psc-chain"
+        >
           {news.chain.join(" → ")}
         </p>
       ) : null}
       {news.cuisines.map((c) => (
-        <p key={c.name} className="mt-1 font-ui text-[13px] font-bold text-walnut-dark">
+        <p key={c.name} className="mt-1 font-ui text-[14.5px] font-bold text-walnut-dark">
           🌍 {c.name} cuisine opens{c.specialist ? ` · needs the ${c.specialist}` : ""}
         </p>
       ))}
       {news.dishes.length > 0 ? (
         <div className="mt-1" data-testid="psc-news-dishes">
-          <p className="font-ui text-[13px] font-bold text-walnut-dark">
+          <p className="font-ui text-[14.5px] font-bold text-walnut-dark">
             🍽️ New on the menu: {news.dishes.map((d) => d.name).join(", ")}
           </p>
           {news.dishWhy ? (
-            <p className="font-ui text-[12px] text-walnut/70">{news.dishWhy}</p>
+            <p className="font-ui text-[13.5px] text-walnut/70">{news.dishWhy}</p>
           ) : null}
         </div>
       ) : null}
       {news.comingUp.length > 0 ? (
         <ul className="mt-1 space-y-0.5" data-testid="psc-coming-up">
           {news.comingUp.map((c) => (
-            <li key={`${c.level}-${c.text}`} className="font-ui text-[12px] text-walnut/70">
+            <li key={`${c.level}-${c.text}`} className="font-ui text-[13.5px] text-walnut/70">
               Level {c.level}: {c.text}
             </li>
           ))}
@@ -761,10 +764,10 @@ function SupplyRow({ row, onRestock }: { row: SupplyCheckRow; onRestock: (id: Su
         {item?.icon}
       </span>
       <div className="min-w-0 flex-1">
-        <p className="font-ui text-[14px] font-bold text-walnut-dark">{row.label}</p>
+        <p className="font-ui text-[15.5px] font-bold text-walnut-dark">{row.label}</p>
         <p
           className={cn(
-            "font-ui text-[12px]",
+            "font-ui text-[13.5px]",
             ok ? "text-walnut/60" : row.blocking ? "text-tomato" : "text-copper",
           )}
         >
@@ -774,7 +777,7 @@ function SupplyRow({ row, onRestock }: { row: SupplyCheckRow; onRestock: (id: Su
         </p>
       </div>
       {ok ? (
-        <span className="font-ui text-[13px] font-extrabold text-sage">✓ Ready</span>
+        <span className="font-ui text-[14.5px] font-extrabold text-sage">✓ Ready</span>
       ) : (
         <KButton
           size="sm"

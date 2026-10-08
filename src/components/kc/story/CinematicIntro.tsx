@@ -238,7 +238,7 @@ export function CinematicIntro({ onDone }: { onDone: (reason: StoryEndReason) =>
           }}
           className="kc-cine-skip absolute right-1 top-1 z-10 flex h-[52px] min-w-[52px] items-center justify-center px-2"
         >
-          <span className="rounded-full bg-black/25 px-3 py-1.5 font-ui text-[12px] font-extrabold uppercase tracking-[0.16em] text-[#fff6e6]/85">
+          <span className="rounded-full bg-black/25 px-3 py-1.5 font-ui text-[13.5px] font-extrabold uppercase tracking-[0.16em] text-[#fff6e6]/85">
             Skip <span aria-hidden>›</span>
           </span>
         </button>
@@ -312,7 +312,7 @@ function CinematicDialogue({ line, leaving }: { line: CinematicLine | null; leav
           {line.speaker ? (
             <p
               className={cn(
-                "font-ui text-[13px] font-extrabold uppercase tracking-[0.2em] [text-shadow:0_1px_4px_rgba(0,0,0,0.7)]",
+                "font-ui text-[14.5px] font-extrabold uppercase tracking-[0.2em] [text-shadow:0_1px_4px_rgba(0,0,0,0.7)]",
                 line.speaker === "CHEF" ? "text-[#f3d98a]" : "text-[#cfe3c4]",
               )}
             >
