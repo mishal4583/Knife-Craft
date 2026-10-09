@@ -589,6 +589,14 @@ conversation.
    text is kept verbatim in `docs/REFERENCE.md` (same section numbers). From
    now on feature details go to REFERENCE.md and a short entry here; CLAUDE.md
    changes only when a rule changes.
+50. SOOTHING PLATING SOUND (developer 2026-10-09: "the plating sound is very
+   annoying"): `AudioManager.playPlateChime` was a bright triangle note per
+   landing piece climbing to 1.17 kHz every ≤ 90 ms, plus a 2.6 kHz ceramic
+   tick. Now a soft low sine (G A C E D, repeating, never climbing), gentle
+   swell + 0.7 s warm low-passed fade, a muffled low "set down" instead of
+   the tick, ~1/3 the volume, and at most one sound every 200 ms
+   (`PLATING.CHIME_LADDER`, `CHIME_MIN_GAP_MS`). Skipped platings stay
+   silent (`platingskip.mjs` 4).
 
 ## 4. Open issues from the Level 1–10 audit (not fixed yet)
 

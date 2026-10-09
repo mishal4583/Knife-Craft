@@ -166,47 +166,58 @@ class AudioManagerImpl {
     }
   }
 
+  /** When the last plate sound started (ms, performance clock) — the throttle. */
+  private lastPlateChimeAt = -Infinity;
+
   /**
-   * Ported from knifecraft.html Audio.plateSettle(): a soft ceramic
-   * contact pitched up a pentatonic ladder, so several pieces landing on
-   * the plate read as a musical phrase rather than a clatter.
-   * `index` is the piece's position in the plating order (0-based).
+   * A piece settling on the plate (developer 2026-10-09: the old bright,
+   * climbing chime with a ceramic tick was "very annoying" — make it
+   * soothing). Now a soft, low sine note with a gentle swell and a long,
+   * warm fade (low-passed), plus a muffled low "set down" instead of the
+   * high click; quiet, and at most one every CHIME_MIN_GAP_MS however many
+   * pieces land. The notes walk a calm pentatonic phrase and repeat
+   * (`index` is the piece's position in the plating order).
    */
   playPlateChime(index: number): void {
     if (!this.enabled) return;
     const ctx = this.ensureContext();
     if (!ctx) return;
+    const nowMs = typeof performance !== "undefined" ? performance.now() : Date.now();
+    if (nowMs - this.lastPlateChimeAt < PLATING.CHIME_MIN_GAP_MS) return;
+    this.lastPlateChimeAt = nowMs;
     const t = ctx.currentTime;
-    const gain = 0.15; // knifecraft.html CONFIG.plating.PLATE_CHIME_GAIN
     const ladder = PLATING.CHIME_LADDER;
-    const freq = ladder[Math.min(index, ladder.length - 1)]! * this.jitter();
+    const freq = ladder[index % ladder.length]! * (0.995 + Math.random() * 0.01);
+    const gain = 0.055;
 
+    // the note: a pure tone, soft swell, slow warm fade
     const osc = ctx.createOscillator();
-    osc.type = "triangle";
+    osc.type = "sine";
     osc.frequency.value = freq;
-    const bp = ctx.createBiquadFilter();
-    bp.type = "bandpass";
-    bp.frequency.value = freq * 1.4;
-    bp.Q.value = 1.6;
+    const lp = ctx.createBiquadFilter();
+    lp.type = "lowpass";
+    lp.frequency.value = 1400;
+    lp.Q.value = 0.5;
     const g = ctx.createGain();
     g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(gain, t + 0.006);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.26);
-    osc.connect(bp).connect(g).connect(ctx.destination);
+    g.gain.exponentialRampToValueAtTime(gain, t + 0.03);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.7);
+    osc.connect(lp).connect(g).connect(ctx.destination);
     osc.start(t);
-    osc.stop(t + 0.3);
+    osc.stop(t + 0.75);
 
-    // the ceramic itself: a whisper of contact under the note
+    // the plate meeting the counter: a muffled, low touch — no high tick
     const src = this.noiseSource(ctx);
-    const hp = ctx.createBiquadFilter();
-    hp.type = "highpass";
-    hp.frequency.value = 2600;
+    const bp = ctx.createBiquadFilter();
+    bp.type = "lowpass";
+    bp.frequency.value = 650;
     const ng = ctx.createGain();
-    ng.gain.setValueAtTime(gain * 0.5, t);
-    ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
-    src.connect(hp).connect(ng).connect(ctx.destination);
+    ng.gain.setValueAtTime(0.0001, t);
+    ng.gain.exponentialRampToValueAtTime(gain * 0.35, t + 0.008);
+    ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.07);
+    src.connect(bp).connect(ng).connect(ctx.destination);
     src.start(t);
-    src.stop(t + 0.06);
+    src.stop(t + 0.08);
   }
 
   /** Warm two-note chime — recipe / order complete. */

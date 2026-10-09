@@ -977,7 +977,7 @@ not silently removed.
   (the plating and the chef taking the plate before it can be fast-forwarded
   by a tap only from 1.2 s after the last action — `PLATING_SKIP_GUARD_MS`,
   so an extra tap after the last cut does nothing — and a skipped plating
-  plays no plate chimes; browser `tools/e2e/platingskip.mjs`),
+  plays no plate chimes; browser `tools/e2e/platingskip.mjs`; the plate sound itself is a soft low sine phrase, at most one every 200 ms — HANDOFF 50),
   is muted unless `AudioManager.soundAllowed`, and falls straight through
   on error / stall / `prefers-reduced-motion`. All six sources carry the same
   AI watermark (centre 600,1160 of 720×1280), painted out with ffmpeg

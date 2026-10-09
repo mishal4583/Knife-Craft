@@ -4418,8 +4418,14 @@ export const PLATING = {
    */
   GROUP_SPREAD_X_FRAC: 0.6,
   GROUP_SPREAD_Y_FRAC: 0.4,
-  /** knifecraft.html Audio.plateSettle's pentatonic ladder — one note per landing piece, climbing. */
-  CHIME_LADDER: [523.25, 587.33, 659.25, 783.99, 880, 1046.5, 1174.7],
+  /**
+   * The plate's soft notes (developer 2026-10-09: the old climbing ladder up
+   * to 1.17 kHz was "very annoying"): a low, calm pentatonic phrase — G A C
+   * E D — that the landing pieces walk through and repeat, never climbing.
+   */
+  CHIME_LADDER: [392.0, 440.0, 523.25, 659.25, 587.33],
+  /** At most one plate sound this often (pieces land every ≤ 90 ms). */
+  CHIME_MIN_GAP_MS: 200,
 } as const;
 
 /**
