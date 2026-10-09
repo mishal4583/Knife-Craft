@@ -1,4 +1,5 @@
 import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
+import { inventoryMenuOf } from "@/game/restaurant/restaurantMenu";
 import { restaurantQuote } from "@/game/restaurant/restaurantEconomy";
 import { supplierPriceNote } from "@/game/restaurant/restaurantBackOffice";
 import { getSelectedSupplierId } from "@/game/economy/SupplierManager";
@@ -110,6 +111,8 @@ export function MarketIngredients({
   const fridge = fridgeStatus(save);
   // Restaurant build: weighed ingredients in the player's lb / kg (Settings); classic: lb.
   const measure = RESTAURANT_MODE ? measureOf(save) : "lb";
+  // Pass 2 review: the restaurant's menu at its level (none before it opens), not the catalog.
+  const menu = RESTAURANT_MODE ? inventoryMenuOf(save) : undefined;
 
   /** − / +: the restaurant steps by ¼ for weighed goods (business/measure.ts); classic whole units. */
   const stepFor = (id: IngredientId, q: number, dir: 1 | -1) =>
@@ -256,7 +259,7 @@ export function MarketIngredients({
                 const perUnit = marketUnitLabel(id, measure, 1);
                 const count = marketUnitCountText(id, measure);
                 const stock = save.business.inventory[id]?.quantity ?? 0;
-                const dishes = activeDishesUsing(save, id).length;
+                const dishes = activeDishesUsing(save, id, menu).length;
                 const message = messages[id];
                 const focused = id === focusId;
                 return (

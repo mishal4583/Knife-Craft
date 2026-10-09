@@ -32,6 +32,7 @@ import {
   activeDishesUsing,
   fridgeStatus,
   lowStockItems,
+  type MenuInEffect,
 } from "./inventoryAnalytics";
 
 /**
@@ -269,7 +270,8 @@ const ATTENTION_FOR_STATUS: Record<InventoryStatus, FridgeAttentionReason | null
   healthy: null,
 };
 
-export function fridgeView(save: SaveData): FridgeView {
+/** `menu`: the menu in effect (inventoryAnalytics.MenuInEffect); the Business menu by default. */
+export function fridgeView(save: SaveData, menu?: MenuInEffect): FridgeView {
   const business = save.business;
   const day = business.calendar.businessDay;
   const fridge = fridgeStatus(save);
@@ -278,7 +280,7 @@ export function fridgeView(save: SaveData): FridgeView {
     REFRIGERATOR_CATALOG.findIndex((r) => r.id === business.refrigerator.refrigeratorId),
   );
   const tiers = REFRIGERATOR_CATALOG.map((_, i) => tierOf(i));
-  const low = new Map(lowStockItems(save).map((l) => [l.id, l]));
+  const low = new Map(lowStockItems(save, menu).map((l) => [l.id, l]));
 
   const items: FridgeItem[] = [];
   const unknown: string[] = [];
@@ -306,7 +308,7 @@ export function fridgeView(save: SaveData): FridgeView {
       freshness: shelfLife > 0 ? Math.min(1, daysLeft / shelfLife) : 0,
       status,
       attention: ATTENTION_FOR_STATUS[status],
-      usedIn: activeDishesUsing(save, id).map((d) => d.name),
+      usedIn: activeDishesUsing(save, id, menu).map((d) => d.name),
     });
   }
   items.sort((a, b) => a.daysLeft - b.daysLeft || a.name.localeCompare(b.name));

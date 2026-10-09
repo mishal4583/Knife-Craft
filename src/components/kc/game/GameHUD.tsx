@@ -1,6 +1,23 @@
 import { IconButton } from "../common/Buttons";
 import { cn } from "@/lib/utils";
 import type { DailyOrder, GameplayState } from "@/types/game";
+import { starText, type ChecklistItem } from "@/game/restaurant/levelChecklist";
+
+/** Pass 3: which checklist steps the card shows — all of a short list, else the current and next. */
+function visibleSteps(list: ChecklistItem[]): { c: ChecklistItem; i: number }[] {
+  const all = list.map((c, i) => ({ c, i }));
+  if (list.length <= 3) return all;
+  const now = list.findIndex((c) => c.state === "now");
+  if (now === -1) return []; // all done: the summary says so
+  return all.slice(now, now + 2);
+}
+
+/** How many later steps the compact checklist leaves out. */
+function hiddenAfter(list: ChecklistItem[]): number {
+  if (list.length <= 3) return 0;
+  const now = list.findIndex((c) => c.state === "now");
+  return now === -1 ? 0 : Math.max(0, list.length - (now + 2));
+}
 
 /**
  * Minimal in-play HUD. Never overlaps the cutting area.
@@ -29,6 +46,7 @@ export function GameHUD({
   peelFraction,
   stepLabel,
   batchHint,
+  guide,
   onPause,
 }: {
   order: DailyOrder;
@@ -43,6 +61,14 @@ export function GameHUD({
   stepLabel?: string;
   /** Phase 3 §16 — a one-sentence batching hint, shown as a small standalone banner (not crammed into the order card, not an overlay) so it stays readable without covering the board. */
   batchHint?: string;
+  /** Pass 3 (restaurant build, Levels 1–15, levelGoals.ts): the customer's line, the goal with the best stars, and a multi-step dish's checklist. Static text in the card — never a dialogue over the board. */
+  guide?: {
+    goal: string;
+    graded: boolean;
+    bestStars: 0 | 1 | 2 | 3 | null;
+    customerLine: string;
+    checklist: ChecklistItem[];
+  };
   onPause: () => void;
 }) {
   const pipRows = counts
@@ -64,6 +90,14 @@ export function GameHUD({
           <p className="truncate font-display text-[15.5px] font-black leading-tight text-walnut-dark">
             {order.name}
           </p>
+          {guide ? (
+            <p
+              className="line-clamp-2 font-hand text-[13px] leading-snug text-walnut/75"
+              data-testid="hud-customer-line"
+            >
+              “{guide.customerLine}”
+            </p>
+          ) : null}
           <p className="font-hand text-[15px] leading-tight text-walnut/80">
             {peelFraction !== undefined ? (
               <span data-testid="peel-progress">
@@ -82,7 +116,9 @@ export function GameHUD({
               for campaign/daily/endless sessions too (level.subtitle),
               which is why this isn't gated behind a "service mode"
               flag. */}
-          {order.note ? (
+          {/* Pass 3: a multi-step dish's checklist lists the steps the chef's note
+              repeats, so the note gives the card's room back to the board. */}
+          {order.note && !(guide && guide.checklist.length > 0) ? (
             <p className="mt-0.5 font-hand text-[13px] leading-snug text-copper/90">{order.note}</p>
           ) : null}
           {/* Level 1–10 UX pass: the step / destination line sits on the card
@@ -94,6 +130,62 @@ export function GameHUD({
               data-testid="hud-step"
             >
               {stepLabel}
+            </p>
+          ) : null}
+          {guide && guide.checklist.length > 0 ? (
+            <ul className="mt-0.5 flex flex-wrap gap-x-2 gap-y-0" data-testid="hud-checklist">
+              {/* Up to 3 steps: all of them. A longer dish (Bruschetta Trio, 6) shows
+                  how many are done, the current one, the next one and how many are
+                  left, so the card never grows over the board on a 320 px phone. */}
+              {guide.checklist.length > 3 && guide.checklist.some((c) => c.state === "done") ? (
+                <li
+                  data-step-summary="done"
+                  className="font-ui text-[11px] font-bold leading-[15px] text-olive"
+                >
+                  {guide.checklist.every((c) => c.state === "done")
+                    ? `✓ all ${guide.checklist.length} done`
+                    : `✓ ${guide.checklist.filter((c) => c.state === "done").length} done`}
+                </li>
+              ) : null}
+              {visibleSteps(guide.checklist).map(({ c, i }) => (
+                <li
+                  key={i}
+                  data-step-index={i}
+                  data-step-state={c.state}
+                  className={cn(
+                    "font-ui text-[11px] font-bold leading-[15px]",
+                    c.state === "done"
+                      ? "text-olive"
+                      : c.state === "now"
+                        ? "text-walnut-dark"
+                        : "text-walnut/45",
+                  )}
+                >
+                  {c.state === "done" ? "✓" : c.state === "now" ? "▸" : "·"} {c.label}
+                </li>
+              ))}
+              {hiddenAfter(guide.checklist) > 0 ? (
+                <li
+                  data-step-summary="more"
+                  className="font-ui text-[11px] font-bold leading-[15px] text-walnut/45"
+                >
+                  +{hiddenAfter(guide.checklist)} more
+                </li>
+              ) : null}
+            </ul>
+          ) : null}
+          {guide ? (
+            <p
+              className="mt-0.5 font-ui text-[11px] font-extrabold leading-[15px] text-copper"
+              data-testid="hud-goal"
+            >
+              🎯 {guide.goal}
+              {guide.graded ? (
+                <span className="text-walnut/60">
+                  {" "}
+                  · best {guide.bestStars === null ? "—" : starText(guide.bestStars)}
+                </span>
+              ) : null}
             </p>
           ) : null}
         </div>

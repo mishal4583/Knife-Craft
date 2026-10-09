@@ -635,9 +635,19 @@ conversation.
    (about $3.55 at L13). Tests changed (wiring regexes only):
    `level-ux-qa` N1, `restaurant-day-qa` W2, `restaurant-guests-qa` W2. New:
    `restaurant-grandmas-fridge-qa`, e2e `restaurantgrandmasfridge.mjs`.
-   Known: Grandma's first-shopping-trip card at L15 no longer shows for a
-   player with food left in the fridge (it ends when there is any stock —
-   unchanged rule); the L13 top-up is the first purchase now.
+   Review fixes (developer 2026-10-09): (1) the restaurant build's
+   Inventory (and the Market card's "N menu dishes") measured stock against
+   the whole 48-dish Business catalog; the inventory selectors now take the
+   menu in effect (`inventoryAnalytics` `MenuInEffect`, default unchanged)
+   and the restaurant passes `restaurantMenu.inventoryMenuOf` (the active
+   menu at its level) — before L11 no menu need / "low for today's menu" /
+   dish count, a "menu opens at Level 11" card instead. (2) The L15
+   first-shopping card was gated on "never bought and fridge empty"; it is
+   now `firstRestock.isFirstStockService` (no stock level completed yet —
+   derived from level progress, no new flag), opens the sheet on that
+   service even with nothing missing, and explains the hand-over from
+   Grandma's leftovers and the top-up. `restaurant-measures-qa` A2 changed
+   to the new rule.
 
 ## 4. Open issues from the Level 1–10 audit (not fixed yet)
 
@@ -704,6 +714,49 @@ Not implemented (from the audits, all CSS/asset-free):
    `mode: certification`), then the developer submits the form to
    moderation in the cabinet.
 5. P1 UX fixes, then the story presentation items in §5.
+
+53. FIRST LEVELS, PASS 3 — GOALS, STARS, CUSTOMER LINES, CHECKLIST, LEVEL 9
+   INGREDIENT LIST (developer 2026-10-09; `restaurant/levelGoals.ts`,
+   `levelChecklist.ts`; restaurant build, Levels 1–15, presentation only,
+   uncommitted on the branch with the Pass 2 review fixes). The order card
+   shows the customer's own line (recipe `customerDialogue`), the goal and
+   the best stars, and a multi-step dish's real checklist; stars are the
+   engine's grade ladder on the saved best score (no money, no save field;
+   L7 and L9 aren't graded by the engine, so no stars there); the Order
+   Board shows the stars and, from L9, "What's in this dish?"; Level
+   Complete adds "⭐ Best prep". Grandma's lines: Pass 1's, unchanged. New:
+   `restaurant-level-goals-qa`, e2e `restaurantlevelgoals.mjs`.
+
+## 6b. Current state (2026-10-09, end of session)
+
+- `main` = Pass 1 (`23da428`, live on Pages). Branch `claude/sharp-wright-emfu2j`
+  = Pass 2 (`1a98d02`) + the Pass 2 review fixes (Inventory menu by level,
+  Level 15 hand-over card) UNCOMMITTED in the working tree — the developer
+  said not to commit/push/merge them until asked. All QA + browser tests
+  pass on them.
+- Pass 3 (goals, stars, customer lines, checklist, L9 ingredient list) is
+  also uncommitted in the working tree, on top of the review fixes.
+- Release order agreed: Pass 1 → Pass 2 (+ review fixes) → Pass 3, then
+  test Levels 1–15 together on Pages before `main`.
+
+### Running the browser tests in the cloud container
+- Serve: `npx vite preview --host 127.0.0.1 --port 4173 --strictPort`
+  (plain `localhost`/IPv6 fails); classic build:
+  `VITE_RESTAURANT_MODE=0 npx vite build --outDir /tmp/claude-0/classic-dist`
+  served on 4174.
+- Chrome: `CHROME_PATH=/tmp/claude-0/chrome-nosandbox.sh` (a wrapper:
+  `exec /opt/pw-browsers/chromium-1194/chrome-linux/chrome --no-sandbox "$@"`),
+  `KC_URL=http://127.0.0.1:4173/`.
+- The Bridge CDN is blocked here: run the tests from a COPY of
+  `tools/e2e` (`/tmp/claude-0/e2erun`, node_modules symlinked) whose
+  `harness.mjs` answers `https://bridge.playgama.com/...` with the official
+  npm build (`/tmp/claude-0/pgb/package/dist/playgama-bridge.js`) via
+  `page.setRequestInterception` (cooperative: respond priority 1000,
+  continue priority 0). `lazyload.mjs` intercepts itself: run it with
+  `KC_OWN_INTERCEPT=1` and let its own handler serve the Bridge. Never
+  commit these test-env patches.
+- `restaurant*.mjs` on the restaurant build; every other e2e on the
+  classic build. Run them one at a time (parallel runs time out).
 
 ## 7. Useful facts
 

@@ -31,6 +31,7 @@ import { KnifeReport } from "./KnifeReport";
 import { CookingClip } from "./CookingClip";
 import { dishKindFor } from "@/game/recipes/dishKind";
 import { taughtTechniques, showsBeginnerHint, COACH_TEXT, CUT_WAYS } from "@/game/coaching";
+import { checklistFor } from "@/game/restaurant/levelChecklist";
 import { OrderComplete } from "./OrderComplete";
 import { ServiceOrderComplete } from "./ServiceOrderComplete";
 import { Panel, KButton, DustMotes } from "../common/primitives";
@@ -96,6 +97,7 @@ export function Preparation({
   level,
   service,
   coachLevelId,
+  levelGuide,
   onExit,
   onComplete,
   credits,
@@ -108,6 +110,13 @@ export function Preparation({
   level?: LevelDefinition;
   /** The campaign level being played for the FIRST time (App decides) — which techniques it teaches (coaching.ts). Omitted for replays, Today's Special, Endless, Restaurant Service and Business: no coaching there. */
   coachLevelId?: string;
+  /** Pass 3 (restaurant build, Levels 1–15, levelGoals.ts): the dish's goal, its best stars (null = not cooked yet), whether the engine grades it, and the customer's own line. */
+  levelGuide?: {
+    goal: string;
+    graded: boolean;
+    bestStars: 0 | 1 | 2 | 3 | null;
+    customerLine: string;
+  };
   /** Present only for a restaurant-service session (App.tsx's sessionMode === "service") — see ServiceManager.ts for the state machine behind it. */
   service?: {
     order: ServiceOrder;
@@ -440,6 +449,15 @@ export function Preparation({
           : {})}
         {...(stepLabel ? { stepLabel } : {})}
         {...(service?.batchHint ? { batchHint: service.batchHint } : {})}
+        {...(levelGuide
+          ? {
+              guide: {
+                ...levelGuide,
+                // The dish's real steps, ticked by the scene's own STEP_STARTED events.
+                checklist: checklistFor(steps, activeStep.index, phase !== "prep"),
+              },
+            }
+          : {})}
         onPause={() => {
           bridge.pauseGame();
           levelPaused();

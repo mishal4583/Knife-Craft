@@ -10,6 +10,7 @@
  */
 import { dayCeremonyAt } from "./firstLevels";
 import { grandmasFridgeNoteFor, type GrandmasFridgeNote } from "./grandmasFridge";
+import { isFirstStockService } from "./firstRestock";
 import type { SaveData } from "../SaveManager";
 import type { LevelDefinition } from "../levels/levelTypes";
 import type { LevelProgress } from "../levels/LevelManager";
@@ -89,6 +90,8 @@ export type ServicePlan = {
   guests: GuestStock;
   /** First levels pass 2: Grandma's fridge note on Levels 12–14 (null otherwise). */
   grandmasFridge: GrandmasFridgeNote | null;
+  /** The first service on real stock (Level 15): the routine is introduced (firstRestock.ts). */
+  firstStockService: boolean;
 };
 
 /** One ingredient the menu guests need beyond the level's own orders: whole Market units. */
@@ -153,6 +156,7 @@ export function servicePlanFor(save: SaveData, level: LevelDefinition): ServiceP
     welcome: unseenStarterCrate(save),
     guests: guestStockFor(save, level, n, remaining),
     grandmasFridge: grandmasFridgeNoteFor(save, level, n),
+    firstStockService: isFirstStockService(save, n),
   };
 }
 
@@ -170,6 +174,8 @@ export function servicePlanNeedsSheet(plan: ServicePlan | null): boolean {
   if (plan.welcome) return true;
   // First levels pass 2: Grandma's note on Levels 12–14 (never blocks START).
   if (plan.grandmasFridge) return true;
+  // Pass 2 review: the first service on real stock always opens the sheet (never blocking).
+  if (plan.firstStockService) return true;
   if (!staffReady(plan)) return true;
   if (suppliesNeedAttention(plan.supplies)) return true;
   return plan.check.applies && (!plan.check.ready || plan.check.hasExpired);

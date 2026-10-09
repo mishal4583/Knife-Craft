@@ -59,9 +59,23 @@ function dishNeeds(dish: BusinessDish): Map<IngredientId, number> {
   return needs;
 }
 
+/**
+ * The menu the selectors below measure against: the Business menu's active
+ * dishes, unless the caller passes the menu in effect (the restaurant build
+ * passes its campaign menu, restaurantMenu.activeMenuDishes, which is empty
+ * before the menu opens). Only WHICH dishes count changes, never a formula.
+ */
+export type MenuInEffect = readonly BusinessDish[];
+const menuOf = (save: SaveData, menu?: MenuInEffect): readonly BusinessDish[] =>
+  menu ?? activeBusinessDishes(save.business.menuActivation);
+
 /** The active menu's dishes that use `id` — the "Used in" list. */
-export function activeDishesUsing(save: SaveData, id: IngredientId): BusinessDish[] {
-  return activeBusinessDishes(save.business.menuActivation).filter((d) => dishNeeds(d).has(id));
+export function activeDishesUsing(
+  save: SaveData,
+  id: IngredientId,
+  menu?: MenuInEffect,
+): BusinessDish[] {
+  return menuOf(save, menu).filter((d) => dishNeeds(d).has(id));
 }
 
 export type FridgeStatus = {
@@ -102,7 +116,7 @@ export type OnHandItem = {
 };
 
 /** Everything in the fridge, soonest to spoil first. */
-export function onHandItems(save: SaveData): OnHandItem[] {
+export function onHandItems(save: SaveData, menu?: MenuInEffect): OnHandItem[] {
   const day = save.business.calendar.businessDay;
   return Object.values(save.business.inventory)
     .filter((e): e is NonNullable<typeof e> => !!e && e.quantity > 0)
@@ -117,7 +131,7 @@ export function onHandItems(save: SaveData): OnHandItem[] {
         shelfLife,
         daysLeft,
         spoilsTonight: daysLeft === 1,
-        usedIn: activeDishesUsing(save, e.ingredientId),
+        usedIn: activeDishesUsing(save, e.ingredientId, menu),
       };
     })
     .sort(
@@ -140,8 +154,11 @@ export type IngredientDemand = {
 };
 
 /** What today's menu is expected to draw of each ingredient it uses. */
-export function menuDemand(save: SaveData): Map<IngredientId, IngredientDemand> {
-  const active = activeBusinessDishes(save.business.menuActivation);
+export function menuDemand(
+  save: SaveData,
+  menu?: MenuInEffect,
+): Map<IngredientId, IngredientDemand> {
+  const active = menuOf(save, menu);
   const target = businessCustomersToday(save).target;
   const totals = new Map<IngredientId, { need: number; dishes: number }>();
   for (const dish of active) {
@@ -177,10 +194,10 @@ export type LowStockItem = {
  * Ingredients with no usable stock at all are not "low", they are missing
  * (menuReadiness.mostNeeded).
  */
-export function lowStockItems(save: SaveData): LowStockItem[] {
+export function lowStockItems(save: SaveData, menu?: MenuInEffect): LowStockItem[] {
   const day = save.business.calendar.businessDay;
   const items: LowStockItem[] = [];
-  for (const [id, d] of menuDemand(save)) {
+  for (const [id, d] of menuDemand(save, menu)) {
     const usable = usableQuantity(save.business.inventory, id, day);
     if (usable <= 0 || usable >= d.perDay) continue;
     items.push({
@@ -202,8 +219,8 @@ export type MenuReadiness = {
   mostNeeded: Array<{ id: IngredientId; blocks: number }>;
 };
 
-export function menuReadiness(save: SaveData): MenuReadiness {
-  const active = activeBusinessDishes(save.business.menuActivation);
+export function menuReadiness(save: SaveData, menu?: MenuInEffect): MenuReadiness {
+  const active = menuOf(save, menu);
   const blocks = new Map<IngredientId, number>();
   let ready = 0;
   for (const dish of active) {

@@ -128,6 +128,16 @@ import { businessCustomerPayment } from "@/game/business/BusinessServiceManager"
 import { recordRevenueAndCogs } from "@/game/business/BusinessFinanceManager";
 import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
 import { giveGrandmasLeftovers } from "@/game/restaurant/grandmasFridge";
+import {
+  STAR_GRADES,
+  customerLineFor,
+  goalFor,
+  hasLevelGoals,
+  isGraded,
+  levelStars,
+  starText,
+  starsForScore,
+} from "@/game/restaurant/levelGoals";
 import { requirementsForRecipes } from "@/game/restaurant/recipeRequirements";
 import { usableQuantity } from "@/game/business/perishability";
 import { formatStockAmount } from "@/game/business/measure";
@@ -1927,6 +1937,16 @@ export function App() {
                 ? [fridgeLeftLine(finalSave, usedIngredients)]
                 : []),
               ...(leftoversNow ? ["🧺 Grandma's leftovers are in the fridge — free"] : []),
+              // Pass 3: the dish's best stars (the engine's grade; never money).
+              ...(hasLevelGoals(n) && levelStars(finalSave, level) !== null
+                ? [
+                    `⭐ Best prep: ${starText(levelStars(finalSave, level)!)}${
+                      levelStars(finalSave, level)! > 0
+                        ? ` ${STAR_GRADES[levelStars(finalSave, level)! - 1]!.grade}`
+                        : ""
+                    }`,
+                  ]
+                : []),
             ].filter((x): x is string => !!x)
           : [];
       setLevelRewardNotice({
@@ -2379,6 +2399,24 @@ export function App() {
         ? { ...viewedBatchOrder, session: batchGroupSession.session }
         : null;
   const showServicePrep = screen === "gameplay" && !!currentServiceOrder;
+  // Pass 3 (restaurant build, Levels 1–15): the dish's goal, best stars and the
+  // customer's own line, from the recipe and the save's best score (levelGoals.ts).
+  const guideLevel =
+    RESTAURANT_MODE && isCampaignService && campaignServiceSession
+      ? levelNumber(campaignServiceSession.levelId)
+      : 0;
+  const levelGuide =
+    currentServiceOrder && hasLevelGoals(guideLevel)
+      ? {
+          goal: goalFor(currentServiceOrder.recipe),
+          graded: isGraded(currentServiceOrder.recipe),
+          bestStars:
+            typeof save?.recipeProgress[currentServiceOrder.recipe.id]?.best === "number"
+              ? starsForScore(save.recipeProgress[currentServiceOrder.recipe.id]!.best!)
+              : null,
+          customerLine: customerLineFor(currentServiceOrder.recipe),
+        }
+      : null;
   const showCampaignPrep =
     screen === "gameplay" &&
     sessionMode !== "campaign-service" &&
@@ -2450,6 +2488,7 @@ export function App() {
             // for the new customer.
             key={currentServiceOrder.order.id}
             {...(coachLevelId ? { coachLevelId } : {})}
+            {...(levelGuide ? { levelGuide } : {})}
             service={{
               order: currentServiceOrder,
               onServe: isCampaignService

@@ -54,7 +54,7 @@ Complete); from Level 21 each day opens with its card and ends with
   Paring Knife unlocks ($500).
 - **L16 — Rings** technique.
 - **L20:** Herb Garden Board ($500), **Prep Assistant** helper ($3,000,
-  one-time, no wages). Menu 8 dishes.
+  one-time, no wages). Menu 7 dishes.
 - **Milestone L20:** *"Word gets around."*
 
 ### Levels 21–30 · Italian Service  *(stage: Fridge & Freshness)*

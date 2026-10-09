@@ -4,6 +4,17 @@ import { useContext, useEffect, useState } from "react";
 import { isTabOpen, tabOpensAt } from "@/game/restaurant/firstLevels";
 import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
 import { NavLevelContext } from "./navLevel";
+import {
+  INGREDIENT_LIST_FROM,
+  STAR_GRADES,
+  dishIngredientsFor,
+  hasLevelGoals,
+  levelStars,
+  starText,
+} from "@/game/restaurant/levelGoals";
+import { formatStockAmount, measureOf } from "@/game/business/measure";
+import { INGREDIENTS } from "@/game/definitions";
+import { INGREDIENT_EMOJI } from "@/game/knives/knifeDefinitions";
 import { ENDLESS_DAILY_COIN_CAP, isEndlessUnlocked } from "@/game/daily/EndlessServiceManager";
 import { paidLevelReward } from "@/game/levels/levelRewards";
 import { levelPayPreview } from "@/game/restaurant/levelPayPreview";
@@ -484,6 +495,32 @@ export function OrderBoard({
                             ? "prepared already · replay pays nothing"
                             : `ready to prepare · ${payText(save, level)}`}
                       </p>
+                      {/* Pass 3 (Levels 1–15): the best stars — the engine's own grade
+                          on the dish, never money (levelGoals.ts). */}
+                      {RESTAURANT_MODE && completed && hasLevelGoals(levelNumber(level.id))
+                        ? (() => {
+                            const stars = levelStars(save, level);
+                            return stars === null ? null : (
+                              <p
+                                className="font-ui text-[12px] font-extrabold text-copper"
+                                data-level-stars={stars}
+                              >
+                                {starText(stars)}{" "}
+                                <span className="font-bold text-walnut/55">
+                                  best ·{" "}
+                                  {stars === 0 ? "keep practising" : STAR_GRADES[stars - 1]!.grade}
+                                </span>
+                              </p>
+                            );
+                          })()
+                        : null}
+                      {RESTAURANT_MODE &&
+                      canOpen &&
+                      !completed &&
+                      levelNumber(level.id) >= INGREDIENT_LIST_FROM &&
+                      hasLevelGoals(levelNumber(level.id)) ? (
+                        <DishIngredientsToggle save={save} level={level} />
+                      ) : null}
                       {canOpen && !completed ? (
                         <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-0.5">
                           <span className="font-ui text-[11px] font-bold text-walnut/45">
@@ -593,6 +630,53 @@ function ScreenHeaderBoard({
         </div>
       ) : null}
     </header>
+  );
+}
+
+/**
+ * Pass 3 (Levels 9–15): the dish's own ingredients before cooking — its
+ * planned use next to what the fridge holds (levelGoals.dishIngredientsFor).
+ * Read-only: opening it buys, uses or changes nothing.
+ */
+function DishIngredientsToggle({ save, level }: { save: SaveData; level: LevelDefinition }) {
+  const [open, setOpen] = useState(false);
+  const measure = measureOf(save);
+  return (
+    <div className="mt-1" data-testid="dish-ingredients">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="press flex min-h-12 items-center gap-1 rounded-full border border-walnut/15 px-3 font-ui text-[12.5px] font-extrabold text-walnut-dark card-warm"
+      >
+        🧾 {open ? "Hide ingredients" : "What's in this dish?"}
+      </button>
+      {open ? (
+        <div className="mt-1 space-y-1" data-testid="dish-ingredients-list">
+          {dishIngredientsFor(save, level).map((d) => (
+            <div key={d.dish}>
+              <p className="font-ui text-[12px] font-extrabold text-walnut/70">{d.dish}</p>
+              <ul>
+                {d.rows.map((r) => (
+                  <li
+                    key={r.ingredientId}
+                    data-dish-ingredient={r.ingredientId}
+                    className="font-ui text-[12.5px] text-walnut-dark"
+                  >
+                    {INGREDIENT_EMOJI[r.ingredientId]} {INGREDIENTS[r.ingredientId].name} ·{" "}
+                    {formatStockAmount(r.ingredientId, r.need, measure)}
+                    <span className={r.have >= r.need ? "text-olive" : "text-tomato"}>
+                      {" "}
+                      (fridge: {formatStockAmount(r.ingredientId, r.have, measure)})
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </div>
   );
 }
 

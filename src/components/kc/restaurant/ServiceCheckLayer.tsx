@@ -16,7 +16,6 @@ import {
   openMarketSupplies,
 } from "@/components/kc/marketFocus";
 import { PreServiceCheck } from "./PreServiceCheck";
-import { hasBoughtIngredients } from "@/game/restaurant/firstRestock";
 import { measureOf } from "@/game/business/measure";
 import {
   quickRestock,
@@ -133,7 +132,8 @@ export function ServiceCheckLayer({
       grandmasFridge={plan.grandmasFridge}
       onRestockFridge={(id, units) => openMarketIngredients(go, id, units)}
       onBuyAllInMarket={() => openMarketPlan(go)}
-      firstRestock={!hasBoughtIngredients(save)}
+      firstRestock={plan.firstStockService}
+      fromGrandmasFridge={!!save.business.grandmasFridge}
       quickRestock={quickRestockPlan(save, check)}
       onQuickRestock={() => {
         const r = quickRestock(save, check);

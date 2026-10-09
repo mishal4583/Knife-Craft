@@ -18,6 +18,13 @@
  *     surplus → nothing to buy; too little money → said, never blocking.
  *  P  Level 14 preview: Levels 14–15's needs, what's low, the spare stock.
  *  S  The sheet: shows on Levels 12–14's first play only; START never waits.
+ *  I  (Pass 2 review) Inventory follows progression: no menu figures before
+ *     the menu opens (L11); then the real unlocked/active menu, never the
+ *     48-dish catalog; the selectors' default (classic / Endless) unchanged.
+ *  F  (Pass 2 review) the Level 15 hand-over shows on the first stock
+ *     service even with food in the fridge (or nothing missing), never again
+ *     after a stock level is done; nothing bought or granted; no second
+ *     leftovers for a returning save.
  *  E  Regression: Levels 1–15 rewards unchanged; a whole Levels 3–14 run moves
  *     no money and writes no ledger entry; Pass 1's unlock levels unchanged.
  *  W  Wiring.
@@ -38,6 +45,15 @@ import {
   orderRequirements,
 } from "../src/game/restaurant/campaignStock.ts";
 import { servicePlanFor, servicePlanNeedsSheet } from "../src/game/restaurant/preServiceCheck.ts";
+import { inventoryView } from "../src/game/business/inventoryView.ts";
+import { lowStockItems, menuDemand } from "../src/game/business/inventoryAnalytics.ts";
+import { activeBusinessDishes } from "../src/game/business/businessMenuActivation.ts";
+import {
+  activeMenuDishes,
+  inventoryMenuOf,
+  menuOpensAt,
+  unlockedMenuDishes,
+} from "../src/game/restaurant/restaurantMenu.ts";
 import { ticketsFor } from "../src/game/restaurant/serviceTickets.ts";
 import { restaurantQuote } from "../src/game/restaurant/restaurantEconomy.ts";
 import { recipeRequirements, sumRequirements } from "../src/game/restaurant/recipeRequirements.ts";
@@ -375,6 +391,107 @@ console.log("S. The sheet");
       grandmasFridgeNoteFor(done, level(13), 13) === null &&
       grandmasFridgeNoteFor(fresh(13), level(13), 13) === null,
     "S1: Levels 12–14's first plays show Grandma's note; not Level 11, a replay, or a save without the leftovers",
+  );
+}
+
+console.log("I. Inventory follows the restaurant's progression (Pass 2 review)");
+{
+  const s3 = giveGrandmasLeftovers(fresh(3));
+  const before = inventoryView(s3); // the Business catalog (the old reading — the bug)
+  const v3 = inventoryView(s3, inventoryMenuOf(s3));
+  assert(
+    before.summary.menuDishes === 48 &&
+      inventoryMenuOf(s3).length === 0 &&
+      menuOpensAt(3) === 11 &&
+      v3.summary.menuDishes === 0 &&
+      v3.summary.runningLow === 0 &&
+      !v3.attention.some((g) => g.id === "low" || g.id === "critical") &&
+      v3.items.length > 0 &&
+      v3.items.every((i) => i.todayRequirement === undefined && i.menuUses.length === 0) &&
+      v3.mostNeeded.length === 0,
+    "I1: Level 3 — no menu yet: no menu need, no 'low for today's menu', no dish count (the catalog read 48); the fridge is still listed",
+    { before: before.summary.menuDishes, after: v3.summary },
+  );
+  const s11 = { ...s3, levelProgress: at(s3, 11).levelProgress };
+  const menu11 = inventoryMenuOf(s11);
+  const v11 = inventoryView(s11, menu11);
+  const names = new Set(menu11.map((d) => d.name));
+  assert(
+    menuOpensAt(11) === null &&
+      menu11.length === unlockedMenuDishes(11).length &&
+      menu11.length === 4 &&
+      v11.summary.menuDishes === 4 &&
+      v11.items.every((i) => i.menuUses.every((d) => names.has(d))),
+    "I2: from Level 11 the Inventory uses the real 4-dish menu (count and 'used by')",
+    v11.summary,
+  );
+  const s250 = { ...s3, levelProgress: at(s3, 250).levelProgress };
+  assert(
+    inventoryView(s3).summary.menuDishes ===
+      activeBusinessDishes(s3.business.menuActivation).length &&
+      inventoryMenuOf(s250).length === activeMenuDishes(s250.business.menuActivation, 250).length,
+    "I3: without a menu passed the selectors read the Business menu as before (classic / Endless unchanged)",
+  );
+  const demandBefore = menuDemand(s11, menu11);
+  assert(
+    [...demandBefore.values()].every((d) => d.perDay >= 0 && d.dishCount <= 4) &&
+      lowStockItems(s11, menu11).every((l) => demandBefore.has(l.id)),
+    "I4: the menu need is the existing formula over the dishes actually on the menu",
+  );
+}
+
+console.log("F. The Level 15 hand-over (Pass 2 review)");
+{
+  const stocked = playTo(15);
+  const plan15 = servicePlanFor(stocked, level(15))!;
+  // A fridge that already holds everything Level 15 needs still gets the hand-over.
+  let full = stocked;
+  for (const r of plan15.check.applies ? plan15.check.rows : [])
+    full = {
+      ...full,
+      business: {
+        ...full.business,
+        inventory: addStock(full.business.inventory, r.ingredientId, r.needed, 100, 1),
+      },
+    };
+  const planFull = servicePlanFor(full, level(15))!;
+  assert(
+    Object.keys(stocked.business.inventory).length > 0 &&
+      plan15.firstStockService &&
+      servicePlanNeedsSheet(plan15) &&
+      planFull.check.applies &&
+      planFull.check.ready &&
+      planFull.firstStockService &&
+      servicePlanNeedsSheet(planFull),
+    "F1: Level 15's first play introduces the routine with food in the fridge, even when nothing is missing",
+  );
+  const done15 = {
+    ...stocked,
+    levelProgress: at(stocked, 16).levelProgress,
+  };
+  const migrated60 = at(fresh(60), 60);
+  assert(
+    !servicePlanFor(done15, level(16))!.firstStockService &&
+      !servicePlanFor(migrated60, level(60))!.firstStockService &&
+      !servicePlanFor(playTo(14), level(14))!.firstStockService,
+    "F2: never again once Level 15 is done (returning or older saves), never before Level 15",
+  );
+  assert(
+    planFull.check.applies &&
+      planFull.check.missingRows.length === 0 &&
+      full.credits === stocked.credits,
+    "F3: nothing is bought or granted for the hand-over (no money, no stock)",
+  );
+  // Returning players: the leftovers are never given twice, even with an empty fridge.
+  const emptied = {
+    ...giveGrandmasLeftovers(fresh(3)),
+    business: { ...giveGrandmasLeftovers(fresh(3)).business, inventory: {} },
+  };
+  const again = giveGrandmasLeftovers(at(emptied, 8));
+  assert(
+    Object.keys(again.business.inventory).length === 0 &&
+      again.business.grandmasFridge?.atLevel === 3,
+    "F4: a returning save that used up the leftovers gets none again",
   );
 }
 

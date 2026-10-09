@@ -36,7 +36,7 @@ const memoryStore = new Map<string, string>();
 } as Storage;
 
 import { levelPayPreview } from "../src/game/restaurant/levelPayPreview.ts";
-import { hasBoughtIngredients } from "../src/game/restaurant/firstRestock.ts";
+import { isFirstStockService } from "../src/game/restaurant/firstRestock.ts";
 import { getSupplyItem, packsText } from "../src/game/business/businessSupplies.ts";
 import { recipePay } from "../src/game/recipes/recipePay.ts";
 import { paidLevelReward } from "../src/game/levels/levelRewards.ts";
@@ -532,12 +532,27 @@ console.log("A. Audit fixes (2026-10-08)");
       replay === null,
     `A1: Level 12 shows what it pays — orders ${pay.orders}c + completion ${pay.completion}c (it used to show only the completion); a replay shows nothing`,
   );
-  // A2 — the first restock guide ends once the player has bought, or has stock.
+  // A2 — the first restock guide. Developer 2026-10-09 (Pass 2 review): it is
+  // progression-based now — the first service on real stock (Level 15) shows it
+  // even with food in the fridge (Grandma's leftovers, the L13 top-up); once a
+  // stock level is completed it never shows again (was: "until the first
+  // ingredient is bought, or any stock is in the fridge").
   const fresh = saveAt(15);
   const bought = purchaseIngredient(fresh, "tomato", 1);
+  const past15 = {
+    ...saveAt(16),
+    levelProgress: {
+      ...saveAt(16).levelProgress,
+      completedLevelIds: Array.from({ length: 15 }, (_, i) => `level-${i + 1}`),
+    },
+  };
   assert(
-    !hasBoughtIngredients(fresh) && bought.ok && hasBoughtIngredients(bought.save),
-    "A2: Grandma's first-restock guide shows until the first ingredient is bought (or stocked)",
+    isFirstStockService(fresh, 15) &&
+      bought.ok &&
+      isFirstStockService(bought.save, 15) &&
+      !isFirstStockService(past15, 16) &&
+      !isFirstStockService(saveAt(14), 14),
+    "A2: Grandma's first-restock guide shows on the first stock service (Level 15), stock or not, and never after a stock level is done",
   );
   // A3 — supply packs say what they hold.
   assert(
@@ -573,7 +588,7 @@ console.log("A. Audit fixes (2026-10-08)");
     /classList\.toggle\("kc-reduced-motion"/.test(app) &&
       /label="Reduced motion"/.test(journal) &&
       /onBuyAllInMarket=\{\(\) => openMarketPlan\(go\)\}/.test(layer) &&
-      /firstRestock=\{!hasBoughtIngredients\(save\)\}/.test(layer) &&
+      /firstRestock=\{plan\.firstStockService\}/.test(layer) &&
       /setShowGuests/.test(check) &&
       /setShowDay/.test(check) &&
       /h-\[96px\]/.test(shop),

@@ -1,6 +1,6 @@
 import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
 import { serviceUsesStock } from "@/game/restaurant/campaignStock";
-import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
+import { inventoryMenuOf, menuOpensAt, restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
 import { STOCK_USED_FROM, TOP_UP_AT } from "@/game/restaurant/firstLevels";
 import { RestaurantAttentionPanel } from "./RestaurantAttentionPanel";
 import { useMemo, useRef, useState, type ReactNode } from "react";
@@ -266,10 +266,13 @@ function StockCard({
   item,
   go,
   onOpen,
+  menuOpensAt = null,
 }: {
   item: InventoryItemView;
   go: (s: ScreenId) => void;
   onOpen: (id: IngredientId) => void;
+  /** Restaurant build, before the menu opens: its level (there is no menu need yet). */
+  menuOpensAt?: number | null;
 }) {
   return (
     <article
@@ -314,7 +317,9 @@ function StockCard({
         <span className="min-w-0 flex-1 font-hand text-[14px] leading-tight text-walnut/65">
           {item.todayRequirement !== undefined
             ? `Today's menu: ≈ ${approx(item.todayRequirement, item)} needed`
-            : "Not on today's menu"}
+            : menuOpensAt !== null
+              ? `Your menu opens at Level ${menuOpensAt}`
+              : "Not on today's menu"}
         </span>
         <RestockButton go={go} id={item.ingredientId} label="Restock →" />
       </div>
@@ -338,10 +343,13 @@ function DetailSheet({
   item,
   go,
   onClose,
+  menuOpensAt = null,
 }: {
   item: InventoryItemView;
   go: (s: ScreenId) => void;
   onClose: () => void;
+  /** Restaurant build, before the menu opens: its level. */
+  menuOpensAt?: number | null;
 }) {
   return (
     <div className="absolute inset-x-0 top-0 bottom-[78px] z-40 flex flex-col justify-end">
@@ -425,7 +433,11 @@ function DetailSheet({
             {item.menuUses.length > 6 ? <li>+{item.menuUses.length - 6} more</li> : null}
           </ul>
         ) : (
-          <p className="font-hand text-[15px] text-walnut/65">Not used by today's menu.</p>
+          <p className="font-hand text-[15px] text-walnut/65">
+            {menuOpensAt !== null
+              ? `No menu yet — it opens at Level ${menuOpensAt}.`
+              : "Not used by today's menu."}
+          </p>
         )}
         {item.todayRequirement !== undefined ? (
           <p className="mt-1 font-hand text-[13px] leading-snug text-walnut/55">
@@ -541,7 +553,15 @@ export function InventoryScreen({
   throwOutExpired: () => DiscardExpiredResult;
 }) {
   const [kind, setKind] = useState<InventoryKind>(initialKind);
-  const view = useMemo(() => inventoryView(save), [save]);
+  // Restaurant build (Pass 2 review): stock is measured against the restaurant's
+  // menu at its level — none before the menu opens — never the whole catalog.
+  const view = useMemo(
+    () => inventoryView(save, RESTAURANT_MODE ? inventoryMenuOf(save) : undefined),
+    [save],
+  );
+  const menuOpensAtLevel = RESTAURANT_MODE
+    ? menuOpensAt(restaurantLevelOf(save.levelProgress))
+    : null;
   const analytics = inventorySummary(save);
   const [selectedId, setSelectedId] = useState<IngredientId | null>(null);
   const [filter, setFilter] = useState("All");
@@ -665,14 +685,16 @@ export function InventoryScreen({
                   testId="summary-stock"
                   onClick={() => scrollTo(fridgeRef.current)}
                 />
-                <SummaryCard
-                  icon="⚠️"
-                  label="Running Low"
-                  value={`${s.runningLow} item${s.runningLow === 1 ? "" : "s"}`}
-                  sub="below today's menu need"
-                  testId="summary-low"
-                  onClick={() => scrollTo(attentionRef.current)}
-                />
+                {menuOpensAtLevel === null ? (
+                  <SummaryCard
+                    icon="⚠️"
+                    label="Running Low"
+                    value={`${s.runningLow} item${s.runningLow === 1 ? "" : "s"}`}
+                    sub="below today's menu need"
+                    testId="summary-low"
+                    onClick={() => scrollTo(attentionRef.current)}
+                  />
+                ) : null}
                 <SummaryCard
                   icon="⏳"
                   label="Expiring Soon"
@@ -681,14 +703,29 @@ export function InventoryScreen({
                   testId="summary-expiring"
                   onClick={() => scrollTo(attentionRef.current)}
                 />
-                <SummaryCard
-                  icon="🍽"
-                  label="Ready to Cook"
-                  value={`${s.readyDishes} / ${s.menuDishes} dishes`}
-                  sub="on today's menu"
-                  testId="summary-ready"
-                  onClick={() => scrollTo(readyRef.current)}
-                />
+                {menuOpensAtLevel === null ? (
+                  <SummaryCard
+                    icon="🍽"
+                    label="Ready to Cook"
+                    value={`${s.readyDishes} / ${s.menuDishes} dishes`}
+                    sub="on today's menu"
+                    testId="summary-ready"
+                    onClick={() => scrollTo(readyRef.current)}
+                  />
+                ) : (
+                  <div
+                    className="flex flex-col justify-center rounded-[18px] border border-walnut/15 p-3 card-warm"
+                    data-testid="summary-menu-opens"
+                  >
+                    <p className="font-ui text-[12.5px] font-extrabold text-walnut-dark">
+                      🍽 No menu yet
+                    </p>
+                    <p className="mt-0.5 font-ui text-[12px] leading-snug text-walnut/65">
+                      Your menu opens at Level {menuOpensAtLevel}. Until then each level cooks its
+                      own dish from this fridge.
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Needs attention */}
@@ -764,8 +801,11 @@ export function InventoryScreen({
                 </Panel>
               ) : null}
 
-              {/* Ready to cook */}
-              <div ref={readyRef} className="scroll-mt-3">
+              {/* Ready to cook (from the menu's opening in the restaurant build) */}
+              <div
+                ref={readyRef}
+                className={cn("scroll-mt-3", menuOpensAtLevel !== null && "hidden")}
+              >
                 <Panel className="p-4">
                   <div className="flex items-baseline justify-between gap-3">
                     <Eyebrow>🍽 Ready to Cook</Eyebrow>
@@ -863,6 +903,7 @@ export function InventoryScreen({
                           item={item}
                           go={go}
                           onOpen={setSelectedId}
+                          menuOpensAt={menuOpensAtLevel}
                         />
                       ))
                     ) : (
@@ -942,7 +983,12 @@ export function InventoryScreen({
       </div>
 
       {selected ? (
-        <DetailSheet item={selected} go={go} onClose={() => setSelectedId(null)} />
+        <DetailSheet
+          item={selected}
+          go={go}
+          onClose={() => setSelectedId(null)}
+          menuOpensAt={menuOpensAtLevel}
+        />
       ) : null}
       <BottomNav active="inventory" go={go} />
     </div>

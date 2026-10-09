@@ -18,6 +18,7 @@
  * Pure; nothing reads RESTAURANT_MODE.
  */
 import type { LevelProgress } from "../levels/LevelManager";
+import type { SaveData } from "../SaveManager";
 import { levelNumber } from "../levels/levelMastery";
 import type { BusinessMenuActivationState } from "../business/businessMenuActivation";
 import { isDishActive } from "../business/businessMenuActivation";
@@ -94,4 +95,24 @@ export function activeMenuRecipes(
   return activeMenuDishes(activation, level)
     .map((d) => getCampaignRecipe(d.sourceRecipeId))
     .filter((r): r is RecipeDefinition => !!r);
+}
+
+/**
+ * The menu the restaurant's Inventory and Market measure stock against
+ * (Pass 2 review, developer 2026-10-09): what customers can order at the
+ * restaurant's level — empty before the menu opens, then the unlocked (and,
+ * from MENU_CHOICE_LEVEL, switched-on) dishes. Never the whole Business
+ * catalog.
+ */
+export function inventoryMenuOf(
+  save: Pick<SaveData, "business" | "levelProgress">,
+): BusinessDish[] {
+  return activeMenuDishes(save.business.menuActivation, restaurantLevelOf(save.levelProgress));
+}
+
+/** The level the menu opens at, while it hasn't (null once it has). */
+export function menuOpensAt(level: number): number | null {
+  return unlockedMenuDishes(level).length > 0
+    ? null
+    : (lockedMenuDishes(level)[0]?.unlockLevel ?? null);
 }

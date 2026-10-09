@@ -90,6 +90,7 @@ export function PreServiceCheck({
   onQuickRestock = () => {},
   onBuyAllInMarket = null,
   firstRestock = false,
+  fromGrandmasFridge = false,
   grandmasFridge = null,
   onRestockFridge = () => {},
 }: {
@@ -133,8 +134,10 @@ export function PreServiceCheck({
   onQuickRestock?: () => void;
   /** "Buy everything in the Market →": the Market's plan on Today (normal prices, audit 2026-10-08). */
   onBuyAllInMarket?: (() => void) | null;
-  /** The player has never bought an ingredient: Grandma walks them through the first restock. */
+  /** The first service on real stock (Level 15, firstRestock.ts): Grandma introduces the routine. */
   firstRestock?: boolean;
+  /** The player had Grandma's leftovers (and the Level 13 top-up): say this is the hand-over. */
+  fromGrandmasFridge?: boolean;
   /** First levels pass 2: Grandma's fridge on Levels 12–14 (never blocks START). */
   grandmasFridge?: GrandmasFridgeNote | null;
   onRestockFridge?: (ingredientId: IngredientId, units: number) => void;
@@ -245,19 +248,35 @@ export function PreServiceCheck({
             />
           ) : null}
 
-          {stock && !stock.ready && firstRestock ? (
+          {stock && firstRestock ? (
             <div
               className="mt-3 rounded-2xl border-2 border-copper/60 bg-gold/15 p-3"
               data-testid="psc-first-restock"
+              data-ready={stock.ready || undefined}
             >
               <p className="font-ui text-[12.5px] font-extrabold uppercase tracking-wide text-copper">
-                👵 Grandma's first shopping trip
+                {stock.ready
+                  ? "👵 Your first Pre-Service Check"
+                  : "👵 Grandma's first shopping trip"}
               </p>
-              <ol className="mt-1 list-decimal space-y-0.5 pl-5 font-ui text-[13.5px] font-bold text-walnut-dark">
-                <li>Tap 🛒 Buy everything in the Market below.</li>
-                <li>In the Market, tap Buy all — it buys what today's services need.</li>
-                <li>Tap ↩ Back to the Pre-Service Check, then start the service.</li>
-              </ol>
+              {fromGrandmasFridge ? (
+                <p className="mt-0.5 font-ui text-[13.5px] font-bold text-walnut-dark">
+                  My leftovers and your top-up got us this far. From now on every service is checked
+                  against the fridge first: ✓ is ready, anything missing is bought in the Market.
+                </p>
+              ) : null}
+              {stock.ready ? (
+                <p className="mt-1 font-ui text-[13.5px] font-bold text-walnut-dark">
+                  Everything today's service needs is in the fridge — nothing to buy. Start the
+                  service.
+                </p>
+              ) : (
+                <ol className="mt-1 list-decimal space-y-0.5 pl-5 font-ui text-[13.5px] font-bold text-walnut-dark">
+                  <li>Tap 🛒 Buy everything in the Market below.</li>
+                  <li>In the Market, tap Buy all — it buys what today's services need.</li>
+                  <li>Tap ↩ Back to the Pre-Service Check, then start the service.</li>
+                </ol>
+              )}
               <p className="mt-1 font-hand text-[16px] leading-snug text-walnut/75">
                 “Buy before you cook, and only what you'll use — fresh food doesn't wait.”
               </p>

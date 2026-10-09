@@ -9,6 +9,9 @@
 //      START starts the level and the order uses the bought mushroom.
 //   5. Level 13 with plenty in the fridge: nothing to buy. With $0: says so, START still works.
 //   6. Level 14: the preview includes Level 15's mozzarella.
+//   6b. Pass 2 review: Level 3 Inventory has no menu figures (no "/ 48 dishes", no "low for
+//       today's menu", "menu opens at Level 11"); Level 11 counts the real 4-dish menu.
+//   6c. Level 15's first play shows the hand-over card even with food in the fridge.
 //   7. 320×568: the sheet fits, no sideways scroll, buttons ≥ 48 px.
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import {
@@ -147,6 +150,23 @@ check(
     /Tomato[^$]{0,80}\b1\.3 lb/.test(invText) &&
     /Cucumber[^$]{0,80}\b0\.65 lb/.test(invText),
   invText.slice(0, 1200),
+);
+// Pass 2 review: no menu figures before the menu opens (Level 11).
+const menuCards = await page.evaluate(() => ({
+  low: !!document.querySelector('[data-testid="summary-low"]'),
+  ready: !!document.querySelector('[data-testid="summary-ready"]'),
+  opens: document.querySelector('[data-testid="summary-menu-opens"]')?.textContent ?? "",
+  lowGroup: /Low for today's menu/i.test(document.body.innerText),
+  dishCount: /\/\s*48 dishes/.test(document.body.innerText),
+}));
+check(
+  "1c Level 3 Inventory: no 'running low for today's menu', no '/ 48 dishes'; it says the menu opens at Level 11",
+  !menuCards.low &&
+    !menuCards.ready &&
+    !menuCards.lowGroup &&
+    !menuCards.dishCount &&
+    /opens at Level 11/.test(menuCards.opens),
+  menuCards,
 );
 
 // ---------- 2. Level 3 uses nothing, Level 4 uses its own ----------
@@ -331,6 +351,59 @@ check(
     preview.rows.some((r) => r.id === "mozzarella") &&
     /Levels 14–15/i.test(preview.text),
   preview,
+);
+
+// ---------- 6b. Level 11: the real menu ----------
+await boot(
+  page,
+  at(11, {}, { inventory: stock({ bread: 0.55, garlic: 0.1 }), grandmasFridge: GIVEN }),
+);
+await nav("Inventory");
+const inv11 = await page.evaluate(() => ({
+  ready:
+    document.querySelector('[data-testid="summary-ready"]')?.textContent.replace(/\s+/g, " ") ?? "",
+  opens: !!document.querySelector('[data-testid="summary-menu-opens"]'),
+}));
+check(
+  "6b Level 11 Inventory counts the real 4-dish menu (not 48)",
+  /\/ 4 dishes/.test(inv11.ready) && !inv11.opens,
+  inv11,
+);
+
+// ---------- 6c. Level 15: the hand-over, with food in the fridge ----------
+await boot(
+  page,
+  at(
+    15,
+    {},
+    {
+      inventory: stock({ tomato: 0.4, basil: 0.3, zucchini: 0.5, carrot: 0.25 }),
+      grandmasFridge: GIVEN,
+    },
+  ),
+);
+await prepareToday();
+const handOver = await page.evaluate(
+  () =>
+    document.querySelector('[data-testid="psc-first-restock"]')?.innerText.replace(/\s+/g, " ") ??
+    null,
+);
+// From Level 15 the normal check applies (unchanged): the missing mozzarella is a Restock row.
+const rows15 = await page.evaluate(() =>
+  [...document.querySelectorAll("[data-psc-ingredient]")].map((r) => [
+    r.getAttribute("data-psc-ingredient"),
+    r.getAttribute("data-psc-status"),
+  ]),
+);
+await shot(page, "grandma-l15-hand-over");
+check(
+  "6c Level 15's first play shows the hand-over (leftovers + top-up → Pre-Service Check) with food in the fridge",
+  !!handOver &&
+    /first shopping trip/i.test(handOver) &&
+    /My leftovers and your top-up got us this far/.test(handOver) &&
+    rows15.some(([id, st]) => id === "mozzarella" && st === "missing") &&
+    rows15.some(([id, st]) => id === "tomato" && st === "ok"),
+  { handOver, rows15 },
 );
 
 // ---------- 7. 320 px ----------

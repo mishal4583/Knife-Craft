@@ -1,15 +1,25 @@
 /**
- * FIRST RESTOCK (audit 2026-10-08) — the Pre-Service Check walks a player
- * through their first shopping trip (Market → Buy all → back → start) until
- * they have ever bought an ingredient. Derived from the save, never stored:
- * any ingredient purchase on record (the lifetime ledger total, or one still
- * in the ledger) or any stock in the fridge (a starter crate or Grandma's
- * pantry counts — the player has food to cook with) ends it.
+ * FIRST RESTOCK (audit 2026-10-08; progression-based since the Pass 2
+ * review, developer 2026-10-09) — the Pre-Service Check introduces the
+ * normal stock routine on the FIRST service that runs on real stock
+ * (`ingredient-stock`, Level 15): Grandma's leftovers and the Level 13
+ * top-up got the player this far; from here every service is checked
+ * against the fridge and what's missing is bought in the Market.
+ *
+ * Derived from the save's level progress, never stored: it shows while no
+ * level that uses stock has been completed yet. It no longer depends on the
+ * fridge being empty (Grandma's leftovers and the top-up fill it before
+ * Level 15), so a returning player or an older save that already finished
+ * a stock level never sees it again.
  */
 import type { SaveData } from "../SaveManager";
+import { levelNumber } from "../levels/levelMastery";
+import { serviceUsesStock } from "./campaignStock";
 
-export function hasBoughtIngredients(save: SaveData): boolean {
-  if ((save.economy?.lifetime?.["inventory-purchase"] ?? 0) !== 0) return true;
-  if (save.economyLedger.some((e) => e.category === "inventory-purchase")) return true;
-  return Object.values(save.business.inventory).some((e) => !!e && e.quantity > 0);
+/** True on the first service that runs on real stock (no stock-using level completed yet). */
+export function isFirstStockService(save: Pick<SaveData, "levelProgress">, level: number): boolean {
+  return (
+    serviceUsesStock(level) &&
+    !save.levelProgress.completedLevelIds.some((id) => serviceUsesStock(levelNumber(id)))
+  );
 }

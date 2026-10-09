@@ -302,11 +302,20 @@ check(
 );
 
 // ---------- 4c. Audit fixes ----------
+// Developer 2026-10-09 (Pass 2 review): Grandma's shopping guide is progression-based —
+// it shows on the first service that uses stock (Level 15), not on a later level whose
+// fridge happens to be empty (was checked at Level 20 with Level 15 done).
+await boot(page, saveAt(15, 5_000_00));
+await clickButton(page, /^Prepare$/);
+await sleep(1200);
+const guide = await page.evaluate(
+  () => document.querySelector('[data-testid="psc-first-restock"]')?.innerText ?? "",
+);
 await boot(page, saveAt(20, 5_000_00));
 const card = await page.evaluate(() => document.body.innerText.replace(/\s+/g, " "));
 await clickButton(page, /^Prepare$/);
 await sleep(1200);
-const guide = await page.evaluate(
+const guideAt20 = await page.evaluate(
   () => document.querySelector('[data-testid="psc-first-restock"]')?.innerText ?? "",
 );
 await clickButton(page, /Buy everything in the Market/);
@@ -317,15 +326,17 @@ const hint = await page.evaluate(
 );
 await shot(page, "measures-buy-all-market");
 check(
-  "4c the Kitchen card shows what the level pays (about +$…), a first-time player gets Grandma's shopping guide, and Buy everything opens the Market plan on Today with a hint",
+  "4c the Kitchen card shows what the level pays (about +$…), Grandma's shopping guide on the first stock service (L15) and not again (L20), and Buy everything opens the Market plan on Today with a hint",
   /ready to prepare · about \+\$[\d.,]+/.test(card) &&
     /first shopping trip/i.test(guide) &&
+    guideAt20 === "" &&
     planNow?.checked === "Today" &&
     planNow.rows.length > 0 &&
     hint,
   {
     card: card.match(/ready to prepare[^A-Z]*/)?.[0],
     guide: guide.slice(0, 40),
+    guideAt20: guideAt20.slice(0, 40),
     plan: planNow?.checked,
     hint,
   },

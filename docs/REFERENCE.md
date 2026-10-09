@@ -484,6 +484,27 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   and board prices unchanged; W wiring (Kitchen places + rank card wait for
   their level, the Market before L10 = Knives + Cutting Boards only,
   `FIRST_PURCHASE_LEVEL`). Browser: `tools/e2e/restaurantfirstlevels.mjs`.
+- `restaurant-level-goals-qa` — LEVEL GOALS, first levels pass 3 (developer
+  2026-10-09; `restaurant/levelGoals.ts` + the light `levelChecklist.ts`
+  used by the lazy Preparation chunk; restaurant build, Levels 1–15,
+  presentation only): G the goal from the dish's real steps (one step: what
+  its cut is judged on — "Even slices"; several: "Clean, even cuts"; a dish
+  of peel/smash only — L7, L9 — "Finish …", because the engine gives an
+  all-peel/smash dish a fixed 90); S stars = the engine's own grade
+  (`CutEvaluator.qualityFor`) on the save's existing
+  `recipeProgress[recipe].best`: ★ Honest ≥70, ★★ Clean ≥85, ★★★ Masterful
+  ≥95; no save field, no money, ungraded dishes none (the developer's
+  decision supersedes Law 4 "no stars" for Levels 1–15); C the customer line
+  = the recipe's authored `customerDialogue` (≤ 64 chars); K the checklist =
+  the dish's real steps ticked by Preparation's active step (the scene's
+  STEP_STARTED), ≤ 3 steps all shown, longer dishes "✓ n done · current ·
+  next · +n more", none for one step; the chef's note is hidden while a
+  checklist shows (room for the board at 320 px); I from Level 9 the Order
+  Board row's "What's in this dish?" lists the dish's `orderRequirements`
+  with the fridge's usable amount (a pool level lists its possible dishes),
+  read-only; D Grandma's 15 Level Complete lines are Pass 1's (no new ones);
+  Level Complete adds "⭐ Best prep: ★★☆ Clean". Browser:
+  `tools/e2e/restaurantlevelgoals.mjs`.
 - `restaurant-grandmas-fridge-qa` — GRANDMA'S FRIDGE, first levels pass 2
   (developer 2026-10-09; `restaurant/grandmasFridge.ts`, levels in
   `firstLevels.ts`: LEFTOVERS_AT 3, STOCK_USED_FROM 4, RUNNING_LOW_AT 12,
@@ -500,7 +521,12 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   spare stock), on the Pre-Service sheet (`servicePlanNeedsSheet`, never
   blocking START; "Buy" opens the Market at the exact step with the back
   pill); S only first plays of 12–14 with the leftovers; E rewards, a whole
-  run moves no money, Pass 1 unlocks. Browser:
+  run moves no money, Pass 1 unlocks; I (review) the Inventory reads the
+  restaurant's menu at its level (`inventoryMenuOf`; the selectors'
+  optional `MenuInEffect`, default = the Business menu): none before L11,
+  the real 4 dishes at L11; F (review) the L15 hand-over card
+  (`isFirstStockService`, `ServicePlan.firstStockService`) with food in the
+  fridge or nothing missing, never after a stock level is done. Browser:
   `tools/e2e/restaurantgrandmasfridge.mjs`.
 - `restaurant-city-ranking-qa` — the CITY RANKING (developer 2026-10-09:
   "add some mock restaurants and implement a ranking — gradually progress to

@@ -51,7 +51,11 @@ at L3, L4, L7, L9, L10, L11, L12, L13, L14 and L15, not more cutting.
 
 Pass 1 shipped 2026-10-09; pass 2 (Grandma's fridge: L3 leftovers, L4 use,
 L12 running low, L13 top-up, L14 preview) is implemented on the working
-branch (`restaurant/grandmasFridge.ts`).
+branch (`restaurant/grandmasFridge.ts`); pass 3 (goals and stars from the
+engine's grade, the customer's own line, the multi-step checklist, the
+Level 9 ingredient list) is on the branch too (`restaurant/levelGoals.ts`).
+Stars are not given on Levels 7 and 9: the engine doesn't grade peel or
+smash, so those dishes always score a fixed 90.
 
 Before Level 21 a day ends quietly (Level Complete says "☀️ Day N
 begins"); the opening card and Closing Time start at Level 21.
