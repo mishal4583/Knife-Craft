@@ -9,6 +9,7 @@ import { markEmergencyService } from "@/game/restaurant/emergencyService";
 import { getSupplyItem } from "@/game/business/businessSupplies";
 import { fridgeUsage } from "@/game/restaurant/fridgeUsage";
 import { isSystemLive } from "@/game/restaurant/restaurantProgression";
+import { dayCeremonyAt } from "@/game/restaurant/firstLevels";
 import {
   openMarketIngredients,
   openMarketPlan,
@@ -89,7 +90,8 @@ export function ServiceCheckLayer({
       credits={save.credits}
       tickets={plan.tickets}
       check={check}
-      opening={plan.opening}
+      // Before Level 21 a new day opens without its card (firstLevels.ts).
+      opening={dayCeremonyAt(n) ? plan.opening : null}
       onStart={() => onStart(!!plan.opening)}
       onRestock={(id) =>
         openMarketIngredients(

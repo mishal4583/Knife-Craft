@@ -173,7 +173,11 @@ console.log("W. Wiring and the release build");
       shop,
     ) &&
       /\{ id: "suppliers", label: "Campaign Supplier"/.test(shop) &&
-      /shopCategories\.map/.test(shop),
+      // First levels (2026-10-09): before Level 10 only knives and boards show.
+      /const visibleCategories = browseOnly\s*\?\s*shopCategories\.filter[\s\S]{0,120}: shopCategories;/.test(
+        shop,
+      ) &&
+      /visibleCategories\.map/.test(shop),
     "W1: the Market hides its supplier tab only in the restaurant build (the release keeps Campaign Supplier)",
   );
   assert(

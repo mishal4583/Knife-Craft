@@ -85,8 +85,9 @@ console.log("N. Level Complete notice (A1/A2)");
   assert(
     /const orderCoins = levelOrderEarnings\(save, level\.id\);/.test(app) &&
       /"completion-reward", rewardCoins, level\.id/.test(app) &&
-      // Since the city ranking (2026-10-09) the notice also carries an optional cityRank line.
-      /if \(rewardCoins > 0\) \{[\s\S]{0,400}?setLevelRewardNotice\(\{\s*rewardCoins,\s*orderCoins,/.test(
+      // Since the city ranking (2026-10-09) the notice also carries an optional cityRank line,
+      // and since the first levels (2026-10-09) Grandma's line and the sections that opened.
+      /if \(rewardCoins > 0\) \{[\s\S]{0,900}?setLevelRewardNotice\(\{\s*rewardCoins,\s*orderCoins,/.test(
         app,
       ) &&
       !/else if \(rewardCoins > 0\) setLevelRewardNotice/.test(app),

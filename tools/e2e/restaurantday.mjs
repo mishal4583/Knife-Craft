@@ -1,13 +1,16 @@
-// Unified Restaurant phase 5 (the day clock) + the early menu, in a real browser, on a
-// RESTAURANT_MODE test build (the default build — the restaurant is on unless VITE_RESTAURANT_MODE=0).
-//   1. Level 5 opens Day 1: the opening card lists Lunch · Level 5 and Dinner · Level 6.
+// Unified Restaurant phase 5 (the day clock), in a real browser, on a RESTAURANT_MODE test
+// build (the default build). Since the first levels (developer 2026-10-09) the day's
+// ceremony — the opening card and Closing Time — starts at Level 21; before it a day opens
+// and ends quietly ("☀️ Day N begins" on Level Complete).
+//   1. Level 5 opens Day 1 with no card: the level starts at once and the day is open.
 //   2. Level 6 (the same day) starts with no sheet.
-//   3. After the day's last service, Closing Time shows over the Order Board: the services,
-//      the chores, the day's count; the next level can't start until the restaurant closes.
-//   4. "Close for the night" → Day 2; the next level opens Day 2. Before L21 the freshness
-//      clock doesn't move and no money moves.
-//   5. Restaurant → Menu at the restaurant's level (L7): the menu isn't open yet (it opens
-//      at L11 with 4 dishes — 2026-10-05), all 48 dishes listed locked with their level.
+//   3. After the day's last service (L6): no Closing Time; Level Complete says "Day 2
+//      begins"; Day 2 in the save; the freshness clock doesn't move and the wallet moves
+//      only by the ledger's entries.
+//   4. From L21: a finished day shows Closing Time over the Order Board (services, chores
+//      with "Throw out spoiled food", the day's count) and blocks the next level; Close →
+//      the next day, and the next level opens with the opening card.
+//   5. Level 7: the Restaurant section (the menu) is still locked ("Lv 11").
 //   6. 320×568: the closing sheet fits, no sideways scroll, buttons ≥ 48 px.
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import {
@@ -110,20 +113,16 @@ await boot(
 );
 const start = await readSave(page);
 
-// ---------- 1. Opening Day 1 ----------
+// ---------- 1. Day 1 opens quietly ----------
 await prepare("Onion Basics");
 const opening = await sheetText();
-await shot(page, "restaurant-day1-opening");
+const started5 = await inHud();
+const open5 = (await readSave(page)).business.restaurantDay;
 check(
-  "1 Level 5 opens Day 1: the opening card lists Lunch · Level 5 and Dinner · Level 6",
-  !!opening &&
-    /Day 1 · Opening time/i.test(opening) &&
-    /Lunch · Level 5/.test(opening) &&
-    /Dinner · Level 6/.test(opening),
-  opening?.slice(0, 200),
+  "1 Level 5 opens Day 1 with no card: the level starts at once and the day is open",
+  opening === null && started5 && open5?.opened === true && open5?.openingLevel === 5,
+  { opening, open5 },
 );
-await clickButton(page, /^OPEN THE RESTAURANT$/);
-await sleep(800);
 const played5 = await playLevel();
 const after5 = await readSave(page);
 
@@ -140,118 +139,116 @@ check(
 );
 const played6 = await playLevel();
 
-// ---------- 3. Closing time ----------
+// ---------- 3. The day ends quietly ----------
+const notes = await page.evaluate(
+  () => document.querySelector('[data-testid="banner-notes"]')?.textContent ?? "",
+);
+const after6 = await readSave(page);
+const ledgerDelta = after6.economyLedger
+  .slice(after5.economyLedger.length)
+  .reduce((sum, e) => sum + e.amount, 0);
+await toBoard();
+const quietClosing = await closingText();
+check(
+  "3 after L6: no Closing Time, 'Day 2 begins', Day 2 saved; no clock change, wallet = ledger",
+  played6 &&
+    quietClosing === null &&
+    /Day 2 begins/.test(notes) &&
+    after6.business.restaurantDay?.day === 2 &&
+    after6.business.restaurantDay?.closingDue === false &&
+    after6.business.calendar.businessDay === start.business.calendar.businessDay &&
+    after6.credits - after5.credits === ledgerDelta,
+  { notes, day: after6.business.restaurantDay, ledgerDelta },
+);
+
+// ---------- 4. From Level 21: the ceremony ----------
+const closingSave = (s) => ({
+  ...s,
+  levelProgress: {
+    currentLevelId: "level-23",
+    highestUnlockedLevelId: "level-23",
+    completedLevelIds: Array.from({ length: 22 }, (_, i) => `level-${i + 1}`),
+  },
+  business: {
+    ...s.business,
+    restaurantDay: {
+      day: 11,
+      opened: true,
+      servicesDone: 2,
+      servicesPlanned: 2,
+      closingDue: true,
+      openingCredits: s.credits - 4500,
+      openingLevel: 21,
+    },
+  },
+});
+await writeSave(page, closingSave(await readSave(page)));
+await page.reload({ waitUntil: "networkidle0" });
+await sleep(1500);
 await toBoard();
 const closing = await closingText();
 const chores = await page.evaluate(() =>
   [...document.querySelectorAll("[data-chore]")].map((c) => c.getAttribute("data-chore")),
 );
-await shot(page, "restaurant-day1-closing");
+await shot(page, "restaurant-day11-closing");
 check(
-  "3a after the last service Closing Time shows: the services, the chores, the day's count",
-  played6 &&
-    !!closing &&
-    /Day 1 · Closing time/i.test(closing) &&
-    /Lunch · Level 5/.test(closing) &&
-    /Dinner · Level 6/.test(closing) &&
-    chores.join() === "wash-up,wipe-down,count" &&
+  "4a from L21 a finished day shows Closing Time: the services, the chores (spoiled food too), the count",
+  !!closing &&
+    /Day 11 · Closing time/i.test(closing) &&
+    /Lunch · Level 21/.test(closing) &&
+    /Dinner · Level 22/.test(closing) &&
+    chores.join() === "wash-up,wipe-down,spoiled,count" &&
     /at opening →/.test(closing),
   { closing: closing?.slice(0, 260), chores },
 );
-await page.evaluate(() => {
-  const h = [...document.querySelectorAll("p")].find(
-    (p) => p.textContent.trim() === "Peeled Potato",
-  );
-  let n = h;
-  for (let i = 0; i < 8 && n; i++) {
-    n = n.parentElement;
-    const b =
-      n && [...n.querySelectorAll("button")].find((x) => /^Prepare$/.test(x.textContent.trim()));
-    if (b) {
-      b.click();
-      return;
-    }
-  }
-});
+await clickButton(page, /^Prepare$/);
 await sleep(900);
-check("3b the next level can't start before closing", !(await inHud()) && !!(await closingText()));
-
-// ---------- 4. Day 2 ----------
-const beforeClose = await readSave(page);
+check("4b the next level can't start before closing", !(await inHud()) && !!(await closingText()));
 await clickButton(page, /^Close for the night/);
 await sleep(800);
 const afterClose = await readSave(page);
+await prepare("Orange Rose Garnish");
+const day12 = await sheetText();
 check(
-  "4a closing → Day 2; before L21 the freshness clock and the money don't move",
+  "4c Close → Day 12; the next level opens with the opening card",
   !(await closingText()) &&
-    afterClose.business.restaurantDay?.day === 2 &&
-    afterClose.business.restaurantDay?.opened === false &&
-    afterClose.business.calendar.businessDay === beforeClose.business.calendar.businessDay &&
-    afterClose.credits === beforeClose.credits &&
-    afterClose.economyLedger.length === beforeClose.economyLedger.length,
-  { day: afterClose.business.restaurantDay },
-);
-await prepare("Peeled Potato");
-const day2 = await sheetText();
-check(
-  "4b the next level opens Day 2",
-  !!day2 && /Day 2 · Opening time/i.test(day2) && /Lunch · Level 7/.test(day2),
-  day2?.slice(0, 160),
+    afterClose.business.restaurantDay?.day === 12 &&
+    !!day12 &&
+    /Day 12 · Opening time/i.test(day12) &&
+    /Level 23/.test(day12),
+  { day: afterClose.business.restaurantDay, day12: day12?.slice(0, 160) },
 );
 await page.evaluate(() => document.querySelector('[aria-label="Close"]')?.click());
 await sleep(400);
 
-// ---------- 5. Menu ----------
-await page.evaluate(() =>
-  [...document.querySelectorAll("nav button")]
-    // The restaurant build calls the Business tab "Restaurant".
-    .find((x) => x.textContent.includes("Restaurant"))
-    ?.click(),
+// ---------- 5. Level 7: the menu is still locked ----------
+await boot(
+  page,
+  seedSave({
+    business: MOVED_IN_BUSINESS,
+    levelProgress: {
+      currentLevelId: "level-7",
+      highestUnlockedLevelId: "level-7",
+      completedLevelIds: Array.from({ length: 6 }, (_, i) => `level-${i + 1}`),
+    },
+    story: { introDone: true, milestoneMask: 127, finaleSeen: false },
+  }),
 );
-await sleep(700);
-await clickButton(page, /Menu$/);
-await sleep(700);
-const menu = await page.evaluate(() => ({
-  count: document.querySelector('[data-testid="menu-active-count"]')?.textContent.trim(),
-  dishes: [...document.querySelectorAll("[data-menu-dish]")].map((d) =>
-    d.getAttribute("data-menu-dish"),
-  ),
-  locked: document.querySelectorAll("[data-menu-locked]").length,
-  switches: [...document.querySelectorAll("[data-menu-dish] button")].filter((b) =>
-    /^(ON|OFF)$/.test(b.textContent.trim()),
-  ).length,
-  firstLocked: document.querySelector("[data-menu-locked]")?.textContent.replace(/\s+/g, " "),
-  opensAt: document
-    .querySelector('[data-testid="menu-opens-at"]')
-    ?.textContent.replace(/\s+/g, " "),
-  page: document.body.innerText.replace(/\s+/g, " ").slice(0, 300),
-}));
-await shot(page, "restaurant-menu-l7");
+const restaurantTab = await page.evaluate(() => {
+  const b = document.querySelector('nav button[data-nav="business"]');
+  return b
+    ? { locked: b.hasAttribute("data-locked"), text: b.innerText.replace(/\s+/g, " ") }
+    : null;
+});
 check(
-  // 2026-10-05: Levels 1–10 are cooking fundamentals; the menu opens at L11 with 4 dishes.
-  "5 the menu at Level 7: not open yet ('opens at Level 11'), all 48 dishes locked with their level, no switches",
-  menu.count === "0 / 0 dishes" &&
-    menu.dishes.length === 0 &&
-    /opens at Level 11/.test(menu.opensAt ?? "") &&
-    menu.locked === 48 &&
-    menu.switches === 0 &&
-    /Level 11/.test(menu.firstLocked ?? ""),
-  menu,
+  "5 Level 7: the Restaurant section (the menu) opens at Level 11",
+  restaurantTab?.locked === true && /Lv 11/.test(restaurantTab.text),
+  restaurantTab,
 );
 
 // ---------- 6. 320 px closing sheet ----------
 await page.setViewport({ width: 320, height: 568, deviceScaleFactor: 1 });
-const s = await readSave(page);
-s.business.restaurantDay = {
-  ...s.business.restaurantDay,
-  opened: true,
-  servicesDone: 2,
-  servicesPlanned: 2,
-  closingDue: true,
-  openingCredits: s.credits - 4500,
-  openingLevel: 7,
-};
-await writeSave(page, s);
+await writeSave(page, closingSave(await readSave(page)));
 await page.reload({ waitUntil: "networkidle0" });
 await sleep(1500);
 await toBoard();

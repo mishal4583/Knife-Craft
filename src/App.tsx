@@ -128,6 +128,13 @@ import { businessCustomerPayment } from "@/game/business/BusinessServiceManager"
 import { recordRevenueAndCogs } from "@/game/business/BusinessFinanceManager";
 import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
 import {
+  TAB_OPENING_NOTE,
+  dayCeremonyAt,
+  firstPurchaseRows,
+  grandmaLineFor,
+  tabsOpeningAt,
+} from "@/game/restaurant/firstLevels";
+import {
   mayPayOrder,
   ordersRequired,
   paidOrdersFor,
@@ -442,6 +449,12 @@ export function App() {
     orderCoins: number | null;
     /** Restaurant build: the city ranking it moved (restaurant/cityRanking.ts), when it moved. */
     cityRank?: { from: number; to: number; passed: string };
+    /** First levels (restaurant/firstLevels.ts): Grandma's line on Levels 1–15. */
+    grandma?: string;
+    /** The bottom-bar sections the next level opens. */
+    opened?: string[];
+    /** Before Level 21: the day that quietly began. */
+    newDay?: number;
   } | null>(null);
 
   // Platform ads (Playgama Bridge). `saveRef` always holds the latest committed save, so code
@@ -1231,24 +1244,44 @@ export function App() {
     if (RESTAURANT_MODE) {
       const level = getLevel(levelId);
       const firstPlay = !!level && !isCompleted(level.id, save.levelProgress);
+      // First levels (firstLevels.ts): before Level 21 a day that's due to
+      // close closes quietly (the same closeDay the Closing Time button runs).
+      const base = quietDayEnd(save);
       // Closing time comes before the next day's first service (the Closing
       // Time sheet shows over the Order Board / Kitchen until it is done).
-      if (firstPlay && restaurantDayOf(save).closingDue) {
+      if (firstPlay && restaurantDayOf(base).closingDue) {
         closingHoldRef.current = true;
         if (screen !== "board" && screen !== "kitchen") setScreen("board");
         return;
       }
-      const pending = level ? servicePlanFor(save, level) : null;
+      const pending = level ? servicePlanFor(base, level) : null;
       if (pending && servicePlanNeedsSheet(pending)) {
-        if (pending.progress !== save.levelProgress)
-          persist({ ...save, levelProgress: pending.progress });
+        if (pending.progress !== base.levelProgress || base !== save)
+          persist({ ...base, levelProgress: pending.progress });
         setServiceCheckLevelId(levelId);
         // The check shows over the Order Board / Kitchen (e.g. after "Next Level").
         if (screen !== "board" && screen !== "kitchen") go("board");
         return;
       }
+      // No sheet before Level 21: a new day opens without its opening card.
+      if (pending?.opening) {
+        beginLevel(levelId, openDay(base, pending.levelNumber));
+        return;
+      }
+      if (base !== save) {
+        beginLevel(levelId, base);
+        return;
+      }
     }
     beginLevel(levelId);
+  }
+
+  /** Before the day's ceremony starts (Level 21), a day due to close closes without its screen. */
+  function quietDayEnd(s: SaveData): SaveData {
+    const restaurantLevel = restaurantLevelOf(s.levelProgress);
+    return restaurantDayOf(s).closingDue && !dayCeremonyAt(restaurantLevel)
+      ? closeDay(s, restaurantLevel)
+      : s;
   }
 
   /** Starts a campaign level (after its Pre-Service Check, when it had one). `from`: the save to build on (e.g. with the day just opened). */
@@ -1821,6 +1854,11 @@ export function App() {
     // Phase G: then the wash-up (dish soap) for the settings it used.
     if (RESTAURANT_MODE && isFirstCompletion)
       nextSave = washUp(recordService(nextSave, levelNumber(level.id)), levelNumber(level.id)).save;
+    // First levels: before Level 21 the day closes quietly, and Level Complete says so.
+    const dayBefore = restaurantDayOf(nextSave).day;
+    if (RESTAURANT_MODE && isFirstCompletion) nextSave = quietDayEnd(nextSave);
+    const newDay =
+      restaurantDayOf(nextSave).day !== dayBefore ? restaurantDayOf(nextSave).day : null;
     // Economy V2 Phase 9 — the completion reward is its own real wallet
     // transaction, separate from any order settlement already recorded
     // by serveCampaignOrder (brief §21 — "do not double-record").
@@ -1840,9 +1878,19 @@ export function App() {
     if (rewardCoins > 0) {
       // Restaurant build: a first completion can climb the city ranking.
       const moved = RESTAURANT_MODE && isFirstCompletion ? rankChange(save, finalSave) : null;
+      const n = levelNumber(level.id);
+      const reachedNow = restaurantLevelOf(finalSave.levelProgress);
+      const opened =
+        RESTAURANT_MODE && isFirstCompletion && reachedNow > restaurantLevelOf(save.levelProgress)
+          ? tabsOpeningAt(reachedNow).map((id) => TAB_OPENING_NOTE[id])
+          : [];
+      const grandma = RESTAURANT_MODE && isFirstCompletion ? grandmaLineFor(n) : null;
       setLevelRewardNotice({
         rewardCoins,
         orderCoins,
+        ...(grandma ? { grandma } : {}),
+        ...(opened.length ? { opened } : {}),
+        ...(newDay !== null ? { newDay } : {}),
         ...(moved
           ? {
               cityRank: {
@@ -2545,6 +2593,7 @@ export function App() {
       {RESTAURANT_MODE &&
       save &&
       restaurantDayOf(save).closingDue &&
+      dayCeremonyAt(restaurantLevelOf(save.levelProgress)) &&
       (screen === "board" || screen === "kitchen") &&
       storyEvent?.kind !== "finale" ? (
         <Suspense fallback={null}>
@@ -2593,6 +2642,11 @@ export function App() {
         <MilestoneBanner
           kicker={storyEvent.milestone.kicker}
           line={storyEvent.milestone.line}
+          // First levels (firstLevels.ts): Level 10's milestone is the big moment —
+          // what the Market now offers (never required) and what comes next.
+          {...(RESTAURANT_MODE && storyEvent.milestone.bit === 1
+            ? { grand: true, rows: firstPurchaseRows(), ms: 9000 }
+            : {})}
           onDismiss={() => setStoryEvent(null)}
         />
       ) : null}
@@ -2636,6 +2690,17 @@ export function App() {
                 ms: 5600,
               }
             : {})}
+          {...(levelRewardNotice.opened || levelRewardNotice.newDay
+            ? {
+                notes: [
+                  ...(levelRewardNotice.opened ?? []),
+                  ...(levelRewardNotice.newDay
+                    ? [`☀️ Day ${levelRewardNotice.newDay} begins`]
+                    : []),
+                ],
+              }
+            : {})}
+          {...(levelRewardNotice.grandma ? { quote: levelRewardNotice.grandma, ms: 6400 } : {})}
           onDismiss={() => setLevelRewardNotice(null)}
         />
       ) : null}

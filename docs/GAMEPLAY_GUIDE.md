@@ -18,7 +18,9 @@ build that ships on Pages and Playgama).
    ranking if you climbed).
 
 A restaurant **day** = **Lunch + Dinner** (two levels), plus **Breakfast**
-from Level 51. After the last service of the day comes **Closing Time**.
+from Level 51. Until Level 20 a day just turns ("☀️ Day 2 begins" on Level
+Complete); from Level 21 each day opens with its card and ends with
+**Closing Time**.
 
 ---
 
@@ -28,10 +30,16 @@ from Level 51. After the last service of the day comes **Closing Time**.
 - **Story:** the opening cinematic; you reopen the family restaurant.
 - **Learn to cut:** slice, peel, halve (Levels 1–5 teach everything with a
   ghost hand + how-to card), **dice** at L6, **smash** at L9.
-- **The day:** opening card in the morning, Closing Time at night.
+- **The restaurant opens up one piece at a time** (bottom bar): Kitchen from
+  the start, **Inventory at L3**, **Market at L7** (a look at knives and
+  boards), **Progress at L10**, **Restaurant at L11**. Locked ones show
+  🔒 "Lv N".
+- **Grandma** says a line on every Level Complete up to Level 15.
+- **The day:** days pass quietly ("☀️ Day 2 begins").
 - **Nothing to stock yet** — just cook.
-- **Milestone L10:** *"The room comes back."*
-- **Unlocks at L10:** Santoku knife ($350), Maple Board ($300).
+- **Milestone L10:** *"The room comes back."* — a big card.
+- **Unlocks at L10:** the first things to buy: Santoku knife ($350), Maple
+  Board ($300), optional.
 
 ### Levels 11–20 · Italian Kitchen  *(stage: Opening Menu → Pantry at L15)*
 - **L11 — Your menu** opens with 4 dishes. **Menu guests** start: 1 per
@@ -46,7 +54,8 @@ from Level 51. After the last service of the day comes **Closing Time**.
 - **Milestone L20:** *"Word gets around."*
 
 ### Levels 21–30 · Italian Service  *(stage: Fridge & Freshness)*
-- **L21 — Refrigerator & freshness:** food ages, can spoil; the fridge has
+- **L21 — Refrigerator & freshness:** the day now opens with its card and
+  ends with Closing Time; food ages, can spoil; the fridge has
   a capacity. Throw out expired food in Inventory. Menu guests: 2 per
   service.
 - **Techniques:** **julienne** L21, **radial** cuts L23.

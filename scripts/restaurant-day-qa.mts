@@ -5,7 +5,8 @@
  *
  *  S. Schedule: Lunch + Dinner per day, Breakfast added from L51.
  *  O. Opening: Day 1 starts closed; opening notes the cash and the
- *     services; the plan shows the opening card even before stock (L5).
+ *     services; before Level 21 a new day opens without its card
+ *     (developer 2026-10-09, first levels), from Level 21 the card shows.
  *  V. Services: only first completions count; after the last one closing is
  *     due; extra counts change nothing; an unopened day opens implicitly.
  *  C. Closing: before L21 only the day number moves (food doesn't age yet);
@@ -46,6 +47,7 @@ import {
 } from "../src/game/restaurant/restaurantDay.ts";
 import { servicesForDayAt } from "../src/game/restaurant/restaurantProgression.ts";
 import { servicePlanFor, servicePlanNeedsSheet } from "../src/game/restaurant/preServiceCheck.ts";
+import { dayCeremonyAt } from "../src/game/restaurant/firstLevels.ts";
 import { addStock } from "../src/game/business/businessInventory.ts";
 import { endBusinessDay } from "../src/game/business/BusinessDayManager.ts";
 import { getLevel, type LevelProgress } from "../src/game/levels/LevelManager.ts";
@@ -110,15 +112,20 @@ console.log("O. Opening");
   assert(openDay(opened, 13) === opened, "O3: an open day doesn't open again");
   const plan5 = servicePlanFor(saveAt(5), getLevel("level-5")!);
   const mid = servicePlanFor(openDay(saveAt(5), 5), getLevel("level-5")!);
+  // Developer 2026-10-09 (first levels, firstLevels.ts): the opening card is the
+  // day's ceremony from Level 21. Before it the plan still opens the day on START,
+  // but no sheet shows for it (was: "the opening card shows even before stock (L5)").
   assert(
     !!plan5 &&
       plan5.opening !== null &&
-      servicePlanNeedsSheet(plan5) &&
+      !servicePlanNeedsSheet(plan5) &&
       !plan5.check.applies &&
       !!mid &&
       mid.opening === null &&
-      !servicePlanNeedsSheet(mid),
-    "O4: the opening card shows even before stock (L5); mid-day a stock-free level starts at once",
+      !servicePlanNeedsSheet(mid) &&
+      !dayCeremonyAt(20) &&
+      dayCeremonyAt(21),
+    "O4: before Level 21 a new day opens without its card (L5); mid-day a stock-free level starts at once; the card starts at L21",
   );
 }
 
@@ -257,12 +264,22 @@ console.log("W. Wiring");
     "W1: a service is counted only on a first completion, only under RESTAURANT_MODE",
   );
   assert(
-    /if \(firstPlay && restaurantDayOf\(save\)\.closingDue\) \{\s*closingHoldRef\.current = true;/.test(
-      app,
-    ) &&
+    // Since the first levels (2026-10-09) a day before Level 21 closes quietly with the
+    // same closeDay, so the hold reads the save after that (`base`).
+    /const base = quietDayEnd\(save\);/.test(app) &&
+      /if \(firstPlay && restaurantDayOf\(base\)\.closingDue\) \{\s*closingHoldRef\.current = true;/.test(
+        app,
+      ) &&
+      /restaurantDayOf\(s\)\.closingDue && !dayCeremonyAt\(restaurantLevel\)\s*\? closeDay\(s, restaurantLevel\)/.test(
+        app,
+      ) &&
       /beginLevel\(id, opensDay \? openDay\(save, levelNumber\(id\)\) : undefined\)/.test(app) &&
-      /persist\(closeDay\(save, restaurantLevelOf\(save\.levelProgress\)\)\)/.test(app),
-    "W2: closing blocks the next first play; START opens the day; the Closing Time sheet closes it",
+      /if \(pending\?\.opening\) \{\s*beginLevel\(levelId, openDay\(base, pending\.levelNumber\)\)/.test(
+        app,
+      ) &&
+      /persist\(closeDay\(save, restaurantLevelOf\(save\.levelProgress\)\)\)/.test(app) &&
+      /closingDue &&\s*dayCeremonyAt\(restaurantLevelOf\(save\.levelProgress\)\) &&/.test(app),
+    "W2: closing blocks the next first play (quietly closed before L21); START, or a start without the card, opens the day; the Closing Time sheet closes it from L21",
   );
 }
 

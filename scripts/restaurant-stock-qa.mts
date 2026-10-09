@@ -331,7 +331,8 @@ console.log("W. Wiring");
         app,
       ) &&
       /if \(RESTAURANT_MODE && !isReplay\) \{\s*const \{ tickets \} = ticketsFor/.test(app) &&
-      /if \(RESTAURANT_MODE\) \{[\s\S]{0,900}servicePlanFor\(save, level\)/.test(app),
+      // First levels (2026-10-09): the plan reads the save after a quiet day-end (`base`).
+      /if \(RESTAURANT_MODE\) \{[\s\S]{0,900}servicePlanFor\((?:save|base), level\)/.test(app),
     "W1: every restaurant path in App is behind RESTAURANT_MODE (serve, batch serve, tickets, check)",
   );
   assert(

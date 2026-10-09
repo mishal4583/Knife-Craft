@@ -90,21 +90,23 @@ await boot(
   seedSave({
     business: MOVED_IN_BUSINESS,
     credits: 500,
+    // First levels (2026-10-09): every section is open from Level 11 in the restaurant
+    // build, so the test plays Levels 13 and 14 (was 3 and 4; stock is used from 15).
     levelProgress: {
-      currentLevelId: "level-3",
-      highestUnlockedLevelId: "level-3",
-      completedLevelIds: ["level-1", "level-2"],
+      currentLevelId: "level-13",
+      highestUnlockedLevelId: "level-13",
+      completedLevelIds: Array.from({ length: 12 }, (_, i) => `level-${i + 1}`),
     },
     story: { introDone: true, milestoneMask: 127, finaleSeen: true },
   }),
 );
 await sleep(800);
 const atStart = chunkRequests();
-const playedL3 = await playLevel("Carrot Chop");
+const playedL13 = await playLevel("Mushroom Bruschetta");
 check(
-  "1 startup and the campaign (Kitchen, Order Board, Level 3 played and served) never load the Restaurant chunk",
-  atStart === 0 && playedL3 && chunkRequests() === 0,
-  { atStart, afterCampaign: chunkRequests(), playedL3 },
+  "1 startup and the campaign (Kitchen, Order Board, Level 13 played and served) never load the Restaurant chunk",
+  atStart === 0 && playedL13 && chunkRequests() === 0,
+  { atStart, afterCampaign: chunkRequests(), playedL13 },
 );
 
 // ---------- 2. Open Restaurant ----------
@@ -155,8 +157,8 @@ const market = /Knives/.test(await body()) && /Cutting Boards/.test(await body()
 check("3b the Market still works", market);
 
 // ---------- 4. Back to the campaign ----------
-const playedL4 = await playLevel("Garden Prep");
-check("4 back in the campaign, Level 4 opens, plays and is served", playedL4);
+const playedL14 = await playLevel("Zucchini Garden Plate");
+check("4 back in the campaign, Level 14 opens, plays and is served", playedL14);
 
 const errors = logs.filter((l) => /pageerror|error:/.test(l) && !/favicon/.test(l));
 check("5 no page errors", errors.length === 0, errors.slice(0, 5));

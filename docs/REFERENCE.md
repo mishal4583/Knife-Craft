@@ -468,6 +468,22 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   W wiring, plus the Kitchen's restaurant rank ("Restaurant rank · n/13",
   the café rank, next rank) and Prepare (sage) vs Replay (ghost). Browser:
   `tools/e2e/restaurantmeasures.mjs` (restaurant test build, 320–430 px).
+- `restaurant-first-levels-qa` — the FIRST LEVELS, pass 1 (developer
+  2026-10-09; `restaurant/firstLevels.ts`, restaurant build, presentation
+  only): T the bottom-bar sections open at `TAB_OPENS_AT` (Inventory 3,
+  Market 7, Progress 10, Restaurant 11; "opens at" = the highest unlocked
+  level, as knives/boards read it; `NavLevelContext` from ScreensRouter feeds
+  `BottomNav`); G Grandma's 15 Level Complete lines (`GRANDMA_LINES`,
+  verbatim); D before L21 (`dayCeremonyAt` = fridge-freshness live) App's
+  `quietDayEnd` runs the same `closeDay` at completion / next start (only the
+  day turns; "☀️ Day N begins" on Level Complete) and a new day opens with no
+  card (`servicePlanNeedsSheet` ignores `opening`, ServiceCheckLayer hides
+  it); M Level 10's milestone (story bit 1) is `MilestoneBanner grand` with
+  `firstPurchaseRows()` (catalog knives/boards at L10 + "your first menu at
+  Level 11"), tap to dismiss; E Levels 1–15 rewards/order and the L10 knife
+  and board prices unchanged; W wiring (Kitchen places + rank card wait for
+  their level, the Market before L10 = Knives + Cutting Boards only,
+  `FIRST_PURCHASE_LEVEL`). Browser: `tools/e2e/restaurantfirstlevels.mjs`.
 - `restaurant-city-ranking-qa` — the CITY RANKING (developer 2026-10-09:
   "add some mock restaurants and implement a ranking — gradually progress to
   the top 1 restaurant after completing the campaign";

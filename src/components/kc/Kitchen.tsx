@@ -1,6 +1,9 @@
 import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
 import { ENDLESS_RESTAURANT_NAME } from "@/game/restaurant/endlessRestaurant";
-import { useEffect } from "react";
+import { useContext, useEffect, useState } from "react";
+import { isTabOpen, tabOpensAt } from "@/game/restaurant/firstLevels";
+import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
+import { NavLevelContext } from "./navLevel";
 import { ENDLESS_DAILY_COIN_CAP, isEndlessUnlocked } from "@/game/daily/EndlessServiceManager";
 import { paidLevelReward } from "@/game/levels/levelRewards";
 import { levelPayPreview } from "@/game/restaurant/levelPayPreview";
@@ -39,6 +42,7 @@ function Hotspot({
   style,
   position,
   onClick,
+  opensAt,
 }: {
   label: string;
   sub: string;
@@ -46,18 +50,25 @@ function Hotspot({
   /** Vertical placement classes — short phones (< 700px tall) move a hotspot so the HUD / Today's Order card never covers it. */
   position: string;
   onClick: () => void;
+  /** The level this place opens at, while it's still closed (first levels, firstLevels.ts). */
+  opensAt?: number | null;
 }) {
+  const locked = typeof opensAt === "number";
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={locked ? undefined : onClick}
+      aria-disabled={locked || undefined}
+      data-locked={locked || undefined}
       style={style}
-      className={`press absolute ${position} -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-ivory/25 bg-walnut-dark/40 px-3 py-1.5 text-left backdrop-blur-[3px] shadow-soft`}
+      className={`press absolute ${position} -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-ivory/25 bg-walnut-dark/40 px-3 py-1.5 text-left backdrop-blur-[3px] shadow-soft${locked ? " opacity-75" : ""}`}
     >
       <span className="block font-display text-[13.5px] font-black leading-none text-ivory">
-        {label}
+        {locked ? `🔒 ${label}` : label}
       </span>
-      <span className="block font-hand text-[14px] leading-tight text-gold/90">{sub}</span>
+      <span className="block font-hand text-[14px] leading-tight text-gold/90">
+        {locked ? `opens at Level ${opensAt}` : sub}
+      </span>
     </button>
   );
 }
@@ -116,6 +127,10 @@ export function Kitchen({
   const todayCompleted = isCompleted(todayLevel.id, levelProgress);
   // Every level cleared: say so plainly — there is no hidden content left.
   const campaignComplete = getLevels().every((l) => isCompleted(l.id, levelProgress));
+  // First levels (restaurant build): a place that hasn't opened yet shows its level.
+  const reached = restaurantLevelOf(levelProgress);
+  const closedUntil = (id: ScreenId) =>
+    RESTAURANT_MODE && !isTabOpen(id, reached) ? tabOpensAt(id) : null;
 
   // A returning player's first screen: once the Kitchen has actually mounted
   // (its lazily-loaded chunk is in), the game is interactive — tell the platform.
@@ -134,7 +149,9 @@ export function Kitchen({
       <div className="absolute inset-x-0 top-0 z-20 flex items-start justify-between p-3">
         <button
           type="button"
-          onClick={() => go("rack")}
+          onClick={() => {
+            if (closedUntil("rack") === null) go("rack");
+          }}
           data-testid="kitchen-rank"
           // One line each, never wider than the room the wallet and Settings leave
           // (audit 2026-10-08: at 320 px it wrapped into the Kitchen Upgrade sign).
@@ -203,6 +220,7 @@ export function Kitchen({
         style={{ left: "26%" }}
         position="top-[35%]"
         onClick={() => go("rack")}
+        opensAt={closedUntil("rack")}
       />
       <Hotspot
         label="Market"
@@ -210,6 +228,7 @@ export function Kitchen({
         style={{ left: "76%" }}
         position="top-[50%] [@media(max-height:700px)]:top-[40%]"
         onClick={() => go("shop")}
+        opensAt={closedUntil("shop")}
       />
       <Hotspot
         label="Kitchen Upgrade"
@@ -599,27 +618,68 @@ const NAV: { id: ScreenId; label: string; glyph: string }[] = [
  * used to light up Kitchen, as if the player were on the Kitchen home).
  */
 export function BottomNav({ active, go }: { active: ScreenId | null; go: (s: ScreenId) => void }) {
+  // First levels (restaurant build): a section that hasn't opened shows a lock
+  // and its level; a tap says when it opens (game/restaurant/firstLevels.ts).
+  const reached = useContext(NavLevelContext);
+  const [hint, setHint] = useState<string | null>(null);
+  useEffect(() => {
+    if (!hint) return;
+    const t = window.setTimeout(() => setHint(null), 2200);
+    return () => window.clearTimeout(t);
+  }, [hint]);
   return (
     <nav className="absolute inset-x-0 bottom-0 z-30 flex items-center justify-around border-t border-walnut-dark/40 bg-[linear-gradient(180deg,rgba(62,40,25,0.82),rgba(45,41,36,0.95))] px-2 pb-3 pt-2 backdrop-blur-sm">
+      {hint ? (
+        <p
+          role="status"
+          data-testid="nav-lock-hint"
+          className="anim-up pointer-events-none absolute inset-x-4 bottom-full mb-2 rounded-full border border-walnut-dark/40 bg-walnut-dark/90 px-4 py-2 text-center font-ui text-[13.5px] font-extrabold text-ivory shadow-lift"
+        >
+          {hint}
+        </p>
+      ) : null}
       {NAV.map((n) => {
         const on = n.id === active;
+        const opensAt =
+          RESTAURANT_MODE && reached !== null && !isTabOpen(n.id, reached)
+            ? tabOpensAt(n.id)
+            : null;
+        const locked = opensAt !== null;
         return (
           <button
             key={n.id}
             type="button"
-            onClick={() => go(n.id)}
+            onClick={() => (locked ? setHint(`🔒 ${n.label} opens at Level ${opensAt}`) : go(n.id))}
+            aria-label={locked ? `${n.label}, opens at Level ${opensAt}` : undefined}
+            data-nav={n.id}
+            data-locked={locked || undefined}
             className="press flex min-h-12 min-w-[56px] flex-col items-center justify-center gap-0.5 rounded-2xl px-2 py-1.5"
             style={on ? { background: "rgba(246,232,204,0.14)" } : undefined}
           >
             <span
               className="text-[17.5px]"
-              style={{ filter: on ? "none" : "grayscale(0.5)", opacity: on ? 1 : 0.72 }}
+              style={{
+                filter: on ? "none" : "grayscale(0.5)",
+                opacity: locked ? 0.6 : on ? 1 : 0.72,
+              }}
             >
-              {n.glyph}
+              {locked ? (
+                <span className="font-ui text-[11px] font-extrabold text-ivory">
+                  🔒 Lv {opensAt}
+                </span>
+              ) : (
+                n.glyph
+              )}
             </span>
             <span
               className="font-ui text-[11px] font-extrabold leading-[14px] tracking-wide"
-              style={{ color: on ? "var(--color-gold)" : "rgba(246,232,204,0.62)" }}
+              style={{
+                color: on
+                  ? "var(--color-gold)"
+                  : locked
+                    ? "rgba(246,232,204,0.42)"
+                    : "rgba(246,232,204,0.62)",
+              }}
             >
               {n.label}
             </span>

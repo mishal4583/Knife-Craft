@@ -2,6 +2,8 @@ import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
 import { useEffect, useState, type ReactNode } from "react";
 import type { ScreenId } from "./data";
 import { BottomNav } from "./Kitchen";
+import { FIRST_PURCHASE_LEVEL } from "@/game/restaurant/firstLevels";
+import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
 import { KnifeGlyph } from "./Workshop";
 import { BoardPreview } from "./Boards";
 import {
@@ -229,11 +231,23 @@ export function Shop({
   /** "shop-ingredients" opens the Market on Ingredients (Business → Market links). */
   initialCategory?: ShopCategory;
 }) {
-  const [category, setCategory] = useState<ShopCategory>(initialCategory);
+  // First levels (restaurant build, firstLevels.ts): before Level 10 the
+  // Market is for a look around: knives and boards only, nothing to buy yet.
+  const browseOnly =
+    RESTAURANT_MODE && restaurantLevelOf(save.levelProgress) < FIRST_PURCHASE_LEVEL;
+  const visibleCategories = browseOnly
+    ? shopCategories.filter((c) => c.id === "knives" || c.id === "boards")
+    : shopCategories;
+  const startCategory = visibleCategories.some((c) => c.id === initialCategory)
+    ? initialCategory
+    : "knives";
+  const [category, setCategory] = useState<ShopCategory>(startCategory);
   const [notice, setNotice] = useState(
-    initialCategory === "knives"
-      ? "Welcome back, Chef. What can I get for you?"
-      : categoryCopy[initialCategory].description,
+    browseOnly
+      ? `Have a look around, Chef. The first new tools arrive at Level ${FIRST_PURCHASE_LEVEL}.`
+      : startCategory === "knives"
+        ? "Welcome back, Chef. What can I get for you?"
+        : categoryCopy[startCategory].description,
   );
   const [focusId] = useState(peekMarketFocus);
   const [focusQuantity] = useState(peekMarketQuantity);
@@ -416,10 +430,13 @@ export function Shop({
 
         {/* Categories */}
         <nav
-          className="category-tabs grid grid-cols-3 gap-2 px-4 pt-3"
+          className={cn(
+            "category-tabs grid gap-2 px-4 pt-3",
+            browseOnly ? "grid-cols-2" : "grid-cols-3",
+          )}
           aria-label="Shop categories"
         >
-          {shopCategories.map((item) => {
+          {visibleCategories.map((item) => {
             const active = category === item.id;
             return (
               <button

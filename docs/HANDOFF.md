@@ -597,6 +597,28 @@ conversation.
    the tick, ~1/3 the volume, and at most one sound every 200 ms
    (`PLATING.CHIME_LADDER`, `CHIME_MIN_GAP_MS`). Skipped platings stay
    silent (`platingskip.mjs` 4).
+51. FIRST LEVELS, PASS 1 (developer 2026-10-09, "Levels 1–15 retention":
+   the start is where players decide to stay; presentation only,
+   `restaurant/firstLevels.ts`): the bottom bar opens one section at a time
+   (Kitchen L1, Inventory L3, Market L7, Progress L10, Restaurant L11; a
+   closed one shows 🔒 "Lv N" and a tap says when it opens; the Kitchen's
+   Market / Progress places and the ranking card wait too); the Market before
+   L10 is a look at Knives and Cutting Boards only (the Santoku and Maple
+   Board arrive at L10, never required); Grandma says one line on each of
+   Levels 1–15's Level Complete (the developer's words), which also names a
+   section that just opened; before Level 21 a day ends quietly (the same
+   `closeDay`, "☀️ Day N begins" on Level Complete) and opens without its
+   card — the opening card and Closing Time start at L21 (fridge &
+   freshness); Level 10's milestone is a bigger card listing the Market's
+   first tools and the menu next. Rewards, level order, cutting, stock (L15)
+   unchanged. Report: `docs/LEVELS_1_15_REPORT.md`. Tests changed to the new
+   rule: `restaurant-day-qa` O4/W2, wiring regexes in `level-ux-qa` N1,
+   `restaurant-backoffice-qa` W1, `restaurant-stock-qa` W1;
+   `tools/e2e/restaurantday.mjs` (the ceremony from L21). New:
+   `restaurant-first-levels-qa`, e2e `restaurantfirstlevels.mjs`. Next:
+   pass 2 (Grandma's leftovers in the fridge from L3, used from L4, running
+   low L12, a top-up from the real need L13, preview L14), pass 3 (stars,
+   customer lines, checklist).
 
 ## 4. Open issues from the Level 1–10 audit (not fixed yet)
 

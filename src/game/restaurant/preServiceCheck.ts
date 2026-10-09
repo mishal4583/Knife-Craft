@@ -8,6 +8,7 @@
  * orders a previous try already paid; `progress` saves the tickets when
  * they were rolled just now. Pure; nothing reads RESTAURANT_MODE.
  */
+import { dayCeremonyAt } from "./firstLevels";
 import type { SaveData } from "../SaveManager";
 import type { LevelDefinition } from "../levels/levelTypes";
 import type { LevelProgress } from "../levels/LevelManager";
@@ -156,10 +157,11 @@ export function staffReady(plan: ServicePlan): boolean {
   return plan.staff.every((r) => r.met);
 }
 
-/** The sheet shows when the day opens, something new arrives, or stock, staff or supplies need attention. */
+/** The sheet shows when the day opens (from Level 21), something new arrives, or stock, staff or supplies need attention. */
 export function servicePlanNeedsSheet(plan: ServicePlan | null): boolean {
   if (!plan) return false;
-  if (plan.opening) return true;
+  // The opening card is the day's ceremony, from Level 21 (firstLevels.ts).
+  if (plan.opening && dayCeremonyAt(plan.levelNumber)) return true;
   if (hasNewsToShow(plan.news)) return true;
   if (plan.welcome) return true;
   if (!staffReady(plan)) return true;

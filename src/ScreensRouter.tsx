@@ -25,6 +25,8 @@ import type { HireStaffResult, FireStaffResult } from "@/game/business/BusinessS
 import type { ScreenId } from "@/components/kc/data";
 import type { SaveData } from "@/game/SaveManager";
 import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
+import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
+import { NavLevelContext } from "@/components/kc/navLevel";
 import type { Measure } from "@/game/business/measure";
 import type { BuyKnifeResult } from "@/game/knives/KnifeManager";
 import type { BuyBoardResult } from "@/game/boards/BoardManager";
@@ -173,7 +175,7 @@ export function ScreensRouter({
   onEnterBusinessPreparation: () => void;
 }) {
   return (
-    <>
+    <NavLevelContext.Provider value={restaurantLevelOf(save.levelProgress)}>
       {screen === "kitchen" ? <Kitchen go={go} save={save} onSelectLevel={onSelectLevel} /> : null}
       {screen === "board" ? <OrderBoard go={go} save={save} onSelectLevel={onSelectLevel} /> : null}
       {screen === "shop" || screen === "shop-ingredients" || screen === "shop-supplies" ? (
@@ -276,6 +278,6 @@ export function ScreensRouter({
           />
         </Suspense>
       ) : null}
-    </>
+    </NavLevelContext.Provider>
   );
 }
