@@ -102,7 +102,11 @@ import {
   cleanSettings,
 } from "../src/game/restaurant/serviceSupplies.ts";
 import { hireSpecialist, getSpecialist } from "../src/game/restaurant/staffRequirements.ts";
-import { bulkDiscountFor, BULK_MAX_PACKS } from "../src/game/restaurant/bulkBuying.ts";
+import {
+  bulkDiscountFor,
+  BULK_MAX_PACKS,
+  ingredientBulkDiscount,
+} from "../src/game/restaurant/bulkBuying.ts";
 import {
   menuGuestCapacity,
   nextMenuGuest,
@@ -199,7 +203,7 @@ function buyIngredient(s: SaveData, id: string, units: number) {
     s,
     id,
     units,
-    bulkDiscountFor(units),
+    ingredientBulkDiscount(id as IngredientId, units, "lb"),
     supplierPriceFactor(s),
     0,
     lbPerMarketUnit(id as IngredientId, "lb"),

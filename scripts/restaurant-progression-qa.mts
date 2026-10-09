@@ -324,7 +324,11 @@ console.log("B. Bulk buying");
   );
   const app = read("src/App.tsx");
   assert(
-    /RESTAURANT_MODE \? bulkDiscountFor\(quantity\) : 0/.test(app) &&
+    // Ingredients: only the restaurant build's known ingredients get a tier, chosen by the stock bought (deep check 2026-10-09).
+    /const id = RESTAURANT_MODE && isKnownIngredient\(ingredientId\) \? ingredientId : null;/.test(
+      app,
+    ) &&
+      /id \? ingredientBulkDiscount\(id, quantity, measureOf\(save\)\) : 0/.test(app) &&
       /RESTAURANT_MODE && item && isConsumableSupply\(item\)/.test(app) &&
       (app.match(/"supply-packaging-purchase" : "supply-equipment-purchase"/g) ?? []).length === 1,
     "B5: App applies the discount only in the restaurant build, consumable supplies only; still one ledger entry per purchase",

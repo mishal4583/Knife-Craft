@@ -21,7 +21,6 @@ import { opensNewDay, restaurantDayOf, todaysServices, type DayService } from ".
 import { hasNewsToShow, restaurantNewsAt, type RestaurantNews } from "./restaurantNews";
 import { unseenStarterCrate, type KitLine } from "./restaurantMigration";
 import { menuGuestQueue, remainingMenuGuests } from "./menuGuests";
-import { bulkDiscountFor } from "./bulkBuying";
 import { getLevel } from "../levels/LevelManager";
 import { restaurantQuote } from "./restaurantEconomy";
 import type { IngredientId } from "../definitions";
@@ -246,6 +245,5 @@ function restaurantQuoteAtPlainPrice(
   units: number,
 ): number | null {
   const q = restaurantQuote(save, ingredientId, units);
-  const discount = bulkDiscountFor(units);
-  return discount > 0 ? Math.round(q.totalCost / (1 - discount)) : q.totalCost;
+  return q.bulkDiscount > 0 ? q.listTotal : q.totalCost;
 }

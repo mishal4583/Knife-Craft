@@ -438,6 +438,18 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   popularity before L250 and "Kitchen upgrade" vs rank, Settings → Reduced
   motion (`settings.reducedMotion`, `.kc-reduced-motion` on <html>), a
   shorter Market banner on Ingredients with Plan ahead first;
+  D the deep check of 2026-10-09: the Market plan puts the NEXT service's
+  own orders first (`forNextService`; its fridge room is planned first and
+  "Buy all" buys it first, so a tight wallet never spends on later services
+  or optional guests instead), today's "no room" lines are told apart
+  (`noRoomToday`: "make room or upgrade", not "after today's service");
+  Quick Restock dates its stock like a Market purchase (Premium +1 day);
+  the bulk tier is chosen by the STOCK bought (`ingredientBulkDiscount`:
+  12 kg = 26.5 lb → 3 %, a whole melon counts by its weight; the presets show
+  the same tier), so the lb/kg setting never changes the price per pound;
+  the shortage cap reads in lb/kg ("Limited to 4.54 kg today"); Reduced
+  motion (system or Settings) also calms panel entrances, the looping glows
+  and the dust/steam (`.kc-ambient`);
   W wiring, plus the Kitchen's restaurant rank ("Restaurant rank · n/13",
   the café rank, next rank) and Prepare (sage) vs Replay (ghost). Browser:
   `tools/e2e/restaurantmeasures.mjs` (restaurant test build, 320–430 px).

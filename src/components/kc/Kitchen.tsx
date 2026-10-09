@@ -66,10 +66,7 @@ function Hotspot({
  * restaurant shows its orders + completion reward ("about +$363"); the classic
  * game keeps the completion reward it always showed.
  */
-function payText(
-  save: SaveData,
-  level: Parameters<typeof paidLevelReward>[0] & LevelDefinition,
-): string {
+function payText(save: SaveData, level: LevelDefinition): string {
   const pay = RESTAURANT_MODE ? levelPayPreview(save, level) : null;
   return pay ? `about ${formatUsdChange(pay.total)}` : formatUsdChange(paidLevelReward(level));
 }

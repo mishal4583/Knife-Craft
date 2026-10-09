@@ -245,7 +245,7 @@ export function Divider() {
 
 export function DustMotes({ count = 14 }: { count?: number }) {
   return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+    <div className="kc-ambient pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
       {Array.from({ length: count }).map((_, i) => (
         <span
           key={i}
@@ -266,7 +266,7 @@ export function DustMotes({ count = 14 }: { count?: number }) {
 
 export function Steam({ className }: { className?: string }) {
   return (
-    <div className={cn("pointer-events-none absolute", className)} aria-hidden>
+    <div className={cn("kc-ambient pointer-events-none absolute", className)} aria-hidden>
       {[0, 1, 2].map((i) => (
         <span
           key={i}

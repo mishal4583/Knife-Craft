@@ -579,3 +579,31 @@ html.kc-reduced-motion .kcf-pan__cue {
 html.kc-reduced-motion .kc-cine-line {
   animation: kc-story-fade 200ms ease-out both;
 }
+
+/* Everyday UI motion (deep check 2026-10-09): panel entrances become a short
+   fade, the looping glows and the ambient dust/steam stop — for the system's
+   reduced motion and for Settings → Reduced motion alike. */
+@media (prefers-reduced-motion: reduce) {
+  .anim-up,
+  .anim-pop {
+    animation: kc-story-fade 0.2s ease-out both;
+  }
+  .anim-breathe,
+  .anim-shimmer {
+    animation: none;
+  }
+  .kc-ambient {
+    display: none;
+  }
+}
+html.kc-reduced-motion .anim-up,
+html.kc-reduced-motion .anim-pop {
+  animation: kc-story-fade 0.2s ease-out both;
+}
+html.kc-reduced-motion .anim-breathe,
+html.kc-reduced-motion .anim-shimmer {
+  animation: none;
+}
+html.kc-reduced-motion .kc-ambient {
+  display: none;
+}

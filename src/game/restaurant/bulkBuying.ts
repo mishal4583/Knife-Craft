@@ -18,6 +18,10 @@
  * restaurant build).
  */
 
+import type { IngredientId } from "../definitions";
+import { normalizeQuantity } from "../business/businessInventory";
+import { lbPerMarketUnit, type Measure } from "../business/measure";
+
 /** Quantity presets on a Market card (ingredient units; supply packs). */
 export const BULK_PRESETS: readonly number[] = [5, 25, 50, 100];
 
@@ -36,6 +40,20 @@ export function bulkDiscountFor(quantity: number): number {
   let d = 0;
   for (const tier of BULK_DISCOUNTS) if (quantity >= tier.minQuantity) d = tier.discount;
   return d;
+}
+
+/**
+ * An ingredient's bulk discount for `units` Market units: the tier is chosen
+ * from the STOCK bought (lb, or pieces for loaves and bunches), so the
+ * Settings lb/kg choice never changes the price per pound, and a whole
+ * watermelon counts by its weight.
+ */
+export function ingredientBulkDiscount(
+  ingredientId: IngredientId,
+  units: number,
+  measure: Measure,
+): number {
+  return bulkDiscountFor(normalizeQuantity(units * lbPerMarketUnit(ingredientId, measure)));
 }
 
 /** A whole-cent unit price after a bulk discount (never below 0). */

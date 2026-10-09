@@ -66,7 +66,7 @@ export type PurchaseIngredientResult =
         | "exceedsShortageLimit";
     };
 
-function isKnownIngredient(id: string): id is IngredientId {
+export function isKnownIngredient(id: string): id is IngredientId {
   return Object.prototype.hasOwnProperty.call(INGREDIENTS, id);
 }
 

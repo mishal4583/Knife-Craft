@@ -57,6 +57,8 @@ export type MarketPlanRow = {
   firstDay: number;
   /** Used by today's menu (a service or guest today). */
   forToday: boolean;
+  /** Used by the next service's own orders (what its Pre-Service Check blocks on). */
+  forNextService: boolean;
 };
 
 export type MarketPlan = {
@@ -64,24 +66,35 @@ export type MarketPlan = {
   /** The levels each day covers (empty for an Endless day). */
   dayLevels: number[][];
   rows: MarketPlanRow[];
-  /** Ingredients a later day needs that didn't fit in the fridge. */
+  /** Ingredients that didn't fit in the fridge (today's included — see `noRoomToday`). */
   noRoom: IngredientId[];
+  /** Of `noRoom`, those today's services need. */
+  noRoomToday: IngredientId[];
   totalCost: number;
   /** Fridge space the plan takes, and free now. */
   storageNeeded: number;
   storageFree: number;
 };
 
-/** The recipes one campaign service still serves: its tickets after the paid orders, and its menu guests. */
-function serviceRecipes(save: SaveData, level: LevelDefinition): RecipeDefinition[] {
-  if (isCompleted(level.id, save.levelProgress)) return [];
+/** The recipes one campaign service still serves: its tickets after the paid orders, and its (optional) menu guests. */
+function serviceRecipes(
+  save: SaveData,
+  level: LevelDefinition,
+): { orders: RecipeDefinition[]; guests: RecipeDefinition[] } {
+  if (isCompleted(level.id, save.levelProgress)) return { orders: [], guests: [] };
   const { tickets, progress } = ticketsFor(save.levelProgress, level);
   const paid = paidOrdersFor(progress, level.id).length;
   const guests =
     level.id === save.levelProgress.highestUnlockedLevelId
       ? remainingMenuGuests(save, level)
       : menuGuestQueue(save, level);
-  return [...tickets.slice(paid), ...guests];
+  return { orders: tickets.slice(paid), guests };
+}
+
+function addNeeds(save: SaveData, need: Map<IngredientId, number>, recipes: RecipeDefinition[]) {
+  for (const recipe of recipes)
+    for (const r of orderRequirements(save, recipe))
+      need.set(r.ingredientId, normalizeQuantity((need.get(r.ingredientId) ?? 0) + r.quantity));
 }
 
 /** The next `days` days of services: levels per day, starting with today's still to come. */
@@ -107,11 +120,15 @@ function upcomingDays(save: SaveData, days: number): number[][] {
   return out.slice(0, days);
 }
 
-/** Each day's need per ingredient (stock units). */
+/**
+ * Each day's need per ingredient (stock units), and the next service's own
+ * orders on their own (they come first: it's the service the Pre-Service
+ * Check is waiting on — its optional guests and later services come after).
+ */
 function dailyNeeds(
   save: SaveData,
   days: number,
-): { levels: number[][]; needs: Map<IngredientId, number>[] } {
+): { levels: number[][]; needs: Map<IngredientId, number>[]; next: Map<IngredientId, number> } {
   if (isEndlessUnlocked(save.levelProgress)) {
     const perDay = new Map<IngredientId, number>();
     for (const [id, d] of menuDemand(save))
@@ -119,22 +136,28 @@ function dailyNeeds(
     return {
       levels: Array.from({ length: days }, () => []),
       needs: Array.from({ length: days }, () => new Map(perDay)),
+      next: new Map(),
     };
   }
   const levels = upcomingDays(save, days);
-  const needs = levels.map((dayLevels) => {
+  const next = new Map<IngredientId, number>();
+  let nextFound = false;
+  const needs = levels.map((dayLevels, day) => {
     const need = new Map<IngredientId, number>();
     for (const n of dayLevels) {
       if (!serviceUsesStock(n)) continue;
       const level = getLevel(`level-${n}`);
       if (!level) continue;
-      for (const recipe of serviceRecipes(save, level))
-        for (const r of orderRequirements(save, recipe))
-          need.set(r.ingredientId, normalizeQuantity((need.get(r.ingredientId) ?? 0) + r.quantity));
+      const { orders, guests } = serviceRecipes(save, level);
+      if (day === 0 && !nextFound && orders.length > 0) {
+        nextFound = true;
+        addNeeds(save, next, orders);
+      }
+      addNeeds(save, need, [...orders, ...guests]);
     }
     return need;
   });
-  return { levels, needs };
+  return { levels, needs, next };
 }
 
 export function marketPlanFor(save: SaveData, days: number): MarketPlan {
@@ -145,7 +168,7 @@ export function marketPlanFor(save: SaveData, days: number): MarketPlan {
     inventory,
     save.business.refrigerator.refrigeratorId,
   );
-  const { levels, needs } = dailyNeeds(save, days);
+  const { levels, needs, next } = dailyNeeds(save, days);
 
   /** Stock in the fridge still fresh on day d (its merged entry's age then is below the shelf life). */
   const freshOn = (id: IngredientId, d: number) => {
@@ -158,13 +181,25 @@ export function marketPlanFor(save: SaveData, days: number): MarketPlan {
   const planned = new Map<IngredientId, number>(); // stock to buy (exact)
   const firstDay = new Map<IngredientId, number>();
   const noRoom = new Set<IngredientId>();
+  const noRoomToday = new Set<IngredientId>();
   let storageNeeded = 0;
   const unitsOf = (id: IngredientId, stock: number) => marketUnitsCovering(id, stock, measure);
   const roomFor = (id: IngredientId, stock: number) =>
     stockForMarketUnits(id, unitsOf(id, stock), measure);
 
-  needs.forEach((need, d) => {
-    // Today first; within a day, the biggest needs first.
+  // The next service's own orders first, then the rest of today, then each
+  // later day; within a pass, the biggest needs first.
+  const rest0 = new Map(needs[0] ?? []);
+  for (const [id, q] of next) {
+    const left = normalizeQuantity((rest0.get(id) ?? 0) - q);
+    if (left > 0) rest0.set(id, left);
+    else rest0.delete(id);
+  }
+  const passes: [Map<IngredientId, number>, number][] =
+    needs.length > 0
+      ? [[next, 0], [rest0, 0], ...needs.slice(1).map((n, i) => [n, i + 1] as [typeof n, number])]
+      : [];
+  for (const [need, d] of passes) {
     for (const [id, quantity] of [...need].sort((a, b) => b[1] - a[1])) {
       if (noRoom.has(id)) continue;
       const have = Math.max(0, freshOn(id, d) - (used.get(id) ?? 0));
@@ -178,13 +213,14 @@ export function marketPlanFor(save: SaveData, days: number): MarketPlan {
       const extraRoom = roomFor(id, after) - roomFor(id, before);
       if (storageNeeded + extraRoom > storageFree + 1e-9) {
         noRoom.add(id);
+        if (d === 0) noRoomToday.add(id);
         continue;
       }
       storageNeeded = normalizeQuantity(storageNeeded + extraRoom);
       planned.set(id, after);
       if (!firstDay.has(id)) firstDay.set(id, d);
     }
-  });
+  }
 
   const forToday = new Set(needs[0]?.keys() ?? []);
   const rows: MarketPlanRow[] = [...planned]
@@ -197,17 +233,24 @@ export function marketPlanFor(save: SaveData, days: number): MarketPlan {
         cost: restaurantQuote(save, ingredientId, buyUnits).totalCost,
         firstDay: firstDay.get(ingredientId) ?? 0,
         forToday: forToday.has(ingredientId),
+        forNextService: next.has(ingredientId),
       };
     })
+    // Buy all buys in this order: the next service's stock can't be crowded
+    // out of a tight wallet by later services or optional guests.
     .sort(
       (a, b) =>
-        Number(b.forToday) - Number(a.forToday) || a.firstDay - b.firstDay || b.cost - a.cost,
+        Number(b.forNextService) - Number(a.forNextService) ||
+        Number(b.forToday) - Number(a.forToday) ||
+        a.firstDay - b.firstDay ||
+        b.cost - a.cost,
     );
   return {
     days,
     dayLevels: levels,
     rows,
     noRoom: [...noRoom],
+    noRoomToday: [...noRoomToday],
     totalCost: rows.reduce((t, r) => t + r.cost, 0),
     storageNeeded,
     storageFree,

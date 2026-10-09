@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { KButton, Panel } from "./common/primitives";
 import { cn } from "@/lib/utils";
 import type { SaveData } from "@/game/SaveManager";
@@ -52,7 +52,7 @@ export function MarketPlanPanel({
   }, [focused]);
   const [showAll, setShowAll] = useState(false);
   const measure = measureOf(save);
-  const plan = marketPlanFor(save, days);
+  const plan = useMemo(() => marketPlanFor(save, days), [save, days]);
   const rows = showAll ? plan.rows : plan.rows.slice(0, FIRST_ROWS);
   const affordable = save.credits >= plan.totalCost;
 
@@ -208,10 +208,24 @@ export function MarketPlanPanel({
             ) : null}
           </>
         )}
-        {plan.noRoom.length > 0 && plan.rows.length > 0 ? (
+        {plan.noRoomToday.length > 0 ? (
+          <p
+            className="mt-1 font-ui text-[12.5px] font-bold text-copper"
+            data-testid="market-plan-no-room-today"
+          >
+            ⚠️ No fridge room for today's{" "}
+            {plan.noRoomToday.map((id) => INGREDIENTS[id].name).join(", ")} — use or throw out stock
+            in Inventory, or upgrade the fridge.
+          </p>
+        ) : null}
+        {plan.noRoom.length > plan.noRoomToday.length && plan.rows.length > 0 ? (
           <p className="mt-1 font-ui text-[12.5px] font-bold text-walnut/60">
-            No fridge room yet for: {plan.noRoom.map((id) => INGREDIENTS[id].name).join(", ")} — buy
-            them after today's service.
+            No fridge room yet for:{" "}
+            {plan.noRoom
+              .filter((id) => !plan.noRoomToday.includes(id))
+              .map((id) => INGREDIENTS[id].name)
+              .join(", ")}{" "}
+            — buy them after today's service.
           </p>
         ) : null}
       </Panel>

@@ -3,6 +3,7 @@ import { restaurantQuote } from "@/game/restaurant/restaurantEconomy";
 import { supplierPriceNote } from "@/game/restaurant/restaurantBackOffice";
 import { getSelectedSupplierId } from "@/game/economy/SupplierManager";
 import { BulkPresets } from "./BulkPresets";
+import { ingredientBulkDiscount } from "@/game/restaurant/bulkBuying";
 import { MarketPlanPanel } from "./MarketPlanPanel";
 import { useEffect, useRef, useState } from "react";
 import { Badge, KButton, Panel } from "./common/primitives";
@@ -134,7 +135,7 @@ export function MarketIngredients({
           : result.reason === "insufficientStorage"
             ? `Not enough fridge space. ${fridgeSpaceText(quote.availableStorage)}`
             : result.reason === "exceedsShortageLimit"
-              ? `Today's shortage limits a purchase to ${quote.maxQuantity}.`
+              ? `Today's shortage limits a purchase to ${formatStockAmount(id, quote.maxQuantity ?? 0, measure)}.`
               : "That purchase couldn't be made.";
       setMessages((m) => ({ ...m, [id]: text }));
       return;
@@ -324,6 +325,7 @@ export function MarketIngredients({
                       <BulkPresets
                         value={quantity}
                         label={marketUnitLabel(id, measure, 2)}
+                        discountFor={(q) => ingredientBulkDiscount(id, q, measure)}
                         onPick={(q) => setQuantities((qs) => ({ ...qs, [id]: q }))}
                       />
                     ) : null}
@@ -357,7 +359,7 @@ export function MarketIngredients({
                       )}
                     >
                       {quote.verdict === "exceedsShortageLimit"
-                        ? `Limited to ${quote.maxQuantity} today.`
+                        ? `Limited to ${formatStockAmount(id, quote.maxQuantity ?? 0, measure)} today.`
                         : quote.verdict === "insufficientFunds"
                           ? notEnoughMoneyText(quote.totalCost, save.credits)
                           : quote.verdict === "insufficientStorage"

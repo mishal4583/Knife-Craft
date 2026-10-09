@@ -71,7 +71,8 @@ import {
   purchaseIngredient,
   purchaseQuote,
 } from "../src/game/business/BusinessInventoryManager.ts";
-import { restaurantQuote } from "../src/game/restaurant/restaurantEconomy.ts";
+import { restaurantQuote, supplierPriceFactor } from "../src/game/restaurant/restaurantEconomy.ts";
+import { ingredientBulkDiscount } from "../src/game/restaurant/bulkBuying.ts";
 import { serviceStockCheck } from "../src/game/restaurant/campaignStock.ts";
 import { servicePlanFor } from "../src/game/restaurant/preServiceCheck.ts";
 import { ticketsFor } from "../src/game/restaurant/serviceTickets.ts";
@@ -577,6 +578,108 @@ console.log("A. Audit fixes (2026-10-08)");
       /setShowDay/.test(check) &&
       /h-\[96px\]/.test(shop),
     "A6: Settings → Reduced motion; Buy everything in the Market (plan on Today); first-restock guide; optional sections folded; a short Market banner on Ingredients",
+  );
+}
+
+console.log("D. Deep check fixes (2026-10-09)");
+{
+  // D1 — Buy all can't spend a tight wallet on later services or guests first.
+  const s = saveAt(31);
+  const own = checkAt(s, 31);
+  const plan = marketPlanFor(own.save, 1);
+  const firstOther = plan.rows.findIndex((r) => !r.forNextService);
+  const missing = own.check.applies ? own.check.missingRows.map((r) => r.ingredientId) : [];
+  const nextRows = plan.rows.filter((r) => r.forNextService);
+  const tight = { ...own.save, credits: nextRows.reduce((t, r) => t + r.cost, 0) };
+  let bought = tight;
+  for (const row of plan.rows) {
+    const b = purchaseIngredient(
+      bought,
+      row.ingredientId,
+      row.buyUnits,
+      ingredientBulkDiscount(row.ingredientId, row.buyUnits, "lb"),
+      supplierPriceFactor(bought),
+      0,
+      lbPerMarketUnit(row.ingredientId, "lb"),
+      marketStep(row.ingredientId),
+    );
+    if (b.ok) bought = b.save;
+  }
+  const after = checkAt(bought, 31).check;
+  assert(
+    missing.length > 0 &&
+      missing.every((id) => nextRows.some((r) => r.ingredientId === id)) &&
+      (firstOther === -1 || plan.rows.slice(firstOther).every((r) => !r.forNextService)) &&
+      plan.rows.length > nextRows.length &&
+      after.applies &&
+      after.ready,
+    "D1: the plan lists the next service's own stock first, so Buy all on a wallet that only covers it still opens the service",
+  );
+
+  // D2 — Quick Restock dates its stock like a Market purchase (Premium: a day later).
+  const premium = { ...saveAt(20), selectedSupplierId: "premium-supplier" };
+  const pc = checkAt(premium, 20);
+  const qr = quickRestock(pc.save, pc.check);
+  const qrDays = qr.ok
+    ? qr.lines.map((l) => qr.save.business.inventory[l.ingredientId]?.purchaseDay)
+    : [];
+  assert(
+    qr.ok &&
+      qrDays.length > 0 &&
+      qrDays.every((d) => d === premium.business.calendar.businessDay + 1),
+    "D2: Quick Restock from the Premium supplier starts ageing a day later, like the Market",
+  );
+
+  // D3 — the bulk tier follows the stock bought, not the lb/kg setting.
+  const lbSave = saveAt(20);
+  const kgSave = kg(saveAt(20));
+  assert(
+    ingredientBulkDiscount("tomato", 26, "lb") === 0.03 &&
+      ingredientBulkDiscount("tomato", 12, "kg") === 0.03 && // 26.5 lb
+      ingredientBulkDiscount("tomato", 10, "kg") === 0 && // 22 lb
+      ingredientBulkDiscount("tomato", 25, "kg") === 0.05 && // 55 lb
+      ingredientBulkDiscount("watermelon", 3, "lb") === 0.03 && // 3 whole melons, 30 lb
+      ingredientBulkDiscount("bread", 25, "kg") === 0.03 && // loaves count as pieces
+      restaurantQuote(kgSave, "tomato", 12).bulkDiscount ===
+        restaurantQuote(lbSave, "tomato", 26).bulkDiscount,
+    "D3: the bulk discount is chosen by the stock bought — 12 kg gets the same tier as 26 lb, a whole melon counts by its weight",
+  );
+
+  // D4 — "no room" for today's own stock is told apart from later days.
+  const s31 = saveAt(31);
+  const fullFridge = {
+    ...s31,
+    business: {
+      ...s31.business,
+      inventory: addStock(
+        {},
+        "potato",
+        getAvailableStorageCapacity({}, s31.business.refrigerator.refrigeratorId),
+        60,
+        s31.business.calendar.businessDay,
+      ),
+    },
+  };
+  const fullPlan = marketPlanFor(fullFridge, 2);
+  assert(
+    fullPlan.noRoomToday.length > 0 &&
+      fullPlan.noRoomToday.every((id) => fullPlan.noRoom.includes(id)) &&
+      /data-testid="market-plan-no-room-today"/.test(read("src/components/kc/MarketPlanPanel.tsx")),
+    "D4: a full fridge names today's missing stock as today's (not 'buy after today's service')",
+  );
+
+  // D5 — wiring: shortage cap in the chosen measure; reduced motion calms everyday UI motion.
+  const market = read("src/components/kc/MarketIngredients.tsx");
+  const css = read("src/styles.css");
+  assert(
+    /Limited to \$\{formatStockAmount\(id, quote\.maxQuantity/.test(market) &&
+      /discountFor=\{\(q\) => ingredientBulkDiscount\(id, q, measure\)\}/.test(market) &&
+      /html\.kc-reduced-motion \.anim-up/.test(css) &&
+      /html\.kc-reduced-motion \.kc-ambient/.test(css) &&
+      /useMemo\(\(\) => marketPlanFor\(save, days\)/.test(
+        read("src/components/kc/MarketPlanPanel.tsx"),
+      ),
+    "D5: the shortage cap reads in lb/kg; presets show the stock-based tier; Reduced motion calms panels, glows, dust and steam; the plan is memoised",
   );
 }
 

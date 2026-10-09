@@ -43,7 +43,7 @@ import { getKnifeSharpness, getSharpnessModifier } from "../economy/sharpness";
 import { getStaffModifier } from "../economy/staff";
 import { getSupplierModifier } from "../economy/supplier";
 import { purchaseQuote, type PurchaseQuote } from "../business/BusinessInventoryManager";
-import { bulkDiscountFor } from "./bulkBuying";
+import { ingredientBulkDiscount } from "./bulkBuying";
 import { restaurantQuality } from "./restaurantInvestments";
 
 /**
@@ -192,7 +192,7 @@ export function restaurantQuote(
     save,
     ingredientId,
     quantity,
-    bulkDiscountFor(quantity),
+    ingredientBulkDiscount(ingredientId, quantity, measureOf(save)),
     supplierPriceFactor(save),
     lbPerMarketUnit(ingredientId, measureOf(save)),
   );

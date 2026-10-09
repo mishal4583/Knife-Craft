@@ -11,16 +11,19 @@ export function BulkPresets({
   value,
   onPick,
   label,
+  discountFor = bulkDiscountFor,
 }: {
   value: number;
   onPick: (quantity: number) => void;
   /** What one step is ("units" / "packs"), for the accessible name. */
   label: string;
+  /** The discount a preset gets (ingredients: by the stock it buys — `ingredientBulkDiscount`). */
+  discountFor?: (quantity: number) => number;
 }) {
   return (
     <div className="mt-2 grid grid-cols-2 gap-1.5" data-testid="bulk-presets">
       {BULK_PRESETS.map((q) => {
-        const d = bulkDiscountFor(q);
+        const d = discountFor(q);
         return (
           <button
             key={q}

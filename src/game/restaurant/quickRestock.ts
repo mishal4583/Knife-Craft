@@ -29,6 +29,7 @@ import { RUSH_RESTOCK_FEE, rushUnitCost } from "../business/businessRushRestock"
 import { canStoreQuantity, getAvailableStorageCapacity } from "../business/RefrigeratorManager";
 import { applyStockingWear } from "../business/businessEquipmentCondition";
 import type { ServiceStockCheck } from "./campaignStock";
+import { supplierEffects } from "./restaurantEconomy";
 
 export const QUICK_RESTOCK_FEE = RUSH_RESTOCK_FEE;
 
@@ -106,7 +107,8 @@ export function quickRestock(save: SaveData, check: ServiceStockCheck): QuickRes
   if (!plan) return { ok: false, reason: "nothingMissing" };
   if (!plan.affordable) return { ok: false, reason: "insufficientFunds" };
   if (!plan.fits) return { ok: false, reason: "insufficientStorage" };
-  const day = save.business.calendar.businessDay;
+  // Dated like a Market purchase: a Premium supplier's stock starts ageing later.
+  const day = save.business.calendar.businessDay + supplierEffects(save).freshnessBonusDays;
   let inventory = save.business.inventory;
   for (const line of plan.lines)
     inventory = addStock(

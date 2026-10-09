@@ -110,7 +110,11 @@ import {
   hireSpecialist,
   paySpecialists,
 } from "@/game/restaurant/staffRequirements";
-import { BULK_MAX_PACKS, bulkDiscountFor } from "@/game/restaurant/bulkBuying";
+import {
+  BULK_MAX_PACKS,
+  bulkDiscountFor,
+  ingredientBulkDiscount,
+} from "@/game/restaurant/bulkBuying";
 import { businessDayAllowed } from "@/game/restaurant/endlessRestaurant";
 import { markStarterCrateSeen } from "@/game/restaurant/restaurantMigration";
 import {
@@ -163,6 +167,7 @@ import { selectSupplier as selectSupplierFromCatalog } from "@/game/economy/Supp
 import { appendLedgerEntry } from "@/game/economy/EconomyLedger";
 import type { SettlementResult } from "@/game/economy/economyTypes";
 import {
+  isKnownIngredient,
   purchaseIngredient as purchaseIngredientFromCatalog,
   rushRestock,
 } from "@/game/business/BusinessInventoryManager";
@@ -900,24 +905,22 @@ export function App() {
   /** Economy V3 Phase 2 (Business Inventory) — Business Mode's own purchase action, mirroring buyKnife/buyStaff exactly: routes through the pure manager, then records the ledger entry from the manager's own reported `totalCost` (never re-derived from a credits diff, since it's already exact). Business Mode only — Campaign never calls this. */
   /** One Market purchase on `from` — the restaurant's bulk price, supplier, freshness and lb/kg (classic: the plain price). */
   function buyOn(save: SaveData, ingredientId: string, quantity: number) {
+    // The restaurant's price, supplier, freshness and lb/kg apply to known ingredients only.
+    const id = RESTAURANT_MODE && isKnownIngredient(ingredientId) ? ingredientId : null;
     return purchaseIngredientFromCatalog(
       save,
       ingredientId,
       quantity,
       // Unified Restaurant: wholesale buying (restaurant/bulkBuying.ts), the same discount the card quoted.
-      RESTAURANT_MODE ? bulkDiscountFor(quantity) : 0,
+      id ? ingredientBulkDiscount(id, quantity, measureOf(save)) : 0,
       // Economy pass: the Campaign Supplier's modifier acts on Market prices.
       RESTAURANT_MODE ? supplierPriceFactor(save) : 1,
       // Premium supplier: longer freshness (supplierEffects, provisional).
       RESTAURANT_MODE ? supplierEffects(save).freshnessBonusDays : 0,
       // Settings: kilograms or pounds (business/measure.ts) — the same unit the card quoted.
-      RESTAURANT_MODE && Object.prototype.hasOwnProperty.call(INGREDIENTS, ingredientId)
-        ? lbPerMarketUnit(ingredientId as IngredientId, measureOf(save))
-        : 1,
+      id ? lbPerMarketUnit(id, measureOf(save)) : 1,
       // The restaurant's Market sells weighed goods by the ¼ lb / ¼ kg (business/measure.ts).
-      RESTAURANT_MODE && Object.prototype.hasOwnProperty.call(INGREDIENTS, ingredientId)
-        ? marketStep(ingredientId as IngredientId)
-        : 1,
+      id ? marketStep(id) : 1,
     );
   }
 

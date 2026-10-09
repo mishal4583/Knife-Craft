@@ -546,6 +546,19 @@ conversation.
    Browser: `restaurantwidths.mjs` + `restaurantmeasures.mjs` on it, no
    sideways scroll at 320–768 px. The Phaser cutting HUD is not React and is
    unchanged.
+45. DEEP CHECK (2026-10-09, developer: "deep check for bugs and solve it"):
+   a correctness review of the last three changes plus every QA suite, every
+   browser test (both builds) and a crawl of every section and tab at
+   Levels 2/15/31/91/251 (no page errors, no NaN/undefined text, no
+   sideways scroll). Fixed: Buy all could spend a tight wallet on later
+   services/guests and leave the next service blocked (the plan now puts
+   the next service's own stock first); "no room" for today's stock said
+   "buy after today's service"; Quick Restock ignored the Premium
+   supplier's extra fresh day; the bulk tier counted Market units, so kg
+   vs lb changed the price per pound (now by the stock bought); the
+   shortage cap showed a bare number (now lb/kg); Reduced motion left the
+   panel entrances, glows and dust/steam moving; the Market plan was
+   recomputed on every tap (memoised). `restaurant-measures-qa` D1–D5.
 
 ## 4. Open issues from the Level 1–10 audit (not fixed yet)
 
