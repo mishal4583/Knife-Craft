@@ -1321,6 +1321,11 @@ export function App() {
   function beginLevel(levelId: string, from?: SaveData) {
     let base = from ?? save;
     if (!base) return;
+    // A new cutting session closes the last level's cards (developer 2026-10-09:
+    // they stayed over the board); queued milestone notices wait for the menus.
+    setLevelRewardNotice(null);
+    setStoryEvent((e) => (e?.kind === "milestone" ? null : e));
+    setLateReplayBonus(null);
     const level = getLevel(levelId);
     // Unified Restaurant (phase G): the wash-up before a service — settings
     // left dirty (no soap last time) are washed now if there's soap.
@@ -2813,7 +2818,11 @@ export function App() {
         />
       ) : null}
       {adActive ? <AdPlayingShield /> : null}
-      {milestoneNoticeQueue[0] && !storyEvent && !levelRewardNotice && !showIntro ? (
+      {milestoneNoticeQueue[0] &&
+      !storyEvent &&
+      !levelRewardNotice &&
+      !showIntro &&
+      screen !== "gameplay" ? (
         <MilestoneBanner
           key={milestoneNoticeQueue[0].id}
           kicker={milestoneNoticeQueue[0].legacy ? "🏆 Campaign Complete" : "Milestone reached"}

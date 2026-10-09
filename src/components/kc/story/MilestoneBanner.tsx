@@ -58,10 +58,29 @@ export function MilestoneBanner({
       <Panel
         tone="cream"
         className={cn(
-          "px-5 py-3 text-center shadow-soft",
+          "relative px-5 py-3 text-center shadow-soft",
           grand ? "max-w-[380px] py-5 ring-2 ring-gold/60 shadow-lift" : "max-w-[360px]",
         )}
       >
+        {/* Close (developer 2026-10-09): dismiss any banner at once — the wrapper
+            lets taps through to the game, this button takes them. */}
+        <button
+          type="button"
+          aria-label="Close"
+          data-testid="banner-close"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDismiss();
+          }}
+          className="press pointer-events-auto absolute -right-2 -top-2 grid h-12 w-12 place-items-center rounded-full"
+        >
+          <span
+            aria-hidden
+            className="grid h-7 w-7 place-items-center rounded-full border border-walnut/20 bg-ivory font-ui text-[13.5px] font-extrabold text-walnut/70 shadow-soft"
+          >
+            ✕
+          </span>
+        </button>
         {grand ? (
           <p className="text-[30px] leading-none" aria-hidden>
             ✨🍽️✨

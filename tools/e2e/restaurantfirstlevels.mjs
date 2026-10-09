@@ -109,8 +109,29 @@ check(
   b1,
 );
 
+// ---------- 1b. The card's close button ----------
+const closeBox = await page.evaluate(() => {
+  const b = document.querySelector('[data-testid="banner-close"]');
+  const r = b?.getBoundingClientRect();
+  return r ? { w: Math.round(r.width), h: Math.round(r.height), right: r.right, top: r.top } : null;
+});
+await page.click('[data-testid="banner-close"]');
+await sleep(400);
+const closedAfterTap = await page.evaluate(
+  () => !document.querySelector('[data-testid="banner-grandma"]'),
+);
+check(
+  "1b the Level Complete card has a ✕ (≥ 48 px, on screen) that closes it at once",
+  !!closeBox &&
+    closeBox.w >= 48 &&
+    closeBox.h >= 48 &&
+    closeBox.top >= 0 &&
+    closeBox.right <= 430 &&
+    closedAfterTap,
+  closeBox,
+);
+
 // ---------- 2. Level 2 reached: only the Kitchen is open ----------
-await sleep(6500); // the Level Complete card times out
 await page.evaluate(() =>
   [...document.querySelectorAll("nav button")]
     .find((x) => x.textContent.includes("Kitchen"))
@@ -184,6 +205,23 @@ check(
     credits: [before2.credits, after2.credits],
     ledgerDelta,
   },
+);
+
+// ---------- 3b. Starting the next level closes the card ----------
+const cardUp = await page.evaluate(
+  () => !!document.querySelector('[data-testid="banner-grandma"]'),
+);
+await prepareToday(); // straight away, while Level 2's card is still showing
+const startedAt3 = await inHud();
+const cardDuringCut = await page.evaluate(
+  () =>
+    !!document.querySelector('[data-testid="banner-grandma"]') ||
+    /LEVEL COMPLETE/i.test(document.body.innerText),
+);
+check(
+  "3b starting the next level at once closes Level 2's card (nothing over the board)",
+  cardUp && startedAt3 && !cardDuringCut,
+  { cardUp, startedAt3, cardDuringCut },
 );
 
 // ---------- 4. Level 7: the Market for a look ----------

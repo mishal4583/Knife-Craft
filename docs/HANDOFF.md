@@ -727,15 +727,17 @@ Not implemented (from the audits, all CSS/asset-free):
    Complete adds "⭐ Best prep". Grandma's lines: Pass 1's, unchanged. New:
    `restaurant-level-goals-qa`, e2e `restaurantlevelgoals.mjs`.
 
+54. BANNER CLOSE + AUTO-CLOSE (developer 2026-10-09): every MilestoneBanner
+   (Level Complete, milestones, late Replay Bonus) has a ✕ (48 px,
+   `banner-close`); starting a level (`App.beginLevel`) closes the last
+   level's cards so nothing sits over the board, and queued "Milestone
+   reached" notices wait until the player is off the cutting screen. e2e
+   `restaurantfirstlevels.mjs` 1b, 3b.
+
 ## 6b. Current state (2026-10-09, end of session)
 
-- `main` = Pass 1 (`23da428`, live on Pages). Branch `claude/sharp-wright-emfu2j`
-  = Pass 2 (`1a98d02`) + the Pass 2 review fixes (Inventory menu by level,
-  Level 15 hand-over card) UNCOMMITTED in the working tree — the developer
-  said not to commit/push/merge them until asked. All QA + browser tests
-  pass on them.
-- Pass 3 (goals, stars, customer lines, checklist, L9 ingredient list) is
-  also uncommitted in the working tree, on top of the review fixes.
+- `main` has Passes 1–3 and the Pass 2 review fixes (pushed 2026-10-09 at
+  the developer's request for testing on Pages).
 - Release order agreed: Pass 1 → Pass 2 (+ review fixes) → Pass 3, then
   test Levels 1–15 together on Pages before `main`.
 
