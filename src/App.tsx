@@ -146,6 +146,7 @@ import {
   dayCeremonyAt,
   firstPurchaseRows,
   earlyStockAt,
+  lockedScreenHint,
   grandmaLineFor,
   tabsOpeningAt,
 } from "@/game/restaurant/firstLevels";
@@ -475,6 +476,13 @@ export function App() {
   // StoryManager's own story-only union type. (This slot used to also
   // report Kitchen Investment chapter upkeep; that system was retired —
   // the six kitchen backgrounds are the kitchen progression now.)
+  /** First levels: a link tried to open a section before its level ("🔒 … opens at Level N"). */
+  const [lockNotice, setLockNotice] = useState<string | null>(null);
+  useEffect(() => {
+    if (!lockNotice) return;
+    const t = window.setTimeout(() => setLockNotice(null), 2400);
+    return () => window.clearTimeout(t);
+  }, [lockNotice]);
   const [levelRewardNotice, setLevelRewardNotice] = useState<{
     rewardCoins: number;
     /** What this level's orders paid (levelOrderEarnings), or null when it can't be read. */
@@ -697,6 +705,16 @@ export function App() {
       !businessDayAllowed(RESTAURANT_MODE, saveRef.current.levelProgress)
     )
       return;
+    // First levels: no link opens a section before its level (the bottom bar's
+    // own lock); the player is told when it opens instead.
+    const lock =
+      RESTAURANT_MODE && saveRef.current
+        ? lockedScreenHint(s, restaurantLevelOf(saveRef.current.levelProgress))
+        : null;
+    if (lock) {
+      setLockNotice(lock);
+      return;
+    }
     setScreen(s);
   };
 
@@ -2721,6 +2739,15 @@ export function App() {
             }
           />
         </Suspense>
+      ) : null}
+      {lockNotice ? (
+        <p
+          role="status"
+          data-testid="lock-notice"
+          className="anim-up pointer-events-none absolute inset-x-4 bottom-[96px] z-50 rounded-full border border-walnut-dark/40 bg-walnut-dark/90 px-4 py-2 text-center font-ui text-[13.5px] font-extrabold text-ivory shadow-lift"
+        >
+          {lockNotice}
+        </p>
       ) : null}
       {showIntro ? <CinematicIntro onDone={completeIntro} /> : null}
       {storyEvent?.kind === "finale" ? (

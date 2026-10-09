@@ -141,7 +141,33 @@ check(
   { n2, given },
 );
 await sleep(6500);
-await nav("Inventory");
+// Developer 2026-10-09: the Kitchen tells a new player where to look, and the
+// Inventory offers nothing that leads into a section still closed.
+await nav("Kitchen");
+const tip3 = await page.evaluate(() => ({
+  tip: document.querySelector('[data-testid="kitchen-tip"]')?.textContent ?? "",
+  isNew: !!document.querySelector('nav button[data-nav="inventory"] [data-nav-new]'),
+}));
+await clickButton(page, /^Open Inventory$/);
+await sleep(900);
+const onInventory = await page.evaluate(
+  () => !!document.querySelector('[data-testid="inventory"]'),
+);
+const deadLinks = await page.evaluate(() => ({
+  upgrade: !!document.querySelector('[data-testid="fridge-upgrade"]'),
+  buttons: [...document.querySelectorAll("button")]
+    .map((b) => b.textContent.trim())
+    .filter((t) => /Upgrade Refrigerator|View Business Performance|Restock|Go to Market/.test(t)),
+}));
+check(
+  "1d Level 3: Grandma's tip on the Kitchen card opens Inventory (NEW badge); no link there leads to a closed Market or Restaurant",
+  /I left food in the fridge/.test(tip3.tip) &&
+    tip3.isNew &&
+    onInventory &&
+    !deadLinks.upgrade &&
+    deadLinks.buttons.length === 0,
+  { tip3, onInventory, deadLinks },
+);
 const invText = await page.evaluate(() => document.body.innerText.replace(/\s+/g, " "));
 await shot(page, "grandma-inventory-l3");
 check(

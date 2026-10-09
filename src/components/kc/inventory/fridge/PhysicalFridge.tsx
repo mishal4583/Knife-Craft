@@ -545,7 +545,8 @@ export function PhysicalFridge({
   view: FridgeView;
   selectedId: IngredientId | null;
   onSelect: (id: IngredientId) => void;
-  onEquipment: () => void;
+  /** Absent before the Restaurant section opens (first levels): no upgrade button then. */
+  onEquipment?: (() => void) | undefined;
 }) {
   const byZone = useMemo(() => {
     const map = new Map<FridgeZoneId, { zone: FridgeZone; items: FridgeItem[] }>();
@@ -655,27 +656,29 @@ export function PhysicalFridge({
             {formatQuantity(view.available)} units available
           </p>
         </div>
-        <button
-          type="button"
-          className="kcf-head__upgrade press"
-          onClick={onEquipment}
-          data-testid="fridge-upgrade"
-        >
-          {view.maintenance !== "OPERATIONAL"
-            ? view.maintenance === "BROKEN"
-              ? "Repair Refrigerator →"
-              : "Service Refrigerator →"
-            : view.nextTier
-              ? "Upgrade Refrigerator →"
-              : "View Equipment →"}
-          <small>
+        {onEquipment ? (
+          <button
+            type="button"
+            className="kcf-head__upgrade press"
+            onClick={onEquipment}
+            data-testid="fridge-upgrade"
+          >
             {view.maintenance !== "OPERATIONAL"
-              ? `Condition ${view.condition}/100`
+              ? view.maintenance === "BROKEN"
+                ? "Repair Refrigerator →"
+                : "Service Refrigerator →"
               : view.nextTier
-                ? `${view.nextTier.name.replace(" Refrigerator", "")} · ${view.nextTier.capacity} units · ${formatUsd(view.nextTier.price)}`
-                : "Top model"}
-          </small>
-        </button>
+                ? "Upgrade Refrigerator →"
+                : "View Equipment →"}
+            <small>
+              {view.maintenance !== "OPERATIONAL"
+                ? `Condition ${view.condition}/100`
+                : view.nextTier
+                  ? `${view.nextTier.name.replace(" Refrigerator", "")} · ${view.nextTier.capacity} units · ${formatUsd(view.nextTier.price)}`
+                  : "Top model"}
+            </small>
+          </button>
+        ) : null}
       </div>
 
       {/* The open appliance — one page at a time on a phone (task #14) */}

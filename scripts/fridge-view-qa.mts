@@ -290,7 +290,9 @@ const ALL_IDS = Object.keys(INGREDIENTS) as IngredientId[];
   );
   assert(
     /<PhysicalFridge/.test(inv) &&
-      /onEquipment=\{toEquipment\}/.test(inv) &&
+      // Developer 2026-10-09 (first levels): the button is passed once the Restaurant
+      // section is open (the classic build: always), never a link to a closed section.
+      /onEquipment=\{restaurantOpen \? toEquipment : undefined\}/.test(inv) &&
       /const toEquipment = \(\) => go\(BUSINESS_TAB_SCREEN\.equipment\)/.test(inv) &&
       /openMarketIngredients\(go, id\)/.test(inv) &&
       /onEquipment/.test(ui) &&

@@ -1,5 +1,6 @@
 import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
 import { inventoryMenuOf } from "@/game/restaurant/restaurantMenu";
+import { useTabOpen } from "./navLevel";
 import { restaurantQuote } from "@/game/restaurant/restaurantEconomy";
 import { supplierPriceNote } from "@/game/restaurant/restaurantBackOffice";
 import { getSelectedSupplierId } from "@/game/economy/SupplierManager";
@@ -113,6 +114,8 @@ export function MarketIngredients({
   const measure = RESTAURANT_MODE ? measureOf(save) : "lb";
   // Pass 2 review: the restaurant's menu at its level (none before it opens), not the catalog.
   const menu = RESTAURANT_MODE ? inventoryMenuOf(save) : undefined;
+  // First levels: suppliers live in Restaurant → Suppliers (Level 11).
+  const restaurantOpen = useTabOpen("business");
 
   /** − / +: the restaurant steps by ¼ for weighed goods (business/measure.ts); classic whole units. */
   const stepFor = (id: IngredientId, q: number, dir: 1 | -1) =>
@@ -182,7 +185,7 @@ export function MarketIngredients({
                 🚚 Supplier: {getSupplier(getSelectedSupplierId(save))?.name ?? "Local Market"}
                 {supplierPriceNote(save)}
               </span>
-              {onChangeSupplier ? (
+              {onChangeSupplier && restaurantOpen ? (
                 <KButton size="md" variant="ghost" onClick={onChangeSupplier}>
                   Change supplier →
                 </KButton>

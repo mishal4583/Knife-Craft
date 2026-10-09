@@ -144,3 +144,81 @@ export const PREVIEW_AT = 14;
 export function earlyStockAt(levelNumber: number): boolean {
   return levelNumber >= STOCK_USED_FROM && !isSystemLive("ingredient-stock", levelNumber);
 }
+
+/**
+ * The bottom-bar section a screen belongs to (null for the Kitchen, the
+ * cutting screen, Settings and other always-open screens). App.go uses it
+ * so no link — "Upgrade Refrigerator", a Restock button, "Change supplier"
+ * — can open a section before its level (developer 2026-10-09).
+ */
+export function sectionOfScreen(screen: string): LockableTab | null {
+  if (screen === "shop" || screen.startsWith("shop-")) return "shop";
+  if (screen === "inventory" || screen.startsWith("inventory-")) return "inventory";
+  if (screen === "business" || screen.startsWith("business-")) return "business";
+  if (screen === "rack") return "rack";
+  return null;
+}
+
+/** "🔒 Restaurant opens at Level 11" — null when the screen is open at `reachedLevel`. */
+export function lockedScreenHint(screen: string, reachedLevel: number): string | null {
+  const section = sectionOfScreen(screen);
+  if (!section || isTabOpen(section, reachedLevel)) return null;
+  return `🔒 ${TAB_NAMES[section]} opens at Level ${TAB_OPENS_AT[section]}`;
+}
+
+/**
+ * Grandma's tip on the Kitchen's Today's Order card (developer 2026-10-09:
+ * "there is no instruction to visit or see these"): for the level about to be
+ * played, what's new and where to find it. `to` is the section a button
+ * opens (it is always open by that level).
+ */
+export type GrandmaTip = { text: string; to?: LockableTab; button?: string };
+
+export const GRANDMA_TIPS: Record<number, GrandmaTip> = {
+  1: { text: "Tap Prepare — I'll show you how to hold the knife." },
+  2: { text: "Same again, nice and steady. Your best cut earns the stars." },
+  3: {
+    text: "I left food in the fridge for you. Take a look!",
+    to: "inventory",
+    button: "Open Inventory",
+  },
+  4: {
+    text: "From today each dish uses its ingredients from the fridge.",
+    to: "inventory",
+    button: "See the fridge",
+  },
+  5: { text: "Three steps today — the order card ticks them off as you go." },
+  6: { text: "Dicing! Watch the goal on the order card." },
+  7: {
+    text: "The Market is open — come and look at the knives.",
+    to: "shop",
+    button: "Open Market",
+  },
+  8: { text: "Peel first, then halve. Steady hands." },
+  // 9: the card's own "What's in this dish?" button is the pointer.
+  10: {
+    text: "Finish this one — something special is waiting. And see how we rank!",
+    to: "rack",
+    button: "Open Progress",
+  },
+  11: {
+    text: "We have a menu now! Have a look at it in the Restaurant.",
+    to: "business",
+    button: "Open Restaurant",
+  },
+  12: { text: "Before you start, we'll check the fridge together." },
+  13: { text: "Today we top up — buy only what's missing." },
+  14: { text: "Let's look at what the next dishes need." },
+  15: { text: "From today, we check the fridge before every service." },
+};
+
+/** Grandma's tip for the level about to be played (Levels 1–15), or null. */
+export function grandmaTipFor(level: number): GrandmaTip | null {
+  return GRANDMA_TIPS[level] ?? null;
+}
+
+/** A section shows "NEW" in the bottom bar for its first two levels. */
+export function isTabNew(id: string, reachedLevel: number): boolean {
+  const at = tabOpensAt(id);
+  return at !== null && reachedLevel >= at && reachedLevel < at + 2;
+}

@@ -1,7 +1,7 @@
 import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
 import { ENDLESS_RESTAURANT_NAME } from "@/game/restaurant/endlessRestaurant";
 import { useContext, useEffect, useState } from "react";
-import { isTabOpen, tabOpensAt } from "@/game/restaurant/firstLevels";
+import { grandmaTipFor, isTabNew, isTabOpen, tabOpensAt } from "@/game/restaurant/firstLevels";
 import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
 import { NavLevelContext } from "./navLevel";
 import {
@@ -140,6 +140,15 @@ export function Kitchen({
   const campaignComplete = getLevels().every((l) => isCompleted(l.id, levelProgress));
   // First levels (restaurant build): a place that hasn't opened yet shows its level.
   const reached = restaurantLevelOf(levelProgress);
+  const todayNumber = levelNumber(todayLevel.id);
+  const tip =
+    RESTAURANT_MODE && todayUnlocked && !todayCompleted ? grandmaTipFor(todayNumber) : null;
+  const showDishIngredients =
+    RESTAURANT_MODE &&
+    todayUnlocked &&
+    !todayCompleted &&
+    todayNumber >= INGREDIENT_LIST_FROM &&
+    hasLevelGoals(todayNumber);
   const closedUntil = (id: ScreenId) =>
     RESTAURANT_MODE && !isTabOpen(id, reached) ? tabOpensAt(id) : null;
 
@@ -301,9 +310,27 @@ export function Kitchen({
               </KButton>
             </div>
           </div>
-          <KButton variant="cream" size="sm" full className="mt-2.5" onClick={() => go("board")}>
-            See all orders →
-          </KButton>
+          {/* First levels (Levels 1–15): Grandma says what's new; its button sits
+              beside "See all orders" so the card stays short on small phones. */}
+          {tip ? (
+            <p
+              className="mt-2 rounded-xl bg-gold/15 px-2.5 py-1 font-hand text-[14px] leading-snug text-walnut-dark"
+              data-testid="kitchen-tip"
+            >
+              👵 {tip.text}
+            </p>
+          ) : null}
+          {showDishIngredients ? <DishIngredientsToggle save={save} level={todayLevel} /> : null}
+          <div className="mt-2.5 flex gap-2">
+            <KButton variant="cream" size="sm" full className="h-12" onClick={() => go("board")}>
+              See all orders →
+            </KButton>
+            {tip?.to && tip.button ? (
+              <KButton size="sm" variant="copper" full className="h-12" onClick={() => go(tip.to!)}>
+                {tip.button}
+              </KButton>
+            ) : null}
+          </div>
         </div>
       </div>
 
@@ -737,9 +764,18 @@ export function BottomNav({ active, go }: { active: ScreenId | null; go: (s: Scr
             aria-label={locked ? `${n.label}, opens at Level ${opensAt}` : undefined}
             data-nav={n.id}
             data-locked={locked || undefined}
-            className="press flex min-h-12 min-w-[56px] flex-col items-center justify-center gap-0.5 rounded-2xl px-2 py-1.5"
+            className="press relative flex min-h-12 min-w-[56px] flex-col items-center justify-center gap-0.5 rounded-2xl px-2 py-1.5"
             style={on ? { background: "rgba(246,232,204,0.14)" } : undefined}
           >
+            {/* First levels: a section that just opened says so for two levels. */}
+            {RESTAURANT_MODE && !locked && reached !== null && isTabNew(n.id, reached) ? (
+              <span
+                data-nav-new
+                className="absolute -top-1 right-0 rounded-full bg-copper px-1.5 font-ui text-[11px] font-extrabold leading-[15px] text-ivory shadow-soft"
+              >
+                NEW
+              </span>
+            ) : null}
             <span
               className="text-[17.5px]"
               style={{
@@ -748,7 +784,7 @@ export function BottomNav({ active, go }: { active: ScreenId | null; go: (s: Scr
               }}
             >
               {locked ? (
-                <span className="font-ui text-[11px] font-extrabold text-ivory">
+                <span className="whitespace-nowrap font-ui text-[11px] font-extrabold text-ivory">
                   🔒 Lv {opensAt}
                 </span>
               ) : (

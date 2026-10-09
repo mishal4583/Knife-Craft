@@ -7,6 +7,7 @@ import { useMemo, useRef, useState, type ReactNode } from "react";
 import type { ScreenId } from "../data";
 import type { SaveData } from "@/game/SaveManager";
 import { BottomNav } from "../Kitchen";
+import { useTabOpen } from "../navLevel";
 import { Coin, KButton, Panel, ScreenHeader } from "../common/primitives";
 import { Bar, Eyebrow } from "../common/Meters";
 import { cn } from "@/lib/utils";
@@ -121,6 +122,9 @@ function RestockButton({
   label?: string;
   className?: string;
 }) {
+  // First levels: no Market button before the Market opens (Level 7).
+  const marketOpen = useTabOpen("shop");
+  if (!marketOpen) return null;
   return (
     <KButton
       size="sm"
@@ -573,6 +577,8 @@ export function InventoryScreen({
   const s = view.summary;
   const selected = view.items.find((i) => i.ingredientId === selectedId) ?? null;
   const toEquipment = () => go(BUSINESS_TAB_SCREEN.equipment);
+  // First levels: the fridge is upgraded in Restaurant → Equipment (Level 11).
+  const restaurantOpen = useTabOpen("business");
   const scrollTo = (el: HTMLElement | null) => el?.scrollIntoView({ block: "start" });
 
   const groups = useMemo(
@@ -787,7 +793,7 @@ export function InventoryScreen({
                   view={view.fridge}
                   selectedId={selectedId}
                   onSelect={setSelectedId}
-                  onEquipment={toEquipment}
+                  onEquipment={restaurantOpen ? toEquipment : undefined}
                 />
               </div>
 
@@ -960,18 +966,22 @@ export function InventoryScreen({
               {/* Where to go next */}
               <div className="grid gap-2">
                 <RestockButton go={go} className="w-full" />
-                <KButton full size="sm" variant="cream" className="h-12" onClick={toEquipment}>
-                  Upgrade Refrigerator →
-                </KButton>
-                <KButton
-                  full
-                  size="sm"
-                  variant="ghost"
-                  className="h-12"
-                  onClick={() => go(BUSINESS_TAB_SCREEN.overview)}
-                >
-                  View Business Performance →
-                </KButton>
+                {restaurantOpen ? (
+                  <>
+                    <KButton full size="sm" variant="cream" className="h-12" onClick={toEquipment}>
+                      Upgrade Refrigerator →
+                    </KButton>
+                    <KButton
+                      full
+                      size="sm"
+                      variant="ghost"
+                      className="h-12"
+                      onClick={() => go(BUSINESS_TAB_SCREEN.overview)}
+                    >
+                      View Business Performance →
+                    </KButton>
+                  </>
+                ) : null}
               </div>
             </>
           )}

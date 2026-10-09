@@ -734,6 +734,19 @@ Not implemented (from the audits, all CSS/asset-free):
    reached" notices wait until the player is off the cutting screen. e2e
    `restaurantfirstlevels.mjs` 1b, 3b.
 
+55. NEW-PLAYER POINTERS + NO LOCKED LINKS (developer 2026-10-09: "there is
+   no instruction to visit or see these"; "Upgrade refrigerator goes
+   directly to the locked page"): `App.go` refuses any screen of a section
+   still closed (`firstLevels.lockedScreenHint` → "🔒 Restaurant opens at
+   Level 11"), and Inventory / Market hide the links into closed sections
+   (`navLevel.useTabOpen`: Restock / Go to Market until L7; Upgrade
+   Refrigerator, View Business Performance, Change supplier until L11).
+   The Kitchen's Today's Order card shows Grandma's tip for Levels 1–15
+   (`GRANDMA_TIPS`; a button to the new section beside "See all orders"),
+   "What's in this dish?" from L9, and a section says NEW in the bottom bar
+   for its first two levels. QA `restaurant-first-levels-qa` L1–L3/W5, e2e
+   `restaurantgrandmasfridge.mjs` 1d.
+
 ## 6b. Current state (2026-10-09, end of session)
 
 - `main` has Passes 1–3 and the Pass 2 review fixes (pushed 2026-10-09 at

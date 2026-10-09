@@ -484,6 +484,10 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   and board prices unchanged; W wiring (Kitchen places + rank card wait for
   their level, the Market before L10 = Knives + Cutting Boards only,
   `FIRST_PURCHASE_LEVEL`). Browser: `tools/e2e/restaurantfirstlevels.mjs`.
+  (restaurant-first-levels-qa) First-levels additions (2026-10-09): L `lockedScreenHint` / `App.go` refuse
+  every screen of a closed section (shop-*, inventory-*, business-*, rack);
+  `GRANDMA_TIPS` (Kitchen card, Levels 1–15, button only to an open section);
+  `isTabNew` (NEW for a section's first two levels); W5 wiring.
 - `restaurant-level-goals-qa` — LEVEL GOALS, first levels pass 3 (developer
   2026-10-09; `restaurant/levelGoals.ts` + the light `levelChecklist.ts`
   used by the lazy Preparation chunk; restaurant build, Levels 1–15,

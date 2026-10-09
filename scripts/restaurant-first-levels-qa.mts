@@ -28,7 +28,10 @@ import {
   dayCeremonyAt,
   firstPurchaseRows,
   grandmaLineFor,
+  grandmaTipFor,
+  isTabNew,
   isTabOpen,
+  lockedScreenHint,
   tabsOpeningAt,
 } from "../src/game/restaurant/firstLevels.ts";
 import {
@@ -165,6 +168,38 @@ console.log("E. Nothing paid changes");
   );
 }
 
+console.log("L. Locked links and Grandma's tips (developer 2026-10-09)");
+{
+  assert(
+    lockedScreenHint("business-equipment", 3) === "🔒 Restaurant opens at Level 11" &&
+      lockedScreenHint("shop-ingredients", 6) === "🔒 Market opens at Level 7" &&
+      lockedScreenHint("inventory-supplies", 2) === "🔒 Inventory opens at Level 3" &&
+      lockedScreenHint("rack", 9) === "🔒 Progress opens at Level 10" &&
+      lockedScreenHint("business-equipment", 11) === null &&
+      lockedScreenHint("kitchen-upgrades", 1) === null &&
+      lockedScreenHint("gameplay", 1) === null &&
+      lockedScreenHint("settings", 1) === null,
+    "L1: every screen of a closed section is refused with when it opens (Restaurant → Equipment at L3 included); other screens never",
+  );
+  const tips = Array.from({ length: 15 }, (_, i) => [i + 1, grandmaTipFor(i + 1)] as const);
+  assert(
+    tips.every(([n, t]) => n === 9 || (!!t && t.text.length <= 70)) &&
+      tips.every(([n, t]) => !t?.to || isTabOpen(t.to, n)) &&
+      grandmaTipFor(3)?.to === "inventory" &&
+      grandmaTipFor(7)?.to === "shop" &&
+      grandmaTipFor(16) === null,
+    "L2: a short tip for each of Levels 1–15 (L9's pointer is its own button); a tip's button only opens a section already open",
+  );
+  assert(
+    isTabNew("inventory", 3) &&
+      isTabNew("inventory", 4) &&
+      !isTabNew("inventory", 5) &&
+      !isTabNew("inventory", 2) &&
+      !isTabNew("kitchen", 1),
+    "L3: a section says NEW for its first two levels",
+  );
+}
+
 console.log("W. Wiring");
 {
   const kitchen = read("src/components/kc/Kitchen.tsx");
@@ -206,6 +241,22 @@ console.log("W. Wiring");
       /opening=\{dayCeremonyAt\(n\) \? plan\.opening : null\}/.test(layer) &&
       /data-testid="banner-grandma"/.test(banner),
     "W4: Level Complete carries Grandma's line, the opened sections and the new day; Level 10's card is the big one",
+  );
+}
+
+{
+  const app = read("src/App.tsx");
+  const inv = read("src/components/kc/inventory/InventoryScreen.tsx");
+  const market = read("src/components/kc/MarketIngredients.tsx");
+  const kitchen = read("src/components/kc/Kitchen.tsx");
+  assert(
+    /lockedScreenHint\(s, restaurantLevelOf\(saveRef\.current\.levelProgress\)\)/.test(app) &&
+      /const marketOpen = useTabOpen\("shop"\);/.test(inv) &&
+      /onEquipment=\{restaurantOpen \? toEquipment : undefined\}/.test(inv) &&
+      /onChangeSupplier && restaurantOpen/.test(market) &&
+      /grandmaTipFor\(todayNumber\)/.test(kitchen) &&
+      /isTabNew\(n\.id, reached\)/.test(kitchen),
+    "W5: App.go refuses closed sections; Inventory / Market hide their links until they open; the Kitchen shows the tip and the NEW badge",
   );
 }
 
