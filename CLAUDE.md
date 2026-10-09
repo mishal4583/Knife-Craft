@@ -251,8 +251,14 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   fridge usage (`restaurant/fridgeUsage.ts`, nearly full at 85 %) in the
   check from L21; no separate Business Day before L250 and the Endless
   Restaurant after (`restaurant/endlessRestaurant.ts`; the Business tab is
-  "Restaurant" in the test build). Browser:
-  `tools/e2e/restaurantprogression.mjs` (restaurant test build).
+  "Restaurant" in the test build). H (developer 2026-10-09, "doesn't show
+  which staff to hire"): the check names the missing staff at its top
+  (`psc-staff-needed`) and, when only staff is missing, its footer button
+  hires them ("Hire Prep Cook & Server →"); Restaurant → Staff opens on the
+  Restaurant Team with those roles marked "Needed now" (`kc/staffFocus.ts`),
+  and before full operation (L91) every wage reads "Free now · $X/day from
+  Lv 91" and the team "$0 a day until Level 91". Browser:
+  `tools/e2e/restaurantprogression.mjs` (restaurant test build; 5c).
 - `restaurant-migration-qa` — phase M (`restaurant/restaurantMigration.ts`):
   in the restaurant build `SaveManager.load` (and reset / a fresh save)
   moves every save into the unified restaurant ONCE, stamped in the

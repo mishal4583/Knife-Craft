@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { clearStaffFocus, peekStaffFocus } from "../staffFocus";
 import type { SaveData } from "@/game/SaveManager";
 import { KButton, Panel, Badge } from "../common/primitives";
 import { Eyebrow } from "../common/Meters";
@@ -10,6 +11,7 @@ import { KitchenHelpers } from "./KitchenHelpers";
 import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
 import { SPECIALIST_CHEFS, restaurantStaffOf } from "@/game/restaurant/staffRequirements";
 import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
+import { isSystemLive, restaurantSystem } from "@/game/restaurant/restaurantProgression";
 
 /** A face per role — visual only. */
 const ROLE_ICON: Record<string, string> = {
@@ -44,6 +46,15 @@ export function BusinessStaff({
   buyStaff: (id: string) => BuyStaffResult;
 }) {
   const [message, setMessage] = useState<string | null>(null);
+  // Opened from the Pre-Service Check: the roles that service needs (staffFocus.ts).
+  const [needed] = useState(() => new Set(peekStaffFocus() ?? []));
+  useEffect(() => {
+    if (needed.size === 0) return;
+    clearStaffFocus();
+    document
+      .querySelector("[data-testid=restaurant-team]")
+      ?.scrollIntoView({ block: "start", behavior: "instant" as ScrollBehavior });
+  }, [needed]);
   const hiredRoles = save.business.staff.hiredRoles;
   const payroll = dailyPayroll(hiredRoles);
   const roster = getAllStaffDefinitions();
@@ -62,6 +73,11 @@ export function BusinessStaff({
   // (one-time helpers, permanent, no wages) and the Restaurant Team (waged
   // roles + specialist chefs; pay from Level 91). Same data and actions.
   const restaurantTeams = RESTAURANT_MODE;
+  // Restaurant build: before full operation (Level 91) no wage is charged —
+  // say so on every card, so "$X/day" doesn't read as a cost today.
+  const wagesFrom = restaurantSystem("full-operation").firstLevel;
+  const wagesStarted =
+    !restaurantTeams || isSystemLive("full-operation", restaurantLevelOf(save.levelProgress));
   return (
     <div className="space-y-3">
       {restaurantTeams ? (
@@ -87,9 +103,22 @@ export function BusinessStaff({
           </span>
         </div>
         <p className="mt-1 font-display text-[22px] font-black leading-none text-walnut-dark">
-          {formatUsd(payroll)}
-          <span className="font-hand text-[16px] font-normal text-walnut/60"> per day</span>
+          {formatUsd(wagesStarted ? payroll : 0)}
+          <span className="font-hand text-[16px] font-normal text-walnut/60">
+            {wagesStarted ? " per day" : ` a day until Level ${wagesFrom}`}
+          </span>
         </p>
+        {!wagesStarted ? (
+          <p
+            className="mt-1 font-ui text-[12.5px] font-extrabold text-olive"
+            data-testid="staff-free-until"
+          >
+            Free to hire and free to keep until Level {wagesFrom}
+            {payroll > 0
+              ? ` — then ${formatUsd(payroll)}/day for this team.`
+              : " — wages start then."}
+          </p>
+        ) : null}
         <p className="mt-1.5 font-hand text-[15px] leading-snug text-walnut/65">
           Hiring is free — pay is charged at End Business Day. If the pay can't be covered, the
           whole team is let go rather than left unpaid.
@@ -107,20 +136,39 @@ export function BusinessStaff({
               className={cn(
                 "product-card flex flex-col rounded-[20px] border p-3 card-warm",
                 hired ? "border-olive/40" : "border-walnut/15",
+                needed.has(def.role) && !hired && "ring-2 ring-copper",
               )}
+              data-staff-role={def.role}
+              data-staff-needed={needed.has(def.role) && !hired ? "true" : undefined}
             >
               <div className="flex items-start justify-between">
                 <span className="text-[34px] leading-none" aria-hidden>
                   {ROLE_ICON[def.role] ?? "🧑‍🍳"}
                 </span>
-                {hired ? <Badge tone="sage">Hired</Badge> : null}
+                {hired ? (
+                  <Badge tone="sage">Hired</Badge>
+                ) : needed.has(def.role) ? (
+                  <Badge tone="copper">Needed now</Badge>
+                ) : null}
               </div>
               <p className="mt-1 font-display text-[14.5px] font-black leading-tight text-walnut-dark">
                 {def.name}
               </p>
               <p className="font-ui text-[12.5px] font-extrabold text-copper">
-                {formatUsd(def.salary)}
-                <span className="font-bold text-walnut/60">/day</span>
+                {wagesStarted ? (
+                  <>
+                    {formatUsd(def.salary)}
+                    <span className="font-bold text-walnut/60">/day</span>
+                  </>
+                ) : (
+                  <>
+                    Free now
+                    <span className="font-bold text-walnut/60">
+                      {" "}
+                      · {formatUsd(def.salary)}/day from Lv {wagesFrom}
+                    </span>
+                  </>
+                )}
               </p>
               <p className="mt-1 rounded-[12px] bg-cream/70 px-2 py-1.5 font-hand text-[14px] leading-tight text-walnut-dark">
                 {def.description}
@@ -144,7 +192,7 @@ export function BusinessStaff({
         })}
       </div>
       {restaurantTeams ? (
-        <SpecialistChefs save={save} onHire={handleHire} onFire={handleFire} />
+        <SpecialistChefs save={save} onHire={handleHire} onFire={handleFire} needed={needed} />
       ) : (
         <KitchenHelpers save={save} buyStaff={buyStaff} />
       )}
@@ -171,12 +219,17 @@ function SpecialistChefs({
   save,
   onHire,
   onFire,
+  needed = new Set<string>(),
 }: {
   save: SaveData;
   onHire: (id: string) => void;
   onFire: (id: string) => void;
+  /** Opened from the Pre-Service Check: the chefs that service needs. */
+  needed?: ReadonlySet<string>;
 }) {
   const level = restaurantLevelOf(save.levelProgress);
+  const wagesFrom = restaurantSystem("full-operation").firstLevel;
+  const wagesStarted = isSystemLive("full-operation", level);
   const hired = new Set(restaurantStaffOf(save).specialists);
   return (
     <Panel className="p-4">
@@ -198,10 +251,18 @@ function SpecialistChefs({
               >
                 <div className="min-w-0 flex-1">
                   <p className="font-ui text-[14.5px] font-bold text-walnut-dark">
-                    {chef.title} {isHired ? <Badge tone="sage">Hired</Badge> : null}
+                    {chef.title}{" "}
+                    {isHired ? (
+                      <Badge tone="sage">Hired</Badge>
+                    ) : needed.has(chef.id) ? (
+                      <Badge tone="copper">Needed now</Badge>
+                    ) : null}
                   </p>
                   <p className="font-ui text-[12.5px] text-walnut/60">
-                    {chef.cuisines.join(" · ")} · {formatUsd(chef.dailyWage)}/day
+                    {chef.cuisines.join(" · ")} ·{" "}
+                    {wagesStarted
+                      ? `${formatUsd(chef.dailyWage)}/day`
+                      : `free now · ${formatUsd(chef.dailyWage)}/day from Lv ${wagesFrom}`}
                   </p>
                 </div>
                 {!open ? (

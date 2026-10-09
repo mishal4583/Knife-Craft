@@ -296,6 +296,70 @@ check(
   },
 );
 
+// ---------- 5c. Only staff missing (developer 2026-10-09) ----------
+// An older Level 47 save (no move-in stamp: the starter crate covers the food and
+// supplies), so staff is the only thing missing: the check names who at the top,
+// the footer hires, Staff opens on the Restaurant Team with those roles marked
+// "Needed now" and wages "free until Level 91"; hiring costs nothing; back → open.
+await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1, hasTouch: true });
+await boot(page, saveAt(47, 500, { business: undefined }));
+await sleep(1200);
+await clickButton(page, /Prepare$/);
+await sleep(1200);
+const only = await page.evaluate(() => ({
+  notice:
+    document.querySelector('[data-testid="psc-staff-needed"]')?.innerText.replace(/\s+/g, " ") ??
+    "",
+  footer:
+    [...document.querySelectorAll('[data-testid="pre-service-check"] button')]
+      .map((b) => b.textContent.trim())
+      .filter((t) => /^Hire .* →$/.test(t))[0] ?? "",
+}));
+const credits47 = (await readSave(page)).credits;
+await clickButton(page, /^Hire .* →$/);
+await sleep(1500);
+const staffView = await page.evaluate(() => ({
+  needed: [...document.querySelectorAll("[data-staff-needed]")].map((a) =>
+    a.getAttribute("data-staff-role"),
+  ),
+  free: document.querySelector('[data-testid="staff-free-until"]')?.innerText ?? "",
+  teamTop: Math.round(
+    document.querySelector('[data-testid="restaurant-team"]')?.getBoundingClientRect().top ?? -1,
+  ),
+}));
+await shot(page, "progression-staff-needed");
+for (const role of staffView.needed) {
+  await page.evaluate((r) => {
+    const card = document.querySelector(`[data-staff-role="${r}"]`);
+    [...(card?.querySelectorAll("button") ?? [])]
+      .find((b) => b.textContent.trim() === "Hire")
+      ?.click();
+  }, role);
+  await sleep(500);
+}
+await page.evaluate(() => document.querySelector('[data-testid="psc-back"]')?.click());
+await sleep(1200);
+const after47 = await page.evaluate(() => ({
+  notice: !!document.querySelector('[data-testid="psc-staff-needed"]'),
+  start: [...document.querySelectorAll('[data-testid="pre-service-check"] button')].some(
+    (b) => /^(OPEN THE RESTAURANT|START SERVICE)$/.test(b.textContent.trim()) && !b.disabled,
+  ),
+}));
+const save47 = await readSave(page);
+check(
+  "5c only staff missing: the check names who, its button hires, Staff marks them (free until L91), hiring is free, back → open",
+  /This service needs: Prep Cook, Server/.test(only.notice) &&
+    only.footer === "Hire Prep Cook & Server →" &&
+    JSON.stringify(staffView.needed) === JSON.stringify(["prep-cook", "server"]) &&
+    /free to keep until Level 91/.test(staffView.free) &&
+    staffView.teamTop >= 0 &&
+    staffView.teamTop < 200 &&
+    save47.credits === credits47 &&
+    !after47.notice &&
+    after47.start,
+  { only, staffView, after47, credits: [credits47, save47.credits] },
+);
+
 // ---------- 6. One restaurant before L250, Endless Restaurant after ----------
 await boot(page, saveAt(60, 500));
 await nav("Restaurant");

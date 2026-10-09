@@ -1,4 +1,5 @@
 import type { SaveData } from "@/game/SaveManager";
+import { openStaffFor } from "../staffFocus";
 import type { ScreenId } from "@/components/kc/data";
 import { getLevel } from "@/game/levels/LevelManager";
 import { dayStockFor, servicePlanFor } from "@/game/restaurant/preServiceCheck";
@@ -119,7 +120,12 @@ export function ServiceCheckLayer({
       dayStock={dayStockFor(save, plan.level)}
       onRestockDay={(id, units) => openMarketIngredients(go, id, units)}
       staff={plan.staff}
-      onHireStaff={() => go("business-staff")}
+      onHireStaff={() =>
+        openStaffFor(
+          go,
+          plan.staff.filter((r) => !r.met).map((r) => r.id),
+        )
+      }
       fridge={isSystemLive("fridge-freshness", n) ? fridgeUsage(save) : null}
       measure={measureOf(save)}
       onBuyAllInMarket={() => openMarketPlan(go)}

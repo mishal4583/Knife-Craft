@@ -510,6 +510,26 @@ console.log("W. The switch");
   );
 }
 
+console.log("H. Hiring from the Pre-Service Check (developer 2026-10-09)");
+{
+  const check = read("src/components/kc/restaurant/PreServiceCheck.tsx");
+  const layer = read("src/components/kc/restaurant/ServiceCheckLayer.tsx");
+  const staff = read("src/components/kc/business/BusinessStaff.tsx");
+  assert(
+    /data-testid="psc-staff-needed"/.test(check) &&
+      /This service needs: \{staffMissing\.map\(\(r\) => r\.title\)/.test(check) &&
+      /!canStart && !stockOrSuppliesShort && staffMissing\.length > 0/.test(check) &&
+      /Hire \{staffMissing\.map\(\(r\) => r\.title\)\.join\(" & "\)\} →/.test(check) &&
+      /openStaffFor\(\s*go,\s*plan\.staff\.filter\(\(r\) => !r\.met\)/.test(layer) &&
+      /peekStaffFocus\(\)/.test(staff) &&
+      /data-staff-needed/.test(staff) &&
+      /Needed now/.test(staff) &&
+      /isSystemLive\("full-operation"/.test(staff) &&
+      /data-testid="staff-free-until"/.test(staff),
+    "H1: the check names the missing staff at the top and its footer hires them; Staff opens on the Restaurant Team with them marked; wages read 'free until Level 91' before full operation",
+  );
+}
+
 console.log(
   failures
     ? `RESTAURANT PROGRESSION QA: ${failures} FAILURE(S)`

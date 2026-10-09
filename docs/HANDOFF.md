@@ -574,6 +574,15 @@ conversation.
    at Level 250 (Endless stars only add reputation after). Kitchen card,
    Restaurant Progress hero + city guide, and a Level Complete line when you
    climb. `restaurant-city-ranking-qa`; e2e `restaurantmeasures.mjs` 1a/1b.
+48. HIRING FROM THE CHECK (developer 2026-10-09: "doesn't show which staff
+   to hire and there is no money to permanently hire"): the Pre-Service
+   Check names the missing staff at its top and its footer hires them; the
+   Staff screen opened from it scrolls to the Restaurant Team (the costly
+   one-time Kitchen Team helpers sat on top and read as the price) and marks
+   the needed roles; before Level 91 wages read "Free now · $X/day from Lv
+   91". Hiring always was free; wages start with full operation (L91), and a
+   team the wallet can't pay is laid off, never debt.
+   `restaurant-progression-qa` H1, e2e `restaurantprogression.mjs` 5c.
 
 ## 4. Open issues from the Level 1–10 audit (not fixed yet)
 
