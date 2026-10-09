@@ -11,14 +11,16 @@
  *    starter-crate rule). Recorded in `business.grandmasFridge` so it is
  *    never given twice. A save that is already past Level 3 (but before
  *    Level 15) gets the leftovers for the levels it still has to play.
- *  - Levels 4–14: a level's own order uses its ingredients (campaignStock's
- *    early branch). It uses what's there and never blocks: before Level 15
- *    nothing is bought for a service, so a short fridge is simply used up.
+ *  - Levels 4–14: a level's own order uses its ingredients (campaignStock).
+ *    Developer 2026-10-09 ("without these ingredients in stock I still can
+ *    cut and serve it"): a missing ingredient blocks START like from Level
+ *    15 — before the Market sells ingredients (L10), or without the money,
+ *    Grandma's pantry fills exactly the gap at no cost.
  *  - Level 12: what's running low, from the real fridge against the next
  *    services' needs.
  *  - Level 13: the top-up — the next services' needs minus the usable stock,
- *    never below zero, in whole Market steps at the Market's price. Optional:
- *    nothing is bought for the player, and START never waits for it.
+ *    never below zero, in whole Market steps at the Market's price. Nothing
+ *    is bought for the player; START waits only for this level's own needs.
  *  - Level 14: a look at what's stocked, what's low and what Levels 14–15
  *    need.
  *

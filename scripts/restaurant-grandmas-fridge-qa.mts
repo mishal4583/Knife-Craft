@@ -7,17 +7,22 @@
  *     not before Level 3 or from Level 15; an older save gets only the levels
  *     it still has to play; never more than the fridge holds.
  *  C  Levels 4–14: a level's own order uses exactly its planned ingredients,
- *     once per serve, from the same inventory; a short or empty fridge is
- *     used up and the serve never fails; replays, menu guests and Levels 1–3
- *     use nothing; Level 15 unchanged (it still refuses missing stock).
+ *     once per serve, from the same inventory; replays, menu guests and
+ *     Levels 1–3 use nothing; Level 15 unchanged. Rule changed (developer
+ *     2026-10-09, "without these ingredients in stock I still can cut and
+ *     serve it"): a short or empty fridge no longer serves — the serve is
+ *     refused with nothing taken, the Pre-Service Check applies, and before
+ *     the Market sells ingredients (L10) Grandma's pantry fills exactly the
+ *     gap at no cost.
  *  R  Level 12 running low: the rows are the real fridge against Levels
  *     12–14's needs; a well-stocked fridge shows nothing short.
  *  T  Level 13 top-up: missing = need − usable, never below zero; the Market
  *     steps cover exactly that (one step less would not); priced with the
  *     Market's own quote; nothing offered for an ingredient there's enough of;
- *     surplus → nothing to buy; too little money → said, never blocking.
+ *     surplus → nothing to buy; too little money → said, and Grandma's
+ *     pantry covers the level's own gap (never a soft-lock).
  *  P  Level 14 preview: Levels 14–15's needs, what's low, the spare stock.
- *  S  The sheet: shows on Levels 12–14's first play only; START never waits.
+ *  S  The sheet: shows on Levels 12–14's first play only.
  *  I  (Pass 2 review) Inventory follows progression: no menu figures before
  *     the menu opens (L11); then the real unlocked/active menu, never the
  *     48-dish catalog; the selectors' default (classic / Endless) unchanged.
@@ -43,6 +48,7 @@ import {
 import {
   consumeCampaignOrderStock,
   orderRequirements,
+  pantryForMissing,
 } from "../src/game/restaurant/campaignStock.ts";
 import { servicePlanFor, servicePlanNeedsSheet } from "../src/game/restaurant/preServiceCheck.ts";
 import { inventoryView } from "../src/game/business/inventoryView.ts";
@@ -200,7 +206,7 @@ console.log("C. Levels 4–14 use their real ingredients");
     replay.ok && !replay.used && replay.save === s4 && guest.ok && !guest.used && l3.ok && !l3.used,
     "C2: a replay, a menu guest (before L15) and Level 3 use nothing",
   );
-  // Short and empty fridges: used up, never failing, never negative.
+  // Short and empty fridges (rule changed 2026-10-09): the serve is refused, nothing taken.
   const short = {
     ...s4,
     business: {
@@ -211,9 +217,23 @@ console.log("C. Levels 4–14 use their real ingredients");
   const sr = consumeCampaignOrderStock(short, 4, recipe, true);
   const empty = { ...s4, business: { ...s4.business, inventory: {} } };
   const er = consumeCampaignOrderStock(empty, 4, recipe, true);
+  const shortPlan = servicePlanFor(short, level(4))!;
+  const filled = pantryForMissing(short, shortPlan.check, false);
+  const filledServe = filled ? consumeCampaignOrderStock(filled, 4, recipe, true) : null;
   assert(
-    sr.ok && qty(sr.save, "tomato") === 0 && qty(sr.save, "cucumber") === 0 && er.ok && !er.used,
-    "C3: a short fridge is used up (0.1 lb tomato → 0), an empty one changes nothing; the serve never fails",
+    !sr.ok &&
+      sr.reason === "missingStock" &&
+      qty(short, "tomato") === 0.1 &&
+      !er.ok &&
+      shortPlan.check.applies &&
+      !shortPlan.check.ready &&
+      servicePlanNeedsSheet(shortPlan) &&
+      pantryForMissing(short, shortPlan.check, true) === null &&
+      !!filled &&
+      filled.credits === short.credits &&
+      filled.economyLedger.length === short.economyLedger.length &&
+      !!filledServe?.ok,
+    "C3: a short or empty fridge refuses the serve (nothing taken); the check opens; before L10 Grandma's pantry fills the gap free and the serve then works",
   );
   // Level 15: unchanged — missing stock still refuses the serve.
   const { save: s15, recipe: r15 } = open(
@@ -350,8 +370,13 @@ console.log("T. Level 13: the top-up");
   const bn = grandmasFridgeNoteFor(broke, level(13), 13)!;
   const plan = servicePlanFor(broke, level(13))!;
   assert(
-    !bn.affordable && bn.shortRows.length > 0 && !plan.check.applies && plan.staff.length === 0,
-    "T4: with $0 the top-up says it can't all be bought; nothing (stock or staff) blocks START",
+    !bn.affordable &&
+      bn.shortRows.length > 0 &&
+      plan.staff.length === 0 &&
+      (!plan.check.applies ||
+        plan.check.ready ||
+        (!plan.check.affordable && !!pantryForMissing(broke, plan.check))),
+    "T4: with $0 the top-up says it can't all be bought; if the level's own stock is short, Grandma's pantry covers it (no soft-lock)",
   );
 }
 

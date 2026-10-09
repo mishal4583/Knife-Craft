@@ -45,6 +45,7 @@ import {
   restaurantDayOf,
   todaysServices,
 } from "../src/game/restaurant/restaurantDay.ts";
+import { giveGrandmasLeftovers } from "../src/game/restaurant/grandmasFridge.ts";
 import { servicesForDayAt } from "../src/game/restaurant/restaurantProgression.ts";
 import { servicePlanFor, servicePlanNeedsSheet } from "../src/game/restaurant/preServiceCheck.ts";
 import { dayCeremonyAt } from "../src/game/restaurant/firstLevels.ts";
@@ -110,8 +111,11 @@ console.log("O. Opening");
     "O2: opening notes the cash and the day's services (Lunch L12, Dinner L13)",
   );
   assert(openDay(opened, 13) === opened, "O3: an open day doesn't open again");
-  const plan5 = servicePlanFor(saveAt(5), getLevel("level-5")!);
-  const mid = servicePlanFor(openDay(saveAt(5), 5), getLevel("level-5")!);
+  // From Level 4 the level's own order needs stock (developer 2026-10-09): Grandma's
+  // leftovers, as App gives them after Level 3, cover Level 5.
+  const stocked5 = giveGrandmasLeftovers(saveAt(5));
+  const plan5 = servicePlanFor(stocked5, getLevel("level-5")!);
+  const mid = servicePlanFor(openDay(stocked5, 5), getLevel("level-5")!);
   // Developer 2026-10-09 (first levels, firstLevels.ts): the opening card is the
   // day's ceremony from Level 21. Before it the plan still opens the day on START,
   // but no sheet shows for it (was: "the opening card shows even before stock (L5)").
@@ -119,7 +123,7 @@ console.log("O. Opening");
     !!plan5 &&
       plan5.opening !== null &&
       !servicePlanNeedsSheet(plan5) &&
-      !plan5.check.applies &&
+      (!plan5.check.applies || plan5.check.ready) &&
       !!mid &&
       mid.opening === null &&
       !servicePlanNeedsSheet(mid) &&

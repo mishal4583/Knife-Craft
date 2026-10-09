@@ -746,6 +746,20 @@ Not implemented (from the audits, all CSS/asset-free):
    "What's in this dish?" from L9, and a section says NEW in the bottom bar
    for its first two levels. QA `restaurant-first-levels-qa` L1–L3/W5, e2e
    `restaurantgrandmasfridge.mjs` 1d.
+56. MISSING STOCK BLOCKS FROM LEVEL 4 (developer 2026-10-09: "without these
+   ingredients in stock I still can cut and serve it" — L14 with zucchini
+   and mozzarella Out still started). Levels 4–14's own orders now need
+   their ingredients (`campaignStock`: the lenient early branch is gone;
+   `serviceStockCheck(…, { ownOrders: true })`), so the Pre-Service Check
+   opens and START waits. Before L10 (no ingredients for sale) the rows
+   show "✗ Missing" without prices and Grandma's pantry fills the gap free
+   (no emergency mark); from L10 the normal Buy / Quick restock, pantry when
+   unaffordable. Menu guests still need stock only from L15. Tests changed
+   to the new rule: `restaurant-grandmas-fridge-qa` C3/T4,
+   `restaurant-stock-qa` A1, `restaurant-day-qa` O4 (stocked save), e2e
+   `restaurantgrandmasfridge` 4c/5b (+ new 6d L14, 6e L5), `lazyload`
+   (seeds L13–14 stock). The campaign sim now gives the leftovers like App;
+   completionist $174,950 → $174,948.
 
 ## 6b. Current state (2026-10-09, end of session)
 

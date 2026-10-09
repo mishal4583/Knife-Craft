@@ -153,15 +153,23 @@ console.log("A/B/D/V. Stock use");
   const r5 = rollServiceTickets(lv5)[0]!;
   const s5 = saveAt(5);
   const none = consumeCampaignOrderStock(s5, 5, r5, true);
+  const guest5 = consumeCampaignOrderStock(s5, 5, r5, true, "guest");
+  const replay5 = consumeCampaignOrderStock(s5, 5, r5, false);
   assert(
-    // 2026-10-05 teaching sequence: stock from L15 (the menu opens at L11 first).
+    // 2026-10-05 teaching sequence: menu stock from L15 (the menu opens at L11 first).
+    // Rule changed 2026-10-09 (developer: "without these ingredients in stock I still
+    // can cut and serve it"): from Level 4 a level's own order needs its stock, so an
+    // empty fridge refuses it (was: L5 used no stock); guests and replays still use none.
     !serviceUsesStock(14) &&
       serviceUsesStock(15) &&
-      none.ok &&
-      none.used === false &&
-      none.save === s5 &&
+      !none.ok &&
+      none.reason === "missingStock" &&
+      guest5.ok &&
+      !guest5.used &&
+      replay5.ok &&
+      !replay5.used &&
       serviceCheckFor(s5, lv5) === null,
-    "A1: Levels 1–14 use no stock and have no check (stock from L15)",
+    "A1: from L4 a level's own order needs its stock (empty fridge → refused); menu guests from L15; replays never",
   );
   const [t1] = rollServiceTickets(pool30);
   const before = stocked(saveAt(30), [t1!], 1);

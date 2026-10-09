@@ -9,7 +9,7 @@ import { markEmergencyService } from "@/game/restaurant/emergencyService";
 import { getSupplyItem } from "@/game/business/businessSupplies";
 import { fridgeUsage } from "@/game/restaurant/fridgeUsage";
 import { isSystemLive } from "@/game/restaurant/restaurantProgression";
-import { dayCeremonyAt } from "@/game/restaurant/firstLevels";
+import { FIRST_PURCHASE_LEVEL, dayCeremonyAt } from "@/game/restaurant/firstLevels";
 import {
   openMarketIngredients,
   openMarketPlan,
@@ -82,6 +82,7 @@ export function ServiceCheckLayer({
   }
   if (screen !== "board" && screen !== "kitchen") return null;
 
+  const canBuy = n >= FIRST_PURCHASE_LEVEL;
   return (
     <PreServiceCheck
       levelNumber={n}
@@ -103,10 +104,12 @@ export function ServiceCheckLayer({
       }
       onThrowOutExpired={onThrowOutExpired}
       onUsePantry={() => {
-        const next = pantryForMissing(save, check);
-        // Final economy pass: the service now runs on emergency goods (no quality bonus).
-        if (next) onUsePantry(markEmergencyService(next, plan.level.id));
+        const next = pantryForMissing(save, check, canBuy);
+        // Final economy pass: the service now runs on emergency goods (no quality bonus) —
+        // not before the Market sells ingredients, when the pantry is the only way.
+        if (next) onUsePantry(canBuy ? markEmergencyService(next, plan.level.id) : next);
       }}
+      canBuy={canBuy}
       onUpgradeFridge={() => go("business-refrigerator")}
       onClose={onClose}
       services={plan.services}

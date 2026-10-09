@@ -38,7 +38,7 @@ at L3, L4, L7, L9, L10, L11, L12, L13, L14 and L15, not more cutting.
 |---|---|---|
 | 1–2 | Kitchen only; Grandma's line on every Level Complete | 1 |
 | 3 | 📦 Inventory opens (Grandma's free leftovers come in pass 2) | 1 · 2 |
-| 4 | Ingredients get used up; what's left is shown | 2 |
+| 4 | Ingredients get used up; what's left is shown; missing stock blocks START (2026-10-09) | 2 |
 | 5–6 | Multi-step checklist; the goal shown first | 3 |
 | 7 | 🛒 Market opens: browse knives & boards (nothing to buy yet) | 1 |
 | 8–9 | Customer line; the dish's ingredient list | 3 · 2 |

@@ -517,13 +517,20 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   Levels 4–12's first-play needs, a pool's bigger recipe, × (1 + full
   sharpness penalty), rounded up to 0.05; cost 0, no money/ledger; older
   saves only the levels left; clamped to the fridge's free room); C Levels
-  4–14's own orders take `orderRequirements` clamped to what's usable, once
-  per serve (`consumeCampaignOrderStock(…, kind)`: "guest" uses none before
-  L15), never failing; L15 still refuses missing stock; R/T/P
+  4–14's own orders take exactly `orderRequirements`, once per serve
+  (`consumeCampaignOrderStock(…, kind)`: "guest" uses none before L15);
+  since 2026-10-09 (developer: "without these ingredients in stock I still
+  can cut and serve it") a short fridge refuses the serve like L15+:
+  `serviceStockCheck(…, { ownOrders: true })` applies from L4, the sheet
+  opens and START waits; before the Market sells ingredients (L10,
+  `FIRST_PURCHASE_LEVEL`) the check shows no Restock/prices and offers
+  Grandma's pantry (`pantryForMissing(…, canBuy = false)`, free, no
+  emergency mark), from L10 the normal Buy / Quick restock / pantry-when-
+  unaffordable; R/T/P
   `grandmasFridgeNoteFor` (low: L12–14 · top-up: L13–14, missing = need −
   usable ≥ 0, `marketUnitsCovering`, `restaurantQuote` · preview: L14–15 +
-  spare stock), on the Pre-Service sheet (`servicePlanNeedsSheet`, never
-  blocking START; "Buy" opens the Market at the exact step with the back
+  spare stock), on the Pre-Service sheet (`servicePlanNeedsSheet`; the note
+  itself never blocks START; "Buy" opens the Market at the exact step with the back
   pill); S only first plays of 12–14 with the leftovers; E rewards, a whole
   run moves no money, Pass 1 unlocks; I (review) the Inventory reads the
   restaurant's menu at its level (`inventoryMenuOf`; the selectors'

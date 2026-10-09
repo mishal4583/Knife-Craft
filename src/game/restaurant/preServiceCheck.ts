@@ -145,7 +145,7 @@ export function servicePlanFor(save: SaveData, level: LevelDefinition): ServiceP
     level,
     levelNumber: n,
     tickets: remaining,
-    check: serviceStockCheck(save, n, remaining),
+    check: serviceStockCheck(save, n, remaining, { ownOrders: true }),
     progress,
     day: restaurantDayOf(save).day,
     opening: opensNewDay(save) ? todaysServices(save, n) : null,
@@ -172,7 +172,7 @@ export function servicePlanNeedsSheet(plan: ServicePlan | null): boolean {
   if (plan.opening && dayCeremonyAt(plan.levelNumber)) return true;
   if (hasNewsToShow(plan.news)) return true;
   if (plan.welcome) return true;
-  // First levels pass 2: Grandma's note on Levels 12–14 (never blocks START).
+  // First levels pass 2: Grandma's note on Levels 12–14 (the note itself never blocks START).
   if (plan.grandmasFridge) return true;
   // Pass 2 review: the first service on real stock always opens the sheet (never blocking).
   if (plan.firstStockService) return true;

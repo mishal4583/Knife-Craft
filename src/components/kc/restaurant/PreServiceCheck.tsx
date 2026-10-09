@@ -31,6 +31,7 @@ import type { KitLine } from "@/game/restaurant/restaurantMigration";
 import type { DayStock, GuestStock } from "@/game/restaurant/preServiceCheck";
 import type { GrandmasFridgeNote } from "@/game/restaurant/grandmasFridge";
 import { getSupplyItem as supplyItemOf } from "@/game/business/businessSupplies";
+import { FIRST_PURCHASE_LEVEL } from "@/game/restaurant/firstLevels";
 
 /**
  * PRE_SERVICE_CHECK (Unified Restaurant spec §6, §24–25) — shown before a
@@ -44,8 +45,9 @@ import { getSupplyItem as supplyItemOf } from "@/game/business/businessSupplies"
  *    ingredients are bought);
  *  - expired stock: THROW OUT EXPIRED (recorded as waste, no money);
  *  - what the missing stock costs against the wallet, and fridge space;
- *  - only when the wallet can't cover it: Grandma's pantry (free, the
- *    missing items only, never automatic);
+ *  - only when the wallet can't cover it, or before the Market sells
+ *    ingredients (Level 10): Grandma's pantry (free, the missing items
+ *    only, never automatic);
  *  - START SERVICE once everything is ready.
  *
  * Phase 5: it is also the day's OPENING card. When a level opens a new
@@ -93,6 +95,7 @@ export function PreServiceCheck({
   fromGrandmasFridge = false,
   grandmasFridge = null,
   onRestockFridge = () => {},
+  canBuy = true,
 }: {
   levelNumber: number;
   day: number;
@@ -136,9 +139,14 @@ export function PreServiceCheck({
   onBuyAllInMarket?: (() => void) | null;
   /** The first service on real stock (Level 15, firstRestock.ts): Grandma introduces the routine. */
   firstRestock?: boolean;
+  /**
+   * False before the Market sells ingredients (Level 10, firstLevels.ts): no
+   * restock buttons, Grandma's pantry fills the gap (developer 2026-10-09).
+   */
+  canBuy?: boolean;
   /** The player had Grandma's leftovers (and the Level 13 top-up): say this is the hand-over. */
   fromGrandmasFridge?: boolean;
-  /** First levels pass 2: Grandma's fridge on Levels 12–14 (never blocks START). */
+  /** First levels pass 2: Grandma's fridge on Levels 12–14 (the note itself never blocks START). */
   grandmasFridge?: GrandmasFridgeNote | null;
   onRestockFridge?: (ingredientId: IngredientId, units: number) => void;
 }) {
@@ -294,7 +302,7 @@ export function PreServiceCheck({
                     key={row.ingredientId}
                     row={row}
                     measure={measure}
-                    onRestock={onRestock}
+                    onRestock={canBuy ? onRestock : null}
                   />
                 ))}
               </ul>
@@ -570,10 +578,28 @@ export function PreServiceCheck({
             >
               <p className="font-ui text-[13.5px] font-bold text-walnut-dark">
                 Missing: {stock.missingRows.length}{" "}
-                {stock.missingRows.length === 1 ? "item" : "items"} · {formatUsd(stock.missingCost)}
+                {stock.missingRows.length === 1 ? "item" : "items"}
+                {canBuy ? ` · ${formatUsd(stock.missingCost)}` : ""}
               </p>
-              <p className="font-ui text-[12.5px] text-walnut/70">You have {formatUsd(credits)}.</p>
-              {onBuyAllInMarket && stock.affordable ? (
+              {canBuy ? (
+                <p className="font-ui text-[12.5px] text-walnut/70">
+                  You have {formatUsd(credits)}.
+                </p>
+              ) : (
+                <>
+                  <p
+                    className="font-ui text-[12.5px] text-walnut/70"
+                    data-testid="psc-no-market-yet"
+                  >
+                    The service can't start without them. The Market sells ingredients from Level{" "}
+                    {FIRST_PURCHASE_LEVEL} — until then Grandma's pantry fills the gap.
+                  </p>
+                  <KButton size="sm" variant="sage" className="mt-2 min-h-12" onClick={onUsePantry}>
+                    🧺 Use Grandma's pantry (free)
+                  </KButton>
+                </>
+              )}
+              {canBuy && onBuyAllInMarket && stock.affordable ? (
                 <KButton
                   size="sm"
                   variant="sage"
@@ -584,7 +610,7 @@ export function PreServiceCheck({
                   🛒 Buy everything in the Market →
                 </KButton>
               ) : null}
-              {quickRestock && quickRestock.affordable ? (
+              {canBuy && quickRestock && quickRestock.affordable ? (
                 <div
                   className="mt-2 rounded-2xl border border-copper/40 bg-gold/10 p-2.5"
                   data-testid="psc-quick-restock"
@@ -615,7 +641,7 @@ export function PreServiceCheck({
                   ) : null}
                 </div>
               ) : null}
-              {!stock.affordable ? (
+              {canBuy && !stock.affordable ? (
                 <>
                   <p className="mt-1 font-ui text-[13.5px] font-bold text-tomato">
                     Not enough money — need {formatUsd(stock.missingCost - credits)} more.
@@ -690,7 +716,7 @@ function IngredientRow({
 }: {
   row: StockRow;
   measure: Measure;
-  onRestock: (id: IngredientId) => void;
+  onRestock: ((id: IngredientId) => void) | null;
 }) {
   const ok = row.missing === 0;
   const count = itemCountText(row.ingredientId, row.needed);
@@ -718,6 +744,8 @@ function IngredientRow({
       </div>
       {ok ? (
         <span className="font-ui text-[13.5px] font-extrabold text-sage">✓ Ready</span>
+      ) : !onRestock ? (
+        <span className="font-ui text-[13.5px] font-extrabold text-tomato">✗ Missing</span>
       ) : (
         <KButton
           size="sm"
@@ -749,9 +777,8 @@ const FRIDGE_COPY: Record<
   },
   preview: {
     title: "👵 What's in the fridge",
-    short:
-      "“A few things will run short. From Level 15 you'll check the fridge before every service.”",
-    enough: "“Everything's here. From Level 15 you'll check the fridge before every service.”",
+    short: "“A few things will run short. Today's dish needs its own before we start.”",
+    enough: "“Everything's here. From Level 15 the menu guests need stock too.”",
   },
 };
 
@@ -850,8 +877,8 @@ function GrandmasFridgeCard({
         >
           Top-up: {formatUsd(note.topUpCost)}
           {note.affordable
-            ? " · optional — the service starts either way."
-            : " · not enough money for all of it: buy what you can, the service starts either way."}
+            ? " · this level's own ingredients are needed to start; the rest is for the next one."
+            : " · not enough money for all of it: buy what you can — Grandma's pantry covers what this level still needs."}
         </p>
       ) : null}
       {note.stage === "preview" && note.spare.length > 0 ? (

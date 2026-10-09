@@ -88,7 +88,16 @@ async function playLevel(title) {
 await boot(
   page,
   seedSave({
-    business: MOVED_IN_BUSINESS,
+    // From Level 4 a level's own order needs its stock (developer 2026-10-09): the
+    // fridge holds what Levels 13 and 14 use, as after the Level 13 top-up.
+    business: {
+      ...MOVED_IN_BUSINESS,
+      inventory: Object.fromEntries(
+        Object.entries({ bread: 1, mushroom: 0.5, garlic: 0.25, zucchini: 1, carrot: 0.5 }).map(
+          ([id, quantity]) => [id, { ingredientId: id, quantity, unitCost: 0, purchaseDay: 1 }],
+        ),
+      ),
+    },
     credits: 500,
     // First levels (2026-10-09): every section is open from Level 11 in the restaurant
     // build, so the test plays Levels 13 and 14 (was 3 and 4; stock is used from 15).

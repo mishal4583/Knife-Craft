@@ -21,8 +21,9 @@
  *    Economy TODO #17.
  *
  * Replays and orders a level no longer owes use no stock (they pay
- * nothing either). Levels 1–3 never use stock; Levels 4–14's own orders use
- * Grandma's fridge, never blocking (first levels pass 2, grandmasFridge.ts).
+ * nothing either). Levels 1–3 never use stock; from Level 4 a level's own
+ * orders need theirs (Grandma's leftovers cover Levels 4–12; developer
+ * 2026-10-09), menu guests theirs from Level 15.
  *
  * Pure: every function returns new objects; nothing reads RESTAURANT_MODE.
  */
@@ -109,8 +110,11 @@ export function serviceStockCheck(
   save: SaveData,
   levelNumber: number,
   tickets: readonly RecipeDefinition[],
+  /** First levels (developer 2026-10-09): the level's own orders need their stock from Level 4. */
+  opts: { ownOrders?: boolean } = {},
 ): ServiceStockCheck {
-  if (!serviceUsesStock(levelNumber)) return { applies: false };
+  if (!serviceUsesStock(levelNumber) && !(opts.ownOrders && earlyStockAt(levelNumber)))
+    return { applies: false };
   const day = save.business.calendar.businessDay;
   const inventory = save.business.inventory;
   const measure = measureOf(save);
@@ -171,10 +175,12 @@ export function consumeCampaignOrderStock(
   /** "guest" for a menu guest: before Level 15 guests use no stock (unchanged). */
   kind: "order" | "guest" = "order",
 ): ConsumeOrderStockResult {
-  if (owesOrder && kind === "order" && earlyStockAt(levelNumber))
-    return consumeFromGrandmasFridge(save, recipe);
-  if (!owesOrder || !serviceUsesStock(levelNumber))
-    return { ok: true, save, used: false, cost: 0, requirements: [] };
+  // From Level 4 a level's own order needs its ingredients (developer 2026-10-09:
+  // "without these ingredients in stock I still can cut and serve it"); menu
+  // guests keep needing theirs from Level 15.
+  const usesStock =
+    serviceUsesStock(levelNumber) || (kind === "order" && earlyStockAt(levelNumber));
+  if (!owesOrder || !usesStock) return { ok: true, save, used: false, cost: 0, requirements: [] };
   // Planned use; where today's stock is short of it (a knife dulled during
   // the service), the serve uses what's there, never less than the floor.
   const inventory = save.business.inventory;
@@ -207,45 +213,17 @@ export function consumeCampaignOrderStock(
 }
 
 /**
- * First levels pass 2 (Levels 4–14, grandmasFridge.ts): the order uses its
- * planned stock from the fridge, as much as is there — before Level 15
- * nothing is bought for a service, so a short fridge is used up and the
- * serve never fails. Taken once per served order (the caller's one serve),
- * with the same atomic function as every other use of stock.
- */
-function consumeFromGrandmasFridge(
-  save: SaveData,
-  recipe: RecipeDefinition,
-): ConsumeOrderStockResult {
-  const inventory = save.business.inventory;
-  const day = save.business.calendar.businessDay;
-  const requirements = orderRequirements(save, recipe)
-    .map((r) => ({
-      ingredientId: r.ingredientId,
-      quantity: normalizeQuantity(
-        Math.min(r.quantity, usableQuantity(inventory, r.ingredientId, day)),
-      ),
-    }))
-    .filter((r) => r.quantity > 0);
-  if (requirements.length === 0) return { ok: true, save, used: false, cost: 0, requirements };
-  const consumed = consumeUsableIngredients(inventory, requirements, day);
-  if (!consumed.ok) return { ok: true, save, used: false, cost: 0, requirements: [] };
-  return {
-    ok: true,
-    save: { ...save, business: { ...save.business, inventory: consumed.inventory } },
-    used: true,
-    cost: realCogsFor(inventory, requirements),
-    requirements,
-  };
-}
-
-/**
  * Grandma's pantry: only when the check is not ready AND the wallet can't
  * cover the missing stock, adds exactly the missing quantities at cost 0.
  * Null when it doesn't apply. It never moves money.
  */
-export function pantryForMissing(save: SaveData, check: ServiceStockCheck): SaveData | null {
-  if (!check.applies || check.ready || check.affordable) return null;
+export function pantryForMissing(
+  save: SaveData,
+  check: ServiceStockCheck,
+  /** False before the Market sells ingredients (Level 10): the pantry is the only way then. */
+  canBuy = true,
+): SaveData | null {
+  if (!check.applies || check.ready || (check.affordable && canBuy)) return null;
   // Freshness is one weighted average per ingredient, so fresh stock added
   // on top of expired stock would make the expired part look usable again.
   // Expired stock goes first, recorded as waste (Throw Out Expired).

@@ -115,6 +115,8 @@ import {
 import { menuGuestsPerService } from "../src/game/restaurant/restaurantProgression.ts";
 import { kitchenGuestSeats } from "../src/game/restaurant/restaurantInvestments.ts";
 import { restaurantLevelOf } from "../src/game/restaurant/restaurantMenu.ts";
+import { giveGrandmasLeftovers } from "../src/game/restaurant/grandmasFridge.ts";
+import { FIRST_PURCHASE_LEVEL } from "../src/game/restaurant/firstLevels.ts";
 import { isSystemLive } from "../src/game/restaurant/restaurantProgression.ts";
 import { levelNumber } from "../src/game/levels/levelMastery.ts";
 import {
@@ -257,6 +259,8 @@ function playLevel(save: SaveData, n: number, opts: SimOptions, stats: Stats): S
     stats.closings++;
   }
   if (profile === "broke") s = drain(s);
+  // As App: Grandma's leftovers arrive once Level 3 is done (grandmasFridge.ts).
+  s = giveGrandmasLeftovers(s);
   let plan = servicePlanFor(s, level);
   if (!plan) {
     stats.blocked.push(`${where}: no plan`);
@@ -314,7 +318,12 @@ function playLevel(save: SaveData, n: number, opts: SimOptions, stats: Stats): S
     if (d.ok) s = d.save;
     replan();
   }
-  if (plan.check.applies && !plan.check.ready && profile === "diligent") {
+  if (
+    plan.check.applies &&
+    !plan.check.ready &&
+    profile === "diligent" &&
+    n >= FIRST_PURCHASE_LEVEL
+  ) {
     for (const row of plan.check.missingRows) {
       let bought = buyIngredient(s, row.ingredientId, row.buyUnits);
       if (!bought.ok && bought.reason === "insufficientStorage") {
@@ -347,9 +356,11 @@ function playLevel(save: SaveData, n: number, opts: SimOptions, stats: Stats): S
     replan();
   }
   if (plan.check.applies && !plan.check.ready) {
-    const pantry = pantryForMissing(s, plan.check);
+    // As App: before the Market sells ingredients (Level 10) the pantry is the only way.
+    const canBuy = n >= FIRST_PURCHASE_LEVEL;
+    const pantry = pantryForMissing(s, plan.check, canBuy);
     if (pantry) {
-      s = markEmergencyService(pantry, level.id);
+      s = canBuy ? markEmergencyService(pantry, level.id) : pantry;
       stats.pantry++;
       replan();
     }
@@ -466,7 +477,7 @@ function playLevel(save: SaveData, n: number, opts: SimOptions, stats: Stats): S
     if (!guest || !guest.inStock) break;
     if (isSystemLive("dine-in", n) && cleanSettings(s) < 1) break;
     const dish = businessDishForRecipeId(guest.recipe.id);
-    const stock = consumeCampaignOrderStock(s, n, guest.recipe, true);
+    const stock = consumeCampaignOrderStock(s, n, guest.recipe, true, "guest");
     if (!dish || !stock.ok) break;
     const withSupplies = takeOrderSupplies(
       stock.save,
