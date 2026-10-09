@@ -583,6 +583,12 @@ conversation.
    91". Hiring always was free; wages start with full operation (L91), and a
    team the wallet can't pay is laid off, never debt.
    `restaurant-progression-qa` H1, e2e `restaurantprogression.mjs` 5c.
+49. CLAUDE.md SLIMMED (developer 2026-10-09: it burned too many tokens —
+   "remove the unwanted things, don't lose any important things"):
+   CLAUDE.md is now the rules only (~270 lines, was 1,138); its full former
+   text is kept verbatim in `docs/REFERENCE.md` (same section numbers). From
+   now on feature details go to REFERENCE.md and a short entry here; CLAUDE.md
+   changes only when a rule changes.
 
 ## 4. Open issues from the Level 1–10 audit (not fixed yet)
 
