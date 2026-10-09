@@ -9,6 +9,7 @@
  * they were rolled just now. Pure; nothing reads RESTAURANT_MODE.
  */
 import { dayCeremonyAt } from "./firstLevels";
+import { grandmasFridgeNoteFor, type GrandmasFridgeNote } from "./grandmasFridge";
 import type { SaveData } from "../SaveManager";
 import type { LevelDefinition } from "../levels/levelTypes";
 import type { LevelProgress } from "../levels/LevelManager";
@@ -86,6 +87,8 @@ export type ServicePlan = {
   welcome: KitLine[] | null;
   /** Today's menu guests and the extra stock their dishes need (optional — never blocks). */
   guests: GuestStock;
+  /** First levels pass 2: Grandma's fridge note on Levels 12–14 (null otherwise). */
+  grandmasFridge: GrandmasFridgeNote | null;
 };
 
 /** One ingredient the menu guests need beyond the level's own orders: whole Market units. */
@@ -149,6 +152,7 @@ export function servicePlanFor(save: SaveData, level: LevelDefinition): ServiceP
     staff: staffRequirementsFor(save, n, serviceShape(save, n, remaining, services)),
     welcome: unseenStarterCrate(save),
     guests: guestStockFor(save, level, n, remaining),
+    grandmasFridge: grandmasFridgeNoteFor(save, level, n),
   };
 }
 
@@ -164,6 +168,8 @@ export function servicePlanNeedsSheet(plan: ServicePlan | null): boolean {
   if (plan.opening && dayCeremonyAt(plan.levelNumber)) return true;
   if (hasNewsToShow(plan.news)) return true;
   if (plan.welcome) return true;
+  // First levels pass 2: Grandma's note on Levels 12–14 (never blocks START).
+  if (plan.grandmasFridge) return true;
   if (!staffReady(plan)) return true;
   if (suppliesNeedAttention(plan.supplies)) return true;
   return plan.check.applies && (!plan.check.ready || plan.check.hasExpired);

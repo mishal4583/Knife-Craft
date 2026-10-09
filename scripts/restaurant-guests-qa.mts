@@ -308,7 +308,11 @@ console.log("W. Wiring");
     "W1: only an order past the level's own, under RESTAURANT_MODE, is served as a menu guest",
   );
   assert(
-    /consumeCampaignOrderStock\(save, levelNumber\(level\.id\), recipe, true\)/.test(app) &&
+    // First levels pass 2 (2026-10-09): a guest says it is one ("guest" — before L15
+    // guests use no stock; the level's own order uses Grandma's fridge).
+    /consumeCampaignOrderStock\(\s*save,\s*levelNumber\(level\.id\),\s*recipe,\s*true,\s*"guest",?\s*\)/.test(
+      app,
+    ) &&
       // Phase G: the guest's place setting + napkin are taken from that same save first.
       /const withSupplies = takeOrderSupplies\(\s*stock\.save,/.test(app) &&
       /levelProgress: withMenuGuestServed\(withSupplies\.levelProgress, level\.id\)/.test(app) &&

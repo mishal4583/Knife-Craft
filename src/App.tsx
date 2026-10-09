@@ -127,10 +127,15 @@ import {
 import { businessCustomerPayment } from "@/game/business/BusinessServiceManager";
 import { recordRevenueAndCogs } from "@/game/business/BusinessFinanceManager";
 import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
+import { giveGrandmasLeftovers } from "@/game/restaurant/grandmasFridge";
+import { requirementsForRecipes } from "@/game/restaurant/recipeRequirements";
+import { usableQuantity } from "@/game/business/perishability";
+import { formatStockAmount } from "@/game/business/measure";
 import {
   TAB_OPENING_NOTE,
   dayCeremonyAt,
   firstPurchaseRows,
+  earlyStockAt,
   grandmaLineFor,
   tabsOpeningAt,
 } from "@/game/restaurant/firstLevels";
@@ -341,6 +346,23 @@ function milestoneNoticeFor(granted: readonly MilestoneDefinition[]): MilestoneN
     reward,
     legacy: false,
   };
+}
+
+/**
+ * First levels pass 2 (display only): "🧊 Left in the fridge: Tomato 0.9 lb ·
+ * Cucumber 0.3 lb" — what the save's fridge now holds of the ingredients a
+ * level used. Null when it used none.
+ */
+function fridgeLeftLine(save: SaveData, ids: readonly IngredientId[]): string | null {
+  if (ids.length === 0) return null;
+  const day = save.business.calendar.businessDay;
+  const measure = measureOf(save);
+  return `🧊 Left in the fridge: ${ids
+    .map(
+      (id) =>
+        `${INGREDIENTS[id].name} ${formatStockAmount(id, usableQuantity(save.business.inventory, id, day), measure)}`,
+    )
+    .join(" · ")}`;
 }
 
 export function App() {
@@ -1246,7 +1268,8 @@ export function App() {
       const firstPlay = !!level && !isCompleted(level.id, save.levelProgress);
       // First levels (firstLevels.ts): before Level 21 a day that's due to
       // close closes quietly (the same closeDay the Closing Time button runs).
-      const base = quietDayEnd(save);
+      // First levels pass 2: Grandma's leftovers, once (an older save past Level 3 too).
+      const base = giveGrandmasLeftovers(quietDayEnd(save));
       // Closing time comes before the next day's first service (the Closing
       // Time sheet shows over the Order Board / Kitchen until it is done).
       if (firstPlay && restaurantDayOf(base).closingDue) {
@@ -1652,7 +1675,7 @@ export function App() {
     if (!save || !campaignServiceSession) return null;
     const dish = businessDishForRecipeId(recipe.id);
     if (!dish) return null;
-    const stock = consumeCampaignOrderStock(save, levelNumber(level.id), recipe, true);
+    const stock = consumeCampaignOrderStock(save, levelNumber(level.id), recipe, true, "guest");
     if (!stock.ok) return null;
     // A menu guest eats in (phase G): a place setting and a napkin from L31.
     const withSupplies = takeOrderSupplies(
@@ -1844,6 +1867,13 @@ export function App() {
     if (!save) return;
     // Read before completion clears the level's paid-order record (display only).
     const orderCoins = levelOrderEarnings(save, level.id);
+    // Pass 2 (display only): the ingredients this level's served dishes used
+    // (its paid orders, read before completion clears them).
+    const usedIngredients = requirementsForRecipes(
+      paidOrdersFor(save.levelProgress, level.id)
+        .map((id) => getCampaignRecipe(id))
+        .filter((r): r is RecipeDefinition => !!r),
+    ).map((r) => r.ingredientId);
     const {
       progress: levelProgress,
       isFirstCompletion,
@@ -1857,6 +1887,10 @@ export function App() {
     // First levels: before Level 21 the day closes quietly, and Level Complete says so.
     const dayBefore = restaurantDayOf(nextSave).day;
     if (RESTAURANT_MODE && isFirstCompletion) nextSave = quietDayEnd(nextSave);
+    // First levels pass 2: reaching Level 3 brings Grandma's leftovers (once).
+    const hadLeftovers = !!nextSave.business.grandmasFridge;
+    if (RESTAURANT_MODE && isFirstCompletion) nextSave = giveGrandmasLeftovers(nextSave);
+    const leftoversNow = !hadLeftovers && !!nextSave.business.grandmasFridge;
     const newDay =
       restaurantDayOf(nextSave).day !== dayBefore ? restaurantDayOf(nextSave).day : null;
     // Economy V2 Phase 9 — the completion reward is its own real wallet
@@ -1885,11 +1919,21 @@ export function App() {
           ? tabsOpeningAt(reachedNow).map((id) => TAB_OPENING_NOTE[id])
           : [];
       const grandma = RESTAURANT_MODE && isFirstCompletion ? grandmaLineFor(n) : null;
+      // Pass 2: what this level's dish left in Grandma's fridge, and her leftovers arriving.
+      const fridgeNotes =
+        RESTAURANT_MODE && isFirstCompletion
+          ? [
+              ...(earlyStockAt(n) && finalSave.business.grandmasFridge
+                ? [fridgeLeftLine(finalSave, usedIngredients)]
+                : []),
+              ...(leftoversNow ? ["🧺 Grandma's leftovers are in the fridge — free"] : []),
+            ].filter((x): x is string => !!x)
+          : [];
       setLevelRewardNotice({
         rewardCoins,
         orderCoins,
         ...(grandma ? { grandma } : {}),
-        ...(opened.length ? { opened } : {}),
+        ...(opened.length || fridgeNotes.length ? { opened: [...fridgeNotes, ...opened] } : {}),
         ...(newDay !== null ? { newDay } : {}),
         ...(moved
           ? {

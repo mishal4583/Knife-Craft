@@ -1,4 +1,7 @@
 import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
+import { serviceUsesStock } from "@/game/restaurant/campaignStock";
+import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
+import { STOCK_USED_FROM, TOP_UP_AT } from "@/game/restaurant/firstLevels";
 import { RestaurantAttentionPanel } from "./RestaurantAttentionPanel";
 import { useMemo, useRef, useState, type ReactNode } from "react";
 import type { ScreenId } from "../data";
@@ -583,6 +586,26 @@ export function InventoryScreen({
         <div className="space-y-3 px-4">
           {/* Unified Restaurant: one urgent list for the whole restaurant (read-only, navigation only). */}
           {RESTAURANT_MODE ? <RestaurantAttentionPanel save={save} go={go} /> : null}
+          {/* First levels pass 2: what Grandma's leftovers are (until stock proper, L15). */}
+          {RESTAURANT_MODE &&
+          save.business.grandmasFridge &&
+          !serviceUsesStock(restaurantLevelOf(save.levelProgress)) ? (
+            <div
+              className="rounded-[18px] border-2 border-copper/40 bg-gold/10 p-3"
+              data-testid="inventory-grandmas-leftovers"
+            >
+              <p className="font-ui text-[12.5px] font-extrabold uppercase tracking-wide text-copper">
+                👵 Grandma's leftovers
+              </p>
+              <p className="mt-0.5 font-hand text-[16px] leading-snug text-walnut/80">
+                “I saved these to help us reopen the family kitchen. They're yours — free.”
+              </p>
+              <p className="mt-1 font-ui text-[12.5px] font-bold text-walnut/70">
+                From Level {STOCK_USED_FROM}, every dish you cook uses its real ingredients from
+                this fridge. At Level {TOP_UP_AT} you'll top it up in the Market.
+              </p>
+            </div>
+          ) : null}
           {/* What kind of stock: food (the fridge) or supplies (smallwares, tableware, takeaway) */}
           <div className="grid grid-cols-2 gap-2" role="tablist" aria-label="Kind of stock">
             {KINDS.map((k) => (

@@ -120,3 +120,27 @@ export function firstPurchaseRows(): { label: string; value: string }[] {
     { label: "📋 Next", value: "your first menu at Level 11" },
   ];
 }
+
+/*
+ * Pass 2 — Grandma's fridge (developer 2026-10-09). The levels its steps
+ * happen at; the stock itself is restaurant/grandmasFridge.ts.
+ */
+/** Grandma's leftovers arrive in the fridge (with the Inventory). */
+export const LEFTOVERS_AT = 3;
+/** From here a level's own order uses its real ingredients (until stock proper, L15). */
+export const STOCK_USED_FROM = 4;
+/** Grandma points out what's running low. */
+export const RUNNING_LOW_AT = 12;
+/** The first top-up, worked out from the next services and the fridge. */
+export const TOP_UP_AT = 13;
+/** A look at the fridge and what the next services need. */
+export const PREVIEW_AT = 14;
+
+/**
+ * True for a level whose own order uses its ingredients from Grandma's
+ * fridge: Levels 4–14, before the full stock rules (Pre-Service Check,
+ * `ingredient-stock`) take over at Level 15. Never blocks a serve.
+ */
+export function earlyStockAt(levelNumber: number): boolean {
+  return levelNumber >= STOCK_USED_FROM && !isSystemLive("ingredient-stock", levelNumber);
+}

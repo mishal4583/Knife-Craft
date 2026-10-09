@@ -619,6 +619,25 @@ conversation.
    pass 2 (Grandma's leftovers in the fridge from L3, used from L4, running
    low L12, a top-up from the real need L13, preview L14), pass 3 (stars,
    customer lines, checklist).
+52. FIRST LEVELS, PASS 2 — GRANDMA'S FRIDGE (developer 2026-10-09;
+   `restaurant/grandmasFridge.ts`, on the ONE inventory, the recipes' own
+   portions and the Market's own prices): Level 3 Grandma's leftovers (once,
+   `business.grandmasFridge`; Levels 4–12's real needs at a dull knife's
+   most, cost 0, no ledger; an older save at L4–14 gets the levels it still
+   has to play; never more than fits); Levels 4–14 a level's own order uses
+   its planned ingredients (`consumeCampaignOrderStock` early branch: as much
+   as is there, never blocking; replays, menu guests and L1–3 use none; L15+
+   unchanged); Level Complete "🧊 Left in the fridge: …"; Levels 12/13/14
+   open a sheet with Grandma's note (running low · the top-up = need − usable,
+   whole Market steps, Market price, optional, "Buy" → the Market at that
+   step · a preview of Levels 14–15), START never waits; Inventory explains
+   the leftovers until L15. Money: none moves except an optional top-up
+   (about $3.55 at L13). Tests changed (wiring regexes only):
+   `level-ux-qa` N1, `restaurant-day-qa` W2, `restaurant-guests-qa` W2. New:
+   `restaurant-grandmas-fridge-qa`, e2e `restaurantgrandmasfridge.mjs`.
+   Known: Grandma's first-shopping-trip card at L15 no longer shows for a
+   player with food left in the fridge (it ends when there is any stock —
+   unchanged rule); the L13 top-up is the first purchase now.
 
 ## 4. Open issues from the Level 1–10 audit (not fixed yet)
 

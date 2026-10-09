@@ -21,7 +21,8 @@
  *    Economy TODO #17.
  *
  * Replays and orders a level no longer owes use no stock (they pay
- * nothing either). Levels 1–10 never use stock.
+ * nothing either). Levels 1–3 never use stock; Levels 4–14's own orders use
+ * Grandma's fridge, never blocking (first levels pass 2, grandmasFridge.ts).
  *
  * Pure: every function returns new objects; nothing reads RESTAURANT_MODE.
  */
@@ -40,6 +41,7 @@ import { realCogsFor } from "../business/BusinessFinanceManager";
 import { getAvailableStorageCapacity } from "../business/RefrigeratorManager";
 import { discardExpiredStock } from "../business/discardExpired";
 import { isSystemLive } from "./unlocks";
+import { earlyStockAt } from "./firstLevels";
 import { recipeRequirements, sumRequirements } from "./recipeRequirements";
 import { restaurantQuote, stockUseFor } from "./restaurantEconomy";
 import { marketUnitsCovering, measureOf, stockForMarketUnits } from "../business/measure";
@@ -166,7 +168,11 @@ export function consumeCampaignOrderStock(
   levelNumber: number,
   recipe: RecipeDefinition,
   owesOrder: boolean,
+  /** "guest" for a menu guest: before Level 15 guests use no stock (unchanged). */
+  kind: "order" | "guest" = "order",
 ): ConsumeOrderStockResult {
+  if (owesOrder && kind === "order" && earlyStockAt(levelNumber))
+    return consumeFromGrandmasFridge(save, recipe);
   if (!owesOrder || !serviceUsesStock(levelNumber))
     return { ok: true, save, used: false, cost: 0, requirements: [] };
   // Planned use; where today's stock is short of it (a knife dulled during
@@ -196,6 +202,39 @@ export function consumeCampaignOrderStock(
     save: { ...save, business: { ...save.business, inventory: consumed.inventory } },
     used: true,
     cost,
+    requirements,
+  };
+}
+
+/**
+ * First levels pass 2 (Levels 4–14, grandmasFridge.ts): the order uses its
+ * planned stock from the fridge, as much as is there — before Level 15
+ * nothing is bought for a service, so a short fridge is used up and the
+ * serve never fails. Taken once per served order (the caller's one serve),
+ * with the same atomic function as every other use of stock.
+ */
+function consumeFromGrandmasFridge(
+  save: SaveData,
+  recipe: RecipeDefinition,
+): ConsumeOrderStockResult {
+  const inventory = save.business.inventory;
+  const day = save.business.calendar.businessDay;
+  const requirements = orderRequirements(save, recipe)
+    .map((r) => ({
+      ingredientId: r.ingredientId,
+      quantity: normalizeQuantity(
+        Math.min(r.quantity, usableQuantity(inventory, r.ingredientId, day)),
+      ),
+    }))
+    .filter((r) => r.quantity > 0);
+  if (requirements.length === 0) return { ok: true, save, used: false, cost: 0, requirements };
+  const consumed = consumeUsableIngredients(inventory, requirements, day);
+  if (!consumed.ok) return { ok: true, save, used: false, cost: 0, requirements: [] };
+  return {
+    ok: true,
+    save: { ...save, business: { ...save.business, inventory: consumed.inventory } },
+    used: true,
+    cost: realCogsFor(inventory, requirements),
     requirements,
   };
 }

@@ -29,6 +29,7 @@ import type { StaffRequirement } from "@/game/restaurant/staffRequirements";
 import type { FridgeUsage } from "@/game/restaurant/fridgeUsage";
 import type { KitLine } from "@/game/restaurant/restaurantMigration";
 import type { DayStock, GuestStock } from "@/game/restaurant/preServiceCheck";
+import type { GrandmasFridgeNote } from "@/game/restaurant/grandmasFridge";
 import { getSupplyItem as supplyItemOf } from "@/game/business/businessSupplies";
 
 /**
@@ -89,6 +90,8 @@ export function PreServiceCheck({
   onQuickRestock = () => {},
   onBuyAllInMarket = null,
   firstRestock = false,
+  grandmasFridge = null,
+  onRestockFridge = () => {},
 }: {
   levelNumber: number;
   day: number;
@@ -132,6 +135,9 @@ export function PreServiceCheck({
   onBuyAllInMarket?: (() => void) | null;
   /** The player has never bought an ingredient: Grandma walks them through the first restock. */
   firstRestock?: boolean;
+  /** First levels pass 2: Grandma's fridge on Levels 12–14 (never blocks START). */
+  grandmasFridge?: GrandmasFridgeNote | null;
+  onRestockFridge?: (ingredientId: IngredientId, units: number) => void;
 }) {
   // Optional sections start folded so START and what blocks it stay in view.
   const [showGuests, setShowGuests] = useState(false);
@@ -230,6 +236,14 @@ export function PreServiceCheck({
               </li>
             ))}
           </ul>
+
+          {grandmasFridge ? (
+            <GrandmasFridgeCard
+              note={grandmasFridge}
+              measure={measure}
+              onRestock={onRestockFridge}
+            />
+          ) : null}
 
           {stock && !stock.ready && firstRestock ? (
             <div
@@ -697,6 +711,142 @@ function IngredientRow({
         </KButton>
       )}
     </li>
+  );
+}
+
+const FRIDGE_COPY: Record<
+  GrandmasFridgeNote["stage"],
+  { title: string; short: string; enough: string }
+> = {
+  low: {
+    title: "👵 Grandma's fridge is running low",
+    short: "“We're running low on a few things. Have a look before the next services.”",
+    enough: "“The fridge still has what the next services need. Well kept!”",
+  },
+  "top-up": {
+    title: "👵 Your first top-up",
+    short: "“Buy just what the next services need — nothing we already have.”",
+    enough: "“Nothing to buy: the fridge already has enough. Never buy what you don't need.”",
+  },
+  preview: {
+    title: "👵 What's in the fridge",
+    short:
+      "“A few things will run short. From Level 15 you'll check the fridge before every service.”",
+    enough: "“Everything's here. From Level 15 you'll check the fridge before every service.”",
+  },
+};
+
+/**
+ * First levels pass 2 (grandmasFridge.ts): Level 12 what's running low,
+ * Level 13 the top-up (Market buttons for the exact missing steps), Level 14
+ * a look at the fridge and the next needs. Read from the save; never blocks
+ * START, never buys anything itself.
+ */
+function GrandmasFridgeCard({
+  note,
+  measure,
+  onRestock,
+}: {
+  note: GrandmasFridgeNote;
+  measure: Measure;
+  onRestock: (ingredientId: IngredientId, units: number) => void;
+}) {
+  const copy = FRIDGE_COPY[note.stage];
+  const rows = note.stage === "low" ? note.shortRows : note.rows;
+  const span =
+    note.levels.length > 1
+      ? `Levels ${note.levels[0]}–${note.levels[note.levels.length - 1]}`
+      : `Level ${note.levels[0] ?? ""}`;
+  return (
+    <div
+      className="mb-2 rounded-2xl border-2 border-copper/50 bg-gold/10 p-3"
+      data-testid="psc-grandmas-fridge"
+      data-fridge-stage={note.stage}
+    >
+      <p className="font-ui text-[12.5px] font-extrabold uppercase tracking-wide text-copper">
+        {copy.title}
+      </p>
+      <p className="mt-0.5 font-hand text-[16px] leading-snug text-walnut/80">
+        {note.shortRows.length > 0 ? copy.short : copy.enough}
+      </p>
+      {rows.length > 0 ? (
+        <>
+          <p className="mt-2 font-ui text-[12px] font-extrabold uppercase tracking-wide text-walnut/55">
+            For {span}
+          </p>
+          <ul className="mt-0.5 divide-y divide-walnut/10">
+            {rows.map((r) => {
+              const short = r.missing > 0;
+              return (
+                <li
+                  key={r.ingredientId}
+                  className="flex min-h-12 items-center gap-2 py-1.5"
+                  data-fridge-ingredient={r.ingredientId}
+                  data-fridge-status={short ? (r.usable > 0 ? "low" : "out") : "ok"}
+                >
+                  <span className="text-[20px]" aria-hidden>
+                    {INGREDIENT_EMOJI[r.ingredientId]}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-ui text-[14.5px] font-bold text-walnut-dark">
+                      {INGREDIENTS[r.ingredientId].name}
+                    </p>
+                    <p
+                      className={cn(
+                        "font-ui text-[12.5px]",
+                        short ? "text-tomato" : "text-walnut/60",
+                      )}
+                    >
+                      Need {formatStockAmount(r.ingredientId, r.need, measure)} · have{" "}
+                      {formatStockAmount(r.ingredientId, r.usable, measure)}
+                    </p>
+                  </div>
+                  {!short ? (
+                    <span className="font-ui text-[13.5px] font-extrabold text-sage">✓ Enough</span>
+                  ) : note.stage === "top-up" ? (
+                    <KButton
+                      size="sm"
+                      variant="copper"
+                      className="min-h-12"
+                      onClick={() => onRestock(r.ingredientId, r.buyUnits)}
+                    >
+                      Buy {r.buyUnits} {marketUnitLabel(r.ingredientId, measure, r.buyUnits)} ·{" "}
+                      {formatUsd(r.cost)}
+                    </KButton>
+                  ) : (
+                    <span className="font-ui text-[13.5px] font-extrabold text-tomato">
+                      {r.usable > 0 ? "Low" : "Out"}
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </>
+      ) : null}
+      {note.stage === "top-up" && note.shortRows.length > 0 ? (
+        <p
+          className="mt-1 font-ui text-[12.5px] font-bold text-walnut/70"
+          data-testid="fridge-top-up"
+        >
+          Top-up: {formatUsd(note.topUpCost)}
+          {note.affordable
+            ? " · optional — the service starts either way."
+            : " · not enough money for all of it: buy what you can, the service starts either way."}
+        </p>
+      ) : null}
+      {note.stage === "preview" && note.spare.length > 0 ? (
+        <p className="mt-1 font-ui text-[12.5px] text-walnut/70">
+          Also in the fridge:{" "}
+          {note.spare
+            .map(
+              (x) =>
+                `${INGREDIENTS[x.ingredientId].name} ${formatStockAmount(x.ingredientId, x.usable, measure)}`,
+            )
+            .join(" · ")}
+        </p>
+      ) : null}
+    </div>
   );
 }
 

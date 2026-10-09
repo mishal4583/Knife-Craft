@@ -49,9 +49,13 @@ at L3, L4, L7, L9, L10, L11, L12, L13, L14 and L15, not more cutting.
 | 14 | Preview of the next service's ingredients | 2 |
 | 15 | Full Pre-Service Check; normal stock from here | — |
 
+Pass 1 shipped 2026-10-09; pass 2 (Grandma's fridge: L3 leftovers, L4 use,
+L12 running low, L13 top-up, L14 preview) is implemented on the working
+branch (`restaurant/grandmasFridge.ts`).
+
 Before Level 21 a day ends quietly (Level Complete says "☀️ Day N
 begins"); the opening card and Closing Time start at Level 21.
 
 **Unchanged by pass 1:** what any level pays, completion rewards, milestone
-rewards, the level order, the cutting and knife behaviour, when stock is used
-(Level 15).
+rewards, the level order, the cutting and knife behaviour. Pass 2 moves no
+money except the optional L13 top-up (about $3.55).

@@ -2,6 +2,7 @@ import type { RestaurantDayState } from "../restaurant/restaurantDay";
 import type { RestaurantSuppliesState } from "../restaurant/serviceSupplies";
 import type { RestaurantStaffState } from "../restaurant/staffRequirements";
 import type { RestaurantMigrationState } from "../restaurant/restaurantMigration";
+import type { GrandmasFridgeState } from "../restaurant/grandmasFridge";
 import type { EndlessStarsState } from "../restaurant/restaurantStanding";
 /**
  * BUSINESS_TYPES — Economy V3's own persisted-state container. A single
@@ -102,6 +103,12 @@ export type BusinessState = {
    * (restaurant/restaurantMigration.ts). Optional; absent = not moved yet.
    */
   restaurantMigration?: RestaurantMigrationState;
+  /**
+   * Unified Restaurant (RESTAURANT_MODE), first levels pass 2: Grandma's
+   * one-time leftovers (restaurant/grandmasFridge.ts). Optional; absent =
+   * not given yet.
+   */
+  grandmasFridge?: GrandmasFridgeState;
   /**
    * Unified Restaurant (RESTAURANT_MODE): the Endless Restaurant's lifetime
    * stars — STATUS ONLY, never money (restaurant/restaurantStanding.ts).

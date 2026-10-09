@@ -36,12 +36,16 @@ Complete); from Level 21 each day opens with its card and ends with
   🔒 "Lv N".
 - **Grandma** says a line on every Level Complete up to Level 15.
 - **The day:** days pass quietly ("☀️ Day 2 begins").
-- **Nothing to stock yet** — just cook.
+- **Grandma's fridge** (L3): her leftovers arrive free; from **L4** every
+  dish uses its real ingredients from the fridge ("🧊 Left in the fridge").
 - **Milestone L10:** *"The room comes back."* — a big card.
 - **Unlocks at L10:** the first things to buy: Santoku knife ($350), Maple
   Board ($300), optional.
 
 ### Levels 11–20 · Italian Kitchen  *(stage: Opening Menu → Pantry at L15)*
+- **L12** Grandma: what's running low. **L13** your first top-up — only what
+  the next services need (about $3.55, optional). **L14** a look at the
+  fridge and Levels 14–15's needs.
 - **L11 — Your menu** opens with 4 dishes. **Menu guests** start: 1 per
   service (optional extra orders that pay the dish's menu price).
 - **L15 — Ingredient stock:** orders now use real food from your fridge.

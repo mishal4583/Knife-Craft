@@ -130,6 +130,8 @@ export function ServiceCheckLayer({
       }
       fridge={isSystemLive("fridge-freshness", n) ? fridgeUsage(save) : null}
       measure={measureOf(save)}
+      grandmasFridge={plan.grandmasFridge}
+      onRestockFridge={(id, units) => openMarketIngredients(go, id, units)}
       onBuyAllInMarket={() => openMarketPlan(go)}
       firstRestock={!hasBoughtIngredients(save)}
       quickRestock={quickRestockPlan(save, check)}

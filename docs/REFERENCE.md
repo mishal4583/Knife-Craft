@@ -484,6 +484,24 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   and board prices unchanged; W wiring (Kitchen places + rank card wait for
   their level, the Market before L10 = Knives + Cutting Boards only,
   `FIRST_PURCHASE_LEVEL`). Browser: `tools/e2e/restaurantfirstlevels.mjs`.
+- `restaurant-grandmas-fridge-qa` — GRANDMA'S FRIDGE, first levels pass 2
+  (developer 2026-10-09; `restaurant/grandmasFridge.ts`, levels in
+  `firstLevels.ts`: LEFTOVERS_AT 3, STOCK_USED_FROM 4, RUNNING_LOW_AT 12,
+  TOP_UP_AT 13, PREVIEW_AT 14, `earlyStockAt` = 4–14): L the leftovers
+  (`giveGrandmasLeftovers`, once, `business.grandmasFridge {atLevel, lines}`;
+  Levels 4–12's first-play needs, a pool's bigger recipe, × (1 + full
+  sharpness penalty), rounded up to 0.05; cost 0, no money/ledger; older
+  saves only the levels left; clamped to the fridge's free room); C Levels
+  4–14's own orders take `orderRequirements` clamped to what's usable, once
+  per serve (`consumeCampaignOrderStock(…, kind)`: "guest" uses none before
+  L15), never failing; L15 still refuses missing stock; R/T/P
+  `grandmasFridgeNoteFor` (low: L12–14 · top-up: L13–14, missing = need −
+  usable ≥ 0, `marketUnitsCovering`, `restaurantQuote` · preview: L14–15 +
+  spare stock), on the Pre-Service sheet (`servicePlanNeedsSheet`, never
+  blocking START; "Buy" opens the Market at the exact step with the back
+  pill); S only first plays of 12–14 with the leftovers; E rewards, a whole
+  run moves no money, Pass 1 unlocks. Browser:
+  `tools/e2e/restaurantgrandmasfridge.mjs`.
 - `restaurant-city-ranking-qa` — the CITY RANKING (developer 2026-10-09:
   "add some mock restaurants and implement a ranking — gradually progress to
   the top 1 restaurant after completing the campaign";
