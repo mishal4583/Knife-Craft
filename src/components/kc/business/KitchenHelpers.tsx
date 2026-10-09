@@ -46,12 +46,12 @@ export function KitchenHelpers({
     <Panel className="p-4">
       <div data-testid="kitchen-helpers">
         <Eyebrow>🔪 Kitchen helpers</Eyebrow>
-        <p className="mt-1 font-hand text-[16px] leading-snug text-walnut/65">
+        <p className="mt-1 font-hand text-[15px] leading-snug text-walnut/65">
           One-time hires for your kitchen: they help in every recipe, campaign included. No daily
           wages.
         </p>
         {message ? (
-          <p className="mt-1 font-hand text-[17px] text-copper" aria-live="polite">
+          <p className="mt-1 font-hand text-[16px] text-copper" aria-live="polite">
             {message}
           </p>
         ) : null}
@@ -71,11 +71,11 @@ export function KitchenHelpers({
                   {HELPER_ICON[st.id] ?? "🧑‍🍳"}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="font-ui text-[14.5px] font-extrabold text-walnut-dark">{st.name}</p>
-                  <p className="font-hand text-[15px] leading-tight text-walnut/65">
+                  <p className="font-ui text-[13.5px] font-extrabold text-walnut-dark">{st.name}</p>
+                  <p className="font-hand text-[14px] leading-tight text-walnut/65">
                     {st.description}
                   </p>
-                  <p className="font-ui text-[12.5px] font-bold text-walnut/60">
+                  <p className="font-ui text-[12px] font-bold text-walnut/60">
                     {formatUsd(st.price)} · one time
                   </p>
                 </div>
@@ -87,7 +87,7 @@ export function KitchenHelpers({
                   <KButton
                     size="sm"
                     variant="copper"
-                    className="h-12 shrink-0 px-3 text-[13.5px]"
+                    className="h-12 shrink-0 px-3 text-[12.5px]"
                     onClick={() => hire(st.id, st.name, st.price, st.unlockLevel)}
                   >
                     Hire · {formatUsd(st.price)}

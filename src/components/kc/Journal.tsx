@@ -76,11 +76,11 @@ export function DailyOrder({
             <p className="mt-3 text-center font-display text-[26px] font-black leading-none text-walnut-dark">
               {level.title}
             </p>
-            <p className="mt-1 text-center font-hand text-[19px] text-walnut/65">
+            <p className="mt-1 text-center font-hand text-[18px] text-walnut/65">
               {level.subtitle}
             </p>
             <Divider />
-            <div className="space-y-2 font-ui text-[13.5px] font-bold text-walnut/75">
+            <div className="space-y-2 font-ui text-[12.5px] font-bold text-walnut/75">
               <div className="flex justify-between">
                 <span>Reward</span>
                 <span className="text-copper">{formatUsdChange(paidLevelReward(level))}</span>
@@ -105,7 +105,7 @@ export function DailyOrder({
               </KButton>
             </div>
           </div>
-          <p className="pt-4 text-center font-hand text-[17px] text-walnut/45">
+          <p className="pt-4 text-center font-hand text-[16px] text-walnut/45">
             the order waits as long as you need — missing a day never locks anything
           </p>
         </div>
@@ -153,10 +153,10 @@ export function EndlessService({
 
         <div className="px-4 pt-2">
           <Panel className="p-4">
-            <p className="font-ui text-[11.5px] font-extrabold uppercase tracking-[0.2em] text-copper">
+            <p className="font-ui text-[11px] font-extrabold uppercase tracking-[0.2em] text-copper">
               Today
             </p>
-            <div className="mt-2 space-y-2 font-ui text-[13.5px] font-bold text-walnut/75">
+            <div className="mt-2 space-y-2 font-ui text-[12.5px] font-bold text-walnut/75">
               <div className="flex justify-between">
                 <span>Earned today</span>
                 <span className="text-walnut-dark">
@@ -185,10 +185,10 @@ export function EndlessService({
           {pool.length === 0 ? (
             <Panel className="p-5 text-center">
               <p className="text-[40px] leading-none">🔒</p>
-              <p className="mt-2 font-display text-[18px] font-black text-walnut-dark">
+              <p className="mt-2 font-display text-[17.5px] font-black text-walnut-dark">
                 Unlocks after Level 250
               </p>
-              <p className="mt-1 font-hand text-[18px] leading-snug text-walnut/65">
+              <p className="mt-1 font-hand text-[17px] leading-snug text-walnut/65">
                 Endless Service is an ongoing earning mode for after the campaign: serve orders from
                 the campaign's service levels, one after another, and earn up to{" "}
                 {formatUsd(ENDLESS_DAILY_COIN_CAP)} every day.
@@ -200,7 +200,7 @@ export function EndlessService({
               <p className="mt-2 font-display text-[18px] font-black text-walnut-dark">
                 {pool.length} service{pool.length === 1 ? "" : "s"} in rotation
               </p>
-              <p className="mt-1 font-hand text-[17px] text-walnut/60">
+              <p className="mt-1 font-hand text-[16px] text-walnut/60">
                 {capReached
                   ? "still counts toward the Cookbook — no more earnings until tomorrow"
                   : `up to ${formatUsdChange(remaining)} left today`}
@@ -212,7 +212,7 @@ export function EndlessService({
               </div>
             </Panel>
           )}
-          <p className="pt-4 text-center font-hand text-[17px] text-walnut/45">
+          <p className="pt-4 text-center font-hand text-[16px] text-walnut/45">
             no lives, no timer — stop whenever you want
           </p>
         </div>
@@ -255,8 +255,8 @@ export function Settings({
           {onSetMeasure ? (
             <div data-testid="measure-setting">
               <Panel className="p-3">
-                <p className="font-ui text-[14.5px] font-bold text-walnut-dark">Weights</p>
-                <p className="font-hand text-[16px] leading-snug text-walnut/65">
+                <p className="font-ui text-[13.5px] font-bold text-walnut-dark">Weights</p>
+                <p className="font-hand text-[15px] leading-snug text-walnut/65">
                   How the Market, the fridge and your orders weigh ingredients.
                 </p>
                 <div className="mt-2 grid grid-cols-2 gap-2" role="radiogroup" aria-label="Weights">
@@ -273,7 +273,7 @@ export function Settings({
                       aria-checked={measure === value}
                       onClick={() => onSetMeasure(value)}
                       className={cn(
-                        "press h-12 rounded-2xl border font-ui text-[14.5px] font-extrabold",
+                        "press h-12 rounded-2xl border font-ui text-[13.5px] font-extrabold",
                         measure === value
                           ? "wood border-walnut-dark/50 text-ivory"
                           : "card-warm border-walnut/15 text-walnut-dark",
@@ -287,10 +287,10 @@ export function Settings({
             </div>
           ) : null}
           <Panel className="p-4">
-            <p className="font-ui text-[11.5px] font-extrabold uppercase tracking-[0.2em] text-copper">
+            <p className="font-ui text-[11px] font-extrabold uppercase tracking-[0.2em] text-copper">
               Credits
             </p>
-            <p className="mt-1.5 font-hand text-[18px] leading-snug text-walnut/70">
+            <p className="mt-1.5 font-hand text-[17px] leading-snug text-walnut/70">
               KnifeCraft — a small kitchen made by a small team.
             </p>
           </Panel>
@@ -312,7 +312,7 @@ function Toggle({ label, on, onToggle }: { label: string; on?: boolean; onToggle
       aria-pressed={on}
       className="flex min-h-12 w-full items-center justify-between px-3 py-3 text-left"
     >
-      <span className="font-ui text-[14.5px] font-bold text-walnut-dark">{label}</span>
+      <span className="font-ui text-[13.5px] font-bold text-walnut-dark">{label}</span>
       <span
         className={cn(
           "relative h-6 w-11 rounded-full border transition-colors",
@@ -333,8 +333,8 @@ function Toggle({ label, on, onToggle }: { label: string; on?: boolean; onToggle
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between px-3 py-3">
-      <span className="font-ui text-[14.5px] font-bold text-walnut-dark">{label}</span>
-      <span className="font-ui text-[13.5px] font-bold text-walnut/55">{value} ›</span>
+      <span className="font-ui text-[13.5px] font-bold text-walnut-dark">{label}</span>
+      <span className="font-ui text-[12.5px] font-bold text-walnut/55">{value} ›</span>
     </div>
   );
 }

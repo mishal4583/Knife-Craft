@@ -108,10 +108,10 @@ export function MarketSupplies({
   return (
     <div className="space-y-3" data-testid={`market-supplies-${section}`}>
       <Panel className="p-3">
-        <p className="font-ui text-[12.5px] font-extrabold uppercase tracking-[0.12em] text-copper">
+        <p className="font-ui text-[12px] font-extrabold uppercase tracking-[0.12em] text-copper">
           {meta.emoji} {meta.kicker}
         </p>
-        <p className="mt-1 font-hand text-[16px] leading-snug text-walnut/65">
+        <p className="mt-1 font-hand text-[15px] leading-snug text-walnut/65">
           {section === "packaging"
             ? "Each Business order goes out in one container and one carry bag while you have them."
             : "Restaurant equipment for your Business kitchen and dining room. It lasts; it's never used up."}{" "}
@@ -131,7 +131,7 @@ export function MarketSupplies({
             onClick={() => setGroup(g)}
             aria-pressed={group === g}
             className={cn(
-              "press h-12 min-w-12 shrink-0 rounded-full border px-3.5 font-ui text-[13.5px] font-extrabold",
+              "press h-12 min-w-12 shrink-0 rounded-full border px-3.5 font-ui text-[12.5px] font-extrabold",
               group === g
                 ? "wood border-walnut-dark/50 text-ivory"
                 : "card-warm border-walnut/15 text-walnut-dark",
@@ -170,17 +170,17 @@ export function MarketSupplies({
                   </Badge>
                 ) : null}
               </div>
-              <p className="mt-1 font-display text-[15.5px] font-black leading-tight text-walnut-dark">
+              <p className="mt-1 font-display text-[14.5px] font-black leading-tight text-walnut-dark">
                 {item.name}
               </p>
-              <p className="font-ui text-[13.5px] font-extrabold text-copper">
+              <p className="font-ui text-[12.5px] font-extrabold text-copper">
                 {formatUsd(quote.packPrice)}
                 <span className="font-bold text-walnut/60">
                   {" "}
                   / {item.packSize === 1 ? unitLabel(item, 1) : `pack of ${item.packSize}`}
                 </span>
               </p>
-              <p className="font-hand text-[15px] leading-tight text-walnut/60">
+              <p className="font-hand text-[14px] leading-tight text-walnut/60">
                 {item.group} · retail {formatUsd(item.retailPackCents)}
               </p>
               <div className="mt-2 flex items-center justify-between">
@@ -192,7 +192,7 @@ export function MarketSupplies({
                 >
                   −
                 </button>
-                <span className="text-center font-ui text-[13.5px] font-extrabold leading-tight text-walnut-dark">
+                <span className="text-center font-ui text-[12.5px] font-extrabold leading-tight text-walnut-dark">
                   {n} pack{n === 1 ? "" : "s"}
                   <br />
                   <span className="font-bold text-walnut/60">
@@ -217,7 +217,7 @@ export function MarketSupplies({
               ) : null}
               {quote.bulkDiscount > 0 ? (
                 <p
-                  className="mt-1 text-center font-ui text-[12.5px] font-bold text-olive"
+                  className="mt-1 text-center font-ui text-[12px] font-bold text-olive"
                   data-testid="bulk-saving"
                 >
                   Bulk −{Math.round(quote.bulkDiscount * 100)}% · saves{" "}
@@ -225,21 +225,21 @@ export function MarketSupplies({
                 </p>
               ) : null}
               {message ? (
-                <p className="mt-1 text-center font-hand text-[14px] leading-tight text-copper">
+                <p className="mt-1 text-center font-hand text-[13px] leading-tight text-copper">
                   {message}
                 </p>
               ) : null}
               <KButton
                 full
                 variant={quote.verdict === "ok" ? "copper" : "ghost"}
-                className="mt-auto h-12 px-2 text-[13.5px]"
+                className="mt-auto h-12 px-2 text-[12.5px]"
                 onClick={() => handleBuy(item.id)}
               >
                 Buy · {formatUsd(quote.totalCost)}
               </KButton>
               <p
                 className={cn(
-                  "wallet-line mt-1 text-center font-ui text-[12.5px] font-bold leading-tight",
+                  "wallet-line mt-1 text-center font-ui text-[12px] font-bold leading-tight",
                   quote.verdict === "ok" ? "text-walnut/65" : "text-copper",
                 )}
               >

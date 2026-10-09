@@ -54,7 +54,7 @@ export function BusinessInspections({ save }: { save: SaveData }) {
       <p className="mt-1 font-display text-[18px] font-black text-walnut-dark">
         {passed} / {report.categories.length} checks passed
       </p>
-      <p className="font-hand text-[16px] leading-snug text-walnut/65">{report.overallReason}</p>
+      <p className="font-hand text-[15px] leading-snug text-walnut/65">{report.overallReason}</p>
 
       <div className="mt-2 space-y-1.5">
         {report.categories.map((c) => (
@@ -66,12 +66,12 @@ export function BusinessInspections({ save }: { save: SaveData }) {
             )}
           >
             <div className="flex items-center justify-between gap-2">
-              <p className="font-ui text-[14.5px] font-extrabold text-walnut-dark">
+              <p className="font-ui text-[13.5px] font-extrabold text-walnut-dark">
                 {CATEGORY_LABEL[c.category]}
               </p>
               <span
                 className={cn(
-                  "shrink-0 font-ui text-[12.5px] font-extrabold",
+                  "shrink-0 font-ui text-[12px] font-extrabold",
                   c.result === "PASS" ? "text-olive" : "text-copper",
                 )}
               >
@@ -79,7 +79,7 @@ export function BusinessInspections({ save }: { save: SaveData }) {
               </span>
             </div>
             {c.result !== "PASS" ? (
-              <p className="mt-0.5 font-hand text-[15px] leading-snug text-walnut/65">{c.reason}</p>
+              <p className="mt-0.5 font-hand text-[14px] leading-snug text-walnut/65">{c.reason}</p>
             ) : null}
           </div>
         ))}
@@ -87,7 +87,7 @@ export function BusinessInspections({ save }: { save: SaveData }) {
 
       <div className="mt-3 rounded-[14px] bg-cream/70 p-3">
         <div className="flex items-center justify-between gap-2">
-          <p className="font-ui text-[13.5px] font-extrabold text-walnut-dark">
+          <p className="font-ui text-[12.5px] font-extrabold text-walnut-dark">
             Tonight's official inspection
           </p>
           <Badge tone={RESULT_BADGE_TONE[atClose.inspectionReport.overall]}>
@@ -96,7 +96,7 @@ export function BusinessInspections({ save }: { save: SaveData }) {
         </div>
         <p
           className={cn(
-            "mt-1 font-ui text-[14.5px] font-extrabold",
+            "mt-1 font-ui text-[13.5px] font-extrabold",
             atClose.inspectionFine.fineAmount > 0 ? "text-copper" : "text-olive",
           )}
         >
@@ -104,7 +104,7 @@ export function BusinessInspections({ save }: { save: SaveData }) {
             ? `Fine ${formatUsd(atClose.inspectionFine.fineAmount)}${atClose.inspectionFine.finePaid === 0 ? " — more than your cash after pay, so it can't be collected (never debt)" : ""}`
             : "No fine"}
         </p>
-        <p className="mt-0.5 font-hand text-[15px] leading-snug text-walnut/60">
+        <p className="mt-0.5 font-hand text-[14px] leading-snug text-walnut/60">
           It runs after tonight's spoilage and pay. Last inspection: {lastResult ?? "none yet"}.
           {atClose.inspectionReport.overall === "WARNING"
             ? lastResult === "WARNING" || lastResult === "FAIL"
@@ -116,25 +116,25 @@ export function BusinessInspections({ save }: { save: SaveData }) {
 
       <div className="mt-3 grid grid-cols-2 gap-2 text-center">
         <div className="rounded-[14px] border border-walnut/10 bg-ivory/60 px-2 py-2">
-          <p className="font-ui text-[11.5px] font-bold text-walnut/55">Small fine</p>
-          <p className="font-display text-[17px] font-black text-walnut-dark">
+          <p className="font-ui text-[11px] font-bold text-walnut/55">Small fine</p>
+          <p className="font-display text-[16.5px] font-black text-walnut-dark">
             {formatUsd(repeatedWarningFineAmount())}
           </p>
-          <p className="font-hand text-[14px] leading-tight text-walnut/55">
+          <p className="font-hand text-[13px] leading-tight text-walnut/55">
             warning after warning
           </p>
         </div>
         <div className="rounded-[14px] border border-walnut/10 bg-ivory/60 px-2 py-2">
-          <p className="font-ui text-[11.5px] font-bold text-walnut/55">Large fine</p>
-          <p className="font-display text-[17px] font-black text-walnut-dark">
+          <p className="font-ui text-[11px] font-bold text-walnut/55">Large fine</p>
+          <p className="font-display text-[16.5px] font-black text-walnut-dark">
             {formatUsd(failFineAmount())}
           </p>
-          <p className="font-hand text-[14px] leading-tight text-walnut/55">
+          <p className="font-hand text-[13px] leading-tight text-walnut/55">
             any failed inspection
           </p>
         </div>
       </div>
-      <p className="mt-2 font-hand text-[14px] leading-snug text-walnut/50">
+      <p className="mt-2 font-hand text-[13px] leading-snug text-walnut/50">
         Warnings come from stock near its shelf life, a fridge below 60 condition or 75%+ full, 15+
         units spoiling in a day without a Cleaner, or pay you can't cover. Expired stock, a broken
         fridge, a 95%+ full fridge or 50+ units spoiling is a fail. Fines are paid in full or not at

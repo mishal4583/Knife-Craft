@@ -81,16 +81,16 @@ export function MarketPlanPanel({
   return (
     <div data-testid="market-plan" ref={ref}>
       <Panel tone="cream" className="p-3">
-        <p className="font-ui text-[12.5px] font-extrabold uppercase tracking-[0.12em] text-copper">
+        <p className="font-ui text-[12px] font-extrabold uppercase tracking-[0.12em] text-copper">
           🗓️ Plan ahead
         </p>
-        <p className="font-hand text-[16px] leading-snug text-walnut/70">
+        <p className="font-hand text-[15px] leading-snug text-walnut/70">
           What your next services need that the fridge doesn't have — today's menu first, only as
           much as fits ({formatQuantity(plan.storageFree)} units free).
         </p>
         {focused ? (
           <p
-            className="mt-1 font-ui text-[13.5px] font-extrabold text-copper"
+            className="mt-1 font-ui text-[12.5px] font-extrabold text-copper"
             data-testid="market-plan-hint"
           >
             👉 Tap Buy all, then ↩ Back to the Pre-Service Check.
@@ -108,7 +108,7 @@ export function MarketPlanPanel({
                 setShowAll(false);
               }}
               className={cn(
-                "press h-12 rounded-2xl border font-ui text-[13.5px] font-extrabold",
+                "press h-12 rounded-2xl border font-ui text-[12.5px] font-extrabold",
                 days === d
                   ? "wood border-walnut-dark/50 text-ivory"
                   : "card-warm border-walnut/15 text-walnut-dark",
@@ -121,7 +121,7 @@ export function MarketPlanPanel({
 
         {plan.rows.length === 0 ? (
           <p
-            className="mt-2 font-ui text-[13.5px] font-bold text-olive"
+            className="mt-2 font-ui text-[12.5px] font-bold text-olive"
             data-testid="market-plan-empty"
           >
             {plan.noRoom.length > 0
@@ -144,11 +144,11 @@ export function MarketPlanPanel({
                       {INGREDIENT_EMOJI[row.ingredientId]}
                     </span>
                     <div className="min-w-0 flex-1">
-                      <p className="font-ui text-[14.5px] font-extrabold leading-tight text-walnut-dark">
+                      <p className="font-ui text-[13.5px] font-extrabold leading-tight text-walnut-dark">
                         {INGREDIENTS[row.ingredientId].name}
                         <span
                           className={cn(
-                            "ml-1.5 inline-block whitespace-nowrap rounded-full px-1.5 py-[1px] align-middle font-ui text-[11.5px] font-extrabold uppercase tracking-wide",
+                            "ml-1.5 inline-block whitespace-nowrap rounded-full px-1.5 py-[1px] align-middle font-ui text-[11px] font-extrabold uppercase tracking-wide",
                             row.forToday
                               ? "bg-copper/20 text-copper"
                               : "bg-walnut/10 text-walnut/60",
@@ -159,7 +159,7 @@ export function MarketPlanPanel({
                             : (DAY_LABEL[row.firstDay] ?? `Day ${row.firstDay + 1}`)}
                         </span>
                       </p>
-                      <p className="font-ui text-[12.5px] font-bold text-walnut/60">
+                      <p className="font-ui text-[12px] font-bold text-walnut/60">
                         Need {formatStockAmount(row.ingredientId, row.stock, measure)}
                         {count ? ` (${count})` : ""}
                       </p>
@@ -202,7 +202,7 @@ export function MarketPlanPanel({
               </KButton>
             ) : null}
             {!affordable ? (
-              <p className="mt-1 text-center font-ui text-[12.5px] font-bold text-copper">
+              <p className="mt-1 text-center font-ui text-[12px] font-bold text-copper">
                 You have {formatUsd(save.credits)} — buy today's first.
               </p>
             ) : null}
@@ -210,7 +210,7 @@ export function MarketPlanPanel({
         )}
         {plan.noRoomToday.length > 0 ? (
           <p
-            className="mt-1 font-ui text-[12.5px] font-bold text-copper"
+            className="mt-1 font-ui text-[12px] font-bold text-copper"
             data-testid="market-plan-no-room-today"
           >
             ⚠️ No fridge room for today's{" "}
@@ -219,7 +219,7 @@ export function MarketPlanPanel({
           </p>
         ) : null}
         {plan.noRoom.length > plan.noRoomToday.length && plan.rows.length > 0 ? (
-          <p className="mt-1 font-ui text-[12.5px] font-bold text-walnut/60">
+          <p className="mt-1 font-ui text-[12px] font-bold text-walnut/60">
             No fridge room yet for:{" "}
             {plan.noRoom
               .filter((id) => !plan.noRoomToday.includes(id))

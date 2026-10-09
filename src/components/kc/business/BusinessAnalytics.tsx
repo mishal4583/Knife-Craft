@@ -35,14 +35,14 @@ function Stat({
 }) {
   return (
     <div className="min-w-0 rounded-[14px] border border-walnut/10 bg-ivory/60 px-2.5 py-2">
-      <p className="truncate font-ui text-[11.5px] font-extrabold uppercase tracking-[0.06em] text-walnut/60">
+      <p className="truncate font-ui text-[11px] font-extrabold uppercase tracking-[0.06em] text-walnut/60">
         {label}
       </p>
-      <p className="truncate font-display text-[17px] font-black leading-tight text-walnut-dark tabular-nums">
+      <p className="truncate font-display text-[16.5px] font-black leading-tight text-walnut-dark tabular-nums">
         {value}
       </p>
       {sub ? (
-        <p className="truncate font-hand text-[14px] leading-tight text-walnut/60">{sub}</p>
+        <p className="truncate font-hand text-[13px] leading-tight text-walnut/60">{sub}</p>
       ) : null}
     </div>
   );
@@ -98,7 +98,7 @@ export function OperationsAnalytics({ save }: { save: SaveData }) {
                 <div
                   key={d.id}
                   data-dish={d.id}
-                  className="flex items-center justify-between gap-2 border-b border-walnut/10 py-1.5 font-ui text-[13.5px] last:border-b-0"
+                  className="flex items-center justify-between gap-2 border-b border-walnut/10 py-1.5 font-ui text-[12.5px] last:border-b-0"
                 >
                   <span className="min-w-0 truncate font-extrabold text-walnut-dark">{d.name}</span>
                   <span className="shrink-0 font-bold text-walnut/65 tabular-nums">
@@ -107,12 +107,12 @@ export function OperationsAnalytics({ save }: { save: SaveData }) {
                 </div>
               ))}
             </div>
-            <p className="mt-1 font-hand text-[14px] text-walnut/55">
+            <p className="mt-1 font-hand text-[13px] text-walnut/55">
               From your last {plural(sales.orders, "paid order")}.
             </p>
           </>
         ) : (
-          <p className="mt-1 font-hand text-[15px] text-walnut/60">
+          <p className="mt-1 font-hand text-[14px] text-walnut/60">
             Nothing served yet — serve Business orders to see your best sellers.
           </p>
         )}
@@ -164,7 +164,7 @@ export function OperationsAnalytics({ save }: { save: SaveData }) {
                 <div
                   key={item.id}
                   data-ingredient={item.id}
-                  className="flex items-center justify-between gap-2 border-b border-walnut/10 py-1.5 font-ui text-[13.5px] last:border-b-0"
+                  className="flex items-center justify-between gap-2 border-b border-walnut/10 py-1.5 font-ui text-[12.5px] last:border-b-0"
                 >
                   <span className="min-w-0 truncate font-extrabold text-walnut-dark">
                     {INGREDIENT_EMOJI[item.id]} {name(item.id)}
@@ -176,12 +176,12 @@ export function OperationsAnalytics({ save }: { save: SaveData }) {
                 </div>
               ))}
             </div>
-            <p className="mt-1 font-hand text-[14px] text-walnut/55">
+            <p className="mt-1 font-hand text-[13px] text-walnut/55">
               From your last {plural(consumption.orders, "paid order")}.
             </p>
           </>
         ) : (
-          <p className="mt-1 font-hand text-[15px] text-walnut/60">
+          <p className="mt-1 font-hand text-[14px] text-walnut/60">
             Nothing served yet — serve Business orders to see what your kitchen uses most.
           </p>
         )}
@@ -215,21 +215,21 @@ function SupplyPurchasing({ save }: { save: SaveData }) {
             className="border-b border-walnut/10 py-2 last:border-b-0"
           >
             <div className="flex items-baseline justify-between gap-2">
-              <span className="font-ui text-[14.5px] font-extrabold text-walnut-dark">
+              <span className="font-ui text-[13.5px] font-extrabold text-walnut-dark">
                 <span aria-hidden>{meta.emoji}</span> {meta.short}
               </span>
-              <span className="font-display text-[16.5px] font-black text-walnut-dark tabular-nums">
+              <span className="font-display text-[15.5px] font-black text-walnut-dark tabular-nums">
                 {formatUsd(summary.spent)}
               </span>
             </div>
-            <p className="font-hand text-[15px] leading-tight text-walnut/60">
+            <p className="font-hand text-[14px] leading-tight text-walnut/60">
               {plural(summary.purchases, "Market order")}, all time · saved{" "}
               {formatUsd(summary.savedVsRetail)} vs retail
             </p>
           </div>
         ))}
       </div>
-      <p className="mt-1 font-hand text-[15px] leading-snug text-walnut/60">
+      <p className="mt-1 font-hand text-[14px] leading-snug text-walnut/60">
         Served orders have used {packaging.unitsUsed.toLocaleString("en-US")} packaging units (
         {formatUsd(packaging.usedCost)} of cost, counted in each order's COGS). Saved vs retail is a
         wholesale discount, not cash.

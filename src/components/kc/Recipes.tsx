@@ -68,7 +68,7 @@ export function RecipeBook({
               type="button"
               onClick={() => setCat(c)}
               className={cn(
-                "press shrink-0 rounded-t-xl rounded-b-md border px-3 py-1.5 font-ui text-[12.5px] font-extrabold tracking-wide",
+                "press shrink-0 rounded-t-xl rounded-b-md border px-3 py-1.5 font-ui text-[12px] font-extrabold tracking-wide",
                 c === cat
                   ? "border-copper/50 bg-gold/30 text-walnut-dark shadow-soft"
                   : "border-walnut/15 bg-ivory/70 text-walnut/60",
@@ -95,10 +95,10 @@ export function RecipeBook({
                     🔒
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block font-display text-[17px] font-black leading-tight text-walnut-dark">
+                    <span className="block font-display text-[16.5px] font-black leading-tight text-walnut-dark">
                       Upcoming Recipe
                     </span>
-                    <span className="mt-1 block font-hand text-[16px] leading-tight text-walnut/60">
+                    <span className="mt-1 block font-hand text-[15px] leading-tight text-walnut/60">
                       finish the recipe above to reveal it
                     </span>
                   </span>
@@ -121,10 +121,10 @@ export function RecipeBook({
                   {unlocked ? entry.level.emoji : "🔒"}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block font-display text-[17px] font-black leading-tight text-walnut-dark">
+                  <span className="block font-display text-[16.5px] font-black leading-tight text-walnut-dark">
                     {entry.level.title}
                   </span>
-                  <span className="mt-1 block font-hand text-[16px] leading-tight text-walnut/60">
+                  <span className="mt-1 block font-hand text-[15px] leading-tight text-walnut/60">
                     {unlocked
                       ? entry.ingredientNames.join(" · ")
                       : describeUnlockRequirement(entry.level.unlockRequirements)}
@@ -199,14 +199,14 @@ export function RecipeDetail({
             <span className="relative text-[92px] drop-shadow-[0_14px_18px_rgba(62,40,25,0.28)]">
               {unlocked ? level.emoji : "🔒"}
             </span>
-            <span className="absolute bottom-3 font-hand text-[18px] text-walnut/60">
+            <span className="absolute bottom-3 font-hand text-[17px] text-walnut/60">
               {level.subtitle}
             </span>
           </div>
         </div>
 
         {unlocked ? (
-          <p className="px-6 pt-3 text-center font-hand text-[18px] leading-snug text-walnut/70">
+          <p className="px-6 pt-3 text-center font-hand text-[17px] leading-snug text-walnut/70">
             {level.description}
           </p>
         ) : null}
@@ -219,24 +219,24 @@ export function RecipeDetail({
                   completed (recipeProgress[id].done, pre-existing data),
                   never a numeric/percentage rating. */}
               {!unlocked ? (
-                <span className="font-ui text-[12.5px] font-extrabold text-walnut/55">
+                <span className="font-ui text-[12px] font-extrabold text-walnut/55">
                   {describeUnlockRequirement(level.unlockRequirements)}
                 </span>
               ) : prepared ? (
                 <Badge tone="sage">Prepared</Badge>
               ) : (
-                <span className="font-ui text-[12.5px] text-walnut/45">Not prepared yet</span>
+                <span className="font-ui text-[12px] text-walnut/45">Not prepared yet</span>
               )}
             </div>
             <Divider />
-            <p className="font-ui text-[11.5px] font-extrabold uppercase tracking-[0.2em] text-copper">
+            <p className="font-ui text-[11px] font-extrabold uppercase tracking-[0.2em] text-copper">
               Ingredients
             </p>
             <ul className="mt-2 space-y-1.5">
               {bookEntry.ingredientNames.map((i) => (
                 <li
                   key={i}
-                  className="flex items-center gap-2 font-ui text-[14.5px] font-bold text-walnut-dark"
+                  className="flex items-center gap-2 font-ui text-[13.5px] font-bold text-walnut-dark"
                 >
                   <span className="h-1.5 w-1.5 rounded-full bg-sage" />
                   {i}
@@ -244,7 +244,7 @@ export function RecipeDetail({
               ))}
             </ul>
             <Divider />
-            <p className="font-ui text-[11.5px] font-extrabold uppercase tracking-[0.2em] text-copper">
+            <p className="font-ui text-[11px] font-extrabold uppercase tracking-[0.2em] text-copper">
               Techniques
             </p>
             <div className="mt-2 flex flex-wrap gap-1.5">
@@ -255,16 +255,16 @@ export function RecipeDetail({
               ))}
             </div>
             <Divider />
-            <p className="font-ui text-[11.5px] font-extrabold uppercase tracking-[0.2em] text-copper">
+            <p className="font-ui text-[11px] font-extrabold uppercase tracking-[0.2em] text-copper">
               Preparation
             </p>
             <ol className="mt-2 space-y-1.5">
               {bookEntry.steps.map((s, i) => (
                 <li
                   key={`${s}-${i}`}
-                  className="flex items-center gap-2 font-ui text-[14.5px] font-bold text-walnut-dark"
+                  className="flex items-center gap-2 font-ui text-[13.5px] font-bold text-walnut-dark"
                 >
-                  <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-walnut/10 font-ui text-[11.5px] text-walnut/60">
+                  <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-walnut/10 font-ui text-[11px] text-walnut/60">
                     {i + 1}
                   </span>
                   {s}

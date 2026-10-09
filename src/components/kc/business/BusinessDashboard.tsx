@@ -238,11 +238,11 @@ export function BusinessDashboard({
                 <span className="text-[19px] leading-none" aria-hidden>
                   {item.emoji}
                 </span>
-                <span className="font-ui text-[11.5px] font-extrabold leading-tight">
+                <span className="font-ui text-[11px] font-extrabold leading-tight">
                   {item.label}
                 </span>
                 {badge ? (
-                  <span className="absolute right-1.5 top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-copper px-1 font-ui text-[10.5px] font-black text-ivory">
+                  <span className="absolute right-1.5 top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-copper px-1 font-ui text-[10px] font-black text-ivory">
                     {needsAttention.length}
                   </span>
                 ) : null}
@@ -301,7 +301,7 @@ export function BusinessDashboard({
           ) : null}
         </div>
 
-        <p className="px-8 pb-2 pt-5 text-center font-hand text-[16px] text-walnut/45">
+        <p className="px-8 pb-2 pt-5 text-center font-hand text-[15px] text-walnut/45">
           {RESTAURANT_MODE
             ? "One restaurant, one wallet: every level you cook is a service here."
             : "Business runs on its own calendar and shares your one wallet with the kitchen."}
@@ -426,19 +426,19 @@ function RestaurantHealth({
       <div className="relative">
         <div className="flex items-baseline justify-between gap-2">
           <Eyebrow dark>🏆 Restaurant health</Eyebrow>
-          <span className="font-ui text-[12.5px] font-bold uppercase tracking-[0.12em] text-ivory/60">
+          <span className="font-ui text-[12px] font-bold uppercase tracking-[0.12em] text-ivory/60">
             Week {businessWeekFor(day)}
           </span>
         </div>
         <p className="mt-1 font-display text-[24px] font-black leading-none text-ivory">
           Business Day {day}{" "}
-          <span className="font-hand text-[19px] font-normal text-ivory/70">
+          <span className="font-hand text-[18px] font-normal text-ivory/70">
             {dayOfWeekFor(day)}
           </span>
         </p>
         <div className="mt-3 flex items-center justify-between gap-2">
           <Stars n={popularityStars(popularity)} size={16} />
-          <span className="font-ui text-[13.5px] font-extrabold text-ivory">
+          <span className="font-ui text-[12.5px] font-extrabold text-ivory">
             Popularity {popularity} / 100
           </span>
         </div>
@@ -454,16 +454,16 @@ function RestaurantHealth({
             ] as const
           ).map(([label, v]) => (
             <div key={label} className="rounded-[14px] bg-ivory/10 px-1 py-2">
-              <p className="font-ui text-[11.5px] font-extrabold uppercase tracking-[0.12em] text-ivory/60">
+              <p className="font-ui text-[11px] font-extrabold uppercase tracking-[0.12em] text-ivory/60">
                 {label}
               </p>
-              <p className="font-display text-[17px] font-black leading-tight text-ivory">
+              <p className="font-display text-[16.5px] font-black leading-tight text-ivory">
                 {formatUsd(v)}
               </p>
             </div>
           ))}
         </div>
-        <p className="mt-2 font-hand text-[16px] leading-snug text-ivory/75">
+        <p className="mt-2 font-hand text-[15px] leading-snug text-ivory/75">
           {profit > 0
             ? "Today is profitable so far."
             : revenue === 0
@@ -475,7 +475,7 @@ function RestaurantHealth({
           <button
             type="button"
             onClick={onAttention}
-            className="press mt-2 flex h-12 w-full items-center justify-between rounded-[14px] border border-gold/40 bg-gold/15 px-3 font-ui text-[13.5px] font-extrabold text-gold"
+            className="press mt-2 flex h-12 w-full items-center justify-between rounded-[14px] border border-gold/40 bg-gold/15 px-3 font-ui text-[12.5px] font-extrabold text-gold"
           >
             <span>
               ⚠️ {needsAttention} thing{needsAttention === 1 ? "" : "s"} need
@@ -484,7 +484,7 @@ function RestaurantHealth({
             <span>Operations →</span>
           </button>
         ) : (
-          <p className="mt-2 font-ui text-[13.5px] font-extrabold text-ivory/80">
+          <p className="mt-2 font-ui text-[12.5px] font-extrabold text-ivory/80">
             ✓ Nothing needs your attention right now
           </p>
         )}
@@ -495,16 +495,13 @@ function RestaurantHealth({
 
 function Trend({ now, before }: { now: number; before: number | null }) {
   if (before === null)
-    return <span className="font-ui text-[11.5px] font-bold text-walnut/45">first day</span>;
+    return <span className="font-ui text-[11px] font-bold text-walnut/45">first day</span>;
   const diff = now - before;
   if (diff === 0)
-    return <span className="font-ui text-[11.5px] font-bold text-walnut/45">same as last day</span>;
+    return <span className="font-ui text-[11px] font-bold text-walnut/45">same as last day</span>;
   return (
     <span
-      className={cn(
-        "font-ui text-[11.5px] font-extrabold",
-        diff > 0 ? "text-olive" : "text-copper",
-      )}
+      className={cn("font-ui text-[11px] font-extrabold", diff > 0 ? "text-olive" : "text-copper")}
     >
       {diff > 0 ? "▲" : "▼"} {formatUsd(Math.abs(diff))} vs last day
     </span>
@@ -548,7 +545,7 @@ function KpiCards({
       label: "Popularity",
       value: `${popularity} / 100`,
       sub: (
-        <span className="font-ui text-[11.5px] font-bold text-walnut/55">
+        <span className="font-ui text-[11px] font-bold text-walnut/55">
           {"★".repeat(popularityStars(popularity))}
           {"☆".repeat(5 - popularityStars(popularity))}
         </span>
@@ -559,7 +556,7 @@ function KpiCards({
     <div className="grid grid-cols-2 gap-3">
       {cards.map((c) => (
         <div key={c.label} className="rounded-[20px] border border-walnut/15 p-3 card-warm">
-          <p className="font-ui text-[12.5px] font-extrabold text-walnut/65">
+          <p className="font-ui text-[12px] font-extrabold text-walnut/65">
             <span aria-hidden>{c.icon}</span> {c.label}
           </p>
           <p className="mt-0.5 font-display text-[19px] font-black leading-tight text-walnut-dark">
@@ -598,7 +595,7 @@ function PerformanceCard({ today, last }: { today: DailyPnL; last: DailyPnL | nu
         <MoneyBars groups={groups} />
       </div>
       <MoneyLegend />
-      <p className="mt-2 font-hand text-[15px] leading-snug text-walnut/60">
+      <p className="mt-2 font-hand text-[14px] leading-snug text-walnut/60">
         {last
           ? "Your last completed day next to today (today includes tonight's staff pay). The game keeps your last day's results, not a longer history."
           : "Today so far. After your first End Business Day, that day appears here next to today."}
@@ -630,7 +627,7 @@ function PopularityCard({
         <Eyebrow>⭐ Restaurant popularity</Eyebrow>
         <p className="font-display text-[22px] font-black text-walnut-dark">
           {popularity}
-          <span className="font-hand text-[16px] font-normal text-walnut/60"> / 100</span>
+          <span className="font-hand text-[15px] font-normal text-walnut/60"> / 100</span>
         </p>
       </div>
       <div className="mt-1">
@@ -639,15 +636,15 @@ function PopularityCard({
       <div className="mt-2">
         <Bar fraction={popularity / 100} tone="sage" />
       </div>
-      <p className="mt-2 font-display text-[15.5px] font-black leading-snug text-walnut-dark">
+      <p className="mt-2 font-display text-[14.5px] font-black leading-snug text-walnut-dark">
         {popularityMood(popularity)}
       </p>
-      <p className="mt-2 font-ui text-[12.5px] font-extrabold uppercase tracking-[0.14em] text-walnut/55">
+      <p className="mt-2 font-ui text-[12px] font-extrabold uppercase tracking-[0.14em] text-walnut/55">
         If you end the day now: {signed(delta)} → {projected}
       </p>
       <div className="mt-1 space-y-1">
         {factors.map(([label, v]) => (
-          <div key={label} className="flex items-center justify-between font-ui text-[13.5px]">
+          <div key={label} className="flex items-center justify-between font-ui text-[12.5px]">
             <span className="font-bold text-walnut/70">{label}</span>
             <span
               className={cn(
@@ -660,7 +657,7 @@ function PopularityCard({
           </div>
         ))}
       </div>
-      <p className="mt-1.5 font-hand text-[14px] leading-snug text-walnut/50">
+      <p className="mt-1.5 font-hand text-[13px] leading-snug text-walnut/50">
         Popularity sets how many customers come tomorrow.
       </p>
     </Panel>
@@ -678,7 +675,7 @@ function RankCard({ save, go }: { save: SaveData; go: (s: ScreenId) => void }) {
       <div className="mt-2">
         <Bar fraction={p.rank.fraction} />
       </div>
-      <p className="mt-1.5 font-ui text-[13.5px] font-bold text-walnut/70">
+      <p className="mt-1.5 font-ui text-[12.5px] font-bold text-walnut/70">
         Level {p.campaignComplete ? p.level.total : p.level.current} / {p.level.total}
         {p.nextRank
           ? ` · Next: ${p.nextRank.title} at Lv ${p.nextRank.levelRequired}`
@@ -709,12 +706,12 @@ function MoneyBreakdown({ pnl }: { pnl: DailyPnL }) {
           <StackedBar segments={segments} />
         </div>
       ) : (
-        <p className="mt-1.5 font-hand text-[16px] text-walnut/60">
+        <p className="mt-1.5 font-hand text-[15px] text-walnut/60">
           No costs yet today — hire staff, serve orders or buy supplies and they'll show here.
         </p>
       )}
       <Divider />
-      <div className="space-y-0.5 font-ui text-[14.5px]">
+      <div className="space-y-0.5 font-ui text-[13.5px]">
         <div className="flex justify-between font-bold text-walnut/75">
           <span>Revenue</span>
           <span style={{ color: MONEY_COLORS.revenue }}>{formatUsd(pnl.revenue)}</span>
@@ -752,19 +749,19 @@ function CampaignDayCard({ save, go }: { save: SaveData; go: (s: ScreenId) => vo
       <Eyebrow dark>🍽️ Your restaurant today</Eyebrow>
       <p className="mt-1 font-display text-[24px] font-black leading-none text-ivory">
         Day {d.day}
-        <span className="ml-2 font-hand text-[19px] font-normal text-gold/90">
+        <span className="ml-2 font-hand text-[18px] font-normal text-gold/90">
           {d.closingDue ? "closing time" : d.opened ? "open" : "opens with your next level"}
         </span>
       </p>
       <ul className="mt-2 space-y-1">
         {services.map((sv) => (
-          <li key={sv.name} className="font-ui text-[14.5px] font-bold text-ivory/90">
+          <li key={sv.name} className="font-ui text-[13.5px] font-bold text-ivory/90">
             {sv.done ? "✓" : "•"} {sv.name} · Level {sv.levelNumber}
           </li>
         ))}
       </ul>
       {since !== null ? (
-        <p className="mt-2 font-ui text-[14.5px] font-extrabold text-gold">
+        <p className="mt-2 font-ui text-[13.5px] font-extrabold text-gold">
           Since opening: {since >= 0 ? "+" : "−"}
           {formatUsd(Math.abs(since))}
         </p>
@@ -781,11 +778,11 @@ function OneRestaurantNote() {
     <Panel className="p-4">
       <div data-testid="one-restaurant-note">
         <Eyebrow>🍽️ One restaurant</Eyebrow>
-        <p className="mt-1 font-hand text-[17px] leading-snug text-walnut-dark">
+        <p className="mt-1 font-hand text-[16px] leading-snug text-walnut-dark">
           Your restaurant runs through the campaign: every level is a service, with menu orders,
           stock, supplies and staff. Play the next level from the Kitchen.
         </p>
-        <p className="mt-1 font-ui text-[13.5px] font-bold text-walnut/60">
+        <p className="mt-1 font-ui text-[12.5px] font-bold text-walnut/60">
           🔒 The {ENDLESS_RESTAURANT_NAME} — open-ended days with everything you built — opens after
           Level 250.
         </p>
@@ -811,7 +808,7 @@ function BusinessDayCard({
         🍽️ {RESTAURANT_MODE ? ENDLESS_RESTAURANT_NAME : "Business"} Day{" "}
         {save.business.calendar.businessDay}
       </Eyebrow>
-      <div className="mt-2 flex items-baseline justify-between font-ui text-[13.5px] font-bold text-walnut/75">
+      <div className="mt-2 flex items-baseline justify-between font-ui text-[12.5px] font-bold text-walnut/75">
         <span>Customers Today</span>
         <span className="font-extrabold text-walnut-dark">
           {customers.served} / {customers.target} served
@@ -823,14 +820,14 @@ function BusinessDayCard({
           tone="sage"
         />
       </div>
-      <div className="mt-3 flex items-baseline justify-between font-ui text-[13.5px] font-bold text-walnut/75">
+      <div className="mt-3 flex items-baseline justify-between font-ui text-[12.5px] font-bold text-walnut/75">
         <span>Popularity</span>
         <span className="font-extrabold text-walnut-dark">{popularity} / 100</span>
       </div>
       <div className="mt-1">
         <Bar fraction={popularity / 100} />
       </div>
-      <p className="mt-2 font-hand text-[15px] leading-snug text-walnut/60">
+      <p className="mt-2 font-hand text-[14px] leading-snug text-walnut/60">
         {usesRestaurantDemand(save) ? (
           // Endless Restaurant: the target (businessCustomersToday) comes from the restaurant's
           // demand, today's events and the team's capacity — not the classic popularity formula.
@@ -847,7 +844,7 @@ function BusinessDayCard({
         )}
       </p>
       {customers.complete ? (
-        <p className="mt-1 font-hand text-[17px] leading-snug text-walnut/75">
+        <p className="mt-1 font-hand text-[16px] leading-snug text-walnut/75">
           Today's customers are complete. No more customers will arrive today — end the day when
           you're ready.
         </p>
@@ -857,13 +854,13 @@ function BusinessDayCard({
           const payment = businessCustomerPayment(save, dish);
           return (
             <div className="mt-2 rounded-[14px] bg-cream/70 p-3">
-              <p className="font-hand text-[17px] leading-snug text-walnut-dark">
+              <p className="font-hand text-[16px] leading-snug text-walnut-dark">
                 {order.customer.avatarEmoji} {order.customer.name} is waiting for <b>{dish.name}</b>{" "}
                 — pays {formatUsd(payment.customerPays)}.
               </p>
               <p
                 className={cn(
-                  "mt-0.5 font-hand text-[15px]",
+                  "mt-0.5 font-hand text-[14px]",
                   availability.available ? "text-olive" : "text-copper",
                 )}
               >
@@ -875,7 +872,7 @@ function BusinessDayCard({
           );
         })()
       ) : (
-        <p className="mt-1 font-hand text-[16px] leading-snug text-walnut/65">
+        <p className="mt-1 font-hand text-[15px] leading-snug text-walnut/65">
           The restaurant is closed. Open it to take real orders.
         </p>
       )}
@@ -941,7 +938,7 @@ function Milestones({ save }: { save: SaveData }) {
     <Panel className="p-4">
       <div className="flex items-baseline justify-between">
         <Eyebrow>🎯 Restaurant milestones</Eyebrow>
-        <span className="font-ui text-[13.5px] font-extrabold text-walnut-dark">
+        <span className="font-ui text-[12.5px] font-extrabold text-walnut-dark">
           {done} / {items.length}
         </span>
       </div>
@@ -953,7 +950,7 @@ function Milestones({ save }: { save: SaveData }) {
           <li
             key={m.label}
             className={cn(
-              "flex items-center gap-2 font-ui text-[14.5px]",
+              "flex items-center gap-2 font-ui text-[13.5px]",
               m.done ? "font-extrabold text-walnut-dark" : "font-bold text-walnut/45",
             )}
           >
@@ -994,7 +991,7 @@ function DaySummary({
         />
       </div>
       <MoneyLegend />
-      <div className="mt-2 space-y-0.5 font-ui text-[13.5px] font-bold text-walnut/75">
+      <div className="mt-2 space-y-0.5 font-ui text-[12.5px] font-bold text-walnut/75">
         <div className="flex justify-between">
           <span>Popularity</span>
           <span className="font-extrabold text-walnut-dark">
@@ -1048,12 +1045,12 @@ function DaySummary({
         ) : null}
       </div>
       {result.staffLaidOff.length > 0 ? (
-        <p className="mt-1 font-hand text-[16px] text-copper">
+        <p className="mt-1 font-hand text-[15px] text-copper">
           Pay couldn't be covered — the whole team was let go.
         </p>
       ) : null}
       {result.expiredSupplierId ? (
-        <p className="mt-1 font-hand text-[16px] text-copper">
+        <p className="mt-1 font-hand text-[15px] text-copper">
           Your contract with{" "}
           {getSupplier(result.expiredSupplierId)?.name ?? result.expiredSupplierId} ended.
         </p>
@@ -1103,10 +1100,10 @@ function Operations({
       <Panel className="p-4">
         <Eyebrow>📋 What needs attention</Eyebrow>
         {repairMessage ? (
-          <p className="mt-2 font-hand text-[16px] text-olive">{repairMessage}</p>
+          <p className="mt-2 font-hand text-[15px] text-olive">{repairMessage}</p>
         ) : null}
         {actionable.length === 0 ? (
-          <p className="mt-1.5 font-hand text-[17px] text-olive">
+          <p className="mt-1.5 font-hand text-[16px] text-olive">
             ✓ Nothing needs your attention right now.
           </p>
         ) : (
@@ -1121,10 +1118,10 @@ function Operations({
                     : "border-walnut/10 bg-cream/60",
                 )}
               >
-                <p className="font-ui text-[14.5px] font-extrabold text-walnut-dark">
+                <p className="font-ui text-[13.5px] font-extrabold text-walnut-dark">
                   {SEVERITY_ICON[alert.severity]} {alert.title}
                 </p>
-                <p className="mt-0.5 font-hand text-[16px] leading-snug text-walnut/70">
+                <p className="mt-0.5 font-hand text-[15px] leading-snug text-walnut/70">
                   {alert.detail}
                 </p>
                 {alert.action?.kind === "rush-restock" ? (
@@ -1157,7 +1154,7 @@ function Operations({
             {allClear.map((a) => (
               <span
                 key={a.key}
-                className="rounded-full border border-olive/30 bg-sage/15 px-2 py-[3px] font-ui text-[12.5px] font-extrabold text-olive"
+                className="rounded-full border border-olive/30 bg-sage/15 px-2 py-[3px] font-ui text-[12px] font-extrabold text-olive"
               >
                 ✓ {a.title}
               </span>
@@ -1176,10 +1173,10 @@ function Operations({
           </KButton>
         </div>
         <Divider />
-        <p className="font-ui text-[13.5px] font-extrabold text-walnut-dark">
+        <p className="font-ui text-[12.5px] font-extrabold text-walnut-dark">
           If you end the day now
         </p>
-        <div className="mt-1 space-y-0.5 font-ui text-[13.5px] font-bold text-walnut/75">
+        <div className="mt-1 space-y-0.5 font-ui text-[12.5px] font-bold text-walnut/75">
           <div className="flex justify-between">
             <span>Staff pay</span>
             <span className="font-extrabold text-walnut-dark">
@@ -1225,7 +1222,7 @@ function Operations({
           </div>
         </div>
         {preview.expiredSupplierId ? (
-          <p className="mt-1 font-hand text-[15px] text-walnut/60">
+          <p className="mt-1 font-hand text-[14px] text-walnut/60">
             Your {getSupplier(preview.expiredSupplierId)?.name ?? preview.expiredSupplierId}{" "}
             contract ends tonight.
           </p>
@@ -1235,7 +1232,7 @@ function Operations({
             End Business Day →
           </KButton>
         ) : (
-          <p className="mt-3 font-hand text-[16px] leading-snug text-walnut/70">
+          <p className="mt-3 font-hand text-[15px] leading-snug text-walnut/70">
             Your restaurant's day ends at closing time after its services. The open-ended{" "}
             {ENDLESS_RESTAURANT_NAME} opens after Level 250.
           </p>
@@ -1258,7 +1255,7 @@ function BusinessDayCardInline({ save }: { save: SaveData }) {
   const customers = businessCustomersToday(save);
   return (
     <>
-      <div className="mt-2 flex items-baseline justify-between font-ui text-[13.5px] font-bold text-walnut/75">
+      <div className="mt-2 flex items-baseline justify-between font-ui text-[12.5px] font-bold text-walnut/75">
         <span>Customers Today</span>
         <span className="font-extrabold text-walnut-dark">
           {customers.served} / {customers.target} served

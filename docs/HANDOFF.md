@@ -559,6 +559,13 @@ conversation.
    shortage cap showed a bare number (now lb/kg); Reduced motion left the
    panel entrances, glows and dust/steam moving; the Market plan was
    recomputed on every tap (memoised). `restaurant-measures-qa` D1–D5.
+46. TEXT SIZE OPTIMISED (developer 2026-10-09: "you increased size of
+   everything a little too much, optimize and don't ruin aesthetics, don't
+   decrease the size too much also"): every size item 44 raised is now
+   halfway back — descriptions 11 → 12 px (was 12.5), 12 → 12.5 (13.5),
+   13 → 13.5 (14.5), 14 → 14.5 (15.5), badges 10 → 11 (11.5); handwritten
+   Caveat lines +1 px over the original (was +2); the stacked Plan ahead
+   buttons and the pinned bottom bar stay. No sideways scroll 320–768 px.
 
 ## 4. Open issues from the Level 1–10 audit (not fixed yet)
 

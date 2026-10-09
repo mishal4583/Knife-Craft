@@ -86,15 +86,15 @@ export function KitchenUpgrades({
                 <p className="font-display text-[19px] font-black leading-tight text-walnut-dark">
                   {selected.name}
                 </p>
-                <p className="font-ui text-[12.5px] font-bold uppercase tracking-wide text-copper">
+                <p className="font-ui text-[12px] font-bold uppercase tracking-wide text-copper">
                   {selected.tagline}
                 </p>
-                <p className="mt-1 font-hand text-[18px] leading-tight text-walnut/70">
+                <p className="mt-1 font-hand text-[17px] leading-tight text-walnut/70">
                   {selected.description}
                 </p>
                 {isRestaurantSave(save) && kitchenTierBenefit(selected.id) ? (
                   <p
-                    className="mt-1 font-ui text-[13.5px] font-extrabold text-olive"
+                    className="mt-1 font-ui text-[12.5px] font-extrabold text-olive"
                     data-testid="kitchen-benefit"
                   >
                     {kitchenTierBenefit(selected.id)}
@@ -122,7 +122,7 @@ export function KitchenUpgrades({
                 >
                   🔨 Build · {formatUsd(kitchenTierPrice(selected, save))}
                 </KButton>
-                <p className="mt-2 text-center font-hand text-[16px] text-walnut/65">
+                <p className="mt-2 text-center font-hand text-[15px] text-walnut/65">
                   {shortfall > 0
                     ? `${notEnoughMoneyText(kitchenTierPrice(selected, save), save.credits)} Balance ${formatUsd(save.credits)}.`
                     : "A permanent investment in your restaurant."}
@@ -159,7 +159,7 @@ export function KitchenUpgrades({
                 <div className={cn(locked && "opacity-55 grayscale-[0.35]")}>
                   <KitchenUpgradePreview upgrade={u} size={88} />
                 </div>
-                <p className="font-display text-[14.5px] font-black leading-none text-walnut-dark">
+                <p className="font-display text-[13.5px] font-black leading-none text-walnut-dark">
                   {u.name}
                 </p>
                 {uState === "current" ? (
@@ -176,7 +176,7 @@ export function KitchenUpgrades({
           })}
         </div>
 
-        <p className="px-6 pb-2 pt-5 text-center font-hand text-[17px] text-walnut/50">
+        <p className="px-6 pb-2 pt-5 text-center font-hand text-[16px] text-walnut/50">
           Build your restaurant, one room at a time.
         </p>
       </div>

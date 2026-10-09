@@ -109,7 +109,7 @@ export function BusinessMenu({
         <div className="flex items-baseline justify-between gap-3">
           <Eyebrow>{restaurant ? "🍽️ Active today" : "🍽️ On the menu"}</Eyebrow>
           <span
-            className="font-ui text-[13.5px] font-extrabold text-walnut-dark"
+            className="font-ui text-[12.5px] font-extrabold text-walnut-dark"
             data-testid="menu-active-count"
           >
             {activeDishes.length} / {pool.length} dishes
@@ -117,7 +117,7 @@ export function BusinessMenu({
         </div>
         {restaurant && pool.length === 0 ? (
           <p
-            className="mt-1 font-hand text-[16px] leading-snug text-walnut/70"
+            className="mt-1 font-hand text-[15px] leading-snug text-walnut/70"
             data-testid="menu-opens-at"
           >
             The menu opens at Level {restaurantSystem("menu").firstLevel}, once you know the basic
@@ -125,12 +125,12 @@ export function BusinessMenu({
           </p>
         ) : null}
         {restaurant && !chooses && pool.length > 0 ? (
-          <p className="mt-1 font-hand text-[16px] leading-snug text-walnut/70">
+          <p className="mt-1 font-hand text-[15px] leading-snug text-walnut/70">
             Every dish you unlock goes straight on the menu. From Level {MENU_CHOICE_LEVEL} you
             choose which dishes customers can order.
           </p>
         ) : null}
-        <p className="mt-1 font-hand text-[16px] leading-snug text-walnut/70">
+        <p className="mt-1 font-hand text-[15px] leading-snug text-walnut/70">
           Customers only order dishes that are on. They pay your price × today's popularity
           modifier. Your menu needs {activeIngredientIds.length} ingredient
           {activeIngredientIds.length === 1 ? "" : "s"} in stock; the fridge holds {fridgeCapacity}{" "}
@@ -149,7 +149,7 @@ export function BusinessMenu({
             onClick={() => setCategory(c)}
             aria-pressed={category === c}
             className={cn(
-              "press h-12 min-w-12 shrink-0 rounded-full border px-3.5 font-ui text-[13.5px] font-extrabold",
+              "press h-12 min-w-12 shrink-0 rounded-full border px-3.5 font-ui text-[12.5px] font-extrabold",
               category === c
                 ? "wood border-walnut-dark/50 text-ivory"
                 : "card-warm border-walnut/15 text-walnut-dark",
@@ -198,15 +198,15 @@ export function BusinessMenu({
                   {recipe?.emoji ?? "🍽️"}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="font-display text-[16.5px] font-black leading-tight text-walnut-dark">
+                  <p className="font-display text-[15.5px] font-black leading-tight text-walnut-dark">
                     {dish.name}
                   </p>
-                  <p className="font-ui text-[11.5px] font-extrabold uppercase tracking-[0.14em] text-copper">
+                  <p className="font-ui text-[11px] font-extrabold uppercase tracking-[0.14em] text-copper">
                     {dish.category}
                   </p>
                   <p
                     className={cn(
-                      "mt-0.5 font-ui text-[12.5px] font-bold leading-snug",
+                      "mt-0.5 font-ui text-[12px] font-bold leading-snug",
                       canMake ? "text-olive" : "text-walnut/55",
                     )}
                   >
@@ -220,7 +220,7 @@ export function BusinessMenu({
                   </p>
                 </div>
                 {!chooses ? (
-                  <span className="grid h-12 w-[64px] shrink-0 place-items-center rounded-full border border-olive/60 bg-[linear-gradient(170deg,var(--color-sage),var(--color-olive))] font-ui text-[13.5px] font-extrabold text-ivory">
+                  <span className="grid h-12 w-[64px] shrink-0 place-items-center rounded-full border border-olive/60 bg-[linear-gradient(170deg,var(--color-sage),var(--color-olive))] font-ui text-[12.5px] font-extrabold text-ivory">
                     ON
                   </span>
                 ) : (
@@ -230,7 +230,7 @@ export function BusinessMenu({
                     aria-pressed={onMenu}
                     aria-label={`${onMenu ? "Take" : "Put"} ${dish.name} ${onMenu ? "off" : "on"} the menu`}
                     className={cn(
-                      "press h-12 w-[64px] shrink-0 rounded-full border font-ui text-[13.5px] font-extrabold",
+                      "press h-12 w-[64px] shrink-0 rounded-full border font-ui text-[12.5px] font-extrabold",
                       onMenu
                         ? "border-olive/60 bg-[linear-gradient(170deg,var(--color-sage),var(--color-olive))] text-ivory"
                         : "border-walnut/25 bg-ivory/70 text-walnut/60",
@@ -254,7 +254,7 @@ export function BusinessMenu({
                   <p className="font-display text-[22px] font-black leading-none text-walnut-dark">
                     {formatUsd(price)}
                   </p>
-                  <p className="font-ui text-[11.5px] font-bold text-walnut/55">
+                  <p className="font-ui text-[11px] font-bold text-walnut/55">
                     {price === suggested ? "suggested price" : `suggested ${formatUsd(suggested)}`}
                   </p>
                 </div>
@@ -269,27 +269,27 @@ export function BusinessMenu({
               </div>
 
               {message ? (
-                <p className="mt-1 text-center font-hand text-[15px] text-copper">{message}</p>
+                <p className="mt-1 text-center font-hand text-[14px] text-copper">{message}</p>
               ) : null}
 
               <div className="mt-2 grid grid-cols-3 gap-2 text-center">
                 <div className="rounded-[12px] bg-cream/70 px-1 py-1.5">
-                  <p className="font-ui text-[11.5px] font-bold text-walnut/55">Customer pays</p>
-                  <p className="font-ui text-[13.5px] font-extrabold text-walnut-dark">
+                  <p className="font-ui text-[11px] font-bold text-walnut/55">Customer pays</p>
+                  <p className="font-ui text-[12.5px] font-extrabold text-walnut-dark">
                     {formatUsd(payment.customerPays)}
                   </p>
                 </div>
                 <div className="rounded-[12px] bg-cream/70 px-1 py-1.5">
-                  <p className="font-ui text-[11.5px] font-bold text-walnut/55">Food cost</p>
-                  <p className="font-ui text-[13.5px] font-extrabold text-walnut-dark">
+                  <p className="font-ui text-[11px] font-bold text-walnut/55">Food cost</p>
+                  <p className="font-ui text-[12.5px] font-extrabold text-walnut-dark">
                     {formatUsd(cost)}
                   </p>
                 </div>
                 <div className="rounded-[12px] bg-cream/70 px-1 py-1.5">
-                  <p className="font-ui text-[11.5px] font-bold text-walnut/55">Kept per plate</p>
+                  <p className="font-ui text-[11px] font-bold text-walnut/55">Kept per plate</p>
                   <p
                     className={cn(
-                      "font-ui text-[13.5px] font-extrabold",
+                      "font-ui text-[12.5px] font-extrabold",
                       margin >= 0 ? "text-olive" : "text-copper",
                     )}
                   >
@@ -299,7 +299,7 @@ export function BusinessMenu({
                 </div>
               </div>
               <div className="mt-1.5 flex items-center justify-between">
-                <p className="font-ui text-[11.5px] font-bold text-walnut/50">
+                <p className="font-ui text-[11px] font-bold text-walnut/50">
                   × {payment.multiplier.toFixed(2)} at popularity {payment.popularity}/100 ·{" "}
                   {grossMarginPercent}% kept
                 </p>
@@ -323,10 +323,10 @@ export function BusinessMenu({
                     className="flex min-h-12 items-center justify-between gap-3 py-1.5"
                     data-menu-locked={dish.id}
                   >
-                    <span className="min-w-0 font-ui text-[14.5px] font-bold text-walnut/70">
+                    <span className="min-w-0 font-ui text-[13.5px] font-bold text-walnut/70">
                       🔒 {dish.name}
                     </span>
-                    <span className="shrink-0 text-right font-ui text-[12.5px] font-extrabold text-walnut/55">
+                    <span className="shrink-0 text-right font-ui text-[12px] font-extrabold text-walnut/55">
                       Level {unlockLevel} · {cuisine}
                       {specialist ? <span className="block">needs {specialist.title}</span> : null}
                     </span>

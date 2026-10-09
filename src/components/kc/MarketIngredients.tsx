@@ -159,7 +159,7 @@ export function MarketIngredients({
         />
       ) : null}
       <Panel className="p-3">
-        <div className="flex items-center justify-between gap-2 font-ui text-[13.5px] font-extrabold text-walnut-dark">
+        <div className="flex items-center justify-between gap-2 font-ui text-[12.5px] font-extrabold text-walnut-dark">
           <span>❄️ {fridge.name}</span>
           <span data-testid="market-fridge">
             {formatQuantity(fridge.used)} / {fridge.capacity} used ·{" "}
@@ -168,14 +168,14 @@ export function MarketIngredients({
         </div>
         {RESTAURANT_MODE ? (
           <>
-            <p className="mt-1 font-hand text-[16px] leading-snug text-walnut/65">
+            <p className="mt-1 font-hand text-[15px] leading-snug text-walnut/65">
               Stock bought here goes into your restaurant fridge; every order you cook uses it.
             </p>
             <div
               className="mt-2 flex flex-wrap items-center justify-between gap-2"
               data-testid="market-supplier"
             >
-              <span className="font-ui text-[12.5px] font-bold text-walnut/70">
+              <span className="font-ui text-[12px] font-bold text-walnut/70">
                 🚚 Supplier: {getSupplier(getSelectedSupplierId(save))?.name ?? "Local Market"}
                 {supplierPriceNote(save)}
               </span>
@@ -187,20 +187,20 @@ export function MarketIngredients({
             </div>
           </>
         ) : (
-          <p className="mt-1 font-hand text-[16px] leading-snug text-walnut/65">
+          <p className="mt-1 font-hand text-[15px] leading-snug text-walnut/65">
             Stock bought here goes into your Business fridge for Business orders. Campaign recipes
             pay for their ingredients automatically as you cook.
           </p>
         )}
         {contractActive && contract ? (
-          <p className="mt-1 font-ui text-[12.5px] font-bold text-walnut/70">
+          <p className="mt-1 font-ui text-[12px] font-bold text-walnut/70">
             📜 {getSupplier(contract.supplierId)?.name ?? "Supplier"} contract: −
             {Math.round(contract.discount * 100)}% on {contract.minimumOrder}+ of one ingredient
             {event?.suspendsContractDiscount ? " (paused today)" : ""}.
           </p>
         ) : null}
         {prepCook ? (
-          <p className="font-ui text-[12.5px] font-bold text-walnut/70">
+          <p className="font-ui text-[12px] font-bold text-walnut/70">
             🧑‍🍳 Your Prep Cook's discount is included in every price.
           </p>
         ) : null}
@@ -208,10 +208,10 @@ export function MarketIngredients({
 
       {event ? (
         <Panel tone="cream" className="p-3">
-          <p className="font-ui text-[12.5px] font-extrabold uppercase tracking-[0.12em] text-copper">
+          <p className="font-ui text-[12px] font-extrabold uppercase tracking-[0.12em] text-copper">
             🚚 Today · {event.name}
           </p>
-          <p className="font-hand text-[16px] leading-snug text-walnut/65">
+          <p className="font-hand text-[15px] leading-snug text-walnut/65">
             {supplierEventSummary(event, contractActive)}
           </p>
         </Panel>
@@ -228,7 +228,7 @@ export function MarketIngredients({
             onClick={() => setGroup(g.category)}
             aria-pressed={group === g.category}
             className={cn(
-              "press h-12 min-w-12 shrink-0 rounded-full border px-3.5 font-ui text-[13.5px] font-extrabold",
+              "press h-12 min-w-12 shrink-0 rounded-full border px-3.5 font-ui text-[12.5px] font-extrabold",
               group === g.category
                 ? "wood border-walnut-dark/50 text-ivory"
                 : "card-warm border-walnut/15 text-walnut-dark",
@@ -244,7 +244,7 @@ export function MarketIngredients({
         if (ids.length === 0) return null;
         return (
           <section key={g.category}>
-            <p className="mb-2 mt-1 font-display text-[17px] font-black text-walnut-dark">
+            <p className="mb-2 mt-1 font-display text-[16.5px] font-black text-walnut-dark">
               {g.emoji} {g.label}
             </p>
             <div className="grid grid-cols-2 gap-3">
@@ -277,22 +277,22 @@ export function MarketIngredients({
                         <Badge tone="sage">{formatStockAmount(id, stock, measure)} in stock</Badge>
                       ) : null}
                     </div>
-                    <p className="mt-1 font-display text-[15.5px] font-black leading-tight text-walnut-dark">
+                    <p className="mt-1 font-display text-[14.5px] font-black leading-tight text-walnut-dark">
                       {def.name}
                     </p>
-                    <p className="font-ui text-[13.5px] font-extrabold text-copper">
+                    <p className="font-ui text-[12.5px] font-extrabold text-copper">
                       {formatUsd(quote.unitCost)}
                       <span className="font-bold text-walnut/60">/{perUnit}</span>
                     </p>
                     {count ? (
                       <p
-                        className="font-ui text-[12.5px] font-bold leading-tight text-walnut/55"
+                        className="font-ui text-[12px] font-bold leading-tight text-walnut/55"
                         data-testid="unit-count"
                       >
                         {count}
                       </p>
                     ) : null}
-                    <p className="font-hand text-[15px] leading-tight text-walnut/60">
+                    <p className="font-hand text-[14px] leading-tight text-walnut/60">
                       Keeps {shelfLifeForIngredient(id)} days
                       {dishes > 0 ? ` · ${dishes} menu dish${dishes === 1 ? "" : "es"}` : ""}
                     </p>
@@ -307,7 +307,7 @@ export function MarketIngredients({
                       >
                         −
                       </button>
-                      <span className="font-ui text-[16.5px] font-extrabold text-walnut-dark">
+                      <span className="font-ui text-[15.5px] font-extrabold text-walnut-dark">
                         {quantity}
                       </span>
                       <button
@@ -331,7 +331,7 @@ export function MarketIngredients({
                     ) : null}
                     {quote.bulkDiscount > 0 ? (
                       <p
-                        className="mt-1 text-center font-ui text-[12.5px] font-bold text-olive"
+                        className="mt-1 text-center font-ui text-[12px] font-bold text-olive"
                         data-testid="bulk-saving"
                       >
                         Bulk −{Math.round(quote.bulkDiscount * 100)}% · saves{" "}
@@ -339,14 +339,14 @@ export function MarketIngredients({
                       </p>
                     ) : null}
                     {message ? (
-                      <p className="mt-1 text-center font-hand text-[14px] leading-tight text-copper">
+                      <p className="mt-1 text-center font-hand text-[13px] leading-tight text-copper">
                         {message}
                       </p>
                     ) : null}
                     <KButton
                       full
                       variant={quote.verdict === "ok" ? "copper" : "ghost"}
-                      className="mt-auto h-12 px-2 text-[13.5px]"
+                      className="mt-auto h-12 px-2 text-[12.5px]"
                       onClick={() => handlePurchase(id)}
                     >
                       Buy {quantity} {unit} · {formatUsd(quote.totalCost)}
@@ -354,7 +354,7 @@ export function MarketIngredients({
                     {/* What the purchase does, before the tap — the same verdict the purchase makes. */}
                     <p
                       className={cn(
-                        "wallet-line mt-1 text-center font-ui text-[12.5px] font-bold leading-tight",
+                        "wallet-line mt-1 text-center font-ui text-[12px] font-bold leading-tight",
                         quote.verdict === "ok" ? "text-walnut/65" : "text-copper",
                       )}
                     >

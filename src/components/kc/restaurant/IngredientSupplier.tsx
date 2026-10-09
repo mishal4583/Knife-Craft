@@ -42,12 +42,12 @@ export function IngredientSupplier({
     <div data-testid="ingredient-supplier">
       <Panel className="p-4">
         <Eyebrow>🚚 Your ingredient supplier</Eyebrow>
-        <p className="mt-1 font-hand text-[16px] leading-snug text-walnut/70">
+        <p className="mt-1 font-hand text-[15px] leading-snug text-walnut/70">
           Who stocks the Market for you. It sets the price of every ingredient you buy — free to
           switch any time.
         </p>
         {message ? (
-          <p className="mt-2 text-center font-hand text-[17px] text-copper">{message}</p>
+          <p className="mt-2 text-center font-hand text-[16px] text-copper">{message}</p>
         ) : null}
         <div className="mt-3 space-y-2">
           {choices.map((c) => (
@@ -63,15 +63,15 @@ export function IngredientSupplier({
                 {ICON[c.id] ?? "🚚"}
               </span>
               <div className="min-w-0 flex-1">
-                <p className="font-display text-[17px] font-black leading-tight text-walnut-dark">
+                <p className="font-display text-[16.5px] font-black leading-tight text-walnut-dark">
                   {c.name}
                 </p>
-                <p className="font-hand text-[15px] leading-tight text-walnut/65">
+                <p className="font-hand text-[14px] leading-tight text-walnut/65">
                   {change(c.priceChange)} · {example} {formatUsd(c.exampleUnitCost)} a unit
                 </p>
                 {c.freshnessBonusDays > 0 || c.qualityBonusPct > 0 ? (
                   <p
-                    className="font-ui text-[12.5px] font-bold text-olive"
+                    className="font-ui text-[12px] font-bold text-olive"
                     data-testid="supplier-extras"
                   >
                     {[

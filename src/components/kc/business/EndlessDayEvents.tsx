@@ -28,7 +28,7 @@ export function EndlessDayEvents({ save, compact = false }: { save: SaveData; co
   return (
     <div data-testid="endless-events">
       <Panel tone="cream" className="mb-3 p-3">
-        <p className="font-ui text-[12.5px] font-extrabold uppercase tracking-[0.14em] text-copper">
+        <p className="font-ui text-[12px] font-extrabold uppercase tracking-[0.14em] text-copper">
           Today in your restaurant
         </p>
         <ul className="mt-1 space-y-1">
@@ -36,14 +36,14 @@ export function EndlessDayEvents({ save, compact = false }: { save: SaveData; co
             const rules = RESTAURANT_EVENT_RULES[e.id];
             const dish = e.id === "todays-special" ? getBusinessDish(e.dishId) : undefined;
             return (
-              <li key={e.id} data-event={e.id} className="font-ui text-[14.5px] leading-snug">
+              <li key={e.id} data-event={e.id} className="font-ui text-[13.5px] leading-snug">
                 <span className="font-extrabold text-walnut-dark">
                   {EVENT_EMOJI[e.id]} {rules.title}
                   {dish ? `: ${dish.name}` : ""}
                 </span>
                 {compact ? null : <span className="text-walnut/70"> — {rules.line}</span>}
                 {e.id === "todays-special" ? (
-                  <span className="block font-hand text-[15px] text-walnut/70">
+                  <span className="block font-hand text-[14px] text-walnut/70">
                     {bonusClaimed
                       ? "Today's Special bonus already earned today."
                       : save.business.todaysSpecialServedDay === save.business.calendar.businessDay

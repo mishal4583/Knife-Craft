@@ -47,7 +47,7 @@ export function CutPathViz({
           />
         ))}
       </svg>
-      <div className="absolute inset-x-0 bottom-0 flex justify-center gap-2 bg-walnut-dark/55 py-[3px] font-ui text-[9px] font-bold uppercase tracking-wide text-ivory/85">
+      <div className="absolute inset-x-0 bottom-0 flex justify-center gap-2 bg-walnut-dark/55 py-[3px] font-ui text-[8.5px] font-bold uppercase tracking-wide text-ivory/85">
         <span className="flex items-center gap-1">
           <i className="block h-[2px] w-3 bg-gold" />
           ideal

@@ -75,7 +75,7 @@ function RankHero({ p }: { p: Progress }) {
         <p className="mt-1 font-display text-[26px] font-black leading-tight text-ivory">
           🏆 {p.rank.title}
         </p>
-        <p className="font-hand text-[18px] text-gold/90">
+        <p className="font-hand text-[17px] text-gold/90">
           {p.restaurantName} · Level {p.campaignComplete ? p.level.total : p.level.current} /{" "}
           {p.level.total}
         </p>
@@ -85,14 +85,14 @@ function RankHero({ p }: { p: Progress }) {
               <span className="flex-1">
                 <Bar fraction={p.rank.fraction} />
               </span>
-              <span className="font-ui text-[13.5px] font-extrabold text-ivory">{pct}%</span>
+              <span className="font-ui text-[12.5px] font-extrabold text-ivory">{pct}%</span>
             </div>
-            <p className="mt-1.5 font-ui text-[12.5px] font-bold text-ivory/75">
+            <p className="mt-1.5 font-ui text-[12px] font-bold text-ivory/75">
               Next rank · ⭐ {p.nextRank.title} at Level {p.nextRank.levelRequired}
             </p>
           </div>
         ) : (
-          <p className="mt-2 font-ui text-[13.5px] font-bold text-ivory/75">
+          <p className="mt-2 font-ui text-[12.5px] font-bold text-ivory/75">
             The highest restaurant rank — every rank reached.
           </p>
         )}
@@ -124,23 +124,23 @@ function StandingCard({ save }: { save: SaveData }) {
         </div>
         {s.endlessUnlocked ? (
           <div className="mt-3 rounded-[16px] bg-gold/15 p-3" data-testid="endless-stars">
-            <p className="font-ui text-[12.5px] font-extrabold uppercase tracking-[0.14em] text-walnut/60">
+            <p className="font-ui text-[12px] font-extrabold uppercase tracking-[0.14em] text-walnut/60">
               Endless stars
             </p>
             <p className="mt-0.5 font-display text-[22px] font-black leading-tight text-walnut-dark">
               ★ {stars.total}
             </p>
-            <p className="font-ui text-[13.5px] font-bold text-walnut/75">
+            <p className="font-ui text-[12.5px] font-bold text-walnut/75">
               {stars.days} {stars.days === 1 ? "day" : "days"} run · best day {stars.bestDay} /{" "}
               {ENDLESS_STARS_PER_DAY}
             </p>
-            <p className="mt-1 font-hand text-[15px] leading-snug text-walnut/65">
+            <p className="mt-1 font-hand text-[14px] leading-snug text-walnut/65">
               Up to {ENDLESS_STARS_PER_DAY} a day: profitable, busy (no guest turned away) and clean
               (inspection passed). Stars show your standing — they are not money.
             </p>
           </div>
         ) : (
-          <p className="mt-2 font-hand text-[16px] leading-snug text-walnut/70">
+          <p className="mt-2 font-hand text-[15px] leading-snug text-walnut/70">
             Complete all 250 campaign levels to unlock Endless Restaurant.
           </p>
         )}
@@ -199,7 +199,7 @@ function NextGoal({ p }: { p: Progress }) {
           <p className="mt-1 font-display text-[19px] font-black leading-tight text-walnut-dark">
             {goal.icon} {goal.name}
           </p>
-          <p className="font-hand text-[17px] text-walnut/70">
+          <p className="font-hand text-[16px] text-walnut/70">
             {opensInMarket(goal)
               ? `Unlocks in the Market at Level ${goal.atLevel}`
               : `Unlocks at Level ${goal.atLevel}`}
@@ -208,7 +208,7 @@ function NextGoal({ p }: { p: Progress }) {
             <span className="flex-1">
               <Bar fraction={Math.min(p.level.current, goal.atLevel) / goal.atLevel} tone="sage" />
             </span>
-            <span className="font-ui text-[13.5px] font-extrabold text-walnut-dark">
+            <span className="font-ui text-[12.5px] font-extrabold text-walnut-dark">
               {Math.min(p.level.current, goal.atLevel)} / {goal.atLevel}
             </span>
           </div>
@@ -218,14 +218,14 @@ function NextGoal({ p }: { p: Progress }) {
           <p className="mt-1 font-display text-[21px] font-black uppercase leading-tight tracking-wide text-walnut-dark">
             🏆 Campaign Complete
           </p>
-          <p className="font-ui text-[14.5px] font-extrabold text-walnut-dark">
+          <p className="font-ui text-[13.5px] font-extrabold text-walnut-dark">
             {p.level.completed} / {p.level.total}
           </p>
-          <p className="mt-2 font-ui text-[12.5px] font-extrabold uppercase tracking-[0.18em] text-copper">
+          <p className="mt-2 font-ui text-[12px] font-extrabold uppercase tracking-[0.18em] text-copper">
             Final Reward · Family Legacy
           </p>
           {p.familyLegacy.waived ? (
-            <p className="font-hand text-[17px] leading-snug text-walnut/70">
+            <p className="font-hand text-[16px] leading-snug text-walnut/70">
               You finished the campaign before the Final Reward existed, so it wasn't paid.
             </p>
           ) : (
@@ -233,10 +233,10 @@ function NextGoal({ p }: { p: Progress }) {
               {formatUsdChange(p.familyLegacy.reward)}
             </p>
           )}
-          <p className="mt-1 font-display text-[17px] font-black text-walnut-dark">
+          <p className="mt-1 font-display text-[16.5px] font-black text-walnut-dark">
             Your restaurant is yours.
           </p>
-          <p className="mt-1 font-hand text-[17px] text-walnut/70">
+          <p className="mt-1 font-hand text-[16px] text-walnut/70">
             All {p.level.total} levels mastered. Endless Service is now unlocked — ongoing earnings
             every day — alongside Business Mode and Today's Special.
           </p>
@@ -253,7 +253,7 @@ function PopularityCard({ p }: { p: Progress }) {
         <Eyebrow>⭐ Popularity</Eyebrow>
         <p className="font-display text-[22px] font-black text-walnut-dark">
           {p.popularity}
-          <span className="font-hand text-[16px] font-normal text-walnut/60"> / 100</span>
+          <span className="font-hand text-[15px] font-normal text-walnut/60"> / 100</span>
         </p>
       </div>
       <div className="mt-1">
@@ -262,10 +262,10 @@ function PopularityCard({ p }: { p: Progress }) {
       <div className="mt-2">
         <Bar fraction={p.popularity / 100} tone="sage" />
       </div>
-      <p className="mt-2 font-display text-[15.5px] font-black leading-snug text-walnut-dark">
+      <p className="mt-2 font-display text-[14.5px] font-black leading-snug text-walnut-dark">
         {p.popularityMood}
       </p>
-      <p className="mt-1 font-hand text-[16px] leading-snug text-walnut/70">
+      <p className="mt-1 font-hand text-[15px] leading-snug text-walnut/70">
         Popularity is your restaurant's Business Mode score — it grows with good service there.
         Campaign levels grow your rank instead.
       </p>
@@ -285,17 +285,17 @@ function CampaignCard({ p }: { p: Progress }) {
         <span className="flex-1">
           <Bar fraction={p.level.completed / p.level.total} />
         </span>
-        <span className="font-ui text-[13.5px] font-extrabold text-walnut-dark">
+        <span className="font-ui text-[12.5px] font-extrabold text-walnut-dark">
           {Number.isInteger(pct) ? pct : pct.toFixed(1)}%
         </span>
       </div>
-      <p className="mt-2 font-ui text-[13.5px] font-bold text-walnut/70">
+      <p className="mt-2 font-ui text-[12.5px] font-bold text-walnut/70">
         {p.campaignComplete
           ? `All ${p.chapter.total} chapters complete`
           : `Chapter ${p.chapter.number} / ${p.chapter.total}${p.chapter.title ? ` · ${p.chapter.title}` : ""}`}
       </p>
       <Divider />
-      <p className="mb-1 font-ui text-[11.5px] font-extrabold uppercase tracking-[0.16em] text-walnut/55">
+      <p className="mb-1 font-ui text-[11px] font-extrabold uppercase tracking-[0.16em] text-walnut/55">
         Your restaurant along the campaign
       </p>
       <JourneyTrack p={p} />
@@ -411,11 +411,11 @@ function Earnings({ p }: { p: Progress }) {
         <Row label="Remaining wealth" value={formatUsd(p.money.balance)} />
       </div>
       <Divider />
-      <p className="mb-1 font-ui text-[11.5px] font-extrabold uppercase tracking-[0.16em] text-walnut/55">
+      <p className="mb-1 font-ui text-[11px] font-extrabold uppercase tracking-[0.16em] text-walnut/55">
         Level rewards at today's rates, cumulative by level
       </p>
       <EarningsChart p={p} />
-      <p className="mt-1 font-hand text-[15px] leading-snug text-walnut/60">
+      <p className="mt-1 font-hand text-[14px] leading-snug text-walnut/60">
         What each completed level pays at today's reward rates — the reward curve, not a record of
         past payouts (those are "Level rewards earned" above).
         {p.money.businessCoverage === "partial"
@@ -444,7 +444,7 @@ function EarningsChart({ p }: { p: Progress }) {
   const y = (v: number) => top + (1 - v / maxY) * (H - top - bottom);
   if (pts.length === 0) {
     return (
-      <p className="py-4 text-center font-hand text-[16px] text-walnut/60">
+      <p className="py-4 text-center font-hand text-[15px] text-walnut/60">
         Complete your first level to start this chart.
       </p>
     );
@@ -513,7 +513,7 @@ function Benchmark({ p }: { p: Progress }) {
   return (
     <Panel className="p-4">
       <Eyebrow>🏆 Local restaurant rankings — city benchmark</Eyebrow>
-      <p className="mt-1 font-hand text-[16px] leading-snug text-walnut/70">
+      <p className="mt-1 font-hand text-[15px] leading-snug text-walnut/70">
         See how your restaurant compares with the city's benchmark restaurants. These are fictional
         restaurants in KnifeCraft's world, not other players.
       </p>
@@ -522,7 +522,7 @@ function Benchmark({ p }: { p: Progress }) {
           <div
             key={r.name}
             className={cn(
-              "flex items-center gap-3 px-3 py-2 font-ui text-[14.5px]",
+              "flex items-center gap-3 px-3 py-2 font-ui text-[13.5px]",
               r.isPlayer
                 ? "bg-gold/25 font-extrabold text-walnut-dark"
                 : "bg-ivory/50 font-bold text-walnut/80",
@@ -539,7 +539,7 @@ function Benchmark({ p }: { p: Progress }) {
           </div>
         ))}
       </div>
-      <p className="mt-1 text-right font-ui text-[11.5px] font-bold text-walnut/50">
+      <p className="mt-1 text-right font-ui text-[11px] font-bold text-walnut/50">
         popularity out of 100
       </p>
     </Panel>
@@ -563,10 +563,10 @@ function Journey({ p }: { p: Progress }) {
             >
               <KitchenBackground skin={s.asset} thumb />
             </div>
-            <p className="font-ui text-[11.5px] font-extrabold leading-tight text-walnut-dark">
+            <p className="font-ui text-[11px] font-extrabold leading-tight text-walnut-dark">
               {s.reached ? "✓" : "🔒"} {s.name}
             </p>
-            <p className="font-ui text-[10.5px] font-bold text-walnut/55">
+            <p className="font-ui text-[10px] font-bold text-walnut/55">
               {s.current ? "your kitchen" : `Level ${s.unlockLevel}`}
             </p>
           </div>
@@ -581,7 +581,7 @@ function Knives({ p }: { p: Progress }) {
     <Panel className="p-4">
       <div className="flex items-baseline justify-between">
         <Eyebrow>🔪 Knives</Eyebrow>
-        <span className="font-ui text-[13.5px] font-extrabold text-walnut-dark">
+        <span className="font-ui text-[12.5px] font-extrabold text-walnut-dark">
           {p.knivesOwned} / {p.knives.length} owned
         </span>
       </div>
@@ -597,7 +597,7 @@ function Knives({ p }: { p: Progress }) {
             <div className={cn("rotate-[-8deg]", !k.owned && "opacity-45 grayscale")}>
               <KnifeGlyph knife={k.knife} size={84} />
             </div>
-            <p className="font-display text-[13.5px] font-black leading-tight text-walnut-dark">
+            <p className="font-display text-[12.5px] font-black leading-tight text-walnut-dark">
               {k.knife.name}
             </p>
             <div className="mt-1">
@@ -616,7 +616,7 @@ function Knives({ p }: { p: Progress }) {
       </div>
       <Divider />
       <Eyebrow>🔨 Knife mastery (Blacksmith)</Eyebrow>
-      <p className="mt-1 font-display text-[18px] font-black text-walnut-dark">
+      <p className="mt-1 font-display text-[17.5px] font-black text-walnut-dark">
         {p.blacksmith.upgradeSteps} / {p.blacksmith.maxForOwned} upgrade levels
       </p>
       <div className="mt-1">
@@ -626,7 +626,7 @@ function Knives({ p }: { p: Progress }) {
           }
         />
       </div>
-      <p className="mt-1 font-hand text-[15px] text-walnut/60">
+      <p className="mt-1 font-hand text-[14px] text-walnut/60">
         across the knives you own · {p.blacksmith.maxAll} with the full collection
       </p>
     </Panel>
@@ -638,7 +638,7 @@ function Boards({ p }: { p: Progress }) {
     <Panel className="p-4">
       <div className="flex items-baseline justify-between">
         <Eyebrow>🪵 Cutting boards</Eyebrow>
-        <span className="font-ui text-[13.5px] font-extrabold text-walnut-dark">
+        <span className="font-ui text-[12.5px] font-extrabold text-walnut-dark">
           {p.boardsOwned} / {p.boards.length} owned
         </span>
       </div>
@@ -648,7 +648,7 @@ function Boards({ p }: { p: Progress }) {
             <div className={cn(!b.owned && "opacity-40 grayscale")}>
               <BoardPreview board={b.board} size={52} />
             </div>
-            <p className="font-ui text-[10.5px] font-extrabold leading-tight text-walnut-dark">
+            <p className="font-ui text-[10px] font-extrabold leading-tight text-walnut-dark">
               {b.owned ? (b.equipped ? "✓ in use" : "✓") : "🔒"}{" "}
               {b.board.name.replace(/ Board$/, "")}
             </p>
@@ -665,7 +665,7 @@ function Milestones({ p }: { p: Progress }) {
   return (
     <Panel className="p-4">
       <Eyebrow>🎯 Milestones</Eyebrow>
-      <p className="mt-0.5 font-hand text-[15px] leading-snug text-walnut/60">
+      <p className="mt-0.5 font-hand text-[14px] leading-snug text-walnut/60">
         Each milestone pays its reward once, the moment you reach it.
       </p>
       <ul className="mt-2 space-y-1.5">
@@ -673,7 +673,7 @@ function Milestones({ p }: { p: Progress }) {
           <li
             key={m.id}
             className={cn(
-              "flex items-center gap-2 font-ui text-[14.5px]",
+              "flex items-center gap-2 font-ui text-[13.5px]",
               m.done ? "font-extrabold text-walnut-dark" : "font-bold text-walnut/45",
             )}
           >
@@ -684,7 +684,7 @@ function Milestones({ p }: { p: Progress }) {
             {!m.done && m.atLevel ? <Badge tone="locked">Lv {m.atLevel}</Badge> : null}
             <span
               className={cn(
-                "shrink-0 text-right font-ui text-[13.5px] font-extrabold",
+                "shrink-0 text-right font-ui text-[12.5px] font-extrabold",
                 m.paid ? "text-olive" : "text-walnut/45",
               )}
             >

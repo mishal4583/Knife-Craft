@@ -98,12 +98,12 @@ export function BusinessSuppliers({
       <Panel className="p-4">
         <div className="flex items-baseline justify-between gap-2">
           <Eyebrow>🌤️ Today's supplier conditions</Eyebrow>
-          <span className="font-ui text-[12.5px] font-bold text-walnut/60">Day {currentDay}</span>
+          <span className="font-ui text-[12px] font-bold text-walnut/60">Day {currentDay}</span>
         </div>
         {market.event ? (
           <div className="mt-2 rounded-[14px] border border-gold/40 bg-gold/15 p-3">
             <div className="flex items-center justify-between gap-2">
-              <p className="font-display text-[17px] font-black text-walnut-dark">
+              <p className="font-display text-[16.5px] font-black text-walnut-dark">
                 {market.event.name}
               </p>
               <Badge tone={market.event.priceModifier > 0 ? "copper" : "sage"}>
@@ -112,7 +112,7 @@ export function BusinessSuppliers({
                   : pct(market.event.priceModifier, true)}
               </Badge>
             </div>
-            <p className="mt-0.5 font-hand text-[16px] leading-snug text-walnut/70">
+            <p className="mt-0.5 font-hand text-[15px] leading-snug text-walnut/70">
               {supplierEventSummary(market.event, active)}
               {market.event.maxPurchaseQuantity !== undefined
                 ? ` Max ${market.event.maxPurchaseQuantity} per purchase.`
@@ -120,11 +120,11 @@ export function BusinessSuppliers({
             </p>
           </div>
         ) : (
-          <p className="mt-1.5 font-display text-[16.5px] font-black text-walnut-dark">
+          <p className="mt-1.5 font-display text-[15.5px] font-black text-walnut-dark">
             ☀️ A quiet day — normal prices
           </p>
         )}
-        <p className="mt-2 font-hand text-[15px] text-walnut/60">
+        <p className="mt-2 font-hand text-[14px] text-walnut/60">
           A {formatUsd(market.referenceBasePrice)} ingredient costs{" "}
           <b>{formatUsd(market.referencePriceToday)}</b> today before any contract discount.
         </p>
@@ -133,7 +133,7 @@ export function BusinessSuppliers({
             <span
               key={e.id}
               className={cn(
-                "rounded-full border px-2 py-[3px] font-ui text-[11.5px] font-extrabold",
+                "rounded-full border px-2 py-[3px] font-ui text-[11px] font-extrabold",
                 market.event?.id === e.id
                   ? "border-copper/50 bg-gold/25 text-walnut-dark"
                   : "border-walnut/15 bg-cream/60 text-walnut/55",
@@ -146,7 +146,7 @@ export function BusinessSuppliers({
         </div>
       </Panel>
 
-      {message ? <p className="text-center font-hand text-[17px] text-copper">{message}</p> : null}
+      {message ? <p className="text-center font-hand text-[16px] text-copper">{message}</p> : null}
 
       {active ? (
         <Panel tone="dark" className="p-4">
@@ -157,7 +157,7 @@ export function BusinessSuppliers({
             </Eyebrow>
             <Badge tone="sage">Active</Badge>
           </div>
-          <p className="mt-1.5 font-hand text-[17px] text-ivory/85">
+          <p className="mt-1.5 font-hand text-[16px] text-ivory/85">
             {pct(contract!.discount)} off purchases of {contract!.minimumOrder}+ units ·{" "}
             {contract!.contractEndDay - currentDay} day
             {contract!.contractEndDay - currentDay === 1 ? "" : "s"} left
@@ -183,7 +183,7 @@ export function BusinessSuppliers({
           </KButton>
         </Panel>
       ) : (
-        <p className="font-hand text-[17px] leading-snug text-walnut/65">
+        <p className="font-hand text-[16px] leading-snug text-walnut/65">
           Sign with one supplier for a standing discount on ingredients — in exchange for a minimum
           order size and a cost to walk away early.
         </p>
@@ -209,10 +209,10 @@ export function BusinessSuppliers({
                   {SUPPLIER_ICON[supplierId] ?? "🚚"}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="font-display text-[18px] font-black leading-tight text-walnut-dark">
+                  <p className="font-display text-[17.5px] font-black leading-tight text-walnut-dark">
                     {supplier?.name ?? supplierId}
                   </p>
-                  <p className="font-hand text-[15px] leading-tight text-walnut/60">
+                  <p className="font-hand text-[14px] leading-tight text-walnut/60">
                     {formatUsd(market.referenceBasePrice)} item → {formatUsd(todayPrice)} today at{" "}
                     {terms.minimumOrder}+ units
                   </p>
@@ -221,7 +221,7 @@ export function BusinessSuppliers({
               </div>
 
               <div className="mt-3">
-                <div className="flex justify-between font-ui text-[13.5px] font-bold text-walnut/75">
+                <div className="flex justify-between font-ui text-[12.5px] font-bold text-walnut/75">
                   <span>Discount</span>
                   <span className="font-extrabold text-walnut-dark">{pct(terms.discount)}</span>
                 </div>
@@ -232,31 +232,31 @@ export function BusinessSuppliers({
 
               <div className="mt-3 grid grid-cols-3 gap-2 text-center">
                 <div className="rounded-[12px] bg-cream/70 px-1 py-1.5">
-                  <p className="font-ui text-[11.5px] font-bold text-walnut/55">Min. order</p>
-                  <p className="font-ui text-[14.5px] font-extrabold text-walnut-dark">
+                  <p className="font-ui text-[11px] font-bold text-walnut/55">Min. order</p>
+                  <p className="font-ui text-[13.5px] font-extrabold text-walnut-dark">
                     {terms.minimumOrder}
                   </p>
                 </div>
                 <div className="rounded-[12px] bg-cream/70 px-1 py-1.5">
-                  <p className="font-ui text-[11.5px] font-bold text-walnut/55">Contract</p>
-                  <p className="font-ui text-[14.5px] font-extrabold text-walnut-dark">
+                  <p className="font-ui text-[11px] font-bold text-walnut/55">Contract</p>
+                  <p className="font-ui text-[13.5px] font-extrabold text-walnut-dark">
                     {terms.contractLength} days
                   </p>
                 </div>
                 <div className="rounded-[12px] bg-cream/70 px-1 py-1.5">
-                  <p className="font-ui text-[11.5px] font-bold text-walnut/55">Cancel</p>
-                  <p className="font-ui text-[14.5px] font-extrabold text-walnut-dark">
+                  <p className="font-ui text-[11px] font-bold text-walnut/55">Cancel</p>
+                  <p className="font-ui text-[13.5px] font-extrabold text-walnut-dark">
                     {terms.cancellationFee > 0 ? formatUsd(terms.cancellationFee) : "Free"}
                   </p>
                 </div>
               </div>
-              <p className="mt-2 font-ui text-[11.5px] font-bold text-walnut/50">
+              <p className="mt-2 font-ui text-[11px] font-bold text-walnut/50">
                 For reference: delivery{" "}
                 {terms.deliveryTime === 0 ? "same day" : `${terms.deliveryTime} day`} · quality{" "}
                 {pct(terms.qualityModifier, true)}
               </p>
               {terms.minimumOrder > freeStorage ? (
-                <p className="mt-1 font-hand text-[15px] leading-snug text-copper">
+                <p className="mt-1 font-hand text-[14px] leading-snug text-copper">
                   A {terms.minimumOrder}-unit order needs that much free fridge space — you have{" "}
                   {formatQuantity(freeStorage)}.
                 </p>

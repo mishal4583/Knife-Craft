@@ -25,14 +25,14 @@ export function BusinessPaymentLines({
     <div className="w-full">
       {rows.map(([label, value]) => (
         <div key={label} className="flex items-center justify-between py-0.5">
-          <p className="font-ui text-[12.5px] font-bold uppercase tracking-[0.14em] text-walnut/60">
+          <p className="font-ui text-[12px] font-bold uppercase tracking-[0.14em] text-walnut/60">
             {label}
           </p>
-          <p className="font-ui text-[14.5px] font-bold tabular-nums text-walnut/80">{value}</p>
+          <p className="font-ui text-[13.5px] font-bold tabular-nums text-walnut/80">{value}</p>
         </div>
       ))}
       <div className="flex items-center justify-between border-t border-walnut/15 pt-1">
-        <p className="font-ui text-[12.5px] font-extrabold uppercase tracking-[0.14em] text-walnut-dark">
+        <p className="font-ui text-[12px] font-extrabold uppercase tracking-[0.14em] text-walnut-dark">
           {paid ? "Customer Paid" : "Customer Pays"}
         </p>
         <p className="font-display text-[18px] font-black text-walnut-dark">

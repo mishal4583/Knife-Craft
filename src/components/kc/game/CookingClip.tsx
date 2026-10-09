@@ -198,7 +198,7 @@ export function CookingClip({
           style={{ left: `${WATERMARK_X * 100}%`, top: `${WATERMARK_Y * 100}%` }}
           className="absolute z-10 flex h-[52px] min-w-[84px] -translate-x-1/2 -translate-y-1/2 items-center justify-center"
         >
-          <span className="flex h-[38px] items-center rounded-full bg-walnut-dark/60 px-4 font-ui text-[14.5px] font-extrabold uppercase tracking-[0.16em] text-[#fff6e6] shadow-[0_2px_8px_rgba(0,0,0,0.25)] backdrop-blur-md">
+          <span className="flex h-[38px] items-center rounded-full bg-walnut-dark/60 px-4 font-ui text-[13.5px] font-extrabold uppercase tracking-[0.16em] text-[#fff6e6] shadow-[0_2px_8px_rgba(0,0,0,0.25)] backdrop-blur-md">
             Skip <span aria-hidden>&nbsp;›</span>
           </span>
         </button>

@@ -43,12 +43,12 @@ export function SupplyBottle({
         </div>
       </div>
       <div className="min-w-0 flex-1">
-        <p className="font-ui text-[15.5px] font-bold text-walnut-dark">
+        <p className="font-ui text-[14.5px] font-bold text-walnut-dark">
           {NAME[bottle.id]} — {level}%{bottle.spare > 0 ? ` + ${bottle.spare} spare` : ""}
         </p>
         <p
           className={cn(
-            "font-ui text-[13.5px]",
+            "font-ui text-[12.5px]",
             bottle.status === "ok" ? "text-walnut/60" : "text-tomato",
           )}
         >
@@ -63,7 +63,7 @@ export function SupplyBottle({
         <button
           type="button"
           onClick={onRestock}
-          className="press min-h-12 rounded-full border border-walnut-dark/30 bg-[linear-gradient(170deg,var(--color-gold),var(--color-copper))] px-3 font-ui text-[14.5px] font-extrabold text-ivory"
+          className="press min-h-12 rounded-full border border-walnut-dark/30 bg-[linear-gradient(170deg,var(--color-gold),var(--color-copper))] px-3 font-ui text-[13.5px] font-extrabold text-ivory"
         >
           Restock →
         </button>

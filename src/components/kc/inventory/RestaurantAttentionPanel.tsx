@@ -30,7 +30,7 @@ export function RestaurantAttentionPanel({
   if (a.rows.length === 0)
     return (
       <p
-        className="rounded-[16px] border border-olive/30 bg-olive/10 px-3 py-2 font-ui text-[14.5px] font-bold text-walnut-dark"
+        className="rounded-[16px] border border-olive/30 bg-olive/10 px-3 py-2 font-ui text-[13.5px] font-bold text-walnut-dark"
         data-testid="restaurant-attention-clear"
       >
         ✓ Everything is stocked{a.nextLevel ? ` for Level ${a.nextLevel}` : ""}.
@@ -52,7 +52,7 @@ export function RestaurantAttentionPanel({
     >
       <p className="font-display text-[18px] font-black text-walnut-dark">⚠️ NEEDS ATTENTION</p>
       {a.nextLevel && a.recommendedCost > 0 ? (
-        <p className="font-ui text-[13.5px] text-walnut/70" data-testid="restaurant-recommended">
+        <p className="font-ui text-[12.5px] text-walnut/70" data-testid="restaurant-recommended">
           Recommended restock for Level {a.nextLevel}: {formatUsd(a.recommendedCost)} at Market
           prices.
         </p>
@@ -65,12 +65,12 @@ export function RestaurantAttentionPanel({
             data-attention={row.id}
             data-attention-severity={row.severity}
           >
-            <span aria-hidden className="text-[17px]">
+            <span aria-hidden className="text-[16.5px]">
               {row.severity === "urgent" ? "⛔" : "🟠"}
             </span>
             <p
               className={cn(
-                "min-w-0 flex-1 font-ui text-[14.5px] font-bold leading-snug",
+                "min-w-0 flex-1 font-ui text-[13.5px] font-bold leading-snug",
                 row.severity === "urgent" ? "text-tomato" : "text-walnut-dark",
               )}
             >
@@ -80,7 +80,7 @@ export function RestaurantAttentionPanel({
             <button
               type="button"
               onClick={() => act(row)}
-              className="press min-h-12 shrink-0 rounded-full border border-walnut-dark/30 bg-[linear-gradient(170deg,var(--color-gold),var(--color-copper))] px-3 font-ui text-[13.5px] font-extrabold text-ivory"
+              className="press min-h-12 shrink-0 rounded-full border border-walnut-dark/30 bg-[linear-gradient(170deg,var(--color-gold),var(--color-copper))] px-3 font-ui text-[12.5px] font-extrabold text-ivory"
             >
               {row.action.to === "staff"
                 ? "Hire →"
@@ -95,7 +95,7 @@ export function RestaurantAttentionPanel({
         <button
           type="button"
           onClick={() => setAll((v) => !v)}
-          className="press mt-1 min-h-12 w-full rounded-full font-ui text-[14.5px] font-extrabold text-copper"
+          className="press mt-1 min-h-12 w-full rounded-full font-ui text-[13.5px] font-extrabold text-copper"
         >
           {all ? "Show less" : `View all ${a.rows.length}`}
         </button>

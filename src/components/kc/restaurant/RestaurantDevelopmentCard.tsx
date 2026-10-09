@@ -37,7 +37,7 @@ export function RestaurantDevelopmentCard({
         <div className="mt-2">
           <Bar fraction={dev.total > 0 ? dev.built / dev.total : 1} tone="sage" />
         </div>
-        <p className="mt-2 font-hand text-[16px] leading-snug text-walnut/70">
+        <p className="mt-2 font-hand text-[15px] leading-snug text-walnut/70">
           {!next
             ? "Fully developed — every tier is built."
             : next.state === "locked"

@@ -25,7 +25,7 @@ export function ConfirmationModal({
   return (
     <Modal open={open} onClose={onClose}>
       <p className="text-center font-display text-[20px] font-black text-walnut-dark">{title}</p>
-      <p className="mt-1 text-center font-hand text-[19px] text-walnut/70">{body}</p>
+      <p className="mt-1 text-center font-hand text-[18px] text-walnut/70">{body}</p>
       <div className="mt-4 flex gap-2">
         <KButton variant="ghost" full onClick={onClose}>
           {cancelLabel}
@@ -57,7 +57,7 @@ export function RewardPopup({
       <Panel tone="cream" className="anim-pop w-[76%] p-6 text-center">
         <span className="anim-shimmer mx-auto mb-2 block text-[26px] text-gold">✦</span>
         <p className="font-display text-[20px] font-black text-walnut-dark">{title}</p>
-        {note ? <p className="mt-1 font-hand text-[19px] text-walnut/70">{note}</p> : null}
+        {note ? <p className="mt-1 font-hand text-[18px] text-walnut/70">{note}</p> : null}
         {typeof credits === "number" ? (
           <div className="mt-3 flex justify-center">
             <CurrencyPill amount={credits} />
@@ -92,7 +92,7 @@ export function Toast({
     >
       <span
         className={cn(
-          "rounded-full border px-4 py-1.5 font-display text-[16.5px] font-black tracking-tight shadow-soft",
+          "rounded-full border px-4 py-1.5 font-display text-[15.5px] font-black tracking-tight shadow-soft",
           tone === "sage"
             ? "border-olive/40 bg-sage/90 text-ivory"
             : "border-copper/40 bg-gold/90 text-walnut-dark",
@@ -122,7 +122,7 @@ export function PauseOverlay({
         <p className="font-display text-[22px] font-black tracking-tight text-walnut-dark">
           Paused
         </p>
-        <p className="mt-1 font-hand text-[18px] text-walnut/70">The kitchen will wait.</p>
+        <p className="mt-1 font-hand text-[17px] text-walnut/70">The kitchen will wait.</p>
         <div className="mt-4 space-y-2">
           <KButton full onClick={onResume}>
             Resume

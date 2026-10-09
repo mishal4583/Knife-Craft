@@ -88,7 +88,7 @@ function StatusPill({ status }: { status: InventoryStatus }) {
     <span
       data-status={status}
       className={cn(
-        "inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 font-ui text-[11.5px] font-extrabold uppercase tracking-[0.06em]",
+        "inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 font-ui text-[11px] font-extrabold uppercase tracking-[0.06em]",
         STATUS_PILL[meta.tone],
       )}
     >
@@ -122,7 +122,7 @@ function RestockButton({
     <KButton
       size="sm"
       variant="copper"
-      className={cn("h-12 shrink-0 px-3 text-[13.5px]", className)}
+      className={cn("h-12 shrink-0 px-3 text-[12.5px]", className)}
       onClick={() => openMarketIngredients(go, id)}
     >
       {label}
@@ -152,13 +152,13 @@ function SummaryCard({
       data-testid={testId}
       className="press min-h-[84px] rounded-[20px] border border-walnut/15 p-3 text-left card-warm"
     >
-      <p className="font-ui text-[12.5px] font-extrabold text-walnut/65">
+      <p className="font-ui text-[12px] font-extrabold text-walnut/65">
         <span aria-hidden>{icon}</span> {label}
       </p>
       <p className="mt-0.5 font-display text-[19px] font-black leading-tight text-walnut-dark tabular-nums">
         {value}
       </p>
-      <p className="font-hand text-[15px] leading-tight text-walnut/60">{sub}</p>
+      <p className="font-hand text-[14px] leading-tight text-walnut/60">{sub}</p>
     </button>
   );
 }
@@ -196,17 +196,17 @@ function AttentionRow({
         </span>
         <span className="min-w-0 flex-1">
           <span className="flex flex-wrap items-center gap-1.5">
-            <span className="truncate font-ui text-[14.5px] font-extrabold text-walnut-dark">
+            <span className="truncate font-ui text-[13.5px] font-extrabold text-walnut-dark">
               {item.name}
             </span>
             <StatusPill status={item.status} />
           </span>
-          <span className="block font-hand text-[15px] leading-tight text-walnut/70">
+          <span className="block font-hand text-[14px] leading-tight text-walnut/70">
             {usableLine}
           </span>
           {item.todayRequirement !== undefined &&
           (item.status === "critical" || item.status === "low") ? (
-            <span className="block font-hand text-[15px] leading-tight text-walnut/70">
+            <span className="block font-hand text-[14px] leading-tight text-walnut/70">
               Today's menu needs ≈ {approx(item.todayRequirement, item)}
             </span>
           ) : null}
@@ -236,7 +236,7 @@ function AttentionGroup({
       data-attention-group={group.id}
       className="rounded-[16px] border border-walnut/12 bg-ivory/60 px-3"
     >
-      <summary className="flex min-h-12 cursor-pointer items-center gap-2 font-ui text-[14.5px] font-extrabold text-walnut-dark">
+      <summary className="flex min-h-12 cursor-pointer items-center gap-2 font-ui text-[13.5px] font-extrabold text-walnut-dark">
         <span aria-hidden>{group.marker}</span>
         <span className="flex-1">{group.title}</span>
         <span className="rounded-full bg-walnut/10 px-2 tabular-nums">{group.items.length}</span>
@@ -249,7 +249,7 @@ function AttentionGroup({
           <button
             type="button"
             onClick={() => setAll((v) => !v)}
-            className="press my-1 h-12 w-full rounded-[12px] font-ui text-[13.5px] font-extrabold text-copper"
+            className="press my-1 h-12 w-full rounded-[12px] font-ui text-[12.5px] font-extrabold text-copper"
           >
             {all ? "Show fewer" : `View all ${group.items.length} →`}
           </button>
@@ -285,12 +285,12 @@ function StockCard({
         </span>
         <span className="min-w-0 flex-1">
           <span className="flex flex-wrap items-center gap-1.5">
-            <span className="truncate font-ui text-[14.5px] font-extrabold text-walnut-dark">
+            <span className="truncate font-ui text-[13.5px] font-extrabold text-walnut-dark">
               {item.name}
             </span>
             <StatusPill status={item.status} />
           </span>
-          <span className="block font-ui text-[13.5px] font-bold text-walnut/70 tabular-nums">
+          <span className="block font-ui text-[12.5px] font-bold text-walnut/70 tabular-nums">
             {qty(item)} ·{" "}
             {formatUsd(pricePerMarketUnit(item.ingredientId, item.unitPrice, displayMeasure()))} /{" "}
             {unitOf(item)} · {formatUsd(item.stockValue)}
@@ -299,7 +299,7 @@ function StockCard({
             <span className="w-16 shrink-0">
               <FreshBar item={item} />
             </span>
-            <span className="font-ui text-[12.5px] font-bold text-walnut/65">
+            <span className="font-ui text-[12px] font-bold text-walnut/65">
               {item.daysRemaining <= 0
                 ? "Expired"
                 : `${FRESHNESS_LABEL[item.freshnessState]} · ${daysText(item.daysRemaining)}`}
@@ -308,7 +308,7 @@ function StockCard({
         </span>
       </button>
       <div className="mt-1 flex items-center gap-2 border-t border-walnut/10 pt-1.5">
-        <span className="min-w-0 flex-1 font-hand text-[15px] leading-tight text-walnut/65">
+        <span className="min-w-0 flex-1 font-hand text-[14px] leading-tight text-walnut/65">
           {item.todayRequirement !== undefined
             ? `Today's menu: ≈ ${approx(item.todayRequirement, item)} needed`
             : "Not on today's menu"}
@@ -322,8 +322,8 @@ function StockCard({
 function DetailRow({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex items-baseline justify-between gap-3 border-b border-walnut/10 py-1.5 last:border-b-0">
-      <span className="font-ui text-[13.5px] font-bold text-walnut/60">{label}</span>
-      <span className="text-right font-ui text-[14.5px] font-extrabold text-walnut-dark tabular-nums">
+      <span className="font-ui text-[12.5px] font-bold text-walnut/60">{label}</span>
+      <span className="text-right font-ui text-[13.5px] font-extrabold text-walnut-dark tabular-nums">
         {children}
       </span>
     </div>
@@ -364,9 +364,7 @@ function DetailSheet({
             </p>
             <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
               <StatusPill status={item.status} />
-              <span className="font-ui text-[12.5px] font-bold text-walnut/60">
-                {item.category}
-              </span>
+              <span className="font-ui text-[12px] font-bold text-walnut/60">{item.category}</span>
             </div>
           </div>
           <button
@@ -387,8 +385,8 @@ function DetailSheet({
           </DetailRow>
           <div className="border-b border-walnut/10 py-1.5">
             <div className="flex items-baseline justify-between">
-              <span className="font-ui text-[13.5px] font-bold text-walnut/60">Freshness</span>
-              <span className="font-ui text-[14.5px] font-extrabold text-walnut-dark">
+              <span className="font-ui text-[12.5px] font-bold text-walnut/60">Freshness</span>
+              <span className="font-ui text-[13.5px] font-extrabold text-walnut-dark">
                 {FRESHNESS_LABEL[item.freshnessState]}
               </span>
             </div>
@@ -413,21 +411,21 @@ function DetailSheet({
             </>
           ) : null}
         </div>
-        <p className="mt-2 font-ui text-[12.5px] font-extrabold uppercase tracking-[0.08em] text-walnut/60">
+        <p className="mt-2 font-ui text-[12px] font-extrabold uppercase tracking-[0.08em] text-walnut/60">
           Used by
         </p>
         {item.menuUses.length > 0 ? (
-          <ul className="mt-0.5 list-disc pl-5 font-hand text-[16px] leading-snug text-walnut/75">
+          <ul className="mt-0.5 list-disc pl-5 font-hand text-[15px] leading-snug text-walnut/75">
             {item.menuUses.slice(0, 6).map((d) => (
               <li key={d}>{d}</li>
             ))}
             {item.menuUses.length > 6 ? <li>+{item.menuUses.length - 6} more</li> : null}
           </ul>
         ) : (
-          <p className="font-hand text-[16px] text-walnut/65">Not used by today's menu.</p>
+          <p className="font-hand text-[15px] text-walnut/65">Not used by today's menu.</p>
         )}
         {item.todayRequirement !== undefined ? (
-          <p className="mt-1 font-hand text-[14px] leading-snug text-walnut/55">
+          <p className="mt-1 font-hand text-[13px] leading-snug text-walnut/55">
             Today's requirement is what today's customers are expected to order, spread over your
             active menu.
           </p>
@@ -470,7 +468,7 @@ function ThrowOutExpired({
   const [done, setDone] = useState<string | null>(null);
   if (preview.count === 0) {
     return done ? (
-      <p className="mt-2 font-hand text-[16px] text-olive" aria-live="polite">
+      <p className="mt-2 font-hand text-[15px] text-olive" aria-live="polite">
         {done}
       </p>
     ) : null;
@@ -483,7 +481,7 @@ function ThrowOutExpired({
     >
       {confirming ? (
         <>
-          <p className="font-ui text-[14.5px] font-extrabold text-walnut-dark">
+          <p className="font-ui text-[13.5px] font-extrabold text-walnut-dark">
             Throw out {what}? It frees {formatQuantity(preview.quantity)} units of fridge space and
             counts {formatUsd(preview.value)} as waste. This can't be undone.
           </p>
@@ -605,10 +603,10 @@ export function InventoryScreen({
                     : "card-warm border-walnut/15 text-walnut-dark",
                 )}
               >
-                <span className="font-ui text-[15.5px] font-extrabold leading-tight">
+                <span className="font-ui text-[14.5px] font-extrabold leading-tight">
                   <span aria-hidden>{k.icon}</span> {k.label}
                 </span>
-                <span className="font-ui text-[11.5px] font-bold leading-tight opacity-75">
+                <span className="font-ui text-[11px] font-bold leading-tight opacity-75">
                   {k.sub}
                 </span>
               </button>
@@ -626,10 +624,10 @@ export function InventoryScreen({
                 data-testid="inventory-fridge-pill"
                 className="press flex min-h-12 w-full items-center justify-between gap-3 rounded-[16px] border border-walnut/15 px-3 py-2 text-left card-warm"
               >
-                <span className="font-ui text-[14.5px] font-extrabold text-walnut-dark">
+                <span className="font-ui text-[13.5px] font-extrabold text-walnut-dark">
                   ❄️ Fridge: {s.fridgeShortName}
                 </span>
-                <span className="font-display text-[17px] font-black text-walnut-dark tabular-nums">
+                <span className="font-display text-[16.5px] font-black text-walnut-dark tabular-nums">
                   {formatQuantity(s.used)} / {s.capacity} units
                 </span>
               </button>
@@ -682,7 +680,7 @@ export function InventoryScreen({
                           {view.attention.map((g) => (
                             <span
                               key={g.id}
-                              className="rounded-full border border-walnut/15 bg-ivory/70 px-2.5 py-1 font-ui text-[13.5px] font-extrabold text-walnut-dark"
+                              className="rounded-full border border-walnut/15 bg-ivory/70 px-2.5 py-1 font-ui text-[12.5px] font-extrabold text-walnut-dark"
                             >
                               <span aria-hidden>{g.marker}</span> {g.items.length} {g.title}
                             </span>
@@ -714,7 +712,7 @@ export function InventoryScreen({
                         </KButton>
                       </>
                     ) : (
-                      <p className="mt-1 font-hand text-[17px] leading-snug text-olive">
+                      <p className="mt-1 font-hand text-[16px] leading-snug text-olive">
                         ✓ Nothing needs attention — everything in stock is fresh and covers today's
                         menu.
                       </p>
@@ -735,7 +733,7 @@ export function InventoryScreen({
 
               {view.items.length === 0 ? (
                 <Panel className="p-4 text-center">
-                  <p className="font-hand text-[17px] leading-snug text-walnut/65">
+                  <p className="font-hand text-[16px] leading-snug text-walnut/65">
                     Your fridge is empty. Buy ingredients from the Market to start serving Business
                     orders.
                   </p>
@@ -749,7 +747,7 @@ export function InventoryScreen({
                   <div className="flex items-baseline justify-between gap-3">
                     <Eyebrow>🍽 Ready to Cook</Eyebrow>
                     <span
-                      className="font-ui text-[13.5px] font-extrabold text-walnut-dark"
+                      className="font-ui text-[12.5px] font-extrabold text-walnut-dark"
                       data-testid="menu-ready"
                     >
                       {s.readyDishes} / {s.menuDishes} dishes ready
@@ -760,7 +758,7 @@ export function InventoryScreen({
                   </div>
                   {view.mostNeeded.length > 0 ? (
                     <>
-                      <p className="mt-2 font-ui text-[12.5px] font-extrabold uppercase tracking-[0.08em] text-walnut/60">
+                      <p className="mt-2 font-ui text-[12px] font-extrabold uppercase tracking-[0.08em] text-walnut/60">
                         Most needed ingredients
                       </p>
                       <div className="mt-1 flex flex-wrap gap-2" data-testid="most-needed">
@@ -770,7 +768,7 @@ export function InventoryScreen({
                             type="button"
                             data-ingredient={n.id}
                             onClick={() => openMarketIngredients(go, n.id)}
-                            className="press flex h-12 items-center gap-1.5 rounded-full border border-walnut/15 px-3 font-ui text-[13.5px] font-extrabold text-walnut-dark card-warm"
+                            className="press flex h-12 items-center gap-1.5 rounded-full border border-walnut/15 px-3 font-ui text-[12.5px] font-extrabold text-walnut-dark card-warm"
                             aria-label={`${INGREDIENTS[n.id].name}: needed by ${n.blocks} dish${n.blocks === 1 ? "" : "es"}. Restock in Market`}
                           >
                             <span aria-hidden>{INGREDIENT_EMOJI[n.id]}</span>
@@ -779,13 +777,13 @@ export function InventoryScreen({
                           </button>
                         ))}
                       </div>
-                      <p className="mt-1 font-hand text-[14px] text-walnut/55">
+                      <p className="mt-1 font-hand text-[13px] text-walnut/55">
                         The number is how many menu dishes are waiting for it. Tap to restock it in
                         the Market.
                       </p>
                     </>
                   ) : s.menuDishes > 0 ? (
-                    <p className="mt-2 font-hand text-[15px] text-walnut/65">
+                    <p className="mt-2 font-hand text-[14px] text-walnut/65">
                       Every dish on your menu can be made from stock.
                     </p>
                   ) : null}
@@ -809,7 +807,7 @@ export function InventoryScreen({
                         aria-selected={filter === g.label}
                         onClick={() => setFilter(g.label)}
                         className={cn(
-                          "press h-12 min-w-12 shrink-0 rounded-full border px-3.5 font-ui text-[13.5px] font-extrabold",
+                          "press h-12 min-w-12 shrink-0 rounded-full border px-3.5 font-ui text-[12.5px] font-extrabold",
                           filter === g.label
                             ? "wood border-walnut-dark/50 text-ivory"
                             : "card-warm border-walnut/15 text-walnut-dark",
@@ -819,13 +817,13 @@ export function InventoryScreen({
                       </button>
                     ))}
                   </div>
-                  <label className="mt-2 flex items-center justify-end gap-2 font-ui text-[13.5px] font-extrabold text-walnut/70">
+                  <label className="mt-2 flex items-center justify-end gap-2 font-ui text-[12.5px] font-extrabold text-walnut/70">
                     Sort by
                     <select
                       id="inventory-sort"
                       value={sort}
                       onChange={(e) => setSort(e.target.value as InventorySort)}
-                      className="h-12 rounded-[12px] border border-walnut/20 bg-ivory px-3 font-ui text-[14.5px] font-extrabold text-walnut-dark"
+                      className="h-12 rounded-[12px] border border-walnut/20 bg-ivory px-3 font-ui text-[13.5px] font-extrabold text-walnut-dark"
                     >
                       {INVENTORY_SORTS.map((o) => (
                         <option key={o.id} value={o.id}>
@@ -845,7 +843,7 @@ export function InventoryScreen({
                         />
                       ))
                     ) : (
-                      <p className="py-2 text-center font-hand text-[16px] text-walnut/60">
+                      <p className="py-2 text-center font-hand text-[15px] text-walnut/60">
                         {view.items.length === 0
                           ? "Nothing in stock yet."
                           : `No ${filter.toLowerCase()} in stock.`}
@@ -879,14 +877,14 @@ export function InventoryScreen({
                       key={stat.label}
                       className="min-w-0 rounded-[14px] border border-walnut/10 bg-ivory/60 px-2.5 py-2"
                     >
-                      <p className="truncate font-ui text-[11.5px] font-extrabold uppercase tracking-[0.06em] text-walnut/60">
+                      <p className="truncate font-ui text-[11px] font-extrabold uppercase tracking-[0.06em] text-walnut/60">
                         {stat.label}
                       </p>
-                      <p className="truncate font-display text-[17px] font-black leading-tight text-walnut-dark">
+                      <p className="truncate font-display text-[16.5px] font-black leading-tight text-walnut-dark">
                         {stat.value}
                       </p>
                       {stat.sub ? (
-                        <p className="truncate font-hand text-[14px] leading-tight text-walnut/60">
+                        <p className="truncate font-hand text-[13px] leading-tight text-walnut/60">
                           {stat.sub}
                         </p>
                       ) : null}
@@ -913,7 +911,7 @@ export function InventoryScreen({
               </div>
             </>
           )}
-          <p className="px-4 pb-2 text-center font-hand text-[16px] text-walnut/45">
+          <p className="px-4 pb-2 text-center font-hand text-[15px] text-walnut/45">
             Inventory shows what you have. Buy ingredients and supplies in the Market; upgrade or
             repair the fridge in Business → Equipment.
           </p>

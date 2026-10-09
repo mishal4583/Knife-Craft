@@ -32,7 +32,7 @@ export function BulkPresets({
             aria-label={`Buy ${q} ${label}${d > 0 ? `, ${Math.round(d * 100)}% off` : ""}`}
             onClick={() => onPick(q)}
             className={cn(
-              "press min-h-12 rounded-[14px] border px-1 font-ui text-[14.5px] font-extrabold leading-tight",
+              "press min-h-12 rounded-[14px] border px-1 font-ui text-[13.5px] font-extrabold leading-tight",
               value === q
                 ? "border-copper bg-copper/15 text-walnut-dark"
                 : "border-walnut/20 bg-ivory text-walnut-dark",
@@ -40,7 +40,7 @@ export function BulkPresets({
           >
             {q}
             {d > 0 ? (
-              <span className="block text-[11.5px] font-bold text-olive">
+              <span className="block text-[11px] font-bold text-olive">
                 −{Math.round(d * 100)}%
               </span>
             ) : null}
