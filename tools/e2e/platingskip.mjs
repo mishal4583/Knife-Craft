@@ -61,12 +61,26 @@ async function run(extraTapAfter) {
       const t = document.body.innerText;
       const m = t.match(/·\s*(\d+)\/(\d+)\s+[a-z-]+/i);
       const s = t.match(/STEP (\d+) OF (\d+)/);
-      return !!m && +m[1] === +m[2] - 1 && (!s || s[1] === s[2]);
+      return !!m && +m[1] >= +m[2] - 2 && (!s || s[1] === s[2]);
     },
   });
   if (!r.stopped) return { error: r.log.slice(-3) };
-  await sleep(400);
-  const s = await stepInfo(page);
+  // A tap the solver made during the previous stroke can still be queued (the
+  // knife buffers one tap) and make the last cut by itself; wait it out, and
+  // start over if it did — the timing below must start at OUR last cut.
+  await sleep(1200);
+  let s = await stepInfo(page);
+  // Stopped two cuts short: make the next-to-last cut with one lone tap (nothing queued after it).
+  if (s.n === s.m - 2) {
+    await tapAt(CX - HALF_W + ((s.n + 0.5) / s.m) * 2 * HALF_W, CY);
+    await sleep(1200);
+    s = await stepInfo(page);
+  }
+  // The HUD keeps its last count once the level is done; the clip is mounted (hidden) from PLATING_STARTED.
+  const plating = await page.evaluate(
+    () => !!document.querySelector('[data-testid="cooking-clip"]'),
+  );
+  if (plating || s.n !== s.m - 1) return null;
   await tapAt(CX - HALF_W + ((s.n + 0.5) / s.m) * 2 * HALF_W, CY);
   const t0 = Date.now();
   let oscAtTap = null;
@@ -81,9 +95,17 @@ async function run(extraTapAfter) {
   return { ms, oscAfter, cuts: s };
 }
 
-const base = await run(null);
-const extra = await run(150);
-const skip = await run(1800);
+/** `run`, retried when the solver's queued tap already finished the level (at most 3 tries). */
+async function measured(extraTapAfter) {
+  for (let i = 0; i < 3; i++) {
+    const r = await run(extraTapAfter);
+    if (r) return r;
+  }
+  return { error: "the level kept finishing before the measured last cut" };
+}
+const base = await measured(null);
+const extra = await measured(150);
+const skip = await measured(1800);
 check("1 baseline: the last cut → plating → chef takes the plate → clip", base.ms > 2000, base);
 check(
   "2 an extra tap 150 ms after the last cut does not skip the plating",
