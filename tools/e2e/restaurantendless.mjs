@@ -9,7 +9,7 @@
 //   2. End Business Day: the day summary shows the day's stars (0–3, which ones); the save adds them
 //      to business.endlessStars (total, days + 1, best day) and notes them on the day's history
 //      record; no ledger entry carries stars (credits change = the ledger's change).
-//   3. Restaurant Progress: Restaurant standing (rank, stage "Restaurant Complete", Endless open)
+//   3. Restaurant Progress: Restaurant standing (kitchen title, stage "Restaurant Complete", Endless open)
 //      and the lifetime stars after a reload.
 //   4. A save at Level 120: Progress says "Complete all 250 campaign levels to unlock Endless
 //      Restaurant." and shows no stars; an old Endless save without endlessStars shows ★ 0.
@@ -181,7 +181,8 @@ await page.evaluate(() =>
 await shot(page, "endless-progress");
 check(
   "3 Progress: rank, stage Restaurant Complete, Endless open, lifetime stars (after a reload)",
-  /Rank \S/.test(st ?? "") &&
+  // The café stage is labelled "Kitchen title" since the city ranking (2026-10-09).
+  /Kitchen title \S/.test(st ?? "") &&
     /Stage Restaurant Complete/.test(st ?? "") &&
     /Restaurant Complete ✅ Yes/.test(st ?? "") &&
     /Endless Restaurant 🔓 Open/.test(st ?? "") &&

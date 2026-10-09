@@ -566,6 +566,14 @@ conversation.
    13 → 13.5 (14.5), 14 → 14.5 (15.5), badges 10 → 11 (11.5); handwritten
    Caveat lines +1 px over the original (was +2); the stacked Plan ahead
    buttons and the pinned bottom bar stay. No sideways scroll 320–768 px.
+47. CITY RANKING (developer 2026-10-09: "add some mock restaurants and
+   implement a ranking — gradually progress to the top 1 restaurant after
+   completing the campaign"; the café rank card was not what they meant):
+   `restaurant/cityRanking.ts` — 49 made-up rivals, reputation from the
+   completed campaign levels, one rival passed every 2–7 levels, #1 exactly
+   at Level 250 (Endless stars only add reputation after). Kitchen card,
+   Restaurant Progress hero + city guide, and a Level Complete line when you
+   climb. `restaurant-city-ranking-qa`; e2e `restaurantmeasures.mjs` 1a/1b.
 
 ## 4. Open issues from the Level 1–10 audit (not fixed yet)
 

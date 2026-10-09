@@ -453,6 +453,23 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   W wiring, plus the Kitchen's restaurant rank ("Restaurant rank · n/13",
   the café rank, next rank) and Prepare (sage) vs Replay (ghost). Browser:
   `tools/e2e/restaurantmeasures.mjs` (restaurant test build, 320–430 px).
+- `restaurant-city-ranking-qa` — the CITY RANKING (developer 2026-10-09:
+  "add some mock restaurants and implement a ranking — gradually progress to
+  the top 1 restaurant after completing the campaign";
+  `restaurant/cityRanking.ts`, restaurant build): 49 made-up rivals + the
+  player = 50 restaurants; reputation = completed campaign levels × 40
+  (+5 per Endless star after L250); each rival is passed by completing one
+  level (`passedAtLevel`, a curve: early ones every 2–3 levels, later ones
+  every ~6–7, never more than 8 without one), #2 at L249 and #1 exactly at
+  L250. Derived from the save, nothing stored, no money. The Kitchen's
+  top-left card shows "City ranking · #n of 50" + the next rival
+  (`CityRankBadge`); Restaurant Progress leads with it (`kc/CityRanking.tsx`:
+  `CityRankHero` + the `CityLeaderboard` guide — top 3, the rows around you,
+  "Show all 50"; the café stage is the standing card's "Kitchen title"); a
+  first completion that passes a rival adds "🏆 City ranking #48 → #47 ·
+  Passed …" to the Level Complete banner (`rankChange`). The classic build
+  keeps its café rank card. Browser: `tools/e2e/restaurantmeasures.mjs`
+  1a/1b.
 - `level-ux-qa` — the Level 1–10 UX pass (presentation only): Level
   Complete waits for a story banner (Level 10's milestone) and lists Order
   payout + Completion reward + Earned this level (`levels/levelEarnings.ts`,

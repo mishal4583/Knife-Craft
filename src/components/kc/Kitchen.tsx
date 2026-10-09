@@ -21,6 +21,7 @@ import {
 } from "@/game/levels/levelMastery";
 import { getCafeProgress } from "@/game/cafe/CafeProgressionManager";
 import { CAFE_MILESTONES } from "@/game/cafe/cafeDefinitions";
+import { cityRanking } from "@/game/restaurant/cityRanking";
 import { kitchenUpgradeOrDefault } from "@/game/kitchen/kitchenUpgradeDefinitions";
 import type { SaveData } from "@/game/SaveManager";
 
@@ -139,29 +140,35 @@ export function Kitchen({
           // (audit 2026-10-08: at 320 px it wrapped into the Kitchen Upgrade sign).
           className="press mr-2 min-w-0 max-w-[60%] shrink rounded-2xl border border-ivory/25 bg-walnut-dark/45 px-3 py-2 text-left backdrop-blur-sm"
         >
-          {/* The restaurant's rank (developer 2026-10-08): which of the ranks it
-              holds, its name, the bar to the next one and when that comes. */}
-          <p className="truncate whitespace-nowrap font-ui text-[10px] font-extrabold uppercase tracking-[0.14em] text-gold">
-            <span className="hidden min-[380px]:inline">Restaurant </span>rank · {rankNumber}/
-            {CAFE_MILESTONES.length}
-          </p>
-          <p className="truncate whitespace-nowrap font-display text-[15.5px] font-black leading-tight text-ivory">
-            🏆 {cafeMilestoneTitle}
-          </p>
-          <span className="mt-1.5 block h-[4px] w-24 overflow-hidden rounded-full bg-ivory/25">
-            <span
-              className="block h-full rounded-full"
-              style={{
-                width: `${Math.round(cafeProgress.progressFraction * 100)}%`,
-                background: "linear-gradient(90deg,var(--color-gold),var(--color-copper))",
-              }}
-            />
-          </span>
-          <p className="mt-1 truncate whitespace-nowrap font-ui text-[10px] font-bold leading-none text-ivory/70">
-            {nextRank
-              ? `Next: ${nextRank.title} · Lv ${nextRank.levelRequired}`
-              : "Highest rank reached"}
-          </p>
+          {RESTAURANT_MODE ? (
+            <CityRankBadge save={save} />
+          ) : (
+            <>
+              {/* The restaurant's rank (developer 2026-10-08): which of the ranks it
+                holds, its name, the bar to the next one and when that comes. */}
+              <p className="truncate whitespace-nowrap font-ui text-[10px] font-extrabold uppercase tracking-[0.14em] text-gold">
+                <span className="hidden min-[380px]:inline">Restaurant </span>rank · {rankNumber}/
+                {CAFE_MILESTONES.length}
+              </p>
+              <p className="truncate whitespace-nowrap font-display text-[15.5px] font-black leading-tight text-ivory">
+                🏆 {cafeMilestoneTitle}
+              </p>
+              <span className="mt-1.5 block h-[4px] w-24 overflow-hidden rounded-full bg-ivory/25">
+                <span
+                  className="block h-full rounded-full"
+                  style={{
+                    width: `${Math.round(cafeProgress.progressFraction * 100)}%`,
+                    background: "linear-gradient(90deg,var(--color-gold),var(--color-copper))",
+                  }}
+                />
+              </span>
+              <p className="mt-1 truncate whitespace-nowrap font-ui text-[10px] font-bold leading-none text-ivory/70">
+                {nextRank
+                  ? `Next: ${nextRank.title} · Lv ${nextRank.levelRequired}`
+                  : "Highest rank reached"}
+              </p>
+            </>
+          )}
         </button>
         <div className="flex shrink-0 items-center gap-2">
           <Coin n={save.credits} />
@@ -620,5 +627,38 @@ export function BottomNav({ active, go }: { active: ScreenId | null; go: (s: Scr
         );
       })}
     </nav>
+  );
+}
+
+/**
+ * The Kitchen's top-left card in the restaurant build (developer 2026-10-09):
+ * the restaurant's place in the city guide, a bar to the next rival and who
+ * that is (restaurant/cityRanking.ts). Opens Restaurant Progress.
+ */
+function CityRankBadge({ save }: { save: SaveData }) {
+  const c = cityRanking(save);
+  return (
+    <>
+      <p className="truncate whitespace-nowrap font-ui text-[10px] font-extrabold uppercase tracking-[0.14em] text-gold">
+        City ranking
+      </p>
+      <p className="truncate whitespace-nowrap font-display text-[15.5px] font-black leading-tight text-ivory">
+        🏆 #{c.rank} <span className="text-ivory/70">of {c.total}</span>
+      </p>
+      <span className="mt-1.5 block h-[4px] w-24 overflow-hidden rounded-full bg-ivory/25">
+        <span
+          className="block h-full rounded-full"
+          style={{
+            width: `${Math.round(c.fraction * 100)}%`,
+            background: "linear-gradient(90deg,var(--color-gold),var(--color-copper))",
+          }}
+        />
+      </span>
+      <p className="mt-1 truncate whitespace-nowrap font-ui text-[10px] font-bold leading-none text-ivory/70">
+        {c.next
+          ? `Next: pass ${c.next.name} · Lv ${c.next.passedAtLevel}`
+          : "The city's best restaurant"}
+      </p>
+    </>
   );
 }

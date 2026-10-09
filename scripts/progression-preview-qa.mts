@@ -111,7 +111,7 @@ const INVESTMENT_NAMES = ["Prep Station Upgrade", "Storage Rack", "Service Count
   assert(importers.length === 0, `B2: no game module imports the retired investment modules (found: ${importers.join(", ") || "none"})`);
   const app = code("src/App.tsx");
   assert(!/upkeep/i.test(app), "B3: App.tsx has no chapter-upkeep path left");
-  assert(/"completion-reward", rewardCoins/.test(app) && /setLevelRewardNotice\(\{ rewardCoins, orderCoins \}\)/.test(app), "B4: the completion reward + its banner are unchanged apart from dropping the upkeep line (and, Level 1–10 UX pass, the banner's display-only order payout)");
+  assert(/"completion-reward", rewardCoins/.test(app) && /setLevelRewardNotice\(\{\s*rewardCoins,\s*orderCoins,/.test(app), "B4: the completion reward + its banner are unchanged apart from dropping the upkeep line (and, Level 1–10 UX pass, the banner's display-only order payout; city ranking 2026-10-09, its display-only rank line)");
   const ledger = read("src/game/economy/EconomyLedger.ts");
   assert(/"investment-upkeep"/.test(ledger) && /"kitchen-investment-purchase"/.test(ledger), "B5: legacy ledger categories are still labelled, so old saves' history still displays");
 }

@@ -1,5 +1,5 @@
 // The developer's 2026-10-08 brief in a real browser (restaurant build — the default):
-//   1. Kitchen home: the top-left card shows the restaurant rank ("Restaurant rank · n/13", the
+//   1. Kitchen home: the top-left card shows the city ranking (#n of 50, the next rival) and opens the guide (was: "Restaurant rank · n/13", the
 //      rank's name, "Next: … · Lv …"); on the Order Board Prepare (green) and Replay (outlined)
 //      look different.
 //   2. Level 20's Pre-Service Check: amounts are real portions ("Need 0.3 lb (≈ 1 tomato)"), and
@@ -66,13 +66,39 @@ const rank = await page.evaluate(
     document.querySelector('[data-testid="kitchen-rank"]')?.innerText.replace(/\s+/g, " ") ?? "",
 );
 await shot(page, "measures-kitchen-rank");
+// City ranking (developer 2026-10-09): 19 levels done = #43 of 50, Taco Hut next at Level 22.
 check(
-  "1a Kitchen top-left shows the restaurant rank, its name and the next one",
-  /Restaurant rank · 3\/13/i.test(rank) &&
-    /Morning Café/.test(rank) &&
-    /Next: Working Kitchen · Lv 30/.test(rank),
+  "1a Kitchen top-left shows the city ranking, the place and the next rival to pass",
+  /City ranking/i.test(rank) && /#43 of 50/.test(rank) && /Next: pass Taco Hut · Lv 22/.test(rank),
   rank,
 );
+await page.evaluate(() => document.querySelector('[data-testid="kitchen-rank"]')?.click());
+await sleep(1200);
+const board = await page.evaluate(() => ({
+  hero:
+    document.querySelector('[data-testid="city-rank-hero"]')?.innerText.replace(/\s+/g, " ") ?? "",
+  you: document.querySelector("[data-city-player]")?.getAttribute("data-city-rank"),
+  folded: document.querySelectorAll("[data-city-rank]").length,
+}));
+await page.evaluate(() =>
+  [...document.querySelectorAll("button")]
+    .find((b) => /^Show all 50$/.test(b.textContent.trim()))
+    ?.click(),
+);
+await sleep(400);
+const allRows = await page.evaluate(() => document.querySelectorAll("[data-city-rank]").length);
+await shot(page, "measures-city-leaderboard");
+check(
+  "1b the card opens Restaurant Progress: the city ranking and the guide around you; Show all lists 50",
+  /#43 of 50/.test(board.hero) &&
+    /Next: pass .*Taco Hut at Level 22/.test(board.hero) &&
+    board.you === "43" &&
+    board.folded === 8 &&
+    allRows === 50,
+  { ...board, allRows },
+);
+await navTo("Kitchen");
+await sleep(800);
 await clickButton(page, /^See all orders/);
 await sleep(800);
 const colors = await page.evaluate(() => {

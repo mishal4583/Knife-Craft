@@ -89,6 +89,7 @@ import {
   todaysSpecialBonus,
   withTodaysSpecialServed,
 } from "@/game/restaurant/restaurantEvents";
+import { rankChange } from "@/game/restaurant/cityRanking";
 import { isEmergencyService } from "@/game/restaurant/emergencyService";
 import { recordEndlessDayStars, starsForDay } from "@/game/restaurant/restaurantStanding";
 import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
@@ -439,6 +440,8 @@ export function App() {
     rewardCoins: number;
     /** What this level's orders paid (levelOrderEarnings), or null when it can't be read. */
     orderCoins: number | null;
+    /** Restaurant build: the city ranking it moved (restaurant/cityRanking.ts), when it moved. */
+    cityRank?: { from: number; to: number; passed: string };
   } | null>(null);
 
   // Platform ads (Playgama Bridge). `saveRef` always holds the latest committed save, so code
@@ -1834,7 +1837,23 @@ export function App() {
     // Level 1–10 UX pass: a story banner (Level 10's milestone) no longer
     // swallows the reward — the Level Complete notice waits for it to be
     // dismissed (it renders only while no story event is showing).
-    if (rewardCoins > 0) setLevelRewardNotice({ rewardCoins, orderCoins });
+    if (rewardCoins > 0) {
+      // Restaurant build: a first completion can climb the city ranking.
+      const moved = RESTAURANT_MODE && isFirstCompletion ? rankChange(save, finalSave) : null;
+      setLevelRewardNotice({
+        rewardCoins,
+        orderCoins,
+        ...(moved
+          ? {
+              cityRank: {
+                from: moved.from,
+                to: moved.to,
+                passed: moved.passed.map((r) => `${r.emoji} ${r.name}`).join(", "),
+              },
+            }
+          : {}),
+      });
+    }
     afterLevelFinished(finalSave, level, !isFirstCompletion, flush?.kind === "finale");
   }
 
@@ -2581,21 +2600,38 @@ export function App() {
         <MilestoneBanner
           kicker="Level Complete"
           line={`${formatUsdChange(levelRewardNotice.rewardCoins)} Completion Reward`}
-          {...(levelRewardNotice.orderCoins
+          {...(levelRewardNotice.orderCoins || levelRewardNotice.cityRank
             ? {
                 rows: [
-                  { label: "Order payout", value: formatUsdChange(levelRewardNotice.orderCoins) },
-                  {
-                    label: "Completion reward",
-                    value: formatUsdChange(levelRewardNotice.rewardCoins),
-                  },
-                  {
-                    label: "Earned this level",
-                    value: formatUsdChange(
-                      levelRewardNotice.orderCoins + levelRewardNotice.rewardCoins,
-                    ),
-                    strong: true,
-                  },
+                  ...(levelRewardNotice.orderCoins
+                    ? [
+                        {
+                          label: "Order payout",
+                          value: formatUsdChange(levelRewardNotice.orderCoins),
+                        },
+                        {
+                          label: "Completion reward",
+                          value: formatUsdChange(levelRewardNotice.rewardCoins),
+                        },
+                        {
+                          label: "Earned this level",
+                          value: formatUsdChange(
+                            levelRewardNotice.orderCoins + levelRewardNotice.rewardCoins,
+                          ),
+                          strong: true,
+                        },
+                      ]
+                    : []),
+                  ...(levelRewardNotice.cityRank
+                    ? [
+                        {
+                          label: "🏆 City ranking",
+                          value: `#${levelRewardNotice.cityRank.from} → #${levelRewardNotice.cityRank.to}`,
+                          strong: true,
+                        },
+                        { label: "Passed", value: levelRewardNotice.cityRank.passed },
+                      ]
+                    : []),
                 ],
                 ms: 5600,
               }

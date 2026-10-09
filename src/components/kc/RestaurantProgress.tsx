@@ -6,6 +6,7 @@ import { BottomNav } from "./Kitchen";
 import { KnifeGlyph } from "./Workshop";
 import { BoardPreview } from "./Boards";
 import { KitchenBackground } from "./KitchenBackground";
+import { CityLeaderboard, CityRankHero } from "./CityRanking";
 import { cn } from "@/lib/utils";
 import { opensInMarket } from "@/game/levels/levelMastery";
 import type { SaveData } from "@/game/SaveManager";
@@ -44,7 +45,16 @@ export function RestaurantProgress({ go, save }: { go: (s: ScreenId) => void; sa
         />
 
         <div className="space-y-3 px-4">
-          <RankHero p={p} />
+          {/* Restaurant build: the city ranking (developer 2026-10-09) leads; the café
+              stage the old card showed is the standing card's "Kitchen title". */}
+          {RESTAURANT_MODE ? (
+            <>
+              <CityRankHero save={save} />
+              <CityLeaderboard save={save} />
+            </>
+          ) : (
+            <RankHero p={p} />
+          )}
           {RESTAURANT_MODE ? <StandingCard save={save} /> : null}
           <Summary p={p} />
           <NextGoal p={p} />
@@ -114,7 +124,7 @@ function StandingCard({ save }: { save: SaveData }) {
       <Panel className="p-4">
         <Eyebrow>🍽️ Restaurant standing</Eyebrow>
         <div className="mt-1 divide-y divide-walnut/10">
-          <Row label="Rank" value={s.rank} />
+          <Row label="Kitchen title" value={s.rank} />
           <Row label="Stage" value={`${s.stage} · ${s.stageNumber} / ${s.stageCount}`} />
           {s.nextStage ? (
             <Row label="Next stage" value={`${s.nextStage.stage} · Level ${s.nextStage.level}`} />
