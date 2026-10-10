@@ -9,7 +9,16 @@
 //   3. A reload gives no second crate.
 //   4. Once a service starts the welcome is gone for good.
 // Prints PASS/FAIL per check and exits 1 on any failure.
-import { launch, boot, seedSave, sleep, clickButton, readSave, shot } from "./harness.mjs";
+import {
+  launch,
+  boot,
+  seedSave,
+  sleep,
+  clickButton,
+  readSave,
+  shot,
+  buyMissingTools,
+} from "./harness.mjs";
 
 const results = [];
 const check = (id, ok, detail) => {
@@ -142,6 +151,8 @@ if (missing.length) {
   await page.evaluate(() => document.querySelector('[data-testid="psc-back"]')?.click());
   await sleep(900);
 }
+// Supplies plan A (2026-10-10): the cooks just hired need their own pans.
+await buyMissingTools(page);
 await clickButton(page, /^(OPEN THE RESTAURANT|START SERVICE)$/);
 await sleep(1200);
 const started = await page.evaluate(() =>

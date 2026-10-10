@@ -119,6 +119,7 @@ import { coverWithCredit } from "../src/game/restaurant/serviceCover.ts";
 import { repayFromEarnings, supplierCreditOf } from "../src/game/restaurant/supplierCredit.ts";
 import { levelOrderEarnings } from "../src/game/levels/levelEarnings.ts";
 import { giveGrandmasLeftovers } from "../src/game/restaurant/grandmasFridge.ts";
+import { giveGrandmasTools } from "../src/game/restaurant/kitchenTools.ts";
 import { FIRST_PURCHASE_LEVEL } from "../src/game/restaurant/firstLevels.ts";
 import { isSystemLive } from "../src/game/restaurant/restaurantProgression.ts";
 import { levelNumber } from "../src/game/levels/levelMastery.ts";
@@ -263,6 +264,8 @@ function playLevel(save: SaveData, n: number, opts: SimOptions, stats: Stats): S
   if (profile === "broke") s = drain(s);
   // As App: Grandma's leftovers arrive once Level 3 is done (grandmasFridge.ts).
   s = giveGrandmasLeftovers(s);
+  // As App: Grandma's old tools once the Market opens (kitchenTools.ts).
+  s = giveGrandmasTools(s, restaurantLevelOf(s.levelProgress));
   let plan = servicePlanFor(s, level);
   if (!plan) {
     stats.blocked.push(`${where}: no plan`);
@@ -377,6 +380,30 @@ function playLevel(save: SaveData, n: number, opts: SimOptions, stats: Stats): S
     // A Grandma's-pantry save may exceed the fridge (goods, never money): note it.
     stats.blocked.push(
       `${where}: stock not ready (${plan.check.missingRows.map((r) => r.ingredientId).join(",")}; affordable=${plan.check.affordable}, fridge free ${plan.check.storageFree}/${plan.check.storageNeeded})`,
+    );
+    return s;
+  }
+
+  // Kitchen tools (supplies plan A): the diligent player buys what the check asks for.
+  if (plan.tools.applies && profile === "diligent") {
+    for (const row of plan.tools.rows.filter((r) => r.missing > 0)) {
+      const b = buySupply(s, row.id, row.packs);
+      if (b.ok) s = persist(b.s, stats, `${where} tool`);
+    }
+    replan();
+  }
+  if (plan.tools.applies && !plan.tools.ready) {
+    const credit = coverWithCredit(s, plan, "tools");
+    if (credit) {
+      stats.creditTaken += supplierCreditOf(credit).owed - supplierCreditOf(s).owed;
+      s = persist(credit, stats, `${where} credit`);
+      stats.credit++;
+      replan();
+    }
+  }
+  if (plan.tools.applies && !plan.tools.ready) {
+    stats.blocked.push(
+      `${where}: tools not ready (${plan.tools.rows.filter((r) => r.missing > 0).map((r) => r.id)})`,
     );
     return s;
   }

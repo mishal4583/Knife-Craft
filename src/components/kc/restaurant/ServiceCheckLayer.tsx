@@ -119,7 +119,15 @@ export function ServiceCheckLayer({
         const next = pantryForMissing(save, check, canBuy);
         if (next) onUsePantry(next);
       }}
-      cover={{ stock: coverFor(plan, "stock"), supplies: coverFor(plan, "supplies") }}
+      cover={{
+        stock: coverFor(plan, "stock"),
+        supplies: coverFor(plan, "supplies"),
+        tools: coverFor(plan, "tools"),
+      }}
+      tools={plan.tools}
+      toolsSoon={plan.toolsSoon}
+      firstShoppingList={plan.firstShoppingList}
+      onBuyTool={(id, packs) => openMarketSupplies(go, "culinary", id, packs)}
       adAvailable={adAvailable}
       onCoverWithAd={onCoverWithAd}
       onCoverWithCredit={onCoverWithCredit}
@@ -130,7 +138,12 @@ export function ServiceCheckLayer({
       services={plan.services}
       supplies={plan.supplies}
       onRestockSupply={(id) =>
-        openMarketSupplies(go, getSupplyItem(id)?.section ?? "packaging", id)
+        openMarketSupplies(
+          go,
+          getSupplyItem(id)?.section ?? "packaging",
+          id,
+          plan.supplies.applies ? plan.supplies.rows.find((r) => r.id === id)?.packs : undefined,
+        )
       }
       news={plan.news}
       welcome={plan.welcome}

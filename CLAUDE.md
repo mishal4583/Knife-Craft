@@ -127,7 +127,8 @@ once). Restaurant browser tests run on the normal build, classic ones on a
   `restaurant-fridge-pressure-qa`, `restaurant-final-economy-qa`,
   `restaurant-measures-qa`, `restaurant-city-ranking-qa`,
   `restaurant-first-levels-qa`, `restaurant-grandmas-fridge-qa`,
-  `restaurant-level-goals-qa`, `restaurant-service-cover-qa` (browser:
+  `restaurant-level-goals-qa`, `restaurant-service-cover-qa`,
+  `restaurant-tools-qa` (browser:
   `tools/e2e/restaurant*.mjs`).
 - Campaign / UX: `story-intro-qa`, `story-pause-qa`,
   `campaign-paid-orders-qa`, `level-ux-qa`, `coaching-qa`,

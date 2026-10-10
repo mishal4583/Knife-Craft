@@ -31,6 +31,7 @@ const memoryStore = new Map<string, string>();
   length: 0,
 } as Storage;
 
+import { getSupplyItem } from "../src/game/business/businessSupplies.ts";
 import fs from "node:fs";
 import path from "node:path";
 import { DEFAULT_SAVE, SaveManager, type SaveData } from "../src/game/SaveManager.ts";
@@ -132,10 +133,17 @@ console.log("F. Fresh saves");
       unseenStarterCrate(fresh) === null,
     "F1: a fresh save is only stamped — no crate, no note",
   );
+  // Rule changed (supplies plan A, 2026-10-10): from Level 10 the dishes need kitchen
+  // tools, so an L12 save's crate holds its stage's tools — and nothing else (was: no crate).
+  const l9 = migrateToUnifiedRestaurant(await loadRaw(modern(9)));
   const l12 = migrateToUnifiedRestaurant(await loadRaw(modern(12)));
+  const kit12 = l12.business.restaurantMigration!.kit;
   assert(
-    l12.business.restaurantMigration!.kit.length === 0,
-    "F2: a save before ingredient stock (L12) needs no crate",
+    l9.business.restaurantMigration!.kit.length === 0 &&
+      kit12.length > 0 &&
+      kit12.every((k) => k.kind === "supply" && getSupplyItem(k.id)?.section === "culinary") &&
+      kit12.some((k) => k.id === "sheet-pans"),
+    "F2: a save before Level 10 needs no crate; an L12 save's crate holds only its stage's kitchen tools (sheet pans for the bread)",
   );
 }
 

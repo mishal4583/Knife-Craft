@@ -22,6 +22,7 @@ import {
   clickButton,
   readSave,
   shot,
+  buyMissingTools,
 } from "./harness.mjs";
 
 const results = [];
@@ -339,13 +340,15 @@ for (const role of staffView.needed) {
 }
 await page.evaluate(() => document.querySelector('[data-testid="psc-back"]')?.click());
 await sleep(1200);
+const save47 = await readSave(page);
+// Supplies plan A (2026-10-10): the prep cook just hired needs their own pans (per cook).
+const extraTools = await buyMissingTools(page);
 const after47 = await page.evaluate(() => ({
   notice: !!document.querySelector('[data-testid="psc-staff-needed"]'),
   start: [...document.querySelectorAll('[data-testid="pre-service-check"] button')].some(
     (b) => /^(OPEN THE RESTAURANT|START SERVICE)$/.test(b.textContent.trim()) && !b.disabled,
   ),
 }));
-const save47 = await readSave(page);
 check(
   "5c only staff missing: the check names who, its button hires, Staff marks them (free until L91), hiring is free, back → open",
   /This service needs: Prep Cook, Server/.test(only.notice) &&
@@ -356,8 +359,9 @@ check(
     staffView.teamTop < 200 &&
     save47.credits === credits47 &&
     !after47.notice &&
+    extraTools.every((id) => ["peelers", "frying-pans", "saucepans", "saute-pans"].includes(id)) &&
     after47.start,
-  { only, staffView, after47, credits: [credits47, save47.credits] },
+  { only, staffView, after47, extraTools, credits: [credits47, save47.credits] },
 );
 
 // ---------- 6. One restaurant before L250, Endless Restaurant after ----------

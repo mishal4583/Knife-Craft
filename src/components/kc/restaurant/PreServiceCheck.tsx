@@ -22,7 +22,8 @@ import type {
   SupplyCheckRow,
 } from "@/game/restaurant/serviceSupplies";
 import type { SupplyId } from "@/game/business/businessSupplies";
-import { getSupplyItem, packsText } from "@/game/business/businessSupplies";
+import { getSupplyItem, packsText, supplyPackPrice } from "@/game/business/businessSupplies";
+import type { ToolRow, ToolsCheck } from "@/game/restaurant/kitchenTools";
 import { SupplyBottle } from "./SupplyBottle";
 import { CoverActions, type CoverAdOutcome } from "./CoverActions";
 import type { CoverOffer, CoverPart } from "@/game/restaurant/serviceCover";
@@ -103,6 +104,10 @@ export function PreServiceCheck({
   grandmasFridge = null,
   onRestockFridge = () => {},
   canBuy = true,
+  tools = { applies: false },
+  toolsSoon = [],
+  firstShoppingList = false,
+  onBuyTool = () => {},
 }: {
   levelNumber: number;
   day: number;
@@ -122,7 +127,11 @@ export function PreServiceCheck({
   supplies?: ServiceSuppliesCheck;
   onRestockSupply?: (id: SupplyId) => void;
   /** From Level 10: what an ad or supplier credit would cover when the wallet can't pay (serviceCover.ts). */
-  cover?: { stock: CoverOffer | null; supplies: CoverOffer | null } | null;
+  cover?: {
+    stock: CoverOffer | null;
+    supplies: CoverOffer | null;
+    tools?: CoverOffer | null;
+  } | null;
   /** The platform can show a rewarded ad now. */
   adAvailable?: boolean;
   onCoverWithAd?: (part: CoverPart) => Promise<CoverAdOutcome>;
@@ -163,22 +172,33 @@ export function PreServiceCheck({
   /** First levels pass 2: Grandma's fridge on Levels 12–14 (the note itself never blocks START). */
   grandmasFridge?: GrandmasFridgeNote | null;
   onRestockFridge?: (ingredientId: IngredientId, units: number) => void;
+  /** Kitchen tools today's dishes and the menu need (kitchenTools.ts, from Level 10). */
+  tools?: ToolsCheck;
+  /** Tools the next levels will ask for, not owned yet. */
+  toolsSoon?: readonly { id: SupplyId; level: number; why: string }[];
+  /** Level 10: Grandma's first shopping list. */
+  firstShoppingList?: boolean;
+  /** Buy → the Market's Culinary section on that tool, with the packs preset. */
+  onBuyTool?: (id: SupplyId, packs: number) => void;
 }) {
   // Optional sections start folded so START and what blocks it stay in view.
   const [showGuests, setShowGuests] = useState(false);
   const [showDay, setShowDay] = useState(false);
   const stock = check.applies ? check : null;
   const sup = supplies.applies ? supplies : null;
+  const kit = tools.applies ? tools : null;
   const fridgeShort = !!stock && stock.storageNeeded > stock.storageFree;
   const canStart =
     (!stock || (stock.ready && !stock.rows.some((r) => r.expired > 0 && r.usable < r.needed))) &&
     (!sup || sup.ready) &&
+    (!kit || kit.ready) &&
     staff.every((r) => r.met);
   const staffMissing = staff.filter((r) => !r.met);
   /** What blocks START, for its label: stock or supplies first, otherwise staff. */
   const stockOrSuppliesShort =
     (!!stock && (!stock.ready || stock.rows.some((r) => r.expired > 0 && r.usable < r.needed))) ||
-    (!!sup && !sup.ready);
+    (!!sup && !sup.ready) ||
+    (!!kit && !kit.ready);
   return (
     <div
       className="absolute inset-0 z-40 flex items-end justify-center"
@@ -222,6 +242,23 @@ export function PreServiceCheck({
               </p>
               <p className="mt-0.5 font-ui text-[12px] font-bold text-walnut/70">
                 Hiring is free — tap Hire below, then come back to start.
+              </p>
+            </div>
+          ) : null}
+          {kit && !kit.ready ? (
+            <div
+              className="mb-2 rounded-2xl border border-tomato/30 bg-tomato/10 p-3"
+              data-testid="psc-tools-needed"
+            >
+              <p className="font-ui text-[13.5px] font-extrabold text-walnut-dark">
+                🍳 Today's dishes need:{" "}
+                {kit.rows
+                  .filter((r) => r.missing > 0)
+                  .map((r) => r.label)
+                  .join(", ")}
+              </p>
+              <p className="mt-0.5 font-ui text-[12px] font-bold text-walnut/70">
+                Buy them below — tools last, you buy each one once.
               </p>
             </div>
           ) : null}
@@ -402,6 +439,74 @@ export function PreServiceCheck({
                 Manage fridge →
               </KButton>
             </div>
+          ) : null}
+
+          {firstShoppingList ? (
+            <FirstShoppingList soon={toolsSoon} credits={credits} onBuy={onBuyTool} />
+          ) : null}
+
+          {kit && kit.rows.length > 0 ? (
+            <div data-testid="psc-tools">
+              <p className="mt-3 font-ui text-[12.5px] font-extrabold uppercase tracking-wide text-walnut/60">
+                🍳 Kitchen tools · today's dishes
+              </p>
+              <ul className="mt-1 divide-y divide-walnut/10">
+                {kit.rows
+                  .filter((row) => row.missing > 0)
+                  .map((row) => (
+                    <ToolRowItem key={row.id} row={row} onBuy={onBuyTool} />
+                  ))}
+              </ul>
+              {kit.rows.some((r) => r.missing === 0) ? (
+                <p
+                  className="mt-1 font-ui text-[12.5px] leading-snug text-sage"
+                  data-testid="psc-tools-ready"
+                >
+                  ✓ Ready:{" "}
+                  {kit.rows
+                    .filter((r) => r.missing === 0)
+                    .map((r) => (r.need > 1 ? `${r.label} × ${r.need}` : r.label))
+                    .join(" · ")}
+                </p>
+              ) : null}
+              {!kit.ready ? (
+                <div
+                  className="mt-2 rounded-2xl border border-walnut/15 bg-ivory/70 p-3"
+                  data-testid="psc-tools-summary"
+                >
+                  <p className="font-ui text-[13.5px] font-bold text-walnut-dark">
+                    Today's dishes can't be cooked without these · {formatUsd(kit.missingCost)}
+                  </p>
+                  {!kit.affordable ? (
+                    <>
+                      <p className="mt-1 font-ui text-[13.5px] font-bold text-tomato">
+                        Not enough money — need {formatUsd(kit.missingCost - credits)} more.
+                      </p>
+                      {cover?.tools ? (
+                        <CoverActions
+                          offer={cover.tools}
+                          adAvailable={adAvailable}
+                          onWatchAd={() => onCoverWithAd("tools")}
+                          onCredit={() => onCoverWithCredit("tools")}
+                          what="tools"
+                        />
+                      ) : null}
+                    </>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+          {!firstShoppingList && toolsSoon.length > 0 ? (
+            <p
+              className="mt-2 font-ui text-[12.5px] leading-snug text-walnut/70"
+              data-testid="psc-tools-soon"
+            >
+              🔜 Coming up:{" "}
+              {toolsSoon
+                .map((t) => `${getSupplyItem(t.id)?.name ?? t.id} (Level ${t.level})`)
+                .join(" · ")}
+            </p>
           ) : null}
 
           {sup ? (
@@ -987,6 +1092,131 @@ function NewsCard({ news }: { news: RestaurantNews }) {
             </li>
           ))}
         </ul>
+      ) : null}
+    </div>
+  );
+}
+
+/** One kitchen tool the dishes need: need / have, why, and Buy → the Market. */
+function ToolRowItem({
+  row,
+  onBuy,
+}: {
+  row: ToolRow;
+  onBuy: (id: SupplyId, packs: number) => void;
+}) {
+  const ok = row.missing === 0;
+  const item = getSupplyItem(row.id);
+  return (
+    <li
+      className="flex min-h-12 items-center gap-2 py-1.5"
+      data-psc-tool={row.id}
+      data-psc-status={ok ? "ok" : "missing"}
+    >
+      <span className="text-[20px]" aria-hidden>
+        {row.icon}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="font-ui text-[14.5px] font-bold text-walnut-dark">
+          {row.label}
+          {row.need > 1 ? ` × ${row.need}` : ""}
+        </p>
+        <p
+          className={cn(
+            "font-ui text-[12.5px] leading-snug",
+            ok ? "text-walnut/60" : "text-tomato",
+          )}
+        >
+          {ok ? `You have ${row.have}` : `Need ${row.need} · have ${row.have}`} · {row.why}
+        </p>
+      </div>
+      {ok ? (
+        <span className="font-ui text-[13.5px] font-extrabold text-sage">✓</span>
+      ) : (
+        <KButton
+          size="sm"
+          variant="copper"
+          className="min-h-12"
+          onClick={() => onBuy(row.id, row.packs)}
+        >
+          Buy {item ? packsText(item, row.packs) : row.packs} · {formatUsd(row.cost)}
+        </KButton>
+      )}
+    </li>
+  );
+}
+
+/**
+ * Level 10: the Market has just opened. Grandma's first shopping list — the
+ * kitchen tools the next ten levels will ask for, with Buy buttons. It
+ * never blocks Level 10's START (only the levels that cook with them do).
+ */
+function FirstShoppingList({
+  soon,
+  credits,
+  onBuy,
+}: {
+  soon: readonly { id: SupplyId; level: number; why: string }[];
+  credits: number;
+  onBuy: (id: SupplyId, packs: number) => void;
+}) {
+  const total = soon.reduce((t, x) => {
+    const item = getSupplyItem(x.id);
+    return t + (item ? supplyPackPrice(item) : 0);
+  }, 0);
+  return (
+    <div
+      className="mt-2 rounded-2xl border border-copper/30 bg-gold/10 p-3"
+      data-testid="psc-shopping-list"
+    >
+      <p className="font-ui text-[12.5px] font-extrabold uppercase tracking-wide text-copper">
+        👵 Your first shopping list
+      </p>
+      <p className="mt-0.5 font-hand text-[15.5px] leading-snug text-walnut">
+        “The Market is open! My old peeler, bowl and cups are yours. The next dishes need real
+        kitchen tools — buy them before we cook.”
+      </p>
+      {soon.length === 0 ? (
+        <p className="mt-1 font-ui text-[12.5px] font-bold text-sage">
+          ✓ You already have every tool the next levels need.
+        </p>
+      ) : (
+        <ul className="mt-1 divide-y divide-walnut/10">
+          {soon.map((x) => {
+            const item = getSupplyItem(x.id);
+            return (
+              <li
+                key={x.id}
+                className="flex min-h-12 items-center gap-2 py-1.5"
+                data-shopping-tool={x.id}
+              >
+                <span className="text-[20px]" aria-hidden>
+                  {item?.icon}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="font-ui text-[14.5px] font-bold text-walnut-dark">{item?.name}</p>
+                  <p className="font-ui text-[12.5px] leading-snug text-walnut/70">
+                    <span className="font-bold text-copper">Level {x.level}</span> · {x.why}
+                  </p>
+                </div>
+                <KButton
+                  size="sm"
+                  variant="ghost"
+                  className="min-h-12"
+                  onClick={() => onBuy(x.id, 1)}
+                >
+                  Buy · {item ? formatUsd(supplyPackPrice(item)) : ""}
+                </KButton>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {soon.length > 0 ? (
+        <p className="mt-1 font-ui text-[12.5px] text-walnut/70">
+          All of it: {formatUsd(total)} · you have {formatUsd(credits)}. Each level asks for its
+          tools before it starts.
+        </p>
       ) : null}
     </div>
   );

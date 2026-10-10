@@ -806,6 +806,28 @@ Not implemented (from the audits, all CSS/asset-free):
    `restaurantstock` 4, `restaurantsupplies` 6, `restauranteconomy` 3,
    `restaurantgrandmasfridge` 5b/6d. Broke player: 259 services on credit,
    $2,191 taken and repaid; completionist unchanged ($174,948).
+62. SUPPLIES PLAN · PHASE A — KITCHEN TOOLS (developer 2026-10-10). All 18
+   culinary smallwares now have a job (`restaurant/kitchenTools.ts`
+   `TOOL_RULES`, dish reading in `dishService.ts`): Grandma's old peeler,
+   bowl and cups at L10; sheet pans + oven mitts L11, frying pans / tongs /
+   skimmer L16, stock pot / ladle L17, storage containers + thermometer
+   L21, saucepans L32, whisks L33, sauté pans + spatulas L36, graters L44,
+   scales L101; pans per cook from L41. A missing tool blocks START (top
+   banner + rows with why, Buy → the Market card preselected); Level 10
+   shows Grandma's first shopping list; "Coming up" 5 levels ahead; ad
+   (`service_tools`) or supplier credit when unaffordable. Market /
+   Inventory copy explains it. New `restaurant-tools-qa`, e2e
+   `restauranttools.mjs`. Tests changed: `restaurant-first-levels-qa` L2
+   (L10's tip now opens the Market), `playables-ads-qa` E6, wiring windows /
+   texts in `level-ux-qa` N1, `restaurant-day-qa` W2,
+   `restaurant-grandmas-fridge-qa` W1, `restaurant-stock-qa` W1,
+   `restaurant-service-cover-qa` W1, `restaurant-migration-qa` F2 (an old
+   save moving in now gets its stage's tools in the starter crate). e2e
+   fixtures: `MOVED_IN_BUSINESS` owns a full tool set; `buyMissingTools`
+   (harness) buys a new cook's pans in `restaurantprogression` 5c and
+   `restaurantmigration` 4; L10's sheet is passed in `restaurantfirstlevels`
+   and `levelux`. Sim: diligent spends ~$304 on tools; broke covers them on
+   credit (272 services, all repaid).
 
 ## 6b. Current state (2026-10-09, end of session)
 

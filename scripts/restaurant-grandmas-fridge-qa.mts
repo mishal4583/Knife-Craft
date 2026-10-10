@@ -561,7 +561,9 @@ console.log("W. Wiring");
     /if \(RESTAURANT_MODE && isFirstCompletion\) nextSave = giveGrandmasLeftovers\(nextSave\);/.test(
       app,
     ) &&
-      /const base = giveGrandmasLeftovers\(quietDayEnd\(save\)\);/.test(app) &&
+      /const base = giveGrandmasTools\(\s*giveGrandmasLeftovers\(quietDayEnd\(save\)\),\s*restaurantLevelOf\(save\.levelProgress\),?\s*\);/.test(
+        app,
+      ) &&
       /recipe,\s*true,\s*"guest",?\s*\)/.test(app) &&
       /fridgeLeftLine\(finalSave, usedIngredients\)/.test(app),
     "W1: App gives the leftovers on reaching Level 3 (or an older save's next start), guests say so, Level Complete shows what's left",

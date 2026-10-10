@@ -91,7 +91,7 @@ create a second engine, and do not duplicate existing systems.
   `restaurant/serviceCover.ts`), granted only when Bridge reports the
   `rewarded` state. One placement per ad spot (`AD_PLACEMENT`, listed in
   the config): `level_completed`, `business_day_end`, `replay_bonus`,
-  `rush_restock`, `service_stock`, `service_supplies`. Locally the mock
+  `rush_restock`, `service_stock`, `service_supplies`, `service_tools`. Locally the mock
   platform reports ads as unsupported.
 - Level messages: `level_started` / `level_completed` (App play sessions
   and Business orders) and `level_paused` / `level_resumed` (in-game pause
@@ -508,6 +508,30 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   ripple — `.kc-tap-hand`/`.kc-tap-ripple`), tilted so the tab's name
   shows; the Restaurant card reads "🍽️ Your Restaurant Business". Browser:
   `restaurantfirstlevels.mjs` 8a/8b/8c.
+- `restaurant-tools-qa` — KITCHEN TOOLS (supplies plan Phase A, developer
+  2026-10-10: "ask the player to buy some important tools when the game
+  starts and the rest when necessary"). `restaurant/dishService.ts`
+  (`dishServiceFor(recipe)`: kind + cooking oven / fry / pot / saute /
+  grill, protein, cheese, skewer, shared, messy — derived, cached) and
+  `restaurant/kitchenTools.ts`: `TOOL_RULES` gives all 18 culinary
+  smallwares a job — peelers (peeled dishes), mixing bowls & measuring cups
+  (salads, fruit, pots) from L10 (Grandma's old set, `giveGrandmasTools`,
+  once at cost 0, `business.grandmasTools`); sheet pans + oven mitts (oven,
+  L11); frying pans, tongs (fried / grilled), skimmers (fried) L16; stock
+  pot + ladles (pots) L17; storage containers + thermometers (every
+  service) L21; saucepans L32, whisks L33 (pots, salads); sauté pans +
+  spatulas L36; graters (cheese, gratin) L44; kitchen scales (meat / fish)
+  L101. Peelers and the three pans are per cook from L41 (`cooksOnLine`:
+  chef + prep / line cooks + Head Chef + specialists, max 4). Needed for
+  today's tickets AND the active menu (`serviceRecipes`). `toolsCheck` →
+  the plan's `tools` (every missing tool blocks START; the sheet's top
+  says "🍳 Today's dishes need: …", rows say why, Buy → the Market's
+  Culinary card preselected with its packs — `openMarketSupplies(…,
+  packs)`); `toolsSoon` (5 levels ahead, "🔜 Coming up"); Level 10's
+  `firstShoppingList` card (the tools L11–20 need; never blocks L10). Cover
+  part `"tools"` (ad placement `service_tools`, or supplier credit). Grandma's
+  L10 tip opens the Market; the L10 milestone card lists the tools. Browser:
+  `tools/e2e/restauranttools.mjs`.
 - `restaurant-service-cover-qa` — COVERING A SHORT SERVICE (developer
   2026-10-10: "don't use Grandma lending anywhere — use watch ad; don't
   miss any monetization opportunity"; with no ad a small loan).

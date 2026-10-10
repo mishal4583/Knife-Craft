@@ -341,7 +341,7 @@ Date.now = realDateNow;
   };
   const ad = cfg.advertisement;
   const ids = (l: Array<{ id: string }>) => l.map((p) => p.id).sort().join();
-  assert(ad.minimumDelayBetweenInterstitial === 120 && ad.interstitial.placementFallback === INTERSTITIAL_PLACEMENT && ad.rewarded.placementFallback === REWARDED_PLACEMENT && ids(ad.interstitial.placements) === [AD_PLACEMENT.levelCompleted, AD_PLACEMENT.businessDayEnd].sort().join() && ids(ad.rewarded.placements) === [AD_PLACEMENT.replayBonus, AD_PLACEMENT.rushRestock, AD_PLACEMENT.serviceStock, AD_PLACEMENT.serviceSupplies].sort().join(), "E6: Bridge config — 120 s minimum between interstitials, every ad spot listed as its own placement, fallbacks = the defaults");
+  assert(ad.minimumDelayBetweenInterstitial === 120 && ad.interstitial.placementFallback === INTERSTITIAL_PLACEMENT && ad.rewarded.placementFallback === REWARDED_PLACEMENT && ids(ad.interstitial.placements) === [AD_PLACEMENT.levelCompleted, AD_PLACEMENT.businessDayEnd].sort().join() && ids(ad.rewarded.placements) === [AD_PLACEMENT.replayBonus, AD_PLACEMENT.rushRestock, AD_PLACEMENT.serviceStock, AD_PLACEMENT.serviceSupplies, AD_PLACEMENT.serviceTools].sort().join(), "E6: Bridge config — 120 s minimum between interstitials, every ad spot listed as its own placement, fallbacks = the defaults");
 }
 
 // ===== F: production safety (source) =====

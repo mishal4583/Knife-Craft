@@ -118,6 +118,7 @@ export function firstPurchaseRows(): { label: string; value: string }[] {
   ];
   return [
     ...items.map((i) => ({ label: i.label, value: `in the Market · ${formatUsd(i.price)}` })),
+    { label: "🧰 Kitchen tools", value: "sheet pans & oven mitts before Level 11" },
     { label: "📋 Next", value: "your first menu at Level 11" },
   ];
 }
@@ -197,10 +198,12 @@ export const GRANDMA_TIPS: Record<number, GrandmaTip> = {
   },
   8: { text: "Peel first, then halve. Steady hands." },
   // 9: the card's own "What's in this dish?" button is the pointer.
+  // Supplies plan A (developer 2026-10-10: "ask the player to buy some important
+  // tools"): the Market sells from here — Grandma's first shopping list.
   10: {
-    text: "Finish this one — something special is waiting. And see how we rank!",
-    to: "rack",
-    button: "Open Progress",
+    text: "The Market sells tools now — buy what's on my list before Level 11!",
+    to: "shop",
+    button: "Open Market",
   },
   11: {
     text: "We have a menu now! Have a look at it in the Restaurant.",

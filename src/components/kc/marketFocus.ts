@@ -68,15 +68,24 @@ export function clearMarketFocus() {
  */
 let pendingSupplySection: SupplySection = "culinary";
 let pendingSupplyId: SupplyId | null = null;
+let pendingSupplyPacks: number | null = null;
 
+/** `packs` presets that card's quantity, e.g. exactly what a Pre-Service Check is missing. */
 export function openMarketSupplies(
   go: (s: ScreenId) => void,
   section: SupplySection,
   supplyId?: SupplyId,
+  packs?: number,
 ) {
   pendingSupplySection = section;
   pendingSupplyId = supplyId ?? null;
+  pendingSupplyPacks = supplyId && packs && packs > 0 ? packs : null;
   go("shop-supplies");
+}
+
+/** The preset packs for the focused supply line, if one was asked for. */
+export function peekSupplyPacks(): number | null {
+  return pendingSupplyPacks;
 }
 
 /** The supply line to preselect (read during render, like peekMarketFocus). */
@@ -86,6 +95,7 @@ export function peekSupplyFocus(): SupplyId | null {
 
 export function clearSupplyFocus() {
   pendingSupplyId = null;
+  pendingSupplyPacks = null;
 }
 
 export function peekSupplySection(): SupplySection {

@@ -240,7 +240,9 @@ console.log("W. Wiring");
       iGate > iAd &&
       iRead > iGate &&
       iGrant > iRead &&
-      /part === "stock" \? AD_PLACEMENT\.serviceStock : AD_PLACEMENT\.serviceSupplies/.test(fn) &&
+      /part === "stock"\s*\? AD_PLACEMENT\.serviceStock\s*: part === "tools"\s*\? AD_PLACEMENT\.serviceTools\s*: AD_PLACEMENT\.serviceSupplies/.test(
+        fn,
+      ) &&
       /coverAdBusyRef\.current/.test(fn),
     "W1: the ad is granted only after `rewarded`, from the save read AFTER the ad, with the spot's own placement; one at a time",
   );

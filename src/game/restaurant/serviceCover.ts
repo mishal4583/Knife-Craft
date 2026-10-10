@@ -28,9 +28,10 @@ import type { ServiceStockCheck } from "./campaignStock";
 import type { ServiceSuppliesCheck } from "./serviceSupplies";
 import { FIRST_PURCHASE_LEVEL } from "./firstLevels";
 import { takeOnCredit } from "./supplierCredit";
+import type { ToolsCheck } from "./kitchenTools";
 
 /** What a cover brings: the service's missing ingredients, or its missing supplies. */
-export type CoverPart = "stock" | "supplies";
+export type CoverPart = "stock" | "supplies" | "tools";
 
 export type CoverOffer = {
   part: CoverPart;
@@ -44,7 +45,19 @@ type Short = {
   levelNumber: number;
   check: ServiceStockCheck;
   supplies: ServiceSuppliesCheck;
+  /** Kitchen tools (kitchenTools.ts; absent = none needed). */
+  tools?: ToolsCheck;
 };
+
+/** The supply lines a part is short of: id, missing units, Market packs. */
+function shortSupplyLines(plan: Short, part: "supplies" | "tools") {
+  if (part === "tools") {
+    const t = plan.tools;
+    return t && t.applies ? t.rows.filter((r) => r.missing > 0) : [];
+  }
+  const s = plan.supplies;
+  return s.applies ? s.rows.filter((r) => r.blocking && r.missing > 0) : [];
+}
 
 /**
  * The cover on offer for `part`, or null: only from Level 10, only when that
@@ -58,10 +71,9 @@ export function coverFor(plan: Short, part: CoverPart): CoverOffer | null {
     if (!c.applies || c.ready || c.affordable) return null;
     return { part, creditCost: c.missingCost, items: c.missingRows.length };
   }
-  const s = plan.supplies;
-  if (!s.applies || s.ready || s.affordable) return null;
-  const rows = s.rows.filter((r) => r.blocking && r.missing > 0);
-  return { part, creditCost: s.missingCost, items: rows.length };
+  const s = part === "tools" ? plan.tools : plan.supplies;
+  if (!s || !s.applies || s.ready || s.affordable) return null;
+  return { part, creditCost: s.missingCost, items: shortSupplyLines(plan, part).length };
 }
 
 function withoutExpired(save: SaveData): SaveData {
@@ -88,8 +100,7 @@ export function coverWithAd(save: SaveData, plan: Short, part: CoverPart): SaveD
     return { ...base, business: { ...base.business, inventory } };
   }
   const stock = { ...save.business.supplies.stock };
-  for (const r of plan.supplies.applies ? plan.supplies.rows : []) {
-    if (!r.blocking || r.missing === 0) continue;
+  for (const r of shortSupplyLines(plan, part)) {
     const prev = stock[r.id] ?? { units: 0, costBasis: 0 };
     stock[r.id] = { units: prev.units + r.missing, costBasis: prev.costBasis };
   }
@@ -135,8 +146,7 @@ export function coverWithCredit(save: SaveData, plan: Short, part: CoverPart): S
   // for that moment only, so it ends where it started.
   let next = save;
   let owed = 0;
-  for (const r of plan.supplies.applies ? plan.supplies.rows : []) {
-    if (!r.blocking || r.missing === 0) continue;
+  for (const r of shortSupplyLines(plan, part)) {
     const item = getSupplyItem(r.id);
     if (!item) continue;
     const price = supplyPackPrice(item) * r.packs;

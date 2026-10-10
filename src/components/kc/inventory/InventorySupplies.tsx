@@ -287,8 +287,12 @@ export function InventorySupplies({ go, save }: { go: (s: ScreenId) => void; sav
         </p>
         <p className="mt-1 font-hand text-[14px] leading-snug text-walnut/60">
           {consumable
-            ? "Every served Business order uses one container and one bag."
-            : "Equipment lasts: it's bought once and never used up."}
+            ? RESTAURANT_MODE
+              ? "Used up service by service — the Pre-Service Check says what's short."
+              : "Every served Business order uses one container and one bag."
+            : RESTAURANT_MODE && section === "culinary"
+              ? "Kitchen tools last: bought once. The Pre-Service Check asks for each when a dish first needs it."
+              : "Equipment lasts: it's bought once and never used up."}
         </p>
 
         <div

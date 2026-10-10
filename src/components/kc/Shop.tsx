@@ -40,6 +40,7 @@ import {
   peekMarketQuantity,
   clearMarketFocus,
   peekSupplyFocus,
+  peekSupplyPacks,
   clearSupplyFocus,
 } from "./marketFocus";
 import { ledgerTotals, LEDGER_CATEGORY_LABEL } from "@/game/economy/EconomyLedger";
@@ -252,6 +253,7 @@ export function Shop({
   const [focusId] = useState(peekMarketFocus);
   const [focusQuantity] = useState(peekMarketQuantity);
   const [supplyFocusId] = useState(peekSupplyFocus);
+  const [supplyFocusPacks] = useState(peekSupplyPacks);
   const [planFocus] = useState(peekMarketPlan);
   useEffect(() => {
     clearMarketFocus();
@@ -484,6 +486,7 @@ export function Shop({
               save={save}
               section={category}
               focusId={supplyFocusId}
+              focusPacks={supplyFocusPacks}
               purchaseSupply={purchaseSupply}
               setNotice={setNotice}
             />

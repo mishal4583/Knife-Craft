@@ -10,6 +10,9 @@
  * goods those systems need, so it isn't stopped by requirements it never had
  * the chance to prepare for:
  *
+ *  - kitchen tools (from L10, supplies plan A, 2026-10-10): the tools its
+ *    next KIT_SERVICES services cook with (kitchenTools.ts), one per cook
+ *    where a tool is per cook;
  *  - ingredient stock (from L15): what its next KIT_SERVICES services' own
  *    orders need, minus what it already has, in whole Market units, only as
  *    much as fits in the fridge (never overfilled);
@@ -45,6 +48,8 @@ import { ticketsFor } from "./serviceTickets";
 import { restaurantLevelOf } from "./restaurantMenu";
 import { LAST_CAMPAIGN_LEVEL, isSystemLive, menuGuestsPerService } from "./restaurantProgression";
 import { SERVICE_SUPPLY_RULES, orderServiceFor, restaurantSuppliesOf } from "./serviceSupplies";
+import { serviceRecipes, toolsNeeded } from "./kitchenTools";
+import { FIRST_PURCHASE_LEVEL } from "./firstLevels";
 
 export const RESTAURANT_MIGRATION_VERSION = 1;
 
@@ -119,6 +124,16 @@ export function migrateToUnifiedRestaurant(save: SaveData): SaveData {
       free -= units;
       kit.push({ kind: "ingredient", id: r.ingredientId, units });
     }
+  }
+
+  // Supplies plan A (2026-10-10): the kitchen tools the save's next services cook with.
+  if (atLevel >= FIRST_PURCHASE_LEVEL) {
+    const want = new Map<SupplyId, number>();
+    for (const sv of services)
+      for (const t of toolsNeeded(save, sv.levelNumber, serviceRecipes(save, sv.tickets)))
+        want.set(t.rule.id, Math.max(want.get(t.rule.id) ?? 0, t.need));
+    for (const [id, need] of want)
+      stock = topUpSupply(stock, id, need - (stock[id]?.units ?? 0), kit);
   }
 
   if (isSystemLive("dine-in", atLevel)) {

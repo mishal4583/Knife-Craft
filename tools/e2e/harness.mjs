@@ -43,8 +43,37 @@ export async function launch() {
  * (tests that check an empty fridge or missing plates need it).
  * `restaurantmigration.mjs` seeds without it on purpose.
  */
+/**
+ * Supplies plan A (2026-10-10): a restaurant past Level 10 owns its kitchen tools; the tests
+ * that aren't about tools start with a full set (4 of each: enough for a full line of cooks).
+ * restauranttools.mjs starts from an empty kitchen instead.
+ */
+export const KITCHEN_TOOLS = [
+  "stock-pot",
+  "saucepans",
+  "frying-pans",
+  "saute-pans",
+  "tongs",
+  "spatulas",
+  "ladles",
+  "whisks",
+  "peelers",
+  "graters",
+  "skimmers",
+  "sheet-pans",
+  "mixing-bowls",
+  "storage-containers",
+  "measuring-cups",
+  "kitchen-scales",
+  "thermometers",
+  "oven-mitts",
+];
 export const MOVED_IN_BUSINESS = {
   restaurantMigration: { version: 1, atLevel: 1, kit: [], seen: true },
+  grandmasTools: { atLevel: 10 },
+  supplies: {
+    stock: Object.fromEntries(KITCHEN_TOOLS.map((id) => [id, { units: 4, costBasis: 400 }])),
+  },
 };
 
 export function seedSave(overrides = {}) {
@@ -142,4 +171,33 @@ export function save(name, data) {
     OUT + "out/" + name,
     typeof data === "string" ? data : JSON.stringify(data, null, 2),
   );
+}
+
+/**
+ * Supplies plan A (2026-10-10): buys every kitchen tool the open Pre-Service Check is missing
+ * (its Buy → the Market's card, preselected with the packs → Buy → back), as a player would —
+ * e.g. the extra pans a newly hired cook needs. Returns the tools bought.
+ */
+export async function buyMissingTools(page) {
+  const bought = [];
+  for (let i = 0; i < 20; i++) {
+    const id = await page.evaluate(() => {
+      const row = document.querySelector('[data-psc-tool][data-psc-status="missing"]');
+      row?.querySelector("button")?.click();
+      return row?.getAttribute("data-psc-tool") ?? null;
+    });
+    if (!id) break;
+    await sleep(900);
+    await page.evaluate((id) => {
+      const card = document.querySelector(`[data-supply="${id}"]`);
+      [...(card?.querySelectorAll("button") ?? [])]
+        .find((b) => /^Buy · /.test(b.textContent.trim()))
+        ?.click();
+    }, id);
+    await sleep(500);
+    await page.evaluate(() => document.querySelector('[data-testid="psc-back"]')?.click());
+    await sleep(900);
+    bought.push(id);
+  }
+  return bought;
 }

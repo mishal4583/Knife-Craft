@@ -8,7 +8,17 @@
  * orders a previous try already paid; `progress` saves the tickets when
  * they were rolled just now. Pure; nothing reads RESTAURANT_MODE.
  */
-import { dayCeremonyAt } from "./firstLevels";
+import { FIRST_PURCHASE_LEVEL, dayCeremonyAt } from "./firstLevels";
+import {
+  FIRST_SHOPPING_LIST_LEVELS,
+  TOOLS_NOTICE_LEVELS,
+  levelRecipesAt,
+  serviceRecipes,
+  toolsCheck,
+  toolsComingUp,
+  type ToolsCheck,
+} from "./kitchenTools";
+import type { SupplyId } from "../business/businessSupplies";
 import { grandmasFridgeNoteFor, type GrandmasFridgeNote } from "./grandmasFridge";
 import { isFirstStockService } from "./firstRestock";
 import type { SaveData } from "../SaveManager";
@@ -92,6 +102,12 @@ export type ServicePlan = {
   grandmasFridge: GrandmasFridgeNote | null;
   /** The first service on real stock (Level 15): the routine is introduced (firstRestock.ts). */
   firstStockService: boolean;
+  /** The kitchen tools today's dishes and the menu need (kitchenTools.ts, from Level 10); a missing one blocks START. */
+  tools: ToolsCheck;
+  /** Tools the next few levels will ask for that the kitchen doesn't own yet ("Coming up"). */
+  toolsSoon: { id: SupplyId; level: number; why: string }[];
+  /** Level 10's first play: Grandma's first shopping list (the tools the next ten levels need). */
+  firstShoppingList: boolean;
 };
 
 /** One ingredient the menu guests need beyond the level's own orders: whole Market units. */
@@ -157,6 +173,17 @@ export function servicePlanFor(save: SaveData, level: LevelDefinition): ServiceP
     guests: guestStockFor(save, level, n, remaining),
     grandmasFridge: grandmasFridgeNoteFor(save, level, n),
     firstStockService: isFirstStockService(save, n),
+    tools: toolsCheck(save, n, serviceRecipes(save, remaining)),
+    toolsSoon:
+      n >= FIRST_PURCHASE_LEVEL
+        ? toolsComingUp(
+            save,
+            n,
+            n === FIRST_PURCHASE_LEVEL ? FIRST_SHOPPING_LIST_LEVELS : TOOLS_NOTICE_LEVELS,
+            levelRecipesAt,
+          )
+        : [],
+    firstShoppingList: n === FIRST_PURCHASE_LEVEL,
   };
 }
 
@@ -178,6 +205,9 @@ export function servicePlanNeedsSheet(plan: ServicePlan | null): boolean {
   if (plan.firstStockService) return true;
   if (!staffReady(plan)) return true;
   if (suppliesNeedAttention(plan.supplies)) return true;
+  // Kitchen tools (supplies plan A): Level 10's shopping list, or a tool missing.
+  if (plan.firstShoppingList) return true;
+  if (plan.tools.applies && !plan.tools.ready) return true;
   return plan.check.applies && (!plan.check.ready || plan.check.hasExpired);
 }
 

@@ -127,6 +127,7 @@ import { businessCustomerPayment } from "@/game/business/BusinessServiceManager"
 import { recordRevenueAndCogs } from "@/game/business/BusinessFinanceManager";
 import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
 import { giveGrandmasLeftovers } from "@/game/restaurant/grandmasFridge";
+import { giveGrandmasTools } from "@/game/restaurant/kitchenTools";
 import {
   STAR_GRADES,
   customerLineFor,
@@ -1147,7 +1148,11 @@ export function App() {
     try {
       const ad = await requestRewardedAd(
         newServiceCoverRewardId(),
-        part === "stock" ? AD_PLACEMENT.serviceStock : AD_PLACEMENT.serviceSupplies,
+        part === "stock"
+          ? AD_PLACEMENT.serviceStock
+          : part === "tools"
+            ? AD_PLACEMENT.serviceTools
+            : AD_PLACEMENT.serviceSupplies,
       );
       if (ad.status !== "rewarded") {
         return {
@@ -1368,7 +1373,11 @@ export function App() {
       // First levels (firstLevels.ts): before Level 21 a day that's due to
       // close closes quietly (the same closeDay the Closing Time button runs).
       // First levels pass 2: Grandma's leftovers, once (an older save past Level 3 too).
-      const base = giveGrandmasLeftovers(quietDayEnd(save));
+      // Grandma's leftovers (Level 3+) and her old tools (Level 10+), once each.
+      const base = giveGrandmasTools(
+        giveGrandmasLeftovers(quietDayEnd(save)),
+        restaurantLevelOf(save.levelProgress),
+      );
       // Closing time comes before the next day's first service (the Closing
       // Time sheet shows over the Order Board / Kitchen until it is done).
       if (firstPlay && restaurantDayOf(base).closingDue) {
@@ -1992,6 +2001,11 @@ export function App() {
     const hadLeftovers = !!nextSave.business.grandmasFridge;
     if (RESTAURANT_MODE && isFirstCompletion) nextSave = giveGrandmasLeftovers(nextSave);
     const leftoversNow = !hadLeftovers && !!nextSave.business.grandmasFridge;
+    // Supplies plan A: reaching Level 10 (the Market opens) brings Grandma's old tools (once).
+    const hadTools = !!nextSave.business.grandmasTools;
+    if (RESTAURANT_MODE && isFirstCompletion)
+      nextSave = giveGrandmasTools(nextSave, restaurantLevelOf(nextSave.levelProgress));
+    const toolsNow = !hadTools && !!nextSave.business.grandmasTools;
     const newDay =
       restaurantDayOf(nextSave).day !== dayBefore ? restaurantDayOf(nextSave).day : null;
     // Economy V2 Phase 9 — the completion reward is its own real wallet
@@ -2036,6 +2050,9 @@ export function App() {
                 ? [fridgeLeftLine(finalSave, usedIngredients)]
                 : []),
               ...(leftoversNow ? ["🧺 Grandma's leftovers are in the fridge — free"] : []),
+              ...(toolsNow
+                ? ["🧰 Grandma's old peeler, bowl and measuring cups are yours — free"]
+                : []),
               // Pass 3: the dish's best stars (the engine's grade; never money).
               ...(hasLevelGoals(n) && levelStars(finalSave, level) !== null
                 ? [

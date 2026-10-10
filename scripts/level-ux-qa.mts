@@ -88,7 +88,8 @@ console.log("N. Level Complete notice (A1/A2)");
       // Since the city ranking (2026-10-09) the notice also carries an optional cityRank line,
       // and since the first levels (2026-10-09) Grandma's line, the sections that opened
       // and (pass 2) what's left in Grandma's fridge.
-      /if \(rewardCoins > 0\) \{[\s\S]{0,1600}?setLevelRewardNotice\(\{\s*rewardCoins,\s*orderCoins,/.test(
+      // Supplies plan A (2026-10-10) adds Grandma's tools note: a longer block.
+      /if \(rewardCoins > 0\) \{[\s\S]{0,2000}?setLevelRewardNotice\(\{\s*rewardCoins,\s*orderCoins,/.test(
         app,
       ) &&
       !/else if \(rewardCoins > 0\) setLevelRewardNotice/.test(app),

@@ -271,7 +271,9 @@ console.log("W. Wiring");
     // Since the first levels (2026-10-09) a day before Level 21 closes quietly with the
     // same closeDay, so the hold reads the save after that (`base`; pass 2 also gives
     // Grandma's leftovers there, once).
-    /const base = giveGrandmasLeftovers\(quietDayEnd\(save\)\);/.test(app) &&
+    /const base = giveGrandmasTools\(\s*giveGrandmasLeftovers\(quietDayEnd\(save\)\),\s*restaurantLevelOf\(save\.levelProgress\),?\s*\);/.test(
+      app,
+    ) &&
       /if \(firstPlay && restaurantDayOf\(base\)\.closingDue\) \{\s*closingHoldRef\.current = true;/.test(
         app,
       ) &&

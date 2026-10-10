@@ -40,6 +40,7 @@ export function MarketSupplies({
   save,
   section,
   focusId = null,
+  focusPacks = null,
   purchaseSupply,
   setNotice,
 }: {
@@ -47,6 +48,8 @@ export function MarketSupplies({
   section: SupplySection;
   /** Preselected by an Inventory → Market link: its group opens and the card scrolls into view. */
   focusId?: SupplyId | null;
+  /** The packs to preset on the focused card (a Pre-Service Check's "Buy"). */
+  focusPacks?: number | null;
   purchaseSupply: (supplyId: string, packs: number) => PurchaseSupplyResult;
   setNotice: (text: string) => void;
 }) {
@@ -59,7 +62,9 @@ export function MarketSupplies({
   useEffect(() => {
     focusRef.current?.scrollIntoView({ block: "center" });
   }, []);
-  const [packs, setPacks] = useState<Partial<Record<SupplyId, number>>>({});
+  const [packs, setPacks] = useState<Partial<Record<SupplyId, number>>>(
+    focusItem && focusPacks ? { [focusItem.id]: focusPacks } : {},
+  );
   const [messages, setMessages] = useState<Partial<Record<SupplyId, string>>>({});
   const supplies = save.business.supplies;
   const items = SUPPLY_CATALOG.filter(
@@ -112,9 +117,15 @@ export function MarketSupplies({
           {meta.emoji} {meta.kicker}
         </p>
         <p className="mt-1 font-hand text-[15px] leading-snug text-walnut/65">
-          {section === "packaging"
-            ? "Each Business order goes out in one container and one carry bag while you have them."
-            : "Restaurant equipment for your Business kitchen and dining room. It lasts; it's never used up."}{" "}
+          {RESTAURANT_MODE
+            ? section === "culinary"
+              ? "Your dishes need these tools — the Pre-Service Check asks for each one when a dish first does. They last; you buy them once."
+              : section === "service"
+                ? "Your dining room's tableware. It lasts and is washed after every service."
+                : "Takeaway packaging, napkins, soap and cleaning liquid — used up service by service."
+            : section === "packaging"
+              ? "Each Business order goes out in one container and one carry bag while you have them."
+              : "Restaurant equipment for your Business kitchen and dining room. It lasts; it's never used up."}{" "}
           Prices are restaurant-supply prices ({SUPPLY_PRICES_RETRIEVED}), less your wholesale
           discount.
         </p>
