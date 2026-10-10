@@ -80,6 +80,7 @@ export type ScreenId =
   | "business-staff"
   // Economy V3 Phase 12 — the Inspections sub-screen under Business.
   | "business-inspections"
+  | "business-cleanliness"
   // Economy V3 Phase 14 (Checkpoint 3) — the Service sub-screen under
   // Business: shows the current Business order (a real curated dish),
   // its live menu price, and ingredient availability, gated into the

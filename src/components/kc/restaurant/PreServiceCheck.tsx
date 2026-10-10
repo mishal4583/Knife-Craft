@@ -108,6 +108,8 @@ export function PreServiceCheck({
   toolsSoon = [],
   firstShoppingList = false,
   onBuyTool = () => {},
+  cleaningOpen = 0,
+  onOpenCleanliness = () => {},
 }: {
   levelNumber: number;
   day: number;
@@ -180,6 +182,9 @@ export function PreServiceCheck({
   firstShoppingList?: boolean;
   /** Buy → the Market's Culinary section on that tool, with the packs preset. */
   onBuyTool?: (id: SupplyId, packs: number) => void;
+  /** Cleanliness & Maintenance: cleaning tasks still open (never blocks START; it costs the spotless streak). */
+  cleaningOpen?: number;
+  onOpenCleanliness?: () => void;
 }) {
   // Optional sections start folded so START and what blocks it stay in view.
   const [showGuests, setShowGuests] = useState(false);
@@ -437,6 +442,29 @@ export function PreServiceCheck({
                 onClick={onUpgradeFridge}
               >
                 Manage fridge →
+              </KButton>
+            </div>
+          ) : null}
+
+          {cleaningOpen > 0 ? (
+            <div
+              className="mt-3 flex items-center gap-2 rounded-2xl border border-gold/50 bg-gold/15 p-2"
+              data-testid="psc-cleaning"
+            >
+              <span className="text-[22px]" aria-hidden>
+                🧹
+              </span>
+              <p className="min-w-0 flex-1 font-ui text-[13px] font-bold leading-snug text-walnut-dark">
+                {cleaningOpen} cleaning {cleaningOpen === 1 ? "task" : "tasks"} left — clean before
+                the service to keep it spotless.
+              </p>
+              <KButton
+                size="sm"
+                variant="cream"
+                className="min-h-12 shrink-0"
+                onClick={onOpenCleanliness}
+              >
+                Clean ›
               </KButton>
             </div>
           ) : null}

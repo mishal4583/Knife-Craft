@@ -24,6 +24,7 @@ import type { SaveData } from "../SaveManager";
 import { isSystemLive } from "./restaurantProgression";
 import { bottleView, restaurantSuppliesOf } from "./serviceSupplies";
 import { isSpotless, type ServiceHygiene } from "./hygiene";
+import { AREA_META, cleanlinessOf, isCleanlinessLive } from "./cleanliness";
 
 export { hygieneIssue, isSpotless, type ServiceHygiene } from "./hygiene";
 
@@ -77,7 +78,19 @@ export function restaurantRecordOf(save: SaveData): RestaurantRecord {
     },
     lastHygiene:
       h && typeof h === "object"
-        ? { soap: h.soap !== false, cleaner: h.cleaner !== false, dirtyLeft: whole(h.dirtyLeft) }
+        ? {
+            soap: h.soap !== false,
+            cleaner: h.cleaner !== false,
+            dirtyLeft: whole(h.dirtyLeft),
+            ...(whole(h.openTasks) > 0
+              ? {
+                  openTasks: whole(h.openTasks),
+                  areas: Array.isArray(h.areas)
+                    ? h.areas.filter((a): a is string => typeof a === "string")
+                    : [],
+                }
+              : {}),
+          }
         : null,
   };
 }
@@ -116,13 +129,22 @@ export function closeServiceReport(
     broken: sup.brokenTotal,
   };
   const diff = (k: keyof typeof now) => Math.max(0, now[k] - rec.at[k]);
-  const hygiene: ServiceHygiene | null = isSystemLive("dine-in", levelNumber)
-    ? {
-        soap: !noSoap,
-        cleaner: bottleView(save, "cleaning-liquid").status !== "empty",
-        dirtyLeft: Object.values(sup.dirty).reduce((t, n) => t + (n ?? 0), 0),
-      }
-    : null;
+  // From dine-in (L31): soap, nothing dirty, cleaning liquid in. From the Cleanliness
+  // section (L21): also no cleaning task left open when the service started.
+  const dineIn = isSystemLive("dine-in", levelNumber);
+  const start = cleanlinessOf(save).lastStart;
+  const atStart = start && start.level === levelNumber ? start : null;
+  const hygiene: ServiceHygiene | null =
+    dineIn || isCleanlinessLive(levelNumber)
+      ? {
+          soap: !noSoap,
+          cleaner: !dineIn || bottleView(save, "cleaning-liquid").status !== "empty",
+          dirtyLeft: Object.values(sup.dirty).reduce((t, n) => t + (n ?? 0), 0),
+          ...(atStart && atStart.open > 0
+            ? { openTasks: atStart.open, areas: atStart.areas.map((a) => AREA_META[a].title) }
+            : {}),
+        }
+      : null;
   const spotless = hygiene ? isSpotless(hygiene) : null;
   const streak = spotless === null ? rec.streak : spotless ? rec.streak + 1 : 0;
   const next: RestaurantRecord = {
@@ -164,6 +186,9 @@ export function serviceReportLines(r: ServiceReport): string[] {
       !r.hygiene.soap ? "no dish soap" : null,
       r.hygiene.dirtyLeft > 0 ? `${r.hygiene.dirtyLeft} dirty pieces left` : null,
       !r.hygiene.cleaner ? "no cleaning liquid" : null,
+      (r.hygiene.openTasks ?? 0) > 0
+        ? `${r.hygiene.openTasks} cleaning ${r.hygiene.openTasks === 1 ? "task" : "tasks"} left`
+        : null,
     ].filter(Boolean);
     lines.push(`🧽 Not spotless: ${why.join(", ")} — the streak starts again`);
   }

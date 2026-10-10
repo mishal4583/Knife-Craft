@@ -6,6 +6,7 @@ import type { GrandmasFridgeState } from "../restaurant/grandmasFridge";
 import type { SupplierCreditState } from "../restaurant/supplierCredit";
 import type { GrandmasToolsState } from "../restaurant/kitchenTools";
 import type { RestaurantRecord } from "../restaurant/serviceReport";
+import type { CleanlinessState } from "../restaurant/cleanliness";
 import type { EndlessStarsState } from "../restaurant/restaurantStanding";
 /**
  * BUSINESS_TYPES — Economy V3's own persisted-state container. A single
@@ -113,6 +114,12 @@ export type BusinessState = {
    * supplies plan D). Optional; absent = nothing recorded yet.
    */
   restaurantRecord?: RestaurantRecord;
+  /**
+   * Unified Restaurant (RESTAURANT_MODE): Cleanliness & Maintenance — open
+   * cleaning tasks, opened supply units, the Cleaner's areas
+   * (restaurant/cleanliness.ts). Optional; absent = nothing yet.
+   */
+  cleanliness?: CleanlinessState;
   /**
    * Unified Restaurant (RESTAURANT_MODE): the specialist chefs hired for the
    * cuisines (restaurant/staffRequirements.ts). Optional; the classic

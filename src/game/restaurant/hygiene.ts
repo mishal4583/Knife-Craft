@@ -12,10 +12,15 @@ export type ServiceHygiene = {
   cleaner: boolean;
   /** Tableware pieces still dirty after the wash-up. */
   dirtyLeft: number;
+  /** Cleanliness & Maintenance: cleaning tasks still open when the service started (absent = none). */
+  openTasks?: number;
+  /** …and the areas they were in. */
+  areas?: string[];
 };
 
 /** Whether a service with this hygiene was spotless. */
-export const isSpotless = (h: ServiceHygiene) => h.soap && h.cleaner && h.dirtyLeft === 0;
+export const isSpotless = (h: ServiceHygiene) =>
+  h.soap && h.cleaner && h.dirtyLeft === 0 && !((h.openTasks ?? 0) > 0);
 
 /**
  * The inspector's look at the restaurant's last service (L91+ inspections):
@@ -32,6 +37,11 @@ export function hygieneIssue(save: SaveData): string | null {
     h.soap === false ? "dishes washed without soap" : null,
     dirtyLeft > 0 ? `${Math.floor(dirtyLeft)} dirty pieces left in the sink` : null,
     h.cleaner === false ? "no cleaning liquid for the wipe-down" : null,
+    typeof h.openTasks === "number" && h.openTasks > 0
+      ? `${Math.floor(h.openTasks)} cleaning ${h.openTasks === 1 ? "task" : "tasks"} left undone${
+          Array.isArray(h.areas) && h.areas.length ? ` (${h.areas.join(", ")})` : ""
+        }`
+      : null,
   ].filter(Boolean);
   return why.length ? `Hygiene: ${why.join(", ")}.` : null;
 }

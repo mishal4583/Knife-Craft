@@ -43,6 +43,7 @@ const memoryStore = new Map<string, string>();
   length: 0,
 } as Storage;
 
+import { getCampaignRecipe } from "../src/game/recipes/campaignRecipes.ts";
 import { dailyPayroll, BUSINESS_STAFF_CATALOG } from "../src/game/business/businessStaff.ts";
 import { SPECIALIST_WAGE_FROM_ROLE } from "../src/game/restaurant/staffRequirements.ts";
 import { DEFAULT_SAVE, type SaveData } from "../src/game/SaveManager.ts";
@@ -103,6 +104,15 @@ import {
   closingSuppliesFor,
 } from "../src/game/restaurant/serviceSupplies.ts";
 import { closeServiceReport, restaurantRecordOf } from "../src/game/restaurant/serviceReport.ts";
+import {
+  cleanAll,
+  cleanerRound,
+  cleanlinessOf,
+  giveGrandmasCupboard,
+  snapshotServiceStart,
+  taskNeeds,
+  tasksAfterService,
+} from "../src/game/restaurant/cleanliness.ts";
 import { hireSpecialist, getSpecialist } from "../src/game/restaurant/staffRequirements.ts";
 import {
   bulkDiscountFor,
@@ -277,6 +287,8 @@ function playLevel(save: SaveData, n: number, opts: SimOptions, stats: Stats): S
   s = giveGrandmasLeftovers(s);
   // As App: Grandma's old tools once the Market opens (kitchenTools.ts).
   s = giveGrandmasTools(s, restaurantLevelOf(s.levelProgress));
+  // As App: Grandma's cleaning cupboard once Cleanliness opens (cleanliness.ts).
+  s = giveGrandmasCupboard(s, restaurantLevelOf(s.levelProgress));
   let plan = servicePlanFor(s, level);
   if (!plan) {
     stats.blocked.push(`${where}: no plan`);
@@ -457,8 +469,20 @@ function playLevel(save: SaveData, n: number, opts: SimOptions, stats: Stats): S
     return s;
   }
 
+  // Cleanliness & Maintenance: a diligent player restocks what the open tasks need and cleans.
+  if (profile === "diligent" && cleanlinessOf(s).tasks.length > 0) {
+    for (const t of cleanlinessOf(s).tasks)
+      for (const id of taskNeeds(s, t.kind)) {
+        if (taskNeeds(s, t.kind).includes(id)) {
+          const b = buySupply(s, id, 1);
+          if (b.ok) s = persist(b.s, stats, `${where} cleaning buy ${id}`);
+        }
+      }
+    s = persist(cleanAll(s).save, stats, `${where} clean`);
+  }
   // START (App.beginLevel): the wash-up, the crate note, the level selected.
   s = markStarterCrateSeen(washUp(s, n).save);
+  s = snapshotServiceStart(s, n);
   s = persist(
     { ...s, levelProgress: selectLevel(level.id, s.levelProgress) },
     stats,
@@ -560,7 +584,16 @@ function playLevel(save: SaveData, n: number, opts: SimOptions, stats: Stats): S
   if (isFirstCompletion) {
     // As App: the wash-up, then the service's report (supplies plan D: the spotless streak).
     const washed = washUp(recordService(next, n), n);
-    next = closeServiceReport(washed.save, n, washed.noSoap).save;
+    const report = closeServiceReport(washed.save, n, washed.noSoap);
+    next = report.save;
+    // As App: the cleaning this service left, then the Cleaner's round.
+    const served = paidOrdersFor(s.levelProgress, level.id).map((id) => getCampaignRecipe(id));
+    next = tasksAfterService(next, n, {
+      recipes: served,
+      dineIn: report.report.covers,
+      customers: Math.max(served.length, report.report.covers + report.report.takeaway),
+    });
+    next = cleanerRound(next).save;
     if (restaurantRecordOf(next).streak > stats.bestStreak)
       stats.bestStreak = restaurantRecordOf(next).streak;
   }

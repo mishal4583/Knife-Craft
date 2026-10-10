@@ -873,6 +873,17 @@ Not implemented (from the audits, all CSS/asset-free):
    times shortened — default 2.0 s (was 4.2), Level Complete with earnings
    2.6 s (5.6), with Grandma's line 3.0 s (6.4), the Level 10 card 5 s (9).
    e2e `restaurantsupplies` 3d (tap outside), `restaurantguests` 4c (page).
+67. CLEANLINESS & MAINTENANCE (developer 2026-10-10; plan answers: new
+   Market section, opens at L21, all three areas count for spotless, the
+   Cleaner only). Restaurant → 🧹 Cleanliness: Kitchen / Dining Area /
+   Restroom cards with meters and task spots, Ready for service, Cleaning
+   staff, Recent history + inspection, a supplies strip to the Market, a
+   guided intro. Tasks come from real services; cleaning uses real supplies
+   once; the Cleaner does the routine tasks of assigned areas; undone
+   cleaning at the start of a service breaks the spotless streak and the
+   L91+ inspector warns. 10 new Market lines (Cleaning). New
+   `restaurant-cleanliness-qa`, e2e `restaurantcleanliness.mjs`. Pushed
+   to `main` after the developer's approval.
 
 ## 6b. Current state (2026-10-09, end of session)
 

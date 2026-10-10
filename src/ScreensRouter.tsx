@@ -1,3 +1,4 @@
+import type { CleanlinessAction, CleanlinessActionResult } from "@/game/restaurant/cleanliness";
 import { Suspense, lazy } from "react";
 import { Kitchen, OrderBoard, BottomNav } from "@/components/kc/Kitchen";
 import { Shop } from "@/components/kc/Shop";
@@ -92,6 +93,7 @@ export function ScreensRouter({
   upgradeKnife,
   buyStaff,
   selectSupplier,
+  cleanlinessAction,
   setEquippedKnife,
   setEquippedBoard,
   toggleSetting,
@@ -133,6 +135,8 @@ export function ScreensRouter({
   upgradeKnife: (id: string, stat: BlacksmithStat) => UpgradeKnifeResult;
   buyStaff: (id: string) => BuyStaffResult;
   selectSupplier: (id: string) => void;
+  /** Restaurant → Cleanliness (restaurant/cleanliness.ts). */
+  cleanlinessAction: (action: CleanlinessAction) => CleanlinessActionResult | null;
   setEquippedKnife: (id: string) => void;
   setEquippedBoard: (id: string) => void;
   toggleSetting: (key: "sound" | "reducedMotion") => void;
@@ -267,6 +271,7 @@ export function ScreensRouter({
               signSupplierContract={signSupplierContract}
               cancelSupplierContract={cancelSupplierContract}
               selectSupplier={selectSupplier}
+              cleanlinessAction={cleanlinessAction}
               hireStaff={hireStaff}
               buyStaff={buyStaff}
               fireStaff={fireStaff}

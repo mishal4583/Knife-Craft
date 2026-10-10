@@ -1,6 +1,14 @@
 import type { ScreenId } from "../data";
 
-export type BusinessTab = "overview" | "equipment" | "staff" | "suppliers" | "menu" | "operations";
+export type BusinessTab =
+  | "overview"
+  | "equipment"
+  | "staff"
+  | "suppliers"
+  | "menu"
+  | "operations"
+  // Restaurant build, from CLEANING_FROM_LEVEL (restaurant/cleanliness.ts).
+  | "cleanliness";
 
 /**
  * The Business screen ids (existing routes) and the tab each one opens.
@@ -15,6 +23,7 @@ export const BUSINESS_TAB_SCREEN: Record<BusinessTab, ScreenId> = {
   suppliers: "business-suppliers",
   menu: "business-menu",
   operations: "business-inspections",
+  cleanliness: "business-cleanliness",
 };
 
 export function businessTabForScreen(screen: ScreenId): BusinessTab | null {
@@ -33,6 +42,8 @@ export function businessTabForScreen(screen: ScreenId): BusinessTab | null {
     case "business-inspections":
     case "business-finance":
       return "operations";
+    case "business-cleanliness":
+      return "cleanliness";
     default:
       return null;
   }

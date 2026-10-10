@@ -1,5 +1,5 @@
 import { formatUsd } from "@/game/money";
-import type { ReactNode } from "react";
+import type { HTMLAttributes, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 /* ── Buttons ─────────────────────────────────────────────── */
@@ -56,18 +56,21 @@ export function Panel({
   children,
   className,
   tone = "paper",
+  ...rest
 }: {
   children: ReactNode;
   className?: string;
   tone?: "paper" | "cream" | "dark";
-}) {
+} & Omit<HTMLAttributes<HTMLDivElement>, "children" | "className">) {
   const tones = {
     paper: "paper border-walnut/15",
     cream: "card-warm border-walnut/15",
     dark: "wood text-ivory border-walnut-dark/60",
   }[tone];
   return (
-    <div className={cn("rounded-[22px] border shadow-soft", tones, className)}>{children}</div>
+    <div className={cn("rounded-[22px] border shadow-soft", tones, className)} {...rest}>
+      {children}
+    </div>
   );
 }
 

@@ -122,7 +122,9 @@ export function MarketSupplies({
               ? "Your dishes need these tools — the Pre-Service Check asks for each one when a dish first does. They last; you buy them once."
               : section === "service"
                 ? "Your dining room's tableware. It lasts and is washed after every service."
-                : "Takeaway packaging, napkins, soap and cleaning liquid — used up service by service."
+                : section === "cleaning"
+                  ? "Your Cleanliness supplies: chemicals, restroom refills and liners are used up by each cleaning task; the mop, broom and toilet brush last."
+                  : "Takeaway packaging, napkins, soap and cleaning liquid — used up service by service."
             : section === "packaging"
               ? "Each Business order goes out in one container and one carry bag while you have them."
               : "Restaurant equipment for your Business kitchen and dining room. It lasts; it's never used up."}{" "}

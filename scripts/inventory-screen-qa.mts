@@ -153,7 +153,8 @@ const ALL_IDS = Object.keys(INGREDIENTS) as IngredientId[];
 
 // ===== U: supplies (smallwares, tableware & cutlery, takeaway parcels) =====
 {
-  const { SUPPLY_CATALOG } = await import("../src/game/business/businessSupplies.ts");
+  const { SUPPLY_CATALOG, isConsumableSupply } =
+    await import("../src/game/business/businessSupplies.ts");
   const M = await import("../src/game/business/BusinessSuppliesManager.ts");
   const { businessCustomersToday } = await import("../src/game/business/BusinessServiceManager.ts");
   const s = saveWith();
@@ -174,20 +175,23 @@ const ALL_IDS = Object.keys(INGREDIENTS) as IngredientId[];
   const customers = businessCustomersToday({ ...s, business: { ...s.business, supplies } }).target;
   const low = SUPPLY_CATALOG.filter((item) => M.isLowSupply(supplies, item, customers));
   assert(
-    low.every((i) => i.section === "packaging") &&
-      !low.some((i) => i.id === "dinner-forks") &&
+    // Cleanliness & Maintenance (developer 2026-10-10): the cleaning consumables are used up
+    // too, so they can be low; equipment and the cleaning tools never are.
+    low.every((i) => isConsumableSupply(i)) &&
+      !low.some((i) => i.id === "dinner-forks" || i.id === "mop-bucket") &&
       low.some((i) => i.id === "foil-containers"),
-    "U2: only packaging can be low (cutlery and other equipment is owned, never used up)",
+    "U2: only consumables can be low (packaging, cleaning supplies) — cutlery, equipment and cleaning tools are owned, never used up",
   );
   const ui = read("src/components/kc/inventory/InventorySupplies.tsx");
   assert(
     /SUPPLY_CATALOG\.filter\(\(item\) => item\.section === section\)/.test(ui) &&
-      // 52 since phase G (dish soap + cleaning liquid, audit decision 6).
-      SUPPLY_CATALOG.length === 52 &&
-      ["culinary", "service", "packaging"].every((sec) =>
+      // 52 since phase G (dish soap + cleaning liquid, audit decision 6); 62 with the
+      // restaurant build's Cleaning section (Cleanliness & Maintenance, 2026-10-10).
+      SUPPLY_CATALOG.length === 62 &&
+      ["culinary", "service", "packaging", "cleaning"].every((sec) =>
         SUPPLY_CATALOG.some((i) => i.section === sec),
       ),
-    "U3: all 52 supply lines (smallwares, tableware & cutlery, takeaway) can be shown",
+    "U3: all 62 supply lines (smallwares, tableware & cutlery, takeaway, cleaning) can be shown",
   );
   const code2 = code(ui).replace(/^import type .*$/gm, "");
   assert(

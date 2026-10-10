@@ -106,6 +106,16 @@ import {
   washUp,
 } from "@/game/restaurant/serviceSupplies";
 import { closeServiceReport, serviceReportLines } from "@/game/restaurant/serviceReport";
+import {
+  cleanerRound,
+  cleaningLines,
+  cleanlinessOf,
+  applyCleanlinessAction,
+  type CleanlinessAction,
+  giveGrandmasCupboard,
+  snapshotServiceStart,
+  tasksAfterService,
+} from "@/game/restaurant/cleanliness";
 import { isSystemLive } from "@/game/restaurant/restaurantProgression";
 import {
   fireSpecialist,
@@ -864,6 +874,14 @@ export function App() {
     if (result.ok) persist(result.save);
   }
 
+  /** Restaurant → Cleanliness (cleanliness.ts): clean a task / everything, assign the Cleaner, the intro. No money moves. */
+  function cleanlinessAction(action: CleanlinessAction) {
+    if (!save) return null;
+    const result = applyCleanlinessAction(save, action);
+    if (result.save !== save) persist(result.save);
+    return result;
+  }
+
   /** Settings: the unit weighed ingredients are shown and sold in (business/measure.ts). */
   function setMeasure(measure: Measure) {
     if (!save || measureOf(save) === measure) return;
@@ -1432,6 +1450,9 @@ export function App() {
     // left dirty (no soap last time) are washed now if there's soap.
     if (RESTAURANT_MODE && level && !isCompleted(level.id, base.levelProgress))
       base = markStarterCrateSeen(washUp(base, levelNumber(level.id)).save);
+    // Cleanliness & Maintenance: what's still open as the service starts (the spotless check).
+    if (RESTAURANT_MODE && level && !isCompleted(level.id, base.levelProgress))
+      base = snapshotServiceStart(base, levelNumber(level.id));
     startPlaySession({
       world: `chapter-${level?.chapter ?? 1}`,
       level: String(levelNumber(levelId)),
@@ -2021,6 +2042,16 @@ export function App() {
       const report = closeServiceReport(washed.save, levelNumber(level.id), washed.noSoap);
       nextSave = report.save;
       serviceLines = serviceReportLines(report.report);
+      // Cleanliness & Maintenance: the cleaning this service left, then the Cleaner's round.
+      const served = paidOrdersFor(save.levelProgress, level.id).map((id) => getCampaignRecipe(id));
+      nextSave = tasksAfterService(nextSave, levelNumber(level.id), {
+        recipes: served,
+        dineIn: report.report.covers,
+        customers: Math.max(served.length, report.report.covers + report.report.takeaway),
+      });
+      const round = cleanerRound(nextSave);
+      nextSave = round.save;
+      serviceLines = [...serviceLines, ...cleaningLines(nextSave, round.cleaned.length)];
     }
     const brokenNow = restaurantSuppliesOf(nextSave).brokenTotal - brokenBefore;
     // First levels: before Level 21 the day closes quietly, and Level Complete says so.
@@ -2035,6 +2066,11 @@ export function App() {
     if (RESTAURANT_MODE && isFirstCompletion)
       nextSave = giveGrandmasTools(nextSave, restaurantLevelOf(nextSave.levelProgress));
     const toolsNow = !hadTools && !!nextSave.business.grandmasTools;
+    // Cleanliness & Maintenance: Grandma's cleaning cupboard when the section opens (once).
+    const hadCupboard = cleanlinessOf(nextSave).cupboardAt !== null;
+    if (RESTAURANT_MODE && isFirstCompletion)
+      nextSave = giveGrandmasCupboard(nextSave, restaurantLevelOf(nextSave.levelProgress));
+    const cupboardNow = !hadCupboard && cleanlinessOf(nextSave).cupboardAt !== null;
     const newDay =
       restaurantDayOf(nextSave).day !== dayBefore ? restaurantDayOf(nextSave).day : null;
     // Economy V2 Phase 9 — the completion reward is its own real wallet
@@ -2081,6 +2117,11 @@ export function App() {
               ...(leftoversNow ? ["🧺 Grandma's leftovers are in the fridge — free"] : []),
               ...(toolsNow
                 ? ["🧰 Grandma's old peeler, bowl and measuring cups are yours — free"]
+                : []),
+              ...(cupboardNow
+                ? [
+                    "🧹 Cleanliness opens: Grandma's cleaning cupboard is yours — Restaurant → Cleanliness",
+                  ]
                 : []),
               ...serviceLines,
               ...(brokenNow > 0
@@ -2824,6 +2865,7 @@ export function App() {
               upgradeKnife={upgradeKnife}
               buyStaff={buyStaff}
               selectSupplier={selectSupplier}
+              cleanlinessAction={cleanlinessAction}
               setEquippedKnife={setEquippedKnife}
               setEquippedBoard={setEquippedBoard}
               toggleSetting={toggleSetting}

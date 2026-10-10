@@ -119,13 +119,16 @@ function appPurchase(save: SaveData, id: string, packs: number) {
   assert(
     // Unified Restaurant phase G added dish soap and cleaning liquid to the packaging
     // section's "Securing & hygiene" group (audit decision 6): 50 → 52, 15 → 17.
-    SUPPLY_CATALOG.length === 52 &&
+    // Cleanliness & Maintenance (developer 2026-10-10) added the restaurant build's
+    // Cleaning section: 10 lines (7 consumables + 3 tools), 52 → 62.
+    SUPPLY_CATALOG.length === 62 &&
       count("culinary") === 18 &&
       count("service") === 17 &&
-      count("packaging") === 17,
-    "A1. 52 supply lines: 18 culinary smallwares, 17 tableware, 17 takeaway packaging & hygiene",
+      count("packaging") === 17 &&
+      count("cleaning") === 10,
+    "A1. 62 supply lines: 18 culinary smallwares, 17 tableware, 17 takeaway packaging & hygiene, 10 cleaning",
   );
-  assert(new Set(SUPPLY_CATALOG.map((i) => i.id)).size === 52, "A2. every supply id is unique");
+  assert(new Set(SUPPLY_CATALOG.map((i) => i.id)).size === 62, "A2. every supply id is unique");
   assert(
     SUPPLY_CATALOG.every((i) => SUPPLY_SECTIONS[i.section].groups.includes(i.group)) &&
       Object.values(SUPPLY_SECTIONS).every((s) =>

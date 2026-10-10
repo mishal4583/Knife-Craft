@@ -109,7 +109,7 @@ export type ShopCategory =
   | SupplySection;
 
 function isSupplySection(c: ShopCategory): c is SupplySection {
-  return c === "culinary" || c === "service" || c === "packaging";
+  return c === "culinary" || c === "service" || c === "packaging" || c === "cleaning";
 }
 
 const categories: Array<{ id: ShopCategory; label: string; emoji: string }> = [
@@ -125,6 +125,8 @@ const categories: Array<{ id: ShopCategory; label: string; emoji: string }> = [
     label: SUPPLY_SECTIONS.packaging.short,
     emoji: SUPPLY_SECTIONS.packaging.emoji,
   },
+  // Restaurant build only (filtered below): the Cleanliness screen's supplies.
+  { id: "cleaning", label: SUPPLY_SECTIONS.cleaning.short, emoji: SUPPLY_SECTIONS.cleaning.emoji },
 ];
 
 /**
@@ -134,7 +136,7 @@ const categories: Array<{ id: ShopCategory; label: string; emoji: string }> = [
  */
 const shopCategories = RESTAURANT_MODE
   ? categories.filter((c) => c.id !== "suppliers")
-  : categories;
+  : categories.filter((c) => c.id !== "cleaning");
 
 const categoryCopy: Record<ShopCategory, { title: string; description: string }> = {
   knives: {
@@ -166,6 +168,10 @@ const categoryCopy: Record<ShopCategory, { title: string; description: string }>
   packaging: {
     title: SUPPLY_SECTIONS.packaging.title,
     description: "Takeaway · every Business order goes out in a container and a bag.",
+  },
+  cleaning: {
+    title: SUPPLY_SECTIONS.cleaning.title,
+    description: "Housekeeping · keep the kitchen, dining room and restroom spotless.",
   },
 };
 

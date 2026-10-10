@@ -537,6 +537,41 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   `cleanSettingFor` (cover 100 + guests served). Inventory's "For service"
   explains it. The migration crate tops up a moving save's tableware by
   dish. Browser: `tools/e2e/restaurantsupplies.mjs`.
+- `restaurant-cleanliness-qa` — CLEANLINESS & MAINTENANCE (developer
+  2026-10-10; restaurant build). Restaurant → 🧹 Cleanliness tab
+  (`business-cleanliness`, `BusinessCleanliness.tsx`), the whole section
+  from Level 21 (`CLEANING_FROM_LEVEL`): Kitchen / Dining Area / Restroom
+  cards (meter, spots with ✓/!, View details → each task's Clean button and
+  "Buy …" for what it lacks), Today's cleanliness (Ready for service /
+  Clean everything I can), Cleaning staff (the existing Cleaner — On duty,
+  area chips, wage from the catalog, Hire/Manage → Staff), Recent history
+  (spotless streak → +1 %, inspection), the supplies strip (uses left, low,
+  + → the exact Market line) and tools; a 4-step intro once.
+  Mechanics (`restaurant/cleanliness.ts`, state `business.cleanliness`,
+  clamped by `cleanlinessOf`): no clock — each first completion adds the
+  service's tasks after the report (`tasksAfterService`: equipment, bins,
+  grease for fry/sauté/grill dishes; dining floor, tables from dine-in,
+  seeded spills from messy dishes ~35 %; toilet, restroom floor, hand-soap
+  refill every 6 customers, paper every 8; one task per kind with a count ≤
+  9), then the Cleaner's round (`cleanerRound`: routine tasks of the
+  assigned areas, never spills; no new wage). `cleanTask` uses each
+  supply once from an opened unit (`USES_PER_UNIT`: floor cleaner 30,
+  sanitizer 20, hand soap 17, cloth 25; cleaning lifetime "used"), tools
+  must be owned; missing → stays open, names the need. Spotless
+  (`hygiene.isSpotless`): also no task open when the service started
+  (`snapshotServiceStart` in App.beginLevel) — hygiene is recorded from
+  L21 (soap / cleaning liquid count from L31); the streak and +1 % rule
+  unchanged. The inspector (L91+) warns "N cleaning tasks left undone"
+  without a Cleaner (existing fines). Grandma's cleaning cupboard once at
+  L21 (`giveGrandmasCupboard`, cost 0, no ledger; older saves on their next
+  level). Catalog: section `cleaning` (restaurant only —
+  `RESTAURANT_SUPPLY_SECTION_ORDER`; the classic order keeps 3): floor
+  cleaner, sanitizer, hand soap, toilet paper, hand towels, cloths, bin
+  liners (consumables, `supply-packaging-purchase`) and mop & bucket,
+  broom & dustpan, toilet brush (durable). Never blocks START; no money
+  moves except Market purchases. Pre-Service Check: a non-blocking
+  "🧹 N cleaning tasks left" row; Level Complete: the Cleaner's line and
+  what's waiting. Browser: `tools/e2e/restaurantcleanliness.mjs`.
 - `restaurant-service-report-qa` — THE RESTAURANT'S NUMBERS (supplies plan
   Phase D, developer 2026-10-10: "they should feel proud"). The supplies
   keep running totals (`restaurantSupplies.coversTotal / takeawayTotal /

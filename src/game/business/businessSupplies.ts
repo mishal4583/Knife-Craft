@@ -33,7 +33,7 @@
  * and only then does its cost become COGS.
  */
 
-export type SupplySection = "culinary" | "service" | "packaging";
+export type SupplySection = "culinary" | "service" | "packaging" | "cleaning";
 
 export type SupplyId =
   | "stock-pot"
@@ -87,7 +87,18 @@ export type SupplyId =
   | "toothpicks"
   | "tamper-labels"
   | "dish-soap"
-  | "cleaning-liquid";
+  | "cleaning-liquid"
+  // Cleaning (restaurant build, Cleanliness & Maintenance — developer 2026-10-10)
+  | "floor-cleaner"
+  | "disinfectant"
+  | "hand-soap"
+  | "toilet-paper"
+  | "paper-towels"
+  | "sponges-cloths"
+  | "bin-liners"
+  | "mop-bucket"
+  | "brooms"
+  | "toilet-brushes";
 
 export type SupplyItem = {
   id: SupplyId;
@@ -136,9 +147,24 @@ export const SUPPLY_SECTIONS: Record<
     emoji: "📦",
     groups: ["Containers", "Boxes & wraps", "Bags & carriers", "Securing & hygiene"],
   },
+  // Restaurant build only (RESTAURANT_SUPPLY_SECTION_ORDER): the Cleanliness screen's supplies.
+  cleaning: {
+    title: "Cleaning & Hygiene Supplies",
+    short: "Cleaning",
+    kicker: "Housekeeping",
+    emoji: "🧹",
+    groups: ["Chemicals", "Restroom", "Cloths & liners", "Tools"],
+  },
 };
 
+/** The classic build's sections (Business Mode); the cleaning lines are restaurant-only. */
 export const SUPPLY_SECTION_ORDER: readonly SupplySection[] = ["culinary", "service", "packaging"];
+
+/** The restaurant build's sections: the classic three + Cleaning (Cleanliness & Maintenance). */
+export const RESTAURANT_SUPPLY_SECTION_ORDER: readonly SupplySection[] = [
+  ...SUPPLY_SECTION_ORDER,
+  "cleaning",
+];
 
 const W = "https://www.webstaurantstore.com/";
 const piece: [string, string] = ["piece", "pieces"];
@@ -894,6 +920,151 @@ export const SUPPLY_CATALOG: readonly SupplyItem[] = [
       url: `${W}noble-chemical-1-gallon-128-oz-all-surf-all-purpose-liquid-cleaner-non-butyl-case/147ALLSURF1G.html`,
     },
   },
+  // ---- Cleaning (restaurant build, Cleanliness & Maintenance — developer 2026-10-10) ----
+  // Prices read from WebstaurantStore's listings on 2026-10-10 (search index).
+  {
+    id: "floor-cleaner",
+    name: "Floor cleaner · no-rinse",
+    section: "cleaning",
+    group: "Chemicals",
+    icon: "🪣",
+    packSize: 4,
+    unit: ["gallon bottle", "gallon bottles"],
+    retailPackCents: 10249,
+    source: {
+      product: "Noble Eco Step and Shine 1 Gallon Concentrated No Rinse Floor Cleaner - 4/Case",
+      url: `${W}noble-eco-step-and-shine-1-gallon-concentrated-no-rinse-floor-cleaner-case/147ENZFC1G.html`,
+    },
+  },
+  {
+    id: "disinfectant",
+    name: "Sanitizer / disinfectant spray",
+    section: "cleaning",
+    group: "Chemicals",
+    icon: "🧪",
+    packSize: 12,
+    unit: ["spray bottle", "spray bottles"],
+    retailPackCents: 5599,
+    source: {
+      product: "Bacoff 32 fl. oz. Ready-to-Use Sanitizer / Disinfectant - 12/Case",
+      url: `${W}bacoff-32-oz-sanitizer-disinfectant-case/146BACOFFQT.html`,
+    },
+  },
+  {
+    id: "hand-soap",
+    name: "Hand soap refill",
+    section: "cleaning",
+    group: "Restroom",
+    icon: "🧼",
+    packSize: 4,
+    unit: ["gallon refill", "gallon refills"],
+    retailPackCents: 7849,
+    source: {
+      product:
+        "Softsoap CPC61036482CT 1 Gallon Refreshing Clean Scent Liquid Hand Soap Refill - 4/Case",
+      url: `${W}softsoap-cpc61036482ct-1-gallon-refreshing-clean-scent-liquid-hand-soap-refill-case/13BCPCA61036482.html`,
+    },
+  },
+  {
+    id: "toilet-paper",
+    name: "Toilet paper · jumbo roll",
+    section: "cleaning",
+    group: "Restroom",
+    icon: "🧻",
+    packSize: 12,
+    unit: ["roll", "rolls"],
+    retailPackCents: 2549,
+    source: {
+      product: "Lavex 2-Ply 720' Universal Jumbo Toilet Paper Roll with 9\" Diameter - 12/Case",
+      url: `${W}lavex-universal-2-ply-jumbo-720-toilet-paper-roll-with-9-diameter-case/5002TPJ.html`,
+    },
+  },
+  {
+    id: "paper-towels",
+    name: "Paper hand towels · multifold",
+    section: "cleaning",
+    group: "Restroom",
+    icon: "📃",
+    packSize: 4000,
+    unit: ["towel", "towels"],
+    retailPackCents: 2649,
+    source: {
+      product: "Lavex Janitorial Multifold Paper Towels - 4000/Case",
+      url: `${W}lavex-janitorial-white-m-fold-multifold-towel-case/500MFT.html`,
+    },
+  },
+  {
+    id: "sponges-cloths",
+    name: "Microfiber cleaning cloths",
+    section: "cleaning",
+    group: "Cloths & liners",
+    icon: "🧽",
+    packSize: 10,
+    unit: ["cloth", "cloths"],
+    retailPackCents: 1390,
+    source: {
+      product:
+        'Unger ME40J SmartColor MicroWipe 16" x 16" Yellow UltraLite Microfiber Cleaning Cloth - 10/Case',
+      url: `${W}unger-me40j-smartcolor-microwipe-16-x-16-yellow-ultralite-microfiber-cleaning-cloth-pack/905ME40J.html`,
+    },
+  },
+  {
+    id: "bin-liners",
+    name: "Bin liners · 33 gallon",
+    section: "cleaning",
+    group: "Cloths & liners",
+    icon: "🗑️",
+    packSize: 500,
+    unit: ["liner", "liners"],
+    retailPackCents: 4499,
+    source: {
+      product:
+        'Lavex 33 Gallon 13 Micron 33" x 40" High Density Janitorial Can Liner / Trash Bag - 500/Case',
+      url: `${W}33-gallon-13-micron-33-x-40-olympian-high-density-can-liner-trash-bag-case/502334013CL.html`,
+    },
+  },
+  {
+    id: "mop-bucket",
+    name: "Mop bucket & wringer",
+    section: "cleaning",
+    group: "Tools",
+    icon: "🪣",
+    packSize: 1,
+    unit: piece,
+    retailPackCents: 4624,
+    source: {
+      product: "Lavex 35 Qt. Yellow Mop Bucket & Side Press Wringer Combo",
+      url: `${W}lavex-janitorial-35-qt-yellow-mop-bucket-side-press-wringer-combo/274MOPBCKTYE.html`,
+    },
+  },
+  {
+    id: "brooms",
+    name: "Lobby broom & dustpan",
+    section: "cleaning",
+    group: "Tools",
+    icon: "🧹",
+    packSize: 1,
+    unit: ["set", "sets"],
+    retailPackCents: 1999,
+    source: {
+      product: 'Lavex 12" Closed-Lid Lobby Dust Pan with Broom',
+      url: `${W}lavex-janitorial-12-closed-lid-lobby-dust-pan-with-broom/697LDP12CLKT.html`,
+    },
+  },
+  {
+    id: "toilet-brushes",
+    name: "Toilet brush & caddy",
+    section: "cleaning",
+    group: "Tools",
+    icon: "🚽",
+    packSize: 1,
+    unit: piece,
+    retailPackCents: 699,
+    source: {
+      product: 'Lavex 14" White Toilet Bowl Brush with Caddy',
+      url: `${W}lavex-janitorial-14-white-toilet-bowl-brush-with-caddy/697TBB14CDDY.html`,
+    },
+  },
 ];
 
 /** Lines used a little at a time from an open bottle (restaurant/serviceSupplies.ts), never one per order. */
@@ -914,9 +1085,15 @@ export function supplyPackPrice(item: SupplyItem): number {
   return Math.round(item.retailPackCents * SUPPLY_WHOLESALE_FACTOR);
 }
 
-/** Durable equipment (smallwares, tableware) is capital and never used up; packaging is a consumable stock asset. */
+/** The cleaning section's durable tools (never used up, like smallwares). */
+export const CLEANING_TOOL_IDS: readonly SupplyId[] = ["mop-bucket", "brooms", "toilet-brushes"];
+
+/** Durable equipment (smallwares, tableware, cleaning tools) is capital and never used up; packaging and cleaning consumables are consumable stock assets. */
 export function isConsumableSupply(item: SupplyItem): boolean {
-  return item.section === "packaging";
+  return (
+    item.section === "packaging" ||
+    (item.section === "cleaning" && !CLEANING_TOOL_IDS.includes(item.id))
+  );
 }
 
 export function unitLabel(item: SupplyItem, n: number): string {
@@ -964,6 +1141,7 @@ export function defaultSuppliesState(): BusinessSuppliesState {
       culinary: { ...ZERO_TOTALS },
       service: { ...ZERO_TOTALS },
       packaging: { ...ZERO_TOTALS },
+      cleaning: { ...ZERO_TOTALS },
     },
   };
 }
@@ -996,7 +1174,7 @@ export function migrateBusinessSuppliesState(stored: unknown): BusinessSuppliesS
     }
   }
   if (raw.lifetime && typeof raw.lifetime === "object") {
-    for (const section of SUPPLY_SECTION_ORDER) {
+    for (const section of RESTAURANT_SUPPLY_SECTION_ORDER) {
       const t = (raw.lifetime as Partial<Record<SupplySection, Partial<SupplySectionTotals>>>)[
         section
       ];

@@ -29,6 +29,13 @@ import { BusinessMenu } from "./BusinessMenu";
 import { BusinessInspections } from "./BusinessInspections";
 import { BusinessFinance } from "./BusinessFinance";
 import { BusinessHistory } from "./BusinessHistory";
+import { BusinessCleanliness } from "./BusinessCleanliness";
+import {
+  CLEANING_FROM_LEVEL,
+  cleanlinessOf,
+  type CleanlinessAction,
+  type CleanlinessActionResult,
+} from "@/game/restaurant/cleanliness";
 import { cn } from "@/lib/utils";
 import { dayOfWeekFor, businessWeekFor } from "@/game/business/businessCalendar";
 import { formatQuantity } from "@/game/business/businessInventory";
@@ -97,6 +104,8 @@ const TABS: Array<{ id: BusinessTab; label: string; emoji: string }> = [
   { id: "suppliers", label: "Suppliers", emoji: "🚚" },
   { id: "menu", label: "Menu", emoji: "🍽️" },
   { id: "operations", label: "Operations", emoji: "📋" },
+  // Restaurant build, from CLEANING_FROM_LEVEL (filtered in the component).
+  { id: "cleanliness", label: "Cleanliness", emoji: "🧹" },
 ];
 
 const SEVERITY_ICON: Record<BusinessAlertSeverity, string> = {
@@ -149,6 +158,7 @@ export function BusinessDashboard({
   buyStaff,
   rushRestock,
   rushAdAvailable,
+  cleanlinessAction,
 }: {
   go: (s: ScreenId) => void;
   save: SaveData;
@@ -169,6 +179,8 @@ export function BusinessDashboard({
   buyStaff: (id: string) => BuyStaffResult;
   rushRestock: (payment: RushRestockPayment) => Promise<RushRestockOutcome>;
   rushAdAvailable: boolean;
+  /** Restaurant → Cleanliness (restaurant/cleanliness.ts); absent = no Cleanliness tab. */
+  cleanlinessAction?: (action: CleanlinessAction) => CleanlinessActionResult | null;
 }) {
   const [dayResult, setDayResult] = useState<AdvanceDayResult | null>(null);
   const [repairMessage, setRepairMessage] = useState<string | null>(null);
@@ -206,6 +218,12 @@ export function BusinessDashboard({
   }
 
   const shared = { save, go, preview, businessServiceSession, dayResult, endDay };
+  // Cleanliness & Maintenance: restaurant build, the whole section from its level.
+  const cleanlinessOpen =
+    RESTAURANT_MODE &&
+    !!cleanlinessAction &&
+    restaurantLevelOf(save.levelProgress) >= CLEANING_FROM_LEVEL;
+  const tabs = cleanlinessOpen ? TABS : TABS.filter((t) => t.id !== "cleanliness");
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-cream">
@@ -218,10 +236,22 @@ export function BusinessDashboard({
           right={<BusinessCash cents={save.credits} />}
         />
 
-        <nav className="category-tabs grid grid-cols-3 gap-2 px-4" aria-label="Business sections">
-          {TABS.map((item) => {
+        <nav
+          className={cn(
+            "category-tabs grid gap-2 px-4",
+            tabs.length > 6 ? "grid-cols-4" : "grid-cols-3",
+          )}
+          aria-label="Business sections"
+        >
+          {tabs.map((item) => {
             const active = tab === item.id;
-            const badge = item.id === "operations" && needsAttention.length > 0;
+            const badgeCount =
+              item.id === "operations"
+                ? needsAttention.length
+                : item.id === "cleanliness"
+                  ? cleanlinessOf(save).tasks.length
+                  : 0;
+            const badge = badgeCount > 0;
             return (
               <button
                 key={item.id}
@@ -242,8 +272,11 @@ export function BusinessDashboard({
                   {item.label}
                 </span>
                 {badge ? (
-                  <span className="absolute right-1.5 top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-copper px-1 font-ui text-[10px] font-black text-ivory">
-                    {needsAttention.length}
+                  <span
+                    className="absolute right-1.5 top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-copper px-1 font-ui text-[10px] font-black text-ivory"
+                    data-tab-badge={item.id}
+                  >
+                    {badgeCount}
                   </span>
                 ) : null}
               </button>
@@ -288,6 +321,9 @@ export function BusinessDashboard({
                 ? { restaurantLevel: restaurantLevelOf(save.levelProgress) }
                 : {})}
             />
+          ) : null}
+          {tab === "cleanliness" && cleanlinessAction ? (
+            <BusinessCleanliness go={go} save={save} cleanlinessAction={cleanlinessAction} />
           ) : null}
           {tab === "operations" ? (
             <Operations

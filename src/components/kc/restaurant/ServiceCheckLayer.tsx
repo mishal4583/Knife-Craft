@@ -1,3 +1,4 @@
+import { cleanlinessOf, isCleanlinessLive } from "@/game/restaurant/cleanliness";
 import type { SaveData } from "@/game/SaveManager";
 import { openStaffFor } from "../staffFocus";
 import type { ScreenId } from "@/components/kc/data";
@@ -128,6 +129,8 @@ export function ServiceCheckLayer({
       toolsSoon={plan.toolsSoon}
       firstShoppingList={plan.firstShoppingList}
       onBuyTool={(id, packs) => openMarketSupplies(go, "culinary", id, packs)}
+      cleaningOpen={isCleanlinessLive(n) ? cleanlinessOf(save).tasks.length : 0}
+      onOpenCleanliness={() => go("business-cleanliness")}
       adAvailable={adAvailable}
       onCoverWithAd={onCoverWithAd}
       onCoverWithCredit={onCoverWithCredit}

@@ -217,7 +217,9 @@ export function isLowSupply(
   item: SupplyItem,
   customersToday: number,
 ): boolean {
-  if (isBottleSupply(item)) return supplyUnits(supplies, item.id) < 1;
+  // Bottles and the cleaning supplies (Cleanliness & Maintenance) last many services: low with none left.
+  if (isBottleSupply(item) || item.section === "cleaning")
+    return isConsumableSupply(item) && supplyUnits(supplies, item.id) < 1;
   return isConsumableSupply(item) && supplyUnits(supplies, item.id) < Math.max(1, customersToday);
 }
 

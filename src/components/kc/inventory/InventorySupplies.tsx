@@ -9,6 +9,7 @@ import {
   SUPPLY_CATALOG,
   SUPPLY_SECTIONS,
   SUPPLY_SECTION_ORDER,
+  RESTAURANT_SUPPLY_SECTION_ORDER,
   isConsumableSupply,
   supplyPackPrice,
   unitLabel,
@@ -94,7 +95,9 @@ export function InventorySupplies({ go, save }: { go: (s: ScreenId) => void; sav
   const supplies = save.business.supplies;
   const customers = businessCustomersToday(save).target;
   const meta = SUPPLY_SECTIONS[section];
-  const summaries = SUPPLY_SECTION_ORDER.map((s) => supplySectionSummary(supplies, s));
+  // The restaurant build has a 4th section: Cleaning (the Cleanliness screen's supplies).
+  const sections = RESTAURANT_MODE ? RESTAURANT_SUPPLY_SECTION_ORDER : SUPPLY_SECTION_ORDER;
+  const summaries = sections.map((s) => supplySectionSummary(supplies, s));
   const unitsOnHand = summaries.reduce((n, s) => n + s.unitsOnHand, 0);
   const stockValue = summaries.reduce((n, s) => n + s.stockValue, 0);
   const linesStocked = summaries.reduce((n, s) => n + s.linesStocked, 0);
@@ -106,7 +109,7 @@ export function InventorySupplies({ go, save }: { go: (s: ScreenId) => void; sav
   const { containers, bags, orders: ordersCovered } = packagingOrdersCovered(supplies);
   const sectionItems = SUPPLY_CATALOG.filter((item) => item.section === section);
   const items = sectionItems.filter((item) => group === "All" || item.group === group);
-  const consumable = section === "packaging";
+  const consumable = section === "packaging" || section === "cleaning";
   const servingState = restaurantSuppliesOf(save);
   const dirtyPieces = Object.values(servingState.dirty).reduce((t, n) => t + (n ?? 0), 0);
   const brokenSoFar = servingState.brokenTotal;
@@ -253,8 +256,11 @@ export function InventorySupplies({ go, save }: { go: (s: ScreenId) => void; sav
         </div>
       </Panel>
 
-      <div className="grid grid-cols-3 gap-2" aria-label="Supply sections">
-        {SUPPLY_SECTION_ORDER.map((s) => (
+      <div
+        className={cn("grid gap-2", sections.length === 4 ? "grid-cols-4" : "grid-cols-3")}
+        aria-label="Supply sections"
+      >
+        {sections.map((s) => (
           <button
             key={s}
             type="button"
