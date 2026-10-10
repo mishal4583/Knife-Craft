@@ -203,7 +203,9 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   Revenue); active menu (runs itself before L51, never empty, locked never
   orderable); level/recipe/dish data untouched.
 - `restaurant-day-qa` — the restaurant day clock (`restaurant/restaurantDay.ts`):
-  Lunch + Dinner (+ Breakfast from L51); opening card; services = first
+  services per day (`DAY_SCHEDULE`, developer 2026-10-10): Lunch + Dinner to
+  L20, + Breakfast from L21 (3), + Afternoon Tea from L51 (4), + Brunch from
+  L101 (5), + Late Supper from L161 (6); opening card; services = first
   completions; Closing Time before the next level (chores, the day's count);
   before L21 only the day number moves, from L21 the freshness clock and
   spoilage, from L91 End Business Day exactly; old saves default to Day 1.
@@ -539,8 +541,10 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   dish. Browser: `tools/e2e/restaurantsupplies.mjs`.
 - `restaurant-cleanliness-qa` — CLEANLINESS & MAINTENANCE (developer
   2026-10-10; restaurant build). Restaurant → 🧹 Cleanliness tab
-  (`business-cleanliness`, `BusinessCleanliness.tsx`), the whole section
-  from Level 21 (`CLEANING_FROM_LEVEL`): Kitchen / Dining Area / Restroom
+  (`business-cleanliness`, `BusinessCleanliness.tsx`). Cleaning starts with
+  Level 10's service (`CLEANING_FROM_LEVEL` = 10, developer 2026-10-10; was
+  21): tasks, the cupboard, the spotless streak; the tab shows in the
+  Restaurant section, open from Level 11. Kitchen / Dining Area / Restroom
   cards (meter, spots with ✓/!, View details → each task's Clean button and
   "Buy …" for what it lacks), Today's cleanliness (Ready for service /
   Clean everything I can), Cleaning staff (the existing Cleaner — On duty,
@@ -563,7 +567,7 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   L21 (soap / cleaning liquid count from L31); the streak and +1 % rule
   unchanged. The inspector (L91+) warns "N cleaning tasks left undone"
   without a Cleaner (existing fines). Grandma's cleaning cupboard once at
-  L21 (`giveGrandmasCupboard`, cost 0, no ledger; older saves on their next
+  L10 (`giveGrandmasCupboard`, cost 0, no ledger; older saves on their next
   level). Catalog: section `cleaning` (restaurant only —
   `RESTAURANT_SUPPLY_SECTION_ORDER`; the classic order keeps 3): floor
   cleaner, sanitizer, hand soap, toilet paper, hand towels, cloths, bin

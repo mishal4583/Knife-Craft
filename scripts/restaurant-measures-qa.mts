@@ -405,8 +405,9 @@ console.log("P. Market plan");
       p1.rows.every((r) => r.firstDay === 0 && r.forToday) &&
       p3.rows.length >= p1.rows.length &&
       p3.dayLevels.length === 3 &&
-      p3.dayLevels[0]!.join() === "31,32" &&
-      p3.dayLevels[1]!.join() === "33,34",
+      // 3 services a day from L21 (developer 2026-10-10; was 2 to L50).
+      p3.dayLevels[0]!.join() === "31,32,33" &&
+      p3.dayLevels[1]!.join() === "34,35,36",
     `P1: today's services first (Levels ${p3.dayLevels.map((d) => d.join("+")).join(" | ")}); a longer plan only adds`,
   );
   assert(

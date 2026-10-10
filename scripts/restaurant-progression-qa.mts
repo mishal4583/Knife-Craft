@@ -86,6 +86,7 @@ import { getLevel } from "../src/game/levels/LevelManager.ts";
 import { rollServiceTickets } from "../src/game/restaurant/serviceTickets.ts";
 import { orderServiceFor } from "../src/game/restaurant/serviceSupplies.ts";
 import { BUSINESS_STAFF_CATALOG } from "../src/game/business/businessStaff.ts";
+import { servicesForDayAt } from "../src/game/restaurant/restaurantProgression.ts";
 
 let failures = 0;
 function assert(cond: unknown, msg: string) {
@@ -253,7 +254,8 @@ console.log("E. Closing from L91: End Business Day in the ledger");
   let s = withRoles(saveAt(95, 100_000), ["prep-cook", "cleaner"]);
   s = (hireSpecialist(s, "indian-chef", 95) as { ok: true; save: SaveData }).save;
   s = openDay(s, 95);
-  for (let i = 0; i < 3; i++) s = recordService(s, 95);
+  // The day's services (4 at L95 since 2026-10-10).
+  for (let i = 0; i < servicesForDayAt(95).length; i++) s = recordService(s, 95);
   const opening = s.credits;
   const before = s.economyLedger.length;
   const closed = closeDay(s, 95);

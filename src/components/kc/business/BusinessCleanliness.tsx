@@ -36,7 +36,7 @@ import { openMarketSupplies } from "../marketFocus";
 import { openStaffFor } from "../staffFocus";
 
 /**
- * RESTAURANT → CLEANLINESS & MAINTENANCE (restaurant build, from Level 21 —
+ * RESTAURANT → CLEANLINESS & MAINTENANCE (restaurant build, from Level 10 —
  * developer 2026-10-10). Every number is read from the save
  * (restaurant/cleanliness.ts, serviceSupplies, serviceReport); the only
  * actions are cleaning a task (its supplies, once), cleaning everything it

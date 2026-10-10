@@ -46,6 +46,7 @@ import { migrateToUnifiedRestaurant } from "../src/game/restaurant/restaurantMig
 import { businessDayAllowed } from "../src/game/restaurant/endlessRestaurant.ts";
 import { $, run, freshRestaurantSave } from "./restaurantCampaignSim.mts";
 import { supplierCreditOf } from "../src/game/restaurant/supplierCredit.ts";
+import { servicesForDayAt } from "../src/game/restaurant/restaurantProgression.ts";
 
 let failures = 0;
 function assert(cond: unknown, msg: string) {
@@ -104,8 +105,10 @@ assert(
   D.stats.credit === 0 && D.stats.pantry === 0,
   "B4: the diligent player never needs supplier credit or Grandma's pantry",
 );
-// 250 levels at 2 services a day (3 from L51): about 92 days, each closed once.
-const serviceDays = 25 + Math.ceil(200 / 3);
+// 250 levels, a day's length set when it opens (servicesForDayAt — developer 2026-10-10:
+// 2 a day to L20, then 3, 4, 5, 6): count the days, each closed once.
+let serviceDays = 0;
+for (let n = 1; n <= 250; n += servicesForDayAt(n).length) serviceDays++;
 assert(
   D.stats.closings >= serviceDays - 1 && D.stats.closings <= serviceDays + 1,
   `D3: the restaurant closed every day (${D.stats.closings} closings for ~${serviceDays} days)`,

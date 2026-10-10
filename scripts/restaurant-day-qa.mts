@@ -3,7 +3,9 @@
  * "only certain levels for 1 day and then closing time and cleaning … then
  * day 2 opening time").
  *
- *  S. Schedule: Lunch + Dinner per day, Breakfast added from L51.
+ *  S. Schedule (developer 2026-10-10): Lunch + Dinner to L20, + Breakfast
+ *     from L21, + Afternoon Tea from L51, + Brunch from L101, + Late Supper
+ *     from L161 (was: Breakfast from L51).
  *  O. Opening: Day 1 starts closed; opening notes the cash and the
  *     services; before Level 21 a new day opens without its card
  *     (developer 2026-10-09, first levels), from Level 21 the card shows.
@@ -84,9 +86,12 @@ const finishedDay = (n: number) => {
 console.log("S. Schedule");
 assert(
   servicesForDayAt(1).join() === "Lunch,Dinner" &&
-    servicesForDayAt(50).join() === "Lunch,Dinner" &&
-    servicesForDayAt(51).join() === "Breakfast,Lunch,Dinner",
-  "S1: Lunch + Dinner per day; Breakfast added from Level 51",
+    servicesForDayAt(20).join() === "Lunch,Dinner" &&
+    servicesForDayAt(21).join() === "Breakfast,Lunch,Dinner" &&
+    servicesForDayAt(51).join() === "Breakfast,Lunch,Afternoon Tea,Dinner" &&
+    servicesForDayAt(101).join() === "Breakfast,Brunch,Lunch,Afternoon Tea,Dinner" &&
+    servicesForDayAt(161).join() === "Breakfast,Brunch,Lunch,Afternoon Tea,Dinner,Late Supper",
+  "S1: 2 services a day to L20, then one more meal at L21, L51, L101 and L161 (6 a day)",
 );
 
 console.log("O. Opening");
@@ -152,10 +157,18 @@ console.log("V. Services");
       restaurantDayOf(implicit).openingCredits === 100_000,
     "V2: a service on an unopened day (the first launch) opens it",
   );
-  const big = recordService(recordService(recordService(openDay(saveAt(60), 60), 60), 61), 62);
+  const big = recordService(recordService(recordService(openDay(saveAt(30), 30), 30), 31), 32);
+  let four = openDay(saveAt(60), 60);
+  for (let i = 0; i < 3; i++) four = recordService(four, 60 + i);
+  const notYet = restaurantDayOf(four).closingDue;
+  four = recordService(four, 63);
   assert(
-    restaurantDayOf(big).servicesPlanned === 3 && restaurantDayOf(big).closingDue,
-    "V3: from L51 a day holds three services",
+    restaurantDayOf(big).servicesPlanned === 3 &&
+      restaurantDayOf(big).closingDue &&
+      restaurantDayOf(four).servicesPlanned === 4 &&
+      !notYet &&
+      restaurantDayOf(four).closingDue,
+    "V3: from L21 a day holds three services, from L51 four",
   );
 }
 

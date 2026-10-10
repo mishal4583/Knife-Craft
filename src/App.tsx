@@ -2120,7 +2120,7 @@ export function App() {
                 : []),
               ...(cupboardNow
                 ? [
-                    "🧹 Cleanliness opens: Grandma's cleaning cupboard is yours — Restaurant → Cleanliness",
+                    "🧹 Grandma's cleaning cupboard is yours — from now on, clean up after each service (Restaurant → Cleanliness)",
                   ]
                 : []),
               ...serviceLines,

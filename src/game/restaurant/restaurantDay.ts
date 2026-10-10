@@ -4,7 +4,8 @@
  * cleaning and all those stuffs, then day 2 opening time").
  *
  * A day is a set number of services, each one a campaign level played for
- * the first time (DAY_SCHEDULE: Lunch + Dinner, Breakfast added at L51):
+ * the first time (DAY_SCHEDULE: Lunch + Dinner to L20, then one more meal at
+ * L21 / L51 / L101 / L161 — Breakfast, Afternoon Tea, Brunch, Late Supper):
  *
  *   OPENING TIME   the day's first level opens the restaurant (the
  *                  Pre-Service Check shows "Day N · Opening time" and the

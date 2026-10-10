@@ -165,20 +165,22 @@ check(
 const closingSave = (s) => ({
   ...s,
   levelProgress: {
-    currentLevelId: "level-23",
-    highestUnlockedLevelId: "level-23",
-    completedLevelIds: Array.from({ length: 22 }, (_, i) => `level-${i + 1}`),
+    // Day 10 = Levels 19 + 20 (2 services a day to L20; 3 from L21 — developer
+    // 2026-10-10); with Level 21 reached its Closing Time shows (the ceremony).
+    currentLevelId: "level-21",
+    highestUnlockedLevelId: "level-21",
+    completedLevelIds: Array.from({ length: 20 }, (_, i) => `level-${i + 1}`),
   },
   business: {
     ...s.business,
     restaurantDay: {
-      day: 11,
+      day: 10,
       opened: true,
       servicesDone: 2,
       servicesPlanned: 2,
       closingDue: true,
       openingCredits: s.credits - 4500,
-      openingLevel: 21,
+      openingLevel: 19,
     },
   },
 });
@@ -194,9 +196,9 @@ await shot(page, "restaurant-day11-closing");
 check(
   "4a from L21 a finished day shows Closing Time: the services, the chores (spoiled food and wrapping what's left too), the count",
   !!closing &&
-    /Day 11 · Closing time/i.test(closing) &&
-    /Lunch · Level 21/.test(closing) &&
-    /Dinner · Level 22/.test(closing) &&
+    /Day 10 · Closing time/i.test(closing) &&
+    /Lunch · Level 19/.test(closing) &&
+    /Dinner · Level 20/.test(closing) &&
     chores.join() === "wash-up,wipe-down,spoiled,wrap,count" &&
     /at opening →/.test(closing),
   { closing: closing?.slice(0, 260), chores },
@@ -207,15 +209,16 @@ check("4b the next level can't start before closing", !(await inHud()) && !!(awa
 await clickButton(page, /^Close for the night/);
 await sleep(800);
 const afterClose = await readSave(page);
-await prepare("Orange Rose Garnish");
+await prepare("Julienne Carrot Garnish");
 const day12 = await sheetText();
 check(
-  "4c Close → Day 12; the next level opens with the opening card",
+  "4c Close → Day 11; Level 21 opens it with the opening card — Breakfast, Lunch, Dinner (3 services from L21)",
   !(await closingText()) &&
-    afterClose.business.restaurantDay?.day === 12 &&
+    afterClose.business.restaurantDay?.day === 11 &&
     !!day12 &&
-    /Day 12 · Opening time/i.test(day12) &&
-    /Level 23/.test(day12),
+    /Day 11 · Opening time/i.test(day12) &&
+    /Level 21/.test(day12) &&
+    /Breakfast/.test(day12),
   { day: afterClose.business.restaurantDay, day12: day12?.slice(0, 160) },
 );
 await page.evaluate(() => document.querySelector('[aria-label="Close"]')?.click());

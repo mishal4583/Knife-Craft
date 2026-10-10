@@ -7,7 +7,7 @@
  * For the next `days` restaurant days it lists what to buy now:
  *  - the services: today's still to come (or the day the next level opens),
  *    then each following day by the restaurant day's schedule (Lunch +
- *    Dinner, + Breakfast from L51 — `servicesForDayAt`); after Level 250,
+ *    Dinner, growing to 6 meals by L161 — `servicesForDayAt`); after Level 250,
  *    the Endless Restaurant's menu demand per day (`menuDemand`);
  *  - each service's real stock: its tickets (after the orders a try already
  *    paid) and its menu guests, through `orderRequirements` (the same stock

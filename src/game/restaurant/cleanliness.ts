@@ -1,8 +1,8 @@
 /**
  * CLEANLINESS & MAINTENANCE (restaurant build, developer 2026-10-10). The
  * whole section — Kitchen, Dining Area, Restroom, their supplies and the
- * Cleaner's rounds — opens together at CLEANING_FROM_LEVEL (21, with the
- * fridge and closing time).
+ * Cleaner's rounds — starts together at CLEANING_FROM_LEVEL (10; the tab is
+ * in the Restaurant section, open from Level 11).
  *
  * No clock and no decay: dirt comes only from real services. After each
  * service (a first completion — App.completeCampaignLevel, after the
@@ -34,11 +34,15 @@ import { supplyUnits, takeOne } from "../business/BusinessSuppliesManager";
 import { makeSeededRand } from "../business/businessDeterministicRandom";
 import type { RecipeDefinition } from "../recipes/recipeTypes";
 import { dishServiceFor } from "./dishService";
-import { isSystemLive, restaurantSystem } from "./restaurantProgression";
+import { isSystemLive } from "./restaurantProgression";
 import { bottleView, restaurantSuppliesOf, tablesFor } from "./serviceSupplies";
 
-/** The whole Cleanliness section opens here (with the fridge and closing time). */
-export const CLEANING_FROM_LEVEL = restaurantSystem("fridge-freshness").firstLevel;
+/**
+ * Cleaning starts with this level's service (developer 2026-10-10: "from level
+ * 10"): its tasks, Grandma's cleaning cupboard and the spotless streak. The
+ * tab shows inside the Restaurant section, which opens at Level 11.
+ */
+export const CLEANING_FROM_LEVEL = 10;
 
 export const isCleanlinessLive = (levelNumber: number) => levelNumber >= CLEANING_FROM_LEVEL;
 

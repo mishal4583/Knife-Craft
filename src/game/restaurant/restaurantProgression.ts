@@ -490,9 +490,17 @@ export const MENU_CHOICE_LEVEL = 51;
 // ── The restaurant day ──────────────────────────────────────────────────
 
 /** Services (levels) per day, by level: lunch + dinner early, breakfast added with the cuisines. */
+// Developer 2026-10-10: the day grows with the restaurant — 2 services to Level 20,
+// then one more meal at L21, L51, L101 and L161 (6 a day at the end).
 export const DAY_SCHEDULE: readonly { fromLevel: number; services: readonly string[] }[] = [
   { fromLevel: 1, services: ["Lunch", "Dinner"] },
-  { fromLevel: 51, services: ["Breakfast", "Lunch", "Dinner"] },
+  { fromLevel: 21, services: ["Breakfast", "Lunch", "Dinner"] },
+  { fromLevel: 51, services: ["Breakfast", "Lunch", "Afternoon Tea", "Dinner"] },
+  { fromLevel: 101, services: ["Breakfast", "Brunch", "Lunch", "Afternoon Tea", "Dinner"] },
+  {
+    fromLevel: 161,
+    services: ["Breakfast", "Brunch", "Lunch", "Afternoon Tea", "Dinner", "Late Supper"],
+  },
 ];
 
 /** The service names of a day that starts with level `levelNumber`. */

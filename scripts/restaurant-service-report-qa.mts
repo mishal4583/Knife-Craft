@@ -162,10 +162,11 @@ console.log("S. Spotless");
     "S1: spotless services build a streak (1,2,3,4); no soap breaks it; the best (4) is kept",
     { streaks, lapse: lapse.report },
   );
-  const early = service(saveAt(20, {}), 20, 0, 0);
+  // Cleaning starts with Level 10 (developer 2026-10-10), so the streak starts there.
+  const early = service(saveAt(9, {}), 9, 0, 0);
   assert(
     early.report.spotless === null && early.report.streak === 0 && early.report.hygiene === null,
-    "S2: before dine-in (L31) there's nothing to keep spotless — no streak change",
+    "S2: before cleaning starts (L10) there's nothing to keep spotless — no streak change",
   );
 }
 

@@ -46,6 +46,7 @@ import {
 import { levelRecipesAt } from "../src/game/restaurant/kitchenTools.ts";
 import { closeDay, closingPreview, recordService } from "../src/game/restaurant/restaurantDay.ts";
 import { migrateToUnifiedRestaurant } from "../src/game/restaurant/restaurantMigration.ts";
+import { servicesForDayAt } from "../src/game/restaurant/restaurantProgression.ts";
 
 let failures = 0;
 function assert(cond: unknown, msg: string, detail?: unknown) {
@@ -279,8 +280,9 @@ console.log("X. Closing tissues and deli wrap");
       units(short, "tissues") === 0,
     "X2: closing uses them (no money, no ledger); short = as much as there is, never below 0",
   );
-  // The day: two services, then closing uses them and shows them first.
-  let day = recordService(recordService(s, 40), 40);
+  // The day: its services (3 at L40 since 2026-10-10), then closing uses them and shows them first.
+  let day = s;
+  for (let i = 0; i < servicesForDayAt(40).length; i++) day = recordService(day, 40);
   const preview = closingPreview(day, 40);
   day = closeDay(day, 40);
   assert(

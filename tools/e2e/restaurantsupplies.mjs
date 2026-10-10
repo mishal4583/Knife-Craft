@@ -38,9 +38,20 @@ const check = (id, ok, detail) => {
 const flat = async () => (await text(page)).replace(/\s+/g, " ");
 const { browser, page, logs } = await launch();
 
+// The day opened at Level 30 (Breakfast, done): 3 services a day from L21 (developer
+// 2026-10-10), so Level 31 is Lunch and Level 32 Dinner — then closing time.
+const DAY_FROM_30 = {
+  day: 15,
+  opened: true,
+  servicesDone: 1,
+  servicesPlanned: 3,
+  closingDue: false,
+  openingCredits: 0,
+  openingLevel: 30,
+};
 const saveAt = (n, credits) =>
   seedSave({
-    business: MOVED_IN_BUSINESS,
+    business: { ...MOVED_IN_BUSINESS, restaurantDay: DAY_FROM_30 },
     credits,
     levelProgress: {
       currentLevelId: `level-${n}`,

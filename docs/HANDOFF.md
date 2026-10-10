@@ -884,6 +884,14 @@ Not implemented (from the audits, all CSS/asset-free):
    L91+ inspector warns. 10 new Market lines (Cleaning). New
    `restaurant-cleanliness-qa`, e2e `restaurantcleanliness.mjs`. Pushed
    to `main` after the developer's approval.
+68. CLEANING FROM LEVEL 10 + LONGER DAYS (developer 2026-10-10: "make the
+   cleanliness visible from level 10 onwards", "gradually increase the
+   count from 3 services"). Cleaning starts with Level 10's service (tasks,
+   Grandma's cleaning cupboard, the spotless streak); the tab shows when the
+   Restaurant section opens at Level 11 (developer's choice). Services per
+   day: 2 to L20, 3 from L21 (+ Breakfast), 4 from L51 (+ Afternoon Tea),
+   5 from L101 (+ Brunch), 6 from L161 (+ Late Supper). Tests changed to the
+   new rules are listed in the commit.
 
 ## 6b. Current state (2026-10-09, end of session)
 

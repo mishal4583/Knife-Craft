@@ -7,7 +7,8 @@
 //   3. A task without its supplies shows "Buy …" → the exact Market card in the Cleaning section;
 //      buying it updates the same stock the strip shows (one ledger entry).
 //   4. "Clean everything I can" cleans the rest; every area Ready.
-//   5. With a Cleaner hired, the area chips assign them; Level 20 has no Cleanliness tab.
+//   5. With a Cleaner hired, the area chips assign them; at Level 10 the Restaurant (and its
+//      Cleanliness tab) is still closed; at Level 11 the tab is there (developer 2026-10-10: from L10).
 //   6. Widths 320 / 360 / 390 / 1024: no sideways scroll, buttons ≥ 48 px.
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import { MOVED_IN_BUSINESS, launch, boot, seedSave, sleep, readSave, shot } from "./harness.mjs";
@@ -221,18 +222,20 @@ check(
   { v4, tasks: after4.business.cleanliness.tasks },
 );
 
-// ---------- 5. The Cleaner's areas; no tab at Level 20 ----------
+// ---------- 5. The Cleaner's areas; no tab at Level 10, the tab at Level 11 ----------
 await boot(page, saveAt(30, { staff: ["cleaner"], introSeen: true }));
 await openCleanliness();
 await page.evaluate(() => document.querySelector('[data-cleaner-area="restroom"]')?.click());
 await sleep(400);
 const areas5 = (await readSave(page)).business.cleanliness.cleanerAreas;
-await boot(page, saveAt(20, { introSeen: true }));
+await boot(page, saveAt(10, { introSeen: true }));
 const tab20 = await openCleanliness();
+await boot(page, saveAt(11, { introSeen: true }));
+const tab11 = await openCleanliness();
 check(
-  "5 a hired Cleaner's area chips assign them (restroom off); Level 20 has no Cleanliness tab",
-  areas5.join() === "kitchen,dining" && tab20 === false,
-  { areas5, tab20 },
+  "5 a hired Cleaner's area chips assign them (restroom off); no tab at Level 10 (Restaurant closed), the tab at Level 11",
+  areas5.join() === "kitchen,dining" && tab20 === false && tab11 === true,
+  { areas5, tab20, tab11 },
 );
 
 // ---------- 6. Widths ----------
