@@ -27,6 +27,7 @@ import { paidLevelReward } from "@/game/levels/levelRewards";
 import { levelPayPreview } from "@/game/restaurant/levelPayPreview";
 import type { LevelDefinition } from "@/game/levels/levelTypes";
 import { KButton, Coin, DustMotes } from "./common/primitives";
+import { PointerHand } from "./common/PointerHand";
 import { gameReady } from "@/game/PlayablesSDK";
 import { dollars, formatUsd, formatUsdChange } from "@/game/money";
 import { KitchenBackground } from "./KitchenBackground";
@@ -815,12 +816,14 @@ export function BottomNav({ active, go }: { active: ScreenId | null; go: (s: Scr
             }
           >
             {pointed ? (
+              // The glove's fingertip rests on the tab's icon (PointerHand: x 30/64, y 6/80),
+              // tilted around it so the hand leans off the tab's name.
               <span
-                aria-hidden
                 data-testid="pointer-hand"
-                className="pointer-events-none absolute bottom-full left-1/2 -ml-[17px] mb-0.5"
+                className="pointer-events-none absolute left-1/2 top-2 z-10 -ml-[20px]"
+                style={{ transformOrigin: "20px 4px", transform: "rotate(-24deg)" }}
               >
-                <span className="kc-point-hand block text-[30px] leading-none drop-shadow">👇</span>
+                <PointerHand size={42} />
               </span>
             ) : null}
             {/* First levels: a section that just opened says so for two levels. */}

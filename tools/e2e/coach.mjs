@@ -7,8 +7,11 @@
 //   5. Level 5 teaches each step as it comes: "How to peel", then "How to halve";
 //   6. a later level (Level 12) never shows it, even after a long pause;
 //   7. a replayed beginner level (Level 4, already completed) shows no coaching or hint;
-//   8. a stuck player (touched, but no progress) gets it back; on Level 2 swiping along the
-//      demonstrated line (the SWIPE half of the loop) also makes a real cut.
+//   8. a stuck player (touched, but no progress) gets it back; on Level 3 (chop) swiping along
+//      the demonstrated line (the SWIPE half of the loop) also makes a real cut. (Was Level 2:
+//      developer 2026-10-10 "don't let the same instructions repeat" — a technique is taught
+//      only in the level that introduces it, so Level 2's slice isn't taught again.)
+//   8c. Level 2 (slice again) shows no how-to card.
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import zlib from "node:zlib";
 import { launch, boot, freshPlayer, seedSave, sleep, clickButton, shot, save } from "./harness.mjs";
@@ -301,7 +304,7 @@ check(
 );
 
 // ---------- 8: stuck → it comes back; SWIPE also cuts ----------
-await boot(page, at(2));
+await boot(page, at(3));
 await clickButton(page, /Prepare$/);
 await page.waitForFunction(() => !!document.querySelector('[data-testid="coach-card"]'), {
   timeout: 5000,
@@ -312,7 +315,7 @@ const hidden = (await card(page)) === null;
 await sleep(4600);
 check(
   "8a a touch that made no progress hides it; still stuck after a pause, it comes back",
-  hidden && /HOW TO SLICE/i.test((await card(page)) ?? ""),
+  hidden && /HOW TO CHOP/i.test((await card(page)) ?? ""),
 );
 const beforeSwipe = await stepInfo(page);
 const tip2 = await findFingertip(page);
@@ -331,6 +334,18 @@ check(
   "8b swiping along the demonstrated line also makes a real cut",
   !!tip2 && afterSwipe.n === (beforeSwipe.n ?? 0) + 1,
   { tip2, before: beforeSwipe.n, after: afterSwipe.n },
+);
+
+// ---------- 8c: Level 2 repeats slice — no lesson again ----------
+await boot(page, at(2));
+await clickButton(page, /Prepare$/);
+await page.waitForFunction(() => /STEP 1 OF|0\/\d+ slice/i.test(document.body.innerText), {
+  timeout: 15000,
+});
+await sleep(2500);
+check(
+  "8c Level 2 (slice, already taught on Level 1) shows no how-to card",
+  (await card(page)) === null,
 );
 
 check("console has no errors", logs.filter((l) => /^error|pageerror/i.test(l)).length === 0, logs);

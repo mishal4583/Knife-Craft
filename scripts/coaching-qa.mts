@@ -38,12 +38,17 @@ assert(
   `A: every technique (${ALL.length}) has a how-to card: title, how, why`,
 );
 
-// B: Levels 1–5 teach everything they ask for.
+// B: rule changed (developer 2026-10-10: "how to slice already came once, don't let the
+// same instructions repeat"): Levels 1–5 no longer re-teach what an earlier level taught
+// (was: every step of Levels 1–5 taught).
 assert(
-  LEVELS.filter((l) => levelNumber(l.id) <= TEACH_ALL_THROUGH_LEVEL).every(
-    (l) => taughtTechniques(l.id, ALL).length === ALL.length,
-  ),
-  "B: every step of Levels 1–5 is taught",
+  TEACH_ALL_THROUGH_LEVEL === 0 &&
+    taughtTechniques("level-1", ALL).join() === "slice" &&
+    taughtTechniques("level-2", ALL).length === 0 &&
+    taughtTechniques("level-3", ALL).join() === "chop" &&
+    taughtTechniques("level-4", ALL).length === 0 &&
+    [...taughtTechniques("level-5", ALL)].sort().join() === "halve,peel",
+  "B: Levels 1–5 teach only what's new to them (L1 slice, L3 chop, L5 peel + halve; L2 and L4 nothing)",
 );
 
 // C: every technique is taught in the level that introduces it — and the first is the level that introduces it.
@@ -62,14 +67,14 @@ const firstUse = (t: TechniqueId) =>
 const late = ALL.filter((t) => firstUse(t) > TEACH_ALL_THROUGH_LEVEL);
 assert(
   late.every((t) => (taughtAt.get(t) ?? []).includes(firstUse(t))),
-  `C: a technique first used after Level 5 is taught in the level that introduces it (${late
+  `C: every technique is taught in the level that introduces it (${late
     .map((t) => `${t}@${firstUse(t)}`)
     .join(", ")})`,
 );
 assert(
   [...taughtAt.values()].every((levels) => levels.length === 1) &&
     [...taughtAt.values()].flat().length === late.length,
-  `C2: after Level 5 each new technique is taught once, in the level that introduces it — and nothing else (${[...taughtAt.values()].flat().join(", ")})`,
+  `C2: each technique is taught once, in the level that introduces it — and nothing else (${[...taughtAt.values()].flat().join(", ")})`,
 );
 
 // D: a level teaches only what its session asks for; later levels teach nothing new.

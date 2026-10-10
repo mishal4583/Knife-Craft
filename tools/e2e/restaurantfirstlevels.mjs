@@ -15,6 +15,9 @@
 //      Market tab with "This is the Market"; Show me → the Market, the save records it (no
 //      money moves), and back on the Kitchen it's gone. Level 3: Later closes it for good
 //      (after a reload too). 320×568: the card and hand fit, buttons ≥ 48 px.
+//   8c. (developer 2026-10-10: "I didn't see any hand gestures for market and inventory") a
+//       Level 12 save that never saw them: Inventory first, then the Market, Progress and
+//       "Your Restaurant Business", one at a time.
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import {
   GAME_URL,
@@ -306,7 +309,10 @@ const pointerState = () =>
     };
   });
 await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });
-await boot(page, at(7, { credits: 5000 }));
+await boot(
+  page,
+  at(7, { credits: 5000, business: { ...MOVED_IN_BUSINESS, sectionsSeen: ["inventory"] } }),
+);
 await sleep(900);
 const p7 = await pointerState();
 const before7 = await readSave(page);
@@ -328,7 +334,7 @@ check(
     p7.handOn === "shop" &&
     /This is the Market/.test(p7.text) &&
     inMarket &&
-    (after7.business.sectionsSeen ?? []).join() === "shop" &&
+    (after7.business.sectionsSeen ?? []).join() === "inventory,shop" &&
     after7.credits === before7.credits &&
     after7.economyLedger.length === before7.economyLedger.length &&
     back7.tab === null,
@@ -370,6 +376,25 @@ check(
     (saved3.business.sectionsSeen ?? []).join() === "inventory" &&
     reload3.tab === null,
   { p3, fit3, gone3, reload3 },
+);
+
+// ---------- 8c. Level 12, nothing pointed out yet ----------
+await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });
+await boot(page, at(12));
+await sleep(900);
+const order12 = [];
+for (let i = 0; i < 5; i++) {
+  const p = await pointerState();
+  if (!p.tab) break;
+  order12.push(p.tab);
+  if (p.tab === "business") order12.push(/Your Restaurant Business/.test(p.text));
+  await clickButton(page, /^Later$/);
+  await sleep(600);
+}
+check(
+  "8c Level 12 save: Inventory, Market, Progress, then Your Restaurant Business — one at a time",
+  JSON.stringify(order12) === JSON.stringify(["inventory", "shop", "rack", "business", true]),
+  order12,
 );
 
 const errors = logs.filter((l) => /pageerror|error:/.test(l) && !/favicon/.test(l));

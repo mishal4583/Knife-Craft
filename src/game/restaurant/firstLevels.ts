@@ -227,8 +227,9 @@ export function isTabNew(id: string, reachedLevel: number): boolean {
 /**
  * Grandma points at a section that just opened (developer 2026-10-10: "a hand
  * points towards the Market and says this is the Market"). Shown on the
- * Kitchen once per section while it is NEW (`isTabNew`), until the player
- * opens it or taps Later (`business.sectionsSeen`). Presentation only.
+ * Kitchen once per section, through Level 15 (developer 2026-10-10: a
+ * player already past a section's NEW levels still gets it), until the
+ * player opens it or taps Later (`business.sectionsSeen`). Presentation only.
  */
 export const SECTION_POINTER: Record<LockableTab, { title: string; line: string }> = {
   inventory: {
@@ -244,16 +245,20 @@ export const SECTION_POINTER: Record<LockableTab, { title: string; line: string 
     line: "See how far our kitchen has come — and what comes next.",
   },
   business: {
-    title: "🍽️ This is your Restaurant",
-    line: "The menu, the room and the day's numbers all live here.",
+    title: "🍽️ Your Restaurant Business",
+    line: "Run it like a business: the menu, the guests and the day's takings.",
   },
 };
 
 const POINTER_ORDER: readonly LockableTab[] = ["inventory", "shop", "rack", "business"];
 
-/** The section Grandma points at now: open, NEW, not seen yet (the earliest first), or null. */
+/** Grandma points out sections through this level (the first levels); later saves never. */
+export const POINTER_THROUGH_LEVEL = 15;
+
+/** The section Grandma points at now: open, not seen yet (the earliest first), or null. */
 export function sectionToPoint(reachedLevel: number, seen: readonly string[]): LockableTab | null {
-  return POINTER_ORDER.find((t) => isTabNew(t, reachedLevel) && !seen.includes(t)) ?? null;
+  if (reachedLevel > POINTER_THROUGH_LEVEL) return null;
+  return POINTER_ORDER.find((t) => isTabOpen(t, reachedLevel) && !seen.includes(t)) ?? null;
 }
 
 /** The save with `tab` marked as seen (the same save when it already was). */

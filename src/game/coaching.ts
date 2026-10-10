@@ -9,9 +9,11 @@
  * - only in a campaign level played for the FIRST time (App passes
  *   `coachLevelId` only then — never on a replay, Today's Special, Endless,
  *   Restaurant Service or Business);
- * - only for TAUGHT techniques: every step of Levels 1–5, and each
- *   technique in the one campaign level that introduces it (its steps, its
- *   order pool and inserted peels counted);
+ * - only for TAUGHT techniques: each technique in the one campaign level
+ *   that introduces it (its steps, its order pool and inserted peels
+ *   counted). Developer 2026-10-10: "how to slice already came once, don't
+ *   let the same instructions repeat" — Levels 1–5 no longer re-teach a
+ *   technique an earlier level taught (was: every step of Levels 1–5);
  * - on such a step it plays as the step starts and hides on the first
  *   touch; it returns after a pause only while the player has made NO
  *   progress on that step (stuck). Once they've cut or peeled anything it
@@ -25,8 +27,8 @@ import { mustPeelBefore } from "./prepStepGuards";
 import { levelNumber } from "./levels/levelMastery";
 import { getCampaignRecipe } from "./recipes/campaignRecipes";
 
-/** Every step of Levels 1..TEACH_ALL_THROUGH_LEVEL is taught. */
-export const TEACH_ALL_THROUGH_LEVEL = 5;
+/** Every step of Levels 1..TEACH_ALL_THROUGH_LEVEL is taught (0: none re-taught — developer 2026-10-10). */
+export const TEACH_ALL_THROUGH_LEVEL = 0;
 /** Each technique is taught in this many of the first campaign levels that use it. */
 export const TEACH_FIRST_LEVELS = 1;
 /** The plain one-line gesture hint ("tap to cut, or swipe for precision") shows only up to this level. */

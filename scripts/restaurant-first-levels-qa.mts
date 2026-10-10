@@ -15,8 +15,8 @@
  *  W  wiring: the bottom bar's locks, the Kitchen's places, the Market's
  *     browse-only look before L10, App's quiet day-end, Level Complete's
  *     Grandma line / opened sections / new day, the big Level 10 card;
- *  P  Grandma's pointer (developer 2026-10-10): a hand at each section while
- *     it's NEW, the earliest first, once (opened or "Later" →
+ *  P  Grandma's pointer (developer 2026-10-10): a hand at each open section
+ *     not seen yet (through Level 15), the earliest first, once (opened or "Later" →
  *     business.sectionsSeen); no money, stock or other save field moves.
  *
  * Run: npx tsx scripts/restaurant-first-levels-qa.mts
@@ -268,16 +268,24 @@ console.log("W. Wiring");
 
 console.log("P. Grandma's pointer at a new section (developer 2026-10-10)");
 {
-  const pointed = Array.from({ length: 15 }, (_, i) => sectionToPoint(i + 1, []));
+  // Rule changed 2026-10-10 (developer: "I didn't see any hand gestures for market and
+  // inventory"): every open section not seen yet, through Level 15 (was: only while NEW).
+  const pointed = Array.from({ length: 16 }, (_, i) => sectionToPoint(i + 1, []));
+  const seenAll = ["inventory", "shop", "rack"];
   assert(
-    pointed.join() === ",,inventory,inventory,,,shop,shop,,rack,rack,business,,," &&
-      sectionToPoint(11, ["rack"]) === "business" &&
+    pointed.join() ===
+      ",,inventory,inventory,inventory,inventory,inventory,inventory,inventory,inventory,inventory,inventory,inventory,inventory,inventory," &&
+      sectionToPoint(12, ["inventory"]) === "shop" &&
+      sectionToPoint(12, ["inventory", "shop"]) === "rack" &&
+      sectionToPoint(12, seenAll) === "business" &&
+      sectionToPoint(9, seenAll) === null &&
+      sectionToPoint(12, [...seenAll, "business"]) === null &&
       sectionToPoint(3, ["inventory"]) === null &&
-      sectionToPoint(40, []) === null &&
+      sectionToPoint(16, []) === null &&
       (["inventory", "shop", "rack", "business"] as const).every(
-        (t) => SECTION_POINTER[t].title.length <= 28 && SECTION_POINTER[t].line.length <= 80,
+        (t) => SECTION_POINTER[t].title.length <= 30 && SECTION_POINTER[t].line.length <= 80,
       ),
-    "P1: each section is pointed at while it's NEW, the earliest unseen first (L11: Progress, then Restaurant); never once seen or on an old save",
+    "P1: every open section not seen yet, the earliest first, one at a time, through Level 15; never once seen, before it opens, or after Level 15",
     pointed,
   );
   const s: SaveData = {

@@ -768,6 +768,18 @@ Not implemented (from the audits, all CSS/asset-free):
    in the new optional `business.sectionsSeen`; only while the section is
    NEW (two levels), so old saves aren't flooded. QA
    `restaurant-first-levels-qa` P1–P3, e2e `restaurantfirstlevels` 8a/8b.
+58. POINTER + COACHING FOLLOW-UP (developer 2026-10-10): (a) "how to slice
+   already came once, don't let the same instructions repeat" →
+   `coaching.TEACH_ALL_THROUGH_LEVEL` 5 → 0: each technique's ghost + how-to
+   card only in the level that introduces it (L2/L4 teach nothing; L5 only
+   peel + halve); `coaching-qa` B rewritten to the new rule; e2e `coach`
+   8 moved to Level 3 (chop) + new 8c (Level 2 shows no card). (b) "I didn't
+   see any hand gestures for market and inventory" (the save was past their
+   NEW levels) → the pointer covers every open section not seen yet through
+   L15, one at a time. (c) Restaurant card: "🍽️ Your Restaurant Business".
+   (d) "make the hand like" the gesture icons → `PointerHand` (white glove
+   SVG, tap + ripple). Tests: `restaurant-first-levels-qa` P1 (new rule),
+   e2e `restaurantfirstlevels` 8a (Inventory seen first) + new 8c.
 
 ## 6b. Current state (2026-10-09, end of session)
 

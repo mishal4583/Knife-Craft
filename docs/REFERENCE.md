@@ -496,8 +496,13 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   (`SECTION_POINTER` title + line, Later / Show me →) and a bouncing 👇
   over the tab (`.kc-point-hand`, still under reduced motion); opening the
   section (any link, through `App.go`) or Later records it once in
-  `business.sectionsSeen` (optional field; no money/stock). Browser:
-  `restaurantfirstlevels.mjs` 8a/8b.
+  `business.sectionsSeen` (optional field; no money/stock). Since
+  2026-10-10 every open section not seen yet, through Level 15
+  (`POINTER_THROUGH_LEVEL`; was: only while NEW), one at a time; the hand
+  is `common/PointerHand.tsx` (inline-SVG white glove tapping, with a
+  ripple — `.kc-tap-hand`/`.kc-tap-ripple`), tilted so the tab's name
+  shows; the Restaurant card reads "🍽️ Your Restaurant Business". Browser:
+  `restaurantfirstlevels.mjs` 8a/8b/8c.
 - `restaurant-level-goals-qa` — LEVEL GOALS, first levels pass 3 (developer
   2026-10-09; `restaurant/levelGoals.ts` + the light `levelChecklist.ts`
   used by the lazy Preparation chunk; restaurant build, Levels 1–15,
@@ -626,8 +631,9 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   cuts or a tall food), right-to-left order, knife poised on the last cut
   between cuts and laid down at step end, cards teach right to left.
 - `coaching-qa` — beginner coaching: every technique has a how-to card,
-  Levels 1–5 teach everything, each later technique is taught only in the
-  level that introduces it, the stuck rule (back only with no progress),
+  each technique is taught only in the level that introduces it (since
+  2026-10-10 Levels 1–5 too: L1 slice, L3 chop, L5 peel + halve; L2/L4
+  nothing — developer: "don't let the same instructions repeat"), the stuck rule (back only with no progress),
   first play only (no replay/Today's Special/Endless/Service/Business),
   the one-line hint only to Level 10, and the ghost never touches
   cut/peel/score state.
@@ -1091,8 +1097,8 @@ not silently removed.
     - It runs only in a campaign level played for the FIRST time. App
       passes `coachLevelId` only then, so there's none on a replay, Today's
       Special, Endless, Restaurant Service or Business.
-    - Only TAUGHT steps get it: every step of Levels 1–5, and each new
-      technique in the one level that introduces it (dice 6, smash 9,
+    - Only TAUGHT steps get it: each technique in the one level that
+      introduces it (slice 1, chop 3, peel + halve 5, dice 6, smash 9,
       rings 16, julienne 21, radial 23, rock-mince 34, chiffonade 35).
     - On such a step it plays 0.7 s after the step starts and hides on the
       first touch. It returns after 4 s idle only while the player has

@@ -28,8 +28,9 @@ Complete); from Level 21 each day opens with its card and ends with
 
 ### Levels 1–10 · Opening the Restaurant  *(stage: Apprentice Restaurant)*
 - **Story:** the opening cinematic; you reopen the family restaurant.
-- **Learn to cut:** slice, peel, halve (Levels 1–5 teach everything with a
-  ghost hand + how-to card), **dice** at L6, **smash** at L9.
+- **Learn to cut:** each cut is taught once, the first time it comes (ghost
+  hand + how-to card): slice L1, chop L3, peel + halve L5, **dice** L6,
+  **smash** L9.
 - **The restaurant opens up one piece at a time** (bottom bar): Kitchen from
   the start, **Inventory at L3**, **Market at L7** (a look at knives and
   boards), **Progress at L10**, **Restaurant at L11**. Locked ones show
