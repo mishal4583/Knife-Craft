@@ -168,7 +168,28 @@ check(
 
 // ---------- 4. Finish, replay ----------
 await clickButton(page, /^Finish Level$/);
-await sleep(1800);
+await sleep(1000);
+// Developer 2026-10-10: the Level Complete card goes as soon as the player opens another page.
+const cardUp = await page.evaluate(() => !!document.querySelector('[data-testid="banner-close"]'));
+await page.evaluate(() =>
+  [...document.querySelectorAll("nav button")]
+    .find((x) => x.textContent.includes("Inventory"))
+    ?.click(),
+);
+await sleep(300);
+const cardAfter = await page.evaluate(
+  () => !!document.querySelector('[data-testid="banner-close"]'),
+);
+check("4c opening another page closes the Level Complete card at once", cardUp && !cardAfter, {
+  cardUp,
+  cardAfter,
+});
+await page.evaluate(() =>
+  [...document.querySelectorAll("nav button")]
+    .find((x) => x.textContent.includes("Kitchen"))
+    ?.click(),
+);
+await sleep(800);
 const done = await readSave(page);
 const reward = done.economyLedger.filter(
   (e) => e.category === "completion-reward" && e.description === "level-12",

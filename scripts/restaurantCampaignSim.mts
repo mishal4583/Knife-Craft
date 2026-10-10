@@ -102,6 +102,7 @@ import {
   cleanSettingFor,
   closingSuppliesFor,
 } from "../src/game/restaurant/serviceSupplies.ts";
+import { closeServiceReport, restaurantRecordOf } from "../src/game/restaurant/serviceReport.ts";
 import { hireSpecialist, getSpecialist } from "../src/game/restaurant/staffRequirements.ts";
 import {
   bulkDiscountFor,
@@ -180,6 +181,8 @@ export type Stats = {
   fridgeOverByGrandma: number;
   guests: number;
   closings: number;
+  /** The longest spotless streak (supplies plan D). */
+  bestStreak: number;
   ordersServed: number;
   /** The campaign orders' recipe earnings and quality bonus (restaurant settlement). */
   orderEarnings: number;
@@ -554,7 +557,13 @@ function playLevel(save: SaveData, n: number, opts: SimOptions, stats: Stats): S
   const orderCoins = levelOrderEarnings(s, level.id);
   const { progress, isFirstCompletion, rewardCoins } = completeLevel(level.id, s.levelProgress);
   let next: SaveData = { ...s, credits: s.credits + rewardCoins, levelProgress: progress };
-  if (isFirstCompletion) next = washUp(recordService(next, n), n).save;
+  if (isFirstCompletion) {
+    // As App: the wash-up, then the service's report (supplies plan D: the spotless streak).
+    const washed = washUp(recordService(next, n), n);
+    next = closeServiceReport(washed.save, n, washed.noSoap).save;
+    if (restaurantRecordOf(next).streak > stats.bestStreak)
+      stats.bestStreak = restaurantRecordOf(next).streak;
+  }
   if (rewardCoins > 0) next = appendLedgerEntry(next, "completion-reward", rewardCoins, level.id);
   // As App: supplier credit is repaid from the level's earnings.
   if (isFirstCompletion) {
@@ -613,6 +622,7 @@ export function run(
     fridgeOverByGrandma: 0,
     guests: 0,
     closings: 0,
+    bestStreak: 0,
     ordersServed: 0,
     orderEarnings: 0,
     qualityBonus: 0,
@@ -639,7 +649,7 @@ export function run(
   if (log) console.log(`\n  ${name}`);
   if (log)
     console.log(
-      `    levels ${stats.levels}/${251 - from} · orders ${stats.ordersServed} · menu guests ${stats.guests} · closings ${stats.closings}`,
+      `    levels ${stats.levels}/${251 - from} · orders ${stats.ordersServed} · menu guests ${stats.guests} · closings ${stats.closings} · best spotless streak ${stats.bestStreak}`,
     );
   if (log)
     console.log(

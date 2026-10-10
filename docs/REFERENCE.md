@@ -508,6 +508,13 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   ripple — `.kc-tap-hand`/`.kc-tap-ripple`), tilted so the tab's name
   shows; the Restaurant card reads "🍽️ Your Restaurant Business". Browser:
   `restaurantfirstlevels.mjs` 8a/8b/8c.
+- MilestoneBanner (every Level Complete / milestone card): ✕ (48 px),
+  auto-close (default 2.0 s; Level Complete with earnings 2.6 s, with
+  Grandma's line 3.0 s, the Level 10 card 5 s); since 2026-10-10 a tap /
+  click outside the card or any key closes it (after
+  `OUTSIDE_TAP_GRACE_MS` 350 ms; the tap still goes through), and so does
+  moving to another page (`page={screen}`). e2e `restaurantsupplies` 3d,
+  `restaurantguests` 4c.
 - `restaurant-tableware-qa` — TABLEWARE BY DISH (supplies plan Phase B,
   developer 2026-10-10). `serviceSupplies.coverPiecesFor(recipe, level,
   cover)`: soups/curries a soup bowl + spoon; fruit a dessert plate + fork
@@ -530,6 +537,28 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   `cleanSettingFor` (cover 100 + guests served). Inventory's "For service"
   explains it. The migration crate tops up a moving save's tableware by
   dish. Browser: `tools/e2e/restaurantsupplies.mjs`.
+- `restaurant-service-report-qa` — THE RESTAURANT'S NUMBERS (supplies plan
+  Phase D, developer 2026-10-10: "they should feel proud"). The supplies
+  keep running totals (`restaurantSupplies.coversTotal / takeawayTotal /
+  packedTotal`, with `washedTotal / brokenTotal`); after each first
+  completion's wash-up App calls `serviceReport.closeServiceReport(save,
+  level, noSoap)`: the report is the difference since the last one
+  (`business.restaurantRecord.at`), plus hygiene from dine-in (L31): soap
+  at the wash-up, nothing left dirty, cleaning liquid not empty =
+  SPOTLESS. Spotless services build a streak (`streak`, `bestStreak`,
+  `spotless`); a lapse resets it. Level Complete: "🍽️ N guests served ·
+  🥡 N takeaway (N pieces packed) · 🧼 N washed" and "✨ Spotless service ·
+  N in a row" or "🧽 Not spotless: …". A streak of 3
+  (`SPOTLESS_QUALITY_STREAK`) adds 1 % (`SPOTLESS_QUALITY_PCT`) to the
+  restaurant's quality share (`restaurantQualityBonusPct`). The inspector
+  (`businessInspection` Kitchen Cleanliness, L91+ day ends) reads the last
+  service's hygiene (`restaurant/hygiene.ts` `hygieneIssue`, no runtime
+  imports): a lapse is a WARNING unless a Cleaner is on staff (a repeated
+  warning is fined as before); Business Mode saves have no record and are
+  unchanged. Restaurant Progress: "🏪 Your restaurant in numbers"
+  (`data-testid="restaurant-numbers"`, read-only). No money, no ledger.
+  The sim mirrors it (best streak in its log). Browser:
+  `tools/e2e/restaurantreport.mjs`, `restaurantsupplies.mjs` 3c.
 - `restaurant-takeaway-qa` — TAKEAWAY BY DISH + CLOSING SUPPLIES (supplies
   plan Phase C, developer 2026-10-10). `serviceSupplies.takeawayPiecesFor
   (recipe, level)`: curries and combo / mezze plates (shared, "mezze",

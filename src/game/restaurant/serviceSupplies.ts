@@ -118,6 +118,10 @@ export type RestaurantSuppliesState = {
   /** Pieces ever washed and broken (the breakage seed, and the restaurant's record). */
   washedTotal: number;
   brokenTotal: number;
+  /** Plan D: guests served at the tables, takeaway orders and pieces packed (running totals). */
+  coversTotal: number;
+  takeawayTotal: number;
+  packedTotal: number;
 };
 
 export const DEFAULT_RESTAURANT_SUPPLIES: RestaurantSuppliesState = {
@@ -127,6 +131,9 @@ export const DEFAULT_RESTAURANT_SUPPLIES: RestaurantSuppliesState = {
   dirty: {},
   washedTotal: 0,
   brokenTotal: 0,
+  coversTotal: 0,
+  takeawayTotal: 0,
+  packedTotal: 0,
 };
 
 const pct = (v: unknown) =>
@@ -153,6 +160,9 @@ export function restaurantSuppliesOf(save: SaveData): RestaurantSuppliesState {
     dirty,
     washedTotal: whole(raw?.washedTotal),
     brokenTotal: whole(raw?.brokenTotal),
+    coversTotal: whole(raw?.coversTotal),
+    takeawayTotal: whole(raw?.takeawayTotal),
+    packedTotal: whole(raw?.packedTotal),
   };
 }
 
@@ -608,15 +618,31 @@ export function takeOrderSupplies(
       dirty[id] = (dirty[id] ?? 0) + 1;
       used = true;
     }
-    if (used) state = { ...state, dirty, washing: state.washing + 1 };
+    state = {
+      ...state,
+      dirty,
+      washing: used ? state.washing + 1 : state.washing,
+      coversTotal: state.coversTotal + 1,
+    };
     for (const id of dineInExtrasFor(cover?.recipe, cover?.levelNumber ?? 0))
       supplies = consumeOne(supplies, id);
   } else if (cover) {
     // Plan C: the dish's own container, bag and extras.
     const t = takeawayPiecesFor(cover.recipe, cover.levelNumber);
-    for (const id of [t.container, t.bag, ...t.extras]) supplies = consumeOne(supplies, id);
+    let packed = 0;
+    for (const id of [t.container, t.bag, ...t.extras]) {
+      const next = consumeOne(supplies, id);
+      if (next !== supplies) packed++;
+      supplies = next;
+    }
+    state = {
+      ...state,
+      takeawayTotal: state.takeawayTotal + 1,
+      packedTotal: state.packedTotal + packed,
+    };
   } else {
     supplies = takePackagingForOrder(supplies).supplies;
+    state = { ...state, takeawayTotal: state.takeawayTotal + 1 };
   }
   for (let i = 0; i < napkinsFor(cover?.recipe); i++) {
     const took = takeOne(supplies.stock, SERVICE_SUPPLY_RULES.napkin);

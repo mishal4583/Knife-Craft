@@ -105,6 +105,7 @@ import {
   takeOrderSupplies,
   washUp,
 } from "@/game/restaurant/serviceSupplies";
+import { closeServiceReport, serviceReportLines } from "@/game/restaurant/serviceReport";
 import { isSystemLive } from "@/game/restaurant/restaurantProgression";
 import {
   fireSpecialist,
@@ -2013,8 +2014,14 @@ export function App() {
     // Phase G: then the wash-up (dish soap) for the settings it used.
     // Supplies plan B: what broke in this service's wash-up (Level Complete says so).
     const brokenBefore = restaurantSuppliesOf(nextSave).brokenTotal;
-    if (RESTAURANT_MODE && isFirstCompletion)
-      nextSave = washUp(recordService(nextSave, levelNumber(level.id)), levelNumber(level.id)).save;
+    // Supplies plan D: then the service's report (guests, takeaway, washed, spotless streak).
+    let serviceLines: string[] = [];
+    if (RESTAURANT_MODE && isFirstCompletion) {
+      const washed = washUp(recordService(nextSave, levelNumber(level.id)), levelNumber(level.id));
+      const report = closeServiceReport(washed.save, levelNumber(level.id), washed.noSoap);
+      nextSave = report.save;
+      serviceLines = serviceReportLines(report.report);
+    }
     const brokenNow = restaurantSuppliesOf(nextSave).brokenTotal - brokenBefore;
     // First levels: before Level 21 the day closes quietly, and Level Complete says so.
     const dayBefore = restaurantDayOf(nextSave).day;
@@ -2075,6 +2082,7 @@ export function App() {
               ...(toolsNow
                 ? ["🧰 Grandma's old peeler, bowl and measuring cups are yours — free"]
                 : []),
+              ...serviceLines,
               ...(brokenNow > 0
                 ? [
                     `🍽️ ${brokenNow === 1 ? "A piece" : `${brokenNow} pieces`} of tableware broke in the wash-up — check the Market`,
@@ -2906,18 +2914,20 @@ export function App() {
       ) : null}
       {storyEvent?.kind === "milestone" ? (
         <MilestoneBanner
+          page={screen}
           kicker={storyEvent.milestone.kicker}
           line={storyEvent.milestone.line}
           // First levels (firstLevels.ts): Level 10's milestone is the big moment —
           // what the Market now offers (never required) and what comes next.
           {...(RESTAURANT_MODE && storyEvent.milestone.bit === 1
-            ? { grand: true, rows: firstPurchaseRows(), ms: 9000 }
+            ? { grand: true, rows: firstPurchaseRows(), ms: 5000 }
             : {})}
           onDismiss={() => setStoryEvent(null)}
         />
       ) : null}
       {levelRewardNotice && !storyEvent ? (
         <MilestoneBanner
+          page={screen}
           kicker="Level Complete"
           line={`${formatUsdChange(levelRewardNotice.rewardCoins)} Completion Reward`}
           {...(levelRewardNotice.orderCoins ||
@@ -2971,7 +2981,7 @@ export function App() {
                       ]
                     : []),
                 ],
-                ms: 5600,
+                ms: 2600,
               }
             : {})}
           {...(levelRewardNotice.opened || levelRewardNotice.newDay
@@ -2984,7 +2994,7 @@ export function App() {
                 ],
               }
             : {})}
-          {...(levelRewardNotice.grandma ? { quote: levelRewardNotice.grandma, ms: 6400 } : {})}
+          {...(levelRewardNotice.grandma ? { quote: levelRewardNotice.grandma, ms: 3000 } : {})}
           onDismiss={() => setLevelRewardNotice(null)}
         />
       ) : null}
@@ -3008,6 +3018,7 @@ export function App() {
       ) : null}
       {lateReplayBonus !== null ? (
         <MilestoneBanner
+          page={screen}
           kicker="Reward Granted"
           line={`${formatUsdChange(lateReplayBonus)} Replay Bonus`}
           onDismiss={() => setLateReplayBonus(null)}
@@ -3020,6 +3031,7 @@ export function App() {
       !showIntro &&
       screen !== "gameplay" ? (
         <MilestoneBanner
+          page={screen}
           key={milestoneNoticeQueue[0].id}
           kicker={milestoneNoticeQueue[0].legacy ? "🏆 Campaign Complete" : "Milestone reached"}
           line={milestoneNoticeQueue[0].label}
@@ -3028,6 +3040,7 @@ export function App() {
       ) : null}
       {businessNoticeQueue[0] && inBusiness && !storyEvent && !levelRewardNotice ? (
         <MilestoneBanner
+          page={screen}
           key={businessNoticeQueue[0].key}
           kicker={businessNoticeQueue[0].title}
           line={businessNoticeQueue[0].detail.split(". ")[0]!.replace(/\.$/, "") + "."}

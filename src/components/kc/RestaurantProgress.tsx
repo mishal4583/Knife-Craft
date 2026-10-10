@@ -22,6 +22,12 @@ import {
   endlessStarsOf,
   restaurantStanding,
 } from "@/game/restaurant/restaurantStanding";
+import { restaurantSuppliesOf } from "@/game/restaurant/serviceSupplies";
+import {
+  SPOTLESS_QUALITY_PCT,
+  SPOTLESS_QUALITY_STREAK,
+  restaurantRecordOf,
+} from "@/game/restaurant/serviceReport";
 
 /**
  * RESTAURANT PROGRESS — the game's progression screen (it replaced the old
@@ -56,6 +62,7 @@ export function RestaurantProgress({ go, save }: { go: (s: ScreenId) => void; sa
             <RankHero p={p} />
           )}
           {RESTAURANT_MODE ? <StandingCard save={save} /> : null}
+          {RESTAURANT_MODE ? <NumbersCard save={save} /> : null}
           <Summary p={p} />
           <NextGoal p={p} />
           {RESTAURANT_MODE && !p.campaignComplete ? null : <PopularityCard p={p} />}
@@ -70,6 +77,54 @@ export function RestaurantProgress({ go, save }: { go: (s: ScreenId) => void; sa
       </div>
       <BottomNav active="rack" go={go} />
     </div>
+  );
+}
+
+/**
+ * Supplies plan D (developer 2026-10-10: "they should feel proud"): the
+ * restaurant's lifetime numbers — read-only from the save's running totals
+ * (serviceSupplies) and record (serviceReport).
+ */
+function NumbersCard({ save }: { save: SaveData }) {
+  const rec = restaurantRecordOf(save);
+  const sup = restaurantSuppliesOf(save);
+  const stats: [string, string, number][] = [
+    ["🍳", "Services", rec.services],
+    ["🍽️", "Guests at the tables", sup.coversTotal],
+    ["🥡", "Takeaway orders", sup.takeawayTotal],
+    ["📦", "Pieces packed", sup.packedTotal],
+    ["🧼", "Pieces washed", sup.washedTotal],
+    ["✨", "Spotless services", rec.spotless],
+  ];
+  return (
+    <Panel className="p-4">
+      <div data-testid="restaurant-numbers">
+        <Eyebrow>🏪 Your restaurant in numbers</Eyebrow>
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          {stats.map(([icon, label, n]) => (
+            <div
+              key={label}
+              data-number={label}
+              className="rounded-[14px] border border-walnut/10 bg-ivory/70 px-3 py-2"
+            >
+              <p className="font-display text-[20px] font-black leading-tight text-walnut-dark">
+                {icon} {n.toLocaleString("en-US")}
+              </p>
+              <p className="font-ui text-[12.5px] font-bold text-walnut/70">{label}</p>
+            </div>
+          ))}
+        </div>
+        <p className="mt-2 font-ui text-[13.5px] font-bold text-walnut-dark">
+          Spotless streak: {rec.streak} · best {rec.bestStreak}
+          {sup.brokenTotal > 0 ? ` · ${sup.brokenTotal} pieces broken` : ""}
+        </p>
+        <p className="mt-1 font-hand text-[15px] leading-snug text-walnut/70">
+          Wash up with soap and keep the cleaning liquid in: {SPOTLESS_QUALITY_STREAK} spotless
+          services in a row add {SPOTLESS_QUALITY_PCT * 100}% to every dish's quality, and the
+          inspector notices.
+        </p>
+      </div>
+    </Panel>
   );
 }
 

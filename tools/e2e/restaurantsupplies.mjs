@@ -240,7 +240,7 @@ check(
   { washing: served.business.restaurantSupplies, played: played.ok },
 );
 await clickButton(page, /^Finish Level$/);
-await sleep(1800);
+await sleep(1000);
 const done = await readSave(page);
 check(
   "3b finishing the service runs the wash-up: nothing washing, dish soap used (one bottle opened)",
@@ -251,6 +251,31 @@ check(
     done.credits >= served.credits,
   { rs: done.business.restaurantSupplies, soap: done.business.supplies.stock["dish-soap"] },
 );
+
+const lc = (await text(page)).replace(/\s+/g, " ");
+check(
+  "3c Level Complete reports the service (supplies plan D): 1 guest served, pieces washed; not spotless — no cleaning liquid (the streak starts again)",
+  /🍽️ 1 guest served · 🧼 \d+ washed/.test(lc) &&
+    /Not spotless: no cleaning liquid/.test(lc) &&
+    done.business.restaurantRecord?.services >= 1 &&
+    done.business.restaurantRecord?.streak === 0 &&
+    done.business.restaurantRecord?.lastHygiene?.cleaner === false,
+  { record: done.business.restaurantRecord, lc: lc.slice(0, 400) },
+);
+
+// Developer 2026-10-10: the Level Complete card goes away when the player taps elsewhere.
+const bannerUp = await page.evaluate(
+  () => !!document.querySelector('[data-testid="banner-close"]'),
+);
+await page.mouse.click(12, 700);
+await sleep(400);
+const bannerAfter = await page.evaluate(
+  () => !!document.querySelector('[data-testid="banner-close"]'),
+);
+check("3d a tap outside the Level Complete card closes it at once", bannerUp && !bannerAfter, {
+  bannerUp,
+  bannerAfter,
+});
 
 // ---------- 4. Inventory → Supplies ----------
 await page.evaluate(() =>

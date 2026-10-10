@@ -589,7 +589,10 @@ console.log("R. Wiring");
   assert(
     /if \(RESTAURANT_MODE && level && !isCompleted\(level\.id, base\.levelProgress\)\)\s*base = (?:markStarterCrateSeen\()?washUp\(base, levelNumber\(level\.id\)\)\.save\)?;/.test(
       app,
-    ) && /nextSave = washUp\(\s*recordService\(nextSave, levelNumber\(level\.id\)\)/.test(app),
+    ) &&
+      /(?:nextSave|const washed) = washUp\(\s*recordService\(nextSave, levelNumber\(level\.id\)\)/.test(
+        app,
+      ),
     "R3: the wash-up runs when a first play starts (phase M also marks the starter crate seen there) and after a service",
   );
   const day = read("src/game/restaurant/restaurantDay.ts");

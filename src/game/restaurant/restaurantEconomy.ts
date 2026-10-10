@@ -45,6 +45,7 @@ import { getSupplierModifier } from "../economy/supplier";
 import { purchaseQuote, type PurchaseQuote } from "../business/BusinessInventoryManager";
 import { ingredientBulkDiscount } from "./bulkBuying";
 import { restaurantQuality } from "./restaurantInvestments";
+import { spotlessQualityPct } from "./serviceReport";
 
 /**
  * The restaurant's view of an order's settlement: earnings + quality bonus,
@@ -186,5 +187,10 @@ export function restaurantQuote(
  * campaign order's settlement.
  */
 export function restaurantQualityBonusPct(save: SaveData): number {
-  return supplierEffects(save).qualityBonusPct + restaurantQuality(save).total;
+  return (
+    supplierEffects(save).qualityBonusPct +
+    restaurantQuality(save).total +
+    // Supplies plan D: a spotless streak (serviceReport.ts).
+    spotlessQualityPct(save)
+  );
 }

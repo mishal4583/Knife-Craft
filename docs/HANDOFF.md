@@ -852,6 +852,27 @@ Not implemented (from the audits, all CSS/asset-free):
    17 packaging items are used. New `restaurant-takeaway-qa`, e2e
    `restauranttakeaway.mjs`. Tests changed to the new rule (wrap chore):
    `restaurant-day-qa` P1, e2e `restaurantday` 4a, `restaurantsupplies` 2 (the bread's deli-sheet liner warns).
+65. SUPPLIES PLAN · PHASE D — THE RESTAURANT'S NUMBERS (developer
+   2026-10-10). Each service's Level Complete reports guests served,
+   takeaway orders and pieces packed, pieces washed, and whether the
+   service was SPOTLESS (soap, nothing left dirty, cleaning liquid in —
+   from L31); spotless services build a streak (3 in a row = +1 % dish
+   quality); the L91+ inspector warns on a hygiene lapse unless a Cleaner
+   is hired; Restaurant Progress shows "Your restaurant in numbers". New
+   `restaurant-service-report-qa`, e2e `restaurantreport.mjs`;
+   `restaurantsupplies` gains check 3c (added, nothing loosened). The
+   supplies plan (0, A–D) is complete; the economy is to be rebalanced
+   later (developer).
+66. LEVEL COMPLETE CARD GOES AWAY SOONER (developer 2026-10-10: "let it
+   automatically disappear when touched outside or player doing something
+   else … reduce the display time" and "reduce the time more and when I
+   take a new page it should automatically disappear"): every
+   MilestoneBanner closes on a tap / click outside the card (the tap still
+   reaches what was tapped) or a key, after a 350 ms grace
+   (`OUTSIDE_TAP_GRACE_MS`), and when the page changes (`page={screen}`);
+   times shortened — default 2.0 s (was 4.2), Level Complete with earnings
+   2.6 s (5.6), with Grandma's line 3.0 s (6.4), the Level 10 card 5 s (9).
+   e2e `restaurantsupplies` 3d (tap outside), `restaurantguests` 4c (page).
 
 ## 6b. Current state (2026-10-09, end of session)
 

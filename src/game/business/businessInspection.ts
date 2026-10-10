@@ -48,6 +48,7 @@ import { dailyPayroll } from "./businessStaff";
 import { formatUsd } from "./businessCurrency";
 import { normalizeQuantity, formatQuantity } from "./businessInventory";
 import type { InspectionResult } from "./PopularityManager";
+import { hygieneIssue } from "../restaurant/hygiene";
 
 export type InspectionCategory =
   | "FOOD_STORAGE"
@@ -205,6 +206,16 @@ function inspectKitchenCleanliness(
     };
   }
   const spoiledToday = normalizeQuantity(daySpoiledQuantity);
+  // Supplies plan D: the restaurant's last service (soap, dirty pieces,
+  // cleaning liquid) — only restaurant saves keep this record.
+  const hygiene = hygieneIssue(save);
+  if (hygiene && spoiledToday < CLEANLINESS_FAIL_SPOILAGE) {
+    return {
+      category: "KITCHEN_CLEANLINESS",
+      result: "WARNING",
+      reason: `No Cleaner on staff. ${hygiene}`,
+    };
+  }
   if (spoiledToday >= CLEANLINESS_FAIL_SPOILAGE) {
     return {
       category: "KITCHEN_CLEANLINESS",
