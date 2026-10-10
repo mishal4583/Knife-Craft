@@ -3,7 +3,7 @@
  * the restaurant's stock control, split out of Business. Checks, against
  * the real production state and functions:
  *
- *   N  navigation: a 5-item bottom bar Kitchen · Market · Inventory · Business ·
+ *   N  navigation: a 5-item bottom bar Kitchen · Inventory · Market · Business ·
  *      Progress; Inventory is its own screen; Business has no Inventory tab and
  *      no "business-inventory" route is left
  *   A  all 57 ingredients are represented, each with the save's own quantity,
@@ -97,8 +97,9 @@ const ALL_IDS = Object.keys(INGREDIENTS) as IngredientId[];
   ].map((m) => `${m[1]}:${m[2]}`);
   assert(
     labels.join() ===
-      "kitchen:Kitchen,shop:Market,inventory:Inventory,business:Business,rack:Progress",
-    "N1: the bottom bar has 5 sections — Kitchen · Market · Inventory · Business · Progress",
+      // Developer 2026-10-10: Inventory and Market swapped (was Kitchen · Market · Inventory …).
+      "kitchen:Kitchen,inventory:Inventory,shop:Market,business:Business,rack:Progress",
+    "N1: the bottom bar has 5 sections — Kitchen · Inventory · Market · Business · Progress",
   );
   assert(
     /label: RESTAURANT_MODE \? "Restaurant" : "Business"/.test(nav),

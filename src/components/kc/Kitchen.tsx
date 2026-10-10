@@ -719,10 +719,10 @@ function DishIngredientsToggle({ save, level }: { save: SaveData; level: LevelDe
 
 const NAV: { id: ScreenId; label: string; glyph: string }[] = [
   { id: "kitchen", label: "Kitchen", glyph: "🏠" },
-  { id: "shop", label: "Market", glyph: "🛒" },
-  // Inventory — stock control (what the restaurant has), between where it's
-  // bought (Market) and how the restaurant performs (Business).
+  // Inventory before Market (developer 2026-10-10: "move the inventory in
+  // place of market"): what the restaurant has, then where it's bought.
   { id: "inventory", label: "Inventory", glyph: "📦" },
+  { id: "shop", label: "Market", glyph: "🛒" },
   // Economy V3 Phase 1 — the Business Simulation layer's own bottom-nav
   // destination (see data.ts's own doc on "business" for why this is a full
   // tab, not a Kitchen hotspot).

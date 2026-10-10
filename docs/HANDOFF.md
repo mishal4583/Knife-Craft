@@ -780,6 +780,15 @@ Not implemented (from the audits, all CSS/asset-free):
    (d) "make the hand like" the gesture icons → `PointerHand` (white glove
    SVG, tap + ripple). Tests: `restaurant-first-levels-qa` P1 (new rule),
    e2e `restaurantfirstlevels` 8a (Inventory seen first) + new 8c.
+59. BOTTOM BAR ORDER (developer 2026-10-10: "move the inventory in place of
+   market"): Kitchen · Inventory · Market · Restaurant/Business · Progress
+   (`Kitchen.tsx` NAV). Tests to the new order: `inventory-screen-qa` N1,
+   e2e `inventory.mjs` 1a.
+60. SUPPLIES PLAN APPROVED (developer 2026-10-10; `docs/SUPPLIES_PLAN.md`):
+   every one of the 52 supplies gets a job across the 250 levels; Grandma's
+   lending (pantry from L10, spares, Emergency Service) is replaced by a
+   rewarded ad or, with no ad, a supplier credit repaid from the next
+   earnings; economy balance deferred. Built in phases 0 → A → B → C → D.
 
 ## 6b. Current state (2026-10-09, end of session)
 

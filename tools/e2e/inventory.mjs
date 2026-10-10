@@ -1,5 +1,5 @@
 // The Inventory section (bottom bar → Inventory) in the built game:
-//   1. the bottom bar has 5 sections in order — Kitchen · Market · Inventory · Business ·
+//   1. the bottom bar has 5 sections in order — Kitchen · Inventory · Market · Business ·
 //      Progress — and Inventory opens straight from it; Business has no Inventory tab;
 //   2. the screen shows the save as it is: header, wallet, "Fridge: Commercial · N / 80 units",
 //      Total Stock / Running Low / Expiring Soon / Ready to Cook cards, the physical fridge;
@@ -85,8 +85,9 @@ const nav = await page.evaluate(() =>
   ),
 );
 check(
-  "1a the bottom bar: Kitchen · Market · Inventory · Business · Progress",
-  nav.map((n) => n.replace(/^\S+\s/, "")).join() === "Kitchen,Market,Inventory,Business,Progress",
+  // Developer 2026-10-10: Inventory and Market swapped.
+  "1a the bottom bar: Kitchen · Inventory · Market · Business · Progress",
+  nav.map((n) => n.replace(/^\S+\s/, "")).join() === "Kitchen,Inventory,Market,Business,Progress",
   nav,
 );
 const before = await readSave(page);
