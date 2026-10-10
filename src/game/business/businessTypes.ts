@@ -110,6 +110,12 @@ export type BusinessState = {
    */
   grandmasFridge?: GrandmasFridgeState;
   /**
+   * Unified Restaurant (RESTAURANT_MODE): the sections Grandma has pointed
+   * out (restaurant/firstLevels.ts `SECTION_POINTER`) — opened or "Later".
+   * Optional; absent = none yet.
+   */
+  sectionsSeen?: ("inventory" | "shop" | "rack" | "business")[];
+  /**
    * Unified Restaurant (RESTAURANT_MODE): the Endless Restaurant's lifetime
    * stars — STATUS ONLY, never money (restaurant/restaurantStanding.ts).
    * Kept apart from the 30-day history so they never roll off. Optional;

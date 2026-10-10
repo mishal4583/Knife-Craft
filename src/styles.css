@@ -263,6 +263,24 @@
   animation-timing-function: ease-out;
   animation-fill-mode: forwards;
 }
+/* Grandma's pointer at a section that just opened (Kitchen.tsx BottomNav). */
+@keyframes kc-point {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-9px);
+  }
+}
+.kc-point-hand {
+  animation: kc-point 0.9s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .kc-point-hand {
+    animation: none;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .kc-story-text,
   .kc-story-art {

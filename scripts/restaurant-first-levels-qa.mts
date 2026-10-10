@@ -14,7 +14,10 @@
  *     the knife and board unlock levels and prices;
  *  W  wiring: the bottom bar's locks, the Kitchen's places, the Market's
  *     browse-only look before L10, App's quiet day-end, Level Complete's
- *     Grandma line / opened sections / new day, the big Level 10 card.
+ *     Grandma line / opened sections / new day, the big Level 10 card;
+ *  P  Grandma's pointer (developer 2026-10-10): a hand at each section while
+ *     it's NEW, the earliest first, once (opened or "Later" →
+ *     business.sectionsSeen); no money, stock or other save field moves.
  *
  * Run: npx tsx scripts/restaurant-first-levels-qa.mts
  */
@@ -32,6 +35,9 @@ import {
   isTabNew,
   isTabOpen,
   lockedScreenHint,
+  markSectionSeen,
+  SECTION_POINTER,
+  sectionToPoint,
   tabsOpeningAt,
 } from "../src/game/restaurant/firstLevels.ts";
 import {
@@ -257,6 +263,51 @@ console.log("W. Wiring");
       /grandmaTipFor\(todayNumber\)/.test(kitchen) &&
       /isTabNew\(n\.id, reached\)/.test(kitchen),
     "W5: App.go refuses closed sections; Inventory / Market hide their links until they open; the Kitchen shows the tip and the NEW badge",
+  );
+}
+
+console.log("P. Grandma's pointer at a new section (developer 2026-10-10)");
+{
+  const pointed = Array.from({ length: 15 }, (_, i) => sectionToPoint(i + 1, []));
+  assert(
+    pointed.join() === ",,inventory,inventory,,,shop,shop,,rack,rack,business,,," &&
+      sectionToPoint(11, ["rack"]) === "business" &&
+      sectionToPoint(3, ["inventory"]) === null &&
+      sectionToPoint(40, []) === null &&
+      (["inventory", "shop", "rack", "business"] as const).every(
+        (t) => SECTION_POINTER[t].title.length <= 28 && SECTION_POINTER[t].line.length <= 80,
+      ),
+    "P1: each section is pointed at while it's NEW, the earliest unseen first (L11: Progress, then Restaurant); never once seen or on an old save",
+    pointed,
+  );
+  const s: SaveData = {
+    ...DEFAULT_SAVE,
+    levelProgress: {
+      currentLevelId: "level-7",
+      highestUnlockedLevelId: "level-7",
+      completedLevelIds: Array.from({ length: 6 }, (_, i) => `level-${i + 1}`),
+    },
+  };
+  const once = markSectionSeen(s, "shop");
+  const twice = markSectionSeen(once, "shop");
+  const { sectionsSeen, ...rest } = once.business;
+  assert(
+    sectionsSeen?.join() === "shop" &&
+      twice === once &&
+      JSON.stringify(rest) === JSON.stringify(s.business) &&
+      once.credits === s.credits &&
+      once.economyLedger === s.economyLedger &&
+      once.levelProgress === s.levelProgress,
+    "P2: seeing a section records only business.sectionsSeen (once); no money, ledger, stock or progress",
+  );
+  const app = read("src/App.tsx");
+  const kitchen = read("src/components/kc/Kitchen.tsx");
+  assert(
+    /const seen = markSectionSeen\(saveRef\.current, section\);/.test(app) &&
+      /screen === "kitchen" &&/.test(app) &&
+      /data-testid="section-pointer"/.test(kitchen) &&
+      /guide && active === "kitchen"/.test(kitchen),
+    "P3: App records a section as seen when it's opened, points only on the Kitchen; the bottom bar draws the hand",
   );
 }
 

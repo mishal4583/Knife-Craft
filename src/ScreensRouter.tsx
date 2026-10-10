@@ -26,7 +26,7 @@ import type { ScreenId } from "@/components/kc/data";
 import type { SaveData } from "@/game/SaveManager";
 import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
 import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
-import { NavLevelContext } from "@/components/kc/navLevel";
+import { NavGuideContext, NavLevelContext, type NavGuide } from "@/components/kc/navLevel";
 import type { Measure } from "@/game/business/measure";
 import type { BuyKnifeResult } from "@/game/knives/KnifeManager";
 import type { BuyBoardResult } from "@/game/boards/BoardManager";
@@ -80,6 +80,7 @@ export function ScreensRouter({
   screen,
   go,
   save,
+  navGuide,
   recipeDetailLevelId,
   onOpenRecipe,
   onSelectLevel,
@@ -119,6 +120,8 @@ export function ScreensRouter({
   screen: ScreenId;
   go: (s: ScreenId) => void;
   save: SaveData;
+  /** Grandma's pointer at a section that just opened (restaurant build; App decides when). */
+  navGuide?: NavGuide;
   recipeDetailLevelId: string;
   onOpenRecipe: (levelId: string) => void;
   onSelectLevel: (levelId: string) => void;
@@ -176,108 +179,114 @@ export function ScreensRouter({
 }) {
   return (
     <NavLevelContext.Provider value={restaurantLevelOf(save.levelProgress)}>
-      {screen === "kitchen" ? <Kitchen go={go} save={save} onSelectLevel={onSelectLevel} /> : null}
-      {screen === "board" ? <OrderBoard go={go} save={save} onSelectLevel={onSelectLevel} /> : null}
-      {screen === "shop" || screen === "shop-ingredients" || screen === "shop-supplies" ? (
-        <Shop
-          key={screen}
-          initialCategory={
-            screen === "shop-ingredients"
-              ? "ingredients"
-              : screen === "shop-supplies"
-                ? peekSupplySection()
-                : "knives"
-          }
-          purchaseIngredient={purchaseIngredient}
-          {...(purchaseIngredients ? { purchaseIngredients } : {})}
-          purchaseSupply={purchaseSupply}
-          go={go}
-          save={save}
-          buyKnife={buyKnife}
-          buyBoard={buyBoard}
-          selectSupplier={selectSupplier}
-          equipKnife={setEquippedKnife}
-          equipBoard={setEquippedBoard}
-          sharpenKnife={sharpenKnife}
-          upgradeKnife={upgradeKnife}
-        />
-      ) : null}
-      {/* "rack" is the internal screen id; the player-facing screen is Restaurant Progress. */}
-      {screen === "rack" ? <RestaurantProgress go={go} save={save} /> : null}
-      {screen === "inventory" || screen === "inventory-supplies" ? (
-        <Suspense fallback={<RestaurantLoading go={go} active="inventory" />}>
-          <InventoryScreen
+      <NavGuideContext.Provider value={navGuide ?? null}>
+        {screen === "kitchen" ? (
+          <Kitchen go={go} save={save} onSelectLevel={onSelectLevel} />
+        ) : null}
+        {screen === "board" ? (
+          <OrderBoard go={go} save={save} onSelectLevel={onSelectLevel} />
+        ) : null}
+        {screen === "shop" || screen === "shop-ingredients" || screen === "shop-supplies" ? (
+          <Shop
             key={screen}
+            initialCategory={
+              screen === "shop-ingredients"
+                ? "ingredients"
+                : screen === "shop-supplies"
+                  ? peekSupplySection()
+                  : "knives"
+            }
+            purchaseIngredient={purchaseIngredient}
+            {...(purchaseIngredients ? { purchaseIngredients } : {})}
+            purchaseSupply={purchaseSupply}
             go={go}
             save={save}
-            initialKind={screen === "inventory-supplies" ? "supplies" : "ingredients"}
-            throwOutExpired={throwOutExpired}
-          />
-        </Suspense>
-      ) : null}
-      {screen === "kitchen-upgrades" ? (
-        <KitchenUpgrades go={go} save={save} buildKitchenUpgrade={buildKitchenUpgrade} />
-      ) : null}
-      {screen === "recipes" ? <RecipeBook go={go} save={save} onOpen={onOpenRecipe} /> : null}
-      {screen === "recipe-detail" ? (
-        <RecipeDetail
-          levelId={recipeDetailLevelId}
-          save={save}
-          go={go}
-          onSelectLevel={onSelectLevel}
-        />
-      ) : null}
-      {screen === "daily" ? <DailyOrder go={go} save={save} onStartDaily={onStartDaily} /> : null}
-      {screen === "endless" ? (
-        <EndlessService go={go} save={save} onStartEndless={onStartEndless} />
-      ) : null}
-      {screen === "settings" ? (
-        <Settings
-          go={go}
-          settings={save.settings}
-          onToggleSetting={toggleSetting}
-          onSetMeasure={RESTAURANT_MODE ? setMeasure : undefined}
-          onResetProgress={resetProgress}
-        />
-      ) : null}
-      {/* Business Mode: one Market-style screen; every business route opens its tab.
-          Rendered from one place so the screen stays mounted while switching tabs. */}
-      {businessTabForScreen(screen) ? (
-        <Suspense fallback={<RestaurantLoading go={go} active="business" />}>
-          <BusinessDashboard
-            go={go}
-            save={save}
-            tab={businessTabForScreen(screen)!}
-            onAdvanceDay={advanceBusinessDay}
-            businessServiceSession={businessServiceSession}
-            purchaseRefrigerator={purchaseRefrigerator}
-            performRefrigeratorMaintenance={performRefrigeratorMaintenance}
-            rushRestock={rushRestock}
-            rushAdAvailable={rushAdAvailable}
-            setMenuPrice={setMenuPrice}
-            setBusinessDishActive={setBusinessDishActive}
-            signSupplierContract={signSupplierContract}
-            cancelSupplierContract={cancelSupplierContract}
+            buyKnife={buyKnife}
+            buyBoard={buyBoard}
             selectSupplier={selectSupplier}
-            hireStaff={hireStaff}
-            buyStaff={buyStaff}
-            fireStaff={fireStaff}
+            equipKnife={setEquippedKnife}
+            equipBoard={setEquippedBoard}
+            sharpenKnife={sharpenKnife}
+            upgradeKnife={upgradeKnife}
           />
-        </Suspense>
-      ) : null}
-      {screen === "business-service" ? (
-        <Suspense fallback={<RestaurantLoading go={go} active="business" />}>
-          <BusinessService
-            go={go}
+        ) : null}
+        {/* "rack" is the internal screen id; the player-facing screen is Restaurant Progress. */}
+        {screen === "rack" ? <RestaurantProgress go={go} save={save} /> : null}
+        {screen === "inventory" || screen === "inventory-supplies" ? (
+          <Suspense fallback={<RestaurantLoading go={go} active="inventory" />}>
+            <InventoryScreen
+              key={screen}
+              go={go}
+              save={save}
+              initialKind={screen === "inventory-supplies" ? "supplies" : "ingredients"}
+              throwOutExpired={throwOutExpired}
+            />
+          </Suspense>
+        ) : null}
+        {screen === "kitchen-upgrades" ? (
+          <KitchenUpgrades go={go} save={save} buildKitchenUpgrade={buildKitchenUpgrade} />
+        ) : null}
+        {screen === "recipes" ? <RecipeBook go={go} save={save} onOpen={onOpenRecipe} /> : null}
+        {screen === "recipe-detail" ? (
+          <RecipeDetail
+            levelId={recipeDetailLevelId}
             save={save}
-            businessServiceSession={businessServiceSession}
-            onStartService={onStartBusinessService}
-            onEnterPreparation={onEnterBusinessPreparation}
-            rushRestock={rushRestock}
-            rushAdAvailable={rushAdAvailable}
+            go={go}
+            onSelectLevel={onSelectLevel}
           />
-        </Suspense>
-      ) : null}
+        ) : null}
+        {screen === "daily" ? <DailyOrder go={go} save={save} onStartDaily={onStartDaily} /> : null}
+        {screen === "endless" ? (
+          <EndlessService go={go} save={save} onStartEndless={onStartEndless} />
+        ) : null}
+        {screen === "settings" ? (
+          <Settings
+            go={go}
+            settings={save.settings}
+            onToggleSetting={toggleSetting}
+            onSetMeasure={RESTAURANT_MODE ? setMeasure : undefined}
+            onResetProgress={resetProgress}
+          />
+        ) : null}
+        {/* Business Mode: one Market-style screen; every business route opens its tab.
+          Rendered from one place so the screen stays mounted while switching tabs. */}
+        {businessTabForScreen(screen) ? (
+          <Suspense fallback={<RestaurantLoading go={go} active="business" />}>
+            <BusinessDashboard
+              go={go}
+              save={save}
+              tab={businessTabForScreen(screen)!}
+              onAdvanceDay={advanceBusinessDay}
+              businessServiceSession={businessServiceSession}
+              purchaseRefrigerator={purchaseRefrigerator}
+              performRefrigeratorMaintenance={performRefrigeratorMaintenance}
+              rushRestock={rushRestock}
+              rushAdAvailable={rushAdAvailable}
+              setMenuPrice={setMenuPrice}
+              setBusinessDishActive={setBusinessDishActive}
+              signSupplierContract={signSupplierContract}
+              cancelSupplierContract={cancelSupplierContract}
+              selectSupplier={selectSupplier}
+              hireStaff={hireStaff}
+              buyStaff={buyStaff}
+              fireStaff={fireStaff}
+            />
+          </Suspense>
+        ) : null}
+        {screen === "business-service" ? (
+          <Suspense fallback={<RestaurantLoading go={go} active="business" />}>
+            <BusinessService
+              go={go}
+              save={save}
+              businessServiceSession={businessServiceSession}
+              onStartService={onStartBusinessService}
+              onEnterPreparation={onEnterBusinessPreparation}
+              rushRestock={rushRestock}
+              rushAdAvailable={rushAdAvailable}
+            />
+          </Suspense>
+        ) : null}
+      </NavGuideContext.Provider>
     </NavLevelContext.Provider>
   );
 }

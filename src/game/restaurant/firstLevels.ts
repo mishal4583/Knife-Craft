@@ -18,6 +18,7 @@ import { isSystemLive } from "./restaurantProgression";
 import { KNIFE_CATALOG } from "../knives/knifeDefinitions";
 import { BOARD_CATALOG } from "../boards/boardDefinitions";
 import { formatUsd } from "../money";
+import type { SaveData } from "../SaveManager";
 
 /** The bottom-bar sections that open later (Kitchen is always open). */
 export type LockableTab = "inventory" | "shop" | "rack" | "business";
@@ -221,4 +222,43 @@ export function grandmaTipFor(level: number): GrandmaTip | null {
 export function isTabNew(id: string, reachedLevel: number): boolean {
   const at = tabOpensAt(id);
   return at !== null && reachedLevel >= at && reachedLevel < at + 2;
+}
+
+/**
+ * Grandma points at a section that just opened (developer 2026-10-10: "a hand
+ * points towards the Market and says this is the Market"). Shown on the
+ * Kitchen once per section while it is NEW (`isTabNew`), until the player
+ * opens it or taps Later (`business.sectionsSeen`). Presentation only.
+ */
+export const SECTION_POINTER: Record<LockableTab, { title: string; line: string }> = {
+  inventory: {
+    title: "📦 This is your Inventory",
+    line: "My leftovers are in the fridge — come and see what's there.",
+  },
+  shop: {
+    title: "🛒 This is the Market",
+    line: "Come and look at the knives and boards. Ingredients come at Level 10.",
+  },
+  rack: {
+    title: "🏆 This is Progress",
+    line: "See how far our kitchen has come — and what comes next.",
+  },
+  business: {
+    title: "🍽️ This is your Restaurant",
+    line: "The menu, the room and the day's numbers all live here.",
+  },
+};
+
+const POINTER_ORDER: readonly LockableTab[] = ["inventory", "shop", "rack", "business"];
+
+/** The section Grandma points at now: open, NEW, not seen yet (the earliest first), or null. */
+export function sectionToPoint(reachedLevel: number, seen: readonly string[]): LockableTab | null {
+  return POINTER_ORDER.find((t) => isTabNew(t, reachedLevel) && !seen.includes(t)) ?? null;
+}
+
+/** The save with `tab` marked as seen (the same save when it already was). */
+export function markSectionSeen(save: SaveData, tab: LockableTab): SaveData {
+  const seen = save.business.sectionsSeen ?? [];
+  if (seen.includes(tab)) return save;
+  return { ...save, business: { ...save.business, sectionsSeen: [...seen, tab] } };
 }

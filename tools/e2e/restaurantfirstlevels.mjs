@@ -11,6 +11,10 @@
 //      next), a tap dismisses it, then Level Complete with Grandma's line and the Restaurant
 //      opening; every section is open.
 //   6. 320×568: the bottom bar's locks fit, buttons ≥ 48 px, no sideways scroll.
+//   8. (developer 2026-10-10) Grandma's pointer: Level 7's Kitchen dims, a hand points at the
+//      Market tab with "This is the Market"; Show me → the Market, the save records it (no
+//      money moves), and back on the Kitchen it's gone. Level 3: Later closes it for good
+//      (after a reload too). 320×568: the card and hand fit, buttons ≥ 48 px.
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import {
   GAME_URL,
@@ -288,6 +292,84 @@ check(
   "6 at 320×568 the locked bar fits, buttons ≥ 48 px",
   fit.overflow <= 0 && fit.small.length === 0 && fit.inside,
   fit,
+);
+
+// ---------- 8. Grandma's pointer ----------
+const pointerState = () =>
+  page.evaluate(() => {
+    const el = document.querySelector('[data-testid="section-pointer"]');
+    const hand = document.querySelector('[data-testid="pointer-hand"]');
+    return {
+      tab: el?.getAttribute("data-pointer-tab") ?? null,
+      text: el?.innerText.replace(/\s+/g, " ") ?? "",
+      handOn: hand?.closest("[data-nav]")?.getAttribute("data-nav") ?? null,
+    };
+  });
+await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });
+await boot(page, at(7, { credits: 5000 }));
+await sleep(900);
+const p7 = await pointerState();
+const before7 = await readSave(page);
+await shot(page, "pointer-l7");
+await clickButton(page, /^Show me →$/);
+await sleep(900);
+const inMarket = await page.evaluate(() =>
+  [...document.querySelectorAll("nav button[data-nav]")].some(
+    (b) => b.getAttribute("data-nav") === "shop" && b.style.background !== "",
+  ),
+);
+const after7 = await readSave(page);
+await page.evaluate(() => document.querySelector('nav button[data-nav="kitchen"]')?.click());
+await sleep(900);
+const back7 = await pointerState();
+check(
+  "8a Level 7: the hand points at the Market tab with Grandma's words; Show me → the Market, recorded once, no money; gone after",
+  p7.tab === "shop" &&
+    p7.handOn === "shop" &&
+    /This is the Market/.test(p7.text) &&
+    inMarket &&
+    (after7.business.sectionsSeen ?? []).join() === "shop" &&
+    after7.credits === before7.credits &&
+    after7.economyLedger.length === before7.economyLedger.length &&
+    back7.tab === null,
+  { p7, inMarket, seen: after7.business.sectionsSeen, back7 },
+);
+await page.setViewport({ width: 320, height: 568, deviceScaleFactor: 1 });
+await boot(page, at(3));
+await sleep(900);
+const p3 = await pointerState();
+const fit3 = await page.evaluate(() => {
+  const el = document.querySelector('[data-testid="section-pointer"]');
+  const card = el?.querySelector(".paper")?.getBoundingClientRect();
+  const hand = document.querySelector('[data-testid="pointer-hand"]')?.getBoundingClientRect();
+  const buttons = el ? [...el.querySelectorAll("button")] : [];
+  return {
+    overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    cardInside: !!card && card.left >= 0 && card.right <= 320 && card.top >= 0,
+    handBelowCard: !!card && !!hand && hand.top >= card.bottom - 1 && hand.bottom <= 568,
+    small: buttons.filter((b) => b.getBoundingClientRect().height < 47.5).length,
+  };
+});
+await shot(page, "pointer-l3-320");
+await clickButton(page, /^Later$/);
+await sleep(700);
+const gone3 = await pointerState();
+const saved3 = await readSave(page);
+await page.reload({ waitUntil: "networkidle0" });
+await sleep(2500);
+const reload3 = await pointerState();
+check(
+  "8b Level 3 at 320 px: Inventory pointed at, it fits (hand under the card, 48 px buttons); Later closes it for good",
+  p3.tab === "inventory" &&
+    /This is your Inventory/.test(p3.text) &&
+    fit3.overflow <= 0 &&
+    fit3.cardInside &&
+    fit3.handBelowCard &&
+    fit3.small === 0 &&
+    gone3.tab === null &&
+    (saved3.business.sectionsSeen ?? []).join() === "inventory" &&
+    reload3.tab === null,
+  { p3, fit3, gone3, reload3 },
 );
 
 const errors = logs.filter((l) => /pageerror|error:/.test(l) && !/favicon/.test(l));

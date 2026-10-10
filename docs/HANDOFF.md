@@ -760,6 +760,14 @@ Not implemented (from the audits, all CSS/asset-free):
    `restaurantgrandmasfridge` 4c/5b (+ new 6d L14, 6e L5), `lazyload`
    (seeds L13–14 stock). The campaign sim now gives the leftovers like App;
    completionist $174,950 → $174,948.
+57. GRANDMA'S POINTER (developer 2026-10-10: "a hand points towards the
+   Market and says this is the Market … add that also"). When a section
+   opens (Inventory L3, Market L7, Progress L10, Restaurant L11), the
+   Kitchen dims, a 👇 bounces over its tab and Grandma's card says what it
+   is (Later / Show me →). Once per section: opening it or Later records it
+   in the new optional `business.sectionsSeen`; only while the section is
+   NEW (two levels), so old saves aren't flooded. QA
+   `restaurant-first-levels-qa` P1–P3, e2e `restaurantfirstlevels` 8a/8b.
 
 ## 6b. Current state (2026-10-09, end of session)
 

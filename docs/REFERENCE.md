@@ -487,7 +487,17 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   (restaurant-first-levels-qa) First-levels additions (2026-10-09): L `lockedScreenHint` / `App.go` refuse
   every screen of a closed section (shop-*, inventory-*, business-*, rack);
   `GRANDMA_TIPS` (Kitchen card, Levels 1–15, button only to an open section);
-  `isTabNew` (NEW for a section's first two levels); W5 wiring.
+  `isTabNew` (NEW for a section's first two levels); W5 wiring. P Grandma's
+  pointer (developer 2026-10-10, "a hand points towards the Market and says
+  this is the Market"): `sectionToPoint(reached, business.sectionsSeen)` =
+  the earliest section that is NEW and not seen; on the Kitchen only, with
+  nothing else on screen (App's `navGuide` → `NavGuideContext` →
+  `BottomNav`): the screen above the bar dims, Grandma's card
+  (`SECTION_POINTER` title + line, Later / Show me →) and a bouncing 👇
+  over the tab (`.kc-point-hand`, still under reduced motion); opening the
+  section (any link, through `App.go`) or Later records it once in
+  `business.sectionsSeen` (optional field; no money/stock). Browser:
+  `restaurantfirstlevels.mjs` 8a/8b.
 - `restaurant-level-goals-qa` — LEVEL GOALS, first levels pass 3 (developer
   2026-10-09; `restaurant/levelGoals.ts` + the light `levelChecklist.ts`
   used by the lazy Preparation chunk; restaurant build, Levels 1–15,

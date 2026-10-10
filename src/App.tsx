@@ -139,6 +139,7 @@ import {
   starsForScore,
 } from "@/game/restaurant/levelGoals";
 import { requirementsForRecipes } from "@/game/restaurant/recipeRequirements";
+import type { NavGuide } from "@/components/kc/navLevel";
 import { usableQuantity } from "@/game/business/perishability";
 import { formatStockAmount } from "@/game/business/measure";
 import {
@@ -147,6 +148,9 @@ import {
   firstPurchaseRows,
   earlyStockAt,
   lockedScreenHint,
+  markSectionSeen,
+  sectionOfScreen,
+  sectionToPoint,
   grandmaLineFor,
   tabsOpeningAt,
 } from "@/game/restaurant/firstLevels";
@@ -714,6 +718,12 @@ export function App() {
     if (lock) {
       setLockNotice(lock);
       return;
+    }
+    // Opening a section answers Grandma's pointer at it (firstLevels.ts SECTION_POINTER).
+    const section = RESTAURANT_MODE ? sectionOfScreen(s) : null;
+    if (section && saveRef.current) {
+      const seen = markSectionSeen(saveRef.current, section);
+      if (seen !== saveRef.current) persist(seen);
     }
     setScreen(s);
   };
@@ -2485,6 +2495,29 @@ export function App() {
         (campaignLevelForSession?.requiredOrders ?? 1)
       : false;
 
+  // Grandma points at a section that just opened (firstLevels.ts SECTION_POINTER):
+  // on the Kitchen only, when nothing else is on screen.
+  const pointedTab =
+    RESTAURANT_MODE &&
+    screen === "kitchen" &&
+    !showIntro &&
+    !storyEvent &&
+    !levelRewardNotice &&
+    !serviceCheckLevelId &&
+    !replayOffer &&
+    milestoneNoticeQueue.length === 0 &&
+    businessNoticeQueue.length === 0
+      ? sectionToPoint(restaurantLevelOf(save.levelProgress), save.business.sectionsSeen ?? [])
+      : null;
+  const navGuide: NavGuide = pointedTab
+    ? {
+        tab: pointedTab,
+        dismiss: () => {
+          if (saveRef.current) persist(markSectionSeen(saveRef.current, pointedTab));
+        },
+      }
+    : null;
+
   return (
     <GameShell
       aside={
@@ -2654,6 +2687,7 @@ export function App() {
               screen={screen}
               go={go}
               save={save}
+              navGuide={navGuide}
               recipeDetailLevelId={recipeDetailLevelId}
               onOpenRecipe={(levelId) => {
                 setRecipeDetailLevelId(levelId);

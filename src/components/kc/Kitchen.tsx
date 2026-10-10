@@ -1,9 +1,16 @@
 import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
 import { ENDLESS_RESTAURANT_NAME } from "@/game/restaurant/endlessRestaurant";
 import { useContext, useEffect, useState } from "react";
-import { grandmaTipFor, isTabNew, isTabOpen, tabOpensAt } from "@/game/restaurant/firstLevels";
+import { cn } from "@/lib/utils";
+import {
+  SECTION_POINTER,
+  grandmaTipFor,
+  isTabNew,
+  isTabOpen,
+  tabOpensAt,
+} from "@/game/restaurant/firstLevels";
 import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
-import { NavLevelContext } from "./navLevel";
+import { NavGuideContext, NavLevelContext } from "./navLevel";
 import {
   INGREDIENT_LIST_FROM,
   STAR_GRADES,
@@ -732,6 +739,9 @@ export function BottomNav({ active, go }: { active: ScreenId | null; go: (s: Scr
   // First levels (restaurant build): a section that hasn't opened shows a lock
   // and its level; a tap says when it opens (game/restaurant/firstLevels.ts).
   const reached = useContext(NavLevelContext);
+  // Grandma points at a section that just opened (firstLevels.ts SECTION_POINTER).
+  const guide = useContext(NavGuideContext);
+  const pointer = guide && active === "kitchen" ? guide : null;
   const [hint, setHint] = useState<string | null>(null);
   useEffect(() => {
     if (!hint) return;
@@ -749,8 +759,37 @@ export function BottomNav({ active, go }: { active: ScreenId | null; go: (s: Scr
           {hint}
         </p>
       ) : null}
+      {pointer ? (
+        <div
+          data-testid="section-pointer"
+          data-pointer-tab={pointer.tab}
+          className="anim-up absolute inset-x-0 bottom-full h-[1200px] bg-[rgba(30,20,12,0.55)]"
+        >
+          <div className="paper absolute inset-x-4 bottom-[64px] rounded-3xl p-4 shadow-lift">
+            <p className="font-display text-[19px] font-black leading-tight text-walnut-dark">
+              {SECTION_POINTER[pointer.tab].title}
+            </p>
+            <p className="mt-1 font-hand text-[16px] leading-snug text-walnut">
+              👵 “{SECTION_POINTER[pointer.tab].line}”
+            </p>
+            <div className="mt-3 flex gap-2">
+              <KButton variant="ghost" className="min-h-12 flex-1" onClick={pointer.dismiss}>
+                Later
+              </KButton>
+              <KButton
+                variant="copper"
+                className="min-h-12 flex-[2]"
+                onClick={() => go(pointer.tab)}
+              >
+                Show me →
+              </KButton>
+            </div>
+          </div>
+        </div>
+      ) : null}
       {NAV.map((n) => {
         const on = n.id === active;
+        const pointed = pointer?.tab === n.id;
         const opensAt =
           RESTAURANT_MODE && reached !== null && !isTabOpen(n.id, reached)
             ? tabOpensAt(n.id)
@@ -764,9 +803,26 @@ export function BottomNav({ active, go }: { active: ScreenId | null; go: (s: Scr
             aria-label={locked ? `${n.label}, opens at Level ${opensAt}` : undefined}
             data-nav={n.id}
             data-locked={locked || undefined}
-            className="press relative flex min-h-12 min-w-[56px] flex-col items-center justify-center gap-0.5 rounded-2xl px-2 py-1.5"
-            style={on ? { background: "rgba(246,232,204,0.14)" } : undefined}
+            className={cn(
+              "press relative flex min-h-12 min-w-[56px] flex-col items-center justify-center gap-0.5 rounded-2xl px-2 py-1.5",
+              pointer && !pointed && "opacity-40",
+              pointed && "ring-2 ring-gold",
+            )}
+            style={
+              on || pointed
+                ? { background: pointed ? "rgba(246,232,204,0.22)" : "rgba(246,232,204,0.14)" }
+                : undefined
+            }
           >
+            {pointed ? (
+              <span
+                aria-hidden
+                data-testid="pointer-hand"
+                className="pointer-events-none absolute bottom-full left-1/2 -ml-[17px] mb-0.5"
+              >
+                <span className="kc-point-hand block text-[30px] leading-none drop-shadow">👇</span>
+              </span>
+            ) : null}
             {/* First levels: a section that just opened says so for two levels. */}
             {RESTAURANT_MODE && !locked && reached !== null && isTabNew(n.id, reached) ? (
               <span
