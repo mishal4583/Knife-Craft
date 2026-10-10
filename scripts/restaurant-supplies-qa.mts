@@ -302,13 +302,17 @@ console.log("W. Wash-up");
     "dine-in",
   );
   const w = washUp(used, 31);
+  // Rule changed (supplies plan B, 2026-10-10): the wash-up counts PIECES (2 settings = 6
+  // pieces) and the soap scales with them (at least one wash-up's 5 %); a piece may break.
   assert(
-    w.washed === 2 &&
+    w.washed === 6 &&
       !w.noSoap &&
       restaurantSuppliesOf(w.save).washing === 0 &&
-      cleanSettings(w.save) === 12 &&
+      Object.keys(restaurantSuppliesOf(w.save).dirty).length === 0 &&
+      cleanSettings(w.save) === settingsOwned(w.save) &&
+      settingsOwned(w.save) === 12 - w.broken.length &&
       restaurantSuppliesOf(w.save).soapPct === 95,
-    "W1: the wash-up washes every waiting setting with one wash-up of soap",
+    "W1: the wash-up washes every waiting piece (6 for two settings) with one wash-up of soap (5 %)",
   );
   const dry = takeOrderSupplies(stocked(saveAt(31), SETTING), "dine-in");
   const wd = washUp(dry, 31);
@@ -388,8 +392,19 @@ console.log("C. Pre-Service Check");
       servicePlanNeedsSheet(plan),
     "C6: the service plan carries the supplies; something blocking opens the sheet mid-day",
   );
-  const full = stocked(openDay(saveAt(31), 31), {
+  // Supplies plan B: "every supply" = what this service's dishes, guests and tables need.
+  const bare = openDay(saveAt(31), 31);
+  const needs = servicePlanFor(bare, lvl)!.supplies;
+  const full = stocked(bare, {
     ...SETTING,
+    ...(needs.applies
+      ? Object.fromEntries(
+          needs.rows.map((r) => [
+            r.id,
+            Math.max(r.need, SETTING[r.id as keyof typeof SETTING] ?? 0),
+          ]),
+        )
+      : {}),
     "paper-napkins": 50,
     "dish-soap": 1,
     "cleaning-liquid": 1,
@@ -561,13 +576,15 @@ console.log("R. Wiring");
     "R1: both campaign serve paths take the order's supplies, only under RESTAURANT_MODE and never on a replay",
   );
   assert(
-    /const withSupplies = takeOrderSupplies\(\s*stock\.save,\s*isSystemLive\("dine-in", levelNumber\(level\.id\)\) \? "dine-in" : null,?\s*\)/.test(
+    // Supplies plan B: the guest's own tableware, by their dish (a cover after the orders).
+    /const withSupplies = takeOrderSupplies\(\s*stock\.save,\s*isSystemLive\("dine-in", levelNumber\(level\.id\)\) \? "dine-in" : null,[\s\S]{0,160}\{ recipe, levelNumber: levelNumber\(level\.id\), index: guestCover\(save, level\) \},?\s*\)/.test(
       app,
     ) &&
+      /cleanSettingFor\(s, guest\.recipe, n, guestCover\(s, level\)\)/.test(app) &&
       /function guestHasSetting/.test(app) &&
       /!guestHasSetting\(save, campaignLevelForSession!\)/.test(app) &&
       /!guest\.inStock \|\| \(level && !guestHasSetting\(save, level\)\)/.test(app),
-    "R2: a menu guest eats in (setting + napkin) and can't be taken without a clean setting",
+    "R2: a menu guest eats in (their dish's tableware + napkin) and can't be taken without it clean",
   );
   assert(
     /if \(RESTAURANT_MODE && level && !isCompleted\(level\.id, base\.levelProgress\)\)\s*base = (?:markStarterCrateSeen\()?washUp\(base, levelNumber\(level\.id\)\)\.save\)?;/.test(

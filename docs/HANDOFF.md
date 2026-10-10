@@ -828,6 +828,19 @@ Not implemented (from the audits, all CSS/asset-free):
    `restaurantmigration` 4; L10's sheet is passed in `restaurantfirstlevels`
    and `levelux`. Sim: diligent spends ~$304 on tools; broke covers them on
    credit (272 services, all repaid).
+63. SUPPLIES PLAN · PHASE B — TABLEWARE BY DISH (developer 2026-10-10). Each
+   dine-in guest eats from what their dish needs (soup bowl + spoon, side
+   plate, dessert plate, steak knife from L106 …), a water glass each, bar
+   drinks from L121 and coffee/tea from L161 (seeded); tables need menu
+   stands, salt & pepper, napkin holders (L31) and water jugs (L46); the
+   wash-up washes every piece (soap scales, ~1/60 plates & glasses and
+   ~1/120 cutlery break — Level Complete says so); menu guests' tableware is
+   an optional row; all 17 front-of-house items are used. New
+   `restaurant-tableware-qa`. Tests changed to the new rule:
+   `restaurant-supplies-qa` W1 (pieces washed), C7 (full stock = the dish's
+   pieces), R2 (guest call carries the dish); e2e `restaurantsupplies`
+   1–6 (L31 bread: side plate, knife, glass, tables). Sim: guests 689;
+   diligent equipment spend ~$642; completionist $174,121.
 
 ## 6b. Current state (2026-10-09, end of session)
 

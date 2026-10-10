@@ -1,17 +1,19 @@
 // Unified Restaurant phase G — consumable supplies, in a real browser, on a RESTAURANT_MODE
 // test build (the default build — the restaurant is on unless VITE_RESTAURANT_MODE=0).
-//   1. Level 31 (dine-in starts), nothing bought: the Pre-Service Check lists Supplies — the
-//      plate, fork and knife block (START disabled), napkins only warn, and the dish-soap and
-//      cleaning-liquid bottles show "Empty".
-//   2. Restock → opens the Market on that exact supply line; one pack each of plates, forks,
-//      knives, napkins and dish soap (bought in the Market, ONE ledger entry each) and the
-//      check turns ready; the soap bottle then shows a % and "~N services left".
-//   3. Serving the order takes a place setting (→ washing) and a napkin automatically;
+//   1. Level 31 (dine-in starts), nothing bought: the Pre-Service Check lists Supplies by the
+//      dish (supplies plan B, 2026-10-10 — was a plain plate/fork/knife): Baguette Rounds is
+//      bread, so a side plate, a knife and a water glass, plus the table's menu stand, salt &
+//      pepper and napkin holder, block (START disabled); napkins and the menu guests' tableware
+//      only warn; the dish-soap and cleaning-liquid bottles show "Empty".
+//   2. Restock → opens the Market on that exact supply line; one pack of each blocking piece,
+//      napkins and dish soap (bought in the Market, ONE ledger entry each) and the check turns
+//      ready; the soap bottle then shows a % and "~N services left".
+//   3. Serving the order takes the dish's pieces (→ washing) and a napkin automatically;
 //      finishing the level runs the wash-up (dish soap used, nothing washing).
 //   4. Inventory → Supplies shows the place settings and both bottles (read-only).
 //   5. Level 32 (Dinner) ends the day: Closing Time shows the empty cleaning-liquid bottle
 //      and still closes for the night.
-//   6. Level 31 with $1: supplier credit brings the missing settings (the Market's packs, no money
+//   6. Level 31 with $1: supplier credit brings the missing tableware (the Market's packs, no money
 //      moved, the price owed) and the service can start (was Grandma's spares — rule changed
 //      2026-10-10).
 // Prints PASS/FAIL per check and exits 1 on any failure.
@@ -86,6 +88,7 @@ const sheet = () =>
       supplies: [...el.querySelectorAll("[data-psc-supply]")].map((r) => ({
         id: r.getAttribute("data-psc-supply"),
         status: r.getAttribute("data-psc-status"),
+        guest: r.hasAttribute("data-psc-guest"),
       })),
       bottles: [...el.querySelectorAll("[data-bottle]")].map((r) => ({
         id: r.getAttribute("data-bottle"),
@@ -141,19 +144,42 @@ async function restockFood() {
   }
 }
 
+/** Buys every blocking supply the open check is missing (the dish's tableware, the tables). */
+async function restockSupplies() {
+  for (let i = 0; i < 12; i++) {
+    const id = await page.evaluate(
+      () =>
+        document
+          .querySelector('[data-psc-supply][data-psc-status="missing"]:not([data-psc-guest])')
+          ?.getAttribute("data-psc-supply") ?? null,
+    );
+    if (!id) break;
+    await buyFromCheck(`[data-psc-supply="${id}"]:not([data-psc-guest])`, id);
+  }
+}
+
 // ---------- 1. Level 31, nothing bought ----------
 await boot(page, saveAt(31, 50_000)); // $50,000 (version-1 test saves are in dollars)
 await prepare("Baguette Rounds");
 const s1 = await sheet();
 await shot(page, "restaurant-supplies-check");
-const status = (id) => s1?.supplies.find((r) => r.id === id)?.status;
+const own = (s) => s?.supplies.filter((r) => !r.guest) ?? [];
+const status = (id) => own(s1).find((r) => r.id === id)?.status;
+const BLOCKING = [
+  "side-plates",
+  "dinner-knives",
+  "water-glasses",
+  "menu-stands",
+  "salt-pepper",
+  "napkin-holders",
+];
 check(
-  "1 L31 check: plate/fork/knife block, napkins warn, both bottles empty, START disabled",
+  "1 L31 check: the bread's side plate, knife and water glass + the table's stand, salt & pepper and napkin holder block; napkins and the guests' tableware warn; both bottles empty; START disabled",
   !!s1 &&
-    status("dinner-plates") === "missing" &&
-    status("dinner-forks") === "missing" &&
-    status("dinner-knives") === "missing" &&
+    BLOCKING.every((id) => status(id) === "missing") &&
+    !own(s1).some((r) => ["dinner-plates", "dinner-forks"].includes(r.id)) &&
     status("paper-napkins") === "warning" &&
+    s1.supplies.filter((r) => r.guest).every((r) => r.status !== "missing") &&
     s1.bottles.length === 2 &&
     s1.bottles.every((b) => b.status === "empty" && /Empty/.test(b.text)) &&
     s1.startDisabled === true,
@@ -164,19 +190,19 @@ check(
 await restockFood();
 const before = await readSave(page);
 const focus = [];
-for (const id of ["dinner-plates", "dinner-forks", "dinner-knives", "paper-napkins"])
-  focus.push(await buyFromCheck(`[data-psc-supply="${id}"]`, id));
+for (const id of [...BLOCKING, "paper-napkins"])
+  focus.push(await buyFromCheck(`[data-psc-supply="${id}"]:not([data-psc-guest])`, id));
 focus.push(await buyFromCheck('[data-bottle="dish-soap"]', "dish-soap"));
 const bought = await readSave(page);
 const s2 = await sheet();
 const newEntries = bought.economyLedger.slice(before.economyLedger.length);
 const soap = s2?.bottles.find((b) => b.id === "dish-soap");
 check(
-  "2 Restock opens the exact Market line; 5 purchases = 5 ledger entries; the check is ready; soap shows ~N washes remaining",
+  "2 Restock opens the exact Market line; 8 purchases = 8 ledger entries; the check is ready; soap shows ~N washes remaining",
   focus.every(Boolean) &&
-    newEntries.length === 5 &&
+    newEntries.length === 8 &&
     newEntries.every((e) => /^supply-/.test(e.category)) &&
-    s2?.supplies.every((r) => r.status === "ok") &&
+    own(s2).every((r) => r.status === "ok") &&
     s2?.startDisabled === false &&
     soap?.status === "ok" &&
     /~\d+ washes remaining/.test(soap.text),
@@ -199,12 +225,16 @@ await clickButton(page, /^Serve to /);
 await sleep(1000);
 const served = await readSave(page);
 check(
-  "3a serving takes a place setting (→ washing) and a napkin, automatically",
+  "3a serving takes the bread's side plate, knife and glass (→ washing) and a napkin, automatically",
   played.ok &&
     served.business.restaurantSupplies?.washing === 1 &&
+    ["side-plates", "dinner-knives", "water-glasses"].every(
+      (id) => served.business.restaurantSupplies?.dirty?.[id] === 1,
+    ) &&
     served.business.supplies.stock["paper-napkins"]?.units ===
       bought.business.supplies.stock["paper-napkins"].units - 1 &&
-    served.business.supplies.stock["dinner-plates"]?.units === 12,
+    served.business.supplies.stock["side-plates"]?.units ===
+      bought.business.supplies.stock["side-plates"].units,
   { washing: served.business.restaurantSupplies, played: played.ok },
 );
 await clickButton(page, /^Finish Level$/);
@@ -236,9 +266,10 @@ const inv = await page.evaluate(
 );
 await shot(page, "restaurant-supplies-inventory");
 check(
-  "4 Inventory → Supplies shows 12 clean place settings, the soap at 95% and the empty cleaning liquid",
+  "4 Inventory → Supplies shows the place settings, what each guest eats from, the soap at 95% and the empty cleaning liquid",
   !!inv &&
-    /Place settings: 12 clean/.test(inv) &&
+    /Place settings: \d+ clean/.test(inv) &&
+    /what their dish needs/.test(inv) &&
     /Dish soap — 95%/.test(inv) &&
     /~79 washes remaining/.test(inv) &&
     /Cleaning liquid — 0%/.test(inv),
@@ -250,6 +281,8 @@ check(
 await prepare("French Onion Base");
 if (await page.evaluate(() => !!document.querySelector('[data-testid="pre-service-check"]'))) {
   await restockFood();
+  // Supplies plan B: the French onion soup needs soup bowls and spoons.
+  await restockSupplies();
   await clickButton(page, /^(OPEN THE RESTAURANT|START SERVICE)$/);
   await sleep(900);
 }
@@ -320,7 +353,7 @@ check(
     creditButtons >= 1 &&
     lent.credits === b0.credits &&
     lent.economyLedger.length === b0.economyLedger.length &&
-    ["dinner-plates", "dinner-forks", "dinner-knives"].every(
+    BLOCKING.every(
       (id) =>
         (lent.business.supplies.stock[id]?.units ?? 0) >= 1 &&
         (lent.business.supplies.stock[id]?.costBasis ?? 0) > 0,

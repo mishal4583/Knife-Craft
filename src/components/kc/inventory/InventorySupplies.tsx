@@ -107,6 +107,9 @@ export function InventorySupplies({ go, save }: { go: (s: ScreenId) => void; sav
   const sectionItems = SUPPLY_CATALOG.filter((item) => item.section === section);
   const items = sectionItems.filter((item) => group === "All" || item.group === group);
   const consumable = section === "packaging";
+  const servingState = restaurantSuppliesOf(save);
+  const dirtyPieces = Object.values(servingState.dirty).reduce((t, n) => t + (n ?? 0), 0);
+  const brokenSoFar = servingState.brokenTotal;
 
   return (
     <div className="space-y-3" data-testid="inventory-supplies">
@@ -144,12 +147,14 @@ export function InventorySupplies({ go, save }: { go: (s: ScreenId) => void; sav
             <Eyebrow>🍽️ For service</Eyebrow>
             <p className="mt-1 font-ui text-[14.5px] font-bold text-walnut-dark">
               Place settings: {cleanSettings(save)} clean
-              {restaurantSuppliesOf(save).washing > 0
-                ? ` · ${Math.min(restaurantSuppliesOf(save).washing, settingsOwned(save))} waiting to be washed`
-                : ""}
+              {dirtyPieces > 0 ? ` · ${dirtyPieces} pieces waiting to be washed` : ""}
             </p>
             <p className="font-ui text-[12.5px] text-walnut/60">
-              A plate, a fork and a knife per dine-in guest; washed after each service.
+              Every guest eats from what their dish needs — plates or bowls, cutlery and a glass —
+              all washed after each service.
+              {brokenSoFar > 0
+                ? ` ${brokenSoFar} ${brokenSoFar === 1 ? "piece has" : "pieces have"} broken so far.`
+                : ""}
             </p>
             <div className="mt-1 divide-y divide-walnut/10">
               <SupplyBottle

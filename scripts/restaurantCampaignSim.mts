@@ -99,7 +99,7 @@ import {
   orderServiceFor,
   takeOrderSupplies,
   washUp,
-  cleanSettings,
+  cleanSettingFor,
 } from "../src/game/restaurant/serviceSupplies.ts";
 import { hireSpecialist, getSpecialist } from "../src/game/restaurant/staffRequirements.ts";
 import {
@@ -410,10 +410,15 @@ function playLevel(save: SaveData, n: number, opts: SimOptions, stats: Stats): S
 
   // Supplies.
   if (plan.supplies.applies && profile === "diligent") {
-    for (const row of plan.supplies.rows.filter((r) => r.missing > 0)) {
-      const b = buySupply(s, row.id, row.packs);
-      if (b.ok) s = persist(b.s, stats, `${where} supply`);
+    // Twice, as the sheet updates: the menu guests' rows show once the orders' rows are bought.
+    for (let pass = 0; pass < 2 && plan.supplies.applies; pass++) {
+      for (const row of plan.supplies.rows.filter((r) => r.missing > 0)) {
+        const b = buySupply(s, row.id, row.packs);
+        if (b.ok) s = persist(b.s, stats, `${where} supply`);
+      }
+      replan();
     }
+    if (!plan.supplies.applies) return s;
     for (const b of [plan.supplies.soap, plan.supplies.cleaner])
       if (b.spare === 0 && b.status !== "ok") {
         const r = buySupply(s, b.id, 1);
@@ -457,7 +462,12 @@ function playLevel(save: SaveData, n: number, opts: SimOptions, stats: Stats): S
       stats.blocked.push(`${where}: order ${recipe.id} out of stock at serve`);
       return s;
     }
-    const base = takeOrderSupplies(stock.save, orderServiceFor(n, idx));
+    // As App (supplies plan B): the guest eats from what their dish needs.
+    const base = takeOrderSupplies(stock.save, orderServiceFor(n, idx), {
+      recipe,
+      levelNumber: n,
+      index: idx,
+    });
     const settlement = computeSettlement(
       recipe,
       level.chapter ?? 1,
@@ -508,13 +518,15 @@ function playLevel(save: SaveData, n: number, opts: SimOptions, stats: Stats): S
   for (;;) {
     const guest = nextMenuGuest(s, level);
     if (!guest || !guest.inStock) break;
-    if (isSystemLive("dine-in", n) && cleanSettings(s) < 1) break;
+    const cover = 100 + (s.levelProgress.menuGuests?.[level.id] ?? 0);
+    if (isSystemLive("dine-in", n) && !cleanSettingFor(s, guest.recipe, n, cover)) break;
     const dish = businessDishForRecipeId(guest.recipe.id);
     const stock = consumeCampaignOrderStock(s, n, guest.recipe, true, "guest");
     if (!dish || !stock.ok) break;
     const withSupplies = takeOrderSupplies(
       stock.save,
       isSystemLive("dine-in", n) ? "dine-in" : null,
+      { recipe: guest.recipe, levelNumber: n, index: cover },
     );
     const pays = businessCustomerPayment(stock.save, dish).customerPays;
     const rec = recordRevenueAndCogs(
@@ -677,6 +689,8 @@ function nextServiceNeeds(save: SaveData): number {
   const plan = level ? servicePlanFor(save, level) : null;
   if (!plan) return 0;
   let cost = plan.check.applies ? plan.check.missingCost : 0;
+  // Supplies plan A: the kitchen tools the next service needs.
+  if (plan.tools.applies) cost += plan.tools.missingCost;
   if (plan.supplies.applies) {
     cost += plan.supplies.missingCost;
     for (const b of [plan.supplies.soap, plan.supplies.cleaner])

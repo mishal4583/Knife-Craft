@@ -99,6 +99,8 @@ import { closeDay, openDay, recordService, restaurantDayOf } from "@/game/restau
 import { nextMenuGuest, withMenuGuestServed } from "@/game/restaurant/menuGuests";
 import {
   cleanSettings,
+  cleanSettingFor,
+  restaurantSuppliesOf,
   orderServiceFor,
   takeOrderSupplies,
   washUp,
@@ -1721,6 +1723,12 @@ export function App() {
               levelNumber(level.id),
               paidOrdersFor(save.levelProgress, level.id).length,
             ),
+            // Supplies plan B: the guest eats from what their dish needs.
+            {
+              recipe,
+              levelNumber: levelNumber(level.id),
+              index: paidOrdersFor(save.levelProgress, level.id).length,
+            },
           )
         : stock?.ok
           ? stock.save
@@ -1791,6 +1799,8 @@ export function App() {
     const withSupplies = takeOrderSupplies(
       stock.save,
       isSystemLive("dine-in", levelNumber(level.id)) ? "dine-in" : null,
+      // Supplies plan B: the guest's own tableware (covers after the level's orders).
+      { recipe, levelNumber: levelNumber(level.id), index: guestCover(save, level) },
     );
     const pays = businessCustomerPayment(stock.save, dish).customerPays;
     const result = serveCurrentOrder(campaignServiceSession, Math.random, pays);
@@ -1816,7 +1826,16 @@ export function App() {
 
   /** Phase G: from dine-in (L31) a menu guest needs a clean place setting. */
   function guestHasSetting(s: SaveData, level: LevelDefinition): boolean {
-    return !isSystemLive("dine-in", levelNumber(level.id)) || cleanSettings(s) > 0;
+    const n = levelNumber(level.id);
+    if (!isSystemLive("dine-in", n)) return true;
+    // Supplies plan B: the next guest's own tableware, by their dish.
+    const guest = nextMenuGuest(s, level);
+    return guest ? cleanSettingFor(s, guest.recipe, n, guestCover(s, level)) : cleanSettings(s) > 0;
+  }
+
+  /** A menu guest's cover number (after the level's own orders): seeds their drink / coffee. */
+  function guestCover(s: SaveData, level: LevelDefinition): number {
+    return 100 + (s.levelProgress.menuGuests?.[level.id] ?? 0);
   }
 
   /** Unified Restaurant (phase D): brings in the next menu guest as one more ticket of this service. */
@@ -1992,8 +2011,11 @@ export function App() {
     let nextSave = { ...save, credits: save.credits + rewardCoins, levelProgress };
     // Unified Restaurant: a first completion is one service of the day.
     // Phase G: then the wash-up (dish soap) for the settings it used.
+    // Supplies plan B: what broke in this service's wash-up (Level Complete says so).
+    const brokenBefore = restaurantSuppliesOf(nextSave).brokenTotal;
     if (RESTAURANT_MODE && isFirstCompletion)
       nextSave = washUp(recordService(nextSave, levelNumber(level.id)), levelNumber(level.id)).save;
+    const brokenNow = restaurantSuppliesOf(nextSave).brokenTotal - brokenBefore;
     // First levels: before Level 21 the day closes quietly, and Level Complete says so.
     const dayBefore = restaurantDayOf(nextSave).day;
     if (RESTAURANT_MODE && isFirstCompletion) nextSave = quietDayEnd(nextSave);
@@ -2052,6 +2074,11 @@ export function App() {
               ...(leftoversNow ? ["🧺 Grandma's leftovers are in the fridge — free"] : []),
               ...(toolsNow
                 ? ["🧰 Grandma's old peeler, bowl and measuring cups are yours — free"]
+                : []),
+              ...(brokenNow > 0
+                ? [
+                    `🍽️ ${brokenNow === 1 ? "A piece" : `${brokenNow} pieces`} of tableware broke in the wash-up — check the Market`,
+                  ]
                 : []),
               // Pass 3: the dish's best stars (the engine's grade; never money).
               ...(hasLevelGoals(n) && levelStars(finalSave, level) !== null
@@ -2181,6 +2208,12 @@ export function App() {
               levelNumber(level.id),
               paidOrdersFor(save.levelProgress, level.id).length,
             ),
+            // Supplies plan B: the guest eats from what their dish needs.
+            {
+              recipe: viewed.recipe,
+              levelNumber: levelNumber(level.id),
+              index: paidOrdersFor(save.levelProgress, level.id).length,
+            },
           )
         : stock?.ok
           ? stock.save
@@ -2645,7 +2678,7 @@ export function App() {
                 ? {
                     extraAction: !guestHasSetting(save, campaignLevelForSession!)
                       ? {
-                          label: `Menu guest wants ${menuGuest.dish.name} — no clean place setting`,
+                          label: `Menu guest wants ${menuGuest.dish.name} — no clean tableware`,
                           onClick: () => {},
                           disabled: true,
                         }

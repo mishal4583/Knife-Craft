@@ -508,6 +508,28 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   ripple — `.kc-tap-hand`/`.kc-tap-ripple`), tilted so the tab's name
   shows; the Restaurant card reads "🍽️ Your Restaurant Business". Browser:
   `restaurantfirstlevels.mjs` 8a/8b/8c.
+- `restaurant-tableware-qa` — TABLEWARE BY DISH (supplies plan Phase B,
+  developer 2026-10-10). `serviceSupplies.coverPiecesFor(recipe, level,
+  cover)`: soups/curries a soup bowl + spoon; fruit a dessert plate + fork
+  (cups a teaspoon); bread a side plate + knife; salads plate + fork; the
+  rest plate, fork, knife (a steak knife for steak from L106); shared
+  boards an extra side plate; every guest a water glass; from L121 a seeded
+  25 % a highball glass (the bar), from L161 coffee/tea (cup & saucer) with
+  every dessert and a seeded 30 %; messy dishes 2 napkins. All 17
+  front-of-house items are used. Tables (`tablesFor`: 2 guests a table, max
+  6, orders + menu guests): menu stand, 2 salt & pepper shakers, napkin
+  holder from L31, water jug from L46 — durable, blocking. State
+  `restaurantSupplies.dirty` per piece (an older save's `washing` =
+  plates/forks/knives), `washedTotal`, `brokenTotal`; `washUp` washes every
+  piece, soap = max(5 %, 0.25 % a piece) (`soapForPieces`), and breaks a
+  seeded ~1 in 60 plates/glasses and 1 in 120 cutlery (they leave the
+  stock; Level Complete says "🍽️ … broke in the wash-up"). The check:
+  the orders' pieces block; the menu guests' pieces are optional rows
+  (`guest`, never blocking or opening the sheet); `takeOrderSupplies(save,
+  service, {recipe, levelNumber, index})`; the guest gate
+  `cleanSettingFor` (cover 100 + guests served). Inventory's "For service"
+  explains it. The migration crate tops up a moving save's tableware by
+  dish. Browser: `tools/e2e/restaurantsupplies.mjs`.
 - `restaurant-tools-qa` — KITCHEN TOOLS (supplies plan Phase A, developer
   2026-10-10: "ask the player to buy some important tools when the game
   starts and the rest when necessary"). `restaurant/dishService.ts`

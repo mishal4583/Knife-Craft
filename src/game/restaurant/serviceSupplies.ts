@@ -49,6 +49,8 @@ import {
 } from "../business/BusinessSuppliesManager";
 import { makeSeededRand } from "../business/businessDeterministicRandom";
 import { isSystemLive } from "./restaurantProgression";
+import type { RecipeDefinition } from "../recipes/recipeTypes";
+import { dishServiceFor } from "./dishService";
 
 /** Every number the restaurant's supplies use (configurable; not balanced — Economy TODO). */
 export const SERVICE_SUPPLY_RULES = {
@@ -66,6 +68,33 @@ export const SERVICE_SUPPLY_RULES = {
   lowWashesLeft: 8,
   /** Cleaning liquid with this many closings (or fewer) left is "low". */
   lowClosingsLeft: 3,
+  // ── Supplies plan B (developer 2026-10-10: "use everything when necessary") ──
+  /** Every dine-in guest gets a glass of water. */
+  waterGlass: "water-glasses" as SupplyId,
+  /** The bar (from "A bigger restaurant · full management", L121): this share of guests orders a drink. */
+  barFromLevel: 121,
+  barShare: 0.25,
+  /** An established restaurant (L161) serves coffee or tea: with every dessert, and this share of other guests. */
+  coffeeFromLevel: 161,
+  coffeeShare: 0.3,
+  /** Steak is served with a steak knife from the first steak (L106). */
+  steakKnifeFromLevel: 106,
+  /** Two dine-in guests to a table, at most this many tables. */
+  coversPerTable: 2,
+  maxTables: 6,
+  /** What each table has (durable, never used up): pieces per table, from a level. */
+  tablePieces: [
+    { id: "menu-stands" as SupplyId, perTable: 1, fromLevel: 31 },
+    { id: "salt-pepper" as SupplyId, perTable: 2, fromLevel: 31 },
+    { id: "napkin-holders" as SupplyId, perTable: 1, fromLevel: 31 },
+    { id: "water-jugs" as SupplyId, perTable: 1, fromLevel: 46 },
+  ],
+  /** One in this many washed pieces breaks (seeded): plates, bowls and glasses; cutlery goes missing less often. */
+  breakOneIn: { crockery: 60, cutlery: 120 },
+  /** Dish soap: this % per piece washed, at least `soapPerWashUp` per wash-up. */
+  soapPerPiece: 0.25,
+  /** Messy dishes (curries, fried, skewers) take this many napkins. */
+  napkinsMessy: 2,
 } as const;
 
 export type RestaurantSuppliesState = {
@@ -73,14 +102,22 @@ export type RestaurantSuppliesState = {
   soapPct: number;
   /** What's left in the open cleaning-liquid bottle, 0–100 (%). */
   cleanerPct: number;
-  /** Place settings used and waiting to be washed. */
+  /** Covers (dine-in guests) whose tableware waits to be washed. */
   washing: number;
+  /** Plan B: each tableware piece waiting to be washed (an older save's `washing` = plate + fork + knife). */
+  dirty: Partial<Record<SupplyId, number>>;
+  /** Pieces ever washed and broken (the breakage seed, and the restaurant's record). */
+  washedTotal: number;
+  brokenTotal: number;
 };
 
 export const DEFAULT_RESTAURANT_SUPPLIES: RestaurantSuppliesState = {
   soapPct: 0,
   cleanerPct: 0,
   washing: 0,
+  dirty: {},
+  washedTotal: 0,
+  brokenTotal: 0,
 };
 
 const pct = (v: unknown) =>
@@ -90,12 +127,115 @@ const whole = (v: unknown) =>
 
 /** The save's state, defaulted and clamped (old saves and the classic game have none). */
 export function restaurantSuppliesOf(save: SaveData): RestaurantSuppliesState {
-  const raw = save.business.restaurantSupplies;
+  const raw = save.business.restaurantSupplies as Partial<RestaurantSuppliesState> | undefined;
+  const washing = whole(raw?.washing);
+  const dirty: Partial<Record<SupplyId, number>> = {};
+  if (raw?.dirty && typeof raw.dirty === "object") {
+    for (const [id, n] of Object.entries(raw.dirty))
+      if (getSupplyItem(id) && whole(n) > 0) dirty[id as SupplyId] = whole(n);
+  } else if (washing > 0) {
+    // An older save: `washing` place settings = that many plates, forks and knives.
+    for (const id of SERVICE_SUPPLY_RULES.placeSetting) dirty[id] = washing;
+  }
   return {
     soapPct: pct(raw?.soapPct),
     cleanerPct: pct(raw?.cleanerPct),
-    washing: whole(raw?.washing),
+    washing,
+    dirty,
+    washedTotal: whole(raw?.washedTotal),
+    brokenTotal: whole(raw?.brokenTotal),
   };
+}
+
+const dirtyOf = (state: RestaurantSuppliesState, id: SupplyId) => state.dirty[id] ?? 0;
+
+/** A piece ready to serve on: owned and not waiting to be washed. */
+export function cleanUnits(save: SaveData, id: SupplyId): number {
+  return Math.max(
+    0,
+    supplyUnits(save.business.supplies, id) - dirtyOf(restaurantSuppliesOf(save), id),
+  );
+}
+
+// ── Tableware by dish (supplies plan B) ─────────────────────────────────
+
+/** A seeded 0–1 roll for one cover's extras (the same for every player and every try). */
+const coverRoll = (levelNumber: number, cover: number, salt: number) =>
+  makeSeededRand(levelNumber * 31_337 + cover * 977 + salt)();
+
+/**
+ * The tableware one dine-in guest eats from, by their dish (dishService.ts):
+ * soups and curries a bowl and soup spoon; fruit a dessert plate and fork (a
+ * teaspoon for cups); bread a side plate and knife; salads a plate and
+ * fork; everything else plate, fork and knife — a steak knife for steak
+ * from L106; shared boards an extra side plate. Every guest a water glass;
+ * from L121 some order a drink at the bar (highball glass); from L161
+ * coffee or tea (cup and saucer) with every dessert and for some others.
+ * No recipe (an older caller) = the plain place setting.
+ */
+export function coverPiecesFor(
+  recipe: RecipeDefinition | null | undefined,
+  levelNumber: number,
+  cover: number,
+): SupplyId[] {
+  const R = SERVICE_SUPPLY_RULES;
+  if (!recipe) return [...R.placeSetting];
+  const d = dishServiceFor(recipe);
+  const pieces: SupplyId[] = d.cooking.includes("pot")
+    ? ["soup-bowls", "soup-spoons"]
+    : d.kind === "fruit"
+      ? /\bcup\b/i.test(recipe.name)
+        ? ["dessert-plates", "teaspoons"]
+        : ["dessert-plates", "dessert-forks"]
+      : d.kind === "bread"
+        ? ["side-plates", "dinner-knives"]
+        : d.kind === "salad"
+          ? ["dinner-plates", "dinner-forks"]
+          : [
+              "dinner-plates",
+              "dinner-forks",
+              d.protein === "steak" && levelNumber >= R.steakKnifeFromLevel
+                ? "steak-knives"
+                : "dinner-knives",
+            ];
+  if (d.shared && !pieces.includes("side-plates")) pieces.push("side-plates");
+  pieces.push(R.waterGlass);
+  if (levelNumber >= R.barFromLevel && coverRoll(levelNumber, cover, 11) < R.barShare)
+    pieces.push("highball-glasses");
+  if (
+    levelNumber >= R.coffeeFromLevel &&
+    (d.kind === "fruit" || coverRoll(levelNumber, cover, 23) < R.coffeeShare)
+  )
+    pieces.push("coffee-tea-set");
+  return pieces;
+}
+
+/** The napkins one order takes: two for messy dishes (curries, fried, skewers). */
+export function napkinsFor(recipe: RecipeDefinition | null | undefined): number {
+  return recipe && dishServiceFor(recipe).messy
+    ? SERVICE_SUPPLY_RULES.napkinsMessy
+    : SERVICE_SUPPLY_RULES.napkinsPerOrder;
+}
+
+/** True when every piece a guest's dish needs is clean now. */
+export function cleanSettingFor(
+  save: SaveData,
+  recipe: RecipeDefinition | null | undefined,
+  levelNumber: number,
+  cover: number,
+): boolean {
+  const need = new Map<SupplyId, number>();
+  for (const id of coverPiecesFor(recipe, levelNumber, cover))
+    need.set(id, (need.get(id) ?? 0) + 1);
+  return [...need].every(([id, n]) => cleanUnits(save, id) >= n);
+}
+
+/** Tables a service sets: two guests to a table (at most `maxTables`). */
+export function tablesFor(covers: number): number {
+  return Math.min(
+    SERVICE_SUPPLY_RULES.maxTables,
+    Math.ceil(covers / SERVICE_SUPPLY_RULES.coversPerTable),
+  );
 }
 
 const withState = (
@@ -174,9 +314,14 @@ export function bottleView(save: SaveData, id: BottleId): BottleView {
  * Opening a bottle takes one stock unit and its cost basis (packaging
  * lifetime "used"), like any consumable. Not enough → nothing changes.
  */
-export function drawFromBottle(save: SaveData, id: BottleId): { save: SaveData; ok: boolean } {
+export function drawFromBottle(
+  save: SaveData,
+  id: BottleId,
+  /** % of a bottle to use (default: one service's worth). */
+  amount: number = perServiceOf(id),
+): { save: SaveData; ok: boolean } {
   const state = restaurantSuppliesOf(save);
-  const use = perServiceOf(id);
+  const use = Math.min(100, Math.max(0, amount));
   const open = openOf(state, id);
   const set = (next: number) =>
     id === "dish-soap" ? { ...state, soapPct: next } : { ...state, cleanerPct: next };
@@ -210,30 +355,87 @@ export function settingsOwned(save: SaveData): number {
   );
 }
 
-/** Clean place settings ready to serve on. */
+/** Clean place settings ready to serve on (plate + fork + knife). */
 export function cleanSettings(save: SaveData): number {
-  return Math.max(0, settingsOwned(save) - restaurantSuppliesOf(save).washing);
+  return Math.min(...SERVICE_SUPPLY_RULES.placeSetting.map((id) => cleanUnits(save, id)));
+}
+
+/** The soap one wash-up of `pieces` uses (% of a bottle). */
+export function soapForPieces(pieces: number): number {
+  return Math.max(
+    SERVICE_SUPPLY_RULES.soapPerWashUp,
+    Math.round(pieces * SERVICE_SUPPLY_RULES.soapPerPiece * 100) / 100,
+  );
+}
+
+/** Whether washed piece number `n` (the restaurant's running count) of `id` breaks (seeded). */
+function breaks(id: SupplyId, n: number): boolean {
+  const group = getSupplyItem(id)?.group;
+  const oneIn =
+    group === "Cutlery"
+      ? SERVICE_SUPPLY_RULES.breakOneIn.cutlery
+      : group === "Crockery" || group === "Glassware & hollowware"
+        ? SERVICE_SUPPLY_RULES.breakOneIn.crockery
+        : 0;
+  if (oneIn === 0) return false;
+  let h = 0;
+  for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) | 0;
+  return makeSeededRand(n * 7_919 + h)() < 1 / oneIn;
 }
 
 /**
- * The wash-up: every setting waiting is washed with one wash-up's soap.
- * Without enough soap they stay dirty (a warning — and, once too few are
- * clean, the check asks for soap or more settings). Runs after a service and
- * when the next one starts. Nothing to wash → no soap used.
+ * The wash-up: every piece waiting is washed — the soap scales with the
+ * pieces (at least one wash-up's worth). Now and then a plate or glass
+ * breaks, or a fork goes missing (seeded): it leaves the stock, so
+ * tableware is restocked over time like any real restaurant's. Without
+ * enough soap everything stays dirty (a warning — and, once too few are
+ * clean, the check asks for soap or more). Runs after a service and when
+ * the next one starts. Nothing to wash → no soap used.
  */
 export function washUp(
   save: SaveData,
   levelNumber: number,
-): { save: SaveData; washed: number; noSoap: boolean } {
+): {
+  save: SaveData;
+  washed: number;
+  noSoap: boolean;
+  /** Pieces that broke in this wash-up. */
+  broken: SupplyId[];
+} {
   const state = restaurantSuppliesOf(save);
-  if (!isSystemLive("dine-in", levelNumber) || state.washing === 0)
-    return { save, washed: 0, noSoap: false };
-  const soap = drawFromBottle(save, "dish-soap");
-  if (!soap.ok) return { save, washed: 0, noSoap: true };
+  const pieces = Object.values(state.dirty).reduce((t, n) => t + (n ?? 0), 0);
+  if (!isSystemLive("dine-in", levelNumber) || pieces === 0)
+    return { save, washed: 0, noSoap: false, broken: [] };
+  const soap = drawFromBottle(save, "dish-soap", soapForPieces(pieces));
+  if (!soap.ok) return { save, washed: 0, noSoap: true, broken: [] };
+  let supplies = soap.save.business.supplies;
+  const broken: SupplyId[] = [];
+  let count = state.washedTotal;
+  for (const [id, n] of Object.entries(state.dirty) as [SupplyId, number][]) {
+    for (let k = 0; k < n; k++) {
+      count++;
+      if (!breaks(id, count)) continue;
+      const took = takeOne(supplies.stock, id);
+      if (!took) continue;
+      supplies = { ...supplies, stock: took.stock };
+      broken.push(id);
+    }
+  }
   return {
-    save: withState(soap.save, { ...restaurantSuppliesOf(soap.save), washing: 0 }),
-    washed: state.washing,
+    save: withState(
+      soap.save,
+      {
+        ...restaurantSuppliesOf(soap.save),
+        washing: 0,
+        dirty: {},
+        washedTotal: state.washedTotal + pieces,
+        brokenTotal: state.brokenTotal + broken.length,
+      },
+      supplies,
+    ),
+    washed: pieces,
     noSoap: false,
+    broken,
   };
 }
 
@@ -254,16 +456,29 @@ export function closingWipeDown(
  * isn't there is simply not used — serving never blocks here (the check
  * made sure before the service; a menu guest's button checks a setting).
  */
-export function takeOrderSupplies(save: SaveData, service: OrderService | null): SaveData {
+export function takeOrderSupplies(
+  save: SaveData,
+  service: OrderService | null,
+  /** Plan B: the dish and its cover (level, index) — what the guest eats from; absent = a plain setting. */
+  cover?: { recipe: RecipeDefinition; levelNumber: number; index: number },
+): SaveData {
   if (!service) return save;
   let state = restaurantSuppliesOf(save);
   let supplies = save.business.supplies;
   if (service === "dine-in") {
-    if (cleanSettings(save) > 0) state = { ...state, washing: state.washing + 1 };
+    const pieces = coverPiecesFor(cover?.recipe, cover?.levelNumber ?? 0, cover?.index ?? 0);
+    const dirty = { ...state.dirty };
+    let used = false;
+    for (const id of pieces) {
+      if (supplyUnits(supplies, id) - (dirty[id] ?? 0) < 1) continue;
+      dirty[id] = (dirty[id] ?? 0) + 1;
+      used = true;
+    }
+    if (used) state = { ...state, dirty, washing: state.washing + 1 };
   } else {
     supplies = takePackagingForOrder(supplies).supplies;
   }
-  for (let i = 0; i < SERVICE_SUPPLY_RULES.napkinsPerOrder; i++) {
+  for (let i = 0; i < napkinsFor(cover?.recipe); i++) {
     const took = takeOne(supplies.stock, SERVICE_SUPPLY_RULES.napkin);
     if (!took) break;
     const totals = supplies.lifetime.packaging;
@@ -296,6 +511,8 @@ export type SupplyCheckRow = {
   missing: number;
   /** True: the service can't start without it. False: a warning. */
   blocking: boolean;
+  /** Plan B: optional tableware for the menu guests (never blocks, never opens the sheet). */
+  guest?: boolean;
   /** Market packs that cover the missing units, and their cost. */
   packs: number;
   cost: number;
@@ -345,25 +562,77 @@ function row(
 /**
  * The supplies a service needs for `services` (each order's dine-in /
  * takeaway; null entries use nothing), from the save alone. The wash-up
- * that runs at Start is counted in (its soap permitting).
+ * that runs at Start is counted in (its soap permitting — and the pieces
+ * it may break). Plan B (`opts`): each dine-in order's own tableware by its
+ * dish (`recipes`, aligned with `services`; covers numbered from
+ * `firstCover`), and the tables set for those orders and the menu guests
+ * (`guests`). Without `recipes` every dine-in order is a plain setting.
  */
 export function serviceSuppliesCheck(
   save: SaveData,
   levelNumber: number,
   services: readonly (OrderService | null)[],
+  opts: {
+    recipes?: readonly (RecipeDefinition | null)[];
+    guests?: number;
+    firstCover?: number;
+    /** The menu guests still to come (their dishes): optional rows, never blocking. */
+    guestRecipes?: readonly RecipeDefinition[];
+    /** The first guest's cover number (seeds their drink / coffee). */
+    firstGuestCover?: number;
+  } = {},
 ): ServiceSuppliesCheck {
   if (!isSystemLive("dine-in", levelNumber)) return { applies: false };
   const washed = washUp(save, levelNumber).save;
-  const dirty = restaurantSuppliesOf(washed).washing;
+  const state = restaurantSuppliesOf(washed);
   const dineIn = services.filter((s) => s === "dine-in").length;
   const takeaway = services.filter((s) => s === "takeaway").length;
   const stock = washed.business.supplies;
   const rows: SupplyCheckRow[] = [];
-  if (dineIn > 0) {
-    for (const id of SERVICE_SUPPLY_RULES.placeSetting) {
-      const item = getSupplyItem(id)!;
+  // Each dine-in guest's tableware, by their dish.
+  const need = new Map<SupplyId, number>();
+  services.forEach((service, i) => {
+    if (service !== "dine-in") return;
+    for (const id of coverPiecesFor(opts.recipes?.[i], levelNumber, (opts.firstCover ?? 0) + i))
+      need.set(id, (need.get(id) ?? 0) + 1);
+  });
+  for (const [id, n] of need) {
+    const item = getSupplyItem(id)!;
+    const dirty = dirtyOf(state, id);
+    rows.push(
+      row(save, id, item.name, n, Math.max(0, supplyUnits(stock, id) - dirty), true, dirty),
+    );
+  }
+  // The menu guests eat in too: what their dishes need beyond the orders' (optional).
+  const guestNeed = new Map<SupplyId, number>();
+  (opts.guestRecipes ?? []).forEach((recipe, g) => {
+    for (const id of coverPiecesFor(recipe, levelNumber, (opts.firstGuestCover ?? 100) + g))
+      guestNeed.set(id, (guestNeed.get(id) ?? 0) + 1);
+  });
+  for (const [id, n] of guestNeed) {
+    const item = getSupplyItem(id)!;
+    const clean = Math.max(0, supplyUnits(stock, id) - dirtyOf(state, id));
+    const spare = Math.max(0, clean - (need.get(id) ?? 0));
+    if (spare >= n) continue;
+    // The orders' own row for it is short already: its Restock (a whole pack) comes first.
+    if ((need.get(id) ?? 0) > clean) continue;
+    rows.push({ ...row(save, id, `${item.name} · for menu guests`, n, spare, false), guest: true });
+  }
+  // The tables (durable pieces) for the orders and the menu guests.
+  if (dineIn > 0 && opts.recipes) {
+    const tables = tablesFor(dineIn + (opts.guests ?? 0));
+    for (const t of SERVICE_SUPPLY_RULES.tablePieces) {
+      if (levelNumber < t.fromLevel) continue;
+      const item = getSupplyItem(t.id)!;
       rows.push(
-        row(save, id, item.name, dineIn, Math.max(0, supplyUnits(stock, id) - dirty), true, dirty),
+        row(
+          save,
+          t.id,
+          `${item.name} · ${tables} ${tables === 1 ? "table" : "tables"}`,
+          tables * t.perTable,
+          supplyUnits(stock, t.id),
+          true,
+        ),
       );
     }
   }
@@ -381,14 +650,17 @@ export function serviceSuppliesCheck(
     );
     rows.push(row(save, ORDER_BAG_PRIORITY[0]!, "Takeaway bags", takeaway, covered.bags, true));
   }
-  const orders = dineIn + takeaway;
-  if (orders > 0)
+  const napkins = services.reduce(
+    (t, service, i) => (service ? t + napkinsFor(opts.recipes?.[i]) : t),
+    0,
+  );
+  if (napkins > 0)
     rows.push(
       row(
         save,
         SERVICE_SUPPLY_RULES.napkin,
         "Napkins",
-        orders * SERVICE_SUPPLY_RULES.napkinsPerOrder,
+        napkins,
         supplyUnits(stock, SERVICE_SUPPLY_RULES.napkin),
         false,
       ),
@@ -414,6 +686,6 @@ export function suppliesNeedAttention(check: ServiceSuppliesCheck): boolean {
     !check.ready ||
     check.soap.status === "empty" ||
     check.cleaner.status === "empty" ||
-    check.rows.some((r) => !r.blocking && r.missing > 0)
+    check.rows.some((r) => !r.blocking && !r.guest && r.missing > 0)
   );
 }

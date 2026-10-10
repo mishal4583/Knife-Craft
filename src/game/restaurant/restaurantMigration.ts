@@ -16,8 +16,9 @@
  *  - ingredient stock (from L15): what its next KIT_SERVICES services' own
  *    orders need, minus what it already has, in whole Market units, only as
  *    much as fits in the fridge (never overfilled);
- *  - dine-in (from L31): enough place settings (plate + fork + knife) for
- *    one of those services, napkins up to KIT_NAPKINS, and one bottle of
+ *  - dine-in (from L31): the tableware one of those services' dishes needs
+ *    (plates, bowls, cutlery, glasses by dish — supplies plan B) and its
+ *    tables' pieces, at least a plain place setting per guest, napkins up to KIT_NAPKINS, and one bottle of
  *    dish soap and one of cleaning liquid when it has none;
  *  - takeaway (from L71): containers and bags for those services' takeaway
  *    orders (at least KIT_PACKAGING).
@@ -47,7 +48,13 @@ import { requirementsForRecipes } from "./recipeRequirements";
 import { ticketsFor } from "./serviceTickets";
 import { restaurantLevelOf } from "./restaurantMenu";
 import { LAST_CAMPAIGN_LEVEL, isSystemLive, menuGuestsPerService } from "./restaurantProgression";
-import { SERVICE_SUPPLY_RULES, orderServiceFor, restaurantSuppliesOf } from "./serviceSupplies";
+import {
+  SERVICE_SUPPLY_RULES,
+  orderServiceFor,
+  restaurantSuppliesOf,
+  serviceSuppliesCheck,
+} from "./serviceSupplies";
+import { getSupplyItem } from "../business/businessSupplies";
 import { serviceRecipes, toolsNeeded } from "./kitchenTools";
 import { FIRST_PURCHASE_LEVEL } from "./firstLevels";
 
@@ -145,8 +152,28 @@ export function migrateToUnifiedRestaurant(save: SaveData): SaveData {
           menuGuestsPerService(s.levelNumber),
       ),
     );
+    // Supplies plan B: each service's tableware by dish (the most any one service
+    // needs), and its tables' pieces.
+    const want = new Map<SupplyId, number>();
+    for (const sv of services) {
+      const check = serviceSuppliesCheck(
+        {
+          ...save,
+          business: { ...save.business, supplies: { ...save.business.supplies, stock: {} } },
+        },
+        sv.levelNumber,
+        sv.tickets.map((_, i) => orderServiceFor(sv.levelNumber, i)),
+        { recipes: sv.tickets, guests: menuGuestsPerService(sv.levelNumber) },
+      );
+      if (check.applies)
+        for (const r of check.rows)
+          if (r.blocking && getSupplyItem(r.id)?.section === "service")
+            want.set(r.id, Math.max(want.get(r.id) ?? 0, r.need));
+    }
     for (const id of SERVICE_SUPPLY_RULES.placeSetting)
-      stock = topUpSupply(stock, id, perService - (stock[id]?.units ?? 0), kit);
+      want.set(id, Math.max(want.get(id) ?? 0, perService));
+    for (const [id, need] of want)
+      stock = topUpSupply(stock, id, need - (stock[id]?.units ?? 0), kit);
     stock = topUpSupply(
       stock,
       SERVICE_SUPPLY_RULES.napkin,

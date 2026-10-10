@@ -517,7 +517,11 @@ export function PreServiceCheck({
               </p>
               <ul className="mt-1 divide-y divide-walnut/10" data-testid="psc-supplies">
                 {sup.rows.map((row) => (
-                  <SupplyRow key={row.id} row={row} onRestock={onRestockSupply} />
+                  <SupplyRow
+                    key={`${row.id}${row.guest ? "-guest" : ""}`}
+                    row={row}
+                    onRestock={onRestockSupply}
+                  />
                 ))}
               </ul>
               <div className="divide-y divide-walnut/10" data-testid="psc-bottles">
@@ -1229,6 +1233,7 @@ function SupplyRow({ row, onRestock }: { row: SupplyCheckRow; onRestock: (id: Su
     <li
       className="flex min-h-12 items-center gap-2 py-1.5"
       data-psc-supply={row.id}
+      data-psc-guest={row.guest ? "" : undefined}
       data-psc-status={ok ? "ok" : row.blocking ? "missing" : "warning"}
     >
       <span className="text-[20px]" aria-hidden>
@@ -1244,7 +1249,12 @@ function SupplyRow({ row, onRestock }: { row: SupplyCheckRow; onRestock: (id: Su
         >
           Need {row.need} · have {row.have}
           {row.dirty > 0 ? ` (+${row.dirty} waiting for soap)` : ""}
-          {!ok && !row.blocking ? " · ⚠️ guests go without" : ""}
+          {!ok && item ? ` · ${packsText(item, row.packs)}` : ""}
+          {!ok && !row.blocking
+            ? row.guest
+              ? " · ⚠️ some guests can't be seated"
+              : " · ⚠️ guests go without"
+            : ""}
         </p>
       </div>
       {ok ? (
@@ -1256,7 +1266,7 @@ function SupplyRow({ row, onRestock }: { row: SupplyCheckRow; onRestock: (id: Su
           className="min-h-12"
           onClick={() => onRestock(row.id)}
         >
-          Restock {item ? packsText(item, row.packs) : row.packs} · {formatUsd(row.cost)}
+          Restock · {formatUsd(row.cost)}
         </KButton>
       )}
     </li>
