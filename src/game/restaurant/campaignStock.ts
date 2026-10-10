@@ -213,17 +213,19 @@ export function consumeCampaignOrderStock(
 }
 
 /**
- * Grandma's pantry: only when the check is not ready AND the wallet can't
- * cover the missing stock, adds exactly the missing quantities at cost 0.
- * Null when it doesn't apply. It never moves money.
+ * Grandma's pantry — ONLY before the Market sells ingredients (Level 10,
+ * the tutorial levels): adds exactly the missing quantities at cost 0. From
+ * Level 10 Grandma lends nothing any more (developer 2026-10-10): a short
+ * service is bought, or covered by a rewarded ad or supplier credit
+ * (serviceCover.ts). Null when it doesn't apply. It never moves money.
  */
 export function pantryForMissing(
   save: SaveData,
   check: ServiceStockCheck,
-  /** False before the Market sells ingredients (Level 10): the pantry is the only way then. */
+  /** True from Level 10 (the Market sells ingredients): no pantry then. */
   canBuy = true,
 ): SaveData | null {
-  if (!check.applies || check.ready || (check.affordable && canBuy)) return null;
+  if (canBuy || !check.applies || check.ready) return null;
   // Freshness is one weighted average per ingredient, so fresh stock added
   // on top of expired stock would make the expired part look usable again.
   // Expired stock goes first, recorded as waste (Throw Out Expired).

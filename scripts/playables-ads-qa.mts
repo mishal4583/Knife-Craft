@@ -173,10 +173,13 @@ await platformReady();
   fake.placements = [];
   fake.rewarded = (e) => { e("opened"); e("rewarded"); e("closed"); };
   const rush = await requestRewardedAd("rush-1", AD_PLACEMENT.rushRestock);
+  // Developer 2026-10-10: the Pre-Service Check's ad spots (missing stock / supplies) — each its own placement.
+  const stockAd = await requestRewardedAd("cover-1", AD_PLACEMENT.serviceStock);
+  const suppliesAd = await requestRewardedAd("cover-2", AD_PLACEMENT.serviceSupplies);
   fake.interstitialPlacements = [];
   await requestInterstitialAd();
   await requestInterstitialAd(AD_PLACEMENT.businessDayEnd);
-  assert(rush.status === "rewarded" && JSON.stringify(fake.placements) === JSON.stringify(["rush_restock"]) && JSON.stringify(fake.interstitialPlacements) === JSON.stringify(["level_completed", "business_day_end"]) && INTERSTITIAL_PLACEMENT === "level_completed", "A4b: each ad spot reports its own placement — rush_restock, level_completed (default), business_day_end");
+  assert(rush.status === "rewarded" && stockAd.status === "rewarded" && suppliesAd.status === "rewarded" && JSON.stringify(fake.placements) === JSON.stringify(["rush_restock", "service_stock", "service_supplies"]) && JSON.stringify(fake.interstitialPlacements) === JSON.stringify(["level_completed", "business_day_end"]) && INTERSTITIAL_PLACEMENT === "level_completed", "A4b: each ad spot reports its own placement — rush_restock, service_stock, service_supplies, level_completed (default), business_day_end");
 
   let emit!: Emit;
   fake.rewarded = (e) => { emit = e; e("opened"); };
@@ -338,7 +341,7 @@ Date.now = realDateNow;
   };
   const ad = cfg.advertisement;
   const ids = (l: Array<{ id: string }>) => l.map((p) => p.id).sort().join();
-  assert(ad.minimumDelayBetweenInterstitial === 120 && ad.interstitial.placementFallback === INTERSTITIAL_PLACEMENT && ad.rewarded.placementFallback === REWARDED_PLACEMENT && ids(ad.interstitial.placements) === [AD_PLACEMENT.levelCompleted, AD_PLACEMENT.businessDayEnd].sort().join() && ids(ad.rewarded.placements) === [AD_PLACEMENT.replayBonus, AD_PLACEMENT.rushRestock].sort().join(), "E6: Bridge config — 120 s minimum between interstitials, every ad spot listed as its own placement, fallbacks = the defaults");
+  assert(ad.minimumDelayBetweenInterstitial === 120 && ad.interstitial.placementFallback === INTERSTITIAL_PLACEMENT && ad.rewarded.placementFallback === REWARDED_PLACEMENT && ids(ad.interstitial.placements) === [AD_PLACEMENT.levelCompleted, AD_PLACEMENT.businessDayEnd].sort().join() && ids(ad.rewarded.placements) === [AD_PLACEMENT.replayBonus, AD_PLACEMENT.rushRestock, AD_PLACEMENT.serviceStock, AD_PLACEMENT.serviceSupplies].sort().join(), "E6: Bridge config — 120 s minimum between interstitials, every ad spot listed as its own placement, fallbacks = the defaults");
 }
 
 // ===== F: production safety (source) =====

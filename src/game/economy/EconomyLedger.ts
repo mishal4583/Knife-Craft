@@ -179,6 +179,8 @@ export const EXPENSE_CATEGORIES: readonly LedgerCategory[] = [
   "refrigerator-purchase",
   "supply-equipment-purchase",
   "supply-packaging-purchase",
+  // Goods taken on credit are paid for here (restaurant/supplierCredit.ts).
+  "supplier-credit-repayment",
   "supplier-contract-cancellation",
   "business-staff-salary",
   "refrigerator-maintenance",
@@ -203,6 +205,7 @@ export const LEDGER_CATEGORY_LABEL: Record<LedgerCategory, string> = {
   "refrigerator-purchase": "Refrigerator",
   "supply-equipment-purchase": "Kitchen & Table Supplies",
   "supply-packaging-purchase": "Takeaway Packaging",
+  "supplier-credit-repayment": "Supplier Credit Repaid",
   "supplier-contract-cancellation": "Contract Cancellation Fee",
   "business-staff-salary": "Staff Payroll",
   "refrigerator-maintenance": "Refrigerator Maintenance",

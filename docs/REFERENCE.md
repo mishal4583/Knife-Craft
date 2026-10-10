@@ -86,10 +86,12 @@ create a second engine, and do not duplicate existing systems.
   3 completed levels, then any natural break once 150 s (the guide's
   120–240 s) have passed since the last ad of any kind; the config's
   `minimumDelayBetweenInterstitial` is 120. Rewarded = the Replay Bonus
-  (`src/game/ads/replayBonus.ts`) and Business Rush Restock, granted only
-  when Bridge reports the `rewarded` state. One placement per ad spot
-  (`AD_PLACEMENT`, listed in the config): `level_completed`,
-  `business_day_end`, `replay_bonus`, `rush_restock`. Locally the mock
+  (`src/game/ads/replayBonus.ts`), Business Rush Restock and the
+  Pre-Service Check covers (missing stock / supplies, from L10 —
+  `restaurant/serviceCover.ts`), granted only when Bridge reports the
+  `rewarded` state. One placement per ad spot (`AD_PLACEMENT`, listed in
+  the config): `level_completed`, `business_day_end`, `replay_bonus`,
+  `rush_restock`, `service_stock`, `service_supplies`. Locally the mock
   platform reports ads as unsupported.
 - Level messages: `level_started` / `level_completed` (App play sessions
   and Business orders) and `level_paused` / `level_resumed` (in-game pause
@@ -179,8 +181,9 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   TODO P0); the Pre-Service Check (`restaurant/preServiceCheck.ts`,
   `kc/restaurant/*`): need / usable / whole units at the Market's own
   price, wallet and fridge verdicts, Restock → the Market preset to that
-  ingredient and quantity, Grandma's pantry only when the wallet can't
-  cover it (goods, no money). Browser: `tools/e2e/restaurantstock.mjs`
+  ingredient and quantity; when the wallet can't cover it (from L10) a
+  rewarded ad or supplier credit (`restaurant-service-cover-qa`; was
+  Grandma's pantry until 2026-10-10). Browser: `tools/e2e/restaurantstock.mjs`
   against the normal build (the restaurant is on by default; the browser
   tests marked "restaurant test build" below run on it, the classic ones on
   a `VITE_RESTAURANT_MODE=0` build).
@@ -233,8 +236,9 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   cleaning liquid per closing; "~N washes / closings remaining", low at
   ≤ 8 washes / ≤ 3 closings, empty. The
   Pre-Service Check's Supplies section: settings and packaging block,
-  napkins and bottles warn; Restock → the Market line; Grandma's spares
-  (cost 0, no money/ledger) only when the wallet can't cover what blocks.
+  napkins and bottles warn; Restock → the Market line; when the wallet
+  can't cover what blocks, a rewarded ad (cost 0, no money/ledger) or
+  supplier credit (was Grandma's spares until 2026-10-10).
   Menu guests need a clean setting. No money moves when supplies are used.
   Browser: `tools/e2e/restaurantsupplies.mjs` (restaurant test build).
 - `restaurant-progression-qa` — the developer's 2026-10-05 brief:
@@ -284,7 +288,8 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   restaurant e2e tests seed `MOVED_IN_BUSINESS` so they get no crate).
 - `restaurant-campaign-sim-qa` — phase N: the whole campaign, L1 → 250,
   through the real restaurant functions (the Pre-Service Check, buying,
-  pantry, spares, free hiring, the wash-up, every order's stock + supplies +
+  the pantry before L10, supplier credit from L10 (the sim shows no ads),
+  free hiring, the wash-up, every order's stock + supplies +
   settlement, menu guests, completion, closing; every change through a
   mirror of `App.persist`) for three players — diligent, broke ($0 before
   every level) and an old save moving in at L120 — with invariants after
@@ -400,9 +405,9 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   supplier + kitchen + equipment on the settlement's quality bonus only;
   `menuGuests.GUEST_CAPACITY_RULES`: guests = min(schedule + seats, chef 2 +
   1 per cook/server/Head Chef/specialist), staff requirements still read the
-  schedule; Emergency Service (`restaurant/emergencyService.ts`, optional
-  `levelProgress.emergency`): a service run on Grandma's pantry/spares earns
-  no quality bonus; whole-day stocking (`preServiceCheck.dayStockFor`, the
+  schedule; Emergency Service retired 2026-10-10 (a covered service earns
+  its full pay; an old save's `levelProgress.emergency` is ignored and
+  dropped on completion); whole-day stocking (`preServiceCheck.dayStockFor`, the
   check's "Stock the whole day" card, Restock → the Market at the day's
   quantity); Today's Special 15 % ≤ $50; BUSY = demand); X release saves pay
   the catalog prices; W wiring; O old saves. Simulations:
@@ -503,6 +508,30 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   ripple — `.kc-tap-hand`/`.kc-tap-ripple`), tilted so the tab's name
   shows; the Restaurant card reads "🍽️ Your Restaurant Business". Browser:
   `restaurantfirstlevels.mjs` 8a/8b/8c.
+- `restaurant-service-cover-qa` — COVERING A SHORT SERVICE (developer
+  2026-10-10: "don't use Grandma lending anywhere — use watch ad; don't
+  miss any monetization opportunity"; with no ad a small loan).
+  `restaurant/serviceCover.ts`: `coverFor(plan, part)` only from L10
+  (`FIRST_PURCHASE_LEVEL`) and only when that part (`"stock"` /
+  `"supplies"`) is short AND unaffordable (a player who can pay buys it);
+  `coverWithAd` = exactly the missing goods at cost 0 (no money, no ledger,
+  no penalty — the Rush Restock ad rule); `coverWithCredit` = the Market's
+  whole units / packs at the Market price (real cost basis), owed.
+  `restaurant/supplierCredit.ts`: optional `business.supplierCredit {owed,
+  taken, repaid}`; taking on credit moves no money (no entry);
+  `repayFromEarnings(save, earned)` = min(owed, earned, wallet), one
+  `"supplier-credit-repayment"` entry (an expense, "Supplier Credit
+  Repaid"), run at a first completion from the level's orders + reward
+  (Level Complete row "💳 Supplier credit repaid"). App
+  `coverServiceWithAd(part)` (placements `service_stock` /
+  `service_supplies`; granted only on `rewarded`; save re-read after the
+  ad) and `coverServiceWithCredit(part)`; UI `CoverActions.tsx` (ad only
+  when `rewardedAdsAvailable()`, credit when not or after a failed ad),
+  the check's owed line, Restaurant → Suppliers "💳 Supplier credit" card.
+  Before L10 the pantry stays (nothing can be bought). Grandma's spares and
+  Emergency Service are gone. Browser: `tools/e2e/restaurantcover.mjs`
+  (stubbed rewarded ads: declined → credit offered; rewarded → free; no
+  ads → credit, repaid at Level Complete; 320 px).
 - `restaurant-level-goals-qa` — LEVEL GOALS, first levels pass 3 (developer
   2026-10-09; `restaurant/levelGoals.ts` + the light `levelChecklist.ts`
   used by the lazy Preparation chunk; restaurant build, Levels 1–15,
@@ -539,9 +568,9 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   `serviceStockCheck(…, { ownOrders: true })` applies from L4, the sheet
   opens and START waits; before the Market sells ingredients (L10,
   `FIRST_PURCHASE_LEVEL`) the check shows no Restock/prices and offers
-  Grandma's pantry (`pantryForMissing(…, canBuy = false)`, free, no
-  emergency mark), from L10 the normal Buy / Quick restock / pantry-when-
-  unaffordable; R/T/P
+  Grandma's pantry (`pantryForMissing(…, canBuy = false)`, free), from L10
+  the normal Buy / Quick restock, and when unaffordable an ad or supplier
+  credit; R/T/P
   `grandmasFridgeNoteFor` (low: L12–14 · top-up: L13–14, missing = need −
   usable ≥ 0, `marketUnitsCovering`, `restaurantQuote` · preview: L14–15 +
   spare stock), on the Pre-Service sheet (`servicePlanNeedsSheet`; the note

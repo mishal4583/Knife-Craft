@@ -56,7 +56,7 @@ export type Checkpoint = {
   fridgeCap: number;
   fridgePeak: number;
   pantry: number;
-  spares: number;
+  credit: number;
 };
 
 export type ScenarioResult = {
@@ -163,7 +163,7 @@ export function runScenario(sc: Scenario): ScenarioResult {
           fridgeCap: getRefrigeratorCapacity(x.business.refrigerator.refrigeratorId),
           fridgePeak: Math.round(peak * 10) / 10,
           pantry: st.pantry,
-          spares: st.spares,
+          credit: st.credit,
         });
       },
     },
@@ -177,18 +177,18 @@ export function printScenario(r: ScenarioResult) {
     `\n${r.key}. ${r.name} — final ${$(r.final)} · lowest cash ${$(r.minCash.cash)} (${r.minCash.where})`,
   );
   console.log(
-    "  lvl  | wallet    | income    | costs     | items     | ingred.  | supplies | wages    | fines   | quality  | orders(+guests) | avg order | fridge peak/cap | pantry/spares",
+    "  lvl  | wallet    | income    | costs     | items     | ingred.  | supplies | wages    | fines   | quality  | orders(+guests) | avg order | fridge peak/cap | pantry/credit",
   );
   for (const c of r.rows)
     console.log(
-      `  L${String(c.level).padEnd(4)}| ${$(c.wallet).padEnd(10)}| ${$(c.income).padEnd(10)}| ${$(c.costs).padEnd(10)}| ${$(c.purchases).padEnd(10)}| ${$(c.ingredients).padEnd(9)}| ${$(c.supplies).padEnd(9)}| ${$(c.wages).padEnd(9)}| ${$(c.fines).padEnd(8)}| ${$(c.qualityBonus).padEnd(9)}| ${`${c.orders} (+${c.guests})`.padEnd(16)}| ${$(c.avgOrder).padEnd(10)}| ${`${c.fridgePeak}/${c.fridgeCap}`.padEnd(16)}| ${c.pantry}/${c.spares}`,
+      `  L${String(c.level).padEnd(4)}| ${$(c.wallet).padEnd(10)}| ${$(c.income).padEnd(10)}| ${$(c.costs).padEnd(10)}| ${$(c.purchases).padEnd(10)}| ${$(c.ingredients).padEnd(9)}| ${$(c.supplies).padEnd(9)}| ${$(c.wages).padEnd(9)}| ${$(c.fines).padEnd(8)}| ${$(c.qualityBonus).padEnd(9)}| ${`${c.orders} (+${c.guests})`.padEnd(16)}| ${$(c.avgOrder).padEnd(10)}| ${`${c.fridgePeak}/${c.fridgeCap}`.padEnd(16)}| ${c.pantry}/${c.credit}`,
     );
   const qb = Object.entries(r.stats.qualityBy)
     .filter(([, v]) => v > 0)
     .map(([k, v]) => `${k} ${$(v)}`)
     .join(" · ");
   console.log(
-    `  quality bonus from investments: ${qb || "none"} · emergency orders ${r.stats.emergencyOrders}`,
+    `  quality bonus from investments: ${qb || "none"} · supplier credit ${r.stats.credit}×`,
   );
   if (r.stats.blocked.length || r.stats.invariant.length)
     console.log(

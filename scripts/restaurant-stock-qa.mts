@@ -16,9 +16,11 @@
  *  E. Expired stock is never used; the check shows it and refuses to count it.
  *  K. The check: need / usable / missing / whole units to buy at the
  *     Market's own price, wallet and fridge verdicts; ready when covered.
- *  U. Never stuck: Grandma's pantry appears only when the wallet can't cover
- *     the missing stock, adds exactly that (at cost 0, expired thrown out
- *     first), moves no money, and makes the check ready.
+ *  U. Never stuck (rule changed 2026-10-10 — was Grandma's pantry): from
+ *     Level 10 only when the wallet can't cover the missing stock, a rewarded
+ *     ad adds exactly that (cost 0, no money, no ledger) or supplier credit
+ *     adds the Market's units and owes their price (repaid from earnings,
+ *     never below $0); either makes the check ready.
  *  W. Wiring: App gates everything on RESTAURANT_MODE; Restock opens the
  *     Market on the exact ingredient; no second inventory.
  *
@@ -42,6 +44,9 @@ import {
   serviceUsesStock,
 } from "../src/game/restaurant/campaignStock.ts";
 import { serviceCheckFor, serviceNeedsAttention } from "../src/game/restaurant/preServiceCheck.ts";
+import { serviceSuppliesCheck } from "../src/game/restaurant/serviceSupplies.ts";
+import { coverFor, coverWithAd, coverWithCredit } from "../src/game/restaurant/serviceCover.ts";
+import { repayFromEarnings, supplierCreditOf } from "../src/game/restaurant/supplierCredit.ts";
 import {
   recipeRequirements,
   requirementsForRecipes,
@@ -305,25 +310,64 @@ console.log("K. Pre-Service Check");
 
 console.log("U. Never stuck");
 {
+  // Rule changed (developer 2026-10-10): from Level 10 Grandma's pantry is gone —
+  // when the wallet can't pay, a rewarded ad brings exactly what's missing (no
+  // money, no ledger) or, with no ad, supplier credit brings the Market's units
+  // and owes their price. Was: "with no money the pantry covers the missing stock".
   const tickets = rollServiceTickets(pool30);
   const rich = saveAt(30);
   const broke = saveAt(30, { credits: 0 });
   const richCheck = serviceStockCheck(rich, 30, tickets);
   const brokeCheck = serviceStockCheck(broke, 30, tickets);
+  const plan = (check: typeof richCheck, s: SaveData) => ({
+    levelNumber: 30,
+    check,
+    supplies: serviceSuppliesCheck(s, 30, []),
+  });
   assert(
-    pantryForMissing(rich, richCheck) === null,
-    "U1: no pantry when the wallet covers the missing stock",
+    pantryForMissing(rich, richCheck) === null &&
+      pantryForMissing(broke, brokeCheck) === null &&
+      coverFor(plan(richCheck, rich), "stock") === null,
+    "U1: from Level 10 no pantry at all; no cover when the wallet can pay (the player buys it)",
   );
-  const next = brokeCheck.applies ? pantryForMissing(broke, brokeCheck) : null;
-  const after = next ? serviceStockCheck(next, 30, tickets) : null;
+  const viaAd = coverWithAd(broke, plan(brokeCheck, broke), "stock");
+  const afterAd = viaAd ? serviceStockCheck(viaAd, 30, tickets) : null;
   assert(
-    !!next &&
-      next.credits === 0 &&
-      next.economyLedger.length === broke.economyLedger.length &&
-      !!after &&
-      after.applies &&
-      after.ready,
-    "U2: with no money the pantry covers exactly the missing stock: no money, no ledger, ready to start",
+    !!viaAd &&
+      viaAd.credits === 0 &&
+      viaAd.economyLedger.length === broke.economyLedger.length &&
+      supplierCreditOf(viaAd).owed === 0 &&
+      !!afterAd &&
+      afterAd.applies &&
+      afterAd.ready,
+    "U2: with no money a rewarded ad covers exactly the missing stock: no money, no ledger, ready to start",
+  );
+  const viaCredit = coverWithCredit(broke, plan(brokeCheck, broke), "stock");
+  const afterCredit = viaCredit ? serviceStockCheck(viaCredit, 30, tickets) : null;
+  assert(
+    !!viaCredit &&
+      brokeCheck.applies &&
+      viaCredit.credits === 0 &&
+      viaCredit.economyLedger.length === broke.economyLedger.length &&
+      supplierCreditOf(viaCredit).owed === brokeCheck.missingCost &&
+      !!afterCredit &&
+      afterCredit.applies &&
+      afterCredit.ready,
+    "U3: …or supplier credit: the Market's units now, their price owed, no money moved, ready to start",
+  );
+  const repaid = viaCredit ? repayFromEarnings(viaCredit, 10_000, "level-30") : null;
+  const half = viaCredit ? repayFromEarnings({ ...viaCredit, credits: 5 }, 10_000) : null;
+  assert(
+    !!repaid &&
+      !!half &&
+      brokeCheck.applies &&
+      repaid.repaid === Math.min(brokeCheck.missingCost, 10_000, viaCredit!.credits) &&
+      half.repaid === Math.min(5, brokeCheck.missingCost) &&
+      half.save.credits === 5 - half.repaid &&
+      half.save.economyLedger.at(-1)?.category === "supplier-credit-repayment" &&
+      half.save.economyLedger.at(-1)?.amount === -half.repaid &&
+      supplierCreditOf(half.save).owed === brokeCheck.missingCost - half.repaid,
+    "U4: repayment = min(owed, earned, wallet) — never below $0; one ledger entry; the rest stays owed",
   );
 }
 

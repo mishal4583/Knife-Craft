@@ -16,6 +16,7 @@ import { getAvailableStorageCapacity } from "@/game/business/RefrigeratorManager
 import { formatQuantity } from "@/game/business/businessInventory";
 import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
 import { IngredientSupplier } from "../restaurant/IngredientSupplier";
+import { supplierCreditOf } from "@/game/restaurant/supplierCredit";
 
 const SUPPLIER_ICON: Record<string, string> = {
   "local-market": "🏪",
@@ -93,6 +94,9 @@ export function BusinessSuppliers({
     <div className="space-y-3">
       {RESTAURANT_MODE && selectSupplier ? (
         <IngredientSupplier save={save} selectSupplier={selectSupplier} />
+      ) : null}
+      {RESTAURANT_MODE && supplierCreditOf(save).taken > 0 ? (
+        <SupplierCreditCard save={save} />
       ) : null}
       {/* Today's supplier conditions */}
       <Panel className="p-4">
@@ -271,5 +275,29 @@ export function BusinessSuppliers({
         })}
       </div>
     </div>
+  );
+}
+
+/**
+ * Supplier credit (developer 2026-10-10; restaurant/supplierCredit.ts): goods
+ * taken on credit when a service was short and couldn't be paid for, repaid
+ * automatically from the next earnings. Read-only.
+ */
+function SupplierCreditCard({ save }: { save: SaveData }) {
+  const c = supplierCreditOf(save);
+  return (
+    <Panel className="p-4">
+      <span data-testid="supplier-credit-card" />
+      <Eyebrow>💳 Supplier credit</Eyebrow>
+      <p className="mt-1 font-display text-[18px] font-black text-walnut-dark">
+        {c.owed > 0 ? `You owe ${formatUsd(c.owed)}` : "Nothing owed"}
+      </p>
+      <p className="mt-0.5 font-ui text-[12.5px] text-walnut/70">
+        {c.owed > 0
+          ? "Repaid automatically from your next level's earnings."
+          : "Everything taken on credit has been repaid."}{" "}
+        Taken so far {formatUsd(c.taken)} · repaid {formatUsd(c.repaid)}.
+      </p>
+    </Panel>
   );
 }

@@ -3,7 +3,7 @@
  * restaurant-campaign-sim-qa.mts and restaurant-economy-pass.mts.
  * RESTAURANT CAMPAIGN SIMULATION QA — Unified Restaurant phase N: the whole
  * campaign, Level 1 → 250, played through the REAL restaurant functions the
- * way App plays a level (servicePlanFor → buy / pantry / spares / hire →
+ * way App plays a level (servicePlanFor → buy / pantry / credit / hire →
  * beginLevel's wash-up → each order: stock + supplies + settlement → menu
  * guests → completeLevel + recordService + wash-up → closing), every save
  * change going through a mirror of App.persist (kitchen sync, milestone
@@ -16,7 +16,8 @@
  *     menu guest it has stock for.
  *  B. Broke — has spent every cent before EVERY level (a recorded
  *     knife-purchase drain), so it can only start services through Grandma's
- *     pantry, Grandma's spares and free hiring.
+ *     pantry (before Level 10), supplier credit (from Level 10 — the sim has
+ *     no ads; developer 2026-10-10: Grandma no longer lends) and free hiring.
  *  M. Moving in — a pre-restaurant save at Level 120 (an old build's save)
  *     moves into the restaurant (phase M crate), then plays to 250.
  *
@@ -95,7 +96,6 @@ import {
   restaurantDayOf,
 } from "../src/game/restaurant/restaurantDay.ts";
 import {
-  grandmasSpares,
   orderServiceFor,
   takeOrderSupplies,
   washUp,
@@ -115,6 +115,9 @@ import {
 import { menuGuestsPerService } from "../src/game/restaurant/restaurantProgression.ts";
 import { kitchenGuestSeats } from "../src/game/restaurant/restaurantInvestments.ts";
 import { restaurantLevelOf } from "../src/game/restaurant/restaurantMenu.ts";
+import { coverWithCredit } from "../src/game/restaurant/serviceCover.ts";
+import { repayFromEarnings, supplierCreditOf } from "../src/game/restaurant/supplierCredit.ts";
+import { levelOrderEarnings } from "../src/game/levels/levelEarnings.ts";
 import { giveGrandmasLeftovers } from "../src/game/restaurant/grandmasFridge.ts";
 import { FIRST_PURCHASE_LEVEL } from "../src/game/restaurant/firstLevels.ts";
 import { isSystemLive } from "../src/game/restaurant/restaurantProgression.ts";
@@ -131,10 +134,6 @@ import {
   supplierPriceFactor,
 } from "../src/game/restaurant/restaurantEconomy.ts";
 import { restaurantQuality } from "../src/game/restaurant/restaurantInvestments.ts";
-import {
-  isEmergencyService,
-  markEmergencyService,
-} from "../src/game/restaurant/emergencyService.ts";
 
 export const $ = (c: number) =>
   `$${(c / 100).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
@@ -167,8 +166,12 @@ export type Stats = {
   levels: number;
   blocked: string[];
   invariant: string[];
+  /** Grandma's pantry, before Level 10 only. */
   pantry: number;
-  spares: number;
+  /** Supplier credit taken (services covered on credit), and the money taken / repaid. */
+  credit: number;
+  creditTaken: number;
+  creditRepaid: number;
   hires: number;
   specialists: number;
   fridgeUpgrades: number;
@@ -179,9 +182,8 @@ export type Stats = {
   /** The campaign orders' recipe earnings and quality bonus (restaurant settlement). */
   orderEarnings: number;
   qualityBonus: number;
-  /** The quality bonus each investment added (recipe earnings × its share), and the emergency orders. */
+  /** The quality bonus each investment added (recipe earnings × its share). */
   qualityBy: Record<string, number>;
-  emergencyOrders: number;
   observe?: (where: string, s: SaveData) => void;
 };
 
@@ -356,12 +358,18 @@ function playLevel(save: SaveData, n: number, opts: SimOptions, stats: Stats): S
     replan();
   }
   if (plan.check.applies && !plan.check.ready) {
-    // As App: before the Market sells ingredients (Level 10) the pantry is the only way.
-    const canBuy = n >= FIRST_PURCHASE_LEVEL;
-    const pantry = pantryForMissing(s, plan.check, canBuy);
+    // As App: before the Market sells ingredients (Level 10) Grandma's pantry;
+    // from Level 10 supplier credit (the sim shows no ads).
+    const pantry = pantryForMissing(s, plan.check, n >= FIRST_PURCHASE_LEVEL);
+    const credit = pantry ? null : coverWithCredit(s, plan, "stock");
     if (pantry) {
-      s = canBuy ? markEmergencyService(pantry, level.id) : pantry;
+      s = pantry;
       stats.pantry++;
+      replan();
+    } else if (credit) {
+      stats.creditTaken += supplierCreditOf(credit).owed - supplierCreditOf(s).owed;
+      s = persist(credit, stats, `${where} credit`);
+      stats.credit++;
       replan();
     }
   }
@@ -387,10 +395,11 @@ function playLevel(save: SaveData, n: number, opts: SimOptions, stats: Stats): S
     replan();
   }
   if (plan.supplies.applies && !plan.supplies.ready) {
-    const spares = grandmasSpares(s, plan.supplies);
-    if (spares) {
-      s = markEmergencyService(spares, level.id);
-      stats.spares++;
+    const credit = coverWithCredit(s, plan, "supplies");
+    if (credit) {
+      stats.creditTaken += supplierCreditOf(credit).owed - supplierCreditOf(s).owed;
+      s = persist(credit, stats, `${where} credit`);
+      stats.credit++;
       replan();
     }
   }
@@ -437,14 +446,11 @@ function playLevel(save: SaveData, n: number, opts: SimOptions, stats: Stats): S
     // Mirrors App: the supplier's quality extra rides on the restaurant settlement.
     const settled = opts.legacyFoodCost
       ? settlement
-      : restaurantSettlement(settlement, restaurantQualityBonusPct(base), {
-          emergency: isEmergencyService(base.levelProgress, level.id),
-        });
+      : restaurantSettlement(settlement, restaurantQualityBonusPct(base));
     const amount = settled.netResult;
     stats.orderEarnings += settled.revenue;
     stats.qualityBonus += settled.qualityBonus;
-    if (isEmergencyService(base.levelProgress, level.id)) stats.emergencyOrders++;
-    else if (!opts.legacyFoodCost) {
+    if (!opts.legacyFoodCost) {
       const q = restaurantQuality(base);
       const parts: Record<string, number> = {
         kitchen: q.kitchen,
@@ -498,10 +504,17 @@ function playLevel(save: SaveData, n: number, opts: SimOptions, stats: Stats): S
   }
 
   // Finish Level (App.completeCampaignLevel).
+  const orderCoins = levelOrderEarnings(s, level.id);
   const { progress, isFirstCompletion, rewardCoins } = completeLevel(level.id, s.levelProgress);
   let next: SaveData = { ...s, credits: s.credits + rewardCoins, levelProgress: progress };
   if (isFirstCompletion) next = washUp(recordService(next, n), n).save;
   if (rewardCoins > 0) next = appendLedgerEntry(next, "completion-reward", rewardCoins, level.id);
+  // As App: supplier credit is repaid from the level's earnings.
+  if (isFirstCompletion) {
+    const r = repayFromEarnings(next, rewardCoins + (orderCoins ?? 0), level.id);
+    next = r.save;
+    stats.creditRepaid += r.repaid;
+  }
   s = persist(next, stats, `${where} complete`);
   if (opts.profile === "completionist")
     s = buyEverything(s, stats, where, opts.shop ?? "all", opts.reserve ?? 0);
@@ -544,7 +557,9 @@ export function run(
     blocked: [],
     invariant: [],
     pantry: 0,
-    spares: 0,
+    credit: 0,
+    creditTaken: 0,
+    creditRepaid: 0,
     hires: 0,
     specialists: 0,
     fridgeUpgrades: 0,
@@ -555,7 +570,6 @@ export function run(
     orderEarnings: 0,
     qualityBonus: 0,
     qualityBy: {},
-    emergencyOrders: 0,
     observe: opts.observe,
   };
   let s = start;
@@ -590,7 +604,7 @@ export function run(
     );
   if (log)
     console.log(
-      `    help: pantry ×${stats.pantry} · spares ×${stats.spares} · hires ${stats.hires} (${stats.specialists} specialists) · fridge upgrades ${stats.fridgeUpgrades} · fridge over capacity (Grandma's goods) at ${stats.fridgeOverByGrandma} level ends`,
+      `    help: pantry ×${stats.pantry} (before L10) · supplier credit ×${stats.credit} (${$(stats.creditTaken)} taken, ${$(stats.creditRepaid)} repaid, ${$(supplierCreditOf(s).owed)} owed) · hires ${stats.hires} (${stats.specialists} specialists) · fridge upgrades ${stats.fridgeUpgrades} · fridge over capacity (covered goods) at ${stats.fridgeOverByGrandma} level ends`,
     );
   if (log && stats.blocked.length)
     console.log(`    BLOCKED: ${stats.blocked.slice(0, 5).join(" | ")}`);

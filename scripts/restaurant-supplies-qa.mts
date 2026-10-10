@@ -19,8 +19,11 @@
  *  C. Pre-Service Check: settings and packaging block, napkins warn; the
  *     wash-up is counted in when there's soap; costs are whole Market packs;
  *     the plan carries it and opens the sheet when something blocks.
- *  G. Grandma's spares: only when the wallet can't cover what blocks,
- *     exactly the missing units at cost 0, no money, no ledger; then ready.
+ *  G. Covering what blocks (rule changed, developer 2026-10-10: Grandma's
+ *     spares are gone): only when the wallet can't cover it, a rewarded ad
+ *     brings exactly the missing units at cost 0 (no money, no ledger), or
+ *     supplier credit brings the Market's packs, owed (no money now); then
+ *     ready.
  *  D. Closing: the wipe-down uses cleaning liquid from L31; none → the day
  *     still closes; before L31 nothing; the preview shows the bottle.
  *  M. No function here moves money or writes the ledger.
@@ -52,7 +55,6 @@ import {
   cleanSettings,
   closingWipeDown,
   drawFromBottle,
-  grandmasSpares,
   orderServiceFor,
   restaurantSuppliesOf,
   serviceSuppliesCheck,
@@ -60,6 +62,7 @@ import {
   suppliesNeedAttention,
   takeOrderSupplies,
   washUp,
+  type OrderService,
 } from "../src/game/restaurant/serviceSupplies.ts";
 import {
   SUPPLY_WHOLESALE_FACTOR,
@@ -77,6 +80,13 @@ import {
   restaurantDayOf,
 } from "../src/game/restaurant/restaurantDay.ts";
 import { servicePlanFor, servicePlanNeedsSheet } from "../src/game/restaurant/preServiceCheck.ts";
+import { coverFor, coverWithAd, coverWithCredit } from "../src/game/restaurant/serviceCover.ts";
+import { supplierCreditOf } from "../src/game/restaurant/supplierCredit.ts";
+
+const check0 = (s: SaveData, services: OrderService[]) => {
+  const c = serviceSuppliesCheck(s, 31, services);
+  return c.applies ? c : { missingCost: -1 };
+};
 import { getLevel } from "../src/game/levels/LevelManager.ts";
 
 let failures = 0;
@@ -395,17 +405,23 @@ console.log("C. Pre-Service Check");
   );
 }
 
-console.log("G. Grandma's spares");
+console.log("G. Covering what blocks (ad / supplier credit)");
 {
+  const plan31 = (s: SaveData, services: OrderService[]) => ({
+    levelNumber: 31,
+    check: { applies: false } as const,
+    supplies: serviceSuppliesCheck(s, 31, services),
+  });
   const rich = saveAt(31);
   assert(
-    grandmasSpares(rich, serviceSuppliesCheck(rich, 31, ["dine-in"])) === null,
-    "G1: never when the wallet can cover it",
+    coverFor(plan31(rich, ["dine-in"]), "supplies") === null &&
+      coverWithAd(rich, plan31(rich, ["dine-in"]), "supplies") === null,
+    "G1: never when the wallet can cover it (the player buys it)",
   );
   const poor = saveAt(31, 100);
-  const check = serviceSuppliesCheck(poor, 31, ["dine-in", "dine-in", "dine-in"]);
-  const lent = grandmasSpares(poor, check)!;
-  const after = serviceSuppliesCheck(lent, 31, ["dine-in", "dine-in", "dine-in"]);
+  const three: OrderService[] = ["dine-in", "dine-in", "dine-in"];
+  const lent = coverWithAd(poor, plan31(poor, three), "supplies")!;
+  const after = serviceSuppliesCheck(lent, 31, three);
   assert(
     lent &&
       units(lent, "dinner-plates") === 3 &&
@@ -416,9 +432,28 @@ console.log("G. Grandma's spares");
       lent.economyLedger.length === poor.economyLedger.length &&
       after.applies &&
       after.ready,
-    "G2: exactly the missing blocking units at cost 0 (not the napkins), no money, no ledger → ready",
+    "G2: the ad brings exactly the missing blocking units at cost 0 (not the napkins), no money, no ledger → ready",
   );
-  assert(grandmasSpares(lent, after) === null, "G3: nothing is lent once the service can start");
+  const offer = coverFor(plan31(poor, three), "supplies")!;
+  const credit = coverWithCredit(poor, plan31(poor, three), "supplies")!;
+  const afterCredit = serviceSuppliesCheck(credit, 31, three);
+  assert(
+    credit &&
+      units(credit, "dinner-plates") === 12 &&
+      credit.business.supplies.stock["dinner-plates"]!.costBasis > 0 &&
+      credit.credits === 100 &&
+      credit.economyLedger.length === poor.economyLedger.length &&
+      supplierCreditOf(credit).owed === offer.creditCost &&
+      offer.creditCost === check0(poor, three).missingCost &&
+      afterCredit.applies &&
+      afterCredit.ready,
+    `G3: supplier credit brings the Market's packs (12 plates), owes their price (${offer.creditCost}¢), moves no money now → ready`,
+  );
+  assert(
+    coverFor(plan31(lent, three), "supplies") === null &&
+      coverWithAd(lent, plan31(lent, three), "supplies") === null,
+    "G4: nothing more once the service can start",
+  );
 }
 
 console.log("D. Closing");

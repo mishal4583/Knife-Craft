@@ -1,7 +1,7 @@
 /**
  * RESTAURANT CAMPAIGN SIMULATION QA — Unified Restaurant phase N: the whole
  * campaign, Level 1 → 250, played through the REAL restaurant functions the
- * way App plays a level (servicePlanFor → buy / pantry / spares / hire →
+ * way App plays a level (servicePlanFor → buy / pantry / credit / hire →
  * beginLevel's wash-up → each order: stock + supplies + settlement → menu
  * guests → completeLevel + recordService + wash-up → closing), every save
  * change going through a mirror of App.persist (kitchen sync, milestone
@@ -14,7 +14,7 @@
  *     menu guest it has stock for.
  *  B. Broke — has spent every cent before EVERY level (a recorded
  *     knife-purchase drain), so it can only start services through Grandma's
- *     pantry, Grandma's spares and free hiring.
+ *     pantry before Level 10, supplier credit from Level 10, and free hiring.
  *  M. Moving in — a pre-restaurant save at Level 120 (an old build's save)
  *     moves into the restaurant (phase M crate), then plays to 250.
  *
@@ -24,7 +24,7 @@
  *  3. opening cash + every ledger movement since = closing cash (lifetime
  *     totals, which are never trimmed);
  *  4. no negative stock or supplies; the fridge never holds more than its
- *     capacity except by Grandma's free goods (counted separately);
+ *     capacity except by covered goods (counted separately);
  *  5. every order the level owes is served and paid, the level completes.
  * It prints each player's summary (money flows, help used, staff, fridge).
  *
@@ -44,7 +44,8 @@ import type { SaveData } from "../src/game/SaveManager.ts";
 import { DEFAULT_SAVE } from "../src/game/SaveManager.ts";
 import { migrateToUnifiedRestaurant } from "../src/game/restaurant/restaurantMigration.ts";
 import { businessDayAllowed } from "../src/game/restaurant/endlessRestaurant.ts";
-import { run, freshRestaurantSave } from "./restaurantCampaignSim.mts";
+import { $, run, freshRestaurantSave } from "./restaurantCampaignSim.mts";
+import { supplierCreditOf } from "../src/game/restaurant/supplierCredit.ts";
 
 let failures = 0;
 function assert(cond: unknown, msg: string) {
@@ -88,9 +89,20 @@ for (const [tag, r, levels] of [
     `${tag}2: money never below 0; opening cash + ledger = closing cash at every level ${r.stats.invariant.slice(0, 2).join(" | ")}`,
   );
 }
+// Rule changed (developer 2026-10-10): Grandma no longer lends from Level 10 — a
+// short service is covered by a rewarded ad or supplier credit (the sim shows no
+// ads). Was: "got through on Grandma's pantry, spares and free hiring alone".
 assert(
-  B.stats.pantry > 0 && B.stats.spares > 0 && B.stats.hires > 0,
-  "B3: the broke player got through on Grandma's pantry, spares and free hiring alone",
+  B.stats.credit > 0 &&
+    B.stats.creditTaken > 0 &&
+    B.stats.creditRepaid === B.stats.creditTaken &&
+    supplierCreditOf(B.s).owed === 0 &&
+    B.stats.hires > 0,
+  `B3: the broke player got through on supplier credit (×${B.stats.credit}, ${$(B.stats.creditTaken)}), all of it repaid from its earnings ($0 owed at the end), and free hiring`,
+);
+assert(
+  D.stats.credit === 0 && D.stats.pantry === 0,
+  "B4: the diligent player never needs supplier credit or Grandma's pantry",
 );
 // 250 levels at 2 services a day (3 from L51): about 92 days, each closed once.
 const serviceDays = 25 + Math.ceil(200 / 3);

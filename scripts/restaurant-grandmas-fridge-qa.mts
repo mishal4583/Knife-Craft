@@ -51,6 +51,7 @@ import {
   pantryForMissing,
 } from "../src/game/restaurant/campaignStock.ts";
 import { servicePlanFor, servicePlanNeedsSheet } from "../src/game/restaurant/preServiceCheck.ts";
+import { coverFor } from "../src/game/restaurant/serviceCover.ts";
 import { inventoryView } from "../src/game/business/inventoryView.ts";
 import { lowStockItems, menuDemand } from "../src/game/business/inventoryAnalytics.ts";
 import { activeBusinessDishes } from "../src/game/business/businessMenuActivation.ts";
@@ -375,8 +376,12 @@ console.log("T. Level 13: the top-up");
       plan.staff.length === 0 &&
       (!plan.check.applies ||
         plan.check.ready ||
-        (!plan.check.affordable && !!pantryForMissing(broke, plan.check))),
-    "T4: with $0 the top-up says it can't all be bought; if the level's own stock is short, Grandma's pantry covers it (no soft-lock)",
+        (!plan.check.affordable &&
+          pantryForMissing(broke, plan.check) === null &&
+          coverFor(plan, "stock") !== null)),
+    // Rule changed (developer 2026-10-10): from Level 10 a rewarded ad or supplier
+    // credit covers it, not Grandma's pantry.
+    "T4: with $0 the top-up says it can't all be bought; if the level's own stock is short, an ad or supplier credit covers it (no soft-lock)",
   );
 }
 

@@ -4,8 +4,9 @@ import type { ScreenId } from "@/components/kc/data";
 import { getLevel } from "@/game/levels/LevelManager";
 import { dayStockFor, servicePlanFor } from "@/game/restaurant/preServiceCheck";
 import { pantryForMissing } from "@/game/restaurant/campaignStock";
-import { grandmasSpares } from "@/game/restaurant/serviceSupplies";
-import { markEmergencyService } from "@/game/restaurant/emergencyService";
+import { coverFor, type CoverPart } from "@/game/restaurant/serviceCover";
+import { supplierCreditOf } from "@/game/restaurant/supplierCredit";
+import type { CoverAdOutcome } from "./CoverActions";
 import { getSupplyItem } from "@/game/business/businessSupplies";
 import { fridgeUsage } from "@/game/restaurant/fridgeUsage";
 import { isSystemLive } from "@/game/restaurant/restaurantProgression";
@@ -42,6 +43,9 @@ export function ServiceCheckLayer({
   onThrowOutExpired,
   onUsePantry,
   onQuickRestock,
+  adAvailable,
+  onCoverWithAd,
+  onCoverWithCredit,
 }: {
   save: SaveData;
   levelId: string;
@@ -51,7 +55,14 @@ export function ServiceCheckLayer({
   onStart: (opensDay: boolean) => void;
   onClose: () => void;
   onThrowOutExpired: () => void;
+  /** Before Level 10 only (nothing can be bought yet): Grandma's pantry. */
   onUsePantry: (next: SaveData) => void;
+  /** The platform can show a rewarded ad now. */
+  adAvailable: boolean;
+  /** From Level 10, when the wallet can't pay: an ad brings the missing part (App.coverServiceWithAd). */
+  onCoverWithAd: (part: CoverPart) => Promise<CoverAdOutcome>;
+  /** …or supplier credit (App.coverServiceWithCredit). */
+  onCoverWithCredit: (part: CoverPart) => void;
   /** Quick restock bought: App records one ledger entry per ingredient and saves. */
   onQuickRestock: (next: SaveData, lines: readonly QuickRestockLine[]) => void;
 }) {
@@ -104,11 +115,15 @@ export function ServiceCheckLayer({
       }
       onThrowOutExpired={onThrowOutExpired}
       onUsePantry={() => {
+        // Before Level 10 only: nothing can be bought yet (pantryForMissing is null from L10).
         const next = pantryForMissing(save, check, canBuy);
-        // Final economy pass: the service now runs on emergency goods (no quality bonus) —
-        // not before the Market sells ingredients, when the pantry is the only way.
-        if (next) onUsePantry(canBuy ? markEmergencyService(next, plan.level.id) : next);
+        if (next) onUsePantry(next);
       }}
+      cover={{ stock: coverFor(plan, "stock"), supplies: coverFor(plan, "supplies") }}
+      adAvailable={adAvailable}
+      onCoverWithAd={onCoverWithAd}
+      onCoverWithCredit={onCoverWithCredit}
+      owed={supplierCreditOf(save).owed}
       canBuy={canBuy}
       onUpgradeFridge={() => go("business-refrigerator")}
       onClose={onClose}
@@ -141,10 +156,6 @@ export function ServiceCheckLayer({
       onQuickRestock={() => {
         const r = quickRestock(save, check);
         if (r.ok) onQuickRestock(r.save, r.lines);
-      }}
-      onBorrowSpares={() => {
-        const next = grandmasSpares(save, plan.supplies);
-        if (next) onUsePantry(markEmergencyService(next, plan.level.id));
       }}
     />
   );

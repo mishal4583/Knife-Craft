@@ -52,8 +52,9 @@ export type LevelProgress = {
   /** Unified Restaurant: menu guests already served in a level not finished yet (restaurant/menuGuests.ts). */
   menuGuests?: Record<string, number>;
   /**
-   * Unified Restaurant: levels whose service ran on Grandma's emergency goods
-   * (restaurant/emergencyService.ts) — their orders earn no quality bonus.
+   * Legacy (retired 2026-10-10, restaurant/emergencyService.ts): levels whose
+   * service ran on Grandma's emergency goods. Ignored; dropped when the level
+   * completes.
    * Absent on older saves; a level's entry is dropped when it completes.
    */
   emergency?: Record<string, true>;

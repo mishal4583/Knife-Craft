@@ -11,8 +11,9 @@
 //   4. Inventory → Supplies shows the place settings and both bottles (read-only).
 //   5. Level 32 (Dinner) ends the day: Closing Time shows the empty cleaning-liquid bottle
 //      and still closes for the night.
-//   6. Level 31 with $1: Grandma's spares lend exactly the missing settings (no money, no
-//      ledger) and the service can start.
+//   6. Level 31 with $1: supplier credit brings the missing settings (the Market's packs, no money
+//      moved, the price owed) and the service can start (was Grandma's spares — rule changed
+//      2026-10-10).
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import {
   MOVED_IN_BUSINESS,
@@ -291,34 +292,46 @@ check(
   { ct, day, dayAfter: afterClose.business.restaurantDay },
 );
 
-// ---------- 6. Grandma's spares ----------
+// ---------- 6. Supplier credit (rule changed 2026-10-10: Grandma's spares are gone) ----------
 // Test saves are version 1, whose money is whole dollars (×100 on load): this is $1.
+// The mock platform shows no rewarded ads, so the check offers supplier credit.
 await boot(page, saveAt(31, 1));
 await prepare("Baguette Rounds");
 const poor = await sheet();
-const pantryBtn = /Use Grandma's pantry/.test(poor?.text ?? "");
-if (pantryBtn) {
-  await clickButton(page, /Use Grandma's pantry/);
+const b0 = await readSave(page);
+const creditButtons = await page.evaluate(
+  () =>
+    [...document.querySelectorAll('[data-testid="pre-service-check"] button')].filter((b) =>
+      /Supplier credit/.test(b.textContent),
+    ).length,
+);
+// One button per short part (ingredients, supplies); take each on credit.
+for (let i = 0; i < creditButtons; i++) {
+  await clickButton(page, /Supplier credit/);
   await sleep(600);
 }
-const b0 = await readSave(page);
-await clickButton(page, /Borrow Grandma's spares/);
-await sleep(700);
 const lent = await readSave(page);
 const s6 = await sheet();
 check(
-  "6 with $1 Grandma lends exactly the missing settings (no money, no ledger) and START is enabled",
+  "6 with $1 supplier credit brings the Market's packs (no money, no ledger now, the price owed) and START is enabled",
   !!poor &&
     /Not enough money/.test(poor.text) &&
+    !/Grandma's spares|Emergency Service/.test(poor.text) &&
+    creditButtons >= 1 &&
     lent.credits === b0.credits &&
     lent.economyLedger.length === b0.economyLedger.length &&
     ["dinner-plates", "dinner-forks", "dinner-knives"].every(
       (id) =>
-        lent.business.supplies.stock[id]?.units === 1 &&
-        lent.business.supplies.stock[id]?.costBasis === 0,
+        (lent.business.supplies.stock[id]?.units ?? 0) >= 1 &&
+        (lent.business.supplies.stock[id]?.costBasis ?? 0) > 0,
     ) &&
+    (lent.business.supplierCredit?.owed ?? 0) > 0 &&
     s6?.startDisabled === false,
-  { stock: lent.business.supplies.stock, start: s6?.startDisabled },
+  {
+    stock: lent.business.supplies.stock,
+    start: s6?.startDisabled,
+    credit: lent.business.supplierCredit,
+  },
 );
 
 const fit = await page.evaluate(

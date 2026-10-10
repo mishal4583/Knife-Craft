@@ -310,7 +310,8 @@ console.log("W. Wiring");
   assert(
     (
       app.match(
-        /computed && RESTAURANT_MODE\s*\?\s*restaurantSettlement\(computed, save \? restaurantQualityBonusPct\(save\) : 0, \{[\s\S]*?\}\)\s*:\s*computed/g,
+        // Emergency Service retired (developer 2026-10-10): no options object any more.
+        /computed && RESTAURANT_MODE\s*\?\s*restaurantSettlement\(computed, save \? restaurantQualityBonusPct\(save\) : 0\)\s*:\s*computed/g,
       ) ?? []
     ).length === 2,
     "W1: both campaign serve paths apply P0, only under RESTAURANT_MODE",

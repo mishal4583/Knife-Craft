@@ -12,7 +12,9 @@
             "placementFallback": "replay_bonus",
             "placements": [
                 { "id": "replay_bonus" },
-                { "id": "rush_restock" }
+                { "id": "rush_restock" },
+                { "id": "service_stock" },
+                { "id": "service_supplies" }
             ]
         }
     }

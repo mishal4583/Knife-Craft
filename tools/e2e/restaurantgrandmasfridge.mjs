@@ -9,11 +9,11 @@
 //      START waits for the level's own bread too; bought, START starts the level and the order
 //      uses the bought mushroom.
 //   5. Level 13 with plenty in the fridge: nothing to buy. With $0: says so (and if the level's
-//      own stock is short, Grandma's pantry is offered).
+//      own stock is short, supplier credit is offered — from L10 Grandma no longer lends).
 //   6. Level 14: the preview includes Level 15's mozzarella.
 //   6d. (developer 2026-10-09, "without these ingredients in stock I still can cut and serve
 //       it") Level 14 with the zucchini out: the missing row shows and START waits; with $0
-//       Grandma's pantry fills it, START starts the level.
+//       supplier credit brings it (from L10 Grandma no longer lends — 2026-10-10), START starts.
 //   6e. Level 5 with an empty fridge (before the Market sells ingredients): no Restock or
 //       price, START waits; Grandma's pantry (free, no ledger entry) → START starts the level.
 //   6b. Pass 2 review: Level 3 Inventory has no menu figures (no "/ 48 dishes", no "low for
@@ -378,16 +378,16 @@ await prepareToday();
 const broke = await fridgeCard();
 const start0 = await startButton();
 // Rule changed 2026-10-09: the level's own missing stock blocks START (was: "START still
-// works"); with $0 Grandma's pantry is the way through, never a soft-lock.
-const pantry0 = await page.evaluate(() =>
+// works"); with $0 supplier credit (or an ad) is the way through (2026-10-10), never a soft-lock.
+const credit0 = await page.evaluate(() =>
   [...document.querySelectorAll('[data-testid="pre-service-check"] button')].some((b) =>
-    /Use Grandma's pantry/.test(b.textContent),
+    /Supplier credit/.test(b.textContent),
   ),
 );
 check(
-  "5b with $0 it says not all of it can be bought; START is open or Grandma's pantry is offered",
-  /not enough money/.test(broke?.text ?? "") && start0 && (!start0.disabled || pantry0),
-  { text: broke?.text, start0, pantry0 },
+  "5b with $0 it says not all of it can be bought; START is open or supplier credit is offered",
+  /not enough money/.test(broke?.text ?? "") && start0 && (!start0.disabled || credit0),
+  { text: broke?.text, start0, credit0 },
 );
 
 // ---------- 6. Level 14: preview ----------
@@ -425,6 +425,9 @@ const psc = () =>
     pantry: [...document.querySelectorAll('[data-testid="pre-service-check"] button')].some((b) =>
       /Use Grandma's pantry/.test(b.textContent),
     ),
+    credit: [...document.querySelectorAll('[data-testid="pre-service-check"] button')].some((b) =>
+      /Supplier credit/.test(b.textContent),
+    ),
   }));
 const usePantry = () =>
   page.evaluate(() =>
@@ -438,17 +441,19 @@ await prepareToday();
 const p14 = await psc();
 const s14 = await startButton();
 await shot(page, "grandma-l14-missing");
-await usePantry();
+await clickButton(page, /Supplier credit/);
 await sleep(900);
 const s14b = await startButton();
 const after14 = await readSave(page);
 await clickButton(page, /^(OPEN THE RESTAURANT|START SERVICE)$/);
 await sleep(2500);
 check(
-  "6d Level 14 with the zucchini out: missing row, START waits; $0 → Grandma's pantry → START starts it",
+  "6d Level 14 with the zucchini out: missing row, START waits; $0 → supplier credit (no pantry from L10) → START starts it",
   p14.rows.some(([id, st]) => id === "zucchini" && st === "missing") &&
     s14?.disabled === true &&
-    p14.pantry &&
+    p14.credit &&
+    !p14.pantry &&
+    (after14.business.supplierCredit?.owed ?? 0) > 0 &&
     s14b?.disabled === false &&
     (after14.business.inventory.zucchini?.quantity ?? 0) > 0 &&
     after14.credits === 0 &&

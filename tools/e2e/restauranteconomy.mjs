@@ -7,8 +7,8 @@
 //   2. Level 31 opens Day 1: the Pre-Service Check offers "Stock the whole day" for both of today's
 //      services (Levels 31, 32) with units, cost and whether it fits the fridge; a row's Restock
 //      opens the Market on that ingredient with the day's quantity.
-//   3. With $0, Grandma's pantry is offered with the Emergency Service note; using it records the
-//      level as an Emergency Service in the save (no money moves).
+//   3. With $0, supplier credit is offered (no Emergency Service any more — developer 2026-10-10);
+//      taking it moves no money, marks nothing and owes the goods' price.
 //   4. 320×568 · 360×640 · 390×844 · 430×932: the check (with the day card) fits, no sideways
 //      scroll, every button ≥ 48 px.
 // Prints PASS/FAIL per check and exits 1 on any failure.
@@ -177,7 +177,7 @@ check(
   { day: d?.text?.slice(0, 80), rows: d?.rows.slice(0, 3), units, buyText },
 );
 
-// ---------- 3. Emergency Service ----------
+// ---------- 3. $0: supplier credit, no Emergency Service (rule changed 2026-10-10) ----------
 await boot(page, saveAt(31, 0));
 await prepare("Baguette Rounds");
 const sheet = await page.evaluate(
@@ -186,16 +186,18 @@ const sheet = await page.evaluate(
     "",
 );
 const pre = await readSave(page);
-await clickButton(page, /Use Grandma's pantry/);
+await clickButton(page, /Supplier credit/);
 await sleep(800);
 const post = await readSave(page);
 check(
-  "3 $0: Grandma's pantry comes with the Emergency Service note; using it records the level as an Emergency Service, no money moves",
-  /Emergency Service: this service's orders earn their pay but no quality bonus/.test(sheet) &&
-    post.levelProgress.emergency?.["level-31"] === true &&
+  "3 $0: supplier credit is offered (no ads on the mock platform), no Emergency Service note; taking it marks nothing, moves no money and owes the price",
+  /Supplier credit/.test(sheet) &&
+    !/Emergency Service|Grandma's pantry/.test(sheet) &&
+    !post.levelProgress.emergency?.["level-31"] &&
     post.credits === pre.credits &&
-    post.economyLedger.length === pre.economyLedger.length,
-  { emergency: post.levelProgress.emergency, credits: [pre.credits, post.credits] },
+    post.economyLedger.length === pre.economyLedger.length &&
+    (post.business.supplierCredit?.owed ?? 0) > 0,
+  { credit: post.business.supplierCredit, credits: [pre.credits, post.credits] },
 );
 
 // ---------- 4. Widths ----------

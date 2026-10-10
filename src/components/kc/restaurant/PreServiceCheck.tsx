@@ -24,6 +24,8 @@ import type {
 import type { SupplyId } from "@/game/business/businessSupplies";
 import { getSupplyItem, packsText } from "@/game/business/businessSupplies";
 import { SupplyBottle } from "./SupplyBottle";
+import { CoverActions, type CoverAdOutcome } from "./CoverActions";
+import type { CoverOffer, CoverPart } from "@/game/restaurant/serviceCover";
 import type { RestaurantNews } from "@/game/restaurant/restaurantNews";
 import type { StaffRequirement } from "@/game/restaurant/staffRequirements";
 import type { FridgeUsage } from "@/game/restaurant/fridgeUsage";
@@ -45,9 +47,10 @@ import { FIRST_PURCHASE_LEVEL } from "@/game/restaurant/firstLevels";
  *    ingredients are bought);
  *  - expired stock: THROW OUT EXPIRED (recorded as waste, no money);
  *  - what the missing stock costs against the wallet, and fridge space;
- *  - only when the wallet can't cover it, or before the Market sells
- *    ingredients (Level 10): Grandma's pantry (free, the missing items
- *    only, never automatic);
+ *  - only when the wallet can't cover it (from Level 10): 🎬 watch an ad
+ *    for the missing items, or 💳 supplier credit when no ad can be shown
+ *    (serviceCover.ts — developer 2026-10-10); before Level 10, when nothing
+ *    can be bought yet, Grandma's pantry;
  *  - START SERVICE once everything is ready.
  *
  * Phase 5: it is also the day's OPENING card. When a level opens a new
@@ -59,7 +62,7 @@ import { FIRST_PURCHASE_LEVEL } from "@/game/restaurant/firstLevels";
  * takeaway containers and bags (from L71), napkins, and the dish-soap and
  * cleaning-liquid bottles. Only missing settings / packaging block START;
  * napkins and bottles warn. Restock → the Market's Supplies on that line;
- * when the wallet can't cover what blocks, Grandma lends her spares.
+ * when the wallet can't cover what blocks, an ad or supplier credit.
  */
 export function PreServiceCheck({
   levelNumber,
@@ -77,7 +80,11 @@ export function PreServiceCheck({
   services = [],
   supplies = { applies: false },
   onRestockSupply = () => {},
-  onBorrowSpares = () => {},
+  cover = null,
+  adAvailable = false,
+  onCoverWithAd = async () => ({ ok: false, reason: "nothingToCover" }),
+  onCoverWithCredit = () => {},
+  owed = 0,
   news = null,
   staff = [],
   onHireStaff = () => {},
@@ -114,7 +121,14 @@ export function PreServiceCheck({
   services?: readonly (OrderService | null)[];
   supplies?: ServiceSuppliesCheck;
   onRestockSupply?: (id: SupplyId) => void;
-  onBorrowSpares?: () => void;
+  /** From Level 10: what an ad or supplier credit would cover when the wallet can't pay (serviceCover.ts). */
+  cover?: { stock: CoverOffer | null; supplies: CoverOffer | null } | null;
+  /** The platform can show a rewarded ad now. */
+  adAvailable?: boolean;
+  onCoverWithAd?: (part: CoverPart) => Promise<CoverAdOutcome>;
+  onCoverWithCredit?: (part: CoverPart) => void;
+  /** What the restaurant owes its supplier (supplierCredit.ts), cents. */
+  owed?: number;
   /** What's new at this level and what's coming. */
   news?: RestaurantNews | null;
   /** This service's staff requirements; an unmet one blocks START. */
@@ -188,6 +202,14 @@ export function PreServiceCheck({
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-3">
+          {owed > 0 ? (
+            <p
+              className="mb-2 rounded-2xl border border-copper/30 bg-gold/10 px-3 py-2 font-ui text-[12.5px] font-bold text-walnut-dark"
+              data-testid="psc-owed"
+            >
+              💳 You owe the supplier {formatUsd(owed)} — repaid from your next earnings.
+            </p>
+          ) : null}
           {/* Who this service still needs, first — the sheet can be long and
               the staff rows sit further down (developer 2026-10-09). */}
           {staffMissing.length > 0 ? (
@@ -418,18 +440,15 @@ export function PreServiceCheck({
                       <p className="mt-1 font-ui text-[13.5px] font-bold text-tomato">
                         Not enough money — need {formatUsd(sup.missingCost - credits)} more.
                       </p>
-                      <KButton
-                        size="sm"
-                        variant="sage"
-                        className="mt-2 h-auto min-h-12 py-2 leading-tight"
-                        onClick={onBorrowSpares}
-                      >
-                        🧺 Borrow Grandma's spares (free, just what's missing)
-                      </KButton>
-                      <p className="mt-1 font-ui text-[12.5px] text-walnut/70">
-                        Emergency Service: this service's orders earn their pay but no quality
-                        bonus.
-                      </p>
+                      {cover?.supplies ? (
+                        <CoverActions
+                          offer={cover.supplies}
+                          adAvailable={adAvailable}
+                          onWatchAd={() => onCoverWithAd("supplies")}
+                          onCredit={() => onCoverWithCredit("supplies")}
+                          what="supplies"
+                        />
+                      ) : null}
                     </>
                   ) : null}
                 </div>
@@ -646,16 +665,15 @@ export function PreServiceCheck({
                   <p className="mt-1 font-ui text-[13.5px] font-bold text-tomato">
                     Not enough money — need {formatUsd(stock.missingCost - credits)} more.
                   </p>
-                  <KButton size="sm" variant="sage" className="mt-2 min-h-12" onClick={onUsePantry}>
-                    🧺 Use Grandma's pantry (free, this service only)
-                  </KButton>
-                  <p
-                    className="mt-1 font-ui text-[12.5px] text-walnut/70"
-                    data-testid="psc-emergency-note"
-                  >
-                    Emergency Service: this service's orders earn their pay but no quality bonus.
-                    Stocking up yourself is better.
-                  </p>
+                  {cover?.stock ? (
+                    <CoverActions
+                      offer={cover.stock}
+                      adAvailable={adAvailable}
+                      onWatchAd={() => onCoverWithAd("stock")}
+                      onCredit={() => onCoverWithCredit("stock")}
+                      what="ingredients"
+                    />
+                  ) : null}
                 </>
               ) : null}
               {fridgeShort ? (
@@ -878,7 +896,7 @@ function GrandmasFridgeCard({
           Top-up: {formatUsd(note.topUpCost)}
           {note.affordable
             ? " · this level's own ingredients are needed to start; the rest is for the next one."
-            : " · not enough money for all of it: buy what you can — Grandma's pantry covers what this level still needs."}
+            : " · not enough money for all of it: buy what you can — an ad or supplier credit covers what this level still needs."}
         </p>
       ) : null}
       {note.stage === "preview" && note.spare.length > 0 ? (

@@ -51,33 +51,14 @@ import { restaurantQuality } from "./restaurantInvestments";
  * food cost from stock. `supplierQualityBonusPct` is the restaurant's extra
  * quality share (`restaurantQualityBonusPct`: the Premium supplier, the
  * kitchen tiers and the equipment owned), a share of the order's earnings
- * added to its quality bonus; 0 = none. `emergency`: the service ran on
- * Grandma's goods — earnings only, no quality bonus.
+ * added to its quality bonus; 0 = none. (The Emergency Service penalty is
+ * gone — developer 2026-10-10: a service covered by an ad or supplier credit
+ * earns its full pay.)
  */
 export function restaurantSettlement(
   settlement: SettlementResult,
   supplierQualityBonusPct = 0,
-  opts: { emergency?: boolean } = {},
 ): SettlementResult {
-  // EMERGENCY SERVICE (final economy pass): a service run on Grandma's
-  // emergency goods earns its recipe earnings but no quality bonus at all —
-  // stocking properly is better, running out is never game over.
-  if (opts.emergency) {
-    return {
-      ...settlement,
-      finalCOGS: 0,
-      supplierCOGSAdjustment: 0,
-      equipmentCOGSSavings: 0,
-      sharpnessCOGSPenalty: 0,
-      staffCOGSSavings: 0,
-      yieldSavings: 0,
-      qualityBonus: 0,
-      netResult: settlement.revenue,
-      transactions: settlement.transactions.filter(
-        (t) => t.type !== "INGREDIENT_COGS" && t.type !== "QUALITY_BONUS",
-      ),
-    };
-  }
   const extra =
     supplierQualityBonusPct > 0 ? Math.round(settlement.revenue * supplierQualityBonusPct) : 0;
   const qualityBonus = settlement.qualityBonus + extra;

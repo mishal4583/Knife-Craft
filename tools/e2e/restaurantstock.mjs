@@ -6,7 +6,8 @@
 //      check" pill returns; START SERVICE once everything is ✓.
 //   3. Serving the 1st order takes exactly its recipe's stock; the only new money entry is the
 //      order's settlement (stock use writes none).
-//   4. With $0, the check offers Grandma's pantry; it fills exactly the gap with no money moved,
+//   4. With $0, the check offers supplier credit (no ads on the mock platform); it brings the goods
+//      with no money moved and the price owed (was Grandma's pantry — rule changed 2026-10-10),
 //      and the service can start.
 //   5. 320×568: the sheet fits, no sideways scroll, every button ≥ 48 px.
 // Prints PASS/FAIL per check and exits 1 on any failure.
@@ -201,24 +202,34 @@ check(
   { drop, newEntries, purchases: bought.economyLedger.length - start.economyLedger.length },
 );
 
-// ---------- 4. $0: Grandma's pantry ----------
+// ---------- 4. $0: supplier credit (developer 2026-10-10: no more Grandma's pantry) ----------
+// The mock platform shows no rewarded ads, so the check offers supplier credit at once.
 await boot(page, saveAt(30, 0));
 await openLevel("Italian Service Night");
 const broke = await sheet();
-const pantryShown =
-  !!broke && /Not enough money/.test(broke.text) && /Grandma's pantry/.test(broke.text);
-await clickButton(page, /Use Grandma's pantry/);
+const creditShown =
+  !!broke &&
+  /Not enough money/.test(broke.text) &&
+  /Supplier credit/.test(broke.text) &&
+  !/Grandma's pantry/.test(broke.text);
+await clickButton(page, /Supplier credit/);
 await sleep(700);
 const filled = await sheet();
-const pantrySave = await readSave(page);
+const creditSave = await readSave(page);
 check(
-  "4 with $0 the pantry fills exactly the gap: no money moved, every row ✓, START open",
-  pantryShown &&
+  "4 with $0 supplier credit brings the Market's goods: no money moved, every row ✓, the price owed, START open",
+  creditShown &&
     !!filled &&
     filled.rows.every((r) => r.status === "ok") &&
-    pantrySave.credits === 0 &&
-    pantrySave.economyLedger.length === 0,
-  { pantryShown, filled: filled?.rows, credits: pantrySave.credits },
+    creditSave.credits === 0 &&
+    creditSave.economyLedger.length === 0 &&
+    (creditSave.business.supplierCredit?.owed ?? 0) > 0,
+  {
+    creditShown,
+    filled: filled?.rows,
+    credits: creditSave.credits,
+    credit: creditSave.business.supplierCredit,
+  },
 );
 
 // ---------- 5. 320×568 ----------

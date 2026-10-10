@@ -65,10 +65,18 @@ export const AD_PLACEMENT = {
   replayBonus: "replay_bonus",
   /** Rewarded: a free Rush Restock for a blocked Business order. */
   rushRestock: "rush_restock",
+  /** Rewarded: the restaurant's Pre-Service Check — the missing ingredients, free. */
+  serviceStock: "service_stock",
+  /** Rewarded: the restaurant's Pre-Service Check — the missing supplies, free. */
+  serviceSupplies: "service_supplies",
 } as const;
 export type InterstitialPlacement =
   typeof AD_PLACEMENT.levelCompleted | typeof AD_PLACEMENT.businessDayEnd;
-export type RewardedPlacement = typeof AD_PLACEMENT.replayBonus | typeof AD_PLACEMENT.rushRestock;
+export type RewardedPlacement =
+  | typeof AD_PLACEMENT.replayBonus
+  | typeof AD_PLACEMENT.rushRestock
+  | typeof AD_PLACEMENT.serviceStock
+  | typeof AD_PLACEMENT.serviceSupplies;
 /** The defaults (also the config's placementFallback values). */
 export const INTERSTITIAL_PLACEMENT: InterstitialPlacement = AD_PLACEMENT.levelCompleted;
 export const REWARDED_PLACEMENT: RewardedPlacement = AD_PLACEMENT.replayBonus;

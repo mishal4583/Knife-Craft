@@ -789,6 +789,23 @@ Not implemented (from the audits, all CSS/asset-free):
    lending (pantry from L10, spares, Emergency Service) is replaced by a
    rewarded ad or, with no ad, a supplier credit repaid from the next
    earnings; economy balance deferred. Built in phases 0 → A → B → C → D.
+61. SUPPLIES PLAN · PHASE 0 — ADS + SUPPLIER CREDIT REPLACE GRANDMA'S
+   LENDING (developer 2026-10-10). From Level 10, when a service is short
+   and the wallet can't pay: 🎬 a rewarded ad brings exactly what's missing
+   free (placements `service_stock` / `service_supplies`), or with no ad /
+   after a failed ad 💳 supplier credit delivers the Market's goods and the
+   price is repaid automatically from the next level's earnings (never
+   below $0). Grandma's spares and Emergency Service are removed; the
+   pantry stays only before L10. New `restaurant/serviceCover.ts`,
+   `supplierCredit.ts`, `CoverActions.tsx`, `restaurant-service-cover-qa`,
+   e2e `restaurantcover.mjs`. Tests changed to the new rule:
+   `restaurant-stock-qa` U, `restaurant-supplies-qa` G,
+   `restaurant-grandmas-fridge-qa` T4, `restaurant-final-economy-qa`
+   R4/R5/S3/W1/W2/X2/O1, `restaurant-campaign-sim-qa` B3 (+B4),
+   `restaurant-economy-pass-qa` W1, `playables-ads-qa` A4b/E6; e2e
+   `restaurantstock` 4, `restaurantsupplies` 6, `restauranteconomy` 3,
+   `restaurantgrandmasfridge` 5b/6d. Broke player: 259 services on credit,
+   $2,191 taken and repaid; completionist unchanged ($174,948).
 
 ## 6b. Current state (2026-10-09, end of session)
 

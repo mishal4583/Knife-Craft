@@ -37,6 +37,8 @@ export type LedgerCategory =
   | "supply-equipment-purchase"
   /** Business Supplies (master spec §25) — a Market purchase of takeaway packaging (BusinessSuppliesManager.purchaseSupply). A stock asset: it becomes COGS only when a served order uses it. `description` is the supply id. */
   | "supply-packaging-purchase"
+  /** Unified Restaurant (developer 2026-10-10) — repaying the supplier for goods taken on credit when a service was short (restaurant/supplierCredit.ts repayFromEarnings): taken automatically from a level's (or an Endless day's) earnings, never more than was earned, owed or in the wallet. Taking goods on credit moves no money and has no entry. */
+  | "supplier-credit-repayment"
   /** Economy V3 Phase 7 — Business Mode early supplier-contract cancellation fee (BusinessSupplierManager.cancelContract). Signing a contract itself moves no money and never appears here. */
   | "supplier-contract-cancellation"
   /** Economy V3 Phase 9 — Business Mode daily staff payroll (BusinessDayManager.endBusinessDay). Distinct from Campaign's own "staff-purchase" category — Campaign staff is purchase-only and never has a recurring cost. Hiring/firing a Business Mode employee itself moves no money and never appears here. */

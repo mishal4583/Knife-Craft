@@ -22,8 +22,9 @@
  * with no container or bag. Napkins, dish soap and cleaning liquid only
  * warn (dirty settings simply wait for soap; with too few clean ones the
  * check then asks for plates — or soap). When the wallet can't cover what
- * blocks, Grandma lends her spares (goods at cost 0, opt-in, no money, no
- * ledger — the pantry rule), so a service can never soft-lock.
+ * blocks, a rewarded ad or supplier credit covers it (serviceCover.ts —
+ * developer 2026-10-10: no more Grandma's spares), so a service can never
+ * soft-lock.
  *
  * Replays use nothing (like stock). Every figure is in SERVICE_SUPPLY_RULES;
  * prices are the Market's own (Economy TODO #2–#6: not balanced here).
@@ -415,23 +416,4 @@ export function suppliesNeedAttention(check: ServiceSuppliesCheck): boolean {
     check.cleaner.status === "empty" ||
     check.rows.some((r) => !r.blocking && r.missing > 0)
   );
-}
-
-/**
- * Grandma's spares: ONLY when the wallet can't cover what blocks the
- * service, exactly the missing units of the blocking rows, at cost 0 (goods,
- * no money, no ledger — the pantry rule, Economy TODO #17). Null otherwise.
- */
-export function grandmasSpares(save: SaveData, check: ServiceSuppliesCheck): SaveData | null {
-  if (!check.applies || check.ready || check.affordable) return null;
-  const stock = { ...save.business.supplies.stock };
-  for (const r of check.rows) {
-    if (!r.blocking || r.missing === 0) continue;
-    const prev = stock[r.id] ?? { units: 0, costBasis: 0 };
-    stock[r.id] = { units: prev.units + r.missing, costBasis: prev.costBasis };
-  }
-  return {
-    ...save,
-    business: { ...save.business, supplies: { ...save.business.supplies, stock } },
-  };
 }

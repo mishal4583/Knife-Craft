@@ -7,18 +7,19 @@
  *     Wholesale and Premium alike; the saver stays viable; the gap shrank.
  *  S. Safety: every player completes every level, credits are whole cents
  *     and never < 0, cash = opening + ledger, no soft-lock; a prudent
- *     completionist (keeps $500) never needs Grandma's goods.
+ *     completionist (keeps $500) never needs supplier credit.
  *  V. Investment value: kitchen tiers, Blacksmith, knives, boards and
  *     helpers each add quality bonus; kitchen tiers seat more guests; staff
  *     capacity serves more guests; the bigger fridges hold whole days.
  *  R. Rules: kitchen prices ($110k) and quality shares, equipment shares,
- *     guest capacity, Emergency Service (no quality bonus, cleared on
- *     completion), whole-day stocking, Today's Special 15 % ≤ $50, BUSY =
+ *     guest capacity, Emergency Service retired (developer 2026-10-10: a
+ *     covered service earns its full pay; an old save's flag is ignored and
+ *     dropped on completion), whole-day stocking, Today's Special 15 % ≤ $50, BUSY =
  *     the whole demand; no double food cost.
  *  X. Release untouched: an unstamped save pays the catalog prices and gets
  *     no shares; the new modules never read RESTAURANT_MODE.
  *  W. Wiring: App's two serve paths, the check layer, the kitchen purchase.
- *  O. Old saves: no emergency / special fields → defaults, nothing moves.
+ *  O. Old saves: no special fields → defaults, nothing moves.
  *
  * Run: npx tsx scripts/restaurant-final-economy-qa.mts
  */
@@ -51,10 +52,8 @@ import {
   restaurantQualityBonusPct,
   restaurantSettlement,
 } from "../src/game/restaurant/restaurantEconomy.ts";
-import {
-  isEmergencyService,
-  markEmergencyService,
-} from "../src/game/restaurant/emergencyService.ts";
+import { withoutEmergency } from "../src/game/restaurant/emergencyService.ts";
+import { supplierCreditOf } from "../src/game/restaurant/supplierCredit.ts";
 import { completeLevel } from "../src/game/levels/LevelManager.ts";
 import { menuGuestCapacity, menuGuestsFor } from "../src/game/restaurant/menuGuests.ts";
 import { menuGuestsPerService } from "../src/game/restaurant/restaurantProgression.ts";
@@ -118,10 +117,11 @@ console.log("S. Safety");
   const g = R.G!;
   assert(
     g.minCash.cash >= dollars(450) &&
-      g.stats.emergencyOrders === 0 &&
+      g.stats.credit === 0 &&
+      supplierCreditOf(g.save).owed === 0 &&
       g.final >= dollars(160_000) &&
       [20, 30, 40, 50, 75, 91].every((n) => atL(g, n).wallet >= dollars(450)),
-    `S3: a prudent completionist (keeps $500) never dips (L20–L91 ≥ $450, lowest ${$(g.minCash.cash)}), never needs Grandma, still ends ${$(g.final)}`,
+    `S3: a prudent completionist (keeps $500) never dips (L20–L91 ≥ $450, lowest ${$(g.minCash.cash)}), never needs supplier credit, still ends ${$(g.final)}`,
   );
 }
 
@@ -176,30 +176,34 @@ console.log("R. Rules");
   const recipe = getCampaignRecipe("camp-sliced-tomato-plate")!;
   const s = computeSettlement(recipe, 3, 92, "chef", "maple", 100, [], "local-market");
   const normal = restaurantSettlement(s, 0.1);
-  const emergency = restaurantSettlement(s, 0.1, { emergency: true });
+  // Rule changed (developer 2026-10-10): Emergency Service is retired — no
+  // "emergency" option any more; a service covered by an ad or supplier
+  // credit earns its full pay (was: "an Emergency Service earns its pay but no
+  // quality bonus").
   assert(
     normal.finalCOGS === 0 &&
       normal.qualityBonus === s.qualityBonus + Math.round(s.revenue * 0.1) &&
-      emergency.qualityBonus === 0 &&
-      emergency.netResult === s.revenue &&
-      !emergency.transactions.some(
-        (t) => t.type === "QUALITY_BONUS" || t.type === "INGREDIENT_COGS",
+      restaurantSettlement.length === 1 &&
+      !/emergency/.test(
+        code("src/game/restaurant/restaurantEconomy.ts").replace(/\/\*[\s\S]*?\*\//g, ""),
       ),
-    `R4: no double food cost; the restaurant's share rides on the quality bonus; an Emergency Service earns its pay (${$(emergency.netResult)}) but no quality bonus`,
+    "R4: no double food cost; the restaurant's share rides on the quality bonus; no Emergency Service penalty any more",
   );
-  const marked = markEmergencyService(stamped, "level-30");
+  const flagged: SaveData = {
+    ...stamped,
+    levelProgress: { ...stamped.levelProgress, emergency: { "level-30": true } },
+  };
   const done = completeLevel("level-30", {
-    ...marked.levelProgress,
+    ...flagged.levelProgress,
     completedLevelIds: Array.from({ length: 29 }, (_, i) => `level-${i + 1}`),
     currentLevelId: "level-30",
     highestUnlockedLevelId: "level-30",
   });
   assert(
-    isEmergencyService(marked.levelProgress, "level-30") &&
-      !isEmergencyService(stamped.levelProgress, "level-30") &&
-      !isEmergencyService(done.progress, "level-30") &&
-      markEmergencyService(marked, "level-30") === marked,
-    "R5: Emergency Service is recorded per level, idempotent, and dropped when the level completes",
+    !done.progress.emergency?.["level-30"] &&
+      withoutEmergency(stamped.levelProgress, "level-30") === stamped.levelProgress &&
+      !/markEmergencyService|isEmergencyService/.test(code("src/App.tsx")),
+    "R5: an old save's Emergency Service flag is ignored and dropped when the level completes; nothing sets or reads it",
   );
   const crew: SaveData = {
     ...stamped,
@@ -238,7 +242,7 @@ console.log("X. Release untouched");
     "X1: a release save pays the catalog kitchen prices ($135,000 in total)",
   );
   assert(
-    ["restaurantInvestments", "emergencyService"].every(
+    ["restaurantInvestments", "emergencyService", "supplierCredit", "serviceCover"].every(
       (m) => !/RESTAURANT_MODE|Math\.random/.test(code(`src/game/restaurant/${m}.ts`)),
     ),
     "X2: the new modules never read RESTAURANT_MODE or Math.random",
@@ -249,18 +253,19 @@ console.log("W. Wiring");
 {
   const app = code("src/App.tsx");
   const serves =
-    app.match(
-      /restaurantSettlement\(computed, save \? restaurantQualityBonusPct\(save\) : 0, \{[\s\S]*?isEmergencyService\(save\.levelProgress, level\.id\)/g,
-    ) ?? [];
+    app.match(/restaurantSettlement\(computed, save \? restaurantQualityBonusPct\(save\) : 0\)/g) ??
+    [];
   assert(
     serves.length === 2 && !/supplierEffects\(save\)\.qualityBonusPct/.test(app),
-    "W1: both campaign serve paths pay the restaurant's quality share and honour Emergency Service",
+    "W1: both campaign serve paths pay the restaurant's quality share (no Emergency Service any more)",
   );
   const layer = code("src/components/kc/restaurant/ServiceCheckLayer.tsx");
   assert(
-    (layer.match(/markEmergencyService\(next, plan\.level\.id\)/g) ?? []).length === 2 &&
+    !/markEmergencyService|grandmasSpares/.test(layer) &&
+      /coverFor\(plan, "stock"\)/.test(layer) &&
+      /coverFor\(plan, "supplies"\)/.test(layer) &&
       /dayStock=\{dayStockFor\(save, plan\.level\)\}/.test(layer),
-    "W2: the Pre-Service Check marks pantry/spares services as Emergency Service and offers whole-day stocking",
+    "W2: the Pre-Service Check offers an ad / supplier credit (never Grandma's spares or Emergency Service) and whole-day stocking",
   );
   assert(
     /const price = kitchenTierPrice\(def, save\)/.test(
@@ -284,17 +289,16 @@ console.log("O. Old saves");
 {
   memoryStore.clear();
   const old = { ...structuredClone(DEFAULT_SAVE), version: 3 } as Record<string, unknown>;
-  const lp = old.levelProgress as Record<string, unknown>;
-  delete lp.emergency;
   delete (old.business as Record<string, unknown>).todaysSpecialServedDay;
   memoryStore.set("knifecraft.save.v1", JSON.stringify(old));
   (SaveManager as unknown as { cache: SaveData | null }).cache = null;
   const loaded = await SaveManager.load();
   assert(
-    !isEmergencyService(loaded.levelProgress, "level-1") &&
+    loaded.business.supplierCredit === undefined &&
+      supplierCreditOf(loaded).owed === 0 &&
       loaded.business.todaysSpecialServedDay === undefined &&
       loaded.credits === (old as unknown as SaveData).credits,
-    "O1: a save without the new optional fields loads unchanged (no emergency, no special served, same cash)",
+    "O1: a save without the new optional fields loads unchanged (nothing owed, no special served, same cash)",
   );
 }
 

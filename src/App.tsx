@@ -90,7 +90,6 @@ import {
   withTodaysSpecialServed,
 } from "@/game/restaurant/restaurantEvents";
 import { rankChange } from "@/game/restaurant/cityRanking";
-import { isEmergencyService } from "@/game/restaurant/emergencyService";
 import { recordEndlessDayStars, starsForDay } from "@/game/restaurant/restaurantStanding";
 import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
 import { ticketsFor } from "@/game/restaurant/serviceTickets";
@@ -139,6 +138,14 @@ import {
   starsForScore,
 } from "@/game/restaurant/levelGoals";
 import { requirementsForRecipes } from "@/game/restaurant/recipeRequirements";
+import {
+  coverWithAd,
+  coverWithCredit,
+  newServiceCoverRewardId,
+  type CoverPart,
+} from "@/game/restaurant/serviceCover";
+import { repayFromEarnings } from "@/game/restaurant/supplierCredit";
+import type { CoverAdOutcome } from "@/components/kc/restaurant/CoverActions";
 import type { NavGuide } from "@/components/kc/navLevel";
 import { usableQuantity } from "@/game/business/perishability";
 import { formatStockAmount } from "@/game/business/measure";
@@ -499,6 +506,8 @@ export function App() {
     opened?: string[];
     /** Before Level 21: the day that quietly began. */
     newDay?: number;
+    /** Supplier credit repaid from this level's earnings, and what's still owed. */
+    credit?: { repaid: number; owed: number };
   } | null>(null);
 
   // Platform ads (Playgama Bridge). `saveRef` always holds the latest committed save, so code
@@ -522,6 +531,8 @@ export function App() {
   // Rush Restock's ad path resumes after an await: it reads the CURRENT order
   // from this ref (was it served or replaced while the ad played?).
   const rushAdBusyRef = useRef(false);
+  /** A Pre-Service Check cover ad is in flight (coverServiceWithAd). */
+  const coverAdBusyRef = useRef(false);
   const businessSessionRef = useRef<ServiceSession | null>(null);
   // One id per play session (level/daily/endless start) + whether it reached a
   // completion — so an interstitial only follows a finished session, never a
@@ -1123,6 +1134,56 @@ export function App() {
   }
 
   /**
+   * The Pre-Service Check's way through when the wallet can't pay for what a
+   * service is short of (from Level 10; serviceCover.ts — developer
+   * 2026-10-10, in place of Grandma's lending). A rewarded ad: only when
+   * Bridge reports `rewarded`, exactly what's missing arrives free (no money,
+   * so no ledger entry). The save and the check are read AFTER the ad,
+   * never from the pre-ad closure.
+   */
+  async function coverServiceWithAd(part: CoverPart): Promise<CoverAdOutcome> {
+    if (coverAdBusyRef.current) return { ok: false, reason: "busy" };
+    coverAdBusyRef.current = true;
+    try {
+      const ad = await requestRewardedAd(
+        newServiceCoverRewardId(),
+        part === "stock" ? AD_PLACEMENT.serviceStock : AD_PLACEMENT.serviceSupplies,
+      );
+      if (ad.status !== "rewarded") {
+        return {
+          ok: false,
+          reason:
+            ad.status === "not-rewarded"
+              ? "notRewarded"
+              : ad.status === "busy"
+                ? "busy"
+                : ad.status === "unavailable"
+                  ? "adUnavailable"
+                  : "adFailed",
+        };
+      }
+      const latest = saveRef.current;
+      const level = serviceCheckRef.current ? getLevel(serviceCheckRef.current) : undefined;
+      const plan = latest && level ? servicePlanFor(latest, level) : null;
+      const next = latest && plan ? coverWithAd(latest, plan, part) : null;
+      if (!next) return { ok: false, reason: "nothingToCover" };
+      persist(next);
+      return { ok: true };
+    } finally {
+      coverAdBusyRef.current = false;
+    }
+  }
+
+  /** …or supplier credit: the goods now, paid from the next earnings (supplierCredit.ts). */
+  function coverServiceWithCredit(part: CoverPart) {
+    const latest = saveRef.current;
+    const level = serviceCheckRef.current ? getLevel(serviceCheckRef.current) : undefined;
+    const plan = latest && level ? servicePlanFor(latest, level) : null;
+    const next = latest && plan ? coverWithCredit(latest, plan, part) : null;
+    if (next) persist(next);
+  }
+
+  /**
    * Business Supplies — a Market purchase of smallwares, tableware or
    * takeaway packaging, mirroring purchaseRefrigerator: the pure manager
    * decides (all-or-nothing), then ONE ledger entry for its exact cost, the
@@ -1675,10 +1736,7 @@ export function App() {
     // so the built-in food cost isn't charged again (restaurantEconomy.ts).
     const settlement =
       computed && RESTAURANT_MODE
-        ? restaurantSettlement(computed, save ? restaurantQualityBonusPct(save) : 0, {
-            // Final economy pass: a service run on Grandma's goods earns no quality bonus.
-            emergency: !!save && !!level && isEmergencyService(save.levelProgress, level.id),
-          })
+        ? restaurantSettlement(computed, save ? restaurantQualityBonusPct(save) : 0)
         : computed;
     const amount = settlement?.netResult ?? 0;
     const result = serveCurrentOrder(campaignServiceSession, Math.random, amount);
@@ -1941,6 +1999,14 @@ export function App() {
     // by serveCampaignOrder (brief §21 — "do not double-record").
     if (rewardCoins > 0)
       nextSave = appendLedgerEntry(nextSave, "completion-reward", rewardCoins, level.id);
+    // Supplier credit (developer 2026-10-10): what's owed is repaid from this
+    // level's earnings — never more than was earned or is in the wallet.
+    let credit: { repaid: number; owed: number } | null = null;
+    if (RESTAURANT_MODE && isFirstCompletion) {
+      const r = repayFromEarnings(nextSave, rewardCoins + (orderCoins ?? 0), level.id);
+      nextSave = r.save;
+      if (r.repaid > 0) credit = { repaid: r.repaid, owed: r.owed };
+    }
     const flush = checkStoryFlush(nextSave);
     const finalSave = flush
       ? flush.kind === "finale"
@@ -1988,6 +2054,7 @@ export function App() {
         ...(grandma ? { grandma } : {}),
         ...(opened.length || fridgeNotes.length ? { opened: [...fridgeNotes, ...opened] } : {}),
         ...(newDay !== null ? { newDay } : {}),
+        ...(credit ? { credit } : {}),
         ...(moved
           ? {
               cityRank: {
@@ -2120,10 +2187,7 @@ export function App() {
     // so the built-in food cost isn't charged again (restaurantEconomy.ts).
     const settlement =
       computed && RESTAURANT_MODE
-        ? restaurantSettlement(computed, save ? restaurantQualityBonusPct(save) : 0, {
-            // Final economy pass: a service run on Grandma's goods earns no quality bonus.
-            emergency: !!save && !!level && isEmergencyService(save.levelProgress, level.id),
-          })
+        ? restaurantSettlement(computed, save ? restaurantQualityBonusPct(save) : 0)
         : computed;
     const amount = settlement?.netResult ?? 0;
     const result = serveBatchGroupOrder(batchGroupSession, batchViewOrderId, Math.random, amount);
@@ -2762,6 +2826,9 @@ export function App() {
             onClose={() => setServiceCheckLevelId(null)}
             onThrowOutExpired={() => void throwOutExpired()}
             onUsePantry={(next) => persist(next)}
+            adAvailable={rewardedAdsAvailable()}
+            onCoverWithAd={coverServiceWithAd}
+            onCoverWithCredit={coverServiceWithCredit}
             onQuickRestock={(next, lines) =>
               persistIngredientPurchases(
                 next,
@@ -2803,7 +2870,9 @@ export function App() {
         <MilestoneBanner
           kicker="Level Complete"
           line={`${formatUsdChange(levelRewardNotice.rewardCoins)} Completion Reward`}
-          {...(levelRewardNotice.orderCoins || levelRewardNotice.cityRank
+          {...(levelRewardNotice.orderCoins ||
+          levelRewardNotice.cityRank ||
+          levelRewardNotice.credit
             ? {
                 rows: [
                   ...(levelRewardNotice.orderCoins
@@ -2823,6 +2892,22 @@ export function App() {
                           ),
                           strong: true,
                         },
+                      ]
+                    : []),
+                  ...(levelRewardNotice.credit
+                    ? [
+                        {
+                          label: "💳 Supplier credit repaid",
+                          value: formatUsdChange(-levelRewardNotice.credit.repaid),
+                        },
+                        ...(levelRewardNotice.credit.owed > 0
+                          ? [
+                              {
+                                label: "Still owed",
+                                value: formatUsd(levelRewardNotice.credit.owed),
+                              },
+                            ]
+                          : []),
                       ]
                     : []),
                   ...(levelRewardNotice.cityRank

@@ -60,7 +60,8 @@ wallet in **USD cents** (`SaveData.credits`), every movement in
   localStorage only when no Bridge exists.
 - Ads: interstitials only at natural breaks via
   `src/game/ads/interstitialPolicy.ts` (none before 3 completed levels, then
-  ≥ 150 s apart); rewarded = Replay Bonus and Rush Restock, granted only on
+  ≥ 150 s apart); rewarded = Replay Bonus, Rush Restock and the Pre-Service
+  Check covers (missing stock / supplies), granted only on
   the `rewarded` state; one placement per spot (`AD_PLACEMENT`). Level
   messages `level_started/completed/paused/resumed` with `{ world, level }`;
   no `level_failed`.
@@ -126,7 +127,7 @@ once). Restaurant browser tests run on the normal build, classic ones on a
   `restaurant-fridge-pressure-qa`, `restaurant-final-economy-qa`,
   `restaurant-measures-qa`, `restaurant-city-ranking-qa`,
   `restaurant-first-levels-qa`, `restaurant-grandmas-fridge-qa`,
-  `restaurant-level-goals-qa` (browser:
+  `restaurant-level-goals-qa`, `restaurant-service-cover-qa` (browser:
   `tools/e2e/restaurant*.mjs`).
 - Campaign / UX: `story-intro-qa`, `story-pause-qa`,
   `campaign-paid-orders-qa`, `level-ux-qa`, `coaching-qa`,
@@ -195,7 +196,11 @@ preparation = PreparationScene; events = `events.ts`; platform =
   stock, prices, money or freshness of its own. The one exception is
   Throw Out Expired (`business/discardExpired.ts`, no money, no ledger).
 - **Wallet invariant** (`economy/wallet.ts`): whole cents, never < 0;
-  every expense all-or-nothing; no debt, no bankruptcy, no soft-lock.
+  every expense all-or-nothing; no bankruptcy, no soft-lock. Grandma never
+  lends from Level 10 (developer 2026-10-10): a short service the player
+  can't pay for is covered by a rewarded ad or, with no ad, **supplier
+  credit** repaid automatically from the next earnings
+  (`restaurant/serviceCover.ts`, `supplierCredit.ts`).
 - **Ledger**: every real wallet movement has exactly ONE ledger entry;
   failed transactions none; opening cash + signed ledger = closing cash.
 - **Business Mode (V3)** lives in `SaveData.business` — extend it; never

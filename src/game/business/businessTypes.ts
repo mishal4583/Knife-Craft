@@ -3,6 +3,7 @@ import type { RestaurantSuppliesState } from "../restaurant/serviceSupplies";
 import type { RestaurantStaffState } from "../restaurant/staffRequirements";
 import type { RestaurantMigrationState } from "../restaurant/restaurantMigration";
 import type { GrandmasFridgeState } from "../restaurant/grandmasFridge";
+import type { SupplierCreditState } from "../restaurant/supplierCredit";
 import type { EndlessStarsState } from "../restaurant/restaurantStanding";
 /**
  * BUSINESS_TYPES — Economy V3's own persisted-state container. A single
@@ -91,6 +92,13 @@ export type BusinessState = {
    * Optional: older saves and the classic game don't have it.
    */
   restaurantSupplies?: RestaurantSuppliesState;
+  /**
+   * Unified Restaurant (RESTAURANT_MODE): goods taken on credit when a
+   * service was short, the player couldn't pay and no ad could be shown —
+   * repaid from the next earnings (restaurant/supplierCredit.ts). Optional;
+   * absent = nothing owed.
+   */
+  supplierCredit?: SupplierCreditState;
   /**
    * Unified Restaurant (RESTAURANT_MODE): the specialist chefs hired for the
    * cuisines (restaurant/staffRequirements.ts). Optional; the classic
