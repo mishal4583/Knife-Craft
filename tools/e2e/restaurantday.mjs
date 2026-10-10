@@ -192,12 +192,12 @@ const chores = await page.evaluate(() =>
 );
 await shot(page, "restaurant-day11-closing");
 check(
-  "4a from L21 a finished day shows Closing Time: the services, the chores (spoiled food too), the count",
+  "4a from L21 a finished day shows Closing Time: the services, the chores (spoiled food and wrapping what's left too), the count",
   !!closing &&
     /Day 11 · Closing time/i.test(closing) &&
     /Lunch · Level 21/.test(closing) &&
     /Dinner · Level 22/.test(closing) &&
-    chores.join() === "wash-up,wipe-down,spoiled,count" &&
+    chores.join() === "wash-up,wipe-down,spoiled,wrap,count" &&
     /at opening →/.test(closing),
   { closing: closing?.slice(0, 260), chores },
 );

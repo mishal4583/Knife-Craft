@@ -42,7 +42,14 @@ import { normalizeQuantity } from "../business/businessInventory";
 import { endBusinessDay } from "../business/BusinessDayManager";
 import { wasteValueFor } from "../business/discardExpired";
 import { CLOSING_CHORES, isSystemLive, servicesForDayAt } from "./restaurantProgression";
-import { bottleView, closingWipeDown, type BottleView } from "./serviceSupplies";
+import {
+  bottleView,
+  closingSupplies,
+  closingSuppliesFor,
+  closingWipeDown,
+  type BottleView,
+  type ClosingSupply,
+} from "./serviceSupplies";
 import { paySpecialists } from "./staffRequirements";
 import { appendLedgerEntry } from "../economy/EconomyLedger";
 
@@ -142,6 +149,8 @@ export type ClosingPreview = {
   fullDayEnd: boolean;
   /** The wipe-down's cleaning liquid (from dine-in, L31); null before. */
   cleaner: BottleView | null;
+  /** Tonight's tissues and deli wrap (supplies plan C); empty before they apply. */
+  supplies: ClosingSupply[];
 };
 
 /** What the Closing Time screen shows for the day that's ending (read-only). */
@@ -170,6 +179,7 @@ export function closingPreview(save: SaveData, levelNumber: number): ClosingPrev
     spoiled,
     fullDayEnd: isSystemLive("full-operation", levelNumber),
     cleaner: isSystemLive("dine-in", levelNumber) ? bottleView(save, "cleaning-liquid") : null,
+    supplies: closingSuppliesFor(save, levelNumber),
   };
 }
 
@@ -219,5 +229,6 @@ export function closeDay(save: SaveData, levelNumber: number): SaveData {
     };
   }
   next = closingWipeDown(next, levelNumber).save;
+  next = closingSupplies(next, levelNumber);
   return withDay(next, { ...DEFAULT_RESTAURANT_DAY_STATE, day: d.day + 1 });
 }

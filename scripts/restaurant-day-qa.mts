@@ -225,9 +225,9 @@ console.log("P. Preview");
   const after = closeDay(fresh, 36);
   assert(
     p12.chores.map((c) => c.id).join() === "wash-up,wipe-down,count" &&
-      p35.chores.map((c) => c.id).join() === "wash-up,wipe-down,spoiled,dining-room,count" &&
+      p35.chores.map((c) => c.id).join() === "wash-up,wipe-down,spoiled,wrap,dining-room,count" &&
       p12.spoiled === null,
-    "P1: the chores grow with the stages (spoiled food from L21, the dining room from L31)",
+    "P1: the chores grow with the stages (spoiled food and wrapping what's left from L21, the dining room from L31)",
   );
   assert(
     p35.spoiled !== null &&

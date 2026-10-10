@@ -95,6 +95,15 @@ export const SERVICE_SUPPLY_RULES = {
   soapPerPiece: 0.25,
   /** Messy dishes (curries, fried, skewers) take this many napkins. */
   napkinsMessy: 2,
+  // ── Supplies plan C (takeaway by dish, extras, closing) ──
+  /** Takeaway orders are sealed with a tamper-evident label from full operation (L91). */
+  tamperFromLevel: 91,
+  /** Grilled / sautéed meat and fish (from L101) come with a toothpick. */
+  toothpickFromLevel: 101,
+  /** Closing: a tissue cube for the dining room every night (from dine-in). */
+  tissuesPerClosing: 1,
+  /** Closing: what's left in the fridge is wrapped and labelled, a sheet per ingredient (from L21). */
+  wrapFromLevel: 21,
 } as const;
 
 export type RestaurantSuppliesState = {
@@ -215,6 +224,87 @@ export function napkinsFor(recipe: RecipeDefinition | null | undefined): number 
   return recipe && dishServiceFor(recipe).messy
     ? SERVICE_SUPPLY_RULES.napkinsMessy
     : SERVICE_SUPPLY_RULES.napkinsPerOrder;
+}
+
+/**
+ * What a takeaway order leaves in (supplies plan C), by its dish: curries,
+ * chutneys and combo / mezze plates a 3-compartment tray, soups, bases and
+ * salsas a microwavable tub,
+ * fried food a clamshell, grilled / sautéed dishes a foil tray, bread and
+ * toast wrapped in deli paper, salads / fruit / plates a kraft box; heavy
+ * orders a carry bag, light ones a paper bag; a cutlery kit (not for bread
+ * or finger food), a wet wipe for messy dishes, a tamper label from L91.
+ * No recipe = the Business priority list (`takePackagingForOrder`).
+ */
+export function takeawayPiecesFor(
+  recipe: RecipeDefinition,
+  levelNumber: number,
+): { container: SupplyId; bag: SupplyId; extras: SupplyId[] } {
+  const d = dishServiceFor(recipe);
+  const curry = /curry|masala|chutney|paste|relish/i.test(recipe.name);
+  const tub = /soup|base|salsa|sauce|dip|stock/i.test(recipe.name);
+  const parts = new Set(recipe.components.map((c) => c.ingredientId)).size;
+  const combo = d.shared || /mezze|platter|garden plate|trio/i.test(recipe.name) || parts >= 4;
+  const container: SupplyId =
+    d.cooking.includes("pot") && curry
+      ? "thali-containers"
+      : d.cooking.includes("pot") || tub
+        ? "microwave-containers"
+        : d.cooking.includes("fry")
+          ? "burger-boxes"
+          : d.cooking.includes("grill") || d.cooking.includes("saute")
+            ? "foil-containers"
+            : d.kind === "bread"
+              ? "food-wrap"
+              : combo
+                ? "thali-containers"
+                : "kraft-boxes";
+  const heavy = d.cooking.includes("pot") || d.cooking.includes("grill") || d.shared;
+  const extras: SupplyId[] = [];
+  if (d.kind !== "bread" && !d.skewer) extras.push("cutlery-packs");
+  if (d.messy) extras.push("wet-wipes");
+  if (levelNumber >= SERVICE_SUPPLY_RULES.tamperFromLevel) extras.push("tamper-labels");
+  return { container, bag: heavy ? "carry-bags" : "paper-bags", extras };
+}
+
+/**
+ * The consumables a dine-in guest's dish uses besides tableware (plan C):
+ * fried food and bread are served on a deli-sheet liner; grilled /
+ * sautéed meat and fish (from L101) with a toothpick.
+ */
+export function dineInExtrasFor(
+  recipe: RecipeDefinition | null | undefined,
+  levelNumber: number,
+): SupplyId[] {
+  if (!recipe) return [];
+  const d = dishServiceFor(recipe);
+  const out: SupplyId[] = [];
+  if (d.cooking.includes("fry") || d.kind === "bread") out.push("deli-sheets");
+  if (
+    levelNumber >= SERVICE_SUPPLY_RULES.toothpickFromLevel &&
+    d.protein !== null &&
+    (d.cooking.includes("grill") || d.cooking.includes("saute"))
+  )
+    out.push("toothpicks");
+  return out;
+}
+
+/** Takes one consumable unit (packaging lifetime "used"); the same supplies when there's none. */
+function consumeOne(supplies: BusinessSuppliesState, id: SupplyId): BusinessSuppliesState {
+  const took = takeOne(supplies.stock, id);
+  if (!took) return supplies;
+  const totals = supplies.lifetime.packaging;
+  return {
+    stock: took.stock,
+    lifetime: {
+      ...supplies.lifetime,
+      packaging: {
+        ...totals,
+        unitsUsed: totals.unitsUsed + 1,
+        usedCost: totals.usedCost + took.cost,
+      },
+    },
+  };
 }
 
 /** True when every piece a guest's dish needs is clean now. */
@@ -448,6 +538,50 @@ export function closingWipeDown(
   return drawFromBottle(save, "cleaning-liquid");
 }
 
+/** One closing supply line: what tonight's closing uses and what's in stock. */
+export type ClosingSupply = { id: SupplyId; label: string; need: number; have: number };
+
+/**
+ * Plan C: what tonight's closing uses besides the cleaning liquid — a
+ * tissue cube for the dining room (from dine-in), and a sheet of deli wrap
+ * for each ingredient left in the fridge (from the fridge stage, L21:
+ * "wrap and label what's left"). Read-only.
+ */
+export function closingSuppliesFor(save: SaveData, levelNumber: number): ClosingSupply[] {
+  const out: ClosingSupply[] = [];
+  const stock = save.business.supplies;
+  if (isSystemLive("dine-in", levelNumber))
+    out.push({
+      id: "tissues",
+      label: "Tissues for the dining room",
+      need: SERVICE_SUPPLY_RULES.tissuesPerClosing,
+      have: supplyUnits(stock, "tissues"),
+    });
+  if (levelNumber >= SERVICE_SUPPLY_RULES.wrapFromLevel) {
+    const lines = Object.values(save.business.inventory).filter(
+      (e) => (e?.quantity ?? 0) > 0,
+    ).length;
+    if (lines > 0)
+      out.push({
+        id: "food-wrap",
+        label: "Deli wrap for what's left in the fridge",
+        need: lines,
+        have: supplyUnits(stock, "food-wrap"),
+      });
+  }
+  return out;
+}
+
+/** Closing uses its tissues and wrap (as much as there is — a warning, never a block). */
+export function closingSupplies(save: SaveData, levelNumber: number): SaveData {
+  let supplies = save.business.supplies;
+  for (const line of closingSuppliesFor(save, levelNumber))
+    for (let i = 0; i < line.need; i++) supplies = consumeOne(supplies, line.id);
+  return supplies === save.business.supplies
+    ? save
+    : { ...save, business: { ...save.business, supplies } };
+}
+
 // ── Serving ─────────────────────────────────────────────────────────────
 
 /**
@@ -475,6 +609,12 @@ export function takeOrderSupplies(
       used = true;
     }
     if (used) state = { ...state, dirty, washing: state.washing + 1 };
+    for (const id of dineInExtrasFor(cover?.recipe, cover?.levelNumber ?? 0))
+      supplies = consumeOne(supplies, id);
+  } else if (cover) {
+    // Plan C: the dish's own container, bag and extras.
+    const t = takeawayPiecesFor(cover.recipe, cover.levelNumber);
+    for (const id of [t.container, t.bag, ...t.extras]) supplies = consumeOne(supplies, id);
   } else {
     supplies = takePackagingForOrder(supplies).supplies;
   }
@@ -636,7 +776,26 @@ export function serviceSuppliesCheck(
       );
     }
   }
-  if (takeaway > 0) {
+  if (takeaway > 0 && opts.recipes) {
+    // Plan C: each takeaway order's own container and bag block; its extras warn.
+    const blocking = new Map<SupplyId, number>();
+    const extra = new Map<SupplyId, number>();
+    services.forEach((service, i) => {
+      const recipe = opts.recipes?.[i];
+      if (service !== "takeaway" || !recipe) return;
+      const t = takeawayPiecesFor(recipe, levelNumber);
+      for (const id of [t.container, t.bag]) blocking.set(id, (blocking.get(id) ?? 0) + 1);
+      for (const id of t.extras) extra.set(id, (extra.get(id) ?? 0) + 1);
+    });
+    for (const [id, n] of blocking)
+      rows.push(
+        row(save, id, `${getSupplyItem(id)!.name} · takeaway`, n, supplyUnits(stock, id), true),
+      );
+    for (const [id, n] of extra)
+      rows.push(
+        row(save, id, `${getSupplyItem(id)!.name} · takeaway`, n, supplyUnits(stock, id), false),
+      );
+  } else if (takeaway > 0) {
     const covered = packagingOrdersCovered(stock);
     rows.push(
       row(
@@ -650,6 +809,15 @@ export function serviceSuppliesCheck(
     );
     rows.push(row(save, ORDER_BAG_PRIORITY[0]!, "Takeaway bags", takeaway, covered.bags, true));
   }
+  // Plan C: the dine-in dishes' liners and toothpicks (warnings).
+  const dineExtras = new Map<SupplyId, number>();
+  services.forEach((service, i) => {
+    if (service !== "dine-in") return;
+    for (const id of dineInExtrasFor(opts.recipes?.[i], levelNumber))
+      dineExtras.set(id, (dineExtras.get(id) ?? 0) + 1);
+  });
+  for (const [id, n] of dineExtras)
+    rows.push(row(save, id, getSupplyItem(id)!.name, n, supplyUnits(stock, id), false));
   const napkins = services.reduce(
     (t, service, i) => (service ? t + napkinsFor(opts.recipes?.[i]) : t),
     0,

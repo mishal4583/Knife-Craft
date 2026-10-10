@@ -841,6 +841,17 @@ Not implemented (from the audits, all CSS/asset-free):
    pieces), R2 (guest call carries the dish); e2e `restaurantsupplies`
    1–6 (L31 bread: side plate, knife, glass, tables). Sim: guests 689;
    diligent equipment spend ~$642; completionist $174,121.
+64. SUPPLIES PLAN · PHASE C — TAKEAWAY BY DISH (developer 2026-10-10). A
+   takeaway order leaves in its dish's own container (compartment tray for
+   curries and mezze / combo plates, tub for salsas and bases, clamshell for
+   fried, foil tray for grilled, deli wrap for bread, kraft box for the
+   rest) and bag (carry bag when heavy), with a cutlery kit, a wet wipe for
+   messy dishes and a tamper label from L91; dine-in fried food and bread
+   get a deli-sheet liner, grilled meat a toothpick from L101; closing uses
+   a tissue cube (L31) and deli wrap per fridge line (L21, new chore). All
+   17 packaging items are used. New `restaurant-takeaway-qa`, e2e
+   `restauranttakeaway.mjs`. Tests changed to the new rule (wrap chore):
+   `restaurant-day-qa` P1, e2e `restaurantday` 4a, `restaurantsupplies` 2 (the bread's deli-sheet liner warns).
 
 ## 6b. Current state (2026-10-09, end of session)
 

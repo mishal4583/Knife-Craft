@@ -530,6 +530,28 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   `cleanSettingFor` (cover 100 + guests served). Inventory's "For service"
   explains it. The migration crate tops up a moving save's tableware by
   dish. Browser: `tools/e2e/restaurantsupplies.mjs`.
+- `restaurant-takeaway-qa` — TAKEAWAY BY DISH + CLOSING SUPPLIES (supplies
+  plan Phase C, developer 2026-10-10). `serviceSupplies.takeawayPiecesFor
+  (recipe, level)`: curries and combo / mezze plates (shared, "mezze",
+  "trio", 4+ ingredients) a 3-compartment tray; pots, soups, bases, salsas
+  a microwavable tub; fried food a burger clamshell; grilled / sautéed a
+  foil tray; bread deli wrap; the rest a kraft box; heavy orders (pot,
+  grill, shared) a carry bag, the rest a paper bag; extras a cutlery kit
+  (not bread / skewers), a wet wipe (messy), a tamper label from L91.
+  `dineInExtrasFor`: fried food and bread on a deli-sheet liner, grilled /
+  sautéed meat and fish with a toothpick from L101. `takeOrderSupplies`
+  with a cover takes exactly those (packaging lifetime "used"; none in
+  stock = still served). The check: each takeaway dish's container and bag
+  block ("· takeaway"), the extras and dine-in liners / toothpicks warn
+  (without recipes the old generic container / bag rows). Closing
+  (`closingSuppliesFor` / `closingSupplies`, called by `closeDay` after the
+  wipe-down; shown on Closing Time, `data-closing-supply`): a tissue cube
+  from L31 and a sheet of deli wrap per ingredient line left in the fridge
+  from L21 (new chore "Wrap and label what's left in the fridge") — short =
+  a warning, no money. All 17 packaging / hygiene items are used. The
+  migration crate packs each takeaway dish's own container and bag (≥
+  KIT_PACKAGING) and extras. Sim: the diligent player keeps tissues and
+  wrap. Browser: `tools/e2e/restauranttakeaway.mjs`.
 - `restaurant-tools-qa` — KITCHEN TOOLS (supplies plan Phase A, developer
   2026-10-10: "ask the player to buy some important tools when the game
   starts and the rest when necessary"). `restaurant/dishService.ts`

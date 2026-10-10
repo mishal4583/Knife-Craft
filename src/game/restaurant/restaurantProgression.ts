@@ -507,6 +507,7 @@ export const CLOSING_CHORES: readonly { id: string; label: string; fromLevel: nu
   { id: "wash-up", label: "Wash the dishes and the knives", fromLevel: 1 },
   { id: "wipe-down", label: "Wipe down the boards and counters", fromLevel: 1 },
   { id: "spoiled", label: "Throw out spoiled food", fromLevel: 21 },
+  { id: "wrap", label: "Wrap and label what's left in the fridge", fromLevel: 21 },
   { id: "dining-room", label: "Clear and set the dining room", fromLevel: 31 },
   { id: "count", label: "Count the day's takings", fromLevel: 1 },
 ];

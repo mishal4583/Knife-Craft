@@ -172,9 +172,18 @@ console.log("C. The starter crate");
   );
   const l120 = migrateToUnifiedRestaurant(await loadRaw(modern(120)));
   assert(
-    units(l120, "microwave-containers") >= KIT_PACKAGING &&
-      units(l120, "paper-bags") >= KIT_PACKAGING,
-    "C3: from L71 the crate adds takeaway containers and bags",
+    // Supplies plan C (developer 2026-10-10): each takeaway dish's own container and bag
+    // (was: the first container and bag in the Business priority list).
+    [
+      "thali-containers",
+      "microwave-containers",
+      "burger-boxes",
+      "foil-containers",
+      "kraft-boxes",
+      "food-wrap",
+    ].some((id) => units(l120, id) >= KIT_PACKAGING) &&
+      ["paper-bags", "carry-bags"].some((id) => units(l120, id) >= KIT_PACKAGING),
+    "C3: from L71 the crate adds its takeaway dishes' own containers and bags (at least KIT_PACKAGING each)",
   );
   const stocked = await loadRaw(
     modern(60, {

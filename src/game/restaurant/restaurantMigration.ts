@@ -20,8 +20,9 @@
  *    (plates, bowls, cutlery, glasses by dish — supplies plan B) and its
  *    tables' pieces, at least a plain place setting per guest, napkins up to KIT_NAPKINS, and one bottle of
  *    dish soap and one of cleaning liquid when it has none;
- *  - takeaway (from L71): containers and bags for those services' takeaway
- *    orders (at least KIT_PACKAGING).
+ *  - takeaway (from L71): each takeaway dish's own container and bag for
+ *    those services (at least KIT_PACKAGING of each kind) and their extras
+ *    (cutlery packs, wet wipes, tamper labels — supplies plan C).
  *
  * The crate is goods at cost 0 — no credits, no ledger entry (the pantry
  * rule, Economy TODO #16) — and only ever tops up: nothing is taken away.
@@ -193,17 +194,50 @@ export function migrateToUnifiedRestaurant(save: SaveData): SaveData {
   }
 
   if (isSystemLive("takeaway", atLevel)) {
-    const takeaway = Math.max(
-      KIT_PACKAGING,
-      services.reduce(
-        (n, s) =>
-          n + s.tickets.filter((_, i) => orderServiceFor(s.levelNumber, i) === "takeaway").length,
-        0,
-      ),
-    );
-    const covered = packagingOrdersCovered({ ...save.business.supplies, stock });
-    stock = topUpSupply(stock, ORDER_CONTAINER_PRIORITY[0]!, takeaway - covered.containers, kit);
-    stock = topUpSupply(stock, ORDER_BAG_PRIORITY[0]!, takeaway - covered.bags, kit);
+    // Supplies plan C: each takeaway dish's own container and bag (a curry's
+    // thali tray, fries' clamshell …) for all the crate's services, at least
+    // KIT_PACKAGING of each kind the first services use.
+    const want = new Map<SupplyId, number>();
+    const boxes = new Set<SupplyId>();
+    for (const sv of services) {
+      const check = serviceSuppliesCheck(
+        {
+          ...save,
+          business: { ...save.business, supplies: { ...save.business.supplies, stock: {} } },
+        },
+        sv.levelNumber,
+        sv.tickets.map((_, i) => orderServiceFor(sv.levelNumber, i)),
+        { recipes: sv.tickets },
+      );
+      if (check.applies)
+        for (const r of check.rows)
+          if (
+            !r.guest &&
+            r.id !== SERVICE_SUPPLY_RULES.napkin &&
+            getSupplyItem(r.id)?.section === "packaging"
+          ) {
+            want.set(r.id, (want.get(r.id) ?? 0) + r.need);
+            if (r.blocking) boxes.add(r.id);
+          }
+    }
+    // Containers and bags at least KIT_PACKAGING; the extras what's needed.
+    for (const [id, need] of want)
+      stock = topUpSupply(
+        stock,
+        id,
+        (boxes.has(id) ? Math.max(need, KIT_PACKAGING) : need) - (stock[id]?.units ?? 0),
+        kit,
+      );
+    if (want.size === 0) {
+      const covered = packagingOrdersCovered({ ...save.business.supplies, stock });
+      stock = topUpSupply(
+        stock,
+        ORDER_CONTAINER_PRIORITY[0]!,
+        KIT_PACKAGING - covered.containers,
+        kit,
+      );
+      stock = topUpSupply(stock, ORDER_BAG_PRIORITY[0]!, KIT_PACKAGING - covered.bags, kit);
+    }
   }
 
   return {

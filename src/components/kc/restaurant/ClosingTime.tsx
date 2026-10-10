@@ -94,6 +94,28 @@ export function ClosingTime({
             </div>
           ) : null}
 
+          {p.supplies.length > 0 ? (
+            <ul className="mt-2 space-y-1" data-testid="closing-supplies">
+              {p.supplies.map((l) => (
+                <li
+                  key={l.id}
+                  data-closing-supply={l.id}
+                  className={cn(
+                    "font-ui text-[13.5px] font-bold",
+                    l.have >= l.need ? "text-walnut-dark" : "text-tomato",
+                  )}
+                >
+                  {l.have >= l.need ? "✓" : "⚠"} {l.label}: uses {l.need} · have {l.have}
+                  {l.have < l.need ? (
+                    <span className="block font-normal text-[12.5px]">
+                      Not enough — buy more in the Market → Takeaway.
+                    </span>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+
           <div
             className="mt-3 rounded-2xl border border-walnut/15 bg-ivory/70 p-3"
             data-testid="closing-count"

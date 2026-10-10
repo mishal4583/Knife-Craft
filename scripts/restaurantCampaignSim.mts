@@ -100,6 +100,7 @@ import {
   takeOrderSupplies,
   washUp,
   cleanSettingFor,
+  closingSuppliesFor,
 } from "../src/game/restaurant/serviceSupplies.ts";
 import { hireSpecialist, getSpecialist } from "../src/game/restaurant/staffRequirements.ts";
 import {
@@ -258,6 +259,13 @@ function playLevel(save: SaveData, n: number, opts: SimOptions, stats: Stats): S
   const where = `L${n}`;
   // Closing time comes before the next day's first service.
   if (restaurantDayOf(s).closingDue) {
+    // Supplies plan C: a diligent player keeps tissues and deli wrap for closing.
+    if (profile === "diligent")
+      for (const line of closingSuppliesFor(s, restaurantLevelOf(s.levelProgress)))
+        if (line.have < line.need) {
+          const b = buySupply(s, line.id, 1);
+          if (b.ok) s = persist(b.s, stats, `${where} closing buy ${line.id}`);
+        }
     s = persist(closeDay(s, restaurantLevelOf(s.levelProgress)), stats, `${where} closing`);
     stats.closings++;
   }

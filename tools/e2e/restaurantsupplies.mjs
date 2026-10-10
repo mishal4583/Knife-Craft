@@ -198,11 +198,13 @@ const s2 = await sheet();
 const newEntries = bought.economyLedger.slice(before.economyLedger.length);
 const soap = s2?.bottles.find((b) => b.id === "dish-soap");
 check(
-  "2 Restock opens the exact Market line; 8 purchases = 8 ledger entries; the check is ready; soap shows ~N washes remaining",
+  "2 Restock opens the exact Market line; 8 purchases = 8 ledger entries; the check is ready (the bread's deli-sheet liner only warns); soap shows ~N washes remaining",
   focus.every(Boolean) &&
     newEntries.length === 8 &&
     newEntries.every((e) => /^supply-/.test(e.category)) &&
-    own(s2).every((r) => r.status === "ok") &&
+    // Supplies plan C (2026-10-10): the bread's deli-sheet liner is a warning, never blocking.
+    own(s2).every((r) => r.status === "ok" || (r.id === "deli-sheets" && r.status === "warning")) &&
+    own(s2).some((r) => r.id === "deli-sheets") &&
     s2?.startDisabled === false &&
     soap?.status === "ok" &&
     /~\d+ washes remaining/.test(soap.text),
