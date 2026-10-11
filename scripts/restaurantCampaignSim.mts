@@ -107,6 +107,8 @@ import { closeServiceReport, restaurantRecordOf } from "../src/game/restaurant/s
 import {
   cleanAll,
   cleanerRound,
+  choresAfterClose,
+  choresAfterService,
   cleanlinessOf,
   giveGrandmasCupboard,
   snapshotServiceStart,
@@ -279,7 +281,14 @@ function playLevel(save: SaveData, n: number, opts: SimOptions, stats: Stats): S
           const b = buySupply(s, line.id, 1);
           if (b.ok) s = persist(b.s, stats, `${where} closing buy ${line.id}`);
         }
-    s = persist(closeDay(s, restaurantLevelOf(s.levelProgress)), stats, `${where} closing`);
+    s = persist(
+      choresAfterClose(
+        closeDay(s, restaurantLevelOf(s.levelProgress)),
+        restaurantLevelOf(s.levelProgress),
+      ).save,
+      stats,
+      `${where} closing`,
+    );
     stats.closings++;
   }
   if (profile === "broke") s = drain(s);
@@ -593,7 +602,7 @@ function playLevel(save: SaveData, n: number, opts: SimOptions, stats: Stats): S
       dineIn: report.report.covers,
       customers: Math.max(served.length, report.report.covers + report.report.takeaway),
     });
-    next = cleanerRound(next).save;
+    next = cleanerRound(choresAfterService(next, n)).save;
     if (restaurantRecordOf(next).streak > stats.bestStreak)
       stats.bestStreak = restaurantRecordOf(next).streak;
   }

@@ -1,4 +1,11 @@
-import { cleanlinessOf, isCleanlinessLive } from "@/game/restaurant/cleanliness";
+import {
+  TASK_RULES,
+  cleanlinessOf,
+  isCleanlinessLive,
+  type CleanlinessAction,
+  type CleanlinessActionResult,
+} from "@/game/restaurant/cleanliness";
+import { ShiftChecklist } from "./ShiftChecklist";
 import type { SaveData } from "@/game/SaveManager";
 import { openStaffFor } from "../staffFocus";
 import type { ScreenId } from "@/components/kc/data";
@@ -47,6 +54,7 @@ export function ServiceCheckLayer({
   adAvailable,
   onCoverWithAd,
   onCoverWithCredit,
+  cleanlinessAction,
 }: {
   save: SaveData;
   levelId: string;
@@ -64,6 +72,8 @@ export function ServiceCheckLayer({
   onCoverWithAd: (part: CoverPart) => Promise<CoverAdOutcome>;
   /** …or supplier credit (App.coverServiceWithCredit). */
   onCoverWithCredit: (part: CoverPart) => void;
+  /** A real restaurant's day: the opening / lull checklist's actions (App.cleanlinessAction). */
+  cleanlinessAction?: (action: CleanlinessAction) => CleanlinessActionResult | null;
   /** Quick restock bought: App records one ledger entry per ingredient and saves. */
   onQuickRestock: (next: SaveData, lines: readonly QuickRestockLine[]) => void;
 }) {
@@ -129,7 +139,22 @@ export function ServiceCheckLayer({
       toolsSoon={plan.toolsSoon}
       firstShoppingList={plan.firstShoppingList}
       onBuyTool={(id, packs) => openMarketSupplies(go, "culinary", id, packs)}
-      cleaningOpen={isCleanlinessLive(n) ? cleanlinessOf(save).tasks.length : 0}
+      cleaningOpen={
+        isCleanlinessLive(n)
+          ? cleanlinessOf(save).tasks.filter((t) => !TASK_RULES[t.kind].phase).length
+          : 0
+      }
+      chores={
+        cleanlinessAction ? (
+          <ShiftChecklist
+            save={save}
+            phase={plan.opening ? "opening" : "lull"}
+            onAction={cleanlinessAction}
+            onBuy={(id) => openMarketSupplies(go, getSupplyItem(id)?.section ?? "cleaning", id)}
+            onOpenCleanliness={() => go("business-cleanliness")}
+          />
+        ) : null
+      }
       onOpenCleanliness={() => go("business-cleanliness")}
       adAvailable={adAvailable}
       onCoverWithAd={onCoverWithAd}

@@ -539,6 +539,25 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   `cleanSettingFor` (cover 100 + guests served). Inventory's "For service"
   explains it. The migration crate tops up a moving save's tableware by
   dish. Browser: `tools/e2e/restaurantsupplies.mjs`.
+- `restaurant-shift-chores-qa` — SHIFT CHORES (a real restaurant's day,
+  plan F2, developer 2026-10-11). From L21 each phase brings its chores as
+  Cleanliness tasks (`TASK_RULES` entries with `phase`, `fromLevel`,
+  `staff`): opening — set up the stations (sanitizer), the morning restroom
+  check, lay the tables (L31+); the lull after each service that isn't the
+  day's last — fresh sanitizer bucket, sweep the line, refresh the restroom;
+  closing after the last — degrease the hot equipment, mop all the floors,
+  disinfect the restroom, top up the condiments and polish the cutlery
+  (L31+). `choresAfterService` (App.completeCampaignLevel, the sim) and
+  `choresAfterClose` (Closing Time's close, the quiet close, the sim) add a
+  batch ONCE per key "day:phase:services" (`cleanliness.choreKeys`) — a
+  reload or a repeated opening never adds it again. Each chore uses its
+  supplies once (`cleanTask`); "Do all" (`phase-all`) does that phase's.
+  The team does its own (`cleanerRound`): the Cleaner the cleaning in their
+  areas, the Server (dining-room chores), the Prep Cook (stations, sanitizer
+  bucket). The Pre-Service Check opens for the opening / lull chores
+  (`plan.chores`, `ShiftChecklist`), Closing Time lists closing's; a chore
+  still open when the next service starts breaks spotless (the existing
+  snapshot). Never blocks; no money. Browser: `tools/e2e/restaurantshift.mjs`.
 - `restaurant-day-clock-qa` — THE DAY CLOCK (developer 2026-10-11: a real
   restaurant's day). `restaurant/dayClock.ts` (read-only, from
   `restaurantDay` + `servicesForDayAt`): the phase — opening (the day not

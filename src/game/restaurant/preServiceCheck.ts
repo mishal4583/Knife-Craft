@@ -8,6 +8,7 @@
  * orders a previous try already paid; `progress` saves the tickets when
  * they were rolled just now. Pure; nothing reads RESTAURANT_MODE.
  */
+import { phaseChecklist } from "./cleanliness";
 import { FIRST_PURCHASE_LEVEL, dayCeremonyAt } from "./firstLevels";
 import {
   FIRST_SHOPPING_LIST_LEVELS,
@@ -108,6 +109,8 @@ export type ServicePlan = {
   toolsSoon: { id: SupplyId; level: number; why: string }[];
   /** Level 10's first play: Grandma's first shopping list (the tools the next ten levels need). */
   firstShoppingList: boolean;
+  /** A real restaurant's day: the phase's open chores (opening on a new day, else the lull's). */
+  chores: number;
 };
 
 /** One ingredient the menu guests need beyond the level's own orders: whole Market units. */
@@ -190,6 +193,7 @@ export function servicePlanFor(save: SaveData, level: LevelDefinition): ServiceP
           )
         : [],
     firstShoppingList: n === FIRST_PURCHASE_LEVEL,
+    chores: phaseChecklist(save, opensNewDay(save) ? "opening" : "lull").length,
   };
 }
 
@@ -205,6 +209,8 @@ export function servicePlanNeedsSheet(plan: ServicePlan | null): boolean {
   if (plan.opening && dayCeremonyAt(plan.levelNumber)) return true;
   if (hasNewsToShow(plan.news)) return true;
   if (plan.welcome) return true;
+  // A real restaurant's day: the opening / lull chores show on the check (never blocking).
+  if (plan.chores > 0) return true;
   // First levels pass 2: Grandma's note on Levels 12–14 (the note itself never blocks START).
   if (plan.grandmasFridge) return true;
   // Pass 2 review: the first service on real stock always opens the sheet (never blocking).

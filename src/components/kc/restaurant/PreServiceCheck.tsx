@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { KButton } from "@/components/kc/common/primitives";
 import { cn } from "@/lib/utils";
 import type { RecipeDefinition } from "@/game/recipes/recipeTypes";
@@ -110,6 +110,7 @@ export function PreServiceCheck({
   onBuyTool = () => {},
   cleaningOpen = 0,
   onOpenCleanliness = () => {},
+  chores = null,
 }: {
   levelNumber: number;
   day: number;
@@ -185,6 +186,8 @@ export function PreServiceCheck({
   /** Cleanliness & Maintenance: cleaning tasks still open (never blocks START; it costs the spotless streak). */
   cleaningOpen?: number;
   onOpenCleanliness?: () => void;
+  /** A real restaurant's day: the phase's checklist (ShiftChecklist), never blocking. */
+  chores?: ReactNode;
 }) {
   // Optional sections start folded so START and what blocks it stay in view.
   const [showGuests, setShowGuests] = useState(false);
@@ -446,6 +449,7 @@ export function PreServiceCheck({
             </div>
           ) : null}
 
+          {chores}
           {cleaningOpen > 0 ? (
             <div
               className="mt-3 flex items-center gap-2 rounded-2xl border border-gold/50 bg-gold/15 p-2"

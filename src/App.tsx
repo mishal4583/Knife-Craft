@@ -108,6 +108,8 @@ import {
 import { closeServiceReport, serviceReportLines } from "@/game/restaurant/serviceReport";
 import {
   cleanerRound,
+  choresAfterClose,
+  choresAfterService,
   cleaningLines,
   cleanlinessOf,
   applyCleanlinessAction,
@@ -1432,7 +1434,7 @@ export function App() {
   function quietDayEnd(s: SaveData): SaveData {
     const restaurantLevel = restaurantLevelOf(s.levelProgress);
     return restaurantDayOf(s).closingDue && !dayCeremonyAt(restaurantLevel)
-      ? closeDay(s, restaurantLevel)
+      ? choresAfterClose(closeDay(s, restaurantLevel), restaurantLevel).save
       : s;
   }
 
@@ -2049,6 +2051,8 @@ export function App() {
         dineIn: report.report.covers,
         customers: Math.max(served.length, report.report.covers + report.report.takeaway),
       });
+      // A real restaurant's day (2026-10-11): the lull's chores, or closing's after the last service.
+      nextSave = choresAfterService(nextSave, levelNumber(level.id));
       const round = cleanerRound(nextSave);
       nextSave = round.save;
       serviceLines = [...serviceLines, ...cleaningLines(nextSave, round.cleaned.length)];
@@ -2904,9 +2908,17 @@ export function App() {
           <ClosingTime
             save={save}
             restaurantLevel={restaurantLevelOf(save.levelProgress)}
+            cleanlinessAction={cleanlinessAction}
+            go={go}
             onClose={() => {
               closingHoldRef.current = false;
-              persist(closeDay(save, restaurantLevelOf(save.levelProgress)));
+              // Tomorrow morning's opening chores come with the new day (once).
+              persist(
+                choresAfterClose(
+                  closeDay(save, restaurantLevelOf(save.levelProgress)),
+                  restaurantLevelOf(save.levelProgress),
+                ).save,
+              );
             }}
           />
         </Suspense>
@@ -2929,6 +2941,7 @@ export function App() {
             adAvailable={rewardedAdsAvailable()}
             onCoverWithAd={coverServiceWithAd}
             onCoverWithCredit={coverServiceWithCredit}
+            cleanlinessAction={cleanlinessAction}
             onQuickRestock={(next, lines) =>
               persistIngredientPurchases(
                 next,

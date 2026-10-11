@@ -1,3 +1,8 @@
+import type { ScreenId } from "@/components/kc/data";
+import { openMarketSupplies } from "@/components/kc/marketFocus";
+import { getSupplyItem } from "@/game/business/businessSupplies";
+import type { CleanlinessAction, CleanlinessActionResult } from "@/game/restaurant/cleanliness";
+import { ShiftChecklist } from "./ShiftChecklist";
 import { KButton } from "@/components/kc/common/primitives";
 import { cn } from "@/lib/utils";
 import type { SaveData } from "@/game/SaveManager";
@@ -20,10 +25,15 @@ export function ClosingTime({
   save,
   restaurantLevel,
   onClose,
+  cleanlinessAction,
+  go,
 }: {
   save: SaveData;
   restaurantLevel: number;
   onClose: () => void;
+  /** A real restaurant's day: closing's chores, done here (App.cleanlinessAction). */
+  cleanlinessAction?: (action: CleanlinessAction) => CleanlinessActionResult | null;
+  go?: (s: ScreenId) => void;
 }) {
   const p = closingPreview(save, restaurantLevel);
   const change = p.cashAtOpening === null ? null : p.cashNow - p.cashAtOpening;
@@ -58,7 +68,7 @@ export function ClosingTime({
           </ul>
 
           <p className="mt-3 font-ui text-[12.5px] font-extrabold uppercase tracking-wide text-walnut/60">
-            Closing chores
+            Done when you close
           </p>
           <ul className="mt-1 space-y-1" data-testid="closing-chores">
             {p.chores.map((c, i) => (
@@ -75,6 +85,19 @@ export function ClosingTime({
               </li>
             ))}
           </ul>
+
+          {cleanlinessAction ? (
+            <ShiftChecklist
+              save={save}
+              phase="closing"
+              onAction={cleanlinessAction}
+              onBuy={(id) =>
+                go
+                  ? openMarketSupplies(go, getSupplyItem(id)?.section ?? "cleaning", id)
+                  : undefined
+              }
+            />
+          ) : null}
 
           {p.spoiled ? (
             <p

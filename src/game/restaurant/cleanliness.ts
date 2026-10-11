@@ -35,6 +35,7 @@ import { makeSeededRand } from "../business/businessDeterministicRandom";
 import type { RecipeDefinition } from "../recipes/recipeTypes";
 import { dishServiceFor } from "./dishService";
 import { isSystemLive } from "./restaurantProgression";
+import { restaurantDayOf } from "./restaurantDay";
 import { bottleView, restaurantSuppliesOf, tablesFor } from "./serviceSupplies";
 
 /**
@@ -59,7 +60,27 @@ export type TaskKind =
   | "toilet"
   | "sink"
   | "paper"
-  | "restroom-floor";
+  | "restroom-floor"
+  // Shift chores (a real restaurant's day, developer 2026-10-11): opening …
+  | "stations"
+  | "restroom-check"
+  | "lay-tables"
+  // … the lull between services …
+  | "sanitizer-bucket"
+  | "sweep-line"
+  | "restroom-refresh"
+  // … and closing.
+  | "degrease"
+  | "mop-all"
+  | "restroom-disinfect"
+  | "condiments"
+  | "polish-cutlery";
+
+/** The day's phases that bring their own chores (dayClock.ts's phases). */
+export type ShiftPhase = "opening" | "lull" | "closing";
+
+/** Who on the existing Restaurant Team does a routine chore (default: the Cleaner). */
+export type ChoreStaff = "cleaner" | "server" | "prep-cook";
 
 export type TaskRule = {
   area: CleanArea;
@@ -73,6 +94,12 @@ export type TaskRule = {
   tools: readonly SupplyId[];
   /** The Cleaner may do it; false = the player's (spills). */
   routine: boolean;
+  /** A shift chore: the phase that brings it (absent = left by a service). */
+  phase?: ShiftPhase;
+  /** A shift chore starts at this level (default PHASE_CHORES_FROM). */
+  fromLevel?: number;
+  /** Who does it when hired (default the Cleaner, in their areas). */
+  staff?: ChoreStaff;
 };
 
 export const TASK_RULES: Record<TaskKind, TaskRule> = {
@@ -181,7 +208,134 @@ export const TASK_RULES: Record<TaskKind, TaskRule> = {
     tools: ["mop-bucket"],
     routine: true,
   },
+  // ── Opening: prepare ──
+  stations: {
+    area: "kitchen",
+    label: "Set up the stations and the sanitizer",
+    short: "Stations",
+    icon: "🧑‍🍳",
+    uses: [{ id: "disinfectant", n: 1 }],
+    tools: [],
+    routine: true,
+    phase: "opening",
+    staff: "prep-cook",
+  },
+  "restroom-check": {
+    area: "restroom",
+    label: "Morning restroom check",
+    short: "Check",
+    icon: "🔎",
+    uses: [{ id: "paper-towels", n: 25 }],
+    tools: [],
+    routine: true,
+    phase: "opening",
+  },
+  "lay-tables": {
+    area: "dining",
+    label: "Lay the tables",
+    short: "Lay tables",
+    icon: "🍴",
+    uses: [],
+    tools: [],
+    routine: true,
+    phase: "opening",
+    fromLevel: 31,
+    staff: "server",
+  },
+  // ── Lull: reset ──
+  "sanitizer-bucket": {
+    area: "kitchen",
+    label: "Fresh sanitizer bucket",
+    short: "Sanitizer",
+    icon: "🪣",
+    uses: [{ id: "disinfectant", n: 1 }],
+    tools: [],
+    routine: true,
+    phase: "lull",
+    staff: "prep-cook",
+  },
+  "sweep-line": {
+    area: "kitchen",
+    label: "Sweep the line",
+    short: "Sweep",
+    icon: "🧹",
+    uses: [],
+    tools: ["brooms"],
+    routine: true,
+    phase: "lull",
+  },
+  "restroom-refresh": {
+    area: "restroom",
+    label: "Refresh the restroom",
+    short: "Refresh",
+    icon: "✨",
+    uses: [{ id: "paper-towels", n: 25 }],
+    tools: [],
+    routine: true,
+    phase: "lull",
+  },
+  // ── Closing: clean and plan ──
+  degrease: {
+    area: "kitchen",
+    label: "Degrease the hot equipment",
+    short: "Degrease",
+    icon: "🔥",
+    uses: [
+      { id: "disinfectant", n: 1 },
+      { id: "sponges-cloths", n: 1 },
+    ],
+    tools: [],
+    routine: true,
+    phase: "closing",
+  },
+  "mop-all": {
+    area: "dining",
+    label: "Mop all the floors",
+    short: "Mop",
+    icon: "🪣",
+    uses: [{ id: "floor-cleaner", n: 2 }],
+    tools: ["mop-bucket"],
+    routine: true,
+    phase: "closing",
+  },
+  "restroom-disinfect": {
+    area: "restroom",
+    label: "Disinfect the restroom",
+    short: "Disinfect",
+    icon: "🧴",
+    uses: [{ id: "disinfectant", n: 1 }],
+    tools: ["toilet-brushes"],
+    routine: true,
+    phase: "closing",
+  },
+  condiments: {
+    area: "dining",
+    label: "Top up the condiments",
+    short: "Condiments",
+    icon: "🧂",
+    uses: [],
+    tools: [],
+    routine: true,
+    phase: "closing",
+    fromLevel: 31,
+    staff: "server",
+  },
+  "polish-cutlery": {
+    area: "dining",
+    label: "Polish and stack the cutlery",
+    short: "Cutlery",
+    icon: "🥄",
+    uses: [{ id: "sponges-cloths", n: 1 }],
+    tools: [],
+    routine: true,
+    phase: "closing",
+    fromLevel: 31,
+    staff: "server",
+  },
 };
+
+/** Shift chores (opening / lull / closing) come with the day's ceremony, from Level 21. */
+export const PHASE_CHORES_FROM = 21;
 
 export const TASK_KINDS = Object.keys(TASK_RULES) as TaskKind[];
 
@@ -222,6 +376,8 @@ export type CleanlinessState = {
   lastStart: { level: number; open: number; areas: CleanArea[] } | null;
   cleaned: number;
   byCleaner: number;
+  /** The shift-chore batches already added ("day:phase:services"), so a phase never repeats. */
+  choreKeys: string[];
 };
 
 export const DEFAULT_CLEANLINESS: CleanlinessState = {
@@ -234,6 +390,7 @@ export const DEFAULT_CLEANLINESS: CleanlinessState = {
   lastStart: null,
   cleaned: 0,
   byCleaner: 0,
+  choreKeys: [],
 };
 
 const whole = (v: unknown) =>
@@ -275,8 +432,13 @@ export function cleanlinessOf(save: SaveData): CleanlinessState {
         : null,
     cleaned: whole(raw.cleaned),
     byCleaner: whole(raw.byCleaner),
+    choreKeys: Array.isArray(raw.choreKeys)
+      ? raw.choreKeys.filter((k): k is string => typeof k === "string").slice(-CHORE_KEYS_KEPT)
+      : [],
   };
 }
+
+const CHORE_KEYS_KEPT = 12;
 
 const withState = (save: SaveData, cleanliness: CleanlinessState): SaveData => ({
   ...save,
@@ -461,14 +623,82 @@ export function cleanAll(
 /** Whether the existing Restaurant Team has a Cleaner. */
 export const hasCleaner = (save: SaveData) => save.business.staff.hiredRoles.includes("cleaner");
 
-/** The Cleaner's round after a service: the routine tasks of their areas (spills stay the player's). */
+/** Who does a routine task when hired: its own role (server, prep cook) or the Cleaner. */
+const staffFor = (kind: TaskKind): ChoreStaff => TASK_RULES[kind].staff ?? "cleaner";
+
+/**
+ * The team's round (after a service, and when a phase's chores arrive): every
+ * routine task whose role is hired — the Cleaner in their assigned areas, the
+ * Server the dining room's chores, the Prep Cook the line's. Spills, and
+ * anything short of supplies, stay the player's. No new wage: these are the
+ * existing Restaurant Team roles (businessStaff.ts).
+ */
 export function cleanerRound(save: SaveData): { save: SaveData; cleaned: TaskKind[] } {
-  if (!hasCleaner(save)) return { save, cleaned: [] };
-  return cleanAll(save, {
-    areas: cleanlinessOf(save).cleanerAreas,
-    routineOnly: true,
-    by: "cleaner",
+  const hired = save.business.staff.hiredRoles as readonly string[];
+  const st = cleanlinessOf(save);
+  let s = save;
+  const cleaned: TaskKind[] = [];
+  for (const t of st.tasks) {
+    const rule = TASK_RULES[t.kind];
+    if (!rule.routine) continue;
+    const role = staffFor(t.kind);
+    if (!hired.includes(role)) continue;
+    if (role === "cleaner" && !st.cleanerAreas.includes(rule.area)) continue;
+    const r = cleanTask(s, t.kind, "cleaner");
+    if (r.ok) {
+      s = r.save;
+      cleaned.push(t.kind);
+    }
+  }
+  return { save: s, cleaned };
+}
+
+/** The shift chores a phase brings at `levelNumber` (from PHASE_CHORES_FROM). */
+export function phaseChores(phase: ShiftPhase, levelNumber: number): TaskKind[] {
+  if (levelNumber < PHASE_CHORES_FROM) return [];
+  return TASK_KINDS.filter(
+    (k) =>
+      TASK_RULES[k].phase === phase &&
+      levelNumber >= (TASK_RULES[k].fromLevel ?? PHASE_CHORES_FROM),
+  );
+}
+
+/**
+ * A phase's chores, added ONCE per restaurant day and phase (the key
+ * "day:phase:services" is remembered): a reload, a second tap or a repeated
+ * opening never adds them again. `day` / `servicesDone`: the restaurant
+ * day's own (restaurantDay.ts).
+ */
+export function addPhaseChores(
+  save: SaveData,
+  phase: ShiftPhase,
+  levelNumber: number,
+  day: number,
+  servicesDone: number,
+): SaveData {
+  const kinds = phaseChores(phase, levelNumber);
+  if (kinds.length === 0) return save;
+  const st = cleanlinessOf(save);
+  const key = `${day}:${phase}:${servicesDone}`;
+  if (st.choreKeys.includes(key)) return save;
+  const tasks = st.tasks.map((t) => ({ ...t }));
+  for (const kind of kinds) {
+    const t = tasks.find((x) => x.kind === kind);
+    if (t) t.count = Math.min(CLEANING_RULES.maxCount, t.count + 1);
+    else tasks.push({ kind, count: 1, since: levelNumber });
+  }
+  return withState(save, {
+    ...st,
+    tasks,
+    choreKeys: [...st.choreKeys, key].slice(-CHORE_KEYS_KEPT),
   });
+}
+
+/** The open tasks of a phase (its checklist), with what each still needs. */
+export function phaseChecklist(save: SaveData, phase: ShiftPhase) {
+  return cleanlinessOf(save)
+    .tasks.filter((t) => TASK_RULES[t.kind].phase === phase)
+    .map((t) => ({ ...t, rule: TASK_RULES[t.kind], needs: taskNeeds(save, t.kind) }));
 }
 
 /** Assigns the Cleaner's areas (the screen's chips). */
@@ -501,7 +731,7 @@ export function cleaningLines(save: SaveData, byCleaner: number): string[] {
   if (byCleaner === 0 && open === 0) return [];
   const parts = [
     ...(byCleaner > 0
-      ? [`🧑‍🔧 Your Cleaner did ${byCleaner} ${byCleaner === 1 ? "task" : "tasks"}`]
+      ? [`🧑‍🔧 Your team did ${byCleaner} ${byCleaner === 1 ? "task" : "tasks"}`]
       : []),
     open > 0
       ? `🧹 ${open} cleaning ${open === 1 ? "task" : "tasks"} waiting — Restaurant → Cleanliness`
@@ -673,6 +903,7 @@ export function supplyGauge(
 export type CleanlinessAction =
   | { kind: "clean"; task: TaskKind }
   | { kind: "clean-all" }
+  | { kind: "phase-all"; phase: ShiftPhase }
   | { kind: "areas"; areas: CleanArea[] }
   | { kind: "intro-seen" };
 
@@ -695,9 +926,47 @@ export function applyCleanlinessAction(
       ];
       return { save: r.save, cleaned: r.cleaned, needs };
     }
+    case "phase-all": {
+      let x = save;
+      const cleaned: TaskKind[] = [];
+      for (const t of phaseChecklist(save, action.phase)) {
+        const r = cleanTask(x, t.kind);
+        if (r.ok) {
+          x = r.save;
+          cleaned.push(t.kind);
+        }
+      }
+      const needs = [...new Set(phaseChecklist(x, action.phase).flatMap((t) => t.needs))];
+      return { save: x, cleaned, needs };
+    }
     case "areas":
       return { save: setCleanerAreas(save, action.areas), cleaned: [], needs: [] };
     case "intro-seen":
       return { save: markCleanlinessIntroSeen(save), cleaned: [], needs: [] };
   }
+}
+
+// ── The day's phases (App / the sim call these) ─────────────────────────
+
+/** After a service: the lull's chores (or, after the day's last service, closing's), then the team's round. */
+export function choresAfterService(save: SaveData, levelNumber: number): SaveData {
+  const d = restaurantDayOf(save);
+  if (!d.opened && !d.closingDue) return save;
+  return addPhaseChores(
+    save,
+    d.closingDue ? "closing" : "lull",
+    levelNumber,
+    d.day,
+    d.servicesDone,
+  );
+}
+
+/** After closing for the night: the next morning's opening chores (`nextLevel` opens the day), then the team's round. */
+export function choresAfterClose(
+  save: SaveData,
+  nextLevel: number,
+): { save: SaveData; cleaned: TaskKind[] } {
+  const d = restaurantDayOf(save);
+  if (d.closingDue) return { save, cleaned: [] };
+  return cleanerRound(addPhaseChores(save, "opening", nextLevel, d.day, 0));
 }

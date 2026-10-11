@@ -903,7 +903,10 @@ Not implemented (from the audits, all CSS/asset-free):
    its days only, pars from usable stock, Inventory stays read-only.
    F1 shipped: `restaurant/dayClock.ts`, the Kitchen day strip and light,
    the night sky at Closing Time; `restaurant-day-clock-qa`, e2e
-   `restaurantdayclock.mjs`.
+   `restaurantdayclock.mjs`. F2 shipped: shift chores (opening / lull /
+   closing) as Cleanliness tasks, once per day and phase, checklists on the
+   Pre-Service Check and Closing Time, staff do theirs;
+   `restaurant-shift-chores-qa`, e2e `restaurantshift.mjs`.
 
 ## 6b. Current state (2026-10-09, end of session)
 

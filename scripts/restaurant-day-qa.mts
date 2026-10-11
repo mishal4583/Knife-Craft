@@ -291,14 +291,18 @@ console.log("W. Wiring");
       /if \(firstPlay && restaurantDayOf\(base\)\.closingDue\) \{\s*closingHoldRef\.current = true;/.test(
         app,
       ) &&
-      /restaurantDayOf\(s\)\.closingDue && !dayCeremonyAt\(restaurantLevel\)\s*\? closeDay\(s, restaurantLevel\)/.test(
+      // A real restaurant's day (2026-10-11): closing then adds the next morning's
+      // opening chores (choresAfterClose wraps the same closeDay).
+      /restaurantDayOf\(s\)\.closingDue && !dayCeremonyAt\(restaurantLevel\)\s*\? (?:choresAfterClose\()?closeDay\(s, restaurantLevel\)/.test(
         app,
       ) &&
       /beginLevel\(id, opensDay \? openDay\(save, levelNumber\(id\)\) : undefined\)/.test(app) &&
       /if \(pending\?\.opening\) \{\s*beginLevel\(levelId, openDay\(base, pending\.levelNumber\)\)/.test(
         app,
       ) &&
-      /persist\(closeDay\(save, restaurantLevelOf\(save\.levelProgress\)\)\)/.test(app) &&
+      /persist\(\s*(?:choresAfterClose\(\s*)?closeDay\(save, restaurantLevelOf\(save\.levelProgress\)\)/.test(
+        app,
+      ) &&
       /closingDue &&\s*dayCeremonyAt\(restaurantLevelOf\(save\.levelProgress\)\) &&/.test(app),
     "W2: closing blocks the next first play (quietly closed before L21); START, or a start without the card, opens the day; the Closing Time sheet closes it from L21",
   );
