@@ -1,3 +1,4 @@
+import type { DeliveryKind } from "@/game/restaurant/deliveries";
 import { ENDLESS_RESTAURANT_NAME, businessDayAllowed } from "@/game/restaurant/endlessRestaurant";
 import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
 import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
@@ -159,6 +160,7 @@ export function BusinessDashboard({
   rushRestock,
   rushAdAvailable,
   cleanlinessAction,
+  setStandingOrder,
 }: {
   go: (s: ScreenId) => void;
   save: SaveData;
@@ -181,6 +183,8 @@ export function BusinessDashboard({
   rushAdAvailable: boolean;
   /** Restaurant → Cleanliness (restaurant/cleanliness.ts); absent = no Cleanliness tab. */
   cleanlinessAction?: (action: CleanlinessAction) => CleanlinessActionResult | null;
+  /** Restaurant → Suppliers: switch a standing order (restaurant/deliveries.ts). */
+  setStandingOrder?: (kind: DeliveryKind, on: boolean) => void;
 }) {
   const [dayResult, setDayResult] = useState<AdvanceDayResult | null>(null);
   const [repairMessage, setRepairMessage] = useState<string | null>(null);
@@ -310,6 +314,7 @@ export function BusinessDashboard({
               signSupplierContract={signSupplierContract}
               cancelSupplierContract={cancelSupplierContract}
               selectSupplier={selectSupplier}
+              {...(setStandingOrder ? { setStandingOrder } : {})}
             />
           ) : null}
           {tab === "menu" ? (

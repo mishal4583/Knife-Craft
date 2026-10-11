@@ -539,6 +539,27 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   `cleanSettingFor` (cover 100 + guests served). Inventory's "For service"
   explains it. The migration crate tops up a moving save's tableware by
   dish. Browser: `tools/e2e/restaurantsupplies.mjs`.
+- `restaurant-deliveries-qa` — STANDING ORDERS & DELIVERIES (a real
+  restaurant's day, plan F3, developer 2026-10-11; answer: standing orders +
+  the Market). `restaurant/deliveries.ts`, state `business.deliveries`
+  (clamped by `deliveriesOf`). From L21 two standing orders, switched on in
+  Restaurant → Suppliers (`StandingOrdersCard`): FRESH (protein, herbs,
+  dairy, bakery, fruit, vegetables) on every even restaurant day, for the
+  next 2 days; WEEKLY (slow goods for 7 days + a week of cleaning supplies
+  and a case of dish soap / cleaning liquid when a week's worth isn't in)
+  on each week's first day. The order is worked out at closing from the
+  Market plan (`marketPlanFor` — usable stock only, fridge room) and arrives
+  with the morning: `afterNight` (Closing Time's close, the sim) places
+  "day-kind" once and delivers each pending id once (`delivered` guard —
+  a reload or a second tap changes nothing). Each line is an ordinary
+  Market purchase (App.buyOn's price: bulk tier, supplier, freshness,
+  lb/kg; supplies via `purchaseSupply`) with one ledger entry; a line the
+  wallet or fridge can't take is skipped and listed. Closing Time shows
+  tonight's order (`TonightsOrder`), the opening card what arrived
+  (`MorningDeliveries`). The Market stays for instant buys; Inventory stays
+  read-only. The sim's diligent player runs both orders (its prudent one
+  keeps its $500 reserve: `afterNight(…, keep)`). Completionist $185,318.
+  Browser: `tools/e2e/restaurantdeliveries.mjs`.
 - `restaurant-shift-chores-qa` — SHIFT CHORES (a real restaurant's day,
   plan F2, developer 2026-10-11). From L21 each phase brings its chores as
   Cleanliness tasks (`TASK_RULES` entries with `phase`, `fromLevel`,

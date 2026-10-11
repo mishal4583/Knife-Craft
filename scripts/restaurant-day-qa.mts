@@ -300,7 +300,8 @@ console.log("W. Wiring");
       /if \(pending\?\.opening\) \{\s*beginLevel\(levelId, openDay\(base, pending\.levelNumber\)\)/.test(
         app,
       ) &&
-      /persist\(\s*(?:choresAfterClose\(\s*)?closeDay\(save, restaurantLevelOf\(save\.levelProgress\)\)/.test(
+      // …and the night's standing orders (deliveries.ts afterNight wraps it too).
+      /persist\(\s*(?:afterNight\(\s*)?(?:choresAfterClose\(\s*)?closeDay\(save, restaurantLevelOf\(save\.levelProgress\)\)/.test(
         app,
       ) &&
       /closingDue &&\s*dayCeremonyAt\(restaurantLevelOf\(save\.levelProgress\)\) &&/.test(app),

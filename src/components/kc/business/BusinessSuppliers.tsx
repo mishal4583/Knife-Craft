@@ -1,3 +1,6 @@
+import { StandingOrdersCard } from "../restaurant/Deliveries";
+import type { DeliveryKind } from "@/game/restaurant/deliveries";
+import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
 import { useState } from "react";
 import type { SaveData } from "@/game/SaveManager";
 import { KButton, Panel, Badge } from "../common/primitives";
@@ -41,12 +44,15 @@ export function BusinessSuppliers({
   signSupplierContract,
   cancelSupplierContract,
   selectSupplier,
+  setStandingOrder,
 }: {
   save: SaveData;
   signSupplierContract: (supplierId: string) => SignContractResult;
   cancelSupplierContract: () => CancelContractResult;
   /** Restaurant build: the ingredient supplier lives here (phase 7), not in the Market. */
   selectSupplier?: (id: string) => void;
+  /** Restaurant build: the standing orders (restaurant/deliveries.ts). */
+  setStandingOrder?: (kind: DeliveryKind, on: boolean) => void;
 }) {
   const [message, setMessage] = useState<string | null>(null);
   const currentDay = save.business.calendar.businessDay;
@@ -94,6 +100,13 @@ export function BusinessSuppliers({
     <div className="space-y-3">
       {RESTAURANT_MODE && selectSupplier ? (
         <IngredientSupplier save={save} selectSupplier={selectSupplier} />
+      ) : null}
+      {RESTAURANT_MODE && setStandingOrder ? (
+        <StandingOrdersCard
+          save={save}
+          level={restaurantLevelOf(save.levelProgress)}
+          onToggle={setStandingOrder}
+        />
       ) : null}
       {RESTAURANT_MODE && supplierCreditOf(save).taken > 0 ? (
         <SupplierCreditCard save={save} />

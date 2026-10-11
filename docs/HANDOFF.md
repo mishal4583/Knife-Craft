@@ -906,7 +906,13 @@ Not implemented (from the audits, all CSS/asset-free):
    `restaurantdayclock.mjs`. F2 shipped: shift chores (opening / lull /
    closing) as Cleanliness tasks, once per day and phase, checklists on the
    Pre-Service Check and Closing Time, staff do theirs;
-   `restaurant-shift-chores-qa`, e2e `restaurantshift.mjs`.
+   `restaurant-shift-chores-qa`, e2e `restaurantshift.mjs`. F3 shipped:
+   standing orders (fresh every 2 days, weekly) delivered with the morning,
+   each id once, the Market's price, skipped lines listed;
+   `restaurant-deliveries-qa`, e2e `restaurantdeliveries.mjs`. (2026-10-11:
+   the session's sandbox proxy began refusing `bridge.playgama.com`, so the
+   F3 browser run used a local-only Bridge stand-in, never committed;
+   `pgbridge.mjs` needs the real CDN and was not run.)
 
 ## 6b. Current state (2026-10-09, end of session)
 

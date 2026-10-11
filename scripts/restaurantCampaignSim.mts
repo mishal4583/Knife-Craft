@@ -105,6 +105,11 @@ import {
 } from "../src/game/restaurant/serviceSupplies.ts";
 import { closeServiceReport, restaurantRecordOf } from "../src/game/restaurant/serviceReport.ts";
 import {
+  DELIVERIES_FROM,
+  afterNight,
+  setStandingOrder,
+} from "../src/game/restaurant/deliveries.ts";
+import {
   cleanAll,
   cleanerRound,
   choresAfterClose,
@@ -281,11 +286,13 @@ function playLevel(save: SaveData, n: number, opts: SimOptions, stats: Stats): S
           const b = buySupply(s, line.id, 1);
           if (b.ok) s = persist(b.s, stats, `${where} closing buy ${line.id}`);
         }
+    // A real restaurant's day (plan F3): the diligent player runs standing orders.
+    const lvl = restaurantLevelOf(s.levelProgress);
+    if (profile === "diligent" && lvl >= DELIVERIES_FROM)
+      s = setStandingOrder(setStandingOrder(s, "fresh", true), "weekly", true);
     s = persist(
-      choresAfterClose(
-        closeDay(s, restaurantLevelOf(s.levelProgress)),
-        restaurantLevelOf(s.levelProgress),
-      ).save,
+      // A prudent player's standing order never spends their reserve.
+      afterNight(choresAfterClose(closeDay(s, lvl), lvl).save, lvl, opts.reserve ?? 0).save,
       stats,
       `${where} closing`,
     );

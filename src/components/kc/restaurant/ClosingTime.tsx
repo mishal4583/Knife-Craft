@@ -1,3 +1,4 @@
+import { TonightsOrder } from "./Deliveries";
 import type { ScreenId } from "@/components/kc/data";
 import { openMarketSupplies } from "@/components/kc/marketFocus";
 import { getSupplyItem } from "@/game/business/businessSupplies";
@@ -98,6 +99,8 @@ export function ClosingTime({
               }
             />
           ) : null}
+
+          <TonightsOrder save={save} level={restaurantLevel} />
 
           {p.spoiled ? (
             <p

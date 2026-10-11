@@ -1,3 +1,4 @@
+import { afterNight, setStandingOrder, type DeliveryKind } from "@/game/restaurant/deliveries";
 import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { Preparation, preloadPreparation } from "@/components/kc/game/lazyPreparation";
 import { ReplayBonusSheet, AdPlayingShield } from "@/components/kc/ReplayBonusSheet";
@@ -882,6 +883,12 @@ export function App() {
     const result = applyCleanlinessAction(save, action);
     if (result.save !== save) persist(result.save);
     return result;
+  }
+
+  /** Restaurant → Suppliers: switch a standing order on or off (deliveries.ts). No money moves. */
+  function setStandingOrderOn(kind: DeliveryKind, on: boolean) {
+    if (!save) return;
+    persist(setStandingOrder(save, kind, on));
   }
 
   /** Settings: the unit weighed ingredients are shown and sold in (business/measure.ts). */
@@ -2870,6 +2877,7 @@ export function App() {
               buyStaff={buyStaff}
               selectSupplier={selectSupplier}
               cleanlinessAction={cleanlinessAction}
+              setStandingOrder={setStandingOrderOn}
               setEquippedKnife={setEquippedKnife}
               setEquippedBoard={setEquippedBoard}
               toggleSetting={toggleSetting}
@@ -2913,9 +2921,13 @@ export function App() {
             onClose={() => {
               closingHoldRef.current = false;
               // Tomorrow morning's opening chores come with the new day (once).
+              // …and the night's standing orders arrive with the morning (deliveries.ts, once).
               persist(
-                choresAfterClose(
-                  closeDay(save, restaurantLevelOf(save.levelProgress)),
+                afterNight(
+                  choresAfterClose(
+                    closeDay(save, restaurantLevelOf(save.levelProgress)),
+                    restaurantLevelOf(save.levelProgress),
+                  ).save,
                   restaurantLevelOf(save.levelProgress),
                 ).save,
               );

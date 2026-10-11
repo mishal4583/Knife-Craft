@@ -1,3 +1,4 @@
+import { MorningDeliveries } from "./Deliveries";
 import {
   TASK_RULES,
   cleanlinessOf,
@@ -146,13 +147,16 @@ export function ServiceCheckLayer({
       }
       chores={
         cleanlinessAction ? (
-          <ShiftChecklist
-            save={save}
-            phase={plan.opening ? "opening" : "lull"}
-            onAction={cleanlinessAction}
-            onBuy={(id) => openMarketSupplies(go, getSupplyItem(id)?.section ?? "cleaning", id)}
-            onOpenCleanliness={() => go("business-cleanliness")}
-          />
+          <>
+            {plan.opening ? <MorningDeliveries save={save} /> : null}
+            <ShiftChecklist
+              save={save}
+              phase={plan.opening ? "opening" : "lull"}
+              onAction={cleanlinessAction}
+              onBuy={(id) => openMarketSupplies(go, getSupplyItem(id)?.section ?? "cleaning", id)}
+              onOpenCleanliness={() => go("business-cleanliness")}
+            />
+          </>
         ) : null
       }
       onOpenCleanliness={() => go("business-cleanliness")}
