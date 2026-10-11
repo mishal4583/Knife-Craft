@@ -539,6 +539,18 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   `cleanSettingFor` (cover 100 + guests served). Inventory's "For service"
   explains it. The migration crate tops up a moving save's tableware by
   dish. Browser: `tools/e2e/restaurantsupplies.mjs`.
+- `restaurant-day-clock-qa` — THE DAY CLOCK (developer 2026-10-11: a real
+  restaurant's day). `restaurant/dayClock.ts` (read-only, from
+  `restaurantDay` + `servicesForDayAt`): the phase — opening (the day not
+  open yet), lull (between services), closing (last service done) — the
+  next service (k/n), the weekday (Day 1 = Monday, 7-day weeks) and the
+  light: the next service's time of day (Breakfast dawn, Brunch morning,
+  Lunch midday, Afternoon Tea afternoon, Dinner evening, Late Supper late),
+  night at closing. The Kitchen (restaurant build) shows the day strip
+  ("Day 12 · Fri · ☀️ Lunch next (2/3)", `data-testid="day-strip"`) above
+  Today's Order and an opacity-only light tint over the kitchen art
+  (`data-day-light`); Closing Time has a night sky. Browser:
+  `tools/e2e/restaurantdayclock.mjs`.
 - `restaurant-cleanliness-qa` — CLEANLINESS & MAINTENANCE (developer
   2026-10-10; restaurant build). Restaurant → 🧹 Cleanliness tab
   (`business-cleanliness`, `BusinessCleanliness.tsx`). Cleaning starts with

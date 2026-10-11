@@ -892,6 +892,18 @@ Not implemented (from the audits, all CSS/asset-free):
    day: 2 to L20, 3 from L21 (+ Breakfast), 4 from L51 (+ Afternoon Tea),
    5 from L101 (+ Brunch), 6 from L161 (+ Late Supper). Tests changed to the
    new rules are listed in the commit.
+69. A REAL RESTAURANT'S DAY — plan (developer 2026-10-11; `/root/.claude/plans`
+   copy in the session): F1 day clock + day/night light, F2 shift chores
+   (opening / lull / closing checklists, staff), F3 standing orders and
+   deliveries (fresh every 2 days, weekly; Market stays for instant buys),
+   F4 a par audit every 14 days + deep cleans. Answers: standing orders +
+   Market; week 7 / "month" 14 days; checklists with Do all, staff do theirs,
+   never blocking; clock + lighting. Binding: idempotent phases and
+   deliveries (never twice after save/load), deep clean is an extra task on
+   its days only, pars from usable stock, Inventory stays read-only.
+   F1 shipped: `restaurant/dayClock.ts`, the Kitchen day strip and light,
+   the night sky at Closing Time; `restaurant-day-clock-qa`, e2e
+   `restaurantdayclock.mjs`.
 
 ## 6b. Current state (2026-10-09, end of session)
 

@@ -1,3 +1,4 @@
+import { dayClockFor, dayStripText, type DayLight } from "@/game/restaurant/dayClock";
 import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
 import { ENDLESS_RESTAURANT_NAME } from "@/game/restaurant/endlessRestaurant";
 import { useContext, useEffect, useState } from "react";
@@ -113,6 +114,18 @@ function pickTodayLevel(levelProgress: LevelProgress) {
   return lastUnlocked ?? levels[0]!;
 }
 
+/** The kitchen's light by time of day (dayClock.ts): a soft gradient over the art. */
+const DAY_LIGHT_TINT: Record<DayLight, string> = {
+  dawn: "linear-gradient(180deg,rgba(255,176,128,0.28) 0%,rgba(255,214,170,0.10) 55%,transparent 100%)",
+  morning: "linear-gradient(180deg,rgba(255,236,190,0.18) 0%,transparent 60%)",
+  midday: "transparent",
+  afternoon:
+    "linear-gradient(180deg,rgba(255,196,96,0.20) 0%,rgba(255,170,70,0.08) 70%,transparent 100%)",
+  evening: "linear-gradient(180deg,rgba(255,128,64,0.26) 0%,rgba(120,50,40,0.22) 100%)",
+  late: "linear-gradient(180deg,rgba(70,60,140,0.34) 0%,rgba(40,30,70,0.30) 100%)",
+  night: "linear-gradient(180deg,rgba(16,26,72,0.55) 0%,rgba(10,14,40,0.45) 100%)",
+};
+
 export function Kitchen({
   go,
   save,
@@ -157,6 +170,8 @@ export function Kitchen({
     !todayCompleted &&
     todayNumber >= INGREDIENT_LIST_FROM &&
     hasLevelGoals(todayNumber);
+  // The day clock (restaurant build): which phase of the day it is, and its light.
+  const clock = RESTAURANT_MODE ? dayClockFor(save, reached) : null;
   const closedUntil = (id: ScreenId) =>
     RESTAURANT_MODE && !isTabOpen(id, reached) ? tabOpensAt(id) : null;
 
@@ -170,6 +185,16 @@ export function Kitchen({
   return (
     <div className="relative h-full w-full overflow-hidden bg-cream">
       <KitchenBackground skin={equippedUpgrade.asset} />
+      {/* The day clock (restaurant build): the light of the next service's time of day,
+          night at closing — an opacity-only tint over the same art (dayClock.ts). */}
+      {clock ? (
+        <div
+          aria-hidden
+          data-day-light={clock.light}
+          className="pointer-events-none absolute inset-0 transition-[background] duration-700 motion-reduce:transition-none"
+          style={{ background: DAY_LIGHT_TINT[clock.light] }}
+        />
+      ) : null}
       <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(62,40,25,0.42)_0%,transparent_22%,transparent_44%,rgba(62,40,25,0.55)_100%)]" />
       <DustMotes count={18} />
 
@@ -280,6 +305,15 @@ export function Kitchen({
           real headroom instead of a razor-thin margin. No scrolling, no
           smaller type — same card, same style, more breathing room. */}
       <div className="absolute inset-x-0 bottom-[104px] z-20 px-5">
+        {clock ? (
+          <p
+            data-testid="day-strip"
+            data-day-phase={clock.phase}
+            className="mx-auto mb-2 w-fit max-w-full truncate rounded-full border border-ivory/25 bg-walnut-dark/70 px-3 py-1.5 font-ui text-[12.5px] font-extrabold text-ivory shadow-soft backdrop-blur-sm"
+          >
+            {dayStripText(clock)}
+          </p>
+        ) : null}
         <div className="paper anim-up relative mx-auto -rotate-[0.8deg] rounded-[18px] border border-walnut/20 p-3.5 shadow-lift">
           <div className="flex items-center justify-between">
             <p className="font-ui text-[10px] font-extrabold uppercase tracking-[0.2em] text-copper">

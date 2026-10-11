@@ -29,7 +29,15 @@ export function ClosingTime({
   const change = p.cashAtOpening === null ? null : p.cashNow - p.cashAtOpening;
   return (
     <div className="absolute inset-0 z-40 flex items-end justify-center" data-testid="closing-time">
-      <div className="absolute inset-0 bg-walnut-dark/55 backdrop-blur-[2px]" />
+      {/* Night falls (the day clock, 2026-10-11): a night sky behind the closing card. */}
+      <div
+        className="absolute inset-0 backdrop-blur-[2px]"
+        data-day-light="night"
+        style={{
+          background:
+            "radial-gradient(circle at 82% 12%,rgba(255,244,214,0.55) 0 22px,transparent 23px),linear-gradient(180deg,rgba(14,22,62,0.86) 0%,rgba(30,24,52,0.72) 55%,rgba(48,30,24,0.62) 100%)",
+        }}
+      />
       <div className="anim-up relative m-3 flex max-h-[calc(100%-24px)] w-[calc(100%-24px)] flex-col rounded-[26px] border border-walnut/20 bg-[linear-gradient(170deg,var(--color-ivory),var(--color-cream))] shadow-lift">
         <div className="px-5 pb-2 pt-4">
           <p className="font-ui text-[12.5px] font-extrabold uppercase tracking-[0.14em] text-walnut/60">
