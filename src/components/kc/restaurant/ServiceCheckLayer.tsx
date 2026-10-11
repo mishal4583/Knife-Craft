@@ -1,4 +1,5 @@
 import { MorningDeliveries } from "./Deliveries";
+import { ParAuditCard } from "./ParAuditCard";
 import {
   TASK_RULES,
   cleanlinessOf,
@@ -149,6 +150,15 @@ export function ServiceCheckLayer({
         cleanlinessAction ? (
           <>
             {plan.opening ? <MorningDeliveries save={save} /> : null}
+            {plan.opening ? (
+              <ParAuditCard
+                save={save}
+                level={n}
+                onBuy={(id, packs) =>
+                  openMarketSupplies(go, getSupplyItem(id)?.section ?? "service", id, packs)
+                }
+              />
+            ) : null}
             <ShiftChecklist
               save={save}
               phase={plan.opening ? "opening" : "lull"}

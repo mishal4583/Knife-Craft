@@ -37,6 +37,7 @@ import { dishServiceFor } from "./dishService";
 import { isSystemLive } from "./restaurantProgression";
 import { restaurantDayOf } from "./restaurantDay";
 import { bottleView, restaurantSuppliesOf, tablesFor } from "./serviceSupplies";
+import { isAuditDay } from "./parAudit";
 
 /**
  * Cleaning starts with this level's service (developer 2026-10-10: "from level
@@ -74,7 +75,11 @@ export type TaskKind =
   | "mop-all"
   | "restroom-disinfect"
   | "condiments"
-  | "polish-cutlery";
+  | "polish-cutlery"
+  // … and, on the designated days, the deep cleans (plan F4).
+  | "deep-kitchen"
+  | "deep-restroom"
+  | "deep-dining";
 
 /** The day's phases that bring their own chores (dayClock.ts's phases). */
 export type ShiftPhase = "opening" | "lull" | "closing";
@@ -100,7 +105,15 @@ export type TaskRule = {
   fromLevel?: number;
   /** Who does it when hired (default the Cleaner, in their areas). */
   staff?: ChoreStaff;
+  /**
+   * A deep clean: an EXTRA closing task only on its designated days (the
+   * week's last day, every DEEP_CLEAN_EVERY; the par audit's day, every
+   * AUDIT_EVERY). It never replaces a daily chore.
+   */
+  deep?: DeepClean;
 };
+
+export type DeepClean = "weekly" | "audit";
 
 export const TASK_RULES: Record<TaskKind, TaskRule> = {
   equipment: {
@@ -332,7 +345,67 @@ export const TASK_RULES: Record<TaskKind, TaskRule> = {
     fromLevel: 31,
     staff: "server",
   },
+  // Deep cleans (a real restaurant's weekly / monthly deep clean, developer 2026-10-11):
+  // their own task kinds, so each is added once and its supplies used once.
+  "deep-kitchen": {
+    area: "kitchen",
+    label: "Deep clean: descale the dish machine, boil out the fryer",
+    short: "Deep kitchen",
+    icon: "🧽",
+    uses: [
+      { id: "disinfectant", n: 3 },
+      { id: "sponges-cloths", n: 2 },
+    ],
+    tools: [],
+    routine: true,
+    phase: "closing",
+    fromLevel: 31,
+    deep: "weekly",
+  },
+  "deep-restroom": {
+    area: "restroom",
+    label: "Deep clean: scrub the restroom tiles and grout",
+    short: "Deep restroom",
+    icon: "🧽",
+    uses: [
+      { id: "disinfectant", n: 2 },
+      { id: "floor-cleaner", n: 2 },
+    ],
+    tools: ["toilet-brushes"],
+    routine: true,
+    phase: "closing",
+    fromLevel: 31,
+    deep: "weekly",
+  },
+  "deep-dining": {
+    area: "dining",
+    label: "Deep clean: the walk-in shelves and the seat upholstery",
+    short: "Deep dining",
+    icon: "🧽",
+    uses: [
+      { id: "disinfectant", n: 2 },
+      { id: "sponges-cloths", n: 2 },
+    ],
+    tools: [],
+    routine: true,
+    phase: "closing",
+    fromLevel: 31,
+    deep: "audit",
+  },
 };
+
+/** The weekly deep clean: the week's last day (Day 7, 14, 21 …). */
+export const DEEP_CLEAN_EVERY = 7;
+
+/** Whether `day` is a deep-clean day of that kind (the audit's is parAudit.ts's day). */
+export function isDeepCleanDay(kind: DeepClean, day: number): boolean {
+  return kind === "audit" ? isAuditDay(day) : day > 0 && day % DEEP_CLEAN_EVERY === 0;
+}
+
+/** The deep cleans that come with `day`'s closing at `levelNumber` (none on other days). */
+export function deepCleansFor(day: number, levelNumber: number): TaskKind[] {
+  return phaseChores("closing", levelNumber, day).filter((k) => !!TASK_RULES[k].deep);
+}
 
 /** Shift chores (opening / lull / closing) come with the day's ceremony, from Level 21. */
 export const PHASE_CHORES_FROM = 21;
@@ -653,14 +726,17 @@ export function cleanerRound(save: SaveData): { save: SaveData; cleaned: TaskKin
   return { save: s, cleaned };
 }
 
-/** The shift chores a phase brings at `levelNumber` (from PHASE_CHORES_FROM). */
-export function phaseChores(phase: ShiftPhase, levelNumber: number): TaskKind[] {
+/**
+ * The shift chores a phase brings at `levelNumber` (from PHASE_CHORES_FROM);
+ * a deep clean only on its designated `day` (never without a day).
+ */
+export function phaseChores(phase: ShiftPhase, levelNumber: number, day?: number): TaskKind[] {
   if (levelNumber < PHASE_CHORES_FROM) return [];
-  return TASK_KINDS.filter(
-    (k) =>
-      TASK_RULES[k].phase === phase &&
-      levelNumber >= (TASK_RULES[k].fromLevel ?? PHASE_CHORES_FROM),
-  );
+  return TASK_KINDS.filter((k) => {
+    const rule = TASK_RULES[k];
+    if (rule.phase !== phase || levelNumber < (rule.fromLevel ?? PHASE_CHORES_FROM)) return false;
+    return !rule.deep || (day !== undefined && isDeepCleanDay(rule.deep, day));
+  });
 }
 
 /**
@@ -676,7 +752,7 @@ export function addPhaseChores(
   day: number,
   servicesDone: number,
 ): SaveData {
-  const kinds = phaseChores(phase, levelNumber);
+  const kinds = phaseChores(phase, levelNumber, day);
   if (kinds.length === 0) return save;
   const st = cleanlinessOf(save);
   const key = `${day}:${phase}:${servicesDone}`;

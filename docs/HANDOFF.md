@@ -912,7 +912,12 @@ Not implemented (from the audits, all CSS/asset-free):
    `restaurant-deliveries-qa`, e2e `restaurantdeliveries.mjs`. (2026-10-11:
    the session's sandbox proxy began refusing `bridge.playgama.com`, so the
    F3 browser run used a local-only Bridge stand-in, never committed;
-   `pgbridge.mjs` needs the real CDN and was not run.)
+   `pgbridge.mjs` needs the real CDN and was not run.) F4 shipped: the
+   14-day par audit on the opening card (tableware 2.5 a seat, the menu's
+   tools, Buy → Market; read-only) and the deep cleans (weekly kitchen +
+   restroom, dining on the audit day; extra tasks, once, supplies once);
+   `restaurant-par-audit-qa`, e2e `restaurantparaudit.mjs` (also on the
+   local Bridge stand-in).
 
 ## 6b. Current state (2026-10-09, end of session)
 

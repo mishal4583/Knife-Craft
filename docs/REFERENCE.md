@@ -560,6 +560,27 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   read-only. The sim's diligent player runs both orders (its prudent one
   keeps its $500 reserve: `afterNight(…, keep)`). Completionist $185,318.
   Browser: `tools/e2e/restaurantdeliveries.mjs`.
+- `restaurant-par-audit-qa` — PAR AUDIT & DEEP CLEANS (a real restaurant's
+  day, plan F4, developer 2026-10-11; answer: the "month" is 14 days).
+  `restaurant/parAudit.ts`: from L31, every `AUDIT_EVERY` = 14 restaurant
+  days (Day 14, 28 …) the opening card (`ParAuditCard`) counts the
+  tableware against its par — ceil(2.5 × seats) of each place-setting piece
+  (and glasses, and any other piece the menu has made part of the kit),
+  the table accessories per table — and the kitchen tools against the
+  menu's own tool check (`toolsCheck`). Counted from what is OWNED (broken
+  pieces have already left the stock). What's short is listed with Buy →
+  that exact Market line (packs preset); read-only, no save writes, no
+  money. Deep cleans (`cleanliness.ts`, rule field `deep`): EXTRA closing
+  tasks only on their days — `deep-kitchen` (descale the dish machine,
+  boil out the fryer) and `deep-restroom` (tiles and grout) on the week's
+  last day (every `DEEP_CLEAN_EVERY` = 7), `deep-dining` (walk-in shelves,
+  upholstery) on the audit day — never replacing a daily chore. Their own
+  task kinds, so the day's `day:phase:services` key adds them once and
+  `cleanTask` uses their (bigger) supplies once; the Cleaner does them in
+  their areas; left undone they stay open like any closing chore. The
+  Kitchen day strip marks "📋 Par audit" and "🧽 Deep clean tonight".
+  Completionist $185,172 (the deep cleans' supplies; was $185,318).
+  Browser: `tools/e2e/restaurantparaudit.mjs`.
 - `restaurant-shift-chores-qa` — SHIFT CHORES (a real restaurant's day,
   plan F2, developer 2026-10-11). From L21 each phase brings its chores as
   Cleanliness tasks (`TASK_RULES` entries with `phase`, `fromLevel`,

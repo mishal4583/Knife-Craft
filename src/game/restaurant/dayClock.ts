@@ -18,6 +18,8 @@ import type { SaveData } from "../SaveManager";
 import { dayOfWeekFor } from "../business/businessCalendar";
 import { restaurantDayOf } from "./restaurantDay";
 import { servicesForDayAt } from "./restaurantProgression";
+import { deepCleansFor } from "./cleanliness";
+import { AUDIT_FROM, isAuditDay } from "./parAudit";
 
 export type DayPhase = "opening" | "lull" | "closing";
 
@@ -57,6 +59,10 @@ export type DayClock = {
   next: { name: string; index: number } | null;
   servicesDone: number;
   light: DayLight;
+  /** Today's closing brings a deep clean (cleanliness.ts, the week's last day / the audit day). */
+  deepClean: boolean;
+  /** Today is a par audit day (parAudit.ts; the opening card counts the stock). */
+  audit: boolean;
 };
 
 /** Where the restaurant's day stands (`restaurantLevel`: the next level to play). */
@@ -81,16 +87,22 @@ export function dayClockFor(save: SaveData, restaurantLevel: number): DayClock {
     next: nextName ? { name: nextName, index: nextIndex + 1 } : null,
     servicesDone: d.servicesDone,
     light: phase === "closing" || !nextName ? "night" : (SERVICE_LIGHT[nextName] ?? "midday"),
+    deepClean: deepCleansFor(d.day, start).length > 0,
+    audit: start >= AUDIT_FROM && isAuditDay(d.day),
   };
 }
 
 /** The day strip's line, e.g. "Day 12 · Tue · ☀️ Lunch next (2/4)". */
 export function dayStripText(c: DayClock): string {
   const head = `Day ${c.day} · ${c.weekday.slice(0, 3)}`;
-  if (c.phase === "closing") return `${head} · 🌙 Closing time`;
-  if (!c.next) return head;
+  // The day's extra jobs: the par audit (opening) and the deep clean (closing).
+  const extra =
+    (c.audit && c.phase === "opening" ? " · 📋 Par audit" : "") +
+    (c.deepClean ? (c.phase === "closing" ? " · 🧽 Deep clean" : " · 🧽 Deep clean tonight") : "");
+  if (c.phase === "closing") return `${head} · 🌙 Closing time${extra}`;
+  if (!c.next) return head + extra;
   const icon = SERVICE_ICON[c.next.name] ?? "🍽️";
   return c.phase === "opening"
-    ? `${head} · ${icon} Opening: ${c.next.name} first (${c.services.length} services)`
-    : `${head} · ${icon} ${c.next.name} next (${c.next.index}/${c.services.length})`;
+    ? `${head} · ${icon} Opening: ${c.next.name} first (${c.services.length} services)${extra}`
+    : `${head} · ${icon} ${c.next.name} next (${c.next.index}/${c.services.length})${extra}`;
 }

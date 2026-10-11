@@ -131,7 +131,8 @@ once). Restaurant browser tests run on the normal build, classic ones on a
   `restaurant-tools-qa`, `restaurant-tableware-qa`,
   `restaurant-takeaway-qa`, `restaurant-service-report-qa`,
   `restaurant-cleanliness-qa`, `restaurant-day-clock-qa`,
-  `restaurant-shift-chores-qa`, `restaurant-deliveries-qa` (browser:
+  `restaurant-shift-chores-qa`, `restaurant-deliveries-qa`,
+  `restaurant-par-audit-qa` (browser:
   `tools/e2e/restaurant*.mjs`).
 - Campaign / UX: `story-intro-qa`, `story-pause-qa`,
   `campaign-paid-orders-qa`, `level-ux-qa`, `coaching-qa`,
