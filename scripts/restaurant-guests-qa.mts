@@ -90,11 +90,12 @@ assert(
   menuGuestsPerService(10) === 0 &&
     menuGuestsPerService(11) === 1 &&
     menuGuestsPerService(21) === 2 &&
-    menuGuestsPerService(51) === 3 &&
-    menuGuestsPerService(121) === 4 &&
-    menuGuestsPerService(250) === 5 &&
+    // +1 from L51 (economy F3, developer 2026-10-12).
+    menuGuestsPerService(51) === 4 &&
+    menuGuestsPerService(121) === 5 &&
+    menuGuestsPerService(250) === 6 &&
     menuGuestQueue(saveAt(10), lv(10)).length === 0,
-  "G1: no guests before the menu opens; 1 / 2 / 3 / 4 / 5 from L11 / 21 / 51 / 121 / 201",
+  "G1: no guests before the menu opens; 1 / 2 / 4 / 5 / 6 from L11 / 21 / 51 / 121 / 201",
 );
 
 console.log("M. Menu control");

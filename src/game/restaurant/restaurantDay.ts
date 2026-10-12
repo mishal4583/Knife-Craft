@@ -51,7 +51,7 @@ import {
   type BottleView,
   type ClosingSupply,
 } from "./serviceSupplies";
-import { paySpecialists } from "./staffRequirements";
+import { payHalfWages, paySpecialists } from "./staffRequirements";
 import { appendLedgerEntry } from "../economy/EconomyLedger";
 
 export type RestaurantDayState = {
@@ -187,7 +187,8 @@ export function closingPreview(save: SaveData, levelNumber: number): ClosingPrev
 /**
  * Closes the restaurant for the night and starts the next day (not open
  * yet). Only when closing is due. `levelNumber` is the restaurant's level
- * (which closing stage applies). No money moves before full operation.
+ * (which closing stage applies). Before full operation only the L41–90 half
+ * wages move money (payHalfWages).
  */
 export function closeDay(save: SaveData, levelNumber: number): SaveData {
   const d = restaurantDayOf(save);
@@ -229,6 +230,8 @@ export function closeDay(save: SaveData, levelNumber: number): SaveData {
       },
     };
   }
+  // L41–90: half wages at closing (economy F2, developer 2026-10-12).
+  next = payHalfWages(next, levelNumber).save;
   next = closingWipeDown(next, levelNumber).save;
   next = closingSupplies(next, levelNumber);
   return withDay(next, { ...DEFAULT_RESTAURANT_DAY_STATE, day: d.day + 1 });

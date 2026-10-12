@@ -9,7 +9,13 @@ import { getAllStaffDefinitions, dailyPayroll } from "@/game/business/businessSt
 import type { BuyStaffResult } from "@/game/economy/StaffManager";
 import { KitchenHelpers } from "./KitchenHelpers";
 import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
-import { SPECIALIST_CHEFS, restaurantStaffOf } from "@/game/restaurant/staffRequirements";
+import {
+  HALF_WAGES_FROM,
+  SPECIALIST_CHEFS,
+  halfPay,
+  halfWage,
+  restaurantStaffOf,
+} from "@/game/restaurant/staffRequirements";
 import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
 import { isSystemLive, restaurantSystem } from "@/game/restaurant/restaurantProgression";
 
@@ -78,6 +84,9 @@ export function BusinessStaff({
   const wagesFrom = restaurantSystem("full-operation").firstLevel;
   const wagesStarted =
     !restaurantTeams || isSystemLive("full-operation", restaurantLevelOf(save.levelProgress));
+  // Economy F2 (developer 2026-10-12): half pay at closing from L41 until full operation.
+  const halfWages =
+    restaurantTeams && !wagesStarted && restaurantLevelOf(save.levelProgress) >= HALF_WAGES_FROM;
   return (
     <div className="space-y-3">
       {restaurantTeams ? (
@@ -92,7 +101,7 @@ export function BusinessStaff({
           <TeamHeading
             id="restaurant-team"
             title="🍽️ Restaurant Team"
-            line="Waged staff. Hiring is free; from Level 91 their pay is charged at closing."
+            line="Waged staff. Hiring is free; half pay is charged at closing from Level 41, full pay from Level 91."
           />
         </>
       ) : null}
@@ -104,9 +113,13 @@ export function BusinessStaff({
           </span>
         </div>
         <p className="mt-1 font-display text-[22px] font-black leading-none text-walnut-dark">
-          {formatUsd(wagesStarted ? payroll : 0)}
+          {formatUsd(wagesStarted ? payroll : halfWages ? halfPay(hiredRoles) : 0)}
           <span className="font-hand text-[16px] font-normal text-walnut/60">
-            {wagesStarted ? " per day" : ` a day until Level ${wagesFrom}`}
+            {wagesStarted
+              ? " per day"
+              : halfWages
+                ? ` a day (half pay until Level ${wagesFrom})`
+                : ` a day until Level ${HALF_WAGES_FROM}`}
           </span>
         </p>
         {!wagesStarted ? (
@@ -114,10 +127,12 @@ export function BusinessStaff({
             className="mt-1 font-ui text-[12.5px] font-extrabold text-olive"
             data-testid="staff-free-until"
           >
-            Free to hire and free to keep until Level {wagesFrom}
+            {halfWages
+              ? `Free to hire; half pay at closing until Level ${wagesFrom}`
+              : `Free to hire and free to keep until Level ${HALF_WAGES_FROM}; half pay until Level ${wagesFrom}`}
             {payroll > 0
               ? ` — then ${formatUsd(payroll)}/day for this team.`
-              : " — wages start then."}
+              : " — full wages start then."}
           </p>
         ) : null}
         <p className="mt-1.5 font-hand text-[15px] leading-snug text-walnut/65">
@@ -163,7 +178,7 @@ export function BusinessStaff({
                   </>
                 ) : (
                   <>
-                    Free now
+                    {halfWages ? `${formatUsd(halfWage(def.role))}/day now` : "Free now"}
                     <span className="font-bold text-walnut/60">
                       {" "}
                       · {formatUsd(def.salary)}/day from Lv {wagesFrom}

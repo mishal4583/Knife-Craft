@@ -939,7 +939,17 @@ Not implemented (from the audits, all CSS/asset-free):
    `levelux.mjs` 5 and `restaurantfirstlevels.mjs` 5 (Level Complete before
    the milestone), `level-ux-qa` N2, `story-legacy-qa` W3,
    `restaurant-progress-qa` F5 (a real Music toggle now), `story-intro-qa`
-   D7 label. `levelflow.mjs` times out in this sandbox on
+   D7 label. Economy F2 + F3 built after the simulation study (half wages
+   L41–90 skipped when unaffordable; +1 menu guest from L51; completionist
+   $187,057); `restaurant-half-wages-qa`; `restaurant-guests-qa` G1 and e2e
+   `restaurantprogression` 5c updated to the new rules.
+   The sim's prudent player now also keeps the next closing's half wages in
+   hand (`restaurantCampaignSim.reserveFor`), so `restaurant-final-economy-qa`
+   S3 keeps its $450 line (lowest $464, ends $187,046). The extra tables only
+   menu guests need now warn instead of blocking START (guests are
+   optional; F3 had made a migrated L60 save unable to start without
+   buying a 4th table) — `restaurant-tableware-qa` T1 updated to the rule.
+   `levelflow.mjs` times out in this sandbox on
    untouched HEAD too (its fresh-player wait outlasts the intro); with a
    runner-only domcontentloaded wait it passes 12/12 on both.
 

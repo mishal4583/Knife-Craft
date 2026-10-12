@@ -28,7 +28,11 @@
  */
 import type { SaveData } from "../SaveManager";
 import type { RecipeDefinition } from "../recipes/recipeTypes";
-import { BUSINESS_STAFF_CATALOG, type BusinessStaffRole } from "../business/businessStaff";
+import {
+  BUSINESS_STAFF_CATALOG,
+  dailyPayroll,
+  type BusinessStaffRole,
+} from "../business/businessStaff";
 import { debitWallet } from "../economy/wallet";
 import { appendLedgerEntry } from "../economy/EconomyLedger";
 import { addSpecialistWagesToLatestDay } from "../business/businessDayHistory";
@@ -197,6 +201,46 @@ export function paySpecialists(
   // Paid right after End Business Day: part of that day's wages in the 30-day history.
   next = addSpecialistWagesToLatestDay(next, total);
   return { save: next, paid: total, laidOff: [] };
+}
+
+/** Staff are first required at L41 (the Prep Cook); half wages run from here to full operation. */
+export const HALF_WAGES_FROM = 41;
+
+/** One role's half daily wage (whole cents). */
+export const halfWage = (role: BusinessStaffRole): number => Math.round(dailyPayroll([role]) / 2);
+/** A team's half wages a day (what closing charges L41–90 when the wallet covers each). */
+export const halfPay = (roles: readonly BusinessStaffRole[]): number =>
+  roles.reduce((n, r) => n + halfWage(r), 0);
+
+/**
+ * Closing between L41 and full operation (L91) — economy decision F2,
+ * developer 2026-10-12: each hired waged role is paid HALF its daily wage,
+ * one "business-staff-salary" entry per role (description = the role id).
+ * A wage the wallet can't cover is skipped that day — no charge, no entry,
+ * the staff stay (never debt). Specialist chefs are unchanged (paid from
+ * L91, paySpecialists). From full operation the normal payroll applies.
+ */
+export function payHalfWages(
+  save: SaveData,
+  levelNumber: number,
+): { save: SaveData; paid: number; skipped: string[] } {
+  if (levelNumber < HALF_WAGES_FROM || isSystemLive("full-operation", levelNumber))
+    return { save, paid: 0, skipped: [] };
+  let next = save;
+  let paid = 0;
+  const skipped: string[] = [];
+  for (const role of save.business.staff.hiredRoles) {
+    const wage = halfWage(role);
+    if (wage <= 0) continue;
+    const debit = debitWallet(next, wage);
+    if (!debit.ok) {
+      skipped.push(role);
+      continue;
+    }
+    next = appendLedgerEntry(debit.save, "business-staff-salary", -wage, role);
+    paid += wage;
+  }
+  return { save: next, paid, skipped };
 }
 
 // ── Requirements for a service ──────────────────────────────────────────

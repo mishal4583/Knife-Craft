@@ -530,9 +530,10 @@ export const CLOSING_CHORES: readonly { id: string; label: string; fromLevel: nu
 export const MENU_GUESTS_SCHEDULE: readonly { fromLevel: number; guests: number }[] = [
   { fromLevel: 11, guests: 1 },
   { fromLevel: 21, guests: 2 },
-  { fromLevel: 51, guests: 3 },
-  { fromLevel: 121, guests: 4 },
-  { fromLevel: 201, guests: 5 },
+  // +1 menu guest from L51 (economy F3, developer 2026-10-12): 3/4/5 → 4/5/6.
+  { fromLevel: 51, guests: 4 },
+  { fromLevel: 121, guests: 5 },
+  { fromLevel: 201, guests: 6 },
 ];
 
 /** How many menu guests a service of `levelNumber` can take (0 before L6). */

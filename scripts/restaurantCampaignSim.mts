@@ -136,6 +136,7 @@ import { kitchenGuestSeats } from "../src/game/restaurant/restaurantInvestments.
 import { restaurantLevelOf } from "../src/game/restaurant/restaurantMenu.ts";
 import { coverWithCredit } from "../src/game/restaurant/serviceCover.ts";
 import { repayFromEarnings, supplierCreditOf } from "../src/game/restaurant/supplierCredit.ts";
+import { HALF_WAGES_FROM, halfPay } from "../src/game/restaurant/staffRequirements.ts";
 import { levelOrderEarnings } from "../src/game/levels/levelEarnings.ts";
 import { giveGrandmasLeftovers } from "../src/game/restaurant/grandmasFridge.ts";
 import { giveGrandmasTools } from "../src/game/restaurant/kitchenTools.ts";
@@ -272,6 +273,21 @@ function drain(s: SaveData): SaveData {
 }
 
 /** Plays one level the way App does; returns the save after its completion. */
+/**
+ * A prudent player's reserve (`opts.reserve`) also sets aside the next
+ * closing's half wages from L41 until full operation (economy F2, developer
+ * 2026-10-12) — a careful owner keeps the wage bill in hand.
+ */
+function reserveFor(opts: SimOptions, s: SaveData, n: number): number {
+  const base = opts.reserve ?? 0;
+  if (!base) return 0;
+  const wagesDue =
+    n >= HALF_WAGES_FROM && !isSystemLive("full-operation", n)
+      ? halfPay(s.business.staff.hiredRoles)
+      : 0;
+  return base + wagesDue;
+}
+
 function playLevel(save: SaveData, n: number, opts: SimOptions, stats: Stats): SaveData {
   const profile: Profile = opts.profile === "completionist" ? "diligent" : opts.profile;
   const level = getLevel(`level-${n}`)!;
@@ -292,7 +308,7 @@ function playLevel(save: SaveData, n: number, opts: SimOptions, stats: Stats): S
       s = setStandingOrder(setStandingOrder(s, "fresh", true), "weekly", true);
     s = persist(
       // A prudent player's standing order never spends their reserve.
-      afterNight(choresAfterClose(closeDay(s, lvl), lvl).save, lvl, opts.reserve ?? 0).save,
+      afterNight(choresAfterClose(closeDay(s, lvl), lvl).save, lvl, reserveFor(opts, s, n)).save,
       stats,
       `${where} closing`,
     );
@@ -349,7 +365,7 @@ function playLevel(save: SaveData, n: number, opts: SimOptions, stats: Stats): S
   if (opts.dayStock && profile === "diligent") {
     const day = dayStockFor(s, level);
     // Optional: a prudent player (reserve) stocks the whole day only while it keeps its reserve.
-    const reserve = opts.reserve ?? 0;
+    const reserve = reserveFor(opts, s, n);
     if (day && day.fits && day.affordable && s.credits - day.totalCost >= reserve)
       for (const row of day.rows) {
         const bought = buyIngredient(s, row.ingredientId, row.buyUnits);
@@ -393,7 +409,7 @@ function playLevel(save: SaveData, n: number, opts: SimOptions, stats: Stats): S
   if (profile === "diligent") {
     for (const g of plan.guests.rows) {
       // Optional stock: a prudent player (reserve) buys it only while it keeps its reserve.
-      if (s.credits - g.cost < (opts.reserve ?? 0)) continue;
+      if (s.credits - g.cost < reserveFor(opts, s, n)) continue;
       const bought = buyIngredient(s, g.ingredientId, g.buyUnits);
       if (bought.ok) s = persist(bought.s, stats, `${where} guest stock`);
     }
@@ -622,7 +638,7 @@ function playLevel(save: SaveData, n: number, opts: SimOptions, stats: Stats): S
   }
   s = persist(next, stats, `${where} complete`);
   if (opts.profile === "completionist")
-    s = buyEverything(s, stats, where, opts.shop ?? "all", opts.reserve ?? 0);
+    s = buyEverything(s, stats, where, opts.shop ?? "all", reserveFor(opts, s, n));
   if (!isCompleted(level.id, s.levelProgress)) stats.blocked.push(`${where}: not completed`);
   else stats.levels++;
   return s;

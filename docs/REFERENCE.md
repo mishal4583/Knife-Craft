@@ -568,6 +568,17 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   read-only. The sim's diligent player runs both orders (its prudent one
   keeps its $500 reserve: `afterNight(…, keep)`). Completionist $185,318.
   Browser: `tools/e2e/restaurantdeliveries.mjs`.
+- `restaurant-half-wages-qa` — ECONOMY F2 + F3 (developer 2026-10-12): from
+  L41 until full operation each hired waged role is paid half its daily wage
+  at closing (`staffRequirements.payHalfWages`, one `business-staff-salary`
+  entry per role; skipped that day when the wallet can't cover it, staff
+  stay); +1 menu guest per service from L51 (4 / 5 / 6 at 51 / 121 / 201).
+  Completionist $185,172 → $187,057; the Staff screen says "half pay".
+  With it, the tables' pieces (`serviceSuppliesCheck`): only the orders' own
+  tables block START; the extra tables the menu guests need are a
+  non-blocking "for menu guests" warning (menu guests are optional) — so an
+  existing L51+ save never gets stuck on the extra guest's table
+  (`restaurant-tableware-qa` T1, e2e `restaurantmigration` 4).
 - `restaurant-par-audit-qa` — PAR AUDIT & DEEP CLEANS (a real restaurant's
   day, plan F4, developer 2026-10-11; answer: the "month" is 14 days).
   `restaurant/parAudit.ts`: from L31, every `AUDIT_EVERY` = 14 restaurant

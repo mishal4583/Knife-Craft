@@ -784,22 +784,35 @@ export function serviceSuppliesCheck(
     if ((need.get(id) ?? 0) > clean) continue;
     rows.push({ ...row(save, id, `${item.name} · for menu guests`, n, spare, false), guest: true });
   }
-  // The tables (durable pieces) for the orders and the menu guests.
+  // The tables (durable pieces): the orders' tables block; the extra tables only
+  // the menu guests need warn (menu guests are optional and never block START —
+  // developer 2026-10-12, with the extra menu guest from L51).
   if (dineIn > 0 && opts.recipes) {
+    const orderTables = tablesFor(dineIn);
     const tables = tablesFor(dineIn + (opts.guests ?? 0));
     for (const t of SERVICE_SUPPLY_RULES.tablePieces) {
       if (levelNumber < t.fromLevel) continue;
       const item = getSupplyItem(t.id)!;
-      rows.push(
-        row(
-          save,
-          t.id,
-          `${item.name} · ${tables} ${tables === 1 ? "table" : "tables"}`,
-          tables * t.perTable,
-          supplyUnits(stock, t.id),
-          true,
-        ),
-      );
+      const have = supplyUnits(stock, t.id);
+      const label = (n: number) => `${item.name} · ${n} ${n === 1 ? "table" : "tables"}`;
+      const ordersShort = have < orderTables * t.perTable;
+      if (ordersShort || have >= tables * t.perTable) {
+        // Blocking: the orders' own tables are short (or everything is set — a ready row).
+        const n = ordersShort ? orderTables : tables;
+        rows.push(row(save, t.id, label(n), n * t.perTable, have, true));
+      } else {
+        rows.push({
+          ...row(
+            save,
+            t.id,
+            `${label(tables)} · for menu guests`,
+            tables * t.perTable,
+            have,
+            false,
+          ),
+          guest: true,
+        });
+      }
     }
   }
   if (takeaway > 0 && opts.recipes) {

@@ -13,9 +13,12 @@ SUPERSEDED (replaced by a later rule; kept for the record).
 (`restaurantProgression.ts`); nothing changed. Revisit only if playtesting shows
 a problem.
 
-**Candidates under simulation, NOT decided or implemented** (2026-10-12): F1
-suppliers (Wholesale −15 % / −1 freshness day), F2 half wages from L41, F3 +1
-menu guest per service from L51 — results reported for approval first.
+**F2 + F3 BUILT** (developer 2026-10-12, after the simulation study):
+completionist $185,172 → $187,057. **F1 (suppliers) NOT built**: as specified
+(Wholesale −1 freshness day) it soft-locks Wholesale at L12 (purchases only
+accept 0–7 freshness days); the alternative (Wholesale −15 %, Premium quality
++1 %) awaits a decision. Provisional values (row 21, 28) await the Level 1–60
+playtest.
 
 | # | Interaction | Status | Why it needs the economy pass |
 |---|---|---|---|
@@ -26,13 +29,13 @@ menu guest per service from L51 — results reported for approval first.
 | 4 | Cleaning liquid (new line: $51.49 / 4 gal retail × 0.65; 10% per closing) | BUILT (phase G) | Usage rate and effect (none yet beyond the warning; inspections later?). |
 | 5 | Tableware: reusable place settings (plate + fork + knife) with washing; no breakage | BUILT (phase G) | Any loss rate is a cost. Grandma's spare settings (cost 0) when the wallet can't cover them. |
 | 6 | Takeaway packaging in campaign orders (~30% of orders from L71: container + bag) | BUILT (phase G) | Same packs as Business; takeaway share. |
-| 7 | Staff wages during the campaign — staff are now REQUIRED as the restaurant grows (Prep Cook L41, Server L46, Line Cook L61, Cleaner L91, Head Chef L121, Manager L161, by service size; `restaurant/staffRequirements.ts`). Hiring is free; wages are paid only at closing from L91 (End Business Day), so L41–90 staff cost nothing | BUILT (behind the switch) | Waged staff cost more than they earn; free staff before L91 is a gap. |
+| 7 | Staff wages during the campaign — staff are now REQUIRED as the restaurant grows (Prep Cook L41, Server L46, Line Cook L61, Cleaner L91, Head Chef L121, Manager L161, by service size; `restaurant/staffRequirements.ts`). Hiring is free; wages are paid only at closing from L91 (End Business Day), so L41–90 staff cost nothing | BUILT (behind the switch) | **DECIDED + BUILT (F2, developer 2026-10-12)**: from L41 to full operation each hired role is paid HALF its daily wage at closing (`staffRequirements.payHalfWages`, one ledger entry per role; skipped that day when the wallet can't cover it — no debt). Full payroll from L91 unchanged. Completionist −$828 (simulated and in `restaurant-final-economy-qa`). |
 | 8 | Two staff systems (one-time helpers vs waged roles) | **DECIDED** (economy audit, developer 2026-10-12) — keep both. Implemented: only the label (F4): the helpers are "Kitchen Upgrades", the roles the "Restaurant Team"; no rule changed | Helpers stay one-off stock/quality upgrades; roles stay the waged team. Their values are part of the later tuning (F5). |
 | 9 | Two supplier systems (campaign COGS ±10% vs Business contracts/events) | BUILT (restaurant build: the ingredient supplier's ±10% sets Market ingredient prices, row 26; chosen on Restaurant → Suppliers, phase 7). **Premium kept** (developer 2026-10-06): +10% price, stock stays fresh **+1 day** and orders get a **+2% quality bonus** (`restaurantEconomy.SUPPLIER_EFFECTS`, PROVISIONAL) | Exact Premium percentages in the final economy pass; Wholesale stays cheapest, Local the baseline. Contracts/events still stack on top. |
 | 10 | Fridge upgrades as campaign needs — **final pass: whole-day stocking** (`preServiceCheck.dayStockFor`) fills the bigger fridges (completionist peak 21.5/40 at L50, 61/140 at L91, 101/140 at L250); service-by-service stocking still fits the Basic | BUILT | $2,000 / $4,800 against a buy-everything player's $10–31 around L20–50. |
 | 11 | Equipment condition and maintenance in the campaign | **DECIDED** (economy audit, developer 2026-10-12) — no new campaign system; nothing implemented | The campaign's wear stays knife sharpness (`sharpness.ts`); fridge condition / maintenance stays Endless (Business) only. |
 | 12 | Waste / spoilage in the campaign | **DECIDED** (economy audit, developer 2026-10-12) — no separate waste cost line; nothing new implemented | Already built: expired stock is unusable and thrown out (`campaignStock.ts`, `discardExpired.ts`) — the lost stock value IS the cost. A waste-prone profile is measured in the F1–F3 simulations. |
-| 13 | Menu orders inside campaign levels (menu prices) next to level settlements — menu guests pay `businessCustomerPayment` (menu price × popularity), up to 1–5 per service | BUILT (phase D) | Two price models in one service. |
+| 13 | Menu orders inside campaign levels (menu prices) next to level settlements — menu guests pay `businessCustomerPayment` (menu price × popularity), up to 1–5 per service | BUILT (phase D) | Two price models in one service. | **F3 BUILT (developer 2026-10-12): +1 menu guest per service from L51 (4 / 5 / 6 at 51 / 121 / 201); batch-group levels still none.**
 | 14 | Endless Restaurant (after L250): the Business engine with demand scaled by what the player built (`restaurant/endlessDemand.ts`, row 27); the old Endless Service economy is not used | BUILT (behind the switch) | Tuned, see below. |
 | 15 | Random orders and demand (customers per day) | **DECIDED** (economy audit, developer 2026-10-12) — the campaign stays deterministic; nothing new implemented | Campaign tickets and menu guests follow fixed, seeded schedules; demand modelling stays in Endless (`endlessDemand.ts`, row 27). A schedule change (+1 menu guest from L51) is candidate F3, not decided. |
 | 16 | Starter crate for existing saves (phase M): the next 3 services' ingredients, place settings, 100 napkins, a bottle of soap and of cleaning liquid, takeaway packaging — goods at cost 0, once | BUILT (behind the switch) | Their value; ingredients at cost 0 lower the average unit cost. |

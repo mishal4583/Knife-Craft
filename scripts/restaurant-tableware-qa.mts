@@ -231,11 +231,13 @@ console.log("T. Tables");
       ["menu-stands", "salt-pepper", "napkin-holders", "water-jugs"].every((id) =>
         ids(check).includes(id as SupplyId),
       ) &&
-      salt?.need === 6 &&
+      // Developer 2026-10-12 (with F3's extra menu guest): only the orders' own
+      // table(s) block; the extra tables for menu guests warn (guests are optional).
+      salt?.need === 2 &&
       salt.blocking &&
       !ids(t31).includes("water-jugs") &&
       ids(t31).includes("menu-stands"),
-    "T1: 2 orders + 3 guests = 3 tables → 3 menu stands, 6 shakers, 3 napkin holders, 3 water jugs (jugs from L46) — blocking",
+    "T1: 2 orders + 3 guests — the orders' 1 table blocks (2 shakers, a menu stand, napkin holder, water jug — jugs from L46); the guests' extra tables only warn",
   );
 }
 

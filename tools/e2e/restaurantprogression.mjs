@@ -350,11 +350,12 @@ const after47 = await page.evaluate(() => ({
   ),
 }));
 check(
-  "5c only staff missing: the check names who, its button hires, Staff marks them (free until L91), hiring is free, back → open",
+  "5c only staff missing: the check names who, its button hires, Staff marks them (half pay until L91), hiring is free, back → open",
   /This service needs: Prep Cook, Server/.test(only.notice) &&
     only.footer === "Hire Prep Cook & Server →" &&
     JSON.stringify(staffView.needed) === JSON.stringify(["prep-cook", "server"]) &&
-    /free to keep until Level 91/.test(staffView.free) &&
+    // Economy F2 (developer 2026-10-12): half pay at closing from L41 until L91.
+    /half pay at closing until Level 91/.test(staffView.free) &&
     staffView.teamTop >= 0 &&
     staffView.teamTop < 200 &&
     save47.credits === credits47 &&
