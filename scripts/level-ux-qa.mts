@@ -97,11 +97,14 @@ console.log("N. Level Complete notice (A1/A2)");
     "N1: the reward notice is no longer dropped when a story banner fires; the reward ledger entry is unchanged",
   );
   assert(
-    /\{levelRewardNotice && !storyEvent \?/.test(app) &&
+    // W4 (developer 2026-10-12): a milestone banner now waits for this card; the
+    // finale and THE LAST PAGE still come first.
+    /\{levelRewardNotice && \(!storyEvent \|\| storyEvent\.kind === "milestone"\) \?/.test(app) &&
+      /storyEvent\?\.kind === "milestone" && !levelRewardNotice \?/.test(app) &&
       /label: "Order payout"/.test(app) &&
       /label: "Completion reward"/.test(app) &&
       /label: "Earned this level"/.test(app),
-    "N2: it shows after the story banner, with Order payout, Completion reward and Earned this level",
+    "N2: it shows before a milestone banner (after the finale / THE LAST PAGE), with Order payout, Completion reward and Earned this level",
   );
 }
 

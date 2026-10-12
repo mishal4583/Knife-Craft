@@ -123,6 +123,13 @@ export type MilestoneDef = { bit: number; at: number; kicker: string; line: stri
  * frozen, see FINALE's own doc) — Level 250 gets one more forward-only
  * milestone beat, the same mechanism Levels 110/120 already used, never
  * a second one-time finale sequence.
+ *
+ * Story for Levels 121–250 (developer 2026-10-11, text approved
+ * verbatim): four more milestones on free mask bits (128/256/512/1024 at
+ * 140/165/190/220), and the bit-64 "CAMPAIGN COMPLETE" banner is retired —
+ * Level 250 now plays LEGACY ("THE LAST PAGE", below), which marks bit 64
+ * along with its own LEGACY_BIT so a save that already saw the old banner
+ * never sees it again. FINALE / FINALE_AT stay exactly as shipped.
  */
 export const MILES: MilestoneDef[] = [
   {
@@ -152,15 +159,82 @@ export const MILES: MilestoneDef[] = [
     line: "Every station, every dish — the kitchen you built runs itself now.",
   },
   {
-    bit: 64,
-    at: 250,
-    kicker: "CAMPAIGN COMPLETE",
-    line: "All 250 levels mastered. Every kitchen this place ever held is still here, all at once.",
+    bit: 128,
+    at: 140,
+    kicker: "A NAME IN TOWN",
+    line: "Strangers come in asking for the house dish by name now.",
+  },
+  {
+    bit: 256,
+    at: 165,
+    kicker: "THE NEXT GENERATION",
+    line: "A young cook asked to learn from me today. I remember asking the same.",
+  },
+  {
+    bit: 512,
+    at: 190,
+    kicker: "ONE OF THE BEST",
+    line: "The city guide put us on its list. The first page.",
+  },
+  {
+    bit: 1024,
+    at: 220,
+    kicker: "THE OLD RECIPE BOOK",
+    line: "I found their old recipe book in the cellar. The last page is blank.",
   },
 ];
 
-/** Full mask value once all 7 milestones have fired — ported verbatim from the source's own regression-harness mute value for the first 4, extended for the Progression pass's two, then Phase 6's own. Stays correct only while there are exactly 7 milestones. */
-export const MILES_FULL_MASK = 127;
+/** The retired Level 250 "CAMPAIGN COMPLETE" banner's bit — marked with LEGACY_BIT, never shown again. */
+export const RETIRED_CAMPAIGN_COMPLETE_BIT = 64;
+
+/** Full mask value once every milestone (and the retired 250 banner) has fired — derived, so it can't go stale. */
+export const MILES_FULL_MASK = MILES.reduce(
+  (mask, m) => mask | m.bit,
+  RETIRED_CAMPAIGN_COMPLETE_BIT,
+);
 
 /** The finale's own gate — ported verbatim from `n >= 100`. */
 export const FINALE_AT = 100;
+
+/**
+ * LEGACY — "THE LAST PAGE", the Level 250 ending (developer 2026-10-11,
+ * text approved verbatim). Plays once through StoryOverlay like FINALE,
+ * gated on LEGACY_BIT in `story.milestoneMask` (no new save field). The
+ * narrative never names the grandparent ("they"), never reuses FINALE's
+ * frozen lines, and "We did it." never appears.
+ */
+export const LEGACY: StoryBeat[] = [
+  {
+    tint: "sThrive",
+    art: "keys",
+    artClass: "sProp",
+    fx: "dust",
+    hold: 4200,
+    lines: ["Every recipe they ever wrote is in here.", "Except the last page."],
+  },
+  {
+    tint: "sThrive",
+    hold: 4400,
+    lines: ["Two hundred and fifty dishes later,", "you know what belongs on it."],
+  },
+  {
+    tint: "sThrive",
+    veil: true,
+    art: "dining",
+    hold: 4600,
+    lines: ["It isn’t a recipe.", "It’s this room. Full, every night."],
+  },
+  {
+    tint: "sThrive",
+    veil: true,
+    art: "dining",
+    fx: "spark",
+    title: "THE LAST PAGE",
+    quote: "They asked you to keep it alive. You did more than that.",
+    btn: "BACK TO THE KITCHEN",
+  },
+];
+
+/** LEGACY's own bit in `story.milestoneMask`, and the completed-level count that plays it. */
+export const LEGACY_BIT = 2048;
+export const LEGACY_AT = 250;

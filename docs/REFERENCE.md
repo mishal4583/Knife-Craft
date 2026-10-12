@@ -153,6 +153,14 @@ and `playgama-bridge-config.json` beside it before uploading.
 Focused suites (`npx tsx scripts/<name>.mts`):
 
 - `story-intro-qa` — intro pacing, Skip story, story save semantics.
+- `audio-qa` — the synthesized sound (W3): the ten named effects, the shared
+  gate (platform audio, pause, ad, Sound off), music only after a
+  gesture and with Music on, one loop, bounded nodes, seeded score, wiring.
+- `story-legacy-qa` — the story for Levels 121–250 and THE LAST PAGE (§9):
+  the approved text, a fresh 0 → 250 run (every beat once, in order), the
+  catch-up rule (saves at 120/145/150/170/200/249), once-only after
+  dismissal / reload / replay, saves already at 250, story-only changes, the
+  App wiring.
 - `campaign-paid-orders-qa` — a multi-order level (or batch group) saves
   each order it pays (`levelProgress.paidOrders`, `levels/paidOrders.ts`):
   a retry carries on from there, a level never pays more orders than it
@@ -1265,9 +1273,56 @@ not silently removed.
   ignored. The finale's last button, "BACK TO THE KITCHEN", ends on the
   Kitchen home screen (`App.finishFinale`; developer decision #21). Every
   path that plays the finale has already paid and saved the level.
-- Milestones (Level 10/20/45/70/110/120/250) and the Level-100 finale are
-  unchanged. `SaveData.story = { introDone, milestoneMask, finaleSeen }` —
-  no new fields.
+- Milestones at 10/20/45/70/110/120 and the Level-100 finale are unchanged.
+  **Story for Levels 121–250** (developer 2026-10-11, text approved
+  verbatim): milestones at 140 "A NAME IN TOWN", 165 "THE NEXT GENERATION",
+  190 "ONE OF THE BEST", 220 "THE OLD RECIPE BOOK" (mask bits
+  128/256/512/1024), and at 250 **THE LAST PAGE** — `LEGACY`, a 4-beat
+  `StoryOverlay` sequence like the finale (existing `keys` / `dining` art),
+  gated on mask bit 2048; it retires the old one-line 250 "CAMPAIGN
+  COMPLETE" banner (bit 64, marked with it). Order at 250: THE LAST PAGE →
+  the Level Complete card → the Family Legacy $50,000 banner, once each; no
+  interstitial or Replay Bonus behind it (`afterLevelFinished`), Closing
+  Time held while it plays. Its flag is saved before it shows
+  (`applyStoryFlush`), so a dismissal, reload or replay never repeats it.
+  A save that finished 250 before it existed plays it once on the next load
+  (`legacyPendingOnLoad`; no money or ledger change). **Catch-up**
+  (`StoryManager.CATCHUP_WINDOW` = 10): a milestone more than 10 completed
+  levels behind is marked seen silently; at most one banner per completion
+  (the newest in the window); the finale and THE LAST PAGE are never
+  skipped. The story never names "Grandma" ("they"), never reuses the
+  finale's frozen lines. `SaveData.story = { introDone, milestoneMask,
+  finaleSeen }` — no new fields. QA `story-legacy-qa`; browser
+  `tools/e2e/legacy.mjs` (classic, finishing the 250th level) and
+  `restaurantlegacy.mjs` (restaurant, the on-load path).
+- **First load (W2, developer 2026-10-12):** a new player's intro runs alone
+  — Level 1 is not mounted under it (no hidden Phaser scene); its kitchen
+  picture (`KitchenPlate`, the same `kitchen-bg.jpg` framing Preparation
+  draws) lies underneath, so the outro dissolves into it, and is the
+  gameplay Suspense fallback while the engine loads. The Preparation chunk is
+  fetched 1.2 s into the intro (`INTRO_PRELOAD_DELAY_MS`); `game_ready` is
+  sent on the intro's first frame (still once). Measured (local, slow-phone
+  emulation 1.6 Mbps / 4× CPU): game_ready 6.3 s → 0.63 s. Not done: moving
+  the campaign data (levels, recipes) out of the startup chunk — 27 modules
+  import it synchronously, several build catalogs at load; a separate,
+  approved refactor. Guards: `lazy-load-qa` L4/L5, e2e `firstload.mjs`.
+- **Sound (W3):** `AudioManager` has an effects bus and a music bus; named
+  synthesized effects (`playSfx`: tap, coin, till, bell, plate, delivery,
+  lightsOff, squeak, levelComplete, story) from existing hooks (KButton,
+  ledger growth in App, Preparation mount, MorningDeliveries, Closing Time,
+  cleanliness actions, story events); a seeded kitchen-jazz loop
+  (`setMusicMood`: kitchen, cutting = ducked, night = Closing Time, off =
+  intro / finale / THE LAST PAGE), never before a user gesture, one loop,
+  silent while paused (the platform's pause covers a hidden page — preflight
+  forbids our own Page Visibility use), during an ad or with platform audio
+  off. Settings: Sound and Music toggles (the existing `settings.music` key).
+- **Story polish (W4):** the outro dissolves into Level 1's kitchen (above);
+  beats may declare `fx` (dust / spark / coins) — CSS particles, off under
+  reduced motion (THE LAST PAGE uses dust and spark; the finale is
+  untouched); dialogue portraits 88 px; card text ≥ 11–12 px; light lines on
+  the dark "decline" tint; milestone banners sit below the screen headers
+  (`top-[13%]`) and wait for the Level Complete card (the finale and THE
+  LAST PAGE still come first).
 - Intro screenshots: `playgama/screenshots/intro/`.
 - **Cooking clip** — after EVERY preparation, once the chef's hands have
   carried the plate away (RECIPE_COMPLETED) and before the Knife Report,

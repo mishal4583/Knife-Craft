@@ -86,5 +86,34 @@ if (fs.existsSync("dist/index.html")) {
   );
 } else console.log("  (L3 skipped: no dist/ — run npm run build first)");
 
+// W2 first load (developer 2026-10-12): a new player's intro runs alone — no Level 1
+// underneath, the cutting engine fetched only once the film is up, game_ready on the
+// intro's first frame (sent once; PlayablesSDK.gameReady is idempotent).
+{
+  const app = read("src/App.tsx");
+  assert(
+    /\{showIntro \? \(\s*introPlate \? \(\s*<KitchenPlate \/>\s*\) : null\s*\) : showServicePrep/.test(
+      app,
+    ) &&
+      /if \(showIntro\) \{\s*const t = setTimeout\(\(\) => \{\s*preloadPreparation\(\);/.test(
+        app,
+      ) &&
+      /if \(!showIntro\) return;\s*const raf = requestAnimationFrame\(\(\) => requestAnimationFrame\(\(\) => gameReady\(\)\)\);/.test(
+        app,
+      ) &&
+      /let gameReadySent = false;[\s\S]*?if \(gameReadySent\) return;/.test(
+        read("src/game/PlayablesSDK.ts"),
+      ),
+    "L4: nothing mounts under the intro; Phaser is fetched after the intro is up; game_ready on the intro, once",
+  );
+  if (fs.existsSync("dist/index.html")) {
+    const html = read("dist/index.html");
+    assert(
+      !/Preparation-[^"]*\.js/.test(html),
+      "L5: index.html never preloads the cutting engine (Preparation chunk)",
+    );
+  }
+}
+
 console.log(failures ? `LAZY LOAD QA: ${failures} FAILURE(S)` : "LAZY LOAD QA: ALL PASS");
 process.exit(failures ? 1 : 0);

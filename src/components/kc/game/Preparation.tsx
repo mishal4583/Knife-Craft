@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { paidLevelReward } from "@/game/levels/levelRewards";
 import { GameBridge, type GameBridgeEvent } from "@/game/GameBridge";
 import { PauseManager } from "@/game/PauseManager";
+import { AudioManager } from "@/game/AudioManager";
 import { gameReady, levelPaused, levelResumed } from "@/game/PlayablesSDK";
 import {
   INGREDIENTS,
@@ -240,6 +241,9 @@ export function Preparation({
 
   const idealPaths = useRef<CutPath[]>([]);
   const playerPaths = useRef<CutPath[]>([]);
+
+  // A new order on the pass (W3): Preparation remounts per order, so the bell rings once each.
+  useEffect(() => AudioManager.playSfx("bell"), []);
 
   useEffect(() => {
     // Campaign levels teach their new techniques (coaching.ts); Restaurant

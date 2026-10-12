@@ -918,6 +918,30 @@ Not implemented (from the audits, all CSS/asset-free):
    restroom, dining on the audit day; extra tasks, once, supplies once);
    `restaurant-par-audit-qa`, e2e `restaurantparaudit.mjs` (also on the
    local Bridge stand-in).
+70. FINISHING PLAN · W1 STORY 121–250 (developer 2026-10-11; text approved
+   verbatim, decisions 1 and 2): milestones at 140/165/190/220 and THE LAST
+   PAGE at 250 (replaces the duplicate 250 banner; then Level Complete, then
+   the Family Legacy banner); returning players: milestones > 10 levels
+   behind marked silently, one banner per completion; saves already at 250
+   see THE LAST PAGE once on the next load. No new save field. QA
+   `story-legacy-qa`; e2e `legacy.mjs` (classic), `restaurantlegacy.mjs`.
+   Next in the plan: W2 performance, W3 sound, W4 story polish; W5 economy
+   after the developer's Level 1–60 playtest. Execution rule for this plan:
+   nothing is committed or pushed without the developer's approval.
+71. FINISHING PLAN · W2–W4 (developer 2026-10-12, built together, not yet
+   committed): W2 first load (no Level 1 under the intro, engine fetched
+   during it, game_ready on its first frame: slow phone 6.3 s → 0.63 s; the
+   campaign-data split deferred), W3 synthesized sound + kitchen-jazz music
+   (Sound / Music toggles), W4 story polish (kitchen plate under the outro,
+   fx particles, portraits, banners below headers and after Level Complete).
+   QA `audio-qa`, `lazy-load-qa` L4/L5; e2e `firstload.mjs`. Rule-change test
+   updates: `introskip.mjs` 1g + 5e (Level 1 mounts after the film),
+   `levelux.mjs` 5 and `restaurantfirstlevels.mjs` 5 (Level Complete before
+   the milestone), `level-ux-qa` N2, `story-legacy-qa` W3,
+   `restaurant-progress-qa` F5 (a real Music toggle now), `story-intro-qa`
+   D7 label. `levelflow.mjs` times out in this sandbox on
+   untouched HEAD too (its fresh-player wait outlasts the intro); with a
+   runner-only domcontentloaded wait it passes 12/12 on both.
 
 ## 6b. Current state (2026-10-09, end of session)
 

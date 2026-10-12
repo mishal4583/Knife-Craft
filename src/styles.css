@@ -654,3 +654,51 @@ html.kc-reduced-motion .anim-shimmer {
 html.kc-reduced-motion .kc-ambient {
   display: none;
 }
+
+/* Story beat particles (W4, developer 2026-10-12): the `fx` a beat declares —
+   dust motes, warm sparks or coins — CSS transform/opacity only, decorative,
+   off under reduced motion (the OS setting or the in-game one). */
+@keyframes kc-fx-float {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale(0.8);
+  }
+  20% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--kc-fx-dx, 8px), -120px, 0) scale(1);
+  }
+}
+.kc-fx {
+  position: absolute;
+  bottom: 18%;
+  border-radius: 9999px;
+  pointer-events: none;
+  animation: kc-fx-float var(--kc-fx-dur, 4s) ease-out infinite;
+  animation-delay: var(--kc-fx-delay, 0s);
+}
+.kc-fx-dust {
+  width: 4px;
+  height: 4px;
+  background: rgba(255, 244, 222, 0.85);
+}
+.kc-fx-spark {
+  width: 5px;
+  height: 5px;
+  background: radial-gradient(circle, #ffe8a8, rgba(255, 190, 90, 0));
+}
+.kc-fx-coins {
+  width: 9px;
+  height: 9px;
+  background: radial-gradient(circle at 35% 35%, #fff2b0, #d9a637 60%, #a8771c);
+}
+@media (prefers-reduced-motion: reduce) {
+  .kc-fx {
+    display: none;
+  }
+}
+html.kc-reduced-motion .kc-fx {
+  display: none;
+}

@@ -138,7 +138,7 @@ const teams = await page.evaluate(() => {
   };
 });
 check(
-  "3b Staff is one screen in two teams: Kitchen Team, then Restaurant Team (with the specialist chefs)",
+  "3b Staff is one screen in two teams: Kitchen Upgrades, then Restaurant Team (with the specialist chefs)",
   teams.kitchen && teams.restaurant && teams.order && teams.chefs,
   teams,
 );

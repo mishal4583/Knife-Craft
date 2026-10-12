@@ -143,7 +143,7 @@ export function ScreensRouter({
   setStandingOrder: (kind: DeliveryKind, on: boolean) => void;
   setEquippedKnife: (id: string) => void;
   setEquippedBoard: (id: string) => void;
-  toggleSetting: (key: "sound" | "reducedMotion") => void;
+  toggleSetting: (key: "sound" | "music" | "reducedMotion") => void;
   /** Settings: weighed ingredients in lb or kg (business/measure.ts). */
   setMeasure: (measure: Measure) => void;
   resetProgress: () => void;

@@ -260,16 +260,22 @@ await boot(page, at(10));
 await prepareToday();
 const played10 = await playLevel();
 await sleep(600);
+// W4 (developer 2026-10-12): Level Complete first, then the big milestone card.
+const b10 = await bannerText();
+for (let i = 0; i < 30; i++) {
+  if (await page.$('[data-testid="milestone-grand"]')) break;
+  await page.mouse.click(8, 8); // an outside tap dismisses the Level Complete card
+  await sleep(400);
+}
 const grand = await page.evaluate(() =>
   document.querySelector('[data-testid="milestone-grand"]')?.innerText.replace(/\s+/g, " "),
 );
 await shot(page, "first-levels-l10-milestone");
 await page.click('[data-testid="milestone-grand"]');
 await sleep(900);
-const b10 = await bannerText();
 const nav10 = await navState();
 check(
-  "5 Level 10: the big card (Santoku, Maple Board, the menu next), tap → Level Complete with Grandma and the Restaurant open",
+  "5 Level 10: Level Complete with Grandma and the Restaurant open, then the big card (Santoku, Maple Board, the menu next)",
   played10 &&
     /THE ROOM COMES BACK/i.test(grand ?? "") &&
     /Santoku/.test(grand ?? "") &&

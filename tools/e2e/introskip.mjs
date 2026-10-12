@@ -29,7 +29,7 @@ page.on("request", (q) => net.push(q.url()));
 // In-page recorder: every introDone false -> true write (Bridge keeps its
 // storage in localStorage locally), and a timestamped log of the film —
 // overlay in/out, scene changes, subtitle changes, SKIP, outro, and whether
-// Level 1's HUD was already in the page when the outro began.
+// whether Level 1's kitchen plate (not a running level) was under the outro.
 await page.evaluateOnNewDocument(() => {
   window.__introDoneWrites = 0;
   const done = (v) => /introDone\\*"\s*:\s*true/.test(v || "");
@@ -75,6 +75,7 @@ await page.evaluateOnNewDocument(() => {
         outro: outro === "true",
         imgs: +imgs,
         hud: /·\s*(?:\d+\/\d+\s+[a-z-]+|\d+% peeled)/i.test(document.body.innerText),
+        plate: !!document.querySelector('[data-testid="kitchen-plate"]'),
       });
     }
   }).observe(document, { childList: true, subtree: true, attributes: true });
@@ -173,9 +174,13 @@ check(
 );
 const outro = c1.events.find((e) => e.outro);
 check(
-  !!outro && outro.hud && outro.scene === "scene5" && !outro.skip,
-  "1g outro starts on Scene 5 with Level 1 already running underneath (no loading screen)",
-  outro ? `at ${((outro.t - firstImg) / 1000).toFixed(2)} s, HUD ${outro.hud}` : "no outro",
+  // W2 (developer 2026-10-12): nothing runs under the intro any more — Level 1's
+  // own kitchen picture is laid underneath, and Level 1 mounts when the film ends.
+  !!outro && outro.plate && !outro.hud && outro.scene === "scene5" && !outro.skip,
+  "1g outro starts on Scene 5 over Level 1's kitchen plate (no loading screen, no hidden level running)",
+  outro
+    ? `at ${((outro.t - firstImg) / 1000).toFixed(2)} s, plate ${outro.plate}, HUD ${outro.hud}`
+    : "no outro",
 );
 check(
   c1.events.every((e) => e.imgs > 0 || e.t < firstImg),
@@ -292,6 +297,12 @@ for (let i = 0; i < 40; i++) {
   prevScene = after.scene;
 }
 await overlayGone(5000).catch(() => {});
+// W2 (developer 2026-10-12): Level 1 mounts when the film ends — give it a moment to boot.
+await page
+  .waitForFunction(() => /·\s*(?:\d+\/\d+\s+[a-z-]+|\d+% peeled)/i.test(document.body.innerText), {
+    timeout: 15000,
+  })
+  .catch(() => {});
 s = await state();
 check(!jumped, "5d tapping through never skips a whole scene");
 check(

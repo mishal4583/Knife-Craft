@@ -4,7 +4,18 @@ Spec §48: every new economic interaction the restaurant integration creates
 is listed here and **not balanced now**. Prices, rewards, wages and formulas
 stay as they are until the separate economy simulation.
 
-Status key: OPEN (not yet built), BUILT (exists, not balanced).
+Status key: OPEN (not yet built), BUILT (exists, not balanced), DECIDED (a
+design choice the developer agreed — says what, if anything, was implemented),
+SUPERSEDED (replaced by a later rule; kept for the record).
+
+**One Asian Chef — DECIDED** (economy audit, developer 2026-10-12): one
+`asian-chef` specialist keeps covering Japanese, Chinese, Thai and Korean
+(`restaurantProgression.ts`); nothing changed. Revisit only if playtesting shows
+a problem.
+
+**Candidates under simulation, NOT decided or implemented** (2026-10-12): F1
+suppliers (Wholesale −15 % / −1 freshness day), F2 half wages from L41, F3 +1
+menu guest per service from L51 — results reported for approval first.
 
 | # | Interaction | Status | Why it needs the economy pass |
 |---|---|---|---|
@@ -16,22 +27,22 @@ Status key: OPEN (not yet built), BUILT (exists, not balanced).
 | 5 | Tableware: reusable place settings (plate + fork + knife) with washing; no breakage | BUILT (phase G) | Any loss rate is a cost. Grandma's spare settings (cost 0) when the wallet can't cover them. |
 | 6 | Takeaway packaging in campaign orders (~30% of orders from L71: container + bag) | BUILT (phase G) | Same packs as Business; takeaway share. |
 | 7 | Staff wages during the campaign — staff are now REQUIRED as the restaurant grows (Prep Cook L41, Server L46, Line Cook L61, Cleaner L91, Head Chef L121, Manager L161, by service size; `restaurant/staffRequirements.ts`). Hiring is free; wages are paid only at closing from L91 (End Business Day), so L41–90 staff cost nothing | BUILT (behind the switch) | Waged staff cost more than they earn; free staff before L91 is a gap. |
-| 8 | Two staff systems (one-time helpers vs waged roles) | OPEN | Which one survives, and its value. |
+| 8 | Two staff systems (one-time helpers vs waged roles) | **DECIDED** (economy audit, developer 2026-10-12) — keep both. Implemented: only the label (F4): the helpers are "Kitchen Upgrades", the roles the "Restaurant Team"; no rule changed | Helpers stay one-off stock/quality upgrades; roles stay the waged team. Their values are part of the later tuning (F5). |
 | 9 | Two supplier systems (campaign COGS ±10% vs Business contracts/events) | BUILT (restaurant build: the ingredient supplier's ±10% sets Market ingredient prices, row 26; chosen on Restaurant → Suppliers, phase 7). **Premium kept** (developer 2026-10-06): +10% price, stock stays fresh **+1 day** and orders get a **+2% quality bonus** (`restaurantEconomy.SUPPLIER_EFFECTS`, PROVISIONAL) | Exact Premium percentages in the final economy pass; Wholesale stays cheapest, Local the baseline. Contracts/events still stack on top. |
 | 10 | Fridge upgrades as campaign needs — **final pass: whole-day stocking** (`preServiceCheck.dayStockFor`) fills the bigger fridges (completionist peak 21.5/40 at L50, 61/140 at L91, 101/140 at L250); service-by-service stocking still fits the Basic | BUILT | $2,000 / $4,800 against a buy-everything player's $10–31 around L20–50. |
-| 11 | Equipment condition and maintenance in the campaign | OPEN | Recurring cost. |
-| 12 | Waste / spoilage in the campaign | OPEN | Lost stock value. |
+| 11 | Equipment condition and maintenance in the campaign | **DECIDED** (economy audit, developer 2026-10-12) — no new campaign system; nothing implemented | The campaign's wear stays knife sharpness (`sharpness.ts`); fridge condition / maintenance stays Endless (Business) only. |
+| 12 | Waste / spoilage in the campaign | **DECIDED** (economy audit, developer 2026-10-12) — no separate waste cost line; nothing new implemented | Already built: expired stock is unusable and thrown out (`campaignStock.ts`, `discardExpired.ts`) — the lost stock value IS the cost. A waste-prone profile is measured in the F1–F3 simulations. |
 | 13 | Menu orders inside campaign levels (menu prices) next to level settlements — menu guests pay `businessCustomerPayment` (menu price × popularity), up to 1–5 per service | BUILT (phase D) | Two price models in one service. |
 | 14 | Endless Restaurant (after L250): the Business engine with demand scaled by what the player built (`restaurant/endlessDemand.ts`, row 27); the old Endless Service economy is not used | BUILT (behind the switch) | Tuned, see below. |
-| 15 | Random orders and demand (customers per day) | OPEN | Volume drives all of the above. |
+| 15 | Random orders and demand (customers per day) | **DECIDED** (economy audit, developer 2026-10-12) — the campaign stays deterministic; nothing new implemented | Campaign tickets and menu guests follow fixed, seeded schedules; demand modelling stays in Endless (`endlessDemand.ts`, row 27). A schedule change (+1 menu guest from L51) is candidate F3, not decided. |
 | 16 | Starter crate for existing saves (phase M): the next 3 services' ingredients, place settings, 100 napkins, a bottle of soap and of cleaning liquid, takeaway packaging — goods at cost 0, once | BUILT (behind the switch) | Their value; ingredients at cost 0 lower the average unit cost. |
-| 17 | **Grandma's pantry** (Pre-Service Check safety net): only when the wallet can't cover the missing stock, the exact missing quantities at cost 0, opt-in, no ledger | BUILT (phase 4) | Free food is value; how often it may be used. |
+| 17 | **Grandma's pantry** (Pre-Service Check safety net): only when the wallet can't cover the missing stock, the exact missing quantities at cost 0, opt-in, no ledger | **SUPERSEDED** (developer 2026-10-10) — from Level 10 a short service is covered by a rewarded ad or, with no ad, supplier credit repaid from the next earnings (`serviceCover.ts`, `supplierCredit.ts`); the pantry remains only before Level 10 | Free food is value; how often it may be used. |
 | 19 | **Closing time** before L91 moves no money; from L91 it is End Business Day (payroll, fines, P&L) | BUILT (phase 5) | When daily costs start in the career. |
 | 20 | Menu prices of the newly unlocked early dishes (the existing 30% food-cost rule) | BUILT | Early menu income once menu orders pay (phase D). |
 | 21 | Bulk discounts — presets 5/25/50/100, PROVISIONAL tiers 3 % from 25, 5 % from 50, 8 % from 100 (`restaurant/bulkBuying.ts`), ingredients and consumable supplies, up to 100 supply packs | BUILT (behind the switch) | The real tiers; how they interact with contracts and the Prep Cook discount. |
 | 22 | Specialist chefs (Indian 51, Mediterranean 71, Mexican 81, Asian 101): free to hire, daily wage = the Line Cook's existing figure, paid at closing from L91 (one `business-staff-salary` entry each; laid off if unaffordable) | BUILT (behind the switch) | Their wage, and whether they earn their keep. |
 | 23 | Menu revenue now starts at L11 (the menu opens there; menu guests from L11 instead of L6) | BUILT (behind the switch) | Early menu income next to level pay. |
-| 24 | Grandma's spares (place settings / packaging at cost 0 when the wallet can't cover what blocks a service) | BUILT (phase G) | Free goods, like the pantry (#17). |
+| 24 | Grandma's spares (place settings / packaging at cost 0 when the wallet can't cover what blocks a service) | **SUPERSEDED** (developer 2026-10-10) — Grandma's spares and Emergency Service were removed; a blocked service is covered by a rewarded ad or supplier credit (`serviceCover.ts`, `supplierCredit.ts`) | Free goods, like the pantry (#17). |
 | 25 | Dish soap low at ≤ 8 washes, cleaning liquid at ≤ 3 closings (warnings only) | BUILT | Usage rates and thresholds. |
 | 26 | **Item effects on real stock** (developer 2026-10-05). Values UNCHANGED, now acting on real ingredients (`restaurant/restaurantEconomy.ts`): knife + board specialisation 3–4 % less stock per matching category (`MAX_TOTAL_COGS_REDUCTION` 8 %; their quality boosts up to 3 % stay quality bonus); Prep Assistant 3 %, Kitchen Assistant 4 % less stock (`MAX_STAFF` 6 %; Quality Chef +1 % quality bonus stays); a dull knife up to +5 % stock (`MAX_SHARPNESS_PENALTY`; a serve never blocks while the un-dulled amount is in stock); Campaign Supplier Wholesale −10 % / Premium +10 % on Market ingredient prices (`supplierPriceFactor`, the purchase charges exactly the card's quote). Completionist $129,324 → $128,063. | BUILT (behind the switch) | Exact percentages in a later tuning pass (developer: "do not rebalance yet"). `restaurant-economy-pass-qa` X1–X5. |
 | 27 | **Endless Restaurant demand** (developer: "Scale demand"). Customers/day = min(DEMAND, CAPACITY): DEMAND = classic 8 × popularity (0.5–1.5) × (1 + cookable dishes ÷ 8), a specialist-cuisine dish counting only while its chef is hired; CAPACITY = chef 10 + Prep Cook 10, Line Cook 13, Head Chef 10, Server 13, Cleaner 3, Manager 5 + 6 per specialist (`ENDLESS_DEMAND_RULES`). Costs untouched (real ingredients at Market prices, packaging, wages incl. specialists — now paid at End Business Day — fines, maintenance). Only saves stamped by the restaurant migration; classic Business demand unchanged. | BUILT (behind the switch) | Five restaurants, 30 days each from the L250 completionist save (`restaurant-endless-qa`): minimum viable **$78/day**, medium **$135**, full menu + thin staff **$276**, fully staffed **$452** (target $300–$600), overstaffed with a 6-dish menu **−$262**. Wages themselves are not rebalanced. |

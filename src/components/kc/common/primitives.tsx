@@ -1,3 +1,4 @@
+import { AudioManager } from "@/game/AudioManager";
 import { formatUsd } from "@/game/money";
 import type { HTMLAttributes, ReactNode } from "react";
 import { cn } from "@/lib/utils";
@@ -41,7 +42,15 @@ export function KButton({
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={
+        onClick
+          ? () => {
+              // A soft wood click on every button (W3; same gate as every sound).
+              AudioManager.playSfx("tap");
+              onClick();
+            }
+          : undefined
+      }
       disabled={disabled}
       className={cn(base, sizes, variants, full && "w-full", disabled && "opacity-45", className)}
     >

@@ -69,7 +69,7 @@ export function BusinessStaff({
     setMessage(result.ok ? null : "That role isn't hired.");
   }
 
-  // Unified Restaurant: ONE Staff screen in two teams — the Kitchen Team
+  // Unified Restaurant: ONE Staff screen in two teams — the Kitchen Upgrades
   // (one-time helpers, permanent, no wages) and the Restaurant Team (waged
   // roles + specialist chefs; pay from Level 91). Same data and actions.
   const restaurantTeams = RESTAURANT_MODE;
@@ -84,8 +84,9 @@ export function BusinessStaff({
         <>
           <TeamHeading
             id="kitchen-team"
-            title="🔪 Kitchen Team"
-            line="One-time hires that stay for good — no wages."
+            // F4 (developer 2026-10-12): one-time helpers read as upgrades, not staff.
+            title="🔪 Kitchen Upgrades"
+            line="One-time helpers that stay for good — no wages."
           />
           <KitchenHelpers save={save} buyStaff={buyStaff} />
           <TeamHeading

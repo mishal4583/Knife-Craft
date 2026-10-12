@@ -232,8 +232,8 @@ export function Settings({
   onResetProgress,
 }: {
   go: (s: ScreenId) => void;
-  settings: { sound: boolean; reducedMotion: boolean; measure?: Measure };
-  onToggleSetting: (key: "sound" | "reducedMotion") => void;
+  settings: { sound: boolean; music?: boolean; reducedMotion: boolean; measure?: Measure };
+  onToggleSetting: (key: "sound" | "music" | "reducedMotion") => void;
   /** Restaurant build: pick lb or kg for weighed ingredients (absent in the classic build). */
   onSetMeasure?: ((measure: Measure) => void) | undefined;
   onResetProgress: () => void;
@@ -246,6 +246,11 @@ export function Settings({
         <div className="space-y-3 px-4">
           <Panel className="divide-y divide-walnut/10 p-1">
             <Toggle label="Sound" on={settings.sound} onToggle={() => onToggleSetting("sound")} />
+            <Toggle
+              label="Music"
+              on={settings.music !== false}
+              onToggle={() => onToggleSetting("music")}
+            />
             <Toggle
               label="Reduced motion"
               on={settings.reducedMotion}

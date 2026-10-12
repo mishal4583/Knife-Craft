@@ -7,7 +7,7 @@
  * Sound toggle feeds `setUserSoundEnabled`; both gates must be open for
  * anything to actually play.
  */
-import { isAdActive, isAudioEnabled, onAudioEnabledChange } from "./PlayablesSDK";
+import { isAdActive, isAudioEnabled, onAdActiveChange, onAudioEnabledChange } from "./PlayablesSDK";
 import { PauseManager } from "./PauseManager";
 import { INGREDIENTS, PLATING, type IngredientId } from "./definitions";
 
@@ -34,7 +34,20 @@ class AudioManagerImpl {
     this.platformEnabled = isAudioEnabled();
     onAudioEnabledChange((enabled) => {
       this.platformEnabled = enabled;
+      this.updateMusic();
     });
+    PauseManager.subscribe(() => this.updateMusic());
+    onAdActiveChange(() => this.updateMusic());
+    if (typeof window !== "undefined") {
+      const onGesture = () => {
+        this.gestured = true;
+        window.removeEventListener("pointerdown", onGesture, true);
+        window.removeEventListener("keydown", onGesture, true);
+        this.updateMusic();
+      };
+      window.addEventListener("pointerdown", onGesture, true);
+      window.addEventListener("keydown", onGesture, true);
+    }
   }
 
   setUserSoundEnabled(enabled: boolean): void {
@@ -50,10 +63,199 @@ class AudioManagerImpl {
     this.init();
     // The platform's audio state AND the player's Sound toggle must both allow
     // it, and nothing plays while the game is paused (in-game or by the
-    // platform) or while a platform ad is on screen.
-    return (
-      this.platformEnabled && this.userSoundEnabled && !PauseManager.isPaused() && !isAdActive()
-    );
+    // platform — a hidden page is the platform's pause), or while an ad is on screen.
+    return this.userSoundEnabled && this.audible;
+  }
+
+  /** Everything but the player's own toggles: the platform's audio, its pause, an ad. */
+  private get audible(): boolean {
+    this.init();
+    return this.platformEnabled && !PauseManager.isPaused() && !isAdActive();
+  }
+
+  // ── Buses (W3, developer 2026-10-12): every effect goes through sfxGain and the
+  // music through musicGain, so both can fade as a whole. ──────────────────
+  private sfxGain: GainNode | null = null;
+  private musicGain: GainNode | null = null;
+  private sfxOut(ctx: AudioContext): GainNode {
+    if (!this.sfxGain) {
+      this.sfxGain = ctx.createGain();
+      this.sfxGain.connect(ctx.destination);
+    }
+    return this.sfxGain;
+  }
+
+  /**
+   * A short named game-world sound (synthesized, no files). Same gate as the
+   * cutting sounds: platform audio, the Sound toggle, not paused, no ad, page
+   * visible. At most one of each name per SFX_MIN_GAP_MS.
+   */
+  playSfx(name: SfxName): void {
+    if (!this.enabled) return;
+    const ctx = this.ensureContext();
+    if (!ctx) return;
+    const nowMs = typeof performance !== "undefined" ? performance.now() : Date.now();
+    if (nowMs - (this.lastSfxAt[name] ?? -Infinity) < SFX_MIN_GAP_MS) return;
+    this.lastSfxAt[name] = nowMs;
+    this.sfxCount++;
+    const t = ctx.currentTime;
+    const out = this.sfxOut(ctx);
+    for (const n of SFX[name]) {
+      const start = t + (n.at ?? 0);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, start);
+      g.gain.exponentialRampToValueAtTime(n.gain, start + (n.attack ?? 0.01));
+      g.gain.exponentialRampToValueAtTime(0.0001, start + n.dur);
+      const lp = ctx.createBiquadFilter();
+      lp.type = n.noise ? "bandpass" : "lowpass";
+      lp.frequency.value = n.filter ?? 2400;
+      if (n.noise) {
+        const src = this.noiseSource(ctx);
+        src.connect(lp).connect(g).connect(out);
+        src.start(start);
+        src.stop(start + n.dur + 0.02);
+      } else {
+        const osc = ctx.createOscillator();
+        osc.type = n.wave ?? "sine";
+        osc.frequency.setValueAtTime(n.freq, start);
+        if (n.to) osc.frequency.exponentialRampToValueAtTime(n.to, start + n.dur);
+        osc.connect(lp).connect(g).connect(out);
+        osc.start(start);
+        osc.stop(start + n.dur + 0.02);
+      }
+    }
+  }
+  private lastSfxAt: Partial<Record<SfxName, number>> = {};
+  /** Effects played so far (tests read it to check a sound is wired). */
+  sfxCount = 0;
+
+  // ── Music: a warm kitchen-jazz loop, scheduled Web Audio notes, seeded ──
+  private userMusicEnabled = true;
+  private mood: MusicMood = "off";
+  private musicTimer: ReturnType<typeof setInterval> | null = null;
+  private nextBarAt = 0;
+  private bar = 0;
+  private musicRand = seededRand(20261012);
+  /** A user gesture has happened (browsers block audio before one; music never starts before it). */
+  private gestured = false;
+  /** Music loops started (one at most is ever running — tests read it). */
+  musicLoopsStarted = 0;
+
+  setUserMusicEnabled(enabled: boolean): void {
+    this.userMusicEnabled = enabled;
+    this.updateMusic();
+  }
+
+  /** What the music should be now: the Kitchen and menus, ducked while cutting, calmer at night, or off. */
+  setMusicMood(mood: MusicMood): void {
+    if (this.mood === mood) return;
+    this.mood = mood;
+    this.updateMusic();
+  }
+
+  get musicPlaying(): boolean {
+    return this.musicTimer !== null;
+  }
+
+  private musicWanted(): boolean {
+    return this.gestured && this.userMusicEnabled && this.mood !== "off" && this.audible;
+  }
+
+  /** Starts the one loop, fades the bus to the mood's level, or fades out and stops. */
+  private updateMusic(): void {
+    if (typeof window === "undefined") return;
+    const ctx = this.musicWanted() ? this.ensureContext() : this.ctx;
+    if (!ctx) return;
+    if (!this.musicGain) {
+      this.musicGain = ctx.createGain();
+      this.musicGain.gain.value = 0.0001;
+      this.musicGain.connect(ctx.destination);
+    }
+    const t = ctx.currentTime;
+    const level = this.musicWanted() ? MUSIC_LEVEL[this.mood] : 0.0001;
+    this.musicGain.gain.cancelScheduledValues(t);
+    this.musicGain.gain.setTargetAtTime(level, t, 0.35);
+    if (this.musicWanted() && !this.musicTimer) {
+      this.musicLoopsStarted++;
+      this.nextBarAt = t + 0.1;
+      this.musicTimer = setInterval(() => this.scheduleMusic(), 200);
+    } else if (!this.musicWanted() && this.musicTimer) {
+      clearInterval(this.musicTimer);
+      this.musicTimer = null;
+    }
+  }
+
+  /** Schedules the bars that start within the next ~0.6 s (one interval, never two). */
+  private scheduleMusic(): void {
+    const ctx = this.ctx;
+    if (!ctx || !this.musicGain) return;
+    if (!this.musicWanted()) return this.updateMusic();
+    while (this.nextBarAt < ctx.currentTime + 0.6) {
+      this.playBar(ctx, this.nextBarAt);
+      const bpm = this.mood === "night" ? 72 : 92;
+      this.nextBarAt += (60 / bpm) * 4;
+      this.bar++;
+    }
+  }
+
+  private playBar(ctx: AudioContext, t: number): void {
+    const out = this.musicGain!;
+    const night = this.mood === "night";
+    const beat = 60 / (night ? 72 : 92);
+    const prog = PROGRESSIONS[Math.floor(this.bar / 4) % PROGRESSIONS.length]!;
+    const chord = prog[this.bar % 4]!;
+    const hz = (m: number) => 440 * Math.pow(2, (m - 69) / 12);
+    // Electric-piano chord: soft sines with a slow fade, on 1 (and a push on the "and" of 2).
+    const hits = night ? [0] : [0, 1.5 + (this.musicRand() < 0.5 ? 0 : 1)];
+    for (const at of hits) {
+      for (const m of chord.slice(1)) {
+        const osc = ctx.createOscillator();
+        osc.type = "sine";
+        osc.frequency.value = hz(m) * (1 + (this.musicRand() - 0.5) * 0.002);
+        const g = ctx.createGain();
+        const s0 = t + at * beat;
+        g.gain.setValueAtTime(0.0001, s0);
+        g.gain.exponentialRampToValueAtTime(0.05, s0 + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, s0 + beat * (night ? 3.6 : 1.8));
+        osc.connect(g).connect(out);
+        osc.start(s0);
+        osc.stop(s0 + beat * (night ? 3.7 : 1.9));
+      }
+    }
+    // Walking bass: a chord tone on each beat (half notes at night).
+    const steps = night ? [0, 2] : [0, 1, 2, 3];
+    for (const b of steps) {
+      const tones = [chord[0]!, chord[0]! + 7, chord[1]! - 12, chord[0]! + 5];
+      const m = b === 0 ? chord[0]! : tones[Math.floor(this.musicRand() * tones.length)]!;
+      const osc = ctx.createOscillator();
+      osc.type = "triangle";
+      osc.frequency.value = hz(m - 12);
+      const g = ctx.createGain();
+      const s0 = t + b * beat;
+      g.gain.setValueAtTime(0.0001, s0);
+      g.gain.exponentialRampToValueAtTime(0.09, s0 + 0.015);
+      g.gain.exponentialRampToValueAtTime(0.0001, s0 + beat * (night ? 1.9 : 0.9));
+      osc.connect(g).connect(out);
+      osc.start(s0);
+      osc.stop(s0 + beat * (night ? 2 : 1));
+    }
+    // Brushes on 2 and 4 (not at night).
+    if (!night) {
+      for (const b of [1, 3]) {
+        const src = this.noiseSource(ctx);
+        const bp = ctx.createBiquadFilter();
+        bp.type = "bandpass";
+        bp.frequency.value = 5200;
+        const g = ctx.createGain();
+        const s0 = t + b * beat;
+        g.gain.setValueAtTime(0.0001, s0);
+        g.gain.exponentialRampToValueAtTime(0.02, s0 + 0.03);
+        g.gain.exponentialRampToValueAtTime(0.0001, s0 + 0.22);
+        src.connect(bp).connect(g).connect(out);
+        src.start(s0);
+        src.stop(s0 + 0.25);
+      }
+    }
   }
 
   private ensureContext(): AudioContext | null {
@@ -127,7 +329,7 @@ class AudioManagerImpl {
         t0 + (v > 0.5 ? A.atkFast : A.atkSlow),
       );
       g.gain.exponentialRampToValueAtTime(0.0001, t0 + A.transDecay);
-      src.connect(bp).connect(g).connect(ctx.destination);
+      src.connect(bp).connect(g).connect(this.sfxOut(ctx));
       src.start(t0);
       src.stop(t0 + A.transDecay + 0.02);
     }
@@ -146,7 +348,7 @@ class AudioManagerImpl {
       g.gain.exponentialRampToValueAtTime(peak, t0 + 0.02);
       g.gain.setValueAtTime(peak, t0 + Math.max(0.02, (durMs / 1000) * 0.7));
       g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-      src.connect(f).connect(g).connect(ctx.destination);
+      src.connect(f).connect(g).connect(this.sfxOut(ctx));
       src.start(t0);
       src.stop(t0 + dur + 0.02);
     }
@@ -160,7 +362,7 @@ class AudioManagerImpl {
       const g = ctx.createGain();
       g.gain.setValueAtTime(A.thunkGain * (0.45 + A.thunkVel * v) * this.jitter() * gainMult, tb);
       g.gain.exponentialRampToValueAtTime(0.001, tb + 0.09);
-      o.connect(g).connect(ctx.destination);
+      o.connect(g).connect(this.sfxOut(ctx));
       o.start(tb);
       o.stop(tb + 0.1);
     }
@@ -202,7 +404,7 @@ class AudioManagerImpl {
     g.gain.setValueAtTime(0.0001, t);
     g.gain.exponentialRampToValueAtTime(gain, t + 0.03);
     g.gain.exponentialRampToValueAtTime(0.0001, t + 0.7);
-    osc.connect(lp).connect(g).connect(ctx.destination);
+    osc.connect(lp).connect(g).connect(this.sfxOut(ctx));
     osc.start(t);
     osc.stop(t + 0.75);
 
@@ -215,7 +417,7 @@ class AudioManagerImpl {
     ng.gain.setValueAtTime(0.0001, t);
     ng.gain.exponentialRampToValueAtTime(gain * 0.35, t + 0.008);
     ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.07);
-    src.connect(bp).connect(ng).connect(ctx.destination);
+    src.connect(bp).connect(ng).connect(this.sfxOut(ctx));
     src.start(t);
     src.stop(t + 0.08);
   }
@@ -238,12 +440,117 @@ class AudioManagerImpl {
       gain.gain.exponentialRampToValueAtTime(0.22, start + 0.02);
       gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.4);
 
-      osc.connect(gain).connect(ctx.destination);
+      osc.connect(gain).connect(this.sfxOut(ctx));
       osc.start(start);
       osc.stop(start + 0.42);
     }
   }
 }
+
+export type MusicMood = "off" | "kitchen" | "cutting" | "night";
+/** The music bus level per mood (quiet; ducked while cutting). */
+const MUSIC_LEVEL: Record<MusicMood, number> = {
+  off: 0.0001,
+  kitchen: 0.5,
+  cutting: 0.18,
+  night: 0.4,
+};
+
+/** ii–V–I kitchen-jazz progressions (MIDI: [bass root, chord tones…]), four bars each. */
+const PROGRESSIONS: readonly (readonly (readonly number[])[])[] = [
+  [
+    [50, 65, 69, 72, 76],
+    [43, 65, 69, 71, 74],
+    [48, 64, 67, 71, 74],
+    [48, 64, 67, 71, 74],
+  ],
+  [
+    [45, 64, 67, 72, 76],
+    [50, 65, 69, 72, 74],
+    [43, 65, 67, 71, 74],
+    [48, 64, 67, 72, 76],
+  ],
+  [
+    [53, 64, 69, 72, 76],
+    [52, 62, 67, 71, 74],
+    [50, 65, 69, 72, 77],
+    [43, 65, 67, 71, 74],
+  ],
+  [
+    [48, 64, 67, 71, 76],
+    [45, 64, 67, 72, 76],
+    [50, 65, 69, 72, 76],
+    [43, 62, 65, 71, 74],
+  ],
+];
+
+/** A small seeded generator (Park–Miller) — the music's choices are reproducible. */
+function seededRand(seed: number): () => number {
+  let s = seed % 2147483647 || 1;
+  return () => (s = (s * 16807) % 2147483647) / 2147483647;
+}
+
+export type SfxName =
+  | "tap"
+  | "coin"
+  | "till"
+  | "bell"
+  | "plate"
+  | "delivery"
+  | "lightsOff"
+  | "squeak"
+  | "levelComplete"
+  | "story";
+
+type SfxNote = {
+  freq: number;
+  to?: number;
+  dur: number;
+  gain: number;
+  at?: number;
+  attack?: number;
+  wave?: OscillatorType;
+  noise?: boolean;
+  filter?: number;
+};
+
+/** The named sounds: short, quiet, warm (W3, developer 2026-10-12). */
+export const SFX: Record<SfxName, readonly SfxNote[]> = {
+  tap: [{ freq: 0, dur: 0.05, gain: 0.05, noise: true, filter: 1800, attack: 0.003 }],
+  coin: [
+    { freq: 1318, dur: 0.18, gain: 0.05, wave: "triangle" },
+    { freq: 1760, dur: 0.3, gain: 0.05, at: 0.07, wave: "triangle" },
+  ],
+  till: [
+    { freq: 0, dur: 0.06, gain: 0.05, noise: true, filter: 3000, attack: 0.003 },
+    { freq: 2093, dur: 0.45, gain: 0.04, at: 0.05, wave: "sine", filter: 5000 },
+  ],
+  bell: [
+    { freq: 1568, dur: 0.9, gain: 0.05, wave: "sine", filter: 6000 },
+    { freq: 3136, dur: 0.5, gain: 0.015, wave: "sine", filter: 7000 },
+  ],
+  plate: [{ freq: 0, dur: 0.08, gain: 0.05, noise: true, filter: 650, attack: 0.006 }],
+  delivery: [
+    { freq: 0, dur: 0.08, gain: 0.07, noise: true, filter: 420, attack: 0.004 },
+    { freq: 0, dur: 0.08, gain: 0.07, noise: true, filter: 420, attack: 0.004, at: 0.18 },
+  ],
+  lightsOff: [
+    { freq: 0, dur: 0.04, gain: 0.06, noise: true, filter: 2500, attack: 0.002 },
+    { freq: 196, to: 98, dur: 0.6, gain: 0.04, at: 0.06, wave: "sine", filter: 800 },
+  ],
+  squeak: [{ freq: 1800, to: 2600, dur: 0.12, gain: 0.025, wave: "triangle", filter: 4000 }],
+  levelComplete: [
+    { freq: 523, dur: 0.25, gain: 0.06, wave: "triangle" },
+    { freq: 659, dur: 0.25, gain: 0.06, at: 0.12, wave: "triangle" },
+    { freq: 784, dur: 0.55, gain: 0.07, at: 0.24, wave: "triangle" },
+  ],
+  story: [
+    { freq: 392, dur: 1.6, gain: 0.04, attack: 0.4, wave: "sine", filter: 1500 },
+    { freq: 494, dur: 1.6, gain: 0.03, attack: 0.5, at: 0.1, wave: "sine", filter: 1500 },
+    { freq: 587, dur: 1.8, gain: 0.03, attack: 0.6, at: 0.2, wave: "sine", filter: 1500 },
+  ],
+};
+const SFX_MIN_GAP_MS = 60;
 
 /** Single shared instance — import this, never instantiate the class yourself. */
 export const AudioManager = new AudioManagerImpl();

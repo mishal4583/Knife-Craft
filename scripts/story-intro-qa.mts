@@ -8,7 +8,8 @@
  *     30 s bounce window), fast montage crossfades, subtle camera moves, the
  *     chef/player dialogue on its beats, SKIP after ~1 s, taps that only step
  *     forward, and the bundled images at their native 941 × 1672 size.
- *  B. Unchanged: FINALE and the 7 milestones (text, thresholds, bits).
+ *  B. Unchanged: FINALE and the six shipped milestones (text, thresholds,
+ *     bits); the four approved 2026-10-11 ones; the 250 banner retired.
  *  C. Save: finishing and skipping both only set story.introDone (no new
  *     field, no progression/credit change), it survives a save/load round
  *     trip, and a skipped intro never triggers a milestone or the finale.
@@ -222,13 +223,17 @@ assert(
 );
 assert(
   MILES.map((m) => `${m.at}:${m.bit}:${m.kicker}`).join() ===
-    "10:1:THE ROOM COMES BACK,20:2:WORD GETS AROUND,45:4:SOMETHING WORTH KEEPING,70:8:THE LAST WISH,110:16:THE KITCHEN GROWS,120:32:GRAND SERVICE,250:64:CAMPAIGN COMPLETE",
-  "B5: milestone thresholds, bits and titles identical",
+    // The six shipped milestones unchanged; developer 2026-10-11 added four
+    // (140/165/190/220) and retired the 250 banner for THE LAST PAGE
+    // (story-legacy-qa covers both).
+    "10:1:THE ROOM COMES BACK,20:2:WORD GETS AROUND,45:4:SOMETHING WORTH KEEPING,70:8:THE LAST WISH,110:16:THE KITCHEN GROWS,120:32:GRAND SERVICE,140:128:A NAME IN TOWN,165:256:THE NEXT GENERATION,190:512:ONE OF THE BEST,220:1024:THE OLD RECIPE BOOK",
+  "B5: milestone thresholds, bits and titles (six shipped unchanged + the four approved)",
 );
 assert(
   MILES[0]!.line === "It’s starting to feel like a real restaurant again." &&
-    MILES[6]!.line.startsWith("All 250 levels mastered."),
-  "B6: milestone lines unchanged",
+    MILES[5]!.line === "Every station, every dish — the kitchen you built runs itself now." &&
+    !MILES.some((m) => m.at === 250),
+  "B6: shipped milestone lines unchanged; the 250 banner is retired (THE LAST PAGE plays instead)",
 );
 
 console.log("C. Save behavior (finish and skip are the same state)");
@@ -313,7 +318,7 @@ assert(
 );
 assert(
   /\{showIntro \? <CinematicIntro onDone=\{completeIntro\} \/> : null\}/.test(app),
-  "D7: App plays the cinematic over the already-mounted game, ending in completeIntro",
+  "D7: App plays the cinematic (over Level 1's kitchen plate since W2), ending in completeIntro",
 );
 // The finale's exit changed on purpose (developer decision #21: "BACK TO
 // THE KITCHEN" goes to Kitchen home); scripts/story-pause-qa.mts and

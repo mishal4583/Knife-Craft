@@ -127,6 +127,7 @@ export function StoryOverlay({
         key={beat.tint}
         className={cn("kc-story-tint absolute inset-0", TINT_CLASS[beat.tint])}
       />
+      {beat.fx ? <StoryFx key={`fx-${index}`} kind={beat.fx} /> : null}
 
       <div
         key={index}
@@ -181,7 +182,7 @@ export function StoryOverlay({
             )}
           >
             <div
-              className="h-[64px] w-[64px] shrink-0 overflow-hidden rounded-full border border-walnut/15 shadow-soft"
+              className="h-[88px] w-[88px] shrink-0 overflow-hidden rounded-full border border-walnut/15 shadow-soft"
               dangerouslySetInnerHTML={{ __html: STORY_ART[beat.dlg.art] }}
             />
             <Panel tone="cream" className="px-4 py-3">
@@ -198,7 +199,11 @@ export function StoryOverlay({
             {beat.lines!.map((line, i) => (
               <p
                 key={i}
-                className="kc-story-text font-hand text-[19px] leading-snug text-walnut-dark"
+                className={cn(
+                  "kc-story-text font-hand text-[19px] leading-snug",
+                  // Light text on the dark "decline" tint (W4 contrast).
+                  beat.tint === "sDecline" ? "text-cream" : "text-walnut-dark",
+                )}
                 style={delay(i + 1)}
               >
                 {line}
@@ -233,10 +238,10 @@ export function StoryOverlay({
                     />
                   )}
                 </div>
-                <p className="mt-1 font-ui text-[11px] font-bold leading-tight text-walnut-dark">
+                <p className="mt-1 font-ui text-[12px] font-bold leading-tight text-walnut-dark">
                   {CARD_LABEL[c].name}
                 </p>
-                <p className="font-ui text-[10px] font-extrabold uppercase tracking-wide text-sage">
+                <p className="font-ui text-[11px] font-extrabold uppercase tracking-wide text-sage">
                   {CARD_LABEL[c].tag}
                 </p>
               </Panel>
@@ -252,6 +257,32 @@ export function StoryOverlay({
           </div>
         ) : null}
       </div>
+    </div>
+  );
+}
+
+/** A beat's declared particles (W4): a fixed, deterministic scatter — decorative only. */
+function StoryFx({ kind }: { kind: NonNullable<StoryBeat["fx"]> }) {
+  return (
+    <div
+      className="pointer-events-none absolute inset-0 overflow-hidden"
+      aria-hidden
+      data-story-fx={kind}
+    >
+      {Array.from({ length: 14 }, (_, i) => (
+        <span
+          key={i}
+          className={`kc-fx kc-fx-${kind}`}
+          style={
+            {
+              left: `${6 + ((i * 37) % 88)}%`,
+              "--kc-fx-dx": `${((i * 13) % 21) - 10}px`,
+              "--kc-fx-dur": `${3.2 + ((i * 7) % 10) / 5}s`,
+              "--kc-fx-delay": `${((i * 11) % 30) / 10}s`,
+            } as React.CSSProperties
+          }
+        />
+      ))}
     </div>
   );
 }

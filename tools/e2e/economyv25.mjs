@@ -163,6 +163,18 @@ await boot(
 );
 await sleep(1200);
 s = await readSave(page);
+// Developer 2026-10-11 (decision 1): a save at 250 that never saw THE LAST PAGE plays it once
+// on load; the Family Legacy banner waits behind it, then shows.
+const lastPage = /Every recipe they ever wrote is in here/.test(await flat(page));
+await page
+  .waitForFunction(() => /BACK TO THE KITCHEN/i.test(document.body.innerText), { timeout: 20000 })
+  .catch(() => undefined);
+await page.evaluate(() =>
+  [...document.querySelectorAll("button")]
+    .find((b) => /BACK TO THE KITCHEN/i.test(b.textContent))
+    ?.click(),
+);
+await sleep(900);
 const legacy = count(s, "family-legacy");
 check(
   "3a the $50,000 Final Reward is paid once (family-legacy), unscaled",
@@ -174,8 +186,9 @@ check(
 );
 t = await flat(page);
 check(
-  "3b banner: Campaign Complete · 250 / 250 · Final Reward +$50,000 · Endless Service unlocked",
-  /Campaign Complete/i.test(t) &&
+  "3b THE LAST PAGE first, then the banner: Campaign Complete · 250 / 250 · Final Reward +$50,000 · Endless Service unlocked",
+  lastPage &&
+    /Campaign Complete/i.test(t) &&
     /250 \/ 250/.test(t) &&
     /Final Reward \+\$50,000/.test(t) &&
     /Endless Service unlocked/i.test(t),

@@ -6,7 +6,7 @@
 //   3. Level 7 (a peel): the HUD shows "% peeled" rising while peeling, before the step is done.
 //   4. The Knife Report: the line follows the grade (one of the per-cut toast's words), the
 //      retry button says "Prepare Again".
-//   5. Level 10: the story milestone shows first, then "Level Complete" with Order payout,
+//   5. Level 10: "Level Complete" first (W4), then the story milestone; the card has Order payout,
 //      Completion reward and Earned this level — equal to what the ledger paid for the level.
 //   6. 320×568 / 360×640 / 375×642 / 390×844 / 430×932: the HUD card and the Level Complete
 //      notice fit (no sideways scroll).
@@ -167,6 +167,13 @@ const banner = await page.evaluate(() => {
   };
 });
 await shot(page, "levelux-l10-complete");
+// W4 (developer 2026-10-12): the milestone banner waits for the Level Complete card.
+let milestoneAfter = false;
+for (let i = 0; i < 30 && !milestoneAfter; i++) {
+  await page.mouse.click(8, 8); // an outside tap dismisses a banner
+  await sleep(400);
+  milestoneAfter = /THE ROOM COMES BACK/i.test(await flat());
+}
 const after = await readSave(page);
 const added = after.economyLedger.slice(ledgerBefore);
 const cents = (v) => Math.round(parseFloat(v.replace(/[^0-9.]/g, "")) * 100);
@@ -178,15 +185,16 @@ const reward = added
   .reduce((s, e) => s + e.amount, 0);
 const row = (label) => banner.rows?.find((r) => r[0] === label)?.[1] ?? null;
 check(
-  "5 Level 10: the story milestone shows first; then Level Complete lists Order payout + Completion reward = Earned this level, as the ledger paid",
+  "5 Level 10: Level Complete shows first (Order payout + Completion reward = Earned this level, as the ledger paid), then the story milestone",
   p10.ok &&
-    !/LEVEL COMPLETE/i.test(first) &&
+    !/THE ROOM COMES BACK/i.test(banner.text) &&
+    milestoneAfter &&
     banner.rows?.length === 3 &&
     cents(row("Order payout")) === order &&
     cents(row("Completion reward")) === reward &&
     cents(row("Earned this level")) === order + reward &&
     reward === 8000,
-  { first: first.slice(0, 120), rows: banner.rows, order, reward },
+  { first: first.slice(0, 120), rows: banner.rows, order, reward, milestoneAfter },
 );
 
 // ---------- 6. Widths ----------

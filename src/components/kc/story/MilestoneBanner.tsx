@@ -7,7 +7,7 @@ import { usePausableTimeout, usePaused } from "./usePausableTimeout";
  * MILESTONE_BANNER — ported from knifecraft.html's `banner(kicker,line,ms)`
  * (`:11139`): a kicker + line card, shown for `ms` (default 4200, the
  * source's own default) then auto-dismissed via `onDismiss`. Used for
- * both the story milestones (completed-level counts 10/20/45/70/110/120)
+ * both the story milestones (completed-level counts 10/20/45/70/110/120/140/165/190/220)
  * and, generically, nothing else — it is not the pre-existing cafe-tier progression
  * display (Kitchen.tsx's header label / Journal.tsx's Progression
  * screen), which is a separate, passive, always-on system this banner
@@ -83,7 +83,8 @@ export function MilestoneBanner({
     <div
       className={cn(
         "anim-pop absolute inset-x-0 z-50 flex justify-center px-6",
-        grand ? "top-[14%]" : "pointer-events-none top-[8%]",
+        // Below the screen headers (W4), never over their back button or title.
+        grand ? "top-[14%]" : "pointer-events-none top-[13%]",
         paused && "kc-story-paused",
       )}
       data-story-paused={paused ? "true" : undefined}

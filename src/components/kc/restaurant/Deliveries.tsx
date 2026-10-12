@@ -1,4 +1,6 @@
+import { useEffect } from "react";
 import { KButton, Panel } from "@/components/kc/common/primitives";
+import { AudioManager } from "@/game/AudioManager";
 import { Eyebrow } from "@/components/kc/common/Meters";
 import { cn } from "@/lib/utils";
 import type { SaveData } from "@/game/SaveManager";
@@ -115,6 +117,11 @@ export function StandingOrdersCard({
 /** The opening card's "Delivered this morning" (read-only). */
 export function MorningDeliveries({ save }: { save: SaveData }) {
   const today = deliveredToday(save);
+  const arrived = today.length > 0;
+  // The delivery van's knock when the morning's order is on the card (W3).
+  useEffect(() => {
+    if (arrived) AudioManager.playSfx("delivery");
+  }, [arrived]);
   if (today.length === 0) return null;
   return (
     <div

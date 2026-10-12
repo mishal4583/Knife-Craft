@@ -203,9 +203,11 @@ export type SaveData = {
 };
 
 /**
- * `milestoneMask` is a 4-bit mask (bits 1/2/4/8, one per milestone —
- * levels 8/20/45/70), ported verbatim from the source's `story.ms`;
- * full value 15. A fired bit can never fire again (duplicate
+ * `milestoneMask` is a bit mask, one bit per story beat (storyDefinitions.ts
+ * MILES: 1/2/4/8 at 10/20/45/70, 16/32 at 110/120, 128/256/512/1024 at
+ * 140/165/190/220; 64 = the retired Level 250 banner; 2048 = LEGACY, "THE
+ * LAST PAGE"); full value MILES_FULL_MASK. The first four are ported from
+ * the source's `story.ms`. A fired bit can never fire again (duplicate
  * prevention IS the mask, not a timestamp) and the mask only ever
  * gains bits (forward-only, matching `n >= m.at`) — see
  * `game/story/StoryManager.ts`'s own doc.

@@ -134,7 +134,7 @@ once). Restaurant browser tests run on the normal build, classic ones on a
   `restaurant-shift-chores-qa`, `restaurant-deliveries-qa`,
   `restaurant-par-audit-qa` (browser:
   `tools/e2e/restaurant*.mjs`).
-- Campaign / UX: `story-intro-qa`, `story-pause-qa`,
+- Campaign / UX: `story-intro-qa`, `story-pause-qa`, `story-legacy-qa`, `audio-qa`,
   `campaign-paid-orders-qa`, `level-ux-qa`, `coaching-qa`,
   `knife-stroke-qa`, `cut-rules-qa`, `lazy-load-qa`, `unused-assets-qa`,
   `playables-ads-qa`.

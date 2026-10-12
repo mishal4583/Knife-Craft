@@ -155,7 +155,7 @@ console.log("T. Staff is one screen");
       staff.indexOf('id="kitchen-team"') < staff.indexOf("<KitchenHelpers") &&
       staff.indexOf("<KitchenHelpers") < staff.indexOf('id="restaurant-team"') &&
       /restaurantTeams \? \(\s*<SpecialistChefs[\s\S]*?\) : \(\s*<KitchenHelpers/.test(staff),
-    "T2: restaurant build — one Staff screen in two teams: Kitchen Team (one-time helpers) then Restaurant Team (waged roles + specialist chefs); the release keeps its layout",
+    "T2: restaurant build — one Staff screen in two teams: Kitchen Upgrades (one-time helpers) then Restaurant Team (waged roles + specialist chefs); the release keeps its layout",
   );
 }
 

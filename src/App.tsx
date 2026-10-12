@@ -1,6 +1,7 @@
 import { afterNight, setStandingOrder, type DeliveryKind } from "@/game/restaurant/deliveries";
 import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { Preparation, preloadPreparation } from "@/components/kc/game/lazyPreparation";
+import kitchenBg from "@/assets/kitchen-bg.jpg";
 import { ReplayBonusSheet, AdPlayingShield } from "@/components/kc/ReplayBonusSheet";
 import { maybeShowInterstitial } from "@/game/ads/interstitialPolicy";
 import {
@@ -16,6 +17,7 @@ import {
 } from "@/game/ads/replayBonus";
 import {
   AD_PLACEMENT,
+  gameReady,
   levelAbandoned,
   levelCompleted,
   levelStarted,
@@ -30,7 +32,7 @@ import { GameShell } from "@/components/kc/game/GameShell";
 import { type ScreenId } from "@/components/kc/data";
 import { SaveManager, type SaveData } from "@/game/SaveManager";
 import { PauseManager } from "@/game/PauseManager";
-import { AudioManager } from "@/game/AudioManager";
+import { AudioManager, type MusicMood } from "@/game/AudioManager";
 import {
   getLevel,
   completeLevel,
@@ -62,11 +64,11 @@ import {
   shouldRunIntro,
   markIntroDone,
   checkStoryFlush,
-  applyFinaleSeen,
-  applyMilestoneFired,
+  applyStoryFlush,
+  legacyPendingOnLoad,
   type StoryFlushResult,
 } from "@/game/story/StoryManager";
-import { FINALE } from "@/game/story/storyDefinitions";
+import { FINALE, LEGACY } from "@/game/story/storyDefinitions";
 import { StoryOverlay } from "@/components/kc/story/StoryOverlay";
 import { CinematicIntro } from "@/components/kc/story/CinematicIntro";
 import { MilestoneBanner } from "@/components/kc/story/MilestoneBanner";
@@ -357,6 +359,25 @@ function LoadingScreen() {
   );
 }
 
+/**
+ * Level 1's own kitchen picture (the same file and framing Preparation draws):
+ * under the intro's outro, and while the cutting engine is still loading, so
+ * the film dissolves straight into the kitchen — never a blank flash.
+ */
+function KitchenPlate() {
+  return (
+    <div className="absolute inset-0 overflow-hidden bg-cream" data-testid="kitchen-plate">
+      <img
+        src={kitchenBg}
+        alt=""
+        width={540}
+        height={960}
+        className="absolute inset-0 h-full w-full object-cover"
+      />
+    </div>
+  );
+}
+
 /** One banner per payout: several milestones paid together (e.g. an older save's first load) are summed into one line. */
 type MilestoneNotice = { id: string; label: string; reward: number; legacy: boolean };
 function milestoneNoticeFor(granted: readonly MilestoneDefinition[]): MilestoneNotice {
@@ -493,6 +514,8 @@ export function App() {
   // the existing plate counter and reinterprets it; it never advances
   // progression itself."
   const [showIntro, setShowIntro] = useState(false);
+  /** Level 1's kitchen, laid under the intro so its outro dissolves into it (W4). */
+  const [introPlate, setIntroPlate] = useState(false);
   const [storyEvent, setStoryEvent] = useState<StoryFlushResult>(null);
   // The intro ends exactly once, whether it finished or was skipped.
   const introCompletedRef = useRef(false);
@@ -578,8 +601,9 @@ export function App() {
   // Load the save once and wire the platform pause source (§23 —
   // the Bridge's pause state is the sole authority). gameReady() is
   // NOT called here — loading the save file isn't "the game is
-  // interactive". Preparation calls it once Phaser's scene actually
-  // finishes booting (see its SCENE_READY handler).
+  // interactive". A new player sends it when the intro is on screen (the
+  // effect below); otherwise Preparation once Phaser's scene finishes
+  // booting (SCENE_READY), or the Kitchen.
   // While a platform ad is in flight the game is muted (AudioManager) and a
   // shield swallows every tap, so nothing underneath can take input.
   useEffect(() => onAdActiveChange(setAdActive), []);
@@ -598,6 +622,7 @@ export function App() {
     PauseManager.wireToPlatform();
     void SaveManager.load().then((loaded) => {
       AudioManager.setUserSoundEnabled(loaded.settings.sound);
+      AudioManager.setUserMusicEnabled(loaded.settings.music !== false);
       // Phase 12C — only a genuinely untouched, never-played save (the
       // exact DEFAULT_LEVEL_PROGRESS shape) auto-opens Preparation on
       // Level 1, matching a first-ever launch. Any save that has
@@ -649,6 +674,13 @@ export function App() {
       // paid once, now. Saves from before V2.5 had their reached milestones
       // claimed without payment by the one-time migration in
       // SaveManager.load (economyMigration.ts), so they get no windfall.
+      // THE LAST PAGE (developer 2026-10-11): a save that finished Level 250
+      // before it existed plays it once now — flagged before it shows, so a
+      // dismissal or reload never repeats it; no money or ledger change.
+      if (legacyPendingOnLoad(synced)) {
+        synced = applyStoryFlush(synced, { kind: "legacy" });
+        setStoryEvent({ kind: "legacy" });
+      }
       const loadGrant = grantEarnedMilestoneRewards(synced);
       synced = loadGrant.save;
       if (loadGrant.granted.length > 0)
@@ -881,7 +913,10 @@ export function App() {
   function cleanlinessAction(action: CleanlinessAction) {
     if (!save) return null;
     const result = applyCleanlinessAction(save, action);
-    if (result.save !== save) persist(result.save);
+    if (result.save !== save) {
+      persist(result.save);
+      if (result.cleaned.length > 0) AudioManager.playSfx("squeak");
+    }
     return result;
   }
 
@@ -897,10 +932,11 @@ export function App() {
     persist({ ...save, settings: { ...save.settings, measure } });
   }
 
-  function toggleSetting(key: "sound" | "reducedMotion") {
+  function toggleSetting(key: "sound" | "music" | "reducedMotion") {
     if (!save) return;
     const settings = { ...save.settings, [key]: !save.settings[key] };
     if (key === "sound") AudioManager.setUserSoundEnabled(settings.sound);
+    if (key === "music") AudioManager.setUserMusicEnabled(settings.music);
     persist({ ...save, settings });
   }
 
@@ -2098,11 +2134,9 @@ export function App() {
       if (r.repaid > 0) credit = { repaid: r.repaid, owed: r.owed };
     }
     const flush = checkStoryFlush(nextSave);
-    const finalSave = flush
-      ? flush.kind === "finale"
-        ? applyFinaleSeen(nextSave)
-        : applyMilestoneFired(nextSave, flush.milestone)
-      : nextSave;
+    // The flag is saved before the story shows (never twice); missed
+    // milestones are marked silently (StoryManager's catch-up rule).
+    const finalSave = applyStoryFlush(nextSave, flush);
     persist(finalSave);
     if (flush) setStoryEvent(flush);
     // Level 1–10 UX pass: a story banner (Level 10's milestone) no longer
@@ -2170,7 +2204,13 @@ export function App() {
           : {}),
       });
     }
-    afterLevelFinished(finalSave, level, !isFirstCompletion, flush?.kind === "finale");
+    // No ad or Replay Bonus behind the Campaign Finale or THE LAST PAGE.
+    afterLevelFinished(
+      finalSave,
+      level,
+      !isFirstCompletion,
+      flush?.kind === "finale" || flush?.kind === "legacy",
+    );
   }
 
   /**
@@ -2363,6 +2403,14 @@ export function App() {
     go("kitchen");
   }
 
+  /** THE LAST PAGE's last button: the same way out as the finale — the Kitchen, where the Level Complete card and the Family Legacy banner follow. */
+  function finishLegacy() {
+    setStoryEvent(null);
+    levelAbandoned();
+    setSessionMode("campaign");
+    go("kitchen");
+  }
+
   /** Returns this run's coin reward (0 on replay) — Preparation shows it directly on OrderComplete rather than waiting a round trip through props. */
   function recordPreparationResult(score: number): number {
     if (!save) return 0;
@@ -2438,11 +2486,9 @@ export function App() {
     // saveCloudSave()` calls), risking the story flag being silently
     // clobbered by whichever write happened to land last.
     const flush = checkStoryFlush(nextSave);
-    const finalSave = flush
-      ? flush.kind === "finale"
-        ? applyFinaleSeen(nextSave)
-        : applyMilestoneFired(nextSave, flush.milestone)
-      : nextSave;
+    // The flag is saved before the story shows (never twice); missed
+    // milestones are marked silently (StoryManager's catch-up rule).
+    const finalSave = applyStoryFlush(nextSave, flush);
     persist(finalSave);
     if (flush) setStoryEvent(flush);
     markPlaySessionCompleted();
@@ -2513,8 +2559,10 @@ export function App() {
   // Once the first screen is up, fetch the Preparation/Phaser chunk in the
   // background so opening a level is instant (see lazyPreparation.ts).
   const saveLoaded = save !== null;
+  /** How long a new player's intro shows before the cutting engine starts downloading. */
+  const INTRO_PRELOAD_DELAY_MS = 1200;
   useEffect(() => {
-    if (!saveLoaded) return;
+    if (!saveLoaded) return undefined;
     // An idle slot, but never later than 500 ms: on a slow phone the Kitchen's
     // animations can keep the main thread "busy" long enough that a plain
     // idle callback starts the download too late for a quick first tap.
@@ -2523,10 +2571,62 @@ export function App() {
         requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
       }
     ).requestIdleCallback;
+    // A new player's intro (developer 2026-10-12, W2): the intro's first
+    // pictures go first; the cutting engine downloads while the film plays.
+    if (showIntro) {
+      const t = setTimeout(() => {
+        preloadPreparation();
+        setIntroPlate(true);
+      }, INTRO_PRELOAD_DELAY_MS);
+      return () => clearTimeout(t);
+    }
     if (idle) idle(preloadPreparation, { timeout: 500 });
     else setTimeout(preloadPreparation, 200);
-  }, [saveLoaded]);
+    return undefined;
+  }, [saveLoaded, showIntro]);
 
+  // A new player is interactive once the intro is on screen (SKIP, taps):
+  // game_ready is sent then, not after the cutting engine boots (it is sent
+  // once — Preparation's and the Kitchen's calls are no-ops afterwards).
+  useEffect(() => {
+    if (!showIntro) return;
+    const raf = requestAnimationFrame(() => requestAnimationFrame(() => gameReady()));
+    return () => cancelAnimationFrame(raf);
+  }, [showIntro]);
+
+  // ── Sound (W3, developer 2026-10-12): the music's mood and the game-world
+  // sounds, all from state App already has (no new event bus). ──
+  const closingShown =
+    RESTAURANT_MODE &&
+    !!save &&
+    restaurantDayOf(save).closingDue &&
+    dayCeremonyAt(restaurantLevelOf(save.levelProgress)) &&
+    (screen === "board" || screen === "kitchen");
+  const musicMood: MusicMood =
+    showIntro || storyEvent?.kind === "finale" || storyEvent?.kind === "legacy"
+      ? "off"
+      : closingShown
+        ? "night"
+        : screen === "gameplay"
+          ? "cutting"
+          : "kitchen";
+  useEffect(() => AudioManager.setMusicMood(musicMood), [musicMood]);
+  const ledgerLength = save?.economyLedger.length ?? 0;
+  const lastLedgerAmount = save?.economyLedger[ledgerLength - 1]?.amount ?? 0;
+  const seenLedgerLength = useRef(ledgerLength);
+  useEffect(() => {
+    // A money movement: a coin for income, the till for a purchase (never on load).
+    if (seenLedgerLength.current > 0 && ledgerLength > seenLedgerLength.current)
+      AudioManager.playSfx(lastLedgerAmount >= 0 ? "coin" : "till");
+    seenLedgerLength.current = Math.max(ledgerLength, 1);
+  }, [ledgerLength, lastLedgerAmount]);
+  useEffect(() => {
+    if (levelRewardNotice && storyEvent?.kind !== "finale" && storyEvent?.kind !== "legacy")
+      AudioManager.playSfx("levelComplete");
+  }, [levelRewardNotice, storyEvent]);
+  useEffect(() => {
+    if (storyEvent) AudioManager.playSfx("story");
+  }, [storyEvent]);
   if (!save) {
     return (
       <GameShell>
@@ -2708,8 +2808,13 @@ export function App() {
     >
       {/* Preparation is a lazy chunk (lazyPreparation.ts) — normally already
           preloaded by the time a level opens, so this fallback rarely shows. */}
-      <Suspense fallback={<LoadingScreen />}>
-        {showServicePrep && currentServiceOrder ? (
+      <Suspense fallback={screen === "gameplay" ? <KitchenPlate /> : <LoadingScreen />}>
+        {/* Nothing runs under the intro (W2): Level 1 mounts when it ends. */}
+        {showIntro ? (
+          introPlate ? (
+            <KitchenPlate />
+          ) : null
+        ) : showServicePrep && currentServiceOrder ? (
           <Preparation
             // Remounts for a new order the same way the campaign branch
             // remounts for a new level: the key changes ("Next Customer"
@@ -2911,7 +3016,8 @@ export function App() {
       restaurantDayOf(save).closingDue &&
       dayCeremonyAt(restaurantLevelOf(save.levelProgress)) &&
       (screen === "board" || screen === "kitchen") &&
-      storyEvent?.kind !== "finale" ? (
+      storyEvent?.kind !== "finale" &&
+      storyEvent?.kind !== "legacy" ? (
         <Suspense fallback={null}>
           <ClosingTime
             save={save}
@@ -2920,6 +3026,7 @@ export function App() {
             go={go}
             onClose={() => {
               closingHoldRef.current = false;
+              AudioManager.playSfx("lightsOff");
               // Tomorrow morning's opening chores come with the new day (once).
               // …and the night's standing orders arrive with the morning (deliveries.ts, once).
               persist(
@@ -2979,7 +3086,10 @@ export function App() {
       {storyEvent?.kind === "finale" ? (
         <StoryOverlay sequence={FINALE} onDone={finishFinale} />
       ) : null}
-      {storyEvent?.kind === "milestone" ? (
+      {storyEvent?.kind === "legacy" ? (
+        <StoryOverlay sequence={LEGACY} onDone={finishLegacy} />
+      ) : null}
+      {storyEvent?.kind === "milestone" && !levelRewardNotice ? (
         <MilestoneBanner
           page={screen}
           kicker={storyEvent.milestone.kicker}
@@ -2992,7 +3102,7 @@ export function App() {
           onDismiss={() => setStoryEvent(null)}
         />
       ) : null}
-      {levelRewardNotice && !storyEvent ? (
+      {levelRewardNotice && (!storyEvent || storyEvent.kind === "milestone") ? (
         <MilestoneBanner
           page={screen}
           kicker="Level Complete"
