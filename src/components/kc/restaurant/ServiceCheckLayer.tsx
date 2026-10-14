@@ -146,9 +146,10 @@ export function ServiceCheckLayer({
           ? cleanlinessOf(save).tasks.filter((t) => !TASK_RULES[t.kind].phase).length
           : 0
       }
+      openingChores={plan.opening ? plan.chores : 0}
       chores={
         cleanlinessAction ? (
-          <>
+          <div id="psc-opening-chores" className="space-y-2">
             {plan.opening ? <MorningDeliveries save={save} /> : null}
             {plan.opening ? (
               <ParAuditCard
@@ -166,7 +167,7 @@ export function ServiceCheckLayer({
               onBuy={(id) => openMarketSupplies(go, getSupplyItem(id)?.section ?? "cleaning", id)}
               onOpenCleanliness={() => go("business-cleanliness")}
             />
-          </>
+          </div>
         ) : null
       }
       onOpenCleanliness={() => go("business-cleanliness")}

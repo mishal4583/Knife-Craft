@@ -18,6 +18,7 @@ import {
 } from "@/game/restaurant/staffRequirements";
 import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
 import { isSystemLive, restaurantSystem } from "@/game/restaurant/restaurantProgression";
+import { BusinessSectionBanner } from "./BusinessSectionBanner";
 
 /** A face per role — visual only. */
 const ROLE_ICON: Record<string, string> = {
@@ -89,6 +90,7 @@ export function BusinessStaff({
     restaurantTeams && !wagesStarted && restaurantLevelOf(save.levelProgress) >= HALF_WAGES_FROM;
   return (
     <div className="space-y-3">
+      <BusinessSectionBanner image="staff-banner.webp" title="Restaurant team" />
       {restaurantTeams ? (
         <>
           <TeamHeading

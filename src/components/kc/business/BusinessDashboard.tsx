@@ -23,10 +23,13 @@ import { BottomNav } from "../Kitchen";
 import { BUSINESS_TAB_SCREEN, type BusinessTab } from "./businessTabs";
 import { BusinessCash } from "./BusinessCash";
 import { BusinessRefrigerator } from "./BusinessRefrigerator";
+import { KitchenUpgrades } from "../KitchenUpgrades";
+import type { PurchaseKitchenUpgradeResult } from "@/game/kitchen/KitchenUpgradeManager";
 import { OperationsAnalytics, TodayAtAGlance } from "./BusinessAnalytics";
 import { BusinessStaff } from "./BusinessStaff";
 import { BusinessSuppliers } from "./BusinessSuppliers";
 import { BusinessMenu } from "./BusinessMenu";
+import { BusinessSectionBanner } from "./BusinessSectionBanner";
 import { BusinessInspections } from "./BusinessInspections";
 import { BusinessFinance } from "./BusinessFinance";
 import { BusinessHistory } from "./BusinessHistory";
@@ -101,6 +104,7 @@ export type AdvanceDayResult = {
 const TABS: Array<{ id: BusinessTab; label: string; emoji: string }> = [
   { id: "overview", label: "Overview", emoji: "📊" },
   { id: "equipment", label: "Equipment", emoji: "❄️" },
+  { id: "development", label: "Upgrades", emoji: "🏗️" },
   { id: "staff", label: "Staff", emoji: "🧑‍🍳" },
   { id: "suppliers", label: "Suppliers", emoji: "🚚" },
   { id: "menu", label: "Menu", emoji: "🍽️" },
@@ -148,6 +152,7 @@ export function BusinessDashboard({
   onAdvanceDay,
   businessServiceSession,
   purchaseRefrigerator,
+  buildKitchenUpgrade,
   performRefrigeratorMaintenance,
   setMenuPrice,
   setBusinessDishActive,
@@ -168,6 +173,7 @@ export function BusinessDashboard({
   onAdvanceDay: () => AdvanceDayResult;
   businessServiceSession: ServiceSession | null;
   purchaseRefrigerator: (refrigeratorId: string) => PurchaseRefrigeratorResult;
+  buildKitchenUpgrade: (id: string) => PurchaseKitchenUpgradeResult;
   performRefrigeratorMaintenance: () => PerformMaintenanceResult;
   setMenuPrice: (recipeId: string, price: number) => SetMenuPriceResult;
   setBusinessDishActive: (dishId: string, active: boolean) => SetDishActiveResult;
@@ -234,7 +240,7 @@ export function BusinessDashboard({
       <div className="absolute inset-0 bg-[radial-gradient(90%_50%_at_50%_0%,rgba(216,168,78,0.28),transparent_60%)]" />
       <div className="relative h-full overflow-y-auto no-scrollbar pb-24">
         <ScreenHeader
-          title={RESTAURANT_MODE ? "Restaurant" : "Business"}
+          title="Business"
           subtitle={RESTAURANT_MODE ? "your back office" : "your restaurant"}
           onBack={() => go("kitchen")}
           right={<BusinessCash cents={save.credits} />}
@@ -299,6 +305,9 @@ export function BusinessDashboard({
               purchaseRefrigerator={purchaseRefrigerator}
               performRefrigeratorMaintenance={performRefrigeratorMaintenance}
             />
+          ) : null}
+          {tab === "development" ? (
+            <KitchenUpgrades embedded go={go} save={save} buildKitchenUpgrade={buildKitchenUpgrade} />
           ) : null}
           {tab === "staff" ? (
             <BusinessStaff
@@ -784,32 +793,50 @@ function CampaignDayCard({ save, go }: { save: SaveData; go: (s: ScreenId) => vo
   const since = d.opened && d.openingCredits !== null ? save.credits - d.openingCredits : null;
   return (
     <div
-      className="relative overflow-hidden rounded-[26px] border border-walnut-dark/50 wood p-4 shadow-lift"
+      className="relative isolate overflow-hidden rounded-[26px] border border-ivory/30 bg-walnut-dark p-2 shadow-lift"
       data-testid="campaign-day"
     >
-      <Eyebrow dark>🍽️ Your restaurant today</Eyebrow>
-      <p className="mt-1 font-display text-[24px] font-black leading-none text-ivory">
-        Day {d.day}
-        <span className="ml-2 font-hand text-[18px] font-normal text-gold/90">
-          {d.closingDue ? "closing time" : d.opened ? "open" : "opens with your next level"}
-        </span>
-      </p>
-      <ul className="mt-2 space-y-1">
-        {services.map((sv) => (
-          <li key={sv.name} className="font-ui text-[13.5px] font-bold text-ivory/90">
-            {sv.done ? "✓" : "•"} {sv.name} · Level {sv.levelNumber}
-          </li>
-        ))}
-      </ul>
-      {since !== null ? (
-        <p className="mt-2 font-ui text-[13.5px] font-extrabold text-gold">
-          Since opening: {since >= 0 ? "+" : "−"}
-          {formatUsd(Math.abs(since))}
+      <img
+        src={`${import.meta.env.BASE_URL}business/business-overview.webp`}
+        alt=""
+        aria-hidden="true"
+        className="absolute inset-0 h-full w-full select-none object-cover object-center"
+        draggable={false}
+      />
+      <div
+        className="pointer-events-none absolute inset-0 bg-walnut-dark/40"
+        aria-hidden="true"
+      />
+      <div className="relative rounded-[20px] border border-ivory/25 bg-walnut-dark/35 p-3.5 text-ivory shadow-soft backdrop-blur-[2px] sm:p-4">
+        <Eyebrow dark>🍽️ Your restaurant today</Eyebrow>
+        <p className="mt-1 font-display text-[24px] font-black leading-none text-ivory">
+          Day {d.day}
+          <span className="ml-2 font-hand text-[18px] font-normal text-gold/90">
+            {d.closingDue ? "closing time" : d.opened ? "open" : "opens with your next level"}
+          </span>
         </p>
-      ) : null}
-      <KButton variant="copper" full className="mt-3 min-h-12" onClick={() => go("kitchen")}>
-        {d.closingDue ? "Close the restaurant →" : "Play the next service →"}
-      </KButton>
+        <ul className="mt-2 space-y-1">
+          {services.map((sv) => (
+            <li key={sv.name} className="font-ui text-[13.5px] font-bold text-ivory/90">
+              {sv.done ? "✓" : "•"} {sv.name} · Level {sv.levelNumber}
+            </li>
+          ))}
+        </ul>
+        {since !== null ? (
+          <p className="mt-2 font-ui text-[13.5px] font-extrabold text-gold">
+            Since opening: {since >= 0 ? "+" : "−"}
+            {formatUsd(Math.abs(since))}
+          </p>
+        ) : null}
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <KButton variant="cream" size="sm" full className="min-h-12 px-2" onClick={() => go("daily-maintenance")}>
+            🌅 Daily check
+          </KButton>
+          <KButton variant="copper" size="sm" full className="min-h-12 px-2" onClick={() => go("kitchen")}>
+            {d.closingDue ? "Close restaurant →" : "Next service →"}
+          </KButton>
+        </div>
+      </div>
     </div>
   );
 }
@@ -947,7 +974,7 @@ function DayActions({
           ? "Go to Service →"
           : RESTAURANT_MODE
             ? `Open the ${ENDLESS_RESTAURANT_NAME} →`
-            : "Open Restaurant →"}
+            : "Open Service →"}
       </KButton>
       <KButton full size="lg" variant={customers.complete ? "wood" : "cream"} onClick={endDay}>
         End Business Day →
@@ -1137,6 +1164,7 @@ function Operations({
   const pnl = preview.dailyPnL;
   return (
     <div className="space-y-3">
+      <BusinessSectionBanner image="operations-banner.webp" title="Restaurant operations" />
       {/* What needs attention */}
       <Panel className="p-4">
         <Eyebrow>📋 What needs attention</Eyebrow>
@@ -1210,7 +1238,7 @@ function Operations({
         <BusinessDayCardInline save={save} />
         <div className="mt-3 space-y-2">
           <KButton full onClick={() => go("business-service")}>
-            🍽️ {businessServiceSession?.current ? "Go to Service →" : "Open Restaurant →"}
+            🍽️ {businessServiceSession?.current ? "Go to Service →" : "Open Service →"}
           </KButton>
         </div>
         <Divider />

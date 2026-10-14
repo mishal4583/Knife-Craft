@@ -1,0 +1,1125 @@
+/* ============================================================
+   KNIFECRAFT RESTAURANT MAP COMPONENT STYLES
+   Resolution-independent, responsive hotspot layer with dynamic atmospheric FX
+============================================================ */
+
+.restaurant-map-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  background-color: #f7edd7;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+  box-sizing: border-box;
+}
+
+/* Toolbar Controls */
+.restaurant-map-toolbar {
+  position: absolute;
+  inset: 8px 10px auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 6px;
+  background: linear-gradient(180deg, rgba(255, 248, 230, 0.94), rgba(255, 248, 230, 0.76) 68%, transparent);
+  z-index: 20;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.restaurant-map-toolbar button { pointer-events: auto; }
+
+.map-legend-pills {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.legend-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+.level-pill {
+  background: linear-gradient(145deg, #fff8e9, #f2ddb0);
+  color: #70451f;
+  border: 1px solid rgba(176, 119, 48, 0.42);
+  box-shadow: 0 2px 7px rgba(74, 43, 20, 0.2);
+}
+
+.level-pill .pill-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #db9f27;
+  box-shadow: 0 0 6px rgba(219, 159, 39, 0.7);
+}
+
+.hub-pill {
+  background: linear-gradient(145deg, #fffaf0, #f1dfbd);
+  color: #4d2f1d;
+  border: 1px solid rgba(113, 76, 40, 0.24);
+  box-shadow: 0 2px 7px rgba(74, 43, 20, 0.2);
+}
+
+.map-zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.zoom-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: linear-gradient(145deg, #fffaf0, #ead5ad);
+  border: 1px solid rgba(113, 76, 40, 0.3);
+  color: #4d2f1d;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.zoom-btn:hover:not(:disabled) {
+  background: #fffdf7;
+  border-color: rgba(113, 76, 40, 0.5);
+  transform: translateY(-1px);
+}
+
+.zoom-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.zoom-btn.reset-btn {
+  width: auto;
+  padding: 0 10px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Viewport and Stage */
+.restaurant-map-viewport {
+  position: relative;
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  touch-action: none;
+}
+
+.restaurant-map-stage {
+  position: relative;
+  width: auto;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  aspect-ratio: 2 / 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform-origin: center center;
+  transition: transform 0.12s ease-out;
+  box-shadow: 0 0 28px rgba(74, 43, 20, 0.22);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* Illustrated floor plan */
+.restaurant-map-picture {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.restaurant-vector-map {
+  width: 100%;
+  height: 100%;
+  display: block;
+  pointer-events: none;
+  object-fit: fill;
+  -webkit-user-drag: none;
+}
+
+/* Guests travel on separate paths, then settle onto the map's chair and sofa positions. */
+.restaurant-guest-layer {
+  position: absolute;
+  z-index: 12;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.map-guest-party {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.map-guest-party--couple { --party-delay: 8s; }
+.map-guest-party--friends { --party-delay: 40s; }
+.map-guest-party--takeaway { --party-delay: -36s; }
+.map-guest-party--couch { --party-delay: -54s; }
+
+@property --guest-facing {
+  syntax: "<angle>";
+  inherits: true;
+  initial-value: 0deg;
+}
+
+.guest-person {
+  position: absolute;
+  z-index: 1;
+  width: clamp(19px, 4.5vw, 30px);
+  height: clamp(25px, 5.8vw, 38px);
+  opacity: 0;
+  --guest-delay: var(--party-delay, 0s);
+  --guest-facing: 0deg;
+  transform: translate(-50%, -50%);
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .7));
+  will-change: left, top, transform;
+}
+
+.guest-pose {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.guest-figure {
+  position: absolute;
+  inset: 0;
+  transform: rotate(var(--guest-facing, 0deg));
+  transform-origin: center;
+}
+
+.guest-walking-pose {
+  opacity: 1;
+  animation: guest-walk-state 72s linear var(--guest-delay) infinite;
+}
+
+.guest-sitting-pose {
+  opacity: 0;
+  animation: guest-sit-state 72s linear var(--guest-delay) infinite;
+}
+
+.map-guest-party--takeaway .guest-sitting-pose { display: none; }
+
+.guest-leg-swing {
+  transform-box: view-box;
+  animation: guest-leg-step 1s linear infinite;
+}
+
+.guest-arm-swing {
+  transform-box: view-box;
+  animation: guest-arm-step 1s ease-in-out infinite;
+}
+
+.guest-leg-swing.guest-limb--left { transform-origin: 10px 19.5px; }
+.guest-leg-swing.guest-limb--right { transform-origin: 14px 19.5px; animation-delay: -.5s; }
+.guest-arm-swing.guest-limb--left { transform-origin: 8.3px 12px; animation-delay: -.5s; }
+.guest-arm-swing.guest-limb--right { transform-origin: 15.7px 12px; }
+.map-guest-party--solo .guest-leg-swing,
+.map-guest-party--solo .guest-arm-swing { animation-play-state: var(--guest-limb-play, running); }
+
+.guest-action-bubble {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 2px);
+  z-index: 2;
+  min-width: 2.8em;
+  padding: .3em .5em;
+  border: 1px solid rgba(131, 91, 49, .86);
+  border-radius: 5px;
+  background: #f4dfb5;
+  color: #53351d;
+  font: 700 clamp(7px, .75vw, 10px)/1 Georgia, 'Times New Roman', serif;
+  text-align: center;
+  white-space: nowrap;
+  opacity: 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .38);
+}
+
+.guest-order-bubble { animation: guest-order-state 72s linear var(--guest-delay) infinite; }
+.guest-food-bubble { background: #f6e5c5; animation: guest-food-state 72s linear var(--guest-delay) infinite; }
+.guest-takeaway-order { animation: guest-takeaway-order-state 72s linear var(--guest-delay) infinite; }
+.guest-pickup-bubble { background: #f6e5c5; animation: guest-pickup-state 72s linear var(--guest-delay) infinite; }
+
+@keyframes guest-walk-state {
+  0%, 34%, 65%, 100% { opacity: 1; }
+  37%, 62% { opacity: 0; }
+}
+
+@keyframes guest-sit-state {
+  0%, 34%, 65%, 100% { opacity: 0; }
+  37%, 62% { opacity: 1; }
+}
+
+@keyframes guest-order-state {
+  0%, 13% { opacity: 0; transform: translate(-50%, 3px) scale(.82); }
+  15%, 21% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  24%, 100% { opacity: 0; transform: translate(-50%, -2px) scale(.92); }
+}
+
+@keyframes guest-food-state {
+  0%, 42% { opacity: 0; transform: translate(-50%, 3px) scale(.82); }
+  45%, 60% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  63%, 100% { opacity: 0; transform: translate(-50%, -2px) scale(.92); }
+}
+
+@keyframes guest-takeaway-order-state {
+  0%, 18% { opacity: 0; transform: translate(-50%, 3px) scale(.82); }
+  21%, 29% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  32%, 100% { opacity: 0; transform: translate(-50%, -2px) scale(.92); }
+}
+
+@keyframes guest-pickup-state {
+  0%, 32% { opacity: 0; transform: translate(-50%, 3px) scale(.82); }
+  35%, 43% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  46%, 100% { opacity: 0; transform: translate(-50%, -2px) scale(.92); }
+}
+
+@keyframes guest-leg-step {
+  /* A step spends about 60% in support, then 40% swinging forward. */
+  0% { transform: translateY(-1.05px) rotate(-5deg) scaleY(1); }
+  30% { transform: translateY(0) rotate(0); }
+  60% { transform: translateY(1.05px) rotate(5deg) scaleY(1); }
+  72% { transform: translateY(.8px) rotate(4deg) scaleY(.98); }
+  86% { transform: translateY(-.55px) rotate(-3deg) scaleY(.9); }
+  100% { transform: translateY(-1.05px) rotate(-5deg) scaleY(1); }
+}
+
+@keyframes guest-arm-step {
+  0%, 100% { transform: rotate(4deg); }
+  50% { transform: rotate(-4deg); }
+}
+
+/* Staged guest one enters, orders, sits in table one's north chair, and exits. */
+.map-guest-party--solo .guest-person,
+.map-guest-party--solo .guest-pose,
+.map-guest-party--solo .guest-action-bubble { animation-duration: 48s; }
+.map-guest-party--solo .guest-person { animation: guest-solo-route 48s linear var(--guest-delay) infinite; }
+.map-guest-party--solo .guest-figure {
+  animation: none;
+  transform: rotate(0deg);
+}
+.map-guest-party--solo .guest-sitting-pose {
+  transform: scale(.82);
+  transform-origin: center;
+}
+.map-guest-party--solo .guest-walking-pose { animation-name: guest-solo-walk-state; }
+.map-guest-party--solo .guest-sitting-pose { animation-name: guest-solo-sit-state; }
+@keyframes guest-solo-walk-state {
+  0%, 39%, 65%, 100% { opacity: 1; }
+  42%, 62% { opacity: 0; }
+}
+@keyframes guest-solo-sit-state {
+  0%, 39%, 65%, 100% { opacity: 0; }
+  42%, 62% { opacity: 1; }
+}
+@keyframes guest-solo-route {
+  0%, 2% { left: 50%; top: 91%; opacity: 0; --guest-facing: 0deg; --guest-limb-play: paused; transform: translate(-50%, -50%); }
+  5% { left: 50%; top: 87%; opacity: 1; --guest-facing: 0deg; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  12% { left: 50%; top: 72%; opacity: 1; --guest-facing: 0deg; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  16% { left: 51%; top: 61%; opacity: 1; --guest-facing: 0deg; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  20% { left: 52%; top: 56%; opacity: 1; --guest-facing: 0deg; --guest-limb-play: paused; transform: translate(-50%, -50%); }
+  24% { left: 52%; top: 56%; opacity: 1; --guest-facing: 270deg; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  26% { left: 48%; top: 56%; opacity: 1; --guest-facing: 270deg; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  29% { left: 43%; top: 56%; opacity: 1; --guest-facing: 270deg; --guest-limb-play: paused; transform: translate(-50%, -50%); }
+  34% { left: 43%; top: 56%; opacity: 1; --guest-facing: 180deg; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  38% { left: 43%; top: 59%; opacity: 1; --guest-facing: 180deg; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  42%, 62% { left: 43%; top: 65.2%; opacity: 1; --guest-facing: 180deg; --guest-limb-play: paused; transform: translate(-50%, -50%); }
+  65% { left: 43%; top: 65.2%; opacity: 1; --guest-facing: 0deg; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  70% { left: 43%; top: 58%; opacity: 1; --guest-facing: 90deg; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  76% { left: 50%; top: 58%; opacity: 1; --guest-facing: 180deg; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  83% { left: 50%; top: 76%; opacity: 1; --guest-facing: 180deg; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  91% { left: 50%; top: 91%; opacity: 1; --guest-facing: 180deg; --guest-limb-play: paused; transform: translate(-50%, -50%); }
+  95%, 100% { left: 50%; top: 91%; opacity: 0; --guest-facing: 0deg; --guest-limb-play: paused; transform: translate(-50%, -50%); }
+}
+
+/* The couple enters and travels side by side, orders at adjacent spots, then shares table two. */
+.map-guest-party--couple .guest-person,
+.map-guest-party--couple .guest-pose,
+.map-guest-party--couple .guest-action-bubble { animation-duration: 72s; }
+.map-guest-party--couple .guest-person { animation: guest-couple-route-one 72s linear var(--guest-delay) infinite; }
+.map-guest-party--couple .guest-person:nth-child(2) {
+  animation-name: guest-couple-route-two;
+}
+.map-guest-party--couple .guest-figure { animation: none; transform: rotate(0deg); }
+.map-guest-party--couple .guest-sitting-pose { transform: scale(.82); transform-origin: center; }
+.map-guest-party--couple .guest-walking-pose { animation-name: guest-couple-walk-state; }
+.map-guest-party--couple .guest-sitting-pose { animation-name: guest-couple-sit-state; }
+.map-guest-party--couple .guest-leg-swing,
+.map-guest-party--couple .guest-arm-swing { animation-play-state: var(--guest-limb-play, running); }
+.map-guest-party--couple .guest-order-bubble { animation-name: guest-couple-order-state; }
+.map-guest-party--couple .guest-food-bubble { animation-name: guest-couple-food-state; }
+
+@keyframes guest-couple-walk-state {
+  0%, 39%, 69%, 100% { opacity: 1; }
+  42%, 67% { opacity: 0; }
+}
+@keyframes guest-couple-sit-state {
+  0%, 39%, 69%, 100% { opacity: 0; }
+  42%, 67% { opacity: 1; }
+}
+@keyframes guest-couple-order-state {
+  0%, 20% { opacity: 0; transform: translate(-50%, 3px) scale(.82); }
+  22%, 27% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  30%, 100% { opacity: 0; transform: translate(-50%, -2px) scale(.92); }
+}
+@keyframes guest-couple-food-state {
+  0%, 44% { opacity: 0; transform: translate(-50%, 3px) scale(.82); }
+  47%, 66% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  69%, 100% { opacity: 0; transform: translate(-50%, -2px) scale(.92); }
+}
+
+@keyframes guest-couple-route-one {
+  0%, 2% { left: 48%; top: 91%; opacity: 0; --guest-limb-play: paused; transform: translate(-50%, -50%); }
+  5% { left: 48%; top: 87%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  12% { left: 48%; top: 72%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  16% { left: 47%; top: 61%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  20% { left: 46%; top: 56%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  24% { left: 46%; top: 56%; opacity: 1; --guest-limb-play: paused; transform: translate(-50%, -50%); }
+  27% { left: 46%; top: 56%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  30% { left: 52%; top: 56%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  34% { left: 64%; top: 56%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  38% { left: 70%; top: 60%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  42%, 67% { left: 70%; top: 65%; opacity: 1; --guest-limb-play: paused; transform: translate(-50%, -50%); }
+  70% { left: 70%; top: 65%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  76% { left: 66%; top: 70%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  83% { left: 59%; top: 76%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  89% { left: 54%; top: 82%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  94% { left: 50%; top: 88%; opacity: 1; --guest-limb-play: paused; transform: translate(-50%, -50%); }
+  98%, 100% { left: 50%; top: 91%; opacity: 0; --guest-limb-play: paused; transform: translate(-50%, -50%); }
+}
+
+@keyframes guest-couple-route-two {
+  0%, 2% { left: 52%; top: 91%; opacity: 0; --guest-limb-play: paused; transform: translate(-50%, -50%); }
+  5% { left: 52%; top: 87%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  12% { left: 52%; top: 72%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  16% { left: 55%; top: 61%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  20% { left: 56%; top: 56%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  24% { left: 56%; top: 56%; opacity: 1; --guest-limb-play: paused; transform: translate(-50%, -50%); }
+  27% { left: 56%; top: 56%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  30% { left: 62%; top: 56%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  34% { left: 70%; top: 56%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  38% { left: 76.5%; top: 63%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  42% { left: 76.5%; top: 68.5%; opacity: 1; --guest-limb-play: paused; transform: translate(-50%, -50%); }
+  67% { left: 76.5%; top: 68.5%; opacity: 1; --guest-limb-play: paused; transform: translate(-50%, -50%); }
+  71% { left: 76.5%; top: 68.5%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  77% { left: 72%; top: 73%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  84% { left: 62%; top: 79%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  91% { left: 56%; top: 85%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  96% { left: 52%; top: 90%; opacity: 1; --guest-limb-play: paused; transform: translate(-50%, -50%); }
+  100% { left: 52%; top: 91%; opacity: 0; --guest-limb-play: paused; transform: translate(-50%, -50%); }
+}
+
+/* Four friends enter side by side, take separate counter spots, and share table one. */
+.map-guest-party--friends .guest-person,
+.map-guest-party--friends .guest-pose,
+.map-guest-party--friends .guest-action-bubble { animation-duration: 96s; }
+.map-guest-party--friends .guest-person { animation: guest-friends-route-one 96s linear var(--guest-delay) infinite; }
+.map-guest-party--friends .guest-person:nth-child(2) { --guest-delay: calc(var(--party-delay) + 3.5s); animation-name: guest-friends-route-two; }
+.map-guest-party--friends .guest-person:nth-child(3) { --guest-delay: calc(var(--party-delay) + 7s); animation-name: guest-friends-route-three; }
+.map-guest-party--friends .guest-person:nth-child(4) { --guest-delay: calc(var(--party-delay) + 10.5s); animation-name: guest-friends-route-four; }
+.map-guest-party--friends .guest-figure { animation: none; transform: rotate(0deg); }
+.map-guest-party--friends .guest-sitting-pose { transform: scale(.82); transform-origin: center; }
+.map-guest-party--friends .guest-walking-pose { animation-name: guest-friends-walk-state; }
+.map-guest-party--friends .guest-sitting-pose { animation-name: guest-friends-sit-state; }
+.map-guest-party--friends .guest-leg-swing,
+.map-guest-party--friends .guest-arm-swing { animation-play-state: var(--guest-limb-play, running); }
+.map-guest-party--friends .guest-order-bubble { animation-name: guest-friends-order-state; }
+.map-guest-party--friends .guest-food-bubble { animation-name: guest-friends-food-state; }
+@keyframes guest-friends-walk-state {
+  0%, 39%, 69%, 100% { opacity: 1; }
+  42%, 67% { opacity: 0; }
+}
+@keyframes guest-friends-sit-state {
+  0%, 39%, 69%, 100% { opacity: 0; }
+  42%, 67% { opacity: 1; }
+}
+@keyframes guest-friends-order-state {
+  0%, 19% { opacity: 0; transform: translate(-50%, 3px) scale(.82); }
+  21%, 26% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  29%, 100% { opacity: 0; transform: translate(-50%, -2px) scale(.92); }
+}
+@keyframes guest-friends-food-state {
+  0%, 45% { opacity: 0; transform: translate(-50%, 3px) scale(.82); }
+  48%, 64% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  67%, 100% { opacity: 0; transform: translate(-50%, -2px) scale(.92); }
+}
+@keyframes guest-friends-route-one {
+  0%, 2% { left: 50%; top: 91%; opacity: 0; --guest-limb-play: paused; transform: translate(-50%, -50%); }
+  5% { left: 50%; top: 87%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  12% { left: 50%; top: 82%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  16% { left: 50%; top: 78%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  18% { left: 45%; top: 65%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  20% { left: 42%; top: 56%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  23% { left: 42%; top: 56%; opacity: 1; --guest-limb-play: paused; transform: translate(-50%, -50%); }
+  27% { left: 42%; top: 56%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  32% { left: 40%; top: 60%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  38% { left: 37%; top: 68.5%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  42%, 67% { left: 37%; top: 68.5%; opacity: 1; --guest-limb-play: paused; transform: translate(-50%, -50%); }
+  70% { left: 36%; top: 61%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  76% { left: 40%; top: 56%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  83% { left: 47%; top: 76%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  90% { left: 47%; top: 91%; opacity: 1; --guest-limb-play: paused; transform: translate(-50%, -50%); }
+  94%, 100% { left: 47%; top: 91%; opacity: 0; --guest-limb-play: paused; transform: translate(-50%, -50%); }
+}
+@keyframes guest-friends-route-two {
+  0%, 2% { left: 50%; top: 91%; opacity: 0; --guest-limb-play: paused; transform: translate(-50%, -50%); }
+  5% { left: 50%; top: 87%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  12% { left: 50%; top: 82%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  16% { left: 50%; top: 78%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  18% { left: 48%; top: 65%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  20% { left: 50%; top: 56%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  23% { left: 50%; top: 56%; opacity: 1; --guest-limb-play: paused; transform: translate(-50%, -50%); }
+  27% { left: 50%; top: 56%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  32% { left: 47%; top: 60%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  38% { left: 43%; top: 65.2%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  42%, 67% { left: 43%; top: 65.2%; opacity: 1; --guest-limb-play: paused; transform: translate(-50%, -50%); }
+  70% { left: 43%; top: 60%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  76% { left: 45%; top: 56%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  83% { left: 49%; top: 76%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  90% { left: 49%; top: 91%; opacity: 1; --guest-limb-play: paused; transform: translate(-50%, -50%); }
+  94%, 100% { left: 49%; top: 91%; opacity: 0; --guest-limb-play: paused; transform: translate(-50%, -50%); }
+}
+@keyframes guest-friends-route-three {
+  0%, 2% { left: 50%; top: 91%; opacity: 0; --guest-limb-play: paused; transform: translate(-50%, -50%); }
+  5% { left: 50%; top: 87%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  12% { left: 50%; top: 82%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  16% { left: 50%; top: 78%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  18% { left: 52%; top: 65%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  20% { left: 59%; top: 56%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  23% { left: 59%; top: 56%; opacity: 1; --guest-limb-play: paused; transform: translate(-50%, -50%); }
+  27% { left: 59%; top: 56%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  32% { left: 54%; top: 61%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  38% { left: 49%; top: 68.5%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  42%, 67% { left: 49%; top: 68.5%; opacity: 1; --guest-limb-play: paused; transform: translate(-50%, -50%); }
+  70% { left: 50%; top: 61%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  76% { left: 55%; top: 56%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  83% { left: 51%; top: 76%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  90% { left: 51%; top: 91%; opacity: 1; --guest-limb-play: paused; transform: translate(-50%, -50%); }
+  94%, 100% { left: 51%; top: 91%; opacity: 0; --guest-limb-play: paused; transform: translate(-50%, -50%); }
+}
+@keyframes guest-friends-route-four {
+  0%, 2% { left: 50%; top: 91%; opacity: 0; --guest-limb-play: paused; transform: translate(-50%, -50%); }
+  5% { left: 50%; top: 87%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  12% { left: 50%; top: 82%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  16% { left: 50%; top: 78%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  18% { left: 56%; top: 65%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  20% { left: 68%; top: 56%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  23% { left: 68%; top: 56%; opacity: 1; --guest-limb-play: paused; transform: translate(-50%, -50%); }
+  27% { left: 68%; top: 56%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  32% { left: 70%; top: 61%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  35% { left: 70%; top: 66%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  38% { left: 60%; top: 72%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  41% { left: 45%; top: 73%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  42%, 67% { left: 43%; top: 72.5%; opacity: 1; --guest-limb-play: paused; transform: translate(-50%, -50%); }
+  70% { left: 57%; top: 64%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  76% { left: 62%; top: 56%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  83% { left: 53%; top: 76%; opacity: 1; --guest-limb-play: running; transform: translate(-50%, -50%); }
+  90% { left: 53%; top: 91%; opacity: 1; --guest-limb-play: paused; transform: translate(-50%, -50%); }
+  94%, 100% { left: 53%; top: 91%; opacity: 0; --guest-limb-play: paused; transform: translate(-50%, -50%); }
+}
+
+/* Takeaway guests leave the dining flow at the parcel counter and return to the door. */
+.map-guest-party--takeaway .guest-person { animation: guest-takeaway-route-one 72s linear var(--guest-delay) infinite; }
+.map-guest-party--takeaway .guest-person:nth-child(2) { --guest-delay: calc(var(--party-delay) + 1.2s); animation-name: guest-takeaway-route-two; }
+@keyframes guest-takeaway-route-one {
+  0%, 2% { left: 46%; top: 90%; opacity: 0; --guest-facing: 0deg; transform: translate(-50%, -50%); }
+  5% { left: 46%; top: 86%; opacity: 1; --guest-facing: 0deg; transform: translate(-50%, -50%); }
+  13% { left: 52%; top: 72%; opacity: 1; --guest-facing: 18deg; transform: translate(-50%, -50%); }
+  21%, 29% { left: 63%; top: 42%; opacity: 1; --guest-facing: 18deg; transform: translate(-50%, -50%); }
+  34%, 44% { left: 64%; top: 45%; opacity: 1; --guest-facing: 180deg; transform: translate(-50%, -50%); }
+  54% { left: 61%; top: 54%; opacity: 1; --guest-facing: 180deg; transform: translate(-50%, -50%); }
+  65% { left: 54%; top: 70%; opacity: 1; --guest-facing: 155deg; transform: translate(-50%, -50%); }
+  78% { left: 50%; top: 87%; opacity: 1; --guest-facing: 175deg; transform: translate(-50%, -50%); }
+  84%, 100% { left: 50%; top: 90%; opacity: 0; --guest-facing: 0deg; transform: translate(-50%, -50%); }
+}
+@keyframes guest-takeaway-route-two {
+  0%, 2% { left: 49%; top: 91%; opacity: 0; --guest-facing: 0deg; transform: translate(-50%, -50%); }
+  5% { left: 49%; top: 87%; opacity: 1; --guest-facing: 0deg; transform: translate(-50%, -50%); }
+  13% { left: 55%; top: 73%; opacity: 1; --guest-facing: 18deg; transform: translate(-50%, -50%); }
+  21%, 29% { left: 68%; top: 42%; opacity: 1; --guest-facing: 18deg; transform: translate(-50%, -50%); }
+  34%, 44% { left: 68%; top: 45%; opacity: 1; --guest-facing: 180deg; transform: translate(-50%, -50%); }
+  54% { left: 64%; top: 55%; opacity: 1; --guest-facing: 180deg; transform: translate(-50%, -50%); }
+  65% { left: 57%; top: 72%; opacity: 1; --guest-facing: 155deg; transform: translate(-50%, -50%); }
+  78% { left: 53%; top: 88%; opacity: 1; --guest-facing: 175deg; transform: translate(-50%, -50%); }
+  84%, 100% { left: 53%; top: 91%; opacity: 0; --guest-facing: 0deg; transform: translate(-50%, -50%); }
+}
+
+/* The sofa pair move to distinct cushion positions and remain seated there. */
+.map-guest-party--couch .guest-person { animation: guest-couch-route-one 72s linear var(--guest-delay) infinite; }
+.map-guest-party--couch .guest-person:nth-child(2) { --guest-delay: calc(var(--party-delay) + 1s); animation-name: guest-couch-route-two; }
+@keyframes guest-couch-route-one {
+  0%, 2% { left: 51%; top: 90%; opacity: 0; --guest-facing: 0deg; transform: translate(-50%, -50%); }
+  5% { left: 51%; top: 86%; opacity: 1; --guest-facing: 0deg; transform: translate(-50%, -50%); }
+  13% { left: 57%; top: 70%; opacity: 1; --guest-facing: 18deg; transform: translate(-50%, -50%); }
+  21%, 24% { left: 61%; top: 53.4%; opacity: 1; --guest-facing: 18deg; transform: translate(-50%, -50%); }
+  32% { left: 73%; top: 57%; opacity: 1; --guest-facing: 140deg; transform: translate(-50%, -50%); }
+  38%, 62% { left: 87.7%; top: 65.2%; opacity: 1; --guest-facing: -90deg; transform: translate(-50%, -50%); }
+  66% { left: 86%; top: 65.2%; opacity: 1; --guest-facing: -90deg; transform: translate(-50%, -50%); }
+  76% { left: 72%; top: 63%; opacity: 1; --guest-facing: -90deg; transform: translate(-50%, -50%); }
+  84% { left: 60%; top: 76%; opacity: 1; --guest-facing: 140deg; transform: translate(-50%, -50%); }
+  91% { left: 52%; top: 89%; opacity: 1; --guest-facing: 170deg; transform: translate(-50%, -50%); }
+  95%, 100% { left: 52%; top: 91%; opacity: 0; --guest-facing: 0deg; transform: translate(-50%, -50%); }
+}
+@keyframes guest-couch-route-two {
+  0%, 2% { left: 54%; top: 91%; opacity: 0; --guest-facing: 0deg; transform: translate(-50%, -50%); }
+  5% { left: 54%; top: 87%; opacity: 1; --guest-facing: 0deg; transform: translate(-50%, -50%); }
+  13% { left: 60%; top: 72%; opacity: 1; --guest-facing: 18deg; transform: translate(-50%, -50%); }
+  21%, 24% { left: 65%; top: 53.4%; opacity: 1; --guest-facing: 18deg; transform: translate(-50%, -50%); }
+  32% { left: 76%; top: 61%; opacity: 1; --guest-facing: 140deg; transform: translate(-50%, -50%); }
+  38%, 62% { left: 87.7%; top: 69%; opacity: 1; --guest-facing: -90deg; transform: translate(-50%, -50%); }
+  66% { left: 86%; top: 69%; opacity: 1; --guest-facing: -90deg; transform: translate(-50%, -50%); }
+  76% { left: 74%; top: 66%; opacity: 1; --guest-facing: -90deg; transform: translate(-50%, -50%); }
+  84% { left: 62%; top: 78%; opacity: 1; --guest-facing: 140deg; transform: translate(-50%, -50%); }
+  91% { left: 55%; top: 90%; opacity: 1; --guest-facing: 170deg; transform: translate(-50%, -50%); }
+  95%, 100% { left: 55%; top: 92%; opacity: 0; --guest-facing: 0deg; transform: translate(-50%, -50%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .restaurant-guest-layer { display: none; }
+}
+
+/* Replacement fridge drawing sits over the artwork bay so equipment upgrades are visible on the map. */
+.fridge-map-overlay {
+  position: absolute;
+  z-index: 3;
+  left: 36.5%;
+  top: 6.3%;
+  width: 29.4%;
+  height: 10.2%;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.fridge-map-overlay svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Player-editable restaurant sign above the front entrance. */
+.restaurant-nameboard-wrap {
+  position: absolute;
+  z-index: 16;
+  left: 16%;
+  top: 77.4%;
+  width: 68%;
+  height: 2.6%;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+}
+
+.restaurant-nameboard {
+  position: relative;
+  width: max-content;
+  min-width: 48%;
+  max-width: 100%;
+  padding: 2px 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid #80572f;
+  border-radius: 2px;
+  background: repeating-linear-gradient(0deg, rgba(230, 183, 112, .035) 0 1px, transparent 1px 5px), linear-gradient(180deg, #563820 0%, #342216 46%, #4a2e1b 100%);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .62), inset 0 1px 0 rgba(255, 224, 150, .18), inset 0 -2px 0 rgba(0, 0, 0, .42);
+  color: #f2d28a;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(8px, .75vw, 10px);
+  gap: .3em;
+  font-weight: 700;
+  letter-spacing: .035em;
+  line-height: 1;
+  text-align: center;
+  text-shadow: 0 1px 2px #160b04, 0 0 3px rgba(255, 190, 73, .2);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.restaurant-nameboard::before {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border: 1px solid rgba(201, 159, 101, .32);
+  border-radius: 1px;
+  pointer-events: none;
+}
+
+.restaurant-nameboard::after {
+  content: '•';
+  position: absolute;
+  inset: 0 5px;
+  background: radial-gradient(circle at 0 50%, #e7c276 0 1px, transparent 1.7px), radial-gradient(circle at 100% 50%, #e7c276 0 1px, transparent 1.7px);
+  pointer-events: none;
+}
+
+.restaurant-nameboard > span {
+  display: block;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: calc(100% - 1.5em);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.restaurant-nameboard .nameboard-cutlery {
+  flex: 0 0 auto;
+  width: .5em;
+  height: .76em;
+  fill: none;
+  color: #d9b46d;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 1px 1px #000);
+}
+
+.restaurant-nameboard:hover,
+.restaurant-nameboard:focus-visible {
+  border-color: #fff0c4;
+  filter: brightness(1.12);
+  outline: 1px solid rgba(255, 224, 154, .72);
+  outline-offset: 1px;
+}
+
+.restaurant-nameboard.is-editing {
+  width: 100%;
+  max-width: 100%;
+  padding: 2px 9px;
+  cursor: text;
+}
+
+.restaurant-nameboard input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: center;
+  text-shadow: inherit;
+}
+
+/* Atmospheric Lighting FX */
+.atmosphere-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.forge-ember-pulse {
+  position: absolute;
+  left: 34.5%;
+  top: 22.5%;
+  width: 12%;
+  height: 8%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 140, 0, 0.45) 0%, rgba(255, 69, 0, 0.2) 60%, transparent 100%);
+  animation: forgePulse 2.4s infinite alternate ease-in-out;
+}
+
+@keyframes forgePulse {
+  0% { opacity: 0.6; transform: scale(0.95); }
+  100% { opacity: 1.0; transform: scale(1.15); }
+}
+
+.fridge-frost-glow {
+  position: absolute;
+  left: 36%;
+  top: 2.5%;
+  width: 30%;
+  height: 15%;
+  border-radius: 8px;
+  background: radial-gradient(ellipse at center, rgba(130, 220, 255, 0.25) 0%, rgba(80, 180, 240, 0.08) 70%, transparent 100%);
+  animation: frostBreathe 4s infinite alternate ease-in-out;
+}
+
+@keyframes frostBreathe {
+  0% { opacity: 0.5; }
+  100% { opacity: 1.0; }
+}
+
+.service-lamp-glow {
+  position: absolute;
+  left: 45%;
+  top: 48%;
+  width: 22%;
+  height: 6%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 220, 130, 0.35) 0%, transparent 75%);
+}
+
+/* Interactive Hotspot Layer */
+.restaurant-map-hotspots-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10;
+}
+
+.map-hotspot-zone {
+  position: absolute;
+  box-sizing: border-box;
+  cursor: pointer;
+  outline: none;
+  border-radius: 6px;
+  background: transparent;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid transparent;
+}
+
+/* Normal state: subtle/no visible box */
+.map-hotspot-zone.is-unlocked {
+  background: transparent;
+}
+
+/* Hover: desktop gentle warm glow */
+@media (hover: hover) {
+  .map-hotspot-zone.is-unlocked:hover {
+    background: radial-gradient(circle at center, rgba(255, 220, 140, 0.18) 0%, rgba(255, 220, 140, 0.02) 80%);
+    border-color: rgba(255, 215, 120, 0.6);
+    box-shadow: inset 0 0 20px rgba(255, 200, 80, 0.2), 0 0 20px rgba(255, 200, 80, 0.35);
+  }
+
+  .map-hotspot-zone.is-locked:hover {
+    background: rgba(20, 15, 15, 0.55);
+    border-color: rgba(245, 101, 101, 0.4);
+  }
+}
+
+/* Pressed / Active feedback */
+.map-hotspot-zone:active {
+  transform: scale(0.985);
+  background-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+/* Locked state: subtle dimmed room without obscuring artwork */
+.map-hotspot-zone.is-locked {
+  cursor: not-allowed;
+  background: rgba(83, 56, 31, 0.1);
+}
+
+/* Banner Anchor for Indicators */
+.hotspot-banner-anchor {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 15;
+}
+
+.map-attention-badge {
+  position: absolute;
+  top: -17px;
+  right: -20px;
+  display: inline-flex;
+  min-width: 30px;
+  max-width: 108px;
+  min-height: 30px;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: 2px 6px;
+  border: 2px solid #fff2d5;
+  border-radius: 999px;
+  background: linear-gradient(145deg, #fff8e9, #e9d5b0);
+  color: #3c2517;
+  font: 900 15px/1 system-ui, sans-serif;
+  white-space: nowrap;
+  box-shadow: 0 3px 8px #1b0c08c9, 0 0 0 1px #6c261c;
+}
+
+.map-attention-badge i {
+  position: absolute;
+  top: -5px;
+  right: -6px;
+  display: grid;
+  width: 16px;
+  height: 16px;
+  place-items: center;
+  border: 1px solid #fff2d5;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #ff654e, #c91f16);
+  color: #fff;
+  font: 900 11px/1 system-ui, sans-serif;
+  box-shadow: 0 1px 4px #1b0c08;
+}
+
+.locked-pill-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: linear-gradient(145deg, #fff9eb, #f2dfc0);
+  border: 1px solid rgba(192, 83, 67, 0.48);
+  color: #8c3024;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  box-shadow: 0 3px 10px rgba(74, 43, 20, 0.28);
+  white-space: nowrap;
+}
+
+.locked-pill-badge .lock-icon {
+  font-size: 10px;
+}
+
+.active-pill-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(145deg, #fff9e8, #f2dfb8);
+  border: 1px solid rgba(184, 128, 52, 0.65);
+  color: #59371c;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  box-shadow: 0 4px 14px rgba(74, 43, 20, 0.35);
+  white-space: nowrap;
+  animation: badgePop 0.18s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}
+
+.active-pill-badge .pulse-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #d99b24;
+  box-shadow: 0 0 8px rgba(217, 155, 36, 0.8);
+}
+
+@keyframes badgePop {
+  from {
+    transform: scale(0.85);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Floating Detail Card */
+.map-zone-detail-card {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 92%;
+  max-width: 440px;
+  background: linear-gradient(145deg, rgba(255, 250, 237, 0.98), rgba(246, 231, 201, 0.98));
+  border: 1px solid rgba(155, 100, 43, 0.38);
+  border-radius: 18px;
+  padding: 14px 16px;
+  box-shadow: 0 8px 22px rgba(60, 34, 15, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  z-index: 40;
+  animation: cardSlideUp 0.18s ease-out;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+@keyframes cardSlideUp {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 10px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.card-icon {
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.card-title-wrap {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.card-title {
+  font-size: 15px;
+  color: #432817;
+  font-weight: 700;
+}
+
+.card-subtitle {
+  font-size: 12px;
+  color: #886848;
+}
+
+.card-status-badge {
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.badge-ready {
+  background: rgba(66, 143, 78, 0.13);
+  color: #2c703b;
+  border: 1px solid rgba(66, 143, 78, 0.34);
+}
+
+.badge-locked {
+  background: rgba(195, 68, 54, 0.1);
+  color: #a13a2f;
+  border: 1px solid rgba(195, 68, 54, 0.32);
+}
+
+.card-description {
+  margin: 2px 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #634a34;
+}
+
+.card-footer {
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.card-action-hint {
+  color: #99551e;
+}
+
+.card-locked-hint {
+  color: #a13a2f;
+}
+
+/* Locked Notification Toast */
+.map-locked-toast {
+  position: absolute;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(145deg, #fff9eb, #f2dfc0);
+  border: 1px solid rgba(192, 83, 67, 0.48);
+  color: #713327;
+  padding: 10px 18px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: 0 8px 24px rgba(74, 43, 20, 0.3);
+  z-index: 60;
+  animation: toastFade 0.2s ease-out;
+}
+
+@keyframes toastFade {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -10px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+/* ============================================================
+   RESPONSIVE DESIGN (320px, 360px, 390px, 430px, 768px, 16:9)
+============================================================ */
+
+@media (max-width: 380px) {
+  .restaurant-map-toolbar {
+    padding: 6px 10px;
+  }
+  .legend-pill {
+    padding: 2px 7px;
+    font-size: 10px;
+  }
+  .zoom-btn {
+    width: 28px;
+    height: 28px;
+    font-size: 14px;
+  }
+  .map-zone-detail-card {
+    padding: 10px 12px;
+    bottom: 8px;
+    width: 95%;
+  }
+  .card-description {
+    display: none;
+  }
+  .locked-pill-badge {
+    font-size: 9px;
+    padding: 2px 5px;
+  }
+}
+
+@media (min-width: 381px) and (max-width: 480px) {
+  .restaurant-map-toolbar {
+    padding: 8px 12px;
+  }
+  .map-zone-detail-card {
+    width: 92%;
+    bottom: 12px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .restaurant-map-stage {
+    max-height: 94%;
+  }
+  .map-zone-detail-card {
+    max-width: 480px;
+  }
+}
+
+/* The production map lives above KnifeCraft's existing five-item bottom bar. */
+.restaurant-map-production {
+  height: calc(100% - 72px);
+}
+
+.restaurant-map--reduced-motion .restaurant-guest-layer {
+  display: none;
+}

@@ -11,7 +11,7 @@ import {
   tabOpensAt,
 } from "@/game/restaurant/firstLevels";
 import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
-import { NavGuideContext, NavLevelContext } from "./navLevel";
+import { NavAttentionContext, NavGuideContext, NavLevelContext } from "./navLevel";
 import {
   INGREDIENT_LIST_FROM,
   STAR_GRADES,
@@ -121,7 +121,9 @@ const DAY_LIGHT_TINT: Record<DayLight, string> = {
   midday: "transparent",
   afternoon:
     "linear-gradient(180deg,rgba(255,196,96,0.20) 0%,rgba(255,170,70,0.08) 70%,transparent 100%)",
-  evening: "linear-gradient(180deg,rgba(255,128,64,0.26) 0%,rgba(120,50,40,0.22) 100%)",
+  // Keep the kitchen art's original color and contrast readable; evening
+  // should suggest warm light, not wash a heavy orange veil over the room.
+  evening: "linear-gradient(180deg,rgba(255,128,64,0.10) 0%,rgba(120,50,40,0.07) 100%)",
   late: "linear-gradient(180deg,rgba(70,60,140,0.34) 0%,rgba(40,30,70,0.30) 100%)",
   night: "linear-gradient(180deg,rgba(16,26,72,0.55) 0%,rgba(10,14,40,0.45) 100%)",
 };
@@ -136,6 +138,7 @@ export function Kitchen({
   onSelectLevel: (levelId: string) => void;
 }) {
   const levelProgress = save.levelProgress;
+  const attention = useContext(NavAttentionContext);
 
   // Café progression (Phase 10A) — the restaurant rank card at the top left.
   const cafeProgress = getCafeProgress(levelProgress);
@@ -157,6 +160,7 @@ export function Kitchen({
   const todayLevel = pickTodayLevel(levelProgress);
   const todayUnlocked = isUnlocked(todayLevel, levelProgress);
   const todayCompleted = isCompleted(todayLevel.id, levelProgress);
+  const [orderCardExpanded, setOrderCardExpanded] = useState(false);
   // Every level cleared: say so plainly — there is no hidden content left.
   const campaignComplete = getLevels().every((l) => isCompleted(l.id, levelProgress));
   // First levels (restaurant build): a place that hasn't opened yet shows its level.
@@ -262,70 +266,113 @@ export function Kitchen({
         </div>
       </div>
 
-      {/* Environment hotspots — Phase 15 consolidated the previous five
-          (Knife Rack, Recipe Board, Boards, Workshop, Journal) down to
-          the three real management destinations, kept at three of the
-          same, already-tested screen positions so the layout doesn't
-          shift, just simplifies. */}
-      <Hotspot
-        label="Progress"
-        sub="your restaurant so far"
-        style={{ left: "26%" }}
-        position="top-[35%]"
-        onClick={() => go("rack")}
-        opensAt={closedUntil("rack")}
-      />
-      <Hotspot
-        label="Market"
-        sub="tools, ingredients & suppliers"
-        style={{ left: "76%" }}
-        position="top-[50%] [@media(max-height:700px)]:top-[40%]"
-        onClick={() => go("shop")}
-        opensAt={closedUntil("shop")}
-      />
-      <Hotspot
-        label="Kitchen Upgrade"
-        sub="improve your kitchen"
-        style={{ left: "50%" }}
-        position="top-[17%] [@media(max-height:700px)]:top-[26%]"
-        onClick={() => go("kitchen-upgrades")}
-      />
+      <div className="absolute right-3 top-[16%] z-20 flex flex-col items-end gap-2 [@media(max-height:700px)]:top-[13%] [@media(max-height:700px)]:gap-1.5">
+        <button
+          type="button"
+          data-testid="daily-check-shortcut"
+          aria-label={
+            attention.nav["restaurant-map"]
+              ? `Open Daily Check, ${attention.nav["restaurant-map"]} items need attention`
+              : "Open Daily Check"
+          }
+          onClick={() => go("daily-maintenance")}
+          className="press relative inline-flex min-h-12 min-w-[158px] items-center justify-between gap-1 rounded-[16px] border border-[#f5d58b] bg-[linear-gradient(145deg,#fff7dc_0%,#f5d998_100%)] px-2 font-ui text-walnut-dark shadow-[0_4px_0_rgba(111,66,28,0.48),0_7px_14px_rgba(35,18,8,0.35),inset_0_1px_0_rgba(255,255,255,0.95)] transition-transform active:translate-y-0.5 active:shadow-[0_2px_0_rgba(111,66,28,0.48),0_4px_8px_rgba(35,18,8,0.3)]"
+        >
+          <span aria-hidden className="relative grid h-9 w-9 shrink-0 place-items-center">
+            <span className="absolute inset-x-[5px] bottom-[2px] top-[5px] rounded-[6px] border-2 border-[#c88b30] bg-[linear-gradient(145deg,#ffe9a1,#e5ae49)] shadow-[0_2px_3px_rgba(91,48,12,0.28)]" />
+            <span className="absolute left-[12px] top-[2px] z-[1] h-[6px] w-[12px] rounded-t-[4px] rounded-b-[2px] border border-[#ae7628] bg-[linear-gradient(180deg,#fff0b8,#d39a3a)]" />
+            <span className="absolute bottom-[7px] left-[9px] right-[8px] top-[11px] rounded-[3px] bg-[#fff8e8] shadow-inner">
+              <span className="absolute left-[3px] right-[2px] top-[4px] h-[2px] rounded-full bg-[#d9c49a]" />
+              <span className="absolute left-[3px] right-[4px] top-[8px] h-[2px] rounded-full bg-[#e5d5b6]" />
+            </span>
+            <span className="absolute bottom-0 left-0 z-[2] grid h-[19px] w-[19px] place-items-center rounded-full border-2 border-[#fff2d0] bg-[linear-gradient(145deg,#45b5ff,#0876d5)] font-ui text-[11px] font-black leading-none text-white shadow-[0_2px_5px_rgba(0,54,115,0.45)]">
+              ✓
+            </span>
+            <span className="absolute -right-0.5 top-0 text-[10px] leading-none text-[#e4ab37]">✦</span>
+          </span>
+          <span className="flex-1 whitespace-nowrap text-left font-display text-[13px] font-black tracking-[0.01em]">Daily Check</span>
+          <span aria-hidden className="font-ui text-[17px] font-black leading-none text-[#82501f]">›</span>
+          {attention.nav["restaurant-map"] ? (
+            <span aria-hidden className="absolute -right-1 -top-1 grid h-4 w-4 place-items-center rounded-full border border-[#fff0d2] bg-[#e53c32] font-ui text-[10px] font-black text-white shadow-md">!</span>
+          ) : null}
+        </button>
 
-      {/* Today's Order — one compact card, the kitchen stays the main
-          visual (§Part 1's visual priority: environment > HUD/hotspots >
-          current order > secondary panels). The full level board opens
-          as its own screen via "See all orders".
-          Phase 12C — the card sat on a fixed `bottom-[86px]` offset that
-          only cleared BottomNav's real rendered height (~75px) by ~11px;
-          on real devices (different emoji/font metrics, safe-area insets)
-          that margin was thin enough for "See all orders" — the card's
-          last line — to clip under the nav. Bumped to a comfortably safe
-          fixed offset and trimmed the card's own padding a touch so the
-          whole card, footer button included, always clears the nav with
-          real headroom instead of a razor-thin margin. No scrolling, no
-          smaller type — same card, same style, more breathing room. */}
-      <div className="absolute inset-x-0 bottom-[104px] z-20 px-5">
+        {([
+          { id: "inventory", label: "Inventory", glyph: "📦" },
+          { id: "business", label: "Business", glyph: "📊" },
+        ] as const).map((item) => {
+          const unlocked = isTabOpen(item.id, reached);
+          const opensAt = unlocked ? null : tabOpensAt(item.id);
+          const count = unlocked ? attention.nav[item.id] : undefined;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              data-testid={`${item.id}-shortcut`}
+              aria-label={
+                !unlocked
+                  ? `${item.label}, opens at Level ${opensAt}`
+                  : count
+                    ? `Open ${item.label}, ${count} items need attention`
+                    : `Open ${item.label}`
+              }
+              aria-disabled={!unlocked || undefined}
+              onClick={() => {
+                if (unlocked) go(item.id);
+              }}
+              className={cn(
+                "press relative inline-flex min-h-12 min-w-[158px] items-center justify-between gap-2 rounded-full border border-[#c58c45] bg-[linear-gradient(145deg,rgba(113,66,34,0.97),rgba(59,34,20,0.98))] px-3 font-ui text-[13px] font-extrabold text-[#fff4da] shadow-[0_4px_0_rgba(38,20,11,0.58),0_7px_14px_rgba(35,18,8,0.35),inset_0_1px_0_rgba(255,231,186,0.22)] transition-transform active:translate-y-0.5",
+                !unlocked && "opacity-75",
+              )}
+            >
+              <span aria-hidden className="text-[22px] leading-none">{unlocked ? item.glyph : "🔒"}</span>
+              <span className="flex-1 text-left">{unlocked ? item.label : `Lv ${opensAt}`}</span>
+              <span aria-hidden className="text-[19px] font-black leading-none text-[#f4d394]">›</span>
+              {count ? (
+                <span aria-hidden className="absolute -right-1 -top-1 grid h-5 w-5 place-items-center rounded-full border-2 border-[#fff3db] bg-[#e53c32] font-ui text-[12px] font-black leading-none text-white shadow-md">!</span>
+              ) : null}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* The city-ranking badge above is the Kitchen screen's entry point
+          for Restaurant Progress; Market remains in BottomNav. */}
+
+      {/* Today's Order — collapsed by default so it keeps the kitchen visible;
+          details and the order board expand on demand. */}
+      <div className="absolute inset-x-0 bottom-[104px] z-20 px-6">
         {clock ? (
           <p
             data-testid="day-strip"
             data-day-phase={clock.phase}
-            className="mx-auto mb-2 w-fit max-w-full truncate rounded-full border border-ivory/25 bg-walnut-dark/70 px-3 py-1.5 font-ui text-[12.5px] font-extrabold text-ivory shadow-soft backdrop-blur-sm"
+            className="mx-auto mb-2 w-fit max-w-full truncate rounded-full border border-ivory/25 bg-walnut-dark/70 px-3 py-1.5 font-ui text-[12.5px] font-extrabold text-ivory shadow-soft backdrop-blur-sm [@media(max-height:700px)]:mb-1 [@media(max-height:700px)]:px-2.5 [@media(max-height:700px)]:py-1 [@media(max-height:700px)]:text-[11px]"
           >
             {dayStripText(clock)}
           </p>
         ) : null}
-        <div className="paper anim-up relative mx-auto -rotate-[0.8deg] rounded-[18px] border border-walnut/20 p-3.5 shadow-lift">
-          <div className="flex items-center justify-between">
-            <p className="font-ui text-[10px] font-extrabold uppercase tracking-[0.2em] text-copper">
+        <div className="anim-up relative mx-auto rounded-[20px] border border-[#f3d9a9] bg-[linear-gradient(145deg,#fff9e9_0%,#fff0d0_52%,#f6dfb5_100%)] p-2.5 shadow-[0_7px_18px_rgba(34,18,8,0.38),inset_0_2px_0_rgba(255,255,255,0.9)] sm:p-3">
+          <div className="flex items-center justify-between gap-2">
+            <p className="font-ui text-[10px] font-extrabold uppercase tracking-[0.19em] text-[#95602c]">
               {campaignComplete ? "Campaign Complete · 250 Levels Mastered" : "Today's Order"}
             </p>
+            <button
+              type="button"
+              aria-expanded={orderCardExpanded}
+              aria-controls="kitchen-order-details"
+              onClick={() => setOrderCardExpanded((expanded) => !expanded)}
+              className="press inline-flex min-h-9 shrink-0 items-center gap-1 rounded-full border border-[#8f4d1e] bg-[linear-gradient(145deg,#a85d25,#754018)] px-2.5 font-ui text-[10px] font-extrabold text-[#fff5df] shadow-[0_2px_6px_rgba(83,41,13,0.32),inset_0_1px_0_rgba(255,255,255,0.25)] transition-transform active:translate-y-px focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-copper"
+            >
+              {orderCardExpanded ? "Hide Details" : "View Details"}
+              <span aria-hidden className="text-[14px] leading-none">{orderCardExpanded ? "⌃" : "›"}</span>
+            </button>
           </div>
-          <div className="mt-1.5 flex items-end justify-between gap-3">
-            <div className={todayUnlocked ? undefined : "opacity-50"}>
-              <p className="line-clamp-2 font-display text-[18px] font-black leading-none text-walnut-dark">
+          <div className="mt-1.5 flex items-center justify-between gap-2">
+            <div className={`min-w-0 flex-1 ${todayUnlocked ? "" : "opacity-50"}`}>
+              <p className="line-clamp-2 font-display text-[18px] font-black leading-[1.06] text-[#392013] sm:text-[20px]">
                 {todayLevel.title}
               </p>
-              <p className="font-hand text-[15px] leading-tight text-walnut/70">
+              <p className="mt-0.5 font-hand text-[13px] italic leading-snug text-[#795a3a] sm:text-[14px]">
                 {campaignComplete
                   ? "every recipe is yours · replay any level or run your restaurant"
                   : !todayUnlocked
@@ -336,11 +383,18 @@ export function Kitchen({
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              <span className="text-[24px]">{todayUnlocked ? todayLevel.emoji : "🔒"}</span>
+              <span
+                role="img"
+                aria-label={`${todayLevel.title} dish`}
+                className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-[#edd8b4] bg-[radial-gradient(circle_at_35%_28%,#fffdf5,#ecdcbf)] text-[26px] shadow-[0_3px_6px_rgba(92,56,25,0.18),inset_0_2px_3px_rgba(255,255,255,0.9)] sm:h-12 sm:w-12"
+              >
+                {todayUnlocked ? todayLevel.emoji : "🔒"}
+              </span>
               <KButton
                 // Prepare (a new order) is the green "go" button; Replay is a quiet
                 // outlined one, so the two never look alike (developer 2026-10-08).
                 variant={todayCompleted ? "ghost" : "sage"}
+                className="min-h-[42px] rounded-[14px] px-3 font-ui text-[12px] font-extrabold shadow-[0_3px_7px_rgba(36,62,37,0.24)] sm:px-4 sm:text-[13px]"
                 disabled={!todayUnlocked}
                 onClick={() => {
                   if (!todayUnlocked) return;
@@ -352,26 +406,38 @@ export function Kitchen({
               </KButton>
             </div>
           </div>
-          {/* First levels (Levels 1–15): Grandma says what's new; its button sits
-              beside "See all orders" so the card stays short on small phones. */}
-          {tip ? (
-            <p
-              className="mt-2 rounded-xl bg-gold/15 px-2.5 py-1 font-hand text-[14px] leading-snug text-walnut-dark"
-              data-testid="kitchen-tip"
-            >
-              👵 {tip.text}
-            </p>
-          ) : null}
-          {showDishIngredients ? <DishIngredientsToggle save={save} level={todayLevel} /> : null}
-          <div className="mt-2.5 flex gap-2">
-            <KButton variant="cream" size="sm" full className="h-12" onClick={() => go("board")}>
-              See all orders →
-            </KButton>
-            {tip?.to && tip.button ? (
-              <KButton size="sm" variant="copper" full className="h-12" onClick={() => go(tip.to!)}>
-                {tip.button}
-              </KButton>
+          <div
+            id="kitchen-order-details"
+            hidden={!orderCardExpanded}
+            className={orderCardExpanded ? "anim-up" : undefined}
+          >
+            {/* First levels (Levels 1–15): Grandma says what's new; her action
+                  stays beside the order-board link when the details are open. */}
+            {tip ? (
+              <p
+                className="mt-2 rounded-xl bg-gold/15 px-2.5 py-1 font-hand text-[14px] leading-snug text-walnut-dark [@media(max-height:700px)]:mt-1 [@media(max-height:700px)]:py-0.5 [@media(max-height:700px)]:text-[12px]"
+                data-testid="kitchen-tip"
+              >
+                👵 {tip.text}
+              </p>
             ) : null}
+            {showDishIngredients ? <DishIngredientsToggle save={save} level={todayLevel} /> : null}
+            <div className="mt-2.5 flex gap-2">
+              <KButton variant="cream" size="sm" full className="h-12" onClick={() => go("board")}>
+                See all orders →
+              </KButton>
+              {tip?.to && tip.button ? (
+                <KButton
+                  size="sm"
+                  variant="copper"
+                  full
+                  className="h-12"
+                  onClick={() => go(tip.to!)}
+                >
+                  {tip.button}
+                </KButton>
+              ) : null}
+            </div>
           </div>
         </div>
       </div>
@@ -461,7 +527,7 @@ export function OrderBoard({
             <button
               type="button"
               // Unified Restaurant: after L250 the restaurant carries on as the Endless
-              // Restaurant (the Business engine, opened from the Restaurant tab).
+              // Restaurant (the Business engine, opened from the Business tab).
               onClick={() => go(RESTAURANT_MODE ? "business" : "endless")}
               data-testid="endless-tile"
               className="press rounded-[16px] border border-sage/40 bg-sage/15 p-3 text-left"
@@ -753,27 +819,20 @@ function DishIngredientsToggle({ save, level }: { save: SaveData; level: LevelDe
 
 const NAV: { id: ScreenId; label: string; glyph: string }[] = [
   { id: "kitchen", label: "Kitchen", glyph: "🏠" },
-  // Inventory before Market (developer 2026-10-10: "move the inventory in
-  // place of market"): what the restaurant has, then where it's bought.
-  { id: "inventory", label: "Inventory", glyph: "📦" },
   { id: "shop", label: "Market", glyph: "🛒" },
-  // Economy V3 Phase 1 — the Business Simulation layer's own bottom-nav
-  // destination (see data.ts's own doc on "business" for why this is a full
-  // tab, not a Kitchen hotspot).
-  // Unified Restaurant: Campaign and Business are one restaurant, so the tab is "Restaurant".
-  { id: "business", label: RESTAURANT_MODE ? "Restaurant" : "Business", glyph: "📊" },
-  { id: "rack", label: "Progress", glyph: "🏆" },
+  { id: "restaurant-map", label: "Restaurant", glyph: "🍽️" },
 ];
 
 /**
  * `active` = the bottom-bar section the screen belongs to, or null for a
- * screen that is none of the five (the Order Board: Level 1–10 UX pass — it
+ * screen that is none of the three (the Order Board: Level 1–10 UX pass — it
  * used to light up Kitchen, as if the player were on the Kitchen home).
  */
 export function BottomNav({ active, go }: { active: ScreenId | null; go: (s: ScreenId) => void }) {
   // First levels (restaurant build): a section that hasn't opened shows a lock
   // and its level; a tap says when it opens (game/restaurant/firstLevels.ts).
   const reached = useContext(NavLevelContext);
+  const attention = useContext(NavAttentionContext);
   // Grandma points at a section that just opened (firstLevels.ts SECTION_POINTER).
   const guide = useContext(NavGuideContext);
   const pointer = guide && active === "kitchen" ? guide : null;
@@ -835,7 +894,13 @@ export function BottomNav({ active, go }: { active: ScreenId | null; go: (s: Scr
             key={n.id}
             type="button"
             onClick={() => (locked ? setHint(`🔒 ${n.label} opens at Level ${opensAt}`) : go(n.id))}
-            aria-label={locked ? `${n.label}, opens at Level ${opensAt}` : undefined}
+            aria-label={
+              locked
+                ? `${n.label}, opens at Level ${opensAt}`
+                : attention.nav[n.id]
+                  ? `${n.label}, ${attention.nav[n.id]} items need attention`
+                  : undefined
+            }
             data-nav={n.id}
             data-locked={locked || undefined}
             className={cn(
@@ -867,6 +932,15 @@ export function BottomNav({ active, go }: { active: ScreenId | null; go: (s: Scr
                 className="absolute -top-1 right-0 rounded-full bg-copper px-1.5 font-ui text-[11px] font-extrabold leading-[15px] text-ivory shadow-soft"
               >
                 NEW
+              </span>
+            ) : null}
+            {!locked && attention.nav[n.id] ? (
+              <span
+                aria-hidden="true"
+                title={`${attention.nav[n.id]} items need attention`}
+                className="absolute -right-0.5 -top-1 grid h-[18px] w-[18px] place-items-center rounded-full border border-[#fff0d0] bg-[#d83b2e] font-ui text-[12px] font-black leading-none text-white shadow-[0_2px_5px_rgba(0,0,0,0.55)]"
+              >
+                !
               </span>
             ) : null}
             <span

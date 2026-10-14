@@ -1,8 +1,8 @@
 /**
  * CLEANLINESS & MAINTENANCE (restaurant build, developer 2026-10-10). The
  * whole section — Kitchen, Dining Area, Restroom, their supplies and the
- * Cleaner's rounds — starts together at CLEANING_FROM_LEVEL (10; the tab is
- * in the Restaurant section, open from Level 11).
+ * Cleaner's rounds — starts together at CLEANING_FROM_LEVEL (10; management
+ * controls live in the Business section, open from Level 11).
  *
  * No clock and no decay: dirt comes only from real services. After each
  * service (a first completion — App.completeCampaignLevel, after the
@@ -42,7 +42,7 @@ import { isAuditDay } from "./parAudit";
 /**
  * Cleaning starts with this level's service (developer 2026-10-10: "from level
  * 10"): its tasks, Grandma's cleaning cupboard and the spotless streak. The
- * tab shows inside the Restaurant section, which opens at Level 11.
+ * management screen is in the Business section, which opens at Level 11.
  */
 export const CLEANING_FROM_LEVEL = 10;
 

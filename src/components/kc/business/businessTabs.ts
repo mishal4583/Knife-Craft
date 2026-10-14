@@ -3,6 +3,7 @@ import type { ScreenId } from "../data";
 export type BusinessTab =
   | "overview"
   | "equipment"
+  | "development"
   | "staff"
   | "suppliers"
   | "menu"
@@ -19,6 +20,7 @@ export type BusinessTab =
 export const BUSINESS_TAB_SCREEN: Record<BusinessTab, ScreenId> = {
   overview: "business",
   equipment: "business-refrigerator",
+  development: "business-kitchen-upgrades",
   staff: "business-staff",
   suppliers: "business-suppliers",
   menu: "business-menu",
@@ -33,6 +35,8 @@ export function businessTabForScreen(screen: ScreenId): BusinessTab | null {
     case "business-refrigerator":
     case "business-shop":
       return "equipment";
+    case "business-kitchen-upgrades":
+      return "development";
     case "business-staff":
       return "staff";
     case "business-suppliers":

@@ -1,5 +1,19 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## Isolated Restaurant Map review (2026-10-12)
+
+The developer created `D:\WORKS\GAMES\Knife-Craft-Codex` on branch
+`codex/restaurant-map` with the origin push URL disabled. The Restaurant Map
+prototype is being integrated here only. It is the always-available
+Restaurant bottom tab; the previous Restaurant management tab is now
+Business, and Progress is reachable from Kitchen and Business. See root
+`AGENTS.md` and the Restaurant Map section in `docs/REFERENCE.md` for the
+task boundaries and implementation overview. Changes are intentionally local and uncommitted.
+Do not run tests, a build, or the dev server; the developer will test locally.
+
+The earlier path/status notes below describe the original primary checkout
+and are historical, not instructions for this isolated review.
+
 Last updated: 2026-10-08. Written at the end of the Claude Code session that
 created this repository, so the next session can continue without the old
 conversation.

@@ -1,6 +1,4 @@
 import { useState } from "react";
-import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
-import { RestaurantDevelopmentCard } from "../restaurant/RestaurantDevelopmentCard";
 import type { ScreenId } from "../data";
 import type { SaveData } from "@/game/SaveManager";
 import { KButton, Panel, Badge } from "../common/primitives";
@@ -106,7 +104,27 @@ export function BusinessRefrigerator({
 
   return (
     <div className="space-y-3">
-      {RESTAURANT_MODE ? <RestaurantDevelopmentCard save={save} go={go} /> : null}
+      <section
+        className="relative isolate h-[88px] overflow-hidden rounded-[20px] border border-walnut/20 bg-walnut-dark shadow-soft sm:h-[96px]"
+        aria-label="Commercial kitchen equipment"
+      >
+        <img
+          src={`${import.meta.env.BASE_URL}business/equipment-banner.webp`}
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 h-full w-full select-none object-cover object-[center_52%]"
+          draggable={false}
+        />
+        <div
+          className="absolute inset-0 bg-gradient-to-r from-walnut-dark/65 via-walnut-dark/20 to-transparent"
+          aria-hidden="true"
+        />
+        <div className="relative flex h-full items-center px-3.5 sm:px-4">
+          <h2 className="rounded-[14px] border border-ivory/25 bg-walnut-dark/35 px-3 py-2 font-display text-[16px] font-black text-ivory shadow-soft backdrop-blur-sm sm:text-[18px]">
+            Kitchen equipment
+          </h2>
+        </div>
+      </section>
       {/* Your fridge */}
       <Panel tone="cream" className="p-4">
         <div className="flex items-start justify-between gap-3">

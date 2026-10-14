@@ -20,6 +20,7 @@ import { formatQuantity } from "@/game/business/businessInventory";
 import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
 import { IngredientSupplier } from "../restaurant/IngredientSupplier";
 import { supplierCreditOf } from "@/game/restaurant/supplierCredit";
+import { BusinessSectionBanner } from "./BusinessSectionBanner";
 
 const SUPPLIER_ICON: Record<string, string> = {
   "local-market": "🏪",
@@ -98,6 +99,7 @@ export function BusinessSuppliers({
 
   return (
     <div className="space-y-3">
+      <BusinessSectionBanner image="suppliers-banner.webp" title="Suppliers" />
       {RESTAURANT_MODE && selectSupplier ? (
         <IngredientSupplier save={save} selectSupplier={selectSupplier} />
       ) : null}

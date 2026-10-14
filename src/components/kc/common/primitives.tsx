@@ -2,6 +2,7 @@ import { AudioManager } from "@/game/AudioManager";
 import { formatUsd } from "@/game/money";
 import type { HTMLAttributes, ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { CashStackIcon } from "./CashStackIcon";
 
 /* ── Buttons ─────────────────────────────────────────────── */
 
@@ -141,16 +142,11 @@ export function Badge({
   );
 }
 
-/** The wallet chip — the game's one money display: a "$" badge + formatUsd (n is integer US cents, see money.ts). Used by every screen header, Campaign and Business alike. */
+/** The shared wallet chip, used by screen headers across Campaign and Business. */
 export function Coin({ n }: { n: number }) {
   return (
     <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-copper/30 bg-ivory/80 px-2.5 py-1 font-ui text-[12.5px] font-extrabold text-walnut-dark shadow-soft">
-      <span
-        className="grid h-4 w-4 place-items-center rounded-full text-[8.5px] text-ivory"
-        style={{ background: "linear-gradient(160deg,var(--color-gold),var(--color-copper))" }}
-      >
-        $
-      </span>
+      <CashStackIcon className="h-[21px] w-[25px] shrink-0 drop-shadow-sm" />
       {formatUsd(n)}
     </span>
   );

@@ -9,6 +9,35 @@ when a task touches it; `CLAUDE.md` keeps the rules. Section numbers match
 
 ---
 
+## Restaurant Map integration (isolated review branch, 2026-10-12)
+
+The in-game map is the always-available Restaurant destination in the bottom
+navigation. The existing Restaurant management destination is labeled
+Business. The map uses existing `ScreenId` routes and existing room unlocks;
+it does not add or alter campaign progression. `src/components/kc/restaurantMap/`
+contains the React map, normalized hotspot configuration, and map-only types.
+The six compressed illustrations live in `public/restaurant-map/` and are
+selected from `SaveData.equippedKitchenUpgradeId`; the refrigerator overlay
+reflects the existing refrigerator tier. Restaurant name edits are kept in
+browser local storage by the map component so this integration does not
+change save data.
+
+The five bottom destinations are Kitchen, Inventory, Market, Business, and
+Restaurant (map). Progress remains reachable from the Kitchen home and the
+Business overview. Map hotspots route to existing screens: Inventory,
+Refrigerator, Staff, Kitchen, Market equipment, Market cleaning/packaging
+supplies, Business management, Business service, Business cleanliness, and
+Business menu. The map is available from the start; each room retains its
+existing level lock. A contextual Map button returns from mapped destinations;
+it is omitted during cutting gameplay.
+
+This branch is an isolated local review. Follow its root `AGENTS.md`: leave
+all changes uncommitted, do not run tests/build/server, and do not publish or
+deploy. Older instructions elsewhere in this reference that direct work to
+`main` do not apply to this explicitly scoped task.
+
+---
+
 ## 0. READ FIRST
 
 This repository (`D:\WORKS\GAMES\Playgama\KnifeCraft`) is now the **primary

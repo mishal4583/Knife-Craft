@@ -9,6 +9,9 @@ import { supplyUnits } from "@/game/business/BusinessSuppliesManager";
 import { BUSINESS_STAFF_CATALOG } from "@/game/business/businessStaff";
 import { formatUsd } from "@/game/money";
 import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
+import { restaurantDayOf } from "@/game/restaurant/restaurantDay";
+import { boardOrDefault } from "@/game/boards/boardDefinitions";
+import { knifeOrDefault } from "@/game/knives/knifeDefinitions";
 import { restaurantSystem } from "@/game/restaurant/restaurantProgression";
 import { bottleView } from "@/game/restaurant/serviceSupplies";
 import {
@@ -34,6 +37,15 @@ import {
 } from "@/game/restaurant/cleanliness";
 import { openMarketSupplies } from "../marketFocus";
 import { openStaffFor } from "../staffFocus";
+import { DishwashingPrototype } from "./DishwashingPrototype";
+import { AreaCleaningPrototype, ROOM_CLEANING_TESTS } from "./AreaCleaningPrototype";
+import { cleanlinessRoomImageUrl, kitchenMapArtStage } from "@/game/kitchen/kitchenMapArt";
+
+const INTERACTIVE_CLEANING_TASKS: Record<CleanArea, ReadonlySet<TaskKind>> = {
+  kitchen: new Set<TaskKind>(["equipment", "grease", "degrease", "deep-kitchen", "sweep-line"]),
+  dining: new Set<TaskKind>(["tables", "floor", "spill", "mop-all", "deep-dining"]),
+  restroom: new Set<TaskKind>(["toilet", "restroom-floor", "restroom-disinfect", "deep-restroom"]),
+};
 
 /**
  * RESTAURANT → CLEANLINESS & MAINTENANCE (restaurant build, from Level 10 —
@@ -54,11 +66,14 @@ export function BusinessCleanliness({
   cleanlinessAction: (action: CleanlinessAction) => CleanlinessActionResult | null;
 }) {
   const level = restaurantLevelOf(save.levelProgress);
+  const closingDue = restaurantDayOf(save).closingDue;
   const st = cleanlinessOf(save);
   const areas = CLEAN_AREAS.map((a) => areaView(save, a, level));
   const open = st.tasks.length;
   const [flash, setFlash] = useState<string | null>(null);
   const [details, setDetails] = useState<CleanArea | null>(null);
+  const [activeCleaning, setActiveCleaning] = useState<{ area: CleanArea; task: TaskKind; previewOnly?: boolean; roomWide?: boolean } | null>(null);
+  const [dishwashingMode, setDishwashingMode] = useState<null | "service" | "kitchen-tools">(null);
 
   if (level < CLEANING_FROM_LEVEL)
     return (
@@ -72,14 +87,15 @@ export function BusinessCleanliness({
       </Panel>
     );
 
-  function run(action: CleanlinessAction) {
+  function run(action: CleanlinessAction): CleanlinessActionResult | null {
     const r = cleanlinessAction(action);
-    if (!r) return;
+    if (!r) return null;
     if (r.cleaned.length)
       setFlash(`✨ ${r.cleaned.length === 1 ? "Cleaned!" : `${r.cleaned.length} tasks cleaned!`}`);
     else if (r.needs.length)
       setFlash(`Needs ${r.needs.map((id) => getSupplyItem(id)?.name ?? id).join(", ")}`);
     window.setTimeout(() => setFlash(null), 1600);
+    return r;
   }
 
   return (
@@ -93,17 +109,14 @@ export function BusinessCleanliness({
           🧹
         </span>
         <div className="min-w-0">
-          <p className="font-display text-[19px] font-black leading-tight text-walnut-dark">
+          <p className="font-display text-[20px] font-black leading-tight text-walnut-dark">
             Cleanliness &amp; Maintenance
           </p>
-          <p className="font-hand text-[15px] leading-snug text-walnut/70">
-            👵 “Good food tastes even better in a clean place.”
+          <p className="mt-0.5 font-ui text-[12.5px] font-semibold leading-snug text-walnut/70">
+            Keep every room ready for the next service.
           </p>
         </div>
       </Panel>
-
-      {/* Ready for service */}
-      <ReadyCard areas={areas} open={open} onCleanAll={() => run({ kind: "clean-all" })} />
 
       {flash ? (
         <p
@@ -120,12 +133,100 @@ export function BusinessCleanliness({
         <AreaCard
           key={v.area}
           view={v}
+          roomImage={cleanlinessRoomImageUrl(v.area, save.equippedKitchenUpgradeId)}
           open={details === v.area}
           onToggle={() => setDetails((d) => (d === v.area ? null : v.area))}
-          onClean={(task) => run({ kind: "clean", task })}
+          onClean={(task) => {
+            if (INTERACTIVE_CLEANING_TASKS[v.area].has(task)) setActiveCleaning({ area: v.area, task });
+            else run({ kind: "clean", task });
+          }}
           onBuy={(id) => openMarketSupplies(go, getSupplyItem(id)?.section ?? "cleaning", id)}
         />
       ))}
+
+      {/* Ready status and hands-on washing actions follow the room overview. */}
+      <ReadyCard areas={areas} open={open} onCleanAll={() => run({ kind: "clean-all" })} />
+
+      <Panel className="p-3" data-testid="cleaning-test-spots">
+        <div className="flex items-start gap-2">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-copper/15 text-[22px]" aria-hidden>
+            🧽
+          </span>
+          <div>
+            <p className="font-display text-[16px] font-black text-walnut-dark">Practice room cleaning</p>
+            <p className="font-ui text-[12px] leading-snug text-walnut/70">
+              Each room is one complete session with its own messes and tools. Practice won’t change supplies or cleanliness.
+            </p>
+          </div>
+        </div>
+        <div className="mt-3 space-y-2.5">
+          {ROOM_CLEANING_TESTS.map((room) => (
+            <button
+              key={room.area}
+              type="button"
+              data-testid={`cleaning-test-area-${room.area}`}
+              onClick={() => setActiveCleaning({ area: room.area, task: room.task, previewOnly: true, roomWide: true })}
+              className="group relative isolate flex min-h-[112px] w-full items-end overflow-hidden rounded-2xl border border-[#8f633c] bg-[#422a19] p-3 text-left shadow-[0_5px_14px_rgba(70,39,17,.2)] transition-transform hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-copper"
+            >
+              <img
+                src={cleanlinessRoomImageUrl(room.area, save.equippedKitchenUpgradeId)}
+                alt=""
+                aria-hidden="true"
+                className="absolute inset-0 z-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.025]"
+                draggable={false}
+              />
+              <span aria-hidden="true" className="absolute inset-0 z-[1] bg-gradient-to-r from-[#21130b]/90 via-[#2d1b0e]/68 to-[#2d1b0e]/15" />
+              <span className="relative z-10 flex w-full items-end gap-2 text-ivory">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-white/20 bg-black/25 text-[22px] shadow">{AREA_META[room.area].icon}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block font-display text-[16px] font-black drop-shadow">{room.title}</span>
+                  <span className="mt-0.5 block font-ui text-[11.5px] font-semibold text-white/85 drop-shadow">{room.subtitle}</span>
+                  <span className="mt-1.5 inline-flex rounded-full border border-white/25 bg-black/25 px-2 py-0.5 font-ui text-[10px] font-extrabold uppercase tracking-wide text-[#f5d69c]">
+                    {room.dirtCount} mess types · {room.toolCount} tools
+                  </span>
+                </span>
+                <span className="mb-0.5 shrink-0 rounded-full border border-[#e0bb74] bg-[#6b3d20] px-3 py-2 font-ui text-[11px] font-black text-[#fff3d7] shadow">Start ›</span>
+              </span>
+            </button>
+          ))}
+        </div>
+      </Panel>
+
+      <Panel className="flex items-center gap-3 p-3" data-testid="dishwashing-prototype-entry">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-sage/20 text-[25px]" aria-hidden>
+          🧽
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="font-display text-[15px] font-black text-walnut-dark">
+            {closingDue ? "Nightly dishwashing & kitchen tools" : "Customer dishwashing"}
+          </p>
+          <p className="font-ui text-[12px] text-walnut/65">
+            {closingDue
+              ? "Wash customer dishes, then clean the chef’s tools before tomorrow."
+              : "Wash customer tableware here. The chef-tool clean-up opens at closing."}
+          </p>
+        </div>
+        <KButton size="sm" variant="wood" className="min-h-12 shrink-0 px-3" onClick={() => setDishwashingMode("service")}>
+          Start washing
+        </KButton>
+      </Panel>
+
+      <Panel className="flex items-center gap-3 p-3" data-testid="kitchen-tools-wash-entry">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-walnut/10 text-[25px]" aria-hidden>
+          🔪
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="font-display text-[15px] font-black text-walnut-dark">Chef’s tools wash-up</p>
+          <p className="font-ui text-[12px] text-walnut/65">
+            {closingDue
+              ? "Practice the after-closing kitchen clean-up."
+              : "Preview and test the after-closing tool clean-up now."}
+          </p>
+        </div>
+        <KButton size="sm" variant="cream" className="min-h-12 shrink-0 px-3" onClick={() => setDishwashingMode("kitchen-tools")}>
+          Test tools
+        </KButton>
+      </Panel>
 
       <StaffCard
         save={save}
@@ -137,6 +238,37 @@ export function BusinessCleanliness({
       <SuppliesCard save={save} go={go} />
 
       {!st.introSeen ? <Intro onDone={() => run({ kind: "intro-seen" })} /> : null}
+      {dishwashingMode ? (
+        <DishwashingPrototype
+          reducedMotion={save.settings.reducedMotion}
+          closingDue={dishwashingMode === "service" && closingDue}
+          startAtKitchenTools={dishwashingMode === "kitchen-tools"}
+          equippedKnife={knifeOrDefault(save.equippedKnifeId)}
+          equippedBoard={boardOrDefault(save.equippedBoardId)}
+          onClose={() => setDishwashingMode(null)}
+        />
+      ) : null}
+      {activeCleaning ? (
+        <AreaCleaningPrototype
+          key={`${activeCleaning.area}-${activeCleaning.task}-${activeCleaning.roomWide ? "room" : "task"}-${kitchenMapArtStage(save.equippedKitchenUpgradeId)}`}
+          area={activeCleaning.area}
+          task={activeCleaning.task}
+          stage={kitchenMapArtStage(save.equippedKitchenUpgradeId)}
+          image={cleanlinessRoomImageUrl(activeCleaning.area, save.equippedKitchenUpgradeId)}
+          roomWide={activeCleaning.roomWide}
+          previewOnly={activeCleaning.previewOnly}
+          onClose={() => setActiveCleaning(null)}
+          onComplete={() => {
+            if (activeCleaning.previewOnly) {
+              setFlash("Test complete — supplies and cleanliness are unchanged.");
+              window.setTimeout(() => setFlash(null), 2400);
+            } else {
+              run({ kind: "clean", task: activeCleaning.task });
+            }
+            setActiveCleaning(null);
+          }}
+        />
+      ) : null}
     </div>
   );
 }
@@ -194,18 +326,21 @@ function ReadyCard({
 
 /* ── An area card ──────────────────────────────────────────────────── */
 
-const SCENE: Record<CleanArea, { bg: string; art: string }> = {
+const SCENE: Record<CleanArea, { position: string; fit: "cover" | "contain"; color: string }> = {
   kitchen: {
-    bg: "bg-[linear-gradient(160deg,#5b3a22,#8a5a32_55%,#c98d4c)]",
-    art: "🍳 🥘 🔪 🧄",
+    position: "center 50%",
+    fit: "cover",
+    color: "#70401f",
   },
   dining: {
-    bg: "bg-[linear-gradient(160deg,#3f4a2c,#6f7c45_55%,#c9a45c)]",
-    art: "🍽️ 🪑 🍷 🪴",
+    position: "center 50%",
+    fit: "cover",
+    color: "#39482d",
   },
   restroom: {
-    bg: "bg-[linear-gradient(160deg,#2f4f4f,#4f7f7a_55%,#b8c9b8)]",
-    art: "🚽 🚰 🧻 🪞",
+    position: "center 50%",
+    fit: "cover",
+    color: "#254b4c",
   },
 };
 
@@ -219,50 +354,74 @@ function AreaCard({
   onToggle,
   onClean,
   onBuy,
+  roomImage,
 }: {
   view: AreaView;
   open: boolean;
   onToggle: () => void;
   onClean: (task: TaskKind) => void;
   onBuy: (id: SupplyId) => void;
+  roomImage: string;
 }) {
   const meta = AREA_META[view.area];
   const tone =
     view.status === "clean" ? "bg-sage" : view.status === "attention" ? "bg-gold" : "bg-tomato";
   return (
     <Panel
-      className="overflow-hidden p-0"
+      className="overflow-hidden rounded-[24px] border border-[#dfc89e] bg-[#fff8e9] p-0 shadow-[0_8px_22px_rgba(75,44,21,.16)]"
       data-testid={`area-${view.area}`}
       data-area-status={view.status}
     >
-      <div className={cn("relative px-3 pb-3 pt-2 text-ivory", SCENE[view.area].bg)}>
-        <div className="flex items-center gap-2">
-          <span className="text-[22px]" aria-hidden>
-            {meta.icon}
-          </span>
-          <p className="font-display text-[19px] font-black">{meta.title}</p>
-          <span
-            className="ml-auto font-display text-[20px] font-black"
-            data-area-meter={view.meter}
-          >
-            {view.meter}%
-          </span>
-          <span className="text-[22px]" aria-hidden>
-            {face(view.meter)}
-          </span>
+      <div
+        className={cn("relative h-[175px] overflow-hidden text-ivory", view.area === "kitchen" ? "sm:h-[190px]" : "")}
+        style={{ backgroundColor: SCENE[view.area].color }}
+      >
+        <img
+          alt={`${meta.title}, shown using the restaurant map artwork`}
+          className="absolute inset-0 h-full w-full"
+          draggable={false}
+          src={roomImage}
+          style={{
+            objectFit: SCENE[view.area].fit,
+            objectPosition: SCENE[view.area].position,
+          }}
+        />
+        <div
+          aria-hidden="true"
+          className="absolute inset-0"
+          style={{ background: "linear-gradient(180deg, rgba(17,12,8,.64) 0%, rgba(17,12,8,.26) 48%, rgba(17,12,8,.05) 100%)" }}
+        />
+        <div className="relative z-10 px-3 pb-2 pt-2.5">
+          <div className="flex items-center gap-2">
+            <span
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-white/25 bg-black/25 text-[21px] shadow-soft"
+              aria-hidden
+            >
+              {meta.icon}
+            </span>
+            <p className="font-display text-[19px] font-black drop-shadow">{meta.title}</p>
+            <span
+              className="ml-auto font-display text-[20px] font-black tabular-nums drop-shadow"
+              data-area-meter={view.meter}
+            >
+              {view.meter}%
+            </span>
+            <span className="text-[22px] drop-shadow" aria-hidden>
+              {face(view.meter)}
+            </span>
+          </div>
+          <div className="mt-2 h-2.5 overflow-hidden rounded-full border border-white/20 bg-black/40 shadow-inner">
+            <div
+              className={cn("h-full rounded-full transition-[width] duration-500", tone)}
+              style={{ width: `${view.meter}%` }}
+            />
+          </div>
+          <p className="mt-1.5 font-ui text-[11.5px] font-bold tracking-wide text-white/90 drop-shadow">
+            {view.tasks.length === 0
+              ? "✨ READY FOR SERVICE"
+              : `${view.tasks.length} ${view.tasks.length === 1 ? "TASK" : "TASKS"} NEED ATTENTION`}
+          </p>
         </div>
-        <div className="mt-1 h-2.5 overflow-hidden rounded-full bg-black/30">
-          <div
-            className={cn("h-full rounded-full transition-[width] duration-500", tone)}
-            style={{ width: `${view.meter}%` }}
-          />
-        </div>
-        <p
-          className="mt-2 select-none text-center text-[30px] leading-none tracking-[0.2em] opacity-90"
-          aria-hidden
-        >
-          {SCENE[view.area].art}
-        </p>
       </div>
       <div
         className="grid gap-1 px-2 pt-3"
@@ -276,7 +435,7 @@ function AreaCard({
             data-spot-status={s.status}
             title={s.note}
           >
-            <span className="relative grid h-12 w-12 place-items-center rounded-full border border-walnut/15 bg-ivory text-[22px] shadow-soft">
+            <span className="relative grid h-12 w-12 place-items-center rounded-full border border-[#ead8b7] bg-[#fffaf0] text-[22px] shadow-[0_3px_8px_rgba(76,43,19,.12)]">
               <span aria-hidden>{s.icon}</span>
               <span
                 className={cn(
@@ -306,8 +465,8 @@ function AreaCard({
           {open
             ? "Hide details ‹"
             : view.tasks.length
-              ? `View details · ${view.tasks.length} to do ›`
-              : "View details ›"}
+              ? `View ${view.tasks.length} cleaning ${view.tasks.length === 1 ? "task" : "tasks"} ›`
+              : "View area details ›"}
         </button>
         {open ? (
           <div className="anim-up mt-2 space-y-2" data-testid={`area-details-${view.area}`}>

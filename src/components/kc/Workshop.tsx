@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import type { KnifeDefinition } from "@/game/knives/knifeTypes";
 import { knifeProfile, type Pt } from "@/game/scenes/knifeProfile";
 
@@ -29,7 +30,7 @@ function shade(n: number, amt: number): string {
  * with gradients, scaled to fit. A paring knife reads as short and slim, a
  * cleaver as short and tall, a bread knife as long with a toothed edge.
  */
-export function KnifeGlyph({ knife, size = 120 }: { knife: KnifeDefinition; size?: number }) {
+export function KnifeGlyph({ knife, size = 120, className, style }: { knife: KnifeDefinition; size?: number; className?: string; style?: CSSProperties }) {
   const shape = knife.animation.blade;
   const visual = knife.visual;
   const p = knifeProfile(shape, 540);
@@ -78,7 +79,7 @@ export function KnifeGlyph({ knife, size = 120 }: { knife: KnifeDefinition; size
   const handleGradId = `handle-${knife.id}`;
 
   return (
-    <svg width={size} height={size * 0.42} viewBox="0 0 240 100" aria-hidden>
+    <svg className={className} style={style} width={size} height={size * 0.42} viewBox="0 0 240 100" aria-hidden>
       <defs>
         <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={shade(visual.bladeColor, 0.45)} />

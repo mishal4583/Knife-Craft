@@ -128,6 +128,7 @@ export function GameShell({ children, aside }: { children: ReactNode; aside?: Re
                 (the cutting scene, the order, a served order's result panel).
                 Now a resize only changes this wrapper's size and scale. */}
             <div
+              data-game-content
               className="absolute left-0 top-0 origin-top-left"
               style={
                 size.width >= MIN_LAYOUT_W

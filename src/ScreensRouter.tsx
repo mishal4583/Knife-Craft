@@ -1,9 +1,11 @@
 import type { DeliveryKind } from "@/game/restaurant/deliveries";
 import type { CleanlinessAction, CleanlinessActionResult } from "@/game/restaurant/cleanliness";
-import { Suspense, lazy } from "react";
+import { Suspense, lazy, useState } from "react";
 import { Kitchen, OrderBoard, BottomNav } from "@/components/kc/Kitchen";
 import { Shop } from "@/components/kc/Shop";
 import { RestaurantProgress } from "@/components/kc/RestaurantProgress";
+import { Achievements } from "@/components/kc/Achievements";
+import { DailyMaintenance } from "@/components/kc/DailyMaintenance";
 import { KitchenUpgrades } from "@/components/kc/KitchenUpgrades";
 import type { PurchaseKitchenUpgradeResult } from "@/game/kitchen/KitchenUpgradeManager";
 import { RecipeBook, RecipeDetail } from "@/components/kc/Recipes";
@@ -12,7 +14,8 @@ import type { AdvanceDayResult } from "@/components/kc/business/BusinessDashboar
 import { businessTabForScreen } from "@/components/kc/business/businessTabs";
 import type { PurchaseIngredientResult } from "@/game/business/BusinessInventoryManager";
 import type { PurchaseSupplyResult } from "@/game/business/BusinessSuppliesManager";
-import { peekSupplySection } from "@/components/kc/marketFocus";
+import { openMarketSupplies, peekSupplySection } from "@/components/kc/marketFocus";
+import type { RestaurantZoneId } from "@/components/kc/restaurantMap/restaurantMap";
 import type { PurchaseRefrigeratorResult } from "@/game/business/RefrigeratorManager";
 import type { DiscardExpiredResult } from "@/game/business/discardExpired";
 import type { PerformMaintenanceResult } from "@/game/business/businessMaintenance";
@@ -28,7 +31,15 @@ import type { ScreenId } from "@/components/kc/data";
 import type { SaveData } from "@/game/SaveManager";
 import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
 import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
-import { NavGuideContext, NavLevelContext, type NavGuide } from "@/components/kc/navLevel";
+import { kitchenMapImageUrl } from "@/game/kitchen/kitchenMapArt";
+import {
+  NavAttentionContext,
+  NavGuideContext,
+  NavLevelContext,
+  type NavGuide,
+} from "@/components/kc/navLevel";
+import { attentionBadgesFor } from "@/game/restaurant/attentionBadges";
+import RestaurantMap from "@/components/kc/restaurantMap/RestaurantMapView";
 import type { Measure } from "@/game/business/measure";
 import type { BuyKnifeResult } from "@/game/knives/KnifeManager";
 import type { BuyBoardResult } from "@/game/boards/BoardManager";
@@ -185,14 +196,61 @@ export function ScreensRouter({
   onStartBusinessService: () => void;
   onEnterBusinessPreparation: () => void;
 }) {
+  const [mapReturnAvailable, setMapReturnAvailable] = useState(false);
+
+  // Any normal navigation leaves map-return mode. A map hotspot sets it again
+  // so the destination screen always has a direct route back to the map.
+  const routeGo = (destination: ScreenId) => {
+    setMapReturnAvailable(false);
+    go(destination);
+  };
+
+  const openMapDestination = (destination: ScreenId, zoneId: RestaurantZoneId) => {
+    setMapReturnAvailable(true);
+    if (zoneId === "takeaway") {
+      openMarketSupplies(go, "packaging");
+    } else if (zoneId === "cleaning") {
+      openMarketSupplies(go, "cleaning");
+    } else {
+      go(destination);
+    }
+  };
+
+  const fridgeTier =
+    save.business.refrigerator.refrigeratorId === "professional-refrigerator"
+      ? "professional"
+      : save.business.refrigerator.refrigeratorId === "commercial-refrigerator"
+        ? "commercial"
+        : "basic";
+  const attentionBadges = attentionBadgesFor(save);
+
   return (
     <NavLevelContext.Provider value={restaurantLevelOf(save.levelProgress)}>
-      <NavGuideContext.Provider value={navGuide ?? null}>
+      <NavAttentionContext.Provider value={attentionBadges}>
+       <NavGuideContext.Provider value={navGuide ?? null}>
+        {screen === "restaurant-map" ? (
+          <Suspense fallback={<RestaurantLoading go={routeGo} active="restaurant-map" />}>
+            <div className="relative h-full w-full overflow-hidden bg-[#f7edd7]">
+              <RestaurantMap
+                className="restaurant-map-production"
+                playerLevel={restaurantLevelOf(save.levelProgress)}
+                kitchenMapImage={kitchenMapImageUrl(save.equippedKitchenUpgradeId)}
+                fridgeTier={fridgeTier}
+                reducedMotion={save.settings.reducedMotion}
+                attentionCounts={attentionBadges.map}
+                attentionSymbols={attentionBadges.mapSymbols}
+                currentScreen={screen}
+                onNavigateToScreen={openMapDestination}
+              />
+              <BottomNav active="restaurant-map" go={routeGo} />
+            </div>
+          </Suspense>
+        ) : null}
         {screen === "kitchen" ? (
-          <Kitchen go={go} save={save} onSelectLevel={onSelectLevel} />
+          <Kitchen go={routeGo} save={save} onSelectLevel={onSelectLevel} />
         ) : null}
         {screen === "board" ? (
-          <OrderBoard go={go} save={save} onSelectLevel={onSelectLevel} />
+          <OrderBoard go={routeGo} save={save} onSelectLevel={onSelectLevel} />
         ) : null}
         {screen === "shop" || screen === "shop-ingredients" || screen === "shop-supplies" ? (
           <Shop
@@ -207,7 +265,7 @@ export function ScreensRouter({
             purchaseIngredient={purchaseIngredient}
             {...(purchaseIngredients ? { purchaseIngredients } : {})}
             purchaseSupply={purchaseSupply}
-            go={go}
+            go={routeGo}
             save={save}
             buyKnife={buyKnife}
             buyBoard={buyBoard}
@@ -219,12 +277,16 @@ export function ScreensRouter({
           />
         ) : null}
         {/* "rack" is the internal screen id; the player-facing screen is Restaurant Progress. */}
-        {screen === "rack" ? <RestaurantProgress go={go} save={save} /> : null}
+        {screen === "rack" ? <RestaurantProgress go={routeGo} save={save} /> : null}
+        {screen === "achievements" ? <Achievements go={routeGo} save={save} /> : null}
+        {screen === "daily-maintenance" ? (
+          <DailyMaintenance go={routeGo} save={save} cleanlinessAction={cleanlinessAction} />
+        ) : null}
         {screen === "inventory" || screen === "inventory-supplies" ? (
-          <Suspense fallback={<RestaurantLoading go={go} active="inventory" />}>
+          <Suspense fallback={<RestaurantLoading go={routeGo} active="inventory" />}>
             <InventoryScreen
               key={screen}
-              go={go}
+              go={routeGo}
               save={save}
               initialKind={screen === "inventory-supplies" ? "supplies" : "ingredients"}
               throwOutExpired={throwOutExpired}
@@ -232,24 +294,24 @@ export function ScreensRouter({
           </Suspense>
         ) : null}
         {screen === "kitchen-upgrades" ? (
-          <KitchenUpgrades go={go} save={save} buildKitchenUpgrade={buildKitchenUpgrade} />
+          <KitchenUpgrades go={routeGo} save={save} buildKitchenUpgrade={buildKitchenUpgrade} />
         ) : null}
-        {screen === "recipes" ? <RecipeBook go={go} save={save} onOpen={onOpenRecipe} /> : null}
+        {screen === "recipes" ? <RecipeBook go={routeGo} save={save} onOpen={onOpenRecipe} /> : null}
         {screen === "recipe-detail" ? (
           <RecipeDetail
             levelId={recipeDetailLevelId}
             save={save}
-            go={go}
+            go={routeGo}
             onSelectLevel={onSelectLevel}
           />
         ) : null}
-        {screen === "daily" ? <DailyOrder go={go} save={save} onStartDaily={onStartDaily} /> : null}
+        {screen === "daily" ? <DailyOrder go={routeGo} save={save} onStartDaily={onStartDaily} /> : null}
         {screen === "endless" ? (
-          <EndlessService go={go} save={save} onStartEndless={onStartEndless} />
+          <EndlessService go={routeGo} save={save} onStartEndless={onStartEndless} />
         ) : null}
         {screen === "settings" ? (
           <Settings
-            go={go}
+            go={routeGo}
             settings={save.settings}
             onToggleSetting={toggleSetting}
             onSetMeasure={RESTAURANT_MODE ? setMeasure : undefined}
@@ -259,14 +321,15 @@ export function ScreensRouter({
         {/* Business Mode: one Market-style screen; every business route opens its tab.
           Rendered from one place so the screen stays mounted while switching tabs. */}
         {businessTabForScreen(screen) ? (
-          <Suspense fallback={<RestaurantLoading go={go} active="business" />}>
+          <Suspense fallback={<RestaurantLoading go={routeGo} active="business" />}>
             <BusinessDashboard
-              go={go}
+              go={routeGo}
               save={save}
               tab={businessTabForScreen(screen)!}
               onAdvanceDay={advanceBusinessDay}
               businessServiceSession={businessServiceSession}
               purchaseRefrigerator={purchaseRefrigerator}
+              buildKitchenUpgrade={buildKitchenUpgrade}
               performRefrigeratorMaintenance={performRefrigeratorMaintenance}
               rushRestock={rushRestock}
               rushAdAvailable={rushAdAvailable}
@@ -284,9 +347,9 @@ export function ScreensRouter({
           </Suspense>
         ) : null}
         {screen === "business-service" ? (
-          <Suspense fallback={<RestaurantLoading go={go} active="business" />}>
+          <Suspense fallback={<RestaurantLoading go={routeGo} active="business" />}>
             <BusinessService
-              go={go}
+              go={routeGo}
               save={save}
               businessServiceSession={businessServiceSession}
               onStartService={onStartBusinessService}
@@ -296,7 +359,19 @@ export function ScreensRouter({
             />
           </Suspense>
         ) : null}
-      </NavGuideContext.Provider>
+        {mapReturnAvailable && screen !== "restaurant-map" && screen !== "gameplay" ? (
+          <button
+            type="button"
+            data-map-return
+            aria-label="Return to restaurant map"
+            onClick={() => routeGo("restaurant-map")}
+            className="fixed bottom-[82px] right-3 z-[80] flex min-h-12 items-center gap-2 rounded-full border border-walnut-dark/60 bg-walnut-dark px-4 font-ui text-[12px] font-extrabold text-ivory shadow-lift"
+          >
+            🗺️ Map
+          </button>
+        ) : null}
+       </NavGuideContext.Provider>
+      </NavAttentionContext.Provider>
     </NavLevelContext.Provider>
   );
 }

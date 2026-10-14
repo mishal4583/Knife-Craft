@@ -545,7 +545,7 @@ export function PhysicalFridge({
   view: FridgeView;
   selectedId: IngredientId | null;
   onSelect: (id: IngredientId) => void;
-  /** Absent before the Restaurant section opens (first levels): no upgrade button then. */
+  /** Absent before Business opens (first levels): no upgrade button then. */
   onEquipment?: (() => void) | undefined;
 }) {
   const byZone = useMemo(() => {

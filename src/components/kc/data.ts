@@ -38,6 +38,8 @@
 // live. Nothing else referenced either array.
 
 export type ScreenId =
+  /** The always-available Restaurant map hub in the bottom navigation. */
+  | "restaurant-map"
   | "gameplay"
   | "kitchen"
   | "board"
@@ -55,6 +57,8 @@ export type ScreenId =
   // "Restock", see marketFocus.ts openMarketSupplies).
   | "shop-supplies"
   | "rack"
+  | "achievements"
+  | "daily-maintenance"
   // Inventory — the restaurant's stock control, its own bottom-bar section
   // between Market and Business (InventoryScreen.tsx). Read-only over
   // save.business.inventory; buying stays in the Market.
@@ -72,6 +76,8 @@ export type ScreenId =
   | "business"
   // Economy V3 Phase 3 — the Refrigerator sub-screen under Business.
   | "business-refrigerator"
+  // Restaurant build — Kitchen Upgrades as its own Business section.
+  | "business-kitchen-upgrades"
   // Economy V3 Phase 5 — the Menu Pricing sub-screen under Business.
   | "business-menu"
   // Economy V3 Phase 7 — the Supplier Contracts sub-screen under Business.

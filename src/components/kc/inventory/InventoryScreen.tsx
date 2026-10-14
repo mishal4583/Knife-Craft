@@ -1,4 +1,5 @@
 import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
+import { kitchenMapArtStage } from "@/game/kitchen/kitchenMapArt";
 import { serviceUsesStock } from "@/game/restaurant/campaignStock";
 import { inventoryMenuOf, menuOpensAt, restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
 import { STOCK_USED_FROM, TOP_UP_AT } from "@/game/restaurant/firstLevels";
@@ -597,6 +598,21 @@ export function InventoryScreen({
       ),
     [view.items, filter, sort],
   );
+  const upgradedStockroom = kitchenMapArtStage(save.equippedKitchenUpgradeId) !== "humble";
+  const selectedStockArt =
+    kind === "supplies"
+      ? {
+          image: upgradedStockroom
+            ? "supplies-stockroom-upgraded.webp"
+            : "supplies-stockroom.webp",
+          title: "Supplies",
+        }
+      : {
+          image: upgradedStockroom
+            ? "ingredients-stockroom-upgraded.webp"
+            : "ingredients-stockroom.webp",
+          title: "Ingredients",
+        };
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-cream">
@@ -610,6 +626,30 @@ export function InventoryScreen({
         />
 
         <div className="space-y-3 px-4">
+          <section
+            className="relative isolate h-[104px] overflow-hidden rounded-[18px] border border-walnut/20 bg-walnut-dark shadow-soft sm:h-[116px]"
+            aria-label="Restaurant stockroom"
+          >
+            <img
+              src={`${import.meta.env.BASE_URL}inventory/stockroom-banner.webp`}
+              alt=""
+              aria-hidden="true"
+              className="absolute inset-0 h-full w-full select-none object-cover object-[center_54%]"
+              draggable={false}
+            />
+            <div
+              className="absolute inset-0 bg-gradient-to-r from-walnut-dark/90 via-walnut-dark/60 to-transparent"
+              aria-hidden="true"
+            />
+            <div className="relative flex h-full max-w-[76%] flex-col justify-center px-3.5 text-ivory sm:px-4">
+              <h2 className="font-display text-[17px] font-black leading-tight sm:text-[19px]">
+                Restaurant stockroom
+              </h2>
+              <p className="mt-1 font-ui text-[11.5px] font-semibold leading-snug text-ivory/90 sm:text-[12px]">
+                Ingredients and supplies, ready for service.
+              </p>
+            </div>
+          </section>
           {/* Unified Restaurant: one urgent list for the whole restaurant (read-only, navigation only). */}
           {RESTAURANT_MODE ? <RestaurantAttentionPanel save={save} go={go} /> : null}
           {/* First levels pass 2: what Grandma's leftovers are (until stock proper, L15). */}
@@ -661,6 +701,30 @@ export function InventoryScreen({
               </button>
             ))}
           </div>
+
+          <section
+            key={kind}
+            className="relative isolate h-[82px] overflow-hidden rounded-[18px] border border-walnut/15 bg-walnut-dark shadow-soft sm:h-[92px]"
+            aria-label={`${selectedStockArt.title} stockroom`}
+            data-testid="inventory-stock-art"
+          >
+            <img
+              src={`${import.meta.env.BASE_URL}inventory/${selectedStockArt.image}`}
+              alt=""
+              aria-hidden="true"
+              className="absolute inset-0 h-full w-full select-none object-cover object-[center_54%]"
+              draggable={false}
+            />
+            <div
+              className="absolute inset-0 bg-gradient-to-r from-walnut-dark/75 via-walnut-dark/35 to-transparent"
+              aria-hidden="true"
+            />
+            <div className="relative flex h-full max-w-[76%] items-center px-4 text-ivory">
+              <h2 className="font-display text-[15px] font-bold leading-tight sm:text-[16px]">
+                {selectedStockArt.title}
+              </h2>
+            </div>
+          </section>
 
           {kind === "supplies" ? (
             <InventorySupplies go={go} save={save} />

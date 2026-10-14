@@ -50,6 +50,23 @@ export function RestaurantProgress({ go, save }: { go: (s: ScreenId) => void; sa
           right={<Coin n={save.credits} />}
         />
 
+        <div className="px-4 pb-3">
+          <button
+            type="button"
+            onClick={() => go("achievements")}
+            className="flex w-full items-center justify-between rounded-2xl border border-gold/50 bg-[linear-gradient(120deg,rgba(255,248,230,0.96),rgba(235,210,161,0.88))] px-4 py-3 text-left shadow-soft transition-transform active:scale-[0.99]"
+          >
+            <span className="flex items-center gap-3">
+              <span className="grid h-10 w-10 place-items-center rounded-xl bg-walnut text-xl text-ivory">🏆</span>
+              <span>
+                <span className="block font-display text-[16px] font-bold text-walnut-dark">Achievements</span>
+                <span className="block font-ui text-[12px] text-walnut/65">Milestones from your real game progress</span>
+              </span>
+            </span>
+            <span aria-hidden="true" className="font-ui text-xl font-bold text-copper">›</span>
+          </button>
+        </div>
+
         <div className="space-y-3 px-4">
           {/* Restaurant build: the city ranking (developer 2026-10-09) leads; the café
               stage the old card showed is the standing card's "Kitchen title". */}

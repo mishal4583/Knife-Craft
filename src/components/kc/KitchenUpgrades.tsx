@@ -51,10 +51,13 @@ export function KitchenUpgrades({
   go,
   save,
   buildKitchenUpgrade,
+  embedded = false,
 }: {
   go: (s: ScreenId) => void;
   save: SaveData;
   buildKitchenUpgrade: (id: string) => PurchaseKitchenUpgradeResult;
+  /** Render as a Business sub-section, sharing its header, scroll area and bottom nav. */
+  embedded?: boolean;
 }) {
   const [selectedId, setSelectedId] = useState<string>(
     () =>
@@ -68,17 +71,9 @@ export function KitchenUpgrades({
   const previous = selectedIndex > 0 ? KITCHEN_UPGRADE_CATALOG[selectedIndex - 1]! : null;
   const shortfall = Math.max(0, kitchenTierPrice(selected, save) - save.credits);
 
-  return (
-    <div className="relative h-full w-full overflow-hidden bg-cream">
-      <div className="relative h-full overflow-y-auto no-scrollbar pb-24">
-        <ScreenHeader
-          title="Kitchen Upgrades"
-          subtitle="restaurant development"
-          onBack={() => go("kitchen")}
-          right={<Coin n={save.credits} />}
-        />
-
-        <div className="px-4">
+  const content = (
+    <>
+        <div className={embedded ? "" : "px-4"}>
           <Panel tone="cream" className="p-4">
             <div className="flex items-center gap-4">
               <KitchenUpgradePreview upgrade={selected} size={100} />
@@ -140,7 +135,7 @@ export function KitchenUpgrades({
           </Panel>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 px-4 pt-4">
+        <div className={cn("grid grid-cols-2 gap-3 pt-4", !embedded && "px-4")}>
           {KITCHEN_UPGRADE_CATALOG.map((u) => {
             const uState: KitchenUpgradeState = getKitchenUpgradeState(u.id, save);
             const locked = uState === "locked";
@@ -176,9 +171,26 @@ export function KitchenUpgrades({
           })}
         </div>
 
-        <p className="px-6 pb-2 pt-5 text-center font-hand text-[16px] text-walnut/50">
+        <p className={cn("pb-2 pt-5 text-center font-hand text-[16px] text-walnut/50", !embedded && "px-6")}>
           Build your restaurant, one room at a time.
         </p>
+    </>
+  );
+
+  if (embedded) {
+    return <div className="space-y-3">{content}</div>;
+  }
+
+  return (
+    <div className="relative h-full w-full overflow-hidden bg-cream">
+      <div className="relative h-full overflow-y-auto no-scrollbar pb-24">
+        <ScreenHeader
+          title="Kitchen Upgrades"
+          subtitle="restaurant development"
+          onBack={() => go("kitchen")}
+          right={<Coin n={save.credits} />}
+        />
+        {content}
       </div>
       <BottomNav active="kitchen" go={go} />
     </div>

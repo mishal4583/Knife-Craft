@@ -34,6 +34,7 @@ import {
   cuisineFor,
   restaurantSystem,
 } from "@/game/restaurant/restaurantProgression";
+import { BusinessSectionBanner } from "./BusinessSectionBanner";
 
 /** A quarter-dollar step — sensible for real USD menu pricing. */
 const PRICE_STEP = 25;
@@ -105,6 +106,7 @@ export function BusinessMenu({
 
   return (
     <div className="space-y-3">
+      <BusinessSectionBanner image="menu-banner.webp" title="Restaurant menu" />
       <Panel tone="cream" className="p-4">
         <div className="flex items-baseline justify-between gap-3">
           <Eyebrow>{restaurant ? "🍽️ Active today" : "🍽️ On the menu"}</Eyebrow>

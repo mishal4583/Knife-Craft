@@ -1,5 +1,6 @@
 import { formatUsd } from "@/game/money";
 import { cn } from "@/lib/utils";
+import { CashStackIcon } from "./CashStackIcon";
 
 export function CurrencyPill({ amount, className }: { amount: number; className?: string }) {
   return (
@@ -9,13 +10,7 @@ export function CurrencyPill({ amount, className }: { amount: number; className?
         className,
       )}
     >
-      <span
-        className="grid h-4 w-4 place-items-center rounded-full text-[8.5px] text-ivory"
-        style={{ background: "linear-gradient(160deg,var(--color-gold),var(--color-copper))" }}
-        aria-hidden
-      >
-        $
-      </span>
+      <CashStackIcon className="h-[21px] w-[25px] shrink-0 drop-shadow-sm" />
       {formatUsd(amount)}
     </span>
   );

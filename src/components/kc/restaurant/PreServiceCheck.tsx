@@ -36,6 +36,52 @@ import type { GrandmasFridgeNote } from "@/game/restaurant/grandmasFridge";
 import { getSupplyItem as supplyItemOf } from "@/game/business/businessSupplies";
 import { FIRST_PURCHASE_LEVEL } from "@/game/restaurant/firstLevels";
 
+function RoutineStatus({
+  icon,
+  label,
+  detail,
+  tone,
+  onClick,
+  testId,
+}: {
+  icon: string;
+  label: string;
+  detail: string;
+  tone: "ready" | "attention";
+  onClick: () => void;
+  testId: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      data-testid={testId}
+      data-status={tone}
+      className={cn(
+        "press relative min-h-[58px] rounded-xl border px-2 py-1.5 pr-5 text-left",
+        tone === "attention"
+          ? "border-copper/25 bg-gold/10"
+          : "border-olive/15 bg-ivory/70",
+      )}
+    >
+      <span className="block font-ui text-[11.5px] font-extrabold text-walnut-dark">
+        <span aria-hidden>{icon} </span>{label}
+      </span>
+      <span
+        className={cn(
+          "mt-0.5 block font-ui text-[11px] leading-tight",
+          tone === "attention" ? "font-bold text-copper" : "text-walnut/65",
+        )}
+      >
+        {detail}
+      </span>
+      <span className="absolute right-2 top-1/2 -translate-y-1/2 font-ui text-[16px] font-black text-walnut/35" aria-hidden>
+        ›
+      </span>
+    </button>
+  );
+}
+
 /**
  * PRE_SERVICE_CHECK (Unified Restaurant spec §6, §24–25) — shown before a
  * campaign service ONLY when something needs attention (missing or
@@ -109,6 +155,7 @@ export function PreServiceCheck({
   firstShoppingList = false,
   onBuyTool = () => {},
   cleaningOpen = 0,
+  openingChores = 0,
   onOpenCleanliness = () => {},
   chores = null,
 }: {
@@ -185,6 +232,8 @@ export function PreServiceCheck({
   onBuyTool?: (id: SupplyId, packs: number) => void;
   /** Cleanliness & Maintenance: cleaning tasks still open (never blocks START; it costs the spotless streak). */
   cleaningOpen?: number;
+  /** Opening-phase chores, counted in the day-start overview. */
+  openingChores?: number;
   onOpenCleanliness?: () => void;
   /** A real restaurant's day: the phase's checklist (ShiftChecklist), never blocking. */
   chores?: ReactNode;
@@ -202,6 +251,27 @@ export function PreServiceCheck({
     (!kit || kit.ready) &&
     staff.every((r) => r.met);
   const staffMissing = staff.filter((r) => !r.met);
+  const urgentIngredientRows = stock?.missingRows.length ?? 0;
+  const lowForDayRows = dayStock?.rows.length ?? 0;
+  const expiredRows = stock?.rows.filter((r) => r.expired > 0).length ?? 0;
+  const urgentSupplyRows = sup?.rows.filter((r) => r.missing > 0 && r.blocking).length ?? 0;
+  const lowSupplyRows = sup?.rows.filter((r) => r.missing > 0 && !r.blocking).length ?? 0;
+  const lowBottleCount = sup
+    ? Number(sup.soap.status !== "ok") + Number(sup.cleaner.status !== "ok")
+    : 0;
+  const missingTools = kit?.rows.filter((r) => r.missing > 0).length ?? 0;
+  const openCleaningTasks = cleaningOpen + openingChores;
+  const routineNeedsAttention = [
+    urgentIngredientRows > 0 || lowForDayRows > 0 || expiredRows > 0,
+    urgentSupplyRows > 0 || lowSupplyRows > 0 || lowBottleCount > 0,
+    missingTools > 0,
+    staffMissing.length > 0,
+    !!fridge && fridge.status !== "ok",
+    openCleaningTasks > 0,
+  ].filter(Boolean).length;
+  const jumpToRoutineSection = (id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
   /** What blocks START, for its label: stock or supplies first, otherwise staff. */
   const stockOrSuppliesShort =
     (!!stock && (!stock.ready || stock.rows.some((r) => r.expired > 0 && r.usable < r.needed))) ||
@@ -230,6 +300,128 @@ export function PreServiceCheck({
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-3">
+          {opening ? (
+            <section
+              className={cn(
+                "mb-3 rounded-2xl border p-3",
+                routineNeedsAttention > 0
+                  ? "border-gold/50 bg-gold/10"
+                  : "border-olive/25 bg-sage/10",
+              )}
+              data-testid="psc-daily-routine"
+            >
+              <div className="flex items-start gap-2">
+                <span className="text-[22px]" aria-hidden>🌅</span>
+                <div className="min-w-0 flex-1">
+                  <p className="font-display text-[16px] font-black text-walnut-dark">
+                    Today’s opening routine
+                  </p>
+                  <p className="font-ui text-[12px] leading-snug text-walnut/70">
+                    {routineNeedsAttention > 0
+                      ? `${routineNeedsAttention} area${routineNeedsAttention === 1 ? "" : "s"} to review before today's services.`
+                      : "Stock, team, tools, and opening chores are ready for today."}
+                  </p>
+                </div>
+                <span
+                  className={cn(
+                    "shrink-0 rounded-full px-2 py-1 font-ui text-[10.5px] font-extrabold",
+                    routineNeedsAttention > 0 ? "bg-gold/30 text-walnut-dark" : "bg-sage/20 text-olive",
+                  )}
+                >
+                  {routineNeedsAttention > 0 ? "CHECK" : "READY"}
+                </span>
+              </div>
+              <div className="mt-2 grid grid-cols-2 gap-1.5">
+                <RoutineStatus
+                  icon="🥕"
+                  label="Ingredients"
+                  detail={
+                    stock
+                      ? urgentIngredientRows > 0
+                        ? `${urgentIngredientRows} urgent refill${urgentIngredientRows === 1 ? "" : "s"}${lowForDayRows > 0 ? ` · ${lowForDayRows} short today` : ""}`
+                        : lowForDayRows > 0
+                          ? `${lowForDayRows} running low for today's schedule`
+                          : expiredRows > 0
+                            ? `${expiredRows} expired to clear`
+                            : "Ready for today's orders"
+                      : "No stock check needed yet"
+                  }
+                  tone={urgentIngredientRows > 0 || lowForDayRows > 0 || expiredRows > 0 ? "attention" : "ready"}
+                  onClick={() =>
+                    jumpToRoutineSection(
+                      urgentIngredientRows > 0 || expiredRows > 0
+                        ? "psc-ingredients"
+                        : "psc-day-stock",
+                    )
+                  }
+                  testId="psc-routine-ingredients"
+                />
+                <RoutineStatus
+                  icon="📦"
+                  label="Service supplies"
+                  detail={
+                    sup
+                      ? urgentSupplyRows > 0
+                        ? `${urgentSupplyRows} urgent refill${urgentSupplyRows === 1 ? "" : "s"}${lowSupplyRows + lowBottleCount > 0 ? ` · ${lowSupplyRows + lowBottleCount} low` : ""}`
+                        : lowSupplyRows + lowBottleCount > 0
+                          ? `${lowSupplyRows + lowBottleCount} running short today`
+                          : "Enough for today's orders"
+                      : "Not used for this service"
+                  }
+                  tone={urgentSupplyRows > 0 || lowSupplyRows > 0 || lowBottleCount > 0 ? "attention" : "ready"}
+                  onClick={() => jumpToRoutineSection("psc-supplies")}
+                  testId="psc-routine-supplies"
+                />
+                <RoutineStatus
+                  icon="🍳"
+                  label="Kitchen tools"
+                  detail={kit ? (missingTools > 0 ? `${missingTools} tool${missingTools === 1 ? "" : "s"} needed` : "Ready for today's dishes") : "No tool check needed"}
+                  tone={missingTools > 0 ? "attention" : "ready"}
+                  onClick={() => jumpToRoutineSection("psc-tools")}
+                  testId="psc-routine-tools"
+                />
+                <RoutineStatus
+                  icon="👥"
+                  label="Team"
+                  detail={staff.length > 0 ? (staffMissing.length > 0 ? `${staffMissing.length} role${staffMissing.length === 1 ? "" : "s"} to fill` : "Required team is ready") : "No staff check needed"}
+                  tone={staffMissing.length > 0 ? "attention" : "ready"}
+                  onClick={() => jumpToRoutineSection("psc-staff")}
+                  testId="psc-routine-staff"
+                />
+                <RoutineStatus
+                  icon="❄️"
+                  label="Cold storage"
+                  detail={
+                    fridge
+                      ? fridge.status === "full"
+                        ? `Full · ${fridge.used} / ${fridge.capacity} units`
+                        : fridge.status === "nearly-full"
+                          ? `Nearly full · ${fridge.free} units free`
+                          : `Space available · ${fridge.free} units free`
+                      : "No fridge alert"
+                  }
+                  tone={!!fridge && fridge.status !== "ok" ? "attention" : "ready"}
+                  onClick={() => jumpToRoutineSection("psc-fridge")}
+                  testId="psc-routine-fridge"
+                />
+                <RoutineStatus
+                  icon="🧹"
+                  label="Cleaning"
+                  detail={openCleaningTasks > 0 ? `${openCleaningTasks} opening or carry-over task${openCleaningTasks === 1 ? "" : "s"}` : "No cleaning tasks waiting"}
+                  tone={openCleaningTasks > 0 ? "attention" : "ready"}
+                  onClick={() =>
+                    jumpToRoutineSection(
+                      openingChores > 0 ? "psc-opening-chores" : "psc-cleaning",
+                    )
+                  }
+                  testId="psc-routine-cleaning"
+                />
+              </div>
+              <p className="mt-2 font-hand text-[13px] leading-snug text-walnut/65">
+                Refill only what today needs. Cleaning and optional stock top-ups never block the start.
+              </p>
+            </section>
+          ) : null}
           {owed > 0 ? (
             <p
               className="mb-2 rounded-2xl border border-copper/30 bg-gold/10 px-3 py-2 font-ui text-[12.5px] font-bold text-walnut-dark"
@@ -363,7 +555,7 @@ export function PreServiceCheck({
               <p className="mt-3 font-ui text-[12.5px] font-extrabold uppercase tracking-wide text-walnut/60">
                 Ingredients
               </p>
-              <ul className="mt-1 divide-y divide-walnut/10" data-testid="psc-ingredients">
+              <ul id="psc-ingredients" className="mt-1 divide-y divide-walnut/10" data-testid="psc-ingredients">
                 {stock.rows.map((row) => (
                   <IngredientRow
                     key={row.ingredientId}
@@ -381,7 +573,7 @@ export function PreServiceCheck({
               <p className="mt-3 font-ui text-[12.5px] font-extrabold uppercase tracking-wide text-walnut/60">
                 Staff for this service
               </p>
-              <ul className="mt-1 divide-y divide-walnut/10" data-testid="psc-staff">
+              <ul id="psc-staff" className="mt-1 divide-y divide-walnut/10" data-testid="psc-staff">
                 {staff.map((r) => (
                   <li
                     key={r.id}
@@ -427,6 +619,7 @@ export function PreServiceCheck({
           {fridge && fridge.status !== "ok" ? (
             <div
               className="mt-3 rounded-2xl border border-tomato/30 bg-tomato/10 p-3"
+              id="psc-fridge"
               data-testid="psc-fridge"
               data-fridge-status={fridge.status}
             >
@@ -453,6 +646,7 @@ export function PreServiceCheck({
           {cleaningOpen > 0 ? (
             <div
               className="mt-3 flex items-center gap-2 rounded-2xl border border-gold/50 bg-gold/15 p-2"
+              id="psc-cleaning"
               data-testid="psc-cleaning"
             >
               <span className="text-[22px]" aria-hidden>
@@ -478,7 +672,7 @@ export function PreServiceCheck({
           ) : null}
 
           {kit && kit.rows.length > 0 ? (
-            <div data-testid="psc-tools">
+            <div id="psc-tools" data-testid="psc-tools">
               <p className="mt-3 font-ui text-[12.5px] font-extrabold uppercase tracking-wide text-walnut/60">
                 🍳 Kitchen tools · today's dishes
               </p>
@@ -547,7 +741,7 @@ export function PreServiceCheck({
                 Supplies · {sup.dineIn} dine-in
                 {sup.takeaway > 0 ? ` · ${sup.takeaway} takeaway` : ""}
               </p>
-              <ul className="mt-1 divide-y divide-walnut/10" data-testid="psc-supplies">
+              <ul id="psc-supplies" className="mt-1 divide-y divide-walnut/10" data-testid="psc-supplies">
                 {sup.rows.map((row) => (
                   <SupplyRow
                     key={`${row.id}${row.guest ? "-guest" : ""}`}
@@ -650,6 +844,7 @@ export function PreServiceCheck({
           {stock && dayStock && dayStock.rows.length > 0 ? (
             <div
               className="mt-3 rounded-2xl border border-walnut/15 bg-ivory/70 p-3"
+              id="psc-day-stock"
               data-testid="psc-day-stock"
             >
               <p className="font-ui text-[12.5px] font-extrabold uppercase tracking-wide text-walnut/60">

@@ -2,9 +2,10 @@
  * THE FIRST LEVELS (developer 2026-10-09, "Levels 1–15 retention" pass 1 —
  * presentation only). The restaurant opens up one piece at a time:
  *
- *  - the bottom-bar sections open at a level each (Kitchen from the start,
- *    Inventory at 3, Market at 7, Progress at 10, Restaurant at 11); before
- *    that a section shows a lock with its level;
+ *  - the bottom-bar sections open at a level each (Kitchen and the Restaurant
+ *    map from the start, Inventory at 3, Market at 7, Business at 11); before
+ *    that a section shows a lock with its level. Progress stays reachable from
+ *    the Kitchen and Business screens rather than occupying a bottom tab;
  *  - Grandma says one line on each of Levels 1–15's Level Complete;
  *  - the day's ceremony (the opening card and Closing Time) starts with the
  *    fridge-and-freshness stage (Level 21); before it a day ends quietly
@@ -20,7 +21,7 @@ import { BOARD_CATALOG } from "../boards/boardDefinitions";
 import { formatUsd } from "../money";
 import type { SaveData } from "../SaveManager";
 
-/** The bottom-bar sections that open later (Kitchen is always open). */
+/** Destinations that open later (Kitchen and the Restaurant map are always open). */
 export type LockableTab = "inventory" | "shop" | "rack" | "business";
 
 export const TAB_OPENS_AT: Record<LockableTab, number> = {
@@ -30,12 +31,12 @@ export const TAB_OPENS_AT: Record<LockableTab, number> = {
   business: 11,
 };
 
-/** The name each section has in the bottom bar. */
+/** Player-facing names for unlockable destinations. */
 export const TAB_NAMES: Record<LockableTab, string> = {
   inventory: "Inventory",
   shop: "Market",
   rack: "Progress",
-  business: "Restaurant",
+  business: "Business",
 };
 
 const isLockable = (id: string): id is LockableTab => id in TAB_OPENS_AT;
@@ -50,7 +51,7 @@ export function tabOpensAt(id: string): number | null {
   return isLockable(id) ? TAB_OPENS_AT[id] : null;
 }
 
-/** The sections that open exactly at `level`, in bottom-bar order. */
+/** Destinations that open exactly at `level`, in progression order. */
 export function tabsOpeningAt(level: number): LockableTab[] {
   return (Object.keys(TAB_OPENS_AT) as LockableTab[]).filter((id) => TAB_OPENS_AT[id] === level);
 }
@@ -59,8 +60,8 @@ export function tabsOpeningAt(level: number): LockableTab[] {
 export const TAB_OPENING_NOTE: Record<LockableTab, string> = {
   inventory: "📦 Inventory is open: Grandma's fridge",
   shop: "🛒 The Market is open: knives & boards",
-  rack: "🏆 Progress is open: the city ranking",
-  business: "🍽️ The Restaurant is open: your menu",
+  rack: "🏆 Restaurant Progress is available from the Kitchen and Business screens",
+  business: "📊 Business is open: manage your restaurant",
 };
 
 /** Grandma's line on each of Levels 1–15's Level Complete (developer 2026-10-09, verbatim). */
@@ -156,12 +157,15 @@ export function earlyStockAt(levelNumber: number): boolean {
 export function sectionOfScreen(screen: string): LockableTab | null {
   if (screen === "shop" || screen.startsWith("shop-")) return "shop";
   if (screen === "inventory" || screen.startsWith("inventory-")) return "inventory";
+  // The Restaurant map is a primary always-open hub. Individual map rooms
+  // retain their existing screen/level gates when tapped.
+  if (screen === "restaurant-map") return null;
   if (screen === "business" || screen.startsWith("business-")) return "business";
   if (screen === "rack") return "rack";
   return null;
 }
 
-/** "🔒 Restaurant opens at Level 11" — null when the screen is open at `reachedLevel`. */
+/** A destination's lock hint, or null when it is open at `reachedLevel`. */
 export function lockedScreenHint(screen: string, reachedLevel: number): string | null {
   const section = sectionOfScreen(screen);
   if (!section || isTabOpen(section, reachedLevel)) return null;
@@ -206,9 +210,9 @@ export const GRANDMA_TIPS: Record<number, GrandmaTip> = {
     button: "Open Market",
   },
   11: {
-    text: "We have a menu now! Have a look at it in the Restaurant.",
+    text: "We have a menu now! Have a look at it in Business.",
     to: "business",
-    button: "Open Restaurant",
+    button: "Open Business",
   },
   12: { text: "Before you start, we'll check the fridge together." },
   13: { text: "Today we top up — buy only what's missing." },
@@ -248,12 +252,12 @@ export const SECTION_POINTER: Record<LockableTab, { title: string; line: string 
     line: "See how far our kitchen has come — and what comes next.",
   },
   business: {
-    title: "🍽️ Your Restaurant Business",
+    title: "📊 Your Business Dashboard",
     line: "Run it like a business: the menu, the guests and the day's takings.",
   },
 };
 
-const POINTER_ORDER: readonly LockableTab[] = ["inventory", "shop", "rack", "business"];
+const POINTER_ORDER: readonly LockableTab[] = ["inventory", "shop", "business"];
 
 /** Grandma points out sections through this level (the first levels); later saves never. */
 export const POINTER_THROUGH_LEVEL = 15;

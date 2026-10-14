@@ -7,7 +7,7 @@ import { restaurantDevelopment } from "@/game/restaurant/restaurantBackOffice";
 
 /**
  * Unified Restaurant phase 7 (restaurant build): restaurant development on
- * Restaurant → Equipment, next to the fridge. Read-only
+ * Business → Overview. Read-only
  * (restaurantBackOffice.restaurantDevelopment over KitchenUpgradeManager);
  * tiers are still built on the Kitchen Upgrade screen.
  */
@@ -45,7 +45,7 @@ export function RestaurantDevelopmentCard({
               : `Next: ${next.name} · ${formatUsd(next.price)} · ready to build.`}
         </p>
         <KButton full variant="ghost" className="mt-3" onClick={() => go("kitchen-upgrades")}>
-          {next && next.state === "available" ? "Build in Kitchen Upgrade →" : "Kitchen Upgrade →"}
+          {next && next.state === "available" ? "Build next upgrade →" : "Kitchen upgrades →"}
         </KButton>
       </Panel>
     </div>

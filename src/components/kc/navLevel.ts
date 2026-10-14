@@ -1,6 +1,7 @@
 import { createContext, useContext } from "react";
 import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
 import { isTabOpen, type LockableTab } from "@/game/restaurant/firstLevels";
+import type { AttentionBadges } from "@/game/restaurant/attentionBadges";
 
 /**
  * The player's reached level for the bottom bar's locks (restaurant build,
@@ -22,3 +23,6 @@ export function useTabOpen(id: string): boolean {
  */
 export type NavGuide = { tab: LockableTab; dismiss: () => void } | null;
 export const NavGuideContext = createContext<NavGuide>(null);
+
+/** Current live attention counts for the shared bottom navigation and restaurant map. */
+export const NavAttentionContext = createContext<AttentionBadges>({ nav: {}, map: {}, mapSymbols: {} });
