@@ -1219,7 +1219,7 @@ export function DishwashingPrototype({
               aria-hidden="true"
               className="absolute inset-0 h-full w-full select-none"
               draggable={false}
-              src={afterClosing ? "/dishwashing/premium-sink-night.png" : "/dishwashing/premium-sink.png"}
+              src={`${import.meta.env.BASE_URL}dishwashing/premium-sink${afterClosing ? "-night" : ""}.webp`}
               style={{
                 position: "absolute",
                 inset: 0,

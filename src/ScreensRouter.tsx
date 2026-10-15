@@ -39,7 +39,6 @@ import {
   type NavGuide,
 } from "@/components/kc/navLevel";
 import { attentionBadgesFor } from "@/game/restaurant/attentionBadges";
-import RestaurantMap from "@/components/kc/restaurantMap/RestaurantMapView";
 import type { Measure } from "@/game/business/measure";
 import type { BuyKnifeResult } from "@/game/knives/KnifeManager";
 import type { BuyBoardResult } from "@/game/boards/BoardManager";
@@ -58,6 +57,9 @@ const BusinessService = lazy(() =>
 );
 const InventoryScreen = lazy(() =>
   loadRestaurantScreens().then((m) => ({ default: m.InventoryScreen })),
+);
+const RestaurantMap = lazy(() =>
+  loadRestaurantScreens().then((m) => ({ default: m.RestaurantMap })),
 );
 
 /** Shown for the moment the Restaurant chunk takes to arrive: the screen's own frame, never a blank. */

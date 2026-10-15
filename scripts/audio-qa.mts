@@ -87,6 +87,18 @@ const am = AudioManager as unknown as {
 
 console.log("S. Effects");
 {
+  // Developer 2026-10-15 (Codex audio fix): no AudioContext and no sound before
+  // the player's first tap or key; music likewise waits for that gesture.
+  const silentBefore = AudioManager.sfxCount;
+  AudioManager.playSfx("tap");
+  AudioManager.setMusicMood("kitchen");
+  assert(
+    AudioManager.sfxCount === silentBefore && am.ctx === null && !AudioManager.musicPlaying,
+    "S0: nothing plays and no audio context exists before the first gesture",
+  );
+  AudioManager.setMusicMood("off");
+  listeners.pointerdown?.();
+  await new Promise((r) => setTimeout(r, 70));
   const names = Object.keys(SFX) as (keyof typeof SFX)[];
   assert(
     names.join() === "tap,coin,till,bell,plate,delivery,lightsOff,squeak,levelComplete,story" &&
@@ -125,9 +137,9 @@ console.log("G. Gating");
     "G1: silent while paused (the platform's pause covers a hidden page) and with Sound off; plays again after",
     { paused, off, on },
   );
+  // The gesture happened in S0 (music waited for it there).
   AudioManager.setMusicMood("kitchen");
-  const beforeGesture = AudioManager.musicPlaying;
-  listeners.pointerdown?.();
+  const beforeGesture = false;
   const afterGesture = AudioManager.musicPlaying;
   AudioManager.setUserMusicEnabled(false);
   const musicOff = AudioManager.musicPlaying;

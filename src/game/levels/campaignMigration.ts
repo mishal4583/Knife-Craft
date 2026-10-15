@@ -80,7 +80,9 @@ export function migrateCampaignProgress(progress: LevelProgress): LevelProgress 
     for (const level of LEVELS) completed.add(level.id);
   }
 
-  const completedLevelIds = LEVELS.filter((level) => completed.has(level.id)).map((level) => level.id);
+  const completedLevelIds = LEVELS.filter((level) => completed.has(level.id)).map(
+    (level) => level.id,
+  );
   const completedPrefix = (() => {
     let count = 0;
     while (count < LEVELS.length && completed.has(`level-${count + 1}`)) count += 1;
@@ -94,15 +96,20 @@ export function migrateCampaignProgress(progress: LevelProgress): LevelProgress 
     : null;
   const highestLevel = Math.min(LEVELS.length, Math.max(oldHighest ?? nextUnlocked, nextUnlocked));
 
-  return {
+  const next: LevelProgress = {
     ...progress,
     currentLevelId,
     highestUnlockedLevelId: `level-${highestLevel}`,
     completedLevelIds,
-    paidOrders: mapKeyed(progress.paidOrders),
-    tickets: mapKeyed(progress.tickets),
-    menuGuests: mapKeyed(progress.menuGuests),
-    emergency: mapKeyed(progress.emergency),
     campaignVersion: CAMPAIGN_PROGRESS_VERSION,
   };
+  const paidOrders = mapKeyed(progress.paidOrders);
+  const tickets = mapKeyed(progress.tickets);
+  const menuGuests = mapKeyed(progress.menuGuests);
+  const emergency = mapKeyed(progress.emergency);
+  if (paidOrders) next.paidOrders = paidOrders;
+  if (tickets) next.tickets = tickets;
+  if (menuGuests) next.menuGuests = menuGuests;
+  if (emergency) next.emergency = emergency;
+  return next;
 }

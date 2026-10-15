@@ -12,10 +12,7 @@
  */
 import type { Axis } from "./CutGeometry";
 import type { OrganicProfile, ClusterLeaf } from "./ingredientShapes";
-import {
-  CAMPAIGN_150_INGREDIENT_FIRST_USE_LEVEL,
-  CAMPAIGN_150_TECHNIQUE_FIRST_USE_LEVEL,
-} from "./levels/campaignSelection";
+import { CAMPAIGN_150_TECHNIQUE_FIRST_USE_LEVEL } from "./levels/campaignSelection";
 
 export type TechniqueId =
   | "slice"
@@ -3475,10 +3472,6 @@ export const INGREDIENTS: Record<IngredientId, IngredientDefinition> = {
   },
 };
 
-for (const [id, unlockLevel] of Object.entries(CAMPAIGN_150_INGREDIENT_FIRST_USE_LEVEL)) {
-  const ingredient = INGREDIENTS[id as IngredientId];
-  if (ingredient) ingredient.unlockLevel = unlockLevel;
-}
 
 // KnifeStats/DEFAULT_KNIFE (Phase 8) — removed. The authoritative knife
 // shape is now KnifeDefinition (src/game/knives/knifeTypes.ts), populated
