@@ -24,6 +24,7 @@ function resolveAudioContextCtor(): AudioContextCtor | null {
 
 class AudioManagerImpl {
   private ctx: AudioContext | null = null;
+  private contextResumePending: Promise<void> | null = null;
   private platformEnabled = true;
   private userSoundEnabled = true;
   private initialized = false;
@@ -259,10 +260,46 @@ class AudioManagerImpl {
   }
 
   private ensureContext(): AudioContext | null {
+    // Effects can be requested by React effects while the game is mounting.
+    // Don't even construct an AudioContext until a real player gesture has
+    // unlocked browser audio; browsers otherwise log autoplay-policy errors.
+    if (!this.gestured) return null;
+
     const Ctor = resolveAudioContextCtor();
     if (!Ctor) return null;
-    if (!this.ctx) this.ctx = new Ctor();
-    if (this.ctx.state === "suspended") void this.ctx.resume();
+
+    try {
+      if (this.ctx?.state === "closed") {
+        this.ctx = null;
+        this.sfxGain = null;
+        this.musicGain = null;
+        this.sharedNoise = null;
+      }
+      if (!this.ctx) this.ctx = new Ctor();
+
+      const ctx = this.ctx;
+      if (ctx.state === "suspended") {
+        // resume() is asynchronous. Wait for it before scheduling nodes, and
+        // share the request so overlapping SFX/music updates don't spam it.
+        if (!this.contextResumePending) {
+          this.contextResumePending = ctx
+            .resume()
+            .then(() => {
+              this.contextResumePending = null;
+              if (this.ctx === ctx && ctx.state === "running") this.updateMusic();
+            })
+            .catch(() => {
+              this.contextResumePending = null;
+            });
+        }
+        return null;
+      }
+      if (ctx.state !== "running") return null;
+    } catch {
+      // Audio is optional. A missing or unavailable audio device must not
+      // break the game screen.
+      return null;
+    }
     return this.ctx;
   }
 

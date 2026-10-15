@@ -13,14 +13,16 @@ import { openStaffFor } from "../staffFocus";
 import type { ScreenId } from "@/components/kc/data";
 import { getLevel } from "@/game/levels/LevelManager";
 import { dayStockFor, servicePlanFor } from "@/game/restaurant/preServiceCheck";
-import { pantryForMissing } from "@/game/restaurant/campaignStock";
 import { coverFor, type CoverPart } from "@/game/restaurant/serviceCover";
 import { supplierCreditOf } from "@/game/restaurant/supplierCredit";
 import type { CoverAdOutcome } from "./CoverActions";
 import { getSupplyItem } from "@/game/business/businessSupplies";
 import { fridgeUsage } from "@/game/restaurant/fridgeUsage";
 import { isSystemLive } from "@/game/restaurant/restaurantProgression";
-import { FIRST_PURCHASE_LEVEL, dayCeremonyAt } from "@/game/restaurant/firstLevels";
+import {
+  FIRST_INGREDIENT_PURCHASE_LEVEL,
+  dayCeremonyAt,
+} from "@/game/restaurant/firstLevels";
 import {
   openMarketIngredients,
   openMarketPlan,
@@ -51,8 +53,8 @@ export function ServiceCheckLayer({
   onStart,
   onClose,
   onThrowOutExpired,
-  onUsePantry,
   onQuickRestock,
+  onDismissFirstRestock,
   adAvailable,
   onCoverWithAd,
   onCoverWithCredit,
@@ -66,11 +68,9 @@ export function ServiceCheckLayer({
   onStart: (opensDay: boolean) => void;
   onClose: () => void;
   onThrowOutExpired: () => void;
-  /** Before Level 10 only (nothing can be bought yet): Grandma's pantry. */
-  onUsePantry: (next: SaveData) => void;
   /** The platform can show a rewarded ad now. */
   adAvailable: boolean;
-  /** From Level 10, when the wallet can't pay: an ad brings the missing part (App.coverServiceWithAd). */
+  /** From Level 3, when the wallet can't pay: an ad brings the missing part (App.coverServiceWithAd). */
   onCoverWithAd: (part: CoverPart) => Promise<CoverAdOutcome>;
   /** …or supplier credit (App.coverServiceWithCredit). */
   onCoverWithCredit: (part: CoverPart) => void;
@@ -78,6 +78,7 @@ export function ServiceCheckLayer({
   cleanlinessAction?: (action: CleanlinessAction) => CleanlinessActionResult | null;
   /** Quick restock bought: App records one ledger entry per ingredient and saves. */
   onQuickRestock: (next: SaveData, lines: readonly QuickRestockLine[]) => void;
+  onDismissFirstRestock: () => void;
 }) {
   const level = getLevel(levelId);
   const plan = level ? servicePlanFor(save, level) : null;
@@ -106,7 +107,7 @@ export function ServiceCheckLayer({
   }
   if (screen !== "board" && screen !== "kitchen") return null;
 
-  const canBuy = n >= FIRST_PURCHASE_LEVEL;
+  const canBuy = n >= FIRST_INGREDIENT_PURCHASE_LEVEL;
   return (
     <PreServiceCheck
       levelNumber={n}
@@ -127,11 +128,6 @@ export function ServiceCheckLayer({
         )
       }
       onThrowOutExpired={onThrowOutExpired}
-      onUsePantry={() => {
-        // Before Level 10 only: nothing can be bought yet (pantryForMissing is null from L10).
-        const next = pantryForMissing(save, check, canBuy);
-        if (next) onUsePantry(next);
-      }}
       cover={{
         stock: coverFor(plan, "stock"),
         supplies: coverFor(plan, "supplies"),
@@ -203,11 +199,10 @@ export function ServiceCheckLayer({
       }
       fridge={isSystemLive("fridge-freshness", n) ? fridgeUsage(save) : null}
       measure={measureOf(save)}
-      grandmasFridge={plan.grandmasFridge}
       onRestockFridge={(id, units) => openMarketIngredients(go, id, units)}
       onBuyAllInMarket={() => openMarketPlan(go)}
-      firstRestock={plan.firstStockService}
-      fromGrandmasFridge={!!save.business.grandmasFridge}
+      firstRestock={plan.firstStockService && !save.business.firstStockCheckSeen}
+      onDismissFirstRestock={onDismissFirstRestock}
       quickRestock={quickRestockPlan(save, check)}
       onQuickRestock={() => {
         const r = quickRestock(save, check);

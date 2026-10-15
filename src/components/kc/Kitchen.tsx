@@ -11,6 +11,7 @@ import {
   tabOpensAt,
 } from "@/game/restaurant/firstLevels";
 import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
+import { openMarketIngredients } from "./marketFocus";
 import { NavAttentionContext, NavGuideContext, NavLevelContext } from "./navLevel";
 import {
   INGREDIENT_LIST_FROM,
@@ -35,6 +36,7 @@ import { KitchenBackground } from "./KitchenBackground";
 import type { ScreenId } from "./data";
 import { getLevels, isUnlocked, isCompleted, type LevelProgress } from "@/game/levels/LevelManager";
 import { CHAPTER_TITLES } from "@/game/levels/levelDefinitions";
+import { LAST_CAMPAIGN_LEVEL } from "@/game/restaurant/restaurantProgression";
 import {
   describeDifficulty,
   getNextKitchenStagePreview,
@@ -139,6 +141,7 @@ export function Kitchen({
 }) {
   const levelProgress = save.levelProgress;
   const attention = useContext(NavAttentionContext);
+  const [expandedShortcut, setExpandedShortcut] = useState<string | null>(null);
 
   // Café progression (Phase 10A) — the restaurant rank card at the top left.
   const cafeProgress = getCafeProgress(levelProgress);
@@ -270,15 +273,36 @@ export function Kitchen({
         <button
           type="button"
           data-testid="daily-check-shortcut"
+          aria-expanded={expandedShortcut === "daily-maintenance"}
           aria-label={
             attention.nav["restaurant-map"]
-              ? `Open Daily Check, ${attention.nav["restaurant-map"]} items need attention`
-              : "Open Daily Check"
+              ? `Daily Check, ${attention.nav["restaurant-map"]} items need attention${expandedShortcut === "daily-maintenance" ? ". Tap again to open" : ". Tap to expand"}`
+              : `Daily Check${expandedShortcut === "daily-maintenance" ? ". Tap again to open" : ". Tap to expand"}`
           }
-          onClick={() => go("daily-maintenance")}
-          className="press relative inline-flex min-h-12 min-w-[158px] items-center justify-between gap-1 rounded-[16px] border border-[#f5d58b] bg-[linear-gradient(145deg,#fff7dc_0%,#f5d998_100%)] px-2 font-ui text-walnut-dark shadow-[0_4px_0_rgba(111,66,28,0.48),0_7px_14px_rgba(35,18,8,0.35),inset_0_1px_0_rgba(255,255,255,0.95)] transition-transform active:translate-y-0.5 active:shadow-[0_2px_0_rgba(111,66,28,0.48),0_4px_8px_rgba(35,18,8,0.3)]"
+          onPointerEnter={(event) => {
+            if (event.pointerType === "mouse") setExpandedShortcut("daily-maintenance");
+          }}
+          onPointerLeave={(event) => {
+            if (event.pointerType === "mouse") setExpandedShortcut(null);
+          }}
+          onFocus={(event) => {
+            if (event.currentTarget.matches(":focus-visible"))
+              setExpandedShortcut("daily-maintenance");
+          }}
+          onBlur={() => setExpandedShortcut(null)}
+          onClick={() => {
+            if (expandedShortcut !== "daily-maintenance") {
+              setExpandedShortcut("daily-maintenance");
+              return;
+            }
+            go("daily-maintenance");
+          }}
+          className={cn(
+            "press group relative inline-flex h-14 w-14 shrink-0 items-center justify-start overflow-visible rounded-full border border-[#f5d58b] bg-[linear-gradient(145deg,#fff7dc_0%,#f5d998_100%)] px-2 font-ui text-walnut-dark shadow-[0_4px_0_rgba(111,66,28,0.48),0_7px_14px_rgba(35,18,8,0.35),inset_0_1px_0_rgba(255,255,255,0.95)] transition-[width,border-radius,transform,box-shadow] duration-300 ease-out motion-reduce:transition-none hover:w-[166px] hover:rounded-full focus-visible:w-[166px] focus-visible:rounded-full active:translate-y-0.5 active:shadow-[0_2px_0_rgba(111,66,28,0.48),0_4px_8px_rgba(35,18,8,0.3)]",
+            expandedShortcut === "daily-maintenance" && "w-[166px] rounded-full",
+          )}
         >
-          <span aria-hidden className="relative grid h-9 w-9 shrink-0 place-items-center">
+          <span aria-hidden className="relative grid h-10 w-10 shrink-0 place-items-center">
             <span className="absolute inset-x-[5px] bottom-[2px] top-[5px] rounded-[6px] border-2 border-[#c88b30] bg-[linear-gradient(145deg,#ffe9a1,#e5ae49)] shadow-[0_2px_3px_rgba(91,48,12,0.28)]" />
             <span className="absolute left-[12px] top-[2px] z-[1] h-[6px] w-[12px] rounded-t-[4px] rounded-b-[2px] border border-[#ae7628] bg-[linear-gradient(180deg,#fff0b8,#d39a3a)]" />
             <span className="absolute bottom-[7px] left-[9px] right-[8px] top-[11px] rounded-[3px] bg-[#fff8e8] shadow-inner">
@@ -290,8 +314,24 @@ export function Kitchen({
             </span>
             <span className="absolute -right-0.5 top-0 text-[10px] leading-none text-[#e4ab37]">✦</span>
           </span>
-          <span className="flex-1 whitespace-nowrap text-left font-display text-[13px] font-black tracking-[0.01em]">Daily Check</span>
-          <span aria-hidden className="font-ui text-[17px] font-black leading-none text-[#82501f]">›</span>
+          <span
+            aria-hidden="true"
+            className={cn(
+              "ml-0 max-w-0 overflow-hidden whitespace-nowrap text-left font-display text-[13px] font-black tracking-[0.01em] opacity-0 transition-[max-width,opacity,margin] duration-200 group-hover:ml-1 group-hover:max-w-[94px] group-hover:opacity-100 group-focus-visible:ml-1 group-focus-visible:max-w-[94px] group-focus-visible:opacity-100",
+              expandedShortcut === "daily-maintenance" && "ml-1 max-w-[94px] opacity-100",
+            )}
+          >
+            Daily Check
+          </span>
+          <span
+            aria-hidden
+            className={cn(
+              "ml-0 w-0 shrink-0 overflow-hidden text-center font-ui text-[17px] font-black leading-none text-[#82501f] opacity-0 transition-[width,opacity,margin] duration-200 group-hover:ml-1 group-hover:w-3 group-hover:opacity-100 group-focus-visible:ml-1 group-focus-visible:w-3 group-focus-visible:opacity-100",
+              expandedShortcut === "daily-maintenance" && "ml-1 w-3 opacity-100",
+            )}
+          >
+            ›
+          </span>
           {attention.nav["restaurant-map"] ? (
             <span aria-hidden className="absolute -right-1 -top-1 grid h-4 w-4 place-items-center rounded-full border border-[#fff0d2] bg-[#e53c32] font-ui text-[10px] font-black text-white shadow-md">!</span>
           ) : null}
@@ -309,25 +349,57 @@ export function Kitchen({
               key={item.id}
               type="button"
               data-testid={`${item.id}-shortcut`}
+              aria-expanded={expandedShortcut === item.id}
               aria-label={
                 !unlocked
-                  ? `${item.label}, opens at Level ${opensAt}`
+                  ? `${item.label}, opens at Level ${opensAt}${expandedShortcut === item.id ? ". Locked" : ". Tap to expand"}`
                   : count
-                    ? `Open ${item.label}, ${count} items need attention`
-                    : `Open ${item.label}`
+                    ? `${item.label}, ${count} items need attention${expandedShortcut === item.id ? ". Tap again to open" : ". Tap to expand"}`
+                    : `${item.label}${expandedShortcut === item.id ? ". Tap again to open" : ". Tap to expand"}`
               }
               aria-disabled={!unlocked || undefined}
+              onPointerEnter={(event) => {
+                if (event.pointerType === "mouse") setExpandedShortcut(item.id);
+              }}
+              onPointerLeave={(event) => {
+                if (event.pointerType === "mouse") setExpandedShortcut(null);
+              }}
+              onFocus={(event) => {
+                if (event.currentTarget.matches(":focus-visible")) setExpandedShortcut(item.id);
+              }}
+              onBlur={() => setExpandedShortcut(null)}
               onClick={() => {
+                if (expandedShortcut !== item.id) {
+                  setExpandedShortcut(item.id);
+                  return;
+                }
                 if (unlocked) go(item.id);
               }}
               className={cn(
-                "press relative inline-flex min-h-12 min-w-[158px] items-center justify-between gap-2 rounded-full border border-[#c58c45] bg-[linear-gradient(145deg,rgba(113,66,34,0.97),rgba(59,34,20,0.98))] px-3 font-ui text-[13px] font-extrabold text-[#fff4da] shadow-[0_4px_0_rgba(38,20,11,0.58),0_7px_14px_rgba(35,18,8,0.35),inset_0_1px_0_rgba(255,231,186,0.22)] transition-transform active:translate-y-0.5",
+                "press group relative inline-flex h-14 w-14 shrink-0 items-center justify-start overflow-visible rounded-full border border-[#f5d58b] bg-[linear-gradient(145deg,#fff7dc_0%,#f5d998_100%)] px-2 font-ui text-[13px] font-extrabold text-walnut-dark shadow-[0_4px_0_rgba(111,66,28,0.48),0_7px_14px_rgba(35,18,8,0.35),inset_0_1px_0_rgba(255,255,255,0.95)] transition-[width,border-radius,transform,box-shadow] duration-300 ease-out motion-reduce:transition-none hover:w-[166px] hover:rounded-full focus-visible:w-[166px] focus-visible:rounded-full active:translate-y-0.5 active:shadow-[0_2px_0_rgba(111,66,28,0.48),0_4px_8px_rgba(35,18,8,0.3)]",
+                expandedShortcut === item.id && "w-[166px] rounded-full",
                 !unlocked && "opacity-75",
               )}
             >
-              <span aria-hidden className="text-[22px] leading-none">{unlocked ? item.glyph : "🔒"}</span>
-              <span className="flex-1 text-left">{unlocked ? item.label : `Lv ${opensAt}`}</span>
-              <span aria-hidden className="text-[19px] font-black leading-none text-[#f4d394]">›</span>
+              <span aria-hidden className="grid h-10 w-10 shrink-0 place-items-center text-[22px] leading-none">{unlocked ? item.glyph : "🔒"}</span>
+              <span
+                aria-hidden="true"
+                className={cn(
+                  "ml-0 max-w-0 overflow-hidden whitespace-nowrap text-left opacity-0 transition-[max-width,opacity,margin] duration-200 group-hover:ml-1 group-hover:max-w-[94px] group-hover:opacity-100 group-focus-visible:ml-1 group-focus-visible:max-w-[94px] group-focus-visible:opacity-100",
+                  expandedShortcut === item.id && "ml-1 max-w-[94px] opacity-100",
+                )}
+              >
+                {unlocked ? item.label : `Lv ${opensAt}`}
+              </span>
+              <span
+                aria-hidden
+                className={cn(
+                  "ml-0 w-0 shrink-0 overflow-hidden text-center text-[19px] font-black leading-none text-[#82501f] opacity-0 transition-[width,opacity,margin] duration-200 group-hover:ml-1 group-hover:w-3 group-hover:opacity-100 group-focus-visible:ml-1 group-focus-visible:w-3 group-focus-visible:opacity-100",
+                  expandedShortcut === item.id && "ml-1 w-3 opacity-100",
+                )}
+              >
+                ›
+              </span>
               {count ? (
                 <span aria-hidden className="absolute -right-1 -top-1 grid h-5 w-5 place-items-center rounded-full border-2 border-[#fff3db] bg-[#e53c32] font-ui text-[12px] font-black leading-none text-white shadow-md">!</span>
               ) : null}
@@ -354,7 +426,7 @@ export function Kitchen({
         <div className="anim-up relative mx-auto rounded-[20px] border border-[#f3d9a9] bg-[linear-gradient(145deg,#fff9e9_0%,#fff0d0_52%,#f6dfb5_100%)] p-2.5 shadow-[0_7px_18px_rgba(34,18,8,0.38),inset_0_2px_0_rgba(255,255,255,0.9)] sm:p-3">
           <div className="flex items-center justify-between gap-2">
             <p className="font-ui text-[10px] font-extrabold uppercase tracking-[0.19em] text-[#95602c]">
-              {campaignComplete ? "Campaign Complete · 250 Levels Mastered" : "Today's Order"}
+              {campaignComplete ? `Campaign Complete · ${LAST_CAMPAIGN_LEVEL} Levels Mastered` : "Today's Order"}
             </p>
             <button
               type="button"
@@ -432,7 +504,9 @@ export function Kitchen({
                   variant="copper"
                   full
                   className="h-12"
-                  onClick={() => go(tip.to!)}
+                  onClick={() =>
+                    tip.focus === "ingredients" ? openMarketIngredients(go) : go(tip.to!)
+                  }
                 >
                   {tip.button}
                 </KButton>
@@ -538,7 +612,7 @@ export function OrderBoard({
               </span>
               <span className="block font-hand text-[13px] text-walnut/60">
                 {!isEndlessUnlocked(levelProgress)
-                  ? "🔒 unlocks after Level 250"
+                  ? `🔒 unlocks after Level ${LAST_CAMPAIGN_LEVEL}`
                   : RESTAURANT_MODE
                     ? "your restaurant, open every day"
                     : `ongoing earnings · up to ${formatUsd(ENDLESS_DAILY_COIN_CAP).replace(/\.00$/, "")}/day`}

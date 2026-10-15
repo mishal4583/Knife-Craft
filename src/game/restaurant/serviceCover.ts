@@ -1,8 +1,8 @@
 /**
  * COVERING A SHORT SERVICE (developer 2026-10-10: "don't use Grandma lending
  * anywhere any more — use watch ad; don't miss any monetization
- * opportunity"; with no ad, "a small cash loan"). Replaces Grandma's pantry
- * (from Level 10) and her spares. When the Pre-Service Check is short of
+ * opportunity"; with no ad, "a small cash loan"). Covers a purchase shortfall
+ * starting at Level 3. When the Pre-Service Check is short of
  * ingredients or supplies and the wallet can't pay for them:
  *
  *  - 🎬 WATCH AN AD (`coverWithAd`): only after Bridge reports `rewarded`
@@ -14,8 +14,8 @@
  *    Market purchase would bring (whole Market units / packs at Market
  *    prices), paid later from the next earnings (supplierCredit.ts).
  *
- * Before Level 10 nothing can be bought yet, so Grandma's pantry stays
- * there (campaignStock.pantryForMissing) — the tutorial levels. Pure;
+ * The Market is available from Level 3, so no free ingredient pantry is
+ * needed. Pure;
  * nothing here reads RESTAURANT_MODE.
  */
 import type { SaveData } from "../SaveManager";
@@ -26,7 +26,7 @@ import { getSupplyItem, supplyPackPrice } from "../business/businessSupplies";
 import { purchaseSupply } from "../business/BusinessSuppliesManager";
 import type { ServiceStockCheck } from "./campaignStock";
 import type { ServiceSuppliesCheck } from "./serviceSupplies";
-import { FIRST_PURCHASE_LEVEL } from "./firstLevels";
+import { FIRST_INGREDIENT_PURCHASE_LEVEL } from "./firstLevels";
 import { takeOnCredit } from "./supplierCredit";
 import type { ToolsCheck } from "./kitchenTools";
 
@@ -60,12 +60,12 @@ function shortSupplyLines(plan: Short, part: "supplies" | "tools") {
 }
 
 /**
- * The cover on offer for `part`, or null: only from Level 10, only when that
+ * The cover on offer for `part`, or null: only from Level 3, only when that
  * part is short AND the wallet can't pay for it (otherwise the player buys
  * it — "ask the user to purchase it").
  */
 export function coverFor(plan: Short, part: CoverPart): CoverOffer | null {
-  if (plan.levelNumber < FIRST_PURCHASE_LEVEL) return null;
+  if (plan.levelNumber < FIRST_INGREDIENT_PURCHASE_LEVEL) return null;
   if (part === "stock") {
     const c = plan.check;
     if (!c.applies || c.ready || c.affordable) return null;

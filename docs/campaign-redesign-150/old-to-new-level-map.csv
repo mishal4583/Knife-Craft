@@ -1,0 +1,251 @@
+old_level,old_id,new_level,new_id,status,reason
+1,level-1,1,level-1,RETAINED,Curated recipe/service retained and renumbered.
+2,level-2,2,level-2,REWORKED_AS_TUTORIAL,Replaced by the required no-cost five-step tutorial.
+3,level-3,,,REMOVED_FROM_CAMPAIGN,Removed as a single-cut drill after the technique has already been introduced.
+4,level-4,3,level-3,RETAINED,Curated recipe/service retained and renumbered.
+5,level-5,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+6,level-6,,,REMOVED_FROM_CAMPAIGN,Removed as a single-cut drill after the technique has already been introduced.
+7,level-7,,,REMOVED_FROM_CAMPAIGN,Removed as a single-cut drill after the technique has already been introduced.
+8,level-8,4,level-4,RETAINED,Curated recipe/service retained and renumbered.
+9,level-9,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+10,level-10,10,level-10,RETAINED,Curated recipe/service retained and renumbered.
+11,level-11,5,level-5,RETAINED,Curated recipe/service retained and renumbered.
+12,level-12,6,level-6,RETAINED,Curated recipe/service retained and renumbered.
+13,level-13,7,level-7,RETAINED,Curated recipe/service retained and renumbered.
+14,level-14,8,level-8,RETAINED,Curated recipe/service retained and renumbered.
+15,level-15,9,level-9,RETAINED,Curated recipe/service retained and renumbered.
+16,level-16,11,level-11,RETAINED,Curated recipe/service retained and renumbered.
+17,level-17,14,level-14,RETAINED,Curated recipe/service retained and renumbered.
+18,level-18,12,level-12,RETAINED,Curated recipe/service retained and renumbered.
+19,level-19,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+20,level-20,13,level-13,RETAINED,Curated recipe/service retained and renumbered.
+21,level-21,,,REMOVED_FROM_CAMPAIGN,Removed as an isolated garnish or repeated service that adds no new preparation decision.
+22,level-22,,,REMOVED_FROM_CAMPAIGN,Removed as a single-cut drill after the technique has already been introduced.
+23,level-23,,,REMOVED_FROM_CAMPAIGN,Removed as an isolated garnish or repeated service that adds no new preparation decision.
+24,level-24,16,level-16,RETAINED,Curated recipe/service retained and renumbered.
+25,level-25,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+26,level-26,17,level-17,RETAINED,Curated recipe/service retained and renumbered.
+27,level-27,20,level-20,RETAINED,Curated recipe/service retained and renumbered.
+28,level-28,18,level-18,RETAINED,Curated recipe/service retained and renumbered.
+29,level-29,15,level-15,RETAINED,Curated recipe/service retained and renumbered.
+30,level-30,19,level-19,RETAINED,Curated recipe/service retained and renumbered.
+31,level-31,,,REMOVED_FROM_CAMPAIGN,Removed as a single-cut drill after the technique has already been introduced.
+32,level-32,21,level-21,RETAINED,Curated recipe/service retained and renumbered.
+33,level-33,22,level-22,RETAINED,Curated recipe/service retained and renumbered.
+34,level-34,23,level-23,RETAINED,Curated recipe/service retained and renumbered.
+35,level-35,24,level-24,RETAINED,Curated recipe/service retained and renumbered.
+36,level-36,25,level-25,RETAINED,Curated recipe/service retained and renumbered.
+37,level-37,26,level-26,RETAINED,Curated recipe/service retained and renumbered.
+38,level-38,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+39,level-39,27,level-27,RETAINED,Curated recipe/service retained and renumbered.
+40,level-40,28,level-28,RETAINED,Curated recipe/service retained and renumbered.
+41,level-41,29,level-29,RETAINED,Curated recipe/service retained and renumbered.
+42,level-42,,,REMOVED_FROM_CAMPAIGN,Removed as an isolated garnish or repeated service that adds no new preparation decision.
+43,level-43,30,level-30,RETAINED,Curated recipe/service retained and renumbered.
+44,level-44,31,level-31,RETAINED,Curated recipe/service retained and renumbered.
+45,level-45,32,level-32,RETAINED,Curated recipe/service retained and renumbered.
+46,level-46,33,level-33,RETAINED,Curated recipe/service retained and renumbered.
+47,level-47,,,REMOVED_FROM_CAMPAIGN,Removed as an isolated garnish or repeated service that adds no new preparation decision.
+48,level-48,,,REMOVED_FROM_CAMPAIGN,Removed as an isolated garnish or repeated service that adds no new preparation decision.
+49,level-49,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+50,level-50,34,level-34,RETAINED,Curated recipe/service retained and renumbered.
+51,level-51,35,level-35,RETAINED,Curated recipe/service retained and renumbered.
+52,level-52,36,level-36,RETAINED,Curated recipe/service retained and renumbered.
+53,level-53,,,REMOVED_FROM_CAMPAIGN,Removed as a single-cut drill after the technique has already been introduced.
+54,level-54,37,level-37,RETAINED,Curated recipe/service retained and renumbered.
+55,level-55,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+56,level-56,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+57,level-57,38,level-38,RETAINED,Curated recipe/service retained and renumbered.
+58,level-58,39,level-39,RETAINED,Curated recipe/service retained and renumbered.
+59,level-59,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+60,level-60,40,level-40,RETAINED,Curated recipe/service retained and renumbered.
+61,level-61,41,level-41,RETAINED,Curated recipe/service retained and renumbered.
+62,level-62,42,level-42,RETAINED,Curated recipe/service retained and renumbered.
+63,level-63,,,REMOVED_FROM_CAMPAIGN,Removed as an isolated garnish or repeated service that adds no new preparation decision.
+64,level-64,43,level-43,RETAINED,Curated recipe/service retained and renumbered.
+65,level-65,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+66,level-66,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+67,level-67,44,level-44,RETAINED,Curated recipe/service retained and renumbered.
+68,level-68,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+69,level-69,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+70,level-70,45,level-45,RETAINED,Curated recipe/service retained and renumbered.
+71,level-71,46,level-46,RETAINED,Curated recipe/service retained and renumbered.
+72,level-72,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+73,level-73,,,REMOVED_FROM_CAMPAIGN,Removed as an isolated garnish or repeated service that adds no new preparation decision.
+74,level-74,47,level-47,RETAINED,Curated recipe/service retained and renumbered.
+75,level-75,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+76,level-76,48,level-48,RETAINED,Curated recipe/service retained and renumbered.
+77,level-77,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+78,level-78,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+79,level-79,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+80,level-80,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+81,level-81,49,level-49,RETAINED,Curated recipe/service retained and renumbered.
+82,level-82,50,level-50,RETAINED,Curated recipe/service retained and renumbered.
+83,level-83,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+84,level-84,51,level-51,RETAINED,Curated recipe/service retained and renumbered.
+85,level-85,52,level-52,RETAINED,Curated recipe/service retained and renumbered.
+86,level-86,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+87,level-87,53,level-53,RETAINED,Curated recipe/service retained and renumbered.
+88,level-88,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+89,level-89,54,level-54,RETAINED,Curated recipe/service retained and renumbered.
+90,level-90,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+91,level-91,55,level-55,RETAINED,Curated recipe/service retained and renumbered.
+92,level-92,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+93,level-93,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+94,level-94,56,level-56,RETAINED,Curated recipe/service retained and renumbered.
+95,level-95,,,REMOVED_FROM_CAMPAIGN,Removed as an isolated garnish or repeated service that adds no new preparation decision.
+96,level-96,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+97,level-97,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+98,level-98,57,level-57,RETAINED,Curated recipe/service retained and renumbered.
+99,level-99,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+100,level-100,58,level-58,RETAINED,Curated recipe/service retained and renumbered.
+101,level-101,59,level-59,RETAINED,Curated recipe/service retained and renumbered.
+102,level-102,60,level-60,RETAINED,Curated recipe/service retained and renumbered.
+103,level-103,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+104,level-104,61,level-61,RETAINED,Curated recipe/service retained and renumbered.
+105,level-105,62,level-62,RETAINED,Curated recipe/service retained and renumbered.
+106,level-106,63,level-63,RETAINED,Curated recipe/service retained and renumbered.
+107,level-107,64,level-64,RETAINED,Curated recipe/service retained and renumbered.
+108,level-108,65,level-65,RETAINED,Curated recipe/service retained and renumbered.
+109,level-109,66,level-66,RETAINED,Curated recipe/service retained and renumbered.
+110,level-110,67,level-67,RETAINED,Curated recipe/service retained and renumbered.
+111,level-111,68,level-68,RETAINED,Curated recipe/service retained and renumbered.
+112,level-112,69,level-69,RETAINED,Curated recipe/service retained and renumbered.
+113,level-113,70,level-70,RETAINED,Curated recipe/service retained and renumbered.
+114,level-114,71,level-71,RETAINED,Curated recipe/service retained and renumbered.
+115,level-115,72,level-72,RETAINED,Curated recipe/service retained and renumbered.
+116,level-116,73,level-73,RETAINED,Curated recipe/service retained and renumbered.
+117,level-117,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+118,level-118,74,level-74,RETAINED,Curated recipe/service retained and renumbered.
+119,level-119,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+120,level-120,75,level-75,RETAINED,Curated recipe/service retained and renumbered.
+121,level-121,76,level-76,RETAINED,Curated recipe/service retained and renumbered.
+122,level-122,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+123,level-123,77,level-77,RETAINED,Curated recipe/service retained and renumbered.
+124,level-124,78,level-78,RETAINED,Curated recipe/service retained and renumbered.
+125,level-125,79,level-79,RETAINED,Curated recipe/service retained and renumbered.
+126,level-126,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+127,level-127,80,level-80,RETAINED,Curated recipe/service retained and renumbered.
+128,level-128,81,level-81,RETAINED,Curated recipe/service retained and renumbered.
+129,level-129,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+130,level-130,82,level-82,RETAINED,Curated recipe/service retained and renumbered.
+131,level-131,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+132,level-132,83,level-83,RETAINED,Curated recipe/service retained and renumbered.
+133,level-133,84,level-84,RETAINED,Curated recipe/service retained and renumbered.
+134,level-134,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+135,level-135,85,level-85,RETAINED,Curated recipe/service retained and renumbered.
+136,level-136,82,level-82,MERGED_EXACT_SERVICE,Exact recipe pool and service shape retained at new Level 82; completion may migrate only on this exact match.
+137,level-137,79,level-79,MERGED_EXACT_SERVICE,Exact recipe pool and service shape retained at new Level 79; completion may migrate only on this exact match.
+138,level-138,,,REMOVED_FROM_CAMPAIGN,Removed as an isolated garnish or repeated service that adds no new preparation decision.
+139,level-139,86,level-86,RETAINED,Curated recipe/service retained and renumbered.
+140,level-140,87,level-87,RETAINED,Curated recipe/service retained and renumbered.
+141,level-141,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+142,level-142,88,level-88,RETAINED,Curated recipe/service retained and renumbered.
+143,level-143,89,level-89,RETAINED,Curated recipe/service retained and renumbered.
+144,level-144,90,level-90,RETAINED,Curated recipe/service retained and renumbered.
+145,level-145,91,level-91,RETAINED,Curated recipe/service retained and renumbered.
+146,level-146,92,level-92,RETAINED,Curated recipe/service retained and renumbered.
+147,level-147,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+148,level-148,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+149,level-149,93,level-93,RETAINED,Curated recipe/service retained and renumbered.
+150,level-150,94,level-94,RETAINED,Curated recipe/service retained and renumbered.
+151,level-151,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+152,level-152,95,level-95,RETAINED,Curated recipe/service retained and renumbered.
+153,level-153,96,level-96,RETAINED,Curated recipe/service retained and renumbered.
+154,level-154,97,level-97,RETAINED,Curated recipe/service retained and renumbered.
+155,level-155,95,level-95,MERGED_EXACT_SERVICE,Exact recipe pool and service shape retained at new Level 95; completion may migrate only on this exact match.
+156,level-156,98,level-98,RETAINED,Curated recipe/service retained and renumbered.
+157,level-157,,,REMOVED_FROM_CAMPAIGN,Removed as an isolated garnish or repeated service that adds no new preparation decision.
+158,level-158,99,level-99,RETAINED,Curated recipe/service retained and renumbered.
+159,level-159,,,REMOVED_FROM_CAMPAIGN,Removed as an isolated garnish or repeated service that adds no new preparation decision.
+160,level-160,100,level-100,RETAINED,Curated recipe/service retained and renumbered.
+161,level-161,101,level-101,RETAINED,Curated recipe/service retained and renumbered.
+162,level-162,102,level-102,RETAINED,Curated recipe/service retained and renumbered.
+163,level-163,103,level-103,RETAINED,Curated recipe/service retained and renumbered.
+164,level-164,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+165,level-165,104,level-104,RETAINED,Curated recipe/service retained and renumbered.
+166,level-166,105,level-105,RETAINED,Curated recipe/service retained and renumbered.
+167,level-167,,,REMOVED_FROM_CAMPAIGN,Removed as an isolated garnish or repeated service that adds no new preparation decision.
+168,level-168,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+169,level-169,,,REMOVED_FROM_CAMPAIGN,Removed as an isolated garnish or repeated service that adds no new preparation decision.
+170,level-170,106,level-106,RETAINED,Curated recipe/service retained and renumbered.
+171,level-171,107,level-107,RETAINED,Curated recipe/service retained and renumbered.
+172,level-172,108,level-108,RETAINED,Curated recipe/service retained and renumbered.
+173,level-173,109,level-109,RETAINED,Curated recipe/service retained and renumbered.
+174,level-174,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+175,level-175,110,level-110,RETAINED,Curated recipe/service retained and renumbered.
+176,level-176,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+177,level-177,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+178,level-178,111,level-111,RETAINED,Curated recipe/service retained and renumbered.
+179,level-179,,,REMOVED_FROM_CAMPAIGN,Removed as an isolated garnish or repeated service that adds no new preparation decision.
+180,level-180,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+181,level-181,112,level-112,RETAINED,Curated recipe/service retained and renumbered.
+182,level-182,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+183,level-183,113,level-113,RETAINED,Curated recipe/service retained and renumbered.
+184,level-184,114,level-114,RETAINED,Curated recipe/service retained and renumbered.
+185,level-185,115,level-115,RETAINED,Curated recipe/service retained and renumbered.
+186,level-186,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+187,level-187,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+188,level-188,116,level-116,RETAINED,Curated recipe/service retained and renumbered.
+189,level-189,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+190,level-190,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+191,level-191,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+192,level-192,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+193,level-193,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+194,level-194,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+195,level-195,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+196,level-196,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+197,level-197,,,REMOVED_FROM_CAMPAIGN,Removed as an isolated garnish or repeated service that adds no new preparation decision.
+198,level-198,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+199,level-199,,,REMOVED_FROM_CAMPAIGN,Removed as an isolated garnish or repeated service that adds no new preparation decision.
+200,level-200,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+201,level-201,117,level-117,RETAINED,Curated recipe/service retained and renumbered.
+202,level-202,118,level-118,RETAINED,Curated recipe/service retained and renumbered.
+203,level-203,119,level-119,RETAINED,Curated recipe/service retained and renumbered.
+204,level-204,120,level-120,RETAINED,Curated recipe/service retained and renumbered.
+205,level-205,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+206,level-206,121,level-121,RETAINED,Curated recipe/service retained and renumbered.
+207,level-207,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+208,level-208,122,level-122,RETAINED,Curated recipe/service retained and renumbered.
+209,level-209,123,level-123,RETAINED,Curated recipe/service retained and renumbered.
+210,level-210,124,level-124,RETAINED,Curated recipe/service retained and renumbered.
+211,level-211,125,level-125,RETAINED,Curated recipe/service retained and renumbered.
+212,level-212,126,level-126,RETAINED,Curated recipe/service retained and renumbered.
+213,level-213,127,level-127,RETAINED,Curated recipe/service retained and renumbered.
+214,level-214,128,level-128,RETAINED,Curated recipe/service retained and renumbered.
+215,level-215,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+216,level-216,129,level-129,RETAINED,Curated recipe/service retained and renumbered.
+217,level-217,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+218,level-218,130,level-130,RETAINED,Curated recipe/service retained and renumbered.
+219,level-219,131,level-131,RETAINED,Curated recipe/service retained and renumbered.
+220,level-220,132,level-132,RETAINED,Curated recipe/service retained and renumbered.
+221,level-221,133,level-133,RETAINED,Curated recipe/service retained and renumbered.
+222,level-222,134,level-134,RETAINED,Curated recipe/service retained and renumbered.
+223,level-223,135,level-135,RETAINED,Curated recipe/service retained and renumbered.
+224,level-224,136,level-136,RETAINED,Curated recipe/service retained and renumbered.
+225,level-225,,,REMOVED_FROM_CAMPAIGN,Removed as an isolated garnish or repeated service that adds no new preparation decision.
+226,level-226,137,level-137,RETAINED,Curated recipe/service retained and renumbered.
+227,level-227,135,level-135,MERGED_EXACT_SERVICE,Exact recipe pool and service shape retained at new Level 135; completion may migrate only on this exact match.
+228,level-228,138,level-138,RETAINED,Curated recipe/service retained and renumbered.
+229,level-229,,,REMOVED_FROM_CAMPAIGN,Removed as an isolated garnish or repeated service that adds no new preparation decision.
+230,level-230,139,level-139,RETAINED,Curated recipe/service retained and renumbered.
+231,level-231,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+232,level-232,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+233,level-233,140,level-140,RETAINED,Curated recipe/service retained and renumbered.
+234,level-234,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+235,level-235,,,REMOVED_FROM_CAMPAIGN,Removed as an isolated garnish or repeated service that adds no new preparation decision.
+236,level-236,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+237,level-237,140,level-140,MERGED_EXACT_SERVICE,Exact recipe pool and service shape retained at new Level 140; completion may migrate only on this exact match.
+238,level-238,141,level-141,RETAINED,Curated recipe/service retained and renumbered.
+239,level-239,,,REMOVED_FROM_CAMPAIGN,Removed as an isolated garnish or repeated service that adds no new preparation decision.
+240,level-240,142,level-142,RETAINED,Curated recipe/service retained and renumbered.
+241,level-241,143,level-143,RETAINED,Curated recipe/service retained and renumbered.
+242,level-242,144,level-144,RETAINED,Curated recipe/service retained and renumbered.
+243,level-243,145,level-145,RETAINED,Curated recipe/service retained and renumbered.
+244,level-244,146,level-146,RETAINED,Curated recipe/service retained and renumbered.
+245,level-245,147,level-147,RETAINED,Curated recipe/service retained and renumbered.
+246,level-246,148,level-148,RETAINED,Curated recipe/service retained and renumbered.
+247,level-247,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+248,level-248,149,level-149,RETAINED,Curated recipe/service retained and renumbered.
+249,level-249,,,REMOVED_FROM_CAMPAIGN,Removed from the curated campaign because stronger dishes or service challenges take this slot.
+250,level-250,150,level-150,RETAINED,Curated recipe/service retained and renumbered.

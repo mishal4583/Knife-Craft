@@ -8,6 +8,7 @@ import { restaurantDayOf, todaysServices } from "@/game/restaurant/restaurantDay
 import { RushRestockActions } from "./RushRestockActions";
 import type { RushRestockOutcome, RushRestockPayment } from "@/game/business/businessRushRestock";
 import type { SaveData } from "@/game/SaveManager";
+import { LAST_CAMPAIGN_LEVEL } from "@/game/restaurant/restaurantProgression";
 import type { ServiceSession } from "@/game/service/ServiceManager";
 import { KButton, Panel, ScreenHeader, Divider, Stars } from "../common/primitives";
 import {
@@ -194,6 +195,7 @@ export function BusinessDashboard({
 }) {
   const [dayResult, setDayResult] = useState<AdvanceDayResult | null>(null);
   const [repairMessage, setRepairMessage] = useState<string | null>(null);
+  const [showBusinessFigures, setShowBusinessFigures] = useState(false);
   const preview = useMemo(() => previewBusinessDayClose(save), [save]);
   const order = businessServiceSession?.current;
   const currentOrderRef = order ? { orderId: order.order.id, recipeId: order.recipe.id } : null;
@@ -296,7 +298,12 @@ export function BusinessDashboard({
 
         <div className="px-4 pt-4">
           {tab === "overview" ? (
-            <Overview {...shared} needsAttention={needsAttention.length} />
+            <Overview
+              {...shared}
+              needsAttention={needsAttention.length}
+              showBusinessFigures={showBusinessFigures}
+              onToggleBusinessFigures={() => setShowBusinessFigures((shown) => !shown)}
+            />
           ) : null}
           {tab === "equipment" ? (
             <BusinessRefrigerator
@@ -307,7 +314,12 @@ export function BusinessDashboard({
             />
           ) : null}
           {tab === "development" ? (
-            <KitchenUpgrades embedded go={go} save={save} buildKitchenUpgrade={buildKitchenUpgrade} />
+            <KitchenUpgrades
+              embedded
+              go={go}
+              save={save}
+              buildKitchenUpgrade={buildKitchenUpgrade}
+            />
           ) : null}
           {tab === "staff" ? (
             <BusinessStaff
@@ -381,7 +393,13 @@ function Overview({
   dayResult,
   endDay,
   needsAttention,
-}: Shared & { needsAttention: number }) {
+  showBusinessFigures,
+  onToggleBusinessFigures,
+}: Shared & {
+  needsAttention: number;
+  showBusinessFigures: boolean;
+  onToggleBusinessFigures: () => void;
+}) {
   const today = preview.dailyPnL;
   const revenue = today.revenue;
   const costs = costsOf(today);
@@ -409,31 +427,61 @@ function Overview({
       <RestaurantHealth
         day={businessDay}
         popularity={popularity}
-        revenue={revenue}
-        costs={costs}
         profit={profit}
         needsAttention={needsAttention}
         onAttention={() => go(BUSINESS_TAB_SCREEN.operations)}
       />
       {/* Endless Restaurant only: today's events (renders nothing on any other day). */}
       <EndlessDayEvents save={save} compact />
-      <KpiCards
-        revenue={revenue}
-        costs={costs}
-        profit={profit}
-        popularity={popularity}
-        last={last}
-      />
-      <TodayAtAGlance save={save} today={today} />
-      <PerformanceCard today={today} last={last} />
-      <PopularityCard
-        popularity={popularity}
-        breakdown={preview.popularityBreakdown}
-        delta={preview.popularityDelta}
-        projected={preview.popularityScore}
-      />
+      <button
+        type="button"
+        aria-expanded={showBusinessFigures}
+        aria-controls="business-figures"
+        onClick={onToggleBusinessFigures}
+        className="press flex min-h-[68px] w-full items-center gap-3 rounded-[20px] border border-walnut/15 p-3 text-left card-warm"
+      >
+        <span
+          className="grid h-11 w-11 shrink-0 place-items-center rounded-[15px] bg-sage/20 text-[24px]"
+          aria-hidden
+        >
+          📒
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-display text-[15px] font-black leading-tight text-walnut-dark">
+            Business figures
+          </span>
+          <span className="mt-0.5 block font-ui text-[11.5px] font-bold leading-snug text-walnut/60">
+            Revenue, costs, service and popularity
+          </span>
+        </span>
+        <span
+          className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-walnut/8 font-ui text-[18px] font-black text-copper"
+          aria-hidden
+        >
+          {showBusinessFigures ? "−" : "+"}
+        </span>
+      </button>
+      {showBusinessFigures ? (
+        <div id="business-figures" className="anim-up space-y-3" data-testid="business-figures">
+          <KpiCards
+            revenue={revenue}
+            costs={costs}
+            profit={profit}
+            popularity={popularity}
+            last={last}
+          />
+          <TodayAtAGlance save={save} today={today} />
+          <PerformanceCard today={today} last={last} />
+          <PopularityCard
+            popularity={popularity}
+            breakdown={preview.popularityBreakdown}
+            delta={preview.popularityDelta}
+            projected={preview.popularityScore}
+          />
+          <MoneyBreakdown pnl={today} />
+        </div>
+      ) : null}
       <RankCard save={save} go={go} />
-      <MoneyBreakdown pnl={today} />
       {businessDayAllowed(RESTAURANT_MODE, save.levelProgress) ? (
         <>
           <BusinessDayCard save={save} businessServiceSession={businessServiceSession} />
@@ -456,86 +504,82 @@ function Overview({
 function RestaurantHealth({
   day,
   popularity,
-  revenue,
-  costs,
   profit,
   needsAttention,
   onAttention,
 }: {
   day: number;
   popularity: number;
-  revenue: number;
-  costs: number;
   profit: number;
   needsAttention: number;
   onAttention: () => void;
 }) {
   return (
-    <div className="relative overflow-hidden rounded-[26px] border border-walnut-dark/50 wood p-4 shadow-lift">
-      <div className="absolute inset-x-0 top-0 h-28 bg-[radial-gradient(60%_100%_at_50%_0%,rgba(255,247,232,0.28),transparent_70%)]" />
-      <div className="relative">
-        <div className="flex items-baseline justify-between gap-2">
-          <Eyebrow dark>🏆 Restaurant health</Eyebrow>
-          <span className="font-ui text-[12px] font-bold uppercase tracking-[0.12em] text-ivory/60">
+    <div className="relative isolate min-h-[190px] overflow-hidden rounded-[26px] border border-walnut-dark/50 bg-walnut-dark shadow-lift">
+      <img
+        src={`${import.meta.env.BASE_URL}business/business-overview.webp`}
+        alt=""
+        aria-hidden="true"
+        className="absolute inset-0 h-full w-full select-none object-cover object-center"
+        draggable={false}
+      />
+      <div
+        className="absolute inset-0 bg-gradient-to-r from-[#29180f]/90 via-[#352014]/65 to-[#352014]/15"
+        aria-hidden="true"
+      />
+      <div className="relative p-4 text-ivory">
+        <div className="flex items-center justify-between gap-2">
+          <Eyebrow dark>🏆 Restaurant today</Eyebrow>
+          <span className="rounded-full border border-ivory/20 bg-walnut-dark/35 px-2.5 py-1 font-ui text-[10px] font-extrabold uppercase tracking-[0.1em] text-ivory/80 backdrop-blur-sm">
             Week {businessWeekFor(day)}
           </span>
         </div>
-        <p className="mt-1 font-display text-[24px] font-black leading-none text-ivory">
-          Business Day {day}{" "}
-          <span className="font-hand text-[18px] font-normal text-ivory/70">
-            {dayOfWeekFor(day)}
+        <p className="mt-2 font-display text-[23px] font-black leading-none">
+          Day {day}{" "}
+          <span className="font-hand text-[17px] font-normal text-ivory/75">
+            · {dayOfWeekFor(day)}
           </span>
         </p>
-        <div className="mt-3 flex items-center justify-between gap-2">
-          <Stars n={popularityStars(popularity)} size={16} />
-          <span className="font-ui text-[12.5px] font-extrabold text-ivory">
-            Popularity {popularity} / 100
+        <div className="mt-3 flex items-center gap-3">
+          <span
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-[15px] border border-ivory/20 bg-walnut-dark/40 text-[23px] shadow-soft backdrop-blur-sm"
+            aria-hidden
+          >
+            {popularity >= 75 ? "🌟" : popularity >= 45 ? "🍽️" : "🪴"}
           </span>
-        </div>
-        <div className="mt-1.5">
-          <Bar fraction={popularity / 100} tone="sage" dark />
-        </div>
-        <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-          {(
-            [
-              ["Revenue", revenue],
-              ["Costs", costs],
-              ["Profit", profit],
-            ] as const
-          ).map(([label, v]) => (
-            <div key={label} className="rounded-[14px] bg-ivory/10 px-1 py-2">
-              <p className="font-ui text-[11px] font-extrabold uppercase tracking-[0.12em] text-ivory/60">
-                {label}
-              </p>
-              <p className="font-display text-[16.5px] font-black leading-tight text-ivory">
-                {formatUsd(v)}
-              </p>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center justify-between gap-2">
+              <Stars n={popularityStars(popularity)} size={15} />
+              <span className="font-ui text-[11px] font-extrabold text-ivory/85">
+                {popularity}% guest love
+              </span>
             </div>
-          ))}
+            <div className="mt-1">
+              <Bar fraction={popularity / 100} tone="sage" dark />
+            </div>
+            <p className="mt-1 font-hand text-[13px] leading-tight text-ivory/75">
+              {profit > 0
+                ? "Your café is earning today."
+                : profit < 0
+                  ? "Today's costs are ahead of earnings."
+                  : "Your café is ready for its next service."}
+            </p>
+          </div>
         </div>
-        <p className="mt-2 font-hand text-[15px] leading-snug text-ivory/75">
-          {profit > 0
-            ? "Today is profitable so far."
-            : revenue === 0
-              ? "No customers served yet today — open the restaurant to start earning."
-              : "Today's costs are ahead of revenue so far."}{" "}
-          Includes tonight's staff pay.
-        </p>
         {needsAttention > 0 ? (
           <button
             type="button"
             onClick={onAttention}
-            className="press mt-2 flex h-12 w-full items-center justify-between rounded-[14px] border border-gold/40 bg-gold/15 px-3 font-ui text-[12.5px] font-extrabold text-gold"
+            className="press mt-3 flex min-h-11 w-full items-center justify-between rounded-[14px] border border-gold/40 bg-walnut-dark/45 px-3 font-ui text-[12px] font-extrabold text-gold backdrop-blur-sm"
           >
             <span>
-              ⚠️ {needsAttention} thing{needsAttention === 1 ? "" : "s"} need
-              {needsAttention === 1 ? "s" : ""} attention
+              ⚠️ {needsAttention} {needsAttention === 1 ? "thing needs" : "things need"} care
             </span>
-            <span>Operations →</span>
+            <span>Take a look ›</span>
           </button>
         ) : (
-          <p className="mt-2 font-ui text-[12.5px] font-extrabold text-ivory/80">
-            ✓ Nothing needs your attention right now
+          <p className="mt-3 inline-flex min-h-9 items-center rounded-full border border-sage/40 bg-sage/20 px-3 font-ui text-[11.5px] font-extrabold text-ivory/90 backdrop-blur-sm">
+            ✨ All areas are in good shape
           </p>
         )}
       </div>
@@ -803,10 +847,7 @@ function CampaignDayCard({ save, go }: { save: SaveData; go: (s: ScreenId) => vo
         className="absolute inset-0 h-full w-full select-none object-cover object-center"
         draggable={false}
       />
-      <div
-        className="pointer-events-none absolute inset-0 bg-walnut-dark/40"
-        aria-hidden="true"
-      />
+      <div className="pointer-events-none absolute inset-0 bg-walnut-dark/40" aria-hidden="true" />
       <div className="relative rounded-[20px] border border-ivory/25 bg-walnut-dark/35 p-3.5 text-ivory shadow-soft backdrop-blur-[2px] sm:p-4">
         <Eyebrow dark>🍽️ Your restaurant today</Eyebrow>
         <p className="mt-1 font-display text-[24px] font-black leading-none text-ivory">
@@ -829,10 +870,22 @@ function CampaignDayCard({ save, go }: { save: SaveData; go: (s: ScreenId) => vo
           </p>
         ) : null}
         <div className="mt-3 grid grid-cols-2 gap-2">
-          <KButton variant="cream" size="sm" full className="min-h-12 px-2" onClick={() => go("daily-maintenance")}>
+          <KButton
+            variant="cream"
+            size="sm"
+            full
+            className="min-h-12 px-2"
+            onClick={() => go("daily-maintenance")}
+          >
             🌅 Daily check
           </KButton>
-          <KButton variant="copper" size="sm" full className="min-h-12 px-2" onClick={() => go("kitchen")}>
+          <KButton
+            variant="copper"
+            size="sm"
+            full
+            className="min-h-12 px-2"
+            onClick={() => go("kitchen")}
+          >
             {d.closingDue ? "Close restaurant →" : "Next service →"}
           </KButton>
         </div>
@@ -852,7 +905,7 @@ function OneRestaurantNote() {
         </p>
         <p className="mt-1 font-ui text-[12.5px] font-bold text-walnut/60">
           🔒 The {ENDLESS_RESTAURANT_NAME} — open-ended days with everything you built — opens after
-          Level 250.
+          Level {LAST_CAMPAIGN_LEVEL}.
         </p>
       </div>
     </Panel>
@@ -1303,7 +1356,7 @@ function Operations({
         ) : (
           <p className="mt-3 font-hand text-[15px] leading-snug text-walnut/70">
             Your restaurant's day ends at closing time after its services. The open-ended{" "}
-            {ENDLESS_RESTAURANT_NAME} opens after Level 250.
+            {ENDLESS_RESTAURANT_NAME} opens after Level {LAST_CAMPAIGN_LEVEL}.
           </p>
         )}
       </Panel>

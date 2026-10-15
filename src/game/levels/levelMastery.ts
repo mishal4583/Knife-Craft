@@ -43,24 +43,25 @@ export function isPrepared(
 }
 
 /**
- * Phase 3 — the Cookbook-correct version of `isPrepared` for a whole
- * LEVEL rather than one fixed recipe id. A "Level ≠ Recipe" level
- * (levelTypes.ts's `recipePoolIds`, brief §3/§40/§41) can be completed
- * via any recipe the order generator actually drew from its pool —
+ * Campaign-correct "Prepared" status for pooled and batch levels as well
+ * as a single recipe id. A level with `recipePoolIds` or
+ * `batchGroupRecipeIds` can be completed via any recipe it actually served —
  * checking only the level's own compat `recipeId` would understate
  * "Prepared" (that field is a stable bookkeeping id, not necessarily
- * the recipe that was actually played). Checks every pool id instead;
- * falls back to the plain `recipeId` check for every level this phase
- * doesn't touch (41-120), which have no `recipePoolIds` at all.
+ * the recipe that was actually played). Checks all ids in the active
+ * order-pool or batch group, then falls back to the level's own id for a
+ * single-recipe level.
  */
 export function isLevelPrepared(
   recipeProgress: Record<string, { best: number | null; done: boolean }>,
   level: LevelDefinition,
 ): boolean {
-  if (level.recipePoolIds?.length) {
-    return level.recipePoolIds.some((id) => isPrepared(recipeProgress, id));
-  }
-  return isPrepared(recipeProgress, level.recipeId);
+  const recipeIds = level.recipePoolIds?.length
+    ? level.recipePoolIds
+    : level.batchGroupRecipeIds?.length
+      ? level.batchGroupRecipeIds
+      : [level.recipeId];
+  return recipeIds.some((id) => isPrepared(recipeProgress, id));
 }
 
 /**

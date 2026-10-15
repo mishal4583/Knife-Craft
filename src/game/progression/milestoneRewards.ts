@@ -91,6 +91,13 @@ const levelsMilestone = (n: number, reward: number): MilestoneDefinition => ({
   done: (f) => f.completed >= n,
 });
 
+const remappedLevelMilestone = (legacyLevel: number, newLevel: number, reward: number): MilestoneDefinition => ({
+  id: `levels-${legacyLevel}`,
+  label: `Completed ${newLevel} levels`,
+  reward,
+  atLevel: newLevel,
+  done: (f) => f.completed >= newLevel,
+});
 /** Display order = the Progress screen's own order. */
 export const MILESTONES: readonly MilestoneDefinition[] = [
   {
@@ -143,8 +150,8 @@ export const MILESTONES: readonly MilestoneDefinition[] = [
     atLevel: HALFWAY,
     done: (f) => f.completed >= HALFWAY,
   },
-  levelsMilestone(150, dollars(5_000)),
-  levelsMilestone(200, dollars(7_500)),
+  remappedLevelMilestone(150, 125, dollars(5_000)),
+  remappedLevelMilestone(200, 140, dollars(7_500)),
   {
     id: "every-kitchen-stage",
     label: "Every kitchen stage built",

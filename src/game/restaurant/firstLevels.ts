@@ -3,7 +3,7 @@
  * presentation only). The restaurant opens up one piece at a time:
  *
  *  - the bottom-bar sections open at a level each (Kitchen and the Restaurant
- *    map from the start, Inventory at 3, Market at 7, Business at 11); before
+ *    map from the start, Inventory and Market at 3, Business at 11); before
  *    that a section shows a lock with its level. Progress stays reachable from
  *    the Kitchen and Business screens rather than occupying a bottom tab;
  *  - Grandma says one line on each of Levels 1–15's Level Complete;
@@ -15,7 +15,7 @@
  * Level N" means the player has reached Level N (its highest unlocked
  * level), the same reading the knife / board unlocks use.
  */
-import { isSystemLive } from "./restaurantProgression";
+import { BUSINESS_MENU_FIRST_LEVEL, isSystemLive } from "./restaurantProgression";
 import { KNIFE_CATALOG } from "../knives/knifeDefinitions";
 import { BOARD_CATALOG } from "../boards/boardDefinitions";
 import { formatUsd } from "../money";
@@ -26,9 +26,9 @@ export type LockableTab = "inventory" | "shop" | "rack" | "business";
 
 export const TAB_OPENS_AT: Record<LockableTab, number> = {
   inventory: 3,
-  shop: 7,
+  shop: 3,
   rack: 10,
-  business: 11,
+  business: BUSINESS_MENU_FIRST_LEVEL,
 };
 
 /** Player-facing names for unlockable destinations. */
@@ -58,8 +58,8 @@ export function tabsOpeningAt(level: number): LockableTab[] {
 
 /** What a newly opened section is for (one short line on Level Complete). */
 export const TAB_OPENING_NOTE: Record<LockableTab, string> = {
-  inventory: "📦 Inventory is open: Grandma's fridge",
-  shop: "🛒 The Market is open: knives & boards",
+  inventory: "📦 Inventory is open: track the ingredients you buy",
+  shop: "🛒 The Market is open: buy the ingredients today's service needs",
   rack: "🏆 Restaurant Progress is available from the Kitchen and Business screens",
   business: "📊 Business is open: manage your restaurant",
 };
@@ -98,13 +98,15 @@ export function dayCeremonyAt(restaurantLevel: number): boolean {
   return isSystemLive("fridge-freshness", restaurantLevel);
 }
 
-/** The level the Market's purchases are first offered at (Santoku, Maple Board — never required). */
+/** Ingredient purchases first become available in the Market. */
+export const FIRST_INGREDIENT_PURCHASE_LEVEL = 3;
+
+/** The level the first new culinary tools are offered at (Santoku, Maple Board). */
 export const FIRST_PURCHASE_LEVEL = 10;
 
 /**
- * The Level 10 milestone's card (story bit 1): what the Market now offers
- * (the knives and boards that open at Level 10, from their own catalogs,
- * never required) and what the next level brings.
+ * The Level 10 milestone's card (story bit 1): the new knives and boards
+ * offered in the already-open Market, plus what the next level brings.
  */
 export function firstPurchaseRows(): { label: string; value: string }[] {
   const items = [
@@ -124,28 +126,21 @@ export function firstPurchaseRows(): { label: string; value: string }[] {
   ];
 }
 
-/*
- * Pass 2 — Grandma's fridge (developer 2026-10-09). The levels its steps
- * happen at; the stock itself is restaurant/grandmasFridge.ts.
- */
-/** Grandma's leftovers arrive in the fridge (with the Inventory). */
+/* Legacy markers kept for old saves and tooling; Grandma no longer provides ingredients. */
+/** Former level marker for the removed leftovers tutorial. */
 export const LEFTOVERS_AT = 3;
-/** From here a level's own order uses its real ingredients (until stock proper, L15). */
-export const STOCK_USED_FROM = 4;
-/** Grandma points out what's running low. */
+/** Ingredient stock is active from this level; purchases are required. */
+export const STOCK_USED_FROM = 3;
+/** Former levels for the removed Grandma fridge tutorial. */
 export const RUNNING_LOW_AT = 12;
-/** The first top-up, worked out from the next services and the fridge. */
+/** Former top-up level for the removed Grandma fridge tutorial. */
 export const TOP_UP_AT = 13;
-/** A look at the fridge and what the next services need. */
+/** Former preview level for the removed Grandma fridge tutorial. */
 export const PREVIEW_AT = 14;
 
-/**
- * True for a level whose own order uses its ingredients from Grandma's
- * fridge: Levels 4–14, before the full stock rules (Pre-Service Check,
- * `ingredient-stock`) take over at Level 15. Never blocks a serve.
- */
-export function earlyStockAt(levelNumber: number): boolean {
-  return levelNumber >= STOCK_USED_FROM && !isSystemLive("ingredient-stock", levelNumber);
+/** Legacy compatibility hook. There is no free early-stock period anymore. */
+export function earlyStockAt(_levelNumber: number): boolean {
+  return false;
 }
 
 /**
@@ -178,29 +173,31 @@ export function lockedScreenHint(screen: string, reachedLevel: number): string |
  * played, what's new and where to find it. `to` is the section a button
  * opens (it is always open by that level).
  */
-export type GrandmaTip = { text: string; to?: LockableTab; button?: string };
+export type GrandmaTip = {
+  text: string;
+  to?: LockableTab;
+  button?: string;
+  focus?: "ingredients";
+};
 
 export const GRANDMA_TIPS: Record<number, GrandmaTip> = {
   1: { text: "Tap Prepare — I'll show you how to hold the knife." },
   2: { text: "Same again, nice and steady. Your best cut earns the stars." },
   3: {
-    text: "I left food in the fridge for you. Take a look!",
-    to: "inventory",
-    button: "Open Inventory",
+    text: "The Market is open. Buy the ingredients today's order needs before you start.",
+    to: "shop",
+    button: "Buy Ingredients",
+    focus: "ingredients",
   },
   4: {
-    text: "From today each dish uses its ingredients from the fridge.",
+    text: "Check your fridge before each service, then buy only what you're missing.",
     to: "inventory",
-    button: "See the fridge",
+    button: "Check Inventory",
   },
-  5: { text: "Three steps today — the order card ticks them off as you go." },
+  5: { text: "Bread and garlic — prepare each part for the warm plate." },
   6: { text: "Dicing! Watch the goal on the order card." },
-  7: {
-    text: "The Market is open — come and look at the knives.",
-    to: "shop",
-    button: "Open Market",
-  },
-  8: { text: "Peel first, then halve. Steady hands." },
+  7: { text: "Choose the right knife technique for each ingredient." },
+  8: { text: "A new vegetable today — prepare the zucchini and its partner carefully." },
   // 9: the card's own "What's in this dish?" button is the pointer.
   // Supplies plan A (developer 2026-10-10: "ask the player to buy some important
   // tools"): the Market sells from here — Grandma's first shopping list.
@@ -214,10 +211,10 @@ export const GRANDMA_TIPS: Record<number, GrandmaTip> = {
     to: "business",
     button: "Open Business",
   },
-  12: { text: "Before you start, we'll check the fridge together." },
-  13: { text: "Today we top up — buy only what's missing." },
-  14: { text: "Let's look at what the next dishes need." },
-  15: { text: "From today, we check the fridge before every service." },
+  12: { text: "Bruschetta needs a few parts prepared for the same plate." },
+  13: { text: "Bring the Italian garden plate together one ingredient at a time." },
+  14: { text: "A hearty soup base builds on the cuts you've learned." },
+  15: { text: "A batch order means preparing shared ingredients once for both guests." },
 };
 
 /** Grandma's tip for the level about to be played (Levels 1–15), or null. */
@@ -241,11 +238,11 @@ export function isTabNew(id: string, reachedLevel: number): boolean {
 export const SECTION_POINTER: Record<LockableTab, { title: string; line: string }> = {
   inventory: {
     title: "📦 This is your Inventory",
-    line: "My leftovers are in the fridge — come and see what's there.",
+    line: "Track what you own here. Buy ingredients from the Market before each service.",
   },
   shop: {
     title: "🛒 This is the Market",
-    line: "Come and look at the knives and boards. Ingredients come at Level 10.",
+    line: "Buy the ingredients your next order needs. Culinary tools unlock at Level 10.",
   },
   rack: {
     title: "🏆 This is Progress",

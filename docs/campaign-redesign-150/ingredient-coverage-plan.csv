@@ -1,0 +1,58 @@
+ingredient_id,ingredient,category,retained_recipe_id,new_level,culinary_role,verified
+tomato,Tomato,Vegetable,camp-sliced-tomato-plate,1,Sliced Tomato Plate; prepared with slice.,YES
+cucumber,Cucumber,Vegetable,camp-level2-basics-tutorial,2,Basic Knife Skills Practice; prepared with slice.,YES
+carrot,Carrot,Vegetable,camp-level2-basics-tutorial,2,Basic Knife Skills Practice; prepared with julienne.,YES
+onion,Onion,Vegetable,camp-onion-rings-basket,11,Onion Rings Basket; prepared with peel.,YES
+potato,Potato,Vegetable,camp-halved-potato-bowl,4,Halved Potato Bowl; prepared with peel.,YES
+garlic,Garlic,Aromatic,camp-level2-basics-tutorial,2,Basic Knife Skills Practice; prepared with peel.,YES
+bread,Bread,Bakery,camp-garlic-bread,5,Garlic Bread; prepared with slice.,YES
+basil,Basil,Herb,camp-tomato-basil-toast,6,Tomato Basil Toast; prepared with chop.,YES
+mushroom,Mushroom,Vegetable,camp-mushroom-bruschetta,7,Mushroom Bruschetta; prepared with slice.,YES
+zucchini,Zucchini,Vegetable,camp-zucchini-garden-plate,8,Zucchini Garden Plate; prepared with slice.,YES
+mozzarella,Mozzarella,Dairy,camp-caprese-plate,9,Caprese Plate; prepared with slice.,YES
+pepper,Bell Pepper,Vegetable,camp-julienne-vegetable-medley,20,Julienne Vegetable Medley; prepared with julienne.,YES
+orange,Orange,Fruit,camp-beetroot-plate,16,Beetroot & Orange Plate; prepared with radial.,YES
+eggplant,Eggplant,Vegetable,camp-eggplant-antipasto,16,Eggplant Antipasto; prepared with slice.,YES
+fennel,Fennel,Vegetable,camp-zucchini-fennel-julienne,20,Zucchini & Fennel with Lemon; prepared with slice.,YES
+lemon,Lemon,Fruit,camp-zucchini-fennel-julienne,20,Zucchini & Fennel with Lemon; prepared with radial.,YES
+baguette,Baguette,Bakery,camp-avocado-baguette-toast,47,Avocado Baguette Toast; prepared with slice.,YES
+celery,Celery,Vegetable,camp-french-onion-base,21,French Onion Base; prepared with julienne.,YES
+spinach,Spinach,Vegetable,camp-spinach-fennel-chiffonade-plate,26,Spinach & Fennel Chiffonade Plate; prepared with chiffonade.,YES
+asparagus,Asparagus,Vegetable,camp-asparagus-carrot-precision-plate,28,Asparagus & Carrot Precision Plate; prepared with slice.,YES
+parsley,Parsley,Herb,camp-three-herb-garnish,34,Herb & Garlic Garnish; prepared with chiffonade.,YES
+apple,Apple,Fruit,camp-celery-apple-remoulade-prep,33,Celery & Apple Remoulade Prep; prepared with peel.,YES
+cheddar,Cheddar,Dairy,camp-peach-cheddar-board,114,Peach & Cheddar Board; prepared with slice.,YES
+ginger,Ginger,Aromatic,camp-onion-tomato-masala-base,36,Onion Tomato Masala Base; prepared with peel.,YES
+cauliflower,Cauliflower,Vegetable,camp-cauliflower-curry,41,Cauliflower Curry; prepared with chop.,YES
+peapod,Pea Pod,Vegetable,camp-spinach-peapod-bowl,40,Spinach & Pea Pod Bowl; prepared with slice.,YES
+coconut,Coconut,Fruit,camp-thai-salmon-coconut,89,Salmon & Coconut; prepared with halve.,YES
+mango,Mango,Fruit,camp-mango-chutney-base,38,Mango Chutney Base; prepared with peel.,YES
+chilli,Green Chili,Vegetable,camp-mango-chutney-base,38,Mango Chutney Base; prepared with slice.,YES
+pumpkin,Pumpkin,Vegetable,camp-pumpkin-curry-dice,39,Pumpkin Curry Dice; prepared with peel.,YES
+avocado,Avocado,Fruit,camp-avocado-baguette-toast,47,Avocado Baguette Toast; prepared with halve.,YES
+pomegranate,Pomegranate,Fruit,camp-pomegranate-apple-plate,120,Pomegranate & Apple Plate; prepared with halve.,YES
+corn,Corn,Vegetable,camp-corn-tomato-salsa,49,Corn & Tomato Salsa; prepared with slice.,YES
+lime,Lime,Fruit,camp-avocado-plate,50,Avocado & Lime Plate; prepared with radial.,YES
+pineapple,Pineapple,Fruit,camp-pineapple-mango-fresh,51,Pineapple & Mango Fresh Cup; prepared with peel.,YES
+sweetpotato,Sweet Potato,Vegetable,camp-sweetpotato-hash,52,Sweet Potato Hash; prepared with peel.,YES
+beetroot,Beetroot,Vegetable,camp-beetroot-plate,16,Beetroot & Orange Plate; prepared with peel.,YES
+cilantro,Cilantro,Herb,camp-pineapple-salsa,53,Pineapple Salsa; prepared with chop.,YES
+chicken,Chicken Breast,Protein,camp-chicken-slice-intro,59,Sliced Chicken Plate; prepared with slice.,YES
+cabbage,Cabbage,Vegetable,camp-chicken-julienne-cabbage,62,Chicken & Cabbage Julienne; prepared with slice.,YES
+steak,Ribeye Steak,Protein,camp-steak-slice-intro,63,Sliced Ribeye Plate; prepared with slice.,YES
+salmon,Salmon Fillet,Protein,camp-salmon-slice-intro,66,Sliced Salmon Plate; prepared with slice.,YES
+radish,Radish,Vegetable,camp-salmon-cucumber-radish,67,"Salmon, Cucumber & Radish; prepared with slice.",YES
+tofu,Tofu,Dairy,camp-salmon-tofu-spinach,70,"Salmon, Tofu & Spinach; prepared with dice.",YES
+broccoli,Broccoli,Vegetable,camp-tofu-broccoli-bowl,76,Tofu & Broccoli Bowl; prepared with chop.,YES
+springonion,Green Onion / Scallion,Vegetable,camp-chicken-pepper-stirfry,77,Chicken Pepper Stir-Fry Prep; prepared with slice.,YES
+greenbean,Green Bean,Vegetable,camp-thai-greenbean-pepper,90,Green Bean & Pepper; prepared with chop.,YES
+pear,Pear,Fruit,camp-pear-radish-side,104,Pear & Radish Side; prepared with peel.,YES
+artichoke,Artichoke,Vegetable,camp-italian-artichoke-fennel,107,Artichoke & Fennel Plate; prepared with halve.,YES
+lettuce,Lettuce,Vegetable,camp-italian-lettuce-tomato,108,Lettuce & Tomato Salad; prepared with chiffonade.,YES
+turnip,Turnip,Vegetable,camp-french-turnip-carrot,112,Turnip & Carrot Plate; prepared with peel.,YES
+peach,Peach,Fruit,camp-french-peach-garnish,114,Peach & Fennel Plate; prepared with halve.,YES
+kiwi,Kiwi,Fruit,camp-med-kiwi-watermelon,117,Kiwi & Watermelon Fresh Plate; prepared with peel.,YES
+watermelon,Watermelon,Fruit,camp-med-kiwi-watermelon,117,Kiwi & Watermelon Fresh Plate; prepared with peel.,YES
+grapes,Grapes,Fruit,camp-latin-grapes-strawberry,125,Grapes & Strawberry Cup; prepared with slice.,YES
+strawberry,Strawberry,Fruit,camp-latin-grapes-strawberry,125,Grapes & Strawberry Cup; prepared with slice.,YES
+butter,Butter,Dairy,camp-herb-butter-vegetable-plate,32,Sliced into finishing pats for the herb-butter vegetable plate.,YES

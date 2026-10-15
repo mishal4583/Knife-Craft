@@ -25,6 +25,8 @@
  */
 
 /** One card shown in the Fresh-Start "your savings" beat — ported from the source's `const CARDS`. */
+import { remapCampaignThreshold } from "../levels/campaignSelection";
+
 export type StoryCardId = "board" | "knife" | "ing";
 
 /** One line of on-screen dialogue — ported from the source's `dlg:{who,art,say,side?}` shape. */
@@ -66,7 +68,7 @@ export type StoryBeat = {
  * beats below (FINALE) still play through StoryOverlay.
  */
 
-/** FINALE (4 beats) — ported verbatim from knifecraft.html:10977. Gated `n >= 100 && !story.finaleSeen`. Copy freeze: "You built this." / "They would be proud." — "We did it." must never appear. */
+/** FINALE (4 beats), shown at the midpoint of the 150-level campaign. */
 export const FINALE: StoryBeat[] = [
   {
     tint: "sThrive",
@@ -131,7 +133,7 @@ export type MilestoneDef = { bit: number; at: number; kicker: string; line: stri
  * along with its own LEGACY_BIT so a save that already saw the old banner
  * never sees it again. FINALE / FINALE_AT stay exactly as shipped.
  */
-export const MILES: MilestoneDef[] = [
+const SOURCE_MILES: MilestoneDef[] = [
   {
     bit: 1,
     at: 10,
@@ -184,6 +186,10 @@ export const MILES: MilestoneDef[] = [
   },
 ];
 
+export const MILES: MilestoneDef[] = SOURCE_MILES.map((milestone) => ({
+  ...milestone,
+  at: remapCampaignThreshold(milestone.at),
+}));
 /** The retired Level 250 "CAMPAIGN COMPLETE" banner's bit — marked with LEGACY_BIT, never shown again. */
 export const RETIRED_CAMPAIGN_COMPLETE_BIT = 64;
 
@@ -193,8 +199,8 @@ export const MILES_FULL_MASK = MILES.reduce(
   RETIRED_CAMPAIGN_COMPLETE_BIT,
 );
 
-/** The finale's own gate — ported verbatim from `n >= 100`. */
-export const FINALE_AT = 100;
+/** The narrative midpoint of the 150-level campaign. */
+export const FINALE_AT = 75;
 
 /**
  * LEGACY — "THE LAST PAGE", the Level 250 ending (developer 2026-10-11,
@@ -215,7 +221,7 @@ export const LEGACY: StoryBeat[] = [
   {
     tint: "sThrive",
     hold: 4400,
-    lines: ["Two hundred and fifty dishes later,", "you know what belongs on it."],
+    lines: ["One hundred and fifty dishes later,", "you know what belongs on it."],
   },
   {
     tint: "sThrive",
@@ -237,4 +243,4 @@ export const LEGACY: StoryBeat[] = [
 
 /** LEGACY's own bit in `story.milestoneMask`, and the completed-level count that plays it. */
 export const LEGACY_BIT = 2048;
-export const LEGACY_AT = 250;
+export const LEGACY_AT = 150;

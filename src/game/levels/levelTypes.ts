@@ -122,6 +122,8 @@ export type LevelUnlockReward = {
 
 export type LevelDefinition = {
   id: string;
+  /** Old campaign level whose reward band this retained level inherits. */
+  campaignRewardBasisLevel?: number;
   chapter: number;
   chapterId: string;
   type: LevelType;
@@ -191,6 +193,8 @@ export type LevelDefinition = {
    * declares.
    */
   requiredOrders?: number;
+  /** Practice-only campaign service: it serves/prepares normally, but cannot spend stock or move wallet/ledger money. */
+  campaignNoEconomy?: boolean;
   /**
    * Phase 4 — REAL batching (brief §3-§10). When present (2 or 3 recipe
    * ids), this level runs a ServiceManager.BatchGroupSession instead of

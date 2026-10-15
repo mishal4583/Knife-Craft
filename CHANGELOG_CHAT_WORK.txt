@@ -1,0 +1,94 @@
+KnifeCraft — Changes Made During This Chat
+==========================================
+
+This file summarizes the game and campaign work completed in this chat, including
+the final audio-policy fix. The current work is on branch codex/restaurant-map.
+
+KITCHEN AND DAILY ROUTINES
+--------------------------
+- Added a separate Daily Maintenance flow for the checks players need before
+  service, with day and night cleaning handled as separate routines.
+- Expanded the checks to cover ingredient stock and urgent/low-stock refills,
+  cutlery and culinary supplies, cleaning supplies, kitchen equipment, tools
+  needed at the current level, staff and chef hiring needs, and refrigerator
+  capacity.
+- Added a Daily Check shortcut on the Kitchen screen.
+- Reduced the space used by the Daily Check and Today's Order cards, made the
+  order details action easier to see, and made the order card more compact.
+- Removed duplicate progress and Market shortcuts from the Kitchen overview.
+- Moved Kitchen Upgrade out of the Kitchen overview into its own Business
+  section.
+- Added compact expandable shortcut buttons for Daily Check, Inventory, and
+  Business, with status indicators for areas needing attention.
+
+RESTAURANT AND BUSINESS UI
+--------------------------
+- Updated the Restaurant section containers and surrounding screen background
+  to use the game's cream-colored visual theme.
+- Added a cross-screen attention system for actionable issues including cleaning,
+  restroom supplies, dining-area cleanup, inventory refills, hiring, equipment,
+  refrigerator capacity, and cleaning supplies.
+- Replaced plain numeric attention badges with issue-appropriate symbols or
+  emoji indicators where the UI presents those alerts.
+- Updated Business dashboard sections and related presentation for the overview,
+  equipment, staff, suppliers, menu, and operations areas.
+- Updated shared money/cash presentation in the affected UI components.
+
+ONBOARDING, STOCK, AND SERVICE FLOW
+-----------------------------------
+- Removed the free Grandma's ingredient stock path from the opening campaign.
+- Made the Market available early and moved ingredient purchasing into the
+  campaign onboarding, starting around level 3.
+- Updated first-restock, campaign-stock, pre-service, service-cover, supplies,
+  cleanliness, tool, and staff progression rules to follow the campaign's
+  intended unlock sequence.
+- Updated the first-use inventory and recipe presentation so service checks are
+  based on the actual recipe requirements.
+
+150-LEVEL CAMPAIGN REDESIGN
+--------------------------
+- Curated 150 retained levels from the former 250-level catalog and re-numbered
+  them sequentially from Level 1 through Level 150.
+- Reworked the opening training level and early recipes, including a no-cost
+  basic-skills practice lesson, fixed recipe choice at the early Italian toast
+  level, and clarified the potato preparation sequence.
+- Updated chapter names and chapter mapping, technique and ingredient unlocks,
+  recipe selection, campaign milestones, story finale, and campaign rewards.
+- Re-mapped progression thresholds for business access, cuisines, tools, staff,
+  cleaning, service supplies, menu systems, and other systems that previously
+  referenced the 250-level campaign.
+- Added one-time save migration for the revised campaign. Retained levels map to
+  their new numbers; removed levels transfer only when their recipe pool and
+  service shape match; a completed old Level 250 maps to a completed new
+  campaign.
+- Added a campaign audit generator and generated level maps, recipe quality
+  ledger, ingredient/fruit/technique coverage plans, and campaign catalog under
+  docs/campaign-redesign-150/.
+- Static campaign audit: 150 selected levels, 150 unique source levels, 168
+  recipes, 57 ingredients, and 15 fruits; no missing ingredient or fruit
+  references; technique unlocks match first use.
+
+RUNTIME FIXES
+-------------
+- Fixed the campaign migration import so it reads CAMPAIGN_150_SOURCE_LEVEL_NUMBERS
+  from campaignSelection.ts, the module that exports it. This resolves the
+  missing-export exception that previously left the app on a white screen.
+- Updated Prepared status checks to account for both recipe-pool and batch-group
+  levels.
+- Added a React error-boundary fallback screen with a reload action for render
+  failures.
+- Fixed Web Audio startup behavior: sound effects and music now wait for a player
+  gesture before creating an AudioContext. Resume attempts are shared and handled
+  safely; closed or unavailable audio contexts no longer break the game screen.
+
+VALIDATION AND LIMITS
+---------------------
+- The repository lint command completed with 0 errors and 7 existing
+  react-refresh/only-export-components warnings in UI component files.
+- git diff --check completed without whitespace errors.
+- Per repository instructions, tests, builds, and the development server were
+  not run.
+- Campaign economy simulation was not run.
+
+The local task-boundary file AGENTS.md is intentionally not included in this
+changelog or in the application changes.

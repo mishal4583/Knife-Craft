@@ -39,6 +39,7 @@ import { addSpecialistWagesToLatestDay } from "../business/businessDayHistory";
 import { activeMenuDishes } from "./restaurantMenu";
 import { CUISINES, isSystemLive, menuGuestsPerService } from "./restaurantProgression";
 import type { OrderService } from "./serviceSupplies";
+import { remapCampaignThreshold } from "../levels/campaignSelection";
 
 // ── Configuration ───────────────────────────────────────────────────────
 
@@ -57,7 +58,7 @@ export type StaffRule = {
   why: string;
 };
 
-export const STAFF_RULES: readonly StaffRule[] = [
+const SOURCE_STAFF_RULES: readonly StaffRule[] = [
   {
     role: "prep-cook",
     fromLevel: 41,
@@ -94,6 +95,11 @@ export const STAFF_RULES: readonly StaffRule[] = [
     why: "A team of five or more needs a Manager.",
   },
 ];
+
+export const STAFF_RULES: readonly StaffRule[] = SOURCE_STAFF_RULES.map((rule) => ({
+  ...rule,
+  fromLevel: remapCampaignThreshold(rule.fromLevel),
+}));
 
 /** How many levels ahead a staff requirement (or a specialist) is announced. */
 export const STAFF_NOTICE_LEVELS = 5;

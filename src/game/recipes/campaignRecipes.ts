@@ -1,7 +1,6 @@
 /**
- * CAMPAIGN_RECIPES — the campaign's recipe library, migrated to exact
- * KnifeCraft_Level_System_v2.docx compliance (221 recipes across all 25
- * chapters/250 levels). Every ingredient/technique combination here is
+ * CAMPAIGN_RECIPES — the campaign's recipe library. Every
+ * ingredient/technique combination here is
  * checked against `INGREDIENTS[id].techniques` in definitions.ts — no
  * recipe asks for a cut the engine doesn't actually support for that
  * ingredient.
@@ -22,10 +21,8 @@
  * CustomerOrderManager now recompute it live per the level's own chapter
  * (see recipePay.ts) — this field is never read on that path.
  *
- * Butter has been removed from every recipe here (v2 §2.1) — the
- * ingredient definition itself is untouched (still exists in
- * definitions.ts) since nothing about the engine architecture required
- * deleting it, only its campaign usage.
+ * Butter is used as a sliced finishing pat on the Herb Butter Vegetable
+ * Plate; that is an existing supported ingredient/action pairing.
  *
  * Five ingredients apple/orange/turnip/pumpkin/pear are declared by v2 as
  * needing a Peel step in certain recipes, but none of the five has a
@@ -37,11 +34,12 @@
  * recipes is implemented exactly.
  */
 import type { RecipeDefinition } from "./recipeTypes";
+import { LEVELS } from "../levels/levelDefinitions";
 
 const PLATE = { id: "plate", name: "Plate" };
 const BOWL = { id: "bowl", name: "Bowl" };
 
-export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
+const SOURCE_CAMPAIGN_RECIPES: RecipeDefinition[] = [
   // ───────────────────────── Chapter 1 — Opening the Restaurant ─────────────────────────
   {
     id: "camp-sliced-tomato-plate",
@@ -258,8 +256,8 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     ],
     destinations: [BOWL],
     batchable: false,
-    chefInstruction: "Halve the potato evenly.",
-    customerDialogue: "Halved potato, ready for the pan.",
+    chefInstruction: "Peel the potato, then halve it evenly for the pan.",
+    customerDialogue: "One peeled potato, halved and ready for the pan.",
     basePayment: 50,
     unlockLevel: 8,
   },
@@ -912,7 +910,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
   },
   {
     id: "camp-zucchini-fennel-julienne",
-    name: "Zucchini & Fennel Julienne",
+    name: "Zucchini & Fennel with Lemon",
     emoji: "🥬",
     cuisineId: "italian",
     authenticity: "A",
@@ -938,8 +936,8 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     ],
     destinations: [PLATE],
     batchable: true,
-    chefInstruction: "Julienne the zucchini. Slice the fennel. Cut the lemon.",
-    customerDialogue: "Zucchini and fennel, cut fine, please.",
+    chefInstruction: "Julienne the zucchini, slice the fennel, and add a lemon wedge as a bright finish.",
+    customerDialogue: "A fresh zucchini and fennel plate with lemon, please.",
     basePayment: 170,
     unlockLevel: 27,
   },
@@ -1432,7 +1430,7 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
   },
   {
     id: "camp-herb-butter-vegetable-plate",
-    name: "Herb Garden Vegetable Plate",
+    name: "Herb Butter Vegetable Plate",
     emoji: "🧈",
     cuisineId: "french",
     authenticity: "B",
@@ -1461,11 +1459,17 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
         resultingState: "diced",
         destinationIds: ["plate"],
       },
+      {
+        ingredientId: "butter",
+        technique: "slice",
+        resultingState: "sliced",
+        destinationIds: ["plate"],
+      },
     ],
     destinations: [PLATE],
     batchable: false,
     chefInstruction:
-      "Chiffonade the basil, julienne the carrot, then dice the potato — the whole plate.",
+      "Chiffonade the basil, julienne the carrot, dice the potato, then slice butter into finishing pats.",
     customerDialogue: "The vegetable plate, the whole thing.",
     basePayment: 260,
     unlockLevel: 45,
@@ -7932,6 +7936,26 @@ export const CAMPAIGN_RECIPES: RecipeDefinition[] = [
     basePayment: 570,
     unlockLevel: 250,
   },
+  {
+    id: "camp-level2-basics-tutorial",
+    name: "Basic Knife Skills Practice",
+    emoji: "🔪",
+    cuisineId: null,
+    authenticity: "B",
+    components: [
+      { ingredientId: "tomato", technique: "dice", resultingState: "diced", destinationIds: ["plate"] },
+      { ingredientId: "cucumber", technique: "slice", resultingState: "sliced", destinationIds: ["plate"] },
+      { ingredientId: "carrot", technique: "julienne", resultingState: "julienned", destinationIds: ["plate"] },
+      { ingredientId: "garlic", technique: "peel", resultingState: "peeled", destinationIds: ["plate"] },
+      { ingredientId: "garlic", technique: "smash", resultingState: "smashed", destinationIds: ["plate"] },
+    ],
+    destinations: [{ id: "plate", name: "Practice Plate" }],
+    batchable: false,
+    chefInstruction: "Practice the basic cuts: dice tomato, slice cucumber, julienne carrot, then peel and smash garlic.",
+    customerDialogue: "Let's practice together before the restaurant opens.",
+    basePayment: 0,
+    unlockLevel: 2,
+  },
 ];
 
 /**
@@ -7990,6 +8014,15 @@ export const BUSINESS_ONLY_RECIPES: RecipeDefinition[] = [
     unlockLevel: 106,
   },
 ];
+/** Recipe unlocks follow their first retained appearance in the curated campaign. */
+export const CAMPAIGN_RECIPES: RecipeDefinition[] = SOURCE_CAMPAIGN_RECIPES.map((recipe) => {
+  const levelIndex = LEVELS.findIndex((level) =>
+    (level.recipePoolIds ?? []).includes(recipe.id) ||
+    (level.batchGroupRecipeIds ?? []).includes(recipe.id) ||
+    level.recipeId === recipe.id,
+  );
+  return levelIndex < 0 ? recipe : { ...recipe, unlockLevel: levelIndex + 1 };
+});
 
 export function getCampaignRecipe(id: string): RecipeDefinition | undefined {
   return (

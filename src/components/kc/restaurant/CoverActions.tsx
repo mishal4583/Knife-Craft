@@ -10,7 +10,7 @@ export type CoverAdOutcome =
 
 /**
  * The Pre-Service Check's way through when the wallet can't pay for what a
- * service is short of (from Level 10; serviceCover.ts). Display only — App
+ * service is short of (from Level 3; serviceCover.ts). Display only — App
  * runs both actions.
  *
  *  - 🎬 Watch an ad: shown whenever the platform can show a rewarded ad.

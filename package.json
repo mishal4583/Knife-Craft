@@ -9,7 +9,7 @@
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "preflight": "node scripts/playables-preflight.mjs",
-    "lint": "eslint .",
+    "lint": "eslint src vite.config.ts eslint.config.js",
     "format": "prettier --write ."
   },
   "dependencies": {

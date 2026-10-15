@@ -287,9 +287,7 @@ function drawDirt(canvas: HTMLCanvasElement, points: Point[], task: TaskKind, ar
   points.forEach((point, index) => {
     const size = 3 + ((index * 7) % 7);
     let stainColor = "rgba(90, 55, 29, .64)";
-    if (area === "restroom" && task === "restroom-floor") stainColor = "rgba(91, 82, 67, .36)";
-    else if (area === "restroom") stainColor = "rgba(90, 71, 53, .48)";
-    else if (area === "dining" && task === "spill") stainColor = "rgba(151, 65, 28, .64)";
+    if (area === "dining" && task === "spill") stainColor = "rgba(151, 65, 28, .64)";
     else if (area === "dining" && task === "tables") stainColor = "rgba(122, 77, 43, .42)";
     else if ((area === "dining" && (task === "floor" || task === "mop-all")) || (area === "kitchen" && task === "sweep-line")) {
       stainColor = "rgba(91, 82, 67, .38)";
@@ -441,8 +439,8 @@ export function AreaCleaningPrototype({
   task: TaskKind;
   stage: KitchenMapArtStage;
   image: string;
-  roomWide?: boolean;
-  previewOnly?: boolean;
+  roomWide?: boolean | undefined;
+  previewOnly?: boolean | undefined;
   onClose: () => void;
   onComplete: () => void;
 }) {

@@ -40,8 +40,8 @@ function levelNumberOf(level: Pick<LevelDefinition, "id">): number {
 }
 
 /** The share (0–100) of the stored reward that `level` pays. */
-export function levelRewardPercent(level: Pick<LevelDefinition, "id">): number {
-  const n = levelNumberOf(level);
+export function levelRewardPercent(level: Pick<LevelDefinition, "id" | "campaignRewardBasisLevel">): number {
+  const n = level.campaignRewardBasisLevel ?? levelNumberOf(level);
   return LEVEL_REWARD_SCHEDULE.find((b) => n >= b.from && n <= b.to)?.percent ?? 100;
 }
 
@@ -50,7 +50,7 @@ export function levelRewardPercent(level: Pick<LevelDefinition, "id">): number {
  * stored reward × its band's percent, rounded to whole dollars (the stored
  * rewards are whole dollars, and so is every reward a player sees).
  */
-export function paidLevelReward(level: Pick<LevelDefinition, "id" | "reward">): number {
+export function paidLevelReward(level: Pick<LevelDefinition, "id" | "reward" | "campaignRewardBasisLevel">): number {
   const wholeDollars = Math.round((level.reward.coins * levelRewardPercent(level)) / 100);
   return dollars(Math.max(0, wholeDollars));
 }

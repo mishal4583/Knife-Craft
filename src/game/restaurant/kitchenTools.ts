@@ -30,8 +30,9 @@ import { supplyUnits } from "../business/BusinessSuppliesManager";
 import { dishServiceFor, type DishService } from "./dishService";
 import { inventoryMenuOf } from "./restaurantMenu";
 import { restaurantStaffOf } from "./staffRequirements";
-import { isSystemLive } from "./restaurantProgression";
+import { isSystemLive, LAST_CAMPAIGN_LEVEL } from "./restaurantProgression";
 import { FIRST_PURCHASE_LEVEL } from "./firstLevels";
+import { remapCampaignThreshold } from "../levels/campaignSelection";
 
 export type ToolRule = {
   id: SupplyId;
@@ -50,7 +51,7 @@ const uses = (recipe: RecipeDefinition, t: string) =>
   recipe.components.some((c) => (c.technique as string) === t);
 
 /** Every culinary smallware and the dishes that need it (supplies plan §A). */
-export const TOOL_RULES: readonly ToolRule[] = [
+const SOURCE_TOOL_RULES: readonly ToolRule[] = [
   {
     id: "peelers",
     fromLevel: FIRST_PURCHASE_LEVEL,
@@ -164,6 +165,13 @@ export const TOOL_RULES: readonly ToolRule[] = [
     why: "Chicken, steak and salmon are portioned by weight",
   },
 ];
+
+export const TOOL_RULES: readonly ToolRule[] = SOURCE_TOOL_RULES.map((rule) => ({
+  ...rule,
+  fromLevel: rule.fromLevel === FIRST_PURCHASE_LEVEL
+    ? FIRST_PURCHASE_LEVEL
+    : remapCampaignThreshold(rule.fromLevel),
+}));
 
 /** Grandma's old tools, hers to give once when the Market opens (Level 10). */
 export const GRANDMAS_TOOL_SET: readonly SupplyId[] = ["peelers", "mixing-bowls", "measuring-cups"];
@@ -279,7 +287,7 @@ export function toolsComingUp(
   recipesAt: (n: number) => readonly RecipeDefinition[],
 ): { id: SupplyId; level: number; why: string }[] {
   const out: { id: SupplyId; level: number; why: string }[] = [];
-  for (let n = levelNumber + 1; n <= levelNumber + ahead && n <= 250; n++) {
+  for (let n = levelNumber + 1; n <= levelNumber + ahead && n <= LAST_CAMPAIGN_LEVEL; n++) {
     for (const { rule, need } of toolsNeeded(save, n, recipesAt(n))) {
       if (out.some((o) => o.id === rule.id)) continue;
       if (supplyUnits(save.business.supplies, rule.id) >= need) continue;

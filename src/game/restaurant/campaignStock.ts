@@ -3,7 +3,7 @@
  * (Unified Restaurant phases 3–4).
  *
  *  - `serviceStockCheck`: the Pre-Service Check's ingredient rows. For a
- *    level whose service uses stock (`ingredient-stock`, Level 15 on), what
+ *    level whose service uses stock (`ingredient-stock`, Level 3 on), what
  *    its tickets need, what is usable (fresh, never expired), what is
  *    missing, how many whole units the Market would sell to cover it, at
  *    what price (the Market's own `purchaseQuote`), and whether the wallet
@@ -14,16 +14,12 @@
  *    average (`realCogsFor`) for the report. Nothing about the order's pay
  *    changes (developer decision 2026-10-04: the built-in food cost stays;
  *    double charging is Economy TODO P0).
- *  - `pantryForMissing`: the soft-lock safety net. Only when the wallet
- *    cannot cover the missing stock, the Pre-Service Check offers Grandma's
- *    pantry: exactly the missing quantities, added to the fridge at cost 0,
- *    visible and opt-in (no money, no ledger entry, never automatic).
- *    Economy TODO #17.
+ *  - ingredients are purchased in the Market from Level 3 onward; there is
+ *    no free pantry or ingredient handout.
  *
  * Replays and orders a level no longer owes use no stock (they pay
- * nothing either). Levels 1–3 never use stock; from Level 4 a level's own
- * orders need theirs (Grandma's leftovers cover Levels 4–12; developer
- * 2026-10-09), menu guests theirs from Level 15.
+ * nothing either). Levels 1–2 never use stock; from Level 3 every order
+ * uses its real ingredients.
  *
  * Pure: every function returns new objects; nothing reads RESTAURANT_MODE.
  */
@@ -31,7 +27,6 @@ import type { SaveData } from "../SaveManager";
 import type { IngredientId } from "../definitions";
 import type { RecipeDefinition } from "../recipes/recipeTypes";
 import {
-  addStock,
   getQuantity,
   normalizeQuantity,
   type IngredientRequirement,
@@ -40,9 +35,7 @@ import { consumeUsableIngredients, usableQuantity } from "../business/perishabil
 import type { PurchaseQuote } from "../business/BusinessInventoryManager";
 import { realCogsFor } from "../business/BusinessFinanceManager";
 import { getAvailableStorageCapacity } from "../business/RefrigeratorManager";
-import { discardExpiredStock } from "../business/discardExpired";
 import { isSystemLive } from "./unlocks";
-import { earlyStockAt } from "./firstLevels";
 import { recipeRequirements, sumRequirements } from "./recipeRequirements";
 import { restaurantQuote, stockUseFor } from "./restaurantEconomy";
 import { marketUnitsCovering, measureOf, stockForMarketUnits } from "../business/measure";
@@ -66,7 +59,6 @@ export function orderRequirements(
     })),
   );
 }
-
 export type StockRow = {
   ingredientId: IngredientId;
   /** What today's tickets use in all. */
@@ -110,11 +102,9 @@ export function serviceStockCheck(
   save: SaveData,
   levelNumber: number,
   tickets: readonly RecipeDefinition[],
-  /** First levels (developer 2026-10-09): the level's own orders need their stock from Level 4. */
-  opts: { ownOrders?: boolean } = {},
+  _opts: { ownOrders?: boolean } = {},
 ): ServiceStockCheck {
-  if (!serviceUsesStock(levelNumber) && !(opts.ownOrders && earlyStockAt(levelNumber)))
-    return { applies: false };
+  if (!serviceUsesStock(levelNumber)) return { applies: false };
   const day = save.business.calendar.businessDay;
   const inventory = save.business.inventory;
   const measure = measureOf(save);
@@ -172,14 +162,12 @@ export function consumeCampaignOrderStock(
   levelNumber: number,
   recipe: RecipeDefinition,
   owesOrder: boolean,
-  /** "guest" for a menu guest: before Level 15 guests use no stock (unchanged). */
-  kind: "order" | "guest" = "order",
+  /** Retained for call-site compatibility; menu guest stock follows the same Level 3 rule. */
+  _kind: "order" | "guest" = "order",
 ): ConsumeOrderStockResult {
-  // From Level 4 a level's own order needs its ingredients (developer 2026-10-09:
-  // "without these ingredients in stock I still can cut and serve it"); menu
-  // guests keep needing theirs from Level 15.
-  const usesStock =
-    serviceUsesStock(levelNumber) || (kind === "order" && earlyStockAt(levelNumber));
+  // Campaign orders use their real ingredients from Level 3; menu guests
+  // still join stock requirements at their separate progression level.
+  const usesStock = serviceUsesStock(levelNumber);
   if (!owesOrder || !usesStock) return { ok: true, save, used: false, cost: 0, requirements: [] };
   // Planned use; where today's stock is short of it (a knife dulled during
   // the service), the serve uses what's there, never less than the floor.
@@ -210,35 +198,4 @@ export function consumeCampaignOrderStock(
     cost,
     requirements,
   };
-}
-
-/**
- * Grandma's pantry — ONLY before the Market sells ingredients (Level 10,
- * the tutorial levels): adds exactly the missing quantities at cost 0. From
- * Level 10 Grandma lends nothing any more (developer 2026-10-10): a short
- * service is bought, or covered by a rewarded ad or supplier credit
- * (serviceCover.ts). Null when it doesn't apply. It never moves money.
- */
-export function pantryForMissing(
-  save: SaveData,
-  check: ServiceStockCheck,
-  /** True from Level 10 (the Market sells ingredients): no pantry then. */
-  canBuy = true,
-): SaveData | null {
-  if (canBuy || !check.applies || check.ready) return null;
-  // Freshness is one weighted average per ingredient, so fresh stock added
-  // on top of expired stock would make the expired part look usable again.
-  // Expired stock goes first, recorded as waste (Throw Out Expired).
-  const base = check.hasExpired ? withoutExpired(save) : save;
-  const day = base.business.calendar.businessDay;
-  let inventory = base.business.inventory;
-  for (const row of check.missingRows) {
-    inventory = addStock(inventory, row.ingredientId, row.missing, 0, day);
-  }
-  return { ...base, business: { ...base.business, inventory } };
-}
-
-function withoutExpired(save: SaveData): SaveData {
-  const discarded = discardExpiredStock(save);
-  return discarded.ok ? discarded.save : save;
 }

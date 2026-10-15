@@ -51,6 +51,7 @@ import { makeSeededRand } from "../business/businessDeterministicRandom";
 import { isSystemLive } from "./restaurantProgression";
 import type { RecipeDefinition } from "../recipes/recipeTypes";
 import { dishServiceFor } from "./dishService";
+import { remapCampaignThreshold } from "../levels/campaignSelection";
 
 /** Every number the restaurant's supplies use (configurable; not balanced — Economy TODO). */
 export const SERVICE_SUPPLY_RULES = {
@@ -72,22 +73,22 @@ export const SERVICE_SUPPLY_RULES = {
   /** Every dine-in guest gets a glass of water. */
   waterGlass: "water-glasses" as SupplyId,
   /** The bar (from "A bigger restaurant · full management", L121): this share of guests orders a drink. */
-  barFromLevel: 121,
+  barFromLevel: remapCampaignThreshold(121),
   barShare: 0.25,
   /** An established restaurant (L161) serves coffee or tea: with every dessert, and this share of other guests. */
-  coffeeFromLevel: 161,
+  coffeeFromLevel: remapCampaignThreshold(161),
   coffeeShare: 0.3,
   /** Steak is served with a steak knife from the first steak (L106). */
-  steakKnifeFromLevel: 106,
+  steakKnifeFromLevel: remapCampaignThreshold(106),
   /** Two dine-in guests to a table, at most this many tables. */
   coversPerTable: 2,
   maxTables: 6,
   /** What each table has (durable, never used up): pieces per table, from a level. */
   tablePieces: [
-    { id: "menu-stands" as SupplyId, perTable: 1, fromLevel: 31 },
-    { id: "salt-pepper" as SupplyId, perTable: 2, fromLevel: 31 },
-    { id: "napkin-holders" as SupplyId, perTable: 1, fromLevel: 31 },
-    { id: "water-jugs" as SupplyId, perTable: 1, fromLevel: 46 },
+    { id: "menu-stands" as SupplyId, perTable: 1, fromLevel: remapCampaignThreshold(31) },
+    { id: "salt-pepper" as SupplyId, perTable: 2, fromLevel: remapCampaignThreshold(31) },
+    { id: "napkin-holders" as SupplyId, perTable: 1, fromLevel: remapCampaignThreshold(31) },
+    { id: "water-jugs" as SupplyId, perTable: 1, fromLevel: remapCampaignThreshold(46) },
   ],
   /** One in this many washed pieces breaks (seeded): plates, bowls and glasses; cutlery goes missing less often. */
   breakOneIn: { crockery: 60, cutlery: 120 },
@@ -97,13 +98,13 @@ export const SERVICE_SUPPLY_RULES = {
   napkinsMessy: 2,
   // ── Supplies plan C (takeaway by dish, extras, closing) ──
   /** Takeaway orders are sealed with a tamper-evident label from full operation (L91). */
-  tamperFromLevel: 91,
+  tamperFromLevel: remapCampaignThreshold(91),
   /** Grilled / sautéed meat and fish (from L101) come with a toothpick. */
-  toothpickFromLevel: 101,
+  toothpickFromLevel: remapCampaignThreshold(101),
   /** Closing: a tissue cube for the dining room every night (from dine-in). */
   tissuesPerClosing: 1,
   /** Closing: what's left in the fridge is wrapped and labelled, a sheet per ingredient (from L21). */
-  wrapFromLevel: 21,
+  wrapFromLevel: remapCampaignThreshold(21),
 } as const;
 
 export type RestaurantSuppliesState = {

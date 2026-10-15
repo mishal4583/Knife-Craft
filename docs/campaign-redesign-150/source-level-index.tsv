@@ -1,0 +1,250 @@
+1	1	RELAX	First Slice	camp-sliced-tomato-plate	1	1	1		Sliced Tomato Plate
+2	1	RELAX	Fresh Cucumber	camp-fresh-cucumber-plate	1	1	1		Fresh Cucumber Plate
+3	1	RELAX	Carrot Chop	camp-carrot-chop-bowl	1	1	1		Carrot Chop Bowl
+4	1	ORDER	Garden Prep	camp-garden-tomato-cucumber	2	2	1		Garden Tomato & Cucumber Plate
+5	1	ORDER	Onion Basics	camp-onion-prep-chain	1	3	1		Onion Prep
+6	1	ORDER	Diced Tomato	camp-diced-tomato-cup	1	1	1		Diced Tomato Cup
+7	1	ORDER	Peeled Potato	camp-peeled-potato-bowl	1	1	1		Peeled Potato Bowl
+8	1	ORDER	Halved Potato	camp-halved-potato-bowl	1	2	1		Halved Potato Bowl
+9	1	ORDER	Smashed Garlic	camp-smashed-garlic-prep	1	2	1		Smashed Garlic Prep
+10	1	SERVICE	Simple Garden Salad	camp-simple-garden-salad	3	3	1		Simple Garden Salad
+11	2	ORDER	Garlic Bread	camp-garlic-bread	2	3	1		Garlic Bread
+12	2	ORDER	Tomato Basil Toast	camp-tomato-basil-toast|camp-bruschetta-trio	4	9	1		Tomato Basil Toast / Bruschetta Trio
+13	2	ORDER	Mushroom Bruschetta	camp-mushroom-bruschetta	3	4	1		Mushroom Bruschetta
+14	2	ORDER	Zucchini Garden Plate	camp-zucchini-garden-plate	2	2	1		Zucchini Garden Plate
+15	2	ORDER	Caprese Plate	camp-caprese-plate	3	3	1		Caprese Plate
+16	2	ORDER	Onion Rings	camp-onion-rings-basket	1	2	1		Onion Rings Basket
+17	2	ORDER	Garden Minestrone Base	camp-garden-minestrone-base	4	5	1		Garden Minestrone Base
+18	2	SERVICE	Bruschetta for the House	camp-bruschetta-for-the-house	5	6	1		Bruschetta for the House
+19	2	ORDER	Mozzarella & Tomato Skewers	camp-mozzarella-tomato-skewers|camp-caprese-skewers-batch	3	5	1		Mozzarella & Tomato Skewers / Caprese Skewers Batch
+20	2	SERVICE	Italian Garden Plate	camp-italian-garden-plate	4	5	1		Italian Garden Plate
+21	3	ORDER	Julienne Carrot Garnish	camp-julienne-carrot-garnish	1	1	1		Julienne Carrot Garnish
+22	3	ORDER	Julienne Pepper Ribbons	camp-julienne-pepper-ribbons	1	1	1		Julienne Pepper Ribbons
+23	3	ORDER	Orange Rose Garnish	camp-orange-rose-garnish	1	1	1		Orange Rose Garnish
+24	3	ORDER	Antipasto Plate	camp-caprese-plate|camp-orange-rose-garnish|camp-eggplant-antipasto	6	8	1		Caprese Plate / Orange Rose Garnish / Eggplant Antipasto
+25	3	ORDER	Caprese Skewers Batch	camp-caprese-skewers-batch	3	3	1		Caprese Skewers Batch
+26	3	SERVICE	Two Tables, One Batch	camp-bruschetta-trio|camp-garden-tomato-cup	5	8	1	BATCH	Bruschetta Trio / Garden Tomato Cup
+27	3	ORDER	Julienne Vegetable Medley	camp-julienne-vegetable-medley|camp-zucchini-fennel-julienne	6	6	1		Julienne Vegetable Medley / Zucchini & Fennel Julienne
+28	3	SERVICE	Onion Two Ways	camp-onion-two-ways	1	4	1		Onion Two Ways
+29	3	SERVICE	Family Antipasto for Two	camp-family-antipasto-for-two	3	3	1		Family Antipasto for Two
+30	3	SERVICE	Italian Service Night	camp-bruschetta-trio|camp-caprese-skewers-batch|camp-caprese-plate|camp-eggplant-antipasto	6	16	2		Bruschetta Trio / Caprese Skewers Batch / Caprese Plate / Eggplant Antipasto
+31	4	ORDER	Baguette Rounds	camp-baguette-rounds	1	1	1		Baguette Rounds
+32	4	ORDER	French Onion Base	camp-french-onion-base	2	3	1		French Onion Base
+33	4	ORDER	Potato Veloute Base	camp-potato-veloute-base	1	2	1		Potato Veloute Base
+34	4	ORDER	Rock Minced Garlic	camp-rock-minced-garlic-herb	1	2	1		Rock Minced Garlic
+35	4	ORDER	Chiffonade Herb Garnish	camp-chiffonade-herb-garnish	1	1	1		Chiffonade Herb Garnish
+36	4	ORDER	Mushroom & Garlic Saute Prep	camp-mushroom-garlic-saute-prep	2	3	1		Mushroom & Garlic Saute Prep
+37	4	ORDER	Spinach & Fennel Chiffonade	camp-spinach-fennel-chiffonade-plate	2	2	1		Spinach & Fennel Chiffonade Plate
+38	4	ORDER	Asparagus & Carrot Precision	camp-asparagus-carrot-precision-plate	2	2	1		Asparagus & Carrot Precision Plate
+39	4	SERVICE	Celery & Potato Prep	camp-celery-potato-prep	3	5	1		Celery & Potato Prep
+40	4	SERVICE	French Bistro Grand Service	camp-rock-minced-garlic-herb|camp-chiffonade-herb-garnish|camp-asparagus-carrot-precision-plate|camp-mushroom-garlic-saute-prep	5	8	2		Rock Minced Garlic / Chiffonade Herb Garnish / Asparagus & Carrot Precision Plate / Mushroom & Garlic Saute Prep
+41	5	ORDER	Precision Plate	camp-julienne-trio-potato	3	4	1		Julienne Vegetable Trio & Potato
+42	5	ORDER	Herb Garnish	camp-parsley-chiffonade-garnish	1	1	1		Parsley Chiffonade Garnish
+43	5	ORDER	Mushroom Duxelles	camp-mushroom-duxelles-prep	3	5	1		Mushroom Duxelles Prep
+44	5	ORDER	Potato & Onion Gratin	camp-potato-onion-gratin-prep	2	4	1		Potato & Onion Gratin Prep
+45	5	SERVICE	Herb Garden Vegetable Plate	camp-herb-butter-vegetable-plate	3	4	1		Herb Garden Vegetable Plate
+46	5	ORDER	Fennel & Celery Julienne	camp-fennel-celery-julienne|camp-celery-apple-remoulade-prep	4	6	1		Fennel & Celery Julienne / Celery & Apple Remoulade Prep
+47	5	ORDER	Asparagus & Carrot, Revisited	camp-asparagus-carrot-precision-plate	2	2	1		Asparagus & Carrot Precision Plate
+48	5	ORDER	Herb & Garlic Garnish	camp-three-herb-garnish	3	4	1		Herb & Garlic Garnish
+49	5	ORDER	Baguette Crostini	camp-baguette-crostini-prep|camp-baguette-cheddar-rounds	4	6	1		Baguette Crostini Prep / Baguette & Cheddar Rounds
+50	5	SERVICE	French Precision Service	camp-three-herb-garnish|camp-mushroom-duxelles-prep|camp-herb-butter-vegetable-plate	7	13	2		Herb & Garlic Garnish / Mushroom Duxelles Prep / Herb Garden Vegetable Plate
+51	6	ORDER	Potato Curry Base	camp-potato-curry-base	3	5	1		Potato Curry Base
+52	6	ORDER	Onion Tomato Masala Base	camp-onion-tomato-masala-base	4	7	1		Onion Tomato Masala Base
+53	6	ORDER	Cauliflower Bowl	camp-cauliflower-chop-bowl	1	1	1		Cauliflower Chop Bowl
+54	6	ORDER	Garlic & Ginger Curry Paste	camp-garlic-curry-paste	2	4	1		Garlic & Ginger Curry Paste
+55	6	ORDER	Spinach & Pea Pod Bowl	camp-spinach-peapod-bowl	2	2	1		Spinach & Pea Pod Bowl
+56	6	ORDER	Coconut Prep	camp-coconut-prep	1	2	1		Coconut Prep
+57	6	ORDER	Mango Chutney Base	camp-mango-chutney-base	2	3	1		Mango Chutney Base
+58	6	ORDER	Pumpkin Curry Dice	camp-pumpkin-curry-dice	1	2	1		Pumpkin Curry Dice
+59	6	ORDER	Aromatic Garlic & Onion Base	camp-aromatic-garlic-smash	3	6	1		Aromatic Garlic & Onion Base
+60	6	SERVICE	Indian Kitchen Service	camp-onion-tomato-masala-base|camp-spinach-peapod-bowl|camp-aromatic-garlic-smash	6	15	2		Onion Tomato Masala Base / Spinach & Pea Pod Bowl / Aromatic Garlic & Onion Base
+61	7	SERVICE	Two Tables, Two Curries	camp-spinach-curry|camp-cauliflower-curry	5	11	2		Spinach Curry / Cauliflower Curry
+62	7	ORDER	Mango Onion Relish	camp-mango-onion-relish	3	4	1		Mango Onion Relish
+63	7	ORDER	Cauliflower Curry, Again	camp-cauliflower-curry	4	6	1		Cauliflower Curry
+64	7	SERVICE	Shared Onion, Two Curries	camp-spinach-curry|camp-cauliflower-curry	5	11	1	BATCH	Spinach Curry / Cauliflower Curry
+65	7	ORDER	Potato Tomato Curry	camp-potato-tomato-curry	3	5	1		Potato Tomato Curry
+66	7	ORDER	Pea Tomato Curry	camp-pea-tomato-curry	3	4	1		Pea Tomato Curry
+67	7	SERVICE	Shared Tomato, Two Curries	camp-potato-tomato-curry|camp-pea-tomato-curry	4	9	1	BATCH	Potato Tomato Curry / Pea Tomato Curry
+68	7	ORDER	Pumpkin Garlic Curry	camp-pumpkin-garlic-curry|camp-pumpkin-coconut-curry	4	10	1		Pumpkin Garlic Curry / Pumpkin & Coconut Curry
+69	7	ORDER	Mango Garlic Chutney	camp-mango-garlic-chutney	3	5	1		Mango Garlic Chutney
+70	7	SERVICE	The Grand Aromatic Service	camp-spinach-curry|camp-cauliflower-curry|camp-mango-onion-relish	7	15	1	BATCH	Spinach Curry / Cauliflower Curry / Mango Onion Relish
+71	8	ORDER	Cucumber & Tomato Mezze	camp-cucumber-tomato-mezze	5	6	1		Cucumber & Tomato Mezze
+72	8	ORDER	Eggplant Mezze	camp-eggplant-plate	3	4	1		Eggplant Mezze Plate
+73	8	ORDER	Lemon Garnish	camp-lemon-garnish	1	1	1		Lemon Garnish
+74	8	ORDER	Avocado Baguette Toast	camp-avocado-baguette-toast	3	4	1		Avocado Baguette Toast
+75	8	ORDER	Pomegranate & Parsley	camp-pomegranate-garnish	2	2	1		Pomegranate & Parsley Garnish
+76	8	ORDER	Herb & Tomato Base	camp-tabbouleh-inspired-base	4	6	1		Herb & Tomato Base
+77	8	SERVICE	Shared Mezze for Two	camp-mezze-plate-for-two	3	3	1		Shared Mezze for Two
+78	8	ORDER	Pickled Onion Rings	camp-pickled-onion-rings	2	3	1		Pickled Onion Rings
+79	8	SERVICE	Two Tables, Mediterranean Night	camp-cucumber-tomato-mezze|camp-tabbouleh-inspired-base|camp-eggplant-plate	7	16	2		Cucumber & Tomato Mezze / Herb & Tomato Base / Eggplant Mezze Plate
+80	8	SERVICE	Mediterranean Service Night	camp-mezze-plate-for-two|camp-pickled-onion-rings|camp-avocado-baguette-toast	7	10	2		Shared Mezze for Two / Pickled Onion Rings / Avocado Baguette Toast
+81	9	ORDER	Corn & Tomato Salsa	camp-corn-tomato-salsa	5	7	1		Corn & Tomato Salsa
+82	9	ORDER	Avocado & Lime Plate	camp-avocado-plate	2	3	1		Avocado & Lime Plate
+83	9	ORDER	Pepper Fajita Julienne	camp-pepper-fajita-julienne	2	3	1		Pepper Fajita Julienne
+84	9	ORDER	Pineapple & Mango Fresh Cup	camp-pineapple-mango-fresh	3	4	1		Pineapple & Mango Fresh Cup
+85	9	ORDER	Sweet Potato Hash	camp-sweetpotato-hash	3	5	1		Sweet Potato Hash
+86	9	ORDER	Beetroot & Orange Plate	camp-beetroot-plate	2	3	1		Beetroot & Orange Plate
+87	9	ORDER	Pineapple Salsa	camp-pineapple-salsa	5	7	1		Pineapple Salsa
+88	9	ORDER	Latin Garden Plate	camp-latin-garden-plate	4	4	1		Latin Garden Plate
+89	9	SERVICE	Two Salsas, One Kitchen	camp-corn-tomato-salsa|camp-pineapple-salsa	7	14	2		Corn & Tomato Salsa / Pineapple Salsa
+90	9	SERVICE	Mexican & Latin Service Night	camp-latin-garden-plate|camp-pepper-fajita-julienne|camp-avocado-plate	5	10	2		Latin Garden Plate / Pepper Fajita Julienne / Avocado & Lime Plate
+91	10	SERVICE	Latin Service Begins	camp-corn-tomato-salsa|camp-pineapple-salsa|camp-fresh-tomato-salsa	8	22	2		Corn & Tomato Salsa / Pineapple Salsa / Fresh Tomato Salsa
+92	10	SERVICE	Two Salsas, Shared Prep	camp-corn-tomato-salsa|camp-pineapple-salsa	7	14	1	BATCH	Corn & Tomato Salsa / Pineapple Salsa
+93	10	SERVICE	Roots & Textures	camp-sweetpotato-hash|camp-beetroot-plate	5	8	2		Sweet Potato Hash / Beetroot & Orange Plate
+94	10	SERVICE	Fajita Night	camp-avocado-plate|camp-pepper-fajita-julienne	4	6	2		Avocado & Lime Plate / Pepper Fajita Julienne
+95	10	ORDER	Latin Garden Plate, Reinforced	camp-latin-garden-plate	4	4	1		Latin Garden Plate
+96	10	SERVICE	Pepper Two Ways	camp-pepper-two-ways	1	2	1		Pepper Two Ways
+97	10	SERVICE	Three Tables, One Night	camp-corn-tomato-salsa|camp-fresh-tomato-salsa	7	15	2		Corn & Tomato Salsa / Fresh Tomato Salsa
+98	10	SERVICE	Three Salsas, One Batch	camp-corn-tomato-salsa|camp-pineapple-salsa|camp-fresh-tomato-salsa	8	22	1	BATCH	Corn & Tomato Salsa / Pineapple Salsa / Fresh Tomato Salsa
+99	10	SERVICE	Fajitas & Salsa Night	camp-pepper-two-ways|camp-latin-garden-plate	4	6	2		Pepper Two Ways / Latin Garden Plate
+100	10	SERVICE	The Grand Latin Service	camp-corn-tomato-salsa|camp-pineapple-salsa|camp-pepper-two-ways	8	16	1	BATCH	Corn & Tomato Salsa / Pineapple Salsa / Pepper Two Ways
+101	11	RELAX	Chicken Introduction	camp-chicken-slice-intro	1	1	1		Sliced Chicken Plate
+102	11	ORDER	Chicken Preparation	camp-chicken-halve-slice	1	2	1		Halved & Sliced Chicken
+103	11	ORDER	Chicken, Diced	camp-chicken-halve-dice	1	2	1		Halved & Diced Chicken
+104	11	ORDER	Chicken Garden Plate	camp-chicken-garden-plate	3	3	1		Chicken Garden Plate
+105	11	SERVICE	Chicken Bistro	camp-chicken-garden-plate|camp-chicken-julienne-cabbage	5	7	2		Chicken Garden Plate / Chicken & Cabbage Julienne
+106	11	RELAX	Ribeye Introduction	camp-steak-slice-intro	1	1	1		Sliced Ribeye Plate
+107	11	ORDER	Steak Preparation	camp-steak-slice-dice	1	2	1		Sliced & Diced Steak
+108	11	SERVICE	Steak Service	camp-steak-mushroom-cabbage|camp-steak-slice-dice	3	5	2		Steak, Mushroom & Cabbage / Sliced & Diced Steak
+109	11	RELAX	Salmon Introduction	camp-salmon-slice-intro	1	1	1		Sliced Salmon Plate
+110	11	SERVICE	Salmon Bistro	camp-salmon-cucumber-radish|camp-salmon-avocado-plate	5	7	2		Salmon, Cucumber & Radish / Salmon & Avocado Plate
+111	12	ORDER	Chicken & Garden	camp-chicken-cabbage-carrot	3	3	1		Chicken, Cabbage & Carrot
+112	12	SERVICE	Steak Dinner	camp-steak-mushroom-cabbage|camp-steak-slice-dice	3	5	2		Steak, Mushroom & Cabbage / Sliced & Diced Steak
+113	12	ORDER	Salmon Garden	camp-salmon-tofu-spinach	3	3	1		Salmon, Tofu & Spinach
+114	12	SERVICE	Three Protein Orders	camp-chicken-slice-intro|camp-steak-slice-intro|camp-salmon-slice-intro|camp-radish-cucumber-namasu	6	7	3		Sliced Chicken Plate / Sliced Ribeye Plate / Sliced Salmon Plate / Radish & Cucumber Namasu
+115	12	SERVICE	Shared Protein	camp-chicken-julienne-carrot-bowl|camp-chicken-julienne-pepper-cup	3	4	1	BATCH	Chicken Julienne Bowl / Chicken Julienne Cup
+116	12	SERVICE	Protein Allocation	camp-chicken-protein-branch	1	2	1		Chicken Two Cuts
+117	12	SERVICE	Full Kitchen	camp-chicken-carrot-plate|camp-steak-carrot-plate|camp-salmon-carrot-plate	4	6	1	BATCH	Chicken & Carrot Plate / Steak & Carrot Plate / Salmon & Carrot Plate
+118	12	SERVICE	Dinner Rush	camp-chicken-cabbage-carrot|camp-steak-mushroom-cabbage|camp-salmon-tofu-spinach|camp-radish-cucumber-namasu	11	13	3		Chicken, Cabbage & Carrot / Steak, Mushroom & Cabbage / Salmon, Tofu & Spinach / Radish & Cucumber Namasu
+119	12	SERVICE	The Last Service	camp-chicken-garden-plate|camp-steak-mushroom-cabbage|camp-salmon-cucumber-radish	8	9	3		Chicken Garden Plate / Steak, Mushroom & Cabbage / Salmon, Cucumber & Radish
+120	12	SERVICE	The Grand Service	camp-chicken-protein-branch|camp-steak-carrot-plate|camp-salmon-carrot-plate	4	6	1	BATCH	Chicken Two Cuts / Steak & Carrot Plate / Salmon & Carrot Plate
+121	13	ORDER	Tofu & Broccoli	camp-tofu-broccoli-bowl	2	2	1		Tofu & Broccoli Bowl
+122	13	ORDER	Cabbage & Cauliflower	camp-cabbage-cauliflower-bowl	2	2	1		Cabbage & Cauliflower Bowl
+123	13	ORDER	Chicken Pepper Stir-Fry	camp-chicken-pepper-stirfry	6	8	1		Chicken Pepper Stir-Fry Prep
+124	13	ORDER	Steak Pepper Stir-Fry	camp-steak-pepper-stirfry	6	8	1		Steak Pepper Stir-Fry Prep
+125	13	SERVICE	Shared Carrot, Two Tables	camp-carrot-pepper-batch|camp-carrot-peapod-batch	3	4	1	BATCH	Carrot & Pepper Wok Plate / Carrot & Pea Pod Wok Plate
+126	13	ORDER	Mushroom & Spinach	camp-mushroom-spinach-bowl	2	2	1		Mushroom & Spinach Bowl
+127	13	SERVICE	Two Vegetable Tables	camp-tofu-broccoli-bowl|camp-cabbage-cauliflower-bowl|camp-eggplant-green-onion-wok-bowl	7	8	2		Tofu & Broccoli Bowl / Cabbage & Cauliflower Bowl / Eggplant & Green Onion Wok Bowl
+128	13	ORDER	Chicken & Broccoli	camp-chicken-broccoli-plate	3	3	1		Chicken & Broccoli Plate
+129	13	ORDER	Tofu & Cauliflower	camp-tofu-cauliflower-bowl	2	2	1		Tofu & Cauliflower Bowl
+130	13	SERVICE	Chinese Kitchen Service	camp-chicken-pepper-stirfry|camp-steak-pepper-stirfry|camp-mushroom-spinach-bowl	9	18	3		Chicken Pepper Stir-Fry Prep / Steak Pepper Stir-Fry Prep / Mushroom & Spinach Bowl
+131	14	SERVICE	Wok Service Begins	camp-chicken-broccoli-plate|camp-tofu-cauliflower-bowl	5	5	2		Chicken & Broccoli Plate / Tofu & Cauliflower Bowl
+132	14	SERVICE	Three Wok Bowls, One Chicken	camp-chicken-dice-batch-a|camp-chicken-dice-batch-b|camp-chicken-dice-batch-c	5	8	1	BATCH	Chicken Wok Bowl (Pepper) / Chicken Wok Bowl (Pea Pod) / Chicken Wok Bowl (Cabbage)
+133	14	SERVICE	Two Tables, Shared Carrot	camp-carrot-pepper-batch|camp-mushroom-spinach-bowl	4	4	2		Carrot & Pepper Wok Plate / Mushroom & Spinach Bowl
+134	14	SERVICE	Three Tables, Vegetable Night	camp-tofu-broccoli-bowl|camp-chicken-broccoli-plate|camp-cabbage-cauliflower-bowl|camp-eggplant-green-onion-wok-bowl	8	11	3		Tofu & Broccoli Bowl / Chicken & Broccoli Plate / Cabbage & Cauliflower Bowl / Eggplant & Green Onion Wok Bowl
+135	14	SERVICE	Steak, Two Cuts	camp-steak-protein-branch	1	2	1		Steak Two Cuts
+136	14	SERVICE	Three Tables, Protein Night	camp-chicken-pepper-stirfry|camp-steak-pepper-stirfry|camp-mushroom-spinach-bowl	9	18	3		Chicken Pepper Stir-Fry Prep / Steak Pepper Stir-Fry Prep / Mushroom & Spinach Bowl
+137	14	SERVICE	Two Tables, Carrot Batch	camp-carrot-pepper-batch|camp-carrot-peapod-batch	3	4	1	BATCH	Carrot & Pepper Wok Plate / Carrot & Pea Pod Wok Plate
+138	14	SERVICE	Three Tables, Full Pool	camp-tofu-cauliflower-bowl|camp-chicken-broccoli-plate|camp-mushroom-spinach-bowl|camp-eggplant-green-onion-wok-bowl	9	11	3		Tofu & Cauliflower Bowl / Chicken & Broccoli Plate / Mushroom & Spinach Bowl / Eggplant & Green Onion Wok Bowl
+139	14	SERVICE	Branch & Batch, Two Tables	camp-steak-protein-branch|camp-chicken-dice-batch-a	3	4	1	BATCH	Steak Two Cuts / Chicken Wok Bowl (Pepper)
+140	14	SERVICE	The Grand Wok Service	camp-full-wok-plate|camp-chicken-dice-batch-a|camp-chicken-dice-batch-b	7	9	1	BATCH	Full Wok Plate / Chicken Wok Bowl (Pepper) / Chicken Wok Bowl (Pea Pod)
+141	15	ORDER	Basil Garlic Base	camp-thai-basil-garlic-base	2	3	1		Thai Basil Garlic Base
+142	15	ORDER	Thai Basil Chicken	camp-thai-chicken-basil	5	7	1		Thai Basil Chicken
+143	15	ORDER	Salmon & Coconut	camp-thai-salmon-coconut	2	3	1		Salmon & Coconut
+144	15	ORDER	Green Bean & Pepper	camp-thai-greenbean-pepper	2	2	1		Green Bean & Pepper
+145	15	ORDER	Cucumber & Pea Pod Salad	camp-thai-cucumber-peapod	5	5	1		Cucumber & Pea Pod Salad
+146	15	ORDER	Mango & Pineapple	camp-thai-mango-pineapple	3	4	1		Mango & Pineapple Fresh Cup
+147	15	SERVICE	Two Tables, Basil Night	camp-thai-chicken-basil|camp-thai-salmon-coconut	7	10	2		Thai Basil Chicken / Salmon & Coconut
+148	15	SERVICE	Chicken, Two Ways	camp-thai-chicken-branch	1	2	1		Chicken Two Ways, Thai Style
+149	15	SERVICE	Three Tables, Fresh Night	camp-thai-greenbean-pepper|camp-thai-cucumber-peapod|camp-thai-mango-pineapple	9	11	3		Green Bean & Pepper / Cucumber & Pea Pod Salad / Mango & Pineapple Fresh Cup
+150	15	SERVICE	Thai Kitchen Service	camp-thai-chicken-basil|camp-thai-salmon-coconut|camp-thai-mango-pineapple	10	14	3		Thai Basil Chicken / Salmon & Coconut / Mango & Pineapple Fresh Cup
+151	16	SERVICE	Southeast Asian Service Begins	camp-thai-basil-garlic-base|camp-thai-greenbean-pepper	4	5	2		Thai Basil Garlic Base / Green Bean & Pepper
+152	16	SERVICE	Three Tables, Shared Aromatics	camp-thai-aromatic-batch-a|camp-thai-aromatic-batch-b|camp-thai-aromatic-batch-c	6	14	1	BATCH	Basil Garlic Chicken / Basil Garlic Salmon / Basil Garlic Pineapple
+153	16	ORDER	Salmon & Mango	camp-thai-salmon-mango	3	4	1		Salmon & Mango Plate
+154	16	SERVICE	Three Tables, Protein Night	camp-thai-chicken-basil|camp-thai-salmon-coconut|camp-thai-salmon-mango	9	14	3		Thai Basil Chicken / Salmon & Coconut / Salmon & Mango Plate
+155	16	SERVICE	Shared Aromatics, Reinforced	camp-thai-aromatic-batch-a|camp-thai-aromatic-batch-b|camp-thai-aromatic-batch-c	6	14	1	BATCH	Basil Garlic Chicken / Basil Garlic Salmon / Basil Garlic Pineapple
+156	16	SERVICE	Two Tables, Fresh & Sweet	camp-thai-cucumber-peapod|camp-thai-mango-pineapple	7	9	2		Cucumber & Pea Pod Salad / Mango & Pineapple Fresh Cup
+157	16	SERVICE	Three Tables, Full Pool	camp-thai-chicken-basil|camp-thai-greenbean-pepper|camp-thai-salmon-mango	10	13	3		Thai Basil Chicken / Green Bean & Pepper / Salmon & Mango Plate
+158	16	SERVICE	Branch & Batch, Two Tables	camp-thai-chicken-branch|camp-thai-aromatic-batch-a	4	7	1	BATCH	Chicken Two Ways, Thai Style / Basil Garlic Chicken
+159	16	SERVICE	Three Tables, One More Night	camp-thai-salmon-coconut|camp-thai-mango-pineapple|camp-thai-cucumber-peapod	9	12	3		Salmon & Coconut / Mango & Pineapple Fresh Cup / Cucumber & Pea Pod Salad
+160	16	SERVICE	The Grand Southeast Asian Service	camp-thai-aromatic-batch-a|camp-thai-aromatic-batch-b|camp-thai-aromatic-batch-c	6	14	1	BATCH	Basil Garlic Chicken / Basil Garlic Salmon / Basil Garlic Pineapple
+161	17	ORDER	Steak & Cabbage	camp-korean-steak-cabbage	2	2	1		Steak & Cabbage
+162	17	ORDER	Chicken & Spinach	camp-korean-chicken-spinach	2	2	1		Chicken & Spinach
+163	17	ORDER	Garlic Onion Base	camp-korean-garlic-onion-base	4	7	1		Korean Garlic Onion Base
+164	17	ORDER	Steak & Carrot Julienne	camp-korean-steak-julienne-carrot	2	2	1		Steak & Carrot Julienne
+165	17	SERVICE	Two Tables, Steak & Chicken	camp-korean-steak-cabbage|camp-korean-chicken-spinach|camp-pear-radish-side	7	8	2		Steak & Cabbage / Chicken & Spinach / Pear & Radish Side
+166	17	SERVICE	Shared Steak, Two Tables	camp-korean-steak-batch-a|camp-korean-steak-batch-b	4	6	1	BATCH	Steak Plate (Cabbage) / Steak Bowl (Spinach)
+167	17	SERVICE	Three Tables, Full Pool	camp-korean-steak-cabbage|camp-korean-chicken-spinach|camp-korean-steak-julienne-carrot|camp-pear-radish-side	8	10	3		Steak & Cabbage / Chicken & Spinach / Steak & Carrot Julienne / Pear & Radish Side
+168	17	SERVICE	Chicken, Thin & Fine	camp-korean-chicken-branch	1	2	1		Chicken, Thin & Fine
+169	17	SERVICE	Three Tables, One More Night	camp-korean-garlic-onion-base|camp-korean-steak-julienne-carrot|camp-korean-chicken-branch	7	11	3		Korean Garlic Onion Base / Steak & Carrot Julienne / Chicken, Thin & Fine
+170	17	SERVICE	The Korean Grand Service	camp-korean-grand-service-plate|camp-korean-steak-batch-a|camp-korean-steak-batch-b	9	13	1	BATCH	Korean Grand Service Plate / Steak Plate (Cabbage) / Steak Bowl (Spinach)
+171	18	ORDER	Artichoke & Fennel	camp-italian-artichoke-fennel	3	4	1		Artichoke & Fennel Plate
+172	18	ORDER	Lettuce & Tomato	camp-italian-lettuce-tomato	2	2	1		Lettuce & Tomato Salad
+173	18	ORDER	Chicken & Artichoke	camp-italian-chicken-artichoke	4	6	1		Chicken & Artichoke
+174	18	ORDER	Caprese, Extra Greens	camp-italian-caprese-lettuce	4	4	1		Caprese, Extra Greens
+175	18	SERVICE	Shared Basil, Two Tables	camp-italian-basil-batch-a|camp-italian-basil-batch-b	3	4	1	BATCH	Basil Tomato Plate / Basil Mozzarella Bowl
+176	18	SERVICE	Chicken, Italian Two Ways	camp-italian-chicken-branch	1	2	1		Chicken, Italian Two Ways
+177	18	SERVICE	Two Tables, Vegetable Night	camp-italian-artichoke-fennel|camp-italian-lettuce-tomato	5	6	2		Artichoke & Fennel Plate / Lettuce & Tomato Salad
+178	18	SERVICE	Three Tables, Shared Mozzarella	camp-italian-mozzarella-3way-a|camp-italian-mozzarella-3way-b|camp-italian-mozzarella-3way-c	5	9	1	BATCH	Insalata Tricolore / Mozzarella & Tomato Bowl / Mozzarella & Lettuce Cup
+179	18	SERVICE	Two Tables, Full Pool	camp-italian-caprese-lettuce|camp-italian-chicken-artichoke	8	10	2		Caprese, Extra Greens / Chicken & Artichoke
+180	18	SERVICE	Italian Grand Service	camp-italian-artichoke-fennel|camp-italian-lettuce-tomato|camp-italian-chicken-artichoke	7	12	3		Artichoke & Fennel Plate / Lettuce & Tomato Salad / Chicken & Artichoke
+181	19	ORDER	Turnip & Carrot	camp-french-turnip-carrot	2	3	1		Turnip & Carrot Plate
+182	19	ORDER	Steak & Turnip	camp-french-steak-turnip	2	3	1		Steak & Turnip
+183	19	ORDER	Salmon & Asparagus	camp-french-salmon-asparagus	3	3	1		Salmon & Asparagus
+184	19	ORDER	Peach & Fennel	camp-french-peach-garnish|camp-peach-cheddar-board	5	8	1		Peach & Fennel Plate / Peach & Cheddar Board
+185	19	SERVICE	Shared Carrot, Two Tables	camp-french-carrot-batch-a|camp-french-carrot-batch-b	3	5	1	BATCH	Carrot Turnip Plate / Carrot Asparagus Bowl
+186	19	SERVICE	Two Tables, Root Vegetables	camp-french-turnip-carrot|camp-french-steak-turnip	3	6	2		Turnip & Carrot Plate / Steak & Turnip
+187	19	SERVICE	Steak, French Two Ways	camp-french-steak-branch	1	2	1		Steak, French Two Ways
+188	19	SERVICE	Two Tables, Salmon & Peach	camp-french-salmon-asparagus|camp-french-peach-garnish	5	7	2		Salmon & Asparagus / Peach & Fennel Plate
+189	19	SERVICE	Three Tables, Shared Persillade	camp-salmon-persillade|camp-turnip-persillade-bowl|camp-asparagus-persillade-cup	5	13	1	BATCH	Salmon Persillade / Turnip Persillade Bowl / Asparagus Persillade Cup
+190	19	SERVICE	French Service Mastery	camp-french-turnip-carrot|camp-french-steak-turnip|camp-french-salmon-asparagus|camp-peach-cheddar-board	9	13	3		Turnip & Carrot Plate / Steak & Turnip / Salmon & Asparagus / Peach & Cheddar Board
+191	20	ORDER	Onion Rings & Garlic	camp-indian-onion-rings-plate	2	4	1		Onion Rings & Garlic
+192	20	ORDER	Steak Curry Bowl	camp-indian-steak-curry	4	6	1		Steak Curry Bowl
+193	20	ORDER	Chicken with Onion Rings	camp-indian-chicken-rings	4	7	1		Chicken with Onion Rings
+194	20	SERVICE	Two Tables, Onion & Steak	camp-indian-onion-rings-plate|camp-indian-steak-curry|camp-eggplant-masala-prep	7	16	2		Onion Rings & Garlic / Steak Curry Bowl / Eggplant Masala Prep
+195	20	SERVICE	Shared Onion Rings, Two Tables	camp-indian-onion-batch-a|camp-indian-onion-batch-b	4	8	1	BATCH	Onion Rings Bowl (Tomato) / Onion Rings Cup (Garlic)
+196	20	SERVICE	Potato, Two Ways	camp-indian-potato-branch	1	3	1		Potato, Two Ways
+197	20	SERVICE	Two Tables, Full Pool	camp-indian-chicken-rings|camp-indian-potato-branch|camp-eggplant-masala-prep	7	16	2		Chicken with Onion Rings / Potato, Two Ways / Eggplant Masala Prep
+198	20	SERVICE	Three Tables, Shared Tomato	camp-indian-tomato-3way-a|camp-indian-tomato-3way-b|camp-indian-tomato-3way-c	5	9	1	BATCH	Tomato Chicken Bowl / Tomato Steak Cup / Tomato Onion Plate
+199	20	SERVICE	Two Tables, One More Night	camp-indian-onion-rings-plate|camp-indian-steak-curry	5	10	2		Onion Rings & Garlic / Steak Curry Bowl
+200	20	SERVICE	Indian Grand Service	camp-indian-onion-batch-a|camp-indian-onion-batch-b|camp-indian-potato-branch	5	11	1	BATCH	Onion Rings Bowl (Tomato) / Onion Rings Cup (Garlic) / Potato, Two Ways
+201	21	ORDER	Kiwi & Watermelon	camp-med-kiwi-watermelon	2	4	1		Kiwi & Watermelon Fresh Plate
+202	21	ORDER	Salmon & Lemon	camp-med-salmon-lemon	2	2	1		Salmon & Lemon
+203	21	ORDER	Chicken & Watermelon	camp-med-chicken-watermelon	3	4	1		Chicken & Watermelon
+204	21	SERVICE	Two Tables, Fresh Fruit	camp-med-kiwi-watermelon|camp-med-salmon-lemon|camp-pomegranate-apple-plate|camp-beetroot-pomegranate-plate	8	14	2		Kiwi & Watermelon Fresh Plate / Salmon & Lemon / Pomegranate & Apple Plate / Beetroot & Pomegranate Plate
+205	21	SERVICE	Shared Cucumber, Two Tables	camp-med-cucumber-batch-a|camp-med-cucumber-batch-b	3	5	1	BATCH	Cucumber Tomato Plate / Cucumber Watermelon Bowl
+206	21	SERVICE	Two Tables, Summer Night	camp-med-chicken-watermelon|camp-med-salmon-lemon	5	6	2		Chicken & Watermelon / Salmon & Lemon
+207	21	SERVICE	Salmon, Two Ways	camp-med-salmon-branch	1	2	1		Salmon, Two Ways
+208	21	SERVICE	Two Tables, Full Pool	camp-med-kiwi-watermelon|camp-med-salmon-branch|camp-beetroot-pomegranate-plate	6	10	2		Kiwi & Watermelon Fresh Plate / Salmon, Two Ways / Beetroot & Pomegranate Plate
+209	21	SERVICE	Three Tables, Shared Lemon	camp-med-lemon-3way-a|camp-med-lemon-3way-b|camp-med-lemon-3way-c	5	7	1	BATCH	Lemon Salmon Plate / Lemon Chicken Bowl / Lemon Cucumber Cup
+210	21	SERVICE	Mediterranean Encore	camp-med-kiwi-watermelon|camp-med-chicken-watermelon|camp-med-salmon-branch	5	10	3		Kiwi & Watermelon Fresh Plate / Chicken & Watermelon / Salmon, Two Ways
+211	22	ORDER	Grapes & Strawberry	camp-latin-grapes-strawberry	2	2	1		Grapes & Strawberry Cup
+212	22	ORDER	Steak & Corn	camp-latin-steak-corn	2	2	1		Steak & Corn
+213	22	ORDER	Chicken, Avocado & Grapes	camp-latin-chicken-avocado-grapes	4	5	1		Chicken, Avocado & Grapes
+214	22	SERVICE	Two Tables, Steak & Fruit	camp-latin-steak-corn|camp-latin-grapes-strawberry|camp-sweet-potato-strawberry-plate	6	8	2		Steak & Corn / Grapes & Strawberry Cup / Sweet Potato & Strawberry Plate
+215	22	SERVICE	Shared Pepper, Two Tables	camp-latin-pepper-batch-a|camp-latin-pepper-batch-b	3	5	1	BATCH	Pepper Onion Plate / Pepper Corn Bowl
+216	22	SERVICE	Two Tables, Chicken & Steak	camp-latin-chicken-avocado-grapes|camp-latin-steak-corn	6	7	2		Chicken, Avocado & Grapes / Steak & Corn
+217	22	SERVICE	Chicken, Latin Two Ways	camp-latin-chicken-branch	1	2	1		Chicken, Latin Two Ways
+218	22	SERVICE	Two Tables, Full Pool	camp-latin-grapes-strawberry|camp-latin-chicken-avocado-grapes|camp-sweet-potato-strawberry-plate	6	11	2		Grapes & Strawberry Cup / Chicken, Avocado & Grapes / Sweet Potato & Strawberry Plate
+219	22	SERVICE	Three Tables, Shared Avocado	camp-latin-avocado-3way-a|camp-latin-avocado-3way-b|camp-latin-avocado-3way-c	5	12	1	BATCH	Avocado Corn Plate / Avocado Pepper Bowl / Avocado Grapes Cup
+220	22	SERVICE	Latin Mastery	camp-latin-steak-corn|camp-latin-chicken-avocado-grapes|camp-latin-grapes-strawberry	7	9	3		Steak & Corn / Chicken, Avocado & Grapes / Grapes & Strawberry Cup
+221	23	ORDER	Salmon & Cabbage	camp-fusion-salmon-cabbage	2	2	1		Salmon & Cabbage
+222	23	ORDER	Steak & Spinach	camp-fusion-steak-spinach	3	3	1		Steak & Spinach
+223	23	SERVICE	Two Tables, Two Kitchens	camp-fusion-salmon-cabbage|camp-fusion-steak-spinach|camp-radish-pear-fusion-cup	8	10	2		Salmon & Cabbage / Steak & Spinach / Radish & Pear Fusion Cup
+224	23	SERVICE	Shared Mushroom, Two Kitchens	camp-fusion-mushroom-batch-a|camp-fusion-mushroom-batch-b	3	4	1	BATCH	Mushroom Salmon Plate / Mushroom Steak Bowl
+225	23	SERVICE	Two Tables, One More Night	camp-fusion-steak-spinach|camp-fusion-salmon-cabbage	5	5	2		Steak & Spinach / Salmon & Cabbage
+226	23	SERVICE	Salmon, Fusion Two Ways	camp-fusion-salmon-branch	1	2	1		Salmon, Fusion Two Ways
+227	23	SERVICE	Two Tables, Full Pool	camp-fusion-salmon-cabbage|camp-fusion-steak-spinach|camp-radish-pear-fusion-cup	8	10	2		Salmon & Cabbage / Steak & Spinach / Radish & Pear Fusion Cup
+228	23	SERVICE	Three Tables, Three Kitchens	camp-fusion-carrot-3way-a|camp-fusion-carrot-3way-b|camp-fusion-carrot-3way-c	4	6	1	BATCH	Carrot Salmon Plate / Carrot Steak Bowl / Carrot Cabbage Cup
+229	23	SERVICE	Three Tables, One More Night	camp-fusion-salmon-cabbage|camp-fusion-steak-spinach|camp-fusion-salmon-branch	5	7	3		Salmon & Cabbage / Steak & Spinach / Salmon, Fusion Two Ways
+230	23	SERVICE	Japanese-Korean Fusion Service	camp-fusion-salmon-branch|camp-fusion-mushroom-batch-a|camp-fusion-mushroom-batch-b	3	6	1	BATCH	Salmon, Fusion Two Ways / Mushroom Salmon Plate / Mushroom Steak Bowl
+231	24	ORDER	Chicken & Broccoli, Wok Style	camp-fusion2-chicken-broccoli	3	3	1		Chicken & Broccoli, Wok Style
+232	24	ORDER	Salmon Basil Garlic	camp-fusion2-salmon-basil	3	4	1		Salmon Basil Garlic
+233	24	SERVICE	Two Tables, Two Kitchens	camp-fusion2-chicken-broccoli|camp-fusion2-salmon-basil|camp-green-bean-tofu-wok-bowl	8	10	2		Chicken & Broccoli, Wok Style / Salmon Basil Garlic / Green Bean & Tofu Wok Bowl
+234	24	SERVICE	Shared Pepper, Two Kitchens	camp-fusion2-pepper-batch-a|camp-fusion2-pepper-batch-b	5	7	1	BATCH	Pepper Chicken Plate / Pepper Salmon Bowl
+235	24	SERVICE	Two Tables, One More Night	camp-fusion2-salmon-basil|camp-fusion2-chicken-broccoli	6	7	2		Salmon Basil Garlic / Chicken & Broccoli, Wok Style
+236	24	SERVICE	Steak, Wok Two Ways	camp-fusion2-steak-branch	1	2	1		Steak, Wok Two Ways
+237	24	SERVICE	Two Tables, Full Pool	camp-fusion2-chicken-broccoli|camp-fusion2-salmon-basil|camp-green-bean-tofu-wok-bowl	8	10	2		Chicken & Broccoli, Wok Style / Salmon Basil Garlic / Green Bean & Tofu Wok Bowl
+238	24	SERVICE	Three Tables, Three Kitchens	camp-fusion2-garlic-3way-a|camp-fusion2-garlic-3way-b|camp-fusion2-garlic-3way-c	5	10	1	BATCH	Garlic Chicken Plate / Garlic Salmon Bowl / Garlic Steak Cup
+239	24	SERVICE	Three Tables, One More Night	camp-fusion2-chicken-broccoli|camp-fusion2-salmon-basil|camp-fusion2-steak-branch	7	9	3		Chicken & Broccoli, Wok Style / Salmon Basil Garlic / Steak, Wok Two Ways
+240	24	SERVICE	Chinese-Thai Fusion Service	camp-fusion2-steak-branch|camp-fusion2-garlic-3way-a|camp-fusion2-garlic-3way-b	5	9	1	BATCH	Steak, Wok Two Ways / Garlic Chicken Plate / Garlic Salmon Bowl
+241	25	ORDER	Nine-Kitchen Sampler	camp-finale-nine-cuisine-sampler	6	8	1		Nine-Kitchen Sampler
+242	25	SERVICE	Two Tables, Every Kitchen	camp-finale-nine-cuisine-sampler|camp-chicken-carrot-plate|camp-finale-apple-cheddar	9	13	2		Nine-Kitchen Sampler / Chicken & Carrot Plate / Apple & Cheddar Plate
+243	25	ORDER	Chicken, the Full Kitchen	camp-finale-chicken-grand	1	3	1		Chicken, the Full Kitchen
+244	25	SERVICE	Two Tables, Steak & Salmon	camp-med-salmon-branch|camp-french-steak-branch	2	4	2		Salmon, Two Ways / Steak, French Two Ways
+245	25	SERVICE	Shared Carrot, Steak & Salmon	camp-finale-steak-salmon-batch-a|camp-finale-steak-salmon-batch-b	3	4	1	BATCH	Grand Carrot Plate (Steak) / Grand Carrot Bowl (Salmon)
+246	25	SERVICE	Three Tables, Every Cuisine	camp-finale-nine-cuisine-sampler|camp-chicken-carrot-plate|camp-steak-carrot-plate|camp-finale-apple-cheddar|camp-finale-onion-rings-smash|camp-finale-kiwi-lemon-plate	13	23	3		Nine-Kitchen Sampler / Chicken & Carrot Plate / Steak & Carrot Plate / Apple & Cheddar Plate / Onion Rings & Smashed Garlic / Kiwi & Lemon Plate
+247	25	SERVICE	Chicken, The Last Branch	camp-finale-chicken-branch-grand	1	2	1		Chicken, The Last Branch
+248	25	SERVICE	Three Tables, The Last Rehearsal	camp-finale-chicken-grand|camp-med-salmon-branch|camp-french-steak-branch|camp-finale-apple-cheddar|camp-finale-kiwi-lemon-plate|camp-finale-onion-rings-smash	10	18	3		Chicken, the Full Kitchen / Salmon, Two Ways / Steak, French Two Ways / Apple & Cheddar Plate / Kiwi & Lemon Plate / Onion Rings & Smashed Garlic
+249	25	SERVICE	Three Tables, The Last Night	camp-finale-chicken-branch-grand|camp-finale-steak-salmon-batch-a|camp-finale-steak-salmon-batch-b	4	6	3		Chicken, The Last Branch / Grand Carrot Plate (Steak) / Grand Carrot Bowl (Salmon)
+250	25	SERVICE	The Grand Service — Every Table	camp-finale-garlic-grand-a|camp-finale-garlic-grand-b|camp-finale-garlic-grand-c	7	12	1	BATCH	The Last Service, Table One / The Last Service, Table Two / The Last Service, Table Three

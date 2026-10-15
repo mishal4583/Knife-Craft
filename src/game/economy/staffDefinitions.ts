@@ -16,6 +16,7 @@
  * operating-cost model; Staff never introduces a second one).
  */
 import { dollars } from "../money";
+import { remapCampaignThreshold } from "../levels/campaignSelection";
 
 export type StaffDefinition = {
   id: string;
@@ -25,7 +26,7 @@ export type StaffDefinition = {
   unlockLevel: number;
 };
 
-export const STAFF_CATALOG: StaffDefinition[] = [
+const SOURCE_STAFF_CATALOG: StaffDefinition[] = [
   {
     id: "prep-assistant",
     name: "Prep Assistant",
@@ -48,6 +49,11 @@ export const STAFF_CATALOG: StaffDefinition[] = [
     unlockLevel: 65,
   },
 ];
+
+export const STAFF_CATALOG: StaffDefinition[] = SOURCE_STAFF_CATALOG.map((staff) => ({
+  ...staff,
+  unlockLevel: remapCampaignThreshold(staff.unlockLevel),
+}));
 
 export function getStaffMember(id: string): StaffDefinition | undefined {
   return STAFF_CATALOG.find((s) => s.id === id);

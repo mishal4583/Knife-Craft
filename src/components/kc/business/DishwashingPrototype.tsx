@@ -61,7 +61,7 @@ const KITCHEN_TOOL_ITEMS = [
 const KITCHEN_TOOL_START_INDEX = TABLEWARE_ITEMS.length;
 const WASH_ITEMS = [...TABLEWARE_ITEMS, ...KITCHEN_TOOL_ITEMS] as const;
 type WashShape = (typeof WASH_ITEMS)[number]["shape"];
-const WASH_VISUAL_FRAMES: Record<WashShape, { viewBox: string; left: string; top: string; width: string; height: string }> = {
+const WASH_VISUAL_FRAMES: Record<WashShape, { viewBox: string; left: string; top: string; width: string; height: string; horizontal?: boolean }> = {
   plate: { viewBox: "0 0 360 280", left: "0%", top: "0%", width: "100%", height: "100%" },
   "small-plate": { viewBox: "0 0 120 90", left: "33%", top: "43%", width: "34%", height: "32%" },
   bowl: { viewBox: "0 0 120 100", left: "31%", top: "39%", width: "38%", height: "36%" },

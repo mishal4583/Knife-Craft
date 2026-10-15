@@ -2,7 +2,7 @@ import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
 import { useEffect, useState, type ReactNode } from "react";
 import type { ScreenId } from "./data";
 import { BottomNav } from "./Kitchen";
-import { FIRST_PURCHASE_LEVEL } from "@/game/restaurant/firstLevels";
+import { FIRST_INGREDIENT_PURCHASE_LEVEL } from "@/game/restaurant/firstLevels";
 import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
 import { KnifeGlyph } from "./Workshop";
 import { BoardPreview } from "./Boards";
@@ -238,10 +238,10 @@ export function Shop({
   /** "shop-ingredients" opens the Market on Ingredients (Business → Market links). */
   initialCategory?: ShopCategory;
 }) {
-  // First levels (restaurant build, firstLevels.ts): before Level 10 the
-  // Market is for a look around: knives and boards only, nothing to buy yet.
+  // First levels (restaurant build, firstLevels.ts): before Level 3 the
+  // Market is locked; from Level 3 all ingredient categories can be purchased.
   const browseOnly =
-    RESTAURANT_MODE && restaurantLevelOf(save.levelProgress) < FIRST_PURCHASE_LEVEL;
+    RESTAURANT_MODE && restaurantLevelOf(save.levelProgress) < FIRST_INGREDIENT_PURCHASE_LEVEL;
   const visibleCategories = browseOnly
     ? shopCategories.filter((c) => c.id === "knives" || c.id === "boards")
     : shopCategories;
@@ -251,7 +251,7 @@ export function Shop({
   const [category, setCategory] = useState<ShopCategory>(startCategory);
   const [notice, setNotice] = useState(
     browseOnly
-      ? `Have a look around, Chef. The first new tools arrive at Level ${FIRST_PURCHASE_LEVEL}.`
+      ? `The Market opens at Level ${FIRST_INGREDIENT_PURCHASE_LEVEL}. Buy ingredients here for each service.`
       : startCategory === "knives"
         ? "Welcome back, Chef. What can I get for you?"
         : categoryCopy[startCategory].description,

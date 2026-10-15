@@ -3,15 +3,9 @@
  * from the restaurant-service brief's §16 signature tables. See
  * cuisineTypes.ts for what a cuisine is (and isn't) allowed to do.
  *
- * `chapterStart` follows §17's chapter map:
- *   2  Italian Kitchen        11 Japanese Kitchen
- *   4  French Bistro          13 Chinese Kitchen
- *   6  Indian Kitchen         15 Thai Kitchen
- *   8  Mediterranean & Levant 17 Korean Kitchen
- *   9  Mexican & Latin Kitchen
- * Chapter 1 has no cuisine identity yet (§3 of Chapter 1's brief —
- * fundamentals only). Chapters 18-25 reuse these 9 families rather than
- * introducing new ones (§17's own chapter notes).
+ * `chapterStart` uses the curated 12-chapter campaign map: Italian 2,
+ * French 3, Indian 4, Mediterranean 5, Mexican 6, then the Asian cuisines
+ * in chapters 7–10. Chapter 1 remains fundamentals only.
  */
 import type { CuisineDefinition, CuisineId } from "./cuisineTypes";
 
@@ -54,7 +48,7 @@ export const CUISINES: Record<CuisineId, CuisineDefinition> = {
       "baguette",
     ],
     identity: "Precision and consistency — uniform dice, clean julienne, elegant bistro plating.",
-    chapterStart: 4,
+    chapterStart: 3,
   },
   indian: {
     id: "indian",
@@ -75,7 +69,7 @@ export const CUISINES: Record<CuisineId, CuisineDefinition> = {
       "coconut",
     ],
     identity: "Aromatic bases — garlic, onion, tomato, and herbs prepped with everyday confidence.",
-    chapterStart: 6,
+    chapterStart: 4,
   },
   mediterranean: {
     id: "mediterranean",
@@ -96,7 +90,7 @@ export const CUISINES: Record<CuisineId, CuisineDefinition> = {
       "salmon",
     ],
     identity: "Shared plates — fresh vegetables, lemon, herbs, and bread built for branching prep.",
-    chapterStart: 8,
+    chapterStart: 5,
   },
   mexican: {
     id: "mexican",
@@ -116,7 +110,7 @@ export const CUISINES: Record<CuisineId, CuisineDefinition> = {
       "sweetpotato",
     ],
     identity: "Texture contrast and colour — fresh combinations allocated across multiple dishes.",
-    chapterStart: 9,
+    chapterStart: 6,
   },
   japanese: {
     id: "japanese",
@@ -135,7 +129,7 @@ export const CUISINES: Record<CuisineId, CuisineDefinition> = {
       "avocado",
     ],
     identity: "Clean cuts, uniform preparation, minimal presentation.",
-    chapterStart: 11,
+    chapterStart: 7,
   },
   chinese: {
     id: "chinese",
@@ -155,7 +149,7 @@ export const CUISINES: Record<CuisineId, CuisineDefinition> = {
       "spinach",
     ],
     identity: "Wok-ready batches — uniform cuts across several ingredients, grouped for the pan.",
-    chapterStart: 13,
+    chapterStart: 8,
   },
   thai: {
     id: "thai",
@@ -176,7 +170,7 @@ export const CUISINES: Record<CuisineId, CuisineDefinition> = {
     ],
     identity:
       "Aromatic, sweet-and-fresh contrast — herbs and coconut alongside branching components.",
-    chapterStart: 15,
+    chapterStart: 9,
   },
   korean: {
     id: "korean",
@@ -196,7 +190,7 @@ export const CUISINES: Record<CuisineId, CuisineDefinition> = {
     ],
     identity:
       "Thin, even protein cuts alongside vegetable prep, shared across a multi-destination service.",
-    chapterStart: 17,
+    chapterStart: 10,
   },
 };
 

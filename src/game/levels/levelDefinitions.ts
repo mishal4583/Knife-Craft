@@ -1,155 +1,21 @@
 /**
- * RESTAURANT-SERVICE CAMPAIGN, PHASE 3 — Levels 1-40 (Chapters 1-4) were
- * REPLACED to run on the new Level -> ServiceProfile -> RecipePool
- * architecture (brief §1/§3/§46): each of these levels now carries a
- * `recipePoolIds` array (campaignRecipes.ts) and a `requiredOrders`
- * count, and is entered through the exact same OrderGenerator/
- * ServiceManager pipeline Phase 2's standalone Restaurant Service
- * harness uses — never a second one. `preparationSteps`/`recipeId`
- * below are kept as an ADAPTER (§46): an accurate compatibility
- * snapshot of the pool's first recipe, so recipeBook.ts/difficulty
- * estimation/anything else still reading the old shape gets a real
- * answer, but they are NOT what drives gameplay for these 40 levels
- * anymore (App.tsx's campaign-service session reads `recipePoolIds`
- * directly). Level ids, chapter numbers, unlock chain, `reward.coins`,
- * `milestone`/`unlockReward` are all UNCHANGED from before this pass —
- * old saves' completedLevelIds/highestUnlockedLevelId/chapterCompleted
- * checks all still resolve correctly (§1 "preserve old-save
- * compatibility"); only each level's CONTENT (title/recipe identity)
- * changed. Levels 41-120 are completely untouched and keep running the
- * legacy `preparationSteps`-only path exactly as before.
- *
- * Everything below this comment through Level 40 describes the ORIGINAL
- * Phase 5-16 campaign for historical context only (brief §1 — "the old
- * 120-level campaign is historical/reference material"); the actual
- * Levels 1-40 objects further down are the new Phase 3 content:
- *
- * Phase 5 shipped the first ten REAL campaign levels (Chapter 1 —
- * "First Cuts", the LEARN band). Phase 6 appended Levels 11-30 (the
- * COMBINE band): Chapter 2 "Prep Station" (11-20) and Chapter 3 "The
- * Cutting Board" (21-30). Phase 7 appends Levels 31-50 (the TRANSFORM
- * band): Chapter 4 "Breakfast Kitchen" (31-40, the restaurant fantasy)
- * and Chapter 5 "Fine Cuts" (41-50, visual beauty as its own reward via
- * Julienne reinforcement and the new Radial technique). Every level's
- * `preparationSteps` is what actually drives its Preparation session (see
- * Preparation.tsx) — not a lookup into the old (deleted) PrepOrder data. Reward curve
- * is the design doc's own ranges, gently increasing per band (Learn
- * 50-80, Combine 80-130, Transform 130-180). Unlock chain stays
- * intentionally linear across all 50 (design brief §"level unlock graph")
- * — the UnlockRequirement graph itself stays fully general (LevelManager's
- * and/or/chapterCompleted nodes), the campaign just doesn't need them yet.
- *
- * Phase 16 appends Levels 51-100: Chapter 6 "Aromatics" (51-60, mince/
- * rock-mince), Chapter 7 "Mise en Place" (61-70, batching/sharing, no
- * timer), Chapter 8 "Bistro Kitchen" (71-80, one-ingredient-many-states),
- * Chapter 9 "Branching Kitchen" (81-90, one-ingredient-many-destinations,
- * for real — see PreparationStep.chainBreak) and Chapter 10 "Chef's
- * Service" (91-100, everything combined). Reward curve: 51-70 within
- * 180-240, 71-90 within 240-320, 91-100 within 320-400 (the design doc's
- * own bands). "Destination" labels (e.g. "Sandwich"/"Salad") are real data
- * on `preparationSteps`/`destinations` now, not schema-only placeholders —
- * Preparation.tsx reads them straight off the level, no new UI/engine
- * system. See the Phase 16 report for the full gap analysis (new
- * techniques rockMince/chiffonade, chainBreak, and the documented
- * deviations: "Trim" reuses Peel, Lettuce substituted with Parsley, no new
- * "Herb Knife" catalog entry was created for the Level 60 milestone).
- *
- * PROGRESSION PASS (this phase) — three changes, all additive/replacing,
- * none touching Levels 1-100's actual recipe content:
- *
- * 1. Levels 1-100 are UNCHANGED — same ids, same preparationSteps, same
- *    rewards. They already implement the requested Learn -> Combine ->
- *    Transform -> Organize -> Branch&Master shape (chapter names/ranges
- *    match the brief's own "NEW CAMPAIGN STRUCTURE" almost exactly:
- *    Mise en Place already sits at 61-70, Branching already sits at
- *    81-90, both with real `destinations`/`chainBreak` data, not a future
- *    placeholder). Rewriting 100 already-shipped, tested levels to match
- *    slightly different per-level ingredient choices would risk
- *    regressions across a fully working system for no functional gain —
- *    see the phase report's "deviations" section for the full reasoning.
- *    Two small ADDITIVE fields were filled in on top of the existing
- *    milestone levels: `milestone` text on Levels 80/90 (the only two
- *    "every-10" levels that never got one) and `unlockReward` on the
- *    dozen levels that have a genuine catalog item unlocking at that
- *    exact level number (10/20/30/40/50/60/70/80/90/100) — nothing else
- *    on those objects changed.
- * 2. Chapter 11 "Protein Kitchen" is REPLACED (Levels 101-108 were 8 flat
- *    single-technique levels; they're now Levels 101-110, a real
- *    introduce -> combine -> branch progression per protein, chained onto
- *    existing recipe ingredients). Chicken/Steak/Salmon's own geometry,
- *    paint, texture and cutting implementations are completely untouched
- *    — only which of their ALREADY-SUPPORTED techniques a level asks for
- *    changed. See the phase report for the "Trim" deviation (chicken/
- *    steak/salmon support no such state; Peel/an extra chained technique
- *    is used instead where the brief called for it).
- * 3. Chapter 12 "Grand Service" (Levels 111-120) is NEW — the mastery
- *    chapter, recombining every ingredient/technique from Levels 1-110
- *    with no new mechanic, closing on Level 120's four-order finale.
+ * Source-of-truth catalog for the 250-level campaign. `LEVELS` below is
+ * the curated 150-level campaign; this original catalog remains available
+ * as `LEGACY_CAMPAIGN_LEVELS` only for explicit save migration and audit.
  */
 import type { LevelDefinition } from "./levelTypes";
+import {
+  CAMPAIGN_150_CHAPTER_BY_SOURCE_CHAPTER,
+  CAMPAIGN_150_CHAPTER_IDS,
+  CAMPAIGN_150_CHAPTER_TITLES,
+  CAMPAIGN_150_OLD_TO_NEW,
+  CAMPAIGN_150_SOURCE_LEVEL_NUMBERS,
+} from "./campaignSelection";
 
 /** Chapter display names, colocated with the level data they describe rather than hardcoded in a UI component — Kitchen.tsx's "Today's Board" derives its per-chapter section dividers from this instead of a literal string. */
-export const CHAPTER_TITLES: Record<number, string> = {
-  // Phase 3 (restaurant-service campaign) — Chapters 1-4 renamed to
-  // match their real new identity (brief §2): Levels 1-10 teach the
-  // restaurant loop itself, 11-30 are Italian (Kitchen -> Service),
-  // 31-40 is French Bistro. Level NUMBERS/ids/chapter numbers are
-  // unchanged (old-save compatibility — completedLevelIds/
-  // chapterCompleted checks key off those, never off this display
-  // string), only the titles and the levels' own content changed.
-  1: "Opening the Restaurant",
-  2: "Italian Kitchen",
-  3: "Italian Service",
-  4: "French Bistro",
-  // Phase 4 — Chapters 5-10 renamed to match their real new identity
-  // (brief §1): 5 reinforces every technique with no new tutorial,
-  // 6-7 are Indian (Kitchen -> Aromatics & Service, where REAL batching
-  // lives), 8 is Mediterranean/Levant, 9-10 are Mexican/Latin (Kitchen
-  // -> Service). Same old-save-compatibility rule as Chapters 1-4:
-  // level ids/chapter numbers/rewards/milestones unchanged, only titles
-  // and content.
-  5: "French Precision",
-  6: "Indian Kitchen",
-  7: "Indian Aromatics & Service",
-  8: "Mediterranean & Levant",
-  9: "Mexican & Latin Kitchen",
-  10: "Latin Service",
-  // Phase 5 — Chapters 11-12 renamed from the old "Progression pass"
-  // generic protein titles to match cuisineDefinitions.ts's own
-  // `chapterStart: 11` japanese entry (brief §6/§9): 11 is Japanese
-  // Kitchen (chicken->steak->salmon introduction, retaining that exact
-  // established unlock order per brief §4's own instruction to preserve
-  // sensible existing boundaries), 12 is Japanese Precision (multi-
-  // protein service, batching, branching). Chapters 13-17 are entirely
-  // new: 13-14 Chinese (Kitchen -> Wok Service), 15-16 Thai/Southeast
-  // Asian (Kitchen -> Service), 17 Korean Kitchen. Same old-save rule as
-  // every earlier renaming: level ids/chapter numbers/rewards/milestones
-  // for 101-120 are unchanged, only titles and content.
-  11: "Japanese Kitchen",
-  12: "Japanese Precision",
-  13: "Chinese Kitchen",
-  14: "Chinese Wok Service",
-  15: "Thai Kitchen",
-  16: "Southeast Asian Service",
-  17: "Korean Kitchen",
-  // Phase 6 — Chapters 18-25, the campaign's final expansion (brief §3).
-  // 18-22 deepen five of the existing nine cuisines with underused
-  // ingredients/techniques (no new cuisine, no new technique); 23-24 are
-  // deliberately mixed-cuisine service (two-three cuisineIds sharing one
-  // batch-group session, per brief §5); 25 is the grand finale, closing
-  // at Level 250 with one more real batch+branch service and one more
-  // forward-only story milestone (see storyDefinitions.ts's MILES).
-  18: "Italian Grand Service",
-  19: "French Service Mastery",
-  20: "Indian Grand Service",
-  21: "Mediterranean Encore",
-  22: "Latin Mastery",
-  23: "Japanese-Korean Fusion",
-  24: "Chinese-Thai Fusion",
-  25: "The Grand Finale",
-};
+export const CHAPTER_TITLES: Record<number, string> = CAMPAIGN_150_CHAPTER_TITLES;
 
-export const LEVELS: LevelDefinition[] = [
+const SOURCE_LEVELS: LevelDefinition[] = [
   {
     id: "level-1",
     chapter: 1,
@@ -367,15 +233,25 @@ export const LEVELS: LevelDefinition[] = [
     chapterId: "opening-the-restaurant",
     type: "ORDER",
     title: "Halved Potato",
-    subtitle: "One clean cut down the middle",
-    description: "Halve the potato evenly — the chef is particular about balance.",
+    subtitle: "Peel first, then halve",
+    description: "Peel the potato, then halve it evenly for the pan.",
     emoji: "🥔",
     recipeId: "camp-halved-potato-bowl",
-    objectives: [{ type: "prepareIngredient", ingredientId: "potato", technique: "halve" }],
+    objectives: [
+      { type: "prepareIngredient", ingredientId: "potato", technique: "peel" },
+      { type: "prepareIngredient", ingredientId: "potato", technique: "halve" },
+    ],
     preparationSteps: [
       {
         ingredient: "potato",
         startingState: "whole",
+        technique: "peel",
+        resultingState: "peeled",
+        optional: false,
+      },
+      {
+        ingredient: "potato",
+        startingState: "peeled",
         technique: "halve",
         resultingState: "halved",
         optional: false,
@@ -537,7 +413,7 @@ export const LEVELS: LevelDefinition[] = [
     destinations: [],
     unlockRequirements: { type: "levelCompleted", levelId: "level-11" },
     reward: { coins: 83 },
-    recipePoolIds: ["camp-tomato-basil-toast", "camp-bruschetta-trio"],
+    recipePoolIds: ["camp-tomato-basil-toast"],
     requiredOrders: 1,
   },
   {
@@ -1004,7 +880,7 @@ export const LEVELS: LevelDefinition[] = [
     destinations: [],
     unlockRequirements: { type: "levelCompleted", levelId: "level-23" },
     reward: { coins: 122 },
-    recipePoolIds: ["camp-caprese-plate", "camp-orange-rose-garnish", "camp-eggplant-antipasto"],
+    recipePoolIds: ["camp-caprese-plate", "camp-beetroot-plate", "camp-eggplant-antipasto"],
     requiredOrders: 1,
   },
   {
@@ -9814,3 +9690,66 @@ export const LEVELS: LevelDefinition[] = [
     ],
   },
 ];
+
+/** Former campaign definitions retained for exact-content save migration and audit only. */
+export const LEGACY_CAMPAIGN_LEVELS: readonly LevelDefinition[] = SOURCE_LEVELS;
+
+/** Mapping used by the one-time save migration from the former 250-level catalog. */
+export const CAMPAIGN_150_OLD_TO_NEW_LEVEL = CAMPAIGN_150_OLD_TO_NEW;
+
+/** The old source definition for each selected campaign level, in new order. */
+export const CAMPAIGN_150_SOURCE_LEVELS: readonly LevelDefinition[] =
+  CAMPAIGN_150_SOURCE_LEVEL_NUMBERS.map((oldNumber) => SOURCE_LEVELS[oldNumber - 1]!);
+
+const tutorialSteps = [
+  { ingredient: "tomato", startingState: "whole", technique: "dice", resultingState: "diced", destination: "Practice Plate", optional: false },
+  { ingredient: "cucumber", startingState: "whole", technique: "slice", resultingState: "sliced", destination: "Practice Plate", optional: false },
+  { ingredient: "carrot", startingState: "whole", technique: "julienne", resultingState: "julienned", destination: "Practice Plate", optional: false },
+  { ingredient: "garlic", startingState: "whole", technique: "peel", resultingState: "peeled", destination: "Practice Plate", optional: false },
+  { ingredient: "garlic", startingState: "peeled", technique: "smash", resultingState: "smashed", destination: "Practice Plate", optional: false },
+] satisfies LevelDefinition["preparationSteps"];
+
+const tutorialObjectives: LevelDefinition["objectives"] = [
+  { type: "prepareIngredient", ingredientId: "tomato", technique: "dice" },
+  { type: "prepareIngredient", ingredientId: "cucumber", technique: "slice" },
+  { type: "prepareIngredient", ingredientId: "carrot", technique: "julienne" },
+  { type: "prepareIngredient", ingredientId: "garlic", technique: "peel" },
+  { type: "prepareIngredient", ingredientId: "garlic", technique: "smash" },
+];
+
+export const LEVELS: LevelDefinition[] = CAMPAIGN_150_SOURCE_LEVEL_NUMBERS.map((oldNumber, index) => {
+  const source = SOURCE_LEVELS[oldNumber - 1]!;
+  const chapter = index < 4
+    ? 1
+    : index < 20
+      ? 2
+      : CAMPAIGN_150_CHAPTER_BY_SOURCE_CHAPTER[source.chapter]!;
+  const id = `level-${index + 1}`;
+  const level: LevelDefinition = {
+    ...source,
+    id,
+    campaignRewardBasisLevel: oldNumber,
+    chapter,
+    chapterId: CAMPAIGN_150_CHAPTER_IDS[chapter]!,
+    unlockRequirements: index === 0 ? { type: "always" } : { type: "levelCompleted", levelId: `level-${index}` },
+  };
+  if (oldNumber === 2) {
+    level.title = "Basic Kitchen Learning";
+    level.subtitle = "A guided practice with five essential prep steps";
+    level.description = "Practice tomato dice, cucumber slices, carrot julienne, then peel and smash garlic. Training food is provided for this lesson.";
+    level.emoji = "🔪";
+    level.recipeId = "camp-level2-basics-tutorial";
+    level.recipePoolIds = ["camp-level2-basics-tutorial"];
+    level.requiredOrders = 1;
+    level.objectives = tutorialObjectives;
+    level.preparationSteps = tutorialSteps;
+    level.destinations = ["Practice Plate"];
+    level.reward = { coins: 0 };
+    level.campaignNoEconomy = true;
+  }
+  return level;
+});
+
+if (LEVELS.length !== 150 || LEVELS.some((level, index) => level.id !== `level-${index + 1}`)) {
+  throw new Error("Curated campaign must contain exactly sequential levels 1–150");
+}

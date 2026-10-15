@@ -23,6 +23,7 @@ import {
   restaurantStanding,
 } from "@/game/restaurant/restaurantStanding";
 import { restaurantSuppliesOf } from "@/game/restaurant/serviceSupplies";
+import { LAST_CAMPAIGN_LEVEL } from "@/game/restaurant/restaurantProgression";
 import {
   SPOTLESS_QUALITY_PCT,
   SPOTLESS_QUALITY_STREAK,
@@ -223,7 +224,7 @@ function StandingCard({ save }: { save: SaveData }) {
           </div>
         ) : (
           <p className="mt-2 font-hand text-[15px] leading-snug text-walnut/70">
-            Complete all 250 campaign levels to unlock Endless Restaurant.
+            Complete all {LAST_CAMPAIGN_LEVEL} campaign levels to unlock Endless Restaurant.
           </p>
         )}
       </Panel>
@@ -251,7 +252,7 @@ function Summary({ p }: { p: Progress }) {
         {/* Restaurant build before L250: popularity and the Business Day belong to
             the Endless Restaurant, which isn't open yet. */}
         {campaignRestaurant ? (
-          <Row label="Endless Restaurant" value="Opens after Level 250" />
+          <Row label="Endless Restaurant" value={`Opens after Level ${LAST_CAMPAIGN_LEVEL}`} />
         ) : (
           <>
             <Row label="Popularity" value={`${p.popularity} / 100`} />
@@ -385,7 +386,7 @@ function CampaignCard({ p }: { p: Progress }) {
   );
 }
 
-/** Chart 2 — the campaign's real milestones (kitchen stages) on a 1→250 track, with the player's position. */
+/** Chart 2 — the campaign's real milestones (kitchen stages) on the current campaign track. */
 function JourneyTrack({ p }: { p: Progress }) {
   const W = 300;
   const H = 64;
@@ -393,7 +394,7 @@ function JourneyTrack({ p }: { p: Progress }) {
   const total = p.level.total;
   const x = (lv: number) => pad + ((lv - 1) / (total - 1)) * (W - pad * 2);
   const at = p.campaignComplete ? total : p.level.current;
-  const ticks = [1, 50, 100, 150, 200, total];
+  const ticks = [...new Set([1, 0.2, 0.4, 0.6, 0.8].map((value) => value < 1 ? Math.round(total * value) : value)), total];
   return (
     <svg
       viewBox={`0 0 ${W} ${H}`}
@@ -474,13 +475,13 @@ function Earnings({ p }: { p: Progress }) {
         <Row label="Level rewards earned" value={formatUsd(p.money.levelRewards)} />
         <Row label="Milestone rewards" value={formatUsd(p.money.milestoneRewards)} />
         <Row
-          label="Final Reward (Level 250)"
+          label={`Final Reward (Level ${LAST_CAMPAIGN_LEVEL})`}
           value={
             p.familyLegacy.paid
               ? formatUsd(p.money.familyLegacy)
               : p.familyLegacy.waived
                 ? "finished before it existed"
-                : "at Level 250"
+                : `at Level ${LAST_CAMPAIGN_LEVEL}`
           }
         />
         <Row label="Business revenue" value={formatUsd(p.money.businessRevenue)} />

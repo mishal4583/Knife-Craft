@@ -33,6 +33,6 @@ export type CuisineDefinition = {
   coreIngredients: IngredientId[];
   /** One line capturing the identity/plating/service feel (§16) — chef flavor text only, never read by gameplay logic. */
   identity: string;
-  /** First chapter (1-25) where this cuisine's arc begins in the 250-level campaign (§17). */
+  /** First curated-campaign chapter where this cuisine's arc begins. */
   chapterStart: number;
 };

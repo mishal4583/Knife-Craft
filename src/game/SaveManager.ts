@@ -19,6 +19,7 @@ import {
 } from "./economy/economyState";
 import { loadCloudSave, platformReady, saveCloudSave } from "./PlayablesSDK";
 import { DEFAULT_LEVEL_PROGRESS, type LevelProgress } from "./levels/LevelManager";
+import { migrateCampaignProgress } from "./levels/campaignMigration";
 import { DEFAULT_SUPPLIER_ID } from "./economy/supplierDefinitions";
 import type { EconomyLedgerEntry } from "./economy/ledgerTypes";
 import { DEFAULT_BUSINESS_STATE, type BusinessState } from "./business/businessTypes";
@@ -337,6 +338,7 @@ class SaveManagerImpl {
       const merged: SaveData = {
         ...DEFAULT_SAVE,
         ...partial,
+        levelProgress: migrateCampaignProgress(partial.levelProgress ?? DEFAULT_SAVE.levelProgress),
         // Economy V2.5 — a save without `economy` predates V2.5: version 0,
         // migrated exactly once below (never the fresh-save default).
         economy: partial.economy

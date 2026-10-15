@@ -32,9 +32,7 @@ import type { StaffRequirement } from "@/game/restaurant/staffRequirements";
 import type { FridgeUsage } from "@/game/restaurant/fridgeUsage";
 import type { KitLine } from "@/game/restaurant/restaurantMigration";
 import type { DayStock, GuestStock } from "@/game/restaurant/preServiceCheck";
-import type { GrandmasFridgeNote } from "@/game/restaurant/grandmasFridge";
 import { getSupplyItem as supplyItemOf } from "@/game/business/businessSupplies";
-import { FIRST_PURCHASE_LEVEL } from "@/game/restaurant/firstLevels";
 
 function RoutineStatus({
   icon,
@@ -94,16 +92,15 @@ function RoutineStatus({
  *    ingredients are bought);
  *  - expired stock: THROW OUT EXPIRED (recorded as waste, no money);
  *  - what the missing stock costs against the wallet, and fridge space;
- *  - only when the wallet can't cover it (from Level 10): 🎬 watch an ad
+ *  - only when the wallet can't cover it (from Level 3): 🎬 watch an ad
  *    for the missing items, or 💳 supplier credit when no ad can be shown
- *    (serviceCover.ts — developer 2026-10-10); before Level 10, when nothing
- *    can be bought yet, Grandma's pantry;
+ *    (serviceCover.ts — developer 2026-10-10);
  *  - START SERVICE once everything is ready.
  *
  * Phase 5: it is also the day's OPENING card. When a level opens a new
  * restaurant day it always shows ("Day N · Opening time", the day's services
- * by name and level) and its button opens the restaurant; before Level 15
- * there is no stock to check, so it is only the opening card.
+ * by name and level) and its button opens the restaurant; from Level 3 it
+ * also checks ingredients before the service starts.
  *
  * Phase G (from dine-in, L31): a Supplies section — clean place settings,
  * takeaway containers and bags (from L71), napkins, and the dish-soap and
@@ -121,7 +118,6 @@ export function PreServiceCheck({
   onStart,
   onRestock,
   onThrowOutExpired,
-  onUsePantry,
   onUpgradeFridge,
   onClose,
   services = [],
@@ -146,8 +142,7 @@ export function PreServiceCheck({
   onQuickRestock = () => {},
   onBuyAllInMarket = null,
   firstRestock = false,
-  fromGrandmasFridge = false,
-  grandmasFridge = null,
+  onDismissFirstRestock = () => {},
   onRestockFridge = () => {},
   canBuy = true,
   tools = { applies: false },
@@ -169,14 +164,13 @@ export function PreServiceCheck({
   onStart: () => void;
   onRestock: (ingredientId: IngredientId) => void;
   onThrowOutExpired: () => void;
-  onUsePantry: () => void;
   onUpgradeFridge: () => void;
   onClose: () => void;
   /** Each ticket's dine-in / takeaway (phase G). */
   services?: readonly (OrderService | null)[];
   supplies?: ServiceSuppliesCheck;
   onRestockSupply?: (id: SupplyId) => void;
-  /** From Level 10: what an ad or supplier credit would cover when the wallet can't pay (serviceCover.ts). */
+  /** From Level 3: what an ad or supplier credit would cover when the wallet can't pay (serviceCover.ts). */
   cover?: {
     stock: CoverOffer | null;
     supplies: CoverOffer | null;
@@ -210,17 +204,14 @@ export function PreServiceCheck({
   onQuickRestock?: () => void;
   /** "Buy everything in the Market →": the Market's plan on Today (normal prices, audit 2026-10-08). */
   onBuyAllInMarket?: (() => void) | null;
-  /** The first service on real stock (Level 15, firstRestock.ts): Grandma introduces the routine. */
+  /** The first service using purchased ingredients (Level 3, firstRestock.ts). */
   firstRestock?: boolean;
+  /** Persist the player's dismissal of the one-time first-stock explainer. */
+  onDismissFirstRestock?: () => void;
   /**
-   * False before the Market sells ingredients (Level 10, firstLevels.ts): no
-   * restock buttons, Grandma's pantry fills the gap (developer 2026-10-09).
+   * False before the Market sells ingredients (Level 3, firstLevels.ts).
    */
   canBuy?: boolean;
-  /** The player had Grandma's leftovers (and the Level 13 top-up): say this is the hand-over. */
-  fromGrandmasFridge?: boolean;
-  /** First levels pass 2: Grandma's fridge on Levels 12–14 (the note itself never blocks START). */
-  grandmasFridge?: GrandmasFridgeNote | null;
   onRestockFridge?: (ingredientId: IngredientId, units: number) => void;
   /** Kitchen tools today's dishes and the menu need (kitchenTools.ts, from Level 10). */
   tools?: ToolsCheck;
@@ -507,31 +498,25 @@ export function PreServiceCheck({
             ))}
           </ul>
 
-          {grandmasFridge ? (
-            <GrandmasFridgeCard
-              note={grandmasFridge}
-              measure={measure}
-              onRestock={onRestockFridge}
-            />
-          ) : null}
-
           {stock && firstRestock ? (
             <div
               className="mt-3 rounded-2xl border-2 border-copper/60 bg-gold/15 p-3"
               data-testid="psc-first-restock"
               data-ready={stock.ready || undefined}
             >
-              <p className="font-ui text-[12.5px] font-extrabold uppercase tracking-wide text-copper">
-                {stock.ready
-                  ? "👵 Your first Pre-Service Check"
-                  : "👵 Grandma's first shopping trip"}
-              </p>
-              {fromGrandmasFridge ? (
-                <p className="mt-0.5 font-ui text-[13.5px] font-bold text-walnut-dark">
-                  My leftovers and your top-up got us this far. From now on every service is checked
-                  against the fridge first: ✓ is ready, anything missing is bought in the Market.
+              <div className="flex items-start justify-between gap-2">
+                <p className="font-ui text-[12.5px] font-extrabold uppercase tracking-wide text-copper">
+                  {stock.ready ? "Your first stock check" : "Buy ingredients for service"}
                 </p>
-              ) : null}
+                <button
+                  type="button"
+                  aria-label="Dismiss first stock check tip"
+                  onClick={onDismissFirstRestock}
+                  className="press -mr-1 -mt-1 grid h-8 w-8 shrink-0 place-items-center rounded-full text-[18px] font-black leading-none text-copper/70 hover:bg-gold/25"
+                >
+                  ×
+                </button>
+              </div>
               {stock.ready ? (
                 <p className="mt-1 font-ui text-[13.5px] font-bold text-walnut-dark">
                   Everything today's service needs is in the fridge — nothing to buy. Start the
@@ -936,24 +921,9 @@ export function PreServiceCheck({
                 {stock.missingRows.length === 1 ? "item" : "items"}
                 {canBuy ? ` · ${formatUsd(stock.missingCost)}` : ""}
               </p>
-              {canBuy ? (
-                <p className="font-ui text-[12.5px] text-walnut/70">
-                  You have {formatUsd(credits)}.
-                </p>
-              ) : (
-                <>
-                  <p
-                    className="font-ui text-[12.5px] text-walnut/70"
-                    data-testid="psc-no-market-yet"
-                  >
-                    The service can't start without them. The Market sells ingredients from Level{" "}
-                    {FIRST_PURCHASE_LEVEL} — until then Grandma's pantry fills the gap.
-                  </p>
-                  <KButton size="sm" variant="sage" className="mt-2 min-h-12" onClick={onUsePantry}>
-                    🧺 Use Grandma's pantry (free)
-                  </KButton>
-                </>
-              )}
+              <p className="font-ui text-[12.5px] text-walnut/70">
+                You have {formatUsd(credits)}. Buy the missing ingredients in the Market to start.
+              </p>
               {canBuy && onBuyAllInMarket && stock.affordable ? (
                 <KButton
                   size="sm"
@@ -1115,148 +1085,11 @@ function IngredientRow({
   );
 }
 
-const FRIDGE_COPY: Record<
-  GrandmasFridgeNote["stage"],
-  { title: string; short: string; enough: string }
-> = {
-  low: {
-    title: "👵 Grandma's fridge is running low",
-    short: "“We're running low on a few things. Have a look before the next services.”",
-    enough: "“The fridge still has what the next services need. Well kept!”",
-  },
-  "top-up": {
-    title: "👵 Your first top-up",
-    short: "“Buy just what the next services need — nothing we already have.”",
-    enough: "“Nothing to buy: the fridge already has enough. Never buy what you don't need.”",
-  },
-  preview: {
-    title: "👵 What's in the fridge",
-    short: "“A few things will run short. Today's dish needs its own before we start.”",
-    enough: "“Everything's here. From Level 15 the menu guests need stock too.”",
-  },
-};
-
-/**
- * First levels pass 2 (grandmasFridge.ts): Level 12 what's running low,
- * Level 13 the top-up (Market buttons for the exact missing steps), Level 14
- * a look at the fridge and the next needs. Read from the save; never blocks
- * START, never buys anything itself.
- */
-function GrandmasFridgeCard({
-  note,
-  measure,
-  onRestock,
-}: {
-  note: GrandmasFridgeNote;
-  measure: Measure;
-  onRestock: (ingredientId: IngredientId, units: number) => void;
-}) {
-  const copy = FRIDGE_COPY[note.stage];
-  const rows = note.stage === "low" ? note.shortRows : note.rows;
-  const span =
-    note.levels.length > 1
-      ? `Levels ${note.levels[0]}–${note.levels[note.levels.length - 1]}`
-      : `Level ${note.levels[0] ?? ""}`;
-  return (
-    <div
-      className="mb-2 rounded-2xl border-2 border-copper/50 bg-gold/10 p-3"
-      data-testid="psc-grandmas-fridge"
-      data-fridge-stage={note.stage}
-    >
-      <p className="font-ui text-[12.5px] font-extrabold uppercase tracking-wide text-copper">
-        {copy.title}
-      </p>
-      <p className="mt-0.5 font-hand text-[16px] leading-snug text-walnut/80">
-        {note.shortRows.length > 0 ? copy.short : copy.enough}
-      </p>
-      {rows.length > 0 ? (
-        <>
-          <p className="mt-2 font-ui text-[12px] font-extrabold uppercase tracking-wide text-walnut/55">
-            For {span}
-          </p>
-          <ul className="mt-0.5 divide-y divide-walnut/10">
-            {rows.map((r) => {
-              const short = r.missing > 0;
-              return (
-                <li
-                  key={r.ingredientId}
-                  className="flex min-h-12 items-center gap-2 py-1.5"
-                  data-fridge-ingredient={r.ingredientId}
-                  data-fridge-status={short ? (r.usable > 0 ? "low" : "out") : "ok"}
-                >
-                  <span className="text-[20px]" aria-hidden>
-                    {INGREDIENT_EMOJI[r.ingredientId]}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-ui text-[14.5px] font-bold text-walnut-dark">
-                      {INGREDIENTS[r.ingredientId].name}
-                    </p>
-                    <p
-                      className={cn(
-                        "font-ui text-[12.5px]",
-                        short ? "text-tomato" : "text-walnut/60",
-                      )}
-                    >
-                      Need {formatStockAmount(r.ingredientId, r.need, measure)} · have{" "}
-                      {formatStockAmount(r.ingredientId, r.usable, measure)}
-                    </p>
-                  </div>
-                  {!short ? (
-                    <span className="font-ui text-[13.5px] font-extrabold text-sage">✓ Enough</span>
-                  ) : note.stage === "top-up" ? (
-                    <KButton
-                      size="sm"
-                      variant="copper"
-                      className="min-h-12"
-                      onClick={() => onRestock(r.ingredientId, r.buyUnits)}
-                    >
-                      Buy {r.buyUnits} {marketUnitLabel(r.ingredientId, measure, r.buyUnits)} ·{" "}
-                      {formatUsd(r.cost)}
-                    </KButton>
-                  ) : (
-                    <span className="font-ui text-[13.5px] font-extrabold text-tomato">
-                      {r.usable > 0 ? "Low" : "Out"}
-                    </span>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        </>
-      ) : null}
-      {note.stage === "top-up" && note.shortRows.length > 0 ? (
-        <p
-          className="mt-1 font-ui text-[12.5px] font-bold text-walnut/70"
-          data-testid="fridge-top-up"
-        >
-          Top-up: {formatUsd(note.topUpCost)}
-          {note.affordable
-            ? " · this level's own ingredients are needed to start; the rest is for the next one."
-            : " · not enough money for all of it: buy what you can — an ad or supplier credit covers what this level still needs."}
-        </p>
-      ) : null}
-      {note.stage === "preview" && note.spare.length > 0 ? (
-        <p className="mt-1 font-ui text-[12.5px] text-walnut/70">
-          Also in the fridge:{" "}
-          {note.spare
-            .map(
-              (x) =>
-                `${INGREDIENTS[x.ingredientId].name} ${formatStockAmount(x.ingredientId, x.usable, measure)}`,
-            )
-            .join(" · ")}
-        </p>
-      ) : null}
-    </div>
-  );
-}
-
 /** Phase M: what an existing save found when it moved into the unified restaurant. */
 function WelcomeCrate({ kit }: { kit: readonly KitLine[] }) {
-  const lines = kit.map((k) =>
-    k.kind === "ingredient"
-      ? `${k.units} ${INGREDIENTS[k.id].name}`
-      : `${k.units.toLocaleString("en-US")} × ${supplyItemOf(k.id)?.name ?? k.id}`,
-  );
+  const lines = kit
+    .filter((k) => k.kind === "supply")
+    .map((k) => `${k.units.toLocaleString("en-US")} × ${supplyItemOf(k.id)?.name ?? k.id}`);
   return (
     <div
       className="mb-2 rounded-2xl border border-olive/40 bg-[linear-gradient(170deg,var(--color-ivory),rgba(120,140,60,0.12))] p-3"
@@ -1266,11 +1099,11 @@ function WelcomeCrate({ kit }: { kit: readonly KitLine[] }) {
         🎁 Welcome to your restaurant
       </p>
       <p className="font-hand text-[17px] leading-snug text-walnut">
-        “Your kitchen is a real restaurant now — stock, supplies and a team. I packed you a starter
-        crate so you can keep cooking.” — Grandma
+        “Your kitchen is ready to serve. Buy the ingredients each service needs in the Market.”
       </p>
       <p className="mt-1 font-ui text-[12.5px] text-walnut/70">
-        Free, once: {lines.join(" · ")}. After this, the Market is where you restock.
+        {lines.length > 0 ? `Free supplies, once: ${lines.join(" · ")}. ` : ""}
+        Ingredients are always bought in the Market.
       </p>
     </div>
   );
@@ -1378,7 +1211,7 @@ function ToolRowItem({
 }
 
 /**
- * Level 10: the Market has just opened. Grandma's first shopping list — the
+ * Level 10: the culinary-tool section opens. The first shopping list — the
  * kitchen tools the next ten levels will ask for, with Buy buttons. It
  * never blocks Level 10's START (only the levels that cook with them do).
  */
@@ -1404,7 +1237,7 @@ function FirstShoppingList({
         👵 Your first shopping list
       </p>
       <p className="mt-0.5 font-hand text-[15.5px] leading-snug text-walnut">
-        “The Market is open! My old peeler, bowl and cups are yours. The next dishes need real
+        “The Market's culinary tools are available. The next dishes need real
         kitchen tools — buy them before we cook.”
       </p>
       {soon.length === 0 ? (

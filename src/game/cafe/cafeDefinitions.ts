@@ -5,8 +5,9 @@
  * doc header in cafeTypes.ts for why.
  */
 import type { CafeMilestoneDefinition } from "./cafeTypes";
+import { remapCampaignThreshold } from "../levels/campaignSelection";
 
-export const CAFE_MILESTONES: CafeMilestoneDefinition[] = [
+const SOURCE_CAFE_MILESTONES: CafeMilestoneDefinition[] = [
   {
     id: "humble-kitchen",
     levelRequired: 1,
@@ -109,3 +110,5 @@ export const CAFE_MILESTONES: CafeMilestoneDefinition[] = [
     unlocks: [{ id: "grand_service", type: "grand_service", name: "Grand Service" }],
   },
 ];
+
+export const CAFE_MILESTONES: CafeMilestoneDefinition[] = SOURCE_CAFE_MILESTONES.map((milestone) => ({ ...milestone, levelRequired: remapCampaignThreshold(milestone.levelRequired) }));

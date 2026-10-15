@@ -17,6 +17,7 @@ import {
   capRemainingToday,
   ENDLESS_DAILY_COIN_CAP,
 } from "@/game/daily/EndlessServiceManager";
+import { LAST_CAMPAIGN_LEVEL } from "@/game/restaurant/restaurantProgression";
 
 // JournalHome (the old "Chef's Journal" hub screen, plus its private
 // Stat/JournalRow helpers) was removed in Phase 15 — its rows were
@@ -186,7 +187,7 @@ export function EndlessService({
             <Panel className="p-5 text-center">
               <p className="text-[40px] leading-none">🔒</p>
               <p className="mt-2 font-display text-[17.5px] font-black text-walnut-dark">
-                Unlocks after Level 250
+                Unlocks after Level {LAST_CAMPAIGN_LEVEL}
               </p>
               <p className="mt-1 font-hand text-[17px] leading-snug text-walnut/65">
                 Endless Service is an ongoing earning mode for after the campaign: serve orders from

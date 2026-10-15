@@ -38,6 +38,7 @@ import { isSystemLive } from "./restaurantProgression";
 import { restaurantDayOf } from "./restaurantDay";
 import { bottleView, restaurantSuppliesOf, tablesFor } from "./serviceSupplies";
 import { isAuditDay } from "./parAudit";
+import { remapCampaignThreshold } from "../levels/campaignSelection";
 
 /**
  * Cleaning starts with this level's service (developer 2026-10-10: "from level
@@ -252,7 +253,7 @@ export const TASK_RULES: Record<TaskKind, TaskRule> = {
     tools: [],
     routine: true,
     phase: "opening",
-    fromLevel: 31,
+    fromLevel: remapCampaignThreshold(31),
     staff: "server",
   },
   // ── Lull: reset ──
@@ -330,7 +331,7 @@ export const TASK_RULES: Record<TaskKind, TaskRule> = {
     tools: [],
     routine: true,
     phase: "closing",
-    fromLevel: 31,
+    fromLevel: remapCampaignThreshold(31),
     staff: "server",
   },
   "polish-cutlery": {
@@ -342,7 +343,7 @@ export const TASK_RULES: Record<TaskKind, TaskRule> = {
     tools: [],
     routine: true,
     phase: "closing",
-    fromLevel: 31,
+    fromLevel: remapCampaignThreshold(31),
     staff: "server",
   },
   // Deep cleans (a real restaurant's weekly / monthly deep clean, developer 2026-10-11):
@@ -359,7 +360,7 @@ export const TASK_RULES: Record<TaskKind, TaskRule> = {
     tools: [],
     routine: true,
     phase: "closing",
-    fromLevel: 31,
+    fromLevel: remapCampaignThreshold(31),
     deep: "weekly",
   },
   "deep-restroom": {
@@ -374,7 +375,7 @@ export const TASK_RULES: Record<TaskKind, TaskRule> = {
     tools: ["toilet-brushes"],
     routine: true,
     phase: "closing",
-    fromLevel: 31,
+    fromLevel: remapCampaignThreshold(31),
     deep: "weekly",
   },
   "deep-dining": {
@@ -389,7 +390,7 @@ export const TASK_RULES: Record<TaskKind, TaskRule> = {
     tools: [],
     routine: true,
     phase: "closing",
-    fromLevel: 31,
+    fromLevel: remapCampaignThreshold(31),
     deep: "audit",
   },
 };
@@ -408,7 +409,7 @@ export function deepCleansFor(day: number, levelNumber: number): TaskKind[] {
 }
 
 /** Shift chores (opening / lull / closing) come with the day's ceremony, from Level 21. */
-export const PHASE_CHORES_FROM = 21;
+export const PHASE_CHORES_FROM = remapCampaignThreshold(21);
 
 export const TASK_KINDS = Object.keys(TASK_RULES) as TaskKind[];
 

@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import type { SaveData } from "@/game/SaveManager";
 import { PLAYER_RESTAURANT_NAME } from "@/game/progression/restaurantProgress";
 import { cityRanking, type CityRanking } from "@/game/restaurant/cityRanking";
+import { LAST_CAMPAIGN_LEVEL } from "@/game/restaurant/restaurantProgression";
 
 /** "1,880 pts" */
 const pts = (n: number) => `${n.toLocaleString("en-US")} pts`;
@@ -67,7 +68,7 @@ export function CityLeaderboard({ save }: { save: SaveData }) {
       <Panel className="p-4">
         <Eyebrow>🏙️ City restaurant guide</Eyebrow>
         <p className="mt-0.5 font-hand text-[15px] leading-snug text-walnut/70">
-          Every campaign service you complete builds your reputation. Finish all 250 to be the
+          Every campaign service you complete builds your reputation. Finish all {LAST_CAMPAIGN_LEVEL} to be the
           city's best.
         </p>
         <ol className="mt-2">

@@ -13,9 +13,6 @@
  *  - kitchen tools (from L10, supplies plan A, 2026-10-10): the tools its
  *    next KIT_SERVICES services cook with (kitchenTools.ts), one per cook
  *    where a tool is per cook;
- *  - ingredient stock (from L15): what its next KIT_SERVICES services' own
- *    orders need, minus what it already has, in whole Market units, only as
- *    much as fits in the fridge (never overfilled);
  *  - dine-in (from L31): the tableware one of those services' dishes needs
  *    (plates, bowls, cutlery, glasses by dish — supplies plan B) and its
  *    tables' pieces, at least a plain place setting per guest, napkins up to KIT_NAPKINS, and one bottle of
@@ -24,8 +21,9 @@
  *    those services (at least KIT_PACKAGING of each kind) and their extras
  *    (cutlery packs, wet wipes, tamper labels — supplies plan C).
  *
- * The crate is goods at cost 0 — no credits, no ledger entry (the pantry
- * rule, Economy TODO #16) — and only ever tops up: nothing is taken away.
+ * Ingredients are never included in the crate: from Level 3, buy the stock
+ * each service needs in the Market. Other legacy items only ever top up;
+ * nothing is taken away.
  * Staff need no migration (hiring is free and the check asks for it).
  *
  * A fresh save (below L15) is only stamped as migrated, with an empty crate.
@@ -35,8 +33,6 @@
  */
 import type { SaveData } from "../SaveManager";
 import type { IngredientId } from "../definitions";
-import { addStock, normalizeQuantity } from "../business/businessInventory";
-import { getAvailableStorageCapacity } from "../business/RefrigeratorManager";
 import type { SupplyId } from "../business/businessSupplies";
 import {
   ORDER_BAG_PRIORITY,
@@ -45,7 +41,6 @@ import {
 } from "../business/BusinessSuppliesManager";
 import { getLevel, isCompleted } from "../levels/LevelManager";
 import type { RecipeDefinition } from "../recipes/recipeTypes";
-import { requirementsForRecipes } from "./recipeRequirements";
 import { ticketsFor } from "./serviceTickets";
 import { restaurantLevelOf } from "./restaurantMenu";
 import { LAST_CAMPAIGN_LEVEL, isSystemLive, menuGuestsPerService } from "./restaurantProgression";
@@ -59,7 +54,7 @@ import { getSupplyItem } from "../business/businessSupplies";
 import { serviceRecipes, toolsNeeded } from "./kitchenTools";
 import { FIRST_PURCHASE_LEVEL } from "./firstLevels";
 
-export const RESTAURANT_MIGRATION_VERSION = 1;
+export const RESTAURANT_MIGRATION_VERSION = 2;
 
 /** How many upcoming services the crate's ingredients and packaging cover. */
 export const KIT_SERVICES = 3;
@@ -115,24 +110,7 @@ export function migrateToUnifiedRestaurant(save: SaveData): SaveData {
   const atLevel = Math.min(restaurantLevelOf(save.levelProgress), LAST_CAMPAIGN_LEVEL);
   const kit: KitLine[] = [];
   const services = upcomingServices(save, atLevel);
-  let inventory = save.business.inventory;
   let stock = save.business.supplies.stock;
-
-  if (isSystemLive("ingredient-stock", atLevel)) {
-    const need = requirementsForRecipes(services.flatMap((s) => s.tickets));
-    let free = getAvailableStorageCapacity(inventory, save.business.refrigerator.refrigeratorId);
-    for (const r of need) {
-      const have = inventory[r.ingredientId]?.quantity ?? 0;
-      const units = Math.min(
-        Math.ceil(normalizeQuantity(r.quantity - have) - 1e-9),
-        Math.floor(free),
-      );
-      if (units <= 0) continue;
-      inventory = addStock(inventory, r.ingredientId, units, 0, save.business.calendar.businessDay);
-      free -= units;
-      kit.push({ kind: "ingredient", id: r.ingredientId, units });
-    }
-  }
 
   // Supplies plan A (2026-10-10): the kitchen tools the save's next services cook with.
   if (atLevel >= FIRST_PURCHASE_LEVEL) {
@@ -244,7 +222,6 @@ export function migrateToUnifiedRestaurant(save: SaveData): SaveData {
     ...save,
     business: {
       ...save.business,
-      inventory,
       supplies: { ...save.business.supplies, stock },
       restaurantMigration: {
         version: RESTAURANT_MIGRATION_VERSION,

@@ -1,0 +1,5227 @@
+{
+  "sourceLevelCount": 250,
+  "requiredLevelCount": 150,
+  "levels": [
+    {
+      "newLevel": 1,
+      "oldLevel": 1,
+      "id": "level-1",
+      "chapter": 1,
+      "title": "First Slice",
+      "type": "RELAX",
+      "recipeIds": [
+        "camp-sliced-tomato-plate"
+      ],
+      "recipeNames": [
+        "Sliced Tomato Plate"
+      ],
+      "ingredients": [
+        "tomato"
+      ],
+      "techniques": [
+        "slice"
+      ],
+      "componentCount": 1,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 50,
+      "purpose": "The first real order: a customer wants a plate of sliced tomato. Cut it, plate it, serve it.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 2,
+      "oldLevel": 2,
+      "id": "level-2",
+      "chapter": 1,
+      "title": "Basic Kitchen Learning",
+      "type": "RELAX",
+      "recipeIds": [
+        "camp-level2-basics-tutorial"
+      ],
+      "recipeNames": [
+        "Basic Knife Skills Practice"
+      ],
+      "ingredients": [
+        "tomato",
+        "cucumber",
+        "carrot",
+        "garlic"
+      ],
+      "techniques": [
+        "dice",
+        "slice",
+        "julienne",
+        "peel",
+        "smash"
+      ],
+      "componentCount": 5,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 52,
+      "purpose": "Practice tomato dice, cucumber slice, carrot julienne, and garlic peel/smash without spending stock or money.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 3,
+      "oldLevel": 4,
+      "id": "level-3",
+      "chapter": 1,
+      "title": "Garden Prep",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-garden-tomato-cucumber"
+      ],
+      "recipeNames": [
+        "Garden Tomato & Cucumber Plate"
+      ],
+      "ingredients": [
+        "tomato",
+        "cucumber"
+      ],
+      "techniques": [
+        "slice"
+      ],
+      "componentCount": 2,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 58,
+      "purpose": "The first dish that needs more than one thing prepared before it's ready.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 4,
+      "oldLevel": 8,
+      "id": "level-4",
+      "chapter": 1,
+      "title": "Halved Potato",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-halved-potato-bowl"
+      ],
+      "recipeNames": [
+        "Halved Potato Bowl"
+      ],
+      "ingredients": [
+        "potato"
+      ],
+      "techniques": [
+        "peel",
+        "halve"
+      ],
+      "componentCount": 2,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 72,
+      "purpose": "Peel the potato, then halve it evenly for the pan.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 5,
+      "oldLevel": 11,
+      "id": "level-5",
+      "chapter": 2,
+      "title": "Garlic Bread",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-garlic-bread"
+      ],
+      "recipeNames": [
+        "Garlic Bread"
+      ],
+      "ingredients": [
+        "bread",
+        "garlic"
+      ],
+      "techniques": [
+        "slice",
+        "peel",
+        "smash"
+      ],
+      "componentCount": 3,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 80,
+      "purpose": "A new chapter, a new identity — garlic bread, the way the house makes it.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 6,
+      "oldLevel": 12,
+      "id": "level-6",
+      "chapter": 2,
+      "title": "Tomato Basil Toast",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-tomato-basil-toast"
+      ],
+      "recipeNames": [
+        "Tomato Basil Toast"
+      ],
+      "ingredients": [
+        "bread",
+        "tomato",
+        "basil"
+      ],
+      "techniques": [
+        "slice",
+        "dice",
+        "chop"
+      ],
+      "componentCount": 3,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 83,
+      "purpose": "A fixed tomato-basil toast recipe teaches the next Italian dish without random recipe swaps.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 7,
+      "oldLevel": 13,
+      "id": "level-7",
+      "chapter": 2,
+      "title": "Mushroom Bruschetta",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-mushroom-bruschetta"
+      ],
+      "recipeNames": [
+        "Mushroom Bruschetta"
+      ],
+      "ingredients": [
+        "bread",
+        "mushroom",
+        "garlic"
+      ],
+      "techniques": [
+        "slice",
+        "peel",
+        "chop"
+      ],
+      "componentCount": 4,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 86,
+      "purpose": "Sliced mushroom and chopped garlic, over toasted bread.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 8,
+      "oldLevel": 14,
+      "id": "level-8",
+      "chapter": 2,
+      "title": "Zucchini Garden Plate",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-zucchini-garden-plate"
+      ],
+      "recipeNames": [
+        "Zucchini Garden Plate"
+      ],
+      "ingredients": [
+        "zucchini",
+        "carrot"
+      ],
+      "techniques": [
+        "slice",
+        "dice"
+      ],
+      "componentCount": 2,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 89,
+      "purpose": "Sliced zucchini and diced carrot — a simple green plate.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 9,
+      "oldLevel": 15,
+      "id": "level-9",
+      "chapter": 2,
+      "title": "Caprese Plate",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-caprese-plate"
+      ],
+      "recipeNames": [
+        "Caprese Plate"
+      ],
+      "ingredients": [
+        "tomato",
+        "mozzarella",
+        "basil"
+      ],
+      "techniques": [
+        "slice",
+        "chop"
+      ],
+      "componentCount": 3,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 92,
+      "purpose": "Tomato, mozzarella, basil — the caprese, plated the way it's meant to be.",
+      "sourceMilestone": null,
+      "unlockReward": {
+        "type": "knife",
+        "id": "paring",
+        "name": "Paring Knife"
+      }
+    },
+    {
+      "newLevel": 10,
+      "oldLevel": 10,
+      "id": "level-10",
+      "chapter": 2,
+      "title": "Simple Garden Salad",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-simple-garden-salad"
+      ],
+      "recipeNames": [
+        "Simple Garden Salad"
+      ],
+      "ingredients": [
+        "tomato",
+        "cucumber",
+        "carrot"
+      ],
+      "techniques": [
+        "dice",
+        "slice",
+        "chop"
+      ],
+      "componentCount": 3,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 80,
+      "purpose": "The first dish that draws on everything learned so far — dice, slice, and chop, one plate, one customer.",
+      "sourceMilestone": "Prep Station",
+      "unlockReward": {
+        "type": "knife",
+        "id": "santoku",
+        "name": "Santoku"
+      }
+    },
+    {
+      "newLevel": 11,
+      "oldLevel": 16,
+      "id": "level-11",
+      "chapter": 2,
+      "title": "Onion Rings",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-onion-rings-basket"
+      ],
+      "recipeNames": [
+        "Onion Rings Basket"
+      ],
+      "ingredients": [
+        "onion"
+      ],
+      "techniques": [
+        "peel",
+        "rings"
+      ],
+      "componentCount": 2,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 95,
+      "purpose": "Cut the onion into even rings — a technique this kitchen hasn't used before.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 12,
+      "oldLevel": 18,
+      "id": "level-12",
+      "chapter": 2,
+      "title": "Bruschetta for the House",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-bruschetta-for-the-house"
+      ],
+      "recipeNames": [
+        "Bruschetta for the House"
+      ],
+      "ingredients": [
+        "bread",
+        "tomato",
+        "garlic",
+        "basil",
+        "mozzarella"
+      ],
+      "techniques": [
+        "slice",
+        "dice",
+        "peel",
+        "chop"
+      ],
+      "componentCount": 6,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 103,
+      "purpose": "The biggest single order yet — bread, tomato, garlic, and basil, all for one plate.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 13,
+      "oldLevel": 20,
+      "id": "level-13",
+      "chapter": 2,
+      "title": "Italian Garden Plate",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-italian-garden-plate"
+      ],
+      "recipeNames": [
+        "Italian Garden Plate"
+      ],
+      "ingredients": [
+        "tomato",
+        "zucchini",
+        "basil",
+        "onion"
+      ],
+      "techniques": [
+        "dice",
+        "slice",
+        "chop",
+        "peel",
+        "rings"
+      ],
+      "componentCount": 5,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 110,
+      "purpose": "Everything this chapter taught, on one plate — dice, slice, chop, and rings, all Italian.",
+      "sourceMilestone": "Second Cutting Board",
+      "unlockReward": {
+        "type": "board",
+        "id": "herb",
+        "name": "Herb Garden Board"
+      }
+    },
+    {
+      "newLevel": 14,
+      "oldLevel": 17,
+      "id": "level-14",
+      "chapter": 2,
+      "title": "Garden Minestrone Base",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-garden-minestrone-base"
+      ],
+      "recipeNames": [
+        "Garden Minestrone Base"
+      ],
+      "ingredients": [
+        "tomato",
+        "carrot",
+        "zucchini",
+        "onion"
+      ],
+      "techniques": [
+        "dice",
+        "chop",
+        "slice",
+        "peel"
+      ],
+      "componentCount": 5,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 99,
+      "purpose": "Diced tomato, chopped carrot, sliced zucchini — the base of a real minestrone.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 15,
+      "oldLevel": 29,
+      "id": "level-15",
+      "chapter": 2,
+      "title": "Family Antipasto for Two",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-family-antipasto-for-two"
+      ],
+      "recipeNames": [
+        "Family Antipasto for Two"
+      ],
+      "ingredients": [
+        "bread",
+        "tomato",
+        "mozzarella"
+      ],
+      "techniques": [
+        "slice",
+        "dice"
+      ],
+      "componentCount": 3,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 130,
+      "purpose": "One batch of bread and tomato, split evenly across two diners' plates — a single preparation, two destinations.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 16,
+      "oldLevel": 24,
+      "id": "level-16",
+      "chapter": 2,
+      "title": "Antipasto Plate",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-caprese-plate",
+        "camp-beetroot-plate",
+        "camp-eggplant-antipasto"
+      ],
+      "recipeNames": [
+        "Caprese Plate",
+        "Beetroot & Orange Plate",
+        "Eggplant Antipasto"
+      ],
+      "ingredients": [
+        "tomato",
+        "mozzarella",
+        "basil",
+        "beetroot",
+        "orange",
+        "eggplant",
+        "garlic"
+      ],
+      "techniques": [
+        "slice",
+        "chop",
+        "peel",
+        "radial",
+        "smash"
+      ],
+      "componentCount": 10,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 122,
+      "purpose": "Tonight's antipasto draws on recipes the kitchen has already mastered.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 17,
+      "oldLevel": 26,
+      "id": "level-17",
+      "chapter": 2,
+      "title": "Two Tables, One Batch",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-bruschetta-trio",
+        "camp-garden-tomato-cup"
+      ],
+      "recipeNames": [
+        "Bruschetta Trio",
+        "Garden Tomato Cup"
+      ],
+      "ingredients": [
+        "bread",
+        "tomato",
+        "basil",
+        "garlic",
+        "cucumber"
+      ],
+      "techniques": [
+        "slice",
+        "dice",
+        "chop",
+        "peel",
+        "smash"
+      ],
+      "componentCount": 8,
+      "requiredOrders": 1,
+      "batchGroup": true,
+      "reward": 126,
+      "purpose": "Two customers, two different dishes — both need the tomato diced the same way. Prepare it once, use it well.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 18,
+      "oldLevel": 28,
+      "id": "level-18",
+      "chapter": 2,
+      "title": "Onion Two Ways",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-onion-two-ways"
+      ],
+      "recipeNames": [
+        "Onion Two Ways"
+      ],
+      "ingredients": [
+        "onion"
+      ],
+      "techniques": [
+        "peel",
+        "halve",
+        "slice",
+        "dice"
+      ],
+      "componentCount": 4,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 129,
+      "purpose": "One onion, prepared twice: sliced for the bruschetta, diced for the soup base — two real destinations from one order.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 19,
+      "oldLevel": 30,
+      "id": "level-19",
+      "chapter": 2,
+      "title": "Italian Service Night",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-bruschetta-trio",
+        "camp-caprese-skewers-batch",
+        "camp-caprese-plate",
+        "camp-eggplant-antipasto"
+      ],
+      "recipeNames": [
+        "Bruschetta Trio",
+        "Caprese Skewers Batch",
+        "Caprese Plate",
+        "Eggplant Antipasto"
+      ],
+      "ingredients": [
+        "bread",
+        "tomato",
+        "basil",
+        "garlic",
+        "mozzarella",
+        "eggplant"
+      ],
+      "techniques": [
+        "slice",
+        "dice",
+        "chop",
+        "peel",
+        "smash"
+      ],
+      "componentCount": 16,
+      "requiredOrders": 2,
+      "batchGroup": false,
+      "reward": 130,
+      "purpose": "A full night of service — two customers, drawing on every Italian recipe this chapter has taught.",
+      "sourceMilestone": "The Cutting Board",
+      "unlockReward": {
+        "type": "board",
+        "id": "marble",
+        "name": "Marble Board"
+      }
+    },
+    {
+      "newLevel": 20,
+      "oldLevel": 27,
+      "id": "level-20",
+      "chapter": 2,
+      "title": "Julienne Vegetable Medley",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-julienne-vegetable-medley",
+        "camp-zucchini-fennel-julienne"
+      ],
+      "recipeNames": [
+        "Julienne Vegetable Medley",
+        "Zucchini & Fennel with Lemon"
+      ],
+      "ingredients": [
+        "carrot",
+        "pepper",
+        "cucumber",
+        "zucchini",
+        "fennel",
+        "lemon"
+      ],
+      "techniques": [
+        "julienne",
+        "slice",
+        "radial"
+      ],
+      "componentCount": 6,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 128,
+      "purpose": "Carrot, pepper, and cucumber, all julienned to the same standard.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 21,
+      "oldLevel": 32,
+      "id": "level-21",
+      "chapter": 3,
+      "title": "French Onion Base",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-french-onion-base"
+      ],
+      "recipeNames": [
+        "French Onion Base"
+      ],
+      "ingredients": [
+        "onion",
+        "celery"
+      ],
+      "techniques": [
+        "peel",
+        "slice",
+        "julienne"
+      ],
+      "componentCount": 3,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 133,
+      "purpose": "Sliced onion and julienned celery — the base of a real French onion soup.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 22,
+      "oldLevel": 33,
+      "id": "level-22",
+      "chapter": 3,
+      "title": "Potato Veloute Base",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-potato-veloute-base"
+      ],
+      "recipeNames": [
+        "Potato Veloute Base"
+      ],
+      "ingredients": [
+        "potato"
+      ],
+      "techniques": [
+        "peel",
+        "dice"
+      ],
+      "componentCount": 2,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 136,
+      "purpose": "An even dice on the potato — the bistro expects consistency.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 23,
+      "oldLevel": 34,
+      "id": "level-23",
+      "chapter": 3,
+      "title": "Rock Minced Garlic",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-rock-minced-garlic-herb"
+      ],
+      "recipeNames": [
+        "Rock Minced Garlic"
+      ],
+      "ingredients": [
+        "garlic"
+      ],
+      "techniques": [
+        "peel",
+        "rockMince"
+      ],
+      "componentCount": 2,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 139,
+      "purpose": "Rock the blade heel-to-tip over the garlic until it's fine and even.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 24,
+      "oldLevel": 35,
+      "id": "level-24",
+      "chapter": 3,
+      "title": "Chiffonade Herb Garnish",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-chiffonade-herb-garnish"
+      ],
+      "recipeNames": [
+        "Chiffonade Herb Garnish"
+      ],
+      "ingredients": [
+        "basil"
+      ],
+      "techniques": [
+        "chiffonade"
+      ],
+      "componentCount": 1,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 142,
+      "purpose": "Roll the basil tight and ribbon it fine — the eleventh and final technique.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 25,
+      "oldLevel": 36,
+      "id": "level-25",
+      "chapter": 3,
+      "title": "Mushroom & Garlic Saute Prep",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-mushroom-garlic-saute-prep"
+      ],
+      "recipeNames": [
+        "Mushroom & Garlic Saute Prep"
+      ],
+      "ingredients": [
+        "mushroom",
+        "garlic"
+      ],
+      "techniques": [
+        "slice",
+        "peel",
+        "rockMince"
+      ],
+      "componentCount": 3,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 145,
+      "purpose": "Sliced mushroom, rock-minced garlic through it — the sauté pan's first real order.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 26,
+      "oldLevel": 37,
+      "id": "level-26",
+      "chapter": 3,
+      "title": "Spinach & Fennel Chiffonade",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-spinach-fennel-chiffonade-plate"
+      ],
+      "recipeNames": [
+        "Spinach & Fennel Chiffonade Plate"
+      ],
+      "ingredients": [
+        "spinach",
+        "fennel"
+      ],
+      "techniques": [
+        "chiffonade",
+        "slice"
+      ],
+      "componentCount": 2,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 148,
+      "purpose": "Ribboned spinach and sliced fennel — delicate, and precise.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 27,
+      "oldLevel": 39,
+      "id": "level-27",
+      "chapter": 3,
+      "title": "Celery & Potato Prep",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-celery-potato-prep"
+      ],
+      "recipeNames": [
+        "Celery & Potato Prep"
+      ],
+      "ingredients": [
+        "celery",
+        "potato",
+        "garlic"
+      ],
+      "techniques": [
+        "julienne",
+        "peel",
+        "dice",
+        "rockMince"
+      ],
+      "componentCount": 5,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 154,
+      "purpose": "Julienned celery, diced potato, rock-minced garlic — everything this chapter taught, together.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 28,
+      "oldLevel": 40,
+      "id": "level-28",
+      "chapter": 3,
+      "title": "French Bistro Grand Service",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-rock-minced-garlic-herb",
+        "camp-chiffonade-herb-garnish",
+        "camp-asparagus-carrot-precision-plate",
+        "camp-mushroom-garlic-saute-prep"
+      ],
+      "recipeNames": [
+        "Rock Minced Garlic",
+        "Chiffonade Herb Garnish",
+        "Asparagus & Carrot Precision Plate",
+        "Mushroom & Garlic Saute Prep"
+      ],
+      "ingredients": [
+        "garlic",
+        "basil",
+        "asparagus",
+        "carrot",
+        "mushroom"
+      ],
+      "techniques": [
+        "peel",
+        "rockMince",
+        "chiffonade",
+        "slice",
+        "julienne"
+      ],
+      "componentCount": 8,
+      "requiredOrders": 2,
+      "batchGroup": false,
+      "reward": 158,
+      "purpose": "The chapter's finale — two customers, a full French bistro pool, and every one of the 11 techniques already in the kitchen's hands.",
+      "sourceMilestone": "Breakfast Shelf",
+      "unlockReward": {
+        "type": "knife",
+        "id": "cleaver",
+        "name": "Cleaver"
+      }
+    },
+    {
+      "newLevel": 29,
+      "oldLevel": 41,
+      "id": "level-29",
+      "chapter": 3,
+      "title": "Precision Plate",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-julienne-trio-potato"
+      ],
+      "recipeNames": [
+        "Julienne Vegetable Trio & Potato"
+      ],
+      "ingredients": [
+        "carrot",
+        "celery",
+        "potato"
+      ],
+      "techniques": [
+        "julienne",
+        "peel",
+        "dice"
+      ],
+      "componentCount": 4,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 161,
+      "purpose": "No new technique here — the challenge now is applying the right cut to the right ingredient.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 30,
+      "oldLevel": 43,
+      "id": "level-30",
+      "chapter": 3,
+      "title": "Mushroom Duxelles",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-mushroom-duxelles-prep"
+      ],
+      "recipeNames": [
+        "Mushroom Duxelles Prep"
+      ],
+      "ingredients": [
+        "mushroom",
+        "garlic",
+        "onion"
+      ],
+      "techniques": [
+        "slice",
+        "peel",
+        "rockMince",
+        "dice"
+      ],
+      "componentCount": 5,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 169,
+      "purpose": "Two techniques, one prep — mushroom and garlic, worked together.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 31,
+      "oldLevel": 44,
+      "id": "level-31",
+      "chapter": 3,
+      "title": "Potato & Onion Gratin",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-potato-onion-gratin-prep"
+      ],
+      "recipeNames": [
+        "Potato & Onion Gratin Prep"
+      ],
+      "ingredients": [
+        "potato",
+        "onion"
+      ],
+      "techniques": [
+        "peel",
+        "dice",
+        "slice"
+      ],
+      "componentCount": 4,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 173,
+      "purpose": "The gratin base — even dice, thin slice.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 32,
+      "oldLevel": 45,
+      "id": "level-32",
+      "chapter": 3,
+      "title": "Herb Garden Vegetable Plate",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-herb-butter-vegetable-plate"
+      ],
+      "recipeNames": [
+        "Herb Butter Vegetable Plate"
+      ],
+      "ingredients": [
+        "basil",
+        "carrot",
+        "potato",
+        "butter"
+      ],
+      "techniques": [
+        "chiffonade",
+        "julienne",
+        "peel",
+        "dice",
+        "slice"
+      ],
+      "componentCount": 5,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 178,
+      "purpose": "Chiffonade, julienne, and dice — everything this kitchen has learned, on one plate.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 33,
+      "oldLevel": 46,
+      "id": "level-33",
+      "chapter": 3,
+      "title": "Fennel & Celery Julienne",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-fennel-celery-julienne",
+        "camp-celery-apple-remoulade-prep"
+      ],
+      "recipeNames": [
+        "Fennel & Celery Julienne",
+        "Celery & Apple Remoulade Prep"
+      ],
+      "ingredients": [
+        "fennel",
+        "celery",
+        "apple",
+        "lemon"
+      ],
+      "techniques": [
+        "slice",
+        "julienne",
+        "peel",
+        "radial"
+      ],
+      "componentCount": 6,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 182,
+      "purpose": "Slice the fennel, julienne the celery — matching precision across two vegetables.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 34,
+      "oldLevel": 50,
+      "id": "level-34",
+      "chapter": 3,
+      "title": "French Precision Service",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-three-herb-garnish",
+        "camp-mushroom-duxelles-prep",
+        "camp-herb-butter-vegetable-plate"
+      ],
+      "recipeNames": [
+        "Herb & Garlic Garnish",
+        "Mushroom Duxelles Prep",
+        "Herb Butter Vegetable Plate"
+      ],
+      "ingredients": [
+        "basil",
+        "parsley",
+        "garlic",
+        "mushroom",
+        "onion",
+        "carrot",
+        "potato",
+        "butter"
+      ],
+      "techniques": [
+        "chiffonade",
+        "peel",
+        "rockMince",
+        "slice",
+        "dice",
+        "julienne"
+      ],
+      "componentCount": 14,
+      "requiredOrders": 2,
+      "batchGroup": false,
+      "reward": 200,
+      "purpose": "The chapter's finale — two orders, drawing on every precision recipe learned so far.",
+      "sourceMilestone": "Premium Knife Collection",
+      "unlockReward": {
+        "type": "knife",
+        "id": "damascus",
+        "name": "Damascus Knife"
+      }
+    },
+    {
+      "newLevel": 35,
+      "oldLevel": 51,
+      "id": "level-35",
+      "chapter": 4,
+      "title": "Potato Curry Base",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-potato-curry-base"
+      ],
+      "recipeNames": [
+        "Potato Curry Base"
+      ],
+      "ingredients": [
+        "potato",
+        "onion",
+        "tomato"
+      ],
+      "techniques": [
+        "peel",
+        "dice",
+        "chop"
+      ],
+      "componentCount": 5,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 206,
+      "purpose": "Indian identity begins here — peeled, then diced potato for the curry.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 36,
+      "oldLevel": 52,
+      "id": "level-36",
+      "chapter": 4,
+      "title": "Onion Tomato Masala Base",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-onion-tomato-masala-base"
+      ],
+      "recipeNames": [
+        "Onion Tomato Masala Base"
+      ],
+      "ingredients": [
+        "onion",
+        "tomato",
+        "garlic",
+        "ginger"
+      ],
+      "techniques": [
+        "peel",
+        "chop",
+        "dice",
+        "smash",
+        "rockMince"
+      ],
+      "componentCount": 7,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 210,
+      "purpose": "Chopped onion, diced tomato, smashed garlic — the base most dishes here start from.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 37,
+      "oldLevel": 54,
+      "id": "level-37",
+      "chapter": 4,
+      "title": "Garlic & Ginger Curry Paste",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-garlic-curry-paste"
+      ],
+      "recipeNames": [
+        "Garlic & Ginger Curry Paste"
+      ],
+      "ingredients": [
+        "garlic",
+        "ginger"
+      ],
+      "techniques": [
+        "peel",
+        "rockMince"
+      ],
+      "componentCount": 4,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 218,
+      "purpose": "Fine, even garlic — the base of the curry paste.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 38,
+      "oldLevel": 57,
+      "id": "level-38",
+      "chapter": 4,
+      "title": "Mango Chutney Base",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-mango-chutney-base"
+      ],
+      "recipeNames": [
+        "Mango Chutney Base"
+      ],
+      "ingredients": [
+        "mango",
+        "chilli"
+      ],
+      "techniques": [
+        "peel",
+        "dice",
+        "slice"
+      ],
+      "componentCount": 3,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 230,
+      "purpose": "A ripe mango, peeled and diced for the chutney.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 39,
+      "oldLevel": 58,
+      "id": "level-39",
+      "chapter": 4,
+      "title": "Pumpkin Curry Dice",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-pumpkin-curry-dice"
+      ],
+      "recipeNames": [
+        "Pumpkin Curry Dice"
+      ],
+      "ingredients": [
+        "pumpkin"
+      ],
+      "techniques": [
+        "peel",
+        "dice"
+      ],
+      "componentCount": 2,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 232,
+      "purpose": "Pumpkin, diced evenly for the curry.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 40,
+      "oldLevel": 60,
+      "id": "level-40",
+      "chapter": 4,
+      "title": "Indian Kitchen Service",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-onion-tomato-masala-base",
+        "camp-spinach-peapod-bowl",
+        "camp-aromatic-garlic-smash"
+      ],
+      "recipeNames": [
+        "Onion Tomato Masala Base",
+        "Spinach & Pea Pod Bowl",
+        "Aromatic Garlic & Onion Base"
+      ],
+      "ingredients": [
+        "onion",
+        "tomato",
+        "garlic",
+        "ginger",
+        "spinach",
+        "peapod"
+      ],
+      "techniques": [
+        "peel",
+        "chop",
+        "dice",
+        "smash",
+        "rockMince",
+        "slice"
+      ],
+      "componentCount": 15,
+      "requiredOrders": 2,
+      "batchGroup": false,
+      "reward": 240,
+      "purpose": "Two orders, drawing on everything this kitchen's Indian recipes have taught.",
+      "sourceMilestone": "Herb Knife",
+      "unlockReward": {
+        "type": "cafe_milestone",
+        "id": "garden-cafe",
+        "name": "Garden Café"
+      }
+    },
+    {
+      "newLevel": 41,
+      "oldLevel": 61,
+      "id": "level-41",
+      "chapter": 4,
+      "title": "Two Tables, Two Curries",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-spinach-curry",
+        "camp-cauliflower-curry"
+      ],
+      "recipeNames": [
+        "Spinach Curry",
+        "Cauliflower Curry"
+      ],
+      "ingredients": [
+        "onion",
+        "spinach",
+        "ginger",
+        "cauliflower",
+        "tomato"
+      ],
+      "techniques": [
+        "peel",
+        "chop",
+        "rockMince",
+        "dice"
+      ],
+      "componentCount": 11,
+      "requiredOrders": 2,
+      "batchGroup": false,
+      "reward": 244,
+      "purpose": "Spinach curry, cauliflower curry — two different dishes that both start with chopped onion.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 42,
+      "oldLevel": 62,
+      "id": "level-42",
+      "chapter": 4,
+      "title": "Mango Onion Relish",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-mango-onion-relish"
+      ],
+      "recipeNames": [
+        "Mango Onion Relish"
+      ],
+      "ingredients": [
+        "onion",
+        "mango",
+        "chilli"
+      ],
+      "techniques": [
+        "peel",
+        "chop",
+        "dice",
+        "slice"
+      ],
+      "componentCount": 4,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 246,
+      "purpose": "Chopped onion, diced mango — a relish that turns up alongside many dishes here.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 43,
+      "oldLevel": 64,
+      "id": "level-43",
+      "chapter": 4,
+      "title": "Shared Onion, Two Curries",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-spinach-curry",
+        "camp-cauliflower-curry"
+      ],
+      "recipeNames": [
+        "Spinach Curry",
+        "Cauliflower Curry"
+      ],
+      "ingredients": [
+        "onion",
+        "spinach",
+        "ginger",
+        "cauliflower",
+        "tomato"
+      ],
+      "techniques": [
+        "peel",
+        "chop",
+        "rockMince",
+        "dice"
+      ],
+      "componentCount": 11,
+      "requiredOrders": 1,
+      "batchGroup": true,
+      "reward": 252,
+      "purpose": "Two customers, two curries, ONE chopped onion that satisfies both — prepare it once.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 44,
+      "oldLevel": 67,
+      "id": "level-44",
+      "chapter": 4,
+      "title": "Shared Tomato, Two Curries",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-potato-tomato-curry",
+        "camp-pea-tomato-curry"
+      ],
+      "recipeNames": [
+        "Potato Tomato Curry",
+        "Pea Tomato Curry"
+      ],
+      "ingredients": [
+        "tomato",
+        "potato",
+        "ginger",
+        "peapod"
+      ],
+      "techniques": [
+        "dice",
+        "peel",
+        "rockMince",
+        "slice"
+      ],
+      "componentCount": 9,
+      "requiredOrders": 1,
+      "batchGroup": true,
+      "reward": 262,
+      "purpose": "Two customers, two curries, ONE diced tomato that satisfies both.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 45,
+      "oldLevel": 70,
+      "id": "level-45",
+      "chapter": 4,
+      "title": "The Grand Aromatic Service",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-spinach-curry",
+        "camp-cauliflower-curry",
+        "camp-mango-onion-relish"
+      ],
+      "recipeNames": [
+        "Spinach Curry",
+        "Cauliflower Curry",
+        "Mango Onion Relish"
+      ],
+      "ingredients": [
+        "onion",
+        "spinach",
+        "ginger",
+        "cauliflower",
+        "tomato",
+        "mango",
+        "chilli"
+      ],
+      "techniques": [
+        "peel",
+        "chop",
+        "rockMince",
+        "dice",
+        "slice"
+      ],
+      "componentCount": 15,
+      "requiredOrders": 1,
+      "batchGroup": true,
+      "reward": 280,
+      "purpose": "Three orders at once, all sharing the same chopped onion — the kitchen is genuinely running now.",
+      "sourceMilestone": "Order Board",
+      "unlockReward": {
+        "type": "cafe_milestone",
+        "id": "pasta-kitchen",
+        "name": "Pasta Kitchen"
+      }
+    },
+    {
+      "newLevel": 46,
+      "oldLevel": 71,
+      "id": "level-46",
+      "chapter": 5,
+      "title": "Cucumber & Tomato Mezze",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-cucumber-tomato-mezze"
+      ],
+      "recipeNames": [
+        "Cucumber & Tomato Mezze"
+      ],
+      "ingredients": [
+        "cucumber",
+        "tomato",
+        "parsley",
+        "onion",
+        "lemon"
+      ],
+      "techniques": [
+        "slice",
+        "dice",
+        "chop",
+        "peel",
+        "radial"
+      ],
+      "componentCount": 6,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 286,
+      "purpose": "Mediterranean identity begins here — fresh cucumber, tomato, and parsley.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 47,
+      "oldLevel": 74,
+      "id": "level-47",
+      "chapter": 5,
+      "title": "Avocado Baguette Toast",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-avocado-baguette-toast"
+      ],
+      "recipeNames": [
+        "Avocado Baguette Toast"
+      ],
+      "ingredients": [
+        "baguette",
+        "avocado",
+        "lemon"
+      ],
+      "techniques": [
+        "slice",
+        "halve",
+        "radial"
+      ],
+      "componentCount": 4,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 296,
+      "purpose": "Sliced baguette, halved avocado.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 48,
+      "oldLevel": 76,
+      "id": "level-48",
+      "chapter": 5,
+      "title": "Herb & Tomato Base",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-tabbouleh-inspired-base"
+      ],
+      "recipeNames": [
+        "Herb & Tomato Base"
+      ],
+      "ingredients": [
+        "parsley",
+        "tomato",
+        "garlic",
+        "onion"
+      ],
+      "techniques": [
+        "chiffonade",
+        "dice",
+        "peel",
+        "chop"
+      ],
+      "componentCount": 6,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 302,
+      "purpose": "Chopped parsley, diced tomato, chopped garlic — a bright, herby base.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 49,
+      "oldLevel": 81,
+      "id": "level-49",
+      "chapter": 6,
+      "title": "Corn & Tomato Salsa",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-corn-tomato-salsa"
+      ],
+      "recipeNames": [
+        "Corn & Tomato Salsa"
+      ],
+      "ingredients": [
+        "corn",
+        "tomato",
+        "onion",
+        "chilli",
+        "garlic"
+      ],
+      "techniques": [
+        "slice",
+        "dice",
+        "peel",
+        "chop",
+        "smash"
+      ],
+      "componentCount": 7,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 326,
+      "purpose": "Mexican/Latin identity begins here — corn, tomato, and onion.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 50,
+      "oldLevel": 82,
+      "id": "level-50",
+      "chapter": 6,
+      "title": "Avocado & Lime Plate",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-avocado-plate"
+      ],
+      "recipeNames": [
+        "Avocado & Lime Plate"
+      ],
+      "ingredients": [
+        "avocado",
+        "lime"
+      ],
+      "techniques": [
+        "halve",
+        "slice",
+        "radial"
+      ],
+      "componentCount": 3,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 330,
+      "purpose": "A ripe avocado, halved.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 51,
+      "oldLevel": 84,
+      "id": "level-51",
+      "chapter": 6,
+      "title": "Pineapple & Mango Fresh Cup",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-pineapple-mango-fresh"
+      ],
+      "recipeNames": [
+        "Pineapple & Mango Fresh Cup"
+      ],
+      "ingredients": [
+        "pineapple",
+        "mango",
+        "lime"
+      ],
+      "techniques": [
+        "peel",
+        "dice",
+        "radial"
+      ],
+      "componentCount": 4,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 338,
+      "purpose": "Diced pineapple, diced mango.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 52,
+      "oldLevel": 85,
+      "id": "level-52",
+      "chapter": 6,
+      "title": "Sweet Potato Hash",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-sweetpotato-hash"
+      ],
+      "recipeNames": [
+        "Sweet Potato Hash"
+      ],
+      "ingredients": [
+        "sweetpotato",
+        "pepper",
+        "onion"
+      ],
+      "techniques": [
+        "peel",
+        "dice",
+        "chop"
+      ],
+      "componentCount": 5,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 342,
+      "purpose": "Diced sweet potato, diced pepper.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 53,
+      "oldLevel": 87,
+      "id": "level-53",
+      "chapter": 6,
+      "title": "Pineapple Salsa",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-pineapple-salsa"
+      ],
+      "recipeNames": [
+        "Pineapple Salsa"
+      ],
+      "ingredients": [
+        "pineapple",
+        "tomato",
+        "onion",
+        "chilli",
+        "cilantro"
+      ],
+      "techniques": [
+        "peel",
+        "dice",
+        "chop",
+        "slice"
+      ],
+      "componentCount": 7,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 350,
+      "purpose": "Diced pineapple, diced tomato, chopped onion.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 54,
+      "oldLevel": 89,
+      "id": "level-54",
+      "chapter": 6,
+      "title": "Two Salsas, One Kitchen",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-corn-tomato-salsa",
+        "camp-pineapple-salsa"
+      ],
+      "recipeNames": [
+        "Corn & Tomato Salsa",
+        "Pineapple Salsa"
+      ],
+      "ingredients": [
+        "corn",
+        "tomato",
+        "onion",
+        "chilli",
+        "garlic",
+        "pineapple",
+        "cilantro"
+      ],
+      "techniques": [
+        "slice",
+        "dice",
+        "peel",
+        "chop",
+        "smash"
+      ],
+      "componentCount": 14,
+      "requiredOrders": 2,
+      "batchGroup": false,
+      "reward": 360,
+      "purpose": "Corn salsa and pineapple salsa, both built on the same tomato and onion.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 55,
+      "oldLevel": 91,
+      "id": "level-55",
+      "chapter": 6,
+      "title": "Latin Service Begins",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-corn-tomato-salsa",
+        "camp-pineapple-salsa",
+        "camp-fresh-tomato-salsa"
+      ],
+      "recipeNames": [
+        "Corn & Tomato Salsa",
+        "Pineapple Salsa",
+        "Fresh Tomato Salsa"
+      ],
+      "ingredients": [
+        "corn",
+        "tomato",
+        "onion",
+        "chilli",
+        "garlic",
+        "pineapple",
+        "cilantro",
+        "lime"
+      ],
+      "techniques": [
+        "slice",
+        "dice",
+        "peel",
+        "chop",
+        "smash",
+        "radial"
+      ],
+      "componentCount": 22,
+      "requiredOrders": 2,
+      "batchGroup": false,
+      "reward": 370,
+      "purpose": "Two to three customers, drawing on the whole Latin recipe pool.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 56,
+      "oldLevel": 94,
+      "id": "level-56",
+      "chapter": 6,
+      "title": "Fajita Night",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-avocado-plate",
+        "camp-pepper-fajita-julienne"
+      ],
+      "recipeNames": [
+        "Avocado & Lime Plate",
+        "Pepper Fajita Julienne"
+      ],
+      "ingredients": [
+        "avocado",
+        "lime",
+        "pepper",
+        "onion"
+      ],
+      "techniques": [
+        "halve",
+        "slice",
+        "radial",
+        "julienne",
+        "peel",
+        "rings"
+      ],
+      "componentCount": 6,
+      "requiredOrders": 2,
+      "batchGroup": false,
+      "reward": 384,
+      "purpose": "Avocado and fajita vegetables, two customers, two plates.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 57,
+      "oldLevel": 98,
+      "id": "level-57",
+      "chapter": 6,
+      "title": "Three Salsas, One Batch",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-corn-tomato-salsa",
+        "camp-pineapple-salsa",
+        "camp-fresh-tomato-salsa"
+      ],
+      "recipeNames": [
+        "Corn & Tomato Salsa",
+        "Pineapple Salsa",
+        "Fresh Tomato Salsa"
+      ],
+      "ingredients": [
+        "corn",
+        "tomato",
+        "onion",
+        "chilli",
+        "garlic",
+        "pineapple",
+        "cilantro",
+        "lime"
+      ],
+      "techniques": [
+        "slice",
+        "dice",
+        "peel",
+        "chop",
+        "smash",
+        "radial"
+      ],
+      "componentCount": 22,
+      "requiredOrders": 1,
+      "batchGroup": true,
+      "reward": 400,
+      "purpose": "Three customers, three salsas, ONE shared tomato-and-onion batch satisfying all three.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 58,
+      "oldLevel": 100,
+      "id": "level-58",
+      "chapter": 6,
+      "title": "The Grand Latin Service",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-corn-tomato-salsa",
+        "camp-pineapple-salsa",
+        "camp-pepper-two-ways"
+      ],
+      "recipeNames": [
+        "Corn & Tomato Salsa",
+        "Pineapple Salsa",
+        "Pepper Two Ways"
+      ],
+      "ingredients": [
+        "corn",
+        "tomato",
+        "onion",
+        "chilli",
+        "garlic",
+        "pineapple",
+        "cilantro",
+        "pepper"
+      ],
+      "techniques": [
+        "slice",
+        "dice",
+        "peel",
+        "chop",
+        "smash",
+        "julienne"
+      ],
+      "componentCount": 16,
+      "requiredOrders": 1,
+      "batchGroup": true,
+      "reward": 420,
+      "purpose": "Three customers at once — two salsas sharing one batch, and a genuine branch — the whole architecture, together.",
+      "sourceMilestone": "Chef's Service",
+      "unlockReward": {
+        "type": "cafe_milestone",
+        "id": "grand-cafe",
+        "name": "Grand Café"
+      }
+    },
+    {
+      "newLevel": 59,
+      "oldLevel": 101,
+      "id": "level-59",
+      "chapter": 7,
+      "title": "Chicken Introduction",
+      "type": "RELAX",
+      "recipeIds": [
+        "camp-chicken-slice-intro"
+      ],
+      "recipeNames": [
+        "Sliced Chicken Plate"
+      ],
+      "ingredients": [
+        "chicken"
+      ],
+      "techniques": [
+        "slice"
+      ],
+      "componentCount": 1,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 200,
+      "purpose": "A boneless fillet, sliced clean — the new protein geometry, its own knife feel.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 60,
+      "oldLevel": 102,
+      "id": "level-60",
+      "chapter": 7,
+      "title": "Chicken Preparation",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-chicken-halve-slice"
+      ],
+      "recipeNames": [
+        "Halved & Sliced Chicken"
+      ],
+      "ingredients": [
+        "chicken"
+      ],
+      "techniques": [
+        "halve",
+        "slice"
+      ],
+      "componentCount": 2,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 215,
+      "purpose": "Halved first, then sliced — the fillet's own real state progression.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 61,
+      "oldLevel": 104,
+      "id": "level-61",
+      "chapter": 7,
+      "title": "Chicken Garden Plate",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-chicken-garden-plate"
+      ],
+      "recipeNames": [
+        "Chicken Garden Plate"
+      ],
+      "ingredients": [
+        "chicken",
+        "cucumber",
+        "carrot"
+      ],
+      "techniques": [
+        "slice",
+        "julienne"
+      ],
+      "componentCount": 3,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 250,
+      "purpose": "The protein now shares a plate — cucumber and carrot alongside it.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 62,
+      "oldLevel": 105,
+      "id": "level-62",
+      "chapter": 7,
+      "title": "Chicken Bistro",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-chicken-garden-plate",
+        "camp-chicken-julienne-cabbage"
+      ],
+      "recipeNames": [
+        "Chicken Garden Plate",
+        "Chicken & Cabbage Julienne"
+      ],
+      "ingredients": [
+        "chicken",
+        "cucumber",
+        "carrot",
+        "cabbage",
+        "ginger"
+      ],
+      "techniques": [
+        "slice",
+        "julienne",
+        "peel"
+      ],
+      "componentCount": 7,
+      "requiredOrders": 2,
+      "batchGroup": false,
+      "reward": 275,
+      "purpose": "Two customers, two chicken dishes — the same protein, different partners.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 63,
+      "oldLevel": 106,
+      "id": "level-63",
+      "chapter": 7,
+      "title": "Ribeye Introduction",
+      "type": "RELAX",
+      "recipeIds": [
+        "camp-steak-slice-intro"
+      ],
+      "recipeNames": [
+        "Sliced Ribeye Plate"
+      ],
+      "ingredients": [
+        "steak"
+      ],
+      "techniques": [
+        "slice"
+      ],
+      "componentCount": 1,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 260,
+      "purpose": "A different weight than the chicken — the ribeye's own knife feel.",
+      "sourceMilestone": null,
+      "unlockReward": {
+        "type": "board",
+        "id": "butcherblock",
+        "name": "Butcher's Block"
+      }
+    },
+    {
+      "newLevel": 64,
+      "oldLevel": 107,
+      "id": "level-64",
+      "chapter": 7,
+      "title": "Steak Preparation",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-steak-slice-dice"
+      ],
+      "recipeNames": [
+        "Sliced & Diced Steak"
+      ],
+      "ingredients": [
+        "steak"
+      ],
+      "techniques": [
+        "slice",
+        "dice"
+      ],
+      "componentCount": 2,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 285,
+      "purpose": "Sliced, then a portion diced — the same fillet, two textures.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 65,
+      "oldLevel": 108,
+      "id": "level-65",
+      "chapter": 7,
+      "title": "Steak Service",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-steak-mushroom-cabbage",
+        "camp-steak-slice-dice"
+      ],
+      "recipeNames": [
+        "Steak, Mushroom & Cabbage",
+        "Sliced & Diced Steak"
+      ],
+      "ingredients": [
+        "steak",
+        "mushroom",
+        "cabbage"
+      ],
+      "techniques": [
+        "slice",
+        "chop",
+        "dice"
+      ],
+      "componentCount": 5,
+      "requiredOrders": 2,
+      "batchGroup": false,
+      "reward": 300,
+      "purpose": "Two customers now — the steak joined by mushroom and cabbage.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 66,
+      "oldLevel": 109,
+      "id": "level-66",
+      "chapter": 7,
+      "title": "Salmon Introduction",
+      "type": "RELAX",
+      "recipeIds": [
+        "camp-salmon-slice-intro"
+      ],
+      "recipeNames": [
+        "Sliced Salmon Plate"
+      ],
+      "ingredients": [
+        "salmon"
+      ],
+      "techniques": [
+        "slice"
+      ],
+      "componentCount": 1,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 290,
+      "purpose": "Even, gentle pressure — the salmon's own real geometry.",
+      "sourceMilestone": null,
+      "unlockReward": {
+        "type": "board",
+        "id": "seafoodslate",
+        "name": "Seafood Slate Board"
+      }
+    },
+    {
+      "newLevel": 67,
+      "oldLevel": 110,
+      "id": "level-67",
+      "chapter": 7,
+      "title": "Salmon Bistro",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-salmon-cucumber-radish",
+        "camp-salmon-avocado-plate"
+      ],
+      "recipeNames": [
+        "Salmon, Cucumber & Radish",
+        "Salmon & Avocado Plate"
+      ],
+      "ingredients": [
+        "salmon",
+        "cucumber",
+        "radish",
+        "avocado",
+        "lemon"
+      ],
+      "techniques": [
+        "slice",
+        "julienne",
+        "dice",
+        "halve",
+        "radial"
+      ],
+      "componentCount": 7,
+      "requiredOrders": 2,
+      "batchGroup": false,
+      "reward": 340,
+      "purpose": "The chapter's finale — clean cuts, uniform preparation, minimal presentation.",
+      "sourceMilestone": "Protein Kitchen",
+      "unlockReward": {
+        "type": "cafe_milestone",
+        "id": "protein-kitchen",
+        "name": "Protein Station"
+      }
+    },
+    {
+      "newLevel": 68,
+      "oldLevel": 111,
+      "id": "level-68",
+      "chapter": 7,
+      "title": "Chicken & Garden",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-chicken-cabbage-carrot"
+      ],
+      "recipeNames": [
+        "Chicken, Cabbage & Carrot"
+      ],
+      "ingredients": [
+        "chicken",
+        "carrot",
+        "cabbage"
+      ],
+      "techniques": [
+        "slice",
+        "julienne"
+      ],
+      "componentCount": 3,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 360,
+      "purpose": "Precision now: uniform sizing across every component on the plate.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 69,
+      "oldLevel": 112,
+      "id": "level-69",
+      "chapter": 7,
+      "title": "Steak Dinner",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-steak-mushroom-cabbage",
+        "camp-steak-slice-dice"
+      ],
+      "recipeNames": [
+        "Steak, Mushroom & Cabbage",
+        "Sliced & Diced Steak"
+      ],
+      "ingredients": [
+        "steak",
+        "mushroom",
+        "cabbage"
+      ],
+      "techniques": [
+        "slice",
+        "chop",
+        "dice"
+      ],
+      "componentCount": 5,
+      "requiredOrders": 2,
+      "batchGroup": false,
+      "reward": 380,
+      "purpose": "Two customers, the steak service reinforced.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 70,
+      "oldLevel": 113,
+      "id": "level-70",
+      "chapter": 7,
+      "title": "Salmon Garden",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-salmon-tofu-spinach"
+      ],
+      "recipeNames": [
+        "Salmon, Tofu & Spinach"
+      ],
+      "ingredients": [
+        "salmon",
+        "tofu",
+        "spinach"
+      ],
+      "techniques": [
+        "slice",
+        "dice",
+        "chiffonade"
+      ],
+      "componentCount": 3,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 395,
+      "purpose": "A quieter plate — salmon, tofu, and spinach, precisely cut.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 71,
+      "oldLevel": 114,
+      "id": "level-71",
+      "chapter": 7,
+      "title": "Three Protein Orders",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-chicken-slice-intro",
+        "camp-steak-slice-intro",
+        "camp-salmon-slice-intro",
+        "camp-radish-cucumber-namasu"
+      ],
+      "recipeNames": [
+        "Sliced Chicken Plate",
+        "Sliced Ribeye Plate",
+        "Sliced Salmon Plate",
+        "Radish & Cucumber Namasu"
+      ],
+      "ingredients": [
+        "chicken",
+        "steak",
+        "salmon",
+        "radish",
+        "cucumber",
+        "ginger"
+      ],
+      "techniques": [
+        "slice",
+        "julienne",
+        "peel"
+      ],
+      "componentCount": 7,
+      "requiredOrders": 3,
+      "batchGroup": false,
+      "reward": 420,
+      "purpose": "All three proteins at once — three customers, three separate preparations.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 72,
+      "oldLevel": 115,
+      "id": "level-72",
+      "chapter": 7,
+      "title": "Shared Protein",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-chicken-julienne-carrot-bowl",
+        "camp-chicken-julienne-pepper-cup"
+      ],
+      "recipeNames": [
+        "Chicken Julienne Bowl",
+        "Chicken Julienne Cup"
+      ],
+      "ingredients": [
+        "chicken",
+        "carrot",
+        "pepper"
+      ],
+      "techniques": [
+        "julienne",
+        "dice"
+      ],
+      "componentCount": 4,
+      "requiredOrders": 1,
+      "batchGroup": true,
+      "reward": 440,
+      "purpose": "Real batching — one chicken julienne, prepared once, serving two orders.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 73,
+      "oldLevel": 116,
+      "id": "level-73",
+      "chapter": 7,
+      "title": "Protein Allocation",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-chicken-protein-branch"
+      ],
+      "recipeNames": [
+        "Chicken Two Cuts"
+      ],
+      "ingredients": [
+        "chicken"
+      ],
+      "techniques": [
+        "slice",
+        "dice"
+      ],
+      "componentCount": 2,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 460,
+      "purpose": "A real branch — one chicken sliced for the salad, a fresh one diced for the bowl.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 74,
+      "oldLevel": 118,
+      "id": "level-74",
+      "chapter": 7,
+      "title": "Dinner Rush",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-chicken-cabbage-carrot",
+        "camp-steak-mushroom-cabbage",
+        "camp-salmon-tofu-spinach",
+        "camp-radish-cucumber-namasu"
+      ],
+      "recipeNames": [
+        "Chicken, Cabbage & Carrot",
+        "Steak, Mushroom & Cabbage",
+        "Salmon, Tofu & Spinach",
+        "Radish & Cucumber Namasu"
+      ],
+      "ingredients": [
+        "chicken",
+        "carrot",
+        "cabbage",
+        "steak",
+        "mushroom",
+        "salmon",
+        "tofu",
+        "spinach",
+        "radish",
+        "cucumber",
+        "ginger"
+      ],
+      "techniques": [
+        "slice",
+        "julienne",
+        "chop",
+        "dice",
+        "chiffonade",
+        "peel"
+      ],
+      "componentCount": 13,
+      "requiredOrders": 3,
+      "batchGroup": false,
+      "reward": 510,
+      "purpose": "Three separate proteins, three separate plates, one evening of service.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 75,
+      "oldLevel": 120,
+      "id": "level-75",
+      "chapter": 7,
+      "title": "The Grand Service",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-chicken-protein-branch",
+        "camp-steak-carrot-plate",
+        "camp-salmon-carrot-plate"
+      ],
+      "recipeNames": [
+        "Chicken Two Cuts",
+        "Steak & Carrot Plate",
+        "Salmon & Carrot Plate"
+      ],
+      "ingredients": [
+        "chicken",
+        "steak",
+        "carrot",
+        "salmon"
+      ],
+      "techniques": [
+        "slice",
+        "dice",
+        "julienne"
+      ],
+      "componentCount": 6,
+      "requiredOrders": 1,
+      "batchGroup": true,
+      "reward": 650,
+      "purpose": "The chapter's finale — a real branch and a real shared carrot julienne, three customers at once.",
+      "sourceMilestone": "Grand Service",
+      "unlockReward": {
+        "type": "cafe_milestone",
+        "id": "grand-service",
+        "name": "Grand Service"
+      }
+    },
+    {
+      "newLevel": 76,
+      "oldLevel": 121,
+      "id": "level-76",
+      "chapter": 8,
+      "title": "Tofu & Broccoli",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-tofu-broccoli-bowl"
+      ],
+      "recipeNames": [
+        "Tofu & Broccoli Bowl"
+      ],
+      "ingredients": [
+        "tofu",
+        "broccoli"
+      ],
+      "techniques": [
+        "dice",
+        "chop"
+      ],
+      "componentCount": 2,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 660,
+      "purpose": "Wok-ready sizes, uniform and even — the Chinese kitchen's own identity.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 77,
+      "oldLevel": 123,
+      "id": "level-77",
+      "chapter": 8,
+      "title": "Chicken Pepper Stir-Fry",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-chicken-pepper-stirfry"
+      ],
+      "recipeNames": [
+        "Chicken Pepper Stir-Fry Prep"
+      ],
+      "ingredients": [
+        "chicken",
+        "pepper",
+        "carrot",
+        "garlic",
+        "ginger",
+        "springonion"
+      ],
+      "techniques": [
+        "dice",
+        "julienne",
+        "peel",
+        "smash",
+        "rockMince",
+        "slice"
+      ],
+      "componentCount": 8,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 690,
+      "purpose": "Chicken, pepper, carrot — every piece the same size for the pan.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 78,
+      "oldLevel": 124,
+      "id": "level-78",
+      "chapter": 8,
+      "title": "Steak Pepper Stir-Fry",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-steak-pepper-stirfry"
+      ],
+      "recipeNames": [
+        "Steak Pepper Stir-Fry Prep"
+      ],
+      "ingredients": [
+        "steak",
+        "pepper",
+        "carrot",
+        "garlic",
+        "ginger",
+        "springonion"
+      ],
+      "techniques": [
+        "slice",
+        "julienne",
+        "peel",
+        "smash",
+        "rockMince"
+      ],
+      "componentCount": 8,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 705,
+      "purpose": "Steak sliced thin, pepper and carrot julienned to the same width.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 79,
+      "oldLevel": 125,
+      "id": "level-79",
+      "chapter": 8,
+      "title": "Shared Carrot, Two Tables",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-carrot-pepper-batch",
+        "camp-carrot-peapod-batch"
+      ],
+      "recipeNames": [
+        "Carrot & Pepper Wok Plate",
+        "Carrot & Pea Pod Wok Plate"
+      ],
+      "ingredients": [
+        "carrot",
+        "pepper",
+        "peapod"
+      ],
+      "techniques": [
+        "julienne",
+        "dice",
+        "slice"
+      ],
+      "componentCount": 4,
+      "requiredOrders": 1,
+      "batchGroup": true,
+      "reward": 720,
+      "purpose": "Two customers, one carrot julienne shared between them.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 80,
+      "oldLevel": 127,
+      "id": "level-80",
+      "chapter": 8,
+      "title": "Two Vegetable Tables",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-tofu-broccoli-bowl",
+        "camp-cabbage-cauliflower-bowl",
+        "camp-eggplant-green-onion-wok-bowl"
+      ],
+      "recipeNames": [
+        "Tofu & Broccoli Bowl",
+        "Cabbage & Cauliflower Bowl",
+        "Eggplant & Green Onion Wok Bowl"
+      ],
+      "ingredients": [
+        "tofu",
+        "broccoli",
+        "cabbage",
+        "cauliflower",
+        "eggplant",
+        "springonion",
+        "garlic"
+      ],
+      "techniques": [
+        "dice",
+        "chop",
+        "slice",
+        "peel",
+        "smash"
+      ],
+      "componentCount": 8,
+      "requiredOrders": 2,
+      "batchGroup": false,
+      "reward": 750,
+      "purpose": "Two customers, two vegetable-forward bowls.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 81,
+      "oldLevel": 128,
+      "id": "level-81",
+      "chapter": 8,
+      "title": "Chicken & Broccoli",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-chicken-broccoli-plate"
+      ],
+      "recipeNames": [
+        "Chicken & Broccoli Plate"
+      ],
+      "ingredients": [
+        "chicken",
+        "broccoli",
+        "springonion"
+      ],
+      "techniques": [
+        "slice",
+        "chop"
+      ],
+      "componentCount": 3,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 765,
+      "purpose": "Slice the chicken, chop the broccoli.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 82,
+      "oldLevel": 130,
+      "id": "level-82",
+      "chapter": 8,
+      "title": "Chinese Kitchen Service",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-chicken-pepper-stirfry",
+        "camp-steak-pepper-stirfry",
+        "camp-mushroom-spinach-bowl"
+      ],
+      "recipeNames": [
+        "Chicken Pepper Stir-Fry Prep",
+        "Steak Pepper Stir-Fry Prep",
+        "Mushroom & Spinach Bowl"
+      ],
+      "ingredients": [
+        "chicken",
+        "pepper",
+        "carrot",
+        "garlic",
+        "ginger",
+        "springonion",
+        "steak",
+        "mushroom",
+        "spinach"
+      ],
+      "techniques": [
+        "dice",
+        "julienne",
+        "peel",
+        "smash",
+        "rockMince",
+        "slice",
+        "chop"
+      ],
+      "componentCount": 18,
+      "requiredOrders": 3,
+      "batchGroup": false,
+      "reward": 850,
+      "purpose": "The chapter's finale — three customers, drawing on everything the wok kitchen taught.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 83,
+      "oldLevel": 132,
+      "id": "level-83",
+      "chapter": 8,
+      "title": "Three Wok Bowls, One Chicken",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-chicken-dice-batch-a",
+        "camp-chicken-dice-batch-b",
+        "camp-chicken-dice-batch-c"
+      ],
+      "recipeNames": [
+        "Chicken Wok Bowl (Pepper)",
+        "Chicken Wok Bowl (Pea Pod)",
+        "Chicken Wok Bowl (Cabbage)"
+      ],
+      "ingredients": [
+        "chicken",
+        "pepper",
+        "peapod",
+        "cabbage",
+        "onion"
+      ],
+      "techniques": [
+        "dice",
+        "slice",
+        "chop",
+        "peel",
+        "rings"
+      ],
+      "componentCount": 8,
+      "requiredOrders": 1,
+      "batchGroup": true,
+      "reward": 890,
+      "purpose": "Three customers, three bowls, ONE diced chicken batch satisfying all three.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 84,
+      "oldLevel": 133,
+      "id": "level-84",
+      "chapter": 8,
+      "title": "Two Tables, Shared Carrot",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-carrot-pepper-batch",
+        "camp-mushroom-spinach-bowl"
+      ],
+      "recipeNames": [
+        "Carrot & Pepper Wok Plate",
+        "Mushroom & Spinach Bowl"
+      ],
+      "ingredients": [
+        "carrot",
+        "pepper",
+        "mushroom",
+        "spinach"
+      ],
+      "techniques": [
+        "julienne",
+        "dice",
+        "slice",
+        "chop"
+      ],
+      "componentCount": 4,
+      "requiredOrders": 2,
+      "batchGroup": false,
+      "reward": 910,
+      "purpose": "Two customers, the same shared carrot julienne from earlier in the chapter.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 85,
+      "oldLevel": 135,
+      "id": "level-85",
+      "chapter": 8,
+      "title": "Steak, Two Cuts",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-steak-protein-branch"
+      ],
+      "recipeNames": [
+        "Steak Two Cuts"
+      ],
+      "ingredients": [
+        "steak"
+      ],
+      "techniques": [
+        "slice",
+        "dice"
+      ],
+      "componentCount": 2,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 950,
+      "purpose": "One steak sliced for the plate, a fresh one diced for the bowl.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 86,
+      "oldLevel": 139,
+      "id": "level-86",
+      "chapter": 8,
+      "title": "Branch & Batch, Two Tables",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-steak-protein-branch",
+        "camp-chicken-dice-batch-a"
+      ],
+      "recipeNames": [
+        "Steak Two Cuts",
+        "Chicken Wok Bowl (Pepper)"
+      ],
+      "ingredients": [
+        "steak",
+        "chicken",
+        "pepper"
+      ],
+      "techniques": [
+        "slice",
+        "dice"
+      ],
+      "componentCount": 4,
+      "requiredOrders": 1,
+      "batchGroup": true,
+      "reward": 1030,
+      "purpose": "Two customers — one a real protein branch, the other part of the chicken batch.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 87,
+      "oldLevel": 140,
+      "id": "level-87",
+      "chapter": 8,
+      "title": "The Grand Wok Service",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-full-wok-plate",
+        "camp-chicken-dice-batch-a",
+        "camp-chicken-dice-batch-b"
+      ],
+      "recipeNames": [
+        "Full Wok Plate",
+        "Chicken Wok Bowl (Pepper)",
+        "Chicken Wok Bowl (Pea Pod)"
+      ],
+      "ingredients": [
+        "chicken",
+        "steak",
+        "mushroom",
+        "carrot",
+        "springonion",
+        "pepper",
+        "peapod"
+      ],
+      "techniques": [
+        "slice",
+        "dice",
+        "julienne"
+      ],
+      "componentCount": 9,
+      "requiredOrders": 1,
+      "batchGroup": true,
+      "reward": 1100,
+      "purpose": "The chapter's finale — a full solo wok plate alongside two customers sharing a chicken batch.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 88,
+      "oldLevel": 142,
+      "id": "level-88",
+      "chapter": 9,
+      "title": "Thai Basil Chicken",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-thai-chicken-basil"
+      ],
+      "recipeNames": [
+        "Thai Basil Chicken"
+      ],
+      "ingredients": [
+        "chicken",
+        "basil",
+        "garlic",
+        "onion",
+        "chilli"
+      ],
+      "techniques": [
+        "slice",
+        "chop",
+        "peel",
+        "rockMince"
+      ],
+      "componentCount": 7,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 1140,
+      "purpose": "The aromatic base now carries chicken — basil, garlic, and a clean slice.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 89,
+      "oldLevel": 143,
+      "id": "level-89",
+      "chapter": 9,
+      "title": "Salmon & Coconut",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-thai-salmon-coconut"
+      ],
+      "recipeNames": [
+        "Salmon & Coconut"
+      ],
+      "ingredients": [
+        "salmon",
+        "coconut"
+      ],
+      "techniques": [
+        "slice",
+        "halve",
+        "chop"
+      ],
+      "componentCount": 3,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 1160,
+      "purpose": "Sliced salmon, peeled and halved coconut alongside it.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 90,
+      "oldLevel": 144,
+      "id": "level-90",
+      "chapter": 9,
+      "title": "Green Bean & Pepper",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-thai-greenbean-pepper"
+      ],
+      "recipeNames": [
+        "Green Bean & Pepper"
+      ],
+      "ingredients": [
+        "greenbean",
+        "pepper"
+      ],
+      "techniques": [
+        "chop",
+        "julienne"
+      ],
+      "componentCount": 2,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 1180,
+      "purpose": "Chopped green bean, julienned pepper.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 91,
+      "oldLevel": 145,
+      "id": "level-91",
+      "chapter": 9,
+      "title": "Cucumber & Pea Pod Salad",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-thai-cucumber-peapod"
+      ],
+      "recipeNames": [
+        "Cucumber & Pea Pod Salad"
+      ],
+      "ingredients": [
+        "cucumber",
+        "peapod",
+        "lime",
+        "chilli",
+        "cilantro"
+      ],
+      "techniques": [
+        "slice",
+        "radial",
+        "chop"
+      ],
+      "componentCount": 5,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 1200,
+      "purpose": "Sliced cucumber, sliced pea pod.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 92,
+      "oldLevel": 146,
+      "id": "level-92",
+      "chapter": 9,
+      "title": "Mango & Pineapple",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-thai-mango-pineapple"
+      ],
+      "recipeNames": [
+        "Mango & Pineapple Fresh Cup"
+      ],
+      "ingredients": [
+        "mango",
+        "pineapple",
+        "lime"
+      ],
+      "techniques": [
+        "dice",
+        "peel",
+        "radial"
+      ],
+      "componentCount": 4,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 1220,
+      "purpose": "Diced mango, diced pineapple — the fruit side of this kitchen.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 93,
+      "oldLevel": 149,
+      "id": "level-93",
+      "chapter": 9,
+      "title": "Three Tables, Fresh Night",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-thai-greenbean-pepper",
+        "camp-thai-cucumber-peapod",
+        "camp-thai-mango-pineapple"
+      ],
+      "recipeNames": [
+        "Green Bean & Pepper",
+        "Cucumber & Pea Pod Salad",
+        "Mango & Pineapple Fresh Cup"
+      ],
+      "ingredients": [
+        "greenbean",
+        "pepper",
+        "cucumber",
+        "peapod",
+        "lime",
+        "chilli",
+        "cilantro",
+        "mango",
+        "pineapple"
+      ],
+      "techniques": [
+        "chop",
+        "julienne",
+        "slice",
+        "radial",
+        "dice",
+        "peel"
+      ],
+      "componentCount": 11,
+      "requiredOrders": 3,
+      "batchGroup": false,
+      "reward": 1280,
+      "purpose": "Two to three customers, the fresh side of this kitchen.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 94,
+      "oldLevel": 150,
+      "id": "level-94",
+      "chapter": 9,
+      "title": "Thai Kitchen Service",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-thai-chicken-basil",
+        "camp-thai-salmon-coconut",
+        "camp-thai-mango-pineapple"
+      ],
+      "recipeNames": [
+        "Thai Basil Chicken",
+        "Salmon & Coconut",
+        "Mango & Pineapple Fresh Cup"
+      ],
+      "ingredients": [
+        "chicken",
+        "basil",
+        "garlic",
+        "onion",
+        "chilli",
+        "salmon",
+        "coconut",
+        "mango",
+        "pineapple",
+        "lime"
+      ],
+      "techniques": [
+        "slice",
+        "chop",
+        "peel",
+        "rockMince",
+        "halve",
+        "dice",
+        "radial"
+      ],
+      "componentCount": 14,
+      "requiredOrders": 3,
+      "batchGroup": false,
+      "reward": 1350,
+      "purpose": "The chapter's finale — three customers, drawing on every aromatic and fresh recipe learned.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 95,
+      "oldLevel": 152,
+      "id": "level-95",
+      "chapter": 9,
+      "title": "Three Tables, Shared Aromatics",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-thai-aromatic-batch-a",
+        "camp-thai-aromatic-batch-b",
+        "camp-thai-aromatic-batch-c"
+      ],
+      "recipeNames": [
+        "Basil Garlic Chicken",
+        "Basil Garlic Salmon",
+        "Basil Garlic Pineapple"
+      ],
+      "ingredients": [
+        "basil",
+        "garlic",
+        "chicken",
+        "chilli",
+        "salmon",
+        "pineapple"
+      ],
+      "techniques": [
+        "chop",
+        "peel",
+        "rockMince",
+        "slice",
+        "dice"
+      ],
+      "componentCount": 14,
+      "requiredOrders": 1,
+      "batchGroup": true,
+      "reward": 1400,
+      "purpose": "Three customers, ONE shared basil-and-garlic base satisfying all three.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 96,
+      "oldLevel": 153,
+      "id": "level-96",
+      "chapter": 9,
+      "title": "Salmon & Mango",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-thai-salmon-mango"
+      ],
+      "recipeNames": [
+        "Salmon & Mango Plate"
+      ],
+      "ingredients": [
+        "salmon",
+        "mango",
+        "lime"
+      ],
+      "techniques": [
+        "dice",
+        "peel",
+        "slice",
+        "radial"
+      ],
+      "componentCount": 4,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 1420,
+      "purpose": "Diced salmon, sliced mango.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 97,
+      "oldLevel": 154,
+      "id": "level-97",
+      "chapter": 9,
+      "title": "Three Tables, Protein Night",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-thai-chicken-basil",
+        "camp-thai-salmon-coconut",
+        "camp-thai-salmon-mango"
+      ],
+      "recipeNames": [
+        "Thai Basil Chicken",
+        "Salmon & Coconut",
+        "Salmon & Mango Plate"
+      ],
+      "ingredients": [
+        "chicken",
+        "basil",
+        "garlic",
+        "onion",
+        "chilli",
+        "salmon",
+        "coconut",
+        "mango",
+        "lime"
+      ],
+      "techniques": [
+        "slice",
+        "chop",
+        "peel",
+        "rockMince",
+        "halve",
+        "dice",
+        "radial"
+      ],
+      "componentCount": 14,
+      "requiredOrders": 3,
+      "batchGroup": false,
+      "reward": 1440,
+      "purpose": "Three customers, drawing on the chapter's protein recipes.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 98,
+      "oldLevel": 156,
+      "id": "level-98",
+      "chapter": 9,
+      "title": "Two Tables, Fresh & Sweet",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-thai-cucumber-peapod",
+        "camp-thai-mango-pineapple"
+      ],
+      "recipeNames": [
+        "Cucumber & Pea Pod Salad",
+        "Mango & Pineapple Fresh Cup"
+      ],
+      "ingredients": [
+        "cucumber",
+        "peapod",
+        "lime",
+        "chilli",
+        "cilantro",
+        "mango",
+        "pineapple"
+      ],
+      "techniques": [
+        "slice",
+        "radial",
+        "chop",
+        "dice",
+        "peel"
+      ],
+      "componentCount": 9,
+      "requiredOrders": 2,
+      "batchGroup": false,
+      "reward": 1480,
+      "purpose": "Two customers, the fresh and sweet side of the pool.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 99,
+      "oldLevel": 158,
+      "id": "level-99",
+      "chapter": 9,
+      "title": "Branch & Batch, Two Tables",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-thai-chicken-branch",
+        "camp-thai-aromatic-batch-a"
+      ],
+      "recipeNames": [
+        "Chicken Two Ways, Thai Style",
+        "Basil Garlic Chicken"
+      ],
+      "ingredients": [
+        "chicken",
+        "basil",
+        "garlic",
+        "chilli"
+      ],
+      "techniques": [
+        "slice",
+        "julienne",
+        "chop",
+        "peel",
+        "rockMince"
+      ],
+      "componentCount": 7,
+      "requiredOrders": 1,
+      "batchGroup": true,
+      "reward": 1520,
+      "purpose": "Two customers — one a real protein branch, the other part of the aromatic batch.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 100,
+      "oldLevel": 160,
+      "id": "level-100",
+      "chapter": 9,
+      "title": "The Grand Southeast Asian Service",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-thai-aromatic-batch-a",
+        "camp-thai-aromatic-batch-b",
+        "camp-thai-aromatic-batch-c"
+      ],
+      "recipeNames": [
+        "Basil Garlic Chicken",
+        "Basil Garlic Salmon",
+        "Basil Garlic Pineapple"
+      ],
+      "ingredients": [
+        "basil",
+        "garlic",
+        "chicken",
+        "chilli",
+        "salmon",
+        "pineapple"
+      ],
+      "techniques": [
+        "chop",
+        "peel",
+        "rockMince",
+        "slice",
+        "dice"
+      ],
+      "componentCount": 14,
+      "requiredOrders": 1,
+      "batchGroup": true,
+      "reward": 1650,
+      "purpose": "The chapter's finale — three customers at once, all sharing the same basil-and-garlic base.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 101,
+      "oldLevel": 161,
+      "id": "level-101",
+      "chapter": 10,
+      "title": "Steak & Cabbage",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-korean-steak-cabbage"
+      ],
+      "recipeNames": [
+        "Steak & Cabbage"
+      ],
+      "ingredients": [
+        "steak",
+        "cabbage"
+      ],
+      "techniques": [
+        "slice"
+      ],
+      "componentCount": 2,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 1670,
+      "purpose": "Korean identity begins here — thin, even steak, sliced cabbage to match.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 102,
+      "oldLevel": 162,
+      "id": "level-102",
+      "chapter": 10,
+      "title": "Chicken & Spinach",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-korean-chicken-spinach"
+      ],
+      "recipeNames": [
+        "Chicken & Spinach"
+      ],
+      "ingredients": [
+        "chicken",
+        "spinach"
+      ],
+      "techniques": [
+        "slice",
+        "chop"
+      ],
+      "componentCount": 2,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 1690,
+      "purpose": "Sliced chicken, chopped spinach.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 103,
+      "oldLevel": 163,
+      "id": "level-103",
+      "chapter": 10,
+      "title": "Garlic Onion Base",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-korean-garlic-onion-base"
+      ],
+      "recipeNames": [
+        "Korean Garlic Onion Base"
+      ],
+      "ingredients": [
+        "garlic",
+        "onion",
+        "ginger",
+        "springonion"
+      ],
+      "techniques": [
+        "peel",
+        "rockMince",
+        "chop",
+        "slice"
+      ],
+      "componentCount": 7,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 1710,
+      "purpose": "Rock-minced garlic, chopped onion.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 104,
+      "oldLevel": 165,
+      "id": "level-104",
+      "chapter": 10,
+      "title": "Two Tables, Steak & Chicken",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-korean-steak-cabbage",
+        "camp-korean-chicken-spinach",
+        "camp-pear-radish-side"
+      ],
+      "recipeNames": [
+        "Steak & Cabbage",
+        "Chicken & Spinach",
+        "Pear & Radish Side"
+      ],
+      "ingredients": [
+        "steak",
+        "cabbage",
+        "chicken",
+        "spinach",
+        "pear",
+        "radish",
+        "springonion"
+      ],
+      "techniques": [
+        "slice",
+        "chop",
+        "peel",
+        "julienne"
+      ],
+      "componentCount": 8,
+      "requiredOrders": 2,
+      "batchGroup": false,
+      "reward": 1750,
+      "purpose": "Two customers, the two proteins side by side.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 105,
+      "oldLevel": 166,
+      "id": "level-105",
+      "chapter": 10,
+      "title": "Shared Steak, Two Tables",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-korean-steak-batch-a",
+        "camp-korean-steak-batch-b"
+      ],
+      "recipeNames": [
+        "Steak Plate (Cabbage)",
+        "Steak Bowl (Spinach)"
+      ],
+      "ingredients": [
+        "steak",
+        "cabbage",
+        "springonion",
+        "spinach"
+      ],
+      "techniques": [
+        "slice",
+        "chop"
+      ],
+      "componentCount": 6,
+      "requiredOrders": 1,
+      "batchGroup": true,
+      "reward": 1780,
+      "purpose": "Two customers, ONE thin-sliced steak batch satisfying both.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 106,
+      "oldLevel": 170,
+      "id": "level-106",
+      "chapter": 10,
+      "title": "The Korean Grand Service",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-korean-grand-service-plate",
+        "camp-korean-steak-batch-a",
+        "camp-korean-steak-batch-b"
+      ],
+      "recipeNames": [
+        "Korean Grand Service Plate",
+        "Steak Plate (Cabbage)",
+        "Steak Bowl (Spinach)"
+      ],
+      "ingredients": [
+        "steak",
+        "chicken",
+        "mushroom",
+        "carrot",
+        "pear",
+        "lemon",
+        "cabbage",
+        "springonion",
+        "spinach"
+      ],
+      "techniques": [
+        "slice",
+        "dice",
+        "julienne",
+        "peel",
+        "radial",
+        "chop"
+      ],
+      "componentCount": 13,
+      "requiredOrders": 1,
+      "batchGroup": true,
+      "reward": 2000,
+      "purpose": "The phase's finale — a grand solo plate, a real branch, and a real shared steak batch, three customers at once.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 107,
+      "oldLevel": 171,
+      "id": "level-107",
+      "chapter": 2,
+      "title": "Artichoke & Fennel",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-italian-artichoke-fennel"
+      ],
+      "recipeNames": [
+        "Artichoke & Fennel Plate"
+      ],
+      "ingredients": [
+        "artichoke",
+        "fennel",
+        "lemon"
+      ],
+      "techniques": [
+        "halve",
+        "slice",
+        "radial"
+      ],
+      "componentCount": 4,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 2020,
+      "purpose": "Two vegetables this kitchen hasn't paired before — artichoke and fennel.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 108,
+      "oldLevel": 172,
+      "id": "level-108",
+      "chapter": 2,
+      "title": "Lettuce & Tomato",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-italian-lettuce-tomato"
+      ],
+      "recipeNames": [
+        "Lettuce & Tomato Salad"
+      ],
+      "ingredients": [
+        "lettuce",
+        "tomato"
+      ],
+      "techniques": [
+        "chiffonade",
+        "dice"
+      ],
+      "componentCount": 2,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 2040,
+      "purpose": "Chiffonade the lettuce fine, then dice the tomato.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 109,
+      "oldLevel": 173,
+      "id": "level-109",
+      "chapter": 2,
+      "title": "Chicken & Artichoke",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-italian-chicken-artichoke"
+      ],
+      "recipeNames": [
+        "Chicken & Artichoke"
+      ],
+      "ingredients": [
+        "chicken",
+        "artichoke",
+        "lemon",
+        "garlic"
+      ],
+      "techniques": [
+        "slice",
+        "halve",
+        "radial",
+        "peel",
+        "rockMince"
+      ],
+      "componentCount": 6,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 2060,
+      "purpose": "Slice the chicken, then chop the artichoke.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 110,
+      "oldLevel": 175,
+      "id": "level-110",
+      "chapter": 2,
+      "title": "Shared Basil, Two Tables",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-italian-basil-batch-a",
+        "camp-italian-basil-batch-b"
+      ],
+      "recipeNames": [
+        "Basil Tomato Plate",
+        "Basil Mozzarella Bowl"
+      ],
+      "ingredients": [
+        "basil",
+        "tomato",
+        "mozzarella"
+      ],
+      "techniques": [
+        "chiffonade",
+        "dice",
+        "slice"
+      ],
+      "componentCount": 4,
+      "requiredOrders": 1,
+      "batchGroup": true,
+      "reward": 2100,
+      "purpose": "Two customers, one chiffonade of basil satisfying both.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 111,
+      "oldLevel": 178,
+      "id": "level-111",
+      "chapter": 2,
+      "title": "Three Tables, Shared Mozzarella",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-italian-mozzarella-3way-a",
+        "camp-italian-mozzarella-3way-b",
+        "camp-italian-mozzarella-3way-c"
+      ],
+      "recipeNames": [
+        "Insalata Tricolore",
+        "Mozzarella & Tomato Bowl",
+        "Mozzarella & Lettuce Cup"
+      ],
+      "ingredients": [
+        "mozzarella",
+        "basil",
+        "lettuce",
+        "tomato",
+        "orange"
+      ],
+      "techniques": [
+        "slice",
+        "chiffonade",
+        "chop",
+        "radial"
+      ],
+      "componentCount": 9,
+      "requiredOrders": 1,
+      "batchGroup": true,
+      "reward": 2160,
+      "purpose": "Three customers, ONE sliced mozzarella satisfying all three.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 112,
+      "oldLevel": 181,
+      "id": "level-112",
+      "chapter": 3,
+      "title": "Turnip & Carrot",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-french-turnip-carrot"
+      ],
+      "recipeNames": [
+        "Turnip & Carrot Plate"
+      ],
+      "ingredients": [
+        "turnip",
+        "carrot"
+      ],
+      "techniques": [
+        "peel",
+        "dice",
+        "julienne"
+      ],
+      "componentCount": 3,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 2270,
+      "purpose": "Dice the turnip, then julienne the carrot.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 113,
+      "oldLevel": 183,
+      "id": "level-113",
+      "chapter": 3,
+      "title": "Salmon & Asparagus",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-french-salmon-asparagus"
+      ],
+      "recipeNames": [
+        "Salmon & Asparagus"
+      ],
+      "ingredients": [
+        "salmon",
+        "asparagus",
+        "lemon"
+      ],
+      "techniques": [
+        "slice",
+        "chop",
+        "radial"
+      ],
+      "componentCount": 3,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 2310,
+      "purpose": "Slice the salmon, then chop the asparagus.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 114,
+      "oldLevel": 184,
+      "id": "level-114",
+      "chapter": 3,
+      "title": "Peach & Fennel",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-french-peach-garnish",
+        "camp-peach-cheddar-board"
+      ],
+      "recipeNames": [
+        "Peach & Fennel Plate",
+        "Peach & Cheddar Board"
+      ],
+      "ingredients": [
+        "peach",
+        "fennel",
+        "lemon",
+        "cheddar",
+        "baguette"
+      ],
+      "techniques": [
+        "halve",
+        "slice",
+        "radial"
+      ],
+      "componentCount": 8,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 2320,
+      "purpose": "Halve the peach clean.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 115,
+      "oldLevel": 185,
+      "id": "level-115",
+      "chapter": 3,
+      "title": "Shared Carrot, Two Tables",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-french-carrot-batch-a",
+        "camp-french-carrot-batch-b"
+      ],
+      "recipeNames": [
+        "Carrot Turnip Plate",
+        "Carrot Asparagus Bowl"
+      ],
+      "ingredients": [
+        "carrot",
+        "turnip",
+        "asparagus"
+      ],
+      "techniques": [
+        "julienne",
+        "peel",
+        "dice",
+        "chop"
+      ],
+      "componentCount": 5,
+      "requiredOrders": 1,
+      "batchGroup": true,
+      "reward": 2340,
+      "purpose": "Two customers, one carrot julienne shared between them.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 116,
+      "oldLevel": 188,
+      "id": "level-116",
+      "chapter": 3,
+      "title": "Two Tables, Salmon & Peach",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-french-salmon-asparagus",
+        "camp-french-peach-garnish"
+      ],
+      "recipeNames": [
+        "Salmon & Asparagus",
+        "Peach & Fennel Plate"
+      ],
+      "ingredients": [
+        "salmon",
+        "asparagus",
+        "lemon",
+        "peach",
+        "fennel"
+      ],
+      "techniques": [
+        "slice",
+        "chop",
+        "radial",
+        "halve"
+      ],
+      "componentCount": 7,
+      "requiredOrders": 2,
+      "batchGroup": false,
+      "reward": 2400,
+      "purpose": "Two customers, salmon and a quiet peach garnish.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 117,
+      "oldLevel": 201,
+      "id": "level-117",
+      "chapter": 5,
+      "title": "Kiwi & Watermelon",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-med-kiwi-watermelon"
+      ],
+      "recipeNames": [
+        "Kiwi & Watermelon Fresh Plate"
+      ],
+      "ingredients": [
+        "kiwi",
+        "watermelon"
+      ],
+      "techniques": [
+        "peel",
+        "slice",
+        "dice"
+      ],
+      "componentCount": 4,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 2770,
+      "purpose": "Peel and halve the kiwi, then peel and dice the watermelon.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 118,
+      "oldLevel": 202,
+      "id": "level-118",
+      "chapter": 5,
+      "title": "Salmon & Lemon",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-med-salmon-lemon"
+      ],
+      "recipeNames": [
+        "Salmon & Lemon"
+      ],
+      "ingredients": [
+        "salmon",
+        "lemon"
+      ],
+      "techniques": [
+        "slice",
+        "radial"
+      ],
+      "componentCount": 2,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 2790,
+      "purpose": "Slice the salmon, then wedge the lemon.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 119,
+      "oldLevel": 203,
+      "id": "level-119",
+      "chapter": 5,
+      "title": "Chicken & Watermelon",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-med-chicken-watermelon"
+      ],
+      "recipeNames": [
+        "Chicken & Watermelon"
+      ],
+      "ingredients": [
+        "chicken",
+        "watermelon",
+        "parsley"
+      ],
+      "techniques": [
+        "slice",
+        "peel",
+        "dice",
+        "chiffonade"
+      ],
+      "componentCount": 4,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 2810,
+      "purpose": "Slice the chicken, then dice the watermelon.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 120,
+      "oldLevel": 204,
+      "id": "level-120",
+      "chapter": 5,
+      "title": "Two Tables, Fresh Fruit",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-med-kiwi-watermelon",
+        "camp-med-salmon-lemon",
+        "camp-pomegranate-apple-plate",
+        "camp-beetroot-pomegranate-plate"
+      ],
+      "recipeNames": [
+        "Kiwi & Watermelon Fresh Plate",
+        "Salmon & Lemon",
+        "Pomegranate & Apple Plate",
+        "Beetroot & Pomegranate Plate"
+      ],
+      "ingredients": [
+        "kiwi",
+        "watermelon",
+        "salmon",
+        "lemon",
+        "pomegranate",
+        "apple",
+        "beetroot",
+        "parsley"
+      ],
+      "techniques": [
+        "peel",
+        "slice",
+        "dice",
+        "radial",
+        "halve",
+        "chiffonade"
+      ],
+      "componentCount": 14,
+      "requiredOrders": 2,
+      "batchGroup": false,
+      "reward": 2830,
+      "purpose": "Two customers, the fresh fruit pool reinforced.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 121,
+      "oldLevel": 206,
+      "id": "level-121",
+      "chapter": 5,
+      "title": "Two Tables, Summer Night",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-med-chicken-watermelon",
+        "camp-med-salmon-lemon"
+      ],
+      "recipeNames": [
+        "Chicken & Watermelon",
+        "Salmon & Lemon"
+      ],
+      "ingredients": [
+        "chicken",
+        "watermelon",
+        "parsley",
+        "salmon",
+        "lemon"
+      ],
+      "techniques": [
+        "slice",
+        "peel",
+        "dice",
+        "chiffonade",
+        "radial"
+      ],
+      "componentCount": 6,
+      "requiredOrders": 2,
+      "batchGroup": false,
+      "reward": 2870,
+      "purpose": "Two customers, the summer-fresh pool.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 122,
+      "oldLevel": 208,
+      "id": "level-122",
+      "chapter": 5,
+      "title": "Two Tables, Full Pool",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-med-kiwi-watermelon",
+        "camp-med-salmon-branch",
+        "camp-beetroot-pomegranate-plate"
+      ],
+      "recipeNames": [
+        "Kiwi & Watermelon Fresh Plate",
+        "Salmon, Two Ways",
+        "Beetroot & Pomegranate Plate"
+      ],
+      "ingredients": [
+        "kiwi",
+        "watermelon",
+        "salmon",
+        "beetroot",
+        "pomegranate",
+        "parsley"
+      ],
+      "techniques": [
+        "peel",
+        "slice",
+        "dice",
+        "halve",
+        "chiffonade"
+      ],
+      "componentCount": 10,
+      "requiredOrders": 2,
+      "batchGroup": false,
+      "reward": 2910,
+      "purpose": "Two customers, drawing across the chapter's pool.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 123,
+      "oldLevel": 209,
+      "id": "level-123",
+      "chapter": 5,
+      "title": "Three Tables, Shared Lemon",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-med-lemon-3way-a",
+        "camp-med-lemon-3way-b",
+        "camp-med-lemon-3way-c"
+      ],
+      "recipeNames": [
+        "Lemon Salmon Plate",
+        "Lemon Chicken Bowl",
+        "Lemon Cucumber Cup"
+      ],
+      "ingredients": [
+        "lemon",
+        "salmon",
+        "chicken",
+        "cucumber",
+        "pomegranate"
+      ],
+      "techniques": [
+        "radial",
+        "slice",
+        "halve"
+      ],
+      "componentCount": 7,
+      "requiredOrders": 1,
+      "batchGroup": true,
+      "reward": 2930,
+      "purpose": "Three customers, ONE wedged lemon satisfying all three.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 124,
+      "oldLevel": 210,
+      "id": "level-124",
+      "chapter": 5,
+      "title": "Mediterranean Encore",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-med-kiwi-watermelon",
+        "camp-med-chicken-watermelon",
+        "camp-med-salmon-branch"
+      ],
+      "recipeNames": [
+        "Kiwi & Watermelon Fresh Plate",
+        "Chicken & Watermelon",
+        "Salmon, Two Ways"
+      ],
+      "ingredients": [
+        "kiwi",
+        "watermelon",
+        "chicken",
+        "parsley",
+        "salmon"
+      ],
+      "techniques": [
+        "peel",
+        "slice",
+        "dice",
+        "chiffonade"
+      ],
+      "componentCount": 10,
+      "requiredOrders": 3,
+      "batchGroup": false,
+      "reward": 3000,
+      "purpose": "The chapter's finale — three customers, drawing on every recipe this encore taught.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 125,
+      "oldLevel": 211,
+      "id": "level-125",
+      "chapter": 6,
+      "title": "Grapes & Strawberry",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-latin-grapes-strawberry"
+      ],
+      "recipeNames": [
+        "Grapes & Strawberry Cup"
+      ],
+      "ingredients": [
+        "grapes",
+        "strawberry"
+      ],
+      "techniques": [
+        "slice"
+      ],
+      "componentCount": 2,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 3020,
+      "purpose": "Slice the grapes, then slice the strawberry.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 126,
+      "oldLevel": 212,
+      "id": "level-126",
+      "chapter": 6,
+      "title": "Steak & Corn",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-latin-steak-corn"
+      ],
+      "recipeNames": [
+        "Steak & Corn"
+      ],
+      "ingredients": [
+        "steak",
+        "corn"
+      ],
+      "techniques": [
+        "slice"
+      ],
+      "componentCount": 2,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 3040,
+      "purpose": "Slice the steak, then slice the corn.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 127,
+      "oldLevel": 213,
+      "id": "level-127",
+      "chapter": 6,
+      "title": "Chicken, Avocado & Grapes",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-latin-chicken-avocado-grapes"
+      ],
+      "recipeNames": [
+        "Chicken, Avocado & Grapes"
+      ],
+      "ingredients": [
+        "chicken",
+        "avocado",
+        "grapes",
+        "lime"
+      ],
+      "techniques": [
+        "dice",
+        "halve",
+        "slice",
+        "radial"
+      ],
+      "componentCount": 5,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 3060,
+      "purpose": "Dice the chicken, halve the avocado, then slice the grapes.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 128,
+      "oldLevel": 214,
+      "id": "level-128",
+      "chapter": 6,
+      "title": "Two Tables, Steak & Fruit",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-latin-steak-corn",
+        "camp-latin-grapes-strawberry",
+        "camp-sweet-potato-strawberry-plate"
+      ],
+      "recipeNames": [
+        "Steak & Corn",
+        "Grapes & Strawberry Cup",
+        "Sweet Potato & Strawberry Plate"
+      ],
+      "ingredients": [
+        "steak",
+        "corn",
+        "grapes",
+        "strawberry",
+        "sweetpotato",
+        "lime"
+      ],
+      "techniques": [
+        "slice",
+        "peel",
+        "dice",
+        "radial"
+      ],
+      "componentCount": 8,
+      "requiredOrders": 2,
+      "batchGroup": false,
+      "reward": 3080,
+      "purpose": "Two customers, steak and the new fruit pool.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 129,
+      "oldLevel": 216,
+      "id": "level-129",
+      "chapter": 6,
+      "title": "Two Tables, Chicken & Steak",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-latin-chicken-avocado-grapes",
+        "camp-latin-steak-corn"
+      ],
+      "recipeNames": [
+        "Chicken, Avocado & Grapes",
+        "Steak & Corn"
+      ],
+      "ingredients": [
+        "chicken",
+        "avocado",
+        "grapes",
+        "lime",
+        "steak",
+        "corn"
+      ],
+      "techniques": [
+        "dice",
+        "halve",
+        "slice",
+        "radial"
+      ],
+      "componentCount": 7,
+      "requiredOrders": 2,
+      "batchGroup": false,
+      "reward": 3120,
+      "purpose": "Two customers, the chapter's two proteins.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 130,
+      "oldLevel": 218,
+      "id": "level-130",
+      "chapter": 6,
+      "title": "Two Tables, Full Pool",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-latin-grapes-strawberry",
+        "camp-latin-chicken-avocado-grapes",
+        "camp-sweet-potato-strawberry-plate"
+      ],
+      "recipeNames": [
+        "Grapes & Strawberry Cup",
+        "Chicken, Avocado & Grapes",
+        "Sweet Potato & Strawberry Plate"
+      ],
+      "ingredients": [
+        "grapes",
+        "strawberry",
+        "chicken",
+        "avocado",
+        "lime",
+        "sweetpotato"
+      ],
+      "techniques": [
+        "slice",
+        "dice",
+        "halve",
+        "radial",
+        "peel"
+      ],
+      "componentCount": 11,
+      "requiredOrders": 2,
+      "batchGroup": false,
+      "reward": 3160,
+      "purpose": "Two customers, drawing across the full Latin mastery pool.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 131,
+      "oldLevel": 219,
+      "id": "level-131",
+      "chapter": 6,
+      "title": "Three Tables, Shared Avocado",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-latin-avocado-3way-a",
+        "camp-latin-avocado-3way-b",
+        "camp-latin-avocado-3way-c"
+      ],
+      "recipeNames": [
+        "Avocado Corn Plate",
+        "Avocado Pepper Bowl",
+        "Avocado Grapes Cup"
+      ],
+      "ingredients": [
+        "avocado",
+        "corn",
+        "lime",
+        "pepper",
+        "grapes"
+      ],
+      "techniques": [
+        "halve",
+        "slice",
+        "radial",
+        "julienne"
+      ],
+      "componentCount": 12,
+      "requiredOrders": 1,
+      "batchGroup": true,
+      "reward": 3180,
+      "purpose": "Three customers, ONE halved avocado satisfying all three.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 132,
+      "oldLevel": 220,
+      "id": "level-132",
+      "chapter": 6,
+      "title": "Latin Mastery",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-latin-steak-corn",
+        "camp-latin-chicken-avocado-grapes",
+        "camp-latin-grapes-strawberry"
+      ],
+      "recipeNames": [
+        "Steak & Corn",
+        "Chicken, Avocado & Grapes",
+        "Grapes & Strawberry Cup"
+      ],
+      "ingredients": [
+        "steak",
+        "corn",
+        "chicken",
+        "avocado",
+        "grapes",
+        "lime",
+        "strawberry"
+      ],
+      "techniques": [
+        "slice",
+        "dice",
+        "halve",
+        "radial"
+      ],
+      "componentCount": 9,
+      "requiredOrders": 3,
+      "batchGroup": false,
+      "reward": 3250,
+      "purpose": "The chapter's finale — three customers, drawing on every recipe this mastery taught.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 133,
+      "oldLevel": 221,
+      "id": "level-133",
+      "chapter": 11,
+      "title": "Salmon & Cabbage",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-fusion-salmon-cabbage"
+      ],
+      "recipeNames": [
+        "Salmon & Cabbage"
+      ],
+      "ingredients": [
+        "salmon",
+        "cabbage"
+      ],
+      "techniques": [
+        "slice"
+      ],
+      "componentCount": 2,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 3270,
+      "purpose": "Slice the salmon, then slice the cabbage.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 134,
+      "oldLevel": 222,
+      "id": "level-134",
+      "chapter": 11,
+      "title": "Steak & Spinach",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-fusion-steak-spinach"
+      ],
+      "recipeNames": [
+        "Steak & Spinach"
+      ],
+      "ingredients": [
+        "steak",
+        "spinach",
+        "springonion"
+      ],
+      "techniques": [
+        "slice",
+        "chop"
+      ],
+      "componentCount": 3,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 3290,
+      "purpose": "Slice the steak thin, then chop the spinach.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 135,
+      "oldLevel": 223,
+      "id": "level-135",
+      "chapter": 11,
+      "title": "Two Tables, Two Kitchens",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-fusion-salmon-cabbage",
+        "camp-fusion-steak-spinach",
+        "camp-radish-pear-fusion-cup"
+      ],
+      "recipeNames": [
+        "Salmon & Cabbage",
+        "Steak & Spinach",
+        "Radish & Pear Fusion Cup"
+      ],
+      "ingredients": [
+        "salmon",
+        "cabbage",
+        "steak",
+        "spinach",
+        "springonion",
+        "radish",
+        "pear",
+        "ginger"
+      ],
+      "techniques": [
+        "slice",
+        "chop",
+        "julienne",
+        "peel"
+      ],
+      "componentCount": 10,
+      "requiredOrders": 2,
+      "batchGroup": false,
+      "reward": 3310,
+      "purpose": "Two customers, one Japanese, one Korean — the same evening.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 136,
+      "oldLevel": 224,
+      "id": "level-136",
+      "chapter": 11,
+      "title": "Shared Mushroom, Two Kitchens",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-fusion-mushroom-batch-a",
+        "camp-fusion-mushroom-batch-b"
+      ],
+      "recipeNames": [
+        "Mushroom Salmon Plate",
+        "Mushroom Steak Bowl"
+      ],
+      "ingredients": [
+        "mushroom",
+        "salmon",
+        "steak"
+      ],
+      "techniques": [
+        "slice"
+      ],
+      "componentCount": 4,
+      "requiredOrders": 1,
+      "batchGroup": true,
+      "reward": 3330,
+      "purpose": "Two customers, one Japanese, one Korean, ONE sliced mushroom satisfying both.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 137,
+      "oldLevel": 226,
+      "id": "level-137",
+      "chapter": 11,
+      "title": "Salmon, Fusion Two Ways",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-fusion-salmon-branch"
+      ],
+      "recipeNames": [
+        "Salmon, Fusion Two Ways"
+      ],
+      "ingredients": [
+        "salmon"
+      ],
+      "techniques": [
+        "slice",
+        "dice"
+      ],
+      "componentCount": 2,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 3370,
+      "purpose": "One salmon sliced for the plate, a fresh one diced for the bowl.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 138,
+      "oldLevel": 228,
+      "id": "level-138",
+      "chapter": 11,
+      "title": "Three Tables, Three Kitchens",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-fusion-carrot-3way-a",
+        "camp-fusion-carrot-3way-b",
+        "camp-fusion-carrot-3way-c"
+      ],
+      "recipeNames": [
+        "Carrot Salmon Plate",
+        "Carrot Steak Bowl",
+        "Carrot Cabbage Cup"
+      ],
+      "ingredients": [
+        "carrot",
+        "salmon",
+        "steak",
+        "cabbage"
+      ],
+      "techniques": [
+        "julienne",
+        "slice",
+        "chop"
+      ],
+      "componentCount": 6,
+      "requiredOrders": 1,
+      "batchGroup": true,
+      "reward": 3410,
+      "purpose": "Three customers, three different kitchens, ONE carrot julienne satisfying all three.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 139,
+      "oldLevel": 230,
+      "id": "level-139",
+      "chapter": 11,
+      "title": "Japanese-Korean Fusion Service",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-fusion-salmon-branch",
+        "camp-fusion-mushroom-batch-a",
+        "camp-fusion-mushroom-batch-b"
+      ],
+      "recipeNames": [
+        "Salmon, Fusion Two Ways",
+        "Mushroom Salmon Plate",
+        "Mushroom Steak Bowl"
+      ],
+      "ingredients": [
+        "salmon",
+        "mushroom",
+        "steak"
+      ],
+      "techniques": [
+        "slice",
+        "dice"
+      ],
+      "componentCount": 6,
+      "requiredOrders": 1,
+      "batchGroup": true,
+      "reward": 3500,
+      "purpose": "The chapter's finale — a real shared mushroom batch alongside a real salmon branch, three customers at once.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 140,
+      "oldLevel": 233,
+      "id": "level-140",
+      "chapter": 8,
+      "title": "Two Tables, Two Kitchens",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-fusion2-chicken-broccoli",
+        "camp-fusion2-salmon-basil",
+        "camp-green-bean-tofu-wok-bowl"
+      ],
+      "recipeNames": [
+        "Chicken & Broccoli, Wok Style",
+        "Salmon Basil Garlic",
+        "Green Bean & Tofu Wok Bowl"
+      ],
+      "ingredients": [
+        "chicken",
+        "broccoli",
+        "springonion",
+        "salmon",
+        "basil",
+        "garlic",
+        "greenbean",
+        "tofu"
+      ],
+      "techniques": [
+        "dice",
+        "chop",
+        "slice",
+        "chiffonade",
+        "peel",
+        "rockMince"
+      ],
+      "componentCount": 10,
+      "requiredOrders": 2,
+      "batchGroup": false,
+      "reward": 3560,
+      "purpose": "Two customers, one Chinese, one Thai — the same evening.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 141,
+      "oldLevel": 238,
+      "id": "level-141",
+      "chapter": 8,
+      "title": "Three Tables, Three Kitchens",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-fusion2-garlic-3way-a",
+        "camp-fusion2-garlic-3way-b",
+        "camp-fusion2-garlic-3way-c"
+      ],
+      "recipeNames": [
+        "Garlic Chicken Plate",
+        "Garlic Salmon Bowl",
+        "Garlic Steak Cup"
+      ],
+      "ingredients": [
+        "garlic",
+        "chicken",
+        "springonion",
+        "salmon",
+        "steak"
+      ],
+      "techniques": [
+        "peel",
+        "rockMince",
+        "slice"
+      ],
+      "componentCount": 10,
+      "requiredOrders": 1,
+      "batchGroup": true,
+      "reward": 3660,
+      "purpose": "Three customers, three different kitchens, ONE rock-minced garlic satisfying all three.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 142,
+      "oldLevel": 240,
+      "id": "level-142",
+      "chapter": 8,
+      "title": "Chinese-Thai Fusion Service",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-fusion2-steak-branch",
+        "camp-fusion2-garlic-3way-a",
+        "camp-fusion2-garlic-3way-b"
+      ],
+      "recipeNames": [
+        "Steak, Wok Two Ways",
+        "Garlic Chicken Plate",
+        "Garlic Salmon Bowl"
+      ],
+      "ingredients": [
+        "steak",
+        "garlic",
+        "chicken",
+        "springonion",
+        "salmon"
+      ],
+      "techniques": [
+        "slice",
+        "dice",
+        "peel",
+        "rockMince"
+      ],
+      "componentCount": 9,
+      "requiredOrders": 1,
+      "batchGroup": true,
+      "reward": 3750,
+      "purpose": "The chapter's finale — a real shared garlic batch alongside a real steak branch, three customers at once.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 143,
+      "oldLevel": 241,
+      "id": "level-143",
+      "chapter": 12,
+      "title": "Nine-Kitchen Sampler",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-finale-nine-cuisine-sampler"
+      ],
+      "recipeNames": [
+        "Nine-Kitchen Sampler"
+      ],
+      "ingredients": [
+        "tomato",
+        "basil",
+        "carrot",
+        "garlic",
+        "onion",
+        "orange"
+      ],
+      "techniques": [
+        "dice",
+        "chiffonade",
+        "julienne",
+        "peel",
+        "rockMince",
+        "rings",
+        "radial"
+      ],
+      "componentCount": 8,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 3800,
+      "purpose": "One plate, every kitchen's own signature cut.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 144,
+      "oldLevel": 242,
+      "id": "level-144",
+      "chapter": 12,
+      "title": "Two Tables, Every Kitchen",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-finale-nine-cuisine-sampler",
+        "camp-chicken-carrot-plate",
+        "camp-finale-apple-cheddar"
+      ],
+      "recipeNames": [
+        "Nine-Kitchen Sampler",
+        "Chicken & Carrot Plate",
+        "Apple & Cheddar Plate"
+      ],
+      "ingredients": [
+        "tomato",
+        "basil",
+        "carrot",
+        "garlic",
+        "onion",
+        "orange",
+        "chicken",
+        "apple",
+        "cheddar"
+      ],
+      "techniques": [
+        "dice",
+        "chiffonade",
+        "julienne",
+        "peel",
+        "rockMince",
+        "rings",
+        "radial",
+        "slice"
+      ],
+      "componentCount": 13,
+      "requiredOrders": 2,
+      "batchGroup": false,
+      "reward": 3820,
+      "purpose": "Two customers, drawing on recipes from across every chapter.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 145,
+      "oldLevel": 243,
+      "id": "level-145",
+      "chapter": 12,
+      "title": "Chicken, the Full Kitchen",
+      "type": "ORDER",
+      "recipeIds": [
+        "camp-finale-chicken-grand"
+      ],
+      "recipeNames": [
+        "Chicken, the Full Kitchen"
+      ],
+      "ingredients": [
+        "chicken"
+      ],
+      "techniques": [
+        "slice",
+        "julienne",
+        "dice"
+      ],
+      "componentCount": 3,
+      "requiredOrders": 1,
+      "batchGroup": false,
+      "reward": 3840,
+      "purpose": "Sliced, julienned, and diced — everything this kitchen learned about chicken, one order.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 146,
+      "oldLevel": 244,
+      "id": "level-146",
+      "chapter": 12,
+      "title": "Two Tables, Steak & Salmon",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-med-salmon-branch",
+        "camp-french-steak-branch"
+      ],
+      "recipeNames": [
+        "Salmon, Two Ways",
+        "Steak, French Two Ways"
+      ],
+      "ingredients": [
+        "salmon",
+        "steak"
+      ],
+      "techniques": [
+        "slice",
+        "dice"
+      ],
+      "componentCount": 4,
+      "requiredOrders": 2,
+      "batchGroup": false,
+      "reward": 3860,
+      "purpose": "Two customers, steak and salmon, reinforced one last time.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 147,
+      "oldLevel": 245,
+      "id": "level-147",
+      "chapter": 12,
+      "title": "Shared Carrot, Steak & Salmon",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-finale-steak-salmon-batch-a",
+        "camp-finale-steak-salmon-batch-b"
+      ],
+      "recipeNames": [
+        "Grand Carrot Plate (Steak)",
+        "Grand Carrot Bowl (Salmon)"
+      ],
+      "ingredients": [
+        "carrot",
+        "steak",
+        "salmon"
+      ],
+      "techniques": [
+        "julienne",
+        "slice"
+      ],
+      "componentCount": 4,
+      "requiredOrders": 1,
+      "batchGroup": true,
+      "reward": 3880,
+      "purpose": "Two customers, steak and salmon, ONE carrot julienne shared between them.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 148,
+      "oldLevel": 246,
+      "id": "level-148",
+      "chapter": 12,
+      "title": "Three Tables, Every Cuisine",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-finale-nine-cuisine-sampler",
+        "camp-chicken-carrot-plate",
+        "camp-steak-carrot-plate",
+        "camp-finale-apple-cheddar",
+        "camp-finale-onion-rings-smash",
+        "camp-finale-kiwi-lemon-plate"
+      ],
+      "recipeNames": [
+        "Nine-Kitchen Sampler",
+        "Chicken & Carrot Plate",
+        "Steak & Carrot Plate",
+        "Apple & Cheddar Plate",
+        "Onion Rings & Smashed Garlic",
+        "Kiwi & Lemon Plate"
+      ],
+      "ingredients": [
+        "tomato",
+        "basil",
+        "carrot",
+        "garlic",
+        "onion",
+        "orange",
+        "chicken",
+        "steak",
+        "apple",
+        "cheddar",
+        "kiwi",
+        "lemon",
+        "pomegranate"
+      ],
+      "techniques": [
+        "dice",
+        "chiffonade",
+        "julienne",
+        "peel",
+        "rockMince",
+        "rings",
+        "radial",
+        "slice",
+        "smash",
+        "halve"
+      ],
+      "componentCount": 23,
+      "requiredOrders": 3,
+      "batchGroup": false,
+      "reward": 3900,
+      "purpose": "Three customers, drawing on recipes from across the entire campaign.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 149,
+      "oldLevel": 248,
+      "id": "level-149",
+      "chapter": 12,
+      "title": "Three Tables, The Last Rehearsal",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-finale-chicken-grand",
+        "camp-med-salmon-branch",
+        "camp-french-steak-branch",
+        "camp-finale-apple-cheddar",
+        "camp-finale-kiwi-lemon-plate",
+        "camp-finale-onion-rings-smash"
+      ],
+      "recipeNames": [
+        "Chicken, the Full Kitchen",
+        "Salmon, Two Ways",
+        "Steak, French Two Ways",
+        "Apple & Cheddar Plate",
+        "Kiwi & Lemon Plate",
+        "Onion Rings & Smashed Garlic"
+      ],
+      "ingredients": [
+        "chicken",
+        "salmon",
+        "steak",
+        "apple",
+        "cheddar",
+        "kiwi",
+        "lemon",
+        "pomegranate",
+        "onion",
+        "garlic"
+      ],
+      "techniques": [
+        "slice",
+        "julienne",
+        "dice",
+        "peel",
+        "radial",
+        "halve",
+        "rings",
+        "smash"
+      ],
+      "componentCount": 18,
+      "requiredOrders": 3,
+      "batchGroup": false,
+      "reward": 3940,
+      "purpose": "Three customers, the night before the very last service.",
+      "sourceMilestone": null,
+      "unlockReward": null
+    },
+    {
+      "newLevel": 150,
+      "oldLevel": 250,
+      "id": "level-150",
+      "chapter": 12,
+      "title": "The Grand Service — Every Table",
+      "type": "SERVICE",
+      "recipeIds": [
+        "camp-finale-garlic-grand-a",
+        "camp-finale-garlic-grand-b",
+        "camp-finale-garlic-grand-c"
+      ],
+      "recipeNames": [
+        "The Last Service, Table One",
+        "The Last Service, Table Two",
+        "The Last Service, Table Three"
+      ],
+      "ingredients": [
+        "garlic",
+        "steak",
+        "turnip",
+        "salmon",
+        "asparagus",
+        "chicken",
+        "basil"
+      ],
+      "techniques": [
+        "peel",
+        "rockMince",
+        "slice",
+        "dice",
+        "chop",
+        "chiffonade"
+      ],
+      "componentCount": 12,
+      "requiredOrders": 1,
+      "batchGroup": true,
+      "reward": 5000,
+      "purpose": "The very last service — a real shared garlic batch across two tables, and a real chicken branch at the third. Everything this kitchen ever learned, on one night.",
+      "sourceMilestone": "Every Table, Every Night",
+      "unlockReward": null
+    }
+  ]
+}

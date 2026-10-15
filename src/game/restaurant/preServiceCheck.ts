@@ -2,7 +2,7 @@
  * PRE_SERVICE_CHECK — what the Pre-Service Check shows for a level, from
  * the save alone (spec §6, §24–25). Null when the level has no check: a
  * replay (free practice), or a level whose service uses no stock yet
- * (Levels 1–10).
+ * (Levels 1–2).
  *
  * The tickets still to serve are the level's rolled tickets after the
  * orders a previous try already paid; `progress` saves the tickets when
@@ -20,7 +20,6 @@ import {
   type ToolsCheck,
 } from "./kitchenTools";
 import type { SupplyId } from "../business/businessSupplies";
-import { grandmasFridgeNoteFor, type GrandmasFridgeNote } from "./grandmasFridge";
 import { isFirstStockService } from "./firstRestock";
 import type { SaveData } from "../SaveManager";
 import type { LevelDefinition } from "../levels/levelTypes";
@@ -75,7 +74,7 @@ export function serviceNeedsAttention(pending: PendingService | null): boolean {
 
 /**
  * The whole pre-service sheet for a first play of `level`: the stock check
- * (from L15) AND, when this level opens a new restaurant day, the opening
+ * (from L3) AND, when this level opens a new restaurant day, the opening
  * card (Day N and its services). Null for a replay.
  */
 export type ServicePlan = {
@@ -99,15 +98,13 @@ export type ServicePlan = {
   welcome: KitLine[] | null;
   /** Today's menu guests and the extra stock their dishes need (optional — never blocks). */
   guests: GuestStock;
-  /** First levels pass 2: Grandma's fridge note on Levels 12–14 (null otherwise). */
-  grandmasFridge: GrandmasFridgeNote | null;
-  /** The first service on real stock (Level 15): the routine is introduced (firstRestock.ts). */
+  /** The first service using purchased ingredients (Level 3): the routine is introduced (firstRestock.ts). */
   firstStockService: boolean;
   /** The kitchen tools today's dishes and the menu need (kitchenTools.ts, from Level 10); a missing one blocks START. */
   tools: ToolsCheck;
   /** Tools the next few levels will ask for that the kitchen doesn't own yet ("Coming up"). */
   toolsSoon: { id: SupplyId; level: number; why: string }[];
-  /** Level 10's first play: Grandma's first shopping list (the tools the next ten levels need). */
+  /** Level 10's first play: the tools the next ten levels need. */
   firstShoppingList: boolean;
   /** A real restaurant's day: the phase's open chores (opening on a new day, else the lull's). */
   chores: number;
@@ -119,7 +116,7 @@ export type GuestStockRow = { ingredientId: IngredientId; buyUnits: number; cost
 export type GuestStock = {
   /** The guests still to come (recipe names, in order). */
   dishes: string[];
-  /** What to buy so every guest can be served (empty when stocked or before stock, L15). */
+  /** What to buy so every unlocked menu guest can be served (empty when stocked or before menu unlock). */
   rows: GuestStockRow[];
 };
 
@@ -180,7 +177,6 @@ export function servicePlanFor(save: SaveData, level: LevelDefinition): ServiceP
     staff: staffRequirementsFor(save, n, serviceShape(save, n, remaining, services)),
     welcome: unseenStarterCrate(save),
     guests: guestStockFor(save, level, n, remaining),
-    grandmasFridge: grandmasFridgeNoteFor(save, level, n),
     firstStockService: isFirstStockService(save, n),
     tools: toolsCheck(save, n, serviceRecipes(save, remaining)),
     toolsSoon:
@@ -211,8 +207,6 @@ export function servicePlanNeedsSheet(plan: ServicePlan | null): boolean {
   if (plan.welcome) return true;
   // A real restaurant's day: the opening / lull chores show on the check (never blocking).
   if (plan.chores > 0) return true;
-  // First levels pass 2: Grandma's note on Levels 12–14 (the note itself never blocks START).
-  if (plan.grandmasFridge) return true;
   // Pass 2 review: the first service on real stock always opens the sheet (never blocking).
   if (plan.firstStockService) return true;
   if (!staffReady(plan)) return true;

@@ -18,10 +18,11 @@
  */
 import type { KitchenUpgradeDefinition } from "./kitchenUpgradeTypes";
 import { dollars } from "../money";
+import { remapCampaignThreshold } from "../levels/campaignSelection";
 
 export const DEFAULT_KITCHEN_UPGRADE_ID = "humble-kitchen" as const;
 
-export const KITCHEN_UPGRADE_CATALOG: KitchenUpgradeDefinition[] = [
+const SOURCE_KITCHEN_UPGRADE_CATALOG: KitchenUpgradeDefinition[] = [
   {
     id: "humble-kitchen",
     name: "Humble Kitchen",
@@ -77,6 +78,8 @@ export const KITCHEN_UPGRADE_CATALOG: KitchenUpgradeDefinition[] = [
     asset: "skin-06",
   },
 ];
+
+export const KITCHEN_UPGRADE_CATALOG: KitchenUpgradeDefinition[] = SOURCE_KITCHEN_UPGRADE_CATALOG.map((item) => ({ ...item, unlockLevel: remapCampaignThreshold(item.unlockLevel) }));
 
 export function findKitchenUpgrade(id: string): KitchenUpgradeDefinition | undefined {
   return KITCHEN_UPGRADE_CATALOG.find((u) => u.id === id);

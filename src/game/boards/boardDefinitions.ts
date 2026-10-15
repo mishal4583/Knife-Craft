@@ -7,10 +7,11 @@
  */
 import type { BoardDefinition } from "./boardTypes";
 import { dollars } from "../money";
+import { remapCampaignThreshold } from "../levels/campaignSelection";
 
 export const DEFAULT_BOARD_ID = "walnut" as const;
 
-export const BOARD_CATALOG: BoardDefinition[] = [
+const SOURCE_BOARD_CATALOG: BoardDefinition[] = [
   {
     id: "walnut",
     name: "Walnut Board",
@@ -129,6 +130,8 @@ export const BOARD_CATALOG: BoardDefinition[] = [
     },
   },
 ];
+
+export const BOARD_CATALOG: BoardDefinition[] = SOURCE_BOARD_CATALOG.map((item) => ({ ...item, unlockLevel: remapCampaignThreshold(item.unlockLevel) }));
 
 export function findBoard(id: string): BoardDefinition | undefined {
   return BOARD_CATALOG.find((b) => b.id === id);

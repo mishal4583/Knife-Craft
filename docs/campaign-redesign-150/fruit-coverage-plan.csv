@@ -1,0 +1,16 @@
+fruit,retained_recipe_id,recipe_or_side,new_level,supported_preparation,culinary_role,verified
+strawberry,camp-latin-grapes-strawberry,Grapes & Strawberry Cup,125,slice,Fresh-fruit component; the later steak-and-fruit service pairs it with a savory main.,YES
+apple,camp-celery-apple-remoulade-prep,Celery & Apple Remoulade Prep,33,peel,Crisp apple in a French celery-apple remoulade side.,YES
+orange,camp-beetroot-plate,Beetroot & Orange Plate,16,radial,Citrus wedge served with beetroot in the antipasto recipe pool.,YES
+lemon,camp-zucchini-fennel-julienne,Zucchini & Fennel with Lemon,20,radial,Citrus finish on the zucchini-and-fennel plate.,YES
+avocado,camp-avocado-baguette-toast,Avocado Baguette Toast,47,halve,Savory avocado toast/plate accompaniment.,YES
+pear,camp-pear-radish-side,Pear & Radish Side,104,peel,Fresh julienned fruit in a Korean pear-and-radish side.,YES
+peach,camp-french-peach-garnish,Peach & Fennel Plate,114,halve,Fresh peach accompaniment in the French service menu.,YES
+pineapple,camp-pineapple-mango-fresh,Pineapple & Mango Fresh Cup,51,peel,Pineapple salsa and a fresh fruit cup; salsa accompanies savory Latin dishes.,YES
+watermelon,camp-med-kiwi-watermelon,Kiwi & Watermelon Fresh Plate,117,peel,Fresh fruit cup paired with savory seafood in a multi-order service.,YES
+mango,camp-mango-chutney-base,Mango Chutney Base,38,peel,Mango chutney/relish as a savory condiment.,YES
+kiwi,camp-med-kiwi-watermelon,Kiwi & Watermelon Fresh Plate,117,peel,Fresh fruit cup paired with savory seafood in a multi-order service.,YES
+pomegranate,camp-pomegranate-apple-plate,Pomegranate & Apple Plate,120,halve,Fresh fruit side with apple and beetroot.,YES
+grapes,camp-latin-grapes-strawberry,Grapes & Strawberry Cup,125,slice,Fresh fruit cup paired with a savory steak service.,YES
+coconut,camp-thai-salmon-coconut,Salmon & Coconut,89,halve,Savory coconut component in Thai salmon and curry recipes.,YES
+lime,camp-avocado-plate,Avocado & Lime Plate,50,radial,Citrus finish in avocado and fresh-fruit recipes.,YES

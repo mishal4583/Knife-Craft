@@ -5,8 +5,9 @@
  */
 import type { ChefDefinition } from "./chefTypes";
 import type { CuisineId } from "../cuisines/cuisineTypes";
+import { remapCampaignThreshold } from "../levels/campaignSelection";
 
-export const CHEFS: Record<CuisineId, ChefDefinition> = {
+const SOURCE_CHEFS: Record<CuisineId, ChefDefinition> = {
   italian: {
     id: "italian",
     name: "Chef Elena",
@@ -89,6 +90,13 @@ export const CHEFS: Record<CuisineId, ChefDefinition> = {
     introLine: "Thin, even, unhurried. The cut is half the dish here.",
   },
 };
+
+export const CHEFS: Record<CuisineId, ChefDefinition> = Object.fromEntries(
+  Object.entries(SOURCE_CHEFS).map(([id, chef]) => [
+    id,
+    { ...chef, unlockLevel: remapCampaignThreshold(chef.unlockLevel) },
+  ]),
+) as Record<CuisineId, ChefDefinition>;
 
 export const CHEF_LIST: ChefDefinition[] = Object.values(CHEFS);
 

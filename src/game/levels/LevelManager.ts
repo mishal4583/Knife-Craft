@@ -58,12 +58,15 @@ export type LevelProgress = {
    * Absent on older saves; a level's entry is dropped when it completes.
    */
   emergency?: Record<string, true>;
+  /** Versioned campaign numbering, nested here to preserve the existing top-level save schema. */
+  campaignVersion?: number;
 };
 
 export const DEFAULT_LEVEL_PROGRESS: LevelProgress = {
   currentLevelId: LEVELS[0]!.id,
   highestUnlockedLevelId: LEVELS[0]!.id,
   completedLevelIds: [],
+  campaignVersion: 2,
 };
 
 export function getLevels(): LevelDefinition[] {

@@ -58,6 +58,8 @@ import {
 import { defaultSuppliesState, type BusinessSuppliesState } from "./businessSupplies";
 
 export type BusinessState = {
+  /** Dismissal state for the one-time first-stock-service explainer. */
+  firstStockCheckSeen: boolean;
   calendar: BusinessCalendar;
   /** Economy V3 Phase 2 — physical restaurant stock, Business Mode only. See businessInventory.ts's own doc. */
   inventory: BusinessInventory;
@@ -140,9 +142,8 @@ export type BusinessState = {
    */
   restaurantMigration?: RestaurantMigrationState;
   /**
-   * Unified Restaurant (RESTAURANT_MODE), first levels pass 2: Grandma's
-   * one-time leftovers (restaurant/grandmasFridge.ts). Optional; absent =
-   * not given yet.
+   * Legacy field retained when reading older saves. It no longer grants or
+   * displays ingredients; new stock is bought in the Market.
    */
   grandmasFridge?: GrandmasFridgeState;
   /**
@@ -167,6 +168,7 @@ export type BusinessState = {
 };
 
 export const DEFAULT_BUSINESS_STATE: BusinessState = {
+  firstStockCheckSeen: false,
   calendar: { ...DEFAULT_BUSINESS_CALENDAR },
   inventory: { ...DEFAULT_BUSINESS_INVENTORY },
   refrigerator: { refrigeratorId: DEFAULT_REFRIGERATOR_ID },
