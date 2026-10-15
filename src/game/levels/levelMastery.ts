@@ -28,6 +28,15 @@ import { KITCHEN_UPGRADE_CATALOG } from "../kitchen/kitchenUpgradeDefinitions";
 import { LEVELS, CHAPTER_TITLES } from "./levelDefinitions";
 
 /**
+ * The chapter a level's pay ramps with (recipePay): its cuisine chapter. The
+ * curated campaign renumbers the chapters for display (2026-10-15) but keeps
+ * the cuisine chapter, so the renumbering moves no money. Absent → `chapter`.
+ */
+export function payChapterOf(level: Pick<LevelDefinition, "chapter" | "cuisineChapter">): number {
+  return level.cuisineChapter ?? level.chapter;
+}
+
+/**
  * The Cookbook's "Prepared" stamp — a plain, permanent, binary fact (has
  * this recipe ever been completed), never a graded/numeric rating. Reads
  * `recipeProgress[recipeId].done`, a field SaveManager has persisted

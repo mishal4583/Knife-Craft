@@ -125,6 +125,13 @@ export type LevelDefinition = {
   /** Old campaign level whose reward band this retained level inherits. */
   campaignRewardBasisLevel?: number;
   chapter: number;
+  /**
+   * The cuisine chapter this level's dishes belong to (curated campaign): pay's
+   * chapter ramp and the cuisine read it. Absent = `chapter`. Encore levels
+   * (107+) show a later chapter but keep their cuisine's pay (developer
+   * 2026-10-15: no economy change in the chapter renumbering).
+   */
+  cuisineChapter?: number;
   chapterId: string;
   type: LevelType;
   title: string;

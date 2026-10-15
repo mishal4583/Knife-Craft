@@ -1,5 +1,34 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## 150-level review fixes (2026-10-15, branch `codex/restaurant-map`)
+
+- **No single-ingredient dishes** (Level 1's first slice aside). 21 dishes gained
+  a second, already-taught ingredient (`SECOND_INGREDIENT`,
+  `src/game/recipes/campaignRecipes.ts`); dish names are kept because
+  `dishService` reads them.
+- **No exact repeats.** Old 61/91/112/152 copied another level's recipes and
+  were swapped for old 68/90/119/157 (`campaignSelection.ts`).
+- **Chapters in play order, 1→13** (`CAMPAIGN_150_CHAPTERS`): encores are their
+  own chapters, and Mediterranean merged with Latin. `cuisineChapter` keeps the
+  old cuisine chapter for pay (`payChapterOf`, `levelMastery.ts`), so the
+  renumbering moves no money.
+- **Teaching:**
+  - Level 2 practice is dice, slice and peel only;
+  - smash is taught at L5 and julienne at L20;
+  - L16 is a fixed Beetroot & Orange dish that teaches the wedge cut.
+- **Text:**
+  - level texts were fixed to match their dishes;
+  - "spring onion", "sweet potato", "green beans" and "pea pods" now appear in
+    instructions instead of the ingredient ids;
+  - repeated level titles were renamed.
+- **Side effects on money (the economy itself is untouched):**
+  - expected campaign order revenue +3% ($64.0k → $66.1k), from the richer dishes;
+  - the business-ux menu price sum is 82,293 (was 81,893).
+- **Tests:** fixture tests were updated to count chicken instances
+  (economy-v2-* J1/F1/O1/K1, multi-instance 4/9).
+- **Still to do:** the suites pinned to the 250-level layout and the economy
+  suites still fail, as before this change.
+
 ## Isolated Restaurant Map review (2026-10-12)
 
 The developer created `D:\WORKS\GAMES\Knife-Craft-Codex` on branch

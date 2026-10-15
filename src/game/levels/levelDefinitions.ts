@@ -7,6 +7,7 @@ import type { LevelDefinition } from "./levelTypes";
 import {
   CAMPAIGN_150_CHAPTER_BY_SOURCE_CHAPTER,
   CAMPAIGN_150_CHAPTER_IDS,
+  campaignChapterOf,
   CAMPAIGN_150_CHAPTER_TITLES,
   CAMPAIGN_150_OLD_TO_NEW,
   CAMPAIGN_150_SOURCE_LEVEL_NUMBERS,
@@ -9704,22 +9705,75 @@ export const CAMPAIGN_150_SOURCE_LEVELS: readonly LevelDefinition[] =
 const tutorialSteps = [
   { ingredient: "tomato", startingState: "whole", technique: "dice", resultingState: "diced", destination: "Practice Plate", optional: false },
   { ingredient: "cucumber", startingState: "whole", technique: "slice", resultingState: "sliced", destination: "Practice Plate", optional: false },
-  { ingredient: "carrot", startingState: "whole", technique: "julienne", resultingState: "julienned", destination: "Practice Plate", optional: false },
   { ingredient: "garlic", startingState: "whole", technique: "peel", resultingState: "peeled", destination: "Practice Plate", optional: false },
-  { ingredient: "garlic", startingState: "peeled", technique: "smash", resultingState: "smashed", destination: "Practice Plate", optional: false },
 ] satisfies LevelDefinition["preparationSteps"];
 
 const tutorialObjectives: LevelDefinition["objectives"] = [
   { type: "prepareIngredient", ingredientId: "tomato", technique: "dice" },
   { type: "prepareIngredient", ingredientId: "cucumber", technique: "slice" },
-  { type: "prepareIngredient", ingredientId: "carrot", technique: "julienne" },
   { type: "prepareIngredient", ingredientId: "garlic", technique: "peel" },
-  { type: "prepareIngredient", ingredientId: "garlic", technique: "smash" },
 ];
+
+/**
+ * Text and recipe fixes from the 2026-10-15 level review (new level number →
+ * fields). Single-ingredient dishes gained a second ingredient in
+ * campaignRecipes.ts, so their descriptions follow; repeated level names got
+ * their own; Level 16 teaches the wedge (radial) cut with one fixed dish
+ * instead of a random pool, so every player meets it.
+ */
+const LEVEL_FIXES: Record<number, Partial<LevelDefinition>> = {
+  4: {
+    title: "Potato & Tomato",
+    description: "Peel the potato and halve it evenly, then slice a tomato alongside it.",
+  },
+  11: {
+    description: "Cut the onion into even rings — a technique this kitchen hasn't used before — with diced tomato for the dip.",
+  },
+  16: {
+    title: "Beetroot & Orange Plate",
+    subtitle: "A new technique: Wedges",
+    description: "Peel and slice the beetroot, then cut the orange into wedges — a new cut for the kitchen.",
+    recipeId: "camp-beetroot-plate",
+    recipePoolIds: ["camp-beetroot-plate"],
+  },
+  18: {
+    description: "One onion, prepared twice: sliced for the bruschetta, diced with carrot for the soup base.",
+  },
+  22: { description: "An even dice on the potato and chopped onion — the bistro expects consistency." },
+  23: {
+    title: "Garlic & Tomato Sauce",
+    description: "Rock the blade heel-to-tip over the garlic until it's fine and even, then dice the tomato for the sauce.",
+  },
+  24: {
+    title: "Basil Ribbons on Tomato",
+    description: "Roll the basil tight and ribbon it fine over sliced tomato — the eleventh and final technique.",
+  },
+  39: { title: "Pumpkin & Onion Curry", description: "Pumpkin and onion, diced and chopped evenly for the curry." },
+  59: { description: "A boneless fillet, sliced clean — the new protein geometry, with sliced cucumber alongside." },
+  60: { description: "Halved first, then sliced — the fillet's own real state progression, finished with a lemon wedge." },
+  63: { description: "A different weight than the chicken — the ribeye's own knife feel, with sliced mushrooms." },
+  64: { description: "Sliced, then a portion diced — the same steak, two textures, with chopped onion." },
+  66: { description: "Even, gentle pressure — the salmon's own real geometry, with a lemon wedge." },
+  71: { title: "Three Tables, Japanese Night" },
+  73: { description: "A real branch — one chicken sliced for the salad, a fresh one diced with pepper for the bowl." },
+  85: { description: "One steak sliced for the plate with spring onion, a fresh one diced for the bowl." },
+  89: { description: "Sliced salmon, with the coconut halved and chopped alongside it." },
+  99: { title: "Thai Branch & Batch" },
+  109: { description: "Slice the chicken, then halve and slice the artichoke, with lemon and minced garlic." },
+  115: { title: "Shared Carrot, Bistro Tables" },
+  117: { description: "Peel and slice the kiwi, then peel and dice the watermelon." },
+  130: { title: "Latin Full Pool" },
+  137: { description: "One salmon sliced for the plate with cabbage, a fresh one diced for the bowl." },
+  140: { title: "Wok & Thai Night" },
+  141: { title: "Three Tables, One Garlic" },
+  145: { description: "Sliced, julienned and diced — everything this kitchen learned about chicken, with carrot julienne." },
+};
 
 export const LEVELS: LevelDefinition[] = CAMPAIGN_150_SOURCE_LEVEL_NUMBERS.map((oldNumber, index) => {
   const source = SOURCE_LEVELS[oldNumber - 1]!;
-  const chapter = index < 4
+  // Display chapter in play order; the cuisine chapter (pay, cuisine) is unchanged.
+  const chapter = campaignChapterOf(index + 1);
+  const cuisineChapter = index < 4
     ? 1
     : index < 20
       ? 2
@@ -9730,13 +9784,14 @@ export const LEVELS: LevelDefinition[] = CAMPAIGN_150_SOURCE_LEVEL_NUMBERS.map((
     id,
     campaignRewardBasisLevel: oldNumber,
     chapter,
+    cuisineChapter,
     chapterId: CAMPAIGN_150_CHAPTER_IDS[chapter]!,
     unlockRequirements: index === 0 ? { type: "always" } : { type: "levelCompleted", levelId: `level-${index}` },
   };
   if (oldNumber === 2) {
     level.title = "Basic Kitchen Learning";
-    level.subtitle = "A guided practice with five essential prep steps";
-    level.description = "Practice tomato dice, cucumber slices, carrot julienne, then peel and smash garlic. Training food is provided for this lesson.";
+    level.subtitle = "A guided practice: dice, slice and peel";
+    level.description = "Practice a tomato dice, cucumber slices, then peel a garlic clove. Training food is provided for this lesson.";
     level.emoji = "🔪";
     level.recipeId = "camp-level2-basics-tutorial";
     level.recipePoolIds = ["camp-level2-basics-tutorial"];
@@ -9747,6 +9802,7 @@ export const LEVELS: LevelDefinition[] = CAMPAIGN_150_SOURCE_LEVEL_NUMBERS.map((
     level.reward = { coins: 0 };
     level.campaignNoEconomy = true;
   }
+  Object.assign(level, LEVEL_FIXES[index + 1] ?? {});
   return level;
 });
 

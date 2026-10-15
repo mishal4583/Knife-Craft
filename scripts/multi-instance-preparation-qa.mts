@@ -108,7 +108,9 @@ if (chickenRecipe) {
 
 // ===== 4/5/6 (E's "7/8/9/10"): componentRuns splits the chicken recipe into exactly 3 independent runs — i.e. each technique gets its OWN preparation instance, not one continuous chain. =====
 if (chickenRecipe) {
-  const runs = componentRuns(chickenRecipe);
+  // Developer 2026-10-15 (no single-ingredient dish): a carrot julienne joined the
+  // bowl; it is its own run, so count the chicken runs.
+  const runs = componentRuns(chickenRecipe).filter((run) => run[0]!.ingredientId === "chicken");
   assert(runs.length === 3, `4: "Chicken, the Full Kitchen" splits into exactly 3 independent preparation runs (got ${runs.length})`);
   assert(runs.every((r) => r.length === 1), "5: each of the 3 runs contains exactly one component (no run accidentally absorbed a second technique)");
   const techniques = runs.map((r) => r[0]!.technique);
@@ -140,7 +142,9 @@ if (chickenRecipe) {
 
 // ===== 9: destinations remain distinct — plate/bowl/cup share no requirement overlap, so each of the 3 chicken outputs satisfies exactly one destination, never accidentally fanning out to the others. =====
 if (chickenRecipe) {
-  const allDest = chickenRecipe.components.flatMap((c) => c.destinationIds);
+  const allDest = chickenRecipe.components
+    .filter((c) => c.ingredientId === "chicken")
+    .flatMap((c) => c.destinationIds);
   const unique = new Set(allDest);
   assert(allDest.length === unique.size, `9: every chicken component's destinationIds are unique across the recipe (no shared/overlapping destination) — ${allDest.join(",")}`);
 }

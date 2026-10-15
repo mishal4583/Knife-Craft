@@ -18,6 +18,7 @@ import { isCompleted } from "../levels/LevelManager";
 import { paidOrdersFor } from "../levels/paidOrders";
 import { paidLevelReward } from "../levels/levelRewards";
 import { recipePay } from "../recipes/recipePay";
+import { payChapterOf } from "../levels/levelMastery";
 import { dollars } from "../money";
 import { ticketsFor } from "./serviceTickets";
 
@@ -27,7 +28,7 @@ export function levelPayPreview(save: SaveData, level: LevelDefinition): LevelPa
   if (isCompleted(level.id, save.levelProgress)) return null;
   const { tickets, progress } = ticketsFor(save.levelProgress, level);
   const owed = tickets.slice(paidOrdersFor(progress, level.id).length);
-  const orders = owed.reduce((t, r) => t + dollars(recipePay(r, level.chapter)), 0);
+  const orders = owed.reduce((t, r) => t + dollars(recipePay(r, payChapterOf(level))), 0);
   const completion = paidLevelReward(level);
   return { orders, completion, total: orders + completion };
 }

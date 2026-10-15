@@ -170,7 +170,9 @@ function fakeRecipe(components: Partial<RecipeComponent>[]): RecipeDefinition {
   // of which settlement (if any) is computed alongside them.
   const s1 = computeSettlement(recipe, 11, 75, "obsidian", "butcherblock");
   const s2 = computeSettlement(recipe, 11, 75);
-  assert(instancesNeutral.length === 1, "F1: camp-chicken-halve-slice still resolves to exactly 1 physical instance (unchanged since Phase 2)");
+  // Developer 2026-10-15 (no single-ingredient dish): the dish gained a lemon wedge,
+  // its own instance; the halve→slice chicken is still ONE instance.
+  assert(instancesNeutral.filter((x) => x.ingredientId === "chicken").length === 1, "F1: camp-chicken-halve-slice still resolves to exactly 1 physical chicken instance (unchanged since Phase 2)");
   assert(s1.baselineCOGS === dollars(baselineNeutral) && s2.baselineCOGS === dollars(baselineNeutral), "F: baselineCOGS (physical-instance accounting) is IDENTICAL with or without equipment specialization — equipment never re-touches component counting");
 }
 

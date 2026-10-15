@@ -41,6 +41,7 @@ import {
   isCompleted,
 } from "@/game/levels/LevelManager";
 import { LEVELS } from "@/game/levels/levelDefinitions";
+import { payChapterOf } from "@/game/levels/levelMastery";
 import { knifeOrDefault } from "@/game/knives/knifeDefinitions";
 import {
   effectiveKnife,
@@ -334,11 +335,11 @@ function buildCampaignServiceSession(
       tickets,
       paidOrdersFor(levelProgress, level.id).length,
       Math.random,
-      level.chapter,
+      payChapterOf(level),
       false,
     );
   }
-  const session = createServiceSession(level.id, pool, Math.random, level.chapter, isReplay);
+  const session = createServiceSession(level.id, pool, Math.random, payChapterOf(level), isReplay);
   // A retry carries on: orders already served and paid stay counted.
   return isReplay
     ? session
@@ -2202,7 +2203,7 @@ export function App() {
     // exactly, for the batch-group architecture.
     const isReplay = isCompleted(level.id, save.levelProgress);
     if (levelAlreadyPaidInFull(level)) return;
-    const fresh = createBatchGroupSession(level.id, recipes, Math.random, level.chapter, isReplay);
+    const fresh = createBatchGroupSession(level.id, recipes, Math.random, payChapterOf(level), isReplay);
     // A retry carries on: customers already served and paid stay served.
     const group = isReplay
       ? fresh
@@ -2405,7 +2406,7 @@ export function App() {
       isFirstCompletion && recipe
         ? computeSettlement(
             recipe,
-            activeLevel.chapter,
+            payChapterOf(activeLevel),
             score,
             save.equippedKnifeId,
             save.equippedBoardId,

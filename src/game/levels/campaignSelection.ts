@@ -10,48 +10,64 @@ export const CAMPAIGN_150_SOURCE_LEVEL_NUMBERS: readonly number[] = [
   // Italian learning progresses into real dishes, branching and service.
   16, 18, 20, 17, 29, 24, 26, 28, 30, 27,
   // Selected from the remainder of the 250-level catalog after the quality pass.
+  // 2026-10-15 review: old 61, 91, 112 and 152 repeated another retained level's
+  // exact recipes; old 68, 90, 119 and 157 (new dishes / a mixed pool) replace them.
   32,33,34,35,36,37,39,40,41,43,44,45,46,50,
-  51,52,54,57,58,60,61,62,64,67,70,71,74,76,
-  81,82,84,85,87,89,91,94,98,100,
-  101,102,104,105,106,107,108,109,110,111,112,113,114,115,116,118,120,
+  51,52,54,57,58,60,68,62,64,67,70,71,74,76,
+  81,82,84,85,87,89,90,94,98,100,
+  101,102,104,105,106,107,108,109,110,111,119,113,114,115,116,118,120,
   121,123,124,125,127,128,130,132,133,135,139,140,142,143,144,145,146,149,150,
-  152,153,154,156,158,160,161,162,163,165,166,170,171,172,173,175,178,181,183,184,185,188,
+  157,153,154,156,158,160,161,162,163,165,166,170,171,172,173,175,178,181,183,184,185,188,
   201,202,203,204,206,208,209,210,211,212,213,214,216,218,219,220,
   221,222,223,224,226,228,230,233,238,240,
   241,242,243,244,245,246,248,250,
 ];
 
-export const CAMPAIGN_150_CHAPTER_TITLES: Record<number, string> = {
-  1: "Opening the Restaurant",
-  2: "Italian Kitchen & Service",
-  3: "French Bistro & Precision",
-  4: "Indian Kitchen & Service",
-  5: "Mediterranean & Levant",
-  6: "Mexican & Latin",
-  7: "Japanese Kitchen",
-  8: "Chinese Wok",
-  9: "Thai & Southeast Asian",
-  10: "Korean Kitchen",
-  11: "East Asian Fusion",
-  12: "The Grand Finale",
-};
+/**
+ * The chapters as the player meets them, strictly in play order (2026-10-15
+ * review: the encore services used to rejoin their cuisine's earlier chapter,
+ * so the chapter number went backwards from Level 107). Each entry is the
+ * chapter's first level.
+ */
+export const CAMPAIGN_150_CHAPTERS: readonly { firstLevel: number; id: string; title: string }[] = [
+  { firstLevel: 1, id: "opening-the-restaurant", title: "Opening the Restaurant" },
+  { firstLevel: 5, id: "italian-kitchen-service", title: "Italian Kitchen & Service" },
+  { firstLevel: 21, id: "french-bistro-precision", title: "French Bistro & Precision" },
+  { firstLevel: 35, id: "indian-kitchen-service", title: "Indian Kitchen & Service" },
+  { firstLevel: 46, id: "mediterranean-latin", title: "Mediterranean & Latin" },
+  { firstLevel: 59, id: "japanese-kitchen", title: "Japanese Kitchen" },
+  { firstLevel: 76, id: "chinese-wok", title: "Chinese Wok" },
+  { firstLevel: 88, id: "thai-southeast-asian", title: "Thai & Southeast Asian" },
+  { firstLevel: 101, id: "korean-kitchen", title: "Korean Kitchen" },
+  { firstLevel: 107, id: "italian-french-encore", title: "Italian & French Encore" },
+  { firstLevel: 117, id: "mediterranean-latin-encore", title: "Mediterranean & Latin Encore" },
+  { firstLevel: 133, id: "east-asian-fusion", title: "East Asian Fusion" },
+  { firstLevel: 143, id: "the-grand-finale", title: "The Grand Finale" },
+];
 
-export const CAMPAIGN_150_CHAPTER_IDS: Record<number, string> = {
-  1: "opening-the-restaurant",
-  2: "italian-kitchen-service",
-  3: "french-bistro-precision",
-  4: "indian-kitchen-service",
-  5: "mediterranean-levant",
-  6: "mexican-latin",
-  7: "japanese-kitchen",
-  8: "chinese-wok",
-  9: "thai-southeast-asian",
-  10: "korean-kitchen",
-  11: "east-asian-fusion",
-  12: "the-grand-finale",
-};
+/** The display chapter (1–13) of new campaign level `n`. */
+export function campaignChapterOf(n: number): number {
+  let chapter = 1;
+  CAMPAIGN_150_CHAPTERS.forEach((c, i) => {
+    if (n >= c.firstLevel) chapter = i + 1;
+  });
+  return chapter;
+}
 
-/** Source chapter → curated chapter. Later encore services rejoin their cuisine. */
+export const CAMPAIGN_150_CHAPTER_TITLES: Record<number, string> = Object.fromEntries(
+  CAMPAIGN_150_CHAPTERS.map((c, i) => [i + 1, c.title]),
+);
+
+export const CAMPAIGN_150_CHAPTER_IDS: Record<number, string> = Object.fromEntries(
+  CAMPAIGN_150_CHAPTERS.map((c, i) => [i + 1, c.id]),
+);
+
+/**
+ * Source chapter → CUISINE chapter (1–12 of the first curated layout). Encore
+ * services keep their cuisine here. Pay (recipePay's chapter ramp) and the
+ * cuisine identity read this, so the display renumbering above moves no money
+ * (economy re-plan pending, developer 2026-10-15).
+ */
 export const CAMPAIGN_150_CHAPTER_BY_SOURCE_CHAPTER: Record<number, number> = {
   1: 1,
   2: 2, 3: 2, 18: 2,
@@ -88,13 +104,13 @@ export function remapCampaignThreshold(oldLevel: number): number {
 export const CAMPAIGN_150_TECHNIQUE_FIRST_USE_LEVEL: Readonly<Record<string, number>> = {
   slice: 1,
   dice: 2,
-  julienne: 2,
   peel: 2,
-  smash: 2,
   halve: 4,
+  smash: 5,
   chop: 6,
   rings: 11,
   radial: 16,
+  julienne: 20,
   rockMince: 23,
   chiffonade: 24,
 };

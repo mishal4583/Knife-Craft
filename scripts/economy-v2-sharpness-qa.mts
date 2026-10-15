@@ -159,7 +159,9 @@ function saveAt(overrides: Partial<SaveData>): SaveData {
   const baseline = baselineCOGSFor(recipe);
   const s1 = computeSettlement(recipe, 11, 75, "obsidian", "butcherblock", 10);
   const s2 = computeSettlement(recipe, 11, 75);
-  assert(instances.length === 1, "J1: camp-chicken-halve-slice still resolves to exactly 1 physical instance");
+  // Developer 2026-10-15 (no single-ingredient dish): the dish gained a lemon wedge,
+  // its own instance; the halve→slice chicken is still ONE instance.
+  assert(instances.filter((x) => x.ingredientId === "chicken").length === 1, "J1: camp-chicken-halve-slice still resolves to exactly 1 physical chicken instance");
   assert(s1.baselineCOGS === dollars(baseline) && s2.baselineCOGS === dollars(baseline), "J: baselineCOGS is IDENTICAL regardless of equipment/sharpness — neither ever re-touches component counting");
 }
 
