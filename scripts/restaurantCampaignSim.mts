@@ -86,10 +86,7 @@ import { hireStaff } from "../src/game/business/BusinessStaffManager.ts";
 import { businessCustomerPayment } from "../src/game/business/BusinessServiceManager.ts";
 import { businessDishForRecipeId } from "../src/game/business/businessServiceCatalog.ts";
 import { dayStockFor, servicePlanFor } from "../src/game/restaurant/preServiceCheck.ts";
-import {
-  consumeCampaignOrderStock,
-  pantryForMissing,
-} from "../src/game/restaurant/campaignStock.ts";
+import { consumeCampaignOrderStock } from "../src/game/restaurant/campaignStock.ts";
 import {
   closeDay,
   openDay,
@@ -140,8 +137,10 @@ import { HALF_WAGES_FROM, halfPay } from "../src/game/restaurant/staffRequiremen
 import { levelOrderEarnings } from "../src/game/levels/levelEarnings.ts";
 import { giveGrandmasLeftovers } from "../src/game/restaurant/grandmasFridge.ts";
 import { giveGrandmasTools } from "../src/game/restaurant/kitchenTools.ts";
-import { FIRST_PURCHASE_LEVEL } from "../src/game/restaurant/firstLevels.ts";
-import { isSystemLive } from "../src/game/restaurant/restaurantProgression.ts";
+import { tabOpensAt } from "../src/game/restaurant/firstLevels.ts";
+/** The Market sells ingredients from the level its tab opens (L3 since the 150-level campaign). */
+const MARKET_OPENS = tabOpensAt("shop") ?? 1;
+import { isSystemLive, LAST_CAMPAIGN_LEVEL } from "../src/game/restaurant/restaurantProgression.ts";
 import { levelNumber } from "../src/game/levels/levelMastery.ts";
 import {
   markStarterCrateSeen,
@@ -382,7 +381,7 @@ function playLevel(save: SaveData, n: number, opts: SimOptions, stats: Stats): S
     plan.check.applies &&
     !plan.check.ready &&
     profile === "diligent" &&
-    n >= FIRST_PURCHASE_LEVEL
+    n >= MARKET_OPENS
   ) {
     for (const row of plan.check.missingRows) {
       let bought = buyIngredient(s, row.ingredientId, row.buyUnits);
@@ -416,15 +415,10 @@ function playLevel(save: SaveData, n: number, opts: SimOptions, stats: Stats): S
     replan();
   }
   if (plan.check.applies && !plan.check.ready) {
-    // As App: before the Market sells ingredients (Level 10) Grandma's pantry;
-    // from Level 10 supplier credit (the sim shows no ads).
-    const pantry = pantryForMissing(s, plan.check, n >= FIRST_PURCHASE_LEVEL);
-    const credit = pantry ? null : coverWithCredit(s, plan, "stock");
-    if (pantry) {
-      s = pantry;
-      stats.pantry++;
-      replan();
-    } else if (credit) {
+    // As App (developer 2026-10-15: no free Grandma's pantry any more): a
+    // short service is covered by supplier credit (the sim shows no ads).
+    const credit = coverWithCredit(s, plan, "stock");
+    if (credit) {
       stats.creditTaken += supplierCreditOf(credit).owed - supplierCreditOf(s).owed;
       s = persist(credit, stats, `${where} credit`);
       stats.credit++;
@@ -697,7 +691,7 @@ export function run(
   let s = start;
   const startCash = s.credits;
   const startLifetime = lifetimeSum(s);
-  for (let n = from; n <= 250; n++) {
+  for (let n = from; n <= LAST_CAMPAIGN_LEVEL; n++) {
     s = playLevel(s, n, opts, stats);
     checkInvariants(s, startCash, startLifetime, stats, `L${n}`);
     opts.onLevel?.(n, s, stats);
@@ -726,7 +720,7 @@ export function run(
     );
   if (log)
     console.log(
-      `    help: pantry ×${stats.pantry} (before L10) · supplier credit ×${stats.credit} (${$(stats.creditTaken)} taken, ${$(stats.creditRepaid)} repaid, ${$(supplierCreditOf(s).owed)} owed) · hires ${stats.hires} (${stats.specialists} specialists) · fridge upgrades ${stats.fridgeUpgrades} · fridge over capacity (covered goods) at ${stats.fridgeOverByGrandma} level ends`,
+      `    help: supplier credit ×${stats.credit} (${$(stats.creditTaken)} taken, ${$(stats.creditRepaid)} repaid, ${$(supplierCreditOf(s).owed)} owed) · hires ${stats.hires} (${stats.specialists} specialists) · fridge upgrades ${stats.fridgeUpgrades} · fridge over capacity (covered goods) at ${stats.fridgeOverByGrandma} level ends`,
     );
   if (log && stats.blocked.length)
     console.log(`    BLOCKED: ${stats.blocked.slice(0, 5).join(" | ")}`);
