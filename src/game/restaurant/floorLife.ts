@@ -139,6 +139,13 @@ function toSeat(seat: Spot): Spot[] {
  * station working, 3 servers, 2 cleaners — whatever the save owns. It is only
  * what is drawn; the save, the stations' locks and the money are unchanged.
  */
+/**
+ * TEMPORARY (developer 2026-10-16: "make them visible for now"): the preview
+ * cast plays on every build, without buying anything, so the animation can be
+ * watched and tuned. Set to false to show only what the save owns and staffs.
+ */
+export const FLOOR_LIFE_ALWAYS_PREVIEW = true;
+
 export const FLOOR_LIFE_PREVIEW: SecondFloorState = {
   stations: Object.fromEntries(STATIONS.map((d) => [d.id, { level: 1, lastCollectAt: 0 }])),
   servers: FLOOR_STAFF.server.max,

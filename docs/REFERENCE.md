@@ -1083,12 +1083,14 @@ preparation = PreparationScene; events = `events.ts`; platform =
     each) come in the door, pick up at the counter, sit and eat, then leave; **cleaners** (as
     hired) wipe the tables with a 🧽; a "+$" pops at the counter while the floor earns;
   - an empty or unstaffed floor is quiet;
+  - **TEMPORARY:** `FLOOR_LIFE_ALWAYS_PREVIEW = true` (developer 2026-10-16, "visible for now")
+    plays the preview on every build without buying anything; set it to false to go back;
   - **testing preview:** with the test switch (`npm run dev` or `?floor2`) the full cast plays
     (`FLOOR_LIFE_PREVIEW`: every station working, 3 servers, 2 cleaners) whatever the save owns;
     only the drawing changes, never the save, the locks or the money;
   - view `components/kc/restaurantMap/FloorLife.tsx`: inline CSS keyframes, transform and
-    opacity only, no library; aria-hidden, `pointer-events: none`; hidden with reduced
-    motion (map switch and system setting). The people are the first floor's
+    opacity only, no library; aria-hidden, `pointer-events: none`; hidden by the game's Reduced
+    Motion setting, like the first floor's guests. The people are the first floor's
     (`restaurantMap/GuestPoses.tsx`, shared).
   - Tests: `restaurant-floor-life-qa`; e2e `restaurantsecondfloor.mjs` check 3c.
 - **Economy:** extra on top of the campaign economy (developer decision); not counted in the

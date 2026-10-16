@@ -147,6 +147,12 @@ check(
 
 // ---------- 3b. Floor staff: a server and a cleaner, hired for good ----------
 const lifeBeforeHire = await page.$$eval(".floor-actor", (els) => els.length);
+// While the temporary always-preview flag is on (developer 2026-10-16) the full cast plays
+// whatever the save owns; otherwise only the bought, staffed floor comes alive.
+const previewOn = await page.$eval(
+  '[data-testid="second-floor"]',
+  (el) => el.querySelector('[data-testid="floor-life"]')?.getAttribute("data-preview") === "true",
+);
 const needsServer = await page.evaluate(() =>
   /Needs a server/.test(document.querySelector('[data-testid="second-floor"]').innerText),
 );
@@ -192,16 +198,21 @@ const life = await page.evaluate(async () => {
 });
 await shot(page, "second-floor-life-390");
 check(
-  "3c floor life: nobody before a server; after the hire a server, 2 guests and a cleaner move on the map (decorative, no taps)",
-  lifeBeforeHire === 0 &&
-    life.kinds.filter((k) => k === "server").length === 1 &&
-    life.kinds.filter((k) => k === "guest").length === 2 &&
-    life.kinds.filter((k) => k === "cleaner").length === 1 &&
+  "3c floor life: nobody before a server; after the hire a server, 2 guests and a cleaner move on the map (decorative, no taps) — or, with the temporary preview on, the full cast moves",
+  (previewOn
+    ? lifeBeforeHire === 15 &&
+      life.kinds.filter((k) => k === "server").length === 3 &&
+      life.kinds.filter((k) => k === "guest").length === 10 &&
+      life.kinds.filter((k) => k === "cleaner").length === 2
+    : lifeBeforeHire === 0 &&
+      life.kinds.filter((k) => k === "server").length === 1 &&
+      life.kinds.filter((k) => k === "guest").length === 2 &&
+      life.kinds.filter((k) => k === "cleaner").length === 1) &&
     life.moved &&
     life.running &&
     life.hidden &&
     life.taps === "none",
-  { lifeBeforeHire, ...life },
+  { previewOn, lifeBeforeHire, ...life },
 );
 
 // ---------- 4. Two hours later: collect ----------

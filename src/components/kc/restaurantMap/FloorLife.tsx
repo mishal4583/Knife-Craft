@@ -36,7 +36,15 @@ function keyframesFor(actor: FloorActor, frames: Frame[]): string {
   );
 }
 
-export function FloorLife({ floor, earning }: { floor: SecondFloorState; earning: boolean }) {
+export function FloorLife({
+  floor,
+  earning,
+  preview = false,
+}: {
+  floor: SecondFloorState;
+  earning: boolean;
+  preview?: boolean;
+}) {
   // The cast only changes when the stations or the team change (not every clock tick).
   const key = `${Object.keys(floor.stations).sort().join()}|${floor.servers ?? 0}|${floor.cleaners ?? 0}`;
   const cast = useMemo(
@@ -47,7 +55,12 @@ export function FloorLife({ floor, earning }: { floor: SecondFloorState; earning
   if (cast.length === 0) return null;
   const css = cast.map((c) => keyframesFor(c.actor, c.frames)).join("");
   return (
-    <div className="floor-life" aria-hidden="true" data-testid="floor-life">
+    <div
+      className="floor-life"
+      aria-hidden="true"
+      data-testid="floor-life"
+      data-preview={preview ? "true" : undefined}
+    >
       <style>{css}</style>
       {cast.map(({ actor, seconds }) => {
         const k = `fl-${actor.id}`;

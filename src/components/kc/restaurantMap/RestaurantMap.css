@@ -1239,12 +1239,7 @@
   100% { opacity: 0; transform: translate(-50%, -16px) scale(.95); }
 }
 
+/* Like the first floor's guests: hidden by the game's Reduced Motion setting. */
 .restaurant-map--reduced-motion .floor-life {
   display: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .floor-life {
-    display: none;
-  }
 }

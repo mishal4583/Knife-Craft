@@ -10,8 +10,9 @@
  *     drop at the counter; guests pick up at the counter, sit, and leave by
  *     the door; the keyframes run 0 → 100 in order.
  *  D  Deterministic: the same floor gives the same cast; no Math.random.
- *  V  View (testing switch: the full preview cast, developer 2026-10-16): decorative (aria-hidden, no taps), transform/opacity only, off
- *     with reduced motion, no animation library, never touches money or saves.
+ *  V  View (the full preview cast under the test switch or the temporary
+ *     FLOOR_LIFE_ALWAYS_PREVIEW flag, developer 2026-10-16): decorative (aria-hidden, no taps), transform/opacity only, off
+ *     with the game's Reduced Motion setting, no animation library, never touches money or saves.
  *
  * Run: npx tsx scripts/restaurant-floor-life-qa.mts
  */
@@ -19,6 +20,7 @@ import fs from "node:fs";
 import path from "node:path";
 import {
   FLOOR_SPOTS,
+  FLOOR_LIFE_ALWAYS_PREVIEW,
   FLOOR_LIFE_PREVIEW,
   MAX_GUESTS,
   floorCast,
@@ -151,7 +153,7 @@ console.log("V. View");
   const css = read("src/components/kc/restaurantMap/RestaurantMap.css");
   const block = css.slice(
     css.indexOf(".floor-life {"),
-    css.indexOf("@media (prefers-reduced-motion: reduce)"),
+    css.indexOf(".restaurant-map--reduced-motion .floor-life"),
   );
   const animated = [...view.matchAll(/\{(transform|opacity):/g)].map((m) => m[1]);
   assert(
@@ -165,9 +167,8 @@ console.log("V. View");
     "V2: the keyframes only animate transform and opacity",
   );
   assert(
-    /\.restaurant-map--reduced-motion \.floor-life \{\s*display: none/.test(css) &&
-      /prefers-reduced-motion: reduce\)\s*\{\s*\.floor-life \{\s*display: none/.test(css),
-    "V3: hidden with reduced motion (the map's switch and the system setting)",
+    /\.restaurant-map--reduced-motion \.floor-life \{\s*display: none/.test(css),
+    "V3: hidden by the game's Reduced Motion setting, like the first floor's guests",
   );
   const pkg = read("package.json");
   assert(
@@ -179,8 +180,12 @@ console.log("V. View");
   );
   const sfv = read("src/components/kc/restaurantMap/SecondFloorView.tsx");
   assert(
-    /<FloorLife\s+floor=\{SECOND_FLOOR_TEST_UNLOCK \? FLOOR_LIFE_PREVIEW : floor\}/.test(sfv),
-    "V5: the Second Floor map shows it — the save's floor, or the full preview while testing",
+    /const previewLife = SECOND_FLOOR_TEST_UNLOCK \|\| FLOOR_LIFE_ALWAYS_PREVIEW/.test(sfv) &&
+      /<FloorLife\s+floor=\{previewLife \? FLOOR_LIFE_PREVIEW : floor\}/.test(sfv),
+    "V5: the Second Floor map shows it — the save's floor, or the full preview (test switch or the temporary always-preview flag)",
+  );
+  console.log(
+    `  note: FLOOR_LIFE_ALWAYS_PREVIEW = ${FLOOR_LIFE_ALWAYS_PREVIEW} (temporary, developer 2026-10-16)`,
   );
   const preview = floorCast(FLOOR_LIFE_PREVIEW);
   assert(

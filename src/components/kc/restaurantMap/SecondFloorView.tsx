@@ -8,7 +8,7 @@
  */
 import { useEffect, useState } from "react";
 import { FloorLife } from "./FloorLife";
-import { FLOOR_LIFE_PREVIEW } from "@/game/restaurant/floorLife";
+import { FLOOR_LIFE_ALWAYS_PREVIEW, FLOOR_LIFE_PREVIEW } from "@/game/restaurant/floorLife";
 import { KButton } from "@/components/kc/common/primitives";
 import { formatUsd } from "@/game/money";
 import type { SaveData } from "@/game/SaveManager";
@@ -132,6 +132,7 @@ export function SecondFloorView({
   const floor = secondFloorOf(save);
   const waiting = floorEarnings(save, now);
   const perHour = floorPerHour(save);
+  const previewLife = SECOND_FLOOR_TEST_UNLOCK || FLOOR_LIFE_ALWAYS_PREVIEW;
   const ownedCount = Object.keys(floor.stations).length;
 
   const act = (action: SecondFloorAction) => {
@@ -359,8 +360,9 @@ export function SecondFloorView({
           </picture>
           {/* Testing: the full cast is shown whatever the save owns (FLOOR_LIFE_PREVIEW). */}
           <FloorLife
-            floor={SECOND_FLOOR_TEST_UNLOCK ? FLOOR_LIFE_PREVIEW : floor}
-            earning={SECOND_FLOOR_TEST_UNLOCK || perHour > 0}
+            floor={previewLife ? FLOOR_LIFE_PREVIEW : floor}
+            earning={previewLife || perHour > 0}
+            preview={previewLife}
           />
           <div className="restaurant-map-hotspots-layer">
             {ZONES.map((z) => {
