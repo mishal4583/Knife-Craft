@@ -182,6 +182,29 @@ check(
   fits,
 );
 
+// ---------- 8. The testing switch: ?floor2 opens everything at any level ----------
+await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });
+await boot(page, atLevel(5));
+const base = process.env.KC_URL || "http://127.0.0.1:4173/";
+await page.goto(base + "?floor2", { waitUntil: "domcontentloaded" });
+await sleep(2500);
+await openMap(page);
+const testLabel = await page.$eval('[data-testid="upstairs"]', (b) => b.textContent);
+await page.evaluate(() => document.querySelector('[data-testid="upstairs"]').click());
+await page
+  .waitForSelector('[data-testid="second-floor"]', { timeout: 15000 })
+  .catch(() => undefined);
+const testZones = await page.$$eval('[data-testid="second-floor"] .map-hotspot-zone', (els) =>
+  els.map((e) => e.getAttribute("aria-label")),
+);
+check(
+  "8 ?floor2 (testing): the floor and every station are open at Level 5",
+  /⬆ 2nd floor/.test(testLabel) &&
+    testZones.length === 9 &&
+    !testZones.some((z) => /opens at Level/.test(z)),
+  { testLabel, testZones },
+);
+
 const errors = logs.filter((l) => /pageerror|error:/.test(l) && !/favicon/.test(l));
 check("7 no page errors", errors.length === 0, errors.slice(0, 5));
 await browser.close();

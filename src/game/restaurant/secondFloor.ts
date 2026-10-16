@@ -24,6 +24,29 @@ import { debitWallet } from "../economy/wallet";
 import { dollars } from "../money";
 
 export const SECOND_FLOOR_OPENS_AT = 60;
+
+/**
+ * Testing switch (developer 2026-10-16): the floor and every station are open
+ * at any level under `npm run dev`, or on any build opened with `?floor2` in
+ * the address (e.g. the Pages test site). Prices and the money rules are
+ * unchanged. Off in Node (QA) and in a normal release play.
+ */
+export const SECOND_FLOOR_TEST_UNLOCK: boolean = (() => {
+  try {
+    const env = (import.meta as { env?: { DEV?: boolean } }).env;
+    if (env?.DEV) return true;
+    return (
+      typeof window !== "undefined" && new URLSearchParams(window.location.search).has("floor2")
+    );
+  } catch {
+    return false;
+  }
+})();
+
+/** The level used for the floor's locks (everything open while testing). */
+export function floorLevel(reachedLevel: number): number {
+  return SECOND_FLOOR_TEST_UNLOCK ? Number.MAX_SAFE_INTEGER : reachedLevel;
+}
 export const MAX_STATION_LEVEL = 3;
 const HOUR_MS = 3_600_000;
 
@@ -145,7 +168,7 @@ function withFloor(save: SaveData, floor: SecondFloorState): SaveData {
 }
 
 export function isSecondFloorOpen(reachedLevel: number): boolean {
-  return reachedLevel >= SECOND_FLOOR_OPENS_AT;
+  return floorLevel(reachedLevel) >= SECOND_FLOOR_OPENS_AT;
 }
 
 /** Cents waiting at one owned station at `now` (0 when not owned). */
@@ -197,7 +220,7 @@ export function buyStation(
 ): FloorResult {
   const def = stationDef(id);
   const floor = secondFloorOf(save);
-  if (!isSecondFloorOpen(reachedLevel) || reachedLevel < def.unlockLevel) {
+  if (!isSecondFloorOpen(reachedLevel) || floorLevel(reachedLevel) < def.unlockLevel) {
     return { ok: false, reason: "locked" };
   }
   if (floor.stations[id]) return { ok: false, reason: "owned" };

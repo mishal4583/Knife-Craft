@@ -14,6 +14,8 @@ import {
   MAX_STATION_LEVEL,
   STATIONS,
   floorEarnings,
+  floorLevel,
+  SECOND_FLOOR_TEST_UNLOCK,
   floorPerHour,
   secondFloorOf,
   stationCap,
@@ -188,7 +190,7 @@ export function SecondFloorView({
     const d = STATIONS.find((s) => s.id === open)!;
     const owned = floor.stations[d.id];
     if (!owned) {
-      const locked = playerLevel < d.unlockLevel;
+      const locked = floorLevel(playerLevel) < d.unlockLevel;
       return (
         <>
           <p className="font-ui text-[13px] leading-snug text-walnut/75">{d.blurb}</p>
@@ -254,6 +256,7 @@ export function SecondFloorView({
             <span className="pill-dot" /> 2nd floor
           </span>
           <span className="legend-pill hub-pill">{formatUsd(perHour)}/h</span>
+          {SECOND_FLOOR_TEST_UNLOCK ? <span className="legend-pill">Test: all open</span> : null}
         </div>
         <button
           type="button"
@@ -279,7 +282,9 @@ export function SecondFloorView({
             {ZONES.map((z) => {
               const station = isStation(z.id) ? STATIONS.find((s) => s.id === z.id)! : null;
               const owned = station ? floor.stations[station.id] : undefined;
-              const locked = station ? !owned && playerLevel < station.unlockLevel : false;
+              const locked = station
+                ? !owned && floorLevel(playerLevel) < station.unlockLevel
+                : false;
               const label = zoneLabel(z.id);
               return (
                 <div
