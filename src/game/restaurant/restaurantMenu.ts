@@ -20,6 +20,7 @@
 import type { LevelProgress } from "../levels/LevelManager";
 import type { SaveData } from "../SaveManager";
 import { levelNumber } from "../levels/levelMastery";
+import { LEVELS } from "../levels/levelDefinitions";
 import type { BusinessMenuActivationState } from "../business/businessMenuActivation";
 import { isDishActive } from "../business/businessMenuActivation";
 import {
@@ -46,6 +47,42 @@ export function unlockedMenuDishes(level: number): BusinessDish[] {
   return menuDishIdsAt(level)
     .map((id) => getBusinessDish(id))
     .filter((d): d is BusinessDish => !!d);
+}
+
+/** The campaign level where each recipe is first cooked (the 150-level campaign). */
+const FIRST_COOKED = (() => {
+  const first = new Map<string, number>();
+  LEVELS.forEach((level, i) => {
+    for (const id of [level.recipeId, ...(level.recipePoolIds ?? [])]) {
+      if (id && !first.has(id)) first.set(id, i + 1);
+    }
+  });
+  return first;
+})();
+
+/**
+ * The menu in the order the campaign brings it (developer 2026-10-16): by the
+ * level a dish joins the menu, then the level its recipe is first cooked,
+ * then the catalog. On / off never moves a dish.
+ */
+export function inCampaignOrder<T extends BusinessDish>(dishes: readonly T[]): T[] {
+  return [...dishes].sort((a, b) => {
+    const ka = campaignOrderKey(a);
+    const kb = campaignOrderKey(b);
+    for (let i = 0; i < ka.length; i++) if (ka[i] !== kb[i]) return ka[i]! - kb[i]!;
+    return 0;
+  });
+}
+
+const CATALOG_INDEX = new Map(BUSINESS_DISH_CATALOG.map((d, i) => [d.id, i]));
+
+/** A dish's place in the campaign: [joins the menu at, first cooked at, catalog index]. */
+export function campaignOrderKey(dish: BusinessDish): [number, number, number] {
+  return [
+    dishUnlockLevel(dish.id) ?? 9999,
+    FIRST_COOKED.get(dish.sourceRecipeId) ?? 9999,
+    CATALOG_INDEX.get(dish.id) ?? 9999,
+  ];
 }
 
 export type LockedDish = { dish: BusinessDish; unlockLevel: number; cuisine: string };

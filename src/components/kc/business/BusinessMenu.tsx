@@ -25,6 +25,8 @@ import { defaultMenuPrice } from "@/game/business/businessMenu";
 import { getRefrigeratorCapacity } from "@/game/business/RefrigeratorManager";
 import {
   activeMenuDishes,
+  campaignOrderKey,
+  inCampaignOrder,
   lockedMenuDishes,
   playerChoosesMenu,
   unlockedMenuDishes,
@@ -38,6 +40,8 @@ import { BusinessSectionBanner } from "./BusinessSectionBanner";
 
 /** A quarter-dollar step — sensible for real USD menu pricing. */
 const PRICE_STEP = 25;
+/** From this popularity the menu suggests raising prices (developer 2026-10-16). */
+const POPULAR_TIP_FROM = 60;
 
 /**
  * BUSINESS · MENU tab (Economy V3 Phases 5/14). The dish list is
@@ -82,10 +86,16 @@ export function BusinessMenu({
     ...new Set(activeDishes.flatMap((d) => businessDishRequirements(d).map((r) => r.ingredientId))),
   ];
   const categories = ["All", ...new Set(pool.map((d) => d.category))];
-  const shown = pool
-    .filter((d) => category === "All" || d.category === category)
-    // The restaurant lists what is on first, then what is off.
-    .sort((a, b) => (restaurant ? Number(activeIds.has(b.id)) - Number(activeIds.has(a.id)) : 0));
+  const filtered = pool.filter((d) => category === "All" || d.category === category);
+  // The restaurant lists dishes in the order the campaign brings them (developer
+  // 2026-10-16); turning a dish off never moves it.
+  const shown = restaurant ? inCampaignOrder(filtered) : filtered;
+  // Popular restaurant → guests pay more than the menu price: suggest raising it.
+  const popularity = pool[0] ? businessCustomerPayment(save, pool[0]) : null;
+  const raiseTip =
+    restaurant && popularity && popularity.popularity >= POPULAR_TIP_FROM
+      ? Math.max(1, Math.round((popularity.popularity - 50) / 2.5))
+      : null;
 
   function toggleDish(dishId: string, active: boolean) {
     const result = setBusinessDishActive(dishId, active);
@@ -140,8 +150,22 @@ export function BusinessMenu({
         </p>
       </Panel>
 
+      {raiseTip !== null && popularity ? (
+        <Panel tone="cream" className="p-3" data-testid="menu-price-tip">
+          <p className="font-ui text-[13px] font-extrabold text-walnut-dark">
+            ⭐ Tip: your restaurant is popular ({popularity.popularity}/100)
+          </p>
+          <p className="mt-0.5 font-ui text-[12.5px] leading-snug text-walnut/70">
+            Guests pay × {popularity.multiplier.toFixed(2)} your price today. A good time to raise
+            your menu prices a little — about +{raiseTip}% over the suggested price still feels
+            fair.
+          </p>
+        </Panel>
+      ) : null}
+
       <div
-        className="-mx-4 flex gap-2 overflow-x-auto no-scrollbar px-4"
+        // Vertical room so the chips' borders and shadows aren't cut off (the row scrolls sideways).
+        className="-mx-4 -my-1 flex gap-2 overflow-x-auto no-scrollbar px-4 py-1.5"
         aria-label="Dish categories"
       >
         {categories.map((c) => (
@@ -187,6 +211,7 @@ export function BusinessMenu({
               key={dish.id}
               data-menu-dish={dish.id}
               data-menu-on={onMenu ? "true" : "false"}
+              data-menu-order={restaurant ? campaignOrderKey(dish).join(".") : undefined}
               className={cn(
                 "product-card rounded-[20px] border p-3 card-warm",
                 onMenu ? "border-olive/40" : "border-walnut/15",
@@ -228,17 +253,29 @@ export function BusinessMenu({
                 ) : (
                   <button
                     type="button"
+                    role="switch"
                     onClick={() => toggleDish(dish.id, !onMenu)}
-                    aria-pressed={onMenu}
-                    aria-label={`${onMenu ? "Take" : "Put"} ${dish.name} ${onMenu ? "off" : "on"} the menu`}
-                    className={cn(
-                      "press h-12 w-[64px] shrink-0 rounded-full border font-ui text-[12.5px] font-extrabold",
-                      onMenu
-                        ? "border-olive/60 bg-[linear-gradient(170deg,var(--color-sage),var(--color-olive))] text-ivory"
-                        : "border-walnut/25 bg-ivory/70 text-walnut/60",
-                    )}
+                    aria-checked={onMenu}
+                    aria-label={`${dish.name} on the menu`}
+                    data-menu-switch={dish.id}
+                    className="press grid h-12 w-[64px] shrink-0 place-items-center"
                   >
-                    {onMenu ? "ON" : "OFF"}
+                    <span
+                      aria-hidden
+                      className={cn(
+                        "relative block h-[30px] w-[54px] rounded-full border transition-colors",
+                        onMenu
+                          ? "border-olive/60 bg-[linear-gradient(170deg,var(--color-sage),var(--color-olive))]"
+                          : "border-walnut/25 bg-walnut/15",
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "absolute left-0 top-[2px] h-6 w-6 rounded-full bg-ivory shadow-soft transition-transform",
+                          onMenu ? "translate-x-[26px]" : "translate-x-[2px]",
+                        )}
+                      />
+                    </span>
                   </button>
                 )}
               </div>
@@ -300,12 +337,14 @@ export function BusinessMenu({
                   </p>
                 </div>
               </div>
-              <div className="mt-1.5 flex items-center justify-between">
-                <p className="font-ui text-[11px] font-bold text-walnut/50">
+              <div className="mt-1.5 flex items-center justify-between gap-2">
+                <p className="min-w-0 font-ui text-[11px] font-bold text-walnut/50">
                   × {payment.multiplier.toFixed(2)} at popularity {payment.popularity}/100 ·{" "}
                   {grossMarginPercent}% kept
                 </p>
-                <Badge tone={margin >= 0 ? "sage" : "copper"}>{foodCostPercent}% food cost</Badge>
+                <span className="shrink-0 whitespace-nowrap">
+                  <Badge tone={margin >= 0 ? "sage" : "copper"}>{foodCostPercent}% food cost</Badge>
+                </span>
               </div>
             </article>
           );

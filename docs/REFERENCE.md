@@ -202,7 +202,8 @@ once). Restaurant browser tests run on the normal build, classic ones on a
   `restaurant-cleanliness-qa`, `restaurant-day-clock-qa`,
   `restaurant-shift-chores-qa`, `restaurant-deliveries-qa`,
   `restaurant-par-audit-qa`, `restaurant-half-wages-qa`, `restaurant-second-floor-qa`,
-  `restaurant-floor-life-qa`, (browser: also `restaurantstafflife.mjs`)
+  `restaurant-floor-life-qa`, `restaurant-menu-order-qa` (browser: also `restaurantstafflife.mjs`,
+  `restaurantmenu.mjs`, `marketsecondfloor.mjs`)
   `achievement-rewards-qa` (browser:
   `tools/e2e/restaurant*.mjs`).
 - Campaign / UX: `story-intro-qa`, `story-pause-qa`, `story-legacy-qa`, `audio-qa`,
@@ -1029,6 +1030,19 @@ preparation = PreparationScene; events = `events.ts`; platform =
 `PlayablesSDK.ts`; persistence = `SaveManager`. Do not duplicate any of them.
 
 ---
+
+### Restaurant menu order, switch and price tip (developer 2026-10-16)
+
+- Business → Menu lists dishes in the order the 150-level campaign brings them
+  (`restaurantMenu.inCampaignOrder`): the level a dish joins the menu, then the level its
+  recipe is first cooked, then the catalog. Turning a dish off never moves it.
+- On / off is a toggle switch (`role="switch"`, `aria-checked`).
+- From popularity 60 a tip suggests raising prices by (popularity − 50) ÷ 2.5 % over the
+  suggested price (+4 % at 60, +12 % at 80, +20 % at 100). Guests already pay
+  × (0.9 + 0.3 × popularity/100) of the menu price.
+- Note: a menu price has no ceiling and no demand effect (pre-existing; reported to the
+  developer).
+- Tests: `restaurant-menu-order-qa`; e2e `tools/e2e/restaurantmenu.mjs`.
 
 ### The Second Floor — automated food hall (developer 2026-10-16)
 
