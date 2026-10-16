@@ -84,6 +84,12 @@ conversation.
 
 ## 3. Current status (2026-10-15)
 
+- **2026-10-16: `main` = the `codex/restaurant-map` build** (the 150-level
+  campaign, restaurant map, achievements, review fixes), pushed at the
+  developer's request. The 250-era QA suites and the economy suites still
+  fail (pending: test update + economy/achievement-money plan). The notes
+  below describe the 250-level build before that.
+
 - `main` = `f350657`: finishing plan W1–W5 done and pushed; all gates green
   (99 QA suites, 46 e2e on both builds with the stub Bridge); Pages deployed.
   - W1 story: milestones at 140/165/190/220 and THE LAST PAGE at 250

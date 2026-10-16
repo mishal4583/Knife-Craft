@@ -32,8 +32,9 @@ status line in HANDOFF; this file changes only when a RULE changes.
 - **Stack:** React 19 + Vite + TypeScript + Tailwind v4; Phaser 3.90 for
   the cutting (the lazy `Preparation` chunk).
 - **Screen:** portrait first, logical 540×960, `GameShell` contain-fits.
-- **Content:** 250 campaign levels (25 chapters), Market, Inventory,
-  Restaurant (Economy V3), story.
+- **Content:** 150 campaign levels in 13 chapters (developer 2026-10-15;
+  `levels/campaignSelection.ts`), Market, Inventory, Restaurant (Economy V3),
+  Achievements, story.
 - **Money:** one wallet in USD cents (`SaveData.credits`); every movement
   goes in `SaveData.economyLedger`.
 - **Reference-only folders** (not in the build): `Knifecraft vegetables/`,
@@ -146,15 +147,17 @@ Release zip: the CONTENTS of `dist/` →
 
 ## 7. ECONOMY RULES (figures: REFERENCE §7)
 
-- **Economy V2 is frozen** (with the approved V2.5 completion rewards):
-  Revenue 165,140 · Completion Rewards 77,581 · COGS 37,620 · Quality
-  Bonus 3,315 · Honest Chef Net 208,416. An unexplained change is a
-  regression: investigate it, never just update the expected values.
+- **Economy re-plan pending (150 levels, developer 2026-10-15).** The old
+  frozen V2 figures (Revenue 165,140 · Completion 77,581 · COGS 37,620 ·
+  Quality 3,315 · Net 208,416) belong to the 250-level campaign; the suites
+  that pin them fail until the new baseline is recorded. Pay follows each
+  level's `cuisineChapter` (`payChapterOf`). An unexplained change is still
+  a regression.
 - **Level rewards:** `levels/levelRewards.ts` `paidLevelReward` is the ONE
-  rule. Milestones pay once; Level 250 pays the $50,000 Family Legacy once.
-- **Restaurant floor:** the completionist ends L250 with ≥ $150k (preferred
-  ≥ $160k, no upper limit). Check with `restaurant-final-economy-qa` after
-  any economy change.
+  rule. Milestones pay once; Level 150 pays the $50,000 Family Legacy once.
+- **Restaurant target:** the completionist ends L150 with $100k–$150k,
+  topped up by achievement money (plan pending). Check with
+  `restaurant-final-economy-qa` after any economy change.
 - **Where things happen:**
   - the Market is the ONLY place to buy ingredients and supplies;
   - Business → Equipment is the ONLY place for fridge upgrades and repairs;
@@ -200,8 +203,8 @@ Release zip: the CONTENTS of `dist/` →
   — no new fields.
   - The intro's finish and SKIP › share one completion path; the finale's
     last button ends on the Kitchen.
-  - The FINALE copy at L100 is frozen. THE LAST PAGE (L250) is mask bit
-    2048.
+  - The FINALE (frozen copy) plays at L75; THE LAST PAGE plays at L150
+    (mask bit 2048).
 - **Clips:** the only bundled videos are the six cooking clips
   (`CookingClip.tsx`). A tap can't skip the plating in its first 1.2 s.
 - **Coaching** (`src/game/coaching.ts`): only on the first play of a level
