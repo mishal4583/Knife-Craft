@@ -2,8 +2,9 @@
  * SECOND FLOOR QA — the automated food hall (developer 2026-10-16;
  * src/game/restaurant/secondFloor.ts).
  *
- *  C  Catalog: six stations (Ice Cream replaces Pasta & Noodle), the floor
- *     opens at L60, unlocks rise, prices and rates rise with level.
+ *  C  Catalog: six stations (Ice Cream replaces Pasta & Noodle); the floor
+ *     can be visited from L10 and every station goes on sale at L60
+ *     (developer 2026-10-16); prices and rates rise with level.
  *  E  Earnings: rate × real hours, capped; a clock set back earns 0; a big
  *     jump forward is still capped; nothing earns before it is bought.
  *  B  Buy / upgrade: all-or-nothing through the wallet, one ledger entry
@@ -15,9 +16,9 @@
  *     wages; a server runs 2 stations (unstaffed earns 0); each missing
  *     cleaner (1 per 3 stations) costs 25 % of the takings; hiring banks
  *     the floor first; the team has a size limit.
- *  L  Locks (developer 2026-10-16): each station locks until its own level,
- *     like the first floor, even with the test switch on (it opens only the
- *     floor); the map shows "🔒 Lv.N" on a locked station.
+ *  L  Locks (developer 2026-10-16): every station stays locked until it is
+ *     bought — "🔒 Lv.60" before L60, "🔒 $price" after; the test switch
+ *     never opens a station; no staff can be hired before a station is owned.
  *  S  Saves: an old save has no floor (nothing owned); no new top-level field.
  *
  * Run: npx tsx scripts/restaurant-second-floor-qa.mts
@@ -32,6 +33,7 @@ import {
   isStaffed,
   MAX_STATION_LEVEL,
   SECOND_FLOOR_OPENS_AT,
+  STATIONS_OPEN_AT,
   STATIONS,
   buyStation,
   collectFloor,
@@ -71,11 +73,10 @@ console.log("C. Catalog");
   const ids = STATIONS.map((s) => s.id).join();
   assert(
     ids === "coffee,drinks,pizza,burger,iceCream,hotFood" &&
-      SECOND_FLOOR_OPENS_AT === 60 &&
-      STATIONS[0]!.unlockLevel === SECOND_FLOOR_OPENS_AT &&
-      STATIONS.every((s, i) => i === 0 || s.unlockLevel > STATIONS[i - 1]!.unlockLevel) &&
-      STATIONS.every((s) => s.unlockLevel <= 150),
-    "C1: six stations (Ice Cream, no Pasta & Noodle), the floor and Coffee at L60, each later one later, all within the campaign",
+      SECOND_FLOOR_OPENS_AT === 10 &&
+      STATIONS_OPEN_AT === 60 &&
+      STATIONS.every((s) => s.unlockLevel === STATIONS_OPEN_AT),
+    "C1: six stations (Ice Cream, no Pasta & Noodle); the floor opens at L10, every station goes on sale at L60",
   );
   assert(
     STATIONS.every(
@@ -92,7 +93,10 @@ console.log("C. Catalog");
     ),
     "C2: whole-cent prices and rates; upgrades cost more and earn more; the cap never shrinks",
   );
-  assert(!isSecondFloorOpen(59) && isSecondFloorOpen(60), "C3: closed at L59, open at L60");
+  assert(
+    !isSecondFloorOpen(9) && isSecondFloorOpen(10),
+    "C3: the floor is closed at L9, open to visit at L10",
+  );
 }
 
 console.log("E. Earnings");
@@ -126,11 +130,11 @@ console.log("E. Earnings");
 console.log("B. Buy and upgrade");
 {
   const coffee = stationDef("coffee");
-  const locked = buyStation(fresh(10_000_000), "pizza", 84, T0);
-  const closed = buyStation(fresh(10_000_000), "coffee", 59, T0);
+  const locked = buyStation(fresh(10_000_000), "pizza", 59, T0);
+  const closed = buyStation(fresh(10_000_000), "coffee", 9, T0);
   assert(
     !locked.ok && locked.reason === "locked" && !closed.ok && closed.reason === "locked",
-    "B1: a station is locked before its level (and the floor before L60)",
+    "B1: no station can be bought before L60 (nor on a closed floor)",
   );
   const short = fresh(coffee.price - 1);
   const poor = buyStation(short, "coffee", 60, T0);
@@ -310,11 +314,22 @@ console.log("L. Station locks");
     "L2: the test switch never opens a station (only the floor)",
   );
   assert(
-    /locked-pill-badge/.test(view) && /Lv\.\{station!\.unlockLevel\}/.test(view),
-    'L3: a locked station shows the first floor\'s "🔒 Lv.N" pill',
+    /locked-pill-badge/.test(view) &&
+      /Lv\.\$\{station!\.unlockLevel\}/.test(view) &&
+      /const locked = !!station && !owned/.test(view),
+    'L3: every unbought station shows the first floor\'s lock pill ("🔒 Lv.60", then its price)',
   );
-  const r = buyStation(fresh(1_000_000_00), "drinks", 69, T0);
-  assert(!r.ok && r.reason === "locked", "L4: buying a station below its level is refused");
+  const r = buyStation(fresh(1_000_000_00), "hotFood", 59, T0);
+  const ok = buyStation(fresh(1_000_000_00), "hotFood", 60, T0);
+  assert(
+    !r.ok && r.reason === "locked" && ok.ok,
+    "L4: even the last station (Hot Food) is refused at L59 and can be bought at L60",
+  );
+  const noStation = hireFloorStaff(fresh(1_000_000_00), "server", T0);
+  assert(
+    !noStation.ok && noStation.reason === "noStations",
+    "L5: no staff can be hired before a station is owned",
+  );
 }
 
 console.log("S. Saves");

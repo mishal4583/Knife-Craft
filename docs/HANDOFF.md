@@ -101,8 +101,8 @@ conversation.
 ## 3. Current status (2026-10-15)
 
 - **2026-10-16: the Second Floor**, an automated food hall that earns money per real hour,
-  is on `main`. It opens at L60, with six stations to buy and upgrade, and Collect at the
-  Pickup Counter. The numbers are provisional. Details: REFERENCE, section before §7.
+  is on `main`. Players can visit it from L10; all six stations go on sale at L60 and stay
+  locked until bought. Stations upgrade, and Collect is at the Pickup Counter. The numbers are provisional. Details: REFERENCE, section before §7.
 
 - **2026-10-16: `main` = the `codex/restaurant-map` build** (the 150-level
   campaign, restaurant map, achievements, review fixes), pushed at the

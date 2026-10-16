@@ -29,7 +29,10 @@ import { appendLedgerEntry } from "../economy/EconomyLedger";
 import { debitWallet } from "../economy/wallet";
 import { dollars } from "../money";
 
-export const SECOND_FLOOR_OPENS_AT = 60;
+/** Players can visit the floor from this level (developer 2026-10-16). */
+export const SECOND_FLOOR_OPENS_AT = 10;
+/** Every station can be bought from this level; each stays locked until bought. */
+export const STATIONS_OPEN_AT = 60;
 
 /**
  * Testing switch (developer 2026-10-16): the floor itself is open at any level
@@ -91,7 +94,7 @@ export const STATIONS: readonly StationDefinition[] = [
     name: "Smart Coffee & Espresso",
     icon: "☕",
     blurb: "Bean-to-cup machines grind, tamp, brew and steam milk by themselves.",
-    unlockLevel: 60,
+    unlockLevel: STATIONS_OPEN_AT,
     price: dollars(3_000),
     upgradePrices: [dollars(4_000), dollars(8_000)],
     perHour: [dollars(15), dollars(30), dollars(50)],
@@ -102,7 +105,7 @@ export const STATIONS: readonly StationDefinition[] = [
     name: "Drinks Dispenser",
     icon: "🥤",
     blurb: "Touchscreen fountain, juices and mocktails mixed to order.",
-    unlockLevel: 70,
+    unlockLevel: STATIONS_OPEN_AT,
     price: dollars(4_000),
     upgradePrices: [dollars(5_000), dollars(10_000)],
     perHour: [dollars(20), dollars(40), dollars(65)],
@@ -113,7 +116,7 @@ export const STATIONS: readonly StationDefinition[] = [
     name: "Auto Pizza Station",
     icon: "🍕",
     blurb: "A robot arm presses the dough, tops it and bakes a pizza in minutes.",
-    unlockLevel: 85,
+    unlockLevel: STATIONS_OPEN_AT,
     price: dollars(6_000),
     upgradePrices: [dollars(8_000), dollars(15_000)],
     perHour: [dollars(30), dollars(60), dollars(100)],
@@ -124,7 +127,7 @@ export const STATIONS: readonly StationDefinition[] = [
     name: "Burger Station",
     icon: "🍔",
     blurb: "Grills the patty, toasts the bun and stacks every burger the same.",
-    unlockLevel: 100,
+    unlockLevel: STATIONS_OPEN_AT,
     price: dollars(7_500),
     upgradePrices: [dollars(10_000), dollars(18_000)],
     perHour: [dollars(35), dollars(70), dollars(115)],
@@ -135,7 +138,7 @@ export const STATIONS: readonly StationDefinition[] = [
     name: "Ice Cream Station",
     icon: "🍦",
     blurb: "Three soft-serve machines and a topping bar, cones always ready.",
-    unlockLevel: 115,
+    unlockLevel: STATIONS_OPEN_AT,
     price: dollars(9_000),
     upgradePrices: [dollars(12_000), dollars(22_000)],
     perHour: [dollars(40), dollars(80), dollars(130)],
@@ -146,7 +149,7 @@ export const STATIONS: readonly StationDefinition[] = [
     name: "Hot Food & Fried Items",
     icon: "🍟",
     blurb: "Auto fryers lift, shake and drain fries and wings into warm holding bays.",
-    unlockLevel: 130,
+    unlockLevel: STATIONS_OPEN_AT,
     price: dollars(11_000),
     upgradePrices: [dollars(14_000), dollars(26_000)],
     perHour: [dollars(45), dollars(90), dollars(150)],
@@ -293,7 +296,14 @@ export type FloorResult =
   | {
       ok: false;
       reason:
-        "locked" | "owned" | "notOwned" | "maxLevel" | "insufficientFunds" | "nothing" | "fullTeam";
+        | "locked"
+        | "owned"
+        | "notOwned"
+        | "maxLevel"
+        | "insufficientFunds"
+        | "nothing"
+        | "fullTeam"
+        | "noStations";
     };
 
 /**
@@ -393,6 +403,9 @@ function bankFloor(save: SaveData, now: number): SaveData {
 export function hireFloorStaff(save: SaveData, role: FloorStaffRole, now: number): FloorResult {
   const def = FLOOR_STAFF[role];
   const have = role === "server" ? secondFloorOf(save).servers : secondFloorOf(save).cleaners;
+  // Nothing to run before the first station is bought.
+  if (Object.keys(secondFloorOf(save).stations).length === 0)
+    return { ok: false, reason: "noStations" };
   if ((have ?? 0) >= def.max) return { ok: false, reason: "fullTeam" };
   const banked = bankFloor(save, now);
   const paid = debitWallet(banked, def.price);

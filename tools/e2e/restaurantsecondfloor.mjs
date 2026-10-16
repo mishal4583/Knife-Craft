@@ -1,14 +1,15 @@
 // The Second Floor (developer 2026-10-16), restaurant build:
-//   1. Level 59: the first-floor map's 2nd-floor button is locked ("Lv 60");
-//   2. Level 60: Upstairs opens the food hall; Coffee is for sale, Drinks is locked;
+//   1. Level 9: the first-floor map's 2nd-floor button is locked ("Lv 10");
+//   1b. Level 10: the floor can be visited; all six stations are locked ("🔒 Lv.60");
+//   2. Level 60: all six stations go on sale, still locked until bought ("🔒 $price");
 //   3. buying Coffee debits the price once (one ledger entry); it needs a Floor Server;
 //      a server and a cleaner are one-time hires (one ledger entry each);
 //   4. two hours later (the save's clock moved back 2 h) the Pickup Counter collects
 //      2 × the hourly rate — one ledger entry; a second tap pays nothing;
 //   5. a reload never pays it again; Downstairs returns to the first floor;
 //   6. it fits at 320 / 390 / 768 (screenshots), no page errors;
-//   8. ?floor2 (testing) opens the floor at any level, but every station still locks
-//      until its own level with the first floor's "🔒 Lv.N" pill (developer 2026-10-16).
+//   8. ?floor2 (testing) opens the floor at any level; every station still shows
+//      "🔒 Lv.60" (developer 2026-10-16).
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import {
   MOVED_IN_BUSINESS,
@@ -63,16 +64,49 @@ const clickText = (page, re) =>
 
 const { browser, page, logs } = await launch();
 
-// ---------- 1. Locked at 59 ----------
-await boot(page, atLevel(59));
+const pillsOf = (page) =>
+  page.$$eval('[data-testid="second-floor"] .map-hotspot-zone .locked-pill-badge', (els) =>
+    els.map((e) => (e.textContent ?? "").replace(/\s+/g, "")),
+  );
+const labelsOf = (page) =>
+  page.$$eval('[data-testid="second-floor"] .map-hotspot-zone', (els) =>
+    els.map((e) => e.getAttribute("aria-label")),
+  );
+
+// ---------- 1. Locked at 9 ----------
+await boot(page, atLevel(9));
 await openMap(page);
 const lockedLabel = await page.$eval('[data-testid="upstairs"]', (b) => b.textContent);
 await page.evaluate(() => document.querySelector('[data-testid="upstairs"]').click());
 await sleep(600);
 check(
-  "1 Level 59: the 2nd-floor button is locked and does nothing",
-  /🔒 2nd floor · Lv 60/.test(lockedLabel) && !(await page.$('[data-testid="second-floor"]')),
+  "1 Level 9: the 2nd-floor button is locked and does nothing",
+  /🔒 2nd floor · Lv 10/.test(lockedLabel) && !(await page.$('[data-testid="second-floor"]')),
   { lockedLabel },
+);
+
+// ---------- 1b. Visit at 10 ----------
+await boot(page, atLevel(10));
+await openMap(page);
+await page.evaluate(() => document.querySelector('[data-testid="upstairs"]').click());
+await page.waitForSelector('[data-testid="second-floor"]', { timeout: 15000 });
+await sleep(800);
+await shot(page, "second-floor-l10-390");
+const l10Labels = await labelsOf(page);
+const l10Pills = await pillsOf(page);
+await tapZone(page, /^Smart Coffee/);
+await sleep(300);
+const l10Buy = await page.evaluate(() =>
+  [...document.querySelectorAll("button")].some(
+    (b) => /For sale from Level 60/.test(b.textContent ?? "") && b.disabled,
+  ),
+);
+check(
+  "1b Level 10: the floor can be visited; all six stations show 🔒 Lv.60 and can't be bought",
+  l10Labels.filter((z) => /opens at Level 60$/.test(z)).length === 6 &&
+    l10Pills.filter((t) => t === "🔒Lv.60").length === 6 &&
+    l10Buy,
+  { l10Labels, l10Pills, l10Buy },
 );
 
 // ---------- 2. Open at 60 ----------
@@ -82,16 +116,15 @@ await page.evaluate(() => document.querySelector('[data-testid="upstairs"]').cli
 await page.waitForSelector('[data-testid="second-floor"]', { timeout: 15000 });
 await sleep(800);
 await shot(page, "second-floor-390");
-const zones = await page.$$eval('[data-testid="second-floor"] .map-hotspot-zone', (els) =>
-  els.map((e) => e.getAttribute("aria-label")),
-);
+const zones = await labelsOf(page);
+const l60Pills = await pillsOf(page);
 check(
-  "2 Level 60: Upstairs opens the food hall; Coffee is for sale, Drinks waits for Level 70",
-  zones.some((z) => /^Smart Coffee & Espresso$/.test(z)) &&
-    zones.some((z) => /Drinks Dispenser — opens at Level 70/.test(z)) &&
-    zones.some((z) => /Ice Cream Station/.test(z)) &&
+  "2 Level 60: every station is on sale, still locked until bought (🔒 + its price)",
+  zones.filter((z) => / — locked, buy for \$[\d,]+\.\d\d$/.test(z)).length === 6 &&
+    l60Pills.length === 6 &&
+    l60Pills.every((t) => /^🔒\$[\d,]+\.\d\d$/.test(t)) &&
     zones.length === 9,
-  zones,
+  { zones, l60Pills },
 );
 
 // ---------- 3. Buy Coffee ----------
@@ -211,7 +244,7 @@ check(
   fits,
 );
 
-// ---------- 8. The testing switch: ?floor2 opens the floor; stations keep their locks ----------
+// ---------- 8. The testing switch: ?floor2 opens the floor; stations keep their lock ----------
 await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });
 await boot(page, atLevel(5));
 const base = process.env.KC_URL || "http://127.0.0.1:4173/";
@@ -232,13 +265,11 @@ const lockPills = await page.$$eval(
 );
 await shot(page, "second-floor-test-locks-390");
 check(
-  "8 ?floor2 (testing): the floor opens at Level 5, and all six stations stay locked with 🔒 Lv.N",
+  "8 ?floor2 (testing): the floor opens at Level 5, and all six stations stay locked with 🔒 Lv.60",
   /⬆ 2nd floor/.test(testLabel) &&
     testZones.length === 9 &&
-    testZones.filter((z) => /opens at Level \d+/.test(z)).length === 6 &&
-    ["Lv.60", "Lv.70", "Lv.85", "Lv.100", "Lv.115", "Lv.130"].every((t) =>
-      lockPills.some((p) => p.endsWith(t)),
-    ),
+    testZones.filter((z) => /opens at Level 60$/.test(z)).length === 6 &&
+    lockPills.filter((t) => t === "🔒Lv.60").length === 6,
   { testLabel, testZones, lockPills },
 );
 

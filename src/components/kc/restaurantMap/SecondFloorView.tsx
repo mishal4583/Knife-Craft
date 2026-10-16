@@ -22,6 +22,7 @@ import {
   STATIONS,
   floorEarnings,
   isStationUnlocked,
+  STATIONS_OPEN_AT,
   SECOND_FLOOR_TEST_UNLOCK,
   floorPerHour,
   secondFloorOf,
@@ -148,6 +149,8 @@ export function SecondFloorView({
       );
     } else if (r.reason === "insufficientFunds") {
       setNote("Not enough money yet");
+    } else if (r.reason === "noStations") {
+      setNote("Buy a station first — the team runs the machines");
     } else if (r.reason === "fullTeam") {
       setNote("The floor team is full");
     } else if (r.reason === "nothing") {
@@ -216,10 +219,16 @@ export function SecondFloorView({
                     full
                     size="sm"
                     variant="cream"
-                    disabled={have >= def.max || save.credits + waiting < def.price}
+                    disabled={
+                      ownedCount === 0 || have >= def.max || save.credits + waiting < def.price
+                    }
                     onClick={() => act({ kind: "hire", role })}
                   >
-                    {have >= def.max ? "Team full" : `Hire for ${formatUsd(def.price)}`}
+                    {ownedCount === 0
+                      ? "Buy a station first"
+                      : have >= def.max
+                        ? "Team full"
+                        : `Hire for ${formatUsd(def.price)}`}
                   </KButton>
                 </div>
               </div>
@@ -239,7 +248,9 @@ export function SecondFloorView({
       return (
         <p className="font-ui text-[13px] leading-snug text-walnut/75">
           {ownedCount === 0
-            ? "The tables wait for their first station. Buy one to bring guests upstairs."
+            ? playerLevel < STATIONS_OPEN_AT
+              ? `Every station goes on sale at Level ${STATIONS_OPEN_AT}. Have a look around until then.`
+              : "The tables wait for their first station. Buy one to bring guests upstairs."
             : `Guests eat what the machines make — ${formatUsd(perHour)} an hour while you cook downstairs.`}
         </p>
       );
@@ -260,7 +271,7 @@ export function SecondFloorView({
               disabled={locked || save.credits < d.price}
               onClick={() => act({ kind: "buy", id: d.id })}
             >
-              {locked ? `🔒 Opens at Level ${d.unlockLevel}` : `Buy for ${formatUsd(d.price)}`}
+              {locked ? `🔒 For sale from Level ${d.unlockLevel}` : `Buy for ${formatUsd(d.price)}`}
             </KButton>
           </div>
         </>
@@ -348,14 +359,23 @@ export function SecondFloorView({
             {ZONES.map((z) => {
               const station = isStation(z.id) ? STATIONS.find((s) => s.id === z.id)! : null;
               const owned = station ? floor.stations[station.id] : undefined;
-              const locked = station ? !owned && !isStationUnlocked(station, playerLevel) : false;
+              // Every station stays locked until it is bought (developer 2026-10-16);
+              // before its level the pill shows the level, after it the price.
+              const locked = !!station && !owned;
+              const tooEarly = !!station && !isStationUnlocked(station, playerLevel);
               const label = zoneLabel(z.id);
               return (
                 <div
                   key={z.id}
                   role="button"
                   tabIndex={0}
-                  aria-label={`${label.name}${locked ? ` — opens at Level ${station!.unlockLevel}` : ""}`}
+                  aria-label={`${label.name}${
+                    !locked
+                      ? ""
+                      : tooEarly
+                        ? ` — opens at Level ${station!.unlockLevel}`
+                        : ` — locked, buy for ${formatUsd(station!.price)}`
+                  }`}
                   className={`map-hotspot-zone ${locked ? "is-locked" : "is-unlocked"} ${open === z.id ? "is-current-screen" : ""}`}
                   style={{
                     left: `${z.room.x}%`,
@@ -386,11 +406,9 @@ export function SecondFloorView({
                         <span className="lock-icon" aria-hidden="true">
                           🔒
                         </span>
-                        <span className="lock-text">Lv.{station!.unlockLevel}</span>
-                      </div>
-                    ) : station && !owned ? (
-                      <div className="active-pill-badge">
-                        <span className="badge-text">For sale</span>
+                        <span className="lock-text">
+                          {tooEarly ? `Lv.${station!.unlockLevel}` : formatUsd(station!.price)}
+                        </span>
                       </div>
                     ) : owned && !isStaffed(floor, station!.id) ? (
                       <div className="locked-pill-badge">

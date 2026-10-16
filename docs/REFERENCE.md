@@ -1036,20 +1036,23 @@ preparation = PreparationScene; events = `events.ts`; platform =
   - `src/components/kc/restaurantMap/SecondFloorView.tsx` (map, same CSS as the first
     floor);
   - art `public/restaurant-map/second-floor.webp` (source `art-source/second-floor-food-hall.png`).
-- **Unlock:** the floor opens at **Level 60**. The first-floor map shows "⬆ 2nd floor"
-  (`data-testid="upstairs"`), or "🔒 · Lv 60" before then. Each station then locks
-  until its own level ("🔒 Lv.N" pill, `isStationUnlocked`), like the first floor.
-  The test switch (`npm run dev` or `?floor2`) opens only the floor, never a station.
-- **Stations** (buy once, upgrade to Lv 3; provisional numbers):
+- **Unlock** (developer 2026-10-16): players can **visit the floor from Level 10**
+  (`SECOND_FLOOR_OPENS_AT`). The first-floor map shows "⬆ 2nd floor"
+  (`data-testid="upstairs"`), or "🔒 2nd floor · Lv 10" before then. **Every station goes
+  on sale at Level 60** (`STATIONS_OPEN_AT`) and stays locked until it is bought, like the
+  first floor: the pill reads "🔒 Lv.60" before L60, then "🔒 $price". No staff can be hired
+  before a station is owned (`noStations`). The test switch (`npm run dev` or `?floor2`)
+  opens only the floor, never a station.
+- **Stations** (buy once, upgrade to Lv 3; provisional numbers; all on sale from L60):
 
-  | Station | Opens | Buy | $/h at Lv 1 / 2 / 3 |
-  |---|---|---|---|
-  | Coffee | L60 | $3,000 | 15 / 30 / 50 |
-  | Drinks | L70 | $4,000 | 20 / 40 / 65 |
-  | Pizza | L85 | $6,000 | 30 / 60 / 100 |
-  | Burger | L100 | $7,500 | 35 / 70 / 115 |
-  | Ice Cream | L115 | $9,000 | 40 / 80 / 130 |
-  | Hot Food | L130 | $11,000 | 45 / 90 / 150 |
+  | Station | Buy | $/h at Lv 1 / 2 / 3 |
+  |---|---|---|
+  | Coffee | $3,000 | 15 / 30 / 50 |
+  | Drinks | $4,000 | 20 / 40 / 65 |
+  | Pizza | $6,000 | 30 / 60 / 100 |
+  | Burger | $7,500 | 35 / 70 / 115 |
+  | Ice Cream | $9,000 | 40 / 80 / 130 |
+  | Hot Food | $11,000 | 45 / 90 / 150 |
 
   - Each station stores up to 8 / 10 / 12 hours of income.
   - A fully upgraded floor earns about $610 an hour.
@@ -1074,7 +1077,8 @@ preparation = PreparationScene; events = `events.ts`; platform =
 - **Save:** `SaveData.business.secondFloor = { stations: { [id]: { level, lastCollectAt } } }`,
   optional; absent = nothing owned.
 - **Tests:** `restaurant-second-floor-qa` (catalog, accrual / cap / clock, buy / upgrade,
-  collect once, saves); e2e `tools/e2e/restaurantsecondfloor.mjs` (L59 locked, L60 open, buy,
+  collect once, saves); e2e `tools/e2e/restaurantsecondfloor.mjs` (L9 locked, L10 visit with every station
+  locked, L60 all on sale, buy,
   +2 h collect once, reload, Downstairs, widths 320 / 390 / 768).
 
 ## 7. ECONOMY RULES
