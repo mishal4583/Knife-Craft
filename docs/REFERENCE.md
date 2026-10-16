@@ -179,6 +179,53 @@ and `playgama-bridge-config.json` beside it before uploading.
 
 ## 5. QA
 
+### Suite index (moved from CLAUDE.md 2026-10-15)
+
+QA suites: `npx tsx scripts/<name>.mts` (each one's full scope and
+figures: `docs/REFERENCE.md` §5). Browser tests: `tools/e2e/` (headless
+Chrome, `puppeteer-core`, see `tools/e2e/README.md`; `npm install` there
+once). Restaurant browser tests run on the normal build, classic ones on a
+`VITE_RESTAURANT_MODE=0` build.
+
+- Restaurant: `restaurant-unlocks-qa`, `restaurant-stock-qa`,
+  `restaurant-menu-qa`, `restaurant-day-qa`, `restaurant-guests-qa`,
+  `restaurant-supplies-qa`, `restaurant-progression-qa`,
+  `restaurant-migration-qa`, `restaurant-campaign-sim-qa`,
+  `restaurant-economy-pass-qa`, `restaurant-endless-qa`,
+  `restaurant-backoffice-qa`, `restaurant-endgame-qa`,
+  `restaurant-fridge-pressure-qa`, `restaurant-final-economy-qa`,
+  `restaurant-measures-qa`, `restaurant-city-ranking-qa`,
+  `restaurant-first-levels-qa`, `restaurant-grandmas-fridge-qa`,
+  `restaurant-level-goals-qa`, `restaurant-service-cover-qa`,
+  `restaurant-tools-qa`, `restaurant-tableware-qa`,
+  `restaurant-takeaway-qa`, `restaurant-service-report-qa`,
+  `restaurant-cleanliness-qa`, `restaurant-day-clock-qa`,
+  `restaurant-shift-chores-qa`, `restaurant-deliveries-qa`,
+  `restaurant-par-audit-qa`, `restaurant-half-wages-qa` (browser:
+  `tools/e2e/restaurant*.mjs`).
+- Campaign / UX: `story-intro-qa`, `story-pause-qa`, `story-legacy-qa`, `audio-qa`,
+  `campaign-paid-orders-qa`, `level-ux-qa`, `coaching-qa`,
+  `knife-stroke-qa`, `cut-rules-qa`, `lazy-load-qa`, `unused-assets-qa`,
+  `playables-ads-qa`.
+- Economy: `economy-v2-final-qa`, `economy-v2-qa`,
+  `economy-v2-settlement-ledger-qa` (frozen baseline; some use `git diff`,
+  run in this repo), `economy-v25-qa`, `economy-final-qa`.
+- Business / Inventory: `business-history-qa`, `business-supplies-qa`,
+  `fridge-view-qa`, `inventory-screen-qa`, `inventory-market-qa`,
+  `business-ux-qa`, plus the other `business-*-qa.mts`,
+  `campaign-integrity-qa`, `restaurant-progress-qa`,
+  `progression-preview-qa`, `usd-currency-qa`, `phase7-2-smoke-test`.
+- Cutting / campaign systems: `blacksmith-qa`, `ingredient-realism-qa`,
+  `julienne-fix-qa`, `level-system-v2-qa`, `multi-instance-preparation-qa`,
+  `new-ingredients-integration-qa`, `overhang-regression-qa`,
+  `plating-system-qa`, `shared-destination-plating-qa`, `prep-softlock-qa`,
+  the `economy-v2-*` equipment / payout / sharpness / staff / supplier
+  suites.
+- Business systems: `perishability-qa`, `popularity-demand-qa`,
+  `refrigerator-storage-qa`, `supplier-contracts-qa`,
+  `supplier-events-qa`.
+- Every suite at once: `for f in scripts/*-qa.mts; do npx tsx $f; done`.
+
 Focused suites (`npx tsx scripts/<name>.mts`):
 
 - `story-intro-qa` — intro pacing, Skip story, story save semantics.
