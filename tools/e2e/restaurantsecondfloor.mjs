@@ -134,13 +134,13 @@ check(
 const s0 = await readSave(page);
 await tapZone(page, /^Smart Coffee/);
 await sleep(300);
-await clickText(page, /^Buy for \$3,000\.00$/);
+await clickText(page, /^Buy for \$400\.00$/);
 await sleep(600);
 const s1 = await readSave(page);
 const buys = s1.economyLedger.filter((e) => e.category === "automation-purchase");
 check(
-  "3 buying Coffee debits $3,000 once, with one ledger entry",
-  s1.credits === s0.credits - 300000 &&
+  "3 buying Coffee debits $400 once (economy plan 2026-10-16), with one ledger entry",
+  s1.credits === s0.credits - 40000 &&
     buys.length === 1 &&
     s1.business.secondFloor?.stations?.coffee?.level === 1,
   { credits: [s0.credits, s1.credits], buys: buys.length },
@@ -161,19 +161,19 @@ await page.evaluate(() => document.querySelector('[aria-label="Close"]')?.click(
 await sleep(200);
 await tapZone(page, /^Pickup Counter/);
 await sleep(300);
-const hiredServer = await clickText(page, /^Hire for \$1,500\.00$/);
+const hiredServer = await clickText(page, /^Hire for \$400\.00$/);
 await sleep(500);
-const hiredCleaner = await clickText(page, /^Hire for \$1,200\.00$/);
+const hiredCleaner = await clickText(page, /^Hire for \$300\.00$/);
 await sleep(500);
 const s1b = await readSave(page);
 const hires = s1b.economyLedger.filter((e) => /^hire-/.test(e.description ?? ""));
 check(
-  "3b an unstaffed station says it needs a server; a Floor Server ($1,500) and a Floor Cleaner ($1,200) are one-time hires — one ledger entry each, no wages",
+  "3b an unstaffed station says it needs a server; a Floor Server ($400) and a Floor Cleaner ($300) are one-time hires — one ledger entry each, no wages",
   needsServer &&
     hiredServer &&
     hiredCleaner &&
     hires.length === 2 &&
-    s1b.credits === s1.credits - 150000 - 120000 &&
+    s1b.credits === s1.credits - 40000 - 30000 &&
     s1b.business.secondFloor.servers === 1 &&
     s1b.business.secondFloor.cleaners === 1,
   { needsServer, hires: hires.length },
@@ -238,10 +238,10 @@ const again = await clickText(page, /^Collect \$/);
 await sleep(400);
 const s4 = await readSave(page);
 check(
-  "4 two hours later the Pickup Counter collects 2 × $15 — one ledger entry; a second tap pays nothing",
+  "4 two hours later the Pickup Counter collects 2 × $10 — one ledger entry; a second tap pays nothing",
   collected &&
-    s3.credits - s2.credits >= 3000 &&
-    s3.credits - s2.credits < 3100 &&
+    s3.credits - s2.credits >= 2000 &&
+    s3.credits - s2.credits < 2100 &&
     incomes.length === 1 &&
     !again &&
     s4.credits === s3.credits,

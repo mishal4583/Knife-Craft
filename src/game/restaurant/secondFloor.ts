@@ -85,9 +85,18 @@ export type StationDefinition = {
   capHours: readonly [number, number, number];
 };
 
-const CAP_HOURS = [8, 10, 12] as const;
+/** Hours of takings a station stores before it stops (Lv 1/2/3): checking in twice a day pays. */
+const CAP_HOURS = [8, 9, 10] as const;
 
-/** Provisional numbers (developer 2026-10-16) — tune after play testing. */
+/**
+ * The Second Floor economy plan (developer 2026-10-16: "plan the upgrading cost
+ * and everything, and also income"). Each price is set by how many staffed
+ * earning hours it takes to pay itself back — buying ≈ 60 h, Lv 2 ≈ 90 h,
+ * Lv 3 ≈ 120 h, each later station 8 % slower — so the floor starts cheap
+ * (Coffee + its server: $1,000, which a Level-60 player can afford without
+ * starving the kitchen upgrades) and then pays for itself.
+ * Proved by scripts/second-floor-economy-sim.mts (restaurant-second-floor-qa P).
+ */
 export const STATIONS: readonly StationDefinition[] = [
   {
     id: "coffee",
@@ -95,9 +104,9 @@ export const STATIONS: readonly StationDefinition[] = [
     icon: "☕",
     blurb: "Bean-to-cup machines grind, tamp, brew and steam milk by themselves.",
     unlockLevel: STATIONS_OPEN_AT,
-    price: dollars(3_000),
-    upgradePrices: [dollars(4_000), dollars(8_000)],
-    perHour: [dollars(15), dollars(30), dollars(50)],
+    price: dollars(400),
+    upgradePrices: [dollars(600), dollars(1000)],
+    perHour: [dollars(10), dollars(16), dollars(21)],
     capHours: CAP_HOURS,
   },
   {
@@ -106,9 +115,9 @@ export const STATIONS: readonly StationDefinition[] = [
     icon: "🥤",
     blurb: "Touchscreen fountain, juices and mocktails mixed to order.",
     unlockLevel: STATIONS_OPEN_AT,
-    price: dollars(4_000),
-    upgradePrices: [dollars(5_000), dollars(10_000)],
-    perHour: [dollars(20), dollars(40), dollars(65)],
+    price: dollars(550),
+    upgradePrices: [dollars(800), dollars(1400)],
+    perHour: [dollars(12), dollars(19), dollars(25)],
     capHours: CAP_HOURS,
   },
   {
@@ -117,9 +126,9 @@ export const STATIONS: readonly StationDefinition[] = [
     icon: "🍕",
     blurb: "A robot arm presses the dough, tops it and bakes a pizza in minutes.",
     unlockLevel: STATIONS_OPEN_AT,
-    price: dollars(6_000),
-    upgradePrices: [dollars(8_000), dollars(15_000)],
-    perHour: [dollars(30), dollars(60), dollars(100)],
+    price: dollars(750),
+    upgradePrices: [dollars(1150), dollars(2100)],
+    perHour: [dollars(14), dollars(23), dollars(31)],
     capHours: CAP_HOURS,
   },
   {
@@ -128,9 +137,9 @@ export const STATIONS: readonly StationDefinition[] = [
     icon: "🍔",
     blurb: "Grills the patty, toasts the bun and stacks every burger the same.",
     unlockLevel: STATIONS_OPEN_AT,
-    price: dollars(7_500),
-    upgradePrices: [dollars(10_000), dollars(18_000)],
-    perHour: [dollars(35), dollars(70), dollars(115)],
+    price: dollars(1000),
+    upgradePrices: [dollars(1450), dollars(2600)],
+    perHour: [dollars(17), dollars(27), dollars(36)],
     capHours: CAP_HOURS,
   },
   {
@@ -139,9 +148,9 @@ export const STATIONS: readonly StationDefinition[] = [
     icon: "🍦",
     blurb: "Three soft-serve machines and a topping bar, cones always ready.",
     unlockLevel: STATIONS_OPEN_AT,
-    price: dollars(9_000),
-    upgradePrices: [dollars(12_000), dollars(22_000)],
-    perHour: [dollars(40), dollars(80), dollars(130)],
+    price: dollars(1300),
+    upgradePrices: [dollars(1750), dollars(3200)],
+    perHour: [dollars(20), dollars(31), dollars(41)],
     capHours: CAP_HOURS,
   },
   {
@@ -150,9 +159,9 @@ export const STATIONS: readonly StationDefinition[] = [
     icon: "🍟",
     blurb: "Auto fryers lift, shake and drain fries and wings into warm holding bays.",
     unlockLevel: STATIONS_OPEN_AT,
-    price: dollars(11_000),
-    upgradePrices: [dollars(14_000), dollars(26_000)],
-    perHour: [dollars(45), dollars(90), dollars(150)],
+    price: dollars(1550),
+    upgradePrices: [dollars(2300), dollars(3850)],
+    perHour: [dollars(22), dollars(35), dollars(46)],
     capHours: CAP_HOURS,
   },
 ];
@@ -175,7 +184,7 @@ export const FLOOR_STAFF: Record<
   server: {
     name: "Floor Server",
     icon: "🧑‍🍳",
-    price: dollars(1_500),
+    price: dollars(400),
     max: 3,
     covers: 2,
     blurb: "Runs the pickup counter and carries trays for 2 stations. Hired for good — no wages.",
@@ -183,7 +192,7 @@ export const FLOOR_STAFF: Record<
   cleaner: {
     name: "Floor Cleaner",
     icon: "🧽",
-    price: dollars(1_200),
+    price: dollars(300),
     max: 2,
     covers: 3,
     blurb: "Clears and wipes the tables for 3 stations' guests. Hired for good — no wages.",

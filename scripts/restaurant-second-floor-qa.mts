@@ -19,6 +19,8 @@
  *  L  Locks (developer 2026-10-16): every station stays locked until it is
  *     bought — "🔒 Lv.60" before L60, "🔒 $price" after; the test switch
  *     never opens a station; no staff can be hired before a station is owned.
+ *  P  Economy plan: payback hours per purchase, first buy ≤ $1,000, whole
+ *     floor $25k–35k / $200 an hour, completion days per player, day-18 takings.
  *  S  Saves: an old save has no floor (nothing owned); no new top-level field.
  *
  * Run: npx tsx scripts/restaurant-second-floor-qa.mts
@@ -45,6 +47,7 @@ import {
   stationDef,
   upgradeStation,
 } from "../src/game/restaurant/secondFloor.ts";
+import { paybackTable, simulateFloor } from "./second-floor-economy-sim.mts";
 
 let failures = 0;
 function assert(cond: unknown, msg: string, detail?: unknown) {
@@ -329,6 +332,58 @@ console.log("L. Station locks");
   assert(
     !noStation.ok && noStation.reason === "noStations",
     "L5: no staff can be hired before a station is owned",
+  );
+}
+
+console.log("P. Economy plan (developer 2026-10-16) — scripts/second-floor-economy-sim.mts");
+{
+  const pb = paybackTable();
+  const rising = (xs: number[]) => xs.every((v, i) => i === 0 || v >= xs[i - 1]!);
+  assert(
+    pb.every(
+      (p) =>
+        p.buy >= 35 && p.buy <= 75 && p.up2 >= 90 && p.up2 <= 180 && p.up3 >= 180 && p.up3 <= 360,
+    ) &&
+      rising(pb.map((p) => p.buy)) &&
+      rising(pb.map((p) => p.up2)) &&
+      rising(pb.map((p) => p.up3)),
+    "P1: every purchase pays itself back in staffed earning hours — buy 35–75 h, Lv 2 90–180 h, Lv 3 180–360 h — and later stations take longer",
+    pb.map((p) => [p.id, Math.round(p.buy), Math.round(p.up2), Math.round(p.up3)]),
+  );
+  const first = STATIONS[0]!;
+  assert(
+    first.price + FLOOR_STAFF.server.price <= 100_000,
+    "P2: the first machine with its Floor Server costs at most $1,000 (it never starves the campaign's kitchen upgrades)",
+  );
+  const full =
+    STATIONS.reduce((t, d) => t + d.price + d.upgradePrices[0] + d.upgradePrices[1], 0) +
+    FLOOR_STAFF.server.max * FLOOR_STAFF.server.price +
+    FLOOR_STAFF.cleaner.max * FLOOR_STAFF.cleaner.price;
+  const top = STATIONS.reduce((t, d) => t + d.perHour[2], 0);
+  assert(
+    full >= 2_500_000 && full <= 3_500_000 && top === 20_000,
+    `P3: the whole floor costs $25k–$35k ($${full / 100}) and earns $200/h fully upgraded`,
+  );
+  const casual = simulateFloor("casual", 1);
+  const regular = simulateFloor("regular", 2);
+  const heavy = simulateFloor("heavy", 4);
+  assert(
+    regular.completeDay !== null &&
+      regular.completeDay >= 18 &&
+      regular.completeDay <= 30 &&
+      casual.completeDay !== null &&
+      casual.completeDay >= 35 &&
+      casual.completeDay <= 60 &&
+      heavy.completeDay !== null &&
+      heavy.completeDay >= 12 &&
+      heavy.completeDay <= 22,
+    "P4: reinvesting its own takings, the floor is complete on day 18–30 (2 check-ins a day), 35–60 (1 a day), 12–22 (4 a day)",
+    { casual: casual.completeDay, regular: regular.completeDay, heavy: heavy.completeDay },
+  );
+  const by18 = regular.earnedBy[18] ?? 0;
+  assert(
+    by18 >= 800_000 && by18 <= 2_000_000,
+    `P5: by the day a 5-levels-a-day player finishes the campaign (day 18 after L60) the floor has paid $8k–$20k ($${by18 / 100}) — extra on top, not the main income`,
   );
 }
 

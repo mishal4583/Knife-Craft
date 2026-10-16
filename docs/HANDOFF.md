@@ -102,7 +102,8 @@ conversation.
 
 - **2026-10-16: the Second Floor**, an automated food hall that earns money per real hour,
   is on `main`. Players can visit it from L10; all six stations go on sale at L60 and stay
-  locked until bought. Stations upgrade, and Collect is at the Pickup Counter. Floor life:
+  locked until bought. Stations upgrade, and Collect is at the Pickup Counter. Economy plan + Market · Second Floor
+  (2026-10-16): machines $400–$1,550, whole floor $29.6k, $200/h at full (REFERENCE). Floor life:
   servers carry food from the machines to the counter, guests eat, cleaners wipe tables
   (`floorLife.ts` / `FloorLife.tsx`). First-floor staff at work on the
   map (`staffLife.ts`, hired roles only). The testing preview is off

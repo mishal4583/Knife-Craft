@@ -112,12 +112,15 @@ export function SecondFloorView({
   playerLevel,
   onAction,
   onDownstairs,
+  onOpenMarket,
   reducedMotion = false,
 }: {
   save: SaveData;
   playerLevel: number;
   onAction: (action: SecondFloorAction) => FloorResult;
   onDownstairs: () => void;
+  /** Opens the Market on its Second Floor section. */
+  onOpenMarket?: () => void;
   reducedMotion?: boolean;
 }) {
   // The floor earns by the real clock: re-read it every few seconds while open.
@@ -197,6 +200,13 @@ export function SecondFloorView({
               {waiting > 0 ? `Collect ${formatUsd(waiting)}` : "Nothing to collect yet"}
             </KButton>
           </div>
+          {onOpenMarket ? (
+            <div className="mt-3">
+              <KButton full size="sm" variant="cream" onClick={onOpenMarket}>
+                🛒 Machines, upgrades & team in the Market
+              </KButton>
+            </div>
+          ) : null}
           <h4 className="mt-4 font-ui text-[11px] font-extrabold uppercase tracking-[0.14em] text-copper">
             Floor team · hired for good, no wages
           </h4>

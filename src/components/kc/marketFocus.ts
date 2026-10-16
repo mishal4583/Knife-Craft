@@ -101,3 +101,23 @@ export function clearSupplyFocus() {
 export function peekSupplySection(): SupplySection {
   return pendingSupplySection;
 }
+
+/**
+ * The Second Floor → Market link: the Market opens on its Second Floor section
+ * (machines, upgrades, floor team). Navigation state only — never saved.
+ */
+let pendingSecondFloor = false;
+
+export function openMarketSecondFloor(go: (s: ScreenId) => void) {
+  pendingSecondFloor = true;
+  go("shop");
+}
+
+export function peekMarketSecondFloor(): boolean {
+  return pendingSecondFloor;
+}
+
+/** Cleared by the Market once it has opened (like the other focus links). */
+export function clearMarketSecondFloor() {
+  pendingSecondFloor = false;
+}

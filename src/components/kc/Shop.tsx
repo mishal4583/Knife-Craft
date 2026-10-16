@@ -1,3 +1,6 @@
+import { MarketSecondFloor } from "./MarketSecondFloor";
+import type { SecondFloorAction } from "./restaurantMap/SecondFloorView";
+import type { FloorResult } from "@/game/restaurant/secondFloor";
 import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
 import { useEffect, useState, type ReactNode } from "react";
 import type { ScreenId } from "./data";
@@ -41,7 +44,7 @@ import {
   clearMarketFocus,
   peekSupplyFocus,
   peekSupplyPacks,
-  clearSupplyFocus,
+  clearMarketSecondFloor, clearSupplyFocus,
 } from "./marketFocus";
 import { ledgerTotals, LEDGER_CATEGORY_LABEL } from "@/game/economy/EconomyLedger";
 import { notEnoughMoneyText } from "@/game/economy/wallet";
@@ -105,6 +108,8 @@ export type ShopCategory =
   | "suppliers"
   | "ingredients"
   | "blacksmith"
+  // The Second Floor's machines, upgrades and Floor Team (restaurant build only).
+  | "second-floor"
   // Business Supplies (master spec §25): smallwares, tableware, takeaway packaging.
   | SupplySection;
 
@@ -127,6 +132,8 @@ const categories: Array<{ id: ShopCategory; label: string; emoji: string }> = [
   },
   // Restaurant build only (filtered below): the Cleanliness screen's supplies.
   { id: "cleaning", label: SUPPLY_SECTIONS.cleaning.short, emoji: SUPPLY_SECTIONS.cleaning.emoji },
+  // Restaurant build only: the Second Floor's machines, upgrades and team.
+  { id: "second-floor", label: "Second Floor", emoji: "🏬" },
 ];
 
 /**
@@ -136,7 +143,7 @@ const categories: Array<{ id: ShopCategory; label: string; emoji: string }> = [
  */
 const shopCategories = RESTAURANT_MODE
   ? categories.filter((c) => c.id !== "suppliers")
-  : categories.filter((c) => c.id !== "cleaning");
+  : categories.filter((c) => c.id !== "cleaning" && c.id !== "second-floor");
 
 const categoryCopy: Record<ShopCategory, { title: string; description: string }> = {
   knives: {
@@ -172,6 +179,10 @@ const categoryCopy: Record<ShopCategory, { title: string; description: string }>
   cleaning: {
     title: SUPPLY_SECTIONS.cleaning.title,
     description: "Housekeeping · keep the kitchen, dining room and restroom spotless.",
+  },
+  "second-floor": {
+    title: "Second Floor",
+    description: "The automated food hall · machines, upgrades and the floor team.",
   },
 };
 
@@ -216,6 +227,7 @@ export function Shop({
   purchaseIngredients,
   purchaseSupply,
   initialCategory = "knives",
+  secondFloorAction,
 }: {
   go: (s: ScreenId) => void;
   save: SaveData;
@@ -237,6 +249,8 @@ export function Shop({
   purchaseSupply: (supplyId: string, packs: number) => PurchaseSupplyResult;
   /** "shop-ingredients" opens the Market on Ingredients (Business → Market links). */
   initialCategory?: ShopCategory;
+  /** The Second Floor's buy / upgrade / hire (App.secondFloorAction, the floor's own action). */
+  secondFloorAction?: (action: SecondFloorAction) => FloorResult;
 }) {
   // First levels (restaurant build, firstLevels.ts): before Level 3 the
   // Market is locked; from Level 3 all ingredient categories can be purchased.
@@ -264,6 +278,7 @@ export function Shop({
   useEffect(() => {
     clearMarketFocus();
     clearSupplyFocus();
+    clearMarketSecondFloor();
   }, []);
 
   function selectCategory(next: ShopCategory) {
@@ -495,6 +510,13 @@ export function Shop({
               focusPacks={supplyFocusPacks}
               purchaseSupply={purchaseSupply}
               setNotice={setNotice}
+            />
+          ) : category === "second-floor" && secondFloorAction ? (
+            <MarketSecondFloor
+              save={save}
+              onAction={secondFloorAction}
+              setNotice={setNotice}
+              go={go}
             />
           ) : category === "blacksmith" ? (
             <Blacksmith

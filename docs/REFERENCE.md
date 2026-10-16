@@ -1044,19 +1044,31 @@ preparation = PreparationScene; events = `events.ts`; platform =
   first floor: the pill reads "🔒 Lv.60" before L60, then "🔒 $price". No staff can be hired
   before a station is owned (`noStations`). The test switch (`npm run dev` or `?floor2`)
   opens only the floor, never a station.
-- **Stations** (buy once, upgrade to Lv 3; provisional numbers; all on sale from L60):
+- **Economy plan** (developer 2026-10-16; `scripts/second-floor-economy-sim.mts`, QA section P).
+  Prices follow payback in staffed earning hours: buying ≈ 40 h, Lv 2 ≈ 100 h, Lv 3 ≈ 200 h,
+  each later station 15 % slower. Fast start, slow finish: the floor matters during the
+  campaign but doesn't flood money after it. All on sale from L60:
 
-  | Station | Buy | $/h at Lv 1 / 2 / 3 |
-  |---|---|---|
-  | Coffee | $3,000 | 15 / 30 / 50 |
-  | Drinks | $4,000 | 20 / 40 / 65 |
-  | Pizza | $6,000 | 30 / 60 / 100 |
-  | Burger | $7,500 | 35 / 70 / 115 |
-  | Ice Cream | $9,000 | 40 / 80 / 130 |
-  | Hot Food | $11,000 | 45 / 90 / 150 |
+  | Station | Buy | Lv 2 | Lv 3 | $/h at Lv 1 / 2 / 3 | Payback (h) buy / Lv2 / Lv3 |
+  |---|---|---|---|---|---|
+  | Coffee | $400 | $600 | $1,000 | 10 / 16 / 21 | 40 / 100 / 200 |
+  | Drinks | $550 | $800 | $1,400 | 12 / 19 / 25 | 46 / 114 / 233 |
+  | Pizza | $750 | $1,150 | $2,100 | 14 / 23 / 31 | 54 / 128 / 263 |
+  | Burger | $1,000 | $1,450 | $2,600 | 17 / 27 / 36 | 59 / 145 / 289 |
+  | Ice Cream | $1,300 | $1,750 | $3,200 | 20 / 31 / 41 | 65 / 159 / 320 |
+  | Hot Food | $1,550 | $2,300 | $3,850 | 22 / 35 / 46 | 70 / 177 / 350 |
 
-  - Each station stores up to 8 / 10 / 12 hours of income.
-  - A fully upgraded floor earns about $610 an hour.
+  - Storage 8 / 9 / 10 h (Lv 1/2/3): checking in twice a day pays.
+  - Floor Server $400 (max 3, runs 2 stations), Floor Cleaner $300 (max 2, per 3 stations).
+  - Whole floor $29,550; $200/h fully upgraded. First machine + server $800.
+  - Sim (reinvesting its own takings from L60): complete on day 23.5 with 2 check-ins a day
+    (day 47 with 1, day 17 with 4); $12.6k earned by day 18 (a 5-levels-a-day player's
+    campaign end); then about $4k a day.
+- **Market · Second Floor** (`kc/MarketSecondFloor.tsx`, Shop category `second-floor`,
+  restaurant build): the six machines (buy, payback), their upgrades and the Floor Team, through
+  the same `App.secondFloorAction` as the floor's panel (one debit, one ledger entry each). The
+  Pickup Counter's "Machines, upgrades & team in the Market" opens it (`openMarketSecondFloor`).
+  Collect stays on the floor. e2e `tools/e2e/marketsecondfloor.mjs`.
 - **Money:**
   - real time (`Date.now()`); min(cap, rate × hours);
   - a clock set back earns 0;
@@ -1066,9 +1078,9 @@ preparation = PreparationScene; events = `events.ts`; platform =
     each;
   - an upgrade first banks the income already earned.
 - **Floor staff** (developer 2026-10-16): permanent, one-time hires, no wages (`FLOOR_STAFF`).
-  - **Floor Server** $1,500 (max 3): runs 2 stations; an unstaffed station earns $0 and shows
+  - **Floor Server** $400 (max 3): runs 2 stations; an unstaffed station earns $0 and shows
     "Needs a server".
-  - **Floor Cleaner** $1,200 (max 2): keeps 3 stations' tables clear; each missing cleaner costs
+  - **Floor Cleaner** $300 (max 2): keeps 3 stations' tables clear; each missing cleaner costs
     25 % of the takings.
   - Hiring and buying a station both bank what the floor already earned first, so staffing
     never changes past hours.

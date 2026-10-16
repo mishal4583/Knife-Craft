@@ -17,7 +17,7 @@ import type { AdvanceDayResult } from "@/components/kc/business/BusinessDashboar
 import { businessTabForScreen } from "@/components/kc/business/businessTabs";
 import type { PurchaseIngredientResult } from "@/game/business/BusinessInventoryManager";
 import type { PurchaseSupplyResult } from "@/game/business/BusinessSuppliesManager";
-import { openMarketSupplies, peekSupplySection } from "@/components/kc/marketFocus";
+import { openMarketSupplies, openMarketSecondFloor, peekMarketSecondFloor, peekSupplySection } from "@/components/kc/marketFocus";
 import type { RestaurantZoneId } from "@/components/kc/restaurantMap/restaurantMap";
 import type { SecondFloorAction } from "@/components/kc/restaurantMap/SecondFloorView";
 import {
@@ -312,6 +312,7 @@ export function ScreensRouter({
                 reducedMotion={save.settings.reducedMotion}
                 onAction={secondFloorAction}
                 onDownstairs={() => routeGo("restaurant-map")}
+                onOpenMarket={() => openMarketSecondFloor(routeGo)}
               />
               <BottomNav active="restaurant-map" go={routeGo} />
             </div>
@@ -331,11 +332,14 @@ export function ScreensRouter({
                 ? "ingredients"
                 : screen === "shop-supplies"
                   ? peekSupplySection()
-                  : "knives"
+                  : peekMarketSecondFloor()
+                    ? "second-floor"
+                    : "knives"
             }
             purchaseIngredient={purchaseIngredient}
             {...(purchaseIngredients ? { purchaseIngredients } : {})}
             purchaseSupply={purchaseSupply}
+            secondFloorAction={secondFloorAction}
             go={routeGo}
             save={save}
             buyKnife={buyKnife}
