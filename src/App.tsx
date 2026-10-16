@@ -130,6 +130,9 @@ import {
   giveGrandmasCupboard,
   snapshotServiceStart,
   tasksAfterService,
+  cleanerRestroomJob,
+  cleanTask,
+  type TaskKind,
 } from "@/game/restaurant/cleanliness";
 import { isSystemLive } from "@/game/restaurant/restaurantProgression";
 import {
@@ -859,6 +862,19 @@ export function App() {
             : upgradeStation(current, action.id, now);
     if (result.ok) persist(result.save);
     return result;
+  }
+
+  /**
+   * The Cleaner on the Restaurant map finished a restroom job (developer
+   * 2026-10-16: "make sure he is cleaning and not mock"): the job is really
+   * cleaned by the Cleaner (its real supplies, counted as the Cleaner's) —
+   * only if it is still the job a hired Cleaner can do now.
+   */
+  function cleanerCleans(job: TaskKind) {
+    const current = saveRef.current;
+    if (!current || cleanerRestroomJob(current) !== job) return;
+    const result = cleanTask(current, job, "cleaner");
+    if (result.ok) persist(result.save);
   }
 
   function buildKitchenUpgrade(id: string) {
@@ -3017,6 +3033,7 @@ export function App() {
               buildKitchenUpgrade={buildKitchenUpgrade}
               collectAchievement={collectAchievementReward}
               secondFloorAction={secondFloorAction}
+              cleanerCleans={cleanerCleans}
               rushAdAvailable={rewardedAdsAvailable()}
               setMenuPrice={setMenuPrice}
               setBusinessDishActive={setBusinessDishActive}

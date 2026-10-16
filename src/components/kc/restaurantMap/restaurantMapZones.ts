@@ -184,8 +184,8 @@ export function getZoneConfig(zoneId: string): HotspotZoneConfig | undefined {
   return RESTAURANT_MAP_ZONES.find((z) => z.id === zoneId);
 }
 
-/** The service counter is open on the map (its cashier is drawn, StaffLife). */
-export function serviceCounterOpen(playerLevel: number): boolean {
-  const zone = getZoneConfig('service');
+/** A map room is open at this level (StaffLife: the Server needs the dining room, the cashier the counter). */
+export function mapRoomOpen(zoneId: string, playerLevel: number): boolean {
+  const zone = getZoneConfig(zoneId);
   return !!zone && isZoneUnlocked(zone, playerLevel);
 }

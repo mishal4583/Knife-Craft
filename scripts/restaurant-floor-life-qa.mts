@@ -16,6 +16,10 @@
  *  G  Placement on each of the six kitchen-stage maps: Head Chef off the pass
  *     shelving, Cleaner on the restroom floor, Manager only sits, the service
  *     counter's cashier at its computer, plates held in the hand.
+ *  H  Only when hired and needed: the testing preview is off; the Old Chef is
+ *     always in the kitchen; the Server with the dining room open (and the
+ *     counter's cashier with them); the Cleaner only while a real restroom job
+ *     is open, and that job is really cleaned (cleanTask by the Cleaner).
  *  D  Deterministic: the same floor gives the same cast; no Math.random.
  *  V  View (the full preview cast under the test switch or the temporary
  *     FLOOR_LIFE_ALWAYS_PREVIEW flag, developer 2026-10-16): decorative (aria-hidden, no taps), transform/opacity only, off
@@ -36,11 +40,18 @@ import {
 } from "../src/game/restaurant/floorLife.ts";
 import type { SecondFloorState, StationId } from "../src/game/restaurant/secondFloor.ts";
 import {
+  CLEANING_SECONDS,
   MAP_STAGES,
   STAFF_LIFE_ROLES,
   staffCast,
   staffOnMap,
 } from "../src/game/restaurant/staffLife.ts";
+import {
+  cleanTask,
+  cleanerRestroomJob,
+  cleanlinessOf,
+} from "../src/game/restaurant/cleanliness.ts";
+import { DEFAULT_SAVE } from "../src/game/SaveManager.ts";
 
 let failures = 0;
 function assert(cond: unknown, msg: string, detail?: unknown) {
@@ -180,6 +191,7 @@ console.log("S. Seats (developer 2026-10-16: sit on the chairs, never two on one
 }
 
 console.log("F. First-floor staff (developer 2026-10-16)");
+const WORK = { stage: "grand", diningOpen: true, serviceOpen: true, cleanerJob: "toilet" } as const;
 {
   const roleSrc = read("src/game/business/businessStaff.ts");
   const roles =
@@ -191,109 +203,160 @@ console.log("F. First-floor staff (developer 2026-10-16)");
     "F1: exactly the six roles the game has (BusinessStaffRole) — no invented role (the Cleaner looks after the restroom)",
     roles,
   );
+  const ids = (cast: ReturnType<typeof staffCast>) => cast.map((a) => a.id).join();
   assert(
-    staffCast([]).length === 0 &&
-      staffCast(["server"])
-        .map((a) => a.kind)
-        .join() === "server" &&
-      staffCast(["manager", "cleaner", "not-a-role"]).length === 2,
-    "F2: only hired roles are drawn (nobody unhired, unknown roles ignored)",
+    ids(staffCast([], WORK)) === "old-chef" &&
+      ids(staffCast(["manager", "not-a-role"], WORK)) === "old-chef,staff-manager",
+    "F2: with nobody hired only the Old Chef (from the intro) is in the kitchen; unknown roles are ignored",
   );
-  const all = staffCast(STAFF_LIFE_ROLES);
   const rooms: Record<string, { x: number; y: number; w: number; h: number }> = {
-    kitchen: { x: 3.8, y: 18, w: 41.2 + 3, h: 30.2 },
+    kitchen: { x: 3.8, y: 18, w: 44, h: 32 },
     restroom: { x: 80, y: 33, w: 17.2, h: 18 },
     office: { x: 3.8, y: 53.4, w: 26.2, h: 24 },
     dining: { x: 30.5, y: 48.2, w: 67, h: 31 },
   };
-  const roomOf: Record<string, string> = {
-    "staff-line-cook": "kitchen",
-    "staff-prep-cook": "kitchen",
-    "staff-head-chef": "kitchen",
-    "staff-server": "dining",
-    "staff-cleaner": "restroom",
-    "staff-manager": "office",
-  };
+  const roomOf = (id: string) =>
+    /chef|cook/.test(id)
+      ? "kitchen"
+      : /cleaner/.test(id)
+        ? "restroom"
+        : /manager/.test(id)
+          ? "office"
+          : "dining";
   const inside = (p: { x: number; y: number }, r: { x: number; y: number; w: number; h: number }) =>
     p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h;
-  const stray = all.flatMap((a) =>
-    a.stops.filter((p) => !inside(p, rooms[roomOf[a.id]!]!)).map((p) => `${a.id}@${p.x},${p.y}`),
+  const stray = MAP_STAGES.flatMap((stage) =>
+    staffCast(STAFF_LIFE_ROLES, { ...WORK, stage }).flatMap((a) =>
+      a.stops
+        .filter((p) => !inside(p, rooms[roomOf(a.id)]!))
+        .map((p) => `${stage}:${a.id}@${p.x},${p.y}`),
+    ),
   );
-  assert(
-    stray.length === 0,
-    "F3: on the crowded first floor everyone keeps to their own room",
-    stray,
-  );
-  assert(
-    all.every((a) => timeline(a.stops).seconds > 5) &&
-      all.find((a) => a.kind === "manager")!.stops.some((p) => p.pose === "sit"),
-    "F4: every role has a working loop; the Manager sits at the office desk",
-  );
+  assert(stray.length === 0, "F3: on every kitchen stage everyone keeps to their own room", stray);
   const map = read("src/components/kc/restaurantMap/RestaurantMapView.tsx");
   const router = read("src/ScreensRouter.tsx");
   assert(
     /<StaffLife hiredRoles=\{staffOnMap\.roles\}/.test(map) &&
-      /staffOnMap=\{staffOnMap\(\s*save\.business\.staff\.hiredRoles,/.test(router) &&
-      staffOnMap([], "humble").roles.length === (FLOOR_LIFE_ALWAYS_PREVIEW ? 6 : 0),
-    "F5: the first-floor map draws the save's hired roles (all six only as the testing preview)",
+      /staffOnMap=\{staffOnMap\(save\.business\.staff\.hiredRoles,/.test(router) &&
+      /kitchenMapArtStage\(save\.equippedKitchenUpgradeId\)/.test(router) &&
+      /cleanerJob: cleanerRestroomJob\(save\)/.test(router),
+    "F4: the map draws the save's hired roles on the shown kitchen stage, with the Cleaner's real restroom job",
   );
 }
 
 console.log("G. First-floor placement, per kitchen stage (developer 2026-10-16)");
 {
-  // The first-floor map has one artwork per kitchen stage; every spot is measured per stage.
   const kitchen = { x: 3.8, y: 18, w: 44, h: 32 };
   const inside = (p: { x: number; y: number }, r: { x: number; y: number; w: number; h: number }) =>
     p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h;
   const problems: string[] = [];
   for (const stage of MAP_STAGES) {
-    const byId = Object.fromEntries(staffCast(STAFF_LIFE_ROLES, true, stage).map((a) => [a.id, a]));
-    for (const id of ["staff-line-cook", "staff-prep-cook", "staff-head-chef"]) {
-      if (!byId[id]!.stops.every((p) => inside(p, kitchen)))
-        problems.push(`${stage}:${id} leaves the kitchen`);
-    }
-    if (!byId["staff-head-chef"]!.stops.every((p) => p.y <= 45.5))
-      problems.push(`${stage}: chef reaches the pass shelving`);
-    if (
-      !byId["staff-cleaner"]!.stops.every((p) => p.x >= 84.5 && p.x <= 91 && p.y >= 45 && p.y <= 51)
-    )
-      problems.push(`${stage}: cleaner off the restroom floor`);
+    const byId = Object.fromEntries(
+      staffCast(STAFF_LIFE_ROLES, { ...WORK, stage }).map((a) => [a.id, a]),
+    );
+    if (!byId["staff-head-chef"]!.stops.every((p) => p.y <= 45.5 && inside(p, kitchen)))
+      problems.push(`${stage}: chef off the kitchen aisle`);
+    const old = byId["old-chef"]!.stops.map((p) => p.x);
+    const line = byId["staff-line-cook"]!.stops.map((p) => p.x);
+    if (Math.max(...old) + 1 > Math.min(...line))
+      problems.push(`${stage}: Old Chef and Line Cook overlap at the range`);
     const m = byId["staff-manager"]!.stops;
-    if (!(
-      m.length === 1 &&
-      m[0]!.pose === "sit" &&
-      inside(m[0]!, { x: 3.8, y: 53.4, w: 26.2, h: 24 })
-    ))
-      problems.push(`${stage}: manager not seated in the office`);
-    const cash = byId["service-cashier"]!.stops;
-    if (!cash.every((p) => p.x >= 30.5 && p.x <= 45 && p.y >= 54 && p.y <= 58))
+    if (!(m.length === 1 && m[0]!.pose === "sit")) problems.push(`${stage}: manager not seated`);
+    if (
+      !byId["service-cashier"]!.stops.every(
+        (p) => p.x >= 30.5 && p.x <= 45 && p.y >= 54 && p.y <= 58,
+      )
+    )
       problems.push(`${stage}: cashier not at the service counter`);
-    if (byId["takeaway-packer"]) problems.push(`${stage}: someone inside Take Away`);
   }
   assert(
     MAP_STAGES.length === 6 && problems.length === 0,
-    "G1: on all six kitchen-stage maps: cooks and Head Chef in the kitchen (chef off the pass shelving), Cleaner on the restroom floor, Manager seated, nobody inside Take Away",
+    "G1: on all six stages: Head Chef on the kitchen aisle, the Old Chef and the Line Cook each on their half of the range, Manager seated, cashier at the counter",
     problems,
-  );
-  assert(
-    !staffCast(STAFF_LIFE_ROLES, false).some((a) => a.kind === "cashier") &&
-      staffCast([], true)
-        .map((a) => a.kind)
-        .join() === "cashier",
-    "G2: the service counter's cashier works at its computer once the counter is open (the game has no cashier role)",
-  );
-  const router = read("src/ScreensRouter.tsx");
-  assert(
-    /kitchenMapArtStage\(save\.equippedKitchenUpgradeId\)/.test(router) &&
-      /stage=\{staffOnMap\.stage\}/.test(
-        read("src/components/kc/restaurantMap/RestaurantMapView.tsx"),
-      ),
-    "G3: the map uses the spots of the kitchen stage whose art is shown",
   );
   const css = read("src/components/kc/restaurantMap/RestaurantMap.css");
   assert(
     /\.floor-carry--server,\s*\.floor-carry--cashier \{\s*bottom: 30%;/.test(css),
-    "G4: servers hold the plate in the hand at waist height, not over the head",
+    "G2: servers hold the plate in the hand at waist height, not over the head",
+  );
+}
+
+console.log("H. Only when hired and needed; the Cleaner really cleans (developer 2026-10-16)");
+{
+  const kinds = (roles: readonly string[], c: Partial<typeof WORK> | Record<string, unknown>) =>
+    staffCast(roles, { ...WORK, ...c } as never).map((a) => a.kind);
+  assert(
+    !FLOOR_LIFE_ALWAYS_PREVIEW && staffOnMap([], { ...WORK }).roles.length === 0,
+    "H1: the testing preview is off — the floors show only what the save hires and owns",
+  );
+  assert(
+    !kinds(["server"], { diningOpen: false }).includes("server") &&
+      kinds(["server"], {}).includes("server"),
+    "H2: the Server is there only once the dining room is open",
+  );
+  assert(
+    !kinds([], {}).includes("cashier") &&
+      !kinds(["server"], { serviceOpen: false }).includes("cashier") &&
+      kinds(["server"], {}).includes("cashier"),
+    "H3: the counter's cashier comes with a hired Server (the game has no cashier role), once the counter is open",
+  );
+  assert(
+    !kinds(["cleaner"], { cleanerJob: null }).includes("cleaner") &&
+      kinds(["cleaner"], { cleanerJob: "sink" }).includes("cleaner") &&
+      !kinds([], { cleanerJob: "sink" }).includes("cleaner"),
+    "H4: the Cleaner is in the restroom only when hired AND a restroom job is open",
+  );
+  const cl = staffCast(["cleaner"], { ...WORK, cleanerJob: "sink" }).find(
+    (a) => a.kind === "cleaner",
+  )!;
+  assert(
+    cl.food === "🧼" &&
+      cl.stops.length === 1 &&
+      cl.stops[0]!.pose === "clean" &&
+      cl.stops[0]!.hold === CLEANING_SECONDS,
+    "H5: the Cleaner stands at the job's fixture with its icon (🧼 soap) for CLEANING_SECONDS",
+  );
+  // The real job: cleanerRestroomJob + cleanTask (no mock).
+  const base = structuredClone(DEFAULT_SAVE);
+  const withJob = (hired: string[], areas = ["kitchen", "dining", "restroom"]) =>
+    ({
+      ...base,
+      business: {
+        ...base.business,
+        staff: { hiredRoles: hired },
+        supplies: {
+          ...base.business.supplies,
+          stock: { "hand-soap": { units: 3, costBasis: 300 } },
+        },
+        cleanliness: {
+          ...cleanlinessOf(base),
+          tasks: [{ kind: "sink", count: 1, since: 1 }],
+          cleanerAreas: areas,
+        },
+      },
+    }) as unknown as typeof base;
+  const s1 = withJob(["cleaner"]);
+  const job = cleanerRestroomJob(s1);
+  const done = job ? cleanTask(s1, job, "cleaner") : null;
+  assert(
+    job === "sink" &&
+      !!done?.ok &&
+      cleanlinessOf(done.save).tasks.length === 0 &&
+      cleanlinessOf(done.save).byCleaner === cleanlinessOf(s1).byCleaner + 1,
+    "H6: a hired Cleaner's restroom job is real — cleaning it removes the task, uses the supplies and counts as the Cleaner's",
+    { job, ok: done?.ok, needs: done?.needs },
+  );
+  assert(
+    cleanerRestroomJob(withJob([])) === null &&
+      cleanerRestroomJob(withJob(["cleaner"], ["kitchen", "dining"])) === null,
+    "H7: no job without a hired Cleaner, nor when the restroom isn't assigned to them",
+  );
+  const app = read("src/App.tsx");
+  assert(
+    /function cleanerCleans\(job: TaskKind\)[\s\S]{0,200}cleanerRestroomJob\(current\) !== job[\s\S]{0,120}cleanTask\(current, job, "cleaner"\)/.test(
+      app,
+    ),
+    "H8: when the map's Cleaner finishes, the game cleans that job for real (only if it is still the Cleaner's job)",
   );
 }
 
@@ -342,19 +405,16 @@ console.log("V. View");
   );
   const sfv = read("src/components/kc/restaurantMap/SecondFloorView.tsx");
   assert(
-    /const previewLife = SECOND_FLOOR_TEST_UNLOCK \|\| FLOOR_LIFE_ALWAYS_PREVIEW/.test(sfv) &&
+    /const previewLife = FLOOR_LIFE_ALWAYS_PREVIEW;/.test(sfv) &&
       /<FloorLife\s+floor=\{previewLife \? FLOOR_LIFE_PREVIEW : floor\}/.test(sfv),
-    "V5: the Second Floor map shows it — the save's floor, or the full preview (test switch or the temporary always-preview flag)",
-  );
-  console.log(
-    `  note: FLOOR_LIFE_ALWAYS_PREVIEW = ${FLOOR_LIFE_ALWAYS_PREVIEW} (temporary, developer 2026-10-16)`,
+    "V5: the Second Floor map shows the save's floor (the full preview only with the testing flag on — the ?floor2 switch no longer adds people)",
   );
   const preview = floorCast(FLOOR_LIFE_PREVIEW);
   assert(
     count(preview, "server") === 3 &&
       count(preview, "guest") === MAX_GUESTS &&
       count(preview, "cleaner") === 2,
-    "V6: the testing preview shows the full cast (3 servers, 10 guests, 2 cleaners)",
+    "V6: the testing preview (when switched on) still shows the full cast",
   );
 }
 

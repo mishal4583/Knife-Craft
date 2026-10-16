@@ -68,13 +68,14 @@ export interface RestaurantMapProps {
   onNavigateToScreen: (screen: ScreenId, zoneId: RestaurantZoneId) => void;
   /** The Settings → Reduced motion preference. */
   reducedMotion?: boolean;
-  /** The hired staff drawn at work on the map (StaffLife), and whether it is the testing preview. */
+  /** The staff drawn at work on the map (StaffLife), and whether it is the testing preview. */
   staffOnMap?: {
     roles: readonly string[];
-    service: boolean;
-    stage: import('@/game/kitchen/kitchenMapArt').KitchenMapArtStage;
+    context: import('@/game/restaurant/staffLife').StaffLifeContext;
     preview: boolean;
   };
+  /** The Cleaner finished a real restroom job on the map (the game cleans that task). */
+  onCleanerDone?: (job: import('@/game/restaurant/cleanliness').TaskKind) => void;
   /** Live, derived count of open attention items for each map room. */
   attentionCounts?: Partial<Record<RestaurantZoneId, number>>;
   /** Contextual emoji pictograms for every active issue type in a map room. */

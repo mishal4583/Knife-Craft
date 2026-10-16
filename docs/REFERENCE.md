@@ -1083,30 +1083,33 @@ preparation = PreparationScene; events = `events.ts`; platform =
     each) come in the door, pick up at the counter, sit and eat, then leave; **cleaners** (as
     hired) wipe the tables with a 🧽; a "+$" pops at the counter while the floor earns;
   - an empty or unstaffed floor is quiet;
-  - **TEMPORARY:** `FLOOR_LIFE_ALWAYS_PREVIEW = true` (developer 2026-10-16, "visible for now")
-    plays the preview on every build without buying anything; set it to false to go back;
-  - **testing preview:** with the test switch (`npm run dev` or `?floor2`) the full cast plays
-    (`FLOOR_LIFE_PREVIEW`: every station working, 3 servers, 2 cleaners) whatever the save owns;
-    only the drawing changes, never the save, the locks or the money;
+  - `FLOOR_LIFE_ALWAYS_PREVIEW` (false; was on for the developer's testing) plays the full
+    preview without buying anything;
+  - **testing preview:** only with that flag (`FLOOR_LIFE_PREVIEW`: every station working, 3
+    servers, 2 cleaners); only the drawing changes, never the save, the locks or the money;
   - view `components/kc/restaurantMap/FloorLife.tsx`: inline CSS keyframes, transform and
     opacity only, no library; aria-hidden, `pointer-events: none`; hidden by the game's Reduced
     Motion setting, like the first floor's guests. The people are the first floor's
     (`restaurantMap/GuestPoses.tsx`, shared).
   - Tests: `restaurant-floor-life-qa`; e2e `restaurantsecondfloor.mjs` check 3c.
 - **First-floor staff life** (developer 2026-10-16): `restaurant/staffLife.ts` +
-  `restaurantMap/StaffLife.tsx`, drawn by the shared `MapCast` (FloorLife.tsx). Only the six
-  roles the game has (`BusinessStaffRole`) and only the hired ones
-  (`business.staff.hiredRoles`); there is no toilet-cleaner role, the Cleaner does the
-  restroom. **The first-floor map has six artworks** (one per kitchen stage,
-  `kitchenMapArtStage`), so `STAGE_SPOTS` holds the measured spots per stage: the range, the
-  prep aisle, the Head Chef's aisle, the service counter's computer, two dining tables and the
-  office chair; the restroom (`RESTROOM_STOPS`) is the same on all six. Line Cook at the range,
-  Prep Cook and Head Chef on the aisles beside the island, Server from the counter to two
-  tables (plate held at the hand), Cleaner on the restroom floor, Manager seated at the desk.
-  A cashier works at the service counter's computer once the counter is open (no cashier role
-  exists, so it belongs to the counter). `staffOnMap` shows all six roles while
-  `FLOOR_LIFE_ALWAYS_PREVIEW` or the test switch is on. Tests: floor-life QA sections F/G
-  (G checks all six stages); e2e `tools/e2e/restaurantstafflife.mjs`.
+  `restaurantMap/StaffLife.tsx`, drawn by the shared `MapCast` (FloorLife.tsx).
+  - **Who:** the **Old Chef** (from the intro) is always at the range. Each of the six real
+    roles (`BusinessStaffRole`) shows only when hired AND it has work: Line Cook, Prep Cook,
+    Head Chef, Manager (seated at the desk) when hired; the Server when hired and the dining
+    room is open, with the service counter's cashier at its computer (the game has no cashier
+    role). No toilet-cleaner role: the Cleaner does the restroom.
+  - **The Cleaner really cleans:** they are in the restroom only when hired, assigned the
+    restroom, and a routine restroom job they can do is open (`cleanerRestroomJob`, with its
+    tools and supplies). They stand at the fixture with the job's icon for `CLEANING_SECONDS`,
+    then App `cleanerCleans` runs `cleanTask(…, "cleaner")` (real supplies, counted in
+    `byCleaner`); with nothing left they go.
+  - **Six maps:** one artwork per kitchen stage (`kitchenMapArtStage`); `STAGE_SPOTS` holds the
+    measured spots per stage (range, aisles, counter computer, two tables, office chair); the
+    restroom (`RESTROOM_STOPS`) is the same on all six.
+  - `FLOOR_LIFE_ALWAYS_PREVIEW` (false since the developer's testing ended) plays the full
+    preview on both floors; the `?floor2` switch no longer adds people.
+  - Tests: floor-life QA sections F/G/H; e2e `tools/e2e/restaurantstafflife.mjs`.
 - **Economy:** extra on top of the campaign economy (developer decision); not counted in the
   $100k–$150k completionist target.
 - **Save:** `SaveData.business.secondFloor = { stations: { [id]: { level, lastCollectAt } } }`,

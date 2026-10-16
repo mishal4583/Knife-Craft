@@ -728,6 +728,25 @@ export function cleanerRound(save: SaveData): { save: SaveData; cleaned: TaskKin
 }
 
 /**
+ * The restroom job a hired Cleaner can do right now, or null (developer
+ * 2026-10-16: the map's Cleaner is in the restroom only when hired AND cleaning
+ * is needed, and really cleans). Same rules as `cleanerRound`: a routine task
+ * that is the Cleaner's, in an area assigned to them, with its tools and
+ * supplies there. The map shows them at it, then `cleanTask(…, "cleaner")`.
+ */
+export function cleanerRestroomJob(save: SaveData): TaskKind | null {
+  if (!(save.business.staff.hiredRoles as readonly string[]).includes("cleaner")) return null;
+  const st = cleanlinessOf(save);
+  if (!st.cleanerAreas.includes("restroom")) return null;
+  for (const t of st.tasks) {
+    const rule = TASK_RULES[t.kind];
+    if (rule.area !== "restroom" || !rule.routine || staffFor(t.kind) !== "cleaner") continue;
+    if (taskNeeds(save, t.kind).length === 0) return t.kind;
+  }
+  return null;
+}
+
+/**
  * The shift chores a phase brings at `levelNumber` (from PHASE_CHORES_FROM);
  * a deep clean only on its designated `day` (never without a day).
  */

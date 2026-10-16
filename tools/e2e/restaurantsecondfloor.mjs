@@ -11,7 +11,8 @@
 //   5. a reload never pays it again; Downstairs returns to the first floor;
 //   6. it fits at 320 / 390 / 768 (screenshots), no page errors;
 //   8. ?floor2 (testing) opens the floor at any level; every station still shows
-//      "🔒 Lv.60" (developer 2026-10-16), and the full floor-life cast plays as a preview.
+//      "🔒 Lv.60" (developer 2026-10-16); with nothing bought nobody walks the floor
+//      (the preview cast is off since the developer's testing ended).
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import {
   MOVED_IN_BUSINESS,
@@ -314,14 +315,12 @@ const lockPills = await page.$$eval(
 );
 await shot(page, "second-floor-test-locks-390");
 check(
-  "8 ?floor2 (testing): the floor opens at Level 5, all six stations stay locked with 🔒 Lv.60, and the full floor-life preview plays (3 servers, 10 guests, 2 cleaners)",
+  "8 ?floor2 (testing): the floor opens at Level 5, all six stations stay locked with 🔒 Lv.60, and nobody walks the floor (nothing bought; the preview cast is off)",
   /⬆ 2nd floor/.test(testLabel) &&
     testZones.length === 9 &&
     testZones.filter((z) => /opens at Level 60$/.test(z)).length === 6 &&
     lockPills.filter((t) => t === "🔒Lv.60").length === 6 &&
-    previewKinds.filter((k) => k === "server").length === 3 &&
-    previewKinds.filter((k) => k === "guest").length === 10 &&
-    previewKinds.filter((k) => k === "cleaner").length === 2,
+    previewKinds.length === 0,
   { testLabel, testZones, lockPills, previewKinds },
 );
 

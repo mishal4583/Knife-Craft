@@ -2,8 +2,11 @@
  * Staff life (developer 2026-10-16): the first floor's hired staff at work on
  * the restaurant map, like the Second Floor's floor life. Only the six roles
  * the game really has (business/businessStaff.ts BusinessStaffRole), and only
- * the ones the save has hired (`business.staff.hiredRoles`). There is no
- * separate toilet cleaner: the Cleaner looks after the restroom.
+ * the ones the save has hired (`business.staff.hiredRoles`) and that have work
+ * (developer 2026-10-16: "visible only when hired and when necessary"). There
+ * is no separate toilet cleaner: the Cleaner looks after the restroom, and is
+ * there only while a real restroom job is open (see `cleanerRestroomJob`).
+ * The Old Chef — who greets the player in the intro — is always in the kitchen.
  *
  * The first-floor map has SIX artworks, one per kitchen stage
  * (kitchen/kitchenMapArt.ts: humble → grand), and the kitchen, the service
@@ -14,8 +17,8 @@
  */
 import type { BusinessStaffRole } from "../business/businessStaff";
 import type { KitchenMapArtStage } from "../kitchen/kitchenMapArt";
+import { TASK_RULES, type TaskKind } from "./cleanliness";
 import { FLOOR_LIFE_ALWAYS_PREVIEW, type FloorActor, type Stop } from "./floorLife";
-import { SECOND_FLOOR_TEST_UNLOCK } from "./secondFloor";
 
 export const STAFF_LIFE_ROLES: readonly BusinessStaffRole[] = [
   "line-cook",
@@ -132,8 +135,25 @@ export const RESTROOM_STOPS: readonly Stop[] = [
   { x: 86.4, y: 48.2, hold: 3, pose: "clean" },
 ];
 
+/** Where the Cleaner works on each restroom job: by the stalls, the basins, or the floor. */
+export function restroomSpot(job: TaskKind): Stop {
+  const [floor, stalls, basins] = RESTROOM_STOPS;
+  const at = /toilet|disinfect|deep/.test(job)
+    ? stalls!
+    : /sink|paper|refresh|check/.test(job)
+      ? basins!
+      : floor!;
+  return { ...at, hold: CLEANING_SECONDS, pose: "clean" };
+}
+
+/** How long the Cleaner is seen at one job before it is really done (cleanTask). */
+export const CLEANING_SECONDS = 5;
+
 const WHITES = "#f4efe6";
 type Look = Pick<FloorActor, "kind" | "food" | "outfit" | "hair"> & { delay: number };
+
+/** The Old Chef: the kitchen's own chef from the start (not a hire), always at the range. */
+const OLD_CHEF: Look = { kind: "chef", food: "🍲", outfit: WHITES, hair: "#9a9a9a", delay: -1.5 };
 
 const LOOKS: Readonly<Record<BusinessStaffRole, Look>> = {
   "line-cook": { kind: "cook", food: "🍳", outfit: WHITES, hair: "#35271f", delay: 0 },
@@ -149,7 +169,13 @@ export function roleStops(role: BusinessStaffRole, stage: KitchenMapArtStage): S
   const s = STAGE_SPOTS[stage];
   switch (role) {
     case "line-cook":
-      return s.range.xs.map((x) => ({ x, y: s.range.y, hold: 3, pose: "work" }));
+      // The range's right half (the Old Chef works the left half).
+      return [s.range.xs[1] + 1.5, s.range.xs[2]].map((x) => ({
+        x,
+        y: s.range.y,
+        hold: 3,
+        pose: "work",
+      }));
     case "prep-cook":
       return s.prepAisle.ys.map((y) => ({ x: s.prepAisle.x, y, hold: 3.5, pose: "work" }));
     case "head-chef":
@@ -166,7 +192,8 @@ export function roleStops(role: BusinessStaffRole, stage: KitchenMapArtStage): S
       ];
     }
     case "cleaner":
-      return RESTROOM_STOPS.map((p) => ({ ...p }));
+      // Only drawn with a real job (staffCast); this is the floor spot as a fallback.
+      return [{ ...RESTROOM_STOPS[0]!, hold: CLEANING_SECONDS, pose: "clean" }];
     case "manager":
       // Sits in the chair behind the desk only (developer 2026-10-16).
       return [{ ...s.managerSeat, hold: 12, pose: "sit" }];
@@ -187,23 +214,69 @@ export function cashierStops(stage: KitchenMapArtStage): Stop[] {
   ];
 }
 
-/** The hired staff at work, in the order of STAFF_LIFE_ROLES; nobody unhired. */
+export type StaffLifeContext = {
+  stage: KitchenMapArtStage;
+  /** The dining room is open (the Server has tables to serve). */
+  diningOpen: boolean;
+  /** The service counter is open (its cashier works there with a Server on the team). */
+  serviceOpen: boolean;
+  /** The restroom job a hired Cleaner can do now (`cleanerRestroomJob`), or null. */
+  cleanerJob: TaskKind | null;
+};
+
+const NO_WORK: StaffLifeContext = {
+  stage: "humble",
+  diningOpen: true,
+  serviceOpen: true,
+  cleanerJob: null,
+};
+
+/**
+ * Who is at work: the Old Chef always; each hired role only when it has work —
+ * the Server (and the counter's cashier with them) when the dining room / the
+ * counter is open, the Cleaner only while a real restroom job is open.
+ */
 export function staffCast(
   hiredRoles: readonly string[],
-  serviceOpen = false,
-  stage: KitchenMapArtStage = "humble",
+  context: Partial<StaffLifeContext> = {},
 ): FloorActor[] {
-  const cast: FloorActor[] = STAFF_LIFE_ROLES.filter((role) => hiredRoles.includes(role)).map(
-    (role) => ({ ...LOOKS[role], id: `staff-${role}`, stops: roleStops(role, stage) }),
-  );
-  if (serviceOpen) {
+  const c = { ...NO_WORK, ...context };
+  const cast: FloorActor[] = [
+    {
+      ...OLD_CHEF,
+      id: "old-chef",
+      stops: [STAGE_SPOTS[c.stage].range.xs[0], STAGE_SPOTS[c.stage].range.xs[1]].map((x) => ({
+        x,
+        y: STAGE_SPOTS[c.stage].range.y,
+        hold: 3.5,
+        pose: "work",
+      })),
+    },
+  ];
+  for (const role of STAFF_LIFE_ROLES) {
+    if (!hiredRoles.includes(role)) continue;
+    if (role === "server" && !c.diningOpen) continue;
+    if (role === "cleaner") {
+      if (!c.cleanerJob) continue;
+      cast.push({
+        ...LOOKS.cleaner,
+        food: TASK_RULES[c.cleanerJob].icon,
+        id: `staff-cleaner-${c.cleanerJob}`,
+        stops: [restroomSpot(c.cleanerJob)],
+        delay: 0,
+      });
+      continue;
+    }
+    cast.push({ ...LOOKS[role], id: `staff-${role}`, stops: roleStops(role, c.stage) });
+  }
+  if (c.serviceOpen && hiredRoles.includes("server")) {
     cast.push({
       id: "service-cashier",
       kind: "cashier",
       food: "🧾",
       outfit: "#3f5f8a",
       hair: "#35271f",
-      stops: cashierStops(stage),
+      stops: cashierStops(c.stage),
       delay: -1,
     });
   }
@@ -211,25 +284,25 @@ export function staffCast(
 }
 
 /**
- * Who the first-floor map shows: the hired roles, or — while the temporary
- * FLOOR_LIFE_ALWAYS_PREVIEW flag or the Second Floor test switch is on — all
- * six, so the developer can watch them (only the drawing; never the save).
+ * Who the first-floor map shows: the save's hired roles with their work, or —
+ * while the temporary FLOOR_LIFE_ALWAYS_PREVIEW flag is on — all six with
+ * work, so the developer can watch them (only the drawing; never the save).
  */
 export function staffOnMap(
   hiredRoles: readonly string[],
-  stage: KitchenMapArtStage,
-  serviceOpen = false,
-): {
-  roles: readonly string[];
-  service: boolean;
-  stage: KitchenMapArtStage;
-  preview: boolean;
-} {
-  const preview = FLOOR_LIFE_ALWAYS_PREVIEW || SECOND_FLOOR_TEST_UNLOCK;
+  context: StaffLifeContext,
+): { roles: readonly string[]; context: StaffLifeContext; preview: boolean } {
+  const preview = FLOOR_LIFE_ALWAYS_PREVIEW;
   return {
     roles: preview ? STAFF_LIFE_ROLES : hiredRoles,
-    service: preview || serviceOpen,
-    stage,
+    context: preview
+      ? {
+          ...context,
+          diningOpen: true,
+          serviceOpen: true,
+          cleanerJob: context.cleanerJob ?? "toilet",
+        }
+      : context,
     preview,
   };
 }

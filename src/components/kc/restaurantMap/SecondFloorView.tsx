@@ -132,7 +132,8 @@ export function SecondFloorView({
   const floor = secondFloorOf(save);
   const waiting = floorEarnings(save, now);
   const perHour = floorPerHour(save);
-  const previewLife = SECOND_FLOOR_TEST_UNLOCK || FLOOR_LIFE_ALWAYS_PREVIEW;
+  // The full preview cast only while the animation-testing flag is on (off: the save's floor).
+  const previewLife = FLOOR_LIFE_ALWAYS_PREVIEW;
   const ownedCount = Object.keys(floor.stations).length;
 
   const act = (action: SecondFloorAction) => {
@@ -358,8 +359,7 @@ export function SecondFloorView({
               draggable={false}
             />
           </picture>
-          {/* Testing: the full cast is shown whatever the save owns (FLOOR_LIFE_PREVIEW). */}
-          <FloorLife
+                    <FloorLife
             floor={previewLife ? FLOOR_LIFE_PREVIEW : floor}
             earning={previewLife || perHour > 0}
             preview={previewLife}

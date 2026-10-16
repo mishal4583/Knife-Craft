@@ -1,4 +1,5 @@
 import { staffOnMap } from "@/game/restaurant/staffLife";
+import { cleanerRestroomJob, type TaskKind } from "@/game/restaurant/cleanliness";
 import type { DeliveryKind } from "@/game/restaurant/deliveries";
 import type { CleanlinessAction, CleanlinessActionResult } from "@/game/restaurant/cleanliness";
 import { Suspense, lazy, useState } from "react";
@@ -146,6 +147,7 @@ export function ScreensRouter({
   onStartBusinessService,
   onEnterBusinessPreparation,
   secondFloorAction,
+  cleanerCleans,
   collectAchievement,
 }: {
   screen: ScreenId;
@@ -213,6 +215,8 @@ export function ScreensRouter({
   onEnterBusinessPreparation: () => void;
   /** The Second Floor: buy / upgrade a station or collect (restaurant/secondFloor.ts). */
   secondFloorAction: (action: SecondFloorAction) => FloorResult;
+  /** The map's Cleaner finished a real restroom job (App: cleanTask by the Cleaner). */
+  cleanerCleans: (job: TaskKind) => void;
   /** Achievements: collect one earned reward (progression/achievements.ts). */
   collectAchievement: (id: string) => CollectResult;
 }) {
@@ -257,10 +261,13 @@ export function ScreensRouter({
                 kitchenMapImage={kitchenMapImageUrl(save.equippedKitchenUpgradeId)}
                 fridgeTier={fridgeTier}
                 reducedMotion={save.settings.reducedMotion}
-                staffOnMap={staffOnMap(
-                  save.business.staff.hiredRoles,
-                  kitchenMapArtStage(save.equippedKitchenUpgradeId),
-                )}
+                staffOnMap={staffOnMap(save.business.staff.hiredRoles, {
+                  stage: kitchenMapArtStage(save.equippedKitchenUpgradeId),
+                  diningOpen: true,
+                  serviceOpen: true,
+                  cleanerJob: cleanerRestroomJob(save),
+                })}
+                onCleanerDone={cleanerCleans}
                 attentionCounts={attentionBadges.map}
                 attentionSymbols={attentionBadges.mapSymbols}
                 currentScreen={screen}

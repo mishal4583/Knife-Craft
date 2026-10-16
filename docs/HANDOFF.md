@@ -105,8 +105,9 @@ conversation.
   locked until bought. Stations upgrade, and Collect is at the Pickup Counter. Floor life:
   servers carry food from the machines to the counter, guests eat, cleaners wipe tables
   (`floorLife.ts` / `FloorLife.tsx`). First-floor staff at work on the
-  map (`staffLife.ts`, hired roles only). TEMPORARY: `FLOOR_LIFE_ALWAYS_PREVIEW = true` shows the
-  full cast (both floors) on every build for the developer's testing; turn it off before release. The numbers are provisional. Details: REFERENCE, section before §7.
+  map (`staffLife.ts`, hired roles only). The testing preview is off
+  (`FLOOR_LIFE_ALWAYS_PREVIEW = false`): people show only when hired and needed; the Old Chef is
+  always in the kitchen; the Cleaner really cleans open restroom jobs. The numbers are provisional. Details: REFERENCE, section before §7.
 
 - **2026-10-16: `main` = the `codex/restaurant-map` build** (the 150-level
   campaign, restaurant map, achievements, review fixes), pushed at the
