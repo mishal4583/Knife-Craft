@@ -82,9 +82,23 @@ export function defaultMenuPrice(recipe: RecipeDefinition): number {
   return Math.max(1, Math.round(menuPriceBasis(recipe) / TARGET_FOOD_COST_PERCENT));
 }
 
-/** The one place "what does this recipe currently sell for" is resolved — every UI reads this, never `menu[id]` directly, so a missing entry can't silently render as `undefined`/`NaN`. */
+/**
+ * Menu price cap (developer 2026-10-16: "add a price cap so menu prices can't
+ * be exploited"). A dish sells for at most 1.5× its suggested price — where
+ * classic Business Mode's popularity already treats a menu as overpriced
+ * (`pricingDelta`). The restaurant's menu guests pay whatever the menu says,
+ * so without a ceiling one price change could print money.
+ */
+export const MENU_PRICE_CAP_MULTIPLIER = 1.5;
+
+/** The highest price a recipe can sell for, in whole US cents. */
+export function menuPriceCap(recipe: RecipeDefinition): number {
+  return Math.max(1, Math.round(defaultMenuPrice(recipe) * MENU_PRICE_CAP_MULTIPLIER));
+}
+
+/** The one place "what does this recipe currently sell for" is resolved — every UI reads this, never `menu[id]` directly, so a missing entry can't silently render as `undefined`/`NaN`. A saved price above the cap (an old save) sells at the cap. */
 export function menuPriceFor(menu: BusinessMenu, recipe: RecipeDefinition): number {
-  return menu[recipe.id] ?? defaultMenuPrice(recipe);
+  return Math.min(menu[recipe.id] ?? defaultMenuPrice(recipe), menuPriceCap(recipe));
 }
 
 export type MenuMargin = {

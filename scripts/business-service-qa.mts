@@ -235,9 +235,9 @@ function sessionReadyForGarlicBread(save: SaveData) {
   const originalPrice = businessDishPrice(save.business.menu, DISH);
   const session = sessionReadyForGarlicBread(save);
   // The player changes the menu price AFTER the order was generated/prepared, but BEFORE serving.
-  const repricedSave = { ...save, business: { ...save.business, menu: { ...save.business.menu, [RECIPE_ID]: originalPrice + 500 } } };
+  const repricedSave = { ...save, business: { ...save.business, menu: { ...save.business.menu, [RECIPE_ID]: Math.round(originalPrice * 1.25) } } };
   const result = serveBusinessOrder(session, repricedSave, Math.random)!;
-  assert(result.amountCharged === customerPaysAt50(originalPrice + 500), `N: the serve charges from the CURRENT (changed) menu price, not the price at order-generation time (got ${result.amountCharged}, expected ${customerPaysAt50(originalPrice + 500)})`);
+  assert(result.amountCharged === customerPaysAt50(Math.round(originalPrice * 1.25)), `N: the serve charges from the CURRENT (changed) menu price, not the price at order-generation time (got ${result.amountCharged}, expected ${customerPaysAt50(Math.round(originalPrice * 1.25))})`);
 }
 
 // ===== O: popularity effect — Economy V3 Phase 16 popularity model D2 (intentional rule change): a serve NO LONGER moves popularity immediately; it counts toward today's ordersServed, and End Business Day applies one bounded daily service score. =====

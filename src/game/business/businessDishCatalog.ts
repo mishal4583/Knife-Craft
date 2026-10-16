@@ -47,7 +47,13 @@
  * recipes were excluded outright, not renamed.
  */
 import { getCampaignRecipe } from "../recipes/campaignRecipes";
-import { recipeCostBasis, defaultMenuPrice, marginFor, type BusinessMenu } from "./businessMenu";
+import {
+  recipeCostBasis,
+  defaultMenuPrice,
+  marginFor,
+  menuPriceFor,
+  type BusinessMenu,
+} from "./businessMenu";
 
 export type BusinessDishCategory =
   "Salad" | "Appetizer" | "Curry" | "Stir-Fry" | "Entree" | "Side" | "Dessert";
@@ -545,7 +551,7 @@ export function businessDishFoodCost(dish: BusinessDish): number {
 /** Whole US cents — delegates to businessMenu.ts's own defaultMenuPrice/menuPriceFor against the source recipe, honoring a player-set override exactly like the existing Menu screen does. */
 export function businessDishPrice(menu: BusinessMenu, dish: BusinessDish): number {
   const recipe = requireSourceRecipe(dish);
-  return menu[recipe.id] ?? defaultMenuPrice(recipe);
+  return menuPriceFor(menu, recipe);
 }
 
 /** Delegates entirely to businessMenu.ts's own marginFor — never a second margin formula. */

@@ -3,6 +3,7 @@
 //      the menu, then the level it is first cooked) — not "on first, off last";
 //   2. on / off is a toggle switch (role=switch); turning a dish off keeps its place;
 //   3. popular restaurant (popularity 80): a tip suggests raising prices; at 50 there is none;
+//   5. price cap: tapping + stops at the max price (≤ 1.5 × suggested), and the card says so;
 //   4. the category chips aren't cut off (fully inside their row), the food-cost badge is one
 //      line; fits at 320 / 390; no page errors.
 // Prints PASS/FAIL per check and exits 1 on any failure.
@@ -136,6 +137,38 @@ check(
     /\+12%/.test(tip80) &&
     !tip50,
   { tip80 },
+);
+// 5. Price cap: tap + on the first dish until it stops.
+const capDish = (await order(page))[0];
+const sel = `[data-menu-dish="${capDish}"]`;
+const money = (t) => Number((t.match(/\$([\d,]+(?:\.\d+)?)/) ?? [0, "NaN"])[1].replace(/,/g, ""));
+const priceOf = () => page.$eval(`${sel} [data-testid="menu-price"]`, (e) => e.textContent ?? "");
+const suggestedText = await page.$eval(`${sel} [data-testid="menu-price"]`, (e) =>
+  e.nextElementSibling ? (e.nextElementSibling.textContent ?? "") : "",
+);
+const startPrice = money(await priceOf());
+const suggestedPrice = /suggested price/.test(suggestedText) ? startPrice : money(suggestedText);
+let taps = 0;
+for (; taps < 120; taps++) {
+  const disabled = await page.$eval(
+    `${sel} button[aria-label^="Increase price"]`,
+    (b) => b.disabled,
+  );
+  if (disabled) break;
+  await page.click(`${sel} button[aria-label^="Increase price"]`);
+  await sleep(40);
+}
+const capPrice = money(await priceOf());
+const capLabel = await page.$eval(`${sel} [data-testid="menu-price-cap"]`, (e) => e.textContent);
+await shot(page, "restaurant-menu-cap-390");
+check(
+  "5 price cap: + stops at the max price (≤ 1.5 × suggested) and the card says max price",
+  taps > 0 &&
+    taps < 120 &&
+    capPrice > suggestedPrice &&
+    capPrice <= Math.round(suggestedPrice * 1.5 * 100) / 100 + 0.001 &&
+    /max price/.test(capLabel ?? ""),
+  { capDish, startPrice, suggestedPrice, capPrice, taps, capLabel },
 );
 const fits = {};
 for (const [w, h] of [

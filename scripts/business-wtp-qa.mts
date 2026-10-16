@@ -137,7 +137,7 @@ function withPrice(save: SaveData, price: number): SaveData {
     [667, 100, 800, "$6.67 × 1.20 = $8.004 -> $8.00"],
     [810, 50, 851, "$8.10 × 1.05 = $8.505 -> $8.51 (half-up)"],
     [1000, 20, 960, "$10.00 × 0.96 = $9.60"],
-    [1999, 60, 2159, "$19.99 × 1.08 = $21.5892 -> $21.59"],
+    [1299, 60, 1403, "$12.99 × 1.08 = $14.0292 -> $14.03"],
     [
       1075,
       12,
@@ -164,7 +164,8 @@ for (const [score, pct, tag] of [
   [50, 105, "D"],
   [100, 120, "E"],
 ] as const) {
-  for (const price of [1000, 2000, 667]) {
+  // 1350c is the salad's menu price cap (1.5 × its 900c suggested price).
+  for (const price of [1000, 1350, 667]) {
     const served = serveViaApp(withPrice(stocked(score), price))!;
     const exact = Math.round((price * pct) / 100);
     assert(
@@ -233,15 +234,15 @@ for (const score of [0, 50, 100]) {
 
 // ===== I: Finance receives the customer payment. =====
 {
-  const save = withPrice(stocked(100), 1500);
+  const save = withPrice(stocked(100), 1250);
   const served = serveViaApp(save)!;
   const f = served.save.business.finance;
   assert(
-    served.r.amountCharged === 1800 &&
-      f.dailyAccumulator.revenue === 1800 &&
-      f.lifetime.revenue - save.business.finance.lifetime.revenue === 1800 &&
+    served.r.amountCharged === 1500 &&
+      f.dailyAccumulator.revenue === 1500 &&
+      f.lifetime.revenue - save.business.finance.lifetime.revenue === 1500 &&
       f.lifetime.orderCount - save.business.finance.lifetime.orderCount === 1,
-    "I: today's and lifetime revenue both gain exactly the 1800c customer payment ($15.00 × 1.20)",
+    "I: today's and lifetime revenue both gain exactly the 1500c customer payment ($12.50 × 1.20)",
   );
 }
 
@@ -369,7 +370,7 @@ for (const score of [0, 50, 100]) {
 
 // ===== O: end-of-day P&L stays internally consistent with WTP revenue. =====
 {
-  let save = withPrice(stocked(80), 1500);
+  let save = withPrice(stocked(80), 1250);
   const opening = save.credits;
   const payments: number[] = [];
   for (let i = 0; i < 3; i++) {
@@ -383,8 +384,8 @@ for (const score of [0, 50, 100]) {
     .filter((e) => e.category === "business-revenue")
     .reduce((a, e) => a + e.amount, 0);
   assert(
-    payments.every((x) => x === 1710) && p.revenue === 3 * 1710 && revenueLedger === p.revenue,
-    "O: P&L revenue = the three 1710c customer payments = the revenue ledger entries",
+    payments.every((x) => x === 1425) && p.revenue === 3 * 1425 && revenueLedger === p.revenue,
+    "O: P&L revenue = the three 1425c customer payments = the revenue ledger entries",
   );
   assert(
     p.cogs === 3 * 75 &&

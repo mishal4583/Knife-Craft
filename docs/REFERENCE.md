@@ -1056,9 +1056,23 @@ preparation = PreparationScene; events = `events.ts`; platform =
 - From popularity 60 a tip suggests raising prices by (popularity − 50) ÷ 2.5 % over the
   suggested price (+4 % at 60, +12 % at 80, +20 % at 100). Guests already pay
   × (0.9 + 0.3 × popularity/100) of the menu price.
-- Note: a menu price has no ceiling and no demand effect (pre-existing; reported to the
-  developer).
-- Tests: `restaurant-menu-order-qa`; e2e `tools/e2e/restaurantmenu.mjs`.
+- **Menu price cap** (developer 2026-10-16, "so menu prices can't be exploited"): a dish
+  sells for at most 1.5 × its suggested price (`businessMenu.menuPriceCap`,
+  `MENU_PRICE_CAP_MULTIPLIER`), the point where classic Business Mode already calls a menu
+  overpriced (`pricingDelta` −3).
+  - `setMenuPrice` saves a higher price AT the cap (`capped: true`); 0 and the cap itself
+    stay allowed.
+  - `menuPriceFor` (the one price resolver, also behind `businessDishPrice`) reads a saved
+    price above the cap (an old save) as the cap, so payment, margin and popularity never
+    see more.
+  - A menu guest pays at most cap × 1.2 (popularity 100). The + button stops at the cap and
+    the card shows "max $X" / "max price"; a capped tap says so.
+  - Tests changed to the new rule: `business-wtp-qa` B/C/D/E/I/O, `business-menu-qa` D2,
+    `business-pnl-qa` G and `business-service-qa` N used prices above the cap (e.g. 2000¢
+    on the 900¢ salad, cap 1350¢); they now use in-cap prices with the same intent and
+    exact expected values. A price still has no demand effect in the restaurant.
+- Tests: `restaurant-menu-order-qa` (C: the cap on all 48 menu dishes, old saves, UI);
+  e2e `tools/e2e/restaurantmenu.mjs` (5: + stops at the max price).
 
 ### The Second Floor — automated food hall (developer 2026-10-16)
 

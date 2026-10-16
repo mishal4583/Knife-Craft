@@ -191,6 +191,8 @@ Release zip: the CONTENTS of `dist/` →
   `SaveManager`.
 - **Second Floor income** (`restaurant/secondFloor.ts`) is real time, capped, and
   collected with one ledger entry. It is extra on top of the campaign economy.
+- **Menu price cap:** a dish sells for at most 1.5 × its suggested price
+  (`menuPriceCap`; old saves read at the cap).
 - **Never negative:** credits, inventory, capacity, menu price, equipment
   condition, popularity.
 

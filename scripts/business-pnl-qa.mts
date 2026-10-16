@@ -217,9 +217,9 @@ function sessionReadyFor(recipeId: string): ServiceSession {
   const save = saveAt({ credits: 1000, business: { ...DEFAULT_BUSINESS_STATE, calendar: { businessDay: 1 }, inventory: fullBreadInventory(1) } });
   const originalPrice = businessDishPrice(save.business.menu, BREAD_DISH);
   const session = sessionReadyFor(BREAD_RECIPE_ID);
-  const repriced = { ...save, business: { ...save.business, menu: { ...save.business.menu, [BREAD_RECIPE_ID]: originalPrice + 777 } } };
+  const repriced = { ...save, business: { ...save.business, menu: { ...save.business.menu, [BREAD_RECIPE_ID]: Math.round(originalPrice * 1.25) } } };
   const result = serveBusinessOrder(session, repriced, Math.random)!;
-  assert(result.amountCharged === customerPaysAt50(originalPrice + 777), `G: P&L revenue uses the CURRENT (changed) menu price, not the stale one (got ${result.amountCharged}, expected ${customerPaysAt50(originalPrice + 777)})`);
+  assert(result.amountCharged === customerPaysAt50(Math.round(originalPrice * 1.25)), `G: P&L revenue uses the CURRENT (changed) menu price, not the stale one (got ${result.amountCharged}, expected ${customerPaysAt50(Math.round(originalPrice * 1.25))})`);
   const recipe = getCampaignRecipe(BREAD_RECIPE_ID)!;
   const menuCostBasis = recipeCostBasis(recipe);
   // V3-16 P1 fix: inventory now draws down the SAME portion the menu cost basis prices, so the two agree (the old whole-unit gap is closed).

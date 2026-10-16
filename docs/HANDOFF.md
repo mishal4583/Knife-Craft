@@ -1,5 +1,12 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## Menu price cap (2026-10-16, `main`)
+
+- A dish sells for at most 1.5 × its suggested price; old saves above it are read at the
+  cap. The menu's + button stops there. Details: REFERENCE §7 (Restaurant menu).
+- Tests: `restaurant-menu-order-qa` C; the business suites that used above-cap prices
+  now use in-cap ones (the developer's rule change). e2e `restaurantmenu.mjs` 5.
+
 ## Economy for 150 levels + achievement money (2026-10-16, `main`)
 
 - **Built:** the level reward curve (`50 + 3.1 × (n − 1)`), achievements with

@@ -15,6 +15,7 @@ import {
   recipeCostBasis,
   defaultMenuPrice,
   menuPriceFor,
+  menuPriceCap,
   marginFor,
 } from "../src/game/business/businessMenu.ts";
 import { setMenuPrice } from "../src/game/business/BusinessMenuManager.ts";
@@ -71,8 +72,13 @@ const sampleRecipe = CAMPAIGN_RECIPES[0]!;
 // ===== D: menuPriceFor — falls back to the default, respects an explicit override. =====
 {
   assert(menuPriceFor({}, sampleRecipe) === defaultMenuPrice(sampleRecipe), "D: an empty menu falls back to the default price");
-  const menu = { [sampleRecipe.id]: 999 };
-  assert(menuPriceFor(menu, sampleRecipe) === 999, "D2: an explicit menu entry overrides the default");
+  const menu = { [sampleRecipe.id]: 450 };
+  assert(menuPriceFor(menu, sampleRecipe) === 450, "D2: an explicit menu entry overrides the default");
+  // Menu price cap (developer 2026-10-16): at most 1.5 × the suggested price.
+  const cap = menuPriceCap(sampleRecipe);
+  assert(cap === Math.round(defaultMenuPrice(sampleRecipe) * 1.5), "D3: the cap is 1.5 × the suggested price");
+  assert(menuPriceFor({ [sampleRecipe.id]: 99999 }, sampleRecipe) === cap, "D4: a saved price above the cap (an old save) sells at the cap");
+  assert(CAMPAIGN_RECIPES.every((r) => menuPriceCap(r) >= defaultMenuPrice(r) && menuPriceFor({ [r.id]: 10 ** 9 }, r) === menuPriceCap(r)), "D5: every recipe has a cap at or above its suggested price, and nothing sells above it");
 }
 
 // ===== E: marginFor — price, cost, margin, foodCostPercent, grossMarginPercent all correct. =====
@@ -169,6 +175,7 @@ const sampleRecipe = CAMPAIGN_RECIPES[0]!;
   const save = saveAt({});
   const result = setMenuPrice(save, sampleRecipe.id, 99999);
   assert(result.ok, "I0: precondition");
+  assert(result.ok && result.capped && result.price === menuPriceCap(sampleRecipe) && result.save.business.menu[sampleRecipe.id] === menuPriceCap(sampleRecipe), "I0b: a price above the cap is saved AT the cap (capped: true)");
   if (result.ok) {
     const recipeAfter = CAMPAIGN_RECIPES.find((r) => r.id === sampleRecipe.id)!;
     assert(recipeAfter.basePayment === sampleRecipe.basePayment, "I: CAMPAIGN_RECIPES' own basePayment is never mutated by a Business Menu price change");

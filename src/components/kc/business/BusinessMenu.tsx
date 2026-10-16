@@ -21,7 +21,7 @@ import {
   businessCustomerPayment,
   businessOrderAvailability,
 } from "@/game/business/BusinessServiceManager";
-import { defaultMenuPrice } from "@/game/business/businessMenu";
+import { defaultMenuPrice, menuPriceCap } from "@/game/business/businessMenu";
 import { getRefrigeratorCapacity } from "@/game/business/RefrigeratorManager";
 import {
   activeMenuDishes,
@@ -112,6 +112,11 @@ export function BusinessMenu({
   function adjustPrice(dishId: string, recipeId: string, currentPrice: number, delta: number) {
     const result = setMenuPrice(recipeId, Math.max(0, currentPrice + delta));
     if (!result.ok) setMessages((m) => ({ ...m, [dishId]: "That price couldn't be set." }));
+    else
+      setMessages((m) => ({
+        ...m,
+        [dishId]: result.capped ? "That's the highest price guests will accept." : undefined,
+      }));
   }
 
   return (
@@ -196,6 +201,8 @@ export function BusinessMenu({
           const recipeId = dish.sourceRecipeId;
           const recipe = getCampaignRecipe(recipeId);
           const suggested = recipe ? defaultMenuPrice(recipe) : price;
+          const cap = recipe ? menuPriceCap(recipe) : price;
+          const atCap = price >= cap;
           const message = messages[dish.id];
           const onMenu = restaurant ? activeIds.has(dish.id) : isDishActive(activation, dish.id);
           const needTotals = new Map<IngredientId, number>();
@@ -290,17 +297,30 @@ export function BusinessMenu({
                   −
                 </button>
                 <div className="text-center">
-                  <p className="font-display text-[22px] font-black leading-none text-walnut-dark">
+                  <p
+                    className="font-display text-[22px] font-black leading-none text-walnut-dark"
+                    data-testid="menu-price"
+                  >
                     {formatUsd(price)}
                   </p>
                   <p className="font-ui text-[11px] font-bold text-walnut/55">
                     {price === suggested ? "suggested price" : `suggested ${formatUsd(suggested)}`}
                   </p>
+                  <p
+                    className={cn(
+                      "font-ui text-[11px] font-bold",
+                      atCap ? "text-copper" : "text-walnut/45",
+                    )}
+                    data-testid="menu-price-cap"
+                  >
+                    {atCap ? "max price" : `max ${formatUsd(cap)}`}
+                  </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => adjustPrice(dish.id, recipeId, price, PRICE_STEP)}
-                  className="press grid h-12 w-12 place-items-center rounded-full border border-walnut/20 bg-ivory font-ui text-[18px] font-black text-walnut-dark"
+                  disabled={atCap}
+                  className="press grid h-12 w-12 place-items-center rounded-full border border-walnut/20 bg-ivory font-ui text-[18px] font-black text-walnut-dark disabled:opacity-35"
                   aria-label={`Increase price for ${dish.name}`}
                 >
                   +
