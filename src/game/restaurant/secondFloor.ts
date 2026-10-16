@@ -32,10 +32,11 @@ import { dollars } from "../money";
 export const SECOND_FLOOR_OPENS_AT = 60;
 
 /**
- * Testing switch (developer 2026-10-16): the floor and every station are open
- * at any level under `npm run dev`, or on any build opened with `?floor2` in
- * the address (e.g. the Pages test site). Prices and the money rules are
- * unchanged. Off in Node (QA) and in a normal release play.
+ * Testing switch (developer 2026-10-16): the floor itself is open at any level
+ * under `npm run dev`, or on any build opened with `?floor2` in the address
+ * (e.g. the Pages test site). Each station still locks until the player
+ * reaches its level, as on the first floor (developer 2026-10-16). Prices and
+ * the money rules are unchanged. Off in Node (QA) and in a normal release play.
  */
 export const SECOND_FLOOR_TEST_UNLOCK: boolean = (() => {
   try {
@@ -49,9 +50,14 @@ export const SECOND_FLOOR_TEST_UNLOCK: boolean = (() => {
   }
 })();
 
-/** The level used for the floor's locks (everything open while testing). */
+/** The level used for the floor's own lock (open while testing). */
 export function floorLevel(reachedLevel: number): number {
   return SECOND_FLOOR_TEST_UNLOCK ? Number.MAX_SAFE_INTEGER : reachedLevel;
+}
+
+/** A station opens at its own level, testing switch or not. */
+export function isStationUnlocked(def: { unlockLevel: number }, reachedLevel: number): boolean {
+  return reachedLevel >= def.unlockLevel;
 }
 export const MAX_STATION_LEVEL = 3;
 const HOUR_MS = 3_600_000;
@@ -302,7 +308,7 @@ export function buyStation(
 ): FloorResult {
   const def = stationDef(id);
   const floor = secondFloorOf(save);
-  if (!isSecondFloorOpen(reachedLevel) || floorLevel(reachedLevel) < def.unlockLevel) {
+  if (!isSecondFloorOpen(reachedLevel) || !isStationUnlocked(def, reachedLevel)) {
     return { ok: false, reason: "locked" };
   }
   if (floor.stations[id]) return { ok: false, reason: "owned" };

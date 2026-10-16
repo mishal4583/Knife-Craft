@@ -1037,7 +1037,9 @@ preparation = PreparationScene; events = `events.ts`; platform =
     floor);
   - art `public/restaurant-map/second-floor.webp` (source `art-source/second-floor-food-hall.png`).
 - **Unlock:** the floor opens at **Level 60**. The first-floor map shows "⬆ 2nd floor"
-  (`data-testid="upstairs"`), or "🔒 · Lv 60" before then.
+  (`data-testid="upstairs"`), or "🔒 · Lv 60" before then. Each station then locks
+  until its own level ("🔒 Lv.N" pill, `isStationUnlocked`), like the first floor.
+  The test switch (`npm run dev` or `?floor2`) opens only the floor, never a station.
 - **Stations** (buy once, upgrade to Lv 3; provisional numbers):
 
   | Station | Opens | Buy | $/h at Lv 1 / 2 / 3 |

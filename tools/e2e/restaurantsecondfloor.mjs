@@ -6,7 +6,9 @@
 //   4. two hours later (the save's clock moved back 2 h) the Pickup Counter collects
 //      2 × the hourly rate — one ledger entry; a second tap pays nothing;
 //   5. a reload never pays it again; Downstairs returns to the first floor;
-//   6. it fits at 320 / 390 / 768 (screenshots), no page errors.
+//   6. it fits at 320 / 390 / 768 (screenshots), no page errors;
+//   8. ?floor2 (testing) opens the floor at any level, but every station still locks
+//      until its own level with the first floor's "🔒 Lv.N" pill (developer 2026-10-16).
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import {
   MOVED_IN_BUSINESS,
@@ -209,7 +211,7 @@ check(
   fits,
 );
 
-// ---------- 8. The testing switch: ?floor2 opens everything at any level ----------
+// ---------- 8. The testing switch: ?floor2 opens the floor; stations keep their locks ----------
 await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });
 await boot(page, atLevel(5));
 const base = process.env.KC_URL || "http://127.0.0.1:4173/";
@@ -224,12 +226,20 @@ await page
 const testZones = await page.$$eval('[data-testid="second-floor"] .map-hotspot-zone', (els) =>
   els.map((e) => e.getAttribute("aria-label")),
 );
+const lockPills = await page.$$eval(
+  '[data-testid="second-floor"] .map-hotspot-zone .locked-pill-badge',
+  (els) => els.map((e) => (e.textContent ?? "").replace(/\s+/g, "")),
+);
+await shot(page, "second-floor-test-locks-390");
 check(
-  "8 ?floor2 (testing): the floor and every station are open at Level 5",
+  "8 ?floor2 (testing): the floor opens at Level 5, and all six stations stay locked with 🔒 Lv.N",
   /⬆ 2nd floor/.test(testLabel) &&
     testZones.length === 9 &&
-    !testZones.some((z) => /opens at Level/.test(z)),
-  { testLabel, testZones },
+    testZones.filter((z) => /opens at Level \d+/.test(z)).length === 6 &&
+    ["Lv.60", "Lv.70", "Lv.85", "Lv.100", "Lv.115", "Lv.130"].every((t) =>
+      lockPills.some((p) => p.endsWith(t)),
+    ),
+  { testLabel, testZones, lockPills },
 );
 
 const errors = logs.filter((l) => /pageerror|error:/.test(l) && !/favicon/.test(l));

@@ -15,6 +15,9 @@
  *     wages; a server runs 2 stations (unstaffed earns 0); each missing
  *     cleaner (1 per 3 stations) costs 25 % of the takings; hiring banks
  *     the floor first; the team has a size limit.
+ *  L  Locks (developer 2026-10-16): each station locks until its own level,
+ *     like the first floor, even with the test switch on (it opens only the
+ *     floor); the map shows "🔒 Lv.N" on a locked station.
  *  S  Saves: an old save has no floor (nothing owned); no new top-level field.
  *
  * Run: npx tsx scripts/restaurant-second-floor-qa.mts
@@ -35,6 +38,7 @@ import {
   floorEarnings,
   floorPerHour,
   isSecondFloorOpen,
+  isStationUnlocked,
   secondFloorOf,
   stationDef,
   upgradeStation,
@@ -282,6 +286,35 @@ console.log("T. Floor staff");
     !poor.ok && poor.reason === "insufficientFunds",
     "T6: a hire the wallet can't cover changes nothing",
   );
+}
+
+console.log("L. Station locks");
+{
+  const src = fs.readFileSync(
+    path.resolve(import.meta.dirname, "../src/game/restaurant/secondFloor.ts"),
+    "utf8",
+  );
+  const view = fs.readFileSync(
+    path.resolve(import.meta.dirname, "../src/components/kc/restaurantMap/SecondFloorView.tsx"),
+    "utf8",
+  );
+  assert(
+    STATIONS.every(
+      (d) => !isStationUnlocked(d, d.unlockLevel - 1) && isStationUnlocked(d, d.unlockLevel),
+    ),
+    "L1: every station is locked one level before its unlock and open at it",
+  );
+  const body = src.match(/export function isStationUnlocked[\s\S]*?\n}/)?.[0] ?? "";
+  assert(
+    body !== "" && !/floorLevel|TEST_UNLOCK/.test(body) && !/floorLevel\(playerLevel\)/.test(view),
+    "L2: the test switch never opens a station (only the floor)",
+  );
+  assert(
+    /locked-pill-badge/.test(view) && /Lv\.\{station!\.unlockLevel\}/.test(view),
+    'L3: a locked station shows the first floor\'s "🔒 Lv.N" pill',
+  );
+  const r = buyStation(fresh(1_000_000_00), "drinks", 69, T0);
+  assert(!r.ok && r.reason === "locked", "L4: buying a station below its level is refused");
 }
 
 console.log("S. Saves");
