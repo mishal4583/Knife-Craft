@@ -1100,7 +1100,9 @@ preparation = PreparationScene; events = `events.ts`; platform =
   restroom. The map is crowded, so each keeps to a short loop in its own room (measured on
   the art on a 2 % grid): Line Cook at the range, Prep Cook on the kitchen's left aisle, Head
   Chef (tall toque) on the right aisle to the pass, Server from the pass to two tables, Cleaner
-  in the restroom, Manager at the office desk and round the office. `staffOnMap` shows all six
+  on the restroom floor, Manager seated at the office desk. A parcel packer works behind the
+  Take Away counter once Take Away is open (`TAKEAWAY_PACKER`; no takeaway role exists, so it
+  belongs to the counter). Plates are held at the hand. `staffOnMap` shows all six
   while `FLOOR_LIFE_ALWAYS_PREVIEW` or the test switch is on. Tests: floor-life QA section F;
   e2e `tools/e2e/restaurantstafflife.mjs`.
 - **Economy:** extra on top of the campaign economy (developer decision); not counted in the

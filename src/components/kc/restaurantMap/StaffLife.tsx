@@ -9,13 +9,16 @@ import { MapCast } from "./FloorLife";
  */
 export function StaffLife({
   hiredRoles,
+  takeaway = false,
   preview = false,
 }: {
   hiredRoles: readonly string[];
+  /** The Take Away counter is open (its packer is shown). */
+  takeaway?: boolean;
   preview?: boolean;
 }) {
-  const key = [...hiredRoles].sort().join();
+  const key = `${[...hiredRoles].sort().join()}|${takeaway}`;
   // eslint-disable-next-line react-hooks/exhaustive-deps -- `key` captures the hired roles
-  const cast = useMemo(() => staffCast(hiredRoles), [key]);
+  const cast = useMemo(() => staffCast(hiredRoles, takeaway), [key]);
   return <MapCast cast={cast} testId="staff-life" preview={preview} />;
 }

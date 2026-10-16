@@ -13,6 +13,8 @@
  *     sides, never on a chair; guests at the counter don't stand on each other.
  *  F  First-floor staff: only the six roles the game has, only the hired ones
  *     (all six as the testing preview), each in its own room.
+ *  G  Placement fixes: Head Chef off the pass shelving, Cleaner on the restroom
+ *     floor, Manager only sits, the Take Away packer, plates held in the hand.
  *  D  Deterministic: the same floor gives the same cast; no Math.random.
  *  V  View (the full preview cast under the test switch or the temporary
  *     FLOOR_LIFE_ALWAYS_PREVIEW flag, developer 2026-10-16): decorative (aria-hidden, no taps), transform/opacity only, off
@@ -228,6 +230,38 @@ console.log("F. First-floor staff (developer 2026-10-16)");
       /staffOnMap=\{staffOnMap\(save\.business\.staff\.hiredRoles\)\}/.test(router) &&
       staffOnMap([]).roles.length === (FLOOR_LIFE_ALWAYS_PREVIEW ? 6 : 0),
     "F5: the first-floor map draws the save's hired roles (all six only as the testing preview)",
+  );
+}
+
+console.log("G. First-floor placement fixes (developer 2026-10-16)");
+{
+  const byId = Object.fromEntries(staffCast(STAFF_LIFE_ROLES, true).map((a) => [a.id, a]));
+  const chef = byId["staff-head-chef"]!;
+  const cleaner = byId["staff-cleaner"]!;
+  const manager = byId["staff-manager"]!;
+  const packer = byId["takeaway-packer"]!;
+  assert(
+    chef.stops.every((p) => p.y <= 42),
+    "G1: the Head Chef stays on the kitchen aisle, above the pass shelving (y ≤ 42 %)",
+  );
+  assert(
+    cleaner.stops.every((p) => p.y >= 45 && p.y <= 51 && p.x >= 81.5 && p.x <= 96),
+    "G2: the Cleaner stays on the restroom floor (never the top wall or its sign)",
+  );
+  assert(
+    manager.stops.length === 1 && manager.stops[0]!.pose === "sit",
+    "G3: the Manager only sits in the chair behind the desk",
+  );
+  assert(
+    !staffCast(STAFF_LIFE_ROLES, false).some((a) => a.kind === "packer") &&
+      packer.stops.every((p) => p.x >= 48.5 && p.x <= 80.5 && p.y >= 34 && p.y <= 48.2) &&
+      packer.stops.map((p) => p.pose).join() === "pick,drop",
+    "G4: a parcel packer works behind the Take Away counter, only once Take Away is open (no hired role needed — the game has none)",
+  );
+  const css = read("src/components/kc/restaurantMap/RestaurantMap.css");
+  assert(
+    /\.floor-carry--server,\s*\.floor-carry--packer \{\s*bottom: 30%;/.test(css),
+    "G5: servers hold the plate in the hand at waist height, not over the head",
   );
 }
 

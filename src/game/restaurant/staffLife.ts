@@ -61,9 +61,10 @@ export const STAFF_LIFE_PLANS: Readonly<Record<BusinessStaffRole, RolePlan>> = {
     food: "📋",
     outfit: WHITES,
     hair: "#2b211b",
+    // Kept above y 42 %: lower down the aisle meets the pass shelving (developer 2026-10-16).
     stops: [
-      { x: 44, y: 33.5, hold: 2.5, pose: "work" },
-      { x: 44, y: 45.5, hold: 2.5, pose: "work" },
+      { x: 43.6, y: 34, hold: 2.5, pose: "work" },
+      { x: 43.6, y: 41.6, hold: 2.5, pose: "work" },
     ],
     delay: -4,
   },
@@ -95,35 +96,59 @@ export const STAFF_LIFE_PLANS: Readonly<Record<BusinessStaffRole, RolePlan>> = {
     food: "🧽",
     outfit: "#5d8a8a",
     hair: "#493324",
+    // Restroom floor only: the left strip and the floor below the stalls (the top of the
+    // room is the wall and its sign; measured on a 1 % grid, developer 2026-10-16).
     stops: [
-      { x: 83, y: 39.5, hold: 3, pose: "clean" },
-      { x: 83, y: 46, hold: 3, pose: "clean" },
-      { x: 87, y: 49.5, hold: 3, pose: "clean" },
+      { x: 82.8, y: 46.5, hold: 3, pose: "clean" },
+      { x: 89.5, y: 49.8, hold: 3, pose: "clean" },
+      { x: 86, y: 50.8, hold: 3, pose: "clean" },
     ],
     delay: -3,
   },
-  // Office: at the desk, then a walk round the office.
+  // Office: sits in the chair behind the desk and works there (developer 2026-10-16:
+  // "let the manager sit on the chair only").
   manager: {
     kind: "manager",
     food: "📋",
     outfit: "#2f3e4f",
     hair: "#35271f",
-    stops: [
-      { x: 13.7, y: 63.9, hold: 9, pose: "sit" },
-      { x: 23, y: 64 },
-      { x: 23, y: 71.5, hold: 3, pose: "work" },
-      { x: 23, y: 64 },
-    ],
+    stops: [{ x: 14, y: 63.8, hold: 12, pose: "sit" }],
     delay: -5,
   },
 };
 
+/**
+ * The Take Away / Parcel counter's packer (developer 2026-10-16: "add a guy at
+ * the pickup counter"). The game has no takeaway staff role, so this person
+ * belongs to the counter itself and is shown only once Take Away is open. They
+ * stand behind the counter and carry parcels from the shelves to the till.
+ */
+export const TAKEAWAY_PACKER: RolePlan = {
+  kind: "packer",
+  food: "📦",
+  outfit: "#8a5a2b",
+  hair: "#35271f",
+  stops: [
+    { x: 55.5, y: 42.4, hold: 2.5, pose: "pick" },
+    { x: 67.5, y: 42.4, hold: 2.5, pose: "drop" },
+  ],
+  delay: -1,
+};
+
 /** The hired staff at work, in the order of STAFF_LIFE_ROLES; nobody unhired. */
-export function staffCast(hiredRoles: readonly string[]): FloorActor[] {
-  return STAFF_LIFE_ROLES.filter((role) => hiredRoles.includes(role)).map((role) => {
+export function staffCast(hiredRoles: readonly string[], takeawayOpen = false): FloorActor[] {
+  const cast = STAFF_LIFE_ROLES.filter((role) => hiredRoles.includes(role)).map((role) => {
     const plan = STAFF_LIFE_PLANS[role];
     return { ...plan, id: `staff-${role}`, stops: plan.stops.map((s): Stop => ({ ...s })) };
   });
+  if (takeawayOpen) {
+    cast.push({
+      ...TAKEAWAY_PACKER,
+      id: "takeaway-packer",
+      stops: TAKEAWAY_PACKER.stops.map((s) => ({ ...s })),
+    });
+  }
+  return cast;
 }
 
 /**
@@ -131,10 +156,18 @@ export function staffCast(hiredRoles: readonly string[]): FloorActor[] {
  * FLOOR_LIFE_ALWAYS_PREVIEW flag or the Second Floor test switch is on — all
  * six, so the developer can watch them (only the drawing; never the save).
  */
-export function staffOnMap(hiredRoles: readonly string[]): {
+export function staffOnMap(
+  hiredRoles: readonly string[],
+  takeawayOpen = false,
+): {
   roles: readonly string[];
+  takeaway: boolean;
   preview: boolean;
 } {
   const preview = FLOOR_LIFE_ALWAYS_PREVIEW || SECOND_FLOOR_TEST_UNLOCK;
-  return { roles: preview ? STAFF_LIFE_ROLES : hiredRoles, preview };
+  return {
+    roles: preview ? STAFF_LIFE_ROLES : hiredRoles,
+    takeaway: preview || takeawayOpen,
+    preview,
+  };
 }

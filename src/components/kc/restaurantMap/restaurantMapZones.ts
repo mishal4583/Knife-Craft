@@ -183,3 +183,9 @@ export function isZoneUnlocked(zone: HotspotZoneConfig, playerLevel: number): bo
 export function getZoneConfig(zoneId: string): HotspotZoneConfig | undefined {
   return RESTAURANT_MAP_ZONES.find((z) => z.id === zoneId);
 }
+
+/** The Take Away / Parcel counter is open on the map (its packer is drawn, StaffLife). */
+export function takeawayCounterOpen(playerLevel: number): boolean {
+  const zone = getZoneConfig('takeaway');
+  return !!zone && isZoneUnlocked(zone, playerLevel);
+}

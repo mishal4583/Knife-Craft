@@ -29,7 +29,7 @@ export type Stop = Spot & {
 export type FloorActor = {
   id: string;
   /** guest / server / cleaner on both floors; cook, chef and manager on the first floor. */
-  kind: "guest" | "server" | "cleaner" | "cook" | "chef" | "manager";
+  kind: "guest" | "server" | "cleaner" | "cook" | "chef" | "manager" | "packer";
   /** Food shown in the bubble or on the tray (a station's icon). */
   food?: string;
   outfit: string;

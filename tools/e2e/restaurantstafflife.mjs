@@ -1,7 +1,7 @@
 // First-floor staff life (developer 2026-10-16), restaurant build:
 //   1. the Restaurant map draws staff at work (data-testid="staff-life"): with the temporary
 //      preview on, all six roles the game has (2 cooks, Head Chef, Server, Cleaner, Manager);
-//      without it, only the save's hired roles;
+//      without it, only the save's hired roles; plus the Take Away packer once Take Away is open;
 //   2. they move (transform changes over time; CSS animations running);
 //   3. decorative: aria-hidden, no taps — the map's rooms still open;
 //   4. no page errors.
@@ -47,9 +47,12 @@ const info = await page.evaluate(async () => {
   };
 });
 await shot(page, "restaurant-staff-life-390");
-const expected = info.preview ? "cook,cook,chef,server,cleaner,manager" : "server,cleaner";
+// Level 140: Take Away is open, so its parcel packer works behind the counter too.
+const expected = info.preview
+  ? "cook,cook,chef,server,cleaner,manager,packer"
+  : "server,cleaner,packer";
 check(
-  "1 the map draws the staff at work — all six roles as the preview, else only the hired ones",
+  "1 the map draws the staff at work — all six roles as the preview, else only the hired ones — plus the Take Away packer",
   info.kinds.join() === expected,
   info,
 );
