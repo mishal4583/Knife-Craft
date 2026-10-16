@@ -5,13 +5,15 @@
  * the ones the save has hired (`business.staff.hiredRoles`). There is no
  * separate toilet cleaner: the Cleaner looks after the restroom.
  *
- * The first-floor map is crowded, so every person keeps to a short loop inside
- * their own room, on floor measured on the art at 390 px on a 2 % grid:
- * cooks at the range and the counters, the Head Chef on the kitchen's right
- * aisle, the Server between the pass and the tables, the Cleaner in the
- * restroom, the Manager at the office desk. Pure, no money, no save.
+ * The first-floor map has SIX artworks, one per kitchen stage
+ * (kitchen/kitchenMapArt.ts: humble → grand), and the kitchen, the service
+ * counter and the dining tables are drawn differently on each. So every spot
+ * here is measured per stage, on a 1–2 % grid over that stage's art, keeping
+ * half a person's width (≈ 2.5 %) clear of walls, shelves and counters. Each
+ * person keeps to a short loop in their own room. Pure, no money, no save.
  */
 import type { BusinessStaffRole } from "../business/businessStaff";
+import type { KitchenMapArtStage } from "../kitchen/kitchenMapArt";
 import { FLOOR_LIFE_ALWAYS_PREVIEW, type FloorActor, type Stop } from "./floorLife";
 import { SECOND_FLOOR_TEST_UNLOCK } from "./secondFloor";
 
@@ -24,128 +26,185 @@ export const STAFF_LIFE_ROLES: readonly BusinessStaffRole[] = [
   "manager",
 ];
 
-type RolePlan = Omit<FloorActor, "id" | "delay"> & { delay: number };
+export const MAP_STAGES: readonly KitchenMapArtStage[] = [
+  "humble",
+  "growing",
+  "established",
+  "neighborhood-cafe",
+  "flourishing-cafe",
+  "grand",
+];
 
-const WHITES = "#f4efe6";
+/** What each stage's art needs measured (map percent, feet position). */
+type StageSpots = {
+  /** In front of the range: y and three x positions along it. */
+  range: { y: number; xs: [number, number, number] };
+  /** The prep aisle beside the island: x and two y positions. */
+  prepAisle: { x: number; ys: [number, number] };
+  /** The Head Chef's aisle on the island's other side: x and two y positions. */
+  chefAisle: { x: number; ys: [number, number] };
+  /** The service counter: its computer's x, and the dining floor just in front of it. */
+  counter: { computerX: number; frontY: number };
+  /** Two spots beside dining tables where the Server puts plates down. */
+  tables: [{ x: number; y: number }, { x: number; y: number }];
+  /** The chair behind the office desk (where the Manager sits). */
+  managerSeat: { x: number; y: number };
+};
 
-/** One loop per role, in first-floor map percent. */
-export const STAFF_LIFE_PLANS: Readonly<Record<BusinessStaffRole, RolePlan>> = {
-  // Kitchen: along the front of the range (stoves end at y 29.5 %).
-  "line-cook": {
-    kind: "cook",
-    food: "🍳",
-    outfit: WHITES,
-    hair: "#35271f",
-    stops: [
-      { x: 20, y: 31.6, hold: 3, pose: "work" },
-      { x: 30, y: 31.6, hold: 3, pose: "work" },
-      { x: 39, y: 31.6, hold: 3, pose: "work" },
+/** Measured on each stage's art (developer feedback 2026-10-16: nobody on shelves or walls). */
+export const STAGE_SPOTS: Readonly<Record<KitchenMapArtStage, StageSpots>> = {
+  humble: {
+    range: { y: 30.4, xs: [18, 27, 36.5] },
+    prepAisle: { x: 18.8, ys: [34, 42] },
+    chefAisle: { x: 36.8, ys: [33.5, 42] },
+    counter: { computerX: 37.2, frontY: 55.6 },
+    tables: [
+      { x: 46.6, y: 66.5 },
+      { x: 65.4, y: 66.5 },
     ],
-    delay: 0,
+    managerSeat: { x: 14, y: 63.6 },
   },
-  // Kitchen: the left aisle, beside the prep island and the counter below it.
-  "prep-cook": {
-    kind: "cook",
-    food: "🥕",
-    outfit: WHITES,
-    hair: "#6b4a2e",
-    stops: [
-      { x: 16, y: 35.5, hold: 3.5, pose: "work" },
-      { x: 16, y: 44, hold: 3.5, pose: "work" },
+  growing: {
+    range: { y: 31, xs: [18, 29.5, 39.5] },
+    prepAisle: { x: 18.8, ys: [36, 43] },
+    chefAisle: { x: 39.6, ys: [35, 43] },
+    counter: { computerX: 37.6, frontY: 55.3 },
+    tables: [
+      { x: 50, y: 60.5 },
+      { x: 61.8, y: 70.6 },
     ],
-    delay: -2,
+    managerSeat: { x: 13.9, y: 63.6 },
   },
-  // Kitchen: the right aisle, checking plates at the pass end.
-  "head-chef": {
-    kind: "chef",
-    food: "📋",
-    outfit: WHITES,
-    hair: "#2b211b",
-    // Kept above y 42 %: lower down the aisle meets the pass shelving (developer 2026-10-16).
-    stops: [
-      { x: 43.6, y: 34, hold: 2.5, pose: "work" },
-      { x: 43.6, y: 41.6, hold: 2.5, pose: "work" },
+  established: {
+    range: { y: 31.2, xs: [17.5, 27, 37.5] },
+    prepAisle: { x: 17.2, ys: [36, 44] },
+    chefAisle: { x: 37.6, ys: [35, 44] },
+    counter: { computerX: 37, frontY: 55.3 },
+    tables: [
+      { x: 49.2, y: 60 },
+      { x: 63.4, y: 70.1 },
     ],
-    delay: -4,
+    managerSeat: { x: 14, y: 63.7 },
   },
-  // Dining: picks plates up at the pass, carries them down the aisles to two tables.
-  server: {
-    kind: "server",
-    food: "🍽️",
-    outfit: "#7a2e2e",
-    hair: "#473222",
-    stops: [
-      { x: 52, y: 54, hold: 2, pose: "pick" },
-      { x: 49.6, y: 54 },
-      { x: 49.6, y: 62.5 },
-      { x: 53.5, y: 62.5, hold: 2.5, pose: "drop" },
-      { x: 49.6, y: 62.5 },
-      { x: 49.6, y: 54 },
-      { x: 60, y: 54, hold: 2, pose: "pick" },
-      { x: 64.1, y: 54 },
-      { x: 64.1, y: 70 },
-      { x: 67.5, y: 70, hold: 2.5, pose: "drop" },
-      { x: 64.1, y: 70 },
-      { x: 64.1, y: 54 },
+  "neighborhood-cafe": {
+    range: { y: 33, xs: [21, 31, 40] },
+    prepAisle: { x: 17.4, ys: [37, 45] },
+    chefAisle: { x: 43.8, ys: [36, 45] },
+    counter: { computerX: 36.8, frontY: 55.6 },
+    tables: [
+      { x: 48.6, y: 61 },
+      { x: 62.8, y: 61 },
     ],
-    delay: -6,
+    managerSeat: { x: 14, y: 63.6 },
   },
-  // Restroom: wipes the basins and the stalls.
-  cleaner: {
-    kind: "cleaner",
-    food: "🧽",
-    outfit: "#5d8a8a",
-    hair: "#493324",
-    // Restroom floor only: the left strip and the floor below the stalls (the top of the
-    // room is the wall and its sign; measured on a 1 % grid, developer 2026-10-16).
-    stops: [
-      { x: 82.8, y: 46.5, hold: 3, pose: "clean" },
-      { x: 89.5, y: 49.8, hold: 3, pose: "clean" },
-      { x: 86, y: 50.8, hold: 3, pose: "clean" },
+  "flourishing-cafe": {
+    range: { y: 31.6, xs: [21, 30, 38] },
+    prepAisle: { x: 16, ys: [35, 46] },
+    chefAisle: { x: 38.3, ys: [35, 41] },
+    counter: { computerX: 38.9, frontY: 56.8 },
+    tables: [
+      { x: 49.5, y: 59.4 },
+      { x: 62, y: 69.3 },
     ],
-    delay: -3,
+    managerSeat: { x: 13.5, y: 62.7 },
   },
-  // Office: sits in the chair behind the desk and works there (developer 2026-10-16:
-  // "let the manager sit on the chair only").
-  manager: {
-    kind: "manager",
-    food: "📋",
-    outfit: "#2f3e4f",
-    hair: "#35271f",
-    stops: [{ x: 14, y: 63.8, hold: 12, pose: "sit" }],
-    delay: -5,
+  grand: {
+    range: { y: 31.6, xs: [20, 30, 39] },
+    prepAisle: { x: 16, ys: [35.5, 44] },
+    chefAisle: { x: 43.4, ys: [34, 41.6] },
+    counter: { computerX: 37.6, frontY: 55.3 },
+    tables: [
+      { x: 53.5, y: 62.5 },
+      { x: 67.5, y: 70 },
+    ],
+    managerSeat: { x: 14, y: 63.8 },
   },
 };
 
 /**
- * The Take Away / Parcel counter's packer (developer 2026-10-16: "add a guy at
- * the pickup counter"). The game has no takeaway staff role, so this person
- * belongs to the counter itself and is shown only once Take Away is open. They
- * stand behind the counter and carry parcels from the shelves to the till.
+ * The restroom is the same on every stage: the open tiled floor in front of the
+ * stalls (x 84–91 %, y 45–51 %). The strip by its left wall is narrower than a
+ * person, so the body overlapped the wall there (developer 2026-10-16).
  */
-export const TAKEAWAY_PACKER: RolePlan = {
-  kind: "packer",
-  food: "📦",
-  outfit: "#8a5a2b",
-  hair: "#35271f",
-  stops: [
-    { x: 55.5, y: 42.4, hold: 2.5, pose: "pick" },
-    { x: 67.5, y: 42.4, hold: 2.5, pose: "drop" },
-  ],
-  delay: -1,
+export const RESTROOM_STOPS: readonly Stop[] = [
+  { x: 87.6, y: 50.2, hold: 3, pose: "clean" },
+  { x: 89.6, y: 48.6, hold: 3, pose: "clean" },
+  { x: 86.4, y: 48.2, hold: 3, pose: "clean" },
+];
+
+const WHITES = "#f4efe6";
+type Look = Pick<FloorActor, "kind" | "food" | "outfit" | "hair"> & { delay: number };
+
+const LOOKS: Readonly<Record<BusinessStaffRole, Look>> = {
+  "line-cook": { kind: "cook", food: "🍳", outfit: WHITES, hair: "#35271f", delay: 0 },
+  "prep-cook": { kind: "cook", food: "🥕", outfit: WHITES, hair: "#6b4a2e", delay: -2 },
+  "head-chef": { kind: "chef", food: "📋", outfit: WHITES, hair: "#2b211b", delay: -4 },
+  server: { kind: "server", food: "🍽️", outfit: "#7a2e2e", hair: "#473222", delay: -6 },
+  cleaner: { kind: "cleaner", food: "🧽", outfit: "#5d8a8a", hair: "#493324", delay: -3 },
+  manager: { kind: "manager", food: "📋", outfit: "#2f3e4f", hair: "#35271f", delay: -5 },
 };
 
+/** Each role's loop on one stage's art. */
+export function roleStops(role: BusinessStaffRole, stage: KitchenMapArtStage): Stop[] {
+  const s = STAGE_SPOTS[stage];
+  switch (role) {
+    case "line-cook":
+      return s.range.xs.map((x) => ({ x, y: s.range.y, hold: 3, pose: "work" }));
+    case "prep-cook":
+      return s.prepAisle.ys.map((y) => ({ x: s.prepAisle.x, y, hold: 3.5, pose: "work" }));
+    case "head-chef":
+      return s.chefAisle.ys.map((y) => ({ x: s.chefAisle.x, y, hold: 2.5, pose: "work" }));
+    case "server": {
+      // Picks up at the counter front (right of the computer), walks to a table, and back.
+      const pickA = { x: s.counter.computerX + 14, y: s.counter.frontY };
+      const pickB = { x: s.counter.computerX + 22, y: s.counter.frontY };
+      return [
+        { ...pickA, hold: 2, pose: "pick" },
+        { ...s.tables[0], hold: 2.5, pose: "drop" },
+        { ...pickB, hold: 2, pose: "pick" },
+        { ...s.tables[1], hold: 2.5, pose: "drop" },
+      ];
+    }
+    case "cleaner":
+      return RESTROOM_STOPS.map((p) => ({ ...p }));
+    case "manager":
+      // Sits in the chair behind the desk only (developer 2026-10-16).
+      return [{ ...s.managerSeat, hold: 12, pose: "sit" }];
+  }
+}
+
+/**
+ * The service counter's cashier (developer 2026-10-16: "a person on the service
+ * counter working on the computer, not inside Take Away / Parcel"). The game
+ * has no cashier role, so this person belongs to the counter and is shown once
+ * the service counter is open. They stand at the counter, at its computer.
+ */
+export function cashierStops(stage: KitchenMapArtStage): Stop[] {
+  const c = STAGE_SPOTS[stage].counter;
+  return [
+    { x: c.computerX, y: c.frontY, hold: 7, pose: "work" },
+    { x: c.computerX + 3, y: c.frontY, hold: 2 },
+  ];
+}
+
 /** The hired staff at work, in the order of STAFF_LIFE_ROLES; nobody unhired. */
-export function staffCast(hiredRoles: readonly string[], takeawayOpen = false): FloorActor[] {
-  const cast = STAFF_LIFE_ROLES.filter((role) => hiredRoles.includes(role)).map((role) => {
-    const plan = STAFF_LIFE_PLANS[role];
-    return { ...plan, id: `staff-${role}`, stops: plan.stops.map((s): Stop => ({ ...s })) };
-  });
-  if (takeawayOpen) {
+export function staffCast(
+  hiredRoles: readonly string[],
+  serviceOpen = false,
+  stage: KitchenMapArtStage = "humble",
+): FloorActor[] {
+  const cast: FloorActor[] = STAFF_LIFE_ROLES.filter((role) => hiredRoles.includes(role)).map(
+    (role) => ({ ...LOOKS[role], id: `staff-${role}`, stops: roleStops(role, stage) }),
+  );
+  if (serviceOpen) {
     cast.push({
-      ...TAKEAWAY_PACKER,
-      id: "takeaway-packer",
-      stops: TAKEAWAY_PACKER.stops.map((s) => ({ ...s })),
+      id: "service-cashier",
+      kind: "cashier",
+      food: "🧾",
+      outfit: "#3f5f8a",
+      hair: "#35271f",
+      stops: cashierStops(stage),
+      delay: -1,
     });
   }
   return cast;
@@ -158,16 +217,19 @@ export function staffCast(hiredRoles: readonly string[], takeawayOpen = false): 
  */
 export function staffOnMap(
   hiredRoles: readonly string[],
-  takeawayOpen = false,
+  stage: KitchenMapArtStage,
+  serviceOpen = false,
 ): {
   roles: readonly string[];
-  takeaway: boolean;
+  service: boolean;
+  stage: KitchenMapArtStage;
   preview: boolean;
 } {
   const preview = FLOOR_LIFE_ALWAYS_PREVIEW || SECOND_FLOOR_TEST_UNLOCK;
   return {
     roles: preview ? STAFF_LIFE_ROLES : hiredRoles,
-    takeaway: preview || takeawayOpen,
+    service: preview || serviceOpen,
+    stage,
     preview,
   };
 }

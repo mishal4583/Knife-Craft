@@ -6,7 +6,7 @@ import type {
 import {
   RESTAURANT_MAP_DISPLAY_ZONES,
   isZoneUnlocked,
-  takeawayCounterOpen
+  serviceCounterOpen
 } from './restaurantMapZones';
 import './RestaurantMap.css';
 import { GuestPoses } from './GuestPoses';
@@ -217,7 +217,7 @@ export const RestaurantMap: React.FC<RestaurantMapProps> = ({
 
           <FridgeMapOverlay tier={fridgeTier} />
           <AnimatedGuestTraffic />
-          {staffOnMap ? <StaffLife hiredRoles={staffOnMap.roles} takeaway={staffOnMap.takeaway || takeawayCounterOpen(playerLevel)} preview={staffOnMap.preview} /> : null}
+          {staffOnMap ? <StaffLife hiredRoles={staffOnMap.roles} service={staffOnMap.service || serviceCounterOpen(playerLevel)} stage={staffOnMap.stage} preview={staffOnMap.preview} /> : null}
 
           <div className="restaurant-nameboard-wrap">
             {isEditingRestaurantName ? (

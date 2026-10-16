@@ -13,8 +13,9 @@
  *     sides, never on a chair; guests at the counter don't stand on each other.
  *  F  First-floor staff: only the six roles the game has, only the hired ones
  *     (all six as the testing preview), each in its own room.
- *  G  Placement fixes: Head Chef off the pass shelving, Cleaner on the restroom
- *     floor, Manager only sits, the Take Away packer, plates held in the hand.
+ *  G  Placement on each of the six kitchen-stage maps: Head Chef off the pass
+ *     shelving, Cleaner on the restroom floor, Manager only sits, the service
+ *     counter's cashier at its computer, plates held in the hand.
  *  D  Deterministic: the same floor gives the same cast; no Math.random.
  *  V  View (the full preview cast under the test switch or the temporary
  *     FLOOR_LIFE_ALWAYS_PREVIEW flag, developer 2026-10-16): decorative (aria-hidden, no taps), transform/opacity only, off
@@ -34,7 +35,12 @@ import {
   workingStations,
 } from "../src/game/restaurant/floorLife.ts";
 import type { SecondFloorState, StationId } from "../src/game/restaurant/secondFloor.ts";
-import { STAFF_LIFE_ROLES, staffCast, staffOnMap } from "../src/game/restaurant/staffLife.ts";
+import {
+  MAP_STAGES,
+  STAFF_LIFE_ROLES,
+  staffCast,
+  staffOnMap,
+} from "../src/game/restaurant/staffLife.ts";
 
 let failures = 0;
 function assert(cond: unknown, msg: string, detail?: unknown) {
@@ -227,41 +233,67 @@ console.log("F. First-floor staff (developer 2026-10-16)");
   const router = read("src/ScreensRouter.tsx");
   assert(
     /<StaffLife hiredRoles=\{staffOnMap\.roles\}/.test(map) &&
-      /staffOnMap=\{staffOnMap\(save\.business\.staff\.hiredRoles\)\}/.test(router) &&
-      staffOnMap([]).roles.length === (FLOOR_LIFE_ALWAYS_PREVIEW ? 6 : 0),
+      /staffOnMap=\{staffOnMap\(\s*save\.business\.staff\.hiredRoles,/.test(router) &&
+      staffOnMap([], "humble").roles.length === (FLOOR_LIFE_ALWAYS_PREVIEW ? 6 : 0),
     "F5: the first-floor map draws the save's hired roles (all six only as the testing preview)",
   );
 }
 
-console.log("G. First-floor placement fixes (developer 2026-10-16)");
+console.log("G. First-floor placement, per kitchen stage (developer 2026-10-16)");
 {
-  const byId = Object.fromEntries(staffCast(STAFF_LIFE_ROLES, true).map((a) => [a.id, a]));
-  const chef = byId["staff-head-chef"]!;
-  const cleaner = byId["staff-cleaner"]!;
-  const manager = byId["staff-manager"]!;
-  const packer = byId["takeaway-packer"]!;
+  // The first-floor map has one artwork per kitchen stage; every spot is measured per stage.
+  const kitchen = { x: 3.8, y: 18, w: 44, h: 32 };
+  const inside = (p: { x: number; y: number }, r: { x: number; y: number; w: number; h: number }) =>
+    p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h;
+  const problems: string[] = [];
+  for (const stage of MAP_STAGES) {
+    const byId = Object.fromEntries(staffCast(STAFF_LIFE_ROLES, true, stage).map((a) => [a.id, a]));
+    for (const id of ["staff-line-cook", "staff-prep-cook", "staff-head-chef"]) {
+      if (!byId[id]!.stops.every((p) => inside(p, kitchen)))
+        problems.push(`${stage}:${id} leaves the kitchen`);
+    }
+    if (!byId["staff-head-chef"]!.stops.every((p) => p.y <= 45.5))
+      problems.push(`${stage}: chef reaches the pass shelving`);
+    if (
+      !byId["staff-cleaner"]!.stops.every((p) => p.x >= 84.5 && p.x <= 91 && p.y >= 45 && p.y <= 51)
+    )
+      problems.push(`${stage}: cleaner off the restroom floor`);
+    const m = byId["staff-manager"]!.stops;
+    if (!(
+      m.length === 1 &&
+      m[0]!.pose === "sit" &&
+      inside(m[0]!, { x: 3.8, y: 53.4, w: 26.2, h: 24 })
+    ))
+      problems.push(`${stage}: manager not seated in the office`);
+    const cash = byId["service-cashier"]!.stops;
+    if (!cash.every((p) => p.x >= 30.5 && p.x <= 45 && p.y >= 54 && p.y <= 58))
+      problems.push(`${stage}: cashier not at the service counter`);
+    if (byId["takeaway-packer"]) problems.push(`${stage}: someone inside Take Away`);
+  }
   assert(
-    chef.stops.every((p) => p.y <= 42),
-    "G1: the Head Chef stays on the kitchen aisle, above the pass shelving (y ≤ 42 %)",
+    MAP_STAGES.length === 6 && problems.length === 0,
+    "G1: on all six kitchen-stage maps: cooks and Head Chef in the kitchen (chef off the pass shelving), Cleaner on the restroom floor, Manager seated, nobody inside Take Away",
+    problems,
   );
   assert(
-    cleaner.stops.every((p) => p.y >= 45 && p.y <= 51 && p.x >= 81.5 && p.x <= 96),
-    "G2: the Cleaner stays on the restroom floor (never the top wall or its sign)",
+    !staffCast(STAFF_LIFE_ROLES, false).some((a) => a.kind === "cashier") &&
+      staffCast([], true)
+        .map((a) => a.kind)
+        .join() === "cashier",
+    "G2: the service counter's cashier works at its computer once the counter is open (the game has no cashier role)",
   );
+  const router = read("src/ScreensRouter.tsx");
   assert(
-    manager.stops.length === 1 && manager.stops[0]!.pose === "sit",
-    "G3: the Manager only sits in the chair behind the desk",
-  );
-  assert(
-    !staffCast(STAFF_LIFE_ROLES, false).some((a) => a.kind === "packer") &&
-      packer.stops.every((p) => p.x >= 48.5 && p.x <= 80.5 && p.y >= 34 && p.y <= 48.2) &&
-      packer.stops.map((p) => p.pose).join() === "pick,drop",
-    "G4: a parcel packer works behind the Take Away counter, only once Take Away is open (no hired role needed — the game has none)",
+    /kitchenMapArtStage\(save\.equippedKitchenUpgradeId\)/.test(router) &&
+      /stage=\{staffOnMap\.stage\}/.test(
+        read("src/components/kc/restaurantMap/RestaurantMapView.tsx"),
+      ),
+    "G3: the map uses the spots of the kitchen stage whose art is shown",
   );
   const css = read("src/components/kc/restaurantMap/RestaurantMap.css");
   assert(
-    /\.floor-carry--server,\s*\.floor-carry--packer \{\s*bottom: 30%;/.test(css),
-    "G5: servers hold the plate in the hand at waist height, not over the head",
+    /\.floor-carry--server,\s*\.floor-carry--cashier \{\s*bottom: 30%;/.test(css),
+    "G4: servers hold the plate in the hand at waist height, not over the head",
   );
 }
 

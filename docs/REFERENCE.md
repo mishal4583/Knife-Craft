@@ -1097,14 +1097,16 @@ preparation = PreparationScene; events = `events.ts`; platform =
   `restaurantMap/StaffLife.tsx`, drawn by the shared `MapCast` (FloorLife.tsx). Only the six
   roles the game has (`BusinessStaffRole`) and only the hired ones
   (`business.staff.hiredRoles`); there is no toilet-cleaner role, the Cleaner does the
-  restroom. The map is crowded, so each keeps to a short loop in its own room (measured on
-  the art on a 2 % grid): Line Cook at the range, Prep Cook on the kitchen's left aisle, Head
-  Chef (tall toque) on the right aisle to the pass, Server from the pass to two tables, Cleaner
-  on the restroom floor, Manager seated at the office desk. A parcel packer works behind the
-  Take Away counter once Take Away is open (`TAKEAWAY_PACKER`; no takeaway role exists, so it
-  belongs to the counter). Plates are held at the hand. `staffOnMap` shows all six
-  while `FLOOR_LIFE_ALWAYS_PREVIEW` or the test switch is on. Tests: floor-life QA section F;
-  e2e `tools/e2e/restaurantstafflife.mjs`.
+  restroom. **The first-floor map has six artworks** (one per kitchen stage,
+  `kitchenMapArtStage`), so `STAGE_SPOTS` holds the measured spots per stage: the range, the
+  prep aisle, the Head Chef's aisle, the service counter's computer, two dining tables and the
+  office chair; the restroom (`RESTROOM_STOPS`) is the same on all six. Line Cook at the range,
+  Prep Cook and Head Chef on the aisles beside the island, Server from the counter to two
+  tables (plate held at the hand), Cleaner on the restroom floor, Manager seated at the desk.
+  A cashier works at the service counter's computer once the counter is open (no cashier role
+  exists, so it belongs to the counter). `staffOnMap` shows all six roles while
+  `FLOOR_LIFE_ALWAYS_PREVIEW` or the test switch is on. Tests: floor-life QA sections F/G
+  (G checks all six stages); e2e `tools/e2e/restaurantstafflife.mjs`.
 - **Economy:** extra on top of the campaign economy (developer decision); not counted in the
   $100k–$150k completionist target.
 - **Save:** `SaveData.business.secondFloor = { stations: { [id]: { level, lastCollectAt } } }`,

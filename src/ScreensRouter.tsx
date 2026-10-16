@@ -40,7 +40,7 @@ import type { ScreenId } from "@/components/kc/data";
 import type { SaveData } from "@/game/SaveManager";
 import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
 import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
-import { kitchenMapImageUrl } from "@/game/kitchen/kitchenMapArt";
+import { kitchenMapArtStage, kitchenMapImageUrl } from "@/game/kitchen/kitchenMapArt";
 import {
   NavAttentionContext,
   NavGuideContext,
@@ -257,7 +257,10 @@ export function ScreensRouter({
                 kitchenMapImage={kitchenMapImageUrl(save.equippedKitchenUpgradeId)}
                 fridgeTier={fridgeTier}
                 reducedMotion={save.settings.reducedMotion}
-                staffOnMap={staffOnMap(save.business.staff.hiredRoles)}
+                staffOnMap={staffOnMap(
+                  save.business.staff.hiredRoles,
+                  kitchenMapArtStage(save.equippedKitchenUpgradeId),
+                )}
                 attentionCounts={attentionBadges.map}
                 attentionSymbols={attentionBadges.mapSymbols}
                 currentScreen={screen}

@@ -184,8 +184,8 @@ export function getZoneConfig(zoneId: string): HotspotZoneConfig | undefined {
   return RESTAURANT_MAP_ZONES.find((z) => z.id === zoneId);
 }
 
-/** The Take Away / Parcel counter is open on the map (its packer is drawn, StaffLife). */
-export function takeawayCounterOpen(playerLevel: number): boolean {
-  const zone = getZoneConfig('takeaway');
+/** The service counter is open on the map (its cashier is drawn, StaffLife). */
+export function serviceCounterOpen(playerLevel: number): boolean {
+  const zone = getZoneConfig('service');
   return !!zone && isZoneUnlocked(zone, playerLevel);
 }
