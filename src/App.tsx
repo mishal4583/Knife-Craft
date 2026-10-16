@@ -46,6 +46,7 @@ import type { SecondFloorAction } from "@/components/kc/restaurantMap/SecondFloo
 import {
   buyStation,
   collectFloor,
+  hireFloorStaff,
   upgradeStation,
   type FloorResult,
 } from "@/game/restaurant/secondFloor";
@@ -818,9 +819,11 @@ export function App() {
     const result =
       action.kind === "collect"
         ? collectFloor(current, now)
-        : action.kind === "buy"
-          ? buyStation(current, action.id, restaurantLevelOf(current.levelProgress), now)
-          : upgradeStation(current, action.id, now);
+        : action.kind === "hire"
+          ? hireFloorStaff(current, action.role, now)
+          : action.kind === "buy"
+            ? buyStation(current, action.id, restaurantLevelOf(current.levelProgress), now)
+            : upgradeStation(current, action.id, now);
     if (result.ok) persist(result.save);
     return result;
   }

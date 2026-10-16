@@ -11,6 +11,10 @@
  *     an upgrade banks the income already earned first.
  *  K  Collect: one credit, ONE ledger entry, opening + ledger = closing;
  *     a second tap pays nothing; every clock restarts.
+ *  T  Floor staff (developer 2026-10-16): permanent one-time hires, no
+ *     wages; a server runs 2 stations (unstaffed earns 0); each missing
+ *     cleaner (1 per 3 stations) costs 25 % of the takings; hiring banks
+ *     the floor first; the team has a size limit.
  *  S  Saves: an old save has no floor (nothing owned); no new top-level field.
  *
  * Run: npx tsx scripts/restaurant-second-floor-qa.mts
@@ -19,6 +23,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { DEFAULT_SAVE, type SaveData } from "../src/game/SaveManager.ts";
 import {
+  FLOOR_STAFF,
+  cleanFactor,
+  hireFloorStaff,
+  isStaffed,
   MAX_STATION_LEVEL,
   SECOND_FLOOR_OPENS_AT,
   STATIONS,
@@ -43,6 +51,14 @@ function assert(cond: unknown, msg: string, detail?: unknown) {
 const H = 3_600_000;
 const T0 = 1_800_000_000_000;
 const fresh = (credits: number): SaveData => ({ ...structuredClone(DEFAULT_SAVE), credits });
+/** Test setup: a fully staffed floor (staff are hired through hireFloorStaff in section T). */
+const staffed = (s: SaveData, servers = 3, cleaners = 2): SaveData => ({
+  ...s,
+  business: {
+    ...s.business,
+    secondFloor: { stations: s.business.secondFloor?.stations ?? {}, servers, cleaners },
+  },
+});
 const ledgerSum = (s: SaveData) => s.economyLedger.reduce((t, e) => t + e.amount, 0);
 const entries = (s: SaveData, c: string) => s.economyLedger.filter((e) => e.category === c);
 
@@ -77,7 +93,7 @@ console.log("C. Catalog");
 
 console.log("E. Earnings");
 {
-  const bought = buyStation(fresh(1_000_000), "coffee", 60, T0);
+  const bought = buyStation(staffed(fresh(1_000_000)), "coffee", 60, T0);
   const s = bought.ok ? bought.save : fresh(0);
   const rate = stationDef("coffee").perHour[0];
   assert(
@@ -132,7 +148,7 @@ console.log("B. Buy and upgrade");
   assert(again && !again.ok && again.reason === "owned", "B4: can't buy the same station twice");
 
   // Upgrade after 3 h: the 3 h at the old rate are paid first, then the price.
-  const rich = buyStation(fresh(10_000_000), "coffee", 60, T0);
+  const rich = buyStation(staffed(fresh(10_000_000)), "coffee", 60, T0);
   const u = rich.ok ? upgradeStation(rich.save, "coffee", T0 + 3 * H) : null;
   const waiting = 3 * coffee.perHour[0];
   assert(
@@ -166,7 +182,7 @@ console.log("B. Buy and upgrade");
 
 console.log("K. Collect");
 {
-  let s = fresh(10_000_000);
+  let s = staffed(fresh(10_000_000));
   for (const [id, lvl] of [
     ["coffee", 60],
     ["drinks", 70],
@@ -195,6 +211,76 @@ console.log("K. Collect");
   assert(
     c.ok && floorEarnings(c.save, T0 + 6 * H) === floorPerHour(c.save),
     "K3: every clock restarts at the collect",
+  );
+}
+
+console.log("T. Floor staff");
+{
+  const H2 = 2 * H;
+  let s = fresh(100_000_000);
+  for (const [id, lvl] of [
+    ["coffee", 60],
+    ["drinks", 70],
+    ["pizza", 85],
+  ] as const) {
+    const r = buyStation(s, id, lvl, T0);
+    if (r.ok) s = r.save;
+  }
+  assert(
+    floorEarnings(s, T0 + H2) === 0 &&
+      !isStaffed({ stations: s.business.secondFloor!.stations }, "coffee"),
+    "T1: without a Floor Server the stations earn nothing",
+  );
+  const before = s.credits;
+  const h1 = hireFloorStaff(s, "server", T0 + H2);
+  const s1 = h1.ok ? h1.save : s;
+  const f1 = s1.business.secondFloor!;
+  assert(
+    h1.ok &&
+      s1.credits === before - FLOOR_STAFF.server.price &&
+      entries(s1, "automation-purchase").filter((e) => e.description === "hire-server").length ===
+        1 &&
+      entries(s1, "automation-income").length === 0 &&
+      isStaffed({ stations: f1.stations, servers: 1 }, "coffee") &&
+      isStaffed({ stations: f1.stations, servers: 1 }, "drinks") &&
+      !isStaffed({ stations: f1.stations, servers: 1 }, "pizza"),
+    "T2: a server is a one-time hire (one ledger entry, no wage); it runs 2 stations — the 3rd stays idle; the idle hours before it paid nothing",
+  );
+  const coffee = stationDef("coffee").perHour[0];
+  const drinks = stationDef("drinks").perHour[0];
+  // 3 stations need 1 cleaner; none hired → 25 % of the takings lost.
+  assert(
+    cleanFactor({ stations: f1.stations, servers: 1, cleaners: 0 }) === 0.75 &&
+      floorEarnings(s1, T0 + H2 + H) === Math.floor(coffee * 0.75) + Math.floor(drinks * 0.75),
+    "T3: each missing cleaner (1 per 3 stations) costs 25 % of the takings",
+  );
+  const c1 = hireFloorStaff(s1, "cleaner", T0 + H2 + H);
+  const s2 = c1.ok ? c1.save : s1;
+  assert(
+    c1.ok &&
+      entries(s2, "automation-income").length === 1 &&
+      entries(s2, "automation-income")[0]!.amount ===
+        Math.floor(coffee * 0.75) + Math.floor(drinks * 0.75) &&
+      floorEarnings(s2, T0 + H2 + 2 * H) === coffee + drinks,
+    "T4: hiring banks what the floor already earned at the old staffing; from then on the clean floor keeps it all",
+  );
+  let t = s2;
+  for (let i = 0; i < 5; i++) {
+    const r = hireFloorStaff(t, "server", T0 + H2 + 2 * H);
+    if (r.ok) t = r.save;
+  }
+  const over = hireFloorStaff(t, "server", T0 + H2 + 2 * H);
+  assert(
+    t.business.secondFloor!.servers === FLOOR_STAFF.server.max &&
+      !over.ok &&
+      over.reason === "fullTeam",
+    "T5: the team has a limit (3 servers, 2 cleaners)",
+  );
+  const broke = { ...s, credits: FLOOR_STAFF.server.price - 1 };
+  const poor = hireFloorStaff(broke, "server", T0);
+  assert(
+    !poor.ok && poor.reason === "insufficientFunds",
+    "T6: a hire the wallet can't cover changes nothing",
   );
 }
 

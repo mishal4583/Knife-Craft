@@ -1,7 +1,8 @@
 // The Second Floor (developer 2026-10-16), restaurant build:
 //   1. Level 59: the first-floor map's 2nd-floor button is locked ("Lv 60");
 //   2. Level 60: Upstairs opens the food hall; Coffee is for sale, Drinks is locked;
-//   3. buying Coffee debits the price once (one ledger entry);
+//   3. buying Coffee debits the price once (one ledger entry); it needs a Floor Server;
+//      a server and a cleaner are one-time hires (one ledger entry each);
 //   4. two hours later (the save's clock moved back 2 h) the Pickup Counter collects
 //      2 × the hourly rate — one ledger entry; a second tap pays nothing;
 //   5. a reload never pays it again; Downstairs returns to the first floor;
@@ -107,8 +108,34 @@ check(
   { credits: [s0.credits, s1.credits], buys: buys.length },
 );
 
+// ---------- 3b. Floor staff: a server and a cleaner, hired for good ----------
+const needsServer = await page.evaluate(() =>
+  /Needs a server/.test(document.querySelector('[data-testid="second-floor"]').innerText),
+);
+await page.evaluate(() => document.querySelector('[aria-label="Close"]')?.click());
+await sleep(200);
+await tapZone(page, /^Pickup Counter/);
+await sleep(300);
+const hiredServer = await clickText(page, /^Hire for \$1,500\.00$/);
+await sleep(500);
+const hiredCleaner = await clickText(page, /^Hire for \$1,200\.00$/);
+await sleep(500);
+const s1b = await readSave(page);
+const hires = s1b.economyLedger.filter((e) => /^hire-/.test(e.description ?? ""));
+check(
+  "3b an unstaffed station says it needs a server; a Floor Server ($1,500) and a Floor Cleaner ($1,200) are one-time hires — one ledger entry each, no wages",
+  needsServer &&
+    hiredServer &&
+    hiredCleaner &&
+    hires.length === 2 &&
+    s1b.credits === s1.credits - 150000 - 120000 &&
+    s1b.business.secondFloor.servers === 1 &&
+    s1b.business.secondFloor.cleaners === 1,
+  { needsServer, hires: hires.length },
+);
+
 // ---------- 4. Two hours later: collect ----------
-const moved = structuredClone(s1);
+const moved = structuredClone(s1b);
 moved.business.secondFloor.stations.coffee.lastCollectAt -= 2 * 3_600_000;
 await writeSave(page, moved);
 await page.reload({ waitUntil: "domcontentloaded" });

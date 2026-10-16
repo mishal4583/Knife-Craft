@@ -1058,6 +1058,14 @@ preparation = PreparationScene; events = `events.ts`; platform =
   - buying and upgrading are all-or-nothing (`debitWallet`), one `automation-purchase` entry
     each;
   - an upgrade first banks the income already earned.
+- **Floor staff** (developer 2026-10-16): permanent, one-time hires, no wages (`FLOOR_STAFF`).
+  - **Floor Server** $1,500 (max 3): runs 2 stations; an unstaffed station earns $0 and shows
+    "Needs a server".
+  - **Floor Cleaner** $1,200 (max 2): keeps 3 stations' tables clear; each missing cleaner costs
+    25 % of the takings.
+  - Hiring and buying a station both bank what the floor already earned first, so staffing
+    never changes past hours.
+  - One `automation-purchase` entry per hire.
 - **Economy:** extra on top of the campaign economy (developer decision); not counted in the
   $100k–$150k completionist target.
 - **Save:** `SaveData.business.secondFloor = { stations: { [id]: { level, lastCollectAt } } }`,

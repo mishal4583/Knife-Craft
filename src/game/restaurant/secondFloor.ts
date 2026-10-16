@@ -14,8 +14,14 @@
  * station is bought. Buying and upgrading are all-or-nothing through
  * `debitWallet`, with one "automation-purchase" ledger entry each.
  *
+ * Floor staff (developer 2026-10-16) are permanent, one-time hires — no
+ * wages: a Floor Server runs up to 2 stations (an unstaffed station earns
+ * nothing); a Floor Cleaner keeps up to 3 stations' tables clear (each
+ * missing cleaner costs the floor 25 % of its takings). Hiring first banks
+ * what the floor already earned, so a new hire never changes past hours.
+ *
  * State lives in `SaveData.business.secondFloor` (absent on older saves =
- * nothing owned). Times are epoch milliseconds passed in by the caller
+ * nothing owned, no staff). Times are epoch milliseconds passed in by the caller
  * (`Date.now()` in the app), so this module stays pure and testable.
  */
 import type { SaveData } from "../SaveManager";
@@ -143,7 +149,42 @@ export const STATIONS: readonly StationDefinition[] = [
 ];
 
 export type OwnedStation = { level: number; lastCollectAt: number };
-export type SecondFloorState = { stations: Partial<Record<StationId, OwnedStation>> };
+export type SecondFloorState = {
+  stations: Partial<Record<StationId, OwnedStation>>;
+  /** Floor Servers hired (permanent). Absent = 0. */
+  servers?: number;
+  /** Floor Cleaners hired (permanent). Absent = 0. */
+  cleaners?: number;
+};
+
+export type FloorStaffRole = "server" | "cleaner";
+
+export const FLOOR_STAFF: Record<
+  FloorStaffRole,
+  { name: string; icon: string; price: number; max: number; covers: number; blurb: string }
+> = {
+  server: {
+    name: "Floor Server",
+    icon: "🧑‍🍳",
+    price: dollars(1_500),
+    max: 3,
+    covers: 2,
+    blurb: "Runs the pickup counter and carries trays for 2 stations. Hired for good — no wages.",
+  },
+  cleaner: {
+    name: "Floor Cleaner",
+    icon: "🧽",
+    price: dollars(1_200),
+    max: 2,
+    covers: 3,
+    blurb: "Clears and wipes the tables for 3 stations' guests. Hired for good — no wages.",
+  },
+};
+
+/** Share of the takings lost per missing cleaner. */
+const MISSING_CLEANER_LOSS = 0.25;
+
+const count = (v: unknown, max: number) => Math.min(max, Math.max(0, Math.floor(Number(v) || 0)));
 
 export function stationDef(id: StationId): StationDefinition {
   return STATIONS.find((s) => s.id === id)!;
@@ -160,7 +201,37 @@ export function secondFloorOf(save: SaveData): SecondFloorState {
     const lastCollectAt = Number.isFinite(s.lastCollectAt) ? s.lastCollectAt : 0;
     stations[def.id] = { level, lastCollectAt };
   }
-  return { stations };
+  const saved = save.business.secondFloor;
+  return {
+    stations,
+    servers: count(saved?.servers, FLOOR_STAFF.server.max),
+    cleaners: count(saved?.cleaners, FLOOR_STAFF.cleaner.max),
+  };
+}
+
+/** Owned stations in catalog order — servers cover them in this order. */
+function ownedIds(floor: SecondFloorState): StationId[] {
+  return STATIONS.filter((d) => floor.stations[d.id]).map((d) => d.id);
+}
+
+/** True when a Floor Server runs this owned station. */
+export function isStaffed(floor: SecondFloorState, id: StationId): boolean {
+  const i = ownedIds(floor).indexOf(id);
+  return i >= 0 && i < (floor.servers ?? 0) * FLOOR_STAFF.server.covers;
+}
+
+/** Cleaners the floor needs for its stations, and how many it has. */
+export function cleanersNeeded(floor: SecondFloorState): number {
+  return Math.ceil(ownedIds(floor).length / FLOOR_STAFF.cleaner.covers);
+}
+export function serversNeeded(floor: SecondFloorState): number {
+  return Math.ceil(ownedIds(floor).length / FLOOR_STAFF.server.covers);
+}
+
+/** The share of takings the floor keeps (1 = all tables clear). */
+export function cleanFactor(floor: SecondFloorState): number {
+  const missing = Math.max(0, cleanersNeeded(floor) - (floor.cleaners ?? 0));
+  return Math.max(0, 1 - missing * MISSING_CLEANER_LOSS);
 }
 
 function withFloor(save: SaveData, floor: SecondFloorState): SaveData {
@@ -189,29 +260,40 @@ export function stationCap(def: StationDefinition, owned: OwnedStation): number 
   return def.capHours[i]! * def.perHour[i]!;
 }
 
+/** What one station has made for the player at `now`: 0 unstaffed, less with tables uncleared. */
+export function stationTakings(floor: SecondFloorState, id: StationId, now: number): number {
+  if (!isStaffed(floor, id)) return 0;
+  return Math.floor(stationEarnings(stationDef(id), floor.stations[id], now) * cleanFactor(floor));
+}
+
 /** Everything waiting on the floor at `now` (cents). */
 export function floorEarnings(save: SaveData, now: number): number {
   const floor = secondFloorOf(save);
-  return STATIONS.reduce((t, d) => t + stationEarnings(d, floor.stations[d.id], now), 0);
+  return STATIONS.reduce((t, d) => t + stationTakings(floor, d.id, now), 0);
 }
 
-/** The floor's total rate (cents per hour). */
+/** The floor's real rate (cents per hour): staffed stations, after uncleared tables. */
 export function floorPerHour(save: SaveData): number {
   const floor = secondFloorOf(save);
-  return STATIONS.reduce((t, d) => {
+  const gross = STATIONS.reduce((t, d) => {
     const s = floor.stations[d.id];
-    return t + (s ? d.perHour[s.level - 1]! : 0);
+    return t + (s && isStaffed(floor, d.id) ? d.perHour[s.level - 1]! : 0);
   }, 0);
+  return Math.floor(gross * cleanFactor(floor));
 }
 
 export type FloorResult =
   | { ok: true; save: SaveData; amount: number }
   | {
       ok: false;
-      reason: "locked" | "owned" | "notOwned" | "maxLevel" | "insufficientFunds" | "nothing";
+      reason:
+        "locked" | "owned" | "notOwned" | "maxLevel" | "insufficientFunds" | "nothing" | "fullTeam";
     };
 
-/** Buys a station (all-or-nothing). Its clock starts at `now`. */
+/**
+ * Buys a station (all-or-nothing). What the floor earned so far is banked
+ * first (it counts toward the price); the new station's clock starts at `now`.
+ */
 export function buyStation(
   save: SaveData,
   id: StationId,
@@ -224,10 +306,13 @@ export function buyStation(
     return { ok: false, reason: "locked" };
   }
   if (floor.stations[id]) return { ok: false, reason: "owned" };
-  const paid = debitWallet(save, def.price);
+  // A new station changes who covers what, so the hours so far are banked first.
+  const paid = debitWallet(bankFloor(save, now), def.price);
   if (!paid.ok) return { ok: false, reason: "insufficientFunds" };
+  const banked = secondFloorOf(paid.save);
   const next = withFloor(paid.save, {
-    stations: { ...floor.stations, [id]: { level: 1, lastCollectAt: now } },
+    ...banked,
+    stations: { ...banked.stations, [id]: { level: 1, lastCollectAt: now } },
   });
   return {
     ok: true,
@@ -248,7 +333,7 @@ export function upgradeStation(save: SaveData, id: StationId, now: number): Floo
   if (!owned) return { ok: false, reason: "notOwned" };
   if (owned.level >= MAX_STATION_LEVEL) return { ok: false, reason: "maxLevel" };
   const price = def.upgradePrices[owned.level - 1]!;
-  const waiting = stationEarnings(def, owned, now);
+  const waiting = stationTakings(floor, id, now);
   // The waiting income counts toward the price (it is the player's money).
   const credited = appendLedgerEntry(
     { ...save, credits: save.credits + waiting },
@@ -259,6 +344,7 @@ export function upgradeStation(save: SaveData, id: StationId, now: number): Floo
   const paid = debitWallet(credited, price);
   if (!paid.ok) return { ok: false, reason: "insufficientFunds" };
   const next = withFloor(paid.save, {
+    ...floor,
     stations: { ...floor.stations, [id]: { level: owned.level + 1, lastCollectAt: now } },
   });
   return {
@@ -274,14 +360,47 @@ export function upgradeStation(save: SaveData, id: StationId, now: number): Floo
  * change and no entry (a second tap pays nothing).
  */
 export function collectFloor(save: SaveData, now: number): FloorResult {
-  const floor = secondFloorOf(save);
   const amount = floorEarnings(save, now);
   if (amount <= 0) return { ok: false, reason: "nothing" };
+  return { ok: true, amount, save: bankFloor(save, now) };
+}
+
+/** Pays everything waiting (its own entry, if any) and restarts every clock at `now`. */
+function bankFloor(save: SaveData, now: number): SaveData {
+  const floor = secondFloorOf(save);
+  const amount = floorEarnings(save, now);
   const stations: SecondFloorState["stations"] = {};
   for (const def of STATIONS) {
     const s = floor.stations[def.id];
     if (s) stations[def.id] = { level: s.level, lastCollectAt: now };
   }
-  const next = withFloor({ ...save, credits: save.credits + amount }, { stations });
-  return { ok: true, amount, save: appendLedgerEntry(next, "automation-income", amount, "floor") };
+  const next = withFloor({ ...save, credits: save.credits + amount }, { ...floor, stations });
+  return appendLedgerEntry(next, "automation-income", amount, "floor");
+}
+
+/**
+ * Hires a permanent Floor Server or Floor Cleaner (one-time price, no
+ * wages; all-or-nothing). What the floor earned so far is banked first at
+ * the old staffing (and counts toward the price), so the hire only changes
+ * the hours from `now` on.
+ */
+export function hireFloorStaff(save: SaveData, role: FloorStaffRole, now: number): FloorResult {
+  const def = FLOOR_STAFF[role];
+  const have = role === "server" ? secondFloorOf(save).servers : secondFloorOf(save).cleaners;
+  if ((have ?? 0) >= def.max) return { ok: false, reason: "fullTeam" };
+  const banked = bankFloor(save, now);
+  const paid = debitWallet(banked, def.price);
+  if (!paid.ok) return { ok: false, reason: "insufficientFunds" };
+  const floor = secondFloorOf(paid.save);
+  const next = withFloor(paid.save, {
+    ...floor,
+    ...(role === "server"
+      ? { servers: (floor.servers ?? 0) + 1 }
+      : { cleaners: (floor.cleaners ?? 0) + 1 }),
+  });
+  return {
+    ok: true,
+    amount: def.price,
+    save: appendLedgerEntry(next, "automation-purchase", -def.price, `hire-${role}`),
+  };
 }

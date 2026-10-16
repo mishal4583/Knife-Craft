@@ -11,6 +11,13 @@ import { KButton } from "@/components/kc/common/primitives";
 import { formatUsd } from "@/game/money";
 import type { SaveData } from "@/game/SaveManager";
 import {
+  FLOOR_STAFF,
+  cleanFactor,
+  cleanersNeeded,
+  isStaffed,
+  serversNeeded,
+  stationTakings,
+  type FloorStaffRole,
   MAX_STATION_LEVEL,
   STATIONS,
   floorEarnings,
@@ -19,7 +26,6 @@ import {
   floorPerHour,
   secondFloorOf,
   stationCap,
-  stationEarnings,
   type FloorResult,
   type StationId,
 } from "@/game/restaurant/secondFloor";
@@ -27,7 +33,10 @@ import type { NormalizedRect } from "./restaurantMap";
 import "./RestaurantMap.css";
 
 export type SecondFloorAction =
-  { kind: "buy"; id: StationId } | { kind: "upgrade"; id: StationId } | { kind: "collect" };
+  | { kind: "buy"; id: StationId }
+  | { kind: "upgrade"; id: StationId }
+  | { kind: "collect" }
+  | { kind: "hire"; role: FloorStaffRole };
 
 type ZoneId = StationId | "pickup" | "seating" | "stairs";
 
@@ -130,11 +139,17 @@ export function SecondFloorView({
         action.kind === "collect"
           ? `Collected ${formatUsd(r.amount)}`
           : action.kind === "buy"
-            ? "Station bought — it is working now"
-            : "Upgraded — it earns more now",
+            ? isStaffed(secondFloorOf(r.save), action.id)
+              ? "Station bought — it is working now"
+              : "Station bought — hire a Floor Server to run it"
+            : action.kind === "hire"
+              ? `${FLOOR_STAFF[action.role].name} hired — on the team for good`
+              : "Upgraded — it earns more now",
       );
     } else if (r.reason === "insufficientFunds") {
       setNote("Not enough money yet");
+    } else if (r.reason === "fullTeam") {
+      setNote("The floor team is full");
     } else if (r.reason === "nothing") {
       setNote("Nothing to collect yet — come back later");
     }
@@ -175,6 +190,48 @@ export function SecondFloorView({
               {waiting > 0 ? `Collect ${formatUsd(waiting)}` : "Nothing to collect yet"}
             </KButton>
           </div>
+          <h4 className="mt-4 font-ui text-[11px] font-extrabold uppercase tracking-[0.14em] text-copper">
+            Floor team · hired for good, no wages
+          </h4>
+          {(["server", "cleaner"] as const).map((role) => {
+            const def = FLOOR_STAFF[role];
+            const have = (role === "server" ? floor.servers : floor.cleaners) ?? 0;
+            const need = role === "server" ? serversNeeded(floor) : cleanersNeeded(floor);
+            return (
+              <div
+                key={role}
+                className="mt-2 rounded-2xl border border-walnut/10 bg-ivory/70 p-2.5"
+              >
+                <div className="flex items-center justify-between gap-2 font-ui text-[13px] font-extrabold text-walnut-dark">
+                  <span>
+                    {def.icon} {def.name}s: {have} / {def.max}
+                  </span>
+                  <span className={have < need ? "text-copper" : "text-sage"}>
+                    {need === 0 ? "" : have < need ? `needs ${need}` : "enough"}
+                  </span>
+                </div>
+                <p className="mt-1 font-ui text-[12px] leading-snug text-walnut/65">{def.blurb}</p>
+                <div className="mt-2">
+                  <KButton
+                    full
+                    size="sm"
+                    variant="cream"
+                    disabled={have >= def.max || save.credits + waiting < def.price}
+                    onClick={() => act({ kind: "hire", role })}
+                  >
+                    {have >= def.max ? "Team full" : `Hire for ${formatUsd(def.price)}`}
+                  </KButton>
+                </div>
+              </div>
+            );
+          })}
+          {ownedCount > 0 && cleanFactor(floor) < 1 ? (
+            <p className="mt-2 font-ui text-[12px] text-copper">
+              Tables wait to be cleared — the floor keeps only{" "}
+              {Math.round(cleanFactor(floor) * 100)}% of its takings until enough cleaners are
+              hired.
+            </p>
+          ) : null}
         </>
       );
     }
@@ -210,7 +267,8 @@ export function SecondFloorView({
       );
     }
     const i = owned.level - 1;
-    const here = stationEarnings(d, owned, now);
+    const here = stationTakings(floor, d.id, now);
+    const staffed = isStaffed(floor, d.id);
     const cap = stationCap(d, owned);
     const nextPrice = owned.level < MAX_STATION_LEVEL ? d.upgradePrices[i]! : null;
     return (
@@ -220,10 +278,18 @@ export function SecondFloorView({
           Lv {owned.level} · {formatUsd(d.perHour[i]!)} an hour · stores up to{" "}
           {hoursText(d.capHours[i]!)}
         </p>
-        <p className="mt-1 font-ui text-[12px] text-walnut/65">
-          Made so far: {formatUsd(here)}
-          {here >= cap ? " — full, collect it at the Pickup Counter" : ""}
-        </p>
+        {staffed ? (
+          <p className="mt-1 font-ui text-[12px] text-walnut/65">
+            Made so far: {formatUsd(here)}
+            {here >= Math.floor(cap * cleanFactor(floor))
+              ? " — full, collect it at the Pickup Counter"
+              : ""}
+          </p>
+        ) : (
+          <p className="mt-1 font-ui text-[12.5px] font-extrabold text-copper">
+            Needs a Floor Server — hire one at the Pickup Counter.
+          </p>
+        )}
         <div className="mt-3">
           {nextPrice !== null ? (
             <KButton
@@ -327,6 +393,10 @@ export function SecondFloorView({
                     ) : station && !owned ? (
                       <div className="active-pill-badge">
                         <span className="badge-text">For sale</span>
+                      </div>
+                    ) : owned && !isStaffed(floor, station!.id) ? (
+                      <div className="locked-pill-badge">
+                        <span className="lock-text">Needs a server</span>
                       </div>
                     ) : owned ? (
                       <div className="active-pill-badge">
