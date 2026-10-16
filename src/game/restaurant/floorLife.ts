@@ -58,19 +58,36 @@ export const FLOOR_SPOTS = {
   topWalk: 20.6,
   middleWalk: 37.8,
   stationAisleX: 52.5,
-  /** The chairs beside each table (centre tables first, then the booths). */
+  /**
+   * The green chairs beside each table, measured on the art on a 2 % grid
+   * (developer 2026-10-16: guests sat beside the chairs). Centre tables first,
+   * then the booth chairs. One guest per chair, never shared.
+   */
   seats: [
-    { x: 46.3, y: 64.1 },
-    { x: 57.8, y: 64.1 },
-    { x: 46.3, y: 76.4 },
-    { x: 57.8, y: 76.4 },
-    { x: 36.3, y: 64.1 },
-    { x: 67.8, y: 64.1 },
-    { x: 36.3, y: 76.4 },
-    { x: 67.8, y: 76.4 },
-    { x: 20.5, y: 64.1 },
-    { x: 20.5, y: 76.4 },
-    { x: 80, y: 70.6 },
+    { x: 47.4, y: 65.1 },
+    { x: 56.4, y: 65.1 },
+    { x: 46.6, y: 77.6 },
+    { x: 57.3, y: 77.6 },
+    { x: 34.6, y: 65.1 },
+    { x: 69.2, y: 65.1 },
+    { x: 35.5, y: 77.6 },
+    { x: 68.4, y: 77.6 },
+    { x: 20.9, y: 65.1 },
+    { x: 20.5, y: 77.8 },
+    { x: 79.9, y: 71.6 },
+  ] as readonly Spot[],
+  /**
+   * Where a cleaner stands to wipe each table: its open bottom side, on the
+   * walkway, away from every chair (so a cleaner never stands on a guest).
+   */
+  tableSides: [
+    { x: 41, y: 69.6 },
+    { x: 63.3, y: 69.6 },
+    { x: 41.2, y: 82 },
+    { x: 63.3, y: 82 },
+    { x: 15.5, y: 69.6 },
+    { x: 15.5, y: 82.2 },
+    { x: 85.5, y: 75.6 },
   ] as readonly Spot[],
 } as const;
 
@@ -219,7 +236,8 @@ export function floorCast(floor: SecondFloorState): FloorActor[] {
         { ...S.door },
         { x: S.aisleX, y: S.aisleBottom },
         { x: S.aisleX, y: S.counterFront.y },
-        { ...S.counterFront, hold: 2.4, pose: "pick" },
+        // Each guest has a place of their own along the counter (no one stands on another).
+        { x: S.counterFront.x + ((i % 5) - 2) * 3.2, y: S.counterFront.y, hold: 2.4, pose: "pick" },
         { x: S.aisleX, y: S.counterFront.y },
         ...there,
         { ...seat, hold: 12 + rand() * 6, pose: "sit" },
@@ -234,13 +252,12 @@ export function floorCast(floor: SecondFloorState): FloorActor[] {
   // Cleaners: walk the tables and wipe them.
   const cleaners = Math.min(floor.cleaners ?? 0, FLOOR_STAFF.cleaner.max);
   for (let i = 0; i < cleaners; i++) {
-    const seats = S.seats.filter((_, k) => k % cleaners === i);
+    const sides = S.tableSides.filter((_, k) => k % cleaners === i);
     const stops: Stop[] = [];
-    for (const seat of seats) {
-      const there = toSeat(seat);
-      stops.push(...there);
-      stops.push({ ...seat, y: seat.y + 1.5, hold: 2.5, pose: "clean" });
-      stops.push(...[...there].reverse());
+    for (const side of sides) {
+      stops.push({ x: S.aisleX, y: side.y });
+      stops.push({ ...side, hold: 2.5, pose: "clean" });
+      stops.push({ x: S.aisleX, y: side.y });
     }
     cast.push({
       id: `cleaner-${i}`,

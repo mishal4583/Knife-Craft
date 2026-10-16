@@ -9,6 +9,8 @@
  *  R  Routes: every stop on the map (0–100); servers pick up at a station and
  *     drop at the counter; guests pick up at the counter, sit, and leave by
  *     the door; the keyframes run 0 → 100 in order.
+ *  S  Seats: guests sit on the measured chairs; cleaners wipe from the table
+ *     sides, never on a chair; guests at the counter don't stand on each other.
  *  D  Deterministic: the same floor gives the same cast; no Math.random.
  *  V  View (the full preview cast under the test switch or the temporary
  *     FLOOR_LIFE_ALWAYS_PREVIEW flag, developer 2026-10-16): decorative (aria-hidden, no taps), transform/opacity only, off
@@ -117,7 +119,8 @@ console.log("R. Routes");
   );
   assert(
     poses(guest) === "pick>sit>away" &&
-      guest.stops.find((s) => s.pose === "pick")!.x === FLOOR_SPOTS.counterFront.x &&
+      Math.abs(guest.stops.find((s) => s.pose === "pick")!.x - FLOOR_SPOTS.counterFront.x) <= 6.4 &&
+      guest.stops.find((s) => s.pose === "pick")!.y === FLOOR_SPOTS.counterFront.y &&
       guest.stops[0]!.x === FLOOR_SPOTS.door.x &&
       guest.stops.at(-1)!.y === FLOOR_SPOTS.door.y,
     "R3: a guest comes in the door, picks the food up at the counter, sits, and leaves by the door",
@@ -132,6 +135,36 @@ console.log("R. Routes");
         l.frames.every((f, i, fs) => i === 0 || f.at >= fs[i - 1]!.at),
     ),
     "R4: every lap runs 0 → 100 % in order and lasts more than 5 s",
+  );
+}
+
+console.log("S. Seats (developer 2026-10-16: sit on the chairs, never two on one)");
+{
+  const full = floorCast(floorOf(ALL, 3, 2));
+  const sits = full
+    .filter((a) => a.kind === "guest")
+    .map((a) => a.stops.find((s) => s.pose === "sit")!);
+  const seatSet = new Set(FLOOR_SPOTS.seats.map((s) => `${s.x},${s.y}`));
+  assert(
+    sits.every((s) => seatSet.has(`${s.x},${s.y}`)),
+    "S1: every guest sits on one of the measured chairs",
+  );
+  const cleans = full
+    .filter((a) => a.kind === "cleaner")
+    .flatMap((a) => a.stops.filter((s) => s.pose === "clean"));
+  const far = (a: { x: number; y: number }, b: { x: number; y: number }) =>
+    Math.hypot(a.x - b.x, a.y - b.y) >= 4;
+  assert(
+    cleans.length === FLOOR_SPOTS.tableSides.length &&
+      cleans.every((c) => FLOOR_SPOTS.seats.every((seat) => far(c, seat))),
+    "S2: cleaners wipe every table from its open side, never standing on a chair",
+  );
+  const counter = full
+    .filter((a) => a.kind === "guest")
+    .map((a) => a.stops.find((s) => s.pose === "pick")!.x);
+  assert(
+    new Set(counter.slice(0, 5)).size === 5,
+    "S3: guests waiting together at the counter each have a place of their own",
   );
 }
 
