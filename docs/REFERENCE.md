@@ -202,7 +202,8 @@ once). Restaurant browser tests run on the normal build, classic ones on a
   `restaurant-cleanliness-qa`, `restaurant-day-clock-qa`,
   `restaurant-shift-chores-qa`, `restaurant-deliveries-qa`,
   `restaurant-par-audit-qa`, `restaurant-half-wages-qa`, `restaurant-second-floor-qa`,
-  `restaurant-floor-life-qa`, `restaurant-menu-order-qa` (browser: also `restaurantstafflife.mjs`,
+  `restaurant-floor-life-qa`, `restaurant-menu-order-qa`, `restaurant-market-needs-qa` (browser: also
+  `marketneeds.mjs`, `restaurantstafflife.mjs`,
   `restaurantmenu.mjs`, `marketsecondfloor.mjs`)
   `achievement-rewards-qa` (browser:
   `tools/e2e/restaurant*.mjs`).
@@ -1030,6 +1031,21 @@ preparation = PreparationScene; events = `events.ts`; platform =
 `PlayablesSDK.ts`; persistence = `SaveManager`. Do not duplicate any of them.
 
 ---
+
+### Market needs: what today needs, highlighted (developer 2026-10-16)
+
+- `restaurant/marketNeeds.ts` (read-only, from the game's own checks): for the current level's
+  service — the Pre-Service Check's missing ingredients (buy = its Restock amount), its
+  supplies and kitchen tools, tonight's closing supplies (tissues, deli wrap), the open cleaning
+  jobs' supplies, the menu guests' extra stock, and the tools coming up ("soon").
+- Every Market section (Ingredients, Smallwares, Tableware, Takeaway, Cleaning): needed cards are
+  highlighted ("📌 Needed today · buy 2 packs · Need 28, have 0 · why"), listed first (today,
+  tonight, menu guests, soon; the rest keep their order) and preset to the amount; supplies
+  sections have "Buy everything needed"; Ingredients has a "Needed for today" group first;
+  each tab shows its count. Restock › links (Daily Check) preset the packs.
+- Quick restock (checked on every level, lb and kg): each line is exactly the Market price
+  + 25 %; it covers the service's own orders only, which the sheet now says.
+- Tests: `restaurant-market-needs-qa`; e2e `tools/e2e/marketneeds.mjs`.
 
 ### Restaurant menu order, switch and price tip (developer 2026-10-16)
 

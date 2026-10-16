@@ -1,7 +1,8 @@
 import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
 import { BULK_MAX_PACKS, bulkDiscountFor } from "@/game/restaurant/bulkBuying";
 import { BulkPresets } from "./BulkPresets";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { marketNeeds, needLabel, needsFirst, type MarketNeed } from "@/game/restaurant/marketNeeds";
 import { Badge, KButton, Panel } from "./common/primitives";
 import { cn } from "@/lib/utils";
 import type { SaveData } from "@/game/SaveManager";
@@ -67,12 +68,41 @@ export function MarketSupplies({
   );
   const [messages, setMessages] = useState<Partial<Record<SupplyId, string>>>({});
   const supplies = save.business.supplies;
-  const items = SUPPLY_CATALOG.filter(
-    (item) => item.section === section && (group === "All" || item.group === group),
+  // What today's service, tonight's closing and the cleaning jobs need (restaurant build):
+  // highlighted, listed first, and preset to the amount needed (developer 2026-10-16).
+  const needs = useMemo(
+    () => (RESTAURANT_MODE ? marketNeeds(save).supplies : {}),
+    [save],
+  ) as Partial<Record<SupplyId, MarketNeed>>;
+  const items = needsFirst(
+    SUPPLY_CATALOG.filter(
+      (item) => item.section === section && (group === "All" || item.group === group),
+    ),
+    (item) => needs[item.id],
+  );
+  const neededNow = SUPPLY_CATALOG.filter(
+    (item) => item.section === section && needs[item.id] && needs[item.id]!.when !== "soon",
   );
 
   function packsFor(id: SupplyId): number {
-    return packs[id] ?? 1;
+    return packs[id] ?? needs[id]?.buy ?? 1;
+  }
+
+  function buyAllNeeded() {
+    let bought = 0;
+    let spent = 0;
+    for (const item of neededNow) {
+      const r = purchaseSupply(item.id, needs[item.id]!.buy);
+      if (r.ok) {
+        bought += 1;
+        spent += r.totalCost;
+      }
+    }
+    setNotice(
+      bought === neededNow.length
+        ? `Bought everything needed (${bought} item${bought === 1 ? "" : "s"}) · ${formatUsd(spent)}.`
+        : `Bought ${bought} of ${neededNow.length} — not enough money for the rest.`,
+    );
   }
 
   /** Unified Restaurant wholesale buying: consumables only (the same rule App's purchase uses). */
@@ -133,8 +163,35 @@ export function MarketSupplies({
         </p>
       </Panel>
 
+      {neededNow.length > 0 ? (
+        <Panel className="border-copper/50 p-3" data-testid={`market-needed-${section}`}>
+          <p className="font-ui text-[13px] font-extrabold text-walnut-dark">
+            📌 {neededNow.length} item{neededNow.length === 1 ? "" : "s"} needed for today
+          </p>
+          <p className="mt-0.5 font-ui text-[12px] leading-snug text-walnut/70">
+            They're first below, with the amount to buy already set.
+          </p>
+          <div className="mt-2" data-testid={`market-buy-needed-${section}`}>
+            <KButton
+              full
+              className="h-12 px-2 text-[12.5px]"
+              variant="copper"
+              onClick={buyAllNeeded}
+            >
+              {`Buy everything needed · ${formatUsd(
+                neededNow.reduce((t, item) => {
+                  const n = needs[item.id]!.buy;
+                  return t + supplyQuote(save, item, n, bulk(item, n)).totalCost;
+                }, 0),
+              )}`}
+            </KButton>
+          </div>
+        </Panel>
+      ) : null}
+
       <div
-        className="-mx-4 flex gap-2 overflow-x-auto no-scrollbar px-4"
+        // Vertical room so the chips' borders aren't cut off (the row scrolls sideways).
+        className="-mx-4 -my-1 flex gap-2 overflow-x-auto no-scrollbar px-4 py-1.5"
         aria-label={`${meta.short} groups`}
       >
         {["All", ...meta.groups].map((g) => (
@@ -166,13 +223,22 @@ export function MarketSupplies({
               key={item.id}
               ref={item.id === focusItem?.id ? focusRef : undefined}
               data-supply={item.id}
+              data-needed={needs[item.id]?.when}
               className={cn(
                 "product-card flex flex-col rounded-[20px] border p-3 card-warm",
                 item.id === focusItem?.id
                   ? "border-copper ring-2 ring-copper/60"
-                  : "border-walnut/15",
+                  : needs[item.id]
+                    ? "border-copper/70 ring-1 ring-copper/40"
+                    : "border-walnut/15",
               )}
             >
+              {needs[item.id] ? (
+                <NeedNote
+                  need={needs[item.id]!}
+                  unit={needs[item.id]!.buy === 1 ? "pack" : "packs"}
+                />
+              ) : null}
               <div className="flex items-start justify-between">
                 <span className="text-[30px] leading-none" aria-hidden>
                   {item.icon}
@@ -267,3 +333,40 @@ export function MarketSupplies({
     </div>
   );
 }
+
+/** The "📌 Needed today · buy 2 packs" label on a Market card (supplies and ingredients). */
+export function NeedNote({
+  need,
+  unit,
+  detail,
+}: {
+  need: MarketNeed;
+  /** The unit to buy in ("pack", "lb", "kg", "loaves"…), already plural-ready. */
+  unit: string;
+  /** Replaces the "Need …, have …" line (ingredients show their own lb / kg). */
+  detail?: string;
+}) {
+  const urgent = need.when === "today" || need.when === "tonight";
+  return (
+    <div
+      className={cn(
+        "-mx-1 -mt-1 mb-1.5 rounded-[12px] px-2 py-1",
+        urgent ? "bg-copper/15" : "bg-gold/15",
+      )}
+      data-testid="need-note"
+    >
+      <p className="font-ui text-[11.5px] font-extrabold leading-tight text-copper">
+        📌 {needLabel(need)} · buy {need.buy} {unit}
+      </p>
+      <p className="font-ui text-[11px] font-bold leading-tight text-walnut/70">
+        {detail ??
+          (need.when === "soon"
+            ? need.why
+            : `Need ${formatNeed(need.need)}, have ${formatNeed(need.have)} · ${need.why}`)}
+      </p>
+    </div>
+  );
+}
+
+const formatNeed = (n: number) =>
+  Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/0$/, "");

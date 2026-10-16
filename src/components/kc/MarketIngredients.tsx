@@ -2,12 +2,14 @@ import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
 import { inventoryMenuOf } from "@/game/restaurant/restaurantMenu";
 import { useTabOpen } from "./navLevel";
 import { restaurantQuote } from "@/game/restaurant/restaurantEconomy";
+import { marketNeeds, needsFirst, type MarketNeed } from "@/game/restaurant/marketNeeds";
+import { NeedNote } from "./MarketSupplies";
 import { supplierPriceNote } from "@/game/restaurant/restaurantBackOffice";
 import { getSelectedSupplierId } from "@/game/economy/SupplierManager";
 import { BulkPresets } from "./BulkPresets";
 import { ingredientBulkDiscount } from "@/game/restaurant/bulkBuying";
 import { MarketPlanPanel } from "./MarketPlanPanel";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Badge, KButton, Panel } from "./common/primitives";
 import { cn } from "@/lib/utils";
 import type { SaveData } from "@/game/SaveManager";
@@ -121,9 +123,20 @@ export function MarketIngredients({
   const stepFor = (id: IngredientId, q: number, dir: 1 | -1) =>
     RESTAURANT_MODE ? stepMarketQuantity(id, q, dir) : stepPurchaseQuantity(q, dir);
 
+  // What today's service and menu guests need (restaurant build, developer 2026-10-16):
+  // highlighted, listed first and preset to the amount to buy.
+  const needs = useMemo(
+    () => (RESTAURANT_MODE ? marketNeeds(save).ingredients : {}),
+    [save],
+  ) as Partial<Record<IngredientId, MarketNeed>>;
+  const neededIds = needsFirst(
+    ALL_INGREDIENT_IDS.filter((id) => needs[id]),
+    (id) => needs[id],
+  );
+
   function quantityFor(id: IngredientId): number {
-    // Restaurant: one lb / kg / piece to start (a plate uses a 0.3 lb tomato); classic: 5.
-    return quantities[id] ?? (RESTAURANT_MODE ? 1 : DEFAULT_PURCHASE_QUANTITY);
+    // Restaurant: the amount needed today, else one lb / kg / piece (a plate uses a 0.3 lb tomato); classic: 5.
+    return quantities[id] ?? needs[id]?.buy ?? (RESTAURANT_MODE ? 1 : DEFAULT_PURCHASE_QUANTITY);
   }
 
   /** Unified Restaurant: the restaurant's price (bulk discount + Campaign Supplier), the same App's purchase charges. */
@@ -224,7 +237,8 @@ export function MarketIngredients({
       ) : null}
 
       <div
-        className="-mx-4 flex gap-2 overflow-x-auto no-scrollbar px-4"
+        // Vertical room so the chips' borders aren't cut off (the row scrolls sideways).
+        className="-mx-4 -my-1 flex gap-2 overflow-x-auto no-scrollbar px-4 py-1.5"
         aria-label="Ingredient groups"
       >
         {[{ category: "all", label: "All", emoji: "🧺" }, ...INGREDIENT_GROUPS].map((g) => (
@@ -245,11 +259,30 @@ export function MarketIngredients({
         ))}
       </div>
 
-      {groups.map((g) => {
-        const ids = ALL_INGREDIENT_IDS.filter((id) => INGREDIENTS[id].category === g.category);
+      {[
+        ...(group === "all" && neededIds.length > 0
+          ? [{ category: "needed", label: "Needed for today", emoji: "📌" }]
+          : []),
+        ...groups,
+      ].map((g) => {
+        // "All": the needed ingredients come first in their own group (not repeated below);
+        // one category: its needed ingredients first.
+        const ids =
+          g.category === "needed"
+            ? neededIds
+            : needsFirst(
+                ALL_INGREDIENT_IDS.filter(
+                  (id) =>
+                    INGREDIENTS[id].category === g.category && !(group === "all" && needs[id]),
+                ),
+                (id) => needs[id],
+              );
         if (ids.length === 0) return null;
         return (
-          <section key={g.category}>
+          <section
+            key={g.category}
+            data-testid={g.category === "needed" ? "market-needed-ingredients" : undefined}
+          >
             <p className="mb-2 mt-1 font-display text-[16.5px] font-black text-walnut-dark">
               {g.emoji} {g.label}
             </p>
@@ -270,11 +303,27 @@ export function MarketIngredients({
                     key={id}
                     ref={focused ? focusRef : undefined}
                     data-ingredient={id}
+                    data-needed={needs[id]?.when}
                     className={cn(
                       "product-card flex flex-col rounded-[20px] border p-3 card-warm",
-                      focused ? "border-copper ring-2 ring-copper/60" : "border-walnut/15",
+                      focused
+                        ? "border-copper ring-2 ring-copper/60"
+                        : needs[id]
+                          ? "border-copper/70 ring-1 ring-copper/40"
+                          : "border-walnut/15",
                     )}
                   >
+                    {needs[id] ? (
+                      <NeedNote
+                        need={needs[id]!}
+                        unit={marketUnitLabel(id, measure, needs[id]!.buy)}
+                        detail={
+                          needs[id]!.when === "guests"
+                            ? "Optional · so every menu guest can be served"
+                            : `Need ${formatStockAmount(id, needs[id]!.need, measure)}, have ${formatStockAmount(id, needs[id]!.have, measure)} · ${needs[id]!.why}`
+                        }
+                      />
+                    ) : null}
                     <div className="flex items-start justify-between">
                       <span className="text-[34px] leading-none" aria-hidden>
                         {INGREDIENT_EMOJI[id]}

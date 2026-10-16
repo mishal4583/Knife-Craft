@@ -230,7 +230,7 @@ export function DailyMaintenance({
               {closePlan.supplies.length ? <ul className="mt-2 space-y-1 border-t border-walnut/10 pt-2">
                 {closePlan.supplies.map((line) => <li key={line.id} className="flex items-center gap-2 font-ui text-[11.5px]">
                   <span className={`min-w-0 flex-1 ${line.have < line.need ? "font-bold text-copper" : "text-walnut/70"}`}>{line.have >= line.need ? "✓" : "⚠️"} {line.label}: need {line.need}, have {line.have}</span>
-                  {line.have < line.need ? <button type="button" onClick={() => openMarketSupplies(go, getSupplyItem(line.id)?.section ?? "packaging", line.id)} className="press min-h-10 shrink-0 rounded-full bg-walnut px-3 font-ui text-[10px] font-extrabold text-ivory">Restock ›</button> : null}
+                  {line.have < line.need ? <button type="button" onClick={() => openMarketSupplies(go, getSupplyItem(line.id)?.section ?? "packaging", line.id, Math.max(1, Math.ceil((line.need - line.have) / Math.max(1, getSupplyItem(line.id)?.packSize ?? 1))))} className="press min-h-10 shrink-0 rounded-full bg-walnut px-3 font-ui text-[10px] font-extrabold text-ivory">Restock ›</button> : null}
                 </li>)}
               </ul> : null}
             </div>

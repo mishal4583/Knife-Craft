@@ -1,8 +1,9 @@
 import { MarketSecondFloor } from "./MarketSecondFloor";
+import { marketNeeds } from "@/game/restaurant/marketNeeds";
 import type { SecondFloorAction } from "./restaurantMap/SecondFloorView";
 import type { FloorResult } from "@/game/restaurant/secondFloor";
 import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { ScreenId } from "./data";
 import { BottomNav } from "./Kitchen";
 import { FIRST_INGREDIENT_PURCHASE_LEVEL } from "@/game/restaurant/firstLevels";
@@ -36,7 +37,12 @@ import type { PurchaseIngredientResult } from "@/game/business/BusinessInventory
 import { MarketIngredients } from "./MarketIngredients";
 import { MarketSupplies } from "./MarketSupplies";
 import type { PurchaseSupplyResult } from "@/game/business/BusinessSuppliesManager";
-import { SUPPLY_SECTIONS, type SupplySection } from "@/game/business/businessSupplies";
+import {
+  SUPPLY_SECTIONS,
+  getSupplyItem,
+  type SupplyId,
+  type SupplySection,
+} from "@/game/business/businessSupplies";
 import {
   peekMarketFocus,
   peekMarketPlan,
@@ -301,6 +307,19 @@ export function Shop({
   }
 
   const cards = cardsFor(category);
+  // How many items each section needs for today / tonight (restaurant build): a badge on its tab.
+  const needCount = useMemo(() => {
+    const counts: Partial<Record<ShopCategory, number>> = {};
+    if (!RESTAURANT_MODE) return counts;
+    const needs = marketNeeds(save);
+    for (const n of Object.values(needs.ingredients))
+      if (n && n.when !== "soon") counts.ingredients = (counts.ingredients ?? 0) + 1;
+    for (const [id, n] of Object.entries(needs.supplies)) {
+      const section = getSupplyItem(id as SupplyId)?.section;
+      if (n && n.when !== "soon" && section) counts[section] = (counts[section] ?? 0) + 1;
+    }
+    return counts;
+  }, [save]);
 
   function cardsFor(c: ShopCategory): Card[] {
     if (c === "knives") {
@@ -467,13 +486,22 @@ export function Shop({
                 type="button"
                 aria-current={active ? "page" : undefined}
                 onClick={() => selectCategory(item.id)}
+                data-needs={needCount[item.id] || undefined}
                 className={cn(
-                  "press flex h-[64px] flex-col items-center justify-center gap-0.5 rounded-[18px] border px-1",
+                  "press relative flex h-[64px] flex-col items-center justify-center gap-0.5 rounded-[18px] border px-1",
                   active
                     ? "wood border-walnut-dark/50 text-ivory shadow-soft"
                     : "card-warm border-walnut/15 text-walnut-dark",
                 )}
               >
+                {needCount[item.id] ? (
+                  <span
+                    className="absolute -right-1 -top-1 grid h-6 min-w-6 place-items-center rounded-full bg-copper px-1.5 font-ui text-[11px] font-extrabold text-ivory shadow-soft"
+                    aria-label={`${needCount[item.id]} needed for today`}
+                  >
+                    {needCount[item.id]}
+                  </span>
+                ) : null}
                 <span className="text-[20px] leading-none" aria-hidden>
                   {item.emoji}
                 </span>

@@ -202,7 +202,12 @@ export function SecondFloorView({
           </div>
           {onOpenMarket ? (
             <div className="mt-3">
-              <KButton full size="sm" variant="cream" onClick={onOpenMarket}>
+              <KButton
+                full
+                className="h-12 px-2 text-[12.5px]"
+                variant="cream"
+                onClick={onOpenMarket}
+              >
                 🛒 Machines, upgrades & team in the Market
               </KButton>
             </div>
@@ -231,7 +236,7 @@ export function SecondFloorView({
                 <div className="mt-2">
                   <KButton
                     full
-                    size="sm"
+                    className="h-12 px-2 text-[12.5px]"
                     variant="cream"
                     disabled={
                       ownedCount === 0 || have >= def.max || save.credits + waiting < def.price
@@ -369,7 +374,7 @@ export function SecondFloorView({
               draggable={false}
             />
           </picture>
-                    <FloorLife
+          <FloorLife
             floor={previewLife ? FLOOR_LIFE_PREVIEW : floor}
             earning={previewLife || perHour > 0}
             preview={previewLife}

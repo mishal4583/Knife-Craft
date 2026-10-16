@@ -86,7 +86,11 @@ export function MarketSecondFloor({
           <span className="font-ui text-[13px] font-extrabold text-walnut-dark">
             Earning now: {formatUsd(perHour)}/h
           </span>
-          <KButton size="sm" variant="cream" onClick={() => go("second-floor")}>
+          <KButton
+            className="h-12 px-2 text-[12.5px]"
+            variant="cream"
+            onClick={() => go("second-floor")}
+          >
             ⬆ Go upstairs
           </KButton>
         </div>
@@ -138,7 +142,7 @@ export function MarketSecondFloor({
                     <div className="mt-auto pt-2">
                       <KButton
                         full
-                        size="sm"
+                        className="h-12 px-2 text-[12.5px]"
                         disabled={locked || save.credits < d.price}
                         onClick={() => run({ kind: "buy", id: d.id }, d.name, d.price)}
                       >
@@ -157,7 +161,7 @@ export function MarketSecondFloor({
                     <div className="mt-auto pt-2">
                       <KButton
                         full
-                        size="sm"
+                        className="h-12 px-2 text-[12.5px]"
                         variant="sage"
                         disabled={save.credits < next}
                         onClick={() =>
@@ -221,7 +225,7 @@ export function MarketSecondFloor({
                 <div className="mt-auto pt-2">
                   <KButton
                     full
-                    size="sm"
+                    className="h-12 px-2 text-[12.5px]"
                     variant="cream"
                     disabled={owned === 0 || have >= def.max || save.credits < def.price}
                     onClick={() => run({ kind: "hire", role }, def.name, def.price)}

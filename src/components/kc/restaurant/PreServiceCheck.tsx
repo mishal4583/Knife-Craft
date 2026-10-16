@@ -958,6 +958,16 @@ export function PreServiceCheck({
                     Market (+{Math.round(QUICK_RESTOCK_FEE * 100)}%). Buying in the Market before
                     the service saves it.
                   </p>
+                  <p
+                    className="mt-1 font-ui text-[12px] leading-snug text-walnut/70"
+                    data-testid="psc-quick-covers"
+                  >
+                    It buys exactly this service's missing ingredients
+                    {quickRestock.lines.length > 0
+                      ? ` (${quickRestock.lines.length} item${quickRestock.lines.length === 1 ? "" : "s"})`
+                      : ""}
+                    — not extra stock for menu guests or later services.
+                  </p>
                   {!quickRestock.fits ? (
                     <p className="mt-1 font-ui text-[12.5px] font-bold text-tomato">
                       Not enough fridge space for it ({formatQuantity(quickRestock.storageFree)}{" "}
