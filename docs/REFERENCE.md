@@ -202,6 +202,7 @@ once). Restaurant browser tests run on the normal build, classic ones on a
   `restaurant-cleanliness-qa`, `restaurant-day-clock-qa`,
   `restaurant-shift-chores-qa`, `restaurant-deliveries-qa`,
   `restaurant-par-audit-qa`, `restaurant-half-wages-qa`, `restaurant-second-floor-qa`,
+  `restaurant-floor-life-qa`,
   `achievement-rewards-qa` (browser:
   `tools/e2e/restaurant*.mjs`).
 - Campaign / UX: `story-intro-qa`, `story-pause-qa`, `story-legacy-qa`, `audio-qa`,
@@ -1072,6 +1073,21 @@ preparation = PreparationScene; events = `events.ts`; platform =
   - Hiring and buying a station both bank what the floor already earned first, so staffing
     never changes past hours.
   - One `automation-purchase` entry per hire.
+- **Floor life** (developer 2026-10-16), the idle-game animation:
+  - logic `src/game/restaurant/floorLife.ts` (pure, seeded, no money or save): `floorCast(floor)`
+    builds the cast from the **working** stations (owned and run by a Floor Server);
+    `timeline(stops)` turns a route into keyframe percentages; spots in `FLOOR_SPOTS`
+    (map percent, measured on the art);
+  - **servers** (one per 2 working stations, never more than hired) walk machine → Pickup
+    Counter with that station's food; **guests** (2 per working station, at most 10, a seat
+    each) come in the door, pick up at the counter, sit and eat, then leave; **cleaners** (as
+    hired) wipe the tables with a 🧽; a "+$" pops at the counter while the floor earns;
+  - an empty or unstaffed floor is quiet;
+  - view `components/kc/restaurantMap/FloorLife.tsx`: inline CSS keyframes, transform and
+    opacity only, no library; aria-hidden, `pointer-events: none`; hidden with reduced
+    motion (map switch and system setting). The people are the first floor's
+    (`restaurantMap/GuestPoses.tsx`, shared).
+  - Tests: `restaurant-floor-life-qa`; e2e `restaurantsecondfloor.mjs` check 3c.
 - **Economy:** extra on top of the campaign economy (developer decision); not counted in the
   $100k–$150k completionist target.
 - **Save:** `SaveData.business.secondFloor = { stations: { [id]: { level, lastCollectAt } } }`,

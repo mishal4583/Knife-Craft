@@ -4,6 +4,8 @@
 //   2. Level 60: all six stations go on sale, still locked until bought ("🔒 $price");
 //   3. buying Coffee debits the price once (one ledger entry); it needs a Floor Server;
 //      a server and a cleaner are one-time hires (one ledger entry each);
+//   3c. nobody walks the floor before a server is hired; then a server, 2 guests and a
+//      cleaner move on the map (FloorLife, decorative: aria-hidden, no taps);
 //   4. two hours later (the save's clock moved back 2 h) the Pickup Counter collects
 //      2 × the hourly rate — one ledger entry; a second tap pays nothing;
 //   5. a reload never pays it again; Downstairs returns to the first floor;
@@ -144,6 +146,7 @@ check(
 );
 
 // ---------- 3b. Floor staff: a server and a cleaner, hired for good ----------
+const lifeBeforeHire = await page.$$eval(".floor-actor", (els) => els.length);
 const needsServer = await page.evaluate(() =>
   /Needs a server/.test(document.querySelector('[data-testid="second-floor"]').innerText),
 );
@@ -167,6 +170,38 @@ check(
     s1b.business.secondFloor.servers === 1 &&
     s1b.business.secondFloor.cleaners === 1,
   { needsServer, hires: hires.length },
+);
+
+// ---------- 3c. Floor life: the server, guests and cleaner come alive ----------
+await page.evaluate(() => document.querySelector('[aria-label="Close"]')?.click());
+await sleep(600);
+const life = await page.evaluate(async () => {
+  const actors = [...document.querySelectorAll(".floor-actor")];
+  const kinds = actors.map((a) => a.getAttribute("data-actor"));
+  const where = () => actors.map((a) => getComputedStyle(a).transform).join("|");
+  const t0 = where();
+  await new Promise((r) => setTimeout(r, 1200));
+  const layer = document.querySelector('[data-testid="floor-life"]');
+  return {
+    kinds,
+    moved: where() !== t0,
+    running: actors.every((a) => a.getAnimations().some((x) => x.playState === "running")),
+    hidden: layer?.getAttribute("aria-hidden") === "true",
+    taps: layer ? getComputedStyle(layer).pointerEvents : null,
+  };
+});
+await shot(page, "second-floor-life-390");
+check(
+  "3c floor life: nobody before a server; after the hire a server, 2 guests and a cleaner move on the map (decorative, no taps)",
+  lifeBeforeHire === 0 &&
+    life.kinds.filter((k) => k === "server").length === 1 &&
+    life.kinds.filter((k) => k === "guest").length === 2 &&
+    life.kinds.filter((k) => k === "cleaner").length === 1 &&
+    life.moved &&
+    life.running &&
+    life.hidden &&
+    life.taps === "none",
+  { lifeBeforeHire, ...life },
 );
 
 // ---------- 4. Two hours later: collect ----------

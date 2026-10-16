@@ -1128,3 +1128,123 @@
 .restaurant-map--reduced-motion .restaurant-guest-layer {
   display: none;
 }
+
+/* Second Floor life (FloorLife.tsx): every actor is a full-map box moved by
+   translate(x%, y%) — percent of the map — so only transform and opacity animate. */
+.floor-life {
+  position: absolute;
+  z-index: 12;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.floor-actor {
+  position: absolute;
+  inset: 0;
+  will-change: transform, opacity;
+}
+
+.floor-person {
+  position: absolute;
+  left: 0;
+  top: 0;
+  /* The same size as the first floor's guests (.guest-person). */
+  width: clamp(19px, 4.5vw, 30px);
+  height: clamp(25px, 5.8vw, 38px);
+  transform: translate(-50%, -78%);
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .7));
+}
+
+.floor-pose,
+.floor-pose-walk,
+.floor-pose-sit {
+  position: absolute;
+  inset: 0;
+}
+
+.floor-life .guest-walking-pose,
+.floor-life .guest-sitting-pose {
+  opacity: 1;
+  animation: none;
+}
+
+.floor-pose-walk .guest-sitting-pose,
+.floor-pose-sit .guest-walking-pose {
+  display: none;
+}
+
+/* Staff caps: white for servers, teal for cleaners. */
+.floor-cap {
+  position: absolute;
+  left: 50%;
+  top: 2%;
+  width: 34%;
+  height: 12%;
+  border-radius: 40% 40% 20% 20%;
+  background: #fffaf0;
+  box-shadow: 0 0 0 .6px #5b3d2b;
+  transform: translateX(-50%);
+}
+
+.floor-actor--cleaner .floor-cap {
+  background: #3f6f70;
+}
+
+.floor-carry {
+  position: absolute;
+  left: 50%;
+  bottom: 78%;
+  font-size: clamp(10px, 2.6vw, 15px);
+  line-height: 1;
+  transform: translateX(-50%);
+}
+
+/* Guests carry their food in a little paper bubble, servers on a tray. */
+.floor-carry--guest {
+  padding: 2px 3px;
+  border: 1px solid rgba(131, 91, 49, .86);
+  border-radius: 6px;
+  background: #f6e5c5;
+}
+
+.floor-carry--server {
+  bottom: 58%;
+  left: 78%;
+}
+
+.floor-carry--cleaner {
+  bottom: 40%;
+  left: 82%;
+}
+
+.floor-life-coin {
+  position: absolute;
+  left: 65%;
+  top: 46%;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: #f2c14e;
+  color: #4a2f12;
+  font: 800 11px/1.2 Nunito, system-ui, sans-serif;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .45);
+  opacity: 0;
+  animation: floor-coin-pop 6s ease-out infinite;
+}
+
+@keyframes floor-coin-pop {
+  0%, 70% { opacity: 0; transform: translate(-50%, 6px) scale(.8); }
+  76% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  92% { opacity: 1; transform: translate(-50%, -10px) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -16px) scale(.95); }
+}
+
+.restaurant-map--reduced-motion .floor-life {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .floor-life {
+    display: none;
+  }
+}

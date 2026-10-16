@@ -7,6 +7,7 @@
  * only shows them and calls `onAction`.
  */
 import { useEffect, useState } from "react";
+import { FloorLife } from "./FloorLife";
 import { KButton } from "@/components/kc/common/primitives";
 import { formatUsd } from "@/game/money";
 import type { SaveData } from "@/game/SaveManager";
@@ -355,6 +356,7 @@ export function SecondFloorView({
               draggable={false}
             />
           </picture>
+          <FloorLife floor={floor} earning={perHour > 0} />
           <div className="restaurant-map-hotspots-layer">
             {ZONES.map((z) => {
               const station = isStation(z.id) ? STATIONS.find((s) => s.id === z.id)! : null;
