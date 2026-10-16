@@ -42,6 +42,7 @@ import {
 } from "@/game/levels/LevelManager";
 import { LEVELS } from "@/game/levels/levelDefinitions";
 import { payChapterOf } from "@/game/levels/levelMastery";
+import { collectAchievement, collectable } from "@/game/progression/achievements";
 import type { SecondFloorAction } from "@/components/kc/restaurantMap/SecondFloorView";
 import {
   buyStation,
@@ -382,6 +383,9 @@ function KitchenPlate() {
 }
 
 /** One banner per payout: several milestones paid together (e.g. an older save's first load) are summed into one line. */
+/** The app pays only the Family Legacy by itself (economy plan 2026-10-16). */
+const legacyOnly = (m: MilestoneDefinition) => m.id === FAMILY_LEGACY_ID;
+
 type MilestoneNotice = { id: string; label: string; reward: number; legacy: boolean };
 function milestoneNoticeFor(granted: readonly MilestoneDefinition[]): MilestoneNotice {
   const reward = granted.reduce((sum, m) => sum + m.reward, 0);
@@ -541,6 +545,8 @@ export function App() {
   // never a stale closure. The Replay Bonus's claimed/granted state is NOT
   // stored here — it is derived from the save's ledger (replayBonus.ts).
   const saveRef = useRef<SaveData | null>(null);
+  /** Achievement rewards already announced this session (and those waiting at load). */
+  const announcedRef = useRef<Set<string>>(new Set());
   const [replayOffer, setReplayOffer] = useState<ReplayBonusOffer | null>(null);
   const [replayPhase, setReplayPhase] = useState<ReplayBonusPhase>("OFFER_SHOWN");
   const [replayFailure, setReplayFailure] = useState<ReplayBonusFailure | null>(null);
@@ -667,11 +673,14 @@ export function App() {
         synced = applyStoryFlush(synced, { kind: "legacy" });
         setStoryEvent({ kind: "legacy" });
       }
-      const loadGrant = grantEarnedMilestoneRewards(synced);
+      // Only the Family Legacy pays by itself; every other reward is collected in Achievements.
+      const loadGrant = grantEarnedMilestoneRewards(synced, legacyOnly);
       synced = loadGrant.save;
       if (loadGrant.granted.length > 0)
         setMilestoneNoticeQueue([milestoneNoticeFor(loadGrant.granted)]);
       if (synced !== loaded) void SaveManager.save(synced);
+      // Rewards already waiting at load are shown by the tab's badge, not a banner.
+      for (const x of collectable(synced)) announcedRef.current.add(x.id);
       saveRef.current = synced;
       setSave(synced);
     });
@@ -796,7 +805,7 @@ export function App() {
     const synced = syncKitchenUpgradeOwnership(next);
     // Economy V2.5 — a milestone reached by this change is paid right here,
     // once (milestoneRewards.ts: the ledger entry is the record).
-    const { save: rewarded, granted } = grantEarnedMilestoneRewards(synced);
+    const { save: rewarded, granted } = grantEarnedMilestoneRewards(synced, legacyOnly);
     // The one save funnel refuses money the game can't have (economy/wallet.ts).
     const violation = walletInvariantViolation(rewarded);
     if (violation) {
@@ -807,6 +816,30 @@ export function App() {
     setSave(rewarded);
     void SaveManager.save(rewarded);
     if (granted.length > 0) setMilestoneNoticeQueue((q) => [...q, milestoneNoticeFor(granted)]);
+    // A newly earned achievement reward: tell the player where to collect it (once per reward).
+    const fresh = collectable(rewarded).filter((x) => !announcedRef.current.has(x.id));
+    if (fresh.length > 0) {
+      for (const x of fresh) announcedRef.current.add(x.id);
+      const amount = fresh.reduce((t, x) => t + x.reward, 0);
+      setMilestoneNoticeQueue((q) => [
+        ...q,
+        {
+          id: `ach:${fresh.map((x) => x.id).join("+")}`,
+          label: `${fresh.length === 1 ? fresh[0]!.title : `${fresh.length} achievements`} · collect ${formatUsdChange(amount)} in Progress → Achievements`,
+          reward: amount,
+          legacy: false,
+        },
+      ]);
+    }
+  }
+
+  /** Achievements tab: collect one earned reward (progression/achievements.ts). */
+  function collectAchievementReward(id: string) {
+    const current = saveRef.current;
+    if (!current) return { ok: false as const, reason: "unknown" as const };
+    const result = collectAchievement(current, id);
+    if (result.ok) persist(result.save);
+    return result;
   }
 
   /** Economy V2.5 — Restaurant Development: build the next kitchen tier (KitchenUpgradeManager.purchaseKitchenUpgrade), recorded as "kitchen-investment-purchase". */
@@ -2982,6 +3015,7 @@ export function App() {
               performRefrigeratorMaintenance={performRefrigeratorMaintenance}
               rushRestock={rushRestockCurrentOrder}
               buildKitchenUpgrade={buildKitchenUpgrade}
+              collectAchievement={collectAchievementReward}
               secondFloorAction={secondFloorAction}
               rushAdAvailable={rewardedAdsAvailable()}
               setMenuPrice={setMenuPrice}

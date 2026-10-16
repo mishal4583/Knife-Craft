@@ -5,6 +5,7 @@ import { Kitchen, OrderBoard, BottomNav } from "@/components/kc/Kitchen";
 import { Shop } from "@/components/kc/Shop";
 import { RestaurantProgress } from "@/components/kc/RestaurantProgress";
 import { Achievements } from "@/components/kc/Achievements";
+import type { CollectResult } from "@/game/progression/achievements";
 import { DailyMaintenance } from "@/components/kc/DailyMaintenance";
 import { KitchenUpgrades } from "@/components/kc/KitchenUpgrades";
 import type { PurchaseKitchenUpgradeResult } from "@/game/kitchen/KitchenUpgradeManager";
@@ -144,6 +145,7 @@ export function ScreensRouter({
   onStartBusinessService,
   onEnterBusinessPreparation,
   secondFloorAction,
+  collectAchievement,
 }: {
   screen: ScreenId;
   go: (s: ScreenId) => void;
@@ -210,6 +212,8 @@ export function ScreensRouter({
   onEnterBusinessPreparation: () => void;
   /** The Second Floor: buy / upgrade a station or collect (restaurant/secondFloor.ts). */
   secondFloorAction: (action: SecondFloorAction) => FloorResult;
+  /** Achievements: collect one earned reward (progression/achievements.ts). */
+  collectAchievement: (id: string) => CollectResult;
 }) {
   const [mapReturnAvailable, setMapReturnAvailable] = useState(false);
 
@@ -333,7 +337,9 @@ export function ScreensRouter({
         ) : null}
         {/* "rack" is the internal screen id; the player-facing screen is Restaurant Progress. */}
         {screen === "rack" ? <RestaurantProgress go={routeGo} save={save} /> : null}
-        {screen === "achievements" ? <Achievements go={routeGo} save={save} /> : null}
+        {screen === "achievements" ? (
+          <Achievements go={routeGo} save={save} onCollect={collectAchievement} />
+        ) : null}
         {screen === "daily-maintenance" ? (
           <DailyMaintenance go={routeGo} save={save} cleanlinessAction={cleanlinessAction} />
         ) : null}

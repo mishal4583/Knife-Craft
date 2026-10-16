@@ -11,7 +11,8 @@
  * and item prices stay as they are; only the flat completion reward tapers
  * as the campaign goes on, which (with paid Restaurant Development and the
  * milestone rewards) lands a completionist at ~$100k–$120k after Level 250
- * instead of ~$400k with nothing left to buy. Early levels keep 100% so a
+ * instead of ~$400k with nothing left to buy. (The curated 150-level
+ * campaign uses `curatedLevelReward` below instead of these bands.) Early levels keep 100% so a
  * new player can afford the first knives and boards on time; Level 250
  * keeps 100% and also pays the one-time Family Legacy
  * (progression/milestoneRewards.ts). Already-paid rewards are never
@@ -51,6 +52,29 @@ export function levelRewardPercent(level: Pick<LevelDefinition, "id" | "campaign
  * rewards are whole dollars, and so is every reward a player sees).
  */
 export function paidLevelReward(level: Pick<LevelDefinition, "id" | "reward" | "campaignRewardBasisLevel">): number {
+  // The curated 150-level campaign (developer 2026-10-16): one smooth curve by the
+  // NEW level number, instead of the old 250-level bands that zig-zagged.
+  if (level.campaignRewardBasisLevel !== undefined) return curatedLevelReward(level);
   const wholeDollars = Math.round((level.reward.coins * levelRewardPercent(level)) / 100);
   return dollars(Math.max(0, wholeDollars));
+}
+
+/** The curated campaign's last level: it keeps its stored finale reward. */
+export const CURATED_FINAL_LEVEL = 150;
+/** First-clear reward curve for the curated campaign: $50 at Level 1, +$3.10 a level. */
+export const CURATED_REWARD_BASE = 50;
+export const CURATED_REWARD_STEP = 3.1;
+
+/**
+ * Economy plan 2026-10-16: `round(50 + 3.1 × (n − 1))` whole dollars, rising
+ * every level (L1 $50, L75 $279, L149 $509); a level that pays nothing
+ * (Level 2's practice) stays $0, and Level 150 keeps its stored $5,000
+ * finale. The total stays where it was (~$46.6k vs $46.3k before), so this only removes the
+ * zig-zag the old bands caused on the renumbered levels.
+ */
+function curatedLevelReward(level: Pick<LevelDefinition, "id" | "reward">): number {
+  if (level.reward.coins <= 0) return 0;
+  const n = levelNumberOf(level);
+  if (n >= CURATED_FINAL_LEVEL) return dollars(Math.max(0, Math.round(level.reward.coins)));
+  return dollars(Math.round(CURATED_REWARD_BASE + CURATED_REWARD_STEP * (n - 1)));
 }

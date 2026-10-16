@@ -1,3 +1,4 @@
+import { collectable } from "../progression/achievements";
 import type { SaveData } from "../SaveManager";
 import { businessAlertsFor } from "../business/businessAlerts";
 import { restaurantAttention } from "./restaurantAttention";
@@ -225,6 +226,9 @@ export function attentionBadgesFor(save: SaveData): AttentionBadges {
       ...attention.rows.filter((row) => row.kind === "staff").map(() => "👥"),
     ]);
   }
+
+  // Achievement rewards waiting to be collected (progression/achievements.ts).
+  add(nav, "rack", collectable(save).length);
 
   return { nav, map, mapSymbols };
 }

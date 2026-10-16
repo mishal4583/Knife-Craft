@@ -1,3 +1,4 @@
+import { collectableTotal } from "@/game/progression/achievements";
 import type { ReactNode } from "react";
 import type { ScreenId } from "./data";
 import { Badge, Coin, Divider, Panel, ScreenHeader, Stars } from "./common/primitives";
@@ -61,7 +62,11 @@ export function RestaurantProgress({ go, save }: { go: (s: ScreenId) => void; sa
               <span className="grid h-10 w-10 place-items-center rounded-xl bg-walnut text-xl text-ivory">🏆</span>
               <span>
                 <span className="block font-display text-[16px] font-bold text-walnut-dark">Achievements</span>
-                <span className="block font-ui text-[12px] text-walnut/65">Milestones from your real game progress</span>
+                <span className="block font-ui text-[12px] text-walnut/65" data-testid="achievements-entry-note">
+                  {collectableTotal(save) > 0
+                    ? `💰 ${formatUsd(collectableTotal(save))} waiting to collect`
+                    : "Cash rewards for your real game progress"}
+                </span>
               </span>
             </span>
             <span aria-hidden="true" className="font-ui text-xl font-bold text-copper">›</span>

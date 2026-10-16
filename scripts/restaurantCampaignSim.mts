@@ -61,7 +61,11 @@ import { walletInvariantViolation } from "../src/game/economy/wallet.ts";
 import { computeSettlement } from "../src/game/economy/EconomySettlement.ts";
 import { getKnifeSharpness } from "../src/game/economy/sharpness.ts";
 import { syncKitchenUpgradeOwnership } from "../src/game/kitchen/KitchenUpgradeManager.ts";
-import { grantEarnedMilestoneRewards } from "../src/game/progression/milestoneRewards.ts";
+import {
+  FAMILY_LEGACY_ID,
+  grantEarnedMilestoneRewards,
+} from "../src/game/progression/milestoneRewards.ts";
+import { collectAllAchievements } from "../src/game/progression/achievements.ts";
 import { purchaseIngredient } from "../src/game/business/BusinessInventoryManager.ts";
 import { purchaseSupply } from "../src/game/business/BusinessSuppliesManager.ts";
 import {
@@ -181,6 +185,12 @@ export type SimOptions = {
   dayStock?: boolean;
   /** A prudent completionist keeps this much cash after every purchase (cents); 0 = buys greedily. */
   reserve?: number;
+  /**
+   * Economy plan 2026-10-16: achievement (and milestone) rewards are collected
+   * in the Achievements tab. true (default) = an active player who collects
+   * them as soon as they are earned; false = one who never opens the tab.
+   */
+  collectAchievements?: boolean;
 };
 export type Stats = {
   levels: number;
@@ -212,10 +222,16 @@ export type Stats = {
 const lifetimeSum = (s: SaveData) =>
   Object.values(s.economy.lifetime ?? {}).reduce((n, v) => n + (v ?? 0), 0);
 
-/** App.persist: kitchen sync, milestone payouts, the wallet invariant. */
+/** Set by run(): whether this player collects achievement rewards (SimOptions.collectAchievements). */
+let collectsAchievements = true;
+
+/** App.persist: kitchen sync, the Family Legacy, the wallet invariant — plus the tab's Collect. */
 function persist(next: SaveData, stats: Stats, where: string): SaveData {
   const synced = syncKitchenUpgradeOwnership(next);
-  const { save } = grantEarnedMilestoneRewards(synced);
+  // As App: only the Family Legacy pays by itself (economy plan 2026-10-16).
+  const legacy = grantEarnedMilestoneRewards(synced, (m) => m.id === FAMILY_LEGACY_ID).save;
+  // An active player taps Collect in Achievements as soon as a reward is earned.
+  const save = collectsAchievements ? collectAllAchievements(legacy).save : legacy;
   const v = walletInvariantViolation(save);
   if (v) stats.invariant.push(`${where}: ${v}`);
   stats.observe?.(where, save);
@@ -667,6 +683,7 @@ export function run(
   opts: SimOptions,
   log = true,
 ): { s: SaveData; stats: Stats } {
+  collectsAchievements = opts.collectAchievements !== false;
   const stats: Stats = {
     levels: 0,
     blocked: [],

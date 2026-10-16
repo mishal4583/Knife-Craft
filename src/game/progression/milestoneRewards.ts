@@ -259,12 +259,21 @@ export function milestoneRewardsPaid(save: SaveData): { milestones: number; fami
  * migration decides what an old save had already reached — see
  * economyMigration.ts). Returns the same `save` when nothing is due.
  */
-export function grantEarnedMilestoneRewards(save: SaveData): {
+export function grantEarnedMilestoneRewards(
+  save: SaveData,
+  /**
+   * Which reached milestones to pay now. The app passes "legacy only"
+   * (developer 2026-10-16: every other reward is collected in the
+   * Achievements tab — progression/achievements.ts); the sims and older
+   * suites pay them all, as an active player would.
+   */
+  only: (m: MilestoneDefinition) => boolean = () => true,
+): {
   save: SaveData;
   granted: MilestoneDefinition[];
 } {
   if ((save.economy?.version ?? 0) < ECONOMY_VERSION) return { save, granted: [] };
-  const due = milestoneStatuses(save).filter((m) => m.reached && !m.claimed);
+  const due = milestoneStatuses(save).filter((m) => m.reached && !m.claimed && only(m));
   if (due.length === 0) return { save, granted: [] };
   let next = save;
   for (const m of due) {

@@ -284,17 +284,17 @@ console.log(
 );
 {
   assert(
-    missingPurchases(after.s).length === 0 && after.stats.levels === 250,
-    "T1: the completionist owns everything at Level 250",
+    missingPurchases(after.s).length === 0 && after.stats.levels === 150,
+    "T1: the completionist owns everything at Level 150 (the 150-level campaign, developer 2026-10-15)",
   );
   assert(
-    after.s.credits >= 150_000_00,
-    // The final economy pass (2026-10-06) replaced the $100k–$150k band with a ≥ $150k floor.
-    `T2: and finishes with ${$(after.s.credits)} — at or above the approved $150,000 floor`,
+    after.s.credits >= 100_000_00 && after.s.credits <= 150_000_00,
+    // Developer 2026-10-16: the 150-level campaign + achievement money ends $100k–$150k.
+    `T2: and finishes with ${$(after.s.credits)} — inside the $100k–$150k target`,
   );
   assert(
-    before.s.credits < 150_000_00 && after.s.credits > before.s.credits,
-    `T3: the double charge leaves it below the floor (${$(before.s.credits)}); P0 fixes that`,
+    after.s.credits > before.s.credits,
+    `T3: the double charge costs money (${$(before.s.credits)} before P0, ${$(after.s.credits)} after)`,
   );
 }
 

@@ -37,6 +37,7 @@ import fs from "node:fs";
 import { DEFAULT_SAVE, SaveManager, type SaveData } from "../src/game/SaveManager.ts";
 import { SCENARIOS, runScenario, type ScenarioResult } from "./economy-final-sim.mts";
 import { $ } from "./restaurantCampaignSim.mts";
+import { LAST_CAMPAIGN_LEVEL as LAST } from "../src/game/restaurant/restaurantProgression.ts";
 import { dollars } from "../src/game/money.ts";
 import { KITCHEN_UPGRADE_CATALOG } from "../src/game/kitchen/kitchenUpgradeDefinitions.ts";
 import {
@@ -83,19 +84,20 @@ console.log("T. The Level-250 target (no Endless income)");
 {
   const c = R.C!;
   assert(
-    c.final >= dollars(150_000) && R.D!.final >= dollars(150_000) && R.E!.final >= dollars(150_000),
-    `T1: completionist ≥ $150,000 — Local ${$(c.final)}, Wholesale ${$(R.D!.final)}, Premium ${$(R.E!.final)}`,
+    // Developer 2026-10-16 (150-level campaign + achievement money): the completionist
+    // ends Level 150 with $100k–$150k, the gap filled by achievements collected in the tab.
+    [c, R.D!, R.E!].every((r) => r.final >= dollars(100_000) && r.final <= dollars(150_000)),
+    `T1: completionist ends L150 with $100k–$150k — Local ${$(c.final)}, Wholesale ${$(R.D!.final)}, Premium ${$(R.E!.final)}`,
   );
-  // Developer 2026-10-08: only the floor matters — the preferred band's $175k upper limit is dropped.
   assert(
-    c.final >= dollars(160_000),
-    `T2: completionist at least the preferred $160k (no upper limit, developer 2026-10-08) (${$(c.final)})`,
+    c.final >= dollars(125_000) && c.final <= dollars(140_000),
+    `T2: and lands near the plan's aim ($125k–$140k) (${$(c.final)})`,
   );
   const owns = c.save;
   assert(
     KITCHEN_UPGRADE_CATALOG.every((k) => owns.ownedKitchenUpgradeIds.includes(k.id)) &&
-      atL(c, 250).purchases === dollars(168_430),
-    `T3: the completionist owns every kitchen tier and bought every item (${$(atL(c, 250).purchases)})`,
+      atL(c, LAST).purchases === dollars(168_430),
+    `T3: the completionist owns every kitchen tier and bought every item (${$(atL(c, LAST).purchases)})`,
   );
   assert(
     R.A!.final >= dollars(250_000) && R.A!.final - c.final < dollars(179_290),
@@ -107,8 +109,8 @@ console.log("S. Safety");
 {
   const all = Object.values(R);
   assert(
-    all.every((r) => r.stats.levels === 250 && r.stats.blocked.length === 0),
-    "S1: every player completes all 250 levels — no soft-lock",
+    all.every((r) => r.stats.levels === LAST && r.stats.blocked.length === 0),
+    `S1: every player completes all ${LAST} levels — no soft-lock`,
   );
   assert(
     all.every((r) => r.stats.invariant.length === 0 && r.minCash.cash >= 0),
@@ -116,12 +118,14 @@ console.log("S. Safety");
   );
   const g = R.G!;
   assert(
-    g.minCash.cash >= dollars(450) &&
+    // Developer 2026-10-16: the prudent player spends down to its $500 reserve, then a
+    // required supply buy can take it a little lower — never below $400, never credit.
+    g.minCash.cash >= dollars(400) &&
       g.stats.credit === 0 &&
       supplierCreditOf(g.save).owed === 0 &&
-      g.final >= dollars(160_000) &&
-      [20, 30, 40, 50, 75, 91].every((n) => atL(g, n).wallet >= dollars(450)),
-    `S3: a prudent completionist (keeps $500) never dips (L20–L91 ≥ $450, lowest ${$(g.minCash.cash)}), never needs supplier credit, still ends ${$(g.final)}`,
+      g.final >= dollars(100_000) &&
+      [20, 30, 40, 50, 75, 91].every((n) => atL(g, n).wallet >= dollars(400)),
+    `S3: a prudent completionist (keeps $500) never dips below $400 (lowest ${$(g.minCash.cash)}), never needs supplier credit, still ends ${$(g.final)}`,
   );
 }
 
@@ -136,8 +140,8 @@ console.log("V. Investment value");
     R.B!.stats.guests > R.A!.stats.guests && R.C!.stats.guests > R.A!.stats.guests,
     `V2: the kitchen's seats bring more menu guests (saver ${R.A!.stats.guests}, kitchen buyer ${R.B!.stats.guests}, completionist ${R.C!.stats.guests})`,
   );
-  const c250 = atL(R.C!, 250);
-  const a250 = atL(R.A!, 250);
+  const c250 = atL(R.C!, LAST);
+  const a250 = atL(R.A!, LAST);
   // Realistic portions (developer 2026-10-08) need about 2.5× less fridge than a pound per step:
   // before them the completionist peaked at L91 61 / L250 102 of 140; now about 35 / 51.
   assert(

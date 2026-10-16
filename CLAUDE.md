@@ -154,10 +154,18 @@ Release zip: the CONTENTS of `dist/` →
   level's `cuisineChapter` (`payChapterOf`). An unexplained change is still
   a regression.
 - **Level rewards:** `levels/levelRewards.ts` `paidLevelReward` is the ONE
-  rule. Milestones pay once; Level 150 pays the $50,000 Family Legacy once.
-- **Restaurant target:** the completionist ends L150 with $100k–$150k,
-  topped up by achievement money (plan pending). Check with
-  `restaurant-final-economy-qa` after any economy change.
+  rule: one rising curve by the new level number, `50 + 3.1 × (n − 1)`
+  dollars (L2 practice $0, L150 keeps $5,000).
+- **Achievement money** (developer 2026-10-16,
+  `progression/achievements.ts`): the old milestones are achievements under
+  their own ids, plus new reward tiers. Each pays once, only when the player
+  taps Collect in Progress → Achievements (one `milestone-reward` ledger
+  entry; claims in `economy.claimedMilestoneIds`). Only the $50,000 Family
+  Legacy at L150 pays by itself.
+- **Restaurant target:** the completionist ends L150 with $100k–$150k (sim
+  ~$132k with achievements collected). Check with
+  `restaurant-final-economy-qa` and `achievement-rewards-qa` after any
+  economy change.
 - **Where things happen:**
   - the Market is the ONLY place to buy ingredients and supplies;
   - Business → Equipment is the ONLY place for fridge upgrades and repairs;

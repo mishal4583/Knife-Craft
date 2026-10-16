@@ -1,5 +1,21 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## Economy for 150 levels + achievement money (2026-10-16, `main`)
+
+- **Built:** the level reward curve (`50 + 3.1 × (n − 1)`), achievements with
+  Collect (milestones merged under their ids, new reward ladders), only the
+  Family Legacy pays by itself. Details: REFERENCE §7.
+- **Measured (sim):** completionist $132.5k–$133.9k at L150 (Local / Wholesale /
+  Premium); prudent $132.5k, lowest $432, no credit; never-collects $7.7k,
+  150/150. Second Floor (with one-time servers and cleaners) is extra on top.
+- **Tests:** `achievement-rewards-qa`, `restaurant-final-economy-qa`,
+  `restaurant-economy-pass-qa` pass; e2e `tools/e2e/achievements.mjs` passes.
+- **Still to do:** re-baseline the suites pinned to the 250-level game
+  (economy-v2-final, economy-v25, economy-final, restaurant-campaign-sim,
+  restaurant-progress, progression-preview, restaurant-endgame, playables-ads,
+  usd-currency, inventory-screen, business-ux, inventory-market,
+  restaurant-backoffice and others); they failed before this change too.
+
 ## 150-level review fixes (2026-10-15, branch `codex/restaurant-map`)
 
 - **No single-ingredient dishes** (Level 1's first slice aside). 21 dishes gained

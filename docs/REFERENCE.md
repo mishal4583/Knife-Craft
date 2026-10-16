@@ -201,7 +201,8 @@ once). Restaurant browser tests run on the normal build, classic ones on a
   `restaurant-takeaway-qa`, `restaurant-service-report-qa`,
   `restaurant-cleanliness-qa`, `restaurant-day-clock-qa`,
   `restaurant-shift-chores-qa`, `restaurant-deliveries-qa`,
-  `restaurant-par-audit-qa`, `restaurant-half-wages-qa`, `restaurant-second-floor-qa` (browser:
+  `restaurant-par-audit-qa`, `restaurant-half-wages-qa`, `restaurant-second-floor-qa`,
+  `achievement-rewards-qa` (browser:
   `tools/e2e/restaurant*.mjs`).
 - Campaign / UX: `story-intro-qa`, `story-pause-qa`, `story-legacy-qa`, `audio-qa`,
   `campaign-paid-orders-qa`, `level-ux-qa`, `coaching-qa`,
@@ -1075,6 +1076,38 @@ preparation = PreparationScene; events = `events.ts`; platform =
   +2 h collect once, reload, Downstairs, widths 320 / 390 / 768).
 
 ## 7. ECONOMY RULES
+
+### Economy for the 150-level campaign (developer 2026-10-16)
+
+- **Level rewards:** `paidLevelReward` → `curatedLevelReward`,
+  `round(50 + 3.1 × (n − 1))` dollars by the new level number; L2 practice $0;
+  L150 keeps its stored $5,000. First clears total $46,585 (was $46,318, with a
+  zig-zag from the old 250-level bands).
+- **Achievements** (`progression/achievements.ts`, shown by
+  `kc/Achievements.tsx`): `achievementsFor(save)` = every `MILESTONES` entry
+  (same id, same reward) + reward ladders with `ach-<key>-<target>` ids:
+  recipes 10/25/50/100/150/all ($200 / $500 / $1.5k / $3k / $5k / $8k), knives
+  3/all ($300 / $4k), boards 3/all ($300 / $3k), kitchen stages 2/4 ($2k / $5k),
+  services 25/50/100/150 ($500 / $1.5k / $4k / $6k), spotless 1/10/25/50/100
+  ($100 / $600 / $1k / $2.5k / $5k), spotless streak 3/7/25/50/100 ($150 / $300 /
+  $1k / $2.5k / $5k), pieces washed 100/500/1000/2000 ($500 / $1.5k / $3k / $5k),
+  dine-in guests 100/250/500 ($1k / $2.5k / $5k), restaurant days 10/20
+  ($1k / $2.5k), daily streak 3/7 ($300 / $700), Endless stars 100 ($10k, after
+  the campaign).
+- **Collect:** `collectAchievement(save, id)` — reached and unclaimed → credit +
+  ONE `milestone-reward` ledger entry (description = the id) + id pushed to
+  `economy.claimedMilestoneIds`; otherwise `unknown` / `notReached` / `claimed` /
+  `automatic`. `collectAllAchievements` is used by the sim. The App grants only
+  the Family Legacy by itself (`grantEarnedMilestoneRewards(save, legacyOnly)`);
+  it announces each newly collectable reward once. The Kitchen rank badge, the
+  Progress entry and the nav badge show the money waiting. Old saves: anything
+  already paid or waived by the V2.5 migration stays claimed.
+- **Measured (sim, `economy-final-sim` / `restaurant-final-economy-qa`):**
+  completionist Local $132,466, Wholesale $132,664, Premium $133,854 (150/150,
+  supplier credit 4 uses, $138 in total); prudent ($500 reserve) $132,473, lowest
+  $432 after L10, no credit; never collects $7,662 (150/150, no soft-lock). The
+  Second Floor is extra on top and not simulated.
+- **Still pinned to the 250-level game** (fail until re-baselined): see HANDOFF.
 
 ### Economy V2 is frozen (with the approved V2.5 completion-reward change)
 

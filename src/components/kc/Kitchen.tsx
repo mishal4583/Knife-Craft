@@ -1,3 +1,4 @@
+import { collectableTotal } from "@/game/progression/achievements";
 import { dayClockFor, dayStripText, type DayLight } from "@/game/restaurant/dayClock";
 import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
 import { ENDLESS_RESTAURANT_NAME } from "@/game/restaurant/endlessRestaurant";
@@ -246,6 +247,14 @@ export function Kitchen({
               </p>
             </>
           )}
+          {collectableTotal(save) > 0 ? (
+            <span
+              data-testid="kitchen-achievements-waiting"
+              className="mt-1.5 block truncate whitespace-nowrap rounded-full bg-gold/90 px-2 py-0.5 font-ui text-[11px] font-extrabold text-walnut-dark"
+            >
+              💰 {formatUsd(collectableTotal(save))} to collect
+            </span>
+          ) : null}
         </button>
         <div className="flex shrink-0 items-center gap-2">
           <Coin n={save.credits} />
