@@ -54,7 +54,11 @@ export type LedgerCategory =
   /** Economy V2.5 — a one-time Restaurant Progress milestone reward (progression/milestoneRewards.ts). `description` is the milestone id; the entry itself is the record that it was paid, and EconomyLedger never trims it. */
   | "milestone-reward"
   /** Economy V2.5 — the one-time Level 250 FAMILY LEGACY reward ($50,000, milestoneRewards.ts). `description` is "campaign-complete"; never trimmed, so it can never be paid twice. */
-  | "family-legacy";
+  | "family-legacy"
+  /** Second Floor (restaurant/secondFloor.ts): buying or upgrading an automated station. */
+  | "automation-purchase"
+  /** Second Floor: income collected from the automated stations (real-time, capped). */
+  | "automation-income";
 
 /**
  * One real wallet-transaction record. `amount` is signed and is always

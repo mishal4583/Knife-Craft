@@ -201,7 +201,7 @@ once). Restaurant browser tests run on the normal build, classic ones on a
   `restaurant-takeaway-qa`, `restaurant-service-report-qa`,
   `restaurant-cleanliness-qa`, `restaurant-day-clock-qa`,
   `restaurant-shift-chores-qa`, `restaurant-deliveries-qa`,
-  `restaurant-par-audit-qa`, `restaurant-half-wages-qa` (browser:
+  `restaurant-par-audit-qa`, `restaurant-half-wages-qa`, `restaurant-second-floor-qa` (browser:
   `tools/e2e/restaurant*.mjs`).
 - Campaign / UX: `story-intro-qa`, `story-pause-qa`, `story-legacy-qa`, `audio-qa`,
   `campaign-paid-orders-qa`, `level-ux-qa`, `coaching-qa`,
@@ -1027,6 +1027,44 @@ preparation = PreparationScene; events = `events.ts`; platform =
 `PlayablesSDK.ts`; persistence = `SaveManager`. Do not duplicate any of them.
 
 ---
+
+### The Second Floor — automated food hall (developer 2026-10-16)
+
+- **Code:**
+  - `src/game/restaurant/secondFloor.ts` (logic);
+  - `src/components/kc/restaurantMap/SecondFloorView.tsx` (map, same CSS as the first
+    floor);
+  - art `public/restaurant-map/second-floor.webp` (source `art-source/second-floor-food-hall.png`).
+- **Unlock:** the floor opens at **Level 60**. The first-floor map shows "⬆ 2nd floor"
+  (`data-testid="upstairs"`), or "🔒 · Lv 60" before then.
+- **Stations** (buy once, upgrade to Lv 3; provisional numbers):
+
+  | Station | Opens | Buy | $/h at Lv 1 / 2 / 3 |
+  |---|---|---|---|
+  | Coffee | L60 | $3,000 | 15 / 30 / 50 |
+  | Drinks | L70 | $4,000 | 20 / 40 / 65 |
+  | Pizza | L85 | $6,000 | 30 / 60 / 100 |
+  | Burger | L100 | $7,500 | 35 / 70 / 115 |
+  | Ice Cream | L115 | $9,000 | 40 / 80 / 130 |
+  | Hot Food | L130 | $11,000 | 45 / 90 / 150 |
+
+  - Each station stores up to 8 / 10 / 12 hours of income.
+  - A fully upgraded floor earns about $610 an hour.
+- **Money:**
+  - real time (`Date.now()`); min(cap, rate × hours);
+  - a clock set back earns 0;
+  - the Pickup Counter's **Collect** pays everything with ONE `automation-income` ledger
+    entry and restarts every clock;
+  - buying and upgrading are all-or-nothing (`debitWallet`), one `automation-purchase` entry
+    each;
+  - an upgrade first banks the income already earned.
+- **Economy:** extra on top of the campaign economy (developer decision); not counted in the
+  $100k–$150k completionist target.
+- **Save:** `SaveData.business.secondFloor = { stations: { [id]: { level, lastCollectAt } } }`,
+  optional; absent = nothing owned.
+- **Tests:** `restaurant-second-floor-qa` (catalog, accrual / cap / clock, buy / upgrade,
+  collect once, saves); e2e `tools/e2e/restaurantsecondfloor.mjs` (L59 locked, L60 open, buy,
+  +2 h collect once, reload, Downstairs, widths 320 / 390 / 768).
 
 ## 7. ECONOMY RULES
 

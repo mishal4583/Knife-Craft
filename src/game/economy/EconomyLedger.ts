@@ -214,4 +214,6 @@ export const LEDGER_CATEGORY_LABEL: Record<LedgerCategory, string> = {
   "rewarded-ad": "Replay Bonus (ad)",
   "milestone-reward": "Milestone Reward",
   "family-legacy": "Family Legacy",
+  "automation-purchase": "Second Floor Station",
+  "automation-income": "Second Floor Income",
 };

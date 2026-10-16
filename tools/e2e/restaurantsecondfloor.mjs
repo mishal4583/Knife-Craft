@@ -1,0 +1,192 @@
+// The Second Floor (developer 2026-10-16), restaurant build:
+//   1. Level 59: the first-floor map's 2nd-floor button is locked ("Lv 60");
+//   2. Level 60: Upstairs opens the food hall; Coffee is for sale, Drinks is locked;
+//   3. buying Coffee debits the price once (one ledger entry);
+//   4. two hours later (the save's clock moved back 2 h) the Pickup Counter collects
+//      2 × the hourly rate — one ledger entry; a second tap pays nothing;
+//   5. a reload never pays it again; Downstairs returns to the first floor;
+//   6. it fits at 320 / 390 / 768 (screenshots), no page errors.
+// Prints PASS/FAIL per check and exits 1 on any failure.
+import {
+  MOVED_IN_BUSINESS,
+  launch,
+  boot,
+  seedSave,
+  sleep,
+  readSave,
+  writeSave,
+  shot,
+  text,
+} from "./harness.mjs";
+
+const results = [];
+const check = (id, ok, detail) => {
+  results.push({ id, ok, detail });
+  console.log(`${ok ? "PASS" : "FAIL"} ${id}`, detail === undefined ? "" : JSON.stringify(detail));
+};
+const flat = async (page) => (await text(page)).replace(/\s+/g, " ");
+const atLevel = (n, credits = 1_000_000) =>
+  seedSave({
+    credits,
+    business: { ...MOVED_IN_BUSINESS },
+    levelProgress: {
+      currentLevelId: `level-${n}`,
+      highestUnlockedLevelId: `level-${n}`,
+      completedLevelIds: Array.from({ length: n - 1 }, (_, i) => `level-${i + 1}`),
+      campaignVersion: 2,
+    },
+    story: { introDone: true, milestoneMask: 0xffff, finaleSeen: true },
+  });
+const openMap = async (page) => {
+  await page.evaluate(() => document.querySelector('[data-nav="restaurant-map"]')?.click());
+  await page.waitForSelector('[data-testid="upstairs"]', { timeout: 15000 });
+};
+const tapZone = (page, re) =>
+  page.evaluate((src) => {
+    const z = [...document.querySelectorAll('[data-testid="second-floor"] .map-hotspot-zone')].find(
+      (e) => new RegExp(src).test(e.getAttribute("aria-label") ?? ""),
+    );
+    z?.click();
+    return !!z;
+  }, re.source);
+const clickText = (page, re) =>
+  page.evaluate((src) => {
+    const b = [...document.querySelectorAll("button")].find((x) =>
+      new RegExp(src).test(x.textContent ?? ""),
+    );
+    if (b && !b.disabled) b.click();
+    return b ? !b.disabled : false;
+  }, re.source);
+
+const { browser, page, logs } = await launch();
+
+// ---------- 1. Locked at 59 ----------
+await boot(page, atLevel(59));
+await openMap(page);
+const lockedLabel = await page.$eval('[data-testid="upstairs"]', (b) => b.textContent);
+await page.evaluate(() => document.querySelector('[data-testid="upstairs"]').click());
+await sleep(600);
+check(
+  "1 Level 59: the 2nd-floor button is locked and does nothing",
+  /🔒 2nd floor · Lv 60/.test(lockedLabel) && !(await page.$('[data-testid="second-floor"]')),
+  { lockedLabel },
+);
+
+// ---------- 2. Open at 60 ----------
+await boot(page, atLevel(60));
+await openMap(page);
+await page.evaluate(() => document.querySelector('[data-testid="upstairs"]').click());
+await page.waitForSelector('[data-testid="second-floor"]', { timeout: 15000 });
+await sleep(800);
+await shot(page, "second-floor-390");
+const zones = await page.$$eval('[data-testid="second-floor"] .map-hotspot-zone', (els) =>
+  els.map((e) => e.getAttribute("aria-label")),
+);
+check(
+  "2 Level 60: Upstairs opens the food hall; Coffee is for sale, Drinks waits for Level 70",
+  zones.some((z) => /^Smart Coffee & Espresso$/.test(z)) &&
+    zones.some((z) => /Drinks Dispenser — opens at Level 70/.test(z)) &&
+    zones.some((z) => /Ice Cream Station/.test(z)) &&
+    zones.length === 9,
+  zones,
+);
+
+// ---------- 3. Buy Coffee ----------
+const s0 = await readSave(page);
+await tapZone(page, /^Smart Coffee/);
+await sleep(300);
+await clickText(page, /^Buy for \$3,000\.00$/);
+await sleep(600);
+const s1 = await readSave(page);
+const buys = s1.economyLedger.filter((e) => e.category === "automation-purchase");
+check(
+  "3 buying Coffee debits $3,000 once, with one ledger entry",
+  s1.credits === s0.credits - 300000 &&
+    buys.length === 1 &&
+    s1.business.secondFloor?.stations?.coffee?.level === 1,
+  { credits: [s0.credits, s1.credits], buys: buys.length },
+);
+
+// ---------- 4. Two hours later: collect ----------
+const moved = structuredClone(s1);
+moved.business.secondFloor.stations.coffee.lastCollectAt -= 2 * 3_600_000;
+await writeSave(page, moved);
+await page.reload({ waitUntil: "domcontentloaded" });
+await sleep(2500);
+await openMap(page);
+await page.evaluate(() => document.querySelector('[data-testid="upstairs"]').click());
+await page.waitForSelector('[data-testid="second-floor"]', { timeout: 15000 });
+await sleep(500);
+const s2 = await readSave(page);
+await tapZone(page, /^Pickup Counter/);
+await sleep(300);
+const collected = await clickText(page, /^Collect \$/);
+await sleep(600);
+const s3 = await readSave(page);
+const incomes = s3.economyLedger.filter((e) => e.category === "automation-income");
+await shot(page, "second-floor-collected");
+const again = await clickText(page, /^Collect \$/);
+await sleep(400);
+const s4 = await readSave(page);
+check(
+  "4 two hours later the Pickup Counter collects 2 × $15 — one ledger entry; a second tap pays nothing",
+  collected &&
+    s3.credits - s2.credits >= 3000 &&
+    s3.credits - s2.credits < 3100 &&
+    incomes.length === 1 &&
+    !again &&
+    s4.credits === s3.credits,
+  { gained: s3.credits - s2.credits, incomes: incomes.length, again },
+);
+
+// ---------- 5. Reload; Downstairs ----------
+await page.reload({ waitUntil: "domcontentloaded" });
+await sleep(2500);
+const s5 = await readSave(page);
+await openMap(page);
+await page.evaluate(() => document.querySelector('[data-testid="upstairs"]').click());
+await page.waitForSelector('[data-testid="second-floor"]', { timeout: 15000 });
+await clickText(page, /Downstairs/);
+await sleep(800);
+check(
+  "5 a reload pays nothing more; Downstairs returns to the first-floor map",
+  s5.credits === s4.credits &&
+    s5.economyLedger.filter((e) => e.category === "automation-income").length === 1 &&
+    !!(await page.$('[data-testid="upstairs"]')) &&
+    !(await page.$('[data-testid="second-floor"]')),
+);
+
+// ---------- 6. Widths ----------
+const fits = {};
+for (const [w, h] of [
+  [320, 568],
+  [390, 844],
+  [768, 1024],
+]) {
+  await page.setViewport({ width: w, height: h, deviceScaleFactor: 1 });
+  await sleep(300);
+  await page.evaluate(() => document.querySelector('[data-testid="upstairs"]')?.click());
+  await page.waitForSelector('[data-testid="second-floor"]', { timeout: 15000 });
+  await sleep(700);
+  await shot(page, `second-floor-${w}`);
+  fits[w] = await page.evaluate(() => ({
+    overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    shown: !!document.querySelector('[data-testid="second-floor"] img'),
+  }));
+  await clickText(page, /Downstairs/);
+  await sleep(500);
+}
+check(
+  "6 fits at 320 / 390 / 768",
+  Object.values(fits).every((f) => f.shown && f.overflow <= 0),
+  fits,
+);
+
+const errors = logs.filter((l) => /pageerror|error:/.test(l) && !/favicon/.test(l));
+check("7 no page errors", errors.length === 0, errors.slice(0, 5));
+await browser.close();
+const failed = results.filter((r) => !r.ok);
+console.log(
+  failed.length ? `SECOND FLOOR E2E: ${failed.length} FAILURE(S)` : "SECOND FLOOR E2E: ALL PASS",
+);
+process.exit(failed.length ? 1 : 0);

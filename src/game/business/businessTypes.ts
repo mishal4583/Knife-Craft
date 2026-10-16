@@ -8,6 +8,7 @@ import type { GrandmasToolsState } from "../restaurant/kitchenTools";
 import type { RestaurantRecord } from "../restaurant/serviceReport";
 import type { CleanlinessState } from "../restaurant/cleanliness";
 import type { DeliveriesState } from "../restaurant/deliveries";
+import type { SecondFloorState } from "../restaurant/secondFloor";
 import type { EndlessStarsState } from "../restaurant/restaurantStanding";
 /**
  * BUSINESS_TYPES — Economy V3's own persisted-state container. A single
@@ -165,6 +166,11 @@ export type BusinessState = {
    * Business Day (restaurantEvents.todaysSpecialBonus). Absent = not served.
    */
   todaysSpecialServedDay?: number;
+  /**
+   * The Second Floor's automated stations (restaurant/secondFloor.ts): owned
+   * stations, their level and last collect time. Absent = nothing owned.
+   */
+  secondFloor?: SecondFloorState;
 };
 
 export const DEFAULT_BUSINESS_STATE: BusinessState = {

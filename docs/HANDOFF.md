@@ -84,6 +84,10 @@ conversation.
 
 ## 3. Current status (2026-10-15)
 
+- **2026-10-16: the Second Floor**, an automated food hall that earns money per real hour,
+  is on `main`. It opens at L60, with six stations to buy and upgrade, and Collect at the
+  Pickup Counter. The numbers are provisional. Details: REFERENCE, section before §7.
+
 - **2026-10-16: `main` = the `codex/restaurant-map` build** (the 150-level
   campaign, restaurant map, achievements, review fixes), pushed at the
   developer's request. The 250-era QA suites and the economy suites still

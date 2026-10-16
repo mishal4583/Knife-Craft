@@ -1,0 +1,264 @@
+/**
+ * The Second Floor — an automated food hall (developer 2026-10-16).
+ *
+ * Opens at Level 60. Each station is bought once, then upgraded to Lv 3; an
+ * owned station earns a fixed amount per REAL hour, even while the game is
+ * closed, up to a storage cap (hours of income it can hold). The player
+ * collects at the Pickup Counter: one wallet credit, ONE ledger entry
+ * ("automation-income"), and every station's timer restarts. Money here is
+ * extra on top of the campaign economy (developer decision).
+ *
+ * Clock rules (the wallet never goes wrong): earnings = min(cap, rate × hours
+ * since the last collect); a clock set backwards earns nothing and never
+ * goes negative; a jump forward is still capped. Nothing earns before the
+ * station is bought. Buying and upgrading are all-or-nothing through
+ * `debitWallet`, with one "automation-purchase" ledger entry each.
+ *
+ * State lives in `SaveData.business.secondFloor` (absent on older saves =
+ * nothing owned). Times are epoch milliseconds passed in by the caller
+ * (`Date.now()` in the app), so this module stays pure and testable.
+ */
+import type { SaveData } from "../SaveManager";
+import { appendLedgerEntry } from "../economy/EconomyLedger";
+import { debitWallet } from "../economy/wallet";
+import { dollars } from "../money";
+
+export const SECOND_FLOOR_OPENS_AT = 60;
+export const MAX_STATION_LEVEL = 3;
+const HOUR_MS = 3_600_000;
+
+export type StationId = "coffee" | "drinks" | "pizza" | "burger" | "iceCream" | "hotFood";
+
+export type StationDefinition = {
+  id: StationId;
+  name: string;
+  icon: string;
+  /** What the machines are (one line for the station panel). */
+  blurb: string;
+  /** Campaign level it can be bought from. */
+  unlockLevel: number;
+  /** Purchase price (cents). */
+  price: number;
+  /** Upgrade to Lv 2 and Lv 3 (cents). */
+  upgradePrices: readonly [number, number];
+  /** Cents earned per real hour at Lv 1, 2, 3. */
+  perHour: readonly [number, number, number];
+  /** Hours of income the station stores at Lv 1, 2, 3. */
+  capHours: readonly [number, number, number];
+};
+
+const CAP_HOURS = [8, 10, 12] as const;
+
+/** Provisional numbers (developer 2026-10-16) — tune after play testing. */
+export const STATIONS: readonly StationDefinition[] = [
+  {
+    id: "coffee",
+    name: "Smart Coffee & Espresso",
+    icon: "☕",
+    blurb: "Bean-to-cup machines grind, tamp, brew and steam milk by themselves.",
+    unlockLevel: 60,
+    price: dollars(3_000),
+    upgradePrices: [dollars(4_000), dollars(8_000)],
+    perHour: [dollars(15), dollars(30), dollars(50)],
+    capHours: CAP_HOURS,
+  },
+  {
+    id: "drinks",
+    name: "Drinks Dispenser",
+    icon: "🥤",
+    blurb: "Touchscreen fountain, juices and mocktails mixed to order.",
+    unlockLevel: 70,
+    price: dollars(4_000),
+    upgradePrices: [dollars(5_000), dollars(10_000)],
+    perHour: [dollars(20), dollars(40), dollars(65)],
+    capHours: CAP_HOURS,
+  },
+  {
+    id: "pizza",
+    name: "Auto Pizza Station",
+    icon: "🍕",
+    blurb: "A robot arm presses the dough, tops it and bakes a pizza in minutes.",
+    unlockLevel: 85,
+    price: dollars(6_000),
+    upgradePrices: [dollars(8_000), dollars(15_000)],
+    perHour: [dollars(30), dollars(60), dollars(100)],
+    capHours: CAP_HOURS,
+  },
+  {
+    id: "burger",
+    name: "Burger Station",
+    icon: "🍔",
+    blurb: "Grills the patty, toasts the bun and stacks every burger the same.",
+    unlockLevel: 100,
+    price: dollars(7_500),
+    upgradePrices: [dollars(10_000), dollars(18_000)],
+    perHour: [dollars(35), dollars(70), dollars(115)],
+    capHours: CAP_HOURS,
+  },
+  {
+    id: "iceCream",
+    name: "Ice Cream Station",
+    icon: "🍦",
+    blurb: "Three soft-serve machines and a topping bar, cones always ready.",
+    unlockLevel: 115,
+    price: dollars(9_000),
+    upgradePrices: [dollars(12_000), dollars(22_000)],
+    perHour: [dollars(40), dollars(80), dollars(130)],
+    capHours: CAP_HOURS,
+  },
+  {
+    id: "hotFood",
+    name: "Hot Food & Fried Items",
+    icon: "🍟",
+    blurb: "Auto fryers lift, shake and drain fries and wings into warm holding bays.",
+    unlockLevel: 130,
+    price: dollars(11_000),
+    upgradePrices: [dollars(14_000), dollars(26_000)],
+    perHour: [dollars(45), dollars(90), dollars(150)],
+    capHours: CAP_HOURS,
+  },
+];
+
+export type OwnedStation = { level: number; lastCollectAt: number };
+export type SecondFloorState = { stations: Partial<Record<StationId, OwnedStation>> };
+
+export function stationDef(id: StationId): StationDefinition {
+  return STATIONS.find((s) => s.id === id)!;
+}
+
+/** The saved floor (absent on older saves = nothing owned); bad values are dropped. */
+export function secondFloorOf(save: SaveData): SecondFloorState {
+  const raw = save.business.secondFloor?.stations ?? {};
+  const stations: SecondFloorState["stations"] = {};
+  for (const def of STATIONS) {
+    const s = raw[def.id];
+    if (!s) continue;
+    const level = Math.min(MAX_STATION_LEVEL, Math.max(1, Math.floor(Number(s.level) || 0)));
+    const lastCollectAt = Number.isFinite(s.lastCollectAt) ? s.lastCollectAt : 0;
+    stations[def.id] = { level, lastCollectAt };
+  }
+  return { stations };
+}
+
+function withFloor(save: SaveData, floor: SecondFloorState): SaveData {
+  return { ...save, business: { ...save.business, secondFloor: floor } };
+}
+
+export function isSecondFloorOpen(reachedLevel: number): boolean {
+  return reachedLevel >= SECOND_FLOOR_OPENS_AT;
+}
+
+/** Cents waiting at one owned station at `now` (0 when not owned). */
+export function stationEarnings(
+  def: StationDefinition,
+  owned: OwnedStation | undefined,
+  now: number,
+): number {
+  if (!owned) return 0;
+  const i = owned.level - 1;
+  const hours = Math.max(0, now - owned.lastCollectAt) / HOUR_MS;
+  const capped = Math.min(hours, def.capHours[i]!);
+  return Math.floor(capped * def.perHour[i]!);
+}
+
+export function stationCap(def: StationDefinition, owned: OwnedStation): number {
+  const i = owned.level - 1;
+  return def.capHours[i]! * def.perHour[i]!;
+}
+
+/** Everything waiting on the floor at `now` (cents). */
+export function floorEarnings(save: SaveData, now: number): number {
+  const floor = secondFloorOf(save);
+  return STATIONS.reduce((t, d) => t + stationEarnings(d, floor.stations[d.id], now), 0);
+}
+
+/** The floor's total rate (cents per hour). */
+export function floorPerHour(save: SaveData): number {
+  const floor = secondFloorOf(save);
+  return STATIONS.reduce((t, d) => {
+    const s = floor.stations[d.id];
+    return t + (s ? d.perHour[s.level - 1]! : 0);
+  }, 0);
+}
+
+export type FloorResult =
+  | { ok: true; save: SaveData; amount: number }
+  | {
+      ok: false;
+      reason: "locked" | "owned" | "notOwned" | "maxLevel" | "insufficientFunds" | "nothing";
+    };
+
+/** Buys a station (all-or-nothing). Its clock starts at `now`. */
+export function buyStation(
+  save: SaveData,
+  id: StationId,
+  reachedLevel: number,
+  now: number,
+): FloorResult {
+  const def = stationDef(id);
+  const floor = secondFloorOf(save);
+  if (!isSecondFloorOpen(reachedLevel) || reachedLevel < def.unlockLevel) {
+    return { ok: false, reason: "locked" };
+  }
+  if (floor.stations[id]) return { ok: false, reason: "owned" };
+  const paid = debitWallet(save, def.price);
+  if (!paid.ok) return { ok: false, reason: "insufficientFunds" };
+  const next = withFloor(paid.save, {
+    stations: { ...floor.stations, [id]: { level: 1, lastCollectAt: now } },
+  });
+  return {
+    ok: true,
+    amount: def.price,
+    save: appendLedgerEntry(next, "automation-purchase", -def.price, `${id}-buy`),
+  };
+}
+
+/**
+ * Upgrades a station one level (all-or-nothing). Income already earned at
+ * the old rate is kept: it is paid into the wallet in the same step (its own
+ * "automation-income" entry), so the new rate starts from zero at `now`.
+ */
+export function upgradeStation(save: SaveData, id: StationId, now: number): FloorResult {
+  const def = stationDef(id);
+  const floor = secondFloorOf(save);
+  const owned = floor.stations[id];
+  if (!owned) return { ok: false, reason: "notOwned" };
+  if (owned.level >= MAX_STATION_LEVEL) return { ok: false, reason: "maxLevel" };
+  const price = def.upgradePrices[owned.level - 1]!;
+  const waiting = stationEarnings(def, owned, now);
+  // The waiting income counts toward the price (it is the player's money).
+  const credited = appendLedgerEntry(
+    { ...save, credits: save.credits + waiting },
+    "automation-income",
+    waiting,
+    `${id}-collect`,
+  );
+  const paid = debitWallet(credited, price);
+  if (!paid.ok) return { ok: false, reason: "insufficientFunds" };
+  const next = withFloor(paid.save, {
+    stations: { ...floor.stations, [id]: { level: owned.level + 1, lastCollectAt: now } },
+  });
+  return {
+    ok: true,
+    amount: price,
+    save: appendLedgerEntry(next, "automation-purchase", -price, `${id}-lv${owned.level + 1}`),
+  };
+}
+
+/**
+ * Collects everything waiting on the floor: one credit, ONE ledger entry,
+ * and every owned station's clock restarts at `now`. Nothing waiting → no
+ * change and no entry (a second tap pays nothing).
+ */
+export function collectFloor(save: SaveData, now: number): FloorResult {
+  const floor = secondFloorOf(save);
+  const amount = floorEarnings(save, now);
+  if (amount <= 0) return { ok: false, reason: "nothing" };
+  const stations: SecondFloorState["stations"] = {};
+  for (const def of STATIONS) {
+    const s = floor.stations[def.id];
+    if (s) stations[def.id] = { level: s.level, lastCollectAt: now };
+  }
+  const next = withFloor({ ...save, credits: save.credits + amount }, { stations });
+  return { ok: true, amount, save: appendLedgerEntry(next, "automation-income", amount, "floor") };
+}

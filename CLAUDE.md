@@ -39,7 +39,7 @@ status line in HANDOFF; this file changes only when a RULE changes.
   goes in `SaveData.economyLedger`.
 - **Reference-only folders** (not in the build): `Knifecraft vegetables/`,
   `Knifecraft Phase 1 review/`, `Shop UI/`, `knifecraft_kitchen_webp/`,
-  `Market.png`, `*.docx`, the root `*.md` audits.
+  `Market.png`, `*.docx`, the root `*.md` audits, `art-source/` (source art).
 - **Playgama assets:** `playgama/covers/` (`source/`, `upload/`) and
   `playgama/screenshots/`.
 
@@ -181,6 +181,8 @@ Release zip: the CONTENTS of `dist/` →
 - **Saves:** keep old saves working (missing fields, old shapes, legacy
   keys); never drop known fields; migrate with the nested pattern in
   `SaveManager`.
+- **Second Floor income** (`restaurant/secondFloor.ts`) is real time, capped, and
+  collected with one ledger entry. It is extra on top of the campaign economy.
 - **Never negative:** credits, inventory, capacity, menu price, equipment
   condition, popularity.
 

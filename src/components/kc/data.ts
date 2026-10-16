@@ -40,6 +40,8 @@
 export type ScreenId =
   /** The always-available Restaurant map hub in the bottom navigation. */
   | "restaurant-map"
+  /** The Second Floor: the automated food hall (restaurant/secondFloor.ts). */
+  | "second-floor"
   | "gameplay"
   | "kitchen"
   | "board"

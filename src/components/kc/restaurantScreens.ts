@@ -10,3 +10,4 @@ export { BusinessDashboard } from "./business/BusinessDashboard";
 export { BusinessService } from "./business/BusinessService";
 export { InventoryScreen } from "./inventory/InventoryScreen";
 export { default as RestaurantMap } from "./restaurantMap/RestaurantMapView";
+export { default as SecondFloorView } from "./restaurantMap/SecondFloorView";

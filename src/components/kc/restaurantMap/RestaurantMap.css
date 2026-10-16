@@ -143,6 +143,11 @@
 }
 
 /* Illustrated floor plan */
+.restaurant-map-stage.is-second-floor {
+  /* second-floor.webp is 941 × 1672 (developer art, 2026-10-16). */
+  aspect-ratio: 941 / 1672;
+}
+
 .restaurant-map-picture {
   position: absolute;
   inset: 0;

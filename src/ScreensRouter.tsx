@@ -16,6 +16,13 @@ import type { PurchaseIngredientResult } from "@/game/business/BusinessInventory
 import type { PurchaseSupplyResult } from "@/game/business/BusinessSuppliesManager";
 import { openMarketSupplies, peekSupplySection } from "@/components/kc/marketFocus";
 import type { RestaurantZoneId } from "@/components/kc/restaurantMap/restaurantMap";
+import type { SecondFloorAction } from "@/components/kc/restaurantMap/SecondFloorView";
+import {
+  SECOND_FLOOR_OPENS_AT,
+  floorEarnings,
+  isSecondFloorOpen,
+  type FloorResult,
+} from "@/game/restaurant/secondFloor";
 import type { PurchaseRefrigeratorResult } from "@/game/business/RefrigeratorManager";
 import type { DiscardExpiredResult } from "@/game/business/discardExpired";
 import type { PerformMaintenanceResult } from "@/game/business/businessMaintenance";
@@ -60,6 +67,9 @@ const InventoryScreen = lazy(() =>
 );
 const RestaurantMap = lazy(() =>
   loadRestaurantScreens().then((m) => ({ default: m.RestaurantMap })),
+);
+const SecondFloorView = lazy(() =>
+  loadRestaurantScreens().then((m) => ({ default: m.SecondFloorView })),
 );
 
 /** Shown for the moment the Restaurant chunk takes to arrive: the screen's own frame, never a blank. */
@@ -133,6 +143,7 @@ export function ScreensRouter({
   businessServiceSession,
   onStartBusinessService,
   onEnterBusinessPreparation,
+  secondFloorAction,
 }: {
   screen: ScreenId;
   go: (s: ScreenId) => void;
@@ -197,6 +208,8 @@ export function ScreensRouter({
   businessServiceSession: ServiceSession | null;
   onStartBusinessService: () => void;
   onEnterBusinessPreparation: () => void;
+  /** The Second Floor: buy / upgrade a station or collect (restaurant/secondFloor.ts). */
+  secondFloorAction: (action: SecondFloorAction) => FloorResult;
 }) {
   const [mapReturnAvailable, setMapReturnAvailable] = useState(false);
 
@@ -243,6 +256,46 @@ export function ScreensRouter({
                 attentionSymbols={attentionBadges.mapSymbols}
                 currentScreen={screen}
                 onNavigateToScreen={openMapDestination}
+              />
+              {(() => {
+                const level = restaurantLevelOf(save.levelProgress);
+                const open = isSecondFloorOpen(level);
+                const waiting = open && floorEarnings(save, Date.now()) > 0;
+                return (
+                  <button
+                    type="button"
+                    data-testid="upstairs"
+                    className={`press absolute bottom-24 right-3 z-20 min-h-12 rounded-2xl border px-4 font-ui text-[13px] font-extrabold shadow-lift ${
+                      open
+                        ? "border-walnut-dark/40 bg-walnut text-ivory"
+                        : "border-walnut/20 bg-ivory/90 text-walnut/60"
+                    }`}
+                    aria-label={
+                      open
+                        ? `Upstairs to the second floor${waiting ? ", money waiting" : ""}`
+                        : `Second floor opens at Level ${SECOND_FLOOR_OPENS_AT}`
+                    }
+                    onClick={() => (open ? routeGo("second-floor") : undefined)}
+                  >
+                    {open
+                      ? `⬆ 2nd floor${waiting ? " 💰" : ""}`
+                      : `🔒 2nd floor · Lv ${SECOND_FLOOR_OPENS_AT}`}
+                  </button>
+                );
+              })()}
+              <BottomNav active="restaurant-map" go={routeGo} />
+            </div>
+          </Suspense>
+        ) : null}
+        {screen === "second-floor" ? (
+          <Suspense fallback={<RestaurantLoading go={routeGo} active="restaurant-map" />}>
+            <div className="relative h-full w-full overflow-hidden bg-[#f7edd7]">
+              <SecondFloorView
+                save={save}
+                playerLevel={restaurantLevelOf(save.levelProgress)}
+                reducedMotion={save.settings.reducedMotion}
+                onAction={secondFloorAction}
+                onDownstairs={() => routeGo("restaurant-map")}
               />
               <BottomNav active="restaurant-map" go={routeGo} />
             </div>

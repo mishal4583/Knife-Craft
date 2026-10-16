@@ -38,11 +38,12 @@ assert(
     /const loadRestaurantScreens = \(\) => import\("@\/components\/kc\/restaurantScreens"\)/.test(
       router,
     ) &&
-    // Four since the restaurant map (developer 2026-10-15): the map joined the lazy chunk.
-    (router.match(/lazy\(\(\) =>\s*loadRestaurantScreens\(\)/g) ?? []).length === 4 &&
-    (router.match(/<Suspense fallback=\{<RestaurantLoading/g) ?? []).length === 4 &&
+    // Four since the restaurant map (developer 2026-10-15), five with the second
+    // floor (2026-10-16): both maps live in the lazy restaurant chunk.
+    (router.match(/lazy\(\(\) =>\s*loadRestaurantScreens\(\)/g) ?? []).length === 5 &&
+    (router.match(/<Suspense fallback=\{<RestaurantLoading/g) ?? []).length === 5 &&
     /Opening the restaurant…/.test(router),
-  "L1: the four Restaurant screens (map included) are lazy from one module, each in Suspense with a loading state",
+  "L1: the five Restaurant screens (both map floors included) are lazy from one module, each in Suspense with a loading state",
 );
 
 function walk(dir: string, out: string[] = []): string[] {

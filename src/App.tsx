@@ -42,6 +42,13 @@ import {
 } from "@/game/levels/LevelManager";
 import { LEVELS } from "@/game/levels/levelDefinitions";
 import { payChapterOf } from "@/game/levels/levelMastery";
+import type { SecondFloorAction } from "@/components/kc/restaurantMap/SecondFloorView";
+import {
+  buyStation,
+  collectFloor,
+  upgradeStation,
+  type FloorResult,
+} from "@/game/restaurant/secondFloor";
 import { knifeOrDefault } from "@/game/knives/knifeDefinitions";
 import {
   effectiveKnife,
@@ -802,6 +809,22 @@ export function App() {
   }
 
   /** Economy V2.5 — Restaurant Development: build the next kitchen tier (KitchenUpgradeManager.purchaseKitchenUpgrade), recorded as "kitchen-investment-purchase". */
+  /** The Second Floor (restaurant/secondFloor.ts): buy / upgrade a station, or collect. */
+  function secondFloorAction(action: SecondFloorAction): FloorResult {
+    // The latest persisted save, so a double tap can't buy or collect twice.
+    const current = saveRef.current;
+    if (!current) return { ok: false, reason: "nothing" };
+    const now = Date.now();
+    const result =
+      action.kind === "collect"
+        ? collectFloor(current, now)
+        : action.kind === "buy"
+          ? buyStation(current, action.id, restaurantLevelOf(current.levelProgress), now)
+          : upgradeStation(current, action.id, now);
+    if (result.ok) persist(result.save);
+    return result;
+  }
+
   function buildKitchenUpgrade(id: string) {
     // The latest persisted save (not the render closure): a double tap
     // before re-render sees the tier already built and buys nothing.
@@ -2956,6 +2979,7 @@ export function App() {
               performRefrigeratorMaintenance={performRefrigeratorMaintenance}
               rushRestock={rushRestockCurrentOrder}
               buildKitchenUpgrade={buildKitchenUpgrade}
+              secondFloorAction={secondFloorAction}
               rushAdAvailable={rewardedAdsAvailable()}
               setMenuPrice={setMenuPrice}
               setBusinessDishActive={setBusinessDishActive}
