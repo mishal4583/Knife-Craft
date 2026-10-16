@@ -1,3 +1,4 @@
+import { staffOnMap } from "@/game/restaurant/staffLife";
 import type { DeliveryKind } from "@/game/restaurant/deliveries";
 import type { CleanlinessAction, CleanlinessActionResult } from "@/game/restaurant/cleanliness";
 import { Suspense, lazy, useState } from "react";
@@ -256,6 +257,7 @@ export function ScreensRouter({
                 kitchenMapImage={kitchenMapImageUrl(save.equippedKitchenUpgradeId)}
                 fridgeTier={fridgeTier}
                 reducedMotion={save.settings.reducedMotion}
+                staffOnMap={staffOnMap(save.business.staff.hiredRoles)}
                 attentionCounts={attentionBadges.map}
                 attentionSymbols={attentionBadges.mapSymbols}
                 currentScreen={screen}

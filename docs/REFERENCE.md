@@ -202,7 +202,7 @@ once). Restaurant browser tests run on the normal build, classic ones on a
   `restaurant-cleanliness-qa`, `restaurant-day-clock-qa`,
   `restaurant-shift-chores-qa`, `restaurant-deliveries-qa`,
   `restaurant-par-audit-qa`, `restaurant-half-wages-qa`, `restaurant-second-floor-qa`,
-  `restaurant-floor-life-qa`,
+  `restaurant-floor-life-qa`, (browser: also `restaurantstafflife.mjs`)
   `achievement-rewards-qa` (browser:
   `tools/e2e/restaurant*.mjs`).
 - Campaign / UX: `story-intro-qa`, `story-pause-qa`, `story-legacy-qa`, `audio-qa`,
@@ -1093,6 +1093,16 @@ preparation = PreparationScene; events = `events.ts`; platform =
     Motion setting, like the first floor's guests. The people are the first floor's
     (`restaurantMap/GuestPoses.tsx`, shared).
   - Tests: `restaurant-floor-life-qa`; e2e `restaurantsecondfloor.mjs` check 3c.
+- **First-floor staff life** (developer 2026-10-16): `restaurant/staffLife.ts` +
+  `restaurantMap/StaffLife.tsx`, drawn by the shared `MapCast` (FloorLife.tsx). Only the six
+  roles the game has (`BusinessStaffRole`) and only the hired ones
+  (`business.staff.hiredRoles`); there is no toilet-cleaner role, the Cleaner does the
+  restroom. The map is crowded, so each keeps to a short loop in its own room (measured on
+  the art on a 2 % grid): Line Cook at the range, Prep Cook on the kitchen's left aisle, Head
+  Chef (tall toque) on the right aisle to the pass, Server from the pass to two tables, Cleaner
+  in the restroom, Manager at the office desk and round the office. `staffOnMap` shows all six
+  while `FLOOR_LIFE_ALWAYS_PREVIEW` or the test switch is on. Tests: floor-life QA section F;
+  e2e `tools/e2e/restaurantstafflife.mjs`.
 - **Economy:** extra on top of the campaign economy (developer decision); not counted in the
   $100k–$150k completionist target.
 - **Save:** `SaveData.business.secondFloor = { stations: { [id]: { level, lastCollectAt } } }`,

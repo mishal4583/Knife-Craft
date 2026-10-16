@@ -104,8 +104,9 @@ conversation.
   is on `main`. Players can visit it from L10; all six stations go on sale at L60 and stay
   locked until bought. Stations upgrade, and Collect is at the Pickup Counter. Floor life:
   servers carry food from the machines to the counter, guests eat, cleaners wipe tables
-  (`floorLife.ts` / `FloorLife.tsx`). TEMPORARY: `FLOOR_LIFE_ALWAYS_PREVIEW = true` shows the
-  full cast on every build for the developer's testing; turn it off before release. The numbers are provisional. Details: REFERENCE, section before §7.
+  (`floorLife.ts` / `FloorLife.tsx`). First-floor staff at work on the
+  map (`staffLife.ts`, hired roles only). TEMPORARY: `FLOOR_LIFE_ALWAYS_PREVIEW = true` shows the
+  full cast (both floors) on every build for the developer's testing; turn it off before release. The numbers are provisional. Details: REFERENCE, section before §7.
 
 - **2026-10-16: `main` = the `codex/restaurant-map` build** (the 150-level
   campaign, restaurant map, achievements, review fixes), pushed at the

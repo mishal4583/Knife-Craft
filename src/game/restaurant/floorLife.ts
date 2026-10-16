@@ -24,11 +24,12 @@ export type Spot = { x: number; y: number };
 export type Stop = Spot & {
   hold?: number;
   /** What the person does while there (drives the pose and the bubble). */
-  pose?: "sit" | "pick" | "drop" | "clean" | "away";
+  pose?: "sit" | "pick" | "drop" | "clean" | "work" | "away";
 };
 export type FloorActor = {
   id: string;
-  kind: "guest" | "server" | "cleaner";
+  /** guest / server / cleaner on both floors; cook, chef and manager on the first floor. */
+  kind: "guest" | "server" | "cleaner" | "cook" | "chef" | "manager";
   /** Food shown in the bubble or on the tray (a station's icon). */
   food?: string;
   outfit: string;

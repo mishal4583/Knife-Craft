@@ -1191,6 +1191,21 @@
   background: #3f6f70;
 }
 
+/* First-floor staff (StaffLife): cooks in white caps, the Head Chef in a tall toque. */
+.floor-actor--chef .floor-cap {
+  top: -10%;
+  width: 40%;
+  height: 22%;
+  border-radius: 45% 45% 15% 15%;
+}
+
+.floor-carry--cook,
+.floor-carry--chef,
+.floor-carry--manager {
+  bottom: 58%;
+  left: 80%;
+}
+
 .floor-carry {
   position: absolute;
   left: 50%;

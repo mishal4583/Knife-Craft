@@ -68,6 +68,8 @@ export interface RestaurantMapProps {
   onNavigateToScreen: (screen: ScreenId, zoneId: RestaurantZoneId) => void;
   /** The Settings → Reduced motion preference. */
   reducedMotion?: boolean;
+  /** The hired staff drawn at work on the map (StaffLife), and whether it is the testing preview. */
+  staffOnMap?: { roles: readonly string[]; preview: boolean };
   /** Live, derived count of open attention items for each map room. */
   attentionCounts?: Partial<Record<RestaurantZoneId, number>>;
   /** Contextual emoji pictograms for every active issue type in a map room. */

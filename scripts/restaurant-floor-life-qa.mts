@@ -11,6 +11,8 @@
  *     the door; the keyframes run 0 → 100 in order.
  *  S  Seats: guests sit on the measured chairs; cleaners wipe from the table
  *     sides, never on a chair; guests at the counter don't stand on each other.
+ *  F  First-floor staff: only the six roles the game has, only the hired ones
+ *     (all six as the testing preview), each in its own room.
  *  D  Deterministic: the same floor gives the same cast; no Math.random.
  *  V  View (the full preview cast under the test switch or the temporary
  *     FLOOR_LIFE_ALWAYS_PREVIEW flag, developer 2026-10-16): decorative (aria-hidden, no taps), transform/opacity only, off
@@ -30,6 +32,7 @@ import {
   workingStations,
 } from "../src/game/restaurant/floorLife.ts";
 import type { SecondFloorState, StationId } from "../src/game/restaurant/secondFloor.ts";
+import { STAFF_LIFE_ROLES, staffCast, staffOnMap } from "../src/game/restaurant/staffLife.ts";
 
 let failures = 0;
 function assert(cond: unknown, msg: string, detail?: unknown) {
@@ -165,6 +168,66 @@ console.log("S. Seats (developer 2026-10-16: sit on the chairs, never two on one
   assert(
     new Set(counter.slice(0, 5)).size === 5,
     "S3: guests waiting together at the counter each have a place of their own",
+  );
+}
+
+console.log("F. First-floor staff (developer 2026-10-16)");
+{
+  const roleSrc = read("src/game/business/businessStaff.ts");
+  const roles =
+    (roleSrc.match(/export type BusinessStaffRole =([^;]+);/)?.[1] ?? "")
+      .match(/"[a-z-]+"/g)
+      ?.map((r) => r.slice(1, -1)) ?? [];
+  assert(
+    roles.length === 6 && [...STAFF_LIFE_ROLES].sort().join() === [...roles].sort().join(),
+    "F1: exactly the six roles the game has (BusinessStaffRole) — no invented role (the Cleaner looks after the restroom)",
+    roles,
+  );
+  assert(
+    staffCast([]).length === 0 &&
+      staffCast(["server"])
+        .map((a) => a.kind)
+        .join() === "server" &&
+      staffCast(["manager", "cleaner", "not-a-role"]).length === 2,
+    "F2: only hired roles are drawn (nobody unhired, unknown roles ignored)",
+  );
+  const all = staffCast(STAFF_LIFE_ROLES);
+  const rooms: Record<string, { x: number; y: number; w: number; h: number }> = {
+    kitchen: { x: 3.8, y: 18, w: 41.2 + 3, h: 30.2 },
+    restroom: { x: 80, y: 33, w: 17.2, h: 18 },
+    office: { x: 3.8, y: 53.4, w: 26.2, h: 24 },
+    dining: { x: 30.5, y: 48.2, w: 67, h: 31 },
+  };
+  const roomOf: Record<string, string> = {
+    "staff-line-cook": "kitchen",
+    "staff-prep-cook": "kitchen",
+    "staff-head-chef": "kitchen",
+    "staff-server": "dining",
+    "staff-cleaner": "restroom",
+    "staff-manager": "office",
+  };
+  const inside = (p: { x: number; y: number }, r: { x: number; y: number; w: number; h: number }) =>
+    p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h;
+  const stray = all.flatMap((a) =>
+    a.stops.filter((p) => !inside(p, rooms[roomOf[a.id]!]!)).map((p) => `${a.id}@${p.x},${p.y}`),
+  );
+  assert(
+    stray.length === 0,
+    "F3: on the crowded first floor everyone keeps to their own room",
+    stray,
+  );
+  assert(
+    all.every((a) => timeline(a.stops).seconds > 5) &&
+      all.find((a) => a.kind === "manager")!.stops.some((p) => p.pose === "sit"),
+    "F4: every role has a working loop; the Manager sits at the office desk",
+  );
+  const map = read("src/components/kc/restaurantMap/RestaurantMapView.tsx");
+  const router = read("src/ScreensRouter.tsx");
+  assert(
+    /<StaffLife hiredRoles=\{staffOnMap\.roles\}/.test(map) &&
+      /staffOnMap=\{staffOnMap\(save\.business\.staff\.hiredRoles\)\}/.test(router) &&
+      staffOnMap([]).roles.length === (FLOOR_LIFE_ALWAYS_PREVIEW ? 6 : 0),
+    "F5: the first-floor map draws the save's hired roles (all six only as the testing preview)",
   );
 }
 

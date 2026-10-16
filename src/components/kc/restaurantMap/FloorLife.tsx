@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import { floorCast, timeline, type FloorActor, type Frame } from "@/game/restaurant/floorLife";
 import type { SecondFloorState } from "@/game/restaurant/secondFloor";
 import { GuestPoses } from "./GuestPoses";
@@ -25,7 +25,7 @@ function keyframesFor(actor: FloorActor, frames: Frame[]): string {
     const prev = frames[i - 1];
     if (prev?.pose === "pick") holding = true;
     if (prev && (prev.pose === "drop" || prev.pose === "sit")) holding = false;
-    carrying.push(holding || (actor.kind === "cleaner" && f.pose === "clean"));
+    carrying.push(holding || f.pose === "clean" || f.pose === "work");
   });
   return (
     `@keyframes ${k}-move{${move}}` +
@@ -47,24 +47,49 @@ export function FloorLife({
 }) {
   // The cast only changes when the stations or the team change (not every clock tick).
   const key = `${Object.keys(floor.stations).sort().join()}|${floor.servers ?? 0}|${floor.cleaners ?? 0}`;
-  const cast = useMemo(
-    () => floorCast(floor).map((a) => ({ actor: a, ...timeline(a.stops) })),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `key` captures what the cast reads
-    [key],
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- `key` captures what the cast reads
+  const cast = useMemo(() => floorCast(floor), [key]);
+  return (
+    <MapCast cast={cast} testId="floor-life" preview={preview}>
+      {earning ? (
+        <span className="floor-life-coin" data-testid="floor-life-coin">
+          +$
+        </span>
+      ) : null}
+    </MapCast>
   );
-  if (cast.length === 0) return null;
-  const css = cast.map((c) => keyframesFor(c.actor, c.frames)).join("");
+}
+
+/**
+ * Draws any cast of map people (both floors share it): each actor's route
+ * becomes CSS keyframes. Nothing is drawn for an empty cast.
+ */
+export function MapCast({
+  cast,
+  testId,
+  preview = false,
+  children,
+}: {
+  cast: readonly FloorActor[];
+  testId: string;
+  preview?: boolean;
+  children?: ReactNode;
+}) {
+  const lines = useMemo(() => cast.map((a) => ({ actor: a, ...timeline(a.stops) })), [cast]);
+  if (lines.length === 0) return null;
+  const css = lines.map((c) => keyframesFor(c.actor, c.frames)).join("");
   return (
     <div
       className="floor-life"
       aria-hidden="true"
-      data-testid="floor-life"
+      data-testid={testId}
       data-preview={preview ? "true" : undefined}
     >
       <style>{css}</style>
-      {cast.map(({ actor, seconds }) => {
+      {lines.map(({ actor, seconds }) => {
         const k = `fl-${actor.id}`;
         const timing = `${seconds}s ${actor.delay}s infinite`;
+        const sits = actor.stops.some((s) => s.pose === "sit");
         return (
           <div
             key={actor.id}
@@ -76,7 +101,7 @@ export function FloorLife({
               <div className="floor-pose" style={{ animation: `${k}-walk ${timing} step-end` }}>
                 <WalkOnly outfit={actor.outfit} hair={actor.hair} />
               </div>
-              {actor.kind === "guest" ? (
+              {sits ? (
                 <div
                   className="floor-pose"
                   style={{ opacity: 0, animation: `${k}-sit ${timing} step-end` }}
@@ -84,22 +109,22 @@ export function FloorLife({
                   <SitOnly outfit={actor.outfit} hair={actor.hair} />
                 </div>
               ) : null}
-              {actor.kind !== "guest" ? <span className="floor-cap" /> : null}
-              <span
-                className={`floor-carry floor-carry--${actor.kind}`}
-                style={{ opacity: 0, animation: `${k}-carry ${timing} step-end` }}
-              >
-                {actor.food}
-              </span>
+              {actor.kind !== "guest" && actor.kind !== "manager" ? (
+                <span className="floor-cap" />
+              ) : null}
+              {actor.food ? (
+                <span
+                  className={`floor-carry floor-carry--${actor.kind}`}
+                  style={{ opacity: 0, animation: `${k}-carry ${timing} step-end` }}
+                >
+                  {actor.food}
+                </span>
+              ) : null}
             </div>
           </div>
         );
       })}
-      {earning ? (
-        <span className="floor-life-coin" data-testid="floor-life-coin">
-          +$
-        </span>
-      ) : null}
+      {children}
     </div>
   );
 }

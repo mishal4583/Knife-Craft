@@ -9,6 +9,7 @@ import {
 } from './restaurantMapZones';
 import './RestaurantMap.css';
 import { GuestPoses } from './GuestPoses';
+import { StaffLife } from './StaffLife';
 
 export const RestaurantMap: React.FC<RestaurantMapProps> = ({
   playerLevel,
@@ -20,6 +21,7 @@ export const RestaurantMap: React.FC<RestaurantMapProps> = ({
   restaurantName: restaurantNameProp,
   onRestaurantNameChange,
   reducedMotion = false,
+  staffOnMap,
   attentionCounts = {},
   attentionSymbols = {},
   mapWebpUrl,
@@ -214,6 +216,7 @@ export const RestaurantMap: React.FC<RestaurantMapProps> = ({
 
           <FridgeMapOverlay tier={fridgeTier} />
           <AnimatedGuestTraffic />
+          {staffOnMap ? <StaffLife hiredRoles={staffOnMap.roles} preview={staffOnMap.preview} /> : null}
 
           <div className="restaurant-nameboard-wrap">
             {isEditingRestaurantName ? (
