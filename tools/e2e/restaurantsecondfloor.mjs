@@ -11,7 +11,7 @@
 //   5. a reload never pays it again; Downstairs returns to the first floor;
 //   6. it fits at 320 / 390 / 768 (screenshots), no page errors;
 //   8. ?floor2 (testing) opens the floor at any level; every station still shows
-//      "🔒 Lv.60" (developer 2026-10-16).
+//      "🔒 Lv.60" (developer 2026-10-16), and the full floor-life cast plays as a preview.
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import {
   MOVED_IN_BUSINESS,
@@ -294,18 +294,24 @@ await page
 const testZones = await page.$$eval('[data-testid="second-floor"] .map-hotspot-zone', (els) =>
   els.map((e) => e.getAttribute("aria-label")),
 );
+const previewKinds = await page.$$eval(".floor-actor", (els) =>
+  els.map((e) => e.getAttribute("data-actor")),
+);
 const lockPills = await page.$$eval(
   '[data-testid="second-floor"] .map-hotspot-zone .locked-pill-badge',
   (els) => els.map((e) => (e.textContent ?? "").replace(/\s+/g, "")),
 );
 await shot(page, "second-floor-test-locks-390");
 check(
-  "8 ?floor2 (testing): the floor opens at Level 5, and all six stations stay locked with 🔒 Lv.60",
+  "8 ?floor2 (testing): the floor opens at Level 5, all six stations stay locked with 🔒 Lv.60, and the full floor-life preview plays (3 servers, 10 guests, 2 cleaners)",
   /⬆ 2nd floor/.test(testLabel) &&
     testZones.length === 9 &&
     testZones.filter((z) => /opens at Level 60$/.test(z)).length === 6 &&
-    lockPills.filter((t) => t === "🔒Lv.60").length === 6,
-  { testLabel, testZones, lockPills },
+    lockPills.filter((t) => t === "🔒Lv.60").length === 6 &&
+    previewKinds.filter((k) => k === "server").length === 3 &&
+    previewKinds.filter((k) => k === "guest").length === 10 &&
+    previewKinds.filter((k) => k === "cleaner").length === 2,
+  { testLabel, testZones, lockPills, previewKinds },
 );
 
 const errors = logs.filter((l) => /pageerror|error:/.test(l) && !/favicon/.test(l));

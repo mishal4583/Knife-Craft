@@ -8,6 +8,7 @@
  */
 import { useEffect, useState } from "react";
 import { FloorLife } from "./FloorLife";
+import { FLOOR_LIFE_PREVIEW } from "@/game/restaurant/floorLife";
 import { KButton } from "@/components/kc/common/primitives";
 import { formatUsd } from "@/game/money";
 import type { SaveData } from "@/game/SaveManager";
@@ -356,7 +357,11 @@ export function SecondFloorView({
               draggable={false}
             />
           </picture>
-          <FloorLife floor={floor} earning={perHour > 0} />
+          {/* Testing: the full cast is shown whatever the save owns (FLOOR_LIFE_PREVIEW). */}
+          <FloorLife
+            floor={SECOND_FLOOR_TEST_UNLOCK ? FLOOR_LIFE_PREVIEW : floor}
+            earning={SECOND_FLOOR_TEST_UNLOCK || perHour > 0}
+          />
           <div className="restaurant-map-hotspots-layer">
             {ZONES.map((z) => {
               const station = isStation(z.id) ? STATIONS.find((s) => s.id === z.id)! : null;

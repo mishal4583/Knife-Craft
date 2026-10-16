@@ -10,7 +10,7 @@
  *     drop at the counter; guests pick up at the counter, sit, and leave by
  *     the door; the keyframes run 0 → 100 in order.
  *  D  Deterministic: the same floor gives the same cast; no Math.random.
- *  V  View: decorative (aria-hidden, no taps), transform/opacity only, off
+ *  V  View (testing switch: the full preview cast, developer 2026-10-16): decorative (aria-hidden, no taps), transform/opacity only, off
  *     with reduced motion, no animation library, never touches money or saves.
  *
  * Run: npx tsx scripts/restaurant-floor-life-qa.mts
@@ -19,6 +19,7 @@ import fs from "node:fs";
 import path from "node:path";
 import {
   FLOOR_SPOTS,
+  FLOOR_LIFE_PREVIEW,
   MAX_GUESTS,
   floorCast,
   timeline,
@@ -176,9 +177,17 @@ console.log("V. View");
       ),
     "V4: no animation library; the animation never touches money, the ledger or the save",
   );
+  const sfv = read("src/components/kc/restaurantMap/SecondFloorView.tsx");
   assert(
-    /<FloorLife floor=\{floor\}/.test(read("src/components/kc/restaurantMap/SecondFloorView.tsx")),
-    "V5: the Second Floor map shows it",
+    /<FloorLife\s+floor=\{SECOND_FLOOR_TEST_UNLOCK \? FLOOR_LIFE_PREVIEW : floor\}/.test(sfv),
+    "V5: the Second Floor map shows it — the save's floor, or the full preview while testing",
+  );
+  const preview = floorCast(FLOOR_LIFE_PREVIEW);
+  assert(
+    count(preview, "server") === 3 &&
+      count(preview, "guest") === MAX_GUESTS &&
+      count(preview, "cleaner") === 2,
+    "V6: the testing preview shows the full cast (3 servers, 10 guests, 2 cleaners)",
   );
 }
 

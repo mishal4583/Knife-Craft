@@ -133,6 +133,18 @@ function toSeat(seat: Spot): Spot[] {
   ];
 }
 
+/**
+ * Testing preview (developer 2026-10-16): with the Second Floor test switch on
+ * (`npm run dev` or `?floor2`) the animation shows this full floor — every
+ * station working, 3 servers, 2 cleaners — whatever the save owns. It is only
+ * what is drawn; the save, the stations' locks and the money are unchanged.
+ */
+export const FLOOR_LIFE_PREVIEW: SecondFloorState = {
+  stations: Object.fromEntries(STATIONS.map((d) => [d.id, { level: 1, lastCollectAt: 0 }])),
+  servers: FLOOR_STAFF.server.max,
+  cleaners: FLOOR_STAFF.cleaner.max,
+};
+
 /** Owned stations that a Floor Server runs (they are the only ones that make food). */
 export function workingStations(floor: SecondFloorState): StationId[] {
   return STATIONS.filter((d) => floor.stations[d.id] && isStaffed(floor, d.id)).map((d) => d.id);
