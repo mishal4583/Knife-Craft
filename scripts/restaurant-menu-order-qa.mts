@@ -27,6 +27,9 @@ import { getCampaignRecipe } from "../src/game/recipes/campaignRecipes.ts";
 import { defaultMenuPrice, menuPriceCap } from "../src/game/business/businessMenu.ts";
 import { setMenuPrice } from "../src/game/business/BusinessMenuManager.ts";
 import { businessCustomerPayment } from "../src/game/business/BusinessServiceManager.ts";
+import { LEVELS } from "../src/game/levels/levelDefinitions.ts";
+import { getBusinessDish } from "../src/game/business/businessDishCatalog.ts";
+import { MENU_UNLOCKS } from "../src/game/restaurant/restaurantProgression.ts";
 
 let failures = 0;
 function assert(cond: unknown, msg: string, detail?: unknown) {
@@ -117,6 +120,35 @@ console.log("C. Menu price cap");
   assert(
     Math.round((100 - 50) / 2.5) < 50,
     "C3: the popular-price tip's biggest raise (+20 %) stays under the cap (+50 %)",
+  );
+}
+
+console.log("K. Cuts before dishes (2026-10-17 audit)");
+{
+  // The level each cut is first cooked, read straight from the campaign levels.
+  const taught = new Map<string, number>();
+  LEVELS.forEach((level, i) => {
+    for (const id of [...(level.recipePoolIds ?? []), ...(level.batchGroupRecipeIds ?? [])])
+      for (const c of getCampaignRecipe(id)?.components ?? [])
+        if (!taught.has(c.technique)) taught.set(c.technique, i + 1);
+  });
+  const early = MENU_UNLOCKS.flatMap((u) =>
+    u.dishIds.flatMap((id) =>
+      (getCampaignRecipe(getBusinessDish(id)?.sourceRecipeId ?? "")?.components ?? [])
+        .filter((c) => (taught.get(c.technique) ?? Infinity) > u.level)
+        .map((c) => `${id}@L${u.level}: ${c.technique} L${taught.get(c.technique)}`),
+    ),
+  );
+  assert(
+    early.length === 0,
+    "K1: no menu dish joins before the campaign has cooked every cut it needs",
+    early,
+  );
+  const salad = MENU_UNLOCKS.find((u) => u.dishIds.includes("biz-zucchini-fennel-salad"));
+  assert(
+    salad?.level === 20,
+    "K2: the Zucchini & Fennel Salad waits for julienne (L20, was L17)",
+    salad?.level,
   );
 }
 

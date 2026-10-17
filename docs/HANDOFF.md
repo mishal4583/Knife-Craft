@@ -1,5 +1,20 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## Whole-game audit fixes (2026-10-17, `main`)
+
+- Menu dishes wait for their cuts: the Zucchini & Fennel Salad joined at
+  L17, before julienne (L20); it now joins at L20. REFERENCE §5
+  (`restaurant-menu-qa`), guard `restaurant-menu-order-qa` K.
+- The day Cleaner (previous commit) broke two checks: its ledger entry is
+  now `staff-purchase` (End Business Day stays the one wage site), and the
+  map shows today's Cleaner through an explicit `cleanerToday` flag.
+- **Still open:** the 250-level-era suites (53 of 104 suites have pinned
+  failures), the bulk tiers the 1/2/5/10 presets can't reach, the "Do all"
+  chores button, four unused files (`DishwashingPrototype.tsx`,
+  `kc/modals/index.tsx`, `RestaurantDevelopmentCard.tsx`,
+  `chefs/chefDefinitions.ts`), the Mexican specialist at L49 while the
+  Mexican chapter starts at L16.
+
 ## Cleaner for today replaces "Clean everything I can" (2026-10-17, `main`)
 
 - Pay the Cleaner's day wage (one ledger entry) or watch a rewarded ad

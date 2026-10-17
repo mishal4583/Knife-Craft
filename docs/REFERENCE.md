@@ -290,6 +290,11 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   L11 chain Menu → Customer Order → Inventory → Preparation → Service →
   Revenue); active menu (runs itself before L51, never empty, locked never
   orderable); level/recipe/dish data untouched.
+  Since the 150-level remap, a dish's level is
+  `max(remapped schedule, cutsReadyLevel)`: it never joins before the
+  campaign first cooks every cut it needs (2026-10-17 audit: the Zucchini &
+  Fennel Salad moved L17 → L20, julienne). Guard: `restaurant-menu-order-qa`
+  K1/K2. The suite's L-numbers above are still the 250-level ones.
 - `restaurant-day-qa` — the restaurant day clock (`restaurant/restaurantDay.ts`):
   services per day (`DAY_SCHEDULE`, developer 2026-10-10): Lunch + Dinner to
   L20, + Breakfast from L21 (3), + Afternoon Tea from L51 (4), + Brunch from
@@ -740,8 +745,8 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   A Cleaner for today (developer 2026-10-17, in place of "Clean everything
   I can"): with no Cleaner hired, the status card offers "Today · $X" (the
   Cleaner's day wage, `dayCleanerPrice` = the catalog salary; all-or-nothing
-  `debitWallet`, ONE `business-staff-salary` ledger entry "Cleaner · one
-  day") or "🎬 Free with an ad" (rewarded placement `day_cleaner`, granted
+  `debitWallet`, ONE `staff-purchase` (Staff Hire) ledger entry "Cleaner ·
+  one day" — End Business Day stays the one payroll site) or "🎬 Free with an ad" (rewarded placement `day_cleaner`, granted
   only on `rewarded`, no money, no ledger). `hireDayCleaner` stores the day
   in `cleanliness.dayCleanerDay` and runs the Cleaner's round at once;
   `cleanerOnDuty` (hired, or `dayCleanerToday`) drives the round after each

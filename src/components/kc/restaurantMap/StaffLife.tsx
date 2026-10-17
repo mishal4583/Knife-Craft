@@ -21,7 +21,7 @@ export function StaffLife({
   preview?: boolean;
   onCleanerDone?: ((job: TaskKind) => void) | undefined;
 }) {
-  const key = `${[...hiredRoles].sort().join()}|${context.stage}|${context.diningOpen}|${context.serviceOpen}|${context.cleanerJob}`;
+  const key = `${[...hiredRoles].sort().join()}|${context.stage}|${context.diningOpen}|${context.serviceOpen}|${context.cleanerJob}|${context.cleanerToday ?? false}`;
   // eslint-disable-next-line react-hooks/exhaustive-deps -- `key` captures what the cast reads
   const cast = useMemo(() => staffCast(hiredRoles, context), [key]);
   const job = context.cleanerJob;

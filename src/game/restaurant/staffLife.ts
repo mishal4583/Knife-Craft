@@ -222,6 +222,8 @@ export type StaffLifeContext = {
   serviceOpen: boolean;
   /** The restroom job a hired Cleaner can do now (`cleanerRestroomJob`), or null. */
   cleanerJob: TaskKind | null;
+  /** A Cleaner hired for today only (cleanliness.dayCleanerToday) walks the map too. */
+  cleanerToday?: boolean;
 };
 
 const NO_WORK: StaffLifeContext = {
@@ -254,7 +256,8 @@ export function staffCast(
     },
   ];
   for (const role of STAFF_LIFE_ROLES) {
-    if (!hiredRoles.includes(role)) continue;
+    // The Cleaner: hired, or hired for today (`cleanerToday`, cleanliness.dayCleanerToday).
+    if (!hiredRoles.includes(role) && !(role === "cleaner" && c.cleanerToday)) continue;
     if (role === "server" && !c.diningOpen) continue;
     if (role === "cleaner") {
       if (!c.cleanerJob) continue;

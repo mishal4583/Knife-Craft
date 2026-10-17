@@ -982,7 +982,7 @@ export function App() {
   /**
    * Restaurant → Cleanliness: a Cleaner for today (developer 2026-10-17, in place of
    * "Clean everything I can"). Paid: the Cleaner's day wage, all-or-nothing, with ONE
-   * ledger entry. They clean the routine tasks at once and after each service today.
+   * Staff Hire ledger entry. They clean the routine tasks at once and after each service today.
    */
   function hireDayCleanerPaid(): DayCleanerOutcome {
     if (!save) return { ok: false, reason: "unavailable" };
@@ -991,7 +991,8 @@ export function App() {
     if (!r.ok) return { ok: false, reason: r.reason };
     const paid = debitWallet(r.save, price);
     if (!paid.ok) return { ok: false, reason: "insufficientFunds" };
-    persist(appendLedgerEntry(paid.save, "business-staff-salary", -price, "Cleaner · one day"));
+    // A hire, not payroll: End Business Day stays the one "business-staff-salary" site.
+    persist(appendLedgerEntry(paid.save, "staff-purchase", -price, "Cleaner · one day"));
     if (r.cleaned.length > 0) AudioManager.playSfx("squeak");
     return { ok: true, cleaned: r.cleaned.length };
   }

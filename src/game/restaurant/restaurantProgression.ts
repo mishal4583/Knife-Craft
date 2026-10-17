@@ -33,6 +33,9 @@
  */
 
 import { remapCampaignThreshold } from "../levels/campaignSelection";
+import { LEVELS } from "../levels/levelDefinitions";
+import { getCampaignRecipe } from "../recipes/campaignRecipes";
+import { getBusinessDish } from "../business/businessDishCatalog";
 
 /** Business and customer-menu systems arrive together after the opening ten levels. */
 export const BUSINESS_MENU_FIRST_LEVEL = 11;
@@ -484,14 +487,39 @@ const SOURCE_MENU_UNLOCKS: readonly { level: number; dishIds: readonly string[];
   },
 ];
 
+/** The level each cut is first cooked in the campaign — where it is taught. */
+const FIRST_CUT_LEVEL: ReadonlyMap<string, number> = (() => {
+  const first = new Map<string, number>();
+  LEVELS.forEach((level, i) => {
+    for (const id of [...(level.recipePoolIds ?? []), ...(level.batchGroupRecipeIds ?? [])])
+      for (const c of getCampaignRecipe(id)?.components ?? [])
+        if (!first.has(c.technique)) first.set(c.technique, i + 1);
+  });
+  return first;
+})();
+
+/**
+ * The first level a menu dish can be cooked: every cut it needs has been
+ * taught (developer 2026-10-17 audit: the 250 → 150 remap put the Zucchini &
+ * Fennel Salad at L17, before julienne at L20).
+ */
+function cutsReadyLevel(dishId: string): number {
+  const recipe = getCampaignRecipe(getBusinessDish(dishId)?.sourceRecipeId ?? "");
+  return Math.max(0, ...(recipe?.components ?? []).map((c) => FIRST_CUT_LEVEL.get(c.technique) ?? 0));
+}
+
 export const MENU_UNLOCKS: readonly { level: number; dishIds: readonly string[]; why: string }[] = (() => {
   const groups = new Map<number, { dishIds: string[]; reasons: string[] }>();
   for (const unlock of SOURCE_MENU_UNLOCKS) {
-    const level = Math.max(BUSINESS_MENU_FIRST_LEVEL, remapCampaignThreshold(unlock.level));
-    const group = groups.get(level) ?? { dishIds: [], reasons: [] };
-    group.dishIds.push(...unlock.dishIds);
-    group.reasons.push(unlock.why);
-    groups.set(level, group);
+    const scheduled = Math.max(BUSINESS_MENU_FIRST_LEVEL, remapCampaignThreshold(unlock.level));
+    // A dish never joins before the campaign has taught every cut it needs.
+    for (const dishId of unlock.dishIds) {
+      const level = Math.max(scheduled, cutsReadyLevel(dishId));
+      const group = groups.get(level) ?? { dishIds: [], reasons: [] };
+      group.dishIds.push(dishId);
+      if (!group.reasons.includes(unlock.why)) group.reasons.push(unlock.why);
+      groups.set(level, group);
+    }
   }
   return [...groups]
     .map(([level, group]) => ({ level, dishIds: [...new Set(group.dishIds)], why: [...new Set(group.reasons)].join(" ") }))

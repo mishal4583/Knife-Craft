@@ -7,7 +7,7 @@
 //   3. A task without its supplies shows "Buy …" → the exact Market card in the Cleaning section;
 //      buying it updates the same stock the strip shows (one ledger entry).
 //   4. No "Clean everything I can" (developer 2026-10-17): "Today · $X" hires a Cleaner for the
-//      day — the routine tasks are cleaned, one Staff Payroll entry of the day wage, every area
+//      day — the routine tasks are cleaned, one Staff Hire entry of the day wage, every area
 //      Ready; the card then says the Cleaner is on today.
 //   5. With a Cleaner hired, the area chips assign them; at Level 10 the Restaurant (and its
 //      Cleanliness tab) is still closed; at Level 11 the tab is there (developer 2026-10-10: from L10).
@@ -236,14 +236,14 @@ const after4 = await readSave(page);
 const entries4 = after4.economyLedger.slice(before4.economyLedger.length);
 await shot(page, "cleanliness-ready");
 check(
-  "4 no Clean everything button; Today · $X hires a Cleaner for the day: the tasks are cleaned, one Staff Payroll entry, every area Ready",
+  "4 no Clean everything button; Today · $X hires a Cleaner for the day: the tasks are cleaned, one Staff Hire entry, every area Ready",
   !offer4.cleanAll &&
     offer4.offer &&
     !!v4 &&
     after4.business.cleanliness.tasks.length === 0 &&
     after4.business.cleanliness.dayCleanerDay === (after4.business.restaurantDay?.day ?? 1) &&
     entries4.length === 1 &&
-    entries4[0].category === "business-staff-salary" &&
+    entries4[0].category === "staff-purchase" &&
     before4.credits - after4.credits === -entries4[0].amount &&
     v4.ready.every((r) => r === "ready") &&
     v4.allReady &&

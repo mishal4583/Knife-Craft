@@ -540,9 +540,7 @@ console.log("D. A Cleaner for today (developer 2026-10-17: instead of Clean ever
   const screen = read("src/components/kc/business/BusinessCleanliness.tsx");
   const sdk = read("src/game/PlayablesSDK.ts");
   assert(
-    /appendLedgerEntry\(paid\.save, "business-staff-salary", -price, "Cleaner · one day"\)/.test(
-      app,
-    ) &&
+    /appendLedgerEntry\(paid\.save, "staff-purchase", -price, "Cleaner · one day"\)/.test(app) &&
       /debitWallet\(r\.save, price\)/.test(app) &&
       /requestRewardedAd\(newDayCleanerRewardId\(\), AD_PLACEMENT\.dayCleaner\)/.test(app) &&
       /if \(ad\.status !== "rewarded"\)/.test(app) &&
@@ -557,6 +555,11 @@ console.log("D. A Cleaner for today (developer 2026-10-17: instead of Clean ever
       /Free with an ad/.test(screen) &&
       /data-testid="cleaner-on-duty"/.test(screen),
     "D7: the Cleanliness screen has no Clean everything button; it offers a Cleaner for today (pay or ad)",
+  );
+  assert(
+    /cleanerToday: dayCleanerToday\(save\)/.test(read("src/ScreensRouter.tsx")) &&
+      /role === "cleaner" && c\.cleanerToday/.test(read("src/game/restaurant/staffLife.ts")),
+    "D8: the day's Cleaner walks the restaurant map like the hired one",
   );
 }
 

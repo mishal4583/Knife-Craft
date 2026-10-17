@@ -2,7 +2,6 @@ import { staffOnMap } from "@/game/restaurant/staffLife";
 import {
   cleanerRestroomJob,
   dayCleanerToday,
-  hasCleaner,
   type TaskKind,
 } from "@/game/restaurant/cleanliness";
 import type { DeliveryKind } from "@/game/restaurant/deliveries";
@@ -276,18 +275,13 @@ export function ScreensRouter({
                 kitchenMapImage={kitchenMapImageUrl(save.equippedKitchenUpgradeId)}
                 fridgeTier={fridgeTier}
                 reducedMotion={save.settings.reducedMotion}
-                // A Cleaner hired for today walks the map like the hired one.
-                staffOnMap={staffOnMap(
-                  dayCleanerToday(save) && !hasCleaner(save)
-                    ? [...save.business.staff.hiredRoles, "cleaner"]
-                    : save.business.staff.hiredRoles,
-                  {
+                staffOnMap={staffOnMap(save.business.staff.hiredRoles, {
                   stage: kitchenMapArtStage(save.equippedKitchenUpgradeId),
                   diningOpen: true,
                   serviceOpen: true,
                   cleanerJob: cleanerRestroomJob(save),
-                  },
-                )}
+                  cleanerToday: dayCleanerToday(save),
+                })}
                 onCleanerDone={cleanerCleans}
                 attentionCounts={attentionBadges.map}
                 attentionSymbols={attentionBadges.mapSymbols}
