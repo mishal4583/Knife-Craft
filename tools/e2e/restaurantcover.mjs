@@ -1,6 +1,7 @@
 // Covering a short service (developer 2026-10-10: "don't use Grandma lending — use watch ad; don't
 // miss any monetization opportunity"; with no ad, a small loan), restaurant build, in a real browser:
-//   1. Level 30 with $0 and rewarded ads supported (stubbed platform): the check offers
+//   1. Level 13 (before dine-in, which opens at Level 21 in the 150-level campaign; was Level 30
+//      before 31) with $0 and rewarded ads supported (stubbed platform): the check offers
 //      🎬 Watch an ad, no supplier credit yet and no Grandma's pantry. A declined ad changes
 //      nothing and then also offers 💳 Supplier credit.
 //   2. A finished ad brings exactly what's missing free: every row ✓, no money, no ledger entry,
@@ -8,7 +9,7 @@
 //   3. No ads (the mock platform): supplier credit at once; taking it moves no money and owes the
 //      goods' price. Playing the level through, Level Complete shows "💳 Supplier credit repaid";
 //      the save has one supplier-credit-repayment entry, owes less, and the wallet stayed ≥ $0.
-//   4. 320×568: the cover buttons fit, no sideways scroll, buttons ≥ 48 px.
+//   4. 320×568 on Level 21 (the first dine-in check, the fullest): the cover buttons fit, no sideways scroll, buttons ≥ 48 px.
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import {
   MOVED_IN_BUSINESS,
@@ -109,7 +110,7 @@ async function playLevel() {
 }
 
 // ---------- 1. Ads supported: the ad first; a declined ad → supplier credit too ----------
-await boot(page, saveAt(30, 0));
+await boot(page, saveAt(13, 0));
 await stubRewarded("closed");
 await openToday();
 const s1 = await sheet();
@@ -153,7 +154,7 @@ check(
 );
 
 // ---------- 3. No ads: supplier credit, repaid from the level's earnings ----------
-await boot(page, saveAt(30, 0));
+await boot(page, saveAt(13, 0));
 await openToday();
 const s3 = await sheet();
 await clickButton(page, /Supplier credit/);
@@ -186,7 +187,7 @@ check(
 
 // ---------- 4. 320 px ----------
 await page.setViewport({ width: 320, height: 568, deviceScaleFactor: 1 });
-await boot(page, saveAt(31, 0));
+await boot(page, saveAt(21, 0));
 await openToday();
 const fit = await page.evaluate(() => {
   const el = document.querySelector('[data-testid="pre-service-check"]');

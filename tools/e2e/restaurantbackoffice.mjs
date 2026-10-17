@@ -5,11 +5,20 @@
 //   2. Restaurant → Suppliers: the ingredient supplier sits above the contracts; choosing
 //      Wholesale is free (no money, no ledger entry) and saves the choice.
 //   3. Back in the Market the line says Wholesale −10% and the tomato card shows that price.
-//   4. Restaurant → Equipment: restaurant development (current tier, built x/5, the next tier)
-//      above the fridge; its button opens the Kitchen Upgrade screen.
-//   5. 320×568: both tabs fit (no sideways scroll), their buttons ≥ 48 px tall.
+//   4. Business → Upgrades (developer 2026-10-15): the saved tier is Current, the earlier ones
+//      Upgraded ✓; Equipment keeps the fridge, with no development card.
+//   5. 320×568: Suppliers and Upgrades fit (no sideways scroll), their buttons ≥ 48 px tall.
 // Prints PASS/FAIL per check and exits 1 on any failure.
-import { MOVED_IN_BUSINESS, launch, boot, seedSave, sleep, readSave, shot } from "./harness.mjs";
+import {
+  MOVED_IN_BUSINESS,
+  launch,
+  boot,
+  seedSave,
+  sleep,
+  readSave,
+  shot,
+  openSection,
+} from "./harness.mjs";
 
 const results = [];
 const check = (id, ok, detail) => {
@@ -43,7 +52,11 @@ const clickIn = (scope, re) =>
     scope,
     re.source,
   );
-const nav = (label) => clickIn("nav", new RegExp(`^\\S*\\s*${label}`));
+// "Restaurant" / "Business": the back office, through the Restaurant map (openSection).
+const nav = (label) =>
+  ["Restaurant", "Business"].includes(label)
+    ? openSection(page, "Business")
+    : clickIn("nav", new RegExp(`^\\S*\\s*${label}`));
 const marketView = () =>
   page.evaluate(() => ({
     tabs: [...document.querySelectorAll('nav[aria-label="Shop categories"] button')].map((b) =>
@@ -143,18 +156,22 @@ check(
   teams,
 );
 
-// ---------- 4. Equipment: restaurant development ----------
+// ---------- 4. Upgrades: restaurant development ----------
+// The developer moved development from an Equipment card to Business → Upgrades (5db9451,
+// 2026-10-15): the Kitchen Upgrade screen, embedded. Equipment keeps the fridge.
 await nav("Restaurant");
 await sleep(700);
 await clickIn('nav[aria-label="Business sections"]', /Equipment/);
 await sleep(700);
-const dev = await page.evaluate(() => {
-  const card = document.querySelector('[data-testid="restaurant-development"]');
-  const fridge = /Your refrigerator/i.test(document.body.innerText);
-  return { text: card?.innerText.replace(/\s+/g, " "), fridge };
-});
-// The seeded L30 save keeps the kitchen tiers its level had earned (migrateKitchenDevelopment),
-// so the expected card comes from the saved tiers.
+const equipment = await page.evaluate(() => ({
+  fridge: /Your refrigerator/i.test(document.body.innerText),
+  oldCard: !!document.querySelector('[data-testid="restaurant-development"]'),
+}));
+await shot(page, "restaurant-equipment");
+await clickIn('nav[aria-label="Business sections"]', /Upgrades/);
+await sleep(800);
+// The seeded save keeps the kitchen tiers its level had earned (migrateKitchenDevelopment),
+// so the expected tiles come from the saved tiers.
 const tiers = [
   "humble-kitchen",
   "growing-kitchen",
@@ -174,56 +191,61 @@ const names = [
 const owned = ((await readSave(page)).ownedKitchenUpgradeIds ?? []).filter((id) => id !== tiers[0]);
 const builtExpected = owned.length;
 const currentExpected = names[builtExpected];
-const nextExpected = names[builtExpected + 1];
-await shot(page, "restaurant-equipment");
-await clickIn('[data-testid="restaurant-development"]', /Kitchen Upgrade/);
-await sleep(900);
-const upgradeScreen = await page.evaluate(
-  () =>
-    /Kitchen Upgrades/i.test(document.body.innerText) &&
-    !document.querySelector('[data-testid="restaurant-development"]'),
-);
+const tiles = await page.evaluate((list) => {
+  const out = {};
+  for (const b of document.querySelectorAll("button")) {
+    const t = b.innerText.replace(/\s+/g, " ").trim();
+    const name = list.find((n) => t.startsWith(n));
+    if (name) out[name] = t.slice(name.length).trim().toLowerCase(); // badges are uppercase
+  }
+  return out;
+}, names);
+await shot(page, "restaurant-upgrades");
 check(
-  "4 Equipment shows restaurant development (the saved tier, built x / 5, the next tier) above the fridge; its button opens Kitchen Upgrade",
-  (dev.text ?? "").includes(currentExpected) &&
-    new RegExp(`${builtExpected} / 5 built`, "i").test(dev.text ?? "") &&
-    (dev.text ?? "").includes(`Next: ${nextExpected}`) &&
-    dev.fridge &&
-    upgradeScreen,
-  { dev, upgradeScreen, builtExpected, currentExpected, nextExpected },
+  "4 Upgrades shows restaurant development: the saved tier is Current, the ones before it Upgraded ✓; Equipment keeps the fridge (no development card)",
+  tiles[currentExpected] === "current" &&
+    names.slice(0, builtExpected).every((n) => tiles[n] === "upgraded ✓") &&
+    names.slice(builtExpected + 1).every((n) => tiles[n] && !/current|upgraded/.test(tiles[n])) &&
+    equipment.fridge &&
+    !equipment.oldCard,
+  { tiles, builtExpected, currentExpected, equipment },
 );
 
 // ---------- 5. 320 px ----------
 await page.setViewport({ width: 320, height: 568, deviceScaleFactor: 1 });
 await sleep(500);
 const fit = [];
-for (const [tab, testid] of [
-  ["Suppliers", "ingredient-supplier"],
-  ["Equipment", "restaurant-development"],
-]) {
+for (const tab of ["Suppliers", "Upgrades"]) {
   await nav("Restaurant");
   await sleep(600);
   await clickIn('nav[aria-label="Business sections"]', new RegExp(tab));
   await sleep(600);
   fit.push(
-    await page.evaluate((id) => {
-      const card = document.querySelector(`[data-testid="${id}"]`);
-      const small = [...(card?.querySelectorAll("button") ?? [])]
+    await page.evaluate((tab) => {
+      // The tab's own content: the ingredient supplier card, or the upgrade screen's buttons.
+      const scope =
+        tab === "Suppliers"
+          ? document.querySelector('[data-testid="ingredient-supplier"]')
+          : (document.querySelector("main") ?? document.body);
+      const buttons = [...(scope?.querySelectorAll("button") ?? [])].filter(
+        (b) => !b.closest("nav"),
+      );
+      const small = buttons
         .map((b) => b.getBoundingClientRect().height)
         .filter((h) => h > 0 && h < 47.5); // sub-pixel rounding, as restaurantwidths.mjs
       return {
-        id,
-        found: !!card,
+        tab,
+        found: !!scope,
         pageOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
-        cardWider: card ? card.getBoundingClientRect().right > window.innerWidth + 0.5 : true,
+        wider: buttons.some((b) => b.getBoundingClientRect().right > window.innerWidth + 0.5),
         small,
       };
-    }, testid),
+    }, tab),
   );
 }
 check(
-  "5 at 320×568 both tabs fit (no sideways scroll) and their buttons are ≥ 48 px",
-  fit.every((f) => f.found && f.pageOverflow <= 0 && !f.cardWider && f.small.length === 0),
+  "5 at 320×568 Suppliers and Upgrades fit (no sideways scroll) and their buttons are ≥ 48 px",
+  fit.every((f) => f.found && f.pageOverflow <= 0 && !f.wider && f.small.length === 0),
   fit,
 );
 

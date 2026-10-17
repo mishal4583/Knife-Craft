@@ -27,6 +27,18 @@ import {
 } from "./harness.mjs";
 import { playToReport } from "./solver.mjs";
 
+// Stock is used from Level 3: the fridge holds Levels 5, 6 and 21's ingredients so only the
+// day decides whether a sheet opens.
+const STOCKED_BUSINESS = {
+  ...MOVED_IN_BUSINESS,
+  inventory: Object.fromEntries(
+    ["bread", "garlic", "tomato", "basil", "onion", "celery"].map((id) => [
+      id,
+      { ingredientId: id, quantity: 3, unitCost: 0, purchaseDay: 1 },
+    ]),
+  ),
+};
+
 const results = [];
 const check = (id, ok, detail) => {
   results.push({ id, ok, detail });
@@ -101,7 +113,7 @@ async function playLevel() {
 await boot(
   page,
   seedSave({
-    business: MOVED_IN_BUSINESS,
+    business: STOCKED_BUSINESS,
     credits: 5000,
     levelProgress: {
       currentLevelId: "level-5",
@@ -114,7 +126,7 @@ await boot(
 const start = await readSave(page);
 
 // ---------- 1. Day 1 opens quietly ----------
-await prepare("Onion Basics");
+await prepare("Garlic Bread");
 const opening = await sheetText();
 const started5 = await inHud();
 const open5 = (await readSave(page)).business.restaurantDay;
@@ -127,7 +139,7 @@ const played5 = await playLevel();
 const after5 = await readSave(page);
 
 // ---------- 2. Level 6, same day ----------
-await prepare("Diced Tomato");
+await prepare("Tomato Basil Toast");
 const midSheet = await sheetText();
 check(
   "2 Level 6 (the same day) starts with no sheet",
@@ -170,6 +182,7 @@ const closingSave = (s) => ({
     currentLevelId: "level-21",
     highestUnlockedLevelId: "level-21",
     completedLevelIds: Array.from({ length: 20 }, (_, i) => `level-${i + 1}`),
+    campaignVersion: 2,
   },
   business: {
     ...s.business,
@@ -197,9 +210,11 @@ check(
   "4a from L21 a finished day shows Closing Time: the services, the chores (spoiled food and wrapping what's left too), the count",
   !!closing &&
     /Day 10 · Closing time/i.test(closing) &&
-    /Lunch · Level 19/.test(closing) &&
-    /Dinner · Level 20/.test(closing) &&
-    chores.join() === "wash-up,wipe-down,spoiled,wrap,count" &&
+    // A two-service day is Breakfast + Lunch (the day clock: Breakfast first); dine-in opens at
+    // Level 21 in the 150-level campaign, so the dining room is cleared at closing too.
+    /Breakfast · Level 19/.test(closing) &&
+    /Lunch · Level 20/.test(closing) &&
+    chores.join() === "wash-up,wipe-down,spoiled,wrap,dining-room,count" &&
     /at opening →/.test(closing),
   { closing: closing?.slice(0, 260), chores },
 );
@@ -209,7 +224,7 @@ check("4b the next level can't start before closing", !(await inHud()) && !!(awa
 await clickButton(page, /^Close for the night/);
 await sleep(800);
 const afterClose = await readSave(page);
-await prepare("Julienne Carrot Garnish");
+await prepare("French Onion Base");
 const day12 = await sheetText();
 check(
   "4c Close → Day 11; Level 21 opens it with the opening card — Breakfast, Lunch, Dinner (3 services from L21)",
@@ -228,7 +243,7 @@ await sleep(400);
 await boot(
   page,
   seedSave({
-    business: MOVED_IN_BUSINESS,
+    business: STOCKED_BUSINESS,
     levelProgress: {
       currentLevelId: "level-7",
       highestUnlockedLevelId: "level-7",
@@ -237,10 +252,14 @@ await boot(
     story: { introDone: true, milestoneMask: 127, finaleSeen: false },
   }),
 );
+// The bottom bar is Kitchen · Market · Restaurant (the map); Business is the Kitchen's shortcut.
 const restaurantTab = await page.evaluate(() => {
-  const b = document.querySelector('nav button[data-nav="business"]');
+  const b = document.querySelector('[data-testid="business-shortcut"]');
   return b
-    ? { locked: b.hasAttribute("data-locked"), text: b.innerText.replace(/\s+/g, " ") }
+    ? {
+        locked: b.getAttribute("aria-disabled") === "true",
+        text: b.innerText.replace(/\s+/g, " "),
+      }
     : null;
 });
 check(
