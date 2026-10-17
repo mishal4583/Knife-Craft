@@ -4,9 +4,11 @@
 //   1. Kitchen Upgrade (restaurant): Growing Kitchen costs $16,000 and says what it gives
 //      ("+1.5% restaurant quality on order earnings"); building it writes ONE
 //      kitchen-investment-purchase entry of −$16,000.
-//   2. Level 31 opens Day 1: the Pre-Service Check offers "Stock the whole day" for both of today's
-//      services (Levels 31, 32) with units, cost and whether it fits the fridge; a row's Restock
-//      opens the Market on that ingredient with the day's quantity.
+//   2. Level 21 opens Day 1, three services (Levels 21–23, the 150-level campaign; was Level 31
+//      with two): the Pre-Service Check offers "Stock the whole day" for today's services, with
+//      units, cost and whether it fits the fridge (short chips since the 2026-10-16 copy sweep,
+//      the levels behind its ⓘ); a row's Restock opens the Market on that ingredient with the
+//      day's quantity.
 //   3. With $0, supplier credit is offered (no Emergency Service any more — developer 2026-10-10);
 //      taking it moves no money, marks nothing and owes the goods' price.
 //   4. 320×568 · 360×640 · 390×844 · 430×932: the check (with the day card) fits, no sideways
@@ -19,6 +21,7 @@ import {
   seedSave,
   sleep,
   clickButton,
+  openSection,
   readSave,
   shot,
   text,
@@ -49,19 +52,15 @@ const saveAt = (n, cents, extra = {}) =>
     story: { introDone: true, milestoneMask: 127, finaleSeen: false },
     ...extra,
   });
+// Kitchen Upgrade is Business → Upgrades (developer 2026-10-15), through the Restaurant map.
 async function openKitchenUpgrades() {
+  await openSection(page, "Business");
+  await sleep(600);
   await page.evaluate(() =>
-    [...document.querySelectorAll("nav button")]
-      .find((x) => x.textContent.includes("Kitchen"))
+    [...document.querySelectorAll('nav[aria-label="Business sections"] button')]
+      .find((x) => /Upgrades/.test(x.textContent))
       ?.click(),
   );
-  await sleep(500);
-  await page.evaluate(() => {
-    const el = [...document.querySelectorAll("button, [role=button], div")].find(
-      (x) => /^Kitchen Upgrade/.test(x.textContent?.trim() ?? "") && x.onclick !== undefined,
-    );
-    (el?.closest("button") ?? el)?.click();
-  });
   await sleep(800);
 }
 async function prepare(title) {
@@ -143,8 +142,8 @@ check(
 );
 
 // ---------- 2. Whole-day stocking ----------
-await boot(page, saveAt(31, 500_000));
-await prepare("Baguette Rounds");
+await boot(page, saveAt(21, 500_000));
+await prepare("French Onion Base");
 const d = await day();
 await page.evaluate(() =>
   document.querySelector('[data-testid="psc-day-stock"]')?.scrollIntoView({ block: "center" }),
@@ -163,14 +162,16 @@ const buyText = await page.evaluate((id) => {
     card && [...card.querySelectorAll("button")].find((b) => /^Buy /.test(b.textContent.trim()));
   return buy?.textContent.trim() ?? "";
 }, first?.id ?? "");
-const units = Number(first?.button.match(/Restock (\d+)/)?.[1] ?? "0");
+// Real portions (lb, may be fractional): "Restock 0.75 lb · $0.53".
+const units = Number(first?.button.match(/Restock ([\d.]+)/)?.[1] ?? "0");
 check(
-  "2 Level 31 offers Stock the whole day (Levels 31, 32 — units, cost, fridge fit); Restock opens the Market at the day's quantity",
+  "2 Level 21 offers Stock the whole day (3 services — units, cost, fridge fit); Restock opens the Market at the day's quantity",
   !!d &&
     /Stock the whole day/i.test(d.text) &&
-    /Levels 31, 32/.test(d.text) &&
-    /\d+ units · \$/.test(d.text) &&
-    /(Fits your fridge|your fridge has)/.test(d.text) &&
+    /3 services/.test(d.text) &&
+    /[\d.]+ units/.test(d.text) &&
+    /\$[\d.,]+/.test(d.text) &&
+    /(Fits|fridge)/i.test(d.text) &&
     d.rows.length > 0 &&
     units > 0 &&
     buyText.startsWith(`Buy ${units} `),
@@ -178,8 +179,8 @@ check(
 );
 
 // ---------- 3. $0: supplier credit, no Emergency Service (rule changed 2026-10-10) ----------
-await boot(page, saveAt(31, 0));
-await prepare("Baguette Rounds");
+await boot(page, saveAt(21, 0));
+await prepare("French Onion Base");
 const sheet = await page.evaluate(
   () =>
     document.querySelector('[data-testid="pre-service-check"]')?.innerText.replace(/\s+/g, " ") ??
@@ -193,7 +194,7 @@ check(
   "3 $0: supplier credit is offered (no ads on the mock platform), no Emergency Service note; taking it marks nothing, moves no money and owes the price",
   /Supplier credit/.test(sheet) &&
     !/Emergency Service|Grandma's pantry/.test(sheet) &&
-    !post.levelProgress.emergency?.["level-31"] &&
+    !post.levelProgress.emergency?.["level-21"] &&
     post.credits === pre.credits &&
     post.economyLedger.length === pre.economyLedger.length &&
     (post.business.supplierCredit?.owed ?? 0) > 0,
@@ -209,8 +210,8 @@ for (const [w, h] of [
   [430, 932],
 ]) {
   await page.setViewport({ width: w, height: h, deviceScaleFactor: 1, hasTouch: true });
-  await boot(page, saveAt(31, 500_000));
-  await prepare("Baguette Rounds");
+  await boot(page, saveAt(21, 500_000));
+  await prepare("French Onion Base");
   const m = await page.evaluate(() => {
     const el = document.querySelector('[data-testid="pre-service-check"]');
     const card = document.querySelector('[data-testid="psc-day-stock"]');

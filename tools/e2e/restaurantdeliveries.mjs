@@ -13,6 +13,7 @@ import {
   sleep,
   readSave,
   clickButton,
+  openSection,
   shot,
 } from "./harness.mjs";
 
@@ -35,11 +36,8 @@ const saveAt = (n, business = {}) =>
     story: { introDone: true, milestoneMask: 127, finaleSeen: false },
   });
 async function openSuppliers() {
-  await page.evaluate(() =>
-    [...document.querySelectorAll("nav button")]
-      .find((x) => x.textContent.includes("Restaurant"))
-      ?.click(),
-  );
+  // The back office opens from the Restaurant map's Manager / Office.
+  await openSection(page, "Business");
   await sleep(800);
   await page.evaluate(() =>
     [...document.querySelectorAll('nav[aria-label="Business sections"] button')]

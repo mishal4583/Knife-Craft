@@ -5,7 +5,16 @@
 //   2. Read-only: opening it changes nothing in the save.
 //   3. 320×568 and 768×1024: the card fits, no sideways scroll.
 // Prints PASS/FAIL per check and exits 1 on any failure.
-import { MOVED_IN_BUSINESS, launch, boot, seedSave, sleep, readSave, shot } from "./harness.mjs";
+import {
+  MOVED_IN_BUSINESS,
+  launch,
+  boot,
+  seedSave,
+  sleep,
+  readSave,
+  shot,
+  openSection,
+} from "./harness.mjs";
 
 const results = [];
 const check = (id, ok, detail) => {
@@ -47,11 +56,8 @@ const SAVE = seedSave({
 });
 
 async function openProgress() {
-  await page.evaluate(() =>
-    [...document.querySelectorAll("nav button")]
-      .find((x) => x.textContent.includes("Progress"))
-      ?.click(),
-  );
+  // Progress opens from the Kitchen's rank card (openSection).
+  await openSection(page, "Progress");
   await sleep(900);
   return page.evaluate(() => {
     const el = document.querySelector('[data-testid="restaurant-numbers"]');
