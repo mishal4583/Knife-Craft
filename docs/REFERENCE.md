@@ -1059,7 +1059,19 @@ preparation = PreparationScene; events = `events.ts`; platform =
   each tab shows its count. Restock › links (Daily Check) preset the packs.
 - Quick restock (checked on every level, lb and kg): each line is exactly the Market price
   + 25 %; it covers the service's own orders only, which the sheet now says.
-- Tests: `restaurant-market-needs-qa`; e2e `tools/e2e/marketneeds.mjs`.
+- **Which level (developer 2026-10-17):** a Level 10 shopping list opened the
+  Market with nothing highlighted. `marketNeeds(save, levelId)` now plans for
+  the open Pre-Service Check's level (App's `serviceCheckLevelId` → router →
+  Shop → sections), else the current level, else the furthest unlocked — the
+  first not played yet (`planningLevelId`). Before, it only read
+  `currentLevelId` and showed nothing when that level was already played.
+- With needed items a section opens on **All** (a tapped Buy no longer filters
+  to one group and hides the rest); group chips carry a count; tools for the
+  next levels get a "🔜 N items needed for the next levels" note; a Market tab
+  with only next-level needs shows a gold badge. Ingredients open on All too
+  (its "Needed for today" group first).
+- Tests: `restaurant-market-needs-qa` (L1–L5); e2e `tools/e2e/marketneeds.mjs`,
+  `tools/e2e/marketneedslevel.mjs` (the Level 10 flow; fails on the old build).
 
 ### Restaurant menu order, switch and price tip (developer 2026-10-16)
 

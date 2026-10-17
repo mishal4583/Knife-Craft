@@ -11,6 +11,12 @@
  *     Market price + 25 %, and the service is fully stocked afterwards.
  *  U  The Market shows it: highlighted cards with the amount, needed items
  *     first, "Buy everything needed", needed counts on the tabs.
+ *  L  Which level (developer 2026-10-17: a Level 10 shopping list opened the
+ *     Market with nothing highlighted): the open Pre-Service Check's level,
+ *     else the current level, else the furthest unlocked — the first not
+ *     played yet. With needed items a section opens on All (none hidden in
+ *     another group), its group chips count them, and tools for the next
+ *     levels get their own "needed for the next levels" note.
  *
  * Run: npx tsx scripts/restaurant-market-needs-qa.mts
  */
@@ -22,7 +28,12 @@ import { servicePlanFor } from "../src/game/restaurant/preServiceCheck.ts";
 import { quickRestock, quickRestockPlan } from "../src/game/restaurant/quickRestock.ts";
 import { restaurantQuote } from "../src/game/restaurant/restaurantEconomy.ts";
 import { closingSuppliesFor } from "../src/game/restaurant/serviceSupplies.ts";
-import { marketNeeds, needsFirst, type MarketNeed } from "../src/game/restaurant/marketNeeds.ts";
+import {
+  marketNeeds,
+  needsFirst,
+  planningLevelId,
+  type MarketNeed,
+} from "../src/game/restaurant/marketNeeds.ts";
 
 let failures = 0;
 function assert(cond: unknown, msg: string, detail?: unknown) {
@@ -187,6 +198,59 @@ console.log("U. The Market shows it");
   assert(
     /needCount\[item\.id\]/.test(shop),
     "U3: each Market tab shows how many items it needs today",
+  );
+}
+
+console.log("L. Which level the Market plans for");
+{
+  const l10 = atLevel(10);
+  const tools = marketNeeds(l10, "level-10").supplies;
+  assert(
+    planningLevelId(l10, "level-10") === "level-10" &&
+      tools["frying-pans"]?.when === "soon" &&
+      tools["frying-pans"]?.level === 11 &&
+      tools["stock-pot"]?.when === "soon" &&
+      tools["mixing-bowls"]?.when === "today",
+    "L1: Level 10's check → the Market highlights today's tools and the shopping list's (fry pan at L11, stock pot …)",
+    tools,
+  );
+  // A save whose current level is already played (or missing) still plans the next one.
+  const stale = atLevel(10);
+  stale.levelProgress = {
+    ...stale.levelProgress,
+    currentLevelId: "level-9",
+  };
+  const none = atLevel(10);
+  none.levelProgress = { ...none.levelProgress, currentLevelId: null as unknown as string };
+  assert(
+    planningLevelId(stale) === "level-10" &&
+      planningLevelId(none) === "level-10" &&
+      marketNeeds(stale).supplies["frying-pans"]?.when === "soon" &&
+      planningLevelId(stale, "level-3") === "level-10",
+    "L2: a played or missing current level falls back to the next unplayed one; a played check level is skipped",
+    { stale: planningLevelId(stale), none: planningLevelId(none) },
+  );
+  const sup = read("src/components/kc/MarketSupplies.tsx");
+  const ing = read("src/components/kc/MarketIngredients.tsx");
+  const app = read("src/App.tsx");
+  const router = read("src/ScreensRouter.tsx");
+  assert(
+    /planLevelId=\{serviceCheckLevelId\}/.test(app) &&
+      /planLevelId=\{planLevelId\}/.test(router) &&
+      /marketNeeds\(save, planLevelId\)/.test(sup) &&
+      /marketNeeds\(save, planLevelId\)/.test(ing),
+    "L3: the open Pre-Service Check's level reaches the Market (App → router → Shop → sections)",
+  );
+  assert(
+    /sectionNeeds\.length > 0 \? "All"/.test(sup) &&
+      /data-group-needs/.test(sup) &&
+      /market-soon-/.test(sup) &&
+      /focusId && neededIds\.length === 0/.test(ing),
+    "L4: with needed items a section opens on All, its group chips count them, next-level tools get a note",
+  );
+  assert(
+    /data-needs-soon=\{soonCount\[item\.id\]\}/.test(read("src/components/kc/Shop.tsx")),
+    "L5: a Market tab with only next-level needs shows them in a gold badge",
   );
 }
 

@@ -108,6 +108,7 @@ export function ScreensRouter({
   screen,
   go,
   save,
+  planLevelId = null,
   navGuide,
   recipeDetailLevelId,
   onOpenRecipe,
@@ -153,6 +154,8 @@ export function ScreensRouter({
   screen: ScreenId;
   go: (s: ScreenId) => void;
   save: SaveData;
+  /** The level whose Pre-Service Check is open: what the Market highlights is for it. */
+  planLevelId?: string | null;
   /** Grandma's pointer at a section that just opened (restaurant build; App decides when). */
   navGuide?: NavGuide;
   recipeDetailLevelId: string;
@@ -340,6 +343,7 @@ export function ScreensRouter({
             {...(purchaseIngredients ? { purchaseIngredients } : {})}
             purchaseSupply={purchaseSupply}
             secondFloorAction={secondFloorAction}
+            planLevelId={planLevelId}
             go={routeGo}
             save={save}
             buyKnife={buyKnife}

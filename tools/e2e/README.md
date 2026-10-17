@@ -16,6 +16,7 @@ profiles to `tools/e2e/profile-*` (both gitignored).
 
 | Script | What it checks |
 |---|---|
+| `marketneedslevel.mjs` | **Restaurant build**, Market highlights from the check (2026-10-17): Level 10's shopping list → Buy on the stock pot → Smallwares opens on All with the 4 next-level tools first, labelled "Needed at Level N · buy 1", chips counting them; the same with a save whose current level is already played; no page errors |
 | `infotip.mjs` | **Restaurant build**, short game copy (2026-10-16): Market knife cards have a ⓘ and no clipped description; the ⓘ opens one bubble on screen, a second ⓘ replaces it, a tap outside closes it; the ⓘ button is ≥ 48 px; Second Floor machines show earnings/payback chips; fits 320/390/768 |
 | `restaurantwidths.mjs` | **Restaurant test build only**, phase N: the Pre-Service Check (L51, the fullest sheet), Inventory's NEEDS ATTENTION, Restaurant → Staff, Market ingredients and takeaway (bulk presets), the Restaurant overview and Closing Time at 320/360/390/430/768 px — no sideways scroll, every button ≥ 48 px |
 | `restaurantbackoffice.mjs` | **Restaurant test build only**, phase 7: no supplier tab in the Market (Ingredients names the supplier, "Change supplier →"); Restaurant → Suppliers: choosing Wholesale is free (no money, no ledger) and the Market's tomato price follows; Restaurant → Staff: Kitchen Team then Restaurant Team (with the specialist chefs); Restaurant → Equipment: restaurant development above the fridge, linking to Kitchen Upgrades; 320×568 fit |

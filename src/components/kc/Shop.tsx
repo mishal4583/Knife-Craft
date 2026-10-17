@@ -234,6 +234,7 @@ export function Shop({
   purchaseSupply,
   initialCategory = "knives",
   secondFloorAction,
+  planLevelId = null,
 }: {
   go: (s: ScreenId) => void;
   save: SaveData;
@@ -257,6 +258,8 @@ export function Shop({
   initialCategory?: ShopCategory;
   /** The Second Floor's buy / upgrade / hire (App.secondFloorAction, the floor's own action). */
   secondFloorAction?: (action: SecondFloorAction) => FloorResult;
+  /** The level whose Pre-Service Check is open: what the Market highlights is for it. */
+  planLevelId?: string | null;
 }) {
   // First levels (restaurant build, firstLevels.ts): before Level 3 the
   // Market is locked; from Level 3 all ingredient categories can be purchased.
@@ -308,18 +311,22 @@ export function Shop({
 
   const cards = cardsFor(category);
   // How many items each section needs for today / tonight (restaurant build): a badge on its tab.
-  const needCount = useMemo(() => {
+  // …and, in gold, how many it needs for the next levels when nothing is due today.
+  const [needCount, soonCount] = useMemo(() => {
     const counts: Partial<Record<ShopCategory, number>> = {};
-    if (!RESTAURANT_MODE) return counts;
-    const needs = marketNeeds(save);
+    const soon: Partial<Record<ShopCategory, number>> = {};
+    if (!RESTAURANT_MODE) return [counts, soon];
+    const needs = marketNeeds(save, planLevelId);
     for (const n of Object.values(needs.ingredients))
       if (n && n.when !== "soon") counts.ingredients = (counts.ingredients ?? 0) + 1;
     for (const [id, n] of Object.entries(needs.supplies)) {
       const section = getSupplyItem(id as SupplyId)?.section;
-      if (n && n.when !== "soon" && section) counts[section] = (counts[section] ?? 0) + 1;
+      if (!n || !section) continue;
+      if (n.when !== "soon") counts[section] = (counts[section] ?? 0) + 1;
+      else soon[section] = (soon[section] ?? 0) + 1;
     }
-    return counts;
-  }, [save]);
+    return [counts, soon];
+  }, [save, planLevelId]);
 
   function cardsFor(c: ShopCategory): Card[] {
     if (c === "knives") {
@@ -501,6 +508,14 @@ export function Shop({
                   >
                     {needCount[item.id]}
                   </span>
+                ) : soonCount[item.id] ? (
+                  <span
+                    className="absolute -right-1 -top-1 grid h-6 min-w-6 place-items-center rounded-full bg-gold px-1.5 font-ui text-[11px] font-extrabold text-walnut-dark shadow-soft"
+                    aria-label={`${soonCount[item.id]} needed for the next levels`}
+                    data-needs-soon={soonCount[item.id]}
+                  >
+                    {soonCount[item.id]}
+                  </span>
                 ) : null}
                 <span className="text-[20px] leading-none" aria-hidden>
                   {item.emoji}
@@ -526,6 +541,7 @@ export function Shop({
               focusId={focusId}
               focusQuantity={focusQuantity}
               focusPlan={planFocus}
+              planLevelId={planLevelId}
               setNotice={setNotice}
               {...(RESTAURANT_MODE ? { onChangeSupplier: () => go("business-suppliers") } : {})}
             />
@@ -536,6 +552,7 @@ export function Shop({
               section={category}
               focusId={supplyFocusId}
               focusPacks={supplyFocusPacks}
+              planLevelId={planLevelId}
               purchaseSupply={purchaseSupply}
               setNotice={setNotice}
             />

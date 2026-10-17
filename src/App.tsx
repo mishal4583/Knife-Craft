@@ -2999,6 +2999,7 @@ export function App() {
               screen={screen}
               go={go}
               save={save}
+              planLevelId={serviceCheckLevelId}
               navGuide={navGuide}
               recipeDetailLevelId={recipeDetailLevelId}
               onOpenRecipe={(levelId) => {

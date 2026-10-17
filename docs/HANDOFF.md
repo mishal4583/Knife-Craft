@@ -1,5 +1,12 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## Market highlights follow the Pre-Service Check (2026-10-17, `main`)
+
+- The Market now highlights what the open check's level needs (it read only
+  `currentLevelId` and showed nothing when that level was played). Sections
+  open on All with needed items first; chips and tabs count them. REFERENCE
+  §7 (Market needs); e2e `marketneedslevel.mjs`.
+
 ## Market quantity presets 1/2/5/10 (2026-10-17, `main`)
 
 - Was 5/25/50/100. The bulk discount tiers (25/50/100) are unchanged, so

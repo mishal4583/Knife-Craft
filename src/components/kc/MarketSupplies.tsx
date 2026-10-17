@@ -45,9 +45,12 @@ export function MarketSupplies({
   focusPacks = null,
   purchaseSupply,
   setNotice,
+  planLevelId = null,
 }: {
   save: SaveData;
   section: SupplySection;
+  /** The open Pre-Service Check's level: what is highlighted is for it. */
+  planLevelId?: string | null;
   /** Preselected by an Inventory → Market link: its group opens and the card scrolls into view. */
   focusId?: SupplyId | null;
   /** The packs to preset on the focused card (a Pre-Service Check's "Buy"). */
@@ -59,7 +62,22 @@ export function MarketSupplies({
   const focusItem = focusId
     ? SUPPLY_CATALOG.find((i) => i.id === focusId && i.section === section)
     : undefined;
-  const [group, setGroup] = useState<string>(focusItem?.group ?? "All");
+  // What today's service, tonight's closing and the cleaning jobs need (restaurant build):
+  // highlighted, listed first, and preset to the amount needed (developer 2026-10-16).
+  const needs = useMemo(
+    () => (RESTAURANT_MODE ? marketNeeds(save, planLevelId).supplies : {}),
+    [save, planLevelId],
+  ) as Partial<Record<SupplyId, MarketNeed>>;
+  // With needed items in this section the Market opens on All, so none is hidden in another
+  // group (developer 2026-10-17); otherwise on the tapped item's group.
+  const sectionNeeds = SUPPLY_CATALOG.filter((i) => i.section === section && needs[i.id]);
+  const [group, setGroup] = useState<string>(
+    sectionNeeds.length > 0 ? "All" : (focusItem?.group ?? "All"),
+  );
+  /** How many items of a group (or All) are needed — a badge on its chip. */
+  const needCountOf = (g: string) =>
+    sectionNeeds.filter((i) => g === "All" || i.group === g).length;
+  const soonCount = sectionNeeds.filter((i) => needs[i.id]?.when === "soon").length;
   const focusRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
     focusRef.current?.scrollIntoView({ block: "center" });
@@ -69,12 +87,6 @@ export function MarketSupplies({
   );
   const [messages, setMessages] = useState<Partial<Record<SupplyId, string>>>({});
   const supplies = save.business.supplies;
-  // What today's service, tonight's closing and the cleaning jobs need (restaurant build):
-  // highlighted, listed first, and preset to the amount needed (developer 2026-10-16).
-  const needs = useMemo(
-    () => (RESTAURANT_MODE ? marketNeeds(save).supplies : {}),
-    [save],
-  ) as Partial<Record<SupplyId, MarketNeed>>;
   const items = needsFirst(
     SUPPLY_CATALOG.filter(
       (item) => item.section === section && (group === "All" || item.group === group),
@@ -220,6 +232,15 @@ export function MarketSupplies({
             </KButton>
           </div>
         </Panel>
+      ) : soonCount > 0 ? (
+        <Panel className="border-gold/60 p-3" data-testid={`market-soon-${section}`}>
+          <p className="font-ui text-[13px] font-extrabold text-walnut-dark">
+            🔜 {soonCount} item{soonCount === 1 ? "" : "s"} needed for the next levels
+          </p>
+          <p className="mt-0.5 font-ui text-[12px] leading-snug text-walnut/70">
+            ⬇️ Listed first · each card says which level
+          </p>
+        </Panel>
       ) : null}
 
       <div
@@ -241,6 +262,15 @@ export function MarketSupplies({
             )}
           >
             {g}
+            {needCountOf(g) > 0 ? (
+              <span
+                className="ml-1.5 inline-grid h-5 min-w-5 place-items-center rounded-full bg-copper px-1 font-ui text-[11px] font-extrabold text-ivory"
+                aria-label={`${needCountOf(g)} needed`}
+                data-group-needs={needCountOf(g)}
+              >
+                {needCountOf(g)}
+              </span>
+            ) : null}
           </button>
         ))}
       </div>

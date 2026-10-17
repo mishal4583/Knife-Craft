@@ -75,8 +75,11 @@ export function MarketIngredients({
   focusPlan = false,
   setNotice,
   onChangeSupplier,
+  planLevelId = null,
 }: {
   save: SaveData;
+  /** The open Pre-Service Check's level: what is highlighted is for it. */
+  planLevelId?: string | null;
   purchaseIngredient: (ingredientId: string, quantity: number) => PurchaseIngredientResult;
   /** Restaurant build: the plan's "Buy all" (App.purchaseIngredients). */
   purchaseIngredients?: (lines: ReadonlyArray<{ ingredientId: string; quantity: number }>) => {
@@ -98,9 +101,6 @@ export function MarketIngredients({
     focusId && focusQuantity ? { [focusId]: focusQuantity } : {},
   );
   const [messages, setMessages] = useState<Partial<Record<IngredientId, string>>>({});
-  const [group, setGroup] = useState<string>(
-    focusId ? (INGREDIENTS[focusId]?.category ?? "all") : "all",
-  );
   const focusRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -127,12 +127,17 @@ export function MarketIngredients({
   // What today's service and menu guests need (restaurant build, developer 2026-10-16):
   // highlighted, listed first and preset to the amount to buy.
   const needs = useMemo(
-    () => (RESTAURANT_MODE ? marketNeeds(save).ingredients : {}),
-    [save],
+    () => (RESTAURANT_MODE ? marketNeeds(save, planLevelId).ingredients : {}),
+    [save, planLevelId],
   ) as Partial<Record<IngredientId, MarketNeed>>;
   const neededIds = needsFirst(
     ALL_INGREDIENT_IDS.filter((id) => needs[id]),
     (id) => needs[id],
+  );
+  // With anything needed the Market opens on All — its "Needed for today" group comes first —
+  // so no needed ingredient hides in another category (developer 2026-10-17).
+  const [group, setGroup] = useState<string>(
+    focusId && neededIds.length === 0 ? (INGREDIENTS[focusId]?.category ?? "all") : "all",
   );
 
   function quantityFor(id: IngredientId): number {

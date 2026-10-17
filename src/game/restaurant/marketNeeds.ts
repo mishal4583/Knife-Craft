@@ -64,11 +64,25 @@ function put<K extends string>(map: Partial<Record<K, MarketNeed>>, id: K, need:
   if (a < b || (a === b && need.buy > old.buy)) map[id] = need;
 }
 
-/** Everything the Market should highlight now. */
-export function marketNeeds(save: SaveData): MarketNeeds {
-  const levelId = save.levelProgress.currentLevelId;
-  const level = levelId ? getLevel(levelId) : undefined;
-  if (!level || isCompleted(level.id, save.levelProgress)) return EMPTY;
+/**
+ * The level the Market plans for (developer 2026-10-17: a Level 10 shopping
+ * list opened the Market with nothing highlighted). First the level whose
+ * Pre-Service Check is open (`preferred` — the check's "Back to Level N"),
+ * then the current level, then the furthest unlocked one — the first of
+ * them not played yet. Null: nothing left to plan.
+ */
+export function planningLevelId(save: SaveData, preferred?: string | null): string | null {
+  const p = save.levelProgress;
+  for (const id of [preferred, p.currentLevelId, p.highestUnlockedLevelId])
+    if (id && getLevel(id) && !isCompleted(id, p)) return id;
+  return null;
+}
+
+/** Everything the Market should highlight now (`levelId`: the open Pre-Service Check's level). */
+export function marketNeeds(save: SaveData, levelId?: string | null): MarketNeeds {
+  const planId = planningLevelId(save, levelId);
+  const level = planId ? getLevel(planId) : undefined;
+  if (!level) return EMPTY;
   const plan = servicePlanFor(save, level);
   if (!plan) return EMPTY;
   const out: MarketNeeds = { levelNumber: plan.levelNumber, ingredients: {}, supplies: {} };
