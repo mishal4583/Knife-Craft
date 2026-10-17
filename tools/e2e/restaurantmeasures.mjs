@@ -18,6 +18,7 @@ import {
   seedSave,
   sleep,
   clickButton,
+  openSection,
   readSave,
   shot,
 } from "./harness.mjs";
@@ -34,7 +35,9 @@ const done = (n) => Array.from({ length: n - 1 }, (_, i) => `level-${i + 1}`);
 const saveAt = (n, cents, extra = {}) =>
   seedSave({
     version: 3,
-    business: MOVED_IN_BUSINESS,
+    // From Level 16 the Mexican dishes need their (free) specialist: hired, so a check
+    // waits only on what this test is about.
+    business: { ...MOVED_IN_BUSINESS, restaurantStaff: { specialists: ["mexican-chef"] } },
     credits: cents,
     levelProgress: {
       currentLevelId: `level-${n}`,
@@ -66,10 +69,13 @@ const rank = await page.evaluate(
     document.querySelector('[data-testid="kitchen-rank"]')?.innerText.replace(/\s+/g, " ") ?? "",
 );
 await shot(page, "measures-kitchen-rank");
-// City ranking (developer 2026-10-09): 19 levels done = #43 of 50, Taco Hut next at Level 22.
+// City ranking (developer 2026-10-09; 150-level campaign): 19 levels done = #40 of 50,
+// The Little Bistro next at Level 20 (cityRankingAt(19)).
 check(
   "1a Kitchen top-left shows the city ranking, the place and the next rival to pass",
-  /City ranking/i.test(rank) && /#43 of 50/.test(rank) && /Next: pass Taco Hut · Lv 22/.test(rank),
+  /City ranking/i.test(rank) &&
+    /#40 of 50/.test(rank) &&
+    /Next: pass The Little Bistro · Lv 20/.test(rank),
   rank,
 );
 await page.evaluate(() => document.querySelector('[data-testid="kitchen-rank"]')?.click());
@@ -90,9 +96,9 @@ const allRows = await page.evaluate(() => document.querySelectorAll("[data-city-
 await shot(page, "measures-city-leaderboard");
 check(
   "1b the card opens Restaurant Progress: the city ranking and the guide around you; Show all lists 50",
-  /#43 of 50/.test(board.hero) &&
-    /Next: pass .*Taco Hut at Level 22/.test(board.hero) &&
-    board.you === "43" &&
+  /#40 of 50/.test(board.hero) &&
+    /Next: pass .*The Little Bistro at Level 20/.test(board.hero) &&
+    board.you === "40" &&
     board.folded === 8 &&
     allRows === 50,
   { ...board, allRows },
@@ -303,9 +309,9 @@ check(
 
 // ---------- 4c. Audit fixes ----------
 // Developer 2026-10-09 (Pass 2 review): Grandma's shopping guide is progression-based —
-// it shows on the first service that uses stock (Level 15), not on a later level whose
-// fridge happens to be empty (was checked at Level 20 with Level 15 done).
-await boot(page, saveAt(15, 5_000_00));
+// it shows on the first service that uses stock (Level 3 since the campaign redesign,
+// isFirstStockService), not on a later level whose fridge happens to be empty (Level 20).
+await boot(page, saveAt(3, 5_000_00));
 await clickButton(page, /^Prepare$/);
 await sleep(1200);
 const guide = await page.evaluate(
@@ -326,9 +332,9 @@ const hint = await page.evaluate(
 );
 await shot(page, "measures-buy-all-market");
 check(
-  "4c the Kitchen card shows what the level pays (about +$…), Grandma's shopping guide on the first stock service (L15) and not again (L20), and Buy everything opens the Market plan on Today with a hint",
+  "4c the Kitchen card shows what the level pays (about +$…), Grandma's shopping guide on the first stock service (L3) and not again (L20), and Buy everything opens the Market plan on Today with a hint",
   /ready to prepare · about \+\$[\d.,]+/.test(card) &&
-    /first shopping trip/i.test(guide) &&
+    /Your first stock check|Buy ingredients for service/i.test(guide) &&
     guideAt20 === "" &&
     planNow?.checked === "Today" &&
     planNow.rows.length > 0 &&
@@ -341,7 +347,8 @@ check(
     hint,
   },
 );
-await navTo("Restaurant");
+// The back office opens from the Restaurant map's Manager / Office.
+await openSection(page, "Business");
 await sleep(1500);
 const overview = await page.evaluate(() => document.body.innerText.replace(/\s+/g, " "));
 check(

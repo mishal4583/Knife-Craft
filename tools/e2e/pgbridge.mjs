@@ -6,7 +6,12 @@ await page.setViewport({ width: 390, height: 844 });
 const external = [];
 page.on("request", (q) => {
   const u = q.url();
-  if (!u.startsWith("http://localhost") && !u.startsWith("data:") && !u.startsWith("blob:"))
+  if (
+    !u.startsWith(new URL(GAME_URL).origin) &&
+    !u.startsWith("http://localhost") &&
+    !u.startsWith("data:") &&
+    !u.startsWith("blob:")
+  )
     external.push(u);
 });
 await page.evaluateOnNewDocument(() => {
@@ -38,6 +43,10 @@ await page.evaluateOnNewDocument(() => {
 });
 await page.goto(GAME_URL, { waitUntil: "networkidle0", timeout: 90000 });
 await sleep(3000);
+// A new player sees the opening intro first; SKIP › leads into Level 1.
+await page.evaluate(() => document.querySelector('[aria-label="Skip intro"]')?.click());
+await page.waitForSelector("canvas", { timeout: 30000 }).catch(() => null);
+await sleep(1000);
 const info = await page.evaluate(() => ({
   hasBridge: !!window.bridge,
   platform: window.bridge?.platform?.id,
@@ -89,6 +98,7 @@ await page.evaluate(async () => {
         "level-8",
         "level-9",
       ],
+      campaignVersion: 2,
     },
   };
   await window.bridge.storage.set(["knifecraft_save"], [JSON.stringify(save)]);
@@ -127,19 +137,19 @@ const after = await page.evaluate(async () =>
     (await window.bridge.storage.get(["knifecraft_save"]))[0],
   ),
 );
-// Economy V2.5: the $350 Santoku also pays its one-time $100 "Santoku in your kit" milestone.
+// Achievement money (developer 2026-10-16): the "Santoku in your kit" $100 waits in
+// Progress → Achievements for Collect; buying pays out nothing by itself.
 const santokuMilestone = after.economyLedger.filter((e) => e.description === "knife-santoku");
 check(
-  before - after.credits === 35000 - 10000 &&
+  before - after.credits === 35000 &&
     after.ownedKnifeIds.includes("santoku") &&
-    santokuMilestone.length === 1 &&
-    santokuMilestone[0].amount === 10000,
-  `Buying the Santoku saves through Bridge storage (${before} → ${after.credits} cents: −$350 + $100 milestone)`,
+    santokuMilestone.length === 0,
+  `Buying the Santoku saves through Bridge storage (${before} → ${after.credits} cents: −$350, the $100 achievement waits for Collect)`,
 );
 await page.reload({ waitUntil: "networkidle0" });
 await sleep(2000);
 t = await text(page);
-check(/\$984\.00/.test(t), "Reload keeps the purchase ($984.00)");
+check(/\$884\.00/.test(t), "Reload keeps the purchase ($884.00)");
 // pause/audio events reach the game
 const paused = await page.evaluate(async () => {
   const b = window.bridge;

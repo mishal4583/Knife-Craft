@@ -104,6 +104,17 @@ export function seedSave(overrides = {}) {
     story: { introDone: true, milestoneMask: 1, finaleSeen: false },
     economyLedger: [],
     ...overrides,
+    // Seeds use the 150-level campaign's numbers (2026-10-15). Without the stamp the game
+    // renumbers a save as a 250-level one; a test of that migration passes
+    // `campaignVersion: undefined` (dropped when the save is written).
+    levelProgress: {
+      campaignVersion: 2,
+      ...(overrides.levelProgress ?? {
+        currentLevelId: "level-10",
+        highestUnlockedLevelId: "level-10",
+        completedLevelIds: completed,
+      }),
+    },
     // The restaurant is already named (2026-10-17) so the one-time naming card doesn't
     // cover the screen; restaurantname.mjs seeds a save without one on purpose.
     settings: {
@@ -177,19 +188,85 @@ export const writeSave = (page, s) =>
 
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-/** Click the first visible button whose text matches. */
+/**
+ * Click the first visible button whose text matches. A match inside a folded section (e.g. the
+ * Kitchen's order card, folded by default since 2026-10-16) is reached the way the player does:
+ * its disclosure toggle (`aria-controls`) is opened first.
+ */
 export async function clickButton(page, re) {
-  const ok = await page.evaluate((src) => {
-    const re = new RegExp(src);
-    const b = [...document.querySelectorAll("button")].find(
-      (x) => re.test(x.textContent.trim()) && x.offsetParent !== null && !x.disabled,
-    );
-    if (!b) return false;
-    b.scrollIntoView({ block: "center" });
-    b.click();
-    return true;
-  }, re.source);
+  const tap = () =>
+    page.evaluate((src) => {
+      const re = new RegExp(src);
+      const all = [...document.querySelectorAll("button")].filter(
+        (x) => re.test(x.textContent.trim()) && !x.disabled,
+      );
+      const b = all.find((x) => x.offsetParent !== null);
+      if (b) {
+        b.scrollIntoView({ block: "center" });
+        b.click();
+        return "clicked";
+      }
+      for (const x of all) {
+        const region = x.closest("[hidden][id]");
+        const toggle =
+          region && document.querySelector(`[aria-controls="${region.id}"][aria-expanded="false"]`);
+        if (toggle) {
+          toggle.click();
+          return "unfolded";
+        }
+      }
+      return "none";
+    }, re.source);
+  let r = await tap();
+  if (r === "unfolded") {
+    await sleep(300);
+    r = await tap();
+  }
   await sleep(250);
+  return r === "clicked";
+}
+
+/**
+ * Opens a section the way the player does now. The bottom bar holds Kitchen · Market ·
+ * Restaurant; the Restaurant tab opens the map, whose hotspots lead to Inventory and to the
+ * back office (older tests call it "Business" or "Restaurant"); Progress opens from the
+ * Kitchen's rank badge. Returns false when the section can't be reached.
+ */
+export async function openSection(page, label) {
+  const tab = (id) =>
+    page.evaluate((i) => {
+      const b = document.querySelector(`[data-nav="${i}"]`);
+      b?.click();
+      return !!b;
+    }, id);
+  if (label === "Kitchen") return tab("kitchen");
+  if (label === "Market") return tab("shop");
+  if (label === "Progress") {
+    await tab("kitchen");
+    await sleep(600);
+    return page.evaluate(() => {
+      const b = document.querySelector('[data-testid="kitchen-rank"]');
+      b?.click();
+      return !!b;
+    });
+  }
+  const zone = {
+    Inventory: /^Inventory /,
+    Business: /^Manager \/ Office/,
+    Restaurant: /^Manager \/ Office/,
+  }[label];
+  if (!zone) return false;
+  await tab("restaurant-map");
+  await page.waitForSelector(".map-hotspot-zone", { timeout: 15000 }).catch(() => null);
+  await sleep(500);
+  const ok = await page.evaluate((src) => {
+    const z = [...document.querySelectorAll(".map-hotspot-zone")].find((e) =>
+      new RegExp(src).test(e.getAttribute("aria-label") ?? ""),
+    );
+    z?.click();
+    return !!z;
+  }, zone.source);
+  await sleep(500);
   return ok;
 }
 

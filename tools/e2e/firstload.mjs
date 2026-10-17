@@ -20,15 +20,22 @@ await page.evaluateOnNewDocument(() => {
   let real;
   Object.defineProperty(window, "bridge", {
     configurable: true,
+    // Wrap sendMessage from inside initialize(), as pgbridge.mjs does: the Bridge
+    // builds `platform` during initialize() and errors on any use before it.
     get: () => real,
     set(b) {
       real = b;
-      const proto = Object.getPrototypeOf(b.platform);
-      const send = proto.sendMessage;
-      proto.sendMessage = function (m, ...rest) {
-        if (m === "game_ready") window.__ready.push(performance.now());
-        return send.call(this, m, ...rest);
-      };
+      const init = b.initialize.bind(b);
+      b.initialize = (...args) =>
+        init(...args).then((r) => {
+          const proto = Object.getPrototypeOf(b.platform);
+          const send = proto.sendMessage;
+          proto.sendMessage = function (m, ...rest) {
+            if (m === "game_ready") window.__ready.push(performance.now());
+            return send.call(this, m, ...rest);
+          };
+          return r;
+        });
     },
   });
 });

@@ -8,7 +8,15 @@
 //   4. back to the campaign: the next level opens and plays;
 //   5. no page errors.
 // Prints PASS/FAIL per check and exits 1 on any failure.
-import { launch, boot, seedSave, sleep, clickButton, MOVED_IN_BUSINESS } from "./harness.mjs";
+import {
+  launch,
+  boot,
+  seedSave,
+  sleep,
+  clickButton,
+  openSection,
+  MOVED_IN_BUSINESS,
+} from "./harness.mjs";
 import { playToReport } from "./solver.mjs";
 
 const results = [];
@@ -26,15 +34,13 @@ page.on("request", (req) => {
     requested.push(url);
     if (delayRestaurant) return void setTimeout(() => req.continue(), 1500);
   }
-  req.continue();
+  // Another handler (e.g. one serving the Bridge script) may have answered it already.
+  if (!req.isInterceptResolutionHandled()) req.continue();
 });
 const chunkRequests = () => requested.length;
-const nav = (label) =>
-  page.evaluate(
-    (l) =>
-      [...document.querySelectorAll("nav button")].find((b) => b.textContent.includes(l))?.click(),
-    label,
-  );
+// The bottom bar is Kitchen · Market · Restaurant; Inventory and the back office open
+// from the Restaurant map (openSection).
+const nav = (label) => openSection(page, label);
 /** Clicks a button whose text matches, when there is one (the restaurant build's extra steps). */
 const clickIf = (re) =>
   page.evaluate((src) => {
@@ -120,11 +126,13 @@ check(
 
 // ---------- 2. Open Restaurant ----------
 delayRestaurant = true;
-await nav("Inventory");
+// The Restaurant tab is the first screen from the chunk (its map leads to Inventory).
+await page.evaluate(() => document.querySelector('[data-nav="restaurant-map"]')?.click());
 await sleep(400);
 const loading = await page.evaluate(
   () => !!document.querySelector('[data-testid="restaurant-loading"]'),
 );
+await nav("Inventory");
 await page.waitForFunction(() => !!document.querySelector('[data-testid="physical-fridge"]'), {
   timeout: 15000,
 });
@@ -133,7 +141,7 @@ const fridge = await page.evaluate(
   () => !!document.querySelector('[data-testid="physical-fridge"]'),
 );
 check(
-  "2 opening Inventory requests the Restaurant chunk once; 'Opening the restaurant…' shows meanwhile; the fridge renders",
+  "2 opening the Restaurant requests its chunk once; 'Opening the restaurant…' shows meanwhile; Inventory's fridge renders",
   loading && fridge && chunkRequests() === 1,
   { loading, fridge, requests: chunkRequests() },
 );
@@ -146,7 +154,6 @@ const tab = (re) =>
     re.source,
   );
 await nav("Business");
-await nav("Restaurant");
 await sleep(800);
 const overview = /End Business Day|One restaurant|restaurant/i.test(await body());
 await tab(/Staff/);
