@@ -4,7 +4,7 @@
  *
  *  G. Schedule: no guests before L6 (the tutorial), 1 / 2 / 3 / 4 / 5 from
  *     L6 / 21 / 51 / 121 / 201 (restaurantProgression, configurable).
- *  M. Menu control, checked at EVERY level 6–250: every guest's dish is
+ *  M. Menu control, checked at EVERY level 6–150: every guest's dish is
  *     unlocked at that level and on the active menu; a dish switched off
  *     (from the menu-choice level) never appears; guests are deterministic.
  *  N. The next guest: one at a time, the count saved per level so a guest
@@ -22,6 +22,8 @@
  */
 import { lbPerMarketUnit, marketStep } from "../src/game/business/measure.ts";
 import fs from "node:fs";
+import { serviceUsesStock } from "../src/game/restaurant/campaignStock.ts";
+import { BUSINESS_MENU_FIRST_LEVEL } from "../src/game/restaurant/restaurantProgression.ts";
 import path from "node:path";
 import { DEFAULT_SAVE, type SaveData } from "../src/game/SaveManager.ts";
 import { getLevel, completeLevel, type LevelProgress } from "../src/game/levels/LevelManager.ts";
@@ -89,13 +91,17 @@ assert(
   // 2026-10-05: customers order from a menu, so guests start when the menu opens (L11).
   menuGuestsPerService(10) === 0 &&
     menuGuestsPerService(11) === 1 &&
-    menuGuestsPerService(21) === 2 &&
-    // +1 from L51 (economy F3, developer 2026-10-12).
-    menuGuestsPerService(51) === 4 &&
-    menuGuestsPerService(121) === 5 &&
-    menuGuestsPerService(250) === 6 &&
+    // 150-level remap (developer 2026-10-15): old L21 / 51 / 121 / 201 → L16 / 35 / 76 / 117.
+    menuGuestsPerService(15) === 1 &&
+    menuGuestsPerService(16) === 2 &&
+    // +1 from old L51 (economy F3, developer 2026-10-12).
+    menuGuestsPerService(34) === 2 &&
+    menuGuestsPerService(35) === 4 &&
+    menuGuestsPerService(76) === 5 &&
+    menuGuestsPerService(117) === 6 &&
+    menuGuestsPerService(150) === 6 &&
     menuGuestQueue(saveAt(10), lv(10)).length === 0,
-  "G1: no guests before the menu opens; 1 / 2 / 4 / 5 / 6 from L11 / 21 / 51 / 121 / 201",
+  "G1: no guests before the menu opens; 1 / 2 / 4 / 5 / 6 from L11 / 16 / 35 / 76 / 117",
 );
 
 console.log("M. Menu control");
@@ -115,10 +121,10 @@ console.log("M. Menu control");
   }
   assert(
     breaks.length === 0,
-    `M1: at every level 6–250 every guest orders an unlocked, active menu dish ${breaks.slice(0, 3).join("; ")}`,
+    `M1: at every level 6–150 every guest orders an unlocked, active menu dish ${breaks.slice(0, 3).join("; ")}`,
   );
   const offBreaks: string[] = [];
-  for (let n = MENU_CHOICE_LEVEL; n <= 250; n++) {
+  for (let n = MENU_CHOICE_LEVEL; n <= LEVELS.length; n++) {
     const level = lv(n);
     if (level.batchGroupRecipeIds?.length) continue;
     const firstGuest = menuGuestQueue(saveAt(n), level)[0];
@@ -186,10 +192,13 @@ console.log("N. The next guest");
       done.progress.menuGuests?.["level-40"] === undefined,
     "N3: completing the level drops the guest count",
   );
+  // 150-level campaign (developer 2026-10-15): stock is live from L3, before the menu opens at
+  // L11, so every guest needs the dish's stock (the old L11–14 stock-free menu is gone).
   assert(
-    nextMenuGuest(saveAt(12), lv(12))!.inStock === true &&
+    serviceUsesStock(BUSINESS_MENU_FIRST_LEVEL) &&
+      nextMenuGuest(saveAt(12), lv(12))!.inStock === false &&
       nextMenuGuest(saveAt(40), lv(40))!.inStock === false,
-    "N4: in stock always before L15 (menu without stock at L11–14); from L15 the guest needs the dish's stock",
+    "N4: stock is live before the menu opens (L3), so from L11 a guest needs the dish's stock",
   );
 }
 

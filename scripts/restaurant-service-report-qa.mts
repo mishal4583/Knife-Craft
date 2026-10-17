@@ -27,7 +27,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { DEFAULT_SAVE, type SaveData } from "../src/game/SaveManager.ts";
 import { getLevels } from "../src/game/levels/LevelManager.ts";
-import { getCampaignRecipe } from "../src/game/recipes/campaignRecipes.ts";
+import { CAMPAIGN_RECIPES, getCampaignRecipe } from "../src/game/recipes/campaignRecipes.ts";
 import type { SupplyId } from "../src/game/business/businessSupplies.ts";
 import { inspectBusiness } from "../src/game/business/businessInspection.ts";
 import {
@@ -56,11 +56,13 @@ function assert(cond: unknown, msg: string, detail?: unknown) {
 }
 const root = path.resolve(import.meta.dirname, "..");
 const read = (p: string) => fs.readFileSync(path.join(root, p), "utf8");
+// The 150-level campaign (2026-10-15) dropped these two dishes from its levels; they are
+// still real catalog recipes, so look there when no level cooks them.
 const recipe = (name: RegExp) =>
   getLevels()
     .flatMap((l) => [...(l.recipePoolIds ?? []), ...(l.batchGroupRecipeIds ?? [])])
     .map((id) => getCampaignRecipe(id)!)
-    .find((r) => name.test(r.name))!;
+    .find((r) => name.test(r.name)) ?? CAMPAIGN_RECIPES.find((r) => name.test(r.name))!;
 const FULL: Partial<Record<SupplyId, number>> = {
   "dinner-plates": 20,
   "dinner-forks": 20,

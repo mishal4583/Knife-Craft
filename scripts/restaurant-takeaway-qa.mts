@@ -29,7 +29,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { DEFAULT_SAVE, type SaveData } from "../src/game/SaveManager.ts";
 import { getLevels } from "../src/game/levels/LevelManager.ts";
-import { getCampaignRecipe } from "../src/game/recipes/campaignRecipes.ts";
+import { CAMPAIGN_RECIPES, getCampaignRecipe } from "../src/game/recipes/campaignRecipes.ts";
 import type { RecipeDefinition } from "../src/game/recipes/recipeTypes.ts";
 import { SUPPLY_CATALOG, type SupplyId } from "../src/game/business/businessSupplies.ts";
 import { supplyUnits } from "../src/game/business/BusinessSuppliesManager.ts";
@@ -46,7 +46,11 @@ import {
 import { levelRecipesAt } from "../src/game/restaurant/kitchenTools.ts";
 import { closeDay, closingPreview, recordService } from "../src/game/restaurant/restaurantDay.ts";
 import { migrateToUnifiedRestaurant } from "../src/game/restaurant/restaurantMigration.ts";
-import { servicesForDayAt } from "../src/game/restaurant/restaurantProgression.ts";
+import {
+  LAST_CAMPAIGN_LEVEL as LAST_LEVEL,
+  restaurantSystem,
+  servicesForDayAt,
+} from "../src/game/restaurant/restaurantProgression.ts";
 
 let failures = 0;
 function assert(cond: unknown, msg: string, detail?: unknown) {
@@ -58,11 +62,13 @@ function assert(cond: unknown, msg: string, detail?: unknown) {
 }
 const root = path.resolve(import.meta.dirname, "..");
 const read = (p: string) => fs.readFileSync(path.join(root, p), "utf8");
+// Some sample dishes left the 150-level campaign's levels (2026-10-15) but are still real
+// catalog recipes: look there when no level cooks them.
 const recipe = (name: RegExp) =>
   getLevels()
     .flatMap((l) => [...(l.recipePoolIds ?? []), ...(l.batchGroupRecipeIds ?? [])])
     .map((id) => getCampaignRecipe(id)!)
-    .find((r) => name.test(r.name))!;
+    .find((r) => name.test(r.name)) ?? CAMPAIGN_RECIPES.find((r) => name.test(r.name))!;
 const saveAt = (
   n: number,
   stock: Partial<Record<SupplyId, number>> = {},
@@ -95,7 +101,8 @@ const piecesOf = (r: RecipeDefinition, n: number) => {
 console.log("U. Every packaging and hygiene item has a use");
 {
   const used = new Set<string>();
-  for (let n = 31; n <= 250; n++)
+  // The whole 150-level campaign (re-baselined 2026-10-17; was L31–250).
+  for (let n = 1; n <= LAST_LEVEL; n++)
     levelRecipesAt(n).forEach((r, i) => {
       const service = orderServiceFor(n, i);
       if (service === "takeaway") {
@@ -119,7 +126,8 @@ console.log("U. Every packaging and hygiene item has a use");
     packaging.filter((id) => !used.has(id)),
   );
   const containers = new Set<string>();
-  for (let n = 71; n <= 250; n++)
+  // From the takeaway stage (L46 in the 150-level campaign; was L71) to the end.
+  for (let n = restaurantSystem("takeaway").firstLevel; n <= LAST_LEVEL; n++)
     levelRecipesAt(n).forEach((r, i) => {
       if (orderServiceFor(n, i) === "takeaway") containers.add(takeawayPiecesFor(r, n).container);
     });
@@ -162,20 +170,29 @@ console.log("P. Pieces by dish");
     "P2: heavy orders (grilled, pot, shared) a carry bag; the rest a paper bag",
   );
   assert(
-    takeawayPiecesFor(fried, 80).extras.join() === "cutlery-packs,wet-wipes" &&
-      !takeawayPiecesFor(bread, 80).extras.includes("cutlery-packs") &&
-      !takeawayPiecesFor(salad, 90).extras.includes("tamper-labels") &&
-      takeawayPiecesFor(salad, 91).extras.includes("tamper-labels"),
-    "P3: a cutlery kit (not bread), a wet wipe for messy dishes, a tamper label from L91",
+    takeawayPiecesFor(fried, 50).extras.join() === "cutlery-packs,wet-wipes" &&
+      !takeawayPiecesFor(bread, 50).extras.includes("cutlery-packs") &&
+      // 150-level remap (2026-10-15): the old L91 / L101 thresholds are SERVICE_SUPPLY_RULES'.
+      !takeawayPiecesFor(salad, SERVICE_SUPPLY_RULES.tamperFromLevel - 1).extras.includes(
+        "tamper-labels",
+      ) &&
+      takeawayPiecesFor(salad, SERVICE_SUPPLY_RULES.tamperFromLevel).extras.includes(
+        "tamper-labels",
+      ) &&
+      SERVICE_SUPPLY_RULES.tamperFromLevel === 56,
+    "P3: a cutlery kit (not bread), a wet wipe for messy dishes, a tamper label from L56 (old L91)",
   );
   assert(
     dineInExtrasFor(fried, 80).join() === "deli-sheets" &&
       dineInExtrasFor(bread, 40).join() === "deli-sheets" &&
-      !dineInExtrasFor(chicken, 100).includes("toothpicks") &&
-      dineInExtrasFor(chicken, 101).includes("toothpicks") &&
+      !dineInExtrasFor(chicken, SERVICE_SUPPLY_RULES.toothpickFromLevel - 1).includes(
+        "toothpicks",
+      ) &&
+      dineInExtrasFor(chicken, SERVICE_SUPPLY_RULES.toothpickFromLevel).includes("toothpicks") &&
+      SERVICE_SUPPLY_RULES.toothpickFromLevel === 59 &&
       dineInExtrasFor(salad, 150).length === 0 &&
       dineInExtrasFor(null, 150).length === 0,
-    "P4: dine-in: fried food and bread on a deli-sheet liner; grilled meat and fish with a toothpick from L101",
+    "P4: dine-in: fried food and bread on a deli-sheet liner; grilled meat and fish with a toothpick from L59 (old L101)",
   );
 }
 
@@ -259,14 +276,15 @@ console.log("X. Closing tissues and deli wrap");
     basil: { ingredientId: "basil", quantity: 0, unitCost: 100, purchaseDay: 1 },
   } as unknown as SaveData["business"]["inventory"];
   assert(
-    closingSuppliesFor(saveAt(20, {}, fridge), 20).length === 0 &&
-      closingSuppliesFor(saveAt(21, {}, fridge), 21)
+    // 150-level remap: wrap from L16 (old L21), tissues with dine-in at L21 (old L31).
+    closingSuppliesFor(saveAt(15, {}, fridge), 15).length === 0 &&
+      closingSuppliesFor(saveAt(16, {}, fridge), 16)
         .map((l) => `${l.id}:${l.need}`)
         .join() === "food-wrap:2" &&
-      closingSuppliesFor(saveAt(31, {}, fridge), 31)
+      closingSuppliesFor(saveAt(21, {}, fridge), 21)
         .map((l) => `${l.id}:${l.need}`)
         .join() === "tissues:1,food-wrap:2",
-    "X1: from L21 a sheet of wrap per ingredient left in the fridge (empty lines skipped); from L31 a tissue cube for the dining room",
+    "X1: from L16 a sheet of wrap per ingredient left in the fridge (empty lines skipped); from L21 a tissue cube for the dining room",
   );
   const s = saveAt(40, { tissues: 3, "food-wrap": 10 }, fridge);
   const used = closingSupplies(s, 40);

@@ -153,8 +153,9 @@ console.log("S. Stale copy (A5)");
 {
   const l1 = getNextRewardPreview(1)!;
   assert(
-    l1.name === "Santoku" && opensInMarket(l1),
-    "S1: Level 1's preview is the Santoku, which opens in the Market",
+    // 150-level order: the Paring Knife (old L15) opens at L9, before the Santoku (L10).
+    l1.name === "Paring Knife" && l1.atLevel === 9 && opensInMarket(l1),
+    "S1: Level 1's preview is the Paring Knife (L9), which opens in the Market",
   );
   const report = read("src/components/kc/game/KnifeReport.tsx");
   assert(

@@ -27,7 +27,12 @@ import path from "node:path";
 import { DEFAULT_SAVE, type SaveData } from "../src/game/SaveManager.ts";
 import { getLevel } from "../src/game/levels/LevelManager.ts";
 import { rollServiceTickets } from "../src/game/restaurant/serviceTickets.ts";
-import { pantryForMissing, serviceStockCheck } from "../src/game/restaurant/campaignStock.ts";
+import { serviceStockCheck } from "../src/game/restaurant/campaignStock.ts";
+import * as campaignStockModule from "../src/game/restaurant/campaignStock.ts";
+// Grandma's pantry was removed in the 2026-10-15 redesign (0b2ce52): "no free pantry or
+// ingredient handout" — a short service is covered by an ad or supplier credit from L3.
+const NO_PANTRY = !("pantryForMissing" in campaignStockModule);
+
 import { serviceSuppliesCheck } from "../src/game/restaurant/serviceSupplies.ts";
 import { coverFor, coverWithAd, coverWithCredit } from "../src/game/restaurant/serviceCover.ts";
 import {
@@ -76,17 +81,17 @@ console.log("A. When it applies");
   const l30 = saveAt(30, 0);
   const p30 = planAt(l30, 30);
   const rich = saveAt(30, 500_000);
+  // 2026-10-15 redesign: the Market sells ingredients from L3, so the cover starts there.
   assert(
-    coverFor(p5, "stock") === null &&
+    coverFor(p5, "stock") !== null &&
       p5.check.applies &&
       !p5.check.ready &&
-      pantryForMissing(l5, p5.check, false) !== null,
-    "A1: before Level 10 no ad or credit — Grandma's pantry (the tutorial levels; nothing can be bought yet)",
+      NO_PANTRY &&
+      coverFor(planAt(saveAt(2, 0), 2), "stock") === null,
+    "A1: from Level 3 (ingredients on sale) a short service with $0 gets an ad or credit; nothing before; no pantry",
   );
   assert(
-    coverFor(p30, "stock") !== null &&
-      pantryForMissing(l30, p30.check, true) === null &&
-      coverFor(planAt(rich, 30), "stock") === null,
+    coverFor(p30, "stock") !== null && NO_PANTRY && coverFor(planAt(rich, 30), "stock") === null,
     "A2: from Level 10 only when the wallet can't pay (a player who can pay buys it); never the pantry",
   );
   const l31 = saveAt(31, 0);

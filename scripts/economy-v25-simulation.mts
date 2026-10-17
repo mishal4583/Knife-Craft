@@ -8,7 +8,8 @@
  *    StaffManager.buyStaff, blacksmith.upgradeKnife,
  *    KitchenUpgradeManager.purchaseKitchenUpgrade,
  *    RefrigeratorManager.purchaseRefrigerator, sharpness.sharpenKnife;
- *  - milestone rewards + the Family Legacy: milestoneRewards.grantEarnedMilestoneRewards;
+ *  - milestone rewards + the Family Legacy: milestoneRewards.grantEarnedMilestoneRewards,
+ *    then achievements.collectAllAchievements (the player taps Collect, since 2026-10-16);
  *  - a Business day: BusinessDayManager.endBusinessDay.
  *
  * Every step records the ledger entry App.tsx would, and checks that the
@@ -87,6 +88,7 @@ import {
   performRefrigeratorMaintenance,
 } from "../src/game/business/businessMaintenance.ts";
 import { grantEarnedMilestoneRewards } from "../src/game/progression/milestoneRewards.ts";
+import { collectAllAchievements } from "../src/game/progression/achievements.ts";
 import { formatUsd } from "../src/game/money.ts";
 import { simulateCampaign, type LevelResult } from "./economy-v2-campaign-simulation.mts";
 
@@ -283,7 +285,12 @@ function payMilestones(run: Tracker, save: SaveData): SaveData {
   const g = grantEarnedMilestoneRewards(save);
   if (g.granted.length)
     run.check(`milestones ${g.granted.map((m) => m.id).join(",")}`, save, g.save);
-  return g.save;
+  // Since 2026-10-16 achievement money (the old milestones) pays only when the player taps
+  // Collect in Progress → Achievements; only the Family Legacy pays by itself. The simulated
+  // player is an active one and collects each as soon as it is earned (CLAUDE.md §7 target).
+  const c = collectAllAchievements(g.save);
+  if (c.amount > 0) run.check("collect achievements", g.save, c.save);
+  return c.save;
 }
 
 /** The six-dish menu a simulated Business player runs (everything else off the menu). */
