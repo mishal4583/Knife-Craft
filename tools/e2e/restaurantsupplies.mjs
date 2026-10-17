@@ -1,19 +1,20 @@
 // Unified Restaurant phase G — consumable supplies, in a real browser, on a RESTAURANT_MODE
 // test build (the default build — the restaurant is on unless VITE_RESTAURANT_MODE=0).
-//   1. Level 31 (dine-in starts), nothing bought: the Pre-Service Check lists Supplies by the
-//      dish (supplies plan B, 2026-10-10 — was a plain plate/fork/knife): Baguette Rounds is
-//      bread, so a side plate, a knife and a water glass, plus the table's menu stand, salt &
-//      pepper and napkin holder, block (START disabled); napkins and the menu guests' tableware
-//      only warn; the dish-soap and cleaning-liquid bottles show "Empty".
+//   1. Level 22 (the 150-level campaign: dine-in starts at 21; was Level 31's Baguette Rounds),
+//      nothing bought: the Pre-Service Check lists Supplies by the dish (supplies plan B,
+//      2026-10-10): Potato Veloute Base is a soup, so a soup bowl, a soup spoon and a water
+//      glass, plus the table's menu stand, salt & pepper and napkin holder, block (START
+//      disabled); napkins and the menu guests' tableware only warn; the dish-soap and
+//      cleaning-liquid bottles show "Empty".
 //   2. Restock → opens the Market on that exact supply line; one pack of each blocking piece,
 //      napkins and dish soap (bought in the Market, ONE ledger entry each) and the check turns
 //      ready; the soap bottle then shows a % and "~N services left".
 //   3. Serving the order takes the dish's pieces (→ washing) and a napkin automatically;
 //      finishing the level runs the wash-up (dish soap used, nothing washing).
 //   4. Inventory → Supplies shows the place settings and both bottles (read-only).
-//   5. Level 32 (Dinner) ends the day: Closing Time shows the empty cleaning-liquid bottle
+//   5. Level 23 (Dinner) ends the day: Closing Time shows the empty cleaning-liquid bottle
 //      and still closes for the night.
-//   6. Level 31 with $1: supplier credit brings the missing tableware (the Market's packs, no money
+//   6. Level 22 with $0: supplier credit brings the missing tableware (the Market's packs, no money
 //      moved, the price owed) and the service can start (was Grandma's spares — rule changed
 //      2026-10-10).
 // Prints PASS/FAIL per check and exits 1 on any failure.
@@ -27,6 +28,7 @@ import {
   readSave,
   shot,
   text,
+  openSection,
 } from "./harness.mjs";
 import { playToReport } from "./solver.mjs";
 
@@ -38,20 +40,26 @@ const check = (id, ok, detail) => {
 const flat = async () => (await text(page)).replace(/\s+/g, " ");
 const { browser, page, logs } = await launch();
 
-// The day opened at Level 30 (Breakfast, done): 3 services a day from L21 (developer
-// 2026-10-10), so Level 31 is Lunch and Level 32 Dinner — then closing time.
-const DAY_FROM_30 = {
-  day: 15,
+// The day opened at Level 21 (Breakfast, done): 3 services a day from L21 (developer
+// 2026-10-10), so Level 22 is Lunch and Level 23 Dinner — then closing time.
+const DAY_FROM_21 = {
+  day: 11,
   opened: true,
   servicesDone: 1,
   servicesPlanned: 3,
   closingDue: false,
   openingCredits: 0,
-  openingLevel: 30,
+  openingLevel: 21,
 };
 const saveAt = (n, credits) =>
   seedSave({
-    business: { ...MOVED_IN_BUSINESS, restaurantDay: DAY_FROM_30 },
+    // The free Mexican Chef is needed from Level 16 (menu guests): hired, so the check is
+    // about supplies only.
+    business: {
+      ...MOVED_IN_BUSINESS,
+      restaurantDay: DAY_FROM_21,
+      restaurantStaff: { specialists: ["mexican-chef"] },
+    },
     credits,
     levelProgress: {
       currentLevelId: `level-${n}`,
@@ -138,8 +146,12 @@ async function restockFood() {
     ),
   );
   for (const id of rows) {
+    // The row's Restock (its ⓘ, since the 2026-10-16 copy sweep, may come first).
     await page.evaluate(
-      (x) => document.querySelector(`[data-psc-ingredient="${x}"] button`)?.click(),
+      (x) =>
+        [...document.querySelectorAll(`[data-psc-ingredient="${x}"] button`)]
+          .find((b) => /Restock/.test(b.textContent))
+          ?.click(),
       id,
     );
     await sleep(800);
@@ -169,23 +181,23 @@ async function restockSupplies() {
   }
 }
 
-// ---------- 1. Level 31, nothing bought ----------
-await boot(page, saveAt(31, 50_000)); // $50,000 (version-1 test saves are in dollars)
-await prepare("Baguette Rounds");
+// ---------- 1. Level 22, nothing bought ----------
+await boot(page, saveAt(22, 50_000)); // $50,000 (version-1 test saves are in dollars)
+await prepare("Potato Veloute Base");
 const s1 = await sheet();
 await shot(page, "restaurant-supplies-check");
 const own = (s) => s?.supplies.filter((r) => !r.guest) ?? [];
 const status = (id) => own(s1).find((r) => r.id === id)?.status;
 const BLOCKING = [
-  "side-plates",
-  "dinner-knives",
+  "soup-bowls",
+  "soup-spoons",
   "water-glasses",
   "menu-stands",
   "salt-pepper",
   "napkin-holders",
 ];
 check(
-  "1 L31 check: the bread's side plate, knife and water glass + the table's stand, salt & pepper and napkin holder block; napkins and the guests' tableware warn; both bottles empty; START disabled",
+  "1 L22 check: the soup's bowl, spoon and water glass + the table's stand, salt & pepper and napkin holder block; napkins and the guests' tableware warn; both bottles empty; START disabled",
   !!s1 &&
     BLOCKING.every((id) => status(id) === "missing") &&
     !own(s1).some((r) => ["dinner-plates", "dinner-forks"].includes(r.id)) &&
@@ -209,13 +221,11 @@ const s2 = await sheet();
 const newEntries = bought.economyLedger.slice(before.economyLedger.length);
 const soap = s2?.bottles.find((b) => b.id === "dish-soap");
 check(
-  "2 Restock opens the exact Market line; 8 purchases = 8 ledger entries; the check is ready (the bread's deli-sheet liner only warns); soap shows ~N washes remaining",
+  "2 Restock opens the exact Market line; 8 purchases = 8 ledger entries; the check is ready; soap shows ~N washes remaining",
   focus.every(Boolean) &&
     newEntries.length === 8 &&
     newEntries.every((e) => /^supply-/.test(e.category)) &&
-    // Supplies plan C (2026-10-10): the bread's deli-sheet liner is a warning, never blocking.
-    own(s2).every((r) => r.status === "ok" || (r.id === "deli-sheets" && r.status === "warning")) &&
-    own(s2).some((r) => r.id === "deli-sheets") &&
+    own(s2).every((r) => r.status === "ok") &&
     s2?.startDisabled === false &&
     soap?.status === "ok" &&
     /~\d+ washes remaining/.test(soap.text),
@@ -238,16 +248,17 @@ await clickButton(page, /^Serve to /);
 await sleep(1000);
 const served = await readSave(page);
 check(
-  "3a serving takes the bread's side plate, knife and glass (→ washing) and a napkin, automatically",
+  "3a serving takes the soup's bowl, spoon and glass (→ washing) and two napkins (a messy dish), automatically",
   played.ok &&
     served.business.restaurantSupplies?.washing === 1 &&
-    ["side-plates", "dinner-knives", "water-glasses"].every(
+    ["soup-bowls", "soup-spoons", "water-glasses"].every(
       (id) => served.business.restaurantSupplies?.dirty?.[id] === 1,
     ) &&
+    // napkinsFor (serviceSupplies.ts): two napkins for a messy dish (curries, soups, fried).
     served.business.supplies.stock["paper-napkins"]?.units ===
-      bought.business.supplies.stock["paper-napkins"].units - 1 &&
-    served.business.supplies.stock["side-plates"]?.units ===
-      bought.business.supplies.stock["side-plates"].units,
+      bought.business.supplies.stock["paper-napkins"].units - 2 &&
+    served.business.supplies.stock["soup-bowls"]?.units ===
+      bought.business.supplies.stock["soup-bowls"].units,
   { washing: served.business.restaurantSupplies, played: played.ok },
 );
 await clickButton(page, /^Finish Level$/);
@@ -255,7 +266,7 @@ await sleep(1000);
 const done = await readSave(page);
 check(
   "3b finishing the service runs the wash-up: nothing washing, dish soap used (one bottle opened)",
-  done.levelProgress.completedLevelIds.includes("level-31") &&
+  done.levelProgress.completedLevelIds.includes("level-22") &&
     done.business.restaurantSupplies?.washing === 0 &&
     done.business.restaurantSupplies?.soapPct === 95 &&
     done.business.supplies.stock["dish-soap"]?.units === 3 &&
@@ -275,25 +286,26 @@ check(
 );
 
 // Developer 2026-10-10: the Level Complete card goes away when the player taps elsewhere.
-const bannerUp = await page.evaluate(
-  () => !!document.querySelector('[data-testid="banner-close"]'),
-);
+// (An achievement to collect may follow with its own card — 2026-10-16 — so the check is on
+// the Level Complete card itself.)
+const levelCompleteUp = () =>
+  page.evaluate(() =>
+    [...document.querySelectorAll('[data-testid="banner-close"]')].some((b) =>
+      /LEVEL COMPLETE/i.test(b.parentElement?.innerText ?? ""),
+    ),
+  );
+const bannerUp = await levelCompleteUp();
 await page.mouse.click(12, 700);
 await sleep(400);
-const bannerAfter = await page.evaluate(
-  () => !!document.querySelector('[data-testid="banner-close"]'),
-);
+const bannerAfter = await levelCompleteUp();
 check("3d a tap outside the Level Complete card closes it at once", bannerUp && !bannerAfter, {
   bannerUp,
   bannerAfter,
 });
 
 // ---------- 4. Inventory → Supplies ----------
-await page.evaluate(() =>
-  [...document.querySelectorAll("nav button")]
-    .find((x) => x.textContent.includes("Inventory"))
-    ?.click(),
-);
+// Inventory opens from the Restaurant map (openSection).
+await openSection(page, "Inventory");
 await sleep(700);
 await clickButton(page, /Supplies/);
 await sleep(700);
@@ -307,7 +319,7 @@ check(
   "4 Inventory → Supplies shows the place settings, what each guest eats from, the soap at 95% and the empty cleaning liquid",
   !!inv &&
     /Place settings: \d+ clean/.test(inv) &&
-    /what their dish needs/.test(inv) &&
+    /Per guest: plate or bowl/.test(inv) &&
     /Dish soap — 95%/.test(inv) &&
     /~79 washes remaining/.test(inv) &&
     /Cleaning liquid — 0%/.test(inv),
@@ -315,11 +327,11 @@ check(
 );
 
 // ---------- 5. Closing time ----------
-// Level 31 was the day's first service (Lunch); Level 32 is Dinner, then it's closing time.
-await prepare("French Onion Base");
+// Level 22 was Lunch; Level 23 is Dinner, then it's closing time.
+await prepare("Garlic & Tomato Sauce");
 if (await page.evaluate(() => !!document.querySelector('[data-testid="pre-service-check"]'))) {
   await restockFood();
-  // Supplies plan B: the French onion soup needs soup bowls and spoons.
+  // Supplies plan B: the plated dish needs its own pieces.
   await restockSupplies();
   await clickButton(page, /^(OPEN THE RESTAURANT|START SERVICE)$/);
   await sleep(900);
@@ -354,7 +366,7 @@ await clickButton(page, /^Close for the night/);
 await sleep(800);
 const afterClose = await readSave(page);
 check(
-  "5 after Dinner (L32) closing shows the empty cleaning-liquid bottle and still closes for the night",
+  "5 after Dinner (L23) closing shows the empty cleaning-liquid bottle and still closes for the night",
   day?.closingDue === true &&
     !!ct &&
     /Empty/.test(ct) &&
@@ -364,10 +376,11 @@ check(
 );
 
 // ---------- 6. Supplier credit (rule changed 2026-10-10: Grandma's spares are gone) ----------
-// Test saves are version 1, whose money is whole dollars (×100 on load): this is $1.
+// Test saves are version 1, whose money is whole dollars (×100 on load): this is $0 (the
+// soup's ingredients cost under $1, so with $1 they'd be bought, not lent).
 // The mock platform shows no rewarded ads, so the check offers supplier credit.
-await boot(page, saveAt(31, 1));
-await prepare("Baguette Rounds");
+await boot(page, saveAt(22, 0));
+await prepare("Potato Veloute Base");
 const poor = await sheet();
 const b0 = await readSave(page);
 const creditButtons = await page.evaluate(
@@ -376,15 +389,16 @@ const creditButtons = await page.evaluate(
       /Supplier credit/.test(b.textContent),
     ).length,
 );
-// One button per short part (ingredients, supplies); take each on credit.
-for (let i = 0; i < creditButtons; i++) {
-  await clickButton(page, /Supplier credit/);
+// One button per short part (ingredients, supplies); take each on credit, as long as one is
+// offered (the next part's button shows once the first is covered).
+for (let i = 0; i < 4; i++) {
+  if (!(await clickButton(page, /Supplier credit/))) break;
   await sleep(600);
 }
 const lent = await readSave(page);
 const s6 = await sheet();
 check(
-  "6 with $1 supplier credit brings the Market's packs (no money, no ledger now, the price owed) and START is enabled",
+  "6 with $0 supplier credit brings the Market's packs (no money, no ledger now, the price owed) and START is enabled",
   !!poor &&
     /Not enough money/.test(poor.text) &&
     !/Grandma's spares|Emergency Service/.test(poor.text) &&
