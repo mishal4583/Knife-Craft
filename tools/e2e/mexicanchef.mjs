@@ -1,8 +1,9 @@
 // The Mexican Chef is introduced early (developer 2026-10-17), restaurant build:
 //   1. Level 11: the check's news says Mexican cuisine is coming at L16 with its chef.
 //   2. Level 16 (the first Mexican dish, Beetroot & Orange Plate): the check needs the Mexican
-//      Chef (ⓘ reason) and asks to hire him; Hire → Staff → hire (free: no money, no ledger)
+//      Chef (ⓘ reason) and asks to hire the chef; Hire → Staff → hire (free: no money, no ledger)
 //      → back: the requirement is met.
+//   2c. the Staff card names her: Chef Marisol (intro line behind ⓘ).
 //   3. 320×568: the check fits (no sideways scroll); no page errors.
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import {
@@ -84,7 +85,7 @@ check(
   { news: news11.slice(0, 300) },
 );
 
-// ---------- 2. Level 16: hire him ----------
+// ---------- 2. Level 16: hire the chef ----------
 await boot(page, saveAt(16, 500));
 await openLevel("Beetroot & Orange Plate");
 const staff = await pscStaff();
@@ -106,8 +107,14 @@ await sleep(400);
 const before = await readSave(page);
 await clickButton(page, /^Hire .* → Staff/);
 await sleep(900);
+const chefRow = await page.evaluate(() => {
+  const r = document.querySelector('[data-specialist="mexican-chef"]');
+  return { text: r?.textContent ?? "", tip: !!r?.querySelector("[data-infotip]") };
+});
 await page.evaluate(() =>
-  document.querySelector('[data-specialist="mexican-chef"] button')?.click(),
+  [...document.querySelectorAll('[data-specialist="mexican-chef"] button')]
+    .find((b) => b.textContent.trim() === "Hire")
+    ?.click(),
 );
 await sleep(400);
 const hired = await readSave(page);
@@ -115,7 +122,7 @@ await page.evaluate(() => document.querySelector('[data-testid="psc-back"]')?.cl
 await sleep(900);
 const after = await pscStaff();
 check(
-  "2a L16: the check needs the Mexican Chef, with its reason (ⓘ), and asks to hire him",
+  "2a L16: the check needs the Mexican Chef, with its reason (ⓘ), and asks to hire the chef",
   staff.some((r) => r.id === "mexican-chef" && r.status === "missing" && r.reason) && !!hireBtn,
   { staff, hireBtn },
 );
@@ -128,6 +135,11 @@ check(
   { specialists: hired.business.restaurantStaff, after },
 );
 
+check(
+  "2c Staff: the specialist card shows the chef's character — Chef Marisol, her line behind ⓘ",
+  /Chef Marisol/.test(chefRow.text) && chefRow.tip,
+  chefRow,
+);
 const errors = logs.filter((l) => /pageerror|error:/.test(l) && !/favicon/.test(l));
 check("3 the check fits at 320 px; no page errors", fit[320] <= 0 && errors.length === 0, {
   fit,

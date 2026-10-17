@@ -345,7 +345,10 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   cuisines, Manager L161 with a team of ≥ 5; the specialist chef of every
   specialist cuisine on the active menu or in the tickets), announced 5
   levels ahead, shown with the reason in the Pre-Service Check, blocking
-  START until hired (hiring is free — no soft-lock); specialist chefs in the
+  START until hired (hiring is free — no soft-lock); each specialist card
+  shows its cuisine character (`chefs/chefDefinitions.ts`
+  `specialistCharacter`: Chef Amara, Yusuf, Marisol, and Haruto for the
+  Asian Chef — name, portrait, intro line behind ⓘ); specialist chefs in the
   optional `business.restaurantStaff`, hired on Restaurant → Staff, paid at
   closing from L91 (one "business-staff-salary" entry each, laid off if the
   wallet can't cover them; wage = the Line Cook's figure, not balanced);
@@ -663,6 +666,11 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   entry per role; skipped that day when the wallet can't cover it, staff
   stay); +1 menu guest per service from L51 (4 / 5 / 6 at 51 / 121 / 201).
   Completionist $185,172 → $187,057; the Staff screen says "half pay".
+  150-level numbers (re-baselined 2026-10-17): half wages from L29 (the
+  Prep Cook; `HALF_WAGES_FROM` had stayed at the raw 41) to L55, full
+  operation L56; menu guests 1 / 2 / 4 / 5 / 6 from L11 / 16 / 35 / 76 /
+  117. The Staff screen's "½ pay from Lv … · full pay from Lv …" reads the
+  constants (it said Lv 41 / 91).
   With it, the tables' pieces (`serviceSuppliesCheck`): only the orders' own
   tables block START; the extra tables the menu guests need are a
   non-blocking "for menu guests" warning (menu guests are optional) — so an
@@ -741,8 +749,10 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   supplies, Recent history. Removed as mocks: "Practice room cleaning"
   (preview-only rooms), "Customer dishwashing" and "Chef's tools wash-up"
   (a scrubbing mini-game on a fixed list that never touched the save).
-  `DishwashingPrototype.tsx` stays in the repo, unreferenced, until it is
-  wired to the real wash-up. Browser: `tools/e2e/restaurantcleanliness.mjs`
+  `DishwashingPrototype.tsx` and its sink art (`public/dishwashing/`) were
+  removed on 2026-10-17: the real wash-up runs by itself after each
+  service, so the scrub game had nothing real to wash (in git history if
+  ever wanted). Browser: `tools/e2e/restaurantcleanliness.mjs`
   (8 checks; it now opens the tab through the map's Manager / Office and
   uses the 150-level numbering).
   A Cleaner for today (developer 2026-10-17, in place of "Clean everything

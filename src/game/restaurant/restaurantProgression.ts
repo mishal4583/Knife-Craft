@@ -311,7 +311,7 @@ const FIRST_CUISINE_LEVEL: ReadonlyMap<CuisineKey, number> = (() => {
  * A cuisine opens at its remapped level, or earlier when the campaign cooks
  * it first (developer 2026-10-17: the Mexican Chef is introduced with the
  * first Mexican dish, L16, and the Pre-Service Check asks the player to hire
- * him — hiring is free; wages start with full operation).
+ * the chef — hiring is free; wages start with full operation).
  */
 export const CUISINES: readonly CuisineUnlock[] = SOURCE_CUISINES.map((cuisine) => ({
   ...cuisine,

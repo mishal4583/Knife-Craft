@@ -187,7 +187,7 @@ export function closingPreview(save: SaveData, levelNumber: number): ClosingPrev
 /**
  * Closes the restaurant for the night and starts the next day (not open
  * yet). Only when closing is due. `levelNumber` is the restaurant's level
- * (which closing stage applies). Before full operation only the L41–90 half
+ * (which closing stage applies). Before full operation only the half
  * wages move money (payHalfWages).
  */
 export function closeDay(save: SaveData, levelNumber: number): SaveData {
@@ -230,7 +230,7 @@ export function closeDay(save: SaveData, levelNumber: number): SaveData {
       },
     };
   }
-  // L41–90: half wages at closing (economy F2, developer 2026-10-12).
+  // From the Prep Cook (L29) to full operation: half wages at closing (economy F2, developer 2026-10-12).
   next = payHalfWages(next, levelNumber).save;
   next = closingWipeDown(next, levelNumber).save;
   next = closingSupplies(next, levelNumber);

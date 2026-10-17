@@ -209,8 +209,12 @@ export function paySpecialists(
   return { save: next, paid: total, laidOff: [] };
 }
 
-/** Staff are first required at L41 (the Prep Cook); half wages run from here to full operation. */
-export const HALF_WAGES_FROM = 41;
+/**
+ * Staff are first required with the Prep Cook (old L41 → new L29); half
+ * wages run from here to full operation. 2026-10-17 audit: it was left at
+ * the raw 41 after the 150-level remap, 12 levels after the Prep Cook.
+ */
+export const HALF_WAGES_FROM = remapCampaignThreshold(41);
 
 /** One role's half daily wage (whole cents). */
 export const halfWage = (role: BusinessStaffRole): number => Math.round(dailyPayroll([role]) / 2);

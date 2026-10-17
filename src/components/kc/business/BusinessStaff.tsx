@@ -20,6 +20,7 @@ import {
 import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
 import { isSystemLive, restaurantSystem } from "@/game/restaurant/restaurantProgression";
 import { BusinessSectionBanner } from "./BusinessSectionBanner";
+import { specialistCharacter } from "@/game/chefs/chefDefinitions";
 
 /** A face per role — visual only. */
 const ROLE_ICON: Record<string, string> = {
@@ -79,14 +80,14 @@ export function BusinessStaff({
 
   // Unified Restaurant: ONE Staff screen in two teams — the Kitchen Upgrades
   // (one-time helpers, permanent, no wages) and the Restaurant Team (waged
-  // roles + specialist chefs; pay from Level 91). Same data and actions.
+  // roles + specialist chefs; pay from full operation). Same data and actions.
   const restaurantTeams = RESTAURANT_MODE;
-  // Restaurant build: before full operation (Level 91) no wage is charged —
+  // Restaurant build: before full operation no full wage is charged —
   // say so on every card, so "$X/day" doesn't read as a cost today.
   const wagesFrom = restaurantSystem("full-operation").firstLevel;
   const wagesStarted =
     !restaurantTeams || isSystemLive("full-operation", restaurantLevelOf(save.levelProgress));
-  // Economy F2 (developer 2026-10-12): half pay at closing from L41 until full operation.
+  // Economy F2 (developer 2026-10-12): half pay at closing from the Prep Cook until full operation.
   const halfWages =
     restaurantTeams && !wagesStarted && restaurantLevelOf(save.levelProgress) >= HALF_WAGES_FROM;
   return (
@@ -104,7 +105,7 @@ export function BusinessStaff({
           <TeamHeading
             id="restaurant-team"
             title="🍽️ Restaurant Team"
-            line="🆓 Free to hire · ½ pay from Lv 41 · full pay from Lv 91"
+            line={`🆓 Free to hire · ½ pay from Lv ${HALF_WAGES_FROM} · full pay from Lv ${wagesFrom}`}
           />
         </>
       ) : null}
@@ -237,7 +238,7 @@ function TeamHeading({ id, title, line }: { id: string; title: string; line: str
 
 /**
  * Unified Restaurant (RESTAURANT_MODE): the specialist chefs a cuisine needs
- * (restaurant/staffRequirements.ts). Free to hire; from Level 91 their wage
+ * (restaurant/staffRequirements.ts). Free to hire; from full operation their wage
  * is paid at closing. A chef is hireable once its first cuisine has opened.
  */
 function SpecialistChefs({
@@ -261,55 +262,67 @@ function SpecialistChefs({
       <div data-testid="specialist-chefs">
         <Eyebrow>🌍 Specialist chefs</Eyebrow>
         <p className="mt-1 font-hand text-[15px] leading-snug text-walnut/65">
-          🌍 One chef per cuisine · 🆓 free to hire · 💵 paid from Lv 91
+          🌍 One chef per cuisine · 🆓 free to hire · 💵 paid from Lv {wagesFrom}
         </p>
         <ul className="mt-2 divide-y divide-walnut/10">
-          {SPECIALIST_CHEFS.map((chef) => {
-            const open = level >= chef.firstLevel;
-            const isHired = hired.has(chef.id);
-            return (
-              <li
-                key={chef.id}
-                className="flex min-h-12 items-center gap-2 py-2"
-                data-specialist={chef.id}
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="font-ui text-[14.5px] font-bold text-walnut-dark">
-                    {chef.title}{" "}
-                    {isHired ? (
-                      <Badge tone="sage">Hired</Badge>
-                    ) : needed.has(chef.id) ? (
-                      <Badge tone="copper">Needed now</Badge>
-                    ) : null}
-                  </p>
-                  <p className="font-ui text-[12.5px] text-walnut/60">
-                    {chef.cuisines.join(" · ")} ·{" "}
-                    {wagesStarted
-                      ? `${formatUsd(chef.dailyWage)}/day`
-                      : `free now · ${formatUsd(chef.dailyWage)}/day from Lv ${wagesFrom}`}
-                  </p>
-                </div>
-                {!open ? (
-                  <span className="font-ui text-[12.5px] font-bold text-walnut/50">
-                    Level {chef.firstLevel}
-                  </span>
-                ) : isHired ? (
-                  <KButton
-                    size="sm"
-                    variant="ghost"
-                    className="min-h-12"
-                    onClick={() => onFire(chef.id)}
-                  >
-                    Let go
-                  </KButton>
-                ) : (
-                  <KButton size="sm" className="min-h-12" onClick={() => onHire(chef.id)}>
-                    Hire
-                  </KButton>
-                )}
-              </li>
-            );
-          })}
+          {[...SPECIALIST_CHEFS]
+            .sort((a, b) => a.firstLevel - b.firstLevel)
+            .map((chef) => {
+              const open = level >= chef.firstLevel;
+              const isHired = hired.has(chef.id);
+              const who = specialistCharacter(chef.id);
+              return (
+                <li
+                  key={chef.id}
+                  className="flex min-h-12 items-center gap-2 py-2"
+                  data-specialist={chef.id}
+                >
+                  {who ? (
+                    <span className="text-[24px]" aria-hidden>
+                      {who.portraitEmoji}
+                    </span>
+                  ) : null}
+                  <div className="min-w-0 flex-1">
+                    <p className="flex flex-wrap items-center gap-x-1.5 font-ui text-[14.5px] font-bold text-walnut-dark">
+                      {who ? `${who.name} · ` : ""}
+                      {chef.title}
+                      {who ? (
+                        <InfoTip label={`About ${who.name}`}>“{who.introLine}”</InfoTip>
+                      ) : null}{" "}
+                      {isHired ? (
+                        <Badge tone="sage">Hired</Badge>
+                      ) : needed.has(chef.id) ? (
+                        <Badge tone="copper">Needed now</Badge>
+                      ) : null}
+                    </p>
+                    <p className="font-ui text-[12.5px] text-walnut/60">
+                      {chef.cuisines.join(" · ")} ·{" "}
+                      {wagesStarted
+                        ? `${formatUsd(chef.dailyWage)}/day`
+                        : `free now · ${formatUsd(chef.dailyWage)}/day from Lv ${wagesFrom}`}
+                    </p>
+                  </div>
+                  {!open ? (
+                    <span className="font-ui text-[12.5px] font-bold text-walnut/50">
+                      Level {chef.firstLevel}
+                    </span>
+                  ) : isHired ? (
+                    <KButton
+                      size="sm"
+                      variant="ghost"
+                      className="min-h-12"
+                      onClick={() => onFire(chef.id)}
+                    >
+                      Let go
+                    </KButton>
+                  ) : (
+                    <KButton size="sm" className="min-h-12" onClick={() => onHire(chef.id)}>
+                      Hire
+                    </KButton>
+                  )}
+                </li>
+              );
+            })}
         </ul>
       </div>
     </Panel>

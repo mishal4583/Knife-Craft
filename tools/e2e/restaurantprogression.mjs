@@ -258,7 +258,10 @@ const onStaff = await page.evaluate(
   () => !!document.querySelector('[data-testid="specialist-chefs"]'),
 );
 await page.evaluate(() =>
-  document.querySelector('[data-specialist="indian-chef"] button')?.click(),
+  // The row's first button is the chef's ⓘ (2026-10-17); click Hire by name.
+  [...document.querySelectorAll('[data-specialist="indian-chef"] button')]
+    .find((b) => b.textContent.trim() === "Hire")
+    ?.click(),
 );
 await sleep(300);
 for (const name of ["Prep Cook", "Server"]) {

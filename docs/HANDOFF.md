@@ -5,8 +5,16 @@
 - Bulk tiers 3/5/8 % from 5/10/25 (were 25/50/100).
 - The shift checklist's "Do all" button is gone (Do it per chore).
 - Mexican cuisine and the Mexican Chef open at L16 (the first Mexican dish),
-  announced at L11; the check asks to hire him (free). e2e `mexicanchef.mjs`.
+  announced at L11; the check asks to hire the chef (free). e2e `mexicanchef.mjs`.
   The Mexican menu dishes stay at L49 for now (menu re-plan, below).
+- Unused files: the specialist chefs now show their characters from
+  `chefDefinitions.ts` (Chef Marisol, …); the development card (replaced by
+  Business → Upgrades on 2026-10-15) and the dishwashing scrub prototype
+  with its 324 KB sink art were removed (the real wash-up runs itself).
+  `kc/modals/index.tsx` was not unused (CutResultPanel's Toast).
+- Half wages start with the Prep Cook (L29); the constant had stayed at the
+  250-level 41. The Staff screen showed "Lv 41 / Lv 91"; it reads the
+  constants now. Sim target still holds (`restaurant-final-economy-qa`).
 
 ## Whole-game audit fixes (2026-10-17, `main`)
 
@@ -17,9 +25,7 @@
   now `staff-purchase` (End Business Day stays the one wage site), and the
   map shows today's Cleaner through an explicit `cleanerToday` flag.
 - **Still open:** the 250-level-era suites (53 of 104 suites have pinned
-  failures), four unused files (`DishwashingPrototype.tsx`,
-  `kc/modals/index.tsx`, `RestaurantDevelopmentCard.tsx`,
-  `chefs/chefDefinitions.ts`).
+  failures; being re-baselined).
 
 ## Cleaner for today replaces "Clean everything I can" (2026-10-17, `main`)
 

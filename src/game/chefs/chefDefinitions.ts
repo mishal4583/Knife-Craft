@@ -104,3 +104,15 @@ export const CHEF_LIST: ChefDefinition[] = Object.values(CHEFS);
 export function chefsUnlockedByLevel(level: number): ChefDefinition[] {
   return CHEF_LIST.filter((c) => c.unlockLevel <= level);
 }
+
+/**
+ * The cuisine character behind a restaurant specialist chef (developer
+ * 2026-10-17: "if they are good keep it and integrate it"): its name,
+ * portrait and intro line on the Staff screen. The specialist id names its
+ * first cuisine ("mexican-chef" → Chef Marisol); the Asian Chef, who cooks
+ * the four Asian chapters, is the Japanese Kitchen's Chef Haruto.
+ */
+export function specialistCharacter(specialistId: string): ChefDefinition | null {
+  const cuisine = specialistId === "asian-chef" ? "japanese" : specialistId.replace(/-chef$/, "");
+  return (CHEFS as Record<string, ChefDefinition | undefined>)[cuisine] ?? null;
+}

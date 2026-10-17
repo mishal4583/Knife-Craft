@@ -127,11 +127,13 @@ console.log("E. Equipment: restaurant development");
       done.currentName === KITCHEN_UPGRADE_CATALOG[all.length - 1]!.name,
     `E3: every tier built: fully developed (${done.currentName})`,
   );
-  const card = code("src/components/kc/restaurant/RestaurantDevelopmentCard.tsx");
+  // The developer replaced the development card with the Upgrades tab (5db9451, 2026-10-15);
+  // the unused card file was removed on 2026-10-17.
+  const dashE = code("src/components/kc/business/BusinessDashboard.tsx");
   assert(
-    /go\("kitchen-upgrades"\)/.test(card) &&
-      !/purchaseKitchenUpgrade|buildKitchenUpgrade/.test(card),
-    "E4: the card is read-only and links to the Kitchen Upgrade screen",
+    !fs.existsSync(path.resolve("src/components/kc/restaurant/RestaurantDevelopmentCard.tsx")) &&
+      /tab === "development" \? \(\s*<KitchenUpgrades/.test(dashE),
+    "E4: development lives on Business → Upgrades (the Kitchen Upgrade screen, embedded)",
   );
 }
 
@@ -187,8 +189,8 @@ console.log("W. Wiring and the release build");
     "W2: Restaurant → Suppliers gets App's own selectSupplier and shows the ingredient supplier only in the restaurant build",
   );
   assert(
-    /RESTAURANT_MODE \? <RestaurantDevelopmentCard/.test(fridge),
-    "W3: Equipment shows restaurant development only in the restaurant build",
+    /equipment-banner\.webp/.test(fridge) && !/RestaurantDevelopmentCard/.test(fridge),
+    "W3: Equipment opens with its banner (the development card moved to Upgrades, developer 2026-10-15)",
   );
   assert(
     /RESTAURANT_MODE \? \{ onChangeSupplier: \(\) => go\("business-suppliers"\) \} : \{\}/.test(
@@ -197,8 +199,10 @@ console.log("W. Wiring and the release build");
     "W4: the Market's Ingredients names the supplier and links to Restaurant → Suppliers (restaurant build)",
   );
   assert(
-    /title=\{RESTAURANT_MODE \? "Restaurant" : "Business"\}/.test(dash),
-    "W6: the back office is titled Restaurant in the restaurant build (Business in the release)",
+    /title="Business"\s*subtitle=\{RESTAURANT_MODE \? "your back office" : "your restaurant"\}/.test(
+      dash,
+    ),
+    'W6: the back office is titled Business, "your back office" in the restaurant build (developer 2026-10-15)',
   );
   const mod = code("src/game/restaurant/restaurantBackOffice.ts");
   assert(!/RESTAURANT_MODE|Math\.random/.test(mod), "W5: the view module never reads the switch");
