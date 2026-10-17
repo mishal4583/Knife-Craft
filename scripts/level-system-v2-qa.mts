@@ -16,6 +16,10 @@ import { LEVELS, CHAPTER_TITLES } from "../src/game/levels/levelDefinitions.ts";
 import { INGREDIENTS, TECHNIQUES, type IngredientId } from "../src/game/definitions.ts";
 import { recipePay, chapterMultiplier, recipeBase } from "../src/game/recipes/recipePay.ts";
 import { recipePrerequisiteIssues } from "../src/game/service/RecipeValidator.ts";
+import {
+  CAMPAIGN_150_CHAPTERS,
+  CAMPAIGN_150_TECHNIQUE_FIRST_USE_LEVEL,
+} from "../src/game/levels/campaignSelection.ts";
 
 let failures = 0;
 function assert(cond: boolean, label: string) {
@@ -31,12 +35,13 @@ const recipeById = new Map(CAMPAIGN_RECIPES.map((r) => [r.id, r]));
 const levelByNum = new Map(LEVELS.map((l) => [Number(l.id.match(/-(\d+)$/)![1]), l]));
 
 // ============================== STRUCTURE ==============================
-assert(LEVELS.length === 250, `1: exactly 250 levels (${LEVELS.length})`);
-assert(Object.keys(CHAPTER_TITLES).length === 25, `2: exactly 25 chapters (${Object.keys(CHAPTER_TITLES).length})`);
+// Re-baselined 2026-10-17 to the developer's 150-level campaign (2026-10-15).
+assert(LEVELS.length === 150, `1: exactly 150 levels (${LEVELS.length})`);
+assert(Object.keys(CHAPTER_TITLES).length === 13, `2: exactly 13 chapters (${Object.keys(CHAPTER_TITLES).length})`);
 {
   const nums = LEVELS.map((l) => Number(l.id.match(/-(\d+)$/)![1])).sort((a, b) => a - b);
-  const expected = Array.from({ length: 250 }, (_, i) => i + 1);
-  assert(JSON.stringify(nums) === JSON.stringify(expected), "3: levels 1-250 present, no gaps");
+  const expected = Array.from({ length: 150 }, (_, i) => i + 1);
+  assert(JSON.stringify(nums) === JSON.stringify(expected), "3: levels 1-150 present, no gaps");
 }
 {
   const ids = LEVELS.map((l) => l.id);
@@ -61,16 +66,20 @@ assert(Object.keys(CHAPTER_TITLES).length === 25, `2: exactly 25 chapters (${Obj
 }
 
 // ============================== RECIPES ==============================
-assert(CAMPAIGN_RECIPES.length === 221, `9: exactly 221 campaign recipes (${CAMPAIGN_RECIPES.length})`);
+// 222 since the redesign added the L2 practice recipe.
+assert(CAMPAIGN_RECIPES.length === 222, `9: exactly 222 campaign recipes (${CAMPAIGN_RECIPES.length})`);
 {
   const ids = CAMPAIGN_RECIPES.map((r) => r.id);
   const names = CAMPAIGN_RECIPES.map((r) => r.name);
   assert(new Set(ids).size === ids.length, "10: no duplicate recipe ids");
   assert(new Set(names).size === names.length, "11: no duplicate recipe identity (names unique)");
 }
+// The redesign put butter in one campaign dish (the Herb Butter Vegetable Plate).
 assert(
-  !CAMPAIGN_RECIPES.some((r) => r.components.some((c) => c.ingredientId === ("butter" as IngredientId))),
-  "12: no recipe contains butter",
+  CAMPAIGN_RECIPES.filter((r) => r.components.some((c) => c.ingredientId === ("butter" as IngredientId)))
+    .map((r) => r.id)
+    .join() === "camp-herb-butter-vegetable-plate",
+  "12: butter only in the Herb Butter Vegetable Plate",
 );
 {
   let validIngredients = true;
@@ -91,21 +100,24 @@ assert(
   if (issues.length) issues.forEach((i) => console.error("  ", i));
 }
 {
-  // no technique used before its teaching level, campaign-wide: for every
-  // recipe, its own unlockLevel must be >= the technique's teaching level.
-  const TEACHING_LEVEL: Record<string, number> = {
-    slice: 1, chop: 3, dice: 6, peel: 5, halve: 5, smash: 9, rings: 16,
-    julienne: 21, radial: 23, rockMince: 34, chiffonade: 35,
-  };
+  // No level cooks a cut before the campaign's own first-use level for it
+  // (CAMPAIGN_150_TECHNIQUE_FIRST_USE_LEVEL, which coaching teaches from), and that
+  // table is exactly where each cut is first cooked. (Was: recipe.unlockLevel — old
+  // metadata the 150-level game doesn't read — against the 250-level teaching table.)
   const early: string[] = [];
-  for (const r of CAMPAIGN_RECIPES) {
-    for (const c of r.components) {
-      const taught = TEACHING_LEVEL[c.technique];
-      if (taught !== undefined && r.unlockLevel < taught) {
-        early.push(`${r.id}: ${c.technique} used at L${r.unlockLevel}, taught at L${taught}`);
+  const first = new Map<string, number>();
+  for (const l of LEVELS) {
+    const n = Number(l.id.match(/-(\d+)$/)![1]);
+    for (const rid of [...(l.recipePoolIds ?? []), ...(l.batchGroupRecipeIds ?? [])])
+      for (const c of recipeById.get(rid)?.components ?? []) {
+        if (!first.has(c.technique) || first.get(c.technique)! > n) first.set(c.technique, n);
+        const taught = CAMPAIGN_150_TECHNIQUE_FIRST_USE_LEVEL[c.technique];
+        if (taught === undefined || n < taught) early.push(`L${n} ${rid}: ${c.technique} (taught L${taught})`);
       }
-    }
   }
+  for (const [t, n] of first)
+    if (CAMPAIGN_150_TECHNIQUE_FIRST_USE_LEVEL[t] !== n)
+      early.push(`${t}: first cooked L${n}, table says L${CAMPAIGN_150_TECHNIQUE_FIRST_USE_LEVEL[t]}`);
   assert(early.length === 0, `16: no technique used before its teaching level (${early.length} violations)`);
   early.forEach((e) => console.error("  ", e));
 }
@@ -113,16 +125,17 @@ assert(
 // ============================== INGREDIENTS ==============================
 const CAMPAIGN_INGREDIENT_IDS = new Set<IngredientId>();
 for (const r of CAMPAIGN_RECIPES) for (const c of r.components) CAMPAIGN_INGREDIENT_IDS.add(c.ingredientId);
-assert(CAMPAIGN_INGREDIENT_IDS.size === 56, `17: exactly 56 campaign ingredients appear across all recipes (${CAMPAIGN_INGREDIENT_IDS.size})`);
-assert(!CAMPAIGN_INGREDIENT_IDS.has("butter" as IngredientId), "18: butter absent from the campaign roster");
+assert(CAMPAIGN_INGREDIENT_IDS.size === 57, `17: exactly 57 campaign ingredients appear across all recipes (${CAMPAIGN_INGREDIENT_IDS.size})`);
+assert(CAMPAIGN_INGREDIENT_IDS.has("butter" as IngredientId), "18: butter is in the campaign roster (one dish, 2026-10-15)");
 
 // ============================== NEW INGREDIENT COVERAGE ==============================
 const NEW_ING_EXPECTED: Record<string, { count: number; first: number; last: number }> = {
-  ginger: { count: 30, first: 52, last: 234 },
-  chilli: { count: 30, first: 57, last: 234 },
-  cilantro: { count: 11, first: 87, last: 159 },
-  springonion: { count: 28, first: 123, last: 240 },
-  lime: { count: 25, first: 82, last: 220 },
+  // The 150-level campaign's coverage (recorded 2026-10-17; the 250-level one was 30/30/11/28/25).
+  ginger: { count: 15, first: 36, last: 135 },
+  chilli: { count: 17, first: 38, last: 100 },
+  cilantro: { count: 7, first: 53, last: 98 },
+  springonion: { count: 17, first: 77, last: 142 },
+  lime: { count: 19, first: 50, last: 132 },
 };
 for (const [ing, expected] of Object.entries(NEW_ING_EXPECTED)) {
   const levels: number[] = [];
@@ -215,17 +228,8 @@ assert(Object.keys(TECHNIQUES).length === 11, `25: exactly 11 techniques (${Obje
 }
 
 // ============================== CHAPTERS ==============================
-const EXPECTED_CHAPTERS: [number, string][] = [
-  [1, "Opening the Restaurant"], [2, "Italian Kitchen"], [3, "Italian Service"],
-  [4, "French Bistro"], [5, "French Precision"], [6, "Indian Kitchen"],
-  [7, "Indian Aromatics & Service"], [8, "Mediterranean & Levant"], [9, "Mexican & Latin Kitchen"],
-  [10, "Latin Service"], [11, "Japanese Kitchen"], [12, "Japanese Precision"],
-  [13, "Chinese Kitchen"], [14, "Chinese Wok Service"], [15, "Thai Kitchen"],
-  [16, "Southeast Asian Service"], [17, "Korean Kitchen"], [18, "Italian Grand Service"],
-  [19, "French Service Mastery"], [20, "Indian Grand Service"], [21, "Mediterranean Encore"],
-  [22, "Latin Mastery"], [23, "Japanese-Korean Fusion"], [24, "Chinese-Thai Fusion"],
-  [25, "The Grand Finale"],
-];
+// The 150-level campaign's 13 chapters (developer 2026-10-15), in play order.
+const EXPECTED_CHAPTERS: [number, string][] = CAMPAIGN_150_CHAPTERS.map((c, k) => [k + 1, c.title]);
 {
   let allMatch = true;
   for (const [num, name] of EXPECTED_CHAPTERS) {
@@ -234,7 +238,7 @@ const EXPECTED_CHAPTERS: [number, string][] = [
       console.error(`   chapter ${num}: got ${CHAPTER_TITLES[num]}, want ${name}`);
     }
   }
-  assert(allMatch, "28: all 25 chapter titles match v2 exactly");
+  assert(allMatch, `28: all ${EXPECTED_CHAPTERS.length} chapter titles match the 150-level campaign`);
 }
 {
   // unlockReward presence/name check for the 12 chapters v2 documents as

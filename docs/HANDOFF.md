@@ -24,8 +24,23 @@
 - The day Cleaner (previous commit) broke two checks: its ledger entry is
   now `staff-purchase` (End Business Day stays the one wage site), and the
   map shows today's Cleaner through an explicit `cleanerToday` flag.
-- **Still open:** the 250-level-era suites (53 of 104 suites have pinned
-  failures; being re-baselined).
+- **250-level suites re-baselined** (2026-10-17, developer: "fix it
+  according to your plan"): every QA suite runs to the end and passes on
+  the 150-level campaign except `restaurant-takeaway-qa` U1/U2 (below).
+  New frozen baseline in CLAUDE.md §7. Twelve suites used to crash part-way
+  (a loop to 250, a removed export), hiding their later checks.
+  Game fixes found on the way: `HALF_WAGES_FROM` (L29) and `AUDIT_FROM`
+  (L21) had stayed raw 250-level numbers; the menu schedule now follows
+  the curve rule (REFERENCE §5, `restaurant-menu-qa`): Mexican dishes from
+  L17, the Carne Asada waits for steak (L63). Three Grandma tips trimmed
+  to ≤ 70 characters.
+- **Open (design):** no takeaway order of the 150-level campaign uses a
+  thali container (the seeded takeaway roll lands on dine-in for every
+  thali dish), so that Market item is never needed —
+  `restaurant-takeaway-qa` U1/U2 fail on purpose until it's decided.
+  `level.preparationSteps` is a stale fallback on 94 levels (the session is
+  built from the recipe). GRAND SERVICE (L75) plays at L76, after the
+  finale.
 
 ## Cleaner for today replaces "Clean everything I can" (2026-10-17, `main`)
 

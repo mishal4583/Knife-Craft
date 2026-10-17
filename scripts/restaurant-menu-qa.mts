@@ -54,6 +54,10 @@ import { LEVELS } from "../src/game/levels/levelDefinitions.ts";
 import { techniqueFirstLevel, TEACH_ALL_THROUGH_LEVEL } from "../src/game/coaching.ts";
 import { mustPeelBefore } from "../src/game/prepStepGuards.ts";
 import { restaurantNewsAt } from "../src/game/restaurant/restaurantNews.ts";
+import {
+  CAMPAIGN_150_INGREDIENT_FIRST_USE_LEVEL,
+  remapCampaignThreshold,
+} from "../src/game/levels/campaignSelection.ts";
 
 let failures = 0;
 function assert(cond: unknown, msg: string) {
@@ -67,6 +71,12 @@ const root = path.resolve(import.meta.dirname, "..");
 const read = (p: string) => fs.readFileSync(path.join(root, p), "utf8");
 const dishIds = BUSINESS_DISH_CATALOG.map((d) => d.id);
 
+const PROTEIN: Record<string, number> = {
+  chicken: CAMPAIGN_150_INGREDIENT_FIRST_USE_LEVEL["chicken"]!,
+  steak: CAMPAIGN_150_INGREDIENT_FIRST_USE_LEVEL["steak"]!,
+  salmon: CAMPAIGN_150_INGREDIENT_FIRST_USE_LEVEL["salmon"]!,
+};
+const RIBEYE_FROM = remapCampaignThreshold(106);
 /** The earliest level a dish may join under the three rules (R below checks the schedule keeps them). */
 function earliestLegal(dish: (typeof BUSINESS_DISH_CATALOG)[number]): number {
   const recipe = getCampaignRecipe(dish.sourceRecipeId)!;
@@ -81,22 +91,26 @@ function earliestLegal(dish: (typeof BUSINESS_DISH_CATALOG)[number]): number {
       if (taught > TEACH_ALL_THROUGH_LEVEL) at = Math.max(at, taught);
     }
   at = Math.max(at, cuisineFor(dish.cuisineId).firstLevel);
-  const ing = new Set(recipe.components.map((c) => c.ingredientId));
-  if (ing.has("chicken") || ing.has("steak")) at = Math.max(at, 101);
-  if (ing.has("salmon")) at = Math.max(at, 109);
-  if (dish.id === "biz-ribeye-herb-butter") at = Math.max(at, 106);
+  // Meat and fish wait for the campaign's own introductions (150-level campaign: chicken L59,
+  // steak L63, salmon L66; was L101 / L109); the ribeye for its butcher block (old L106 → L63).
+  for (const c of recipe.components)
+    if (c.ingredientId in PROTEIN) at = Math.max(at, PROTEIN[c.ingredientId]!);
+  if (dish.id === "biz-ribeye-herb-butter") at = Math.max(at, RIBEYE_FROM);
   return at;
 }
 const legalBy = (lv: number) => BUSINESS_DISH_CATALOG.filter((d) => earliestLegal(d) <= lv).length;
 
-console.log("M. Schedule (developer curve 2026-10-05)");
+console.log("M. Schedule (developer curve 2026-10-05; 150-level re-plan 2026-10-17)");
+// The 150-level campaign: the menu opens at L11 with 6 dishes (the curve's remapped points).
 assert(
   menuDishIdsAt(10).length === 0 &&
-    menuDishIdsAt(11).join() ===
-      "biz-caprese-salad,biz-mushroom-bruschetta,biz-garden-salad,biz-garlic-bread" &&
+    menuDishIdsAt(11).length === 6 &&
+    menuDishIdsAt(11).every(
+      (id) => earliestLegal(BUSINESS_DISH_CATALOG.find((d) => d.id === id)!) <= 11,
+    ) &&
     menuTargetAt(10) === 0 &&
-    menuTargetAt(11) === 4,
-  "M1: no menu in the L1–10 fundamentals; it opens at L11 with 4 dishes the player can already cut",
+    menuTargetAt(11) === 6,
+  "M1: no menu in the L1–10 fundamentals; it opens at L11 with 6 dishes the player can already cut",
 );
 const curveMisses: string[] = [];
 for (const p of MENU_CURVE) {
@@ -106,12 +120,14 @@ for (const p of MENU_CURVE) {
 }
 assert(
   curveMisses.length === 0 &&
+    // The developer's curve through the 150-level remap (old 11:4 … 161:48; L11's point
+    // merges the old 11 and 15).
     MENU_CURVE.map((p) => `${p.level}:${p.dishes}`).join() ===
-      "11:4,15:6,20:8,25:10,31:12,41:15,51:18,61:21,71:25,81:29,91:33,101:36,111:39,121:42,141:45,161:48",
+      "11:6,13:8,17:10,21:12,29:15,35:18,42:21,46:25,49:29,56:33,59:36,68:39,76:42,88:45,101:48",
   `M2: at every point of the developer's curve the menu has min(target, dishes the rules allow) ${curveMisses.join("; ")}`,
 );
 const over: string[] = [];
-for (let lv = 1; lv <= 250; lv++)
+for (let lv = 1; lv <= 150; lv++)
   if (menuDishIdsAt(lv).length > menuTargetAt(lv))
     over.push(`L${lv}: ${menuDishIdsAt(lv).length} > ${menuTargetAt(lv)}`);
 assert(
@@ -120,17 +136,18 @@ assert(
 );
 const shortfalls = MENU_CURVE.filter((p) => legalBy(p.level) < p.dishes).map((p) => p.level);
 assert(
-  shortfalls.join() === "20,25,31,91,101,111",
-  `M2c: the only points the catalog can't reach are L20/25/31 (techniques) and L91/101/111 (meat and fish) — ${shortfalls.join()}`,
+  // 150-level campaign: L13 (cuts not yet taught) and L56–68 (meat and fish not yet cooked).
+  shortfalls.join() === "13,56,59,68",
+  `M2c: the only points the catalog can't reach are L13 (techniques) and L56–68 (meat and fish) — ${shortfalls.join()}`,
 );
 const scheduled = MENU_UNLOCKS.flatMap((u) => [...u.dishIds]);
 assert(
   scheduled.length === 48 &&
     new Set(scheduled).size === 48 &&
     scheduled.every((id) => dishIds.includes(id)) &&
-    menuDishIdsAt(161).length === 48 &&
-    menuDishIdsAt(160).length === 45,
-  "M3: all 48 catalog dishes are scheduled once, the full menu at L161",
+    menuDishIdsAt(101).length === 48 &&
+    menuDishIdsAt(100).length === 45,
+  "M3: all 48 catalog dishes are scheduled once, the full menu at L101",
 );
 assert(
   MENU_UNLOCKS.every((u, i) => i === 0 || u.level > MENU_UNLOCKS[i - 1]!.level) &&
@@ -153,11 +170,15 @@ console.log("T. Tied to cuisine progression");
       ),
     );
   const misses = CUISINES.filter((c) => c.firstLevel > 1)
-    .filter((c) => firstDish(c.id) !== firstLegal(c.id))
+    .filter((c) => {
+      const point = MENU_CURVE.find((p) => p.level >= firstLegal(c.id))?.level ?? firstLegal(c.id);
+      return firstDish(c.id) < firstLegal(c.id) || firstDish(c.id) > point;
+    })
     .map((c) => `${c.id}: ${firstDish(c.id)} vs ${firstLegal(c.id)}`);
   assert(
     misses.length === 0,
-    `T1: each cuisine's first dishes join the menu the first level they legally can (its chapter, or fish/meat) ${misses.join("; ")}`,
+    // The first dish of a cuisine may wait for the next curve point (the menu never runs ahead).
+    `T1: each cuisine's first dishes join the menu at the first curve point they legally can (its chapter, or fish/meat) ${misses.join("; ")}`,
   );
   const campaignFirst = new Map<string, number>();
   for (const l of LEVELS)
@@ -175,14 +196,14 @@ console.log("T. Tied to cuisine progression");
     `T2: every specialist cuisine opens with its campaign chapter ${chapterMisses.join("; ")}`,
   );
   const news11 = restaurantNewsAt(11);
-  const news51 = restaurantNewsAt(51);
+  const news51 = restaurantNewsAt(35);
   assert(
     news11.chain?.join(" → ") ===
       "Menu → Customer Order → Inventory → Preparation → Service → Revenue" &&
-      news11.dishes.length === 4 &&
+      news11.dishes.length === 6 &&
       !!news11.dishWhy &&
       news51.cuisines.some((c) => c.name === "Indian" && c.specialist === "Indian Chef") &&
-      restaurantNewsAt(46).comingUp.some((c) => c.level === 51 && /Indian/.test(c.text)) &&
+      restaurantNewsAt(30).comingUp.some((c) => c.level === 35 && /Indian/.test(c.text)) &&
       restaurantNewsAt(12).chain === null,
     "T3: the news explains the menu chain at L11, new dishes with their reason, and a cuisine (with its chef) 5 levels ahead",
   );
@@ -205,14 +226,15 @@ for (const dish of BUSINESS_DISH_CATALOG) {
   }
   if (at < cuisineFor(dish.cuisineId).firstLevel) ruleBreaks.push(`${dish.id}: cuisine`);
   const ing = new Set(recipe.components.map((c) => c.ingredientId));
-  if ((ing.has("chicken") || ing.has("steak")) && at < 101) ruleBreaks.push(`${dish.id}: meat`);
-  if (ing.has("salmon") && at < 109) ruleBreaks.push(`${dish.id}: fish`);
-  if (dish.id === "biz-ribeye-herb-butter" && at < 106)
+  if (ing.has("chicken") && at < PROTEIN.chicken!) ruleBreaks.push(`${dish.id}: chicken`);
+  if (ing.has("steak") && at < PROTEIN.steak!) ruleBreaks.push(`${dish.id}: steak`);
+  if (ing.has("salmon") && at < PROTEIN.salmon!) ruleBreaks.push(`${dish.id}: fish`);
+  if (dish.id === "biz-ribeye-herb-butter" && at < RIBEYE_FROM)
     ruleBreaks.push(`${dish.id}: butcher block`);
 }
 assert(
   ruleBreaks.length === 0,
-  `R1: every dish respects techniques, cuisine, meat L101, fish L109, ribeye L106 ${ruleBreaks.join("; ")}`,
+  `R1: every dish respects techniques, cuisine, chicken L${PROTEIN.chicken}, steak L${PROTEIN.steak}, fish L${PROTEIN.salmon}, ribeye L${RIBEYE_FROM} ${ruleBreaks.join("; ")}`,
 );
 
 console.log("C. Cuisines");
@@ -222,15 +244,22 @@ assert(
   "C1: every catalog cuisine belongs to a cuisine group",
 );
 assert(
-  CUISINES.filter((c) => c.firstLevel < 51).every((c) => c.specialist === null) &&
-    CUISINES.filter((c) => c.firstLevel >= 51).every((c) => c.specialist !== null),
-  "C2: house cuisines need no specialist; every cuisine from L51 has its specialist chef",
+  // 150-level campaign: the house cuisines (home, Italian, French) need no specialist; every
+  // other cuisine does — Mexican from its first dish at L16 (developer 2026-10-17).
+  CUISINES.filter((c) => ["home", "italian", "french"].includes(c.id)).every(
+    (c) => c.specialist === null,
+  ) &&
+    CUISINES.filter((c) => !["home", "italian", "french"].includes(c.id)).every(
+      (c) => c.specialist !== null,
+    ),
+  "C2: house cuisines need no specialist; every other cuisine has its specialist chef",
 );
 assert(
-  cuisineComingUp(46)?.id === "indian" &&
-    cuisineComingUp(45) === null &&
+  cuisineComingUp(30)?.id === "indian" &&
+    cuisineComingUp(29) === null &&
+    cuisineComingUp(11)?.id === "mexican" &&
     CUISINE_NOTICE_LEVELS === 5 &&
-    cuisineComingUp(116)?.specialist?.title === "Asian Chef",
+    cuisineComingUp(54)?.specialist?.title === "Asian Chef",
   "C3: a cuisine and its specialist are announced 5 levels ahead",
 );
 
@@ -239,7 +268,7 @@ console.log("A. Active menu");
   const none = { inactiveDishIds: [] as string[] };
   const offEarly = { inactiveDishIds: ["biz-caprese-salad"] };
   assert(
-    activeMenuDishes(offEarly, 12).length === 4 && activeMenuDishes(none, 12).length === 4,
+    activeMenuDishes(offEarly, 12).length === 6 && activeMenuDishes(none, 12).length === 6,
     "A1: before the menu choice level every unlocked dish is on (saved switches ignored)",
   );
   const lv = MENU_CHOICE_LEVEL;
@@ -260,8 +289,8 @@ console.log("A. Active menu");
   assert(
     !canOrderDish(none, 12, lockedId) &&
       !canOrderDish(none, 10, "biz-caprese-salad") &&
-      !canOrderDish(none, 160, "biz-thai-basil-salmon") &&
-      canOrderDish(none, 161, "biz-thai-basil-salmon"),
+      !canOrderDish(none, 100, "biz-thai-basil-salmon") &&
+      canOrderDish(none, 101, "biz-thai-basil-salmon"),
     "A4: a locked dish is never orderable, whatever the saved switches say",
   );
   assert(
@@ -275,15 +304,15 @@ console.log("A. Active menu");
       currentLevelId: "level-3",
       highestUnlockedLevelId: "level-12",
       completedLevelIds: [],
-    }) === 12 && dishesUnlockedAt(51).length === 3,
+    }) === 12 && dishesUnlockedAt(35).length === 3,
     "A6: the restaurant's level is the furthest level reached",
   );
 }
 
 console.log("D. Data untouched");
 assert(
-  LEVELS.length === 250 && CAMPAIGN_RECIPES.length === 221 && BUSINESS_DISH_CATALOG.length === 48,
-  "D1: 250 levels, 221 campaign recipes, 48 menu dishes (a schedule over existing data)",
+  LEVELS.length === 150 && CAMPAIGN_RECIPES.length === 222 && BUSINESS_DISH_CATALOG.length === 48,
+  "D1: 150 levels, 222 campaign recipes, 48 menu dishes (a schedule over existing data)",
 );
 
 console.log("W. Wiring");

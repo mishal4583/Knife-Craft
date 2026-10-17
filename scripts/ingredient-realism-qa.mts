@@ -95,21 +95,29 @@ assert(seenIds.size === CAMPAIGN_RECIPES.length, "9: zero duplicate recipe ids")
 // ===== 10: Cookbook data agrees with authoritative recipes — no stale preparationSteps mismatch. =====
 {
   const entries = getRecipeBookEntries();
-  const l250 = entries.find((e) => e.level.id === "level-250")!;
-  const l200 = entries.find((e) => e.level.id === "level-200")!;
+  // 150-level campaign (2026-10-17): every batch-group level's Cookbook lists its peel steps
+  // (was: L200 / L250 spot checks), and the finale (L150) shows its garlic peel.
+  const last = entries.find((e) => e.level.id === `level-${LEVELS.length}`)!;
+  const missing = entries.filter(
+    (e) =>
+      (e.level.batchGroupRecipeIds ?? []).some((id) =>
+        recipeById.get(id)?.components.some((c) => c.technique === "peel"),
+      ) && !e.steps.some((step) => /^Peel /.test(step)),
+  );
   assert(
-    l250.steps.includes("Peel Garlic") && l200.steps.includes("Peel Onion"),
+    last.steps.includes("Peel Garlic") && missing.length === 0,
     "10: Cookbook agrees with the authoritative (post-Peel-fix) recipe data for batch-group levels",
   );
 }
 
-// ===== 11: Level 250 resolves correctly. =====
-const level250 = LEVELS.find((l) => l.id === "level-250")! as any;
+// ===== 11: the last level (150, was 250) resolves correctly. =====
+const level250 = LEVELS[LEVELS.length - 1]! as any;
 assert(
-  level250.chapter === 25 &&
+  level250.id === "level-150" &&
+    level250.chapter === 13 &&
     level250.batchGroupRecipeIds?.length === 3 &&
     level250.batchGroupRecipeIds.every((id: string) => isRecipePlayable(recipeById.get(id)!)),
-  "11: Level 250 resolves correctly — chapter 25, real 3-recipe batch group, all playable",
+  "11: Level 150 resolves correctly — chapter 13, real 3-recipe batch group, all playable",
 );
 
 // ===== 12: recipe name matches its own ingredients — the defect this pass originally found and fixed. =====
@@ -131,8 +139,11 @@ assert(
     usesIngredient(salmon, "salmon") &&
       usesIngredient(turnip, "turnip") &&
       usesIngredient(asparagus, "asparagus") &&
-      !CAMPAIGN_RECIPES.some((r) => r.components.some((c) => c.ingredientId === "butter")),
-    "12: L189's three persillade recipes each name the ingredient they actually use, and Butter is gone campaign-wide",
+      // The 2026-10-15 redesign brought butter back in one dish, whose name says so.
+      CAMPAIGN_RECIPES.filter((r) => r.components.some((c) => c.ingredientId === "butter"))
+        .map((r) => r.name)
+        .every((n) => /butter/i.test(n)),
+    "12: the three persillade recipes each name the ingredient they actually use; the one butter dish names its butter",
   );
 }
 

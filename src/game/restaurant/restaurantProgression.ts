@@ -32,7 +32,10 @@
  * not live here (docs/ECONOMY_TODO.md).
  */
 
-import { remapCampaignThreshold } from "../levels/campaignSelection";
+import {
+  CAMPAIGN_150_INGREDIENT_FIRST_USE_LEVEL,
+  remapCampaignThreshold,
+} from "../levels/campaignSelection";
 import { LEVELS } from "../levels/levelDefinitions";
 import { getCampaignRecipe } from "../recipes/campaignRecipes";
 import { getBusinessDish } from "../business/businessDishCatalog";
@@ -529,21 +532,80 @@ function cutsReadyLevel(dishId: string): number {
   return Math.max(0, ...(recipe?.components ?? []).map((c) => FIRST_CUT_LEVEL.get(c.technique) ?? 0));
 }
 
+/** Meat and fish wait for the campaign level that first cooks them (its "introduction"). */
+const PROTEIN_FIRST: Readonly<Record<string, number>> = {
+  chicken: CAMPAIGN_150_INGREDIENT_FIRST_USE_LEVEL["chicken"] ?? 1,
+  steak: CAMPAIGN_150_INGREDIENT_FIRST_USE_LEVEL["steak"] ?? 1,
+  salmon: CAMPAIGN_150_INGREDIENT_FIRST_USE_LEVEL["salmon"] ?? 1,
+};
+
+/**
+ * The first level a menu dish may join under the menu's rules: every cut it
+ * needs taught, its cuisine open, its meat or fish introduced, the ribeye with
+ * its butcher block (old L106).
+ */
+function dishLegalLevel(dishId: string): number {
+  const dish = getBusinessDish(dishId);
+  const recipe = getCampaignRecipe(dish?.sourceRecipeId ?? "");
+  let at = Math.max(cutsReadyLevel(dishId), cuisineFor(dish?.cuisineId ?? null).firstLevel);
+  for (const c of recipe?.components ?? []) at = Math.max(at, PROTEIN_FIRST[c.ingredientId] ?? 0);
+  if (dishId === "biz-ribeye-herb-butter") at = Math.max(at, remapCampaignThreshold(106));
+  return at;
+}
+
+/**
+ * The schedule (2026-10-17, the 150-level re-plan): the developer's dishes in
+ * their scheduled order, placed so that at every point of MENU_CURVE the menu
+ * holds exactly min(target, the dishes the rules allow) and never runs ahead
+ * of the curve between points. A dish keeps its scheduled level when there is
+ * room for it; otherwise it moves to the curve point that needs it (the
+ * 250 → 150 remap had left points short, and Mexican dishes at L49 after the
+ * cuisine and its chef opened at L16). Its news line is its group's reason.
+ */
 export const MENU_UNLOCKS: readonly { level: number; dishIds: readonly string[]; why: string }[] = (() => {
-  const groups = new Map<number, { dishIds: string[]; reasons: string[] }>();
-  for (const unlock of SOURCE_MENU_UNLOCKS) {
-    const scheduled = Math.max(BUSINESS_MENU_FIRST_LEVEL, remapCampaignThreshold(unlock.level));
-    // A dish never joins before the campaign has taught every cut it needs.
-    for (const dishId of unlock.dishIds) {
-      const level = Math.max(scheduled, cutsReadyLevel(dishId));
-      const group = groups.get(level) ?? { dishIds: [], reasons: [] };
-      group.dishIds.push(dishId);
-      if (!group.reasons.includes(unlock.why)) group.reasons.push(unlock.why);
-      groups.set(level, group);
+  const source = SOURCE_MENU_UNLOCKS.flatMap((unlock, g) =>
+    unlock.dishIds.map((dishId, k) => ({
+      dishId,
+      why: unlock.why,
+      order: g * 100 + k,
+      scheduled: Math.max(BUSINESS_MENU_FIRST_LEVEL, remapCampaignThreshold(unlock.level)),
+      legal: dishLegalLevel(dishId),
+    })),
+  );
+  const seen = new Set<string>();
+  const dishes = source
+    .filter((d) => (seen.has(d.dishId) ? false : (seen.add(d.dishId), true)))
+    .sort((x, y) => Math.max(x.scheduled, x.legal) - Math.max(y.scheduled, y.legal) || x.order - y.order);
+  const placed = new Map<string, number>();
+  const count = () => placed.size;
+  const points = [...MENU_CURVE].sort((a, b) => a.level - b.level);
+  points.forEach((point, k) => {
+    const next = points[k + 1]?.level ?? Infinity;
+    // At the point: exactly min(target, the dishes legal by now).
+    const legalNow = dishes.filter((d) => d.legal <= point.level).length;
+    const need = Math.min(point.dishes, legalNow);
+    for (const d of dishes) {
+      if (count() >= need) break;
+      if (!placed.has(d.dishId) && d.legal <= point.level) placed.set(d.dishId, point.level);
     }
+    // Between points: a dish may still join on its own level while there is room.
+    for (const d of dishes) {
+      if (count() >= point.dishes) break;
+      const at = Math.max(d.scheduled, d.legal, point.level + 1);
+      if (!placed.has(d.dishId) && at < next) placed.set(d.dishId, at);
+    }
+  });
+  for (const d of dishes) if (!placed.has(d.dishId)) placed.set(d.dishId, Math.max(d.scheduled, d.legal));
+  const groups = new Map<number, { dishIds: string[]; reasons: string[] }>();
+  for (const d of [...dishes].sort((x, y) => x.order - y.order)) {
+    const level = placed.get(d.dishId)!;
+    const group = groups.get(level) ?? { dishIds: [], reasons: [] };
+    group.dishIds.push(d.dishId);
+    if (!group.reasons.includes(d.why)) group.reasons.push(d.why);
+    groups.set(level, group);
   }
   return [...groups]
-    .map(([level, group]) => ({ level, dishIds: [...new Set(group.dishIds)], why: [...new Set(group.reasons)].join(" ") }))
+    .map(([level, group]) => ({ level, dishIds: group.dishIds, why: group.reasons.join(" ") }))
     .sort((a, b) => a.level - b.level);
 })();
 const UNLOCK_LEVEL = new Map<string, number>(

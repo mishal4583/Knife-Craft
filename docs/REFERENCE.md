@@ -292,11 +292,19 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   L11 chain Menu → Customer Order → Inventory → Preparation → Service →
   Revenue); active menu (runs itself before L51, never empty, locked never
   orderable); level/recipe/dish data untouched.
-  Since the 150-level remap, a dish's level is
-  `max(remapped schedule, cutsReadyLevel)`: it never joins before the
-  campaign first cooks every cut it needs (2026-10-17 audit: the Zucchini &
-  Fennel Salad moved L17 → L20, julienne). Guard: `restaurant-menu-order-qa`
-  K1/K2. The suite's L-numbers above are still the 250-level ones.
+  150-level re-plan (2026-10-17, `restaurantProgression.ts` MENU_UNLOCKS):
+  the developer's dishes, in their scheduled order, are seated so that at
+  every curve point (11:6 13:8 17:10 21:12 29:15 35:18 42:21 46:25 49:29
+  56:33 59:36 68:39 76:42 88:45 101:48) the menu holds exactly min(target,
+  dishes the rules allow) and never runs ahead between points. The rules
+  (`dishLegalLevel`): every cut taught (first campaign cook), the cuisine
+  open, chicken / steak / salmon from their introductions (L59 / L63 /
+  L66), the ribeye with its butcher block (L63). Short points: L13 and
+  L56–68. Moves from the plain remap: the Avocado & Corn and Beet & Orange
+  salads to L17 (Mexican opens L16), the Carne Asada to L63 (steak), the
+  Zucchini & Fennel Salad L21, and ten dishes one point later to make room.
+  The suite numbers above are the 250-level ones; `restaurant-menu-qa`
+  checks the 150-level ones.
 - `restaurant-day-qa` — the restaurant day clock (`restaurant/restaurantDay.ts`):
   services per day (`DAY_SCHEDULE`, developer 2026-10-10): Lunch + Dinner to
   L20, + Breakfast from L21 (3), + Afternoon Tea from L51 (4), + Brunch from
