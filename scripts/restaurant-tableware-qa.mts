@@ -100,6 +100,7 @@ console.log("U. Every front-of-house item has a use");
   );
 }
 
+const R = SERVICE_SUPPLY_RULES;
 console.log("P. Pieces by dish");
 {
   const soup = recipe(/Minestrone/);
@@ -122,30 +123,33 @@ console.log("P. Pieces by dish");
     "P1: soups a bowl + spoon, fruit a dessert plate + fork (cups a teaspoon), bread a side plate + knife, salads plate + fork, the rest a full setting; a glass of water for all; no dish = a plain setting",
   );
   assert(
-    coverPiecesFor(steak, 106, 0).includes("steak-knives") &&
-      !coverPiecesFor(steak, 105, 0).includes("steak-knives") &&
+    // 150-level remap (2026-10-15): the old L106 / L121 / L161 are SERVICE_SUPPLY_RULES'.
+    coverPiecesFor(steak, R.steakKnifeFromLevel, 0).includes("steak-knives") &&
+      !coverPiecesFor(steak, R.steakKnifeFromLevel - 1, 0).includes("steak-knives") &&
       !coverPiecesFor(plain, 120, 0).includes("steak-knives"),
-    "P2: a steak knife with steak from L106",
+    `P2: a steak knife with steak from L${R.steakKnifeFromLevel} (old L106)`,
   );
   let bar = 0;
   let coffee = 0;
   const N = 2000;
+  // Past both thresholds: L200 → the last level.
+
   for (let c = 0; c < N; c++) {
-    if (coverPiecesFor(plain, 200, c).includes("highball-glasses")) bar++;
-    if (coverPiecesFor(plain, 200, c).includes("coffee-tea-set")) coffee++;
+    if (coverPiecesFor(plain, 150, c).includes("highball-glasses")) bar++;
+    if (coverPiecesFor(plain, 150, c).includes("coffee-tea-set")) coffee++;
   }
   assert(
     Math.abs(bar / N - SERVICE_SUPPLY_RULES.barShare) < 0.04 &&
       Math.abs(coffee / N - SERVICE_SUPPLY_RULES.coffeeShare) < 0.04 &&
       ![...Array(200).keys()].some((c) =>
-        coverPiecesFor(plain, 120, c).includes("highball-glasses"),
+        coverPiecesFor(plain, R.barFromLevel - 1, c).includes("highball-glasses"),
       ) &&
       ![...Array(200).keys()].some((c) =>
-        coverPiecesFor(plain, 160, c).includes("coffee-tea-set"),
+        coverPiecesFor(plain, R.coffeeFromLevel - 1, c).includes("coffee-tea-set"),
       ) &&
-      coverPiecesFor(fruitPlate, 161, 7).includes("coffee-tea-set") &&
-      pieces(plain, 200, 5) === pieces(plain, 200, 5),
-    `P3: drinks at the bar from L121 (${((bar / N) * 100).toFixed(0)} %), coffee/tea from L161 (${((coffee / N) * 100).toFixed(0)} %; every dessert) — seeded, the same every try`,
+      coverPiecesFor(fruitPlate, R.coffeeFromLevel, 7).includes("coffee-tea-set") &&
+      pieces(plain, 150, 5) === pieces(plain, 150, 5),
+    `P3: drinks at the bar from L${R.barFromLevel} (${((bar / N) * 100).toFixed(0)} %), coffee/tea from L${R.coffeeFromLevel} (${((coffee / N) * 100).toFixed(0)} %; every dessert) — seeded, the same every try`,
   );
   assert(
     napkinsFor(recipe(/Onion Rings Basket/)) === 2 &&

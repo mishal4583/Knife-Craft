@@ -538,22 +538,23 @@ console.log("A. Audit fixes (2026-10-08)");
   // even with food in the fridge (Grandma's leftovers, the L13 top-up); once a
   // stock level is completed it never shows again (was: "until the first
   // ingredient is bought, or any stock is in the fridge").
-  const fresh = saveAt(15);
+  // Redesign 2026-10-15 (0b2ce52): the first service on real stock is Level 3 (was 15).
+  const fresh = saveAt(3);
   const bought = purchaseIngredient(fresh, "tomato", 1);
-  const past15 = {
-    ...saveAt(16),
+  const past3 = {
+    ...saveAt(4),
     levelProgress: {
-      ...saveAt(16).levelProgress,
-      completedLevelIds: Array.from({ length: 15 }, (_, i) => `level-${i + 1}`),
+      ...saveAt(4).levelProgress,
+      completedLevelIds: Array.from({ length: 3 }, (_, i) => `level-${i + 1}`),
     },
   };
   assert(
-    isFirstStockService(fresh, 15) &&
+    isFirstStockService(fresh, 3) &&
       bought.ok &&
-      isFirstStockService(bought.save, 15) &&
-      !isFirstStockService(past15, 16) &&
-      !isFirstStockService(saveAt(14), 14),
-    "A2: Grandma's first-restock guide shows on the first stock service (Level 15), stock or not, and never after a stock level is done",
+      isFirstStockService(bought.save, 3) &&
+      !isFirstStockService(past3, 4) &&
+      !isFirstStockService(saveAt(2), 2),
+    "A2: the first-restock guide shows on the first stock service (Level 3), stock or not, and never after a stock level is done",
   );
   // A3 — supply packs say what they hold.
   assert(
@@ -589,11 +590,13 @@ console.log("A. Audit fixes (2026-10-08)");
     /classList\.toggle\("kc-reduced-motion"/.test(app) &&
       /label="Reduced motion"/.test(journal) &&
       /onBuyAllInMarket=\{\(\) => openMarketPlan\(go\)\}/.test(layer) &&
-      /firstRestock=\{plan\.firstStockService\}/.test(layer) &&
+      /firstRestock=\{plan\.firstStockService && !save\.business\.firstStockCheckSeen\}/.test(
+        layer,
+      ) &&
       /setShowGuests/.test(check) &&
       /setShowDay/.test(check) &&
       /h-\[96px\]/.test(shop),
-    "A6: Settings → Reduced motion; Buy everything in the Market (plan on Today); first-restock guide; optional sections folded; a short Market banner on Ingredients",
+    "A6: Settings → Reduced motion; Buy everything in the Market (plan on Today); first-restock guide (once, firstStockCheckSeen); optional sections folded; a short Market banner on Ingredients",
   );
 }
 

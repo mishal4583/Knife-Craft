@@ -48,7 +48,7 @@ const key = (c: { ingredientId: string; technique: string; resultingState: strin
       else if (r.unlockLevel > n) early.push(`${l.id} serves ${id} (unlocks ${r.unlockLevel})`);
     }
   }
-  assert(LEVELS.length === 250, `A0: the campaign has 250 levels (${LEVELS.length})`);
+  assert(LEVELS.length === 150, `A0: the campaign has 150 levels (${LEVELS.length}; 250 before the 2026-10-15 redesign)`);
   assert(missing.length === 0, `A: every served recipe exists${missing.length ? " — " + missing.join(", ") : ""}`);
   assert(early.length === 0, `A2: no level serves a recipe before its own unlockLevel${early.length ? " — " + early.join("; ") : ""}`);
 }
@@ -82,10 +82,11 @@ const key = (c: { ingredientId: string; technique: string; resultingState: strin
   const bad = LEVELS.filter(
     (l) =>
       !((l.recipePoolIds?.length ?? 0) > 0 || (l.batchGroupRecipeIds?.length ?? 0) > 0) ||
-      !(l.reward.coins > 0) ||
+      // Level 2's practice pays $0 by rule (CLAUDE.md §7, developer 2026-10-16).
+      !(l.reward.coins > 0 || l.id === "level-2") ||
       !CHAPTER_TITLES[l.chapter],
   ).map((l) => l.id);
-  assert(bad.length === 0, `C: every level serves real recipes, pays a reward and belongs to a titled chapter${bad.length ? " — " + bad.join(", ") : ""}`);
+  assert(bad.length === 0, `C: every level serves real recipes, pays a reward (L2 practice $0) and belongs to a titled chapter${bad.length ? " — " + bad.join(", ") : ""}`);
 }
 
 console.log(failures === 0 ? "\nCAMPAIGN INTEGRITY QA: ALL PASS" : `\nCAMPAIGN INTEGRITY QA: ${failures} FAILURE(S)`);

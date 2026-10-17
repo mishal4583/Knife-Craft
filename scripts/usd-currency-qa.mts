@@ -189,7 +189,8 @@ const read = (rel: string) => fs.readFileSync(path.resolve(ROOT, rel), "utf8");
   }
   assert(offenders.length === 0, `G: no "coins"/"cents" text or bare money numbers in the UI${offenders.length ? " — " + offenders.join(", ") : ""}`);
   const prim = read("src/components/kc/common/primitives.tsx");
-  assert(/export function Coin\(\{ n \}: \{ n: number \}\)[\s\S]*?\$\s*<\/span>\s*\{formatUsd\(n\)\}/.test(prim), "G2: the wallet chip on every screen shows $ + formatUsd");
+  // Developer 2026-10-15 (5db9451): the chip's "$" glyph became a cash-stack icon; formatUsd itself writes the "$".
+  assert(/export function Coin\(\{ n \}: \{ n: number \}\)[\s\S]*?<CashStackIcon[^>]*\/>\s*\{formatUsd\(n\)\}/.test(prim) && formatUsd(124_000) === "$1,240.00", "G2: the wallet chip on every screen shows the cash icon + formatUsd (\"$1,240.00\")");
   assert(/\{formatUsd\(amount\)\}/.test(read("src/components/kc/common/Indicators.tsx")), "G3: reward pills show formatUsd");
 }
 

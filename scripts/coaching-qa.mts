@@ -9,6 +9,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { TECHNIQUES, type TechniqueId } from "../src/game/definitions.ts";
 import { LEVELS } from "../src/game/levels/levelDefinitions.ts";
+import { getCampaignRecipe } from "../src/game/recipes/campaignRecipes.ts";
 import { levelNumber } from "../src/game/levels/levelMastery.ts";
 import {
   COACH_TEXT,
@@ -41,14 +42,17 @@ assert(
 // B: rule changed (developer 2026-10-10: "how to slice already came once, don't let the
 // same instructions repeat"): Levels 1–5 no longer re-teach what an earlier level taught
 // (was: every step of Levels 1–5 taught).
+// 150-level campaign (developer 2026-10-15): L2's practice brings dice + peel, L3 nothing new,
+// L4 halve, L5 smash, L6 chop (was L1 slice, L3 chop, L5 peel + halve).
 assert(
   TEACH_ALL_THROUGH_LEVEL === 0 &&
     taughtTechniques("level-1", ALL).join() === "slice" &&
-    taughtTechniques("level-2", ALL).length === 0 &&
-    taughtTechniques("level-3", ALL).join() === "chop" &&
-    taughtTechniques("level-4", ALL).length === 0 &&
-    [...taughtTechniques("level-5", ALL)].sort().join() === "halve,peel",
-  "B: Levels 1–5 teach only what's new to them (L1 slice, L3 chop, L5 peel + halve; L2 and L4 nothing)",
+    [...taughtTechniques("level-2", ALL)].sort().join() === "dice,peel" &&
+    taughtTechniques("level-3", ALL).length === 0 &&
+    taughtTechniques("level-4", ALL).join() === "halve" &&
+    taughtTechniques("level-5", ALL).join() === "smash" &&
+    taughtTechniques("level-6", ALL).join() === "chop",
+  "B: Levels 1–6 teach only what's new to them (L1 slice, L2 dice + peel, L4 halve, L5 smash, L6 chop; L3 nothing)",
 );
 
 // C: every technique is taught in the level that introduces it — and the first is the level that introduces it.
@@ -58,11 +62,16 @@ for (const l of LEVELS) {
   if (n <= TEACH_ALL_THROUGH_LEVEL) continue;
   for (const t of taughtTechniques(l.id, ALL)) taughtAt.set(t, [...(taughtAt.get(t) ?? []), n]);
 }
+// The cutting session is built from the order's recipe (Preparation.tsx,
+// preparationStepsForRecipe); `level.preparationSteps` is only the fallback and is stale on
+// 94 of the 150 remapped levels — so the level that introduces a cut is its first recipe.
 const firstUse = (t: TechniqueId) =>
   Math.min(
-    ...LEVELS.filter((l) => l.preparationSteps.some((s) => s.technique === t)).map((l) =>
-      levelNumber(l.id),
-    ),
+    ...LEVELS.filter((l) =>
+      [...(l.recipePoolIds ?? []), ...(l.batchGroupRecipeIds ?? [])].some((id) =>
+        getCampaignRecipe(id)?.components.some((c) => c.technique === t),
+      ),
+    ).map((l) => levelNumber(l.id)),
   );
 const late = ALL.filter((t) => firstUse(t) > TEACH_ALL_THROUGH_LEVEL);
 assert(

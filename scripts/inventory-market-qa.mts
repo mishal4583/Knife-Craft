@@ -534,9 +534,12 @@ function buy(save: SaveData, id: string, qty: number) {
     !!getCampaignRecipe(ribeye.sourceRecipeId) &&
       BUSINESS_ONLY_RECIPES.some((r) => r.id === ribeye.sourceRecipeId) &&
       !CAMPAIGN_RECIPES.some((r) => r.id === ribeye.sourceRecipeId) &&
-      CAMPAIGN_RECIPES.length === 221 &&
-      !CAMPAIGN_RECIPES.some((r) => r.components.some((c) => c.ingredientId === "butter")),
-    "15: Ribeye with Herb Butter stays Business-only; the campaign keeps 221 recipes with no butter",
+      // The 2026-10-15 redesign added the L2 practice recipe and one butter dish to the campaign.
+      CAMPAIGN_RECIPES.length === 222 &&
+      CAMPAIGN_RECIPES.filter((r) => r.components.some((c) => c.ingredientId === "butter"))
+        .map((r) => r.id)
+        .join() === "camp-herb-butter-vegetable-plate",
+    "15: Ribeye with Herb Butter stays Business-only; the campaign's 222 recipes use butter only in the Herb Butter Vegetable Plate (2026-10-15)",
   );
   const inv = Object.fromEntries(
     ["steak", "butter", "parsley", "garlic"].map((id) => [
@@ -609,6 +612,8 @@ function buy(save: SaveData, id: string, qty: number) {
   assert(
     JSON.stringify(Object.keys(DEFAULT_SAVE.business)) ===
       JSON.stringify([
+        // Added by the developer's 2026-10-15 redesign (0b2ce52).
+        "firstStockCheckSeen",
         "calendar",
         "inventory",
         "refrigerator",
@@ -625,7 +630,7 @@ function buy(save: SaveData, id: string, qty: number) {
         // business-supplies-qa) — the only field added since this check.
         "supplies",
       ]),
-    "16c: no new Business save fields (beyond the authorized `supplies`, §25)",
+    "16c: no new Business save fields (beyond the authorized `supplies`, §25, and the redesign's `firstStockCheckSeen`)",
   );
 }
 

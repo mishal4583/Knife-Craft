@@ -167,12 +167,15 @@ console.log("D. Deep cleans");
   );
   assert(
     DEEP_CLEAN_EVERY === 7 &&
+      // 150-level remap (2026-10-15): from dine-in, L21 (AUDIT_FROM; was L31).
+      AUDIT_FROM === 21 &&
       deepCleansFor(13, 41).length === 0 &&
       deepCleansFor(7, 41).join() === "deep-kitchen,deep-restroom" &&
       deepCleansFor(14, 41).join() === "deep-kitchen,deep-restroom,deep-dining" &&
-      deepCleansFor(14, 30).length === 0 &&
+      deepCleansFor(14, AUDIT_FROM - 1).length === 0 &&
+      deepCleansFor(14, AUDIT_FROM).join() === "deep-kitchen,deep-restroom,deep-dining" &&
       phaseChores("closing", 41).every((k) => !deepKinds.includes(k)),
-    "D1: deep cleans only on their days — the weekly one on Day 7, 14 …, the dining one on the audit day; from L31",
+    "D1: deep cleans only on their days — the weekly one on Day 7, 14 …, the dining one on the audit day; from L21 (with the audit)",
     { d7: deepCleansFor(7, 41), d14: deepCleansFor(14, 41) },
   );
   const daily = phaseChores("closing", 41, 13);
@@ -222,8 +225,11 @@ console.log("S. The day strip");
     /Par audit/.test(dayStripText(dayClockFor(saveAt(41, 14), 41))) &&
       /Deep clean tonight/.test(dayStripText(dayClockFor(saveAt(41, 7), 41))) &&
       !/Par audit|Deep clean/.test(dayStripText(dayClockFor(saveAt(41, 13), 41))) &&
-      !/Par audit|Deep clean/.test(dayStripText(dayClockFor(saveAt(25, 14), 25))),
-    "S1: the strip shows 📋 Par audit / 🧽 Deep clean tonight on their days (from L31), nothing otherwise",
+      !/Par audit|Deep clean/.test(
+        dayStripText(dayClockFor(saveAt(AUDIT_FROM - 1, 14), AUDIT_FROM - 1)),
+      ) &&
+      /Par audit/.test(dayStripText(dayClockFor(saveAt(AUDIT_FROM, 14), AUDIT_FROM))),
+    "S1: the strip shows 📋 Par audit / 🧽 Deep clean tonight on their days (from L21), nothing otherwise",
     dayStripText(dayClockFor(saveAt(41, 14), 41)),
   );
 }

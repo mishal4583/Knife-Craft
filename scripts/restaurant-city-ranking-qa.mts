@@ -7,10 +7,10 @@
  *     strictly rising weakest → best;
  *  C2 the climb: #50 before any level, never down as levels complete, at
  *     most one rival passed per level, never more than 8 levels without
- *     passing one, #2 at Level 249 and #1 exactly at Level 250;
+ *     passing one, #2 at Level 149 and #1 exactly at Level 150 (was 249 / 250);
  *  C3 each rival is passed by completing its own level;
  *  C4 derived from the save (no new save field), the Endless stars after
- *     Level 250 only add reputation;
+ *     Level 150 only add reputation;
  *  C5 rankChange: the first completion that passes a rival names it, a
  *     replay (no new level) or a level that passes nobody returns null;
  *  W  wiring: the Kitchen card and Restaurant Progress show it in the
@@ -22,6 +22,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { DEFAULT_SAVE, type SaveData } from "../src/game/SaveManager.ts";
+import { LAST_CAMPAIGN_LEVEL } from "../src/game/restaurant/restaurantProgression.ts";
 import {
   CITY_RESTAURANTS,
   REPUTATION_PER_LEVEL,
@@ -44,8 +45,8 @@ const done = (n: number) => Array.from({ length: n }, (_, i) => `level-${i + 1}`
 const saveAt = (n: number, extra: Partial<SaveData> = {}): SaveData => ({
   ...DEFAULT_SAVE,
   levelProgress: {
-    currentLevelId: `level-${Math.min(n + 1, 250)}`,
-    highestUnlockedLevelId: `level-${Math.min(n + 1, 250)}`,
+    currentLevelId: `level-${Math.min(n + 1, LAST_CAMPAIGN_LEVEL)}`,
+    highestUnlockedLevelId: `level-${Math.min(n + 1, LAST_CAMPAIGN_LEVEL)}`,
     completedLevelIds: done(n),
   },
   ...extra,
@@ -68,10 +69,12 @@ console.log("C1. The guide");
 
 console.log("C2. The climb");
 {
-  const ranks = Array.from({ length: 251 }, (_, n) => cityRankingAt(n).rank);
+  // The 150-level campaign (2026-10-15): the climb ends at LAST_CAMPAIGN_LEVEL (was 250).
+  const L = LAST_CAMPAIGN_LEVEL;
+  const ranks = Array.from({ length: L + 1 }, (_, n) => cityRankingAt(n).rank);
   let maxGap = 0;
   let since = 0;
-  for (let n = 1; n <= 250; n++) {
+  for (let n = 1; n <= L; n++) {
     since = ranks[n]! < ranks[n - 1]! ? 0 : since + 1;
     maxGap = Math.max(maxGap, since);
   }
@@ -80,15 +83,16 @@ console.log("C2. The climb");
       ranks.every((r, n) => n === 0 || r <= ranks[n - 1]!) &&
       ranks.every((r, n) => n === 0 || ranks[n - 1]! - r <= 1) &&
       maxGap <= 8 &&
-      ranks[249] === 2 &&
-      ranks[250] === 1 &&
-      ranks.slice(0, 250).every((r) => r > 1),
-    `C2: #50 → #1 one rival at a time, never more than 8 levels without passing one (longest ${maxGap}); #1 only at Level 250`,
+      ranks[L - 1] === 2 &&
+      ranks[L] === 1 &&
+      L === 150 &&
+      ranks.slice(0, L).every((r) => r > 1),
+    `C2: #50 → #1 one rival at a time, never more than 8 levels without passing one (longest ${maxGap}); #1 only at Level 150`,
   );
-  const at = cityRankingAt(250);
+  const at = cityRankingAt(L);
   assert(
     at.next === null && at.fraction === 1 && at.table[0]!.player && at.table.length === 50,
-    "C2: at Level 250 you top the table — nobody left to pass",
+    "C2: at Level 150 you top the table — nobody left to pass",
   );
 }
 
@@ -109,7 +113,7 @@ console.log("C4. Derived from the save");
   const s = saveAt(47);
   const c = cityRanking(s);
   const stars = cityRanking({
-    ...saveAt(250),
+    ...saveAt(LAST_CAMPAIGN_LEVEL),
     business: { ...DEFAULT_SAVE.business, endlessStars: { total: 12, days: 6, bestDay: 3 } },
   });
   assert(
@@ -120,7 +124,7 @@ console.log("C4. Derived from the save");
         levelProgress: { ...s.levelProgress, completedLevelIds: [...done(47), "level-3"] },
       }) === 47 &&
       stars.rank === 1 &&
-      stars.reputation === reputationFor(250, 12) &&
+      stars.reputation === reputationFor(LAST_CAMPAIGN_LEVEL, 12) &&
       !/cityRanking|cityRank/.test(read("src/game/SaveManager.ts")),
     "C4: the ranking reads the completed levels (duplicates once), Endless stars only add reputation, nothing is saved",
   );

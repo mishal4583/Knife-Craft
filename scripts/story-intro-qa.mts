@@ -206,8 +206,9 @@ assert(
   "A24: images fill the frame keeping their aspect ratio (object-cover, never stretched)",
 );
 
-console.log("B. Finale and milestones unchanged");
-assert(FINALE_AT === 100, "B1: finale still at 100 completed levels");
+console.log("B. Finale and milestones");
+// The 150-level redesign (developer 2026-10-15, CLAUDE.md §9): the finale plays at L75 (was 100).
+assert(FINALE_AT === 75, "B1: finale at 75 completed levels (the 150-level campaign's midpoint)");
 assert(
   FINALE.length === 4 && FINALE[3]!.btn === "BACK TO THE KITCHEN",
   "B2: finale still 4 beats ending on BACK TO THE KITCHEN",
@@ -226,8 +227,9 @@ assert(
     // The six shipped milestones unchanged; developer 2026-10-11 added four
     // (140/165/190/220) and retired the 250 banner for THE LAST PAGE
     // (story-legacy-qa covers both).
-    "10:1:THE ROOM COMES BACK,20:2:WORD GETS AROUND,45:4:SOMETHING WORTH KEEPING,70:8:THE LAST WISH,110:16:THE KITCHEN GROWS,120:32:GRAND SERVICE,140:128:A NAME IN TOWN,165:256:THE NEXT GENERATION,190:512:ONE OF THE BEST,220:1024:THE OLD RECIPE BOOK",
-  "B5: milestone thresholds, bits and titles (six shipped unchanged + the four approved)",
+    // 150-level remap (2026-10-15): the same ten beats, bits and titles at the remapped levels.
+    "10:1:THE ROOM COMES BACK,13:2:WORD GETS AROUND,32:4:SOMETHING WORTH KEEPING,45:8:THE LAST WISH,67:16:THE KITCHEN GROWS,75:32:GRAND SERVICE,87:128:A NAME IN TOWN,104:256:THE NEXT GENERATION,117:512:ONE OF THE BEST,132:1024:THE OLD RECIPE BOOK",
+  "B5: milestone thresholds (150-level remap), bits and titles (six shipped + the four approved)",
 );
 assert(
   MILES[0]!.line === "It’s starting to feel like a real restaurant again." &&

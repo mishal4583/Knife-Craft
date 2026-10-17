@@ -19,9 +19,14 @@ import { restaurantDayOf } from "./restaurantDay";
 import { kitchenGuestSeats } from "./restaurantInvestments";
 import { SERVICE_SUPPLY_RULES, tablesFor } from "./serviceSupplies";
 import { levelRecipesAt, toolsCheck } from "./kitchenTools";
+import { remapCampaignThreshold } from "../levels/campaignSelection";
 
 export const AUDIT_EVERY = 14;
-export const AUDIT_FROM = 31;
+/**
+ * With dine-in (old L31 → new L21). 2026-10-17 audit: it had stayed at the raw
+ * 31, so on L21–30 the dining deep clean ran "on the audit day" with no audit.
+ */
+export const AUDIT_FROM = remapCampaignThreshold(31);
 /** Settings of each piece per dining seat (a real restaurant's par, 2.5). */
 export const PAR_PER_SEAT = 2.5;
 /** The fewest seats an audit counts (the first tables). */
