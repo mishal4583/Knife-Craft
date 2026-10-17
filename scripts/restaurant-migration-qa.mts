@@ -52,6 +52,7 @@ import {
 } from "../src/game/business/RefrigeratorManager.ts";
 import { addStock } from "../src/game/business/businessInventory.ts";
 import { RESTAURANT_MODE } from "../src/game/config/restaurantMode.ts";
+import { restaurantLevelOf } from "../src/game/restaurant/restaurantMenu.ts";
 
 let failures = 0;
 function assert(cond: unknown, msg: string) {
@@ -71,11 +72,19 @@ async function loadRaw(raw: object): Promise<SaveData> {
   (SaveManager as unknown as { cache: SaveData | null }).cache = null;
   return SaveManager.load();
 }
+// A 150-level save (campaignVersion 2). Without it SaveManager treats the progress as the
+// old 250-level layout and renumbers it (2026-10-15) — right for real old saves, which
+// E1 still uses on purpose.
 const progressAt = (n: number, done = n - 1) => ({
-  currentLevelId: `level-${Math.min(n, 250)}`,
-  highestUnlockedLevelId: `level-${Math.min(n, 250)}`,
+  currentLevelId: `level-${Math.min(n, 150)}`,
+  highestUnlockedLevelId: `level-${Math.min(n, 150)}`,
   completedLevelIds: Array.from({ length: done }, (_, i) => `level-${i + 1}`),
+  campaignVersion: 2,
 });
+const oldLayoutAt = (n: number) => {
+  const { campaignVersion: _v, ...rest } = progressAt(n);
+  return { ...rest, currentLevelId: `level-${n}`, highestUnlockedLevelId: `level-${n}` };
+};
 /** A current-version save at level n (credits in cents). */
 const modern = (n: number, extra: Partial<SaveData> = {}) => ({
   ...structuredClone(DEFAULT_SAVE),
@@ -154,10 +163,12 @@ console.log("C. The starter crate");
   const kit = moved.business.restaurantMigration!.kit;
   const cap = getRefrigeratorCapacity(moved.business.refrigerator.refrigeratorId);
   assert(
-    kit.some((k) => k.kind === "ingredient") &&
+    // Redesign 2026-10-15 (0b2ce52): "Ingredients are never included in the crate: from
+    // Level 3, buy the stock" (was: the next services' ingredients at cost 0).
+    !kit.some((k) => k.kind === "ingredient") &&
       getInventoryUsedCapacity(moved.business.inventory) <= cap &&
-      Object.values(moved.business.inventory).every((e) => e!.unitCost === 0),
-    "C1: ingredients for the next services, at cost 0, never past the fridge's capacity",
+      JSON.stringify(moved.business.inventory) === JSON.stringify(loaded.business.inventory),
+    "C1: no ingredients in the crate (bought in the Market from L3); the fridge is untouched",
   );
   assert(
     units(moved, "dinner-plates") >= 1 &&
@@ -226,8 +237,9 @@ console.log("R. Ready for the next service");
   const moved = migrateToUnifiedRestaurant(await loadRaw(modern(60)));
   const plan = servicePlanFor(openDay(moved, 60), getLevel("level-60")!)!;
   assert(
-    plan.check.applies && plan.check.ready && plan.supplies.applies && plan.supplies.ready,
-    "R1: after the move the next service's stock and place settings are ready",
+    // Ingredients are bought (redesign 2026-10-15); the crate makes the place settings ready.
+    plan.check.applies && !plan.check.ready && plan.supplies.applies && plan.supplies.ready,
+    "R1: after the move the next service's place settings are ready; its ingredients are still to buy",
   );
 }
 
@@ -270,15 +282,16 @@ console.log("E. Saves of every era");
     credits: 400,
     ownedKnifeIds: ["chef"],
     equippedKnifeId: "chef",
-    levelProgress: progressAt(45),
+    levelProgress: oldLayoutAt(45),
     economyLedger: [],
   });
   const a = migrateToUnifiedRestaurant(ancient);
   assert(
     a.credits === ancient.credits &&
-      a.business.restaurantMigration!.atLevel === 45 &&
+      a.business.restaurantMigration!.atLevel === restaurantLevelOf(ancient.levelProgress) &&
+      a.business.restaurantMigration!.atLevel >= 21 &&
       units(a, "dinner-plates") >= 1,
-    "E1: a version-1 save without `business` loads, keeps its money and gets its crate",
+    "E1: a version-1 save without `business` (old 250-level layout, renumbered) loads, keeps its money and gets its crate",
   );
   const mid = modern(60, {
     levelProgress: {
@@ -291,7 +304,8 @@ console.log("E. Saves of every era");
   assert(
     JSON.stringify(m.levelProgress.tickets) ===
       JSON.stringify({ "level-60": ["missing-recipe-id"] }) &&
-      m.business.restaurantMigration!.version === 1,
+      // RESTAURANT_MIGRATION_VERSION is 2 since the 2026-10-15 redesign.
+      m.business.restaurantMigration!.version === RESTAURANT_MIGRATION_VERSION,
     "E2: a save mid-level keeps its saved tickets and paid orders",
   );
   const biz = modern(70);
@@ -307,10 +321,10 @@ console.log("E. Saves of every era");
       (b.business.inventory.tomato?.quantity ?? 0) >= 5,
     "E3: a Business-day player keeps staff, menu switches, calendar and stock — they become the restaurant's",
   );
-  const done = modern(250, { levelProgress: progressAt(250, 250) });
+  const done = modern(150, { levelProgress: progressAt(150, 150) });
   const d = migrateToUnifiedRestaurant(await loadRaw(done));
   assert(
-    d.business.restaurantMigration!.atLevel === 250 &&
+    d.business.restaurantMigration!.atLevel === 150 &&
       !d.business.restaurantMigration!.kit.some((k) => k.kind === "ingredient") &&
       units(d, "dinner-plates") >= 1 &&
       units(d, "paper-bags") >= KIT_PACKAGING,

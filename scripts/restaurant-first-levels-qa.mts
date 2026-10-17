@@ -66,24 +66,24 @@ console.log("T. Sections open one at a time");
   const at = (n: number) =>
     ["kitchen", "inventory", "shop", "rack", "business"].filter((id) => isTabOpen(id, n)).join();
   assert(
+    // Redesign 2026-10-15 (0b2ce52): Inventory and the Market both open at L3 (stock from L3).
     at(1) === "kitchen" &&
       at(2) === "kitchen" &&
-      at(3) === "kitchen,inventory" &&
-      at(6) === "kitchen,inventory" &&
-      at(7) === "kitchen,inventory,shop" &&
+      at(3) === "kitchen,inventory,shop" &&
+      at(9) === "kitchen,inventory,shop" &&
       at(10) === "kitchen,inventory,shop,rack" &&
       at(11) === "kitchen,inventory,shop,rack,business" &&
-      at(250) === at(11),
-    "T1: Kitchen from the start, Inventory L3, Market L7, Progress L10, Restaurant L11; all open after",
+      at(150) === at(11),
+    "T1: Kitchen from the start, Inventory and Market L3, Progress L10, Business L11; all open after",
   );
   assert(
-    tabsOpeningAt(3).join() === "inventory" &&
-      tabsOpeningAt(7).join() === "shop" &&
+    tabsOpeningAt(3).join() === "inventory,shop" &&
+      tabsOpeningAt(7).length === 0 &&
       tabsOpeningAt(10).join() === "rack" &&
       tabsOpeningAt(11).join() === "business" &&
       tabsOpeningAt(4).length === 0 &&
       Object.values(TAB_OPENS_AT).every((n) => n <= 15),
-    "T2: each section opens at exactly one level, all of them by Level 15",
+    "T2: each section opens at exactly one level (Inventory + Market together at L3), all of them by Level 15",
   );
 }
 
@@ -131,10 +131,11 @@ console.log("D. Quiet day-end before Level 21");
     "D1: the quiet close before Level 21 only turns the day (no money, ledger, stock or calendar change)",
   );
   assert(
-    Array.from({ length: 20 }, (_, i) => dayCeremonyAt(i + 1)).every((v) => !v) &&
-      dayCeremonyAt(21) &&
-      dayCeremonyAt(250),
-    "D2: the opening card and Closing Time show from Level 21 (fridge & freshness)",
+    // 150-level remap: fridge & freshness at L16 (old L21).
+    Array.from({ length: 15 }, (_, i) => dayCeremonyAt(i + 1)).every((v) => !v) &&
+      dayCeremonyAt(16) &&
+      dayCeremonyAt(150),
+    "D2: the opening card and Closing Time show from Level 16 (fridge & freshness)",
   );
 }
 
@@ -152,16 +153,16 @@ console.log("M. The Level 10 card");
 
 console.log("E. Nothing paid changes");
 {
-  // Snapshot taken from main before this pass (cents).
-  const expected = [
-    5000, 5200, 5500, 5800, 6100, 6400, 6800, 7200, 7600, 8000, 8000, 8300, 8600, 8900, 9200,
-  ];
+  // Rule changed (developer 2026-10-16): round(50 + 3.1 × (n − 1)) dollars; L2's practice $0.
+  const expected = Array.from({ length: 15 }, (_, i) =>
+    i === 1 ? 0 : Math.round(50 + 3.1 * i) * 100,
+  );
   const levels = getLevels().slice(0, 15);
   assert(
     levels.every((l, i) => l.id === `level-${i + 1}`) &&
       levels.every((l, i) => paidLevelReward(l) === expected[i]) &&
       getLevel("level-10")!.title === "Simple Garden Salad",
-    "E1: Levels 1–15 keep their order and completion rewards",
+    "E1: Levels 1–15 keep their order and pay the 2026-10-16 reward curve",
   );
   const santoku = KNIFE_CATALOG.find((k) => k.name === "Santoku");
   const maple = BOARD_CATALOG.find((b) => b.name === "Maple Board");
@@ -177,8 +178,9 @@ console.log("E. Nothing paid changes");
 console.log("L. Locked links and Grandma's tips (developer 2026-10-09)");
 {
   assert(
-    lockedScreenHint("business-equipment", 3) === "🔒 Restaurant opens at Level 11" &&
-      lockedScreenHint("shop-ingredients", 6) === "🔒 Market opens at Level 7" &&
+    lockedScreenHint("business-equipment", 3) === "🔒 Business opens at Level 11" &&
+      lockedScreenHint("shop-ingredients", 2) === "🔒 Market opens at Level 3" &&
+      lockedScreenHint("shop-ingredients", 3) === null &&
       lockedScreenHint("inventory-supplies", 2) === "🔒 Inventory opens at Level 3" &&
       lockedScreenHint("rack", 9) === "🔒 Progress opens at Level 10" &&
       lockedScreenHint("business-equipment", 11) === null &&
@@ -191,8 +193,8 @@ console.log("L. Locked links and Grandma's tips (developer 2026-10-09)");
   assert(
     tips.every(([n, t]) => n === 9 || (!!t && t.text.length <= 70)) &&
       tips.every(([n, t]) => !t?.to || isTabOpen(t.to, n)) &&
-      grandmaTipFor(3)?.to === "inventory" &&
-      grandmaTipFor(7)?.to === "shop" &&
+      grandmaTipFor(3)?.to === "shop" &&
+      grandmaTipFor(4)?.to === "inventory" &&
       grandmaTipFor(16) === null,
     "L2: a short tip for each of Levels 1–15 (L9's pointer is its own button); a tip's button only opens a section already open",
   );
@@ -224,16 +226,15 @@ console.log("W. Wiring");
     "W1: a closed section shows a lock and its level, a tap says when it opens (restaurant build)",
   );
   assert(
-    /opensAt=\{closedUntil\("rack"\)\}/.test(kitchen) &&
-      /opensAt=\{closedUntil\("shop"\)\}/.test(kitchen) &&
-      /if \(closedUntil\("rack"\) === null\) go\("rack"\);/.test(kitchen),
-    "W2: the Kitchen's Progress and Market places (and the ranking card) wait for their level",
+    // Developer 2026-10-15 (5db9451): Progress opens from the ranking card only.
+    /if \(closedUntil\("rack"\) === null\) go\("rack"\);/.test(kitchen),
+    "W2: the Kitchen's ranking card (the way to Progress) waits for Progress's level",
   );
   assert(
-    /RESTAURANT_MODE && restaurantLevelOf\(save\.levelProgress\) < FIRST_PURCHASE_LEVEL/.test(
+    /RESTAURANT_MODE && restaurantLevelOf\(save\.levelProgress\) < FIRST_INGREDIENT_PURCHASE_LEVEL/.test(
       shop,
     ) && /c\.id === "knives" \|\| c\.id === "boards"/.test(shop),
-    "W3: before Level 10 the Market shows knives and boards to look at, nothing else",
+    "W3: before Level 3 the Market shows knives and boards to look at, nothing else",
   );
   assert(
     /if \(RESTAURANT_MODE && isFirstCompletion\) nextSave = quietDayEnd\(nextSave\);/.test(app) &&
@@ -271,16 +272,17 @@ console.log("P. Grandma's pointer at a new section (developer 2026-10-10)");
   // Rule changed 2026-10-10 (developer: "I didn't see any hand gestures for market and
   // inventory"): every open section not seen yet, through Level 15 (was: only while NEW).
   const pointed = Array.from({ length: 16 }, (_, i) => sectionToPoint(i + 1, []));
-  const seenAll = ["inventory", "shop", "rack"];
+  // Developer 2026-10-15 (5db9451): Progress is no longer pointed at (it left the bottom bar).
+  const seenAll = ["inventory", "shop"];
   assert(
     pointed.join() ===
       ",,inventory,inventory,inventory,inventory,inventory,inventory,inventory,inventory,inventory,inventory,inventory,inventory,inventory," &&
       sectionToPoint(12, ["inventory"]) === "shop" &&
-      sectionToPoint(12, ["inventory", "shop"]) === "rack" &&
       sectionToPoint(12, seenAll) === "business" &&
       sectionToPoint(9, seenAll) === null &&
       sectionToPoint(12, [...seenAll, "business"]) === null &&
-      sectionToPoint(3, ["inventory"]) === null &&
+      sectionToPoint(3, ["inventory"]) === "shop" &&
+      sectionToPoint(3, seenAll) === null &&
       sectionToPoint(16, []) === null &&
       (["inventory", "shop", "rack", "business"] as const).every(
         (t) => SECTION_POINTER[t].title.length <= 30 && SECTION_POINTER[t].line.length <= 80,

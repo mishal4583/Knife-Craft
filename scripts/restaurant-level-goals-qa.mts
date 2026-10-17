@@ -24,7 +24,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { DEFAULT_SAVE, type SaveData } from "../src/game/SaveManager.ts";
 import { getLevel, getLevels } from "../src/game/levels/LevelManager.ts";
-import { getCampaignRecipe } from "../src/game/recipes/campaignRecipes.ts";
+import { CAMPAIGN_RECIPES, getCampaignRecipe } from "../src/game/recipes/campaignRecipes.ts";
 import { qualityFor } from "../src/game/CutEvaluator.ts";
 import {
   STARS_FOR_GRADE,
@@ -69,14 +69,23 @@ console.log("G. Goals from the real dish");
   const goals = Object.fromEntries(
     Array.from({ length: 15 }, (_, i) => [i + 1, recipesOf(i + 1).map(goalFor)]),
   );
+  // The 150-level redesign (2026-10-15, "no single-ingredient dishes"): L1's one-step
+  // slice, then a multi-step dish every level. The rule for one-step and ungraded dishes is
+  // still checked on the catalog's own recipes.
+  const oneStep = CAMPAIGN_RECIPES.find(
+    (r) => r.components.length === 1 && isGraded(r) && r.components[0]!.technique === "dice",
+  );
+  const ungradedOne = CAMPAIGN_RECIPES.find((r) => !isGraded(r) && r.components.length === 1);
   assert(
     goals[1]!.join() === "Even slices" &&
-      goals[3]!.join() === "Short, even pieces" &&
-      goals[5]!.join() === "Clean, even cuts" &&
-      goals[6]!.join() === "A neat, even grid" &&
-      goals[7]!.join() === "Finish the step cleanly" &&
-      goals[9]!.join() === "Finish all 2 steps" &&
-      goals[10]!.join() === "Clean, even cuts",
+      Array.from({ length: 14 }, (_, i) => goals[i + 2]!).every(
+        (g) => g.join() === "Clean, even cuts",
+      ) &&
+      !!oneStep &&
+      goalFor(oneStep) === "A neat, even grid" &&
+      !!ungradedOne &&
+      goalFor(ungradedOne) === "Finish the step cleanly" &&
+      goalFor(getCampaignRecipe("camp-smashed-garlic-prep")!) === "Finish all 2 steps",
     "G1: a one-step dish names what its cut is judged on, a multi-step dish all its cuts, an ungraded dish completion",
     goals,
   );
@@ -84,8 +93,8 @@ console.log("G. Goals from the real dish");
     (n) => !recipesOf(n).every(isGraded),
   );
   assert(
-    ungraded.join() === "7,9",
-    "G2: only Level 7 (peel) and Level 9 (peel + smash) are ungraded — the engine scores them a fixed 90",
+    ungraded.length === 0,
+    "G2: every Level 1–15 dish is graded (the redesign dropped the peel-only levels that scored a fixed 90)",
     ungraded,
   );
 }
@@ -106,16 +115,15 @@ console.log("S. Stars = the engine's grade");
     });
   const s = played({
     "camp-sliced-tomato-plate": 96,
-    "camp-peeled-potato-bowl": 90,
     "camp-tomato-basil-toast": 72,
-    "camp-bruschetta-trio": 88,
+    "camp-bruschetta-for-the-house": 88,
   });
   assert(
     levelStars(s, level(1)) === 3 &&
       levelStars(s, level(2)) === null &&
-      levelStars(s, level(7)) === null &&
+      levelStars(s, level(6)) === 1 &&
       levelStars(s, level(12)) === 2,
-    "S2: from the save's best score (Level 1 ★★★); unplayed → none; ungraded (L7) → none; a pool level takes its best dish (L12 ★★)",
+    "S2: from the save's best score (Level 1 ★★★, L6 ★, L12 ★★); unplayed → none",
   );
   const goals =
     read("src/game/restaurant/levelGoals.ts") + read("src/game/restaurant/levelChecklist.ts");
@@ -141,7 +149,8 @@ console.log("C. Customer lines");
 
 console.log("K. Checklist");
 {
-  const steps = recipesOf(5)[0]!.components.map((c) => ({
+  // Level 4 (150-level campaign): peel → halve the potato, slice a tomato.
+  const steps = recipesOf(4)[0]!.components.map((c) => ({
     ingredientId: c.ingredientId,
     techniqueId: c.technique,
   }));
@@ -153,12 +162,12 @@ console.log("K. Checklist");
     techniqueId: c.technique,
   }));
   assert(
-    k0.map((c) => c.label).join("|") === "Onion — peel|Onion — halve|Onion — slice" &&
+    k0.map((c) => c.label).join("|") === "Potato — peel|Potato — halve|Tomato — slice" &&
       k0.map((c) => c.state).join() === "now,todo,todo" &&
       k1.map((c) => c.state).join() === "done,now,todo" &&
       kDone.every((c) => c.state === "done") &&
       checklistFor(single, 0, false).length === 0,
-    "K1: Level 5's real steps (peel → halve → slice), ticked by the active step; none for a one-step dish",
+    "K1: Level 4's real steps (peel → halve → slice), ticked by the active step; none for a one-step dish",
   );
 }
 
@@ -167,7 +176,7 @@ console.log("I. Ingredient list (Level 9+)");
   const s = at(9, {
     business: {
       ...DEFAULT_SAVE.business,
-      inventory: addStock({}, "garlic", 0.1, 0, 1),
+      inventory: addStock({}, "basil", 0.1, 0, 1),
     },
   });
   const before = JSON.stringify(s);
@@ -175,12 +184,12 @@ console.log("I. Ingredient list (Level 9+)");
   const l12 = dishIngredientsFor(at(12), level(12));
   assert(
     l9.length === 1 &&
-      l9[0]!.dish === "Smashed Garlic Prep" &&
-      l9[0]!.rows.map((r) => r.ingredientId).join() === "garlic" &&
-      l9[0]!.rows[0]!.have === 0.1 &&
+      l9[0]!.dish === "Caprese Plate" &&
+      l9[0]!.rows.map((r) => r.ingredientId).join() === "tomato,mozzarella,basil" &&
+      l9[0]!.rows.find((r) => r.ingredientId === "basil")!.have === 0.1 &&
       JSON.stringify(s) === before &&
-      l12.map((d) => d.dish).join("|") === "Tomato Basil Toast|Bruschetta Trio",
-    "I1: Level 9 lists only its dish's garlic with the fridge's amount, changes nothing; a pool level (12) lists its two possible dishes",
+      l12.map((d) => d.dish).join("|") === "Bruschetta for the House",
+    "I1: Level 9 lists its Caprese Plate's ingredients with the fridge's amount, changes nothing; Level 12 its one dish",
     { l9, l12: l12.map((d) => d.dish) },
   );
 }
@@ -201,24 +210,26 @@ console.log("D. Grandma's lines");
 console.log("P. Pass 2 review fixes intact");
 {
   assert(
+    // Redesign 2026-10-15: the menu opens with 6 dishes (MENU_CURVE); real stock from L3.
     inventoryMenuOf(at(3)).length === 0 &&
-      inventoryMenuOf(at(11)).length === 4 &&
-      isFirstStockService(at(15), 15) &&
-      !isFirstStockService(at(16), 16),
-    "P1: Inventory menu by level (none at L3, 4 at L11); the Level 15 hand-over by progression",
+      inventoryMenuOf(at(11)).length === 6 &&
+      isFirstStockService(at(3), 3) &&
+      !isFirstStockService(at(4), 4),
+    "P1: Inventory menu by level (none at L3, 6 at L11); the first stock hand-over at L3 by progression",
   );
 }
 
 console.log("E. Rewards unchanged");
 {
-  const expected = [
-    5000, 5200, 5500, 5800, 6100, 6400, 6800, 7200, 7600, 8000, 8000, 8300, 8600, 8900, 9200,
-  ];
+  // Rule changed (developer 2026-10-16): round(50 + 3.1 × (n − 1)) dollars; L2's practice $0.
+  const expected = Array.from({ length: 15 }, (_, i) =>
+    i === 1 ? 0 : Math.round(50 + 3.1 * i) * 100,
+  );
   assert(
     getLevels()
       .slice(0, 15)
       .every((l, i) => l.id === `level-${i + 1}` && paidLevelReward(l) === expected[i]),
-    "E1: Levels 1–15 keep their order and completion rewards",
+    "E1: Levels 1–15 keep their order and pay the 2026-10-16 reward curve",
   );
 }
 

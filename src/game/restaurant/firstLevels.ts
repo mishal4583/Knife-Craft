@@ -184,20 +184,20 @@ export const GRANDMA_TIPS: Record<number, GrandmaTip> = {
   1: { text: "Tap Prepare — I'll show you how to hold the knife." },
   2: { text: "Same again, nice and steady. Your best cut earns the stars." },
   3: {
-    text: "The Market is open. Buy the ingredients today's order needs before you start.",
+    text: "The Market is open. Buy what today's order needs before you start.",
     to: "shop",
     button: "Buy Ingredients",
     focus: "ingredients",
   },
   4: {
-    text: "Check your fridge before each service, then buy only what you're missing.",
+    text: "Check your fridge before each service; buy only what's missing.",
     to: "inventory",
     button: "Check Inventory",
   },
   5: { text: "Bread and garlic — prepare each part for the warm plate." },
   6: { text: "Dicing! Watch the goal on the order card." },
   7: { text: "Choose the right knife technique for each ingredient." },
-  8: { text: "A new vegetable today — prepare the zucchini and its partner carefully." },
+  8: { text: "A new vegetable today — prepare the zucchini and its partner." },
   // 9: the card's own "What's in this dish?" button is the pointer.
   // Supplies plan A (developer 2026-10-10: "ask the player to buy some important
   // tools"): the Market sells from here — Grandma's first shopping list.
