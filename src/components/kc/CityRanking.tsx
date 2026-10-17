@@ -3,7 +3,7 @@ import { KButton, Panel } from "./common/primitives";
 import { Bar, Eyebrow } from "./common/Meters";
 import { cn } from "@/lib/utils";
 import type { SaveData } from "@/game/SaveManager";
-import { PLAYER_RESTAURANT_NAME } from "@/game/progression/restaurantProgress";
+import { restaurantNameOf } from "@/game/restaurant/restaurantName";
 import { cityRanking, type CityRanking } from "@/game/restaurant/cityRanking";
 import { LAST_CAMPAIGN_LEVEL } from "@/game/restaurant/restaurantProgression";
 
@@ -29,7 +29,7 @@ export function CityRankHero({ save }: { save: SaveData }) {
           🏆 #{c.rank} <span className="text-[17.5px] text-ivory/75">of {c.total}</span>
         </p>
         <p className="font-hand text-[17px] text-gold/90">
-          {PLAYER_RESTAURANT_NAME} · {pts(c.reputation)}
+          {restaurantNameOf(save)} · {pts(c.reputation)}
         </p>
         {c.next ? (
           <div className="mt-3">
@@ -108,7 +108,7 @@ export function CityLeaderboard({ save }: { save: SaveData }) {
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-ui text-[13.5px] font-extrabold leading-tight text-walnut-dark">
-                      {row.rival ? row.rival.name : PLAYER_RESTAURANT_NAME}
+                      {row.rival ? row.rival.name : restaurantNameOf(save)}
                     </span>
                     <span className="block truncate font-ui text-[12px] font-bold text-walnut/55">
                       {row.rival ? `${row.rival.cuisine} · ${row.rival.district}` : "That's you"}

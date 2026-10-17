@@ -81,6 +81,13 @@ import {
 import { FINALE, LEGACY } from "@/game/story/storyDefinitions";
 import { StoryOverlay } from "@/components/kc/story/StoryOverlay";
 import { CinematicIntro } from "@/components/kc/story/CinematicIntro";
+import { RestaurantNameCard } from "@/components/kc/RestaurantNameCard";
+import {
+  LEGACY_RESTAURANT_NAME_KEY,
+  needsRestaurantName,
+  restaurantNameOf,
+  withRestaurantName,
+} from "@/game/restaurant/restaurantName";
 import { MilestoneBanner } from "@/components/kc/story/MilestoneBanner";
 import {
   businessAlertsFor,
@@ -1021,6 +1028,13 @@ export function App() {
   function setStandingOrderOn(kind: DeliveryKind, on: boolean) {
     if (!save) return;
     persist(setStandingOrder(save, kind, on));
+  }
+
+  /** The restaurant's name (restaurant/restaurantName.ts): the naming card and Settings. Only settings change. */
+  function setRestaurantName(name: string) {
+    if (!save) return;
+    const next = withRestaurantName(save, name);
+    if (next !== save) persist(next);
   }
 
   /** Settings: the unit weighed ingredients are shown and sold in (business/measure.ts). */
@@ -2849,6 +2863,20 @@ export function App() {
         (campaignLevelForSession?.requiredOrders ?? 1)
       : false;
 
+  // Name the restaurant once (developer 2026-10-17): after the intro, before Level 1 starts;
+  // an existing save is asked on its next launch. The map's old nameboard kept a name in
+  // plain localStorage — offered as the starting text, never written.
+  const askRestaurantName =
+    RESTAURANT_MODE && save.story.introDone && !showIntro && needsRestaurantName(save);
+  let legacyRestaurantName = "";
+  if (askRestaurantName) {
+    try {
+      legacyRestaurantName = window.localStorage.getItem(LEGACY_RESTAURANT_NAME_KEY) ?? "";
+    } catch {
+      legacyRestaurantName = "";
+    }
+  }
+
   // Grandma points at a section that just opened (firstLevels.ts SECTION_POINTER):
   // on the Kitchen only, when nothing else is on screen.
   const pointedTab =
@@ -2888,9 +2916,9 @@ export function App() {
       {/* Preparation is a lazy chunk (lazyPreparation.ts) — normally already
           preloaded by the time a level opens, so this fallback rarely shows. */}
       <Suspense fallback={screen === "gameplay" ? <KitchenPlate /> : <LoadingScreen />}>
-        {/* Nothing runs under the intro (W2): Level 1 mounts when it ends. */}
-        {showIntro ? (
-          introPlate ? (
+        {/* Nothing runs under the intro (W2) or the naming card: Level 1 mounts when they end. */}
+        {showIntro || askRestaurantName ? (
+          introPlate || askRestaurantName ? (
             <KitchenPlate />
           ) : null
         ) : showServicePrep && currentServiceOrder ? (
@@ -3073,6 +3101,7 @@ export function App() {
               setEquippedBoard={setEquippedBoard}
               toggleSetting={toggleSetting}
               setMeasure={setMeasure}
+              setRestaurantName={setRestaurantName}
               resetProgress={resetProgress}
               advanceBusinessDay={advanceBusinessDay}
               purchaseIngredient={purchaseIngredient}
@@ -3179,6 +3208,9 @@ export function App() {
         </p>
       ) : null}
       {showIntro ? <CinematicIntro onDone={completeIntro} /> : null}
+      {askRestaurantName ? (
+        <RestaurantNameCard initial={legacyRestaurantName} onSave={setRestaurantName} />
+      ) : null}
       {storyEvent?.kind === "finale" ? (
         <StoryOverlay sequence={FINALE} onDone={finishFinale} />
       ) : null}

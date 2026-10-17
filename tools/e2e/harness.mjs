@@ -12,7 +12,12 @@ export const OUT = new URL(".", import.meta.url).pathname.replace(/^\/([A-Z]:)/,
 export const GAME_URL = process.env.KC_URL || "http://localhost:4173/";
 export const SAVE_KEY = "knifecraft_save";
 
-export async function launch() {
+/**
+ * `nameCard: true` leaves the one-time restaurant naming card (2026-10-17) on screen for the
+ * test to answer (restaurantname.mjs); otherwise a new player's card is answered with
+ * "Keep" as soon as it shows, so tests about other things carry on past it.
+ */
+export async function launch({ nameCard = false } = {}) {
   const browser = await puppeteer.launch({
     executablePath:
       process.env.CHROME_PATH || "C:/Program Files/Google/Chrome/Application/chrome.exe",
@@ -27,6 +32,14 @@ export async function launch() {
     defaultViewport: { width: 430, height: 900, deviceScaleFactor: 1 },
   });
   const page = await browser.newPage();
+  if (!nameCard)
+    await page.evaluateOnNewDocument(() => {
+      const keep = () =>
+        [...document.querySelectorAll('[data-testid="restaurant-name-card"] button')]
+          .find((b) => /^Keep /.test(b.textContent.trim()))
+          ?.click();
+      new MutationObserver(keep).observe(document, { childList: true, subtree: true });
+    });
   const logs = [];
   page.on("console", (m) => {
     if (["error", "warning"].includes(m.type())) logs.push(`${m.type()}: ${m.text()}`);
@@ -91,7 +104,29 @@ export function seedSave(overrides = {}) {
     story: { introDone: true, milestoneMask: 1, finaleSeen: false },
     economyLedger: [],
     ...overrides,
+    // The restaurant is already named (2026-10-17) so the one-time naming card doesn't
+    // cover the screen; restaurantname.mjs seeds a save without one on purpose.
+    settings: {
+      sound: true,
+      music: true,
+      reducedMotion: false,
+      restaurantName: "Test Kitchen",
+      ...(overrides.settings ?? {}),
+    },
   };
+}
+
+/** A brand-new player meets the naming card after the intro: keep the default name. */
+export async function passNameCard(page) {
+  await page
+    .waitForSelector('[data-testid="restaurant-name-card"]', { timeout: 8000 })
+    .catch(() => null);
+  await page.evaluate(() =>
+    [...document.querySelectorAll('[data-testid="restaurant-name-card"] button')]
+      .find((b) => /^Keep /.test(b.textContent.trim()))
+      ?.click(),
+  );
+  await new Promise((r) => setTimeout(r, 600));
 }
 
 const waitForBridge = (page) =>

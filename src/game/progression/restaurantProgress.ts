@@ -9,6 +9,7 @@
  * The only non-derived data is CITY_BENCHMARK: fictional, fixed game-world
  * restaurants used purely as context for the player's real popularity.
  */
+import { DEFAULT_RESTAURANT_NAME, restaurantNameOf } from "../restaurant/restaurantName";
 import type { SaveData } from "../SaveManager";
 import { getLevels, isCompleted, isUnlocked } from "../levels/LevelManager";
 import { CHAPTER_TITLES } from "../levels/levelDefinitions";
@@ -49,7 +50,8 @@ export const CITY_BENCHMARK: ReadonlyArray<{ name: string; popularity: number }>
   { name: "Corner Crumb", popularity: 58 },
 ];
 
-export const PLAYER_RESTAURANT_NAME = "Your Restaurant";
+/** The player's row before they name the restaurant (restaurant/restaurantName.ts). */
+export const PLAYER_RESTAURANT_NAME = DEFAULT_RESTAURANT_NAME;
 
 export type BenchmarkRow = { rank: number; name: string; popularity: number; isPlayer: boolean };
 
@@ -221,7 +223,7 @@ export function restaurantProgress(save: SaveData) {
   }));
 
   return {
-    restaurantName: PLAYER_RESTAURANT_NAME,
+    restaurantName: restaurantNameOf(save),
     level: {
       current: levelNumber(current.id),
       completed: completedCount,

@@ -16,6 +16,7 @@ profiles to `tools/e2e/profile-*` (both gitignored).
 
 | Script | What it checks |
 |---|---|
+| `restaurantname.mjs` | **Restaurant build**, the restaurant name (2026-10-17): a new player names it after the intro (Level 1 waits under the card), the name is saved cleaned; no card after a reload; an unnamed existing save is asked once (Keep → default); Settings changes it and the map's sign follows; 320 px fit. Runs with `launch({ nameCard: true })` — every other test gets a named seed save and an auto-answered card |
 | `marketneedslevel.mjs` | **Restaurant build**, Market highlights from the check (2026-10-17): Level 10's shopping list → Buy on the stock pot → Smallwares opens on All with the 4 next-level tools first, labelled "Needed at Level N · buy 1", chips counting them; the same with a save whose current level is already played; no page errors |
 | `infotip.mjs` | **Restaurant build**, short game copy (2026-10-16): Market knife cards have a ⓘ and no clipped description; the ⓘ opens one bubble on screen, a second ⓘ replaces it, a tap outside closes it; the ⓘ button is ≥ 48 px; Second Floor machines show earnings/payback chips; fits 320/390/768 |
 | `restaurantwidths.mjs` | **Restaurant test build only**, phase N: the Pre-Service Check (L51, the fullest sheet), Inventory's NEEDS ATTENTION, Restaurant → Staff, Market ingredients and takeaway (bulk presets), the Restaurant overview and Closing Time at 320/360/390/430/768 px — no sideways scroll, every button ≥ 48 px |

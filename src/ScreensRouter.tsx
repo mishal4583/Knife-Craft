@@ -1,4 +1,5 @@
 import { staffOnMap } from "@/game/restaurant/staffLife";
+import { restaurantNameOf } from "@/game/restaurant/restaurantName";
 import {
   cleanerRestroomJob,
   dayCleanerToday,
@@ -136,6 +137,7 @@ export function ScreensRouter({
   setEquippedBoard,
   toggleSetting,
   setMeasure,
+  setRestaurantName,
   resetProgress,
   advanceBusinessDay,
   purchaseIngredient,
@@ -189,6 +191,8 @@ export function ScreensRouter({
   toggleSetting: (key: "sound" | "music" | "reducedMotion") => void;
   /** Settings: weighed ingredients in lb or kg (business/measure.ts). */
   setMeasure: (measure: Measure) => void;
+  /** The restaurant's name (restaurant/restaurantName.ts): Settings and the map's nameboard. */
+  setRestaurantName: (name: string) => void;
   resetProgress: () => void;
   /** Economy V3 Phase 1 — the player's own explicit "End Business Day" action. */
   advanceBusinessDay: () => AdvanceDayResult;
@@ -287,6 +291,8 @@ export function ScreensRouter({
                 attentionSymbols={attentionBadges.mapSymbols}
                 currentScreen={screen}
                 onNavigateToScreen={openMapDestination}
+                restaurantName={restaurantNameOf(save)}
+                onRestaurantNameChange={setRestaurantName}
               />
               {(() => {
                 const level = restaurantLevelOf(save.levelProgress);
@@ -408,6 +414,9 @@ export function ScreensRouter({
             settings={save.settings}
             onToggleSetting={toggleSetting}
             onSetMeasure={RESTAURANT_MODE ? setMeasure : undefined}
+            {...(RESTAURANT_MODE
+              ? { restaurantName: restaurantNameOf(save), onSetRestaurantName: setRestaurantName }
+              : {})}
             onResetProgress={resetProgress}
           />
         ) : null}

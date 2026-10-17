@@ -1,5 +1,15 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## Restaurant name (2026-10-17, `main`)
+
+- After the intro, before Level 1, the player names the restaurant (four
+  ideas, or "Keep \"Your Restaurant\""); an existing save is asked once on
+  its next launch. Changeable in Settings → Restaurant name and on the map's
+  sign. Stored as `settings.restaurantName` (optional, like `measure`).
+  Shown on the map, Progress and the City Ranking. REFERENCE §10; QA
+  `restaurant-name-qa`, e2e `restaurantname.mjs`. The browser harness names
+  seeded saves and answers a new player's card unless `launch({ nameCard: true })`.
+
 ## Developer follow-ups to the audit (2026-10-17, `main`)
 
 - Bulk tiers 3/5/8 % from 5/10/25 (were 25/50/100).

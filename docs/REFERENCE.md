@@ -1829,6 +1829,18 @@ not silently removed.
 
 ## 10. UI
 
+### Restaurant name (developer 2026-10-17)
+
+`restaurant/restaurantName.ts`: `settings.restaurantName` (optional; absent
+= not asked yet). App shows `RestaurantNameCard` once the intro is done and
+holds Level 1 under it (restaurant build); "Open the doors →" saves the
+typed name, cleaned (single spaces, trimmed, ≤ 24 characters), "Keep …"
+saves the default "Your Restaurant". Settings → Restaurant name
+(`RestaurantNameField`) and the map's nameboard change the same saved name
+(the nameboard used to keep it in plain localStorage — that key is now
+only read once, as the card's starting text). Progress and the City
+Ranking show it. Display only: no money, ledger or progress reads it.
+
 Use the existing KnifeCraft UI primitives and visual identity (warm
 painted kitchens, wood/paper, Fraunces / Nunito / Caveat bundled locally).
 Touch targets ≥ 48 px. Test at 320×568, 360×640, 390×844, 430×900,

@@ -1,4 +1,9 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
+import {
+  DEFAULT_RESTAURANT_NAME,
+  RESTAURANT_NAME_MAX,
+  cleanRestaurantName,
+} from '@/game/restaurant/restaurantName';
 import type {
   RestaurantMapProps,
   HotspotZoneConfig
@@ -35,24 +40,17 @@ export const RestaurantMap: React.FC<RestaurantMapProps> = ({
   const [zoomLevel, setZoomLevel] = useState<number>(1);
   const [panOffset, setPanOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState<boolean>(false);
-  const [restaurantName, setRestaurantName] = useState('Your Restaurant');
-  const [restaurantNameDraft, setRestaurantNameDraft] = useState('Your Restaurant');
+  const [restaurantName, setRestaurantName] = useState(DEFAULT_RESTAURANT_NAME);
+  const [restaurantNameDraft, setRestaurantNameDraft] = useState(DEFAULT_RESTAURANT_NAME);
   const [isEditingRestaurantName, setIsEditingRestaurantName] = useState(false);
   const dragStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
   const noticeTimerRef = useRef<number | null>(null);
 
+  // The name lives in the save (restaurant/restaurantName.ts, developer 2026-10-17); it
+  // used to be kept in plain localStorage here, outside SaveManager.
   useEffect(() => {
-    if (restaurantNameProp !== undefined) {
-      setRestaurantName(restaurantNameProp || 'Your Restaurant');
-      return;
-    }
-    try {
-      const savedName = window.localStorage.getItem('knifecraft.restaurantName');
-      if (savedName) setRestaurantName(savedName);
-    } catch {
-      // Storage may be unavailable in private or embedded browser contexts.
-    }
+    setRestaurantName(restaurantNameProp || DEFAULT_RESTAURANT_NAME);
   }, [restaurantNameProp]);
 
   const startEditingRestaurantName = () => {
@@ -61,17 +59,10 @@ export const RestaurantMap: React.FC<RestaurantMapProps> = ({
   };
 
   const saveRestaurantName = () => {
-    const nextName = restaurantNameDraft.trim().slice(0, 28) || 'Your Restaurant';
+    const nextName = cleanRestaurantName(restaurantNameDraft) || DEFAULT_RESTAURANT_NAME;
     setRestaurantName(nextName);
     setIsEditingRestaurantName(false);
     onRestaurantNameChange?.(nextName);
-    if (restaurantNameProp === undefined) {
-      try {
-        window.localStorage.setItem('knifecraft.restaurantName', nextName);
-      } catch {
-        // Keep the current name for this session if storage is unavailable.
-      }
-    }
   };
 
   // Show a temporary locked toast
@@ -235,7 +226,7 @@ export const RestaurantMap: React.FC<RestaurantMapProps> = ({
                 <input
                   autoFocus
                   aria-label="Restaurant name"
-                  maxLength={28}
+                  maxLength={RESTAURANT_NAME_MAX}
                   value={restaurantNameDraft}
                   onChange={(event) => setRestaurantNameDraft(event.target.value)}
                   onKeyDown={(event) => {

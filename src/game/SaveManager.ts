@@ -140,7 +140,14 @@ export type SaveData = {
   recipeProgress: Record<string, { best: number | null; done: boolean }>;
   /** `sound` and `reducedMotion` (Settings → Reduced motion, audit 2026-10-08) are real settings; `music` is a legacy key kept so older saves round-trip unchanged (the game has no music). */
   /** `measure` (optional, developer 2026-10-08): the player's unit for weighed ingredients — absent = "lb" (business/measure.ts). */
-  settings: { sound: boolean; music: boolean; reducedMotion: boolean; measure?: "lb" | "kg" };
+  /** `restaurantName` (optional, developer 2026-10-17): the player's name for the restaurant — absent = not asked yet (restaurant/restaurantName.ts). */
+  settings: {
+    sound: boolean;
+    music: boolean;
+    reducedMotion: boolean;
+    measure?: "lb" | "kg";
+    restaurantName?: string;
+  };
   /**
    * Level Engine progression (Phase 4 — design doc §15). Added as a field
    * on the SAME save blob, not a second storage system. Old saves parsed

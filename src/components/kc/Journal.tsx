@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { RestaurantNameField } from "./RestaurantNameCard";
 import type { Measure } from "@/game/business/measure";
 import type { ScreenId } from "./data";
 import { paidLevelReward } from "@/game/levels/levelRewards";
@@ -228,6 +230,8 @@ export function Settings({
   settings,
   onToggleSetting,
   onSetMeasure,
+  restaurantName,
+  onSetRestaurantName,
   onResetProgress,
 }: {
   go: (s: ScreenId) => void;
@@ -235,9 +239,13 @@ export function Settings({
   onToggleSetting: (key: "sound" | "music" | "reducedMotion") => void;
   /** Restaurant build: pick lb or kg for weighed ingredients (absent in the classic build). */
   onSetMeasure?: ((measure: Measure) => void) | undefined;
+  /** Restaurant build: the restaurant's name and its change (restaurant/restaurantName.ts). */
+  restaurantName?: string;
+  onSetRestaurantName?: (name: string) => void;
   onResetProgress: () => void;
 }) {
   const measure: Measure = settings.measure === "kg" ? "kg" : "lb";
+  const [nameSaved, setNameSaved] = useState(false);
   return (
     <div className="relative h-full w-full overflow-hidden bg-cream">
       <div className="relative h-full overflow-y-auto no-scrollbar pb-24">
@@ -256,6 +264,32 @@ export function Settings({
               onToggle={() => onToggleSetting("reducedMotion")}
             />
           </Panel>
+          {onSetRestaurantName && restaurantName !== undefined ? (
+            <div data-testid="restaurant-name-setting">
+              <Panel className="p-3">
+                <p className="flex items-center gap-2 font-ui text-[13.5px] font-bold text-walnut-dark">
+                  🍽️ Restaurant name
+                  {nameSaved ? (
+                    <span className="font-ui text-[12px] font-extrabold text-olive" role="status">
+                      ✓ Saved
+                    </span>
+                  ) : null}
+                </p>
+                <div className="mt-2">
+                  <RestaurantNameField
+                    key={restaurantName}
+                    initial={restaurantName}
+                    saveLabel="Save name"
+                    testId="settings-restaurant-name"
+                    onSave={(name) => {
+                      onSetRestaurantName(name);
+                      setNameSaved(true);
+                    }}
+                  />
+                </div>
+              </Panel>
+            </div>
+          ) : null}
           {onSetMeasure ? (
             <div data-testid="measure-setting">
               <Panel className="p-3">
