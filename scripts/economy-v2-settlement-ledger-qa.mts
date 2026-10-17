@@ -19,7 +19,7 @@ import fs from "node:fs";
  */
 import { DEFAULT_SAVE, type SaveData } from "../src/game/SaveManager.ts";
 // USD: every wallet/settlement amount is integer US cents (money.ts). The frozen Economy V2 figures are
-// the original numbers read as dollars — $165,140.00 / $77,581.00 / $37,620.00 / $3,315.00 / $208,416.00 (V2.5 completion rewards).
+// the original numbers read as dollars — $69,110.00 / $46,585.00 / $16,092.00 / $1,402.00 / $101,005.00 (150-level baseline, recorded 2026-10-17).
 import { dollars } from "../src/game/money.ts";
 import { DEFAULT_LEVEL_PROGRESS, completeLevel, isChapterComplete } from "../src/game/levels/LevelManager.ts";
 import { LEVELS } from "../src/game/levels/levelDefinitions.ts";
@@ -346,11 +346,11 @@ const recipe = CAMPAIGN_RECIPES[30]!;
     }),
     { grossRecipeRevenue: 0, completionRewards: 0, cogs: 0, qualityBonus: 0, net: 0 },
   );
-  assert(totals.grossRecipeRevenue === dollars(165140), `X: recipe revenue unchanged at $165,140.00 (got ${totals.grossRecipeRevenue})`);
-  assert(totals.completionRewards === dollars(77581), `X2: completion rewards at the V2.5 locked $77,581.00 (got ${totals.completionRewards})`);
-  assert(totals.cogs === dollars(37620), `X3: baseline COGS unchanged at $37,620.00 (got ${totals.cogs})`);
-  assert(totals.qualityBonus === dollars(3315), `X4: quality bonus unchanged at $3,315.00 (got ${totals.qualityBonus})`);
-  assert(totals.net === dollars(208416), `X5: Honest net at the V2.5 locked $208,416.00 (got ${totals.net})`);
+  assert(totals.grossRecipeRevenue === dollars(69110), `X: recipe revenue unchanged at $69,110.00 (got ${totals.grossRecipeRevenue})`);
+  assert(totals.completionRewards === dollars(46585), `X2: completion rewards at the V2.5 locked $46,585.00 (got ${totals.completionRewards})`);
+  assert(totals.cogs === dollars(16092), `X3: baseline COGS unchanged at $16,092.00 (got ${totals.cogs})`);
+  assert(totals.qualityBonus === dollars(1402), `X4: quality bonus unchanged at $1,402.00 (got ${totals.qualityBonus})`);
+  assert(totals.net === dollars(101005), `X5: Honest net at the V2.5 locked $101,005.00 (got ${totals.net})`);
 }
 
 console.log(`\nMAX_LEDGER_ENTRIES bound in effect: ${MAX_LEDGER_ENTRIES}`);

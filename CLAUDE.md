@@ -148,10 +148,10 @@ Release zip: the CONTENTS of `dist/` →
 
 ## 7. ECONOMY RULES (figures: REFERENCE §7)
 
-- **Economy re-plan pending (150 levels, developer 2026-10-15).** The old
-  frozen V2 figures (Revenue 165,140 · Completion 77,581 · COGS 37,620 ·
-  Quality 3,315 · Net 208,416) belong to the 250-level campaign; the suites
-  that pin them fail until the new baseline is recorded. Pay follows each
+- **Frozen campaign baseline (150 levels, recorded 2026-10-17 on the
+  developer's approval):** Revenue 69,110 · Completion 46,585 · COGS 16,092
+  · Quality 1,402 · Net 101,005 (`economy-v2-campaign-simulation`; the
+  250-level figures were 165,140 / 77,581 / 37,620 / 3,315 / 208,416). Pay follows each
   level's `cuisineChapter` (`payChapterOf`). An unexplained change is still
   a regression.
 - **Level rewards:** `levels/levelRewards.ts` `paidLevelReward` is the ONE

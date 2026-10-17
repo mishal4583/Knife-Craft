@@ -1270,8 +1270,10 @@ preparation = PreparationScene; events = `events.ts`; platform =
 
 Locked Campaign baseline (enforced by `economy-v2-final-qa`):
 
-- Revenue 165,140 · Completion Rewards 77,581 · COGS 37,620 ·
-  Quality Bonus 3,315 · Honest Chef Net 208,416
+- Revenue 69,110 · Completion Rewards 46,585 · COGS 16,092 ·
+  Quality Bonus 1,402 · Honest Chef Net 101,005 — the 150-level campaign,
+  recorded 2026-10-17 (developer's approval of the re-baseline). The
+  250-level figures were 165,140 / 77,581 / 37,620 / 3,315 / 208,416.
 
 (Completion Rewards were 330,691 and the net 461,526 before Economy V2.5;
 that one line changed by the approved rebalance below. Nothing else moved.)

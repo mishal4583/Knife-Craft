@@ -8,8 +8,9 @@
  */
 import { KNIFE_CATALOG } from "../src/game/knives/knifeDefinitions.ts";
 // USD: every wallet/settlement amount is integer US cents (money.ts). The frozen Economy V2 figures are
-// the original numbers read as dollars — $165,140.00 / $77,581.00 / $37,620.00 / $3,315.00 / $208,416.00 (V2.5 completion rewards).
+// the original numbers read as dollars — $69,110.00 / $46,585.00 / $16,092.00 / $1,402.00 / $101,005.00 (150-level baseline, recorded 2026-10-17).
 import { dollars } from "../src/game/money.ts";
+import { remapCampaignThreshold } from "../src/game/levels/campaignSelection.ts";
 import { buyKnife, isKnifeOwned } from "../src/game/knives/KnifeManager.ts";
 import { BOARD_CATALOG } from "../src/game/boards/boardDefinitions.ts";
 import { buyBoard, isOwned as isBoardOwned } from "../src/game/boards/BoardManager.ts";
@@ -81,12 +82,13 @@ function fakeRecipe(components: Partial<RecipeComponent>[]): RecipeDefinition {
   assert(BOARD_CATALOG.length === 8, `A: exactly 8 boards exist (got ${BOARD_CATALOG.length})`);
   for (const k of KNIFE_CATALOG) {
     const locked = LOCKED_KNIVES[k.id];
-    // The locked table keeps the original numbers; the catalog now states them in dollars (cents).
-    assert(!!locked && k.price === dollars(locked.price) && k.unlockLevel === locked.unlockLevel, `A: knife ${k.id} price/unlockLevel unchanged ($${locked?.price} / L${k.unlockLevel})`);
+    // The locked table keeps the original numbers; the catalog now states them in dollars (cents)
+    // and the unlock level through the 150-level remap (developer 2026-10-15).
+    assert(!!locked && k.price === dollars(locked.price) && k.unlockLevel === remapCampaignThreshold(locked.unlockLevel), `A: knife ${k.id} price/unlockLevel unchanged ($${locked?.price} / L${k.unlockLevel})`);
   }
   for (const b of BOARD_CATALOG) {
     const locked = LOCKED_BOARDS[b.id];
-    assert(!!locked && b.price === dollars(locked.price) && b.unlockLevel === locked.unlockLevel, `A: board ${b.id} price/unlockLevel unchanged ($${locked?.price} / L${b.unlockLevel})`);
+    assert(!!locked && b.price === dollars(locked.price) && b.unlockLevel === remapCampaignThreshold(locked.unlockLevel), `A: board ${b.id} price/unlockLevel unchanged ($${locked?.price} / L${b.unlockLevel})`);
   }
 }
 
@@ -96,7 +98,7 @@ function fakeRecipe(components: Partial<RecipeComponent>[]): RecipeDefinition {
   const modifier = getEquipmentModifier("chef", "walnut", anyRecipe);
   assert(modifier.cogsReductionPct === 0 && modifier.qualityBonusBoost === 0, "B: chef+walnut produces a fully neutral (0,0) modifier for an arbitrary recipe");
   const { results } = simulateCampaign(SCORE.Honest, false, DEFAULT_LEVEL_PROGRESS, "chef", "walnut");
-  assert(results.length === 250, "B: the full 250-level campaign completes end to end with chef+walnut explicitly equipped");
+  assert(results.length === 150, "B: the full 150-level campaign completes end to end with chef+walnut explicitly equipped");
 }
 
 // ===== C: each specialization triggers on at least one valid context; D: non-applicable cases stay neutral. =====
@@ -188,10 +190,10 @@ function fakeRecipe(components: Partial<RecipeComponent>[]): RecipeDefinition {
     }),
     { grossRecipeRevenue: 0, completionRewards: 0, cogs: 0, qualityBonus: 0 },
   );
-  assert(totals.grossRecipeRevenue === dollars(165140), `G: recipe revenue unchanged at $165,140.00 (got ${totals.grossRecipeRevenue})`);
-  assert(totals.completionRewards === dollars(77581), `G: completion rewards at the V2.5 locked $77,581.00 (got ${totals.completionRewards})`);
-  assert(totals.cogs === dollars(37620), `G: baseline COGS unchanged at $37,620.00 (got ${totals.cogs})`);
-  assert(totals.qualityBonus === dollars(3315), `G: quality bonus unchanged at $3,315.00 (got ${totals.qualityBonus})`);
+  assert(totals.grossRecipeRevenue === dollars(69110), `G: recipe revenue unchanged at $69,110.00 (got ${totals.grossRecipeRevenue})`);
+  assert(totals.completionRewards === dollars(46585), `G: completion rewards at the V2.5 locked $46,585.00 (got ${totals.completionRewards})`);
+  assert(totals.cogs === dollars(16092), `G: baseline COGS unchanged at $16,092.00 (got ${totals.cogs})`);
+  assert(totals.qualityBonus === dollars(1402), `G: quality bonus unchanged at $1,402.00 (got ${totals.qualityBonus})`);
 }
 
 // ===== H: equipment sensitivity — real 250-level simulation under representative loadouts. =====
@@ -207,7 +209,7 @@ console.log("\n--- H: Equipment sensitivity (250-level campaign, Honest quality)
   ];
   const neutral = simulateCampaign(SCORE.Honest, false, DEFAULT_LEVEL_PROGRESS, "chef", "walnut").results;
   const neutralTotals = neutral.reduce((s, r) => ({ cogs: s.cogs + r.ingredientCOGS, qb: s.qb + r.qualityBonus, net: s.net + r.netResult }), { cogs: 0, qb: 0, net: 0 });
-  assert(neutralTotals.cogs === dollars(37620), "H: chef+walnut (explicit) reproduces the exact locked $37,620.00 COGS baseline — zero drift from neutral equipment");
+  assert(neutralTotals.cogs === dollars(16092), "H: chef+walnut (explicit) reproduces the exact locked $16,092.00 COGS baseline — zero drift from neutral equipment");
 
   for (const l of loadouts) {
     const { results } = simulateCampaign(SCORE.Honest, false, DEFAULT_LEVEL_PROGRESS, l.knife, l.board);

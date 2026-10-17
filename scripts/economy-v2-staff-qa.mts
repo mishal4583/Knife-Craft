@@ -8,7 +8,7 @@
  */
 import { DEFAULT_SAVE, type SaveData } from "../src/game/SaveManager.ts";
 // USD: every wallet/settlement amount is integer US cents (money.ts). The frozen Economy V2 figures are
-// the original numbers read as dollars — $165,140.00 / $77,581.00 / $37,620.00 / $3,315.00 / $208,416.00 (V2.5 completion rewards).
+// the original numbers read as dollars — $69,110.00 / $46,585.00 / $16,092.00 / $1,402.00 / $101,005.00 (150-level baseline, recorded 2026-10-17).
 import { dollars } from "../src/game/money.ts";
 import { DEFAULT_LEVEL_PROGRESS } from "../src/game/levels/LevelManager.ts";
 import { CAMPAIGN_RECIPES } from "../src/game/recipes/campaignRecipes.ts";
@@ -48,9 +48,9 @@ function saveAtLevel(levelNumber: number, credits: number, extra: Partial<SaveDa
   assert(byId["prep-assistant"]!.price === dollars(3000), "B: prep-assistant price is $3,000.00");
   assert(byId["quality-chef"]!.price === dollars(6000), "B: quality-chef price is $6,000.00");
   assert(byId["kitchen-assistant"]!.price === dollars(4000), "B: kitchen-assistant price is $4,000.00");
-  assert(byId["prep-assistant"]!.unlockLevel === 20, "C: prep-assistant unlocks at L20");
-  assert(byId["quality-chef"]!.unlockLevel === 45, "C: quality-chef unlocks at L45");
-  assert(byId["kitchen-assistant"]!.unlockLevel === 65, "C: kitchen-assistant unlocks at L65");
+  assert(byId["prep-assistant"]!.unlockLevel === 13, "C: prep-assistant unlocks at L13 (old L20, 150-level remap)");
+  assert(byId["quality-chef"]!.unlockLevel === 32, "C: quality-chef unlocks at L32 (old L45, 150-level remap)");
+  assert(byId["kitchen-assistant"]!.unlockLevel === 44, "C: kitchen-assistant unlocks at L44 (old L65, 150-level remap)");
 }
 
 // ===== D: save migration — old save without staff data loads correctly. =====
@@ -198,10 +198,10 @@ function saveAtLevel(levelNumber: number, credits: number, extra: Partial<SaveDa
     }),
     { grossRecipeRevenue: 0, completionRewards: 0, cogs: 0, qualityBonus: 0 },
   );
-  assert(totals.grossRecipeRevenue === dollars(165140), `P: recipe revenue unchanged at $165,140.00 (got ${totals.grossRecipeRevenue})`);
-  assert(totals.completionRewards === dollars(77581), `P: completion rewards at the V2.5 locked $77,581.00 (got ${totals.completionRewards})`);
-  assert(totals.cogs === dollars(37620), `P: baseline COGS unchanged at $37,620.00 (got ${totals.cogs})`);
-  assert(totals.qualityBonus === dollars(3315), `P: quality bonus unchanged at $3,315.00 (got ${totals.qualityBonus})`);
+  assert(totals.grossRecipeRevenue === dollars(69110), `P: recipe revenue unchanged at $69,110.00 (got ${totals.grossRecipeRevenue})`);
+  assert(totals.completionRewards === dollars(46585), `P: completion rewards at the V2.5 locked $46,585.00 (got ${totals.completionRewards})`);
+  assert(totals.cogs === dollars(16092), `P: baseline COGS unchanged at $16,092.00 (got ${totals.cogs})`);
+  assert(totals.qualityBonus === dollars(1402), `P: quality bonus unchanged at $1,402.00 (got ${totals.qualityBonus})`);
 }
 
 // ===== Q: replay behavior — staff never bypasses replay's zero-economics rule. =====

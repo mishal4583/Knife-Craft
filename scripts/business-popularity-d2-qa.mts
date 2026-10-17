@@ -303,7 +303,7 @@ function closeDay(save: SaveData): SaveData {
   const v2 = spawnSync("npx", ["tsx", JSON.stringify(path.resolve(import.meta.dirname, "economy-v2-campaign-simulation.mts"))], { encoding: "utf8", shell: true });
   const honest = v2.stdout.slice(v2.stdout.indexOf("SIMULATION HONEST"), v2.stdout.indexOf("Total net campaign result") + 60);
   const has = (label: string, value: string) => new RegExp(`${label}:\\s*${value}(?![\\d,])`).test(honest);
-  assert(v2.status === 0 && has("Gross recipe revenue", "\\$165,140\\.00") && has("Level-completion rewards", "\\$77,581\\.00") && has("Total COGS", "\\$37,620\\.00") && has("Total quality bonuses", "\\$3,315\\.00") && has("Total net campaign result", "\\$208,416\\.00"), "I2: Economy V2 freeze exact — $165,140.00 / $77,581.00 / $37,620.00 / $3,315.00 / $208,416.00 (V2.5 completion rewards)");
+  assert(v2.status === 0 && has("Gross recipe revenue", "\\$69,110\\.00") && has("Level-completion rewards", "\\$46,585\\.00") && has("Total COGS", "\\$16,092\\.00") && has("Total quality bonuses", "\\$1,402\\.00") && has("Total net campaign result", "\\$101,005\\.00"), "I2: Economy V2 freeze exact — $69,110.00 / $46,585.00 / $16,092.00 / $1,402.00 / $101,005.00 (150-level baseline, recorded 2026-10-17)");
 }
 
 // ===== S: simulation scenarios (120 days each, real pipeline, no tuning). =====

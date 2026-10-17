@@ -8,7 +8,7 @@
  */
 import { DEFAULT_SAVE, type SaveData } from "../src/game/SaveManager.ts";
 // USD: every wallet/settlement amount is integer US cents (money.ts). The frozen Economy V2 figures are
-// the original numbers read as dollars — $165,140.00 / $77,581.00 / $37,620.00 / $3,315.00 / $208,416.00 (V2.5 completion rewards).
+// the original numbers read as dollars — $69,110.00 / $46,585.00 / $16,092.00 / $1,402.00 / $101,005.00 (150-level baseline, recorded 2026-10-17).
 import { dollars } from "../src/game/money.ts";
 import { DEFAULT_LEVEL_PROGRESS } from "../src/game/levels/LevelManager.ts";
 import { CAMPAIGN_RECIPES } from "../src/game/recipes/campaignRecipes.ts";
@@ -234,10 +234,10 @@ console.log("\n--- T: Supplier sensitivity (250-level campaign, Honest quality, 
     }),
     { grossRecipeRevenue: 0, completionRewards: 0, cogs: 0, qualityBonus: 0, net: 0 },
   );
-  assert(localTotals.grossRecipeRevenue === dollars(165140), `T-P: recipe revenue unchanged at $165,140.00 with Local Market (got ${localTotals.grossRecipeRevenue})`);
-  assert(localTotals.completionRewards === dollars(77581), `T-Q: completion rewards at the V2.5 locked $77,581.00 with Local Market (got ${localTotals.completionRewards})`);
-  assert(localTotals.cogs === dollars(37620), `T: baseline COGS unchanged at $37,620.00 with Local Market (got ${localTotals.cogs})`);
-  assert(localTotals.qualityBonus === dollars(3315), `T: quality bonus unchanged at $3,315.00 with Local Market (got ${localTotals.qualityBonus})`);
+  assert(localTotals.grossRecipeRevenue === dollars(69110), `T-P: recipe revenue unchanged at $69,110.00 with Local Market (got ${localTotals.grossRecipeRevenue})`);
+  assert(localTotals.completionRewards === dollars(46585), `T-Q: completion rewards at the V2.5 locked $46,585.00 with Local Market (got ${localTotals.completionRewards})`);
+  assert(localTotals.cogs === dollars(16092), `T: baseline COGS unchanged at $16,092.00 with Local Market (got ${localTotals.cogs})`);
+  assert(localTotals.qualityBonus === dollars(1402), `T: quality bonus unchanged at $1,402.00 with Local Market (got ${localTotals.qualityBonus})`);
 
   for (const supplier of SUPPLIER_CATALOG) {
     const { results } = simulateCampaign(SCORE.Honest, false, DEFAULT_LEVEL_PROGRESS, "chef", "walnut", 100, [], supplier.id);

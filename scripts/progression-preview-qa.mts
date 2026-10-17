@@ -127,10 +127,11 @@ const INVESTMENT_NAMES = ["Prep Station Upgrade", "Storage Rack", "Service Count
     if (r) shown.add(r.name);
   }
   assert(INVESTMENT_NAMES.every((n) => !shown.has(n)), "C2: no level's Order Board hint ever names a retired investment");
-  const p40 = getNextRewardPreview(40);
-  const p90 = getNextRewardPreview(90);
-  assert(p40?.name === "Established Kitchen" && p40.atLevel === 41 && p40.icon === "🏠", `C3: after Lv 40 the hint is the "Established Kitchen" background (Lv 41)`);
-  assert(p90?.name === "Grand Kitchen" && p90.atLevel === 91 && p90.icon === "🏠", `C4: after Lv 90 the hint is the "Grand Kitchen" background (Lv 91)`);
+  // 150-level campaign (developer 2026-10-15): the backgrounds open at L29 / L56 (old 41 / 91).
+  const p40 = getNextRewardPreview(28);
+  const p90 = getNextRewardPreview(55);
+  assert(p40?.name === "Established Kitchen" && p40.atLevel === 29 && p40.icon === "🏠", `C3: after Lv 28 the hint is the "Established Kitchen" background (Lv 29)`);
+  assert(p90?.name === "Grand Kitchen" && p90.atLevel === 56 && p90.icon === "🏠", `C4: after Lv 55 the hint is the "Grand Kitchen" background (Lv 56)`);
   for (const u of KITCHEN_UPGRADE_CATALOG.filter((u) => u.unlockLevel > 1)) {
     const cafeClash = CAFE_MILESTONES.some((m) => m.title === u.name && m.levelRequired < u.unlockLevel);
     const entry = timeline.find((r) => r.name === u.name);
@@ -157,10 +158,10 @@ const INVESTMENT_NAMES = ["Prep Station Upgrade", "Storage Rack", "Service Count
   assert(keys.every((k) => sources.includes(k)), "C7: every entry is a real knife/board/café rank/kitchen background/cuisine chapter/campaign finale at its own level (nothing invented)");
   assert(timeline.every((r, i) => i === 0 || timeline[i - 1]!.atLevel <= r.atLevel), "C8: timeline is level-ordered");
   const last = timeline[timeline.length - 1]!;
-  assert(last.name === "Campaign Finale" && last.atLevel === 250 && getNextRewardPreview(250) === null, `C9: the last real goal is "${last.name}" at Lv ${last.atLevel}; after the campaign nothing is invented`);
+  assert(last.name === "Campaign Finale" && last.atLevel === 150 && getNextRewardPreview(150) === null, `C9: the last real goal is "${last.name}" at Lv ${last.atLevel}; after the campaign nothing is invented`);
   const dead: number[] = [];
-  for (let lv = 1; lv < 250; lv++) if (!getNextRewardPreview(lv)) dead.push(lv);
-  assert(dead.length === 0, `C10: every level 1-249 shows a real next goal on the Order Board (no dead stretch after Lv 120)${dead.length ? " — none at " + dead.slice(0, 10).join(",") : ""}`);
+  for (let lv = 1; lv < 150; lv++) if (!getNextRewardPreview(lv)) dead.push(lv);
+  assert(dead.length === 0, `C10: every level 1-149 shows a real next goal on the Order Board (no dead stretch after Lv 120)${dead.length ? " — none at " + dead.slice(0, 10).join(",") : ""}`);
   assert(timeline.filter((r) => r.atLevel > 120).every((r) => r.icon === "📖" || r.icon === "🏁"), "C11: after Lv 120 the goals are only real cuisine chapters and the finale — no invented rewards");
 }
 
@@ -168,8 +169,8 @@ const INVESTMENT_NAMES = ["Prep Station Upgrade", "Storage Rack", "Service Count
 {
   assert(
     KITCHEN_UPGRADE_CATALOG.map((u) => `${u.name}@${u.unlockLevel}:${u.asset}`).join(", ") ===
-      "Humble Kitchen@1:skin-01, Growing Kitchen@21:skin-02, Established Kitchen@41:skin-03, Neighborhood Café@51:skin-04, Flourishing Café@71:skin-05, Grand Kitchen@91:skin-06",
-    "D: all six kitchen backgrounds intact — names, levels and art unchanged",
+      "Humble Kitchen@1:skin-01, Growing Kitchen@16:skin-02, Established Kitchen@29:skin-03, Neighborhood Café@35:skin-04, Flourishing Café@46:skin-05, Grand Kitchen@56:skin-06",
+    "D: all six kitchen backgrounds intact — names and art unchanged, levels through the 150-level remap (old 1/21/41/51/71/91)",
   );
   const bg = read("src/components/kc/KitchenBackground.tsx");
   for (const u of KITCHEN_UPGRADE_CATALOG) {
@@ -243,16 +244,17 @@ const INVESTMENT_NAMES = ["Prep Station Upgrade", "Storage Rack", "Service Count
     return { n, main, extra: stage ? `Next: ${stage.name} · Lv ${stage.atLevel}` : null };
   });
   const extras = rows.filter((r) => r.extra).map((r) => `${r.n}→${r.extra}`);
-  // Level 1–10 UX pass: a knife/board preview says where it opens ("Next: Santoku in the Market · Lv 10").
-  assert(rows[0]!.main === "Next: Santoku in the Market · Lv 10" && /opensInMarket\(nextReward\) \? " in the Market" : ""/.test(board), `H9: Level 1's row reads "${rows[0]!.main}" — a knife opens in the Market, it isn't handed over`);
+  // Level 1–10 UX pass: a knife/board preview says where it opens. In the 150-level order the
+  // Paring Knife (old L15) opens at L9, before the Santoku (L10).
+  assert(rows[0]!.main === "Next: Paring Knife in the Market · Lv 9" && /opensInMarket\(nextReward\) \? " in the Market" : ""/.test(board), `H9: Level 1's row reads "${rows[0]!.main}" — a knife opens in the Market, it isn't handed over`);
   console.log("     second hints:", JSON.stringify(extras));
   const at = (n: number) => rows.find((r) => r.n === n)!;
   // A knife/board is only unlocked for purchase, never handed over, so the row says "Unlocks … in the Market".
-  assert(at(40).main === "Unlocks: Cleaver in the Market" && at(40).extra === "Next: Established Kitchen · Lv 41", `H1: Lv 40 shows "${at(40).main}" + "${at(40).extra}"`);
-  assert(at(70).extra === "Next: Flourishing Café · Lv 71", `H2: Lv 70 shows "${at(70).main}" + "${at(70).extra}"`);
-  assert(at(90).extra === "Next: Grand Kitchen · Lv 91", `H3: Lv 90 shows "${at(90).main}" + "${at(90).extra}"`);
-  assert(JSON.stringify(extras) === JSON.stringify(["40→Next: Established Kitchen · Lv 41", "70→Next: Flourishing Café · Lv 71", "90→Next: Grand Kitchen · Lv 91"]), "H4: exactly those three rows gain a second hint — every other row is unchanged");
-  const shownBgs = new Set(rows.flatMap((r) => [r.main, r.extra]).filter((h): h is string => !!h && /· Lv (21|41|51|71|91)$/.test(h) && KITCHEN_UPGRADE_CATALOG.some((u) => h.includes(u.name))));
+  assert(at(28).main === "Unlocks: Cleaver in the Market" && at(28).extra === "Next: Established Kitchen · Lv 29", `H1: Lv 28 shows "${at(28).main}" + "${at(28).extra}"`);
+  assert(at(45).extra === "Next: Flourishing Café · Lv 46", `H2: Lv 45 shows "${at(45).main}" + "${at(45).extra}"`);
+  assert(at(55).extra === "Next: Grand Kitchen · Lv 56", `H3: Lv 55 shows "${at(55).main}" + "${at(55).extra}"`);
+  assert(JSON.stringify(extras) === JSON.stringify(["28→Next: Established Kitchen · Lv 29", "45→Next: Flourishing Café · Lv 46", "55→Next: Grand Kitchen · Lv 56"]), "H4: exactly those three rows gain a second hint — every other row is unchanged");
+  const shownBgs = new Set(rows.flatMap((r) => [r.main, r.extra]).filter((h): h is string => !!h && /· Lv (16|29|35|46|56)$/.test(h) && KITCHEN_UPGRADE_CATALOG.some((u) => h.includes(u.name))));
   assert([...shownBgs].every((h) => !/Growing Kitchen|Neighborhood Café/.test(h)), "H5: Growing Kitchen / Neighborhood Café stay shown once, as their café rank — no name-clash duplicate");
   for (let lv = 0; lv <= 250; lv++) {
     const st = getNextKitchenStagePreview(lv);
@@ -310,8 +312,8 @@ const INVESTMENT_NAMES = ["Prep Station Upgrade", "Storage Rack", "Service Count
   const honest = v2.stdout.slice(v2.stdout.indexOf("SIMULATION HONEST"), v2.stdout.indexOf("Total net campaign result") + 60);
   const has = (label: string, value: string) => new RegExp(`${label}:\\s*${value}(?![\\d,])`).test(honest);
   assert(
-    v2.status === 0 && has("Gross recipe revenue", "\\$165,140\\.00") && has("Level-completion rewards", "\\$77,581\\.00") && has("Total COGS", "\\$37,620\\.00") && has("Total quality bonuses", "\\$3,315\\.00") && has("Total net campaign result", "\\$208,416\\.00"),
-    "G: Economy V2 freeze exact — $165,140.00 / $77,581.00 / $37,620.00 / $3,315.00 / $208,416.00 (V2.5 completion rewards)",
+    v2.status === 0 && has("Gross recipe revenue", "\\$69,110\\.00") && has("Level-completion rewards", "\\$46,585\\.00") && has("Total COGS", "\\$16,092\\.00") && has("Total quality bonuses", "\\$1,402\\.00") && has("Total net campaign result", "\\$101,005\\.00"),
+    "G: Economy V2 freeze exact — $69,110.00 / $46,585.00 / $16,092.00 / $1,402.00 / $101,005.00 (150-level baseline, recorded 2026-10-17)",
   );
 }
 

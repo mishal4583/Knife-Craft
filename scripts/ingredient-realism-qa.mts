@@ -44,7 +44,8 @@ for (const r of CAMPAIGN_RECIPES) {
   if (seenIds.has(r.id)) dup = true;
   seenIds.add(r.id);
 }
-assert(CAMPAIGN_RECIPES.length === 221 && !dup, `2: all 221 recipes resolve with unique ids (${CAMPAIGN_RECIPES.length})`);
+// 222 since the 2026-10-15 150-level redesign added the L2 practice recipe.
+assert(CAMPAIGN_RECIPES.length === 222 && !dup, `2: all 222 recipes resolve with unique ids (${CAMPAIGN_RECIPES.length})`);
 
 // ===== 3: all technique references resolve (engine-supported per ingredient). =====
 assert(
