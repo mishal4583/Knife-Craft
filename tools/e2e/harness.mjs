@@ -82,7 +82,8 @@ export const KITCHEN_TOOLS = [
   "oven-mitts",
 ];
 export const MOVED_IN_BUSINESS = {
-  restaurantMigration: { version: 1, atLevel: 1, kit: [], seen: true },
+  // RESTAURANT_MIGRATION_VERSION (2): an older stamp re-runs the move-in and its starter crate.
+  restaurantMigration: { version: 2, atLevel: 1, kit: [], seen: true },
   grandmasTools: { atLevel: 10 },
   supplies: {
     stock: Object.fromEntries(KITCHEN_TOOLS.map((id) => [id, { units: 4, costBasis: 400 }])),

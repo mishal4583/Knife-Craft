@@ -5,9 +5,12 @@
 //      oven mitts, frying pans, stock pot …) and START is not blocked.
 //   2. Buy on the list → the Market's Culinary card for that tool, preselected → Buy → back: the
 //      tool leaves the list; one supply-equipment-purchase entry for its price.
-//   3. Level 11 (Garlic Bread) without a sheet pan and oven mitts: the "🍳 Kitchen tools" rows say
-//      why, START waits ("Restock to start"); buying both opens START.
-//   4. Level 11 with $0 (no ads on the mock platform): supplier credit brings the tools, START opens.
+//   3. Level 12 (Bruschetta for the House, the first oven dish in the 150-level campaign) without
+//      a sheet pan and oven mitts: the "🍳 Kitchen tools" rows say why, START waits ("Restock to
+//      start"); buying both opens START.
+//   4. Level 12 with $0 (no ads on the mock platform): supplier credit brings the tools, START opens.
+// The fridge holds Levels 10 and 12's ingredients (stock is used from Level 3), so only the
+// tools decide START.
 //   5. 320×568: the tools rows and the list fit, buttons ≥ 48 px, no sideways scroll.
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import {
@@ -30,9 +33,21 @@ const { browser, page, logs } = await launch();
 
 // An empty kitchen (MOVED_IN_BUSINESS owns every tool for the other tests).
 const EMPTY = { stock: {} };
+const STOCKED = Object.fromEntries(
+  ["tomato", "cucumber", "carrot", "bread", "garlic", "basil", "mozzarella"].map((id) => [
+    id,
+    { ingredientId: id, quantity: 3, unitCost: 0, purchaseDay: 1 },
+  ]),
+);
 const saveAt = (n, credits, business = {}) =>
   seedSave({
-    business: { ...MOVED_IN_BUSINESS, grandmasTools: undefined, supplies: EMPTY, ...business },
+    business: {
+      ...MOVED_IN_BUSINESS,
+      grandmasTools: undefined,
+      supplies: EMPTY,
+      inventory: STOCKED,
+      ...business,
+    },
     credits,
     levelProgress: {
       currentLevelId: `level-${n}`,
@@ -91,6 +106,7 @@ const sheet = () =>
       startDisabled: start ? start.disabled : null,
     };
   });
+// A row's Buy (its ⓘ, since the 2026-10-16 copy sweep, is the row's first button).
 /** On the Market's open Culinary section: Buy on `id`'s card, then back to the check. */
 async function buyOnCard(id) {
   const r = await page.evaluate((id) => {
@@ -126,12 +142,14 @@ check(
     ["sheet-pans", "oven-mitts", "frying-pans", "stock-pot"].every((id) => s1.list.includes(id)) &&
     !s1.list.includes("peelers") &&
     s1.startDisabled === false,
-  { list: s1?.list, start: s1?.startText },
+  { list: s1?.list, start: s1?.startText, stock: Object.keys(after1.business.supplies.stock) },
 );
 
 // ---------- 2. Buy from the list ----------
 await page.evaluate(() =>
-  document.querySelector('[data-shopping-tool="sheet-pans"] button')?.click(),
+  [...document.querySelectorAll('[data-shopping-tool="sheet-pans"] button')]
+    .find((b) => /^Buy/.test(b.textContent.trim()))
+    ?.click(),
 );
 await sleep(900);
 const card = await buyOnCard("sheet-pans");
@@ -151,20 +169,28 @@ check(
   { card, list: s2?.list, entries },
 );
 
-// ---------- 3. Level 11: Garlic Bread waits for its tools ----------
-await boot(page, saveAt(11, 500000, GRANDMA));
+// ---------- 3. Level 12: Bruschetta for the House waits for its tools ----------
+await boot(page, saveAt(12, 500000, GRANDMA));
 await openToday();
 const s3 = await sheet();
-await shot(page, "tools-l11-missing");
-await page.evaluate(() => document.querySelector('[data-psc-tool="sheet-pans"] button')?.click());
+await shot(page, "tools-l12-missing");
+await page.evaluate(() =>
+  [...document.querySelectorAll('[data-psc-tool="sheet-pans"] button')]
+    .find((b) => /^Buy/.test(b.textContent.trim()))
+    ?.click(),
+);
 await sleep(900);
 await buyOnCard("sheet-pans");
-await page.evaluate(() => document.querySelector('[data-psc-tool="oven-mitts"] button')?.click());
+await page.evaluate(() =>
+  [...document.querySelectorAll('[data-psc-tool="oven-mitts"] button')]
+    .find((b) => /^Buy/.test(b.textContent.trim()))
+    ?.click(),
+);
 await sleep(900);
 await buyOnCard("oven-mitts");
 const s3b = await sheet();
 check(
-  "3 Level 11: the top says what today's dishes need, the rows say why (sheet pan, oven mitts), START waits; both bought → ✓ Ready, START opens",
+  "3 Level 12: the top says what today's dishes need, the rows say why (sheet pan, oven mitts), START waits; both bought → ✓ Ready, START opens",
   !!s3 &&
     /Today's dishes need: .*Sheet pan.*Oven mitts|Today's dishes need: .*Oven mitts.*Sheet pan/.test(
       s3.needed ?? "",
@@ -186,7 +212,7 @@ check(
 );
 
 // ---------- 4. $0: supplier credit for the tools ----------
-await boot(page, saveAt(11, 0, GRANDMA));
+await boot(page, saveAt(12, 0, GRANDMA));
 await openToday();
 const s4 = await sheet();
 const creditButtons = await page.evaluate(
