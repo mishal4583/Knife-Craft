@@ -11,7 +11,7 @@ import { formatUsd } from "@/game/money";
 import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
 import { restaurantSystem } from "@/game/restaurant/restaurantProgression";
 import { bottleView, restaurantSuppliesOf } from "@/game/restaurant/serviceSupplies";
-import { StatChip } from "../common/InfoTip";
+import { InfoTip, StatChip } from "../common/InfoTip";
 import {
   SPOTLESS_QUALITY_PCT,
   SPOTLESS_QUALITY_STREAK,
@@ -24,8 +24,12 @@ import {
   CLEANING_FROM_LEVEL,
   STRIP_SUPPLIES,
   areaView,
+  cleanerOnDuty,
   cleanlinessOf,
+  dayCleanerToday,
   hasCleaner,
+  type DayCleanerOffer,
+  type DayCleanerOutcome,
   supplyGauge,
   type AreaView,
   type CleanArea,
@@ -57,15 +61,17 @@ export function BusinessCleanliness({
   go,
   save,
   cleanlinessAction,
+  dayCleaner,
 }: {
   go: (s: ScreenId) => void;
   save: SaveData;
   cleanlinessAction: (action: CleanlinessAction) => CleanlinessActionResult | null;
+  /** A Cleaner for today, paid or for an ad (App; developer 2026-10-17). */
+  dayCleaner?: DayCleanerOffer;
 }) {
   const level = restaurantLevelOf(save.levelProgress);
   const st = cleanlinessOf(save);
   const areas = CLEAN_AREAS.map((a) => areaView(save, a, level));
-  const open = st.tasks.length;
   const [flash, setFlash] = useState<string | null>(null);
   const [details, setDetails] = useState<CleanArea | null>(null);
   const [activeCleaning, setActiveCleaning] = useState<{ area: CleanArea; task: TaskKind } | null>(null);
@@ -81,6 +87,23 @@ export function BusinessCleanliness({
         </p>
       </Panel>
     );
+
+  function say(text: string) {
+    setFlash(text);
+    window.setTimeout(() => setFlash(null), 2200);
+  }
+
+  function dayCleanerSaid(r: DayCleanerOutcome) {
+    if (r.ok)
+      say(
+        r.cleaned > 0
+          ? `🧑‍🔧 Cleaner on today · ${r.cleaned} ${r.cleaned === 1 ? "task" : "tasks"} cleaned`
+          : "🧑‍🔧 Cleaner on today",
+      );
+    else if (r.reason === "insufficientFunds") say("💸 Not enough money for a day's Cleaner");
+    else if (r.reason === "notRewarded") say("🎬 The ad didn't finish · no Cleaner");
+    else if (r.reason === "unavailable") say("🎬 No ad right now");
+  }
 
   function run(action: CleanlinessAction): CleanlinessActionResult | null {
     const r = cleanlinessAction(action);
@@ -123,11 +146,12 @@ export function BusinessCleanliness({
         </p>
       ) : null}
 
-      {/* Today's status first: one chip per area (tap → its card) and Clean everything. */}
+      {/* Today's status first: one chip per area (tap → its card) and today's Cleaner. */}
       <ReadyCard
         areas={areas}
-        open={open}
-        onCleanAll={() => run({ kind: "clean-all" })}
+        save={save}
+        dayCleaner={dayCleaner}
+        onDayCleaner={dayCleanerSaid}
         onArea={(a) => {
           setDetails(a);
           document
@@ -186,16 +210,21 @@ export function BusinessCleanliness({
 
 function ReadyCard({
   areas,
-  open,
-  onCleanAll,
+  save,
+  dayCleaner,
+  onDayCleaner,
   onArea,
 }: {
   areas: AreaView[];
-  open: number;
-  onCleanAll: () => void;
+  save: SaveData;
+  dayCleaner: DayCleanerOffer | undefined;
+  onDayCleaner: (r: DayCleanerOutcome) => void;
   onArea: (area: CleanArea) => void;
 }) {
   const ready = areas.every((a) => a.tasks.length === 0);
+  const [adBusy, setAdBusy] = useState(false);
+  const onDuty = cleanerOnDuty(save);
+  const today = dayCleanerToday(save);
   return (
     <Panel className="p-3" data-testid="cleanliness-ready">
       <Eyebrow>Today's cleanliness</Eyebrow>
@@ -231,11 +260,54 @@ function ReadyCard({
         >
           ✨ Ready for service — every area is spotless
         </p>
-      ) : (
-        <KButton full variant="sage" className="mt-2 min-h-12" onClick={onCleanAll}>
-          🧽 Clean everything I can ({open})
-        </KButton>
-      )}
+      ) : onDuty ? (
+        <p
+          className="mt-2 flex items-center gap-1.5 rounded-2xl bg-sage/15 px-3 py-2 font-ui text-[13px] font-extrabold text-olive"
+          data-testid="cleaner-on-duty"
+        >
+          🧑‍🔧 {today ? "Cleaner on today" : "Your Cleaner is on duty"} · cleans after each service
+          <InfoTip label="What the Cleaner does">
+            The routine tasks in their areas, now and after each service. Spills, and anything
+            short of supplies, stay yours: tap Clean on those.
+          </InfoTip>
+        </p>
+      ) : dayCleaner ? (
+        <div className="mt-2" data-testid="day-cleaner">
+          <p className="flex items-center gap-1.5 font-ui text-[12.5px] font-extrabold text-walnut-dark">
+            🧑‍🔧 Hire a Cleaner for today
+            <InfoTip label="A Cleaner for today">
+              They clean the routine tasks now and after each service until closing. Spills, and
+              anything short of supplies, stay yours. Hire one for good in Staff.
+            </InfoTip>
+          </p>
+          <div className="mt-1.5 grid grid-cols-2 gap-2">
+            <KButton
+              variant="sage"
+              className="h-12 px-2 text-[12.5px]"
+              disabled={save.credits < dayCleaner.price || adBusy}
+              onClick={() => onDayCleaner(dayCleaner.onPay())}
+            >
+              {`Today · ${formatUsd(dayCleaner.price)}`}
+            </KButton>
+            {dayCleaner.adAvailable ? (
+              <KButton
+                variant="copper"
+                className="h-12 px-2 text-[12.5px]"
+                disabled={adBusy}
+                onClick={() => {
+                  setAdBusy(true);
+                  void dayCleaner
+                    .onAd()
+                    .then(onDayCleaner)
+                    .finally(() => setAdBusy(false));
+                }}
+              >
+                {adBusy ? "Loading ad…" : "🎬 Free with an ad"}
+              </KButton>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
     </Panel>
   );
 }
@@ -517,6 +589,7 @@ function StaffCard({
   onAreas: (areas: CleanArea[]) => void;
 }) {
   const hired = hasCleaner(save);
+  const today = !hired && dayCleanerToday(save);
   const st = cleanlinessOf(save);
   const wagesFrom = restaurantSystem("full-operation").firstLevel;
   const wage = BUSINESS_STAFF_CATALOG.cleaner.salary;
@@ -527,7 +600,7 @@ function StaffCard({
         <span
           className={cn(
             "grid h-16 w-16 shrink-0 place-items-center rounded-2xl text-[34px] shadow-soft",
-            hired ? "bg-sage/25" : "bg-walnut/10 grayscale",
+            hired || today ? "bg-sage/25" : "bg-walnut/10 grayscale",
           )}
           aria-hidden
         >
@@ -537,10 +610,10 @@ function StaffCard({
           <span
             className={cn(
               "inline-block rounded-full px-2 py-0.5 font-ui text-[11px] font-extrabold text-ivory",
-              hired ? "bg-sage" : "bg-walnut/50",
+              hired || today ? "bg-sage" : "bg-walnut/50",
             )}
           >
-            {hired ? "On duty" : "Not hired"}
+            {hired ? "On duty" : today ? "Today only" : "Not hired"}
           </span>
           <p className="font-display text-[17px] font-black text-walnut-dark">Cleaner</p>
           <p className="font-ui text-[12.5px] text-walnut/70">

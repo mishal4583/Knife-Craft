@@ -1,5 +1,11 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## Cleaner for today replaces "Clean everything I can" (2026-10-17, `main`)
+
+- Pay the Cleaner's day wage (one ledger entry) or watch a rewarded ad
+  (new placement `day_cleaner`, also in `public/playgama-bridge-config.json`
+  — register it on Playgama if placements are set up there). REFERENCE §5.
+
 ## Market highlights follow the Pre-Service Check (2026-10-17, `main`)
 
 - The Market now highlights what the open check's level needs (it read only

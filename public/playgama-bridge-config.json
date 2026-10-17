@@ -15,7 +15,8 @@
                 { "id": "rush_restock" },
                 { "id": "service_stock" },
                 { "id": "service_supplies" },
-                { "id": "service_tools" }
+                { "id": "service_tools" },
+                { "id": "day_cleaner" }
             ]
         }
     }

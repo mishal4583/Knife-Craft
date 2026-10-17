@@ -56,8 +56,9 @@ status line in HANDOFF; this file changes only when a RULE changes.
 - **Interstitials:** only at natural breaks, via
   `src/game/ads/interstitialPolicy.ts`. None before 3 completed levels, then
   ≥ 150 s apart.
-- **Rewarded ads:** Replay Bonus, Rush Restock and the Pre-Service Check
-  covers, granted only on the `rewarded` state. One placement per spot
+- **Rewarded ads:** Replay Bonus, Rush Restock, the Pre-Service Check
+  covers and the day's Cleaner (`day_cleaner`, developer 2026-10-17),
+  granted only on the `rewarded` state. One placement per spot
   (`AD_PLACEMENT`).
 - **Level messages:** `level_started/completed/paused/resumed` with
   `{ world, level }`; no `level_failed`.

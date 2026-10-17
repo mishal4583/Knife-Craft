@@ -6,10 +6,14 @@
 //      a second tap on the same task isn't possible (it's gone).
 //   3. A task without its supplies shows "Buy …" → the exact Market card in the Cleaning section;
 //      buying it updates the same stock the strip shows (one ledger entry).
-//   4. "Clean everything I can" cleans the rest; every area Ready.
+//   4. No "Clean everything I can" (developer 2026-10-17): "Today · $X" hires a Cleaner for the
+//      day — the routine tasks are cleaned, one Staff Payroll entry of the day wage, every area
+//      Ready; the card then says the Cleaner is on today.
 //   5. With a Cleaner hired, the area chips assign them; at Level 10 the Restaurant (and its
 //      Cleanliness tab) is still closed; at Level 11 the tab is there (developer 2026-10-10: from L10).
 //   6. Widths 320 / 360 / 390 / 1024: no sideways scroll, buttons ≥ 48 px.
+//   9. "Free with an ad" (stubbed): a declined ad changes nothing; a finished one puts a Cleaner
+//      on today with no money and no ledger entry (placement day_cleaner).
 //   8. No practice / test / mock dishwashing panels (developer 2026-10-17); today's status
 //      first (a chip per area), each area once, then the real wash-up (automatic, serviceSupplies).
 // Prints PASS/FAIL per check and exits 1 on any failure.
@@ -213,24 +217,38 @@ check(
   { need, market, entries3, strip },
 );
 
-// ---------- 4. Clean everything ----------
+// ---------- 4. A Cleaner for today (in place of Clean everything) ----------
+const before4 = await readSave(page);
+const offer4 = await page.evaluate(() => ({
+  cleanAll: [...document.querySelectorAll("button")].some((b) =>
+    /Clean everything/.test(b.textContent),
+  ),
+  offer: !!document.querySelector('[data-testid="day-cleaner"]'),
+}));
 await page.evaluate(() =>
-  [...document.querySelectorAll('[data-testid="cleanliness-ready"] button')]
-    .find((b) => /Clean everything/.test(b.textContent))
+  [...document.querySelectorAll('[data-testid="day-cleaner"] button')]
+    .find((b) => /^Today · \$/.test(b.textContent.trim()))
     ?.click(),
 );
-await sleep(600);
+await sleep(700);
 const v4 = await view();
 const after4 = await readSave(page);
+const entries4 = after4.economyLedger.slice(before4.economyLedger.length);
 await shot(page, "cleanliness-ready");
 check(
-  "4 Clean everything → every task done, every area Ready, ✨ Ready for service",
-  !!v4 &&
+  "4 no Clean everything button; Today · $X hires a Cleaner for the day: the tasks are cleaned, one Staff Payroll entry, every area Ready",
+  !offer4.cleanAll &&
+    offer4.offer &&
+    !!v4 &&
     after4.business.cleanliness.tasks.length === 0 &&
+    after4.business.cleanliness.dayCleanerDay === (after4.business.restaurantDay?.day ?? 1) &&
+    entries4.length === 1 &&
+    entries4[0].category === "business-staff-salary" &&
+    before4.credits - after4.credits === -entries4[0].amount &&
     v4.ready.every((r) => r === "ready") &&
     v4.allReady &&
     v4.badge === null,
-  { v4, tasks: after4.business.cleanliness.tasks },
+  { offer4, v4, entries4, tasks: after4.business.cleanliness.tasks },
 );
 
 // ---------- 5. The Cleaner's areas; no tab at Level 10, the tab at Level 11 ----------
@@ -306,6 +324,60 @@ check(
     layout8.chips.every((t) => t === "BUTTON") &&
     /Automatic after each service/.test(layout8.wash),
   layout8,
+);
+
+// ---------- 9. A Cleaner for today with an ad (stubbed rewarded ads) ----------
+async function stubRewarded(outcome) {
+  await page.evaluate((outcome) => {
+    window.__adOutcome = outcome;
+    const adv = window.bridge.advertisement;
+    if (adv.__stubbed) return;
+    adv.__stubbed = true;
+    let handler = null;
+    Object.defineProperty(adv, "isRewardedSupported", { get: () => true, configurable: true });
+    adv.on = (_event, cb) => (handler = cb);
+    adv.off = () => (handler = null);
+    adv.showRewarded = (placement) => {
+      window.__adPlacements = [...(window.__adPlacements ?? []), placement];
+      const seq =
+        window.__adOutcome === "rewarded" ? ["opened", "rewarded", "closed"] : ["opened", "closed"];
+      seq.forEach((st, i) => setTimeout(() => handler && handler(st), 80 * (i + 1)));
+    };
+  }, outcome);
+}
+const tapAd = () =>
+  page.evaluate(() =>
+    [...document.querySelectorAll('[data-testid="day-cleaner"] button')]
+      .find((b) => /Free with an ad/.test(b.textContent))
+      ?.click(),
+  );
+await boot(page, saveAt(30, { introSeen: true }));
+await stubRewarded("not-rewarded");
+await openCleanliness();
+const b9 = await readSave(page);
+await tapAd();
+await sleep(900);
+const declined = await readSave(page);
+await stubRewarded("rewarded");
+await tapAd();
+await sleep(1200);
+const a9 = await readSave(page);
+const placements9 = await page.evaluate(() => window.__adPlacements ?? []);
+const onDuty9 = await page.evaluate(
+  () => !!document.querySelector('[data-testid="cleaner-on-duty"]'),
+);
+check(
+  "9 Free with an ad: a declined ad changes nothing; a finished ad puts a Cleaner on today (no money, no ledger), placement day_cleaner",
+  declined.business.cleanliness.dayCleanerDay == null &&
+    declined.credits === b9.credits &&
+    a9.business.cleanliness.dayCleanerDay === (a9.business.restaurantDay?.day ?? 1) &&
+    a9.credits === b9.credits &&
+    a9.economyLedger.length === b9.economyLedger.length &&
+    a9.business.cleanliness.tasks.length < b9.business.cleanliness.tasks.length &&
+    placements9.length === 2 &&
+    placements9.every((p) => p === "day_cleaner") &&
+    onDuty9,
+  { placements9, tasks: a9.business.cleanliness.tasks.map((t) => t.kind), onDuty9 },
 );
 
 const errors = logs.filter((l) => /pageerror|error:/.test(l) && !/favicon/.test(l));

@@ -737,6 +737,19 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   wired to the real wash-up. Browser: `tools/e2e/restaurantcleanliness.mjs`
   (8 checks; it now opens the tab through the map's Manager / Office and
   uses the 150-level numbering).
+  A Cleaner for today (developer 2026-10-17, in place of "Clean everything
+  I can"): with no Cleaner hired, the status card offers "Today · $X" (the
+  Cleaner's day wage, `dayCleanerPrice` = the catalog salary; all-or-nothing
+  `debitWallet`, ONE `business-staff-salary` ledger entry "Cleaner · one
+  day") or "🎬 Free with an ad" (rewarded placement `day_cleaner`, granted
+  only on `rewarded`, no money, no ledger). `hireDayCleaner` stores the day
+  in `cleanliness.dayCleanerDay` and runs the Cleaner's round at once;
+  `cleanerOnDuty` (hired, or `dayCleanerToday`) drives the round after each
+  service, the restroom job on the map, the map's Cleaner and tonight's
+  inspection (`businessInspection` reads the day inline). Spills, and tasks
+  short of supplies, stay the player's. Once a day; not with a Cleaner
+  hired; the next day they're gone. QA `restaurant-cleanliness-qa` D1–D7;
+  e2e `restaurantcleanliness.mjs` 4 (paid) and 9 (ad).
   Mechanics (`restaurant/cleanliness.ts`, state `business.cleanliness`,
   clamped by `cleanlinessOf`): no clock — each first completion adds the
   service's tasks after the report (`tasksAfterService`: equipment, bins,

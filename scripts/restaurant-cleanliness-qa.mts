@@ -54,8 +54,12 @@ import {
   areaView,
   cleanAll,
   cleanTask,
+  cleanerOnDuty,
   cleanerRound,
   cleanlinessOf,
+  dayCleanerPrice,
+  dayCleanerToday,
+  hireDayCleaner,
   giveGrandmasCupboard,
   snapshotServiceStart,
   tasksAfterService,
@@ -64,6 +68,8 @@ import {
   type CleaningTask,
 } from "../src/game/restaurant/cleanliness.ts";
 import { closeServiceReport, restaurantRecordOf } from "../src/game/restaurant/serviceReport.ts";
+import { restaurantDayOf } from "../src/game/restaurant/restaurantDay.ts";
+import { BUSINESS_STAFF_CATALOG } from "../src/game/business/businessStaff.ts";
 
 let failures = 0;
 function assert(cond: unknown, msg: string, detail?: unknown) {
@@ -432,6 +438,125 @@ console.log("W. Wiring");
   assert(
     CLEANING_FROM_LEVEL === 10,
     "W2: cleaning starts with Level 10's service (developer 2026-10-10; was L21)",
+  );
+}
+
+console.log("D. A Cleaner for today (developer 2026-10-17: instead of Clean everything I can)");
+{
+  const onDay = (x: SaveData, day: number): SaveData => ({
+    ...x,
+    business: { ...x.business, restaurantDay: { ...restaurantDayOf(x), day } },
+  });
+  const tasks: CleaningTask[] = [
+    { kind: "equipment", count: 1, since: 39 },
+    { kind: "bins", count: 1, since: 39 },
+    { kind: "toilet", count: 1, since: 39 },
+    { kind: "spill", count: 1, since: 39 },
+  ];
+  const base = onDay(saveAt(40, FULL, tasks), 5);
+  const r = hireDayCleaner(base, 40);
+  const left = r.ok ? kinds(r.save) : "";
+  assert(
+    r.ok &&
+      dayCleanerToday(r.save) &&
+      cleanerOnDuty(r.save) &&
+      cleanlinessOf(r.save).dayCleanerDay === 5 &&
+      r.cleaned.includes("equipment") &&
+      r.cleaned.includes("bins") &&
+      r.cleaned.includes("toilet") &&
+      left === "spill" &&
+      r.save.credits === base.credits &&
+      r.save.economyLedger.length === base.economyLedger.length,
+    "D1: hiring a Cleaner for today cleans the routine tasks at once (spills stay yours); the pure action moves no money (App charges)",
+    { cleaned: r.ok ? r.cleaned : null, left },
+  );
+  const again = r.ok ? hireDayCleaner(r.save, 40) : null;
+  const hired = hireDayCleaner(onDay(saveAt(40, FULL, tasks, ["cleaner"]), 5), 40);
+  const early = hireDayCleaner(
+    onDay(saveAt(CLEANING_FROM_LEVEL - 1, FULL, tasks), 5),
+    CLEANING_FROM_LEVEL - 1,
+  );
+  assert(
+    again?.ok === false &&
+      again.reason === "alreadyToday" &&
+      !hired.ok &&
+      hired.reason === "hired" &&
+      !early.ok &&
+      early.reason === "locked",
+    "D2: once a day; not with a Cleaner already hired; not before cleaning opens",
+  );
+  // The next restaurant day: no longer on duty — new tasks wait for the player.
+  const tomorrow = r.ok
+    ? onDay(
+        {
+          ...r.save,
+          business: {
+            ...r.save.business,
+            cleanliness: {
+              ...cleanlinessOf(r.save),
+              tasks: [{ kind: "bins", count: 1, since: 41 }],
+            },
+          },
+        },
+        6,
+      )
+    : base;
+  assert(
+    !dayCleanerToday(tomorrow) &&
+      !cleanerOnDuty(tomorrow) &&
+      cleanerRound(tomorrow).cleaned.length === 0 &&
+      r.ok &&
+      cleanerRound({
+        ...r.save,
+        business: {
+          ...r.save.business,
+          cleanliness: { ...cleanlinessOf(r.save), tasks: [{ kind: "bins", count: 1, since: 40 }] },
+        },
+      }).cleaned.includes("bins"),
+    "D3: during the day they clean after each service too; the next day they're gone",
+  );
+  const old = { ...saveAt(40, FULL, tasks) };
+  assert(
+    cleanlinessOf(old).dayCleanerDay === null &&
+      !dayCleanerToday(old) &&
+      dayCleanerPrice() === BUSINESS_STAFF_CATALOG.cleaner.salary,
+    "D4: an older save has no day Cleaner; the price is the Cleaner's day wage",
+  );
+  const kc = (x: SaveData) =>
+    inspectBusiness(x).categories.find((c) => c.category === "KITCHEN_CLEANLINESS")!;
+  assert(
+    r.ok &&
+      kc(r.save).result === "PASS" &&
+      /Cleaner/.test(kc(r.save).reason) &&
+      // A save that never stored a restaurant day is on day 1.
+      (() => {
+        const d1 = hireDayCleaner(saveAt(40, FULL, tasks), 40);
+        return d1.ok && kc(d1.save).result === "PASS";
+      })(),
+    "D5: tonight's inspection counts the day's Cleaner like a hired one (also on a save's first day)",
+    r.ok ? kc(r.save) : null,
+  );
+  const app = read("src/App.tsx");
+  const screen = read("src/components/kc/business/BusinessCleanliness.tsx");
+  const sdk = read("src/game/PlayablesSDK.ts");
+  assert(
+    /appendLedgerEntry\(paid\.save, "business-staff-salary", -price, "Cleaner · one day"\)/.test(
+      app,
+    ) &&
+      /debitWallet\(r\.save, price\)/.test(app) &&
+      /requestRewardedAd\(newDayCleanerRewardId\(\), AD_PLACEMENT\.dayCleaner\)/.test(app) &&
+      /if \(ad\.status !== "rewarded"\)/.test(app) &&
+      /dayCleaner: "day_cleaner"/.test(sdk) &&
+      /"day_cleaner"/.test(read("public/playgama-bridge-config.json")),
+    "D6: paid = the day wage with ONE ledger entry (all-or-nothing); the ad grants it only when rewarded, placement day_cleaner",
+  );
+  assert(
+    !/Clean everything I can/.test(screen) &&
+      !/kind: "clean-all"/.test(screen) &&
+      /data-testid="day-cleaner"/.test(screen) &&
+      /Free with an ad/.test(screen) &&
+      /data-testid="cleaner-on-duty"/.test(screen),
+    "D7: the Cleanliness screen has no Clean everything button; it offers a Cleaner for today (pay or ad)",
   );
 }
 

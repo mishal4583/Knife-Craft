@@ -41,6 +41,7 @@ import {
   cleanlinessOf,
   type CleanlinessAction,
   type CleanlinessActionResult,
+  type DayCleanerOffer,
 } from "@/game/restaurant/cleanliness";
 import { cn } from "@/lib/utils";
 import { dayOfWeekFor, businessWeekFor } from "@/game/business/businessCalendar";
@@ -167,6 +168,7 @@ export function BusinessDashboard({
   rushRestock,
   rushAdAvailable,
   cleanlinessAction,
+  dayCleaner,
   setStandingOrder,
 }: {
   go: (s: ScreenId) => void;
@@ -191,6 +193,8 @@ export function BusinessDashboard({
   rushAdAvailable: boolean;
   /** Restaurant → Cleanliness (restaurant/cleanliness.ts); absent = no Cleanliness tab. */
   cleanlinessAction?: (action: CleanlinessAction) => CleanlinessActionResult | null;
+  /** Restaurant → Cleanliness: a Cleaner for today, paid or for an ad (App). */
+  dayCleaner?: DayCleanerOffer;
   /** Restaurant → Suppliers: switch a standing order (restaurant/deliveries.ts). */
   setStandingOrder?: (kind: DeliveryKind, on: boolean) => void;
 }) {
@@ -350,7 +354,12 @@ export function BusinessDashboard({
             />
           ) : null}
           {tab === "cleanliness" && cleanlinessAction ? (
-            <BusinessCleanliness go={go} save={save} cleanlinessAction={cleanlinessAction} />
+            <BusinessCleanliness
+              go={go}
+              save={save}
+              cleanlinessAction={cleanlinessAction}
+              {...(dayCleaner ? { dayCleaner } : {})}
+            />
           ) : null}
           {tab === "operations" ? (
             <Operations

@@ -39,6 +39,7 @@ import { restaurantDayOf } from "./restaurantDay";
 import { bottleView, restaurantSuppliesOf, tablesFor } from "./serviceSupplies";
 import { isAuditDay } from "./parAudit";
 import { remapCampaignThreshold } from "../levels/campaignSelection";
+import { BUSINESS_STAFF_CATALOG } from "../business/businessStaff";
 
 /**
  * Cleaning starts with this level's service (developer 2026-10-10: "from level
@@ -452,6 +453,8 @@ export type CleanlinessState = {
   byCleaner: number;
   /** The shift-chore batches already added ("day:phase:services"), so a phase never repeats. */
   choreKeys: string[];
+  /** The restaurant day a Cleaner was hired for one day (paid or for an ad); null = none. */
+  dayCleanerDay: number | null;
 };
 
 export const DEFAULT_CLEANLINESS: CleanlinessState = {
@@ -465,6 +468,7 @@ export const DEFAULT_CLEANLINESS: CleanlinessState = {
   cleaned: 0,
   byCleaner: 0,
   choreKeys: [],
+  dayCleanerDay: null,
 };
 
 const whole = (v: unknown) =>
@@ -509,6 +513,7 @@ export function cleanlinessOf(save: SaveData): CleanlinessState {
     choreKeys: Array.isArray(raw.choreKeys)
       ? raw.choreKeys.filter((k): k is string => typeof k === "string").slice(-CHORE_KEYS_KEPT)
       : [],
+    dayCleanerDay: raw.dayCleanerDay == null ? null : whole(raw.dayCleanerDay),
   };
 }
 
@@ -697,6 +702,74 @@ export function cleanAll(
 /** Whether the existing Restaurant Team has a Cleaner. */
 export const hasCleaner = (save: SaveData) => save.business.staff.hiredRoles.includes("cleaner");
 
+/**
+ * A Cleaner for one day (developer 2026-10-17: instead of "Clean everything
+ * I can", hire a Cleaner for the day — pay the day's wage, or watch an ad).
+ * They work like the hired Cleaner until the restaurant day ends: the
+ * routine tasks now and after each service, in the Cleaner's areas. Spills,
+ * and anything short of supplies, stay the player's.
+ */
+export const dayCleanerToday = (save: SaveData) =>
+  cleanlinessOf(save).dayCleanerDay === restaurantDayOf(save).day;
+
+/** A Cleaner is working today: hired for good, or for the day. */
+export const cleanerOnDuty = (save: SaveData) => hasCleaner(save) || dayCleanerToday(save);
+
+/** A fresh id for one day-Cleaner ad (never sent as a placement — placements are fixed per spot). */
+export function newDayCleanerRewardId(): string {
+  const uuid =
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) =>
+          b.toString(16).padStart(2, "0"),
+        ).join("");
+  return `knifecraft-day-cleaner-${uuid}`;
+}
+
+/** A day's Cleaner costs the hired Cleaner's day wage (businessStaff.ts), paid at once. */
+export const dayCleanerPrice = (): number => BUSINESS_STAFF_CATALOG.cleaner.salary;
+
+/** What App reports back to the screen for a day-Cleaner tap. */
+export type DayCleanerOutcome =
+  | { ok: true; cleaned: number }
+  | {
+      ok: false;
+      reason:
+        | "hired"
+        | "alreadyToday"
+        | "locked"
+        | "insufficientFunds"
+        | "notRewarded"
+        | "unavailable"
+        | "busy";
+    };
+
+/** What the Cleanliness screen gets to offer a day's Cleaner (App wires it). */
+export type DayCleanerOffer = {
+  price: number;
+  adAvailable: boolean;
+  onPay: () => DayCleanerOutcome;
+  onAd: () => Promise<DayCleanerOutcome>;
+};
+
+export type DayCleanerResult =
+  | { ok: true; save: SaveData; cleaned: TaskKind[] }
+  | { ok: false; reason: "hired" | "alreadyToday" | "locked" };
+
+/**
+ * Puts a Cleaner on today (the payment, or the ad, is the caller's: App
+ * debits the day's wage with one ledger entry, or grants it only on a
+ * rewarded ad) and runs their round at once.
+ */
+export function hireDayCleaner(save: SaveData, levelNumber: number): DayCleanerResult {
+  if (!isCleanlinessLive(levelNumber)) return { ok: false, reason: "locked" };
+  if (hasCleaner(save)) return { ok: false, reason: "hired" };
+  if (dayCleanerToday(save)) return { ok: false, reason: "alreadyToday" };
+  const st = cleanlinessOf(save);
+  const round = cleanerRound(withState(save, { ...st, dayCleanerDay: restaurantDayOf(save).day }));
+  return { ok: true, save: round.save, cleaned: round.cleaned };
+}
+
 /** Who does a routine task when hired: its own role (server, prep cook) or the Cleaner. */
 const staffFor = (kind: TaskKind): ChoreStaff => TASK_RULES[kind].staff ?? "cleaner";
 
@@ -712,11 +785,12 @@ export function cleanerRound(save: SaveData): { save: SaveData; cleaned: TaskKin
   const st = cleanlinessOf(save);
   let s = save;
   const cleaned: TaskKind[] = [];
+  const cleanerToday = cleanerOnDuty(save);
   for (const t of st.tasks) {
     const rule = TASK_RULES[t.kind];
     if (!rule.routine) continue;
     const role = staffFor(t.kind);
-    if (!hired.includes(role)) continue;
+    if (role === "cleaner" ? !cleanerToday : !hired.includes(role)) continue;
     if (role === "cleaner" && !st.cleanerAreas.includes(rule.area)) continue;
     const r = cleanTask(s, t.kind, "cleaner");
     if (r.ok) {
@@ -735,7 +809,7 @@ export function cleanerRound(save: SaveData): { save: SaveData; cleaned: TaskKin
  * supplies there. The map shows them at it, then `cleanTask(…, "cleaner")`.
  */
 export function cleanerRestroomJob(save: SaveData): TaskKind | null {
-  if (!(save.business.staff.hiredRoles as readonly string[]).includes("cleaner")) return null;
+  if (!cleanerOnDuty(save)) return null;
   const st = cleanlinessOf(save);
   if (!st.cleanerAreas.includes("restroom")) return null;
   for (const t of st.tasks) {

@@ -1,7 +1,16 @@
 import { staffOnMap } from "@/game/restaurant/staffLife";
-import { cleanerRestroomJob, type TaskKind } from "@/game/restaurant/cleanliness";
+import {
+  cleanerRestroomJob,
+  dayCleanerToday,
+  hasCleaner,
+  type TaskKind,
+} from "@/game/restaurant/cleanliness";
 import type { DeliveryKind } from "@/game/restaurant/deliveries";
-import type { CleanlinessAction, CleanlinessActionResult } from "@/game/restaurant/cleanliness";
+import type {
+  CleanlinessAction,
+  CleanlinessActionResult,
+  DayCleanerOffer,
+} from "@/game/restaurant/cleanliness";
 import { Suspense, lazy, useState } from "react";
 import { Kitchen, OrderBoard, BottomNav } from "@/components/kc/Kitchen";
 import { Shop } from "@/components/kc/Shop";
@@ -122,6 +131,7 @@ export function ScreensRouter({
   buyStaff,
   selectSupplier,
   cleanlinessAction,
+  dayCleaner,
   setStandingOrder,
   setEquippedKnife,
   setEquippedBoard,
@@ -171,6 +181,8 @@ export function ScreensRouter({
   selectSupplier: (id: string) => void;
   /** Restaurant → Cleanliness (restaurant/cleanliness.ts). */
   cleanlinessAction: (action: CleanlinessAction) => CleanlinessActionResult | null;
+  /** Restaurant → Cleanliness: a Cleaner for today, paid or for an ad (App). */
+  dayCleaner?: DayCleanerOffer;
   /** Restaurant → Suppliers: the standing orders (restaurant/deliveries.ts). */
   setStandingOrder: (kind: DeliveryKind, on: boolean) => void;
   setEquippedKnife: (id: string) => void;
@@ -264,12 +276,18 @@ export function ScreensRouter({
                 kitchenMapImage={kitchenMapImageUrl(save.equippedKitchenUpgradeId)}
                 fridgeTier={fridgeTier}
                 reducedMotion={save.settings.reducedMotion}
-                staffOnMap={staffOnMap(save.business.staff.hiredRoles, {
+                // A Cleaner hired for today walks the map like the hired one.
+                staffOnMap={staffOnMap(
+                  dayCleanerToday(save) && !hasCleaner(save)
+                    ? [...save.business.staff.hiredRoles, "cleaner"]
+                    : save.business.staff.hiredRoles,
+                  {
                   stage: kitchenMapArtStage(save.equippedKitchenUpgradeId),
                   diningOpen: true,
                   serviceOpen: true,
                   cleanerJob: cleanerRestroomJob(save),
-                })}
+                  },
+                )}
                 onCleanerDone={cleanerCleans}
                 attentionCounts={attentionBadges.map}
                 attentionSymbols={attentionBadges.mapSymbols}
@@ -420,6 +438,7 @@ export function ScreensRouter({
               cancelSupplierContract={cancelSupplierContract}
               selectSupplier={selectSupplier}
               cleanlinessAction={cleanlinessAction}
+              {...(dayCleaner ? { dayCleaner } : {})}
               setStandingOrder={setStandingOrder}
               hireStaff={hireStaff}
               buyStaff={buyStaff}

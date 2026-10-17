@@ -197,7 +197,13 @@ function inspectKitchenCleanliness(
   save: SaveData,
   daySpoiledQuantity: number,
 ): CategoryInspectionResult {
-  const hasCleaner = save.business.staff.hiredRoles.includes("cleaner");
+  // A Cleaner hired for good, or for today (restaurant/cleanliness.ts dayCleanerToday —
+  // read inline: the inspection runs at closing, before the day number moves on).
+  const dayCleaner =
+    save.business.cleanliness?.dayCleanerDay != null &&
+    // Day 1 when no restaurant day was stored yet (restaurantDayOf's default).
+    save.business.cleanliness.dayCleanerDay === (save.business.restaurantDay?.day ?? 1);
+  const hasCleaner = save.business.staff.hiredRoles.includes("cleaner") || dayCleaner;
   if (hasCleaner) {
     return {
       category: "KITCHEN_CLEANLINESS",

@@ -69,7 +69,7 @@ import {
   grantEarnedMilestoneRewards,
   type MilestoneDefinition,
 } from "@/game/progression/milestoneRewards";
-import { walletInvariantViolation } from "@/game/economy/wallet";
+import { debitWallet, walletInvariantViolation } from "@/game/economy/wallet";
 import {
   shouldRunIntro,
   markIntroDone,
@@ -133,6 +133,10 @@ import {
   cleanerRestroomJob,
   cleanTask,
   type TaskKind,
+  dayCleanerPrice,
+  hireDayCleaner,
+  type DayCleanerOutcome,
+  newDayCleanerRewardId,
 } from "@/game/restaurant/cleanliness";
 import { isSystemLive } from "@/game/restaurant/restaurantProgression";
 import {
@@ -568,6 +572,8 @@ export function App() {
   const rushAdBusyRef = useRef(false);
   /** A Pre-Service Check cover ad is in flight (coverServiceWithAd). */
   const coverAdBusyRef = useRef(false);
+  /** A day-Cleaner ad is in flight (hireDayCleanerWithAd). */
+  const dayCleanerAdBusyRef = useRef(false);
   const businessSessionRef = useRef<ServiceSession | null>(null);
   // One id per play session (level/daily/endless start) + whether it reached a
   // completion — so an interstitial only follows a finished session, never a
@@ -971,6 +977,43 @@ export function App() {
       if (result.cleaned.length > 0) AudioManager.playSfx("squeak");
     }
     return result;
+  }
+
+  /**
+   * Restaurant → Cleanliness: a Cleaner for today (developer 2026-10-17, in place of
+   * "Clean everything I can"). Paid: the Cleaner's day wage, all-or-nothing, with ONE
+   * ledger entry. They clean the routine tasks at once and after each service today.
+   */
+  function hireDayCleanerPaid(): DayCleanerOutcome {
+    if (!save) return { ok: false, reason: "unavailable" };
+    const price = dayCleanerPrice();
+    const r = hireDayCleaner(save, restaurantLevelOf(save.levelProgress));
+    if (!r.ok) return { ok: false, reason: r.reason };
+    const paid = debitWallet(r.save, price);
+    if (!paid.ok) return { ok: false, reason: "insufficientFunds" };
+    persist(appendLedgerEntry(paid.save, "business-staff-salary", -price, "Cleaner · one day"));
+    if (r.cleaned.length > 0) AudioManager.playSfx("squeak");
+    return { ok: true, cleaned: r.cleaned.length };
+  }
+
+  /** …or for a rewarded ad: only on Bridge's `rewarded`, no money and no ledger entry. */
+  async function hireDayCleanerWithAd(): Promise<DayCleanerOutcome> {
+    if (dayCleanerAdBusyRef.current) return { ok: false, reason: "busy" };
+    dayCleanerAdBusyRef.current = true;
+    try {
+      const ad = await requestRewardedAd(newDayCleanerRewardId(), AD_PLACEMENT.dayCleaner);
+      if (ad.status !== "rewarded")
+        return { ok: false, reason: ad.status === "not-rewarded" ? "notRewarded" : "unavailable" };
+      const latest = saveRef.current;
+      if (!latest) return { ok: false, reason: "unavailable" };
+      const r = hireDayCleaner(latest, restaurantLevelOf(latest.levelProgress));
+      if (!r.ok) return { ok: false, reason: r.reason };
+      persist(r.save);
+      if (r.cleaned.length > 0) AudioManager.playSfx("squeak");
+      return { ok: true, cleaned: r.cleaned.length };
+    } finally {
+      dayCleanerAdBusyRef.current = false;
+    }
   }
 
   /** Restaurant → Suppliers: switch a standing order on or off (deliveries.ts). No money moves. */
@@ -3016,6 +3059,12 @@ export function App() {
               buyStaff={buyStaff}
               selectSupplier={selectSupplier}
               cleanlinessAction={cleanlinessAction}
+              dayCleaner={{
+                price: dayCleanerPrice(),
+                adAvailable: rewardedAdsAvailable(),
+                onPay: hireDayCleanerPaid,
+                onAd: hireDayCleanerWithAd,
+              }}
               setStandingOrder={setStandingOrderOn}
               setEquippedKnife={setEquippedKnife}
               setEquippedBoard={setEquippedBoard}
