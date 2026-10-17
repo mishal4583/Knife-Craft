@@ -104,7 +104,7 @@ console.log("U. Every packaging and hygiene item has a use");
   // The whole 150-level campaign (re-baselined 2026-10-17; was L31–250).
   for (let n = 1; n <= LAST_LEVEL; n++)
     levelRecipesAt(n).forEach((r, i) => {
-      const service = orderServiceFor(n, i);
+      const service = orderServiceFor(n, i, r);
       if (service === "takeaway") {
         const t = takeawayPiecesFor(r, n);
         [t.container, t.bag, ...t.extras].forEach((id) => used.add(id));
@@ -129,7 +129,8 @@ console.log("U. Every packaging and hygiene item has a use");
   // From the takeaway stage (L46 in the 150-level campaign; was L71) to the end.
   for (let n = restaurantSystem("takeaway").firstLevel; n <= LAST_LEVEL; n++)
     levelRecipesAt(n).forEach((r, i) => {
-      if (orderServiceFor(n, i) === "takeaway") containers.add(takeawayPiecesFor(r, n).container);
+      if (orderServiceFor(n, i, r) === "takeaway")
+        containers.add(takeawayPiecesFor(r, n).container);
     });
   assert(
     [
@@ -141,6 +142,32 @@ console.log("U. Every packaging and hygiene item has a use");
     ].every((id) => containers.has(id)),
     "U2: the campaign's own takeaway orders use five different containers",
     [...containers],
+  );
+}
+
+console.log("K. Curries travel (developer 2026-10-17)");
+{
+  // A curry (packed in a compartment tray) is a takeaway at curryTakeawayShare; every other
+  // order keeps the plain roll, so its service is the same with or without its recipe.
+  let curry = 0;
+  let curryOut = 0;
+  let same = true;
+  for (let n = 46; n <= LAST_LEVEL; n++)
+    levelRecipesAt(n).forEach((r, i) => {
+      const thali = takeawayPiecesFor(r, n).container === "thali-containers";
+      if (thali) {
+        curry++;
+        if (orderServiceFor(n, i, r) === "takeaway") curryOut++;
+      } else if (orderServiceFor(n, i, r) !== orderServiceFor(n, i)) same = false;
+    });
+  assert(
+    SERVICE_SUPPLY_RULES.curryTakeawayShare === 0.6 &&
+      SERVICE_SUPPLY_RULES.takeawayShare === 0.3 &&
+      curry > 0 &&
+      curryOut > 0 &&
+      same &&
+      orderServiceFor(45, 0, levelRecipesAt(45)[0]) === "dine-in",
+    `K1: curries go home in thali trays (${curryOut} of the campaign's ${curry} curry orders); other orders unchanged; nothing before takeaway (L46)`,
   );
 }
 
@@ -329,7 +356,7 @@ console.log("M. The moving-in crate");
   const want = new Set<string>();
   for (let n = 120; n < 124; n++)
     levelRecipesAt(n).forEach((r, i) => {
-      if (orderServiceFor(n, i) === "takeaway") {
+      if (orderServiceFor(n, i, r) === "takeaway") {
         const t = takeawayPiecesFor(r, n);
         want.add(t.container);
         want.add(t.bag);

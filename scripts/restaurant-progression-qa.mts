@@ -120,7 +120,7 @@ const shapeAt = (s: SaveData, n: number) => {
     s,
     n,
     tickets,
-    tickets.map((_, i) => orderServiceFor(n, i)),
+    tickets.map((r, i) => orderServiceFor(n, i, r)),
   );
 };
 

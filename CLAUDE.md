@@ -116,7 +116,7 @@ Release zip: the CONTENTS of `dist/` →
   `VITE_RESTAURANT_MODE=0` build.
 - `economy-v2-final-qa` is the frozen baseline; some suites use `git diff`,
   so run them in this repo.
-- Known pre-existing failures: `restaurant-takeaway-qa` U1/U2 (thali containers unused in the 150-level campaign — a design decision, HANDOFF).
+- Known pre-existing failures: none.
 
 ## 6. ARCHITECTURE — PRESERVE AND REUSE
 

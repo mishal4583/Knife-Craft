@@ -65,6 +65,11 @@ export const SERVICE_SUPPLY_RULES = {
   cleanerPerClosing: 10,
   /** Share of a level's orders that are takeaway, once takeaway is open. */
   takeawayShare: 0.3,
+  /**
+   * Curries travel well: their share of takeaway (developer 2026-10-17 — so the
+   * compartment trays they go home in are really used).
+   */
+  curryTakeawayShare: 0.6,
   /** Dish soap with this many washes (or fewer) left is "low" (a warning, never a block). */
   lowWashesLeft: 8,
   /** Cleaning liquid with this many closings (or fewer) left is "low". */
@@ -355,13 +360,22 @@ export type OrderService = "dine-in" | "takeaway";
 /**
  * How the `index`-th order of level `levelNumber` is served (seeded: the same
  * for every player and every try), or null before the dine-in stage (no
- * supplies yet).
+ * supplies yet). A curry (`recipe` packed in a compartment tray) is a takeaway
+ * more often (`curryTakeawayShare`); the roll itself is the same.
  */
-export function orderServiceFor(levelNumber: number, index: number): OrderService | null {
+export function orderServiceFor(
+  levelNumber: number,
+  index: number,
+  recipe?: RecipeDefinition | null,
+): OrderService | null {
   if (!isSystemLive("dine-in", levelNumber)) return null;
   if (!isSystemLive("takeaway", levelNumber)) return "dine-in";
   const roll = makeSeededRand(levelNumber * 104_729 + index * 7_907 + 13)();
-  return roll < SERVICE_SUPPLY_RULES.takeawayShare ? "takeaway" : "dine-in";
+  const share =
+    recipe && takeawayPiecesFor(recipe, levelNumber).container === "thali-containers"
+      ? SERVICE_SUPPLY_RULES.curryTakeawayShare
+      : SERVICE_SUPPLY_RULES.takeawayShare;
+  return roll < share ? "takeaway" : "dine-in";
 }
 
 // ── Bottles ─────────────────────────────────────────────────────────────

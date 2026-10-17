@@ -1883,6 +1883,7 @@ export function App() {
             orderServiceFor(
               levelNumber(level.id),
               paidOrdersFor(save.levelProgress, level.id).length,
+              recipe,
             ),
             // Supplies plan B: the guest eats from what their dish needs.
             {
@@ -2385,6 +2386,7 @@ export function App() {
             orderServiceFor(
               levelNumber(level.id),
               paidOrdersFor(save.levelProgress, level.id).length,
+              viewed.recipe,
             ),
             // Supplies plan B: the guest eats from what their dish needs.
             {

@@ -156,7 +156,7 @@ export function servicePlanFor(save: SaveData, level: LevelDefinition): ServiceP
   const { tickets, progress } = ticketsFor(save.levelProgress, level);
   const paid = paidOrdersFor(progress, level.id).length;
   const remaining = tickets.slice(paid);
-  const services = remaining.map((_, i) => orderServiceFor(n, paid + i));
+  const services = remaining.map((r, i) => orderServiceFor(n, paid + i, r));
   return {
     level,
     levelNumber: n,

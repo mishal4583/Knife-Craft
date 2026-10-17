@@ -34,11 +34,12 @@
   the curve rule (REFERENCE §5, `restaurant-menu-qa`): Mexican dishes from
   L17, the Carne Asada waits for steak (L63). Three Grandma tips trimmed
   to ≤ 70 characters.
-- **Open (design):** no takeaway order of the 150-level campaign uses a
-  thali container (the seeded takeaway roll lands on dine-in for every
-  thali dish), so that Market item is never needed —
-  `restaurant-takeaway-qa` U1/U2 fail on purpose until it's decided.
-  `level.preparationSteps` is a stale fallback on 94 levels (the session is
+- **Curries travel** (developer 2026-10-17): a curry order (packed in a
+  thali tray) is a takeaway at 60% instead of 30%
+  (`SERVICE_SUPPLY_RULES.curryTakeawayShare`, same seeded roll), so the
+  thali containers are used (3 of the campaign's 5 curry orders after
+  L46). Other orders are unchanged. All 104 QA suites pass.
+- **Notes:** `level.preparationSteps` is a stale fallback on 94 levels (the session is
   built from the recipe). GRAND SERVICE (L75) plays at L76, after the
   finale.
 

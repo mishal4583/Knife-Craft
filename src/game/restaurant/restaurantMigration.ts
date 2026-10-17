@@ -127,7 +127,7 @@ export function migrateToUnifiedRestaurant(save: SaveData): SaveData {
       1,
       ...services.map(
         (s) =>
-          s.tickets.filter((_, i) => orderServiceFor(s.levelNumber, i) === "dine-in").length +
+          s.tickets.filter((r, i) => orderServiceFor(s.levelNumber, i, r) === "dine-in").length +
           menuGuestsPerService(s.levelNumber),
       ),
     );
@@ -141,7 +141,7 @@ export function migrateToUnifiedRestaurant(save: SaveData): SaveData {
           business: { ...save.business, supplies: { ...save.business.supplies, stock: {} } },
         },
         sv.levelNumber,
-        sv.tickets.map((_, i) => orderServiceFor(sv.levelNumber, i)),
+        sv.tickets.map((r, i) => orderServiceFor(sv.levelNumber, i, r)),
         { recipes: sv.tickets, guests: menuGuestsPerService(sv.levelNumber) },
       );
       if (check.applies)
@@ -184,7 +184,7 @@ export function migrateToUnifiedRestaurant(save: SaveData): SaveData {
           business: { ...save.business, supplies: { ...save.business.supplies, stock: {} } },
         },
         sv.levelNumber,
-        sv.tickets.map((_, i) => orderServiceFor(sv.levelNumber, i)),
+        sv.tickets.map((r, i) => orderServiceFor(sv.levelNumber, i, r)),
         { recipes: sv.tickets },
       );
       if (check.applies)

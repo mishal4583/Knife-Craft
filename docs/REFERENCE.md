@@ -824,7 +824,11 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   The sim mirrors it (best streak in its log). Browser:
   `tools/e2e/restaurantreport.mjs`, `restaurantsupplies.mjs` 3c.
 - `restaurant-takeaway-qa` — TAKEAWAY BY DISH + CLOSING SUPPLIES (supplies
-  plan Phase C, developer 2026-10-10). `serviceSupplies.takeawayPiecesFor
+  plan Phase C, developer 2026-10-10). Curries travel (developer
+  2026-10-17, K1): `orderServiceFor(level, index, recipe)` makes a curry
+  (a thali-tray dish) a takeaway at `curryTakeawayShare` (60%) instead of
+  `takeawayShare` (30%), on the same seeded roll; every other order is
+  unchanged. `serviceSupplies.takeawayPiecesFor
   (recipe, level)`: curries and combo / mezze plates (shared, "mezze",
   "trio", 4+ ingredients) a 3-compartment tray; pots, soups, bases, salsas
   a microwavable tub; fried food a burger clamshell; grilled / sautéed a

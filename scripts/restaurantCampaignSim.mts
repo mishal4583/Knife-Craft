@@ -540,7 +540,7 @@ function playLevel(save: SaveData, n: number, opts: SimOptions, stats: Stats): S
       return s;
     }
     // As App (supplies plan B): the guest eats from what their dish needs.
-    const base = takeOrderSupplies(stock.save, orderServiceFor(n, idx), {
+    const base = takeOrderSupplies(stock.save, orderServiceFor(n, idx, recipe), {
       recipe,
       levelNumber: n,
       index: idx,
