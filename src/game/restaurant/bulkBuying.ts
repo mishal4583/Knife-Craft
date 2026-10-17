@@ -22,8 +22,15 @@ import type { IngredientId } from "../definitions";
 import { normalizeQuantity } from "../business/businessInventory";
 import { lbPerMarketUnit, type Measure } from "../business/measure";
 
-/** Quantity presets on a Market card (ingredient units; supply packs). */
-export const BULK_PRESETS: readonly number[] = [5, 25, 50, 100];
+/**
+ * Quantity presets on a Market card (ingredient units; supply packs).
+ * Developer 2026-10-17 ("we don't need 100 lb or kg at a time"): sized to
+ * what a restaurant really buys — one service needs at most 2.25 lb of an
+ * ingredient, three days at most 9 lb, a supply 1–2 packs, and the first
+ * fridge holds 40 units in all. The bulk tiers below are unchanged; a
+ * larger amount is still one + tap away.
+ */
+export const BULK_PRESETS: readonly number[] = [1, 2, 5, 10];
 
 /** From `minQuantity` on, `discount` (a fraction) comes off the price. Provisional. */
 export const BULK_DISCOUNTS: readonly { minQuantity: number; discount: number }[] = [

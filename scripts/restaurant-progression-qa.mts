@@ -274,13 +274,14 @@ console.log("E. Closing from L91: End Business Day in the ledger");
 console.log("B. Bulk buying");
 {
   assert(
-    BULK_PRESETS.join() === "5,25,50,100" &&
+    // Presets 1/2/5/10 (developer 2026-10-17: no 100 lb at a time); the tiers are unchanged.
+    BULK_PRESETS.join() === "1,2,5,10" &&
       bulkDiscountFor(5) === 0 &&
       bulkDiscountFor(25) === BULK_DISCOUNTS[0]!.discount &&
       bulkDiscountFor(99) === BULK_DISCOUNTS[1]!.discount &&
       bulkDiscountFor(100) === BULK_DISCOUNTS[2]!.discount &&
       BULK_DISCOUNTS.every((t, i) => i === 0 || t.discount > BULK_DISCOUNTS[i - 1]!.discount),
-    "B1: presets 5/25/50/100; the discount grows with the tier (configurable)",
+    "B1: presets 1/2/5/10; the discount grows with the tier (configurable)",
   );
   const s = {
     ...saveAt(30, 1_000_000),

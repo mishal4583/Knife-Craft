@@ -3,7 +3,7 @@ import { BULK_PRESETS, bulkDiscountFor } from "@/game/restaurant/bulkBuying";
 
 /**
  * Unified Restaurant wholesale buying (RESTAURANT_MODE only): the quantity
- * presets of a Market card (5 / 25 / 50 / 100) with each one's bulk
+ * presets of a Market card (1 / 2 / 5 / 10) with each one's bulk
  * discount. Sets the card's quantity; the card's quote and Buy button stay
  * the one source of the price. 2 × 2 so every target is 48 px.
  */

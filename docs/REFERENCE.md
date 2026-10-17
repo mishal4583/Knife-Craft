@@ -344,7 +344,9 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   wallet can't cover them; wage = the Line Cook's figure, not balanced);
   closing from L91 writes End Business Day's payroll and fine ledger
   entries (it used to move money without them); bulk buying
-  (`restaurant/bulkBuying.ts`: presets 5/25/50/100, provisional tiers
+  (`restaurant/bulkBuying.ts`: presets 1/2/5/10 — developer 2026-10-17,
+  sized to real buys: ≤ 2.25 lb an ingredient a service, ≤ 9 lb for 3 days,
+  1–2 supply packs; was 5/25/50/100 — provisional tiers
   3/5/8 % from 25/50/100, the last price layer, consumables only, up to 100
   supply packs, one ledger entry; the classic purchase is unchanged);
   Inventory's ⚠️ NEEDS ATTENTION (`restaurant/restaurantAttention.ts`,

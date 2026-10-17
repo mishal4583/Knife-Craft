@@ -1,5 +1,11 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## Market quantity presets 1/2/5/10 (2026-10-17, `main`)
+
+- Was 5/25/50/100. The bulk discount tiers (25/50/100) are unchanged, so
+  the presets no longer show a discount; re-tiering them is an open
+  economy choice. REFERENCE §5 (`restaurant-progression-qa` B1).
+
 ## Cleanliness screen sorted (2026-10-17, `main`)
 
 - Removed three mock panels (practice rooms, dishwashing and chef's-tools

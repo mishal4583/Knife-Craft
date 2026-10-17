@@ -138,7 +138,8 @@ check("2b Restock → the Market opens on that exact ingredient", focused, { fir
 // ---------- 3. Bulk buying: ingredients ----------
 const before = await readSave(page);
 await page.evaluate(
-  (id) => document.querySelector(`[data-ingredient="${id}"] [data-bulk-preset="25"]`)?.click(),
+  // Presets 1/2/5/10 (developer 2026-10-17); 10 is below the first bulk tier (25).
+  (id) => document.querySelector(`[data-ingredient="${id}"] [data-bulk-preset="10"]`)?.click(),
   firstIngredient,
 );
 await sleep(300);
@@ -164,14 +165,14 @@ const quoted = Math.round(
   Number((/\$([\d,]+\.\d\d)/.exec(card.buy ?? "")?.[1] ?? "0").replace(/,/g, "")) * 100,
 );
 check(
-  "3 the 25 preset shows 'Bulk −3%'; buying writes ONE inventory-purchase entry for exactly the quoted total",
-  /^Buy 25 /.test(card.buy ?? "") &&
-    /Bulk −3%/.test(card.saving ?? "") &&
+  "3 the 10 preset sets 10 (no bulk tier yet); buying writes ONE inventory-purchase entry for exactly the quoted total",
+  /^Buy 10 /.test(card.buy ?? "") &&
+    !card.saving &&
     entries.length === 1 &&
     entries[0].category === "inventory-purchase" &&
     entries[0].amount === -quoted &&
     before.credits - after.credits === quoted &&
-    after.business.inventory[firstIngredient]?.quantity === 25,
+    after.business.inventory[firstIngredient]?.quantity === 10,
   { card, entries, quoted },
 );
 
@@ -189,7 +190,7 @@ await clickButton(page, /Takeaway/);
 await sleep(700);
 const b4 = await readSave(page);
 await page.evaluate(() =>
-  document.querySelector('[data-supply="paper-napkins"] [data-bulk-preset="100"]')?.click(),
+  document.querySelector('[data-supply="paper-napkins"] [data-bulk-preset="10"]')?.click(),
 );
 await sleep(300);
 const napkinCard = await page.evaluate(() => {
@@ -205,11 +206,11 @@ await sleep(700);
 const a4 = await readSave(page);
 const e4 = a4.economyLedger.slice(b4.economyLedger.length);
 check(
-  "4 napkins: the 100 preset buys 100 packs at the bulk price (−8%), one supply-packaging-purchase entry",
-  /Bulk −8%/.test(napkinCard.saving ?? "") &&
+  "4 napkins: the 10 preset buys 10 packs, one supply-packaging-purchase entry",
+  !napkinCard.saving &&
     e4.length === 1 &&
     e4[0].category === "supply-packaging-purchase" &&
-    a4.business.supplies.stock["paper-napkins"]?.units === 100 * 4000,
+    a4.business.supplies.stock["paper-napkins"]?.units === 10 * 4000,
   { napkinCard, e4, units: a4.business.supplies.stock["paper-napkins"]?.units },
 );
 
