@@ -1,23 +1,25 @@
 // First levels (developer 2026-10-09, Levels 1–15 pass 1), restaurant build, in a real browser:
 //   1. Level 1 played: Level Complete carries Grandma's line; no day screen.
-//   2. Level 2 reached: only the Kitchen is open; Inventory / Market / Progress / Restaurant
-//      show a lock and "Lv 3 / 7 / 10 / 11"; a tap says when it opens and goes nowhere; the
-//      Kitchen's Market and Progress places say "opens at Level …".
+//   2. Level 2 reached (the campaign redesign's levels: Inventory + Market at 3, Progress 10,
+//      Business 11): the bottom bar (Kitchen · Market · Restaurant) has the Market locked
+//      "Lv 3", the Restaurant map open; the Kitchen's Inventory and Business shortcuts show
+//      "Lv 3" / "Lv 11"; a tap on the Market says when it opens and stays on the Kitchen.
 //   3. Level 2 starts with no opening card; finished, Level Complete has Grandma's line,
 //      "📦 Inventory is open" and "☀️ Day 2 begins"; no Closing Time; Day 2 in the save,
 //      and the wallet moved only by the ledger's entries.
-//   4. Level 7: the Market opens for a look: Knives and Cutting Boards only.
+//   4. Level 3: the Market opens, Ingredients to buy beside Knives and Cutting Boards.
 //   5. Level 10 played: the big milestone card (Santoku, Maple Board in the Market, the menu
 //      next), a tap dismisses it, then Level Complete with Grandma's line and the Restaurant
 //      opening; every section is open.
 //   6. 320×568: the bottom bar's locks fit, buttons ≥ 48 px, no sideways scroll.
 //   8. (developer 2026-10-10) Grandma's pointer: Level 7's Kitchen dims, a hand points at the
 //      Market tab with "This is the Market"; Show me → the Market, the save records it (no
-//      money moves), and back on the Kitchen it's gone. Level 3: Later closes it for good
-//      (after a reload too). 320×568: the card and hand fit, buttons ≥ 48 px.
+//      money moves), and back on the Kitchen it's gone. Level 3 (Inventory and the Market open
+//      together): Inventory first; Later closes it for good (after a reload too) and the
+//      Market follows. 320×568: the cards and the Market's hand fit, buttons ≥ 48 px.
 //   8c. (developer 2026-10-10: "I didn't see any hand gestures for market and inventory") a
-//       Level 12 save that never saw them: Inventory first, then the Market, Progress and
-//       "Your Restaurant Business", one at a time.
+//       Level 12 save that never saw them: Inventory, the Market, then "Your Business
+//       Dashboard", one at a time (POINTER_ORDER since 5db9451; Progress is the ranking card).
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import {
   GAME_URL,
@@ -40,9 +42,20 @@ const check = (id, ok, detail) => {
 };
 const { browser, page, logs } = await launch();
 
+// Stock is used from Level 3: the fridge holds Levels 3 and 10's ingredients, so a level
+// starts on its own (the stock check has its own tests).
+const STOCKED_BUSINESS = {
+  ...MOVED_IN_BUSINESS,
+  inventory: Object.fromEntries(
+    ["tomato", "cucumber", "carrot", "zucchini", "pepper"].map((id) => [
+      id,
+      { ingredientId: id, quantity: 3, unitCost: 0, purchaseDay: 1 },
+    ]),
+  ),
+};
 const at = (n, extra = {}) =>
   seedSave({
-    business: MOVED_IN_BUSINESS,
+    business: STOCKED_BUSINESS,
     credits: 0,
     levelProgress: {
       currentLevelId: `level-${n}`,
@@ -151,19 +164,34 @@ await page.evaluate(() =>
 await sleep(800);
 const nav1 = await navState();
 const navOf = (id) => nav1.find((n) => n.id === id);
+const shortcuts = await page.evaluate(() =>
+  Object.fromEntries(
+    ["inventory", "business"].map((id) => {
+      const b = document.querySelector(`[data-testid="${id}-shortcut"]`);
+      return [
+        id,
+        b
+          ? {
+              locked: b.getAttribute("aria-disabled") === "true",
+              text: b.innerText.replace(/\s+/g, " ").trim(),
+            }
+          : null,
+      ];
+    }),
+  ),
+);
 check(
-  "2a Level 2: Kitchen open; Inventory Lv 3, Market Lv 7, Restaurant Lv 11, Progress Lv 10 locked",
-  nav1.length === 5 &&
+  "2a Level 2: Kitchen and the Restaurant map open, the Market locked Lv 3; Inventory Lv 3 and Business Lv 11 locked on the Kitchen",
+  nav1.length === 3 &&
     navOf("kitchen")?.locked === false &&
-    navOf("inventory")?.locked &&
-    /Lv 3/.test(navOf("inventory").text) &&
+    navOf("restaurant-map")?.locked === false &&
     navOf("shop")?.locked &&
-    /Lv 7/.test(navOf("shop").text) &&
-    navOf("rack")?.locked &&
-    /Lv 10/.test(navOf("rack").text) &&
-    navOf("business")?.locked &&
-    /Lv 11/.test(navOf("business").text),
-  nav1,
+    /Lv 3/.test(navOf("shop").text) &&
+    shortcuts.inventory?.locked &&
+    /Lv 3/.test(shortcuts.inventory.text) &&
+    shortcuts.business?.locked &&
+    /Lv 11/.test(shortcuts.business.text),
+  { nav1, shortcuts },
 );
 await page.click('nav button[data-nav="shop"]');
 await sleep(300);
@@ -173,19 +201,17 @@ const hint = await page.evaluate(
 const stillKitchen = await page.evaluate(
   () => !!document.querySelector('[data-testid="kitchen-rank"]'),
 );
-const places = await page.evaluate(() =>
-  [...document.querySelectorAll("button[data-locked]")]
-    .filter((b) => !b.hasAttribute("data-nav"))
-    .map((b) => b.innerText.replace(/\s+/g, " ").trim()),
+// Progress (Level 10) opens from the ranking card only: a tap there stays on the Kitchen.
+await page.evaluate(() => document.querySelector('[data-testid="kitchen-rank"]')?.click());
+await sleep(500);
+const stillKitchenAfterRank = await page.evaluate(
+  () => !!document.querySelector('[data-testid="kitchen-rank"]'),
 );
 await shot(page, "first-levels-l2-kitchen");
 check(
-  "2b a tap on a locked section says when it opens and stays on the Kitchen; the Kitchen's places say so too",
-  /Market opens at Level 7/.test(hint ?? "") &&
-    stillKitchen &&
-    places.some((p) => /Market opens at Level 7/.test(p)) &&
-    places.some((p) => /Progress opens at Level 10/.test(p)),
-  { hint, places },
+  "2b a tap on a locked section says when it opens and stays on the Kitchen; the ranking card waits for Progress (Level 10)",
+  /Market opens at Level 3/.test(hint ?? "") && stillKitchen && stillKitchenAfterRank,
+  { hint, stillKitchen, stillKitchenAfterRank },
 );
 
 // ---------- 3. Level 2: the day ends quietly ----------
@@ -235,8 +261,8 @@ check(
   { cardUp, startedAt3, cardDuringCut },
 );
 
-// ---------- 4. Level 7: the Market for a look ----------
-await boot(page, at(7));
+// ---------- 4. Level 3: the Market opens ----------
+await boot(page, at(3));
 await page.click('nav button[data-nav="shop"]');
 await sleep(900);
 const market = await page.evaluate(() => ({
@@ -245,13 +271,12 @@ const market = await page.evaluate(() => ({
   ),
   notice: document.querySelector('[aria-live="polite"]')?.textContent ?? "",
 }));
-await shot(page, "first-levels-l7-market");
+await shot(page, "first-levels-l3-market");
 check(
-  "4 Level 7: the Market opens with Knives and Cutting Boards to look at",
-  market.cats.length === 2 &&
-    /Knives$/.test(market.cats[0]) &&
-    /Cutting Boards$/.test(market.cats[1]) &&
-    /Level 10/.test(market.notice),
+  "4 Level 3: the Market opens with Ingredients to buy, beside Knives and Cutting Boards",
+  /Knives$/.test(market.cats[0] ?? "") &&
+    /Cutting Boards$/.test(market.cats[1] ?? "") &&
+    market.cats.some((c) => /Ingredients$/.test(c)),
   market,
 );
 
@@ -282,7 +307,7 @@ check(
     /Maple Board/.test(grand ?? "") &&
     /first menu at Level 11/.test(grand ?? "") &&
     /Look at this place\./.test(b10 ?? "") &&
-    /Restaurant is open/.test(b10 ?? "") &&
+    /Business is open/.test(b10 ?? "") &&
     nav10.every((n) => !n.locked),
   { grand, b10 },
 );
@@ -353,39 +378,48 @@ check(
 await page.setViewport({ width: 320, height: 568, deviceScaleFactor: 1 });
 await boot(page, at(3));
 await sleep(900);
+const fitOf = () =>
+  page.evaluate(() => {
+    const el = document.querySelector('[data-testid="section-pointer"]');
+    const card = el?.querySelector(".paper")?.getBoundingClientRect();
+    const hand = document.querySelector('[data-testid="pointer-hand"]')?.getBoundingClientRect();
+    const buttons = el ? [...el.querySelectorAll("button")] : [];
+    return {
+      overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      cardInside: !!card && card.left >= 0 && card.right <= 320 && card.top >= 0,
+      hand: !!hand,
+      handBelowCard: !!card && !!hand && hand.top >= card.bottom - 1 && hand.bottom <= 568,
+      small: buttons.filter((b) => b.getBoundingClientRect().height < 47.5).length,
+    };
+  });
 const p3 = await pointerState();
-const fit3 = await page.evaluate(() => {
-  const el = document.querySelector('[data-testid="section-pointer"]');
-  const card = el?.querySelector(".paper")?.getBoundingClientRect();
-  const hand = document.querySelector('[data-testid="pointer-hand"]')?.getBoundingClientRect();
-  const buttons = el ? [...el.querySelectorAll("button")] : [];
-  return {
-    overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
-    cardInside: !!card && card.left >= 0 && card.right <= 320 && card.top >= 0,
-    handBelowCard: !!card && !!hand && hand.top >= card.bottom - 1 && hand.bottom <= 568,
-    small: buttons.filter((b) => b.getBoundingClientRect().height < 47.5).length,
-  };
-});
+const fit3 = await fitOf();
 await shot(page, "pointer-l3-320");
 await clickButton(page, /^Later$/);
 await sleep(700);
-const gone3 = await pointerState();
+// Inventory is on the Kitchen, not the bottom bar, so its card has no hand; the Market (a
+// bottom-bar tab) follows with the hand on its tab.
+const next3 = await pointerState();
+const fitMarket = await fitOf();
 const saved3 = await readSave(page);
 await page.reload({ waitUntil: "networkidle0" });
 await sleep(2500);
 const reload3 = await pointerState();
 check(
-  "8b Level 3 at 320 px: Inventory pointed at, it fits (hand under the card, 48 px buttons); Later closes it for good",
+  "8b Level 3 at 320 px: Inventory pointed at first, it fits (48 px buttons); Later closes it for good and the Market follows, its hand under the card",
   p3.tab === "inventory" &&
     /This is your Inventory/.test(p3.text) &&
     fit3.overflow <= 0 &&
     fit3.cardInside &&
-    fit3.handBelowCard &&
     fit3.small === 0 &&
-    gone3.tab === null &&
+    next3.tab === "shop" &&
+    next3.handOn === "shop" &&
+    fitMarket.cardInside &&
+    fitMarket.handBelowCard &&
+    fitMarket.small === 0 &&
     (saved3.business.sectionsSeen ?? []).join() === "inventory" &&
-    reload3.tab === null,
-  { p3, fit3, gone3, reload3 },
+    reload3.tab !== "inventory",
+  { p3, fit3, next3, fitMarket, reload3 },
 );
 
 // ---------- 8c. Level 12, nothing pointed out yet ----------
@@ -397,13 +431,13 @@ for (let i = 0; i < 5; i++) {
   const p = await pointerState();
   if (!p.tab) break;
   order12.push(p.tab);
-  if (p.tab === "business") order12.push(/Your Restaurant Business/.test(p.text));
+  if (p.tab === "business") order12.push(/Your Business Dashboard/.test(p.text));
   await clickButton(page, /^Later$/);
   await sleep(600);
 }
 check(
-  "8c Level 12 save: Inventory, Market, Progress, then Your Restaurant Business — one at a time",
-  JSON.stringify(order12) === JSON.stringify(["inventory", "shop", "rack", "business", true]),
+  "8c Level 12 save: Inventory, Market, then Your Business Dashboard — one at a time",
+  JSON.stringify(order12) === JSON.stringify(["inventory", "shop", "business", true]),
   order12,
 );
 

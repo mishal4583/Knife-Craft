@@ -1374,10 +1374,13 @@ export function App() {
    * Mode only — Campaign never calls this.
    */
   function purchaseSupply(supplyId: string, packs: number) {
-    if (!save) return { ok: false as const, reason: "unknownSupply" as const };
+    // The latest save (persist keeps saveRef current): "Buy everything needed" buys several
+    // items in one tap, and each purchase must build on the one before.
+    const current = saveRef.current ?? save;
+    if (!current) return { ok: false as const, reason: "unknownSupply" as const };
     const item = getSupplyItem(supplyId);
     const result = purchaseSupplyFromCatalog(
-      save,
+      current,
       supplyId,
       packs,
       RESTAURANT_MODE && item && isConsumableSupply(item)
@@ -2239,8 +2242,10 @@ export function App() {
     if (flush) setStoryEvent(flush);
     // Level 1–10 UX pass: a story banner (Level 10's milestone) no longer
     // swallows the reward — the Level Complete notice waits for it to be
-    // dismissed (it renders only while no story event is showing).
-    if (rewardCoins > 0) {
+    // dismissed (it renders only while no story event is showing). Level 2's
+    // practice pays nothing but still has Grandma's line, the sections it
+    // opens and the new day, so a restaurant first completion always shows it.
+    if (rewardCoins > 0 || (RESTAURANT_MODE && isFirstCompletion)) {
       // Restaurant build: a first completion can climb the city ranking.
       const moved = RESTAURANT_MODE && isFirstCompletion ? rankChange(save, finalSave) : null;
       const n = levelNumber(level.id);
@@ -3234,7 +3239,11 @@ export function App() {
         <MilestoneBanner
           page={screen}
           kicker="Level Complete"
-          line={`${formatUsdChange(levelRewardNotice.rewardCoins)} Completion Reward`}
+          line={
+            levelRewardNotice.rewardCoins > 0
+              ? `${formatUsdChange(levelRewardNotice.rewardCoins)} Completion Reward`
+              : "✓ Practice complete"
+          }
           {...(levelRewardNotice.orderCoins ||
           levelRewardNotice.cityRank ||
           levelRewardNotice.credit

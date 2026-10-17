@@ -90,7 +90,8 @@ console.log("N. Level Complete notice (A1/A2)");
       // and (pass 2) what's left in Grandma's fridge.
       // Supplies plan A (2026-10-10) adds Grandma's tools note, and Cleanliness &
       // Maintenance (2026-10-10) the cleaning cupboard note: a longer block.
-      /if \(rewardCoins > 0\) \{[\s\S]{0,2400}?setLevelRewardNotice\(\{\s*rewardCoins,\s*orderCoins,/.test(
+      // A restaurant first completion shows it with no reward too (Level 2's practice, 2026-10-17).
+      /if \(rewardCoins > 0 \|\| \(RESTAURANT_MODE && isFirstCompletion\)\) \{[\s\S]{0,2400}?setLevelRewardNotice\(\{\s*rewardCoins,\s*orderCoins,/.test(
         app,
       ) &&
       !/else if \(rewardCoins > 0\) setLevelRewardNotice/.test(app),
