@@ -1156,7 +1156,7 @@ export function DishwashingPrototype({
                 ? startAtKitchenTools
                   ? "Test the after-closing wash sequence for food-prep tools."
                   : "After closing, wash or sanitize the chef’s tools."
-                : "Wash each customer’s reusable tableware, one piece at a time."}
+                : "🍽️ Wash each piece, one at a time"}
             </p>
           </div>
           <button
@@ -1492,15 +1492,15 @@ export function DishwashingPrototype({
         >
           {complete
             ? startAtKitchenTools
-              ? "All chef’s tools are clean and ready for tomorrow’s service!"
-              : "All tableware and chef tools are clean for tomorrow’s service!"
+              ? "✨ Chef’s tools clean for tomorrow!"
+              : "✨ Tableware & tools clean for tomorrow!"
             : itemFinished
               ? `${activeItem.label} clean!`
               : scrubbing
                 ? `Keep scrubbing the ${activeItem.label.toLowerCase()}…`
                 : afterClosing
                   ? `🌙 Closing task: clean the ${activeItem.label.toLowerCase()} for tomorrow.`
-                  : `✨ Wash the ${activeItem.label.toLowerCase()} next. Scrub every mark to finish.`}
+                  : `✨ Next: the ${activeItem.label.toLowerCase()} · scrub every mark`}
         </p>
         <div className="mt-2 flex items-center gap-3">
           <div

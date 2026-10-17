@@ -150,14 +150,11 @@ export function InventorySupplies({ go, save }: { go: (s: ScreenId) => void; sav
             <Eyebrow>🍽️ For service</Eyebrow>
             <p className="mt-1 font-ui text-[14.5px] font-bold text-walnut-dark">
               Place settings: {cleanSettings(save)} clean
-              {dirtyPieces > 0 ? ` · ${dirtyPieces} pieces waiting to be washed` : ""}
+              {dirtyPieces > 0 ? ` · 🫧 ${dirtyPieces} to wash` : ""}
             </p>
             <p className="font-ui text-[12.5px] text-walnut/60">
-              Every guest eats from what their dish needs — plates or bowls, cutlery and a glass —
-              all washed after each service.
-              {brokenSoFar > 0
-                ? ` ${brokenSoFar} ${brokenSoFar === 1 ? "piece has" : "pieces have"} broken so far.`
-                : ""}
+              🍽️ Per guest: plate or bowl · 🍴 cutlery · 🥛 glass · 🫧 washed each service
+              {brokenSoFar > 0 ? ` · 💥 ${brokenSoFar} broken so far` : ""}
             </p>
             <div className="mt-1 divide-y divide-walnut/10">
               <SupplyBottle
@@ -191,8 +188,7 @@ export function InventorySupplies({ go, save }: { go: (s: ScreenId) => void; sav
                   🟠 Packaging covers {ordersCovered} of today's {customers} orders
                 </span>
                 <span className="block font-hand text-[14px] leading-tight text-walnut/70">
-                  Each served order uses one container and one bag · {containers} containers ·{" "}
-                  {bags} bags on hand
+                  🥡 1 container + 1 bag per order · {containers} containers · {bags} bags
                 </span>
               </span>
               <KButton
@@ -299,11 +295,11 @@ export function InventorySupplies({ go, save }: { go: (s: ScreenId) => void; sav
         <p className="mt-1 font-hand text-[14px] leading-snug text-walnut/60">
           {consumable
             ? RESTAURANT_MODE
-              ? "Used up service by service — the Pre-Service Check says what's short."
-              : "Every served Business order uses one container and one bag."
+              ? "📦 Used each service · 📋 the Pre-Service Check says what's short"
+              : "🥡 1 container + 1 bag per order"
             : RESTAURANT_MODE && section === "culinary"
-              ? "Kitchen tools last: bought once. The Pre-Service Check asks for each when a dish first needs it."
-              : "Equipment lasts: it's bought once and never used up."}
+              ? "🔁 Bought once · 📋 asked for when a dish needs it"
+              : "🔁 Bought once · never used up"}
         </p>
 
         <div

@@ -221,6 +221,8 @@ let staff = await page.evaluate(() =>
     id: r.getAttribute("data-psc-staff"),
     status: r.getAttribute("data-psc-status"),
     text: r.innerText.replace(/\s+/g, " "),
+    // Short game copy (developer 2026-10-16): the reason sits behind the row's ⓘ.
+    reason: !!r.querySelector("[data-infotip]"),
   })),
 );
 const startDisabled = await page.evaluate(
@@ -243,9 +245,9 @@ const fit320 = await page.evaluate(() => ({
 await page.setViewport({ width: 430, height: 900, deviceScaleFactor: 1 });
 await sleep(400);
 check(
-  "5a L52: the check needs the Indian Chef, a Prep Cook and a Server — each with its reason — and START is blocked",
+  "5a L52: the check needs the Indian Chef, a Prep Cook and a Server — each with its reason (ⓘ) — and START is blocked",
   ["indian-chef", "prep-cook", "server"].every((id) =>
-    staff.some((r) => r.id === id && r.status === "missing" && r.text.length > 30),
+    staff.some((r) => r.id === id && r.status === "missing" && r.reason && /Needed/.test(r.text)),
   ) && startDisabled === true,
   { staff, startDisabled },
 );

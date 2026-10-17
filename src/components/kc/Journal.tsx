@@ -107,7 +107,7 @@ export function DailyOrder({
             </div>
           </div>
           <p className="pt-4 text-center font-hand text-[16px] text-walnut/45">
-            the order waits as long as you need — missing a day never locks anything
+            ⏳ no rush · missing a day locks nothing
           </p>
         </div>
       </div>
@@ -190,9 +190,7 @@ export function EndlessService({
                 Unlocks after Level {LAST_CAMPAIGN_LEVEL}
               </p>
               <p className="mt-1 font-hand text-[17px] leading-snug text-walnut/65">
-                Endless Service is an ongoing earning mode for after the campaign: serve orders from
-                the campaign's service levels, one after another, and earn up to{" "}
-                {formatUsd(ENDLESS_DAILY_COIN_CAP)} every day.
+                ♾️ Serve orders back to back · 💵 up to {formatUsd(ENDLESS_DAILY_COIN_CAP)} a day
               </p>
             </Panel>
           ) : (
@@ -203,7 +201,7 @@ export function EndlessService({
               </p>
               <p className="mt-1 font-hand text-[16px] text-walnut/60">
                 {capReached
-                  ? "still counts toward the Cookbook — no more earnings until tomorrow"
+                  ? "📖 still counts · 💵 earnings back tomorrow"
                   : `up to ${formatUsdChange(remaining)} left today`}
               </p>
               <div className="mt-4">
@@ -214,7 +212,7 @@ export function EndlessService({
             </Panel>
           )}
           <p className="pt-4 text-center font-hand text-[16px] text-walnut/45">
-            no lives, no timer — stop whenever you want
+            no lives · no timer · stop any time
           </p>
         </div>
       </div>
@@ -263,7 +261,7 @@ export function Settings({
               <Panel className="p-3">
                 <p className="font-ui text-[13.5px] font-bold text-walnut-dark">Weights</p>
                 <p className="font-hand text-[15px] leading-snug text-walnut/65">
-                  How the Market, the fridge and your orders weigh ingredients.
+                  ⚖️ Market, fridge & orders
                 </p>
                 <div className="mt-2 grid grid-cols-2 gap-2" role="radiogroup" aria-label="Weights">
                   {(

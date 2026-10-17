@@ -45,7 +45,7 @@ export function RushRestockActions({
       <div className="mt-2 space-y-2">
         {planned.reason === "exceedsShortageLimit" ? (
           <p className="font-hand text-[14px] leading-snug text-copper">
-            Today's supplier shortage limits purchases — buy what you can in the Market.
+            🚚 Supplier shortage today · buy what you can in the Market
           </p>
         ) : null}
         {market}
@@ -84,8 +84,8 @@ export function RushRestockActions({
       ) : null}
       <p className="text-center font-hand text-[14px] leading-snug text-walnut/65">
         {canAfford
-          ? `Market price ${formatUsd(plan.marketCost)} + ${Math.round(RUSH_RESTOCK_FEE * 100)}% rush fee — buys only what this order needs.`
-          : `Rush Restock costs ${formatUsd(plan.cashCost)} — you have ${formatUsd(save.credits)}.`}
+          ? `Market price ${formatUsd(plan.marketCost)} + ${Math.round(RUSH_RESTOCK_FEE * 100)}% rush fee · this order only`
+          : `Rush Restock costs ${formatUsd(plan.cashCost)} · you have ${formatUsd(save.credits)}`}
       </p>
       {message ? (
         <p className="text-center font-hand text-[15px] leading-snug text-copper">{message}</p>
@@ -101,17 +101,17 @@ function outcomeMessage(outcome: RushRestockOutcome): string | null {
     case "insufficientFunds":
       return "Not enough cash for a Rush Restock.";
     case "insufficientStorage":
-      return "Your refrigerator is full — make room or upgrade it first.";
+      return "❄️ Fridge full · make room or upgrade";
     case "exceedsShortageLimit":
-      return "Today's supplier shortage limits purchases — try the Market.";
+      return "🚚 Supplier shortage today · try the Market";
     case "wouldNotUnblock":
-      return "Old stock of this ingredient has expired, so a restock wouldn't free this order. It's cleared at End Business Day.";
+      return "🗑️ Expired stock blocks it · cleared at End Business Day";
     case "notRewarded":
-      return "The ad didn't finish, so nothing was restocked. You can try again.";
+      return "🎬 The ad didn't finish · nothing restocked";
     case "busy":
     case "adUnavailable":
     case "adFailed":
-      return "Ad unavailable right now. Nothing was restocked.";
+      return "🎬 No ad right now · nothing restocked";
     case "notBlocked":
     case "orderChanged":
       return null;

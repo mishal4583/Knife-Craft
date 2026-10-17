@@ -1,5 +1,11 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## Short game copy + ⓘ InfoTip (2026-10-16, `main`)
+
+- Long sentences across the screens became icons, chips and short points;
+  longer explanations sit behind a tappable ⓘ (`InfoTip`). Details: REFERENCE
+  §10. Guard: `scripts/ui-copy-qa.mts`.
+
 ## Menu price cap (2026-10-16, `main`)
 
 - A dish sells for at most 1.5 × its suggested price; old saves above it are read at the

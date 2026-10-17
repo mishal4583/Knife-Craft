@@ -19,17 +19,18 @@ import {
   type DeliveryKind,
   type DeliveryRecord,
 } from "@/game/restaurant/deliveries";
+import { InfoTip } from "@/components/kc/common/InfoTip";
 
 const KIND_META: Record<DeliveryKind, { icon: string; title: string; line: string }> = {
   fresh: {
     icon: "🥬",
     title: "Fresh delivery",
-    line: `Meat, fish, dairy, bread, fruit and veg for the next ${FRESH_DAYS} days — every 2 days.`,
+    line: `🥩🐟🧀🍞🍎 · ${FRESH_DAYS} days · every 2 days`,
   },
   weekly: {
     icon: "📦",
     title: "Weekly delivery",
-    line: `Slow goods for ${WEEK_DAYS} days, plus a week of cleaning supplies — every Monday.`,
+    line: `🫙 slow goods + 🧽 cleaning · ${WEEK_DAYS} days · Mondays`,
   },
 };
 
@@ -65,10 +66,15 @@ export function StandingOrdersCard({
   const last = st.history.at(-1) ?? null;
   return (
     <Panel className="p-4" data-testid="standing-orders">
-      <Eyebrow>🚚 Standing orders</Eyebrow>
+      <div className="flex items-center justify-between gap-2">
+        <Eyebrow>🚚 Standing orders</Eyebrow>
+        <InfoTip label="About standing orders">
+          Ordered at closing, delivered with the morning at the Market's price — only what the next
+          days need.
+        </InfoTip>
+      </div>
       <p className="mt-1 font-ui text-[13px] text-walnut/70">
-        Ordered at closing, delivered with the morning at the Market's price — only what the next
-        days need.
+        🌙 Order at closing · ☀️ arrives by morning
       </p>
       <div className="mt-2 space-y-2">
         {(["fresh", "weekly"] as const).map((k) => {

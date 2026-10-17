@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { clearStaffFocus, peekStaffFocus } from "../staffFocus";
 import type { SaveData } from "@/game/SaveManager";
 import { KButton, Panel, Badge } from "../common/primitives";
+import { InfoTip } from "../common/InfoTip";
 import { Eyebrow } from "../common/Meters";
 import { cn } from "@/lib/utils";
 import { formatUsd } from "@/game/business/businessCurrency";
@@ -97,13 +98,13 @@ export function BusinessStaff({
             id="kitchen-team"
             // F4 (developer 2026-10-12): one-time helpers read as upgrades, not staff.
             title="🔪 Kitchen Upgrades"
-            line="One-time helpers that stay for good — no wages."
+            line="🔁 One-time hire · no wages"
           />
           <KitchenHelpers save={save} buyStaff={buyStaff} />
           <TeamHeading
             id="restaurant-team"
             title="🍽️ Restaurant Team"
-            line="Waged staff. Hiring is free; half pay is charged at closing from Level 41, full pay from Level 91."
+            line="🆓 Free to hire · ½ pay from Lv 41 · full pay from Lv 91"
           />
         </>
       ) : null}
@@ -131,15 +132,18 @@ export function BusinessStaff({
           >
             {halfWages
               ? `Free to hire; half pay at closing until Level ${wagesFrom}`
-              : `Free to hire and free to keep until Level ${HALF_WAGES_FROM}; half pay until Level ${wagesFrom}`}
+              : `🆓 Free until Level ${HALF_WAGES_FROM} · ½ pay until Level ${wagesFrom}`}
             {payroll > 0
               ? ` — then ${formatUsd(payroll)}/day for this team.`
               : " — full wages start then."}
           </p>
         ) : null}
-        <p className="mt-1.5 font-hand text-[15px] leading-snug text-walnut/65">
-          Hiring is free — pay is charged at End Business Day. If the pay can't be covered, the
-          whole team is let go rather than left unpaid.
+        <p className="mt-1.5 flex items-center gap-1.5 font-hand text-[15px] leading-snug text-walnut/65">
+          🌙 Paid at closing
+          <InfoTip label="About pay">
+            Hiring is free — pay is charged at End Business Day. If the pay can't be covered, the
+            whole team is let go rather than left unpaid.
+          </InfoTip>
         </p>
       </Panel>
 
@@ -169,9 +173,17 @@ export function BusinessStaff({
                   <Badge tone="copper">Needed now</Badge>
                 ) : null}
               </div>
-              <p className="mt-1 font-display text-[14.5px] font-black leading-tight text-walnut-dark">
-                {def.name}
-              </p>
+              <div className="mt-1 flex items-start gap-1.5">
+                <p className="min-w-0 flex-1 font-display text-[14.5px] font-black leading-tight text-walnut-dark">
+                  {def.name}
+                </p>
+                <InfoTip label={`About the ${def.name}`}>
+                  {def.description}
+                  <span className="mt-1 block text-[12px] text-walnut/60">
+                    {formatUsd(def.hourlyWageCents)}/hr × {def.scheduledHours}h + 25% employer cost
+                  </span>
+                </InfoTip>
+              </div>
               <p className="font-ui text-[12.5px] font-extrabold text-copper">
                 {wagesStarted ? (
                   <>
@@ -188,12 +200,7 @@ export function BusinessStaff({
                   </>
                 )}
               </p>
-              <p className="mt-1 rounded-[12px] bg-cream/70 px-2 py-1.5 font-hand text-[14px] leading-tight text-walnut-dark">
-                {def.description}
-              </p>
-              <p className="mt-1 font-ui text-[11px] font-bold text-walnut/50">
-                {formatUsd(def.hourlyWageCents)}/hr × {def.scheduledHours}h + 25% employer cost
-              </p>
+
               <div className="mt-auto pt-2">
                 {hired ? (
                   <KButton full variant="ghost" onClick={() => handleFire(def.role)}>
@@ -254,8 +261,7 @@ function SpecialistChefs({
       <div data-testid="specialist-chefs">
         <Eyebrow>🌍 Specialist chefs</Eyebrow>
         <p className="mt-1 font-hand text-[15px] leading-snug text-walnut/65">
-          Each new cuisine needs its own chef. Hiring is free; from Level 91 their pay is charged at
-          closing.
+          🌍 One chef per cuisine · 🆓 free to hire · 💵 paid from Lv 91
         </p>
         <ul className="mt-2 divide-y divide-walnut/10">
           {SPECIALIST_CHEFS.map((chef) => {

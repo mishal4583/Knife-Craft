@@ -1,4 +1,5 @@
 import { Badge, KButton, Panel } from "./common/primitives";
+import { InfoTip, Points, StatChip } from "./common/InfoTip";
 import { cn } from "@/lib/utils";
 import type { SaveData } from "@/game/SaveManager";
 import { formatUsd } from "@/game/money";
@@ -52,8 +53,7 @@ export function MarketSecondFloor({
     if (r.ok) setNotice(`${name} — done!`);
     else if (r.reason === "insufficientFunds") setNotice(notEnoughMoneyText(price, save.credits));
     else if (r.reason === "locked") setNotice(`${name} goes on sale at Level ${STATIONS_OPEN_AT}.`);
-    else if (r.reason === "noStations")
-      setNotice("Buy a machine first — the team runs the machines.");
+    else if (r.reason === "noStations") setNotice("🏬 Buy a machine first");
     else if (r.reason === "fullTeam") setNotice("The floor team is full.");
     else setNotice(`${name} couldn't be bought right now.`);
   };
@@ -62,10 +62,10 @@ export function MarketSecondFloor({
     return (
       <Panel className="p-4" data-testid="market-second-floor">
         <p className="font-ui text-[13px] font-extrabold text-walnut-dark">
-          🔒 The Second Floor opens at Level {SECOND_FLOOR_OPENS_AT}.
+          🔒 Opens at Level {SECOND_FLOOR_OPENS_AT}
         </p>
         <p className="mt-1 font-ui text-[12.5px] text-walnut/65">
-          Its automated food stations go on sale at Level {STATIONS_OPEN_AT}.
+          🛒 Machines on sale at Level {STATIONS_OPEN_AT}
         </p>
       </Panel>
     );
@@ -74,14 +74,24 @@ export function MarketSecondFloor({
   return (
     <div className="space-y-4" data-testid="market-second-floor">
       <Panel className="p-3">
-        <p className="font-ui text-[12px] font-extrabold uppercase tracking-[0.12em] text-copper">
-          🏬 Automated food hall
-        </p>
-        <p className="mt-1 font-hand text-[15px] leading-snug text-walnut/65">
-          Machines cook while you play; a Floor Server runs 2 of them and a Floor Cleaner keeps 3
-          clean. Collect the takings at the Pickup Counter — each machine stores a few hours, so
-          come back twice a day.
-        </p>
+        <div className="flex items-center justify-between gap-2">
+          <p className="font-ui text-[12px] font-extrabold uppercase tracking-[0.12em] text-copper">
+            🏬 Automated food hall
+          </p>
+          <InfoTip label="How the food hall works">
+            Machines cook while you play; a Floor Server runs 2 of them and a Floor Cleaner keeps 3
+            clean. Collect the takings at the Pickup Counter — each machine stores a few hours, so
+            come back twice a day.
+          </InfoTip>
+        </div>
+        <Points
+          className="mt-1"
+          items={[
+            ["🤖", "Machines cook while you play"],
+            ["🧑‍🍳", "1 server runs 2 · 1 cleaner keeps 3"],
+            ["💰", "Collect at the Pickup Counter, twice a day"],
+          ]}
+        />
         <div className="mt-2 flex items-center justify-between gap-2">
           <span className="font-ui text-[13px] font-extrabold text-walnut-dark">
             Earning now: {formatUsd(perHour)}/h
@@ -123,22 +133,32 @@ export function MarketSecondFloor({
                   </span>
                   {o ? <Badge tone="sage">Lv {lvl}</Badge> : null}
                 </div>
-                <p className="mt-1 font-display text-[14.5px] font-black leading-tight text-walnut-dark">
-                  {d.name}
-                </p>
-                <p className="font-ui text-[12px] leading-snug text-walnut/65">{d.blurb}</p>
+                <div className="mt-1 flex items-start gap-1.5">
+                  <p className="min-w-0 flex-1 font-display text-[14.5px] font-black leading-tight text-walnut-dark">
+                    {d.name}
+                  </p>
+                  <InfoTip label={`About the ${d.name}`}>{d.blurb}</InfoTip>
+                </div>
                 {!o ? (
                   <>
-                    <p className="mt-1 font-ui text-[12.5px] font-extrabold text-copper">
+                    <p className="mt-1 font-ui text-[13px] font-extrabold text-copper">
                       {formatUsd(d.price)}
-                      <span className="font-bold text-walnut/60">
-                        {" "}
-                        · earns {formatUsd(d.perHour[0])}/h
-                      </span>
                     </p>
-                    <p className="font-hand text-[14px] leading-tight text-walnut/60">
-                      Pays itself back in ~{hours(d.price, d.perHour[0])} h of service
-                    </p>
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      <StatChip
+                        icon="⏱"
+                        tone="sage"
+                        title={`Earns ${formatUsd(d.perHour[0])} an hour`}
+                      >
+                        {formatUsd(d.perHour[0])}/h
+                      </StatChip>
+                      <StatChip
+                        icon="↩"
+                        title={`Pays itself back in about ${hours(d.price, d.perHour[0])} hours of service`}
+                      >
+                        ~{hours(d.price, d.perHour[0])} h
+                      </StatChip>
+                    </div>
                     <div className="mt-auto pt-2">
                       <KButton
                         full
@@ -153,11 +173,19 @@ export function MarketSecondFloor({
                 ) : next !== null ? (
                   <>
                     <p className="mt-1 font-ui text-[12.5px] font-extrabold text-walnut-dark">
-                      {formatUsd(d.perHour[lvl - 1]!)}/h → {formatUsd(d.perHour[lvl]!)}/h
+                      ⏱ {formatUsd(d.perHour[lvl - 1]!)}/h → {formatUsd(d.perHour[lvl]!)}/h
                     </p>
-                    <p className="font-hand text-[14px] leading-tight text-walnut/60">
-                      Upgrade pays back in ~{hours(next, nextGain)} h · stores {d.capHours[lvl]} h
-                    </p>
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      <StatChip
+                        icon="↩"
+                        title={`The upgrade pays back in about ${hours(next, nextGain)} hours`}
+                      >
+                        ~{hours(next, nextGain)} h
+                      </StatChip>
+                      <StatChip icon="📦" title={`Stores ${d.capHours[lvl]} hours of takings`}>
+                        {d.capHours[lvl]} h
+                      </StatChip>
+                    </div>
                     <div className="mt-auto pt-2">
                       <KButton
                         full
@@ -185,7 +213,7 @@ export function MarketSecondFloor({
 
       <section aria-label="Floor team">
         <h3 className="mb-2 font-ui text-[12px] font-extrabold uppercase tracking-[0.14em] text-copper">
-          Floor team · hired for good, no wages
+          Floor team · 1-time hire, no wages
         </h3>
         <div className="grid grid-cols-2 gap-3">
           {(["server", "cleaner"] as const).map((role) => {
@@ -206,10 +234,12 @@ export function MarketSecondFloor({
                     {have} / {def.max}
                   </Badge>
                 </div>
-                <p className="mt-1 font-display text-[14.5px] font-black leading-tight text-walnut-dark">
-                  {def.name}
-                </p>
-                <p className="font-ui text-[12px] leading-snug text-walnut/65">{def.blurb}</p>
+                <div className="mt-1 flex items-start gap-1.5">
+                  <p className="min-w-0 flex-1 font-display text-[14.5px] font-black leading-tight text-walnut-dark">
+                    {def.name}
+                  </p>
+                  <InfoTip label={`About the ${def.name}`}>{def.blurb}</InfoTip>
+                </div>
                 <p className="mt-1 font-ui text-[12.5px] font-extrabold text-copper">
                   {formatUsd(def.price)}
                   <span className="font-bold text-walnut/60">

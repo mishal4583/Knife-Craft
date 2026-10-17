@@ -66,7 +66,7 @@ function SettlementBreakdown({
         <div className="my-1 h-px bg-walnut/10" />
         {foodFromStock(settlement) ? (
           // Unified Restaurant: the ingredients came from your own stock, paid in the Market.
-          <p className="text-walnut/60">Ingredients · from your stock (paid in the Market)</p>
+          <p className="text-walnut/60">🥕 Ingredients · from your stock</p>
         ) : (
           <Row label="Ingredient COGS" value={-settlement.finalCOGS} />
         )}
@@ -187,7 +187,7 @@ export function ServiceOrderComplete({
                 (a genuine settlement can also floor at 0, rarely). */}
             {served.isReplay ? (
               <p className="mt-3 font-ui text-[12px] font-extrabold uppercase tracking-[0.16em] text-walnut/50">
-                Replay — no money earned, no campaign economy progress
+                🔁 Replay · no money earned
               </p>
             ) : isBusinessOrder && served.businessPayment ? (
               <div className="mt-3">
@@ -219,7 +219,7 @@ export function ServiceOrderComplete({
             ) : null}
             {isBusinessOrder && served.businessCustomers?.complete ? (
               <p className="mt-1 font-hand text-[16px] leading-snug text-walnut/70">
-                Today's customers are complete. No more customers will arrive today.
+                ✓ Today's customers are complete. 🌙 End the day when ready.
               </p>
             ) : null}
             <div className="mt-5 space-y-2">

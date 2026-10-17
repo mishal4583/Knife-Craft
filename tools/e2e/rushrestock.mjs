@@ -190,7 +190,7 @@ await openBlockedOrder();
 t = await flat(page);
 check(
   "2f with $0.99, Rush Restock ($1.00) explains the shortfall",
-  /Rush Restock costs \$1\.00 — you have \$0\.99/.test(t),
+  /Rush Restock costs \$1\.00 · you have \$0\.99/.test(t),
 );
 const poorBefore = await readSave(page);
 await clickButton(page, /Rush Restock · /);

@@ -55,12 +55,11 @@ export function ReplayBonusSheet({
             Replay Bonus · {formatUsd(amount)}
           </p>
           <p className="mt-1 font-hand text-[16px] leading-snug text-walnut/70">
-            Replays don't pay — but you can watch a short ad to earn a bonus for this one.
+            🔁 Replays don't pay · 🎬 watch a short ad for a bonus
           </p>
           {phase === "REQUESTING_AD" && canClose ? (
             <p className="mt-3 rounded-[12px] bg-walnut/8 px-3 py-2 font-ui text-[12.5px] font-bold text-walnut/80">
-              Still waiting for the ad. You can keep playing — if the ad finishes, your bonus is
-              added automatically.
+              ⏳ Waiting for the ad · keep playing, the bonus adds itself
             </p>
           ) : null}
           {phase === "FAILED" && failure ? (
@@ -97,13 +96,13 @@ export function ReplayBonusSheet({
 function failureMessage(failure: ReplayBonusFailure): string {
   switch (failure) {
     case "notRewarded":
-      return "The ad didn't finish, so no reward was granted. You can try again.";
+      return "🎬 The ad didn't finish · no bonus · try again";
     case "dailyCapReached":
       return "You've used today's Replay Bonuses. Come back tomorrow!";
     case "alreadyClaimed":
       return "This Replay Bonus was already added to your wallet.";
     case "saveFailed":
-      return "Your bonus couldn't be saved, so no reward was granted. Try again later.";
+      return "💾 Couldn't save the bonus · try again later";
     case "busy":
     case "adUnavailable":
     case "adFailed":

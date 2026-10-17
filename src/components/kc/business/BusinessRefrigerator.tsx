@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { ScreenId } from "../data";
 import type { SaveData } from "@/game/SaveManager";
 import { KButton, Panel, Badge } from "../common/primitives";
+import { InfoTip } from "../common/InfoTip";
 import { Bar, Eyebrow } from "../common/Meters";
 import { cn } from "@/lib/utils";
 import { formatUsd } from "@/game/business/businessCurrency";
@@ -163,11 +164,15 @@ export function BusinessRefrigerator({
         <div className="mt-1">
           <Bar fraction={condition / 100} />
         </div>
-        <p className="mt-1 font-hand text-[14px] leading-snug text-walnut/60">
-          Buying stock wears it (1 point per {DECAY_DIVISOR} units). Below 60 it needs service (
-          {formatUsd(maintenanceCostFor(59) ?? 0)}); below 20 it breaks (
-          {formatUsd(maintenanceCostFor(0) ?? 0)} repair). A worn fridge costs popularity, raises
-          spoilage and fails inspections.
+        <p className="mt-1 flex flex-wrap items-center gap-1.5 font-hand text-[14px] leading-snug text-walnut/60">
+          🔧 &lt;60: {formatUsd(maintenanceCostFor(59) ?? 0)} · 💥 &lt;20:{" "}
+          {formatUsd(maintenanceCostFor(0) ?? 0)}
+          <InfoTip label="How the fridge wears">
+            Buying stock wears it (1 point per {DECAY_DIVISOR} units). Below 60 it needs service (
+            {formatUsd(maintenanceCostFor(59) ?? 0)}); below 20 it breaks (
+            {formatUsd(maintenanceCostFor(0) ?? 0)} repair). A worn fridge costs popularity, raises
+            spoilage and fails inspections.
+          </InfoTip>
         </p>
         {maintenanceStatus !== "OPERATIONAL" ? (
           <KButton full variant="copper" className="mt-3" onClick={handleMaintenance}>
@@ -260,8 +265,7 @@ export function BusinessRefrigerator({
       <Panel className="p-4">
         <Eyebrow>🔪 Knives, boards & sharpening</Eyebrow>
         <p className="mt-1 font-hand text-[15px] leading-snug text-walnut/70">
-          Your knives and boards are shared with the kitchen. Buying and equipping happen in the
-          Market, sharpening at the Market's Blacksmith.
+          🔪 Shared with the kitchen · 🛒 buy in the Market · ⚒️ sharpen at the Blacksmith
         </p>
         <KButton full variant="cream" className="mt-2" onClick={() => go("shop")}>
           Manage in the Market →

@@ -238,7 +238,7 @@ function saveAt(n: number, extra: Partial<SaveData> = {}): SaveData {
   assert(qaLeft.length === 0 && !fs.existsSync(path.resolve(ROOT, "src/game/qaMode.ts")) && !fs.existsSync(path.resolve(ROOT, ".env.local.example")), `G23: QA Mode is fully removed — no level-unlock bypass, no QA badge, no Ingredient Lab${qaLeft.length ? " — still in " + qaLeft.join(", ") : ""}`);
   const model = read("src/game/progression/restaurantProgress.ts");
   const board = kitchen.slice(kitchen.indexOf("export function OrderBoard"));
-  assert(/const campaignComplete = levels\.every\(\(l\) => isCompleted\(l\.id, levelProgress\)\)/.test(board) && /🏆 Campaign Complete/.test(board) && /levels mastered — replay any level or run your restaurant/.test(board) && /nextReward && !campaignComplete/.test(board) && /stageAfter && !campaignComplete/.test(board), "G22: after Level 250 the Order Board shows '🏆 Campaign Complete' instead of early-game Next/Reward hints (unchanged before 250)");
+  assert(/const campaignComplete = levels\.every\(\(l\) => isCompleted\(l\.id, levelProgress\)\)/.test(board) && /🏆 Campaign Complete/.test(board) && /levels mastered · 🔁 replay or 🍽️ run the restaurant/.test(board) && /nextReward && !campaignComplete/.test(board) && /stageAfter && !campaignComplete/.test(board), "G22: after Level 250 the Order Board shows '🏆 Campaign Complete' instead of early-game Next/Reward hints (unchanged before 250)");
   assert(/balance: save\.credits/.test(model) && !/coins?\s*:/.test(model.replace(/reward\.coins/g, "")), "G21: one wallet — the balance is save.credits (cents); no coin/second currency");
 }
 

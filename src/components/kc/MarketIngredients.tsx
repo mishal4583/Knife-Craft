@@ -12,6 +12,7 @@ import { MarketPlanPanel } from "./MarketPlanPanel";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Badge, KButton, Panel } from "./common/primitives";
 import { cn } from "@/lib/utils";
+import { InfoTip } from "./common/InfoTip";
 import type { SaveData } from "@/game/SaveManager";
 import { INGREDIENTS, type IngredientId } from "@/game/definitions";
 import { INGREDIENT_EMOJI } from "@/game/knives/knifeDefinitions";
@@ -55,7 +56,7 @@ function balanceText(cents: number): string {
 }
 
 function fridgeSpaceText(available: number): string {
-  return `You have ${formatQuantity(available)} unit${available === 1 ? "" : "s"} of fridge space left.`;
+  return `❄️ ${formatQuantity(available)} unit${available === 1 ? "" : "s"} free`;
 }
 
 /**
@@ -152,16 +153,16 @@ export function MarketIngredients({
         result.reason === "insufficientFunds"
           ? notEnoughMoneyText(quote.totalCost, save.credits)
           : result.reason === "insufficientStorage"
-            ? `Not enough fridge space. ${fridgeSpaceText(quote.availableStorage)}`
+            ? `Fridge full · ${fridgeSpaceText(quote.availableStorage)}`
             : result.reason === "exceedsShortageLimit"
-              ? `Today's shortage limits a purchase to ${formatStockAmount(id, quote.maxQuantity ?? 0, measure)}.`
+              ? `🚚 Shortage · max ${formatStockAmount(id, quote.maxQuantity ?? 0, measure)}`
               : "That purchase couldn't be made.";
       setMessages((m) => ({ ...m, [id]: text }));
       return;
     }
     const bought = `Bought ${result.quantity} ${marketUnitLabel(id, measure, result.quantity)} ${INGREDIENTS[id].name} · ${formatUsd(result.totalCost)}`;
     setMessages((m) => ({ ...m, [id]: bought }));
-    setNotice(`${bought}. It's in your Business fridge.`);
+    setNotice(`✓ ${bought}`);
   }
 
   const groups = INGREDIENT_GROUPS.filter((g) => group === "all" || g.category === group);
@@ -179,7 +180,14 @@ export function MarketIngredients({
       ) : null}
       <Panel className="p-3">
         <div className="flex items-center justify-between gap-2 font-ui text-[12.5px] font-extrabold text-walnut-dark">
-          <span>❄️ {fridge.name}</span>
+          <span className="flex items-center gap-1.5">
+            ❄️ {fridge.name}
+            <InfoTip label="Where the stock goes">
+              {RESTAURANT_MODE
+                ? "Stock bought here goes into your restaurant fridge; every order you cook uses it."
+                : "Stock bought here goes into your Business fridge for Business orders. Campaign recipes pay for their ingredients automatically as you cook."}
+            </InfoTip>
+          </span>
           <span data-testid="market-fridge">
             {formatQuantity(fridge.used)} / {fridge.capacity} used ·{" "}
             {formatQuantity(fridge.available)} free
@@ -187,9 +195,6 @@ export function MarketIngredients({
         </div>
         {RESTAURANT_MODE ? (
           <>
-            <p className="mt-1 font-hand text-[15px] leading-snug text-walnut/65">
-              Stock bought here goes into your restaurant fridge; every order you cook uses it.
-            </p>
             <div
               className="mt-2 flex flex-wrap items-center justify-between gap-2"
               data-testid="market-supplier"
@@ -205,22 +210,17 @@ export function MarketIngredients({
               ) : null}
             </div>
           </>
-        ) : (
-          <p className="mt-1 font-hand text-[15px] leading-snug text-walnut/65">
-            Stock bought here goes into your Business fridge for Business orders. Campaign recipes
-            pay for their ingredients automatically as you cook.
-          </p>
-        )}
+        ) : null}
         {contractActive && contract ? (
           <p className="mt-1 font-ui text-[12px] font-bold text-walnut/70">
-            📜 {getSupplier(contract.supplierId)?.name ?? "Supplier"} contract: −
-            {Math.round(contract.discount * 100)}% on {contract.minimumOrder}+ of one ingredient
-            {event?.suspendsContractDiscount ? " (paused today)" : ""}.
+            📜 {getSupplier(contract.supplierId)?.name ?? "Supplier"}: −
+            {Math.round(contract.discount * 100)}% on {contract.minimumOrder}+
+            {event?.suspendsContractDiscount ? " · paused today" : ""}
           </p>
         ) : null}
         {prepCook ? (
           <p className="font-ui text-[12px] font-bold text-walnut/70">
-            🧑‍🍳 Your Prep Cook's discount is included in every price.
+            🧑‍🍳 Prep Cook discount included
           </p>
         ) : null}
       </Panel>
@@ -319,7 +319,7 @@ export function MarketIngredients({
                         unit={marketUnitLabel(id, measure, needs[id]!.buy)}
                         detail={
                           needs[id]!.when === "guests"
-                            ? "Optional · so every menu guest can be served"
+                            ? "Optional · for menu guests"
                             : `Need ${formatStockAmount(id, needs[id]!.need, measure)}, have ${formatStockAmount(id, needs[id]!.have, measure)} · ${needs[id]!.why}`
                         }
                       />
@@ -348,8 +348,8 @@ export function MarketIngredients({
                       </p>
                     ) : null}
                     <p className="font-hand text-[14px] leading-tight text-walnut/60">
-                      Keeps {shelfLifeForIngredient(id)} days
-                      {dishes > 0 ? ` · ${dishes} menu dish${dishes === 1 ? "" : "es"}` : ""}
+                      🕒 {shelfLifeForIngredient(id)} days
+                      {dishes > 0 ? ` · 🍽️ ${dishes} dish${dishes === 1 ? "" : "es"}` : ""}
                     </p>
                     <div className="mt-2 flex items-center justify-between">
                       <button
@@ -418,7 +418,7 @@ export function MarketIngredients({
                         : quote.verdict === "insufficientFunds"
                           ? notEnoughMoneyText(quote.totalCost, save.credits)
                           : quote.verdict === "insufficientStorage"
-                            ? `Not enough fridge space. ${fridgeSpaceText(quote.availableStorage)}`
+                            ? `Fridge full · ${fridgeSpaceText(quote.availableStorage)}`
                             : quantity >= LARGE_PURCHASE_QUANTITY
                               ? `You'll have ${balanceText(quote.remainingCredits)} remaining`
                               : `${balanceText(save.credits)} → ${balanceText(quote.remainingCredits)}`}

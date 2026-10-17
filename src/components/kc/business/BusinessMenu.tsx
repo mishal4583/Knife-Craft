@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { SaveData } from "@/game/SaveManager";
 import { Panel, Badge } from "../common/primitives";
+import { InfoTip, StatChip } from "../common/InfoTip";
 import { Eyebrow } from "../common/Meters";
 import { cn } from "@/lib/utils";
 import { formatUsd } from "@/game/business/businessCurrency";
@@ -137,22 +138,26 @@ export function BusinessMenu({
             className="mt-1 font-hand text-[15px] leading-snug text-walnut/70"
             data-testid="menu-opens-at"
           >
-            The menu opens at Level {restaurantSystem("menu").firstLevel}, once you know the basic
-            cuts: customers order from it, and every order is cooked from your stock.
+            🔒 The menu opens at Level {restaurantSystem("menu").firstLevel}
           </p>
         ) : null}
         {restaurant && !chooses && pool.length > 0 ? (
           <p className="mt-1 font-hand text-[15px] leading-snug text-walnut/70">
-            Every dish you unlock goes straight on the menu. From Level {MENU_CHOICE_LEVEL} you
-            choose which dishes customers can order.
+            ✨ New dishes go straight on · 🎛️ you choose from Level {MENU_CHOICE_LEVEL}
           </p>
         ) : null}
-        <p className="mt-1 font-hand text-[15px] leading-snug text-walnut/70">
-          Customers only order dishes that are on. They pay your price × today's popularity
-          modifier. Your menu needs {activeIngredientIds.length} ingredient
-          {activeIngredientIds.length === 1 ? "" : "s"} in stock; the fridge holds {fridgeCapacity}{" "}
-          units — a smaller menu means less stock to keep fresh.
-        </p>
+        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+          <StatChip icon="🥕" title="Ingredients your menu needs in stock">
+            {activeIngredientIds.length} ingredient{activeIngredientIds.length === 1 ? "" : "s"}
+          </StatChip>
+          <StatChip icon="❄️" title="Fridge capacity">
+            {fridgeCapacity} units
+          </StatChip>
+          <InfoTip label="How the menu works">
+            Customers only order dishes that are on. They pay your price × today's popularity
+            modifier. A smaller menu means less stock to keep fresh.
+          </InfoTip>
+        </div>
       </Panel>
 
       {raiseTip !== null && popularity ? (
@@ -161,9 +166,8 @@ export function BusinessMenu({
             ⭐ Tip: your restaurant is popular ({popularity.popularity}/100)
           </p>
           <p className="mt-0.5 font-ui text-[12.5px] leading-snug text-walnut/70">
-            Guests pay × {popularity.multiplier.toFixed(2)} your price today. A good time to raise
-            your menu prices a little — about +{raiseTip}% over the suggested price still feels
-            fair.
+            💵 Guests pay × {popularity.multiplier.toFixed(2)} today · 💡 raise your menu prices
+            about +{raiseTip}%
           </p>
         </Panel>
       ) : null}

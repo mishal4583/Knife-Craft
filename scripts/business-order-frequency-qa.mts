@@ -278,9 +278,9 @@ for (const score of [0, 50, 100]) {
   const service = read("src/components/kc/business/BusinessService.tsx");
   const dash = read("src/components/kc/business/BusinessDashboard.tsx");
   const card = read("src/components/kc/game/ServiceOrderComplete.tsx");
-  assert(/Customers Today/.test(service) && /served/.test(service) && /remaining/.test(service) && /Today's customers are complete\./.test(service) && /No more customers will arrive today/.test(service), "U: the Service screen shows Customers Today (served / target, remaining) and the completion message");
+  assert(/Customers Today/.test(service) && /served/.test(service) && /remaining/.test(service) && /Today's customers are complete\./.test(service) && /End the day on the Dashboard/.test(service), "U: the Service screen shows Customers Today (served / target, remaining) and the completion message");
   assert(/Customers Today/.test(dash) && /Today's target/.test(dash) && /BASE_CUSTOMERS_PER_DAY/.test(dash) && /Today's customers are complete\./.test(dash), "U2: the Dashboard shows today's target and explains it (popularity × multiplier of the base)");
-  assert(/businessCustomers\?\.complete \? null/.test(card) && /No more customers will arrive today/.test(card), "U3: the served card hides Next Customer once today's customers are complete");
+  assert(/businessCustomers\?\.complete \? null/.test(card) && /End the day when ready/.test(card), "U3: the served card hides Next Customer once today's customers are complete");
 }
 
 console.log(failures === 0 ? "\nBUSINESS ORDER FREQUENCY QA: ALL PASS" : `\nBUSINESS ORDER FREQUENCY QA: ${failures} FAILURE(S)`);

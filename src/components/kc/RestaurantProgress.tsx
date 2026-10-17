@@ -2,6 +2,7 @@ import { collectableTotal } from "@/game/progression/achievements";
 import type { ReactNode } from "react";
 import type { ScreenId } from "./data";
 import { Badge, Coin, Divider, Panel, ScreenHeader, Stars } from "./common/primitives";
+import { InfoTip } from "./common/InfoTip";
 import { Bar, Eyebrow, Row } from "./common/Meters";
 import { BottomNav } from "./Kitchen";
 import { KnifeGlyph } from "./Workshop";
@@ -142,9 +143,8 @@ function NumbersCard({ save }: { save: SaveData }) {
           {sup.brokenTotal > 0 ? ` · ${sup.brokenTotal} pieces broken` : ""}
         </p>
         <p className="mt-1 font-hand text-[15px] leading-snug text-walnut/70">
-          Wash up with soap and keep the cleaning liquid in: {SPOTLESS_QUALITY_STREAK} spotless
-          services in a row add {SPOTLESS_QUALITY_PCT * 100}% to every dish's quality, and the
-          inspector notices.
+          ✨ {SPOTLESS_QUALITY_STREAK} spotless in a row → +{SPOTLESS_QUALITY_PCT * 100}% dish
+          quality · 🕵️ the inspector notices
         </p>
       </div>
     </Panel>
@@ -223,8 +223,11 @@ function StandingCard({ save }: { save: SaveData }) {
               {ENDLESS_STARS_PER_DAY}
             </p>
             <p className="mt-1 font-hand text-[14px] leading-snug text-walnut/65">
-              Up to {ENDLESS_STARS_PER_DAY} a day: profitable, busy (no guest turned away) and clean
-              (inspection passed). Stars show your standing — they are not money.
+              ⭐ 💵 profitable · 👥 busy · ✨ clean{" "}
+              <InfoTip label="How stars are earned">
+                Up to {ENDLESS_STARS_PER_DAY} a day: profitable, busy (no guest turned away) and
+                clean (inspection passed). Stars show your standing — they are not money.
+              </InfoTip>
             </p>
           </div>
         ) : (
@@ -314,7 +317,7 @@ function NextGoal({ p }: { p: Progress }) {
           </p>
           {p.familyLegacy.waived ? (
             <p className="font-hand text-[16px] leading-snug text-walnut/70">
-              You finished the campaign before the Final Reward existed, so it wasn't paid.
+              Finished the campaign before the Final Reward existed · not paid
             </p>
           ) : (
             <p className="font-display text-[26px] font-black leading-tight text-olive">
@@ -325,8 +328,7 @@ function NextGoal({ p }: { p: Progress }) {
             Your restaurant is yours.
           </p>
           <p className="mt-1 font-hand text-[16px] text-walnut/70">
-            All {p.level.total} levels mastered. Endless Service is now unlocked — ongoing earnings
-            every day — alongside Business Mode and Today's Special.
+            All {p.level.total} levels mastered · ♾️ Endless Service unlocked
           </p>
         </>
       )}
@@ -353,9 +355,12 @@ function PopularityCard({ p }: { p: Progress }) {
       <p className="mt-2 font-display text-[14.5px] font-black leading-snug text-walnut-dark">
         {p.popularityMood}
       </p>
-      <p className="mt-1 font-hand text-[15px] leading-snug text-walnut/70">
-        Popularity is your restaurant's Business Mode score — it grows with good service there.
-        Campaign levels grow your rank instead.
+      <p className="mt-1 flex items-center gap-1.5 font-hand text-[15px] leading-snug text-walnut/70">
+        ⭐ Grows with good service
+        <InfoTip label="About popularity">
+          Popularity is your restaurant's Business Mode score — it grows with good service there.
+          Campaign levels grow your rank instead.
+        </InfoTip>
       </p>
     </Panel>
   );
@@ -503,15 +508,18 @@ function Earnings({ p }: { p: Progress }) {
         Level rewards at today's rates, cumulative by level
       </p>
       <EarningsChart p={p} />
-      <p className="mt-1 font-hand text-[14px] leading-snug text-walnut/60">
-        What each completed level pays at today's reward rates — the reward curve, not a record of
-        past payouts (those are "Level rewards earned" above).
-        {p.money.businessCoverage === "partial"
-          ? " Business revenue counts from your earliest saved record."
-          : ""}
-        {p.historySince === "migration"
-          ? " Your totals from before the economy update were reconstructed from your progress: levels paid their full reward back then, and kitchen stages you received free count as $0."
-          : ""}
+      <p className="mt-1 flex items-center gap-1.5 font-hand text-[14px] leading-snug text-walnut/60">
+        📈 The reward curve
+        <InfoTip label="About this chart">
+          What each completed level pays at today's reward rates — the reward curve, not a record
+          of past payouts (those are "Level rewards earned" above).
+          {p.money.businessCoverage === "partial"
+            ? " Business revenue counts from your earliest saved record."
+            : ""}
+          {p.historySince === "migration"
+            ? " Your totals from before the economy update were reconstructed from your progress: levels paid their full reward back then, and kitchen stages you received free count as $0."
+            : ""}
+        </InfoTip>
       </p>
     </Panel>
   );
@@ -601,9 +609,12 @@ function Benchmark({ p }: { p: Progress }) {
   return (
     <Panel className="p-4">
       <Eyebrow>🏆 Local restaurant rankings — city benchmark</Eyebrow>
-      <p className="mt-1 font-hand text-[15px] leading-snug text-walnut/70">
-        See how your restaurant compares with the city's benchmark restaurants. These are fictional
-        restaurants in KnifeCraft's world, not other players.
+      <p className="mt-1 flex items-center gap-1.5 font-hand text-[15px] leading-snug text-walnut/70">
+        🏙️ You vs the city
+        <InfoTip label="About the rankings">
+          See how your restaurant compares with the city's benchmark restaurants. These are
+          fictional restaurants in KnifeCraft's world, not other players.
+        </InfoTip>
       </p>
       <div className="mt-2 overflow-hidden rounded-[14px] border border-walnut/10">
         {p.benchmark.map((r) => (
@@ -754,7 +765,7 @@ function Milestones({ p }: { p: Progress }) {
     <Panel className="p-4">
       <Eyebrow>🎯 Milestones</Eyebrow>
       <p className="mt-0.5 font-hand text-[14px] leading-snug text-walnut/60">
-        Each milestone pays its reward once, the moment you reach it.
+        💰 Each pays once · collect in Achievements
       </p>
       <ul className="mt-2 space-y-1.5">
         {p.milestones.map((m) => (

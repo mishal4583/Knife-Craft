@@ -103,14 +103,10 @@ check(
   /Dinner Rush/.test(ov ?? "") &&
     /Today's Special: \S/.test(ov ?? "") &&
     !/Large Group/.test(ov ?? "") &&
-    /Serve it today: at closing you earn 15% of today's restaurant revenue, up to \$50(\.00)? \(once a day\)/.test(
-      svc ?? "",
-    ) &&
+    /⭐ Serve it → 15% of today's revenue · max \$50(\.00)? · once a day/.test(svc ?? "") &&
     /A busy evening/.test(svc ?? "") &&
     !/NaN/.test(`${ov} ${svc}`) &&
-    /Today's expected customers: \d+ — set by your popularity, menu and today's events, up to what your team can serve\./.test(
-      svcCustomers,
-    ) &&
+    /👥 Today: \d+ expected · \d+ left/.test(svcCustomers) &&
     !/brings \d+ customers today/.test(svcCustomers),
   { ov, svc },
 );
@@ -125,14 +121,12 @@ check(
 );
 check(
   '1c Overview day card: today\'s expected customers (the real target, as on Service), no classic "8 base customers" formula',
-  /Today's expected customers: \d+ — set by your popularity, menu and today's events, up to what your team can serve\. \d+ remaining\./.test(
-    opsText,
-  ) &&
+  /👥 Today: \d+ expected · \d+ left/.test(opsText) &&
     !/base customers/.test(opsText) &&
-    (opsText.match(/Today's expected customers: (\d+)/)?.[1] ?? "") ===
+    (opsText.match(/👥 Today: (\d+) expected/)?.[1] ?? "") ===
       (opsText.match(/\d+ \/ (\d+) served/)?.[1] ?? "x"),
   {
-    line: opsText.match(/Today's expected customers: \d+ — [^.]*\. \d+ remaining\./)?.[0],
+    line: opsText.match(/👥 Today: \d+ expected · \d+ left/)?.[0],
     served: opsText.match(/\d+ \/ \d+ served/)?.[0],
   },
 );

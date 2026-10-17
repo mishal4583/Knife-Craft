@@ -155,7 +155,7 @@ export function BusinessCleanliness({
           <div>
             <p className="font-display text-[16px] font-black text-walnut-dark">Practice room cleaning</p>
             <p className="font-ui text-[12px] leading-snug text-walnut/70">
-              Each room is one complete session with its own messes and tools. Practice won’t change supplies or cleanliness.
+              🏠 One room per session · 🆓 practice uses nothing
             </p>
           </div>
         </div>
@@ -202,8 +202,8 @@ export function BusinessCleanliness({
           </p>
           <p className="font-ui text-[12px] text-walnut/65">
             {closingDue
-              ? "Wash customer dishes, then clean the chef’s tools before tomorrow."
-              : "Wash customer tableware here. The chef-tool clean-up opens at closing."}
+              ? "🍽️ Dishes, then 🔪 chef’s tools"
+              : "🍽️ Wash tableware · 🔪 tools at closing"}
           </p>
         </div>
         <KButton size="sm" variant="wood" className="min-h-12 shrink-0 px-3" onClick={() => setDishwashingMode("service")}>
@@ -671,8 +671,8 @@ function HistoryCard({ save, level }: { save: SaveData; level: number }) {
         </span>
         <p className="font-ui text-[12.5px] font-bold leading-snug">
           {level >= inspections
-            ? "The inspector checks every closing: leave tasks undone and it warns — repeated warnings are fined. A Cleaner on staff passes."
-            : `Inspections start at Level ${inspections}. Keep every area clean.`}
+            ? "🕵️ Checked every closing · ⚠️ undone = warning · 💸 repeats fined · 🧑‍🔧 Cleaner passes"
+            : `🕵️ Inspections from Level ${inspections}`}
         </p>
       </div>
     </Panel>
@@ -812,22 +812,22 @@ const INTRO_STEPS: readonly { icon: string; title: string; line: string }[] = [
   {
     icon: "🏠",
     title: "Three areas",
-    line: "Kitchen, Dining Area and Restroom. Each service leaves cleaning in all three.",
+    line: "🍳 Kitchen · 🍽️ Dining · 🚻 Restroom — every service leaves some mess.",
   },
   {
     icon: "🧽",
     title: "Clean the tasks",
-    line: "Tap Clean: each task uses its real supplies once. Spotless before the next service builds your streak.",
+    line: "Tap Clean · uses supplies once · ✨ spotless builds your streak.",
   },
   {
     icon: "🛒",
     title: "Keep supplies in",
-    line: "Floor cleaner, sanitizer, restroom refills and liners come from the Market — tap + to restock.",
+    line: "🛒 Cleaner, sanitizer, refills & liners from the Market · tap + to restock.",
   },
   {
     icon: "🧑‍🔧",
     title: "Your Cleaner",
-    line: "Hire one and they do the routine tasks after each service. 3 spotless services = +1% dish quality.",
+    line: "🧑‍🔧 Does routine tasks after each service · ✨×3 = +1% dish quality.",
   },
 ];
 

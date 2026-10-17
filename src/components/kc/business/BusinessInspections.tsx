@@ -1,5 +1,6 @@
 import type { SaveData } from "@/game/SaveManager";
 import { Panel, Badge } from "../common/primitives";
+import { InfoTip } from "../common/InfoTip";
 import { Eyebrow } from "../common/Meters";
 import { cn } from "@/lib/utils";
 import { inspectBusiness, type InspectionCategory } from "@/game/business/businessInspection";
@@ -101,15 +102,15 @@ export function BusinessInspections({ save }: { save: SaveData }) {
           )}
         >
           {atClose.inspectionFine.fineAmount > 0
-            ? `Fine ${formatUsd(atClose.inspectionFine.fineAmount)}${atClose.inspectionFine.finePaid === 0 ? " — more than your cash after pay, so it can't be collected (never debt)" : ""}`
+            ? `💸 Fine ${formatUsd(atClose.inspectionFine.fineAmount)}${atClose.inspectionFine.finePaid === 0 ? " · not collected (no debt)" : ""}`
             : "No fine"}
         </p>
         <p className="mt-0.5 font-hand text-[14px] leading-snug text-walnut/60">
-          It runs after tonight's spoilage and pay. Last inspection: {lastResult ?? "none yet"}.
+          🕵️ Last: {lastResult ?? "none yet"}
           {atClose.inspectionReport.overall === "WARNING"
             ? lastResult === "WARNING" || lastResult === "FAIL"
-              ? " A second non-passing day in a row is fined."
-              : " A first warning isn't fined — a second one in a row is."
+              ? " · ⚠️ 2nd in a row → fined"
+              : " · ⚠️ 1st warning is free"
             : ""}
         </p>
       </div>
@@ -134,11 +135,14 @@ export function BusinessInspections({ save }: { save: SaveData }) {
           </p>
         </div>
       </div>
-      <p className="mt-2 font-hand text-[13px] leading-snug text-walnut/50">
-        Warnings come from stock near its shelf life, a fridge below 60 condition or 75%+ full, 15+
-        units spoiling in a day without a Cleaner, or pay you can't cover. Expired stock, a broken
-        fridge, a 95%+ full fridge or 50+ units spoiling is a fail. Fines are paid in full or not at
-        all — never debt.
+      <p className="mt-2 flex items-center gap-1.5 font-hand text-[14px] leading-snug text-walnut/55">
+        What the inspector checks
+        <InfoTip label="What the inspector checks">
+          Warnings come from stock near its shelf life, a fridge below 60 condition or 75%+ full,
+          15+ units spoiling in a day without a Cleaner, or pay you can't cover. Expired stock, a
+          broken fridge, a 95%+ full fridge or 50+ units spoiling is a fail. The check runs after
+          tonight's spoilage and pay. Fines are paid in full or not at all — never debt.
+        </InfoTip>
       </p>
     </Panel>
   );

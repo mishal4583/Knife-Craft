@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type { SaveData } from "@/game/SaveManager";
 import { Panel } from "../common/primitives";
+import { InfoTip } from "../common/InfoTip";
 import { Eyebrow } from "../common/Meters";
 import { INGREDIENTS, type IngredientId } from "@/game/definitions";
 import { INGREDIENT_EMOJI } from "@/game/knives/knifeDefinitions";
@@ -112,9 +113,7 @@ export function OperationsAnalytics({ save }: { save: SaveData }) {
             </p>
           </>
         ) : (
-          <p className="mt-1 font-hand text-[14px] text-walnut/60">
-            Nothing served yet — serve Business orders to see your best sellers.
-          </p>
+          <p className="mt-1 font-hand text-[14px] text-walnut/60">🍽️ Nothing served yet</p>
         )}
       </Panel>
 
@@ -181,9 +180,7 @@ export function OperationsAnalytics({ save }: { save: SaveData }) {
             </p>
           </>
         ) : (
-          <p className="mt-1 font-hand text-[14px] text-walnut/60">
-            Nothing served yet — serve Business orders to see what your kitchen uses most.
-          </p>
+          <p className="mt-1 font-hand text-[14px] text-walnut/60">🍽️ Nothing served yet</p>
         )}
       </Panel>
     </>
@@ -229,10 +226,13 @@ function SupplyPurchasing({ save }: { save: SaveData }) {
           </div>
         ))}
       </div>
-      <p className="mt-1 font-hand text-[14px] leading-snug text-walnut/60">
-        Served orders have used {packaging.unitsUsed.toLocaleString("en-US")} packaging units (
-        {formatUsd(packaging.usedCost)} of cost, counted in each order's COGS). Saved vs retail is a
-        wholesale discount, not cash.
+      <p className="mt-1 flex items-center gap-1.5 font-hand text-[14px] leading-snug text-walnut/60">
+        🥡 {packaging.unitsUsed.toLocaleString("en-US")} packaging used ·{" "}
+        {formatUsd(packaging.usedCost)}
+        <InfoTip label="About packaging and savings">
+          Packaging cost is counted in each order's COGS. Saved vs retail is a wholesale discount,
+          not cash.
+        </InfoTip>
       </p>
     </Panel>
   );

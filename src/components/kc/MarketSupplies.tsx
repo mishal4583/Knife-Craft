@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { marketNeeds, needLabel, needsFirst, type MarketNeed } from "@/game/restaurant/marketNeeds";
 import { Badge, KButton, Panel } from "./common/primitives";
 import { cn } from "@/lib/utils";
+import { InfoTip, StatChip } from "./common/InfoTip";
 import type { SaveData } from "@/game/SaveManager";
 import { formatUsd } from "@/game/money";
 import { notEnoughMoneyText } from "@/game/economy/wallet";
@@ -100,8 +101,8 @@ export function MarketSupplies({
     }
     setNotice(
       bought === neededNow.length
-        ? `Bought everything needed (${bought} item${bought === 1 ? "" : "s"}) · ${formatUsd(spent)}.`
-        : `Bought ${bought} of ${neededNow.length} — not enough money for the rest.`,
+        ? `✓ Bought all ${bought} · ${formatUsd(spent)}`
+        : `✓ Bought ${bought}/${neededNow.length} · 💸 not enough for the rest`,
     );
   }
 
@@ -137,30 +138,62 @@ export function MarketSupplies({
     }
     const bought = `Bought ${result.units} ${unitLabel(item, result.units)} · ${formatUsd(result.totalCost)}`;
     setMessages((m) => ({ ...m, [id]: bought }));
-    setNotice(`${item.name}: ${bought}. It's in Inventory → Supplies.`);
+    setNotice(`✓ ${item.name}: ${bought}`);
   }
 
   return (
     <div className="space-y-3" data-testid={`market-supplies-${section}`}>
       <Panel className="p-3">
-        <p className="font-ui text-[12px] font-extrabold uppercase tracking-[0.12em] text-copper">
-          {meta.emoji} {meta.kicker}
-        </p>
-        <p className="mt-1 font-hand text-[15px] leading-snug text-walnut/65">
-          {RESTAURANT_MODE
+        <div className="flex items-center justify-between gap-2">
+          <p className="font-ui text-[12px] font-extrabold uppercase tracking-[0.12em] text-copper">
+            {meta.emoji} {meta.kicker}
+          </p>
+          <InfoTip label={`About ${meta.short}`}>
+            {RESTAURANT_MODE
+              ? section === "culinary"
+                ? "Your dishes need these tools — the Pre-Service Check asks for each one when a dish first does. They last; you buy them once."
+                : section === "service"
+                  ? "Your dining room's tableware. It lasts and is washed after every service."
+                  : section === "cleaning"
+                    ? "Your Cleanliness supplies: chemicals, restroom refills and liners are used up by each cleaning task; the mop, broom and toilet brush last."
+                    : "Takeaway packaging, napkins, soap and cleaning liquid — used up service by service."
+              : section === "packaging"
+                ? "Each Business order goes out in one container and one carry bag while you have them."
+                : "Restaurant equipment for your Business kitchen and dining room. It lasts; it's never used up."}{" "}
+            Prices are restaurant-supply prices ({SUPPLY_PRICES_RETRIEVED}), less your wholesale
+            discount.
+          </InfoTip>
+        </div>
+        <div className="mt-1.5 flex flex-wrap gap-1.5">
+          {(RESTAURANT_MODE
             ? section === "culinary"
-              ? "Your dishes need these tools — the Pre-Service Check asks for each one when a dish first does. They last; you buy them once."
+              ? [
+                  ["🔁", "Buy once"],
+                  ["📋", "Asked when a dish needs it"],
+                ]
               : section === "service"
-                ? "Your dining room's tableware. It lasts and is washed after every service."
+                ? [
+                    ["🔁", "Lasts"],
+                    ["🫧", "Washed each service"],
+                  ]
                 : section === "cleaning"
-                  ? "Your Cleanliness supplies: chemicals, restroom refills and liners are used up by each cleaning task; the mop, broom and toilet brush last."
-                  : "Takeaway packaging, napkins, soap and cleaning liquid — used up service by service."
+                  ? [
+                      ["🧴", "Used per task"],
+                      ["🧹", "Tools last"],
+                    ]
+                  : [["📦", "Used each service"]]
             : section === "packaging"
-              ? "Each Business order goes out in one container and one carry bag while you have them."
-              : "Restaurant equipment for your Business kitchen and dining room. It lasts; it's never used up."}{" "}
-          Prices are restaurant-supply prices ({SUPPLY_PRICES_RETRIEVED}), less your wholesale
-          discount.
-        </p>
+              ? [["📦", "1 per order"]]
+              : [["🔁", "Lasts"]]
+          ).map(([icon, text]) => (
+            <StatChip key={text} icon={icon}>
+              {text}
+            </StatChip>
+          ))}
+          <StatChip icon="🏷️" tone="sage">
+            Wholesale
+          </StatChip>
+        </div>
       </Panel>
 
       {neededNow.length > 0 ? (
@@ -169,7 +202,7 @@ export function MarketSupplies({
             📌 {neededNow.length} item{neededNow.length === 1 ? "" : "s"} needed for today
           </p>
           <p className="mt-0.5 font-ui text-[12px] leading-snug text-walnut/70">
-            They're first below, with the amount to buy already set.
+            ⬇️ Listed first · amount preset
           </p>
           <div className="mt-2" data-testid={`market-buy-needed-${section}`}>
             <KButton

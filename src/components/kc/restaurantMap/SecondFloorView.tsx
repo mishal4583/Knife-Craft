@@ -148,16 +148,16 @@ export function SecondFloorView({
           ? `Collected ${formatUsd(r.amount)}`
           : action.kind === "buy"
             ? isStaffed(secondFloorOf(r.save), action.id)
-              ? "Station bought — it is working now"
-              : "Station bought — hire a Floor Server to run it"
+              ? "✓ Station bought · working now"
+              : "✓ Station bought · hire a Floor Server"
             : action.kind === "hire"
-              ? `${FLOOR_STAFF[action.role].name} hired — on the team for good`
-              : "Upgraded — it earns more now",
+              ? `✓ ${FLOOR_STAFF[action.role].name} hired`
+              : "⬆ Upgraded · earns more",
       );
     } else if (r.reason === "insufficientFunds") {
       setNote("Not enough money yet");
     } else if (r.reason === "noStations") {
-      setNote("Buy a station first — the team runs the machines");
+      setNote("🏬 Buy a station first");
     } else if (r.reason === "fullTeam") {
       setNote("The floor team is full");
     } else if (r.reason === "nothing") {
@@ -255,9 +255,8 @@ export function SecondFloorView({
           })}
           {ownedCount > 0 && cleanFactor(floor) < 1 ? (
             <p className="mt-2 font-ui text-[12px] text-copper">
-              Tables wait to be cleared — the floor keeps only{" "}
-              {Math.round(cleanFactor(floor) * 100)}% of its takings until enough cleaners are
-              hired.
+              🧹 Messy tables · keeps {Math.round(cleanFactor(floor) * 100)}% of takings · hire a
+              cleaner
             </p>
           ) : null}
         </>
@@ -268,9 +267,9 @@ export function SecondFloorView({
         <p className="font-ui text-[13px] leading-snug text-walnut/75">
           {ownedCount === 0
             ? playerLevel < STATIONS_OPEN_AT
-              ? `Every station goes on sale at Level ${STATIONS_OPEN_AT}. Have a look around until then.`
-              : "The tables wait for their first station. Buy one to bring guests upstairs."
-            : `Guests eat what the machines make — ${formatUsd(perHour)} an hour while you cook downstairs.`}
+              ? `🔒 Stations on sale at Level ${STATIONS_OPEN_AT} · look around`
+              : "🏬 Buy a station to bring guests upstairs"
+            : `🍔 Guests eat what the machines make · ${formatUsd(perHour)}/h`}
         </p>
       );
     }
@@ -312,12 +311,12 @@ export function SecondFloorView({
           <p className="mt-1 font-ui text-[12px] text-walnut/65">
             Made so far: {formatUsd(here)}
             {here >= Math.floor(cap * cleanFactor(floor))
-              ? " — full, collect it at the Pickup Counter"
+              ? " · full, collect at the Pickup Counter"
               : ""}
           </p>
         ) : (
           <p className="mt-1 font-ui text-[12.5px] font-extrabold text-copper">
-            Needs a Floor Server — hire one at the Pickup Counter.
+            🧑‍🍳 Needs a Floor Server · Pickup Counter
           </p>
         )}
         <div className="mt-3">

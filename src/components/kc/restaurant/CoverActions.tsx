@@ -2,6 +2,7 @@ import { useState } from "react";
 import { KButton } from "../common/primitives";
 import { formatUsd } from "@/game/money";
 import type { CoverOffer } from "@/game/restaurant/serviceCover";
+import { InfoTip } from "@/components/kc/common/InfoTip";
 
 /** What App answers when the player asked for an ad (App.coverServiceWithAd). */
 export type CoverAdOutcome =
@@ -46,10 +47,10 @@ export function CoverActions({
         setAdFailed(true);
         setMessage(
           outcome.reason === "notRewarded"
-            ? "The ad didn't finish, so nothing arrived. Watch it again, or take it on supplier credit."
+            ? "🎬 The ad didn't finish · nothing arrived"
             : outcome.reason === "nothingToCover"
               ? null
-              : "No ad right now — take it on supplier credit instead.",
+              : "🎬 No ad right now · use 💳 supplier credit",
         );
       }
     } finally {
@@ -67,7 +68,7 @@ export function CoverActions({
           disabled={busy}
           onClick={() => void watch()}
         >
-          {busy ? "Loading ad…" : `🎬 Watch an ad · get the missing ${what} free`}
+          {busy ? "Loading ad…" : `🎬 Watch an ad · ${what} free`}
         </KButton>
       ) : null}
       {showCredit ? (
@@ -82,11 +83,14 @@ export function CoverActions({
             💳 Supplier credit · {formatUsd(offer.creditCost)}
           </KButton>
           <p
-            className="font-ui text-[12.5px] leading-snug text-walnut/70"
+            className="flex items-center gap-1.5 font-ui text-[12.5px] leading-snug text-walnut/70"
             data-testid={`psc-credit-note-${offer.part}`}
           >
-            The supplier delivers now; {formatUsd(offer.creditCost)} is paid back automatically from
-            your next earnings.
+            🚚 Delivered now · ↩ repaid from next earnings
+            <InfoTip label="About supplier credit">
+              The supplier delivers now; {formatUsd(offer.creditCost)} is paid back automatically
+              from your next earnings.
+            </InfoTip>
           </p>
         </>
       ) : null}

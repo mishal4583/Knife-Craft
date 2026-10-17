@@ -203,8 +203,7 @@ export function BusinessSuppliers({
         </Panel>
       ) : (
         <p className="font-hand text-[16px] leading-snug text-walnut/65">
-          Sign with one supplier for a standing discount on ingredients — in exchange for a minimum
-          order size and a cost to walk away early.
+          📜 One contract · 🏷️ ingredient discount · 📦 minimum order · 💸 fee to cancel
         </p>
       )}
 
@@ -276,8 +275,7 @@ export function BusinessSuppliers({
               </p>
               {terms.minimumOrder > freeStorage ? (
                 <p className="mt-1 font-hand text-[14px] leading-snug text-copper">
-                  A {terms.minimumOrder}-unit order needs that much free fridge space — you have{" "}
-                  {formatQuantity(freeStorage)}.
+                  ❄️ Needs {terms.minimumOrder} free · you have {formatQuantity(freeStorage)}
                 </p>
               ) : null}
               {!active ? (

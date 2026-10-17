@@ -11,6 +11,7 @@ import type { SaveData } from "@/game/SaveManager";
 import { LAST_CAMPAIGN_LEVEL } from "@/game/restaurant/restaurantProgression";
 import type { ServiceSession } from "@/game/service/ServiceManager";
 import { KButton, Panel, ScreenHeader, Divider, Stars } from "../common/primitives";
+import { InfoTip, Points } from "../common/InfoTip";
 import {
   Bar,
   Eyebrow,
@@ -365,8 +366,8 @@ export function BusinessDashboard({
 
         <p className="px-8 pb-2 pt-5 text-center font-hand text-[15px] text-walnut/45">
           {RESTAURANT_MODE
-            ? "One restaurant, one wallet: every level you cook is a service here."
-            : "Business runs on its own calendar and shares your one wallet with the kitchen."}
+            ? "🍽️ One restaurant · 💵 one wallet"
+            : "📅 Own calendar · 💵 one wallet with the kitchen"}
         </p>
       </div>
       <BottomNav active="business" go={go} />
@@ -684,16 +685,18 @@ function PerformanceCard({ today, last }: { today: DailyPnL; last: DailyPnL | nu
   ];
   return (
     <Panel className="p-4">
-      <Eyebrow>📈 Business performance</Eyebrow>
+      <div className="flex items-center justify-between gap-2">
+        <Eyebrow>📈 Business performance</Eyebrow>
+        <InfoTip label="About this chart">
+          {last
+            ? "Your last completed day next to today (today includes tonight's staff pay). The game keeps your last day's results, not a longer history."
+            : "Today so far. After your first End Business Day, that day appears here next to today."}
+        </InfoTip>
+      </div>
       <div className="mt-2">
         <MoneyBars groups={groups} />
       </div>
       <MoneyLegend />
-      <p className="mt-2 font-hand text-[14px] leading-snug text-walnut/60">
-        {last
-          ? "Your last completed day next to today (today includes tonight's staff pay). The game keeps your last day's results, not a longer history."
-          : "Today so far. After your first End Business Day, that day appears here next to today."}
-      </p>
     </Panel>
   );
 }
@@ -800,9 +803,7 @@ function MoneyBreakdown({ pnl }: { pnl: DailyPnL }) {
           <StackedBar segments={segments} />
         </div>
       ) : (
-        <p className="mt-1.5 font-hand text-[15px] text-walnut/60">
-          No costs yet today — hire staff, serve orders or buy supplies and they'll show here.
-        </p>
+        <p className="mt-1.5 font-hand text-[15px] text-walnut/60">✓ No costs yet today</p>
       )}
       <Divider />
       <div className="space-y-0.5 font-ui text-[13.5px]">
@@ -898,14 +899,25 @@ function OneRestaurantNote() {
   return (
     <Panel className="p-4">
       <div data-testid="one-restaurant-note">
-        <Eyebrow>🍽️ One restaurant</Eyebrow>
-        <p className="mt-1 font-hand text-[16px] leading-snug text-walnut-dark">
-          Your restaurant runs through the campaign: every level is a service, with menu orders,
-          stock, supplies and staff. Play the next level from the Kitchen.
-        </p>
-        <p className="mt-1 font-ui text-[12.5px] font-bold text-walnut/60">
-          🔒 The {ENDLESS_RESTAURANT_NAME} — open-ended days with everything you built — opens after
-          Level {LAST_CAMPAIGN_LEVEL}.
+        <div className="flex items-center justify-between gap-2">
+          <Eyebrow>🍽️ One restaurant</Eyebrow>
+          <InfoTip label="About your restaurant">
+            Your restaurant runs through the campaign: every level is a service, with menu orders,
+            stock, supplies and staff. Play the next level from the Kitchen. The{" "}
+            {ENDLESS_RESTAURANT_NAME} — open-ended days with everything you built — opens after
+            Level {LAST_CAMPAIGN_LEVEL}.
+          </InfoTip>
+        </div>
+        <Points
+          className="mt-1"
+          items={[
+            ["🎮", "Every level = one service"],
+            ["🧾", "Orders · stock · supplies · staff"],
+            ["🏠", "Play the next level from the Kitchen"],
+          ]}
+        />
+        <p className="mt-1.5 font-ui text-[12.5px] font-bold text-walnut/60">
+          🔒 {ENDLESS_RESTAURANT_NAME} · after Level {LAST_CAMPAIGN_LEVEL}
         </p>
       </div>
     </Panel>
@@ -953,8 +965,10 @@ function BusinessDayCard({
           // Endless Restaurant: the target (businessCustomersToday) comes from the restaurant's
           // demand, today's events and the team's capacity — not the classic popularity formula.
           <>
-            Today's expected customers: {customers.target} — set by your popularity, menu and
-            today's events, up to what your team can serve. {customers.remaining} remaining.
+            👥 Today: {customers.target} expected · {customers.remaining} left{" "}
+            <InfoTip label="How today's customers are set">
+              Set by your popularity, menu and today's events, up to what your team can serve.
+            </InfoTip>
           </>
         ) : (
           <>
@@ -966,8 +980,7 @@ function BusinessDayCard({
       </p>
       {customers.complete ? (
         <p className="mt-1 font-hand text-[16px] leading-snug text-walnut/75">
-          Today's customers are complete. No more customers will arrive today — end the day when
-          you're ready.
+          ✓ Today's customers are complete. 🌙 End the day when ready.
         </p>
       ) : order && dish ? (
         (() => {
@@ -976,8 +989,8 @@ function BusinessDayCard({
           return (
             <div className="mt-2 rounded-[14px] bg-cream/70 p-3">
               <p className="font-hand text-[16px] leading-snug text-walnut-dark">
-                {order.customer.avatarEmoji} {order.customer.name} is waiting for <b>{dish.name}</b>{" "}
-                — pays {formatUsd(payment.customerPays)}.
+                {order.customer.avatarEmoji} {order.customer.name} · <b>{dish.name}</b> · 💵{" "}
+                {formatUsd(payment.customerPays)}
               </p>
               <p
                 className={cn(
@@ -986,15 +999,15 @@ function BusinessDayCard({
                 )}
               >
                 {availability.available
-                  ? "✓ All ingredients in stock."
-                  : `Missing ${availability.missing.map((id) => INGREDIENTS[id]?.name ?? id).join(", ")} — restock to accept it.`}
+                  ? "✓ All in stock"
+                  : `⚠️ Missing ${availability.missing.map((id) => INGREDIENTS[id]?.name ?? id).join(", ")}`}
               </p>
             </div>
           );
         })()
       ) : (
         <p className="mt-1 font-hand text-[15px] leading-snug text-walnut/65">
-          The restaurant is closed. Open it to take real orders.
+          🔒 Closed · open it to take orders
         </p>
       )}
     </Panel>
@@ -1167,7 +1180,7 @@ function DaySummary({
       </div>
       {result.staffLaidOff.length > 0 ? (
         <p className="mt-1 font-hand text-[15px] text-copper">
-          Pay couldn't be covered — the whole team was let go.
+          💸 Pay not covered · the team was let go
         </p>
       ) : null}
       {result.expiredSupplierId ? (
@@ -1355,8 +1368,8 @@ function Operations({
           </KButton>
         ) : (
           <p className="mt-3 font-hand text-[15px] leading-snug text-walnut/70">
-            Your restaurant's day ends at closing time after its services. The open-ended{" "}
-            {ENDLESS_RESTAURANT_NAME} opens after Level {LAST_CAMPAIGN_LEVEL}.
+            🌙 Your day ends at closing time · 🔒 {ENDLESS_RESTAURANT_NAME} after Level{" "}
+            {LAST_CAMPAIGN_LEVEL}
           </p>
         )}
       </Panel>

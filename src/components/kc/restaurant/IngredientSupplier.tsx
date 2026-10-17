@@ -9,6 +9,7 @@ import {
   SUPPLIER_EXAMPLE_INGREDIENT,
   supplierChoices,
 } from "@/game/restaurant/restaurantBackOffice";
+import { InfoTip } from "@/components/kc/common/InfoTip";
 
 const ICON: Record<string, string> = {
   "local-market": "🏪",
@@ -41,10 +42,15 @@ export function IngredientSupplier({
   return (
     <div data-testid="ingredient-supplier">
       <Panel className="p-4">
-        <Eyebrow>🚚 Your ingredient supplier</Eyebrow>
+        <div className="flex items-center justify-between gap-2">
+          <Eyebrow>🚚 Your ingredient supplier</Eyebrow>
+          <InfoTip label="About suppliers">
+            Who stocks the Market for you. It sets the price of every ingredient you buy — free to
+            switch any time.
+          </InfoTip>
+        </div>
         <p className="mt-1 font-hand text-[15px] leading-snug text-walnut/70">
-          Who stocks the Market for you. It sets the price of every ingredient you buy — free to
-          switch any time.
+          💵 Sets Market prices · 🔁 switch free
         </p>
         {message ? (
           <p className="mt-2 text-center font-hand text-[16px] text-copper">{message}</p>
@@ -76,9 +82,9 @@ export function IngredientSupplier({
                   >
                     {[
                       c.freshnessBonusDays > 0
-                        ? `stays fresh ${c.freshnessBonusDays} day${c.freshnessBonusDays === 1 ? "" : "s"} longer`
+                        ? `🕒 +${c.freshnessBonusDays} day${c.freshnessBonusDays === 1 ? "" : "s"} fresh`
                         : null,
-                      c.qualityBonusPct > 0 ? "a small quality bonus" : null,
+                      c.qualityBonusPct > 0 ? "⭐ quality bonus" : null,
                     ]
                       .filter(Boolean)
                       .join(" · ")}

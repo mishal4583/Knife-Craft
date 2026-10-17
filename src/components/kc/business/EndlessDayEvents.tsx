@@ -45,10 +45,10 @@ export function EndlessDayEvents({ save, compact = false }: { save: SaveData; co
                 {e.id === "todays-special" ? (
                   <span className="block font-hand text-[14px] text-walnut/70">
                     {bonusClaimed
-                      ? "Today's Special bonus already earned today."
+                      ? "✓ Today's Special bonus already earned today"
                       : save.business.todaysSpecialServedDay === save.business.calendar.businessDay
-                        ? `Served ✓ — at closing you earn ${sharePct}% of today's restaurant revenue, up to ${formatUsd(e.dailyBonus)}.`
-                        : `Serve it today: at closing you earn ${sharePct}% of today's restaurant revenue, up to ${formatUsd(e.dailyBonus)} (once a day).`}
+                        ? `✓ Served → ${sharePct}% of today's revenue at closing · max ${formatUsd(e.dailyBonus)}`
+                        : `⭐ Serve it → ${sharePct}% of today's revenue · max ${formatUsd(e.dailyBonus)} · once a day`}
                   </span>
                 ) : null}
               </li>

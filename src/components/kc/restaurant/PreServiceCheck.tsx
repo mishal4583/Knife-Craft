@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { KButton } from "@/components/kc/common/primitives";
 import { cn } from "@/lib/utils";
+import { InfoTip, StatChip } from "@/components/kc/common/InfoTip";
 import type { RecipeDefinition } from "@/game/recipes/recipeTypes";
 import type { IngredientId } from "@/game/definitions";
 import { INGREDIENTS } from "@/game/definitions";
@@ -304,13 +305,17 @@ export function PreServiceCheck({
               <div className="flex items-start gap-2">
                 <span className="text-[22px]" aria-hidden>🌅</span>
                 <div className="min-w-0 flex-1">
-                  <p className="font-display text-[16px] font-black text-walnut-dark">
+                  <p className="flex items-center gap-1.5 font-display text-[16px] font-black text-walnut-dark">
                     Today’s opening routine
+                    <InfoTip label="About the opening routine">
+                      Refill only what today needs. Cleaning and optional stock top-ups never block
+                      the start.
+                    </InfoTip>
                   </p>
                   <p className="font-ui text-[12px] leading-snug text-walnut/70">
                     {routineNeedsAttention > 0
-                      ? `${routineNeedsAttention} area${routineNeedsAttention === 1 ? "" : "s"} to review before today's services.`
-                      : "Stock, team, tools, and opening chores are ready for today."}
+                      ? `⚠️ ${routineNeedsAttention} to check`
+                      : "✓ All ready"}
                   </p>
                 </div>
                 <span
@@ -329,13 +334,13 @@ export function PreServiceCheck({
                   detail={
                     stock
                       ? urgentIngredientRows > 0
-                        ? `${urgentIngredientRows} urgent refill${urgentIngredientRows === 1 ? "" : "s"}${lowForDayRows > 0 ? ` · ${lowForDayRows} short today` : ""}`
+                        ? `${urgentIngredientRows} urgent${lowForDayRows > 0 ? ` · ${lowForDayRows} short` : ""}`
                         : lowForDayRows > 0
-                          ? `${lowForDayRows} running low for today's schedule`
+                          ? `${lowForDayRows} low today`
                           : expiredRows > 0
-                            ? `${expiredRows} expired to clear`
-                            : "Ready for today's orders"
-                      : "No stock check needed yet"
+                            ? `🗑️ ${expiredRows} expired`
+                            : "✓ Ready"
+                      : "— Not needed"
                   }
                   tone={urgentIngredientRows > 0 || lowForDayRows > 0 || expiredRows > 0 ? "attention" : "ready"}
                   onClick={() =>
@@ -353,11 +358,11 @@ export function PreServiceCheck({
                   detail={
                     sup
                       ? urgentSupplyRows > 0
-                        ? `${urgentSupplyRows} urgent refill${urgentSupplyRows === 1 ? "" : "s"}${lowSupplyRows + lowBottleCount > 0 ? ` · ${lowSupplyRows + lowBottleCount} low` : ""}`
+                        ? `${urgentSupplyRows} urgent${lowSupplyRows + lowBottleCount > 0 ? ` · ${lowSupplyRows + lowBottleCount} low` : ""}`
                         : lowSupplyRows + lowBottleCount > 0
-                          ? `${lowSupplyRows + lowBottleCount} running short today`
-                          : "Enough for today's orders"
-                      : "Not used for this service"
+                          ? `${lowSupplyRows + lowBottleCount} low today`
+                          : "✓ Enough"
+                      : "— Not needed"
                   }
                   tone={urgentSupplyRows > 0 || lowSupplyRows > 0 || lowBottleCount > 0 ? "attention" : "ready"}
                   onClick={() => jumpToRoutineSection("psc-supplies")}
@@ -366,7 +371,7 @@ export function PreServiceCheck({
                 <RoutineStatus
                   icon="🍳"
                   label="Kitchen tools"
-                  detail={kit ? (missingTools > 0 ? `${missingTools} tool${missingTools === 1 ? "" : "s"} needed` : "Ready for today's dishes") : "No tool check needed"}
+                  detail={kit ? (missingTools > 0 ? `${missingTools} to buy` : "✓ Ready") : "— Not needed"}
                   tone={missingTools > 0 ? "attention" : "ready"}
                   onClick={() => jumpToRoutineSection("psc-tools")}
                   testId="psc-routine-tools"
@@ -374,7 +379,7 @@ export function PreServiceCheck({
                 <RoutineStatus
                   icon="👥"
                   label="Team"
-                  detail={staff.length > 0 ? (staffMissing.length > 0 ? `${staffMissing.length} role${staffMissing.length === 1 ? "" : "s"} to fill` : "Required team is ready") : "No staff check needed"}
+                  detail={staff.length > 0 ? (staffMissing.length > 0 ? `${staffMissing.length} to hire` : "✓ Ready") : "— Not needed"}
                   tone={staffMissing.length > 0 ? "attention" : "ready"}
                   onClick={() => jumpToRoutineSection("psc-staff")}
                   testId="psc-routine-staff"
@@ -385,11 +390,11 @@ export function PreServiceCheck({
                   detail={
                     fridge
                       ? fridge.status === "full"
-                        ? `Full · ${fridge.used} / ${fridge.capacity} units`
+                        ? `Full · ${fridge.used}/${fridge.capacity}`
                         : fridge.status === "nearly-full"
-                          ? `Nearly full · ${fridge.free} units free`
-                          : `Space available · ${fridge.free} units free`
-                      : "No fridge alert"
+                          ? `Nearly full · ${fridge.free} free`
+                          : `✓ ${fridge.free} free`
+                      : "✓ OK"
                   }
                   tone={!!fridge && fridge.status !== "ok" ? "attention" : "ready"}
                   onClick={() => jumpToRoutineSection("psc-fridge")}
@@ -398,7 +403,7 @@ export function PreServiceCheck({
                 <RoutineStatus
                   icon="🧹"
                   label="Cleaning"
-                  detail={openCleaningTasks > 0 ? `${openCleaningTasks} opening or carry-over task${openCleaningTasks === 1 ? "" : "s"}` : "No cleaning tasks waiting"}
+                  detail={openCleaningTasks > 0 ? `${openCleaningTasks} task${openCleaningTasks === 1 ? "" : "s"}` : "✓ Clean"}
                   tone={openCleaningTasks > 0 ? "attention" : "ready"}
                   onClick={() =>
                     jumpToRoutineSection(
@@ -408,9 +413,6 @@ export function PreServiceCheck({
                   testId="psc-routine-cleaning"
                 />
               </div>
-              <p className="mt-2 font-hand text-[13px] leading-snug text-walnut/65">
-                Refill only what today needs. Cleaning and optional stock top-ups never block the start.
-              </p>
             </section>
           ) : null}
           {owed > 0 ? (
@@ -418,7 +420,7 @@ export function PreServiceCheck({
               className="mb-2 rounded-2xl border border-copper/30 bg-gold/10 px-3 py-2 font-ui text-[12.5px] font-bold text-walnut-dark"
               data-testid="psc-owed"
             >
-              💳 You owe the supplier {formatUsd(owed)} — repaid from your next earnings.
+              💳 Owed {formatUsd(owed)} · repaid from your next earnings
             </p>
           ) : null}
           {/* Who this service still needs, first — the sheet can be long and
@@ -432,7 +434,7 @@ export function PreServiceCheck({
                 👥 This service needs: {staffMissing.map((r) => r.title).join(", ")}
               </p>
               <p className="mt-0.5 font-ui text-[12px] font-bold text-walnut/70">
-                Hiring is free — tap Hire below, then come back to start.
+                🆓 Free to hire · tap Hire below
               </p>
             </div>
           ) : null}
@@ -449,7 +451,7 @@ export function PreServiceCheck({
                   .join(", ")}
               </p>
               <p className="mt-0.5 font-ui text-[12px] font-bold text-walnut/70">
-                Buy them below — tools last, you buy each one once.
+                🛒 Buy below · 🔁 you buy each once
               </p>
             </div>
           ) : null}
@@ -477,7 +479,7 @@ export function PreServiceCheck({
                 ))}
               </ul>
               <p className="mt-1 font-ui text-[12.5px] text-walnut/70">
-                After the last service it's closing time: clean up and count the day.
+                🌙 Then closing: clean up & count the day
               </p>
             </div>
           ) : null}
@@ -519,18 +521,17 @@ export function PreServiceCheck({
               </div>
               {stock.ready ? (
                 <p className="mt-1 font-ui text-[13.5px] font-bold text-walnut-dark">
-                  Everything today's service needs is in the fridge — nothing to buy. Start the
-                  service.
+                  ✓ All in the fridge · start the service
                 </p>
               ) : (
                 <ol className="mt-1 list-decimal space-y-0.5 pl-5 font-ui text-[13.5px] font-bold text-walnut-dark">
-                  <li>Tap 🛒 Buy everything in the Market below.</li>
-                  <li>In the Market, tap Buy all — it buys what today's services need.</li>
-                  <li>Tap ↩ Back to the Pre-Service Check, then start the service.</li>
+                  <li>🛒 Buy everything in the Market</li>
+                  <li>Tap Buy all</li>
+                  <li>↩ Back here, then start</li>
                 </ol>
               )}
               <p className="mt-1 font-hand text-[16px] leading-snug text-walnut/75">
-                “Buy before you cook, and only what you'll use — fresh food doesn't wait.”
+                “Buy only what you'll use — fresh food doesn't wait.”
               </p>
             </div>
           ) : null}
@@ -570,15 +571,13 @@ export function PreServiceCheck({
                       {r.kind === "specialist" ? "👩‍🍳" : "🧑‍🍳"}
                     </span>
                     <div className="min-w-0 flex-1">
-                      <p className="font-ui text-[14.5px] font-bold text-walnut-dark">{r.title}</p>
-                      <p
-                        className={cn(
-                          "font-ui text-[12.5px]",
-                          r.met ? "text-walnut/60" : "text-tomato",
-                        )}
-                      >
-                        {r.why}
+                      <p className="flex items-center gap-1.5 font-ui text-[14.5px] font-bold text-walnut-dark">
+                        {r.title}
+                        <InfoTip label={`Why a ${r.title}`}>{r.why}</InfoTip>
                       </p>
+                      {r.met ? null : (
+                        <p className="font-ui text-[12.5px] font-bold text-tomato">Needed</p>
+                      )}
                     </div>
                     {r.met ? (
                       <span className="font-ui text-[13.5px] font-extrabold text-sage">
@@ -595,7 +594,7 @@ export function PreServiceCheck({
                   className="mt-2 h-auto min-h-12 py-2 leading-tight"
                   onClick={onHireStaff}
                 >
-                  Hire {staffMissing.map((r) => r.title).join(", ")} → Staff (free to hire)
+                  Hire {staffMissing.map((r) => r.title).join(", ")} → Staff · free
                 </KButton>
               ) : null}
             </>
@@ -612,9 +611,11 @@ export function PreServiceCheck({
                 {fridge.status === "full" ? "⛔ Fridge full" : "⚠️ Fridge nearly full"} ·{" "}
                 {fridge.used} / {fridge.capacity} units
               </p>
-              <p className="font-ui text-[12.5px] text-walnut/70">
-                {fridge.free} units of space left. Use what you have, throw out expired food, or
-                upgrade the refrigerator.
+              <p className="flex items-center gap-1.5 font-ui text-[12.5px] text-walnut/70">
+                ❄️ {fridge.free} free
+                <InfoTip label="How to make room">
+                  Use what you have, throw out expired food, or upgrade the refrigerator.
+                </InfoTip>
               </p>
               <KButton
                 size="sm"
@@ -638,8 +639,7 @@ export function PreServiceCheck({
                 🧹
               </span>
               <p className="min-w-0 flex-1 font-ui text-[13px] font-bold leading-snug text-walnut-dark">
-                {cleaningOpen} cleaning {cleaningOpen === 1 ? "task" : "tasks"} left — clean before
-                the service to keep it spotless.
+                {cleaningOpen} to clean · keeps you ✨ spotless
               </p>
               <KButton
                 size="sm"
@@ -686,7 +686,7 @@ export function PreServiceCheck({
                   data-testid="psc-tools-summary"
                 >
                   <p className="font-ui text-[13.5px] font-bold text-walnut-dark">
-                    Today's dishes can't be cooked without these · {formatUsd(kit.missingCost)}
+                    ⛔ Needed to cook · {formatUsd(kit.missingCost)}
                   </p>
                   {!kit.affordable ? (
                     <>
@@ -753,7 +753,7 @@ export function PreServiceCheck({
                   data-testid="psc-supplies-summary"
                 >
                   <p className="font-ui text-[13.5px] font-bold text-walnut-dark">
-                    The service can't start without these · {formatUsd(sup.missingCost)}
+                    ⛔ Needed to start · {formatUsd(sup.missingCost)}
                   </p>
                   {!sup.affordable ? (
                     <>
@@ -778,12 +778,16 @@ export function PreServiceCheck({
 
           {stock && guests && guests.dishes.length > 0 ? (
             <div className="mt-3" data-testid="psc-guests">
-              <p className="font-ui text-[12.5px] font-extrabold uppercase tracking-wide text-walnut/60">
+              <p className="flex items-center gap-1.5 font-ui text-[12.5px] font-extrabold uppercase tracking-wide text-walnut/60">
                 🍽️ Menu guests today · optional
+                <InfoTip label="About menu guests">
+                  Menu guests order from your menu after your own orders. Stocking for them is
+                  optional — each one served pays the menu price.
+                </InfoTip>
               </p>
               <p className="font-ui text-[12.5px] text-walnut/70">
-                {guests.dishes.join(", ")} — they order after your own orders.
-                {guests.rows.length === 0 ? " ✓ Stocked for every guest." : " Stock for them:"}
+                {guests.dishes.join(", ")}
+                {guests.rows.length === 0 ? " · ✓ all stocked" : ""}
               </p>
               {guests.rows.length > 0 ? (
                 <KButton
@@ -832,18 +836,23 @@ export function PreServiceCheck({
               id="psc-day-stock"
               data-testid="psc-day-stock"
             >
-              <p className="font-ui text-[12.5px] font-extrabold uppercase tracking-wide text-walnut/60">
+              <p className="flex items-center gap-1.5 font-ui text-[12.5px] font-extrabold uppercase tracking-wide text-walnut/60">
                 🗓️ Stock the whole day · optional
+                <InfoTip label="About stocking the whole day">
+                  Everything for today's {dayStock.levels.length} services (Levels{" "}
+                  {dayStock.levels.join(", ")}) in one go, at the bulk price.
+                </InfoTip>
               </p>
-              <p className="font-ui text-[12.5px] text-walnut/70">
-                Everything for today's {dayStock.levels.length} services (Levels{" "}
-                {dayStock.levels.join(", ")}) in one go: {formatQuantity(dayStock.totalUnits)} units
-                · {formatUsd(dayStock.totalCost)}
-                {dayStock.bulkSaving > 0
-                  ? ` · the bulk price saves ${formatUsd(dayStock.bulkSaving)}`
-                  : ""}
-                .
-              </p>
+              <div className="mt-1 flex flex-wrap gap-1.5">
+                <StatChip icon="🍽️">{dayStock.levels.length} services</StatChip>
+                <StatChip icon="📦">{formatQuantity(dayStock.totalUnits)} units</StatChip>
+                <StatChip icon="💵">{formatUsd(dayStock.totalCost)}</StatChip>
+                {dayStock.bulkSaving > 0 ? (
+                  <StatChip icon="🏷️" tone="sage">
+                    −{formatUsd(dayStock.bulkSaving)}
+                  </StatChip>
+                ) : null}
+              </div>
               <p
                 className={cn(
                   "mt-1 font-ui text-[12.5px] font-bold",
@@ -851,8 +860,8 @@ export function PreServiceCheck({
                 )}
               >
                 {dayStock.fits
-                  ? `✓ Fits your fridge (${formatQuantity(dayStock.storageFree)} units free).`
-                  : `Needs ${formatQuantity(dayStock.totalUnits)} units — your fridge has ${formatQuantity(dayStock.storageFree)} free. Keep stocking service by service, or get a bigger fridge.`}
+                  ? `✓ Fits · ❄️ ${formatQuantity(dayStock.storageFree)} free`
+                  : `❄️ Too big · ${formatQuantity(dayStock.storageFree)} of ${formatQuantity(dayStock.totalUnits)} free · stock per service`}
               </p>
               {dayStock.fits ? (
                 <KButton
@@ -898,7 +907,7 @@ export function PreServiceCheck({
           {stock?.hasExpired ? (
             <div className="mt-3 rounded-2xl border border-tomato/30 bg-tomato/10 p-3">
               <p className="font-ui text-[13.5px] font-bold text-walnut-dark">
-                Some stock has expired and can't be served.
+                🗑️ Expired stock can't be served
               </p>
               <KButton
                 size="sm"
@@ -921,9 +930,7 @@ export function PreServiceCheck({
                 {stock.missingRows.length === 1 ? "item" : "items"}
                 {canBuy ? ` · ${formatUsd(stock.missingCost)}` : ""}
               </p>
-              <p className="font-ui text-[12.5px] text-walnut/70">
-                You have {formatUsd(credits)}. Buy the missing ingredients in the Market to start.
-              </p>
+              <p className="font-ui text-[12.5px] text-walnut/70">💵 You have {formatUsd(credits)}</p>
               {canBuy && onBuyAllInMarket && stock.affordable ? (
                 <KButton
                   size="sm"
@@ -954,19 +961,21 @@ export function PreServiceCheck({
                     className="mt-1.5 font-ui text-[12.5px] font-bold leading-snug text-copper"
                     data-testid="psc-quick-warning"
                   >
-                    ⚠️ The same stock costs {formatUsd(quickRestock.extraCost)} more than in the
-                    Market (+{Math.round(QUICK_RESTOCK_FEE * 100)}%). Buying in the Market before
-                    the service saves it.
+                    ⚠️ {formatUsd(quickRestock.extraCost)} more than in the Market (+
+                    {Math.round(QUICK_RESTOCK_FEE * 100)}%)
                   </p>
                   <p
                     className="mt-1 font-ui text-[12px] leading-snug text-walnut/70"
                     data-testid="psc-quick-covers"
                   >
-                    It buys exactly this service's missing ingredients
+                    🎯 This service only
                     {quickRestock.lines.length > 0
-                      ? ` (${quickRestock.lines.length} item${quickRestock.lines.length === 1 ? "" : "s"})`
-                      : ""}
-                    — not extra stock for menu guests or later services.
+                      ? ` · ${quickRestock.lines.length} item${quickRestock.lines.length === 1 ? "" : "s"}`
+                      : ""}{" "}
+                    <InfoTip label="What Quick restock buys">
+                      It buys exactly this service's missing ingredients — not extra stock for menu
+                      guests or later services. Buying in the Market before the service is cheaper.
+                    </InfoTip>
                   </p>
                   {!quickRestock.fits ? (
                     <p className="mt-1 font-ui text-[12.5px] font-bold text-tomato">
@@ -995,8 +1004,7 @@ export function PreServiceCheck({
               {fridgeShort ? (
                 <>
                   <p className="mt-1 font-ui text-[13.5px] font-bold text-tomato">
-                    Your refrigerator is full: this needs {stock.storageNeeded} units,{" "}
-                    {stock.storageFree} free.
+                    ❄️ Fridge full · needs {stock.storageNeeded}, {stock.storageFree} free
                   </p>
                   <KButton
                     size="sm"
@@ -1109,12 +1117,11 @@ function WelcomeCrate({ kit }: { kit: readonly KitLine[] }) {
         🎁 Welcome to your restaurant
       </p>
       <p className="font-hand text-[17px] leading-snug text-walnut">
-        “Your kitchen is ready to serve. Buy the ingredients each service needs in the Market.”
+        “Your kitchen is ready. Buy each service's ingredients in the Market.”
       </p>
-      <p className="mt-1 font-ui text-[12.5px] text-walnut/70">
-        {lines.length > 0 ? `Free supplies, once: ${lines.join(" · ")}. ` : ""}
-        Ingredients are always bought in the Market.
-      </p>
+      {lines.length > 0 ? (
+        <p className="mt-1 font-ui text-[12.5px] text-walnut/70">🎁 Free, once: {lines.join(" · ")}</p>
+      ) : null}
     </div>
   );
 }
@@ -1152,10 +1159,13 @@ function NewsCard({ news }: { news: RestaurantNews }) {
         <div className="mt-1" data-testid="psc-news-dishes">
           <p className="font-ui text-[13.5px] font-bold text-walnut-dark">
             🍽️ New on the menu: {news.dishes.map((d) => d.name).join(", ")}
+            {news.dishWhy ? (
+              <>
+                {" "}
+                <InfoTip label="Why these dishes">{news.dishWhy}</InfoTip>
+              </>
+            ) : null}
           </p>
-          {news.dishWhy ? (
-            <p className="font-ui text-[12.5px] text-walnut/70">{news.dishWhy}</p>
-          ) : null}
         </div>
       ) : null}
       {news.comingUp.length > 0 ? (
@@ -1191,9 +1201,12 @@ function ToolRowItem({
         {row.icon}
       </span>
       <div className="min-w-0 flex-1">
-        <p className="font-ui text-[14.5px] font-bold text-walnut-dark">
-          {row.label}
-          {row.need > 1 ? ` × ${row.need}` : ""}
+        <p className="flex items-center gap-1.5 font-ui text-[14.5px] font-bold text-walnut-dark">
+          <span>
+            {row.label}
+            {row.need > 1 ? ` × ${row.need}` : ""}
+          </span>
+          <InfoTip label={`Why the ${row.label}`}>{row.why}</InfoTip>
         </p>
         <p
           className={cn(
@@ -1201,7 +1214,7 @@ function ToolRowItem({
             ok ? "text-walnut/60" : "text-tomato",
           )}
         >
-          {ok ? `You have ${row.have}` : `Need ${row.need} · have ${row.have}`} · {row.why}
+          {ok ? `You have ${row.have}` : `Need ${row.need} · have ${row.have}`}
         </p>
       </div>
       {ok ? (
@@ -1247,12 +1260,11 @@ function FirstShoppingList({
         👵 Your first shopping list
       </p>
       <p className="mt-0.5 font-hand text-[15.5px] leading-snug text-walnut">
-        “The Market's culinary tools are available. The next dishes need real
-        kitchen tools — buy them before we cook.”
+        “Real dishes need real tools — buy them before we cook.”
       </p>
       {soon.length === 0 ? (
         <p className="mt-1 font-ui text-[12.5px] font-bold text-sage">
-          ✓ You already have every tool the next levels need.
+          ✓ Every tool coming up is yours
         </p>
       ) : (
         <ul className="mt-1 divide-y divide-walnut/10">
@@ -1268,9 +1280,12 @@ function FirstShoppingList({
                   {item?.icon}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="font-ui text-[14.5px] font-bold text-walnut-dark">{item?.name}</p>
-                  <p className="font-ui text-[12.5px] leading-snug text-walnut/70">
-                    <span className="font-bold text-copper">Level {x.level}</span> · {x.why}
+                  <p className="flex items-center gap-1.5 font-ui text-[14.5px] font-bold text-walnut-dark">
+                    <span>{item?.name}</span>
+                    <InfoTip label={`Why the ${item?.name ?? "tool"}`}>{x.why}</InfoTip>
+                  </p>
+                  <p className="font-ui text-[12.5px] font-bold leading-snug text-copper">
+                    Level {x.level}
                   </p>
                 </div>
                 <KButton
@@ -1288,8 +1303,7 @@ function FirstShoppingList({
       )}
       {soon.length > 0 ? (
         <p className="mt-1 font-ui text-[12.5px] text-walnut/70">
-          All of it: {formatUsd(total)} · you have {formatUsd(credits)}. Each level asks for its
-          tools before it starts.
+          All of it: {formatUsd(total)} · you have {formatUsd(credits)}
         </p>
       ) : null}
     </div>
@@ -1318,11 +1332,11 @@ function SupplyRow({ row, onRestock }: { row: SupplyCheckRow; onRestock: (id: Su
           )}
         >
           Need {row.need} · have {row.have}
-          {row.dirty > 0 ? ` (+${row.dirty} waiting for soap)` : ""}
+          {row.dirty > 0 ? ` · 🫧 ${row.dirty} dirty` : ""}
           {!ok && item ? ` · ${packsText(item, row.packs)}` : ""}
           {!ok && !row.blocking
             ? row.guest
-              ? " · ⚠️ some guests can't be seated"
+              ? " · ⚠️ some guests unseated"
               : " · ⚠️ guests go without"
             : ""}
         </p>

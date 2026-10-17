@@ -231,6 +231,9 @@ Release zip: the CONTENTS of `dist/` →
 - Use the existing primitives and look: warm painted kitchens, wood and
   paper, Fraunces / Nunito / Caveat bundled locally.
 - Touch targets ≥ 48 px.
+- **Short game copy** (developer 2026-10-16): a few words, icons and numbers
+  (`StatChip`, `Points`). Any longer explanation goes behind an ⓘ
+  (`InfoTip`, `kc/common/InfoTip.tsx`); `ui-copy-qa` guards it.
 - Test at 320×568, 360×640, 390×844, 430×900 and 768×1024, with no
   sideways scroll.
 - No animation libraries or large assets (prefer CSS transform/opacity).

@@ -828,7 +828,7 @@ export function App() {
         ...q,
         {
           id: `ach:${fresh.map((x) => x.id).join("+")}`,
-          label: `${fresh.length === 1 ? fresh[0]!.title : `${fresh.length} achievements`} · collect ${formatUsdChange(amount)} in Progress → Achievements`,
+          label: `🏆 ${fresh.length === 1 ? fresh[0]!.title : `${fresh.length} achievements`} · ${formatUsdChange(amount)} to collect`,
           reward: amount,
           legacy: false,
         },
@@ -2195,17 +2195,17 @@ export function App() {
         RESTAURANT_MODE && isFirstCompletion
           ? [
               ...(toolsNow
-                ? ["🧰 Grandma's old peeler, bowl and measuring cups are yours — free"]
+                ? ["🧰 Grandma's peeler, bowl & cups · free"]
                 : []),
               ...(cupboardNow
                 ? [
-                    "🧹 Grandma's cleaning cupboard is yours — from now on, clean up after each service (Restaurant → Cleanliness)",
+                    "🧹 Grandma's cleaning cupboard · clean after each service",
                   ]
                 : []),
               ...serviceLines,
               ...(brokenNow > 0
                 ? [
-                    `🍽️ ${brokenNow === 1 ? "A piece" : `${brokenNow} pieces`} of tableware broke in the wash-up — check the Market`,
+                    `💥 ${brokenNow === 1 ? "1 piece" : `${brokenNow} pieces`} of tableware broke · 🛒 Market`,
                   ]
                 : []),
               // Pass 3: the dish's best stars (the engine's grade; never money).
@@ -2834,8 +2834,7 @@ export function App() {
             KnifeCraft
           </p>
           <p className="mt-2 font-ui text-[12.5px] leading-relaxed text-[color:var(--color-cream)]/60">
-            A cozy prep-chef arcade. Portrait-first, one thumb, no timers. Swipe across the tomato
-            to begin.
+            🔪 A cozy prep-chef arcade · 👉 swipe the tomato to begin
           </p>
         </div>
       }

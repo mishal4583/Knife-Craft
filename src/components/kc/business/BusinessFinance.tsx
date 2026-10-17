@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type { SaveData } from "@/game/SaveManager";
 import { Panel, Divider, Badge } from "../common/primitives";
+import { InfoTip } from "../common/InfoTip";
 import { Eyebrow } from "../common/Meters";
 import { formatUsd } from "@/game/business/businessCurrency";
 import { lifetimeSummary } from "@/game/business/BusinessFinanceManager";
@@ -54,10 +55,13 @@ export function BusinessFinance({ save }: { save: SaveData }) {
         strong
       />
       <Line label="Cash moved today" value={formatUsd(todayNetCash)} />
-      <p className="font-hand text-[13px] leading-snug text-walnut/50">
-        Stock bought ({formatUsd(dailyAccumulator.inventoryPurchaseCost)}), packaging (
-        {formatUsd(dailyAccumulator.packagingPurchaseCost ?? 0)}) and equipment (
-        {formatUsd(dailyAccumulator.capitalExpenditure)}) move cash but aren't costs until used.
+      <p className="flex items-center gap-1.5 font-hand text-[14px] leading-snug text-walnut/55">
+        Cash vs costs
+        <InfoTip label="Cash vs costs">
+          Stock bought ({formatUsd(dailyAccumulator.inventoryPurchaseCost)}), packaging (
+          {formatUsd(dailyAccumulator.packagingPurchaseCost ?? 0)}) and equipment (
+          {formatUsd(dailyAccumulator.capitalExpenditure)}) move cash but aren't costs until used.
+        </InfoTip>
       </p>
 
       <Divider />
@@ -65,9 +69,7 @@ export function BusinessFinance({ save }: { save: SaveData }) {
       {lastDailyPnL ? (
         <LastDay pnl={lastDailyPnL} />
       ) : (
-        <p className="font-hand text-[15px] text-walnut/60">
-          No business day has ended yet — its results appear here.
-        </p>
+        <p className="font-hand text-[15px] text-walnut/60">📅 No day closed yet</p>
       )}
 
       <Divider />

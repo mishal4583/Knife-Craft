@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { SaveData } from "@/game/SaveManager";
 import { Badge, KButton, Panel } from "../common/primitives";
+import { InfoTip } from "../common/InfoTip";
 import { Eyebrow } from "../common/Meters";
 import { cn } from "@/lib/utils";
 import { formatUsd } from "@/game/money";
@@ -34,7 +35,7 @@ export function KitchenHelpers({
 
   function hire(id: string, name: string, price: number, unlockLevel: number) {
     const result = buyStaff(id);
-    if (result.ok) return setMessage(`${name} hired — helping in every recipe from now on.`);
+    if (result.ok) return setMessage(`✓ ${name} hired!`);
     if (result.reason === "insufficientFunds")
       return setMessage(notEnoughMoneyText(price, save.credits));
     if (result.reason === "notUnlocked")
@@ -47,8 +48,7 @@ export function KitchenHelpers({
       <div data-testid="kitchen-helpers">
         <Eyebrow>🔪 Kitchen helpers</Eyebrow>
         <p className="mt-1 font-hand text-[15px] leading-snug text-walnut/65">
-          One-time hires for your kitchen: they help in every recipe, campaign included. No daily
-          wages.
+          🔁 One-time hire · 🍳 helps every recipe · no wages
         </p>
         {message ? (
           <p className="mt-1 font-hand text-[16px] text-copper" aria-live="polite">
@@ -71,9 +71,9 @@ export function KitchenHelpers({
                   {HELPER_ICON[st.id] ?? "🧑‍🍳"}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="font-ui text-[13.5px] font-extrabold text-walnut-dark">{st.name}</p>
-                  <p className="font-hand text-[14px] leading-tight text-walnut/65">
-                    {st.description}
+                  <p className="flex items-center gap-1.5 font-ui text-[13.5px] font-extrabold text-walnut-dark">
+                    {st.name}
+                    <InfoTip label={`About the ${st.name}`}>{st.description}</InfoTip>
                   </p>
                   <p className="font-ui text-[12px] font-bold text-walnut/60">
                     {formatUsd(st.price)} · one time

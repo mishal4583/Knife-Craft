@@ -61,6 +61,7 @@ import {
   type SharpenKnifeResult,
 } from "@/game/economy/sharpness";
 import { INGREDIENTS, type IngredientId } from "@/game/definitions";
+import { InfoTip, StatChip } from "./common/InfoTip";
 import {
   BLACKSMITH_STATS,
   MAX_UPGRADE_LEVEL,
@@ -154,41 +155,40 @@ const shopCategories = RESTAURANT_MODE
 const categoryCopy: Record<ShopCategory, { title: string; description: string }> = {
   knives: {
     title: "Knives",
-    description: "Choose the perfect blade for speed, precision, and dependable prep.",
+    description: "🔪 Speed · precision · prep",
   },
   boards: {
     title: "Cutting Boards",
-    description: "A reliable surface makes every chop cleaner and every service smoother.",
+    description: "🪵 Cleaner chops, smoother service",
   },
   suppliers: {
     title: "Campaign Supplier",
-    description:
-      "Choose who stocks your kitchen for campaign dishes — cheaper in bulk, or carefully sourced. Restaurant supplier contracts are in Business → Suppliers.",
+    description: "🚚 Bulk or premium · switch any time",
   },
   ingredients: {
     title: "Fresh Ingredients",
-    description: "Stock your restaurant fridge at today's supplier prices.",
+    description: "🧊 Into your fridge · today's prices",
   },
-  blacksmith: { title: "Blacksmith", description: "Forge your knife. Cut faster. Cut better." },
+  blacksmith: { title: "Blacksmith", description: "⚒️ Forge your knife · cut faster" },
   culinary: {
     title: SUPPLY_SECTIONS.culinary.title,
-    description: "Back of house · pots, pans and prep tools for your restaurant kitchen.",
+    description: "🍳 Pots, pans & prep tools",
   },
   service: {
     title: SUPPLY_SECTIONS.service.title,
-    description: "Front of house · cutlery, plates and glasses to set every table.",
+    description: "🍽️ Cutlery, plates & glasses",
   },
   packaging: {
     title: SUPPLY_SECTIONS.packaging.title,
-    description: "Takeaway · every Business order goes out in a container and a bag.",
+    description: "🥡 Containers & bags",
   },
   cleaning: {
     title: SUPPLY_SECTIONS.cleaning.title,
-    description: "Housekeeping · keep the kitchen, dining room and restroom spotless.",
+    description: "🧽 Kitchen · dining · restroom",
   },
   "second-floor": {
     title: "Second Floor",
-    description: "The automated food hall · machines, upgrades and the floor team.",
+    description: "🏬 Machines · upgrades · team",
   },
 };
 
@@ -271,9 +271,9 @@ export function Shop({
   const [category, setCategory] = useState<ShopCategory>(startCategory);
   const [notice, setNotice] = useState(
     browseOnly
-      ? `The Market opens at Level ${FIRST_INGREDIENT_PURCHASE_LEVEL}. Buy ingredients here for each service.`
+      ? `🔒 Ingredients from Level ${FIRST_INGREDIENT_PURCHASE_LEVEL}`
       : startCategory === "knives"
-        ? "Welcome back, Chef. What can I get for you?"
+        ? "Welcome back, Chef!"
         : categoryCopy[startCategory].description,
   );
   const [focusId] = useState(peekMarketFocus);
@@ -590,7 +590,10 @@ function EmojiVisual({ emoji }: { emoji: string }) {
 function ProductCard({ card }: { card: Card }) {
   const { action } = card;
   return (
-    <article className="product-card flex flex-col rounded-[20px] border border-walnut/15 p-3 card-warm">
+    <article className="product-card relative flex flex-col rounded-[20px] border border-walnut/15 p-3 card-warm">
+      <span className="absolute right-2.5 top-2.5 z-10">
+        <InfoTip label={`About ${card.name}`}>{card.description}</InfoTip>
+      </span>
       <div
         className={cn(
           "grid h-[92px] place-items-center",
@@ -601,9 +604,6 @@ function ProductCard({ card }: { card: Card }) {
       </div>
       <p className="mt-1 text-center font-display text-[14.5px] font-black leading-tight text-walnut-dark">
         {card.name}
-      </p>
-      <p className="mt-0.5 line-clamp-3 text-center font-hand text-[15px] leading-tight text-walnut/70">
-        {card.description}
       </p>
       <div className="mt-2 space-y-1 rounded-[12px] bg-cream/70 px-2 py-1.5">
         {card.stats.map(([label, value]) => (
@@ -643,19 +643,25 @@ function ProductCard({ card }: { card: Card }) {
   );
 }
 
-const forgeCopy: Record<BlacksmithStat, { name: string; detail: string; emoji: string }> = {
+const forgeCopy: Record<
+  BlacksmithStat,
+  { name: string; short: string; detail: string; emoji: string }
+> = {
   sharpness: {
     name: "Sharpness",
+    short: "Faster slices · wider peel",
     detail: "The blade passes through food faster, and peels a slightly wider strip.",
     emoji: "🗡️",
   },
   speed: {
     name: "Speed",
+    short: "Next cut ready sooner",
     detail: "The knife lifts and comes back down faster, so the next cut is ready sooner.",
     emoji: "⚡",
   },
   handling: {
     name: "Handling",
+    short: "Fast taps never missed",
     detail:
       "Catches rapid taps: a tap made while a cut is finishing is queued instead of missed, and the pause after each cut is shorter.",
     emoji: "🪶",
@@ -670,15 +676,13 @@ function previewText(
   const { now, next } = p;
   if (stat === "handling")
     return next
-      ? `Catches taps ${now.queueMs} → ${next.queueMs} ms before a cut ends · pause ${now.pauseMs} → ${next.pauseMs} ms`
-      : `Catches taps ${now.queueMs} ms before a cut ends · pause ${now.pauseMs} ms`;
-  const slice = next
-    ? `Slices every ${now.cycleMs} → ${next.cycleMs} ms`
-    : `Slices every ${now.cycleMs} ms`;
-  if (stat === "speed") return `${slice} when tapping fast`;
+      ? `🎯 ${now.queueMs} → ${next.queueMs} ms tap catch · ⏸ ${now.pauseMs} → ${next.pauseMs} ms`
+      : `🎯 ${now.queueMs} ms tap catch · ⏸ ${now.pauseMs} ms`;
+  const slice = next ? `⏱ ${now.cycleMs} → ${next.cycleMs} ms/slice` : `⏱ ${now.cycleMs} ms/slice`;
+  if (stat === "speed") return slice;
   return next
-    ? `${slice} · peel strip ${now.peelPct}% → ${next.peelPct}%`
-    : `${slice} · peel strip ${now.peelPct}%`;
+    ? `${slice} · 🥕 ${now.peelPct}% → ${next.peelPct}% peel`
+    : `${slice} · 🥕 ${now.peelPct}% peel`;
 }
 
 function Blacksmith({
@@ -701,7 +705,7 @@ function Blacksmith({
   function report(result: UpgradeKnifeResult, stat: BlacksmithStat, cost: number) {
     if (result.ok)
       setNotice(
-        `${forgeCopy[stat].name} forged to level ${result.level}! Your ${knife.name} feels it on the board.`,
+        `${forgeCopy[stat].emoji} ${forgeCopy[stat].name} → Level ${result.level}!`,
       );
     else if (result.reason === "insufficientFunds")
       setNotice(notEnoughMoneyText(cost, save.credits));
@@ -712,14 +716,17 @@ function Blacksmith({
 
   return (
     <div className="space-y-3">
-      <Panel className="p-4">
-        <p className="font-ui text-[12.5px] leading-snug text-walnut/80">
-          Upgrade your knife to cut faster and catch more of your taps.{" "}
-          <strong className="text-walnut-dark">
-            Upgrades are permanent and belong to the knife you forge
-          </strong>{" "}
-          — they change how cutting feels, never your score, grade or earnings.
-        </p>
+      <Panel className="flex items-center gap-2 p-3">
+        <div className="flex min-w-0 flex-1 flex-wrap gap-1.5">
+          <StatChip icon="♾️">Permanent</StatChip>
+          <StatChip icon="🔪">Per knife</StatChip>
+          <StatChip icon="⭐">Score unchanged</StatChip>
+        </div>
+        <InfoTip label="About the Blacksmith">
+          Upgrade your knife to cut faster and catch more of your taps. Upgrades are permanent and
+          belong to the knife you forge — they change how cutting feels, never your score, grade or
+          earnings.
+        </InfoTip>
       </Panel>
 
       {/* The forge — illustration (or the knife) in the same wood hero frame as Rack. */}
@@ -751,10 +758,11 @@ function Blacksmith({
             <KnifeGlyph knife={knife} size={84} />
           </div>
         </div>
-        <p className="mt-1 font-hand text-[15px] leading-tight text-walnut/70">
-          Slices every {forgePreview(knife, levels, "speed").now.cycleMs} ms when tapping fast ·
-          each knife keeps its own upgrades
-        </p>
+        <div className="mt-1 flex flex-wrap gap-1.5">
+          <StatChip icon="⏱" title="Time per slice when tapping fast">
+            {forgePreview(knife, levels, "speed").now.cycleMs} ms/slice
+          </StatChip>
+        </div>
         <div className="mt-3 space-y-2">
           {BLACKSMITH_STATS.map((stat) => (
             <div key={stat} className="flex items-center gap-3">
@@ -794,12 +802,14 @@ function Blacksmith({
         ) : null}
         <Divider />
         <div className="flex items-center justify-between gap-3">
-          <p className="font-ui text-[12px] font-bold text-walnut/70">
-            Edge condition {condition}/100 · {sharpnessLabel(condition)}
-            <span className="mt-0.5 block font-hand text-[14px] font-normal leading-tight text-walnut/60">
+          <p className="flex items-center gap-1.5 font-ui text-[12.5px] font-bold text-walnut/75">
+            <span>
+              🔪 Edge {condition}/100 · {sharpnessLabel(condition)}
+            </span>
+            <InfoTip label="About the knife's edge">
               Wears with use; a dull edge wastes a little more of each ingredient. Sharpening
               restores it — upgrades never wear off.
-            </span>
+            </InfoTip>
           </p>
           <KButton
             size="sm"
@@ -822,7 +832,7 @@ function Blacksmith({
 
       <div className="forge-grid space-y-3">
         {BLACKSMITH_STATS.map((stat) => {
-          const { name, detail, emoji } = forgeCopy[stat];
+          const { name, short, detail, emoji } = forgeCopy[stat];
           const level = levels[stat];
           const cost = upgradeCost(level);
           const maxed = cost === null;
@@ -836,7 +846,10 @@ function Blacksmith({
                   {maxed ? `Level ${level} · Mastered` : `Level ${level} → ${level + 1}`}
                 </Badge>
               </div>
-              <p className="mt-1 font-hand text-[15px] leading-tight text-walnut/70">{detail}</p>
+              <p className="mt-1 flex items-center gap-1.5 font-hand text-[15px] leading-tight text-walnut/70">
+                <span>{short}</span>
+                <InfoTip label={`About ${name}`}>{detail}</InfoTip>
+              </p>
               <p className="mt-2 rounded-[12px] bg-cream/70 px-3 py-1.5 font-ui text-[12px] font-bold text-walnut-dark">
                 {previewText(stat, forgePreview(knife, levels, stat))}
               </p>

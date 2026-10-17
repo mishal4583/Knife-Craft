@@ -11,6 +11,7 @@ import { INGREDIENTS } from "@/game/definitions";
 import { formatUsd } from "@/game/money";
 import { closingPreview } from "@/game/restaurant/restaurantDay";
 import { SupplyBottle } from "./SupplyBottle";
+import { InfoTip } from "@/components/kc/common/InfoTip";
 
 /**
  * CLOSING TIME (Unified Restaurant phase 5, behind RESTAURANT_MODE) — after
@@ -111,8 +112,8 @@ export function ClosingTime({
               data-testid="closing-spoiled"
             >
               {p.spoiled.quantity > 0
-                ? `Spoiled tonight: ${p.spoiled.ingredientIds.map((id) => INGREDIENTS[id]?.name ?? id).join(", ")} (${formatUsd(p.spoiled.value)} of food)`
-                : "Nothing spoiled today."}
+                ? `🗑️ Spoiled: ${p.spoiled.ingredientIds.map((id) => INGREDIENTS[id]?.name ?? id).join(", ")} · ${formatUsd(p.spoiled.value)}`
+                : "✓ Nothing spoiled today"}
             </p>
           ) : null}
 
@@ -120,9 +121,11 @@ export function ClosingTime({
             <div className="mt-2" data-testid="closing-cleaner">
               <SupplyBottle bottle={p.cleaner} per="closing" />
               {p.cleaner.status === "empty" ? (
-                <p className="font-ui text-[12.5px] text-tomato">
-                  No cleaning liquid: the wipe-down is done with water tonight. Buy some in the
-                  Market → Takeaway → Securing &amp; hygiene.
+                <p className="flex items-center gap-1.5 font-ui text-[12.5px] text-tomato">
+                  💧 No cleaning liquid · water tonight
+                  <InfoTip label="Where to buy cleaning liquid">
+                    Buy some in the Market → Takeaway → Securing &amp; hygiene.
+                  </InfoTip>
                 </p>
               ) : null}
             </div>
@@ -139,11 +142,9 @@ export function ClosingTime({
                     l.have >= l.need ? "text-walnut-dark" : "text-tomato",
                   )}
                 >
-                  {l.have >= l.need ? "✓" : "⚠"} {l.label}: uses {l.need} · have {l.have}
+                  {l.have >= l.need ? "✓" : "⚠"} {l.label}: {l.have}/{l.need}
                   {l.have < l.need ? (
-                    <span className="block font-normal text-[12.5px]">
-                      Not enough — buy more in the Market → Takeaway.
-                    </span>
+                    <span className="block font-normal text-[12.5px]">🛒 Market → Takeaway</span>
                   ) : null}
                 </li>
               ))}
@@ -174,7 +175,7 @@ export function ClosingTime({
             )}
             {p.fullDayEnd ? (
               <p className="mt-1 font-ui text-[12.5px] text-walnut/70">
-                Closing pays the staff and closes the day's accounts.
+                💰 Pays the team · closes the books
               </p>
             ) : null}
           </div>

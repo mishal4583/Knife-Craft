@@ -455,7 +455,7 @@ export function Kitchen({
               </p>
               <p className="mt-0.5 font-hand text-[13px] italic leading-snug text-[#795a3a] sm:text-[14px]">
                 {campaignComplete
-                  ? "every recipe is yours · replay any level or run your restaurant"
+                  ? "📖 every recipe is yours · 🔁 replay or 🍽️ run the restaurant"
                   : !todayUnlocked
                     ? "locked · finish the level before it"
                     : todayCompleted
@@ -591,7 +591,7 @@ export function OrderBoard({
                 🏆 Campaign Complete
               </p>
               <p className="mt-0.5 font-hand text-[15px] leading-snug text-walnut/75">
-                All {levels.length} levels mastered — replay any level or run your restaurant.
+                All {levels.length} levels mastered · 🔁 replay or 🍽️ run the restaurant
               </p>
             </div>
           ) : null}

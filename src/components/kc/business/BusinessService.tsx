@@ -4,6 +4,7 @@ import type { RushRestockOutcome, RushRestockPayment } from "@/game/business/bus
 import type { SaveData } from "@/game/SaveManager";
 import type { ServiceSession } from "@/game/service/ServiceManager";
 import { KButton, Panel, ScreenHeader, Divider, Badge } from "../common/primitives";
+import { InfoTip, StatChip } from "../common/InfoTip";
 import { BusinessCash } from "./BusinessCash";
 import { formatUsd } from "@/game/business/businessCurrency";
 import { BottomNav } from "../Kitchen";
@@ -122,13 +123,22 @@ export function BusinessService({
                 </span>
               ))}
             </div>
-            <p className="mt-1.5 text-center font-hand text-[14px] leading-snug text-walnut/60">
-              The customer pays your menu price × a popularity modifier, and that payment is the
-              revenue recorded. Serving uses the stock. A day with service earns +
-              {orderCompletedDelta({ onTime: true })} popularity at close. Served today:{" "}
-              {save.business.finance.dailyAccumulator.ordersServed ?? 0} · Revenue today:{" "}
-              {formatUsd(save.business.finance.dailyAccumulator.revenue)}.
-            </p>
+            <div className="mt-1.5 flex flex-wrap items-center justify-center gap-1.5">
+              <StatChip icon="🍽️" title="Served today">
+                {save.business.finance.dailyAccumulator.ordersServed ?? 0} served
+              </StatChip>
+              <StatChip icon="💵" tone="sage" title="Revenue today">
+                {formatUsd(save.business.finance.dailyAccumulator.revenue)}
+              </StatChip>
+              <StatChip icon="⭐" title="Popularity at close for a day with service">
+                +{orderCompletedDelta({ onTime: true })}
+              </StatChip>
+              <InfoTip label="How service pays">
+                The customer pays your menu price × a popularity modifier, and that payment is the
+                revenue recorded. Serving uses the stock. A day with service earns +
+                {orderCompletedDelta({ onTime: true })} popularity at close.
+              </InfoTip>
+            </div>
           </Panel>
           <Panel className="mb-3 p-3">
             <div className="flex items-center justify-between">
@@ -144,14 +154,15 @@ export function BusinessService({
                 // Endless Restaurant: the target (businessCustomersToday) comes from the
                 // restaurant's demand, today's events and the team's capacity — not popularity alone.
                 <>
-                  {customers.remaining} remaining · Today's expected customers: {customers.target} —
-                  set by your popularity, menu and today's events, up to what your team can serve.
+                  👥 Today: {customers.target} expected · {customers.remaining} left{" "}
+                  <InfoTip label="How today's customers are set">
+                    Set by your popularity, menu and today's events, up to what your team can serve.
+                  </InfoTip>
                 </>
               ) : (
                 <>
-                  {customers.remaining} remaining · popularity {customers.popularity}/100 brings{" "}
-                  {customers.target} customers today (×{customers.multiplier.toFixed(2)} of{" "}
-                  {BASE_CUSTOMERS_PER_DAY}).
+                  {customers.remaining} left · ⭐ {customers.popularity}/100 → {customers.target}{" "}
+                  customers (×{customers.multiplier.toFixed(2)} of {BASE_CUSTOMERS_PER_DAY})
                 </>
               )}
             </p>
@@ -163,7 +174,7 @@ export function BusinessService({
                 Today's customers are complete.
               </p>
               <p className="mt-1 font-hand text-[15px] leading-snug text-walnut/70">
-                No more customers will arrive today. End the Business Day from the Dashboard.
+                🌙 End the day on the Dashboard
               </p>
               <Divider />
               <KButton full onClick={() => go("business")}>
@@ -173,7 +184,7 @@ export function BusinessService({
           ) : !order || !dish ? (
             <Panel className="p-4 text-center">
               <p className="font-hand text-[16px] leading-snug text-walnut/70">
-                Nobody's waiting yet. Open the counter to take your first real order.
+                🔔 Nobody's waiting yet · open the counter
               </p>
               <Divider />
               <KButton full onClick={onStartService}>
@@ -251,7 +262,7 @@ export function BusinessService({
                 </>
               )}
               <div className="mt-3 flex justify-center">
-                <Badge tone="sage">One order at a time — same real Preparation gameplay</Badge>
+                <Badge tone="sage">🔪 One order at a time</Badge>
               </div>
             </Panel>
           )}

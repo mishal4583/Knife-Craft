@@ -495,9 +495,9 @@ function buy(save: SaveData, id: string, qty: number) {
   );
   const market = read("src/components/kc/MarketIngredients.tsx");
   assert(
-    /Not enough fridge space\./.test(market) &&
-      /You have \$\{formatQuantity\(available\)\} unit/.test(market),
-    "12c: the card says 'Not enough fridge space. You have N units of fridge space left.'",
+    // Copy shortened (developer 2026-10-16: short game-style text instead of sentences).
+    /Fridge full · /.test(market) && /\$\{formatQuantity\(available\)\} unit/.test(market),
+    "12c: the card says 'Fridge full · ❄️ N units free'",
   );
 }
 

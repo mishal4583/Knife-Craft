@@ -2,6 +2,7 @@ import { KButton } from "@/components/kc/common/primitives";
 import type { SaveData } from "@/game/SaveManager";
 import { getSupplyItem, type SupplyId } from "@/game/business/businessSupplies";
 import { AUDIT_EVERY, PAR_PER_SEAT, parAuditFor, type AuditRow } from "@/game/restaurant/parAudit";
+import { InfoTip } from "@/components/kc/common/InfoTip";
 
 /**
  * The opening card's par audit (parAudit.ts — every AUDIT_EVERY restaurant
@@ -28,12 +29,15 @@ export function ParAuditCard({
       data-testid="par-audit"
       data-short={audit.short}
     >
-      <p className="font-ui text-[13px] font-extrabold text-walnut-dark">
+      <p className="flex items-center gap-1.5 font-ui text-[13px] font-extrabold text-walnut-dark">
         📋 Par audit · Day {audit.day}
+        <InfoTip label="About the par audit">
+          Every {AUDIT_EVERY} days: {PAR_PER_SEAT} of each piece a seat ({audit.seats} seats) and
+          the tools today's dishes need. Broken pieces have already left the stock.
+        </InfoTip>
       </p>
       <p className="font-ui text-[12px] leading-snug text-walnut/70">
-        Every {AUDIT_EVERY} days: {PAR_PER_SEAT} of each piece a seat ({audit.seats} seats) and the
-        tools today's dishes need. Broken pieces have already left the stock.
+        🔁 Every {AUDIT_EVERY} days · 💺 {audit.seats} seats × {PAR_PER_SEAT}
       </p>
       {short.length === 0 ? (
         <p className="mt-1 font-ui text-[13px] font-bold text-sage" data-testid="par-ok">

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { KButton, Panel } from "./common/primitives";
 import { cn } from "@/lib/utils";
+import { InfoTip, StatChip } from "./common/InfoTip";
 import type { SaveData } from "@/game/SaveManager";
 import { INGREDIENTS } from "@/game/definitions";
 import { INGREDIENT_EMOJI } from "@/game/knives/knifeDefinitions";
@@ -61,8 +62,8 @@ export function MarketPlanPanel({
     const name = INGREDIENTS[row.ingredientId].name;
     setNotice(
       r.ok
-        ? `Bought ${row.buyUnits} ${marketUnitLabel(row.ingredientId, measure, row.buyUnits)} ${name} · ${formatUsd(r.totalCost)}.`
-        : `Couldn't buy ${name} — ${r.reason === "insufficientFunds" ? "not enough money" : r.reason === "insufficientStorage" ? "no fridge space" : "not available today"}.`,
+        ? `✓ ${row.buyUnits} ${marketUnitLabel(row.ingredientId, measure, row.buyUnits)} ${name} · ${formatUsd(r.totalCost)}`
+        : `✗ ${name} · ${r.reason === "insufficientFunds" ? "💸 not enough money" : r.reason === "insufficientStorage" ? "❄️ no fridge space" : "🚚 not available today"}`,
     );
   }
 
@@ -73,21 +74,29 @@ export function MarketPlanPanel({
     );
     setNotice(
       r.bought > 0
-        ? `Stocked ${r.bought} ingredient${r.bought === 1 ? "" : "s"} for the next ${days === 1 ? "day" : `${days} days`} · ${formatUsd(r.totalCost)}${r.skipped > 0 ? ` (${r.skipped} couldn't be bought)` : ""}.`
-        : "Nothing could be bought — check your money and fridge space.",
+        ? `✓ Stocked ${r.bought} · ${days === 1 ? "today" : `${days} days`} · ${formatUsd(r.totalCost)}${r.skipped > 0 ? ` · ${r.skipped} skipped` : ""}`
+        : "✗ Nothing bought · check 💸 money and ❄️ space",
     );
   }
 
   return (
     <div data-testid="market-plan" ref={ref}>
       <Panel tone="cream" className="p-3">
-        <p className="font-ui text-[12px] font-extrabold uppercase tracking-[0.12em] text-copper">
-          🗓️ Plan ahead
-        </p>
-        <p className="font-hand text-[15px] leading-snug text-walnut/70">
-          What your next services need that the fridge doesn't have — today's menu first, only as
-          much as fits ({formatQuantity(plan.storageFree)} units free).
-        </p>
+        <div className="flex items-center justify-between gap-2">
+          <p className="font-ui text-[12px] font-extrabold uppercase tracking-[0.12em] text-copper">
+            🗓️ Plan ahead
+          </p>
+          <InfoTip label="About Plan ahead">
+            What your next services need that the fridge doesn't have — today's menu first, only as
+            much as fits.
+          </InfoTip>
+        </div>
+        <div className="mt-1 flex flex-wrap gap-1.5">
+          <StatChip icon="🍽️">Today first</StatChip>
+          <StatChip icon="❄️" tone="sage">
+            {formatQuantity(plan.storageFree)} free
+          </StatChip>
+        </div>
         {focused ? (
           <p
             className="mt-1 font-ui text-[12.5px] font-extrabold text-copper"
@@ -125,7 +134,7 @@ export function MarketPlanPanel({
             data-testid="market-plan-empty"
           >
             {plan.noRoom.length > 0
-              ? "Your fridge is full — use what you have first."
+              ? "❄️ Fridge full · use what you have first"
               : `✓ You're stocked for ${days === 1 ? "today" : `the next ${days} days`}.`}
           </p>
         ) : (
@@ -213,19 +222,19 @@ export function MarketPlanPanel({
             className="mt-1 font-ui text-[12px] font-bold text-copper"
             data-testid="market-plan-no-room-today"
           >
-            ⚠️ No fridge room for today's{" "}
-            {plan.noRoomToday.map((id) => INGREDIENTS[id].name).join(", ")} — use or throw out stock
-            in Inventory, or upgrade the fridge.
+            ⚠️ No fridge room: {plan.noRoomToday.map((id) => INGREDIENTS[id].name).join(", ")}{" "}
+            <InfoTip label="How to make room">
+              Use or throw out stock in Inventory, or upgrade the fridge.
+            </InfoTip>
           </p>
         ) : null}
         {plan.noRoom.length > plan.noRoomToday.length && plan.rows.length > 0 ? (
           <p className="mt-1 font-ui text-[12px] font-bold text-walnut/60">
-            No fridge room yet for:{" "}
+            ⏳ After today:{" "}
             {plan.noRoom
               .filter((id) => !plan.noRoomToday.includes(id))
               .map((id) => INGREDIENTS[id].name)
-              .join(", ")}{" "}
-            — buy them after today's service.
+              .join(", ")}
           </p>
         ) : null}
       </Panel>

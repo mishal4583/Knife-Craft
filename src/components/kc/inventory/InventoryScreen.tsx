@@ -8,6 +8,7 @@ import type { SaveData } from "@/game/SaveManager";
 import { BottomNav } from "../Kitchen";
 import { useTabOpen } from "../navLevel";
 import { Coin, KButton, Panel, ScreenHeader } from "../common/primitives";
+import { InfoTip } from "../common/InfoTip";
 import { Bar, Eyebrow } from "../common/Meters";
 import { cn } from "@/lib/utils";
 import { INGREDIENTS, type IngredientId } from "@/game/definitions";
@@ -180,7 +181,7 @@ function AttentionRow({
 }) {
   const usableLine =
     item.status === "expired"
-      ? `${qty(item)} · 0 ${unitOf(item)} usable · throw it out now or it goes at End Business Day`
+      ? `${qty(item)} · 🗑️ expired · throw it out`
       : item.status === "spoils_today"
         ? `${qty(item)} left · spoils at End Business Day`
         : item.status === "expiring"
@@ -438,14 +439,16 @@ function DetailSheet({
         ) : (
           <p className="font-hand text-[15px] text-walnut/65">
             {menuOpensAt !== null
-              ? `No menu yet — it opens at Level ${menuOpensAt}.`
-              : "Not used by today's menu."}
+              ? `🔒 Menu opens at Level ${menuOpensAt}`
+              : "Not on today's menu"}
           </p>
         )}
         {item.todayRequirement !== undefined ? (
-          <p className="mt-1 font-hand text-[13px] leading-snug text-walnut/55">
-            Today's requirement is what today's customers are expected to order, spread over your
-            active menu.
+          <p className="mt-1 flex items-center gap-1.5 font-hand text-[14px] leading-snug text-walnut/55">
+            📊 Today's requirement
+            <InfoTip label="About today's requirement">
+              What today's customers are expected to order, spread over your active menu.
+            </InfoTip>
           </p>
         ) : null}
         <RestockButton go={go} id={item.ingredientId} className="mt-3 w-full" />
@@ -521,7 +524,7 @@ function ThrowOutExpired({
                 setConfirming(false);
                 if (r.ok)
                   setDone(
-                    `🗑 Threw out ${formatQuantity(r.quantity)} units — ${formatUsd(r.value)} recorded as waste.`,
+                    `🗑 Threw out ${formatQuantity(r.quantity)} units · ${formatUsd(r.value)} waste`,
                   );
               }}
             >
@@ -769,8 +772,7 @@ export function InventoryScreen({
                       🍽 No menu yet
                     </p>
                     <p className="mt-0.5 font-ui text-[12px] leading-snug text-walnut/65">
-                      Your menu opens at Level {menuOpensAtLevel}. Until then each level cooks its
-                      own dish from this fridge.
+                      🔒 Opens at Level {menuOpensAtLevel} · 🍳 each level cooks from this fridge
                     </p>
                   </div>
                 )}
@@ -821,8 +823,7 @@ export function InventoryScreen({
                       </>
                     ) : (
                       <p className="mt-1 font-hand text-[16px] leading-snug text-olive">
-                        ✓ Nothing needs attention — everything in stock is fresh and covers today's
-                        menu.
+                        ✓ All fresh · today's menu covered
                       </p>
                     )}
                   </div>
@@ -889,8 +890,7 @@ export function InventoryScreen({
                         ))}
                       </div>
                       <p className="mt-1 font-hand text-[13px] text-walnut/55">
-                        The number is how many menu dishes are waiting for it. Tap to restock it in
-                        the Market.
+                        🍽️ = dishes waiting · tap to restock
                       </p>
                     </>
                   ) : s.menuDishes > 0 ? (
@@ -1028,8 +1028,7 @@ export function InventoryScreen({
             </>
           )}
           <p className="px-4 pb-2 text-center font-hand text-[15px] text-walnut/45">
-            Inventory shows what you have. Buy ingredients and supplies in the Market; upgrade or
-            repair the fridge in Business → Equipment.
+            👀 View only · 🛒 buy in the Market · ❄️ fridge in Business → Equipment
           </p>
         </div>
       </div>

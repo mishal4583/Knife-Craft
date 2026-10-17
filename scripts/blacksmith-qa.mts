@@ -278,7 +278,8 @@ function cutsLanded(knife: typeof chef, intervalMs: number, durationMs: number):
   }
   assert(forgePreview(chef, { sharpness: 5, speed: 5, handling: 5 }, "speed").next === null, "P2: a mastered stat has no next preview");
   const shop = read("src/components/kc/Shop.tsx");
-  assert(/never your score, grade or earnings/.test(shop) && /belong to the knife you forge/.test(shop) && /each knife keeps its own upgrades/.test(shop), "P3: the Blacksmith says upgrades are permanent, per knife, and never change score, grade or earnings");
+  // Short game copy (developer 2026-10-16): chips on the panel, the full sentence behind its ⓘ.
+  assert(/never your score, grade or\s+earnings/.test(shop) && /belong to the knife you forge/.test(shop) && /icon="♾️">Permanent</.test(shop) && /icon="🔪">Per knife</.test(shop) && /icon="⭐">Score unchanged</.test(shop), "P3: the Blacksmith says upgrades are permanent, per knife, and never change score, grade or earnings (chips + ⓘ)");
   assert(/upgrades never wear off/.test(shop) && /Sharpening\s+restores it/.test(shop), "P4: the Sharpen action is explained as separate from the permanent Sharpness upgrade");
 }
 

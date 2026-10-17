@@ -1771,6 +1771,38 @@ small text sits about halfway between the original and the first bump,
 badges 11 px, nothing below 8.5 px; Caveat lines +1 px, 13–17 px); new UI
 uses these sizes.
 
+### Short, game-style copy and the ⓘ InfoTip (developer 2026-10-16)
+
+"Concise the big sentences … convey it with emojis … small points … if long
+sentences are necessary add a small 'i' information symbol and only when it is
+clicked let the information display; make the UI proper according to a game."
+
+- **Primitives** (`kc/common/InfoTip.tsx`):
+  - `InfoTip`: a 22 px ⓘ coin with a 48 px touch area. It opens a paper
+    bubble with the longer text. One bubble is open at a time; a tap outside,
+    Escape or resizing closes it; it follows a scroll and closes once its ⓘ is off screen. The bubble is portalled to
+    `<body>` and drawn at the GameShell's scale, so a clipped card or a scaled
+    frame never cuts it. Never put one inside a `<button>`.
+  - `StatChip`: icon + short value ("⏱ $10/h", "↩ ~40 h").
+  - `Points`: one icon + a few words per line.
+- **The rule:** visible copy is a few words, icons and numbers. A longer
+  explanation goes inside an `InfoTip`. Data copy (knife, board, station,
+  staff and helper descriptions; why a role or tool is needed; forge details)
+  is shown only behind ⓘ.
+- **Swept (2026-10-16):** the Market (cards, Blacksmith, supplies,
+  ingredients, Plan ahead, Second Floor), the Pre-Service Check, Daily Check,
+  Closing Time, deliveries, supplier credit, the ingredient supplier, the par
+  audit, every Business tab, Inventory, Restaurant Progress, the Journal, the
+  Kitchen, the Second Floor view, the served card, the Replay Bonus sheet and
+  the Level Complete notices. The story's narration is unchanged (frozen).
+- **Guard:** `scripts/ui-copy-qa.mts` fails on any visible string over 14
+  words outside an `InfoTip` (screen-reader text, the story and the cleaning
+  mini-game are allowed), and checks the InfoTip's touch area and behaviour.
+- Tests that pinned the old sentences now pin the short copy (the
+  developer's rule change): `inventory-market-qa` 12c,
+  `business-order-frequency-qa` U/U3, `restaurant-progress-qa` G22, e2e
+  `restaurantendless.mjs` 1a/1c and `rushrestock.mjs`.
+
 ---
 
 ## 11. REPOSITORY LAYOUT (additions for Playgama)

@@ -47,8 +47,7 @@ export function BusinessHistory({ save }: { save: SaveData }) {
         <Eyebrow>📅 Last {HISTORY_DAYS} days</Eyebrow>
         {days.length === 0 ? (
           <p className="mt-1 font-hand text-[15px] text-walnut/60">
-            No business day has ended yet — each completed day is kept here (the latest{" "}
-            {HISTORY_DAYS}).
+            📅 No day closed yet · the last {HISTORY_DAYS} are kept here
           </p>
         ) : (
           <>
