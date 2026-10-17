@@ -1,5 +1,13 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## Developer follow-ups to the audit (2026-10-17, `main`)
+
+- Bulk tiers 3/5/8 % from 5/10/25 (were 25/50/100).
+- The shift checklist's "Do all" button is gone (Do it per chore).
+- Mexican cuisine and the Mexican Chef open at L16 (the first Mexican dish),
+  announced at L11; the check asks to hire him (free). e2e `mexicanchef.mjs`.
+  The Mexican menu dishes stay at L49 for now (menu re-plan, below).
+
 ## Whole-game audit fixes (2026-10-17, `main`)
 
 - Menu dishes wait for their cuts: the Zucchini & Fennel Salad joined at
@@ -9,11 +17,9 @@
   now `staff-purchase` (End Business Day stays the one wage site), and the
   map shows today's Cleaner through an explicit `cleanerToday` flag.
 - **Still open:** the 250-level-era suites (53 of 104 suites have pinned
-  failures), the bulk tiers the 1/2/5/10 presets can't reach, the "Do all"
-  chores button, four unused files (`DishwashingPrototype.tsx`,
+  failures), four unused files (`DishwashingPrototype.tsx`,
   `kc/modals/index.tsx`, `RestaurantDevelopmentCard.tsx`,
-  `chefs/chefDefinitions.ts`), the Mexican specialist at L49 while the
-  Mexican chapter starts at L16.
+  `chefs/chefDefinitions.ts`).
 
 ## Cleaner for today replaces "Clean everything I can" (2026-10-17, `main`)
 
@@ -30,9 +36,9 @@
 
 ## Market quantity presets 1/2/5/10 (2026-10-17, `main`)
 
-- Was 5/25/50/100. The bulk discount tiers (25/50/100) are unchanged, so
-  the presets no longer show a discount; re-tiering them is an open
-  economy choice. REFERENCE §5 (`restaurant-progression-qa` B1).
+- Was 5/25/50/100. The bulk tiers followed on the same day: 3/5/8 % from
+  5/10/25, so the 5 and 10 presets save. REFERENCE §5
+  (`restaurant-progression-qa` B1).
 
 ## Cleanliness screen sorted (2026-10-17, `main`)
 

@@ -650,15 +650,16 @@ console.log("D. Deep check fixes (2026-10-09)");
   const lbSave = saveAt(20);
   const kgSave = kg(saveAt(20));
   assert(
-    ingredientBulkDiscount("tomato", 26, "lb") === 0.03 &&
-      ingredientBulkDiscount("tomato", 12, "kg") === 0.03 && // 26.5 lb
-      ingredientBulkDiscount("tomato", 10, "kg") === 0 && // 22 lb
-      ingredientBulkDiscount("tomato", 25, "kg") === 0.05 && // 55 lb
-      ingredientBulkDiscount("watermelon", 3, "lb") === 0.03 && // 3 whole melons, 30 lb
-      ingredientBulkDiscount("bread", 25, "kg") === 0.03 && // loaves count as pieces
-      restaurantQuote(kgSave, "tomato", 12).bulkDiscount ===
-        restaurantQuote(lbSave, "tomato", 26).bulkDiscount,
-    "D3: the bulk discount is chosen by the stock bought — 12 kg gets the same tier as 26 lb, a whole melon counts by its weight",
+    // Tiers 5 / 10 / 25 (developer 2026-10-17, lowered from 25 / 50 / 100).
+    ingredientBulkDiscount("tomato", 6, "lb") === 0.03 &&
+      ingredientBulkDiscount("tomato", 3, "kg") === 0.03 && // 6.6 lb
+      ingredientBulkDiscount("tomato", 2, "kg") === 0 && // 4.4 lb
+      ingredientBulkDiscount("tomato", 5, "kg") === 0.05 && // 11 lb
+      ingredientBulkDiscount("watermelon", 3, "lb") === 0.08 && // 3 whole melons, 30 lb
+      ingredientBulkDiscount("bread", 5, "kg") === 0.03 && // loaves count as pieces
+      restaurantQuote(kgSave, "tomato", 3).bulkDiscount ===
+        restaurantQuote(lbSave, "tomato", 6).bulkDiscount,
+    "D3: the bulk discount is chosen by the stock bought — 3 kg gets the same tier as 6 lb, a whole melon counts by its weight",
   );
 
   // D4 — "no room" for today's own stock is told apart from later days.

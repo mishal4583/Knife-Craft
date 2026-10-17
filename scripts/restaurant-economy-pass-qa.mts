@@ -154,21 +154,18 @@ console.log('X. Item effects on real stock (developer: "move to real stock")');
     served.ok,
     "X3: a knife that dulled after the check never blocks a serve — the extra waste comes only from stock that's there",
   );
-  const local = restaurantQuote(base, "tomato", 10);
+  // 4 units: below the first bulk tier (5, developer 2026-10-17), so this checks the supplier price alone.
+  const local = restaurantQuote(base, "tomato", 4);
   const wholesale = restaurantQuote(
     { ...base, selectedSupplierId: "wholesale-supplier" },
     "tomato",
-    10,
+    4,
   );
-  const premium = restaurantQuote(
-    { ...base, selectedSupplierId: "premium-supplier" },
-    "tomato",
-    10,
-  );
+  const premium = restaurantQuote({ ...base, selectedSupplierId: "premium-supplier" }, "tomato", 4);
   const bought = purchaseIngredient(
     { ...base, selectedSupplierId: "wholesale-supplier" },
     "tomato",
-    10,
+    4,
     0,
     supplierPriceFactor({ ...base, selectedSupplierId: "wholesale-supplier" }),
   );
@@ -177,7 +174,7 @@ console.log('X. Item effects on real stock (developer: "move to real stock")');
       premium.unitCost === Math.round(local.unitCost * 1.1) &&
       bought.ok &&
       bought.totalCost === wholesale.totalCost &&
-      purchaseQuote(base, "tomato", 10).unitCost === local.unitCost,
+      purchaseQuote(base, "tomato", 4).unitCost === local.unitCost,
     `X4: the Campaign Supplier now sets Market prices — tomato ${$(local.unitCost)} local, ${$(wholesale.unitCost)} wholesale, ${$(premium.unitCost)} premium; the purchase charges the quote; the classic quote is unchanged`,
   );
   const app = read("src/App.tsx");

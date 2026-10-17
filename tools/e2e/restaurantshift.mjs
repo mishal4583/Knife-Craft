@@ -1,7 +1,7 @@
 // Shift chores (a real restaurant's day, developer 2026-10-11), restaurant build:
 //   1. Between services (Level 41, Lunch done): Prepare opens the check with "Between services"
-//      — sanitizer bucket, sweep the line, refresh the restroom; Do all does them (supplies once,
-//      no money) and the list is gone.
+//      — sanitizer bucket, sweep the line, refresh the restroom; there is no "Do all" (developer
+//      2026-10-17); each Do it does one (supplies once, no money) and the list is gone.
 //   2. Closing Time lists the closing chores with Do it; one done leaves; Close for the night
 //      brings the next morning's opening chores (stations, restroom check, lay the tables), and
 //      the opening card shows them.
@@ -101,23 +101,32 @@ await prepare();
 const l1 = await chores("lull");
 await shot(page, "shift-lull");
 const before1 = await readSave(page);
-await page.evaluate(() =>
-  [...document.querySelectorAll('[data-testid="shift-chores-lull"] button')]
-    .find((b) => /^Do all/.test(b.textContent.trim()))
-    ?.click(),
+const noDoAll = await page.evaluate(
+  () =>
+    ![...document.querySelectorAll('[data-testid="shift-chores-lull"] button')].some((b) =>
+      /^Do all/.test(b.textContent.trim()),
+    ),
 );
-await sleep(600);
+for (let i = 0; i < 3; i++) {
+  await page.evaluate(() =>
+    [...document.querySelectorAll('[data-testid="shift-chores-lull"] [data-chore-task] button')]
+      .find((b) => /^Do it/.test(b.textContent.trim()))
+      ?.click(),
+  );
+  await sleep(500);
+}
 const l1b = await chores("lull");
 const after1 = await readSave(page);
 check(
-  "1 between services: the check lists the lull's chores; Do all does them (supplies once, no money) and the list is gone",
-  l1.sort().join() === "restroom-refresh,sanitizer-bucket,sweep-line" &&
+  "1 between services: the check lists the lull's chores, no Do all; Do it does each (supplies once, no money) and the list is gone",
+  noDoAll &&
+    l1.sort().join() === "restroom-refresh,sanitizer-bucket,sweep-line" &&
     l1b.length === 0 &&
     after1.business.cleanliness.tasks.length === 0 &&
     after1.credits === before1.credits &&
     after1.economyLedger.length === before1.economyLedger.length &&
     after1.business.supplies.stock.disinfectant.units === 3,
-  { l1, l1b, tasks: after1.business.cleanliness.tasks },
+  { noDoAll, l1, l1b, tasks: after1.business.cleanliness.tasks },
 );
 
 // ---------- 2. Closing → the next morning ----------

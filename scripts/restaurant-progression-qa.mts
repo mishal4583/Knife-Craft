@@ -274,14 +274,17 @@ console.log("E. Closing from L91: End Business Day in the ledger");
 console.log("B. Bulk buying");
 {
   assert(
-    // Presets 1/2/5/10 (developer 2026-10-17: no 100 lb at a time); the tiers are unchanged.
+    // Presets 1/2/5/10 (developer 2026-10-17: no 100 lb at a time) and tiers
+    // 5/10/25 (developer 2026-10-17: lowered so the presets reach them).
     BULK_PRESETS.join() === "1,2,5,10" &&
-      bulkDiscountFor(5) === 0 &&
-      bulkDiscountFor(25) === BULK_DISCOUNTS[0]!.discount &&
-      bulkDiscountFor(99) === BULK_DISCOUNTS[1]!.discount &&
-      bulkDiscountFor(100) === BULK_DISCOUNTS[2]!.discount &&
+      bulkDiscountFor(2) === 0 &&
+      bulkDiscountFor(5) === BULK_DISCOUNTS[0]!.discount &&
+      bulkDiscountFor(10) === BULK_DISCOUNTS[1]!.discount &&
+      bulkDiscountFor(24) === BULK_DISCOUNTS[1]!.discount &&
+      bulkDiscountFor(25) === BULK_DISCOUNTS[2]!.discount &&
+      BULK_PRESETS.filter((q) => bulkDiscountFor(q) > 0).join() === "5,10" &&
       BULK_DISCOUNTS.every((t, i) => i === 0 || t.discount > BULK_DISCOUNTS[i - 1]!.discount),
-    "B1: presets 1/2/5/10; the discount grows with the tier (configurable)",
+    "B1: presets 1/2/5/10; tiers from 5 / 10 / 25, so the 5 and 10 presets save; the discount grows with the tier",
   );
   const s = {
     ...saveAt(30, 1_000_000),

@@ -283,7 +283,9 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   allow) and never runs ahead; it misses only at L20/25/31 (techniques) and
   L91/101/111 (meat L101, ribeye L106, fish L109) — no dish is invented.
   Each specialist cuisine opens with its campaign chapter (Indian 51,
-  Mediterranean 71, Mexican 81, Japanese 101, Chinese 121, Thai 141,
+  Mediterranean 71, Mexican 81 (since 2026-10-17 a cuisine opens no later
+  than the campaign's first dish of it: Mexican and its chef at new L16, the
+  Beetroot & Orange Plate; announced at L11), Japanese 101, Chinese 121, Thai 141,
   Korean 161; one Asian Chef for the four Asian chapters) and its first
   dishes arrive as soon as they legally can; every unlock says why
   (`MENU_UNLOCKS.why`, shown by `restaurant/restaurantNews.ts` with the
@@ -351,8 +353,8 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   entries (it used to move money without them); bulk buying
   (`restaurant/bulkBuying.ts`: presets 1/2/5/10 — developer 2026-10-17,
   sized to real buys: ≤ 2.25 lb an ingredient a service, ≤ 9 lb for 3 days,
-  1–2 supply packs; was 5/25/50/100 — provisional tiers
-  3/5/8 % from 25/50/100, the last price layer, consumables only, up to 100
+  1–2 supply packs; was 5/25/50/100 — tiers 3/5/8 % from 5/10/25,
+  lowered from 25/50/100 on 2026-10-17 so the 5 and 10 presets save; the last price layer, consumables only, up to 100
   supply packs, one ledger entry; the classic purchase is unchanged);
   Inventory's ⚠️ NEEDS ATTENTION (`restaurant/restaurantAttention.ts`,
   `RestaurantAttentionPanel`): the next service's missing ingredients and
@@ -699,7 +701,8 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   `choresAfterClose` (Closing Time's close, the quiet close, the sim) add a
   batch ONCE per key "day:phase:services" (`cleanliness.choreKeys`) — a
   reload or a repeated opening never adds it again. Each chore uses its
-  supplies once (`cleanTask`); "Do all" (`phase-all`) does that phase's.
+  supplies once (`cleanTask`); no "Do all" button (removed, developer
+  2026-10-17; the `phase-all` action stays for tests and the sim).
   The team does its own (`cleanerRound`): the Cleaner the cleaning in their
   areas, the Server (dining-room chores), the Prep Cook (stations, sanitizer
   bucket). The Pre-Service Check opens for the opening / lull chores

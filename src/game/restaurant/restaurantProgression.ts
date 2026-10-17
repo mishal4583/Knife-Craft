@@ -295,9 +295,30 @@ const SOURCE_CUISINES: readonly CuisineUnlock[] = [
   },
 ];
 
+/** The first campaign level that cooks each dish cuisine (null → "home"). */
+const FIRST_CUISINE_LEVEL: ReadonlyMap<CuisineKey, number> = (() => {
+  const first = new Map<CuisineKey, number>();
+  LEVELS.forEach((level, i) => {
+    for (const id of [level.recipeId, ...(level.recipePoolIds ?? [])]) {
+      const key = getCampaignRecipe(id ?? "")?.cuisineId ?? null;
+      if (key && !first.has(key)) first.set(key, i + 1);
+    }
+  });
+  return first;
+})();
+
+/**
+ * A cuisine opens at its remapped level, or earlier when the campaign cooks
+ * it first (developer 2026-10-17: the Mexican Chef is introduced with the
+ * first Mexican dish, L16, and the Pre-Service Check asks the player to hire
+ * him — hiring is free; wages start with full operation).
+ */
 export const CUISINES: readonly CuisineUnlock[] = SOURCE_CUISINES.map((cuisine) => ({
   ...cuisine,
-  firstLevel: remapCampaignThreshold(cuisine.firstLevel),
+  firstLevel: Math.min(
+    remapCampaignThreshold(cuisine.firstLevel),
+    ...cuisine.cuisineIds.map((k) => FIRST_CUISINE_LEVEL.get(k) ?? Infinity),
+  ),
 }));
 /** How many levels ahead a cuisine (and its specialist) is announced. */
 export const CUISINE_NOTICE_LEVELS = 5;

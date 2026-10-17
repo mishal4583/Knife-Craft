@@ -7,8 +7,9 @@
  *     opening chores. Nothing before L21 (the day's ceremony).
  *  O  Once: each (day, phase, service) batch is added once — re-applying it
  *     (a reload, a repeated opening, a second tap) adds nothing.
- *  D  Do it / Do all: each chore uses its supplies exactly once; a chore
- *     done is gone; Do all only does that phase's chores.
+ *  D  Do it: each chore uses its supplies exactly once; a chore done is
+ *     gone; the phase action (setup only) does just that phase's chores. The
+ *     checklist has no "Do all" button (developer 2026-10-17).
  *  S  Staff: the Cleaner (assigned areas), the Server (dining-room chores,
  *     not cleaning ones) and the Prep Cook (the line's) do their own.
  *  P  Spotless: a chore still open when the next service starts breaks it;
@@ -142,7 +143,7 @@ console.log("O. Once per day and phase");
   );
 }
 
-console.log("D. Do it / Do all");
+console.log("D. Do it");
 {
   const s = choresAfterService(recordService(openDay(saveAt(40), 40), 40), 40);
   const before = usesAvailable(s, "disinfectant");
@@ -158,7 +159,17 @@ console.log("D. Do it / Do all");
       all.cleaned.sort().join() === "restroom-refresh,sweep-line" &&
       all.save.credits === s.credits &&
       all.save.economyLedger.length === s.economyLedger.length,
-    "D1: a chore uses its supplies once (a second tap does nothing); Do all does the phase's chores; no money",
+    "D1: a chore uses its supplies once (a second tap does nothing); the phase action does the phase's chores; no money",
+  );
+  const view = fs.readFileSync(
+    path.join(import.meta.dirname, "../src/components/kc/restaurant/ShiftChecklist.tsx"),
+    "utf8",
+  );
+  assert(
+    !/Do all/.test(view.replace(/\/\*[\s\S]*?\*\//g, "")) &&
+      !/"phase-all"/.test(view) &&
+      /Do it/.test(view),
+    'D2: the checklist offers "Do it" per chore and no "Do all" button (developer 2026-10-17)',
   );
 }
 

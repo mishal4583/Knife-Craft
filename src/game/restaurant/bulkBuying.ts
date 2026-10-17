@@ -27,16 +27,19 @@ import { lbPerMarketUnit, type Measure } from "../business/measure";
  * Developer 2026-10-17 ("we don't need 100 lb or kg at a time"): sized to
  * what a restaurant really buys — one service needs at most 2.25 lb of an
  * ingredient, three days at most 9 lb, a supply 1–2 packs, and the first
- * fridge holds 40 units in all. The bulk tiers below are unchanged; a
- * larger amount is still one + tap away.
+ * fridge holds 40 units in all. A larger amount is still one + tap away.
  */
 export const BULK_PRESETS: readonly number[] = [1, 2, 5, 10];
 
-/** From `minQuantity` on, `discount` (a fraction) comes off the price. Provisional. */
+/**
+ * From `minQuantity` on, `discount` (a fraction) comes off the price.
+ * Developer 2026-10-17: lowered from 25/50/100 so the 5 and 10 presets get
+ * a discount; 25 stays reachable with the + button.
+ */
 export const BULK_DISCOUNTS: readonly { minQuantity: number; discount: number }[] = [
-  { minQuantity: 25, discount: 0.03 },
-  { minQuantity: 50, discount: 0.05 },
-  { minQuantity: 100, discount: 0.08 },
+  { minQuantity: 5, discount: 0.03 },
+  { minQuantity: 10, discount: 0.05 },
+  { minQuantity: 25, discount: 0.08 },
 ];
 
 /** The most supply packs one restaurant purchase can buy (the largest preset). */

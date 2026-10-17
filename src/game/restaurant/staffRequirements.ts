@@ -356,7 +356,7 @@ export function staffComingUp(levelNumber: number): StaffNotice[] {
     ...SPECIALIST_CHEFS.filter((s) => soon(s.firstLevel)).map((s) => ({
       level: s.firstLevel,
       title: s.title,
-      why: `${s.cuisines[0]} dishes join the menu at Level ${s.firstLevel} — they need the ${s.title}.`,
+      why: `${s.cuisines[0]} dishes start at Level ${s.firstLevel} — hire the ${s.title} (free).`,
     })),
   ].sort((a, b) => a.level - b.level);
 }

@@ -23,9 +23,10 @@ const PHASE_META: Record<ShiftPhase, { title: string; icon: string; goal: string
 /**
  * A phase's chores (a real restaurant's day, developer 2026-10-11): a filtered
  * view of the Cleanliness tasks — the opening chores on the opening card,
- * the lull's between services, closing's at Closing Time. Clean one, or Do
- * all (each uses its supplies once, cleanliness.ts); "Buy …" opens the
- * Market line; the full picture is Restaurant → Cleanliness. Never blocks.
+ * the lull's between services, closing's at Closing Time. Each chore is
+ * done with its own Do it (its supplies used once, cleanliness.ts; the "Do
+ * all" shortcut was removed, developer 2026-10-17); "Buy …" opens the Market
+ * line; the full picture is Restaurant → Cleanliness. Never blocks.
  */
 export function ShiftChecklist({
   save,
@@ -44,7 +45,6 @@ export function ShiftChecklist({
   const [flash, setFlash] = useState<string | null>(null);
   if (items.length === 0) return null;
   const meta = PHASE_META[phase];
-  const doable = items.filter((t) => t.needs.length === 0);
   function run(action: CleanlinessAction) {
     const r = onAction(action);
     if (r && r.cleaned.length) {
@@ -67,16 +67,6 @@ export function ShiftChecklist({
           </p>
           <p className="font-ui text-[12px] text-walnut/60">{meta.goal}</p>
         </div>
-        {doable.length > 1 ? (
-          <KButton
-            size="sm"
-            variant="sage"
-            className="min-h-12 shrink-0"
-            onClick={() => run({ kind: "phase-all", phase })}
-          >
-            Do all ({doable.length})
-          </KButton>
-        ) : null}
       </div>
       {flash ? (
         <p
