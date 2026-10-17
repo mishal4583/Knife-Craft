@@ -1,5 +1,6 @@
 // Developer decision #5 — a two-order level never pays an order twice.
-//   1. Level 30 (2 orders): serve the 1st, leave. The order is paid once and
+//   1. Level 19 (Italian Service Night, 2 orders; Level 30 before the 150-level campaign):
+//      serve the 1st, leave. The order is paid once and
 //      saved as paid; the level stays open.
 //   2. Retry: the session carries on with the 1st order counted. Serving one
 //      more finishes the level: 2 settlements in all (it used to be 3) and
@@ -17,12 +18,12 @@ const flat = async (page) => (await text(page)).replace(/\s+/g, " ");
 const settlements = (s) =>
   s.economyLedger.filter((e) => e.category === "campaign-settlement").length;
 const rewards = (s) =>
-  s.economyLedger.filter((e) => e.category === "completion-reward" && e.description === "level-30")
+  s.economyLedger.filter((e) => e.category === "completion-reward" && e.description === "level-19")
     .length;
 
 const { browser, page, logs } = await launch();
 
-async function openLevel30() {
+async function openLevel19() {
   await page.evaluate(() =>
     [...document.querySelectorAll("nav button")]
       .find((x) => x.textContent.includes("Kitchen"))
@@ -68,14 +69,14 @@ async function playAndServe() {
   return { played: played.ok, ready };
 }
 
-const done = Array.from({ length: 29 }, (_, i) => `level-${i + 1}`);
+const done = Array.from({ length: 18 }, (_, i) => `level-${i + 1}`);
 await boot(
   page,
   seedSave({
     credits: 2000000,
     levelProgress: {
-      currentLevelId: "level-30",
-      highestUnlockedLevelId: "level-30",
+      currentLevelId: "level-19",
+      highestUnlockedLevelId: "level-19",
       completedLevelIds: done,
     },
     story: { introDone: true, milestoneMask: 127, finaleSeen: false },
@@ -84,7 +85,7 @@ await boot(
 const start = await readSave(page);
 
 // ---------- 1. Serve the 1st order, then leave ----------
-await openLevel30();
+await openLevel19();
 const first = await playAndServe();
 const servedOne = await flat(page);
 await shot(page, "paidorders-1-served");
@@ -96,8 +97,8 @@ check(
   first.played &&
     first.ready &&
     settlements(afterLeave) - settlements(start) === 1 &&
-    afterLeave.levelProgress.paidOrders?.["level-30"]?.length === 1 &&
-    !afterLeave.levelProgress.completedLevelIds.includes("level-30") &&
+    afterLeave.levelProgress.paidOrders?.["level-19"]?.length === 1 &&
+    !afterLeave.levelProgress.completedLevelIds.includes("level-19") &&
     !/Finish Level/.test(servedOne),
   {
     first,
@@ -107,7 +108,7 @@ check(
 );
 
 // ---------- 2. Retry: one more order finishes it ----------
-await openLevel30();
+await openLevel19();
 const second = await playAndServe();
 const servedTwo = await flat(page);
 await shot(page, "paidorders-2-retry-served");
@@ -123,8 +124,8 @@ check(
   "2b 2 settlements in all (not 3), the completion reward once, the paid entry cleared",
   settlements(end) - settlements(start) === 2 &&
     rewards(end) === 1 &&
-    end.levelProgress.completedLevelIds.includes("level-30") &&
-    end.levelProgress.paidOrders?.["level-30"] === undefined,
+    end.levelProgress.completedLevelIds.includes("level-19") &&
+    end.levelProgress.paidOrders?.["level-19"] === undefined,
   {
     settlements: settlements(end) - settlements(start),
     rewards: rewards(end),

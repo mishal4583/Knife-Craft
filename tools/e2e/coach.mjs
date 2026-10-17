@@ -4,14 +4,16 @@
 //   2. tapping exactly where the ghost fingertip taps makes a real cut, and the card goes away;
 //   3. once the player has cut, it stays away even when they pause (only shown when needed);
 //   4. Level 1 still plays through to the Knife Report with coaching on;
-//   5. Level 5 teaches each step as it comes: "How to peel", then "How to halve";
+//   5. a level teaches a step only when it comes, and only a new technique: Level 4
+//      (Potato & Tomato, 150-level campaign) starts with peel, already taught in Level 2's
+//      practice, so no card; its halve step (first used at Level 4) teaches itself;
 //   6. a later level (Level 12) never shows it, even after a long pause;
 //   7. a replayed beginner level (Level 4, already completed) shows no coaching or hint;
-//   8. a stuck player (touched, but no progress) gets it back; on Level 3 (chop) swiping along
-//      the demonstrated line (the SWIPE half of the loop) also makes a real cut. (Was Level 2:
-//      developer 2026-10-10 "don't let the same instructions repeat" — a technique is taught
-//      only in the level that introduces it, so Level 2's slice isn't taught again.)
-//   8c. Level 2 (slice again) shows no how-to card.
+//   8. a stuck player (touched, but no progress) gets it back; on Level 2 (the practice, whose
+//      first step dices: dice first used there) swiping along the demonstrated line (the SWIPE
+//      half of the loop) also makes a real cut. (Developer 2026-10-10 "don't let the same
+//      instructions repeat" — a technique is taught only in the level that introduces it.)
+//   8c. Level 3 (Garden Prep, slice again) shows no how-to card.
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import zlib from "node:zlib";
 import { launch, boot, freshPlayer, seedSave, sleep, clickButton, shot, save } from "./harness.mjs";
@@ -239,8 +241,8 @@ const played = await playToReport(page, { maxMs: 90000 });
 check("4a Level 1 still plays through to the Knife Report", played.ok, played.log.slice(-3));
 check("4b no card on the Knife Report", (await card(page)) === null);
 
-// ---------- 5: Level 5 teaches each step as it comes ----------
-await boot(page, at(5));
+// ---------- 5: Level 4 teaches its new step as it comes ----------
+await boot(page, at(4));
 await clickButton(page, /Prepare$/);
 await page
   .waitForFunction(() => !!document.querySelector('[data-testid="coach-card"]'), {
@@ -248,8 +250,8 @@ await page
   })
   .catch(() => {});
 check(
-  "5a Level 5 step 1: How to peel",
-  /HOW TO PEEL/i.test((await card(page)) ?? ""),
+  "5a Level 4 step 1 (peel, taught in Level 2's practice): no how-to card",
+  !/HOW TO PEEL/i.test((await card(page)) ?? ""),
   await card(page),
 );
 await shot(page, "coach-5-peel");
@@ -271,7 +273,7 @@ for (let i = 0; i < 40 && !toHalve; i++) {
 }
 await sleep(1500); // the player looks at the new step
 check(
-  "5b after peeling, the halve step teaches itself: How to halve",
+  "5b after peeling, Level 4's new halve step teaches itself: How to halve",
   toHalve && /HOW TO HALVE/i.test((await card(page)) ?? ""),
   await card(page),
 );
@@ -304,7 +306,7 @@ check(
 );
 
 // ---------- 8: stuck → it comes back; SWIPE also cuts ----------
-await boot(page, at(3));
+await boot(page, at(2));
 await clickButton(page, /Prepare$/);
 await page.waitForFunction(() => !!document.querySelector('[data-testid="coach-card"]'), {
   timeout: 5000,
@@ -315,7 +317,7 @@ const hidden = (await card(page)) === null;
 await sleep(4600);
 check(
   "8a a touch that made no progress hides it; still stuck after a pause, it comes back",
-  hidden && /HOW TO CHOP/i.test((await card(page)) ?? ""),
+  hidden && /HOW TO DICE/i.test((await card(page)) ?? ""),
 );
 const beforeSwipe = await stepInfo(page);
 const tip2 = await findFingertip(page);
@@ -336,15 +338,15 @@ check(
   { tip2, before: beforeSwipe.n, after: afterSwipe.n },
 );
 
-// ---------- 8c: Level 2 repeats slice — no lesson again ----------
-await boot(page, at(2));
+// ---------- 8c: Level 3 repeats slice — no lesson again ----------
+await boot(page, at(3));
 await clickButton(page, /Prepare$/);
 await page.waitForFunction(() => /STEP 1 OF|0\/\d+ slice/i.test(document.body.innerText), {
   timeout: 15000,
 });
 await sleep(2500);
 check(
-  "8c Level 2 (slice, already taught on Level 1) shows no how-to card",
+  "8c Level 3 (slice, already taught on Level 1) shows no how-to card",
   (await card(page)) === null,
 );
 

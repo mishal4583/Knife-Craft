@@ -1,9 +1,11 @@
 // Level 1–10 UX pass (docs/HANDOFF.md §4), on the release build:
 //   1. The Order Board highlights no bottom-bar section (it used to light up Kitchen) and its
-//      rows say "Next: Santoku in the Market · Lv 10" (not a free "Next: Santoku").
-//   2. The HUD: a single-step level shows no "Step 1 of 1"; its destination line ("For Bowl")
-//      sits on the order card, readable.
-//   3. Level 7 (a peel): the HUD shows "% peeled" rising while peeling, before the step is done.
+//      rows say "Next: Paring Knife in the Market · Lv 9" (not a free "Next: Paring Knife"; the
+//      150-level campaign's numbers, the bottom bar Kitchen · Market · Restaurant).
+//   2. The HUD: a single-step level (First Slice, Level 1) shows no "Step 1 of 1"; its
+//      destination line ("For Plate") sits on the order card, readable.
+//   3. Level 4 (Potato & Tomato, a peel first): the HUD shows "% peeled" rising while peeling,
+//      before the step is done.
 //   4. The Knife Report: the line follows the grade (one of the per-cut toast's words), the
 //      retry button says "Prepare Again".
 //   5. Level 10: "Level Complete" first (W4), then the story milestone; the card has Order payout,
@@ -41,7 +43,10 @@ async function openLevel(title) {
     for (let i = 0; i < 8 && n; i++) {
       n = n.parentElement;
       const b =
-        n && [...n.querySelectorAll("button")].find((x) => /^Prepare$/.test(x.textContent.trim()));
+        n &&
+        [...n.querySelectorAll("button")].find((x) =>
+          /^(Prepare|Replay)$/.test(x.textContent.trim()),
+        );
       if (b) return b.click();
     }
   }, title);
@@ -69,16 +74,16 @@ const board = await page.evaluate(() => {
 });
 await shot(page, "levelux-board");
 check(
-  "1 the Order Board lights no bottom-bar section; rows say 'Next: Santoku in the Market · Lv 10'",
-  board.nav.length === 5 &&
+  "1 the Order Board lights no bottom-bar section; rows say 'Next: Paring Knife in the Market · Lv 9'",
+  board.nav.length === 3 &&
     board.nav.every((n) => !n.lit) &&
-    /Next: Santoku in the Market · Lv 10/.test(board.text) &&
-    !/Next: Santoku · Lv 10/.test(board.text),
+    /Next: Paring Knife in the Market · Lv 9/.test(board.text) &&
+    !/Next: Paring Knife · Lv 9/.test(board.text),
   { nav: board.nav },
 );
 
 // ---------- 2. HUD ----------
-await openLevel("Carrot Chop");
+await openLevel("First Slice");
 const hud = await page.evaluate(() => {
   const step = document.querySelector('[data-testid="hud-step"]');
   const card = step?.closest(".paper");
@@ -91,12 +96,12 @@ const hud = await page.evaluate(() => {
 });
 await shot(page, "levelux-hud");
 check(
-  "2 single-step HUD: no 'Step 1 of 1'; 'For Bowl' sits on the order card",
-  !hud.stepOneOfOne && /for bowl/i.test(hud.text ?? "") && hud.inCard,
+  "2 single-step HUD: no 'Step 1 of 1'; 'For Plate' sits on the order card",
+  !hud.stepOneOfOne && /for plate/i.test(hud.text ?? "") && hud.inCard,
   hud,
 );
 
-// ---------- 4. Knife Report (Level 3) ----------
+// ---------- 4. Knife Report (Level 1) ----------
 const played = await playToReport(page);
 await sleep(400);
 const report = await flat();
@@ -112,9 +117,9 @@ check(
   { report: report.slice(0, 260) },
 );
 
-// ---------- 3. Level 7: peel progress ----------
-await boot(page, saveAt(7));
-await openLevel("Peeled Potato");
+// ---------- 3. Level 4: peel progress ----------
+await boot(page, saveAt(4));
+await openLevel("Potato & Tomato");
 const pct = () =>
   page.evaluate(() => {
     const m = document.body.innerText.match(/(\d+)% peeled/);
@@ -136,7 +141,7 @@ await strokeAt(-18);
 const mid = await pct();
 await shot(page, "levelux-peel");
 check(
-  "3 Level 7: the HUD shows '% peeled' rising while peeling, before the step is done",
+  "3 Level 4: the HUD shows '% peeled' rising while peeling, before the step is done",
   before === 0 && mid !== null && mid > 0 && mid < 100,
   { before, mid },
 );
@@ -193,7 +198,8 @@ check(
     cents(row("Order payout")) === order &&
     cents(row("Completion reward")) === reward &&
     cents(row("Earned this level")) === order + reward &&
-    reward === 8000,
+    // paidLevelReward (developer 2026-10-16): round(50 + 3.1 × (10 − 1)) = $78.
+    reward === 7800,
   { first: first.slice(0, 120), rows: banner.rows, order, reward, milestoneAfter },
 );
 

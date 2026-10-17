@@ -167,7 +167,7 @@ await boot(
 );
 for (let run = 1; run <= 2; run++) {
   const b = await readSave(page);
-  await openFromBoard("Fresh Cucumber");
+  await openFromBoard("Basic Kitchen Learning");
   const r = await playAndServe();
   await clickButton(page, /^Back to (Kitchen|Orders)$/);
   await sleep(1500);
@@ -176,11 +176,10 @@ for (let run = 1; run <= 2; run++) {
   const done = a.levelProgress.completedLevelIds.includes("level-2");
   if (run === 1)
     check(
-      "G1.3 Level 2 first Serve -> Back to Kitchen: completed, settlement + reward once",
-      r.flow === "service" &&
-        done &&
-        led.filter((e) => e.startsWith("campaign-settlement")).length === 1 &&
-        led.filter((e) => e.startsWith("completion-reward")).length === 1,
+      // Level 2 is a guided practice since the campaign redesign (levelTypes: practice-only,
+      // no wallet or ledger money), so it completes with no entry at all.
+      "G1.3 Level 2 (practice) first Serve -> Back to Kitchen: completed once, no money moves",
+      r.flow === "service" && done && led.length === 0,
       // No wallet delta here: the seeded save's legacy `credits` are migrated
       // to cents on the first save, so only the ledger is compared.
       { flow: r.flow, ledger: led },

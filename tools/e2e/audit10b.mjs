@@ -58,7 +58,7 @@ async function openFromBoard(title) {
 await boot(page, base);
 for (let run = 1; run <= 2; run++) {
   const b = await readSave(page);
-  await openFromBoard("Fresh Cucumber");
+  await openFromBoard("Basic Kitchen Learning");
   await playToReport(page);
   await clickButton(page, /^Continue$/);
   await sleep(800);
@@ -93,7 +93,7 @@ await shot(page, "a10b-A-after");
 
 // B. Pause → "Back to Kitchen" mid-level.
 await boot(page, base);
-await openFromBoard("Fresh Cucumber");
+await openFromBoard("Basic Kitchen Learning");
 await page.evaluate(() =>
   [...document.querySelectorAll("button")]
     .find(
@@ -118,7 +118,7 @@ note("B pause→Back to Kitchen lands on", (await text(page)).replace(/\s+/g, " 
 
 // C. Reload in the middle of a level.
 await boot(page, base);
-await openFromBoard("Fresh Cucumber");
+await openFromBoard("Basic Kitchen Learning");
 const cx = 215,
   cy = 452;
 for (let i = 0; i < 3; i++) {
@@ -139,7 +139,7 @@ note("C reload mid-level", {
 // D. Knife Report "Prepare Again" then finish — paid once?
 await boot(page, base);
 const d0 = await readSave(page);
-await openFromBoard("Fresh Cucumber");
+await openFromBoard("Basic Kitchen Learning");
 await playToReport(page);
 await clickButton(page, /^Prepare Again$/);
 await sleep(1200);

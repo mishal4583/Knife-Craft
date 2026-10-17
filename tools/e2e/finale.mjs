@@ -1,5 +1,6 @@
 // The finale (developer decisions #21 and #22):
-//   1. finishing the 100th level plays the finale once, after the level is paid;
+//   1. finishing the 75th level (the 150-level campaign's halfway, CLAUDE.md §9) plays the
+//      finale once, after the level is paid;
 //   2. a platform pause stops its beat timer, freezes its animations and ignores
 //      taps; after the resume it carries on from where it was;
 //   3. "BACK TO THE KITCHEN" lands on the Kitchen home screen (it used to leave
@@ -18,15 +19,15 @@ const flat = async (page) => (await text(page)).replace(/\s+/g, " ");
 
 const { browser, page, logs } = await launch();
 
-// 99 levels done (2–100), Level 1 still open: finishing it is the 100th.
-const done = Array.from({ length: 99 }, (_, i) => `level-${i + 2}`);
+// 74 levels done (2–75), Level 1 still open: finishing it is the 75th.
+const done = Array.from({ length: 74 }, (_, i) => `level-${i + 2}`);
 await boot(
   page,
   seedSave({
     credits: 5000000,
     levelProgress: {
       currentLevelId: "level-1",
-      highestUnlockedLevelId: "level-101",
+      highestUnlockedLevelId: "level-76",
       completedLevelIds: done,
     },
     story: { introDone: true, milestoneMask: 127, finaleSeen: false },
@@ -72,10 +73,10 @@ await page
   .catch(() => undefined);
 const first = await flat(page);
 check(
-  "1 finishing the 100th level plays the finale after the level is saved",
+  "1 finishing the 75th level plays the finale after the level is saved",
   played.ok &&
     /keep a promise/.test(first) &&
-    paid.levelProgress.completedLevelIds.length === 100 &&
+    paid.levelProgress.completedLevelIds.length === 75 &&
     paid.story.finaleSeen === true,
   { played: played.ok, completed: paid.levelProgress.completedLevelIds.length },
 );
@@ -127,10 +128,14 @@ await shot(page, "finale-2-last-beat");
 await clickButton(page, /^BACK TO THE KITCHEN$/);
 await sleep(1200);
 const home = await flat(page);
+// The Kitchen home's own rank card (its "See all orders" sits in the folded order card).
+const onKitchen = await page.evaluate(
+  () => !!document.querySelector('[data-testid="kitchen-rank"]'),
+);
 const after = await readSave(page);
 check(
   "3a BACK TO THE KITCHEN lands on the Kitchen home screen, not the Order Board",
-  /See all orders/.test(home) && !/BACK TO THE KITCHEN/.test(home),
+  onKitchen && !/BACK TO THE KITCHEN/.test(home) && !/Today's Board/.test(home),
   home.slice(0, 160),
 );
 check(

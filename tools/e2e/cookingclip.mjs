@@ -130,18 +130,20 @@ check("4b with Sound off the clip is muted (and still plays)", v4?.muted === tru
 await page.evaluate(() => document.querySelector('[aria-label="Skip cooking"]').click());
 
 // ---------- 5. a cooked dish gets the cooking film ----------
+// Levels by their 150-level numbers (dishKindFor: L25 cooked, L51 fruit, L3 plated, L35
+// curry/pot, L5 bread).
 await boot(
   page,
   seedSave({
     levelProgress: {
-      currentLevelId: "level-36",
-      highestUnlockedLevelId: "level-36",
-      completedLevelIds: Array.from({ length: 35 }, (_, i) => `level-${i + 1}`),
+      currentLevelId: "level-25",
+      highestUnlockedLevelId: "level-25",
+      completedLevelIds: Array.from({ length: 24 }, (_, i) => `level-${i + 1}`),
     },
   }),
 );
 await clickButton(page, /Prepare$/);
-check("5a Level 36 (Mushroom & Garlic Saute Prep): clip shown", await cookUntilClip());
+check("5a Level 25 (Mushroom & Garlic Saute Prep): clip shown", await cookUntilClip());
 await sleep(800);
 const v5 = await video(page);
 check(
@@ -162,14 +164,14 @@ await boot(
   page,
   seedSave({
     levelProgress: {
-      currentLevelId: "level-84",
-      highestUnlockedLevelId: "level-84",
-      completedLevelIds: Array.from({ length: 83 }, (_, i) => `level-${i + 1}`),
+      currentLevelId: "level-51",
+      highestUnlockedLevelId: "level-51",
+      completedLevelIds: Array.from({ length: 50 }, (_, i) => `level-${i + 1}`),
     },
   }),
 );
 await clickButton(page, /Prepare$/);
-check("6a Level 84 (Pineapple & Mango Fresh Cup): clip shown", await cookUntilClip());
+check("6a Level 51 (Pineapple & Mango Fresh Cup): clip shown", await cookUntilClip());
 await sleep(800);
 const v6 = await video(page);
 check(
@@ -198,7 +200,7 @@ await boot(
   }),
 );
 await clickButton(page, /Prepare$/);
-check("7a Level 3 (Carrot Chop Bowl): clip shown", await cookUntilClip());
+check("7a Level 3 (Garden Prep): clip shown", await cookUntilClip());
 await sleep(800);
 const v7 = await video(page);
 check(
@@ -219,14 +221,14 @@ await boot(
   page,
   seedSave({
     levelProgress: {
-      currentLevelId: "level-58",
-      highestUnlockedLevelId: "level-58",
-      completedLevelIds: Array.from({ length: 57 }, (_, i) => `level-${i + 1}`),
+      currentLevelId: "level-35",
+      highestUnlockedLevelId: "level-35",
+      completedLevelIds: Array.from({ length: 34 }, (_, i) => `level-${i + 1}`),
     },
   }),
 );
 await clickButton(page, /Prepare$/);
-check("8a Level 58 (Pumpkin Curry Dice): clip shown", await cookUntilClip());
+check("8a Level 35 (Potato Curry Base): clip shown", await cookUntilClip());
 await sleep(800);
 const v8 = await video(page);
 check(
@@ -247,14 +249,14 @@ await boot(
   page,
   seedSave({
     levelProgress: {
-      currentLevelId: "level-11",
-      highestUnlockedLevelId: "level-11",
-      completedLevelIds: Array.from({ length: 10 }, (_, i) => `level-${i + 1}`),
+      currentLevelId: "level-5",
+      highestUnlockedLevelId: "level-5",
+      completedLevelIds: Array.from({ length: 4 }, (_, i) => `level-${i + 1}`),
     },
   }),
 );
 await clickButton(page, /Prepare$/);
-check("9a Level 11 (Garlic Bread): clip shown", await cookUntilClip());
+check("9a Level 5 (Garlic Bread): clip shown", await cookUntilClip());
 await sleep(800);
 const v9 = await video(page);
 check(
