@@ -97,13 +97,14 @@ const kinds = (s: SaveData, phase: "opening" | "lull" | "closing") =>
 
 console.log("T. Timing");
 {
-  let s = openDay(saveAt(40), 40);
-  s = choresAfterService(recordService(s, 40), 40);
+  // 150-level campaign: a 3-service day at L30 (from L40 a day has 4 services).
+  let s = openDay(saveAt(30), 30);
+  s = choresAfterService(recordService(s, 30), 30);
   const lull = kinds(s, "lull");
-  s = choresAfterService(recordService(s, 41), 41);
-  s = choresAfterService(recordService(s, 42), 42);
+  s = choresAfterService(recordService(s, 31), 31);
+  s = choresAfterService(recordService(s, 32), 32);
   const closing = kinds(s, "closing");
-  const closed = choresAfterClose(closeDay(s, 43), 43).save;
+  const closed = choresAfterClose(closeDay(s, 33), 33).save;
   const opening = kinds(closed, "opening");
   assert(
     lull === "restroom-refresh,sanitizer-bucket,sweep-line" &&
@@ -114,9 +115,10 @@ console.log("T. Timing");
   );
   assert(
     phaseChores("lull", PHASE_CHORES_FROM - 1).length === 0 &&
-      !phaseChores("opening", 25).includes("lay-tables") &&
-      phaseChores("opening", 31).includes("lay-tables"),
-    "T2: nothing before L21; table chores from dine-in (L31)",
+      PHASE_CHORES_FROM === 16 &&
+      !phaseChores("opening", 20).includes("lay-tables") &&
+      phaseChores("opening", 21).includes("lay-tables"),
+    "T2: nothing before L16 (old L21); table chores from dine-in (L21, old L31)",
   );
 }
 
@@ -178,10 +180,10 @@ console.log("S. Staff");
   const base = (hired: string[]) =>
     choresAfterService(
       choresAfterService(
-        recordService(recordService(recordService(openDay(saveAt(40, hired), 40), 40), 41), 42),
-        42,
+        recordService(recordService(recordService(openDay(saveAt(30, hired), 30), 30), 31), 32),
+        32,
       ),
-      42,
+      32,
     );
   const closingWith = (hired: string[]) => kinds(cleanerRound(base(hired)).save, "closing");
   assert(

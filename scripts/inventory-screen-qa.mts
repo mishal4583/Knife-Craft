@@ -87,7 +87,12 @@ const ALL_IDS = Object.keys(INGREDIENTS) as IngredientId[];
 
 // ===== N: navigation =====
 {
-  const nav = read("src/components/kc/Kitchen.tsx");
+  const kitchenSrc = read("src/components/kc/Kitchen.tsx");
+  // Just the bottom bar's NAV table (Kitchen.tsx has other link lists).
+  const nav = kitchenSrc.slice(
+    kitchenSrc.indexOf("const NAV"),
+    kitchenSrc.indexOf("];", kitchenSrc.indexOf("const NAV")),
+  );
   const labels = [
     // The Business tab's label is "Restaurant" only in the Unified Restaurant test build
     // (RESTAURANT_MODE); the release build reads the classic label checked here.
@@ -97,16 +102,17 @@ const ALL_IDS = Object.keys(INGREDIENTS) as IngredientId[];
   ].map((m) => `${m[1]}:${m[2]}`);
   assert(
     labels.join() ===
-      // Developer 2026-10-10: Inventory and Market swapped (was Kitchen · Market · Inventory …).
-      "kitchen:Kitchen,inventory:Inventory,shop:Market,business:Business,rack:Progress",
-    "N1: the bottom bar has 5 sections — Kitchen · Inventory · Market · Business · Progress",
+      // Developer 2026-10-15 (5db9451): three sections; Inventory and Business open from the
+      // Restaurant map (was Kitchen · Inventory · Market · Business · Progress).
+      "kitchen:Kitchen,shop:Market,restaurant-map:Restaurant",
+    "N1: the bottom bar has 3 sections — Kitchen · Market · Restaurant",
   );
   assert(
-    /label: RESTAURANT_MODE \? "Restaurant" : "Business"/.test(nav),
-    "N1b: in the restaurant build the Business tab is called Restaurant (one restaurant)",
+    /\{ id: "restaurant-map", label: "Restaurant", glyph: "[^"]+" \}/.test(nav),
+    "N1b: the Restaurant tab is the restaurant map (one restaurant)",
   );
   assert(
-    /min-h-12/.test(nav.match(/export function BottomNav[\s\S]*?<\/nav>/)?.[0] ?? ""),
+    /min-h-12/.test(kitchenSrc.match(/export function BottomNav[\s\S]*?<\/nav>/)?.[0] ?? ""),
     "N2: bottom-bar buttons are 48 px tall",
   );
   const router = read("src/ScreensRouter.tsx");
@@ -114,11 +120,11 @@ const ALL_IDS = Object.keys(INGREDIENTS) as IngredientId[];
   // Lazy-load (task #24): the route may wrap it in its Suspense loading state; it is still its own screen.
   assert(
     /\| "inventory"/.test(data) &&
-      /screen === "inventory" \|\| screen === "inventory-supplies" \? \(\s*(?:<Suspense fallback=\{<RestaurantLoading go=\{go\} active="inventory" \/>\}>\s*)?<InventoryScreen/.test(
+      /screen === "inventory" \|\| screen === "inventory-supplies" \? \(\s*(?:<Suspense fallback=\{<RestaurantLoading go=\{(?:route)?[gG]o\} active="inventory" \/>\}>\s*)?<InventoryScreen/.test(
         router,
       ) &&
       businessTabForScreen("inventory") === null,
-    "N3: Inventory is its own screen, opened straight from the bottom bar",
+    "N3: Inventory is its own screen (opened from the Restaurant map since 2026-10-15)",
   );
   const dash = read("src/components/kc/business/BusinessDashboard.tsx");
   assert(

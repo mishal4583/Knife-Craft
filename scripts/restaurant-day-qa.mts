@@ -47,7 +47,8 @@ import {
   restaurantDayOf,
   todaysServices,
 } from "../src/game/restaurant/restaurantDay.ts";
-import { giveGrandmasLeftovers } from "../src/game/restaurant/grandmasFridge.ts";
+import { recipeRequirements } from "../src/game/restaurant/recipeRequirements.ts";
+import { getCampaignRecipe } from "../src/game/recipes/campaignRecipes.ts";
 import { servicesForDayAt } from "../src/game/restaurant/restaurantProgression.ts";
 import { servicePlanFor, servicePlanNeedsSheet } from "../src/game/restaurant/preServiceCheck.ts";
 import { dayCeremonyAt } from "../src/game/restaurant/firstLevels.ts";
@@ -85,13 +86,14 @@ const finishedDay = (n: number) => {
 
 console.log("S. Schedule");
 assert(
+  // 150-level remap (2026-10-15): old L21 / 51 / 101 / 161 → L16 / 35 / 59 / 101.
   servicesForDayAt(1).join() === "Lunch,Dinner" &&
-    servicesForDayAt(20).join() === "Lunch,Dinner" &&
-    servicesForDayAt(21).join() === "Breakfast,Lunch,Dinner" &&
-    servicesForDayAt(51).join() === "Breakfast,Lunch,Afternoon Tea,Dinner" &&
-    servicesForDayAt(101).join() === "Breakfast,Brunch,Lunch,Afternoon Tea,Dinner" &&
-    servicesForDayAt(161).join() === "Breakfast,Brunch,Lunch,Afternoon Tea,Dinner,Late Supper",
-  "S1: 2 services a day to L20, then one more meal at L21, L51, L101 and L161 (6 a day)",
+    servicesForDayAt(15).join() === "Lunch,Dinner" &&
+    servicesForDayAt(16).join() === "Breakfast,Lunch,Dinner" &&
+    servicesForDayAt(35).join() === "Breakfast,Lunch,Afternoon Tea,Dinner" &&
+    servicesForDayAt(59).join() === "Breakfast,Brunch,Lunch,Afternoon Tea,Dinner" &&
+    servicesForDayAt(101).join() === "Breakfast,Brunch,Lunch,Afternoon Tea,Dinner,Late Supper",
+  "S1: 2 services a day to L15, then one more meal at L16, L35, L59 and L101 (6 a day)",
 );
 
 console.log("O. Opening");
@@ -116,9 +118,20 @@ console.log("O. Opening");
     "O2: opening notes the cash and the day's services (Lunch L12, Dinner L13)",
   );
   assert(openDay(opened, 13) === opened, "O3: an open day doesn't open again");
-  // From Level 4 the level's own order needs stock (developer 2026-10-09): Grandma's
-  // leftovers, as App gives them after Level 3, cover Level 5.
-  const stocked5 = giveGrandmasLeftovers(saveAt(5));
+  // Stock from Level 3 (redesign 2026-10-15; Grandma's leftovers are retired): stock
+  // Level 5's own ingredients so its check is ready.
+  const base5 = saveAt(5);
+  let inv5 = base5.business.inventory;
+  for (const id of getLevel("level-5")!.recipePoolIds ?? [])
+    for (const r of recipeRequirements(getCampaignRecipe(id)!))
+      inv5 = addStock(
+        inv5,
+        r.ingredientId,
+        Math.ceil(r.quantity) + 2,
+        100,
+        base5.business.calendar.businessDay,
+      );
+  const stocked5 = { ...base5, business: { ...base5.business, inventory: inv5 } };
   const plan5 = servicePlanFor(stocked5, getLevel("level-5")!);
   const mid = servicePlanFor(openDay(stocked5, 5), getLevel("level-5")!);
   // Developer 2026-10-09 (first levels, firstLevels.ts): the opening card is the
@@ -132,9 +145,9 @@ console.log("O. Opening");
       !!mid &&
       mid.opening === null &&
       !servicePlanNeedsSheet(mid) &&
-      !dayCeremonyAt(20) &&
-      dayCeremonyAt(21),
-    "O4: before Level 21 a new day opens without its card (L5); mid-day a stock-free level starts at once; the card starts at L21",
+      !dayCeremonyAt(15) &&
+      dayCeremonyAt(16),
+    "O4: before Level 16 a new day opens without its card (L5); mid-day a stock-free level starts at once; the card starts at L16 (old L21)",
   );
 }
 
@@ -158,17 +171,17 @@ console.log("V. Services");
     "V2: a service on an unopened day (the first launch) opens it",
   );
   const big = recordService(recordService(recordService(openDay(saveAt(30), 30), 30), 31), 32);
-  let four = openDay(saveAt(60), 60);
-  for (let i = 0; i < 3; i++) four = recordService(four, 60 + i);
+  let four = openDay(saveAt(40), 40);
+  for (let i = 0; i < 3; i++) four = recordService(four, 40 + i);
   const notYet = restaurantDayOf(four).closingDue;
-  four = recordService(four, 63);
+  four = recordService(four, 43);
   assert(
     restaurantDayOf(big).servicesPlanned === 3 &&
       restaurantDayOf(big).closingDue &&
       restaurantDayOf(four).servicesPlanned === 4 &&
       !notYet &&
       restaurantDayOf(four).closingDue,
-    "V3: from L21 a day holds three services, from L51 four",
+    "V3: from L16 a day holds three services, from L35 four",
   );
 }
 
@@ -285,7 +298,8 @@ console.log("W. Wiring");
     // Since the first levels (2026-10-09) a day before Level 21 closes quietly with the
     // same closeDay, so the hold reads the save after that (`base`; pass 2 also gives
     // Grandma's leftovers there, once).
-    /const base = giveGrandmasTools\(\s*giveGrandmasLeftovers\(quietDayEnd\(save\)\),\s*restaurantLevelOf\(save\.levelProgress\),?\s*\);/.test(
+    // The redesign (2026-10-15) dropped Grandma's leftovers from this line.
+    /const base = giveGrandmasTools\(\s*quietDayEnd\(save\),\s*restaurantLevelOf\(save\.levelProgress\),?\s*\);/.test(
       app,
     ) &&
       /if \(firstPlay && restaurantDayOf\(base\)\.closingDue\) \{\s*closingHoldRef\.current = true;/.test(
@@ -305,7 +319,7 @@ console.log("W. Wiring");
         app,
       ) &&
       /closingDue &&\s*dayCeremonyAt\(restaurantLevelOf\(save\.levelProgress\)\) &&/.test(app),
-    "W2: closing blocks the next first play (quietly closed before L21); START, or a start without the card, opens the day; the Closing Time sheet closes it from L21",
+    "W2: closing blocks the next first play (quietly closed before L16); START, or a start without the card, opens the day; the Closing Time sheet closes it from L16",
   );
 }
 

@@ -1,6 +1,6 @@
 /**
  * RESTAURANT CAMPAIGN SIMULATION QA — Unified Restaurant phase N: the whole
- * campaign, Level 1 → 250, played through the REAL restaurant functions the
+ * campaign, Level 1 → 150 (was 250), played through the REAL restaurant functions the
  * way App plays a level (servicePlanFor → buy / pantry / credit / hire →
  * beginLevel's wash-up → each order: stock + supplies + settlement → menu
  * guests → completeLevel + recordService + wash-up → closing), every save
@@ -16,7 +16,7 @@
  *     knife-purchase drain), so it can only start services through Grandma's
  *     pantry before Level 10, supplier credit from Level 10, and free hiring.
  *  M. Moving in — a pre-restaurant save at Level 120 (an old build's save)
- *     moves into the restaurant (phase M crate), then plays to 250.
+ *     moves into the restaurant (phase M crate), then plays to 150.
  *
  * After EVERY level, for every player:
  *  1. the service could start (no soft-lock);
@@ -46,7 +46,10 @@ import { migrateToUnifiedRestaurant } from "../src/game/restaurant/restaurantMig
 import { businessDayAllowed } from "../src/game/restaurant/endlessRestaurant.ts";
 import { $, run, freshRestaurantSave } from "./restaurantCampaignSim.mts";
 import { supplierCreditOf } from "../src/game/restaurant/supplierCredit.ts";
-import { servicesForDayAt } from "../src/game/restaurant/restaurantProgression.ts";
+import {
+  LAST_CAMPAIGN_LEVEL,
+  servicesForDayAt,
+} from "../src/game/restaurant/restaurantProgression.ts";
 
 let failures = 0;
 function assert(cond: unknown, msg: string) {
@@ -58,7 +61,7 @@ function assert(cond: unknown, msg: string) {
 }
 const fresh = freshRestaurantSave;
 
-console.log("Simulating the campaign (this plays 250 levels three times)…");
+console.log("Simulating the campaign (this plays the 150 levels three times)…");
 const D = run("D. Diligent player, fresh save", fresh(), 1, { profile: "diligent" });
 const B = run("B. Broke player ($0 before every level)", fresh(), 1, { profile: "broke" });
 const old: SaveData = {
@@ -77,9 +80,10 @@ const M = run("M. Moving in at Level 120 (old save)", migrateToUnifiedRestaurant
 
 console.log("\nChecks");
 for (const [tag, r, levels] of [
-  ["D", D, 250],
-  ["B", B, 250],
-  ["M", M, 131],
+  // The 150-level campaign (2026-10-15): moving in at L120 plays L120–150.
+  ["D", D, LAST_CAMPAIGN_LEVEL],
+  ["B", B, LAST_CAMPAIGN_LEVEL],
+  ["M", M, LAST_CAMPAIGN_LEVEL - 119],
 ] as const) {
   assert(
     r.stats.blocked.length === 0 && r.stats.levels === levels,
@@ -105,10 +109,10 @@ assert(
   D.stats.credit === 0 && D.stats.pantry === 0,
   "B4: the diligent player never needs supplier credit or Grandma's pantry",
 );
-// 250 levels, a day's length set when it opens (servicesForDayAt — developer 2026-10-10:
+// 150 levels, a day's length set when it opens (servicesForDayAt — developer 2026-10-10:
 // 2 a day to L20, then 3, 4, 5, 6): count the days, each closed once.
 let serviceDays = 0;
-for (let n = 1; n <= 250; n += servicesForDayAt(n).length) serviceDays++;
+for (let n = 1; n <= LAST_CAMPAIGN_LEVEL; n += servicesForDayAt(n).length) serviceDays++;
 assert(
   D.stats.closings >= serviceDays - 1 && D.stats.closings <= serviceDays + 1,
   `D3: the restaurant closed every day (${D.stats.closings} closings for ~${serviceDays} days)`,
@@ -121,9 +125,9 @@ assert(
   businessDayAllowed(true, D.s.levelProgress) &&
     !businessDayAllowed(true, {
       ...D.s.levelProgress,
-      completedLevelIds: D.s.levelProgress.completedLevelIds.slice(0, 249),
+      completedLevelIds: D.s.levelProgress.completedLevelIds.slice(0, LAST_CAMPAIGN_LEVEL - 1),
     }),
-  "E1: after Level 250 the Endless Restaurant opens; not one level before",
+  "E1: after Level 150 the Endless Restaurant opens; not one level before",
 );
 
 console.log(

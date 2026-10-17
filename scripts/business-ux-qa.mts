@@ -273,8 +273,11 @@ function playedSave(): SaveData {
 // ===== O–P: actions still wired to the existing mechanics =====
 {
   assert(
-    /go\("business-service"\)/.test(dash) && /Open Restaurant/.test(dash),
-    "O: Open Restaurant opens the existing service counter",
+    // Developer 2026-10-15 (5db9451): the button reads "Open Service →" (the Endless Restaurant's name in the restaurant build).
+    /go\("business-service"\)/.test(dash) &&
+      /"Open Service →"/.test(dash) &&
+      /`Open the \$\{ENDLESS_RESTAURANT_NAME\} →`/.test(dash),
+    "O: Open Service opens the existing service counter",
   );
   assert(
     /setDayResult\(onAdvanceDay\(\)\)/.test(dash) &&
@@ -314,7 +317,7 @@ function playedSave(): SaveData {
   // Lazy-load (task #24): the route may wrap it in its Suspense loading state; it is still its own screen.
   assert(
     businessTabForScreen("inventory") === null &&
-      /screen === "inventory" \|\| screen === "inventory-supplies" \? \(\s*(?:<Suspense fallback=\{<RestaurantLoading go=\{go\} active="inventory" \/>\}>\s*)?<InventoryScreen/.test(
+      /screen === "inventory" \|\| screen === "inventory-supplies" \? \(\s*(?:<Suspense fallback=\{<RestaurantLoading go=\{(?:route)?[gG]o\} active="inventory" \/>\}>\s*)?<InventoryScreen/.test(
         router,
       ) &&
       !/business-inventory/.test(alerts) &&
@@ -454,6 +457,8 @@ function playedSave(): SaveData {
   assert(
     JSON.stringify(Object.keys(DEFAULT_SAVE.business)) ===
       JSON.stringify([
+        // Added by the developer's 2026-10-15 redesign (0b2ce52).
+        "firstStockCheckSeen",
         "calendar",
         "inventory",
         "refrigerator",
@@ -468,7 +473,7 @@ function playedSave(): SaveData {
         "menuActivation",
         "supplies",
       ]),
-    "V2: no new Business save fields (beyond the authorized `supplies`, §25)",
+    "V2: no new Business save fields (beyond the authorized `supplies`, §25, and the redesign's `firstStockCheckSeen`)",
   );
   assert(
     /<BusinessCash cents=\{save\.credits\}/.test(dash) &&

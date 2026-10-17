@@ -169,20 +169,21 @@ console.log("E. Events");
 console.log("S. Standing: rank, stage, Restaurant Complete");
 {
   const s1 = restaurantStanding(saveAt(1).levelProgress);
-  const s51 = restaurantStanding(saveAt(51).levelProgress);
-  const s245 = restaurantStanding(saveAt(245).levelProgress);
-  const s250 = restaurantStanding(saveAt(250).levelProgress);
-  const done = restaurantStanding(saveAt(251).levelProgress);
+  // 150-level campaign (2026-10-15): stages through the remap; Restaurant Complete at L150.
+  const s51 = restaurantStanding(saveAt(35).levelProgress);
+  const s245 = restaurantStanding(saveAt(145).levelProgress);
+  const s250 = restaurantStanding(saveAt(150).levelProgress);
+  const done = restaurantStanding(saveAt(151).levelProgress);
   assert(
     s1.rank === "Humble Kitchen" &&
       s1.stage === RESTAURANT_SYSTEMS[0]!.stage &&
       s1.stageNumber === 1 &&
-      s1.nextStage?.level === 11 &&
+      s1.nextStage?.level === 3 &&
       s51.stage === "Cuisines & Specialists" &&
       s245.stage === "Grand Service" &&
       s245.nextStage?.stage === "Restaurant Complete" &&
-      s245.nextStage.level === 250,
-    `S1: rank and stage from the existing tables (L1 ${s1.rank} · ${s1.stage}; L51 ${s51.stage}; L245 ${s245.stage} → next Restaurant Complete at 250)`,
+      s245.nextStage.level === 150,
+    `S1: rank and stage from the existing tables (L1 ${s1.rank} · ${s1.stage} → Pantry at L3; L35 ${s51.stage}; L145 ${s245.stage} → next Restaurant Complete at 150)`,
   );
   assert(
     !s250.complete &&
@@ -192,7 +193,7 @@ console.log("S. Standing: rank, stage, Restaurant Complete");
       done.stage === "Restaurant Complete" &&
       done.nextStage === null &&
       done.stageNumber === done.stageCount,
-    "S2: Level 250 still to play → not complete; every level done → Restaurant Complete and the Endless Restaurant unlocked",
+    "S2: Level 150 still to play → not complete; every level done → Restaurant Complete and the Endless Restaurant unlocked",
   );
   const before = JSON.stringify(endless);
   isRestaurantComplete(endless);
@@ -439,7 +440,9 @@ console.log("W. Wiring");
   const prog = code("src/components/kc/RestaurantProgress.tsx");
   assert(
     /RESTAURANT_MODE \? <StandingCard/.test(prog) &&
-      prog.includes("Complete all 250 campaign levels to unlock Endless Restaurant.") &&
+      prog.includes(
+        "Complete all {LAST_CAMPAIGN_LEVEL} campaign levels to unlock Endless Restaurant.",
+      ) &&
       code("src/components/kc/business/EndlessDayEvents.tsx").includes(
         "if (!endlessEventsActive(save)) return null",
       ),

@@ -143,10 +143,11 @@ console.log("C. The check");
   const at = (n: number, s: SaveData) => toolsCheck(s, n, [...levelRecipesAt(n)].slice(0, 1));
   const c9 = at(9, saveAt(9));
   const c10 = at(10, giveGrandmasTools(saveAt(10), 10));
-  const s11 = giveGrandmasTools(saveAt(11), 11);
-  const c11 = at(11, s11);
+  // 150-level campaign (2026-10-15): L11 is the Onion Rings Basket, L12 the Bruschetta for the House.
+  const s11 = giveGrandmasTools(saveAt(12), 12);
+  const c11 = at(12, s11);
   const bought = withTools(s11, ["sheet-pans", "oven-mitts"]);
-  const c11b = at(11, bought);
+  const c11b = at(12, bought);
   assert(
     !c9.applies &&
       c10.applies &&
@@ -158,18 +159,20 @@ console.log("C. The check");
         .map((r) => r.id)
         .sort()
         .join() === "oven-mitts,sheet-pans" &&
-      c11.rows.find((r) => r.id === "sheet-pans")!.dishes.includes("Garlic Bread") &&
+      c11.rows.find((r) => r.id === "sheet-pans")!.dishes.includes("Bruschetta for the House") &&
       c11.missingCost > 0 &&
       c11b.applies &&
       c11b.ready,
-    "C1: nothing before L10; L10 ready with Grandma's set; L11's Garlic Bread waits for a sheet pan and oven mitts; bought → ready",
+    "C1: nothing before L10; L10 ready with Grandma's set; L12's Bruschetta waits for a sheet pan and oven mitts; bought → ready",
   );
-  // The menu's dishes count too: L16 (rings) needs a frying pan even for an own dish without one.
-  const s16 = giveGrandmasTools(saveAt(16), 16);
-  const ownOnly = toolsCheck(s16, 16, levelRecipesAt(16));
+  const s16 = giveGrandmasTools(saveAt(11), 11);
+  const ownOnly = toolsCheck(s16, 11, levelRecipesAt(11));
   assert(
-    ownOnly.applies && ownOnly.rows.some((r) => r.id === "frying-pans" && r.missing > 0),
-    "C2: L16's onion rings need a frying pan (tongs, skimmer) before the service",
+    ownOnly.applies &&
+      ["frying-pans", "tongs", "skimmers"].every((id) =>
+        ownOnly.rows.some((r) => r.id === id && r.missing > 0),
+      ),
+    "C2: L11's onion rings need a frying pan, tongs and a skimmer before the service",
   );
   const crew = {
     ...saveAt(61),
@@ -179,7 +182,7 @@ console.log("C. The check");
     },
   } as SaveData;
   const solo = saveAt(30);
-  const pans = toolsNeeded(crew, 61, levelRecipesAt(61)).find((t) => t.rule.id === "saucepans");
+  const pans = toolsNeeded(crew, 61, levelRecipesAt(61)).find((t) => t.rule.id === "frying-pans");
   assert(
     cooksOnLine(solo, 30) === 1 && cooksOnLine(crew, 61) === 3 && !!pans && pans.need === 3,
     "C3: pans are per cook from the staff stage — the chef + 2 cooks need 3 of each",
