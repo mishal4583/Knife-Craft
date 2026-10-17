@@ -723,6 +723,18 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   area chips, wage from the catalog, Hire/Manage → Staff), Recent history
   (spotless streak → +1 %, inspection), the supplies strip (uses left, low,
   + → the exact Market line) and tools; a 4-step intro once.
+  Screen order (developer 2026-10-17, "any mock or any section repeated —
+  sort it"): Today's cleanliness first (a chip per area → that area's
+  tasks, and Clean everything), the three area cards, the Wash-up (read
+  only: pieces waiting, washed and broken from `serviceSupplies` — the
+  wash-up itself runs after each service, `washUp`), Cleaning staff,
+  supplies, Recent history. Removed as mocks: "Practice room cleaning"
+  (preview-only rooms), "Customer dishwashing" and "Chef's tools wash-up"
+  (a scrubbing mini-game on a fixed list that never touched the save).
+  `DishwashingPrototype.tsx` stays in the repo, unreferenced, until it is
+  wired to the real wash-up. Browser: `tools/e2e/restaurantcleanliness.mjs`
+  (8 checks; it now opens the tab through the map's Manager / Office and
+  uses the 150-level numbering).
   Mechanics (`restaurant/cleanliness.ts`, state `business.cleanliness`,
   clamped by `cleanlinessOf`): no clock — each first completion adds the
   service's tasks after the report (`tasksAfterService`: equipment, bins,

@@ -2,7 +2,7 @@
 //   1. Level 25: Restaurant → Cleanliness opens with the guided intro (once); Kitchen, Dining
 //      Area and Restroom cards show the seeded tasks (meter < 100, ! badges), the tab badge counts
 //      them.
-//   2. View details → Clean a task: it leaves, its supplies are used once (no money, no ledger);
+//   2. View (the area's tasks) → Clean a task: it leaves, its supplies are used once (no money, no ledger);
 //      a second tap on the same task isn't possible (it's gone).
 //   3. A task without its supplies shows "Buy …" → the exact Market card in the Cleaning section;
 //      buying it updates the same stock the strip shows (one ledger entry).
@@ -10,6 +10,8 @@
 //   5. With a Cleaner hired, the area chips assign them; at Level 10 the Restaurant (and its
 //      Cleanliness tab) is still closed; at Level 11 the tab is there (developer 2026-10-10: from L10).
 //   6. Widths 320 / 360 / 390 / 1024: no sideways scroll, buttons ≥ 48 px.
+//   8. No practice / test / mock dishwashing panels (developer 2026-10-17); today's status
+//      first (a chip per area), each area once, then the real wash-up (automatic, serviceSupplies).
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import { MOVED_IN_BUSINESS, launch, boot, seedSave, sleep, readSave, shot } from "./harness.mjs";
 
@@ -59,17 +61,26 @@ const saveAt = (n, { tasks, stock, staff, introSeen = false } = {}) =>
       currentLevelId: `level-${n}`,
       highestUnlockedLevelId: `level-${n}`,
       completedLevelIds: Array.from({ length: n - 1 }, (_, i) => `level-${i + 1}`),
+      // The 150-level campaign's numbering (an unversioned save is renumbered from the old 250).
+      campaignVersion: 2,
     },
     story: { introDone: true, milestoneMask: 127, finaleSeen: false },
   });
 
+// The Restaurant tab opens the map; its Manager / Office hotspot holds the section tabs.
 async function openCleanliness() {
+  await page.evaluate(() => document.querySelector('[data-nav="restaurant-map"]')?.click());
+  await page.waitForSelector(".map-hotspot-zone", { timeout: 15000 }).catch(() => null);
+  await sleep(600);
   await page.evaluate(() =>
-    [...document.querySelectorAll("nav button")]
-      .find((x) => x.textContent.includes("Restaurant"))
+    [...document.querySelectorAll(".map-hotspot-zone")]
+      .find((e) => /Manager \/ Office/.test(e.getAttribute("aria-label") ?? ""))
       ?.click(),
   );
-  await sleep(900);
+  await page
+    .waitForSelector('nav[aria-label="Business sections"]', { timeout: 4000 })
+    .catch(() => null);
+  await sleep(400);
   const tab = await page.evaluate(() => {
     const b = [...document.querySelectorAll('nav[aria-label="Business sections"] button')].find(
       (x) => x.textContent.includes("Cleanliness"),
@@ -136,7 +147,7 @@ check(
 const before2 = await readSave(page);
 await page.evaluate(() =>
   [...document.querySelectorAll('[data-testid="area-kitchen"] button')]
-    .find((b) => /View details/.test(b.textContent))
+    .find((b) => /^View /.test(b.textContent.trim()))
     ?.click(),
 );
 await sleep(400);
@@ -270,6 +281,31 @@ check(
   "6 at 320 / 360 / 390 / 1024 px: no sideways scroll, every button ≥ 48 px",
   fits.every((f) => f.open && f.overflow <= 0 && f.small.length === 0),
   fits,
+);
+
+// ---------- 8. No mock panels; today's status first; the real wash-up ----------
+await boot(page, saveAt(30, { introSeen: true }));
+await openCleanliness();
+const layout8 = await page.evaluate(() => ({
+  order: [...document.querySelectorAll('[data-testid="cleanliness"] > [data-testid]')].map((e) =>
+    e.getAttribute("data-testid"),
+  ),
+  mocks: ["cleaning-test-spots", "dishwashing-prototype-entry", "kitchen-tools-wash-entry"].filter(
+    (id) => !!document.querySelector(`[data-testid="${id}"]`),
+  ),
+  chips: [...document.querySelectorAll("[data-ready-area]")].map((e) => e.tagName),
+  wash: document.querySelector('[data-testid="cleanliness-wash-up"]')?.textContent ?? "",
+}));
+check(
+  "8 no practice / test / mock dishwashing panels; today's status first (one chip per area), the areas once each, then the real wash-up",
+  layout8.mocks.length === 0 &&
+    layout8.order[0] === "cleanliness-ready" &&
+    layout8.order.filter((id) => /^area-/.test(id)).length === 3 &&
+    layout8.order.indexOf("cleanliness-wash-up") > layout8.order.indexOf("area-restroom") &&
+    layout8.chips.length === 3 &&
+    layout8.chips.every((t) => t === "BUTTON") &&
+    /Automatic after each service/.test(layout8.wash),
+  layout8,
 );
 
 const errors = logs.filter((l) => /pageerror|error:/.test(l) && !/favicon/.test(l));

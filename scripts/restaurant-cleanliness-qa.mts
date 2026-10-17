@@ -128,8 +128,10 @@ const kinds = (s: SaveData) =>
     .sort()
     .join();
 const plain = recipe(/^Sliced Tomato Plate$/);
-const fried = recipe(/Pickled Onion Rings/);
-const curry = recipe(/Steak Curry Bowl/);
+// 150-level campaign (developer 2026-10-15): the old Pickled Onion Rings and Steak Curry Bowl
+// left the campaign, so the lookup found nothing; the same kinds of dish that are still in it.
+const fried = recipe(/^Onion Rings Basket$/);
+const curry = recipe(/^Potato Curry Base$/);
 
 console.log("C. Catalog");
 {

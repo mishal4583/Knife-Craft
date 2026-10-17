@@ -9,11 +9,9 @@ import { supplyUnits } from "@/game/business/BusinessSuppliesManager";
 import { BUSINESS_STAFF_CATALOG } from "@/game/business/businessStaff";
 import { formatUsd } from "@/game/money";
 import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
-import { restaurantDayOf } from "@/game/restaurant/restaurantDay";
-import { boardOrDefault } from "@/game/boards/boardDefinitions";
-import { knifeOrDefault } from "@/game/knives/knifeDefinitions";
 import { restaurantSystem } from "@/game/restaurant/restaurantProgression";
-import { bottleView } from "@/game/restaurant/serviceSupplies";
+import { bottleView, restaurantSuppliesOf } from "@/game/restaurant/serviceSupplies";
+import { StatChip } from "../common/InfoTip";
 import {
   SPOTLESS_QUALITY_PCT,
   SPOTLESS_QUALITY_STREAK,
@@ -37,8 +35,7 @@ import {
 } from "@/game/restaurant/cleanliness";
 import { openMarketSupplies } from "../marketFocus";
 import { openStaffFor } from "../staffFocus";
-import { DishwashingPrototype } from "./DishwashingPrototype";
-import { AreaCleaningPrototype, ROOM_CLEANING_TESTS } from "./AreaCleaningPrototype";
+import { AreaCleaningPrototype } from "./AreaCleaningPrototype";
 import { cleanlinessRoomImageUrl, kitchenMapArtStage } from "@/game/kitchen/kitchenMapArt";
 
 const INTERACTIVE_CLEANING_TASKS: Record<CleanArea, ReadonlySet<TaskKind>> = {
@@ -66,14 +63,12 @@ export function BusinessCleanliness({
   cleanlinessAction: (action: CleanlinessAction) => CleanlinessActionResult | null;
 }) {
   const level = restaurantLevelOf(save.levelProgress);
-  const closingDue = restaurantDayOf(save).closingDue;
   const st = cleanlinessOf(save);
   const areas = CLEAN_AREAS.map((a) => areaView(save, a, level));
   const open = st.tasks.length;
   const [flash, setFlash] = useState<string | null>(null);
   const [details, setDetails] = useState<CleanArea | null>(null);
-  const [activeCleaning, setActiveCleaning] = useState<{ area: CleanArea; task: TaskKind; previewOnly?: boolean; roomWide?: boolean } | null>(null);
-  const [dishwashingMode, setDishwashingMode] = useState<null | "service" | "kitchen-tools">(null);
+  const [activeCleaning, setActiveCleaning] = useState<{ area: CleanArea; task: TaskKind } | null>(null);
 
   if (level < CLEANING_FROM_LEVEL)
     return (
@@ -128,6 +123,19 @@ export function BusinessCleanliness({
         </p>
       ) : null}
 
+      {/* Today's status first: one chip per area (tap → its card) and Clean everything. */}
+      <ReadyCard
+        areas={areas}
+        open={open}
+        onCleanAll={() => run({ kind: "clean-all" })}
+        onArea={(a) => {
+          setDetails(a);
+          document
+            .querySelector(`[data-testid="area-${a}"]`)
+            ?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }}
+      />
+
       {/* The three areas */}
       {areas.map((v) => (
         <AreaCard
@@ -144,89 +152,7 @@ export function BusinessCleanliness({
         />
       ))}
 
-      {/* Ready status and hands-on washing actions follow the room overview. */}
-      <ReadyCard areas={areas} open={open} onCleanAll={() => run({ kind: "clean-all" })} />
-
-      <Panel className="p-3" data-testid="cleaning-test-spots">
-        <div className="flex items-start gap-2">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-copper/15 text-[22px]" aria-hidden>
-            🧽
-          </span>
-          <div>
-            <p className="font-display text-[16px] font-black text-walnut-dark">Practice room cleaning</p>
-            <p className="font-ui text-[12px] leading-snug text-walnut/70">
-              🏠 One room per session · 🆓 practice uses nothing
-            </p>
-          </div>
-        </div>
-        <div className="mt-3 space-y-2.5">
-          {ROOM_CLEANING_TESTS.map((room) => (
-            <button
-              key={room.area}
-              type="button"
-              data-testid={`cleaning-test-area-${room.area}`}
-              onClick={() => setActiveCleaning({ area: room.area, task: room.task, previewOnly: true, roomWide: true })}
-              className="group relative isolate flex min-h-[112px] w-full items-end overflow-hidden rounded-2xl border border-[#8f633c] bg-[#422a19] p-3 text-left shadow-[0_5px_14px_rgba(70,39,17,.2)] transition-transform hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-copper"
-            >
-              <img
-                src={cleanlinessRoomImageUrl(room.area, save.equippedKitchenUpgradeId)}
-                alt=""
-                aria-hidden="true"
-                className="absolute inset-0 z-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.025]"
-                draggable={false}
-              />
-              <span aria-hidden="true" className="absolute inset-0 z-[1] bg-gradient-to-r from-[#21130b]/90 via-[#2d1b0e]/68 to-[#2d1b0e]/15" />
-              <span className="relative z-10 flex w-full items-end gap-2 text-ivory">
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-white/20 bg-black/25 text-[22px] shadow">{AREA_META[room.area].icon}</span>
-                <span className="min-w-0 flex-1">
-                  <span className="block font-display text-[16px] font-black drop-shadow">{room.title}</span>
-                  <span className="mt-0.5 block font-ui text-[11.5px] font-semibold text-white/85 drop-shadow">{room.subtitle}</span>
-                  <span className="mt-1.5 inline-flex rounded-full border border-white/25 bg-black/25 px-2 py-0.5 font-ui text-[10px] font-extrabold uppercase tracking-wide text-[#f5d69c]">
-                    {room.dirtCount} mess types · {room.toolCount} tools
-                  </span>
-                </span>
-                <span className="mb-0.5 shrink-0 rounded-full border border-[#e0bb74] bg-[#6b3d20] px-3 py-2 font-ui text-[11px] font-black text-[#fff3d7] shadow">Start ›</span>
-              </span>
-            </button>
-          ))}
-        </div>
-      </Panel>
-
-      <Panel className="flex items-center gap-3 p-3" data-testid="dishwashing-prototype-entry">
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-sage/20 text-[25px]" aria-hidden>
-          🧽
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="font-display text-[15px] font-black text-walnut-dark">
-            {closingDue ? "Nightly dishwashing & kitchen tools" : "Customer dishwashing"}
-          </p>
-          <p className="font-ui text-[12px] text-walnut/65">
-            {closingDue
-              ? "🍽️ Dishes, then 🔪 chef’s tools"
-              : "🍽️ Wash tableware · 🔪 tools at closing"}
-          </p>
-        </div>
-        <KButton size="sm" variant="wood" className="min-h-12 shrink-0 px-3" onClick={() => setDishwashingMode("service")}>
-          Start washing
-        </KButton>
-      </Panel>
-
-      <Panel className="flex items-center gap-3 p-3" data-testid="kitchen-tools-wash-entry">
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-walnut/10 text-[25px]" aria-hidden>
-          🔪
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="font-display text-[15px] font-black text-walnut-dark">Chef’s tools wash-up</p>
-          <p className="font-ui text-[12px] text-walnut/65">
-            {closingDue
-              ? "Practice the after-closing kitchen clean-up."
-              : "Preview and test the after-closing tool clean-up now."}
-          </p>
-        </div>
-        <KButton size="sm" variant="cream" className="min-h-12 shrink-0 px-3" onClick={() => setDishwashingMode("kitchen-tools")}>
-          Test tools
-        </KButton>
-      </Panel>
+      <WashUpCard save={save} />
 
       <StaffCard
         save={save}
@@ -234,37 +160,20 @@ export function BusinessCleanliness({
         level={level}
         onAreas={(a) => run({ kind: "areas", areas: a })}
       />
-      <HistoryCard save={save} level={level} />
       <SuppliesCard save={save} go={go} />
+      <HistoryCard save={save} level={level} />
 
       {!st.introSeen ? <Intro onDone={() => run({ kind: "intro-seen" })} /> : null}
-      {dishwashingMode ? (
-        <DishwashingPrototype
-          reducedMotion={save.settings.reducedMotion}
-          closingDue={dishwashingMode === "service" && closingDue}
-          startAtKitchenTools={dishwashingMode === "kitchen-tools"}
-          equippedKnife={knifeOrDefault(save.equippedKnifeId)}
-          equippedBoard={boardOrDefault(save.equippedBoardId)}
-          onClose={() => setDishwashingMode(null)}
-        />
-      ) : null}
       {activeCleaning ? (
         <AreaCleaningPrototype
-          key={`${activeCleaning.area}-${activeCleaning.task}-${activeCleaning.roomWide ? "room" : "task"}-${kitchenMapArtStage(save.equippedKitchenUpgradeId)}`}
+          key={`${activeCleaning.area}-${activeCleaning.task}-${kitchenMapArtStage(save.equippedKitchenUpgradeId)}`}
           area={activeCleaning.area}
           task={activeCleaning.task}
           stage={kitchenMapArtStage(save.equippedKitchenUpgradeId)}
           image={cleanlinessRoomImageUrl(activeCleaning.area, save.equippedKitchenUpgradeId)}
-          roomWide={activeCleaning.roomWide}
-          previewOnly={activeCleaning.previewOnly}
           onClose={() => setActiveCleaning(null)}
           onComplete={() => {
-            if (activeCleaning.previewOnly) {
-              setFlash("Test complete — supplies and cleanliness are unchanged.");
-              window.setTimeout(() => setFlash(null), 2400);
-            } else {
-              run({ kind: "clean", task: activeCleaning.task });
-            }
+            run({ kind: "clean", task: activeCleaning.task });
             setActiveCleaning(null);
           }}
         />
@@ -279,35 +188,42 @@ function ReadyCard({
   areas,
   open,
   onCleanAll,
+  onArea,
 }: {
   areas: AreaView[];
   open: number;
   onCleanAll: () => void;
+  onArea: (area: CleanArea) => void;
 }) {
   const ready = areas.every((a) => a.tasks.length === 0);
   return (
     <Panel className="p-3" data-testid="cleanliness-ready">
       <Eyebrow>Today's cleanliness</Eyebrow>
-      <ul className="mt-1 space-y-1">
+      <div className="mt-1.5 grid grid-cols-3 gap-1.5">
         {areas.map((a) => (
-          <li
+          <button
             key={a.area}
-            className="flex min-h-7 items-center justify-between gap-2 font-ui text-[14px] font-bold text-walnut-dark"
+            type="button"
+            onClick={() => onArea(a.area)}
+            aria-label={`${AREA_META[a.area].title}: ${a.tasks.length === 0 ? "ready" : `${a.tasks.length} to clean`}`}
+            className={cn(
+              "press flex min-h-12 flex-col items-center justify-center rounded-2xl border px-1 py-1 font-ui",
+              a.tasks.length === 0
+                ? "border-olive/30 bg-sage/15 text-olive"
+                : "border-tomato/30 bg-tomato/10 text-tomato",
+            )}
             data-ready-area={a.area}
             data-ready={a.tasks.length === 0 ? "ready" : "attention"}
           >
-            <span>
-              <span aria-hidden>{a.tasks.length === 0 ? "✅" : "❗"}</span>{" "}
-              {AREA_META[a.area].title}
+            <span className="text-[18px] leading-none" aria-hidden>
+              {AREA_META[a.area].icon}
             </span>
-            <span className={a.tasks.length === 0 ? "text-olive" : "text-tomato"}>
-              {a.tasks.length === 0
-                ? "Ready"
-                : `${a.tasks.length} ${a.tasks.length === 1 ? "task" : "tasks"}`}
+            <span className="mt-0.5 text-[12.5px] font-extrabold leading-tight">
+              {a.tasks.length === 0 ? "✓ Ready" : `${a.tasks.length} to clean`}
             </span>
-          </li>
+          </button>
         ))}
-      </ul>
+      </div>
       {ready ? (
         <p
           className="mt-2 rounded-2xl bg-sage/90 px-3 py-3 text-center font-ui text-[15px] font-extrabold text-ivory"
@@ -419,7 +335,7 @@ function AreaCard({
           <p className="mt-1.5 font-ui text-[11.5px] font-bold tracking-wide text-white/90 drop-shadow">
             {view.tasks.length === 0
               ? "✨ READY FOR SERVICE"
-              : `${view.tasks.length} ${view.tasks.length === 1 ? "TASK" : "TASKS"} NEED ATTENTION`}
+              : `${view.tasks.length} ${view.tasks.length === 1 ? "TASK NEEDS" : "TASKS NEED"} ATTENTION`}
           </p>
         </div>
       </div>
@@ -532,6 +448,56 @@ function AreaCard({
               ))}
           </div>
         ) : null}
+      </div>
+    </Panel>
+  );
+}
+
+/* ── The wash-up (real: restaurant/serviceSupplies.ts washUp) ──────── */
+
+/**
+ * The wash-up runs by itself after every service (`washUp`): every dirty
+ * piece is washed with dish soap, and now and then one breaks. This card
+ * only reads it — what is waiting, what has been washed and broken.
+ */
+function WashUpCard({ save }: { save: SaveData }) {
+  const st = restaurantSuppliesOf(save);
+  const waiting = Object.values(st.dirty).reduce((t, n) => t + (n ?? 0), 0);
+  const soap = bottleView(save, "dish-soap");
+  return (
+    <Panel className="flex items-center gap-3 p-3" data-testid="cleanliness-wash-up">
+      <span
+        className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-sage/20 text-[25px]"
+        aria-hidden
+      >
+        🫧
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="font-display text-[15px] font-black text-walnut-dark">Wash-up</p>
+        <p className="font-ui text-[12px] text-walnut/65">
+          🔁 Automatic after each service
+        </p>
+        <div className="mt-1 flex flex-wrap gap-1">
+          {waiting > 0 ? (
+            <StatChip icon="🍽️" tone={soap.status === "empty" ? "tomato" : "copper"}>
+              {waiting} waiting{soap.status === "empty" ? " · no soap" : ""}
+            </StatChip>
+          ) : (
+            <StatChip icon="✓" tone="sage">
+              All clean
+            </StatChip>
+          )}
+          {st.washedTotal > 0 ? (
+            <StatChip icon="🫧" title="Pieces washed so far">
+              {st.washedTotal.toLocaleString("en-US")} washed
+            </StatChip>
+          ) : null}
+          {st.brokenTotal > 0 ? (
+            <StatChip icon="💥" title="Pieces broken so far">
+              {st.brokenTotal} broken
+            </StatChip>
+          ) : null}
+        </div>
       </div>
     </Panel>
   );

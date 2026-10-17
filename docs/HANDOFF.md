@@ -1,5 +1,13 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## Cleanliness screen sorted (2026-10-17, `main`)
+
+- Removed three mock panels (practice rooms, dishwashing and chef's-tools
+  test games that changed nothing); one status card first, each area once,
+  a real read-only Wash-up card. REFERENCE §5 (`restaurant-cleanliness-qa`).
+- `restaurant-cleanliness-qa` G2/G3 used two dishes no longer in the
+  150-level campaign; they now use current dishes of the same kind.
+
 ## Short game copy + ⓘ InfoTip (2026-10-16, `main`)
 
 - Long sentences across the screens became icons, chips and short points;
