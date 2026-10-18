@@ -24,6 +24,7 @@ import {
   onAdActiveChange,
   requestRewardedAd,
   rewardedAdsAvailable,
+  sendAnalyticsEvent,
   sendScore,
   type LevelContext,
 } from "@/game/PlayablesSDK";
@@ -79,7 +80,7 @@ import {
   type StoryFlushResult,
 } from "@/game/story/StoryManager";
 import { FINALE, LEGACY } from "@/game/story/storyDefinitions";
-import { StoryOverlay } from "@/components/kc/story/StoryOverlay";
+import { StoryOverlay, type StoryEndReason } from "@/components/kc/story/StoryOverlay";
 import { CinematicIntro } from "@/components/kc/story/CinematicIntro";
 import { RestaurantNameCard } from "@/components/kc/RestaurantNameCard";
 import {
@@ -523,6 +524,8 @@ export function App() {
   const [storyEvent, setStoryEvent] = useState<StoryFlushResult>(null);
   // The intro ends exactly once, whether it finished or was skipped.
   const introCompletedRef = useRef(false);
+  /** A fresh save's Level 1 waits under the intro; its play session opens when the intro ends. */
+  const firstLevelUnderIntroRef = useRef<LevelContext | null>(null);
 
   // Economy V2 Phase 9 — the level's own completion reward
   // (finishCampaignLevel/finishBatchGroupLevel's `rewardCoins`), shown via
@@ -656,6 +659,12 @@ export function App() {
         if (firstSession) {
           setCampaignServiceSession(firstSession);
           setSessionMode("campaign-service");
+          // Its level_started (and the analytics funnel's first step) is sent when
+          // the intro closes — Level 1 is what the player sees then (completeIntro).
+          firstLevelUnderIntroRef.current = {
+            world: `chapter-${LEVELS[0]!.chapter ?? 1}`,
+            level: String(levelNumber(LEVELS[0]!.id)),
+          };
         }
       }
       // Economy V2.5 — kitchen tiers are bought (Restaurant Development);
@@ -803,14 +812,19 @@ export function App() {
    * The one way the opening intro ends — the cinematic played out (it fades
    * into Level 1) or skipped via SKIP. Both land in the same state: it closes and
    * `story.introDone` is saved (once), leaving the player on the Level 1 that
-   * is already mounted underneath. Nothing else in the save changes.
+   * is already mounted underneath. Nothing else in the save changes. The
+   * `intro_completed` analytics event says whether it was watched or skipped.
    */
-  function completeIntro() {
+  function completeIntro(reason: StoryEndReason) {
     if (introCompletedRef.current) return;
     introCompletedRef.current = true;
     setShowIntro(false);
     const current = saveRef.current;
     if (current && !current.story.introDone) persist(markIntroDone(current));
+    sendAnalyticsEvent("intro_completed", { skipped: reason === "skipped" });
+    const firstLevel = firstLevelUnderIntroRef.current;
+    firstLevelUnderIntroRef.current = null;
+    if (firstLevel) startPlaySession(firstLevel);
   }
 
   /** The single place every save mutation flows through: keeps the kitchen

@@ -1,5 +1,32 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## Playgama analytics, Level 1's level messages (2026-10-18, `main`)
+
+- **Playgama cabinet check** (MCP connected): live archive
+  `KnifeCraft-Playgama-v1.3.0` PASSED, Bridge 2.3.1 FOUND; sandbox and
+  traffic done; covers done; no moderation comments, no leaderboards. The
+  form waits on **certification** (`NO_CERTIFICATION`: "Submission requires
+  a passed certification") — the QA Tool's certification run is the
+  developer's, in the console.
+- **Telemetry so far** (30 Sep–18 Oct, 92 sessions, 51 users; too few for a
+  firm conclusion): 89 starts → 62 `game_ready` → 49 past 30 s → 40 past
+  60 s; 24 sessions started a level. The platform's level events carry no
+  level, so where players stop was unknown.
+- **Added:** the game's own analytics events through Bridge
+  `analytics.send` — the progression funnel (`progression_started` /
+  `_completed` / `_abandoned` with world, level number and duration),
+  `intro_completed {skipped}` and `performance_sample` every ~30 s on the
+  board; each with `game_version` (`BUILD_VERSION` 1.4.0). REFERENCE §2;
+  QA `playgama-telemetry-qa`, e2e `pganalytics.mjs`.
+- **Fixed:** a new player's Level 1 (under the intro) sent no
+  `level_started` / `level_completed`; it opens its play session when the
+  intro closes now.
+- **Stale test fixed:** `adsflow.mjs` (failed on the old `main` too: Level 4
+  now needs stock and the Pre-Service Check's START).
+- **For the developer:** a leaderboard is possible (the game already has a
+  `sendScore` hook) but needs a choice of score and a cabinet leaderboard,
+  which cannot be deleted. The new zip is built only on the developer's word.
+
 ## Achievements you can find, a scroll cue, browser tests current (2026-10-18, `main`)
 
 - **Achievements** (developer: "hard to find which is unlocked … no arrow …

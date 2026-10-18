@@ -62,6 +62,11 @@ status line in HANDOFF; this file changes only when a RULE changes.
   (`AD_PLACEMENT`).
 - **Level messages:** `level_started/completed/paused/resumed` with
   `{ world, level }`; no `level_failed`.
+- **Analytics** (2026-10-18): only through `sendAnalyticsEvent`
+  (Bridge `analytics.send`); stable snake_case names, values in the data,
+  `game_version` = `BUILD_VERSION` (`config/buildVersion.ts`, raised with
+  each release zip); no personal data, no external analytics. Never
+  duplicate what Bridge already records.
 - **Never publish a build in which Playgama did not detect the SDK.**
 - English only.
 

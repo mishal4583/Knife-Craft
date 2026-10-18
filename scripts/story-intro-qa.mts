@@ -334,7 +334,7 @@ assert(
   "D8: the finale overlay has no Skip button and ends on the Kitchen home screen",
 );
 assert(
-  /function completeIntro\(\) \{\s*if \(introCompletedRef\.current\) return;\s*introCompletedRef\.current = true;\s*setShowIntro\(false\);\s*const current = saveRef\.current;\s*if \(current && !current\.story\.introDone\) persist\(markIntroDone\(current\)\);/.test(
+  /function completeIntro\(reason: StoryEndReason\) \{\s*if \(introCompletedRef\.current\) return;\s*introCompletedRef\.current = true;\s*setShowIntro\(false\);\s*const current = saveRef\.current;\s*if \(current && !current\.story\.introDone\) persist\(markIntroDone\(current\)\);/.test(
     app,
   ),
   "D9: App completes the intro once, from the latest save, with one write",

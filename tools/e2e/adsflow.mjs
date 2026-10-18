@@ -6,7 +6,17 @@
 //      natural break (after the level, never during it), with placement "level_completed";
 //   3. the next break straight after it shows no second ad (150 s cooldown).
 // Prints PASS/FAIL per check and exits 1 on any failure.
-import { launch, boot, seedSave, sleep, clickButton, readSave, text, save } from "./harness.mjs";
+import {
+  MOVED_IN_BUSINESS,
+  launch,
+  boot,
+  seedSave,
+  sleep,
+  clickButton,
+  readSave,
+  text,
+  save,
+} from "./harness.mjs";
 import { playToReport } from "./solver.mjs";
 
 const results = [];
@@ -90,9 +100,19 @@ async function playLevel() {
 }
 
 // ---------- 1 + 2: Level 4 with 3 completed ----------
+// Restaurant build (150-level campaign, re-baselined 2026-10-18): from Level 3 an order uses real
+// stock, so the fridge holds Level 4's potato and tomato and Prepare opens the Pre-Service Check,
+// whose START begins the level (the level_started moment).
+const food = (ids) =>
+  Object.fromEntries(
+    ids.map((id) => [id, { ingredientId: id, quantity: 12, unitCost: 0, purchaseDay: 1 }]),
+  );
 await boot(
   page,
   seedSave({
+    business: { ...MOVED_IN_BUSINESS, inventory: food(["potato", "tomato"]) },
+    credits: 5000,
+    story: { introDone: true, milestoneMask: 127, finaleSeen: false },
     levelProgress: {
       currentLevelId: "level-4",
       highestUnlockedLevelId: "level-4",
@@ -102,6 +122,8 @@ await boot(
 );
 await stubBridge();
 await clickButton(page, /Prepare$/);
+await sleep(1200);
+await clickButton(page, /^(START SERVICE|OPEN THE RESTAURANT)$/);
 await sleep(1500);
 let m = await msgs();
 check(

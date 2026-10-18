@@ -4,6 +4,7 @@ import { GameBridge, type GameBridgeEvent } from "@/game/GameBridge";
 import { PauseManager } from "@/game/PauseManager";
 import { AudioManager } from "@/game/AudioManager";
 import { gameReady, levelPaused, levelResumed } from "@/game/PlayablesSDK";
+import { startPerformanceSampling } from "@/game/telemetry/performanceSample";
 import {
   INGREDIENTS,
   TECHNIQUES,
@@ -244,6 +245,8 @@ export function Preparation({
 
   // A new order on the pass (W3): Preparation remounts per order, so the bell rings once each.
   useEffect(() => AudioManager.playSfx("bell"), []);
+  // The cutting board is the game's active play: its frame rate is sampled (telemetry).
+  useEffect(() => startPerformanceSampling(), []);
 
   useEffect(() => {
     // Campaign levels teach their new techniques (coaching.ts); Restaurant

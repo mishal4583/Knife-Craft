@@ -14,6 +14,8 @@
  * off at boot.
  */
 
+import { BUILD_VERSION } from "./config/buildVersion";
+
 type BridgeStateHandler<T> = (value: T) => void;
 
 type Bridge = {
@@ -43,7 +45,14 @@ type Bridge = {
     on: (event: string, handler: BridgeStateHandler<string>) => void;
     off?: (event: string, handler: BridgeStateHandler<string>) => void;
   };
+  /** Bridge 2.3.0+: the game's own analytics events (absent on older Bridges). */
+  analytics?: {
+    send: (name: string, data?: AnalyticsData) => unknown;
+  };
 };
+
+/** An analytics event's data: a flat object of strings, numbers and booleans. */
+export type AnalyticsData = Record<string, string | number | boolean>;
 
 declare global {
   interface Window {
@@ -136,6 +145,26 @@ export function gameReady(): void {
   void platformReady().then((b) => b?.platform.sendMessage("game_ready"));
 }
 
+/* ── Analytics (Bridge analytics.send) ─────────────────────────────────
+ * Only events the game alone knows: Bridge already records game_ready, the
+ * level messages, ads, sessions and playtime. Names are stable snake_case;
+ * the changing values (level, world) ride in the data, never in the name.
+ * Every event carries `game_version`. No personal data, text, URLs or ids.
+ */
+export function sendAnalyticsEvent(name: string, data: AnalyticsData = {}): void {
+  void platformReady().then((b) => {
+    try {
+      const analytics = b?.analytics;
+      if (!analytics || typeof analytics.send !== "function") return;
+      void Promise.resolve(analytics.send(name, { ...data, game_version: BUILD_VERSION })).catch(
+        () => {},
+      );
+    } catch {
+      // A platform without analytics is a silent no-op.
+    }
+  });
+}
+
 /* ── Level lifecycle messages (recommended by the Bridge platform docs) ── */
 
 /**
@@ -148,6 +177,27 @@ export type LevelContext = { world: string; level: string };
 /** The level currently being played, or null between levels. */
 let openLevel: LevelContext | null = null;
 let levelPausedSent = false;
+/** When the open level started (ms), for the progression events' duration. */
+let openLevelAt = 0;
+
+/**
+ * The progression funnel (telemetry guide): which level a player starts,
+ * finishes or leaves. The platform's own level messages carry no level, so
+ * these say WHERE players stop. `step_index` is the level number (the
+ * Business day for "business"); `world` is a small fixed set.
+ */
+function progressionEvent(
+  name: "progression_started" | "progression_completed" | "progression_abandoned",
+  ctx: LevelContext,
+): void {
+  const index = Number(ctx.level);
+  const data: AnalyticsData = { world: ctx.world, step_index: Number.isFinite(index) ? index : 0 };
+  const duration = Math.max(0, Math.round((Date.now() - openLevelAt) / 1000));
+  sendAnalyticsEvent(
+    name,
+    name === "progression_started" ? data : { ...data, duration_sec: duration },
+  );
+}
 
 function sendPlatformMessage(message: string, ctx: LevelContext): void {
   void platformReady().then((b) => {
@@ -162,14 +212,17 @@ function sendPlatformMessage(message: string, ctx: LevelContext): void {
 /** `level_started` — the player entered a level (campaign, Today's Special, Endless, a Business order). */
 export function levelStarted(ctx: LevelContext): void {
   openLevel = { ...ctx };
+  openLevelAt = Date.now();
   levelPausedSent = false;
   sendPlatformMessage("level_started", openLevel);
+  progressionEvent("progression_started", openLevel);
 }
 
 /** `level_completed` — the level open since levelStarted was finished. Once per start. */
 export function levelCompleted(): void {
   if (!openLevel) return;
   sendPlatformMessage("level_completed", openLevel);
+  progressionEvent("progression_completed", openLevel);
   openLevel = null;
   levelPausedSent = false;
 }
@@ -188,8 +241,12 @@ export function levelResumed(): void {
   sendPlatformMessage("level_resumed", openLevel);
 }
 
-/** Leaving a level without finishing it: no message (KnifeCraft has no fail state), just closes it. */
+/**
+ * Leaving a level without finishing it: no platform message (KnifeCraft has
+ * no fail state), only the `progression_abandoned` analytics event.
+ */
 export function levelAbandoned(): void {
+  if (openLevel) progressionEvent("progression_abandoned", openLevel);
   openLevel = null;
   levelPausedSent = false;
 }

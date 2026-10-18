@@ -129,6 +129,30 @@ create a second engine, and do not duplicate existing systems.
 - The Bridge SDK is required for every build. **Never publish a build in
   which Playgama did not detect the SDK.**
 - Language: English only (the game reads `platform.language` and stays EN).
+- Analytics (2026-10-18; Bridge `analytics.send`, 2.3.0+; Playgama telemetry
+  guide 1.1): `sendAnalyticsEvent(name, data)` in `PlayablesSDK.ts` is the one
+  way in; a Bridge without analytics is a silent no-op. Only events the game
+  alone knows (Bridge already records `game_ready`, the level messages, ads,
+  sessions and playtime). Every event carries `game_version`
+  (`src/game/config/buildVersion.ts` `BUILD_VERSION`). The events:
+  - `progression_started` / `progression_completed` / `progression_abandoned`
+    with `{ world, step_index, duration_sec }`, sent beside the level
+    messages (the platform's own level events carry no level, so these show
+    WHERE players stop);
+  - `intro_completed` `{ skipped }`;
+  - `performance_sample` (`src/game/telemetry/performanceSample.ts`): on the
+    cutting board, one aggregated sample per ~30 s of play (FPS average and
+    p10, frame-time p50/p95/p99/max, frames over 50–1000 ms). Paused time
+    (PauseManager) and frame gaps over 2 s (a hidden page) are excluded; no
+    Page Visibility API. A window with under 5 s of play is dropped.
+  - Names are stable snake_case with no digits; the changing values ride in
+    the data; no personal data, text, URLs or ids. No external analytics.
+  - Read them with the cabinet's telemetry tools (§3).
+- A new player's Level 1 (under the intro) opens its play session when the
+  intro closes, so it sends `level_started` / `level_completed` like every
+  other level (before 2026-10-18 it sent neither).
+- Leaderboards: none yet (`sendScore` is a no-op); one needs a cabinet
+  leaderboard and a config entry, both the developer's choice.
 
 ---
 
@@ -153,6 +177,10 @@ then authenticate via `/mcp`). Never ask for the developer's password.
 - QA Tool links: always request them with `get_archive_qa_tool_link`
   (never build them). Moderation submission is done by a human in the
   cabinet after certification in the QA Tool.
+- Telemetry: `get_game_telemetry_analytics` (overview) first, then one
+  event (`get_game_telemetry_event_analytics`) or a trend
+  (`…_timeseries`); at most once a day, never in a loop. Under 30 sessions
+  a conclusion is not reliable yet.
 - Covers live in `playgama/covers/` (`source/` originals,
   `upload/` exact-size files: square 800×800, portrait 1080×1920,
   landscape 1920×1080).
@@ -173,7 +201,10 @@ npx vite preview            # serve dist/ on http://localhost:4173 for browser t
 Release zip: zip the **contents** of `dist/` (index.html at the root, no
 spaces in names) into `releases/KnifeCraft-Playgama-v<version>.zip`
 (`releases/` is gitignored). Verify the zip lists `index.html` at the root
-and `playgama-bridge-config.json` beside it before uploading.
+and `playgama-bridge-config.json` beside it before uploading. The
+`<version>` is `BUILD_VERSION` (`src/game/config/buildVersion.ts`, sent as
+`game_version` with every analytics event): raise it before building a new
+release.
 
 ---
 
@@ -210,7 +241,7 @@ once). Restaurant browser tests run on the normal build, classic ones on a
 - Campaign / UX: `story-intro-qa`, `story-pause-qa`, `story-legacy-qa`, `audio-qa`,
   `campaign-paid-orders-qa`, `level-ux-qa`, `coaching-qa`,
   `knife-stroke-qa`, `cut-rules-qa`, `lazy-load-qa`, `unused-assets-qa`,
-  `playables-ads-qa`.
+  `playables-ads-qa`, `playgama-telemetry-qa`.
 - Economy: `economy-v2-final-qa`, `economy-v2-qa`,
   `economy-v2-settlement-ledger-qa` (frozen baseline; some use `git diff`,
   run in this repo), `economy-v25-qa`, `economy-final-qa`.
@@ -1001,6 +1032,9 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   px) never restarts the game: `GameShell` keeps ONE wrapper and changes
   only its style (swapping the tree remounted everything).
 - `playables-ads-qa` — Bridge ads (interstitial policy, rewarded Replay Bonus).
+- `playgama-telemetry-qa` — the analytics events (§2): the progression
+  funnel once per level, the event contract, `performance_sample`'s fields
+  and values, only PlayablesSDK touches the Bridge, one version source.
 - `economy-v2-final-qa`, `economy-v2-qa`, `economy-v2-settlement-ledger-qa`
   — Economy V2 frozen baseline (some checks use `git diff`, so run them in
   this git repo).
