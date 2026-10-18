@@ -81,7 +81,7 @@ export function GameHUD({
     <div className="absolute inset-x-0 top-0 z-20 flex flex-col items-stretch gap-1.5 p-3">
       <div className="flex items-start justify-between gap-2">
         <div
-          className="paper max-w-[64%] -rotate-[1.4deg] rounded-[10px] border border-walnut/20 px-3 py-2 shadow-soft"
+          className="paper max-w-[64%] -rotate-[1.4deg] rounded-[10px] [@media(max-width:360px)]:max-w-[72%] border border-walnut/20 px-3 py-2 shadow-soft"
           style={{ clipPath: "polygon(0 2%, 100% 0, 99% 100%, 1% 98%)" }}
         >
           <p className="font-ui text-[10px] font-extrabold uppercase tracking-[0.18em] text-copper">

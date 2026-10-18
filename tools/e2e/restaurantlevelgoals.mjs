@@ -1,17 +1,21 @@
 // Levels 1–15 pass 3 (developer 2026-10-09), restaurant build, in a real browser:
-//   1. Level 5 (Onion Prep): the order card shows the customer's own line (the recipe's
+// (The 150-level campaign's Levels 1–15, scripts/restaurant-level-goals-qa.mts.)
+//   1. Level 4 (Potato & Tomato): the order card shows the customer's own line (the recipe's
 //      customerDialogue), the goal ("Clean, even cuts · best —") and the real
-//      checklist (Onion — peel / halve / slice) with peel as the current step.
+//      checklist (Potato — peel / halve, Tomato — slice) with peel as the current step.
 //   2. Playing it: the checklist moves peel → halve → slice with the scene's own step events
 //      (recorded by a page observer, not a timer); finished, every step is ticked.
 //   3. Level Complete shows the best stars = the engine's grade of the saved best score;
 //      the wallet moved only by the ledger's entries (stars pay nothing).
 //   4. The Order Board shows the same stars on the finished row.
-//   5. Level 7 (peel only, not graded by the engine): a completion goal and no stars.
-//   6. Level 9's row: "What's in this dish?" lists only the garlic (with the fridge's amount),
-//      and opening it changes nothing in the save.
+//   5. Level 7 (Mushroom Bruschetta): graded too — the redesign dropped the ungraded peel-only
+//      levels — so its goal carries "best —" and its checklist shows.
+//   6. Level 9's row: "What's in this dish?" lists the Caprese Plate's tomato, mozzarella and
+//      basil (with the fridge's amount), and opening it changes nothing in the save.
 //   7. The order card fits at 320 / 360 / 390 / 430 px (no sideways scroll, inside the screen);
-//      7b. a six-step dish (Bruschetta Trio) shows a compact checklist at 320 px.
+//      7b. a six-step dish (Level 12, Bruschetta for the House) shows a compact checklist at
+//      320 px.
+// Stock is used from Level 3: each level's fridge holds its dish's food.
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import {
   MOVED_IN_BUSINESS,
@@ -32,9 +36,22 @@ const check = (id, ok, detail) => {
 };
 const { browser, page, logs } = await launch();
 
+const FOOD = {
+  4: ["potato", "tomato"],
+  7: ["bread", "mushroom", "garlic"],
+  9: [],
+  12: ["bread", "tomato", "garlic", "basil", "mozzarella"],
+};
+const fridge = (n) =>
+  Object.fromEntries(
+    (FOOD[n] ?? []).map((id) => [
+      id,
+      { ingredientId: id, quantity: 3, unitCost: 0, purchaseDay: 1 },
+    ]),
+  );
 const at = (n, extra = {}) =>
   seedSave({
-    business: MOVED_IN_BUSINESS,
+    business: { ...MOVED_IN_BUSINESS, inventory: fridge(n) },
     credits: 5000,
     levelProgress: {
       currentLevelId: `level-${n}`,
@@ -73,21 +90,21 @@ async function prepareToday() {
 const STARS = (score) => (score >= 95 ? 3 : score >= 85 ? 2 : score >= 70 ? 1 : 0);
 const starText = (n) => "★".repeat(n) + "☆".repeat(3 - n);
 
-// ---------- 1. Level 5's card ----------
-await boot(page, at(5));
+// ---------- 1. Level 4's card ----------
+await boot(page, at(4));
 const before = await readSave(page);
 await prepareToday();
 const h1 = await hud();
-await shot(page, "goals-l5-start");
+await shot(page, "goals-l4-start");
 check(
-  "1 Level 5: the customer's own line, the goal, and the real steps (peel now)",
-  h1.line === "“Just the prepped onion, for the pot.”" &&
+  "1 Level 4: the customer's own line, the goal, and the real steps (peel now)",
+  h1.line === "“A halved potato with some sliced tomato, please.”" &&
     /Clean, even cuts · best —/.test(h1.goal ?? "") &&
     JSON.stringify(h1.steps) ===
       JSON.stringify([
-        ["Onion — peel", "now"],
-        ["Onion — halve", "todo"],
-        ["Onion — slice", "todo"],
+        ["Potato — peel", "now"],
+        ["Potato — halve", "todo"],
+        ["Tomato — slice", "todo"],
       ]),
   h1,
 );
@@ -133,7 +150,7 @@ const notes = await page.evaluate(
   () => document.querySelector('[data-testid="banner-notes"]')?.innerText ?? "",
 );
 const after = await readSave(page);
-const best = after.recipeProgress["camp-onion-prep-chain"]?.best;
+const best = after.recipeProgress["camp-halved-potato-bowl"]?.best;
 const stars = STARS(best);
 const ledger = after.economyLedger
   .slice(before.economyLedger.length)
@@ -155,23 +172,23 @@ await sleep(900);
 const row5 = await page.evaluate(
   () =>
     document
-      .querySelector('[data-level-row="level-5"] [data-level-stars]')
+      .querySelector('[data-level-row="level-4"] [data-level-stars]')
       ?.getAttribute("data-level-stars") ?? null,
 );
-check("4 the Order Board shows the same stars on Level 5", row5 === String(stars), {
+check("4 the Order Board shows the same stars on Level 4", row5 === String(stars), {
   row5,
   stars,
 });
 
-// ---------- 5. Level 7: not graded ----------
+// ---------- 5. Level 7: graded like every Level 1–15 dish ----------
 await boot(page, at(7));
 await prepareToday();
 const h7 = await hud();
 check(
-  "5 Level 7 (peel only): a completion goal and no stars",
-  /Finish the step cleanly/.test(h7.goal ?? "") &&
-    !/best/.test(h7.goal ?? "") &&
-    h7.steps.length === 0,
+  "5 Level 7 (Mushroom Bruschetta): graded too — a goal with best — and its checklist",
+  /best —/.test(h7.goal ?? "") &&
+    !/Finish the step cleanly/.test(h7.goal ?? "") &&
+    h7.steps.length > 1,
   h7,
 );
 
@@ -181,7 +198,7 @@ await boot(
   at(9, {
     business: {
       ...MOVED_IN_BUSINESS,
-      inventory: { garlic: { ingredientId: "garlic", quantity: 0.1, unitCost: 0, purchaseDay: 1 } },
+      inventory: { tomato: { ingredientId: "tomato", quantity: 0.1, unitCost: 0, purchaseDay: 1 } },
     },
   }),
 );
@@ -204,9 +221,9 @@ const list = await page.evaluate(() => ({
 const s9after = await readSave(page);
 await shot(page, "goals-l9-ingredients");
 check(
-  "6 Level 9: only the dish's garlic (with the fridge's amount); opening it changes nothing",
-  list.ids.join() === "garlic" &&
-    /Smashed Garlic Prep/.test(list.text) &&
+  "6 Level 9: the Caprese Plate's tomato, mozzarella and basil (with the fridge's amount); opening it changes nothing",
+  list.ids.join() === "tomato,mozzarella,basil" &&
+    /Caprese Plate/.test(list.text) &&
     /fridge: 0\.1 lb/.test(list.text) &&
     JSON.stringify(s9after.business.inventory) === JSON.stringify(s9.business.inventory) &&
     s9after.credits === s9.credits &&
@@ -218,7 +235,7 @@ check(
 const fits = [];
 for (const w of [320, 360, 390, 430]) {
   await page.setViewport({ width: w, height: w === 320 ? 568 : 844, deviceScaleFactor: 1 });
-  await boot(page, at(5));
+  await boot(page, at(4));
   await prepareToday();
   fits.push(
     await page.evaluate((width) => {
@@ -233,7 +250,7 @@ for (const w of [320, 360, 390, 430]) {
       };
     }, w),
   );
-  if (w === 320) await shot(page, "goals-l5-320");
+  if (w === 320) await shot(page, "goals-l4-320");
 }
 check(
   "7 the order card fits at 320–430 px: no sideways scroll, inside the screen, in the top half",
@@ -250,7 +267,6 @@ await boot(
       currentLevelId: "level-12",
       highestUnlockedLevelId: "level-12",
       completedLevelIds: Array.from({ length: 11 }, (_, i) => `level-${i + 1}`),
-      tickets: { "level-12": ["camp-bruschetta-trio"] },
     },
   }),
 );
@@ -270,7 +286,7 @@ const trio = await page.evaluate(() => {
 });
 await shot(page, "goals-l12-320");
 check(
-  "7b Bruschetta Trio (6 steps) at 320 px: the current and next step and how many are left, card in the top third",
+  "7b Bruschetta for the House (6 steps) at 320 px: the current and next step and how many are left, card in the top third",
   trio.items.join("|") === "▸ Bread — slice|· Tomato — dice|+4 more" &&
     trio.bottom !== null &&
     trio.bottom < 568 / 3 + 10,

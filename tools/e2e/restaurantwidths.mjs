@@ -7,7 +7,16 @@
 //   ingredients and supplies (bulk presets), Restaurant overview (one-restaurant note) and
 //   Closing Time.
 // Prints PASS/FAIL per check and exits 1 on any failure.
-import { MOVED_IN_BUSINESS, launch, boot, seedSave, sleep, clickButton, shot } from "./harness.mjs";
+import {
+  MOVED_IN_BUSINESS,
+  launch,
+  boot,
+  seedSave,
+  sleep,
+  clickButton,
+  openSection,
+  shot,
+} from "./harness.mjs";
 
 const results = [];
 const check = (id, ok, detail) => {
@@ -33,12 +42,18 @@ const save = (n, extraBusiness = {}) =>
     },
     story: { introDone: true, milestoneMask: 127, finaleSeen: true },
   });
+// The bottom bar is Kitchen · Market · Restaurant (the map); Inventory and the back office
+// ("Restaurant" in this test) open from the map (openSection).
 const nav = (label) =>
-  page.evaluate(
-    (l) =>
-      [...document.querySelectorAll("nav button")].find((x) => x.textContent.includes(l))?.click(),
-    label,
-  );
+  ["Inventory", "Restaurant"].includes(label)
+    ? openSection(page, label === "Inventory" ? "Inventory" : "Business")
+    : page.evaluate(
+        (l) =>
+          [...document.querySelectorAll("nav button")]
+            .find((x) => x.textContent.includes(l))
+            ?.click(),
+        label,
+      );
 /** Overflow of the page, and buttons under 48 px inside `selector` (visible ones only). */
 const measure = (selector) =>
   page.evaluate((sel) => {
