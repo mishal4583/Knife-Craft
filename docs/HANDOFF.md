@@ -21,9 +21,17 @@
 - **Browser tests** (`tools/e2e`) follow the 150-level campaign and the
   current navigation; see the README's "Writing a test" notes (seeds carry
   `campaignVersion: 2` and migration v2; `openSection` for the map's
-  screens; `clickButton` unfolds folded cards). Grandma's-fridge e2e checks
-  the retired feature stays retired. `day_cleaner` still needs registering
-  on Playgama (the cabinet tool isn't connected here).
+  screens; `openShortcut` for the Kitchen's shortcuts; `clickButton` unfolds
+  folded cards). Grandma's-fridge e2e checks the retired feature stays
+  retired. Final run: every browser test passes on its build (62), all 105
+  QA suites pass.
+- `releases/KnifeCraft-Playgama-v1.4.0.zip` is built from this `main`
+  (gitignored; `index.html` and `playgama-bridge-config.json` at the root,
+  preflight passes). Uploading it to Playgama, the real-Bridge check and
+  registering the `day_cleaner` placement are for the developer (the
+  cabinet tool isn't connected here).
+- Open design point: Inventory left the bottom bar (5db9451), so Grandma's
+  "This is your Inventory" pointer shows its card without the hand.
 
 ## Restaurant name (2026-10-17, `main`)
 
