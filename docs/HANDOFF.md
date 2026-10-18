@@ -1,5 +1,17 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## Bug sweep before the v1.4.0 upload (2026-10-18, `main`)
+
+- A crawl of every screen (Kitchen, Market tabs, map rooms, Business tabs,
+  Inventory, Progress, Achievements, Settings, Second Floor) at 320 / 390 /
+  768 px found no console or page errors and no sideways scroll.
+- Fixed: map text under 8.5 px (the guest's order bubble 7 px, the
+  restaurant's name sign 8 px, the Second Floor's carried items 8 px → 9 px);
+  a pending Level-bonus sheet could open over the next level's board (it is
+  dropped when a level starts, and no ad sheet shows during gameplay); a long
+  press / right click opened the browser's menu (Playgama checklist #25 —
+  GameShell blocks it outside text fields; `pgbridge.mjs` checks it).
+
 ## Five ad bonuses (2026-10-18, `main`)
 
 - Developer: "build 1–5". From Level 3, each an optional rewarded ad with its

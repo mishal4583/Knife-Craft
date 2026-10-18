@@ -618,6 +618,11 @@ export function App() {
   const playSessionRef = useRef({ id: 0, completed: false });
   function startPlaySession(where: LevelContext) {
     playSessionRef.current = { id: playSessionRef.current.id + 1, completed: false };
+    // A level bonus not taken before the next level starts is gone (never over the board).
+    if (adBonusOfferRef.current?.kind === "level_double" && !adBonusBusyRef.current) {
+      adBonusOfferRef.current = null;
+      setAdBonus((b) => (b?.kind === "level_double" && b.phase !== "waiting" ? null : b));
+    }
     levelStarted(where);
   }
   function markPlaySessionCompleted() {
@@ -3564,7 +3569,7 @@ export function App() {
           }
         />
       ) : null}
-      {adBonus && !levelRewardNotice && !storyEvent && !showIntro ? (
+      {adBonus && !levelRewardNotice && !storyEvent && !showIntro && screen !== "gameplay" ? (
         <AdBonusSheet
           state={adBonus}
           canClose={!adActive}

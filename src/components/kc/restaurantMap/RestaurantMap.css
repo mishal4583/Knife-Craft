@@ -259,7 +259,7 @@
   border-radius: 5px;
   background: #f4dfb5;
   color: #53351d;
-  font: 700 clamp(7px, .75vw, 10px)/1 Georgia, 'Times New Roman', serif;
+  font: 700 clamp(9px, .75vw, 10px)/1 Georgia, 'Times New Roman', serif;
   text-align: center;
   white-space: nowrap;
   opacity: 0;
@@ -656,7 +656,7 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, .62), inset 0 1px 0 rgba(255, 224, 150, .18), inset 0 -2px 0 rgba(0, 0, 0, .42);
   color: #f2d28a;
   font-family: Georgia, 'Times New Roman', serif;
-  font-size: clamp(8px, .75vw, 10px);
+  font-size: clamp(9px, .75vw, 10px);
   gap: .3em;
   font-weight: 700;
   letter-spacing: .035em;
@@ -1232,7 +1232,7 @@
 .floor-carry--cashier {
   bottom: 30%;
   left: 86%;
-  font-size: clamp(8px, 2vw, 12px);
+  font-size: clamp(9px, 2vw, 12px);
 }
 
 .floor-carry--cleaner {

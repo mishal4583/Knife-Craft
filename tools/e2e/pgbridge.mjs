@@ -168,6 +168,22 @@ check(
   !!paused.pauseEvent && !!paused.audioEvent,
   `Bridge exposes the pause/audio events the game subscribes to (${paused.pauseEvent}, ${paused.audioEvent}); ads on this mock: interstitial ${paused.interstitial}, rewarded ${paused.rewarded}`,
 );
+// Playgama checklist: a long press / right click in the game opens no browser menu.
+const menu = await page.evaluate(() => {
+  const fire = (el) => {
+    const e = new MouseEvent("contextmenu", { bubbles: true, cancelable: true });
+    el?.dispatchEvent(e);
+    return e.defaultPrevented;
+  };
+  return {
+    button: fire(document.querySelector("nav button")),
+    picture: fire(document.querySelector("img") ?? document.body.firstElementChild),
+  };
+});
+check(
+  menu.button && menu.picture,
+  `A long press opens no browser menu (button ${menu.button}, picture ${menu.picture})`,
+);
 const ext = [...new Set(external.map((u) => new URL(u).host))];
 check(
   ext.every((h) => /playgama\.com$/.test(h)),

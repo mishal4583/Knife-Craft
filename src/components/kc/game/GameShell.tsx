@@ -103,7 +103,19 @@ function useContainFit(logicalW: number, logicalH: number) {
 export function GameShell({ children, aside }: { children: ReactNode; aside?: ReactNode }) {
   const { ref, size } = useContainFit(LOGICAL_W, LOGICAL_H);
   return (
-    <div className="fixed inset-0 overflow-hidden bg-[radial-gradient(120%_80%_at_50%_0%,#3E2819,#231710_70%)]">
+    <div
+      className="fixed inset-0 overflow-hidden bg-[radial-gradient(120%_80%_at_50%_0%,#3E2819,#231710_70%)]"
+      // Playgama checklist: a long press (or right click) in the game never opens the
+      // browser's menu; text fields keep theirs (paste).
+      onContextMenu={(e) => {
+        const t = e.target as HTMLElement;
+        if (t.closest("input, textarea")) return;
+        e.preventDefault();
+      }}
+      onDragStart={(e) => {
+        if ((e.target as HTMLElement).tagName === "IMG") e.preventDefault();
+      }}
+    >
       {/* Phone-sized screens get the game edge to edge (no margin, border or
           rounded corners); the framed "device" look is only for wider screens. */}
       <div className="flex h-full w-full items-center justify-center gap-6 p-0 sm:p-4">
