@@ -25,6 +25,7 @@ import {
   save,
   text,
   openShortcut,
+  openSection,
 } from "./harness.mjs";
 import { playToReport } from "./solver.mjs";
 import { ALL_DISH_IDS } from "./businessDishes.mjs";
@@ -35,7 +36,17 @@ const check = (id, ok, detail) => {
   console.log(`${ok ? "PASS" : "FAIL"} ${id}`, detail === undefined ? "" : JSON.stringify(detail));
 };
 const businessSave = (credits) =>
-  seedSave({ version: 2, credits, business: { calendar: { businessDay: 7 } } });
+  seedSave({
+    version: 2,
+    credits,
+    // Level 12: Business is open (from Level 11).
+    levelProgress: {
+      currentLevelId: "level-12",
+      highestUnlockedLevelId: "level-12",
+      completedLevelIds: Array.from({ length: 11 }, (_, i) => `level-${i + 1}`),
+    },
+    business: { calendar: { businessDay: 7 } },
+  });
 
 const { browser, page, logs } = await launch();
 await page.setViewport({ width: 375, height: 642, deviceScaleFactor: 1 });
@@ -139,7 +150,8 @@ await shot(page, "supplies-1-market");
 
 // ---------- 3. Inventory → Supplies (stock) and Business → Operations (spend) ----------
 async function openInventorySupplies() {
-  await clickButton(page, /Inventory$/);
+  // Inventory opens from the Kitchen's shortcut (since 5db9451).
+  await openShortcut(page, "inventory");
   await sleep(700);
   await page.evaluate(() => document.querySelector('[data-inventory-kind="supplies"]')?.click());
   await sleep(500);
@@ -247,6 +259,12 @@ await boot(
   seedSave({
     version: 2,
     credits: 50_000,
+    // The ribeye joins the menu at Level 63 (steak, 150-level campaign).
+    levelProgress: {
+      currentLevelId: "level-64",
+      highestUnlockedLevelId: "level-64",
+      completedLevelIds: Array.from({ length: 63 }, (_, i) => `level-${i + 1}`),
+    },
     business: {
       calendar: { businessDay: 7 },
       inventory: seedStock,
@@ -267,9 +285,8 @@ await boot(
     },
   }),
 );
-await openShortcut(page, "business");
-await sleep(600);
-await clickButton(page, /Open Restaurant →|Go to Service →/);
+// The Service screen is the Restaurant map's Service Counter.
+await openSection(page, "Service");
 await sleep(600);
 await clickButton(page, /Open the Counter/);
 await sleep(800);

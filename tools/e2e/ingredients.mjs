@@ -1,5 +1,5 @@
 // Ingredients in the built game — Market buys, Business monitors:
-//   0. Inventory (bottom bar) has no purchase controls (empty state: "Go to Market →");
+//   0. Inventory (the Kitchen's shortcut) has no purchase controls (empty state: "Go to Market →");
 //   1. Market → Ingredients lists all 57 ingredients (nothing hidden, no "No dish"); Business →
 //      Inventory's "Go to Market →" opens it;
 //   2. prices are per ingredient (potato $0.60, tomato $1.00, asparagus $2.60, salmon $6.50);
@@ -22,6 +22,7 @@ import {
   save,
   text,
   openShortcut,
+  openSection,
 } from "./harness.mjs";
 import { playToReport } from "./solver.mjs";
 import { ALL_DISH_IDS } from "./businessDishes.mjs";
@@ -32,8 +33,18 @@ const check = (id, ok, detail) => {
   console.log(`${ok ? "PASS" : "FAIL"} ${id}`, detail === undefined ? "" : JSON.stringify(detail));
 };
 const DAY = 7; // no supplier event on day 7
+// Level 12: Business is open (from Level 11).
 const businessSave = (credits) =>
-  seedSave({ version: 2, credits, business: { calendar: { businessDay: DAY } } });
+  seedSave({
+    version: 2,
+    credits,
+    levelProgress: {
+      currentLevelId: "level-12",
+      highestUnlockedLevelId: "level-12",
+      completedLevelIds: Array.from({ length: 11 }, (_, i) => `level-${i + 1}`),
+    },
+    business: { calendar: { businessDay: DAY } },
+  });
 
 const { browser, page, logs } = await launch();
 
@@ -47,9 +58,9 @@ const cards = () =>
       ]),
     ),
   );
-/** Inventory is its own bottom-bar section (stock control), between Market and Business. */
+/** Inventory opens from the Kitchen's Inventory shortcut (since 5db9451). */
 async function openInventory() {
-  await clickButton(page, /Inventory$/);
+  await openShortcut(page, "inventory");
   await sleep(700);
 }
 async function openOperations() {
@@ -118,8 +129,8 @@ check(
   names.length,
 );
 check(
-  "1b cards say how many menu dishes use them (Butter: 1 menu dish)",
-  /1 menu dish\b/.test(c["Butter"]) && /menu dish/.test(c["Watermelon"]),
+  "1b cards say how many menu dishes use them (Butter: 🍽️ 1 dish, short copy 2026-10-16)",
+  /🍽️ 1 dish\b/.test(c["Butter"]) && /🍽️ \d+ dish/.test(c["Watermelon"]),
   { butter: c["Butter"]?.slice(0, 80) },
 );
 check(
@@ -251,8 +262,8 @@ await boot(
 await openIngredients();
 c = await cards();
 check(
-  "4f fridge full: the card says so and how much space is left",
-  /Not enough fridge space\. You have 2 units of fridge space left\./.test(c["Tomato"]),
+  "4f fridge full: the card says so and how much space is left (short copy: Fridge full · ❄️ N units free)",
+  /Fridge full · ❄️ 2 units free/.test(c["Tomato"]),
   c["Tomato"],
 );
 const full = await readSave(page);
@@ -281,6 +292,12 @@ await boot(
   seedSave({
     version: 2,
     credits: 50_000,
+    // The ribeye joins the menu at Level 63 (steak, 150-level campaign).
+    levelProgress: {
+      currentLevelId: "level-64",
+      highestUnlockedLevelId: "level-64",
+      completedLevelIds: Array.from({ length: 63 }, (_, i) => `level-${i + 1}`),
+    },
     business: {
       calendar: { businessDay: DAY },
       inventory: stock,
@@ -290,9 +307,8 @@ await boot(
     },
   }),
 );
-await openShortcut(page, "business");
-await sleep(600);
-await clickButton(page, /Open Restaurant →|Go to Service →/);
+// The Service screen is the Restaurant map's Service Counter.
+await openSection(page, "Service");
 await sleep(600);
 await clickButton(page, /Open the Counter/);
 await sleep(800);

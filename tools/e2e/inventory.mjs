@@ -1,6 +1,6 @@
 // The Inventory section (bottom bar → Inventory) in the built game:
-//   1. the bottom bar has 5 sections in order — Kitchen · Inventory · Market · Business ·
-//      Progress — and Inventory opens straight from it; Business has no Inventory tab;
+//   1. the bottom bar is Kitchen · Market · Restaurant (developer 2026-10-15, 5db9451) and
+//      Inventory opens from the Kitchen's Inventory shortcut; Business has no Inventory tab;
 //   2. the screen shows the save as it is: header, wallet, "Fridge: Commercial · N / 80 units",
 //      Total Stock / Running Low / Expiring Soon / Ready to Cook cards, the physical fridge;
 //   3. Needs Attention: the expired cheddar, the basil spoiling tonight and the low tomato appear,
@@ -14,7 +14,7 @@
 //      stock or the fridge;
 //   7. visiting Inventory changes nothing in the save;
 //   8. at 320×568 · 360×640 · 375×642 · 390×844 · 430×932 · 768×1024 · 1024×1366: no horizontal
-//      page scroll, the 5 bottom-bar buttons fit and are ≥ 48 px tall, the page scrolls and its
+//      page scroll, the 3 bottom-bar tabs fit and are ≥ 48 px tall, the page scrolls and its
 //      last control clears the bottom bar; no console errors.
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import {
@@ -52,6 +52,12 @@ const inventorySave = () =>
   seedSave({
     version: 2,
     credits: 250_000,
+    // Level 12: Business is open (from Level 11).
+    levelProgress: {
+      currentLevelId: "level-12",
+      highestUnlockedLevelId: "level-12",
+      completedLevelIds: Array.from({ length: 11 }, (_, i) => `level-${i + 1}`),
+    },
     business: {
       calendar: { businessDay: DAY },
       inventory: STOCK,
@@ -63,7 +69,7 @@ const { browser, page, logs } = await launch();
 await page.setViewport({ width: 375, height: 642, deviceScaleFactor: 1, hasTouch: true });
 const flat = async () => (await text(page)).replace(/\s+/g, " ");
 const openInventory = async () => {
-  await clickButton(page, /Inventory$/);
+  await openShortcut(page, "inventory");
   await sleep(800);
 };
 const essentials = (s) =>
@@ -86,15 +92,15 @@ const nav = await page.evaluate(() =>
   ),
 );
 check(
-  // Developer 2026-10-10: Inventory and Market swapped.
-  "1a the bottom bar: Kitchen · Inventory · Market · Business · Progress",
-  nav.map((n) => n.replace(/^\S+\s/, "")).join() === "Kitchen,Inventory,Market,Business,Progress",
+  // Developer 2026-10-15 (5db9451): Inventory, Business and Progress left the bottom bar.
+  "1a the bottom bar: Kitchen · Market · Restaurant",
+  nav.map((n) => n.replace(/^[^A-Za-z]+/, "")).join() === "Kitchen,Market,Restaurant",
   nav,
 );
 const before = await readSave(page);
 await openInventory();
 check(
-  "1b Inventory opens straight from the bottom bar",
+  "1b Inventory opens from the Kitchen's Inventory shortcut",
   !!(await page.$('[data-testid="inventory"]')) &&
     /Manage your restaurant stock/.test(await flat()),
 );
@@ -106,9 +112,9 @@ const bizTabs = await page.evaluate(() =>
   ),
 );
 check(
-  "1c Business: Overview · Equipment · Staff · Suppliers · Menu · Operations (no Inventory or Supplies)",
-  bizTabs.map((t) => t.replace(/^\S+\s/, "")).join() ===
-    "Overview,Equipment,Staff,Suppliers,Menu,Operations",
+  "1c Business: Overview · Equipment · Upgrades · Staff · Suppliers · Menu · Operations (no Inventory or Supplies)",
+  bizTabs.map((t) => t.replace(/^[^A-Za-z]+/, "")).join() ===
+    "Overview,Equipment,Upgrades,Staff,Suppliers,Menu,Operations",
   bizTabs,
 );
 
@@ -186,7 +192,10 @@ const expiredRow = await page.evaluate(
 );
 check(
   "3c each row says what's wrong in words and offers Restock",
-  /EXPIRED/i.test(expiredRow) && /0 lb usable/.test(expiredRow) && /Restock →/.test(expiredRow),
+  // Short copy (2026-10-16): "2 lb · 🗑️ expired · throw it out".
+  /EXPIRED/i.test(expiredRow) &&
+    /expired · throw it out/.test(expiredRow) &&
+    /Restock →/.test(expiredRow),
   expiredRow,
 );
 await page.evaluate(() =>
@@ -298,7 +307,8 @@ await sleep(800);
 t = await flat();
 check(
   "6c View Business Performance opens Business → Overview",
-  /Restaurant health/i.test(t) && /Today at a glance/i.test(t),
+  // The overview since the developer's 2026-10-15 layout: "Restaurant today" + "Business figures".
+  /Restaurant today/i.test(t) && /Business figures/i.test(t),
 );
 
 // ---------- 6d. Supplies: every other kind of stock ----------
@@ -434,7 +444,10 @@ for (const [w, h] of sizes) {
     const scroller = document.querySelector('[data-testid="inventory"]');
     const nav = document.querySelector("nav.absolute");
     const navR = nav.getBoundingClientRect();
-    const buttons = [...nav.querySelectorAll("button")].map((b) => b.getBoundingClientRect());
+    // The bar's tabs (the scroll cue's "▾ More" also sits in the bar, 2026-10-18).
+    const buttons = [...nav.querySelectorAll("button[data-nav]")].map((b) =>
+      b.getBoundingClientRect(),
+    );
     const top0 = scroller.scrollTop;
     scroller.scrollTop = scroller.scrollHeight;
     await new Promise((r) => setTimeout(r, 150));
@@ -459,9 +472,9 @@ for (const [w, h] of sizes) {
   await shot(page, `inventory-5-${w}x${h}`);
 }
 check(
-  "8a every size: no horizontal scroll; 5 bottom-bar buttons fit, ≥ 48 px tall; the page scrolls and its last button clears the bar",
+  "8a every size: no horizontal scroll; the 3 bottom-bar tabs fit, ≥ 48 px tall; the page scrolls and its last button clears the bar",
   Object.values(perSize).every(
-    (m) => !m.hScroll && m.navButtons === 5 && m.navFits && m.navTall && m.scrolls && m.lastClear,
+    (m) => !m.hScroll && m.navButtons === 3 && m.navFits && m.navTall && m.scrolls && m.lastClear,
   ),
   perSize,
 );
