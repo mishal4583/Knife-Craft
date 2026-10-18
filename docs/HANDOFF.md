@@ -4,9 +4,11 @@
 
 - Archive `knifecraft-playgama-1.4.0` (id `cmvdtce9m9cbunj0h19uop72a`, built
   from `ec6f66e`): processing DONE, check PASSED, Bridge 2.3.1 FOUND.
-- The sandbox still serves v1.3.0 (launch step "sandbox" OUTDATED) until the
-  developer approves `publish_sandbox`. The form still waits on certification
-  in the QA Tool (the developer's).
+- Published to the sandbox on the developer's approval: https://playgama.ai/play/gm6cvisosg
+  serves v1.4.0 (publication PUBLISHED; launch step "sandbox" DONE). Not yet
+  played on the live link from a cloud session (its network blocks
+  playgama.ai). The form still waits on certification in the QA Tool (the
+  developer's).
 
 ## Bug sweep before the v1.4.0 upload (2026-10-18, `main`)
 
