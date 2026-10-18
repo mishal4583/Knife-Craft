@@ -296,7 +296,10 @@ export async function buyMissingTools(page) {
   for (let i = 0; i < 20; i++) {
     const id = await page.evaluate(() => {
       const row = document.querySelector('[data-psc-tool][data-psc-status="missing"]');
-      row?.querySelector("button")?.click();
+      // The row's Buy (its ⓘ, since the 2026-10-16 copy sweep, comes first).
+      [...(row?.querySelectorAll("button") ?? [])]
+        .find((b) => /^(Buy|Restock)/.test(b.textContent.trim()))
+        ?.click();
       return row?.getAttribute("data-psc-tool") ?? null;
     });
     if (!id) break;

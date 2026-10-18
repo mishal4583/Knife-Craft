@@ -1,13 +1,17 @@
 // Unified Restaurant phase M — an existing save moves into the unified restaurant, in a real
 // browser, on a RESTAURANT_MODE build (the default — on unless VITE_RESTAURANT_MODE=0). The save is seeded the way
 // an older build wrote it (no `restaurantMigration` stamp — NOT MOVED_IN_BUSINESS).
-//   1. Level 60 (Indian Kitchen Service): the first load gives a one-time starter crate —
-//      ingredients for the next services, place settings, napkins, a bottle of dish soap and of
-//      cleaning liquid — at cost 0: credits and ledger unchanged, levels kept.
-//   2. The Pre-Service Check welcomes the player ("Welcome to your restaurant") and the service's
-//      ingredients and place settings are ready (only the staff remain to hire).
+// It is a 250-level save (no campaign stamp): the game renumbers it — its Level 60 (Indian
+// Kitchen Service) is Level 40 of the 150-level campaign, 39 levels kept.
+//   1. The first load gives a one-time starter crate (migration v2, redesign 0b2ce52) — the next
+//      services' kitchen tools, place settings, napkins, a bottle of dish soap and of cleaning
+//      liquid; NO ingredients (they are bought in the Market from Level 3) — at cost 0: credits
+//      and ledger unchanged, levels kept.
+//   2. The Pre-Service Check welcomes the player ("Welcome to your restaurant", buy the food in
+//      the Market); the place settings are ready, the ingredients wait to be bought.
 //   3. A reload gives no second crate.
-//   4. Once a service starts the welcome is gone for good.
+//   4. With the food bought (Market, one entry each) and the staff hired, the service starts and
+//      the welcome is gone for good.
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import {
   launch,
@@ -71,6 +75,7 @@ await boot(
       currentLevelId: "level-60",
       highestUnlockedLevelId: "level-60",
       completedLevelIds: Array.from({ length: 59 }, (_, i) => `level-${i + 1}`),
+      campaignVersion: undefined, // written before the 150-level campaign
     },
     story: { introDone: true, milestoneMask: 127, finaleSeen: true },
   }),
@@ -80,17 +85,20 @@ const m = moved.business.restaurantMigration;
 const units = (s, id) => s.business.supplies.stock[id]?.units ?? 0;
 check(
   "1 the first load gives the starter crate at cost 0: credits and ledger unchanged, levels kept",
-  m?.version === 1 &&
-    m.atLevel === 60 &&
+  m?.version === 2 &&
+    m.atLevel === 40 &&
     m.seen === false &&
-    m.kit.some((k) => k.kind === "ingredient") &&
+    m.kit.length > 0 &&
+    !m.kit.some((k) => k.kind === "ingredient") &&
+    Object.keys(moved.business.inventory ?? {}).length === 0 &&
     units(moved, "dinner-plates") >= 1 &&
     units(moved, "paper-napkins") === 100 &&
     units(moved, "dish-soap") === 1 &&
     units(moved, "cleaning-liquid") === 1 &&
     moved.credits === 50_000 &&
     moved.economyLedger.length === 0 &&
-    moved.levelProgress.completedLevelIds.length === 59,
+    moved.levelProgress.completedLevelIds.length === 39 &&
+    moved.levelProgress.currentLevelId === "level-40",
   { kit: m?.kit, credits: moved.credits, ledger: moved.economyLedger.length },
 );
 
@@ -104,11 +112,11 @@ const ingredients = await statuses("data-psc-ingredient");
 const supplies = await statuses("data-psc-supply");
 await shot(page, "restaurant-migration-welcome");
 check(
-  "2 the check says 'Welcome to your restaurant' with the crate; the service's stock and place settings are ready",
+  "2 the check says 'Welcome to your restaurant' with the crate (food from the Market); the place settings are ready, the ingredients wait to be bought",
   /Welcome to your restaurant/i.test(welcome ?? "") &&
-    /Napkins|napkins/.test(welcome ?? "") &&
+    /Market/.test(welcome ?? "") &&
     ingredients.length > 0 &&
-    ingredients.every((r) => r.status === "ok") &&
+    ingredients.every((r) => r.status === "missing") &&
     supplies.filter((r) => /dinner-/.test(r.id)).every((r) => r.status === "ok"),
   { welcome: welcome?.slice(0, 200), ingredients, supplies },
 );
@@ -133,12 +141,18 @@ const missing = (await statuses("data-psc-staff")).filter((r) => r.status === "m
 if (missing.length) {
   await clickButton(page, /^Hire .* → Staff/);
   await sleep(900);
-  await page.evaluate(() =>
-    // The row's first button is the chef's ⓘ (2026-10-17); click Hire by name.
-    [...document.querySelectorAll('[data-specialist="indian-chef"] button')]
-      .find((b) => b.textContent.trim() === "Hire")
-      ?.click(),
-  );
+  // Every specialist this service needs (the Indian dishes, and the menu's Mexican ones from
+  // Level 16). A row's first button is the chef's ⓘ (2026-10-17); click Hire by name.
+  for (const id of ["indian-chef", "mexican-chef"]) {
+    await page.evaluate(
+      (x) =>
+        [...document.querySelectorAll(`[data-specialist="${x}"] button`)]
+          .find((b) => b.textContent.trim() === "Hire")
+          ?.click(),
+      id,
+    );
+    await sleep(300);
+  }
   await sleep(300);
   for (const name of ["Prep Cook", "Server", "Line Cook"]) {
     await page.evaluate((n) => {
@@ -156,6 +170,34 @@ if (missing.length) {
 }
 // Supplies plan A (2026-10-10): the cooks just hired need their own pans.
 await buyMissingTools(page);
+// The food: each missing row's Restock → the Market on that ingredient → Buy → back.
+const toBuy = (await statuses("data-psc-ingredient"))
+  .filter((r) => r.status === "missing")
+  .map((r) => r.id);
+const beforeFood = await readSave(page);
+for (const id of toBuy) {
+  await page.evaluate(
+    (x) =>
+      [...document.querySelectorAll(`[data-psc-ingredient="${x}"] button`)]
+        .find((b) => /Restock/.test(b.textContent))
+        ?.click(),
+    id,
+  );
+  await sleep(800);
+  await page.evaluate((x) => {
+    const card = document.querySelector(`[data-ingredient="${x}"]`);
+    [...(card?.querySelectorAll("button") ?? [])]
+      .find((b) => /^Buy /.test(b.textContent.trim()))
+      ?.click();
+  }, id);
+  await sleep(400);
+  await page.evaluate(() => document.querySelector('[data-testid="psc-back"]')?.click());
+  await sleep(700);
+}
+const afterFood = await readSave(page);
+const foodEntries = afterFood.economyLedger
+  .slice(beforeFood.economyLedger.length)
+  .filter((e) => e.category === "inventory-purchase");
 await clickButton(page, /^(OPEN THE RESTAURANT|START SERVICE)$/);
 await sleep(1200);
 const started = await page.evaluate(() =>
@@ -163,9 +205,17 @@ const started = await page.evaluate(() =>
 );
 const afterStart = await readSave(page);
 check(
-  "4 once the service starts the welcome is marked seen and never shows again",
-  started && afterStart.business.restaurantMigration.seen === true,
-  { started, seen: afterStart.business.restaurantMigration.seen },
+  "4 with the food bought in the Market (one entry each) the service starts; the welcome is marked seen and never shows again",
+  started &&
+    afterStart.business.restaurantMigration.seen === true &&
+    toBuy.length > 0 &&
+    foodEntries.length === toBuy.length,
+  {
+    started,
+    seen: afterStart.business.restaurantMigration.seen,
+    toBuy,
+    foodEntries: foodEntries.length,
+  },
 );
 
 const errors = logs.filter((l) => /pageerror|error:/.test(l) && !/favicon/.test(l));
