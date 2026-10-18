@@ -233,20 +233,33 @@ const chickenCost = ingredientBaselineCost("chicken" as any);
 const onionCost = ingredientBaselineCost("onion" as any);
 const gingerCost = ingredientBaselineCost("ginger" as any);
 
+// The campaign redesign (2026-10-15) gave these sample recipes a garnish of another
+// ingredient (lemon / pepper / carrot). Re-baselined 2026-10-17: the rule is checked on the
+// main ingredient's instances, and the whole cost = its instances + one of each other
+// ingredient (each a single instance).
+const instancesOf = (components: RecipeComponent[], id: string) =>
+  groupIntoInstances(components).filter((g) => g.ingredientId === id).length;
+const othersCost = (components: RecipeComponent[], id: string) =>
+  groupIntoInstances(components)
+    .filter((g) => g.ingredientId !== id)
+    .reduce((t, g) => t + ingredientBaselineCost(g.ingredientId as any), 0);
+
 // A. Same ingredient, same physical instance (chicken: halve -> slice, no chainBreak).
 {
   const recipe = CAMPAIGN_RECIPES.find((r) => r.id === "camp-chicken-halve-slice")!;
   const proposed = proposedBaselineCOGS(recipe);
-  assert(groupIntoInstances(recipe.components).length === 1, "A1: camp-chicken-halve-slice groups into exactly 1 instance");
-  assert(Math.abs(proposed - chickenCost) < 1e-9, `A: same-instance chain (halve->slice, no chainBreak) charges ONE chicken COGS (${proposed.toFixed(2)} === ${chickenCost.toFixed(2)})`);
+  const expected = chickenCost + othersCost(recipe.components, "chicken");
+  assert(instancesOf(recipe.components, "chicken") === 1, "A1: camp-chicken-halve-slice's chicken (halve -> slice) is exactly 1 instance");
+  assert(Math.abs(proposed - expected) < 1e-9, `A: same-instance chain (halve->slice, no chainBreak) charges ONE chicken COGS + the garnish (${proposed.toFixed(2)} === ${expected.toFixed(2)})`);
 }
 
 // B. Same ingredient, two physical instances (chainBreak forces a fresh one).
 {
   const recipe = CAMPAIGN_RECIPES.find((r) => r.id === "camp-chicken-protein-branch")!;
   const proposed = proposedBaselineCOGS(recipe);
-  assert(groupIntoInstances(recipe.components).length === 2, "B1: camp-chicken-protein-branch (chainBreak-marked) groups into exactly 2 instances");
-  assert(Math.abs(proposed - 2 * chickenCost) < 1e-9, `B: chainBreak-marked branch charges TWO chicken COGS (${proposed.toFixed(2)} === ${(2 * chickenCost).toFixed(2)})`);
+  const expected = 2 * chickenCost + othersCost(recipe.components, "chicken");
+  assert(instancesOf(recipe.components, "chicken") === 2, "B1: camp-chicken-protein-branch's chicken (chainBreak-marked) is exactly 2 instances");
+  assert(Math.abs(proposed - expected) < 1e-9, `B: chainBreak-marked branch charges TWO chicken COGS + the garnish (${proposed.toFixed(2)} === ${expected.toFixed(2)})`);
 }
 
 // C. Different ingredients (chicken + onion) — synthetic, isolates the rule from any one real recipe's exact shape.
@@ -264,11 +277,11 @@ const gingerCost = ingredientBaselineCost("ginger" as any);
 // D. Shared preparation / branching — one source ingredient (onion), multiple legitimate OUTPUTS/destinations, no chainBreak anywhere.
 {
   const recipe = CAMPAIGN_RECIPES.find((r) => r.id === "camp-onion-two-ways")!;
-  const groups = groupIntoInstances(recipe.components);
-  assert(groups.length === 1, "D1: camp-onion-two-ways (peel->halve->slice/dice, shared prep then branched to 2 destinations, no chainBreak) groups into exactly 1 instance");
-  assert(recipe.components.length === 4, "D2: camp-onion-two-ways still has 4 components/outputs (gameplay's per-component PreparedOutput creation is completely UNCHANGED — only the ECONOMY instance-count changes, never organizationManager.ts's own output/destination behavior)");
+  assert(instancesOf(recipe.components, "onion") === 1, "D1: camp-onion-two-ways's onion (peel->halve->slice/dice, shared prep then branched to 2 destinations, no chainBreak) is exactly 1 instance");
+  assert(recipe.components.filter((c) => c.ingredientId === "onion").length === 4, "D2: camp-onion-two-ways still has 4 onion components/outputs (gameplay's per-component PreparedOutput creation is completely UNCHANGED — only the ECONOMY instance-count changes, never organizationManager.ts's own output/destination behavior)");
   const proposed = proposedBaselineCOGS(recipe);
-  assert(Math.abs(proposed - onionCost) < 1e-9, `D: one onion split into 2 destinations on the SAME order charges exactly ONE onion COGS (${proposed.toFixed(2)} === ${onionCost.toFixed(2)}) — matches the physical reality of one onion, peeled and halved once, then finished two ways`);
+  const expected = onionCost + othersCost(recipe.components, "onion");
+  assert(Math.abs(proposed - expected) < 1e-9, `D: one onion split into 2 destinations on the SAME order charges exactly ONE onion COGS + the garnish (${proposed.toFixed(2)} === ${expected.toFixed(2)}) — matches the physical reality of one onion, peeled and halved once, then finished two ways`);
 }
 
 // E. Batch preparation (cross-ORDER sharing, e.g. BatchGroupSession) is explicitly OUT OF SCOPE for this fix.

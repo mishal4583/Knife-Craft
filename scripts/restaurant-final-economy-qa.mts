@@ -2,9 +2,10 @@
  * RESTAURANT FINAL ECONOMY QA — the final economy design pass
  * (docs/ECONOMY_FINAL.md, developer 2026-10-06), restaurant build:
  *
- *  T. Target: the completionist (every item, all 250 levels, no Endless)
- *     ends Level 250 with ≥ $150,000 — preferred $160k–$175k — Local,
- *     Wholesale and Premium alike; the saver stays viable; the gap shrank.
+ *  T. Target: the completionist (every item, all 150 levels, no Endless)
+ *     ends Level 150 with $100k–$150k (CLAUDE.md §7, developer 2026-10-16;
+ *     was ≥ $150k at Level 250) — Local, Wholesale and Premium alike; the
+ *     saver stays viable; the gap shrank.
  *  S. Safety: every player completes every level, credits are whole cents
  *     and never < 0, cash = opening + ledger, no soft-lock; a prudent
  *     completionist (keeps $500) never needs supplier credit.
@@ -80,7 +81,7 @@ const R: Record<string, ScenarioResult> = {};
 for (const sc of SCENARIOS) R[sc.key] = runScenario(sc);
 const atL = (r: ScenarioResult, n: number) => r.rows.find((x) => x.level === n)!;
 
-console.log("T. The Level-250 target (no Endless income)");
+console.log("T. The Level-150 target (no Endless income)");
 {
   const c = R.C!;
   assert(
@@ -143,10 +144,10 @@ console.log("V. Investment value");
   const c250 = atL(R.C!, LAST);
   const a250 = atL(R.A!, LAST);
   // Realistic portions (developer 2026-10-08) need about 2.5× less fridge than a pound per step:
-  // before them the completionist peaked at L91 61 / L250 102 of 140; now about 35 / 51.
+  // before them the completionist peaked at L91 61 / the last level 102 of 140; now about 35 / 51.
   assert(
     c250.fridgePeak > 40 && c250.fridgePeak <= c250.fridgeCap && a250.fridgePeak <= 40,
-    `V3: whole-day stocking outgrows the Basic fridge by L250 (completionist L91 ${atL(R.C!, 91).fridgePeak}, L250 ${c250.fridgePeak} of ${c250.fridgeCap}); service-by-service stocking still fits the Basic (saver ${a250.fridgePeak}/40)`,
+    `V3: whole-day stocking outgrows the Basic fridge by L${LAST} (completionist L91 ${atL(R.C!, 91).fridgePeak}, L${LAST} ${c250.fridgePeak} of ${c250.fridgeCap}); service-by-service stocking still fits the Basic (saver ${a250.fridgePeak}/40)`,
   );
   assert(
     R.E!.stats.qualityBy.supplier! > 0 && R.D!.final > R.C!.final,
