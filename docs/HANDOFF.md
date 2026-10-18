@@ -15,6 +15,11 @@
 - Also: the Replay Bonus cap counts only Replay Bonuses; the scroll cue moved
   to the middle of the bottom bar (it covered Business's 🗺️ Map button); the
   browser harness seeds today's gift as taken.
+- Tests: all 107 QA suites pass; every browser test passes on its build
+  (restaurant and classic). Stale tests fixed on the way (they failed on the
+  previous `main` too): `platingskip` and `audit10` (Level 3 needs stock: they
+  restock from the Pre-Service Check now), and five "no ledger entry" checks
+  that now ignore the harness's seeded daily-gift record.
 - Playgama: the five new placements (`floating_cash`, `level_bonus`,
   `shortfall_topup`, `floor_double`, `daily_gift`) are in
   `playgama-bridge-config.json`; the zip is built on the developer's word.

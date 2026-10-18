@@ -1,4 +1,5 @@
-// AUDIT ONLY — plays a brand-new player through intro -> Level 1 ... Level 10 -> post-Level-10, via real input.
+// AUDIT ONLY — plays a brand-new player through intro -> Level 1 ... Level 10 -> post-Level-10, via real input
+// (from Level 3 it buys what each Pre-Service Check lists, as a new player must).
 // Records every transition's screen text, timings, save/ledger, network and memory. Changes nothing in the game.
 import { launch, sleep, clickButton, readSave, shot, text, save } from "./harness.mjs";
 import { playToReport, stepInfo } from "./solver.mjs";
@@ -81,6 +82,87 @@ for (let i = 0; i < 40; i++) {
 }
 R.introTotalMs = Date.now() - tIntro;
 await shot(page, "a10-level1-start");
+
+/**
+ * From Level 3 a service uses real stock (redesign 2026-10-15; re-baselined 2026-10-18): Prepare
+ * opens the Pre-Service Check, and a new player buys what it lists (each row's Restock / Buy, or
+ * supplier credit when the money is short), then taps START. Returns what it bought.
+ */
+async function throughServiceCheck() {
+  const bought = [];
+  for (let i = 0; i < 20; i++) {
+    // Restock opens the Market on what today needs: buy each "Needed today" card, then go back.
+    const inMarket = await page.evaluate(() =>
+      [...document.querySelectorAll("button")].some((b) =>
+        /^↩ Back to Level \d+ Pre-Service Check$/.test(b.textContent.trim()),
+      ),
+    );
+    if (inMarket) {
+      const buys = await page.evaluate(() => {
+        const cards = [...document.querySelectorAll("article")].filter((a) =>
+          /Needed today/.test(a.textContent),
+        );
+        const labels = [];
+        for (const c of cards) {
+          const b = [...c.querySelectorAll("button")].find(
+            (x) => /^Buy .* · \$/.test(x.textContent.trim()) && !x.disabled,
+          );
+          if (b) {
+            labels.push(b.textContent.trim());
+            b.click();
+          }
+        }
+        return labels;
+      });
+      bought.push(...buys);
+      await sleep(700);
+      await clickButton(page, /^↩ Back to Level \d+ Pre-Service Check$/);
+      await sleep(900);
+      continue;
+    }
+    const state = await page.evaluate(() => {
+      const el = document.querySelector('[data-testid="pre-service-check"]');
+      if (!el) return null;
+      const start = [...el.querySelectorAll("button")].find((x) =>
+        /^(OPEN THE RESTAURANT|START SERVICE)$/.test(x.textContent.trim()),
+      );
+      const row = [...el.querySelectorAll("button")].find(
+        (x) => /^(Restock|Buy)/.test(x.textContent.trim()) && !x.disabled,
+      );
+      return { canStart: !!start && !start.disabled, row: row?.textContent.trim() ?? null };
+    });
+    if (!state) return bought;
+    if (state.canStart) {
+      await clickButton(page, /^(OPEN THE RESTAURANT|START SERVICE)$/);
+      await sleep(900);
+      return bought;
+    }
+    const clicked = state.row
+      ? await page.evaluate((label) => {
+          const el = document.querySelector('[data-testid="pre-service-check"]');
+          const b = [...(el?.querySelectorAll("button") ?? [])].find(
+            (x) => x.textContent.trim() === label && !x.disabled,
+          );
+          b?.click();
+          return !!b;
+        }, state.row)
+      : await clickButton(page, /Supplier credit/);
+    if (!clicked) return bought;
+    bought.push(state.row ?? "supplier credit");
+    // Restock opens the Market (a lazy screen): wait for it, or for the check to update.
+    await page
+      .waitForFunction(
+        () =>
+          [...document.querySelectorAll("button")].some((b) =>
+            /^↩ Back to Level \d+ Pre-Service Check$/.test(b.textContent.trim()),
+          ) || !!document.querySelector('[data-testid="pre-service-check"]'),
+        { timeout: 8000 },
+      )
+      .catch(() => {});
+    await sleep(700);
+  }
+  return bought;
+}
 
 // ---------- LEVELS 1..10 ----------
 for (let lv = 1; lv <= 10; lv++) {
@@ -197,6 +279,8 @@ for (let lv = 1; lv <= 10; lv++) {
         b?.scrollIntoView({ block: "center" });
         b?.click();
       });
+    await sleep(1200);
+    R.levels[R.levels.length - 1].nextLevelBought = await throughServiceCheck();
     await page
       .waitForFunction(
         () => /·\s*(?:\d+\/\d+\s+[a-z-]+|\d+% peeled)/i.test(document.body.innerText),
