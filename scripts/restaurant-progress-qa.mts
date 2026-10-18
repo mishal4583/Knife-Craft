@@ -171,8 +171,9 @@ function saveAt(n: number, extra: Partial<SaveData> = {}): SaveData {
   const kitchen = read("src/components/kc/Kitchen.tsx");
   const navGlyphs = [...kitchen.matchAll(/\{ id: "[a-z-]+", label: "[^"]+", glyph: "([^"]+)" \}/g)].map((x) => x[1]);
   assert(navGlyphs.length >= 4 && new Set(navGlyphs).size === navGlyphs.length, `F2b: every bottom-nav destination has its own icon (${navGlyphs.join(" ")})`);
-  // Developer 2026-10-15 (5db9451): Progress left the bottom bar; the Kitchen's rank badge opens it.
-  assert(/data-testid="kitchen-rank"/.test(kitchen) && /go\("rack"\)/.test(kitchen) && !/label="Rack"/.test(kitchen), "F2: the Kitchen's rank badge opens Progress; nothing says Rack");
+  // Developer 2026-10-15 (5db9451): Progress left the bottom bar; the Kitchen's rank badge opens it
+  // (Achievements while money waits there, 2026-10-18).
+  assert(/data-testid="kitchen-rank"/.test(kitchen) && /go\(collectableTotal\(save\) > 0 \? "achievements" : "rack"\)/.test(kitchen) && !/label="Rack"/.test(kitchen), "F2: the Kitchen's rank badge opens Progress; nothing says Rack");
   const router = read("src/ScreensRouter.tsx");
   assert(/screen === "rack" \? <RestaurantProgress go=\{(?:route)?[gG]o\} save=\{save\} \/>/.test(router), "F3: the existing route now opens Restaurant Progress (no second navigation system)");
   // The old in-Business "Market" overview was folded into the Business Equipment tab.

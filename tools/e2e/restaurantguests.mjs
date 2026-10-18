@@ -7,8 +7,8 @@
 //      saves the guest count; the guest's dish is on the Level 12 menu; no guest button after it.
 //   4. Finish Level completes the level once (its own completion reward), the guest count is
 //      dropped, and a replay offers no guest.
-//   5. Level 30 with an empty fridge (stock from L11): the guest button says the dish isn't in
-//      stock and is disabled.
+//   5. Level 19 (Italian Service Night; was Level 30 before the 150-level campaign) with an
+//      empty fridge: the guest button says the dish isn't in stock and is disabled.
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import {
   MOVED_IN_BUSINESS,
@@ -88,9 +88,29 @@ const guestButton = () =>
     );
     return b ? { text: b.textContent.trim(), disabled: b.disabled } : null;
   });
-const saveAt = (n, credits) =>
+// Stock is used from Level 3, and the free Mexican Chef is needed from Level 16 (hired here).
+const stocked = (ids) =>
+  Object.fromEntries(
+    ids.map((id) => [id, { ingredientId: id, quantity: 3, unitCost: 0, purchaseDay: 1 }]),
+  );
+// Level 12's own order and its menu's dishes, so a menu guest can be cooked.
+const LEVEL_12_FOOD = stocked([
+  "bread",
+  "tomato",
+  "garlic",
+  "basil",
+  "mozzarella",
+  "mushroom",
+  "cucumber",
+  "carrot",
+]);
+const saveAt = (n, credits, inventory = {}) =>
   seedSave({
-    business: MOVED_IN_BUSINESS,
+    business: {
+      ...MOVED_IN_BUSINESS,
+      inventory,
+      restaurantStaff: { specialists: ["mexican-chef"] },
+    },
     credits,
     levelProgress: {
       currentLevelId: `level-${n}`,
@@ -101,8 +121,8 @@ const saveAt = (n, credits) =>
   });
 
 // ---------- 1. Level 12: the guest is offered after the level's own order ----------
-await boot(page, saveAt(12, 5000));
-await prepare("Tomato Basil Toast");
+await boot(page, saveAt(12, 5000, LEVEL_12_FOOD));
+await prepare("Bruschetta for the House");
 const own = await cookAndServe();
 const offer = await guestButton();
 const finishShown = /Finish Level/.test(await flat());
@@ -169,17 +189,18 @@ check(
 // ---------- 4. Finish, replay ----------
 await clickButton(page, /^Finish Level$/);
 await sleep(1000);
-// Developer 2026-10-10: the Level Complete card goes as soon as the player opens another page.
-const cardUp = await page.evaluate(() => !!document.querySelector('[data-testid="banner-close"]'));
-await page.evaluate(() =>
-  [...document.querySelectorAll("nav button")]
-    .find((x) => x.textContent.includes("Inventory"))
-    ?.click(),
-);
+// Developer 2026-10-10: the Level Complete card goes as soon as the player opens another page
+// (the Market here; an achievement-to-collect card may follow, so the Level Complete one is checked).
+const levelCompleteUp = () =>
+  page.evaluate(() =>
+    [...document.querySelectorAll('[data-testid="banner-close"]')].some((b) =>
+      /LEVEL COMPLETE/i.test(b.parentElement?.innerText ?? ""),
+    ),
+  );
+const cardUp = await levelCompleteUp();
+await page.evaluate(() => document.querySelector('[data-nav="shop"]')?.click());
 await sleep(300);
-const cardAfter = await page.evaluate(
-  () => !!document.querySelector('[data-testid="banner-close"]'),
-);
+const cardAfter = await levelCompleteUp();
 check("4c opening another page closes the Level Complete card at once", cardUp && !cardAfter, {
   cardUp,
   cardAfter,
@@ -206,12 +227,12 @@ if (closing) {
   await clickButton(page, /^Close for the night/);
   await sleep(600);
 }
-await prepare("Tomato Basil Toast");
+await prepare("Bruschetta for the House");
 await cookAndServe();
 check("4b a replay offers no menu guest", (await guestButton()) === null);
 
-// ---------- 5. Level 30, empty fridge: guest not in stock ----------
-await boot(page, saveAt(30, 5000));
+// ---------- 5. Level 19, empty fridge: guest not in stock ----------
+await boot(page, saveAt(19, 5000));
 await prepare("Italian Service Night");
 // The check is open with an empty fridge: restock exactly what the level's own orders need.
 const rows = await page.evaluate(() =>
@@ -220,8 +241,12 @@ const rows = await page.evaluate(() =>
   ),
 );
 for (const id of rows) {
+  // The row's Restock (its ⓘ may come first).
   await page.evaluate(
-    (x) => document.querySelector(`[data-psc-ingredient="${x}"] button`)?.click(),
+    (x) =>
+      [...document.querySelectorAll(`[data-psc-ingredient="${x}"] button`)]
+        .find((b) => /Restock/.test(b.textContent))
+        ?.click(),
     id,
   );
   await sleep(800);
@@ -244,7 +269,7 @@ await cookAndServe();
 const stockOffer = await guestButton();
 await shot(page, "restaurant-guest-nostock");
 check(
-  "5 Level 30 with only its own stock: the guest's dish isn't in stock, the button says so and is disabled",
+  "5 Level 19 with only its own stock: the guest's dish isn't in stock, the button says so and is disabled",
   !!stockOffer && stockOffer.disabled && /not in stock/.test(stockOffer.text),
   stockOffer,
 );

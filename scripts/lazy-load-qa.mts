@@ -94,7 +94,8 @@ if (fs.existsSync("dist/index.html")) {
 {
   const app = read("src/App.tsx");
   assert(
-    /\{showIntro \? \(\s*introPlate \? \(\s*<KitchenPlate \/>\s*\) : null\s*\) : showServicePrep/.test(
+    // 2026-10-17: the restaurant-name card holds Level 1 the same way (the plate, nothing mounted).
+    /\{showIntro \|\| askRestaurantName \? \(\s*introPlate \|\| askRestaurantName \? \(\s*<KitchenPlate \/>\s*\) : null\s*\) : showServicePrep/.test(
       app,
     ) &&
       /if \(showIntro\) \{\s*const t = setTimeout\(\(\) => \{\s*preloadPreparation\(\);/.test(
