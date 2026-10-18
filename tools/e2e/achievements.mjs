@@ -5,6 +5,12 @@
 //      the row reads "✓ Collected"; the waiting total drops by the same amount;
 //   3. a reload never pays it again, and nothing else pays by itself;
 //   4. it fits at 320 / 390 (screenshots), no page errors.
+//   6. (developer 2026-10-18: "hard to find which is unlocked … no arrow … no highlight or
+//      sort") the Kitchen's ranking card with money waiting opens Achievements itself; the
+//      ready ones sit together at the top, each with a red mark and its Collect, the
+//      "$… waiting" line jumps to them; the lists below hold no ready row and put collected
+//      ones last; the screen's "▾ More" cue shows and scrolls the list.
+//   7. Collect all pays every ready one — one ledger entry each — and nothing is left waiting.
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import { MOVED_IN_BUSINESS, launch, boot, seedSave, sleep, readSave, shot } from "./harness.mjs";
 
@@ -119,6 +125,100 @@ check(
   s2.credits === s1.credits &&
     s2.economyLedger.filter((e) => e.category === "milestone-reward").length === 1,
   { credits: [s1.credits, s2.credits] },
+);
+
+// ---------- 6. Found at once ----------
+await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });
+await page.evaluate(() => document.querySelector('[data-nav="kitchen"]')?.click());
+await sleep(700);
+await page.evaluate(() => document.querySelector('[data-testid="kitchen-rank"]')?.click());
+await sleep(900);
+const direct = await page.evaluate(
+  () => !!document.querySelector('[data-testid="achievements-ready"]'),
+);
+const layout = await page.evaluate(() => {
+  const readySec = document.querySelector('[data-testid="achievements-ready"]');
+  const readyRows = [...document.querySelectorAll("[data-achievement][data-ready]")];
+  const firstGroupRow = [...document.querySelectorAll("[data-achievement]")].find(
+    (r) => !readySec?.contains(r),
+  );
+  const groups = [...document.querySelectorAll("section > h2")]
+    .map((h) => h.parentElement)
+    .filter((sec) => sec !== readySec);
+  // In every group, no collected row comes before one that isn't.
+  const ordered = groups.every((sec) => {
+    const done = [...sec.querySelectorAll("[data-achievement]")].map((r) =>
+      /✓ Collected/.test(r.textContent ?? ""),
+    );
+    return done.every((d, i) => !d || done.slice(i).every(Boolean));
+  });
+  return {
+    readyCount: readyRows.length,
+    allInSection: readyRows.every((r) => readySec?.contains(r)),
+    allMarked: readyRows.every(
+      (r) => !!r.querySelector("span[aria-hidden]") && /Collect \$/.test(r.textContent ?? ""),
+    ),
+    readyAboveLists:
+      !!readySec &&
+      !!firstGroupRow &&
+      !!(readySec.compareDocumentPosition(firstGroupRow) & Node.DOCUMENT_POSITION_FOLLOWING),
+    ordered,
+  };
+});
+const cue = await page.evaluate(
+  () =>
+    document.querySelector('[data-testid="scroll-cue"]')?.getAttribute("data-scroll-cue") ?? null,
+);
+const scrollBefore = await page.evaluate(
+  () =>
+    document.querySelector('[data-testid="achievements-ready"]')?.closest(".overflow-y-auto")
+      ?.scrollTop ?? -1,
+);
+await page.evaluate(() => document.querySelector('[data-testid="scroll-cue"]')?.click());
+await sleep(900);
+const scrollAfter = await page.evaluate(
+  () =>
+    document.querySelector('[data-testid="achievements-ready"]')?.closest(".overflow-y-auto")
+      ?.scrollTop ?? -1,
+);
+await shot(page, "achievements-ready-390");
+check(
+  "6 the ranking card opens Achievements; ready ones together on top, marked, with Collect; lists below hold none and put collected last; ▾ More scrolls",
+  direct &&
+    layout.readyCount > 0 &&
+    layout.allInSection &&
+    layout.allMarked &&
+    layout.readyAboveLists &&
+    layout.ordered &&
+    cue === "more" &&
+    scrollAfter > scrollBefore,
+  { direct, layout, cue, scrollBefore, scrollAfter },
+);
+
+// ---------- 7. Collect all ----------
+const s6 = await readSave(page);
+const readyIds = await page.$$eval("[data-achievement][data-ready]", (rs) =>
+  rs.map((r) => r.getAttribute("data-achievement")),
+);
+const wait6 = money(await waitingText(page));
+const all = await page.evaluate(() => {
+  const b = [...document.querySelectorAll('[data-testid="achievements-ready"] button')].find((x) =>
+    /^Collect all/.test(x.textContent ?? ""),
+  );
+  b?.click();
+  return !!b;
+});
+await sleep(900);
+const s7 = await readSave(page);
+const newEntries = s7.economyLedger.slice(s6.economyLedger.length);
+check(
+  "7 Collect all pays every ready one — one ledger entry each — and nothing is left waiting",
+  (readyIds.length < 2 || all) &&
+    newEntries.length === readyIds.length &&
+    newEntries.every((e) => e.category === "milestone-reward") &&
+    s7.credits - s6.credits === Math.round(wait6 * 100) &&
+    !(await page.$('[data-testid="achievements-ready"]')),
+  { ready: readyIds.length, entries: newEntries.length, gained: s7.credits - s6.credits, wait6 },
 );
 
 const fits = {};

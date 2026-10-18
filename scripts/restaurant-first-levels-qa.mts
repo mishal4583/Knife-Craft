@@ -227,7 +227,10 @@ console.log("W. Wiring");
   );
   assert(
     // Developer 2026-10-15 (5db9451): Progress opens from the ranking card only.
-    /if \(closedUntil\("rack"\) === null\) go\("rack"\);/.test(kitchen),
+    // 2026-10-18: with money waiting the card opens Achievements (still only once Progress is open).
+    /if \(closedUntil\("rack"\) === null\)\s*go\(collectableTotal\(save\) > 0 \? "achievements" : "rack"\);/.test(
+      kitchen,
+    ),
     "W2: the Kitchen's ranking card (the way to Progress) waits for Progress's level",
   );
   assert(

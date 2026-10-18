@@ -50,6 +50,7 @@ import { CAFE_MILESTONES } from "@/game/cafe/cafeDefinitions";
 import { cityRanking } from "@/game/restaurant/cityRanking";
 import { kitchenUpgradeOrDefault } from "@/game/kitchen/kitchenUpgradeDefinitions";
 import type { SaveData } from "@/game/SaveManager";
+import { ScrollCue } from "./common/ScrollCue";
 
 /** Icon for a level's own `unlockReward.type` (levelTypes.ts) — display-only. */
 const REWARD_TYPE_ICON: Record<"knife" | "board" | "cafe_milestone" | "story", string> = {
@@ -211,7 +212,9 @@ export function Kitchen({
         <button
           type="button"
           onClick={() => {
-            if (closedUntil("rack") === null) go("rack");
+            // Money waiting: straight to Achievements, where it's collected (developer 2026-10-18).
+            if (closedUntil("rack") === null)
+              go(collectableTotal(save) > 0 ? "achievements" : "rack");
           }}
           data-testid="kitchen-rank"
           // One line each, never wider than the room the wallet and Settings leave
@@ -927,6 +930,8 @@ export function BottomNav({ active, go }: { active: ScreenId | null; go: (s: Scr
   }, [hint]);
   return (
     <nav className="absolute inset-x-0 bottom-0 z-30 flex items-center justify-around border-t border-walnut-dark/40 bg-[linear-gradient(180deg,rgba(62,40,25,0.82),rgba(45,41,36,0.95))] px-2 pb-3 pt-2 backdrop-blur-sm">
+      {/* Every screen with the bottom bar: "▾ More" / "▴ Top" for a list longer than the screen. */}
+      <ScrollCue hidden={!!hint || !!pointer} />
       {hint ? (
         <p
           role="status"
