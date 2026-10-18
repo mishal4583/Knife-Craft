@@ -1,5 +1,14 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## v1.4.1: interstitials show again (2026-10-18)
+
+- Found in the Playgama QA Tool's certification ("Trigger the Interstitial
+  Ad"): after every first clear the Level bonus was offered instead of the
+  interstitial, and a declined bonus never counts against its daily cap, so
+  interstitials stopped. Now the interstitial is decided first (3 levels
+  done, 150 s since the last ad) and the bonus is offered only when it didn't
+  show. `ad-bonuses-qa` E3, `adbonuses.mjs` 3a/3b. `BUILD_VERSION` 1.4.1.
+
 ## v1.4.0 uploaded to Playgama (2026-10-18)
 
 - Archive `knifecraft-playgama-1.4.0` (id `cmvdtce9m9cbunj0h19uop72a`, built
@@ -27,7 +36,7 @@
 - Developer: "build 1–5". From Level 3, each an optional rewarded ad with its
   own placement and daily cap, all through one sheet (what it gives → 📺 Watch
   / No thanks): **floating cash** over the Kitchen (6/day), **level bonus** +50%
-  after a first clear (3/day, replaces that break's interstitial), **short by**
+  after a first clear (3/day, only at a break with no interstitial — 1.4.1), **short by**
   top-up under "Not enough money" (2/day), **Second Floor ×2** (2/day) and the
   **daily gift** (free, or 📺 doubled). One `rewarded-ad` entry per claim.
   REFERENCE §2 / §7; QA `ad-bonuses-qa`, e2e `adbonuses.mjs`.

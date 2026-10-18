@@ -16,7 +16,8 @@
  *     Level 3; it survives a ledger trim of 200+ other entries, as do the
  *     ad entries.
  *  E. Every bonus has its own placement in AD_PLACEMENT and the Bridge
- *     config; the source pays only after `rewarded`.
+ *     config; the source pays only after `rewarded`; at a level's end the
+ *     interstitial comes first, the Level bonus only when it can't show.
  *  F. Economy bound: a player who takes every offer every day (10 levels a
  *     day) ends the campaign at most 20% above the $132k completionist
  *     target; a player who never watches gets only the free gift.
@@ -254,6 +255,21 @@ check(
       /status !== "rewarded"/.test(flow) &&
       /saveRef\.current/.test(flow) &&
       flow.indexOf('status !== "rewarded"') < flow.indexOf("commitAdBonus("),
+  );
+}
+
+{
+  const app = fs.readFileSync(path.resolve("src/App.tsx"), "utf8");
+  const fn = app.slice(
+    app.indexOf("function afterLevelFinished"),
+    app.indexOf("async function watchReplayBonusAd"),
+  );
+  const inter = fn.indexOf("maybeShowInterstitial(");
+  const bonus = fn.indexOf('openAdBonus("level_double"');
+  check(
+    "E3 at a level's end the interstitial is decided first; the Level bonus is offered only when it didn't show (a declined bonus never costs the break its interstitial)",
+    inter > 0 && bonus > inter && /if \(!interstitial\.show && !wasReplay\)/.test(fn),
+    { inter, bonus },
   );
 }
 

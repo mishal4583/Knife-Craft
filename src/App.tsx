@@ -2252,13 +2252,15 @@ export function App() {
       setReplayFailure(null);
       return;
     }
-    // A first clear: "+50%" for an ad (ads/adBonuses.ts) — this break's one ad offer, so
-    // no interstitial follows it (never stacked). The sheet waits for Level Complete's card.
-    if (!wasReplay && openAdBonus("level_double", levelDoubleAmount(level))) return;
-    maybeShowInterstitial(
+    // The interstitial comes first (the policy decides: 3 levels done, 150 s apart). Only
+    // when it can't show is a first clear offered "+50%" for an ad (ads/adBonuses.ts), so
+    // the two never stack and a declined bonus never costs the break its interstitial.
+    // The sheet waits for Level Complete's card.
+    const interstitial = maybeShowInterstitial(
       `level-finish:${level.id}:${playSessionRef.current.id}`,
       finalSave.levelProgress.completedLevelIds.length,
     );
+    if (!interstitial.show && !wasReplay) openAdBonus("level_double", levelDoubleAmount(level));
   }
 
   /**

@@ -7,8 +7,9 @@
 //   2. Floating cash: ~60 s on the Kitchen, a bag drifts in over the shelves (📺 +$X), clear of
 //      Today's Order; tapping opens the sheet;
 //      📺 pays $X with one entry, placement floating_cash.
-//   3. Level Complete: a first clear of Level 4 offers +50% of its reward (after the card),
-//      placement level_bonus, and no interstitial at that break.
+//   3. Level Complete: the interstitial comes first — Level 4's finish shows it and offers no
+//      bonus; Level 5 right after (inside the 150 s gap) offers +50% of its reward instead,
+//      placement level_bonus (developer 2026-10-18: interstitials must still show).
 //   4. Short by: $300 for the $350 Santoku shows "📺 Watch · +$50"; after the ad the knife can be
 //      bought.
 //   5. Second Floor ×2 (one staffed coffee machine, 12 h) → "📺 Collect ×2"; one automation-income + one rewarded-ad
@@ -219,40 +220,59 @@ check(
   { bag, fc, ads: adEntries(a2) },
 );
 
-// ---------- 3. Level Complete +50% ----------
-await boot(
-  page,
-  at(4, { ledger: [giftTaken()], business: { inventory: food(["potato", "tomato"]) } }),
-);
-await sleep(1200);
-await page.evaluate(() => {
-  window.__interstitials.length = 0;
-});
-await clickButton(page, /Prepare$/);
-await sleep(1200);
-await clickButton(page, /^(START SERVICE|OPEN THE RESTAURANT)$/);
-let finished = false;
-for (let order = 0; order < 8 && !finished; order++) {
-  await page.waitForFunction(
-    () => /·\s*(?:\d+\/\d+\s+[a-z-]+|\d+% peeled)/i.test(document.body.innerText),
-    { timeout: 30000 },
-  );
-  await playToReport(page);
-  await clickButton(page, /^Continue$/);
-  await sleep(900);
-  if (/ORDER READY/i.test(await page.evaluate(() => document.body.innerText))) {
-    await clickButton(page, /^Serve to /);
+// ---------- 3. Level Complete: the interstitial first, the +50% when it can't show ----------
+/** Prepare → START → every order → Finish Level. */
+async function playLevelThrough() {
+  await page.evaluate(() => document.querySelector('[data-nav="kitchen"]')?.click());
+  await sleep(700);
+  await clickButton(page, /Prepare$/);
+  await sleep(1200);
+  await clickButton(page, /^(START SERVICE|OPEN THE RESTAURANT)$/);
+  for (let order = 0; order < 8; order++) {
+    await page.waitForFunction(
+      () => /·\s*(?:\d+\/\d+\s+[a-z-]+|\d+% peeled)/i.test(document.body.innerText),
+      { timeout: 30000 },
+    );
+    await playToReport(page);
+    await clickButton(page, /^Continue$/);
+    await sleep(900);
+    if (/ORDER READY/i.test(await page.evaluate(() => document.body.innerText))) {
+      await clickButton(page, /^Serve to /);
+      await sleep(900);
+    }
+    if (await clickButton(page, /^Finish Level$/)) return true;
+    if (!(await clickButton(page, /^Next (Customer|Order)/))) return false;
     await sleep(900);
   }
-  if (await clickButton(page, /^Finish Level$/)) finished = true;
-  else if (!(await clickButton(page, /^Next (Customer|Order)/))) break;
-  await sleep(900);
+  return false;
 }
-await sleep(400);
-const cardFirst = await sheet();
-// Level Complete's card goes on its own after a few seconds (or with its ✕).
-await page.evaluate(() => document.querySelector('[data-testid="banner-close"]')?.click());
+const closeCard = async () => {
+  await sleep(400);
+  // Level Complete's card goes on its own after a few seconds (or with its ✕).
+  await page.evaluate(() => document.querySelector('[data-testid="banner-close"]')?.click());
+  await sleep(1200);
+};
+await boot(
+  page,
+  at(4, {
+    ledger: [giftTaken()],
+    business: { inventory: food(["potato", "tomato", "bread", "garlic"]) },
+  }),
+);
 await sleep(1200);
+const finished4 = await playLevelThrough();
+await sleep(900);
+const inter4 = await page.evaluate(() => window.__interstitials.slice());
+await closeCard();
+const sheet4 = await sheet();
+check(
+  "3a Level 4's first clear (4 levels done, no ad yet): the interstitial shows (level_completed) and no Level bonus is offered with it",
+  finished4 && inter4.length === 1 && inter4[0] === "level_completed" && sheet4 === null,
+  { finished4, inter4, sheet4 },
+);
+// Level 5 straight after: inside the 150 s gap the interstitial can't show, so the bonus is offered.
+const finished5 = await playLevelThrough();
+await closeCard();
 const lv = await sheet();
 const b3 = await readSave(page);
 await watch();
@@ -260,17 +280,16 @@ const a3 = await readSave(page);
 await closeSheet();
 const completion = b3.economyLedger.filter((e) => e.category === "completion-reward").at(-1);
 check(
-  "3 Level 4's first clear: after the Level Complete card, +50% of its reward (placement level_bonus); no interstitial at that break",
-  finished &&
-    cardFirst === null &&
+  "3b Level 5 within 150 s of that ad: no second interstitial; after the card, +50% of its reward (placement level_bonus)",
+  finished5 &&
+    (await page.evaluate(() => window.__interstitials.length)) === 1 &&
     lv?.kind === "level_double" &&
     !!completion &&
     adEntries(a3).length === 1 &&
     adEntries(a3)[0].amount === Math.round(completion.amount / 200) * 100 &&
     (await rewarded()).includes("level_bonus") &&
-    (await page.evaluate(() => window.__interstitials.length)) === 0 &&
     balanced(b3, a3),
-  { finished, lv, completion: completion?.amount, ads: adEntries(a3) },
+  { finished5, lv, completion: completion?.amount, ads: adEntries(a3) },
 );
 
 // ---------- 4. Short by ----------

@@ -5,4 +5,4 @@
  * (`game_version`) so the telemetry can compare one release with the next.
  * Raise it with each new release zip.
  */
-export const BUILD_VERSION = "1.4.0";
+export const BUILD_VERSION = "1.4.1";

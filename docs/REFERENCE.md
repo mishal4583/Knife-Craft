@@ -161,8 +161,10 @@ create a second engine, and do not duplicate existing systems.
      Kitchen's shelves, 60 s into the session then every 3 min, gone after 15 s;
      only when nothing else is on screen. 10% of the level's pay, $5–$50, 6 a day.
   2. **Level bonus** (`level_bonus`): after a first clear's Level Complete card,
-     +50% of its reward (≤ $250), 3 a day. It is that break's one ad offer, so no
-     interstitial follows it.
+     +50% of its reward (≤ $250), 3 a day. The interstitial comes first: the bonus
+     is offered only at a break where the interstitial policy didn't show one
+     (fix 2026-10-18: offered first, a declined bonus had cost every break its
+     interstitial, since the cap counts claims).
   3. **Short by** (`shortfall_topup`, `kc/ads/ShortfallOffer.tsx`): under a "Not
      enough money" line (knives, boards, blacksmith, kitchen upgrades, Second
      Floor machines and team, kitchen helpers, ingredients, supplies) when the gap
