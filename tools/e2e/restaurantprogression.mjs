@@ -4,13 +4,14 @@
 //      Menu → Customer Order → Inventory → Preparation → Service → Revenue.
 //   2. Level 35, empty fridge: Inventory's ⚠️ NEEDS ATTENTION lists the next service's missing
 //      ingredients with a recommended restock; Restock → the exact Market card.
-//   3. Bulk buying: the card's 25 preset shows the bulk saving; buying it writes ONE ledger entry
-//      for exactly the quoted (discounted) total.
-//   4. Supplies: napkins' 100 preset buys 100 packs at the bulk price, one ledger entry.
-//   5. Level 52: the check lists the staff the service needs (Indian Chef, Prep Cook, Server)
-//      with the reason and blocks START; Hire → Staff (free) → back: every requirement met.
-//   6. Before Level 250 the Restaurant tab has no Business Day (one-restaurant note) and the
-//      Kitchen tile says "Endless Restaurant 🔒"; after Level 250 it opens the Endless Restaurant.
+//   3. Bulk buying: the card's 10 preset shows the bulk saving (−5%, tiers 5/10/25 since
+//      2026-10-17); buying it writes ONE ledger entry for exactly the quoted (discounted) total.
+//   4. Supplies: napkins' 10 preset buys 10 packs at the bulk price, one ledger entry.
+//   5. Level 36 (Onion Tomato Masala Base; was Level 52): the check lists the staff the service
+//      needs (the Indian and Mexican chefs, a Prep Cook, a Server) with the reason and blocks
+//      START; Hire → Staff (free) → back: every requirement met.
+//   6. Before Level 150 the back office has no Business Day (one-restaurant note) and the
+//      Kitchen tile says "Endless Restaurant 🔒"; after Level 150 it opens the Endless Restaurant.
 //   7. 320×568: the check with news and staff fits (no sideways scroll).
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import {
@@ -23,6 +24,8 @@ import {
   readSave,
   shot,
   buyMissingTools,
+  openSection,
+  KITCHEN_TOOLS,
 } from "./harness.mjs";
 
 const results = [];
@@ -39,18 +42,24 @@ const saveAt = (n, dollars, extra = {}) =>
     credits: dollars,
     levelProgress: {
       currentLevelId: `level-${n}`,
-      highestUnlockedLevelId: `level-${Math.min(n, 250)}`,
+      highestUnlockedLevelId: `level-${Math.min(n, 150)}`,
       completedLevelIds: Array.from({ length: n - 1 }, (_, i) => `level-${i + 1}`),
     },
     story: { introDone: true, milestoneMask: 127, finaleSeen: true },
     ...extra,
   });
+// The bottom bar is Kitchen · Market · Restaurant (the map); Inventory and the back office
+// ("Restaurant" in this test) open from the map (openSection).
 const nav = (label) =>
-  page.evaluate(
-    (l) =>
-      [...document.querySelectorAll("nav button")].find((x) => x.textContent.includes(l))?.click(),
-    label,
-  );
+  ["Inventory", "Restaurant", "Business"].includes(label)
+    ? openSection(page, label === "Inventory" ? "Inventory" : "Business")
+    : page.evaluate(
+        (l) =>
+          [...document.querySelectorAll("nav button")]
+            .find((x) => x.textContent.includes(l))
+            ?.click(),
+        label,
+      );
 async function openLevel(title) {
   await nav("Kitchen");
   await sleep(500);
@@ -138,7 +147,7 @@ check("2b Restock → the Market opens on that exact ingredient", focused, { fir
 // ---------- 3. Bulk buying: ingredients ----------
 const before = await readSave(page);
 await page.evaluate(
-  // Presets 1/2/5/10 (developer 2026-10-17); 10 is below the first bulk tier (25).
+  // Presets 1/2/5/10 (developer 2026-10-17); 10 is the −5% bulk tier (tiers 5/10/25).
   (id) => document.querySelector(`[data-ingredient="${id}"] [data-bulk-preset="10"]`)?.click(),
   firstIngredient,
 );
@@ -165,9 +174,9 @@ const quoted = Math.round(
   Number((/\$([\d,]+\.\d\d)/.exec(card.buy ?? "")?.[1] ?? "0").replace(/,/g, "")) * 100,
 );
 check(
-  "3 the 10 preset sets 10 (no bulk tier yet); buying writes ONE inventory-purchase entry for exactly the quoted total",
+  "3 the 10 preset sets 10 and shows the −5% bulk saving; buying writes ONE inventory-purchase entry for exactly the quoted total",
   /^Buy 10 /.test(card.buy ?? "") &&
-    !card.saving &&
+    /−5%/.test(card.saving ?? "") &&
     entries.length === 1 &&
     entries[0].category === "inventory-purchase" &&
     entries[0].amount === -quoted &&
@@ -206,16 +215,16 @@ await sleep(700);
 const a4 = await readSave(page);
 const e4 = a4.economyLedger.slice(b4.economyLedger.length);
 check(
-  "4 napkins: the 10 preset buys 10 packs, one supply-packaging-purchase entry",
-  !napkinCard.saving &&
+  "4 napkins: the 10 preset buys 10 packs at the −5% bulk price, one supply-packaging-purchase entry",
+  /−5%/.test(napkinCard.saving ?? "") &&
     e4.length === 1 &&
     e4[0].category === "supply-packaging-purchase" &&
     a4.business.supplies.stock["paper-napkins"]?.units === 10 * 4000,
   { napkinCard, e4, units: a4.business.supplies.stock["paper-napkins"]?.units },
 );
 
-// ---------- 5. Level 52: staff requirements ----------
-await boot(page, saveAt(52, 5000));
+// ---------- 5. Level 36: staff requirements ----------
+await boot(page, saveAt(36, 5000));
 await openLevel("Onion Tomato Masala Base");
 let staff = await page.evaluate(() =>
   [...document.querySelectorAll("[data-psc-staff]")].map((r) => ({
@@ -246,8 +255,8 @@ const fit320 = await page.evaluate(() => ({
 await page.setViewport({ width: 430, height: 900, deviceScaleFactor: 1 });
 await sleep(400);
 check(
-  "5a L52: the check needs the Indian Chef, a Prep Cook and a Server — each with its reason (ⓘ) — and START is blocked",
-  ["indian-chef", "prep-cook", "server"].every((id) =>
+  "5a L36: the check needs the Indian and Mexican chefs, a Prep Cook and a Server — each with its reason (ⓘ) — and START is blocked",
+  ["indian-chef", "mexican-chef", "prep-cook", "server"].every((id) =>
     staff.some((r) => r.id === id && r.status === "missing" && r.reason && /Needed/.test(r.text)),
   ) && startDisabled === true,
   { staff, startDisabled },
@@ -257,13 +266,17 @@ await sleep(900);
 const onStaff = await page.evaluate(
   () => !!document.querySelector('[data-testid="specialist-chefs"]'),
 );
-await page.evaluate(() =>
-  // The row's first button is the chef's ⓘ (2026-10-17); click Hire by name.
-  [...document.querySelectorAll('[data-specialist="indian-chef"] button')]
-    .find((b) => b.textContent.trim() === "Hire")
-    ?.click(),
-);
-await sleep(300);
+// A row's first button is the chef's ⓘ (2026-10-17); click Hire by name.
+for (const id of ["indian-chef", "mexican-chef"]) {
+  await page.evaluate(
+    (x) =>
+      [...document.querySelectorAll(`[data-specialist="${x}"] button`)]
+        .find((b) => b.textContent.trim() === "Hire")
+        ?.click(),
+    id,
+  );
+  await sleep(300);
+}
 for (const name of ["Prep Cook", "Server"]) {
   await page.evaluate((n) => {
     const art = [...document.querySelectorAll("article")].find((a) =>
@@ -287,7 +300,7 @@ staff = await page.evaluate(() =>
 check(
   "5b Hire → Restaurant → Staff (free: no money, no ledger) → back to the check: every requirement met",
   onStaff &&
-    staff.length >= 3 &&
+    staff.length >= 4 &&
     staff.every((r) => r.status === "ok") &&
     hiredSave.business.restaurantStaff?.specialists?.includes("indian-chef") &&
     hiredSave.business.staff.hiredRoles.includes("prep-cook") &&
@@ -304,12 +317,49 @@ check(
 );
 
 // ---------- 5c. Only staff missing (developer 2026-10-09) ----------
-// An older Level 47 save (no move-in stamp: the starter crate covers the food and
-// supplies), so staff is the only thing missing: the check names who at the top,
-// the footer hires, Staff opens on the Restaurant Team with those roles marked
-// "Needed now" and wages "free until Level 91"; hiring costs nothing; back → open.
+// Level 36 with its food, its dine-in supplies and the chefs, so staff is the only thing
+// missing: the check names who at the top, the footer hires, Staff opens on the Restaurant
+// Team with those roles marked "Needed now" and half pay at closing until full pay (Level 56);
+// hiring costs nothing; back → open.
 await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1, hasTouch: true });
-await boot(page, saveAt(47, 500, { business: undefined }));
+const pieces = (q) =>
+  Object.fromEntries(Object.entries(q).map(([id, units]) => [id, { units, costBasis: 100 }]));
+await boot(
+  page,
+  saveAt(36, 500, {
+    business: {
+      ...MOVED_IN_BUSINESS,
+      inventory: Object.fromEntries(
+        ["onion", "tomato", "garlic", "ginger"].map((id) => [
+          id,
+          { ingredientId: id, quantity: 3, unitCost: 0, purchaseDay: 1 },
+        ]),
+      ),
+      restaurantStaff: { specialists: ["indian-chef", "mexican-chef"] },
+      supplies: {
+        stock: {
+          ...Object.fromEntries(KITCHEN_TOOLS.map((id) => [id, { units: 4, costBasis: 400 }])),
+          ...pieces({
+            "soup-bowls": 12,
+            "soup-spoons": 12,
+            "water-glasses": 12,
+            "dinner-plates": 12,
+            "dinner-forks": 12,
+            "dinner-knives": 12,
+            "side-plates": 12,
+            "menu-stands": 4,
+            "salt-pepper": 8,
+            "napkin-holders": 4,
+            "water-jugs": 4,
+            "paper-napkins": 400,
+            "dish-soap": 2,
+            "cleaning-liquid": 2,
+          }),
+        },
+      },
+    },
+  }),
+);
 await sleep(1200);
 await clickButton(page, /Prepare$/);
 await sleep(1200);
@@ -356,12 +406,13 @@ const after47 = await page.evaluate(() => ({
   ),
 }));
 check(
-  "5c only staff missing: the check names who, its button hires, Staff marks them (half pay until L91), hiring is free, back → open",
+  "5c only staff missing: the check names who, its button hires, Staff marks them (half pay until L56), hiring is free, back → open",
   /This service needs: Prep Cook, Server/.test(only.notice) &&
     only.footer === "Hire Prep Cook & Server →" &&
     JSON.stringify(staffView.needed) === JSON.stringify(["prep-cook", "server"]) &&
-    // Economy F2 (developer 2026-10-12): half pay at closing from L41 until L91.
-    /half pay at closing until Level 91/.test(staffView.free) &&
+    // Economy F2 (developer 2026-10-12): half pay at closing from the Prep Cook's level until
+    // full pay (Level 56 in the 150-level campaign).
+    /half pay at closing until Level 56/.test(staffView.free) &&
     staffView.teamTop >= 0 &&
     staffView.teamTop < 200 &&
     save47.credits === credits47 &&
@@ -371,7 +422,7 @@ check(
   { only, staffView, after47, extraTools, credits: [credits47, save47.credits] },
 );
 
-// ---------- 6. One restaurant before L250, Endless Restaurant after ----------
+// ---------- 6. One restaurant before L150, Endless Restaurant after ----------
 await boot(page, saveAt(60, 500));
 await nav("Restaurant");
 await sleep(800);
@@ -388,7 +439,7 @@ await sleep(700);
 const tile = await page.evaluate(() =>
   document.querySelector('[data-testid="endless-tile"]')?.innerText.replace(/\s+/g, " "),
 );
-await boot(page, saveAt(251, 500));
+await boot(page, saveAt(151, 500));
 await nav("Restaurant");
 await sleep(800);
 const after250 = await page.evaluate(() => ({
@@ -399,7 +450,7 @@ const after250 = await page.evaluate(() => ({
 }));
 await shot(page, "restaurant-endless");
 check(
-  "6 before L250: no Business Day (one-restaurant note), Kitchen tile 'Endless Restaurant 🔒'; after L250: Open the Endless Restaurant",
+  "6 before L150: no Business Day (one-restaurant note), Kitchen tile 'Endless Restaurant 🔒'; after L150: Open the Endless Restaurant",
   before250.note &&
     !before250.open &&
     /Endless Restaurant/.test(tile ?? "") &&
