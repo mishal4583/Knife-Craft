@@ -1,5 +1,13 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## v1.4.0 uploaded to Playgama (2026-10-18)
+
+- Archive `knifecraft-playgama-1.4.0` (id `cmvdtce9m9cbunj0h19uop72a`, built
+  from `ec6f66e`): processing DONE, check PASSED, Bridge 2.3.1 FOUND.
+- The sandbox still serves v1.3.0 (launch step "sandbox" OUTDATED) until the
+  developer approves `publish_sandbox`. The form still waits on certification
+  in the QA Tool (the developer's).
+
 ## Bug sweep before the v1.4.0 upload (2026-10-18, `main`)
 
 - A crawl of every screen (Kitchen, Market tabs, map rooms, Business tabs,
