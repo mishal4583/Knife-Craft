@@ -11,7 +11,16 @@
 //   6. "Show the whole fridge" switches to the wide, panning appliance and back;
 //   7. at 768×1024 (tablet) the wide appliance is kept (no paging).
 // Prints PASS/FAIL per check and exits 1 on any failure.
-import { launch, boot, seedSave, sleep, clickButton, shot, text } from "./harness.mjs";
+import {
+  launch,
+  boot,
+  seedSave,
+  sleep,
+  clickButton,
+  shot,
+  text,
+  openShortcut,
+} from "./harness.mjs";
 
 const results = [];
 const check = (id, ok, detail) => {
@@ -52,7 +61,7 @@ const { browser, page, logs } = await launch();
 async function open(tier, w, h) {
   await page.setViewport({ width: w, height: h, deviceScaleFactor: 1, hasTouch: true });
   await boot(page, fridgeSave(tier));
-  await clickButton(page, /Inventory$/);
+  await openShortcut(page, "inventory");
   await sleep(800);
   await page.evaluate(() =>
     document.querySelector('[data-testid="physical-fridge"]')?.scrollIntoView({ block: "start" }),
@@ -263,7 +272,7 @@ check(
   d.slice(0, 200),
 );
 await boot(page, fridgeSave("professional-refrigerator"));
-await clickButton(page, /Inventory$/);
+await openShortcut(page, "inventory");
 await sleep(700);
 await page.evaluate(() => document.querySelector('[data-testid="fridge-upgrade"]')?.click());
 await sleep(800);

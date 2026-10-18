@@ -8,7 +8,16 @@
 //      day row ≥ 48 px tall; Overview's day card keeps the classic "Today's target: popularity … base
 //      customers" line (the Endless wording is restaurant-build only); no page errors.
 // Prints PASS/FAIL per check and exits 1 on any failure.
-import { launch, boot, seedSave, sleep, clickButton, readSave, shot } from "./harness.mjs";
+import {
+  launch,
+  boot,
+  seedSave,
+  sleep,
+  clickButton,
+  readSave,
+  shot,
+  openShortcut,
+} from "./harness.mjs";
 
 const results = [];
 const check = (id, ok, detail) => {
@@ -42,6 +51,12 @@ await boot(
   seedSave({
     version: 2,
     credits: 1000,
+    // Level 12: Business is open (from Level 11).
+    levelProgress: {
+      currentLevelId: "level-12",
+      highestUnlockedLevelId: "level-12",
+      completedLevelIds: Array.from({ length: 11 }, (_, i) => `level-${i + 1}`),
+    },
     business: {
       calendar: { businessDay: 31 },
       finance: { history: Array.from({ length: 30 }, (_, i) => day(i + 1)) },
@@ -49,12 +64,17 @@ await boot(
   }),
 );
 const before = await readSave(page);
+// Business opens from the Kitchen's shortcut (since 5db9451); other sections from the bar.
 const nav = (label) =>
-  page.evaluate(
-    (l) =>
-      [...document.querySelectorAll("nav button")].find((b) => b.textContent.includes(l))?.click(),
-    label,
-  );
+  label === "Business"
+    ? openShortcut(page, "business")
+    : page.evaluate(
+        (l) =>
+          [...document.querySelectorAll("nav button")]
+            .find((b) => b.textContent.includes(l))
+            ?.click(),
+        label,
+      );
 await nav("Business");
 await sleep(800);
 await clickButton(page, /^End Business Day →/);

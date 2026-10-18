@@ -29,6 +29,7 @@ import {
   shot,
   save,
   text,
+  openShortcut,
 } from "./harness.mjs";
 
 const results = [];
@@ -83,7 +84,7 @@ async function swipe(x, y, dx, dy) {
 
 /** Inventory is its own bottom-bar section; the fridge sits on it. */
 async function openInventory() {
-  await clickButton(page, /Inventory$/);
+  await openShortcut(page, "inventory");
   await sleep(700);
 }
 const fridgeTop = () =>
