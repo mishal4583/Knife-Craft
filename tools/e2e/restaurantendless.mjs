@@ -1,6 +1,6 @@
 // The Endless Restaurant, connected (2026-10-06), in a real browser on a RESTAURANT_MODE test
 // build (the default build — the restaurant is on unless VITE_RESTAURANT_MODE=0):
-//   1. Business Day 4 (a Dinner Rush) after Level 250: Restaurant → Overview shows today's events
+//   1. Business Day 4 (a Dinner Rush) after Level 150: Restaurant → Overview shows today's events
 //      (Dinner Rush + Today's Special with its dish and the bonus line: 15% of the day's revenue at
 //      closing, up to the existing $50 — final economy pass); the Service screen
 //      shows them too, with the lines, and states today's expected customers (the real target),
@@ -11,12 +11,21 @@
 //      record; no ledger entry carries stars (credits change = the ledger's change).
 //   3. Restaurant Progress: Restaurant standing (kitchen title, stage "Restaurant Complete", Endless open)
 //      and the lifetime stars after a reload.
-//   4. A save at Level 120: Progress says "Complete all 250 campaign levels to unlock Endless
+//   4. A save at Level 120: Progress says "Complete all 150 campaign levels to unlock Endless
 //      Restaurant." and shows no stars; an old Endless save without endlessStars shows ★ 0.
 //   5. 320×568 · 360×640 · 390×844 · 430×932: Progress and Overview fit (no sideways scroll),
 //      the events card fits; no page errors.
 // Prints PASS/FAIL per check and exits 1 on any failure.
-import { MOVED_IN_BUSINESS, launch, boot, seedSave, sleep, readSave, shot } from "./harness.mjs";
+import {
+  MOVED_IN_BUSINESS,
+  launch,
+  boot,
+  seedSave,
+  sleep,
+  readSave,
+  shot,
+  openSection,
+} from "./harness.mjs";
 
 const results = [];
 const check = (id, ok, detail) => {
@@ -26,15 +35,17 @@ const check = (id, ok, detail) => {
 const { browser, page, logs } = await launch();
 await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1, hasTouch: true });
 
-const ALL = Array.from({ length: 250 }, (_, i) => `level-${i + 1}`);
+// The 150-level campaign (2026-10-15): the Endless Restaurant opens after Level 150.
+const LAST = 150;
+const ALL = Array.from({ length: LAST }, (_, i) => `level-${i + 1}`);
 const saveAt = (n, business = {}) =>
   seedSave({
     version: 2,
     credits: 500000,
     levelProgress: {
-      currentLevelId: `level-${Math.min(n, 250)}`,
-      highestUnlockedLevelId: `level-${Math.min(n, 250)}`,
-      completedLevelIds: n > 250 ? ALL : ALL.slice(0, n - 1),
+      currentLevelId: `level-${Math.min(n, LAST)}`,
+      highestUnlockedLevelId: `level-${Math.min(n, LAST)}`,
+      completedLevelIds: n > LAST ? ALL : ALL.slice(0, n - 1),
     },
     story: { introDone: true, milestoneMask: 127, finaleSeen: true },
     business: { ...MOVED_IN_BUSINESS, ...business },
@@ -52,7 +63,12 @@ const clickIn = (scope, re) =>
     scope,
     re.source,
   );
-const nav = (label) => clickIn("nav", new RegExp(`^\\S*\\s*${label}`));
+// "Restaurant" (the back office) opens from the Restaurant map, Progress from the Kitchen's
+// rank card (openSection).
+const nav = (label) =>
+  ["Restaurant", "Progress"].includes(label)
+    ? openSection(page, label === "Progress" ? "Progress" : "Business")
+    : clickIn("nav", new RegExp(`^\\S*\\s*${label}`));
 const clickText = (re) =>
   page.evaluate((src) => {
     const b = [...document.querySelectorAll("button")].find((x) =>
@@ -80,7 +96,7 @@ const fits = () =>
 // ---------- 1. Events on the Endless day ----------
 await boot(
   page,
-  saveAt(251, { calendar: { businessDay: 4 }, endlessStars: { total: 7, days: 3, bestDay: 3 } }),
+  saveAt(151, { calendar: { businessDay: 4 }, endlessStars: { total: 7, days: 3, bestDay: 3 } }),
 );
 await nav("Restaurant");
 await sleep(900);
@@ -91,9 +107,8 @@ await page.evaluate(() =>
 await shot(page, "endless-overview");
 // Overview's "Today's service" day card (BusinessDayCard) — read before leaving the tab.
 const opsText = await page.evaluate(() => document.body.innerText.replace(/\s+/g, " "));
-await clickIn('nav[aria-label="Business sections"]', /Operations/);
-await sleep(700);
-await clickText(/Open Restaurant →|Go to Service →/);
+// The Service screen is the Restaurant map's Service Counter.
+await openSection(page, "Service");
 await sleep(900);
 const svc = await card("endless-events");
 const svcCustomers = await page.evaluate(() => document.body.innerText.replace(/\s+/g, " "));
@@ -110,7 +125,7 @@ check(
     !/brings \d+ customers today/.test(svcCustomers),
   { ov, svc },
 );
-await boot(page, saveAt(251, { calendar: { businessDay: 2 } }));
+await boot(page, saveAt(151, { calendar: { businessDay: 2 } }));
 await nav("Restaurant");
 await sleep(900);
 const ov2 = await card("endless-events");
@@ -134,7 +149,7 @@ check(
 // ---------- 2. End Business Day → stars ----------
 await boot(
   page,
-  saveAt(251, { calendar: { businessDay: 4 }, endlessStars: { total: 7, days: 3, bestDay: 3 } }),
+  saveAt(151, { calendar: { businessDay: 4 }, endlessStars: { total: 7, days: 3, bestDay: 3 } }),
 );
 const before = await readSave(page);
 await nav("Restaurant");
@@ -173,6 +188,14 @@ await page.evaluate(() =>
   document.querySelector('[data-testid="restaurant-standing"]')?.scrollIntoView(),
 );
 await shot(page, "endless-progress");
+// "Stars … are not money" sits behind the stars' ⓘ (short copy, 2026-10-16): open it and read.
+await page.evaluate(() =>
+  document.querySelector('[data-testid="restaurant-standing"] [data-infotip]')?.click(),
+);
+await sleep(400);
+const starTip = await page.evaluate(
+  () => document.querySelector("[data-infotip-bubble]")?.textContent ?? "",
+);
 check(
   "3 Progress: rank, stage Restaurant Complete, Endless open, lifetime stars (after a reload)",
   // The café stage is labelled "Kitchen title" since the city ranking (2026-10-09).
@@ -182,8 +205,8 @@ check(
     /Endless Restaurant 🔓 Open/.test(st ?? "") &&
     new RegExp(`★ ${life?.total}`).test(st ?? "") &&
     /4 days run · best day 3 \/ 3/.test(st ?? "") &&
-    /not money/.test(st ?? ""),
-  st,
+    /not money/.test(starTip),
+  { st, starTip },
 );
 
 // ---------- 4. Locked, and an old save ----------
@@ -193,13 +216,13 @@ await sleep(900);
 const locked = await card("restaurant-standing");
 check(
   "4a Level 120: Endless locked with the line; no stars",
-  /Complete all 250 campaign levels to unlock Endless Restaurant\./.test(locked ?? "") &&
+  /Complete all 150 campaign levels to unlock Endless Restaurant\./.test(locked ?? "") &&
     /Endless Restaurant 🔒 Locked/.test(locked ?? "") &&
     /Restaurant Complete Not yet/.test(locked ?? "") &&
     !/Endless stars/.test(locked ?? ""),
   locked,
 );
-await boot(page, saveAt(251));
+await boot(page, saveAt(151));
 await nav("Progress");
 await sleep(900);
 const oldSave = await card("restaurant-standing");
@@ -221,7 +244,7 @@ for (const [w, h] of widths) {
   await page.setViewport({ width: w, height: h, deviceScaleFactor: 1, hasTouch: true });
   await boot(
     page,
-    saveAt(251, { calendar: { businessDay: 4 }, endlessStars: { total: 12, days: 5, bestDay: 3 } }),
+    saveAt(151, { calendar: { businessDay: 4 }, endlessStars: { total: 12, days: 5, bestDay: 3 } }),
   );
   await nav("Progress");
   await sleep(800);

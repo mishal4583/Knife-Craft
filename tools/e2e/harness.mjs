@@ -245,16 +245,24 @@ export async function openSection(page, label) {
   if (label === "Progress") {
     await tab("kitchen");
     await sleep(600);
-    return page.evaluate(() => {
+    const ok = await page.evaluate(() => {
       const b = document.querySelector('[data-testid="kitchen-rank"]');
       b?.click();
       return !!b;
     });
+    // With achievement money waiting the card opens Achievements (2026-10-18); Back → Progress.
+    await sleep(600);
+    if (await page.$('[data-testid="achievements-waiting"]')) {
+      await page.evaluate(() => document.querySelector('[aria-label="Back"]')?.click());
+      await sleep(600);
+    }
+    return ok;
   }
   const zone = {
     Inventory: /^Inventory /,
     Business: /^Manager \/ Office/,
     Restaurant: /^Manager \/ Office/,
+    Service: /^Service Counter/,
   }[label];
   if (!zone) return false;
   await tab("restaurant-map");

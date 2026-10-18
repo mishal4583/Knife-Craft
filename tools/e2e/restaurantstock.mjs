@@ -1,7 +1,8 @@
 // Unified Restaurant phases 3–4 in a real browser, on a RESTAURANT_MODE test build
 // (the default build — the restaurant is on unless VITE_RESTAURANT_MODE=0). KC_URL must point at that build.
-//   1. Level 5 (before stock): no check, the level starts at once.
-//   2. Level 30 with an empty fridge: the Pre-Service Check lists today's 2 orders and every
+// (The 150-level campaign: stock is used from Level 3; Italian Service Night is Level 19.)
+//   1. Level 2 (before stock — Levels 1–2 use none): no check, the level starts at once.
+//   2. Level 19 with an empty fridge: the Pre-Service Check lists today's 2 orders and every
 //      missing ingredient; Restock opens the Market on that ingredient, Buy, the "Back to the
 //      check" pill returns; START SERVICE once everything is ✓.
 //   3. Serving the 1st order takes exactly its recipe's stock; the only new money entry is the
@@ -33,7 +34,8 @@ const { browser, page, logs } = await launch();
 const doneUpTo = (n) => Array.from({ length: n - 1 }, (_, i) => `level-${i + 1}`);
 const saveAt = (n, credits) =>
   seedSave({
-    business: MOVED_IN_BUSINESS,
+    // The free Mexican Chef (needed from Level 16) is hired: the check is about stock.
+    business: { ...MOVED_IN_BUSINESS, restaurantStaff: { specialists: ["mexican-chef"] } },
     credits,
     levelProgress: {
       currentLevelId: `level-${n}`,
@@ -89,11 +91,11 @@ const sheet = () =>
 const inHud = () =>
   page.evaluate(() => /·\s*(?:\d+\/\d+\s+[a-z-]+|\d+% peeled)/i.test(document.body.innerText));
 
-// ---------- 1. Level 5: no stock check ----------
+// ---------- 1. Level 2: no stock check ----------
 // First levels (developer 2026-10-09): before Level 21 a new day opens without its
-// card, so Level 5 now shows no sheet at all (was: only the opening card).
-await boot(page, saveAt(5, 5000));
-await openLevel("Onion Basics");
+// card, so Level 2 shows no sheet at all (was Level 5, before stock moved to Level 3).
+await boot(page, saveAt(2, 5000));
+await openLevel("Basic Kitchen Learning");
 let l5 = await sheet();
 const l5Hud = await page
   .waitForFunction(() => /·\s*(?:\d+\/\d+\s+[a-z-]+|\d+% peeled)/i.test(document.body.innerText), {
@@ -101,13 +103,13 @@ const l5Hud = await page
   })
   .then(() => true)
   .catch(() => false);
-check("1 Level 5 (before stock): no sheet, the level starts at once", l5 === null && l5Hud, {
+check("1 Level 2 (before stock): no sheet, the level starts at once", l5 === null && l5Hud, {
   l5Hud,
   text: l5?.text.slice(0, 120),
 });
 
-// ---------- 2. Level 30, empty fridge ----------
-await boot(page, saveAt(30, 5000));
+// ---------- 2. Level 19, empty fridge ----------
+await boot(page, saveAt(19, 5000));
 const start = await readSave(page);
 await openLevel("Italian Service Night");
 const first = await sheet();
@@ -125,7 +127,10 @@ let restockOk = true;
 const visited = [];
 for (const row of first?.rows ?? []) {
   await page.evaluate((id) => {
-    document.querySelector(`[data-psc-ingredient="${id}"] button`)?.click();
+    // The row's Restock (its ⓘ may come first).
+    [...document.querySelectorAll(`[data-psc-ingredient="${id}"] button`)]
+      .find((b) => /Restock/.test(b.textContent))
+      ?.click();
   }, row.id);
   await sleep(900);
   const market = await page.evaluate((id) => {
@@ -204,7 +209,7 @@ check(
 
 // ---------- 4. $0: supplier credit (developer 2026-10-10: no more Grandma's pantry) ----------
 // The mock platform shows no rewarded ads, so the check offers supplier credit at once.
-await boot(page, saveAt(30, 0));
+await boot(page, saveAt(19, 0));
 await openLevel("Italian Service Night");
 const broke = await sheet();
 const creditShown =
