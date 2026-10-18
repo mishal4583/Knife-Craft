@@ -1,7 +1,8 @@
 // A resize or rotation must never restart the game screen (GameShell used to swap its element
 // tree when the frame crossed 320 px wide, which remounted everything under it).
-//   1. Mid-cut: Level 8 with its peel step done, resize 430 → 320 → 768 → 430: the same order,
-//      the same step, and the peel progress are still there.
+//   1. Mid-cut: Level 4 (Potato & Tomato, the 150-level campaign's peel dish; was Level 8) with
+//      its peel step done, resize 430 → 320 → 768 → 430: the same order, the same step, and the
+//      peel progress are still there.
 //   2. Served: the result panel ("Finish Level") survives a resize to 320×568 and to
 //      768×1024 and back, and Finish Level still completes the level once.
 //   3. Kitchen home survives a resize to 320 (no remount flash: a marker set on the page
@@ -34,9 +35,9 @@ await boot(
   seedSave({
     credits: 5000,
     levelProgress: {
-      currentLevelId: "level-8",
-      highestUnlockedLevelId: "level-8",
-      completedLevelIds: Array.from({ length: 7 }, (_, i) => `level-${i + 1}`),
+      currentLevelId: "level-4",
+      highestUnlockedLevelId: "level-4",
+      completedLevelIds: Array.from({ length: 3 }, (_, i) => `level-${i + 1}`),
     },
     story: { introDone: true, milestoneMask: 127, finaleSeen: false },
   }),
@@ -59,7 +60,7 @@ await clickButton(page, /^See all orders/);
 await sleep(700);
 await page.evaluate(() => {
   const h = [...document.querySelectorAll("p")].find(
-    (p) => p.textContent.trim() === "Halved Potato",
+    (p) => p.textContent.trim() === "Potato & Tomato",
   );
   let n = h;
   for (let i = 0; i < 8 && n; i++) {
@@ -82,18 +83,18 @@ await sleep(800);
 // Real progress: play until the peel step is finished and step 2 (halve) is on screen.
 await playToReport(page, {
   maxMs: 90000,
-  until: () => /STEP 2 OF 2/i.test(document.body.innerText),
+  until: () => /STEP 2 OF 3/i.test(document.body.innerText),
 });
 await sleep(500);
 const before = await flat();
 await resizeAll();
 const after = await flat();
-const sameOrder = /Halved Potato/i.test(after) && /ORDER/i.test(after);
+const sameOrder = /Halved Potato Bowl/i.test(after) && /ORDER/i.test(after);
 check(
-  "1 mid-cut: with the peel done (step 2 of 2), resizing to 320, 768 and back keeps the order, the step and the progress",
+  "1 mid-cut: with the peel done (step 2 of 3), resizing to 320, 768 and back keeps the order, the step and the progress",
   sameOrder &&
-    /STEP 2 OF 2/i.test(before) &&
-    /STEP 2 OF 2/i.test(after) &&
+    /STEP 2 OF 3/i.test(before) &&
+    /STEP 2 OF 3/i.test(after) &&
     /1\/1 peel|halve/i.test(after),
   { before: before.slice(0, 160), after: after.slice(0, 160) },
 );
@@ -117,8 +118,8 @@ await sleep(1500);
 const s = await readSave(page);
 check(
   "2b Finish Level still completes the level once",
-  s.levelProgress.completedLevelIds.includes("level-8") &&
-    s.economyLedger.filter((e) => e.category === "completion-reward" && e.description === "level-8")
+  s.levelProgress.completedLevelIds.includes("level-4") &&
+    s.economyLedger.filter((e) => e.category === "completion-reward" && e.description === "level-4")
       .length === 1,
 );
 

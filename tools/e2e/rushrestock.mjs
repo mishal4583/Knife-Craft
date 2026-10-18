@@ -17,6 +17,8 @@ import {
   shot,
   text,
   save,
+  openShortcut,
+  openSection,
 } from "./harness.mjs";
 
 const results = [];
@@ -81,6 +83,12 @@ const blockedSave = (credits) =>
   seedSave({
     version: 2,
     credits,
+    // Business service opens at Level 11 (first levels, 2026-10-09).
+    levelProgress: {
+      currentLevelId: "level-12",
+      highestUnlockedLevelId: "level-12",
+      completedLevelIds: Array.from({ length: 11 }, (_, i) => `level-${i + 1}`),
+    },
     // Its reached milestones (First dish served, First Business day — it is on Day 7) were already
     // paid — so loading adds nothing.
     economyLedger: [
@@ -113,15 +121,14 @@ const { browser, page, logs } = await launch();
 
 /** Business → Service → Open the Counter: a salad customer arrives, blocked on carrot. */
 async function openBlockedOrder() {
-  await clickButton(page, /Business$/);
-  await sleep(600);
-  await clickButton(page, /Open Restaurant →|Go to Service →/);
+  // The Service screen is the Restaurant map's Service Counter.
+  await openSection(page, "Service");
   await sleep(600);
   await clickButton(page, /Open the Counter/);
   await sleep(800);
 }
 async function operationsTab() {
-  await clickButton(page, /Business$/);
+  await openShortcut(page, "business");
   await sleep(500);
   await clickButton(page, /Operations/);
   await sleep(600);

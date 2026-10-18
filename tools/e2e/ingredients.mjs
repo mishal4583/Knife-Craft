@@ -21,6 +21,7 @@ import {
   shot,
   save,
   text,
+  openShortcut,
 } from "./harness.mjs";
 import { playToReport } from "./solver.mjs";
 import { ALL_DISH_IDS } from "./businessDishes.mjs";
@@ -52,7 +53,7 @@ async function openInventory() {
   await sleep(700);
 }
 async function openOperations() {
-  await clickButton(page, /Business$/);
+  await openShortcut(page, "business");
   await sleep(600);
   await clickButton(page, /Operations\d*$/); // the tab may carry an alert count
   await sleep(600);
@@ -289,7 +290,7 @@ await boot(
     },
   }),
 );
-await clickButton(page, /Business$/);
+await openShortcut(page, "business");
 await sleep(600);
 await clickButton(page, /Open Restaurant →|Go to Service →/);
 await sleep(600);

@@ -24,6 +24,7 @@ import {
   shot,
   save,
   text,
+  openShortcut,
 } from "./harness.mjs";
 import { playToReport } from "./solver.mjs";
 import { ALL_DISH_IDS } from "./businessDishes.mjs";
@@ -162,7 +163,7 @@ const row = await page.evaluate(
     "",
 );
 await shot(page, "supplies-2-inventory");
-await clickButton(page, /Business$/);
+await openShortcut(page, "business");
 await sleep(600);
 await clickButton(page, /Operations\d*$/);
 await sleep(600);
@@ -266,7 +267,7 @@ await boot(
     },
   }),
 );
-await clickButton(page, /Business$/);
+await openShortcut(page, "business");
 await sleep(600);
 await clickButton(page, /Open Restaurant →|Go to Service →/);
 await sleep(600);

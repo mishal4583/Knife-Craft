@@ -279,6 +279,30 @@ export async function openSection(page, label) {
   return ok;
 }
 
+/**
+ * Opens a Kitchen shortcut (Daily Check, Inventory, Business) the way a tap does: the first tap
+ * shows its label, the second opens it (Kitchen.tsx, 5db9451); from another screen it goes to the
+ * Kitchen first. Returns false when there is none.
+ */
+export async function openShortcut(page, id) {
+  const tap = () =>
+    page.evaluate((i) => {
+      const b = document.querySelector(`[data-testid="${i}-shortcut"]`);
+      b?.click();
+      return !!b;
+    }, id);
+  if (!(await tap())) {
+    // The shortcuts live on the Kitchen home.
+    await page.evaluate(() => document.querySelector('[data-nav="kitchen"]')?.click());
+    await sleep(700);
+    if (!(await tap())) return false;
+  }
+  await sleep(250);
+  await tap();
+  await sleep(600);
+  return true;
+}
+
 export async function shot(page, name) {
   fs.mkdirSync(OUT + "out", { recursive: true });
   await page.screenshot({ path: OUT + "out/" + name + ".png" });

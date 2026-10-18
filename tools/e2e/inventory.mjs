@@ -27,6 +27,7 @@ import {
   shot,
   save,
   text,
+  openShortcut,
 } from "./harness.mjs";
 
 const results = [];
@@ -97,7 +98,7 @@ check(
   !!(await page.$('[data-testid="inventory"]')) &&
     /Manage your restaurant stock/.test(await flat()),
 );
-await clickButton(page, /Business$/);
+await openShortcut(page, "business");
 await sleep(700);
 const bizTabs = await page.evaluate(() =>
   [...document.querySelectorAll('nav[aria-label="Business sections"] button')].map((b) =>

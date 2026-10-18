@@ -10,7 +10,17 @@
 //   4. not enough money: the card says so and nothing changes;
 //   5. no console errors.
 // Prints PASS/FAIL per check and exits 1 on any failure.
-import { launch, boot, seedSave, sleep, clickButton, readSave, shot, save } from "./harness.mjs";
+import {
+  launch,
+  boot,
+  seedSave,
+  sleep,
+  clickButton,
+  readSave,
+  shot,
+  save,
+  openShortcut,
+} from "./harness.mjs";
 
 const results = [];
 const check = (id, ok, detail) => {
@@ -34,7 +44,7 @@ const { browser, page, logs } = await launch();
 await page.setViewport({ width: 375, height: 642, deviceScaleFactor: 1, hasTouch: true });
 
 async function openStaff() {
-  await clickButton(page, /Business$/);
+  await openShortcut(page, "business");
   await sleep(600);
   await clickButton(page, /Staff$/);
   await sleep(600);
@@ -76,9 +86,10 @@ check(
     /Prep Assistant/.test(prep) &&
     /Hire · \$3,000\.00/.test(prep) &&
     /\$6,000\.00/.test(quality) &&
-    /Level 45/i.test(quality) &&
+    // Unlock levels on the 150-level campaign (remapCampaignThreshold: 45 → 32, 65 → 44).
+    /Level 32/i.test(quality) &&
     /\$4,000\.00/.test(kitchen) &&
-    /Level 65/i.test(kitchen),
+    /Level 44/i.test(kitchen),
   { prep, quality, kitchen },
 );
 await page.evaluate(() =>
