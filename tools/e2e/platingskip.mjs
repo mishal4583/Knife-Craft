@@ -1,6 +1,8 @@
 // The plating skip guard (developer report 2026-10-08: "when you tap one extra after cutting the
 // plating and chef taking animation skips automatically, the sound while it skips is very annoying").
-// Level 3 (Carrot Chop Bowl) in the built game:
+// Level 3 in the built game (re-baselined 2026-10-18 for the 150-level campaign: Level 3 uses
+// real stock, so the fridge holds its tomato and cucumber, and the Pre-Service Check's START
+// begins the service):
 //   1. baseline: the last cut, no more taps: time until the cooking clip appears;
 //   2. an extra tap 150 ms after the last cut does NOT skip: the clip comes at the baseline time;
 //   3. a deliberate tap 1.8 s after the last cut still fast-forwards the plating (clip sooner);
@@ -34,8 +36,14 @@ const tapAt = async (x, y) => {
   await sleep(16);
   await page.mouse.up();
 };
+const food = Object.fromEntries(
+  ["tomato", "cucumber", "carrot"].map((id) => [
+    id,
+    { ingredientId: id, quantity: 6, unitCost: 0, purchaseDay: 1 },
+  ]),
+);
 const save = seedSave({
-  business: MOVED_IN_BUSINESS,
+  business: { ...MOVED_IN_BUSINESS, inventory: food },
   settings: { sound: true, music: false, reducedMotion: false },
   levelProgress: {
     currentLevelId: "level-3",
@@ -51,7 +59,7 @@ async function run(extraTapAfter) {
   await clickButton(page, /Prepare$/);
   await sleep(800);
   // the restaurant build opens the day first
-  await clickButton(page, /^OPEN THE RESTAURANT$/);
+  await clickButton(page, /^(OPEN THE RESTAURANT|START SERVICE)$/);
   await page.waitForFunction(() => /·\s*\d+\/\d+\s+[a-z-]+/i.test(document.body.innerText), {
     timeout: 30000,
   });
