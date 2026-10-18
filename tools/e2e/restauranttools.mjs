@@ -232,7 +232,7 @@ check(
   !!s4 &&
     /Supplier credit/.test(s4.text) &&
     after4.credits === 0 &&
-    after4.economyLedger.length === 0 &&
+    after4.economyLedger.filter((e) => e.id !== "seed-daily-gift").length === 0 &&
     (after4.business.supplierCredit?.owed ?? 0) > 0 &&
     after4.business.supplies.stock["sheet-pans"]?.units >= 1 &&
     s4b?.startDisabled === false,

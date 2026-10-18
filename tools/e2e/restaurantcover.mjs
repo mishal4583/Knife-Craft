@@ -175,7 +175,8 @@ check(
     /Supplier credit/.test(s3.text) &&
     !/Watch an ad/.test(s3.text) &&
     took.credits === 0 &&
-    took.economyLedger.length === 0 &&
+    // no entry beyond the harness's seeded daily-gift record
+    took.economyLedger.filter((e) => e.id !== "seed-daily-gift").length === 0 &&
     owed > 0 &&
     played &&
     /Supplier credit repaid/.test(banner) &&

@@ -96,7 +96,7 @@ check(
     units(moved, "dish-soap") === 1 &&
     units(moved, "cleaning-liquid") === 1 &&
     moved.credits === 50_000 &&
-    moved.economyLedger.length === 0 &&
+    moved.economyLedger.filter((e) => e.id !== "seed-daily-gift").length === 0 &&
     moved.levelProgress.completedLevelIds.length === 39 &&
     moved.levelProgress.currentLevelId === "level-40",
   { kit: m?.kit, credits: moved.credits, ledger: moved.economyLedger.length },

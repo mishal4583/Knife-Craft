@@ -227,7 +227,7 @@ check(
     !!filled &&
     filled.rows.every((r) => r.status === "ok") &&
     creditSave.credits === 0 &&
-    creditSave.economyLedger.length === 0 &&
+    creditSave.economyLedger.filter((e) => e.id !== "seed-daily-gift").length === 0 &&
     (creditSave.business.supplierCredit?.owed ?? 0) > 0,
   {
     creditShown,

@@ -304,7 +304,7 @@ check(
     staff.every((r) => r.status === "ok") &&
     hiredSave.business.restaurantStaff?.specialists?.includes("indian-chef") &&
     hiredSave.business.staff.hiredRoles.includes("prep-cook") &&
-    hiredSave.economyLedger.length === 0,
+    hiredSave.economyLedger.filter((e) => e.id !== "seed-daily-gift").length === 0,
   { staff, ledger: hiredSave.economyLedger.length },
 );
 check(
