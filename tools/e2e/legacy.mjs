@@ -1,10 +1,11 @@
 // THE LAST PAGE (developer 2026-10-11), classic build (the same App story path as the restaurant):
-//   1. finishing the 250th level plays THE LAST PAGE once, its flag saved first; the wallet and
+// (The 150-level campaign: THE LAST PAGE plays at Level 150, CLAUDE.md §9.)
+//   1. finishing the 150th level plays THE LAST PAGE once, its flag saved first; the wallet and
 //      ledger don't move while it plays; no interstitial or Replay Bonus covers it;
 //   2. a tap moves a beat on; a platform pause holds it; Enter on the last button lands on the
 //      Kitchen; then the Level Complete card, then the Family Legacy ($50,000) banner, once each;
 //   3. a reload never plays it again;
-//   4. a save that finished 250 before it existed: THE LAST PAGE once on load, never on the next
+//   4. a save that finished the (250-level) campaign before it existed: THE LAST PAGE once on load, never on the next
 //      launches, no money or ledger change; screenshots at 320 / 390 / 768.
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import { launch, boot, seedSave, sleep, clickButton, readSave, shot, text } from "./harness.mjs";
@@ -27,30 +28,40 @@ await page.evaluateOnNewDocument(() => {
   Object.defineProperty(window, "bridge", {
     configurable: true,
     get: () => real,
+    // Stubbed from inside initialize(), as pgbridge.mjs / adsflow.mjs do: the Bridge refuses
+    // any use of its modules before it is initialized.
     set(b) {
       real = b;
-      const adv = b.advertisement;
-      Object.defineProperty(adv, "isInterstitialSupported", {
-        get: () => true,
-        configurable: true,
-      });
-      Object.defineProperty(adv, "isRewardedSupported", { get: () => true, configurable: true });
-      adv.showInterstitial = (p) => window.__adCalls.push(["interstitial", p]);
-      adv.showRewarded = (p) => window.__adCalls.push(["rewarded", p]);
+      const init = b.initialize.bind(b);
+      b.initialize = (...args) =>
+        init(...args).then((r) => {
+          const adv = b.advertisement;
+          Object.defineProperty(adv, "isInterstitialSupported", {
+            get: () => true,
+            configurable: true,
+          });
+          Object.defineProperty(adv, "isRewardedSupported", {
+            get: () => true,
+            configurable: true,
+          });
+          adv.showInterstitial = (p) => window.__adCalls.push(["interstitial", p]);
+          adv.showRewarded = (p) => window.__adCalls.push(["rewarded", p]);
+          return r;
+        });
     },
   });
 });
 
-// ---------- 1. Finishing the 250th level ----------
-// 249 levels done (2–250), Level 1 still open: finishing it is the 250th.
+// ---------- 1. Finishing the 150th level ----------
+// 149 levels done (2–150), Level 1 still open: finishing it is the 150th.
 await boot(
   page,
   seedSave({
     credits: 5000000,
     levelProgress: {
       currentLevelId: "level-1",
-      highestUnlockedLevelId: "level-250",
-      completedLevelIds: Array.from({ length: 249 }, (_, i) => `level-${i + 2}`),
+      highestUnlockedLevelId: "level-150",
+      completedLevelIds: Array.from({ length: 149 }, (_, i) => `level-${i + 2}`),
     },
     story: { introDone: true, milestoneMask: OLD_SIX | 128 | 256 | 512 | 1024, finaleSeen: true },
   }),
@@ -91,14 +102,14 @@ const atStart = await readSave(page);
 const firstText = await flat(page);
 await shot(page, "legacy-1-first-beat");
 check(
-  "1a finishing the 250th level plays THE LAST PAGE, its flag already saved",
+  "1a finishing the 150th level plays THE LAST PAGE, its flag already saved",
   played.ok &&
     BEAT1.test(firstText) &&
-    atStart.levelProgress.completedLevelIds.length === 250 &&
+    atStart.levelProgress.completedLevelIds.length === 150 &&
     (atStart.story.milestoneMask & 2048) !== 0 &&
     (atStart.story.milestoneMask & 64) !== 0 &&
     // The retired story banner's line (the Kitchen's own campaign card stays).
-    !/All 250 levels mastered\. Every kitchen/.test(firstText),
+    !/All \d+ levels mastered\. Every kitchen/.test(firstText),
   {
     played: played.ok,
     completed: atStart.levelProgress.completedLevelIds.length,
@@ -121,8 +132,8 @@ await setPause(false);
 check(
   "2a a tap moves the first beat on; a platform pause holds the beat",
   !BEAT1.test(afterTap) &&
-    /Two hundred and fifty dishes later/.test(afterTap) &&
-    /Two hundred and fifty dishes later/.test(whilePaused),
+    /One hundred and fifty dishes later/.test(afterTap) &&
+    /One hundred and fifty dishes later/.test(whilePaused),
 );
 await page
   .waitForFunction(() => /THE LAST PAGE/i.test(document.body.innerText), { timeout: 15000 })
@@ -155,7 +166,7 @@ for (let i = 0; i < 60; i++) {
   const t = await flat(page);
   const tag = /Level Complete/i.test(t)
     ? "level-complete"
-    : /250 \/ 250 · Final Reward/.test(t)
+    : /150 \/ 150 · Final Reward/.test(t)
       ? "family-legacy"
       : null;
   if (tag && seen.at(-1) !== tag) seen.push(tag);
@@ -164,10 +175,14 @@ for (let i = 0; i < 60; i++) {
   if (i % 10 === 9) await page.mouse.click(10, 10); // dismiss a banner by an outside tap
 }
 const home = await flat(page);
+// The Kitchen home's own rank card ("See all orders" sits in the folded order card).
+const onKitchen = await page.evaluate(
+  () => !!document.querySelector('[data-testid="kitchen-rank"]'),
+);
 const endSave = await readSave(page);
 check(
   "2c Enter on BACK TO THE KITCHEN lands on the Kitchen; then Level Complete, then the Family Legacy banner — once each",
-  /See all orders/.test(home) &&
+  onKitchen &&
     !BEAT1.test(home) &&
     seen.join() === "level-complete,family-legacy" &&
     endSave.economyLedger.filter((e) => e.description === "campaign-complete").length === 1 &&
@@ -188,7 +203,7 @@ check(
   !BEAT1.test(reloaded) && !/THE LAST PAGE/i.test(reloaded),
 );
 
-// ---------- 4. A save that already finished 250 ----------
+// ---------- 4. A save that already finished the 250-level campaign ----------
 const shots = {};
 for (const [w, h] of [
   [320, 568],
@@ -204,6 +219,7 @@ for (const [w, h] of [
         currentLevelId: "level-250",
         highestUnlockedLevelId: "level-250",
         completedLevelIds: Array.from({ length: 250 }, (_, i) => `level-${i + 1}`),
+        campaignVersion: undefined, // a 250-level save: renumbered to 150 / 150
       },
       // It saw the old Level 250 banner (bit 64), never THE LAST PAGE.
       story: { introDone: true, milestoneMask: OLD_SIX | 64, finaleSeen: true },
@@ -235,7 +251,7 @@ for (const [w, h] of [
   };
 }
 check(
-  "4 a save that finished 250 before: THE LAST PAGE once on load (flag saved first), not on the next launch; no money change; fits at 320 / 390 / 768",
+  "4 a save that finished the campaign before: THE LAST PAGE once on load (flag saved first), not on the next launch; no money change; fits at 320 / 390 / 768",
   Object.values(shots).every((r) => r.shown && r.flagged && !r.again && r.money && r.overflow <= 0),
   shots,
 );

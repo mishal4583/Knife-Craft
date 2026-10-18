@@ -1,4 +1,5 @@
 // Economy V2.5 in the built game:
+// (150-level campaign: an old finished save is a 250-level one, renumbered to 150 / 150.)
 //   1. a save that finished all 250 levels BEFORE V2.5 (no `economy`, no milestone entries) is migrated
 //      once on load: its reached milestones and the Final Reward are marked claimed WITHOUT payment
 //      (no ~$85k windfall), its balance and all six kitchen tiers are kept, no banner; reloads pay nothing;
@@ -20,6 +21,8 @@ import {
   shot,
   text,
   save,
+  openSection,
+  openShortcut,
 } from "./harness.mjs";
 
 const results = [];
@@ -28,7 +31,11 @@ const check = (id, ok, detail) => {
   console.log(`${ok ? "PASS" : "FAIL"} ${id}`, detail === undefined ? "" : JSON.stringify(detail));
 };
 const flat = async (page) => (await text(page)).replace(/\s+/g, " ");
-const allLevels = Array.from({ length: 250 }, (_, i) => `level-${i + 1}`);
+// The 150-level campaign (2026-10-15). An old finished save is a 250-level one (no campaign
+// stamp): the game renumbers it to 150 / 150.
+const LAST = 150;
+const allLevels = Array.from({ length: LAST }, (_, i) => `level-${i + 1}`);
+const oldLevels = Array.from({ length: 250 }, (_, i) => `level-${i + 1}`);
 const finished = (extra = {}) =>
   seedSave({
     version: 2, // pre-V2.5: kitchen tiers were free, so migration grants all six
@@ -36,7 +43,8 @@ const finished = (extra = {}) =>
     levelProgress: {
       currentLevelId: "level-250",
       highestUnlockedLevelId: "level-250",
-      completedLevelIds: allLevels,
+      completedLevelIds: oldLevels,
+      campaignVersion: undefined,
     },
     story: { introDone: true, milestoneMask: 127, finaleSeen: true },
     ...extra,
@@ -88,10 +96,10 @@ check(
 // ---------- 2. Restaurant Progress (historical) ----------
 for (let i = 0; i < 12; i++)
   if (!(await clickButton(page, /Continue|OK|Close|Got it|Dismiss/))) break;
-await clickButton(page, /Progress$/);
+await openSection(page, "Progress");
 await sleep(800);
 t = await flat(page);
-check("2a CAMPAIGN COMPLETE · 250 / 250", /Campaign Complete/i.test(t) && /250 \/ 250/.test(t));
+check("2a CAMPAIGN COMPLETE · 150 / 150", /Campaign Complete/i.test(t) && /150 \/ 150/.test(t));
 check(
   "2b the Final Reward is explained as finished before it existed (not +$50,000)",
   /finished the campaign before the Final Reward existed/i.test(t),
@@ -118,7 +126,7 @@ check(
 check("2f no 'richest' / '#1' claim", !/richest|number one|#1/i.test(t));
 await shot(page, "v25-2-progress");
 
-// ---------- 3. Current save: Level 250 just completed, Final Reward paid once ----------
+// ---------- 3. Current save: Level 150 just completed, Final Reward paid once ----------
 await boot(
   page,
   seedSave({
@@ -145,8 +153,8 @@ await boot(
       lifetimeSince: "start",
     },
     levelProgress: {
-      currentLevelId: "level-250",
-      highestUnlockedLevelId: "level-250",
+      currentLevelId: `level-${LAST}`,
+      highestUnlockedLevelId: `level-${LAST}`,
       completedLevelIds: allLevels,
     },
     ownedKitchenUpgradeIds: [
@@ -163,7 +171,7 @@ await boot(
 );
 await sleep(1200);
 s = await readSave(page);
-// Developer 2026-10-11 (decision 1): a save at 250 that never saw THE LAST PAGE plays it once
+// Developer 2026-10-11 (decision 1): a save at 150 that never saw THE LAST PAGE plays it once
 // on load; the Family Legacy banner waits behind it, then shows.
 const lastPage = /Every recipe they ever wrote is in here/.test(await flat(page));
 await page
@@ -186,10 +194,10 @@ check(
 );
 t = await flat(page);
 check(
-  "3b THE LAST PAGE first, then the banner: Campaign Complete · 250 / 250 · Final Reward +$50,000 · Endless Service unlocked",
+  "3b THE LAST PAGE first, then the banner: Campaign Complete · 150 / 150 · Final Reward +$50,000 · Endless Service unlocked",
   lastPage &&
     /Campaign Complete/i.test(t) &&
-    /250 \/ 250/.test(t) &&
+    /150 \/ 150/.test(t) &&
     /Final Reward \+\$50,000/.test(t) &&
     /Endless Service unlocked/i.test(t),
   t.match(/Campaign Complete.{0,160}/i)?.[0],
@@ -201,7 +209,7 @@ for (let i = 0; i < 2; i++) {
 }
 const s3 = await readSave(page);
 check(
-  "3c reloads after Level 250 pay nothing more",
+  "3c reloads after Level 150 pay nothing more",
   s3.credits === s.credits && count(s3, "family-legacy").length === 1,
   s3.credits,
 );
@@ -223,14 +231,10 @@ await boot(
 );
 await sleep(800);
 const before = await readSave(page);
-await clickButton(page, /^Kitchen$/);
-await sleep(400);
-await page.evaluate(() => {
-  const el = [...document.querySelectorAll("button, [role=button], div")].find(
-    (x) => /^Kitchen Upgrade/.test(x.textContent?.trim() ?? "") && x.onclick !== undefined,
-  );
-  (el?.closest("button") ?? el)?.click();
-});
+// Kitchen Upgrade is Business → Upgrades (developer 2026-10-15).
+await openShortcut(page, "business");
+await sleep(500);
+await clickButton(page, /Upgrades$/);
 await sleep(700);
 t = await flat(page);
 check(
@@ -252,10 +256,12 @@ check(
     after.equippedKitchenUpgradeId === "growing-kitchen",
   kip,
 );
+// Achievement money (developer 2026-10-16): the "First kitchen upgrade" reward waits for
+// Collect in Progress → Achievements; building pays nothing by itself.
 check(
-  "4c + the $1,500 'First kitchen upgrade' milestone, once",
+  "4c the 'First kitchen upgrade' reward is not paid by itself (it waits for Collect)",
   count(after, "milestone-reward").filter((e) => e.description === "first-kitchen-upgrade")
-    .length === 1 && after.credits === before.credits - 2_000_000 + 150_000,
+    .length === 0 && after.credits === before.credits - 2_000_000,
   { before: before.credits, after: after.credits },
 );
 t = await flat(page);
@@ -263,9 +269,9 @@ await clickButton(page, /Established Kitchen/);
 await sleep(400);
 t = await flat(page);
 check(
-  "4d selecting Established Kitchen ($25,000) with $6,500 shows 'Not enough money — need $18,500.00 more' and a disabled Build",
-  after.credits === 650_000 &&
-    /Not enough money — need \$18,500\.00 more/i.test(t) &&
+  "4d selecting Established Kitchen ($25,000) with $5,000 shows 'Not enough money — need $20,000.00 more' and a disabled Build",
+  after.credits === 500_000 &&
+    /Not enough money — need \$20,000\.00 more/i.test(t) &&
     (await page.evaluate(
       () =>
         [...document.querySelectorAll("button")].find((b) => /Build · \$25,000/.test(b.textContent))
@@ -291,8 +297,8 @@ await clickButton(page, /See all orders/);
 await sleep(700);
 t = await flat(page);
 check(
-  "4e at Level 60 Endless Service is locked until Level 250",
-  /Endless Service 🔒 unlocks after Level 250/i.test(t),
+  "4e at Level 60 Endless Service is locked until Level 150",
+  /Endless Service 🔒 unlocks after Level 150/i.test(t),
 );
 
 check("console has no errors", logs.filter((l) => /^error|pageerror/i.test(l)).length === 0, logs);
