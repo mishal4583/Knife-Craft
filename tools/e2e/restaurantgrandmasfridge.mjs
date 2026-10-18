@@ -1,25 +1,17 @@
-// Grandma's fridge (developer 2026-10-09, Levels 1–15 pass 2), restaurant build, in a real browser:
-//   1. Level 2 finished → reaching Level 3: Level Complete says Grandma's leftovers arrived;
-//      the save holds them at cost 0 with no ledger entry; Inventory explains them and lists them.
-//   2. Level 3 uses nothing; Level 4 uses exactly its tomato and cucumber; Level Complete shows
-//      what's left and Inventory shows the new amounts at once; wallet = ledger throughout.
-//   3. Level 12: Grandma's note lists what's running low (the real fridge), START still works.
-//   4. Level 13: the top-up lists only what's missing; Buy → the Market on that ingredient at the
-//      exact step → Buy → back: the row turns ✓; one ledger entry, wallet moved by its cost;
-//      START waits for the level's own bread too; bought, START starts the level and the order
-//      uses the bought mushroom.
-//   5. Level 13 with plenty in the fridge: nothing to buy. With $0: says so (and if the level's
-//      own stock is short, supplier credit is offered — from L10 Grandma no longer lends).
-//   6. Level 14: the preview includes Level 15's mozzarella.
-//   6d. (developer 2026-10-09, "without these ingredients in stock I still can cut and serve
-//       it") Level 14 with the zucchini out: the missing row shows and START waits; with $0
-//       supplier credit brings it (from L10 Grandma no longer lends — 2026-10-10), START starts.
-//   6e. Level 5 with an empty fridge (before the Market sells ingredients): no Restock or
-//       price, START waits; Grandma's pantry (free, no ledger entry) → START starts the level.
-//   6b. Pass 2 review: Level 3 Inventory has no menu figures (no "/ 48 dishes", no "low for
-//       today's menu", "menu opens at Level 11"); Level 11 counts the real 4-dish menu.
-//   6c. Level 15's first play shows the hand-over card even with food in the fridge.
-//   7. 320×568: the sheet fits, no sideways scroll, buttons ≥ 48 px.
+// Grandma's fridge is RETIRED (developer redesign 2026-10-15, 0b2ce52: "ingredients are
+// purchased in the Market from Level 3 onward; there is no free pantry or ingredient handout";
+// scripts/restaurant-grandmas-fridge-qa.mts). Re-baselined 2026-10-17: the old browser checks
+// (Level 3 leftovers, the Level 12–14 fridge notes, Grandma's pantry) are in git history before
+// this date. In a real browser, restaurant build:
+//   1. Finishing Level 2 (reaching Level 3): Level Complete says the Market and Inventory are
+//      open, no leftovers; the fridge stays empty and no ledger entry is written.
+//   2. Level 3 with an empty fridge: the Pre-Service Check lists the order's ingredients with a
+//      Market Restock and START waits; there is no Grandma's fridge card or pantry button.
+//   3. Level 3 stocked: the order takes only its own ingredients (tomato and cucumber, Garden
+//      Prep); wallet = ledger.
+//   4. Level 3 with $0 and an empty fridge (no ads on the mock platform): supplier credit brings
+//      the food, no money moves, the price is owed, START opens.
+//   5. 320×568: the check fits, no sideways scroll, its buttons ≥ 48 px.
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import {
   MOVED_IN_BUSINESS,
@@ -40,7 +32,6 @@ const check = (id, ok, detail) => {
 };
 const { browser, page, logs } = await launch();
 
-/** Stock as Grandma's leftovers sit in the fridge (cost 0, bought on Business Day 1). */
 const stock = (q) =>
   Object.fromEntries(
     Object.entries(q).map(([id, quantity]) => [
@@ -48,28 +39,25 @@ const stock = (q) =>
       { ingredientId: id, quantity, unitCost: 0, purchaseDay: 1 },
     ]),
   );
-const GIVEN = {
-  atLevel: 3,
-  lines: [
-    { ingredientId: "tomato", quantity: 1.3 },
-    { ingredientId: "cucumber", quantity: 0.65 },
-  ],
-};
-const at = (n, extra = {}, business = {}) =>
+// Test saves are version 1: credits are whole dollars there (×100 on load).
+const at = (n, credits, inventory = {}) =>
   seedSave({
-    business: { ...MOVED_IN_BUSINESS, ...business },
-    credits: 5000,
+    business: { ...MOVED_IN_BUSINESS, inventory },
+    credits,
     levelProgress: {
       currentLevelId: `level-${n}`,
       highestUnlockedLevelId: `level-${n}`,
       completedLevelIds: Array.from({ length: n - 1 }, (_, i) => `level-${i + 1}`),
     },
     story: { introDone: true, milestoneMask: 127, finaleSeen: false },
-    ...extra,
   });
 const ledgerSum = (s, from = 0) => s.economyLedger.slice(from).reduce((t, e) => t + e.amount, 0);
-const inv = (s) =>
-  Object.fromEntries(Object.entries(s.business.inventory).map(([k, v]) => [k, v.quantity]));
+const qty = (s) =>
+  Object.fromEntries(
+    Object.entries(s.business.inventory ?? {})
+      .filter(([, v]) => v.quantity > 0)
+      .map(([k, v]) => [k, v.quantity]),
+  );
 const notes = () =>
   page.evaluate(
     () =>
@@ -77,39 +65,29 @@ const notes = () =>
   );
 const inHud = () =>
   page.evaluate(() => /·\s*(?:\d+\/\d+\s+[a-z-]+|\d+% peeled)/i.test(document.body.innerText));
-const fridgeCard = () =>
+const sheet = () =>
   page.evaluate(() => {
-    const el = document.querySelector('[data-testid="psc-grandmas-fridge"]');
+    const el = document.querySelector('[data-testid="pre-service-check"]');
     if (!el) return null;
-    return {
-      stage: el.getAttribute("data-fridge-stage"),
-      rows: [...el.querySelectorAll("[data-fridge-ingredient]")].map((r) => ({
-        id: r.getAttribute("data-fridge-ingredient"),
-        status: r.getAttribute("data-fridge-status"),
-        button: r.querySelector("button")?.textContent.trim() ?? "",
-      })),
-      text: el.innerText.replace(/\s+/g, " "),
-    };
-  });
-const startButton = () =>
-  page.evaluate(() => {
-    const b = [...document.querySelectorAll('[data-testid="pre-service-check"] button')].find((x) =>
+    const start = [...el.querySelectorAll("button")].find((x) =>
       /^(OPEN THE RESTAURANT|START SERVICE|Restock to start)$/.test(x.textContent.trim()),
     );
-    return b ? { disabled: b.disabled } : null;
+    return {
+      rows: [...el.querySelectorAll("[data-psc-ingredient]")].map((r) => ({
+        id: r.getAttribute("data-psc-ingredient"),
+        status: r.getAttribute("data-psc-status"),
+        restock: [...r.querySelectorAll("button")].some((b) => /^Restock/.test(b.textContent)),
+      })),
+      fridgeCard: !!el.querySelector('[data-testid="psc-grandmas-fridge"]'),
+      text: el.innerText.replace(/\s+/g, " "),
+      startDisabled: start ? start.disabled : null,
+    };
   });
-async function nav(label) {
-  await page.evaluate(
-    (l) =>
-      [...document.querySelectorAll("nav button")].find((x) => x.textContent.includes(l))?.click(),
-    label,
-  );
-  await sleep(800);
-}
 async function prepareToday() {
-  await nav("Kitchen");
+  await page.evaluate(() => document.querySelector('[data-nav="kitchen"]')?.click());
+  await sleep(600);
   await clickButton(page, /^Prepare$/);
-  await sleep(1000);
+  await sleep(1200);
 }
 async function playLevel() {
   await page.waitForFunction(
@@ -128,451 +106,122 @@ async function playLevel() {
   return played.ok;
 }
 
-// ---------- 1. Reaching Level 3: Grandma's leftovers ----------
-await boot(page, at(2));
-const s2 = await readSave(page);
+// ---------- 1. Level 2 → Level 3: no leftovers ----------
+await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });
+await boot(page, at(2, 5000));
+const b1 = await readSave(page);
 await prepareToday();
 const played2 = await playLevel();
-const n2 = await notes();
-const s3 = await readSave(page);
-const given = s3.business.grandmasFridge;
+const n1 = await notes();
+const a1 = await readSave(page);
 check(
-  "1a reaching Level 3: Level Complete says the leftovers arrived; the save holds them at cost 0, no ledger entry for them",
+  "1 reaching Level 3: Level Complete says the Market and Inventory are open, no leftovers; the fridge stays empty, no ledger entry",
   played2 &&
-    /Grandma's leftovers are in the fridge/.test(n2) &&
-    !!given &&
-    given.atLevel === 3 &&
-    given.lines.every((l) => s3.business.inventory[l.ingredientId]?.unitCost === 0) &&
-    !s3.economyLedger.some((e) => /inventory|pantry/.test(e.category)) &&
-    s3.credits - s2.credits === ledgerSum(s3, s2.economyLedger.length),
-  { n2, given },
-);
-await sleep(6500);
-// Developer 2026-10-09: the Kitchen tells a new player where to look, and the
-// Inventory offers nothing that leads into a section still closed.
-await nav("Kitchen");
-const tip3 = await page.evaluate(() => ({
-  tip: document.querySelector('[data-testid="kitchen-tip"]')?.textContent ?? "",
-  isNew: !!document.querySelector('nav button[data-nav="inventory"] [data-nav-new]'),
-}));
-await clickButton(page, /^Open Inventory$/);
-await sleep(900);
-const onInventory = await page.evaluate(
-  () => !!document.querySelector('[data-testid="inventory"]'),
-);
-const deadLinks = await page.evaluate(() => ({
-  upgrade: !!document.querySelector('[data-testid="fridge-upgrade"]'),
-  buttons: [...document.querySelectorAll("button")]
-    .map((b) => b.textContent.trim())
-    .filter((t) => /Upgrade Refrigerator|View Business Performance|Restock|Go to Market/.test(t)),
-}));
-check(
-  "1d Level 3: Grandma's tip on the Kitchen card opens Inventory (NEW badge); no link there leads to a closed Market or Restaurant",
-  /I left food in the fridge/.test(tip3.tip) &&
-    tip3.isNew &&
-    onInventory &&
-    !deadLinks.upgrade &&
-    deadLinks.buttons.length === 0,
-  { tip3, onInventory, deadLinks },
-);
-const invText = await page.evaluate(() => document.body.innerText.replace(/\s+/g, " "));
-await shot(page, "grandma-inventory-l3");
-check(
-  "1b Inventory explains Grandma's leftovers and lists them",
-  /Grandma's leftovers/i.test(invText) &&
-    /Tomato[^$]{0,80}\b1\.3 lb/.test(invText) &&
-    /Cucumber[^$]{0,80}\b0\.65 lb/.test(invText),
-  invText.slice(0, 1200),
-);
-// Pass 2 review: no menu figures before the menu opens (Level 11).
-const menuCards = await page.evaluate(() => ({
-  low: !!document.querySelector('[data-testid="summary-low"]'),
-  ready: !!document.querySelector('[data-testid="summary-ready"]'),
-  opens: document.querySelector('[data-testid="summary-menu-opens"]')?.textContent ?? "",
-  lowGroup: /Low for today's menu/i.test(document.body.innerText),
-  dishCount: /\/\s*48 dishes/.test(document.body.innerText),
-}));
-check(
-  "1c Level 3 Inventory: no 'running low for today's menu', no '/ 48 dishes'; it says the menu opens at Level 11",
-  !menuCards.low &&
-    !menuCards.ready &&
-    !menuCards.lowGroup &&
-    !menuCards.dishCount &&
-    /opens at Level 11/.test(menuCards.opens),
-  menuCards,
+    /Inventory is open/.test(n1) &&
+    /Market is open/.test(n1) &&
+    !/leftover|Grandma's fridge/i.test(n1) &&
+    Object.keys(qty(a1)).length === 0 &&
+    a1.economyLedger.length === b1.economyLedger.length &&
+    a1.credits === b1.credits,
+  { notes: n1, fridge: qty(a1), ledger: a1.economyLedger.length - b1.economyLedger.length },
 );
 
-// ---------- 2. Level 3 uses nothing, Level 4 uses its own ----------
-const before3 = await readSave(page);
+// ---------- 2. Level 3, empty fridge ----------
+await boot(page, at(3, 5000));
 await prepareToday();
+const s2 = await sheet();
+const pantry = await page.evaluate(() =>
+  [...document.querySelectorAll("button")].some((b) => /Grandma's pantry/i.test(b.textContent)),
+);
+await shot(page, "grandmas-fridge-retired-l3");
+check(
+  "2 Level 3 with an empty fridge: the check lists the order's ingredients with a Market Restock, START waits; no Grandma's fridge card or pantry",
+  !!s2 &&
+    s2.rows.length > 0 &&
+    s2.rows.every((r) => r.status === "missing" && r.restock) &&
+    s2.startDisabled === true &&
+    !s2.fridgeCard &&
+    !pantry &&
+    !/Grandma's (fridge|pantry)/i.test(s2.text),
+  s2 && { rows: s2.rows, start: s2.startDisabled, fridgeCard: s2.fridgeCard, pantry },
+);
+
+// ---------- 3. Level 3, stocked: the order takes only its own ingredients ----------
+await boot(page, at(3, 5000, stock({ tomato: 2, cucumber: 2, carrot: 2 })));
+const b3 = await readSave(page);
+await prepareToday();
+await clickButton(page, /^(OPEN THE RESTAURANT|START SERVICE)$/);
+await sleep(600);
+const started3 = await inHud();
 const played3 = await playLevel();
-const after3 = await readSave(page);
+const a3 = await readSave(page);
+const before3 = qty(b3);
+const after3 = qty(a3);
+const used = Object.keys(before3).filter((id) => (after3[id] ?? 0) < before3[id]);
 check(
-  "2a Level 3 uses nothing from the fridge",
-  played3 && JSON.stringify(inv(after3)) === JSON.stringify(inv(before3)),
-  { before: inv(before3), after: inv(after3) },
-);
-await sleep(6500);
-await prepareToday();
-const played4 = await playLevel();
-const n4 = await notes();
-const after4 = await readSave(page);
-const dTomato = +(inv(after3).tomato - inv(after4).tomato).toFixed(3);
-const dCucumber = +(inv(after3).cucumber - inv(after4).cucumber).toFixed(3);
-check(
-  "2b Level 4 uses its tomato and cucumber (0.3 lb each, Chef's knife), Level Complete shows what's left; wallet = ledger",
-  played4 &&
-    dTomato === 0.3 &&
-    dCucumber === 0.3 &&
-    /Left in the fridge: Tomato 1 lb · Cucumber 0\.35 lb/.test(n4) &&
-    after4.credits - after3.credits === ledgerSum(after4, after3.economyLedger.length),
-  { dTomato, dCucumber, n4 },
-);
-await sleep(6500);
-await nav("Inventory");
-const inv4 = await page.evaluate(() => document.body.innerText.replace(/\s+/g, " "));
-check(
-  "2c Inventory shows the new amount at once (Tomato 1 lb)",
-  /Tomato[^$]{0,80}\b1 lb/.test(inv4),
-  inv4.slice(0, 400),
+  "3 Level 3 stocked: the order takes only tomato and cucumber (carrot untouched); wallet = ledger",
+  started3 &&
+    played3 &&
+    used.sort().join() === "cucumber,tomato" &&
+    after3.carrot === before3.carrot &&
+    a3.credits - b3.credits === ledgerSum(a3, b3.economyLedger.length),
+  { used, before3, after3 },
 );
 
-// ---------- 3. Level 12: running low ----------
-const L12 = stock({
-  tomato: 0.4,
-  cucumber: 0.05,
-  onion: 0.05,
-  potato: 0.05,
-  garlic: 0.05,
-  carrot: 0.05,
-  bread: 0.3,
-  basil: 0.3,
-});
-await boot(page, at(12, {}, { inventory: L12, grandmasFridge: GIVEN }));
+// ---------- 4. $0, empty fridge: supplier credit ----------
+await boot(page, at(3, 0));
 await prepareToday();
-const low = await fridgeCard();
-const start12 = await startButton();
-await shot(page, "grandma-l12-low");
+const poor = await sheet();
+const b4 = await readSave(page);
+for (let i = 0; i < 4; i++) {
+  if (!(await clickButton(page, /Supplier credit/))) break;
+  await sleep(600);
+}
+const a4 = await readSave(page);
+const s4 = await sheet();
 check(
-  "3 Level 12: Grandma's note lists what's running low from the real fridge; START isn't blocked",
-  low?.stage === "low" &&
-    ["bread", "mushroom", "zucchini", "carrot"].every((id) =>
-      low.rows.some((r) => r.id === id && r.status !== "ok"),
-    ) &&
-    !low.rows.some((r) => r.id === "tomato") &&
-    start12 &&
-    !start12.disabled,
-  { low, start12 },
+  "4 Level 3 with $0: supplier credit brings the food (no money, no ledger entry, the price owed) and START opens; no pantry",
+  !!poor &&
+    /Supplier credit/.test(poor.text) &&
+    !/Grandma's pantry/i.test(poor.text) &&
+    a4.credits === b4.credits &&
+    a4.economyLedger.length === b4.economyLedger.length &&
+    (a4.business.supplierCredit?.owed ?? 0) > 0 &&
+    Object.keys(qty(a4)).length > 0 &&
+    s4?.startDisabled === false,
+  { credit: a4.business.supplierCredit, fridge: qty(a4), start: s4?.startDisabled },
 );
 
-// ---------- 4. Level 13: the top-up ----------
-const L13 = stock({
-  tomato: 0.1,
-  cucumber: 0.05,
-  onion: 0.05,
-  potato: 0.05,
-  garlic: 0.025,
-  carrot: 0.05,
-  bread: 0.05,
-  basil: 0.05,
-});
-await boot(page, at(13, {}, { inventory: L13, grandmasFridge: GIVEN }));
-const before13 = await readSave(page);
-await prepareToday();
-const top = await fridgeCard();
-await shot(page, "grandma-l13-top-up");
-check(
-  "4a Level 13: the top-up offers only what's missing (bread, mushroom, zucchini, carrot), garlic is enough",
-  top?.stage === "top-up" &&
-    ["bread", "mushroom", "zucchini", "carrot"].every((id) =>
-      top.rows.some((r) => r.id === id && /^Buy /.test(r.button)),
-    ) &&
-    top.rows.some((r) => r.id === "garlic" && r.status === "ok" && r.button === "") &&
-    /Top-up: \$3\.55/.test(top.text),
-  top,
-);
-await page.evaluate(() =>
-  document.querySelector('[data-fridge-ingredient="mushroom"] button')?.click(),
-);
-await sleep(900);
-const market = await page.evaluate(() => {
-  const card = document.querySelector('[data-ingredient="mushroom"]');
-  const buy =
-    card && [...card.querySelectorAll("button")].find((b) => /^Buy /.test(b.textContent.trim()));
-  const text = buy?.textContent.trim() ?? "";
-  buy?.click();
-  return { card: !!card, pill: !!document.querySelector('[data-testid="psc-back"]'), text };
-});
-await sleep(700);
-await page.evaluate(() => document.querySelector('[data-testid="psc-back"]')?.click());
-await sleep(900);
-const afterBuy = await readSave(page);
-const top2 = await fridgeCard();
-const newEntries = afterBuy.economyLedger.slice(before13.economyLedger.length);
-check(
-  "4b Buy → the Market on mushroom at the exact step (¼ lb) → Buy → back: ✓ Enough; one ledger entry, wallet moved by it",
-  market.card &&
-    market.pill &&
-    /^Buy 0\.25 lb/.test(market.text) &&
-    top2?.rows.some((r) => r.id === "mushroom" && r.status === "ok") &&
-    newEntries.length === 1 &&
-    newEntries[0].category === "inventory-purchase" &&
-    afterBuy.credits - before13.credits === newEntries[0].amount &&
-    Math.abs(afterBuy.business.inventory.mushroom.quantity - 0.25) < 1e-9,
-  { market, newEntries, top2: top2?.rows },
-);
-// From Level 4 the level's own stock is needed (developer 2026-10-09): START waits
-// for Level 13's bread too, so buy it the same way.
-const wait13 = await startButton();
-await page.evaluate(() =>
-  document.querySelector('[data-fridge-ingredient="bread"] button')?.click(),
-);
-await sleep(900);
-await page.evaluate(() => {
-  const card = document.querySelector('[data-ingredient="bread"]');
-  const buy =
-    card && [...card.querySelectorAll("button")].find((b) => /^Buy /.test(b.textContent.trim()));
-  buy?.click();
-});
-await sleep(700);
-await page.evaluate(() => document.querySelector('[data-testid="psc-back"]')?.click());
-await sleep(900);
-const ready13 = await startButton();
-await clickButton(page, /^(OPEN THE RESTAURANT|START SERVICE)$/);
-await sleep(1200);
-const started13 = await inHud();
-const played13 = started13 && (await playLevel());
-const after13 = await readSave(page);
-check(
-  "4c START waits for Level 13's own bread; bought, START starts the level and its order uses the bought mushroom",
-  wait13?.disabled === true &&
-    ready13?.disabled === false &&
-    played13 &&
-    !after13.business.inventory.mushroom,
-  { wait13, ready13, inventory: inv(after13) },
-);
-
-// ---------- 5. Surplus and $0 ----------
-await boot(
-  page,
-  at(
-    13,
-    {},
-    {
-      inventory: stock({ bread: 2, mushroom: 1, garlic: 0.5, zucchini: 2, carrot: 1 }),
-      grandmasFridge: GIVEN,
-    },
-  ),
-);
-await prepareToday();
-const plenty = await fridgeCard();
-check(
-  "5a with plenty in the fridge the top-up asks for nothing",
-  plenty?.stage === "top-up" &&
-    plenty.rows.every((r) => r.status === "ok" && r.button === "") &&
-    /Nothing to buy/.test(plenty.text),
-  plenty,
-);
-await boot(page, at(13, { credits: 0 }, { inventory: L13, grandmasFridge: GIVEN }));
-await prepareToday();
-const broke = await fridgeCard();
-const start0 = await startButton();
-// Rule changed 2026-10-09: the level's own missing stock blocks START (was: "START still
-// works"); with $0 supplier credit (or an ad) is the way through (2026-10-10), never a soft-lock.
-const credit0 = await page.evaluate(() =>
-  [...document.querySelectorAll('[data-testid="pre-service-check"] button')].some((b) =>
-    /Supplier credit/.test(b.textContent),
-  ),
-);
-check(
-  "5b with $0 it says not all of it can be bought; START is open or supplier credit is offered",
-  /not enough money/.test(broke?.text ?? "") && start0 && (!start0.disabled || credit0),
-  { text: broke?.text, start0, credit0 },
-);
-
-// ---------- 6. Level 14: preview ----------
-await boot(
-  page,
-  at(
-    14,
-    {},
-    {
-      inventory: stock({ tomato: 0.1, cucumber: 0.05, carrot: 0.05, basil: 0.05 }),
-      grandmasFridge: GIVEN,
-    },
-  ),
-);
-await prepareToday();
-const preview = await fridgeCard();
-check(
-  "6 Level 14: the preview covers Levels 14–15 (zucchini … mozzarella)",
-  preview?.stage === "preview" &&
-    preview.rows.some((r) => r.id === "zucchini") &&
-    preview.rows.some((r) => r.id === "mozzarella") &&
-    /Levels 14–15/i.test(preview.text),
-  preview,
-);
-
-// ---------- 6d. Level 14 with the zucchini out (the developer's report) ----------
-const psc = () =>
-  page.evaluate(() => ({
-    rows: [...document.querySelectorAll("[data-psc-ingredient]")].map((r) => [
-      r.getAttribute("data-psc-ingredient"),
-      r.getAttribute("data-psc-status"),
-      r.querySelector("button")?.textContent.trim() ?? "",
-    ]),
-    noMarket: !!document.querySelector('[data-testid="psc-no-market-yet"]'),
-    pantry: [...document.querySelectorAll('[data-testid="pre-service-check"] button')].some((b) =>
-      /Use Grandma's pantry/.test(b.textContent),
-    ),
-    credit: [...document.querySelectorAll('[data-testid="pre-service-check"] button')].some((b) =>
-      /Supplier credit/.test(b.textContent),
-    ),
-  }));
-const usePantry = () =>
-  page.evaluate(() =>
-    [...document.querySelectorAll('[data-testid="pre-service-check"] button')]
-      .find((b) => /Use Grandma's pantry/.test(b.textContent))
-      ?.click(),
-  );
-const out14 = stock({ tomato: 0.1, carrot: 0.25, basil: 0.05 });
-await boot(page, at(14, { credits: 0 }, { inventory: out14, grandmasFridge: GIVEN }));
-await prepareToday();
-const p14 = await psc();
-const s14 = await startButton();
-await shot(page, "grandma-l14-missing");
-await clickButton(page, /Supplier credit/);
-await sleep(900);
-const s14b = await startButton();
-const after14 = await readSave(page);
-await clickButton(page, /^(OPEN THE RESTAURANT|START SERVICE)$/);
-await sleep(2500);
-check(
-  "6d Level 14 with the zucchini out: missing row, START waits; $0 → supplier credit (no pantry from L10) → START starts it",
-  p14.rows.some(([id, st]) => id === "zucchini" && st === "missing") &&
-    s14?.disabled === true &&
-    p14.credit &&
-    !p14.pantry &&
-    (after14.business.supplierCredit?.owed ?? 0) > 0 &&
-    s14b?.disabled === false &&
-    (after14.business.inventory.zucchini?.quantity ?? 0) > 0 &&
-    after14.credits === 0 &&
-    (await inHud()),
-  { p14, s14, s14b },
-);
-
-// ---------- 6e. Level 5, empty fridge, before the Market sells ingredients ----------
-await boot(page, at(5, {}, { inventory: {}, grandmasFridge: GIVEN }));
-const before5 = await readSave(page);
-await prepareToday();
-const p5 = await psc();
-const s5 = await startButton();
-await shot(page, "grandma-l5-empty");
-await usePantry();
-await sleep(900);
-const s5b = await startButton();
-const after5 = await readSave(page);
-await clickButton(page, /^(OPEN THE RESTAURANT|START SERVICE)$/);
-await sleep(2500);
-check(
-  "6e Level 5 with an empty fridge: no Restock/price, START waits; Grandma's pantry (free) → START starts it",
-  p5.rows.length > 0 &&
-    p5.rows.every(([, st, btn]) => st === "missing" && btn === "") &&
-    p5.noMarket &&
-    s5?.disabled === true &&
-    s5b?.disabled === false &&
-    after5.credits === before5.credits &&
-    after5.economyLedger.length === before5.economyLedger.length &&
-    (after5.business.inventory.onion?.quantity ?? 0) > 0 &&
-    (await inHud()),
-  { p5, s5, s5b },
-);
-
-// ---------- 6b. Level 11: the real menu ----------
-await boot(
-  page,
-  at(11, {}, { inventory: stock({ bread: 0.55, garlic: 0.1 }), grandmasFridge: GIVEN }),
-);
-await nav("Inventory");
-const inv11 = await page.evaluate(() => ({
-  ready:
-    document.querySelector('[data-testid="summary-ready"]')?.textContent.replace(/\s+/g, " ") ?? "",
-  opens: !!document.querySelector('[data-testid="summary-menu-opens"]'),
-}));
-check(
-  "6b Level 11 Inventory counts the real 4-dish menu (not 48)",
-  /\/ 4 dishes/.test(inv11.ready) && !inv11.opens,
-  inv11,
-);
-
-// ---------- 6c. Level 15: the hand-over, with food in the fridge ----------
-await boot(
-  page,
-  at(
-    15,
-    {},
-    {
-      inventory: stock({ tomato: 0.4, basil: 0.3, zucchini: 0.5, carrot: 0.25 }),
-      grandmasFridge: GIVEN,
-    },
-  ),
-);
-await prepareToday();
-const handOver = await page.evaluate(
-  () =>
-    document.querySelector('[data-testid="psc-first-restock"]')?.innerText.replace(/\s+/g, " ") ??
-    null,
-);
-// From Level 15 the normal check applies (unchanged): the missing mozzarella is a Restock row.
-const rows15 = await page.evaluate(() =>
-  [...document.querySelectorAll("[data-psc-ingredient]")].map((r) => [
-    r.getAttribute("data-psc-ingredient"),
-    r.getAttribute("data-psc-status"),
-  ]),
-);
-await shot(page, "grandma-l15-hand-over");
-check(
-  "6c Level 15's first play shows the hand-over (leftovers + top-up → Pre-Service Check) with food in the fridge",
-  !!handOver &&
-    /first shopping trip/i.test(handOver) &&
-    /My leftovers and your top-up got us this far/.test(handOver) &&
-    rows15.some(([id, st]) => id === "mozzarella" && st === "missing") &&
-    rows15.some(([id, st]) => id === "tomato" && st === "ok"),
-  { handOver, rows15 },
-);
-
-// ---------- 7. 320 px ----------
+// ---------- 5. 320 px ----------
 await page.setViewport({ width: 320, height: 568, deviceScaleFactor: 1 });
-await boot(page, at(13, {}, { inventory: L13, grandmasFridge: GIVEN }));
+await boot(page, at(3, 5000));
 await prepareToday();
 const fit = await page.evaluate(() => {
   const el = document.querySelector('[data-testid="pre-service-check"]');
-  const buttons = el ? [...el.querySelectorAll("button")].filter((b) => b.offsetParent) : [];
+  const buttons = el ? [...el.querySelectorAll("[data-psc-ingredient] button")] : [];
   return {
-    open: !!el,
+    sheet: !!el,
     overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
     small: buttons
-      .filter(
-        (b) => b.getBoundingClientRect().height < 47.5 && b.getAttribute("aria-label") !== "Close",
-      )
+      .filter((b) => /Restock/.test(b.textContent) && b.getBoundingClientRect().height < 47.5)
       .map((b) => b.textContent.trim()),
   };
 });
-await shot(page, "grandma-l13-320");
+await shot(page, "grandmas-fridge-retired-320");
 check(
-  "7 at 320×568 the sheet fits, no sideways scroll, buttons ≥ 48 px",
-  fit.open && fit.overflow <= 0 && fit.small.length === 0,
+  "5 at 320×568 the check fits, no sideways scroll, its Restock buttons ≥ 48 px",
+  fit.sheet && fit.overflow <= 0 && fit.small.length === 0,
   fit,
 );
 
 const errors = logs.filter((l) => /pageerror|error:/.test(l) && !/favicon/.test(l));
-check("8 no page errors", errors.length === 0, errors.slice(0, 5));
+check("6 no page errors", errors.length === 0, errors.slice(0, 5));
 
 await browser.close();
 const failed = results.filter((r) => !r.ok);
 console.log(
   failed.length
-    ? `GRANDMA'S FRIDGE E2E: ${failed.length} FAILURE(S)`
-    : "GRANDMA'S FRIDGE E2E: ALL PASS",
+    ? `GRANDMA'S FRIDGE (RETIRED) E2E: ${failed.length} FAILURE(S)`
+    : "GRANDMA'S FRIDGE (RETIRED) E2E: ALL PASS",
 );
 process.exit(failed.length ? 1 : 0);
