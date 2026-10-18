@@ -94,19 +94,19 @@ async function playLevel(title) {
 await boot(
   page,
   seedSave({
-    // From Level 4 a level's own order needs its stock (developer 2026-10-09): the
-    // fridge holds what Levels 13 and 14 use, as after the Level 13 top-up.
+    // A level's own order needs its stock (from Level 3): the fridge holds what Levels 13
+    // and 14 use (Italian Garden Plate, Garden Minestrone Base).
     business: {
       ...MOVED_IN_BUSINESS,
       inventory: Object.fromEntries(
-        Object.entries({ bread: 1, mushroom: 0.5, garlic: 0.25, zucchini: 1, carrot: 0.5 }).map(
+        Object.entries({ tomato: 2, zucchini: 2, basil: 1, onion: 2, carrot: 1 }).map(
           ([id, quantity]) => [id, { ingredientId: id, quantity, unitCost: 0, purchaseDay: 1 }],
         ),
       ),
     },
     credits: 500,
     // First levels (2026-10-09): every section is open from Level 11 in the restaurant
-    // build, so the test plays Levels 13 and 14 (was 3 and 4; stock is used from 15).
+    // build, so the test plays Levels 13 and 14.
     levelProgress: {
       currentLevelId: "level-13",
       highestUnlockedLevelId: "level-13",
@@ -117,7 +117,7 @@ await boot(
 );
 await sleep(800);
 const atStart = chunkRequests();
-const playedL13 = await playLevel("Mushroom Bruschetta");
+const playedL13 = await playLevel("Italian Garden Plate");
 check(
   "1 startup and the campaign (Kitchen, Order Board, Level 13 played and served) never load the Restaurant chunk",
   atStart === 0 && playedL13 && chunkRequests() === 0,
@@ -173,7 +173,7 @@ const market = /Knives/.test(await body()) && /Cutting Boards/.test(await body()
 check("3b the Market still works", market);
 
 // ---------- 4. Back to the campaign ----------
-const playedL14 = await playLevel("Zucchini Garden Plate");
+const playedL14 = await playLevel("Garden Minestrone Base");
 check("4 back in the campaign, Level 14 opens, plays and is served", playedL14);
 
 const errors = logs.filter((l) => /pageerror|error:/.test(l) && !/favicon/.test(l));

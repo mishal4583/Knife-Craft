@@ -78,7 +78,8 @@ check(
     /Next: pass The Little Bistro · Lv 20/.test(rank),
   rank,
 );
-await page.evaluate(() => document.querySelector('[data-testid="kitchen-rank"]')?.click());
+// The ranking card opens Progress (Achievements first while money waits there, 2026-10-18).
+await openSection(page, "Progress");
 await sleep(1200);
 const board = await page.evaluate(() => ({
   hero:
@@ -95,7 +96,7 @@ await sleep(400);
 const allRows = await page.evaluate(() => document.querySelectorAll("[data-city-rank]").length);
 await shot(page, "measures-city-leaderboard");
 check(
-  "1b the card opens Restaurant Progress: the city ranking and the guide around you; Show all lists 50",
+  "1b the card leads to Restaurant Progress: the city ranking and the guide around you; Show all lists 50",
   /#40 of 50/.test(board.hero) &&
     /Next: pass .*The Little Bistro at Level 20/.test(board.hero) &&
     board.you === "40" &&
