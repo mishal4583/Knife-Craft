@@ -14,6 +14,26 @@ node tools/e2e/<script>.mjs          # in another terminal (KC_URL overrides the
 Output (screenshots, JSON) goes to `tools/e2e/out/`; throwaway Chrome
 profiles to `tools/e2e/profile-*` (both gitignored).
 
+Tests without a build in their row are **classic-build** tests
+(`VITE_RESTAURANT_MODE=0 npx vite build --outDir <dir>`, serve it, point
+`KC_URL` at it); the rows marked restaurant run on the normal build.
+
+**Writing a test (2026-10-18)** — the harness follows the current game:
+
+- `seedSave` stamps `levelProgress.campaignVersion: 2` (the 150-level
+  numbers); a test of the 250-level migration passes
+  `campaignVersion: undefined`. `MOVED_IN_BUSINESS` carries restaurant
+  migration v2 (an older stamp re-runs the move-in and its starter crate).
+- Stock is used from Level 3: seed the fridge (`business.inventory`) with
+  the level's food unless the test is about buying it; from Level 16 a
+  service may need the free Mexican Chef (`business.restaurantStaff`).
+- The bottom bar is Kitchen · Market · Restaurant: `openSection(page, …)`
+  opens Inventory, the back office ("Business"), the Service Counter
+  ("Service") from the map and Progress from the Kitchen's ranking card.
+- `clickButton` opens a folded section first (the Kitchen's order card
+  hides "See all orders"); a row's first button may be its ⓘ, so click
+  Buy / Restock / Hire by name.
+
 | Script | What it checks |
 |---|---|
 | `restaurantname.mjs` | **Restaurant build**, the restaurant name (2026-10-17): a new player names it after the intro (Level 1 waits under the card), the name is saved cleaned; no card after a reload; an unnamed existing save is asked once (Keep → default); Settings changes it and the map's sign follows; 320 px fit. Runs with `launch({ nameCard: true })` — every other test gets a named seed save and an auto-answered card |
@@ -41,11 +61,11 @@ profiles to `tools/e2e/profile-*` (both gitignored).
 | `restaurantcover.mjs` | **Restaurant test build only**, covering a short service (2026-10-10, no more Grandma's lending): with rewarded ads (stubbed) Level 30 at $0 offers 🎬 Watch an ad only; a declined ad changes nothing and adds 💳 Supplier credit; a finished ad brings the missing ingredients free (no money, no ledger, nothing owed, placement `service_stock`); with no ads supplier credit at once (owed, no money moved), and finishing the level repays it (Level Complete "Supplier credit repaid", one ledger entry, wallet ≥ $0); 320×568 fit |
 | `restaurantlevelgoals.mjs` | **Restaurant test build only**, Levels 1–15 pass 3 (2026-10-09): Level 5's order card shows the customer's own line, the goal ("Clean, even cuts · best —") and the real checklist (Onion — peel / halve / slice); a page observer records it moving peel → halve → slice → all ticked with the scene; Level Complete's "⭐ Best prep" = the engine's grade of the saved best, wallet = ledger; the Order Board row shows the same stars; Level 7 (peel only) has a completion goal and no stars; Level 9's "What's in this dish?" lists only the garlic and changes nothing; the card fits at 320–430 px; Bruschetta Trio (6 steps) shows a compact checklist at 320 px |
 | `restaurantstock.mjs` | **Restaurant test build only** (`VITE_RESTAURANT_MODE=1 npx vite build --outDir <dir>`, serve it, point `KC_URL` at it): Level 5 has no check; Level 30 with an empty fridge opens the Pre-Service Check, Restock → Market preset to the missing units → Buy → back pill, START SERVICE; serving takes exactly the order's stock with only the settlement as a money entry; $0 → Grandma's pantry; 320×568 fit |
-| `paidorders.mjs` | Level 30 (2 orders): serve the 1st, leave, retry → the retry carries on, 2 settlements in all (not 3), completion reward once, paid entry cleared |
+| `paidorders.mjs` | Level 19 (Italian Service Night, 2 orders): serve the 1st, leave, retry → the retry carries on, 2 settlements in all (not 3), completion reward once, paid entry cleared |
 | `firstload.mjs` | **Restaurant build**, a brand-new player (W2): the intro is up before the cutting engine is requested and game_ready is sent during it, once; nothing runs under the intro (no canvas / HUD), Level 1's kitchen plate lies underneath; SKIP → Level 1 playable; a returning player sends game_ready once |
 | `legacy.mjs` | **Classic build** — THE LAST PAGE: finishing the 250th level plays it once (flag saved first), a tap moves a beat on, a pause holds it, the wallet and ledger don't move, no ad or Replay Bonus; Enter on BACK TO THE KITCHEN lands on the Kitchen, then the Level Complete card, then the Family Legacy banner once; a reload never replays it; a save that finished 250 before sees it once on load (320 / 390 / 768) |
 | `restaurantlegacy.mjs` | **Restaurant test build** — a finished restaurant save plays THE LAST PAGE once on load with Closing Time held behind it (shown after), no money change; never on the next launch; fits at 320 / 390 / 768 |
-| `finale.mjs` | The finale after the 100th level: a real Bridge pause holds its beat (animations frozen, taps ignored) and it resumes with the time left; "BACK TO THE KITCHEN" lands on Kitchen home; nothing paid twice |
+| `finale.mjs` | The finale after the 75th level: a real Bridge pause holds its beat (animations frozen, taps ignored) and it resumes with the time left; "BACK TO THE KITCHEN" lands on Kitchen home; nothing paid twice |
 | `resize.mjs` | Resizes/rotations never restart the game: Kitchen home, mid-cut (Level 8, peel done) and the served result panel survive 320×568 → 768×1024 → 430×900; Finish Level still completes once |
 | `introskip.mjs` | Opening intro: natural finish time, Skip story (double tap, mid-transition, button beat, last-timer race), button beats, reload, existing saves, 6 viewports, network hosts, console errors |
 | `introshots.mjs` | Captures every intro screen into `playgama/screenshots/intro/` |

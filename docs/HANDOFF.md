@@ -1,5 +1,30 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## Achievements you can find, a scroll cue, browser tests current (2026-10-18, `main`)
+
+- **Achievements** (developer: "hard to find which is unlocked … no arrow …
+  no highlight or sort"): the ready rewards sit together at the top (gold,
+  a red "!", Collect each or "Collect all"); "$X waiting" jumps there; the
+  lists below filter All / In progress / Earned, closest first, collected
+  last. The Kitchen's ranking card opens Achievements while money waits.
+  REFERENCE §10.
+- **Scroll cue** on every screen with the bottom bar (`kc/common/ScrollCue.tsx`):
+  "▾ More" while a list goes on below, "▴ Top" at the end.
+- **Game bugs found by the browser tests, fixed:** Level 2 (the $0
+  practice) showed no Level Complete card (no Grandma line, no "Inventory /
+  Market is open", no "Day 2 begins"); "Buy everything needed" in a supply
+  section bought only one item (each purchase overwrote the one before);
+  the order card overlapped the board at 320 px on a six-step dish.
+- **Economy check:** every economy suite passes; completionist $132k at
+  L150 (target $100k–$150k), every profile 150/150, prudent ≥ $458 with no
+  supplier credit. The COGS audit follows the redesigned recipes.
+- **Browser tests** (`tools/e2e`) follow the 150-level campaign and the
+  current navigation; see the README's "Writing a test" notes (seeds carry
+  `campaignVersion: 2` and migration v2; `openSection` for the map's
+  screens; `clickButton` unfolds folded cards). Grandma's-fridge e2e checks
+  the retired feature stays retired. `day_cleaner` still needs registering
+  on Playgama (the cabinet tool isn't connected here).
+
 ## Restaurant name (2026-10-17, `main`)
 
 - After the intro, before Level 1, the player names the restaurant (four

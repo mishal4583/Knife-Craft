@@ -1829,6 +1829,28 @@ not silently removed.
 
 ## 10. UI
 
+### Finding things: Achievements and the scroll cue (developer 2026-10-18)
+
+- **Achievements** (`kc/Achievements.tsx`): the rewards ready to collect
+  sit together at the top in "🎁 Ready to collect · n" (gold cards with a
+  red "!" and their Collect; "Collect all · $X" when there are two or more —
+  one `collectAchievement` each, one ledger entry each). The header's
+  "$X waiting to collect" is a button that scrolls there. Below, filter
+  chips All · In progress · Earned (≥ 48 px); each group lists in-progress
+  ones first (closest first), then not started, then the earned ones; a
+  ready one is never repeated there. The Kitchen's ranking card opens
+  Achievements itself while money waits (`collectableTotal > 0`),
+  Progress otherwise. e2e `achievements.mjs` 6–7.
+- **Scroll cue** (`kc/common/ScrollCue.tsx`, mounted in `BottomNav`): the
+  screens hide their scrollbars, so the screen's tallest vertical scroll
+  area gets "▾ More" while there is more below (a tap scrolls most of a
+  screen) and "▴ Top" at the end once well down; nothing when it fits;
+  hidden under a lock hint or Grandma's pointer. Every screen with the
+  bottom bar has it.
+- **Level Complete with no reward:** a restaurant first completion always
+  shows the card (Level 2's practice pays $0: "✓ Practice complete", with
+  Grandma's line, the opened sections and the new day).
+
 ### Restaurant name (developer 2026-10-17)
 
 `restaurant/restaurantName.ts`: `settings.restaurantName` (optional; absent
