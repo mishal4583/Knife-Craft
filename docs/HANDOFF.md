@@ -8,6 +8,9 @@
   interstitials stopped. Now the interstitial is decided first (3 levels
   done, 150 s since the last ad) and the bonus is offered only when it didn't
   show. `ad-bonuses-qa` E3, `adbonuses.mjs` 3a/3b. `BUILD_VERSION` 1.4.1.
+- Uploaded as `knifecraft-playgama-1.4.1` (id `cmve2clpwadmdmz0h3gxvkqay`, from
+  `f76a002`): check PASSED, Bridge 2.3.1 FOUND. Certification restarts on it;
+  the sandbox still serves 1.4.0 until the developer approves a publish.
 
 ## v1.4.0 uploaded to Playgama (2026-10-18)
 
