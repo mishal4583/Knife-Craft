@@ -341,7 +341,7 @@ Date.now = realDateNow;
   };
   const ad = cfg.advertisement;
   const ids = (l: Array<{ id: string }>) => l.map((p) => p.id).sort().join();
-  assert(ad.minimumDelayBetweenInterstitial === 120 && ad.interstitial.placementFallback === INTERSTITIAL_PLACEMENT && ad.rewarded.placementFallback === REWARDED_PLACEMENT && ids(ad.interstitial.placements) === [AD_PLACEMENT.levelCompleted, AD_PLACEMENT.businessDayEnd].sort().join() && ids(ad.rewarded.placements) === [AD_PLACEMENT.replayBonus, AD_PLACEMENT.rushRestock, AD_PLACEMENT.serviceStock, AD_PLACEMENT.serviceSupplies, AD_PLACEMENT.serviceTools, AD_PLACEMENT.dayCleaner].sort().join(), "E6: Bridge config — 120 s minimum between interstitials, every ad spot listed as its own placement (day_cleaner since 2026-10-17), fallbacks = the defaults");
+  assert(ad.minimumDelayBetweenInterstitial === 120 && ad.interstitial.placementFallback === INTERSTITIAL_PLACEMENT && ad.rewarded.placementFallback === REWARDED_PLACEMENT && ids(ad.interstitial.placements) === [AD_PLACEMENT.levelCompleted, AD_PLACEMENT.businessDayEnd].sort().join() && ids(ad.rewarded.placements) === [AD_PLACEMENT.replayBonus, AD_PLACEMENT.rushRestock, AD_PLACEMENT.serviceStock, AD_PLACEMENT.serviceSupplies, AD_PLACEMENT.serviceTools, AD_PLACEMENT.dayCleaner, AD_PLACEMENT.floatingCash, AD_PLACEMENT.levelBonus, AD_PLACEMENT.shortfallTopUp, AD_PLACEMENT.floorDouble, AD_PLACEMENT.dailyGift].sort().join(), "E6: Bridge config — 120 s minimum between interstitials, every ad spot listed as its own placement (day_cleaner since 2026-10-17; the five ad bonuses since 2026-10-18), fallbacks = the defaults");
 }
 
 // ===== F: production safety (source) =====

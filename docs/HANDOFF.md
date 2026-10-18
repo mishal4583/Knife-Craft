@@ -1,5 +1,24 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## Five ad bonuses (2026-10-18, `main`)
+
+- Developer: "build 1–5". From Level 3, each an optional rewarded ad with its
+  own placement and daily cap, all through one sheet (what it gives → 📺 Watch
+  / No thanks): **floating cash** over the Kitchen (6/day), **level bonus** +50%
+  after a first clear (3/day, replaces that break's interstitial), **short by**
+  top-up under "Not enough money" (2/day), **Second Floor ×2** (2/day) and the
+  **daily gift** (free, or 📺 doubled). One `rewarded-ad` entry per claim.
+  REFERENCE §2 / §7; QA `ad-bonuses-qa`, e2e `adbonuses.mjs`.
+- Economy: a player who never watches is unchanged except the free gift
+  (~$460 over the campaign); one who takes every offer at 10 levels a day ends
+  ~$19.5k (14.8%) above the $132k target (cap 20%).
+- Also: the Replay Bonus cap counts only Replay Bonuses; the scroll cue moved
+  to the middle of the bottom bar (it covered Business's 🗺️ Map button); the
+  browser harness seeds today's gift as taken.
+- Playgama: the five new placements (`floating_cash`, `level_bonus`,
+  `shortfall_topup`, `floor_double`, `daily_gift`) are in
+  `playgama-bridge-config.json`; the zip is built on the developer's word.
+
 ## Playgama analytics, Level 1's level messages (2026-10-18, `main`)
 
 - **Playgama cabinet check** (MCP connected): live archive

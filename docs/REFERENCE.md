@@ -120,8 +120,10 @@ create a second engine, and do not duplicate existing systems.
   `restaurant/serviceCover.ts`), granted only when Bridge reports the
   `rewarded` state. One placement per ad spot (`AD_PLACEMENT`, listed in
   the config): `level_completed`, `business_day_end`, `replay_bonus`,
-  `rush_restock`, `service_stock`, `service_supplies`, `service_tools`. Locally the mock
-  platform reports ads as unsupported.
+  `rush_restock`, `service_stock`, `service_supplies`, `service_tools`,
+  `day_cleaner`, and the five ad bonuses below (`floating_cash`, `level_bonus`,
+  `shortfall_topup`, `floor_double`, `daily_gift`). Locally the mock platform
+  reports ads as unsupported.
 - Level messages: `level_started` / `level_completed` (App play sessions
   and Business orders) and `level_paused` / `level_resumed` (in-game pause
   menu), with `{ world, level }` (world = `chapter-N`, `todays-special`,
@@ -151,6 +153,31 @@ create a second engine, and do not duplicate existing systems.
 - A new player's Level 1 (under the intro) opens its play session when the
   intro closes, so it sends `level_started` / `level_completed` like every
   other level (before 2026-10-18 it sent neither).
+- Ad bonuses (developer 2026-10-18, `src/game/ads/adBonuses.ts`): five optional
+  rewarded-ad cash offers, each with its own placement, from Level 3, all through
+  one sheet (`kc/ads/AdBonusSheet.tsx`: what it gives, 📺 Watch, No thanks; a tap
+  in its first 600 ms is ignored):
+  1. **Floating cash** (`floating_cash`, `kc/ads/FloatingCash.tsx`): a bag over the
+     Kitchen's shelves, 60 s into the session then every 3 min, gone after 15 s;
+     only when nothing else is on screen. 10% of the level's pay, $5–$50, 6 a day.
+  2. **Level bonus** (`level_bonus`): after a first clear's Level Complete card,
+     +50% of its reward (≤ $250), 3 a day. It is that break's one ad offer, so no
+     interstitial follows it.
+  3. **Short by** (`shortfall_topup`, `kc/ads/ShortfallOffer.tsx`): under a "Not
+     enough money" line (knives, boards, blacksmith, kitchen upgrades, Second
+     Floor machines and team, kitchen helpers, ingredients, supplies) when the gap
+     is ≤ 25% of the price and ≤ $150: the missing dollars, 2 a day. The player
+     then buys it themselves.
+  4. **Second Floor ×2** (`floor_double`): at the Pickup Counter, for $50+ waiting:
+     collect, then the same again (extra ≤ $250), 2 a day.
+  5. **Daily gift** (`daily_gift`): the first calm Kitchen or map of the day opens
+     it once (from Level 3): Take the gift (10% of the level's pay, $20–$60; one
+     `daily-reward` entry, works without ads) or 📺 take it twice; Later keeps it.
+  - Money: one `rewarded-ad` ledger entry per bonus (description
+    `knifecraft-adbonus-<kind>-<uuid>`); today's count per kind is read from those
+    entries, so the caps survive reloads and ledger trims. The Replay Bonus counts
+    only its own entries. Screens offer bonuses through `kc/ads/adBonusApi.ts`
+    (context; without a provider nothing shows).
 - Leaderboards: none yet (`sendScore` is a no-op); one needs a cabinet
   leaderboard and a config entry, both the developer's choice.
 
@@ -241,7 +268,7 @@ once). Restaurant browser tests run on the normal build, classic ones on a
 - Campaign / UX: `story-intro-qa`, `story-pause-qa`, `story-legacy-qa`, `audio-qa`,
   `campaign-paid-orders-qa`, `level-ux-qa`, `coaching-qa`,
   `knife-stroke-qa`, `cut-rules-qa`, `lazy-load-qa`, `unused-assets-qa`,
-  `playables-ads-qa`, `playgama-telemetry-qa`.
+  `playables-ads-qa`, `playgama-telemetry-qa`, `ad-bonuses-qa`.
 - Economy: `economy-v2-final-qa`, `economy-v2-qa`,
   `economy-v2-settlement-ledger-qa` (frozen baseline; some use `git diff`,
   run in this repo), `economy-v25-qa`, `economy-final-qa`.
@@ -1032,6 +1059,10 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   px) never restarts the game: `GameShell` keeps ONE wrapper and changes
   only its style (swapping the tree remounted everything).
 - `playables-ads-qa` — Bridge ads (interstitial policy, rewarded Replay Bonus).
+- `ad-bonuses-qa` — the five ad bonuses (§2): amounts, one entry per claim,
+  caps per kind and day (apart from the Replay Bonus's), the free daily gift,
+  ledger-trim survival, placements, and the economy bound (an every-offer
+  player at 10 levels a day: +$19.5k, 14.8% of the $132k target; ≤ 20% allowed).
 - `playgama-telemetry-qa` — the analytics events (§2): the progression
   funnel once per level, the event contract, `performance_sample`'s fields
   and values, only PlayablesSDK touches the Bridge, one version source.
@@ -1279,6 +1310,15 @@ preparation = PreparationScene; events = `events.ts`; platform =
   +2 h collect once, reload, Downstairs, widths 320 / 390 / 768).
 
 ## 7. ECONOMY RULES
+
+### Ad bonus money (developer 2026-10-18)
+
+The five ad bonuses (§2) are extra, on top of the campaign economy, like the
+Replay Bonus: the frozen baseline and the $100k–$150k completionist target are
+for a player who watches nothing (that player gets only the free daily gift,
+about $460 over the campaign). A player who takes every offer every day at 10
+levels a day ends about $19.5k (14.8%) richer; `ad-bonuses-qa` F1 keeps it
+≤ 20%.
 
 ### Economy for the 150-level campaign (developer 2026-10-16)
 

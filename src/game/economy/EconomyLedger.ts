@@ -104,10 +104,11 @@ export function appendLedgerEntry(
 /**
  * Recent "rewarded-ad" entries survive trimming: they ARE the record of
  * which Replay Bonuses were claimed today (replayBonus.ts derives the daily
- * cap and "already claimed" from them), so a busy day of 200+ other
- * transactions must not push them out and silently re-open the cap. 36 h
- * always covers "today" in any timezone; at most the daily cap's worth of
- * entries (x2) can be retained this way, so the window stays bounded.
+ * cap and "already claimed" from them, and adBonuses.ts its caps and the
+ * daily gift), so a busy day of 200+ other transactions must not push them
+ * out and silently re-open a cap. 36 h always covers "today" in any
+ * timezone; at most the daily caps' worth of entries (x2) can be retained
+ * this way, so the window stays bounded.
  */
 const RETAIN_REWARDED_AD_MS = 36 * 60 * 60 * 1000;
 
@@ -126,7 +127,10 @@ function trimLedger(entries: EconomyLedgerEntry[], now: number): EconomyLedgerEn
   if (entries.length <= MAX_LEDGER_ENTRIES) return entries;
   const retained = (e: EconomyLedgerEntry) =>
     PERMANENT_CATEGORIES.has(e.category) ||
-    (e.category === "rewarded-ad" && now - e.timestamp < RETAIN_REWARDED_AD_MS);
+    ((e.category === "rewarded-ad" ||
+      // The day's free welcome gift (ads/adBonuses.ts): its entry is today's "taken" record.
+      (e.category === "daily-reward" && !!e.description?.startsWith("knifecraft-daily-gift-"))) &&
+      now - e.timestamp < RETAIN_REWARDED_AD_MS);
   const keepCount = Math.max(0, MAX_LEDGER_ENTRIES - entries.filter(retained).length);
   const others = entries.filter((e) => !retained(e));
   const keptOthers = new Set(others.slice(others.length - keepCount));
@@ -211,7 +215,7 @@ export const LEDGER_CATEGORY_LABEL: Record<LedgerCategory, string> = {
   "refrigerator-maintenance": "Refrigerator Maintenance",
   "inspection-fine": "Inspection Fine",
   "business-revenue": "Business Order Revenue",
-  "rewarded-ad": "Replay Bonus (ad)",
+  "rewarded-ad": "Ad Bonus",
   "milestone-reward": "Milestone Reward",
   "family-legacy": "Family Legacy",
   "automation-purchase": "Second Floor Station",

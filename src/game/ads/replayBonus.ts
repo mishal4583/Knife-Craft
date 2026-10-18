@@ -70,8 +70,11 @@ export function newReplayBonusRewardId(levelId: string): string {
   return `${REWARD_ID_PREFIX}${levelId}-${uuid}`;
 }
 
+/** The Replay Bonus's own entries (the other ad bonuses — adBonuses.ts — share the category, not the cap). */
 function rewardEntries(save: SaveData): EconomyLedgerEntry[] {
-  return save.economyLedger.filter((e) => e.category === "rewarded-ad");
+  return save.economyLedger.filter(
+    (e) => e.category === "rewarded-ad" && !!e.description?.startsWith(REWARD_ID_PREFIX),
+  );
 }
 
 /** Has this exact offer's reward been committed to the save? (The only "claimed" signal.) */

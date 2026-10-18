@@ -90,6 +90,19 @@ export const MOVED_IN_BUSINESS = {
   },
 };
 
+/** The ledger entry that says today's free daily gift was taken (adBonuses.ts dailyGiftId). */
+export function GIFT_TAKEN_TODAY() {
+  const d = new Date();
+  const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return {
+    id: "seed-daily-gift",
+    timestamp: Date.now(),
+    category: "daily-reward",
+    amount: 20,
+    description: `knifecraft-daily-gift-${key}`,
+  };
+}
+
 export function seedSave(overrides = {}) {
   const completed = Array.from({ length: 9 }, (_, i) => `level-${i + 1}`);
   return {
@@ -103,7 +116,9 @@ export function seedSave(overrides = {}) {
       completedLevelIds: completed,
     },
     story: { introDone: true, milestoneMask: 1, finaleSeen: false },
-    economyLedger: [],
+    // Today's welcome gift (ads/adBonuses.ts, 2026-10-18) is already taken, so its sheet doesn't
+    // cover the Kitchen; adbonuses.mjs seeds a save without it on purpose.
+    economyLedger: [GIFT_TAKEN_TODAY()],
     ...overrides,
     // Seeds use the 150-level campaign's numbers (2026-10-15). Without the stamp the game
     // renumbers a save as a 250-level one; a test of that migration passes

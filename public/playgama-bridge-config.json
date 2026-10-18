@@ -16,7 +16,12 @@
                 { "id": "service_stock" },
                 { "id": "service_supplies" },
                 { "id": "service_tools" },
-                { "id": "day_cleaner" }
+                { "id": "day_cleaner" },
+                { "id": "floating_cash" },
+                { "id": "level_bonus" },
+                { "id": "shortfall_topup" },
+                { "id": "floor_double" },
+                { "id": "daily_gift" }
             ]
         }
     }

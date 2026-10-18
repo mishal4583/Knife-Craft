@@ -1,4 +1,5 @@
 import { Badge, KButton, Panel } from "./common/primitives";
+import { ShortfallOffer } from "./ads/ShortfallOffer";
 import { InfoTip, Points, StatChip } from "./common/InfoTip";
 import { cn } from "@/lib/utils";
 import type { SaveData } from "@/game/SaveManager";
@@ -168,6 +169,7 @@ export function MarketSecondFloor({
                       >
                         {locked ? `🔒 Level ${d.unlockLevel}` : `Buy ${formatUsd(d.price)}`}
                       </KButton>
+                      {locked ? null : <ShortfallOffer price={d.price} item={d.name} />}
                     </div>
                   </>
                 ) : next !== null ? (
@@ -198,6 +200,7 @@ export function MarketSecondFloor({
                       >
                         {`Upgrade ${formatUsd(next)}`}
                       </KButton>
+                      <ShortfallOffer price={next} item={d.name} />
                     </div>
                   </>
                 ) : (
@@ -266,6 +269,9 @@ export function MarketSecondFloor({
                         ? "Team full"
                         : `Hire ${formatUsd(def.price)}`}
                   </KButton>
+                  {owned > 0 && have < def.max ? (
+                    <ShortfallOffer price={def.price} item={def.name} />
+                  ) : null}
                 </div>
               </article>
             );

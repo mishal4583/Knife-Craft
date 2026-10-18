@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import { FloorLife } from "./FloorLife";
 import { FLOOR_LIFE_ALWAYS_PREVIEW, FLOOR_LIFE_PREVIEW } from "@/game/restaurant/floorLife";
 import { KButton } from "@/components/kc/common/primitives";
+import { useAdBonus } from "@/components/kc/ads/adBonusApi";
 import { formatUsd } from "@/game/money";
 import type { SaveData } from "@/game/SaveManager";
 import {
@@ -131,6 +132,7 @@ export function SecondFloorView({
   }, []);
   const [open, setOpen] = useState<ZoneId | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  const adBonus = useAdBonus();
 
   const floor = secondFloorOf(save);
   const waiting = floorEarnings(save, now);
@@ -199,6 +201,13 @@ export function SecondFloorView({
             >
               {waiting > 0 ? `Collect ${formatUsd(waiting)}` : "Nothing to collect yet"}
             </KButton>
+            {adBonus.floorDoubleFor(waiting) > 0 ? (
+              <div className="mt-2" data-testid="floor-double">
+                <KButton full onClick={adBonus.openFloorDouble}>
+                  {`📺 Collect ×2 · ${formatUsd(waiting + adBonus.floorDoubleFor(waiting))}`}
+                </KButton>
+              </div>
+            ) : null}
           </div>
           {onOpenMarket ? (
             <div className="mt-3">

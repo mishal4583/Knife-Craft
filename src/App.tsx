@@ -3,6 +3,23 @@ import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { Preparation, preloadPreparation } from "@/components/kc/game/lazyPreparation";
 import kitchenBg from "@/assets/kitchen-bg.jpg";
 import { ReplayBonusSheet, AdPlayingShield } from "@/components/kc/ReplayBonusSheet";
+import { AdBonusSheet, type AdBonusSheetState } from "@/components/kc/ads/AdBonusSheet";
+import { FloatingCash } from "@/components/kc/ads/FloatingCash";
+import { AdBonusContext, type AdBonusApi } from "@/components/kc/ads/adBonusApi";
+import {
+  AD_BONUSES_FROM_LEVEL,
+  adBonusOffer,
+  adBonusesLeftToday,
+  commitAdBonus,
+  dailyGiftDue,
+  floatingCashAmount,
+  floorDoubleAmount,
+  levelDoubleAmount,
+  shortfallAmount,
+  takeDailyGift,
+  type AdBonusKind,
+  type AdBonusOffer,
+} from "@/game/ads/adBonuses";
 import { maybeShowInterstitial } from "@/game/ads/interstitialPolicy";
 import {
   commitReplayBonus,
@@ -27,6 +44,7 @@ import {
   sendAnalyticsEvent,
   sendScore,
   type LevelContext,
+  type RewardedPlacement,
 } from "@/game/PlayablesSDK";
 import { levelNumber } from "@/game/levels/levelMastery";
 import { GameShell } from "@/components/kc/game/GameShell";
@@ -48,6 +66,7 @@ import type { SecondFloorAction } from "@/components/kc/restaurantMap/SecondFloo
 import {
   buyStation,
   collectFloor,
+  floorEarnings,
   hireFloorStaff,
   upgradeStation,
   type FloorResult,
@@ -575,6 +594,13 @@ export function App() {
   // (possible after the dead-request guard released the screen) — confirmed here.
   const [lateReplayBonus, setLateReplayBonus] = useState<number | null>(null);
   const [adActive, setAdActive] = useState(false);
+  // Ad bonuses (ads/adBonuses.ts, developer 2026-10-18): the one sheet's state, and the
+  // offer it holds (its reward id), mirrored in refs for the flow resuming after the ad.
+  const [adBonus, setAdBonus] = useState<AdBonusSheetState | null>(null);
+  const adBonusOfferRef = useRef<AdBonusOffer | null>(null);
+  const adBonusBusyRef = useRef(false);
+  /** The daily gift is offered once per session at most (it waits for a calm Kitchen). */
+  const dailyGiftOfferedRef = useRef(false);
   // Economy V2.5 — milestone rewards just paid, shown one at a time.
   const [milestoneNoticeQueue, setMilestoneNoticeQueue] = useState<MilestoneNotice[]>([]);
   // Rush Restock's ad path resumes after an await: it reads the CURRENT order
@@ -1037,6 +1063,139 @@ export function App() {
       dayCleanerAdBusyRef.current = false;
     }
   }
+
+  /* ── Ad bonuses (ads/adBonuses.ts) ──────────────────────────────────── */
+
+  const AD_BONUS_PLACEMENT: Record<AdBonusKind, RewardedPlacement> = {
+    floating_cash: AD_PLACEMENT.floatingCash,
+    level_double: AD_PLACEMENT.levelBonus,
+    shortfall: AD_PLACEMENT.shortfallTopUp,
+    floor_double: AD_PLACEMENT.floorDouble,
+    daily_gift: AD_PLACEMENT.dailyGift,
+  };
+
+  /** Are ad bonuses on offer at all: an ad platform, and the Market open (Level 3). */
+  function adBonusesOpen(s: SaveData | null): s is SaveData {
+    return (
+      !!s && rewardedAdsAvailable() && restaurantLevelOf(s.levelProgress) >= AD_BONUSES_FROM_LEVEL
+    );
+  }
+
+  /** Opens the sheet for one bonus of `kind` worth `amount` (nothing when it isn't on offer). */
+  function openAdBonus(kind: AdBonusKind, amount: number, item?: string): boolean {
+    const current = saveRef.current;
+    if (!adBonusesOpen(current) || adBonusBusyRef.current) return false;
+    const offer = adBonusOffer(current, kind, amount, new Date());
+    if (!offer) return false;
+    adBonusOfferRef.current = offer;
+    setAdBonus({ kind, amount, phase: "offer", ...(item ? { item } : {}) });
+    return true;
+  }
+
+  /** The day's welcome gift: the free part always, the ad doubling it when an ad can play. */
+  function openDailyGift(): boolean {
+    const current = saveRef.current;
+    if (!current) return false;
+    const now = new Date();
+    const free = dailyGiftDue(current, restaurantLevelOf(current.levelProgress), now);
+    if (free <= 0) return false;
+    const offer = adBonusesOpen(current) ? adBonusOffer(current, "daily_gift", free, now) : null;
+    adBonusOfferRef.current = offer;
+    setAdBonus({ kind: "daily_gift", amount: offer ? free : 0, free, phase: "offer" });
+    return true;
+  }
+
+  /** The daily gift's free "Take": one "daily-reward" entry, no ad. */
+  function takeDailyGiftFree() {
+    const current = saveRef.current;
+    if (!current || adBonusBusyRef.current) return;
+    const r = takeDailyGift(current, restaurantLevelOf(current.levelProgress), new Date());
+    if (r.ok) {
+      persist(r.save);
+      AudioManager.playSfx("coin");
+      setAdBonus((b) => (b ? { ...b, phase: "done", granted: r.amount } : b));
+    } else setAdBonus(null);
+  }
+
+  /**
+   * The ad-bonus transaction: the reward is committed ONLY after the Bridge
+   * reported `rewarded`, on the latest save, as ONE "rewarded-ad" entry
+   * (commitAdBonus). The daily gift's free part and a Second Floor collection
+   * are folded into the same save first. Any other outcome changes nothing.
+   */
+  async function watchAdBonus() {
+    const offer = adBonusOfferRef.current;
+    if (!offer || adBonusBusyRef.current) return;
+    adBonusBusyRef.current = true;
+    setAdBonus((b) => (b ? { ...b, phase: "waiting" } : b));
+    const fail = (failure: NonNullable<AdBonusSheetState["failure"]>) =>
+      setAdBonus((b) => (b ? { ...b, phase: "failed", failure } : b));
+    try {
+      const ad = await requestRewardedAd(offer.rewardId, AD_BONUS_PLACEMENT[offer.kind]);
+      if (ad.status !== "rewarded") {
+        fail(ad.status === "not-rewarded" ? "notRewarded" : "unavailable");
+        return;
+      }
+      // Read the authoritative save AFTER the ad — never the pre-ad closure.
+      const latest = saveRef.current;
+      if (!latest) return fail("unavailable");
+      const now = new Date();
+      let base = latest;
+      let granted = 0;
+      let amount = offer.amount;
+      if (offer.kind === "daily_gift") {
+        const gift = takeDailyGift(base, restaurantLevelOf(base.levelProgress), now);
+        if (gift.ok) {
+          base = gift.save;
+          granted += gift.amount;
+        }
+      } else if (offer.kind === "floor_double") {
+        const collected = collectFloor(base, now.getTime());
+        if (!collected.ok) return fail("unavailable");
+        base = collected.save;
+        granted += collected.amount;
+        // What the floor really held now (it may have grown while the ad played).
+        amount = floorDoubleAmount(collected.amount);
+      }
+      const commit = commitAdBonus(base, { ...offer, amount }, now);
+      if (!commit.ok) return fail(commit.reason === "dailyCapReached" ? "capReached" : "unavailable");
+      persist(commit.save);
+      AudioManager.playSfx("coin");
+      setAdBonus((b) => (b ? { ...b, phase: "done", granted: granted + amount } : b));
+    } finally {
+      adBonusBusyRef.current = false;
+    }
+  }
+
+  function closeAdBonus() {
+    if (adActive) return;
+    adBonusOfferRef.current = null;
+    setAdBonus(null);
+  }
+
+  /** What the screens may offer (AdBonusContext): the "short by" top-up and the Second Floor ×2. */
+  const adBonusApi: AdBonusApi = {
+    shortfallFor: (price) => {
+      const current = saveRef.current ?? save;
+      if (!adBonusesOpen(current)) return 0;
+      if (adBonusesLeftToday(current, "shortfall", new Date()) === 0) return 0;
+      return shortfallAmount(price, current.credits);
+    },
+    openShortfall: (price, item) => {
+      const current = saveRef.current;
+      if (current) openAdBonus("shortfall", shortfallAmount(price, current.credits), item);
+    },
+    floorDoubleFor: (waiting) => {
+      const current = saveRef.current ?? save;
+      if (!adBonusesOpen(current)) return 0;
+      if (adBonusesLeftToday(current, "floor_double", new Date()) === 0) return 0;
+      return floorDoubleAmount(waiting);
+    },
+    openFloorDouble: () => {
+      const current = saveRef.current;
+      if (current) openAdBonus("floor_double", floorDoubleAmount(floorEarnings(current, Date.now())));
+    },
+  };
 
   /** Restaurant → Suppliers: switch a standing order on or off (deliveries.ts). No money moves. */
   function setStandingOrderOn(kind: DeliveryKind, on: boolean) {
@@ -2088,6 +2247,9 @@ export function App() {
       setReplayFailure(null);
       return;
     }
+    // A first clear: "+50%" for an ad (ads/adBonuses.ts) — this break's one ad offer, so
+    // no interstitial follows it (never stacked). The sheet waits for Level Complete's card.
+    if (!wasReplay && openAdBonus("level_double", levelDoubleAmount(level))) return;
     maybeShowInterstitial(
       `level-finish:${level.id}:${playSessionRef.current.id}`,
       finalSave.levelProgress.completedLevelIds.length,
@@ -2740,6 +2902,38 @@ export function App() {
   useEffect(() => {
     if (storyEvent) AudioManager.playSfx("story");
   }, [storyEvent]);
+  // Ad bonuses: the home screens with nothing else on them — where the floating cash may
+  // drift in and the daily gift opens (never over a card, a sheet, a pointer or an ad).
+  const homeCalm =
+    !!save &&
+    (screen === "kitchen" || screen === "restaurant-map") &&
+    !showIntro &&
+    !storyEvent &&
+    !levelRewardNotice &&
+    !serviceCheckLevelId &&
+    !replayOffer &&
+    lateReplayBonus === null &&
+    !adBonus &&
+    !adActive &&
+    !closingShown &&
+    milestoneNoticeQueue.length === 0 &&
+    businessNoticeQueue.length === 0 &&
+    !(RESTAURANT_MODE && save.story.introDone && needsRestaurantName(save)) &&
+    !(
+      RESTAURANT_MODE &&
+      screen === "kitchen" &&
+      sectionToPoint(restaurantLevelOf(save.levelProgress), save.business.sectionsSeen ?? [])
+    );
+  // The day's welcome gift opens once, at the first calm moment of the session.
+  useEffect(() => {
+    if (!homeCalm || dailyGiftOfferedRef.current) return;
+    const t = window.setTimeout(() => {
+      if (openDailyGift()) dailyGiftOfferedRef.current = true;
+    }, 1200);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- openDailyGift reads saveRef
+  }, [homeCalm]);
+
   if (!save) {
     return (
       <GameShell>
@@ -3088,6 +3282,7 @@ export function App() {
           />
         ) : (
           <Suspense fallback={<LoadingScreen />}>
+            <AdBonusContext.Provider value={adBonusApi}>
             <ScreensRouter
               screen={screen}
               go={go}
@@ -3145,6 +3340,7 @@ export function App() {
               onStartBusinessService={startBusinessService}
               onEnterBusinessPreparation={enterBusinessPreparation}
             />
+            </AdBonusContext.Provider>
           </Suspense>
         )}
       </Suspense>
@@ -3350,6 +3546,31 @@ export function App() {
           kicker="Reward Granted"
           line={`${formatUsdChange(lateReplayBonus)} Replay Bonus`}
           onDismiss={() => setLateReplayBonus(null)}
+        />
+      ) : null}
+      {screen === "kitchen" ? (
+        <FloatingCash
+          amount={floatingCashAmount(restaurantLevelOf(save.levelProgress))}
+          active={
+            homeCalm &&
+            adBonusesOpen(save) &&
+            adBonusesLeftToday(save, "floating_cash", new Date()) > 0
+          }
+          onOpen={() =>
+            openAdBonus(
+              "floating_cash",
+              floatingCashAmount(restaurantLevelOf(save.levelProgress)),
+            )
+          }
+        />
+      ) : null}
+      {adBonus && !levelRewardNotice && !storyEvent && !showIntro ? (
+        <AdBonusSheet
+          state={adBonus}
+          canClose={!adActive}
+          onWatch={() => void watchAdBonus()}
+          onTakeFree={takeDailyGiftFree}
+          onClose={closeAdBonus}
         />
       ) : null}
       {adActive ? <AdPlayingShield /> : null}

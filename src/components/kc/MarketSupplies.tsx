@@ -9,6 +9,7 @@ import { InfoTip, StatChip } from "./common/InfoTip";
 import type { SaveData } from "@/game/SaveManager";
 import { formatUsd } from "@/game/money";
 import { notEnoughMoneyText } from "@/game/economy/wallet";
+import { ShortfallOffer } from "./ads/ShortfallOffer";
 import {
   SUPPLY_CATALOG,
   SUPPLY_PRICES_RETRIEVED,
@@ -389,6 +390,9 @@ export function MarketSupplies({
                   ? notEnoughMoneyText(quote.totalCost, save.credits)
                   : `${balanceText(save.credits)} → ${balanceText(quote.remainingCredits)}`}
               </p>
+              {quote.verdict === "insufficientFunds" ? (
+                <ShortfallOffer price={quote.totalCost} />
+              ) : null}
             </article>
           );
         })}

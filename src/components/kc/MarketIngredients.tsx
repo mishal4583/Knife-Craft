@@ -42,6 +42,7 @@ import {
   fridgeStatus,
 } from "@/game/business/inventoryAnalytics";
 import { notEnoughMoneyText } from "@/game/economy/wallet";
+import { ShortfallOffer } from "./ads/ShortfallOffer";
 import {
   DEFAULT_PURCHASE_QUANTITY,
   stepPurchaseQuantity,
@@ -428,6 +429,9 @@ export function MarketIngredients({
                               ? `You'll have ${balanceText(quote.remainingCredits)} remaining`
                               : `${balanceText(save.credits)} → ${balanceText(quote.remainingCredits)}`}
                     </p>
+                    {quote.verdict === "insufficientFunds" ? (
+                      <ShortfallOffer price={quote.totalCost} />
+                    ) : null}
                   </article>
                 );
               })}

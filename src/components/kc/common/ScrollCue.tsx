@@ -8,7 +8,8 @@ const EDGE_PX = 24;
  * show scroll up or down"). The screens hide their scrollbars, so a list
  * longer than the screen says so: "▾ More" while there is more below (a tap
  * moves down most of a screen), "▴ Top" once the player is well down and at
- * the end. It sits just above the bottom bar and finds the screen's own
+ * the end. It sits just above the bottom bar, centred (the corners hold the
+ * Business screens' "🗺️ Map" button), and finds the screen's own
  * scroll area (its tallest vertical scroll area), so every screen with the
  * bottom bar gets it. Nothing shows when the content fits.
  */
@@ -67,7 +68,7 @@ export function ScrollCue({ hidden = false }: { hidden?: boolean }) {
           data-testid="scroll-cue"
           data-scroll-cue={state}
           aria-label={state === "more" ? "Scroll down: more below" : "Back to the top"}
-          className="press anim-up absolute bottom-full right-3 mb-2 flex min-h-12 min-w-12 items-center justify-center gap-1 rounded-full border border-walnut-dark/40 bg-walnut-dark/85 px-3 font-ui text-[12.5px] font-extrabold text-ivory shadow-lift backdrop-blur-sm"
+          className="press anim-up absolute bottom-full left-1/2 mb-2 -translate-x-1/2 flex min-h-12 min-w-12 items-center justify-center gap-1 rounded-full border border-walnut-dark/40 bg-walnut-dark/85 px-3 font-ui text-[12.5px] font-extrabold text-ivory shadow-lift backdrop-blur-sm"
         >
           <span aria-hidden className="text-[15px] leading-none">
             {state === "more" ? "▾" : "▴"}

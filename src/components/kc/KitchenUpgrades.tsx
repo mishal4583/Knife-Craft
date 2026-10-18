@@ -12,6 +12,7 @@ import {
   type PurchaseKitchenUpgradeResult,
 } from "@/game/kitchen/KitchenUpgradeManager";
 import { formatUsd } from "@/game/money";
+import { ShortfallOffer } from "./ads/ShortfallOffer";
 import { notEnoughMoneyText } from "@/game/economy/wallet";
 import {
   isRestaurantSave,
@@ -122,6 +123,9 @@ export function KitchenUpgrades({
                     ? `${notEnoughMoneyText(kitchenTierPrice(selected, save), save.credits)} Balance ${formatUsd(save.credits)}.`
                     : "A permanent investment in your restaurant."}
                 </p>
+                {shortfall > 0 ? (
+                  <ShortfallOffer price={kitchenTierPrice(selected, save)} item={selected.name} />
+                ) : null}
               </>
             ) : state === "current" ? (
               <KButton full variant="sage" disabled>

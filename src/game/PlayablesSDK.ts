@@ -82,6 +82,16 @@ export const AD_PLACEMENT = {
   serviceTools: "service_tools",
   /** Rewarded: Restaurant → Cleanliness — a Cleaner for today (developer 2026-10-17). */
   dayCleaner: "day_cleaner",
+  /** Rewarded: the cash floating over the Kitchen / map (ads/adBonuses.ts, developer 2026-10-18). */
+  floatingCash: "floating_cash",
+  /** Rewarded: Level Complete — +50% of a first clear's reward. */
+  levelBonus: "level_bonus",
+  /** Rewarded: a purchase a little out of reach — the missing dollars. */
+  shortfallTopUp: "shortfall_topup",
+  /** Rewarded: Second Floor — collect ×2. */
+  floorDouble: "floor_double",
+  /** Rewarded: the daily welcome gift, doubled. */
+  dailyGift: "daily_gift",
 } as const;
 export type InterstitialPlacement =
   typeof AD_PLACEMENT.levelCompleted | typeof AD_PLACEMENT.businessDayEnd;
@@ -91,7 +101,12 @@ export type RewardedPlacement =
   | typeof AD_PLACEMENT.serviceStock
   | typeof AD_PLACEMENT.serviceSupplies
   | typeof AD_PLACEMENT.serviceTools
-  | typeof AD_PLACEMENT.dayCleaner;
+  | typeof AD_PLACEMENT.dayCleaner
+  | typeof AD_PLACEMENT.floatingCash
+  | typeof AD_PLACEMENT.levelBonus
+  | typeof AD_PLACEMENT.shortfallTopUp
+  | typeof AD_PLACEMENT.floorDouble
+  | typeof AD_PLACEMENT.dailyGift;
 /** The defaults (also the config's placementFallback values). */
 export const INTERSTITIAL_PLACEMENT: InterstitialPlacement = AD_PLACEMENT.levelCompleted;
 export const REWARDED_PLACEMENT: RewardedPlacement = AD_PLACEMENT.replayBonus;

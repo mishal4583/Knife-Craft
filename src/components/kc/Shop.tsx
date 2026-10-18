@@ -53,6 +53,7 @@ import {
   clearMarketSecondFloor, clearSupplyFocus,
 } from "./marketFocus";
 import { ledgerTotals, LEDGER_CATEGORY_LABEL } from "@/game/economy/EconomyLedger";
+import { ShortfallOffer } from "./ads/ShortfallOffer";
 import { notEnoughMoneyText } from "@/game/economy/wallet";
 import {
   getKnifeSharpness,
@@ -193,7 +194,14 @@ const categoryCopy: Record<ShopCategory, { title: string; description: string }>
 };
 
 type CardAction =
-  | { kind: "buy"; label: string; onClick: () => void; disabled?: boolean }
+  | {
+      kind: "buy";
+      label: string;
+      onClick: () => void;
+      disabled?: boolean;
+      /** The price (cents): a small shortfall gets the "📺 Watch · +$X" top-up (ads/adBonuses.ts). */
+      price?: number;
+    }
   | { kind: "equip"; onClick: () => void }
   | { kind: "equipped"; label?: string }
   | { kind: "locked"; label: string }
@@ -362,6 +370,7 @@ export function Shop({
                   : {
                       kind: "buy",
                       label: "Buy",
+                      price: k.price,
                       onClick: () =>
                         purchaseMessage(buyKnife(k.id), k.name, k.price, k.unlockLevel),
                     },
@@ -398,6 +407,7 @@ export function Shop({
                   : {
                       kind: "buy",
                       label: "Buy",
+                      price: b.price,
                       onClick: () =>
                         purchaseMessage(buyBoard(b.id), b.name, b.price, b.unlockLevel),
                     },
@@ -651,9 +661,12 @@ function ProductCard({ card }: { card: Card }) {
             <Badge tone="locked">🔒 {action.label.replace("Unlocks at Level", "Lv")}</Badge>
           </div>
         ) : (
-          <KButton full size="sm" onClick={action.onClick} disabled={action.disabled ?? false}>
-            {action.label}
-          </KButton>
+          <>
+            <KButton full size="sm" onClick={action.onClick} disabled={action.disabled ?? false}>
+              {action.label}
+            </KButton>
+            {action.price ? <ShortfallOffer price={action.price} item={card.name} /> : null}
+          </>
         )}
       </div>
     </article>
@@ -880,9 +893,12 @@ function Blacksmith({
                   {maxed ? "Mastered" : `Upgrade · ${formatUsd(cost ?? 0)}`}
                 </KButton>
                 {!maxed && save.credits < (cost ?? 0) && (
-                  <p className="text-center font-hand text-[14px] text-walnut/65">
-                    {notEnoughMoneyText(cost ?? 0, save.credits)}
-                  </p>
+                  <>
+                    <p className="text-center font-hand text-[14px] text-walnut/65">
+                      {notEnoughMoneyText(cost ?? 0, save.credits)}
+                    </p>
+                    <ShortfallOffer price={cost ?? 0} item={name} />
+                  </>
                 )}
               </div>
             </Panel>

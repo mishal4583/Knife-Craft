@@ -57,9 +57,12 @@ status line in HANDOFF; this file changes only when a RULE changes.
   `src/game/ads/interstitialPolicy.ts`. None before 3 completed levels, then
   ≥ 150 s apart.
 - **Rewarded ads:** Replay Bonus, Rush Restock, the Pre-Service Check
-  covers and the day's Cleaner (`day_cleaner`, developer 2026-10-17),
-  granted only on the `rewarded` state. One placement per spot
-  (`AD_PLACEMENT`).
+  covers, the day's Cleaner (`day_cleaner`, developer 2026-10-17) and the
+  five ad bonuses (`ads/adBonuses.ts`, developer 2026-10-18: floating cash,
+  level bonus, short by, Second Floor ×2, daily gift), granted only on the
+  `rewarded` state. One placement per spot (`AD_PLACEMENT`). Each says what
+  it gives before the ad, is never needed to progress, has a daily cap, and
+  pays with one `rewarded-ad` ledger entry.
 - **Level messages:** `level_started/completed/paused/resumed` with
   `{ world, level }`; no `level_failed`.
 - **Analytics** (2026-10-18): only through `sendAnalyticsEvent`

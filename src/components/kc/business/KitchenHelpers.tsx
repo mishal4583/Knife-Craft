@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { SaveData } from "@/game/SaveManager";
 import { Badge, KButton, Panel } from "../common/primitives";
+import { ShortfallOffer } from "../ads/ShortfallOffer";
 import { InfoTip } from "../common/InfoTip";
 import { Eyebrow } from "../common/Meters";
 import { cn } from "@/lib/utils";
@@ -32,12 +33,17 @@ export function KitchenHelpers({
   buyStaff: (id: string) => BuyStaffResult;
 }) {
   const [message, setMessage] = useState<string | null>(null);
+  /** The hire a "Not enough money" line is about (its small-gap ad top-up shows under it). */
+  const [short, setShort] = useState<{ price: number; name: string } | null>(null);
 
   function hire(id: string, name: string, price: number, unlockLevel: number) {
     const result = buyStaff(id);
+    setShort(null);
     if (result.ok) return setMessage(`✓ ${name} hired!`);
-    if (result.reason === "insufficientFunds")
+    if (result.reason === "insufficientFunds") {
+      setShort({ price, name });
       return setMessage(notEnoughMoneyText(price, save.credits));
+    }
     if (result.reason === "notUnlocked")
       return setMessage(`${name} unlocks at Level ${unlockLevel}.`);
     setMessage(`${name} couldn't be hired right now.`);
@@ -55,6 +61,7 @@ export function KitchenHelpers({
             {message}
           </p>
         ) : null}
+        {short ? <ShortfallOffer price={short.price} item={short.name} /> : null}
         <div className="mt-2 space-y-2">
           {STAFF_CATALOG.map((st) => {
             const state = getStaffPurchaseState(save, st.id);
