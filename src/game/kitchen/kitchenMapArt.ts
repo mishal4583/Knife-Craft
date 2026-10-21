@@ -29,9 +29,5 @@ export function cleanlinessRoomImageUrl(
   area: CleanArea,
   upgradeId: string | null | undefined,
 ): string {
-  if (area === "restroom") {
-    return `${import.meta.env.BASE_URL}cleanliness/restaurant-map/restroom-premium.webp`;
-  }
-
-  return `${import.meta.env.BASE_URL}cleanliness/restaurant-map/${area}-${kitchenMapArtStage(upgradeId)}.webp`;
+  return `${import.meta.env.BASE_URL}cleanliness/interactive/${area}-${kitchenMapArtStage(upgradeId)}.webp`;
 }

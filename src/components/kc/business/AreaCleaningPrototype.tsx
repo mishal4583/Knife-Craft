@@ -169,10 +169,8 @@ export function AreaCleaningPrototype({
   const copy = TASK_COPY[task];
   const dimensions = SCENE_SIZE[area];
   const roomTitle = area === "kitchen" ? "Kitchen" : area === "dining" ? "Dining area" : "Restroom";
-  const stageWidthLimit = Math.max(180, Math.min(roomWide ? 448 : 436, gameViewport.width - 32));
-  const stageHeightLimit = roomWide
-    ? Math.max(210, Math.min(390, gameViewport.height * 0.42))
-    : Math.max(220, gameViewport.height * 0.58);
+  const stageWidthLimit = Math.max(180, gameViewport.width);
+  const stageHeightLimit = Math.max(320, gameViewport.height);
   const stageScale = Math.min(stageWidthLimit / dimensions.width, stageHeightLimit / dimensions.height);
   const stageDisplay = { width: dimensions.width * stageScale, height: dimensions.height * stageScale };
   const availableTools = roomWide
@@ -191,11 +189,15 @@ export function AreaCleaningPrototype({
     const target = document.querySelector<HTMLElement>("[data-game-content]");
     setPortalTarget(target);
     if (!target) return;
-    const measure = () => setGameViewport({ width: target.clientWidth || 540, height: target.clientHeight || 960 });
+    const measure = () => {
+      setGameViewport({ width: target.clientWidth || 540, height: target.clientHeight || 960 });
+    };
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(target);
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+    };
   }, []);
 
   // Paint the stains once, set up the effects layer; clean everything up on close.
@@ -443,13 +445,69 @@ export function AreaCleaningPrototype({
       onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}
     >
       <section
-        className="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden border border-[#d5a65a] bg-[#fff3d9]"
+        className="relative mx-auto my-auto h-auto max-h-full min-h-0 min-w-0 overflow-hidden bg-[#fff3d9] shadow-[0_24px_90px_rgba(0,0,0,.5)] ring-1 ring-[#d5a65a]"
+        style={{ width: stageDisplay.width, height: stageDisplay.height, aspectRatio: "9 / 16" }}
         role="dialog"
         aria-modal="true"
         aria-labelledby={`clean-title-${area}`}
         data-testid={`${area}-cleaning-prototype`}
       >
-        <header className="relative z-20 flex shrink-0 items-center gap-2.5 border-b border-[#dfc79e] bg-[linear-gradient(135deg,#fff9e9,#f0d7a9)] px-3 py-2.5">
+        <div
+          className="absolute left-1/2 top-1/2 z-0 shrink-0 overflow-hidden bg-[#38261b] shadow-inner ring-1 ring-[#89603e]"
+          style={{ ...stageDisplay, transform: "translate(-50%, -50%)", touchAction: "none", overscrollBehavior: "contain" }}
+          data-testid="cleaning-stage"
+        >
+          <img
+            src={image}
+            alt={`${roomTitle} from the current restaurant map`}
+            className="block h-full w-full select-none object-fill transition-[filter] duration-300"
+            style={{ filter: `saturate(${0.82 + 0.18 * shine}) brightness(${0.92 + 0.1 * shine})` }}
+            draggable={false}
+          />
+          <canvas
+            ref={canvasRef}
+            className="absolute inset-0 h-full w-full touch-none overscroll-contain"
+            style={{ touchAction: "none", overscrollBehavior: "contain" }}
+            onPointerDown={handleDown}
+            onPointerMove={handleMove}
+            onPointerUp={handleUp}
+            onPointerCancel={handleUp}
+            onLostPointerCapture={handleUp}
+            data-testid="cleaning-dirt"
+            data-stains={stains.length}
+            aria-label={`Drag the ${cleaningTool.name} over the dirt in the ${roomTitle.toLowerCase()}`}
+          />
+          <canvas ref={fxCanvasRef} className="pointer-events-none absolute inset-0 h-full w-full" data-testid="cleaning-fx" aria-hidden />
+          <span
+            ref={cursorRef}
+            className="pointer-events-none absolute left-0 top-0 text-[34px] leading-none opacity-0 drop-shadow-[0_3px_3px_rgba(40,20,5,.45)]"
+            aria-hidden
+          >
+            {cleaningTool.icon}
+          </span>
+          {streak >= 2 && phase === "play" ? (
+            <span key={streak} className="kc-clean-pop pointer-events-none absolute right-2 top-[24%] rounded-full border border-white/80 bg-[#6b3d20]/90 px-2.5 py-1 font-ui text-[13px] font-black text-[#ffe9b0] shadow" data-testid="cleaning-streak" data-streak={streak}>
+              ✨ Streak ×{streak}
+            </span>
+          ) : null}
+          {toast ? (
+            <div className="pointer-events-none absolute inset-x-0 top-[185px] flex justify-center">
+              <span key={toast.key} className="kc-clean-toast rounded-full bg-white/95 px-3 py-1 font-display text-[15px] font-black text-walnut-dark shadow" data-testid="cleaning-milestone">{toast.text}</span>
+            </div>
+          ) : null}
+          {!scrubbing && progress === 0 ? <span className="pointer-events-none absolute bottom-[150px] left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border border-white/70 bg-[#fff7e6]/95 px-2.5 py-1 font-ui text-[10px] font-extrabold text-walnut-dark shadow sm:text-[12px]">{cleaningTool.icon} Scrub the dirt away</span> : null}
+          {phase === "spotless" ? (
+            <div className="absolute inset-0 grid place-items-center bg-[radial-gradient(circle,rgba(255,250,230,.55),rgba(255,250,230,0)_70%)]" data-testid="cleaning-spotless">
+              <span className="kc-clean-sheen" aria-hidden />
+              <div className="kc-clean-banner rounded-2xl border-2 border-[#e7c37a] bg-[#fffaf0]/95 px-5 py-3 text-center shadow-lg">
+                <p className="font-display text-[26px] font-black leading-none text-walnut-dark">✨ Spotless! ✨</p>
+                {result ? <p className="mt-1 font-ui text-[12px] font-bold text-walnut/70">{formatTime(result.time)}{result.best >= 2 ? ` · best streak ×${result.best}` : ""}</p> : null}
+                <KButton size="sm" variant="sage" className="mt-2 min-h-11 px-5" onClick={finish}>Done ✓</KButton>
+              </div>
+            </div>
+          ) : null}
+        </div>
+        <header className="absolute inset-x-0 top-0 z-20 flex items-center gap-2.5 border-b border-[#dfc79e]/70 bg-[linear-gradient(135deg,rgba(255,249,233,.94),rgba(240,215,169,.88))] px-3 py-2.5 shadow-sm backdrop-blur-md">
           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#6b3d20] text-[22px] text-[#fff2d6] shadow">{area === "kitchen" ? "👨‍🍳" : area === "dining" ? "🍽️" : "🚻"}</span>
           <div className="min-w-0 flex-1">
             <h2 id={`clean-title-${area}`} className="font-display text-[18px] font-black leading-tight text-walnut-dark">
@@ -464,35 +522,35 @@ export function AreaCleaningPrototype({
         </header>
         {previewOnly ? <span className="sr-only" data-testid="cleaning-test-mode">Practice only. Progress and supplies are not saved.</span> : null}
         {roomWide ? (
-          <div className="shrink-0 border-b border-[#e4d1ad] bg-[#f9edcf] px-2.5 py-2">
-            <div className="mb-1.5 flex items-center justify-between gap-2">
-              <span className="font-ui text-[10px] font-black uppercase tracking-[.12em] text-walnut/65">Choose equipment</span>
-              <span className="font-ui text-[10px] font-semibold text-walnut/60">Match tool to mess</span>
+          <div className="absolute inset-x-2 top-[70px] z-20 rounded-xl border border-[#dfc79e]/80 bg-[#fff7e6]/85 p-1.5 shadow-md backdrop-blur-md">
+            <div className="mb-1 flex items-center justify-between gap-2 px-1">
+              <span className="font-ui text-[9px] font-black uppercase tracking-[.12em] text-walnut/65">Choose tool</span>
+              <span className="font-ui text-[9px] font-semibold text-walnut/60">Match tool to mess</span>
             </div>
-            <div className="grid grid-cols-2 gap-1.5 min-[360px]:grid-cols-3">
+            <div className="grid grid-cols-3 gap-1">
               {availableTools.map((tool) => (
                 <button
                   key={tool.id}
                   type="button"
                   onClick={() => selectTool(tool.id)}
                   aria-pressed={activeTool === tool.id}
-                  className={`flex min-h-[48px] items-center gap-1.5 rounded-xl border px-1.5 py-1 text-left shadow-sm transition ${activeTool === tool.id ? "border-[#a3602c] bg-[#6b3d20] text-[#fff4dc] ring-1 ring-[#d7a85a]" : "border-[#d9c39a] bg-[#fffaf0] text-walnut-dark hover:bg-white"}`}
+                  className={`flex min-h-9 items-center justify-center gap-1 rounded-lg border px-1 py-1 text-center shadow-sm transition ${activeTool === tool.id ? "border-[#a3602c] bg-[#6b3d20] text-[#fff4dc] ring-1 ring-[#d7a85a]" : "border-[#d9c39a] bg-[#fffaf0] text-walnut-dark hover:bg-white"}`}
                 >
-                  <span className="shrink-0 text-[18px]" aria-hidden>{tool.icon}</span>
-                  <span className="min-w-0"><span className="block truncate font-ui text-[11px] font-black leading-tight">{tool.name}</span><span className={`block truncate font-ui text-[10px] leading-tight ${activeTool === tool.id ? "text-[#f4d8a1]" : "text-walnut/60"}`}>{tool.use}</span></span>
+                  <span className="shrink-0 text-[16px]" aria-hidden>{tool.icon}</span>
+                  <span className="min-w-0 truncate font-ui text-[10px] font-black leading-tight">{tool.name}</span>
                 </button>
               ))}
             </div>
           </div>
         ) : availableTools.length > 1 ? (
-          <div className="flex shrink-0 justify-center gap-2 border-b border-[#e4d1ad] bg-[#f9edcf] px-2.5 py-2">
+          <div className="absolute inset-x-2 top-[70px] z-20 flex justify-center gap-2 rounded-xl border border-[#dfc79e]/80 bg-[#fff7e6]/85 px-2 py-1.5 shadow-md backdrop-blur-md">
             {availableTools.map((tool) => (
               <button
                 key={tool.id}
                 type="button"
                 onClick={() => selectTool(tool.id)}
                 aria-pressed={activeTool === tool.id}
-                className={`flex min-h-12 items-center gap-1.5 rounded-xl border px-3 font-ui text-[12px] font-black ${activeTool === tool.id ? "border-[#a3602c] bg-[#6b3d20] text-[#fff4dc]" : "border-[#d9c39a] bg-[#fffaf0] text-walnut-dark"}`}
+                className={`flex min-h-9 items-center gap-1 rounded-xl border px-2 font-ui text-[10px] font-black ${activeTool === tool.id ? "border-[#a3602c] bg-[#6b3d20] text-[#fff4dc]" : "border-[#d9c39a] bg-[#fffaf0] text-walnut-dark"}`}
               >
                 <span aria-hidden className="text-[18px]">{tool.icon}</span>
                 {tool.name}
@@ -500,99 +558,29 @@ export function AreaCleaningPrototype({
             ))}
           </div>
         ) : null}
-        <div className="flex min-h-0 flex-1 items-center justify-center px-2 py-2">
-          <div
-            className="relative shrink-0 overflow-hidden rounded-xl border border-[#89603e] bg-[#38261b] shadow-inner sm:rounded-2xl"
-            style={{ ...stageDisplay, touchAction: "none", overscrollBehavior: "contain" }}
-            data-testid="cleaning-stage"
-          >
-            <img
-              src={image}
-              alt={`${roomTitle} from the current restaurant map`}
-              className="block h-full w-full select-none object-fill transition-[filter] duration-300"
-              style={{ filter: `saturate(${0.82 + 0.18 * shine}) brightness(${0.92 + 0.1 * shine})` }}
-              draggable={false}
-            />
-            <canvas
-              ref={canvasRef}
-              className="absolute inset-0 h-full w-full touch-none overscroll-contain"
-              style={{ touchAction: "none", overscrollBehavior: "contain" }}
-              onPointerDown={handleDown}
-              onPointerMove={handleMove}
-              onPointerUp={handleUp}
-              onPointerCancel={handleUp}
-              onLostPointerCapture={handleUp}
-              data-testid="cleaning-dirt"
-              data-stains={stains.length}
-              aria-label={`Drag the ${cleaningTool.name} over the dirt in the ${roomTitle.toLowerCase()}`}
-            />
-            <canvas ref={fxCanvasRef} className="pointer-events-none absolute inset-0 h-full w-full" data-testid="cleaning-fx" aria-hidden />
-            <span
-              ref={cursorRef}
-              className="pointer-events-none absolute left-0 top-0 text-[34px] leading-none opacity-0 drop-shadow-[0_3px_3px_rgba(40,20,5,.45)]"
-              aria-hidden
-            >
-              {cleaningTool.icon}
-            </span>
-            {streak >= 2 && phase === "play" ? (
-              <span
-                key={streak}
-                className="kc-clean-pop pointer-events-none absolute right-2 top-2 rounded-full border border-white/80 bg-[#6b3d20]/90 px-2.5 py-1 font-ui text-[13px] font-black text-[#ffe9b0] shadow"
-                data-testid="cleaning-streak"
-                data-streak={streak}
-              >
-                ✨ Streak ×{streak}
-              </span>
-            ) : null}
-            {toast ? (
-              <div className="pointer-events-none absolute inset-x-0 top-2 flex justify-center">
-                <span key={toast.key} className="kc-clean-toast rounded-full bg-white/95 px-3 py-1 font-display text-[15px] font-black text-walnut-dark shadow" data-testid="cleaning-milestone">
-                  {toast.text}
-                </span>
-              </div>
-            ) : null}
-            {!scrubbing && progress === 0 ? <span className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border border-white/70 bg-[#fff7e6]/95 px-2.5 py-1 font-ui text-[10px] font-extrabold text-walnut-dark shadow sm:bottom-3 sm:text-[12px]">{cleaningTool.icon} Scrub the dirt away</span> : null}
-            {phase === "spotless" ? (
-              <div className="absolute inset-0 grid place-items-center bg-[radial-gradient(circle,rgba(255,250,230,.55),rgba(255,250,230,0)_70%)]" data-testid="cleaning-spotless">
-                <span className="kc-clean-sheen" aria-hidden />
-                <div className="kc-clean-banner rounded-2xl border-2 border-[#e7c37a] bg-[#fffaf0]/95 px-5 py-3 text-center shadow-lg">
-                  <p className="font-display text-[26px] font-black leading-none text-walnut-dark">✨ Spotless! ✨</p>
-                  {result ? (
-                    <p className="mt-1 font-ui text-[12px] font-bold text-walnut/70">
-                      {formatTime(result.time)}
-                      {result.best >= 2 ? ` · best streak ×${result.best}` : ""}
-                    </p>
-                  ) : null}
-                  <KButton size="sm" variant="sage" className="mt-2 min-h-11 px-5" onClick={finish}>
-                    Done ✓
-                  </KButton>
-                </div>
-              </div>
-            ) : null}
-          </div>
-        </div>
-        <div className="relative z-20 shrink-0 border-t border-[#e4d1ad] bg-[#fff3d9]/95 p-2.5 sm:p-3">
-          <p className={`mb-1.5 flex min-h-[30px] items-center justify-center rounded-lg border px-2 py-1.5 text-center font-ui text-[10.5px] font-extrabold ${toolHint ? "border-[#d89d52]/60 bg-[#fff9e8] text-[#8e5423]" : "border-transparent bg-transparent text-transparent"}`} role="status" aria-live="polite">{toolHint ?? " "}</p>
-          <div className="mb-1 flex items-center justify-between font-ui text-[12px] font-extrabold text-walnut-dark">
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 bg-[linear-gradient(0deg,rgba(255,243,217,.98),rgba(255,243,217,.9)_72%,rgba(255,243,217,0))] px-2.5 pb-[max(.625rem,env(safe-area-inset-bottom))] pt-2 sm:px-3">
+          <div className="pointer-events-auto">
+          {toolHint ? <p className="mb-1 flex min-h-6 items-center justify-center rounded-lg border border-[#d89d52]/60 bg-[#fff9e8]/95 px-2 py-1 text-center font-ui text-[10.5px] font-extrabold text-[#8e5423]" role="status" aria-live="polite">{toolHint}</p> : null}
+          <div className="mb-1 flex items-center justify-between font-ui text-[11px] font-extrabold text-walnut-dark">
             <span data-testid="cleaning-stains-left">
               {stainsLeft > 0 ? `🧼 ${stainsLeft} ${stainsLeft === 1 ? "stain" : "stains"} left` : "✨ All clean"}
             </span>
             <span className="text-walnut/60">{cleaningTool.icon} {cleaningTool.name}</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="h-3 flex-1 overflow-hidden rounded-full bg-[#d9c5a5]" role="progressbar" aria-label={`${roomTitle} cleaning progress`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}>
+            <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-[#d9c5a5]" role="progressbar" aria-label={`${roomTitle} cleaning progress`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}>
               <div className="kc-clean-bar h-full rounded-full transition-[width] duration-150" style={{ width: `${progress}%` }} />
             </div>
             <span className="w-10 text-right font-ui text-[12px] font-black text-walnut-dark">{progress}%</span>
           </div>
-          <p className="mt-1 flex min-h-[30px] items-center justify-center text-center font-hand text-[12px] leading-tight text-walnut/70">
+          <p className="mt-1 flex min-h-6 items-center justify-center text-center font-hand text-[11px] leading-tight text-walnut/70">
             {scrubbing
               ? "Keep scrubbing. Tough stains take a few rubs."
               : roomWide
                 ? `${cleaningTool.name} · ${cleaningTool.use} · switch tools as needed`
                 : `Rub with the ${cleaningTool.name.toLowerCase()} until each stain is gone.`}
           </p>
-          <KButton full variant="cream" className="mt-2 min-h-10 rounded-xl text-[12px]" onClick={onClose} disabled={phase !== "play"}>{roomWide ? "Close practice" : "Cancel cleaning"}</KButton>
+          </div>
         </div>
       </section>
     </div>

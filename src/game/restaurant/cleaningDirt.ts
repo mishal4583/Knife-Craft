@@ -51,9 +51,12 @@ export type Stain = {
 export type DirtMark = { point: Point; task: TaskKind; tool: CleaningToolId; stain: number };
 
 export const SCENE_SIZE: Record<CleanArea, { width: number; height: number }> = {
-  kitchen: { width: 510, height: 520 },
-  dining: { width: 555, height: 370 },
-  restroom: { width: 510, height: 340 },
+  // Every interactive room uses the same portrait 9:16 coordinate space as
+  // the full-screen art. Keep image and canvas bounds identical so scrubbing
+  // never drifts on mobile or desktop.
+  kitchen: { width: 540, height: 960 },
+  dining: { width: 540, height: 960 },
+  restroom: { width: 540, height: 960 },
 };
 
 export const BRUSH_RADIUS = 30;
@@ -81,43 +84,43 @@ export const TOUGHNESS: Record<StainKind, number> = {
 
 export const DINING_TABLE_CENTERS: Record<KitchenMapArtStage, Point[]> = {
   humble: [
-    { x: 145, y: 220 },
-    { x: 410, y: 220 },
+    { x: 175, y: 300 },
+    { x: 365, y: 650 },
   ],
   growing: [
-    { x: 145, y: 88 },
-    { x: 410, y: 88 },
-    { x: 278, y: 270 },
+    { x: 170, y: 295 },
+    { x: 370, y: 295 },
+    { x: 270, y: 660 },
   ],
   established: [
-    { x: 145, y: 88 },
-    { x: 410, y: 88 },
-    { x: 145, y: 230 },
-    { x: 410, y: 230 },
+    { x: 170, y: 295 },
+    { x: 370, y: 295 },
+    { x: 170, y: 620 },
+    { x: 370, y: 620 },
   ],
   "neighborhood-cafe": [
-    { x: 145, y: 90 },
-    { x: 410, y: 90 },
-    { x: 88, y: 282 },
-    { x: 278, y: 282 },
-    { x: 470, y: 282 },
+    { x: 170, y: 295 },
+    { x: 370, y: 295 },
+    { x: 170, y: 490 },
+    { x: 370, y: 490 },
+    { x: 270, y: 760 },
   ],
   "flourishing-cafe": [
-    { x: 145, y: 88 },
-    { x: 410, y: 88 },
-    { x: 145, y: 232 },
-    { x: 410, y: 232 },
+    { x: 170, y: 295 },
+    { x: 370, y: 295 },
+    { x: 170, y: 630 },
+    { x: 370, y: 630 },
   ],
   grand: [
-    { x: 105, y: 80 },
-    { x: 280, y: 80 },
-    { x: 455, y: 80 },
-    { x: 105, y: 190 },
-    { x: 280, y: 190 },
-    { x: 455, y: 190 },
-    { x: 105, y: 300 },
-    { x: 280, y: 300 },
-    { x: 455, y: 300 },
+    { x: 100, y: 295 },
+    { x: 270, y: 295 },
+    { x: 440, y: 295 },
+    { x: 100, y: 490 },
+    { x: 270, y: 490 },
+    { x: 440, y: 490 },
+    { x: 100, y: 750 },
+    { x: 270, y: 750 },
+    { x: 440, y: 750 },
   ],
 };
 
@@ -168,21 +171,22 @@ export function dirtZones(area: CleanArea, task: TaskKind, stage: KitchenMapArtS
   if (area === "kitchen") {
     if (task === "sweep-line")
       return [
-        { x: 86, y: 190, w: 48, h: 270 },
-        { x: 378, y: 190, w: 42, h: 235 },
-        { x: 168, y: 375, w: 210, h: 38 },
+        { x: 38, y: 350, w: 105, h: 440 },
+        { x: 397, y: 350, w: 105, h: 440 },
+        { x: 145, y: 720, w: 250, h: 70 },
       ];
     if (task === "deep-kitchen")
       return [
-        { x: 95, y: 75, w: 330, h: 125 },
-        { x: 150, y: 185, w: 245, h: 175 },
+        { x: 48, y: 270, w: 444, h: 120 },
+        { x: 120, y: 385, w: 300, h: 285 },
+        { x: 40, y: 660, w: 460, h: 140 },
       ];
     if (task === "equipment")
       return [
-        { x: 95, y: 75, w: 330, h: 125 },
-        { x: 170, y: 205, w: 205, h: 125 },
+        { x: 55, y: 270, w: 430, h: 125 },
+        { x: 135, y: 390, w: 270, h: 245 },
       ];
-    return [{ x: 105, y: 95, w: 315, h: 105 }];
+    return [{ x: 55, y: 270, w: 430, h: 125 }];
   }
   if (area === "dining") {
     const tables = DINING_TABLE_CENTERS[stage];
@@ -201,9 +205,9 @@ export function dirtZones(area: CleanArea, task: TaskKind, stage: KitchenMapArtS
         w: 531,
         h: Math.max(20, rows[i + 1]! - row - 90),
       })),
-      { x: 12, y: last + 48, w: 531, h: Math.max(20, dimensions.height - last - 48) },
-      { x: 12, y: 35, w: 44, h: dimensions.height - 70 },
-      { x: 500, y: 35, w: 43, h: dimensions.height - 70 },
+      { x: 12, y: last + 48, w: 531, h: Math.max(20, Math.min(790, dimensions.height) - last - 48) },
+      { x: 12, y: 150, w: 44, h: 620 },
+      { x: 500, y: 150, w: 31, h: 620 },
     ];
     if (task === "spill") {
       const c = spillCenter(stage);
@@ -215,23 +219,24 @@ export function dirtZones(area: CleanArea, task: TaskKind, stage: KitchenMapArtS
   }
   if (task === "restroom-floor")
     return [
-      { x: 112, y: 142, w: 258, h: 145 },
-      { x: 285, y: 254, w: 115, h: 44 },
+      { x: 55, y: 425, w: 420, h: 370 },
+      { x: 190, y: 335, w: 185, h: 115 },
     ];
   if (task === "restroom-disinfect")
     return [
-      { x: 444, y: 70, w: 34, h: 96 }, // mirror
-      { x: 386, y: 105, w: 43, h: 42 }, // upper sink and tap
-      { x: 386, y: 184, w: 43, h: 42 }, // lower sink and tap
+      { x: 390, y: 260, w: 132, h: 100 }, // mirror
+      { x: 390, y: 335, w: 132, h: 170 }, // upper sink and tap
+      { x: 390, y: 510, w: 132, h: 170 }, // lower sink and tap
     ];
   if (task === "toilet")
     return [
-      { x: 96, y: 58, w: 62, h: 63 }, // toilet bowl and rim
-      { x: 225, y: 57, w: 38, h: 50 }, // urinal bowl
+      { x: 55, y: 270, w: 185, h: 140 }, // toilet bowl and rim
+      { x: 245, y: 270, w: 130, h: 140 }, // urinal bowl
     ];
   return [
-    { x: 90, y: 55, w: 178, h: 70 },
-    { x: 382, y: 102, w: 51, h: 126 },
+    { x: 45, y: 270, w: 330, h: 135 },
+    { x: 385, y: 260, w: 135, h: 420 },
+    { x: 55, y: 430, w: 420, h: 365 },
   ];
 }
 
@@ -247,9 +252,9 @@ export function spillCenter(stage: KitchenMapArtStage): Point {
 
 /** The cooktop's grease streaks (kitchen grease tasks). */
 const GREASE_STREAKS: readonly [number, number, number, number][] = [
-  [140, 120, 216, 128],
-  [250, 150, 345, 136],
-  [180, 176, 265, 169],
+  [92, 270, 440, 270],
+  [100, 310, 420, 310],
+  [130, 350, 400, 350],
 ];
 
 const pick = <T>(rnd: () => number, list: readonly T[]): T =>
