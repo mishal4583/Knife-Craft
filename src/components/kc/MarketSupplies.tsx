@@ -1,4 +1,5 @@
 import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
+import { ShopItemArt } from "./common/ShopItemArt";
 import { BULK_MAX_PACKS, bulkDiscountFor } from "@/game/restaurant/bulkBuying";
 import { BulkPresets } from "./BulkPresets";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -303,16 +304,13 @@ export function MarketSupplies({
                   unit={needs[item.id]!.buy === 1 ? "pack" : "packs"}
                 />
               ) : null}
-              <div className="flex items-start justify-between">
-                <span className="text-[30px] leading-none" aria-hidden>
-                  {item.icon}
-                </span>
+              <ShopItemArt icon={item.icon}>
                 {onHand > 0 ? (
                   <Badge tone="sage">
                     {onHand.toLocaleString("en-US")} {isConsumableSupply(item) ? "left" : "owned"}
                   </Badge>
                 ) : null}
-              </div>
+              </ShopItemArt>
               <p className="mt-1 font-display text-[14.5px] font-black leading-tight text-walnut-dark">
                 {item.name}
               </p>

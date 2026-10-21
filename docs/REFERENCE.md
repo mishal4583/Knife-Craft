@@ -1120,6 +1120,84 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   controls in Business, purchase maths, fridge, low stock, expiry,
   purchasing/consumption analytics, supplier modifiers, contracts, funds,
   fridge full, 57 ingredients, 48 dishes, Business-only recipe, old saves).
+- `phase1-cutting-qa` — PHASE 1 CUTTING FEEL (developer 2026-10-21; §10
+  "Cutting feel, combo and New Best"): A combo config; B the combo is the
+  scene's own step count, emitted on CUT_COMPLETED, never a UI copy; C
+  reset on STEP_STARTED, each milestone once, toast non-interactive; D the
+  board drag (axis + speed, Reduced Motion off); E the sounds (Sound
+  setting respected, Perfect sharper, completion chime once); F
+  `bestVerdict` honesty (first / equal / worse / invalid never celebrate,
+  real %), the before/after digits only on a genuine new best,
+  `formatScorePair` never prints an equal pair; G the replay latch, no
+  money near the combo, no save field; H the settle tilt never reads the
+  cut's angle, is proportional, pivots on the centroid (checked on
+  numbers), Reduced Motion off; I the Knife Report's stats grid can
+  shrink and tightens under a 390 px game (static guard for
+  `tools/e2e/knifereport.mjs`).
+- `phase2-qa` — PHASE 2 (developer 2026-10-21; §10 "Bench scraper, money
+  vacuum…", §7 "Customer tips"): A debris bounded, deterministic, per
+  ingredient, in the margins, only from real actions; the scraper takes the
+  board's pointer before any cut, is offered only at an order's start, always
+  has Skip, recovers lost pointers, ends cleanly, touches no save or wallet;
+  B the cash adds up exactly (whole cents, tip in gold), bounded, never
+  credits/records/saves, each piece once, the wallet = credits − counter, the
+  Serve latch, the tray owns its pointer, auto-collect session-only; C tips:
+  never on a replay, below Masterful, off-schedule or for no pay; 10% in whole
+  dollars ≥ $5; no RNG; 1 in 3 of the REAL campaign within 2σ; worst case ≤ 5%
+  of campaign income; credited in the same save as its own entry on both
+  first-payment paths; D no save-schema change, exactly two new ledger
+  writes. Browser: `tools/e2e/phase2.mjs`.
+- `phase6-qa` — PHASE 6 (developer 2026-10-21; §10 "Kitchen Moment cards"):
+  A the four moments from existing signals only (Perfect Slice in a Clean ×5+
+  run; a real special variant or a new Grandma's Signature; bestVerdict's
+  genuine best; a special customer's real Serve reaction), honest facts,
+  nothing for an ordinary dish; B once per (run, kind), a new key per attempt,
+  detection in one place (the scene's RECIPE_COMPLETED) and the customer
+  moment behind the Serve latch; C the card on its own 1080×1350 canvas,
+  feature-detected Share, Save as a PNG download, cancel is not an error,
+  object URLs revoked, nothing opens by itself; E no storage, no network, no
+  money, no save change. Browser: `tools/e2e/phase6.mjs`.
+- `phase5-qa` — PHASE 5 (developer 2026-10-21; §10 "Restoration reveals and
+  the daily gift streak", §7 "Gift streak rewards"): A kitchen tiers, prices
+  and purchase rules byte-for-byte HEAD's, every tier in one of four
+  restoration stages, major vs short reveals, each tier's real changes and
+  the family's kept things, the reveal opened only after a saved purchase,
+  skip / cleanup / Reduced Motion, no money in the restoration layer; B the
+  gift streak from the ledger alone (Day 1–7, a missed day restarts, the day
+  after Day 7 starts a new week), $100 / $300 paid once inside the gift's own
+  save, the gift itself unchanged, the ledger keeping 9 days of gift records
+  through a busy week, the Kitchen card only opening the existing sheet and
+  re-reading the day on resume; E no save field, no new App ledger write, no
+  storage, Today's Special untouched. Browser: `tools/e2e/phase5.mjs`.
+- `phase4-qa` — PHASE 4 (developer 2026-10-21; §10 "Signature dishes,
+  special customers and the order-completion sequence"): A the tiers sit on
+  the Knife Report's own Clean/Masterful thresholds, a page's best is the max
+  of its recipes, a milestone only when the saved best crosses a tier (once
+  per recipe, never on a worse or equal replay), memories fixed per page,
+  this visit's extras memory-only, no score digits in the book, "Prepared"
+  kept; B five customers with their own names/faces, the cadence (2nd
+  eligible order, then every 5th) and rotation, one decision per order id,
+  eligibility, reactions that follow the real grade (cheer only for
+  Masterful), the Regular's par, the Mystery reveal, presentation only — the
+  money is the normal settlement; C one advance per stage (Continue, Serve,
+  Next Customer), the staged serve card, every Knife Report field kept; E no
+  save-schema change, no new ledger write, nothing persisted. Browser:
+  `tools/e2e/phase4.mjs`.
+- `phase3-qa` — PHASE 3 (developer 2026-10-21; §10 "Fever Mode, Prep Rush,
+  Kitchen Chaos and special variants"): A Fever lights on the existing ×10
+  milestone, once an order, on the scene clock, ends at plating / new order /
+  restart, never touches grading, Reduced Motion; B Prep Rush's difficulty
+  steps and caps, seeded sequence, scoring, end rule, clean-cut and stroke
+  geometry, session best, isolation from save/money/storage, a bounded belt
+  scoring each item once, teardown and pause safety, its own lazy chunk; C the
+  Director's cadence (after 3, then every 4th eligible order), fixed rotation,
+  determinism, eligibility (no taught technique, no Levels 1–10, never with
+  the scraper), the six events' scene/UI hooks, the dev-only test hook, the
+  report's words (never money), real-campaign coverage; D the variants'
+  cadence (every 3rd order with a base ingredient), real ingredients only,
+  their looks and where they are painted; E no save-schema change, no new
+  ingredient id, no new ledger write, nothing persisted. Browser:
+  `tools/e2e/phase3.mjs`.
 - `campaign-integrity-qa`, `restaurant-progress-qa`, `business-ux-qa`,
   `progression-preview-qa`, `usd-currency-qa`, `phase7-2-smoke-test`,
   plus the other `scripts/*-qa.mts` / `business-*-qa.mts` suites.
@@ -1131,9 +1209,17 @@ Prettier, build, preflight, the relevant QA, and a browser check.
 Browser tests: `tools/e2e/` (headless Chrome via `puppeteer-core`; see
 `tools/e2e/README.md`). Run `npm install` inside `tools/e2e` once.
 
-Known pre-existing failures (document, do not "fix" by weakening): none
-at present. (`playables-ads-qa` B12/B13 depended on the calendar date; the
-test now pins `Date.now` to its `NOW` for section B — the cap is unchanged.)
+Known pre-existing failures (document, do not "fix" by weakening) — found
+2026-10-21 and confirmed identical on an unmodified `HEAD` build (A/B:
+changes reverted, rebuilt, re-run):
+- `tools/e2e/coach.mjs`: 5b ("Level 4's new halve step teaches itself"),
+  8a ("a touch that made no progress hides it…"), then a
+  `TimeoutError` at `coach.mjs:344` that ends the run.
+- `tools/e2e/economyv25.mjs`: 2f ("no 'richest' / '#1' claim") and 4a–4e
+  (the Kitchen Upgrade build flow and the Level 60 Endless lock).
+- `tools/e2e/adsflow.mjs`: all pass.
+(`playables-ads-qa` B12/B13 depended on the calendar date; the test now
+pins `Date.now` to its `NOW` for section B — the cap is unchanged.)
 
 ---
 
@@ -1312,6 +1398,44 @@ preparation = PreparationScene; events = `events.ts`; platform =
   +2 h collect once, reload, Downstairs, widths 320 / 390 / 768).
 
 ## 7. ECONOMY RULES
+
+### Gift streak rewards (developer 2026-10-21)
+
+New money, approved: taking the free daily gift on consecutive days builds a
+7-day streak (`daily/giftStreak.ts`). The gift that is the week's **Day 3**
+also pays a fixed **$100**; **Day 7** pays a fixed **$300** (5× the largest
+daily gift). Each is one "daily-reward" ledger entry
+(`knifecraft-gift-streak-day<3|7>-<day>`) written in the SAME save as that
+day's gift (`takeDailyGift`), and never twice: the gift can only be taken
+once a day and the reward only when no entry for that day exists. The day
+after Day 7 starts a new week; a missed day starts a new streak at Day 1 —
+nothing is charged or taken back. At most $400 a week; the daily gift
+($20–$60), order pay, tips and the Replay Bonus are unchanged. The ledger
+now keeps gift and streak entries 9 days (was 36 h for the gift) — they are
+the streak's only record; no save field.
+
+### Customer tips (developer 2026-10-21)
+
+A tip is real money on top of the frozen campaign economy, like the ad bonuses:
+the frozen baseline is for a player who never earns one. The rule
+(`economy/customerTips.ts`), with no random numbers anywhere:
+
+- only a campaign order paid for the FIRST time — the settlement's own
+  `isReplay` / `mayPayOrder` gate, so a replay can never tip and no order tips
+  twice; an order that paid nothing never tips;
+- only a Masterful dish (95+: CutEvaluator's grade of the very score the
+  settlement used);
+- only the 1-in-3 orders picked by a fixed hash of level + recipe + the order's
+  place in the level (FNV-1a with murmur3's finalizer — plain FNV-1a picked
+  40.5% of the real campaign, outside chance for one in three);
+- 10% of that order's own pay, in whole dollars, at least $5.
+
+App credits it in the SAME save as the order's settlement, as its own
+`customer-tip` ledger entry (an income category, "Customer Tip"); the settlement
+and its `campaign-settlement` entry are unchanged. Over the real 150-level
+campaign 71 of 242 paid orders can tip, tips run $12–$68, and if EVERY order
+were Masterful they would add $2,151 (1.79%) to campaign income —
+`phase2-qa` C9 keeps it at or under 5%.
 
 ### Ad bonus money (developer 2026-10-18)
 
@@ -1904,6 +2028,258 @@ not silently removed.
 ---
 
 ## 10. UI
+
+### Market item showcase (developer 2026-10-21)
+
+- Every Market card (Knives, Cutting Boards, Ingredients, the supply sections,
+  the Second Floor) shows its item big on a lit display stand —
+  `components/kc/common/ShopItemArt.tsx` + `.shop-stage` in `styles.css` — the
+  way a game shop does, instead of a small emoji in the corner. The items are
+  still the catalog's emoji (and the knives' own glyph): there is no per-item
+  art. The owned / in-stock / level badge sits in the stand's corner and the
+  item moves down a little to clear it. Static (no animation). 112 px stand,
+  68 px item; under 360 px wide 96 px / 56 px.
+- Browser: `tools/e2e/shopart.mjs`.
+
+### Kitchen Moment cards — Phase 6 (developer 2026-10-21)
+
+- **Moments** (`game/kitchenMoments.ts`), from signals the game already has:
+  **Perfect Cut** — a Perfect Slice (the scene's own detection: a swipe within
+  12 px of an ideal division) on an ingredient that reached Clean ×5;
+  **Special Dish** — made with a special variant that order really had, or
+  just raised to Grandma's Signature; **New Personal Best** — `bestVerdict`'s
+  "best" (a real improvement on the saved best; never a first plate or a tie);
+  **Customer Moment** — a special customer's reaction at Serve (their own
+  line, the Mystery Guest's reveal). An ordinary dish earns none. Detected once
+  when the scene reports the finished recipe (the customer one on the real
+  Serve), kept in memory per run and kind — a re-render adds nothing, Prepare
+  Again is a new run, a reload forgets them. No save field.
+- **Offer** (`kc/moments/MomentChip.tsx`): a small "📸" chip in the corner of
+  the order's completion screen (serve card / Order Complete) — never during
+  cutting, never over the Knife Report; it opens nothing by itself; ✕ puts it
+  away. Declining changes nothing.
+- **Card & preview** (`momentCard.ts`, `MomentPreview.tsx`): a 1080×1350 PNG
+  drawn on its own canvas in the game's look (the kitchen painting, cream
+  paper, gold frame, Fraunces/Nunito/Caveat — same-origin, so exportable): the
+  KNIFECRAFT wordmark, the kind, the dish/variant/customer picture, the
+  heading, a badge and one or two real facts. The preview IS that image; arrows
+  between a dish's moments. **Save image** downloads it
+  (`knifecraft-<kind>-<dish>.png`). **Share** appears only where the browser
+  can share an image file (`navigator.canShare({ files })`); a cancelled share
+  is silent, a refused one points to Save. Nothing is ever posted, uploaded or
+  tracked; no money, rewards or progress for sharing.
+- QA: `phase6-qa` (§5). Browser: `tools/e2e/phase6.mjs`.
+
+### Restoration reveals and the daily gift streak — Phase 5 (developer 2026-10-21)
+
+- **Restoration** (`game/kitchen/restoration.ts`): the six existing kitchen
+  tiers — each already painted as its own Kitchen skin and map art — fall
+  into four restoration stages: Humble → **Inherited Kitchen**, Growing →
+  **Cleaning & Repair**, Established + Neighborhood Café → **Improved
+  Kitchen**, Flourishing Café + Grand → **Restored Family Restaurant**. Each
+  tier lists what its painting changed (lighting, equipment, workstation,
+  furniture); every painting keeps the family's arched window, long wooden
+  worktop, green cupboards and copper pans. No tier, price or rule changed.
+  The cutting screen behind the board shows the built tier's painting too
+  (App → Preparation `kitchenArt`); the Humble Kitchen keeps the original
+  cutting-screen art (the same room, same framing).
+- **Reveal** (`kc/RestorationReveal.tsx`): opened by App only after a
+  successful, saved build (`buildKitchenUpgrade`), one at a time. The old
+  kitchen shows, then the new one wipes across it (0.7 s + 1.4 s for a new
+  stage, 0.35 s + 0.8 s within one); Skip jumps to the finished picture with
+  what changed and what stayed; Continue closes. Reduced Motion: the result at
+  once. The Kitchen behind already shows the new tier (it reads the save), so
+  skipping or leaving changes nothing; nothing is saved about the reveal.
+- **Daily gift card** (`kc/DailyGiftCard.tsx`, under the rank on the Kitchen,
+  from Level 3): today's gift ready with its amount, or "✓ Taken today"; the
+  week's seven days with Day 3 ($) and Day 7 (★) marked; the reward ahead. A
+  tap opens the SAME gift sheet as before (now saying "Gift streak · Day N of
+  7" and any reward today), so there is still one place a gift is taken. The
+  card re-reads the device-local day every 30 s and when the page comes back,
+  so it turns over at midnight. After a missed day: "Welcome back! A new
+  streak starts today." Today's Special keeps its own streak, untouched.
+- QA: `phase5-qa` (§5). Browser: `tools/e2e/phase5.mjs`.
+
+### Signature dishes, special customers and the order-completion sequence — Phase 4 (developer 2026-10-21)
+
+Presentation only: no new save field, no money, no new order or customer engine.
+
+- **Signature Dish Collection** (`game/signatureDishes.ts`, `kc/Recipes.tsx`,
+  `kc/signature/TierBadge.tsx`): the Recipe Book (Order Board → 📖) is the
+  collection. Each page's tier comes from `recipeProgress[recipeId].best` —
+  the existing, persisted max Knife Report score (max over the recipes a
+  level can serve): **Homemade** once prepared, **Chef's Special** at 85+
+  (the Clean grade), **Grandma's Signature** at 95+ (Masterful). A summary
+  strip counts pages per tier; each row's stamp says its tier (Homemade is
+  "Prepared"); a page shows its dish in a tier frame with the tier's ribbon,
+  the ladder with how to reach each tier, the best plate as a grade word, one
+  family memory per tier reached, and "This visit (not saved)" — the longest
+  run and any special variant used, kept for the page session only (developer
+  decision 2026-10-21: no save field for them). **Deliberate override (developer, Phase 4 brief):**
+  the cookbook's old "no graded rating" rule (Law 4) gives way to the three
+  tier words; score digits are still never shown in the book.
+- **Book page** (`kc/game/BookPageNote.tsx`): when the dish writes something
+  new — its first plate, a new tier (the saved best crossing 85 / 95 — once
+  per recipe, ever) or a variant met for the first time this visit — a small
+  page with one memory rides on the serve card (before Serve) or the Order
+  Complete card. It is part of that card, not a stage: no extra tap (an
+  earlier draft as its own step added a tap after every new level and broke
+  the existing flows). Business orders keep no recipe record, so never one.
+- **Special customers** (`game/customers/personalities.ts`): the Food Critic,
+  the Regular, the Mystery Guest, Grandma's Old Friend and Big Bruno. Over
+  ordinary service orders from campaign Level 4 (any Business order), never
+  while a technique is taught: the 2nd eligible order of the page session,
+  then every 5th, in that rotation; decided once per order id and cached.
+  They change only who the player sees — the order card's name, an arrival
+  card, the serve card (the Mystery Guest a silhouette until Serve, then
+  revealed; Bruno drawn big) — and what they say at Serve, from the dish's
+  real grade (cheer only for Masterful, nod for Clean). The Regular's par is
+  8 s + 1.5 s per cut of unpaused prep: past it he checks his watch once and
+  says "Finally!" — cosmetic, never a penalty. The order, its customer id,
+  pay, tip and ledger entry are the normal ones. Grandma's Old Friend is a new
+  narrative touch (a friend of the grandmother, unnamed); no new story beat.
+- **Order completion** (`Preparation.tsx`, `ServiceOrderComplete.tsx`):
+  plating → cooking film → Knife Report → serve card (with any book page); after
+  Serve the customer's reaction, the pay, the tip and the cash appear a beat
+  apart (0 / 0.18 / 0.36 / 0.52 s, opacity only, none with Reduced Motion);
+  the plate's tier rides on the card's first line. Continue, Serve and Next
+  Customer / Finish Level each advance exactly once per screen (Next used to
+  advance the campaign queue twice on a double tap). The card tightens on
+  screens up to 640 px tall so it fits 320×568 with any customer line.
+- QA: `phase4-qa` (§5). Browser: `tools/e2e/phase4.mjs` (restaurant dev
+  server; `window.__kcSpecials.customer(id)` in development builds only).
+
+### Fever Mode, Prep Rush, Kitchen Chaos and special variants — Phase 3 (developer 2026-10-21)
+
+Presentation and play only: nothing here pays, unlocks, records or saves
+anything (no save field, no ledger entry, no stock, no progress).
+
+- **Fever Mode** (`game/fever.ts`): the existing Clean ×10 milestone lights it,
+  once per order (Prepare Again may light it again). 6 s on the scene clock, so
+  a pause holds it; it ends early at plating or a restart. While on: a warm
+  knife glow and trail, stronger flecks, board drag and piece separation, a
+  slight pitch lift, warm screen edges (`kc-fever-vignette`, leaves the
+  board's middle clear), a countdown bar along the top that pauses with the
+  game, 🔥 on the combo chip, start and end sounds, "What a run!" at the end.
+  No score change. Reduced Motion: no breathing edges, no flecks/drag boost.
+- **Endless Prep Rush** (`game/prepRush.ts`, `scenes/PrepRushScene.ts`,
+  `PrepRushBridge.ts`, `kc/prepRush/PrepRush.tsx`; screen `prep-rush`, a tile
+  on the order board): its own small Phaser game, lazily loaded. Ingredients
+  ride a conveyor; a swipe across one cuts it (through the middle = clean, +5),
+  a tap cuts too (never clean); every 5 in a row +10; one falling off the end
+  is a miss and resets the run. A fixed seed (the same sequence every run);
+  speed and spacing step up every 10 s to a cap; at most 6 on the belt; 60 s
+  or 5 misses. Results show prepared / clean / missed / best run and this
+  session's best (memory only). Replay, Pause (Resume / Restart / Back), Back
+  to Orders; leaving stops the run, un-pauses and tears the game down.
+- **Kitchen Chaos Director** (`game/kitchenChaos.ts`): after 3 eligible orders,
+  then every 4th, an order gets a twist in a fixed rotation — Giant
+  Ingredient (the first ingredient ×1.35, clamped to the board), Vegetable
+  Avalanche (8 little vegetables land on the board as the order starts; they
+  hold the board — no cut can start — until swiped away or skipped), Rush
+  Hour (plating, the hand-off and the cooking film run 1.6× / 1.5×),
+  Grandma's Challenge (reach Clean ×8 on one ingredient; a live chip), Perfect
+  Plating (the plating judge reads the Knife Report's Evenness: 90+ is the
+  stamp — there is no separate plating interaction to judge) and Kitchen
+  Inspection (restaurant build: a friendly visit whose verdict at the report
+  is the live `inspectBusiness` result — no fine, no state). Eligible = not
+  Levels 1–10 and no technique being taught (`coaching.ts`); an event that
+  can't happen on the order (Grandma needs a step of 8+ cuts, Inspection a
+  restaurant, Giant a cutting first step) passes to the next; a due event
+  waits one order when the bench scraper is offered. Decided once per order
+  in the scene (a restart keeps it), announced on a card; the Knife Report
+  acknowledges it (`specialsReport.ts`).
+- **Special variants** (`game/specialVariants.ts`): every 3rd eligible order
+  that contains a tomato, cucumber, carrot, onion or pepper gets that
+  ingredient as a Golden Tomato, Giant Cucumber (×1.3), Rainbow Carrot,
+  Frosted Onion or Grandma's Heirloom Pepper — the same ingredient (id,
+  cuts, grading, stock) painted differently: its skin pixels are re-hued on
+  the ingredient's own texture (stems and leaves keep their colour) plus a few
+  marks, so the pieces and the plate carry it; coloured flecks on each cut;
+  "✨ Made with a Golden Tomato" on the report.
+- Counters are this browser session's only. Development builds expose
+  `window.__kcSpecials.chaos(id)` / `.variant(id)` for the browser tests;
+  production builds inline it away.
+- QA: `phase3-qa` (§5). Browser: `tools/e2e/phase3.mjs`. The e2e solver sweeps
+  (then skips) an avalanche.
+
+### Bench scraper, money vacuum and the serve celebration — Phase 2 (developer 2026-10-21)
+
+All presentation except the tip (§7 "Customer tips"); no save field.
+
+- **Cutting debris** (`game/boardDebris.ts`): each real action leaves a little
+  mess in the ingredient's own look (tomato seeds and juice, onion skins,
+  cucumber scraps, …): 1 per cut or ring, 2 per smash, 3 per finished peel, in
+  the board's far and near margins, at most 40, drawn into ONE Graphics at
+  depth 1 (above the board, under guides, food and knife). A session list,
+  seeded (piece n always lands the same way), never saved: it outlives one
+  order on purpose, since each order remounts the scene.
+- **Bench scraper**: at the START of an order (or Prepare Again) with 30+
+  pieces — about every 2–3 orders — never mid-dish. While it is out, the
+  board's pointer is the scraper's (a tap or swipe can never cut); one drag
+  across 45% of the board's width sweeps the debris off the edge, then a
+  polish glint, a squeak and sparkles; shorter drags put the blade back. Skip
+  (on the card, like the coach card) leaves the mess and cuts at once; it is
+  offered again next time. Lost pointers are let go; Reduced Motion makes it
+  instant; the coach waits.
+- **Money vacuum** (`game/cashBurst.ts`, `kc/game/CashVacuum.tsx`): after
+  Serve, the payment (and any tip, in gold) lands on the serve card as 4–14
+  bills and coins whose cents add up to it exactly. Swipe across them — one
+  broad pass picks up everything it passes near — and each flies to the wallet
+  with a cha-ching. The money was credited when Serve was tapped; the wallet
+  pill shows `credits − cash still on the counter`, so it rolls up to the real
+  balance and lands on it exactly (also if the player just moves on). Each
+  piece is collected once; the auto-collect toggle (session only, always on
+  with Reduced Motion) uses the same path.
+- **Serve celebration** (`ServiceOrderComplete.tsx`): Serve is latched to one
+  call per screen (a double tap cannot pay twice); the till sound plays on the
+  payment; the customer reacts to the dish's own grade — a cheer and
+  "👏 Exceptional!" for Masterful, a nod for Clean; a tip shows as
+  "💸 Generous tip! +$X" under the order pay. At 320×568 the card fits
+  without scrolling (a tip on a two-line dish name may scroll, never clip).
+- QA: `phase2-qa` (§5). Browser: `tools/e2e/phase2.mjs`. The e2e solver
+  scrapes when the scraper is offered, and takes an opt-in `aim` / `steady`.
+
+### Cutting feel, combo and New Best — Phase 1 (developer 2026-10-21)
+
+Two parts of this deliberately override older rules on the developer's
+instruction. Do not "restore" either without asking them.
+
+- **Combo** (`COMBO`, `definitions.ts`): the cuts landed on the current
+  ingredient step, owned by `PreparationScene` and sent on
+  `CutCompletedPayload.combo` — the UI never counts on its own. Reset by
+  STEP_STARTED and by restart. No break rule (only valid, guide-snapped
+  cuts are ever committed, so there is no miss to break on). Awards
+  nothing. A meter on the order card from ×2; a "Clean ×N!" toast once per
+  milestone (5 / 10 / 15 / 20), below the board, `pointer-events-none`;
+  the cut sound's pitch rises to ×1.12.
+- **Feel**: the board gives along the blade's travel as well as down
+  (`CUT_DRAG`, `boardNudge(axis, velocity)`); a Perfect Slice sounds
+  sharper (×1.06); `AudioManager.playComboMilestone` and
+  `playIngredientComplete` (once, on the cut that finishes an ingredient).
+  Reduced Motion turns off the drag and the tilt.
+- **Settle tilt — overrides the reference's "no rotation" rule.** Each
+  piece leans up to `PIECE_SETTLE.TILT_RAD` (≈2.6°) about its own centroid,
+  in proportion to its offset across the silhouette's half-width. It never
+  reads the cut's angle, which is what caused the original crossing
+  pieces. Full reasoning: the `PIECE_SETTLE` doc.
+- **Knife Report "New Best!" — overrides Law 4 for this one line.** On a
+  genuine improvement over `recipeProgress[recipe].best`
+  (`game/bestVerdict.ts`): "✦ New Best!", "Best 72 → 85" and "Cleaner than
+  your best +N%". Nothing for an equal or worse run; a first plate says
+  "your first plate of this dish". The headline stays the qualityLabel and
+  OrderComplete keeps Law 4. No save field, no money.
+- **Replay**: "Prepare Again" is latched until the scene's STEP_STARTED, so
+  a double tap can neither start nor credit two runs.
+- **Knife Report on narrow screens** (fixed alongside Phase 1): the stats
+  grid used to overflow the card at every game width up to ~460 px (its
+  `1fr` column could not shrink below the Rhythm line's text), pushing the
+  ideal-vs-yours diagram off the card and clipping "100" to "10" at 320
+  px. Now `minmax(0, 1fr)`; under a 390 px-wide GAME the card, gaps and
+  value column tighten (`@container` on the report + `@min-[390px]:`, the
+  project's first container query — the game is a contain-fit frame, so
+  a short wide window gives a narrow game); from 390 px it is the original.
+- QA: `phase1-cutting-qa` (§5). Browser: `tools/e2e/knifereport.mjs`.
 
 ### Finding things: Achievements and the scroll cue (developer 2026-10-18)
 

@@ -1,4 +1,5 @@
 import { Badge, KButton, Panel } from "./common/primitives";
+import { ShopItemArt } from "./common/ShopItemArt";
 import { ShortfallOffer } from "./ads/ShortfallOffer";
 import { InfoTip, Points, StatChip } from "./common/InfoTip";
 import { cn } from "@/lib/utils";
@@ -128,12 +129,9 @@ export function MarketSecondFloor({
                   o ? "border-sage/40" : "border-walnut/15",
                 )}
               >
-                <div className="flex items-start justify-between">
-                  <span className="text-[30px] leading-none" aria-hidden>
-                    {d.icon}
-                  </span>
+                <ShopItemArt icon={d.icon}>
                   {o ? <Badge tone="sage">Lv {lvl}</Badge> : null}
-                </div>
+                </ShopItemArt>
                 <div className="mt-1 flex items-start gap-1.5">
                   <p className="min-w-0 flex-1 font-display text-[14.5px] font-black leading-tight text-walnut-dark">
                     {d.name}
@@ -229,14 +227,11 @@ export function MarketSecondFloor({
                 data-floor-staff={role}
                 className="product-card flex flex-col rounded-[20px] border border-walnut/15 p-3 card-warm"
               >
-                <div className="flex items-start justify-between">
-                  <span className="text-[30px] leading-none" aria-hidden>
-                    {def.icon}
-                  </span>
+                <ShopItemArt icon={def.icon}>
                   <Badge tone={have < need ? "copper" : "sage"}>
                     {have} / {def.max}
                   </Badge>
-                </div>
+                </ShopItemArt>
                 <div className="mt-1 flex items-start gap-1.5">
                   <p className="min-w-0 flex-1 font-display text-[14.5px] font-black leading-tight text-walnut-dark">
                     {def.name}

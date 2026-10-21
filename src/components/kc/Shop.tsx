@@ -1,4 +1,5 @@
 import { MarketSecondFloor } from "./MarketSecondFloor";
+import { ShopItemArt } from "./common/ShopItemArt";
 import { marketNeeds } from "@/game/restaurant/marketNeeds";
 import type { SecondFloorAction } from "./restaurantMap/SecondFloorView";
 import type { FloorResult } from "@/game/restaurant/secondFloor";
@@ -50,7 +51,8 @@ import {
   clearMarketFocus,
   peekSupplyFocus,
   peekSupplyPacks,
-  clearMarketSecondFloor, clearSupplyFocus,
+  clearMarketSecondFloor,
+  clearSupplyFocus,
 } from "./marketFocus";
 import { ledgerTotals, LEDGER_CATEGORY_LABEL } from "@/game/economy/EconomyLedger";
 import { ShortfallOffer } from "./ads/ShortfallOffer";
@@ -607,11 +609,7 @@ function KnifeVisual({ knife }: { knife: KnifeDefinition }) {
 }
 
 function EmojiVisual({ emoji }: { emoji: string }) {
-  return (
-    <span className="text-[46px] leading-none" aria-hidden>
-      {emoji}
-    </span>
-  );
+  return <span aria-hidden>{emoji}</span>;
 }
 
 function ProductCard({ card }: { card: Card }) {
@@ -621,15 +619,11 @@ function ProductCard({ card }: { card: Card }) {
       <span className="absolute right-2.5 top-2.5 z-10">
         <InfoTip label={`About ${card.name}`}>{card.description}</InfoTip>
       </span>
-      <div
-        className={cn(
-          "grid h-[92px] place-items-center",
-          card.locked && "opacity-55 grayscale-[0.35]",
-        )}
-      >
-        {card.visual}
-      </div>
-      <p className="mt-1 text-center font-display text-[14.5px] font-black leading-tight text-walnut-dark">
+      <ShopItemArt
+        icon={card.visual}
+        className={cn(card.locked && "opacity-55 grayscale-[0.35]")}
+      />
+      <p className="mt-2 text-center font-display text-[14.5px] font-black leading-tight text-walnut-dark">
         {card.name}
       </p>
       <div className="mt-2 space-y-1 rounded-[12px] bg-cream/70 px-2 py-1.5">
@@ -734,9 +728,7 @@ function Blacksmith({
 
   function report(result: UpgradeKnifeResult, stat: BlacksmithStat, cost: number) {
     if (result.ok)
-      setNotice(
-        `${forgeCopy[stat].emoji} ${forgeCopy[stat].name} → Level ${result.level}!`,
-      );
+      setNotice(`${forgeCopy[stat].emoji} ${forgeCopy[stat].name} → Level ${result.level}!`);
     else if (result.reason === "insufficientFunds")
       setNotice(notEnoughMoneyText(cost, save.credits));
     else if (result.reason === "maxLevel")

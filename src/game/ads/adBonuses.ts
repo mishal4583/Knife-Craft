@@ -34,6 +34,7 @@ import {
   paidLevelReward,
 } from "../levels/levelRewards";
 import { dailyKeyFor } from "../daily/DailyOrderManager";
+import { streakRewardOnTake } from "../daily/giftStreak";
 
 export type AdBonusKind =
   "floating_cash" | "level_double" | "shortfall" | "floor_double" | "daily_gift";
@@ -222,18 +223,36 @@ export function dailyGiftDue(save: SaveData, levelNumber: number, now: Date): nu
   return dailyGiftAmount(levelNumber);
 }
 
-/** Pure: takes today's free gift (one "daily-reward" entry). Once a day. */
+/**
+ * Pure: takes today's free gift (one "daily-reward" entry). Once a day.
+ * Phase 5 (B): when today's gift is the gift streak's Day 3 or Day 7
+ * (daily/giftStreak.ts), its fixed reward is paid in the SAME save as its own
+ * "daily-reward" entry; `amount` stays the gift alone, `streak` the reward.
+ */
 export function takeDailyGift(
   save: SaveData,
   levelNumber: number,
   now: Date,
-): { ok: true; save: SaveData; amount: number } | { ok: false } {
+):
+  | { ok: true; save: SaveData; amount: number; streak: { day: number; amount: number } | null }
+  | { ok: false } {
   const amount = dailyGiftDue(save, levelNumber, now);
   if (amount <= 0) return { ok: false };
+  const reward = streakRewardOnTake(save, now);
   const credited = { ...save, credits: save.credits + amount };
+  let next = appendLedgerEntry(credited, "daily-reward", amount, dailyGiftId(now));
+  if (reward) {
+    next = appendLedgerEntry(
+      { ...next, credits: next.credits + reward.amount },
+      "daily-reward",
+      reward.amount,
+      reward.id,
+    );
+  }
   return {
     ok: true,
     amount,
-    save: appendLedgerEntry(credited, "daily-reward", amount, dailyGiftId(now)),
+    save: next,
+    streak: reward ? { day: reward.day, amount: reward.amount } : null,
   };
 }

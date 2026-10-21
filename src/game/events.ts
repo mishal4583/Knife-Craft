@@ -10,6 +10,8 @@ import type { CutPath, QualityLabel } from "@/types/game";
 import type { IngredientId, TechniqueId } from "./definitions";
 import type { KnifeDefinition } from "./knives/knifeTypes";
 import type { BoardDefinition } from "./boards/boardTypes";
+import type { ChaosEventId } from "./kitchenChaos";
+import type { VariantId } from "./specialVariants";
 
 /** Bridge → Scene commands. */
 export const CMD = {
@@ -19,6 +21,10 @@ export const CMD = {
   RESTART: "cmd:restart",
   SET_KNIFE: "cmd:setKnife",
   SET_BOARD: "cmd:setBoard",
+  /** Phase 2 (A2) — the player chose "Skip" on the bench-scraper offer: the debris stays, cutting resumes. */
+  CLEANUP_SKIP: "cmd:cleanupSkip",
+  /** Phase 3 (C) — "Skip" on the Vegetable Avalanche: the rest roll off, the order starts. */
+  AVALANCHE_SKIP: "cmd:avalancheSkip",
 } as const;
 
 /**
@@ -41,6 +47,14 @@ export const EVT = {
   COACH: "evt:coach",
   /** Peel steps only: how much of the skin is off (read-only HUD feedback; the peel itself is unchanged). */
   PEEL_PROGRESS: "evt:peelProgress",
+  /** Phase 2 (A2) — the bench-scraper cleanup: offered at the start of an order, then done or skipped. The UI shows the hint and the Skip button from it. */
+  CLEANUP: "evt:cleanup",
+  /** Phase 3 (A) — Fever Mode lit or ended (fever.ts). The UI shows the vignette, the countdown bar and the cues from it. */
+  FEVER: "evt:fever",
+  /** Phase 3 (C/D) — this order's Kitchen Chaos event and special ingredient variant (or none), once per order as it starts. */
+  SPECIALS: "evt:specials",
+  /** Phase 3 (C) — the Vegetable Avalanche: on the board, a vegetable sliced, all cleared or skipped. */
+  AVALANCHE: "evt:avalanche",
 } as const;
 
 /**
@@ -83,6 +97,14 @@ export type StartPreparationConfig = {
   board: BoardDefinition;
   /** Techniques whose steps are TAUGHT with the ghost demonstration (coaching.ts). Every other step only demonstrates after a longer pause without input. */
   teach?: TechniqueId[];
+  /**
+   * Phase 3 (C/D) — what this order may get (Preparation decides from the
+   * session kind): a Kitchen Chaos event (never an early campaign level) and
+   * a special variant; the scene rules out both while `teach` is non-empty
+   * (a technique being taught). `restaurant`: one exists to inspect.
+   * Absent: neither.
+   */
+  specials?: { chaosEligible: boolean; variantEligible: boolean; restaurant: boolean };
 };
 
 /** Scene -> Bridge -> React: the ghost demonstration appeared/disappeared, so the HUD's how-to card shows with it. */
@@ -90,6 +112,23 @@ export type CoachPayload = { visible: boolean; techniqueId: TechniqueId };
 
 /** Scene -> Bridge -> React: a peel step's progress, 0–1 of the way to done (covered cells ÷ the completion threshold). Display only. */
 export type PeelProgressPayload = { fraction: number };
+/** Phase 2 (A2) — see EVT.CLEANUP. `pieces` is the debris on the board at that moment. */
+export type CleanupPayload = { state: "offered" | "done" | "skipped"; pieces: number };
+/** Phase 3 (A) — see EVT.FEVER. `ms` is how long it lasts (0 on end); `reason` says why it ended. */
+export type FeverPayload = {
+  state: "start" | "end";
+  ms: number;
+  reason?: "time" | "plating" | "restart";
+};
+
+/** Phase 3 (C/D) — see EVT.SPECIALS. */
+export type SpecialsPayload = { chaos: ChaosEventId | null; variant: VariantId | null };
+/** Phase 3 (C) — see EVT.AVALANCHE. `left` of `total` vegetables are still on the board. */
+export type AvalanchePayload = {
+  state: "start" | "progress" | "done" | "skipped";
+  left: number;
+  total: number;
+};
 
 /** Scene -> Bridge -> React: which step is now active, so the HUD can show the right ingredient/technique/progress without the whole session being one fixed pair (§ "step-aware HUD"). */
 export type StepStartedPayload = {
@@ -125,6 +164,15 @@ export type CutCompletedPayload = {
    * per-cut judgment.
    */
   inputMode: "tap" | "swipe";
+  /**
+   * Phase 1 — how many cuts have landed on the CURRENT step including
+   * this one (1 for the first cut of an ingredient). This is the combo:
+   * see COMBO in definitions.ts for why the step's own run of cuts is
+   * the whole rule and why there is no break condition. Presentation
+   * only — the HUD meter, the milestone toast and the cut-sound pitch
+   * read it; nothing in grading, scoring or progression does.
+   */
+  combo: number;
 };
 
 export type RecipeCompletedPayload = {

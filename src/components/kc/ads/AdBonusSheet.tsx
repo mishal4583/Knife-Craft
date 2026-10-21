@@ -19,6 +19,11 @@ export type AdBonusSheetState = {
   /** What landed in the wallet, once done. */
   granted?: number;
   failure?: "notRewarded" | "unavailable" | "capReached";
+  /** Phase 5 (B): the daily gift's streak day, and the fixed reward today's gift brings (daily/giftStreak.ts). */
+  streakDay?: number;
+  streakReward?: number;
+  /** Phase 5 (B): the streak reward that landed with the gift, once done. */
+  streak?: { day: number; amount: number } | null;
 };
 
 /** A tap that lands within this time of the sheet opening is ignored (never an ad by accident). */
@@ -72,6 +77,15 @@ export function AdBonusSheet({
           <p className="mt-2 font-display text-[22px] font-black text-walnut-dark">
             {formatUsdChange(state.granted ?? 0)} added
           </p>
+          {state.streak ? (
+            <p
+              className="mt-1 font-ui text-[12.5px] font-extrabold uppercase tracking-[0.12em] text-copper"
+              data-testid="gift-streak-paid"
+            >
+              🔥 incl. the Day {state.streak.day} streak reward ·{" "}
+              {formatUsdChange(state.streak.amount)}
+            </p>
+          ) : null}
           <div className="mt-4">
             <KButton full onClick={onClose}>
               Continue
@@ -93,6 +107,15 @@ export function AdBonusSheet({
             {state.item ? `${state.item} · ` : ""}
             {copy.line}
           </p>
+          {state.kind === "daily_gift" && state.streakDay ? (
+            <p
+              className="mt-1 font-ui text-[12.5px] font-extrabold text-copper"
+              data-testid="gift-streak-offer"
+            >
+              🔥 Gift streak · Day {state.streakDay} of 7
+              {state.streakReward ? ` · +${formatUsd(state.streakReward)} streak reward today` : ""}
+            </p>
+          ) : null}
           {state.phase === "failed" ? (
             <p
               className="mt-3 rounded-[12px] bg-walnut/8 px-3 py-2 font-ui text-[12.5px] font-bold text-walnut/80"

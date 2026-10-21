@@ -2,6 +2,7 @@ import { KButton, Panel } from "../common/primitives";
 import { formatUsdChange } from "@/game/money";
 import { CurrencyPill } from "../common/Indicators";
 import type { QualityLabel } from "@/types/game";
+import type { ReactNode } from "react";
 
 /**
  * Design doc Law 4 ("the plate is the score" — no stars, no visible
@@ -31,6 +32,7 @@ export function OrderComplete({
   onKitchen,
   nextLevelTitle,
   onNextLevel,
+  bookNote,
 }: {
   dishName: string;
   score: number;
@@ -44,6 +46,8 @@ export function OrderComplete({
   /** Present only when a next campaign level exists AND is unlocked (App.tsx computes this) — omitted entirely (no button) at the end of the campaign or when the next level is still locked. */
   nextLevelTitle?: string;
   onNextLevel?: () => void;
+  /** Phase 4 (A7): the recipe-book page this dish wrote (BookPageNote) — part of the card. */
+  bookNote?: ReactNode;
 }) {
   const isBest = score > previousBest;
   return (
@@ -59,6 +63,7 @@ export function OrderComplete({
         <p className="mt-2 font-display text-[26px] font-black leading-tight text-walnut-dark">
           {qualityLabel}
         </p>
+        {bookNote}
         {isBest ? (
           <p className="mt-2 font-ui text-[11px] font-extrabold uppercase tracking-[0.2em] text-copper">
             ✦ Your best plate yet

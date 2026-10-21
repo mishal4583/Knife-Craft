@@ -4390,18 +4390,88 @@ export const BOARD_NUDGE = { PX_FRAC: 1.5 / 540, MS: 120 } as const;
 
 /**
  * knifecraft.html CONFIG.render.SLAB_OFFSET_PX / CONFIG.physics.PIECE_SETTLE_MS:
- * a cut piece does NOT fall, stack, or rotate — it nudges outward from the
- * ingredient's center by a few px (a "slab" parting, like a knife just
- * lifted the slice a hair) and eases to rest. No rotation, same as the
- * reference — see the porting report for how skipping the "no rotation"
- * rule produced crossing, chaotic-looking pieces on angled cuts.
+ * a cut piece nudges outward from the ingredient's center by a few px (a
+ * "slab" parting, like a knife just lifted the slice a hair) and eases to
+ * rest. It does not fall or stack.
+ *
+ * ROTATION — developer decision 2026-10-21 (Phase 1, A2), deliberately
+ * overriding the reference's "no rotation" rule. Do not remove it as a
+ * "fix". The reference rotated each piece BY THE CUT'S ANGLE, which turned
+ * diagonal and grid cuts into crossing, chaotic-looking shapes (see the
+ * porting report). This tilt is built so that failure cannot come back:
+ * - it never reads the cut's angle — only how far the piece's centroid
+ *   sits left or right of the ingredient's centre, as a fraction of the
+ *   silhouette's own half-width (PreparationScene.settleTilt);
+ * - it is proportional to that distance, so the middle pieces barely move
+ *   and the two either side of the centre cannot lean into each other;
+ * - neighbouring pieces' tilts differ by at most TILT_RAD x (their
+ *   spacing / the half-width), so facing edges stay parallel to within a
+ *   pixel or two, and every piece of a Dice column leans identically;
+ * - it pivots on the piece's own centroid (piece images have a top-left
+ *   origin), so a piece leans in place rather than swinging about a corner;
+ * - the plate flight already starts from each piece's current angle
+ *   (startPlating reads `piece.angle`), so a tilted piece flies cleanly.
+ * Reduced Motion keeps the original untilted parting.
  *
  * Player-reported: the original 4px reference value read as "no visible
  * gap at all" once several thin bands stack up (e.g. Tomato Slice's 12
  * cuts) — doubled to 8px, still a small parting nudge (not a drop, not a
  * scatter), just one a player can actually see between adjacent pieces.
  */
-export const PIECE_SETTLE = { SLAB_OFFSET_PX_FRAC: 8 / 540, MS: 240 } as const;
+export const PIECE_SETTLE = {
+  SLAB_OFFSET_PX_FRAC: 8 / 540,
+  MS: 240,
+  /** Peak tilt (radians, ~2.6°) for a piece at the silhouette's outer edge; scales linearly to 0 at the centre. */
+  TILT_RAD: 0.045,
+} as const;
+
+/**
+ * Phase 1 (tactile impact) — the blade's own "bite" as it passes through
+ * the food, on top of the board nudge that already fires on every cut.
+ * The board — and the food sitting on it — gives a little ALONG the
+ * blade's travel as well as straight down, scaled by stroke speed. It
+ * rides on the board nudge's existing tween, so the knife's own pose
+ * rules (KNIFE_RULES.md, "a cutting knife stands on its edge") are not
+ * touched; it never gates input, never pauses the scene's update loop
+ * and never delays the piece reveal (that timing stays CUT_FEEL's and
+ * the hitstop's job). Skipped entirely when the player has Reduced
+ * Motion on (SaveData.settings.reducedMotion).
+ */
+export const CUT_DRAG = {
+  /** Lateral give ALONG the blade's travel, as a fraction of the canvas width, on top of BOARD_NUDGE's own downward give. Deliberately smaller than the piece-parting offset — felt, not watched. */
+  PX_FRAC: 3 / 540,
+  /** How much a full-speed stroke adds on top of that give (fraction). */
+  VEL_BOOST: 0.5,
+} as const;
+
+/**
+ * Phase 1 (combo rhythm) — the combo is a PRESENTATION layer over the
+ * cutting the player already does. It counts the cuts landed so far on
+ * the CURRENT ingredient step (PreparationScene's
+ * `cuts.length - stepCutsAtStart`, the very same number the HUD's pip
+ * row already reads), and it is reset by exactly the boundaries that
+ * already reset those pips: a new step (STEP_STARTED) and a restart.
+ *
+ * It awards nothing — no score, no money, no grade, no unlock — so
+ * difficulty, the economy and the Knife Report are untouched.
+ *
+ * There is deliberately NO combo-break rule. The engine only ever
+ * commits guide-snapped, valid cuts (see commitCut's `proxyQuality`
+ * note), so no "missed cut" state exists to break a combo on, and
+ * inventing one would be a difficulty change Phase 1 is not allowed to
+ * make. The smallest behaviour compatible with what the game already
+ * tracks is therefore: the combo is this ingredient's own run of cuts,
+ * and a new ingredient starts a new run.
+ */
+export const COMBO = {
+  /** Ascending; each fires its "Clean xN!" toast once per step. */
+  MILESTONES: [5, 10, 15, 20] as readonly number[],
+  /** How long a milestone toast stays up — long enough to read, short enough not to block play. */
+  TOAST_MS: 900,
+  /** Cut-sound pitch: 1.0 at combo 0, easing to PITCH_MAX at PITCH_FULL_AT and never past it. */
+  PITCH_MAX: 1.12,
+  PITCH_FULL_AT: 12,
+} as const;
 
 /** knifecraft.html CONFIG.plating — pieces fly to the ceramic, staggered, with a small arc. */
 export const PLATING = {

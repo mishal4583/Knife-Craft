@@ -1,5 +1,88 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## Phase 6: Kitchen Moment cards (2026-10-21, not committed)
+
+- Four moments (Perfect Cut, Special Dish, New Personal Best, Customer
+  Moment) from existing events; a quiet 📸 chip on the completion screen; a
+  1080×1350 PNG card with Save image and (where supported) native Share. No
+  storage, no network, no rewards. REFERENCE §10 "Kitchen Moment cards".
+- QA `phase6-qa`; browser `tools/e2e/phase6.mjs`. Working tree only.
+
+## Phase 5: restoration reveals, daily gift streak (2026-10-21, not committed)
+
+- Building a kitchen tier now plays a short before-and-after of the existing
+  painted kitchens (four restoration stages over the six tiers; skippable;
+  Reduced Motion = instant). No tier, price or purchase rule changed.
+- **New money (developer):** the daily gift's streak — Day 3 +$100, Day 7
+  +$300, paid with that day's gift, once; a missed day restarts the streak.
+  REFERENCE §7 "Gift streak rewards". The ledger keeps gift/streak entries 9
+  days (their only record; no save field). A gift card on the Kitchen.
+- QA `phase5-qa`; browser `tools/e2e/phase5.mjs`. Working tree only.
+
+## Phase 4: signature dishes, special customers, order completion (2026-10-21, not committed)
+
+- The Recipe Book is the Signature Dish Collection: Homemade / Chef's Special
+  (Clean) / Grandma's Signature (Masterful) from the saved best — no new save
+  field; a small book page on the serve / Order Complete card when a dish
+  reaches a new tier (once per recipe) — no extra tap. Five special customers (Food Critic, Regular,
+  Mystery Guest, Grandma's Old Friend, Big Bruno) on every 5th eligible
+  service order — presentation only. The serve card fills in a beat at a time;
+  Next Customer can no longer advance twice. REFERENCE §10 "Signature dishes…".
+- **Override (developer):** tier words in the cookbook (Law 4's "no graded
+  rating" there); digits still never shown.
+- Not saved, by developer decision (2026-10-21): best combo / variants per
+  recipe stay "This visit (not saved)" — no save field for them.
+- QA `phase4-qa`; browser `tools/e2e/phase4.mjs`. Working tree only.
+
+## Phase 3: Fever Mode, Prep Rush, Kitchen Chaos, special variants (2026-10-21, not committed)
+
+- Fever Mode on the Clean ×10 milestone (6 s, once an order); Endless Prep Rush,
+  a conveyor mini-game on its own screen (order-board tile); the Kitchen Chaos
+  Director (Giant, Avalanche, Rush Hour, Grandma's Challenge, Perfect Plating,
+  Kitchen Inspection — one every 4th eligible order); five special ingredient
+  variants (every 3rd eligible order with their ingredient). REFERENCE §10
+  "Fever Mode, Prep Rush, Kitchen Chaos and special variants".
+- No save field, no money, no new ingredient id; counters and Prep Rush's best
+  are session memory. The inspection event reads `inspectBusiness` live, no
+  fine.
+- QA `phase3-qa`; browser `tools/e2e/phase3.mjs` (needs the restaurant build
+  plus the two dev servers it names). Dev builds only: `window.__kcSpecials`.
+- Working tree only: no commit, no `BUILD_VERSION` change, no upload.
+
+## Phase 2: bench scraper, money vacuum, serve celebration, tips (2026-10-21, not committed)
+
+- Cutting leaves debris; every 2–3 orders the bench scraper is offered at the
+  start of an order (one broad sweep cleans; Skip always there). After Serve
+  the payment lands as cash to sweep into the wallet (which was already
+  credited — the pill rolls up to the real balance). The customer cheers a
+  Masterful dish and nods at a Clean one. REFERENCE §10 "Bench scraper…".
+- **Customer tips — new money (developer):** 1 in 3 first-time Masterful
+  campaign orders tip 10% (≥ $5), as a new `customer-tip` ledger entry in the
+  same save as the order pay. REFERENCE §7 "Customer tips" (bound: ≤ 5%,
+  measured 1.79% worst case). This lifts ServiceOrderComplete's old "no tip"
+  rule on purpose.
+- QA `phase2-qa`; browser `tools/e2e/phase2.mjs`. The shared e2e solver now
+  scrapes when offered, and takes opt-in `aim` / `steady` (callers unchanged).
+- Working tree only: no commit, no `BUILD_VERSION` change, no upload.
+
+## Phase 1: cutting feel, combo, New Best (2026-10-21, not committed)
+
+- The combo (meter, "Clean ×N!" milestones, rising cut pitch), the board
+  drag, Perfect/milestone/completion sounds, the settle tilt, the Knife
+  Report's "New Best!" with "Best 72 → 85" and "+N%", and a replay latch.
+  REFERENCE §10 "Cutting feel, combo and New Best"; QA `phase1-cutting-qa`.
+- Fixed with it: the Knife Report's stats grid overflowed the card on every
+  phone width (diagram off-card, "100" clipped at 320 px). Container query
+  on the report; browser check `tools/e2e/knifereport.mjs` (26 checks, 6
+  screen sizes incl. a 1280×720 window).
+- **Two deliberate rule overrides (developer):** pieces now lean as they
+  settle (the reference's "no rotation" rule), and the New Best line shows
+  score digits (Law 4). Both are scoped and reasoned in their docs — do
+  not revert them as fixes.
+- Working tree only: no commit, no `BUILD_VERSION` change, no upload.
+- e2e baseline is NOT clean: `coach.mjs` and `economyv25.mjs` fail on an
+  unmodified build too (REFERENCE §5, "Known pre-existing failures").
+
 ## v1.4.1: interstitials show again (2026-10-18)
 
 - Found in the Playgama QA Tool's certification ("Trigger the Interstitial

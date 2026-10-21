@@ -1,5 +1,8 @@
 import { foodFromStock } from "@/game/restaurant/restaurantEconomy";
-import { useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { AudioManager } from "@/game/AudioManager";
+import { CASH, autoCollectOn, reducedMotionOn, setAutoCollect } from "@/game/cashBurst";
+import { CashVacuum } from "./CashVacuum";
 import { KButton, Panel } from "../common/primitives";
 import { CurrencyPill } from "../common/Indicators";
 import { BusinessPaymentLines } from "../business/BusinessPaymentLines";
@@ -14,12 +17,23 @@ import type { KnifeDefinition } from "@/game/knives/knifeTypes";
 import type { BoardDefinition } from "@/game/boards/boardTypes";
 import { getSupplier } from "@/game/economy/supplierDefinitions";
 import { STAFF_CATALOG } from "@/game/economy/staffDefinitions";
+import type { QualityLabel } from "@/types/game";
+import {
+  PERSONALITIES,
+  personalityReaction,
+  type PersonalityId,
+} from "@/game/customers/personalities";
+import { TIER_INFO, type PresentationTier } from "@/game/signatureDishes";
 
 type ServeResult = {
   coinsAwarded: number;
   reaction: string;
   settlement?: SettlementResult | undefined;
   isReplay?: boolean;
+  /** Phase 2 (C3): the customer tip credited with this payment, in cents (0 or absent: none). */
+  tip?: number;
+  /** Phase 2 (C2): the dish grade, from the same score its pay was computed from; the customer reaction follows it. */
+  quality?: QualityLabel;
   /** Business Mode only — the menu price × willingness-to-pay breakdown behind `coinsAwarded` (Economy V3 Phase 16). */
   businessPayment?: BusinessCustomerPayment;
   /** Business Mode only — today's customer count after this serve (order frequency, Economy V3 Phase 16). */
@@ -114,12 +128,24 @@ function Row({ label, value, strong }: { label: string; value: number; strong?: 
  * the player takes it (§16/§18: "do not automatically serve the order
  * immediately when preparation completes").
  *
- * Same "no stars, no percentage, no tip" law as OrderComplete — the
- * only numbers ever shown here are the flat coin payment and the
- * running credits total, PLUS (Economy V2 Phase 9) an optional
- * collapsible settlement breakdown when this serve actually computed
- * one (campaign/batch-group only — plain Restaurant Service never
- * passes `settlement`, so its screen is completely unchanged).
+ * Same "no stars, no percentage" law as OrderComplete — the only numbers
+ * shown here are the coin payment and the running credits total, PLUS
+ * (Economy V2 Phase 9) an optional collapsible settlement breakdown when
+ * this serve actually computed one (campaign/batch-group only — plain
+ * Restaurant Service never passes `settlement`, so its screen is
+ * completely unchanged).
+ *
+ * Phase 2 (developer decision 2026-10-21) lifts this screen's old "no
+ * tip" rule: a campaign order can now earn a customer tip (App credits it
+ * with the order pay; economy/customerTips.ts has the rule), shown here
+ * as its own line. It also adds the serve celebration: the payment sound
+ * on the real payment, the customer reacting to the dish's grade, and the
+ * payment as cash on the counter (CashVacuum) — all presentation over
+ * money App has already credited when Serve is tapped. The wallet pill
+ * shows `credits − cash still on the counter`, so it rolls up to the real
+ * balance as the cash is swept in and can never disagree with it. Serve is
+ * latched to one call per screen, so a double tap can never serve, pay or
+ * tip twice.
  */
 export function ServiceOrderComplete({
   serviceOrder,
@@ -136,6 +162,11 @@ export function ServiceOrderComplete({
   knifeSharpnessValue,
   isBusinessOrder = false,
   extraAction,
+  personality = null,
+  prep,
+  plateTier = null,
+  bookNote,
+  onCustomerMoment,
 }: {
   serviceOrder: ServiceOrder;
   credits: number;
@@ -157,31 +188,150 @@ export function ServiceOrderComplete({
   isBusinessOrder?: boolean;
   /** Unified Restaurant: an optional second action after a serve (a menu guest). Absent everywhere else. */
   extraAction?: { label: string; onClick: () => void; disabled?: boolean } | undefined;
+  /** Phase 4 (B): this order's special customer, if any (customers/personalities.ts) — their reaction line and mood; the money is the normal settlement. */
+  personality?: { id: PersonalityId; nth: number } | null;
+  /** Phase 4 (B4): the Regular's measured prep time and par (cosmetic). */
+  prep?: { ms: number; parMs: number };
+  /** Phase 4 (A/C): this plate's presentation tier (from this run's score) — a label only. */
+  plateTier?: PresentationTier | null;
+  /** Phase 4 (A7): the recipe-book page this dish wrote (BookPageNote), shown before Serve — part of the card. */
+  bookNote?: ReactNode;
+  /** Phase 6: a special customer's reaction at Serve (for its Kitchen Moment) — once, on the real serve. */
+  onCustomerMoment?: (c: { line: string; reveal?: string }) => void;
 }) {
   const [served, setServed] = useState<ServeResult | null>(null);
   const { customer, recipe } = serviceOrder;
+  // Phase 2 (B4): cents still on the counter as cash. The pill shows
+  // `credits - remaining`, so it rolls toward the real balance as the cash
+  // is swept in and lands on it exactly.
+  const [remaining, setRemaining] = useState(0);
+  const walletRef = useRef<HTMLSpanElement | null>(null);
+  const [reduced] = useState(() => reducedMotionOn());
+  const shownCredits = useRolledNumber(credits - remaining, reduced);
+  // B5: auto-collect — a session option (no save field), always on with Reduced Motion.
+  const [auto, setAuto] = useState(() => reduced || autoCollectOn());
+  // One serve per screen: a second tap that lands before React re-renders
+  // must not call onServe again (C1, "prevent double-clicking").
+  const serveLatch = useRef(false);
+  // Phase 4 (C4): the same for moving on — "Next Customer" / "Finish Level"
+  // advances the queue (or finishes the level) exactly once per screen.
+  const nextLatch = useRef(false);
+  function nextOnce() {
+    if (nextLatch.current) return;
+    nextLatch.current = true;
+    onNextOrder();
+  }
 
   function handleServe() {
+    if (serveLatch.current) return;
+    serveLatch.current = true;
     const result = onServe();
-    if (result) setServed(result);
+    if (!result) {
+      serveLatch.current = false;
+      return;
+    }
+    const paid = result.isReplay ? 0 : result.coinsAwarded + (result.tip ?? 0);
+    setRemaining(paid);
+    setServed(result);
+    if (personality) {
+      const said = personalityReaction(personality, result.quality, prep);
+      onCustomerMoment?.({ line: said.line, ...(said.reveal ? { reveal: said.reveal } : {}) });
+    }
+    // The payment sound on the payment itself (C1); the tip's own after it.
+    if (paid > 0) AudioManager.playSfx("till");
+    if ((result.tip ?? 0) > 0) window.setTimeout(() => AudioManager.playTip(), 320);
   }
+  const tip = served && !served.isReplay ? (served.tip ?? 0) : 0;
+  const paidCents = served && !served.isReplay ? served.coinsAwarded : 0;
+  // Phase 4 (B9): a special customer reacts in their own words to the same
+  // grade (and the Regular to his wait); everyone else as before.
+  const special =
+    served && personality ? personalityReaction(personality, served.quality, prep) : null;
+  const reaction = special
+    ? special.mood
+    : served?.quality === "Masterful"
+      ? "cheer"
+      : served?.quality === "Clean"
+        ? "nod"
+        : null;
+  // Phase 4 (C3): after Serve the card fills in in order — the customer's
+  // reaction, then the payment, the tip, the cash — a beat apart (none with
+  // Reduced Motion). Presentation only: the money was credited on the tap.
+  const stage = (ms: number) => (reduced ? undefined : ({ animationDelay: `${ms}ms` } as const));
 
   return (
     <div className="absolute inset-0 z-50 grid place-items-center bg-walnut-dark/55 backdrop-blur-[3px]">
-      <Panel tone="cream" className="anim-pop w-[82%] p-6 text-center">
+      <Panel
+        tone="cream"
+        className="anim-pop max-h-[calc(100%-12px)] w-[82%] overflow-y-auto overscroll-contain p-6 text-center [@media(max-height:640px)]:px-5 [@media(max-height:640px)]:py-4"
+      >
         <p className="font-ui text-[11px] font-extrabold uppercase tracking-[0.24em] text-copper">
           {served ? "Served" : "Order Ready"}
+          {/* Phase 4 (A/C): the plate's presentation tier, on the same line. */}
+          {plateTier ? (
+            <span data-testid="plate-tier" data-tier={plateTier}>
+              {" "}
+              · {TIER_INFO[plateTier].icon} {TIER_INFO[plateTier].name}
+            </span>
+          ) : null}
         </p>
-        <p className="mt-1 font-display text-[24px] font-black tracking-tight text-walnut-dark">
+        <p className="mt-1 font-display text-[24px] font-black leading-tight tracking-tight text-walnut-dark [@media(max-height:640px)]:text-[21px]">
           {recipe.name}
         </p>
-        <p className="font-hand text-[18px] text-olive">
-          {customer.avatarEmoji} {customer.name}
+        {/* Phase 2 (C2): the customer reacts to the dish's own grade (the
+            score its pay came from) — a cheer and a clap for Masterful, a
+            nod for Clean, nothing extra otherwise. Once, on serve. */}
+        <p className="font-hand text-[18px] text-olive" data-testid="service-customer">
+          <span
+            className={
+              (reaction === "cheer" ? "kc-cheer" : reaction === "nod" ? "kc-nod" : "") +
+              // Phase 4 (B5/B7): the Mystery Guest is a silhouette until served; Bruno is big.
+              (personality?.id === "mystery-customer" && !served ? " kc-silhouette" : "") +
+              (personality?.id === "giant-eater" ? " inline-block text-[1.45em] leading-none" : "")
+            }
+            data-testid={personality ? "special-customer" : undefined}
+            data-customer={personality?.id}
+          >
+            {customer.avatarEmoji}
+          </span>
+          {personality ? (
+            <span className="ml-0.5 text-[0.8em]" aria-hidden="true">
+              {PERSONALITIES[personality.id].badge}
+            </span>
+          ) : null}{" "}
+          {customer.name}
+          {reaction === "cheer" ? (
+            // The clap rides inside the chip: name, avatar and chip stay on one
+            // line at 320 px, so a tip line still fits on a 320×568 screen.
+            <span
+              className="anim-pop ml-1.5 inline-block whitespace-nowrap rounded-full bg-copper/10 px-2 py-0.5 align-middle font-ui text-[10.5px] font-extrabold uppercase tracking-[0.12em] text-copper"
+              data-testid="customer-reaction"
+            >
+              <span className="kc-cheer" aria-hidden="true">
+                👏
+              </span>{" "}
+              Exceptional!
+            </span>
+          ) : null}
         </p>
 
         {served ? (
           <>
-            <p className="mt-2 font-hand text-[20px] text-walnut-dark">"{served.reaction}"</p>
+            <p
+              className="kc-stage mt-2 font-hand text-[20px] leading-snug text-walnut-dark [@media(max-height:640px)]:text-[18px]"
+              data-testid="customer-line"
+              style={stage(0)}
+            >
+              {special?.reveal ? (
+                <span
+                  className="font-ui text-[13px] font-extrabold text-copper"
+                  data-testid="mystery-reveal"
+                >
+                  It was {special.reveal}!{" "}
+                </span>
+              ) : null}
+              {special ? special.line : `"${served.reaction}"`}
+            </p>
             {/* Economy V2 Phase 9 §11 — a replay must read as unambiguously
                 economically-zero, never inferred from coinsAwarded === 0
                 (a genuine settlement can also floor at 0, rarely). */}
@@ -194,12 +344,57 @@ export function ServiceOrderComplete({
                 <BusinessPaymentLines payment={served.businessPayment} paid />
               </div>
             ) : served.coinsAwarded > 0 ? (
-              <p className="mt-3 font-hand text-[20px] text-olive">
+              <p
+                className="kc-stage mt-3 font-hand text-[20px] text-olive [@media(max-height:640px)]:mt-2"
+                style={stage(180)}
+              >
                 {formatUsdChange(served.coinsAwarded)}
               </p>
             ) : null}
-            <div className="mt-2 flex justify-center">
-              <CurrencyPill amount={credits} />
+            {/* Phase 2 (C3): the tip, as its own line under the order pay. */}
+            {tip > 0 ? (
+              <p
+                className="kc-stage font-ui text-[13px] font-extrabold uppercase tracking-[0.14em] text-copper"
+                data-testid="tip-line"
+                style={stage(360)}
+              >
+                💸 Generous tip! {formatUsdChange(tip)}
+              </p>
+            ) : null}
+            {/* Phase 2 (B2/B3): the payment (and tip) as cash to sweep in. */}
+            {paidCents + tip > 0 ? (
+              <div className="kc-stage" style={stage(520)}>
+                <CashVacuum
+                  payCents={paidCents}
+                  tipCents={tip}
+                  walletRef={walletRef}
+                  reducedMotion={reduced}
+                  auto={auto}
+                  onRemaining={setRemaining}
+                />
+              </div>
+            ) : null}
+            <div className="mt-1 flex items-center justify-center gap-1">
+              <span ref={walletRef} data-testid="wallet-pill" data-credits={credits}>
+                <CurrencyPill amount={shownCredits} />
+              </span>
+              {/* B5: the auto-collect toggle shares the wallet row while cash is on the counter. */}
+              {remaining > 0 ? (
+                <button
+                  type="button"
+                  className="min-h-12 px-2 font-ui text-[11px] font-extrabold uppercase tracking-[0.12em] text-walnut/55 disabled:opacity-60"
+                  data-testid="cash-auto"
+                  aria-pressed={auto}
+                  aria-label={reduced ? "Auto-collect (on with Reduced Motion)" : "Auto-collect"}
+                  disabled={reduced}
+                  onClick={() => {
+                    setAutoCollect(!auto);
+                    setAuto(!auto);
+                  }}
+                >
+                  {auto ? "✓ Auto" : "⚡ Auto"}
+                </button>
+              ) : null}
             </div>
             {served.settlement ? (
               <SettlementBreakdown
@@ -222,9 +417,9 @@ export function ServiceOrderComplete({
                 ✓ Today's customers are complete. 🌙 End the day when ready.
               </p>
             ) : null}
-            <div className="mt-5 space-y-2">
+            <div className="mt-5 space-y-2 [@media(max-height:640px)]:mt-3">
               {isBusinessOrder && served.businessCustomers?.complete ? null : (
-                <KButton full onClick={onNextOrder}>
+                <KButton full onClick={nextOnce}>
                   {nextLabel}
                 </KButton>
               )}
@@ -232,7 +427,7 @@ export function ServiceOrderComplete({
                 <KButton
                   full
                   variant="sage"
-                  className="h-auto min-h-12 py-2 leading-tight"
+                  className="h-auto min-h-12 py-2 leading-tight [@media(max-height:640px)]:text-[12.5px]"
                   disabled={!!extraAction.disabled}
                   onClick={extraAction.onClick}
                 >
@@ -246,6 +441,7 @@ export function ServiceOrderComplete({
           </>
         ) : (
           <>
+            {bookNote}
             <p className="mt-2 font-hand text-[17px] text-walnut/70">
               Everything's prepared — {customer.name} is waiting.
             </p>
@@ -265,4 +461,34 @@ export function ServiceOrderComplete({
       </Panel>
     </div>
   );
+}
+
+/**
+ * Phase 2 (B4) — `target` shown as a short roll from its previous value
+ * (CASH.COUNTER_MS), immediate with Reduced Motion. Display only: it
+ * always ends on `target`, whatever interrupts it.
+ */
+function useRolledNumber(target: number, reduced: boolean): number {
+  const [shown, setShown] = useState(target);
+  const from = useRef(target);
+  useEffect(() => {
+    if (reduced || from.current === target) {
+      from.current = target;
+      setShown(target);
+      return;
+    }
+    const start = performance.now();
+    const a = from.current;
+    let raf = 0;
+    const step = (now: number) => {
+      const k = Math.min(1, (now - start) / CASH.COUNTER_MS);
+      const v = Math.round(a + (target - a) * (1 - (1 - k) * (1 - k)));
+      from.current = v;
+      setShown(v);
+      if (k < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [target, reduced]);
+  return shown;
 }

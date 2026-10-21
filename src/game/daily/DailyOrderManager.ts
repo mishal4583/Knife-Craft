@@ -34,7 +34,7 @@ export function dailyKeyFor(date: Date): string {
 }
 
 /** The day immediately before `key` ("YYYY-MM-DD" in, same shape out) — used only to decide whether a streak continues or resets. */
-function previousDayKey(key: string): string {
+export function previousDayKey(key: string): string {
   const [y, m, d] = key.split("-").map(Number);
   const dt = new Date(y!, m! - 1, d!);
   dt.setDate(dt.getDate() - 1);

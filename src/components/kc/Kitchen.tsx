@@ -33,6 +33,7 @@ import { KButton, Coin, DustMotes } from "./common/primitives";
 import { PointerHand } from "./common/PointerHand";
 import { gameReady } from "@/game/PlayablesSDK";
 import { dollars, formatUsd, formatUsdChange } from "@/game/money";
+import { DailyGiftCard } from "./DailyGiftCard";
 import { KitchenBackground } from "./KitchenBackground";
 import type { ScreenId } from "./data";
 import { getLevels, isUnlocked, isCompleted, type LevelProgress } from "@/game/levels/LevelManager";
@@ -136,10 +137,13 @@ export function Kitchen({
   go,
   save,
   onSelectLevel,
+  onOpenDailyGift,
 }: {
   go: (s: ScreenId) => void;
   save: SaveData;
   onSelectLevel: (levelId: string) => void;
+  /** Phase 5 (B3): opens today's gift sheet (App's openDailyGift) — the one place a gift is taken. */
+  onOpenDailyGift?: () => void;
 }) {
   const levelProgress = save.levelProgress;
   const attention = useContext(NavAttentionContext);
@@ -209,56 +213,62 @@ export function Kitchen({
 
       {/* Top HUD */}
       <div className="absolute inset-x-0 top-0 z-20 flex items-start justify-between p-3">
-        <button
-          type="button"
-          onClick={() => {
-            // Money waiting: straight to Achievements, where it's collected (developer 2026-10-18).
-            if (closedUntil("rack") === null)
-              go(collectableTotal(save) > 0 ? "achievements" : "rack");
-          }}
-          data-testid="kitchen-rank"
-          // One line each, never wider than the room the wallet and Settings leave
-          // (audit 2026-10-08: at 320 px it wrapped into the Kitchen Upgrade sign).
-          className="press mr-2 min-w-0 max-w-[60%] shrink rounded-2xl border border-ivory/25 bg-walnut-dark/45 px-3 py-2 text-left backdrop-blur-sm"
-        >
-          {RESTAURANT_MODE ? (
-            <CityRankBadge save={save} />
-          ) : (
-            <>
-              {/* The restaurant's rank (developer 2026-10-08): which of the ranks it
-                holds, its name, the bar to the next one and when that comes. */}
-              <p className="truncate whitespace-nowrap font-ui text-[10px] font-extrabold uppercase tracking-[0.14em] text-gold">
-                <span className="hidden min-[380px]:inline">Restaurant </span>rank · {rankNumber}/
-                {CAFE_MILESTONES.length}
-              </p>
-              <p className="truncate whitespace-nowrap font-display text-[15.5px] font-black leading-tight text-ivory">
-                🏆 {cafeMilestoneTitle}
-              </p>
-              <span className="mt-1.5 block h-[4px] w-24 overflow-hidden rounded-full bg-ivory/25">
-                <span
-                  className="block h-full rounded-full"
-                  style={{
-                    width: `${Math.round(cafeProgress.progressFraction * 100)}%`,
-                    background: "linear-gradient(90deg,var(--color-gold),var(--color-copper))",
-                  }}
-                />
+        {/* Phase 5 (B3): the daily gift sits under the rank, on the Kitchen's free wall. */}
+        <div className="mr-2 flex min-w-0 max-w-[60%] shrink flex-col items-start gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              // Money waiting: straight to Achievements, where it's collected (developer 2026-10-18).
+              if (closedUntil("rack") === null)
+                go(collectableTotal(save) > 0 ? "achievements" : "rack");
+            }}
+            data-testid="kitchen-rank"
+            // One line each, never wider than the room the wallet and Settings leave
+            // (audit 2026-10-08: at 320 px it wrapped into the Kitchen Upgrade sign).
+            className="press min-w-0 max-w-full shrink rounded-2xl border border-ivory/25 bg-walnut-dark/45 px-3 py-2 text-left backdrop-blur-sm"
+          >
+            {RESTAURANT_MODE ? (
+              <CityRankBadge save={save} />
+            ) : (
+              <>
+                {/* The restaurant's rank (developer 2026-10-08): which of the ranks it
+                  holds, its name, the bar to the next one and when that comes. */}
+                <p className="truncate whitespace-nowrap font-ui text-[10px] font-extrabold uppercase tracking-[0.14em] text-gold">
+                  <span className="hidden min-[380px]:inline">Restaurant </span>rank · {rankNumber}/
+                  {CAFE_MILESTONES.length}
+                </p>
+                <p className="truncate whitespace-nowrap font-display text-[15.5px] font-black leading-tight text-ivory">
+                  🏆 {cafeMilestoneTitle}
+                </p>
+                <span className="mt-1.5 block h-[4px] w-24 overflow-hidden rounded-full bg-ivory/25">
+                  <span
+                    className="block h-full rounded-full"
+                    style={{
+                      width: `${Math.round(cafeProgress.progressFraction * 100)}%`,
+                      background: "linear-gradient(90deg,var(--color-gold),var(--color-copper))",
+                    }}
+                  />
+                </span>
+                <p className="mt-1 truncate whitespace-nowrap font-ui text-[10px] font-bold leading-none text-ivory/70">
+                  {nextRank
+                    ? `Next: ${nextRank.title} · Lv ${nextRank.levelRequired}`
+                    : "Highest rank reached"}
+                </p>
+              </>
+            )}
+            {collectableTotal(save) > 0 ? (
+              <span
+                data-testid="kitchen-achievements-waiting"
+                className="mt-1.5 block truncate whitespace-nowrap rounded-full bg-gold/90 px-2 py-0.5 font-ui text-[11px] font-extrabold text-walnut-dark"
+              >
+                💰 {formatUsd(collectableTotal(save))} to collect
               </span>
-              <p className="mt-1 truncate whitespace-nowrap font-ui text-[10px] font-bold leading-none text-ivory/70">
-                {nextRank
-                  ? `Next: ${nextRank.title} · Lv ${nextRank.levelRequired}`
-                  : "Highest rank reached"}
-              </p>
-            </>
-          )}
-          {collectableTotal(save) > 0 ? (
-            <span
-              data-testid="kitchen-achievements-waiting"
-              className="mt-1.5 block truncate whitespace-nowrap rounded-full bg-gold/90 px-2 py-0.5 font-ui text-[11px] font-extrabold text-walnut-dark"
-            >
-              💰 {formatUsd(collectableTotal(save))} to collect
-            </span>
+            ) : null}
+          </button>
+          {onOpenDailyGift ? (
+            <DailyGiftCard save={save} levelNumber={reached} onOpen={onOpenDailyGift} />
           ) : null}
-        </button>
+        </div>
         <div className="flex shrink-0 items-center gap-2">
           <Coin n={save.credits} />
           {/* Settings — Phase 15 dissolved the Journal hub, so this is the
@@ -628,6 +638,24 @@ export function OrderBoard({
                   : RESTAURANT_MODE
                     ? "your restaurant, open every day"
                     : `ongoing earnings · up to ${formatUsd(ENDLESS_DAILY_COIN_CAP).replace(/\.00$/, "")}/day`}
+              </span>
+            </button>
+            {/* Phase 3 (B): Endless Prep Rush — an optional arcade challenge on
+                its own screen, open from the start; it pays nothing and saves nothing. */}
+            <button
+              type="button"
+              onClick={() => go("prep-rush")}
+              data-testid="prep-rush-tile"
+              className="press col-span-2 flex items-center gap-3 rounded-[16px] border border-copper/30 bg-copper/10 px-3 py-2.5 text-left"
+            >
+              <span className="text-[20px]">🏃</span>
+              <span className="min-w-0">
+                <span className="block font-display text-[13.5px] font-black text-walnut-dark">
+                  Prep Rush
+                </span>
+                <span className="block font-hand text-[13px] text-walnut/60">
+                  cut the conveyor clean · just for fun
+                </span>
               </span>
             </button>
           </div>

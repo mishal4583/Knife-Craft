@@ -71,10 +71,13 @@ export function CookingClip({
   playing,
   kind,
   onDone,
+  rate = 1,
 }: {
   playing: boolean;
   kind: DishKind;
   onDone: () => void;
+  /** Phase 3 (C): Rush Hour plays the film faster (the watchdogs count real time, so a faster film only ends sooner). */
+  rate?: number;
 }) {
   const clip = CLIPS[kind];
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -108,6 +111,7 @@ export function CookingClip({
       if (doneRef.current || PauseManager.isPaused()) return;
       if (video.error || video.networkState === HTMLMediaElement.NETWORK_NO_SOURCE) return finish();
       video.muted = !AudioManager.soundAllowed;
+      video.playbackRate = rate;
       video.play().catch(() => {
         // Autoplay with sound refused: try once more silently, else move on.
         if (video.muted) return finish();

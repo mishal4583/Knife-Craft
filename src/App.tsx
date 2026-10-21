@@ -47,6 +47,13 @@ import {
   type RewardedPlacement,
 } from "@/game/PlayablesSDK";
 import { levelNumber } from "@/game/levels/levelMastery";
+import { CHAOS } from "@/game/kitchenChaos";
+import { RestorationReveal } from "@/components/kc/RestorationReveal";
+import { KITCHEN_SKIN_SRC } from "@/components/kc/KitchenBackground";
+import { kitchenUpgradeOrDefault } from "@/game/kitchen/kitchenUpgradeDefinitions";
+import { giftStreakState, streakRewardOnTake } from "@/game/daily/giftStreak";
+import { PERSONALITY_CADENCE } from "@/game/customers/personalities";
+import { inspectBusiness } from "@/game/business/businessInspection";
 import { GameShell } from "@/components/kc/game/GameShell";
 import { type ScreenId } from "@/components/kc/data";
 import { SaveManager, type SaveData } from "@/game/SaveManager";
@@ -258,6 +265,9 @@ import {
 import { buyStaff as buyStaffFromCatalog } from "@/game/economy/StaffManager";
 import { selectSupplier as selectSupplierFromCatalog } from "@/game/economy/SupplierManager";
 import { appendLedgerEntry } from "@/game/economy/EconomyLedger";
+import { tipFor } from "@/game/economy/customerTips";
+import { qualityFor } from "@/game/CutEvaluator";
+import type { QualityLabel } from "@/types/game";
 import type { SettlementResult } from "@/game/economy/economyTypes";
 import {
   isKnownIngredient,
@@ -601,6 +611,10 @@ export function App() {
   const adBonusBusyRef = useRef(false);
   /** The daily gift is offered once per session at most (it waits for a calm Kitchen). */
   const dailyGiftOfferedRef = useRef(false);
+  /** Phase 5 (A): the restoration reveal of a kitchen tier just built (RestorationReveal.tsx) — session-only, never saved. */
+  const [restorationReveal, setRestorationReveal] = useState<{ from: string; to: string } | null>(
+    null,
+  );
   // Economy V2.5 — milestone rewards just paid, shown one at a time.
   const [milestoneNoticeQueue, setMilestoneNoticeQueue] = useState<MilestoneNotice[]>([]);
   // Rush Restock's ad path resumes after an await: it reads the CURRENT order
@@ -943,6 +957,12 @@ export function App() {
     const result = purchaseKitchenUpgrade(current, id);
     if (result.ok) {
       persist(appendLedgerEntry(result.save, "kitchen-investment-purchase", -result.price, id));
+      // Phase 5 (A): the before-and-after of the kitchen just built — only
+      // after the purchase is saved; one at a time (a second build while one
+      // shows just updates the kitchen behind it).
+      const from = current.equippedKitchenUpgradeId;
+      const to = result.save.equippedKitchenUpgradeId;
+      if (from !== to) setRestorationReveal((r) => r ?? { from, to });
     }
     return result;
   }
@@ -1106,7 +1126,17 @@ export function App() {
     if (free <= 0) return false;
     const offer = adBonusesOpen(current) ? adBonusOffer(current, "daily_gift", free, now) : null;
     adBonusOfferRef.current = offer;
-    setAdBonus({ kind: "daily_gift", amount: offer ? free : 0, free, phase: "offer" });
+    // Phase 5 (B): which day of the gift streak today's gift is, and its reward if any.
+    const streak = giftStreakState(current, now);
+    const reward = streakRewardOnTake(current, now);
+    setAdBonus({
+      kind: "daily_gift",
+      amount: offer ? free : 0,
+      free,
+      phase: "offer",
+      streakDay: streak.todayDay,
+      ...(reward ? { streakReward: reward.amount } : {}),
+    });
     return true;
   }
 
@@ -1118,7 +1148,11 @@ export function App() {
     if (r.ok) {
       persist(r.save);
       AudioManager.playSfx("coin");
-      setAdBonus((b) => (b ? { ...b, phase: "done", granted: r.amount } : b));
+      setAdBonus((b) =>
+        b
+          ? { ...b, phase: "done", granted: r.amount + (r.streak?.amount ?? 0), streak: r.streak }
+          : b,
+      );
     } else setAdBonus(null);
   }
 
@@ -1147,12 +1181,14 @@ export function App() {
       const now = new Date();
       let base = latest;
       let granted = 0;
+      let streakPaid: { day: number; amount: number } | null = null;
       let amount = offer.amount;
       if (offer.kind === "daily_gift") {
         const gift = takeDailyGift(base, restaurantLevelOf(base.levelProgress), now);
         if (gift.ok) {
           base = gift.save;
-          granted += gift.amount;
+          granted += gift.amount + (gift.streak?.amount ?? 0);
+          streakPaid = gift.streak;
         }
       } else if (offer.kind === "floor_double") {
         const collected = collectFloor(base, now.getTime());
@@ -1166,7 +1202,9 @@ export function App() {
       if (!commit.ok) return fail(commit.reason === "dailyCapReached" ? "capReached" : "unavailable");
       persist(commit.save);
       AudioManager.playSfx("coin");
-      setAdBonus((b) => (b ? { ...b, phase: "done", granted: granted + amount } : b));
+      setAdBonus((b) =>
+        b ? { ...b, phase: "done", granted: granted + amount, streak: streakPaid } : b,
+      );
     } finally {
       adBonusBusyRef.current = false;
     }
@@ -2041,6 +2079,10 @@ export function App() {
     reaction: string;
     settlement?: SettlementResult | undefined;
     isReplay?: boolean;
+    /** Phase 2 (C3): the customer tip credited with this payment, in cents (0 or absent: none). */
+    tip?: number;
+    /** Phase 2 (C2): the dish grade, from the same score its pay was computed from; the customer reaction follows it. */
+    quality?: QualityLabel;
   } | null {
     if (!campaignServiceSession?.current) return null;
     const { recipe, order } = campaignServiceSession.current;
@@ -2121,10 +2163,25 @@ export function App() {
     // isReplay gate exactly (brief §11 — replay must never create a
     // persistent sharpness change). Folded into the SAME persist() call
     // as the credit award so both land atomically together.
+    // Phase 2 (C3, developer 2026-10-21) — a customer tip rides on THIS
+    // first payment only (economy/customerTips.ts): same `isReplay` gate as
+    // the settlement, so a replay can never tip and no order tips twice.
+    // It is credited in the SAME persist as the order pay, as its own
+    // "customer-tip" entry; the settlement and its entry are unchanged.
+    // appendLedgerEntry is a no-op for a 0 tip.
+    let tip = 0;
     if (base && !isReplay) {
+      tip = tipFor({
+        firstPayment: true,
+        levelId: campaignServiceSession.levelId,
+        recipeId: recipe.id,
+        orderIndex: paidOrdersFor(base.levelProgress, campaignServiceSession.levelId).length,
+        score: order.preparationScore ?? 0,
+        payCents: result.coinsAwarded,
+      });
       const withCredits = {
         ...base,
-        credits: base.credits + result.coinsAwarded,
+        credits: base.credits + result.coinsAwarded + tip,
         levelProgress: withPaidOrder(base.levelProgress, campaignServiceSession.levelId, recipe.id),
       };
       const withLedger = appendLedgerEntry(
@@ -2133,9 +2190,22 @@ export function App() {
         result.coinsAwarded,
         recipe.id,
       );
-      persist(applySharpnessDecay(withLedger, base.equippedKnifeId, recipe));
+      const withTip = appendLedgerEntry(
+        withLedger,
+        "customer-tip",
+        tip,
+        `${campaignServiceSession.levelId}:${recipe.id}`,
+      );
+      persist(applySharpnessDecay(withTip, base.equippedKnifeId, recipe));
     }
-    return { coinsAwarded: result.coinsAwarded, reaction: result.reaction, settlement, isReplay };
+    return {
+      coinsAwarded: result.coinsAwarded,
+      reaction: result.reaction,
+      settlement,
+      isReplay,
+      tip,
+      quality: qualityFor(order.preparationScore ?? 0),
+    };
   }
 
   /**
@@ -2563,6 +2633,10 @@ export function App() {
     reaction: string;
     settlement?: SettlementResult | undefined;
     isReplay?: boolean;
+    /** Phase 2 (C3): the customer tip credited with this payment, in cents (0 or absent: none). */
+    tip?: number;
+    /** Phase 2 (C2): the dish grade, from the same score its pay was computed from; the customer reaction follows it. */
+    quality?: QualityLabel;
   } | null {
     if (!batchGroupSession || !batchViewOrderId) return null;
     const viewed = batchGroupSession.orders.find((o) => o.order.id === batchViewOrderId);
@@ -2626,10 +2700,21 @@ export function App() {
     if (!result) return null;
     setBatchGroupSession(result.group);
     // Economy V2 Phase 6 — mirrors serveCampaignOrder's own doc exactly.
+    // Phase 2 (C3) — mirrors serveCampaignOrder exactly: the tip rides on
+    // this first payment only, in the same persist, as its own entry.
+    let tip = 0;
     if (base && !isReplay) {
+      tip = tipFor({
+        firstPayment: true,
+        levelId: batchGroupSession.levelId,
+        recipeId: viewed.recipe.id,
+        orderIndex: paidOrdersFor(base.levelProgress, batchGroupSession.levelId).length,
+        score: viewed.order.preparationScore ?? 0,
+        payCents: result.coinsAwarded,
+      });
       const withCredits = {
         ...base,
-        credits: base.credits + result.coinsAwarded,
+        credits: base.credits + result.coinsAwarded + tip,
         levelProgress: withPaidOrder(
           base.levelProgress,
           batchGroupSession.levelId,
@@ -2642,9 +2727,22 @@ export function App() {
         result.coinsAwarded,
         viewed.recipe.id,
       );
-      persist(applySharpnessDecay(withLedger, base.equippedKnifeId, viewed.recipe));
+      const withTip = appendLedgerEntry(
+        withLedger,
+        "customer-tip",
+        tip,
+        `${batchGroupSession.levelId}:${viewed.recipe.id}`,
+      );
+      persist(applySharpnessDecay(withTip, base.equippedKnifeId, viewed.recipe));
     }
-    return { coinsAwarded: result.coinsAwarded, reaction: result.reaction, settlement, isReplay };
+    return {
+      coinsAwarded: result.coinsAwarded,
+      reaction: result.reaction,
+      settlement,
+      isReplay,
+      tip,
+      quality: qualityFor(viewed.order.preparationScore ?? 0),
+    };
   }
 
   /** "Next Customer" within a batch group — advances the VIEW to the next order (which may already be READY, having been satisfied by the order just served — §4's whole point), or finishes the level once every group order has been served and paid. */
@@ -2889,7 +2987,7 @@ export function App() {
       ? "off"
       : closingShown
         ? "night"
-        : screen === "gameplay"
+        : screen === "gameplay" || screen === "prep-rush"
           ? "cutting"
           : "kitchen";
   useEffect(() => AudioManager.setMusicMood(musicMood), [musicMood]);
@@ -2998,6 +3096,27 @@ export function App() {
       ? activeLevel.id
       : undefined;
   const isBusinessService = sessionMode === "business-service";
+  // Phase 5 (A4): the cutting screen shows the built kitchen tier's painting
+  // (the Humble Kitchen keeps the original cutting-screen art).
+  const cuttingKitchenArt =
+    save && save.equippedKitchenUpgradeId !== "humble-kitchen"
+      ? KITCHEN_SKIN_SRC[kitchenUpgradeOrDefault(save.equippedKitchenUpgradeId).asset]
+      : undefined;
+  // Phase 3 (C/D): what an order may get — a Kitchen Chaos event (never
+  // Levels 1–10) and a special ingredient variant; the scene adds "never
+  // while a technique is being taught" (coaching.ts) to both. In the
+  // restaurant build the inspection event reads the live restaurant (no
+  // fine, no state). Presentation only.
+  const orderSpecials = save
+    ? {
+        chaosEligible: isBusinessService || levelNumber(activeLevel.id) > CHAOS.MIN_LEVEL,
+        variantEligible: true,
+        // Phase 4 (B): special customers from campaign Level 4 (any Business order).
+        customerEligible:
+          isBusinessService || levelNumber(activeLevel.id) >= PERSONALITY_CADENCE.MIN_LEVEL,
+        ...(RESTAURANT_MODE ? { inspect: () => inspectBusiness(save) } : {}),
+      }
+    : null;
   const activeServiceSession = isCampaignService
     ? campaignServiceSession
     : isBusinessService
@@ -3151,6 +3270,7 @@ export function App() {
             key={currentServiceOrder.order.id}
             {...(coachLevelId ? { coachLevelId } : {})}
             {...(levelGuide ? { levelGuide } : {})}
+            {...(orderSpecials ? { specials: orderSpecials } : {})}
             service={{
               order: currentServiceOrder,
               onServe: isCampaignService
@@ -3240,6 +3360,7 @@ export function App() {
                 : (save.recipeProgress[currentServiceOrder.recipe.id]?.best ?? 0)
             }
             knife={equippedKnife}
+            {...(cuttingKitchenArt ? { kitchenArt: cuttingKitchenArt } : {})}
             board={equippedBoard}
           />
         ) : showCampaignPrep ? (
@@ -3254,6 +3375,7 @@ export function App() {
             key={activeLevel.id}
             level={activeLevel}
             {...(coachLevelId ? { coachLevelId } : {})}
+            {...(orderSpecials ? { specials: orderSpecials } : {})}
             onExit={() => {
               // Leaving an unfinished level closes it without a level message.
               levelAbandoned();
@@ -3271,6 +3393,7 @@ export function App() {
             credits={save.credits}
             previousBest={previousBest}
             knife={equippedKnife}
+            {...(cuttingKitchenArt ? { kitchenArt: cuttingKitchenArt } : {})}
             board={equippedBoard}
             {...(nextLevel
               ? {
@@ -3303,6 +3426,9 @@ export function App() {
               }}
               onSelectLevel={onSelectLevel}
               onStartDaily={startDaily}
+              onOpenDailyGift={() => {
+                openDailyGift();
+              }}
               onStartEndless={startEndless}
               buyKnife={buyKnife}
               buyBoard={buyBoard}
@@ -3581,6 +3707,13 @@ export function App() {
         />
       ) : null}
       {adActive ? <AdPlayingShield /> : null}
+      {restorationReveal && screen !== "gameplay" ? (
+        <RestorationReveal
+          from={restorationReveal.from}
+          to={restorationReveal.to}
+          onClose={() => setRestorationReveal(null)}
+        />
+      ) : null}
       {milestoneNoticeQueue[0] &&
       !storyEvent &&
       !levelRewardNotice &&

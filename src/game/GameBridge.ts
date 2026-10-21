@@ -12,6 +12,10 @@ import {
   type StepStartedPayload,
   type CoachPayload,
   type PeelProgressPayload,
+  type CleanupPayload,
+  type FeverPayload,
+  type SpecialsPayload,
+  type AvalanchePayload,
 } from "./events";
 import type { KnifeDefinition } from "./knives/knifeTypes";
 import type { BoardDefinition } from "./boards/boardTypes";
@@ -34,7 +38,11 @@ export type GameBridgeEvent =
   | { type: "CHEF_TAKE_COMPLETED" }
   | { type: "RECIPE_COMPLETED"; payload: RecipeCompletedPayload }
   | { type: "COACH"; payload: CoachPayload }
-  | { type: "PEEL_PROGRESS"; payload: PeelProgressPayload };
+  | { type: "PEEL_PROGRESS"; payload: PeelProgressPayload }
+  | { type: "CLEANUP"; payload: CleanupPayload }
+  | { type: "FEVER"; payload: FeverPayload }
+  | { type: "SPECIALS"; payload: SpecialsPayload }
+  | { type: "AVALANCHE"; payload: AvalanchePayload };
 
 type Listener = (event: GameBridgeEvent) => void;
 
@@ -72,6 +80,16 @@ export class GameBridge {
       this.publish({ type: "CUT_COMPLETED", payload }),
     );
     this.bus.on(EVT.COACH, (payload: CoachPayload) => this.publish({ type: "COACH", payload }));
+    this.bus.on(EVT.CLEANUP, (payload: CleanupPayload) =>
+      this.publish({ type: "CLEANUP", payload }),
+    );
+    this.bus.on(EVT.FEVER, (payload: FeverPayload) => this.publish({ type: "FEVER", payload }));
+    this.bus.on(EVT.SPECIALS, (payload: SpecialsPayload) =>
+      this.publish({ type: "SPECIALS", payload }),
+    );
+    this.bus.on(EVT.AVALANCHE, (payload: AvalanchePayload) =>
+      this.publish({ type: "AVALANCHE", payload }),
+    );
     this.bus.on(EVT.PEEL_PROGRESS, (payload: PeelProgressPayload) =>
       this.publish({ type: "PEEL_PROGRESS", payload }),
     );
@@ -241,6 +259,16 @@ export class GameBridge {
 
   setKnife(knife: KnifeDefinition): void {
     this.bus.emit(CMD.SET_KNIFE, knife);
+  }
+
+  /** Phase 2 (A2) — "Skip" on the bench-scraper offer. */
+  skipCleanup(): void {
+    this.bus.emit(CMD.CLEANUP_SKIP);
+  }
+
+  /** Phase 3 (C) — "Skip" on the Vegetable Avalanche. */
+  skipAvalanche(): void {
+    this.bus.emit(CMD.AVALANCHE_SKIP);
   }
 
   setBoard(board: BoardDefinition): void {

@@ -5,7 +5,20 @@ import { BottomNav } from "./Kitchen";
 import { cn } from "@/lib/utils";
 import { getRecipeBookEntries, getRecipeBookCategories } from "@/game/levels/recipeBook";
 import { getLevel, isUnlocked, isCompleted } from "@/game/levels/LevelManager";
-import { isLevelPrepared } from "@/game/levels/levelMastery";
+import { isLevelPrepared, recipeIdsOfLevel } from "@/game/levels/levelMastery";
+import {
+  TIER_INFO,
+  TIER_ORDER,
+  bestOfRecipes,
+  collectionSummary,
+  memoryFor,
+  nextTier,
+  sessionDish,
+  tierFor,
+} from "@/game/signatureDishes";
+import { VARIANTS } from "@/game/specialVariants";
+import { qualityFor } from "@/game/CutEvaluator";
+import { TierBadge, TIER_STYLE } from "./signature/TierBadge";
 import type { UnlockRequirement } from "@/game/levels/levelTypes";
 import type { SaveData } from "@/game/SaveManager";
 
@@ -48,6 +61,15 @@ export function RecipeBook({
   const inChapter = allEntries.filter((e) => e.chapterTitle === cat);
   const firstLocked = inChapter.findIndex((e) => !isUnlocked(e.level, save.levelProgress));
   const entries = firstLocked === -1 ? inChapter : inChapter.slice(0, firstLocked + 1);
+  // Phase 4 (A): each page's presentation tier, from the saved best of the
+  // recipes it can serve (signatureDishes.ts — no new save field).
+  const tierOf = (level: (typeof allEntries)[number]["level"]) => {
+    const rec = bestOfRecipes(save.recipeProgress, recipeIdsOfLevel(level));
+    return tierFor(rec.best, rec.done);
+  };
+  const summary = collectionSummary(
+    allEntries.filter((e) => isUnlocked(e.level, save.levelProgress)).map((e) => tierOf(e.level)),
+  );
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-cream">
@@ -79,11 +101,27 @@ export function RecipeBook({
           ))}
         </div>
 
+        {/* Phase 4 (A8): the collection at a glance — how many pages are at each tier. */}
+        <div
+          className="mx-4 mb-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 rounded-[16px] border border-gold/40 bg-gold/10 px-3 py-2 font-ui text-[12px] font-extrabold text-walnut-dark"
+          data-testid="signature-summary"
+        >
+          <span className="w-full text-center text-[10.5px] uppercase tracking-[0.18em] text-copper">
+            Signature dishes
+          </span>
+          {[...TIER_ORDER].reverse().map((t) => (
+            <span key={t} data-tier-count={t}>
+              {TIER_INFO[t].icon} {summary[t]} {TIER_INFO[t].name}
+            </span>
+          ))}
+        </div>
+
         <div className="space-y-3 px-4">
           {entries.map((entry) => {
             const unlocked = isUnlocked(entry.level, save.levelProgress);
             const completed = isCompleted(entry.level.id, save.levelProgress);
             const prepared = isLevelPrepared(save.recipeProgress, entry.level);
+            const tier = prepared ? tierOf(entry.level) : null;
             const ready = unlocked && !completed;
             if (!unlocked) {
               return (
@@ -113,7 +151,11 @@ export function RecipeBook({
                 onClick={() => onOpen(entry.level.id)}
                 className={cn(
                   "lift flex w-full items-center gap-3 rounded-[20px] border p-3 text-left card-warm",
-                  ready ? "border-copper/45 ring-1 ring-gold/25" : "border-walnut/15",
+                  tier
+                    ? TIER_STYLE[tier].frame
+                    : ready
+                      ? "border-copper/45 ring-1 ring-gold/25"
+                      : "border-walnut/15",
                   !unlocked && "opacity-55",
                 )}
               >
@@ -138,7 +180,14 @@ export function RecipeBook({
                   {!unlocked ? (
                     <Badge tone="locked">Locked</Badge>
                   ) : prepared ? (
-                    <Badge tone="sage">Prepared</Badge>
+                    // Phase 4 (A3): the Prepared stamp now says HOW it was
+                    // prepared — every tier means "Prepared" (Homemade is the
+                    // first one). Words, never a score.
+                    tier ? (
+                      <TierBadge tier={tier} className="max-[359px]:px-1.5" />
+                    ) : (
+                      <Badge tone="sage">Prepared</Badge>
+                    )
                   ) : (
                     <Badge tone="copper">Ready</Badge>
                   )}
@@ -182,6 +231,14 @@ export function RecipeDetail({
   const unlocked = isUnlocked(level, save.levelProgress);
   const completed = isCompleted(level.id, save.levelProgress);
   const prepared = isLevelPrepared(save.recipeProgress, level);
+  // Phase 4 (A): the page's tier, best plate (as a grade word), memories and
+  // this visit's extras (signatureDishes.ts).
+  const recipeIds = recipeIdsOfLevel(level);
+  const record = bestOfRecipes(save.recipeProgress, recipeIds);
+  const tier = prepared ? tierFor(record.best, record.done) : null;
+  const upNext = nextTier(tier);
+  const reached = tier ? TIER_ORDER.slice(0, TIER_ORDER.indexOf(tier) + 1) : [];
+  const visit = sessionDish(recipeIds);
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-cream">
@@ -194,9 +251,35 @@ export function RecipeDetail({
         />
 
         <div className="px-4">
-          <div className="relative grid h-[210px] place-items-center overflow-hidden rounded-[26px] border border-walnut/15 card-warm">
+          {/* Phase 4 (A6): the page's illustration — the dish's own picture
+              (the game draws dishes as their emoji; there is no separate dish
+              art) framed by its tier, with the tier's ribbon. A page not
+              written yet shows the dish faded. */}
+          <div
+            className={cn(
+              "relative grid h-[210px] place-items-center overflow-hidden rounded-[26px] border card-warm",
+              tier ? TIER_STYLE[tier].frame : "border-walnut/15",
+            )}
+            data-testid="signature-illustration"
+            data-tier={tier ?? ""}
+          >
             <div className="absolute inset-0 bg-[radial-gradient(60%_60%_at_50%_40%,rgba(255,247,232,0.9),transparent_70%)]" />
-            <span className="relative text-[92px] drop-shadow-[0_14px_18px_rgba(62,40,25,0.28)]">
+            {tier ? (
+              <span
+                className={cn(
+                  "absolute left-3 top-3 rounded-full px-2.5 py-1 font-ui text-[10.5px] font-extrabold uppercase tracking-[0.12em] shadow-soft",
+                  TIER_STYLE[tier].ribbon,
+                )}
+              >
+                {TIER_INFO[tier].icon} {TIER_INFO[tier].name}
+              </span>
+            ) : null}
+            <span
+              className={cn(
+                "relative text-[92px] drop-shadow-[0_14px_18px_rgba(62,40,25,0.28)]",
+                unlocked && !prepared && "opacity-45 grayscale",
+              )}
+            >
               {unlocked ? level.emoji : "🔒"}
             </span>
             <span className="absolute bottom-3 font-hand text-[17px] text-walnut/60">
@@ -209,6 +292,95 @@ export function RecipeDetail({
           <p className="px-6 pt-3 text-center font-hand text-[17px] leading-snug text-walnut/70">
             {level.description}
           </p>
+        ) : null}
+
+        {/* Phase 4 (A3/A4/A5/A7): the Signature Dish — the three tiers and how
+            to reach each, the best plate as its grade word, the family
+            memories this page has earned, and this visit's extras. */}
+        {unlocked ? (
+          <div className="px-4 pt-3">
+            <Panel className="p-4" data-testid="signature-panel">
+              <p className="font-ui text-[11px] font-extrabold uppercase tracking-[0.2em] text-copper">
+                Signature dish
+              </p>
+              <ol className="mt-2 space-y-1.5">
+                {TIER_ORDER.map((t) => {
+                  const got = reached.includes(t);
+                  return (
+                    <li
+                      key={t}
+                      className="flex items-start gap-2"
+                      data-tier-step={t}
+                      data-reached={got}
+                    >
+                      <span
+                        className={cn(
+                          "mt-[1px] grid h-5 w-5 shrink-0 place-items-center rounded-full text-[11px]",
+                          got ? "bg-sage text-ivory" : "border border-walnut/25 text-walnut/40",
+                        )}
+                        aria-hidden="true"
+                      >
+                        {got ? "✓" : ""}
+                      </span>
+                      <span className="min-w-0">
+                        <span
+                          className={cn(
+                            "block font-ui text-[13.5px] font-extrabold",
+                            got ? "text-walnut-dark" : "text-walnut/55",
+                          )}
+                        >
+                          {TIER_INFO[t].icon} {TIER_INFO[t].name}
+                        </span>
+                        <span className="block font-hand text-[14.5px] leading-snug text-walnut/60">
+                          {TIER_INFO[t].how}
+                        </span>
+                      </span>
+                    </li>
+                  );
+                })}
+              </ol>
+              {tier && typeof record.best === "number" ? (
+                <p
+                  className="mt-2 font-ui text-[12.5px] font-bold text-walnut/75"
+                  data-testid="signature-best"
+                >
+                  Best plate so far: <span className="text-copper">{qualityFor(record.best)}</span>
+                  {upNext ? <> · next: {TIER_INFO[upNext].name}</> : <> · the top of the book</>}
+                </p>
+              ) : (
+                <p className="mt-2 font-hand text-[15px] text-walnut/55">
+                  A page waiting to be written.
+                </p>
+              )}
+              {reached.length > 0 ? (
+                <div className="mt-2 space-y-1" data-testid="signature-memories">
+                  {reached.map((t) => (
+                    <p key={t} className="font-hand text-[15.5px] leading-snug text-walnut-dark/80">
+                      {TIER_INFO[t].icon} {memoryFor(level.recipeId, t)}
+                    </p>
+                  ))}
+                </div>
+              ) : null}
+              {visit && (visit.bestCombo > 0 || visit.variants.length > 0) ? (
+                <p
+                  className="mt-2 rounded-xl bg-gold/12 px-2.5 py-1.5 font-ui text-[12px] font-bold text-walnut/75"
+                  data-testid="signature-visit"
+                >
+                  This visit (not saved)
+                  {visit.bestCombo > 0 ? <> · longest run Clean ×{visit.bestCombo}</> : null}
+                  {visit.variants.length > 0 ? (
+                    <>
+                      {" "}
+                      · made with{" "}
+                      {visit.variants
+                        .map((v) => `${VARIANTS[v].emoji} ${VARIANTS[v].name}`)
+                        .join(", ")}
+                    </>
+                  ) : null}
+                </p>
+              ) : null}
+            </Panel>
+          </div>
         ) : null}
 
         <div className="px-4 pt-3">

@@ -482,6 +482,275 @@ class AudioManagerImpl {
       osc.stop(start + 0.42);
     }
   }
+
+  /**
+   * Phase 2 (A2) — the bench scraper going across the board: steel on wood.
+   * A band of noise whose centre slides down as the blade travels (the
+   * "shhhk" of a scrape), a quick attack, a short tail. `durMs` is clamped
+   * to the shared noise buffer (0.6 s). Gated on the Sound setting like
+   * every other effect.
+   */
+  playScrape(durMs: number): void {
+    if (!this.enabled) return;
+    const ctx = this.ensureContext();
+    if (!ctx) return;
+    const t0 = ctx.currentTime;
+    const dur = Math.max(0.12, Math.min(0.55, durMs / 1000));
+    const src = this.noiseSource(ctx);
+    const bp = ctx.createBiquadFilter();
+    bp.type = "bandpass";
+    bp.Q.value = 1.6;
+    bp.frequency.setValueAtTime(3200, t0);
+    bp.frequency.exponentialRampToValueAtTime(1300, t0 + dur);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(0.09, t0 + 0.03);
+    g.gain.setValueAtTime(0.09, t0 + dur * 0.7);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    src.connect(bp).connect(g).connect(this.sfxOut(ctx));
+    src.start(t0);
+    src.stop(t0 + dur + 0.02);
+  }
+
+  /**
+   * Cleaning (developer 2026-10-21): one stroke of a cleaning tool — a short
+   * band of noise shaped by the tool: "wet" (sponge, cloth, mop) low and soft,
+   * "dry" (broom) a high swish, "brush" (toilet brush, scraper) a gritty mid.
+   * At most one per 85 ms. Gated on the Sound setting.
+   */
+  playScrub(texture: "wet" | "dry" | "brush"): void {
+    if (!this.enabled) return;
+    const ctx = this.ensureContext();
+    if (!ctx) return;
+    const nowMs = typeof performance !== "undefined" ? performance.now() : Date.now();
+    if (nowMs - this.lastScrubAt < 85) return;
+    this.lastScrubAt = nowMs;
+    const t0 = ctx.currentTime;
+    const dur = texture === "dry" ? 0.09 : 0.12;
+    const [from, to, peak] =
+      texture === "dry"
+        ? [5200, 3800, 0.03]
+        : texture === "brush"
+          ? [2400, 3300, 0.04]
+          : [800, 1400, 0.05];
+    const src = this.noiseSource(ctx);
+    const bp = ctx.createBiquadFilter();
+    bp.type = "bandpass";
+    bp.Q.value = texture === "wet" ? 0.9 : 1.4;
+    bp.frequency.setValueAtTime(from, t0);
+    bp.frequency.exponentialRampToValueAtTime(to, t0 + dur);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(peak, t0 + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    src.connect(bp).connect(g).connect(this.sfxOut(ctx));
+    src.start(t0);
+    src.stop(t0 + dur + 0.02);
+  }
+  private lastScrubAt = -Infinity;
+
+  /**
+   * Cleaning: a stain wiped away — a glassy ping that climbs a pentatonic
+   * scale with the streak (`step` 1, 2, 3…), so a run of clears rises. Gated
+   * on the Sound setting.
+   */
+  playSparkle(step: number): void {
+    if (!this.enabled) return;
+    const ctx = this.ensureContext();
+    if (!ctx) return;
+    const PENTA = [1047, 1175, 1319, 1568, 1760];
+    const i = Math.max(0, step - 1);
+    const freq = PENTA[i % 5]! * 2 ** Math.min(1, Math.floor(i / 5));
+    const t0 = ctx.currentTime;
+    for (const [mult, gain, dur] of [
+      [1, 0.045, 0.28],
+      [2, 0.012, 0.18],
+    ] as const) {
+      const osc = ctx.createOscillator();
+      osc.type = mult === 1 ? "sine" : "triangle";
+      osc.frequency.value = freq * mult;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(gain, t0 + 0.008);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      osc.connect(g).connect(this.sfxOut(ctx));
+      osc.start(t0);
+      osc.stop(t0 + dur + 0.02);
+    }
+  }
+
+  /** Cleaning: the room is spotless — a quick rising sparkle run and a soft bell. Gated on the Sound setting. */
+  playSpotless(): void {
+    if (!this.enabled) return;
+    const ctx = this.ensureContext();
+    if (!ctx) return;
+    const t0 = ctx.currentTime;
+    [1047, 1319, 1568, 2093, 2637].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      osc.type = "triangle";
+      osc.frequency.value = freq;
+      const g = ctx.createGain();
+      const start = t0 + i * 0.055;
+      g.gain.setValueAtTime(0.0001, start);
+      g.gain.exponentialRampToValueAtTime(0.045, start + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, start + 0.3);
+      osc.connect(g).connect(this.sfxOut(ctx));
+      osc.start(start);
+      osc.stop(start + 0.32);
+    });
+    const bell = ctx.createOscillator();
+    bell.type = "sine";
+    bell.frequency.value = 3136;
+    const bg = ctx.createGain();
+    const bs = t0 + 0.3;
+    bg.gain.setValueAtTime(0.0001, bs);
+    bg.gain.exponentialRampToValueAtTime(0.03, bs + 0.01);
+    bg.gain.exponentialRampToValueAtTime(0.0001, bs + 1);
+    bell.connect(bg).connect(this.sfxOut(ctx));
+    bell.start(bs);
+    bell.stop(bs + 1.05);
+  }
+
+  /**
+   * Phase 2 (C3) — a customer tip: a quiet rising triad (C6 E6 G6), set
+   * apart from the coin and till sounds. Its own method like the other
+   * Phase 1/2 sounds, so the named SFX table stays the ten effects
+   * audio-qa S1 describes. Gated on the Sound setting.
+   */
+  playTip(): void {
+    if (!this.enabled) return;
+    const ctx = this.ensureContext();
+    if (!ctx) return;
+    const t0 = ctx.currentTime;
+    for (const [i, freq] of [1047, 1319, 1568].entries()) {
+      const osc = ctx.createOscillator();
+      osc.type = "triangle";
+      osc.frequency.value = freq;
+      const g = ctx.createGain();
+      const start = t0 + i * 0.08;
+      const dur = i === 2 ? 0.32 : 0.16;
+      g.gain.setValueAtTime(0.0001, start);
+      g.gain.exponentialRampToValueAtTime(i === 2 ? 0.04 : 0.035, start + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+      osc.connect(g).connect(this.sfxOut(ctx));
+      osc.start(start);
+      osc.stop(start + dur + 0.02);
+    }
+  }
+
+  /**
+   * Phase 3 (A) — Fever lights: a quick rising run of four warm notes and a
+   * soft shimmer under them. Quieter than the perfect-slice chime's peak;
+   * gated on the Sound setting.
+   */
+  playFeverStart(): void {
+    if (!this.enabled) return;
+    const ctx = this.ensureContext();
+    if (!ctx) return;
+    const t0 = ctx.currentTime;
+    [523, 659, 784, 1047].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      osc.type = "triangle";
+      osc.frequency.value = freq;
+      const g = ctx.createGain();
+      const start = t0 + i * 0.06;
+      g.gain.setValueAtTime(0.0001, start);
+      g.gain.exponentialRampToValueAtTime(0.08, start + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, start + 0.26);
+      osc.connect(g).connect(this.sfxOut(ctx));
+      osc.start(start);
+      osc.stop(start + 0.28);
+    });
+    const src = this.noiseSource(ctx);
+    const bp = ctx.createBiquadFilter();
+    bp.type = "bandpass";
+    bp.frequency.value = 6000;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(0.025, t0 + 0.05);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.45);
+    src.connect(bp).connect(g).connect(this.sfxOut(ctx));
+    src.start(t0);
+    src.stop(t0 + 0.47);
+  }
+
+  /** Phase 3 (A) — Fever ends: the same notes falling, softer — "well done", not "stop". */
+  playFeverEnd(): void {
+    if (!this.enabled) return;
+    const ctx = this.ensureContext();
+    if (!ctx) return;
+    const t0 = ctx.currentTime;
+    [1047, 784, 659].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      const g = ctx.createGain();
+      const start = t0 + i * 0.07;
+      g.gain.setValueAtTime(0.0001, start);
+      g.gain.exponentialRampToValueAtTime(0.06, start + 0.015);
+      g.gain.exponentialRampToValueAtTime(0.0001, start + 0.32);
+      osc.connect(g).connect(this.sfxOut(ctx));
+      osc.start(start);
+      osc.stop(start + 0.34);
+    });
+  }
+
+  /**
+   * Phase 1 — a combo milestone ("Clean x5!"). A short two-note rise
+   * whose root steps up with the milestone index, so the 10th reads as
+   * better earned than the 5th. `index` is 0-based and clamped, so the
+   * ramp can never climb into a harsh register however many milestones
+   * COMBO.MILESTONES grows to. Quieter than playChime() on purpose:
+   * this fires several times per ingredient, the perfect-slice chime
+   * fires at most once.
+   */
+  playComboMilestone(index: number): void {
+    if (!this.enabled) return;
+    const ctx = this.ensureContext();
+    if (!ctx) return;
+    const step = Math.max(0, Math.min(4, Math.floor(index)));
+    const root = 523 * Math.pow(2, step / 12); // up one semitone per milestone, 4 max
+    const now = ctx.currentTime;
+    for (const [i, freq] of [root, root * 1.5].entries()) {
+      const osc = ctx.createOscillator();
+      osc.type = "triangle";
+      osc.frequency.value = freq;
+      const gain = ctx.createGain();
+      const start = now + i * 0.07;
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.1, start + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.22);
+      osc.connect(gain).connect(this.sfxOut(ctx));
+      osc.start(start);
+      osc.stop(start + 0.24);
+    }
+  }
+
+  /**
+   * Phase 1 — an ingredient's required cuts are all done. A soft settled
+   * major third, warmer and lower than playChime()'s perfect-slice
+   * sparkle so the two never read as the same event: this one says
+   * "that's prepped", not "that was a great cut".
+   */
+  playIngredientComplete(): void {
+    if (!this.enabled) return;
+    const ctx = this.ensureContext();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    for (const [i, freq] of [440, 554, 659].entries()) {
+      const osc = ctx.createOscillator();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      const gain = ctx.createGain();
+      const start = now + i * 0.05;
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.14, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.5);
+      osc.connect(gain).connect(this.sfxOut(ctx));
+      osc.start(start);
+      osc.stop(start + 0.52);
+    }
+  }
 }
 
 export type MusicMood = "off" | "kitchen" | "cutting" | "night";

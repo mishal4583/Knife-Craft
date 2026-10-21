@@ -54,7 +54,17 @@ async function stroke(page, x0, y0, x1, y1, steps = 14) {
  * Plays the current recipe to its Knife Report. Returns a log of what it did.
  * `until` (a page predicate) stops early once true — e.g. when the cooking clip appears.
  */
-export async function playToReport(page, { tapInterval = 140, maxMs = 90000, until } = {}) {
+/**
+ * Options added 2026-10-21 (Phase 2), both opt-in, so every existing caller plays exactly as
+ * before: `aim(page, stepInfo)` may return the point to tap for the next cut (a test that wants
+ * cuts ON the real guides, not this file's generic tomato-sized spacing), or null for the
+ * default; `steady` taps exactly that many ms apart (an even rhythm, whatever the page latency).
+ */
+export async function playToReport(
+  page,
+  { tapInterval = 140, maxMs = 90000, until, aim, steady } = {},
+) {
+  let lastTap = 0;
   const log = [];
   const t0 = Date.now();
   let lastKey = "",
@@ -65,6 +75,29 @@ export async function playToReport(page, { tapInterval = 140, maxMs = 90000, unt
     if (await stop()) {
       log.push("stopped");
       return { ok: true, log, stopped: true };
+    }
+    // Phase 2 (2026-10-21): a messy board offers the bench scraper at the
+    // start of an order and takes the board until it is used or skipped —
+    // scrape it like a player, one broad sweep across the board.
+    if (await page.evaluate(() => !!document.querySelector('[data-testid="board-cleanup"]'))) {
+      log.push("scrape");
+      await stroke(page, CX - 185, CY + 30, CX + 185, CY + 30, 18);
+      await sleep(1100);
+      continue;
+    }
+    // Phase 3 (2026-10-21): a Vegetable Avalanche (Kitchen Chaos) holds the
+    // board until it is cleared or skipped — sweep it like a player, and skip
+    // whatever a few sweeps miss.
+    if (await page.evaluate(() => !!document.querySelector('[data-testid="avalanche"]'))) {
+      const sweeps = log.filter((l) => l === "avalanche").length;
+      log.push("avalanche");
+      if (sweeps >= 6) await page.click('[data-testid="avalanche-skip"]').catch(() => null);
+      else {
+        const dy = [-60, 0, 60, -30, 30, -90][sweeps];
+        await stroke(page, CX - 190, CY + dy, CX + 190, CY + dy, 22);
+      }
+      await sleep(600);
+      continue;
     }
     const s = await stepInfo(page);
     if (s.report) {
@@ -92,9 +125,16 @@ export async function playToReport(page, { tapInterval = 140, maxMs = 90000, unt
           await sleep(1500);
         }
       } else {
-        const x = CX - HALF_W + ((s.n + 0.5) / s.m) * 2 * HALF_W;
-        await tap(page, x, CY);
-        await sleep(tapInterval);
+        const aimed = aim ? await aim(page, s) : null;
+        const x = aimed ? aimed.x : CX - HALF_W + ((s.n + 0.5) / s.m) * 2 * HALF_W;
+        const y = aimed ? aimed.y : CY;
+        if (steady) {
+          const wait = lastTap + steady - Date.now();
+          if (wait > 0) await sleep(wait);
+        }
+        await tap(page, x, y);
+        lastTap = Date.now();
+        await sleep(steady ? 0 : tapInterval);
       }
     } else {
       // step complete: wait for the plate to appear, then drag the prepared ingredient onto it

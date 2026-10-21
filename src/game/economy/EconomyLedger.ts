@@ -123,14 +123,26 @@ const PERMANENT_CATEGORIES: ReadonlySet<LedgerCategory> = new Set<LedgerCategory
   "family-legacy",
 ]);
 
+/**
+ * Phase 5 (B) — the daily gift's entries and the gift streak's rewards are
+ * kept 9 days (they were kept 36 h with the rewarded-ad entries): they ARE
+ * the record of the streak and of which Day 3 / Day 7 rewards were paid
+ * (daily/giftStreak.ts). At most one gift and one reward a day, so at most
+ * ~18 entries are retained this way.
+ */
+const RETAIN_GIFT_STREAK_MS = 9 * 24 * 60 * 60 * 1000;
+const isGiftOrStreak = (e: EconomyLedgerEntry) =>
+  e.category === "daily-reward" &&
+  (!!e.description?.startsWith("knifecraft-daily-gift-") ||
+    !!e.description?.startsWith("knifecraft-gift-streak-"));
+
 function trimLedger(entries: EconomyLedgerEntry[], now: number): EconomyLedgerEntry[] {
   if (entries.length <= MAX_LEDGER_ENTRIES) return entries;
   const retained = (e: EconomyLedgerEntry) =>
     PERMANENT_CATEGORIES.has(e.category) ||
-    ((e.category === "rewarded-ad" ||
-      // The day's free welcome gift (ads/adBonuses.ts): its entry is today's "taken" record.
-      (e.category === "daily-reward" && !!e.description?.startsWith("knifecraft-daily-gift-"))) &&
-      now - e.timestamp < RETAIN_REWARDED_AD_MS);
+    (e.category === "rewarded-ad" && now - e.timestamp < RETAIN_REWARDED_AD_MS) ||
+    // The day's free welcome gift (ads/adBonuses.ts) and the gift streak's rewards.
+    (isGiftOrStreak(e) && now - e.timestamp < RETAIN_GIFT_STREAK_MS);
   const keepCount = Math.max(0, MAX_LEDGER_ENTRIES - entries.filter(retained).length);
   const others = entries.filter((e) => !retained(e));
   const keptOthers = new Set(others.slice(others.length - keepCount));
@@ -169,6 +181,7 @@ export const INCOME_CATEGORIES: readonly LedgerCategory[] = [
   "service-revenue",
   "business-revenue",
   "rewarded-ad",
+  "customer-tip",
 ];
 
 export const EXPENSE_CATEGORIES: readonly LedgerCategory[] = [
@@ -220,4 +233,5 @@ export const LEDGER_CATEGORY_LABEL: Record<LedgerCategory, string> = {
   "family-legacy": "Family Legacy",
   "automation-purchase": "Second Floor Station",
   "automation-income": "Second Floor Income",
+  "customer-tip": "Customer Tip",
 };

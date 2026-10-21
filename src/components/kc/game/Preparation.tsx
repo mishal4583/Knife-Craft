@@ -6,6 +6,7 @@ import { AudioManager } from "@/game/AudioManager";
 import { gameReady, levelPaused, levelResumed } from "@/game/PlayablesSDK";
 import { startPerformanceSampling } from "@/game/telemetry/performanceSample";
 import {
+  COMBO,
   INGREDIENTS,
   TECHNIQUES,
   requiredCutsFor,
@@ -16,7 +17,35 @@ import { knifeOrDefault, DEFAULT_KNIFE_ID } from "@/game/knives/knifeDefinitions
 import type { KnifeDefinition } from "@/game/knives/knifeTypes";
 import { boardOrDefault, DEFAULT_BOARD_ID } from "@/game/boards/boardDefinitions";
 import type { BoardDefinition } from "@/game/boards/boardTypes";
-import type { PrepStep } from "@/game/events";
+import type { PrepStep, SpecialsPayload } from "@/game/events";
+import { CHAOS, CHAOS_COPY } from "@/game/kitchenChaos";
+import { VARIANTS } from "@/game/specialVariants";
+import { specialsReportLines } from "@/game/specialsReport";
+import {
+  PERSONALITIES,
+  personalityForOrder,
+  presentedCustomer,
+  regularParMs,
+} from "@/game/customers/personalities";
+import {
+  recordSessionDish,
+  sessionDish,
+  tierFor,
+  tierMilestone,
+  type PresentationTier,
+} from "@/game/signatureDishes";
+import { resolveTechniqueFor } from "@/game/definitions";
+import { BookPageNote } from "./BookPageNote";
+import {
+  customerMoment,
+  momentsForRun,
+  momentsOf,
+  nextRunKey,
+  recordMoment,
+} from "@/game/kitchenMoments";
+import { MomentChip } from "../moments/MomentChip";
+import { MomentPreview } from "../moments/MomentPreview";
+import type { InspectionReport } from "@/game/business/businessInspection";
 import type { CutPath, CutResult, GameplayPhase, QualityLabel } from "@/types/game";
 import type { LevelDefinition } from "@/game/levels/levelTypes";
 import type { ServiceOrder } from "@/game/service/ServiceManager";
@@ -108,6 +137,8 @@ export function Preparation({
   board = boardOrDefault(DEFAULT_BOARD_ID),
   nextLevel,
   onNextLevel,
+  specials,
+  kitchenArt,
 }: {
   level?: LevelDefinition;
   /** The campaign level being played for the FIRST time (App decides) — which techniques it teaches (coaching.ts). Omitted for replays, Today's Special, Endless, Restaurant Service and Business: no coaching there. */
@@ -128,6 +159,10 @@ export function Preparation({
       reaction: string;
       settlement?: SettlementResult | undefined;
       isReplay?: boolean;
+      /** Phase 2 (C3): the customer tip credited with this payment, in cents (0 or absent: none). */
+      tip?: number;
+      /** Phase 2 (C2): the dish grade, from the same score its pay was computed from; the customer reaction follows it. */
+      quality?: QualityLabel;
       businessPayment?: BusinessCustomerPayment;
       businessCustomers?: BusinessCustomersToday;
     } | null;
@@ -156,6 +191,26 @@ export function Preparation({
   /** The next campaign level, only when it exists AND is already unlocked — App.tsx computes this once per render, mirroring how `previousBest` is already passed down instead of looked up in here. Never set for a service session. */
   nextLevel?: LevelDefinition | null;
   onNextLevel?: () => void;
+  /**
+   * Phase 3 (C/D) — what this order may get (App decides): a Kitchen Chaos
+   * event, a special ingredient variant, and — restaurant build — the live
+   * inspection the Kitchen Inspection event reads at the Knife Report (no
+   * fine, no state). Absent: neither (the scene then decides nothing).
+   */
+  specials?: {
+    chaosEligible: boolean;
+    variantEligible: boolean;
+    inspect?: () => InspectionReport;
+    /** Phase 4 (B): the level side of a special customer's eligibility (customers/personalities.ts) — App decides. */
+    customerEligible?: boolean;
+  };
+  /**
+   * Phase 5 (A4): the painting behind the cutting board — the built kitchen
+   * tier's own art (KitchenBackground's skins), so the workstation shows the
+   * restoration too. Absent (the starting Humble Kitchen): the original
+   * cutting-screen painting, unchanged.
+   */
+  kitchenArt?: string;
 }) {
   // The single source of "what does this session look like" — a real
   // level's own fields, or the equivalent ones derived from the active
@@ -226,11 +281,110 @@ export function Preparation({
     requiredCuts: requiredCutsFor(TECHNIQUES[firstStep.techniqueId]),
   });
   const [cutProgress, setCutProgress] = useState(0);
+  // Phase 1 (B1) — the live combo, straight off the scene's CUT_COMPLETED
+  // payload. Never computed here: the scene owns it (COMBO in
+  // definitions.ts), so there is one counter, not a UI copy that can
+  // drift out of step with the board.
+  const [combo, setCombo] = useState(0);
+  // The milestone toast currently on screen ("Clean ×5!"), or null.
+  const [comboMilestone, setComboMilestone] = useState<number | null>(null);
+  // Phase 3 (A): Fever Mode, straight from the scene's EVT.FEVER (fever.ts) — the
+  // vignette, the countdown bar (it pauses with the game) and the end cue.
+  const [fever, setFever] = useState<{ ms: number } | null>(null);
+  const [feverDone, setFeverDone] = useState(false);
+  const feverDoneTimer = useRef<number | null>(null);
+  // Phase 3 (C/D): this order's chaos event and variant (EVT.SPECIALS, once per
+  // order; a restart keeps them), the card that announces them, the
+  // avalanche while it is on the board, and Grandma's Challenge.
+  const [orderSpecials, setOrderSpecials] = useState<SpecialsPayload>({
+    chaos: null,
+    variant: null,
+  });
+  const orderChaos = useRef<SpecialsPayload["chaos"]>(null);
+  const orderVariant = useRef<SpecialsPayload["variant"]>(null);
+  const variantOnBoard = useRef(false);
+  const [specialsCard, setSpecialsCard] = useState(false);
+  const specialsTimer = useRef<number | null>(null);
+  const [avalanche, setAvalanche] = useState<{ left: number; total: number; on: boolean } | null>(
+    null,
+  );
+  const grandmaBest = useRef(0);
+  const [grandmaDone, setGrandmaDone] = useState(false);
+  const [inspection, setInspection] = useState<InspectionReport | null>(null);
+  const specialsRef = useRef(specials);
+  // Phase 4 (B): this order's special customer (customers/personalities.ts) —
+  // decided once per order id and cached there, so a StrictMode double render
+  // or a remount of the same order sees the same one. Presentation only: the
+  // order, its customer id and its payment are untouched.
+  const [personality] = useState(() =>
+    service
+      ? personalityForOrder(service.order.order.id, {
+          service: true,
+          teaching:
+            !!coachLevelId &&
+            taughtTechniques(
+              coachLevelId,
+              steps.map((s) => s.techniqueId),
+            ).length > 0,
+          levelOk: !!specials?.customerEligible,
+        })
+      : null,
+  );
+  const shownCustomer = service
+    ? presentedCustomer(service.order.customer, personality?.id ?? null)
+    : null;
+  // The Regular's par (cosmetic): unpaused prep time against regularParMs.
+  const [regularPar] = useState(() =>
+    regularParMs(
+      steps.reduce((n, s) => {
+        const t = resolveTechniqueFor(TECHNIQUES[s.techniqueId], INGREDIENTS[s.ingredientId]);
+        return n + (t.interactionMode === "cut" ? requiredCutsFor(t) : 1);
+      }, 0),
+    ),
+  );
+  const prepMs = useRef(0);
+  const [regularWaiting, setRegularWaiting] = useState<"no" | "showing" | "shown">("no");
+  const regularChecked = useRef(false);
+  const regularTimer = useRef<number | null>(null);
+  useEffect(
+    () => () => {
+      if (regularTimer.current !== null) window.clearTimeout(regularTimer.current);
+    },
+    [],
+  );
+  // Phase 4 (A7): the run's longest combo (for this visit's record) and the
+  // recipe-book page this dish wrote, if any (shown after the Knife Report).
+  const bestCombo = useRef(0);
+  const [bookNote, setBookNote] = useState<{
+    tier: PresentationTier | null;
+    variant: SpecialsPayload["variant"];
+  } | null>(null);
+  const reportContinued = useRef(false);
+  // Phase 6: this run's Kitchen Moments (kitchenMoments.ts) — the run's key,
+  // the Perfect Slices and the combo of the ingredient each landed on, and the
+  // chip / preview. Memory only; a new run (Prepare Again) is a new key.
+  const runKey = useRef<string | null>(null);
+  const stepIndexNow = useRef(0);
+  const stepCombo = useRef<number[]>([]);
+  const perfectSteps = useRef<Set<number>>(new Set());
+  const [momentTick, setMomentTick] = useState(0);
+  const [momentsHidden, setMomentsHidden] = useState(false);
+  const [momentPreview, setMomentPreview] = useState(false);
+  useEffect(() => {
+    specialsRef.current = specials;
+  });
+  // The highest milestone already announced for THIS step — so a
+  // threshold fires on the cut that reaches it and never again on the
+  // cuts after it. Reset by STEP_STARTED along with the combo itself.
+  const firedMilestone = useRef(0);
+  const milestoneTimer = useRef<number | null>(null);
   const [progressByAxis, setProgressByAxis] = useState({ h: 0, v: 0 });
   const [currentCutQuality, setCurrentCutQuality] = useState<QualityLabel | null>(null);
   const [showHint, setShowHint] = useState(true);
   // The ghost demonstration is on the board (the scene says when) — show its how-to card.
   const [coachVisible, setCoachVisible] = useState(false);
+  // Phase 2 (A2): the scene is offering the bench scraper (EVT.CLEANUP) — show how, and a Skip.
+  const [cleanupOffered, setCleanupOffered] = useState(false);
   // A peel step's progress (0–1) from the scene's PEEL_PROGRESS — HUD feedback only.
   const [peelFraction, setPeelFraction] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -245,6 +399,30 @@ export function Preparation({
 
   // A new order on the pass (W3): Preparation remounts per order, so the bell rings once each.
   useEffect(() => AudioManager.playSfx("bell"), []);
+  // Phase 4 (B): a special customer's arrival card, with the order's own
+  // twist if it has one (the same card, a few seconds, never a touch).
+  useEffect(() => {
+    if (!personality || phase !== "prep") return;
+    setSpecialsCard(true);
+    if (specialsTimer.current !== null) window.clearTimeout(specialsTimer.current);
+    specialsTimer.current = window.setTimeout(() => setSpecialsCard(false), 3400);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, as the order arrives
+  }, []);
+  // The Regular's clock: counts unpaused cutting time only; past his par he
+  // checks his watch once (on the order card — never over the board).
+  useEffect(() => {
+    if (personality?.id !== "impatient-regular" || phase !== "prep") return;
+    const tick = window.setInterval(() => {
+      if (paused) return;
+      prepMs.current += 250;
+      if (prepMs.current >= regularPar && !regularChecked.current) {
+        regularChecked.current = true;
+        setRegularWaiting("showing");
+        regularTimer.current = window.setTimeout(() => setRegularWaiting("shown"), 3000);
+      }
+    }, 250);
+    return () => window.clearInterval(tick);
+  }, [personality, phase, paused, regularPar]);
   // The cutting board is the game's active play: its frame rate is sampled (telemetry).
   useEffect(() => startPerformanceSampling(), []);
 
@@ -262,6 +440,15 @@ export function Preparation({
             steps.map((s) => s.techniqueId),
           )
         : [],
+      ...(specials
+        ? {
+            specials: {
+              chaosEligible: specials.chaosEligible,
+              variantEligible: specials.variantEligible,
+              restaurant: !!specials.inspect,
+            },
+          }
+        : {}),
     });
 
     // Fallback only — if Phaser somehow never boots (no WebGL/canvas2d,
@@ -286,6 +473,35 @@ export function Preparation({
       } else if (event.type === "COACH") {
         setCoachVisible(event.payload.visible);
         if (event.payload.visible) setShowHint(false);
+      } else if (event.type === "FEVER") {
+        if (event.payload.state === "start") {
+          setFever({ ms: event.payload.ms });
+        } else {
+          setFever(null);
+          if (event.payload.reason === "time" || event.payload.reason === "plating") {
+            setFeverDone(true);
+            if (feverDoneTimer.current !== null) window.clearTimeout(feverDoneTimer.current);
+            feverDoneTimer.current = window.setTimeout(() => setFeverDone(false), 1200);
+          }
+        }
+      } else if (event.type === "SPECIALS") {
+        setOrderSpecials(event.payload);
+        orderChaos.current = event.payload.chaos;
+        orderVariant.current = event.payload.variant;
+        variantOnBoard.current =
+          !!event.payload.variant &&
+          VARIANTS[event.payload.variant].base === firstStep.ingredientId;
+        if (event.payload.chaos || event.payload.variant) {
+          setSpecialsCard(true);
+          if (specialsTimer.current !== null) window.clearTimeout(specialsTimer.current);
+          specialsTimer.current = window.setTimeout(() => setSpecialsCard(false), 3200);
+        }
+      } else if (event.type === "AVALANCHE") {
+        const { state, left, total } = event.payload;
+        setAvalanche({ left, total, on: state === "start" || state === "progress" });
+        if (state === "start") setSpecialsCard(false); // the avalanche card takes over
+      } else if (event.type === "CLEANUP") {
+        setCleanupOffered(event.payload.state === "offered");
       } else if (event.type === "PEEL_PROGRESS") {
         setPeelFraction(event.payload.fraction);
       } else if (event.type === "CUT_STARTED") {
@@ -293,9 +509,25 @@ export function Preparation({
       } else if (event.type === "STEP_STARTED") {
         const { stepIndex, ingredientId, techniqueId, requiredCuts } = event.payload;
         setActiveStep({ index: stepIndex, ingredientId, techniqueId, requiredCuts });
+        stepIndexNow.current = stepIndex;
+        // Phase 3 (D): a variant that comes later in the order is announced again as it reaches the board.
+        const v = orderVariant.current;
+        if (v && !variantOnBoard.current && VARIANTS[v].base === ingredientId) {
+          variantOnBoard.current = true;
+          setSpecialsCard(true);
+          if (specialsTimer.current !== null) window.clearTimeout(specialsTimer.current);
+          specialsTimer.current = window.setTimeout(() => setSpecialsCard(false), 2400);
+        }
         setCutProgress(0);
         setProgressByAxis({ h: 0, v: 0 });
         setPeelFraction(0);
+        // A new ingredient starts a new run (COMBO's doc) — and releases
+        // the replay latch below, because the scene has now confirmed a
+        // fresh session actually began.
+        setCombo(0);
+        setComboMilestone(null);
+        firedMilestone.current = 0;
+        restarting.current = false;
       } else if (event.type === "CUT_COMPLETED") {
         // Audio/particles/hitstop for the cut itself are triggered by the
         // scene directly (they're gameplay feedback, not UI) — this only
@@ -314,6 +546,36 @@ export function Preparation({
         if (inputMode === "swipe") {
           setCurrentCutQuality(proxyQuality);
           window.setTimeout(() => setCurrentCutQuality(null), 1100);
+        }
+        // Phase 1 (B1/B3) — the combo, and its milestone toast. The
+        // threshold check reads the scene's own combo (never a second
+        // counter kept here) and `firedMilestone` makes each milestone
+        // announce itself exactly once per step, instead of re-firing on
+        // every cut after it.
+        const nextCombo = event.payload.combo;
+        setCombo(nextCombo);
+        bestCombo.current = Math.max(bestCombo.current, nextCombo);
+        // Phase 6: the combo each ingredient reached, and where a Perfect Slice landed.
+        stepCombo.current[stepIndexNow.current] = Math.max(
+          stepCombo.current[stepIndexNow.current] ?? 0,
+          nextCombo,
+        );
+        if (event.payload.isPerfect) perfectSteps.current.add(stepIndexNow.current);
+        // Phase 3 (C): Grandma's Challenge reads the same combo.
+        if (orderChaos.current === "grandma" && nextCombo > grandmaBest.current) {
+          grandmaBest.current = nextCombo;
+          if (nextCombo === CHAOS.GRANDMA_COMBO) {
+            setGrandmaDone(true);
+            AudioManager.playChime();
+          }
+        }
+        const reached = COMBO.MILESTONES.filter((m) => m <= nextCombo).pop() ?? 0;
+        if (reached > firedMilestone.current) {
+          firedMilestone.current = reached;
+          setComboMilestone(reached);
+          AudioManager.playComboMilestone(COMBO.MILESTONES.indexOf(reached));
+          if (milestoneTimer.current !== null) window.clearTimeout(milestoneTimer.current);
+          milestoneTimer.current = window.setTimeout(() => setComboMilestone(null), COMBO.TOAST_MS);
         }
       } else if (event.type === "PLATING_STARTED") {
         // The actual plating + chef-hands sequence plays out inside the
@@ -335,6 +597,32 @@ export function Preparation({
           idealPath: idealPaths.current,
           playerPath: playerPaths.current,
         });
+        // Phase 6: the Kitchen Moments this finished run earned — computed once,
+        // here, from the run's own result (never on a render).
+        {
+          const key = nextRunKey(view.recipeId);
+          runKey.current = key;
+          const business = !!service?.isBusinessOrder;
+          const before =
+            baselineBest.current > 0 ? { best: baselineBest.current, done: true } : undefined;
+          for (const m of momentsForRun({
+            runKey: key,
+            dishName: view.title,
+            dishEmoji: view.emoji,
+            score: overall,
+            grade: qualityLabel,
+            previousBest: business ? 0 : baselineBest.current,
+            perfects: [...perfectSteps.current].map((s) => ({ combo: stepCombo.current[s] ?? 0 })),
+            bestCombo: bestCombo.current,
+            variant: orderVariant.current,
+            tierReached: business ? null : tierMilestone(before, overall),
+          }))
+            recordMoment(m);
+          setMomentTick((t) => t + 1);
+        }
+        // Phase 3 (C): the friendly inspector reads the restaurant as it is now.
+        if (orderChaos.current === "inspection")
+          setInspection(specialsRef.current?.inspect?.() ?? null);
         // The chef cooks the dish (CookingClip), then the Knife Report.
         setCooking("playing");
       }
@@ -344,6 +632,9 @@ export function Preparation({
 
     return () => {
       window.clearTimeout(readyFallback);
+      if (milestoneTimer.current !== null) window.clearTimeout(milestoneTimer.current);
+      if (feverDoneTimer.current !== null) window.clearTimeout(feverDoneTimer.current); // unmount
+      if (specialsTimer.current !== null) window.clearTimeout(specialsTimer.current); // unmount
       unsubscribe();
       unsubscribePause();
     };
@@ -361,7 +652,53 @@ export function Preparation({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- onComplete/result are stable for this run
   }, [phase]);
 
+  /**
+   * Phase 1 (B6) — one replay per press. Two presses in the same frame
+   * (or a double-tap, where the second lands before React has rendered
+   * the result screen away) would otherwise each clear `awarded` and
+   * each call bridge.restartPreparation() — which is how one run can be
+   * completed, and so credited, twice. The latch opens again only when
+   * the scene confirms a fresh run really started (STEP_STARTED above),
+   * never on a timer.
+   */
+  const restarting = useRef(false);
+
+  /**
+   * B4/B5 — the player's best BEFORE this run. App.tsx reads `previousBest`
+   * live off the save, and this run's own score goes into that save the
+   * moment the player continues past the report (the `awarded` effect
+   * above). Snapshotting it here — and again on each replay, before the
+   * new run can possibly finish — keeps "New Best!" and the improvement
+   * line comparing against the right number instead of against this very
+   * run's result.
+   */
+  const baselineBest = useRef(previousBest);
+
   function restart() {
+    bestCombo.current = 0;
+    prepMs.current = 0;
+    regularChecked.current = false;
+    if (regularTimer.current !== null) window.clearTimeout(regularTimer.current);
+    setRegularWaiting("no");
+    setBookNote(null);
+    reportContinued.current = false;
+    runKey.current = null;
+    stepCombo.current = [];
+    perfectSteps.current = new Set();
+    setMomentsHidden(false);
+    setMomentPreview(false);
+    if (restarting.current) return;
+    restarting.current = true;
+    baselineBest.current = previousBest;
+    setCombo(0);
+    setComboMilestone(null);
+    setFever(null); // the scene ends it on restart too (endFever)
+    setFeverDone(false);
+    setAvalanche((a) => (a ? { ...a, on: false } : a)); // the scene clears it on restart (once per order)
+    grandmaBest.current = 0;
+    setGrandmaDone(false);
+    setInspection(null);
+    firedMilestone.current = 0;
     idealPaths.current = [];
     playerPaths.current = [];
     awarded.current = false;
@@ -379,6 +716,29 @@ export function Preparation({
       requiredCuts: requiredCutsFor(TECHNIQUES[firstStep.techniqueId]),
     });
     bridge.restartPreparation();
+  }
+
+  /**
+   * Phase 4 (C) — Knife Report → serve/complete, once per run (a double tap
+   * can't advance twice). When this dish writes something new into the
+   * recipe book (signatureDishes.tierMilestone, or a variant met for the
+   * first time this visit) the completion card carries a small book page
+   * (BookPageNote) — part of that card, never a stage of its own. Business
+   * orders keep no recipe record (V3-16), so they never get one.
+   */
+  function continueFromReport() {
+    if (reportContinued.current || !result) return;
+    reportContinued.current = true;
+    if (!service?.isBusinessOrder) {
+      const before =
+        baselineBest.current > 0 ? { best: baselineBest.current, done: true } : undefined;
+      const tier = tierMilestone(before, result.score);
+      const v = orderSpecials.variant;
+      const newVariant = v && !sessionDish([view.recipeId])?.variants.includes(v) ? v : null;
+      recordSessionDish(view.recipeId, bestCombo.current, v);
+      if (tier || newVariant) setBookNote({ tier, variant: newVariant });
+    }
+    setPhase("complete");
   }
 
   const activeIngredient = INGREDIENTS[activeStep.ingredientId];
@@ -405,7 +765,7 @@ export function Preparation({
   // own short instruction (§41), data-driven from the recipe — never
   // hardcoded here or in PreparationScene.
   const order = {
-    day: service ? `${service.order.customer.avatarEmoji} ${service.order.customer.name}` : "Today",
+    day: shownCustomer ? `${shownCustomer.avatarEmoji} ${shownCustomer.name}` : "Today",
     recipeId: view.recipeId,
     name: view.title,
     emoji: view.emoji,
@@ -417,7 +777,7 @@ export function Preparation({
   return (
     <div className="relative h-full w-full overflow-hidden bg-cream">
       <img
-        src={kitchenBg}
+        src={kitchenArt ?? kitchenBg}
         alt="Warm café kitchen with copper pans, herbs and morning light"
         width={540}
         height={960}
@@ -441,7 +801,7 @@ export function Preparation({
           technique: activeTechnique.name,
           cutProgress,
           currentScore: result?.score ?? 0,
-          currentCombo: 0,
+          currentCombo: combo,
           currentCutQuality,
           isPaused: paused,
           lastResult: result,
@@ -449,6 +809,7 @@ export function Preparation({
           rewardCredits: view.rewardCoins,
         }}
         totalPieces={activeStep.requiredCuts}
+        fever={!!fever}
         counts={activeTechnique.counts}
         progressByAxis={progressByAxis}
         {...(activeTechnique.interactionMode === "peel"
@@ -473,7 +834,162 @@ export function Preparation({
 
       <GameViewport bridge={bridge} />
 
-      {coachVisible && phase === "prep" ? (
+      {/* Phase 3 (C/D) — the order's twist, announced as it starts (a few
+          seconds, never a touch), and Grandma's live progress. */}
+      {specialsCard &&
+      phase === "prep" &&
+      (orderSpecials.chaos || orderSpecials.variant || personality) ? (
+        <div
+          className="pointer-events-none absolute inset-x-0 top-[22%] z-30 flex justify-center px-4"
+          data-testid="specials-card"
+          data-chaos={orderSpecials.chaos ?? ""}
+          data-variant={orderSpecials.variant ?? ""}
+          data-customer={personality?.id ?? ""}
+        >
+          <div className="anim-pop w-full max-w-[340px] rounded-[18px] border border-gold/40 bg-walnut-dark/85 px-4 py-2.5 text-center shadow-lift backdrop-blur-[2px]">
+            {personality ? (
+              <div
+                className="kc-arrive flex items-center gap-2.5 text-left"
+                data-testid="customer-arrival"
+              >
+                <span
+                  className={
+                    "relative shrink-0 leading-none " +
+                    (personality.id === "giant-eater" ? "text-[42px]" : "text-[32px]") +
+                    (personality.id === "mystery-customer" ? " kc-silhouette" : "")
+                  }
+                  aria-hidden="true"
+                >
+                  {PERSONALITIES[personality.id].avatarEmoji}
+                  <span className="absolute -bottom-1 -right-2 text-[16px]">
+                    {PERSONALITIES[personality.id].badge}
+                  </span>
+                </span>
+                <span className="min-w-0">
+                  <span className="block font-ui text-[12px] font-extrabold uppercase tracking-[0.14em] text-gold">
+                    {PERSONALITIES[personality.id].name}
+                  </span>
+                  <span className="block font-ui text-[13.5px] font-bold leading-snug text-ivory">
+                    {PERSONALITIES[personality.id].entrance}
+                  </span>
+                </span>
+              </div>
+            ) : null}
+            {orderSpecials.chaos ? (
+              <>
+                <p className="font-ui text-[12px] font-extrabold uppercase tracking-[0.14em] text-gold">
+                  {CHAOS_COPY[orderSpecials.chaos].icon} {CHAOS_COPY[orderSpecials.chaos].title}
+                </p>
+                <p className="font-ui text-[14px] font-bold leading-snug text-ivory">
+                  {CHAOS_COPY[orderSpecials.chaos].line}
+                </p>
+              </>
+            ) : null}
+            {orderSpecials.variant ? (
+              <p className="font-ui text-[13.5px] font-extrabold leading-snug text-gold">
+                ✨ Special: {VARIANTS[orderSpecials.variant].emoji}{" "}
+                {VARIANTS[orderSpecials.variant].name}!
+              </p>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+      {regularWaiting === "showing" && phase === "prep" ? (
+        <div
+          className="pointer-events-none absolute left-3 top-[22%] z-20"
+          data-testid="regular-waiting"
+        >
+          <span className="anim-pop rounded-full border border-gold/40 bg-walnut-dark/75 px-2.5 py-1 font-ui text-[12px] font-extrabold text-gold shadow-soft">
+            ⏱️ The Regular checks his watch…
+          </span>
+        </div>
+      ) : null}
+      {orderSpecials.chaos === "grandma" && phase === "prep" && !specialsCard ? (
+        <div
+          className="pointer-events-none absolute right-3 top-[22%] z-20"
+          data-testid="grandma-progress"
+        >
+          <span className="rounded-full border border-gold/40 bg-walnut-dark/75 px-2.5 py-1 font-ui text-[12px] font-extrabold text-gold shadow-soft">
+            {grandmaDone ? `👵 ×${CHAOS.GRANDMA_COMBO} ✓` : `👵 ×${combo} / ${CHAOS.GRANDMA_COMBO}`}
+          </span>
+        </div>
+      ) : null}
+
+      {/* Phase 3 (A) — Fever Mode: warm edges that leave the board's middle
+          clear, and a thin countdown along the very top (it stops while the
+          game is paused). Both pointer-events-none: Fever never takes a touch. */}
+      {fever && phase === "prep" ? (
+        <>
+          <div
+            className="kc-fever-vignette pointer-events-none absolute inset-0 z-[15] bg-[radial-gradient(120%_90%_at_50%_45%,transparent_58%,rgba(232,140,40,0.3)_100%)]"
+            data-testid="fever-vignette"
+          />
+          <div className="pointer-events-none absolute inset-x-0 top-0 z-40 h-[5px] bg-walnut-dark/30">
+            <div
+              className="kc-fever-bar h-full bg-[linear-gradient(90deg,#f6c453,#e8862f)]"
+              data-testid="fever-bar"
+              style={{
+                animationDuration: `${fever.ms}ms`,
+                animationPlayState: paused ? "paused" : "running",
+              }}
+            />
+          </div>
+        </>
+      ) : null}
+
+      {/* Phase 2 (A2) — the bench scraper. Same slot and look as the coach
+          card, which it replaces while it is up; the card itself lets every
+          touch through to the board (the swipe is the whole interaction),
+          except its Skip, which leaves the debris and goes straight to
+          cutting, so the scrape can never hold a player up. */}
+      {/* Phase 3 (C) — the Vegetable Avalanche: same slot as the scraper (they
+          never share a start); touches go through to the board except Skip. */}
+      {avalanche?.on && phase === "prep" ? (
+        <div
+          className="pointer-events-none absolute inset-x-0 bottom-[6%] z-20 flex justify-center px-4"
+          data-testid="avalanche"
+        >
+          <div className="anim-pop w-full max-w-[400px] rounded-[18px] border border-gold/40 bg-walnut-dark/80 px-4 py-3 text-center shadow-lift backdrop-blur-[2px]">
+            <p className="font-ui text-[12px] font-extrabold uppercase tracking-[0.14em] text-gold">
+              {CHAOS_COPY.avalanche.icon} {CHAOS_COPY.avalanche.title}
+            </p>
+            <p className="mt-0.5 font-ui text-[15px] font-bold leading-snug text-ivory">
+              Swipe through them to clear the board ·{" "}
+              <span data-testid="avalanche-left">{avalanche.left}</span> left
+            </p>
+            <button
+              type="button"
+              className="pointer-events-auto mt-1 min-h-12 rounded-full px-5 font-ui text-[13px] font-extrabold uppercase tracking-[0.12em] text-ivory/70"
+              onClick={() => bridge.skipAvalanche()}
+              data-testid="avalanche-skip"
+            >
+              Skip
+            </button>
+          </div>
+        </div>
+      ) : cleanupOffered && phase === "prep" ? (
+        <div
+          className="pointer-events-none absolute inset-x-0 bottom-[6%] z-20 flex justify-center px-4"
+          data-testid="board-cleanup"
+        >
+          <div className="anim-pop w-full max-w-[400px] rounded-[18px] border border-gold/40 bg-walnut-dark/80 px-4 py-3 text-center shadow-lift backdrop-blur-[2px]">
+            <p className="font-ui text-[12px] font-extrabold uppercase tracking-[0.14em] text-gold">
+              Clean the board
+            </p>
+            <p className="mt-0.5 font-ui text-[15px] font-bold leading-snug text-ivory">
+              Swipe the scraper across the board to clear the scraps.
+            </p>
+            <button
+              type="button"
+              className="pointer-events-auto mt-1 min-h-12 rounded-full px-5 font-ui text-[13px] font-extrabold uppercase tracking-[0.12em] text-ivory/70"
+              onClick={() => bridge.skipCleanup()}
+              data-testid="board-cleanup-skip"
+            >
+              Skip
+            </button>
+          </div>
+        </div>
+      ) : coachVisible && phase === "prep" ? (
         <div
           className="pointer-events-none absolute inset-x-0 bottom-[6%] z-20 flex justify-center px-4"
           data-testid="coach-card"
@@ -519,6 +1035,30 @@ export function Preparation({
       <div className="absolute inset-x-0 top-[26%] z-30 flex justify-center">
         <CutResultPanel quality={currentCutQuality} />
       </div>
+
+      {/* Phase 1 (B3) — the combo milestone. A small pill BELOW the board
+          and above the hint line, so it covers neither the cutting
+          surface nor the order card; pointer-events-none so it can never
+          swallow a cut. It auto-clears after COMBO.TOAST_MS. */}
+      {comboMilestone !== null && phase === "prep" ? (
+        <div
+          className="pointer-events-none absolute inset-x-0 bottom-[19%] z-30 flex justify-center px-4"
+          data-testid="combo-milestone"
+        >
+          <span className="anim-pop rounded-full border border-gold/40 bg-walnut-dark/80 px-3.5 py-1 font-ui text-[13px] font-extrabold uppercase tracking-[0.14em] text-gold shadow-lift backdrop-blur-[2px]">
+            {fever ? `🔥 Fever! · Clean ×${comboMilestone}!` : `Clean ×${comboMilestone}!`}
+          </span>
+        </div>
+      ) : feverDone && phase !== "result" && phase !== "complete" ? (
+        <div
+          className="pointer-events-none absolute inset-x-0 bottom-[19%] z-30 flex justify-center px-4"
+          data-testid="fever-done"
+        >
+          <span className="anim-pop rounded-full border border-gold/40 bg-walnut-dark/80 px-3.5 py-1 font-ui text-[13px] font-extrabold uppercase tracking-[0.14em] text-gold shadow-lift backdrop-blur-[2px]">
+            🔥 What a run!
+          </span>
+        </div>
+      ) : null}
 
       {paused ? (
         <div className="absolute inset-0 z-40 flex items-center justify-center bg-walnut-dark/40 backdrop-blur-[3px]">
@@ -583,6 +1123,7 @@ export function Preparation({
         <CookingClip
           playing={cooking === "playing"}
           kind={dishKindFor(view.recipeId, view.title)}
+          {...(orderSpecials.chaos === "rush-hour" ? { rate: CHAOS.RUSH_CLIP_RATE } : {})}
           onDone={() => {
             setCooking("off");
             setPhase("result");
@@ -595,15 +1136,79 @@ export function Preparation({
           dishName={view.title}
           stepName={steps.length > 1 ? "Preparation" : activeTechnique.name}
           result={result}
+          previousBest={baselineBest.current}
+          specials={specialsReportLines({
+            chaos: orderSpecials.chaos,
+            variant: orderSpecials.variant,
+            grandmaBest: grandmaBest.current,
+            evenness: result.evenness,
+            avalanche: avalanche
+              ? { sliced: avalanche.total - avalanche.left, total: avalanche.total }
+              : null,
+            inspection,
+          })}
           onRetry={restart}
-          onContinue={() => setPhase("complete")}
+          onContinue={continueFromReport}
         />
       ) : null}
+
+      {/* Phase 6: a dish's Kitchen Moments — a quiet chip on its completion
+          screen; the card preview only when the player asks. */}
+      {phase === "complete" && runKey.current && momentTick >= 0
+        ? (() => {
+            const moments = momentsOf(runKey.current);
+            if (moments.length === 0) return null;
+            return momentPreview ? (
+              <MomentPreview moments={moments} onClose={() => setMomentPreview(false)} />
+            ) : !momentsHidden ? (
+              <MomentChip
+                moments={moments}
+                onOpen={() => setMomentPreview(true)}
+                onDismiss={() => setMomentsHidden(true)}
+              />
+            ) : null;
+          })()
+        : null}
 
       {phase === "complete" ? (
         service ? (
           <ServiceOrderComplete
-            serviceOrder={service.order}
+            serviceOrder={
+              shownCustomer ? { ...service.order, customer: shownCustomer } : service.order
+            }
+            personality={personality}
+            onCustomerMoment={(c) => {
+              if (!personality) return;
+              runKey.current ??= nextRunKey(view.recipeId);
+              if (
+                recordMoment(
+                  customerMoment({
+                    runKey: runKey.current,
+                    dishName: view.title,
+                    personality: personality.id,
+                    line: c.line,
+                    ...(c.reveal ? { reveal: c.reveal } : {}),
+                  }),
+                )
+              )
+                setMomentTick((t) => t + 1);
+            }}
+            {...(bookNote
+              ? {
+                  bookNote: (
+                    <BookPageNote
+                      emoji={view.emoji}
+                      recipeId={view.recipeId}
+                      tier={bookNote.tier}
+                      variant={bookNote.variant}
+                    />
+                  ),
+                }
+              : {})}
+            {...(personality?.id === "impatient-regular"
+              ? { prep: { ms: prepMs.current, parMs: regularPar } }
+              : {})}
+            {...(result ? { plateTier: tierFor(result.score, true) } : {})}
             credits={credits}
             onServe={service.onServe}
             onNextOrder={service.onNextOrder}
@@ -624,6 +1229,18 @@ export function Preparation({
           />
         ) : (
           <OrderComplete
+            {...(bookNote
+              ? {
+                  bookNote: (
+                    <BookPageNote
+                      emoji={view.emoji}
+                      recipeId={view.recipeId}
+                      tier={bookNote.tier}
+                      variant={bookNote.variant}
+                    />
+                  ),
+                }
+              : {})}
             dishName={view.title}
             score={result?.score ?? 0}
             previousBest={previousBest}

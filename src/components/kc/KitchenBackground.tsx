@@ -12,7 +12,8 @@ import thumb05 from "@/assets/kitchen/thumbs/skin-05.webp";
 import thumb06 from "@/assets/kitchen/thumbs/skin-06.webp";
 import type { KitchenSkinId } from "@/game/kitchen/kitchenUpgradeTypes";
 
-const KITCHEN_SKIN_SRC: Record<KitchenSkinId, string> = {
+/** Exported for Phase 5's restoration reveal (RestorationReveal.tsx), which shows two of them. */
+export const KITCHEN_SKIN_SRC: Record<KitchenSkinId, string> = {
   "skin-01": skin01,
   "skin-02": skin02,
   "skin-03": skin03,

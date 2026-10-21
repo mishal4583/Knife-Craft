@@ -65,12 +65,18 @@ export function isLevelPrepared(
   recipeProgress: Record<string, { best: number | null; done: boolean }>,
   level: LevelDefinition,
 ): boolean {
-  const recipeIds = level.recipePoolIds?.length
+  return recipeIdsOfLevel(level).some((id) => isPrepared(recipeProgress, id));
+}
+
+/** The recipe ids a level can actually serve: its order pool, its batch group, or its own recipe (see isLevelPrepared). */
+export function recipeIdsOfLevel(
+  level: Pick<LevelDefinition, "recipeId" | "recipePoolIds" | "batchGroupRecipeIds">,
+): readonly string[] {
+  return level.recipePoolIds?.length
     ? level.recipePoolIds
     : level.batchGroupRecipeIds?.length
       ? level.batchGroupRecipeIds
       : [level.recipeId];
-  return recipeIds.some((id) => isPrepared(recipeProgress, id));
 }
 
 /**

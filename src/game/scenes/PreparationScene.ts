@@ -23,6 +23,18 @@ import {
 } from "./knifeProfile";
 import { COACH_FIRST_DELAY_MS, COACH_STUCK_IDLE_MS } from "../coaching";
 import { AudioManager } from "../AudioManager";
+import { FEVER, feverLights } from "../fever";
+import { CHAOS, chaosForOrder, type ChaosEventId } from "../kitchenChaos";
+import { VARIANTS, paintVariantOverlay, variantForOrder, type VariantId } from "../specialVariants";
+import { segmentNear } from "../prepRush";
+import {
+  DEBRIS,
+  addDebris,
+  boardDebris,
+  cleanupDue,
+  clearDebris,
+  type DebrisPiece,
+} from "../boardDebris";
 import {
   ASSIST,
   PERFECT,
@@ -82,7 +94,9 @@ import {
   CAMERA,
   CARROT_GEOMETRY,
   CHOP_KNIFE,
+  COMBO,
   CUCUMBER_GEOMETRY,
+  CUT_DRAG,
   CUT_FEEL,
   GARLIC_GEOMETRY,
   INGREDIENTS,
@@ -737,6 +751,42 @@ type KnifePhase =
   | "tapImpact"
   | "tapRetract";
 
+/** Phase 2 (A2) — the bench scraper while it is offered (PreparationScene.cleanup). Canvas px. */
+/** Phase 3 (C) — the Vegetable Avalanche: the little vegetables on the board, the halves still flying, the stroke in progress. */
+type AvalancheState = {
+  /** `u`, `v`: where on the board face it lies (fractions, like the debris), so a resize keeps it there. */
+  items: {
+    img: Phaser.GameObjects.Image;
+    kind: AvalancheKind;
+    r: number;
+    cut: boolean;
+    u: number;
+    v: number;
+  }[];
+  halves: Phaser.GameObjects.Image[];
+  swipe: { x: number; y: number } | null;
+  left: number;
+  /** Cleared or skipped and playing out: no more input, no Skip. */
+  finishing: boolean;
+};
+const AVALANCHE_KINDS = ["tomato", "onion", "potato", "orange"] as const;
+type AvalancheKind = (typeof AVALANCHE_KINDS)[number];
+
+type CleanupState = {
+  gfx: Phaser.GameObjects.Graphics;
+  bladeX: number;
+  restX: number;
+  dragging: boolean;
+  /** Where this drag began: pieces between here and the blade ride along with it. */
+  startX: number;
+  /** The sweep direction once the drag has moved: 1 right, -1 left, 0 not yet. */
+  dir: 0 | 1 | -1;
+  /** The furthest the blade has gone in `dir` this drag. */
+  travel: number;
+  /** The sweep counted and is playing out: no more input, no Skip. */
+  finishing: boolean;
+};
+
 type KnifeState = {
   x: number;
   y: number;
@@ -875,6 +925,23 @@ export class PreparationScene extends Phaser.Scene {
   private boardImg!: Phaser.GameObjects.Image; // painted once into a CanvasTexture — see textures/boardTexture.ts
   private boardTextureKey = "board-face";
   private boardQuad: BoardQuad = { xt0: 0, xt1: 0, yt: 0, xb0: 0, xb1: 0, yb: 0 };
+  /** Phase 2 (A1) — every piece of cutting debris, drawn into this ONE Graphics (depth 1: on the board, under guides, food and knife) from boardDebris.ts's session list. */
+  private debrisGfx!: Phaser.GameObjects.Graphics;
+  /** Phase 2 (A2) — the bench-scraper cleanup while it is offered; null the rest of the time. While set, the board's pointer belongs to the scraper, never to a cut. */
+  private cleanup: CleanupState | null = null;
+  /** Phase 3 (A) — Fever Mode while it is on (fever.ts); null otherwise. Its graphics, timer and knife trail live and die together. */
+  private fever: {
+    gfx: Phaser.GameObjects.Graphics;
+    timer: Phaser.Time.TimerEvent;
+    trail: { x: number; y: number; t: number }[];
+  } | null = null;
+  /** Fever has been lit this order already (once per order — fever.ts). Reset by onStart/onRestart. */
+  private feverUsed = false;
+  /** Phase 3 (C/D) — this order's Kitchen Chaos event and special ingredient variant (kitchenChaos.ts, specialVariants.ts): decided once in onStart, kept on restart. */
+  private chaos: ChaosEventId | null = null;
+  private variant: VariantId | null = null;
+  /** Phase 3 (C) — the Vegetable Avalanche while it is on the board; null otherwise. While set, the board's pointer is its own, never a cut. */
+  private avalanche: AvalancheState | null = null;
   private guideGfx!: Phaser.GameObjects.Graphics;
   private seamGfx!: Phaser.GameObjects.Graphics; // committed cut marks + live in-stroke seam preview
   private knifeGfx!: Phaser.GameObjects.Graphics;
@@ -1050,6 +1117,7 @@ export class PreparationScene extends Phaser.Scene {
     this.guideGfx = this.add.graphics();
     this.seamGfx = this.add.graphics();
     this.knifeGfx = this.add.graphics();
+    this.debrisGfx = this.add.graphics().setDepth(1);
     this.coachGfx = this.add.graphics();
     this.coachLabel = this.add
       .text(0, 0, "", {
@@ -1116,6 +1184,10 @@ export class PreparationScene extends Phaser.Scene {
 
     this.bus.on(CMD.START, this.onStart, this);
     this.bus.on(CMD.RESTART, this.onRestart, this);
+    this.bus.on(CMD.CLEANUP_SKIP, () => {
+      if (this.cleanup && !this.cleanup.finishing) this.endCleanup("skipped");
+    });
+    this.bus.on(CMD.AVALANCHE_SKIP, () => this.skipAvalanche());
     this.bus.on(CMD.SET_KNIFE, (knife: KnifeDefinition) => {
       this.knifeStats = knife;
     });
@@ -1170,11 +1242,17 @@ export class PreparationScene extends Phaser.Scene {
     this.tweens.timeScale = 1;
     this.time.timeScale = 1;
     this.platingSkipped = false;
+    this.decideSpecials(config);
     this.beginStep(0); // fresh (index 0 has no previous step) — lays out geometry/texture and resets pieces
     // Fresh entry only — Retry/Prep Again (onRestart alone, below) must
     // stay instant and does NOT replay the kitchen-view push-in.
     this.hasZoomedIn = false;
     this.cameras.main.setZoom(CAMERA.KITCHEN_ZOOM);
+    this.endFever("restart");
+    this.feverUsed = false;
+    this.maybeOfferCleanup();
+    // Phase 3 (C): the avalanche lands as the order begins (never with the scraper — kitchenChaos.ts).
+    if (this.chaos === "avalanche" && !this.cleanup) this.startAvalanche();
   }
 
   /** "Restart Prep"/"Retry" — always returns to step 0 of the CURRENT session's steps, fully fresh, whichever step the player was actually on. */
@@ -1201,7 +1279,11 @@ export class PreparationScene extends Phaser.Scene {
     this.tweens.timeScale = 1;
     this.time.timeScale = 1;
     this.platingSkipped = false;
+    this.endAvalanche("restart"); // its tweens died with killAll above; its objects go now
     this.beginStep(0);
+    this.endFever("restart");
+    this.feverUsed = false;
+    this.maybeOfferCleanup();
   }
 
   /**
@@ -1663,8 +1745,8 @@ export class PreparationScene extends Phaser.Scene {
     return primaryCutAxis(this.technique, this.ingredient, this.ingRx, this.ingRy);
   }
 
-  /** Recomputes every pixel position from current canvas size — called on resize. */
-  private layout(): void {
+  /** Recomputes every pixel position from current canvas size — called on resize. `fit` (Phase 3) shrinks a scaled-up ingredient back onto the board; see ingredientScale. */
+  private layout(fit = 1): void {
     const w = this.scale.width;
     const h = this.scale.height;
 
@@ -1692,14 +1774,20 @@ export class PreparationScene extends Phaser.Scene {
     this.ingCx =
       (this.boardQuad.xt0 + this.boardQuad.xt1 + this.boardQuad.xb0 + this.boardQuad.xb1) / 4;
 
+    // Phase 3 (C/D): a Giant Ingredient / Giant Cucumber is drawn bigger —
+    // the ingredient's own geometry only, never the board, the knife or a
+    // rule (cut counts and grading are relative to the ingredient). 1 for
+    // every other order, so this is the original layout exactly.
+    const iw = w * this.ingredientScale() * fit;
+
     if (this.ingredient.shape === "ellipse") {
       // Phase 18: a new-roster ingredient's geometry lives in
       // ELLIPSE_RENDERERS, consulted first; a lookup miss falls through to
       // the original 4-ingredient ellipseGeometry() switch, unchanged.
       const newR = ELLIPSE_RENDERERS[this.ingredientId];
       const eg = newR ? newR.geom : this.ellipseGeometry();
-      this.ingRx = eg.RX_FRAC * w;
-      this.ingRy = eg.RY_FRAC * w;
+      this.ingRx = eg.RX_FRAC * iw;
+      this.ingRy = eg.RY_FRAC * iw;
       // eg is a big union (every *_GEOMETRY const `ellipseGeometry()` can
       // return, plus every ELLIPSE_RENDERERS entry's own geom) — most
       // members have none of these fields at all, so read them through an
@@ -1721,8 +1809,8 @@ export class PreparationScene extends Phaser.Scene {
       );
     } else if (this.ingredient.shape === "organic") {
       const og = this.organicGeometry();
-      this.ingRx = og.RX_FRAC * w;
-      this.ingRy = og.RY_FRAC * w;
+      this.ingRx = og.RX_FRAC * iw;
+      this.ingRy = og.RY_FRAC * iw;
       this.silhouette = makeOrganicSilhouette(
         this.ingCx,
         this.ingCy,
@@ -1738,7 +1826,7 @@ export class PreparationScene extends Phaser.Scene {
       // there's only one shape-defining input (the point list) plus a
       // uniform scale, unlike ellipse/organic's independent rx/ry.
       const pg = this.polygonGeometry();
-      this.ingPolyScale = pg.scaleFrac * w;
+      this.ingPolyScale = pg.scaleFrac * iw;
       this.silhouette = makePolygonSilhouette(this.ingCx, this.ingCy, this.ingPolyScale, pg.pts);
       this.ingRx = this.silhouette.rx;
       this.ingRy = this.silhouette.ry;
@@ -1748,7 +1836,7 @@ export class PreparationScene extends Phaser.Scene {
       // rx/ry come from the silhouette's own fitted bounds, the same
       // "derived, never hand-written" convention `polygon` already uses.
       const cr = CLUSTER_RENDERERS[this.ingredientId]!;
-      this.clusterLeaves = cr.leavesAt(w / 540);
+      this.clusterLeaves = cr.leavesAt(iw / 540);
       this.silhouette = makeClusterSilhouette(this.ingCx, this.ingCy, this.clusterLeaves);
       this.ingRx = this.silhouette.rx;
       this.ingRy = this.silhouette.ry;
@@ -1757,10 +1845,10 @@ export class PreparationScene extends Phaser.Scene {
       // front+top+side planes), ported directly from knifecraft.html's
       // actual `SILS.block` — see makeBlockSilhouette's own doc.
       const br = BLOCK_RENDERERS[this.ingredientId]!;
-      this.ingRx = br.geom.RX_FRAC * w;
-      this.ingRy = br.geom.RY_FRAC * w;
-      this.blockDepthX = br.geom.DEPTH_X_FRAC * w;
-      this.blockDepthY = br.geom.DEPTH_Y_FRAC * w;
+      this.ingRx = br.geom.RX_FRAC * iw;
+      this.ingRy = br.geom.RY_FRAC * iw;
+      this.blockDepthX = br.geom.DEPTH_X_FRAC * iw;
+      this.blockDepthY = br.geom.DEPTH_Y_FRAC * iw;
       this.silhouette = makeBlockSilhouette(
         this.ingCx,
         this.ingCy,
@@ -1777,16 +1865,16 @@ export class PreparationScene extends Phaser.Scene {
       // Baguette/Pineapple live in CAPSULE_RENDERERS.
       const cr = CAPSULE_RENDERERS[this.ingredientId];
       const g = cr ? cr.geom : this.capsuleGeometry();
-      this.ingRx = g.RX_FRAC * w;
-      this.ingRBig = g.CAP_R_FRAC * w; // reuses the same "short axis" storage slot taper already has
+      this.ingRx = g.RX_FRAC * iw;
+      this.ingRBig = g.CAP_R_FRAC * iw; // reuses the same "short axis" storage slot taper already has
       this.ingRSmall = this.ingRBig;
       this.ingRy = this.ingRBig;
       this.silhouette = makeCapsuleSilhouette(this.ingCx, this.ingCy, this.ingRx, this.ingRBig);
     } else if (this.ingredient.shape === "fillet") {
       // Chicken/Steak/Salmon only — see makeFilletSilhouette's own doc.
       const fr = FILLET_RENDERERS[this.ingredientId]!;
-      this.ingRx = fr.geom.RX_FRAC * w;
-      this.ingRy = fr.geom.RY_FRAC * w;
+      this.ingRx = fr.geom.RX_FRAC * iw;
+      this.ingRy = fr.geom.RY_FRAC * iw;
       this.filletOpts = {
         ...(fr.geom.BIAS != null ? { bias: fr.geom.BIAS } : {}),
         ...(fr.geom.FULL != null ? { full: fr.geom.FULL } : {}),
@@ -1811,14 +1899,14 @@ export class PreparationScene extends Phaser.Scene {
       // consulted first, same fallback convention as the ellipse branch.
       const newR = TAPER_RENDERERS[this.ingredientId];
       const g = newR ? newR.geom : this.taperGeometry();
-      this.ingRx = g.RX_FRAC * w;
-      this.ingRBig = g.R_BIG_FRAC * w;
-      this.ingRSmall = g.R_SMALL_FRAC * w;
+      this.ingRx = g.RX_FRAC * iw;
+      this.ingRBig = g.R_BIG_FRAC * iw;
+      this.ingRSmall = g.R_SMALL_FRAC * iw;
       this.taperOpts = {
         ...("TAPER_CURVE" in g && g.TAPER_CURVE != null ? { taperCurve: g.TAPER_CURVE } : {}),
-        ...("SPINE_FRAC" in g && g.SPINE_FRAC != null ? { spine: g.SPINE_FRAC * w } : {}),
+        ...("SPINE_FRAC" in g && g.SPINE_FRAC != null ? { spine: g.SPINE_FRAC * iw } : {}),
         ...("SPINE_RX_FRAC" in g && g.SPINE_RX_FRAC != null
-          ? { spineRx: g.SPINE_RX_FRAC * w }
+          ? { spineRx: g.SPINE_RX_FRAC * iw }
           : {}),
       };
       // The bowed-centreline (`spine`) tapers reach `spine` px past `rBig`
@@ -1835,6 +1923,18 @@ export class PreparationScene extends Phaser.Scene {
         g.TIP_ROUND,
         this.taperOpts,
       );
+    }
+
+    // ...and never past the board: shrink it back until it fits (once).
+    if (fit === 1 && this.ingredientScale() > 1) {
+      const q = this.boardQuad;
+      const maxRx = (Math.min(q.xt1 - q.xt0, q.xb1 - q.xb0) / 2) * CHAOS.MAX_BOARD_FRAC;
+      const maxRy = ((q.yb - q.yt) / 2) * CHAOS.MAX_BOARD_FRAC;
+      const f = Math.min(1, maxRx / this.ingRx, maxRy / this.ingRy);
+      if (f < 1) {
+        this.layout(Math.max(f, 1 / this.ingredientScale()));
+        return;
+      }
     }
 
     this.redrawIngredientTexture();
@@ -1880,6 +1980,23 @@ export class PreparationScene extends Phaser.Scene {
       const img = this.createPieceImage(piece);
       img.setAlpha(wasVisible ? 1 : 0);
       this.pieceImages.set(piece, img);
+    }
+    // Phase 2: debris is stored as board fractions, so it just redraws on
+    // the new board; a resting scraper moves to the new board's edge.
+    this.redrawDebris();
+    // Phase 3 (C): so is the avalanche — each vegetable back to its place on the new board.
+    if (this.avalanche && !this.avalanche.finishing)
+      for (const it of this.avalanche.items) {
+        if (it.cut) continue;
+        this.tweens.killTweensOf(it.img);
+        const p = this.facePoint(it.u, it.v);
+        it.img.setPosition(p.x, p.y);
+      }
+    const c = this.cleanup;
+    if (c && !c.dragging && !c.finishing) {
+      c.restX = this.scraperMetrics().left + this.scraperMetrics().bw * 1.4;
+      c.bladeX = c.restX;
+      this.drawScraper();
     }
   }
 
@@ -2436,6 +2553,10 @@ export class PreparationScene extends Phaser.Scene {
         );
       }
     }
+    // Phase 3 (D): a special variant's look, painted over the ingredient's
+    // own texture inside its silhouette — the pieces (cut from this
+    // canvas) and so the plate carry it.
+    if (this.variantHere()) paintVariantOverlay(tex.context, this.variant!);
     tex.refresh();
     this.ingredientCanvas = tex.canvas;
     this.ingredientSourceOriginWorld = { x: this.ingCx - w / 2, y: this.ingCy - h / 2 };
@@ -2751,6 +2872,653 @@ export class PreparationScene extends Phaser.Scene {
     ctx.restore();
   }
 
+  // ── Phase 3 (A): Fever Mode ─────────────────────────────────────────────
+  // Presentation only (fever.ts): nothing here reads or writes the cut, the
+  // grade, the combo or the order.
+
+  /** Lights Fever: its glow/trail graphics under the knife, a timer on the scene clock (it stops while paused), the start cue. */
+  private startFever(): void {
+    if (this.fever || this.feverUsed) return;
+    this.feverUsed = true;
+    const gfx = this.add.graphics().setDepth(29).setBlendMode(Phaser.BlendModes.ADD);
+    const timer = this.time.delayedCall(FEVER.MS, () => this.endFever("time"));
+    this.fever = { gfx, timer, trail: [] };
+    AudioManager.playFeverStart();
+    this.bus.emit(EVT.FEVER, { state: "start", ms: FEVER.MS });
+  }
+
+  /**
+   * Ends Fever once: on time, when plating starts (the dish is done), or
+   * silently on a restart. Its timer is removed and its graphics destroyed
+   * here, so nothing of it can outlive the order.
+   */
+  private endFever(reason: "time" | "plating" | "restart"): void {
+    const f = this.fever;
+    if (!f) return;
+    f.timer.remove(false);
+    f.gfx.destroy();
+    this.fever = null;
+    if (reason !== "restart") {
+      AudioManager.playFeverEnd();
+      if (!this.reducedMotion())
+        for (const u of [0.3, 0.5, 0.7]) {
+          const p = this.facePoint(u, 0.5);
+          this.spawnSparkle(p.x, p.y);
+        }
+    }
+    this.bus.emit(EVT.FEVER, { state: "end", ms: 0, reason });
+  }
+
+  /** Each frame while Fever is on: a fading gold trail behind the finger and a soft glow at the knife. */
+  private drawFever(): void {
+    const f = this.fever;
+    if (!f) return;
+    const g = f.gfx;
+    g.clear();
+    const now = this.time.now;
+    f.trail = f.trail.filter((p) => now - p.t <= FEVER.TRAIL_MS).slice(-FEVER.TRAIL_POINTS);
+    const still = this.reducedMotion();
+    if (!still)
+      for (let i = 1; i < f.trail.length; i++) {
+        const a = f.trail[i - 1]!;
+        const b = f.trail[i]!;
+        const k = 1 - (now - b.t) / FEVER.TRAIL_MS;
+        g.lineStyle(1 + 6 * k, PALETTE.gold, 0.35 * k);
+        g.lineBetween(a.x, a.y, b.x, b.y);
+      }
+    const kn = this.knife;
+    if (kn) {
+      const pulse = still ? 1 : 0.85 + 0.15 * Math.sin(now / 120);
+      g.fillStyle(PALETTE.gold, 0.16 * pulse);
+      g.fillCircle(kn.x, kn.y, this.scale.width * 0.07);
+      g.fillStyle(0xfff1c2, 0.12 * pulse);
+      g.fillCircle(kn.x, kn.y, this.scale.width * 0.035);
+    }
+  }
+
+  /** A few gold flecks thrown up from a cut while Fever is on (none with Reduced Motion). */
+  private spawnFeverFlecks(x: number, y: number): void {
+    if (this.reducedMotion()) return;
+    for (let i = 0; i < FEVER.FLECKS; i++) {
+      const a = -Math.PI / 2 + (i - (FEVER.FLECKS - 1) / 2) * 0.55;
+      const dist = 16 + i * 3;
+      const fleck = this.add.circle(x, y, 2.4, PALETTE.gold, 0.9).setDepth(23);
+      this.tweens.add({
+        targets: fleck,
+        x: x + Math.cos(a) * dist,
+        y: y + Math.sin(a) * dist,
+        alpha: 0,
+        scale: 0.4,
+        duration: 320,
+        ease: Phaser.Math.Easing.Cubic.Out,
+        onComplete: () => fleck.destroy(),
+      });
+    }
+  }
+
+  /** How far pieces part as they settle: more while Fever is on (not with Reduced Motion). */
+  private settleBoost(): number {
+    return this.fever && !this.reducedMotion() ? FEVER.SETTLE_MULT : 1;
+  }
+
+  // ── Phase 3 (C/D): Kitchen Chaos and special variants ─────────────────
+  // Decided once per order (onStart), never on a restart. Presentation and
+  // play only: nothing below touches a grade, a payout or the save.
+
+  /** This order's chaos event and variant (kitchenChaos.ts, specialVariants.ts), then tells the UI. */
+  private decideSpecials(config: StartPreparationConfig): void {
+    const sp = config.specials;
+    // Never while this order teaches a technique (the coach's ghost owns the board's attention).
+    const teaching = this.coachTeach.size > 0;
+    const first = this.steps[0];
+    const firstTechnique = first ? TECHNIQUES[first.techniqueId] : null;
+    const longestStepCuts = Math.max(
+      0,
+      ...this.steps.map((st) => {
+        const t = resolveTechniqueFor(TECHNIQUES[st.techniqueId], INGREDIENTS[st.ingredientId]);
+        return t.interactionMode === "cut" ? requiredCutsFor(t) : 0;
+      }),
+    );
+    this.chaos = sp
+      ? chaosForOrder({
+          eligible: sp.chaosEligible && !teaching,
+          cleanupDue: cleanupDue(),
+          restaurant: sp.restaurant,
+          longestStepCuts,
+          giantOk: firstTechnique?.interactionMode === "cut",
+        })
+      : null;
+    this.variant = sp
+      ? variantForOrder(
+          sp.variantEligible && !teaching,
+          this.steps.map((st) => st.ingredientId),
+        )
+      : null;
+    this.bus.emit(EVT.SPECIALS, { chaos: this.chaos, variant: this.variant });
+  }
+
+  /** How much bigger than usual the CURRENT ingredient is drawn: the Giant Ingredient (the order's first ingredient) or a Giant Cucumber; 1 otherwise. */
+  private ingredientScale(): number {
+    let s = 1;
+    if (this.chaos === "giant" && this.ingredientId === this.steps[0]?.ingredientId)
+      s = CHAOS.GIANT_SCALE;
+    if (this.variantHere()) s = Math.max(s, VARIANTS[this.variant!].sizeScale);
+    return s;
+  }
+
+  /** The current ingredient is this order's special variant. */
+  private variantHere(): boolean {
+    return this.variant !== null && VARIANTS[this.variant].base === this.ingredientId;
+  }
+
+  /** A few flecks in the variant's own colour where a cut lands (not with Reduced Motion). */
+  private spawnVariantFlecks(x: number, y: number): void {
+    if (this.reducedMotion() || !this.variant) return;
+    const colour = VARIANTS[this.variant].fleck;
+    for (let i = 0; i < 4; i++) {
+      const a = Math.PI / 2 + (i - 1.5) * 0.7;
+      const fleck = this.add.circle(x, y, 2.2, colour, 0.95).setDepth(23);
+      this.tweens.add({
+        targets: fleck,
+        x: x + Math.cos(a) * (14 + i * 3),
+        y: y + Math.sin(a) * (14 + i * 3),
+        alpha: 0,
+        scale: 0.4,
+        duration: 340,
+        ease: Phaser.Math.Easing.Cubic.Out,
+        onComplete: () => fleck.destroy(),
+      });
+    }
+  }
+
+  /**
+   * Vegetable Avalanche: CHAOS.AVALANCHE_COUNT little vegetables tumble onto
+   * the board as the order begins. Until they are all sliced (a stroke
+   * through one cuts it) or the player skips, the board's pointer is the
+   * avalanche's — no cut of the order can start. Bounded: a fixed count,
+   * every object it makes is in `items`/`halves` and dies in endAvalanche.
+   */
+  private startAvalanche(): void {
+    if (this.avalanche) return;
+    const w = this.scale.width;
+    if (!(w > 1)) return;
+    const r = w * 0.055;
+    for (const kind of AVALANCHE_KINDS) {
+      const key = `avalanche-${kind}`;
+      if (this.textures.exists(key)) continue;
+      const m = Math.ceil(r * 0.15);
+      const ry = r * (kind === "potato" ? 0.72 : 0.9);
+      const tex = this.textures.createCanvas(key, Math.ceil(2 * (r + m)), Math.ceil(2 * (ry + m)));
+      if (!tex) continue;
+      if (kind === "tomato") paintTomatoTexture(tex.context, r, ry, m);
+      else if (kind === "onion") paintOnionTexture(tex.context, r, ry, m, false);
+      else if (kind === "potato") paintPotatoTexture(tex.context, r, ry, m, false);
+      else paintOrangeTexture(tex.context, r, ry, m);
+      tex.refresh();
+    }
+    // A fixed scatter (no randomness): a golden-angle spiral over the board face.
+    const reduced = this.reducedMotion();
+    const items: AvalancheState["items"] = [];
+    for (let i = 0; i < CHAOS.AVALANCHE_COUNT; i++) {
+      const t = (i + 0.5) / CHAOS.AVALANCHE_COUNT;
+      const ang = i * 2.39996;
+      const u = 0.5 + Math.cos(ang) * 0.32 * Math.sqrt(t);
+      const v = 0.5 + Math.sin(ang) * 0.3 * Math.sqrt(t);
+      const p = this.facePoint(u, v);
+      const kind = AVALANCHE_KINDS[i % AVALANCHE_KINDS.length]!;
+      const img = this.add.image(p.x, reduced ? p.y : -r * 2, `avalanche-${kind}`).setDepth(26);
+      img.setAngle((i * 47) % 360);
+      if (!reduced)
+        this.tweens.add({
+          targets: img,
+          y: p.y,
+          duration: 420 + i * 40,
+          delay: i * 70,
+          ease: Phaser.Math.Easing.Bounce.Out,
+          onComplete: () => {
+            if (this.avalanche) AudioManager.playSfx("tap");
+          },
+        });
+      items.push({ img, kind, r: r * 1.1, cut: false, u, v });
+    }
+    this.avalanche = { items, halves: [], swipe: null, left: items.length, finishing: false };
+    this.knifeGfx.setVisible(false);
+    this.setCoachVisible(false);
+    this.bus.emit(EVT.AVALANCHE, { state: "start", left: items.length, total: items.length });
+  }
+
+  private onAvalancheDown(pointer: Phaser.Input.Pointer): void {
+    const a = this.avalanche;
+    if (!a || a.finishing) return;
+    a.swipe = this.worldPointer(pointer);
+  }
+
+  private onAvalancheMove(pointer: Phaser.Input.Pointer): void {
+    const a = this.avalanche;
+    if (!a || a.finishing || !a.swipe || !pointer.isDown) return;
+    const now = this.worldPointer(pointer);
+    const from = a.swipe;
+    if (Math.hypot(now.x - from.x, now.y - from.y) < 4) return;
+    for (const it of a.items) {
+      if (it.cut || !segmentNear(from, now, it.img.x, it.img.y, it.r)) continue;
+      this.sliceAvalancheItem(it, Math.atan2(now.y - from.y, now.x - from.x));
+    }
+    a.swipe = now;
+  }
+
+  /** One vegetable sliced: its two halves part along the stroke and fade. Each one once. */
+  private sliceAvalancheItem(it: AvalancheState["items"][number], angle: number): void {
+    const a = this.avalanche;
+    if (!a || it.cut) return;
+    it.cut = true;
+    a.left -= 1;
+    AudioManager.playIngredientSlice(it.kind, 0.8, 90);
+    const key = it.img.texture.key;
+    const src = this.textures.get(key).getSourceImage() as HTMLCanvasElement;
+    const nx = Math.cos(angle + Math.PI / 2);
+    const ny = Math.sin(angle + Math.PI / 2);
+    const reduced = this.reducedMotion();
+    [-1, 1].forEach((side) => {
+      const half = this.add
+        .image(it.img.x, it.img.y, key)
+        .setDepth(26)
+        .setRotation(angle - Math.PI / 2);
+      half.setCrop(side < 0 ? 0 : src.width / 2, 0, src.width / 2, src.height);
+      a.halves.push(half);
+      this.tweens.add({
+        targets: half,
+        x: half.x + nx * side * it.r * (reduced ? 0.2 : 1.4),
+        y: half.y + ny * side * it.r * (reduced ? 0.2 : 1.4) + (reduced ? 0 : it.r * 0.6),
+        alpha: 0,
+        duration: reduced ? 160 : 520,
+        ease: Phaser.Math.Easing.Cubic.Out,
+        onComplete: () => {
+          half.destroy();
+          if (this.avalanche)
+            this.avalanche.halves = this.avalanche.halves.filter((h) => h !== half);
+        },
+      });
+    });
+    this.tweens.killTweensOf(it.img);
+    it.img.setVisible(false);
+    this.bus.emit(EVT.AVALANCHE, { state: "progress", left: a.left, total: a.items.length });
+    if (a.left === 0) {
+      a.finishing = true;
+      this.spawnSparkle(this.ingCx, this.ingCy);
+      this.time.delayedCall(280, () => this.endAvalanche("done"));
+    }
+  }
+
+  /** "Skip": what is left rolls off the board's side, then the order starts. */
+  private skipAvalanche(): void {
+    const a = this.avalanche;
+    if (!a || a.finishing) return;
+    a.finishing = true;
+    a.swipe = null;
+    const left = a.items.filter((it) => !it.cut);
+    if (this.reducedMotion() || left.length === 0) {
+      this.endAvalanche("skipped");
+      return;
+    }
+    left.forEach((it, i) => {
+      this.tweens.killTweensOf(it.img);
+      this.tweens.add({
+        targets: it.img,
+        x: it.img.x < this.ingCx ? -it.r * 2 : this.scale.width + it.r * 2,
+        angle: it.img.angle + (it.img.x < this.ingCx ? -240 : 240),
+        duration: 380,
+        delay: i * 30,
+        ease: Phaser.Math.Easing.Quadratic.In,
+      });
+    });
+    this.time.delayedCall(380 + left.length * 30, () => this.endAvalanche("skipped"));
+  }
+
+  /** The avalanche is over: everything it made is destroyed and cutting is back. A restart clears it silently. */
+  private endAvalanche(state: "done" | "skipped" | "restart"): void {
+    const a = this.avalanche;
+    if (!a) return;
+    for (const it of a.items) {
+      this.tweens.killTweensOf(it.img);
+      it.img.destroy();
+    }
+    for (const h of a.halves) {
+      this.tweens.killTweensOf(h);
+      h.destroy();
+    }
+    this.avalanche = null;
+    this.knifeGfx.setVisible(true);
+    this.coachStepT = this.time.now;
+    this.coachInputT = this.time.now;
+    if (state !== "restart")
+      this.bus.emit(EVT.AVALANCHE, { state, left: a.left, total: a.items.length });
+  }
+
+  // ── Phase 2 (A1/A2): cutting debris and the bench scraper ──────────────
+  // Presentation only. Nothing below reads or writes cuts, pieces, grades,
+  // the order or the wallet; the rules (how much, when, how far a sweep
+  // must go) live in boardDebris.ts.
+
+  /** A point on the board face from its own (u across, v down) fractions — the same trapezoid the board texture is painted from. */
+  private facePoint(u: number, v: number): { x: number; y: number } {
+    const q = this.boardQuad;
+    const x0 = q.xt0 + (q.xb0 - q.xt0) * v;
+    const x1 = q.xt1 + (q.xb1 - q.xt1) * v;
+    return { x: x0 + (x1 - x0) * u, y: q.yt + (q.yb - q.yt) * v };
+  }
+
+  /** Cutting leaves a little mess: `count` pieces near canvas x `x`, in the current ingredient's own look. */
+  private addBoardDebris(x: number, count: number): void {
+    const q = this.boardQuad;
+    const left = (q.xt0 + q.xb0) / 2;
+    const right = (q.xt1 + q.xb1) / 2;
+    if (!(right > left)) return;
+    const u = Phaser.Math.Clamp((x - left) / (right - left), 0, 1);
+    if (addDebris(this.ingredientId, this.ingredient.category, u, count) > 0) this.redrawDebris();
+  }
+
+  /**
+   * Draws every debris piece into the one `debrisGfx`. `push` (during a
+   * scrape) says how far each piece has been carried and how faded it is.
+   */
+  private redrawDebris(push?: (x: number, i: number) => { dx: number; alpha: number }): void {
+    const g = this.debrisGfx;
+    if (!g) return;
+    g.clear();
+    const w = this.scale.width;
+    if (w <= 1 || !(this.boardQuad.yb > this.boardQuad.yt)) return;
+    boardDebris().forEach((p, i) => {
+      const at = this.facePoint(p.u, p.v);
+      const off = push ? push(at.x, i) : { dx: 0, alpha: 1 };
+      if (off.alpha > 0.02) this.drawDebrisPiece(g, at.x + off.dx, at.y, p, p.size * w, off.alpha);
+    });
+  }
+
+  private drawDebrisPiece(
+    g: Phaser.GameObjects.Graphics,
+    x: number,
+    y: number,
+    p: DebrisPiece,
+    s: number,
+    alpha: number,
+  ): void {
+    const c = Math.cos(p.rot);
+    const sn = Math.sin(p.rot);
+    const poly = (pts: readonly (readonly [number, number])[]) =>
+      pts.map(([px, py]) => ({ x: x + px * c - py * sn, y: y + px * sn + py * c }));
+    switch (p.kind) {
+      case "juice":
+        g.fillStyle(p.color, 0.2 * alpha);
+        g.fillEllipse(x, y, s * 1.7, s);
+        g.fillEllipse(x + s * 0.35, y + s * 0.15, s * 0.9, s * 0.6);
+        break;
+      case "seed":
+        g.fillStyle(p.color, 0.9 * alpha);
+        g.fillPoints(
+          poly([
+            [-s, 0],
+            [-s * 0.3, -s * 0.55],
+            [s, 0],
+            [-s * 0.3, s * 0.55],
+          ]),
+          true,
+        );
+        break;
+      case "skin":
+        g.fillStyle(p.color, 0.85 * alpha);
+        g.fillPoints(
+          poly([
+            [-s, -s * 0.1],
+            [-s * 0.3, -s * 0.42],
+            [s * 0.4, -s * 0.36],
+            [s, -s * 0.05],
+            [s * 0.35, -s * 0.12],
+            [-s * 0.35, -s * 0.16],
+          ]),
+          true,
+        );
+        break;
+      default:
+        g.fillStyle(p.color, 0.9 * alpha);
+        g.fillPoints(
+          poly([
+            [-s * 0.6, -s * 0.4],
+            [s * 0.5, -s * 0.55],
+            [s * 0.7, s * 0.2],
+            [s * 0.1, s * 0.6],
+            [-s * 0.7, s * 0.3],
+          ]),
+          true,
+        );
+    }
+  }
+
+  /** The scraper's size and reach, from the board: blade height/width and the board's outer x range. */
+  private scraperMetrics(): {
+    yc: number;
+    H: number;
+    bw: number;
+    hw: number;
+    left: number;
+    right: number;
+  } {
+    const q = this.boardQuad;
+    const w = this.scale.width;
+    return {
+      yc: (q.yt + q.yb) / 2,
+      H: (q.yb - q.yt) * 0.78,
+      bw: w * 0.04,
+      hw: w * 0.028,
+      left: Math.min(q.xt0, q.xb0),
+      right: Math.max(q.xt1, q.xb1),
+    };
+  }
+
+  /**
+   * At the start of an order (and on Prepare Again) with a messy board,
+   * offer the scrape — boardDebris.ts decides when. The scraper rests on
+   * the board's left edge and the knife steps aside until it's done or
+   * skipped.
+   */
+  private maybeOfferCleanup(): void {
+    this.redrawDebris();
+    if (this.cleanup || !cleanupDue()) return;
+    const m = this.scraperMetrics();
+    const restX = m.left + m.bw * 1.4;
+    this.cleanup = {
+      gfx: this.add.graphics().setDepth(35),
+      bladeX: restX,
+      restX,
+      dragging: false,
+      startX: 0,
+      dir: 0,
+      travel: 0,
+      finishing: false,
+    };
+    this.knifeGfx.setVisible(false);
+    this.setCoachVisible(false);
+    this.drawScraper();
+    this.bus.emit(EVT.CLEANUP, { state: "offered", pieces: boardDebris().length });
+  }
+
+  /** A stainless bench scraper seen from above: the steel blade (its edge leading) with a rolled wooden handle trailing it. */
+  private drawScraper(): void {
+    const c = this.cleanup;
+    if (!c) return;
+    const g = c.gfx;
+    g.clear();
+    const m = this.scraperMetrics();
+    if (!(m.H > 0)) return;
+    const x = c.bladeX;
+    const top = m.yc - m.H / 2;
+    const handleX = x + (c.dir < 0 ? 1 : -1) * (m.bw / 2 + m.hw * 0.55) - m.hw / 2;
+    g.fillStyle(0x3e2819, 0.18);
+    g.fillRoundedRect(x - m.bw / 2 + 3, top + 6, m.bw, m.H, 4);
+    g.fillStyle(0x8a5a35, 1);
+    g.fillRoundedRect(handleX, top - 4, m.hw, m.H + 8, m.hw / 2);
+    g.fillStyle(0xb07a4c, 0.6);
+    g.fillRoundedRect(handleX + 2, top, m.hw * 0.35, m.H, m.hw * 0.17);
+    g.fillStyle(0xd5dade, 1);
+    g.fillRoundedRect(x - m.bw / 2, top, m.bw, m.H, 3);
+    g.fillStyle(0xf5f7f9, 0.85);
+    g.fillRect(x - m.bw / 2 + 2, top + 4, m.bw * 0.32, m.H - 8);
+    g.lineStyle(1.5, 0x88909a, 1);
+    g.strokeRoundedRect(x - m.bw / 2, top, m.bw, m.H, 3);
+  }
+
+  /** The pointer in world space — the camera can still be at its kitchen zoom while the scraper is out, and the blade should sit under the finger. */
+  private worldPointer(pointer: Phaser.Input.Pointer): { x: number; y: number } {
+    const p = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+    return { x: p.x, y: p.y };
+  }
+
+  /** Grab anywhere over the board: the blade comes to the finger. */
+  private onScraperDown(pointer: Phaser.Input.Pointer): void {
+    const c = this.cleanup;
+    if (!c || c.finishing) return;
+    const m = this.scraperMetrics();
+    const p = this.worldPointer(pointer);
+    if (p.y < this.boardQuad.yt - 60 || p.y > this.boardQuad.yb + 60) return;
+    c.dragging = true;
+    c.startX = Phaser.Math.Clamp(p.x, m.left, m.right);
+    c.bladeX = c.startX;
+    c.dir = 0;
+    c.travel = 0;
+    this.drawScraper();
+  }
+
+  private onScraperMove(pointer: Phaser.Input.Pointer): void {
+    const c = this.cleanup;
+    if (!c || !c.dragging || c.finishing) return;
+    const m = this.scraperMetrics();
+    const x = Phaser.Math.Clamp(this.worldPointer(pointer).x, m.left, m.right);
+    if (c.dir === 0 && Math.abs(x - c.startX) > 8) {
+      c.dir = x > c.startX ? 1 : -1;
+      AudioManager.playScrape(320);
+    }
+    c.bladeX = x;
+    if (c.dir !== 0) c.travel = Math.max(c.travel, (x - c.startX) * c.dir);
+    this.drawScraper();
+    this.redrawDebris(this.scrapePush(c, 0));
+  }
+
+  /**
+   * Where each piece sits while the blade moves: the ones it has passed
+   * since the drag began ride just in front of it (a little stacked, so the
+   * pile reads), sliding off and fading once the pile is past the board's
+   * edge. `fade` dims the pieces the blade never reached (the polish).
+   */
+  private scrapePush(
+    c: CleanupState,
+    fade: number,
+  ): (x: number, i: number) => { dx: number; alpha: number } {
+    const m = this.scraperMetrics();
+    const lead = c.bladeX + (c.dir * m.bw) / 2;
+    return (x, i) => {
+      const passed =
+        c.dir > 0
+          ? x >= c.startX - m.bw && x < lead
+          : c.dir < 0 && x <= c.startX + m.bw && x > lead;
+      if (!passed) return { dx: 0, alpha: 1 - fade };
+      const at = lead + c.dir * (2 + (i % 5) * 1.6);
+      const beyond = c.dir > 0 ? at - m.right : m.left - at;
+      return { dx: at - x, alpha: beyond > 0 ? Math.max(0, 1 - beyond / (m.bw * 1.5)) : 1 };
+    };
+  }
+
+  /** Let go: a long enough sweep (DEBRIS.SWEEP_FRAC of the board) cleans; a short one puts the blade back with nothing moved. */
+  private onScraperUp(): void {
+    const c = this.cleanup;
+    if (!c || !c.dragging) return;
+    c.dragging = false;
+    const m = this.scraperMetrics();
+    if (c.dir !== 0 && c.travel >= DEBRIS.SWEEP_FRAC * (m.right - m.left)) {
+      this.finishCleanup();
+      return;
+    }
+    c.dir = 0;
+    c.travel = 0;
+    c.bladeX = c.restX;
+    this.drawScraper();
+    this.redrawDebris();
+  }
+
+  /**
+   * The sweep counted: the blade carries on off the board with its pile,
+   * then a short polish glint wipes what the blade never reached, a squeak,
+   * a few sparkles — and the board is clean. About half a second; with
+   * Reduced Motion it is immediate.
+   */
+  private finishCleanup(): void {
+    const c = this.cleanup;
+    if (!c || c.finishing) return;
+    c.finishing = true;
+    AudioManager.playScrape(240);
+    if (this.reducedMotion()) {
+      AudioManager.playSfx("squeak");
+      this.endCleanup("done");
+      return;
+    }
+    const m = this.scraperMetrics();
+    this.tweens.add({
+      targets: c,
+      bladeX: c.dir > 0 ? m.right + m.bw * 3 : m.left - m.bw * 3,
+      duration: 240,
+      ease: Phaser.Math.Easing.Cubic.In,
+      onUpdate: () => {
+        this.drawScraper();
+        this.redrawDebris(this.scrapePush(c, 0));
+      },
+      onComplete: () => this.polishBoard(c),
+    });
+  }
+
+  private polishBoard(c: CleanupState): void {
+    if (this.cleanup !== c) return;
+    AudioManager.playSfx("squeak");
+    const m = this.scraperMetrics();
+    const q = this.boardQuad;
+    const glint = { k: 0 };
+    this.tweens.add({
+      targets: glint,
+      k: 1,
+      duration: 300,
+      ease: Phaser.Math.Easing.Sine.InOut,
+      onUpdate: () => {
+        this.redrawDebris(this.scrapePush(c, glint.k));
+        const g = c.gfx;
+        g.clear();
+        const span = m.right - m.left;
+        const gx = c.dir < 0 ? m.right - span * glint.k : m.left + span * glint.k;
+        g.fillStyle(0xffffff, 0.22 * Math.sin(Math.PI * glint.k));
+        g.fillRect(gx - m.bw, q.yt, m.bw * 2, q.yb - q.yt);
+      },
+      onComplete: () => {
+        for (const u of [0.25, 0.5, 0.75]) {
+          const p = this.facePoint(u, 0.5);
+          this.spawnSparkle(p.x, p.y);
+        }
+        this.endCleanup("done");
+      },
+    });
+  }
+
+  /** The scraper goes away: "done" cleans the board, "skipped" leaves the debris. Cutting is back immediately either way. */
+  private endCleanup(state: "done" | "skipped"): void {
+    const c = this.cleanup;
+    if (!c) return;
+    this.tweens.killTweensOf(c);
+    c.gfx.destroy();
+    this.cleanup = null;
+    if (state === "done") clearDebris();
+    this.redrawDebris();
+    this.knifeGfx.setVisible(true);
+    // The coach counts from now, not from the start of the order.
+    this.coachStepT = this.time.now;
+    this.coachInputT = this.time.now;
+    this.bus.emit(EVT.CLEANUP, { state, pieces: boardDebris().length });
+  }
+
   private destroyPieceImage(img: Phaser.GameObjects.Image): void {
     const key = img.texture.key;
     img.destroy();
@@ -2976,6 +3744,18 @@ export class PreparationScene extends Phaser.Scene {
 
   private onPointerDown(pointer: Phaser.Input.Pointer): void {
     if (this.paused) return;
+    // Phase 2 (A2): while the scraper is offered the board's pointer is the
+    // scraper's — this returns before any cut, peel, smash or ring can start
+    // (and before the first-touch push-in, which waits for the first cut).
+    if (this.cleanup) {
+      this.onScraperDown(pointer);
+      return;
+    }
+    // Phase 3 (C): the same for the Vegetable Avalanche.
+    if (this.avalanche) {
+      this.onAvalancheDown(pointer);
+      return;
+    }
     this.coachTouched = true;
     this.coachInputT = this.time.now;
     this.setCoachVisible(false);
@@ -3083,6 +3863,16 @@ export class PreparationScene extends Phaser.Scene {
   }
 
   private onPointerMove(pointer: Phaser.Input.Pointer): void {
+    if (this.cleanup) {
+      this.onScraperMove(pointer);
+      return;
+    }
+    if (this.avalanche) {
+      this.onAvalancheMove(pointer);
+      return;
+    }
+    if (this.fever && pointer.isDown)
+      this.fever.trail.push({ x: pointer.x, y: pointer.y, t: this.time.now });
     if (pointer.isDown) this.coachInputT = this.time.now;
     if (this.paused) return;
     const mode = this.technique.interactionMode;
@@ -3190,6 +3980,14 @@ export class PreparationScene extends Phaser.Scene {
   }
 
   private onPointerUp(): void {
+    if (this.cleanup) {
+      this.onScraperUp();
+      return;
+    }
+    if (this.avalanche) {
+      this.avalanche.swipe = null;
+      return;
+    }
     if (this.technique.interactionMode === "peel") {
       this.onPeelUp();
       return;
@@ -3555,6 +4353,7 @@ export class PreparationScene extends Phaser.Scene {
    */
   private completePeel(): void {
     this.peeled = true;
+    this.addBoardDebris(this.ingCx, DEBRIS.PER_PEEL);
     this.peeling = false;
     this.lastValidPeelPoint = null;
     this.currentPath = [];
@@ -4029,6 +4828,7 @@ export class PreparationScene extends Phaser.Scene {
    * scale tween, then the step advances.
    */
   private runSmash(x: number, y: number): void {
+    this.addBoardDebris(x, DEBRIS.PER_SMASH);
     this.smashBusy = true;
     const seq = ++this.knifeSeq;
     const w = this.scale.width;
@@ -4232,6 +5032,7 @@ export class PreparationScene extends Phaser.Scene {
     const targetMid = (fracOut + fracIn) / 2;
     const tapFrac = Math.hypot((x - this.ingCx) / this.ingRx, (y - this.ingCy) / this.ingRy);
     this.ringDeviations.push((tapFrac - targetMid) / halfBand);
+    this.addBoardDebris(this.ingCx, DEBRIS.PER_RING);
     this.ringTapTimestamps.push(this.time.now);
   }
 
@@ -4470,15 +5271,35 @@ export class PreparationScene extends Phaser.Scene {
       this.cuts.length - this.stepCutsAtStart >= this.requiredCuts &&
       this.stepIndex + 1 >= this.steps.length;
     this.applyCut(cut, perfect, hitstopMs, isFinalCut);
-    this.boardNudge();
+    this.boardNudge(cut.axis, opts.velocity);
     this.redrawGuides();
 
+    // Phase 1 (B1/B2) — cuts landed so far on THIS step. See COMBO's own
+    // doc in definitions.ts for why that IS the whole combo rule: it is
+    // the number the HUD's pip row already shows, read back out as
+    // rhythm feedback. It awards nothing, and STEP_STARTED resets it for
+    // the next ingredient exactly as it resets the pips.
+    const combo = this.cuts.length - this.stepCutsAtStart;
+    const comboPitch = 1 + (COMBO.PITCH_MAX - 1) * Math.min(1, combo / COMBO.PITCH_FULL_AT);
+    // Phase 3 (A): the x10 milestone of THIS combo lights Fever, once per order.
+    if (feverLights(combo, this.feverUsed, !!this.fever)) this.startFever();
+
     const cutPoint = cut.axis === "h" ? { x: this.ingCx, y: cut.c } : { x: cut.c, y: this.ingCy };
+    this.addBoardDebris(cutPoint.x, DEBRIS.PER_CUT);
+    if (this.variantHere()) this.spawnVariantFlecks(cutPoint.x, cutPoint.y);
     AudioManager.playIngredientSlice(
       this.ingredientId,
       opts.velocity,
       CUT_FEEL.CUT_REVEAL_MS,
-      this.knifeStats.audio.pitchMult,
+      // Phase 1 (A3/A4/B2): the equipped knife's own identity, times the
+      // combo's gentle rise, times a small extra edge for a Perfect
+      // Slice so it reads sharper than the cut before it. All three stay
+      // multiplicative and bounded (COMBO.PITCH_MAX caps the ramp), so
+      // no combination can run away or clip.
+      this.knifeStats.audio.pitchMult *
+        comboPitch *
+        (perfect ? 1.06 : 1) *
+        (this.fever ? FEVER.PITCH_MULT : 1),
       this.knifeStats.audio.gainMult,
     );
     // Chop's own tiny impact tick — reinforces the rhythmic "chop chop
@@ -4498,6 +5319,7 @@ export class PreparationScene extends Phaser.Scene {
       // rather than a new per-ingredient data field.
       this.spawnCutFleck(cutPoint.x, cutPoint.y);
     }
+    if (this.fever) this.spawnFeverFlecks(cutPoint.x, cutPoint.y);
 
     // visibleSeamSpanFor (§13): this feeds the CutResultPanel/KnifeReport
     // comparison diagram — a purely visual overlay — so it should hug
@@ -4517,12 +5339,22 @@ export class PreparationScene extends Phaser.Scene {
       proxyQuality,
       isPerfect: perfect,
       inputMode: opts.inputMode,
+      combo,
     };
     this.bus.emit(EVT.CUT_COMPLETED, payload);
 
     if (perfect) this.playPerfectSlice(cutPoint.x, cutPoint.y);
 
-    if (this.cuts.length - this.stepCutsAtStart >= this.requiredCuts) this.advanceStepOrFinish();
+    if (this.cuts.length - this.stepCutsAtStart >= this.requiredCuts) {
+      // Phase 1 (A5) — this ingredient's required cuts are all in. Fires
+      // exactly once per step: advanceStepOrFinish() moves the step on
+      // (or finishes the recipe) before any further cut can be
+      // committed, so this branch cannot be re-entered for the same
+      // ingredient. Deliberately a different, warmer voice than the
+      // perfect-slice chime — "that's prepped", not "nice cut".
+      AudioManager.playIngredientComplete();
+      this.advanceStepOrFinish();
+    }
   }
 
   /**
@@ -4696,14 +5528,19 @@ export class PreparationScene extends Phaser.Scene {
   }
 
   /**
-   * knifecraft.html rebuildPieces()/animOffsets(): a cut piece does NOT
-   * fall, stack, or rotate here — it parts from the ingredient's center
-   * by SLAB_OFFSET_PX (4px in the reference's design canvas — a knife-
-   * width "give", not a drop) along its OWN true centroid direction, and
-   * eases to rest over PIECE_SETTLE_MS. No rotation: rotating a piece by
-   * the cut's angle turned any diagonal or grid cut into visibly crossing
-   * shapes — orientation stays untouched until the plate-flight animation
-   * fans pieces out (see startPlating()).
+   * knifecraft.html rebuildPieces()/animOffsets(): a cut piece does not
+   * fall or stack here — it parts from the ingredient's center by
+   * SLAB_OFFSET_PX (4px in the reference's design canvas — a knife-width
+   * "give", not a drop) along its OWN true centroid direction, and eases
+   * to rest over PIECE_SETTLE_MS, leaning slightly outward as it does
+   * (tweenSettle / settleTilt).
+   *
+   * The lean is the developer's Phase 1 decision (2026-10-21) and
+   * deliberately overrides the reference's old "no rotation" rule. That
+   * rule existed because rotating a piece BY THE CUT'S ANGLE turned any
+   * diagonal or grid cut into visibly crossing shapes; settleTilt never
+   * reads the cut's angle — see PIECE_SETTLE's doc for why this lean
+   * cannot cross.
    */
   private settlePiece(piece: Piece): void {
     const img = this.pieceImages.get(piece);
@@ -4712,11 +5549,51 @@ export class PreparationScene extends Phaser.Scene {
     const vx = centroid.gx - this.ingCx;
     const vy = centroid.gy - this.ingCy;
     const m = Math.hypot(vx, vy) || 1;
-    const offset = PIECE_SETTLE.SLAB_OFFSET_PX_FRAC * this.scale.width;
+    const offset = PIECE_SETTLE.SLAB_OFFSET_PX_FRAC * this.scale.width * this.settleBoost();
+    this.tweenSettle(img, centroid, (vx / m) * offset, (vy / m) * offset);
+  }
+
+  /**
+   * Phase 1 (A2, developer 2026-10-21) — how far a piece leans as it
+   * settles, in radians (positive = clockwise = the top falls right).
+   * Reads ONLY the piece's horizontal position across the silhouette —
+   * never the cut's angle — and is proportional to it: 0 at the centre,
+   * PIECE_SETTLE.TILT_RAD at the silhouette's own edge (`rx`, defined for
+   * every shape). So pieces right of centre topple right, left of centre
+   * left, the middle barely moves, and neighbours lean almost in
+   * parallel. 0 with Reduced Motion on.
+   */
+  private settleTilt(gx: number): number {
+    if (this.reducedMotion()) return 0;
+    const half = this.silhouette.rx;
+    if (!(half > 1)) return 0;
+    return PIECE_SETTLE.TILT_RAD * Phaser.Math.Clamp((gx - this.ingCx) / half, -1, 1);
+  }
+
+  /**
+   * Eases a piece to its settled pose: moved by (dx, dy) and leaning by
+   * settleTilt() about its OWN centroid. Piece images have a top-left
+   * origin (createPieceImage), so rotating the image alone would swing
+   * it about that corner; the target x/y below put the corner exactly
+   * where a rotation about (gx, gy) leaves it. At tilt 0 this is the old
+   * straight (dx, dy) parting, unchanged.
+   */
+  private tweenSettle(
+    img: Phaser.GameObjects.Image,
+    centroid: { gx: number; gy: number },
+    dx: number,
+    dy: number,
+  ): void {
+    const tilt = this.settleTilt(centroid.gx);
+    const cos = Math.cos(tilt);
+    const sin = Math.sin(tilt);
+    const rx = img.x - centroid.gx;
+    const ry = img.y - centroid.gy;
     this.tweens.add({
       targets: img,
-      x: img.x + (vx / m) * offset,
-      y: img.y + (vy / m) * offset,
+      x: centroid.gx + dx + cos * rx - sin * ry,
+      y: centroid.gy + dy + sin * rx + cos * ry,
+      rotation: img.rotation + tilt,
       duration: PIECE_SETTLE.MS,
       ease: Phaser.Math.Easing.Sine.Out, // overshoot-free, per the reference's own comment
     });
@@ -4749,7 +5626,7 @@ export class PreparationScene extends Phaser.Scene {
     const vx = centroid.gx - this.ingCx;
     const vy = centroid.gy - this.ingCy;
     const m = Math.hypot(vx, vy) || 1;
-    const offset = PIECE_SETTLE.SLAB_OFFSET_PX_FRAC * this.scale.width;
+    const offset = PIECE_SETTLE.SLAB_OFFSET_PX_FRAC * this.scale.width * this.settleBoost();
     let dx = (vx / m) * offset;
     let dy = (vy / m) * offset;
     const spread = this.ingredient.depth?.spread;
@@ -4773,13 +5650,10 @@ export class PreparationScene extends Phaser.Scene {
         dy += ny * d;
       }
     }
-    this.tweens.add({
-      targets: img,
-      x: img.x + dx,
-      y: img.y + dy,
-      duration: PIECE_SETTLE.MS,
-      ease: Phaser.Math.Easing.Sine.Out,
-    });
+    // Same lean as every other ingredient (tweenSettle): the fan along the
+    // cut's normal above still decides WHERE the piece goes; the lean only
+    // decides how it sits when it gets there.
+    this.tweenSettle(img, centroid, dx, dy);
   }
 
   /** The skin color a Peel fleck should read as — each peelable ingredient has its own. Pineapple/Watermelon/Coconut ported verbatim from knifecraft.html's own `PEEL_TONE` map (the exact three ids `peelable` resolves to there). */
@@ -4979,14 +5853,50 @@ export class PreparationScene extends Phaser.Scene {
   }
 
   /** knifecraft.html CONFIG.physics — felt, never consciously noticed. */
-  private boardNudge(): void {
+  /**
+   * The board's give on knife impact. `axis`/`velocity` (Phase 1, A1) add
+   * the lateral component: the board — and the food sitting on it —
+   * shifts a little ALONG the blade's travel as well as down, which is
+   * what reads as the edge dragging through the food rather than
+   * teleporting past it. A vertical cut line is travelled across x, a
+   * horizontal one across y. Called without arguments it is the original
+   * straight-down nudge exactly as before, so any other caller and the
+   * knife-stroke QA are unaffected.
+   */
+  private boardNudge(axis?: "h" | "v", velocity = 0): void {
     const px = BOARD_NUDGE.PX_FRAC * this.knifeStats.animation.weightMult * this.scale.width;
+    const drag =
+      axis && !this.reducedMotion()
+        ? CUT_DRAG.PX_FRAC *
+          (1 + CUT_DRAG.VEL_BOOST * Phaser.Math.Clamp(velocity, 0, 1)) *
+          this.scale.width *
+          (this.fever ? FEVER.DRAG_MULT : 1)
+        : 0;
+    // The board rests at (0, 0) — see beginFreshIngredient — so with no
+    // axis (or Reduced Motion on) both channels are the original
+    // straight-down nudge and the x tween is a no-op.
     this.tweens.add({
       targets: this.boardImg,
-      y: { from: px, to: 0 },
+      x: { from: axis === "v" ? drag : 0, to: 0 },
+      y: { from: axis === "h" ? px + drag : px, to: 0 },
       duration: BOARD_NUDGE.MS,
       ease: Phaser.Math.Easing.Sine.Out,
     });
+  }
+
+  /**
+   * The player's Reduced Motion setting (SaveData.settings.reducedMotion),
+   * which App.tsx already mirrors onto <html> as `kc-reduced-motion` for
+   * the CSS. The scene has no save access of its own, so it reads that
+   * same class rather than adding a second plumbing path or a save
+   * field. Only Phase 1's decorative effects consult it — nothing that
+   * affects cutting, grading or progression.
+   */
+  private reducedMotion(): boolean {
+    return (
+      typeof document !== "undefined" &&
+      document.documentElement.classList.contains("kc-reduced-motion")
+    );
   }
 
   /** The one hero moment per recipe: hitstop, spark, chime (§13). */
@@ -5019,6 +5929,14 @@ export class PreparationScene extends Phaser.Scene {
    * deadline, not from the completion callback.
    */
   private startPlating(): void {
+    this.endFever("plating"); // the dish is done: Fever ends with it
+    // Phase 3 (C): Rush Hour — plating, the hand-off and the chef's take run
+    // faster (the scene's own clocks, reset by onStart/onRestart; skipPlating
+    // can still go faster). Nothing timed is scored, so no grade changes.
+    if (this.chaos === "rush-hour") {
+      this.tweens.timeScale = Math.max(this.tweens.timeScale, CHAOS.RUSH_PACE);
+      this.time.timeScale = Math.max(this.time.timeScale, CHAOS.RUSH_PACE);
+    }
     this.bus.emit(EVT.PLATING_STARTED);
     const w = this.scale.width;
     const arcPx = PLATING.PLATE_ARC_FRAC * w;
@@ -5692,12 +6610,19 @@ export class PreparationScene extends Phaser.Scene {
 
   override update(_time: number, _delta: number): void {
     if (this.paused) return;
+    // Phase 2 (A2): a scrape the browser never finished (focus lost, the
+    // touch cancelled) is let go, so the blade can't stay stuck to nothing.
+    if (this.cleanup?.dragging && !this.input.activePointer.isDown) this.onScraperUp();
+    if (this.avalanche?.swipe && !this.input.activePointer.isDown) this.avalanche.swipe = null;
     this.drawKnife();
+    if (this.fever) this.drawFever();
     this.updateCoach();
   }
 
   /** True while the current step can't take a demonstration: input in flight, the step already done, or the plate on its way. */
   private coachBlocked(): boolean {
+    if (this.cleanup) return true; // Phase 2: no knife demonstration over the scraper
+    if (this.avalanche) return true; // Phase 3: nor over the avalanche
     if (this.pendingRecipePayload || this.tapBusy || this.isDragging || this.peeling) return true;
     if (this.cutBlockedUntilPeeled()) return true;
     const mode = this.technique.interactionMode;

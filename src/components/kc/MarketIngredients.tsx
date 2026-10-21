@@ -1,4 +1,5 @@
 import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
+import { ShopItemArt } from "./common/ShopItemArt";
 import { inventoryMenuOf } from "@/game/restaurant/restaurantMenu";
 import { useTabOpen } from "./navLevel";
 import { restaurantQuote } from "@/game/restaurant/restaurantEconomy";
@@ -330,14 +331,11 @@ export function MarketIngredients({
                         }
                       />
                     ) : null}
-                    <div className="flex items-start justify-between">
-                      <span className="text-[34px] leading-none" aria-hidden>
-                        {INGREDIENT_EMOJI[id]}
-                      </span>
+                    <ShopItemArt icon={INGREDIENT_EMOJI[id]}>
                       {stock > 0 ? (
                         <Badge tone="sage">{formatStockAmount(id, stock, measure)} in stock</Badge>
                       ) : null}
-                    </div>
+                    </ShopItemArt>
                     <p className="mt-1 font-display text-[14.5px] font-black leading-tight text-walnut-dark">
                       {def.name}
                     </p>

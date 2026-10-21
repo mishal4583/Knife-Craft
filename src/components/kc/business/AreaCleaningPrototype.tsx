@@ -2,53 +2,44 @@ import { useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
 import { createPortal } from "react-dom";
 import type { CleanArea, TaskKind } from "@/game/restaurant/cleanliness";
 import type { KitchenMapArtStage } from "@/game/kitchen/kitchenMapArt";
+import {
+  BRUSH_RADIUS,
+  CLEAN_THRESHOLD,
+  SCENE_SIZE,
+  cleanedShare,
+  makeStains,
+  milestoneCrossed,
+  nextStreak,
+  scrubAmount,
+  stainMarks,
+  toolForTask,
+  type CleaningToolId,
+  type Point,
+} from "@/game/restaurant/cleaningDirt";
+import { AudioManager } from "@/game/AudioManager";
+import { reducedMotionOn } from "@/game/cashBurst";
 import { KButton } from "../common/primitives";
+import { paintStain, stainReach } from "./cleaning/dirtArt";
+import { CleaningFx } from "./cleaning/cleaningFx";
 
-const BRUSH_RADIUS = 30;
-const CLEAN_THRESHOLD = 0.9;
-const SCENE_SIZE: Record<CleanArea, { width: number; height: number }> = {
-  kitchen: { width: 510, height: 520 },
-  dining: { width: 555, height: 370 },
-  restroom: { width: 510, height: 340 },
-};
-
-type Point = { x: number; y: number };
-
-const DINING_TABLE_CENTERS: Record<KitchenMapArtStage, Point[]> = {
-  humble: [{ x: 145, y: 220 }, { x: 410, y: 220 }],
-  growing: [{ x: 145, y: 88 }, { x: 410, y: 88 }, { x: 278, y: 270 }],
-  established: [{ x: 145, y: 88 }, { x: 410, y: 88 }, { x: 145, y: 230 }, { x: 410, y: 230 }],
-  "neighborhood-cafe": [
-    { x: 145, y: 90 }, { x: 410, y: 90 },
-    { x: 88, y: 282 }, { x: 278, y: 282 }, { x: 470, y: 282 },
-  ],
-  "flourishing-cafe": [{ x: 145, y: 88 }, { x: 410, y: 88 }, { x: 145, y: 232 }, { x: 410, y: 232 }],
-  grand: [
-    { x: 105, y: 80 }, { x: 280, y: 80 }, { x: 455, y: 80 },
-    { x: 105, y: 190 }, { x: 280, y: 190 }, { x: 455, y: 190 },
-    { x: 105, y: 300 }, { x: 280, y: 300 }, { x: 455, y: 300 },
-  ],
-};
+export type { CleaningToolId } from "@/game/restaurant/cleaningDirt";
 
 const TASK_COPY: Partial<Record<TaskKind, { title: string; instruction: string }>> = {
-  equipment: { title: "Clean the cooking equipment", instruction: "Scrub the cooking line and prep station." },
-  grease: { title: "Degrease the stove and fryer", instruction: "Work over the greasy cooktop marks." },
-  degrease: { title: "Degrease the hot equipment", instruction: "Scrub the cooktop until the grease is gone." },
+  equipment: { title: "Clean the cooking equipment", instruction: "Scrub the sauce and splashes off the cooking line." },
+  grease: { title: "Degrease the stove and fryer", instruction: "Scrape the grease off the cooktop. It takes a few rubs." },
+  degrease: { title: "Degrease the hot equipment", instruction: "Scrape the cooktop until the grease is gone." },
   "deep-kitchen": { title: "Deep clean the kitchen", instruction: "Clean the cooking line, worktop and service equipment." },
-  "sweep-line": { title: "Sweep the kitchen line", instruction: "Sweep the marked floor lanes between the equipment." },
-  tables: { title: "Wipe and sanitize the tables", instruction: "Wipe the marked table tops before the next service." },
-  floor: { title: "Sweep and mop the dining floor", instruction: "Clean the marked walkways between the tables." },
-  spill: { title: "Clean up the spill", instruction: "Wipe up the spill, then clean the surrounding floor." },
-  "mop-all": { title: "Mop the dining area", instruction: "Work across the dining floor and clear every marked patch." },
+  "sweep-line": { title: "Sweep the kitchen line", instruction: "Sweep the crumbs from the floor between the equipment." },
+  tables: { title: "Wipe and sanitize the tables", instruction: "Wipe the rings and food off the tables." },
+  floor: { title: "Sweep and mop the dining floor", instruction: "Mop the scuffs and footprints off the walkways." },
+  spill: { title: "Clean up the spill", instruction: "Mop up the spilled drink and the splashes." },
+  "mop-all": { title: "Mop the dining area", instruction: "Mop every scuff and footprint off the floor." },
   "deep-dining": { title: "Deep clean the dining area", instruction: "Clean the tables, floor edges and guest walkways." },
-  toilet: { title: "Clean the toilet and urinal", instruction: "Scrub the marked fixtures and leave them sanitary." },
-  "restroom-floor": { title: "Mop the restroom floor", instruction: "Wipe the marks from the tiled floor." },
-  "restroom-disinfect": { title: "Disinfect the restroom", instruction: "Clean the fixtures and tiled floor before opening." },
+  toilet: { title: "Clean the toilet and urinal", instruction: "Brush the limescale out of the bowls." },
+  "restroom-floor": { title: "Mop the restroom floor", instruction: "Mop the grime out of the tiles." },
+  "restroom-disinfect": { title: "Disinfect the restroom", instruction: "Polish the water spots off the mirror and taps." },
   "deep-restroom": { title: "Deep clean the restroom", instruction: "Scrub the fixtures, floor and tile edges." },
 };
-
-export type CleaningToolId = "sponge" | "cloth" | "scraper" | "broom" | "mop" | "toilet-brush" | "glass-cloth";
-type DirtMark = { point: Point; task: TaskKind; tool: CleaningToolId };
 
 export const ROOM_CLEANING_TESTS: readonly {
   area: CleanArea;
@@ -85,60 +76,18 @@ const TOOLS: Record<CleanArea, readonly { id: CleaningToolId; icon: string; name
   ],
 };
 
-const ROOM_TASKS: Record<CleanArea, readonly TaskKind[]> = {
-  kitchen: ["equipment", "grease", "sweep-line"],
-  dining: ["tables", "spill", "floor", "mop-all"],
-  restroom: ["toilet", "restroom-floor", "restroom-disinfect"],
-};
+const MILESTONE_COPY = ["Looking better!", "Halfway there!", "Almost spotless!"] as const;
 
-function toolForTask(area: CleanArea, task: TaskKind): CleaningToolId {
-  if (area === "kitchen") {
-    if (task === "grease" || task === "degrease") return "scraper";
-    if (task === "sweep-line") return "broom";
-    if (task === "floor") return "mop";
-    if (task === "deep-kitchen") return "sponge";
-    return "sponge";
-  }
-  if (area === "dining") {
-    if (task === "floor" || task === "spill" || task === "mop-all") return "mop";
-    if (task === "deep-dining") return "scraper";
-    return "cloth";
-  }
-  if (task === "toilet" || task === "deep-restroom") return "toilet-brush";
-  if (task === "restroom-floor") return "mop";
-  return "sponge";
+/** How wide each tool works, and what it sounds like. */
+function toolRadius(tool: CleaningToolId): number {
+  if (tool === "mop" || tool === "broom") return BRUSH_RADIUS * 1.25;
+  if (tool === "scraper" || tool === "toilet-brush") return BRUSH_RADIUS * 0.85;
+  return BRUSH_RADIUS;
 }
-
-function makeRoomDirt(area: CleanArea, stage: KitchenMapArtStage): DirtMark[] {
-  return ROOM_TASKS[area].flatMap((task) => {
-    const taskPoints = area === "restroom" && task === "restroom-disinfect"
-      ? (() => {
-          let seed = 91273;
-          const random = () => {
-            seed = (seed * 1664525 + 1013904223) >>> 0;
-            return seed / 4294967296;
-          };
-          const zones = [
-            { x: 444, y: 70, w: 34, h: 96 }, // mirror water spots
-            { x: 386, y: 105, w: 43, h: 42 }, // upper sink and tap
-            { x: 386, y: 184, w: 43, h: 42 }, // lower sink and tap
-          ];
-          return Array.from({ length: 36 }, (_, index) => {
-            const zone = zones[index < 12 ? 0 : index < 24 ? 1 : 2]!;
-            return { x: zone.x + random() * zone.w, y: zone.y + random() * zone.h };
-          });
-        })()
-      : makeDirt(area, task, stage);
-    return taskPoints.map((point, index) => {
-      let tool = toolForTask(area, task);
-      if (area === "kitchen" && task === "equipment" && index % 3 === 0) tool = "cloth";
-      if (area === "kitchen" && task === "sweep-line" && index % 2 === 0) tool = "mop";
-      if (area === "dining" && task === "tables" && index % 4 === 0) tool = "scraper";
-      if (area === "dining" && task === "floor" && index % 2 === 0) tool = "broom";
-      if (area === "restroom" && task === "restroom-disinfect") tool = point.x >= 440 ? "glass-cloth" : "sponge";
-      return { point, task, tool };
-    });
-  });
+function toolTexture(tool: CleaningToolId): "wet" | "dry" | "brush" {
+  if (tool === "broom") return "dry";
+  if (tool === "scraper" || tool === "toilet-brush") return "brush";
+  return "wet";
 }
 
 function distanceToSegmentSquared(point: Point, start: Point, end: Point) {
@@ -150,280 +99,10 @@ function distanceToSegmentSquared(point: Point, start: Point, end: Point) {
   return (point.x - start.x - t * dx) ** 2 + (point.y - start.y - t * dy) ** 2;
 }
 
-function makeDirt(area: CleanArea, task: TaskKind, stage: KitchenMapArtStage): Point[] {
-  const rand = (seed: number) => {
-    let value = seed >>> 0;
-    return () => {
-      value = (value * 1664525 + 1013904223) >>> 0;
-      return value / 4294967296;
-    };
-  };
-  const random = rand(task.split("").reduce((n, char) => n + char.charCodeAt(0), 712));
-  const dimensions = SCENE_SIZE[area];
-  const tableZones = DINING_TABLE_CENTERS[stage].flatMap(({ x, y }) => [
-    { x: x - 42, y: y - 32, w: 84, h: 12 },
-    { x: x - 42, y: y + 20, w: 84, h: 12 },
-    { x: x - 42, y: y - 20, w: 12, h: 40 },
-    { x: x + 30, y: y - 20, w: 12, h: 40 },
-  ]);
-  const tableRows = [...new Set(DINING_TABLE_CENTERS[stage].map(({ y }) => y))].sort((a, b) => a - b);
-  const lastTableRow = tableRows[tableRows.length - 1] ?? 185;
-  const spillCenter = {
-    x: dimensions.width * 0.52,
-    y: tableRows.length > 1 ? (tableRows[0]! + tableRows[1]!) / 2 : Math.max(70, lastTableRow - 120),
-  };
-  const floorZones = [
-    ...tableRows.slice(0, -1).map((row, index) => ({
-      x: 12,
-      y: row + 45,
-      w: 531,
-      h: Math.max(20, tableRows[index + 1]! - row - 90),
-    })),
-    { x: 12, y: lastTableRow + 48, w: 531, h: Math.max(20, dimensions.height - lastTableRow - 48) },
-    { x: 12, y: 35, w: 44, h: dimensions.height - 70 },
-    { x: 500, y: 35, w: 43, h: dimensions.height - 70 },
-  ];
-  const zones = area === "kitchen"
-      ? task === "sweep-line"
-        ? [
-            { x: 86, y: 190, w: 48, h: 270 },
-            { x: 378, y: 190, w: 42, h: 235 },
-            { x: 168, y: 375, w: 210, h: 38 },
-          ]
-        : task === "deep-kitchen"
-      ? [{ x: 95, y: 75, w: 330, h: 125 }, { x: 150, y: 185, w: 245, h: 175 }]
-      : task === "equipment"
-        ? [{ x: 95, y: 75, w: 330, h: 125 }, { x: 170, y: 205, w: 205, h: 125 }]
-        : [{ x: 105, y: 95, w: 315, h: 105 }]
-    : area === "dining"
-      ? task === "spill"
-        ? [{ x: spillCenter.x - 48, y: spillCenter.y - 35, w: 95, h: 70 }]
-        : task === "floor" || task === "mop-all"
-          ? floorZones
-          : task === "tables"
-            ? tableZones
-            : [...floorZones, ...tableZones]
-      : task === "restroom-floor"
-        ? [
-            { x: 112, y: 142, w: 258, h: 145 },
-            { x: 285, y: 254, w: 115, h: 44 },
-          ]
-        : task === "restroom-disinfect"
-          ? [
-              { x: 444, y: 70, w: 34, h: 96 },
-              { x: 386, y: 105, w: 43, h: 42 },
-              { x: 386, y: 184, w: 43, h: 42 },
-            ]
-        : task === "toilet"
-          ? [
-              { x: 96, y: 58, w: 62, h: 63 }, // toilet bowl and rim
-              { x: 225, y: 57, w: 38, h: 50 }, // urinal bowl
-            ]
-          : [{ x: 90, y: 55, w: 178, h: 70 }, { x: 382, y: 102, w: 51, h: 126 }];
-  const markCount = task === "deep-kitchen" || task === "deep-dining" || task === "deep-restroom"
-    ? 170
-    : area === "restroom"
-      ? task === "restroom-floor" ? 40 : task === "toilet" ? 32 : 36
-      : 120;
-  const marks = Array.from({ length: markCount }, () => {
-    const zone = zones[Math.floor(random() * zones.length)]!;
-    return { x: zone.x + random() * zone.w, y: zone.y + random() * zone.h };
-  });
-  if (area === "kitchen" && (task === "grease" || task === "degrease" || task === "deep-kitchen")) {
-    [[140, 120, 216, 128], [250, 150, 345, 136], [180, 176, 265, 169]].forEach(([x1, y1, x2, y2]) => {
-      for (let i = 0; i <= 18; i++) {
-        const t = i / 18;
-        marks.push({ x: x1! + (x2! - x1!) * t, y: y1! + (y2! - y1!) * t });
-      }
-    });
-  }
-  // Give isolated dining spills and restroom fixtures a believable, focused stain cluster.
-  if (area === "dining" && task === "spill") {
-    marks.push(...Array.from({ length: 28 }, () => ({ x: spillCenter.x + (random() - 0.5) * 48, y: spillCenter.y + (random() - 0.5) * 32 })));
-  }
-  return marks;
-}
-
-function drawDirt(canvas: HTMLCanvasElement, points: Point[], task: TaskKind, area: CleanArea, stage: KitchenMapArtStage) {
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return;
-  const { width, height } = SCENE_SIZE[area];
-  canvas.width = width;
-  canvas.height = height;
-  ctx.clearRect(0, 0, width, height);
-  if (area === "restroom") {
-    points.forEach((point, index) => {
-      const radius = task === "restroom-disinfect" ? 3.5 + (index % 3) * 0.7 : 3.7 + (index % 3) * 0.65;
-      if (task === "restroom-disinfect") {
-        const mirrorSpot = point.x >= 440;
-        ctx.fillStyle = mirrorSpot ? "rgba(225, 237, 231, .54)" : "rgba(175, 198, 190, .56)";
-        ctx.beginPath();
-        ctx.ellipse(point.x, point.y, radius * 1.25, radius * 0.82, ((index % 5) - 2) * 0.12, 0, Math.PI * 2);
-        ctx.fill();
-        if (index % 3 === 0) {
-          ctx.strokeStyle = mirrorSpot ? "rgba(245, 248, 237, .84)" : "rgba(224, 235, 223, .76)";
-          ctx.lineWidth = 1.25;
-          ctx.beginPath();
-          ctx.arc(point.x, point.y, radius * 1.3, 0, Math.PI * 2);
-          ctx.stroke();
-        }
-      } else if (task === "toilet") {
-        ctx.fillStyle = `rgba(${index % 2 ? "146, 107, 64" : "190, 158, 111"}, .62)`;
-        ctx.beginPath();
-        ctx.ellipse(point.x, point.y, radius * 1.05, radius * 0.62, ((index % 5) - 2) * 0.16, 0, Math.PI * 2);
-        ctx.fill();
-      } else {
-        ctx.strokeStyle = "rgba(91, 70, 50, .44)";
-        ctx.lineWidth = Math.max(2.2, radius * 0.76);
-        ctx.lineCap = "round";
-        ctx.beginPath();
-        ctx.moveTo(point.x - radius * 1.2, point.y + radius * 0.3);
-        ctx.lineTo(point.x + radius * 1.1, point.y - radius * 0.35);
-        ctx.stroke();
-      }
-    });
-    return;
-  }
-  points.forEach((point, index) => {
-    const size = 3 + ((index * 7) % 7);
-    let stainColor = "rgba(90, 55, 29, .64)";
-    if (area === "dining" && task === "spill") stainColor = "rgba(151, 65, 28, .64)";
-    else if (area === "dining" && task === "tables") stainColor = "rgba(122, 77, 43, .42)";
-    else if ((area === "dining" && (task === "floor" || task === "mop-all")) || (area === "kitchen" && task === "sweep-line")) {
-      stainColor = "rgba(91, 82, 67, .38)";
-    } else if (task === "grease" || task === "degrease") stainColor = "rgba(61, 34, 16, .8)";
-    ctx.fillStyle = stainColor;
-    ctx.beginPath();
-    ctx.ellipse(point.x, point.y, size * 1.45, size, (index % 9) * 0.2, 0, Math.PI * 2);
-    ctx.fill();
-  });
-  // Longer grease smears make the stove task read as a wipe-down, not random speckles.
-  if (area === "kitchen" && (task === "grease" || task === "degrease" || task === "deep-kitchen")) {
-    ctx.strokeStyle = "rgba(76, 43, 20, .5)";
-    ctx.lineWidth = 6;
-    ctx.lineCap = "round";
-    [[140, 120, 216, 128], [250, 150, 345, 136], [180, 176, 265, 169]].forEach(([x1, y1, x2, y2]) => {
-      ctx.beginPath();
-      ctx.moveTo(x1!, y1!);
-      ctx.quadraticCurveTo((x1! + x2!) / 2, y1! - 8, x2!, y2!);
-      ctx.stroke();
-    });
-  }
-  if (area === "dining" && task === "spill") {
-    const rows = [...new Set(DINING_TABLE_CENTERS[stage].map(({ y }) => y))].sort((a, b) => a - b);
-    const lastRow = rows[rows.length - 1] ?? 185;
-    const spillY = rows.length > 1 ? (rows[0]! + rows[1]!) / 2 : Math.max(70, lastRow - 120);
-    ctx.fillStyle = "rgba(151, 65, 28, .42)";
-    ctx.beginPath();
-    ctx.ellipse(width * 0.52, spillY, 28, 17, -0.16, 0, Math.PI * 2);
-    ctx.fill();
-  }
-}
-
-function drawRoomDirt(canvas: HTMLCanvasElement, marks: DirtMark[], area: CleanArea) {
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return;
-  const { width, height } = SCENE_SIZE[area];
-  canvas.width = width;
-  canvas.height = height;
-  ctx.clearRect(0, 0, width, height);
-  marks.forEach(({ point, task, tool }, index) => {
-    const radius = area === "restroom"
-      ? task === "restroom-disinfect" ? 3.5 + (index % 3) * 0.7
-        : task === "toilet" ? 3.7 + (index % 3) * 0.65
-          : 3.8 + (index % 4) * 0.6
-      : 3.2 + ((index * 7) % 8) * 0.72;
-    const greasy = task === "grease" || task === "degrease";
-    const liquid = task === "spill";
-    const dryFloor = task === "floor" || task === "sweep-line" || task === "mop-all" || task === "restroom-floor";
-    const restroom = area === "restroom";
-    const foodResidue = task === "equipment" || task === "tables";
-    const waterSpots = restroom && task === "restroom-disinfect";
-    const mineralScale = restroom && task === "toilet";
-    if (restroom) {
-      ctx.save();
-      if (waterSpots) {
-        const mirrorSpot = tool === "glass-cloth";
-        ctx.fillStyle = mirrorSpot ? "rgba(225, 237, 231, .54)" : "rgba(175, 198, 190, .56)";
-        ctx.beginPath();
-        ctx.ellipse(point.x, point.y, radius * 1.25, radius * 0.82, ((index % 5) - 2) * 0.12, 0, Math.PI * 2);
-        ctx.fill();
-        if (index % 3 === 0) {
-          ctx.strokeStyle = mirrorSpot ? "rgba(245, 248, 237, .84)" : "rgba(224, 235, 223, .76)";
-          ctx.lineWidth = 1.25;
-          ctx.beginPath();
-          ctx.arc(point.x, point.y, radius * 1.3, 0, Math.PI * 2);
-          ctx.stroke();
-        }
-      } else if (mineralScale) {
-        ctx.fillStyle = `rgba(${index % 2 ? "146, 107, 64" : "190, 158, 111"}, .62)`;
-        ctx.beginPath();
-        ctx.ellipse(point.x, point.y, radius * 1.05, radius * 0.62, ((index % 5) - 2) * 0.16, 0, Math.PI * 2);
-        ctx.fill();
-      } else if (dryFloor) {
-        ctx.strokeStyle = "rgba(91, 70, 50, .44)";
-        ctx.lineWidth = Math.max(2.2, radius * 0.76);
-        ctx.lineCap = "round";
-        ctx.beginPath();
-        ctx.moveTo(point.x - radius * 1.2, point.y + radius * 0.3);
-        ctx.lineTo(point.x + radius * 1.1, point.y - radius * 0.35);
-        ctx.stroke();
-      }
-      ctx.restore();
-      return;
-    }
-    ctx.fillStyle = greasy
-      ? `rgba(62, 32, 13, ${0.62 + (index % 3) * 0.08})`
-      : liquid
-        ? `rgba(${index % 2 ? "133, 52, 33" : "105, 57, 29"}, .68)`
-        : waterSpots
-          ? `rgba(${index % 2 ? "166, 187, 183" : "210, 220, 211"}, .58)`
-          : mineralScale
-            ? `rgba(${index % 2 ? "157, 132, 91" : "190, 164, 120"}, .48)`
-        : dryFloor
-          ? `rgba(70, 60, 50, ${restroom ? ".38" : ".42"})`
-          : restroom
-            ? `rgba(${index % 3 ? "140, 124, 99" : "178, 158, 126"}, .46)`
-            : foodResidue
-              ? `rgba(${index % 3 ? "145, 67, 35" : "177, 102, 47"}, .58)`
-              : `rgba(${index % 3 ? "128, 69, 33" : "171, 104, 47"}, .55)`;
-    ctx.beginPath();
-    ctx.ellipse(
-      point.x,
-      point.y,
-      radius * (liquid ? 1.8 : 1.35),
-      radius * (liquid ? 1.15 : 0.72),
-      ((index % 7) - 3) * 0.13,
-      0,
-      Math.PI * 2,
-    );
-    ctx.fill();
-    if (liquid && index % 5 === 0) {
-      ctx.beginPath();
-      ctx.arc(point.x + radius * 1.2, point.y - radius * 0.45, radius * 0.55, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    if (waterSpots && index % 4 === 0) {
-      ctx.beginPath();
-      ctx.arc(point.x, point.y, radius * 1.35, 0, Math.PI * 2);
-      ctx.strokeStyle = "rgba(238, 244, 232, .7)";
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-    }
-  });
-  // Long oily wipe marks distinguish baked-on cookline grease from food crumbs.
-  if (area === "kitchen") {
-    ctx.strokeStyle = "rgba(68, 35, 14, .55)";
-    ctx.lineWidth = 7;
-    ctx.lineCap = "round";
-    [[140, 120, 216, 128], [250, 150, 345, 136], [180, 176, 265, 169]].forEach(([x1, y1, x2, y2]) => {
-      ctx.beginPath();
-      ctx.moveTo(x1!, y1!);
-      ctx.quadraticCurveTo((x1! + x2!) / 2, y1! - 8, x2!, y2!);
-      ctx.stroke();
-    });
-  }
-}
+const formatTime = (ms: number) => {
+  const s = Math.max(1, Math.round(ms / 1000));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+};
 
 export function AreaCleaningPrototype({
   area,
@@ -445,45 +124,68 @@ export function AreaCleaningPrototype({
   onComplete: () => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const fxCanvasRef = useRef<HTMLCanvasElement>(null);
+  const cursorRef = useRef<HTMLSpanElement>(null);
+  const fxRef = useRef<CleaningFx | null>(null);
   const activePointerRef = useRef<number | null>(null);
   const lastPointRef = useRef<Point | null>(null);
-  const wipedRef = useRef(new Set<number>());
   const completeRef = useRef(false);
+  const finishedRef = useRef(false);
   const progressRef = useRef(0);
+  const timersRef = useRef(new Set<number>());
+  const rafRef = useRef(0);
+  const movesRef = useRef(0);
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
   const [gameViewport, setGameViewport] = useState({ width: 540, height: 960 });
   const [progress, setProgress] = useState(0);
   const [scrubbing, setScrubbing] = useState(false);
   const [toolHint, setToolHint] = useState<string | null>(null);
+  const [streak, setStreak] = useState(0);
+  const [toast, setToast] = useState<{ text: string; key: number } | null>(null);
+  const [phase, setPhase] = useState<"play" | "finale" | "spotless">("play");
+  const [result, setResult] = useState<{ time: number; best: number } | null>(null);
   const [activeTool, setActiveTool] = useState<CleaningToolId>(() =>
     roomWide ? TOOLS[area][0]!.id : toolForTask(area, task),
   );
-  const points = useMemo(() => makeDirt(area, task, stage), [area, stage, task]);
-  const roomMarks = useMemo(() => makeRoomDirt(area, stage), [area, stage]);
-  const marks = useMemo<DirtMark[]>(
-    () => roomWide
-      ? roomMarks
-      : points.map((point) => ({
-          point,
-          task,
-          tool: area === "restroom" && task === "restroom-disinfect"
-            ? point.x >= 440 ? "glass-cloth" : "sponge"
-            : toolForTask(area, task),
-        })),
-    [area, points, roomMarks, roomWide, task],
+  const reduced = useMemo(() => reducedMotionOn(), []);
+  const stains = useMemo(() => makeStains(area, task, stage, roomWide), [area, roomWide, stage, task]);
+  const marks = useMemo(() => stainMarks(stains, area), [area, stains]);
+  // Everything that changes per stroke lives here, outside React state.
+  const play = useMemo(
+    () => ({
+      wear: new Float64Array(marks.length),
+      pointsLeft: stains.map((s) => marks.filter((m) => m.stain === s.id).length),
+      cleared: new Uint8Array(stains.length),
+      alpha: new Float64Array(stains.length).fill(1),
+      fading: new Map<number, number>(),
+      sprites: [] as HTMLCanvasElement[],
+      streak: { count: 0, at: -Infinity },
+      best: 0,
+      startedAt: 0,
+    }),
+    [marks, stains],
   );
+  const [stainsLeft, setStainsLeft] = useState(stains.length);
   const copy = TASK_COPY[task];
   const dimensions = SCENE_SIZE[area];
   const roomTitle = area === "kitchen" ? "Kitchen" : area === "dining" ? "Dining area" : "Restroom";
   const stageWidthLimit = Math.max(180, Math.min(roomWide ? 448 : 436, gameViewport.width - 32));
-  const stageHeightLimit = roomWide ? Math.max(210, Math.min(390, gameViewport.height * 0.42)) : Number.POSITIVE_INFINITY;
+  const stageHeightLimit = roomWide
+    ? Math.max(210, Math.min(390, gameViewport.height * 0.42))
+    : Math.max(220, gameViewport.height * 0.58);
   const stageScale = Math.min(stageWidthLimit / dimensions.width, stageHeightLimit / dimensions.height);
   const stageDisplay = { width: dimensions.width * stageScale, height: dimensions.height * stageScale };
   const availableTools = roomWide
     ? TOOLS[area]
     : TOOLS[area].filter((tool) => marks.some((mark) => mark.tool === tool.id));
   const cleaningTool = availableTools.find((tool) => tool.id === activeTool) ?? availableTools[0]!;
-  const totalMarks = marks.length;
+  const later = (fn: () => void, ms: number) => {
+    const id = window.setTimeout(() => {
+      timersRef.current.delete(id);
+      fn();
+    }, ms);
+    timersRef.current.add(id);
+  };
 
   useEffect(() => {
     const target = document.querySelector<HTMLElement>("[data-game-content]");
@@ -496,83 +198,234 @@ export function AreaCleaningPrototype({
     return () => observer.disconnect();
   }, []);
 
+  // Paint the stains once, set up the effects layer; clean everything up on close.
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!portalTarget || !canvas) return;
-    if (roomWide) drawRoomDirt(canvas, roomMarks, area);
-    else drawDirt(canvas, points, task, area, stage);
-  }, [area, points, portalTarget, roomMarks, roomWide, stage, task]);
+    canvas.width = dimensions.width;
+    canvas.height = dimensions.height;
+    play.sprites = stains.map(paintStain);
+    draw();
+    const fxCanvas = fxCanvasRef.current;
+    if (fxCanvas && !reduced) fxRef.current = new CleaningFx(fxCanvas, dimensions.width, dimensions.height);
+    const timers = timersRef.current;
+    return () => {
+      fxRef.current?.dispose();
+      fxRef.current = null;
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = 0;
+      timers.forEach((id) => window.clearTimeout(id));
+      timers.clear();
+    };
+    // draw reads refs only; the stains are fixed for this cleaning.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [portalTarget, stains, play, reduced]);
 
-  const erase = (event: PointerEvent<HTMLCanvasElement>, from: Point | null) => {
+  function draw() {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    stains.forEach((s, i) => {
+      const sprite = play.sprites[i];
+      const a = play.alpha[i]!;
+      if (!sprite || a <= 0) return;
+      const reach = stainReach(s);
+      ctx.globalAlpha = a;
+      ctx.drawImage(sprite, s.x - reach, s.y - reach);
+    });
+    ctx.globalAlpha = 1;
+    canvas.dataset["cleared"] = String(play.cleared.reduce((n, c) => n + c, 0));
+  }
+
+  // One frame loop for redraws and for stains fading out once they're gone.
+  function requestDraw() {
+    if (rafRef.current) return;
+    rafRef.current = requestAnimationFrame(function frame(t) {
+      rafRef.current = 0;
+      for (const [i, start] of play.fading) {
+        const a = 1 - (t - start) / 260;
+        play.alpha[i] = Math.max(0, a);
+        if (a <= 0) play.fading.delete(i);
+      }
+      draw();
+      if (play.fading.size) rafRef.current = requestAnimationFrame(frame);
+    });
+  }
+
+  /** Wear a stain where the brush passed: it fades there in proportion to the scrub. */
+  function carve(index: number, from: Point, to: Point, radius: number, strength: number) {
+    const s = stains[index]!;
+    const ctx = play.sprites[index]?.getContext("2d");
+    if (!ctx) return;
+    const reach = stainReach(s);
+    const ox = s.x - reach;
+    const oy = s.y - reach;
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.globalAlpha = Math.min(1, strength * 0.9);
+    ctx.lineCap = "round";
+    ctx.lineWidth = radius * 1.5;
+    ctx.beginPath();
+    if (from.x === to.x && from.y === to.y) {
+      ctx.arc(to.x - ox, to.y - oy, radius * 0.75, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.moveTo(from.x - ox, from.y - oy);
+      ctx.lineTo(to.x - ox, to.y - oy);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  /** A stain is gone: it fades, sparkles and pings; quick clears build a streak. */
+  function clearStain(index: number) {
+    if (play.cleared[index]) return;
+    play.cleared[index] = 1;
+    const t = performance.now();
+    if (reduced) play.alpha[index] = 0;
+    else play.fading.set(index, t);
+    play.streak = nextStreak(play.streak, t);
+    play.best = Math.max(play.best, play.streak.count);
+    setStreak(play.streak.count);
+    const s = stains[index]!;
+    fxRef.current?.sparkle(s.x, s.y, play.streak.count);
+    AudioManager.playSparkle(play.streak.count);
+    setStainsLeft(stains.length - play.cleared.reduce((n, c) => n + c, 0));
+    requestDraw();
+  }
+
+  function setPct(pct: number) {
+    const from = progressRef.current;
+    if (pct === from) return;
+    progressRef.current = pct;
+    setProgress(pct);
+    const m = milestoneCrossed(from, pct);
+    if (m != null && pct < 100) {
+      const key = performance.now();
+      setToast({ text: MILESTONE_COPY[m]!, key });
+      AudioManager.playComboMilestone(m);
+      later(() => setToast((current) => (current?.key === key ? null : current)), 1100);
+    }
+  }
+
+  function finish() {
+    if (finishedRef.current) return;
+    finishedRef.current = true;
+    onComplete();
+  }
+
+  /** Past the threshold: the last stains wipe themselves in a quick cascade, then "Spotless!". */
+  function finale() {
+    completeRef.current = true;
+    setPhase("finale");
+    setScrubbing(false);
+    if (cursorRef.current) cursorRef.current.style.opacity = "0";
+    const left = stains.filter((s) => !play.cleared[s.id]);
+    const step = reduced ? 0 : 55;
+    left.forEach((s, k) =>
+      later(() => {
+        marks.forEach((m, i) => {
+          if (m.stain === s.id) play.wear[i] = s.toughness;
+        });
+        clearStain(s.id);
+      }, step * (k + 1)),
+    );
+    later(
+      () => {
+        setPct(100);
+        setResult({ time: performance.now() - (play.startedAt || performance.now()), best: play.best });
+        setPhase("spotless");
+        AudioManager.playSpotless();
+        later(finish, reduced ? 1100 : 2400);
+      },
+      step * (left.length + 1) + (reduced ? 0 : 200),
+    );
+  }
+
+  const scrubAt = (event: PointerEvent<HTMLCanvasElement>, from: Point | null) => {
     const canvas = canvasRef.current;
     if (!canvas || completeRef.current) return;
     const rect = canvas.getBoundingClientRect();
-    const current = { x: ((event.clientX - rect.left) / rect.width) * dimensions.width, y: ((event.clientY - rect.top) / rect.height) * dimensions.height };
+    const current = {
+      x: ((event.clientX - rect.left) / rect.width) * dimensions.width,
+      y: ((event.clientY - rect.top) / rect.height) * dimensions.height,
+    };
+    moveCursor(event.clientX - rect.left, event.clientY - rect.top);
     const start = from ?? current;
-    const ctx = canvas.getContext("2d");
-    const radius = activeTool === "mop" || activeTool === "broom" ? BRUSH_RADIUS * 1.25 : activeTool === "scraper" || activeTool === "toilet-brush" ? BRUSH_RADIUS * 0.85 : BRUSH_RADIUS;
-    const hitIndices = marks.flatMap((mark, index) =>
-      !wipedRef.current.has(index) && mark.tool === activeTool && distanceToSegmentSquared(mark.point, start, current) <= radius ** 2
-        ? [index]
-        : [],
-    );
-    if (hitIndices.length && ctx) {
-      ctx.save();
-      ctx.globalCompositeOperation = "destination-out";
-      for (const index of hitIndices) {
-        const { point } = marks[index]!;
-        ctx.beginPath();
-        ctx.ellipse(point.x, point.y, radius * 0.92, radius * 0.7, 0, 0, Math.PI * 2);
-        ctx.fill();
+    const stroke = from ? Math.hypot(current.x - from.x, current.y - from.y) : null;
+    const amount = scrubAmount(stroke);
+    const radius = toolRadius(activeTool);
+    const touched = new Set<number>();
+    marks.forEach((mark, index) => {
+      if (mark.tool !== activeTool || play.cleared[mark.stain]) return;
+      const tough = stains[mark.stain]!.toughness;
+      if (play.wear[index]! >= tough) return;
+      if (distanceToSegmentSquared(mark.point, start, current) > radius ** 2) return;
+      play.wear[index] = Math.min(tough, play.wear[index]! + amount);
+      if (play.wear[index]! >= tough) play.pointsLeft[mark.stain]!--;
+      touched.add(mark.stain);
+    });
+    lastPointRef.current = current;
+    if (touched.size) {
+      if (!play.startedAt) play.startedAt = performance.now();
+      for (const index of touched) {
+        carve(index, start, current, radius, amount / stains[index]!.toughness);
+        if (play.pointsLeft[index]! <= 0) clearStain(index);
       }
-      ctx.restore();
-    }
-    hitIndices.forEach((index) => wipedRef.current.add(index));
-    const pct = Math.min(100, Math.round((wipedRef.current.size / totalMarks) * 100));
-    if (pct !== progressRef.current) {
-      progressRef.current = pct;
-      setProgress(pct);
-    }
-    if (!hitIndices.length && roomWide) {
-      const wrongTool = marks.find((mark) =>
-        mark.tool !== activeTool && distanceToSegmentSquared(mark.point, start, current) <= radius ** 2,
+      requestDraw();
+      AudioManager.playScrub(toolTexture(activeTool));
+      fxRef.current?.scrub(activeTool, current.x, current.y, Math.min(3, 1 + Math.floor((stroke ?? 0) / 14)));
+      setToolHint((hint) => (hint === null ? hint : null));
+    } else if (roomWide) {
+      const wrongTool = marks.find(
+        (mark) =>
+          mark.tool !== activeTool &&
+          !play.cleared[mark.stain] &&
+          distanceToSegmentSquared(mark.point, start, current) <= radius ** 2,
       );
       if (wrongTool) {
         const required = TOOLS[area].find((tool) => tool.id === wrongTool.tool);
         const hint = `Switch to ${required?.name.toLowerCase() ?? "the right tool"} for this mark.`;
-        setToolHint((current) => current === hint ? current : hint);
+        setToolHint((h) => (h === hint ? h : hint));
       }
-    } else if (hitIndices.length) {
-      setToolHint((current) => current === null ? current : null);
     }
-    lastPointRef.current = current;
-    if (pct / 100 >= CLEAN_THRESHOLD && !completeRef.current) {
-      completeRef.current = true;
-      progressRef.current = 100;
-      setProgress(100);
-      window.setTimeout(onComplete, 180);
-    }
+    const share = cleanedShare(play.wear, marks, stains);
+    setPct(Math.min(99, Math.round(share * 100)));
+    if (share >= CLEAN_THRESHOLD && !completeRef.current) finale();
   };
 
+  /** The tool follows the finger, rocking as it scrubs. */
+  function moveCursor(x: number, y: number) {
+    const el = cursorRef.current;
+    if (!el) return;
+    movesRef.current++;
+    const tilt = reduced ? -12 : -12 + Math.sin(movesRef.current * 0.9) * 14;
+    el.style.opacity = "1";
+    el.style.transform = `translate(${x}px, ${y}px) translate(-35%, -75%) rotate(${tilt}deg)`;
+  }
+
   const handleDown = (event: PointerEvent<HTMLCanvasElement>) => {
-    if (event.button !== 0 || !event.isPrimary) return;
+    if (event.button !== 0 || !event.isPrimary || completeRef.current) return;
     event.preventDefault();
     activePointerRef.current = event.pointerId;
     event.currentTarget.setPointerCapture(event.pointerId);
     lastPointRef.current = null;
     setScrubbing(true);
-    erase(event, null);
+    scrubAt(event, null);
   };
   const handleMove = (event: PointerEvent<HTMLCanvasElement>) => {
     if (activePointerRef.current !== event.pointerId) return;
     event.preventDefault();
-    erase(event, lastPointRef.current);
+    scrubAt(event, lastPointRef.current);
   };
   const handleUp = (event: PointerEvent<HTMLCanvasElement>) => {
     if (activePointerRef.current !== event.pointerId) return;
     activePointerRef.current = null;
     lastPointRef.current = null;
     setScrubbing(false);
+    if (cursorRef.current) cursorRef.current.style.opacity = "0";
   };
 
   const selectTool = (tool: CleaningToolId) => {
@@ -581,6 +434,7 @@ export function AreaCleaningPrototype({
   };
 
   const roomTest = ROOM_CLEANING_TESTS.find((entry) => entry.area === area);
+  const shine = progress / 100;
   const modal = (
     <div
       className="absolute inset-0 z-[100] flex min-h-0 items-stretch justify-stretch overflow-hidden bg-[#1b100a]/85 p-0 backdrop-blur-sm"
@@ -602,7 +456,7 @@ export function AreaCleaningPrototype({
               {roomWide ? roomTest?.title : copy?.title ?? `Clean the ${roomTitle.toLowerCase()}`}
             </h2>
             <p className="mt-0.5 truncate font-ui text-[11.5px] font-semibold text-walnut/75">
-              {roomWide ? roomTest?.subtitle : copy?.instruction ?? `Scrub the marked surfaces in the ${roomTitle.toLowerCase()}.`}
+              {roomWide ? roomTest?.subtitle : copy?.instruction ?? `Scrub the dirt in the ${roomTitle.toLowerCase()}.`}
             </p>
             {previewOnly ? <span className="mt-1 inline-flex rounded-full bg-[#788a70]/15 px-2 py-0.5 font-ui text-[10px] font-black uppercase tracking-wide text-olive">Practice · no save or supplies</span> : null}
           </div>
@@ -630,24 +484,115 @@ export function AreaCleaningPrototype({
               ))}
             </div>
           </div>
+        ) : availableTools.length > 1 ? (
+          <div className="flex shrink-0 justify-center gap-2 border-b border-[#e4d1ad] bg-[#f9edcf] px-2.5 py-2">
+            {availableTools.map((tool) => (
+              <button
+                key={tool.id}
+                type="button"
+                onClick={() => selectTool(tool.id)}
+                aria-pressed={activeTool === tool.id}
+                className={`flex min-h-12 items-center gap-1.5 rounded-xl border px-3 font-ui text-[12px] font-black ${activeTool === tool.id ? "border-[#a3602c] bg-[#6b3d20] text-[#fff4dc]" : "border-[#d9c39a] bg-[#fffaf0] text-walnut-dark"}`}
+              >
+                <span aria-hidden className="text-[18px]">{tool.icon}</span>
+                {tool.name}
+              </button>
+            ))}
+          </div>
         ) : null}
-        <div className="relative mx-auto my-2 shrink-0 overflow-hidden rounded-xl border border-[#89603e] bg-[#38261b] shadow-inner sm:my-3 sm:rounded-2xl" style={{ ...stageDisplay, touchAction: "none", overscrollBehavior: "contain" }}>
-          <img src={image} alt={`${roomTitle} from the current restaurant map`} className="block h-full w-full select-none object-fill" draggable={false} />
-          <canvas ref={canvasRef} className="absolute inset-0 h-full w-full touch-none overscroll-contain" style={{ touchAction: "none", overscrollBehavior: "contain" }} onPointerDown={handleDown} onPointerMove={handleMove} onPointerUp={handleUp} onPointerCancel={handleUp} onLostPointerCapture={handleUp} aria-label={`Drag the ${cleaningTool.name} over matching marks in the ${roomTitle.toLowerCase()}`} />
-          {!scrubbing && progress === 0 ? <span className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border border-white/70 bg-[#fff7e6]/95 px-2.5 py-1 font-ui text-[10px] font-extrabold text-walnut-dark shadow sm:bottom-3 sm:text-[12px]">{cleaningTool.icon} Drag over matching marks</span> : null}
+        <div className="flex min-h-0 flex-1 items-center justify-center px-2 py-2">
+          <div
+            className="relative shrink-0 overflow-hidden rounded-xl border border-[#89603e] bg-[#38261b] shadow-inner sm:rounded-2xl"
+            style={{ ...stageDisplay, touchAction: "none", overscrollBehavior: "contain" }}
+            data-testid="cleaning-stage"
+          >
+            <img
+              src={image}
+              alt={`${roomTitle} from the current restaurant map`}
+              className="block h-full w-full select-none object-fill transition-[filter] duration-300"
+              style={{ filter: `saturate(${0.82 + 0.18 * shine}) brightness(${0.92 + 0.1 * shine})` }}
+              draggable={false}
+            />
+            <canvas
+              ref={canvasRef}
+              className="absolute inset-0 h-full w-full touch-none overscroll-contain"
+              style={{ touchAction: "none", overscrollBehavior: "contain" }}
+              onPointerDown={handleDown}
+              onPointerMove={handleMove}
+              onPointerUp={handleUp}
+              onPointerCancel={handleUp}
+              onLostPointerCapture={handleUp}
+              data-testid="cleaning-dirt"
+              data-stains={stains.length}
+              aria-label={`Drag the ${cleaningTool.name} over the dirt in the ${roomTitle.toLowerCase()}`}
+            />
+            <canvas ref={fxCanvasRef} className="pointer-events-none absolute inset-0 h-full w-full" data-testid="cleaning-fx" aria-hidden />
+            <span
+              ref={cursorRef}
+              className="pointer-events-none absolute left-0 top-0 text-[34px] leading-none opacity-0 drop-shadow-[0_3px_3px_rgba(40,20,5,.45)]"
+              aria-hidden
+            >
+              {cleaningTool.icon}
+            </span>
+            {streak >= 2 && phase === "play" ? (
+              <span
+                key={streak}
+                className="kc-clean-pop pointer-events-none absolute right-2 top-2 rounded-full border border-white/80 bg-[#6b3d20]/90 px-2.5 py-1 font-ui text-[13px] font-black text-[#ffe9b0] shadow"
+                data-testid="cleaning-streak"
+                data-streak={streak}
+              >
+                ✨ Streak ×{streak}
+              </span>
+            ) : null}
+            {toast ? (
+              <div className="pointer-events-none absolute inset-x-0 top-2 flex justify-center">
+                <span key={toast.key} className="kc-clean-toast rounded-full bg-white/95 px-3 py-1 font-display text-[15px] font-black text-walnut-dark shadow" data-testid="cleaning-milestone">
+                  {toast.text}
+                </span>
+              </div>
+            ) : null}
+            {!scrubbing && progress === 0 ? <span className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border border-white/70 bg-[#fff7e6]/95 px-2.5 py-1 font-ui text-[10px] font-extrabold text-walnut-dark shadow sm:bottom-3 sm:text-[12px]">{cleaningTool.icon} Scrub the dirt away</span> : null}
+            {phase === "spotless" ? (
+              <div className="absolute inset-0 grid place-items-center bg-[radial-gradient(circle,rgba(255,250,230,.55),rgba(255,250,230,0)_70%)]" data-testid="cleaning-spotless">
+                <span className="kc-clean-sheen" aria-hidden />
+                <div className="kc-clean-banner rounded-2xl border-2 border-[#e7c37a] bg-[#fffaf0]/95 px-5 py-3 text-center shadow-lg">
+                  <p className="font-display text-[26px] font-black leading-none text-walnut-dark">✨ Spotless! ✨</p>
+                  {result ? (
+                    <p className="mt-1 font-ui text-[12px] font-bold text-walnut/70">
+                      {formatTime(result.time)}
+                      {result.best >= 2 ? ` · best streak ×${result.best}` : ""}
+                    </p>
+                  ) : null}
+                  <KButton size="sm" variant="sage" className="mt-2 min-h-11 px-5" onClick={finish}>
+                    Done ✓
+                  </KButton>
+                </div>
+              </div>
+            ) : null}
+          </div>
         </div>
-        <div className="relative z-20 mt-auto shrink-0 border-t border-[#e4d1ad] bg-[#fff3d9]/95 p-2.5 sm:p-3">
+        <div className="relative z-20 shrink-0 border-t border-[#e4d1ad] bg-[#fff3d9]/95 p-2.5 sm:p-3">
           <p className={`mb-1.5 flex min-h-[30px] items-center justify-center rounded-lg border px-2 py-1.5 text-center font-ui text-[10.5px] font-extrabold ${toolHint ? "border-[#d89d52]/60 bg-[#fff9e8] text-[#8e5423]" : "border-transparent bg-transparent text-transparent"}`} role="status" aria-live="polite">{toolHint ?? " "}</p>
+          <div className="mb-1 flex items-center justify-between font-ui text-[12px] font-extrabold text-walnut-dark">
+            <span data-testid="cleaning-stains-left">
+              {stainsLeft > 0 ? `🧼 ${stainsLeft} ${stainsLeft === 1 ? "stain" : "stains"} left` : "✨ All clean"}
+            </span>
+            <span className="text-walnut/60">{cleaningTool.icon} {cleaningTool.name}</span>
+          </div>
           <div className="flex items-center gap-2">
-            <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-[#d9c5a5]" role="progressbar" aria-label={`${roomTitle} cleaning progress`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}>
-              <div className="h-full rounded-full bg-sage transition-[width] duration-100" style={{ width: `${progress}%` }} />
+            <div className="h-3 flex-1 overflow-hidden rounded-full bg-[#d9c5a5]" role="progressbar" aria-label={`${roomTitle} cleaning progress`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}>
+              <div className="kc-clean-bar h-full rounded-full transition-[width] duration-150" style={{ width: `${progress}%` }} />
             </div>
-            <span className="w-9 text-right font-ui text-[12px] font-black text-walnut-dark">{progress}%</span>
+            <span className="w-10 text-right font-ui text-[12px] font-black text-walnut-dark">{progress}%</span>
           </div>
           <p className="mt-1 flex min-h-[30px] items-center justify-center text-center font-hand text-[12px] leading-tight text-walnut/70">
-            {scrubbing ? "Keep working across the matching marks…" : roomWide ? `${cleaningTool.name} · ${cleaningTool.use} · switch tools as needed` : `Use the ${cleaningTool.name.toLowerCase()} to clear the marks.`}
+            {scrubbing
+              ? "Keep scrubbing. Tough stains take a few rubs."
+              : roomWide
+                ? `${cleaningTool.name} · ${cleaningTool.use} · switch tools as needed`
+                : `Rub with the ${cleaningTool.name.toLowerCase()} until each stain is gone.`}
           </p>
-          <KButton full variant="cream" className="mt-2 min-h-10 rounded-xl text-[12px]" onClick={onClose}>{roomWide ? "Close practice" : "Cancel cleaning"}</KButton>
+          <KButton full variant="cream" className="mt-2 min-h-10 rounded-xl text-[12px]" onClick={onClose} disabled={phase !== "play"}>{roomWide ? "Close practice" : "Cancel cleaning"}</KButton>
         </div>
       </section>
     </div>

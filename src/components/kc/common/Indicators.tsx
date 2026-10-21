@@ -59,14 +59,20 @@ export function StatRow({
   tone?: "copper" | "sage";
 }) {
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-2 @min-[390px]:gap-3">
       <span className="w-[68px] shrink-0 font-ui text-[12px] font-bold text-walnut/80">
         {label}
       </span>
       <span className="flex-1">
         <ProgressBar value={value} tone={tone} />
       </span>
-      <span className="w-[62px] text-right font-ui text-[12px] font-extrabold text-walnut-dark">
+      {/* In a container under 390 px wide (the Knife Report — StatRow's only
+          user — is that container) the value column is sized to its digits (at
+          least 28 px, so "83" and "100" still line up) instead of 62 px, and it
+          never shrinks: the bar absorbs the squeeze, so a value is never
+          clipped. From 390 px up it is the original 62 px. See the Knife
+          Report's stats grid. */}
+      <span className="min-w-7 shrink-0 text-right font-ui text-[12px] font-extrabold text-walnut-dark @min-[390px]:w-[62px]">
         {value}
         {typeof next === "number" ? (
           <span className={next > value ? "text-olive" : "text-walnut/40"}> → {next}</span>

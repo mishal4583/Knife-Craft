@@ -50,6 +50,9 @@ export type ScreenId =
   | "recipe-detail"
   | "daily"
   | "endless"
+  // Phase 3 (B): Endless Prep Rush, the conveyor challenge (prepRush.ts) —
+  // its own screen, no save state and no money.
+  | "prep-rush"
   | "shop"
   // The Market opened on its Ingredients tab (Business → "Go to Market" /
   // "Buy in Market →", see marketFocus.ts). Same Shop screen, different

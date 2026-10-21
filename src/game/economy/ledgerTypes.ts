@@ -58,7 +58,9 @@ export type LedgerCategory =
   /** Second Floor (restaurant/secondFloor.ts): buying or upgrading an automated station. */
   | "automation-purchase"
   /** Second Floor: income collected from the automated stations (real-time, capped). */
-  | "automation-income";
+  | "automation-income"
+  /** Phase 2 (developer decision 2026-10-21) — a customer tip for an exceptional dish (economy/customerTips.ts): only alongside a campaign order paid for the first time, so never on a replay and never twice; written in the SAME save as that order campaign-settlement entry, which it never changes. `description` is "levelId:recipeId". Extra money on top of the frozen campaign economy, like "rewarded-ad", and kept apart from it for the same reason. */
+  | "customer-tip";
 
 /**
  * One real wallet-transaction record. `amount` is signed and is always

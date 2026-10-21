@@ -22,6 +22,7 @@ import { KitchenUpgrades } from "@/components/kc/KitchenUpgrades";
 import type { PurchaseKitchenUpgradeResult } from "@/game/kitchen/KitchenUpgradeManager";
 import { RecipeBook, RecipeDetail } from "@/components/kc/Recipes";
 import { Settings, DailyOrder, EndlessService } from "@/components/kc/Journal";
+import { PrepRush } from "@/components/kc/prepRush/lazyPrepRush";
 import type { AdvanceDayResult } from "@/components/kc/business/BusinessDashboard";
 import { businessTabForScreen } from "@/components/kc/business/businessTabs";
 import type { PurchaseIngredientResult } from "@/game/business/BusinessInventoryManager";
@@ -123,6 +124,7 @@ export function ScreensRouter({
   onOpenRecipe,
   onSelectLevel,
   onStartDaily,
+  onOpenDailyGift,
   onStartEndless,
   buyKnife,
   buyBoard,
@@ -173,6 +175,8 @@ export function ScreensRouter({
   onOpenRecipe: (levelId: string) => void;
   onSelectLevel: (levelId: string) => void;
   onStartDaily: () => void;
+  /** Phase 5 (B3): the Kitchen's daily gift card opens the gift sheet. */
+  onOpenDailyGift?: () => void;
   onStartEndless: () => void;
   buyKnife: (id: string) => BuyKnifeResult;
   buyBoard: (id: string) => BuyBoardResult;
@@ -340,7 +344,12 @@ export function ScreensRouter({
           </Suspense>
         ) : null}
         {screen === "kitchen" ? (
-          <Kitchen go={routeGo} save={save} onSelectLevel={onSelectLevel} />
+          <Kitchen
+            go={routeGo}
+            save={save}
+            onSelectLevel={onSelectLevel}
+            {...(onOpenDailyGift ? { onOpenDailyGift } : {})}
+          />
         ) : null}
         {screen === "board" ? (
           <OrderBoard go={routeGo} save={save} onSelectLevel={onSelectLevel} />
@@ -405,6 +414,11 @@ export function ScreensRouter({
           />
         ) : null}
         {screen === "daily" ? <DailyOrder go={routeGo} save={save} onStartDaily={onStartDaily} /> : null}
+        {screen === "prep-rush" ? (
+          <Suspense fallback={<div className="h-full w-full bg-[#ecd7b1]" />}>
+            <PrepRush go={routeGo} />
+          </Suspense>
+        ) : null}
         {screen === "endless" ? (
           <EndlessService go={routeGo} save={save} onStartEndless={onStartEndless} />
         ) : null}

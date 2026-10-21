@@ -2,6 +2,20 @@ import { IconButton } from "../common/Buttons";
 import { cn } from "@/lib/utils";
 import type { DailyOrder, GameplayState } from "@/types/game";
 import { starText, type ChecklistItem } from "@/game/restaurant/levelChecklist";
+import { COMBO } from "@/game/definitions";
+
+/**
+ * Phase 1 (B1) — how full the combo meter is, as a fraction of the way
+ * from the last milestone passed to the next one. Past the final
+ * milestone it stays full rather than wrapping, so a long ingredient
+ * reads as "maxed", not as "back to the start".
+ */
+function comboMeter(combo: number): { frac: number; next: number | null } {
+  const next = COMBO.MILESTONES.find((m) => m > combo) ?? null;
+  const prev = COMBO.MILESTONES.filter((m) => m <= combo).pop() ?? 0;
+  if (next === null) return { frac: 1, next: null };
+  return { frac: (combo - prev) / (next - prev), next };
+}
 
 /** Pass 3: which checklist steps the card shows — all of a short list, else the current and next. */
 function visibleSteps(list: ChecklistItem[]): { c: ChecklistItem; i: number }[] {
@@ -48,6 +62,7 @@ export function GameHUD({
   batchHint,
   guide,
   onPause,
+  fever = false,
 }: {
   order: DailyOrder;
   gameplay: GameplayState;
@@ -70,6 +85,8 @@ export function GameHUD({
     checklist: ChecklistItem[];
   };
   onPause: () => void;
+  /** Phase 3 (A): Fever Mode is on — the combo chip shows it. */
+  fever?: boolean;
 }) {
   const pipRows = counts
     ? [
@@ -77,6 +94,7 @@ export function GameHUD({
         { n: counts.v, done: progressByAxis?.v ?? 0 },
       ]
     : [{ n: totalPieces, done: gameplay.cutProgress }];
+  const combo = comboMeter(gameplay.currentCombo);
   return (
     <div className="absolute inset-x-0 top-0 z-20 flex flex-col items-stretch gap-1.5 p-3">
       <div className="flex items-start justify-between gap-2">
@@ -110,6 +128,27 @@ export function GameHUD({
               </>
             )}
           </p>
+          {/* Phase 1 (B1) — the combo meter. It sits on the order card in
+              normal flow, under the progress line it describes, so it can
+              never cover the cutting board or the chef's instruction
+              ("the cutting board is the hero"). Hidden below 2 so an
+              ordinary single cut doesn't add furniture to the screen. */}
+          {gameplay.currentCombo >= 2 ? (
+            <span
+              className="mt-1 flex items-center gap-2 font-ui text-[11px] font-extrabold uppercase tracking-[0.12em] text-copper"
+              data-testid="hud-combo"
+            >
+              <span>
+                {fever ? "🔥 " : ""}Clean ×{gameplay.currentCombo}
+              </span>
+              <span className="h-[3px] min-w-[28px] flex-1 overflow-hidden rounded-full bg-walnut/15">
+                <span
+                  className="block h-full rounded-full bg-copper transition-[width] duration-200"
+                  style={{ width: `${Math.round(combo.frac * 100)}%` }}
+                />
+              </span>
+            </span>
+          ) : null}
           {/* Phase 2 — the chef's own short instruction (§12/§41),
               data-driven from the active recipe/level rather than
               hardcoded here or in PreparationScene. Harmless flavor text

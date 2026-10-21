@@ -145,6 +145,146 @@
     transform: scale(1);
   }
 }
+/* Phase 2 (C2): the customer reacts to the dish on the serve card. A cheer
+   (a bounce and a clap) for a Masterful dish, a nod for a Clean one. Short,
+   once, never looping; off with Reduced Motion (below and the media query). */
+@keyframes kc-cheer {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  30% {
+    transform: translateY(-7px) scale(1.12);
+  }
+  55% {
+    transform: translateY(0) scale(0.97);
+  }
+  75% {
+    transform: translateY(-3px) scale(1.04);
+  }
+}
+.kc-cheer {
+  display: inline-block;
+  animation: kc-cheer 0.9s ease-out 0.15s both;
+}
+@keyframes kc-nod {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  35% {
+    transform: translateY(2px) rotate(-6deg);
+  }
+  70% {
+    transform: translateY(0) rotate(4deg);
+  }
+}
+.kc-nod {
+  display: inline-block;
+  animation: kc-nod 0.7s ease-in-out 0.15s both;
+}
+html.kc-reduced-motion .kc-cheer,
+html.kc-reduced-motion .kc-nod {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .kc-cheer,
+  .kc-nod {
+    animation: none;
+  }
+}
+/* Phase 5 (A): the light sweeping across a restoration reveal's wipe. */
+@keyframes kc-reveal-sweep {
+  from {
+    left: -12%;
+  }
+  to {
+    left: 100%;
+  }
+}
+.kc-reveal-sweep {
+  animation-name: kc-reveal-sweep;
+  animation-timing-function: ease-in-out;
+  animation-fill-mode: forwards;
+}
+/* Phase 4 (B/C): a special customer's arrival, the Mystery Guest's
+   silhouette, and the serve card filling in a beat at a time (kc-stage:
+   opacity only, so the layout never moves and nothing is hidden from a
+   tap for long). Off with Reduced Motion. */
+@keyframes kc-arrive {
+  from {
+    opacity: 0;
+    transform: translateX(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.kc-arrive {
+  animation: kc-arrive 420ms ease-out both;
+}
+.kc-silhouette {
+  filter: brightness(0) opacity(0.7);
+}
+@keyframes kc-stage-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.kc-stage {
+  animation: kc-stage-in 260ms ease-out both;
+}
+html.kc-reduced-motion .kc-arrive,
+html.kc-reduced-motion .kc-stage {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .kc-arrive,
+  .kc-stage {
+    animation: none;
+  }
+}
+/* Phase 3 (A): Fever Mode — warm edges that breathe, and a countdown bar
+   (its duration and pause come from inline styles). No breathing with
+   Reduced Motion; the bar still runs: it is information, not decoration. */
+@keyframes kc-fever-breathe {
+  0%,
+  100% {
+    opacity: 0.75;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.kc-fever-vignette {
+  animation: kc-fever-breathe 1.2s ease-in-out infinite;
+}
+@keyframes kc-fever-bar {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+.kc-fever-bar {
+  transform-origin: left;
+  animation-name: kc-fever-bar;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+html.kc-reduced-motion .kc-fever-vignette {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .kc-fever-vignette {
+    animation: none;
+  }
+}
 /* InfoTip bubble: opacity only (its transform carries the GameShell scale). */
 @keyframes kc-pop-in {
   from {
@@ -713,4 +853,156 @@ html.kc-reduced-motion .kc-ambient {
 }
 html.kc-reduced-motion .kc-fx {
   display: none;
+}
+
+/* Market: a shop item on a lit display stand (components/kc/common/ShopItemArt). */
+.shop-stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 112px;
+  overflow: hidden;
+  border-radius: 16px;
+  background:
+    radial-gradient(
+      ellipse 58% 13% at 50% 86%,
+      color-mix(in oklch, var(--color-walnut-dark) 32%, transparent),
+      transparent 72%
+    ),
+    radial-gradient(
+      circle at 50% 40%,
+      color-mix(in oklch, var(--color-ivory) 70%, white),
+      var(--color-cream) 58%,
+      color-mix(in oklch, var(--color-gold) 45%, var(--color-cream)) 100%
+    );
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklch, var(--color-walnut) 16%, transparent),
+    inset 0 -14px 22px color-mix(in oklch, var(--color-copper) 16%, transparent);
+}
+.shop-stage::before {
+  content: "";
+  position: absolute;
+  inset: -25%;
+  background: repeating-conic-gradient(
+    from 0deg at 50% 42%,
+    color-mix(in oklch, white 45%, transparent) 0deg 7deg,
+    transparent 7deg 18deg
+  );
+  mask-image: radial-gradient(circle at 50% 42%, black 0%, transparent 55%);
+  pointer-events: none;
+}
+.shop-stage__item {
+  position: relative;
+  font-size: 68px;
+  line-height: 1;
+  transform: translateY(-5px);
+  filter: drop-shadow(0 7px 5px color-mix(in oklch, var(--color-walnut-dark) 30%, transparent));
+}
+/* A badge in the corner: the item sits lower so the two don't touch. */
+.shop-stage--badge .shop-stage__item {
+  transform: translateY(7px);
+}
+@media (max-width: 359px) {
+  .shop-stage {
+    height: 96px;
+  }
+  .shop-stage__item {
+    font-size: 56px;
+  }
+}
+
+/* Cleaning mini-game feel (developer 2026-10-21): streak pop, milestone toast,
+   the "Spotless!" banner and its shine sweep. Reduced Motion turns them off. */
+@keyframes kc-clean-pop {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  55% {
+    transform: scale(1.18);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.kc-clean-pop {
+  animation: kc-clean-pop 0.32s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+@keyframes kc-clean-toast {
+  0% {
+    transform: translateY(8px) scale(0.9);
+    opacity: 0;
+  }
+  15% {
+    transform: translateY(0) scale(1.06);
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-6px);
+    opacity: 0;
+  }
+}
+.kc-clean-toast {
+  animation: kc-clean-toast 1.1s ease-out both;
+}
+@keyframes kc-clean-banner {
+  0% {
+    transform: scale(0.7) rotate(-3deg);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.08) rotate(1deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0);
+  }
+}
+.kc-clean-banner {
+  animation: kc-clean-banner 0.45s cubic-bezier(0.2, 1.3, 0.4, 1) both;
+}
+@keyframes kc-clean-sheen {
+  from {
+    transform: translateX(-120%) skewX(-18deg);
+  }
+  to {
+    transform: translateX(260%) skewX(-18deg);
+  }
+}
+.kc-clean-sheen {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 45%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.7), transparent);
+  animation: kc-clean-sheen 0.9s ease-in-out 0.1s both;
+  pointer-events: none;
+}
+.kc-clean-bar {
+  background: linear-gradient(
+    90deg,
+    var(--color-sage),
+    color-mix(in oklch, var(--color-gold) 80%, white)
+  );
+}
+html.kc-reduced-motion .kc-clean-pop,
+html.kc-reduced-motion .kc-clean-toast,
+html.kc-reduced-motion .kc-clean-banner {
+  animation: none;
+}
+html.kc-reduced-motion .kc-clean-sheen {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .kc-clean-pop,
+  .kc-clean-toast,
+  .kc-clean-banner {
+    animation: none;
+  }
+  .kc-clean-sheen {
+    display: none;
+  }
 }
