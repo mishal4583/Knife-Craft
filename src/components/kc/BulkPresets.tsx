@@ -1,11 +1,14 @@
 import { cn } from "@/lib/utils";
 import { BULK_PRESETS, bulkDiscountFor } from "@/game/restaurant/bulkBuying";
+import { CrateIcon } from "./market/ShopCard";
 
 /**
- * Unified Restaurant wholesale buying (RESTAURANT_MODE only): the quantity
- * presets of a Market card (1 / 2 / 5 / 10) with each one's bulk
- * discount. Sets the card's quantity; the card's quote and Buy button stay
- * the one source of the price. 2 × 2 so every target is 48 px.
+ * Unified Restaurant wholesale buying (RESTAURANT_MODE only): the bulk sizes
+ * of a Market card as crate tiles, "5 kg · −3%" (developer 2026-10-22, the
+ * shop card design). The small sizes are on the card's − / + stepper; the
+ * tiles are the presets that earn a discount (5 and 10 of BULK_PRESETS). Sets
+ * the card's quantity; the card's quote and Buy button stay the one source of
+ * the price. Each tile is ≥ 48 px.
  */
 export function BulkPresets({
   value,
@@ -15,14 +18,15 @@ export function BulkPresets({
 }: {
   value: number;
   onPick: (quantity: number) => void;
-  /** What one step is ("units" / "packs"), for the accessible name. */
+  /** What one step is ("kg" / "packs"), shown on the tile and in the accessible name. */
   label: string;
   /** The discount a preset gets (ingredients: by the stock it buys — `ingredientBulkDiscount`). */
   discountFor?: (quantity: number) => number;
 }) {
+  const tiles = BULK_PRESETS.filter((q) => q >= 5);
   return (
     <div className="mt-2 grid grid-cols-2 gap-1.5" data-testid="bulk-presets">
-      {BULK_PRESETS.map((q) => {
+      {tiles.map((q, i) => {
         const d = discountFor(q);
         return (
           <button
@@ -30,20 +34,21 @@ export function BulkPresets({
             type="button"
             data-bulk-preset={q}
             aria-label={`Buy ${q} ${label}${d > 0 ? `, ${Math.round(d * 100)}% off` : ""}`}
+            aria-pressed={value === q}
             onClick={() => onPick(q)}
-            className={cn(
-              "press min-h-12 rounded-[14px] border px-1 font-ui text-[13.5px] font-extrabold leading-tight",
-              value === q
-                ? "border-copper bg-copper/15 text-walnut-dark"
-                : "border-walnut/20 bg-ivory text-walnut-dark",
-            )}
+            className={cn("press shop-card__tile", value === q && "shop-card__tile--on")}
           >
-            {q}
-            {d > 0 ? (
-              <span className="block text-[11px] font-bold text-olive">
-                −{Math.round(d * 100)}%
+            <CrateIcon size={22} full={i === 0} />
+            <span className="flex min-w-0 flex-col items-start leading-tight">
+              <span className="truncate font-ui text-[13px] font-black text-walnut-dark">
+                {q} {label}
               </span>
-            ) : null}
+              {d > 0 ? (
+                <span className="font-ui text-[12px] font-black text-olive">
+                  −{Math.round(d * 100)}%
+                </span>
+              ) : null}
+            </span>
           </button>
         );
       })}

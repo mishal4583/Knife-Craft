@@ -347,8 +347,10 @@ function playedSave(): SaveData {
       !dash.includes(`label: "Supplies"`),
     "S4: the six tabs: Overview · Equipment · Staff · Suppliers · Menu · Operations (no Inventory or Supplies)",
   );
+  // The Market's stepper lives in market/ShopCard.tsx since the shop card redesign (2026-10-22).
   const ui = [
     "src/components/kc/MarketIngredients.tsx",
+    "src/components/kc/market/ShopCard.tsx",
     "src/components/kc/business/BusinessMenu.tsx",
   ]
     .map(read)

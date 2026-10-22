@@ -196,7 +196,8 @@ const tomatoCard = await page.evaluate(
 );
 check(
   "3b the tomato card is priced per kg and says 1 kg ≈ 7 tomatoes",
-  /\$[\d.]+\/kg/.test(tomatoCard) && /1 kg ≈ 7 tomatoes/.test(tomatoCard),
+  // "$2.20 / kg" on the coin pill since the shop card redesign (2026-10-22; was "$2.20/kg").
+  /\$[\d.]+\s*\/\s*kg/.test(tomatoCard) && /1 kg ≈ 7 tomatoes/.test(tomatoCard),
   tomatoCard.slice(0, 120),
 );
 // The card starts at 1 kg (restaurant default); − three times goes ¼ at a time to ¼ kg.

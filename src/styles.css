@@ -858,58 +858,483 @@ html.kc-reduced-motion .kc-fx {
 }
 
 /* Market: a shop item on a lit display stand (components/kc/common/ShopItemArt). */
+/* ── Market shop cards (developer 2026-10-22: the shop card design) ──────────
+   market/ShopCard.tsx + common/ShopItemArt.tsx: a wooden frame with brass
+   rivets, a hanging name plank with leaves, a warm market-stall picture, a
+   parchment body, a coin price pill, a wooden stepper, crate tiles and a
+   green leaf Buy button. Transforms and gradients only (no images). */
+.shop-card {
+  container-type: inline-size;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 5px;
+  border-radius: 18px;
+  background:
+    repeating-linear-gradient(
+      100deg,
+      rgba(255, 220, 170, 0.07) 0 3px,
+      rgba(40, 20, 8, 0.07) 3px 7px
+    ),
+    linear-gradient(160deg, #9a6236, #6e3f1f 55%, #50290f);
+  border: 1px solid #3b1e0b;
+  box-shadow:
+    0 6px 14px rgba(40, 20, 8, 0.35),
+    inset 0 1px 0 rgba(255, 220, 170, 0.35);
+}
+.shop-card--need {
+  box-shadow:
+    0 0 0 2px #e0a24a,
+    0 6px 14px rgba(40, 20, 8, 0.35);
+}
+.shop-card__inner {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 13px;
+  background: #2f1a0d;
+  box-shadow: inset 0 0 0 1px rgba(20, 10, 4, 0.6);
+}
+.shop-card__plank {
+  position: relative;
+  z-index: 2;
+  margin: 4px 6px 0;
+  padding: 5px 18px 6px;
+  border-radius: 7px;
+  background:
+    radial-gradient(120% 140% at 50% 0%, rgba(255, 255, 255, 0.45), transparent 60%),
+    linear-gradient(180deg, #fbefd2, #ecd6a8);
+  border: 2px solid #8a5a2b;
+  box-shadow:
+    0 3px 5px rgba(20, 10, 4, 0.45),
+    inset 0 -2px 0 rgba(140, 90, 40, 0.25);
+}
+.shop-card__title {
+  font-family: var(--font-display, "Fraunces", serif);
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1.1;
+  text-align: center;
+  color: #3a2214;
+  overflow-wrap: anywhere;
+}
+.shop-card__rope {
+  position: absolute;
+  top: -5px;
+  width: 5px;
+  height: 11px;
+  border-radius: 3px;
+  background: repeating-linear-gradient(160deg, #e2bf7a 0 2px, #a77a3a 2px 4px);
+}
+.shop-card__rope--l {
+  left: 9px;
+}
+.shop-card__rope--r {
+  right: 9px;
+}
+.shop-card__leaf {
+  position: absolute;
+  top: -5px;
+  width: 20px;
+  height: 20px;
+}
+.shop-card__leaf--l {
+  left: -6px;
+  transform: rotate(-20deg);
+}
+.shop-card__leaf--r {
+  right: -6px;
+}
+
+/* The picture: a warm stall with soft lamp light behind the item. */
 .shop-stage {
   position: relative;
   display: grid;
   place-items: center;
-  height: 112px;
+  height: 128px;
+  margin-top: -14px;
+  padding-top: 14px;
   overflow: hidden;
-  border-radius: 16px;
   background:
-    radial-gradient(
-      ellipse 58% 13% at 50% 86%,
-      color-mix(in oklch, var(--color-walnut-dark) 32%, transparent),
-      transparent 72%
-    ),
-    radial-gradient(
-      circle at 50% 40%,
-      color-mix(in oklch, var(--color-ivory) 70%, white),
-      var(--color-cream) 58%,
-      color-mix(in oklch, var(--color-gold) 45%, var(--color-cream)) 100%
-    );
-  box-shadow:
-    inset 0 0 0 1px color-mix(in oklch, var(--color-walnut) 16%, transparent),
-    inset 0 -14px 22px color-mix(in oklch, var(--color-copper) 16%, transparent);
+    radial-gradient(18% 22% at 12% 30%, rgba(255, 205, 120, 0.55), transparent 70%),
+    radial-gradient(14% 18% at 86% 22%, rgba(255, 215, 140, 0.45), transparent 70%),
+    radial-gradient(10% 12% at 60% 18%, rgba(255, 230, 170, 0.35), transparent 70%),
+    radial-gradient(70% 55% at 50% 60%, rgba(255, 220, 160, 0.42), transparent 75%),
+    linear-gradient(180deg, #5a3a22, #7a5332 55%, #4a2d17);
 }
 .shop-stage::before {
+  /* blurred shelves at the back */
   content: "";
   position: absolute;
-  inset: -25%;
-  background: repeating-conic-gradient(
-    from 0deg at 50% 42%,
-    color-mix(in oklch, white 45%, transparent) 0deg 7deg,
-    transparent 7deg 18deg
-  );
-  mask-image: radial-gradient(circle at 50% 42%, black 0%, transparent 55%);
+  inset: 0;
+  background:
+    linear-gradient(180deg, transparent 38%, rgba(30, 15, 5, 0.35) 38% 41%, transparent 41%),
+    linear-gradient(180deg, transparent 66%, rgba(30, 15, 5, 0.3) 66% 69%, transparent 69%);
+  filter: blur(1.5px);
+  pointer-events: none;
+}
+.shop-stage::after {
+  /* the counter top the item sits on */
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 22%;
+  background: linear-gradient(180deg, #8a5a30, #5e3818);
+  box-shadow: inset 0 2px 0 rgba(255, 210, 150, 0.35);
   pointer-events: none;
 }
 .shop-stage__item {
   position: relative;
-  font-size: 68px;
+  z-index: 2;
+  font-size: 66px;
   line-height: 1;
-  transform: translateY(-5px);
-  filter: drop-shadow(0 7px 5px color-mix(in oklch, var(--color-walnut-dark) 30%, transparent));
+  transform: translateY(-2px);
+  filter: drop-shadow(0 7px 5px rgba(30, 15, 5, 0.45));
 }
-/* A badge in the corner: the item sits lower so the two don't touch. */
 .shop-stage--badge .shop-stage__item {
-  transform: translateY(7px);
+  transform: translateY(6px);
+}
+
+/* Ingredients: a crate of produce with a checked cloth. */
+.shop-stage--crate .shop-stage__item--front {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  font-size: 56px;
+  transform: translateX(-62%) rotate(6deg);
+}
+.shop-stage__pile {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+.shop-stage__pile > span {
+  position: absolute;
+  line-height: 1;
+  filter: drop-shadow(0 4px 3px rgba(30, 15, 5, 0.4));
+}
+.shop-stage__pile-a {
+  left: 6%;
+  bottom: 20px;
+  font-size: 40px;
+  transform: rotate(-16deg);
+}
+.shop-stage__pile-b {
+  left: 40%;
+  bottom: 40px;
+  font-size: 38px;
+  transform: rotate(12deg);
+}
+.shop-stage__pile-c {
+  right: 26%;
+  bottom: 18px;
+  font-size: 44px;
+  transform: rotate(-6deg);
+}
+.shop-stage__crate {
+  position: absolute;
+  z-index: 3;
+  left: 6%;
+  right: 6%;
+  bottom: 5px;
+  height: 20px;
+  border-radius: 3px;
+  background:
+    linear-gradient(180deg, transparent 47%, rgba(60, 30, 10, 0.55) 47% 53%, transparent 53%),
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0) 0 22%, rgba(60, 30, 10, 0.35) 22% 23%),
+    linear-gradient(180deg, #c48a4e, #9a6233);
+  border: 2px solid #5b3417;
+  box-shadow:
+    0 4px 6px rgba(20, 10, 4, 0.5),
+    inset 0 2px 0 rgba(255, 220, 170, 0.4);
+}
+.shop-stage__cloth {
+  position: absolute;
+  z-index: 4;
+  left: 5%;
+  bottom: 4px;
+  width: 30px;
+  height: 24px;
+  border-radius: 3px 8px 3px 3px;
+  background:
+    repeating-linear-gradient(0deg, rgba(190, 40, 40, 0.8) 0 4px, transparent 4px 8px),
+    repeating-linear-gradient(90deg, rgba(190, 40, 40, 0.8) 0 4px, transparent 4px 8px), #f5ece0;
+  transform: rotate(-8deg);
+  box-shadow: 0 2px 3px rgba(20, 10, 4, 0.4);
+}
+.shop-stage__sign {
+  position: absolute;
+  z-index: 5;
+  right: 5px;
+  bottom: 10px;
+  max-width: 38%;
+  padding: 2px 5px 3px;
+  border: 2px solid #8a5a2b;
+  border-radius: 4px;
+  background: #2f3a33;
+  color: #f4efe2;
+  font-family: var(--font-hand, "Caveat", cursive);
+  font-size: 13px;
+  line-height: 0.95;
+  text-align: center;
+  transform: rotate(4deg);
+  box-shadow: 0 3px 4px rgba(20, 10, 4, 0.45);
+}
+.shop-stage > .absolute.right-1\.5.top-1\.5 {
+  top: 20px;
+}
+.shop-stock-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 7px 3px 4px;
+  border-radius: 10px;
+  border: 1.5px solid #e3c07a;
+  background: linear-gradient(180deg, #3f6b3c, #29492a);
+  color: #fff6df;
+  box-shadow: 0 2px 4px rgba(10, 20, 8, 0.45);
+}
+.shop-stock-pill__crate {
+  font-size: 14px;
+  line-height: 1;
+}
+
+/* The parchment body. */
+.shop-card__body {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  padding: 9px 8px 8px;
+  background:
+    radial-gradient(90% 60% at 20% 10%, rgba(255, 255, 255, 0.45), transparent 70%),
+    radial-gradient(80% 70% at 90% 100%, rgba(190, 140, 70, 0.18), transparent 70%),
+    linear-gradient(180deg, #faefd6, #f0deb8);
+  border-top: 2px solid #8a5a2b;
+}
+.shop-card__rivet {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #d9d2c3, #6f675c 70%);
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
+}
+.shop-card__rivet--tl {
+  left: 5px;
+  top: 5px;
+}
+.shop-card__rivet--tr {
+  right: 5px;
+  top: 5px;
+}
+.shop-card__rivet--bl {
+  left: 5px;
+  bottom: 5px;
+}
+.shop-card__rivet--br {
+  right: 5px;
+  bottom: 5px;
+}
+.shop-card__price > span {
+  white-space: nowrap;
+}
+.shop-card__price {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  align-self: center;
+  max-width: 100%;
+  padding: 5px 12px 5px 6px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #fffaf0, #f6e8c8);
+  border: 1px solid rgba(140, 90, 40, 0.3);
+  box-shadow:
+    inset 0 -2px 0 rgba(140, 90, 40, 0.12),
+    0 1px 2px rgba(60, 30, 10, 0.15);
+}
+.shop-card__stepper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  margin-top: 8px;
+  padding: 3px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #8a5630, #5e3417);
+  border: 1.5px solid #3b1e0b;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 210, 160, 0.35),
+    0 2px 4px rgba(40, 20, 8, 0.3);
+}
+.shop-card__step {
+  position: relative;
+  z-index: 1;
+  flex: none;
+  background: linear-gradient(180deg, #fff4dc, #ecd29e);
+  border: 1.5px solid #8a5a2b;
+  color: #4a2a14;
+  font-family: var(--font-ui, "Nunito", sans-serif);
+  font-size: 22px;
+  font-weight: 900;
+  box-shadow:
+    inset 0 -2px 0 rgba(140, 90, 40, 0.3),
+    0 2px 3px rgba(20, 10, 4, 0.35);
+}
+.shop-card__value {
+  min-width: 0;
+  flex: 1;
+  padding: 6px 2px;
+  border-radius: 10px;
+  background: #3b2010;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
+  color: #fff4dc;
+  text-align: center;
+}
+.shop-card__stepper-leaf {
+  position: absolute;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+}
+.shop-card__stepper-leaf--l {
+  left: -9px;
+  transform: translateY(-50%) rotate(-30deg);
+}
+.shop-card__stepper-leaf--r {
+  right: -9px;
+  transform: translateY(-50%) rotate(30deg);
+}
+.shop-card__tile {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 4px 6px;
+  border-radius: 12px;
+  border: 1.5px solid rgba(140, 90, 40, 0.3);
+  background: linear-gradient(180deg, #fffaf0, #f4e5c4);
+  box-shadow: 0 1px 2px rgba(60, 30, 10, 0.15);
+}
+.shop-card__tile--on {
+  border-color: #b86a2a;
+  background: linear-gradient(180deg, #fde9c4, #f0cf95);
+  box-shadow:
+    0 0 0 2px rgba(214, 140, 60, 0.45),
+    0 1px 2px rgba(60, 30, 10, 0.15);
+}
+.shop-card__buy {
+  position: relative;
+  display: flex;
+  width: 100%;
+  min-height: 48px;
+  margin-top: auto;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 6px 16px;
+  border-radius: 999px;
+  font-family: var(--font-ui, "Nunito", sans-serif);
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.15;
+  text-align: center;
+  overflow: hidden;
+}
+.shop-card__buy--go {
+  border: 2px solid #2c4a17;
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(255, 255, 255, 0.28), transparent 60%),
+    linear-gradient(180deg, #6fa046, #44752a 60%, #335d1f);
+  color: #fffbe9;
+  text-shadow: 0 1px 0 rgba(20, 40, 8, 0.5);
+  box-shadow:
+    inset 0 -3px 0 rgba(20, 40, 8, 0.35),
+    0 3px 5px rgba(30, 50, 10, 0.35);
+}
+.shop-card__buy--short {
+  border: 2px solid rgba(140, 90, 40, 0.45);
+  background: linear-gradient(180deg, #f6e8c8, #e6cf9f);
+  color: #8e5423;
+}
+.shop-card__buy--done {
+  border: 2px solid rgba(85, 110, 70, 0.5);
+  background: linear-gradient(180deg, #d9e4c6, #bfd0a5);
+  color: #3e5a2c;
+}
+.shop-card__buy--wood {
+  border: 2px solid #3b1e0b;
+  background: linear-gradient(180deg, #9a6236, #6e3f1f);
+  color: #fff4dc;
+}
+.shop-card__buy:disabled {
+  opacity: 0.6;
+}
+.shop-card__buy-leaf {
+  position: absolute;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  opacity: 0.9;
+}
+.shop-card__buy-leaf--l {
+  left: 4px;
+  transform: translateY(-50%) rotate(-40deg);
+}
+.shop-card__buy-leaf--r {
+  right: 4px;
+  transform: translateY(-50%) rotate(40deg);
+}
+/* A narrow card (two to a row on a phone): no basket, smaller leaves, so "Buy 1 kg · $2.36" fits. */
+@container (max-width: 200px) {
+  .shop-card__buy > svg:not(.shop-card__buy-leaf) {
+    display: none;
+  }
+  .shop-card__buy {
+    padding: 6px 12px;
+  }
+  .shop-card__buy-leaf {
+    width: 13px;
+    height: 13px;
+  }
+  .wallet-line > svg {
+    display: none;
+  }
+  .shop-card__tile > svg {
+    display: none;
+  }
+  .shop-card__price {
+    padding: 4px 8px 4px 4px;
+    gap: 4px;
+  }
 }
 @media (max-width: 359px) {
   .shop-stage {
-    height: 96px;
+    height: 108px;
   }
   .shop-stage__item {
     font-size: 56px;
+  }
+  .shop-stage--crate .shop-stage__item--front {
+    font-size: 50px;
+  }
+  .shop-stage__pile-a,
+  .shop-stage__pile-b,
+  .shop-stage__pile-c {
+    font-size: 34px;
+  }
+  .shop-card__buy {
+    padding: 6px 10px;
+    font-size: 12.5px;
+  }
+  .shop-card__buy-leaf {
+    display: none;
   }
 }
 

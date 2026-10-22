@@ -1,5 +1,16 @@
 import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
-import { ShopItemArt } from "./common/ShopItemArt";
+import { ShopItemArt, StockPill } from "./common/ShopItemArt";
+import {
+  BuyButton,
+  ClockIcon,
+  CrateIcon,
+  CutleryIcon,
+  PricePill,
+  ShopCard,
+  ShopLine,
+  WalletLine,
+  WoodStepper,
+} from "./market/ShopCard";
 import { inventoryMenuOf } from "@/game/restaurant/restaurantMenu";
 import { useTabOpen } from "./navLevel";
 import { restaurantQuote } from "@/game/restaurant/restaurantEconomy";
@@ -56,6 +67,17 @@ const LARGE_PURCHASE_QUANTITY = 25;
 function balanceText(cents: number): string {
   return formatUsd(cents).replace(/\.00$/, "");
 }
+
+/** The chalkboard on each ingredient's crate, by its group. */
+const GROUP_SIGN: Record<string, string> = {
+  Vegetable: "Fresh Produce",
+  Fruit: "Sweet & Ripe",
+  Herb: "Fresh Cut",
+  Aromatic: "Farm Fresh",
+  Bakery: "Baked Today",
+  Dairy: "Fresh Dairy",
+  Protein: "Butcher's Pick",
+};
 
 function fridgeSpaceText(available: number): string {
   return `❄️ ${formatQuantity(available)} unit${available === 1 ? "" : "s"} free`;
@@ -293,7 +315,7 @@ export function MarketIngredients({
             <p className="mb-2 mt-1 font-display text-[16.5px] font-black text-walnut-dark">
               {g.emoji} {g.label}
             </p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3 max-[359px]:grid-cols-1 land:grid-cols-3">
               {ids.map((id) => {
                 const def = INGREDIENTS[id];
                 const quantity = quantityFor(id);
@@ -306,19 +328,27 @@ export function MarketIngredients({
                 const message = messages[id];
                 const focused = id === focusId;
                 return (
-                  <article
+                  <ShopCard
                     key={id}
                     ref={focused ? focusRef : undefined}
                     data-ingredient={id}
                     data-needed={needs[id]?.when}
-                    className={cn(
-                      "product-card flex flex-col rounded-[20px] border p-3 card-warm",
-                      focused
-                        ? "border-copper ring-2 ring-copper/60"
-                        : needs[id]
-                          ? "border-copper/70 ring-1 ring-copper/40"
-                          : "border-walnut/15",
-                    )}
+                    ring={focused ? "focus" : needs[id] ? "need" : null}
+                    title={def.name}
+                    art={
+                      <ShopItemArt
+                        icon={INGREDIENT_EMOJI[id]}
+                        crate
+                        sign={GROUP_SIGN[def.category]}
+                      >
+                        {stock > 0 ? (
+                          <StockPill
+                            amount={formatStockAmount(id, stock, measure)}
+                            label="in stock"
+                          />
+                        ) : null}
+                      </ShopItemArt>
+                    }
                   >
                     {needs[id] ? (
                       <NeedNote
@@ -331,55 +361,35 @@ export function MarketIngredients({
                         }
                       />
                     ) : null}
-                    <ShopItemArt icon={INGREDIENT_EMOJI[id]}>
-                      {stock > 0 ? (
-                        <Badge tone="sage">{formatStockAmount(id, stock, measure)} in stock</Badge>
-                      ) : null}
-                    </ShopItemArt>
-                    <p className="mt-1 font-display text-[14.5px] font-black leading-tight text-walnut-dark">
-                      {def.name}
-                    </p>
-                    <p className="font-ui text-[12.5px] font-extrabold text-copper">
-                      {formatUsd(quote.unitCost)}
-                      <span className="font-bold text-walnut/60">/{perUnit}</span>
-                    </p>
+                    <PricePill price={formatUsd(quote.unitCost)} per={perUnit} />
                     {count ? (
-                      <p
-                        className="font-ui text-[12px] font-bold leading-tight text-walnut/55"
-                        data-testid="unit-count"
-                      >
+                      <ShopLine data-testid="unit-count">
+                        <CrateIcon size={18} />
                         {count}
-                      </p>
+                      </ShopLine>
                     ) : null}
-                    <p className="font-hand text-[14px] leading-tight text-walnut/60">
-                      🕒 {shelfLifeForIngredient(id)} days
-                      {dishes > 0 ? ` · 🍽️ ${dishes} dish${dishes === 1 ? "" : "es"}` : ""}
-                    </p>
-                    <div className="mt-2 flex items-center justify-between">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setQuantities((q) => ({ ...q, [id]: stepFor(id, quantity, -1) }))
-                        }
-                        className="press grid h-12 w-12 place-items-center rounded-full border border-walnut/20 bg-ivory font-ui text-[18px] font-black text-walnut-dark"
-                        aria-label={`Decrease quantity for ${def.name}`}
-                      >
-                        −
-                      </button>
-                      <span className="font-ui text-[15.5px] font-extrabold text-walnut-dark">
-                        {quantity}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setQuantities((q) => ({ ...q, [id]: stepFor(id, quantity, 1) }))
-                        }
-                        className="press grid h-12 w-12 place-items-center rounded-full border border-walnut/20 bg-ivory font-ui text-[18px] font-black text-walnut-dark"
-                        aria-label={`Increase quantity for ${def.name}`}
-                      >
-                        +
-                      </button>
-                    </div>
+                    <ShopLine hand>
+                      <ClockIcon />
+                      {shelfLifeForIngredient(id)} days
+                      {dishes > 0 ? (
+                        <>
+                          <span aria-hidden>·</span>
+                          <CutleryIcon />
+                          {dishes} dish{dishes === 1 ? "" : "es"}
+                        </>
+                      ) : null}
+                    </ShopLine>
+                    <WoodStepper
+                      value={quantity}
+                      onMinus={() =>
+                        setQuantities((q) => ({ ...q, [id]: stepFor(id, quantity, -1) }))
+                      }
+                      onPlus={() =>
+                        setQuantities((q) => ({ ...q, [id]: stepFor(id, quantity, 1) }))
+                      }
+                      minusLabel={`Decrease quantity for ${def.name}`}
+                      plusLabel={`Increase quantity for ${def.name}`}
+                    />
                     {RESTAURANT_MODE ? (
                       <BulkPresets
                         value={quantity}
@@ -402,21 +412,16 @@ export function MarketIngredients({
                         {message}
                       </p>
                     ) : null}
-                    <KButton
-                      full
-                      variant={quote.verdict === "ok" ? "copper" : "ghost"}
-                      className="mt-auto h-12 px-2 text-[12.5px]"
-                      onClick={() => handlePurchase(id)}
-                    >
-                      Buy {quantity} {unit} · {formatUsd(quote.totalCost)}
-                    </KButton>
+                    <div className="mt-auto pt-2">
+                      <BuyButton
+                        tone={quote.verdict === "ok" ? "go" : "short"}
+                        onClick={() => handlePurchase(id)}
+                      >
+                        Buy {quantity} {unit} · {formatUsd(quote.totalCost)}
+                      </BuyButton>
+                    </div>
                     {/* What the purchase does, before the tap — the same verdict the purchase makes. */}
-                    <p
-                      className={cn(
-                        "wallet-line mt-1 text-center font-ui text-[12px] font-bold leading-tight",
-                        quote.verdict === "ok" ? "text-walnut/65" : "text-copper",
-                      )}
-                    >
+                    <WalletLine warn={quote.verdict !== "ok"}>
                       {quote.verdict === "exceedsShortageLimit"
                         ? `Limited to ${formatStockAmount(id, quote.maxQuantity ?? 0, measure)} today.`
                         : quote.verdict === "insufficientFunds"
@@ -426,11 +431,11 @@ export function MarketIngredients({
                             : quantity >= LARGE_PURCHASE_QUANTITY
                               ? `You'll have ${balanceText(quote.remainingCredits)} remaining`
                               : `${balanceText(save.credits)} → ${balanceText(quote.remainingCredits)}`}
-                    </p>
+                    </WalletLine>
                     {quote.verdict === "insufficientFunds" ? (
                       <ShortfallOffer price={quote.totalCost} />
                     ) : null}
-                  </article>
+                  </ShopCard>
                 );
               })}
             </div>

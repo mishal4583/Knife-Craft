@@ -1,5 +1,6 @@
 import { MarketSecondFloor } from "./MarketSecondFloor";
 import { ShopItemArt } from "./common/ShopItemArt";
+import { BuyButton, PricePill, ShopCard, ShopLine } from "./market/ShopCard";
 import { marketNeeds } from "@/game/restaurant/marketNeeds";
 import type { SecondFloorAction } from "./restaurantMap/SecondFloorView";
 import type { FloorResult } from "@/game/restaurant/secondFloor";
@@ -505,6 +506,7 @@ export function Shop({
                 type="button"
                 aria-current={active ? "page" : undefined}
                 onClick={() => selectCategory(item.id)}
+                data-category={item.id}
                 data-needs={needCount[item.id] || undefined}
                 className={cn(
                   "press relative flex h-[64px] flex-col items-center justify-center gap-0.5 rounded-[18px] border px-1",
@@ -583,7 +585,7 @@ export function Shop({
               upgradeKnife={upgradeKnife}
             />
           ) : (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3 max-[359px]:grid-cols-1 land:grid-cols-3">
               {cards.map((card) => (
                 <ProductCard key={card.id} card={card} />
               ))}
@@ -614,19 +616,26 @@ function EmojiVisual({ emoji }: { emoji: string }) {
 
 function ProductCard({ card }: { card: Card }) {
   const { action } = card;
+  const owned = action.kind === "equipped" || action.kind === "owned";
   return (
-    <article className="product-card relative flex flex-col rounded-[20px] border border-walnut/15 p-3 card-warm">
-      <span className="absolute right-2.5 top-2.5 z-10">
-        <InfoTip label={`About ${card.name}`}>{card.description}</InfoTip>
-      </span>
-      <ShopItemArt
-        icon={card.visual}
-        className={cn(card.locked && "opacity-55 grayscale-[0.35]")}
-      />
-      <p className="mt-2 text-center font-display text-[14.5px] font-black leading-tight text-walnut-dark">
-        {card.name}
-      </p>
-      <div className="mt-2 space-y-1 rounded-[12px] bg-cream/70 px-2 py-1.5">
+    <ShopCard
+      title={card.name}
+      ring={owned ? "owned" : null}
+      art={
+        <ShopItemArt
+          icon={card.visual}
+          className={cn(card.locked && "opacity-55 grayscale-[0.35]")}
+        >
+          <InfoTip label={`About ${card.name}`}>{card.description}</InfoTip>
+        </ShopItemArt>
+      }
+    >
+      {/^\$/.test(card.price) ? (
+        <PricePill price={card.price} />
+      ) : (
+        <ShopLine className="font-display text-[15px] font-black">{card.price}</ShopLine>
+      )}
+      <div className="mt-2 space-y-1 rounded-[12px] border border-walnut/10 bg-ivory/60 px-2 py-1.5">
         {card.stats.map(([label, value]) => (
           <div key={label} className="flex justify-between gap-2 font-ui text-[11px]">
             <span className="text-walnut/60">{label}</span>
@@ -635,35 +644,36 @@ function ProductCard({ card }: { card: Card }) {
         ))}
       </div>
       <div className="mt-auto pt-2">
-        <p className="mb-1.5 text-center font-ui text-[13.5px] font-extrabold text-walnut-dark">
-          {card.price}
-        </p>
         {action.kind === "equipped" ? (
-          <KButton full size="sm" variant="sage" disabled>
-            {action.label ?? "Equipped"}
-          </KButton>
+          <BuyButton tone="done" disabled>
+            ✓ {action.label ?? "Equipped"}
+          </BuyButton>
         ) : action.kind === "owned" ? (
-          <KButton full size="sm" variant="sage" disabled>
+          <BuyButton tone="done" disabled>
             {action.label}
-          </KButton>
+          </BuyButton>
         ) : action.kind === "equip" ? (
-          <KButton full size="sm" variant="cream" onClick={action.onClick}>
+          <BuyButton tone="wood" icon={false} onClick={action.onClick}>
             Equip
-          </KButton>
+          </BuyButton>
         ) : action.kind === "locked" ? (
           <div className="flex justify-center">
             <Badge tone="locked">🔒 {action.label.replace("Unlocks at Level", "Lv")}</Badge>
           </div>
         ) : (
           <>
-            <KButton full size="sm" onClick={action.onClick} disabled={action.disabled ?? false}>
+            <BuyButton
+              tone={action.disabled ? "short" : "go"}
+              onClick={action.onClick}
+              disabled={action.disabled ?? false}
+            >
               {action.label}
-            </KButton>
+            </BuyButton>
             {action.price ? <ShortfallOffer price={action.price} item={card.name} /> : null}
           </>
         )}
       </div>
-    </article>
+    </ShopCard>
   );
 }
 
@@ -852,38 +862,49 @@ function Blacksmith({
         </div>
       </Panel>
 
-      <div className="forge-grid space-y-3">
+      <div className="forge-grid space-y-3 land:grid land:grid-cols-3 land:gap-3 land:space-y-0">
         {BLACKSMITH_STATS.map((stat) => {
           const { name, short, detail, emoji } = forgeCopy[stat];
           const level = levels[stat];
           const cost = upgradeCost(level);
           const maxed = cost === null;
           return (
-            <Panel key={stat} className="p-4">
-              <div className="flex items-center justify-between gap-3">
-                <p className="font-display text-[17.5px] font-black leading-tight text-walnut-dark">
+            <ShopCard
+              key={stat}
+              data-forge={stat}
+              title={
+                <>
                   <span aria-hidden>{emoji}</span> {name}
-                </p>
+                </>
+              }
+            >
+              <div className="flex justify-center">
                 <Badge tone={maxed ? "sage" : "copper"}>
                   {maxed ? `Level ${level} · Mastered` : `Level ${level} → ${level + 1}`}
                 </Badge>
               </div>
-              <p className="mt-1 flex items-center gap-1.5 font-hand text-[15px] leading-tight text-walnut/70">
+              <ShopLine hand>
                 <span>{short}</span>
                 <InfoTip label={`About ${name}`}>{detail}</InfoTip>
-              </p>
-              <p className="mt-2 rounded-[12px] bg-cream/70 px-3 py-1.5 font-ui text-[12px] font-bold text-walnut-dark">
+              </ShopLine>
+              <p className="mt-2 rounded-[12px] border border-walnut/10 bg-ivory/60 px-3 py-1.5 text-center font-ui text-[12px] font-bold text-walnut-dark">
                 {previewText(stat, forgePreview(knife, levels, stat))}
               </p>
               <div className="mt-3 space-y-2">
-                <KButton
-                  full
-                  size="sm"
-                  disabled={maxed || save.credits < (cost ?? Infinity)}
-                  onClick={() => report(upgradeKnife(knife.id, stat), stat, cost ?? 0)}
-                >
-                  {maxed ? "Mastered" : `Upgrade · ${formatUsd(cost ?? 0)}`}
-                </KButton>
+                {maxed ? (
+                  <BuyButton tone="done" disabled>
+                    ✓ Mastered
+                  </BuyButton>
+                ) : (
+                  <BuyButton
+                    tone={save.credits < (cost ?? Infinity) ? "short" : "go"}
+                    icon={false}
+                    disabled={save.credits < (cost ?? Infinity)}
+                    onClick={() => report(upgradeKnife(knife.id, stat), stat, cost ?? 0)}
+                  >
+                    ⚒️ Upgrade · {formatUsd(cost ?? 0)}
+                  </BuyButton>
+                )}
                 {!maxed && save.credits < (cost ?? 0) && (
                   <>
                     <p className="text-center font-hand text-[14px] text-walnut/65">
@@ -893,7 +914,7 @@ function Blacksmith({
                   </>
                 )}
               </div>
-            </Panel>
+            </ShopCard>
           );
         })}
       </div>

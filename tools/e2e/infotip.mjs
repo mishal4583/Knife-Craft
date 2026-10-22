@@ -78,7 +78,13 @@ check(
 
 await tap(0);
 const open2 = await bubble(page);
-await page.mouse.click(160, 40);
+// "Outside": the first card's name plank (2026-10-22: with one card a row at 320 px the old
+// fixed point (160, 40) landed on a Market tab and switched the tab).
+const outside = await page.$eval(".product-card .shop-card__title", (t) => {
+  const r = t.getBoundingClientRect();
+  return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+});
+await page.mouse.click(outside.x, outside.y);
 await sleep(300);
 const open3 = await bubble(page);
 check("2 one bubble at a time; a tap outside closes it", open2.length === 1 && open3.length === 0, {

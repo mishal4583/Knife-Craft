@@ -1,5 +1,14 @@
 import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
-import { ShopItemArt } from "./common/ShopItemArt";
+import { ShopItemArt, StockPill } from "./common/ShopItemArt";
+import {
+  BuyButton,
+  CrateIcon,
+  PricePill,
+  ShopCard,
+  ShopLine,
+  WalletLine,
+  WoodStepper,
+} from "./market/ShopCard";
 import { BULK_MAX_PACKS, bulkDiscountFor } from "@/game/restaurant/bulkBuying";
 import { BulkPresets } from "./BulkPresets";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -277,26 +286,30 @@ export function MarketSupplies({
         ))}
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-3 max-[359px]:grid-cols-1 land:grid-cols-3">
         {items.map((item) => {
           const n = packsFor(item.id);
           const quote = supplyQuote(save, item, n, bulk(item, n));
           const onHand = supplyUnits(supplies, item.id);
           const message = messages[item.id];
           return (
-            <article
+            <ShopCard
               key={item.id}
               ref={item.id === focusItem?.id ? focusRef : undefined}
               data-supply={item.id}
               data-needed={needs[item.id]?.when}
-              className={cn(
-                "product-card flex flex-col rounded-[20px] border p-3 card-warm",
-                item.id === focusItem?.id
-                  ? "border-copper ring-2 ring-copper/60"
-                  : needs[item.id]
-                    ? "border-copper/70 ring-1 ring-copper/40"
-                    : "border-walnut/15",
-              )}
+              ring={item.id === focusItem?.id ? "focus" : needs[item.id] ? "need" : null}
+              title={item.name}
+              art={
+                <ShopItemArt icon={item.icon}>
+                  {onHand > 0 ? (
+                    <StockPill
+                      amount={onHand.toLocaleString("en-US")}
+                      label={isConsumableSupply(item) ? "left" : "owned"}
+                    />
+                  ) : null}
+                </ShopItemArt>
+              }
             >
               {needs[item.id] ? (
                 <NeedNote
@@ -304,51 +317,29 @@ export function MarketSupplies({
                   unit={needs[item.id]!.buy === 1 ? "pack" : "packs"}
                 />
               ) : null}
-              <ShopItemArt icon={item.icon}>
-                {onHand > 0 ? (
-                  <Badge tone="sage">
-                    {onHand.toLocaleString("en-US")} {isConsumableSupply(item) ? "left" : "owned"}
-                  </Badge>
-                ) : null}
-              </ShopItemArt>
-              <p className="mt-1 font-display text-[14.5px] font-black leading-tight text-walnut-dark">
-                {item.name}
-              </p>
-              <p className="font-ui text-[12.5px] font-extrabold text-copper">
-                {formatUsd(quote.packPrice)}
-                <span className="font-bold text-walnut/60">
-                  {" "}
-                  / {item.packSize === 1 ? unitLabel(item, 1) : `pack of ${item.packSize}`}
-                </span>
-              </p>
-              <p className="font-hand text-[14px] leading-tight text-walnut/60">
+              <PricePill
+                price={formatUsd(quote.packPrice)}
+                per={item.packSize === 1 ? unitLabel(item, 1) : "pack"}
+              />
+              {item.packSize > 1 ? (
+                <ShopLine>
+                  <CrateIcon size={18} />
+                  {n === 1
+                    ? `${item.packSize.toLocaleString("en-US")} ${unitLabel(item, item.packSize)} a pack`
+                    : `${quote.units.toLocaleString("en-US")} ${unitLabel(item, quote.units)}`}
+                </ShopLine>
+              ) : null}
+              <ShopLine hand>
                 {item.group} · retail {formatUsd(item.retailPackCents)}
-              </p>
-              <div className="mt-2 flex items-center justify-between">
-                <button
-                  type="button"
-                  onClick={() => step(item.id, -1)}
-                  className="press grid h-12 w-12 place-items-center rounded-full border border-walnut/20 bg-ivory font-ui text-[18px] font-black text-walnut-dark"
-                  aria-label={`Fewer packs of ${item.name}`}
-                >
-                  −
-                </button>
-                <span className="text-center font-ui text-[12.5px] font-extrabold leading-tight text-walnut-dark">
-                  {n} pack{n === 1 ? "" : "s"}
-                  <br />
-                  <span className="font-bold text-walnut/60">
-                    {quote.units.toLocaleString("en-US")} {unitLabel(item, quote.units)}
-                  </span>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => step(item.id, 1)}
-                  className="press grid h-12 w-12 place-items-center rounded-full border border-walnut/20 bg-ivory font-ui text-[18px] font-black text-walnut-dark"
-                  aria-label={`More packs of ${item.name}`}
-                >
-                  +
-                </button>
-              </div>
+              </ShopLine>
+              <WoodStepper
+                value={n}
+                sub={`pack${n === 1 ? "" : "s"}`}
+                onMinus={() => step(item.id, -1)}
+                onPlus={() => step(item.id, 1)}
+                minusLabel={`Fewer packs of ${item.name}`}
+                plusLabel={`More packs of ${item.name}`}
+              />
               {wholesale(item) ? (
                 <BulkPresets
                   value={n}
@@ -370,28 +361,23 @@ export function MarketSupplies({
                   {message}
                 </p>
               ) : null}
-              <KButton
-                full
-                variant={quote.verdict === "ok" ? "copper" : "ghost"}
-                className="mt-auto h-12 px-2 text-[12.5px]"
-                onClick={() => handleBuy(item.id)}
-              >
-                Buy · {formatUsd(quote.totalCost)}
-              </KButton>
-              <p
-                className={cn(
-                  "wallet-line mt-1 text-center font-ui text-[12px] font-bold leading-tight",
-                  quote.verdict === "ok" ? "text-walnut/65" : "text-copper",
-                )}
-              >
+              <div className="mt-auto pt-2">
+                <BuyButton
+                  tone={quote.verdict === "ok" ? "go" : "short"}
+                  onClick={() => handleBuy(item.id)}
+                >
+                  Buy · {formatUsd(quote.totalCost)}
+                </BuyButton>
+              </div>
+              <WalletLine warn={quote.verdict !== "ok"}>
                 {quote.verdict === "insufficientFunds"
                   ? notEnoughMoneyText(quote.totalCost, save.credits)
                   : `${balanceText(save.credits)} → ${balanceText(quote.remainingCredits)}`}
-              </p>
+              </WalletLine>
               {quote.verdict === "insufficientFunds" ? (
                 <ShortfallOffer price={quote.totalCost} />
               ) : null}
-            </article>
+            </ShopCard>
           );
         })}
       </div>

@@ -1,5 +1,6 @@
 import { Badge, KButton, Panel } from "./common/primitives";
-import { ShopItemArt } from "./common/ShopItemArt";
+import { ShopItemArt, StockPill } from "./common/ShopItemArt";
+import { BuyButton, PricePill, ShopCard, ShopLine } from "./market/ShopCard";
 import { ShortfallOffer } from "./ads/ShortfallOffer";
 import { InfoTip, Points, StatChip } from "./common/InfoTip";
 import { cn } from "@/lib/utils";
@@ -112,7 +113,7 @@ export function MarketSecondFloor({
         <h3 className="mb-2 font-ui text-[12px] font-extrabold uppercase tracking-[0.14em] text-copper">
           Machines
         </h3>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3 max-[359px]:grid-cols-1 land:grid-cols-3">
           {STATIONS.map((d) => {
             const o = floor.stations[d.id];
             const locked = !isStationUnlocked(d, level);
@@ -121,29 +122,24 @@ export function MarketSecondFloor({
             const nextGain =
               o && lvl < MAX_STATION_LEVEL ? d.perHour[lvl]! - d.perHour[lvl - 1]! : 0;
             return (
-              <article
+              <ShopCard
                 key={d.id}
                 data-floor-machine={d.id}
-                className={cn(
-                  "product-card flex flex-col rounded-[20px] border p-3 card-warm",
-                  o ? "border-sage/40" : "border-walnut/15",
-                )}
+                ring={o ? "owned" : null}
+                title={d.name}
+                art={
+                  <ShopItemArt icon={d.icon} className={cn(locked && "opacity-60 grayscale-[0.3]")}>
+                    <span className="flex items-center gap-1">
+                      {o ? <StockPill amount={`Lv ${lvl}`} label="owned" /> : null}
+                      <InfoTip label={`About the ${d.name}`}>{d.blurb}</InfoTip>
+                    </span>
+                  </ShopItemArt>
+                }
               >
-                <ShopItemArt icon={d.icon}>
-                  {o ? <Badge tone="sage">Lv {lvl}</Badge> : null}
-                </ShopItemArt>
-                <div className="mt-1 flex items-start gap-1.5">
-                  <p className="min-w-0 flex-1 font-display text-[14.5px] font-black leading-tight text-walnut-dark">
-                    {d.name}
-                  </p>
-                  <InfoTip label={`About the ${d.name}`}>{d.blurb}</InfoTip>
-                </div>
                 {!o ? (
                   <>
-                    <p className="mt-1 font-ui text-[13px] font-extrabold text-copper">
-                      {formatUsd(d.price)}
-                    </p>
-                    <div className="mt-1 flex flex-wrap gap-1">
+                    <PricePill price={formatUsd(d.price)} />
+                    <div className="mt-1.5 flex flex-wrap justify-center gap-1">
                       <StatChip
                         icon="⏱"
                         tone="sage"
@@ -159,23 +155,23 @@ export function MarketSecondFloor({
                       </StatChip>
                     </div>
                     <div className="mt-auto pt-2">
-                      <KButton
-                        full
-                        className="h-12 px-2 text-[12.5px]"
+                      <BuyButton
+                        tone={locked || save.credits < d.price ? "short" : "go"}
+                        icon={!locked}
                         disabled={locked || save.credits < d.price}
                         onClick={() => run({ kind: "buy", id: d.id }, d.name, d.price)}
                       >
                         {locked ? `🔒 Level ${d.unlockLevel}` : `Buy ${formatUsd(d.price)}`}
-                      </KButton>
+                      </BuyButton>
                       {locked ? null : <ShortfallOffer price={d.price} item={d.name} />}
                     </div>
                   </>
                 ) : next !== null ? (
                   <>
-                    <p className="mt-1 font-ui text-[12.5px] font-extrabold text-walnut-dark">
+                    <ShopLine>
                       ⏱ {formatUsd(d.perHour[lvl - 1]!)}/h → {formatUsd(d.perHour[lvl]!)}/h
-                    </p>
-                    <div className="mt-1 flex flex-wrap gap-1">
+                    </ShopLine>
+                    <div className="mt-1.5 flex flex-wrap justify-center gap-1">
                       <StatChip
                         icon="↩"
                         title={`The upgrade pays back in about ${hours(next, nextGain)} hours`}
@@ -187,26 +183,27 @@ export function MarketSecondFloor({
                       </StatChip>
                     </div>
                     <div className="mt-auto pt-2">
-                      <KButton
-                        full
-                        className="h-12 px-2 text-[12.5px]"
-                        variant="sage"
+                      <BuyButton
+                        tone={save.credits < next ? "short" : "go"}
+                        icon={false}
                         disabled={save.credits < next}
                         onClick={() =>
                           run({ kind: "upgrade", id: d.id }, `${d.name} Lv ${lvl + 1}`, next)
                         }
                       >
                         {`Upgrade ${formatUsd(next)}`}
-                      </KButton>
+                      </BuyButton>
                       <ShortfallOffer price={next} item={d.name} />
                     </div>
                   </>
                 ) : (
-                  <p className="mt-auto pt-2 font-ui text-[12.5px] font-extrabold text-sage">
-                    ✓ Top level · {formatUsd(d.perHour[lvl - 1]!)}/h
-                  </p>
+                  <div className="mt-auto pt-2">
+                    <BuyButton tone="done" disabled>
+                      ✓ Top level · {formatUsd(d.perHour[lvl - 1]!)}/h
+                    </BuyButton>
+                  </div>
                 )}
-              </article>
+              </ShopCard>
             );
           })}
         </div>
@@ -216,45 +213,41 @@ export function MarketSecondFloor({
         <h3 className="mb-2 font-ui text-[12px] font-extrabold uppercase tracking-[0.14em] text-copper">
           Floor team · 1-time hire, no wages
         </h3>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3 max-[359px]:grid-cols-1 land:grid-cols-3">
           {(["server", "cleaner"] as const).map((role) => {
             const def = FLOOR_STAFF[role];
             const have = (role === "server" ? floor.servers : floor.cleaners) ?? 0;
             const need = role === "server" ? serversNeeded(floor) : cleanersNeeded(floor);
             return (
-              <article
+              <ShopCard
                 key={role}
                 data-floor-staff={role}
-                className="product-card flex flex-col rounded-[20px] border border-walnut/15 p-3 card-warm"
+                title={def.name}
+                art={
+                  <ShopItemArt icon={def.icon}>
+                    <span className="flex items-center gap-1">
+                      <Badge tone={have < need ? "copper" : "sage"}>
+                        {have} / {def.max}
+                      </Badge>
+                      <InfoTip label={`About the ${def.name}`}>{def.blurb}</InfoTip>
+                    </span>
+                  </ShopItemArt>
+                }
               >
-                <ShopItemArt icon={def.icon}>
-                  <Badge tone={have < need ? "copper" : "sage"}>
-                    {have} / {def.max}
-                  </Badge>
-                </ShopItemArt>
-                <div className="mt-1 flex items-start gap-1.5">
-                  <p className="min-w-0 flex-1 font-display text-[14.5px] font-black leading-tight text-walnut-dark">
-                    {def.name}
-                  </p>
-                  <InfoTip label={`About the ${def.name}`}>{def.blurb}</InfoTip>
-                </div>
-                <p className="mt-1 font-ui text-[12.5px] font-extrabold text-copper">
-                  {formatUsd(def.price)}
-                  <span className="font-bold text-walnut/60">
-                    {" "}
-                    ·{" "}
-                    {need > have
-                      ? `you need ${need}`
-                      : need === 0
-                        ? "for your first machine"
-                        : "enough"}
-                  </span>
-                </p>
+                <PricePill price={formatUsd(def.price)} />
+                <ShopLine hand>
+                  {need > have
+                    ? `you need ${need}`
+                    : need === 0
+                      ? "for your first machine"
+                      : "enough"}
+                </ShopLine>
                 <div className="mt-auto pt-2">
-                  <KButton
-                    full
-                    className="h-12 px-2 text-[12.5px]"
-                    variant="cream"
+                  <BuyButton
+                    tone={
+                      owned === 0 || have >= def.max || save.credits < def.price ? "short" : "go"
+                    }
+                    icon={false}
                     disabled={owned === 0 || have >= def.max || save.credits < def.price}
                     onClick={() => run({ kind: "hire", role }, def.name, def.price)}
                   >
@@ -263,12 +256,12 @@ export function MarketSecondFloor({
                       : have >= def.max
                         ? "Team full"
                         : `Hire ${formatUsd(def.price)}`}
-                  </KButton>
+                  </BuyButton>
                   {owned > 0 && have < def.max ? (
                     <ShortfallOffer price={def.price} item={def.name} />
                   ) : null}
                 </div>
-              </article>
+              </ShopCard>
             );
           })}
         </div>

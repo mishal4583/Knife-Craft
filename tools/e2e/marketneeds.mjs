@@ -72,7 +72,8 @@ const ing = await page.evaluate(() => {
   const cards = [...needed.querySelectorAll("[data-ingredient]")].map((c) => ({
     id: c.getAttribute("data-ingredient"),
     note: (c.querySelector('[data-testid="need-note"]')?.textContent ?? "").replace(/\s+/g, " "),
-    qty: (c.querySelector(".font-ui.text-\\[15\\.5px\\]")?.textContent ?? "").trim(),
+    // The stepper's value (market/ShopCard WoodStepper, 2026-10-22; was a font class).
+    qty: (c.querySelector('[data-testid="stepper-value"]')?.textContent ?? "").trim(),
   }));
   return {
     firstIsNeeded:

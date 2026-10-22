@@ -1,5 +1,13 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## Market shop cards redesigned (2026-10-22, `main`)
+
+- Every Market card now uses one kit (`kc/market/ShopCard.tsx`), after the developer's
+  reference: wooden frame, hanging name plank with leaves, produce crate picture with a
+  stock pill and chalk sign, coin price pill, wooden stepper, 5 / 10 crate tiles, green
+  leaf Buy button, wallet line. Logic and prices unchanged. REFERENCE §10 "Market shop
+  cards". Not uploaded to Playgama.
+
 ## Phone landscape (2026-10-22, `main`)
 
 - A phone on its side now fills the screen: a left rail instead of the bottom bar, wider

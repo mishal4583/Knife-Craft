@@ -423,7 +423,7 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   wallet can't cover them; wage = the Line Cook's figure, not balanced);
   closing from L91 writes End Business Day's payroll and fine ledger
   entries (it used to move money without them); bulk buying
-  (`restaurant/bulkBuying.ts`: presets 1/2/5/10 — developer 2026-10-17,
+  (`restaurant/bulkBuying.ts`: presets 1/2/5/10, the cards show 5 and 10 as tiles since 2026-10-22 — developer 2026-10-17,
   sized to real buys: ≤ 2.25 lb an ingredient a service, ≤ 9 lb for 3 days,
   1–2 supply packs; was 5/25/50/100 — tiers 3/5/8 % from 5/10/25,
   lowered from 25/50/100 on 2026-10-17 so the 5 and 10 presets save; the last price layer, consumables only, up to 100
@@ -2101,16 +2101,28 @@ not silently removed.
   cut, the cleaning, rotation mid-level), `cleaning-dirt-qa` L; `solver.mjs`
   `geometryFromCanvas` aims from the canvas's own box.
 
-### Market item showcase (developer 2026-10-21)
+### Market shop cards (developer 2026-10-21, redesigned 2026-10-22)
 
-- Every Market card (Knives, Cutting Boards, Ingredients, the supply sections,
-  the Second Floor) shows its item big on a lit display stand —
-  `components/kc/common/ShopItemArt.tsx` + `.shop-stage` in `styles.css` — the
-  way a game shop does, instead of a small emoji in the corner. The items are
-  still the catalog's emoji (and the knives' own glyph): there is no per-item
-  art. The owned / in-stock / level badge sits in the stand's corner and the
-  item moves down a little to clear it. Static (no animation). 112 px stand,
-  68 px item; under 360 px wide 96 px / 56 px.
+"Make the ingredient shop card exactly like this … improve all the shop cards."
+
+- One card kit, `components/kc/market/ShopCard.tsx` (+ `.shop-card*` / `.shop-stage*`
+  in `styles.css`), used by every Market card: Ingredients, the four supply sections,
+  Knives, Cutting Boards, the Second Floor machines and floor team, and the Blacksmith
+  upgrades (those have no picture, so they are not `product-card`s).
+- **Look:** a wooden frame with brass rivets; the name on a hanging cream plank with
+  ropes and leaves; the picture (`common/ShopItemArt.tsx`), a warm market stall with lamp
+  light: ingredients pile in a produce crate with a checked cloth and a chalkboard by
+  their group ("Fresh Produce", "Baked Today" …), everything else stands on the counter;
+  the dark green stock / owned pill (`StockPill`) top right; a parchment body.
+- **Body:** the price on a coin pill (`PricePill`), the details lines (`ShopLine`:
+  "1 kg ≈ 7 tomatoes", "🕒 7 days · 🍽 11 dishes", a supply's pack size), the wooden
+  − / + stepper (`WoodStepper`, 48 px buttons), the bulk sizes as crate tiles
+  (`BulkPresets`: 5 and 10 with their discount; 1 / 2 are on the stepper), the green
+  leaf Buy button (`BuyButton`: go / short / done / wood), the wallet before → after
+  (`WalletLine`). Every number is still the card's own quote.
+- **Sizes:** two cards a row on a phone (a narrow card drops the basket and trend icons,
+  `@container`), one a row under 360 px, three in phone landscape. Pictures 128 px
+  (108 px under 360 px), the item ≥ 56 px.
 - Browser: `tools/e2e/shopart.mjs`.
 
 ### Kitchen Moment cards — Phase 6 (developer 2026-10-21)

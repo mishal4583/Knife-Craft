@@ -53,7 +53,8 @@ const cards = () =>
   page.evaluate(() =>
     Object.fromEntries(
       [...document.querySelectorAll("article.product-card")].map((a) => [
-        a.querySelector("p")?.textContent?.trim(),
+        // The name is on the card's plank heading since the shop card redesign (2026-10-22).
+        a.querySelector("h3, p")?.textContent?.trim(),
         a.textContent.replace(/\s+/g, " "),
       ]),
     ),
@@ -130,15 +131,17 @@ check(
 );
 check(
   "1b cards say how many menu dishes use them (Butter: 🍽️ 1 dish, short copy 2026-10-16)",
-  /🍽️ 1 dish\b/.test(c["Butter"]) && /🍽️ \d+ dish/.test(c["Watermelon"]),
+  // The 🍽️ is a drawn cutlery icon since the shop card redesign (2026-10-22): the count stays.
+  /\b1 dish\b/.test(c["Butter"]) && /\b\d+ dish/.test(c["Watermelon"]),
   { butter: c["Butter"]?.slice(0, 80) },
 );
 check(
   "2a prices are per ingredient",
-  /\$0\.60\/lb/.test(c["Potato"]) &&
-    /\$1\.00\/lb/.test(c["Tomato"]) &&
-    /\$2\.60\/lb/.test(c["Asparagus"]) &&
-    /\$6\.50\/lb/.test(c["Salmon Fillet"]),
+  // "$0.60 / lb" on the coin pill since the shop card redesign (2026-10-22; was "$0.60/lb").
+  /\$0\.60\s*\/\s*lb/.test(c["Potato"]) &&
+    /\$1\.00\s*\/\s*lb/.test(c["Tomato"]) &&
+    /\$2\.60\s*\/\s*lb/.test(c["Asparagus"]) &&
+    /\$6\.50\s*\/\s*lb/.test(c["Salmon Fillet"]),
   { potato: c["Potato"]?.slice(0, 40), salmon: c["Salmon Fillet"]?.slice(0, 40) },
 );
 check(
@@ -159,7 +162,7 @@ await shot(page, "ingredients-1-cards");
 const before = await readSave(page);
 await page.evaluate(() => {
   const card = [...document.querySelectorAll("article.product-card")].find(
-    (a) => a.querySelector("p")?.textContent?.trim() === "Tomato",
+    (a) => a.querySelector("h3, p")?.textContent?.trim() === "Tomato",
   );
   [...card.querySelectorAll("button")].find((b) => /^Buy /.test(b.textContent.trim()))?.click();
 });
@@ -234,7 +237,7 @@ check(
 const poor = await readSave(page);
 await page.evaluate(() => {
   const card = [...document.querySelectorAll("article.product-card")].find(
-    (a) => a.querySelector("p")?.textContent?.trim() === "Tomato",
+    (a) => a.querySelector("h3, p")?.textContent?.trim() === "Tomato",
   );
   [...card.querySelectorAll("button")].find((b) => /^Buy /.test(b.textContent.trim()))?.click();
 });
@@ -269,7 +272,7 @@ check(
 const full = await readSave(page);
 await page.evaluate(() => {
   const card = [...document.querySelectorAll("article.product-card")].find(
-    (a) => a.querySelector("p")?.textContent?.trim() === "Tomato",
+    (a) => a.querySelector("h3, p")?.textContent?.trim() === "Tomato",
   );
   [...card.querySelectorAll("button")].find((b) => /^Buy /.test(b.textContent.trim()))?.click();
 });
