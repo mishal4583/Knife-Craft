@@ -82,46 +82,147 @@ export const TOUGHNESS: Record<StainKind, number> = {
   grease: 2.2,
 };
 
-export const DINING_TABLE_CENTERS: Record<KitchenMapArtStage, Point[]> = {
-  humble: [
-    { x: 175, y: 300 },
-    { x: 365, y: 650 },
-  ],
-  growing: [
-    { x: 170, y: 295 },
-    { x: 370, y: 295 },
-    { x: 270, y: 660 },
-  ],
-  established: [
-    { x: 170, y: 295 },
-    { x: 370, y: 295 },
-    { x: 170, y: 620 },
-    { x: 370, y: 620 },
-  ],
-  "neighborhood-cafe": [
-    { x: 170, y: 295 },
-    { x: 370, y: 295 },
-    { x: 170, y: 490 },
-    { x: 370, y: 490 },
-    { x: 270, y: 760 },
-  ],
-  "flourishing-cafe": [
-    { x: 170, y: 295 },
-    { x: 370, y: 295 },
-    { x: 170, y: 630 },
-    { x: 370, y: 630 },
-  ],
-  grand: [
-    { x: 100, y: 295 },
-    { x: 270, y: 295 },
-    { x: 440, y: 295 },
-    { x: 100, y: 490 },
-    { x: 270, y: 490 },
-    { x: 440, y: 490 },
-    { x: 100, y: 750 },
-    { x: 270, y: 750 },
-    { x: 440, y: 750 },
-  ],
+type Zone = { x: number; y: number; w: number; h: number };
+const rect = (x1: number, y1: number, x2: number, y2: number): Zone => ({
+  x: x1,
+  y: y1,
+  w: x2 - x1,
+  h: y2 - y1,
+});
+
+/**
+ * Each tier's painted room, in scene coordinates (540×960), measured from the
+ * art in public/cleanliness/interactive/ (2026-10-22): where the cooking line,
+ * worktops and floor are; the tables; the toilets, sinks, mirror and floor.
+ * The dirt goes on these surfaces only, so it sits on what would get dirty.
+ */
+type KitchenGeo = { line: Zone; islands: Zone[]; floor: Zone[] };
+export const KITCHEN_GEO: Record<KitchenMapArtStage, KitchenGeo> = {
+  humble: {
+    line: rect(120, 70, 435, 205),
+    islands: [rect(225, 262, 360, 470)],
+    floor: [rect(160, 540, 420, 760), rect(170, 215, 225, 520), rect(360, 215, 420, 520)],
+  },
+  growing: {
+    line: rect(80, 80, 500, 205),
+    islands: [rect(182, 275, 390, 470)],
+    floor: [rect(120, 540, 470, 780), rect(120, 230, 180, 520), rect(395, 230, 455, 520)],
+  },
+  established: {
+    line: rect(140, 130, 435, 222),
+    islands: [rect(210, 275, 360, 460)],
+    floor: [rect(150, 530, 440, 780), rect(150, 240, 205, 520), rect(365, 240, 420, 520)],
+  },
+  "neighborhood-cafe": {
+    line: rect(100, 110, 490, 205),
+    islands: [rect(172, 245, 400, 352), rect(172, 362, 400, 480)],
+    floor: [rect(140, 500, 460, 850), rect(120, 230, 165, 490)],
+  },
+  "flourishing-cafe": {
+    line: rect(125, 115, 455, 215),
+    islands: [rect(170, 285, 390, 405), rect(170, 495, 390, 605)],
+    floor: [rect(160, 620, 440, 860), rect(160, 412, 440, 488)],
+  },
+  grand: {
+    line: rect(112, 105, 468, 190),
+    islands: [rect(165, 252, 412, 340), rect(165, 432, 412, 548)],
+    floor: [rect(140, 570, 445, 830), rect(165, 350, 412, 425)],
+  },
+};
+
+/** The dining tables' centres and half-size per tier. */
+export const DINING_TABLES: Record<KitchenMapArtStage, { centers: Point[]; half: number }> = {
+  humble: {
+    centers: [
+      { x: 268, y: 293 },
+      { x: 268, y: 668 },
+    ],
+    half: 70,
+  },
+  growing: {
+    centers: [
+      { x: 165, y: 243 },
+      { x: 378, y: 243 },
+      { x: 270, y: 485 },
+    ],
+    half: 45,
+  },
+  established: {
+    centers: [
+      { x: 162, y: 252 },
+      { x: 387, y: 252 },
+      { x: 162, y: 527 },
+      { x: 387, y: 527 },
+    ],
+    half: 50,
+  },
+  "neighborhood-cafe": {
+    centers: [
+      { x: 155, y: 217 },
+      { x: 388, y: 217 },
+      { x: 152, y: 463 },
+      { x: 388, y: 463 },
+      { x: 272, y: 708 },
+    ],
+    half: 48,
+  },
+  "flourishing-cafe": {
+    centers: [
+      { x: 143, y: 267 },
+      { x: 397, y: 267 },
+      { x: 143, y: 558 },
+      { x: 397, y: 558 },
+    ],
+    half: 55,
+  },
+  grand: {
+    centers: [100, 270, 440].flatMap((x) => [200, 417, 633].map((y) => ({ x, y }))),
+    half: 38,
+  },
+};
+/** The tables' centres per tier (kept for callers of the old name). */
+export const DINING_TABLE_CENTERS: Record<KitchenMapArtStage, Point[]> = Object.fromEntries(
+  Object.entries(DINING_TABLES).map(([k, v]) => [k, v.centers]),
+) as Record<KitchenMapArtStage, Point[]>;
+
+type RestroomGeo = { bowls: Zone[]; sinks: Zone; mirror: Zone; floor: Zone[] };
+export const RESTROOM_GEO: Record<KitchenMapArtStage, RestroomGeo> = {
+  humble: {
+    bowls: [rect(100, 150, 162, 230), rect(258, 150, 320, 230), rect(402, 175, 450, 250)],
+    sinks: rect(425, 375, 490, 545),
+    mirror: rect(492, 340, 518, 560),
+    floor: [rect(70, 340, 400, 860)],
+  },
+  growing: {
+    bowls: [rect(92, 175, 156, 250), rect(215, 175, 278, 250), rect(330, 180, 378, 250)],
+    sinks: rect(392, 278, 458, 470),
+    mirror: rect(462, 270, 490, 480),
+    floor: [rect(70, 330, 380, 870)],
+  },
+  established: {
+    bowls: [rect(66, 160, 116, 265), rect(175, 160, 233, 255), rect(316, 160, 374, 255)],
+    sinks: rect(400, 345, 482, 625),
+    mirror: rect(485, 320, 508, 640),
+    floor: [rect(70, 345, 390, 850)],
+  },
+  "neighborhood-cafe": {
+    bowls: [rect(90, 135, 150, 240), rect(216, 135, 278, 240), rect(342, 140, 390, 245)],
+    sinks: rect(426, 240, 490, 410),
+    mirror: rect(494, 110, 528, 345),
+    floor: [rect(70, 330, 410, 900)],
+  },
+  "flourishing-cafe": {
+    bowls: [rect(86, 120, 130, 230), rect(202, 120, 255, 230), rect(318, 120, 370, 230)],
+    sinks: rect(426, 215, 504, 420),
+    mirror: rect(505, 200, 530, 430),
+    floor: [rect(70, 300, 415, 900)],
+  },
+  grand: {
+    bowls: [rect(92, 85, 150, 160), rect(222, 70, 268, 170), rect(324, 85, 384, 160)],
+    sinks: rect(430, 285, 524, 540),
+    mirror: rect(508, 140, 532, 280),
+    floor: [rect(70, 310, 415, 920)],
+  },
 };
 
 /** The room-wide practice's tasks per room. */
@@ -163,99 +264,70 @@ function hash(text: string): number {
   return h >>> 0;
 }
 
-type Zone = { x: number; y: number; w: number; h: number };
-
-/** Where a task's dirt can be: the surfaces of the room's painting. */
+/** Where a task's dirt can be: the surfaces of the tier's painting. */
 export function dirtZones(area: CleanArea, task: TaskKind, stage: KitchenMapArtStage): Zone[] {
-  const dimensions = SCENE_SIZE[area];
   if (area === "kitchen") {
-    if (task === "sweep-line")
-      return [
-        { x: 38, y: 350, w: 105, h: 440 },
-        { x: 397, y: 350, w: 105, h: 440 },
-        { x: 145, y: 720, w: 250, h: 70 },
-      ];
-    if (task === "deep-kitchen")
-      return [
-        { x: 48, y: 270, w: 444, h: 120 },
-        { x: 120, y: 385, w: 300, h: 285 },
-        { x: 40, y: 660, w: 460, h: 140 },
-      ];
-    if (task === "equipment")
-      return [
-        { x: 55, y: 270, w: 430, h: 125 },
-        { x: 135, y: 390, w: 270, h: 245 },
-      ];
-    return [{ x: 55, y: 270, w: 430, h: 125 }];
+    const g = KITCHEN_GEO[stage];
+    if (task === "sweep-line") return g.floor;
+    if (task === "deep-kitchen") return [g.line, ...g.islands, ...g.floor];
+    if (task === "equipment") return [g.line, ...g.islands];
+    return [g.line];
   }
   if (area === "dining") {
-    const tables = DINING_TABLE_CENTERS[stage];
-    const tableZones = tables.flatMap(({ x, y }) => [
-      { x: x - 42, y: y - 32, w: 84, h: 12 },
-      { x: x - 42, y: y + 20, w: 84, h: 12 },
-      { x: x - 42, y: y - 20, w: 12, h: 40 },
-      { x: x + 30, y: y - 20, w: 12, h: 40 },
+    const { centers, half } = DINING_TABLES[stage];
+    // On the tabletops, inside their edges.
+    const tops = centers.map(({ x, y }) =>
+      rect(x - half * 0.62, y - half * 0.5, x + half * 0.62, y + half * 0.5),
+    );
+    // The floor between the tables: the gaps around each one, inside the room's walls.
+    const floor = centers.flatMap(({ x, y }) => [
+      rect(
+        Math.max(40, x - half * 1.9),
+        y + half * 1.05,
+        Math.min(500, x + half * 1.9),
+        y + half * 1.55,
+      ),
+      rect(
+        Math.max(40, x - half * 1.9),
+        y - half * 1.55,
+        Math.min(500, x + half * 1.9),
+        y - half * 1.1,
+      ),
     ]);
-    const rows = [...new Set(tables.map(({ y }) => y))].sort((a, b) => a - b);
-    const last = rows[rows.length - 1] ?? 185;
-    const floorZones = [
-      ...rows.slice(0, -1).map((row, i) => ({
-        x: 12,
-        y: row + 45,
-        w: 531,
-        h: Math.max(20, rows[i + 1]! - row - 90),
-      })),
-      { x: 12, y: last + 48, w: 531, h: Math.max(20, Math.min(790, dimensions.height) - last - 48) },
-      { x: 12, y: 150, w: 44, h: 620 },
-      { x: 500, y: 150, w: 31, h: 620 },
-    ];
     if (task === "spill") {
       const c = spillCenter(stage);
-      return [{ x: c.x - 48, y: c.y - 35, w: 95, h: 70 }];
+      return [rect(c.x - 48, c.y - 35, c.x + 48, c.y + 35)];
     }
-    if (task === "floor" || task === "mop-all") return floorZones;
-    if (task === "tables") return tableZones;
-    return [...floorZones, ...tableZones];
+    if (task === "floor" || task === "mop-all") return floor;
+    if (task === "tables") return tops;
+    return [...floor, ...tops];
   }
-  if (task === "restroom-floor")
-    return [
-      { x: 55, y: 425, w: 420, h: 370 },
-      { x: 190, y: 335, w: 185, h: 115 },
-    ];
-  if (task === "restroom-disinfect")
-    return [
-      { x: 390, y: 260, w: 132, h: 100 }, // mirror
-      { x: 390, y: 335, w: 132, h: 170 }, // upper sink and tap
-      { x: 390, y: 510, w: 132, h: 170 }, // lower sink and tap
-    ];
-  if (task === "toilet")
-    return [
-      { x: 55, y: 270, w: 185, h: 140 }, // toilet bowl and rim
-      { x: 245, y: 270, w: 130, h: 140 }, // urinal bowl
-    ];
-  return [
-    { x: 45, y: 270, w: 330, h: 135 },
-    { x: 385, y: 260, w: 135, h: 420 },
-    { x: 55, y: 430, w: 420, h: 365 },
-  ];
+  const g = RESTROOM_GEO[stage];
+  if (task === "restroom-floor") return g.floor;
+  if (task === "restroom-disinfect") return [g.sinks, g.mirror];
+  if (task === "toilet") return g.bowls;
+  return [...g.bowls, g.sinks, ...g.floor];
 }
 
-/** The dining spill sits between the first two rows of tables. */
+/** The dining spill sits on the floor between the first two rows of tables. */
 export function spillCenter(stage: KitchenMapArtStage): Point {
-  const rows = [...new Set(DINING_TABLE_CENTERS[stage].map(({ y }) => y))].sort((a, b) => a - b);
-  const last = rows[rows.length - 1] ?? 185;
-  return {
-    x: SCENE_SIZE.dining.width * 0.52,
-    y: rows.length > 1 ? (rows[0]! + rows[1]!) / 2 : Math.max(70, last - 120),
-  };
+  const { centers, half } = DINING_TABLES[stage];
+  const rows = [...new Set(centers.map(({ y }) => y))].sort((a, b) => a - b);
+  const y = rows.length > 1 ? (rows[0]! + rows[1]!) / 2 : rows[0]! + half * 1.6;
+  return { x: SCENE_SIZE.dining.width * 0.5, y };
 }
 
-/** The cooktop's grease streaks (kitchen grease tasks). */
-const GREASE_STREAKS: readonly [number, number, number, number][] = [
-  [92, 270, 440, 270],
-  [100, 310, 420, 310],
-  [130, 350, 400, 350],
-];
+/** The cooktop's grease streaks: three runs along the tier's cooking line. */
+function greaseStreaks(stage: KitchenMapArtStage): [number, number, number, number][] {
+  const { line } = KITCHEN_GEO[stage];
+  const x1 = line.x + line.w * 0.1;
+  const x2 = line.x + line.w * 0.9;
+  return [0.3, 0.55, 0.8].map((f, i) => {
+    const y = line.y + line.h * f;
+    const inset = i * line.w * 0.06;
+    return [x1 + inset, y, x2 - inset, y];
+  });
+}
 
 const pick = <T>(rnd: () => number, list: readonly T[]): T =>
   list[Math.floor(rnd() * list.length)]!;
@@ -290,19 +362,20 @@ function kindFor(
   }
 }
 
+/** Stain sizes (scene px), sized to read on a phone with the whole room on screen (2026-10-22). */
 const RADIUS: Record<StainKind, [number, number]> = {
-  sauce: [8, 15],
-  smear: [11, 18],
-  "coffee-ring": [8, 11],
-  crust: [6, 10],
-  grease: [10, 16],
-  crumbs: [9, 14],
-  scuff: [12, 19],
-  footprint: [9, 11],
-  puddle: [7, 10],
-  scale: [7, 12],
-  "water-spots": [7, 11],
-  grime: [11, 17],
+  sauce: [11, 19],
+  smear: [14, 23],
+  "coffee-ring": [11, 14],
+  crust: [8, 13],
+  grease: [12, 19],
+  crumbs: [12, 18],
+  scuff: [15, 24],
+  footprint: [11, 14],
+  puddle: [9, 13],
+  scale: [9, 15],
+  "water-spots": [9, 14],
+  grime: [14, 21],
 };
 
 function stainCount(area: CleanArea, task: TaskKind): number {
@@ -356,7 +429,7 @@ function taskStains(
   }
   // The cooktop's grease runs in streaks.
   if (area === "kitchen" && (task === "grease" || task === "degrease")) {
-    for (const [x1, y1, x2, y2] of GREASE_STREAKS) {
+    for (const [x1, y1, x2, y2] of greaseStreaks(stage)) {
       const len = Math.hypot(x2 - x1, y2 - y1);
       add({
         kind: "grease",
@@ -364,8 +437,8 @@ function taskStains(
         tool: "scraper",
         x: (x1 + x2) / 2,
         y: (y1 + y2) / 2,
-        r: 8,
-        stretch: len / 16,
+        r: 10,
+        stretch: len / 20,
         angle: Math.atan2(y2 - y1, x2 - x1),
       });
     }
@@ -391,7 +464,7 @@ function taskStains(
       task,
       tool:
         area === "restroom" && task === "restroom-disinfect"
-          ? x >= 440
+          ? zone === RESTROOM_GEO[stage].mirror
             ? "glass-cloth"
             : "sponge"
           : tool,

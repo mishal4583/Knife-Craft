@@ -21,24 +21,65 @@ import { reducedMotionOn } from "@/game/cashBurst";
 import { KButton } from "../common/primitives";
 import { paintStain, stainReach } from "./cleaning/dirtArt";
 import { CleaningFx } from "./cleaning/cleaningFx";
+import { CleaningToolIcon } from "./cleaning/CleaningToolIcon";
+import { TOOL_LOOK } from "./cleaning/toolLook";
 
 export type { CleaningToolId } from "@/game/restaurant/cleaningDirt";
 
 const TASK_COPY: Partial<Record<TaskKind, { title: string; instruction: string }>> = {
-  equipment: { title: "Clean the cooking equipment", instruction: "Scrub the sauce and splashes off the cooking line." },
-  grease: { title: "Degrease the stove and fryer", instruction: "Scrape the grease off the cooktop. It takes a few rubs." },
-  degrease: { title: "Degrease the hot equipment", instruction: "Scrape the cooktop until the grease is gone." },
-  "deep-kitchen": { title: "Deep clean the kitchen", instruction: "Clean the cooking line, worktop and service equipment." },
-  "sweep-line": { title: "Sweep the kitchen line", instruction: "Sweep the crumbs from the floor between the equipment." },
-  tables: { title: "Wipe and sanitize the tables", instruction: "Wipe the rings and food off the tables." },
-  floor: { title: "Sweep and mop the dining floor", instruction: "Mop the scuffs and footprints off the walkways." },
+  equipment: {
+    title: "Clean the cooking equipment",
+    instruction: "Scrub the sauce and splashes off the cooking line.",
+  },
+  grease: {
+    title: "Degrease the stove and fryer",
+    instruction: "Scrape the grease off the cooktop. It takes a few rubs.",
+  },
+  degrease: {
+    title: "Degrease the hot equipment",
+    instruction: "Scrape the cooktop until the grease is gone.",
+  },
+  "deep-kitchen": {
+    title: "Deep clean the kitchen",
+    instruction: "Clean the cooking line, worktop and service equipment.",
+  },
+  "sweep-line": {
+    title: "Sweep the kitchen line",
+    instruction: "Sweep the crumbs from the floor between the equipment.",
+  },
+  tables: {
+    title: "Wipe and sanitize the tables",
+    instruction: "Wipe the rings and food off the tables.",
+  },
+  floor: {
+    title: "Sweep and mop the dining floor",
+    instruction: "Mop the scuffs and footprints off the walkways.",
+  },
   spill: { title: "Clean up the spill", instruction: "Mop up the spilled drink and the splashes." },
-  "mop-all": { title: "Mop the dining area", instruction: "Mop every scuff and footprint off the floor." },
-  "deep-dining": { title: "Deep clean the dining area", instruction: "Clean the tables, floor edges and guest walkways." },
-  toilet: { title: "Clean the toilet and urinal", instruction: "Brush the limescale out of the bowls." },
-  "restroom-floor": { title: "Mop the restroom floor", instruction: "Mop the grime out of the tiles." },
-  "restroom-disinfect": { title: "Disinfect the restroom", instruction: "Polish the water spots off the mirror and taps." },
-  "deep-restroom": { title: "Deep clean the restroom", instruction: "Scrub the fixtures, floor and tile edges." },
+  "mop-all": {
+    title: "Mop the dining area",
+    instruction: "Mop every scuff and footprint off the floor.",
+  },
+  "deep-dining": {
+    title: "Deep clean the dining area",
+    instruction: "Clean the tables, floor edges and guest walkways.",
+  },
+  toilet: {
+    title: "Clean the toilet and urinal",
+    instruction: "Brush the limescale out of the bowls.",
+  },
+  "restroom-floor": {
+    title: "Mop the restroom floor",
+    instruction: "Mop the grime out of the tiles.",
+  },
+  "restroom-disinfect": {
+    title: "Disinfect the restroom",
+    instruction: "Polish the water spots off the mirror and taps.",
+  },
+  "deep-restroom": {
+    title: "Deep clean the restroom",
+    instruction: "Scrub the fixtures, floor and tile edges.",
+  },
 };
 
 export const ROOM_CLEANING_TESTS: readonly {
@@ -49,30 +90,57 @@ export const ROOM_CLEANING_TESTS: readonly {
   dirtCount: number;
   toolCount: number;
 }[] = [
-  { area: "kitchen", task: "equipment", title: "Kitchen close-down", subtitle: "Grease · food splashes · prep crumbs", dirtCount: 3, toolCount: 5 },
-  { area: "dining", task: "tables", title: "Dining reset", subtitle: "Crumbs · drink spill · floor marks", dirtCount: 3, toolCount: 4 },
-  { area: "restroom", task: "toilet", title: "Restroom refresh", subtitle: "Fixture scale · sink spots · floor grime", dirtCount: 3, toolCount: 4 },
+  {
+    area: "kitchen",
+    task: "equipment",
+    title: "Kitchen close-down",
+    subtitle: "Grease · food splashes · prep crumbs",
+    dirtCount: 3,
+    toolCount: 5,
+  },
+  {
+    area: "dining",
+    task: "tables",
+    title: "Dining reset",
+    subtitle: "Crumbs · drink spill · floor marks",
+    dirtCount: 3,
+    toolCount: 4,
+  },
+  {
+    area: "restroom",
+    task: "toilet",
+    title: "Restroom refresh",
+    subtitle: "Fixture scale · sink spots · floor grime",
+    dirtCount: 3,
+    toolCount: 4,
+  },
 ];
 
-const TOOLS: Record<CleanArea, readonly { id: CleaningToolId; icon: string; name: string; use: string }[]> = {
+type ToolEntry = { id: CleaningToolId; name: string; use: string };
+const tool = (id: CleaningToolId, use: string): ToolEntry => ({
+  id,
+  name: TOOL_LOOK[id].name,
+  use,
+});
+const TOOLS: Record<CleanArea, readonly ToolEntry[]> = {
   kitchen: [
-    { id: "sponge", icon: "🧽", name: "Sponge", use: "food splashes" },
-    { id: "cloth", icon: "🧻", name: "Sanitizer cloth", use: "prep surfaces" },
-    { id: "scraper", icon: "🪒", name: "Grill scraper", use: "baked-on grease" },
-    { id: "broom", icon: "🧹", name: "Broom", use: "dry crumbs" },
-    { id: "mop", icon: "🪣", name: "Floor mop", use: "wet floor marks" },
+    tool("sponge", "food splashes"),
+    tool("cloth", "worktops"),
+    tool("scraper", "baked-on grease"),
+    tool("broom", "dry crumbs"),
+    tool("mop", "wet floor marks"),
   ],
   dining: [
-    { id: "cloth", icon: "🧻", name: "Table cloth", use: "table smears" },
-    { id: "scraper", icon: "🪒", name: "Table scraper", use: "stuck-on food" },
-    { id: "broom", icon: "🧹", name: "Broom", use: "dry crumbs" },
-    { id: "mop", icon: "🪣", name: "Floor mop", use: "drink spills" },
+    tool("cloth", "table rings and smears"),
+    tool("scraper", "stuck-on food"),
+    tool("broom", "dry crumbs"),
+    tool("mop", "spills and scuffs"),
   ],
   restroom: [
-    { id: "toilet-brush", icon: "🪥", name: "Toilet brush", use: "toilet bowl" },
-    { id: "sponge", icon: "🧽", name: "Detail sponge", use: "sink and taps" },
-    { id: "glass-cloth", icon: "✨", name: "Glass cloth", use: "mirror spots" },
-    { id: "mop", icon: "🪣", name: "Restroom mop", use: "floor grime" },
+    tool("toilet-brush", "toilet bowls"),
+    tool("sponge", "sinks and taps"),
+    tool("glass-cloth", "the mirror"),
+    tool("mop", "floor grime"),
   ],
 };
 
@@ -95,7 +163,10 @@ function distanceToSegmentSquared(point: Point, start: Point, end: Point) {
   const dy = end.y - start.y;
   const length = dx * dx + dy * dy;
   if (!length) return (point.x - start.x) ** 2 + (point.y - start.y) ** 2;
-  const t = Math.max(0, Math.min(1, ((point.x - start.x) * dx + (point.y - start.y) * dy) / length));
+  const t = Math.max(
+    0,
+    Math.min(1, ((point.x - start.x) * dx + (point.y - start.y) * dy) / length),
+  );
   return (point.x - start.x - t * dx) ** 2 + (point.y - start.y - t * dy) ** 2;
 }
 
@@ -144,11 +215,21 @@ export function AreaCleaningPrototype({
   const [toast, setToast] = useState<{ text: string; key: number } | null>(null);
   const [phase, setPhase] = useState<"play" | "finale" | "spotless">("play");
   const [result, setResult] = useState<{ time: number; best: number } | null>(null);
+  /** A tool the player should switch to (its button glows). */
+  const [suggest, setSuggest] = useState<CleaningToolId | null>(null);
+  /** Where to rub next: shown at the start and after a few idle seconds (scene coordinates). */
+  const [guide, setGuide] = useState<{ x: number; y: number; tool: CleaningToolId } | null>(null);
+  const idleRef = useRef(0);
   const [activeTool, setActiveTool] = useState<CleaningToolId>(() =>
     roomWide ? TOOLS[area][0]!.id : toolForTask(area, task),
   );
+  const activeToolRef = useRef(activeTool);
+  activeToolRef.current = activeTool;
   const reduced = useMemo(() => reducedMotionOn(), []);
-  const stains = useMemo(() => makeStains(area, task, stage, roomWide), [area, roomWide, stage, task]);
+  const stains = useMemo(
+    () => makeStains(area, task, stage, roomWide),
+    [area, roomWide, stage, task],
+  );
   const marks = useMemo(() => stainMarks(stains, area), [area, stains]);
   // Everything that changes per stroke lives here, outside React state.
   const play = useMemo(
@@ -169,10 +250,7 @@ export function AreaCleaningPrototype({
   const copy = TASK_COPY[task];
   const dimensions = SCENE_SIZE[area];
   const roomTitle = area === "kitchen" ? "Kitchen" : area === "dining" ? "Dining area" : "Restroom";
-  const stageWidthLimit = Math.max(180, gameViewport.width);
   const stageHeightLimit = Math.max(320, gameViewport.height);
-  const stageScale = Math.min(stageWidthLimit / dimensions.width, stageHeightLimit / dimensions.height);
-  const stageDisplay = { width: dimensions.width * stageScale, height: dimensions.height * stageScale };
   const availableTools = roomWide
     ? TOOLS[area]
     : TOOLS[area].filter((tool) => marks.some((mark) => mark.tool === tool.id));
@@ -208,8 +286,10 @@ export function AreaCleaningPrototype({
     canvas.height = dimensions.height;
     play.sprites = stains.map(paintStain);
     draw();
+    setGuide(nextGuide(activeToolRef.current));
     const fxCanvas = fxCanvasRef.current;
-    if (fxCanvas && !reduced) fxRef.current = new CleaningFx(fxCanvas, dimensions.width, dimensions.height);
+    if (fxCanvas && !reduced)
+      fxRef.current = new CleaningFx(fxCanvas, dimensions.width, dimensions.height);
     const timers = timersRef.current;
     return () => {
       fxRef.current?.dispose();
@@ -218,10 +298,28 @@ export function AreaCleaningPrototype({
       rafRef.current = 0;
       timers.forEach((id) => window.clearTimeout(id));
       timers.clear();
+      window.clearTimeout(idleRef.current);
     };
     // draw reads refs only; the stains are fixed for this cleaning.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [portalTarget, stains, play, reduced]);
+
+  /** The next stain to point at: one the current tool cleans if any, else any left. */
+  function nextGuide(toolNow: CleaningToolId) {
+    const left = stains.filter((st) => !play.cleared[st.id]);
+    const pickOne = left.find((st) => st.tool === toolNow) ?? left[0];
+    return pickOne ? { x: pickOne.x, y: pickOne.y, tool: pickOne.tool } : null;
+  }
+  /** After 3.5 s without a scrub, point at a stain that's left (and its tool). */
+  function armIdleGuide() {
+    window.clearTimeout(idleRef.current);
+    idleRef.current = window.setTimeout(() => {
+      if (completeRef.current) return;
+      const g = nextGuide(activeToolRef.current);
+      setGuide(g);
+      if (g && g.tool !== activeToolRef.current) setSuggest(g.tool);
+    }, 3500);
+  }
 
   function draw() {
     const canvas = canvasRef.current;
@@ -304,7 +402,8 @@ export function AreaCleaningPrototype({
     progressRef.current = pct;
     setProgress(pct);
     const m = milestoneCrossed(from, pct);
-    if (m != null && pct < 100) {
+    // No cheer once the finale has started: "Spotless!" is the last word.
+    if (m != null && pct < 100 && !completeRef.current) {
       const key = performance.now();
       setToast({ text: MILESTONE_COPY[m]!, key });
       AudioManager.playComboMilestone(m);
@@ -321,23 +420,34 @@ export function AreaCleaningPrototype({
   /** Past the threshold: the last stains wipe themselves in a quick cascade, then "Spotless!". */
   function finale() {
     completeRef.current = true;
+    window.clearTimeout(idleRef.current);
+    setGuide(null);
+    setSuggest(null);
+    setToast(null);
+    setToolHint(null);
     setPhase("finale");
     setScrubbing(false);
     if (cursorRef.current) cursorRef.current.style.opacity = "0";
     const left = stains.filter((s) => !play.cleared[s.id]);
     const step = reduced ? 0 : 55;
     left.forEach((s, k) =>
-      later(() => {
-        marks.forEach((m, i) => {
-          if (m.stain === s.id) play.wear[i] = s.toughness;
-        });
-        clearStain(s.id);
-      }, step * (k + 1)),
+      later(
+        () => {
+          marks.forEach((m, i) => {
+            if (m.stain === s.id) play.wear[i] = s.toughness;
+          });
+          clearStain(s.id);
+        },
+        step * (k + 1),
+      ),
     );
     later(
       () => {
         setPct(100);
-        setResult({ time: performance.now() - (play.startedAt || performance.now()), best: play.best });
+        setResult({
+          time: performance.now() - (play.startedAt || performance.now()),
+          best: play.best,
+        });
         setPhase("spotless");
         AudioManager.playSpotless();
         later(finish, reduced ? 1100 : 2400);
@@ -378,9 +488,18 @@ export function AreaCleaningPrototype({
       }
       requestDraw();
       AudioManager.playScrub(toolTexture(activeTool));
-      fxRef.current?.scrub(activeTool, current.x, current.y, Math.min(3, 1 + Math.floor((stroke ?? 0) / 14)));
+      fxRef.current?.scrub(
+        activeTool,
+        current.x,
+        current.y,
+        Math.min(3, 1 + Math.floor((stroke ?? 0) / 14)),
+      );
       setToolHint((hint) => (hint === null ? hint : null));
-    } else if (roomWide) {
+      setSuggest((t) => (t === null ? t : null));
+      setGuide((g) => (g === null ? g : null));
+      armIdleGuide();
+    } else {
+      // Rubbing a mark with the wrong tool: say which tool it needs and light that button.
       const wrongTool = marks.find(
         (mark) =>
           mark.tool !== activeTool &&
@@ -388,9 +507,9 @@ export function AreaCleaningPrototype({
           distanceToSegmentSquared(mark.point, start, current) <= radius ** 2,
       );
       if (wrongTool) {
-        const required = TOOLS[area].find((tool) => tool.id === wrongTool.tool);
-        const hint = `Switch to ${required?.name.toLowerCase() ?? "the right tool"} for this mark.`;
+        const hint = `Use the ${TOOL_LOOK[wrongTool.tool].name.toLowerCase()} here`;
         setToolHint((h) => (h === hint ? h : hint));
+        setSuggest((t) => (t === wrongTool.tool ? t : wrongTool.tool));
       }
     }
     const share = cleanedShare(play.wear, marks, stains);
@@ -430,157 +549,266 @@ export function AreaCleaningPrototype({
     if (cursorRef.current) cursorRef.current.style.opacity = "0";
   };
 
-  const selectTool = (tool: CleaningToolId) => {
-    setActiveTool(tool);
+  const selectTool = (next: CleaningToolId) => {
+    setActiveTool(next);
     setToolHint(null);
+    setSuggest(null);
+    setGuide((g) => (g ? nextGuide(next) : g));
   };
 
   const roomTest = ROOM_CLEANING_TESTS.find((entry) => entry.area === area);
   const shine = progress / 100;
+  const pctOf = (v: number, total: number) => `${(v / total) * 100}%`;
   const modal = (
     <div
       className="absolute inset-0 z-[100] flex min-h-0 items-stretch justify-stretch overflow-hidden bg-[#1b100a]/85 p-0 backdrop-blur-sm"
       style={{ touchAction: "none", overscrollBehavior: "contain" }}
       role="presentation"
-      onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
     >
       <section
-        className="relative mx-auto my-auto h-auto max-h-full min-h-0 min-w-0 overflow-hidden bg-[#fff3d9] shadow-[0_24px_90px_rgba(0,0,0,.5)] ring-1 ring-[#d5a65a]"
-        style={{ width: stageDisplay.width, height: stageDisplay.height, aspectRatio: "9 / 16" }}
+        className="relative mx-auto flex h-full w-full max-w-[560px] min-h-0 flex-col overflow-hidden bg-[#fff3d9] shadow-[0_24px_90px_rgba(0,0,0,.5)] ring-1 ring-[#d5a65a]"
+        style={{ maxHeight: stageHeightLimit }}
         role="dialog"
         aria-modal="true"
         aria-labelledby={`clean-title-${area}`}
         data-testid={`${area}-cleaning-prototype`}
       >
-        <div
-          className="absolute left-1/2 top-1/2 z-0 shrink-0 overflow-hidden bg-[#38261b] shadow-inner ring-1 ring-[#89603e]"
-          style={{ ...stageDisplay, transform: "translate(-50%, -50%)", touchAction: "none", overscrollBehavior: "contain" }}
-          data-testid="cleaning-stage"
-        >
-          <img
-            src={image}
-            alt={`${roomTitle} from the current restaurant map`}
-            className="block h-full w-full select-none object-fill transition-[filter] duration-300"
-            style={{ filter: `saturate(${0.82 + 0.18 * shine}) brightness(${0.92 + 0.1 * shine})` }}
-            draggable={false}
-          />
-          <canvas
-            ref={canvasRef}
-            className="absolute inset-0 h-full w-full touch-none overscroll-contain"
-            style={{ touchAction: "none", overscrollBehavior: "contain" }}
-            onPointerDown={handleDown}
-            onPointerMove={handleMove}
-            onPointerUp={handleUp}
-            onPointerCancel={handleUp}
-            onLostPointerCapture={handleUp}
-            data-testid="cleaning-dirt"
-            data-stains={stains.length}
-            aria-label={`Drag the ${cleaningTool.name} over the dirt in the ${roomTitle.toLowerCase()}`}
-          />
-          <canvas ref={fxCanvasRef} className="pointer-events-none absolute inset-0 h-full w-full" data-testid="cleaning-fx" aria-hidden />
+        {/* Header: what this cleaning is, and the way out. */}
+        <header className="relative z-20 flex shrink-0 items-center gap-2.5 border-b border-[#dfc79e]/70 bg-[linear-gradient(135deg,rgba(255,249,233,.97),rgba(240,215,169,.94))] px-3 py-2 shadow-sm">
           <span
-            ref={cursorRef}
-            className="pointer-events-none absolute left-0 top-0 text-[34px] leading-none opacity-0 drop-shadow-[0_3px_3px_rgba(40,20,5,.45)]"
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[#6b3d20] text-[24px] text-[#fff2d6] shadow"
             aria-hidden
           >
-            {cleaningTool.icon}
+            {area === "kitchen" ? "🍳" : area === "dining" ? "🍽️" : "🚻"}
           </span>
-          {streak >= 2 && phase === "play" ? (
-            <span key={streak} className="kc-clean-pop pointer-events-none absolute right-2 top-[24%] rounded-full border border-white/80 bg-[#6b3d20]/90 px-2.5 py-1 font-ui text-[13px] font-black text-[#ffe9b0] shadow" data-testid="cleaning-streak" data-streak={streak}>
-              ✨ Streak ×{streak}
-            </span>
-          ) : null}
-          {toast ? (
-            <div className="pointer-events-none absolute inset-x-0 top-[185px] flex justify-center">
-              <span key={toast.key} className="kc-clean-toast rounded-full bg-white/95 px-3 py-1 font-display text-[15px] font-black text-walnut-dark shadow" data-testid="cleaning-milestone">{toast.text}</span>
-            </div>
-          ) : null}
-          {!scrubbing && progress === 0 ? <span className="pointer-events-none absolute bottom-[150px] left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border border-white/70 bg-[#fff7e6]/95 px-2.5 py-1 font-ui text-[10px] font-extrabold text-walnut-dark shadow sm:text-[12px]">{cleaningTool.icon} Scrub the dirt away</span> : null}
-          {phase === "spotless" ? (
-            <div className="absolute inset-0 grid place-items-center bg-[radial-gradient(circle,rgba(255,250,230,.55),rgba(255,250,230,0)_70%)]" data-testid="cleaning-spotless">
-              <span className="kc-clean-sheen" aria-hidden />
-              <div className="kc-clean-banner rounded-2xl border-2 border-[#e7c37a] bg-[#fffaf0]/95 px-5 py-3 text-center shadow-lg">
-                <p className="font-display text-[26px] font-black leading-none text-walnut-dark">✨ Spotless! ✨</p>
-                {result ? <p className="mt-1 font-ui text-[12px] font-bold text-walnut/70">{formatTime(result.time)}{result.best >= 2 ? ` · best streak ×${result.best}` : ""}</p> : null}
-                <KButton size="sm" variant="sage" className="mt-2 min-h-11 px-5" onClick={finish}>Done ✓</KButton>
-              </div>
-            </div>
-          ) : null}
-        </div>
-        <header className="absolute inset-x-0 top-0 z-20 flex items-center gap-2.5 border-b border-[#dfc79e]/70 bg-[linear-gradient(135deg,rgba(255,249,233,.94),rgba(240,215,169,.88))] px-3 py-2.5 shadow-sm backdrop-blur-md">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#6b3d20] text-[22px] text-[#fff2d6] shadow">{area === "kitchen" ? "👨‍🍳" : area === "dining" ? "🍽️" : "🚻"}</span>
           <div className="min-w-0 flex-1">
-            <h2 id={`clean-title-${area}`} className="font-display text-[18px] font-black leading-tight text-walnut-dark">
-              {roomWide ? roomTest?.title : copy?.title ?? `Clean the ${roomTitle.toLowerCase()}`}
+            <h2
+              id={`clean-title-${area}`}
+              className="font-display text-[18px] font-black leading-tight text-walnut-dark"
+            >
+              {roomWide ? roomTest?.title : (copy?.title ?? `Clean the ${roomTitle.toLowerCase()}`)}
             </h2>
-            <p className="mt-0.5 truncate font-ui text-[11.5px] font-semibold text-walnut/75">
-              {roomWide ? roomTest?.subtitle : copy?.instruction ?? `Scrub the dirt in the ${roomTitle.toLowerCase()}.`}
+            <p className="mt-0.5 truncate font-ui text-[12px] font-semibold text-walnut/75">
+              {roomWide
+                ? roomTest?.subtitle
+                : (copy?.instruction ?? `Scrub the dirt in the ${roomTitle.toLowerCase()}.`)}
             </p>
-            {previewOnly ? <span className="mt-1 inline-flex rounded-full bg-[#788a70]/15 px-2 py-0.5 font-ui text-[10px] font-black uppercase tracking-wide text-olive">Practice · no save or supplies</span> : null}
+            {previewOnly ? (
+              <span className="mt-1 inline-flex rounded-full bg-[#788a70]/15 px-2 py-0.5 font-ui text-[11px] font-black uppercase tracking-wide text-olive">
+                Practice · no save or supplies
+              </span>
+            ) : null}
           </div>
-          <button type="button" onClick={onClose} aria-label={`Close ${roomTitle.toLowerCase()} cleaning`} className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-walnut/15 bg-white/65 font-ui text-xl font-black text-walnut-dark">×</button>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={`Close ${roomTitle.toLowerCase()} cleaning`}
+            className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-walnut/15 bg-white/70 font-ui text-xl font-black text-walnut-dark"
+          >
+            ×
+          </button>
         </header>
-        {previewOnly ? <span className="sr-only" data-testid="cleaning-test-mode">Practice only. Progress and supplies are not saved.</span> : null}
-        {roomWide ? (
-          <div className="absolute inset-x-2 top-[70px] z-20 rounded-xl border border-[#dfc79e]/80 bg-[#fff7e6]/85 p-1.5 shadow-md backdrop-blur-md">
-            <div className="mb-1 flex items-center justify-between gap-2 px-1">
-              <span className="font-ui text-[9px] font-black uppercase tracking-[.12em] text-walnut/65">Choose tool</span>
-              <span className="font-ui text-[9px] font-semibold text-walnut/60">Match tool to mess</span>
-            </div>
-            <div className="grid grid-cols-3 gap-1">
-              {availableTools.map((tool) => (
-                <button
-                  key={tool.id}
-                  type="button"
-                  onClick={() => selectTool(tool.id)}
-                  aria-pressed={activeTool === tool.id}
-                  className={`flex min-h-9 items-center justify-center gap-1 rounded-lg border px-1 py-1 text-center shadow-sm transition ${activeTool === tool.id ? "border-[#a3602c] bg-[#6b3d20] text-[#fff4dc] ring-1 ring-[#d7a85a]" : "border-[#d9c39a] bg-[#fffaf0] text-walnut-dark hover:bg-white"}`}
+        {previewOnly ? (
+          <span className="sr-only" data-testid="cleaning-test-mode">
+            Practice only. Progress and supplies are not saved.
+          </span>
+        ) : null}
+
+        {/* The room, fitted whole between the header and the tools (nothing covers the dirt). */}
+        <div className="relative min-h-0 flex-1 bg-[#2a1b12]" style={{ containerType: "size" }}>
+          <div
+            className="absolute left-1/2 top-1/2 overflow-hidden bg-[#38261b] ring-1 ring-[#89603e]"
+            style={{
+              width: `min(100cqw, calc(100cqh * ${dimensions.width} / ${dimensions.height}))`,
+              aspectRatio: `${dimensions.width} / ${dimensions.height}`,
+              transform: "translate(-50%, -50%)",
+              touchAction: "none",
+              overscrollBehavior: "contain",
+            }}
+            data-testid="cleaning-stage"
+          >
+            <img
+              src={image}
+              alt={`${roomTitle} from the current restaurant map`}
+              className="block h-full w-full select-none object-fill transition-[filter] duration-300"
+              style={{
+                filter: `saturate(${0.82 + 0.18 * shine}) brightness(${0.92 + 0.1 * shine})`,
+              }}
+              draggable={false}
+            />
+            <canvas
+              ref={canvasRef}
+              className="absolute inset-0 h-full w-full touch-none overscroll-contain"
+              style={{ touchAction: "none", overscrollBehavior: "contain" }}
+              onPointerDown={handleDown}
+              onPointerMove={handleMove}
+              onPointerUp={handleUp}
+              onPointerCancel={handleUp}
+              onLostPointerCapture={handleUp}
+              data-testid="cleaning-dirt"
+              data-stains={stains.length}
+              aria-label={`Drag the ${cleaningTool.name.toLowerCase()} over the dirt in the ${roomTitle.toLowerCase()}`}
+            />
+            <canvas
+              ref={fxCanvasRef}
+              className="pointer-events-none absolute inset-0 h-full w-full"
+              data-testid="cleaning-fx"
+              aria-hidden
+            />
+            {/* Where to rub: a pulsing ring and the tool rubbing over it. */}
+            {guide && phase === "play" && !scrubbing ? (
+              <span
+                className="pointer-events-none absolute"
+                style={{
+                  left: pctOf(guide.x, dimensions.width),
+                  top: pctOf(guide.y, dimensions.height),
+                }}
+                data-testid="cleaning-guide"
+                data-tool={guide.tool}
+                aria-hidden
+              >
+                <span className="kc-clean-ring absolute -left-7 -top-7 h-14 w-14 rounded-full border-[3px] border-white/90 shadow-[0_0_14px_rgba(255,236,170,.9)]" />
+                <span className="kc-clean-ghost absolute -left-2 -top-9 drop-shadow-[0_3px_3px_rgba(40,20,5,.45)]">
+                  <CleaningToolIcon tool={guide.tool} size={38} />
+                </span>
+              </span>
+            ) : null}
+            {/* The tool in the hand follows the finger, rocking as it scrubs. */}
+            <span
+              ref={cursorRef}
+              className="pointer-events-none absolute left-0 top-0 leading-none opacity-0 drop-shadow-[0_3px_3px_rgba(40,20,5,.45)]"
+              aria-hidden
+            >
+              <CleaningToolIcon tool={cleaningTool.id} size={46} />
+            </span>
+            {streak >= 2 && phase === "play" ? (
+              <span
+                key={streak}
+                className="kc-clean-pop pointer-events-none absolute right-2 top-2 rounded-full border border-white/80 bg-[#6b3d20]/90 px-3 py-1 font-ui text-[14px] font-black text-[#ffe9b0] shadow"
+                data-testid="cleaning-streak"
+                data-streak={streak}
+              >
+                ✨ Streak ×{streak}
+              </span>
+            ) : null}
+            {toast ? (
+              <div className="pointer-events-none absolute inset-x-0 top-[12%] flex justify-center">
+                <span
+                  key={toast.key}
+                  className="kc-clean-toast rounded-full bg-white/95 px-4 py-1.5 font-display text-[17px] font-black text-walnut-dark shadow"
+                  data-testid="cleaning-milestone"
                 >
-                  <span className="shrink-0 text-[16px]" aria-hidden>{tool.icon}</span>
-                  <span className="min-w-0 truncate font-ui text-[10px] font-black leading-tight">{tool.name}</span>
+                  {toast.text}
+                </span>
+              </div>
+            ) : null}
+            {phase === "spotless" ? (
+              <div
+                className="absolute inset-0 grid place-items-center bg-[radial-gradient(circle,rgba(255,250,230,.6),rgba(255,250,230,0)_70%)]"
+                data-testid="cleaning-spotless"
+              >
+                <span className="kc-clean-sheen" aria-hidden />
+                <div className="kc-clean-banner rounded-2xl border-2 border-[#e7c37a] bg-[#fffaf0]/95 px-5 py-3 text-center shadow-lg">
+                  <p className="font-display text-[28px] font-black leading-none text-walnut-dark">
+                    ✨ Spotless! ✨
+                  </p>
+                  {result ? (
+                    <p className="mt-1 font-ui text-[13px] font-bold text-walnut/70">
+                      ⏱ {formatTime(result.time)}
+                      {result.best >= 2 ? ` · 🔥 best streak ×${result.best}` : ""}
+                    </p>
+                  ) : null}
+                  <KButton variant="sage" className="mt-2 min-h-12 px-6" onClick={finish}>
+                    Done ✓
+                  </KButton>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
+
+        {/* Tools and progress, below the room. */}
+        <div className="relative z-20 shrink-0 border-t border-[#dfc79e]/80 bg-[linear-gradient(0deg,rgba(255,243,217,1),rgba(255,247,230,.98))] px-2.5 pb-[max(.5rem,env(safe-area-inset-bottom))] pt-2">
+          {availableTools.length > 1 ? (
+            <div
+              className="mb-1.5 flex justify-center gap-1.5"
+              role="group"
+              aria-label="Cleaning tools"
+            >
+              {availableTools.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => selectTool(t.id)}
+                  aria-pressed={activeTool === t.id}
+                  data-tool={t.id}
+                  data-suggested={suggest === t.id || undefined}
+                  title={`${t.name} · ${t.use}`}
+                  className={`relative flex min-h-12 min-w-12 flex-1 basis-0 flex-col items-center justify-center rounded-xl border px-1 py-1 shadow-sm transition ${
+                    activeTool === t.id
+                      ? "border-[#a3602c] bg-[#6b3d20] text-[#fff4dc] ring-2 ring-[#d7a85a]"
+                      : "border-[#d9c39a] bg-[#fffaf0] text-walnut-dark"
+                  } ${suggest === t.id ? "kc-clean-suggest" : ""}`}
+                >
+                  <CleaningToolIcon tool={t.id} size={26} />
+                  <span className="mt-0.5 max-w-full truncate font-ui text-[11px] font-black leading-tight">
+                    {t.name}
+                  </span>
                 </button>
               ))}
             </div>
-          </div>
-        ) : availableTools.length > 1 ? (
-          <div className="absolute inset-x-2 top-[70px] z-20 flex justify-center gap-2 rounded-xl border border-[#dfc79e]/80 bg-[#fff7e6]/85 px-2 py-1.5 shadow-md backdrop-blur-md">
-            {availableTools.map((tool) => (
-              <button
-                key={tool.id}
-                type="button"
-                onClick={() => selectTool(tool.id)}
-                aria-pressed={activeTool === tool.id}
-                className={`flex min-h-9 items-center gap-1 rounded-xl border px-2 font-ui text-[10px] font-black ${activeTool === tool.id ? "border-[#a3602c] bg-[#6b3d20] text-[#fff4dc]" : "border-[#d9c39a] bg-[#fffaf0] text-walnut-dark"}`}
-              >
-                <span aria-hidden className="text-[18px]">{tool.icon}</span>
-                {tool.name}
-              </button>
-            ))}
-          </div>
-        ) : null}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 bg-[linear-gradient(0deg,rgba(255,243,217,.98),rgba(255,243,217,.9)_72%,rgba(255,243,217,0))] px-2.5 pb-[max(.625rem,env(safe-area-inset-bottom))] pt-2 sm:px-3">
-          <div className="pointer-events-auto">
-          {toolHint ? <p className="mb-1 flex min-h-6 items-center justify-center rounded-lg border border-[#d89d52]/60 bg-[#fff9e8]/95 px-2 py-1 text-center font-ui text-[10.5px] font-extrabold text-[#8e5423]" role="status" aria-live="polite">{toolHint}</p> : null}
-          <div className="mb-1 flex items-center justify-between font-ui text-[11px] font-extrabold text-walnut-dark">
+          ) : null}
+          {toolHint ? (
+            <p
+              className="mb-1 flex min-h-6 items-center justify-center gap-1 rounded-lg border border-[#d89d52]/60 bg-[#fff9e8] px-2 py-1 text-center font-ui text-[12px] font-extrabold text-[#8e5423]"
+              role="status"
+              aria-live="polite"
+            >
+              {suggest ? <CleaningToolIcon tool={suggest} size={18} /> : null}
+              {toolHint}
+            </p>
+          ) : null}
+          <div className="mb-1 flex items-center justify-between font-ui text-[12px] font-extrabold text-walnut-dark">
             <span data-testid="cleaning-stains-left">
-              {stainsLeft > 0 ? `🧼 ${stainsLeft} ${stainsLeft === 1 ? "stain" : "stains"} left` : "✨ All clean"}
+              {stainsLeft > 0
+                ? `🫧 ${stainsLeft} ${stainsLeft === 1 ? "stain" : "stains"} left`
+                : "✨ All clean"}
             </span>
-            <span className="text-walnut/60">{cleaningTool.icon} {cleaningTool.name}</span>
+            <span className="flex items-center gap-1 text-walnut/70">
+              <CleaningToolIcon tool={cleaningTool.id} size={18} />
+              {cleaningTool.name}
+            </span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-[#d9c5a5]" role="progressbar" aria-label={`${roomTitle} cleaning progress`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}>
-              <div className="kc-clean-bar h-full rounded-full transition-[width] duration-150" style={{ width: `${progress}%` }} />
+            <div
+              className="h-3 flex-1 overflow-hidden rounded-full bg-[#d9c5a5]"
+              role="progressbar"
+              aria-label={`${roomTitle} cleaning progress`}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={progress}
+            >
+              <div
+                className="kc-clean-bar h-full rounded-full transition-[width] duration-150"
+                style={{ width: `${progress}%` }}
+              />
             </div>
-            <span className="w-10 text-right font-ui text-[12px] font-black text-walnut-dark">{progress}%</span>
+            <span className="w-11 text-right font-ui text-[13px] font-black text-walnut-dark">
+              {progress}%
+            </span>
           </div>
-          <p className="mt-1 flex min-h-6 items-center justify-center text-center font-hand text-[11px] leading-tight text-walnut/70">
-            {scrubbing
-              ? "Keep scrubbing. Tough stains take a few rubs."
-              : roomWide
-                ? `${cleaningTool.name} · ${cleaningTool.use} · switch tools as needed`
-                : `Rub with the ${cleaningTool.name.toLowerCase()} until each stain is gone.`}
+          <p className="mt-1 flex min-h-5 items-center justify-center text-center font-hand text-[14px] leading-tight text-walnut/70">
+            {phase !== "play"
+              ? "✨ Sparkling!"
+              : scrubbing
+                ? "Keep scrubbing · tough stains take a few rubs"
+                : progress === 0
+                  ? `Drag the ${cleaningTool.name.toLowerCase()} over the dirt`
+                  : `${cleaningTool.name} · ${cleaningTool.use}`}
           </p>
-          </div>
         </div>
       </section>
     </div>

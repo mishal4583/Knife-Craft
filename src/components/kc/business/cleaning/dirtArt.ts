@@ -440,25 +440,16 @@ function grime(ctx: Ctx, s: Stain, rnd: Rnd) {
   ctx.scale(1.2, 0.85);
   haze(ctx, s.r * 1.3, [70, 66, 50], 0.34);
   ctx.restore();
-  // Dirt settles in the grout lines.
-  ctx.save();
-  blob(ctx, s.r * 1.05, rnd, 0.3, 9);
-  ctx.clip();
-  ctx.strokeStyle = "rgba(48, 44, 32, 0.5)";
-  ctx.lineWidth = 1.6;
-  const step = 11;
-  const off = rnd() * step;
-  for (let v = -s.r * 1.5 + off; v < s.r * 1.5; v += step) {
-    ctx.beginPath();
-    ctx.moveTo(v, -s.r * 1.5);
-    ctx.lineTo(v + s.r * 0.6, s.r * 1.5);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(-s.r * 1.5, v);
-    ctx.lineTo(s.r * 1.5, v - s.r * 0.6);
-    ctx.stroke();
+  // A muddy film with darker patches where it dried (the painted tiles are far larger than a
+  // grout grid this size, so drawing grout lines read as hash marks — 2026-10-22).
+  for (let k = 0; k < 3; k++) {
+    ctx.save();
+    ctx.translate((rnd() - 0.5) * s.r * 0.9, (rnd() - 0.5) * s.r * 0.6);
+    ctx.fillStyle = `rgba(66, 58, 40, ${0.2 + rnd() * 0.14})`;
+    blob(ctx, s.r * (0.45 + rnd() * 0.3), rnd, 0.35, 8);
+    ctx.fill();
+    ctx.restore();
   }
-  ctx.restore();
   for (let i = 0; i < 8; i++) {
     ctx.fillStyle = `rgba(60, 56, 40, ${0.3 + rnd() * 0.3})`;
     ctx.beginPath();

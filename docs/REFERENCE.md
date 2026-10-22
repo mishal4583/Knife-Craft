@@ -259,7 +259,8 @@ once). Restaurant browser tests run on the normal build, classic ones on a
   `restaurant-level-goals-qa`, `restaurant-service-cover-qa`,
   `restaurant-tools-qa`, `restaurant-tableware-qa`,
   `restaurant-takeaway-qa`, `restaurant-service-report-qa`,
-  `restaurant-cleanliness-qa`, `restaurant-day-clock-qa`,
+  `restaurant-cleanliness-qa`, `cleaning-dirt-qa` (browser: `cleaningfeel.mjs`),
+  `restaurant-day-clock-qa`,
   `restaurant-shift-chores-qa`, `restaurant-deliveries-qa`,
   `restaurant-par-audit-qa`, `restaurant-half-wages-qa`, `restaurant-second-floor-qa`,
   `restaurant-floor-life-qa`, `restaurant-menu-order-qa`, `restaurant-market-needs-qa` (browser: also
@@ -861,6 +862,28 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   moves except Market purchases. Pre-Service Check: a non-blocking
   "🧹 N cleaning tasks left" row; Level Complete: the Cleaner's line and
   what's waiting. Browser: `tools/e2e/restaurantcleanliness.mjs`.
+- `cleaning-dirt-qa` — THE CLEANING MINI-GAME (developer 2026-10-21/22: "make it
+  proper and satisfying, proper cleaning tools"). Tapping Clean on an interactive
+  task (`INTERACTIVE_CLEANING_TASKS`, `BusinessCleanliness.tsx`) opens
+  `AreaCleaningPrototype.tsx` on the room's art for the kitchen tier. Pure, seeded
+  dirt (`restaurant/cleaningDirt.ts`): real stain kinds (sauce, smear, coffee ring,
+  crust, grease streaks, crumbs, scuffs, footprints, puddle, limescale, water spots,
+  grime) placed only on the tier's surfaces (`KITCHEN_GEO` line / islands / floor,
+  `DINING_TABLES` tops and the floor between them, `RESTROOM_GEO` bowls / sinks /
+  mirror / floor, measured from `public/cleanliness/interactive/`). Each stain has a
+  tool (`toolForTask`; Disinfect: Squeegee on the mirror, Sponge on the sinks) and a
+  toughness (`TOUGHNESS`: a crumb goes in one firm stroke, grease needs three).
+  Painting `cleaning/dirtArt.ts`, particles `cleaning/cleaningFx.ts` (none under
+  Reduced Motion), sounds `AudioManager.playScrub / playSparkle / playSpotless`
+  (Sound setting). Tools: `cleaning/toolLook.ts` names + emoji (🧽 🧴 🧹),
+  `cleaning/CleaningToolIcon.tsx` draws the mop, grill scraper, toilet brush and
+  squeegee. Feel: a guide ring on a stain (again after 3.5 s idle), the wrong tool
+  says "Use the X here" and lights the right button, streak chip, 25/50/75 % cheers,
+  "🫧 N stains left"; at `CLEAN_THRESHOLD` 0.9 the rest wipes away, then "Spotless!"
+  (time, best streak) and Done → `onComplete` (the task's existing clean: supplies
+  once, no money, no ledger, no save field). Layout: header, the room
+  (contain-fit 540×960), tools and progress below. QA D/B/Z/T/K/S/A/R; browser
+  `tools/e2e/cleaningfeel.mjs` (9 checks, incl. Reduced Motion and 320×568).
 - `restaurant-service-report-qa` — THE RESTAURANT'S NUMBERS (supplies plan
   Phase D, developer 2026-10-10: "they should feel proud"). The supplies
   keep running totals (`restaurantSupplies.coversTotal / takeawayTotal /

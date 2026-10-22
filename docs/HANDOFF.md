@@ -1,5 +1,13 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## Cleaning mini-game finished (2026-10-22, `main`)
+
+- Stains on each kitchen tier's real surfaces, proper cleaning tools (🧽 🧴 🧹 and
+  drawn mop, grill scraper, toilet brush, squeegee), a guide ring, wrong-tool hints,
+  the room unobstructed with the tools below it. No save, money or ledger change.
+  REFERENCE §5 `cleaning-dirt-qa`; browser `cleaningfeel.mjs` 9/9,
+  `restaurantcleanliness.mjs` 9/9. Not uploaded to Playgama (it has 1.4.1).
+
 ## Phases 1–6 committed and green (2026-10-22, `main`)
 
 - Phases 1–6 were committed in 412f3bc (another session). Fixed after it: the
@@ -8,7 +16,7 @@
   30 s. `phase2`–`phase5` QA compared with `HEAD` (right only while uncommitted):
   they compare with `0ab8a4e` (`PHASE_BASE`). `ad-bonuses-qa` used a fixed date.
 - Now: QA 113/113, preflight clean, `phase5.mjs` 21/21. Nothing new uploaded to
-  Playgama (it has 1.4.1). Still open: the cleaning rework (STATUS-2026-10-21.md).
+  Playgama (it has 1.4.1).
 
 ## Phase 6: Kitchen Moment cards (2026-10-21, not committed)
 
