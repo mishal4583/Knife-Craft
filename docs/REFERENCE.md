@@ -873,17 +873,23 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   mirror / floor, measured from `public/cleanliness/interactive/`). Each stain has a
   tool (`toolForTask`; Disinfect: Squeegee on the mirror, Sponge on the sinks) and a
   toughness (`TOUGHNESS`: a crumb goes in one firm stroke, grease needs three).
+  Fresh dirt every clean (developer 2026-10-22, "don't put the dirt in the same
+  position and intensity"): `makeStains(…, variant)` with `cleaningVariant(cleaned,
+  since, task)` from the save (new after each clean, steady while the task waits; no
+  save field) moves the stains, varies their number ±20 % and gives each a
+  `strength` (paint 70–100 %, toughness ×0.75–1.25). The dining floor's dirt goes on
+  the open walkways (`DINING_WALK`, off every rug `diningRug`), where it shows.
   Painting `cleaning/dirtArt.ts`, particles `cleaning/cleaningFx.ts` (none under
   Reduced Motion), sounds `AudioManager.playScrub / playSparkle / playSpotless`
-  (Sound setting). Tools: `cleaning/toolLook.ts` names + emoji (🧽 🧴 🧹),
-  `cleaning/CleaningToolIcon.tsx` draws the mop, grill scraper, toilet brush and
-  squeegee. Feel: a guide ring on a stain (again after 3.5 s idle), the wrong tool
+  (Sound setting). Tools: `cleaning/toolLook.ts` names + emoji (🧽 🧹),
+  `cleaning/CleaningToolIcon.tsx` draws the spray bottle & cloth, string mop, grill
+  scraper, toilet brush and squeegee (🧴 is a lotion bottle, 🪣 a bucket). Feel: a guide ring on a stain (again after 3.5 s idle), the wrong tool
   says "Use the X here" and lights the right button, streak chip, 25/50/75 % cheers,
   "🫧 N stains left"; at `CLEAN_THRESHOLD` 0.9 the rest wipes away, then "Spotless!"
   (time, best streak) and Done → `onComplete` (the task's existing clean: supplies
   once, no money, no ledger, no save field). Layout: header, the room
-  (contain-fit 540×960), tools and progress below. QA D/B/Z/T/K/S/A/R; browser
-  `tools/e2e/cleaningfeel.mjs` (9 checks, incl. Reduced Motion and 320×568).
+  (contain-fit 540×960), tools and progress below. QA D/V/B/Z/T/K/S/A/R; browser
+  `tools/e2e/cleaningfeel.mjs` (10 checks, incl. Reduced Motion, 320×568 and fresh dirt).
 - `restaurant-service-report-qa` — THE RESTAURANT'S NUMBERS (supplies plan
   Phase D, developer 2026-10-10: "they should feel proud"). The supplies
   keep running totals (`restaurantSupplies.coversTotal / takeawayTotal /

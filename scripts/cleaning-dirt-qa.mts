@@ -3,7 +3,11 @@
  * satisfying, proper cleaning tools"). The pure module src/game/restaurant/cleaningDirt.ts
  * and the tool look (cleaning/toolLook.ts, CleaningToolIcon.tsx).
  *
- *  D  Determinism: the same area, task and tier give the same stains; tiers differ.
+ *  D  Determinism: the same area, task, tier and variant give the same stains; tiers differ.
+ *  V  Variety (developer 2026-10-22: "don't put the dirt in the same position and
+ *     intensity"): another variant (cleaningVariant, new after every clean) moves the
+ *     stains, changes their number (±20%) and their strength (opacity 70–100%,
+ *     toughness ×0.75–1.25); the Cleanliness tab passes it.
  *  B  Bounds: every stain and every brush mark is inside the 540×960 scene.
  *  Z  Zones: every stain sits on its task's surfaces for that tier (the cooking line, the
  *     tabletops, the floor between tables, the toilets, sinks and mirror, …); the grease
@@ -26,12 +30,17 @@ import {
   CLEAN_MILESTONES,
   CLEAN_THRESHOLD,
   DINING_TABLES,
+  DINING_WALK,
   KITCHEN_GEO,
   RESTROOM_GEO,
   SCENE_SIZE,
   STREAK_WINDOW_MS,
   TOUGHNESS,
   cleanedShare,
+  cleaningVariant,
+  diningRug,
+  strengthOpacity,
+  strengthToughness,
   dirtZones,
   makeStains,
   milestoneCrossed,
@@ -80,16 +89,21 @@ const ALL_TOOLS: CleaningToolId[] = [
   "toilet-brush",
   "glass-cloth",
 ];
+// Variant 0 and a few real ones (cleaningVariant after some cleans): every check holds for each.
+const VARIANTS = [0, cleaningVariant(1, 12, "floor"), cleaningVariant(7, 40, "grease"), 987654321];
+const SV = STAGES.flatMap((stage) => VARIANTS.map((variant) => ({ stage, variant })));
 const cases = (Object.keys(INTERACTIVE) as CleanArea[]).flatMap((area) =>
-  INTERACTIVE[area].flatMap((task) => STAGES.map((stage) => ({ area, task, stage }))),
+  INTERACTIVE[area].flatMap((task) =>
+    SV.map(({ stage, variant }) => ({ area, task, stage, variant })),
+  ),
 );
 
 console.log("D  determinism");
 {
   const same = cases.every(
-    ({ area, task, stage }) =>
-      JSON.stringify(makeStains(area, task, stage)) ===
-      JSON.stringify(makeStains(area, task, stage)),
+    ({ area, task, stage, variant }) =>
+      JSON.stringify(makeStains(area, task, stage, false, variant)) ===
+      JSON.stringify(makeStains(area, task, stage, false, variant)),
   );
   assert(same, "the same area, task and tier always give the same stains");
   const differ = STAGES.slice(1).every(
@@ -105,12 +119,65 @@ console.log("D  determinism");
   );
 }
 
+console.log("V  variety");
+{
+  const a = makeStains("dining", "floor", "humble", false, cleaningVariant(0, 12, "floor"));
+  const b = makeStains("dining", "floor", "humble", false, cleaningVariant(1, 12, "floor"));
+  const moved = a.filter((s) => !b.some((t) => Math.hypot(s.x - t.x, s.y - t.y) < 4)).length;
+  assert(moved >= a.length * 0.8, "the next clean lays the dirt somewhere else", {
+    moved,
+    of: a.length,
+  });
+  assert(
+    cleaningVariant(3, 12, "floor") === cleaningVariant(3, 12, "floor") &&
+      cleaningVariant(3, 12, "floor") !== cleaningVariant(4, 12, "floor"),
+    "the variant is steady while the task waits and new after a clean",
+  );
+  const counts = new Set(
+    Array.from(
+      { length: 12 },
+      (_, k) => makeStains("kitchen", "equipment", "humble", false, k + 1).length,
+    ),
+  );
+  assert(counts.size >= 3, "the number of stains varies between cleans", [...counts]);
+  const all = cases.flatMap(({ area, task, stage, variant }) =>
+    makeStains(area, task, stage, false, variant),
+  );
+  const str = all.map((s) => s.strength);
+  assert(
+    str.every((x) => x >= 0 && x < 1) && Math.min(...str) < 0.15 && Math.max(...str) > 0.85,
+    "stains run from light to heavy (strength 0–1)",
+  );
+  assert(
+    all.every(
+      (s) => Math.abs(s.toughness - TOUGHNESS[s.kind] * strengthToughness(s.strength)) < 1e-9,
+    ),
+    "a heavier stain is tougher (toughness × 0.75–1.25)",
+  );
+  assert(
+    strengthOpacity(0) === 0.7 &&
+      strengthOpacity(1) === 1 &&
+      strengthToughness(0) === 0.75 &&
+      strengthToughness(1) === 1.25,
+    "a light stain still shows (70% paint); a heavy one is full",
+  );
+  const view = read("src/components/kc/business/BusinessCleanliness.tsx");
+  const proto = read("src/components/kc/business/AreaCleaningPrototype.tsx");
+  assert(
+    /variant=\{cleaningVariantFor\(/.test(view) &&
+      /cleaningVariant\(st\.cleaned/.test(view) &&
+      /makeStains\(area, task, stage, roomWide, variant\)/.test(proto) &&
+      /strengthOpacity\(s\.strength\)/.test(proto),
+    "the Cleanliness tab passes the variant; the game paints each stain at its strength",
+  );
+}
+
 console.log("B  bounds");
 {
   const out: unknown[] = [];
-  for (const { area, task, stage } of cases) {
+  for (const { area, task, stage, variant } of cases) {
     const { width, height } = SCENE_SIZE[area];
-    const stains = makeStains(area, task, stage);
+    const stains = makeStains(area, task, stage, false, variant);
     for (const s of stains)
       if (s.x < 0 || s.y < 0 || s.x > width || s.y > height) out.push({ area, task, stage, s });
     for (const m of stainMarks(stains, area))
@@ -132,9 +199,9 @@ console.log("Z  zones");
         s.x >= z.x - pad && s.x <= z.x + z.w + pad && s.y >= z.y - pad && s.y <= z.y + z.h + pad,
     );
   const off: unknown[] = [];
-  for (const { area, task, stage } of cases) {
+  for (const { area, task, stage, variant } of cases) {
     const zones = dirtZones(area, task, stage);
-    for (const s of makeStains(area, task, stage)) {
+    for (const s of makeStains(area, task, stage, false, variant)) {
       // The spill's centre puddle and the grease streaks are placed on purpose (checked below).
       if ((task === "spill" && s.r === 30) || (s.kind === "grease" && s.stretch > 3)) continue;
       // A stain is kept clear of the scene edge by its radius.
@@ -143,9 +210,11 @@ console.log("Z  zones");
   }
   assert(off.length === 0, "every stain sits on its task's surfaces for the tier", off.slice(0, 4));
 
-  const streaksOnLine = STAGES.every((stage) => {
+  const streaksOnLine = SV.every(({ stage, variant }) => {
     const { line } = KITCHEN_GEO[stage];
-    const streaks = makeStains("kitchen", "grease", stage).filter((s) => s.stretch > 3);
+    const streaks = makeStains("kitchen", "grease", stage, false, variant).filter(
+      (s) => s.stretch > 3,
+    );
     return (
       streaks.length === 3 &&
       streaks.every(
@@ -155,10 +224,10 @@ console.log("Z  zones");
   });
   assert(streaksOnLine, "Degrease: three grease streaks run along each tier's cooking line");
 
-  const spillOk = STAGES.every((stage) => {
+  const spillOk = SV.every(({ stage, variant }) => {
     const c = spillCenter(stage);
     const ys = [...new Set(DINING_TABLES[stage].centers.map((p) => p.y))].sort((a, b) => a - b);
-    const puddle = makeStains("dining", "spill", stage).find((s) => s.r === 30);
+    const puddle = makeStains("dining", "spill", stage, false, variant).find((s) => s.r === 30);
     return (
       !!puddle &&
       puddle.kind === "puddle" &&
@@ -169,46 +238,71 @@ console.log("Z  zones");
   });
   assert(spillOk, "the spill puddle lies on the floor between the first two rows of tables");
 
-  const tablesOnTops = STAGES.every((stage) => {
+  const tablesOnTops = SV.every(({ stage, variant }) => {
     const { centers, half } = DINING_TABLES[stage];
-    return makeStains("dining", "tables", stage).every((s) =>
+    return makeStains("dining", "tables", stage, false, variant).every((s) =>
       centers.some((c) => Math.abs(s.x - c.x) <= half && Math.abs(s.y - c.y) <= half),
     );
   });
   assert(tablesOnTops, "Wipe the tables: every stain is on a tabletop");
 
-  const floorOffTops = STAGES.every((stage) => {
+  const floorOffTops = SV.every(({ stage, variant }) => {
     const { centers, half } = DINING_TABLES[stage];
-    return makeStains("dining", "floor", stage).every(
+    return makeStains("dining", "floor", stage, false, variant).every(
       (s) =>
         !centers.some((c) => Math.abs(s.x - c.x) < half * 0.6 && Math.abs(s.y - c.y) < half * 0.6),
     );
   });
   assert(floorOffTops, "the dining floor's dirt is never on a tabletop");
+  const offRugs = SV.every(({ stage, variant }) => {
+    const { centers, half } = DINING_TABLES[stage];
+    const walk = DINING_WALK[stage];
+    return makeStains("dining", "floor", stage, false, variant).every(
+      (s) =>
+        s.x >= walk.x &&
+        s.x <= walk.x + walk.w &&
+        s.y >= walk.y &&
+        s.y <= walk.y + walk.h &&
+        !centers.some((c) => {
+          const r = diningRug(c, half);
+          return s.x > r.x && s.x < r.x + r.w && s.y > r.y && s.y < r.y + r.h;
+        }),
+    );
+  });
+  assert(offRugs, "the dining floor's dirt is on the open walkways, off the rugs (it shows there)");
+  const spread = SV.every(({ stage, variant }) => {
+    const ys = makeStains("dining", "floor", stage, false, variant).map((s) => s.y);
+    return Math.max(...ys) - Math.min(...ys) > 250;
+  });
+  assert(spread, "the floor dirt spreads over the room, not one strip");
 
-  const toiletInBowls = STAGES.every((stage) =>
-    makeStains("restroom", "toilet", stage).every((s) => inZone(s, RESTROOM_GEO[stage].bowls, s.r)),
+  const toiletInBowls = SV.every(({ stage, variant }) =>
+    makeStains("restroom", "toilet", stage, false, variant).every((s) =>
+      inZone(s, RESTROOM_GEO[stage].bowls, s.r),
+    ),
   );
   assert(toiletInBowls, "Scrub the toilets: the limescale is in the bowls");
 }
 
 console.log("T  tools");
 {
-  const empty = cases.filter(({ area, task, stage }) => makeStains(area, task, stage).length === 0);
+  const empty = cases.filter(
+    ({ area, task, stage, variant }) => makeStains(area, task, stage, false, variant).length === 0,
+  );
   assert(empty.length === 0, "every interactive task has stains on every tier", empty.slice(0, 3));
-  const unknown = cases.flatMap(({ area, task, stage }) =>
-    makeStains(area, task, stage).filter((s) => !ALL_TOOLS.includes(s.tool)),
+  const unknown = cases.flatMap(({ area, task, stage, variant }) =>
+    makeStains(area, task, stage, false, variant).filter((s) => !ALL_TOOLS.includes(s.tool)),
   );
   assert(unknown.length === 0, "every stain names a known tool");
   const single = cases.filter(
-    ({ area, task, stage }) =>
+    ({ area, task, stage, variant }) =>
       task !== "restroom-disinfect" &&
       !task.startsWith("deep-") &&
-      makeStains(area, task, stage).some((s) => s.tool !== toolForTask(area, task)),
+      makeStains(area, task, stage, false, variant).some((s) => s.tool !== toolForTask(area, task)),
   );
   assert(single.length === 0, "a one-tool task uses only its own tool", single.slice(0, 3));
-  const disinfect = STAGES.every((stage) => {
-    const stains = makeStains("restroom", "restroom-disinfect", stage);
+  const disinfect = SV.every(({ stage, variant }) => {
+    const stains = makeStains("restroom", "restroom-disinfect", stage, false, variant);
     const m = RESTROOM_GEO[stage].mirror;
     const onMirror = (s: Stain) =>
       s.x >= m.x - s.r && s.x <= m.x + m.w + s.r && s.y >= m.y - s.r && s.y <= m.y + m.h + s.r;
@@ -249,7 +343,14 @@ console.log("K  toughness");
     "a firm stroke is 1, a tap a little",
   );
   assert(firm >= TOUGHNESS.crumbs, "one firm stroke sweeps a crumb");
-  assert(firm / TOUGHNESS.grease < CLEAN_THRESHOLD, "one firm stroke doesn't lift grease");
+  assert(
+    firm / (TOUGHNESS.grease * strengthToughness(0)) < CLEAN_THRESHOLD,
+    "one firm stroke doesn't lift grease, even a light one",
+  );
+  assert(
+    firm >= TOUGHNESS.crumbs * strengthToughness(1),
+    "one firm stroke sweeps even a heavy crumb pile",
+  );
   assert(Math.ceil(TOUGHNESS.grease / firm) <= 3, "grease goes in a few rubs (≤ 3 firm strokes)");
   const stains = makeStains("kitchen", "grease", "humble");
   const marks = stainMarks(stains, "kitchen");

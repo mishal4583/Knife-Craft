@@ -8,6 +8,7 @@ import {
   SCENE_SIZE,
   cleanedShare,
   makeStains,
+  strengthOpacity,
   milestoneCrossed,
   nextStreak,
   scrubAmount,
@@ -182,6 +183,7 @@ export function AreaCleaningPrototype({
   image,
   roomWide = false,
   previewOnly = false,
+  variant = 0,
   onClose,
   onComplete,
 }: {
@@ -191,6 +193,8 @@ export function AreaCleaningPrototype({
   image: string;
   roomWide?: boolean | undefined;
   previewOnly?: boolean | undefined;
+  /** Which dirt layout (cleaningVariant): a new one after every clean. */
+  variant?: number | undefined;
   onClose: () => void;
   onComplete: () => void;
 }) {
@@ -227,8 +231,8 @@ export function AreaCleaningPrototype({
   activeToolRef.current = activeTool;
   const reduced = useMemo(() => reducedMotionOn(), []);
   const stains = useMemo(
-    () => makeStains(area, task, stage, roomWide),
-    [area, roomWide, stage, task],
+    () => makeStains(area, task, stage, roomWide, variant),
+    [area, roomWide, stage, task, variant],
   );
   const marks = useMemo(() => stainMarks(stains, area), [area, stains]);
   // Everything that changes per stroke lives here, outside React state.
@@ -331,7 +335,7 @@ export function AreaCleaningPrototype({
       const a = play.alpha[i]!;
       if (!sprite || a <= 0) return;
       const reach = stainReach(s);
-      ctx.globalAlpha = a;
+      ctx.globalAlpha = a * strengthOpacity(s.strength);
       ctx.drawImage(sprite, s.x - reach, s.y - reach);
     });
     ctx.globalAlpha = 1;

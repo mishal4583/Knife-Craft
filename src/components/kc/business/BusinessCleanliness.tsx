@@ -40,7 +40,12 @@ import {
 import { openMarketSupplies } from "../marketFocus";
 import { openStaffFor } from "../staffFocus";
 import { AreaCleaningPrototype } from "./AreaCleaningPrototype";
+import { cleaningVariant } from "@/game/restaurant/cleaningDirt";
 import { cleanlinessRoomImageUrl, kitchenMapArtStage } from "@/game/kitchen/kitchenMapArt";
+
+/** Fresh dirt every clean (developer 2026-10-22), steady while the task waits. */
+const cleaningVariantFor = (st: ReturnType<typeof cleanlinessOf>, task: TaskKind) =>
+  cleaningVariant(st.cleaned, st.tasks.find((t) => t.kind === task)?.since ?? 0, task);
 
 const INTERACTIVE_CLEANING_TASKS: Record<CleanArea, ReadonlySet<TaskKind>> = {
   kitchen: new Set<TaskKind>(["equipment", "grease", "degrease", "deep-kitchen", "sweep-line"]),
@@ -190,10 +195,11 @@ export function BusinessCleanliness({
       {!st.introSeen ? <Intro onDone={() => run({ kind: "intro-seen" })} /> : null}
       {activeCleaning ? (
         <AreaCleaningPrototype
-          key={`${activeCleaning.area}-${activeCleaning.task}-${kitchenMapArtStage(save.equippedKitchenUpgradeId)}`}
+          key={`${activeCleaning.area}-${activeCleaning.task}-${kitchenMapArtStage(save.equippedKitchenUpgradeId)}-${cleaningVariantFor(st, activeCleaning.task)}`}
           area={activeCleaning.area}
           task={activeCleaning.task}
           stage={kitchenMapArtStage(save.equippedKitchenUpgradeId)}
+          variant={cleaningVariantFor(st, activeCleaning.task)}
           image={cleanlinessRoomImageUrl(activeCleaning.area, save.equippedKitchenUpgradeId)}
           onClose={() => setActiveCleaning(null)}
           onComplete={() => {

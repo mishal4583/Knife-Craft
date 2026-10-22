@@ -5,7 +5,10 @@
 - Stains on each kitchen tier's real surfaces, proper cleaning tools (🧽 🧴 🧹 and
   drawn mop, grill scraper, toilet brush, squeegee), a guide ring, wrong-tool hints,
   the room unobstructed with the tools below it. No save, money or ledger change.
-  REFERENCE §5 `cleaning-dirt-qa`; browser `cleaningfeel.mjs` 9/9,
+  Then (developer 2026-10-22): bolder crumbs, scuffs, footprints and grime; a drawn
+  string mop and spray bottle (no 🪣 / 🧴); fresh dirt every clean (`cleaningVariant`,
+  position, count and strength); dining floor dirt on the walkways, off the rugs.
+  REFERENCE §5 `cleaning-dirt-qa`; browser `cleaningfeel.mjs` 10/10,
   `restaurantcleanliness.mjs` 9/9. Not uploaded to Playgama (it has 1.4.1).
 
 ## Phases 1–6 committed and green (2026-10-22, `main`)

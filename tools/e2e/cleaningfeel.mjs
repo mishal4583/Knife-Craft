@@ -11,6 +11,8 @@
 //   5. 320×568: the room, the tools and the progress fit with no sideways scroll; every
 //      tool button is ≥ 48 px.
 //   6. No console errors.
+//   7. Fresh dirt (developer 2026-10-22): the same waiting task keeps its dirt on reopening;
+//      one clean later (`cleaned` + 1) the dirt is laid out anew.
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import { MOVED_IN_BUSINESS, launch, boot, seedSave, sleep, readSave, shot } from "./harness.mjs";
 
@@ -21,7 +23,12 @@ const check = (id, ok, detail) => {
 };
 const { browser, page, logs } = await launch();
 
-const AREA = { grease: "kitchen", "restroom-disinfect": "restroom", tables: "dining" };
+const AREA = {
+  grease: "kitchen",
+  "restroom-disinfect": "restroom",
+  tables: "dining",
+  floor: "dining",
+};
 const SUPPLIES = [
   "bin-liners",
   "brooms",
@@ -35,7 +42,7 @@ const SUPPLIES = [
   "toilet-paper",
 ];
 const N = 25;
-const saveWith = (tasks, settings = {}) =>
+const saveWith = (tasks, settings = {}, cleaned = 0) =>
   seedSave({
     business: {
       ...MOVED_IN_BUSINESS,
@@ -53,7 +60,7 @@ const saveWith = (tasks, settings = {}) =>
         introSeen: true,
         cupboardAt: 21,
         lastStart: null,
-        cleaned: 0,
+        cleaned,
         byCleaner: 0,
       },
     },
@@ -262,6 +269,26 @@ check(
   fit,
 );
 await shot(page, "cleaningfeel-5-320");
+
+/* ── 7. Fresh dirt after a clean: the same task, one clean later, looks different ── */
+await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });
+const dirtPixels = () =>
+  page.evaluate(() => document.querySelector('[data-testid="cleaning-dirt"]')?.toDataURL() ?? "");
+await boot(page, saveWith(["floor"], {}, 4));
+await openTask("floor");
+const firstLook = await dirtPixels();
+await boot(page, saveWith(["floor"], {}, 4));
+await openTask("floor");
+const sameLook = await dirtPixels();
+await boot(page, saveWith(["floor"], {}, 5));
+await openTask("floor");
+const nextLook = await dirtPixels();
+await shot(page, "cleaningfeel-7-floor");
+check(
+  "7 the same waiting task keeps its dirt; after a clean the dirt is new",
+  firstLook.length > 1000 && firstLook === sameLook && nextLook !== firstLook,
+  { len: firstLook.length },
+);
 
 /* ── 6. console ── */
 const errors = logs.filter((l) => /pageerror|error:/i.test(l));

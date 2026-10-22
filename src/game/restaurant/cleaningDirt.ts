@@ -7,7 +7,10 @@
  * puddle, limescale in the toilet, water spots on the mirror and taps. Each
  * stain has a tool and a toughness: a crumb goes in one sweep, baked-on
  * grease needs a few rubs and fades as you work it. Pure and seeded: the same
- * room, task and kitchen tier always give the same dirt. No save, no money.
+ * room, task, kitchen tier and `variant` always give the same dirt; the
+ * Cleanliness tab passes a new variant after every clean (developer
+ * 2026-10-22: "don't put the dirt in the same position and intensity"), so
+ * each job lays fresh dirt. No save field, no money.
  */
 import type { KitchenMapArtStage } from "../kitchen/kitchenMapArt";
 import type { CleanArea, TaskKind } from "./cleanliness";
@@ -43,6 +46,8 @@ export type Stain = {
   stretch: number;
   angle: number;
   seed: number;
+  /** 0–1: how heavy this stain is (paint opacity and toughness vary with it). */
+  strength: number;
   /** Scrub units each of its points takes (one firm stroke is about 1). */
   toughness: number;
 };
@@ -279,34 +284,61 @@ export function dirtZones(area: CleanArea, task: TaskKind, stage: KitchenMapArtS
     const tops = centers.map(({ x, y }) =>
       rect(x - half * 0.62, y - half * 0.5, x + half * 0.62, y + half * 0.5),
     );
-    // The floor between the tables: the gaps around each one, inside the room's walls.
-    const floor = centers.flatMap(({ x, y }) => [
-      rect(
-        Math.max(40, x - half * 1.9),
-        y + half * 1.05,
-        Math.min(500, x + half * 1.9),
-        y + half * 1.55,
-      ),
-      rect(
-        Math.max(40, x - half * 1.9),
-        y - half * 1.55,
-        Math.min(500, x + half * 1.9),
-        y - half * 1.1,
-      ),
-    ]);
+    // The open floor: the walkways inside the walls, off every table's rug (dark scuffs
+    // vanish on a rug; developer 2026-10-22 "make the dirt more visible").
+    const floor = diningWalkCells(stage);
     if (task === "spill") {
       const c = spillCenter(stage);
       return [rect(c.x - 48, c.y - 35, c.x + 48, c.y + 35)];
     }
     if (task === "floor" || task === "mop-all") return floor;
     if (task === "tables") return tops;
-    return [...floor, ...tops];
+    // The deep clean: about a third of the picks on the tabletops, the rest on the floor.
+    const topShare = Math.max(1, Math.round(floor.length / (2 * tops.length)));
+    return [...floor, ...Array.from({ length: topShare }, () => tops).flat()];
   }
   const g = RESTROOM_GEO[stage];
   if (task === "restroom-floor") return g.floor;
   if (task === "restroom-disinfect") return [g.sinks, g.mirror];
   if (task === "toilet") return g.bowls;
   return [...g.bowls, g.sinks, ...g.floor];
+}
+
+/** Each dining tier's open floor inside its walls, planters and benches (scene px, from the art). */
+export const DINING_WALK: Record<KitchenMapArtStage, Zone> = {
+  humble: rect(45, 80, 495, 800),
+  growing: rect(65, 95, 480, 790),
+  established: rect(60, 110, 485, 730),
+  "neighborhood-cafe": rect(55, 100, 480, 770),
+  "flourishing-cafe": rect(55, 110, 485, 850),
+  grand: rect(45, 110, 495, 840),
+};
+
+/** A table's rug, which the floor dirt stays off: about ±1.9 half across and ±1.55 half down. */
+export function diningRug(c: Point, half: number): Zone {
+  return rect(c.x - half * 1.9, c.y - half * 1.55, c.x + half * 1.9, c.y + half * 1.55);
+}
+
+const WALK_CELL = 24;
+/** The walkway as cells clear of every rug. */
+function diningWalkCells(stage: KitchenMapArtStage): Zone[] {
+  const walk = DINING_WALK[stage];
+  const { centers, half } = DINING_TABLES[stage];
+  const rugs = centers.map((c) => diningRug(c, half));
+  const cells: Zone[] = [];
+  for (let y = walk.y; y + WALK_CELL <= walk.y + walk.h; y += WALK_CELL)
+    for (let x = walk.x; x + WALK_CELL <= walk.x + walk.w; x += WALK_CELL) {
+      const cell = rect(x, y, x + WALK_CELL, y + WALK_CELL);
+      const onRug = rugs.some(
+        (r) =>
+          cell.x < r.x + r.w &&
+          cell.x + cell.w > r.x &&
+          cell.y < r.y + r.h &&
+          cell.y + cell.h > r.y,
+      );
+      if (!onRug) cells.push(cell);
+    }
+  return cells;
 }
 
 /** The dining spill sits on the floor between the first two rows of tables. */
@@ -408,19 +440,23 @@ function taskStains(
   stage: KitchenMapArtStage,
   roomWide: boolean,
   firstId: number,
+  variant: number,
 ): Stain[] {
-  const rnd = seeded(hash(`${area}|${task}|${stage}`));
+  const rnd = seeded(hash(`${area}|${task}|${stage}|${variant}`));
   const zones = dirtZones(area, task, stage);
   const { width, height } = SCENE_SIZE[area];
   const out: Stain[] = [];
   const base = toolForTask(area, task);
-  const add = (s: Omit<Stain, "id" | "seed" | "toughness">) =>
+  const add = (s: Omit<Stain, "id" | "seed" | "toughness" | "strength">) => {
+    const strength = rnd();
     out.push({
       ...s,
       id: firstId + out.length,
       seed: Math.floor(rnd() * 2 ** 31),
-      toughness: TOUGHNESS[s.kind],
+      strength,
+      toughness: TOUGHNESS[s.kind] * strengthToughness(strength),
     });
+  };
 
   // The spill: one big puddle with a few splashes around it.
   if (task === "spill") {
@@ -443,7 +479,8 @@ function taskStains(
       });
     }
   }
-  const target = stainCount(area, task);
+  // A few more or fewer stains each time (±20%).
+  const target = Math.round(stainCount(area, task) * (0.8 + rnd() * 0.4));
   let guard = 0;
   while (out.length < target && guard++ < target * 30) {
     const tool = variantTool(area, task, out.length, base, roomWide);
@@ -454,7 +491,8 @@ function taskStains(
     const x = Math.min(width - r, Math.max(r, zone.x + rnd() * zone.w));
     const y = Math.min(height - r, Math.max(r, zone.y + rnd() * zone.h));
     // Small zones (the toilet bowl, the taps) may share; elsewhere keep stains apart.
-    const spacing = zone.w * zone.h < 4000 ? 0.35 : 0.75;
+    const small = zone.w * zone.h < 4000 && !(zone.w === WALK_CELL && zone.h === WALK_CELL);
+    const spacing = small ? 0.35 : 0.75;
     const crowded = out.some(
       (o) => Math.hypot(o.x - x, o.y - y) < (o.r * Math.max(1, o.stretch * 0.6) + r) * spacing,
     );
@@ -478,17 +516,40 @@ function taskStains(
   return out;
 }
 
-/** The stains for a cleaning (one task, or the whole room for the practice). */
+/** A stain's toughness factor from its strength: a light one ×0.75, a heavy one ×1.25. */
+export function strengthToughness(strength: number): number {
+  return 0.75 + 0.5 * Math.min(1, Math.max(0, strength));
+}
+
+/** A stain's paint opacity from its strength: a light one 70%, a heavy one full. */
+export function strengthOpacity(strength: number): number {
+  return 0.7 + 0.3 * Math.min(1, Math.max(0, strength));
+}
+
+/**
+ * The stains for a cleaning (one task, or the whole room for the practice).
+ * `variant` picks the layout: same variant, same dirt; another, fresh dirt.
+ */
 export function makeStains(
   area: CleanArea,
   task: TaskKind,
   stage: KitchenMapArtStage,
   roomWide = false,
+  variant = 0,
 ): Stain[] {
   const tasks = roomWide ? ROOM_TASKS[area] : [task];
   const out: Stain[] = [];
-  for (const t of tasks) out.push(...taskStains(area, t, stage, roomWide, out.length));
+  for (const t of tasks) out.push(...taskStains(area, t, stage, roomWide, out.length, variant));
   return out;
+}
+
+/**
+ * The variant for a task's next cleaning, from the save: it changes after every clean
+ * (`cleaned` counts them) and with the day the task came up, and stays the same if the
+ * player closes the game and comes back to the same dirty task.
+ */
+export function cleaningVariant(cleaned: number, since: number, task: TaskKind): number {
+  return hash(`${cleaned}|${since}|${task}`);
 }
 
 /** The points the brush has to cover for each stain: its middle and a ring inside its edge. */

@@ -239,17 +239,21 @@ const CRUMB = [
   [186, 130, 64],
   [150, 98, 50],
   [236, 214, 170],
+  [118, 68, 30], // toasted
+  [84, 50, 24], // burnt
 ] as const;
 
 function crumbs(ctx: Ctx, s: Stain, rnd: Rnd) {
-  haze(ctx, s.r * 1.4, [120, 95, 60], 0.1);
-  const n = 9 + Math.floor(rnd() * 8);
+  // Bigger, darker-edged pieces with a crumb haze, so they read on warm tiles
+  // and wood (developer 2026-10-22: "make the crumbs more visible").
+  haze(ctx, s.r * 1.4, [96, 70, 40], 0.2);
+  const n = 14 + Math.floor(rnd() * 10);
   for (let i = 0; i < n; i++) {
     const a = rnd() * Math.PI * 2;
     const d = Math.sqrt(rnd()) * s.r;
     const x = Math.cos(a) * d;
     const y = Math.sin(a) * d;
-    const size = 1.2 + rnd() * 2.6;
+    const size = 1.8 + rnd() * 3.2;
     const sides = 3 + Math.floor(rnd() * 3);
     const rot = rnd() * Math.PI;
     const shape = (ox: number, oy: number) => {
@@ -264,12 +268,15 @@ function crumbs(ctx: Ctx, s: Stain, rnd: Rnd) {
       }
       ctx.closePath();
     };
-    shape(0.8, 1);
-    ctx.fillStyle = "rgba(40, 25, 12, 0.35)";
+    shape(1.2, 1.5);
+    ctx.fillStyle = "rgba(30, 18, 8, 0.55)";
     ctx.fill();
     shape(0, 0);
-    ctx.fillStyle = rgba(CRUMB[Math.floor(rnd() * CRUMB.length)]!, 0.95);
+    ctx.fillStyle = rgba(CRUMB[Math.floor(rnd() * CRUMB.length)]!, 1);
     ctx.fill();
+    ctx.strokeStyle = "rgba(70, 40, 16, 0.85)";
+    ctx.lineWidth = 0.9;
+    ctx.stroke();
   }
   // Now and then a herb leaf.
   if (rnd() < 0.5) {
@@ -284,16 +291,16 @@ function scuff(ctx: Ctx, s: Stain, rnd: Rnd) {
   ctx.save();
   ctx.rotate(s.angle);
   ctx.scale(s.stretch, 1);
-  haze(ctx, s.r * 1.3, [85, 70, 55], 0.3);
+  haze(ctx, s.r * 1.3, [62, 48, 34], 0.42);
   ctx.restore();
   ctx.save();
   ctx.rotate(s.angle);
   ctx.lineCap = "round";
   const long = s.r * s.stretch;
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < 8; i++) {
     const y = (rnd() - 0.5) * s.r * 1.2;
-    ctx.strokeStyle = `rgba(60, 46, 34, ${0.28 + rnd() * 0.3})`;
-    ctx.lineWidth = 0.8 + rnd() * 2;
+    ctx.strokeStyle = `rgba(38, 26, 16, ${0.5 + rnd() * 0.35})`;
+    ctx.lineWidth = 1.4 + rnd() * 2.4;
     ctx.beginPath();
     ctx.moveTo(-long * (0.4 + rnd() * 0.5), y);
     ctx.quadraticCurveTo(
@@ -311,13 +318,13 @@ function footprint(
   ctx: Ctx,
   s: Stain,
   rnd: Rnd,
-  rgb: readonly [number, number, number] = [76, 58, 40],
+  rgb: readonly [number, number, number] = [62, 42, 24],
 ) {
   ctx.save();
   ctx.rotate(s.angle + Math.PI / 2);
   const L = s.r * s.stretch;
   const W = s.r * 0.62;
-  const a = 0.42 + rnd() * 0.18;
+  const a = 0.62 + rnd() * 0.2;
   ctx.fillStyle = rgba(rgb, a);
   // Sole and heel of a shoe.
   ctx.beginPath();
@@ -438,20 +445,20 @@ function waterSpots(ctx: Ctx, s: Stain, rnd: Rnd) {
 function grime(ctx: Ctx, s: Stain, rnd: Rnd) {
   ctx.save();
   ctx.scale(1.2, 0.85);
-  haze(ctx, s.r * 1.3, [70, 66, 50], 0.34);
+  haze(ctx, s.r * 1.3, [58, 52, 36], 0.46);
   ctx.restore();
   // A muddy film with darker patches where it dried (the painted tiles are far larger than a
   // grout grid this size, so drawing grout lines read as hash marks — 2026-10-22).
   for (let k = 0; k < 3; k++) {
     ctx.save();
     ctx.translate((rnd() - 0.5) * s.r * 0.9, (rnd() - 0.5) * s.r * 0.6);
-    ctx.fillStyle = `rgba(66, 58, 40, ${0.2 + rnd() * 0.14})`;
+    ctx.fillStyle = `rgba(56, 48, 30, ${0.32 + rnd() * 0.16})`;
     blob(ctx, s.r * (0.45 + rnd() * 0.3), rnd, 0.35, 8);
     ctx.fill();
     ctx.restore();
   }
   for (let i = 0; i < 8; i++) {
-    ctx.fillStyle = `rgba(60, 56, 40, ${0.3 + rnd() * 0.3})`;
+    ctx.fillStyle = `rgba(48, 42, 28, ${0.45 + rnd() * 0.35})`;
     ctx.beginPath();
     ctx.arc(
       (rnd() - 0.5) * s.r * 1.6,
@@ -497,7 +504,7 @@ export function paintStain(s: Stain): HTMLCanvasElement {
       scuff(ctx, s, rnd);
       break;
     case "footprint":
-      footprint(ctx, s, rnd, s.task === "restroom-floor" ? [64, 62, 48] : [76, 58, 40]);
+      footprint(ctx, s, rnd, s.task === "restroom-floor" ? [52, 50, 36] : [62, 42, 24]);
       break;
     case "puddle":
       puddle(ctx, s, rnd);
