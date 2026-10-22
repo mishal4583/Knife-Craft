@@ -480,7 +480,7 @@ if (ONLY.includes("G")) {
   // Midnight: the clock moves a day on, the page comes back.
   await page.evaluate(() => {
     window.__setDayOffset(1);
-    document.dispatchEvent(new Event("visibilitychange"));
+    window.dispatchEvent(new Event("focus")); // the window comes back (no Page Visibility API)
   });
   await sleep(800);
   const c2 = await card();

@@ -14,6 +14,12 @@
 import fs from "node:fs";
 import path from "node:path";
 import { execSync } from "node:child_process";
+/**
+ * What the phase work is measured against: the tree before Phases 1–6 (the parent of
+ * 412f3bc). These checks were written against HEAD while the work was uncommitted; once
+ * committed, HEAD is the work itself, so they compare to this commit (re-baselined 2026-10-22).
+ */
+const PHASE_BASE = "0ab8a4e";
 import { KITCHEN_UPGRADE_CATALOG } from "../src/game/kitchen/kitchenUpgradeDefinitions.ts";
 import { kitchenMapArtStage } from "../src/game/kitchen/kitchenMapArt.ts";
 import {
@@ -63,7 +69,7 @@ const app = code("src/App.tsx");
 // ───────────────────────────────────────────────────────────── A. restoration
 console.log("A. Restaurant restoration");
 {
-  const head = execSync("git show HEAD:src/game/kitchen/kitchenUpgradeDefinitions.ts", {
+  const head = execSync(`git show ${PHASE_BASE}:src/game/kitchen/kitchenUpgradeDefinitions.ts`, {
     cwd: ROOT,
     encoding: "utf8",
   });
@@ -326,10 +332,14 @@ const L = (...e: EconomyLedgerEntry[]) => ({ economyLedger: e });
   assert(
     /onClick=\{ready \? onOpen : undefined\}/.test(card) &&
       !/takeDailyGift|persist\(|appendLedgerEntry/.test(card) &&
-      /visibilitychange/.test(card) &&
+      // No Page Visibility API (CLAUDE.md §9, preflight; re-baselined 2026-10-22): the day is
+      // re-read on window focus and every 30 s.
+      !/visibilitychange|document\.hidden|visibilityState/.test(card) &&
       /setInterval\(check, 30_000\)/.test(card) &&
-      /removeEventListener\("visibilitychange", check\)/.test(card),
-    "B16: the Kitchen card only OPENS the existing gift sheet (one claim path); it re-reads the day on resume and every 30 s, and cleans up",
+      /addEventListener\("focus", check\)/.test(card) &&
+      /removeEventListener\("focus", check\)/.test(card) &&
+      /clearInterval\(t\)/.test(card),
+    "B16: the Kitchen card only OPENS the existing gift sheet (one claim path); it re-reads the day on focus and every 30 s (no Page Visibility API), and cleans up",
   );
   assert(
     /const reward = streakRewardOnTake\(current, now\);/.test(app) &&
@@ -342,7 +352,7 @@ const L = (...e: EconomyLedgerEntry[]) => ({ economyLedger: e });
 // ───────────────────────────────────────────────────────────── E. save & money
 console.log("\nE. Save and money");
 {
-  const saveDiff = execSync("git diff --stat HEAD -- src/game/SaveManager.ts src/types", {
+  const saveDiff = execSync(`git diff --stat ${PHASE_BASE} -- src/game/SaveManager.ts src/types`, {
     cwd: ROOT,
     encoding: "utf8",
   });
@@ -351,7 +361,7 @@ console.log("\nE. Save and money");
     "E1: no save-schema change (SaveManager.ts and src/types untouched)",
     saveDiff,
   );
-  const headApp = execSync("git show HEAD:src/App.tsx", {
+  const headApp = execSync(`git show ${PHASE_BASE}:src/App.tsx`, {
     cwd: ROOT,
     encoding: "utf8",
     maxBuffer: 1 << 26,
@@ -371,7 +381,7 @@ console.log("\nE. Save and money");
     p5.every((f) => !/localStorage|sessionStorage|indexedDB|bridge\.storage/.test(f)),
     "E3: no new storage of any kind",
   );
-  const daily = execSync("git diff HEAD -- src/game/daily/DailyOrderManager.ts", {
+  const daily = execSync(`git diff ${PHASE_BASE} -- src/game/daily/DailyOrderManager.ts`, {
     cwd: ROOT,
     encoding: "utf8",
   });

@@ -61,8 +61,10 @@ const check = (label: string, ok: boolean, detail?: unknown) => {
   );
 };
 const $ = (d: number) => d * 100;
-const NOW = new Date(2026, 9, 18, 14, 0, 0);
-const TOMORROW = new Date(2026, 9, 19, 9, 0, 0);
+// Ledger entries are stamped with the real clock (appendLedgerEntry), so "today" is the real
+// today; a fixed date stopped matching the entries once the calendar moved on (2026-10-22).
+const NOW = new Date();
+const TOMORROW = new Date(NOW.getFullYear(), NOW.getMonth(), NOW.getDate() + 1, 9, 0, 0);
 const base = (): SaveData => {
   const s = structuredClone(DEFAULT_SAVE);
   return { ...s, credits: $(500), economyLedger: [] };

@@ -1,5 +1,15 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## Phases 1–6 committed and green (2026-10-22, `main`)
+
+- Phases 1–6 were committed in 412f3bc (another session). Fixed after it: the
+  Daily Gift card listened to `visibilitychange` (Page Visibility API — CLAUDE.md
+  §9; the preflight failed): it now re-reads the day on window focus and every
+  30 s. `phase2`–`phase5` QA compared with `HEAD` (right only while uncommitted):
+  they compare with `0ab8a4e` (`PHASE_BASE`). `ad-bonuses-qa` used a fixed date.
+- Now: QA 113/113, preflight clean, `phase5.mjs` 21/21. Nothing new uploaded to
+  Playgama (it has 1.4.1). Still open: the cleaning rework (STATUS-2026-10-21.md).
+
 ## Phase 6: Kitchen Moment cards (2026-10-21, not committed)
 
 - Four moments (Perfect Cut, Special Dish, New Personal Best, Customer

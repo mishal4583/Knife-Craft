@@ -16,6 +16,12 @@
 import fs from "node:fs";
 import path from "node:path";
 import { execSync } from "node:child_process";
+/**
+ * What the phase work is measured against: the tree before Phases 1–6 (the parent of
+ * 412f3bc). These checks were written against HEAD while the work was uncommitted; once
+ * committed, HEAD is the work itself, so they compare to this commit (re-baselined 2026-10-22).
+ */
+const PHASE_BASE = "0ab8a4e";
 import {
   TIERS,
   TIER_INFO,
@@ -413,7 +419,7 @@ assert(
 // ───────────────────────────────────────────────────────────── E. save & money
 console.log("\nE. Save and money");
 {
-  const saveDiff = execSync("git diff --stat HEAD -- src/game/SaveManager.ts src/types", {
+  const saveDiff = execSync(`git diff --stat ${PHASE_BASE} -- src/game/SaveManager.ts src/types`, {
     cwd: ROOT,
     encoding: "utf8",
   });
@@ -422,7 +428,7 @@ console.log("\nE. Save and money");
     "E1: no save-schema change (SaveManager.ts and src/types untouched)",
     saveDiff,
   );
-  const headApp = execSync("git show HEAD:src/App.tsx", {
+  const headApp = execSync(`git show ${PHASE_BASE}:src/App.tsx`, {
     cwd: ROOT,
     encoding: "utf8",
     maxBuffer: 1 << 26,
