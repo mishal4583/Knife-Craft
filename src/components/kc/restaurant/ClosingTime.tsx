@@ -50,7 +50,7 @@ export function ClosingTime({
             "radial-gradient(circle at 82% 12%,rgba(255,244,214,0.55) 0 22px,transparent 23px),linear-gradient(180deg,rgba(14,22,62,0.86) 0%,rgba(30,24,52,0.72) 55%,rgba(48,30,24,0.62) 100%)",
         }}
       />
-      <div className="anim-up relative m-3 flex max-h-[calc(100%-24px)] w-[calc(100%-24px)] flex-col rounded-[26px] border border-walnut/20 bg-[linear-gradient(170deg,var(--color-ivory),var(--color-cream))] shadow-lift">
+      <div className="anim-up relative m-3 flex max-h-[calc(100%-24px)] w-[calc(100%-24px)] flex-col rounded-[26px] land:max-w-[680px] border border-walnut/20 bg-[linear-gradient(170deg,var(--color-ivory),var(--color-cream))] shadow-lift">
         <div className="px-5 pb-2 pt-4">
           <p className="font-ui text-[12.5px] font-extrabold uppercase tracking-[0.14em] text-walnut/60">
             Day {p.day} · Closing time

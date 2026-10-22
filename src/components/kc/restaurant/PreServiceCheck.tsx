@@ -280,7 +280,7 @@ export function PreServiceCheck({
         onClick={onClose}
         className="absolute inset-0 bg-walnut-dark/45 backdrop-blur-[2px]"
       />
-      <div className="anim-up relative m-3 flex max-h-[calc(100%-24px)] w-[calc(100%-24px)] flex-col rounded-[26px] border border-walnut/20 bg-[linear-gradient(170deg,var(--color-ivory),var(--color-cream))] shadow-lift">
+      <div className="anim-up relative m-3 flex max-h-[calc(100%-24px)] w-[calc(100%-24px)] flex-col rounded-[26px] land:max-w-[680px] border border-walnut/20 bg-[linear-gradient(170deg,var(--color-ivory),var(--color-cream))] shadow-lift">
         <div className="px-5 pb-2 pt-4">
           <span className="mx-auto mb-3 block h-1 w-10 rounded-full bg-walnut/20" />
           <p className="font-ui text-[12.5px] font-extrabold uppercase tracking-[0.14em] text-walnut/60">

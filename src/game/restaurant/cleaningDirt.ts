@@ -230,6 +230,255 @@ export const RESTROOM_GEO: Record<KitchenMapArtStage, RestroomGeo> = {
   },
 };
 
+/* ── Phone landscape (developer 2026-10-22) ──────────────────────────────
+   The 16:9 room paintings (public/landscape-art/cleaning/, 1672×940) in a
+   960×540 scene, measured from the art like the portrait geometry above
+   (2026-10-22). The views are three-quarter, so every surface is a list of
+   boxes. Where a painting hides the toilets behind stall doors (bowls null),
+   the toilet jobs keep the portrait room (landscapeCleaningSupports). */
+export type CleanOrient = "portrait" | "landscape";
+export const LAND_SCENE = { width: 960, height: 540 } as const;
+
+type LandGeo = {
+  kitchen: { line: Zone[]; islands: Zone[]; floor: Zone[] };
+  dining: { tops: Zone[]; floor: Zone[] };
+  restroom: { bowls: Zone[] | null; sinks: Zone[]; mirror: Zone[]; floor: Zone[] };
+};
+export const LAND_GEO: Record<KitchenMapArtStage, LandGeo> = {
+  humble: {
+    kitchen: {
+      line: [rect(320, 118, 840, 160)],
+      islands: [rect(290, 282, 515, 330)],
+      floor: [rect(120, 210, 280, 460), rect(540, 225, 800, 460), rect(290, 455, 540, 530)],
+    },
+    dining: {
+      tops: [rect(240, 215, 430, 310), rect(650, 255, 820, 360)],
+      floor: [
+        rect(55, 195, 230, 300),
+        rect(450, 260, 610, 340),
+        rect(200, 340, 640, 500),
+        rect(560, 400, 820, 500),
+      ],
+    },
+    restroom: {
+      bowls: [rect(670, 245, 740, 295)],
+      sinks: [rect(185, 165, 305, 220)],
+      mirror: [rect(165, 30, 240, 150)],
+      floor: [rect(330, 200, 520, 330), rect(150, 330, 520, 520), rect(800, 420, 950, 530)],
+    },
+  },
+  growing: {
+    kitchen: {
+      line: [rect(330, 128, 770, 190)],
+      islands: [rect(390, 225, 660, 320), rect(690, 150, 830, 180)],
+      floor: [rect(110, 250, 360, 380), rect(690, 220, 930, 470), rect(380, 470, 680, 525)],
+    },
+    dining: {
+      tops: [
+        rect(300, 135, 425, 195),
+        rect(195, 265, 350, 335),
+        rect(680, 225, 825, 290),
+        rect(610, 340, 770, 405),
+      ],
+      floor: [
+        rect(40, 330, 170, 500),
+        rect(444, 153, 640, 264),
+        rect(167, 417, 375, 520),
+        rect(380, 420, 600, 520),
+      ],
+    },
+    restroom: {
+      bowls: [rect(97, 195, 163, 255), rect(305, 167, 368, 230)],
+      sinks: [rect(655, 190, 750, 225), rect(775, 255, 880, 295)],
+      mirror: [rect(730, 20, 920, 200)],
+      floor: [rect(130, 300, 480, 530), rect(480, 330, 680, 530), rect(300, 245, 410, 300)],
+    },
+  },
+  established: {
+    kitchen: {
+      line: [rect(360, 165, 800, 215)],
+      islands: [rect(270, 212, 640, 290)],
+      floor: [rect(130, 300, 250, 450), rect(655, 300, 740, 470), rect(480, 505, 730, 535)],
+    },
+    dining: {
+      tops: [
+        rect(140, 205, 265, 250),
+        rect(450, 130, 570, 172),
+        rect(625, 100, 735, 128),
+        rect(795, 165, 900, 200),
+        rect(310, 310, 470, 375),
+        rect(630, 248, 775, 298),
+      ],
+      floor: [
+        rect(300, 195, 450, 280),
+        rect(575, 170, 700, 245),
+        rect(40, 300, 170, 340),
+        rect(650, 440, 780, 535),
+      ],
+    },
+    restroom: {
+      bowls: [rect(127, 178, 170, 222), rect(265, 162, 315, 205), rect(410, 152, 455, 195)],
+      sinks: [rect(660, 215, 740, 245), rect(755, 300, 850, 340)],
+      mirror: [rect(750, 35, 900, 180)],
+      floor: [rect(140, 280, 580, 525)],
+    },
+  },
+  "neighborhood-cafe": {
+    kitchen: {
+      line: [rect(420, 150, 850, 190)],
+      islands: [rect(235, 188, 495, 245), rect(570, 258, 870, 330)],
+      floor: [rect(70, 300, 220, 480), rect(260, 350, 540, 520), rect(500, 250, 565, 350)],
+    },
+    dining: {
+      tops: [
+        rect(292, 90, 382, 115),
+        rect(507, 125, 607, 155),
+        rect(183, 162, 288, 200),
+        rect(405, 215, 505, 255),
+        rect(75, 260, 200, 310),
+        rect(785, 260, 900, 305),
+        rect(635, 390, 760, 455),
+      ],
+      floor: [
+        rect(330, 320, 640, 385),
+        rect(540, 200, 740, 280),
+        rect(240, 250, 330, 330),
+        rect(470, 420, 520, 520),
+      ],
+    },
+    restroom: {
+      bowls: null,
+      sinks: [rect(625, 180, 700, 210), rect(700, 220, 780, 245), rect(780, 260, 860, 295)],
+      mirror: [rect(690, 25, 895, 150)],
+      floor: [rect(120, 300, 490, 525), rect(460, 250, 560, 300), rect(600, 470, 820, 530)],
+    },
+  },
+  "flourishing-cafe": {
+    kitchen: {
+      line: [rect(70, 115, 520, 170)],
+      islands: [rect(300, 210, 640, 275), rect(620, 325, 860, 380)],
+      floor: [rect(175, 300, 290, 470), rect(640, 260, 740, 320), rect(300, 400, 610, 520)],
+    },
+    dining: {
+      tops: [
+        rect(45, 195, 165, 232),
+        rect(128, 158, 222, 188),
+        rect(185, 128, 268, 152),
+        rect(378, 170, 478, 205),
+        rect(552, 185, 655, 220),
+        rect(315, 255, 440, 305),
+        rect(520, 278, 655, 328),
+        rect(842, 295, 948, 345),
+      ],
+      floor: [rect(700, 150, 785, 410), rect(610, 470, 770, 520), rect(300, 118, 375, 160)],
+    },
+    restroom: {
+      bowls: null,
+      sinks: [
+        rect(695, 190, 760, 210),
+        rect(725, 220, 790, 245),
+        rect(760, 255, 820, 280),
+        rect(795, 300, 860, 330),
+      ],
+      mirror: [rect(750, 30, 905, 180)],
+      floor: [
+        rect(170, 235, 660, 300),
+        rect(170, 300, 330, 520),
+        rect(540, 300, 660, 440),
+        rect(330, 420, 860, 530),
+      ],
+    },
+  },
+  grand: {
+    kitchen: {
+      line: [rect(230, 128, 700, 175), rect(620, 140, 900, 190)],
+      islands: [rect(300, 190, 600, 320)],
+      floor: [rect(150, 260, 290, 520), rect(620, 260, 880, 330), rect(340, 420, 720, 530)],
+    },
+    dining: {
+      tops: [
+        rect(52, 197, 168, 233),
+        rect(215, 113, 288, 133),
+        rect(340, 145, 415, 165),
+        rect(278, 227, 368, 255),
+        rect(555, 145, 628, 165),
+        rect(605, 227, 692, 255),
+        rect(805, 198, 920, 242),
+        rect(690, 113, 758, 133),
+      ],
+      floor: [
+        rect(200, 315, 400, 355),
+        rect(600, 315, 760, 355),
+        rect(700, 275, 790, 325),
+        rect(160, 275, 265, 325),
+      ],
+    },
+    restroom: {
+      bowls: null,
+      sinks: [rect(530, 312, 600, 335), rect(620, 248, 680, 268), rect(672, 213, 718, 228)],
+      mirror: [rect(470, 200, 550, 320), rect(575, 160, 630, 265), rect(635, 130, 685, 215)],
+      floor: [
+        rect(120, 380, 430, 530),
+        rect(720, 280, 850, 440),
+        rect(550, 470, 850, 535),
+        rect(230, 300, 360, 360),
+      ],
+    },
+  },
+};
+
+/** Whether this job has its landscape room (the toilets must be in view for the toilet jobs). */
+export function landscapeCleaningSupports(
+  area: CleanArea,
+  task: TaskKind,
+  stage: KitchenMapArtStage,
+): boolean {
+  if (area !== "restroom") return true;
+  if (task === "toilet" || task === "deep-restroom") return LAND_GEO[stage].restroom.bowls !== null;
+  return true;
+}
+
+/** The scene a cleaning is laid out in. */
+export function cleanScene(
+  area: CleanArea,
+  orient: CleanOrient,
+): { width: number; height: number } {
+  return orient === "landscape" ? LAND_SCENE : SCENE_SIZE[area];
+}
+
+/** Where a task's dirt can be in the landscape painting (the same jobs as dirtZones). */
+export function landDirtZones(area: CleanArea, task: TaskKind, stage: KitchenMapArtStage): Zone[] {
+  const g = LAND_GEO[stage];
+  if (area === "kitchen") {
+    const k = g.kitchen;
+    if (task === "sweep-line") return k.floor;
+    if (task === "deep-kitchen") return [...k.line, ...k.islands, ...k.floor];
+    if (task === "equipment") return [...k.line, ...k.islands];
+    return k.line;
+  }
+  if (area === "dining") {
+    const d = g.dining;
+    if (task === "spill") {
+      const c = landSpillCenter(stage);
+      return [rect(c.x - 48, c.y - 30, c.x + 48, c.y + 30)];
+    }
+    if (task === "floor" || task === "mop-all") return d.floor;
+    if (task === "tables") return d.tops;
+    return [...d.floor, ...d.tops];
+  }
+  const r = g.restroom;
+  if (task === "restroom-floor") return r.floor;
+  if (task === "restroom-disinfect") return [...r.sinks, ...r.mirror];
+  if (task === "toilet") return r.bowls ?? [];
+  return [...(r.bowls ?? []), ...r.sinks, ...r.floor];
+}
+
+/** The landscape spill: the middle of the dining room's largest stretch of open floor. */
+export function landSpillCenter(stage: KitchenMapArtStage): Point {
+  const z = [...LAND_GEO[stage].dining.floor].sort((a, b) => b.w * b.h - a.w * a.h)[0]!;
+  return { x: z.x + z.w / 2, y: z.y + z.h / 2 };
+}
+
 /** The room-wide practice's tasks per room. */
 export const ROOM_TASKS: Record<CleanArea, readonly TaskKind[]> = {
   kitchen: ["equipment", "grease", "sweep-line"],
@@ -350,8 +599,11 @@ export function spillCenter(stage: KitchenMapArtStage): Point {
 }
 
 /** The cooktop's grease streaks: three runs along the tier's cooking line. */
-function greaseStreaks(stage: KitchenMapArtStage): [number, number, number, number][] {
-  const { line } = KITCHEN_GEO[stage];
+function greaseStreaks(
+  stage: KitchenMapArtStage,
+  orient: CleanOrient = "portrait",
+): [number, number, number, number][] {
+  const line = orient === "landscape" ? LAND_GEO[stage].kitchen.line[0]! : KITCHEN_GEO[stage].line;
   const x1 = line.x + line.w * 0.1;
   const x2 = line.x + line.w * 0.9;
   return [0.3, 0.55, 0.8].map((f, i) => {
@@ -441,10 +693,16 @@ function taskStains(
   roomWide: boolean,
   firstId: number,
   variant: number,
+  orient: CleanOrient,
 ): Stain[] {
-  const rnd = seeded(hash(`${area}|${task}|${stage}|${variant}`));
-  const zones = dirtZones(area, task, stage);
-  const { width, height } = SCENE_SIZE[area];
+  const land = orient === "landscape";
+  // Portrait keeps its exact seed; landscape lays its own dirt on its own painting.
+  const rnd = seeded(hash(`${area}|${task}|${stage}|${variant}${land ? "|land" : ""}`));
+  const zones = land ? landDirtZones(area, task, stage) : dirtZones(area, task, stage);
+  const { width, height } = cleanScene(area, orient);
+  const mirrors: readonly Zone[] = land
+    ? LAND_GEO[stage].restroom.mirror
+    : [RESTROOM_GEO[stage].mirror];
   const out: Stain[] = [];
   const base = toolForTask(area, task);
   const add = (s: Omit<Stain, "id" | "seed" | "toughness" | "strength">) => {
@@ -460,12 +718,12 @@ function taskStains(
 
   // The spill: one big puddle with a few splashes around it.
   if (task === "spill") {
-    const c = spillCenter(stage);
+    const c = land ? landSpillCenter(stage) : spillCenter(stage);
     add({ kind: "puddle", task, tool: "mop", x: c.x, y: c.y, r: 30, stretch: 1.35, angle: -0.16 });
   }
   // The cooktop's grease runs in streaks.
   if (area === "kitchen" && (task === "grease" || task === "degrease")) {
-    for (const [x1, y1, x2, y2] of greaseStreaks(stage)) {
+    for (const [x1, y1, x2, y2] of greaseStreaks(stage, orient)) {
       const len = Math.hypot(x2 - x1, y2 - y1);
       add({
         kind: "grease",
@@ -502,7 +760,7 @@ function taskStains(
       task,
       tool:
         area === "restroom" && task === "restroom-disinfect"
-          ? zone === RESTROOM_GEO[stage].mirror
+          ? mirrors.includes(zone)
             ? "glass-cloth"
             : "sponge"
           : tool,
@@ -536,10 +794,12 @@ export function makeStains(
   stage: KitchenMapArtStage,
   roomWide = false,
   variant = 0,
+  orient: CleanOrient = "portrait",
 ): Stain[] {
   const tasks = roomWide ? ROOM_TASKS[area] : [task];
   const out: Stain[] = [];
-  for (const t of tasks) out.push(...taskStains(area, t, stage, roomWide, out.length, variant));
+  for (const t of tasks)
+    out.push(...taskStains(area, t, stage, roomWide, out.length, variant, orient));
   return out;
 }
 
@@ -553,8 +813,12 @@ export function cleaningVariant(cleaned: number, since: number, task: TaskKind):
 }
 
 /** The points the brush has to cover for each stain: its middle and a ring inside its edge. */
-export function stainMarks(stains: readonly Stain[], area: CleanArea): DirtMark[] {
-  const { width, height } = SCENE_SIZE[area];
+export function stainMarks(
+  stains: readonly Stain[],
+  area: CleanArea,
+  orient: CleanOrient = "portrait",
+): DirtMark[] {
+  const { width, height } = cleanScene(area, orient);
   return stains.flatMap((s) => {
     const long = s.r * s.stretch;
     const pts: Point[] = [{ x: s.x, y: s.y }];

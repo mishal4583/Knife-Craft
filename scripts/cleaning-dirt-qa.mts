@@ -20,6 +20,9 @@
  *  S  Streak and milestones: within the window the streak grows, after it it restarts;
  *     25 / 50 / 75 % are crossed once each.
  *  A  Audio: the scrub, sparkle and Spotless sounds are off when Sound is off.
+ *  L  Phone landscape (developer 2026-10-22): the 16:9 paintings' own measured surfaces;
+ *     stains inside and on them; toilets hidden by stall doors keep portrait; portrait
+ *     dirt unchanged; the screen picks the orientation once per cleaning.
  *  R  No Math.random in the dirt module (seeded only).
  *
  * Run: npx tsx scripts/cleaning-dirt-qa.mts
@@ -38,6 +41,10 @@ import {
   TOUGHNESS,
   cleanedShare,
   cleaningVariant,
+  LAND_GEO,
+  LAND_SCENE,
+  landDirtZones,
+  landscapeCleaningSupports,
   diningRug,
   strengthOpacity,
   strengthToughness,
@@ -166,7 +173,7 @@ console.log("V  variety");
   assert(
     /variant=\{cleaningVariantFor\(/.test(view) &&
       /cleaningVariant\(st\.cleaned/.test(view) &&
-      /makeStains\(area, task, stage, roomWide, variant\)/.test(proto) &&
+      /makeStains\(area, task, stage, roomWide, variant, orient\)/.test(proto) &&
       /strengthOpacity\(s\.strength\)/.test(proto),
     "the Cleanliness tab passes the variant; the game paints each stain at its strength",
   );
@@ -398,6 +405,95 @@ console.log("A  audio");
     return at >= 0 && audio.slice(at, at + 200).includes("if (!this.enabled) return;");
   });
   assert(gated, "the scrub, sparkle and Spotless sounds stay quiet with Sound off");
+}
+
+console.log("L  phone landscape");
+{
+  // Developer 2026-10-22 ("optimize the game for mobile landscape"): the 16:9 room paintings.
+  const landCases = cases.filter(({ area, task, stage }) =>
+    landscapeCleaningSupports(area, task, stage),
+  );
+  const out: unknown[] = [];
+  const off: unknown[] = [];
+  for (const { area, task, stage, variant } of landCases) {
+    const stains = makeStains(area, task, stage, false, variant, "landscape");
+    if (!stains.length) out.push({ area, task, stage, empty: true });
+    for (const s of stains)
+      if (s.x < 0 || s.y < 0 || s.x > LAND_SCENE.width || s.y > LAND_SCENE.height)
+        out.push({ area, task, stage, x: s.x, y: s.y });
+    for (const m of stainMarks(stains, area, "landscape"))
+      if (m.point.x < 1 || m.point.y < 1 || m.point.x > 959 || m.point.y > 539) out.push({ m });
+    const zones = landDirtZones(area, task, stage);
+    for (const s of stains) {
+      if ((task === "spill" && s.r === 30) || (s.kind === "grease" && s.stretch > 3)) continue;
+      const inside = zones.some(
+        (z) =>
+          s.x >= z.x - s.r && s.x <= z.x + z.w + s.r && s.y >= z.y - s.r && s.y <= z.y + z.h + s.r,
+      );
+      if (!inside) off.push({ area, task, stage, x: s.x, y: s.y });
+    }
+  }
+  assert(
+    landCases.length > cases.length * 0.85 && out.length === 0,
+    "every landscape job has stains inside the 960×540 scene",
+    out.slice(0, 3),
+  );
+  assert(
+    off.length === 0,
+    "every landscape stain sits on its job's painted surfaces",
+    off.slice(0, 3),
+  );
+  const geoInside = STAGES.every((st) =>
+    Object.values(LAND_GEO[st]).every((room) =>
+      Object.values(room).every((list) =>
+        (list ?? []).every(
+          (z: { x: number; y: number; w: number; h: number }) =>
+            z.w > 0 && z.h > 0 && z.x >= 0 && z.y >= 0 && z.x + z.w <= 960 && z.y + z.h <= 540,
+        ),
+      ),
+    ),
+  );
+  assert(geoInside, "every measured landscape surface is a real box inside the painting");
+  const toiletFallback = STAGES.filter(
+    (st) => !landscapeCleaningSupports("restroom", "toilet", st),
+  );
+  assert(
+    toiletFallback.every((st) => LAND_GEO[st].restroom.bowls === null) &&
+      STAGES.every((st) => landscapeCleaningSupports("restroom", "restroom-floor", st)),
+    "a painting without visible toilets keeps the toilet jobs in portrait; the other jobs go landscape",
+    toiletFallback,
+  );
+  const portraitSame = cases.every(
+    ({ area, task, stage, variant }) =>
+      JSON.stringify(makeStains(area, task, stage, false, variant)) ===
+      JSON.stringify(makeStains(area, task, stage, false, variant, "portrait")),
+  );
+  assert(portraitSame, "portrait dirt is unchanged by the landscape option");
+  const differs =
+    JSON.stringify(makeStains("dining", "floor", "humble", false, 0, "landscape")) !==
+    JSON.stringify(makeStains("dining", "floor", "humble", false, 0));
+  assert(differs, "landscape lays its own dirt for its own painting");
+  const disinfectLand = STAGES.every((st) => {
+    const ss = makeStains("restroom", "restroom-disinfect", st, false, 0, "landscape");
+    return ss.some((x) => x.tool === "glass-cloth") && ss.some((x) => x.tool === "sponge");
+  });
+  assert(
+    disinfectLand,
+    "landscape Disinfect: the Squeegee on the mirrors, the Sponge on the sinks",
+  );
+  const proto = read("src/components/kc/business/AreaCleaningPrototype.tsx");
+  assert(
+    /landscapeCleaningSupports\(area, t, stage\)/.test(proto) &&
+      /landscapeCleaningArt\(area, stage\)/.test(proto) &&
+      /useState<"portrait" \| "landscape">/.test(proto),
+    "the cleaning screen picks the landscape room once per cleaning (turning the phone keeps the dirt)",
+  );
+  for (const st of STAGES)
+    for (const area of ["kitchen", "dining", "restroom"])
+      assert(
+        fs.existsSync(path.join(root, `public/landscape-art/cleaning/${area}-${st}.webp`)),
+        `landscape art ${area}-${st} exists`,
+      );
 }
 
 console.log("R  seeded only");

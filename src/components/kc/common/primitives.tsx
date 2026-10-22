@@ -235,7 +235,7 @@ export function Modal({
         onClick={onClose}
         className="absolute inset-0 bg-walnut-dark/45 backdrop-blur-[2px]"
       />
-      <div className="anim-up relative m-3 w-[calc(100%-24px)] rounded-[26px] border border-walnut/20 bg-[linear-gradient(170deg,var(--color-ivory),var(--color-cream))] p-5 shadow-lift">
+      <div className="anim-up relative m-3 w-[calc(100%-24px)] rounded-[26px] border border-walnut/20 bg-[linear-gradient(170deg,var(--color-ivory),var(--color-cream))] p-5 shadow-lift land:max-h-[calc(100%-24px)] land:max-w-[620px] land:overflow-y-auto">
         <span className="mx-auto mb-4 block h-1 w-10 rounded-full bg-walnut/20" />
         {children}
       </div>

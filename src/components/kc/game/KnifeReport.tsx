@@ -62,8 +62,8 @@ export function KnifeReport({
   }, []);
 
   return (
-    <div className="@container absolute inset-0 z-40 flex items-end bg-walnut-dark/45 backdrop-blur-[3px]">
-      <div className="anim-up paper m-3 w-[calc(100%-24px)] rounded-[26px] border border-walnut/20 p-4 shadow-lift @min-[390px]:p-5">
+    <div className="@container absolute inset-0 z-40 flex items-end bg-walnut-dark/45 backdrop-blur-[3px] land:items-center land:justify-center">
+      <div className="anim-up paper m-3 w-[calc(100%-24px)] rounded-[26px] border border-walnut/20 p-4 shadow-lift @min-[390px]:p-5 land:max-h-[calc(100%-16px)] land:max-w-[620px] land:overflow-y-auto">
         <p className="text-center font-ui text-[11px] font-extrabold uppercase tracking-[0.22em] text-copper">
           Knife Report
         </p>

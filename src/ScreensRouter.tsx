@@ -482,7 +482,7 @@ export function ScreensRouter({
             data-map-return
             aria-label="Return to restaurant map"
             onClick={() => routeGo("restaurant-map")}
-            className="fixed bottom-[82px] right-3 z-[80] flex min-h-12 items-center gap-2 rounded-full border border-walnut-dark/60 bg-walnut-dark px-4 font-ui text-[12px] font-extrabold text-ivory shadow-lift"
+            className="fixed bottom-[82px] right-3 z-[80] land:bottom-3 flex min-h-12 items-center gap-2 rounded-full border border-walnut-dark/60 bg-walnut-dark px-4 font-ui text-[12px] font-extrabold text-ivory shadow-lift"
           >
             🗺️ Map
           </button>

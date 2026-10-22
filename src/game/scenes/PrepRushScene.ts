@@ -120,11 +120,19 @@ export class PrepRushScene extends Phaser.Scene {
   private get h(): number {
     return this.scale.height;
   }
+  /**
+   * The size unit: the width on a portrait canvas (exactly as before), the height on a
+   * landscape one, so a phone on its side keeps the food, belt and bins in proportion
+   * instead of scaling them by the long side (developer 2026-10-22, landscape).
+   */
+  private get u(): number {
+    return Math.min(this.w, this.h);
+  }
   private beltY(): number {
     return this.h * 0.42;
   }
   private beltH(): number {
-    return Math.max(56, this.h * 0.17);
+    return Math.max(56, this.h * 0.17, this.u * 0.24);
   }
   private beltStart(): number {
     return this.w * 0.04;
@@ -139,7 +147,7 @@ export class PrepRushScene extends Phaser.Scene {
     return { x: this.w * 0.88, y: this.h * 0.7 };
   }
   private radiusOf(kind: RushKind): number {
-    return GEOMETRY[kind].RX_FRAC * this.w * PREP_RUSH.SIZE_FRAC;
+    return GEOMETRY[kind].RX_FRAC * this.u * PREP_RUSH.SIZE_FRAC;
   }
 
   /** (Re)paints the ingredient textures at this size and redraws the belt and bins. */
@@ -147,7 +155,7 @@ export class PrepRushScene extends Phaser.Scene {
     if (this.w <= 1 || this.h <= 1) return;
     for (const kind of PREP_RUSH.KINDS) {
       const rx = this.radiusOf(kind);
-      const ry = GEOMETRY[kind].RY_FRAC * this.w * PREP_RUSH.SIZE_FRAC;
+      const ry = GEOMETRY[kind].RY_FRAC * this.u * PREP_RUSH.SIZE_FRAC;
       const m = Math.ceil(rx * 0.12);
       const key = `rush-${kind}`;
       if (this.textures.exists(key)) this.textures.remove(key);
@@ -191,7 +199,7 @@ export class PrepRushScene extends Phaser.Scene {
     g.clear();
     for (const t of this.labels) t.destroy();
     this.labels = [];
-    const bw = this.w * 0.24;
+    const bw = this.u * 0.24;
     const bowl = this.bowl();
     g.fillStyle(0xf3ead9, 1);
     g.fillEllipse(bowl.x, bowl.y, bw * 1.25, bw * 0.42);
@@ -205,7 +213,7 @@ export class PrepRushScene extends Phaser.Scene {
     const style = {
       fontFamily: FONT,
       fontStyle: "800",
-      fontSize: `${Math.max(12, this.w * 0.032)}px`,
+      fontSize: `${Math.max(12, this.u * 0.032)}px`,
       color: "#6b4a2f",
     };
     this.labels.push(

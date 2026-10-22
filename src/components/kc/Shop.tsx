@@ -472,7 +472,7 @@ export function Shop({
                 // Restaurant Ingredients: a shorter banner so the Plan ahead panel is on
                 // screen (audit 2026-10-08: it sat below the fold).
                 className={cn(
-                  "block w-full object-cover object-top",
+                  "block w-full object-cover object-top land:!h-[72px] land:object-[center_35%]",
                   RESTAURANT_MODE && category === "ingredients" ? "h-[96px]" : "h-[168px]",
                 )}
               />
@@ -493,7 +493,7 @@ export function Shop({
         <nav
           className={cn(
             "category-tabs grid gap-2 px-4 pt-3",
-            browseOnly ? "grid-cols-2" : "grid-cols-3",
+            browseOnly ? "grid-cols-2" : "grid-cols-3 land:grid-cols-6",
           )}
           aria-label="Shop categories"
         >

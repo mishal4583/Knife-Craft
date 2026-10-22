@@ -2058,6 +2058,49 @@ not silently removed.
 
 ## 10. UI
 
+### Phone landscape (developer 2026-10-22)
+
+"Optimize the game for mobile landscape layout; there are landscape images … integrate."
+
+- **When:** `isPhoneLandscape(w, h)` (`kc/game/layoutMode.ts`): aspect ≥ 1.3 and height
+  < 640. A phone on its side. Tablets and desktop windows keep the framed 9:16 portrait
+  game; portrait is unchanged (every landscape style is behind `land:` / `[data-orient]`).
+- **Shell:** `GameShell` fills the whole screen (safe-area insets left/right), sets
+  `<html data-orient="landscape">` (the Tailwind `land:` variant, `styles.css`) and a
+  `LayoutContext` (`useLandscape()`). Below `LAND_MIN_H` (320) the UI is laid out at
+  320 and scaled, like `MIN_LAYOUT_W` in portrait. One wrapper at every size: turning
+  the phone never remounts the game.
+- **Navigation:** `BottomNav` becomes a 76 px rail on the left (`--kc-rail`); siblings
+  start after it (`styles.css`); the `pb-24` room for the bar and the map's 72 px are
+  dropped; the scroll cue, lock hint and Grandma's section pointer sit beside the rail.
+- **Screens:** Kitchen home: HUD in one row, the order card at the bottom (max 640 px),
+  shortcuts at the right; Market: shorter banner, categories in one row of 6; Business:
+  tabs in one row; Inventory / Business banners shorter. Sheets and result cards
+  (`Modal`, Pre-Service Check, Closing Time, Knife Report, Order Complete, Service Order
+  Complete) are centred, at most 560–680 px wide, scrolling inside.
+- **Landscape art** (`public/landscape-art/`, `LANDSCAPE_ART_CLAUDE.md`,
+  `game/landscapeArt.ts`): the restaurant painting behind the Restaurant map and the
+  Second Floor (`LandscapeBackdrop`, dimmed); the cleaning rooms (below). Loaded only in
+  landscape.
+- **Cutting:** the Phaser canvas stays portrait (`PreparationScene` sizes the food by the
+  width): `.kc-prep [data-game-viewport]` is 0.912 × the height wide and 120 % tall
+  (empty top and bottom cropped), right of the order card; the how-to / guide cards
+  (`kc-prep-side`) sit under the order card, off the board; the HUD strip passes touches
+  through. Phaser reads the canvas box, so cuts land exactly. The cooking clip plays
+  whole in a 9:16 box over a blurred copy of its poster.
+- **Prep Rush:** `PrepRushScene` sizes the food, belt and bins by `min(width, height)`
+  (portrait: the width, as before).
+- **Cleaning:** a job opens on its 16:9 painting when that painting shows it
+  (`landscapeCleaningSupports`: the toilets of the last three tiers are behind stall
+  doors, so those toilet jobs keep the portrait room). `LAND_GEO` (`cleaningDirt.ts`):
+  per tier the measured surfaces in a 960×540 scene; `makeStains(…, orient)` /
+  `stainMarks(…, orient)`; portrait dirt unchanged. Chosen once per cleaning, so turning
+  the phone keeps the dirt and progress. The title, tools and progress sit in a 232 px
+  column right of the room.
+- **Tests:** `tools/e2e/landscape.mjs` (8 checks at 568×320 … 932×430, the map art, the
+  cut, the cleaning, rotation mid-level), `cleaning-dirt-qa` L; `solver.mjs`
+  `geometryFromCanvas` aims from the canvas's own box.
+
 ### Market item showcase (developer 2026-10-21)
 
 - Every Market card (Knives, Cutting Boards, Ingredients, the supply sections,

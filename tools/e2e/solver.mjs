@@ -6,6 +6,28 @@ export const CX = 215,
   CY = 452,
   HALF_W = 62;
 const PLATE = { x: 112, y: 616 };
+const [CX0, CY0, HALF_W0, PLATE0] = [CX, CY, HALF_W, PLATE];
+
+/**
+ * The same aim points, read from the cutting canvas's own box (2026-10-22, phone
+ * landscape): the defaults above are the 430×900 portrait layout, where the canvas is
+ * 430 × 565 at y 160 — so the ingredient sits at (0.5, 0.517) of it, the cuts span
+ * ±0.144 of its width and the plate is at (0.26, 0.807).
+ */
+export async function geometryFromCanvas(page) {
+  const r = await page.evaluate(() => {
+    const q = document.querySelector("[data-game-viewport] canvas")?.getBoundingClientRect();
+    return q ? { x: q.left, y: q.top, w: q.width, h: q.height } : null;
+  });
+  if (!r) return null;
+  return {
+    CX: r.x + r.w * 0.5,
+    CY: r.y + r.h * 0.517,
+    HALF_W: r.w * 0.144,
+    SPAN: r.w * 0.43,
+    PLATE: { x: r.x + r.w * 0.26, y: r.y + r.h * 0.807 },
+  };
+}
 
 export async function stepInfo(page) {
   return page.evaluate(() => {
@@ -62,8 +84,17 @@ async function stroke(page, x0, y0, x1, y1, steps = 14) {
  */
 export async function playToReport(
   page,
-  { tapInterval = 140, maxMs = 90000, until, aim, steady } = {},
+  { tapInterval = 140, maxMs = 90000, until, aim, steady, geom } = {},
 ) {
+  // `geom` (geometryFromCanvas) replaces the portrait aim points; without it, as before.
+  const { CX, CY, HALF_W, PLATE, SPAN } = geom ?? {
+    CX: CX0,
+    CY: CY0,
+    HALF_W: HALF_W0,
+    PLATE: PLATE0,
+    SPAN: 190,
+  };
+  const k = SPAN / 190;
   let lastTap = 0;
   const log = [];
   const t0 = Date.now();
@@ -81,7 +112,7 @@ export async function playToReport(
     // scrape it like a player, one broad sweep across the board.
     if (await page.evaluate(() => !!document.querySelector('[data-testid="board-cleanup"]'))) {
       log.push("scrape");
-      await stroke(page, CX - 185, CY + 30, CX + 185, CY + 30, 18);
+      await stroke(page, CX - 185 * k, CY + 30 * k, CX + 185 * k, CY + 30 * k, 18);
       await sleep(1100);
       continue;
     }
@@ -93,8 +124,8 @@ export async function playToReport(
       log.push("avalanche");
       if (sweeps >= 6) await page.click('[data-testid="avalanche-skip"]').catch(() => null);
       else {
-        const dy = [-60, 0, 60, -30, 30, -90][sweeps];
-        await stroke(page, CX - 190, CY + dy, CX + 190, CY + dy, 22);
+        const dy = [-60, 0, 60, -30, 30, -90][sweeps] * k;
+        await stroke(page, CX - SPAN, CY + dy, CX + SPAN, CY + dy, 22);
       }
       await sleep(600);
       continue;
@@ -112,10 +143,10 @@ export async function playToReport(
       if (s.tech === "peel") {
         // horizontal full-width strokes at staggered heights (a peel's counter only changes when the step ends)
         const rows = [0, -18, 18, -36, 36, -9, 9, -27, 27, -50, 50, -60, 60];
-        const y = CY + rows[peelIdx++ % rows.length];
+        const y = CY + rows[peelIdx++ % rows.length] * k;
         // start ON the ingredient (a peel only begins from a press on it), sweep out to each side
-        await stroke(page, CX, y, CX - 115, y, 14);
-        await stroke(page, CX, y, CX + 115, y, 14);
+        await stroke(page, CX, y, CX - 115 * k, y, 14);
+        await stroke(page, CX, y, CX + 115 * k, y, 14);
         await sleep(250);
         stuck = Math.min(stuck, 20);
         // a finished peel in a multi-step recipe waits for the plate drag (its counter stays "0/1")

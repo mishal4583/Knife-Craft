@@ -628,7 +628,7 @@ export function InventoryScreen({
 
         <div className="space-y-3 px-4">
           <section
-            className="relative isolate h-[104px] overflow-hidden rounded-[18px] border border-walnut/20 bg-walnut-dark shadow-soft sm:h-[116px]"
+            className="relative isolate h-[104px] overflow-hidden rounded-[18px] border border-walnut/20 bg-walnut-dark shadow-soft sm:h-[116px] land:!h-[64px]"
             aria-label="Restaurant stockroom"
           >
             <img

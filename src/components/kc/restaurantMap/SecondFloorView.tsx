@@ -35,6 +35,7 @@ import {
 } from "@/game/restaurant/secondFloor";
 import type { NormalizedRect } from "./restaurantMap";
 import "./RestaurantMap.css";
+import { LandscapeBackdrop } from "@/components/kc/game/LandscapeBackdrop";
 
 export type SecondFloorAction =
   | { kind: "buy"; id: StationId }
@@ -354,6 +355,7 @@ export function SecondFloorView({
       aria-label="Second floor: the automated food hall"
       data-testid="second-floor"
     >
+      <LandscapeBackdrop section="restaurant" wash="dim" />
       <div className="restaurant-map-toolbar" role="toolbar" aria-label="Second floor">
         <div className="map-legend-pills">
           <span className="legend-pill level-pill">

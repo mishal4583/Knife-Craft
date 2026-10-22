@@ -256,7 +256,7 @@ export function BusinessDashboard({
         <nav
           className={cn(
             "category-tabs grid gap-2 px-4",
-            tabs.length > 6 ? "grid-cols-4" : "grid-cols-3",
+            tabs.length > 6 ? "grid-cols-4 land:grid-cols-8" : "grid-cols-3 land:grid-cols-6",
           )}
           aria-label="Business sections"
         >
@@ -276,7 +276,7 @@ export function BusinessDashboard({
                 aria-current={active ? "page" : undefined}
                 onClick={() => go(BUSINESS_TAB_SCREEN[item.id])}
                 className={cn(
-                  "press relative flex h-[60px] flex-col items-center justify-center gap-0.5 rounded-[18px] border px-0.5",
+                  "press relative flex h-[60px] flex-col items-center justify-center gap-0.5 rounded-[18px] border px-0.5 land:h-[52px]",
                   active
                     ? "wood border-walnut-dark/50 text-ivory shadow-soft"
                     : "card-warm border-walnut/15 text-walnut-dark",

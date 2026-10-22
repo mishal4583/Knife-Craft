@@ -68,7 +68,7 @@ export function ScrollCue({ hidden = false }: { hidden?: boolean }) {
           data-testid="scroll-cue"
           data-scroll-cue={state}
           aria-label={state === "more" ? "Scroll down: more below" : "Back to the top"}
-          className="press anim-up absolute bottom-full left-1/2 mb-2 -translate-x-1/2 flex min-h-12 min-w-12 items-center justify-center gap-1 rounded-full border border-walnut-dark/40 bg-walnut-dark/85 px-3 font-ui text-[12.5px] font-extrabold text-ivory shadow-lift backdrop-blur-sm"
+          className="press anim-up absolute bottom-full left-1/2 mb-2 -translate-x-1/2 land:bottom-3 land:left-full land:mb-0 land:ml-3 land:translate-x-0 flex min-h-12 min-w-12 items-center justify-center gap-1 rounded-full border border-walnut-dark/40 bg-walnut-dark/85 px-3 font-ui text-[12.5px] font-extrabold text-ivory shadow-lift backdrop-blur-sm"
         >
           <span aria-hidden className="text-[15px] leading-none">
             {state === "more" ? "▾" : "▴"}

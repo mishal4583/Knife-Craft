@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { LayoutContext, isPhoneLandscape, LAND_MIN_H } from "./layoutMode";
 
 // The logical design canvas every screen/Phaser scene in this project is
 // authored against (see PreparationScene.ts, GameBridge.ts) — unchanged
@@ -50,6 +51,11 @@ const MIN_LAYOUT_W = 320;
 function useContainFit(logicalW: number, logicalH: number) {
   const ref = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: logicalW, height: logicalH });
+  // Phone landscape (developer 2026-10-22: "optimize the game for mobile landscape"):
+  // the game fills the whole screen instead of a shrunken 9:16 phone in the middle.
+  const [landscape, setLandscape] = useState(() =>
+    typeof window === "undefined" ? false : isPhoneLandscape(window.innerWidth, window.innerHeight),
+  );
 
   useLayoutEffect(() => {
     const el = ref.current;
@@ -62,6 +68,12 @@ function useContainFit(logicalW: number, logicalH: number) {
       // GameBridge's own `scale.min` floor does one layer down for the
       // Phaser canvas itself.
       if (w <= 0 || h <= 0) return;
+      const land = isPhoneLandscape(window.innerWidth, window.innerHeight);
+      setLandscape(land);
+      if (land) {
+        setSize({ width: w, height: h });
+        return;
+      }
       const scale = Math.min(w / logicalW, h / logicalH);
       setSize({ width: logicalW * scale, height: logicalH * scale });
     };
@@ -85,7 +97,14 @@ function useContainFit(logicalW: number, logicalH: number) {
     };
   }, [logicalW, logicalH]);
 
-  return { ref, size };
+  // Landscape styles key off <html data-orient> (Tailwind `land:`), so portals see it too.
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    if (landscape) root.dataset["orient"] = "landscape";
+    else delete root.dataset["orient"];
+  }, [landscape]);
+
+  return { ref, size, landscape };
 }
 
 /**
@@ -101,63 +120,86 @@ function useContainFit(logicalW: number, logicalH: number) {
  * own doc for the sizing mechanism.
  */
 export function GameShell({ children, aside }: { children: ReactNode; aside?: ReactNode }) {
-  const { ref, size } = useContainFit(LOGICAL_W, LOGICAL_H);
+  const { ref, size, landscape } = useContainFit(LOGICAL_W, LOGICAL_H);
+  // Below LAND_MIN_H the landscape UI is laid out at that height and scaled down,
+  // like MIN_LAYOUT_W in portrait (a 568×320 phone, a browser bar eating the height).
+  const landScale = landscape && size.height < LAND_MIN_H ? size.height / LAND_MIN_H : 1;
+  const contentStyle = landscape
+    ? landScale < 1
+      ? {
+          width: size.width / landScale,
+          height: LAND_MIN_H,
+          transform: `scale(${landScale})`,
+        }
+      : { width: "100%", height: "100%" }
+    : size.width >= MIN_LAYOUT_W
+      ? { width: "100%", height: "100%" }
+      : {
+          width: MIN_LAYOUT_W,
+          height: (size.height * MIN_LAYOUT_W) / size.width,
+          transform: `scale(${size.width / MIN_LAYOUT_W})`,
+        };
   return (
-    <div
-      className="fixed inset-0 overflow-hidden bg-[radial-gradient(120%_80%_at_50%_0%,#3E2819,#231710_70%)]"
-      // Playgama checklist: a long press (or right click) in the game never opens the
-      // browser's menu; text fields keep theirs (paste).
-      onContextMenu={(e) => {
-        const t = e.target as HTMLElement;
-        if (t.closest("input, textarea")) return;
-        e.preventDefault();
-      }}
-      onDragStart={(e) => {
-        if ((e.target as HTMLElement).tagName === "IMG") e.preventDefault();
-      }}
-    >
-      {/* Phone-sized screens get the game edge to edge (no margin, border or
+    <LayoutContext.Provider value={landscape ? "landscape" : "portrait"}>
+      <div
+        className="fixed inset-0 overflow-hidden bg-[radial-gradient(120%_80%_at_50%_0%,#3E2819,#231710_70%)]"
+        // Playgama checklist: a long press (or right click) in the game never opens the
+        // browser's menu; text fields keep theirs (paste).
+        onContextMenu={(e) => {
+          const t = e.target as HTMLElement;
+          if (t.closest("input, textarea")) return;
+          e.preventDefault();
+        }}
+        onDragStart={(e) => {
+          if ((e.target as HTMLElement).tagName === "IMG") e.preventDefault();
+        }}
+      >
+        {/* Phone-sized screens get the game edge to edge (no margin, border or
           rounded corners); the framed "device" look is only for wider screens. */}
-      <div className="flex h-full w-full items-center justify-center gap-6 p-0 sm:p-4">
-        {aside}
-        {/* The measuring box — its own rendered size (via ResizeObserver
+        <div
+          className={
+            landscape
+              ? "flex h-full w-full items-stretch justify-center pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]"
+              : "flex h-full w-full items-center justify-center gap-6 p-0 sm:p-4"
+          }
+        >
+          {landscape ? null : aside}
+          {/* The measuring box — its own rendered size (via ResizeObserver
             above) IS "the space actually available to the game", already
             net of `aside`'s width and this row's gap/padding, courtesy of
             ordinary flex layout. Never sized/styled itself beyond that;
             the visible phone-frame lives entirely on the fixed-size child
             below, centered inside it. */}
-        <div
-          ref={ref}
-          className="flex h-full min-h-0 w-full min-w-0 flex-1 items-center justify-center"
-        >
           <div
-            className="relative overflow-hidden sm:rounded-[clamp(0px,4vmin,34px)] sm:border-[3px] sm:border-[#241811] sm:shadow-[0_40px_80px_rgba(0,0,0,0.55)]"
-            style={{ width: size.width, height: size.height }}
+            ref={ref}
+            className="flex h-full min-h-0 w-full min-w-0 flex-1 items-center justify-center"
           >
-            {/* ONE wrapper at every size: switching between "children" and a
+            <div
+              className={
+                landscape
+                  ? "relative overflow-hidden"
+                  : "relative overflow-hidden sm:rounded-[clamp(0px,4vmin,34px)] sm:border-[3px] sm:border-[#241811] sm:shadow-[0_40px_80px_rgba(0,0,0,0.55)]"
+              }
+              style={{ width: size.width, height: size.height }}
+            >
+              {/* ONE wrapper at every size: switching between "children" and a
                 wrapped tree when a resize or rotation crossed MIN_LAYOUT_W
                 changed the element tree, so React remounted the whole game
                 (the cutting scene, the order, a served order's result panel).
                 Now a resize only changes this wrapper's size and scale. */}
-            <div
-              data-game-content
-              className="absolute left-0 top-0 origin-top-left"
-              style={
-                size.width >= MIN_LAYOUT_W
-                  ? { width: "100%", height: "100%" }
-                  : {
-                      width: MIN_LAYOUT_W,
-                      height: (size.height * MIN_LAYOUT_W) / size.width,
-                      transform: `scale(${size.width / MIN_LAYOUT_W})`,
-                    }
-              }
-            >
-              {children}
+              <div
+                data-game-content
+                data-orient={landscape ? "landscape" : "portrait"}
+                className="absolute left-0 top-0 origin-top-left"
+                style={contentStyle}
+              >
+                {children}
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </LayoutContext.Provider>
   );
 }
 
@@ -184,6 +226,8 @@ export function ScreenContainer({
 /** Scrollable body region — the shell itself never scrolls. */
 export function ScreenBody({ children }: { children: ReactNode }) {
   return (
-    <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-4 pb-24 pt-1">{children}</div>
+    <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-4 pb-24 pt-1 land:pb-6">
+      {children}
+    </div>
   );
 }

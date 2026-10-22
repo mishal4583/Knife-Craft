@@ -1124,6 +1124,10 @@
 .restaurant-map-production {
   height: calc(100% - 72px);
 }
+/* Phone landscape: the bar is a rail at the side, so the map takes the full height. */
+[data-orient="landscape"] .restaurant-map-production {
+  height: 100%;
+}
 
 .restaurant-map--reduced-motion .restaurant-guest-layer {
   display: none;

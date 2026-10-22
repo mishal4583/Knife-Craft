@@ -263,7 +263,7 @@ export function ServiceOrderComplete({
     <div className="absolute inset-0 z-50 grid place-items-center bg-walnut-dark/55 backdrop-blur-[3px]">
       <Panel
         tone="cream"
-        className="anim-pop max-h-[calc(100%-12px)] w-[82%] overflow-y-auto overscroll-contain p-6 text-center [@media(max-height:640px)]:px-5 [@media(max-height:640px)]:py-4"
+        className="anim-pop max-h-[calc(100%-12px)] w-[82%] land:max-w-[560px] overflow-y-auto overscroll-contain p-6 text-center [@media(max-height:640px)]:px-5 [@media(max-height:640px)]:py-4"
       >
         <p className="font-ui text-[11px] font-extrabold uppercase tracking-[0.24em] text-copper">
           {served ? "Served" : "Order Ready"}

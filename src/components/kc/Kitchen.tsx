@@ -214,7 +214,7 @@ export function Kitchen({
       {/* Top HUD */}
       <div className="absolute inset-x-0 top-0 z-20 flex items-start justify-between p-3">
         {/* Phase 5 (B3): the daily gift sits under the rank, on the Kitchen's free wall. */}
-        <div className="mr-2 flex min-w-0 max-w-[60%] shrink flex-col items-start gap-2">
+        <div className="mr-2 flex min-w-0 max-w-[60%] shrink flex-col items-start gap-2 land:max-w-[64%] land:flex-row">
           <button
             type="button"
             onClick={() => {
@@ -291,7 +291,7 @@ export function Kitchen({
         </div>
       </div>
 
-      <div className="absolute right-3 top-[16%] z-20 flex flex-col items-end gap-2 [@media(max-height:700px)]:top-[13%] [@media(max-height:700px)]:gap-1.5">
+      <div className="absolute right-3 top-[16%] z-20 flex flex-col items-end gap-2 [@media(max-height:700px)]:top-[13%] [@media(max-height:700px)]:gap-1.5 land:!top-[68px]">
         <button
           type="button"
           data-testid="daily-check-shortcut"
@@ -435,7 +435,7 @@ export function Kitchen({
 
       {/* Today's Order — collapsed by default so it keeps the kitchen visible;
           details and the order board expand on demand. */}
-      <div className="absolute inset-x-0 bottom-[104px] z-20 px-6">
+      <div className="absolute inset-x-0 bottom-[104px] z-20 px-6 land:bottom-3 land:left-4 land:right-[84px] land:mx-auto land:max-w-[640px] land:px-0">
         {clock ? (
           <p
             data-testid="day-strip"
@@ -957,14 +957,18 @@ export function BottomNav({ active, go }: { active: ScreenId | null; go: (s: Scr
     return () => window.clearTimeout(t);
   }, [hint]);
   return (
-    <nav className="absolute inset-x-0 bottom-0 z-30 flex items-center justify-around border-t border-walnut-dark/40 bg-[linear-gradient(180deg,rgba(62,40,25,0.82),rgba(45,41,36,0.95))] px-2 pb-3 pt-2 backdrop-blur-sm">
+    // Phone landscape: the bar becomes a rail down the left edge (styles.css pads the screen).
+    <nav
+      data-bottom-nav
+      className="absolute inset-x-0 bottom-0 z-30 flex items-center justify-around border-t border-walnut-dark/40 bg-[linear-gradient(180deg,rgba(62,40,25,0.82),rgba(45,41,36,0.95))] px-2 pb-3 pt-2 backdrop-blur-sm land:inset-x-auto land:inset-y-0 land:left-0 land:w-[var(--kc-rail)] land:flex-col land:justify-center land:gap-3 land:border-r land:border-t-0 land:bg-[linear-gradient(90deg,rgba(62,40,25,0.9),rgba(45,41,36,0.96))] land:px-1 land:py-2"
+    >
       {/* Every screen with the bottom bar: "▾ More" / "▴ Top" for a list longer than the screen. */}
       <ScrollCue hidden={!!hint || !!pointer} />
       {hint ? (
         <p
           role="status"
           data-testid="nav-lock-hint"
-          className="anim-up pointer-events-none absolute inset-x-4 bottom-full mb-2 rounded-full border border-walnut-dark/40 bg-walnut-dark/90 px-4 py-2 text-center font-ui text-[13.5px] font-extrabold text-ivory shadow-lift"
+          className="anim-up pointer-events-none absolute inset-x-4 bottom-full mb-2 land:inset-x-auto land:bottom-4 land:left-full land:mb-0 land:ml-2 land:w-max land:max-w-[300px] rounded-full border border-walnut-dark/40 bg-walnut-dark/90 px-4 py-2 text-center font-ui text-[13.5px] font-extrabold text-ivory shadow-lift"
         >
           {hint}
         </p>
@@ -973,9 +977,9 @@ export function BottomNav({ active, go }: { active: ScreenId | null; go: (s: Scr
         <div
           data-testid="section-pointer"
           data-pointer-tab={pointer.tab}
-          className="anim-up absolute inset-x-0 bottom-full h-[1200px] bg-[rgba(30,20,12,0.55)]"
+          className="anim-up absolute inset-x-0 bottom-full h-[1200px] bg-[rgba(30,20,12,0.55)] land:inset-x-auto land:inset-y-0 land:bottom-auto land:left-full land:h-auto land:w-[2000px]"
         >
-          <div className="paper absolute inset-x-4 bottom-[64px] rounded-3xl p-4 shadow-lift">
+          <div className="paper absolute inset-x-4 bottom-[64px] rounded-3xl p-4 shadow-lift land:inset-x-auto land:bottom-4 land:left-4 land:w-[340px]">
             <p className="font-display text-[19px] font-black leading-tight text-walnut-dark">
               {SECTION_POINTER[pointer.tab].title}
             </p>
@@ -1020,7 +1024,7 @@ export function BottomNav({ active, go }: { active: ScreenId | null; go: (s: Scr
             data-nav={n.id}
             data-locked={locked || undefined}
             className={cn(
-              "press relative flex min-h-12 min-w-[56px] flex-col items-center justify-center gap-0.5 rounded-2xl px-2 py-1.5",
+              "press relative flex min-h-12 min-w-[56px] flex-col items-center justify-center gap-0.5 rounded-2xl px-2 py-1.5 land:min-h-[54px] land:min-w-[60px]",
               pointer && !pointed && "opacity-40",
               pointed && "ring-2 ring-gold",
             )}

@@ -3,6 +3,8 @@
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
+/* Phone landscape (GameShell sets <html data-orient="landscape">). */
+@custom-variant land (&:where([data-orient="landscape"] *));
 
 /* ── Self-hosted fonts ─────────────────────────────────────
    Bundled locally (no Google Fonts CDN at runtime — Playables must not
@@ -1058,4 +1060,71 @@ html.kc-reduced-motion .kc-clean-sheen {
   .kc-clean-sheen {
     display: none;
   }
+}
+
+/* ── Phone landscape (developer 2026-10-22) ─────────────────
+   GameShell sets <html data-orient="landscape"> on a phone on its side. The
+   bottom bar becomes a rail on the left (BottomNav), so everything beside
+   it (the screen) starts after the rail. */
+:root {
+  --kc-rail: 76px;
+}
+[data-orient="landscape"] :has(> nav[data-bottom-nav]) > :not(nav[data-bottom-nav]) {
+  margin-left: var(--kc-rail);
+}
+/* A full-width child would then run past the right edge: it keeps to the room left. */
+[data-orient="landscape"] :has(> nav[data-bottom-nav]) > :not(nav[data-bottom-nav]) {
+  max-width: calc(100% - var(--kc-rail));
+}
+/* The room lists kept at the bottom for the bar (pb-24 / pb-28) isn't needed beside a rail. */
+[data-orient="landscape"] :has(> nav[data-bottom-nav]) :is(.pb-24, .pb-28) {
+  padding-bottom: 1.5rem;
+}
+
+/* Phone landscape, the cutting (Preparation): the scene is laid out for a
+   portrait canvas (PreparationScene sizes the food by the width), so its
+   canvas stays portrait — as wide as 0.912 × the height, 20% taller than the
+   screen with the empty top and bottom cropped, so the board is as big as the
+   height allows — and sits right of the order card. Phaser reads the canvas's
+   own box, so cutting stays exact. */
+[data-orient="landscape"] .kc-prep {
+  container-type: size;
+}
+[data-orient="landscape"] .kc-prep [data-game-viewport] {
+  left: max(calc(50cqw - 45.6cqh), 236px);
+  right: auto;
+  top: -10%;
+  height: 120%;
+  width: 91.2cqh;
+}
+[data-orient="landscape"] .kc-prep .kc-prep-card {
+  max-width: calc(max(calc(50cqw - 45.6cqh), 236px) - 20px);
+}
+/* The HUD's strip spans the width over the board's top: only its card and buttons take a touch. */
+[data-orient="landscape"] .kc-prep .kc-prep-hud {
+  pointer-events: none;
+}
+[data-orient="landscape"] .kc-prep .kc-prep-hud :is(button, a, .kc-prep-card) {
+  pointer-events: auto;
+}
+/* The how-to cards (coach, first-level guides) go in the left column, under the order card,
+   so they never cover the board. */
+[data-orient="landscape"] .kc-prep .kc-prep-side {
+  right: auto;
+  bottom: 12px;
+  width: max(calc(50cqw - 45.6cqh), 236px);
+  padding: 0 10px;
+}
+[data-orient="landscape"] .kc-prep .kc-prep-side > * {
+  padding: 6px 10px;
+}
+[data-orient="landscape"] .kc-prep .kc-prep-side :is(p, span, li) {
+  font-size: 12px;
+  line-height: 1.3;
+}
+[data-orient="landscape"] .kc-prep .kc-prep-side :is(.font-hand) {
+  font-size: 13px;
+}
+[data-orient="landscape"] .kc-prep .kc-prep-side :is(.mt-1, .mt-1\.5, .mt-2) {
+  margin-top: 2px;
 }

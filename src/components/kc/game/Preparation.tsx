@@ -775,7 +775,7 @@ export function Preparation({
   };
 
   return (
-    <div className="relative h-full w-full overflow-hidden bg-cream">
+    <div className="kc-prep relative h-full w-full overflow-hidden bg-cream">
       <img
         src={kitchenArt ?? kitchenBg}
         alt="Warm café kitchen with copper pans, herbs and morning light"
@@ -946,7 +946,7 @@ export function Preparation({
           never share a start); touches go through to the board except Skip. */}
       {avalanche?.on && phase === "prep" ? (
         <div
-          className="pointer-events-none absolute inset-x-0 bottom-[6%] z-20 flex justify-center px-4"
+          className="kc-prep-side pointer-events-none absolute inset-x-0 bottom-[6%] z-20 flex justify-center px-4"
           data-testid="avalanche"
         >
           <div className="anim-pop w-full max-w-[400px] rounded-[18px] border border-gold/40 bg-walnut-dark/80 px-4 py-3 text-center shadow-lift backdrop-blur-[2px]">
@@ -969,7 +969,7 @@ export function Preparation({
         </div>
       ) : cleanupOffered && phase === "prep" ? (
         <div
-          className="pointer-events-none absolute inset-x-0 bottom-[6%] z-20 flex justify-center px-4"
+          className="kc-prep-side pointer-events-none absolute inset-x-0 bottom-[6%] z-20 flex justify-center px-4"
           data-testid="board-cleanup"
         >
           <div className="anim-pop w-full max-w-[400px] rounded-[18px] border border-gold/40 bg-walnut-dark/80 px-4 py-3 text-center shadow-lift backdrop-blur-[2px]">
@@ -991,7 +991,7 @@ export function Preparation({
         </div>
       ) : coachVisible && phase === "prep" ? (
         <div
-          className="pointer-events-none absolute inset-x-0 bottom-[6%] z-20 flex justify-center px-4"
+          className="kc-prep-side pointer-events-none absolute inset-x-0 bottom-[6%] z-20 flex justify-center px-4"
           data-testid="coach-card"
         >
           <div className="anim-pop w-full max-w-[400px] rounded-[18px] border border-gold/40 bg-walnut-dark/80 px-4 py-3 text-center shadow-lift backdrop-blur-[2px]">

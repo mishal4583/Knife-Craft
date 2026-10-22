@@ -1,5 +1,14 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## Phone landscape (2026-10-22, `main`)
+
+- A phone on its side now fills the screen: a left rail instead of the bottom bar, wider
+  layouts for the Kitchen, Market, Business and Inventory, centred sheets, the cutting
+  board as big as the height allows beside the order card, Prep Rush sized for it, and
+  the landscape art (`public/landscape-art/`) behind the map and in the cleaning rooms
+  (own stain geometry per tier). Portrait and tablets unchanged. REFERENCE §10 "Phone
+  landscape"; browser `landscape.mjs` 8/8. Not uploaded to Playgama (it has 1.4.1).
+
 ## Cleaning mini-game finished (2026-10-22, `main`)
 
 - Stains on each kitchen tier's real surfaces, proper cleaning tools (🧽 🧴 🧹 and

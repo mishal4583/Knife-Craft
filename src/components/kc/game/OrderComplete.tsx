@@ -52,7 +52,10 @@ export function OrderComplete({
   const isBest = score > previousBest;
   return (
     <div className="absolute inset-0 z-50 grid place-items-center bg-walnut-dark/55 backdrop-blur-[3px]">
-      <Panel tone="cream" className="anim-pop w-[82%] p-6 text-center">
+      <Panel
+        tone="cream"
+        className="anim-pop w-[82%] p-6 text-center land:max-h-[calc(100%-12px)] land:max-w-[560px] land:overflow-y-auto"
+      >
         <p className="font-ui text-[11px] font-extrabold uppercase tracking-[0.24em] text-copper">
           Order Complete
         </p>

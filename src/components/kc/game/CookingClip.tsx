@@ -163,50 +163,60 @@ export function CookingClip({
         (playing && !leaving ? "opacity-100" : "pointer-events-none opacity-0")
       }
     >
-      <video
-        ref={videoRef}
-        playsInline
-        muted
-        preload="auto"
-        poster={clip.poster}
-        disablePictureInPicture
-        onPlaying={() => setStarted(true)}
-        onEnded={finish}
-        onError={() => {
-          if (playing) finish();
-        }}
-        className="absolute inset-0 h-full w-full object-cover"
-      >
-        <source src={clip.webm} type="video/webm" />
-        <source
-          src={clip.mp4}
-          type="video/mp4"
-          // The last <source> failing is reported here, not on <video>.
+      {/* Phone landscape: the portrait film whole, in a centred 9:16 box over a soft copy
+          of its poster (cover would crop it to a strip); portrait unchanged. */}
+      <img
+        src={clip.poster}
+        alt=""
+        aria-hidden
+        className="absolute inset-0 hidden h-full w-full scale-110 object-cover opacity-60 blur-xl land:block"
+      />
+      <div className="absolute inset-0 land:left-1/2 land:right-auto land:aspect-[720/1280] land:-translate-x-1/2">
+        <video
+          ref={videoRef}
+          playsInline
+          muted
+          preload="auto"
+          poster={clip.poster}
+          disablePictureInPicture
+          onPlaying={() => setStarted(true)}
+          onEnded={finish}
           onError={() => {
             if (playing) finish();
           }}
-        />
-      </video>
-      {playing ? (
-        // Sits exactly over the corner where the source film carried an AI
-        // watermark (painted out of the files too, see WATERMARK_*), and
-        // stays through the fade-out so that corner is never bare.
-        <button
-          type="button"
-          aria-label="Skip cooking"
-          disabled={leaving}
-          onClick={(e) => {
-            e.stopPropagation();
-            finish();
-          }}
-          style={{ left: `${WATERMARK_X * 100}%`, top: `${WATERMARK_Y * 100}%` }}
-          className="absolute z-10 flex h-[52px] min-w-[84px] -translate-x-1/2 -translate-y-1/2 items-center justify-center"
+          className="absolute inset-0 h-full w-full object-cover"
         >
-          <span className="flex h-[38px] items-center rounded-full bg-walnut-dark/60 px-4 font-ui text-[13.5px] font-extrabold uppercase tracking-[0.16em] text-[#fff6e6] shadow-[0_2px_8px_rgba(0,0,0,0.25)] backdrop-blur-md">
-            Skip <span aria-hidden>&nbsp;›</span>
-          </span>
-        </button>
-      ) : null}
+          <source src={clip.webm} type="video/webm" />
+          <source
+            src={clip.mp4}
+            type="video/mp4"
+            // The last <source> failing is reported here, not on <video>.
+            onError={() => {
+              if (playing) finish();
+            }}
+          />
+        </video>
+        {playing ? (
+          // Sits exactly over the corner where the source film carried an AI
+          // watermark (painted out of the files too, see WATERMARK_*), and
+          // stays through the fade-out so that corner is never bare.
+          <button
+            type="button"
+            aria-label="Skip cooking"
+            disabled={leaving}
+            onClick={(e) => {
+              e.stopPropagation();
+              finish();
+            }}
+            style={{ left: `${WATERMARK_X * 100}%`, top: `${WATERMARK_Y * 100}%` }}
+            className="absolute z-10 flex h-[52px] min-w-[84px] -translate-x-1/2 -translate-y-1/2 items-center justify-center"
+          >
+            <span className="flex h-[38px] items-center rounded-full bg-walnut-dark/60 px-4 font-ui text-[13.5px] font-extrabold uppercase tracking-[0.16em] text-[#fff6e6] shadow-[0_2px_8px_rgba(0,0,0,0.25)] backdrop-blur-md">
+              Skip <span aria-hidden>&nbsp;›</span>
+            </span>
+          </button>
+        ) : null}
+      </div>
       {playing && !started ? <span className="sr-only">Cooking…</span> : null}
     </div>
   );

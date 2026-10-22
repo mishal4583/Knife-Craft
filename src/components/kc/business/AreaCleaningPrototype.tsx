@@ -5,8 +5,10 @@ import type { KitchenMapArtStage } from "@/game/kitchen/kitchenMapArt";
 import {
   BRUSH_RADIUS,
   CLEAN_THRESHOLD,
-  SCENE_SIZE,
+  ROOM_TASKS,
+  cleanScene,
   cleanedShare,
+  landscapeCleaningSupports,
   makeStains,
   strengthOpacity,
   milestoneCrossed,
@@ -24,6 +26,8 @@ import { paintStain, stainReach } from "./cleaning/dirtArt";
 import { CleaningFx } from "./cleaning/cleaningFx";
 import { CleaningToolIcon } from "./cleaning/CleaningToolIcon";
 import { TOOL_LOOK } from "./cleaning/toolLook";
+import { useLandscape } from "../game/layoutMode";
+import { landscapeCleaningArt } from "@/game/landscapeArt";
 
 export type { CleaningToolId } from "@/game/restaurant/cleaningDirt";
 
@@ -230,11 +234,22 @@ export function AreaCleaningPrototype({
   const activeToolRef = useRef(activeTool);
   activeToolRef.current = activeTool;
   const reduced = useMemo(() => reducedMotionOn(), []);
-  const stains = useMemo(
-    () => makeStains(area, task, stage, roomWide, variant),
-    [area, roomWide, stage, task, variant],
+  // Phone landscape (developer 2026-10-22): the room's 16:9 painting with its own dirt, when
+  // that painting shows the job (cleaningDirt.ts LAND_GEO). Chosen once per cleaning, so
+  // turning the phone mid-scrub keeps the dirt and the progress.
+  const landscape = useLandscape();
+  const [orient] = useState<"portrait" | "landscape">(() =>
+    landscape &&
+    (roomWide ? ROOM_TASKS[area] : [task]).every((t) => landscapeCleaningSupports(area, t, stage))
+      ? "landscape"
+      : "portrait",
   );
-  const marks = useMemo(() => stainMarks(stains, area), [area, stains]);
+  const roomImage = orient === "landscape" ? landscapeCleaningArt(area, stage) : image;
+  const stains = useMemo(
+    () => makeStains(area, task, stage, roomWide, variant, orient),
+    [area, roomWide, stage, task, variant, orient],
+  );
+  const marks = useMemo(() => stainMarks(stains, area, orient), [area, stains, orient]);
   // Everything that changes per stroke lives here, outside React state.
   const play = useMemo(
     () => ({
@@ -252,7 +267,7 @@ export function AreaCleaningPrototype({
   );
   const [stainsLeft, setStainsLeft] = useState(stains.length);
   const copy = TASK_COPY[task];
-  const dimensions = SCENE_SIZE[area];
+  const dimensions = cleanScene(area, orient);
   const roomTitle = area === "kitchen" ? "Kitchen" : area === "dining" ? "Dining area" : "Restroom";
   const stageHeightLimit = Math.max(320, gameViewport.height);
   const availableTools = roomWide
@@ -573,7 +588,10 @@ export function AreaCleaningPrototype({
       }}
     >
       <section
-        className="relative mx-auto flex h-full w-full max-w-[560px] min-h-0 flex-col overflow-hidden bg-[#fff3d9] shadow-[0_24px_90px_rgba(0,0,0,.5)] ring-1 ring-[#d5a65a]"
+        // Landscape: the room on the left at full height; the title, tools and progress in a
+        // column on the right.
+        className="relative mx-auto flex h-full w-full max-w-[560px] min-h-0 flex-col overflow-hidden bg-[#fff3d9] shadow-[0_24px_90px_rgba(0,0,0,.5)] ring-1 ring-[#d5a65a] land:grid land:max-w-none land:grid-cols-[minmax(0,1fr)_232px] land:grid-rows-[auto_minmax(0,1fr)]"
+        data-orient-scene={orient}
         style={{ maxHeight: stageHeightLimit }}
         role="dialog"
         aria-modal="true"
@@ -581,9 +599,9 @@ export function AreaCleaningPrototype({
         data-testid={`${area}-cleaning-prototype`}
       >
         {/* Header: what this cleaning is, and the way out. */}
-        <header className="relative z-20 flex shrink-0 items-center gap-2.5 border-b border-[#dfc79e]/70 bg-[linear-gradient(135deg,rgba(255,249,233,.97),rgba(240,215,169,.94))] px-3 py-2 shadow-sm">
+        <header className="relative z-20 flex shrink-0 items-center gap-2.5 border-b border-[#dfc79e]/70 bg-[linear-gradient(135deg,rgba(255,249,233,.97),rgba(240,215,169,.94))] px-3 py-2 shadow-sm land:col-start-2 land:row-start-1 land:gap-2 land:border-l land:px-2.5">
           <span
-            className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[#6b3d20] text-[24px] text-[#fff2d6] shadow"
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[#6b3d20] text-[24px] text-[#fff2d6] shadow land:hidden"
             aria-hidden
           >
             {area === "kitchen" ? "🍳" : area === "dining" ? "🍽️" : "🚻"}
@@ -591,7 +609,7 @@ export function AreaCleaningPrototype({
           <div className="min-w-0 flex-1">
             <h2
               id={`clean-title-${area}`}
-              className="font-display text-[18px] font-black leading-tight text-walnut-dark"
+              className="font-display text-[18px] font-black leading-tight text-walnut-dark land:text-[16px]"
             >
               {roomWide ? roomTest?.title : (copy?.title ?? `Clean the ${roomTitle.toLowerCase()}`)}
             </h2>
@@ -622,7 +640,10 @@ export function AreaCleaningPrototype({
         ) : null}
 
         {/* The room, fitted whole between the header and the tools (nothing covers the dirt). */}
-        <div className="relative min-h-0 flex-1 bg-[#2a1b12]" style={{ containerType: "size" }}>
+        <div
+          className="relative min-h-0 flex-1 bg-[#2a1b12] land:col-start-1 land:row-span-2 land:row-start-1"
+          style={{ containerType: "size" }}
+        >
           <div
             className="absolute left-1/2 top-1/2 overflow-hidden bg-[#38261b] ring-1 ring-[#89603e]"
             style={{
@@ -635,7 +656,7 @@ export function AreaCleaningPrototype({
             data-testid="cleaning-stage"
           >
             <img
-              src={image}
+              src={roomImage}
               alt={`${roomTitle} from the current restaurant map`}
               className="block h-full w-full select-none object-fill transition-[filter] duration-300"
               style={{
@@ -735,7 +756,7 @@ export function AreaCleaningPrototype({
         </div>
 
         {/* Tools and progress, below the room. */}
-        <div className="relative z-20 shrink-0 border-t border-[#dfc79e]/80 bg-[linear-gradient(0deg,rgba(255,243,217,1),rgba(255,247,230,.98))] px-2.5 pb-[max(.5rem,env(safe-area-inset-bottom))] pt-2">
+        <div className="relative z-20 shrink-0 border-t border-[#dfc79e]/80 bg-[linear-gradient(0deg,rgba(255,243,217,1),rgba(255,247,230,.98))] px-2.5 pb-[max(.5rem,env(safe-area-inset-bottom))] pt-2 land:col-start-2 land:row-start-2 land:flex land:min-h-0 land:flex-col land:justify-end land:overflow-y-auto land:border-l land:border-t-0">
           {availableTools.length > 1 ? (
             <div
               className="mb-1.5 flex justify-center gap-1.5"

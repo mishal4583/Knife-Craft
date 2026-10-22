@@ -1,4 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { LandscapeBackdrop } from '@/components/kc/game/LandscapeBackdrop';
 import {
   DEFAULT_RESTAURANT_NAME,
   RESTAURANT_NAME_MAX,
@@ -139,6 +140,8 @@ export const RestaurantMap: React.FC<RestaurantMapProps> = ({
       role="region"
       aria-label="KnifeCraft Restaurant Interactive Map"
     >
+      {/* Phone landscape: the dining room painting around the map. */}
+      <LandscapeBackdrop section="restaurant" wash="dim" />
       {/* Map Toolbar / View Controls */}
       <div className="restaurant-map-toolbar" role="toolbar" aria-label="Map View Controls">
         <div className="map-legend-pills">
