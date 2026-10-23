@@ -2164,6 +2164,19 @@ remove anything important)."
 - **Guard:** `tools/e2e/longcopy.mjs` crawls every screen at Levels 25 / 70 / 100 and fails
   on a visible line over 12 words (ⓘ bubbles and screen-reader text excluded).
 
+### Staff portraits and roster cards (developer 2026-10-23)
+
+- `BusinessStaff.tsx` presents the six waged roles as portrait cards with their actual
+  wage, effect, status and hire / let-go action. The summary still uses the authoritative
+  `dailyPayroll`; `STAFF_RULES`, `staffFocus`, unlock conditions, and save state are unchanged.
+- The four cuisine specialists use matching portraits and retain their existing unlock,
+  cuisine, free-hire and wage rules. Needed roles remain highlighted from the Pre-Service Check.
+- Portraits are visual only in `public/business/staff-portraits/`: `prep-cook.webp`,
+  `line-cook.webp`, `head-chef.webp` (an older male chef), `server.webp`, `cleaner.webp`,
+  `manager.webp`, plus `specialist-{mexican,indian,mediterranean,asian}.webp`.
+- The roster uses cream cards, clear role/effect/pay lines, visible hired / needed states,
+  and 48 px hire controls. Kitchen helpers remain their existing one-time purchases.
+
 ### Market shop cards (developer 2026-10-21, redesigned 2026-10-22)
 
 "Make the ingredient shop card exactly like this … improve all the shop cards."

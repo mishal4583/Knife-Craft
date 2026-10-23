@@ -1,5 +1,14 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## Staff portraits and roster refresh (2026-10-23)
+
+- Business → Staff now uses illustrated portraits for the six restaurant roles
+  and four cuisine specialists, with a warmer roster summary, clearer hired / needed
+  states, and larger hire controls. The Head Chef portrait is an older man. All
+  gameplay, hiring, unlocks, wages and save data remain unchanged.
+- Portrait assets: `public/business/staff-portraits/`; UI: `components/kc/business/BusinessStaff.tsx`.
+  Details: REFERENCE §10 "Staff portraits and roster cards".
+
 ## Inventory in pictures (2026-10-23, `main`)
 
 - Inventory's Needs Attention, summaries, stock list and supplies are picture tiles

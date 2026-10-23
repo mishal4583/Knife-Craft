@@ -26,11 +26,59 @@ import { specialistCharacter } from "@/game/chefs/chefDefinitions";
 const ROLE_ICON: Record<string, string> = {
   "prep-cook": "🧑‍🍳",
   "line-cook": "👨‍🍳",
-  "head-chef": "👩‍🍳",
+  "head-chef": "👨‍🍳",
   server: "🧑‍💼",
   cleaner: "🧽",
   manager: "📋",
 };
+
+/** Portraits are presentation only; staff rules and save state remain data-driven. */
+const ROLE_PORTRAIT: Record<string, string> = {
+  "prep-cook": "prep-cook",
+  "line-cook": "line-cook",
+  "head-chef": "head-chef",
+  server: "server",
+  cleaner: "cleaner",
+  manager: "manager",
+};
+
+/** Compact summaries for the cards; the full, authoritative text stays behind ⓘ. */
+const ROLE_GLANCE: Record<string, string> = {
+  "prep-cook": "🛒 3% off ingredients",
+  "line-cook": "⭐ +1 popularity / day",
+  "head-chef": "⭐ +3 popularity / day",
+  server: "⭐ +2 popularity / day",
+  cleaner: "🛡️ Inspection · ♻️ 20% less loss",
+  manager: "💸 10% off other staff wages",
+};
+
+const SPECIALIST_PORTRAIT: Record<string, string> = {
+  "mexican-chef": "specialist-mexican",
+  "indian-chef": "specialist-indian",
+  "mediterranean-chef": "specialist-mediterranean",
+  "asian-chef": "specialist-asian",
+};
+
+function StaffPortrait({
+  file,
+  name,
+  className,
+}: {
+  file: string;
+  name: string;
+  className: string;
+}) {
+  return (
+    <img
+      src={`${import.meta.env.BASE_URL}business/staff-portraits/${file}.webp`}
+      alt={`${name} portrait`}
+      loading="lazy"
+      decoding="async"
+      draggable={false}
+      className={cn("select-none object-cover", className)}
+    />
+  );
+}
 
 /**
  * BUSINESS · STAFF tab (Economy V3 Phase 9) — all of the restaurant's
@@ -92,7 +140,7 @@ export function BusinessStaff({
     restaurantTeams && !wagesStarted && restaurantLevelOf(save.levelProgress) >= HALF_WAGES_FROM;
   return (
     <div className="space-y-3">
-      <BusinessSectionBanner image="staff-banner.webp" title="Restaurant team" />
+      <BusinessSectionBanner image="staff-banner.webp" title="Your Restaurant Team" />
       {restaurantTeams ? (
         <>
           <TeamHeading
@@ -109,23 +157,25 @@ export function BusinessStaff({
           />
         </>
       ) : null}
-      <Panel tone="cream" className="p-4">
-        <div className="flex items-baseline justify-between gap-3">
-          <Eyebrow>🧑‍🍳 Your team</Eyebrow>
-          <span className="font-ui text-[12.5px] font-extrabold text-walnut-dark">
+      <Panel tone="cream" className="relative isolate overflow-hidden p-4">
+        <div
+          className="pointer-events-none absolute -right-5 -top-8 select-none text-[96px] opacity-[0.07]"
+          aria-hidden="true"
+        >
+          🧑‍🍳
+        </div>
+        <div className="relative flex items-start justify-between gap-3">
+          <div>
+            <Eyebrow>🍽️ Restaurant crew</Eyebrow>
+            <p className="mt-1 font-display text-[24px] font-black leading-none text-walnut-dark">
+              {formatUsd(wagesStarted ? payroll : halfWages ? halfPay(hiredRoles) : 0)}
+              <span className="ml-1 font-hand text-[15px] font-normal text-walnut/65">/ day</span>
+            </p>
+          </div>
+          <span className="shrink-0 rounded-full border border-olive/25 bg-olive/10 px-3 py-1.5 font-ui text-[12px] font-extrabold text-olive">
             {hiredRoles.length} / {roster.length} hired
           </span>
         </div>
-        <p className="mt-1 font-display text-[22px] font-black leading-none text-walnut-dark">
-          {formatUsd(wagesStarted ? payroll : halfWages ? halfPay(hiredRoles) : 0)}
-          <span className="font-hand text-[16px] font-normal text-walnut/60">
-            {wagesStarted
-              ? " per day"
-              : halfWages
-                ? ` a day (half pay until Level ${wagesFrom})`
-                : ` a day until Level ${HALF_WAGES_FROM}`}
-          </span>
-        </p>
         {!wagesStarted ? (
           <p
             className="mt-1 font-ui text-[12.5px] font-extrabold text-olive"
@@ -137,8 +187,8 @@ export function BusinessStaff({
             {payroll > 0 ? ` · then ${formatUsd(payroll)}/day` : ""}
           </p>
         ) : null}
-        <p className="mt-1.5 flex items-center gap-1.5 font-hand text-[15px] leading-snug text-walnut/65">
-          🌙 Paid at closing
+        <p className="relative mt-1.5 flex items-center gap-1.5 font-hand text-[14px] leading-snug text-walnut/65">
+          🌙 Payroll is settled at closing
           <InfoTip label="About pay">
             Hiring is free — pay is charged at End Business Day. If the pay can't be covered, the
             whole team is let go rather than left unpaid.
@@ -148,68 +198,102 @@ export function BusinessStaff({
 
       {message ? <p className="text-center font-hand text-[16px] text-copper">{message}</p> : null}
 
-      <div className="grid grid-cols-2 gap-3">
+      <TeamHeading
+        id="restaurant-team-roster"
+        title="👩‍🍳 The crew"
+        line="Hire the people your next service needs"
+      />
+      <div className="grid grid-cols-1 gap-2.5 land:grid-cols-2">
         {roster.map((def) => {
           const hired = hiredRoles.includes(def.role);
           return (
             <article
               key={def.role}
               className={cn(
-                "product-card flex flex-col rounded-[20px] border p-3 card-warm",
-                hired ? "border-olive/40" : "border-walnut/15",
-                needed.has(def.role) && !hired && "ring-2 ring-copper",
+                "product-card grid grid-cols-[82px_minmax(0,1fr)] gap-3 rounded-[20px] border p-2.5 card-warm",
+                hired ? "border-olive/35" : "border-walnut/15",
+                needed.has(def.role) &&
+                  !hired &&
+                  "ring-2 ring-copper ring-offset-2 ring-offset-cream",
               )}
               data-staff-role={def.role}
               data-staff-needed={needed.has(def.role) && !hired ? "true" : undefined}
             >
-              <div className="flex items-start justify-between">
-                <span className="text-[34px] leading-none" aria-hidden>
+              <div className="relative min-h-[106px] overflow-hidden rounded-[15px] border border-walnut/15 bg-walnut/10">
+                <StaffPortrait
+                  file={ROLE_PORTRAIT[def.role] ?? "head-chef"}
+                  name={def.name}
+                  className="h-full min-h-[106px] w-full"
+                />
+                <span
+                  className="absolute bottom-1.5 left-1.5 rounded-full border border-ivory/65 bg-ivory/90 px-1.5 py-0.5 text-[13px] leading-none shadow-soft"
+                  aria-hidden
+                >
                   {ROLE_ICON[def.role] ?? "🧑‍🍳"}
                 </span>
-                {hired ? (
-                  <Badge tone="sage">Hired</Badge>
-                ) : needed.has(def.role) ? (
-                  <Badge tone="copper">Needed now</Badge>
-                ) : null}
               </div>
-              <div className="mt-1 flex items-start gap-1.5">
-                <p className="min-w-0 flex-1 font-display text-[14.5px] font-black leading-tight text-walnut-dark">
-                  {def.name}
+              <div className="flex min-w-0 flex-col">
+                <div className="flex items-start justify-between gap-1.5">
+                  <div className="flex min-w-0 items-start gap-1">
+                    <p className="min-w-0 font-display text-[15px] font-black leading-tight text-walnut-dark">
+                      {def.name}
+                    </p>
+                    <InfoTip label={`About the ${def.name}`}>
+                      {def.description}
+                      <span className="mt-1 block text-[12px] text-walnut/60">
+                        {formatUsd(def.hourlyWageCents)}/hr × {def.scheduledHours}h + 25% employer
+                        cost
+                      </span>
+                    </InfoTip>
+                  </div>
+                  {hired ? (
+                    <Badge tone="sage">✓ Hired</Badge>
+                  ) : needed.has(def.role) ? (
+                    <Badge tone="copper">Needed now</Badge>
+                  ) : null}
+                </div>
+                <p className="mt-1 line-clamp-2 font-ui text-[11.5px] leading-snug text-walnut/65">
+                  {ROLE_GLANCE[def.role] ?? "🍽️ Supports the restaurant team"}
                 </p>
-                <InfoTip label={`About the ${def.name}`}>
-                  {def.description}
-                  <span className="mt-1 block text-[12px] text-walnut/60">
-                    {formatUsd(def.hourlyWageCents)}/hr × {def.scheduledHours}h + 25% employer cost
-                  </span>
-                </InfoTip>
-              </div>
-              <p className="font-ui text-[12.5px] font-extrabold text-copper">
-                {wagesStarted ? (
-                  <>
-                    {formatUsd(def.salary)}
-                    <span className="font-bold text-walnut/60">/day</span>
-                  </>
-                ) : (
-                  <>
-                    {halfWages ? `${formatUsd(halfWage(def.role))}/day now` : "Free now"}
-                    <span className="font-bold text-walnut/60">
-                      {" "}
-                      · {formatUsd(def.salary)}/day from Lv {wagesFrom}
-                    </span>
-                  </>
-                )}
-              </p>
-
-              <div className="mt-auto pt-2">
-                {hired ? (
-                  <KButton full variant="ghost" onClick={() => handleFire(def.role)}>
-                    Let go
-                  </KButton>
-                ) : (
-                  <KButton full onClick={() => handleHire(def.role)}>
-                    Hire
-                  </KButton>
-                )}
+                <p className="mt-auto pt-1.5 font-ui text-[12px] font-extrabold text-copper">
+                  {wagesStarted ? (
+                    <>
+                      {formatUsd(def.salary)}
+                      <span className="font-bold text-walnut/60">/day</span>
+                    </>
+                  ) : (
+                    <>
+                      {halfWages ? `${formatUsd(halfWage(def.role))}/day now` : "Free now"}
+                      <span className="font-bold text-walnut/60">
+                        {" "}
+                        · {formatUsd(def.salary)}/day from Lv {wagesFrom}
+                      </span>
+                    </>
+                  )}
+                </p>
+                <div className="pt-2">
+                  {hired ? (
+                    <KButton
+                      full
+                      size="sm"
+                      variant="ghost"
+                      className="min-h-12"
+                      onClick={() => handleFire(def.role)}
+                    >
+                      🗑️ Let go
+                    </KButton>
+                  ) : (
+                    <KButton
+                      full
+                      size="sm"
+                      variant="sage"
+                      className="min-h-12"
+                      onClick={() => handleHire(def.role)}
+                    >
+                      👋 Hire
+                    </KButton>
+                  )}
+                </div>
               </div>
             </article>
           );
@@ -256,72 +340,111 @@ function SpecialistChefs({
   const wagesStarted = isSystemLive("full-operation", level);
   const hired = new Set(restaurantStaffOf(save).specialists);
   return (
-    <Panel className="p-4">
+    <Panel tone="cream" className="overflow-hidden p-3.5 sm:p-4">
       <div data-testid="specialist-chefs">
-        <Eyebrow>🌍 Specialist chefs</Eyebrow>
-        <p className="mt-1 font-hand text-[15px] leading-snug text-walnut/65">
-          🌍 1 chef a cuisine · 🆓 free · 💵 paid Lv {wagesFrom}
-        </p>
-        <ul className="mt-2 divide-y divide-walnut/10">
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <Eyebrow>🌍 Specialist chefs</Eyebrow>
+            <p className="mt-1 font-hand text-[14px] leading-snug text-walnut/65">
+              One chef per cuisine · free to hire · paid from Lv {wagesFrom}
+            </p>
+          </div>
+          <span className="rounded-full border border-gold/30 bg-gold/10 px-2 py-1 font-ui text-[11px] font-extrabold text-copper">
+            {SPECIALIST_CHEFS.length} chefs
+          </span>
+        </div>
+        <div className="mt-3 grid grid-cols-1 gap-2 land:grid-cols-2">
           {[...SPECIALIST_CHEFS]
             .sort((a, b) => a.firstLevel - b.firstLevel)
             .map((chef) => {
               const open = level >= chef.firstLevel;
               const isHired = hired.has(chef.id);
               const who = specialistCharacter(chef.id);
+              const portrait = SPECIALIST_PORTRAIT[chef.id];
               return (
-                <li
+                <article
                   key={chef.id}
-                  className="flex min-h-12 items-center gap-2 py-2"
+                  className={cn(
+                    "grid grid-cols-[66px_minmax(0,1fr)] gap-2.5 rounded-[18px] border bg-ivory/75 p-2",
+                    isHired
+                      ? "border-olive/30"
+                      : needed.has(chef.id)
+                        ? "border-copper/50"
+                        : "border-walnut/12",
+                  )}
                   data-specialist={chef.id}
                 >
-                  {who ? (
-                    <span className="text-[24px]" aria-hidden>
-                      {who.portraitEmoji}
-                    </span>
-                  ) : null}
-                  <div className="min-w-0 flex-1">
-                    <p className="flex flex-wrap items-center gap-x-1.5 font-ui text-[14.5px] font-bold text-walnut-dark">
-                      {who ? `${who.name} · ` : ""}
-                      {chef.title}
-                      {who ? (
-                        <InfoTip label={`About ${who.name}`}>“{who.introLine}”</InfoTip>
-                      ) : null}{" "}
+                  <div className="relative min-h-[88px] overflow-hidden rounded-[13px] border border-walnut/15 bg-walnut/10">
+                    {who && portrait ? (
+                      <StaffPortrait
+                        file={portrait}
+                        name={who.name}
+                        className="h-full min-h-[88px] w-full"
+                      />
+                    ) : (
+                      <span
+                        className="grid h-full min-h-[88px] place-items-center text-[30px]"
+                        aria-hidden
+                      >
+                        {who?.portraitEmoji ?? "🧑‍🍳"}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex min-w-0 flex-col">
+                    <div className="flex items-start justify-between gap-1">
+                      <div className="flex min-w-0 items-start gap-1">
+                        <p className="min-w-0 font-display text-[14px] font-black leading-tight text-walnut-dark">
+                          {who?.name ?? "Specialist Chef"}
+                        </p>
+                        {who ? (
+                          <InfoTip label={`About ${who.name}`}>“{who.introLine}”</InfoTip>
+                        ) : null}
+                      </div>
                       {isHired ? (
-                        <Badge tone="sage">Hired</Badge>
+                        <Badge tone="sage">✓ Hired</Badge>
                       ) : needed.has(chef.id) ? (
                         <Badge tone="copper">Needed now</Badge>
                       ) : null}
+                    </div>
+                    <p className="font-ui text-[12px] font-bold text-walnut/75">{chef.title}</p>
+                    <p className="mt-1 line-clamp-2 font-ui text-[11px] leading-snug text-walnut/60">
+                      {chef.cuisines.join(" · ")}
                     </p>
-                    <p className="font-ui text-[12.5px] text-walnut/60">
-                      {chef.cuisines.join(" · ")} ·{" "}
+                    <p className="mt-auto pt-1 font-ui text-[11px] font-extrabold text-copper">
                       {wagesStarted
-                        ? `${formatUsd(chef.dailyWage)}/day`
-                        : `🆓 now · ${formatUsd(chef.dailyWage)}/day Lv ${wagesFrom}`}
+                        ? `${formatUsd(chef.dailyWage)} / day`
+                        : `🆓 Free now · ${formatUsd(chef.dailyWage)}/day from Lv ${wagesFrom}`}
                     </p>
+                    <div className="pt-1.5">
+                      {!open ? (
+                        <Badge tone="locked">Opens Lv {chef.firstLevel}</Badge>
+                      ) : isHired ? (
+                        <KButton
+                          full
+                          size="sm"
+                          variant="ghost"
+                          className="min-h-12"
+                          onClick={() => onFire(chef.id)}
+                        >
+                          🗑️ Let go
+                        </KButton>
+                      ) : (
+                        <KButton
+                          full
+                          size="sm"
+                          variant="sage"
+                          className="min-h-12"
+                          onClick={() => onHire(chef.id)}
+                        >
+                          👋 Hire
+                        </KButton>
+                      )}
+                    </div>
                   </div>
-                  {!open ? (
-                    <span className="font-ui text-[12.5px] font-bold text-walnut/50">
-                      Level {chef.firstLevel}
-                    </span>
-                  ) : isHired ? (
-                    <KButton
-                      size="sm"
-                      variant="ghost"
-                      className="min-h-12"
-                      onClick={() => onFire(chef.id)}
-                    >
-                      Let go
-                    </KButton>
-                  ) : (
-                    <KButton size="sm" className="min-h-12" onClick={() => onHire(chef.id)}>
-                      Hire
-                    </KButton>
-                  )}
-                </li>
+                </article>
               );
             })}
-        </ul>
+        </div>
       </div>
     </Panel>
   );

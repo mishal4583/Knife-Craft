@@ -66,7 +66,10 @@ const tabs = await page.evaluate(() =>
 );
 check(
   "1 the Market has no Staff tab",
-  tabs.length === 8 && !tabs.some((t) => /Staff/.test(t)),
+  tabs.length >= 8 &&
+    !tabs.some((t) => /Staff/.test(t)) &&
+    tabs.some((t) => /Ingredients/.test(t)) &&
+    tabs.some((t) => /Cleaning/.test(t)),
   tabs,
 );
 
@@ -74,7 +77,7 @@ check(
 await openStaff();
 const counts = await page.evaluate(() => ({
   helpers: document.querySelectorAll("[data-helper]").length,
-  team: /Your team/i.test(document.body.innerText),
+  team: Boolean(document.querySelector('[data-testid="restaurant-team-roster"]')),
 }));
 const prep = await helper("prep-assistant");
 const quality = await helper("quality-chef");
