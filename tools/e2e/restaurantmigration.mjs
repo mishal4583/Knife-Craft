@@ -147,7 +147,8 @@ if (missing.length) {
     await page.evaluate(
       (x) =>
         [...document.querySelectorAll(`[data-specialist="${x}"] button`)]
-          .find((b) => b.textContent.trim() === "Hire")
+          // "👋 Hire" since the portrait cards (developer 2026-10-23).
+          .find((b) => /^(👋\s*)?Hire$/.test(b.textContent.trim()))
           ?.click(),
       id,
     );
@@ -160,7 +161,8 @@ if (missing.length) {
         [...a.querySelectorAll("p")].some((p) => p.textContent.trim() === n),
       );
       [...(art?.querySelectorAll("button") ?? [])]
-        .find((b) => b.textContent.trim() === "Hire")
+        // "👋 Hire" since the portrait cards (developer 2026-10-23).
+        .find((b) => /^(👋\s*)?Hire$/.test(b.textContent.trim()))
         ?.click();
     }, name);
     await sleep(300);

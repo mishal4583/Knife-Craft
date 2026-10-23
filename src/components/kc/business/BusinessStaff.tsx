@@ -21,6 +21,7 @@ import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
 import { isSystemLive, restaurantSystem } from "@/game/restaurant/restaurantProgression";
 import { BusinessSectionBanner } from "./BusinessSectionBanner";
 import { specialistCharacter } from "@/game/chefs/chefDefinitions";
+import { StaffCard, StaffPay, StaffPortrait, StaffRow, StaffStatus } from "./StaffCard";
 
 /** A face per role — visual only. */
 const ROLE_ICON: Record<string, string> = {
@@ -58,27 +59,6 @@ const SPECIALIST_PORTRAIT: Record<string, string> = {
   "mediterranean-chef": "specialist-mediterranean",
   "asian-chef": "specialist-asian",
 };
-
-function StaffPortrait({
-  file,
-  name,
-  className,
-}: {
-  file: string;
-  name: string;
-  className: string;
-}) {
-  return (
-    <img
-      src={`${import.meta.env.BASE_URL}business/staff-portraits/${file}.webp`}
-      alt={`${name} portrait`}
-      loading="lazy"
-      decoding="async"
-      draggable={false}
-      className={cn("select-none object-cover", className)}
-    />
-  );
-}
 
 /**
  * BUSINESS · STAFF tab (Economy V3 Phase 9) — all of the restaurant's
@@ -206,96 +186,72 @@ export function BusinessStaff({
       <div className="grid grid-cols-2 gap-2.5">
         {roster.map((def) => {
           const hired = hiredRoles.includes(def.role);
+          const isNeeded = needed.has(def.role) && !hired;
           return (
-            <article
+            <StaffCard
               key={def.role}
-              className={cn(
-                "product-card flex min-w-0 flex-col gap-2 rounded-[20px] border p-2 card-warm min-[700px]:grid min-[700px]:grid-cols-[76px_minmax(0,1fr)]",
-                hired ? "border-olive/35" : "border-walnut/15",
-                needed.has(def.role) &&
-                  !hired &&
-                  "ring-2 ring-copper ring-offset-2 ring-offset-cream",
-              )}
               data-staff-role={def.role}
-              data-staff-needed={needed.has(def.role) && !hired ? "true" : undefined}
-            >
-              <div className="relative h-[92px] overflow-hidden rounded-[13px] border border-walnut/15 bg-walnut/10 min-[700px]:h-auto min-[700px]:min-h-[112px]">
+              data-staff-needed={isNeeded ? "true" : undefined}
+              tone={hired ? "hired" : isNeeded ? "needed" : "plain"}
+              portrait={
                 <StaffPortrait
-                  file={ROLE_PORTRAIT[def.role] ?? "head-chef"}
+                  file={ROLE_PORTRAIT[def.role]}
                   name={def.name}
+                  emoji={ROLE_ICON[def.role]}
                   className="h-full w-full"
                 />
-                <span
-                  className="absolute bottom-1.5 left-1.5 rounded-full border border-ivory/65 bg-ivory/90 px-1.5 py-0.5 text-[13px] leading-none shadow-soft"
-                  aria-hidden
-                >
-                  {ROLE_ICON[def.role] ?? "🧑‍🍳"}
-                </span>
-              </div>
-              <div className="flex min-w-0 flex-col">
-                <div className="flex items-start justify-between gap-1.5">
-                  <div className="flex min-w-0 items-start gap-1">
-                    <p className="min-w-0 font-display text-[15px] font-black leading-tight text-walnut-dark">
-                      {def.name}
-                    </p>
-                    <InfoTip label={`About the ${def.name}`}>
-                      {def.description}
-                      <span className="mt-1 block text-[12px] text-walnut/60">
-                        {formatUsd(def.hourlyWageCents)}/hr × {def.scheduledHours}h + 25% employer
-                        cost
-                      </span>
-                    </InfoTip>
-                  </div>
-                  {hired ? (
-                    <Badge tone="sage">✓ Hired</Badge>
-                  ) : needed.has(def.role) ? (
-                    <Badge tone="copper">Needed now</Badge>
-                  ) : null}
-                </div>
-                <p className="mt-1 line-clamp-2 font-ui text-[11.5px] leading-snug text-walnut/65">
-                  {ROLE_GLANCE[def.role] ?? "🍽️ Supports the restaurant team"}
-                </p>
-                <p className="mt-auto pt-1.5 font-ui text-[12px] font-extrabold text-copper">
-                  {wagesStarted ? (
-                    <>
-                      {formatUsd(def.salary)}
-                      <span className="font-bold text-walnut/60">/day</span>
-                    </>
-                  ) : (
-                    <>
-                      {halfWages ? `${formatUsd(halfWage(def.role))}/day now` : "Free now"}
-                      <span className="font-bold text-walnut/60">
-                        {" "}
-                        · {formatUsd(def.salary)}/day from Lv {wagesFrom}
-                      </span>
-                    </>
-                  )}
-                </p>
-                <div className="pt-2">
-                  {hired ? (
-                    <KButton
-                      full
-                      size="sm"
-                      variant="ghost"
-                      className="min-h-12"
-                      onClick={() => handleFire(def.role)}
-                    >
-                      🗑️ Let go
-                    </KButton>
-                  ) : (
-                    <KButton
-                      full
-                      size="sm"
-                      variant="sage"
-                      className="min-h-12"
-                      onClick={() => handleHire(def.role)}
-                    >
-                      👋 Hire
-                    </KButton>
-                  )}
-                </div>
-              </div>
-            </article>
+              }
+              status={
+                hired ? (
+                  <StaffStatus tone="hired">✓ Hired</StaffStatus>
+                ) : isNeeded ? (
+                  <StaffStatus tone="needed">Needed now</StaffStatus>
+                ) : null
+              }
+              title={def.name}
+              info={
+                <InfoTip label={`About the ${def.name}`}>
+                  {def.description}
+                  <span className="mt-1 block text-[12px] text-walnut/60">
+                    {formatUsd(def.hourlyWageCents)}/hr × {def.scheduledHours}h + 25% employer cost
+                  </span>
+                </InfoTip>
+              }
+              glance={ROLE_GLANCE[def.role] ?? "🍽️ Supports the restaurant team"}
+              pay={
+                wagesStarted ? (
+                  <StaffPay now={`${formatUsd(def.salary)}/day`} />
+                ) : (
+                  <StaffPay
+                    now={halfWages ? `${formatUsd(halfWage(def.role))}/day now` : "Free now"}
+                    later={`${formatUsd(def.salary)}/day from Lv ${wagesFrom}`}
+                  />
+                )
+              }
+              action={
+                hired ? (
+                  <KButton
+                    full
+                    size="sm"
+                    variant="ghost"
+                    className="min-h-12 text-tomato"
+                    onClick={() => handleFire(def.role)}
+                  >
+                    🗑️ Let go
+                  </KButton>
+                ) : (
+                  <KButton
+                    full
+                    size="sm"
+                    variant="sage"
+                    className="min-h-12"
+                    onClick={() => handleHire(def.role)}
+                  >
+                    👋 Hire
+                  </KButton>
+                )
+              }
+            />
           );
         })}
       </div>
@@ -353,95 +309,77 @@ function SpecialistChefs({
             {SPECIALIST_CHEFS.length} chefs
           </span>
         </div>
-        <div className="mt-3 grid grid-cols-2 gap-2">
+        <div className="mt-3 space-y-2">
           {[...SPECIALIST_CHEFS]
             .sort((a, b) => a.firstLevel - b.firstLevel)
             .map((chef) => {
               const open = level >= chef.firstLevel;
               const isHired = hired.has(chef.id);
+              const isNeeded = needed.has(chef.id) && !isHired;
               const who = specialistCharacter(chef.id);
-              const portrait = SPECIALIST_PORTRAIT[chef.id];
               return (
-                <article
+                <StaffRow
                   key={chef.id}
-                  className={cn(
-                    "flex min-w-0 flex-col gap-2 rounded-[18px] border bg-ivory/75 p-2 min-[700px]:grid min-[700px]:grid-cols-[70px_minmax(0,1fr)]",
-                    isHired
-                      ? "border-olive/30"
-                      : needed.has(chef.id)
-                        ? "border-copper/50"
-                        : "border-walnut/12",
-                  )}
                   data-specialist={chef.id}
-                >
-                  <div className="relative h-[88px] overflow-hidden rounded-[13px] border border-walnut/15 bg-walnut/10 min-[700px]:h-auto min-[700px]:min-h-[104px]">
-                    {who && portrait ? (
-                      <StaffPortrait
-                        file={portrait}
-                        name={who.name}
-                        className="h-full min-h-[88px] w-full"
-                      />
+                  tone={isHired ? "hired" : isNeeded ? "needed" : open ? "plain" : "locked"}
+                  portrait={
+                    <StaffPortrait
+                      file={who ? SPECIALIST_PORTRAIT[chef.id] : undefined}
+                      name={who?.name ?? chef.title}
+                      emoji={who?.portraitEmoji ?? "🧑‍🍳"}
+                      className="h-full w-full"
+                    />
+                  }
+                  title={who?.name ?? "Specialist Chef"}
+                  subtitle={chef.title}
+                  status={
+                    isHired ? (
+                      <StaffStatus tone="hired">✓ Hired</StaffStatus>
+                    ) : isNeeded ? (
+                      <StaffStatus tone="needed">Needed now</StaffStatus>
+                    ) : null
+                  }
+                  info={
+                    who ? <InfoTip label={`About ${who.name}`}>“{who.introLine}”</InfoTip> : null
+                  }
+                  // One cuisine is already in the title ("Mexican Chef"); several are listed.
+                  glance={chef.cuisines.length > 1 ? chef.cuisines.join(" · ") : undefined}
+                  pay={
+                    wagesStarted ? (
+                      <StaffPay now={`${formatUsd(chef.dailyWage)}/day`} />
                     ) : (
-                      <span
-                        className="grid h-full min-h-[88px] place-items-center text-[30px]"
-                        aria-hidden
+                      <StaffPay
+                        now="Free now"
+                        later={`${formatUsd(chef.dailyWage)}/day from Lv ${wagesFrom}`}
+                      />
+                    )
+                  }
+                  action={
+                    !open ? (
+                      <Badge tone="locked">Opens Lv {chef.firstLevel}</Badge>
+                    ) : isHired ? (
+                      <KButton
+                        full
+                        size="sm"
+                        variant="ghost"
+                        className="min-h-12 text-tomato"
+                        onClick={() => onFire(chef.id)}
                       >
-                        {who?.portraitEmoji ?? "🧑‍🍳"}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex min-w-0 flex-col">
-                    <div className="flex items-start justify-between gap-1">
-                      <div className="flex min-w-0 items-start gap-1">
-                        <p className="min-w-0 font-display text-[14px] font-black leading-tight text-walnut-dark">
-                          {who?.name ?? "Specialist Chef"}
-                        </p>
-                        {who ? (
-                          <InfoTip label={`About ${who.name}`}>“{who.introLine}”</InfoTip>
-                        ) : null}
-                      </div>
-                      {isHired ? (
-                        <Badge tone="sage">✓ Hired</Badge>
-                      ) : needed.has(chef.id) ? (
-                        <Badge tone="copper">Needed now</Badge>
-                      ) : null}
-                    </div>
-                    <p className="font-ui text-[12px] font-bold text-walnut/75">{chef.title}</p>
-                    <p className="mt-1 line-clamp-2 font-ui text-[11px] leading-snug text-walnut/60">
-                      {chef.cuisines.join(" · ")}
-                    </p>
-                    <p className="mt-auto pt-1 font-ui text-[11px] font-extrabold text-copper">
-                      {wagesStarted
-                        ? `${formatUsd(chef.dailyWage)} / day`
-                        : `🆓 Free now · ${formatUsd(chef.dailyWage)}/day from Lv ${wagesFrom}`}
-                    </p>
-                    <div className="pt-1.5">
-                      {!open ? (
-                        <Badge tone="locked">Opens Lv {chef.firstLevel}</Badge>
-                      ) : isHired ? (
-                        <KButton
-                          full
-                          size="sm"
-                          variant="ghost"
-                          className="min-h-12"
-                          onClick={() => onFire(chef.id)}
-                        >
-                          🗑️ Let go
-                        </KButton>
-                      ) : (
-                        <KButton
-                          full
-                          size="sm"
-                          variant="sage"
-                          className="min-h-12"
-                          onClick={() => onHire(chef.id)}
-                        >
-                          👋 Hire
-                        </KButton>
-                      )}
-                    </div>
-                  </div>
-                </article>
+                        🗑️ Let go
+                      </KButton>
+                    ) : (
+                      <KButton
+                        full
+                        size="sm"
+                        variant="sage"
+                        className="min-h-12"
+                        onClick={() => onHire(chef.id)}
+                      >
+                        👋 Hire
+                      </KButton>
+                    )
+                  }
+                />
               );
             })}
         </div>

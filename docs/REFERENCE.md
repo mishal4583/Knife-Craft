@@ -2179,6 +2179,15 @@ remove anything important)."
   clear role/effect/pay lines, visible hired / needed states, and 48 px hire controls.
 - Kitchen helpers use the same two-column portrait-card treatment, reusing the matching
   staff portraits. Their one-time purchase prices, unlocks and effects are unchanged.
+- **One card kit, laid out by the card's own width** (`business/StaffCard.tsx`, developer
+  2026-10-23 "fix the card like in the image"): `StaffCard` (crew, kitchen helpers) and
+  `StaffRow` (specialist chefs) use container queries, never window media queries — the
+  game is a fixed 540 frame, so the old `min-[700px]` rule squeezed cards on desktop and
+  the name, HIRED pill and ⓘ overlapped. A card ≥ 200 px wide puts the portrait left
+  (44%) and the HIRED pill, name + ⓘ, effect and pay ("🪙 $35.00/day now" over
+  "$70.00/day from Lv 56") right; narrower, the portrait is on top with the pill on it.
+  The Hire / Let go button spans the bottom. A specialist row puts its button on the
+  right from 380 px, below it otherwise; a single cuisine isn't repeated under the title.
 
 ### Market shop cards (developer 2026-10-21, redesigned 2026-10-22)
 

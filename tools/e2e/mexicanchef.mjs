@@ -113,7 +113,8 @@ const chefRow = await page.evaluate(() => {
 });
 await page.evaluate(() =>
   [...document.querySelectorAll('[data-specialist="mexican-chef"] button')]
-    .find((b) => b.textContent.trim() === "Hire")
+    // "👋 Hire" since the portrait cards (developer 2026-10-23).
+    .find((b) => /^(👋\s*)?Hire$/.test(b.textContent.trim()))
     ?.click(),
 );
 await sleep(400);

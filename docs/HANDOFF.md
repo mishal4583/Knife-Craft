@@ -1,5 +1,11 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## Staff cards fixed (2026-10-23, `main`)
+
+- Staff cards no longer overlap on desktop: one kit (`business/StaffCard.tsx`) sized by
+  the card's own width (container queries), like the developer's reference. REFERENCE §10
+  "Staff portraits and roster cards".
+
 ## Staff portraits and roster refresh (2026-10-23)
 
 - Business → Staff now uses illustrated portraits for the six restaurant roles

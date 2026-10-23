@@ -273,7 +273,8 @@ for (const id of ["indian-chef", "mexican-chef"]) {
   await page.evaluate(
     (x) =>
       [...document.querySelectorAll(`[data-specialist="${x}"] button`)]
-        .find((b) => b.textContent.trim() === "Hire")
+        // "👋 Hire" since the portrait cards (developer 2026-10-23).
+        .find((b) => /^(👋\s*)?Hire$/.test(b.textContent.trim()))
         ?.click(),
     id,
   );
@@ -285,7 +286,8 @@ for (const name of ["Prep Cook", "Server"]) {
       [...a.querySelectorAll("p")].some((p) => p.textContent.trim() === n),
     );
     [...(art?.querySelectorAll("button") ?? [])]
-      .find((b) => b.textContent.trim() === "Hire")
+      // "👋 Hire" since the portrait cards (developer 2026-10-23).
+      .find((b) => /^(👋\s*)?Hire$/.test(b.textContent.trim()))
       ?.click();
   }, name);
   await sleep(300);
@@ -391,7 +393,8 @@ for (const role of staffView.needed) {
   await page.evaluate((r) => {
     const card = document.querySelector(`[data-staff-role="${r}"]`);
     [...(card?.querySelectorAll("button") ?? [])]
-      .find((b) => b.textContent.trim() === "Hire")
+      // "👋 Hire" since the portrait cards (developer 2026-10-23).
+      .find((b) => /^(👋\s*)?Hire$/.test(b.textContent.trim()))
       ?.click();
   }, role);
   await sleep(500);

@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { formatUsd } from "@/game/money";
 import { STAFF_CATALOG } from "@/game/economy/staffDefinitions";
 import { getStaffPurchaseState, type BuyStaffResult } from "@/game/economy/StaffManager";
+import { StaffCard, StaffPay, StaffPortrait, StaffStatus } from "./StaffCard";
 import { notEnoughMoneyText } from "@/game/economy/wallet";
 
 /** Reuse the matching staff portraits; these helpers are permanent hires. */
@@ -83,63 +84,48 @@ export function KitchenHelpers({
               effect: "🍽️ Supports kitchen service",
             };
             return (
-              <article
+              <StaffCard
                 key={st.id}
                 data-helper={st.id}
-                className={cn(
-                  "flex min-w-0 flex-col gap-2 rounded-[18px] border border-walnut/12 bg-ivory/70 p-2 card-warm min-[700px]:grid min-[700px]:grid-cols-[70px_minmax(0,1fr)]",
-                  state === "locked" && "opacity-70",
-                )}
-              >
-                <div className="relative h-[92px] overflow-hidden rounded-[13px] border border-walnut/15 bg-walnut/10 min-[700px]:h-auto min-[700px]:min-h-[108px]">
-                  <img
-                    src={`${import.meta.env.BASE_URL}business/staff-portraits/${portrait.file}.webp`}
-                    alt={`${st.name} portrait`}
-                    loading="lazy"
-                    decoding="async"
-                    draggable={false}
+                tone={state === "owned" ? "hired" : state === "locked" ? "locked" : "plain"}
+                portrait={
+                  <StaffPortrait
+                    file={portrait.file}
+                    name={st.name}
+                    emoji={portrait.icon}
                     data-helper-portrait={st.id}
-                    className="h-full w-full select-none object-cover"
+                    className="h-full w-full"
                   />
-                  <span
-                    className="absolute bottom-1 left-1 rounded-full border border-ivory/65 bg-ivory/90 px-1 py-0.5 text-[12px] leading-none shadow-soft"
-                    aria-hidden
-                  >
-                    {portrait.icon}
-                  </span>
-                </div>
-                <div className="flex min-w-0 flex-col">
-                  <div className="flex items-start gap-1">
-                    <p className="min-w-0 font-display text-[13px] font-black leading-tight text-walnut-dark">
-                      {st.name}
-                    </p>
-                    <InfoTip label={`About the ${st.name}`}>{st.description}</InfoTip>
-                  </div>
-                  <p className="mt-1 line-clamp-2 font-ui text-[10.5px] leading-snug text-walnut/65">
-                    {portrait.effect}
-                  </p>
-                  <p className="mt-auto pt-1 font-ui text-[11px] font-extrabold text-copper">
-                    {formatUsd(st.price)} · one time
-                  </p>
-                  <div className="pt-1.5">
-                    {state === "owned" ? (
-                      <Badge tone="sage">✓ Hired</Badge>
-                    ) : state === "locked" ? (
-                      <Badge tone="locked">Level {st.unlockLevel}</Badge>
-                    ) : (
-                      <KButton
-                        full
-                        size="sm"
-                        variant="copper"
-                        className="min-h-11 px-2 text-[11px]"
-                        onClick={() => hire(st.id, st.name, st.price, st.unlockLevel)}
-                      >
-                        Hire · {formatUsd(st.price)}
-                      </KButton>
-                    )}
-                  </div>
-                </div>
-              </article>
+                }
+                status={
+                  state === "owned" ? (
+                    <StaffStatus tone="hired">✓ Hired</StaffStatus>
+                  ) : state === "locked" ? (
+                    <StaffStatus tone="locked">🔒 Level {st.unlockLevel}</StaffStatus>
+                  ) : null
+                }
+                title={st.name}
+                info={<InfoTip label={`About the ${st.name}`}>{st.description}</InfoTip>}
+                glance={portrait.effect}
+                pay={<StaffPay now={formatUsd(st.price)} later="🔁 one time · no wages" />}
+                action={
+                  state === "owned" ? (
+                    <Badge tone="sage">✓ Yours for good</Badge>
+                  ) : state === "locked" ? (
+                    <Badge tone="locked">Level {st.unlockLevel}</Badge>
+                  ) : (
+                    <KButton
+                      full
+                      size="sm"
+                      variant="copper"
+                      className="min-h-12 px-2 text-[12px]"
+                      onClick={() => hire(st.id, st.name, st.price, st.unlockLevel)}
+                    >
+                      Hire · {formatUsd(st.price)}
+                    </KButton>
+                  )
+                }
+              />
             );
           })}
         </div>
