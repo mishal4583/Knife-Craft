@@ -348,11 +348,16 @@ await sleep(1200);
 if (
   await page.evaluate(() =>
     [...document.querySelectorAll("button")].some((b) =>
-      /^(OPEN THE RESTAURANT|START SERVICE)$/i.test(b.textContent.trim()),
+      /^((?:OPEN THE RESTAURANT|🚪 Open restaurant)|(?:START SERVICE|🔥 Start service))$/i.test(
+        b.textContent.trim(),
+      ),
     ),
   )
 )
-  await clickButton(page, /^(OPEN THE RESTAURANT|START SERVICE)$/i);
+  await clickButton(
+    page,
+    /^((?:OPEN THE RESTAURANT|🚪 Open restaurant)|(?:START SERVICE|🔥 Start service))$/i,
+  );
 await page.waitForFunction(
   () => /·\s*(?:\d+\/\d+\s+[a-z-]+|\d+% peeled)/i.test(document.body.innerText),
   { timeout: 30000 },
@@ -443,11 +448,16 @@ await sleep(1200);
 if (
   await page.evaluate(() =>
     [...document.querySelectorAll("button")].some((b) =>
-      /^(OPEN THE RESTAURANT|START SERVICE)$/i.test(b.textContent.trim()),
+      /^((?:OPEN THE RESTAURANT|🚪 Open restaurant)|(?:START SERVICE|🔥 Start service))$/i.test(
+        b.textContent.trim(),
+      ),
     ),
   )
 )
-  await clickButton(page, /^(OPEN THE RESTAURANT|START SERVICE)$/i);
+  await clickButton(
+    page,
+    /^((?:OPEN THE RESTAURANT|🚪 Open restaurant)|(?:START SERVICE|🔥 Start service))$/i,
+  );
 const onBoard = () =>
   page.waitForFunction(
     () => /·\s*(?:\d+\/\d+\s+[a-z-]+|\d+% peeled)/i.test(document.body.innerText),

@@ -142,7 +142,10 @@ async function startOrder() {
     await clickButton(page, /^Later$/);
   await clickButton(page, /Prepare$/);
   await sleep(1200);
-  await clickButton(page, /^(OPEN THE RESTAURANT|START SERVICE)$/i);
+  await clickButton(
+    page,
+    /^((?:OPEN THE RESTAURANT|🚪 Open restaurant)|(?:START SERVICE|🔥 Start service))$/i,
+  );
   await page.waitForFunction(
     () => /·\s*(?:\d+\/\d+\s+[a-z-]+|\d+% peeled)/i.test(document.body.innerText),
     {
@@ -389,7 +392,10 @@ if (ONLY.includes("A")) {
   }, L13.title);
   if (replayed) {
     await sleep(1200);
-    await clickButton(page, /^(OPEN THE RESTAURANT|START SERVICE)$/i);
+    await clickButton(
+      page,
+      /^((?:OPEN THE RESTAURANT|🚪 Open restaurant)|(?:START SERVICE|🔥 Start service))$/i,
+    );
     await page
       .waitForFunction(
         () => /·\s*(?:\d+\/\d+\s+[a-z-]+|\d+% peeled)/i.test(document.body.innerText),

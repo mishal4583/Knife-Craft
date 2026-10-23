@@ -273,7 +273,10 @@ await boot(
 await nav("Kitchen");
 await clickButton(page, /^Prepare$/);
 await sleep(1200);
-await clickButton(page, /^(START SERVICE|OPEN THE RESTAURANT)$/);
+await clickButton(
+  page,
+  /^((?:START SERVICE|🔥 Start service)|(?:OPEN THE RESTAURANT|🚪 Open restaurant))$/,
+);
 await sleep(2500);
 const trio = await page.evaluate(() => {
   const card = document.querySelector('[data-testid="hud-goal"]')?.closest(".paper");

@@ -227,7 +227,10 @@ async function playLevelThrough() {
   await sleep(700);
   await clickButton(page, /Prepare$/);
   await sleep(1200);
-  await clickButton(page, /^(START SERVICE|OPEN THE RESTAURANT)$/);
+  await clickButton(
+    page,
+    /^((?:START SERVICE|🔥 Start service)|(?:OPEN THE RESTAURANT|🚪 Open restaurant))$/,
+  );
   for (let order = 0; order < 8; order++) {
     await page.waitForFunction(
       () => /·\s*(?:\d+\/\d+\s+[a-z-]+|\d+% peeled)/i.test(document.body.innerText),

@@ -168,7 +168,8 @@ const units = Number(first?.button.match(/Restock ([\d.]+)/)?.[1] ?? "0");
 check(
   "2 Level 21 offers Stock the whole day (3 services — units, cost, fridge fit); Restock opens the Market at the day's quantity",
   !!d &&
-    /Stock the whole day/i.test(d.text) &&
+    // "📅 Whole-day stock · optional" since the Pre-Service Check polish (developer 2026-10-23, 613d3a4).
+    /Stock the whole day|Whole-day stock/i.test(d.text) &&
     /3 services/.test(d.text) &&
     /[\d.]+ units/.test(d.text) &&
     /\$[\d.,]+/.test(d.text) &&

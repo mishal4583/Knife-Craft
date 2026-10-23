@@ -152,7 +152,8 @@ check(
   "2a the check shows real portions with item counts (📦 0 lb / 0.3 lb (≈ 1 tomato) …)",
   rows.length > 0 &&
     rows.every((t) => /📦 [\d.]+ \w+ \/ [\d.]+ (lb|loa|bunch)/.test(t)) &&
-    rows.some((t) => /\(≈ \d+ \w+/.test(t)),
+    // "· ≈ 1 zucchini" since the Pre-Service Check polish (developer 2026-10-23, 613d3a4; was "(≈ 1 …)").
+    rows.some((t) => /≈ \d+ \w+/.test(t)),
   rows.slice(0, 3),
 );
 check(
@@ -170,7 +171,10 @@ const after = await readSave(page);
 const newEntries = purchases(after).length - purchases(before).length;
 const startable = await page.evaluate(() =>
   [...document.querySelectorAll("button")].some(
-    (b) => /^(OPEN THE RESTAURANT|START SERVICE)$/.test(b.textContent.trim()) && !b.disabled,
+    (b) =>
+      /^((?:OPEN THE RESTAURANT|🚪 Open restaurant)|(?:START SERVICE|🔥 Start service))$/.test(
+        b.textContent.trim(),
+      ) && !b.disabled,
   ),
 );
 check(
@@ -337,7 +341,8 @@ await shot(page, "measures-buy-all-market");
 check(
   "4c the Kitchen card shows what the level pays (about +$…), Grandma's shopping guide on the first stock service (L3) and not again (L20), and Buy everything opens the Market plan on Today with a hint",
   /ready to prepare · about \+\$[\d.,]+/.test(card) &&
-    /Your first stock check|Buy ingredients for service/i.test(guide) &&
+    // "First ingredient run" since the Pre-Service Check polish (developer 2026-10-23, 613d3a4).
+    /Your first stock check|Buy ingredients for service|First ingredient run/i.test(guide) &&
     guideAt20 === "" &&
     planNow?.checked === "Today" &&
     planNow.rows.length > 0 &&

@@ -91,7 +91,10 @@ async function prepareToday() {
   await sleep(900);
   // Supplies plan A (2026-10-10): Level 10's first play opens the Pre-Service Check with
   // Grandma's first shopping list (it never blocks START).
-  await clickButton(page, /^(OPEN THE RESTAURANT|START SERVICE)$/);
+  await clickButton(
+    page,
+    /^((?:OPEN THE RESTAURANT|🚪 Open restaurant)|(?:START SERVICE|🔥 Start service))$/,
+  );
   await sleep(600);
 }
 async function playLevel() {

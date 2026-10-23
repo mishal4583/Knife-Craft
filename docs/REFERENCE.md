@@ -2136,6 +2136,17 @@ make it short or show the issues with emojis." Builds on the 2026-10-16 short-co
   Menu-guest extras start folded as optional, and tools, supplies, cleaning, staff and fridge
   checks retain their existing actions and blocking rules. All stock, costs and status values
   still come from the existing game checks.
+- **One row look for every list** (2026-10-23, "optimize the looks of pre service check"):
+  ingredients, kitchen tools, service supplies and the soap / cleaning bottles
+  (`SupplyBottle compact`) are the same tinted card rows: icon plate, short name, a
+  "📦 have / need" line with the size split off the name ("Fine mesh skimmers" ·
+  "📏 5 in"), and a compact action (a tool's two-line "Buy · $13.61" / "1 pack of 6").
+  The staff list is portrait tiles (`business/staffPortraits.ts`), two a row when the
+  sheet is ≥ 300 px wide (container query), one below. "Tools to buy" and "Coming up"
+  are chips, at most six with "+N more". The ingredient button's word "Restock" is
+  screen-reader text beside the 🛒. The menu guests' ⓘ sits beside its toggle, not inside
+  it (a button can't hold a button). Button labels (developer, 613d3a4): "🔥 Start
+  service", "🚪 Open restaurant", "🛒 Restock to start", "👥 Hire staff to start".
 - **Short number lines:** a menu card's "⭐ 50 · ×1.05 · 92.6% kept" (the sentence in its
   `title`); staff wages "🆓 Free until Lv N · ½ pay to Lv M · then $X/day".
 - `ShopLine` flows its icons inline with the text, so an icon never wraps onto its own line.

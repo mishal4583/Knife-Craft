@@ -120,7 +120,7 @@ check(
     first.orders.length === 2 &&
     first.rows.length > 0 &&
     first.rows.every((r) => r.status === "missing") &&
-    /Restock to start/.test(first.text),
+    /(?:🛒 )?Restock to start/.test(first.text),
   first,
 );
 let restockOk = true;
@@ -144,7 +144,7 @@ for (const row of first?.rows ?? []) {
   }, row.id);
   await sleep(500);
   visited.push({ id: row.id, ...market });
-  const units = /^Restock ([\d.]+)/.exec(row.restock)?.[1];
+  const units = /^(?:🛒 )?Restock ([\d.]+)/.exec(row.restock)?.[1];
   if (
     !market.card ||
     !market.pill ||
@@ -166,11 +166,16 @@ check(
   "2c once everything is bought every row is ✓ and START SERVICE is open",
   !!after &&
     after.rows.every((r) => r.status === "ok") &&
-    /OPEN THE RESTAURANT|START SERVICE/.test(after.text),
+    /(?:OPEN THE RESTAURANT|🚪 Open restaurant)|(?:START SERVICE|🔥 Start service)/.test(
+      after.text,
+    ),
   after,
 );
 const bought = await readSave(page);
-await clickButton(page, /^(OPEN THE RESTAURANT|START SERVICE)$/);
+await clickButton(
+  page,
+  /^((?:OPEN THE RESTAURANT|🚪 Open restaurant)|(?:START SERVICE|🔥 Start service))$/,
+);
 await sleep(1200);
 check("2d START SERVICE starts the level", await inHud());
 

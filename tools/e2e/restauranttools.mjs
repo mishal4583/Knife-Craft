@@ -86,7 +86,9 @@ const sheet = () =>
     const el = document.querySelector('[data-testid="pre-service-check"]');
     if (!el) return null;
     const start = [...el.querySelectorAll("button")].find((b) =>
-      /^(OPEN THE RESTAURANT|START SERVICE|Restock to start|Hire)/.test(b.textContent.trim()),
+      /^((?:OPEN THE RESTAURANT|🚪 Open restaurant)|(?:START SERVICE|🔥 Start service)|(?:🛒 )?Restock to start|(?:👥 )?Hire)/.test(
+        b.textContent.trim(),
+      ),
     );
     return {
       list: [...el.querySelectorAll("[data-shopping-tool]")].map((x) =>

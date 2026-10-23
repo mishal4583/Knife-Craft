@@ -101,7 +101,9 @@ const sheet = () =>
     const el = document.querySelector('[data-testid="pre-service-check"]');
     if (!el) return null;
     const start = [...el.querySelectorAll("button")].find((b) =>
-      /OPEN THE RESTAURANT|START SERVICE|Restock to start|Hire staff to start/.test(b.textContent),
+      /(?:OPEN THE RESTAURANT|🚪 Open restaurant)|(?:START SERVICE|🔥 Start service)|(?:🛒 )?Restock to start|(?:👥 )?Hire staff to start/.test(
+        b.textContent,
+      ),
     );
     return {
       supplies: [...el.querySelectorAll("[data-psc-supply]")].map((r) => ({
@@ -233,7 +235,10 @@ check(
 );
 
 // ---------- 3. Serve: a setting and a napkin; finish: the wash-up ----------
-await clickButton(page, /^(OPEN THE RESTAURANT|START SERVICE)$/);
+await clickButton(
+  page,
+  /^((?:OPEN THE RESTAURANT|🚪 Open restaurant)|(?:START SERVICE|🔥 Start service))$/,
+);
 await sleep(900);
 await page.waitForFunction(
   () => /·\s*(?:\d+\/\d+\s+[a-z-]+|\d+% peeled)/i.test(document.body.innerText),
@@ -334,7 +339,10 @@ if (await page.evaluate(() => !!document.querySelector('[data-testid="pre-servic
   await restockFood();
   // Supplies plan B: the plated dish needs its own pieces.
   await restockSupplies();
-  await clickButton(page, /^(OPEN THE RESTAURANT|START SERVICE)$/);
+  await clickButton(
+    page,
+    /^((?:OPEN THE RESTAURANT|🚪 Open restaurant)|(?:START SERVICE|🔥 Start service))$/,
+  );
   await sleep(900);
 }
 await page.waitForFunction(

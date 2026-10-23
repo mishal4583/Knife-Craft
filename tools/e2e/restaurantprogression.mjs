@@ -240,7 +240,9 @@ let staff = await page.evaluate(() =>
 const startDisabled = await page.evaluate(
   () =>
     [...document.querySelectorAll('[data-testid="pre-service-check"] button')].find((b) =>
-      /Restock to start|Hire staff to start|START SERVICE|OPEN THE RESTAURANT/.test(b.textContent),
+      /(?:🛒 )?Restock to start|(?:👥 )?Hire staff to start|(?:START SERVICE|🔥 Start service)|(?:OPEN THE RESTAURANT|🚪 Open restaurant)/.test(
+        b.textContent,
+      ),
     )?.disabled,
 );
 await shot(page, "restaurant-staff-check");
@@ -407,7 +409,10 @@ const extraTools = await buyMissingTools(page);
 const after47 = await page.evaluate(() => ({
   notice: !!document.querySelector('[data-testid="psc-staff-needed"]'),
   start: [...document.querySelectorAll('[data-testid="pre-service-check"] button')].some(
-    (b) => /^(OPEN THE RESTAURANT|START SERVICE)$/.test(b.textContent.trim()) && !b.disabled,
+    (b) =>
+      /^((?:OPEN THE RESTAURANT|🚪 Open restaurant)|(?:START SERVICE|🔥 Start service))$/.test(
+        b.textContent.trim(),
+      ) && !b.disabled,
   ),
 }));
 check(

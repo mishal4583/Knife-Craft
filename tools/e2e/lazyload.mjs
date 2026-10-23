@@ -68,9 +68,13 @@ async function playLevel(title) {
   }, title);
   // Restaurant test build: the day's opening card / Pre-Service Check comes first.
   await sleep(900);
-  await clickIf(/^(OPEN THE RESTAURANT|START SERVICE)$/);
+  await clickIf(
+    /^((?:OPEN THE RESTAURANT|🚪 Open restaurant)|(?:START SERVICE|🔥 Start service))$/,
+  );
   await sleep(900);
-  await clickIf(/^(OPEN THE RESTAURANT|START SERVICE)$/);
+  await clickIf(
+    /^((?:OPEN THE RESTAURANT|🚪 Open restaurant)|(?:START SERVICE|🔥 Start service))$/,
+  );
   await page.waitForFunction(
     () => /·\s*(?:\d+\/\d+\s+[a-z-]+|\d+% peeled)/i.test(document.body.innerText),
     { timeout: 30000 },

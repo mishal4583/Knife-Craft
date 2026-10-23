@@ -13,6 +13,13 @@
 - Staff cards no longer overlap on desktop: one kit (`business/StaffCard.tsx`) sized by
   the card's own width (container queries), like the developer's reference. REFERENCE §10
   "Staff portraits and roster cards".
+## Pre-Service Check rows unified (2026-10-23, `main`)
+
+- Tools, supplies, bottles and ingredients share one card-row look; staff are portrait
+  tiles; long lists are chips. Fixed: a button inside a button (menu guests' ⓘ) and the
+  40 px menu-guests toggle. The e2e suites follow 613d3a4's new button labels.
+  REFERENCE §10 "Glance copy".
+
 ## Pre-Service Check visual refresh (2026-10-23)
 
 - The check uses compact ticket cards, icon-led status rows, and folded ready-stock amounts

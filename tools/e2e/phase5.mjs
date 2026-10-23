@@ -351,7 +351,10 @@ if (ONLY.includes("R")) {
       await clickButton(page, /^Later$/);
     await clickButton(page, /Prepare$/);
     await sleep(1200);
-    await clickButton(page, /^(OPEN THE RESTAURANT|START SERVICE)$/i);
+    await clickButton(
+      page,
+      /^((?:OPEN THE RESTAURANT|🚪 Open restaurant)|(?:START SERVICE|🔥 Start service))$/i,
+    );
     await page
       .waitForFunction(() => !!document.querySelector('img[alt^="Warm café kitchen"]'), {
         timeout: 30000,

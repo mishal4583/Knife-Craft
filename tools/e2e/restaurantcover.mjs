@@ -47,7 +47,9 @@ const sheet = () =>
     const el = document.querySelector('[data-testid="pre-service-check"]');
     if (!el) return null;
     const start = [...el.querySelectorAll("button")].find((b) =>
-      /^(OPEN THE RESTAURANT|START SERVICE|Restock to start|Hire)/.test(b.textContent.trim()),
+      /^((?:OPEN THE RESTAURANT|🚪 Open restaurant)|(?:START SERVICE|🔥 Start service)|(?:🛒 )?Restock to start|(?:👥 )?Hire)/.test(
+        b.textContent.trim(),
+      ),
     );
     return {
       rows: [...el.querySelectorAll("[data-psc-ingredient]")].map((r) =>
@@ -161,7 +163,10 @@ await clickButton(page, /Supplier credit/);
 await sleep(800);
 const took = await readSave(page);
 const owed = took.business.supplierCredit?.owed ?? 0;
-await clickButton(page, /^(OPEN THE RESTAURANT|START SERVICE)$/);
+await clickButton(
+  page,
+  /^((?:OPEN THE RESTAURANT|🚪 Open restaurant)|(?:START SERVICE|🔥 Start service))$/,
+);
 await sleep(1500);
 const played = await playLevel();
 await sleep(1500);

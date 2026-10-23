@@ -61,7 +61,10 @@ async function prepare(title) {
   }, title);
   await sleep(900);
   if (await page.evaluate(() => !!document.querySelector('[data-testid="pre-service-check"]'))) {
-    await clickButton(page, /^(OPEN THE RESTAURANT|START SERVICE)$/);
+    await clickButton(
+      page,
+      /^((?:OPEN THE RESTAURANT|🚪 Open restaurant)|(?:START SERVICE|🔥 Start service))$/,
+    );
     await sleep(800);
   }
 }
@@ -260,7 +263,10 @@ for (const id of rows) {
   await page.evaluate(() => document.querySelector('[data-testid="psc-back"]')?.click());
   await sleep(700);
 }
-await clickButton(page, /^(OPEN THE RESTAURANT|START SERVICE)$/);
+await clickButton(
+  page,
+  /^((?:OPEN THE RESTAURANT|🚪 Open restaurant)|(?:START SERVICE|🔥 Start service))$/,
+);
 await sleep(900);
 await cookAndServe();
 await clickButton(page, /^Next Customer$/);

@@ -123,7 +123,10 @@ await boot(
 await stubBridge();
 await clickButton(page, /Prepare$/);
 await sleep(1200);
-await clickButton(page, /^(START SERVICE|OPEN THE RESTAURANT)$/);
+await clickButton(
+  page,
+  /^((?:START SERVICE|🔥 Start service)|(?:OPEN THE RESTAURANT|🚪 Open restaurant))$/,
+);
 await sleep(1500);
 let m = await msgs();
 check(

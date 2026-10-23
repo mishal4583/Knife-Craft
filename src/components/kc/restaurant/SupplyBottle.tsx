@@ -20,8 +20,11 @@ export function SupplyBottle({
   bottle,
   per,
   onRestock,
+  compact = false,
 }: {
   bottle: BottleView;
+  /** The Pre-Service Check's card-row look (smaller type, a tinted card). */
+  compact?: boolean;
   /** What one use is: "wash" (dish soap: one wash-up) or "closing" (cleaning liquid). */
   per: string;
   onRestock?: () => void;
@@ -29,7 +32,16 @@ export function SupplyBottle({
   const level = Math.round(bottle.openPct);
   return (
     <div
-      className="flex min-h-12 items-center gap-3 py-1.5"
+      className={cn(
+        "flex min-h-12 items-center gap-3 py-1.5",
+        compact && "gap-2 rounded-xl border px-2",
+        compact &&
+          (bottle.status === "ok"
+            ? "border-olive/10 bg-ivory/65"
+            : bottle.status === "empty"
+              ? "border-tomato/20 bg-tomato/5"
+              : "border-gold/25 bg-gold/5"),
+      )}
       data-bottle={bottle.id}
       data-bottle-status={bottle.status}
     >
@@ -43,12 +55,18 @@ export function SupplyBottle({
         </div>
       </div>
       <div className="min-w-0 flex-1">
-        <p className="font-ui text-[14.5px] font-bold text-walnut-dark">
+        <p
+          className={cn(
+            "font-ui text-walnut-dark",
+            compact ? "text-[12.5px] font-extrabold leading-tight" : "text-[14.5px] font-bold",
+          )}
+        >
           {NAME[bottle.id]} — {level}%{bottle.spare > 0 ? ` + ${bottle.spare} spare` : ""}
         </p>
         <p
           className={cn(
-            "font-ui text-[12.5px]",
+            "font-ui",
+            compact ? "text-[10.5px] leading-tight" : "text-[12.5px]",
             bottle.status === "ok" ? "text-walnut/60" : "text-tomato",
           )}
         >
@@ -63,9 +81,12 @@ export function SupplyBottle({
         <button
           type="button"
           onClick={onRestock}
-          className="press min-h-12 rounded-full border border-walnut-dark/30 bg-[linear-gradient(170deg,var(--color-gold),var(--color-copper))] px-3 font-ui text-[13.5px] font-extrabold text-ivory"
+          className={cn(
+            "press min-h-12 shrink-0 rounded-full border border-walnut-dark/30 bg-[linear-gradient(170deg,var(--color-gold),var(--color-copper))] font-ui font-extrabold text-ivory",
+            compact ? "px-2.5 text-[11px]" : "px-3 text-[13.5px]",
+          )}
         >
-          Restock →
+          {compact ? "🛒 Restock" : "Restock →"}
         </button>
       ) : null}
     </div>

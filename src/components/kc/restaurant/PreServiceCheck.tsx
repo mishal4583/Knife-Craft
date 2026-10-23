@@ -1,6 +1,8 @@
 import { useState, type ReactNode } from "react";
 import { KButton } from "@/components/kc/common/primitives";
 import { cn } from "@/lib/utils";
+import { StaffPortrait } from "../business/StaffCard";
+import { staffPortraitFile } from "../business/staffPortraits";
 import { InfoTip, StatChip } from "@/components/kc/common/InfoTip";
 import type { RecipeDefinition } from "@/game/recipes/recipeTypes";
 import type { IngredientId } from "@/game/definitions";
@@ -465,7 +467,11 @@ export function PreServiceCheck({
               <p className="font-ui text-[13.5px] font-extrabold text-walnut-dark">
                 🍳 Tools to buy · 🔁 once
               </p>
-              <NameChips names={kit.rows.filter((r) => r.missing > 0).map((r) => r.label)} />
+              {/* The first few; every tool has its own row (and Buy) below. */}
+              <NameChips
+                names={kit.rows.filter((r) => r.missing > 0).map((r) => r.label)}
+                max={6}
+              />
             </div>
           ) : null}
           {welcome ? <WelcomeCrate kit={welcome} /> : null}
@@ -633,34 +639,54 @@ export function PreServiceCheck({
               <p className="mt-3 font-ui text-[12.5px] font-extrabold uppercase tracking-wide text-walnut/60">
                 Staff for this service
               </p>
-              <ul id="psc-staff" className="mt-1 divide-y divide-walnut/10" data-testid="psc-staff">
-                {staff.map((r) => (
-                  <li
-                    key={r.id}
-                    className="flex min-h-12 items-center gap-2 py-1.5"
-                    data-psc-staff={r.id}
-                    data-psc-status={r.met ? "ok" : "missing"}
-                  >
-                    <span className="text-[20px]" aria-hidden>
-                      {r.kind === "specialist" ? "👩‍🍳" : "🧑‍🍳"}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="flex items-center gap-1.5 font-ui text-[14.5px] font-bold text-walnut-dark">
-                        {r.title}
-                        <InfoTip label={`Why a ${r.title}`}>{r.why}</InfoTip>
-                      </p>
-                      {r.met ? null : (
-                        <p className="font-ui text-[12.5px] font-bold text-tomato">Needed</p>
+              {/* Two portrait tiles a row when the sheet is wide enough (its own width, not the window's). */}
+              <div className="@container">
+                <ul
+                  id="psc-staff"
+                  className="mt-1 grid grid-cols-1 gap-1.5 @min-[300px]:grid-cols-2"
+                  data-testid="psc-staff"
+                >
+                  {staff.map((r) => (
+                    <li
+                      key={r.id}
+                      className={cn(
+                        "flex min-h-12 min-w-0 items-center gap-2 rounded-xl border px-1.5 py-1.5",
+                        r.met ? "border-olive/15 bg-ivory/65" : "border-tomato/25 bg-tomato/5",
                       )}
-                    </div>
-                    {r.met ? (
-                      <span className="font-ui text-[13.5px] font-extrabold text-sage">
-                        ✓ On staff
+                      data-psc-staff={r.id}
+                      data-psc-status={r.met ? "ok" : "missing"}
+                    >
+                      <span
+                        className={cn(
+                          "relative h-10 w-10 shrink-0 overflow-hidden rounded-full border-2 bg-walnut/10",
+                          r.met ? "border-olive/50" : "border-tomato/45",
+                        )}
+                      >
+                        <StaffPortrait
+                          file={staffPortraitFile(r.id)}
+                          name={r.title}
+                          emoji={r.kind === "specialist" ? "👩‍🍳" : "🧑‍🍳"}
+                          className="h-full w-full text-[20px]"
+                        />
                       </span>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
+                      <div className="min-w-0 flex-1">
+                        <p className="flex items-start gap-1 font-ui text-[12.5px] font-extrabold leading-tight text-walnut-dark">
+                          <span className="min-w-0 break-words">{r.title}</span>
+                          <InfoTip label={`Why a ${r.title}`}>{r.why}</InfoTip>
+                        </p>
+                        <p
+                          className={cn(
+                            "font-ui text-[11px] font-extrabold leading-tight",
+                            r.met ? "text-olive" : "text-tomato",
+                          )}
+                        >
+                          {r.met ? "✓ On staff" : "Needed"}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
               {staffMissing.length > 0 ? (
                 <KButton
                   size="sm"
@@ -737,7 +763,7 @@ export function PreServiceCheck({
               <p className="mt-3 font-ui text-[12px] font-extrabold uppercase tracking-wide text-walnut/60">
                 🔪 Culinary tools
               </p>
-              <ul className="mt-1 divide-y divide-walnut/10">
+              <ul className="mt-1 grid gap-1.5">
                 {kit.rows
                   .filter((row) => row.missing > 0)
                   .map((row) => (
@@ -786,15 +812,17 @@ export function PreServiceCheck({
             </div>
           ) : null}
           {!firstShoppingList && toolsSoon.length > 0 ? (
-            <p
-              className="mt-2 font-ui text-[12.5px] leading-snug text-walnut/70"
-              data-testid="psc-tools-soon"
-            >
-              🔜 Coming up:{" "}
-              {toolsSoon
-                .map((t) => `${getSupplyItem(t.id)?.name ?? t.id} (Level ${t.level})`)
-                .join(" · ")}
-            </p>
+            <div className="mt-2" data-testid="psc-tools-soon">
+              <p className="font-ui text-[12px] font-extrabold uppercase tracking-wide text-walnut/60">
+                🔜 Coming up
+              </p>
+              <NameChips
+                names={toolsSoon.map(
+                  (t) => `${(getSupplyItem(t.id)?.name ?? t.id).split(" · ")[0]} · Lv ${t.level}`,
+                )}
+                max={6}
+              />
+            </div>
           ) : null}
 
           {sup ? (
@@ -803,11 +831,7 @@ export function PreServiceCheck({
                 🧻 Service supplies · {sup.dineIn} dine-in
                 {sup.takeaway > 0 ? ` · ${sup.takeaway} takeaway` : ""}
               </p>
-              <ul
-                id="psc-supplies"
-                className="mt-1 divide-y divide-walnut/10"
-                data-testid="psc-supplies"
-              >
+              <ul id="psc-supplies" className="mt-1 grid gap-1.5" data-testid="psc-supplies">
                 {sup.rows.map((row) => (
                   <SupplyRow
                     key={`${row.id}${row.guest ? "-guest" : ""}`}
@@ -816,13 +840,15 @@ export function PreServiceCheck({
                   />
                 ))}
               </ul>
-              <div className="divide-y divide-walnut/10" data-testid="psc-bottles">
+              <div className="mt-1.5 grid gap-1.5" data-testid="psc-bottles">
                 <SupplyBottle
+                  compact
                   bottle={sup.soap}
                   per="wash"
                   onRestock={() => onRestockSupply("dish-soap")}
                 />
                 <SupplyBottle
+                  compact
                   bottle={sup.cleaner}
                   per="closing"
                   onRestock={() => onRestockSupply("cleaning-liquid")}
@@ -862,31 +888,34 @@ export function PreServiceCheck({
               className="mt-2.5 rounded-2xl border border-walnut/15 bg-ivory/60 p-2.5"
               data-testid="psc-guests"
             >
-              <button
-                type="button"
-                className="flex min-h-10 w-full items-center gap-2 text-left"
-                onClick={() => setShowGuests((v) => !v)}
-                aria-expanded={showGuests}
-              >
-                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-gold/20 text-[18px]">
-                  👥
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block font-ui text-[12px] font-extrabold text-walnut-dark">
-                    Menu guests · optional
+              {/* The ⓘ sits beside the toggle, never inside it (a button can't hold a button). */}
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  className="flex min-h-12 min-w-0 flex-1 items-center gap-2 text-left"
+                  onClick={() => setShowGuests((v) => !v)}
+                  aria-expanded={showGuests}
+                >
+                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-gold/20 text-[18px]">
+                    👥
                   </span>
-                  <span className="block font-ui text-[10.5px] font-bold text-walnut/60">
-                    {guests.dishes.length} dishes · {guests.rows.length} stock items
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-ui text-[12px] font-extrabold text-walnut-dark">
+                      Menu guests · optional
+                    </span>
+                    <span className="block font-ui text-[10.5px] font-bold text-walnut/60">
+                      {guests.dishes.length} dishes · {guests.rows.length} stock items
+                    </span>
                   </span>
-                </span>
+                  <span className="text-[18px] font-black text-copper" aria-hidden>
+                    {showGuests ? "−" : "+"}
+                  </span>
+                </button>
                 <InfoTip label="About menu guests">
                   Menu guests order from your menu after your own orders. Stocking for them is
                   optional — each one served pays the menu price.
                 </InfoTip>
-                <span className="text-[18px] font-black text-copper" aria-hidden>
-                  {showGuests ? "−" : "+"}
-                </span>
-              </button>
+              </div>
               {showGuests ? (
                 <>
                   <NameChips names={guests.dishes} />
@@ -1213,7 +1242,9 @@ function IngredientRow({
           className="min-h-12 max-w-[52%] shrink-0 whitespace-normal px-2 py-1 text-[10.5px] leading-tight"
           onClick={() => onRestock(row.ingredientId)}
         >
-          🛒 {row.buyUnits} {marketUnitLabel(row.ingredientId, measure, row.buyUnits)} ·{" "}
+          {/* "Restock" for screen readers (and the tests); the cart says it on screen. */}
+          🛒 <span className="sr-only">Restock </span>
+          {row.buyUnits} {marketUnitLabel(row.ingredientId, measure, row.buyUnits)} ·{" "}
           {formatUsd(row.quote?.totalCost ?? 0)}
         </KButton>
       )}
@@ -1327,42 +1358,57 @@ function ToolRowItem({
 }) {
   const ok = row.missing === 0;
   const item = getSupplyItem(row.id);
+  // "Fine mesh skimmers · 5 in" → name + size, so the name doesn't break word by word.
+  const [name, size] = row.label.split(" · ");
   return (
     <li
-      className="flex min-h-12 items-center gap-2 py-1.5"
+      className={cn(
+        "flex min-h-12 items-center gap-2 rounded-xl border px-2 py-1.5",
+        ok ? "border-olive/10 bg-ivory/65" : "border-tomato/20 bg-tomato/5",
+      )}
       data-psc-tool={row.id}
       data-psc-status={ok ? "ok" : "missing"}
     >
-      <span className="text-[20px]" aria-hidden>
+      <span
+        className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-gold/15 text-[18px]"
+        aria-hidden
+      >
         {row.icon}
       </span>
       <div className="min-w-0 flex-1">
-        <p className="flex items-center gap-1.5 font-ui text-[14.5px] font-bold text-walnut-dark">
-          <span>
-            {row.label}
+        <p className="flex items-start gap-1 font-ui text-[12.5px] font-extrabold leading-tight text-walnut-dark">
+          <span className="min-w-0">
+            {name}
             {row.need > 1 ? ` × ${row.need}` : ""}
           </span>
           <InfoTip label={`Why the ${row.label}`}>{row.why}</InfoTip>
         </p>
         <p
           className={cn(
-            "font-ui text-[12.5px] leading-snug",
+            "font-ui text-[10.5px] leading-tight",
             ok ? "text-walnut/60" : "text-tomato",
           )}
         >
-          {ok ? `You have ${row.have}` : `Need ${row.need} · have ${row.have}`}
+          📦 {row.have} / {row.need}
+          {size ? ` · 📏 ${size}` : ""}
         </p>
       </div>
       {ok ? (
-        <span className="font-ui text-[13.5px] font-extrabold text-sage">✓</span>
+        <span className="shrink-0 rounded-full bg-sage/15 px-2 py-1 font-ui text-[10.5px] font-extrabold text-olive">
+          ✓
+        </span>
       ) : (
         <KButton
           size="sm"
           variant="copper"
-          className="min-h-12"
+          className="min-h-12 shrink-0 px-2.5 py-1 leading-tight"
           onClick={() => onBuy(row.id, row.packs)}
+          aria-label={`Buy ${item ? packsText(item, row.packs) : row.packs} of ${row.label} for ${formatUsd(row.cost)}`}
         >
-          Buy {item ? packsText(item, row.packs) : row.packs} · {formatUsd(row.cost)}
+          <span className="block text-[12px]">Buy · {formatUsd(row.cost)}</span>
+          <span className="block text-[10.5px] font-bold opacity-85">
+            {item ? packsText(item, row.packs) : row.packs}
+          </span>
         </KButton>
       )}
     </li>
@@ -1449,6 +1495,9 @@ function FirstShoppingList({
 function SupplyRow({ row, onRestock }: { row: SupplyCheckRow; onRestock: (id: SupplyId) => void }) {
   const ok = row.missing === 0;
   const item = getSupplyItem(row.id);
+  // "Water pitcher · 60 oz · 1 table" → the name, then the size with the numbers.
+  const [name, ...rest] = row.label.split(" · ");
+  const size = rest.join(" · ");
   return (
     <li
       className={cn(
@@ -1471,7 +1520,7 @@ function SupplyRow({ row, onRestock }: { row: SupplyCheckRow; onRestock: (id: Su
       </span>
       <div className="min-w-0 flex-1">
         <p className="font-ui text-[12.5px] font-extrabold leading-tight text-walnut-dark">
-          {row.label}
+          {name}
         </p>
         <p
           className={cn(
@@ -1480,6 +1529,7 @@ function SupplyRow({ row, onRestock }: { row: SupplyCheckRow; onRestock: (id: Su
           )}
         >
           📦 {row.have} / {row.need}
+          {size ? ` · ${size}` : ""}
           {row.dirty > 0 ? ` · 🫧 ${row.dirty} dirty` : ""}
           {!ok && item ? ` · ${packsText(item, row.packs)}` : ""}
           {!ok && !row.blocking ? (
@@ -1511,10 +1561,12 @@ function SupplyRow({ row, onRestock }: { row: SupplyCheckRow; onRestock: (id: Su
 }
 
 /** A list of names as small chips (who to hire, which tools), instead of a long sentence. */
-function NameChips({ names }: { names: readonly string[] }) {
+function NameChips({ names, max }: { names: readonly string[]; max?: number }) {
+  const shown = max && names.length > max ? names.slice(0, max - 1) : names;
+  const more = names.length - shown.length;
   return (
     <div className="mt-1 flex flex-wrap gap-1">
-      {names.map((n) => (
+      {shown.map((n) => (
         <span
           key={n}
           className="rounded-full border border-walnut/15 bg-ivory/80 px-2 py-0.5 font-ui text-[12px] font-bold text-walnut-dark"
@@ -1522,6 +1574,14 @@ function NameChips({ names }: { names: readonly string[] }) {
           {n}
         </span>
       ))}
+      {more > 0 ? (
+        <span
+          className="rounded-full border border-walnut/15 bg-walnut/10 px-2 py-0.5 font-ui text-[12px] font-extrabold text-walnut/70"
+          title={names.slice(shown.length).join(", ")}
+        >
+          +{more} more
+        </span>
+      ) : null}
     </div>
   );
 }

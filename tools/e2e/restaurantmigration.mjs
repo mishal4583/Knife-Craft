@@ -200,7 +200,10 @@ const afterFood = await readSave(page);
 const foodEntries = afterFood.economyLedger
   .slice(beforeFood.economyLedger.length)
   .filter((e) => e.category === "inventory-purchase");
-await clickButton(page, /^(OPEN THE RESTAURANT|START SERVICE)$/);
+await clickButton(
+  page,
+  /^((?:OPEN THE RESTAURANT|🚪 Open restaurant)|(?:START SERVICE|🔥 Start service))$/,
+);
 await sleep(1200);
 const started = await page.evaluate(() =>
   /·\s*(?:\d+\/\d+\s+[a-z-]+|\d+% peeled)/i.test(document.body.innerText),

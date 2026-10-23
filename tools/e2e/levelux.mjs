@@ -53,7 +53,10 @@ async function openLevel(title) {
   // Supplies plan A (2026-10-10): Level 10's first play opens the Pre-Service Check with
   // Grandma's first shopping list (it never blocks START).
   await sleep(900);
-  await clickButton(page, /^(OPEN THE RESTAURANT|START SERVICE)$/);
+  await clickButton(
+    page,
+    /^((?:OPEN THE RESTAURANT|🚪 Open restaurant)|(?:START SERVICE|🔥 Start service))$/,
+  );
   await page.waitForFunction(
     () => /·\s*(?:\d+\/\d+\s+[a-z-]+|\d+% peeled)/i.test(document.body.innerText),
     { timeout: 30000 },

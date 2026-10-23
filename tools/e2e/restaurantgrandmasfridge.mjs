@@ -70,13 +70,17 @@ const sheet = () =>
     const el = document.querySelector('[data-testid="pre-service-check"]');
     if (!el) return null;
     const start = [...el.querySelectorAll("button")].find((x) =>
-      /^(OPEN THE RESTAURANT|START SERVICE|Restock to start)$/.test(x.textContent.trim()),
+      /^((?:OPEN THE RESTAURANT|🚪 Open restaurant)|(?:START SERVICE|🔥 Start service)|(?:🛒 )?Restock to start)$/.test(
+        x.textContent.trim(),
+      ),
     );
     return {
       rows: [...el.querySelectorAll("[data-psc-ingredient]")].map((r) => ({
         id: r.getAttribute("data-psc-ingredient"),
         status: r.getAttribute("data-psc-status"),
-        restock: [...r.querySelectorAll("button")].some((b) => /^Restock/.test(b.textContent)),
+        restock: [...r.querySelectorAll("button")].some((b) =>
+          /^(?:🛒 )?Restock/.test(b.textContent),
+        ),
       })),
       fridgeCard: !!el.querySelector('[data-testid="psc-grandmas-fridge"]'),
       text: el.innerText.replace(/\s+/g, " "),
@@ -150,7 +154,10 @@ check(
 await boot(page, at(3, 5000, stock({ tomato: 2, cucumber: 2, carrot: 2 })));
 const b3 = await readSave(page);
 await prepareToday();
-await clickButton(page, /^(OPEN THE RESTAURANT|START SERVICE)$/);
+await clickButton(
+  page,
+  /^((?:OPEN THE RESTAURANT|🚪 Open restaurant)|(?:START SERVICE|🔥 Start service))$/,
+);
 await sleep(600);
 const started3 = await inHud();
 const played3 = await playLevel();

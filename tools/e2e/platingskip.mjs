@@ -59,7 +59,10 @@ async function run(extraTapAfter) {
   await clickButton(page, /Prepare$/);
   await sleep(800);
   // the restaurant build opens the day first
-  await clickButton(page, /^(OPEN THE RESTAURANT|START SERVICE)$/);
+  await clickButton(
+    page,
+    /^((?:OPEN THE RESTAURANT|🚪 Open restaurant)|(?:START SERVICE|🔥 Start service))$/,
+  );
   await page.waitForFunction(() => /·\s*\d+\/\d+\s+[a-z-]+/i.test(document.body.innerText), {
     timeout: 30000,
   });

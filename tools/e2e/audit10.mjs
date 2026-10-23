@@ -70,7 +70,12 @@ for (let i = 0; i < 40; i++) {
     R.intro.push({ atMs: Date.now() - tIntro, text: txt.slice(0, 220) });
     lastTxt = txt;
   }
-  if (await clickButton(page, /^(OPEN THE RESTAURANT|READY|BACK TO THE KITCHEN)$/i)) {
+  if (
+    await clickButton(
+      page,
+      /^((?:OPEN THE RESTAURANT|🚪 Open restaurant)|READY|BACK TO THE KITCHEN)$/i,
+    )
+  ) {
     await sleep(600);
     continue;
   }
@@ -124,7 +129,9 @@ async function throughServiceCheck() {
       const el = document.querySelector('[data-testid="pre-service-check"]');
       if (!el) return null;
       const start = [...el.querySelectorAll("button")].find((x) =>
-        /^(OPEN THE RESTAURANT|START SERVICE)$/.test(x.textContent.trim()),
+        /^((?:OPEN THE RESTAURANT|🚪 Open restaurant)|(?:START SERVICE|🔥 Start service))$/.test(
+          x.textContent.trim(),
+        ),
       );
       const row = [...el.querySelectorAll("button")].find(
         (x) => /^(Restock|Buy)/.test(x.textContent.trim()) && !x.disabled,
@@ -133,7 +140,10 @@ async function throughServiceCheck() {
     });
     if (!state) return bought;
     if (state.canStart) {
-      await clickButton(page, /^(OPEN THE RESTAURANT|START SERVICE)$/);
+      await clickButton(
+        page,
+        /^((?:OPEN THE RESTAURANT|🚪 Open restaurant)|(?:START SERVICE|🔥 Start service))$/,
+      );
       await sleep(900);
       return bought;
     }
