@@ -6,6 +6,11 @@
   menu ingredients, inventory rows, supplier events, achievements, upgrades) became
   emoji / number glance lines and chips, the full text behind ⓘ. Logic unchanged.
   REFERENCE §10 "Glance copy"; guard `tools/e2e/longcopy.mjs` (nothing over 12 words).
+- Second sweep ("check everywhere"): screenshot review of every Market, Business, Inventory,
+  Progress and Pre-Service Check screen at Level 60 in a trouble state; have / need rows,
+  menu card line, wage lines, new-dish chips, Market plan list shortened. The only lines
+  left over 7 words: the Settings credit, the Second Floor pickup line, the Inventory
+  "view only" line and the Operations day line.
 
 ## Market shop cards redesigned (2026-10-22, `main`)
 

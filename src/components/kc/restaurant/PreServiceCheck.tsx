@@ -1108,9 +1108,9 @@ function IngredientRow({
           {INGREDIENTS[row.ingredientId].name}
         </p>
         <p className={cn("font-ui text-[12.5px]", ok ? "text-walnut/60" : "text-tomato")}>
-          Need {formatStockAmount(row.ingredientId, row.needed, measure)}
-          {count ? ` (${count})` : ""} · have{" "}
-          {formatStockAmount(row.ingredientId, row.usable, measure)}
+          📦 {formatStockAmount(row.ingredientId, row.usable, measure)} /{" "}
+          {formatStockAmount(row.ingredientId, row.needed, measure)}
+          {count ? ` (${count})` : ""}
           {row.expired > 0
             ? ` (+${formatStockAmount(row.ingredientId, row.expired, measure)} expired)`
             : ""}
@@ -1192,7 +1192,7 @@ function NewsCard({ news }: { news: RestaurantNews }) {
       {news.dishes.length > 0 ? (
         <div className="mt-1" data-testid="psc-news-dishes">
           <p className="font-ui text-[13.5px] font-bold text-walnut-dark">
-            🍽️ New on the menu: {news.dishes.map((d) => d.name).join(", ")}
+            🍽️ New on the menu
             {news.dishWhy ? (
               <>
                 {" "}
@@ -1200,6 +1200,7 @@ function NewsCard({ news }: { news: RestaurantNews }) {
               </>
             ) : null}
           </p>
+          <NameChips names={news.dishes.map((d) => d.name)} />
         </div>
       ) : null}
       {news.comingUp.length > 0 ? (
@@ -1372,7 +1373,7 @@ function SupplyRow({ row, onRestock }: { row: SupplyCheckRow; onRestock: (id: Su
             ok ? "text-walnut/60" : row.blocking ? "text-tomato" : "text-copper",
           )}
         >
-          Need {row.need} · have {row.have}
+          📦 {row.have} / {row.need}
           {row.dirty > 0 ? ` · 🫧 ${row.dirty} dirty` : ""}
           {!ok && item ? ` · ${packsText(item, row.packs)}` : ""}
           {!ok && !row.blocking ? (

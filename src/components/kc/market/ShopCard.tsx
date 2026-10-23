@@ -243,7 +243,7 @@ export function ShopLine({
     <p
       {...rest}
       className={cn(
-        "mt-1 flex flex-wrap items-center justify-center gap-x-1.5 gap-y-0.5 text-center leading-tight",
+        "mt-1 text-center leading-tight [&>*]:mx-[3px] [&>svg]:inline-block [&>svg]:align-[-3px]",
         hand
           ? "font-hand text-[14px] italic text-walnut/75"
           : "font-ui text-[12px] font-bold text-walnut-dark/85",

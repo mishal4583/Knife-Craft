@@ -132,11 +132,9 @@ export function BusinessStaff({
             data-testid="staff-free-until"
           >
             {halfWages
-              ? `Free to hire; half pay at closing until Level ${wagesFrom}`
-              : `🆓 Free until Level ${HALF_WAGES_FROM} · ½ pay until Level ${wagesFrom}`}
-            {payroll > 0
-              ? ` — then ${formatUsd(payroll)}/day for this team.`
-              : " — full wages start then."}
+              ? `🆓 Free to hire · ½ pay at closing until Lv ${wagesFrom}`
+              : `🆓 Free until Lv ${HALF_WAGES_FROM} · ½ pay to Lv ${wagesFrom}`}
+            {payroll > 0 ? ` · then ${formatUsd(payroll)}/day` : ""}
           </p>
         ) : null}
         <p className="mt-1.5 flex items-center gap-1.5 font-hand text-[15px] leading-snug text-walnut/65">
@@ -299,7 +297,7 @@ function SpecialistChefs({
                       {chef.cuisines.join(" · ")} ·{" "}
                       {wagesStarted
                         ? `${formatUsd(chef.dailyWage)}/day`
-                        : `free now · ${formatUsd(chef.dailyWage)}/day from Lv ${wagesFrom}`}
+                        : `🆓 now · ${formatUsd(chef.dailyWage)}/day Lv ${wagesFrom}`}
                     </p>
                   </div>
                   {!open ? (

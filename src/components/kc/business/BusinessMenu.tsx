@@ -371,9 +371,12 @@ export function BusinessMenu({
                 </div>
               </div>
               <div className="mt-1.5 flex items-center justify-between gap-2">
-                <p className="min-w-0 font-ui text-[11px] font-bold text-walnut/50">
-                  × {payment.multiplier.toFixed(2)} at popularity {payment.popularity}/100 ·{" "}
-                  {grossMarginPercent}% kept
+                <p
+                  className="min-w-0 font-ui text-[11px] font-bold text-walnut/50"
+                  title={`× ${payment.multiplier.toFixed(2)} at popularity ${payment.popularity}/100 · ${grossMarginPercent}% of the price kept`}
+                >
+                  ⭐ {payment.popularity} · ×{payment.multiplier.toFixed(2)} · {grossMarginPercent}%
+                  kept
                 </p>
                 <span className="shrink-0 whitespace-nowrap">
                   <Badge tone={margin >= 0 ? "sage" : "copper"}>{foodCostPercent}% food cost</Badge>

@@ -102,7 +102,8 @@ check(
     news.chain === "Menu → Customer Order → Inventory → Preparation → Service → Revenue" &&
     /Caprese Salad/.test(news.dishes ?? "") &&
     /Garlic Bread/.test(news.dishes ?? "") &&
-    /New on the menu: Caprese Salad, Mushroom Bruschetta, Garden Salad, Garlic Bread\b/.test(
+    // The dishes are chips under "🍽️ New on the menu" since the short-copy pass (2026-10-23).
+    /New on the menu[\s\S]*Caprese Salad[\s\S]*Mushroom Bruschetta[\s\S]*Garden Salad[\s\S]*Garlic Bread\b/.test(
       news.dishes ?? "",
     ),
   news,
@@ -414,7 +415,8 @@ check(
     JSON.stringify(staffView.needed) === JSON.stringify(["prep-cook", "server"]) &&
     // Economy F2 (developer 2026-10-12): half pay at closing from the Prep Cook's level until
     // full pay (Level 56 in the 150-level campaign).
-    /half pay at closing until Level 56/.test(staffView.free) &&
+    // "½ pay at closing until Lv 56" since the short-copy pass (2026-10-23).
+    /½ pay at closing until Lv 56/.test(staffView.free) &&
     staffView.teamTop >= 0 &&
     staffView.teamTop < 200 &&
     save47.credits === credits47 &&

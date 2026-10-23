@@ -148,9 +148,10 @@ await page.evaluate(() =>
 );
 await shot(page, "measures-quick-restock");
 check(
-  "2a the check shows real portions with item counts (Need 0.3 lb (≈ 1 tomato) …)",
+  // "📦 0 lb / 0.3 lb (≈ 1 tomato)" (have / need) since the short-copy pass (2026-10-23; was "Need 0.3 lb (≈ 1 tomato) · have 0 lb").
+  "2a the check shows real portions with item counts (📦 0 lb / 0.3 lb (≈ 1 tomato) …)",
   rows.length > 0 &&
-    rows.every((t) => /Need [\d.]+ (lb|loa|bunch)/.test(t)) &&
+    rows.every((t) => /📦 [\d.]+ \w+ \/ [\d.]+ (lb|loa|bunch)/.test(t)) &&
     rows.some((t) => /\(≈ \d+ \w+/.test(t)),
   rows.slice(0, 3),
 );

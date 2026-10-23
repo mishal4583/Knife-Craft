@@ -2124,7 +2124,15 @@ make it short or show the issues with emojis." Builds on the 2026-10-16 short-co
   - the Pre-Service Check's staff and tools to buy are chips (`NameChips`);
   - the ready tools are "✓ N tools ready ▸" (`<details>`);
   - the Hire buttons name at most two roles;
-  - a menu dish's ingredients show as emoji + amount.
+  - a menu dish's ingredients show as emoji + amount;
+  - the "New on the menu" dishes are chips; the Market plan's "later, no room" list is
+    emoji (name on hover).
+- **Have / need is "📦 have / need"** everywhere: the Market need note (ingredients and
+  supplies; menu guests' rows add "optional ·"), the Pre-Service Check's ingredient and
+  supply rows ("📦 0 lb / 0.5 lb (≈ 1 breast)", "📦 0 / 1 · 1 pack of 12").
+- **Short number lines:** a menu card's "⭐ 50 · ×1.05 · 92.6% kept" (the sentence in its
+  `title`); staff wages "🆓 Free until Lv N · ½ pay to Lv M · then $X/day".
+- `ShopLine` flows its icons inline with the text, so an icon never wraps onto its own line.
 - **Descriptions behind ⓘ:** fridges, kitchen upgrades, achievements, the ordered dish.
   Kitchen upgrade benefits read "⭐ +7% earnings · 🪑 +2 guest seats" (built in
   `KitchenUpgrades.tsx`; `kitchenTierBenefit` is unchanged).

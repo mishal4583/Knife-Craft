@@ -230,11 +230,15 @@ export function MarketPlanPanel({
         ) : null}
         {plan.noRoom.length > plan.noRoomToday.length && plan.rows.length > 0 ? (
           <p className="mt-1 font-ui text-[12px] font-bold text-walnut/60">
-            ⏳ After today:{" "}
+            ⏳ Later, no room:{" "}
+            {/* Emoji, the names on hover (developer 2026-10-23: no long lists). */}
             {plan.noRoom
               .filter((id) => !plan.noRoomToday.includes(id))
-              .map((id) => INGREDIENTS[id].name)
-              .join(", ")}
+              .map((id) => (
+                <span key={id} title={INGREDIENTS[id].name} aria-label={INGREDIENTS[id].name}>
+                  {INGREDIENT_EMOJI[id] ?? "🥬"}{" "}
+                </span>
+              ))}
           </p>
         ) : null}
       </Panel>

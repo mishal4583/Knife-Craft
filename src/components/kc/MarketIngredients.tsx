@@ -359,11 +359,7 @@ export function MarketIngredients({
                       <NeedNote
                         need={needs[id]!}
                         unit={marketUnitLabel(id, measure, needs[id]!.buy)}
-                        detail={
-                          needs[id]!.when === "guests"
-                            ? "🍽️ optional · guests"
-                            : `📦 ${formatStockAmount(id, needs[id]!.have, measure)} / ${formatStockAmount(id, needs[id]!.need, measure)}`
-                        }
+                        detail={`${needs[id]!.when === "guests" ? "optional · " : ""}📦 ${formatStockAmount(id, needs[id]!.have, measure)} / ${formatStockAmount(id, needs[id]!.need, measure)}`}
                       />
                     ) : null}
                     <PricePill price={formatUsd(quote.unitCost)} per={perUnit} />
