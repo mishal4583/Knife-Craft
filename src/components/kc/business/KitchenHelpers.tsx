@@ -10,11 +10,23 @@ import { STAFF_CATALOG } from "@/game/economy/staffDefinitions";
 import { getStaffPurchaseState, type BuyStaffResult } from "@/game/economy/StaffManager";
 import { notEnoughMoneyText } from "@/game/economy/wallet";
 
-/** A face per helper — visual only. */
-const HELPER_ICON: Record<string, string> = {
-  "prep-assistant": "🧑‍🍳",
-  "kitchen-assistant": "🙋",
-  "quality-chef": "👨‍🍳",
+/** Reuse the matching staff portraits; these helpers are permanent hires. */
+const HELPER_PORTRAIT: Record<string, { file: string; icon: string; effect: string }> = {
+  "prep-assistant": {
+    file: "prep-cook",
+    icon: "🧑‍🍳",
+    effect: "♻️ Less ingredient waste",
+  },
+  "kitchen-assistant": {
+    file: "line-cook",
+    icon: "🙋",
+    effect: "🍳 Helps with batch prep",
+  },
+  "quality-chef": {
+    file: "head-chef",
+    icon: "👨‍🍳",
+    effect: "✨ More consistent plates",
+  },
 };
 
 /**
@@ -62,44 +74,71 @@ export function KitchenHelpers({
           </p>
         ) : null}
         {short ? <ShortfallOffer price={short.price} item={short.name} /> : null}
-        <div className="mt-2 space-y-2">
+        <div className="mt-3 grid grid-cols-2 gap-2.5">
           {STAFF_CATALOG.map((st) => {
             const state = getStaffPurchaseState(save, st.id);
+            const portrait = HELPER_PORTRAIT[st.id] ?? {
+              file: "prep-cook",
+              icon: "🧑‍🍳",
+              effect: "🍽️ Supports kitchen service",
+            };
             return (
               <article
                 key={st.id}
                 data-helper={st.id}
                 className={cn(
-                  "flex items-center gap-3 rounded-[18px] border border-walnut/12 bg-ivory/70 px-3 py-2",
+                  "flex min-w-0 flex-col gap-2 rounded-[18px] border border-walnut/12 bg-ivory/70 p-2 card-warm min-[700px]:grid min-[700px]:grid-cols-[70px_minmax(0,1fr)]",
                   state === "locked" && "opacity-70",
                 )}
               >
-                <span className="text-[28px] leading-none" aria-hidden>
-                  {HELPER_ICON[st.id] ?? "🧑‍🍳"}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="flex items-center gap-1.5 font-ui text-[13.5px] font-extrabold text-walnut-dark">
-                    {st.name}
+                <div className="relative h-[92px] overflow-hidden rounded-[13px] border border-walnut/15 bg-walnut/10 min-[700px]:h-auto min-[700px]:min-h-[108px]">
+                  <img
+                    src={`${import.meta.env.BASE_URL}business/staff-portraits/${portrait.file}.webp`}
+                    alt={`${st.name} portrait`}
+                    loading="lazy"
+                    decoding="async"
+                    draggable={false}
+                    data-helper-portrait={st.id}
+                    className="h-full w-full select-none object-cover"
+                  />
+                  <span
+                    className="absolute bottom-1 left-1 rounded-full border border-ivory/65 bg-ivory/90 px-1 py-0.5 text-[12px] leading-none shadow-soft"
+                    aria-hidden
+                  >
+                    {portrait.icon}
+                  </span>
+                </div>
+                <div className="flex min-w-0 flex-col">
+                  <div className="flex items-start gap-1">
+                    <p className="min-w-0 font-display text-[13px] font-black leading-tight text-walnut-dark">
+                      {st.name}
+                    </p>
                     <InfoTip label={`About the ${st.name}`}>{st.description}</InfoTip>
+                  </div>
+                  <p className="mt-1 line-clamp-2 font-ui text-[10.5px] leading-snug text-walnut/65">
+                    {portrait.effect}
                   </p>
-                  <p className="font-ui text-[12px] font-bold text-walnut/60">
+                  <p className="mt-auto pt-1 font-ui text-[11px] font-extrabold text-copper">
                     {formatUsd(st.price)} · one time
                   </p>
+                  <div className="pt-1.5">
+                    {state === "owned" ? (
+                      <Badge tone="sage">✓ Hired</Badge>
+                    ) : state === "locked" ? (
+                      <Badge tone="locked">Level {st.unlockLevel}</Badge>
+                    ) : (
+                      <KButton
+                        full
+                        size="sm"
+                        variant="copper"
+                        className="min-h-11 px-2 text-[11px]"
+                        onClick={() => hire(st.id, st.name, st.price, st.unlockLevel)}
+                      >
+                        Hire · {formatUsd(st.price)}
+                      </KButton>
+                    )}
+                  </div>
                 </div>
-                {state === "owned" ? (
-                  <Badge tone="sage">Hired</Badge>
-                ) : state === "locked" ? (
-                  <Badge tone="locked">Level {st.unlockLevel}</Badge>
-                ) : (
-                  <KButton
-                    size="sm"
-                    variant="copper"
-                    className="h-12 shrink-0 px-3 text-[12.5px]"
-                    onClick={() => hire(st.id, st.name, st.price, st.unlockLevel)}
-                  >
-                    Hire · {formatUsd(st.price)}
-                  </KButton>
-                )}
               </article>
             );
           })}

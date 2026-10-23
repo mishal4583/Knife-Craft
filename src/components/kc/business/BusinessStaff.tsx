@@ -203,14 +203,14 @@ export function BusinessStaff({
         title="👩‍🍳 The crew"
         line="Hire the people your next service needs"
       />
-      <div className="grid grid-cols-1 gap-2.5 land:grid-cols-2">
+      <div className="grid grid-cols-2 gap-2.5">
         {roster.map((def) => {
           const hired = hiredRoles.includes(def.role);
           return (
             <article
               key={def.role}
               className={cn(
-                "product-card grid grid-cols-[82px_minmax(0,1fr)] gap-3 rounded-[20px] border p-2.5 card-warm",
+                "product-card flex min-w-0 flex-col gap-2 rounded-[20px] border p-2 card-warm min-[700px]:grid min-[700px]:grid-cols-[76px_minmax(0,1fr)]",
                 hired ? "border-olive/35" : "border-walnut/15",
                 needed.has(def.role) &&
                   !hired &&
@@ -219,11 +219,11 @@ export function BusinessStaff({
               data-staff-role={def.role}
               data-staff-needed={needed.has(def.role) && !hired ? "true" : undefined}
             >
-              <div className="relative min-h-[106px] overflow-hidden rounded-[15px] border border-walnut/15 bg-walnut/10">
+              <div className="relative h-[92px] overflow-hidden rounded-[13px] border border-walnut/15 bg-walnut/10 min-[700px]:h-auto min-[700px]:min-h-[112px]">
                 <StaffPortrait
                   file={ROLE_PORTRAIT[def.role] ?? "head-chef"}
                   name={def.name}
-                  className="h-full min-h-[106px] w-full"
+                  className="h-full w-full"
                 />
                 <span
                   className="absolute bottom-1.5 left-1.5 rounded-full border border-ivory/65 bg-ivory/90 px-1.5 py-0.5 text-[13px] leading-none shadow-soft"
@@ -353,7 +353,7 @@ function SpecialistChefs({
             {SPECIALIST_CHEFS.length} chefs
           </span>
         </div>
-        <div className="mt-3 grid grid-cols-1 gap-2 land:grid-cols-2">
+        <div className="mt-3 grid grid-cols-2 gap-2">
           {[...SPECIALIST_CHEFS]
             .sort((a, b) => a.firstLevel - b.firstLevel)
             .map((chef) => {
@@ -365,7 +365,7 @@ function SpecialistChefs({
                 <article
                   key={chef.id}
                   className={cn(
-                    "grid grid-cols-[66px_minmax(0,1fr)] gap-2.5 rounded-[18px] border bg-ivory/75 p-2",
+                    "flex min-w-0 flex-col gap-2 rounded-[18px] border bg-ivory/75 p-2 min-[700px]:grid min-[700px]:grid-cols-[70px_minmax(0,1fr)]",
                     isHired
                       ? "border-olive/30"
                       : needed.has(chef.id)
@@ -374,7 +374,7 @@ function SpecialistChefs({
                   )}
                   data-specialist={chef.id}
                 >
-                  <div className="relative min-h-[88px] overflow-hidden rounded-[13px] border border-walnut/15 bg-walnut/10">
+                  <div className="relative h-[88px] overflow-hidden rounded-[13px] border border-walnut/15 bg-walnut/10 min-[700px]:h-auto min-[700px]:min-h-[104px]">
                     {who && portrait ? (
                       <StaffPortrait
                         file={portrait}

@@ -2174,8 +2174,11 @@ remove anything important)."
 - Portraits are visual only in `public/business/staff-portraits/`: `prep-cook.webp`,
   `line-cook.webp`, `head-chef.webp` (an older male chef), `server.webp`, `cleaner.webp`,
   `manager.webp`, plus `specialist-{mexican,indian,mediterranean,asian}.webp`.
-- The roster uses cream cards, clear role/effect/pay lines, visible hired / needed states,
-  and 48 px hire controls. Kitchen helpers remain their existing one-time purchases.
+- The six-role roster and specialist chefs use a two-column card grid. On narrow screens,
+  each portrait sits above the role details; wider screens place it beside them. Cards retain
+  clear role/effect/pay lines, visible hired / needed states, and 48 px hire controls.
+- Kitchen helpers use the same two-column portrait-card treatment, reusing the matching
+  staff portraits. Their one-time purchase prices, unlocks and effects are unchanged.
 
 ### Market shop cards (developer 2026-10-21, redesigned 2026-10-22)
 

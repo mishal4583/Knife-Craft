@@ -9,6 +9,14 @@
 - Portrait assets: `public/business/staff-portraits/`; UI: `components/kc/business/BusinessStaff.tsx`.
   Details: REFERENCE §10 "Staff portraits and roster cards".
 
+## Staff cards arranged in a grid (2026-10-23)
+
+- The restaurant crew, specialist chefs, and Kitchen Upgrades now use two-column
+  portrait cards. At phone width, portraits sit above the details for readable
+  names, effects, prices, unlocks, and actions; at wider widths, they sit beside
+  the details. Kitchen helpers reuse the matching generated staff portraits.
+  Hiring and economy rules are unchanged.
+
 ## Inventory in pictures (2026-10-23, `main`)
 
 - Inventory's Needs Attention, summaries, stock list and supplies are picture tiles

@@ -78,6 +78,15 @@ await openStaff();
 const counts = await page.evaluate(() => ({
   helpers: document.querySelectorAll("[data-helper]").length,
   team: Boolean(document.querySelector('[data-testid="restaurant-team-roster"]')),
+  helperPortraits: [...document.querySelectorAll("[data-helper-portrait]")].filter(
+    (image) => image.complete && image.naturalWidth > 0,
+  ).length,
+  helperColumns: getComputedStyle(
+    document.querySelector('[data-helper="prep-assistant"]')?.parentElement,
+  ).gridTemplateColumns.split(" ").length,
+  roleColumns: getComputedStyle(
+    document.querySelector("[data-staff-role]")?.parentElement,
+  ).gridTemplateColumns.split(" ").length,
 }));
 const prep = await helper("prep-assistant");
 const quality = await helper("quality-chef");
@@ -95,10 +104,22 @@ check(
     /Level 44/i.test(kitchen),
   { prep, quality, kitchen },
 );
+check(
+  "2b Kitchen Upgrades use loaded portraits in a two-column card grid",
+  counts.helperPortraits === 3 && counts.helperColumns === 2,
+  counts,
+);
+check("2c restaurant crew is arranged in a two-column card grid", counts.roleColumns === 2, counts);
 await page.evaluate(() =>
   document.querySelector('[data-testid="kitchen-helpers"]').scrollIntoView({ block: "center" }),
 );
 await shot(page, "staff-1-business");
+await page.evaluate(() =>
+  document
+    .querySelector('[data-testid="restaurant-team-roster"]')
+    .scrollIntoView({ block: "center" }),
+);
+await shot(page, "staff-2-roster");
 
 // ---------- 3. Hire ----------
 const before = await readSave(page);
