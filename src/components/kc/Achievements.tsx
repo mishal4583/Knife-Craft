@@ -1,3 +1,4 @@
+import { InfoTip } from "./common/InfoTip";
 import { useRef, useState } from "react";
 import type { ScreenId } from "./data";
 import { BottomNav } from "./Kitchen";
@@ -80,8 +81,7 @@ export function Achievements({
     setNote(n > 0 ? `✓ Collected ${n} · ${formatUsd(total)}` : null);
   };
   const shown = (a: Achievement) =>
-    !isReady(a) &&
-    (filter === "all" || (filter === "earned" ? isDone(a) : !a.reached));
+    !isReady(a) && (filter === "all" || (filter === "earned" ? isDone(a) : !a.reached));
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-cream">
@@ -96,7 +96,10 @@ export function Achievements({
         />
         <div className="space-y-4 px-4 pb-4">
           <section className="relative overflow-hidden rounded-[26px] border border-walnut-dark/50 wood p-5 text-ivory shadow-lift">
-            <div className="absolute -right-6 -top-10 text-[110px] opacity-[0.12]" aria-hidden="true">
+            <div
+              className="absolute -right-6 -top-10 text-[110px] opacity-[0.12]"
+              aria-hidden="true"
+            >
               🏆
             </div>
             <div className="relative">
@@ -269,7 +272,11 @@ function AchievementCard({
         <span
           className={cn(
             "grid h-11 w-11 shrink-0 place-items-center rounded-2xl text-[23px]",
-            ready ? "bg-gold/30" : a.reached ? "bg-sage/20" : "bg-walnut/5 grayscale-[0.55] opacity-75",
+            ready
+              ? "bg-gold/30"
+              : a.reached
+                ? "bg-sage/20"
+                : "bg-walnut/5 grayscale-[0.55] opacity-75",
           )}
           aria-hidden="true"
         >
@@ -277,8 +284,9 @@ function AchievementCard({
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
-            <h3 className="font-display text-[15px] font-bold leading-tight text-walnut-dark">
+            <h3 className="flex items-center gap-1 font-display text-[15px] font-bold leading-tight text-walnut-dark">
               {a.title}
+              <InfoTip label={`About ${a.title}`}>{a.description}</InfoTip>
             </h3>
             {a.reward > 0 ? (
               <span
@@ -291,7 +299,6 @@ function AchievementCard({
               </span>
             ) : null}
           </div>
-          <p className="mt-1 font-ui text-[12px] leading-snug text-walnut/65">{a.description}</p>
           {!a.reached && a.target > 1 ? (
             <div className="mt-2">
               <Bar fraction={a.value / a.target} />

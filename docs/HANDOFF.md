@@ -1,5 +1,12 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## Glance copy pass (2026-10-23, `main`)
+
+- Long sentences from game data (alerts, inspection, fridge, Pre-Service Check lists,
+  menu ingredients, inventory rows, supplier events, achievements, upgrades) became
+  emoji / number glance lines and chips, the full text behind ⓘ. Logic unchanged.
+  REFERENCE §10 "Glance copy"; guard `tools/e2e/longcopy.mjs` (nothing over 12 words).
+
 ## Market shop cards redesigned (2026-10-22, `main`)
 
 - Every Market card now uses one kit (`kc/market/ShopCard.tsx`), after the developer's
@@ -397,14 +404,14 @@ conversation.
 
 ## 1. Where things stand
 
-| Item | State |
-|---|---|
-| Primary codebase | this repo, `D:\WORKS\GAMES\Playgama\KnifeCraft` |
-| Retired codebase | `D:\WORKS\GAMES\Knife Craft` (YouTube Playables build, GitHub `mishal4583/Knife-Craft`). Its last commit `1af591f` is the base of this repo's history (`youtube-original/main`). It still has the story change as **uncommitted** edits; leave it alone. |
-| Distribution | Playgama → its catalog + partner platforms ("distribute everywhere", no exclusions). No direct YouTube Playables release. |
-| Platform SDK | Playgama Bridge v2 (detected by Playgama: bridge 2.2.0, engine javascript) |
-| Live sandbox | https://playgama.ai/play/gm6cvisosg — status ACTIVE, published 2026-09-26, running archive `knifecraft-playgama-1.0.0` (the **old** 13-beat intro, no Skip). Launch steps now say the sandbox is OUTDATED (form/covers changed since). |
-| Latest local build | this repo at HEAD: re-paced intro + Skip story (not uploaded yet) |
+| Item               | State                                                                                                                                                                                                                                                    |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Primary codebase   | this repo, `D:\WORKS\GAMES\Playgama\KnifeCraft`                                                                                                                                                                                                          |
+| Retired codebase   | `D:\WORKS\GAMES\Knife Craft` (YouTube Playables build, GitHub `mishal4583/Knife-Craft`). Its last commit `1af591f` is the base of this repo's history (`youtube-original/main`). It still has the story change as **uncommitted** edits; leave it alone. |
+| Distribution       | Playgama → its catalog + partner platforms ("distribute everywhere", no exclusions). No direct YouTube Playables release.                                                                                                                                |
+| Platform SDK       | Playgama Bridge v2 (detected by Playgama: bridge 2.2.0, engine javascript)                                                                                                                                                                               |
+| Live sandbox       | https://playgama.ai/play/gm6cvisosg — status ACTIVE, published 2026-09-26, running archive `knifecraft-playgama-1.0.0` (the **old** 13-beat intro, no Skip). Launch steps now say the sandbox is OUTDATED (form/covers changed since).                   |
+| Latest local build | this repo at HEAD: re-paced intro + Skip story (not uploaded yet)                                                                                                                                                                                        |
 
 ## 2. Playgama cabinet (MCP `playgama-developer-cabinet`)
 
@@ -480,6 +487,7 @@ conversation.
   test Levels 1–15 together on Pages before `main`.
 
 ### Running the browser tests in the cloud container
+
 - Serve: `npx vite preview --host 127.0.0.1 --port 4173 --strictPort`
   (plain `localhost`/IPv6 fails); classic build:
   `VITE_RESTAURANT_MODE=0 npx vite build --outDir /tmp/claude-0/classic-dist`

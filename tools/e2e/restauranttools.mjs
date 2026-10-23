@@ -101,7 +101,8 @@ const sheet = () =>
         el.querySelector('[data-testid="psc-tools-needed"]')?.innerText.replace(/\s+/g, " ") ??
         null,
       ready:
-        el.querySelector('[data-testid="psc-tools-ready"]')?.innerText.replace(/\s+/g, " ") ?? "",
+        // textContent: the ready tools fold under "✓ N tools ready" since 2026-10-23.
+        el.querySelector('[data-testid="psc-tools-ready"]')?.textContent.replace(/\s+/g, " ") ?? "",
       startText: start?.textContent.trim() ?? null,
       startDisabled: start ? start.disabled : null,
     };
@@ -192,7 +193,8 @@ const s3b = await sheet();
 check(
   "3 Level 12: the top says what today's dishes need, the rows say why (sheet pan, oven mitts), START waits; both bought → ✓ Ready, START opens",
   !!s3 &&
-    /Today's dishes need: .*Sheet pan.*Oven mitts|Today's dishes need: .*Oven mitts.*Sheet pan/.test(
+    // Chips under "🍳 Tools to buy" since the short-copy pass (2026-10-23; was "Today's dishes need: …").
+    /Tools to buy.*Sheet pan.*Oven mitts|Tools to buy.*Oven mitts.*Sheet pan/.test(
       s3.needed ?? "",
     ) &&
     s3.tools

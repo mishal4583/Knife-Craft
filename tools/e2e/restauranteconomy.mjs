@@ -134,7 +134,8 @@ const kip = after.economyLedger
 check(
   "1 Kitchen Upgrade (restaurant): Growing Kitchen $16,000 with its benefit; one −$16,000 entry",
   /Build · \$16,000/.test(k1) &&
-    /\+1\.5% restaurant quality on order earnings/.test(benefit ?? "") &&
+    // "⭐ +1.5% earnings" since the short-copy pass (2026-10-23; was "+1.5% restaurant quality on order earnings").
+    /\+1\.5% earnings/.test(benefit ?? "") &&
     kip.length === 1 &&
     kip[0].amount === -1_600_000 &&
     after.equippedKitchenUpgradeId === "growing-kitchen",

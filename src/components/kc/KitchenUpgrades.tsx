@@ -1,3 +1,4 @@
+import { InfoTip } from "./common/InfoTip";
 import { useState } from "react";
 import type { ScreenId } from "./data";
 import { KButton, Panel, ScreenHeader, Badge, Coin, Divider } from "./common/primitives";
@@ -17,6 +18,7 @@ import { notEnoughMoneyText } from "@/game/economy/wallet";
 import {
   isRestaurantSave,
   kitchenTierBenefit,
+  RESTAURANT_INVESTMENT_RULES,
   kitchenTierPrice,
 } from "@/game/restaurant/restaurantInvestments";
 import type { SaveData } from "@/game/SaveManager";
@@ -48,6 +50,18 @@ function KitchenUpgradePreview({
  * never on credit). Building a tier moves the kitchen onto it for good.
  * Nothing in the game requires any tier; they are the restaurant growing.
  */
+/** What a tier gives, short ("⭐ +7% earnings · 🪑 +2 guest seats", developer 2026-10-23). */
+function shortTierBenefit(id: string): string {
+  const q = RESTAURANT_INVESTMENT_RULES.kitchenQuality[id] ?? 0;
+  const seats = RESTAURANT_INVESTMENT_RULES.kitchenGuestSeats[id] ?? 0;
+  return [
+    q > 0 ? `⭐ +${Math.round(q * 1000) / 10}% earnings` : null,
+    seats > 0 ? `🪑 +${seats} guest seat${seats === 1 ? "" : "s"}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
 export function KitchenUpgrades({
   go,
   save,
@@ -74,110 +88,116 @@ export function KitchenUpgrades({
 
   const content = (
     <>
-        <div className={embedded ? "" : "px-4"}>
-          <Panel tone="cream" className="p-4">
-            <div className="flex items-center gap-4">
-              <KitchenUpgradePreview upgrade={selected} size={100} />
-              <div className="min-w-0 flex-1">
-                <p className="font-display text-[19px] font-black leading-tight text-walnut-dark">
-                  {selected.name}
-                </p>
-                <p className="font-ui text-[12px] font-bold uppercase tracking-wide text-copper">
-                  {selected.tagline}
-                </p>
-                <p className="mt-1 font-hand text-[17px] leading-tight text-walnut/70">
+      <div className={embedded ? "" : "px-4"}>
+        <Panel tone="cream" className="p-4">
+          <div className="flex items-center gap-4">
+            <KitchenUpgradePreview upgrade={selected} size={100} />
+            <div className="min-w-0 flex-1">
+              <p className="flex items-center gap-1 font-display text-[19px] font-black leading-tight text-walnut-dark">
+                {selected.name}
+                <InfoTip label={`About the ${selected.name}`}>
                   {selected.description}
-                </p>
-                {isRestaurantSave(save) && kitchenTierBenefit(selected.id) ? (
-                  <p
-                    className="mt-1 font-ui text-[12.5px] font-extrabold text-olive"
-                    data-testid="kitchen-benefit"
-                  >
-                    {kitchenTierBenefit(selected.id)}
-                  </p>
-                ) : null}
-              </div>
-            </div>
-            <Divider />
-            {state === "locked" ? (
-              <KButton full variant="ghost" disabled>
-                Unlocks at Level {selected.unlockLevel} ·{" "}
-                {formatUsd(kitchenTierPrice(selected, save))}
-              </KButton>
-            ) : state === "needsPrevious" ? (
-              <KButton full variant="ghost" disabled>
-                Build the {previous?.name} first
-              </KButton>
-            ) : state === "available" ? (
-              <>
-                <KButton
-                  full
-                  variant="copper"
-                  disabled={shortfall > 0}
-                  onClick={() => buildKitchenUpgrade(selected.id)}
+                  {kitchenTierBenefit(selected.id)
+                    ? " Restaurant quality raises what every order earns; guest seats bring more menu guests each service."
+                    : ""}
+                </InfoTip>
+              </p>
+              <p className="font-ui text-[12px] font-bold uppercase tracking-wide text-copper">
+                {selected.tagline}
+              </p>
+              {isRestaurantSave(save) && kitchenTierBenefit(selected.id) ? (
+                <p
+                  className="mt-1 font-ui text-[12.5px] font-extrabold text-olive"
+                  data-testid="kitchen-benefit"
                 >
-                  🔨 Build · {formatUsd(kitchenTierPrice(selected, save))}
-                </KButton>
-                <p className="mt-2 text-center font-hand text-[15px] text-walnut/65">
-                  {shortfall > 0
-                    ? `${notEnoughMoneyText(kitchenTierPrice(selected, save), save.credits)} Balance ${formatUsd(save.credits)}.`
-                    : "A permanent investment in your restaurant."}
+                  {shortTierBenefit(selected.id)}
                 </p>
-                {shortfall > 0 ? (
-                  <ShortfallOffer price={kitchenTierPrice(selected, save)} item={selected.name} />
-                ) : null}
-              </>
-            ) : state === "current" ? (
-              <KButton full variant="sage" disabled>
-                Current Kitchen
-              </KButton>
-            ) : (
-              <KButton full variant="ghost" disabled>
-                Already upgraded past this
-              </KButton>
-            )}
-          </Panel>
-        </div>
-
-        <div className={cn("grid grid-cols-2 gap-3 pt-4", !embedded && "px-4")}>
-          {KITCHEN_UPGRADE_CATALOG.map((u) => {
-            const uState: KitchenUpgradeState = getKitchenUpgradeState(u.id, save);
-            const locked = uState === "locked";
-            return (
-              <button
-                key={u.id}
-                type="button"
-                onClick={() => setSelectedId(u.id)}
-                className={cn(
-                  "lift flex flex-col items-center gap-2 rounded-[20px] border p-3 card-warm",
-                  u.id === selected.id
-                    ? "border-copper/60 ring-2 ring-gold/35"
-                    : "border-walnut/15",
-                )}
+              ) : null}
+            </div>
+          </div>
+          <Divider />
+          {state === "locked" ? (
+            <KButton full variant="ghost" disabled>
+              Unlocks at Level {selected.unlockLevel} ·{" "}
+              {formatUsd(kitchenTierPrice(selected, save))}
+            </KButton>
+          ) : state === "needsPrevious" ? (
+            <KButton full variant="ghost" disabled>
+              Build the {previous?.name} first
+            </KButton>
+          ) : state === "available" ? (
+            <>
+              <KButton
+                full
+                variant="copper"
+                disabled={shortfall > 0}
+                onClick={() => buildKitchenUpgrade(selected.id)}
               >
-                <div className={cn(locked && "opacity-55 grayscale-[0.35]")}>
-                  <KitchenUpgradePreview upgrade={u} size={88} />
-                </div>
-                <p className="font-display text-[13.5px] font-black leading-none text-walnut-dark">
-                  {u.name}
-                </p>
-                {uState === "current" ? (
-                  <Badge tone="sage">Current</Badge>
-                ) : uState === "past" ? (
-                  <Badge tone="cream">Upgraded ✓</Badge>
-                ) : uState === "locked" ? (
-                  <Badge tone="locked">Lv {u.unlockLevel}</Badge>
-                ) : (
-                  <Badge tone="copper">{formatUsd(kitchenTierPrice(u, save))}</Badge>
-                )}
-              </button>
-            );
-          })}
-        </div>
+                🔨 Build · {formatUsd(kitchenTierPrice(selected, save))}
+              </KButton>
+              <p className="mt-2 text-center font-hand text-[15px] text-walnut/65">
+                {shortfall > 0
+                  ? `${notEnoughMoneyText(kitchenTierPrice(selected, save), save.credits)} Balance ${formatUsd(save.credits)}.`
+                  : "A permanent investment in your restaurant."}
+              </p>
+              {shortfall > 0 ? (
+                <ShortfallOffer price={kitchenTierPrice(selected, save)} item={selected.name} />
+              ) : null}
+            </>
+          ) : state === "current" ? (
+            <KButton full variant="sage" disabled>
+              Current Kitchen
+            </KButton>
+          ) : (
+            <KButton full variant="ghost" disabled>
+              Already upgraded past this
+            </KButton>
+          )}
+        </Panel>
+      </div>
 
-        <p className={cn("pb-2 pt-5 text-center font-hand text-[16px] text-walnut/50", !embedded && "px-6")}>
-          Build your restaurant, one room at a time.
-        </p>
+      <div className={cn("grid grid-cols-2 gap-3 pt-4", !embedded && "px-4")}>
+        {KITCHEN_UPGRADE_CATALOG.map((u) => {
+          const uState: KitchenUpgradeState = getKitchenUpgradeState(u.id, save);
+          const locked = uState === "locked";
+          return (
+            <button
+              key={u.id}
+              type="button"
+              onClick={() => setSelectedId(u.id)}
+              className={cn(
+                "lift flex flex-col items-center gap-2 rounded-[20px] border p-3 card-warm",
+                u.id === selected.id ? "border-copper/60 ring-2 ring-gold/35" : "border-walnut/15",
+              )}
+            >
+              <div className={cn(locked && "opacity-55 grayscale-[0.35]")}>
+                <KitchenUpgradePreview upgrade={u} size={88} />
+              </div>
+              <p className="font-display text-[13.5px] font-black leading-none text-walnut-dark">
+                {u.name}
+              </p>
+              {uState === "current" ? (
+                <Badge tone="sage">Current</Badge>
+              ) : uState === "past" ? (
+                <Badge tone="cream">Upgraded ✓</Badge>
+              ) : uState === "locked" ? (
+                <Badge tone="locked">Lv {u.unlockLevel}</Badge>
+              ) : (
+                <Badge tone="copper">{formatUsd(kitchenTierPrice(u, save))}</Badge>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      <p
+        className={cn(
+          "pb-2 pt-5 text-center font-hand text-[16px] text-walnut/50",
+          !embedded && "px-6",
+        )}
+      >
+        🏗️ One room at a time
+      </p>
     </>
   );
 

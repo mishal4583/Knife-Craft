@@ -105,7 +105,7 @@ export function BusinessStaff({
           <TeamHeading
             id="restaurant-team"
             title="🍽️ Restaurant Team"
-            line={`🆓 Free to hire · ½ pay from Lv ${HALF_WAGES_FROM} · full pay from Lv ${wagesFrom}`}
+            line={`🆓 Free to hire · ½ pay Lv ${HALF_WAGES_FROM} · full Lv ${wagesFrom}`}
           />
         </>
       ) : null}
@@ -262,7 +262,7 @@ function SpecialistChefs({
       <div data-testid="specialist-chefs">
         <Eyebrow>🌍 Specialist chefs</Eyebrow>
         <p className="mt-1 font-hand text-[15px] leading-snug text-walnut/65">
-          🌍 One chef per cuisine · 🆓 free to hire · 💵 paid from Lv {wagesFrom}
+          🌍 1 chef a cuisine · 🆓 free · 💵 paid Lv {wagesFrom}
         </p>
         <ul className="mt-2 divide-y divide-walnut/10">
           {[...SPECIALIST_CHEFS]

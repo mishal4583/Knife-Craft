@@ -1199,7 +1199,8 @@ export function App() {
         amount = floorDoubleAmount(collected.amount);
       }
       const commit = commitAdBonus(base, { ...offer, amount }, now);
-      if (!commit.ok) return fail(commit.reason === "dailyCapReached" ? "capReached" : "unavailable");
+      if (!commit.ok)
+        return fail(commit.reason === "dailyCapReached" ? "capReached" : "unavailable");
       persist(commit.save);
       AudioManager.playSfx("coin");
       setAdBonus((b) =>
@@ -1236,7 +1237,8 @@ export function App() {
     },
     openFloorDouble: () => {
       const current = saveRef.current;
-      if (current) openAdBonus("floor_double", floorDoubleAmount(floorEarnings(current, Date.now())));
+      if (current)
+        openAdBonus("floor_double", floorDoubleAmount(floorEarnings(current, Date.now())));
     },
   };
 
@@ -2511,14 +2513,8 @@ export function App() {
       const fridgeNotes =
         RESTAURANT_MODE && isFirstCompletion
           ? [
-              ...(toolsNow
-                ? ["🧰 Grandma's peeler, bowl & cups · free"]
-                : []),
-              ...(cupboardNow
-                ? [
-                    "🧹 Grandma's cleaning cupboard · clean after each service",
-                  ]
-                : []),
+              ...(toolsNow ? ["🧰 Grandma's peeler, bowl & cups · free"] : []),
+              ...(cupboardNow ? ["🧹 Grandma's cleaning cupboard · clean after each service"] : []),
               ...serviceLines,
               ...(brokenNow > 0
                 ? [
@@ -2595,7 +2591,13 @@ export function App() {
     // exactly, for the batch-group architecture.
     const isReplay = isCompleted(level.id, save.levelProgress);
     if (levelAlreadyPaidInFull(level)) return;
-    const fresh = createBatchGroupSession(level.id, recipes, Math.random, payChapterOf(level), isReplay);
+    const fresh = createBatchGroupSession(
+      level.id,
+      recipes,
+      Math.random,
+      payChapterOf(level),
+      isReplay,
+    );
     // A retry carries on: customers already served and paid stay served.
     const group = isReplay
       ? fresh
@@ -3413,66 +3415,66 @@ export function App() {
         ) : (
           <Suspense fallback={<LoadingScreen />}>
             <AdBonusContext.Provider value={adBonusApi}>
-            <ScreensRouter
-              screen={screen}
-              go={go}
-              save={save}
-              planLevelId={serviceCheckLevelId}
-              navGuide={navGuide}
-              recipeDetailLevelId={recipeDetailLevelId}
-              onOpenRecipe={(levelId) => {
-                setRecipeDetailLevelId(levelId);
-                setScreen("recipe-detail");
-              }}
-              onSelectLevel={onSelectLevel}
-              onStartDaily={startDaily}
-              onOpenDailyGift={() => {
-                openDailyGift();
-              }}
-              onStartEndless={startEndless}
-              buyKnife={buyKnife}
-              buyBoard={buyBoard}
-              sharpenKnife={sharpenKnife}
-              upgradeKnife={upgradeKnife}
-              buyStaff={buyStaff}
-              selectSupplier={selectSupplier}
-              cleanlinessAction={cleanlinessAction}
-              dayCleaner={{
-                price: dayCleanerPrice(),
-                adAvailable: rewardedAdsAvailable(),
-                onPay: hireDayCleanerPaid,
-                onAd: hireDayCleanerWithAd,
-              }}
-              setStandingOrder={setStandingOrderOn}
-              setEquippedKnife={setEquippedKnife}
-              setEquippedBoard={setEquippedBoard}
-              toggleSetting={toggleSetting}
-              setMeasure={setMeasure}
-              setRestaurantName={setRestaurantName}
-              resetProgress={resetProgress}
-              advanceBusinessDay={advanceBusinessDay}
-              purchaseIngredient={purchaseIngredient}
-              purchaseIngredients={purchaseIngredients}
-              purchaseSupply={purchaseSupply}
-              purchaseRefrigerator={purchaseRefrigerator}
-              throwOutExpired={throwOutExpired}
-              performRefrigeratorMaintenance={performRefrigeratorMaintenance}
-              rushRestock={rushRestockCurrentOrder}
-              buildKitchenUpgrade={buildKitchenUpgrade}
-              collectAchievement={collectAchievementReward}
-              secondFloorAction={secondFloorAction}
-              cleanerCleans={cleanerCleans}
-              rushAdAvailable={rewardedAdsAvailable()}
-              setMenuPrice={setMenuPrice}
-              setBusinessDishActive={setBusinessDishActive}
-              signSupplierContract={signSupplierContract}
-              cancelSupplierContract={cancelSupplierContract}
-              hireStaff={hireStaff}
-              fireStaff={fireStaff}
-              businessServiceSession={businessServiceSession}
-              onStartBusinessService={startBusinessService}
-              onEnterBusinessPreparation={enterBusinessPreparation}
-            />
+              <ScreensRouter
+                screen={screen}
+                go={go}
+                save={save}
+                planLevelId={serviceCheckLevelId}
+                navGuide={navGuide}
+                recipeDetailLevelId={recipeDetailLevelId}
+                onOpenRecipe={(levelId) => {
+                  setRecipeDetailLevelId(levelId);
+                  setScreen("recipe-detail");
+                }}
+                onSelectLevel={onSelectLevel}
+                onStartDaily={startDaily}
+                onOpenDailyGift={() => {
+                  openDailyGift();
+                }}
+                onStartEndless={startEndless}
+                buyKnife={buyKnife}
+                buyBoard={buyBoard}
+                sharpenKnife={sharpenKnife}
+                upgradeKnife={upgradeKnife}
+                buyStaff={buyStaff}
+                selectSupplier={selectSupplier}
+                cleanlinessAction={cleanlinessAction}
+                dayCleaner={{
+                  price: dayCleanerPrice(),
+                  adAvailable: rewardedAdsAvailable(),
+                  onPay: hireDayCleanerPaid,
+                  onAd: hireDayCleanerWithAd,
+                }}
+                setStandingOrder={setStandingOrderOn}
+                setEquippedKnife={setEquippedKnife}
+                setEquippedBoard={setEquippedBoard}
+                toggleSetting={toggleSetting}
+                setMeasure={setMeasure}
+                setRestaurantName={setRestaurantName}
+                resetProgress={resetProgress}
+                advanceBusinessDay={advanceBusinessDay}
+                purchaseIngredient={purchaseIngredient}
+                purchaseIngredients={purchaseIngredients}
+                purchaseSupply={purchaseSupply}
+                purchaseRefrigerator={purchaseRefrigerator}
+                throwOutExpired={throwOutExpired}
+                performRefrigeratorMaintenance={performRefrigeratorMaintenance}
+                rushRestock={rushRestockCurrentOrder}
+                buildKitchenUpgrade={buildKitchenUpgrade}
+                collectAchievement={collectAchievementReward}
+                secondFloorAction={secondFloorAction}
+                cleanerCleans={cleanerCleans}
+                rushAdAvailable={rewardedAdsAvailable()}
+                setMenuPrice={setMenuPrice}
+                setBusinessDishActive={setBusinessDishActive}
+                signSupplierContract={signSupplierContract}
+                cancelSupplierContract={cancelSupplierContract}
+                hireStaff={hireStaff}
+                fireStaff={fireStaff}
+                businessServiceSession={businessServiceSession}
+                onStartBusinessService={startBusinessService}
+                onEnterBusinessPreparation={enterBusinessPreparation}
+              />
             </AdBonusContext.Provider>
           </Suspense>
         )}
@@ -3690,10 +3692,7 @@ export function App() {
             adBonusesLeftToday(save, "floating_cash", new Date()) > 0
           }
           onOpen={() =>
-            openAdBonus(
-              "floating_cash",
-              floatingCashAmount(restaurantLevelOf(save.levelProgress)),
-            )
+            openAdBonus("floating_cash", floatingCashAmount(restaurantLevelOf(save.levelProgress)))
           }
         />
       ) : null}
@@ -3732,7 +3731,7 @@ export function App() {
           page={screen}
           key={businessNoticeQueue[0].key}
           kicker={businessNoticeQueue[0].title}
-          line={businessNoticeQueue[0].detail.split(". ")[0]!.replace(/\.$/, "") + "."}
+          line={businessNoticeQueue[0].glance}
           onDismiss={() => setBusinessNoticeQueue((q) => q.slice(1))}
         />
       ) : null}

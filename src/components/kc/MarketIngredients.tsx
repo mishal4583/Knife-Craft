@@ -45,7 +45,7 @@ import {
 import { eventForDay } from "@/game/business/businessSupplierEvents";
 import { isContractActive } from "@/game/business/businessSupplierContract";
 import { getSupplier } from "@/game/economy/supplierDefinitions";
-import { supplierEventSummary } from "@/game/business/businessAlerts";
+import { supplierEventGlance, supplierEventSummary } from "@/game/business/businessAlerts";
 import { isHired } from "@/game/business/businessStaff";
 import {
   ALL_INGREDIENT_IDS,
@@ -256,11 +256,16 @@ export function MarketIngredients({
 
       {event ? (
         <Panel tone="cream" className="p-3">
-          <p className="font-ui text-[12px] font-extrabold uppercase tracking-[0.12em] text-copper">
-            🚚 Today · {event.name}
-          </p>
-          <p className="font-hand text-[15px] leading-snug text-walnut/65">
-            {supplierEventSummary(event, contractActive)}
+          <div className="flex items-center justify-between gap-2">
+            <p className="font-ui text-[12px] font-extrabold uppercase tracking-[0.12em] text-copper">
+              🚚 Today · {event.name}
+            </p>
+            <InfoTip label={`About ${event.name}`}>
+              {supplierEventSummary(event, contractActive)}
+            </InfoTip>
+          </div>
+          <p className="font-ui text-[12.5px] font-bold text-walnut/75">
+            {supplierEventGlance(event, contractActive)}
           </p>
         </Panel>
       ) : null}
@@ -356,8 +361,8 @@ export function MarketIngredients({
                         unit={marketUnitLabel(id, measure, needs[id]!.buy)}
                         detail={
                           needs[id]!.when === "guests"
-                            ? "Optional · for menu guests"
-                            : `Need ${formatStockAmount(id, needs[id]!.need, measure)}, have ${formatStockAmount(id, needs[id]!.have, measure)} · ${needs[id]!.why}`
+                            ? "🍽️ optional · guests"
+                            : `📦 ${formatStockAmount(id, needs[id]!.have, measure)} / ${formatStockAmount(id, needs[id]!.need, measure)}`
                         }
                       />
                     ) : null}

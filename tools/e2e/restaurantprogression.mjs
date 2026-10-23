@@ -130,7 +130,8 @@ check(
     !!firstIngredient &&
     att.rows[0].sev === "urgent" &&
     /remaining \(Level 35 needs/.test(att.text ?? "") &&
-    /Recommended restock for Level 35/.test(att.rec ?? ""),
+    // "🛒 Lv 35 restock · $X" since the short-copy pass (2026-10-23; was "Recommended restock for Level 35: …").
+    /Lv 35 restock · \$/.test(att.rec ?? ""),
   att,
 );
 await page.evaluate(
@@ -407,7 +408,8 @@ const after47 = await page.evaluate(() => ({
 }));
 check(
   "5c only staff missing: the check names who, its button hires, Staff marks them (half pay until L56), hiring is free, back → open",
-  /This service needs: Prep Cook, Server/.test(only.notice) &&
+  // Chips under "👥 To hire" since the short-copy pass (2026-10-23; was "This service needs: …").
+  /To hire[\s\S]*Prep Cook[\s\S]*Server/.test(only.notice) &&
     only.footer === "Hire Prep Cook & Server →" &&
     JSON.stringify(staffView.needed) === JSON.stringify(["prep-cook", "server"]) &&
     // Economy F2 (developer 2026-10-12): half pay at closing from the Prep Cook's level until

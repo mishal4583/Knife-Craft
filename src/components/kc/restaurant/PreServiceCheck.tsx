@@ -58,13 +58,12 @@ function RoutineStatus({
       data-status={tone}
       className={cn(
         "press relative min-h-[58px] rounded-xl border px-2 py-1.5 pr-5 text-left",
-        tone === "attention"
-          ? "border-copper/25 bg-gold/10"
-          : "border-olive/15 bg-ivory/70",
+        tone === "attention" ? "border-copper/25 bg-gold/10" : "border-olive/15 bg-ivory/70",
       )}
     >
       <span className="block font-ui text-[11.5px] font-extrabold text-walnut-dark">
-        <span aria-hidden>{icon} </span>{label}
+        <span aria-hidden>{icon} </span>
+        {label}
       </span>
       <span
         className={cn(
@@ -74,7 +73,10 @@ function RoutineStatus({
       >
         {detail}
       </span>
-      <span className="absolute right-2 top-1/2 -translate-y-1/2 font-ui text-[16px] font-black text-walnut/35" aria-hidden>
+      <span
+        className="absolute right-2 top-1/2 -translate-y-1/2 font-ui text-[16px] font-black text-walnut/35"
+        aria-hidden
+      >
         ›
       </span>
     </button>
@@ -303,7 +305,9 @@ export function PreServiceCheck({
               data-testid="psc-daily-routine"
             >
               <div className="flex items-start gap-2">
-                <span className="text-[22px]" aria-hidden>🌅</span>
+                <span className="text-[22px]" aria-hidden>
+                  🌅
+                </span>
                 <div className="min-w-0 flex-1">
                   <p className="flex items-center gap-1.5 font-display text-[16px] font-black text-walnut-dark">
                     Today’s opening routine
@@ -321,7 +325,9 @@ export function PreServiceCheck({
                 <span
                   className={cn(
                     "shrink-0 rounded-full px-2 py-1 font-ui text-[10.5px] font-extrabold",
-                    routineNeedsAttention > 0 ? "bg-gold/30 text-walnut-dark" : "bg-sage/20 text-olive",
+                    routineNeedsAttention > 0
+                      ? "bg-gold/30 text-walnut-dark"
+                      : "bg-sage/20 text-olive",
                   )}
                 >
                   {routineNeedsAttention > 0 ? "CHECK" : "READY"}
@@ -342,7 +348,11 @@ export function PreServiceCheck({
                             : "✓ Ready"
                       : "— Not needed"
                   }
-                  tone={urgentIngredientRows > 0 || lowForDayRows > 0 || expiredRows > 0 ? "attention" : "ready"}
+                  tone={
+                    urgentIngredientRows > 0 || lowForDayRows > 0 || expiredRows > 0
+                      ? "attention"
+                      : "ready"
+                  }
                   onClick={() =>
                     jumpToRoutineSection(
                       urgentIngredientRows > 0 || expiredRows > 0
@@ -364,14 +374,20 @@ export function PreServiceCheck({
                           : "✓ Enough"
                       : "— Not needed"
                   }
-                  tone={urgentSupplyRows > 0 || lowSupplyRows > 0 || lowBottleCount > 0 ? "attention" : "ready"}
+                  tone={
+                    urgentSupplyRows > 0 || lowSupplyRows > 0 || lowBottleCount > 0
+                      ? "attention"
+                      : "ready"
+                  }
                   onClick={() => jumpToRoutineSection("psc-supplies")}
                   testId="psc-routine-supplies"
                 />
                 <RoutineStatus
                   icon="🍳"
                   label="Kitchen tools"
-                  detail={kit ? (missingTools > 0 ? `${missingTools} to buy` : "✓ Ready") : "— Not needed"}
+                  detail={
+                    kit ? (missingTools > 0 ? `${missingTools} to buy` : "✓ Ready") : "— Not needed"
+                  }
                   tone={missingTools > 0 ? "attention" : "ready"}
                   onClick={() => jumpToRoutineSection("psc-tools")}
                   testId="psc-routine-tools"
@@ -379,7 +395,13 @@ export function PreServiceCheck({
                 <RoutineStatus
                   icon="👥"
                   label="Team"
-                  detail={staff.length > 0 ? (staffMissing.length > 0 ? `${staffMissing.length} to hire` : "✓ Ready") : "— Not needed"}
+                  detail={
+                    staff.length > 0
+                      ? staffMissing.length > 0
+                        ? `${staffMissing.length} to hire`
+                        : "✓ Ready"
+                      : "— Not needed"
+                  }
                   tone={staffMissing.length > 0 ? "attention" : "ready"}
                   onClick={() => jumpToRoutineSection("psc-staff")}
                   testId="psc-routine-staff"
@@ -403,12 +425,14 @@ export function PreServiceCheck({
                 <RoutineStatus
                   icon="🧹"
                   label="Cleaning"
-                  detail={openCleaningTasks > 0 ? `${openCleaningTasks} task${openCleaningTasks === 1 ? "" : "s"}` : "✓ Clean"}
+                  detail={
+                    openCleaningTasks > 0
+                      ? `${openCleaningTasks} task${openCleaningTasks === 1 ? "" : "s"}`
+                      : "✓ Clean"
+                  }
                   tone={openCleaningTasks > 0 ? "attention" : "ready"}
                   onClick={() =>
-                    jumpToRoutineSection(
-                      openingChores > 0 ? "psc-opening-chores" : "psc-cleaning",
-                    )
+                    jumpToRoutineSection(openingChores > 0 ? "psc-opening-chores" : "psc-cleaning")
                   }
                   testId="psc-routine-cleaning"
                 />
@@ -431,11 +455,9 @@ export function PreServiceCheck({
               data-testid="psc-staff-needed"
             >
               <p className="font-ui text-[13.5px] font-extrabold text-walnut-dark">
-                👥 This service needs: {staffMissing.map((r) => r.title).join(", ")}
+                👥 To hire · 🆓 free
               </p>
-              <p className="mt-0.5 font-ui text-[12px] font-bold text-walnut/70">
-                🆓 Free to hire · tap Hire below
-              </p>
+              <NameChips names={staffMissing.map((r) => r.title)} />
             </div>
           ) : null}
           {kit && !kit.ready ? (
@@ -444,15 +466,9 @@ export function PreServiceCheck({
               data-testid="psc-tools-needed"
             >
               <p className="font-ui text-[13.5px] font-extrabold text-walnut-dark">
-                🍳 Today's dishes need:{" "}
-                {kit.rows
-                  .filter((r) => r.missing > 0)
-                  .map((r) => r.label)
-                  .join(", ")}
+                🍳 Tools to buy · 🔁 once
               </p>
-              <p className="mt-0.5 font-ui text-[12px] font-bold text-walnut/70">
-                🛒 Buy below · 🔁 you buy each once
-              </p>
+              <NameChips names={kit.rows.filter((r) => r.missing > 0).map((r) => r.label)} />
             </div>
           ) : null}
           {welcome ? <WelcomeCrate kit={welcome} /> : null}
@@ -541,7 +557,11 @@ export function PreServiceCheck({
               <p className="mt-3 font-ui text-[12.5px] font-extrabold uppercase tracking-wide text-walnut/60">
                 Ingredients
               </p>
-              <ul id="psc-ingredients" className="mt-1 divide-y divide-walnut/10" data-testid="psc-ingredients">
+              <ul
+                id="psc-ingredients"
+                className="mt-1 divide-y divide-walnut/10"
+                data-testid="psc-ingredients"
+              >
                 {stock.rows.map((row) => (
                   <IngredientRow
                     key={row.ingredientId}
@@ -594,7 +614,9 @@ export function PreServiceCheck({
                   className="mt-2 h-auto min-h-12 py-2 leading-tight"
                   onClick={onHireStaff}
                 >
-                  Hire {staffMissing.map((r) => r.title).join(", ")} → Staff · free
+                  {staffMissing.length <= 2
+                    ? `Hire ${staffMissing.map((r) => r.title).join(", ")} → Staff · free`
+                    : `Hire ${staffMissing.length} → Staff · free`}
                 </KButton>
               ) : null}
             </>
@@ -669,16 +691,17 @@ export function PreServiceCheck({
                   ))}
               </ul>
               {kit.rows.some((r) => r.missing === 0) ? (
-                <p
-                  className="mt-1 font-ui text-[12.5px] leading-snug text-sage"
-                  data-testid="psc-tools-ready"
-                >
-                  ✓ Ready:{" "}
-                  {kit.rows
-                    .filter((r) => r.missing === 0)
-                    .map((r) => (r.need > 1 ? `${r.label} × ${r.need}` : r.label))
-                    .join(" · ")}
-                </p>
+                // A count, the names one tap away (developer 2026-10-23: no long lists).
+                <details className="mt-1" data-testid="psc-tools-ready">
+                  <summary className="flex min-h-12 cursor-pointer list-none items-center font-ui text-[12.5px] font-extrabold text-sage">
+                    ✓ {kit.rows.filter((r) => r.missing === 0).length} tools ready ▸
+                  </summary>
+                  <NameChips
+                    names={kit.rows
+                      .filter((r) => r.missing === 0)
+                      .map((r) => (r.need > 1 ? `${r.label} × ${r.need}` : r.label))}
+                  />
+                </details>
               ) : null}
               {!kit.ready ? (
                 <div
@@ -726,7 +749,11 @@ export function PreServiceCheck({
                 Supplies · {sup.dineIn} dine-in
                 {sup.takeaway > 0 ? ` · ${sup.takeaway} takeaway` : ""}
               </p>
-              <ul id="psc-supplies" className="mt-1 divide-y divide-walnut/10" data-testid="psc-supplies">
+              <ul
+                id="psc-supplies"
+                className="mt-1 divide-y divide-walnut/10"
+                data-testid="psc-supplies"
+              >
                 {sup.rows.map((row) => (
                   <SupplyRow
                     key={`${row.id}${row.guest ? "-guest" : ""}`}
@@ -930,7 +957,9 @@ export function PreServiceCheck({
                 {stock.missingRows.length === 1 ? "item" : "items"}
                 {canBuy ? ` · ${formatUsd(stock.missingCost)}` : ""}
               </p>
-              <p className="font-ui text-[12.5px] text-walnut/70">💵 You have {formatUsd(credits)}</p>
+              <p className="font-ui text-[12.5px] text-walnut/70">
+                💵 You have {formatUsd(credits)}
+              </p>
               {canBuy && onBuyAllInMarket && stock.affordable ? (
                 <KButton
                   size="sm"
@@ -1032,7 +1061,10 @@ export function PreServiceCheck({
               className="h-auto min-h-12 py-2 leading-tight"
               onClick={onHireStaff}
             >
-              Hire {staffMissing.map((r) => r.title).join(" & ")} →
+              {/* Two names at most on the button; more is a count (developer 2026-10-23). */}
+              {staffMissing.length <= 2
+                ? `Hire ${staffMissing.map((r) => r.title).join(" & ")} →`
+                : `Hire ${staffMissing.length} → 👥`}
             </KButton>
           ) : (
             <KButton full className="min-h-12" disabled={!canStart} onClick={onStart}>
@@ -1120,7 +1152,9 @@ function WelcomeCrate({ kit }: { kit: readonly KitLine[] }) {
         “Your kitchen is ready. Buy each service's ingredients in the Market.”
       </p>
       {lines.length > 0 ? (
-        <p className="mt-1 font-ui text-[12.5px] text-walnut/70">🎁 Free, once: {lines.join(" · ")}</p>
+        <p className="mt-1 font-ui text-[12.5px] text-walnut/70">
+          🎁 Free, once: {lines.join(" · ")}
+        </p>
       ) : null}
     </div>
   );
@@ -1171,8 +1205,15 @@ function NewsCard({ news }: { news: RestaurantNews }) {
       {news.comingUp.length > 0 ? (
         <ul className="mt-1 space-y-0.5" data-testid="psc-coming-up">
           {news.comingUp.map((c) => (
-            <li key={`${c.level}-${c.text}`} className="font-ui text-[12.5px] text-walnut/70">
-              Level {c.level}: {c.text}
+            <li
+              key={`${c.level}-${c.text}`}
+              className="flex items-center gap-1.5 font-ui text-[12.5px] font-bold text-walnut/75"
+            >
+              <span className="rounded-full bg-copper/15 px-1.5 text-[11px] font-black text-copper">
+                Lv {c.level}
+              </span>
+              <span className="min-w-0 flex-1">{c.short}</span>
+              <InfoTip label={`About Level ${c.level}`}>{c.text}</InfoTip>
             </li>
           ))}
         </ul>
@@ -1334,11 +1375,14 @@ function SupplyRow({ row, onRestock }: { row: SupplyCheckRow; onRestock: (id: Su
           Need {row.need} · have {row.have}
           {row.dirty > 0 ? ` · 🫧 ${row.dirty} dirty` : ""}
           {!ok && item ? ` · ${packsText(item, row.packs)}` : ""}
-          {!ok && !row.blocking
-            ? row.guest
-              ? " · ⚠️ some guests unseated"
-              : " · ⚠️ guests go without"
-            : ""}
+          {!ok && !row.blocking ? (
+            <>
+              {" · "}
+              <span title={row.guest ? "Some guests can't be seated" : "Some guests go without"}>
+                ⚠️ {row.guest ? "🪑" : "short"}
+              </span>
+            </>
+          ) : null}
         </p>
       </div>
       {ok ? (
@@ -1354,5 +1398,21 @@ function SupplyRow({ row, onRestock }: { row: SupplyCheckRow; onRestock: (id: Su
         </KButton>
       )}
     </li>
+  );
+}
+
+/** A list of names as small chips (who to hire, which tools), instead of a long sentence. */
+function NameChips({ names }: { names: readonly string[] }) {
+  return (
+    <div className="mt-1 flex flex-wrap gap-1">
+      {names.map((n) => (
+        <span
+          key={n}
+          className="rounded-full border border-walnut/15 bg-ivory/80 px-2 py-0.5 font-ui text-[12px] font-bold text-walnut-dark"
+        >
+          {n}
+        </span>
+      ))}
+    </div>
   );
 }

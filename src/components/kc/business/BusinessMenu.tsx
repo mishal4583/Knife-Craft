@@ -1,3 +1,4 @@
+import { INGREDIENT_EMOJI } from "@/game/knives/knifeDefinitions";
 import { useState } from "react";
 import type { SaveData } from "@/game/SaveManager";
 import { Panel, Badge } from "../common/primitives";
@@ -248,13 +249,21 @@ export function BusinessMenu({
                       canMake ? "text-olive" : "text-walnut/55",
                     )}
                   >
-                    {canMake ? "✓ In stock · " : "Needs "}
-                    {[...needTotals]
-                      .map(
-                        ([id, q]) =>
-                          `${formatStockAmount(id, q, displayMeasure())} ${INGREDIENTS[id]?.name ?? id}`,
-                      )
-                      .join(" · ")}
+                    {canMake ? "✓ " : "🛒 "}
+                    {/* Each ingredient as its emoji and amount, the name on hover / for
+                        screen readers (developer 2026-10-23: no long lists). */}
+                    {[...needTotals].map(([id, q], i) => (
+                      <span
+                        key={id}
+                        className="whitespace-nowrap"
+                        title={INGREDIENTS[id]?.name ?? id}
+                      >
+                        {i > 0 ? " · " : ""}
+                        <span aria-hidden>{INGREDIENT_EMOJI[id] ?? "🥬"}</span>
+                        <span className="sr-only">{INGREDIENTS[id]?.name ?? id}</span>{" "}
+                        {formatStockAmount(id, q, displayMeasure())}
+                      </span>
+                    ))}
                   </p>
                 </div>
                 {!chooses ? (

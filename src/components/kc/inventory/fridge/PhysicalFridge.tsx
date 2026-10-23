@@ -627,8 +627,9 @@ export function PhysicalFridge({
     >
       {/* The model's wooden sign */}
       <div className="kcf-plaque">
-        <p className="kcf-plaque__name">❄️ {view.tier.name}</p>
-        <p className="kcf-plaque__line">{view.tier.description}</p>
+        <p className="kcf-plaque__name" title={view.tier.description}>
+          ❄️ {view.tier.name}
+        </p>
       </div>
 
       {/* Stats bar: space, cooling, upgrade */}

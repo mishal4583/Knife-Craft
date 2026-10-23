@@ -438,9 +438,7 @@ function DetailSheet({
           </ul>
         ) : (
           <p className="font-hand text-[15px] text-walnut/65">
-            {menuOpensAt !== null
-              ? `🔒 Menu opens at Level ${menuOpensAt}`
-              : "Not on today's menu"}
+            {menuOpensAt !== null ? `🔒 Menu opens at Level ${menuOpensAt}` : "Not on today's menu"}
           </p>
         )}
         {item.todayRequirement !== undefined ? (
@@ -603,9 +601,7 @@ export function InventoryScreen({
   const selectedStockArt =
     kind === "supplies"
       ? {
-          image: upgradedStockroom
-            ? "supplies-stockroom-upgraded.webp"
-            : "supplies-stockroom.webp",
+          image: upgradedStockroom ? "supplies-stockroom-upgraded.webp" : "supplies-stockroom.webp",
           title: "Supplies",
         }
       : {
@@ -1028,7 +1024,7 @@ export function InventoryScreen({
             </>
           )}
           <p className="px-4 pb-2 text-center font-hand text-[15px] text-walnut/45">
-            👀 View only · 🛒 buy in the Market · ❄️ fridge in Business → Equipment
+            👀 View only · 🛒 buy in Market · ❄️ fridge in Equipment
           </p>
         </div>
       </div>

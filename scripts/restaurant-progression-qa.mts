@@ -538,9 +538,11 @@ console.log("H. Hiring from the Pre-Service Check (developer 2026-10-09)");
   const staff = read("src/components/kc/business/BusinessStaff.tsx");
   assert(
     /data-testid="psc-staff-needed"/.test(check) &&
-      /This service needs: \{staffMissing\.map\(\(r\) => r\.title\)/.test(check) &&
+      // Since the short-copy pass (developer 2026-10-23): "👥 To hire" and one chip a role.
+      /👥 To hire/.test(check) &&
+      /<NameChips names=\{staffMissing\.map\(\(r\) => r\.title\)\} \/>/.test(check) &&
       /!canStart && !stockOrSuppliesShort && staffMissing\.length > 0/.test(check) &&
-      /Hire \{staffMissing\.map\(\(r\) => r\.title\)\.join\(" & "\)\} →/.test(check) &&
+      /`Hire \$\{staffMissing\.map\(\(r\) => r\.title\)\.join\(" & "\)\} →`/.test(check) &&
       /openStaffFor\(\s*go,\s*plan\.staff\.filter\(\(r\) => !r\.met\)/.test(layer) &&
       /peekStaffFocus\(\)/.test(staff) &&
       /data-staff-needed/.test(staff) &&

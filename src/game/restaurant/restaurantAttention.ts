@@ -17,6 +17,8 @@
  * Read-only (the Inventory rule): every figure comes from the save and the
  * existing systems. Pure; nothing reads RESTAURANT_MODE.
  */
+import { getSupplyItem } from "../business/businessSupplies";
+import { INGREDIENT_EMOJI } from "../knives/knifeDefinitions";
 import { formatStockAmount, marketUnitLabel, measureOf } from "../business/measure";
 import type { SaveData } from "../SaveManager";
 import type { IngredientId } from "../definitions";
@@ -39,7 +41,10 @@ export type AttentionRow = {
   kind: "ingredient" | "supply" | "bottle" | "fridge" | "staff";
   /** "urgent": the next service can't start without it; "low": it will run out soon. */
   severity: "urgent" | "low";
+  /** The full line (screen readers, the row's title). */
   text: string;
+  /** What the row shows (developer 2026-10-23: icons and numbers); `text` when absent. */
+  glance?: string;
   action:
     | { to: "ingredient"; id: IngredientId; quantity: number }
     | { to: "supply"; id: SupplyId }
@@ -73,6 +78,7 @@ export function restaurantAttention(save: SaveData): RestaurantAttention {
         kind: "ingredient",
         severity: "urgent",
         text: `${INGREDIENTS[r.ingredientId].name} — ${formatStockAmount(r.ingredientId, r.usable, measure)} remaining (Level ${plan.levelNumber} needs ${formatStockAmount(r.ingredientId, r.needed, measure)})`,
+        glance: `${INGREDIENT_EMOJI[r.ingredientId] ?? "🥬"} ${INGREDIENTS[r.ingredientId].name} · ${formatStockAmount(r.ingredientId, r.usable, measure)} / ${formatStockAmount(r.ingredientId, r.needed, measure)}`,
         action: { to: "ingredient", id: r.ingredientId, quantity: r.buyUnits },
       });
       recommendedCost += r.quote?.totalCost ?? 0;
@@ -86,6 +92,7 @@ export function restaurantAttention(save: SaveData): RestaurantAttention {
         kind: "supply",
         severity: r.blocking ? "urgent" : "low",
         text: `${r.label} — ${r.have} remaining (Level ${plan.levelNumber} needs ${r.need})`,
+        glance: `${getSupplyItem(r.id)?.icon ?? "📦"} ${r.label} · ${r.have} / ${r.need}`,
         action: { to: "supply", id: r.id },
       });
       recommendedCost += r.cost;
@@ -100,6 +107,7 @@ export function restaurantAttention(save: SaveData): RestaurantAttention {
           kind: "ingredient",
           severity: "low",
           text: `${INGREDIENTS[g.ingredientId].name} — ${g.buyUnits} ${marketUnitLabel(g.ingredientId, measure, g.buyUnits)} more for today's menu guests (optional)`,
+          glance: `${INGREDIENT_EMOJI[g.ingredientId] ?? "🥬"} ${INGREDIENTS[g.ingredientId].name} · +${g.buyUnits} ${marketUnitLabel(g.ingredientId, measure, g.buyUnits)} · 🍽️ guests`,
           action: { to: "ingredient", id: g.ingredientId, quantity: g.buyUnits },
         });
     for (const r of plan.staff.filter((x) => !x.met))
@@ -108,6 +116,7 @@ export function restaurantAttention(save: SaveData): RestaurantAttention {
         kind: "staff",
         severity: "urgent",
         text: `${r.title} needed for Level ${plan.levelNumber}`,
+        glance: `👥 ${r.title}`,
         action: { to: "staff" },
       });
   }

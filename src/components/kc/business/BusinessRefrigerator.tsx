@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { ScreenId } from "../data";
 import type { SaveData } from "@/game/SaveManager";
 import { KButton, Panel, Badge } from "../common/primitives";
-import { InfoTip } from "../common/InfoTip";
+import { InfoTip, StatChip } from "../common/InfoTip";
 import { Bar, Eyebrow } from "../common/Meters";
 import { cn } from "@/lib/utils";
 import { formatUsd } from "@/game/business/businessCurrency";
@@ -47,6 +47,10 @@ function rankOf(id: string): number {
  * condition bands/costs only through businessEquipmentCondition /
  * businessMaintenance — never recomputed here.
  */
+/** A stock amount for display: whole, or one decimal ("91.9"), never "91.882". */
+const shortUnits = (n: number) =>
+  Number.isInteger(n) ? String(n) : (Math.round(n * 10) / 10).toFixed(1).replace(/\.0$/, "");
+
 export function BusinessRefrigerator({
   go,
   save,
@@ -134,31 +138,27 @@ export function BusinessRefrigerator({
             <p className="flex items-center gap-3 font-display text-[18px] font-black leading-tight text-walnut-dark">
               <FridgeMini rank={rankOf(current?.id ?? "")} />
               {current?.name ?? "Refrigerator"}
+              {current ? (
+                <InfoTip label={`About the ${current.name}`}>{current.description}</InfoTip>
+              ) : null}
             </p>
-            {current ? (
-              <p className="mt-0.5 font-hand text-[15px] leading-tight text-walnut/65">
-                {current.description}
-              </p>
-            ) : null}
           </div>
           <Badge tone={CONDITION_BADGE_TONE[conditionBand]}>{conditionBand}</Badge>
         </div>
 
         <div className="mt-3 flex items-baseline justify-between font-ui text-[12.5px] font-bold text-walnut/75">
-          <span>Space used</span>
+          <span>📦 Space</span>
           <span className="font-extrabold text-walnut-dark">
-            {formatQuantity(used)} / {capacity}
+            {shortUnits(used)} / {capacity}
+            <span className="ml-1.5 font-bold text-olive">· {shortUnits(available)} free</span>
           </span>
         </div>
         <div className="mt-1">
           <Bar fraction={capacity > 0 ? used / capacity : 0} tone="sage" />
         </div>
-        <p className="mt-1 font-hand text-[14px] text-walnut/60">
-          {formatQuantity(available)} free
-        </p>
 
         <div className="mt-3 flex items-baseline justify-between font-ui text-[12.5px] font-bold text-walnut/75">
-          <span>Condition</span>
+          <span>🔧 Condition</span>
           <span className="font-extrabold text-walnut-dark">{condition} / 100</span>
         </div>
         <div className="mt-1">
@@ -206,28 +206,20 @@ export function BusinessRefrigerator({
               <span className="grid h-[84px] place-items-center">
                 <FridgeMini rank={rankOf(def.id)} className="kcf-mini--lg" />
               </span>
-              <p className="mt-1 text-center font-display text-[14.5px] font-black leading-tight text-walnut-dark">
+              <p className="mt-1 flex items-center justify-center gap-1 text-center font-display text-[14.5px] font-black leading-tight text-walnut-dark">
                 {def.name}
+                <InfoTip label={`About the ${def.name}`}>{def.description}</InfoTip>
               </p>
-              <p className="mt-0.5 text-center font-hand text-[14px] leading-tight text-walnut/65">
-                {def.description}
-              </p>
-              <div className="mt-2 space-y-1 rounded-[12px] bg-cream/70 px-2 py-1.5 font-ui text-[12px]">
-                <div className="flex justify-between">
-                  <span className="text-walnut/60">Capacity</span>
-                  <span className="font-extrabold text-walnut-dark">
-                    {def.capacity} units
-                    {!isCurrent && def.capacity > capacity ? (
-                      <span className="ml-1 text-olive">▲ +{def.capacity - capacity}</span>
-                    ) : null}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-walnut/60">Size</span>
-                  <span className="font-extrabold text-walnut-dark">
-                    ≈{def.approxCubicFeet} cu ft
-                  </span>
-                </div>
+              <div className="mt-1.5 flex flex-wrap justify-center gap-1">
+                <StatChip icon="📦" title={`Holds ${def.capacity} units`}>
+                  {def.capacity}
+                  {!isCurrent && def.capacity > capacity ? (
+                    <span className="ml-1 text-olive">▲{def.capacity - capacity}</span>
+                  ) : null}
+                </StatChip>
+                <StatChip icon="📐" title={`About ${def.approxCubicFeet} cubic feet`}>
+                  {def.approxCubicFeet} ft³
+                </StatChip>
               </div>
               <p className="mt-2 text-center font-ui text-[13.5px] font-extrabold text-walnut-dark">
                 {def.price > 0 ? formatUsd(def.price) : "Included"}
@@ -248,8 +240,8 @@ export function BusinessRefrigerator({
                   </KButton>
                 )}
                 {!isCurrent && tooSmall ? (
-                  <p className="mt-1 text-center font-hand text-[13px] text-copper">
-                    Too small for your {formatQuantity(used)} units.
+                  <p className="mt-1 text-center font-ui text-[12px] font-bold text-copper">
+                    📦 Too small · {shortUnits(used)} stored
                   </p>
                 ) : null}
               </div>
@@ -258,14 +250,14 @@ export function BusinessRefrigerator({
         })}
       </div>
       <p className="text-center font-hand text-[15px] text-walnut/50">
-        Upgrading keeps everything already in the fridge.
+        📦 Your stock moves to the new fridge
       </p>
 
       {/* Campaign gear lives in the Market — one shop, no second one here. */}
       <Panel className="p-4">
         <Eyebrow>🔪 Knives, boards & sharpening</Eyebrow>
         <p className="mt-1 font-hand text-[15px] leading-snug text-walnut/70">
-          🔪 Shared with the kitchen · 🛒 buy in the Market · ⚒️ sharpen at the Blacksmith
+          🔪 Shared · 🛒 buy in Market · ⚒️ Blacksmith sharpens
         </p>
         <KButton full variant="cream" className="mt-2" onClick={() => go("shop")}>
           Manage in the Market →

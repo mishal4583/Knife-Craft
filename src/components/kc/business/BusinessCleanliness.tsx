@@ -79,7 +79,9 @@ export function BusinessCleanliness({
   const areas = CLEAN_AREAS.map((a) => areaView(save, a, level));
   const [flash, setFlash] = useState<string | null>(null);
   const [details, setDetails] = useState<CleanArea | null>(null);
-  const [activeCleaning, setActiveCleaning] = useState<{ area: CleanArea; task: TaskKind } | null>(null);
+  const [activeCleaning, setActiveCleaning] = useState<{ area: CleanArea; task: TaskKind } | null>(
+    null,
+  );
 
   if (level < CLEANING_FROM_LEVEL)
     return (
@@ -136,7 +138,7 @@ export function BusinessCleanliness({
             Cleanliness &amp; Maintenance
           </p>
           <p className="mt-0.5 font-ui text-[12.5px] font-semibold leading-snug text-walnut/70">
-            Keep every room ready for the next service.
+            🍳 🍽️ 🚻 ready for the next service
           </p>
         </div>
       </Panel>
@@ -174,7 +176,8 @@ export function BusinessCleanliness({
           open={details === v.area}
           onToggle={() => setDetails((d) => (d === v.area ? null : v.area))}
           onClean={(task) => {
-            if (INTERACTIVE_CLEANING_TASKS[v.area].has(task)) setActiveCleaning({ area: v.area, task });
+            if (INTERACTIVE_CLEANING_TASKS[v.area].has(task))
+              setActiveCleaning({ area: v.area, task });
             else run({ kind: "clean", task });
           }}
           onBuy={(id) => openMarketSupplies(go, getSupplyItem(id)?.section ?? "cleaning", id)}
@@ -273,8 +276,8 @@ function ReadyCard({
         >
           🧑‍🔧 {today ? "Cleaner on today" : "Your Cleaner is on duty"} · cleans after each service
           <InfoTip label="What the Cleaner does">
-            The routine tasks in their areas, now and after each service. Spills, and anything
-            short of supplies, stay yours: tap Clean on those.
+            The routine tasks in their areas, now and after each service. Spills, and anything short
+            of supplies, stay yours: tap Clean on those.
           </InfoTip>
         </p>
       ) : dayCleaner ? (
@@ -367,7 +370,10 @@ function AreaCard({
       data-area-status={view.status}
     >
       <div
-        className={cn("relative h-[175px] overflow-hidden text-ivory", view.area === "kitchen" ? "sm:h-[190px]" : "")}
+        className={cn(
+          "relative h-[175px] overflow-hidden text-ivory",
+          view.area === "kitchen" ? "sm:h-[190px]" : "",
+        )}
         style={{ backgroundColor: SCENE[view.area].color }}
       >
         <img
@@ -383,7 +389,10 @@ function AreaCard({
         <div
           aria-hidden="true"
           className="absolute inset-0"
-          style={{ background: "linear-gradient(180deg, rgba(17,12,8,.64) 0%, rgba(17,12,8,.26) 48%, rgba(17,12,8,.05) 100%)" }}
+          style={{
+            background:
+              "linear-gradient(180deg, rgba(17,12,8,.64) 0%, rgba(17,12,8,.26) 48%, rgba(17,12,8,.05) 100%)",
+          }}
         />
         <div className="relative z-10 px-3 pb-2 pt-2.5">
           <div className="flex items-center gap-2">
@@ -552,9 +561,7 @@ function WashUpCard({ save }: { save: SaveData }) {
       </span>
       <div className="min-w-0 flex-1">
         <p className="font-display text-[15px] font-black text-walnut-dark">Wash-up</p>
-        <p className="font-ui text-[12px] text-walnut/65">
-          🔁 Automatic after each service
-        </p>
+        <p className="font-ui text-[12px] text-walnut/65">🔁 Automatic after each service</p>
         <div className="mt-1 flex flex-wrap gap-1">
           {waiting > 0 ? (
             <StatChip icon="🍽️" tone={soap.status === "empty" ? "tomato" : "copper"}>
@@ -624,9 +631,9 @@ function StaffCard({
           <p className="font-display text-[17px] font-black text-walnut-dark">Cleaner</p>
           <p className="font-ui text-[12.5px] text-walnut/70">
             {level < wagesFrom
-              ? `Free until Level ${wagesFrom}, then ${formatUsd(wage)}/day`
-              : `${formatUsd(wage)}/day`}{" "}
-            · cleans the routine tasks after each service
+              ? `🆓 until Lv ${wagesFrom} · then ${formatUsd(wage)}/day`
+              : `💵 ${formatUsd(wage)}/day`}{" "}
+            · 🧹 after each service
           </p>
         </div>
       </div>
@@ -666,7 +673,7 @@ function StaffCard({
         {hired ? "Manage the team ›" : "Hire a Cleaner ›"}
       </KButton>
       <p className="mt-1 font-ui text-[12px] text-walnut/60">
-        Spills, and anything short of supplies, stay yours.
+        🥤 Spills &amp; 🧴 missing supplies are yours
       </p>
     </Panel>
   );
@@ -716,7 +723,7 @@ function HistoryCard({ save, level }: { save: SaveData; level: number }) {
         </span>
         <p className="font-ui text-[12.5px] font-bold leading-snug">
           {level >= inspections
-            ? "🕵️ Checked every closing · ⚠️ undone = warning · 💸 repeats fined · 🧑‍🔧 Cleaner passes"
+            ? "🕵️ Checked at closing · ⚠️ undone = warning · 💸 repeat = fine"
             : `🕵️ Inspections from Level ${inspections}`}
         </p>
       </div>

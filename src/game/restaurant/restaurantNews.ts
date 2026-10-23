@@ -47,7 +47,8 @@ export type RestaurantNews = {
   dishes: { id: string; name: string }[];
   dishWhy: string | null;
   cuisines: { name: string; specialist: string | null }[];
-  comingUp: { level: number; text: string }[];
+  /** `short`: what the card shows (an icon and a name); `text` behind its ⓘ. */
+  comingUp: { level: number; text: string; short: string }[];
 };
 
 export function restaurantNewsAt(levelNumber: number): RestaurantNews {
@@ -57,14 +58,20 @@ export function restaurantNewsAt(levelNumber: number): RestaurantNews {
     ...RESTAURANT_SYSTEMS.filter((s) => soon(s.firstLevel)).map((s) => ({
       level: s.firstLevel,
       text: `${s.title}: ${s.covers}`,
+      short: `✨ ${s.title}`,
     })),
     ...CUISINES.filter((c) => soon(c.firstLevel)).map((c) => ({
       level: c.firstLevel,
       text: `${c.name} cuisine opens${c.specialist ? ` — hire the ${c.specialist.title} to cook it` : ""}`,
+      short: `🌍 ${c.name}${c.specialist ? ` · 👨‍🍳 ${c.specialist.title}` : ""}`,
     })),
     ...staffComingUp(levelNumber)
       .filter((s) => !CUISINES.some((c) => c.specialist?.title === s.title && soon(c.firstLevel)))
-      .map((s) => ({ level: s.level, text: `${s.title} needed: ${s.why}` })),
+      .map((s) => ({
+        level: s.level,
+        text: `${s.title} needed: ${s.why}`,
+        short: `👥 ${s.title}`,
+      })),
   ].sort((a, b) => a.level - b.level);
   return {
     levelNumber,

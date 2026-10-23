@@ -1,3 +1,4 @@
+import { InfoTip } from "../common/InfoTip";
 import { StandingOrdersCard } from "../restaurant/Deliveries";
 import type { DeliveryKind } from "@/game/restaurant/deliveries";
 import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
@@ -13,7 +14,11 @@ import type {
   SignContractResult,
   CancelContractResult,
 } from "@/game/business/BusinessSupplierManager";
-import { supplierMarketToday, supplierEventSummary } from "@/game/business/businessAlerts";
+import {
+  supplierEventGlance,
+  supplierMarketToday,
+  supplierEventSummary,
+} from "@/game/business/businessAlerts";
 import { SUPPLIER_EVENT_CATALOG } from "@/game/business/businessSupplierEvents";
 import { getAvailableStorageCapacity } from "@/game/business/RefrigeratorManager";
 import { formatQuantity } from "@/game/business/businessInventory";
@@ -131,11 +136,14 @@ export function BusinessSuppliers({
                   : pct(market.event.priceModifier, true)}
               </Badge>
             </div>
-            <p className="mt-0.5 font-hand text-[15px] leading-snug text-walnut/70">
-              {supplierEventSummary(market.event, active)}
-              {market.event.maxPurchaseQuantity !== undefined
-                ? ` Max ${market.event.maxPurchaseQuantity} per purchase.`
-                : ""}
+            <p className="mt-0.5 flex items-center gap-1.5 font-ui text-[12.5px] font-bold text-walnut/75">
+              <span className="min-w-0 flex-1">{supplierEventGlance(market.event, active)}</span>
+              <InfoTip label={`About ${market.event.name}`}>
+                {supplierEventSummary(market.event, active)}
+                {market.event.maxPurchaseQuantity !== undefined
+                  ? ` Max ${market.event.maxPurchaseQuantity} per purchase.`
+                  : ""}
+              </InfoTip>
             </p>
           </div>
         ) : (
@@ -143,9 +151,12 @@ export function BusinessSuppliers({
             ☀️ A quiet day — normal prices
           </p>
         )}
-        <p className="mt-2 font-hand text-[14px] text-walnut/60">
-          A {formatUsd(market.referenceBasePrice)} ingredient costs{" "}
-          <b>{formatUsd(market.referencePriceToday)}</b> today before any contract discount.
+        <p
+          className="mt-2 font-ui text-[12.5px] font-bold text-walnut/65"
+          title="Before any contract discount"
+        >
+          🏷️ {formatUsd(market.referenceBasePrice)} → <b>{formatUsd(market.referencePriceToday)}</b>{" "}
+          today
         </p>
         <div className="mt-2 flex flex-wrap gap-1.5" aria-label="Possible supplier events">
           {Object.values(SUPPLIER_EVENT_CATALOG).map((e) => (
@@ -203,7 +214,7 @@ export function BusinessSuppliers({
         </Panel>
       ) : (
         <p className="font-hand text-[16px] leading-snug text-walnut/65">
-          📜 One contract · 🏷️ ingredient discount · 📦 minimum order · 💸 fee to cancel
+          📜 1 contract · 🏷️ discount · 📦 minimum · 💸 cancel fee
         </p>
       )}
 

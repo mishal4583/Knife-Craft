@@ -334,7 +334,9 @@ export function Kitchen({
             <span className="absolute bottom-0 left-0 z-[2] grid h-[19px] w-[19px] place-items-center rounded-full border-2 border-[#fff2d0] bg-[linear-gradient(145deg,#45b5ff,#0876d5)] font-ui text-[11px] font-black leading-none text-white shadow-[0_2px_5px_rgba(0,54,115,0.45)]">
               ✓
             </span>
-            <span className="absolute -right-0.5 top-0 text-[10px] leading-none text-[#e4ab37]">✦</span>
+            <span className="absolute -right-0.5 top-0 text-[10px] leading-none text-[#e4ab37]">
+              ✦
+            </span>
           </span>
           <span
             aria-hidden="true"
@@ -355,14 +357,21 @@ export function Kitchen({
             ›
           </span>
           {attention.nav["restaurant-map"] ? (
-            <span aria-hidden className="absolute -right-1 -top-1 grid h-4 w-4 place-items-center rounded-full border border-[#fff0d2] bg-[#e53c32] font-ui text-[10px] font-black text-white shadow-md">!</span>
+            <span
+              aria-hidden
+              className="absolute -right-1 -top-1 grid h-4 w-4 place-items-center rounded-full border border-[#fff0d2] bg-[#e53c32] font-ui text-[10px] font-black text-white shadow-md"
+            >
+              !
+            </span>
           ) : null}
         </button>
 
-        {([
-          { id: "inventory", label: "Inventory", glyph: "📦" },
-          { id: "business", label: "Business", glyph: "📊" },
-        ] as const).map((item) => {
+        {(
+          [
+            { id: "inventory", label: "Inventory", glyph: "📦" },
+            { id: "business", label: "Business", glyph: "📊" },
+          ] as const
+        ).map((item) => {
           const unlocked = isTabOpen(item.id, reached);
           const opensAt = unlocked ? null : tabOpensAt(item.id);
           const count = unlocked ? attention.nav[item.id] : undefined;
@@ -403,7 +412,12 @@ export function Kitchen({
                 !unlocked && "opacity-75",
               )}
             >
-              <span aria-hidden className="grid h-10 w-10 shrink-0 place-items-center text-[22px] leading-none">{unlocked ? item.glyph : "🔒"}</span>
+              <span
+                aria-hidden
+                className="grid h-10 w-10 shrink-0 place-items-center text-[22px] leading-none"
+              >
+                {unlocked ? item.glyph : "🔒"}
+              </span>
               <span
                 aria-hidden="true"
                 className={cn(
@@ -423,7 +437,12 @@ export function Kitchen({
                 ›
               </span>
               {count ? (
-                <span aria-hidden className="absolute -right-1 -top-1 grid h-5 w-5 place-items-center rounded-full border-2 border-[#fff3db] bg-[#e53c32] font-ui text-[12px] font-black leading-none text-white shadow-md">!</span>
+                <span
+                  aria-hidden
+                  className="absolute -right-1 -top-1 grid h-5 w-5 place-items-center rounded-full border-2 border-[#fff3db] bg-[#e53c32] font-ui text-[12px] font-black leading-none text-white shadow-md"
+                >
+                  !
+                </span>
               ) : null}
             </button>
           );
@@ -448,7 +467,9 @@ export function Kitchen({
         <div className="anim-up relative mx-auto rounded-[20px] border border-[#f3d9a9] bg-[linear-gradient(145deg,#fff9e9_0%,#fff0d0_52%,#f6dfb5_100%)] p-2.5 shadow-[0_7px_18px_rgba(34,18,8,0.38),inset_0_2px_0_rgba(255,255,255,0.9)] sm:p-3">
           <div className="flex items-center justify-between gap-2">
             <p className="font-ui text-[10px] font-extrabold uppercase tracking-[0.19em] text-[#95602c]">
-              {campaignComplete ? `Campaign Complete · ${LAST_CAMPAIGN_LEVEL} Levels Mastered` : "Today's Order"}
+              {campaignComplete
+                ? `Campaign Complete · ${LAST_CAMPAIGN_LEVEL} Levels Mastered`
+                : "Today's Order"}
             </p>
             <button
               type="button"
@@ -458,7 +479,9 @@ export function Kitchen({
               className="press inline-flex min-h-9 shrink-0 items-center gap-1 rounded-full border border-[#8f4d1e] bg-[linear-gradient(145deg,#a85d25,#754018)] px-2.5 font-ui text-[10px] font-extrabold text-[#fff5df] shadow-[0_2px_6px_rgba(83,41,13,0.32),inset_0_1px_0_rgba(255,255,255,0.25)] transition-transform active:translate-y-px focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-copper"
             >
               {orderCardExpanded ? "Hide Details" : "View Details"}
-              <span aria-hidden className="text-[14px] leading-none">{orderCardExpanded ? "⌃" : "›"}</span>
+              <span aria-hidden className="text-[14px] leading-none">
+                {orderCardExpanded ? "⌃" : "›"}
+              </span>
             </button>
           </div>
           <div className="mt-1.5 flex items-center justify-between gap-2">
@@ -680,7 +703,7 @@ export function OrderBoard({
                           Upcoming Order
                         </p>
                         <p className="font-hand text-[14px] leading-tight text-walnut/70">
-                          finish the level above to reveal it
+                          🔒 finish the level above
                         </p>
                       </div>
                       <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-walnut/10 text-[18px]">

@@ -50,7 +50,7 @@ export function BusinessFinance({ save }: { save: SaveData }) {
       <Line label="Ingredients & packaging used" value={`−${formatUsd(dailyAccumulator.cogs)}`} />
       <Line label="Repairs & supplier fees" value={`−${formatUsd(todayRunningCosts)}`} />
       <Line
-        label="Profit so far (before tonight's pay & fines)"
+        label="Profit so far · before pay & fines"
         value={formatUsd(todayFoodMargin - todayRunningCosts)}
         strong
       />

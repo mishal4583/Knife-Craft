@@ -45,3 +45,21 @@ export function hygieneIssue(save: SaveData): string | null {
   ].filter(Boolean);
   return why.length ? `Hygiene: ${why.join(", ")}.` : null;
 }
+
+/** The same issues as icons and numbers ("🧼 no soap · 🧹 10 undone"), or null. */
+export function hygieneGlance(save: SaveData): string | null {
+  const h = save.business.restaurantRecord?.lastHygiene as
+    Partial<ServiceHygiene> | null | undefined;
+  if (!h || typeof h !== "object") return null;
+  const dirtyLeft =
+    typeof h.dirtyLeft === "number" && Number.isFinite(h.dirtyLeft) ? Math.max(0, h.dirtyLeft) : 0;
+  const bits = [
+    h.soap === false ? "🧼 no soap" : null,
+    dirtyLeft > 0 ? `🍽️ ${Math.floor(dirtyLeft)} dirty` : null,
+    h.cleaner === false ? "🧴 no cleaner" : null,
+    typeof h.openTasks === "number" && h.openTasks > 0
+      ? `🧹 ${Math.floor(h.openTasks)} undone`
+      : null,
+  ].filter(Boolean);
+  return bits.length ? bits.join(" · ") : null;
+}

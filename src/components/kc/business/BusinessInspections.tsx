@@ -10,6 +10,7 @@ import {
   previewBusinessDayClose,
   repeatedWarningFineAmount,
   failFineAmount,
+  INSPECTION_CATEGORY_ICON,
 } from "@/game/business/businessAlerts";
 
 const RESULT_BADGE_TONE: Record<InspectionResult, "sage" | "copper" | "locked"> = {
@@ -20,7 +21,7 @@ const RESULT_BADGE_TONE: Record<InspectionResult, "sage" | "copper" | "locked"> 
 
 const RESULT_TEXT: Record<InspectionResult, string> = {
   PASS: "✓ Passed",
-  WARNING: "⚠ Needs attention",
+  WARNING: "⚠ Warning",
   FAIL: "✕ Failing",
 };
 
@@ -52,38 +53,86 @@ export function BusinessInspections({ save }: { save: SaveData }) {
         <Eyebrow>🧾 Inspection · right now</Eyebrow>
         <Badge tone={RESULT_BADGE_TONE[report.overall]}>{report.overall}</Badge>
       </div>
-      <p className="mt-1 font-display text-[18px] font-black text-walnut-dark">
-        {passed} / {report.categories.length} checks passed
-      </p>
-      <p className="font-hand text-[15px] leading-snug text-walnut/65">{report.overallReason}</p>
-
-      <div className="mt-2 space-y-1.5">
+      <div className="mt-1 flex items-center gap-2">
+        <p className="font-display text-[18px] font-black text-walnut-dark">
+          {passed} / {report.categories.length} checks
+        </p>
+        <InfoTip label="Why">{report.overallReason}</InfoTip>
+      </div>
+      {/* Every check at a glance: its icon, green when it passes (developer 2026-10-23). */}
+      <div className="mt-1.5 flex flex-wrap gap-1" data-testid="inspection-icons">
         {report.categories.map((c) => (
-          <div
+          <span
             key={c.category}
+            title={`${CATEGORY_LABEL[c.category]}: ${RESULT_TEXT[c.result]}`}
             className={cn(
-              "rounded-[14px] border px-3 py-2",
-              c.result === "PASS" ? "border-olive/25 bg-sage/10" : "border-copper/30 bg-gold/10",
+              "relative grid h-9 w-9 place-items-center rounded-full border text-[17px]",
+              c.result === "PASS"
+                ? "border-olive/30 bg-sage/15"
+                : c.result === "WARNING"
+                  ? "border-copper/50 bg-gold/20"
+                  : "border-tomato/50 bg-tomato/15",
             )}
           >
-            <div className="flex items-center justify-between gap-2">
-              <p className="font-ui text-[13.5px] font-extrabold text-walnut-dark">
-                {CATEGORY_LABEL[c.category]}
-              </p>
-              <span
-                className={cn(
-                  "shrink-0 font-ui text-[12px] font-extrabold",
-                  c.result === "PASS" ? "text-olive" : "text-copper",
-                )}
-              >
-                {RESULT_TEXT[c.result]}
-              </span>
-            </div>
-            {c.result !== "PASS" ? (
-              <p className="mt-0.5 font-hand text-[14px] leading-snug text-walnut/65">{c.reason}</p>
-            ) : null}
-          </div>
+            {INSPECTION_CATEGORY_ICON[c.category]}
+            <span
+              className={cn(
+                "absolute -bottom-1 -right-1 grid h-4 w-4 place-items-center rounded-full font-ui text-[10px] font-black text-ivory",
+                c.result === "PASS"
+                  ? "bg-olive"
+                  : c.result === "WARNING"
+                    ? "bg-copper"
+                    : "bg-tomato",
+              )}
+              aria-hidden
+            >
+              {c.result === "PASS" ? "✓" : "!"}
+            </span>
+          </span>
         ))}
+      </div>
+
+      <div className="mt-2 space-y-1.5">
+        {report.categories
+          .filter((c) => c.result !== "PASS")
+          .map((c) => (
+            <div
+              key={c.category}
+              data-inspection-check={c.category}
+              className="flex items-center gap-2 rounded-[14px] border border-copper/30 bg-gold/10 px-3 py-2"
+            >
+              <span className="text-[18px]" aria-hidden>
+                {INSPECTION_CATEGORY_ICON[c.category]}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="font-ui text-[13.5px] font-extrabold leading-tight text-walnut-dark">
+                  {CATEGORY_LABEL[c.category]}
+                  <span className="ml-1.5 font-ui text-[12px] font-extrabold text-copper">
+                    {RESULT_TEXT[c.result]}
+                  </span>
+                </p>
+                <p className="font-ui text-[12.5px] font-bold leading-tight text-walnut/75">
+                  {c.glance}
+                </p>
+              </div>
+              <InfoTip label={`About ${CATEGORY_LABEL[c.category]}`}>{c.reason}</InfoTip>
+            </div>
+          ))}
+        {passed > 0 ? (
+          <p className="flex flex-wrap items-center gap-1 font-ui text-[12px] font-bold text-olive">
+            ✓ Passed:
+            {report.categories
+              .filter((c) => c.result === "PASS")
+              .map((c) => (
+                <span
+                  key={c.category}
+                  className="rounded-full border border-olive/25 bg-sage/10 px-2 py-0.5 text-walnut-dark"
+                >
+                  {INSPECTION_CATEGORY_ICON[c.category]} {CATEGORY_LABEL[c.category]}
+                </span>
+              ))}
+          </p>
+        ) : null}
       </div>
 
       <div className="mt-3 rounded-[14px] bg-cream/70 p-3">

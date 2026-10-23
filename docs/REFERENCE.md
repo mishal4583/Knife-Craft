@@ -661,7 +661,7 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   their level, the Market before L10 = Knives + Cutting Boards only,
   `FIRST_PURCHASE_LEVEL`). Browser: `tools/e2e/restaurantfirstlevels.mjs`.
   (restaurant-first-levels-qa) First-levels additions (2026-10-09): L `lockedScreenHint` / `App.go` refuse
-  every screen of a closed section (shop-*, inventory-*, business-*, rack);
+  every screen of a closed section (shop-_, inventory-_, business-*, rack);
   `GRANDMA_TIPS` (Kitchen card, Levels 1–15, button only to an open section);
   `isTabNew` (NEW for a section's first two levels); W5 wiring. P Grandma's
   pointer (developer 2026-10-10, "a hand points towards the Market and says
@@ -688,7 +688,7 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   `restaurantguests` 4c.
 - `restaurant-tableware-qa` — TABLEWARE BY DISH (supplies plan Phase B,
   developer 2026-10-10). `serviceSupplies.coverPiecesFor(recipe, level,
-  cover)`: soups/curries a soup bowl + spoon; fruit a dessert plate + fork
+cover)`: soups/curries a soup bowl + spoon; fruit a dessert plate + fork
   (cups a teaspoon); bread a side plate + knife; salads plate + fork; the
   rest plate, fork, knife (a steak knife for steak from L106); shared
   boards an extra side plate; every guest a water glass; from L121 a seeded
@@ -704,7 +704,7 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   stock; Level Complete says "🍽️ … broke in the wash-up"). The check:
   the orders' pieces block; the menu guests' pieces are optional rows
   (`guest`, never blocking or opening the sheet); `takeOrderSupplies(save,
-  service, {recipe, levelNumber, index})`; the guest gate
+service, {recipe, levelNumber, index})`; the guest gate
   `cleanSettingFor` (cover 100 + guests served). Inventory's "For service"
   explains it. The migration crate tops up a moving save's tableware by
   dish. Browser: `tools/e2e/restaurantsupplies.mjs`.
@@ -737,8 +737,7 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   Completionist $185,172 → $187,057; the Staff screen says "half pay".
   150-level numbers (re-baselined 2026-10-17): half wages from L29 (the
   Prep Cook; `HALF_WAGES_FROM` had stayed at the raw 41) to L55, full
-  operation L56; menu guests 1 / 2 / 4 / 5 / 6 from L11 / 16 / 35 / 76 /
-  117. The Staff screen's "½ pay from Lv … · full pay from Lv …" reads the
+  operation L56; menu guests 1 / 2 / 4 / 5 / 6 from L11 / 16 / 35 / 76 / 117. The Staff screen's "½ pay from Lv … · full pay from Lv …" reads the
   constants (it said Lv 41 / 91).
   With it, the tables' pieces (`serviceSuppliesCheck`): only the orders' own
   tables block START; the extra tables the menu guests need are a
@@ -809,59 +808,59 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   Clean everything I can), Cleaning staff (the existing Cleaner — On duty,
   area chips, wage from the catalog, Hire/Manage → Staff), Recent history
   (spotless streak → +1 %, inspection), the supplies strip (uses left, low,
-  + → the exact Market line) and tools; a 4-step intro once.
-  Screen order (developer 2026-10-17, "any mock or any section repeated —
-  sort it"): Today's cleanliness first (a chip per area → that area's
-  tasks, and Clean everything), the three area cards, the Wash-up (read
-  only: pieces waiting, washed and broken from `serviceSupplies` — the
-  wash-up itself runs after each service, `washUp`), Cleaning staff,
-  supplies, Recent history. Removed as mocks: "Practice room cleaning"
-  (preview-only rooms), "Customer dishwashing" and "Chef's tools wash-up"
-  (a scrubbing mini-game on a fixed list that never touched the save).
-  `DishwashingPrototype.tsx` and its sink art (`public/dishwashing/`) were
-  removed on 2026-10-17: the real wash-up runs by itself after each
-  service, so the scrub game had nothing real to wash (in git history if
-  ever wanted). Browser: `tools/e2e/restaurantcleanliness.mjs`
-  (8 checks; it now opens the tab through the map's Manager / Office and
-  uses the 150-level numbering).
-  A Cleaner for today (developer 2026-10-17, in place of "Clean everything
-  I can"): with no Cleaner hired, the status card offers "Today · $X" (the
-  Cleaner's day wage, `dayCleanerPrice` = the catalog salary; all-or-nothing
-  `debitWallet`, ONE `staff-purchase` (Staff Hire) ledger entry "Cleaner ·
-  one day" — End Business Day stays the one payroll site) or "🎬 Free with an ad" (rewarded placement `day_cleaner`, granted
-  only on `rewarded`, no money, no ledger). `hireDayCleaner` stores the day
-  in `cleanliness.dayCleanerDay` and runs the Cleaner's round at once;
-  `cleanerOnDuty` (hired, or `dayCleanerToday`) drives the round after each
-  service, the restroom job on the map, the map's Cleaner and tonight's
-  inspection (`businessInspection` reads the day inline). Spills, and tasks
-  short of supplies, stay the player's. Once a day; not with a Cleaner
-  hired; the next day they're gone. QA `restaurant-cleanliness-qa` D1–D7;
-  e2e `restaurantcleanliness.mjs` 4 (paid) and 9 (ad).
-  Mechanics (`restaurant/cleanliness.ts`, state `business.cleanliness`,
-  clamped by `cleanlinessOf`): no clock — each first completion adds the
-  service's tasks after the report (`tasksAfterService`: equipment, bins,
-  grease for fry/sauté/grill dishes; dining floor, tables from dine-in,
-  seeded spills from messy dishes ~35 %; toilet, restroom floor, hand-soap
-  refill every 6 customers, paper every 8; one task per kind with a count ≤
-  9), then the Cleaner's round (`cleanerRound`: routine tasks of the
-  assigned areas, never spills; no new wage). `cleanTask` uses each
-  supply once from an opened unit (`USES_PER_UNIT`: floor cleaner 30,
-  sanitizer 20, hand soap 17, cloth 25; cleaning lifetime "used"), tools
-  must be owned; missing → stays open, names the need. Spotless
-  (`hygiene.isSpotless`): also no task open when the service started
-  (`snapshotServiceStart` in App.beginLevel) — hygiene is recorded from
-  L21 (soap / cleaning liquid count from L31); the streak and +1 % rule
-  unchanged. The inspector (L91+) warns "N cleaning tasks left undone"
-  without a Cleaner (existing fines). Grandma's cleaning cupboard once at
-  L10 (`giveGrandmasCupboard`, cost 0, no ledger; older saves on their next
-  level). Catalog: section `cleaning` (restaurant only —
-  `RESTAURANT_SUPPLY_SECTION_ORDER`; the classic order keeps 3): floor
-  cleaner, sanitizer, hand soap, toilet paper, hand towels, cloths, bin
-  liners (consumables, `supply-packaging-purchase`) and mop & bucket,
-  broom & dustpan, toilet brush (durable). Never blocks START; no money
-  moves except Market purchases. Pre-Service Check: a non-blocking
-  "🧹 N cleaning tasks left" row; Level Complete: the Cleaner's line and
-  what's waiting. Browser: `tools/e2e/restaurantcleanliness.mjs`.
+  - → the exact Market line) and tools; a 4-step intro once.
+    Screen order (developer 2026-10-17, "any mock or any section repeated —
+    sort it"): Today's cleanliness first (a chip per area → that area's
+    tasks, and Clean everything), the three area cards, the Wash-up (read
+    only: pieces waiting, washed and broken from `serviceSupplies` — the
+    wash-up itself runs after each service, `washUp`), Cleaning staff,
+    supplies, Recent history. Removed as mocks: "Practice room cleaning"
+    (preview-only rooms), "Customer dishwashing" and "Chef's tools wash-up"
+    (a scrubbing mini-game on a fixed list that never touched the save).
+    `DishwashingPrototype.tsx` and its sink art (`public/dishwashing/`) were
+    removed on 2026-10-17: the real wash-up runs by itself after each
+    service, so the scrub game had nothing real to wash (in git history if
+    ever wanted). Browser: `tools/e2e/restaurantcleanliness.mjs`
+    (8 checks; it now opens the tab through the map's Manager / Office and
+    uses the 150-level numbering).
+    A Cleaner for today (developer 2026-10-17, in place of "Clean everything
+    I can"): with no Cleaner hired, the status card offers "Today · $X" (the
+    Cleaner's day wage, `dayCleanerPrice` = the catalog salary; all-or-nothing
+    `debitWallet`, ONE `staff-purchase` (Staff Hire) ledger entry "Cleaner ·
+    one day" — End Business Day stays the one payroll site) or "🎬 Free with an ad" (rewarded placement `day_cleaner`, granted
+    only on `rewarded`, no money, no ledger). `hireDayCleaner` stores the day
+    in `cleanliness.dayCleanerDay` and runs the Cleaner's round at once;
+    `cleanerOnDuty` (hired, or `dayCleanerToday`) drives the round after each
+    service, the restroom job on the map, the map's Cleaner and tonight's
+    inspection (`businessInspection` reads the day inline). Spills, and tasks
+    short of supplies, stay the player's. Once a day; not with a Cleaner
+    hired; the next day they're gone. QA `restaurant-cleanliness-qa` D1–D7;
+    e2e `restaurantcleanliness.mjs` 4 (paid) and 9 (ad).
+    Mechanics (`restaurant/cleanliness.ts`, state `business.cleanliness`,
+    clamped by `cleanlinessOf`): no clock — each first completion adds the
+    service's tasks after the report (`tasksAfterService`: equipment, bins,
+    grease for fry/sauté/grill dishes; dining floor, tables from dine-in,
+    seeded spills from messy dishes ~35 %; toilet, restroom floor, hand-soap
+    refill every 6 customers, paper every 8; one task per kind with a count ≤
+    9), then the Cleaner's round (`cleanerRound`: routine tasks of the
+    assigned areas, never spills; no new wage). `cleanTask` uses each
+    supply once from an opened unit (`USES_PER_UNIT`: floor cleaner 30,
+    sanitizer 20, hand soap 17, cloth 25; cleaning lifetime "used"), tools
+    must be owned; missing → stays open, names the need. Spotless
+    (`hygiene.isSpotless`): also no task open when the service started
+    (`snapshotServiceStart` in App.beginLevel) — hygiene is recorded from
+    L21 (soap / cleaning liquid count from L31); the streak and +1 % rule
+    unchanged. The inspector (L91+) warns "N cleaning tasks left undone"
+    without a Cleaner (existing fines). Grandma's cleaning cupboard once at
+    L10 (`giveGrandmasCupboard`, cost 0, no ledger; older saves on their next
+    level). Catalog: section `cleaning` (restaurant only —
+    `RESTAURANT_SUPPLY_SECTION_ORDER`; the classic order keeps 3): floor
+    cleaner, sanitizer, hand soap, toilet paper, hand towels, cloths, bin
+    liners (consumables, `supply-packaging-purchase`) and mop & bucket,
+    broom & dustpan, toilet brush (durable). Never blocks START; no money
+    moves except Market purchases. Pre-Service Check: a non-blocking
+    "🧹 N cleaning tasks left" row; Level Complete: the Cleaner's line and
+    what's waiting. Browser: `tools/e2e/restaurantcleanliness.mjs`.
 - `cleaning-dirt-qa` — THE CLEANING MINI-GAME (developer 2026-10-21/22: "make it
   proper and satisfying, proper cleaning tools"). Tapping Clean on an interactive
   task (`INTERACTIVE_CLEANING_TASKS`, `BusinessCleanliness.tsx`) opens
@@ -875,7 +874,7 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   toughness (`TOUGHNESS`: a crumb goes in one firm stroke, grease needs three).
   Fresh dirt every clean (developer 2026-10-22, "don't put the dirt in the same
   position and intensity"): `makeStains(…, variant)` with `cleaningVariant(cleaned,
-  since, task)` from the save (new after each clean, steady while the task waits; no
+since, task)` from the save (new after each clean, steady while the task waits; no
   save field) moves the stains, varies their number ±20 % and gives each a
   `strength` (paint 70–100 %, toughness ×0.75–1.25). The dining floor's dirt goes on
   the open walkways (`DINING_WALK`, off every rug `diningRug`), where it shows.
@@ -893,9 +892,9 @@ Focused suites (`npx tsx scripts/<name>.mts`):
 - `restaurant-service-report-qa` — THE RESTAURANT'S NUMBERS (supplies plan
   Phase D, developer 2026-10-10: "they should feel proud"). The supplies
   keep running totals (`restaurantSupplies.coversTotal / takeawayTotal /
-  packedTotal`, with `washedTotal / brokenTotal`); after each first
+packedTotal`, with `washedTotal / brokenTotal`); after each first
   completion's wash-up App calls `serviceReport.closeServiceReport(save,
-  level, noSoap)`: the report is the difference since the last one
+level, noSoap)`: the report is the difference since the last one
   (`business.restaurantRecord.at`), plus hygiene from dine-in (L31): soap
   at the wash-up, nothing left dirty, cleaning liquid not empty =
   SPOTLESS. Spotless services build a streak (`streak`, `bestStreak`,
@@ -918,7 +917,7 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   (a thali-tray dish) a takeaway at `curryTakeawayShare` (60%) instead of
   `takeawayShare` (30%), on the same seeded roll; every other order is
   unchanged. `serviceSupplies.takeawayPiecesFor
-  (recipe, level)`: curries and combo / mezze plates (shared, "mezze",
+(recipe, level)`: curries and combo / mezze plates (shared, "mezze",
   "trio", 4+ ingredients) a 3-compartment tray; pots, soups, bases, salsas
   a microwavable tub; fried food a burger clamshell; grilled / sautéed a
   foil tray; bread deli wrap; the rest a kraft box; heavy orders (pot,
@@ -957,7 +956,7 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   the plan's `tools` (every missing tool blocks START; the sheet's top
   says "🍳 Today's dishes need: …", rows say why, Buy → the Market's
   Culinary card preselected with its packs — `openMarketSupplies(…,
-  packs)`); `toolsSoon` (5 levels ahead, "🔜 Coming up"); Level 10's
+packs)`); `toolsSoon` (5 levels ahead, "🔜 Coming up"); Level 10's
   `firstShoppingList` card (the tools L11–20 need; never blocks L10). Cover
   part `"tools"` (ad placement `service_tools`, or supplier credit). Grandma's
   L10 tip opens the Market; the L10 milestone card lists the tools. Browser:
@@ -972,7 +971,7 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   no penalty — the Rush Restock ad rule); `coverWithCredit` = the Market's
   whole units / packs at the Market price (real cost basis), owed.
   `restaurant/supplierCredit.ts`: optional `business.supplierCredit {owed,
-  taken, repaid}`; taking on credit moves no money (no entry);
+taken, repaid}`; taking on credit moves no money (no entry);
   `repayFromEarnings(save, earned)` = min(owed, earned, wallet), one
   `"supplier-credit-repayment"` entry (an expense, "Supplier Credit
   Repaid"), run at a first completion from the level's orders + reward
@@ -1241,14 +1240,15 @@ Browser tests: `tools/e2e/` (headless Chrome via `puppeteer-core`; see
 Known pre-existing failures (document, do not "fix" by weakening) — found
 2026-10-21 and confirmed identical on an unmodified `HEAD` build (A/B:
 changes reverted, rebuilt, re-run):
+
 - `tools/e2e/coach.mjs`: 5b ("Level 4's new halve step teaches itself"),
   8a ("a touch that made no progress hides it…"), then a
   `TimeoutError` at `coach.mjs:344` that ends the run.
 - `tools/e2e/economyv25.mjs`: 2f ("no 'richest' / '#1' claim") and 4a–4e
   (the Kitchen Upgrade build flow and the Level 60 Endless lock).
 - `tools/e2e/adsflow.mjs`: all pass.
-(`playables-ads-qa` B12/B13 depended on the calendar date; the test now
-pins `Date.now` to its `NOW` for section B — the cap is unchanged.)
+  (`playables-ads-qa` B12/B13 depended on the calendar date; the test now
+  pins `Date.now` to its `NOW` for section B — the cap is unchanged.)
 
 ---
 
@@ -1283,7 +1283,7 @@ preparation = PreparationScene; events = `events.ts`; platform =
   sections have "Buy everything needed"; Ingredients has a "Needed for today" group first;
   each tab shows its count. Restock › links (Daily Check) preset the packs.
 - Quick restock (checked on every level, lb and kg): each line is exactly the Market price
-  + 25 %; it covers the service's own orders only, which the sheet now says.
+  - 25 %; it covers the service's own orders only, which the sheet now says.
 - **Which level (developer 2026-10-17):** a Level 10 shopping list opened the
   Market with nothing highlighted. `marketNeeds(save, levelId)` now plans for
   the open Pre-Service Check's level (App's `serviceCheckLevelId` → router →
@@ -1344,21 +1344,21 @@ preparation = PreparationScene; events = `events.ts`; platform =
   each later station 15 % slower. Fast start, slow finish: the floor matters during the
   campaign but doesn't flood money after it. All on sale from L60:
 
-  | Station | Buy | Lv 2 | Lv 3 | $/h at Lv 1 / 2 / 3 | Payback (h) buy / Lv2 / Lv3 |
-  |---|---|---|---|---|---|
-  | Coffee | $400 | $600 | $1,000 | 10 / 16 / 21 | 40 / 100 / 200 |
-  | Drinks | $550 | $800 | $1,400 | 12 / 19 / 25 | 46 / 114 / 233 |
-  | Pizza | $750 | $1,150 | $2,100 | 14 / 23 / 31 | 54 / 128 / 263 |
-  | Burger | $1,000 | $1,450 | $2,600 | 17 / 27 / 36 | 59 / 145 / 289 |
-  | Ice Cream | $1,300 | $1,750 | $3,200 | 20 / 31 / 41 | 65 / 159 / 320 |
-  | Hot Food | $1,550 | $2,300 | $3,850 | 22 / 35 / 46 | 70 / 177 / 350 |
-
+  | Station   | Buy    | Lv 2   | Lv 3   | $/h at Lv 1 / 2 / 3 | Payback (h) buy / Lv2 / Lv3 |
+  | --------- | ------ | ------ | ------ | ------------------- | --------------------------- |
+  | Coffee    | $400   | $600   | $1,000 | 10 / 16 / 21        | 40 / 100 / 200              |
+  | Drinks    | $550   | $800   | $1,400 | 12 / 19 / 25        | 46 / 114 / 233              |
+  | Pizza     | $750   | $1,150 | $2,100 | 14 / 23 / 31        | 54 / 128 / 263              |
+  | Burger    | $1,000 | $1,450 | $2,600 | 17 / 27 / 36        | 59 / 145 / 289              |
+  | Ice Cream | $1,300 | $1,750 | $3,200 | 20 / 31 / 41        | 65 / 159 / 320              |
+  | Hot Food  | $1,550 | $2,300 | $3,850 | 22 / 35 / 46        | 70 / 177 / 350              |
   - Storage 8 / 9 / 10 h (Lv 1/2/3): checking in twice a day pays.
   - Floor Server $400 (max 3, runs 2 stations), Floor Cleaner $300 (max 2, per 3 stations).
   - Whole floor $29,550; $200/h fully upgraded. First machine + server $800.
   - Sim (reinvesting its own takings from L60): complete on day 23.5 with 2 check-ins a day
     (day 47 with 1, day 17 with 4); $12.6k earned by day 18 (a 5-levels-a-day player's
     campaign end); then about $4k a day.
+
 - **Market · Second Floor** (`kc/MarketSecondFloor.tsx`, Shop category `second-floor`,
   restaurant build): the six machines (buy, payback), their upgrades and the Floor Team, through
   the same `App.secondFloorAction` as the floor's panel (one debit, one ledger entry each). The
@@ -1688,51 +1688,51 @@ with the real functions.
     `inventory.mjs` 7b.
 - **Physical fridge** (refrigerator UI handoff, a UI integration — not
   V3-17) on the Inventory screen: `kc/inventory/fridge/PhysicalFridge.tsx`
-  + `.css`, fed by the read-only adapter `business/fridgeView.ts`. An open
-  reach-in: Dairy & Tofu on the top shelf, Vegetables in the middle, Meat,
-  Fish & Bread low, Fruit and Greens & Herbs crisper drawers, Butter and
-  Aromatics in the door (production has no eggs, sauces or oils, so no egg
-  tray or sauce rack). One crate per ingredient (quantity, aggregate
-  freshness from the weighted `purchaseDay`, days left); production tiers
-  (Basic 40 / Commercial 80 / Professional 140, prices from
-  `refrigeratorDefinitions`), drawn after the developer's design
-  references (refrigerator handoff `design-assets/`, CSS only — the 3 MB
-  mockups carry sample numbers and are not shipped): **Basic** a vintage
-  cream-enamel single-door with its door open on the right; **Commercial**
-  a stainless two-door reach-in (two compartments, both doors open: Butter
-  left, Aromatics right); **Professional** three compartments (Dairy +
-  Meat/Fish/Bread · Vegetables · Greens + Fruit drawer). Food sits in
-  wooden crates (1–3 pieces shown by quantity) with cream tags, zone names
-  on wooden signs, glass shelves and crisper drawers. Every shelf and drawer
-  holds at least two crates per row (developer: arrange two to a row rather
-  than make the fridge taller): steel compartments are 214 px, Basic crates
-  shrink to 64 px on narrow phones (set on `.kcf-unit` — a container query
-  can't style its own container), and drawers sit side by side only while
-  each still fits two crates, otherwise they stack full width
-  (`fridge.mjs` check 9). Its header shows the
-  model, used / capacity, units available and the cooling line, a status
-  from the real condition ("Refrigerated" / "Needs service" / "Broken"),
-  never a temperature (the game does not simulate degrees, so no °F/°C may
-  appear), and "Upgrade / Service / Repair Refrigerator →" (Business →
-  Equipment, `business-refrigerator`, which owns `purchaseRefrigerator`
-  and maintenance). The fridge is display only: a tap calls `onSelect`
-  (the Inventory screen's detail sheet). The Basic always fits its frame.
-  On a phone (below the 768 px breakpoint) a steel model wider than its
-  frame shows ONE door or compartment at a time (task #14): "‹ name n / N
-  ›", 48 px buttons, a sideways swipe or mouse drag (never opening an
-  item), page dots, opening on the first compartment; vertical scroll
-  still works. On a tablet/desktop the wide steel models pan sideways
-  inside the frame ("›" cue + "Swipe to see every door →", touch and mouse
-  drag) without blocking vertical scroll. A "Show the whole fridge" / "One
-  door at a time" toggle switches wherever it doesn't fit. Same crates,
-  data and actions in both views (`fridgepager.mjs`).
-  The door handle is decorative (`pointer-events: none`, in the door's own
-  18 px edge). Business → Equipment's cards use the same small drawings
-  (`FridgeMini`) and show the capacity gain (▲ +40). Unknown inventory ids
-  are listed, never dropped. `HANDOFF_INGREDIENT_ID_MAP` maps the
-  handoff's 57 ids.
-  QA: `fridge-view-qa`, `inventory-screen-qa`, `tools/e2e/fridge.mjs`,
-  `tools/e2e/inventory.mjs`.
+  - `.css`, fed by the read-only adapter `business/fridgeView.ts`. An open
+    reach-in: Dairy & Tofu on the top shelf, Vegetables in the middle, Meat,
+    Fish & Bread low, Fruit and Greens & Herbs crisper drawers, Butter and
+    Aromatics in the door (production has no eggs, sauces or oils, so no egg
+    tray or sauce rack). One crate per ingredient (quantity, aggregate
+    freshness from the weighted `purchaseDay`, days left); production tiers
+    (Basic 40 / Commercial 80 / Professional 140, prices from
+    `refrigeratorDefinitions`), drawn after the developer's design
+    references (refrigerator handoff `design-assets/`, CSS only — the 3 MB
+    mockups carry sample numbers and are not shipped): **Basic** a vintage
+    cream-enamel single-door with its door open on the right; **Commercial**
+    a stainless two-door reach-in (two compartments, both doors open: Butter
+    left, Aromatics right); **Professional** three compartments (Dairy +
+    Meat/Fish/Bread · Vegetables · Greens + Fruit drawer). Food sits in
+    wooden crates (1–3 pieces shown by quantity) with cream tags, zone names
+    on wooden signs, glass shelves and crisper drawers. Every shelf and drawer
+    holds at least two crates per row (developer: arrange two to a row rather
+    than make the fridge taller): steel compartments are 214 px, Basic crates
+    shrink to 64 px on narrow phones (set on `.kcf-unit` — a container query
+    can't style its own container), and drawers sit side by side only while
+    each still fits two crates, otherwise they stack full width
+    (`fridge.mjs` check 9). Its header shows the
+    model, used / capacity, units available and the cooling line, a status
+    from the real condition ("Refrigerated" / "Needs service" / "Broken"),
+    never a temperature (the game does not simulate degrees, so no °F/°C may
+    appear), and "Upgrade / Service / Repair Refrigerator →" (Business →
+    Equipment, `business-refrigerator`, which owns `purchaseRefrigerator`
+    and maintenance). The fridge is display only: a tap calls `onSelect`
+    (the Inventory screen's detail sheet). The Basic always fits its frame.
+    On a phone (below the 768 px breakpoint) a steel model wider than its
+    frame shows ONE door or compartment at a time (task #14): "‹ name n / N
+    ›", 48 px buttons, a sideways swipe or mouse drag (never opening an
+    item), page dots, opening on the first compartment; vertical scroll
+    still works. On a tablet/desktop the wide steel models pan sideways
+    inside the frame ("›" cue + "Swipe to see every door →", touch and mouse
+    drag) without blocking vertical scroll. A "Show the whole fridge" / "One
+    door at a time" toggle switches wherever it doesn't fit. Same crates,
+    data and actions in both views (`fridgepager.mjs`).
+    The door handle is decorative (`pointer-events: none`, in the door's own
+    18 px edge). Business → Equipment's cards use the same small drawings
+    (`FridgeMini`) and show the capacity gain (▲ +40). Unknown inventory ids
+    are listed, never dropped. `HANDOFF_INGREDIENT_ID_MAP` maps the
+    handoff's 57 ids.
+    QA: `fridge-view-qa`, `inventory-screen-qa`, `tools/e2e/fridge.mjs`,
+    `tools/e2e/inventory.mjs`.
 - **Recurring caps** — Replay Bonus 20% of the paid reward, $10–$200,
   3/day; Endless $600/day; Today's Special $50/day.
 - **Wallet invariant** — `economy/wallet.ts`: credits are whole cents and
@@ -1766,7 +1766,7 @@ with its own gates.
   - No prep knives or cutting boards (they stay in Knives / Cutting
     Boards). Never ingredients, never in the fridge.
 - **Data** — `SaveData.business.supplies` = `{ stock: { id: { units,
-  costBasis } }, lifetime per section }`.
+costBasis } }, lifetime per section }`.
   - New and old saves start empty (no prototype opening stock).
   - `migrateBusinessSuppliesState` in `SaveManager.load`.
 - **Purchase** — Market only (`MarketSupplies.tsx` → App `purchaseSupply`
@@ -1858,7 +1858,7 @@ not silently removed.
   (the newest in the window); the finale and THE LAST PAGE are never
   skipped. The story never names "Grandma" ("they"), never reuses the
   finale's frozen lines. `SaveData.story = { introDone, milestoneMask,
-  finaleSeen }` — no new fields. QA `story-legacy-qa`; browser
+finaleSeen }` — no new fields. QA `story-legacy-qa`; browser
   `tools/e2e/legacy.mjs` (classic, finishing the 250th level) and
   `restaurantlegacy.mjs` (restaurant, the on-load path).
 - **First load (W2, developer 2026-10-12):** a new player's intro runs alone
@@ -1905,7 +1905,7 @@ not silently removed.
   onto toasted bread, then hands finishing the crostini board) and
   **chef-cooking** (stove,
   `chef-cooking.*`, 3.75 s). `src/game/recipes/dishKind.ts` `dishKindFor(recipeId,
-  name)` decides, in order: **fruit** (every ingredient a Fruit, or a
+name)` decides, in order: **fruit** (every ingredient a Fruit, or a
   Business Dessert — 11 recipes, Level 84); **salad** ("Salad"/"Slaw" in the
   dish/recipe name, or a Business Salad — 14 recipes, Level 10);
   **curry** (curry, masala, chutney, minestrone, velouté, soup, French
@@ -1949,9 +1949,9 @@ not silently removed.
     with the most skin);
   - Smash: a press with a ripple;
   - Rings: a tap plus the next ring glowing.
-  The scene emits `EVT.COACH` → GameBridge `COACH` → Preparation shows
-  `COACH_TEXT[technique]` (title, how, why; on cutting steps also
-  `CUT_WAYS`: TAP / SWIPE rows with the same labels). The card is `pointer-events-none`.
+    The scene emits `EVT.COACH` → GameBridge `COACH` → Preparation shows
+    `COACH_TEXT[technique]` (title, how, why; on cutting steps also
+    `CUT_WAYS`: TAP / SWIPE rows with the same labels). The card is `pointer-events-none`.
   - **Only for beginners, only when needed:**
     - It runs only in a campaign level played for the FIRST time. App
       passes `coachLevelId` only then, so there's none on a replay, Today's
@@ -2100,6 +2100,36 @@ not silently removed.
 - **Tests:** `tools/e2e/landscape.mjs` (8 checks at 568×320 … 932×430, the map art, the
   cut, the cleaning, rotation mid-level), `cleaning-dirt-qa` L; `solver.mjs`
   `geometryFromCanvas` aims from the canvas's own box.
+
+### Glance copy (developer 2026-10-23)
+
+"Players won't read big sentences … show the full sentences only if very important, if not
+make it short or show the issues with emojis." Builds on the 2026-10-16 short-copy rule
+(`ui-copy-qa`, InfoTips).
+
+- **Data copy gets a glance line**; the full sentence stays as data, behind an ⓘ (or a
+  `title` / screen-reader text):
+  - `BusinessAlert.glance` (`businessAlerts.ts`), e.g. "🗑️ 🍞 🥖 · use today" and
+    "⏳ 🧊 🔧 🧹 🛡️ · 5 checks · 💸 $55 if again tomorrow". Operations shows
+    title + glance + ⓘ(detail), and the business notice banner shows the glance.
+  - `CategoryInspectionResult.glance` (`businessInspection.ts`, `hygieneGlance`): the
+    inspection card shows "2 / 7 checks", a row of seven check icons (✓ / !), the failing
+    checks as icon · name · glance · ⓘ(reason), and the passed ones as chips
+    (`INSPECTION_CATEGORY_ICON`).
+  - `AttentionRow.glance` (`restaurantAttention.ts`): "🐟 Salmon Fillet · 0 / 0.4 lb";
+    the row's full `text` is kept for screen readers.
+  - `restaurantNewsAt().comingUp[].short` ("🌍 Korean · 👨‍🍳 Asian Chef");
+    `supplierEventGlance` ("📈 +10% prices · 📦 max 5").
+- **Lists become chips or counts:**
+  - the Pre-Service Check's staff and tools to buy are chips (`NameChips`);
+  - the ready tools are "✓ N tools ready ▸" (`<details>`);
+  - the Hire buttons name at most two roles;
+  - a menu dish's ingredients show as emoji + amount.
+- **Descriptions behind ⓘ:** fridges, kitchen upgrades, achievements, the ordered dish.
+  Kitchen upgrade benefits read "⭐ +7% earnings · 🪑 +2 guest seats" (built in
+  `KitchenUpgrades.tsx`; `kitchenTierBenefit` is unchanged).
+- **Guard:** `tools/e2e/longcopy.mjs` crawls every screen at Levels 25 / 70 / 100 and fails
+  on a visible line over 12 words (ⓘ bubbles and screen-reader text excluded).
 
 ### Market shop cards (developer 2026-10-21, redesigned 2026-10-22)
 

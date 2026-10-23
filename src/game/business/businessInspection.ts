@@ -48,7 +48,7 @@ import { dailyPayroll } from "./businessStaff";
 import { formatUsd } from "./businessCurrency";
 import { normalizeQuantity, formatQuantity } from "./businessInventory";
 import type { InspectionResult } from "./PopularityManager";
-import { hygieneIssue } from "../restaurant/hygiene";
+import { hygieneGlance, hygieneIssue } from "../restaurant/hygiene";
 
 export type InspectionCategory =
   | "FOOD_STORAGE"
@@ -64,6 +64,8 @@ export type CategoryInspectionResult = {
   result: InspectionResult;
   /** Master spec §14: "Every result must explain why." Always a concrete, state-derived sentence — never a generic placeholder. */
   reason: string;
+  /** The same in a few icons and numbers, for the card (developer 2026-10-23); the reason sits behind its ⓘ. */
+  glance: string;
 };
 
 export type InspectionReport = {
@@ -88,6 +90,7 @@ function inspectFoodStorage(save: SaveData): CategoryInspectionResult {
       category: "FOOD_STORAGE",
       result: "FAIL",
       reason: `Storage is critically overcrowded (${used}/${capacity} used).`,
+      glance: `❄️ ${used}/${capacity} · overfull`,
     };
   }
   if (fraction >= 0.75) {
@@ -95,12 +98,14 @@ function inspectFoodStorage(save: SaveData): CategoryInspectionResult {
       category: "FOOD_STORAGE",
       result: "WARNING",
       reason: `Storage is nearly full (${used}/${capacity} used).`,
+      glance: `❄️ ${used}/${capacity} · nearly full`,
     };
   }
   return {
     category: "FOOD_STORAGE",
     result: "PASS",
     reason: `Storage has healthy headroom (${used}/${capacity} used).`,
+    glance: `❄️ ${used}/${capacity}`,
   };
 }
 
@@ -120,6 +125,7 @@ function inspectIngredientExpiry(save: SaveData): CategoryInspectionResult {
       category: "INGREDIENT_EXPIRY",
       result: "FAIL",
       reason: `${expiredCount} ingredient${expiredCount === 1 ? "" : "s"} in storage ${expiredCount === 1 ? "is" : "are"} already expired.`,
+      glance: `🗑️ ${expiredCount} expired`,
     };
   }
   if (nearExpiryCount > 0) {
@@ -127,12 +133,14 @@ function inspectIngredientExpiry(save: SaveData): CategoryInspectionResult {
       category: "INGREDIENT_EXPIRY",
       result: "WARNING",
       reason: `${nearExpiryCount} ingredient${nearExpiryCount === 1 ? "" : "s"} ${nearExpiryCount === 1 ? "is" : "are"} nearing its shelf life.`,
+      glance: `⏳ ${nearExpiryCount} expiring soon`,
     };
   }
   return {
     category: "INGREDIENT_EXPIRY",
     result: "PASS",
     reason: "Nothing in storage is close to expiring.",
+    glance: "⏳ all fresh",
   };
 }
 
@@ -145,6 +153,7 @@ function inspectRefrigeratorCondition(save: SaveData): CategoryInspectionResult 
       category: "REFRIGERATOR_CONDITION",
       result: "FAIL",
       reason: `The refrigerator is broken down (condition ${condition}/100).`,
+      glance: `🧊 broken · ${condition}/100`,
     };
   }
   if (band === "POOR" || band === "CRITICAL") {
@@ -152,12 +161,14 @@ function inspectRefrigeratorCondition(save: SaveData): CategoryInspectionResult 
       category: "REFRIGERATOR_CONDITION",
       result: "WARNING",
       reason: `The refrigerator is due for service (condition ${condition}/100).`,
+      glance: `🧊 needs service · ${condition}/100`,
     };
   }
   return {
     category: "REFRIGERATOR_CONDITION",
     result: "PASS",
     reason: `The refrigerator is in good working order (condition ${condition}/100).`,
+    glance: `🧊 ${condition}/100`,
   };
 }
 
@@ -171,6 +182,7 @@ function inspectEquipmentCondition(save: SaveData): CategoryInspectionResult {
       fridge.result === "PASS"
         ? "All owned equipment (the refrigerator) is in good working order."
         : `The refrigerator, the only equipment currently owned, needs attention (condition ${save.business.equipmentCondition.refrigeratorCondition}/100).`,
+    glance: fridge.glance,
   };
 }
 
@@ -209,6 +221,7 @@ function inspectKitchenCleanliness(
       category: "KITCHEN_CLEANLINESS",
       result: "PASS",
       reason: "A Cleaner is on staff keeping the kitchen sanitary.",
+      glance: "🧑‍🔧 Cleaner on",
     };
   }
   const spoiledToday = normalizeQuantity(daySpoiledQuantity);
@@ -220,6 +233,7 @@ function inspectKitchenCleanliness(
       category: "KITCHEN_CLEANLINESS",
       result: "WARNING",
       reason: `No Cleaner on staff. ${hygiene}`,
+      glance: `🧑‍🔧 no Cleaner · ${hygieneGlance(save) ?? "🧹 hygiene"}`,
     };
   }
   if (spoiledToday >= CLEANLINESS_FAIL_SPOILAGE) {
@@ -227,6 +241,7 @@ function inspectKitchenCleanliness(
       category: "KITCHEN_CLEANLINESS",
       result: "FAIL",
       reason: `No Cleaner on staff, and ${formatQuantity(spoiledToday)} units of food spoiled today.`,
+      glance: `🧑‍🔧 no Cleaner · 🗑️ ${formatQuantity(spoiledToday)} spoiled`,
     };
   }
   if (spoiledToday >= CLEANLINESS_WARNING_SPOILAGE) {
@@ -234,6 +249,7 @@ function inspectKitchenCleanliness(
       category: "KITCHEN_CLEANLINESS",
       result: "WARNING",
       reason: `No Cleaner on staff, and ${formatQuantity(spoiledToday)} units of food spoiled today.`,
+      glance: `🧑‍🔧 no Cleaner · 🗑️ ${formatQuantity(spoiledToday)} spoiled`,
     };
   }
   return {
@@ -243,6 +259,7 @@ function inspectKitchenCleanliness(
       spoiledToday > 0
         ? `No Cleaner on staff; ${formatQuantity(spoiledToday)} units spoiled today — under the ${CLEANLINESS_WARNING_SPOILAGE}-unit warning level.`
         : "No Cleaner on staff, but nothing has spoiled today.",
+    glance: spoiledToday > 0 ? `🗑️ ${formatQuantity(spoiledToday)} spoiled` : "🧹 clean",
   };
 }
 
@@ -255,7 +272,9 @@ function inspectFoodSafety(save: SaveData): CategoryInspectionResult {
     result === "PASS"
       ? "Ingredients are fresh and refrigeration is working correctly."
       : `Food safety risk: ${result === expiry.result ? expiry.reason : fridge.reason}`;
-  return { category: "FOOD_SAFETY", result, reason };
+  const glance =
+    result === "PASS" ? "🛡️ safe" : result === expiry.result ? expiry.glance : fridge.glance;
+  return { category: "FOOD_SAFETY", result, reason, glance };
 }
 
 /** "Staff Compliance where applicable" — PASSes trivially with no staff (the category doesn't apply); once staff exist, whether today's cash on hand can actually cover their payroll is the real, always-available compliance signal (see businessStaff.ts's own dailyPayroll and BusinessDayManager's insolvency safety net). */
@@ -266,6 +285,7 @@ function inspectStaffCompliance(save: SaveData): CategoryInspectionResult {
       category: "STAFF_COMPLIANCE",
       result: "PASS",
       reason: "Not applicable — no staff currently employed.",
+      glance: "👥 no staff",
     };
   }
   const payroll = dailyPayroll(hiredRoles);
@@ -274,12 +294,14 @@ function inspectStaffCompliance(save: SaveData): CategoryInspectionResult {
       category: "STAFF_COMPLIANCE",
       result: "WARNING",
       reason: `Cash on hand (${formatUsd(save.credits)}) can't currently cover the ${formatUsd(payroll)} daily payroll.`,
+      glance: `💸 ${formatUsd(payroll)} due · 💵 ${formatUsd(save.credits)}`,
     };
   }
   return {
     category: "STAFF_COMPLIANCE",
     result: "PASS",
     reason: "Staff payroll is fully covered by cash on hand.",
+    glance: "💵 payroll covered",
   };
 }
 

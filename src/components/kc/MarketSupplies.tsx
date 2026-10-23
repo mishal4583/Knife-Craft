@@ -409,11 +409,12 @@ export function NeedNote({
       <p className="font-ui text-[11.5px] font-extrabold leading-tight text-copper">
         📌 {needLabel(need)} · buy {need.buy} {unit}
       </p>
-      <p className="font-ui text-[11px] font-bold leading-tight text-walnut/70">
+      {/* Have / need at a glance; why it's needed on hover (developer 2026-10-23). */}
+      <p className="font-ui text-[11px] font-bold leading-tight text-walnut/70" title={need.why}>
         {detail ??
           (need.when === "soon"
-            ? need.why
-            : `Need ${formatNeed(need.need)}, have ${formatNeed(need.have)} · ${need.why}`)}
+            ? `🔜 ${need.why}`
+            : `📦 ${formatNeed(need.have)} / ${formatNeed(need.need)}`)}
       </p>
     </div>
   );

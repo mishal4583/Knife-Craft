@@ -52,9 +52,12 @@ export function RestaurantAttentionPanel({
     >
       <p className="font-display text-[18px] font-black text-walnut-dark">⚠️ NEEDS ATTENTION</p>
       {a.nextLevel && a.recommendedCost > 0 ? (
-        <p className="font-ui text-[12.5px] text-walnut/70" data-testid="restaurant-recommended">
-          Recommended restock for Level {a.nextLevel}: {formatUsd(a.recommendedCost)} at Market
-          prices.
+        <p
+          className="font-ui text-[12.5px] font-bold text-walnut/70"
+          data-testid="restaurant-recommended"
+          title={`Recommended restock for Level ${a.nextLevel} at Market prices`}
+        >
+          🛒 Lv {a.nextLevel} restock · {formatUsd(a.recommendedCost)}
         </p>
       ) : null}
       <ul className="mt-1 divide-y divide-walnut/10">
@@ -74,7 +77,10 @@ export function RestaurantAttentionPanel({
                 row.severity === "urgent" ? "text-tomato" : "text-walnut-dark",
               )}
             >
-              {row.text}
+              <span aria-hidden={row.glance ? true : undefined} title={row.text}>
+                {row.glance ?? row.text}
+              </span>
+              {row.glance ? <span className="sr-only">{row.text}</span> : null}
               <span className="sr-only">{row.severity === "urgent" ? " (urgent)" : " (low)"}</span>
             </p>
             <button

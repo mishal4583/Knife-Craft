@@ -1262,11 +1262,17 @@ function Operations({
                     : "border-walnut/10 bg-cream/60",
                 )}
               >
-                <p className="font-ui text-[13.5px] font-extrabold text-walnut-dark">
-                  {SEVERITY_ICON[alert.severity]} {alert.title}
-                </p>
-                <p className="mt-0.5 font-hand text-[15px] leading-snug text-walnut/70">
-                  {alert.detail}
+                <div className="flex items-start justify-between gap-2">
+                  <p className="font-ui text-[13.5px] font-extrabold text-walnut-dark">
+                    {SEVERITY_ICON[alert.severity]} {alert.title}
+                  </p>
+                  <InfoTip label={`About ${alert.title}`}>{alert.detail}</InfoTip>
+                </div>
+                <p
+                  className="mt-0.5 font-ui text-[12.5px] font-bold leading-snug text-walnut/80"
+                  data-testid="alert-glance"
+                >
+                  {alert.glance}
                 </p>
                 {alert.action?.kind === "rush-restock" ? (
                   blockedDish ? (
@@ -1377,8 +1383,7 @@ function Operations({
           </KButton>
         ) : (
           <p className="mt-3 font-hand text-[15px] leading-snug text-walnut/70">
-            🌙 Your day ends at closing time · 🔒 {ENDLESS_RESTAURANT_NAME} after Level{" "}
-            {LAST_CAMPAIGN_LEVEL}
+            🌙 Day ends at closing · 🔒 {ENDLESS_RESTAURANT_NAME} after Lv {LAST_CAMPAIGN_LEVEL}
           </p>
         )}
       </Panel>

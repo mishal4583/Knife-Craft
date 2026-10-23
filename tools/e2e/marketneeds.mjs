@@ -100,9 +100,20 @@ check(
 
 // 3. Daily Check → Restock › on the tissues
 await page.evaluate(() => document.querySelector('[data-nav="kitchen"]')?.click());
-await page.waitForSelector('[data-testid="daily-check-shortcut"]', { timeout: 15000 }).catch(async () => {
-  console.log("debug nav:", await page.evaluate(() => [...document.querySelectorAll("[data-nav]")].map((e) => e.getAttribute("data-nav")).join(","), document.body.innerText.slice(0, 200)));
-});
+await page
+  .waitForSelector('[data-testid="daily-check-shortcut"]', { timeout: 15000 })
+  .catch(async () => {
+    console.log(
+      "debug nav:",
+      await page.evaluate(
+        () =>
+          [...document.querySelectorAll("[data-nav]")]
+            .map((e) => e.getAttribute("data-nav"))
+            .join(","),
+        document.body.innerText.slice(0, 200),
+      ),
+    );
+  });
 await sleep(500);
 // The shortcut expands on the first tap and opens on the second (a mouse expands it on hover).
 for (let i = 0; i < 3; i++) {
@@ -134,7 +145,8 @@ check(
   "3 Restock › on the tissues opens the Market on that card: '📌 Needed tonight · buy 1 pack', 1 pack preset",
   tissue.needed === "tonight" &&
     /📌 Needed tonight · buy 1 pack/.test(tissue.note) &&
-    /Need 1, have 0/.test(tissue.note) &&
+    // "📦 0 / 1" (have / need) since the short-copy pass (2026-10-23; was "Need 1, have 0 · …").
+    /📦 0 \/ 1/.test(tissue.note) &&
     tissue.packs === "1" &&
     tissue.ring,
   tissue,

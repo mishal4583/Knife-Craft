@@ -35,6 +35,7 @@ import { endBusinessDay, type EndBusinessDayResult } from "./BusinessDayManager"
 import { businessOrderAvailability } from "./BusinessServiceManager";
 import { activeBusinessDishes } from "./businessMenuActivation";
 import { formatUsd } from "./businessCurrency";
+import { INGREDIENT_EMOJI } from "../knives/knifeDefinitions";
 
 export type BusinessAlertSeverity = "critical" | "warning" | "info" | "ok";
 
@@ -62,7 +63,13 @@ export type BusinessAlert = {
   key: string;
   severity: BusinessAlertSeverity;
   title: string;
+  /** The full explanation (behind the card's ⓘ). */
   detail: string;
+  /**
+   * What the card shows at a glance (developer 2026-10-23: "players won't read big
+   * sentences … show the issues with emojis"): a few icons, names and numbers.
+   */
+  glance: string;
   action?: BusinessAlertAction;
   /** Whether this alert's first appearance deserves a banner notification. */
   notify: boolean;
@@ -81,6 +88,23 @@ export const INSPECTION_CATEGORY_LABEL: Record<InspectionCategory, string> = {
 function ingredientNames(ids: readonly IngredientId[]): string {
   return ids.map((id) => INGREDIENTS[id]?.name ?? id).join(", ");
 }
+
+/** The ingredients as emoji (up to 5, then "+N"), for a glance line. */
+export function ingredientIcons(ids: readonly IngredientId[]): string {
+  const shown = ids.slice(0, 5).map((id) => INGREDIENT_EMOJI[id] ?? "🥬");
+  return ids.length > 5 ? `${shown.join(" ")} +${ids.length - 5}` : shown.join(" ");
+}
+
+/** Each inspection check as an icon (inspection cards, alert glance lines). */
+export const INSPECTION_CATEGORY_ICON: Record<InspectionCategory, string> = {
+  FOOD_STORAGE: "❄️",
+  INGREDIENT_EXPIRY: "⏳",
+  REFRIGERATOR_CONDITION: "🧊",
+  EQUIPMENT_CONDITION: "🔧",
+  KITCHEN_CLEANLINESS: "🧹",
+  FOOD_SAFETY: "🛡️",
+  STAFF_COMPLIANCE: "👥",
+};
 
 /** The fine V3-13 charges for a WARNING that follows a non-passing day — read from the fine rule itself, never hard-coded here. */
 export function repeatedWarningFineAmount(): number {
@@ -102,6 +126,24 @@ export function supplierEventSummary(
     return "A contracted supplier's delivery is running late, so contract discounts don't apply today. You have no contract, so your prices are unaffected.";
   }
   return event.description;
+}
+
+/** The event's effect in icons and numbers ("📈 +10% · 📦 max 5"); the summary goes behind ⓘ. */
+export function supplierEventGlance(
+  event: SupplierEventDefinition,
+  hasActiveContract: boolean,
+): string {
+  const pct = Math.round(event.priceModifier * 100);
+  const bits = [
+    pct !== 0 ? `${pct > 0 ? "📈 +" : "📉 "}${pct}% prices` : null,
+    event.maxPurchaseQuantity !== undefined ? `📦 max ${event.maxPurchaseQuantity}` : null,
+    event.suspendsContractDiscount
+      ? hasActiveContract
+        ? "📜 contract discount paused"
+        : "✓ no effect · no contract"
+      : null,
+  ].filter(Boolean);
+  return bits.length ? bits.join(" · ") : "🚚 normal prices";
 }
 
 /** The fine V3-13 charges for any FAIL — read from the fine rule itself. */
@@ -243,6 +285,7 @@ export function businessAlertsFor(
           : "Wear is already nudging spoilage and reputation.") +
         ` Repair ${formatUsd(cost)} restores it to 100.` +
         (credits < cost ? " Not enough cash for the repair right now." : ""),
+      glance: `🔧 ${condition}/100 · ${broken ? "🥀 spoiling" : "⚠️ wearing"} · 💵 ${formatUsd(cost)}`,
       action: { kind: "repair-refrigerator", label: `Repair · ${formatUsd(cost)}` },
       notify: true,
     });
@@ -264,8 +307,18 @@ export function businessAlertsFor(
         : fine.fineAmount > 0
           ? `The last inspection was also non-passing — a repeated WARNING is fined ${formatUsd(fine.fineAmount)}.`
           : `A first WARNING isn't fined, but a second non-passing day in a row is fined ${formatUsd(repeatedWarningFineAmount())}.`;
+    const failing = report.categories
+      .filter((c) => c.result !== "PASS")
+      .map((c) => INSPECTION_CATEGORY_ICON[c.category]);
+    const fineGlance =
+      report.overall === "FAIL"
+        ? `💸 ${formatUsd(fine.fineAmount)} fine tonight`
+        : fine.fineAmount > 0
+          ? `💸 ${formatUsd(fine.fineAmount)} fine tonight`
+          : `💸 ${formatUsd(repeatedWarningFineAmount())} if again tomorrow`;
     alerts.push({
       key: `inspection:${report.overall}`,
+      glance: `${failing.join(" ")} · ${failing.length} check${failing.length === 1 ? "" : "s"} · ${fineGlance}`,
       severity: report.overall === "FAIL" ? "critical" : "warning",
       title: report.overall === "FAIL" ? "Inspection Would Fail" : "Inspection Warning",
       detail: `${problems}. ${fineText}`,
@@ -281,6 +334,7 @@ export function businessAlertsFor(
       key: `spoil-tonight:${day}:${[...spoilingTonight].sort().join(",")}`,
       severity: "warning",
       title: "Stock Spoils Tonight",
+      glance: `🗑️ ${ingredientIcons(spoilingTonight)} · use today`,
       detail: `${ingredientNames(spoilingTonight)} will be discarded at End Business Day. Use it in orders today.`,
       action: { kind: "navigate", label: "View Inventory", screen: "inventory" },
       notify: true,
@@ -292,6 +346,7 @@ export function businessAlertsFor(
       key: `near-expiry:${day}:${[...nearExpiry].sort().join(",")}`,
       severity: "info",
       title: "Nearing Expiry",
+      glance: `⏳ ${ingredientIcons(nearExpiry)} · use soon`,
       detail: `${ingredientNames(nearExpiry)} — best used soon. Holding stock this close to its shelf life shows up as an Ingredient Expiry WARNING at inspection, and a WARNING two days running is fined ${formatUsd(repeatedWarningFineAmount())}.`,
       action: { kind: "navigate", label: "View Inventory", screen: "inventory" },
       notify: false,
@@ -308,6 +363,7 @@ export function businessAlertsFor(
         key: `order-blocked:${currentOrder.orderId}`,
         severity: "warning",
         title: "Current Order Blocked",
+        glance: `🧾 ${currentDish.name} · missing ${ingredientIcons(missing)}`,
         detail: `A customer wants ${currentDish.name} — missing ${ingredientNames(missing)}. It can't be accepted until you restock.`,
         action: { kind: "rush-restock", label: "Restock" },
         notify: true,
@@ -322,6 +378,7 @@ export function businessAlertsFor(
           key: "no-dishes",
           severity: "warning",
           title: "No Dish Can Be Made",
+          glance: `🍽️ 0 / ${menuSize} dishes · 🛒 restock`,
           detail: `Your usable stock can't make any of the ${menuSize} dishes on your menu — no customer can be served until you restock. You can buy as little as one unit, and a smaller menu needs fewer different ingredients.`,
           action: { kind: "navigate", label: "Restock in Market", screen: "shop-ingredients" },
           notify: true,
@@ -330,6 +387,7 @@ export function businessAlertsFor(
           key: "dishes-available",
           severity: "ok",
           title: "Menu Ready",
+          glance: `🍽️ ${makeable} / ${menuSize} dishes ready`,
           detail: `${makeable} of the ${menuSize} dishes on your menu can be made from current stock.`,
           action: { kind: "navigate", label: "Open Service", screen: "business-service" },
           notify: false,
@@ -346,6 +404,10 @@ export function businessAlertsFor(
       title: market.contractDiscountSuspended
         ? `${market.event.name} — Contract Discount Suspended`
         : `Supplier Event: ${market.event.name}`,
+      glance: supplierEventGlance(
+        market.event,
+        isContractActive(save.business.supplierContract, day),
+      ),
       detail:
         `${supplierEventSummary(market.event, isContractActive(save.business.supplierContract, day))}` +
         (pct !== 0 ? ` Prices ${pct > 0 ? "+" : ""}${pct}% today.` : "") +
@@ -362,6 +424,7 @@ export function businessAlertsFor(
       key: `contract-ends:${contract.supplierId}:${contract.contractEndDay}`,
       severity: "info",
       title: "Supplier Contract Ends Tonight",
+      glance: `📜 ${getSupplier(contract.supplierId)?.name ?? contract.supplierId} · ends tonight · no fee`,
       detail: `Your ${getSupplier(contract.supplierId)?.name ?? contract.supplierId} contract ends at End Business Day (no fee for letting it run out).`,
       action: { kind: "navigate", label: "Manage Suppliers", screen: "business-suppliers" },
       notify: false,
@@ -378,6 +441,7 @@ export function businessAlertsFor(
             key: "payroll-unaffordable",
             severity: "critical",
             title: "Payroll Can't Be Covered",
+            glance: `💸 ${formatUsd(payroll)} due · 💵 ${formatUsd(credits)} on hand`,
             detail: `Today's payroll is ${formatUsd(payroll)} but you have ${formatUsd(credits)}. If that's still true at End Business Day, the whole staff is let go.`,
             action: { kind: "navigate", label: "Manage Staff", screen: "business-staff" },
             notify: true,
@@ -386,6 +450,7 @@ export function businessAlertsFor(
             key: "payroll-ok",
             severity: "ok",
             title: "Staff",
+            glance: `👥 ${hired.length} · 💵 ${formatUsd(payroll)} tonight`,
             detail: `${hired.length} on staff · ${formatUsd(payroll)} payroll due at End Business Day.`,
             action: { kind: "navigate", label: "Manage Staff", screen: "business-staff" },
             notify: false,
