@@ -13,7 +13,14 @@
 - Staff cards no longer overlap on desktop: one kit (`business/StaffCard.tsx`) sized by
   the card's own width (container queries), like the developer's reference. REFERENCE §10
   "Staff portraits and roster cards".
+## Pre-Service Check visual refresh (2026-10-23)
 
+- The check uses compact ticket cards, icon-led status rows, and folded ready-stock amounts
+  so missing items and the start action are easier to spot. Optional menu-guest stock is
+  folded until opened; expanded details and every existing restock / hire / clean action
+  remain available. No service, inventory, or economy rules changed.
+- UI: `components/kc/restaurant/PreServiceCheck.tsx`, `SupplyBottle.tsx`. Details: REFERENCE
+  §10 "Glance copy".
 ## Staff portraits and roster refresh (2026-10-23)
 
 - Business → Staff now uses illustrated portraits for the six restaurant roles

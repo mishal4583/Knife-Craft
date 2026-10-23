@@ -2130,6 +2130,12 @@ make it short or show the issues with emojis." Builds on the 2026-10-16 short-co
 - **Have / need is "📦 have / need"** everywhere: the Market need note (ingredients and
   supplies; menu guests' rows add "optional ·"), the Pre-Service Check's ingredient and
   supply rows ("📦 0 lb / 0.5 lb (≈ 1 breast)", "📦 0 / 1 · 1 pack of 12").
+- **Pre-Service Check glance layout** (`restaurant/PreServiceCheck.tsx`): day / level and
+  title are compact; tickets use small dish cards; missing ingredients stay visible with a
+  direct Restock action, while ready amounts are folded under one stock-details toggle.
+  Menu-guest extras start folded as optional, and tools, supplies, cleaning, staff and fridge
+  checks retain their existing actions and blocking rules. All stock, costs and status values
+  still come from the existing game checks.
 - **Short number lines:** a menu card's "⭐ 50 · ×1.05 · 92.6% kept" (the sentence in its
   `title`); staff wages "🆓 Free until Lv N · ½ pay to Lv M · then $X/day".
 - `ShopLine` flows its icons inline with the text, so an icon never wraps onto its own line.

@@ -57,7 +57,7 @@ function RoutineStatus({
       data-testid={testId}
       data-status={tone}
       className={cn(
-        "press relative min-h-[58px] rounded-xl border px-2 py-1.5 pr-5 text-left",
+        "press relative min-h-[48px] rounded-xl border px-2 py-1.5 pr-5 text-left",
         tone === "attention" ? "border-copper/25 bg-gold/10" : "border-olive/15 bg-ivory/70",
       )}
     >
@@ -236,6 +236,8 @@ export function PreServiceCheck({
   const [showGuests, setShowGuests] = useState(false);
   const [showDay, setShowDay] = useState(false);
   const stock = check.applies ? check : null;
+  const missingIngredients = stock?.rows.filter((row) => row.missing > 0) ?? [];
+  const readyIngredients = stock?.rows.filter((row) => row.missing === 0) ?? [];
   const sup = supplies.applies ? supplies : null;
   const kit = tools.applies ? tools : null;
   const fridgeShort = !!stock && stock.storageNeeded > stock.storageFree;
@@ -282,14 +284,14 @@ export function PreServiceCheck({
         onClick={onClose}
         className="absolute inset-0 bg-walnut-dark/45 backdrop-blur-[2px]"
       />
-      <div className="anim-up relative m-3 flex max-h-[calc(100%-24px)] w-[calc(100%-24px)] flex-col rounded-[26px] land:max-w-[680px] border border-walnut/20 bg-[linear-gradient(170deg,var(--color-ivory),var(--color-cream))] shadow-lift">
-        <div className="px-5 pb-2 pt-4">
-          <span className="mx-auto mb-3 block h-1 w-10 rounded-full bg-walnut/20" />
-          <p className="font-ui text-[12.5px] font-extrabold uppercase tracking-[0.14em] text-walnut/60">
-            Day {day} · {opening ? "Opening time" : `Level ${levelNumber}`}
+      <div className="anim-up relative m-3 flex max-h-[calc(100%-24px)] w-[calc(100%-24px)] flex-col rounded-[26px] border border-walnut/20 bg-[linear-gradient(170deg,var(--color-ivory),var(--color-cream))] shadow-lift land:max-w-[680px]">
+        <div className="px-5 pb-2 pt-3.5">
+          <span className="mx-auto mb-2.5 block h-1 w-10 rounded-full bg-walnut/20" />
+          <p className="font-ui text-[11.5px] font-extrabold uppercase tracking-[0.14em] text-walnut/60">
+            📆 Day {day} · Level {levelNumber}
           </p>
           <p className="font-display text-[22px] font-black text-walnut-dark">
-            {opening ? `Good morning! Day ${day}` : "Pre-Service Check"}
+            🧾 Pre-Service Check
           </p>
         </div>
 
@@ -309,17 +311,12 @@ export function PreServiceCheck({
                   🌅
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="flex items-center gap-1.5 font-display text-[16px] font-black text-walnut-dark">
-                    Today’s opening routine
+                  <p className="flex items-center gap-1.5 font-display text-[15px] font-black text-walnut-dark">
+                    Before opening
                     <InfoTip label="About the opening routine">
                       Refill only what today needs. Cleaning and optional stock top-ups never block
                       the start.
                     </InfoTip>
-                  </p>
-                  <p className="font-ui text-[12px] leading-snug text-walnut/70">
-                    {routineNeedsAttention > 0
-                      ? `⚠️ ${routineNeedsAttention} to check`
-                      : "✓ All ready"}
                   </p>
                 </div>
                 <span
@@ -330,7 +327,7 @@ export function PreServiceCheck({
                       : "bg-sage/20 text-olive",
                   )}
                 >
-                  {routineNeedsAttention > 0 ? "CHECK" : "READY"}
+                  {routineNeedsAttention > 0 ? `${routineNeedsAttention} CHECKS` : "READY"}
                 </span>
               </div>
               <div className="mt-2 grid grid-cols-2 gap-1.5">
@@ -484,37 +481,57 @@ export function PreServiceCheck({
               className="mb-2 rounded-2xl border border-walnut/15 bg-ivory/70 p-3"
               data-testid="psc-opening"
             >
-              <p className="font-ui text-[12.5px] font-extrabold uppercase tracking-wide text-walnut/60">
-                Today's services
+              <p className="font-ui text-[12px] font-extrabold uppercase tracking-wide text-walnut/60">
+                🗓️ Today’s shifts
               </p>
               <ul className="mt-1 space-y-0.5">
                 {opening.map((s) => (
-                  <li key={s.name} className="font-ui text-[14.5px] font-bold text-walnut-dark">
-                    {s.name} · Level {s.levelNumber}
+                  <li
+                    key={s.name}
+                    className="flex items-center justify-between gap-2 font-ui text-[13px] font-bold text-walnut-dark"
+                  >
+                    <span>🍽️ {s.name}</span>
+                    <span className="shrink-0 rounded-full bg-gold/15 px-2 py-0.5 text-[10px] text-copper">
+                      Lv {s.levelNumber}
+                    </span>
                   </li>
                 ))}
               </ul>
-              <p className="mt-1 font-ui text-[12.5px] text-walnut/70">
-                🌙 Then closing: clean up & count the day
+              <p className="mt-1 font-ui text-[11px] font-bold text-walnut/60">
+                🌙 Closing · clean & count
               </p>
             </div>
           ) : null}
-          <p className="mt-1 font-ui text-[12.5px] font-extrabold uppercase tracking-wide text-walnut/60">
-            {opening ? `Level ${levelNumber} · today's orders` : "Today's orders"}
-          </p>
-          <ul className="mt-1 space-y-0.5" data-testid="psc-orders">
-            {tickets.map((r, i) => (
-              <li key={`${r.id}-${i}`} className="font-ui text-[14.5px] font-bold text-walnut-dark">
-                {r.name}
-                {services[i] === "takeaway" ? (
-                  <span className="font-ui text-[12.5px] font-extrabold text-copper">
-                    {" "}
-                    · 🥡 takeaway
+          <section className="mt-2.5 rounded-2xl border border-walnut/15 bg-ivory/70 p-2.5">
+            <div className="mb-1.5 flex items-center justify-between gap-2">
+              <p className="font-ui text-[11.5px] font-extrabold uppercase tracking-wide text-walnut/60">
+                🍽️ Today’s tickets
+              </p>
+              <span className="rounded-full bg-gold/20 px-2 py-0.5 font-ui text-[10.5px] font-extrabold text-copper">
+                {tickets.length} {tickets.length === 1 ? "order" : "orders"}
+              </span>
+            </div>
+            <ul className="grid gap-1.5" data-testid="psc-orders">
+              {tickets.map((r, i) => (
+                <li
+                  key={`${r.id}-${i}`}
+                  className="flex min-h-10 items-center gap-2 rounded-xl border border-walnut/10 bg-cream/70 px-2.5 py-1.5"
+                >
+                  <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-gold/20 text-[16px]">
+                    {services[i] === "takeaway" ? "🥡" : "🍽️"}
                   </span>
-                ) : null}
-              </li>
-            ))}
-          </ul>
+                  <span className="min-w-0 flex-1 font-ui text-[13.5px] font-extrabold leading-tight text-walnut-dark">
+                    {r.name}
+                  </span>
+                  {services[i] === "takeaway" ? (
+                    <span className="rounded-full bg-copper/10 px-1.5 py-0.5 font-ui text-[9.5px] font-extrabold text-copper">
+                      TAKEAWAY
+                    </span>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </section>
 
           {stock && firstRestock ? (
             <div
@@ -524,7 +541,7 @@ export function PreServiceCheck({
             >
               <div className="flex items-start justify-between gap-2">
                 <p className="font-ui text-[12.5px] font-extrabold uppercase tracking-wide text-copper">
-                  {stock.ready ? "Your first stock check" : "Buy ingredients for service"}
+                  {stock.ready ? "First stock check" : "First ingredient run"}
                 </p>
                 <button
                   type="button"
@@ -540,38 +557,75 @@ export function PreServiceCheck({
                   ✓ All in the fridge · start the service
                 </p>
               ) : (
-                <ol className="mt-1 list-decimal space-y-0.5 pl-5 font-ui text-[13.5px] font-bold text-walnut-dark">
-                  <li>🛒 Buy everything in the Market</li>
-                  <li>Tap Buy all</li>
-                  <li>↩ Back here, then start</li>
-                </ol>
+                <p className="mt-1 rounded-xl bg-ivory/70 px-2.5 py-2 font-ui text-[12.5px] font-extrabold text-walnut-dark">
+                  🛒 Market → Buy all → ↩ Start
+                </p>
               )}
-              <p className="mt-1 font-hand text-[16px] leading-snug text-walnut/75">
-                “Buy only what you'll use — fresh food doesn't wait.”
+              <p className="mt-1 font-hand text-[14px] leading-snug text-walnut/70">
+                Buy only what you’ll use. Fresh food doesn’t wait.
               </p>
             </div>
           ) : null}
 
           {stock ? (
-            <>
-              <p className="mt-3 font-ui text-[12.5px] font-extrabold uppercase tracking-wide text-walnut/60">
-                Ingredients
-              </p>
-              <ul
-                id="psc-ingredients"
-                className="mt-1 divide-y divide-walnut/10"
-                data-testid="psc-ingredients"
-              >
-                {stock.rows.map((row) => (
-                  <IngredientRow
-                    key={row.ingredientId}
-                    row={row}
-                    measure={measure}
-                    onRestock={canBuy ? onRestock : null}
-                  />
-                ))}
-              </ul>
-            </>
+            <section
+              id="psc-ingredients"
+              className="mt-2.5 rounded-2xl border border-walnut/15 bg-cream/60 p-2.5"
+              data-testid="psc-ingredients"
+            >
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <p className="font-ui text-[12px] font-extrabold uppercase tracking-wide text-walnut/65">
+                  🥬 Ingredients
+                </p>
+                <div className="flex flex-wrap justify-end gap-1">
+                  {missingIngredients.length > 0 ? (
+                    <span className="rounded-full bg-tomato/10 px-2 py-0.5 font-ui text-[10.5px] font-extrabold text-tomato">
+                      ⚠️ {missingIngredients.length} to restock
+                    </span>
+                  ) : null}
+                  {readyIngredients.length > 0 ? (
+                    <span className="rounded-full bg-sage/15 px-2 py-0.5 font-ui text-[10.5px] font-extrabold text-olive">
+                      ✓ {readyIngredients.length} ready
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+              {missingIngredients.length > 0 ? (
+                <ul className="grid gap-1.5">
+                  {missingIngredients.map((row) => (
+                    <IngredientRow
+                      key={row.ingredientId}
+                      row={row}
+                      measure={measure}
+                      onRestock={canBuy ? onRestock : null}
+                    />
+                  ))}
+                </ul>
+              ) : (
+                <p className="rounded-xl bg-sage/10 px-2.5 py-2 font-ui text-[12px] font-bold text-olive">
+                  ✨ All covered ·{" "}
+                  {readyIngredients.map((row) => INGREDIENT_EMOJI[row.ingredientId]).join(" ")}
+                </p>
+              )}
+              {readyIngredients.length > 0 ? (
+                <details className="mt-1.5" data-testid="psc-ready-ingredients">
+                  <summary className="flex min-h-9 cursor-pointer list-none items-center justify-between rounded-xl px-2 font-ui text-[11.5px] font-extrabold text-walnut/65 hover:bg-ivory/70">
+                    <span>📦 View stock amounts</span>
+                    <span aria-hidden>⌄</span>
+                  </summary>
+                  <ul className="mt-1 grid gap-1.5">
+                    {readyIngredients.map((row) => (
+                      <IngredientRow
+                        key={row.ingredientId}
+                        row={row}
+                        measure={measure}
+                        onRestock={canBuy ? onRestock : null}
+                      />
+                    ))}
+                  </ul>
+                </details>
+              ) : null}
+            </section>
           ) : null}
 
           {staff.length > 0 ? (
@@ -680,8 +734,8 @@ export function PreServiceCheck({
 
           {kit && kit.rows.length > 0 ? (
             <div id="psc-tools" data-testid="psc-tools">
-              <p className="mt-3 font-ui text-[12.5px] font-extrabold uppercase tracking-wide text-walnut/60">
-                🍳 Kitchen tools · today's dishes
+              <p className="mt-3 font-ui text-[12px] font-extrabold uppercase tracking-wide text-walnut/60">
+                🔪 Culinary tools
               </p>
               <ul className="mt-1 divide-y divide-walnut/10">
                 {kit.rows
@@ -745,8 +799,8 @@ export function PreServiceCheck({
 
           {sup ? (
             <>
-              <p className="mt-3 font-ui text-[12.5px] font-extrabold uppercase tracking-wide text-walnut/60">
-                Supplies · {sup.dineIn} dine-in
+              <p className="mt-3 font-ui text-[12px] font-extrabold uppercase tracking-wide text-walnut/60">
+                🧻 Service supplies · {sup.dineIn} dine-in
                 {sup.takeaway > 0 ? ` · ${sup.takeaway} takeaway` : ""}
               </p>
               <ul
@@ -804,27 +858,44 @@ export function PreServiceCheck({
           ) : null}
 
           {stock && guests && guests.dishes.length > 0 ? (
-            <div className="mt-3" data-testid="psc-guests">
-              <p className="flex items-center gap-1.5 font-ui text-[12.5px] font-extrabold uppercase tracking-wide text-walnut/60">
-                🍽️ Menu guests today · optional
+            <section
+              className="mt-2.5 rounded-2xl border border-walnut/15 bg-ivory/60 p-2.5"
+              data-testid="psc-guests"
+            >
+              <button
+                type="button"
+                className="flex min-h-10 w-full items-center gap-2 text-left"
+                onClick={() => setShowGuests((v) => !v)}
+                aria-expanded={showGuests}
+              >
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-gold/20 text-[18px]">
+                  👥
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block font-ui text-[12px] font-extrabold text-walnut-dark">
+                    Menu guests · optional
+                  </span>
+                  <span className="block font-ui text-[10.5px] font-bold text-walnut/60">
+                    {guests.dishes.length} dishes · {guests.rows.length} stock items
+                  </span>
+                </span>
                 <InfoTip label="About menu guests">
                   Menu guests order from your menu after your own orders. Stocking for them is
                   optional — each one served pays the menu price.
                 </InfoTip>
-              </p>
-              <p className="font-ui text-[12.5px] text-walnut/70">
-                {guests.dishes.join(", ")}
-                {guests.rows.length === 0 ? " · ✓ all stocked" : ""}
-              </p>
-              {guests.rows.length > 0 ? (
-                <KButton
-                  size="sm"
-                  variant="ghost"
-                  className="mt-1 min-h-12"
-                  onClick={() => setShowGuests((v) => !v)}
-                >
-                  {showGuests ? "Hide" : `Show ${guests.rows.length} ingredients`}
-                </KButton>
+                <span className="text-[18px] font-black text-copper" aria-hidden>
+                  {showGuests ? "−" : "+"}
+                </span>
+              </button>
+              {showGuests ? (
+                <>
+                  <NameChips names={guests.dishes} />
+                  {guests.rows.length === 0 ? (
+                    <p className="mt-1 font-ui text-[11.5px] font-extrabold text-olive">
+                      ✓ All stocked
+                    </p>
+                  ) : null}
+                </>
               ) : null}
               {guests.rows.length > 0 && showGuests ? (
                 <ul className="mt-1 divide-y divide-walnut/10">
@@ -854,7 +925,7 @@ export function PreServiceCheck({
                   ))}
                 </ul>
               ) : null}
-            </div>
+            </section>
           ) : null}
 
           {stock && dayStock && dayStock.rows.length > 0 ? (
@@ -863,8 +934,8 @@ export function PreServiceCheck({
               id="psc-day-stock"
               data-testid="psc-day-stock"
             >
-              <p className="flex items-center gap-1.5 font-ui text-[12.5px] font-extrabold uppercase tracking-wide text-walnut/60">
-                🗓️ Stock the whole day · optional
+              <p className="flex items-center gap-1.5 font-ui text-[12px] font-extrabold uppercase tracking-wide text-walnut/60">
+                📅 Whole-day stock · optional
                 <InfoTip label="About stocking the whole day">
                   Everything for today's {dayStock.levels.length} services (Levels{" "}
                   {dayStock.levels.join(", ")}) in one go, at the bulk price.
@@ -1051,7 +1122,7 @@ export function PreServiceCheck({
 
         <div className="flex gap-2 border-t border-walnut/10 px-5 py-3">
           <KButton variant="ghost" className="min-h-12" onClick={onClose}>
-            Back
+            ← Back
           </KButton>
           {!canStart && !stockOrSuppliesShort && staffMissing.length > 0 ? (
             // Only staff is missing: the button hires (Restaurant → Staff), naming who.
@@ -1070,11 +1141,11 @@ export function PreServiceCheck({
             <KButton full className="min-h-12" disabled={!canStart} onClick={onStart}>
               {canStart
                 ? opening
-                  ? "OPEN THE RESTAURANT"
-                  : "START SERVICE"
+                  ? "🚪 Open restaurant"
+                  : "🔥 Start service"
                 : stockOrSuppliesShort
-                  ? "Restock to start"
-                  : "Hire staff to start"}
+                  ? "🛒 Restock to start"
+                  : "👥 Hire staff to start"}
             </KButton>
           )}
         </div>
@@ -1096,38 +1167,53 @@ function IngredientRow({
   const count = itemCountText(row.ingredientId, row.needed);
   return (
     <li
-      className="flex min-h-12 items-center gap-2 py-1.5"
+      className={cn(
+        "flex min-h-12 items-center gap-2 rounded-xl border px-2 py-1.5",
+        ok ? "border-olive/10 bg-ivory/65" : "border-tomato/20 bg-tomato/5",
+      )}
       data-psc-ingredient={row.ingredientId}
       data-psc-status={ok ? "ok" : "missing"}
     >
-      <span className="text-[20px]" aria-hidden>
+      <span
+        className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-gold/15 text-[19px]"
+        aria-hidden
+      >
         {INGREDIENT_EMOJI[row.ingredientId]}
       </span>
       <div className="min-w-0 flex-1">
-        <p className="font-ui text-[14.5px] font-bold text-walnut-dark">
+        <p className="font-ui text-[12.5px] font-extrabold leading-tight text-walnut-dark">
           {INGREDIENTS[row.ingredientId].name}
         </p>
-        <p className={cn("font-ui text-[12.5px]", ok ? "text-walnut/60" : "text-tomato")}>
+        <p
+          className={cn(
+            "font-ui text-[10.5px] leading-tight",
+            ok ? "text-walnut/60" : "text-tomato",
+          )}
+        >
           📦 {formatStockAmount(row.ingredientId, row.usable, measure)} /{" "}
           {formatStockAmount(row.ingredientId, row.needed, measure)}
-          {count ? ` (${count})` : ""}
+          {count ? ` · ${count}` : ""}
           {row.expired > 0
-            ? ` (+${formatStockAmount(row.ingredientId, row.expired, measure)} expired)`
+            ? ` · 🗑️ ${formatStockAmount(row.ingredientId, row.expired, measure)}`
             : ""}
         </p>
       </div>
       {ok ? (
-        <span className="font-ui text-[13.5px] font-extrabold text-sage">✓ Ready</span>
+        <span className="shrink-0 rounded-full bg-sage/15 px-2 py-1 font-ui text-[10.5px] font-extrabold text-olive">
+          ✓
+        </span>
       ) : !onRestock ? (
-        <span className="font-ui text-[13.5px] font-extrabold text-tomato">✗ Missing</span>
+        <span className="shrink-0 rounded-full bg-tomato/10 px-2 py-1 font-ui text-[10.5px] font-extrabold text-tomato">
+          ✕
+        </span>
       ) : (
         <KButton
           size="sm"
           variant="copper"
-          className="min-h-12"
+          className="min-h-12 max-w-[52%] shrink-0 whitespace-normal px-2 py-1 text-[10.5px] leading-tight"
           onClick={() => onRestock(row.ingredientId)}
         >
-          Restock {row.buyUnits} {marketUnitLabel(row.ingredientId, measure, row.buyUnits)} ·{" "}
+          🛒 {row.buyUnits} {marketUnitLabel(row.ingredientId, measure, row.buyUnits)} ·{" "}
           {formatUsd(row.quote?.totalCost ?? 0)}
         </KButton>
       )}
@@ -1168,12 +1254,17 @@ function NewsCard({ news }: { news: RestaurantNews }) {
       data-testid="psc-news"
     >
       <p className="font-ui text-[12.5px] font-extrabold uppercase tracking-wide text-copper">
-        📰 {fresh ? "New at your restaurant" : "Coming up"}
+        ✨ {fresh ? "New this level" : "Coming up"}
       </p>
       {news.systems.map((s) => (
-        <div key={s.id} className="mt-1" data-news-system={s.id}>
-          <p className="font-ui text-[14.5px] font-extrabold text-walnut-dark">{s.title}</p>
-          <p className="font-hand text-[17px] leading-snug text-walnut">“{s.intro}”</p>
+        <div key={s.id} className="mt-1 flex items-center gap-1.5" data-news-system={s.id}>
+          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-copper/10 text-[16px]">
+            ✨
+          </span>
+          <p className="min-w-0 flex-1 font-ui text-[13px] font-extrabold text-walnut-dark">
+            {s.title}
+          </p>
+          <InfoTip label={`About ${s.title}`}>{s.intro}</InfoTip>
         </div>
       ))}
       {news.chain ? (
@@ -1185,8 +1276,11 @@ function NewsCard({ news }: { news: RestaurantNews }) {
         </p>
       ) : null}
       {news.cuisines.map((c) => (
-        <p key={c.name} className="mt-1 font-ui text-[13.5px] font-bold text-walnut-dark">
-          🌍 {c.name} cuisine opens{c.specialist ? ` · needs the ${c.specialist}` : ""}
+        <p
+          key={c.name}
+          className="mt-1 rounded-xl bg-ivory/70 px-2.5 py-1.5 font-ui text-[12px] font-bold text-walnut-dark"
+        >
+          🌍 {c.name} {c.specialist ? `· 👨‍🍳 ${c.specialist}` : "cuisine unlocked"}
         </p>
       ))}
       {news.dishes.length > 0 ? (
@@ -1357,19 +1451,31 @@ function SupplyRow({ row, onRestock }: { row: SupplyCheckRow; onRestock: (id: Su
   const item = getSupplyItem(row.id);
   return (
     <li
-      className="flex min-h-12 items-center gap-2 py-1.5"
+      className={cn(
+        "flex min-h-12 items-center gap-2 rounded-xl border px-2 py-1.5",
+        ok
+          ? "border-olive/10 bg-ivory/65"
+          : row.blocking
+            ? "border-tomato/20 bg-tomato/5"
+            : "border-gold/25 bg-gold/5",
+      )}
       data-psc-supply={row.id}
       data-psc-guest={row.guest ? "" : undefined}
       data-psc-status={ok ? "ok" : row.blocking ? "missing" : "warning"}
     >
-      <span className="text-[20px]" aria-hidden>
+      <span
+        className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-gold/15 text-[18px]"
+        aria-hidden
+      >
         {item?.icon}
       </span>
       <div className="min-w-0 flex-1">
-        <p className="font-ui text-[14.5px] font-bold text-walnut-dark">{row.label}</p>
+        <p className="font-ui text-[12.5px] font-extrabold leading-tight text-walnut-dark">
+          {row.label}
+        </p>
         <p
           className={cn(
-            "font-ui text-[12.5px]",
+            "font-ui text-[10.5px] leading-tight",
             ok ? "text-walnut/60" : row.blocking ? "text-tomato" : "text-copper",
           )}
         >
@@ -1387,15 +1493,17 @@ function SupplyRow({ row, onRestock }: { row: SupplyCheckRow; onRestock: (id: Su
         </p>
       </div>
       {ok ? (
-        <span className="font-ui text-[13.5px] font-extrabold text-sage">✓ Ready</span>
+        <span className="shrink-0 rounded-full bg-sage/15 px-2 py-1 font-ui text-[10.5px] font-extrabold text-olive">
+          ✓
+        </span>
       ) : (
         <KButton
           size="sm"
           variant={row.blocking ? "copper" : "ghost"}
-          className="min-h-12"
+          className="min-h-12 shrink-0 px-2 text-[10.5px]"
           onClick={() => onRestock(row.id)}
         >
-          Restock · {formatUsd(row.cost)}
+          🛒 Restock · {formatUsd(row.cost)}
         </KButton>
       )}
     </li>
