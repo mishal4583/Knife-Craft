@@ -302,7 +302,8 @@ check(
 );
 
 // ---------- 8. No mock panels; today's status first; the real wash-up ----------
-await boot(page, saveAt(30, { introSeen: true }));
+// Level 31: the Dishwashing card comes with dine-in service (the sink holds tableware).
+await boot(page, saveAt(31, { introSeen: true }));
 await openCleanliness();
 const layout8 = await page.evaluate(() => ({
   order: [...document.querySelectorAll('[data-testid="cleanliness"] > [data-testid]')].map((e) =>
@@ -315,15 +316,18 @@ const layout8 = await page.evaluate(() => ({
   wash: document.querySelector('[data-testid="cleanliness-wash-up"]')?.textContent ?? "",
 }));
 check(
-  "8 no practice / test / mock dishwashing panels; today's status first (one chip per area), the areas once each, then the real wash-up",
+  "8 no practice / test / mock dishwashing panels; today's status first (one chip per area), the real Dishwashing card, then the areas once each",
   layout8.mocks.length === 0 &&
     layout8.order[0] === "cleanliness-ready" &&
     layout8.order.filter((id) => /^area-/.test(id)).length === 3 &&
-    layout8.order.indexOf("cleanliness-wash-up") > layout8.order.indexOf("area-restroom") &&
+    // Developer 2026-10-23 ("add the dishwashing in the cleanliness page"): the Dishwashing
+    // card sits right under today's status, before the three areas (was after the areas).
+    layout8.order[1] === "cleanliness-wash-up" &&
     layout8.chips.length === 3 &&
     layout8.chips.every((t) => t === "BUTTON") &&
-    // The sink game (developer 2026-10-23): "By hand · or at START" (was "Automatic after each service").
-    /By hand · 🔁 or at START/.test(layout8.wash),
+    // The sink game (developer 2026-10-23): the card names it and offers the wash or says it's empty.
+    /Dishwashing/.test(layout8.wash) &&
+    /Wash \d+ dish|Sink empty/.test(layout8.wash),
   layout8,
 );
 

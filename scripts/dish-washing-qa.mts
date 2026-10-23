@@ -16,6 +16,11 @@
  *  L. Saves: an old lastStart without `dirty` reads 0; the sink survives the
  *     real SaveManager save/load.
  *  D. Determinism and copy: no Math.random; the Level Complete line is short.
+ *  R. Realistic dirt (restaurant/dishDirt.ts, developer 2026-10-23: "make the
+ *     dirt in the utensils more realistic"): every piece gets several stains
+ *     of the kinds that piece really collects, all on the piece, seeded (same
+ *     wash, same dirt; the next wash, fresh dirt), each with marks to scrub;
+ *     the big pieces come first and thin ones are zoomed in.
  *  W. Wiring: App and the sim don't wash right after a service; App washes at
  *     START; the sink is reachable from Cleanliness, the Pre-Service Check and
  *     Closing Time, each kind washed through the cleanliness action.
@@ -33,6 +38,16 @@ const memoryStore = new Map<string, string>();
 } as Storage;
 
 import fs from "node:fs";
+import {
+  DISH_ITEMS,
+  DISH_ORDER,
+  DISH_ZOOM,
+  dishMarks,
+  dishSeed,
+  dishStains,
+  inDishSurface,
+  type DishShape,
+} from "../src/game/restaurant/dishDirt.ts";
 import path from "node:path";
 import { DEFAULT_SAVE, SaveManager, type SaveData } from "../src/game/SaveManager.ts";
 import {
@@ -295,6 +310,77 @@ console.log("W. Wiring");
       fs.existsSync(path.resolve("public/dishwashing/premium-sink.webp")) &&
       fs.statSync(path.resolve("public/dishwashing/premium-sink.webp")).size < 120_000,
     "W4: each kind scrubbed clean is one cleanliness action; the sink art is bundled and small",
+  );
+}
+
+// ---------- R. Realistic dirt ----------
+{
+  const shapes = [...new Set(DISH_ITEMS.map((t) => t.shape))] as DishShape[];
+  const KINDS: Record<DishShape, RegExp> = {
+    plate: /sauce|crust|grease|crumbs|smear/,
+    "small-plate": /sauce|crust|crumbs|smear/,
+    bowl: /coffee-ring|crust|grease|crumbs/,
+    fork: /sauce|grease|crust/,
+    knife: /grease|sauce|smear|crust/,
+    spoon: /sauce|coffee-ring|crust|grease/,
+    glass: /water-spots|smear|coffee-ring/,
+    "cup-set": /coffee-ring|smear|water-spots/,
+    jug: /water-spots|scale|smear/,
+    shakers: /grime|crumbs|smear/,
+  };
+  let few = "";
+  let off = "";
+  let wrongKind = "";
+  let noMarks = "";
+  let fresh = 0;
+  for (const shape of shapes) {
+    for (let w = 0; w < 25; w++) {
+      const stains = dishStains(shape, dishSeed(w, `x-${shape}` as never));
+      if (stains.length < 3) few ||= `${shape}#${w}: ${stains.length}`;
+      for (const st of stains) {
+        if (!inDishSurface(st.x, st.y, shape)) off ||= `${shape}#${w} ${st.kind}`;
+        if (!KINDS[shape].test(st.kind)) wrongKind ||= `${shape} ${st.kind}`;
+        if (!(st.strength > 0 && st.strength <= 1 && st.toughness > 0)) off ||= `${shape} strength`;
+      }
+      const marks = dishMarks(stains, shape);
+      for (const st of stains)
+        if (!marks.some((m) => m.stain === st.id)) noMarks ||= `${shape}#${w} ${st.kind}`;
+      if (!marks.every((m) => inDishSurface(m.point.x, m.point.y, shape))) off ||= `${shape} mark`;
+    }
+    const a = JSON.stringify(dishStains(shape, 1234));
+    const b = JSON.stringify(dishStains(shape, 1234));
+    const c = JSON.stringify(dishStains(shape, dishSeed(322, "dinner-plates")));
+    const d = JSON.stringify(dishStains(shape, dishSeed(321, "dinner-plates")));
+    if (a === b && c !== d) fresh++;
+  }
+  assert(!few, `R1: every piece gets at least 3 stains on every wash ${few}`);
+  assert(!off, `R2: every stain and every mark to scrub sits on the piece ${off}`);
+  assert(
+    !wrongKind,
+    `R3: each piece collects its own kinds of dirt (glass: water spots…) ${wrongKind}`,
+  );
+  assert(!noMarks, `R4: every stain has marks the sponge must pass over ${noMarks}`);
+  assert(
+    fresh === shapes.length,
+    `R5: seeded — the same wash gives the same dirt, the next wash fresh dirt (${fresh}/${shapes.length})`,
+  );
+  assert(
+    shapes.every((s) => DISH_ZOOM[s] >= 1) &&
+      DISH_ZOOM.fork > DISH_ZOOM.plate &&
+      DISH_ORDER.plate < DISH_ORDER.fork &&
+      DISH_ORDER.bowl < DISH_ORDER.spoon,
+    "R6: big pieces come first; thin cutlery is zoomed in so its dirt shows",
+  );
+  const game = read("src/components/kc/restaurant/WashUpSink.tsx");
+  assert(
+    /dishStains\(/.test(game) &&
+      /playScrub\("wet"\)/.test(game) &&
+      /playSparkle\(/.test(game) &&
+      /playSpotless\(/.test(game) &&
+      /new CleaningFx|CleaningFx\(/.test(game) &&
+      /reducedMotionOn\(\)/.test(game) &&
+      !/Math\.random\(/.test(game + read("src/game/restaurant/dishDirt.ts")),
+    "R7: the sink uses the rooms' feel engine (wet scrub sound, sparkles, suds, spotless chime; reduced motion honoured), seeded",
   );
 }
 

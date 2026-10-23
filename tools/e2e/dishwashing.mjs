@@ -6,7 +6,7 @@
 //      soap is used, nothing breaks, no money moves and no ledger entry is written.
 //   3. Closing half-way keeps it; reopening shows what's left (8); scrubbing the rest empties the
 //      sink ("Sink empty") and the row disappears.
-//   4. Restaurant → Cleanliness's Wash-up card offers the same sink; with no soap the game says so
+//   4. Restaurant → Cleanliness's Dishwashing card ("🧽 Wash 12 dishes") offers the same sink; with no soap the game says so
 //      and offers 🛒 Dish soap (the Market's exact line).
 //   5. 320 px: the sink fits, no sideways scroll, its buttons ≥ 48 px; no console errors.
 // Prints PASS/FAIL per check and exits 1 on any failure.
@@ -229,8 +229,8 @@ const noSoap = await page.evaluate(() => ({
 }));
 check(
   "4 Restaurant → Cleanliness offers the same sink; with no soap nothing is washed and it offers 🛒 Dish soap",
-  /12 in the sink/.test(card) &&
-    /No dish soap/.test(card) &&
+  /Wash 12 dishes/.test(card) &&
+    /No soap/.test(card) &&
     sinkOf(n1) === sinkOf(n0) &&
     /Out of dish soap/.test(noSoap.status) &&
     noSoap.buy,

@@ -9,7 +9,7 @@ import { supplyUnits } from "@/game/business/BusinessSuppliesManager";
 import { BUSINESS_STAFF_CATALOG } from "@/game/business/businessStaff";
 import { formatUsd } from "@/game/money";
 import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
-import { restaurantSystem } from "@/game/restaurant/restaurantProgression";
+import { isSystemLive, restaurantSystem } from "@/game/restaurant/restaurantProgression";
 import { bottleView, restaurantSuppliesOf } from "@/game/restaurant/serviceSupplies";
 import { InfoTip, StatChip } from "../common/InfoTip";
 import {
@@ -168,6 +168,11 @@ export function BusinessCleanliness({
         }}
       />
 
+      {/* Dishwashing (developer 2026-10-23: an important part of cleaning) — once dishes exist. */}
+      {isSystemLive("dine-in", level) ? (
+        <SinkWash save={save} go={go} cleanlinessAction={cleanlinessAction} variant="card" />
+      ) : null}
+
       {/* The three areas */}
       {areas.map((v) => (
         <AreaCard
@@ -184,8 +189,6 @@ export function BusinessCleanliness({
           onBuy={(id) => openMarketSupplies(go, getSupplyItem(id)?.section ?? "cleaning", id)}
         />
       ))}
-
-      <WashUpCard save={save} go={go} cleanlinessAction={cleanlinessAction} />
 
       <StaffCard
         save={save}
@@ -537,73 +540,6 @@ function AreaCard({
           </div>
         ) : null}
       </div>
-    </Panel>
-  );
-}
-
-/* ── The wash-up (real: restaurant/serviceSupplies.ts handWash / washUp) ── */
-
-/**
- * The sink (developer 2026-10-23: dishwashing back): after a service its
- * dishes wait here. Washed by hand in the sink game (`SinkWash` → the
- * cleanliness action "wash") nothing breaks; what's left is washed by itself
- * when the next service starts (`washUp`), and now and then a piece breaks.
- */
-function WashUpCard({
-  save,
-  go,
-  cleanlinessAction,
-}: {
-  save: SaveData;
-  go: (s: ScreenId) => void;
-  cleanlinessAction: (action: CleanlinessAction) => CleanlinessActionResult | null;
-}) {
-  const st = restaurantSuppliesOf(save);
-  const waiting = Object.values(st.dirty).reduce((t, n) => t + (n ?? 0), 0);
-  const soap = bottleView(save, "dish-soap");
-  return (
-    <Panel className="p-3" data-testid="cleanliness-wash-up">
-      <div className="flex items-center gap-3">
-        <span
-          className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-sage/20 text-[25px]"
-          aria-hidden
-        >
-          🫧
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="font-display text-[15px] font-black text-walnut-dark">Wash-up</p>
-          <p className="flex items-center gap-1 font-ui text-[12px] text-walnut/65">
-            🧽 By hand · 🔁 or at START
-            <InfoTip label="About the wash-up">
-              After a service its dishes wait in the sink. Wash them by hand and nothing breaks.
-              Left in the sink, they are washed when the next service starts, and now and then a
-              plate, glass or fork breaks.
-            </InfoTip>
-          </p>
-          <div className="mt-1 flex flex-wrap gap-1">
-            {waiting > 0 ? (
-              <StatChip icon="🍽️" tone={soap.status === "empty" ? "tomato" : "copper"}>
-                {waiting} waiting{soap.status === "empty" ? " · no soap" : ""}
-              </StatChip>
-            ) : (
-              <StatChip icon="✓" tone="sage">
-                All clean
-              </StatChip>
-            )}
-            {st.washedTotal > 0 ? (
-              <StatChip icon="🫧" title="Pieces washed so far">
-                {st.washedTotal.toLocaleString("en-US")} washed
-              </StatChip>
-            ) : null}
-            {st.brokenTotal > 0 ? (
-              <StatChip icon="💥" title="Pieces broken so far">
-                {st.brokenTotal} broken
-              </StatChip>
-            ) : null}
-          </div>
-        </div>
-      </div>
-      <SinkWash save={save} go={go} cleanlinessAction={cleanlinessAction} className="mt-2" />
     </Panel>
   );
 }

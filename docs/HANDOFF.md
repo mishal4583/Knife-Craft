@@ -1,5 +1,12 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## Dishwashing as a feature: realistic dirt, satisfying sink (2026-10-23, `main`)
+
+- Cleanliness has a Dishwashing card (under today's status). The sink game paints
+  realistic, per-piece dirt (`restaurant/dishDirt.ts`, seeded) and reuses the rooms'
+  feel engine: suds, wet scrub, sparkles, combo, shine + squeak, drying rack, summary.
+  REFERENCE §10 "The sink"; QA `dish-washing-qa` R1–R7.
+
 ## Dishwashing back: the sink (2026-10-23, `main`)
 
 - A service's dishes wait in the sink; wash them by hand in the sink game (soap, nothing

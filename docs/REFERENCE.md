@@ -842,8 +842,26 @@ service, {recipe, levelNumber, index})`; the guest gate
     - Spotless (`serviceReport`): pieces still dirty when a service STARTED
       (`cleanliness.lastStart.dirty`, no soap for the START wash-up) spoil
       it; the service's own dishes in the sink at close don't.
-    - Where: `SinkWash` ("🫧 N in the sink · 🧽 Wash ›") on Cleanliness →
-      Wash-up, the Pre-Service Check (with the opening chores) and Closing
+    - Realistic dirt and the satisfying feel (developer 2026-10-23: "consider
+      the cleaning an important feature … make the dirt in the utensils more
+      realistic"): `restaurant/dishDirt.ts` is the pure dirt model — each
+      piece collects its own kinds (plate: sauce, baked-on crust, grease
+      streak, crumbs, smear; bowl: tide-mark ring; glass: water spots and lip
+      marks; jug: scale; shakers: grime…), 3–6 stains seeded by
+      `dishSeed(washedTotal, id)` (fresh dirt every wash, all on the piece),
+      painted with the rooms' `paintStain` and scrubbed with the rooms' feel
+      engine (`cleaningDirt` wear and toughness, `CleaningFx` suds and
+      sparkles, wet scrub sound, sparkle steps, combo, a buzz). A piece is
+      clean at 90%: the last specks cascade off, a shine sweep and a squeak,
+      a cheer ("Squeaky clean!"), it slides onto the drying rack and the next
+      slides in; the last one plays the spotless chime and a summary (best
+      combo, seconds). Big pieces come first (`DISH_ORDER`); thin cutlery is
+      zoomed in (`DISH_ZOOM`) so its dirt shows. Reduced motion is honoured.
+    - Where: Restaurant → Cleanliness's **Dishwashing card** (right under
+      today's status, before the areas; the sink picture, a count and meter,
+      a chip per kind, soap · washed · broken behind ⓘ, "🧽 Wash N dishes",
+      🛒 Soap with none; shown from dine-in, L31); `SinkWash` rows
+      ("🫧 N in the sink · 🧽 Wash ›") on the Pre-Service Check (with the opening chores) and Closing
       Time; Level Complete adds "🫧 N in the sink · 🧽 wash by hand, nothing
       breaks" (`sinkNoticeLines`).
     - Economy: the sim's player never washes by hand, so its numbers barely
