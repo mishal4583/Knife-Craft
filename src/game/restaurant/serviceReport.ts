@@ -137,9 +137,12 @@ export function closeServiceReport(
   const hygiene: ServiceHygiene | null =
     dineIn || isCleanlinessLive(levelNumber)
       ? {
-          soap: !noSoap,
+          // Since the sink game (developer 2026-10-23) a service's own dishes wait in the
+          // sink after it; what counts is what was still dirty when it STARTED (the
+          // start's wash-up had no soap).
+          soap: !noSoap && !(atStart && atStart.dirty > 0),
           cleaner: !dineIn || bottleView(save, "cleaning-liquid").status !== "empty",
-          dirtyLeft: Object.values(sup.dirty).reduce((t, n) => t + (n ?? 0), 0),
+          dirtyLeft: atStart ? atStart.dirty : 0,
           ...(atStart && atStart.open > 0
             ? { openTasks: atStart.open, areas: atStart.areas.map((a) => AREA_META[a].title) }
             : {}),

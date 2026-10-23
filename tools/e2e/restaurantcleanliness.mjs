@@ -15,7 +15,7 @@
 //   9. "Free with an ad" (stubbed): a declined ad changes nothing; a finished one puts a Cleaner
 //      on today with no money and no ledger entry (placement day_cleaner).
 //   8. No practice / test / mock dishwashing panels (developer 2026-10-17); today's status
-//      first (a chip per area), each area once, then the real wash-up (automatic, serviceSupplies).
+//      first (a chip per area), each area once, then the real wash-up (the sink, 2026-10-23).
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import { MOVED_IN_BUSINESS, launch, boot, seedSave, sleep, readSave, shot } from "./harness.mjs";
 
@@ -322,7 +322,8 @@ check(
     layout8.order.indexOf("cleanliness-wash-up") > layout8.order.indexOf("area-restroom") &&
     layout8.chips.length === 3 &&
     layout8.chips.every((t) => t === "BUTTON") &&
-    /Automatic after each service/.test(layout8.wash),
+    // The sink game (developer 2026-10-23): "By hand · or at START" (was "Automatic after each service").
+    /By hand · 🔁 or at START/.test(layout8.wash),
   layout8,
 );
 

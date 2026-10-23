@@ -151,6 +151,7 @@ import {
   orderServiceFor,
   takeOrderSupplies,
   washUp,
+  sinkNoticeLines,
 } from "@/game/restaurant/serviceSupplies";
 import { closeServiceReport, serviceReportLines } from "@/game/restaurant/serviceReport";
 import {
@@ -2442,9 +2443,11 @@ export function App() {
     const brokenBefore = restaurantSuppliesOf(nextSave).brokenTotal;
     // Supplies plan D: then the service's report (guests, takeaway, washed, spotless streak).
     let serviceLines: string[] = [];
+    // The sink game (developer 2026-10-23): this service's dishes wait in the sink — washed
+    // by hand (nothing breaks), or by the automatic wash-up when the next service starts.
     if (RESTAURANT_MODE && isFirstCompletion) {
-      const washed = washUp(recordService(nextSave, levelNumber(level.id)), levelNumber(level.id));
-      const report = closeServiceReport(washed.save, levelNumber(level.id), washed.noSoap);
+      const recorded = recordService(nextSave, levelNumber(level.id));
+      const report = closeServiceReport(recorded, levelNumber(level.id), false);
       nextSave = report.save;
       serviceLines = serviceReportLines(report.report);
       // Cleanliness & Maintenance: the cleaning this service left, then the Cleaner's round.
@@ -2458,7 +2461,11 @@ export function App() {
       nextSave = choresAfterService(nextSave, levelNumber(level.id));
       const round = cleanerRound(nextSave);
       nextSave = round.save;
-      serviceLines = [...serviceLines, ...cleaningLines(nextSave, round.cleaned.length)];
+      serviceLines = [
+        ...serviceLines,
+        ...cleaningLines(nextSave, round.cleaned.length),
+        ...sinkNoticeLines(nextSave),
+      ];
     }
     const brokenNow = restaurantSuppliesOf(nextSave).brokenTotal - brokenBefore;
     // First levels: before Level 21 the day closes quietly, and Level Complete says so.

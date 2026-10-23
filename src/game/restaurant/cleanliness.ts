@@ -36,7 +36,13 @@ import type { RecipeDefinition } from "../recipes/recipeTypes";
 import { dishServiceFor } from "./dishService";
 import { isSystemLive } from "./restaurantProgression";
 import { restaurantDayOf } from "./restaurantDay";
-import { bottleView, restaurantSuppliesOf, tablesFor } from "./serviceSupplies";
+import {
+  bottleView,
+  handWash,
+  restaurantSuppliesOf,
+  sinkPieces,
+  tablesFor,
+} from "./serviceSupplies";
 import { isAuditDay } from "./parAudit";
 import { remapCampaignThreshold } from "../levels/campaignSelection";
 import { BUSINESS_STAFF_CATALOG } from "../business/businessStaff";
@@ -447,8 +453,12 @@ export type CleanlinessState = {
   introSeen: boolean;
   /** The level Grandma's cleaning cupboard came at (once); null = not yet. */
   cupboardAt: number | null;
-  /** What was open when the last service started (the spotless check). */
-  lastStart: { level: number; open: number; areas: CleanArea[] } | null;
+  /**
+   * What was open when the last service started (the spotless check): cleaning
+   * tasks, and the pieces still dirty after the start's wash-up (no soap) —
+   * since the sink game (2026-10-23) a service's own dishes wait in the sink.
+   */
+  lastStart: { level: number; open: number; areas: CleanArea[]; dirty: number } | null;
   cleaned: number;
   byCleaner: number;
   /** The shift-chore batches already added ("day:phase:services"), so a phase never repeats. */
@@ -506,6 +516,7 @@ export function cleanlinessOf(save: SaveData): CleanlinessState {
             level: whole(ls.level),
             open: whole(ls.open),
             areas: Array.isArray(ls.areas) ? ls.areas.filter(isArea) : [],
+            dirty: whole((ls as { dirty?: unknown }).dirty),
           }
         : null,
     cleaned: whole(raw.cleaned),
@@ -891,7 +902,12 @@ export function snapshotServiceStart(save: SaveData, levelNumber: number): SaveD
   const areas = CLEAN_AREAS.filter((a) => st.tasks.some((t) => TASK_RULES[t.kind].area === a));
   return withState(save, {
     ...st,
-    lastStart: { level: levelNumber, open: st.tasks.length, areas },
+    lastStart: {
+      level: levelNumber,
+      open: st.tasks.length,
+      areas,
+      dirty: sinkPieces(save),
+    },
   });
 }
 
@@ -1075,7 +1091,9 @@ export type CleanlinessAction =
   | { kind: "clean-all" }
   | { kind: "phase-all"; phase: ShiftPhase }
   | { kind: "areas"; areas: CleanArea[] }
-  | { kind: "intro-seen" };
+  | { kind: "intro-seen" }
+  /** The sink game (2026-10-23): these lines washed by hand (soap, nothing breaks). */
+  | { kind: "wash"; ids: SupplyId[] };
 
 export type CleanlinessActionResult = { save: SaveData; cleaned: TaskKind[]; needs: SupplyId[] };
 
@@ -1113,6 +1131,10 @@ export function applyCleanlinessAction(
       return { save: setCleanerAreas(save, action.areas), cleaned: [], needs: [] };
     case "intro-seen":
       return { save: markCleanlinessIntroSeen(save), cleaned: [], needs: [] };
+    case "wash": {
+      const w = handWash(save, action.ids);
+      return { save: w.save, cleaned: [], needs: w.noSoap ? ["dish-soap"] : [] };
+    }
   }
 }
 

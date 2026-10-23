@@ -260,6 +260,7 @@ once). Restaurant browser tests run on the normal build, classic ones on a
   `restaurant-tools-qa`, `restaurant-tableware-qa`,
   `restaurant-takeaway-qa`, `restaurant-service-report-qa`,
   `restaurant-cleanliness-qa`, `cleaning-dirt-qa` (browser: `cleaningfeel.mjs`),
+  `dish-washing-qa` (browser: `dishwashing.mjs`),
   `restaurant-day-clock-qa`,
   `restaurant-shift-chores-qa`, `restaurant-deliveries-qa`,
   `restaurant-par-audit-qa`, `restaurant-half-wages-qa`, `restaurant-second-floor-qa`,
@@ -811,18 +812,44 @@ service, {recipe, levelNumber, index})`; the guest gate
   - → the exact Market line) and tools; a 4-step intro once.
     Screen order (developer 2026-10-17, "any mock or any section repeated —
     sort it"): Today's cleanliness first (a chip per area → that area's
-    tasks, and Clean everything), the three area cards, the Wash-up (read
-    only: pieces waiting, washed and broken from `serviceSupplies` — the
-    wash-up itself runs after each service, `washUp`), Cleaning staff,
+    tasks, and Clean everything), the three area cards, the Wash-up (pieces
+    in the sink, washed and broken from `serviceSupplies`, and the sink game —
+    see "The sink" below), Cleaning staff,
     supplies, Recent history. Removed as mocks: "Practice room cleaning"
     (preview-only rooms), "Customer dishwashing" and "Chef's tools wash-up"
     (a scrubbing mini-game on a fixed list that never touched the save).
-    `DishwashingPrototype.tsx` and its sink art (`public/dishwashing/`) were
-    removed on 2026-10-17: the real wash-up runs by itself after each
-    service, so the scrub game had nothing real to wash (in git history if
-    ever wanted). Browser: `tools/e2e/restaurantcleanliness.mjs`
+    `DishwashingPrototype.tsx` and its sink art were removed on 2026-10-17
+    (the wash-up ran by itself after each service, so the scrub game had
+    nothing real to wash); the developer brought dishwashing back on
+    2026-10-23 as the real sink game (below). Browser: `tools/e2e/restaurantcleanliness.mjs`
     (8 checks; it now opens the tab through the map's Manager / Office and
     uses the 150-level numbering).
+    **The sink** (developer 2026-10-23, "add the dish washing back and
+    integrate it properly"; the developer chose "sink after service"):
+    - A service's dishes WAIT in the sink (`restaurantSupplies.dirty`):
+      App and the sim no longer wash right after a service.
+    - By hand: the sink game `restaurant/WashUpSink.tsx` (the prototype's
+      sink art, `public/dishwashing/premium-sink.webp`, and scrubbing, fed
+      the real `sinkLines`), one kind at a time ("Dinner plates ×4"). Each
+      kind scrubbed clean is the cleanliness action `{ kind: "wash", ids }`
+      → `handWash`: dish soap by the piece (`soapPerPiece`, no machine
+      minimum), nothing breaks, no money, no ledger; saved per kind, so
+      closing half-way keeps it. No soap → the sink says so at once and
+      offers 🛒 Dish soap (Market → that line).
+    - Not washed: the automatic `washUp` at the next service's START washes
+      what's left (one wash-up's soap, the seeded chance a piece breaks) —
+      never needed to progress, no soft-lock.
+    - Spotless (`serviceReport`): pieces still dirty when a service STARTED
+      (`cleanliness.lastStart.dirty`, no soap for the START wash-up) spoil
+      it; the service's own dishes in the sink at close don't.
+    - Where: `SinkWash` ("🫧 N in the sink · 🧽 Wash ›") on Cleanliness →
+      Wash-up, the Pre-Service Check (with the opening chores) and Closing
+      Time; Level Complete adds "🫧 N in the sink · 🧽 wash by hand, nothing
+      breaks" (`sinkNoticeLines`).
+    - Economy: the sim's player never washes by hand, so its numbers barely
+      move (completionist Local $132,088 → $132,066: soap and breakage one
+      service later); hand washing only saves the odd broken piece.
+      QA `dish-washing-qa`; browser `dishwashing.mjs`.
     A Cleaner for today (developer 2026-10-17, in place of "Clean everything
     I can"): with no Cleaner hired, the status card offers "Today · $X" (the
     Cleaner's day wage, `dayCleanerPrice` = the catalog salary; all-or-nothing

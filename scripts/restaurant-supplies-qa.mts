@@ -591,10 +591,11 @@ console.log("R. Wiring");
     /if \(RESTAURANT_MODE && level && !isCompleted\(level\.id, base\.levelProgress\)\)\s*base = (?:markStarterCrateSeen\()?washUp\(base, levelNumber\(level\.id\)\)\.save\)?;/.test(
       app,
     ) &&
-      /(?:nextSave|const washed) = washUp\(\s*recordService\(nextSave, levelNumber\(level\.id\)\)/.test(
-        app,
-      ),
-    "R3: the wash-up runs when a first play starts (phase M also marks the starter crate seen there) and after a service",
+      // Since the sink game (developer 2026-10-23) a service's dishes wait in the sink: no
+      // wash-up right after it (was `washUp(recordService(…))`); the START one washes them.
+      !/washUp\(\s*recordService\(/.test(app) &&
+      /const recorded = recordService\(nextSave, levelNumber\(level\.id\)\)/.test(app),
+    "R3: the wash-up runs when a first play starts (phase M also marks the starter crate seen there); a service's dishes wait in the sink",
   );
   const day = read("src/game/restaurant/restaurantDay.ts");
   assert(

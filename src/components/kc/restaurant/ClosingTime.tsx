@@ -4,6 +4,7 @@ import { openMarketSupplies } from "@/components/kc/marketFocus";
 import { getSupplyItem } from "@/game/business/businessSupplies";
 import type { CleanlinessAction, CleanlinessActionResult } from "@/game/restaurant/cleanliness";
 import { ShiftChecklist } from "./ShiftChecklist";
+import { SinkWash } from "./SinkWash";
 import { KButton } from "@/components/kc/common/primitives";
 import { cn } from "@/lib/utils";
 import type { SaveData } from "@/game/SaveManager";
@@ -88,6 +89,10 @@ export function ClosingTime({
             ))}
           </ul>
 
+          {cleanlinessAction ? (
+            // The day's last dishes (the sink game, 2026-10-23); left, they wash at tomorrow's START.
+            <SinkWash save={save} go={go} cleanlinessAction={cleanlinessAction} className="mt-3" />
+          ) : null}
           {cleanlinessAction ? (
             <ShiftChecklist
               save={save}

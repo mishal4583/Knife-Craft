@@ -288,8 +288,10 @@ console.log("W. Wiring");
   const app = read("src/App.tsx");
   assert(
     // Phase G wraps the count in the wash-up (serviceSupplies.washUp); supplies plan D then
-    // closes the service's report from it (`const washed = …`); the guard is the same.
-    /if \(RESTAURANT_MODE && isFirstCompletion\)\s*(?:\{\s*const washed = |nextSave = )(?:washUp\(\s*)?recordService\(nextSave, levelNumber\(level\.id\)\)/.test(
+    // closes the service's report from it (`const washed = …`); since the sink game
+    // (developer 2026-10-23) the dishes wait in the sink, so the count is recorded on its own
+    // (`const recorded = …`). The guard is the same.
+    /if \(RESTAURANT_MODE && isFirstCompletion\)\s*(?:\{\s*const (?:washed|recorded) = |nextSave = )(?:washUp\(\s*)?recordService\(nextSave, levelNumber\(level\.id\)\)/.test(
       app,
     ),
     "W1: a service is counted only on a first completion, only under RESTAURANT_MODE",

@@ -554,6 +554,63 @@ export function washUp(
   };
 }
 
+// ── The sink (developer 2026-10-23: dishwashing is back, by hand) ────────
+
+/** The pieces waiting in the sink, by line, most first (what the sink game washes). */
+export function sinkLines(save: SaveData): { id: SupplyId; n: number }[] {
+  return (Object.entries(restaurantSuppliesOf(save).dirty) as [SupplyId, number][])
+    .filter(([, n]) => n > 0)
+    .map(([id, n]) => ({ id, n }))
+    .sort((a, b) => b.n - a.n || a.id.localeCompare(b.id));
+}
+
+/** Level Complete's sink line: what waits, and the choice (short copy). */
+export function sinkNoticeLines(save: SaveData): string[] {
+  const n = sinkPieces(save);
+  return n > 0 ? [`🫧 ${n} in the sink · 🧽 wash by hand, nothing breaks`] : [];
+}
+
+/** Every piece waiting in the sink. */
+export function sinkPieces(save: SaveData): number {
+  return sinkLines(save).reduce((t, l) => t + l.n, 0);
+}
+
+/**
+ * Washing by hand (the sink game, developer 2026-10-23): the chosen lines'
+ * pieces are washed with dish soap — by the piece, without the machine's
+ * one-wash minimum — and, washed with care, nothing breaks. No money moves.
+ * Without enough soap nothing changes (`noSoap`). Pieces left in the sink
+ * are washed by the automatic wash-up when the next service starts (`washUp`).
+ */
+export function handWash(
+  save: SaveData,
+  ids: readonly SupplyId[],
+): { save: SaveData; washed: number; noSoap: boolean } {
+  const state = restaurantSuppliesOf(save);
+  const pick = [...new Set(ids)].filter((id) => (state.dirty[id] ?? 0) > 0);
+  const pieces = pick.reduce((t, id) => t + (state.dirty[id] ?? 0), 0);
+  if (pieces === 0) return { save, washed: 0, noSoap: false };
+  const soap = drawFromBottle(
+    save,
+    "dish-soap",
+    Math.round(pieces * SERVICE_SUPPLY_RULES.soapPerPiece * 100) / 100,
+  );
+  if (!soap.ok) return { save, washed: 0, noSoap: true };
+  const after = restaurantSuppliesOf(soap.save);
+  const dirty = { ...after.dirty };
+  for (const id of pick) delete dirty[id];
+  return {
+    save: withState(soap.save, {
+      ...after,
+      dirty,
+      washing: 0,
+      washedTotal: after.washedTotal + pieces,
+    }),
+    washed: pieces,
+    noSoap: false,
+  };
+}
+
 /** The closing wipe-down's cleaning liquid (from the dine-in stage). `ok` false: none left (a warning). */
 export function closingWipeDown(
   save: SaveData,

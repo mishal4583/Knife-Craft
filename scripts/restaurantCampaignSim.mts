@@ -624,9 +624,10 @@ function playLevel(save: SaveData, n: number, opts: SimOptions, stats: Stats): S
   const { progress, isFirstCompletion, rewardCoins } = completeLevel(level.id, s.levelProgress);
   let next: SaveData = { ...s, credits: s.credits + rewardCoins, levelProgress: progress };
   if (isFirstCompletion) {
-    // As App: the wash-up, then the service's report (supplies plan D: the spotless streak).
-    const washed = washUp(recordService(next, n), n);
-    const report = closeServiceReport(washed.save, n, washed.noSoap);
+    // As App: the service's report (supplies plan D: the spotless streak). Since the sink game
+    // (developer 2026-10-23) the dishes wait in the sink; this player never washes by hand, so
+    // the automatic wash-up at the next service's start washes them.
+    const report = closeServiceReport(recordService(next, n), n, false);
     next = report.save;
     // As App: the cleaning this service left, then the Cleaner's round.
     const served = paidOrdersFor(s.levelProgress, level.id).map((id) => getCampaignRecipe(id));

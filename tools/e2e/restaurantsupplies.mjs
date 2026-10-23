@@ -10,7 +10,8 @@
 //      napkins and dish soap (bought in the Market, ONE ledger entry each) and the check turns
 //      ready; the soap bottle then shows a % and "~N services left".
 //   3. Serving the order takes the dish's pieces (→ washing) and a napkin automatically;
-//      finishing the level runs the wash-up (dish soap used, nothing washing).
+//      finishing the level leaves them in the sink (the sink game, developer 2026-10-23: washed
+//      by hand, or by the wash-up at the next START) — no soap used yet; Level Complete says so.
 //   4. Inventory → Supplies shows the place settings and both bottles (read-only).
 //   5. Level 23 (Dinner) ends the day: Closing Time shows the empty cleaning-liquid bottle
 //      and still closes for the night.
@@ -269,20 +270,26 @@ check(
 await clickButton(page, /^Finish Level$/);
 await sleep(1000);
 const done = await readSave(page);
+// The sink game (developer 2026-10-23; was "the wash-up runs: nothing washing, soap 95 %"):
+// the service's pieces wait in the sink, the soap is untouched until they're washed.
 check(
-  "3b finishing the service runs the wash-up: nothing washing, dish soap used (one bottle opened)",
+  "3b finishing the service leaves its bowl, spoon and glass in the sink; no dish soap used yet",
   done.levelProgress.completedLevelIds.includes("level-22") &&
-    done.business.restaurantSupplies?.washing === 0 &&
-    done.business.restaurantSupplies?.soapPct === 95 &&
-    done.business.supplies.stock["dish-soap"]?.units === 3 &&
+    ["soup-bowls", "soup-spoons", "water-glasses"].every(
+      (id) => done.business.restaurantSupplies?.dirty?.[id] === 1,
+    ) &&
+    (done.business.restaurantSupplies?.soapPct ?? 0) === 0 &&
+    done.business.supplies.stock["dish-soap"]?.units === 4 &&
     done.credits >= served.credits,
   { rs: done.business.restaurantSupplies, soap: done.business.supplies.stock["dish-soap"] },
 );
 
 const lc = (await text(page)).replace(/\s+/g, " ");
 check(
-  "3c Level Complete reports the service (supplies plan D): 1 guest served, pieces washed; not spotless — no cleaning liquid (the streak starts again)",
-  /🍽️ 1 guest served · 🧼 \d+ washed/.test(lc) &&
+  "3c Level Complete reports the service (supplies plan D): 1 guest served, 3 in the sink; not spotless — no cleaning liquid (the streak starts again)",
+  // "🫧 3 in the sink" since the sink game (2026-10-23; was "🧼 N washed").
+  /🍽️ 1 guest served/.test(lc) &&
+    /🫧 3 in the sink/.test(lc) &&
     /Not spotless: no cleaning liquid/.test(lc) &&
     done.business.restaurantRecord?.services >= 1 &&
     done.business.restaurantRecord?.streak === 0 &&
@@ -321,13 +328,15 @@ const inv = await page.evaluate(
 );
 await shot(page, "restaurant-supplies-inventory");
 check(
-  "4 Inventory → Supplies shows the place settings, what each guest eats from, the soap at 95% and the empty cleaning liquid",
+  "4 Inventory → Supplies shows the place settings and the 3 to wash, what each guest eats from, the soap still sealed and the empty cleaning liquid",
   !!inv &&
     /Place settings: \d+ clean/.test(inv) &&
     // "👤 🍽️ 🍴 🥛 per guest" since the picture pass (2026-10-23; was "Per guest: plate or bowl …").
     /per guest/.test(inv) &&
-    /Dish soap — 95%/.test(inv) &&
-    /~79 washes remaining/.test(inv) &&
+    // The sink game (2026-10-23; was "95%, ~79 washes"): nothing washed yet, the soap is sealed.
+    /🫧 3 to wash/.test(inv) &&
+    /Dish soap — 0% \+ 4 spare/.test(inv) &&
+    /~80 washes remaining/.test(inv) &&
     /Cleaning liquid — 0%/.test(inv),
   inv,
 );
@@ -375,12 +384,16 @@ await clickButton(page, /^Close for the night/);
 await sleep(800);
 const afterClose = await readSave(page);
 check(
-  "5 after Dinner (L23) closing shows the empty cleaning-liquid bottle and still closes for the night",
+  "5 after Dinner (L23) closing shows the empty cleaning-liquid bottle and still closes for the night; Lunch's dishes were washed at Dinner's START, Dinner's wait in the sink",
   day?.closingDue === true &&
     !!ct &&
     /Empty/.test(ct) &&
     afterClose.business.restaurantDay?.day === day.day + 1 &&
-    afterClose.business.restaurantSupplies?.washing === 0,
+    // The sink game (2026-10-23; was "nothing washing"): the START wash-up washed Lunch's
+    // three pieces (soap opened), Dinner's own dishes wait overnight.
+    (afterClose.business.restaurantSupplies?.washedTotal ?? 0) >= 3 &&
+    (afterClose.business.restaurantSupplies?.soapPct ?? 0) > 0 &&
+    Object.values(afterClose.business.restaurantSupplies?.dirty ?? {}).some((n) => n > 0),
   { ct, day, dayAfter: afterClose.business.restaurantDay },
 );
 

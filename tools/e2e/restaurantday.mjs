@@ -231,8 +231,11 @@ check(
   !(await closingText()) &&
     afterClose.business.restaurantDay?.day === 11 &&
     !!day12 &&
-    /Day 11 · Opening time/i.test(day12) &&
-    /Level 21/.test(day12) &&
+    // "📆 Day 11 · Level 21" + "🌅 Before opening" since the Pre-Service Check polish
+    // (developer 2026-10-23, 613d3a4; was "Day 11 · Opening time").
+    /Day 11 · (?:Opening time|Level 21)/i.test(day12) &&
+    /Opening time|Before opening/i.test(day12) &&
+    /Level 21/i.test(day12) &&
     /Breakfast/.test(day12),
   { day: afterClose.business.restaurantDay, day12: day12?.slice(0, 160) },
 );

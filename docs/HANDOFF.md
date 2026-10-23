@@ -1,5 +1,13 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## Dishwashing back: the sink (2026-10-23, `main`)
+
+- A service's dishes wait in the sink; wash them by hand in the sink game (soap, nothing
+  breaks, no money) from Cleanliness, the Pre-Service Check or Closing Time, or they're
+  washed automatically at the next START (breakage as before). Spotless now judges what
+  was dirty at a service's START. REFERENCE §10 Cleanliness "The sink"; QA
+  `dish-washing-qa`, browser `dishwashing.mjs`.
+
 ## Images halved (2026-10-23, `main`)
 
 - 109 of 126 images re-encoded smaller (20.5 → 10.6 MB; dist 29 → 19 MB), names and

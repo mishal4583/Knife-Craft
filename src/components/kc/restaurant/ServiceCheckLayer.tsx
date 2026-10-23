@@ -8,6 +8,7 @@ import {
   type CleanlinessActionResult,
 } from "@/game/restaurant/cleanliness";
 import { ShiftChecklist } from "./ShiftChecklist";
+import { SinkWash } from "./SinkWash";
 import type { SaveData } from "@/game/SaveManager";
 import { openStaffFor } from "../staffFocus";
 import type { ScreenId } from "@/components/kc/data";
@@ -147,6 +148,8 @@ export function ServiceCheckLayer({
         cleanlinessAction ? (
           <div id="psc-opening-chores" className="space-y-2">
             {plan.opening ? <MorningDeliveries save={save} /> : null}
+            {/* Last service's dishes waiting in the sink (the sink game, 2026-10-23). */}
+            <SinkWash save={save} go={go} cleanlinessAction={cleanlinessAction} />
             {plan.opening ? (
               <ParAuditCard
                 save={save}
