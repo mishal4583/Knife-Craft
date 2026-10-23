@@ -15,6 +15,7 @@ import {
   clickButton,
   openSection,
   shot,
+  doClosingChores,
 } from "./harness.mjs";
 
 const results = [];
@@ -98,6 +99,7 @@ const tonightNames = await page.evaluate(() =>
   [...document.querySelectorAll("[data-order-line]")].map((x) => x.getAttribute("data-order-line")),
 );
 const before = await readSave(page);
+await doClosingChores(page);
 await clickButton(page, /^Close for the night/);
 await sleep(1200);
 const after = await readSave(page);

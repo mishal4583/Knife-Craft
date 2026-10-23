@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { TonightsOrder } from "./Deliveries";
 import type { ScreenId } from "@/components/kc/data";
 import { openMarketSupplies } from "@/components/kc/marketFocus";
@@ -13,6 +14,7 @@ import { formatUsd } from "@/game/money";
 import { closingPreview } from "@/game/restaurant/restaurantDay";
 import { SupplyBottle } from "./SupplyBottle";
 import { InfoTip } from "@/components/kc/common/InfoTip";
+import { closingChoreList, type ClosingChore } from "@/game/restaurant/closingChores";
 
 /**
  * CLOSING TIME (Unified Restaurant phase 5, behind RESTAURANT_MODE) — after
@@ -23,12 +25,19 @@ import { InfoTip } from "@/components/kc/common/InfoTip";
  * throws out. One button closes for the night (`closeDay`) and the next
  * level opens Day N+1. It has no dismiss: the day must close first (replays
  * stay playable).
+ *
+ * The chores are the player's (developer 2026-10-23: "do not automate the
+ * important tasks while closing, let the player do everything unless he
+ * hires a cleaner"): each has its own button (wash up opens the sink game
+ * while dishes wait), and "Close for the night" opens once they're done. A
+ * Cleaner on duty does them all but the count (closingChores.ts).
  */
 export function ClosingTime({
   save,
   restaurantLevel,
   onClose,
   cleanlinessAction,
+  onChore,
   go,
 }: {
   save: SaveData;
@@ -37,8 +46,12 @@ export function ClosingTime({
   /** A real restaurant's day: closing's chores, done here (App.cleanlinessAction). */
   cleanlinessAction?: (action: CleanlinessAction) => CleanlinessActionResult | null;
   go?: (s: ScreenId) => void;
+  /** The player does one closing chore (App: closingChores.doClosingChore → save). */
+  onChore?: (id: string) => void;
 }) {
   const p = closingPreview(save, restaurantLevel);
+  const chores = closingChoreList(save, restaurantLevel);
+  const left = onChore ? chores.filter((c) => c.by === null).length : 0;
   const change = p.cashAtOpening === null ? null : p.cashNow - p.cashAtOpening;
   return (
     <div className="absolute inset-0 z-40 flex items-end justify-center" data-testid="closing-time">
@@ -70,29 +83,42 @@ export function ClosingTime({
             ))}
           </ul>
 
-          <p className="mt-3 font-ui text-[12.5px] font-extrabold uppercase tracking-wide text-walnut/60">
-            Done when you close
-          </p>
-          <ul className="mt-1 space-y-1" data-testid="closing-chores">
-            {p.chores.map((c, i) => (
-              <li
+          <div className="mt-3 flex items-center gap-2">
+            <p className="font-ui text-[12.5px] font-extrabold uppercase tracking-wide text-walnut/60">
+              Close up
+            </p>
+            <span
+              className={cn(
+                "rounded-full px-2 py-0.5 font-ui text-[11px] font-black",
+                left > 0 ? "bg-copper/15 text-copper" : "bg-sage/20 text-olive",
+              )}
+              data-testid="closing-left"
+            >
+              {left > 0 ? `${left} left` : "✓ All done"}
+            </span>
+          </div>
+          <ul className="mt-1.5 space-y-1.5" data-testid="closing-chores">
+            {chores.map((c, i) => (
+              <ChoreRow
                 key={c.id}
-                data-chore={c.id}
-                className="kc-story-text flex items-center gap-2 font-ui text-[14.5px] text-walnut-dark"
-                style={{ animationDelay: `${150 + i * 180}ms` }}
-              >
-                <span className="text-sage" aria-hidden>
-                  ✓
-                </span>
-                {c.label}
-              </li>
+                chore={c}
+                index={i}
+                interactive={!!onChore}
+                onDo={() => onChore?.(c.id)}
+                sink={
+                  c.sinkFirst > 0 && cleanlinessAction ? (
+                    <SinkWash
+                      save={save}
+                      go={go}
+                      cleanlinessAction={cleanlinessAction}
+                      variant="button"
+                    />
+                  ) : null
+                }
+              />
             ))}
           </ul>
 
-          {cleanlinessAction ? (
-            // The day's last dishes (the sink game, 2026-10-23); left, they wash at tomorrow's START.
-            <SinkWash save={save} go={go} cleanlinessAction={cleanlinessAction} className="mt-3" />
-          ) : null}
           {cleanlinessAction ? (
             <ShiftChecklist
               save={save}
@@ -187,11 +213,85 @@ export function ClosingTime({
         </div>
 
         <div className="border-t border-walnut/10 px-5 py-3">
-          <KButton full className="min-h-12" onClick={onClose}>
-            Close for the night → Day {p.day + 1}
+          <KButton full className="min-h-12" onClick={onClose} disabled={left > 0}>
+            {left > 0
+              ? `🌙 ${left} ${left === 1 ? "chore" : "chores"} left`
+              : `Close for the night → Day ${p.day + 1}`}
           </KButton>
         </div>
       </div>
     </div>
+  );
+}
+
+/** One closing chore: its picture, the chore, and its button (or who did it). */
+function ChoreRow({
+  chore: c,
+  index,
+  interactive,
+  onDo,
+  sink,
+}: {
+  chore: ClosingChore;
+  index: number;
+  interactive: boolean;
+  onDo: () => void;
+  sink: ReactNode;
+}) {
+  const done = c.by !== null || !interactive;
+  return (
+    <li
+      data-chore={c.id}
+      data-chore-by={c.by ?? "todo"}
+      className={cn(
+        "kc-story-text flex min-h-[52px] items-center gap-2 rounded-xl border px-2 py-1",
+        done ? "border-olive/20 bg-sage/10" : "border-walnut/15 bg-ivory/80",
+      )}
+      style={{ animationDelay: `${150 + index * 120}ms` }}
+    >
+      <span
+        className={cn(
+          "grid h-9 w-9 shrink-0 place-items-center rounded-lg text-[19px]",
+          done ? "bg-sage/20" : "bg-walnut/8",
+        )}
+        aria-hidden
+      >
+        {c.icon}
+      </span>
+      <span
+        className={cn(
+          "min-w-0 flex-1 font-ui text-[13.5px] font-bold leading-tight",
+          done ? "text-walnut/60" : "text-walnut-dark",
+        )}
+      >
+        {c.label}
+        {c.sinkFirst > 0 ? (
+          <span className="block text-[12px] font-extrabold text-copper">
+            🫧 {c.sinkFirst} in the sink
+          </span>
+        ) : null}
+      </span>
+      {!interactive ? (
+        <span className="shrink-0 text-sage" aria-hidden>
+          ✓
+        </span>
+      ) : c.by === "cleaner" ? (
+        <span className="shrink-0 font-ui text-[12px] font-extrabold text-olive">🧹 Cleaner</span>
+      ) : c.by === "player" ? (
+        <span className="anim-pop shrink-0 font-ui text-[12px] font-extrabold text-olive">
+          ✓ {c.doneWord}
+        </span>
+      ) : sink ? (
+        sink
+      ) : (
+        <button
+          type="button"
+          onClick={onDo}
+          className="press min-h-12 shrink-0 rounded-full border border-walnut-dark/30 bg-[linear-gradient(170deg,var(--color-gold),var(--color-copper))] px-3.5 font-ui text-[12.5px] font-extrabold text-ivory"
+        >
+          {c.verb}
+        </button>
+      )}
+    </li>
   );
 }

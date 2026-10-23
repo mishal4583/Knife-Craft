@@ -63,9 +63,8 @@ await page
   .catch(() => undefined);
 const s1 = await readSave(page);
 const t1 = await flat(page);
-const closingDuring = await page.evaluate(() =>
-  /Close for the night/i.test(document.body.innerText),
-);
+// The sheet's heading (developer 2026-10-23: the button reads "N chores left" until the player closes up).
+const closingDuring = await page.evaluate(() => /Time to close up/i.test(document.body.innerText));
 await shot(page, "restaurant-legacy-first-beat");
 // Through the beats to the button.
 await page
@@ -87,7 +86,7 @@ check(
     s2.credits === s1.credits &&
     s2.economyLedger.length === s1.economyLedger.length &&
     !BEAT1.test(after) &&
-    /Close for the night/i.test(after),
+    /Time to close up/i.test(after),
   { flagged: (s1.story.milestoneMask & 2048) !== 0, closingDuring, after: after.slice(0, 140) },
 );
 

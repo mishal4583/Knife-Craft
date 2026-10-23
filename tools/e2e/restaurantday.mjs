@@ -24,6 +24,7 @@ import {
   writeSave,
   shot,
   text,
+  doClosingChores,
 } from "./harness.mjs";
 import { playToReport } from "./solver.mjs";
 
@@ -221,6 +222,7 @@ check(
 await clickButton(page, /^Prepare$/);
 await sleep(900);
 check("4b the next level can't start before closing", !(await inHud()) && !!(await closingText()));
+await doClosingChores(page);
 await clickButton(page, /^Close for the night/);
 await sleep(800);
 const afterClose = await readSave(page);

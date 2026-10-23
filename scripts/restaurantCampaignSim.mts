@@ -97,6 +97,7 @@ import {
   recordService,
   restaurantDayOf,
 } from "../src/game/restaurant/restaurantDay.ts";
+import { cleanerClosing } from "../src/game/restaurant/closingChores.ts";
 import {
   orderServiceFor,
   takeOrderSupplies,
@@ -323,7 +324,12 @@ function playLevel(save: SaveData, n: number, opts: SimOptions, stats: Stats): S
       s = setStandingOrder(setStandingOrder(s, "fresh", true), "weekly", true);
     s = persist(
       // A prudent player's standing order never spends their reserve.
-      afterNight(choresAfterClose(closeDay(s, lvl), lvl).save, lvl, reserveFor(opts, s, n)).save,
+      // A Cleaner on duty washes the sink by hand at closing, as in the game (closingChores.ts).
+      afterNight(
+        choresAfterClose(closeDay(cleanerClosing(s).save, lvl), lvl).save,
+        lvl,
+        reserveFor(opts, s, n),
+      ).save,
       stats,
       `${where} closing`,
     );
@@ -717,7 +723,11 @@ export function run(
   }
   // The day after Level 250 closes like any other.
   if (restaurantDayOf(s).closingDue) {
-    s = persist(closeDay(s, restaurantLevelOf(s.levelProgress)), stats, "final closing");
+    s = persist(
+      closeDay(cleanerClosing(s).save, restaurantLevelOf(s.levelProgress)),
+      stats,
+      "final closing",
+    );
     stats.closings++;
     checkInvariants(s, startCash, startLifetime, stats, "final closing");
   }

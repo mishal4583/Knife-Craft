@@ -33,15 +33,18 @@ export function SinkWash({
   go?: ((s: ScreenId) => void) | undefined;
   cleanlinessAction: (action: CleanlinessAction) => CleanlinessActionResult | null;
   className?: string;
-  /** "card": the Cleanliness page's Dishwashing card (always there, even with the sink empty). */
-  variant?: "row" | "card";
+  /**
+   * "card": the Cleanliness page's Dishwashing card (always there, even with the sink empty);
+   * "button": just "🧽 Wash N" (Closing Time's wash-up chore).
+   */
+  variant?: "row" | "card" | "button";
 }) {
   const [open, setOpen] = useState<{ lines: SinkLine[]; seed: number } | null>(null);
   const pieces = sinkPieces(save);
   const soap = bottleView(save, "dish-soap");
   const openSink = () =>
     setOpen({ lines: sinkLines(save), seed: restaurantSuppliesOf(save).washedTotal });
-  if (variant === "row" && pieces === 0 && !open) return null;
+  if (variant !== "card" && pieces === 0 && !open) return null;
   return (
     <>
       {variant === "card" ? (
@@ -51,6 +54,18 @@ export function SinkWash({
           onWash={openSink}
           onBuySoap={go ? () => openMarketSupplies(go, "packaging", "dish-soap") : undefined}
         />
+      ) : variant === "button" && pieces > 0 ? (
+        <button
+          type="button"
+          onClick={openSink}
+          data-testid="sink-wash"
+          className={cn(
+            "press min-h-12 shrink-0 rounded-full border border-walnut-dark/30 bg-[linear-gradient(170deg,var(--color-gold),var(--color-copper))] px-3 font-ui text-[12.5px] font-extrabold text-ivory",
+            className,
+          )}
+        >
+          🧽 Wash {pieces}
+        </button>
       ) : pieces > 0 ? (
         <div
           className={cn(

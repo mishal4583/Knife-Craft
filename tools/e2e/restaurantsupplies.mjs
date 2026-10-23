@@ -30,6 +30,7 @@ import {
   shot,
   text,
   openSection,
+  doClosingChores,
 } from "./harness.mjs";
 import { playToReport } from "./solver.mjs";
 
@@ -380,20 +381,22 @@ const ct = await page.evaluate(
     null,
 );
 await shot(page, "restaurant-supplies-closing");
+await doClosingChores(page);
 await clickButton(page, /^Close for the night/);
 await sleep(800);
 const afterClose = await readSave(page);
 check(
-  "5 after Dinner (L23) closing shows the empty cleaning-liquid bottle and still closes for the night; Lunch's dishes were washed at Dinner's START, Dinner's wait in the sink",
+  "5 after Dinner (L23) closing shows the empty cleaning-liquid bottle and still closes for the night; Lunch's dishes were washed at Dinner's START, Dinner's in the sink at closing",
   day?.closingDue === true &&
     !!ct &&
     /Empty/.test(ct) &&
     afterClose.business.restaurantDay?.day === day.day + 1 &&
     // The sink game (2026-10-23; was "nothing washing"): the START wash-up washed Lunch's
-    // three pieces (soap opened), Dinner's own dishes wait overnight.
-    (afterClose.business.restaurantSupplies?.washedTotal ?? 0) >= 3 &&
+    // three pieces (soap opened). The player does the closing chores (developer 2026-10-23;
+    // was "Dinner's dishes wait overnight"): Dinner's were washed in the sink at closing.
+    (afterClose.business.restaurantSupplies?.washedTotal ?? 0) > 3 &&
     (afterClose.business.restaurantSupplies?.soapPct ?? 0) > 0 &&
-    Object.values(afterClose.business.restaurantSupplies?.dirty ?? {}).some((n) => n > 0),
+    Object.values(afterClose.business.restaurantSupplies?.dirty ?? {}).every((n) => n === 0),
   { ct, day, dayAfter: afterClose.business.restaurantDay },
 );
 

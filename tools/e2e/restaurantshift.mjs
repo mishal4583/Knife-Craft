@@ -16,6 +16,7 @@ import {
   readSave,
   clickButton,
   shot,
+  doClosingChores,
 } from "./harness.mjs";
 
 const results = [];
@@ -155,6 +156,7 @@ await page.evaluate(() =>
 );
 await sleep(500);
 const c2b = await chores("closing");
+await doClosingChores(page);
 await clickButton(page, /^Close for the night/);
 await sleep(900);
 const after2 = await readSave(page);

@@ -69,6 +69,12 @@ export type RestaurantDayState = {
   openingCredits: number | null;
   /** The level the day opened with. */
   openingLevel: number | null;
+  /**
+   * Closing chores the player has done tonight (closingChores.ts, developer
+   * 2026-10-23: "let the player do everything unless he hires a cleaner").
+   * Optional: old saves and a new day start with none.
+   */
+  closingDone?: string[];
 };
 
 export const DEFAULT_RESTAURANT_DAY_STATE: RestaurantDayState = {
@@ -83,7 +89,11 @@ export const DEFAULT_RESTAURANT_DAY_STATE: RestaurantDayState = {
 
 /** A save's day state, defaulted for saves that predate it. */
 export function restaurantDayOf(save: SaveData): RestaurantDayState {
-  return { ...DEFAULT_RESTAURANT_DAY_STATE, ...(save.business.restaurantDay ?? {}) };
+  const d = { ...DEFAULT_RESTAURANT_DAY_STATE, ...(save.business.restaurantDay ?? {}) };
+  const done = Array.isArray(d.closingDone)
+    ? d.closingDone.filter((id): id is string => typeof id === "string")
+    : [];
+  return { ...d, closingDone: done };
 }
 
 const withDay = (save: SaveData, day: RestaurantDayState): SaveData => ({

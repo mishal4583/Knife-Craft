@@ -364,3 +364,79 @@ export async function buyMissingTools(page) {
   }
   return bought;
 }
+
+/**
+ * Scrubs the sink game's current kind clean (zig-zag drags across the basin);
+ * true once that kind is washed (or the sink says it's empty).
+ */
+export async function scrubSinkPiece(page) {
+  const before = await page.evaluate(
+    () => document.querySelectorAll('[data-wash-state="done"]').length,
+  );
+  const box = await page.evaluate(() => {
+    const r = document.querySelector('[data-testid="wash-up-surface"]')?.getBoundingClientRect();
+    return r ? { x: r.left, y: r.top, w: r.width, h: r.height } : null;
+  });
+  if (!box) return false;
+  // Scene coordinates are 360 × 280; every piece sits in about x 80–280, y 90–245.
+  const at = (sx, sy) => [box.x + (sx / 360) * box.w, box.y + (sy / 280) * box.h];
+  for (let pass = 0; pass < 3; pass++) {
+    const [x0, y0] = at(180, 160);
+    await page.mouse.move(x0, y0);
+    await page.mouse.down();
+    for (let sy = 88; sy <= 248; sy += 6) {
+      const [ax, ay] = at(pass % 2 ? 290 : 70, sy);
+      const [bx, by] = at(pass % 2 ? 70 : 290, sy + 3);
+      await page.mouse.move(ax, ay, { steps: 4 });
+      await page.mouse.move(bx, by, { steps: 14 });
+    }
+    await page.mouse.up();
+    const done = await page.evaluate(
+      () =>
+        document.querySelectorAll('[data-wash-state="done"]').length ||
+        /Sink empty/.test(
+          document.querySelector('[data-testid="wash-up-status"]')?.textContent ?? "",
+        ),
+    );
+    if (done > before || done === true) return true;
+  }
+  return false;
+}
+
+/** With the sink game open: scrubs every kind clean, then closes it. */
+export async function washWholeSink(page) {
+  const kinds = await page.evaluate(() => document.querySelectorAll("[data-wash-line]").length);
+  let all = true;
+  for (let i = 0; i < kinds; i++) all = (await scrubSinkPiece(page)) && all;
+  await sleep(900);
+  await page.evaluate(() =>
+    (
+      [...document.querySelectorAll('[data-testid="wash-up-sink"] button')].find((b) =>
+        /Done/.test(b.textContent),
+      ) ?? document.querySelector('[aria-label="Close the sink"]')
+    )?.click(),
+  );
+  await sleep(500);
+  return all;
+}
+
+/**
+ * Closing Time (developer 2026-10-23: the player does the closing chores):
+ * does every chore still to do, washing the sink in the sink game when its
+ * dishes come first. True when nothing is left.
+ */
+export async function doClosingChores(page) {
+  for (let i = 0; i < 16; i++) {
+    const next = await page.evaluate(() => {
+      const row = document.querySelector('[data-testid="closing-chores"] [data-chore-by="todo"]');
+      if (!row) return null;
+      const sink = !!row.querySelector('[data-testid="sink-wash"]');
+      row.querySelector("button")?.click();
+      return sink ? "sink" : "tap";
+    });
+    if (!next) return true;
+    await sleep(700);
+    if (next === "sink") await washWholeSink(page);
+  }
+  return false;
+}

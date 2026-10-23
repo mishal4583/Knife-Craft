@@ -20,6 +20,7 @@ import {
   readSave,
   shot,
   text,
+  doClosingChores,
 } from "./harness.mjs";
 import { playToReport } from "./solver.mjs";
 
@@ -227,6 +228,7 @@ check(
 );
 const closing = await page.evaluate(() => !!document.querySelector('[data-testid="closing-time"]'));
 if (closing) {
+  await doClosingChores(page);
   await clickButton(page, /^Close for the night/);
   await sleep(600);
 }

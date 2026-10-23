@@ -19,6 +19,7 @@ import {
   clickButton,
   readSave,
   shot,
+  doClosingChores,
 } from "./harness.mjs";
 
 const results = [];
@@ -152,6 +153,7 @@ const c3 = await page.evaluate(() => {
   };
 });
 await shot(page, "takeaway-closing");
+await doClosingChores(page);
 await clickButton(page, /^Close for the night/);
 await sleep(900);
 const after3 = await readSave(page);

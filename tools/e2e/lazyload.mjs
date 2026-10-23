@@ -16,6 +16,7 @@ import {
   clickButton,
   openSection,
   MOVED_IN_BUSINESS,
+  doClosingChores,
 } from "./harness.mjs";
 import { playToReport } from "./solver.mjs";
 
@@ -89,6 +90,7 @@ async function playLevel(title) {
   await clickButton(page, /^(Finish Level|Back to Orders)$/);
   await sleep(1500);
   // Restaurant test build: Closing Time after the day's last service.
+  await doClosingChores(page);
   await clickIf(/^Close for the night/);
   await sleep(800);
   return played.ok;

@@ -376,6 +376,24 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   spoilage, from L91 End Business Day exactly; old saves default to Day 1.
   Browser: `tools/e2e/restaurantday.mjs` (restaurant test build).
   The game map is `docs/GAME_MAP.md`.
+- `closing-chores-qa` — the player closes up (`restaurant/closingChores.ts`,
+  developer 2026-10-23: "do not automate the important tasks while closing,
+  let the player do everything unless he hires a cleaner"). Closing Time's
+  chores (wash up, wipe down, throw out spoiled food, wrap the fridge, set
+  the dining room, count the takings — by level) are the player's, one
+  button each (`doClosingChore`, saved in `business.restaurantDay.closingDone`,
+  cleared when the day closes); "Close for the night" reads "N chores left"
+  and stays locked until they're done. Wash up: while dishes wait and there
+  is dish soap, its button opens the sink game ("🧽 Wash N"); with the sink
+  empty one tap does the knives; no soap → the tap is allowed (the dishes
+  wait for START, never a soft-lock). The taps move no money and no stock:
+  `closeDay` still does the work (cleaning liquid, spoilage, wrap, tissues,
+  the books), so the economy is unchanged. A Cleaner on duty (hired, or for
+  the day) does every chore but the count ("🧹 Cleaner") and washes the
+  sink by hand at closing (`cleanerClosing`, before `closeDay` in App and the
+  sim: soap, nothing breaks, no money). Browser: every closing test does the
+  chores with `doClosingChores` (harness; it washes the sink in the sink
+  game).
 - `restaurant-guests-qa` — phase D, orders from the ACTIVE MENU inside
   campaign services (`restaurant/menuGuests.ts`): after a level's own orders
   (unchanged, deterministic) the service can take menu guests (none before

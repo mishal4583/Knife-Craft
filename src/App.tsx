@@ -143,6 +143,7 @@ import { ticketsFor } from "@/game/restaurant/serviceTickets";
 import { consumeCampaignOrderStock } from "@/game/restaurant/campaignStock";
 import { servicePlanFor, servicePlanNeedsSheet } from "@/game/restaurant/preServiceCheck";
 import { closeDay, openDay, recordService, restaurantDayOf } from "@/game/restaurant/restaurantDay";
+import { cleanerClosing, doClosingChore } from "@/game/restaurant/closingChores";
 import { nextMenuGuest, withMenuGuestServed } from "@/game/restaurant/menuGuests";
 import {
   cleanSettings,
@@ -1806,7 +1807,7 @@ export function App() {
   function quietDayEnd(s: SaveData): SaveData {
     const restaurantLevel = restaurantLevelOf(s.levelProgress);
     return restaurantDayOf(s).closingDue && !dayCeremonyAt(restaurantLevel)
-      ? choresAfterClose(closeDay(s, restaurantLevel), restaurantLevel).save
+      ? choresAfterClose(closeDay(cleanerClosing(s).save, restaurantLevel), restaurantLevel).save
       : s;
   }
 
@@ -3499,15 +3500,25 @@ export function App() {
             restaurantLevel={restaurantLevelOf(save.levelProgress)}
             cleanlinessAction={cleanlinessAction}
             go={go}
+            onChore={(id) => {
+              // The player's closing chores (closingChores.ts, developer 2026-10-23).
+              const r = doClosingChore(save, id, restaurantLevelOf(save.levelProgress));
+              if (!r.ok) return;
+              AudioManager.playSfx(
+                id === "count" ? "till" : id === "dining-room" ? "plate" : "squeak",
+              );
+              persist(r.save);
+            }}
             onClose={() => {
               closingHoldRef.current = false;
               AudioManager.playSfx("lightsOff");
               // Tomorrow morning's opening chores come with the new day (once).
               // …and the night's standing orders arrive with the morning (deliveries.ts, once).
+              // A Cleaner on duty washes the sink's dishes by hand first (closingChores.ts).
               persist(
                 afterNight(
                   choresAfterClose(
-                    closeDay(save, restaurantLevelOf(save.levelProgress)),
+                    closeDay(cleanerClosing(save).save, restaurantLevelOf(save.levelProgress)),
                     restaurantLevelOf(save.levelProgress),
                   ).save,
                   restaurantLevelOf(save.levelProgress),

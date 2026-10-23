@@ -1,5 +1,11 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## Closing chores are the player's (2026-10-23, `main`)
+
+- Closing Time's chores each have a button (wash up opens the sink game); "Close for
+  the night" stays locked until they're done. A Cleaner on duty does all but the count
+  and washes the sink by hand. Economy unchanged. REFERENCE §5 `closing-chores-qa`.
+
 ## Dishwashing as a feature: realistic dirt, satisfying sink (2026-10-23, `main`)
 
 - Cleanliness has a Dishwashing card (under today's status). The sink game paints

@@ -308,8 +308,9 @@ console.log("W. Wiring");
         app,
       ) &&
       // A real restaurant's day (2026-10-11): closing then adds the next morning's
-      // opening chores (choresAfterClose wraps the same closeDay).
-      /restaurantDayOf\(s\)\.closingDue && !dayCeremonyAt\(restaurantLevel\)\s*\? (?:choresAfterClose\()?closeDay\(s, restaurantLevel\)/.test(
+      // opening chores (choresAfterClose wraps the same closeDay; a Cleaner on duty washes the
+      // sink first, cleanerClosing — developer 2026-10-23).
+      /restaurantDayOf\(s\)\.closingDue && !dayCeremonyAt\(restaurantLevel\)\s*\? (?:choresAfterClose\()?closeDay\((?:cleanerClosing\(s\)\.save|s), restaurantLevel\)/.test(
         app,
       ) &&
       /beginLevel\(id, opensDay \? openDay\(save, levelNumber\(id\)\) : undefined\)/.test(app) &&
@@ -317,7 +318,7 @@ console.log("W. Wiring");
         app,
       ) &&
       // …and the night's standing orders (deliveries.ts afterNight wraps it too).
-      /persist\(\s*(?:afterNight\(\s*)?(?:choresAfterClose\(\s*)?closeDay\(save, restaurantLevelOf\(save\.levelProgress\)\)/.test(
+      /persist\(\s*(?:afterNight\(\s*)?(?:choresAfterClose\(\s*)?closeDay\((?:cleanerClosing\(save\)\.save|save), restaurantLevelOf\(save\.levelProgress\)\)/.test(
         app,
       ) &&
       /closingDue &&\s*dayCeremonyAt\(restaurantLevelOf\(save\.levelProgress\)\) &&/.test(app),
