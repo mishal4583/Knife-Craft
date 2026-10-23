@@ -1,5 +1,13 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## Images halved (2026-10-23, `main`)
+
+- 109 of 126 images re-encoded smaller (20.5 → 10.6 MB; dist 29 → 19 MB), names and
+  formats unchanged. Budget for new art: REFERENCE §10 "Image size budget".
+- Open, pre-existing (fails on `main` before this change too): `lazyload.mjs` check 2 — the
+  "Opening the restaurant…" state no longer shows; the chunk seems to be ready before
+  the Restaurant tab is tapped. Not investigated yet.
+
 ## Staff cards fixed (2026-10-23, `main`)
 
 - Staff cards no longer overlap on desktop: one kit (`business/StaffCard.tsx`) sized by

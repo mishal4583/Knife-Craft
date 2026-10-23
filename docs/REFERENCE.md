@@ -2134,6 +2134,19 @@ make it short or show the issues with emojis." Builds on the 2026-10-16 short-co
   `title`); staff wages "🆓 Free until Lv N · ½ pay to Lv M · then $X/day".
 - `ShopLine` flows its icons inline with the text, so an icon never wraps onto its own line.
 
+### Image size budget (developer 2026-10-23)
+
+"Make sure all the images in the full game are of low size." Every bundled image was
+re-encoded (same file names, formats and aspect ratios, so no code changes): 126 images
+20.5 MB → 10.6 MB (dist images 20.0 → 10.4 MB, dist 29 → 19 MB). Rules for new art:
+- full-screen paintings (cleaning rooms, landscape sections, kitchen skins, banners): long
+  side ≤ 1440 px (1.5× the 960 frame), WebP quality ~72;
+- the restaurant maps keep their size (the map zooms), WebP ~78;
+- the story intro keeps its native 941 × 1672 (`story-intro-qa` A23), WebP ~76;
+- staff portraits ≤ 320 px (shown ≤ 150 px), WebP ~78; thumbnails / clip posters as they are;
+- a file is only replaced when it gets ≥ 10% smaller.
+The largest image is now ~245 KB; the videos (six clips, ~4.5 MB) are unchanged.
+
 ### Inventory in pictures (developer 2026-10-23)
 
 "Make the need attention with emojis or photos of what items need to be restocked … optimize
