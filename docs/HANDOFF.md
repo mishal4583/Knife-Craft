@@ -1,5 +1,11 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## Inventory in pictures (2026-10-23, `main`)
+
+- Inventory's Needs Attention, summaries, stock list and supplies are picture tiles
+  (`kc/inventory/ItemTile.tsx`), fewer words and numbers, nothing removed (sentences in
+  labels / the details sheet). REFERENCE §10 "Inventory in pictures".
+
 ## Glance copy pass (2026-10-23, `main`)
 
 - Long sentences from game data (alerts, inspection, fridge, Pre-Service Check lists,

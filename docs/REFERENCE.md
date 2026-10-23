@@ -2133,6 +2133,31 @@ make it short or show the issues with emojis." Builds on the 2026-10-16 short-co
 - **Short number lines:** a menu card's "⭐ 50 · ×1.05 · 92.6% kept" (the sentence in its
   `title`); staff wages "🆓 Free until Lv N · ½ pay to Lv M · then $X/day".
 - `ShopLine` flows its icons inline with the text, so an icon never wraps onto its own line.
+
+### Inventory in pictures (developer 2026-10-23)
+
+"Make the need attention with emojis or photos of what items need to be restocked … optimize
+the inventory fully with less texts and numbers but with full pictures and emojis (do not
+remove anything important)."
+
+- `kc/inventory/ItemTile.tsx`: `ItemPic` (the item's emoji on a warm round plate, toned
+  urgent / low / ok / none, with a corner badge), `AmountChip`, `ItemTile` (one ≥ 48 px
+  button: picture, short name, amount, "Restock ›"). The game has no per-item art; the
+  pictures are the Market cards' emoji.
+- **⚠️ NEEDS ATTENTION** (`RestaurantAttentionPanel`): a 3-column grid of tiles (⛔ urgent /
+  🟠 low badge, "0 / 0.3 lb", "Hire ›" / "Fridge ›"), 6 before View all, ⛔ N · 🟠 N in the
+  header. `AttentionRow` gained `icon`, `name` (supplies without their size) and `amount`;
+  the full sentence stays as the tile's label and screen-reader text.
+- **Ingredients:** the Ingredients / Supplies tabs are the stockroom pictures (the separate
+  stock-art banner is gone); the fridge pill has a fill bar; the summary is four icon tiles
+  (💰 stock value · ⚠️ running low · ⏳ expire soon · 🍽️ dishes ready, sentences in the
+  title); the ingredient Needs Attention groups are tiles (🗑️ Expired · 🌙 Tonight · ⏳ Nd ·
+  have / need) with 🛒 Restock; All Inventory is a 2-column picture grid (status pill,
+  amount, freshness bar + ⏳ Nd, 🍽️ today's need, 🛒 Restock). Price and value moved to the
+  card's label and the details sheet, which shows the same plate.
+- **Supplies:** icon stat tiles; "👤 🍽️ 🍴 🥛 per guest · 🫧 each service"; the alerts are
+  tiles (packaging coverage + 3 lines, View all); every supply is a 3-column tile (picture,
+  short name, units, bar, status), its group and price in the title.
 - **Descriptions behind ⓘ:** fridges, kitchen upgrades, achievements, the ordered dish.
   Kitchen upgrade benefits read "⭐ +7% earnings · 🪑 +2 guest seats" (built in
   `KitchenUpgrades.tsx`; `kitchenTierBenefit` is unchanged).

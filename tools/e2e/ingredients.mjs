@@ -186,14 +186,17 @@ const tomatoLabel = await page.evaluate(
       .querySelector('[data-fridge-zone="vegetables"] [data-fridge-item="tomato"]')
       ?.getAttribute("aria-label") ?? "",
 );
+// The card shows the amount; its price and value are in the card's label since the picture
+// pass (developer 2026-10-23; was the line "25 lb · $1.00 / lb · $25.00").
 const stockCard = await page.evaluate(
   () =>
-    document.querySelector('[data-inventory-item="tomato"]')?.innerText.replace(/\s+/g, " ") ?? "",
+    document.querySelector('[data-inventory-item="tomato"] button')?.getAttribute("aria-label") ??
+    "",
 );
 check(
   "4b Inventory shows it at once: Tomato 25 lb in the fridge and in All Inventory · $25.00, fridge 25 / 40",
   /^Tomato: 25 lb, /.test(tomatoLabel) &&
-    /25 lb · \$1\.00 \/ lb · \$25\.00/.test(stockCard) &&
+    /25 lb, \$1\.00 \/ lb, \$25\.00 value/.test(stockCard) &&
     /25 \/ 40/.test(t),
   { tomatoLabel, stockCard, t: t.slice(0, 300) },
 );

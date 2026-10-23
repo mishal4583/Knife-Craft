@@ -34,6 +34,7 @@ import {
   settingsOwned,
 } from "@/game/restaurant/serviceSupplies";
 import { SupplyBottle } from "../restaurant/SupplyBottle";
+import { ItemPic, ItemTile, type TileTone } from "./ItemTile";
 
 type SupplyStatus = "low" | "in-stock" | "owned" | "none";
 
@@ -54,29 +55,48 @@ function statusOf(save: SaveData, item: SupplyItem, customers: number): SupplySt
   return isConsumableSupply(item) ? "in-stock" : "owned";
 }
 
+/** An icon stat tile: big picture, big number, a short label; the sentence in its title. */
 function Card({
   icon,
   label,
   value,
-  sub,
+  title,
 }: {
   icon: string;
   label: string;
   value: string;
-  sub: string;
+  title: string;
 }) {
   return (
-    <div className="min-h-[84px] rounded-[20px] border border-walnut/15 p-3 card-warm">
-      <p className="font-ui text-[12px] font-extrabold text-walnut/65">
-        <span aria-hidden>{icon}</span> {label}
-      </p>
-      <p className="mt-0.5 font-display text-[19px] font-black leading-tight text-walnut-dark tabular-nums">
-        {value}
-      </p>
-      <p className="font-hand text-[14px] leading-tight text-walnut/60">{sub}</p>
+    <div
+      className="flex min-h-[64px] min-w-0 items-center gap-2 rounded-[18px] border border-walnut/15 px-2.5 py-2 card-warm"
+      title={title}
+    >
+      <span className="shrink-0 text-[26px] leading-none" aria-hidden>
+        {icon}
+      </span>
+      <span className="min-w-0">
+        <span className="block truncate font-display text-[18px] font-black leading-tight text-walnut-dark tabular-nums">
+          {value}
+        </span>
+        <span className="block truncate font-ui text-[12px] font-extrabold leading-tight text-walnut/65">
+          {label}
+        </span>
+        <span className="sr-only">{title}</span>
+      </span>
     </div>
   );
 }
+
+/** A supply's name without its size ("Dinner plates · 10½ in" → "Dinner plates"). */
+const shortName = (item: SupplyItem) => item.name.split(" · ")[0]!;
+
+const STATUS_TONE: Record<SupplyStatus, TileTone> = {
+  low: "low",
+  "in-stock": "ok",
+  owned: "ok",
+  none: "none",
+};
 
 /**
  * INVENTORY · SUPPLIES — every non-food thing the restaurant owns:
@@ -116,30 +136,30 @@ export function InventorySupplies({ go, save }: { go: (s: ScreenId) => void; sav
 
   return (
     <div className="space-y-3" data-testid="inventory-supplies">
-      <div className="grid grid-cols-2 gap-3" data-testid="supplies-summary">
+      <div className="grid grid-cols-2 gap-2" data-testid="supplies-summary">
         <Card
           icon="🧰"
-          label="Supplies on hand"
-          value={`${unitsOnHand.toLocaleString("en-US")} units`}
-          sub={`${linesStocked} of ${SUPPLY_CATALOG.length} lines stocked`}
+          label="units on hand"
+          value={unitsOnHand.toLocaleString("en-US")}
+          title={`Supplies on hand: ${linesStocked} of ${SUPPLY_CATALOG.length} lines stocked`}
         />
         <Card
-          icon="💲"
-          label="Stock value"
+          icon="💰"
+          label="stock value"
           value={formatUsd(stockValue)}
-          sub="what you paid for it"
+          title="Stock value: what you paid for it"
         />
         <Card
           icon="⚠️"
-          label="Running low"
-          value={`${lowAll.length} line${lowAll.length === 1 ? "" : "s"}`}
-          sub={`packaging below today's ${customers} customers`}
+          label="running low"
+          value={String(lowAll.length)}
+          title={`Running low: ${lowAll.length} packaging line${lowAll.length === 1 ? "" : "s"} below today's ${customers} customers`}
         />
         <Card
           icon="🥡"
-          label="Takeaway orders covered"
-          value={`${ordersCovered.toLocaleString("en-US")}`}
-          sub={`${containers} containers · ${bags} bags`}
+          label="orders covered"
+          value={ordersCovered.toLocaleString("en-US")}
+          title={`Takeaway orders covered: ${containers} containers · ${bags} bags`}
         />
       </div>
 
@@ -152,9 +172,12 @@ export function InventorySupplies({ go, save }: { go: (s: ScreenId) => void; sav
               Place settings: {cleanSettings(save)} clean
               {dirtyPieces > 0 ? ` · 🫧 ${dirtyPieces} to wash` : ""}
             </p>
-            <p className="font-ui text-[12.5px] text-walnut/60">
-              🍽️ Per guest: plate or bowl · 🍴 cutlery · 🥛 glass · 🫧 washed each service
-              {brokenSoFar > 0 ? ` · 💥 ${brokenSoFar} broken so far` : ""}
+            <p
+              className="font-ui text-[12.5px] font-bold text-walnut/60"
+              title="Per guest: plate or bowl, cutlery and a glass, washed after each service"
+            >
+              👤 🍽️ 🍴 🥛 per guest · 🫧 each service
+              {brokenSoFar > 0 ? ` · 💥 ${brokenSoFar} broken` : ""}
             </p>
             <div className="mt-1 divide-y divide-walnut/10">
               <SupplyBottle
@@ -175,66 +198,46 @@ export function InventorySupplies({ go, save }: { go: (s: ScreenId) => void; sav
       <Panel className="p-4">
         <div data-testid="supplies-attention">
           <Eyebrow>⚠️ Needs Attention</Eyebrow>
-          {ordersCovered < customers ? (
-            <div
-              data-supply-attention="packaging-coverage"
-              className="mt-1 flex items-center gap-2 border-b border-walnut/10 py-2"
-            >
-              <span className="text-[22px]" aria-hidden>
-                🥡
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block font-ui text-[13.5px] font-extrabold text-walnut-dark">
-                  🟠 Packaging covers {ordersCovered} of today's {customers} orders
-                </span>
-                <span className="block font-hand text-[14px] leading-tight text-walnut/70">
-                  🥡 1 container + 1 bag per order · {containers} containers · {bags} bags
-                </span>
-              </span>
-              <KButton
-                size="sm"
-                variant="copper"
-                className="h-12 shrink-0 px-3 text-[12.5px]"
-                onClick={() =>
-                  // Jump to whichever runs out first: the top container line or the top bag line.
-                  openMarketSupplies(
-                    go,
-                    "packaging",
-                    containers <= bags ? ORDER_CONTAINER_PRIORITY[0] : ORDER_BAG_PRIORITY[0],
-                  )
-                }
-              >
-                Restock →
-              </KButton>
-            </div>
+          {/* Pictures of what's short (developer 2026-10-23); tap a tile to restock. */}
+          {ordersCovered < customers || lowAll.length > 0 ? (
+            <ul className="mt-2 grid grid-cols-3 gap-2">
+              {ordersCovered < customers ? (
+                <li className="min-w-0" data-supply-attention="packaging-coverage">
+                  <ItemTile
+                    icon="🥡"
+                    name="Packaging"
+                    amount={`${ordersCovered} / ${customers}`}
+                    tone="low"
+                    badge="🟠"
+                    action="Restock ›"
+                    label={`Packaging covers ${ordersCovered} of today's ${customers} orders: 1 container + 1 bag per order, ${containers} containers, ${bags} bags. Restock`}
+                    onClick={() =>
+                      // Jump to whichever runs out first: the top container line or the top bag line.
+                      openMarketSupplies(
+                        go,
+                        "packaging",
+                        containers <= bags ? ORDER_CONTAINER_PRIORITY[0] : ORDER_BAG_PRIORITY[0],
+                      )
+                    }
+                  />
+                </li>
+              ) : null}
+              {(allLow ? lowAll : lowAll.slice(0, 3)).map((item) => (
+                <li key={item.id} className="min-w-0" data-supply-attention={item.id}>
+                  <ItemTile
+                    icon={item.icon}
+                    name={shortName(item)}
+                    amount={`${supplyUnits(supplies, item.id)} left`}
+                    tone="low"
+                    badge="🟡"
+                    action="Restock ›"
+                    label={`${item.name}: low, ${supplyUnits(supplies, item.id)} left for today's ${customers} customers. Restock`}
+                    onClick={() => openMarketSupplies(go, item.section, item.id)}
+                  />
+                </li>
+              ))}
+            </ul>
           ) : null}
-          {(allLow ? lowAll : lowAll.slice(0, 3)).map((item) => (
-            <div
-              key={item.id}
-              data-supply-attention={item.id}
-              className="flex items-center gap-2 border-b border-walnut/10 py-2 last:border-b-0"
-            >
-              <span className="text-[22px]" aria-hidden>
-                {item.icon}
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate font-ui text-[13.5px] font-extrabold text-walnut-dark">
-                  {item.name}
-                </span>
-                <span className="block font-hand text-[14px] leading-tight text-walnut/70">
-                  🟡 Low · {supplyUnits(supplies, item.id)} left for today's {customers} customers
-                </span>
-              </span>
-              <KButton
-                size="sm"
-                variant="copper"
-                className="h-12 shrink-0 px-3 text-[12.5px]"
-                onClick={() => openMarketSupplies(go, item.section, item.id)}
-              >
-                Restock →
-              </KButton>
-            </div>
-          ))}
           {lowAll.length > 3 ? (
             <button
               type="button"
@@ -324,51 +327,48 @@ export function InventorySupplies({ go, save }: { go: (s: ScreenId) => void; sav
           ))}
         </div>
 
-        <div className="mt-2 space-y-2">
+        <div className="mt-2 grid grid-cols-3 gap-2">
           {items.map((item) => {
             const units = supplyUnits(supplies, item.id);
             const status = statusOf(save, item, customers);
             // The bar shows stock against two packs (a full shelf).
             const pct = Math.min(100, Math.round((units / (item.packSize * 2)) * 100));
+            const price = `${formatUsd(supplyPackPrice(item))} / ${item.packSize === 1 ? unitLabel(item, 1) : `pack of ${item.packSize}`}`;
             return (
               <article
                 key={item.id}
                 data-supply-row={item.id}
                 data-status={status}
-                className="flex items-center gap-3 rounded-[18px] border border-walnut/12 bg-ivory/70 px-3 py-2"
+                title={`${item.name} · ${item.group} · ${price}`}
+                className="flex min-w-0 flex-col items-center gap-1 rounded-[16px] border border-walnut/12 bg-ivory/80 px-1.5 pb-2 pt-2 text-center"
               >
-                <span
-                  className="grid h-10 w-10 shrink-0 place-items-center text-[24px]"
-                  aria-hidden
-                >
-                  {item.icon}
+                <ItemPic
+                  icon={item.icon}
+                  tone={STATUS_TONE[status]}
+                  badge={status === "low" ? "🟡" : undefined}
+                  size={48}
+                />
+                <p className="line-clamp-2 w-full font-ui text-[12px] font-extrabold leading-tight text-walnut-dark">
+                  {shortName(item)}
+                </p>
+                <span className="sr-only">
+                  {item.name}, {item.group}, {price}
                 </span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-ui text-[13.5px] font-extrabold text-walnut-dark">
-                    {item.name}
-                  </p>
-                  <p className="font-ui text-[12px] font-bold text-walnut/60">
-                    {item.group} · {formatUsd(supplyPackPrice(item))} /{" "}
-                    {item.packSize === 1 ? unitLabel(item, 1) : `pack of ${item.packSize}`}
-                  </p>
-                  <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-walnut/10">
-                    <div
-                      className={cn(
-                        "h-full rounded-full",
-                        status === "low" ? "bg-copper" : "bg-sage",
-                      )}
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
+                <p className="font-display text-[16px] font-black leading-none text-walnut-dark tabular-nums">
+                  {units.toLocaleString("en-US")}
+                </p>
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-walnut/10">
+                  <div
+                    className={cn(
+                      "h-full rounded-full",
+                      status === "low" ? "bg-copper" : "bg-sage",
+                    )}
+                    style={{ width: `${pct}%` }}
+                  />
                 </div>
-                <div className="shrink-0 text-right">
-                  <p className="font-display text-[16.5px] font-black leading-none text-walnut-dark tabular-nums">
-                    {units.toLocaleString("en-US")}
-                  </p>
-                  <Badge tone={STATUS[status].tone}>
-                    {STATUS[status].marker} {STATUS[status].label}
-                  </Badge>
-                </div>
+                <Badge tone={STATUS[status].tone}>
+                  {STATUS[status].marker} {STATUS[status].label}
+                </Badge>
               </article>
             );
           })}

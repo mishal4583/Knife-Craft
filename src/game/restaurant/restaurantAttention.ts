@@ -45,6 +45,10 @@ export type AttentionRow = {
   text: string;
   /** What the row shows (developer 2026-10-23: icons and numbers); `text` when absent. */
   glance?: string;
+  /** The tile's picture (an emoji), short name and amount (developer 2026-10-23: Inventory shows pictures). */
+  icon: string;
+  name: string;
+  amount: string;
   action:
     | { to: "ingredient"; id: IngredientId; quantity: number }
     | { to: "supply"; id: SupplyId }
@@ -61,6 +65,12 @@ export type RestaurantAttention = {
 };
 
 const severityOrder = { urgent: 0, low: 1 } as const;
+
+/** "0 lb" + "0.3 lb" → "0 / 0.3 lb": the unit once, on the need. */
+const haveOfNeed = (have: string, need: string) => `${have.split(" ")[0]} / ${need}`;
+/** A supply's name without its size ("Dinner plates · 10½ in" → "Dinner plates"). */
+const shortSupplyName = (id: SupplyId, label: string) =>
+  (getSupplyItem(id)?.name ?? label).split(" · ")[0]!;
 
 export function restaurantAttention(save: SaveData): RestaurantAttention {
   const rows: AttentionRow[] = [];
@@ -79,6 +89,12 @@ export function restaurantAttention(save: SaveData): RestaurantAttention {
         severity: "urgent",
         text: `${INGREDIENTS[r.ingredientId].name} — ${formatStockAmount(r.ingredientId, r.usable, measure)} remaining (Level ${plan.levelNumber} needs ${formatStockAmount(r.ingredientId, r.needed, measure)})`,
         glance: `${INGREDIENT_EMOJI[r.ingredientId] ?? "🥬"} ${INGREDIENTS[r.ingredientId].name} · ${formatStockAmount(r.ingredientId, r.usable, measure)} / ${formatStockAmount(r.ingredientId, r.needed, measure)}`,
+        icon: INGREDIENT_EMOJI[r.ingredientId] ?? "🥬",
+        name: INGREDIENTS[r.ingredientId].name,
+        amount: haveOfNeed(
+          formatStockAmount(r.ingredientId, r.usable, measure),
+          formatStockAmount(r.ingredientId, r.needed, measure),
+        ),
         action: { to: "ingredient", id: r.ingredientId, quantity: r.buyUnits },
       });
       recommendedCost += r.quote?.totalCost ?? 0;
@@ -93,6 +109,9 @@ export function restaurantAttention(save: SaveData): RestaurantAttention {
         severity: r.blocking ? "urgent" : "low",
         text: `${r.label} — ${r.have} remaining (Level ${plan.levelNumber} needs ${r.need})`,
         glance: `${getSupplyItem(r.id)?.icon ?? "📦"} ${r.label} · ${r.have} / ${r.need}`,
+        icon: getSupplyItem(r.id)?.icon ?? "📦",
+        name: shortSupplyName(r.id, r.label),
+        amount: `${r.have} / ${r.need}`,
         action: { to: "supply", id: r.id },
       });
       recommendedCost += r.cost;
@@ -108,6 +127,9 @@ export function restaurantAttention(save: SaveData): RestaurantAttention {
           severity: "low",
           text: `${INGREDIENTS[g.ingredientId].name} — ${g.buyUnits} ${marketUnitLabel(g.ingredientId, measure, g.buyUnits)} more for today's menu guests (optional)`,
           glance: `${INGREDIENT_EMOJI[g.ingredientId] ?? "🥬"} ${INGREDIENTS[g.ingredientId].name} · +${g.buyUnits} ${marketUnitLabel(g.ingredientId, measure, g.buyUnits)} · 🍽️ guests`,
+          icon: INGREDIENT_EMOJI[g.ingredientId] ?? "🥬",
+          name: INGREDIENTS[g.ingredientId].name,
+          amount: `+${g.buyUnits} ${marketUnitLabel(g.ingredientId, measure, g.buyUnits)} 🍽️`,
           action: { to: "ingredient", id: g.ingredientId, quantity: g.buyUnits },
         });
     for (const r of plan.staff.filter((x) => !x.met))
@@ -117,6 +139,9 @@ export function restaurantAttention(save: SaveData): RestaurantAttention {
         severity: "urgent",
         text: `${r.title} needed for Level ${plan.levelNumber}`,
         glance: `👥 ${r.title}`,
+        icon: "👥",
+        name: r.title,
+        amount: "Hire",
         action: { to: "staff" },
       });
   }
@@ -134,6 +159,9 @@ export function restaurantAttention(save: SaveData): RestaurantAttention {
         kind: "supply",
         severity: "low",
         text: `Napkins — ${napkins} remaining`,
+        icon: getSupplyItem("paper-napkins")?.icon ?? "🧻",
+        name: "Napkins",
+        amount: `${napkins} left`,
         action: { to: "supply", id: "paper-napkins" },
       });
     for (const [id, per] of [
@@ -150,6 +178,10 @@ export function restaurantAttention(save: SaveData): RestaurantAttention {
           b.status === "empty"
             ? `${id === "dish-soap" ? "Dish soap" : "Cleaning liquid"} — empty`
             : `${id === "dish-soap" ? "Dish soap" : "Cleaning liquid"} — ~${b.servicesLeft} ${per}${b.servicesLeft === 1 ? "" : per === "wash" ? "es" : "s"} remaining`,
+        icon: getSupplyItem(id)?.icon ?? "🧴",
+        name: id === "dish-soap" ? "Dish soap" : "Cleaning liquid",
+        amount:
+          b.status === "empty" ? "Empty" : `~${b.servicesLeft} ${per === "wash" ? "🫧" : "🌙"}`,
         action: { to: "supply", id },
       });
     }
@@ -163,6 +195,9 @@ export function restaurantAttention(save: SaveData): RestaurantAttention {
         kind: "fridge",
         severity: f.status === "full" ? "urgent" : "low",
         text: `Fridge ${f.status === "full" ? "full" : "nearly full"} — ${f.used} / ${f.capacity} units, ${f.free} free`,
+        icon: "❄️",
+        name: f.status === "full" ? "Fridge full" : "Fridge nearly full",
+        amount: `${f.used} / ${f.capacity}`,
         action: { to: "fridge" },
       });
   }

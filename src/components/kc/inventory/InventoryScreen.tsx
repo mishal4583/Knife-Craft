@@ -42,10 +42,11 @@ import { BUSINESS_TAB_SCREEN } from "../business/businessTabs";
 import { openMarketIngredients } from "../marketFocus";
 import { PhysicalFridge } from "./fridge/PhysicalFridge";
 import { InventorySupplies } from "./InventorySupplies";
+import { AmountChip, ItemPic, type TileTone } from "./ItemTile";
 import { expiredStockPreview, type DiscardExpiredResult } from "@/game/business/discardExpired";
 
-/** How many rows each Needs Attention group shows before "View all". */
-const ATTENTION_PREVIEW = 3;
+/** How many tiles each Needs Attention group shows before "View all" (two rows of three). */
+const ATTENTION_PREVIEW = 6;
 
 const FRESHNESS_LABEL: Record<PerishabilityState, string> = {
   FRESH: "Fresh",
@@ -137,18 +138,20 @@ function RestockButton({
   );
 }
 
+/** An icon stat tile: big picture, big number, a two-word label (developer 2026-10-23). */
 function SummaryCard({
   icon,
   label,
   value,
-  sub,
+  title,
   testId,
   onClick,
 }: {
   icon: string;
   label: string;
   value: string;
-  sub: string;
+  /** The full sentence (hover / screen readers). */
+  title: string;
   testId: string;
   onClick: () => void;
 }) {
@@ -157,19 +160,41 @@ function SummaryCard({
       type="button"
       onClick={onClick}
       data-testid={testId}
-      className="press min-h-[84px] rounded-[20px] border border-walnut/15 p-3 text-left card-warm"
+      title={title}
+      aria-label={`${value} ${label}. ${title}`}
+      className="press flex min-h-[64px] min-w-0 items-center gap-2 rounded-[18px] border border-walnut/15 px-2.5 py-2 text-left card-warm"
     >
-      <p className="font-ui text-[12px] font-extrabold text-walnut/65">
-        <span aria-hidden>{icon}</span> {label}
-      </p>
-      <p className="mt-0.5 font-display text-[19px] font-black leading-tight text-walnut-dark tabular-nums">
-        {value}
-      </p>
-      <p className="font-hand text-[14px] leading-tight text-walnut/60">{sub}</p>
+      <span className="shrink-0 text-[26px] leading-none" aria-hidden>
+        {icon}
+      </span>
+      <span className="min-w-0">
+        <span className="block truncate font-display text-[18px] font-black leading-tight text-walnut-dark tabular-nums">
+          {value}
+        </span>
+        <span className="block truncate font-ui text-[12px] font-extrabold leading-tight text-walnut/65">
+          {label}
+        </span>
+      </span>
     </button>
   );
 }
 
+/** The tile tone and badge of a stock status. */
+const STATUS_TILE: Record<InventoryStatus, { tone: TileTone; badge: string }> = {
+  expired: { tone: "urgent", badge: "🗑️" },
+  spoils_today: { tone: "urgent", badge: "🌙" },
+  critical: { tone: "urgent", badge: "⛔" },
+  low: { tone: "low", badge: "🟠" },
+  expiring: { tone: "low", badge: "⏳" },
+  healthy: { tone: "ok", badge: "" },
+};
+
+/** "0.2 lb" + "1.3 lb" → "0.2 / 1.3 lb". */
+function haveOfNeed(have: string, need: string): string {
+  return `${have.split(" ")[0]} / ${need}`;
+}
+
+/** One Needs Attention item as a picture tile: tap the picture for details, 🛒 to restock. */
 function AttentionRow({
   item,
   go,
@@ -179,47 +204,59 @@ function AttentionRow({
   go: (s: ScreenId) => void;
   onOpen: (id: IngredientId) => void;
 }) {
-  const usableLine =
+  const need =
+    item.todayRequirement !== undefined && (item.status === "critical" || item.status === "low")
+      ? item.todayRequirement
+      : undefined;
+  const amount =
     item.status === "expired"
-      ? `${qty(item)} · 🗑️ expired · throw it out`
+      ? "🗑️ Expired"
       : item.status === "spoils_today"
-        ? `${qty(item)} left · spoils at End Business Day`
+        ? "🌙 Tonight"
         : item.status === "expiring"
-          ? `${qty(item)} · ${daysText(item.daysRemaining)}`
-          : `${qty(item)} remaining`;
+          ? `⏳ ${item.daysRemaining}d`
+          : need !== undefined
+            ? haveOfNeed(qty(item), approx(need, item))
+            : qty(item);
+  const sentence =
+    item.status === "expired"
+      ? `${qty(item)}, expired — throw it out`
+      : item.status === "spoils_today"
+        ? `${qty(item)} left, spoils at End Business Day`
+        : item.status === "expiring"
+          ? `${qty(item)}, ${daysText(item.daysRemaining)}`
+          : `${qty(item)} remaining${need !== undefined ? `, today's menu needs ≈ ${approx(need, item)}` : ""}`;
+  const t = STATUS_TILE[item.status];
   return (
     <div
       data-attention-item={item.ingredientId}
-      className="flex items-center gap-2 border-b border-walnut/10 py-2 last:border-b-0"
+      data-status={item.status}
+      className="flex min-w-0 flex-col items-center gap-1 rounded-[16px] border border-walnut/12 bg-ivory/80 px-1.5 pb-1.5 pt-2 text-center"
     >
       <button
         type="button"
         onClick={() => onOpen(item.ingredientId)}
-        className="press flex min-h-12 min-w-0 flex-1 items-center gap-2 text-left"
-        aria-label={`${item.name}: details`}
+        className="press flex min-h-12 w-full min-w-0 flex-col items-center gap-1"
+        aria-label={`${item.name}: ${INVENTORY_STATUS_META[item.status].label}, ${sentence}. Details`}
+        title={`${INVENTORY_STATUS_META[item.status].label} · ${sentence}`}
       >
-        <span className="text-[24px]" aria-hidden>
-          {INGREDIENT_EMOJI[item.ingredientId]}
+        <ItemPic
+          icon={INGREDIENT_EMOJI[item.ingredientId]}
+          tone={t.tone}
+          badge={t.badge}
+          size={52}
+        />
+        <span className="line-clamp-2 w-full font-ui text-[12px] font-extrabold leading-tight text-walnut-dark">
+          {item.name}
         </span>
-        <span className="min-w-0 flex-1">
-          <span className="flex flex-wrap items-center gap-1.5">
-            <span className="truncate font-ui text-[13.5px] font-extrabold text-walnut-dark">
-              {item.name}
-            </span>
-            <StatusPill status={item.status} />
-          </span>
-          <span className="block font-hand text-[14px] leading-tight text-walnut/70">
-            {usableLine}
-          </span>
-          {item.todayRequirement !== undefined &&
-          (item.status === "critical" || item.status === "low") ? (
-            <span className="block font-hand text-[14px] leading-tight text-walnut/70">
-              Today's menu needs ≈ {approx(item.todayRequirement, item)}
-            </span>
-          ) : null}
-        </span>
+        <AmountChip tone={t.tone}>{amount}</AmountChip>
       </button>
-      <RestockButton go={go} id={item.ingredientId} label="Restock →" />
+      <RestockButton
+        go={go}
+        id={item.ingredientId}
+        label="🛒 Restock"
+        className="mt-auto w-full px-1 text-[12px]"
+      />
     </div>
   );
 }
@@ -248,7 +285,7 @@ function AttentionGroup({
         <span className="flex-1">{group.title}</span>
         <span className="rounded-full bg-walnut/10 px-2 tabular-nums">{group.items.length}</span>
       </summary>
-      <div className="pb-1">
+      <div className="grid grid-cols-3 gap-2 pb-2">
         {shown.map((item) => (
           <AttentionRow key={item.ingredientId} item={item} go={go} onOpen={onOpen} />
         ))}
@@ -256,7 +293,7 @@ function AttentionGroup({
           <button
             type="button"
             onClick={() => setAll((v) => !v)}
-            className="press my-1 h-12 w-full rounded-[12px] font-ui text-[12.5px] font-extrabold text-copper"
+            className="press col-span-3 h-12 w-full rounded-[12px] font-ui text-[12.5px] font-extrabold text-copper"
           >
             {all ? "Show fewer" : `View all ${group.items.length} →`}
           </button>
@@ -266,6 +303,7 @@ function AttentionGroup({
   );
 }
 
+/** An All Inventory card: the picture, name, status, amount, freshness and today's need (developer 2026-10-23). */
 function StockCard({
   item,
   go,
@@ -278,55 +316,62 @@ function StockCard({
   /** Restaurant build, before the menu opens: its level (there is no menu need yet). */
   menuOpensAt?: number | null;
 }) {
+  const t = STATUS_TILE[item.status];
+  const price = `${formatUsd(pricePerMarketUnit(item.ingredientId, item.unitPrice, displayMeasure()))} / ${unitOf(item)}`;
+  const need =
+    item.todayRequirement !== undefined
+      ? `Today's menu: ≈ ${approx(item.todayRequirement, item)} needed`
+      : menuOpensAt !== null
+        ? `Your menu opens at Level ${menuOpensAt}`
+        : "Not on today's menu";
   return (
     <article
       data-inventory-item={item.ingredientId}
       data-status={item.status}
-      className="rounded-[18px] border border-walnut/12 bg-ivory/70 px-3 py-2"
+      className="flex min-w-0 flex-col rounded-[18px] border border-walnut/12 bg-ivory/80 p-2"
     >
       <button
         type="button"
         onClick={() => onOpen(item.ingredientId)}
-        className="press flex min-h-12 w-full items-center gap-2.5 text-left"
-        aria-label={`${item.name}: ${qty(item)}, ${daysText(item.daysRemaining)}, ${INVENTORY_STATUS_META[item.status].label}. Details`}
+        className="press flex min-h-12 w-full min-w-0 flex-col items-center gap-1 text-center"
+        aria-label={`${item.name}: ${qty(item)}, ${price}, ${formatUsd(item.stockValue)} value, ${daysText(item.daysRemaining)}, ${INVENTORY_STATUS_META[item.status].label}. ${need}. Details`}
+        title={`${price} · ${formatUsd(item.stockValue)} · ${need}`}
       >
-        <span className="text-[28px] leading-none" aria-hidden>
-          {INGREDIENT_EMOJI[item.ingredientId]}
+        <ItemPic
+          icon={INGREDIENT_EMOJI[item.ingredientId]}
+          tone={t.tone}
+          badge={t.badge}
+          size={54}
+        />
+        <span className="w-full truncate font-ui text-[13px] font-extrabold leading-tight text-walnut-dark">
+          {item.name}
         </span>
-        <span className="min-w-0 flex-1">
-          <span className="flex flex-wrap items-center gap-1.5">
-            <span className="truncate font-ui text-[13.5px] font-extrabold text-walnut-dark">
-              {item.name}
-            </span>
-            <StatusPill status={item.status} />
+        <StatusPill status={item.status} />
+        <span className="font-display text-[17px] font-black leading-none text-walnut-dark tabular-nums">
+          {qty(item)}
+        </span>
+        <span className="flex w-full items-center gap-1.5 px-1">
+          <span className="min-w-0 flex-1">
+            <FreshBar item={item} />
           </span>
-          <span className="block font-ui text-[12.5px] font-bold text-walnut/70 tabular-nums">
-            {qty(item)} ·{" "}
-            {formatUsd(pricePerMarketUnit(item.ingredientId, item.unitPrice, displayMeasure()))} /{" "}
-            {unitOf(item)} · {formatUsd(item.stockValue)}
+          <span className="shrink-0 font-ui text-[12px] font-extrabold text-walnut/65 tabular-nums">
+            {item.daysRemaining <= 0 ? "🗑️" : `⏳ ${item.daysRemaining}d`}
           </span>
-          <span className="mt-1 flex items-center gap-2">
-            <span className="w-16 shrink-0">
-              <FreshBar item={item} />
-            </span>
-            <span className="font-ui text-[12px] font-bold text-walnut/65">
-              {item.daysRemaining <= 0
-                ? "Expired"
-                : `${FRESHNESS_LABEL[item.freshnessState]} · ${daysText(item.daysRemaining)}`}
-            </span>
-          </span>
+        </span>
+        <span className="font-ui text-[12px] font-bold text-walnut/65" aria-hidden>
+          {item.todayRequirement !== undefined
+            ? `🍽️ ≈ ${approx(item.todayRequirement, item)}`
+            : menuOpensAt !== null
+              ? `🔒 Lv ${menuOpensAt}`
+              : "🍽️ —"}
         </span>
       </button>
-      <div className="mt-1 flex items-center gap-2 border-t border-walnut/10 pt-1.5">
-        <span className="min-w-0 flex-1 font-hand text-[14px] leading-tight text-walnut/65">
-          {item.todayRequirement !== undefined
-            ? `Today's menu: ≈ ${approx(item.todayRequirement, item)} needed`
-            : menuOpensAt !== null
-              ? `Your menu opens at Level ${menuOpensAt}`
-              : "Not on today's menu"}
-        </span>
-        <RestockButton go={go} id={item.ingredientId} label="Restock →" />
-      </div>
+      <RestockButton
+        go={go}
+        id={item.ingredientId}
+        label="🛒 Restock"
+        className="mt-1.5 w-full px-1 text-[12px]"
+      />
     </article>
   );
 }
@@ -370,9 +415,12 @@ function DetailSheet({
         className="paper anim-up relative max-h-[86%] overflow-y-auto rounded-t-[24px] border border-walnut/20 px-4 pb-4 pt-3 shadow-lift"
       >
         <div className="flex items-center gap-3">
-          <span className="text-[34px]" aria-hidden>
-            {INGREDIENT_EMOJI[item.ingredientId]}
-          </span>
+          <ItemPic
+            icon={INGREDIENT_EMOJI[item.ingredientId]}
+            tone={STATUS_TILE[item.status].tone}
+            badge={STATUS_TILE[item.status].badge}
+            size={60}
+          />
           <div className="min-w-0 flex-1">
             <p className="font-display text-[20px] font-black leading-tight text-walnut-dark">
               {item.name}
@@ -598,18 +646,8 @@ export function InventoryScreen({
     [view.items, filter, sort],
   );
   const upgradedStockroom = kitchenMapArtStage(save.equippedKitchenUpgradeId) !== "humble";
-  const selectedStockArt =
-    kind === "supplies"
-      ? {
-          image: upgradedStockroom ? "supplies-stockroom-upgraded.webp" : "supplies-stockroom.webp",
-          title: "Supplies",
-        }
-      : {
-          image: upgradedStockroom
-            ? "ingredients-stockroom-upgraded.webp"
-            : "ingredients-stockroom.webp",
-          title: "Ingredients",
-        };
+  const stockArt = (k: InventoryKind) =>
+    `${k === "supplies" ? "supplies" : "ingredients"}-stockroom${upgradedStockroom ? "-upgraded" : ""}.webp`;
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-cream">
@@ -642,8 +680,8 @@ export function InventoryScreen({
               <h2 className="font-display text-[17px] font-black leading-tight sm:text-[19px]">
                 Restaurant stockroom
               </h2>
-              <p className="mt-1 font-ui text-[11.5px] font-semibold leading-snug text-ivory/90 sm:text-[12px]">
-                Ingredients and supplies, ready for service.
+              <p className="mt-1 font-ui text-[12px] font-bold text-ivory/90" aria-hidden>
+                🥕 🧀 🍞 · 🍽️ 🥡 🧽
               </p>
             </div>
           </section>
@@ -658,50 +696,42 @@ export function InventoryScreen({
                 role="tab"
                 aria-selected={kind === k.id}
                 data-inventory-kind={k.id}
+                title={k.sub}
                 onClick={() => {
                   setKind(k.id);
                   setSelectedId(null);
                 }}
                 className={cn(
-                  "press flex min-h-[60px] flex-col items-center justify-center rounded-[18px] border px-2 py-1.5",
-                  kind === k.id
-                    ? "wood border-walnut-dark/50 text-ivory shadow-soft"
-                    : "card-warm border-walnut/15 text-walnut-dark",
+                  "press relative isolate flex h-[76px] items-end overflow-hidden rounded-[18px] border-2 bg-walnut-dark px-2.5 pb-1.5 text-left text-ivory shadow-soft",
+                  kind === k.id ? "border-gold" : "border-walnut/20 opacity-80",
                 )}
               >
-                <span className="font-ui text-[14.5px] font-extrabold leading-tight">
+                {/* The stockroom picture is the tab (developer 2026-10-23: pictures, less text). */}
+                <img
+                  src={`${import.meta.env.BASE_URL}inventory/${stockArt(k.id)}`}
+                  alt=""
+                  aria-hidden="true"
+                  className="absolute inset-0 -z-10 h-full w-full select-none object-cover object-[center_54%]"
+                  draggable={false}
+                />
+                <span
+                  className="absolute inset-0 -z-10 bg-gradient-to-t from-walnut-dark/90 via-walnut-dark/35 to-transparent"
+                  aria-hidden="true"
+                />
+                <span className="font-ui text-[14.5px] font-extrabold leading-tight drop-shadow">
                   <span aria-hidden>{k.icon}</span> {k.label}
                 </span>
-                <span className="font-ui text-[11px] font-bold leading-tight opacity-75">
-                  {k.sub}
-                </span>
+                {kind === k.id ? (
+                  <span
+                    className="absolute right-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-full bg-gold text-[12px] font-black text-walnut-dark"
+                    aria-hidden
+                  >
+                    ✓
+                  </span>
+                ) : null}
               </button>
             ))}
           </div>
-
-          <section
-            key={kind}
-            className="relative isolate h-[82px] overflow-hidden rounded-[18px] border border-walnut/15 bg-walnut-dark shadow-soft sm:h-[92px]"
-            aria-label={`${selectedStockArt.title} stockroom`}
-            data-testid="inventory-stock-art"
-          >
-            <img
-              src={`${import.meta.env.BASE_URL}inventory/${selectedStockArt.image}`}
-              alt=""
-              aria-hidden="true"
-              className="absolute inset-0 h-full w-full select-none object-cover object-[center_54%]"
-              draggable={false}
-            />
-            <div
-              className="absolute inset-0 bg-gradient-to-r from-walnut-dark/75 via-walnut-dark/35 to-transparent"
-              aria-hidden="true"
-            />
-            <div className="relative flex h-full max-w-[76%] items-center px-4 text-ivory">
-              <h2 className="font-display text-[15px] font-bold leading-tight sm:text-[16px]">
-                {selectedStockArt.title}
-              </h2>
-            </div>
-          </section>
 
           {kind === "supplies" ? (
             <InventorySupplies go={go} save={save} />
@@ -712,64 +742,80 @@ export function InventoryScreen({
                 type="button"
                 onClick={() => scrollTo(fridgeRef.current)}
                 data-testid="inventory-fridge-pill"
-                className="press flex min-h-12 w-full items-center justify-between gap-3 rounded-[16px] border border-walnut/15 px-3 py-2 text-left card-warm"
+                className="press flex min-h-12 w-full items-center gap-2.5 rounded-[16px] border border-walnut/15 px-3 py-2 text-left card-warm"
               >
-                <span className="font-ui text-[13.5px] font-extrabold text-walnut-dark">
-                  ❄️ Fridge: {s.fridgeShortName}
+                <span className="text-[24px] leading-none" aria-hidden>
+                  ❄️
                 </span>
-                <span className="font-display text-[16.5px] font-black text-walnut-dark tabular-nums">
-                  {formatQuantity(s.used)} / {s.capacity} units
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-baseline justify-between gap-2">
+                    <span className="truncate font-ui text-[13.5px] font-extrabold text-walnut-dark">
+                      Fridge: {s.fridgeShortName}
+                    </span>
+                    <span className="shrink-0 font-display text-[15px] font-black text-walnut-dark tabular-nums">
+                      {formatQuantity(s.used)} / {s.capacity} units
+                    </span>
+                  </span>
+                  <span className="mt-1 block">
+                    <Bar fraction={s.capacity > 0 ? s.used / s.capacity : 0} />
+                  </span>
                 </span>
               </button>
 
-              {/* Summary */}
-              <div className="grid grid-cols-2 gap-3" data-testid="inventory-summary">
+              {/* Summary: pictures and numbers (developer 2026-10-23) */}
+              <div className="grid grid-cols-2 gap-2" data-testid="inventory-summary">
                 <SummaryCard
-                  icon="📦"
-                  label="Total Stock"
-                  value={`${formatQuantity(s.used)} / ${s.capacity} units`}
-                  sub={`${formatUsd(s.stockValue)} stock value`}
+                  icon="💰"
+                  label="stock value"
+                  value={formatUsd(s.stockValue)}
+                  title={`${formatQuantity(s.used)} / ${s.capacity} units in the fridge, worth ${formatUsd(s.stockValue)}`}
                   testId="summary-stock"
                   onClick={() => scrollTo(fridgeRef.current)}
                 />
                 {menuOpensAtLevel === null ? (
                   <SummaryCard
                     icon="⚠️"
-                    label="Running Low"
-                    value={`${s.runningLow} item${s.runningLow === 1 ? "" : "s"}`}
-                    sub="below today's menu need"
+                    label="running low"
+                    value={String(s.runningLow)}
+                    title={`${s.runningLow} item${s.runningLow === 1 ? "" : "s"} below today's menu need`}
                     testId="summary-low"
                     onClick={() => scrollTo(attentionRef.current)}
                   />
                 ) : null}
                 <SummaryCard
                   icon="⏳"
-                  label="Expiring Soon"
-                  value={`${s.expiringSoon} item${s.expiringSoon === 1 ? "" : "s"}`}
-                  sub={`within ${EXPIRING_SOON_DAYS} Business Days`}
+                  label="expire soon"
+                  value={String(s.expiringSoon)}
+                  title={`${s.expiringSoon} item${s.expiringSoon === 1 ? "" : "s"} expiring within ${EXPIRING_SOON_DAYS} Business Days`}
                   testId="summary-expiring"
                   onClick={() => scrollTo(attentionRef.current)}
                 />
                 {menuOpensAtLevel === null ? (
                   <SummaryCard
-                    icon="🍽"
-                    label="Ready to Cook"
-                    value={`${s.readyDishes} / ${s.menuDishes} dishes`}
-                    sub="on today's menu"
+                    icon="🍽️"
+                    label="dishes ready"
+                    value={`${s.readyDishes} / ${s.menuDishes}`}
+                    title={`${s.readyDishes} of the ${s.menuDishes} dishes on today's menu can be cooked from stock`}
                     testId="summary-ready"
                     onClick={() => scrollTo(readyRef.current)}
                   />
                 ) : (
                   <div
-                    className="flex flex-col justify-center rounded-[18px] border border-walnut/15 p-3 card-warm"
+                    className="flex min-h-[64px] items-center gap-2 rounded-[18px] border border-walnut/15 px-2.5 py-2 card-warm"
                     data-testid="summary-menu-opens"
+                    title="Each level cooks from this fridge"
                   >
-                    <p className="font-ui text-[12.5px] font-extrabold text-walnut-dark">
-                      🍽 No menu yet
-                    </p>
-                    <p className="mt-0.5 font-ui text-[12px] leading-snug text-walnut/65">
-                      🔒 Opens at Level {menuOpensAtLevel} · 🍳 each level cooks from this fridge
-                    </p>
+                    <span className="text-[26px] leading-none" aria-hidden>
+                      🍽️
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block font-ui text-[13px] font-extrabold text-walnut-dark">
+                        No menu yet
+                      </span>
+                      <span className="block font-ui text-[12px] font-bold text-walnut/65">
+                        🔒 Lv {menuOpensAtLevel}
+                      </span>
+                    </span>
                   </div>
                 )}
               </div>
@@ -782,16 +828,6 @@ export function InventoryScreen({
                     <ThrowOutExpired save={save} throwOutExpired={throwOutExpired} />
                     {view.attention.length > 0 ? (
                       <>
-                        <div className="mt-2 flex flex-wrap gap-1.5" data-testid="attention-counts">
-                          {view.attention.map((g) => (
-                            <span
-                              key={g.id}
-                              className="rounded-full border border-walnut/15 bg-ivory/70 px-2.5 py-1 font-ui text-[12.5px] font-extrabold text-walnut-dark"
-                            >
-                              <span aria-hidden>{g.marker}</span> {g.items.length} {g.title}
-                            </span>
-                          ))}
-                        </div>
                         <div className="mt-2 space-y-2">
                           {view.attention.map((g, i) => (
                             <AttentionGroup
@@ -814,7 +850,7 @@ export function InventoryScreen({
                             scrollTo(allRef.current);
                           }}
                         >
-                          View All Inventory Issues →
+                          🧺 All stock ↓
                         </KButton>
                       </>
                     ) : (
@@ -934,12 +970,12 @@ export function InventoryScreen({
                     >
                       {INVENTORY_SORTS.map((o) => (
                         <option key={o.id} value={o.id}>
-                          {o.id === "status" ? "Status (needs attention first)" : o.label}
+                          {o.label}
                         </option>
                       ))}
                     </select>
                   </label>
-                  <div className="mt-2 space-y-2" data-testid="inventory-list">
+                  <div className="mt-2 grid grid-cols-2 gap-2" data-testid="inventory-list">
                     {list.length > 0 ? (
                       list.map((item) => (
                         <StockCard
@@ -951,7 +987,7 @@ export function InventoryScreen({
                         />
                       ))
                     ) : (
-                      <p className="py-2 text-center font-hand text-[15px] text-walnut/60">
+                      <p className="col-span-2 py-2 text-center font-hand text-[15px] text-walnut/60">
                         {view.items.length === 0
                           ? "Nothing in stock yet."
                           : `No ${filter.toLowerCase()} in stock.`}
@@ -966,13 +1002,19 @@ export function InventoryScreen({
                 <Eyebrow>📊 Stock analytics</Eyebrow>
                 <div className="mt-2 grid grid-cols-2 gap-2" data-testid="inventory-analytics">
                   {[
-                    { label: "Stock value", value: formatUsd(analytics.stockValue) },
+                    { icon: "💰", label: "Stock value", value: formatUsd(analytics.stockValue) },
                     {
-                      label: "Ingredients stocked",
+                      icon: "🥕",
+                      label: "Stocked",
                       value: `${analytics.stocked} / ${analytics.ingredientCount}`,
                     },
-                    { label: "Fridge usage", value: `${Math.round(analytics.fridgeUsage * 100)}%` },
                     {
+                      icon: "❄️",
+                      label: "Fridge used",
+                      value: `${Math.round(analytics.fridgeUsage * 100)}%`,
+                    },
+                    {
+                      icon: "🗑️",
                       label: "Waste (all time)",
                       value: formatUsd(analytics.wasteValue),
                       sub:
@@ -986,7 +1028,7 @@ export function InventoryScreen({
                       className="min-w-0 rounded-[14px] border border-walnut/10 bg-ivory/60 px-2.5 py-2"
                     >
                       <p className="truncate font-ui text-[11px] font-extrabold uppercase tracking-[0.06em] text-walnut/60">
-                        {stat.label}
+                        <span aria-hidden>{stat.icon}</span> {stat.label}
                       </p>
                       <p className="truncate font-display text-[16.5px] font-black leading-tight text-walnut-dark">
                         {stat.value}

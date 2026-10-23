@@ -319,7 +319,8 @@ check(
   "4 Inventory → Supplies shows the place settings, what each guest eats from, the soap at 95% and the empty cleaning liquid",
   !!inv &&
     /Place settings: \d+ clean/.test(inv) &&
-    /Per guest: plate or bowl/.test(inv) &&
+    // "👤 🍽️ 🍴 🥛 per guest" since the picture pass (2026-10-23; was "Per guest: plate or bowl …").
+    /per guest/.test(inv) &&
     /Dish soap — 95%/.test(inv) &&
     /~79 washes remaining/.test(inv) &&
     /Cleaning liquid — 0%/.test(inv),

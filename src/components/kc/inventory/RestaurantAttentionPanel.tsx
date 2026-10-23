@@ -1,14 +1,21 @@
 import { useState } from "react";
-import { cn } from "@/lib/utils";
 import type { SaveData } from "@/game/SaveManager";
 import type { ScreenId } from "../data";
 import { formatUsd } from "@/game/money";
 import { getSupplyItem } from "@/game/business/businessSupplies";
 import { restaurantAttention, type AttentionRow } from "@/game/restaurant/restaurantAttention";
 import { openMarketIngredients, openMarketSupplies } from "../marketFocus";
+import { ItemTile } from "./ItemTile";
 
-/** Rows shown before "View all". */
-const SHOWN = 4;
+/** Tiles shown before "View all" (two rows of three). */
+const SHOWN = 6;
+
+const ACTION: Record<AttentionRow["action"]["to"], string> = {
+  ingredient: "Restock ›",
+  supply: "Restock ›",
+  fridge: "Fridge ›",
+  staff: "Hire ›",
+};
 
 /**
  * ⚠️ NEEDS ATTENTION for the whole restaurant (Unified Restaurant,
@@ -45,55 +52,67 @@ export function RestaurantAttentionPanel({
     else if (t.to === "fridge") go("business-refrigerator");
     else go("business-staff");
   }
+  const urgent = a.rows.filter((r) => r.severity === "urgent").length;
+  const low = a.rows.length - urgent;
   return (
     <section
       className="rounded-[20px] border-2 border-tomato/40 bg-[linear-gradient(170deg,var(--color-ivory),rgba(200,80,60,0.08))] p-3"
       data-testid="restaurant-attention"
     >
-      <p className="font-display text-[18px] font-black text-walnut-dark">⚠️ NEEDS ATTENTION</p>
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <p className="flex-1 font-display text-[17.5px] font-black text-walnut-dark">
+          ⚠️ NEEDS ATTENTION
+        </p>
+        {urgent > 0 ? (
+          <span
+            className="rounded-full bg-tomato/12 px-2 py-0.5 font-ui text-[12.5px] font-black text-tomato"
+            title={`${urgent} needed to start`}
+          >
+            ⛔ {urgent}
+          </span>
+        ) : null}
+        {low > 0 ? (
+          <span
+            className="rounded-full bg-copper/15 px-2 py-0.5 font-ui text-[12.5px] font-black text-copper"
+            title={`${low} running low`}
+          >
+            🟠 {low}
+          </span>
+        ) : null}
+      </div>
       {a.nextLevel && a.recommendedCost > 0 ? (
         <p
-          className="font-ui text-[12.5px] font-bold text-walnut/70"
+          className="mt-0.5 font-ui text-[12.5px] font-bold text-walnut/70"
           data-testid="restaurant-recommended"
           title={`Recommended restock for Level ${a.nextLevel} at Market prices`}
         >
           🛒 Lv {a.nextLevel} restock · {formatUsd(a.recommendedCost)}
         </p>
       ) : null}
-      <ul className="mt-1 divide-y divide-walnut/10">
+      {/* Pictures of what's short (developer 2026-10-23); tap a tile to fix it. */}
+      <ul className="mt-2 grid grid-cols-3 gap-2">
         {rows.map((row) => (
           <li
             key={row.id}
-            className="flex min-h-12 items-center gap-2 py-1.5"
+            className="min-w-0"
             data-attention={row.id}
             data-attention-severity={row.severity}
           >
-            <span aria-hidden className="text-[16.5px]">
-              {row.severity === "urgent" ? "⛔" : "🟠"}
-            </span>
-            <p
-              className={cn(
-                "min-w-0 flex-1 font-ui text-[13.5px] font-bold leading-snug",
-                row.severity === "urgent" ? "text-tomato" : "text-walnut-dark",
-              )}
-            >
-              <span aria-hidden={row.glance ? true : undefined} title={row.text}>
-                {row.glance ?? row.text}
-              </span>
-              {row.glance ? <span className="sr-only">{row.text}</span> : null}
-              <span className="sr-only">{row.severity === "urgent" ? " (urgent)" : " (low)"}</span>
-            </p>
-            <button
-              type="button"
+            <ItemTile
+              icon={row.icon}
+              name={row.name}
+              amount={row.amount}
+              tone={row.severity}
+              badge={row.severity === "urgent" ? "⛔" : "🟠"}
+              action={ACTION[row.action.to]}
+              label={`${row.text}${row.severity === "urgent" ? " (urgent)" : " (low)"}. ${ACTION[row.action.to]}`}
               onClick={() => act(row)}
-              className="press min-h-12 shrink-0 rounded-full border border-walnut-dark/30 bg-[linear-gradient(170deg,var(--color-gold),var(--color-copper))] px-3 font-ui text-[12.5px] font-extrabold text-ivory"
             >
-              {row.action.to === "staff"
-                ? "Hire →"
-                : row.action.to === "fridge"
-                  ? "Fridge →"
-                  : "Restock →"}
-            </button>
+              <span className="sr-only">
+                {row.text}
+                {row.severity === "urgent" ? " (urgent)" : " (low)"}
+              </span>
+            </ItemTile>
           </li>
         ))}
       </ul>

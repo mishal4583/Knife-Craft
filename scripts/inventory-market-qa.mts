@@ -90,7 +90,8 @@ function buy(save: SaveData, id: string, qty: number) {
   assert(
     /Go to Market →/.test(inv) &&
       /Restock in Market →/.test(inv) &&
-      /Restock →/.test(inv) &&
+      // The tiles' button reads "🛒 Restock" since the picture pass (developer 2026-10-23; was "Restock →").
+      /🛒 Restock/.test(inv) &&
       /openMarketIngredients\(go, id\)/.test(inv) &&
       /openMarketIngredients\(go, n\.id\)/.test(inv),
     "1b: its only purchase-related controls navigate to the Market",

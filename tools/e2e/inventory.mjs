@@ -146,13 +146,15 @@ const lowCard = await card("summary-low");
 const expCard = await card("summary-expiring");
 const readyCard = await card("summary-ready");
 const value = Object.values(STOCK).reduce((n, e) => n + Math.round(e.quantity * e.unitCost), 0);
+// Icon stat tiles since the picture pass (developer 2026-10-23): a number and a two-word label
+// (was "Total Stock … units / $x stock value", "Running Low N items", …); the units are on the
+// fridge pill above.
 check(
-  "2b summary cards: Total Stock (units + value), Running Low, Expiring Soon, Ready to Cook (x / 48)",
-  stockCard.includes(`${used} / 80 units`) &&
-    stockCard.includes(`$${(value / 100).toFixed(2)} stock value`) &&
-    /Running Low \d+ items?/.test(lowCard) &&
-    /Expiring Soon [1-9]\d* items?/.test(expCard) &&
-    /Ready to Cook \d+ \/ 48 dishes/.test(readyCard),
+  "2b summary tiles: stock value, running low, expire soon, dishes ready (x / 48)",
+  stockCard.includes(`$${(value / 100).toFixed(2)} stock value`) &&
+    /\d+ running low/.test(lowCard) &&
+    /[1-9]\d* expire soon/.test(expCard) &&
+    /\d+ \/ 48 dishes ready/.test(readyCard),
   { stockCard, lowCard, expCard, readyCard },
 );
 check(
@@ -190,13 +192,19 @@ const expiredRow = await page.evaluate(
   () =>
     document.querySelector('[data-attention-item="cheddar"]')?.innerText.replace(/\s+/g, " ") ?? "",
 );
+const expiredLabel = await page.evaluate(
+  () =>
+    document.querySelector('[data-attention-item="cheddar"] button')?.getAttribute("aria-label") ??
+    "",
+);
 check(
-  "3c each row says what's wrong in words and offers Restock",
-  // Short copy (2026-10-16): "2 lb · 🗑️ expired · throw it out".
-  /EXPIRED/i.test(expiredRow) &&
-    /expired · throw it out/.test(expiredRow) &&
-    /Restock →/.test(expiredRow),
-  expiredRow,
+  "3c each tile says what's wrong and offers Restock",
+  // Picture tiles since 2026-10-23: "🗑️ Expired" on the tile, the sentence in its label
+  // (was the row "2 lb · 🗑️ expired · throw it out" and "Restock →").
+  /🗑️ Expired/.test(expiredRow) &&
+    /expired — throw it out/.test(expiredLabel) &&
+    /🛒 Restock/.test(expiredRow),
+  { expiredRow, expiredLabel },
 );
 await page.evaluate(() =>
   document.querySelector('[data-testid="inventory-attention"]').scrollIntoView({ block: "start" }),
@@ -349,8 +357,9 @@ check(
     tableware.length === 17 &&
     tableware.includes("dinner-forks") &&
     takeaway.length === 17 &&
-    /Supplies on hand/.test(supSummary) &&
-    /Takeaway orders covered/.test(supSummary) &&
+    // Icon stat tiles since 2026-10-23 (the long names stay in the screen-reader text).
+    /units on hand/.test(supSummary) &&
+    /orders covered/.test(supSummary) &&
     !supButtons.some((t) => /^Buy|^[−+]$/.test(t)) &&
     supAttention.join() === "packaging-coverage",
   {
