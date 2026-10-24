@@ -24,14 +24,20 @@ import {
   DEBRIS,
   JUICE,
   addDebris,
+  boardClean,
   boardDebris,
+  boardFilm,
   cleanProgress,
   cleanupDue,
   clearDebris,
+  debrisLookIds,
   isWet,
+  newIngredientBatch,
   resetDebrisForTests,
+  startWipe,
   wipeDebris,
 } from "../src/game/boardDebris.ts";
+import { INGREDIENTS } from "../src/game/definitions.ts";
 import { CASH, cashPieceCount, cashPieces, cashRemaining } from "../src/game/cashBurst.ts";
 import { TIPS, isTippingOrder, tipAmount, tipFor } from "../src/game/economy/customerTips.ts";
 import { INCOME_CATEGORIES, LEDGER_CATEGORY_LABEL } from "../src/game/economy/EconomyLedger.ts";
@@ -115,7 +121,8 @@ assert(
 resetDebrisForTests();
 for (const u of [0, 0.2, 0.5, 0.8, 1]) addDebris("carrot", "Vegetable", u, 6);
 assert(
-  boardDebris().every((p) => (p.v <= 0.15 || p.v >= 0.85) && p.u >= 0.06 && p.u <= 0.94),
+  // Developer 2026-10-24 ("make the stains random"): scattered a little wider than before (0.15/0.85, 0.06–0.94).
+  boardDebris().every((p) => (p.v <= 0.16 || p.v >= 0.84) && p.u >= 0.04 && p.u <= 0.96),
   "A6: debris sits in the board's far and near margins, clear of the food",
 );
 assert(
@@ -173,30 +180,54 @@ assert(
   /if \(this\.cleanup\) return true;/.test(body(scene, "private coachBlocked(): boolean {")),
   "A14: no knife demonstration over the cloth",
 );
-// Developer 2026-10-24 ("make the cleaning a little slow and satisfying"): the cloth
-// rubs the mess away over several passes (was: one broad scraper sweep).
+// Developer 2026-10-24 ("make the cleaning a little slow and satisfying"; then "make the
+// user wipe the board each and every corner, don't make it too easy"): the cloth rubs the
+// mess AND a film over the whole board away over many strokes (was: one broad scraper sweep).
 {
-  resetDebrisForTests();
-  for (let i = 0; i < 34; i++) addDebris("tomato", "Vegetable", (i % 10) / 10, 1, 0.5);
   // One stroke: the cloth drawn once across the board along one row (rows top to bottom, then again).
   const rows = [0.08, 0.3, 0.5, 0.7, 0.92];
   let strokes = 0;
-  const stroke = () => {
-    const v = rows[strokes % rows.length]!;
-    const back = Math.floor(strokes / rows.length) % 2 === 1;
-    for (let k = 0; k < 10; k++)
-      back
-        ? wipeDebris(1 - k / 10, v, 1 - (k + 1) / 10, v)
-        : wipeDebris(k / 10, v, (k + 1) / 10, v);
+  const stroke = (from = 0, to = 1, rowList = rows) => {
+    const v = rowList[strokes % rowList.length]!;
+    const back = Math.floor(strokes / rowList.length) % 2 === 1;
+    const n = 10;
+    for (let k = 0; k < n; k++) {
+      const a0 = from + ((to - from) * k) / n;
+      const a1 = from + ((to - from) * (k + 1)) / n;
+      back ? wipeDebris(1 - a0, v, 1 - a1, v) : wipeDebris(a0, v, a1, v);
+    }
     strokes++;
   };
+  const messy = () => {
+    resetDebrisForTests();
+    for (let i = 0; i < 34; i++) addDebris("tomato", "Vegetable", (i % 10) / 10, 1, 0.5);
+    startWipe();
+    strokes = 0;
+  };
+  messy();
   stroke();
   const after1 = cleanProgress();
-  while (cleanProgress() < DEBRIS.CLEAN_DONE && strokes < 60) stroke();
+  while (!boardClean() && strokes < 80) stroke();
   assert(
-    after1 > 0.02 && after1 < 0.5 && strokes >= 6 && strokes <= 20,
-    "A15: the cloth wipes the board over several strokes (slow, satisfying) — one sweep never cleans it, nor does it take forever",
+    after1 > 0.02 && after1 < 0.3 && strokes >= 10 && strokes <= 40 && cleanProgress() === 1,
+    "A15: the cloth cleans the whole board over many strokes (slow, satisfying) — one sweep is nowhere near, nor does it take forever",
     { after1, strokes },
+  );
+  // Rub only the middle of the board, as long as you like: the corners stay dirty.
+  messy();
+  for (let i = 0; i < 120; i++) stroke(0.25, 0.75, [0.35, 0.5, 0.65]);
+  const middleOnly = { clean: boardClean(), progress: cleanProgress() };
+  for (let i = 0; i < 40 && !boardClean(); i++) stroke();
+  assert(
+    !middleOnly.clean && middleOnly.progress < 1 && boardClean(),
+    "A15c: every corner and edge needs the cloth — rubbing only the middle never finishes; the corners do",
+    middleOnly,
+  );
+  assert(
+    boardFilm().length === DEBRIS.FILM_COLS * DEBRIS.FILM_ROWS &&
+      DEBRIS.FILM_COLS >= 6 &&
+      DEBRIS.FILM_ROWS >= 4,
+    "A15d: the film covers the whole board in patches",
   );
   resetDebrisForTests();
   addDebris("tomato", "Vegetable", 0.5, 4, 0.5);
@@ -223,6 +254,58 @@ assert(
     /this\.guideGfx\.setVisible\(false\)/.test(offerBody),
   "A19: while the cloth is out the next ingredient (and its guides) wait off the board",
 );
+const near = (a: number, b: number, d: number) =>
+  [16, 8, 0].every((sh) => Math.abs(((a >> sh) & 255) - ((b >> sh) & 255)) <= d);
+// Developer 2026-10-24: "make the stains random, like cutting different tomatoes different stains".
+{
+  const cut = (seed: number, batches = false) => {
+    resetDebrisForTests(seed);
+    for (let t = 0; t < 3; t++) {
+      if (batches) newIngredientBatch();
+      for (let i = 0; i < 8; i++) addDebris("tomato", "Vegetable", 0.5, 1, 0.5);
+    }
+    return JSON.stringify(boardDebris());
+  };
+  const sameSeed = cut(7) === cut(7);
+  const otherSeed = cut(7) !== cut(8);
+  resetDebrisForTests(11);
+  newIngredientBatch();
+  for (let i = 0; i < 8; i++) addDebris("tomato", "Vegetable", 0.5, 1, 0.5);
+  const first = boardDebris().filter((p) => p.kind === "juice");
+  clearDebris();
+  newIngredientBatch();
+  for (let i = 0; i < 8; i++) addDebris("tomato", "Vegetable", 0.5, 1, 0.5);
+  const second = boardDebris().filter((p) => p.kind === "juice");
+  const colours = new Set(first.map((p) => p.color));
+  assert(
+    sameSeed &&
+      otherSeed &&
+      JSON.stringify(first) !== JSON.stringify(second) &&
+      colours.size > 1 &&
+      !/Math\.random\(/.test(code("src/game/boardDebris.ts")) &&
+      /getRandomValues/.test(code("src/game/boardDebris.ts")),
+    "A22: random stains — a new session, and each new tomato, stains differently (shades, sizes, places); tests fix the seed; no Math.random",
+    { pools: [first.length, second.length], shades: colours.size },
+  );
+  assert(
+    /newIngredientBatch\(\);/.test(body(scene, "private beginFreshIngredient(")),
+    "A23: every fresh ingredient gets its own juiciness and tone",
+  );
+}
+// Developer 2026-10-24: "optimise the stains for all ingredients".
+{
+  const ids = Object.keys(INGREDIENTS) as (keyof typeof INGREDIENTS)[];
+  const own = new Set(debrisLookIds());
+  const missing = ids.filter((id) => !own.has(id));
+  const juicyFruit = ids.filter(
+    (id) => INGREDIENTS[id].category === "Fruit" && id !== "coconut" && !JUICE[id],
+  );
+  assert(
+    missing.length === 0 && juicyFruit.length === 0 && !!JUICE.steak && !JUICE.bread,
+    "A24: every ingredient has its own leftovers; every fruit, the watery veg and the meats spill their own juice (bread doesn't)",
+    { missing, juicyFruit },
+  );
+}
 // Developer 2026-10-24: "for juicy ingredients make it juicy … let it spill while cutting".
 {
   resetDebrisForTests();
@@ -239,7 +322,8 @@ assert(
   for (let i = 0; i < DEBRIS.CLEAN_AT - 1; i++) addDebris("tomato", "Vegetable", 0.5, 1, 0.5);
   assert(
     wet.some((p) => p.kind === "juice") &&
-      wet.every((p) => Math.abs(p.v - 0.5) < 0.3 && p.color === JUICE.tomato!.color) &&
+      // Each drop and pool is its own shade of the ingredient's juice (developer 2026-10-24: random stains).
+      wet.every((p) => Math.abs(p.v - 0.5) < 0.3 && near(p.color, JUICE.tomato!.color, 60)) &&
       dry.length === 0 &&
       wetMax <= DEBRIS.MAX_WET &&
       due &&
@@ -254,6 +338,16 @@ assert(
     "A21: the scene paints the debris and the cloth with textures/boardMess.ts",
   );
 }
+assert(
+  /this\.clothGestureLeft = this\.input\.activePointer\.isDown;/.test(
+    body(scene, "private endCleanup("),
+  ) &&
+    /if \(this\.clothGestureLeft\) return;/.test(body(scene, "private onPointerMove(")) &&
+    /if \(this\.clothGestureLeft\) \{\s*this\.clothGestureLeft = false;\s*return;/.test(
+      body(scene, "private onPointerUp("),
+    ),
+  "A25: a rub still going when the board comes clean never turns into a cut (the next tap cuts)",
+);
 const debrisCode = code("src/game/boardDebris.ts");
 assert(
   !/SaveData|localStorage|persist|credits|ledger/i.test(debrisCode),

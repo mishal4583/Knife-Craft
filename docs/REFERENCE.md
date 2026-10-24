@@ -2490,9 +2490,20 @@ All presentation except the tip (§7 "Customer tips"); no save field.
   board, under guides, food and knife): the pools' bodies merge in one wet
   layer laid on at the juice's own transparency with a soft darker edge, then
   their sheen and pulp, the drops and the scraps with contact shadows. A
-  session list, seeded (piece n always lands the same way, its shape from its
-  own `seed`), never saved: it outlives one order on purpose, since each
+  session list, never saved: it outlives one order on purpose, since each
   order remounts the scene.
+- **Random, per ingredient** (2026-10-24, developer: "make the stains random,
+  like cutting different tomatoes different stains … optimise the stains for
+  all ingredients"): a fresh seed per session (the platform's crypto source,
+  else the clock — never Math.random; tests fix it with
+  `resetDebrisForTests(seed)`), and every fresh ingredient its own batch
+  (`newIngredientBatch`: juiciness 0.65–1.35 ×, tone) — so each tomato
+  spills differently: pool sizes, a second pool sometimes, 0–4 drops, now and
+  then a squirt (a line of drops), every piece's shade, size, place and turn
+  its own. Every ingredient has its own leftovers (`LOOKS` covers all 54:
+  broccoli florets, corn kernels, cheddar crumbs, salmon skin…) and every
+  fruit, the watery and starchy veg, dairy and the meats spill their own
+  liquid (`JUICE`; bread and dry veg don't).
 - **The cleaning cloth** (2026-10-24, developer: "instead of that tool use a
   realistic cloth and do not show the next ingredient before cleaning the
   cutting board … make the cleaning a little slow and satisfying"; was the
@@ -2510,10 +2521,20 @@ All presentation except the tip (§7 "Customer tips"); no save field.
   a short buzz; the wet scrub sound follows the motion; the cloth picks up a
   faint stain. The card shows "🧽 Wipe it with the cloth" and a five-segment
   bar (`cleanProgress`, sent as `EVT.CLEANUP` "progress"). At `CLEAN_DONE`
-  (92%) the cloth lifts off to the side, a polish glint wipes the last specks,
-  a squeak, sparkles and the spotless chime — then the ingredient is set down
-  (a short drop and settle, a plate tap). One sweep never cleans; a whole
-  board takes several strokes (`phase2-qa` A15: 6–20). Skip (on the card)
+(every piece gone AND every patch of the film wiped — developer 2026-10-24:
+  "make the user wipe the board each and every corner, don't make it too
+  easy") the cloth lifts off to the side, a polish glint, a squeak, sparkles
+  and the spotless chime — then the ingredient is set down (a short drop and
+  settle, a plate tap). **The film:** when the cloth comes out a film of grime
+  (`startWipe`; `FILM_COLS` × `FILM_ROWS` patches, each `FILM_BASE` ± random,
+  more under the mess, in a dull version of the juice's colour) covers the
+  whole board, drawn as a soft smudge per patch still dirty; the cloth must
+  pass over every patch, corners and edges included. Progress is half the
+  pieces, half the film, and only reaches 100% when both are done; after a
+  pause a soft ring pulses over the dirtiest spot left (`dirtiestPatch`). One
+  sweep is nowhere near; a whole board takes many strokes (`phase2-qa` A15:
+  10–40) and rubbing only the middle never finishes (A15c). A rub still going
+  when the board comes clean never becomes a cut (`clothGestureLeft`). Skip (on the card)
   leaves the mess, sets the ingredient down and cuts at once; it is offered
   again next time. Lost pointers are let go; Reduced Motion makes the end
   instant; the coach waits.

@@ -30,12 +30,19 @@ import { segmentNear } from "../prepRush";
 import {
   DEBRIS,
   addDebris,
+  boardClean,
   boardDebris,
+  boardFilm,
   cleanProgress,
   cleanupDue,
   clearDebris,
+  dirtiestPatch,
   endWipe,
+  filmCell,
+  filmColor,
   isWet,
+  newIngredientBatch,
+  startWipe,
   wipeDebris,
 } from "../boardDebris";
 import { paintCloth, paintDebrisPiece, paintPoolBody } from "../textures/boardMess";
@@ -796,6 +803,9 @@ type CleanupState = {
   lastClearAt: number;
   /** The last whole percent sent to React. */
   sentProgress: number;
+  /** When the cloth last rubbed, and when a missed spot was last pointed out. */
+  lastRubAt: number;
+  lastHintAt: number;
   /** Clean and playing out: no more input, no Skip. */
   finishing: boolean;
 };
@@ -940,6 +950,8 @@ export class PreparationScene extends Phaser.Scene {
   private boardQuad: BoardQuad = { xt0: 0, xt1: 0, yt: 0, xb0: 0, xb1: 0, yb: 0 };
   /** Phase 2 (A1) — every piece of cutting debris, drawn into this ONE Graphics (depth 1: on the board, under guides, food and knife) from boardDebris.ts's session list. */
   private debrisImg: Phaser.GameObjects.Image | null = null;
+  /** The cloth went away mid-drag: the rest of that drag (until the finger lifts) is ignored. */
+  private clothGestureLeft = false;
   /** The cloth moved debris this frame: repaint once in update(). */
   private debrisDirty = false;
   /** Phase 2 (A2) — the cleaning cloth while it is offered; null the rest of the time. While set, the board's pointer belongs to the cloth, never to a cut. */
@@ -1388,6 +1400,8 @@ export class PreparationScene extends Phaser.Scene {
   private beginFreshIngredient(): void {
     for (const img of this.pieceImages.values()) this.destroyPieceImage(img);
     this.pieceImages.clear();
+    // Each ingredient stains the board its own way (boardDebris.ts).
+    newIngredientBatch();
     this.pieces = [{ cons: [] }];
     const whole = this.createPieceImage(this.pieces[0]!);
     whole.setAlpha(1);
@@ -3289,6 +3303,39 @@ export class PreparationScene extends Phaser.Scene {
     // at the juice's own transparency with a soft darker edge, so overlapping
     // pools merge into one puddle; then their sheen, the drops and the scraps.
     const list = boardDebris();
+    // The film of grime over the whole board while the cloth is out: a soft,
+    // dull smudge per patch still dirty, so the player sees every spot left.
+    const film = boardFilm();
+    if (film.length) {
+      const fc = filmColor();
+      const cr = (fc >> 16) & 255;
+      const cg = (fc >> 8) & 255;
+      const cb = fc & 255;
+      const q = this.boardQuad;
+      const cellW = ((q.xt1 - q.xt0 + q.xb1 - q.xb0) / 2 / DEBRIS.FILM_COLS) * 0.95;
+      const cellH = ((q.yb - q.yt) / DEBRIS.FILM_ROWS) * 0.95;
+      film.forEach((d, i) => {
+        if (d <= DEBRIS.FILM_CLEAN) return;
+        const c = filmCell(i);
+        const at = this.facePoint(c.u, c.v);
+        const x = at.x - b.x;
+        const y = at.y - b.y;
+        const a = Math.min(0.32, d * 0.3) * (1 - fade);
+        const g = ctx.createRadialGradient(x, y, 0, x, y, cellW * 0.85);
+        g.addColorStop(0, `rgba(${cr},${cg},${cb},${a})`);
+        g.addColorStop(0.6, `rgba(${cr},${cg},${cb},${a * 0.75})`);
+        g.addColorStop(1, `rgba(${cr},${cg},${cb},0)`);
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.scale(1, cellH / cellW);
+        ctx.translate(-x, -y);
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(x, y, cellW * 0.85, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      });
+    }
     const wetLayer = this.wetLayer(cw, ch);
     if (wetLayer) {
       const wctx = wetLayer.getContext("2d");
@@ -3386,8 +3433,13 @@ export class PreparationScene extends Phaser.Scene {
       streak: 0,
       lastClearAt: 0,
       sentProgress: -1,
+      lastRubAt: this.time.now,
+      lastHintAt: this.time.now,
       finishing: false,
     };
+    // The whole board gets its film: every corner needs the cloth.
+    startWipe();
+    this.redrawDebris();
     // The next ingredient waits: off the board until it's clean.
     for (const im of this.pieceImages.values()) im.setAlpha(0);
     this.guideGfx.setVisible(false);
@@ -3466,14 +3518,27 @@ export class PreparationScene extends Phaser.Scene {
       c.y + w * (c.dragging ? 0.06 : 0.11),
     );
     c.shadow.setAlpha(c.dragging ? 0.3 : 0.18);
-    if (!c.dragging) return;
     const now = this.time.now;
+    // A spot missed: after a pause, a soft ring shows where the board is still dirty.
+    if (now - c.lastRubAt > 1800 && now - c.lastHintAt > 1600 && cleanProgress() > 0.3) {
+      c.lastHintAt = now;
+      const spot = dirtiestPatch();
+      if (spot) this.pulseMissedSpot(spot.u, spot.v);
+    }
+    if (!c.dragging) return;
     const uv = this.faceUV(c.x, c.y);
     if (c.last) {
       const moved = Math.hypot(uv.u - c.last.u, uv.v - c.last.v);
       if (moved > 0.002) {
         const r = wipeDebris(c.last.u, c.last.v, uv.u, uv.v);
+        c.lastRubAt = now;
+        this.debrisDirty = true;
         if (r.touched > 0 || moved > 0.01) AudioManager.playScrub("wet");
+        // A patch of the film wiped clean: a little glint where it was.
+        if (r.patches > 0) {
+          this.spawnSparkle(c.x + Phaser.Math.Between(-20, 20), c.y + Phaser.Math.Between(-6, 6));
+          if (r.cleared === 0) AudioManager.playSparkle(1 + (c.streak % 5));
+        }
         if (r.cleared > 0) {
           if (now - c.lastClearAt > 900) c.streak = 0;
           for (let i = 0; i < r.cleared; i++) {
@@ -3484,7 +3549,6 @@ export class PreparationScene extends Phaser.Scene {
           this.spawnSparkle(c.x + Phaser.Math.Between(-12, 12), c.y);
           if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate?.(8);
         }
-        if (r.touched > 0) this.debrisDirty = true;
         const progress = cleanProgress();
         // A tint creeps into the cloth as it picks the mess up.
         const t = Math.round(255 - 26 * progress);
@@ -3498,7 +3562,7 @@ export class PreparationScene extends Phaser.Scene {
             progress,
           });
         }
-        if (progress >= DEBRIS.CLEAN_DONE) {
+        if (boardClean()) {
           this.redrawDebris();
           this.finishCleanup();
           return;
@@ -3506,6 +3570,23 @@ export class PreparationScene extends Phaser.Scene {
       }
     }
     c.last = uv;
+  }
+
+  /** A soft expanding ring over a spot the cloth hasn't cleaned yet. */
+  private pulseMissedSpot(u: number, v: number): void {
+    if (this.reducedMotion()) return;
+    const p = this.facePoint(u, v);
+    const ring = this.add.circle(p.x, p.y, this.scale.width * 0.03).setDepth(30);
+    ring.setStrokeStyle(2, 0xfff4d6, 0.85);
+    ring.setFillStyle(0xfff4d6, 0.12);
+    this.tweens.add({
+      targets: ring,
+      scale: 2.2,
+      alpha: 0,
+      duration: 900,
+      ease: Phaser.Math.Easing.Sine.Out,
+      onComplete: () => ring.destroy(),
+    });
   }
 
   /**
@@ -3574,6 +3655,8 @@ export class PreparationScene extends Phaser.Scene {
     c.img.destroy();
     c.shadow.destroy();
     this.cleanup = null;
+    // A finger still down from wiping: the rest of that drag isn't a cut.
+    this.clothGestureLeft = this.input.activePointer.isDown;
     if (state === "done") clearDebris();
     else endWipe();
     this.redrawDebris();
@@ -3829,13 +3912,14 @@ export class PreparationScene extends Phaser.Scene {
 
   private onPointerDown(pointer: Phaser.Input.Pointer): void {
     if (this.paused) return;
-    // Phase 2 (A2): while the scraper is offered the board's pointer is the
-    // scraper's — this returns before any cut, peel, smash or ring can start
+    // Phase 2 (A2): while the cloth is offered the board's pointer is the
+    // cloth's — this returns before any cut, peel, smash or ring can start
     // (and before the first-touch push-in, which waits for the first cut).
     if (this.cleanup) {
       this.onClothDown(pointer);
       return;
     }
+    this.clothGestureLeft = false;
     // Phase 3 (C): the same for the Vegetable Avalanche.
     if (this.avalanche) {
       this.onAvalancheDown(pointer);
@@ -3952,6 +4036,7 @@ export class PreparationScene extends Phaser.Scene {
       this.onClothMove(pointer);
       return;
     }
+    if (this.clothGestureLeft) return;
     if (this.avalanche) {
       this.onAvalancheMove(pointer);
       return;
@@ -4067,6 +4152,11 @@ export class PreparationScene extends Phaser.Scene {
   private onPointerUp(): void {
     if (this.cleanup) {
       this.onClothUp();
+      return;
+    }
+    // The rub the cloth finished during ends here — it never becomes a cut.
+    if (this.clothGestureLeft) {
+      this.clothGestureLeft = false;
       return;
     }
     if (this.avalanche) {

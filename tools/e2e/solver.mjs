@@ -73,18 +73,19 @@ async function stroke(page, x0, y0, x1, y1, steps = 14) {
 }
 
 /**
- * The cleaning cloth (developer 2026-10-24: slow and satisfying — it takes several strokes):
+ * The cleaning cloth (developer 2026-10-24: slow and satisfying, every corner — it takes many strokes):
  * wipes the board like a player, back and forth row by row, top to bottom, until the clean-up
  * card goes (true) or `maxStrokes` run out (false). Aim points are the portrait defaults unless
  * `cx`/`cy`/`k` (geometry scale) are given.
  */
-export async function wipeBoard(page, { cx = CX, cy = CY, k = 1, maxStrokes = 28 } = {}) {
+export async function wipeBoard(page, { cx = CX, cy = CY, k = 1, maxStrokes = 56 } = {}) {
   const up = () => page.evaluate(() => !!document.querySelector('[data-testid="board-cleanup"]'));
-  const rows = [-130, -90, -50, -10, 30, 70, 110];
+  // Every corner needs the cloth (developer 2026-10-24): rows from the far edge to the near one.
+  const rows = [-140, -100, -60, -20, 20, 60, 100, 125];
   for (let i = 0; i < maxStrokes; i++) {
     const y = cy + 30 * k + rows[i % rows.length] * k;
     const back = Math.floor(i / rows.length) % 2 === 1;
-    const [x0, x1] = back ? [cx + 185 * k, cx - 185 * k] : [cx - 185 * k, cx + 185 * k];
+    const [x0, x1] = back ? [cx + 200 * k, cx - 200 * k] : [cx - 200 * k, cx + 200 * k];
     await page.mouse.move(x0, y);
     await page.mouse.down();
     for (let s = 1; s <= 20; s++) {

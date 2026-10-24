@@ -285,7 +285,7 @@ function paintSeed(ctx: CanvasRenderingContext2D, p: DebrisPiece, s: number) {
 function paintPeel(ctx: CanvasRenderingContext2D, p: DebrisPiece, r: () => number, s: number) {
   ctx.rotate(p.rot);
   const bend = 0.6 + r() * 0.9;
-  const w = Math.max(1.6, s * 0.28);
+  const w = Math.max(1.2, s * 0.2);
   const curve = () => {
     ctx.beginPath();
     ctx.moveTo(-s * 0.9, 0);

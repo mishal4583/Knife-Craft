@@ -1,5 +1,12 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## Random stains, every ingredient, wipe every corner (2026-10-24, `main`)
+
+- Each session and each fresh ingredient stains differently (seeded per session,
+  `newIngredientBatch`); all 54 ingredients have their own leftovers and liquid; a
+  film over the whole board must be wiped corner to corner (hint ring on missed
+  spots). REFERENCE §10 "Cleaning cloth…"; QA `phase2-qa` A15c/A15d, A22–A25.
+
 ## Realistic board mess and the cleaning cloth (2026-10-24, `main`)
 
 - Cutting leaves realistic scraps (diced cubes, seeds, peel, leaves, crumbs) and
