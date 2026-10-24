@@ -1,5 +1,13 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## Realistic board mess and the cleaning cloth (2026-10-24, `main`)
+
+- Cutting leaves realistic scraps (diced cubes, seeds, peel, leaves, crumbs) and
+  juicy ingredients spill merged juice pools and drops at the cut. The board is
+  cleaned with a folded towel over several strokes (sparkles, scrub sound,
+  progress bar, polish); the next ingredient waits off the board until it's clean.
+  REFERENCE §10 "Cleaning cloth…"; QA `phase2-qa` A15–A21.
+
 ## Closing chores are the player's (2026-10-23, `main`)
 
 - Closing Time's chores each have a button (wash up opens the sink game); "Close for

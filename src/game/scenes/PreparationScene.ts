@@ -31,10 +31,18 @@ import {
   DEBRIS,
   addDebris,
   boardDebris,
+  cleanProgress,
   cleanupDue,
   clearDebris,
-  type DebrisPiece,
+  endWipe,
+  isWet,
+  wipeDebris,
 } from "../boardDebris";
+import { paintCloth, paintDebrisPiece, paintPoolBody } from "../textures/boardMess";
+
+/** Phase 2: the one CanvasTexture all the cutting debris is painted into, and the cloth's. */
+const DEBRIS_TEXTURE = "board-debris";
+const CLOTH_TEXTURE = "board-cloth";
 import {
   ASSIST,
   PERFECT,
@@ -751,7 +759,6 @@ type KnifePhase =
   | "tapImpact"
   | "tapRetract";
 
-/** Phase 2 (A2) — the bench scraper while it is offered (PreparationScene.cleanup). Canvas px. */
 /** Phase 3 (C) — the Vegetable Avalanche: the little vegetables on the board, the halves still flying, the stroke in progress. */
 type AvalancheState = {
   /** `u`, `v`: where on the board face it lies (fractions, like the debris), so a resize keeps it there. */
@@ -772,18 +779,24 @@ type AvalancheState = {
 const AVALANCHE_KINDS = ["tomato", "onion", "potato", "orange"] as const;
 type AvalancheKind = (typeof AVALANCHE_KINDS)[number];
 
+/** Phase 2 (A2) — the cleaning cloth while it is offered (PreparationScene.cleanup). Canvas px. */
 type CleanupState = {
-  gfx: Phaser.GameObjects.Graphics;
-  bladeX: number;
-  restX: number;
+  img: Phaser.GameObjects.Image;
+  shadow: Phaser.GameObjects.Ellipse;
+  /** Where the cloth is, and where the finger wants it (it follows with a little lag). */
+  x: number;
+  y: number;
+  tx: number;
+  ty: number;
   dragging: boolean;
-  /** Where this drag began: pieces between here and the blade ride along with it. */
-  startX: number;
-  /** The sweep direction once the drag has moved: 1 right, -1 left, 0 not yet. */
-  dir: 0 | 1 | -1;
-  /** The furthest the blade has gone in `dir` this drag. */
-  travel: number;
-  /** The sweep counted and is playing out: no more input, no Skip. */
+  /** The board-face point of the last rub (null when a new press begins). */
+  last: { u: number; v: number } | null;
+  /** Pieces wiped away in a row — the sparkle note climbs with it. */
+  streak: number;
+  lastClearAt: number;
+  /** The last whole percent sent to React. */
+  sentProgress: number;
+  /** Clean and playing out: no more input, no Skip. */
   finishing: boolean;
 };
 
@@ -926,8 +939,10 @@ export class PreparationScene extends Phaser.Scene {
   private boardTextureKey = "board-face";
   private boardQuad: BoardQuad = { xt0: 0, xt1: 0, yt: 0, xb0: 0, xb1: 0, yb: 0 };
   /** Phase 2 (A1) — every piece of cutting debris, drawn into this ONE Graphics (depth 1: on the board, under guides, food and knife) from boardDebris.ts's session list. */
-  private debrisGfx!: Phaser.GameObjects.Graphics;
-  /** Phase 2 (A2) — the bench-scraper cleanup while it is offered; null the rest of the time. While set, the board's pointer belongs to the scraper, never to a cut. */
+  private debrisImg: Phaser.GameObjects.Image | null = null;
+  /** The cloth moved debris this frame: repaint once in update(). */
+  private debrisDirty = false;
+  /** Phase 2 (A2) — the cleaning cloth while it is offered; null the rest of the time. While set, the board's pointer belongs to the cloth, never to a cut. */
   private cleanup: CleanupState | null = null;
   /** Phase 3 (A) — Fever Mode while it is on (fever.ts); null otherwise. Its graphics, timer and knife trail live and die together. */
   private fever: {
@@ -1117,7 +1132,6 @@ export class PreparationScene extends Phaser.Scene {
     this.guideGfx = this.add.graphics();
     this.seamGfx = this.add.graphics();
     this.knifeGfx = this.add.graphics();
-    this.debrisGfx = this.add.graphics().setDepth(1);
     this.coachGfx = this.add.graphics();
     this.coachLabel = this.add
       .text(0, 0, "", {
@@ -1251,7 +1265,7 @@ export class PreparationScene extends Phaser.Scene {
     this.endFever("restart");
     this.feverUsed = false;
     this.maybeOfferCleanup();
-    // Phase 3 (C): the avalanche lands as the order begins (never with the scraper — kitchenChaos.ts).
+    // Phase 3 (C): the avalanche lands as the order begins (never with the cloth — kitchenChaos.ts).
     if (this.chaos === "avalanche" && !this.cleanup) this.startAvalanche();
   }
 
@@ -1982,7 +1996,7 @@ export class PreparationScene extends Phaser.Scene {
       this.pieceImages.set(piece, img);
     }
     // Phase 2: debris is stored as board fractions, so it just redraws on
-    // the new board; a resting scraper moves to the new board's edge.
+    // the new board; a resting cloth moves to the new board's corner.
     this.redrawDebris();
     // Phase 3 (C): so is the avalanche — each vegetable back to its place on the new board.
     if (this.avalanche && !this.avalanche.finishing)
@@ -1994,9 +2008,11 @@ export class PreparationScene extends Phaser.Scene {
       }
     const c = this.cleanup;
     if (c && !c.dragging && !c.finishing) {
-      c.restX = this.scraperMetrics().left + this.scraperMetrics().bw * 1.4;
-      c.bladeX = c.restX;
-      this.drawScraper();
+      this.ensureClothTexture();
+      c.img.setTexture(CLOTH_TEXTURE);
+      const rest = this.clothRest();
+      c.x = c.tx = rest.x;
+      c.y = c.ty = rest.y;
     }
   }
 
@@ -3194,10 +3210,10 @@ export class PreparationScene extends Phaser.Scene {
       this.bus.emit(EVT.AVALANCHE, { state, left: a.left, total: a.items.length });
   }
 
-  // ── Phase 2 (A1/A2): cutting debris and the bench scraper ──────────────
+  // ── Phase 2 (A1/A2): cutting debris and the cleaning cloth ──────────────
   // Presentation only. Nothing below reads or writes cuts, pieces, grades,
-  // the order or the wallet; the rules (how much, when, how far a sweep
-  // must go) live in boardDebris.ts.
+  // the order or the wallet; the rules (how much, when, how hard each piece
+  // is to wipe) live in boardDebris.ts, the painting in textures/boardMess.ts.
 
   /** A point on the board face from its own (u across, v down) fractions — the same trapezoid the board texture is painted from. */
   private facePoint(u: number, v: number): { x: number; y: number } {
@@ -3207,316 +3223,385 @@ export class PreparationScene extends Phaser.Scene {
     return { x: x0 + (x1 - x0) * u, y: q.yt + (q.yb - q.yt) * v };
   }
 
-  /** Cutting leaves a little mess: `count` pieces near canvas x `x`, in the current ingredient's own look. */
-  private addBoardDebris(x: number, count: number): void {
+  /** The board-face fractions under canvas point (x, y) — facePoint's inverse. */
+  private faceUV(x: number, y: number): { u: number; v: number } {
+    const q = this.boardQuad;
+    const v = q.yb > q.yt ? (y - q.yt) / (q.yb - q.yt) : 0;
+    const x0 = q.xt0 + (q.xb0 - q.xt0) * v;
+    const x1 = q.xt1 + (q.xb1 - q.xt1) * v;
+    return { u: x1 > x0 ? (x - x0) / (x1 - x0) : 0, v };
+  }
+
+  /**
+   * Cutting leaves a little mess: `count` pieces near canvas x `x`, in the
+   * current ingredient's own look. With the cut's `y`, a juicy ingredient
+   * also spills there (boardDebris.ts JUICE).
+   */
+  private addBoardDebris(x: number, count: number, y?: number): void {
     const q = this.boardQuad;
     const left = (q.xt0 + q.xb0) / 2;
     const right = (q.xt1 + q.xb1) / 2;
     if (!(right > left)) return;
     const u = Phaser.Math.Clamp((x - left) / (right - left), 0, 1);
-    if (addDebris(this.ingredientId, this.ingredient.category, u, count) > 0) this.redrawDebris();
+    const v = y === undefined ? undefined : Phaser.Math.Clamp(this.faceUV(x, y).v, 0, 1);
+    const before = boardDebris().length;
+    addDebris(this.ingredientId, this.ingredient.category, u, count, v);
+    if (boardDebris().length !== before) this.redrawDebris();
+  }
+
+  /** The board's outline in canvas px (the debris canvas covers it, with room for smears). */
+  private debrisBounds(): { x: number; y: number; w: number; h: number } {
+    const q = this.boardQuad;
+    const pad = this.scale.width * 0.04;
+    const x0 = Math.min(q.xt0, q.xb0) - pad;
+    const x1 = Math.max(q.xt1, q.xb1) + pad;
+    return { x: x0, y: q.yt - pad, w: x1 - x0, h: q.yb - q.yt + pad * 2 };
   }
 
   /**
-   * Draws every debris piece into the one `debrisGfx`. `push` (during a
-   * scrape) says how far each piece has been carried and how faded it is.
+   * Paints every debris piece into the one debris CanvasTexture (resized
+   * with the board). `fade` dims what is left (the polish at the end).
    */
-  private redrawDebris(push?: (x: number, i: number) => { dx: number; alpha: number }): void {
-    const g = this.debrisGfx;
-    if (!g) return;
-    g.clear();
+  private redrawDebris(fade = 0): void {
+    this.debrisDirty = false;
     const w = this.scale.width;
     if (w <= 1 || !(this.boardQuad.yb > this.boardQuad.yt)) return;
-    boardDebris().forEach((p, i) => {
-      const at = this.facePoint(p.u, p.v);
-      const off = push ? push(at.x, i) : { dx: 0, alpha: 1 };
-      if (off.alpha > 0.02) this.drawDebrisPiece(g, at.x + off.dx, at.y, p, p.size * w, off.alpha);
-    });
-  }
-
-  private drawDebrisPiece(
-    g: Phaser.GameObjects.Graphics,
-    x: number,
-    y: number,
-    p: DebrisPiece,
-    s: number,
-    alpha: number,
-  ): void {
-    const c = Math.cos(p.rot);
-    const sn = Math.sin(p.rot);
-    const poly = (pts: readonly (readonly [number, number])[]) =>
-      pts.map(([px, py]) => ({ x: x + px * c - py * sn, y: y + px * sn + py * c }));
-    switch (p.kind) {
-      case "juice":
-        g.fillStyle(p.color, 0.2 * alpha);
-        g.fillEllipse(x, y, s * 1.7, s);
-        g.fillEllipse(x + s * 0.35, y + s * 0.15, s * 0.9, s * 0.6);
-        break;
-      case "seed":
-        g.fillStyle(p.color, 0.9 * alpha);
-        g.fillPoints(
-          poly([
-            [-s, 0],
-            [-s * 0.3, -s * 0.55],
-            [s, 0],
-            [-s * 0.3, s * 0.55],
-          ]),
-          true,
-        );
-        break;
-      case "skin":
-        g.fillStyle(p.color, 0.85 * alpha);
-        g.fillPoints(
-          poly([
-            [-s, -s * 0.1],
-            [-s * 0.3, -s * 0.42],
-            [s * 0.4, -s * 0.36],
-            [s, -s * 0.05],
-            [s * 0.35, -s * 0.12],
-            [-s * 0.35, -s * 0.16],
-          ]),
-          true,
-        );
-        break;
-      default:
-        g.fillStyle(p.color, 0.9 * alpha);
-        g.fillPoints(
-          poly([
-            [-s * 0.6, -s * 0.4],
-            [s * 0.5, -s * 0.55],
-            [s * 0.7, s * 0.2],
-            [s * 0.1, s * 0.6],
-            [-s * 0.7, s * 0.3],
-          ]),
-          true,
-        );
+    const b = this.debrisBounds();
+    const cw = Math.max(1, Math.ceil(b.w));
+    const ch = Math.max(1, Math.ceil(b.h));
+    let tex = this.textures.exists(DEBRIS_TEXTURE)
+      ? (this.textures.get(DEBRIS_TEXTURE) as Phaser.Textures.CanvasTexture)
+      : null;
+    if (tex && (tex.width !== cw || tex.height !== ch)) {
+      this.debrisImg?.destroy();
+      this.debrisImg = null;
+      this.textures.remove(DEBRIS_TEXTURE);
+      tex = null;
     }
+    if (!tex) tex = this.textures.createCanvas(DEBRIS_TEXTURE, cw, ch);
+    if (!tex) return;
+    if (!this.debrisImg)
+      this.debrisImg = this.add.image(0, 0, DEBRIS_TEXTURE).setOrigin(0).setDepth(1);
+    this.debrisImg.setPosition(b.x, b.y);
+    const ctx = tex.context;
+    ctx.clearRect(0, 0, cw, ch);
+    // The juice first: every pool's body into one wet layer, laid on the board
+    // at the juice's own transparency with a soft darker edge, so overlapping
+    // pools merge into one puddle; then their sheen, the drops and the scraps.
+    const list = boardDebris();
+    const wetLayer = this.wetLayer(cw, ch);
+    if (wetLayer) {
+      const wctx = wetLayer.getContext("2d");
+      if (wctx) {
+        wctx.clearRect(0, 0, cw, ch);
+        for (const p of list) {
+          if (p.kind !== "juice") continue;
+          const at = this.facePoint(p.u + p.smearU, p.v + p.smearV);
+          paintPoolBody(wctx, p, at.x - b.x, at.y - b.y, p.size * w, Math.pow(1 - p.wear, 0.8));
+        }
+        ctx.save();
+        ctx.globalAlpha = 0.55 * (1 - fade);
+        ctx.shadowColor = "rgba(60,15,10,0.35)";
+        ctx.shadowBlur = Math.max(1, w * 0.004);
+        ctx.shadowOffsetY = Math.max(0.5, w * 0.0015);
+        ctx.drawImage(wetLayer, 0, 0);
+        ctx.restore();
+      }
+    }
+    for (const wet of [true, false])
+      for (const p of list) {
+        if (isWet(p.kind) !== wet) continue;
+        const at = this.facePoint(p.u + p.smearU, p.v + p.smearV);
+        const alpha = (wet ? Math.pow(1 - p.wear, 0.8) : 1 - p.wear * 0.45) * (1 - fade);
+        paintDebrisPiece(ctx, p, at.x - b.x, at.y - b.y, p.size * w * (wet ? 1 : 1.3), alpha);
+      }
+    tex.refresh();
   }
 
-  /** The scraper's size and reach, from the board: blade height/width and the board's outer x range. */
-  private scraperMetrics(): {
-    yc: number;
-    H: number;
-    bw: number;
-    hw: number;
-    left: number;
-    right: number;
-  } {
-    const q = this.boardQuad;
-    const w = this.scale.width;
-    return {
-      yc: (q.yt + q.yb) / 2,
-      H: (q.yb - q.yt) * 0.78,
-      bw: w * 0.04,
-      hw: w * 0.028,
-      left: Math.min(q.xt0, q.xb0),
-      right: Math.max(q.xt1, q.xb1),
-    };
+  /** The scratch canvas the juice pools merge in (same size as the debris canvas; reused). */
+  private wetCanvas: HTMLCanvasElement | null = null;
+  private wetLayer(cw: number, ch: number): HTMLCanvasElement | null {
+    if (typeof document === "undefined") return null;
+    if (!this.wetCanvas) this.wetCanvas = document.createElement("canvas");
+    if (this.wetCanvas.width !== cw) this.wetCanvas.width = cw;
+    if (this.wetCanvas.height !== ch) this.wetCanvas.height = ch;
+    return this.wetCanvas;
+  }
+
+  /** The cloth's size from the board (a folded kitchen towel about a quarter of the board across). */
+  private clothSize(): { w: number; h: number } {
+    const w = this.scale.width * 0.27;
+    return { w, h: w * 0.62 };
+  }
+
+  /** Where the cloth rests: folded on the board's near right corner, as a cook leaves it. */
+  private clothRest(): { x: number; y: number } {
+    const p = this.facePoint(0.82, 0.86);
+    return { x: p.x, y: p.y };
+  }
+
+  /** The folded towel's texture, painted once per size (textures/boardMess.ts). */
+  private ensureClothTexture(): void {
+    const { w, h } = this.clothSize();
+    const cw = Math.max(8, Math.round(w));
+    const ch = Math.max(8, Math.round(h));
+    if (this.textures.exists(CLOTH_TEXTURE)) {
+      const t = this.textures.get(CLOTH_TEXTURE) as Phaser.Textures.CanvasTexture;
+      if (t.width === cw && t.height === ch) return;
+      this.textures.remove(CLOTH_TEXTURE);
+    }
+    const tex = this.textures.createCanvas(CLOTH_TEXTURE, cw, ch);
+    if (!tex) return;
+    paintCloth(tex.context, cw, ch);
+    tex.refresh();
   }
 
   /**
    * At the start of an order (and on Prepare Again) with a messy board,
-   * offer the scrape — boardDebris.ts decides when. The scraper rests on
-   * the board's left edge and the knife steps aside until it's done or
+   * offer the cloth — boardDebris.ts decides when. The cloth rests folded
+   * on the board's corner; the knife steps aside and the next ingredient
+   * waits off the board (developer 2026-10-24: "do not show the next
+   * ingredient before cleaning the cutting board") until it's clean or
    * skipped.
    */
   private maybeOfferCleanup(): void {
     this.redrawDebris();
     if (this.cleanup || !cleanupDue()) return;
-    const m = this.scraperMetrics();
-    const restX = m.left + m.bw * 1.4;
+    this.ensureClothTexture();
+    const rest = this.clothRest();
+    const { w } = this.clothSize();
+    const shadow = this.add
+      .ellipse(rest.x, rest.y, w * 0.95, w * 0.42, 0x2d1a0c, 0.22)
+      .setDepth(34);
+    const img = this.add.image(rest.x, rest.y, CLOTH_TEXTURE).setDepth(35).setRotation(-0.12);
     this.cleanup = {
-      gfx: this.add.graphics().setDepth(35),
-      bladeX: restX,
-      restX,
+      img,
+      shadow,
+      x: rest.x,
+      y: rest.y,
+      tx: rest.x,
+      ty: rest.y,
       dragging: false,
-      startX: 0,
-      dir: 0,
-      travel: 0,
+      last: null,
+      streak: 0,
+      lastClearAt: 0,
+      sentProgress: -1,
       finishing: false,
     };
+    // The next ingredient waits: off the board until it's clean.
+    for (const im of this.pieceImages.values()) im.setAlpha(0);
+    this.guideGfx.setVisible(false);
     this.knifeGfx.setVisible(false);
     this.setCoachVisible(false);
-    this.drawScraper();
-    this.bus.emit(EVT.CLEANUP, { state: "offered", pieces: boardDebris().length });
+    this.bus.emit(EVT.CLEANUP, { state: "offered", pieces: boardDebris().length, progress: 0 });
   }
 
-  /** A stainless bench scraper seen from above: the steel blade (its edge leading) with a rolled wooden handle trailing it. */
-  private drawScraper(): void {
-    const c = this.cleanup;
-    if (!c) return;
-    const g = c.gfx;
-    g.clear();
-    const m = this.scraperMetrics();
-    if (!(m.H > 0)) return;
-    const x = c.bladeX;
-    const top = m.yc - m.H / 2;
-    const handleX = x + (c.dir < 0 ? 1 : -1) * (m.bw / 2 + m.hw * 0.55) - m.hw / 2;
-    g.fillStyle(0x3e2819, 0.18);
-    g.fillRoundedRect(x - m.bw / 2 + 3, top + 6, m.bw, m.H, 4);
-    g.fillStyle(0x8a5a35, 1);
-    g.fillRoundedRect(handleX, top - 4, m.hw, m.H + 8, m.hw / 2);
-    g.fillStyle(0xb07a4c, 0.6);
-    g.fillRoundedRect(handleX + 2, top, m.hw * 0.35, m.H, m.hw * 0.17);
-    g.fillStyle(0xd5dade, 1);
-    g.fillRoundedRect(x - m.bw / 2, top, m.bw, m.H, 3);
-    g.fillStyle(0xf5f7f9, 0.85);
-    g.fillRect(x - m.bw / 2 + 2, top + 4, m.bw * 0.32, m.H - 8);
-    g.lineStyle(1.5, 0x88909a, 1);
-    g.strokeRoundedRect(x - m.bw / 2, top, m.bw, m.H, 3);
-  }
-
-  /** The pointer in world space — the camera can still be at its kitchen zoom while the scraper is out, and the blade should sit under the finger. */
+  /** The pointer in world space — the camera can still be at its kitchen zoom while the cloth is out, and it should sit under the finger. */
   private worldPointer(pointer: Phaser.Input.Pointer): { x: number; y: number } {
     const p = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
     return { x: p.x, y: p.y };
   }
 
-  /** Grab anywhere over the board: the blade comes to the finger. */
-  private onScraperDown(pointer: Phaser.Input.Pointer): void {
-    const c = this.cleanup;
-    if (!c || c.finishing) return;
-    const m = this.scraperMetrics();
-    const p = this.worldPointer(pointer);
-    if (p.y < this.boardQuad.yt - 60 || p.y > this.boardQuad.yb + 60) return;
-    c.dragging = true;
-    c.startX = Phaser.Math.Clamp(p.x, m.left, m.right);
-    c.bladeX = c.startX;
-    c.dir = 0;
-    c.travel = 0;
-    this.drawScraper();
-  }
-
-  private onScraperMove(pointer: Phaser.Input.Pointer): void {
-    const c = this.cleanup;
-    if (!c || !c.dragging || c.finishing) return;
-    const m = this.scraperMetrics();
-    const x = Phaser.Math.Clamp(this.worldPointer(pointer).x, m.left, m.right);
-    if (c.dir === 0 && Math.abs(x - c.startX) > 8) {
-      c.dir = x > c.startX ? 1 : -1;
-      AudioManager.playScrape(320);
-    }
-    c.bladeX = x;
-    if (c.dir !== 0) c.travel = Math.max(c.travel, (x - c.startX) * c.dir);
-    this.drawScraper();
-    this.redrawDebris(this.scrapePush(c, 0));
-  }
-
-  /**
-   * Where each piece sits while the blade moves: the ones it has passed
-   * since the drag began ride just in front of it (a little stacked, so the
-   * pile reads), sliding off and fading once the pile is past the board's
-   * edge. `fade` dims the pieces the blade never reached (the polish).
-   */
-  private scrapePush(
-    c: CleanupState,
-    fade: number,
-  ): (x: number, i: number) => { dx: number; alpha: number } {
-    const m = this.scraperMetrics();
-    const lead = c.bladeX + (c.dir * m.bw) / 2;
-    return (x, i) => {
-      const passed =
-        c.dir > 0
-          ? x >= c.startX - m.bw && x < lead
-          : c.dir < 0 && x <= c.startX + m.bw && x > lead;
-      if (!passed) return { dx: 0, alpha: 1 - fade };
-      const at = lead + c.dir * (2 + (i % 5) * 1.6);
-      const beyond = c.dir > 0 ? at - m.right : m.left - at;
-      return { dx: at - x, alpha: beyond > 0 ? Math.max(0, 1 - beyond / (m.bw * 1.5)) : 1 };
+  /** Keeps the cloth's centre over the board (it can hang over the edge a little). */
+  private clampToBoard(x: number, y: number): { x: number; y: number } {
+    const q = this.boardQuad;
+    const m = this.scale.width * 0.03;
+    return {
+      x: Phaser.Math.Clamp(x, Math.min(q.xt0, q.xb0) - m, Math.max(q.xt1, q.xb1) + m),
+      y: Phaser.Math.Clamp(y, q.yt - m, q.yb + m),
     };
   }
 
-  /** Let go: a long enough sweep (DEBRIS.SWEEP_FRAC of the board) cleans; a short one puts the blade back with nothing moved. */
-  private onScraperUp(): void {
+  /** Grab anywhere over the board: the cloth comes to the finger and presses down. */
+  private onClothDown(pointer: Phaser.Input.Pointer): void {
+    const c = this.cleanup;
+    if (!c || c.finishing) return;
+    const p = this.worldPointer(pointer);
+    if (p.y < this.boardQuad.yt - 60 || p.y > this.boardQuad.yb + 60) return;
+    const at = this.clampToBoard(p.x, p.y);
+    c.dragging = true;
+    c.tx = at.x;
+    c.ty = at.y;
+    c.last = null;
+  }
+
+  private onClothMove(pointer: Phaser.Input.Pointer): void {
+    const c = this.cleanup;
+    if (!c || !c.dragging || c.finishing) return;
+    const at = this.clampToBoard(this.worldPointer(pointer).x, this.worldPointer(pointer).y);
+    c.tx = at.x;
+    c.ty = at.y;
+  }
+
+  /** Let go: the cloth lifts and stays where it is, ready for the next rub. */
+  private onClothUp(): void {
     const c = this.cleanup;
     if (!c || !c.dragging) return;
     c.dragging = false;
-    const m = this.scraperMetrics();
-    if (c.dir !== 0 && c.travel >= DEBRIS.SWEEP_FRAC * (m.right - m.left)) {
-      this.finishCleanup();
-      return;
-    }
-    c.dir = 0;
-    c.travel = 0;
-    c.bladeX = c.restX;
-    this.drawScraper();
-    this.redrawDebris();
+    c.last = null;
   }
 
   /**
-   * The sweep counted: the blade carries on off the board with its pile,
-   * then a short polish glint wipes what the blade never reached, a squeak,
-   * a few sparkles — and the board is clean. About half a second; with
-   * Reduced Motion it is immediate.
+   * Every frame while the cloth is out: it follows the finger with a little
+   * lag (cloth has weight), leans into its motion and presses flat while
+   * held; each frame's travel is one rub (boardDebris.wipeDebris). Each
+   * piece wiped away rings a rising note and a sparkle; the scrub sound and
+   * a soft buzz follow the motion. Clean enough → finishCleanup.
+   */
+  private stepCloth(): void {
+    const c = this.cleanup;
+    if (!c || c.finishing) return;
+    const prevX = c.x;
+    const k = c.dragging ? 0.38 : 0.2;
+    c.x += (c.tx - c.x) * k;
+    c.y += (c.ty - c.y) * k;
+    const vx = c.x - prevX;
+    const { w } = this.clothSize();
+    const lean = Phaser.Math.Clamp(vx / (w * 0.6), -0.22, 0.22);
+    c.img.setPosition(c.x, c.y);
+    c.img.setRotation(c.img.rotation + (lean - 0.12 - c.img.rotation) * 0.25);
+    c.img.setScale(c.dragging ? 1.02 : 1, c.dragging ? 0.94 : 1);
+    c.shadow.setPosition(
+      c.x + w * (c.dragging ? 0.03 : 0.06),
+      c.y + w * (c.dragging ? 0.06 : 0.11),
+    );
+    c.shadow.setAlpha(c.dragging ? 0.3 : 0.18);
+    if (!c.dragging) return;
+    const now = this.time.now;
+    const uv = this.faceUV(c.x, c.y);
+    if (c.last) {
+      const moved = Math.hypot(uv.u - c.last.u, uv.v - c.last.v);
+      if (moved > 0.002) {
+        const r = wipeDebris(c.last.u, c.last.v, uv.u, uv.v);
+        if (r.touched > 0 || moved > 0.01) AudioManager.playScrub("wet");
+        if (r.cleared > 0) {
+          if (now - c.lastClearAt > 900) c.streak = 0;
+          for (let i = 0; i < r.cleared; i++) {
+            c.streak++;
+            AudioManager.playSparkle(Math.min(c.streak, 12));
+          }
+          c.lastClearAt = now;
+          this.spawnSparkle(c.x + Phaser.Math.Between(-12, 12), c.y);
+          if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate?.(8);
+        }
+        if (r.touched > 0) this.debrisDirty = true;
+        const progress = cleanProgress();
+        // A tint creeps into the cloth as it picks the mess up.
+        const t = Math.round(255 - 26 * progress);
+        c.img.setTint(Phaser.Display.Color.GetColor(255, t + 8, t));
+        const pct = Math.floor(progress * 100);
+        if (pct !== c.sentProgress) {
+          c.sentProgress = pct;
+          this.bus.emit(EVT.CLEANUP, {
+            state: "progress",
+            pieces: boardDebris().length,
+            progress,
+          });
+        }
+        if (progress >= DEBRIS.CLEAN_DONE) {
+          this.redrawDebris();
+          this.finishCleanup();
+          return;
+        }
+      }
+    }
+    c.last = uv;
+  }
+
+  /**
+   * Clean: the cloth lifts off the board to the side, a polish glint runs
+   * across the wood wiping the last specks, a squeak and a few sparkles —
+   * then the next ingredient is set down. With Reduced Motion it is
+   * immediate.
    */
   private finishCleanup(): void {
     const c = this.cleanup;
     if (!c || c.finishing) return;
     c.finishing = true;
-    AudioManager.playScrape(240);
+    c.dragging = false;
+    AudioManager.playSfx("squeak");
     if (this.reducedMotion()) {
-      AudioManager.playSfx("squeak");
       this.endCleanup("done");
       return;
     }
-    const m = this.scraperMetrics();
-    this.tweens.add({
-      targets: c,
-      bladeX: c.dir > 0 ? m.right + m.bw * 3 : m.left - m.bw * 3,
-      duration: 240,
-      ease: Phaser.Math.Easing.Cubic.In,
-      onUpdate: () => {
-        this.drawScraper();
-        this.redrawDebris(this.scrapePush(c, 0));
-      },
-      onComplete: () => this.polishBoard(c),
-    });
-  }
-
-  private polishBoard(c: CleanupState): void {
-    if (this.cleanup !== c) return;
-    AudioManager.playSfx("squeak");
-    const m = this.scraperMetrics();
     const q = this.boardQuad;
+    this.tweens.add({
+      targets: [c.img, c.shadow],
+      x: `+=${this.scale.width * 0.55}`,
+      y: `+=${this.scale.width * 0.12}`,
+      alpha: 0,
+      duration: 420,
+      ease: Phaser.Math.Easing.Cubic.In,
+    });
     const glint = { k: 0 };
+    const gfx = this.add.graphics().setDepth(2);
+    const left = Math.min(q.xt0, q.xb0);
+    const right = Math.max(q.xt1, q.xb1);
     this.tweens.add({
       targets: glint,
       k: 1,
-      duration: 300,
+      duration: 650,
       ease: Phaser.Math.Easing.Sine.InOut,
       onUpdate: () => {
-        this.redrawDebris(this.scrapePush(c, glint.k));
-        const g = c.gfx;
-        g.clear();
-        const span = m.right - m.left;
-        const gx = c.dir < 0 ? m.right - span * glint.k : m.left + span * glint.k;
-        g.fillStyle(0xffffff, 0.22 * Math.sin(Math.PI * glint.k));
-        g.fillRect(gx - m.bw, q.yt, m.bw * 2, q.yb - q.yt);
+        this.redrawDebris(glint.k);
+        gfx.clear();
+        const gx = left + (right - left) * glint.k;
+        const bw = this.scale.width * 0.05;
+        gfx.fillStyle(0xffffff, 0.24 * Math.sin(Math.PI * glint.k));
+        gfx.fillRect(gx - bw, q.yt, bw * 2, q.yb - q.yt);
       },
       onComplete: () => {
-        for (const u of [0.25, 0.5, 0.75]) {
+        gfx.destroy();
+        for (const u of [0.2, 0.4, 0.6, 0.8]) {
           const p = this.facePoint(u, 0.5);
           this.spawnSparkle(p.x, p.y);
         }
+        AudioManager.playSpotless();
         this.endCleanup("done");
       },
     });
   }
 
-  /** The scraper goes away: "done" cleans the board, "skipped" leaves the debris. Cutting is back immediately either way. */
+  /**
+   * The cloth goes away: "done" cleans the board, "skipped" leaves the
+   * debris. Either way the next ingredient is set down on the board (a
+   * short drop and settle) and cutting is back.
+   */
   private endCleanup(state: "done" | "skipped"): void {
     const c = this.cleanup;
     if (!c) return;
-    this.tweens.killTweensOf(c);
-    c.gfx.destroy();
+    this.tweens.killTweensOf([c.img, c.shadow]);
+    c.img.destroy();
+    c.shadow.destroy();
     this.cleanup = null;
     if (state === "done") clearDebris();
+    else endWipe();
     this.redrawDebris();
     this.knifeGfx.setVisible(true);
+    this.guideGfx.setVisible(true);
+    const drop = this.reducedMotion() ? 0 : this.scale.width * 0.06;
+    for (const im of this.pieceImages.values()) {
+      const y = im.y;
+      if (drop > 0) {
+        im.setY(y - drop).setAlpha(0);
+        this.tweens.add({
+          targets: im,
+          y,
+          alpha: 1,
+          duration: 380,
+          ease: Phaser.Math.Easing.Back.Out,
+        });
+      } else im.setAlpha(1);
+    }
+    if (drop > 0) this.time.delayedCall(260, () => AudioManager.playSfx("plate"));
     // The coach counts from now, not from the start of the order.
     this.coachStepT = this.time.now;
     this.coachInputT = this.time.now;
-    this.bus.emit(EVT.CLEANUP, { state, pieces: boardDebris().length });
+    this.bus.emit(EVT.CLEANUP, {
+      state,
+      pieces: boardDebris().length,
+      progress: state === "done" ? 1 : cleanProgress(),
+    });
   }
 
   private destroyPieceImage(img: Phaser.GameObjects.Image): void {
@@ -3748,7 +3833,7 @@ export class PreparationScene extends Phaser.Scene {
     // scraper's — this returns before any cut, peel, smash or ring can start
     // (and before the first-touch push-in, which waits for the first cut).
     if (this.cleanup) {
-      this.onScraperDown(pointer);
+      this.onClothDown(pointer);
       return;
     }
     // Phase 3 (C): the same for the Vegetable Avalanche.
@@ -3864,7 +3949,7 @@ export class PreparationScene extends Phaser.Scene {
 
   private onPointerMove(pointer: Phaser.Input.Pointer): void {
     if (this.cleanup) {
-      this.onScraperMove(pointer);
+      this.onClothMove(pointer);
       return;
     }
     if (this.avalanche) {
@@ -3981,7 +4066,7 @@ export class PreparationScene extends Phaser.Scene {
 
   private onPointerUp(): void {
     if (this.cleanup) {
-      this.onScraperUp();
+      this.onClothUp();
       return;
     }
     if (this.avalanche) {
@@ -4828,7 +4913,7 @@ export class PreparationScene extends Phaser.Scene {
    * scale tween, then the step advances.
    */
   private runSmash(x: number, y: number): void {
-    this.addBoardDebris(x, DEBRIS.PER_SMASH);
+    this.addBoardDebris(x, DEBRIS.PER_SMASH, y);
     this.smashBusy = true;
     const seq = ++this.knifeSeq;
     const w = this.scale.width;
@@ -5285,7 +5370,7 @@ export class PreparationScene extends Phaser.Scene {
     if (feverLights(combo, this.feverUsed, !!this.fever)) this.startFever();
 
     const cutPoint = cut.axis === "h" ? { x: this.ingCx, y: cut.c } : { x: cut.c, y: this.ingCy };
-    this.addBoardDebris(cutPoint.x, DEBRIS.PER_CUT);
+    this.addBoardDebris(cutPoint.x, DEBRIS.PER_CUT, cutPoint.y);
     if (this.variantHere()) this.spawnVariantFlecks(cutPoint.x, cutPoint.y);
     AudioManager.playIngredientSlice(
       this.ingredientId,
@@ -6610,9 +6695,11 @@ export class PreparationScene extends Phaser.Scene {
 
   override update(_time: number, _delta: number): void {
     if (this.paused) return;
-    // Phase 2 (A2): a scrape the browser never finished (focus lost, the
-    // touch cancelled) is let go, so the blade can't stay stuck to nothing.
-    if (this.cleanup?.dragging && !this.input.activePointer.isDown) this.onScraperUp();
+    // Phase 2 (A2): a wipe the browser never finished (focus lost, the
+    // touch cancelled) is let go, so the cloth can't stay stuck to nothing.
+    if (this.cleanup?.dragging && !this.input.activePointer.isDown) this.onClothUp();
+    this.stepCloth();
+    if (this.debrisDirty) this.redrawDebris();
     if (this.avalanche?.swipe && !this.input.activePointer.isDown) this.avalanche.swipe = null;
     this.drawKnife();
     if (this.fever) this.drawFever();
@@ -6621,7 +6708,7 @@ export class PreparationScene extends Phaser.Scene {
 
   /** True while the current step can't take a demonstration: input in flight, the step already done, or the plate on its way. */
   private coachBlocked(): boolean {
-    if (this.cleanup) return true; // Phase 2: no knife demonstration over the scraper
+    if (this.cleanup) return true; // Phase 2: no knife demonstration over the cloth
     if (this.avalanche) return true; // Phase 3: nor over the avalanche
     if (this.pendingRecipePayload || this.tapBusy || this.isDragging || this.peeling) return true;
     if (this.cutBlockedUntilPeeled()) return true;

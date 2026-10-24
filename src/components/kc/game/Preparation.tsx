@@ -385,6 +385,8 @@ export function Preparation({
   const [coachVisible, setCoachVisible] = useState(false);
   // Phase 2 (A2): the scene is offering the bench scraper (EVT.CLEANUP) — show how, and a Skip.
   const [cleanupOffered, setCleanupOffered] = useState(false);
+  // How much of the board the cloth has wiped clean (0–1), for the card's bar.
+  const [cleanupProgress, setCleanupProgress] = useState(0);
   // A peel step's progress (0–1) from the scene's PEEL_PROGRESS — HUD feedback only.
   const [peelFraction, setPeelFraction] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -501,7 +503,9 @@ export function Preparation({
         setAvalanche({ left, total, on: state === "start" || state === "progress" });
         if (state === "start") setSpecialsCard(false); // the avalanche card takes over
       } else if (event.type === "CLEANUP") {
-        setCleanupOffered(event.payload.state === "offered");
+        const { state, progress } = event.payload;
+        setCleanupOffered(state === "offered" || state === "progress");
+        setCleanupProgress(progress ?? 0);
       } else if (event.type === "PEEL_PROGRESS") {
         setPeelFraction(event.payload.fraction);
       } else if (event.type === "CUT_STARTED") {
@@ -977,8 +981,25 @@ export function Preparation({
               Clean the board
             </p>
             <p className="mt-0.5 font-ui text-[15px] font-bold leading-snug text-ivory">
-              Swipe the scraper across the board to clear the scraps.
+              🧽 Wipe it with the cloth
             </p>
+            <div
+              className="mx-auto mt-2 flex h-2 w-40 gap-1"
+              data-testid="board-cleanup-progress"
+              data-progress={Math.round(cleanupProgress * 100)}
+              aria-hidden
+            >
+              {[0, 1, 2, 3, 4].map((i) => (
+                <span key={i} className="relative flex-1 overflow-hidden rounded-full bg-ivory/15">
+                  <span
+                    className="absolute inset-y-0 left-0 rounded-full bg-gold transition-[width] duration-200"
+                    style={{
+                      width: `${Math.max(0, Math.min(1, cleanupProgress * 5 - i)) * 100}%`,
+                    }}
+                  />
+                </span>
+              ))}
+            </div>
             <button
               type="button"
               className="pointer-events-auto mt-1 min-h-12 rounded-full px-5 font-ui text-[13px] font-extrabold uppercase tracking-[0.12em] text-ivory/70"

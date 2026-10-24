@@ -390,7 +390,7 @@ function run(ctxs: ChaosContext[]): (ChaosEventId | null)[] {
     "C13: Giant scales the ingredient's own geometry only, clamped to the board",
   );
   assert(
-    /this\.cleanup\)[\s\S]{0,80}onScraperDown[\s\S]{0,200}this\.avalanche\)[\s\S]{0,40}onAvalancheDown/.test(
+    /this\.cleanup\)[\s\S]{0,80}onClothDown[\s\S]{0,200}this\.avalanche\)[\s\S]{0,40}onAvalancheDown/.test(
       body(scene, "private onPointerDown("),
     ) &&
       /onAvalancheMove/.test(body(scene, "private onPointerMove(")) &&

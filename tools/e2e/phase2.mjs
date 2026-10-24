@@ -1,6 +1,6 @@
 // Phase 2 in the built game (2026-10-21), restaurant build (the normal `npm run build`):
-//   A. the bench scraper — a brand-new player cuts Level 1 three times (Knife Report → Prepare
-//      Again); the scraper is offered only once the board is messy (not after the 1st or 2nd
+//   A. the cleaning cloth — a brand-new player cuts Level 1 three times (Knife Report → Prepare
+//      Again); the cloth is offered only once the board is messy (not after the 1st or 2nd
 //      dish); while it is out a tap on the food does not cut and a short swipe does nothing;
 //      Skip puts it away and cutting works at once; the skipped mess is offered again on the
 //      next start (pause → Restart Prep); one broad sweep cleans and the next tap cuts;
@@ -24,7 +24,7 @@
 //      the tip must be exact, its own entry, shown with "Generous tip!" and the cheer, in the
 //      cash (gold = tip), and sweeping it in pays nothing more. Otherwise the run reports that
 //      the positive path wasn't reached, and checks that no tip was paid;
-//   D. 320×568: screenshots of the scraper, the cash and the tip; the scraper card and the
+//   D. 320×568: screenshots of the cloth, the cash and the tip; the cloth card and the
 //      served card fit (the served card WITHOUT scrolling for a plain order; with a tip line on
 //      a two-line dish name it may scroll, never clip — reported); no console errors.
 // Prints PASS/FAIL per check and exits 1 on any failure.
@@ -40,7 +40,7 @@ import {
   readSave,
   MOVED_IN_BUSINESS,
 } from "./harness.mjs";
-import { playToReport, stepInfo, CX, CY } from "./solver.mjs";
+import { playToReport, stepInfo, wipeBoard, CX, CY } from "./solver.mjs";
 
 const results = [];
 const check = (id, ok, detail) => {
@@ -194,7 +194,7 @@ async function at320(page, name) {
 
 const { browser, page, logs } = await launch();
 
-// ---------- A. the bench scraper (a brand-new player, Level 1) ----------
+// ---------- A. the cleaning cloth (a brand-new player, Level 1) ----------
 await freshPlayer(page);
 await page.waitForFunction(() => !!document.querySelector('[aria-label="Skip intro"]'), {
   timeout: 30000,
@@ -214,22 +214,22 @@ for (let run = 1; run <= 3; run++) {
   offered.push(await cleanupUp(page));
 }
 check(
-  "A1 the scraper is offered once the board is messy — after the 3rd dish, not the 1st or 2nd",
+  "A1 the cloth is offered once the board is messy — after the 3rd dish, not the 1st or 2nd",
   offered[0] === false && offered[1] === false && offered[2] === true,
   offered,
 );
 await page.mouse.click(CX, CY);
 await sleep(900);
 check(
-  "A2 while the scraper is out, a tap on the food does not cut",
+  "A2 while the cloth is out, a tap on the food does not cut",
   (await stepInfo(page)).n === 0 && (await cleanupUp(page)),
 );
 await stroke(page, CX - 40, CY + 30, CX + 40, CY + 30, 8);
 await sleep(600);
-check("A3 a short swipe does not clean (the scraper is still offered)", await cleanupUp(page));
+check("A3 a short swipe does not clean (the cloth is still offered)", await cleanupUp(page));
 await page.click('[data-testid="board-cleanup-skip"]');
 await sleep(600);
-check("A4 Skip puts the scraper away at once", !(await cleanupUp(page)));
+check("A4 Skip puts the cloth away at once", !(await cleanupUp(page)));
 await page.mouse.click(CX, CY);
 await sleep(1000);
 check("A5 after Skip, cutting works straight away", (await stepInfo(page)).n === 1);
@@ -237,19 +237,33 @@ await page.click('[aria-label="Pause"]');
 await sleep(500);
 await clickButton(page, /^Restart Prep$/);
 await sleep(1500);
-check("A6 skipped mess stays: the next start offers the scraper again", await cleanupUp(page));
+check("A6 skipped mess stays: the next start offers the cloth again", await cleanupUp(page));
 const cleanupFit = await at320(page, "phase2-cleanup-320");
 check(
-  "A7 at 320×568 the scraper card is on screen",
+  "A7 at 320×568 the cloth card is on screen",
   !!cleanupFit && cleanupFit.top >= 0 && cleanupFit.bottom <= cleanupFit.h,
   cleanupFit,
 );
+await page.setViewport({ width: 430, height: 900, deviceScaleFactor: 1 });
+await sleep(700);
+// Developer 2026-10-24: the cloth wipes over several strokes (was "one broad sweep cleans").
 await stroke(page, CX - 185, CY + 30, CX + 185, CY + 30, 18);
-await sleep(1300);
-check("A8 one broad sweep cleans the board (the scraper goes away)", !(await cleanupUp(page)));
+await sleep(400);
+const oneSweep = await cleanupUp(page);
+const hidden = await page.evaluate(() => {
+  const p = document.querySelector('[data-testid="board-cleanup-progress"]');
+  return p ? Number(p.getAttribute("data-progress")) : -1;
+});
+const wiped = await wipeBoard(page);
+await sleep(1500);
+check(
+  "A8 one sweep is not enough (progress shows); wiping the board with the cloth cleans it (the cloth goes away)",
+  oneSweep && hidden > 0 && hidden < 100 && wiped && !(await cleanupUp(page)),
+  { oneSweep, hidden, wiped },
+);
 await page.mouse.click(CX, CY);
 await sleep(1000);
-check("A9 after the scrape, the next tap cuts", (await stepInfo(page)).n === 1);
+check("A9 after the wipe, the next tap cuts", (await stepInfo(page)).n === 1);
 
 // ---------- B. the money vacuum (Level 1: not a tipping order) ----------
 const played1 = await playToReport(page, { maxMs: 120000 });

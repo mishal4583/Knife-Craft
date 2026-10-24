@@ -112,8 +112,16 @@ export type CoachPayload = { visible: boolean; techniqueId: TechniqueId };
 
 /** Scene -> Bridge -> React: a peel step's progress, 0–1 of the way to done (covered cells ÷ the completion threshold). Display only. */
 export type PeelProgressPayload = { fraction: number };
-/** Phase 2 (A2) — see EVT.CLEANUP. `pieces` is the debris on the board at that moment. */
-export type CleanupPayload = { state: "offered" | "done" | "skipped"; pieces: number };
+/**
+ * Phase 2 (A2) — see EVT.CLEANUP. `pieces` is the debris on the board at that
+ * moment; `progress` how much of the mess the cloth has wiped away (0–1),
+ * sent as it changes ("progress").
+ */
+export type CleanupPayload = {
+  state: "offered" | "progress" | "done" | "skipped";
+  pieces: number;
+  progress?: number;
+};
 /** Phase 3 (A) — see EVT.FEVER. `ms` is how long it lasts (0 on end); `reason` says why it ended. */
 export type FeverPayload = {
   state: "start" | "end";

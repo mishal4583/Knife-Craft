@@ -1225,11 +1225,13 @@ taken, repaid}`; taking on credit moves no money (no entry);
   numbers), Reduced Motion off; I the Knife Report's stats grid can
   shrink and tightens under a 390 px game (static guard for
   `tools/e2e/knifereport.mjs`).
-- `phase2-qa` — PHASE 2 (developer 2026-10-21; §10 "Bench scraper, money
+- `phase2-qa` — PHASE 2 (developer 2026-10-21; §10 "Cleaning cloth, money
   vacuum…", §7 "Customer tips"): A debris bounded, deterministic, per
-  ingredient, in the margins, only from real actions; the scraper takes the
-  board's pointer before any cut, is offered only at an order's start, always
-  has Skip, recovers lost pointers, ends cleanly, touches no save or wallet;
+  ingredient, in the margins, only from real actions; juicy cuts spill juice
+  at the cut (2026-10-24); the cloth takes the board's pointer before any cut,
+  wipes over several strokes, hides the next ingredient until it's done, is
+  offered only at an order's start, always has Skip, recovers lost pointers,
+  ends cleanly, touches no save or wallet;
   B the cash adds up exactly (whole cents, tip in gold), bounded, never
   credits/records/saves, each piece once, the wallet = credits − counter, the
   Serve latch, the tray owns its pointer, auto-collect session-only; C tips:
@@ -2451,7 +2453,7 @@ anything (no save field, no ledger entry, no stock, no progress).
   Levels 1–10 and no technique being taught (`coaching.ts`); an event that
   can't happen on the order (Grandma needs a step of 8+ cuts, Inspection a
   restaurant, Giant a cutting first step) passes to the next; a due event
-  waits one order when the bench scraper is offered. Decided once per order
+  waits one order when the cleaning cloth is offered. Decided once per order
   in the scene (a restart keeps it), announced on a card; the Knife Report
   acknowledges it (`specialsReport.ts`).
 - **Special variants** (`game/specialVariants.ts`): every 3rd eligible order
@@ -2468,24 +2470,52 @@ anything (no save field, no ledger entry, no stock, no progress).
 - QA: `phase3-qa` (§5). Browser: `tools/e2e/phase3.mjs`. The e2e solver sweeps
   (then skips) an avalanche.
 
-### Bench scraper, money vacuum and the serve celebration — Phase 2 (developer 2026-10-21)
+### Cleaning cloth, money vacuum and the serve celebration — Phase 2 (developer 2026-10-21)
 
 All presentation except the tip (§7 "Customer tips"); no save field.
 
-- **Cutting debris** (`game/boardDebris.ts`): each real action leaves a little
-  mess in the ingredient's own look (tomato seeds and juice, onion skins,
-  cucumber scraps, …): 1 per cut or ring, 2 per smash, 3 per finished peel, in
-  the board's far and near margins, at most 40, drawn into ONE Graphics at
-  depth 1 (above the board, under guides, food and knife). A session list,
-  seeded (piece n always lands the same way), never saved: it outlives one
-  order on purpose, since each order remounts the scene.
-- **Bench scraper**: at the START of an order (or Prepare Again) with 30+
-  pieces — about every 2–3 orders — never mid-dish. While it is out, the
-  board's pointer is the scraper's (a tap or swipe can never cut); one drag
-  across 45% of the board's width sweeps the debris off the edge, then a
-  polish glint, a squeak and sparkles; shorter drags put the blade back. Skip
-  (on the card, like the coach card) leaves the mess and cuts at once; it is
-  offered again next time. Lost pointers are let go; Reduced Motion makes it
+- **Cutting debris** (`game/boardDebris.ts`; realistic since 2026-10-24,
+  developer: "make the ingredient leftover while cutting more realistic …
+  for juicy ingredients make it juicy … let it spill while cutting"): each
+  real action leaves a little mess in the ingredient's own look — diced cubes
+  with a lit top and shaded sides, teardrop seeds, curled peel, herb leaves,
+  crumbs, irregular chunks (`LOOKS`, by ingredient, else by category): 1 per
+  cut or ring, 2 per smash, 3 per finished peel, in the board's far and near
+  margins, at most 40. **Juice:** a juicy ingredient (`JUICE`: its colour and
+  how much it spills — tomato, watermelon, citrus, pineapple, beetroot, steak
+  …) spills at the cut itself: a pool that runs out from under the food and a
+  few droplets (at most `MAX_WET` 24 wet pieces). Juice never brings the cloth
+  sooner (CLEAN_AT counts solid pieces). Painted with Canvas 2D
+  (`textures/boardMess.ts`) into ONE CanvasTexture image at depth 1 (above the
+  board, under guides, food and knife): the pools' bodies merge in one wet
+  layer laid on at the juice's own transparency with a soft darker edge, then
+  their sheen and pulp, the drops and the scraps with contact shadows. A
+  session list, seeded (piece n always lands the same way, its shape from its
+  own `seed`), never saved: it outlives one order on purpose, since each
+  order remounts the scene.
+- **The cleaning cloth** (2026-10-24, developer: "instead of that tool use a
+  realistic cloth and do not show the next ingredient before cleaning the
+  cutting board … make the cleaning a little slow and satisfying"; was the
+  bench scraper): at the START of an order (or Prepare Again) with 30+ solid
+  pieces — about every 2–3 orders — never mid-dish. A folded kitchen towel
+  (cotton weave, red stripes, a folded-over flap; `paintCloth`) rests on the
+  board's near corner; the next ingredient and its guides wait OFF the board.
+  While it is out the board's pointer is the cloth's (a tap or swipe can never
+  cut): it follows the finger with a little lag, leans into its motion and
+  presses flat; each frame's travel rubs the pieces under it
+  (`wipeDebris`: reach `CLOTH_RU`/`CLOTH_RV`, `WIPE_RATE`, each kind's
+  `WIPE_TOUGHNESS` — a juice pool takes a few passes, a seed one). Solids are
+  dragged a little before it picks them up; juice smears along the stroke and
+  fades. Each piece gone rings a rising sparkle note (a streak), a sparkle and
+  a short buzz; the wet scrub sound follows the motion; the cloth picks up a
+  faint stain. The card shows "🧽 Wipe it with the cloth" and a five-segment
+  bar (`cleanProgress`, sent as `EVT.CLEANUP` "progress"). At `CLEAN_DONE`
+  (92%) the cloth lifts off to the side, a polish glint wipes the last specks,
+  a squeak, sparkles and the spotless chime — then the ingredient is set down
+  (a short drop and settle, a plate tap). One sweep never cleans; a whole
+  board takes several strokes (`phase2-qa` A15: 6–20). Skip (on the card)
+  leaves the mess, sets the ingredient down and cuts at once; it is offered
+  again next time. Lost pointers are let go; Reduced Motion makes the end
   instant; the coach waits.
 - **Money vacuum** (`game/cashBurst.ts`, `kc/game/CashVacuum.tsx`): after
   Serve, the payment (and any tip, in gold) lands on the serve card as 4–14
@@ -2503,7 +2533,8 @@ All presentation except the tip (§7 "Customer tips"); no save field.
   "💸 Generous tip! +$X" under the order pay. At 320×568 the card fits
   without scrolling (a tip on a two-line dish name may scroll, never clip).
 - QA: `phase2-qa` (§5). Browser: `tools/e2e/phase2.mjs`. The e2e solver
-  scrapes when the scraper is offered, and takes an opt-in `aim` / `steady`.
+  wipes the board (`wipeBoard`) when the cloth is offered, and takes an opt-in
+  `aim` / `steady`.
 
 ### Cutting feel, combo and New Best — Phase 1 (developer 2026-10-21)
 

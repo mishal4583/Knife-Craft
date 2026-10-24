@@ -73,6 +73,32 @@ async function stroke(page, x0, y0, x1, y1, steps = 14) {
 }
 
 /**
+ * The cleaning cloth (developer 2026-10-24: slow and satisfying — it takes several strokes):
+ * wipes the board like a player, back and forth row by row, top to bottom, until the clean-up
+ * card goes (true) or `maxStrokes` run out (false). Aim points are the portrait defaults unless
+ * `cx`/`cy`/`k` (geometry scale) are given.
+ */
+export async function wipeBoard(page, { cx = CX, cy = CY, k = 1, maxStrokes = 28 } = {}) {
+  const up = () => page.evaluate(() => !!document.querySelector('[data-testid="board-cleanup"]'));
+  const rows = [-130, -90, -50, -10, 30, 70, 110];
+  for (let i = 0; i < maxStrokes; i++) {
+    const y = cy + 30 * k + rows[i % rows.length] * k;
+    const back = Math.floor(i / rows.length) % 2 === 1;
+    const [x0, x1] = back ? [cx + 185 * k, cx - 185 * k] : [cx - 185 * k, cx + 185 * k];
+    await page.mouse.move(x0, y);
+    await page.mouse.down();
+    for (let s = 1; s <= 20; s++) {
+      await page.mouse.move(x0 + ((x1 - x0) * s) / 20, y + Math.sin(s) * 5 * k);
+      await sleep(16);
+    }
+    await page.mouse.up();
+    if (!(await up())) return true;
+  }
+  await sleep(1200);
+  return !(await up());
+}
+
+/**
  * Plays the current recipe to its Knife Report. Returns a log of what it did.
  * `until` (a page predicate) stops early once true — e.g. when the cooking clip appears.
  */
@@ -107,12 +133,13 @@ export async function playToReport(
       log.push("stopped");
       return { ok: true, log, stopped: true };
     }
-    // Phase 2 (2026-10-21): a messy board offers the bench scraper at the
-    // start of an order and takes the board until it is used or skipped —
-    // scrape it like a player, one broad sweep across the board.
+    // Phase 2 (2026-10-21; the cloth since 2026-10-24): a messy board offers the
+    // cloth at the start of an order and takes the board until it is clean or
+    // skipped — wipe it like a player, row by row, and skip if it won't come clean.
     if (await page.evaluate(() => !!document.querySelector('[data-testid="board-cleanup"]'))) {
-      log.push("scrape");
-      await stroke(page, CX - 185 * k, CY + 30 * k, CX + 185 * k, CY + 30 * k, 18);
+      log.push("wipe");
+      if (!(await wipeBoard(page, { cx: CX, cy: CY, k })))
+        await page.click('[data-testid="board-cleanup-skip"]').catch(() => null);
       await sleep(1100);
       continue;
     }

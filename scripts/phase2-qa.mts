@@ -22,11 +22,15 @@ import { execSync } from "node:child_process";
 const PHASE_BASE = "0ab8a4e";
 import {
   DEBRIS,
+  JUICE,
   addDebris,
   boardDebris,
+  cleanProgress,
   cleanupDue,
   clearDebris,
+  isWet,
   resetDebrisForTests,
+  wipeDebris,
 } from "../src/game/boardDebris.ts";
 import { CASH, cashPieceCount, cashPieces, cashRemaining } from "../src/game/cashBurst.ts";
 import { TIPS, isTippingOrder, tipAmount, tipFor } from "../src/game/economy/customerTips.ts";
@@ -102,9 +106,10 @@ const cucumber = kindsOf("cucumber", "Vegetable");
 assert(
   [...tomato].some((k) => k.startsWith("seed")) &&
     [...onion].some((k) => k.startsWith("skin")) &&
-    [...cucumber].some((k) => k.startsWith("scrap")) &&
+    // Developer 2026-10-24 ("more realistic leftovers"): cucumber now leaves diced cubes.
+    [...cucumber].some((k) => k.startsWith("cube")) &&
     ![...tomato].some((k) => onion.has(k)),
-  "A5: each ingredient leaves its own debris (tomato seeds, onion skins, cucumber scraps)",
+  "A5: each ingredient leaves its own debris (tomato seeds, onion skins, cucumber cubes)",
   { tomato: [...tomato], onion: [...onion] },
 );
 resetDebrisForTests();
@@ -114,16 +119,18 @@ assert(
   "A6: debris sits in the board's far and near margins, clear of the food",
 );
 assert(
-  /this\.debrisGfx = this\.add\.graphics\(\)\.setDepth\(1\);/.test(scene) &&
+  // Developer 2026-10-24 (realistic debris): one CanvasTexture image instead of one Graphics.
+  /this\.add\.image\(0, 0, DEBRIS_TEXTURE\)\.setOrigin\(0\)\.setDepth\(1\)/.test(scene) &&
+    (scene.match(/this\.textures\.createCanvas\(DEBRIS_TEXTURE/g) ?? []).length === 1 &&
     /this\.guideGfx\.setDepth\(15\)/.test(scene),
-  "A7: one Graphics at depth 1 — above the board, below the guides (15), food and knife",
+  "A7: one debris image (one canvas) at depth 1 — above the board, below the guides (15), food and knife",
 );
 const addCalls = scene.match(/this\.addBoardDebris\(/g)?.length ?? 0;
 assert(
   addCalls === 4 &&
-    /this\.addBoardDebris\(cutPoint\.x, DEBRIS\.PER_CUT\)/.test(scene) &&
+    /this\.addBoardDebris\(cutPoint\.x, DEBRIS\.PER_CUT, cutPoint\.y\)/.test(scene) &&
     /this\.addBoardDebris\(this\.ingCx, DEBRIS\.PER_PEEL\)/.test(scene) &&
-    /this\.addBoardDebris\(x, DEBRIS\.PER_SMASH\)/.test(scene) &&
+    /this\.addBoardDebris\(x, DEBRIS\.PER_SMASH, y\)/.test(scene) &&
     /this\.addBoardDebris\(this\.ingCx, DEBRIS\.PER_RING\)/.test(scene) &&
     !/addBoardDebris/.test(body(scene, "override update(")),
   "A8: debris only from real actions (cut, peel, smash, ring) — never per frame",
@@ -134,13 +141,13 @@ assert(
   down.indexOf("if (this.cleanup)") > 0 &&
     down.indexOf("if (this.cleanup)") < down.indexOf("this.coachTouched") &&
     down.indexOf("if (this.cleanup)") < down.indexOf("hasZoomedIn") &&
-    /if \(this\.cleanup\) \{\s*this\.onScraperDown\(pointer\);\s*return;/.test(down),
-  "A9: while the scraper is out, a touch on the board goes to it and returns before any cut",
+    /if \(this\.cleanup\) \{\s*this\.onClothDown\(pointer\);\s*return;/.test(down),
+  "A9: while the cloth is out, a touch on the board goes to it and returns before any cut",
 );
 assert(
-  /if \(this\.cleanup\) \{\s*this\.onScraperMove\(pointer\);\s*return;/.test(scene) &&
-    /if \(this\.cleanup\) \{\s*this\.onScraperUp\(\);\s*return;/.test(scene),
-  "A10: moves and releases go to the scraper too (no swipe cut can start or finish)",
+  /if \(this\.cleanup\) \{\s*this\.onClothMove\(pointer\);\s*return;/.test(scene) &&
+    /if \(this\.cleanup\) \{\s*this\.onClothUp\(\);\s*return;/.test(scene),
+  "A10: moves and releases go to the cloth too (no swipe cut can start or finish)",
 );
 const offers = scene.match(/this\.maybeOfferCleanup\(\);/g)?.length ?? 0;
 assert(
@@ -157,28 +164,96 @@ assert(
   "A12: Skip is always there — the scrape can never hold a player up",
 );
 assert(
-  /this\.cleanup\?\.dragging && !this\.input\.activePointer\.isDown\) this\.onScraperUp\(\)/.test(
+  /this\.cleanup\?\.dragging && !this\.input\.activePointer\.isDown\) this\.onClothUp\(\)/.test(
     scene,
   ),
-  "A13: a scrape the browser never ended (lost focus, cancelled touch) is let go",
+  "A13: a wipe the browser never ended (lost focus, cancelled touch) is let go",
 );
 assert(
   /if \(this\.cleanup\) return true;/.test(body(scene, "private coachBlocked(): boolean {")),
-  "A14: no knife demonstration over the scraper",
+  "A14: no knife demonstration over the cloth",
 );
-assert(
-  /c\.travel >= DEBRIS\.SWEEP_FRAC \* \(m\.right - m\.left\)/.test(scene) &&
-    DEBRIS.SWEEP_FRAC > 0.25 &&
-    DEBRIS.SWEEP_FRAC <= 0.6,
-  "A15: one broad sweep cleans (a share of the board's width, not pixel-perfect)",
-);
+// Developer 2026-10-24 ("make the cleaning a little slow and satisfying"): the cloth
+// rubs the mess away over several passes (was: one broad scraper sweep).
+{
+  resetDebrisForTests();
+  for (let i = 0; i < 34; i++) addDebris("tomato", "Vegetable", (i % 10) / 10, 1, 0.5);
+  // One stroke: the cloth drawn once across the board along one row (rows top to bottom, then again).
+  const rows = [0.08, 0.3, 0.5, 0.7, 0.92];
+  let strokes = 0;
+  const stroke = () => {
+    const v = rows[strokes % rows.length]!;
+    const back = Math.floor(strokes / rows.length) % 2 === 1;
+    for (let k = 0; k < 10; k++)
+      back
+        ? wipeDebris(1 - k / 10, v, 1 - (k + 1) / 10, v)
+        : wipeDebris(k / 10, v, (k + 1) / 10, v);
+    strokes++;
+  };
+  stroke();
+  const after1 = cleanProgress();
+  while (cleanProgress() < DEBRIS.CLEAN_DONE && strokes < 60) stroke();
+  assert(
+    after1 > 0.02 && after1 < 0.5 && strokes >= 6 && strokes <= 20,
+    "A15: the cloth wipes the board over several strokes (slow, satisfying) — one sweep never cleans it, nor does it take forever",
+    { after1, strokes },
+  );
+  resetDebrisForTests();
+  addDebris("tomato", "Vegetable", 0.5, 4, 0.5);
+  wipeDebris(0.2, 0.5, 0.25, 0.5);
+  assert(
+    cleanProgress() === 0 || boardDebris().every((p) => p.wear < 1),
+    "A15b: a short rub far from the mess cleans nothing",
+  );
+}
 const endBody = body(scene, "private endCleanup(");
 assert(
-  /c\.gfx\.destroy\(\)/.test(endBody) &&
-    /this\.tweens\.killTweensOf\(c\)/.test(endBody) &&
-    /this\.knifeGfx\.setVisible\(true\)/.test(endBody),
-  "A16: ending the cleanup destroys the scraper, stops its tweens and gives the knife back",
+  /c\.img\.destroy\(\)/.test(endBody) &&
+    /c\.shadow\.destroy\(\)/.test(endBody) &&
+    /this\.tweens\.killTweensOf\(\[c\.img, c\.shadow\]\)/.test(endBody) &&
+    /this\.knifeGfx\.setVisible\(true\)/.test(endBody) &&
+    /this\.guideGfx\.setVisible\(true\)/.test(endBody) &&
+    /for \(const im of this\.pieceImages\.values\(\)\)/.test(endBody),
+  "A16: ending the cleanup puts the cloth away, stops its tweens, gives the knife back and sets the ingredient down",
 );
+// Developer 2026-10-24: "do not show the next ingredient before cleaning the cutting board".
+const offerBody = body(scene, "private maybeOfferCleanup(");
+assert(
+  /for \(const im of this\.pieceImages\.values\(\)\) im\.setAlpha\(0\);/.test(offerBody) &&
+    /this\.guideGfx\.setVisible\(false\)/.test(offerBody),
+  "A19: while the cloth is out the next ingredient (and its guides) wait off the board",
+);
+// Developer 2026-10-24: "for juicy ingredients make it juicy … let it spill while cutting".
+{
+  resetDebrisForTests();
+  for (let i = 0; i < 12; i++) addDebris("tomato", "Vegetable", 0.5, 1, 0.5);
+  const wet = boardDebris().filter((p) => isWet(p.kind));
+  resetDebrisForTests();
+  for (let i = 0; i < 12; i++) addDebris("carrot", "Vegetable", 0.5, 1, 0.5);
+  const dry = boardDebris().filter((p) => isWet(p.kind));
+  resetDebrisForTests();
+  for (let i = 0; i < 200; i++) addDebris("watermelon", "Fruit", 0.5, 1, 0.5);
+  const wetMax = boardDebris().filter((p) => isWet(p.kind)).length;
+  const due = cleanupDue();
+  resetDebrisForTests();
+  for (let i = 0; i < DEBRIS.CLEAN_AT - 1; i++) addDebris("tomato", "Vegetable", 0.5, 1, 0.5);
+  assert(
+    wet.some((p) => p.kind === "juice") &&
+      wet.every((p) => Math.abs(p.v - 0.5) < 0.3 && p.color === JUICE.tomato!.color) &&
+      dry.length === 0 &&
+      wetMax <= DEBRIS.MAX_WET &&
+      due &&
+      !cleanupDue(),
+    "A20: juicy cuts spill juice at the cut (pools and drops in the ingredient's colour); dry ones don't; bounded; juice never brings the cloth sooner",
+    { wet: wet.length, dry: dry.length, wetMax },
+  );
+  assert(
+    /addDebris\(this\.ingredientId, this\.ingredient\.category, u, count, v\)/.test(scene) &&
+      /paintDebrisPiece\(/.test(scene) &&
+      /paintCloth\(/.test(scene),
+    "A21: the scene paints the debris and the cloth with textures/boardMess.ts",
+  );
+}
 const debrisCode = code("src/game/boardDebris.ts");
 assert(
   !/SaveData|localStorage|persist|credits|ledger/i.test(debrisCode),
