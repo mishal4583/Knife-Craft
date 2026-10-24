@@ -2570,14 +2570,22 @@ when, `scenes/knifeFx.ts` draws, on the knife's own transform; the knife's
 pose is untouched — docs/KNIFE_RULES.md). It builds with the run, so the
 blade gets more alive the better the player cuts:
 
+Matched to the developer's reference board (2026-10-24, "make the effects
+like this": motion trail, impact, slice through, juice beads, combo build,
+combo high, perfect / last slice):
+
 | When | What |
 |---|---|
-| every cut | a glint runs heel → tip along the edge (and the spine); the edge's afterimage stays in the cut; a 5 ms buzz |
-| juicy ingredient (`JUICE`) | juice beads stay on the blade, slide to the edge and dry |
-| combo ×5 / ×10 / ×15 (`bladeTier`) | the edge heats: ivory → gold with a glow (Fever is at least this) → pulsing white-gold, sparks off the tip |
-| combo milestones | a brighter glint and a star at the tip; 14 ms buzz |
-| Perfect Slice | the whole blade flashes white; a star; 18 ms buzz |
-| the step's last cut | a double glint, the steel's "shing" (`AudioManager.playBladeRing`, under the "prepped" chord), a star, the juice flicked off; 24 ms buzz |
+| the knife moving | a soft motion trail — swooshes of the edge behind it (gold from ×10) |
+| every cut — impact | 16–25 juice teardrops and 4–7 seeds burst from the cut and arc onto the board, with a wet mist (dry food throws flecks of itself) |
+| every cut — slice through | a bright glint with a flare runs heel → tip (the spine catches it too); the edge's afterimage stays in the cut; the edge always carries a thin line of light; a 5 ms buzz |
+| juicy ingredient (`JUICE`) | juice beads (teardrops) stick to the blade, slide down leaving a wet streak, and dry |
+| combo ×5 (`bladeTier` 1) | the blade warms: a warm aura over the steel, a glowing edge |
+| combo ×10 (tier 2; Fever is at least this) | a gold edge with bloom and embers rising off it |
+| combo ×15 (tier 3) | pulsing white-gold, more embers, sparks off the tip |
+| combo milestones | a brighter glint and a lens-flare star at the tip; 14 ms buzz |
+| Perfect Slice | the whole blade flashes white; a big star; 18 ms buzz |
+| the step's last cut | a flash, a double glint, the steel's "shing" (`AudioManager.playBladeRing`, under the "prepped" chord), a big star, the juice flicked off; 24 ms buzz |
 
 A fresh ingredient starts cool and dry. Reduced Motion keeps only the edge's
 colour and a short flash. QA: `knife-feel-qa`.

@@ -2,10 +2,11 @@
 
 ## The knife's feel (2026-10-24, `main`)
 
-- Every cut glints along the blade; juice beads on it; the edge heats with the combo
-  (×5/×10/×15); milestones and Perfect Slice star and flash; the last cut rings the
-  steel and flicks the juice off; short haptics. REFERENCE §10 "The knife's feel";
-  QA `knife-feel-qa`.
+- Matched to the developer's reference board: motion trail, an impact splash of juice
+  and seeds, a glint with a flare, juice beads that slide with a streak, a glowing
+  blade with embers by combo (×5/×10/×15), lens-flare stars, a flash and the steel's
+  ring on the last cut; short haptics. REFERENCE §10 "The knife's feel"; QA
+  `knife-feel-qa` (R1–R5 for the reference).
 
 ## Random stains, every ingredient, wipe every corner (2026-10-24, `main`)
 

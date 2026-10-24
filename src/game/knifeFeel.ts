@@ -10,30 +10,36 @@ import { COMBO } from "./definitions";
  * When each effect comes (it builds with the player's run, so the blade
  * gets more alive the better they cut):
  *
- *  every cut     a glint runs heel → tip along the edge (and the spine);
- *                a faint afterimage of the edge stays in the cut; 5 ms buzz.
- *  juicy food    juice beads stay on the blade, slide to the edge and drip.
- *  combo ×5      tier 1: the edge warms (ivory).
- *  combo ×10     tier 2: a gold edge with a soft glow (Fever lights here).
- *  combo ×15     tier 3: a pulsing white-gold edge, sparks off the tip.
+ *  moving knife  a soft motion trail of the edge behind it.
+ *  every cut     impact: juice droplets and seeds burst from the cut (dry
+ *                food throws flecks); a glint with a flare runs heel → tip;
+ *                the edge's afterimage stays in the cut; 5 ms buzz.
+ *  juicy food    juice beads stick to the blade, slide down leaving a wet
+ *                streak, and dry.
+ *  combo ×5      tier 1: the blade warms — a warm aura, a glowing edge.
+ *  combo ×10     tier 2: a gold edge with bloom, embers rising off it
+ *                (Fever lights here).
+ *  combo ×15     tier 3: pulsing white-gold, more embers, sparks off the tip.
  *  milestones    (COMBO.MILESTONES) a brighter glint and a star at the tip.
- *  Perfect Slice the whole blade flashes white; a star at the tip.
- *  last cut      a double glint, a soft metallic "shing", a tip star, and
- *                the juice flicked off the blade — the ingredient is done.
+ *  Perfect Slice the whole blade flashes white; a lens-flare star at the tip.
+ *  last cut      a flash, a double glint, a soft metallic "shing", a big tip
+ *                star, and the juice flicked off — the ingredient is done.
+ * (The developer's reference board, 2026-10-24: motion trail, impact, slice
+ * through, juice beads, combo build, combo high, perfect / last slice.)
  *  Reduced Motion: only the edge's colour and a short flash.
  */
 export const KNIFE_FX = {
   /** The glint's run along the edge, and how much of the edge it lights. */
-  GLINT_MS: 260,
+  GLINT_MS: 340,
   GLINT_SPAN: 0.16,
   /** The second glint of the last cut, after the first. */
   GLINT_ECHO_MS: 170,
   /** The edge's afterimage in the cut. */
-  AFTERIMAGE_MS: 220,
+  AFTERIMAGE_MS: 260,
   /** Perfect Slice's white flash. */
   FLASH_MS: 260,
   /** Juice beads on the blade: at most this many; how long one lasts. */
-  WET_MAX: 8,
+  WET_MAX: 12,
   WET_MS: 2600,
   /** The combo each blade tier starts at. */
   TIER_AT: [5, 10, 15] as readonly number[],
@@ -82,7 +88,8 @@ export function cutMoment(c: {
   return {
     glint: Math.min(1, 0.55 + tier * 0.12 + (milestone ? 0.25 : 0) + (c.perfect ? 0.3 : 0)),
     echo: c.last,
-    flash: c.perfect,
+    // Perfect Slice and the last cut both flash (developer 2026-10-24 reference: "Perfect / last slice").
+    flash: c.perfect || c.last,
     star: c.perfect || milestone || c.last || tier >= 3,
     shing: c.last,
     flick: c.last,

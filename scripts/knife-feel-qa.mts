@@ -91,10 +91,10 @@ assert(bladeTier(1, true) === 2 && bladeTier(20, true) === 3, "T2: Fever is at l
     scene.indexOf("private markCutCommitted("),
   );
   assert(
-    /this\.knifeFx\?\.onCut\(\s*cutMoment\(\{ combo, perfect, last: stepDone, fever: !!this\.fever \}\),\s*JUICE\[this\.ingredientId\]\?\.color \?\? null,?\s*\)/.test(
+    /this\.knifeFx\?\.onCut\(\s*cutMoment\(\{ combo, perfect, last: stepDone, fever: !!this\.fever \}\),\s*JUICE\[this\.ingredientId\]\?\.color \?\? null,\s*cutPoint,/.test(
       commit,
     ) && /if \(stepDone\) AudioManager\.playBladeRing\(\);/.test(commit),
-    "W1: every committed cut gets its moment (with the ingredient's juice); the step's last rings the steel",
+    "W1: every committed cut gets its moment (with the ingredient's juice and where it went through); the step's last rings the steel",
   );
   assert(
     /this\.knifeFx\?\.draw\(g, profile, g\.visible \? alpha : 0\);/.test(scene) &&
@@ -124,6 +124,34 @@ assert(bladeTier(1, true) === 2 && bladeTier(20, true) === 3, "T2: Fever is at l
       read("src/game/AudioManager.ts"),
     ),
     "W6: the steel ring is synthesized and gated on the Sound setting",
+  );
+}
+
+// ---------- R. The reference board (developer 2026-10-24: "make the effects like this") ----------
+{
+  const fx = read("src/game/scenes/knifeFx.ts");
+  const last = cutMoment({ combo: 6, perfect: false, last: true });
+  assert(
+    /private splash\(/.test(fx) &&
+      /if \(at && !still\) this\.splash\(/.test(fx) &&
+      /fillTriangle\(-size \* 0\.9/.test(fx),
+    "R1: impact — juice teardrops and seeds burst from the cut and land (dry food throws flecks)",
+  );
+  assert(
+    /this\.trail\.push\(\{ pts: edgeWorld, t: now \}\)/.test(fx) && /TRAIL_MS/.test(fx),
+    "R2: motion trail — soft swooshes of the edge behind a moving knife",
+  );
+  assert(
+    /private ember\(/.test(fx) && /fillPoints\(p\.outline, true\)/.test(fx),
+    "R3: combo glow — a warm aura over the blade, embers rising off the edge from ×10",
+  );
+  assert(
+    last.flash && last.star && /ray\(0, L \* 1\.4/.test(fx),
+    "R4: perfect / last slice — the blade flashes and a lens-flare star pops at the tip",
+  );
+  assert(
+    /lineBetween\(x, top, x, y - r \* 0\.6\)/.test(fx),
+    "R5: juice beads slide down leaving a wet streak",
   );
 }
 

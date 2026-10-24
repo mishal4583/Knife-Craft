@@ -36,6 +36,7 @@ import {
   cleanProgress,
   cleanupDue,
   clearDebris,
+  debrisLookFor,
   dirtiestPatch,
   endWipe,
   filmCell,
@@ -5508,6 +5509,14 @@ export class PreparationScene extends Phaser.Scene {
     this.knifeFx?.onCut(
       cutMoment({ combo, perfect, last: stepDone, fever: !!this.fever }),
       JUICE[this.ingredientId]?.color ?? null,
+      cutPoint,
+      {
+        seed:
+          debrisLookFor(this.ingredientId, this.ingredient.category).find(
+            ([kind]) => kind === "seed",
+          )?.[1] ?? null,
+        fleck: this.cutFleckColor(),
+      },
     );
     if (stepDone) AudioManager.playBladeRing();
 
