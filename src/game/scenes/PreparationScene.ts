@@ -41,11 +41,14 @@ import {
   filmCell,
   filmColor,
   isWet,
+  JUICE,
   newIngredientBatch,
   startWipe,
   wipeDebris,
 } from "../boardDebris";
 import { paintCloth, paintDebrisPiece, paintPoolBody } from "../textures/boardMess";
+import { cutMoment } from "../knifeFeel";
+import { KnifeFx } from "./knifeFx";
 
 /** Phase 2: the one CanvasTexture all the cutting debris is painted into, and the cloth's. */
 const DEBRIS_TEXTURE = "board-debris";
@@ -950,6 +953,8 @@ export class PreparationScene extends Phaser.Scene {
   private boardQuad: BoardQuad = { xt0: 0, xt1: 0, yt: 0, xb0: 0, xb1: 0, yb: 0 };
   /** Phase 2 (A1) — every piece of cutting debris, drawn into this ONE Graphics (depth 1: on the board, under guides, food and knife) from boardDebris.ts's session list. */
   private debrisImg: Phaser.GameObjects.Image | null = null;
+  /** The knife's own effects while cutting — glint, heated edge, juice on the blade (knifeFeel.ts). */
+  private knifeFx: KnifeFx | null = null;
   /** The cloth went away mid-drag: the rest of that drag (until the finger lifts) is ignored. */
   private clothGestureLeft = false;
   /** The cloth moved debris this frame: repaint once in update(). */
@@ -1178,6 +1183,7 @@ export class PreparationScene extends Phaser.Scene {
     this.seamGfx.setDepth(16);
     this.plateGfx.setDepth(18);
     this.knifeGfx.setDepth(30);
+    this.knifeFx = new KnifeFx(this, () => this.reducedMotion());
     this.coachGfx.setDepth(29);
     this.coachLabel.setDepth(29);
     this.handL.setDepth(40);
@@ -1400,8 +1406,9 @@ export class PreparationScene extends Phaser.Scene {
   private beginFreshIngredient(): void {
     for (const img of this.pieceImages.values()) this.destroyPieceImage(img);
     this.pieceImages.clear();
-    // Each ingredient stains the board its own way (boardDebris.ts).
+    // Each ingredient stains the board its own way (boardDebris.ts); the blade cools and dries.
     newIngredientBatch();
+    this.knifeFx?.reset();
     this.pieces = [{ cons: [] }];
     const whole = this.createPieceImage(this.pieces[0]!);
     whole.setAlpha(1);
@@ -5495,6 +5502,14 @@ export class PreparationScene extends Phaser.Scene {
       this.spawnCutFleck(cutPoint.x, cutPoint.y);
     }
     if (this.fever) this.spawnFeverFlecks(cutPoint.x, cutPoint.y);
+    // The knife itself answers the cut (knifeFeel.ts): a glint, a hotter edge as
+    // the combo grows, juice on the blade; the step's last cut rings the steel.
+    const stepDone = combo >= this.requiredCuts;
+    this.knifeFx?.onCut(
+      cutMoment({ combo, perfect, last: stepDone, fever: !!this.fever }),
+      JUICE[this.ingredientId]?.color ?? null,
+    );
+    if (stepDone) AudioManager.playBladeRing();
 
     // visibleSeamSpanFor (§13): this feeds the CutResultPanel/KnifeReport
     // comparison diagram — a purely visual overlay — so it should hug
@@ -7124,6 +7139,7 @@ export class PreparationScene extends Phaser.Scene {
       y: -sw * 0.6 * sin + sw * cos,
     };
     paintKnife(g, profile, shape, visual, shadow);
+    this.knifeFx?.draw(g, profile, g.visible ? alpha : 0);
   }
 }
 

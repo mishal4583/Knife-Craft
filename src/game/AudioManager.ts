@@ -727,6 +727,44 @@ class AudioManagerImpl {
   }
 
   /**
+   * The knife's "shing" (knifeFeel.ts, developer 2026-10-24): steel ringing
+   * after the ingredient's last cut — a bright click and a few inharmonic
+   * high partials that shimmer away, like a blade drawn off a steel. Quiet,
+   * under the "prepped" chord. Gated on the Sound setting.
+   */
+  playBladeRing(): void {
+    if (!this.enabled) return;
+    const ctx = this.ensureContext();
+    if (!ctx) return;
+    const t0 = ctx.currentTime + 0.02;
+    const src = this.noiseSource(ctx);
+    const hp = ctx.createBiquadFilter();
+    hp.type = "highpass";
+    hp.frequency.value = 5200;
+    const click = ctx.createGain();
+    click.gain.setValueAtTime(0.0001, t0);
+    click.gain.exponentialRampToValueAtTime(0.03, t0 + 0.004);
+    click.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.06);
+    src.connect(hp).connect(click).connect(this.sfxOut(ctx));
+    src.start(t0);
+    src.stop(t0 + 0.08);
+    for (const [i, f] of [2637, 3951, 5274, 6640].entries()) {
+      const osc = ctx.createOscillator();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(f, t0);
+      osc.frequency.exponentialRampToValueAtTime(f * 0.996, t0 + 0.7);
+      const g = ctx.createGain();
+      const peak = 0.026 / (i + 1);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(peak, t0 + 0.006);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.75 - i * 0.12);
+      osc.connect(g).connect(this.sfxOut(ctx));
+      osc.start(t0);
+      osc.stop(t0 + 0.8);
+    }
+  }
+
+  /**
    * Phase 1 — an ingredient's required cuts are all done. A soft settled
    * major third, warmer and lower than playChime()'s perfect-slice
    * sparkle so the two never read as the same event: this one says

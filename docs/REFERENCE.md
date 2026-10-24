@@ -1225,6 +1225,11 @@ taken, repaid}`; taking on credit moves no money (no entry);
   numbers), Reduced Motion off; I the Knife Report's stats grid can
   shrink and tightens under a 390 px game (static guard for
   `tools/e2e/knifereport.mjs`).
+- `knife-feel-qa` — the knife's feel (developer 2026-10-24; §10 "The
+  knife's feel"): tiers by combo (Fever ≥ 2), each moment's effects and
+  buzz, the scene wiring (every committed cut, juice, the last cut's ring,
+  the knife's own transform, a cool blade per ingredient, Reduced Motion),
+  presentation only.
 - `phase2-qa` — PHASE 2 (developer 2026-10-21; §10 "Cleaning cloth, money
   vacuum…", §7 "Customer tips"): A debris bounded, deterministic, per
   ingredient, in the margins, only from real actions; juicy cuts spill juice
@@ -2556,6 +2561,26 @@ All presentation except the tip (§7 "Customer tips"); no save field.
 - QA: `phase2-qa` (§5). Browser: `tools/e2e/phase2.mjs`. The e2e solver
   wipes the board (`wipeBoard`) when the cloth is offered, and takes an opt-in
   `aim` / `steady`.
+
+### The knife's feel — glint, heat, juice, ring (developer 2026-10-24)
+
+"Add effects to the knife while cutting so the cutting is satisfying and the
+player gets dopamine from it." Presentation only (`game/knifeFeel.ts` says
+when, `scenes/knifeFx.ts` draws, on the knife's own transform; the knife's
+pose is untouched — docs/KNIFE_RULES.md). It builds with the run, so the
+blade gets more alive the better the player cuts:
+
+| When | What |
+|---|---|
+| every cut | a glint runs heel → tip along the edge (and the spine); the edge's afterimage stays in the cut; a 5 ms buzz |
+| juicy ingredient (`JUICE`) | juice beads stay on the blade, slide to the edge and dry |
+| combo ×5 / ×10 / ×15 (`bladeTier`) | the edge heats: ivory → gold with a glow (Fever is at least this) → pulsing white-gold, sparks off the tip |
+| combo milestones | a brighter glint and a star at the tip; 14 ms buzz |
+| Perfect Slice | the whole blade flashes white; a star; 18 ms buzz |
+| the step's last cut | a double glint, the steel's "shing" (`AudioManager.playBladeRing`, under the "prepped" chord), a star, the juice flicked off; 24 ms buzz |
+
+A fresh ingredient starts cool and dry. Reduced Motion keeps only the edge's
+colour and a short flash. QA: `knife-feel-qa`.
 
 ### Cutting feel, combo and New Best — Phase 1 (developer 2026-10-21)
 

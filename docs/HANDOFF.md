@@ -1,5 +1,12 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## The knife's feel (2026-10-24, `main`)
+
+- Every cut glints along the blade; juice beads on it; the edge heats with the combo
+  (×5/×10/×15); milestones and Perfect Slice star and flash; the last cut rings the
+  steel and flicks the juice off; short haptics. REFERENCE §10 "The knife's feel";
+  QA `knife-feel-qa`.
+
 ## Random stains, every ingredient, wipe every corner (2026-10-24, `main`)
 
 - Each session and each fresh ingredient stains differently (seeded per session,
