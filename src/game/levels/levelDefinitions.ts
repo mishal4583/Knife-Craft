@@ -9719,15 +9719,39 @@ const tutorialObjectives: LevelDefinition["objectives"] = [
  * fields). Single-ingredient dishes gained a second ingredient in
  * campaignRecipes.ts, so their descriptions follow; repeated level names got
  * their own; Level 16 teaches the wedge (radial) cut with one fixed dish
- * instead of a random pool, so every player meets it.
+ * instead of a random pool, so every player meets it. Levels 4, 11 and 16
+ * also carry their recipe's steps (2026-10-24: the level's own snapshot still
+ * listed the old dish, which the difficulty badge and the derived recipe read).
  */
 const LEVEL_FIXES: Record<number, Partial<LevelDefinition>> = {
   4: {
     title: "Potato & Tomato",
     description: "Peel the potato and halve it evenly, then slice a tomato alongside it.",
+
+    preparationSteps: [
+      { ingredient: "potato", startingState: "whole", technique: "peel", resultingState: "peeled", optional: false },
+      { ingredient: "potato", startingState: "peeled", technique: "halve", resultingState: "halved", optional: false },
+      { ingredient: "tomato", startingState: "whole", technique: "slice", resultingState: "sliced", optional: false },
+    ],
+    objectives: [
+      { type: "prepareIngredient", ingredientId: "potato", technique: "peel" },
+      { type: "prepareIngredient", ingredientId: "potato", technique: "halve" },
+      { type: "prepareIngredient", ingredientId: "tomato", technique: "slice" },
+    ],
   },
   11: {
     description: "Cut the onion into even rings — a technique this kitchen hasn't used before — with diced tomato for the dip.",
+
+    preparationSteps: [
+      { ingredient: "onion", startingState: "whole", technique: "peel", resultingState: "peeled", optional: false },
+      { ingredient: "onion", startingState: "peeled", technique: "rings", resultingState: "ringed", optional: false },
+      { ingredient: "tomato", startingState: "whole", technique: "dice", resultingState: "diced", optional: false },
+    ],
+    objectives: [
+      { type: "prepareIngredient", ingredientId: "onion", technique: "peel" },
+      { type: "prepareIngredient", ingredientId: "onion", technique: "rings" },
+      { type: "prepareIngredient", ingredientId: "tomato", technique: "dice" },
+    ],
   },
   16: {
     title: "Beetroot & Orange Plate",
@@ -9735,6 +9759,17 @@ const LEVEL_FIXES: Record<number, Partial<LevelDefinition>> = {
     description: "Peel and slice the beetroot, then cut the orange into wedges — a new cut for the kitchen.",
     recipeId: "camp-beetroot-plate",
     recipePoolIds: ["camp-beetroot-plate"],
+
+    preparationSteps: [
+      { ingredient: "beetroot", startingState: "whole", technique: "peel", resultingState: "peeled", optional: false },
+      { ingredient: "beetroot", startingState: "peeled", technique: "slice", resultingState: "sliced", optional: false },
+      { ingredient: "orange", startingState: "whole", technique: "radial", resultingState: "wedged", optional: false },
+    ],
+    objectives: [
+      { type: "prepareIngredient", ingredientId: "beetroot", technique: "peel" },
+      { type: "prepareIngredient", ingredientId: "beetroot", technique: "slice" },
+      { type: "prepareIngredient", ingredientId: "orange", technique: "radial" },
+    ],
   },
   18: {
     description: "One onion, prepared twice: sliced for the bruschetta, diced with carrot for the soup base.",

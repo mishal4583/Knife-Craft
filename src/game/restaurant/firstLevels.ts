@@ -121,7 +121,7 @@ export function firstPurchaseRows(): { label: string; value: string }[] {
   ];
   return [
     ...items.map((i) => ({ label: i.label, value: `in the Market · ${formatUsd(i.price)}` })),
-    { label: "🧰 Kitchen tools", value: "sheet pans & oven mitts before Level 11" },
+    { label: "🧰 Kitchen tools", value: "on Grandma's list in the Market" },
     { label: "📋 Next", value: "your first menu at Level 11" },
   ];
 }
