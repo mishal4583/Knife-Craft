@@ -193,8 +193,10 @@ assert(
 assert(
   /typeof navigator\.share === "function" && !!navigator\.canShare\?\.\(\{ files: \[f\] \}\)/.test(
     preview,
-  ) && /\{canShareFile \? \(/.test(preview),
-  "C2: Share appears only where the browser can share an image file",
+  ) &&
+    /const canShareText = !canShareFile && typeof navigator\.share === "function"/.test(preview) &&
+    /\{canShareFile \|\| canShareText \? \(/.test(preview),
+  "C2: file sharing and text sharing are detected separately; Share appears only where one exists",
 );
 assert(
   /name === "AbortError"\)\s*setStatus\(null\)/.test(preview) &&

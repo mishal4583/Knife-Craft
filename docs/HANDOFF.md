@@ -154,7 +154,7 @@
 - Now: QA 113/113, preflight clean, `phase5.mjs` 21/21. Nothing new uploaded to
   Playgama (it has 1.4.1).
 
-## Phase 6: Kitchen Moment cards (2026-10-21, not committed)
+## Phase 6: Kitchen Moment cards (2026-10-21; committed in 412f3bc)
 
 - Four moments (Perfect Cut, Special Dish, New Personal Best, Customer
   Moment) from existing events; a quiet 📸 chip on the completion screen; a
@@ -162,7 +162,7 @@
   storage, no network, no rewards. REFERENCE §10 "Kitchen Moment cards".
 - QA `phase6-qa`; browser `tools/e2e/phase6.mjs`. Working tree only.
 
-## Phase 5: restoration reveals, daily gift streak (2026-10-21, not committed)
+## Phase 5: restoration reveals, daily gift streak (2026-10-21; committed in 412f3bc)
 
 - Building a kitchen tier now plays a short before-and-after of the existing
   painted kitchens (four restoration stages over the six tiers; skippable;
@@ -173,7 +173,7 @@
   days (their only record; no save field). A gift card on the Kitchen.
 - QA `phase5-qa`; browser `tools/e2e/phase5.mjs`. Working tree only.
 
-## Phase 4: signature dishes, special customers, order completion (2026-10-21, not committed)
+## Phase 4: signature dishes, special customers, order completion (2026-10-21; committed in 412f3bc)
 
 - The Recipe Book is the Signature Dish Collection: Homemade / Chef's Special
   (Clean) / Grandma's Signature (Masterful) from the saved best — no new save
@@ -188,7 +188,7 @@
   recipe stay "This visit (not saved)" — no save field for them.
 - QA `phase4-qa`; browser `tools/e2e/phase4.mjs`. Working tree only.
 
-## Phase 3: Fever Mode, Prep Rush, Kitchen Chaos, special variants (2026-10-21, not committed)
+## Phase 3: Fever Mode, Prep Rush, Kitchen Chaos, special variants (2026-10-21; committed in 412f3bc)
 
 - Fever Mode on the Clean ×10 milestone (6 s, once an order); Endless Prep Rush,
   a conveyor mini-game on its own screen (order-board tile); the Kitchen Chaos
@@ -203,7 +203,7 @@
   plus the two dev servers it names). Dev builds only: `window.__kcSpecials`.
 - Working tree only: no commit, no `BUILD_VERSION` change, no upload.
 
-## Phase 2: bench scraper, money vacuum, serve celebration, tips (2026-10-21, not committed)
+## Phase 2: bench scraper, money vacuum, serve celebration, tips (2026-10-21; committed in 412f3bc)
 
 - Cutting leaves debris; every 2–3 orders the bench scraper is offered at the
   start of an order (one broad sweep cleans; Skip always there). After Serve
@@ -219,7 +219,7 @@
   scrapes when offered, and takes opt-in `aim` / `steady` (callers unchanged).
 - Working tree only: no commit, no `BUILD_VERSION` change, no upload.
 
-## Phase 1: cutting feel, combo, New Best (2026-10-21, not committed)
+## Phase 1: cutting feel, combo, New Best (2026-10-21; committed in 412f3bc)
 
 - The combo (meter, "Clean ×N!" milestones, rising cut pitch), the board
   drag, Perfect/milestone/completion sounds, the settle tilt, the Knife

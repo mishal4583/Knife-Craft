@@ -253,7 +253,7 @@ if (ONLY.includes("M")) {
     files.length === 1 && /^knifecraft-customer-/.test(files[0]) && head === "89504e470d0a1a0a",
     { files, head },
   );
-  // No share API at all: no Share button.
+  // Text sharing but no file sharing (detected separately): Share stays, for the line.
   await page.evaluate(() => {
     delete navigator.canShare;
     navigator.canShare = undefined;
@@ -262,7 +262,18 @@ if (ONLY.includes("M")) {
   await waitImg();
   await sleep(300);
   check(
-    "M8 where the browser can't share an image file, only Save image is offered",
+    "M8 where the browser shares text but not an image file, Share is still offered",
+    (await preview())?.share === true,
+  );
+  // No share API at all: no Share button.
+  await page.evaluate(() => {
+    navigator.share = undefined;
+  });
+  await page.click('[aria-label="Next moment"]');
+  await waitImg();
+  await sleep(300);
+  check(
+    "M8b with no share API at all, only Save image is offered",
     (await preview())?.share === false,
   );
   await clickButton(page, /^Close$/);

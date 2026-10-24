@@ -62,13 +62,20 @@ export function MomentPreview({
       return false;
     }
   })();
+  // Detected separately: a platform that shares text but not files gets the
+  // card's line (the image stays a Save image away).
+  const canShareText = !canShareFile && typeof navigator.share === "function";
 
   async function share() {
-    const f = file();
-    if (!f || busy) return;
+    const f = canShareFile ? file() : null;
+    if ((!f && !canShareText) || busy) return;
     setBusy(true);
     try {
-      await navigator.share({ files: [f], text: m.shareText, title: "KnifeCraft" });
+      await navigator.share(
+        f
+          ? { files: [f], text: m.shareText, title: "KnifeCraft" }
+          : { text: m.shareText, title: "KnifeCraft" },
+      );
       setStatus({ tone: "ok", text: "Shared!" });
     } catch (e) {
       if ((e as DOMException)?.name === "AbortError")
@@ -128,7 +135,7 @@ export function MomentPreview({
               <button
                 type="button"
                 aria-label="Previous moment"
-                className="absolute left-1 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full bg-walnut-dark/60 text-[20px] text-ivory"
+                className="absolute left-1 top-1/2 grid h-12 w-12 -translate-y-1/2 place-items-center rounded-full bg-walnut-dark/60 text-[20px] text-ivory"
                 onClick={() => setIndex((i) => (i - 1 + moments.length) % moments.length)}
               >
                 ‹
@@ -136,7 +143,7 @@ export function MomentPreview({
               <button
                 type="button"
                 aria-label="Next moment"
-                className="absolute right-1 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full bg-walnut-dark/60 text-[20px] text-ivory"
+                className="absolute right-1 top-1/2 grid h-12 w-12 -translate-y-1/2 place-items-center rounded-full bg-walnut-dark/60 text-[20px] text-ivory"
                 onClick={() => setIndex((i) => (i + 1) % moments.length)}
               >
                 ›
@@ -160,14 +167,14 @@ export function MomentPreview({
           </p>
         ) : null}
         <div className="mt-2 grid grid-cols-2 gap-2">
-          {canShareFile ? (
+          {canShareFile || canShareText ? (
             <KButton variant="copper" disabled={!url || busy} onClick={() => void share()}>
               Share
             </KButton>
           ) : null}
           <KButton
-            variant={canShareFile ? "cream" : "copper"}
-            className={canShareFile ? "" : "col-span-2"}
+            variant={canShareFile || canShareText ? "cream" : "copper"}
+            className={canShareFile || canShareText ? "" : "col-span-2"}
             disabled={!url}
             onClick={saveImage}
           >
