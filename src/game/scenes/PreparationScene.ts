@@ -43,6 +43,7 @@ import {
   filmColor,
   isWet,
   JUICE,
+  mixColor,
   newIngredientBatch,
   startWipe,
   wipeDebris,
@@ -810,7 +811,7 @@ type CleanupState = {
   /** When the cloth last rubbed, and when a missed spot was last pointed out. */
   lastRubAt: number;
   lastHintAt: number;
-  /** Clean and playing out: no more input, no Skip. */
+  /** Clean and playing out: no more input. */
   finishing: boolean;
 };
 
@@ -1217,9 +1218,6 @@ export class PreparationScene extends Phaser.Scene {
 
     this.bus.on(CMD.START, this.onStart, this);
     this.bus.on(CMD.RESTART, this.onRestart, this);
-    this.bus.on(CMD.CLEANUP_SKIP, () => {
-      if (this.cleanup && !this.cleanup.finishing) this.endCleanup("skipped");
-    });
     this.bus.on(CMD.AVALANCHE_SKIP, () => this.skipAvalanche());
     this.bus.on(CMD.SET_KNIFE, (knife: KnifeDefinition) => {
       this.knifeStats = knife;
@@ -3045,6 +3043,11 @@ export class PreparationScene extends Phaser.Scene {
   }
 
   /** The current ingredient is this order's special variant. */
+  /** A special variant's colour while it is on the board (its juice and scraps take it), else undefined. */
+  private variantTint(): number | undefined {
+    return this.variantHere() ? VARIANTS[this.variant!].fleck : undefined;
+  }
+
   private variantHere(): boolean {
     return this.variant !== null && VARIANTS[this.variant].base === this.ingredientId;
   }
@@ -3267,7 +3270,7 @@ export class PreparationScene extends Phaser.Scene {
     const u = Phaser.Math.Clamp((x - left) / (right - left), 0, 1);
     const v = y === undefined ? undefined : Phaser.Math.Clamp(this.faceUV(x, y).v, 0, 1);
     const before = boardDebris().length;
-    addDebris(this.ingredientId, this.ingredient.category, u, count, v);
+    addDebris(this.ingredientId, this.ingredient.category, u, count, v, this.variantTint());
     if (boardDebris().length !== before) this.redrawDebris();
   }
 
@@ -5506,9 +5509,16 @@ export class PreparationScene extends Phaser.Scene {
     // The knife itself answers the cut (knifeFeel.ts): a glint, a hotter edge as
     // the combo grows, juice on the blade; the step's last cut rings the steel.
     const stepDone = combo >= this.requiredCuts;
+    const juice = JUICE[this.ingredientId];
+    const tint = this.variantTint();
     this.knifeFx?.onCut(
       cutMoment({ combo, perfect, last: stepDone, fever: !!this.fever }),
-      JUICE[this.ingredientId]?.color ?? null,
+      juice
+        ? {
+            color: tint !== undefined ? mixColor(tint, 0x6a3a10, 0.12) : juice.color,
+            amount: juice.amount,
+          }
+        : null,
       cutPoint,
       {
         seed:

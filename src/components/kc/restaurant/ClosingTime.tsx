@@ -2,9 +2,9 @@ import type { ReactNode } from "react";
 import { TonightsOrder } from "./Deliveries";
 import type { ScreenId } from "@/components/kc/data";
 import { openMarketSupplies } from "@/components/kc/marketFocus";
-import { getSupplyItem } from "@/game/business/businessSupplies";
+import { getSupplyItem, type SupplyId } from "@/game/business/businessSupplies";
 import type { CleanlinessAction, CleanlinessActionResult } from "@/game/restaurant/cleanliness";
-import { ShiftChecklist } from "./ShiftChecklist";
+import { useCleaningGame, isInteractiveTask } from "./CleaningGame";
 import { SinkWash } from "./SinkWash";
 import { KButton } from "@/components/kc/common/primitives";
 import { cn } from "@/lib/utils";
@@ -14,7 +14,7 @@ import { formatUsd } from "@/game/money";
 import { closingPreview } from "@/game/restaurant/restaurantDay";
 import { SupplyBottle } from "./SupplyBottle";
 import { InfoTip } from "@/components/kc/common/InfoTip";
-import { closingChoreList, type ClosingChore } from "@/game/restaurant/closingChores";
+import { closingRows, type ClosingRow } from "@/game/restaurant/closingChores";
 
 /**
  * CLOSING TIME (Unified Restaurant phase 5, behind RESTAURANT_MODE) — after
@@ -50,8 +50,12 @@ export function ClosingTime({
   onChore?: (id: string) => void;
 }) {
   const p = closingPreview(save, restaurantLevel);
-  const chores = closingChoreList(save, restaurantLevel);
-  const left = onChore ? chores.filter((c) => c.by === null).length : 0;
+  const rows = closingRows(save, restaurantLevel);
+  const left = onChore ? rows.filter((r) => r.state === "todo").length : 0;
+  // Tonight's tasks are Cleanliness tasks: cleaned in the same game as by day (CleaningGame.tsx).
+  const cleaning = useCleaningGame(save, (a) => cleanlinessAction?.(a) ?? null);
+  const buy = (id: SupplyId) =>
+    go ? openMarketSupplies(go, getSupplyItem(id)?.section ?? "cleaning", id) : undefined;
   const change = p.cashAtOpening === null ? null : p.cashNow - p.cashAtOpening;
   return (
     <div className="absolute inset-0 z-40 flex items-end justify-center" data-testid="closing-time">
@@ -98,15 +102,22 @@ export function ClosingTime({
             </span>
           </div>
           <ul className="mt-1.5 space-y-1.5" data-testid="closing-chores">
-            {chores.map((c, i) => (
+            {rows.map((r, i) => (
               <ChoreRow
-                key={c.id}
-                chore={c}
+                key={r.id}
+                row={r}
                 index={i}
-                interactive={!!onChore}
-                onDo={() => onChore?.(c.id)}
+                interactive={!!onChore && !!cleanlinessAction}
+                onDo={() =>
+                  r.type === "count"
+                    ? onChore?.("count")
+                    : r.type === "task"
+                      ? cleaning.clean(r.task)
+                      : undefined
+                }
+                onBuy={buy}
                 sink={
-                  c.sinkFirst > 0 && cleanlinessAction ? (
+                  r.type === "sink" && r.state === "todo" && cleanlinessAction ? (
                     <SinkWash
                       save={save}
                       go={go}
@@ -118,19 +129,14 @@ export function ClosingTime({
               />
             ))}
           </ul>
-
-          {cleanlinessAction ? (
-            <ShiftChecklist
-              save={save}
-              phase="closing"
-              onAction={cleanlinessAction}
-              onBuy={(id) =>
-                go
-                  ? openMarketSupplies(go, getSupplyItem(id)?.section ?? "cleaning", id)
-                  : undefined
-              }
-            />
-          ) : null}
+          <p className="mt-1 flex items-center gap-1 font-ui text-[12px] font-bold text-walnut/60">
+            🧹 Also in Restaurant → Cleanliness
+            <InfoTip label="About closing">
+              Tonight's chores are the Cleanliness section's closing tasks. Clean them here or
+              there; a hired Cleaner does the routine ones. Missing supplies never stop you closing
+              — the task waits for the morning.
+            </InfoTip>
+          </p>
 
           <TonightsOrder save={save} level={restaurantLevel} />
 
@@ -220,34 +226,43 @@ export function ClosingTime({
           </KButton>
         </div>
       </div>
+      {cleaning.game}
     </div>
   );
 }
 
-/** One closing chore: its picture, the chore, and its button (or who did it). */
+/** One closing row: its picture, the chore, and its button (or that it's done). */
 function ChoreRow({
-  chore: c,
+  row: r,
   index,
   interactive,
   onDo,
+  onBuy,
   sink,
 }: {
-  chore: ClosingChore;
+  row: ClosingRow;
   index: number;
   interactive: boolean;
   onDo: () => void;
+  onBuy: (id: SupplyId) => void;
   sink: ReactNode;
 }) {
-  const done = c.by !== null || !interactive;
+  const done = r.state === "done" || !interactive;
+  const verb =
+    r.type === "count"
+      ? "Count"
+      : r.type === "task" && isInteractiveTask(r.task)
+        ? "🧽 Clean"
+        : "Do it";
   return (
     <li
-      data-chore={c.id}
-      data-chore-by={c.by ?? "todo"}
+      data-chore={r.type === "task" ? r.task : r.id}
+      data-chore-by={r.state === "done" ? "done" : r.state === "blocked" ? "blocked" : "todo"}
       className={cn(
         "kc-story-text flex min-h-[52px] items-center gap-2 rounded-xl border px-2 py-1",
         done ? "border-olive/20 bg-sage/10" : "border-walnut/15 bg-ivory/80",
       )}
-      style={{ animationDelay: `${150 + index * 120}ms` }}
+      style={{ animationDelay: `${150 + index * 90}ms` }}
     >
       <span
         className={cn(
@@ -256,7 +271,7 @@ function ChoreRow({
         )}
         aria-hidden
       >
-        {c.icon}
+        {r.icon}
       </span>
       <span
         className={cn(
@@ -264,23 +279,34 @@ function ChoreRow({
           done ? "text-walnut/60" : "text-walnut-dark",
         )}
       >
-        {c.label}
-        {c.sinkFirst > 0 ? (
+        {r.label}
+        {r.type === "sink" && r.pieces > 0 ? (
           <span className="block text-[12px] font-extrabold text-copper">
-            🫧 {c.sinkFirst} in the sink
+            🫧 {r.pieces} in the sink{r.state === "blocked" ? " · no soap" : ""}
+          </span>
+        ) : null}
+        {r.type === "task" && r.state === "blocked" ? (
+          <span className="block text-[12px] font-extrabold text-tomato">
+            ⏳ Waits for supplies
           </span>
         ) : null}
       </span>
-      {!interactive ? (
-        <span className="shrink-0 text-sage" aria-hidden>
-          ✓
-        </span>
-      ) : c.by === "cleaner" ? (
-        <span className="shrink-0 font-ui text-[12px] font-extrabold text-olive">🧹 Cleaner</span>
-      ) : c.by === "player" ? (
-        <span className="anim-pop shrink-0 font-ui text-[12px] font-extrabold text-olive">
-          ✓ {c.doneWord}
-        </span>
+      {done ? (
+        <span className="anim-pop shrink-0 font-ui text-[12px] font-extrabold text-olive">✓</span>
+      ) : r.state === "blocked" ? (
+        r.type === "task" && r.needs[0] ? (
+          <button
+            type="button"
+            onClick={() => onBuy(r.needs[0]!)}
+            className="press min-h-12 shrink-0 rounded-full border border-tomato/40 bg-tomato/90 px-3 font-ui text-[12px] font-extrabold text-ivory"
+          >
+            🛒 {getSupplyItem(r.needs[0])?.name.split(" ·")[0] ?? "Buy"}
+          </button>
+        ) : (
+          <span className="shrink-0 font-ui text-[12px] font-extrabold text-walnut/60">
+            ⏳ START
+          </span>
+        )
       ) : sink ? (
         sink
       ) : (
@@ -289,7 +315,7 @@ function ChoreRow({
           onClick={onDo}
           className="press min-h-12 shrink-0 rounded-full border border-walnut-dark/30 bg-[linear-gradient(170deg,var(--color-gold),var(--color-copper))] px-3.5 font-ui text-[12.5px] font-extrabold text-ivory"
         >
-          {c.verb}
+          {verb}
         </button>
       )}
     </li>

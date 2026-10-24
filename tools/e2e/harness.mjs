@@ -421,22 +421,65 @@ export async function washWholeSink(page) {
 }
 
 /**
- * Closing Time (developer 2026-10-23: the player does the closing chores):
- * does every chore still to do, washing the sink in the sink game when its
- * dishes come first. True when nothing is left.
+ * The cleaning game (Restaurant → Cleanliness, Closing Time, the Pre-Service
+ * Check): scrubs the room row by row until Spotless, then taps Done. True
+ * when the task was cleaned.
+ */
+export async function playCleaningGame(page, passes = 8) {
+  const up = await page
+    .waitForSelector('[data-testid="cleaning-stage"]', { timeout: 8000 })
+    .then(() => true)
+    .catch(() => false);
+  if (!up) return false;
+  await sleep(600);
+  const spotless = () =>
+    page.evaluate(() => !!document.querySelector('[data-testid="cleaning-spotless"]'));
+  for (let i = 0; i < passes && !(await spotless()); i++) {
+    const b = await page.evaluate(() => {
+      const r = document.querySelector('[data-testid="cleaning-dirt"]')?.getBoundingClientRect();
+      return r ? { x: r.left, y: r.top, w: r.width, h: r.height } : null;
+    });
+    if (!b) break;
+    for (let y = b.y + 10; y < b.y + b.h - 10; y += 18) {
+      await page.evaluate(() =>
+        document.querySelector('button[data-tool][data-suggested="true"]')?.click(),
+      );
+      await page.mouse.move(b.x + 8, y);
+      await page.mouse.down();
+      for (let x = b.x + 8; x < b.x + b.w - 8; x += 22) await page.mouse.move(x, y, { steps: 1 });
+      await page.mouse.up();
+      if (await spotless()) break;
+    }
+  }
+  await sleep(500);
+  const ok = await spotless();
+  await page.evaluate(() =>
+    [...document.querySelectorAll('[data-testid="cleaning-spotless"] button')].at(0)?.click(),
+  );
+  await sleep(900);
+  return ok;
+}
+
+/**
+ * Closing Time (developer 2026-10-24: tonight's chores are Cleanliness tasks):
+ * does every row still to do — the cleaning game for scrubbing tasks, one tap
+ * for the rest, the sink game for the dishes, the till. True when nothing is left.
  */
 export async function doClosingChores(page) {
-  for (let i = 0; i < 16; i++) {
+  for (let i = 0; i < 24; i++) {
     const next = await page.evaluate(() => {
       const row = document.querySelector('[data-testid="closing-chores"] [data-chore-by="todo"]');
       if (!row) return null;
       const sink = !!row.querySelector('[data-testid="sink-wash"]');
-      row.querySelector("button")?.click();
-      return sink ? "sink" : "tap";
+      const button = row.querySelector("button");
+      const game = /Clean/.test(button?.textContent ?? "");
+      button?.click();
+      return sink ? "sink" : game ? "game" : "tap";
     });
     if (!next) return true;
     await sleep(700);
     if (next === "sink") await washWholeSink(page);
+    if (next === "game") await playCleaningGame(page);
   }
   return false;
 }

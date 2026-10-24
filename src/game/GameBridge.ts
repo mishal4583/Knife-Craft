@@ -261,11 +261,6 @@ export class GameBridge {
     this.bus.emit(CMD.SET_KNIFE, knife);
   }
 
-  /** Phase 2 (A2) — "Skip" on the bench-scraper offer. */
-  skipCleanup(): void {
-    this.bus.emit(CMD.CLEANUP_SKIP);
-  }
-
   /** Phase 3 (C) — "Skip" on the Vegetable Avalanche. */
   skipAvalanche(): void {
     this.bus.emit(CMD.AVALANCHE_SKIP);

@@ -52,6 +52,14 @@ const TASK_COPY: Partial<Record<TaskKind, { title: string; instruction: string }
     title: "Sweep the kitchen line",
     instruction: "Sweep the crumbs from the floor between the equipment.",
   },
+  "wipe-boards": {
+    title: "Wipe down the boards and counters",
+    instruction: "Wipe the day's juice and crumbs off every worktop.",
+  },
+  "clear-tables": {
+    title: "Clear and reset the dining room",
+    instruction: "Wipe every table clean for tomorrow.",
+  },
   tables: {
     title: "Wipe and sanitize the tables",
     instruction: "Wipe the rings and food off the tables.",

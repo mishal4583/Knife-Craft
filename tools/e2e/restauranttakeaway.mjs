@@ -132,6 +132,12 @@ const closingSave = (n) => ({
       openingCredits: 495000,
       openingLevel: n - 2,
     },
+    // Tonight's chores as the day's last service gives them out (developer 2026-10-24: the
+    // night chores are Cleanliness tasks — wrapping the fridge is one).
+    cleanliness: {
+      tasks: [{ kind: "wrap-fridge", count: 1, since: n - 1 }],
+      choreKeys: ["20:closing:2"],
+    },
   }),
 });
 await boot(page, closingSave(40));
@@ -160,7 +166,7 @@ const after3 = await readSave(page);
 check(
   "3 Closing Time: the wrap chore; tissues and deli wrap short (⚠); closing still closes the day",
   !!c3 &&
-    c3.chores.includes("wrap") &&
+    c3.chores.includes("wrap-fridge") &&
     c3.supplies.map(([id]) => id).join() === "tissues,food-wrap" &&
     c3.supplies.every(([, t]) => /⚠/.test(t)) &&
     after3.business.restaurantDay?.day === 21 &&

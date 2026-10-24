@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { KButton } from "@/components/kc/common/primitives";
+import { isInteractiveTask, useCleaningGame } from "./CleaningGame";
 import { cn } from "@/lib/utils";
 import type { SaveData } from "@/game/SaveManager";
 import { getSupplyItem, type SupplyId } from "@/game/business/businessSupplies";
@@ -43,14 +44,17 @@ export function ShiftChecklist({
 }) {
   const items = phaseChecklist(save, phase);
   const [flash, setFlash] = useState<string | null>(null);
-  if (items.length === 0) return null;
+  // The same cleaning as Restaurant → Cleanliness: scrubbing tasks in the game (CleaningGame.tsx).
+  const cleaning = useCleaningGame(save, (a) => run(a));
+  if (items.length === 0) return cleaning.game;
   const meta = PHASE_META[phase];
-  function run(action: CleanlinessAction) {
+  function run(action: CleanlinessAction): CleanlinessActionResult | null {
     const r = onAction(action);
     if (r && r.cleaned.length) {
       setFlash(`✨ ${r.cleaned.length === 1 ? "Done!" : `${r.cleaned.length} done!`}`);
       window.setTimeout(() => setFlash(null), 1400);
     }
+    return r;
   }
   return (
     <div
@@ -94,9 +98,9 @@ export function ShiftChecklist({
                 size="sm"
                 variant="cream"
                 className="min-h-12 shrink-0"
-                onClick={() => run({ kind: "clean", task: t.kind })}
+                onClick={() => cleaning.clean(t.kind)}
               >
-                Do it
+                {isInteractiveTask(t.kind) ? "🧽 Clean" : "Do it"}
               </KButton>
             ) : (
               t.needs.map((id) => (
@@ -125,6 +129,7 @@ export function ShiftChecklist({
           See every area in Cleanliness ›
         </button>
       ) : null}
+      {cleaning.game}
     </div>
   );
 }

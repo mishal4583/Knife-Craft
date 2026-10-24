@@ -1000,14 +1000,6 @@ export function Preparation({
                 </span>
               ))}
             </div>
-            <button
-              type="button"
-              className="pointer-events-auto mt-1 min-h-12 rounded-full px-5 font-ui text-[13px] font-extrabold uppercase tracking-[0.12em] text-ivory/70"
-              onClick={() => bridge.skipCleanup()}
-              data-testid="board-cleanup-skip"
-            >
-              Skip
-            </button>
           </div>
         </div>
       ) : coachVisible && phase === "prep" ? (

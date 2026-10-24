@@ -22,7 +22,6 @@ export const CMD = {
   SET_KNIFE: "cmd:setKnife",
   SET_BOARD: "cmd:setBoard",
   /** Phase 2 (A2) — the player chose "Skip" on the bench-scraper offer: the debris stays, cutting resumes. */
-  CLEANUP_SKIP: "cmd:cleanupSkip",
   /** Phase 3 (C) — "Skip" on the Vegetable Avalanche: the rest roll off, the order starts. */
   AVALANCHE_SKIP: "cmd:avalancheSkip",
 } as const;

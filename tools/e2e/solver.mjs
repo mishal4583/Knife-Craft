@@ -135,12 +135,11 @@ export async function playToReport(
       return { ok: true, log, stopped: true };
     }
     // Phase 2 (2026-10-21; the cloth since 2026-10-24): a messy board offers the
-    // cloth at the start of an order and takes the board until it is clean or
-    // skipped — wipe it like a player, row by row, and skip if it won't come clean.
+    // cloth at the start of an order and takes the board until it is
+    // wiped — wipe it like a player, row by row, every corner (no Skip since 2026-10-24).
     if (await page.evaluate(() => !!document.querySelector('[data-testid="board-cleanup"]'))) {
       log.push("wipe");
-      if (!(await wipeBoard(page, { cx: CX, cy: CY, k })))
-        await page.click('[data-testid="board-cleanup-skip"]').catch(() => null);
+      await wipeBoard(page, { cx: CX, cy: CY, k });
       await sleep(1100);
       continue;
     }

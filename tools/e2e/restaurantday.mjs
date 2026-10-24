@@ -196,8 +196,26 @@ const closingSave = (s) => ({
       openingCredits: s.credits - 4500,
       openingLevel: 19,
     },
+    // Tonight's chores, given out as the day's last service ends (cleanliness.addPhaseChores).
+    cleanliness: {
+      ...(s.business.cleanliness ?? {}),
+      tasks: NIGHT.map((kind) => ({ kind, count: 1, since: 20 })),
+      choreKeys: ["10:closing:2"],
+    },
   },
 });
+// Developer 2026-10-24: the night chores are Cleanliness tasks (were six taps of Closing Time's own).
+const NIGHT = [
+  "wipe-boards",
+  "spoiled-out",
+  "wrap-fridge",
+  "clear-tables",
+  "degrease",
+  "mop-all",
+  "restroom-disinfect",
+  "condiments",
+  "polish-cutlery",
+];
 await writeSave(page, closingSave(await readSave(page)));
 await page.reload({ waitUntil: "networkidle0" });
 await sleep(1500);
@@ -208,14 +226,16 @@ const chores = await page.evaluate(() =>
 );
 await shot(page, "restaurant-day11-closing");
 check(
-  "4a from L21 a finished day shows Closing Time: the services, the chores (spoiled food and wrapping what's left too), the count",
+  "4a from L21 a finished day shows Closing Time: the services, the dishes, tonight's Cleanliness tasks (spoiled food, wrapping, the dining reset …), the count",
   !!closing &&
     /Day 10 · Closing time/i.test(closing) &&
     // A two-service day is Breakfast + Lunch (the day clock: Breakfast first); dine-in opens at
     // Level 21 in the 150-level campaign, so the dining room is cleared at closing too.
     /Breakfast · Level 19/.test(closing) &&
     /Lunch · Level 20/.test(closing) &&
-    chores.join() === "wash-up,wipe-down,spoiled,wrap,dining-room,count" &&
+    chores[0] === "wash-up" &&
+    chores.at(-1) === "count" &&
+    NIGHT.every((k) => chores.includes(k)) &&
     /at opening →/.test(closing),
   { closing: closing?.slice(0, 260), chores },
 );

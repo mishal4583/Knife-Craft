@@ -78,7 +78,12 @@ export type TaskKind =
   | "sanitizer-bucket"
   | "sweep-line"
   | "restroom-refresh"
-  // … and closing.
+  // … and closing (the night chores, developer 2026-10-24: "add the same night
+  // chores also in the same cleanliness section").
+  | "wipe-boards"
+  | "spoiled-out"
+  | "wrap-fridge"
+  | "clear-tables"
   | "degrease"
   | "mop-all"
   | "restroom-disinfect"
@@ -296,6 +301,55 @@ export const TASK_RULES: Record<TaskKind, TaskRule> = {
     phase: "lull",
   },
   // ── Closing: clean and plan ──
+  // The night chores that were Closing Time's own taps (developer 2026-10-24):
+  // real tasks now, in their areas, done like any other — the boards and the
+  // dining room in the cleaning game. Their supplies stay where they were
+  // (the wipe-down's cleaning liquid and the wrap are used by closeDay), so
+  // they use nothing here and the economy is unchanged.
+  "wipe-boards": {
+    area: "kitchen",
+    label: "Wipe down the boards and counters",
+    short: "Boards",
+    icon: "🧽",
+    uses: [],
+    tools: [],
+    routine: true,
+    phase: "closing",
+  },
+  "spoiled-out": {
+    area: "kitchen",
+    label: "Throw out spoiled food",
+    short: "Spoiled",
+    icon: "🗑️",
+    uses: [],
+    tools: [],
+    routine: true,
+    phase: "closing",
+    staff: "prep-cook",
+  },
+  "wrap-fridge": {
+    area: "kitchen",
+    label: "Wrap and label what's left in the fridge",
+    short: "Wrap",
+    icon: "🥡",
+    uses: [],
+    tools: [],
+    routine: true,
+    phase: "closing",
+    staff: "prep-cook",
+  },
+  "clear-tables": {
+    area: "dining",
+    label: "Clear and reset the dining room",
+    short: "Reset",
+    icon: "🍽️",
+    uses: [],
+    tools: [],
+    routine: true,
+    phase: "closing",
+    fromLevel: remapCampaignThreshold(31),
+    staff: "server",
+  },
   degrease: {
     area: "kitchen",
     label: "Degrease the hot equipment",

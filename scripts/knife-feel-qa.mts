@@ -91,7 +91,7 @@ assert(bladeTier(1, true) === 2 && bladeTier(20, true) === 3, "T2: Fever is at l
     scene.indexOf("private markCutCommitted("),
   );
   assert(
-    /this\.knifeFx\?\.onCut\(\s*cutMoment\(\{ combo, perfect, last: stepDone, fever: !!this\.fever \}\),\s*JUICE\[this\.ingredientId\]\?\.color \?\? null,\s*cutPoint,/.test(
+    /this\.knifeFx\?\.onCut\(\s*cutMoment\(\{ combo, perfect, last: stepDone, fever: !!this\.fever \}\),\s*juice\s*\?\s*\{\s*color: tint !== undefined[\s\S]{0,80}amount: juice\.amount,?\s*\}\s*:\s*null,\s*cutPoint,/.test(
       commit,
     ) && /if \(stepDone\) AudioManager\.playBladeRing\(\);/.test(commit),
     "W1: every committed cut gets its moment (with the ingredient's juice and where it went through); the step's last rings the steel",
@@ -152,6 +152,18 @@ assert(bladeTier(1, true) === 2 && bladeTier(20, true) === 3, "T2: Fever is at l
   assert(
     /lineBetween\(x, top, x, y - r \* 0\.6\)/.test(fx),
     "R5: juice beads slide down leaving a wet streak",
+  );
+}
+
+// Developer 2026-10-24: "reduce the splashing or spilling while cutting non-juicy ingredients".
+{
+  const fx = read("src/game/scenes/knifeFx.ts");
+  assert(
+    /if \(juice !== null && amount >= 0\.35\)/.test(fx) &&
+      /\* amount \* amount \+ 4\)/.test(fx) &&
+      /for \(let i = 0; i < Math\.floor\(R\(0, 3\)\); i\+\+\)/.test(fx) &&
+      /\(liquid\?\.amount \?\? 0\) >= 0\.35/.test(fx),
+    "D1: the splash and the blade's beads scale with juiciness; a barely-wet cut throws a few drops, a dry one at most two flecks",
   );
 }
 

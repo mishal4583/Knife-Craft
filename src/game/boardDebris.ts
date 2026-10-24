@@ -603,6 +603,11 @@ export function addDebris(
   count: number,
   /** Where down the board face the cut was (0–1): a juicy ingredient spills there. */
   v?: number,
+  /**
+   * A special variant's colour (a Golden Tomato bleeds gold, not red —
+   * developer 2026-10-24): the juice takes it and the scraps lean to it.
+   */
+  tint?: number,
 ): number {
   const look = debrisLookFor(ingredientId, category);
   const solid = () => pieces.filter((p) => !isWet(p.kind)).length;
@@ -620,7 +625,12 @@ export function addDebris(
         // The far (top) and near (bottom) margins of the face — clear of the food.
         v: near ? 0.84 + r() * 0.12 : 0.04 + r() * 0.12,
         kind,
-        color: vary(color, r, batch.tone),
+        // Seeds keep their own colour; flesh and peel take a variant's.
+        color: vary(
+          tint !== undefined && kind !== "seed" ? mixColor(color, tint, 0.75) : color,
+          r,
+          batch.tone,
+        ),
         size: s0 + r() * ds,
         rot: r() * Math.PI * 2,
         seed: Math.floor(r() * 1e9),
@@ -631,8 +641,14 @@ export function addDebris(
     ];
     added++;
   }
-  if (v !== undefined) spill(ingredientId, u, v);
+  if (v !== undefined) spill(ingredientId, u, v, tint);
   return added;
+}
+
+/** `a` moved `k` of the way to `b`, channel by channel. */
+export function mixColor(a: number, b: number, k: number): number {
+  const ch = (sh: number) => Math.round(((a >> sh) & 255) * (1 - k) + ((b >> sh) & 255) * k) & 255;
+  return (ch(16) << 16) | (ch(8) << 8) | ch(0);
 }
 
 /**
@@ -641,9 +657,11 @@ export function addDebris(
  * second smaller one, a few droplets, and now and then a squirt (a line of
  * drops flung out). Bounded by DEBRIS.MAX_WET.
  */
-function spill(ingredientId: IngredientId, u: number, v: number): void {
-  const juice = JUICE[ingredientId];
-  if (!juice) return;
+function spill(ingredientId: IngredientId, u: number, v: number, tint?: number): void {
+  const base = JUICE[ingredientId];
+  if (!base) return;
+  // A variant bleeds its own colour, a shade deeper than its skin.
+  const juice = tint === undefined ? base : { ...base, color: mixColor(tint, 0x6a3a10, 0.12) };
   const wet = () => pieces.filter((p) => isWet(p.kind)).length;
   const r = nextRand(0x51ed270b);
   const amount = Math.min(1, juice.amount * batch.juicy);

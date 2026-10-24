@@ -1,13 +1,16 @@
 // Shift chores (a real restaurant's day, developer 2026-10-11), restaurant build:
 //   1. Between services (Level 41, Lunch done): Prepare opens the check with "Between services"
 //      — sanitizer bucket, sweep the line, refresh the restroom; there is no "Do all" (developer
-//      2026-10-17); each Do it does one (supplies once, no money) and the list is gone.
-//   2. Closing Time lists the closing chores with Do it; one done leaves; Close for the night
+//      2026-10-17); each Do it (or, for the line's sweep, the cleaning game — 2026-10-24) does one
+//      (supplies once, no money) and the list is gone.
+//   2. Closing Time lists tonight's Cleanliness tasks; degrease cleaned in the cleaning game
+//      ticks it; Close for the night
 //      brings the next morning's opening chores (stations, restroom check, lay the tables), and
 //      the opening card shows them.
 //   3. 320 px: the checklist fits, buttons ≥ 48 px.
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import {
+  playCleaningGame,
   MOVED_IN_BUSINESS,
   launch,
   boot,
@@ -65,6 +68,13 @@ const saveAt = (n, restaurantDay, tasks, keys) =>
     },
     story: { introDone: true, milestoneMask: 127, finaleSeen: false },
   });
+/** Closing Time's open Cleanliness tasks (developer 2026-10-24: tonight's chores are Cleanliness tasks). */
+const closingTodo = () =>
+  page.evaluate(() =>
+    [...document.querySelectorAll('[data-testid="closing-chores"] [data-chore-by="todo"]')]
+      .map((x) => x.getAttribute("data-chore"))
+      .filter((k) => k !== "wash-up" && k !== "count"),
+  );
 const chores = (phase) =>
   page.evaluate(
     (phase) =>
@@ -108,13 +118,18 @@ const noDoAll = await page.evaluate(
       /^Do all/.test(b.textContent.trim()),
     ),
 );
+// Developer 2026-10-24: a scrubbing chore (the line's sweep) opens the cleaning game, as in
+// Restaurant → Cleanliness; the one-tap chores stay "Do it".
 for (let i = 0; i < 3; i++) {
-  await page.evaluate(() =>
-    [...document.querySelectorAll('[data-testid="shift-chores-lull"] [data-chore-task] button')]
-      .find((b) => /^Do it/.test(b.textContent.trim()))
-      ?.click(),
-  );
+  const kind = await page.evaluate(() => {
+    const b = [
+      ...document.querySelectorAll('[data-testid="shift-chores-lull"] [data-chore-task] button'),
+    ].find((x) => /^(Do it|🧽 Clean)/.test(x.textContent.trim()));
+    b?.click();
+    return b ? (/Clean/.test(b.textContent) ? "game" : "tap") : null;
+  });
   await sleep(500);
+  if (kind === "game") await playCleaningGame(page);
 }
 const l1b = await chores("lull");
 const after1 = await readSave(page);
@@ -147,15 +162,16 @@ await page.evaluate(() =>
     ?.click(),
 );
 await sleep(900);
-const c2 = await chores("closing");
+const c2 = await closingTodo();
 await shot(page, "shift-closing");
 await page.evaluate(() =>
-  [...document.querySelectorAll('[data-chore-task="degrease"] button')]
-    .find((b) => /Do it/.test(b.textContent))
+  [...document.querySelectorAll('[data-testid="closing-chores"] [data-chore="degrease"] button')]
+    .find((b) => /Clean/.test(b.textContent))
     ?.click(),
 );
 await sleep(500);
-const c2b = await chores("closing");
+const degreased = await playCleaningGame(page);
+const c2b = await closingTodo();
 await doClosingChores(page);
 await clickButton(page, /^Close for the night/);
 await sleep(900);
@@ -164,14 +180,15 @@ await prepare();
 const o2 = await chores("opening");
 await shot(page, "shift-opening");
 check(
-  "2 Closing Time lists the closing chores; Do it removes one; closing brings the morning's opening chores to the opening card",
+  "2 Closing Time lists tonight's Cleanliness tasks; cleaning one in the cleaning game ticks it; closing brings the morning's opening chores to the opening card",
   c2.length === 5 &&
+    degreased &&
     c2b.length === 4 &&
     !c2b.includes("degrease") &&
     after2.business.restaurantDay.day === 16 &&
     after2.business.cleanliness.choreKeys.includes("16:opening:0") &&
     o2.sort().join() === "lay-tables,restroom-check,stations",
-  { c2, c2b, o2, keys: after2.business.cleanliness.choreKeys },
+  { c2, c2b, degreased, o2, keys: after2.business.cleanliness.choreKeys },
 );
 
 // ---------- 3. 320 px ----------

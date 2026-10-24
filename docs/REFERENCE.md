@@ -376,24 +376,35 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   spoilage, from L91 End Business Day exactly; old saves default to Day 1.
   Browser: `tools/e2e/restaurantday.mjs` (restaurant test build).
   The game map is `docs/GAME_MAP.md`.
-- `closing-chores-qa` — the player closes up (`restaurant/closingChores.ts`,
-  developer 2026-10-23: "do not automate the important tasks while closing,
-  let the player do everything unless he hires a cleaner"). Closing Time's
-  chores (wash up, wipe down, throw out spoiled food, wrap the fridge, set
-  the dining room, count the takings — by level) are the player's, one
-  button each (`doClosingChore`, saved in `business.restaurantDay.closingDone`,
-  cleared when the day closes); "Close for the night" reads "N chores left"
-  and stays locked until they're done. Wash up: while dishes wait and there
-  is dish soap, its button opens the sink game ("🧽 Wash N"); with the sink
-  empty one tap does the knives; no soap → the tap is allowed (the dishes
-  wait for START, never a soft-lock). The taps move no money and no stock:
-  `closeDay` still does the work (cleaning liquid, spoilage, wrap, tissues,
-  the books), so the economy is unchanged. A Cleaner on duty (hired, or for
-  the day) does every chore but the count ("🧹 Cleaner") and washes the
-  sink by hand at closing (`cleanerClosing`, before `closeDay` in App and the
-  sim: soap, nothing breaks, no money). Browser: every closing test does the
-  chores with `doClosingChores` (harness; it washes the sink in the sink
-  game).
+- `closing-chores-qa` — the night chores are Cleanliness tasks
+  (`restaurant/closingChores.ts`; developer 2026-10-23: "let the player do
+  everything unless he hires a cleaner"; 2026-10-24: "why is it not
+  connected with the cleanliness section just like opening or normal
+  cleaning … add the same night chores also in the same cleanliness
+  section"). The closing phase's own tasks (cleanliness.ts — new: wipe the
+  boards and counters 🧽, throw out spoiled food 🗑️, wrap the fridge 🥡,
+  reset the dining room 🍽️ from dine-in; with degrease, mop, disinfect, the
+  condiments, the cutlery and the deep cleans) are given out when the day's
+  last service ends, show in Restaurant → Cleanliness under their areas
+  (tagged "🌙 Tonight") and on Closing Time (`closingRows`), and are cleaned
+  the same way everywhere (`kc/restaurant/CleaningGame.tsx`,
+  `useCleaningGame`: the scrubbing ones — the boards, the dining reset,
+  degrease, mop, disinfect — in the cleaning game; the rest one tap). The
+  Pre-Service Check's opening/lull checklist uses the same game. Closing
+  Time adds the dishes (done when the sink is empty — the sink game; no soap
+  → they wait for START) and counting the till (the owner's tap,
+  `doClosingChore`, `business.restaurantDay.closingDone`). "Close for the
+  night" reads "N chores left" until every row is done; a task short of a
+  supply says what to buy and never holds the close. A row is ticked only for
+  chores actually given out tonight (`choreKeys`). The team does its routine
+  tasks when they arrive (`cleanerRound`: the Cleaner the boards, mop,
+  degrease, disinfect; the Server the dining reset, condiments, cutlery; the
+  Prep Cook the spoiled food and the wrap) and a Cleaner on duty washes the
+  sink at closing (`cleanerClosing`) — the owner then only counts. The new
+  tasks use no supplies (closeDay still draws the wipe-down's liquid and the
+  wrap), so the economy is unchanged. Browser: every closing test does the
+  rows with `doClosingChores` (harness: the cleaning game via
+  `playCleaningGame`, the sink game, the taps).
 - `restaurant-guests-qa` — phase D, orders from the ACTIVE MENU inside
   campaign services (`restaurant/menuGuests.ts`): after a level's own orders
   (unchanged, deterministic) the service can take menu guests (none before
@@ -1235,7 +1246,7 @@ taken, repaid}`; taking on credit moves no money (no entry);
   ingredient, in the margins, only from real actions; juicy cuts spill juice
   at the cut (2026-10-24); the cloth takes the board's pointer before any cut,
   wipes over several strokes, hides the next ingredient until it's done, is
-  offered only at an order's start, always has Skip, recovers lost pointers,
+  offered only at an order's start, has no Skip (2026-10-24), recovers lost pointers,
   ends cleanly, touches no save or wallet;
   B the cash adds up exactly (whole cents, tip in gold), bounded, never
   credits/records/saves, each piece once, the wallet = credits − counter, the
@@ -2539,9 +2550,10 @@ All presentation except the tip (§7 "Customer tips"); no save field.
   pause a soft ring pulses over the dirtiest spot left (`dirtiestPatch`). One
   sweep is nowhere near; a whole board takes many strokes (`phase2-qa` A15:
   10–40) and rubbing only the middle never finishes (A15c). A rub still going
-  when the board comes clean never becomes a cut (`clothGestureLeft`). Skip (on the card)
-  leaves the mess, sets the ingredient down and cuts at once; it is offered
-  again next time. Lost pointers are let go; Reduced Motion makes the end
+  when the board comes clean never becomes a cut (`clothGestureLeft`). No Skip
+  (developer 2026-10-24: "remove the skip button"): the cloth needs no
+  supplies and every patch can be reached, so the board is always wiped —
+  never a soft-lock. Lost pointers are let go; Reduced Motion makes the end
   instant; the coach waits.
 - **Money vacuum** (`game/cashBurst.ts`, `kc/game/CashVacuum.tsx`): after
   Serve, the payment (and any tip, in gold) lands on the serve card as 4–14

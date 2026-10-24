@@ -453,7 +453,8 @@ export function landDirtZones(area: CleanArea, task: TaskKind, stage: KitchenMap
     const k = g.kitchen;
     if (task === "sweep-line") return k.floor;
     if (task === "deep-kitchen") return [...k.line, ...k.islands, ...k.floor];
-    if (task === "equipment") return [...k.line, ...k.islands];
+    // The night's boards and counters: the cooking line and the worktops (developer 2026-10-24).
+    if (task === "equipment" || task === "wipe-boards") return [...k.line, ...k.islands];
     return k.line;
   }
   if (area === "dining") {
@@ -463,7 +464,7 @@ export function landDirtZones(area: CleanArea, task: TaskKind, stage: KitchenMap
       return [rect(c.x - 48, c.y - 30, c.x + 48, c.y + 30)];
     }
     if (task === "floor" || task === "mop-all") return d.floor;
-    if (task === "tables") return d.tops;
+    if (task === "tables" || task === "clear-tables") return d.tops;
     return [...d.floor, ...d.tops];
   }
   const r = g.restroom;
@@ -524,7 +525,7 @@ export function dirtZones(area: CleanArea, task: TaskKind, stage: KitchenMapArtS
     const g = KITCHEN_GEO[stage];
     if (task === "sweep-line") return g.floor;
     if (task === "deep-kitchen") return [g.line, ...g.islands, ...g.floor];
-    if (task === "equipment") return [g.line, ...g.islands];
+    if (task === "equipment" || task === "wipe-boards") return [g.line, ...g.islands];
     return [g.line];
   }
   if (area === "dining") {
@@ -541,7 +542,7 @@ export function dirtZones(area: CleanArea, task: TaskKind, stage: KitchenMapArtS
       return [rect(c.x - 48, c.y - 35, c.x + 48, c.y + 35)];
     }
     if (task === "floor" || task === "mop-all") return floor;
-    if (task === "tables") return tops;
+    if (task === "tables" || task === "clear-tables") return tops;
     // The deep clean: about a third of the picks on the tabletops, the rest on the floor.
     const topShare = Math.max(1, Math.round(floor.length / (2 * tops.length)));
     return [...floor, ...Array.from({ length: topShare }, () => tops).flat()];

@@ -227,17 +227,20 @@ check(
 await stroke(page, CX - 40, CY + 30, CX + 40, CY + 30, 8);
 await sleep(600);
 check("A3 a short swipe does not clean (the cloth is still offered)", await cleanupUp(page));
-await page.click('[data-testid="board-cleanup-skip"]');
-await sleep(600);
-check("A4 Skip puts the cloth away at once", !(await cleanupUp(page)));
-await page.mouse.click(CX, CY);
-await sleep(1000);
-check("A5 after Skip, cutting works straight away", (await stepInfo(page)).n === 1);
+// Developer 2026-10-24: "remove the skip button" (A4–A6 were Skip puts it away / cutting / offered again).
+check(
+  "A4 there is no Skip on the cloth card",
+  await page.evaluate(
+    () =>
+      !document.querySelector('[data-testid="board-cleanup-skip"]') &&
+      ![...document.querySelectorAll('[data-testid="board-cleanup"] button')].length,
+  ),
+);
 await page.click('[aria-label="Pause"]');
 await sleep(500);
 await clickButton(page, /^Restart Prep$/);
 await sleep(1500);
-check("A6 skipped mess stays: the next start offers the cloth again", await cleanupUp(page));
+check("A6 Restart Prep keeps the mess: the cloth is still there to wipe", await cleanupUp(page));
 const cleanupFit = await at320(page, "phase2-cleanup-320");
 check(
   "A7 at 320×568 the cloth card is on screen",

@@ -39,20 +39,9 @@ import {
 } from "@/game/restaurant/cleanliness";
 import { openMarketSupplies } from "../marketFocus";
 import { openStaffFor } from "../staffFocus";
-import { AreaCleaningPrototype } from "./AreaCleaningPrototype";
+import { useCleaningGame } from "../restaurant/CleaningGame";
 import { SinkWash } from "../restaurant/SinkWash";
-import { cleaningVariant } from "@/game/restaurant/cleaningDirt";
-import { cleanlinessRoomImageUrl, kitchenMapArtStage } from "@/game/kitchen/kitchenMapArt";
-
-/** Fresh dirt every clean (developer 2026-10-22), steady while the task waits. */
-const cleaningVariantFor = (st: ReturnType<typeof cleanlinessOf>, task: TaskKind) =>
-  cleaningVariant(st.cleaned, st.tasks.find((t) => t.kind === task)?.since ?? 0, task);
-
-const INTERACTIVE_CLEANING_TASKS: Record<CleanArea, ReadonlySet<TaskKind>> = {
-  kitchen: new Set<TaskKind>(["equipment", "grease", "degrease", "deep-kitchen", "sweep-line"]),
-  dining: new Set<TaskKind>(["tables", "floor", "spill", "mop-all", "deep-dining"]),
-  restroom: new Set<TaskKind>(["toilet", "restroom-floor", "restroom-disinfect", "deep-restroom"]),
-};
+import { cleanlinessRoomImageUrl } from "@/game/kitchen/kitchenMapArt";
 
 /**
  * RESTAURANT → CLEANLINESS & MAINTENANCE (restaurant build, from Level 10 —
@@ -80,9 +69,8 @@ export function BusinessCleanliness({
   const areas = CLEAN_AREAS.map((a) => areaView(save, a, level));
   const [flash, setFlash] = useState<string | null>(null);
   const [details, setDetails] = useState<CleanArea | null>(null);
-  const [activeCleaning, setActiveCleaning] = useState<{ area: CleanArea; task: TaskKind } | null>(
-    null,
-  );
+  // The cleaning game (or a one-tap clean) for any task, shared with Closing Time (CleaningGame.tsx).
+  const cleaning = useCleaningGame(save, (a) => run(a));
 
   if (level < CLEANING_FROM_LEVEL)
     return (
@@ -181,11 +169,7 @@ export function BusinessCleanliness({
           roomImage={cleanlinessRoomImageUrl(v.area, save.equippedKitchenUpgradeId)}
           open={details === v.area}
           onToggle={() => setDetails((d) => (d === v.area ? null : v.area))}
-          onClean={(task) => {
-            if (INTERACTIVE_CLEANING_TASKS[v.area].has(task))
-              setActiveCleaning({ area: v.area, task });
-            else run({ kind: "clean", task });
-          }}
+          onClean={cleaning.clean}
           onBuy={(id) => openMarketSupplies(go, getSupplyItem(id)?.section ?? "cleaning", id)}
         />
       ))}
@@ -200,21 +184,7 @@ export function BusinessCleanliness({
       <HistoryCard save={save} level={level} />
 
       {!st.introSeen ? <Intro onDone={() => run({ kind: "intro-seen" })} /> : null}
-      {activeCleaning ? (
-        <AreaCleaningPrototype
-          key={`${activeCleaning.area}-${activeCleaning.task}-${kitchenMapArtStage(save.equippedKitchenUpgradeId)}-${cleaningVariantFor(st, activeCleaning.task)}`}
-          area={activeCleaning.area}
-          task={activeCleaning.task}
-          stage={kitchenMapArtStage(save.equippedKitchenUpgradeId)}
-          variant={cleaningVariantFor(st, activeCleaning.task)}
-          image={cleanlinessRoomImageUrl(activeCleaning.area, save.equippedKitchenUpgradeId)}
-          onClose={() => setActiveCleaning(null)}
-          onComplete={() => {
-            run({ kind: "clean", task: activeCleaning.task });
-            setActiveCleaning(null);
-          }}
-        />
-      ) : null}
+      {cleaning.game}
     </div>
   );
 }
@@ -496,10 +466,20 @@ function AreaCard({
                     <p className="font-ui text-[14px] font-extrabold leading-tight text-walnut-dark">
                       {t.rule.label}
                       {t.count > 1 ? ` ×${t.count}` : ""}
+                      {t.rule.phase === "closing" ? (
+                        // The night chores live here too (developer 2026-10-24), tagged for tonight.
+                        <span
+                          className="ml-1.5 inline-block rounded-full bg-walnut-dark/85 px-1.5 py-0.5 align-middle font-ui text-[11px] font-black text-ivory"
+                          data-closing-task
+                        >
+                          🌙 Tonight
+                        </span>
+                      ) : null}
                     </p>
                     <p className="font-ui text-[12px] text-walnut/65">
-                      Uses{" "}
-                      {t.rule.uses.map((u) => getSupplyItem(u.id)?.name.split(" ·")[0]).join(", ")}
+                      {t.rule.uses.length
+                        ? `Uses ${t.rule.uses.map((u) => getSupplyItem(u.id)?.name.split(" ·")[0]).join(", ")}`
+                        : "No supplies"}
                       {t.rule.routine ? "" : " · not a Cleaner's job"}
                     </p>
                   </div>

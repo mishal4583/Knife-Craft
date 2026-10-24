@@ -1,110 +1,143 @@
 /**
  * CLOSING CHORES — the player closes up (developer 2026-10-23: "do not
  * automate the important tasks while closing, let the player do everything
- * unless he hires a cleaner").
+ * unless he hires a cleaner"; 2026-10-24: "why is it not connected with the
+ * cleanliness section just like opening or normal cleaning … add the same
+ * night chores also in the same cleanliness section").
  *
- * Closing Time's list (CLOSING_CHORES: wash up, wipe down, throw out spoiled
- * food, wrap the fridge, set the dining room, count the takings) is a list of
- * chores the player does, one tap each, before "Close for the night" opens:
+ * The night's chores ARE Cleanliness tasks: the closing phase's own
+ * (cleanliness.ts — wipe the boards and counters, throw out spoiled food,
+ * wrap the fridge, reset the dining room, degrease, mop, disinfect, the
+ * condiments and cutlery, and the deep cleans on their days), added when
+ * the day's last service ends (`choresAfterService`). They show in Restaurant
+ * → Cleanliness under their areas and on Closing Time, and are cleaned the
+ * same way everywhere: the scrubbing ones in the cleaning game, the rest
+ * with one tap (CleaningGame.tsx). Closing Time adds two rows of its own:
  *
- *  - Wash up: the sink's dishes are washed in the sink game first (each kind
- *    is the cleanliness action "wash"); with the sink empty, one tap does the
- *    knives and pans. No dish soap → the dishes may wait for the next START
- *    (never a block, no soft-lock).
- *  - Every other chore is one tap. What it does to the save stays in
- *    `closeDay` (the wipe-down's cleaning liquid, the spoiled food thrown
- *    out, the wrap and tissues, the books), so the economy is unchanged.
- *  - A Cleaner on duty (hired, or for the day) does every chore but the
- *    count — the money is the owner's — and washes the sink's dishes by hand
- *    at closing (`cleanerClosing`: dish soap, nothing breaks; with no soap
- *    they wait for START as before).
+ *  - the dishes: done when the sink is empty (the sink game), or when there
+ *    is no dish soap (they wait for the next START — never a soft-lock);
+ *  - counting the day's takings: the owner's own tap.
  *
- * What's done lives in `business.restaurantDay.closingDone` (the day's own
- * state; a new day starts with none). Pure; nothing reads RESTAURANT_MODE.
+ * "Close for the night" opens once every row is done. A task short of a
+ * supply or a tool never blocks it (it says what to buy and waits for the
+ * morning, like any open task). The team does its routine tasks as ever
+ * (`cleanerRound`, when the chores arrive), and a Cleaner on duty washes the
+ * sink by hand at closing (`cleanerClosing`) — so with a Cleaner the owner
+ * only counts the till.
+ *
+ * The count lives in `business.restaurantDay.closingDone` (a new day starts
+ * with none). Pure; nothing reads RESTAURANT_MODE.
  */
 import type { SaveData } from "../SaveManager";
-import { cleanerOnDuty } from "./cleanliness";
-import { CLOSING_CHORES } from "./restaurantProgression";
+import type { SupplyId } from "../business/businessSupplies";
+import {
+  TASK_RULES,
+  cleanerOnDuty,
+  cleanlinessOf,
+  phaseChores,
+  taskNeeds,
+  type CleanArea,
+  type TaskKind,
+} from "./cleanliness";
 import { restaurantDayOf } from "./restaurantDay";
 import { bottleView, handWash, sinkLines, sinkPieces } from "./serviceSupplies";
 
-/** Each chore's picture and the word on its button. */
-export const CLOSING_CHORE_LOOK: Record<string, { icon: string; verb: string; done: string }> = {
-  "wash-up": { icon: "🧽", verb: "Wash", done: "Washed" },
-  "wipe-down": { icon: "🧻", verb: "Wipe", done: "Wiped" },
-  spoiled: { icon: "🗑️", verb: "Throw out", done: "Done" },
-  wrap: { icon: "🥡", verb: "Wrap", done: "Wrapped" },
-  "dining-room": { icon: "🍽️", verb: "Set", done: "Set" },
-  count: { icon: "💵", verb: "Count", done: "Counted" },
-};
+export type ClosingRowState = "todo" | "done" | "blocked";
 
-/** The one chore a Cleaner never does: the day's money is the owner's. */
-const OWNER_ONLY = new Set(["count"]);
+export type ClosingRow =
+  | {
+      id: string;
+      type: "task";
+      task: TaskKind;
+      area: CleanArea;
+      label: string;
+      icon: string;
+      /** Supplies or tools it still needs (blocked: shown, never holds the close). */
+      needs: SupplyId[];
+      state: ClosingRowState;
+    }
+  | {
+      id: "wash-up";
+      type: "sink";
+      label: string;
+      icon: string;
+      pieces: number;
+      state: ClosingRowState;
+    }
+  | { id: "count"; type: "count"; label: string; icon: string; state: ClosingRowState };
 
-export type ClosingChore = {
-  id: string;
-  label: string;
-  icon: string;
-  verb: string;
-  doneWord: string;
-  /** Who did it: the player's tap, the Cleaner on duty, or nobody yet. */
-  by: "player" | "cleaner" | null;
-  /** Wash up only: dishes still in the sink that the sink game must wash first. */
-  sinkFirst: number;
-};
-
-/** Tonight's chores for the restaurant at `levelNumber`, with who did each. */
-export function closingChoreList(save: SaveData, levelNumber: number): ClosingChore[] {
+/** Tonight's closing rows at `levelNumber`: the closing tasks, the dishes and the count. */
+export function closingRows(save: SaveData, levelNumber: number): ClosingRow[] {
   const d = restaurantDayOf(save);
-  const done = new Set(d.closingDone ?? []);
-  const cleaner = cleanerOnDuty(save);
-  const soap = bottleView(save, "dish-soap").status !== "empty";
-  const sink = sinkPieces(save);
-  return CLOSING_CHORES.filter((c) => levelNumber >= c.fromLevel).map((c) => {
-    const look = CLOSING_CHORE_LOOK[c.id] ?? { icon: "✓", verb: "Do it", done: "Done" };
-    const byCleaner = cleaner && !OWNER_ONLY.has(c.id);
+  const st = cleanlinessOf(save);
+  const open = new Map(st.tasks.map((t) => [t.kind, t]));
+  // Tonight's chores (only once they were given out — a ✓ must mean done, never
+  // "never added"), plus any closing chore still open from before.
+  const givenOut = st.choreKeys.includes(`${d.day}:closing:${d.servicesDone}`);
+  const kinds = [
+    ...(givenOut ? phaseChores("closing", levelNumber, d.day) : []),
+    ...st.tasks.filter((t) => TASK_RULES[t.kind].phase === "closing").map((t) => t.kind),
+  ].filter((k, i, all) => all.indexOf(k) === i);
+  const rows: ClosingRow[] = kinds.map((task) => {
+    const rule = TASK_RULES[task];
+    const needs = open.has(task) ? taskNeeds(save, task) : [];
     return {
-      id: c.id,
-      label: c.label,
-      icon: look.icon,
-      verb: look.verb,
-      doneWord: look.done,
-      by: done.has(c.id) ? "player" : byCleaner ? "cleaner" : null,
-      sinkFirst: c.id === "wash-up" && !byCleaner && soap ? sink : 0,
+      id: `task:${task}`,
+      type: "task",
+      task,
+      area: rule.area,
+      label: rule.label,
+      icon: rule.icon,
+      needs,
+      state: !open.has(task) ? "done" : needs.length ? "blocked" : "todo",
     };
   });
+  const pieces = sinkPieces(save);
+  const soap = bottleView(save, "dish-soap").status !== "empty";
+  rows.unshift({
+    id: "wash-up",
+    type: "sink",
+    label: "Wash the dishes",
+    icon: "🫧",
+    pieces,
+    // No soap: the dishes wait for START (the row says so; it never holds the close).
+    state: pieces === 0 ? "done" : soap ? "todo" : "blocked",
+  });
+  rows.push({
+    id: "count",
+    type: "count",
+    label: "Count the day's takings",
+    icon: "💵",
+    state: (d.closingDone ?? []).includes("count") ? "done" : "todo",
+  });
+  return rows;
 }
 
-/** How many chores are still the player's before closing. */
+/** How many rows still hold the close (blocked ones never do). */
 export function closingChoresLeft(save: SaveData, levelNumber: number): number {
-  return closingChoreList(save, levelNumber).filter((c) => c.by === null).length;
+  return closingRows(save, levelNumber).filter((r) => r.state === "todo").length;
 }
 
 export type ClosingChoreResult =
-  { ok: true; save: SaveData } | { ok: false; reason: "not-closing" | "unknown" | "done" | "sink" };
+  { ok: true; save: SaveData } | { ok: false; reason: "not-closing" | "done" | "use-cleanliness" };
 
 /**
- * The player does one closing chore. Wash up waits until the sink game has
- * washed the sink's dishes (while there is soap). Done twice → refused.
+ * The owner's own closing tap — counting the day's takings. Every other row
+ * is a Cleanliness task (the cleanliness action "clean", in the cleaning game
+ * or one tap) or the sink (the cleanliness action "wash").
  */
-export function doClosingChore(
-  save: SaveData,
-  id: string,
-  levelNumber: number,
-): ClosingChoreResult {
+export function doClosingChore(save: SaveData, id: string): ClosingChoreResult {
   const d = restaurantDayOf(save);
   if (!d.closingDue) return { ok: false, reason: "not-closing" };
-  const chore = closingChoreList(save, levelNumber).find((c) => c.id === id);
-  if (!chore) return { ok: false, reason: "unknown" };
-  if (chore.by !== null) return { ok: false, reason: "done" };
-  if (chore.sinkFirst > 0) return { ok: false, reason: "sink" };
+  if (id !== "count") return { ok: false, reason: "use-cleanliness" };
+  if ((d.closingDone ?? []).includes("count")) return { ok: false, reason: "done" };
   return {
     ok: true,
     save: {
       ...save,
       business: {
         ...save.business,
-        restaurantDay: { ...d, closingDone: [...(d.closingDone ?? []), id] },
+        restaurantDay: { ...d, closingDone: [...(d.closingDone ?? []), "count"] },
       },
     },
   };

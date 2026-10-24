@@ -164,11 +164,13 @@ assert(
   "A11: the scrape is offered only at the start of an order (and on Prepare Again), never mid-dish",
   { offers },
 );
+// Developer 2026-10-24: "remove the skip button" (was "Skip is always there"). The cloth needs
+// no supplies and every patch can be reached, so the board can always be wiped: no soft-lock.
 assert(
-  /this\.bus\.on\(CMD\.CLEANUP_SKIP/.test(scene) &&
-    /data-testid="board-cleanup-skip"/.test(prep) &&
-    /bridge\.skipCleanup\(\)/.test(prep),
-  "A12: Skip is always there — the scrape can never hold a player up",
+  !/CLEANUP_SKIP/.test(scene) &&
+    !/board-cleanup-skip|skipCleanup/.test(prep) &&
+    !/CLEANUP_SKIP/.test(code("src/game/events.ts")),
+  "A12: no Skip — the board is wiped every time (it needs nothing the player could lack)",
 );
 assert(
   /this\.cleanup\?\.dragging && !this\.input\.activePointer\.isDown\) this\.onClothUp\(\)/.test(
@@ -332,7 +334,9 @@ const near = (a: number, b: number, d: number) =>
     { wet: wet.length, dry: dry.length, wetMax },
   );
   assert(
-    /addDebris\(this\.ingredientId, this\.ingredient\.category, u, count, v\)/.test(scene) &&
+    /addDebris\(\s*this\.ingredientId,\s*this\.ingredient\.category,\s*u,\s*count,\s*v,\s*this\.variantTint\(\),?\s*\)/.test(
+      scene,
+    ) &&
       /paintDebrisPiece\(/.test(scene) &&
       /paintCloth\(/.test(scene),
     "A21: the scene paints the debris and the cloth with textures/boardMess.ts",
@@ -348,6 +352,20 @@ assert(
     ),
   "A25: a rub still going when the board comes clean never turns into a cut (the next tap cuts)",
 );
+// Developer 2026-10-24: "for yellow tomato add yellow splashing not red".
+{
+  resetDebrisForTests(3);
+  for (let i = 0; i < 10; i++) addDebris("tomato", "Vegetable", 0.5, 1, 0.5, 0xf6c84a);
+  const wet = boardDebris().filter((p) => p.kind === "juice" || p.kind === "drop");
+  const yellow = (c: number) => ((c >> 8) & 255) > 140 && ((c >> 16) & 255) > 180;
+  assert(
+    wet.length > 0 &&
+      wet.every((p) => yellow(p.color)) &&
+      !wet.some((p) => near(p.color, 0xc4301e, 60)),
+    "A26: a Golden Tomato bleeds gold, not red (its scraps lean gold too)",
+    { shades: wet.slice(0, 3).map((p) => p.color.toString(16)) },
+  );
+}
 const debrisCode = code("src/game/boardDebris.ts");
 assert(
   !/SaveData|localStorage|persist|credits|ledger/i.test(debrisCode),

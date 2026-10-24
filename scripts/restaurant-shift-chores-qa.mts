@@ -108,7 +108,10 @@ console.log("T. Timing");
   const opening = kinds(closed, "opening");
   assert(
     lull === "restroom-refresh,sanitizer-bucket,sweep-line" &&
-      closing === "condiments,degrease,mop-all,polish-cutlery,restroom-disinfect" &&
+      // Developer 2026-10-24: the night chores are Cleanliness tasks too (the boards, the spoiled
+      // food, the fridge wrap, the dining reset — were Closing Time's own taps).
+      closing ===
+        "clear-tables,condiments,degrease,mop-all,polish-cutlery,restroom-disinfect,spoiled-out,wipe-boards,wrap-fridge" &&
       opening === "lay-tables,restroom-check,stations",
     "T1: after a service the lull's chores, after the last the closing chores, closing for the night brings the morning's",
     { lull, closing, opening },
@@ -187,10 +190,16 @@ console.log("S. Staff");
     );
   const closingWith = (hired: string[]) => kinds(cleanerRound(base(hired)).save, "closing");
   assert(
-    closingWith([]) === "condiments,degrease,mop-all,polish-cutlery,restroom-disinfect" &&
-      closingWith(["server"]) === "degrease,mop-all,restroom-disinfect" &&
-      closingWith(["cleaner"]) === "condiments,polish-cutlery" &&
-      closingWith(["cleaner", "server"]) === "" &&
+    // Developer 2026-10-24: with the night chores added (the Server resets the dining room,
+    // the Prep Cook throws out and wraps, the Cleaner wipes the boards).
+    closingWith([]) ===
+      "clear-tables,condiments,degrease,mop-all,polish-cutlery,restroom-disinfect,spoiled-out,wipe-boards,wrap-fridge" &&
+      closingWith(["server"]) ===
+        "degrease,mop-all,restroom-disinfect,spoiled-out,wipe-boards,wrap-fridge" &&
+      closingWith(["cleaner"]) ===
+        "clear-tables,condiments,polish-cutlery,spoiled-out,wrap-fridge" &&
+      closingWith(["cleaner", "server"]) === "spoiled-out,wrap-fridge" &&
+      closingWith(["cleaner", "server", "prep-cook"]) === "" &&
       TASK_RULES.stations.staff === "prep-cook",
     "S1: the Server does the dining room's chores, the Cleaner the cleaning, the Prep Cook the line's; nobody hired = all the player's",
   );
@@ -233,7 +242,8 @@ console.log("W. Wiring");
       /choresAfterService\(next, n\)/.test(sim) &&
       /choresAfterClose\(/.test(sim) &&
       /<ShiftChecklist[\s\S]{0,80}phase=\{plan\.opening \? "opening" : "lull"\}/.test(layer) &&
-      /<ShiftChecklist[\s\S]{0,60}phase="closing"/.test(closing) &&
+      // Closing Time lists tonight's Cleanliness tasks itself (developer 2026-10-24).
+      /closingRows\(save, restaurantLevel\)/.test(closing) &&
       !/Math\.random/.test(read("src/game/restaurant/cleanliness.ts")),
     "W1: App and the sim add the chores after services and closing; the check shows opening/lull, Closing Time closing; no randomness",
   );

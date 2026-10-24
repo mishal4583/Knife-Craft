@@ -1,5 +1,14 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## Night chores in Cleanliness; no board Skip; calmer dry splashes (2026-10-24, `main`)
+
+- The night chores are Cleanliness closing tasks (boards, spoiled food, fridge wrap,
+  dining reset, degrease, mop, disinfect …): in Restaurant → Cleanliness ("🌙 Tonight")
+  and on Closing Time, cleaned in the same cleaning game (`CleaningGame.tsx`); the
+  dishes and the till stay Closing Time's rows. REFERENCE §5 `closing-chores-qa`.
+- The board cloth has no Skip. Dry ingredients barely splash; the splash scales with
+  juiciness; a Golden Tomato bleeds gold. QA `phase2-qa` A12/A26, `knife-feel-qa` D1.
+
 ## The knife's feel (2026-10-24, `main`)
 
 - Matched to the developer's reference board: motion trail, an impact splash of juice

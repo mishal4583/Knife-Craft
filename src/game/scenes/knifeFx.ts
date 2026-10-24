@@ -106,13 +106,14 @@ export class KnifeFx {
    */
   onCut(
     m: CutMoment,
-    juice: number | null,
+    liquid: { color: number; amount: number } | null,
     at?: Pt,
     colours: { seed?: number | null; fleck?: number } = {},
   ): void {
     const now = this.scene.time.now;
     this.tier = m.tier;
     const still = this.reduced();
+    const juice = liquid?.color ?? null;
     if (!still) {
       this.glints.push({ t: now, power: m.glint });
       if (m.echo) this.glints.push({ t: now + KNIFE_FX.GLINT_ECHO_MS, power: m.glint });
@@ -132,10 +133,11 @@ export class KnifeFx {
           m.flash || m.shing,
         );
     }
-    if (at && !still) this.splash(at, juice, colours.seed ?? null, colours.fleck ?? 0xf2e6c8);
-    if (juice !== null && !still) {
+    if (at && !still) this.splash(at, liquid, colours.seed ?? null, colours.fleck ?? 0xf2e6c8);
+    // Beads only from a properly juicy cut, more the juicier.
+    if (juice !== null && !still && (liquid?.amount ?? 0) >= 0.35) {
       const r = () => Phaser.Math.FloatBetween(0, 1);
-      const n = 2 + (r() < 0.6 ? 1 : 0);
+      const n = 1 + (r() < (liquid?.amount ?? 0) ? 1 : 0) + (r() < 0.3 ? 1 : 0);
       for (let i = 0; i < n; i++) {
         const up = 0.3 + r() * 0.55;
         this.wet.push({
@@ -159,7 +161,14 @@ export class KnifeFx {
    * few seeds burst out of the cut and arc down onto the board, with a soft
    * wet mist; a dry ingredient throws a few flecks of itself instead.
    */
-  private splash(at: Pt, juice: number | null, seed: number | null, fleck: number): void {
+  private splash(
+    at: Pt,
+    liquid: { color: number; amount: number } | null,
+    seed: number | null,
+    fleck: number,
+  ): void {
+    const juice = liquid?.color ?? null;
+    const amount = liquid?.amount ?? 0;
     const s = this.scene;
     const w = s.scale.width;
     const R = (a: number, b: number) => Phaser.Math.FloatBetween(a, b);
@@ -190,8 +199,11 @@ export class KnifeFx {
           }),
       });
     };
-    if (juice !== null) {
-      const mist = s.add.circle(at.x, at.y, w * 0.045, juice, 0.38).setDepth(23);
+    // Juicy food splashes in proportion to how juicy it is; a barely-wet one
+    // only a few drops; dry food just a fleck or two (developer 2026-10-24:
+    // "reduce the splashing while cutting non-juicy ingredients").
+    if (juice !== null && amount >= 0.35) {
+      const mist = s.add.circle(at.x, at.y, w * 0.045 * amount, juice, 0.38 * amount).setDepth(23);
       s.tweens.add({
         targets: mist,
         scale: 2.4,
@@ -200,7 +212,7 @@ export class KnifeFx {
         ease: Phaser.Math.Easing.Quadratic.Out,
         onComplete: () => mist.destroy(),
       });
-      const n = 16 + Math.floor(R(0, 10));
+      const n = Math.round((8 + R(0, 10)) * amount * amount + 4);
       for (let i = 0; i < n; i++) {
         const a = R(0, Math.PI * 2);
         const size = w * R(0.006, 0.016);
@@ -221,8 +233,14 @@ export class KnifeFx {
           sd.setRotation(a);
           fly(sd, a, w * R(0.05, 0.14), R(480, 700));
         }
-    } else
-      for (let i = 0; i < 8; i++) {
+    } else if (juice !== null)
+      for (let i = 0; i < 2 + Math.floor(R(0, 3)); i++) {
+        const a = R(0, Math.PI * 2);
+        const d = s.add.circle(at.x, at.y, w * R(0.003, 0.006), juice, 0.85).setDepth(23);
+        fly(d, a, w * R(0.03, 0.08), R(300, 460));
+      }
+    else
+      for (let i = 0; i < Math.floor(R(0, 3)); i++) {
         const a = -Math.PI / 2 + R(-1.3, 1.3);
         const f = s.add.circle(at.x, at.y, w * R(0.003, 0.006), fleck, 0.85).setDepth(23);
         fly(f, a, w * R(0.03, 0.07), R(260, 380));

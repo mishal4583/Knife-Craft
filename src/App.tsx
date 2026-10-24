@@ -3501,12 +3501,10 @@ export function App() {
             cleanlinessAction={cleanlinessAction}
             go={go}
             onChore={(id) => {
-              // The player's closing chores (closingChores.ts, developer 2026-10-23).
-              const r = doClosingChore(save, id, restaurantLevelOf(save.levelProgress));
+              // The owner's own closing tap: counting the till (the rest are Cleanliness tasks).
+              const r = doClosingChore(save, id);
               if (!r.ok) return;
-              AudioManager.playSfx(
-                id === "count" ? "till" : id === "dining-room" ? "plate" : "squeak",
-              );
+              AudioManager.playSfx("till");
               persist(r.save);
             }}
             onClose={() => {

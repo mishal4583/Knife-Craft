@@ -168,7 +168,10 @@ console.log("V  variety");
       strengthToughness(1) === 1.25,
     "a light stain still shows (70% paint); a heavy one is full",
   );
-  const view = read("src/components/kc/business/BusinessCleanliness.tsx");
+  // The cleaning game's launcher is shared now (CleaningGame.tsx, developer 2026-10-24).
+  const view =
+    read("src/components/kc/business/BusinessCleanliness.tsx") +
+    read("src/components/kc/restaurant/CleaningGame.tsx");
   const proto = read("src/components/kc/business/AreaCleaningPrototype.tsx");
   assert(
     /variant=\{cleaningVariantFor\(/.test(view) &&
