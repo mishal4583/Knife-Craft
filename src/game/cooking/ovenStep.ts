@@ -1,8 +1,8 @@
 /**
  * OVEN STEP — Transformation Phase C (developer 2026-10-25): the first
- * interactive cooking step, prototyped on ONE oven recipe. After the cut,
- * instead of the passive cooking film, the tray goes into the oven, the bread
- * browns, and the player takes it out.
+ * interactive cooking step, prototyped on one oven recipe (Phase D: six bread
+ * dishes). After the cut, instead of the passive cooking film, the tray goes
+ * into the oven, the bread browns, and the player takes it out.
  *
  * PRESENTATION ONLY (by decision — no approval to change the economy or the
  * grade): the doneness the player lands on picks a line ("Golden and crisp!")
@@ -13,8 +13,20 @@
  * Pure: time in, doneness out. The view (OvenStep.tsx) drives the clock.
  */
 
-/** The recipes that use the oven step in this phase (every order of them: campaign, menu guest, Business). */
-export const OVEN_STEP_RECIPES: readonly string[] = ["camp-garlic-bread"];
+/**
+ * The recipes that use the oven step (every order of them: campaign, menu guest, Business).
+ * Phase D (developer 2026-10-25): the five bread dishes that bake as slices on the tray.
+ * Baguette dishes wait for a baguette tray; the gratin and the cold Peach & Cheddar Board
+ * never use it (dishService still tags the board "oven" through its baguette).
+ */
+export const OVEN_STEP_RECIPES: readonly string[] = [
+  "camp-garlic-bread", // L5
+  "camp-tomato-basil-toast", // L6
+  "camp-mushroom-bruschetta", // L7
+  "camp-bruschetta-for-the-house", // L12
+  "camp-family-antipasto-for-two", // L15
+  "camp-bruschetta-trio", // L17
+];
 
 export const ovenStepFor = (recipeId: string): boolean => OVEN_STEP_RECIPES.includes(recipeId);
 

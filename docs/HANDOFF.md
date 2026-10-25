@@ -1,6 +1,14 @@
 # KnifeCraft — Handoff (Playgama edition)
 
-## Kitchen next-upgrade strip (2026-10-25, work branch)
+## Oven for five more bread dishes (2026-10-25, work branch)
+
+- Transformation Phase D. Tomato Basil Toast (L6), Mushroom Bruschetta (L7), Bruschetta for
+  the House (L12), Family Antipasto for Two (L15) and Bruschetta Trio (L17) now bake in the
+  Garlic Bread oven after the cut. Still cosmetic: score, grade, tips and pay unchanged.
+  Baguette dishes wait for a 🥖 tray (decision pending). QA `oven-step-qa`; browser
+  `ovenrecipes.mjs`; report `docs/reports/TRANSFORMATION-PHASED-2026-10-25.md`.
+
+## Kitchen next-upgrade strip (2026-10-25, `main`)
 
 - The Kitchen shows the next kitchen tier not yet built: its existing price, its level
   lock, and the wallet's progress. A tap opens Kitchen Upgrades. Read-only: no new price,
@@ -8,7 +16,7 @@
   audit: report `TRANSFORMATION-PHASEC-2026-10-25.md` (5 bread recipes can reuse it as
   is; none added).
 
-## Interactive oven for Garlic Bread (2026-10-25, work branch)
+## Interactive oven for Garlic Bread (2026-10-25, `main`)
 
 - Transformation Phase C, Feature A. After the cut, Garlic Bread goes into the oven: the
   bread bakes and the player takes it out in the golden window. It shows a line only; the

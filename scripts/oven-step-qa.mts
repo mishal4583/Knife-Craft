@@ -1,13 +1,16 @@
 /**
- * OVEN_STEP_QA — Transformation Phase C (developer 2026-10-25): the
- * interactive oven for Garlic Bread (src/game/cooking/ovenStep.ts,
+ * OVEN_STEP_QA — Transformation Phase C/D (developer 2026-10-25): the
+ * interactive oven for the bread dishes (src/game/cooking/ovenStep.ts,
  * components/kc/game/OvenStep.tsx, Preparation.tsx, App.tsx).
  *   A. the bake: doneness over time, the golden window, the lines, the colour;
- *   B. scope: Garlic Bread only; every other recipe keeps the cooking film;
+ *   B. scope: Garlic Bread plus the five Phase D bread dishes (L6, L7, L12, L15,
+ *      L17); the baguette dishes, the gratin, the board and every other recipe
+ *      keep the cooking film;
  *   C. wiring: in the film's place (after the cut, before the Knife Report),
  *      finishes once, cleans up when interrupted, restaurant build only;
  *   D. presentation only: no score, grade, pay, wallet, ledger or save;
- *   E. no save field, no economy file changed since Phase B (0e0d83b).
+ *   E. no save field, no economy file changed since Phase B (0e0d83b); Phase D
+ *      changed only the recipe list (since 54e30cc).
  *
  * Run: npx tsx scripts/oven-step-qa.mts
  */
@@ -23,6 +26,8 @@ import {
   donenessLabel,
   ovenStepFor,
 } from "../src/game/cooking/ovenStep.ts";
+import { getCampaignRecipe } from "../src/game/recipes/campaignRecipes.ts";
+import { getLevel } from "../src/game/levels/LevelManager.ts";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const code = (f: string) =>
@@ -64,12 +69,50 @@ console.log("A. The bake");
 }
 
 console.log("B. Scope");
-assert(
-  OVEN_STEP_RECIPES.length === 1 &&
-    ovenStepFor("camp-garlic-bread") &&
-    !ovenStepFor("camp-tomato-basil-toast"),
-  "B1: Garlic Bread only; other recipes keep the film",
-);
+{
+  // Phase D (developer 2026-10-25): the rule changed from "Garlic Bread only" to these six.
+  const PHASE_D: Record<number, string> = {
+    5: "camp-garlic-bread",
+    6: "camp-tomato-basil-toast",
+    7: "camp-mushroom-bruschetta",
+    12: "camp-bruschetta-for-the-house",
+    15: "camp-family-antipasto-for-two",
+    17: "camp-bruschetta-trio",
+  };
+  const ids = Object.values(PHASE_D);
+  assert(
+    OVEN_STEP_RECIPES.length === ids.length && ids.every((id) => ovenStepFor(id)),
+    "B1: exactly Garlic Bread and the five Phase D bread dishes use the oven",
+    OVEN_STEP_RECIPES,
+  );
+  assert(
+    Object.entries(PHASE_D).every(([n, id]) => getLevel(`level-${n}`)?.recipeId === id),
+    "B2: each is the recipe its level (L5, L6, L7, L12, L15, L17) cooks",
+  );
+  assert(
+    ids.every((id) => {
+      const parts = getCampaignRecipe(id)?.components.map((c) => c.ingredientId) ?? [];
+      return parts.includes("bread") && !parts.includes("baguette");
+    }),
+    "B3: all are bread-slice dishes (the tray draws 🍞), none uses a baguette",
+  );
+  const excluded = [
+    "camp-avocado-baguette-toast",
+    "camp-baguette-rounds",
+    "camp-baguette-cheddar-rounds",
+    "camp-baguette-crostini-prep",
+    "camp-potato-onion-gratin-prep",
+    "camp-peach-cheddar-board",
+  ];
+  assert(
+    excluded.every((id) => !!getCampaignRecipe(id) && !ovenStepFor(id)),
+    "B4: the four baguette dishes, the gratin and the Peach & Cheddar Board keep the film",
+  );
+  assert(
+    !ovenStepFor("camp-garden-tomato-cup") && !ovenStepFor(""),
+    "B5: other recipes (e.g. L17's batch partner) keep the film",
+  );
+}
 
 console.log("C. Wiring");
 {
@@ -110,10 +153,10 @@ console.log("D. Presentation only");
   const logic = code("src/game/cooking/ovenStep.ts");
   const view = code("src/components/kc/game/OvenStep.tsx");
   assert(
-    !/Math\.random|credits|Ledger|Settlement|wallet|SaveManager|persist|score|grade|quality/i.test(
+    !/Math\.random|credits|Ledger|Settlement|wallet|SaveManager|persist|setSave|score|grade|quality|\btips?\b|\bpay|reward|achievement|ranking/i.test(
       logic + view,
     ),
-    "D1: no randomness, score, grade, pay, wallet, ledger or save in the oven",
+    "D1: no randomness, score, grade, tip, pay, reward, wallet, ledger or save in the oven",
   );
 }
 
@@ -127,6 +170,15 @@ console.log("E. Nothing else moves");
     diff.trim() === "",
     "E1: no save field, economy, level or recipe change",
     diff.slice(0, 300),
+  );
+  const flow = execSync(
+    "git diff 54e30cc -- src/components/kc/game/Preparation.tsx src/components/kc/game/OvenStep.tsx src/App.tsx src/game/restaurant src/game/progression",
+    { cwd: ROOT, encoding: "utf8" },
+  );
+  assert(
+    flow.trim() === "",
+    "E2: Phase D changes no order, serve, pay, oven-view, achievement or ranking code",
+    flow.slice(0, 300),
   );
 }
 
