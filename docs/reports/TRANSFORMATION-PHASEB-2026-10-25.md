@@ -7,6 +7,34 @@
 - **Not run:** Playgama itself.
 - **Pushed** to the non-deploying branch `claude/sharp-wright-emfu2j` only, not `main`.
 
+### Release check (2026-10-25, third session — branch `claude/sharp-wright-emfu2j` at `bea4798`)
+
+**Setup:** both commits built and served side by side (`bea4798` on :4173, `095115a` on
+:4175), with the same local harness, the same Chromium and the same Bridge file.
+
+**Passing on `bea4798`:** shopart, staff, marketneeds, marketneedslevel, restaurantstock,
+restaurantmenu, restaurantstafflife, platingskip, achievements, restaurantsecondfloor.
+
+**Failing on `bea4798`, and identical on the baseline** (same FAIL ids and counts, or the
+same timeout at the same line):
+
+| Suite | Result on both commits |
+|---|---|
+| restaurantfirstlevels | first-load `networkidle0` timeout |
+| paidorders | `waitForFunction` timeouts, lines 53 / 88 |
+| inventory | 4 FAIL — old bottom bar / Business tab expectations |
+| ingredients | 14 FAIL — old Market card copy |
+| supplies | 1 FAIL (#7) |
+| cookingclip | crashes before any check |
+| rushrestock | 15 FAIL |
+
+**Conclusion:**
+- None of these failures is a Phase B regression. They are stale tests or environment issues
+  already present on `main`.
+- Not fixed here (out of scope), and no test was weakened.
+- Phase B's own browser checks still pass: servicefloor 8 / 8 and servicefloorstages 13 / 13.
+- No game code changed in this check; only this report.
+
 ### Final verification pass (2026-10-25, second session)
 
 | Suite | New build | Untouched baseline (`095115a`) |
