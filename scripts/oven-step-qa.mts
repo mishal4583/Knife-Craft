@@ -192,8 +192,10 @@ console.log("E. Nothing else moves");
   // oven view and Preparation only lines about the tray item.
   // Phase F (developer 2026-10-25, option B): dishService.ts may change only by the cold-board
   // exception (the Peach & Cheddar Board loses "oven"); dish-classification-qa checks its effect.
+  // Early-game phase 1 (developer 2026-10-25): levelPayPreview.ts, display only — the practice
+  // level previews $0 (restaurant-measures-qa A1b checks it); no pay, serve or oven code moves.
   const flow = execSync(
-    "git diff cc46bbd -- src/App.tsx src/game/restaurant ':!src/game/restaurant/dishService.ts' src/game/progression src/game/recipes/dishKind.ts",
+    "git diff cc46bbd -- src/App.tsx src/game/restaurant ':!src/game/restaurant/dishService.ts' ':!src/game/restaurant/levelPayPreview.ts' src/game/progression src/game/recipes/dishKind.ts",
     { cwd: ROOT, encoding: "utf8" },
   );
   const serviceDiff = execSync("git diff -U0 cc46bbd -- src/game/restaurant/dishService.ts", {
@@ -224,7 +226,7 @@ console.log("E. Nothing else moves");
   );
   assert(
     flow.trim() === "" && offTray.length === 0 && offBoard.length === 0,
-    "E2: since Phase D only the tray item and the Phase F cold-board exception changed (no order, serve, pay, achievement, ranking or dishKind code)",
+    "E2: since Phase D only the tray item, the Phase F cold-board exception and the Level 2 pay preview changed (no order, serve, pay, achievement, ranking or dishKind code)",
     { flow: flow.slice(0, 200), offTray, offBoard },
   );
 }

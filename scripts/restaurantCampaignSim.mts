@@ -539,6 +539,12 @@ function playLevel(save: SaveData, n: number, opts: SimOptions, stats: Stats): S
 
   // Serve the level's own orders.
   for (const recipe of plan.tickets) {
+    // As App.serveCampaignOrder: a practice level (`campaignNoEconomy`, Level 2) is served
+    // like a replay — no stock, no supplies, no pay and no paid-order record.
+    if (level.campaignNoEconomy) {
+      stats.ordersServed++;
+      continue;
+    }
     const idx = paidOrdersFor(s.levelProgress, level.id).length;
     const stock = consumeCampaignOrderStock(s, n, recipe, true);
     if (!stock.ok) {

@@ -533,6 +533,21 @@ console.log("A. Audit fixes (2026-10-08)");
       replay === null,
     `A1: Level 12 shows what it pays — orders ${pay.orders}c + completion ${pay.completion}c (it used to show only the completion); a replay shows nothing`,
   );
+  // A1b (2026-10-25, transformation audit B1) — the practice level (Level 2, campaignNoEconomy)
+  // pays nothing (App.serveCampaignOrder serves it as a replay), so its preview is $0. It used
+  // to show its order at recipe price ("about +$130") though nothing was ever paid.
+  const l2 = getLevel("level-2")!;
+  const practice = levelPayPreview(saveAt(2), l2);
+  assert(
+    l2.campaignNoEconomy === true &&
+      paidLevelReward(l2) === 0 &&
+      !!practice &&
+      practice.orders === 0 &&
+      practice.completion === 0 &&
+      practice.total === 0,
+    "A1b: Level 2 (practice) previews $0, as it pays",
+    practice,
+  );
   // A2 — the first restock guide. Developer 2026-10-09 (Pass 2 review): it is
   // progression-based now — the first service on real stock (Level 15) shows it
   // even with food in the fridge (Grandma's leftovers, the L13 top-up); once a

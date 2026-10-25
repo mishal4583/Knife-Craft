@@ -106,7 +106,9 @@ function Hotspot({
  */
 function payText(save: SaveData, level: LevelDefinition): string {
   const pay = RESTAURANT_MODE ? levelPayPreview(save, level) : null;
-  return pay ? `about ${formatUsdChange(pay.total)}` : formatUsdChange(paidLevelReward(level));
+  // "about": the quality bonus comes on top — except on a level that pays nothing (Level 2).
+  if (pay) return pay.total > 0 ? `about ${formatUsdChange(pay.total)}` : formatUsdChange(0);
+  return formatUsdChange(paidLevelReward(level));
 }
 
 /** The single "what should I prepare next" level — the first unlocked-but-not-completed level in campaign order, falling back to the furthest reached one once everything's done. Shared by the compact Kitchen Home card and OrderBoard's own header context. */

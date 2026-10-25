@@ -1,5 +1,13 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+
+## Early game, phase 1: Level 2 pays $0, and says so (2026-10-25, branch `claude/early-game`)
+
+- The practice level's card read "about +$130" though it never pays; it now reads "$0.00".
+  The campaign simulator also stopped paying it (−$138 for a saver; the completionist's L150
+  is $132,067, inside the band). QA `restaurant-measures-qa` A1b; browser `practicepay.mjs`;
+  report `docs/reports/EARLYGAME-PHASE1-2026-10-25.md`. Next: menu from L5 (awaiting review).
+
 ## Oven for the four baguette dishes (2026-10-25, work branch)
 
 - Transformation Phase E. Avocado Baguette Toast (L47), Baguette Rounds, Baguette & Cheddar
