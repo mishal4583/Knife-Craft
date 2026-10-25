@@ -73,3 +73,23 @@ takeaway supplies). Its oven path is the same code path, chosen by recipe id.
 weakly on 🥖; the bar carries the timing.
 
 ## 3. Baseline comparison and regressions
+
+**The same baguette test on `cc46bbd`** (its development server): the cooking film plays,
+so the oven checks fail there as expected. Each dish writes exactly the same ledger entries
+and amounts as on the branch: Avocado Baguette Toast 19,100, Baguette Rounds 5,800,
+Baguette & Cheddar Rounds 20,400 plus a `customer-tip` of 2,000, Baguette Crostini Prep
+12,700. The tip is not caused by the oven.
+
+**Branch build, pass:** ovenbaguette (dev server), ovenrecipes, ovenstep, kitchenstrip,
+servicefloor, restaurantday, restaurantguests, knifereport, levelflow (restaurant and
+classic), platingskip, phase4, phase5, phase6.
+
+**Fail on both** (`cc46bbd` rebuilt as `index-CWTPdHFr.js`, the Phase D build):
+
+| Suite | Branch | `cc46bbd` | Verdict |
+|---|---|---|---|
+| cookingclip | timeout in `cookUntilClip` (line 44), 0 checks | the same | pre-existing |
+| levelux | 3 PASS, then a timeout in `openLevel` (line 60) | the same | pre-existing |
+| phase2 | run 1: A9 + C4; run 2: C4 only (27 PASS) | C4 only (27 PASS) | pre-existing, intermittent (C4 the wallet pill `shown 40000`; A9 the cloth wipe, also seen in Phase D) |
+
+**No regressions found.**
