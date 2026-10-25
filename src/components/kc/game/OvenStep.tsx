@@ -88,7 +88,7 @@ export function OvenStep({
   const glow = state === "baking" && !reducedMotion ? 0.25 + doneness * 0.55 : 0.2;
   return (
     <div
-      className="absolute inset-0 z-[55] flex flex-col items-center justify-center gap-4 bg-walnut-dark/90 px-5 text-center"
+      className="absolute inset-0 z-[55] flex flex-col items-center justify-center gap-4 bg-walnut-dark/[0.97] px-5 backdrop-blur-sm text-center"
       data-testid="oven-step"
       data-state={state}
       data-zone={result ?? zone}

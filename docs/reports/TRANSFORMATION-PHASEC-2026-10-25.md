@@ -1,5 +1,18 @@
 # KnifeCraft — Transformation Phase C (2026-10-25)
 
+## Update — oven overlay fix (third commit)
+
+**Issue (review at `333e2d8`):** the order card ("Step 3 of 3") showed through the oven's
+90 % walnut background, behind "Into the oven / Garlic Bread".
+
+**Fix:** `OvenStep.tsx` root only: `bg-walnut-dark/90` → `bg-walnut-dark/[0.97]` plus
+`backdrop-blur-sm`. Layout, animations, timings and Reduced Motion are unchanged; no score,
+grade, tip, pay, wallet, ledger, save or other-recipe code touched.
+
+**Tests:** typecheck, ESLint, build and preflight pass; `oven-step-qa` and `ui-copy-qa`
+pass; `ovenstep.mjs` 6 / 6. A 320 × 568 mid-bake screenshot (baking, no sideways scroll)
+shows only the oven UI.
+
 ## Update — approved follow-up (second commit on `claude/sharp-wright-emfu2j`)
 
 **1. The oven stays cosmetic.** Unchanged: QA `oven-step-qa` D1 forbids any score, grade,
