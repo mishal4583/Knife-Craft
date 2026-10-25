@@ -220,7 +220,9 @@ console.log("R. Rules");
       menuGuestsFor(stamped, 51) === Math.min(menuGuestsPerService(51), 2) &&
       menuGuestsFor({ ...crew, ownedKitchenUpgradeIds: tiers }, 51) ===
         Math.min(menuGuestsPerService(51) + 2, 4) &&
-      menuGuestsFor(crew, 10) === 0,
+      // Rule changed (developer 2026-10-25, early game phase 2): the menu opens at L5 (was L11).
+      menuGuestsFor(crew, 4) === 0 &&
+      menuGuestsFor(crew, 5) === 1,
     "R6: menu guests = min(schedule + the kitchen's seats, the team's capacity); none before the menu",
   );
   assert(

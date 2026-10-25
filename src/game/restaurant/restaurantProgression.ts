@@ -40,8 +40,11 @@ import { LEVELS } from "../levels/levelDefinitions";
 import { getCampaignRecipe } from "../recipes/campaignRecipes";
 import { getBusinessDish } from "../business/businessDishCatalog";
 
-/** Business and customer-menu systems arrive together after the opening ten levels. */
-export const BUSINESS_MENU_FIRST_LEVEL = 11;
+/**
+ * Business and customer-menu systems arrive together. Early game (developer 2026-10-25):
+ * Level 5, the source design's old L11 (`remapCampaignThreshold(11)`); it was floored at 11.
+ */
+export const BUSINESS_MENU_FIRST_LEVEL = 5;
 
 // ── Systems ─────────────────────────────────────────────────────────────
 
@@ -406,7 +409,7 @@ const SOURCE_MENU_UNLOCKS: readonly { level: number; dishIds: readonly string[];
       "biz-garden-salad",
       "biz-garlic-bread",
     ],
-    why: "Four dishes you already know how to cut: slices, dice and a smashed garlic clove.",
+    why: "Dishes you already know how to cut: slices, dice and a smashed garlic clove.",
   },
   {
     level: 15,

@@ -102,15 +102,23 @@ const legalBy = (lv: number) => BUSINESS_DISH_CATALOG.filter((d) => earliestLega
 
 console.log("M. Schedule (developer curve 2026-10-05; 150-level re-plan 2026-10-17)");
 // The 150-level campaign: the menu opens at L11 with 6 dishes (the curve's remapped points).
+// Rule changed (developer 2026-10-25, early game phase 2): the menu opens at L5, the source
+// curve's old L11 point (was floored at L11). Garlic Bread at L5 (Level 5's own dish; chop is
+// taught at L6), 4 dishes from L6, the same 6 as the old L11 opening by L9.
 assert(
-  menuDishIdsAt(10).length === 0 &&
-    menuDishIdsAt(11).length === 6 &&
-    menuDishIdsAt(11).every(
-      (id) => earliestLegal(BUSINESS_DISH_CATALOG.find((d) => d.id === id)!) <= 11,
+  menuDishIdsAt(4).length === 0 &&
+    menuDishIdsAt(5).join() === "biz-garlic-bread" &&
+    menuDishIdsAt(6).length === 4 &&
+    menuDishIdsAt(9).length === 6 &&
+    menuDishIdsAt(10).length === 6 &&
+    menuDishIdsAt(10).every(
+      (id) =>
+        earliestLegal(BUSINESS_DISH_CATALOG.find((d) => d.id === id)!) <= dishUnlockLevel(id)!,
     ) &&
-    menuTargetAt(10) === 0 &&
-    menuTargetAt(11) === 6,
-  "M1: no menu in the L1–10 fundamentals; it opens at L11 with 6 dishes the player can already cut",
+    menuTargetAt(4) === 0 &&
+    menuTargetAt(5) === 4 &&
+    menuTargetAt(9) === 6,
+  "M1: no menu in L1–4; it opens at L5 (Garlic Bread), 4 dishes from L6 and 6 by L9, each one the player can already cut",
 );
 const curveMisses: string[] = [];
 for (const p of MENU_CURVE) {
@@ -123,7 +131,8 @@ assert(
     // The developer's curve through the 150-level remap (old 11:4 … 161:48; L11's point
     // merges the old 11 and 15).
     MENU_CURVE.map((p) => `${p.level}:${p.dishes}`).join() ===
-      "11:6,13:8,17:10,21:12,29:15,35:18,42:21,46:25,49:29,56:33,59:36,68:39,76:42,88:45,101:48",
+      // Rule changed (developer 2026-10-25): the first points are L5:4 and L9:6 (was 11:6).
+      "5:4,9:6,13:8,17:10,21:12,29:15,35:18,42:21,46:25,49:29,56:33,59:36,68:39,76:42,88:45,101:48",
   `M2: at every point of the developer's curve the menu has min(target, dishes the rules allow) ${curveMisses.join("; ")}`,
 );
 const over: string[] = [];
@@ -137,8 +146,10 @@ assert(
 const shortfalls = MENU_CURVE.filter((p) => legalBy(p.level) < p.dishes).map((p) => p.level);
 assert(
   // 150-level campaign: L13 (cuts not yet taught) and L56–68 (meat and fish not yet cooked).
-  shortfalls.join() === "13,56,59,68",
-  `M2c: the only points the catalog can't reach are L13 (techniques) and L56–68 (meat and fish) — ${shortfalls.join()}`,
+  // Rule changed (developer 2026-10-25): also L5, the menu's new opening (target 4; only Garlic
+  // Bread is legal before chop is taught at L6).
+  shortfalls.join() === "5,13,56,59,68",
+  `M2c: the only points the catalog can't reach are L5 (chop at L6), L13 (techniques) and L56–68 (meat and fish) — ${shortfalls.join()}`,
 );
 const scheduled = MENU_UNLOCKS.flatMap((u) => [...u.dishIds]);
 assert(
@@ -195,17 +206,21 @@ console.log("T. Tied to cuisine progression");
     chapterMisses.length === 0,
     `T2: every specialist cuisine opens with its campaign chapter ${chapterMisses.join("; ")}`,
   );
-  const news11 = restaurantNewsAt(11);
+  // Rule changed (developer 2026-10-25): the menu chain is explained at L5 (was L11).
+  const news11 = restaurantNewsAt(5);
   const news51 = restaurantNewsAt(35);
   assert(
     news11.chain?.join(" → ") ===
       "Menu → Customer Order → Inventory → Preparation → Service → Revenue" &&
-      news11.dishes.length === 6 &&
+      news11.dishes.length === 1 &&
+      restaurantNewsAt(6).dishes.length === 3 &&
+      restaurantNewsAt(6).chain === null &&
+      restaurantNewsAt(11).chain === null &&
       !!news11.dishWhy &&
       news51.cuisines.some((c) => c.name === "Indian" && c.specialist === "Indian Chef") &&
       restaurantNewsAt(30).comingUp.some((c) => c.level === 35 && /Indian/.test(c.text)) &&
       restaurantNewsAt(12).chain === null,
-    "T3: the news explains the menu chain at L11, new dishes with their reason, and a cuisine (with its chef) 5 levels ahead",
+    "T3: the news explains the menu chain at L5, new dishes with their reason, and a cuisine (with its chef) 5 levels ahead",
   );
 }
 
@@ -288,7 +303,9 @@ console.log("A. Active menu");
   const lockedId = lockedMenuDishes(12)[0]!.dish.id;
   assert(
     !canOrderDish(none, 12, lockedId) &&
-      !canOrderDish(none, 10, "biz-caprese-salad") &&
+      // Rule changed (developer 2026-10-25): Caprese joins at L6 (was L11), so L5 is "locked".
+      !canOrderDish(none, 5, "biz-caprese-salad") &&
+      canOrderDish(none, 6, "biz-caprese-salad") &&
       !canOrderDish(none, 100, "biz-thai-basil-salmon") &&
       canOrderDish(none, 101, "biz-thai-basil-salmon"),
     "A4: a locked dish is never orderable, whatever the saved switches say",

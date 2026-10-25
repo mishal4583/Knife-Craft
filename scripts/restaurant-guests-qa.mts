@@ -88,8 +88,11 @@ const lv = (n: number) => getLevel(`level-${n}`)!;
 
 console.log("G. Schedule");
 assert(
-  // 2026-10-05: customers order from a menu, so guests start when the menu opens (L11).
-  menuGuestsPerService(10) === 0 &&
+  // 2026-10-05: customers order from a menu, so guests start when the menu opens.
+  // Rule changed (developer 2026-10-25, early game phase 2): the menu opens at L5 (was L11).
+  menuGuestsPerService(4) === 0 &&
+    menuGuestsPerService(5) === 1 &&
+    menuGuestsPerService(10) === 1 &&
     menuGuestsPerService(11) === 1 &&
     // 150-level remap (developer 2026-10-15): old L21 / 51 / 121 / 201 → L16 / 35 / 76 / 117.
     menuGuestsPerService(15) === 1 &&
@@ -100,8 +103,9 @@ assert(
     menuGuestsPerService(76) === 5 &&
     menuGuestsPerService(117) === 6 &&
     menuGuestsPerService(150) === 6 &&
-    menuGuestQueue(saveAt(10), lv(10)).length === 0,
-  "G1: no guests before the menu opens; 1 / 2 / 4 / 5 / 6 from L11 / 16 / 35 / 76 / 117",
+    menuGuestQueue(saveAt(4), lv(4)).length === 0 &&
+    menuGuestQueue(saveAt(5), lv(5)).length === 1,
+  "G1: no guests before the menu opens; 1 / 2 / 4 / 5 / 6 from L5 / 16 / 35 / 76 / 117",
 );
 
 console.log("M. Menu control");
@@ -192,13 +196,13 @@ console.log("N. The next guest");
       done.progress.menuGuests?.["level-40"] === undefined,
     "N3: completing the level drops the guest count",
   );
-  // 150-level campaign (developer 2026-10-15): stock is live from L3, before the menu opens at
-  // L11, so every guest needs the dish's stock (the old L11–14 stock-free menu is gone).
+  // 150-level campaign (developer 2026-10-15): stock is live from L3, before the menu opens (L5
+  // since 2026-10-25), so every guest needs the dish's stock (the old L11–14 stock-free menu is gone).
   assert(
     serviceUsesStock(BUSINESS_MENU_FIRST_LEVEL) &&
       nextMenuGuest(saveAt(12), lv(12))!.inStock === false &&
       nextMenuGuest(saveAt(40), lv(40))!.inStock === false,
-    "N4: stock is live before the menu opens (L3), so from L11 a guest needs the dish's stock",
+    "N4: stock is live before the menu opens (L3), so from L5 a guest needs the dish's stock",
   );
 }
 

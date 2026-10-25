@@ -1,12 +1,21 @@
 # KnifeCraft — Handoff (Playgama edition)
 
 
+## Early game, phase 2: the menu and menu guests from Level 5 (2026-10-25, branch `claude/early-game`)
+
+- `BUSINESS_MENU_FIRST_LEVEL` 11 → 5: the menu, Business and 1 menu guest per service open at
+  L5 (Garlic Bread; 4 dishes from L6, the old six by L9). From L11 the dishes and guest counts
+  are as before; their order moved, so seeded guests pick another dish at 28 levels.
+  Completionist L150 $132,209 (+$142). QA `early-menu-qa` + 8 suites' pinned levels updated;
+  browser `earlymenu.mjs`; report `docs/reports/EARLYGAME-PHASE2-2026-10-25.md`. Next: walk-ins
+  (awaiting review).
+
 ## Early game, phase 1: Level 2 pays $0, and says so (2026-10-25, branch `claude/early-game`)
 
 - The practice level's card read "about +$130" though it never pays; it now reads "$0.00".
   The campaign simulator also stopped paying it (−$138 for a saver; the completionist's L150
   is $132,067, inside the band). QA `restaurant-measures-qa` A1b; browser `practicepay.mjs`;
-  report `docs/reports/EARLYGAME-PHASE1-2026-10-25.md`. Next: menu from L5 (awaiting review).
+  report `docs/reports/EARLYGAME-PHASE1-2026-10-25.md`.
 
 ## Oven for the four baguette dishes (2026-10-25, work branch)
 

@@ -67,20 +67,24 @@ console.log("T. Sections open one at a time");
     ["kitchen", "inventory", "shop", "rack", "business"].filter((id) => isTabOpen(id, n)).join();
   assert(
     // Redesign 2026-10-15 (0b2ce52): Inventory and the Market both open at L3 (stock from L3).
+    // Rule changed (developer 2026-10-25, early game phase 2): Business opens with the menu at
+    // Level 5 (was L11), so it now opens before Progress (L10).
     at(1) === "kitchen" &&
       at(2) === "kitchen" &&
       at(3) === "kitchen,inventory,shop" &&
-      at(9) === "kitchen,inventory,shop" &&
-      at(10) === "kitchen,inventory,shop,rack" &&
-      at(11) === "kitchen,inventory,shop,rack,business" &&
-      at(150) === at(11),
-    "T1: Kitchen from the start, Inventory and Market L3, Progress L10, Business L11; all open after",
+      at(4) === "kitchen,inventory,shop" &&
+      at(5) === "kitchen,inventory,shop,business" &&
+      at(9) === "kitchen,inventory,shop,business" &&
+      at(10) === "kitchen,inventory,shop,rack,business" &&
+      at(150) === at(10),
+    "T1: Kitchen from the start, Inventory and Market L3, Business L5, Progress L10; all open after",
   );
   assert(
     tabsOpeningAt(3).join() === "inventory,shop" &&
       tabsOpeningAt(7).length === 0 &&
       tabsOpeningAt(10).join() === "rack" &&
-      tabsOpeningAt(11).join() === "business" &&
+      tabsOpeningAt(5).join() === "business" &&
+      tabsOpeningAt(11).length === 0 &&
       tabsOpeningAt(4).length === 0 &&
       Object.values(TAB_OPENS_AT).every((n) => n <= 15),
     "T2: each section opens at exactly one level (Inventory + Market together at L3), all of them by Level 15",
@@ -146,8 +150,11 @@ console.log("M. The Level 10 card");
     FIRST_PURCHASE_LEVEL === 10 &&
       rows.some((r) => r.label === "🔪 Santoku" && r.value === "in the Market · $350.00") &&
       rows.some((r) => r.label === "🪵 Maple Board" && r.value === "in the Market · $300.00") &&
-      rows.at(-1)?.value === "your first menu at Level 11",
-    "M1: Santoku and Maple Board from their catalogs (prices unchanged), then the first menu",
+      // Rule changed (developer 2026-10-25): the menu is already open at L10 (from L5), so the
+      // last row points at it instead of "your first menu at Level 11".
+      rows.at(-1)?.label === "📋 Your menu" &&
+      rows.at(-1)?.value === "new dishes in Business",
+    "M1: Santoku and Maple Board from their catalogs (prices unchanged), then the menu (open since L5)",
   );
 }
 
@@ -178,7 +185,10 @@ console.log("E. Nothing paid changes");
 console.log("L. Locked links and Grandma's tips (developer 2026-10-09)");
 {
   assert(
-    lockedScreenHint("business-equipment", 3) === "🔒 Business opens at Level 11" &&
+    // Rule changed (developer 2026-10-25): Business opens at Level 5 (was 11).
+    lockedScreenHint("business-equipment", 3) === "🔒 Business opens at Level 5" &&
+      lockedScreenHint("business-equipment", 4) === "🔒 Business opens at Level 5" &&
+      lockedScreenHint("business-equipment", 5) === null &&
       lockedScreenHint("shop-ingredients", 2) === "🔒 Market opens at Level 3" &&
       lockedScreenHint("shop-ingredients", 3) === null &&
       lockedScreenHint("inventory-supplies", 2) === "🔒 Inventory opens at Level 3" &&
@@ -282,7 +292,10 @@ console.log("P. Grandma's pointer at a new section (developer 2026-10-10)");
       ",,inventory,inventory,inventory,inventory,inventory,inventory,inventory,inventory,inventory,inventory,inventory,inventory,inventory," &&
       sectionToPoint(12, ["inventory"]) === "shop" &&
       sectionToPoint(12, seenAll) === "business" &&
-      sectionToPoint(9, seenAll) === null &&
+      // Rule changed (developer 2026-10-25): Business opens at L5 (was 11), so it is pointed
+      // at from L5; before it, nothing (was: L9).
+      sectionToPoint(5, seenAll) === "business" &&
+      sectionToPoint(4, seenAll) === null &&
       sectionToPoint(12, [...seenAll, "business"]) === null &&
       sectionToPoint(3, ["inventory"]) === "shop" &&
       sectionToPoint(3, seenAll) === null &&

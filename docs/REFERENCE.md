@@ -367,6 +367,19 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   Zucchini & Fennel Salad L21, and ten dishes one point later to make room.
   The suite numbers above are the 250-level ones; `restaurant-menu-qa`
   checks the 150-level ones.
+  Early game phase 2 (developer 2026-10-25): `BUSINESS_MENU_FIRST_LEVEL` = 5
+  (was 11) — the menu system, the Business tab, the map's office and service
+  counter, and 1 menu guest per service open at L5 (the source curve's old L11
+  point, which the floor of 11 had delayed). Curve points 5:4 9:6 13:8 …;
+  Garlic Bread at L5 (chop is taught at L6), Caprese Salad, Mushroom
+  Bruschetta and Garden Salad at L6, the skewers and tomato bruschetta at L9 —
+  the same six dishes as the old L11 opening. From L11 the dishes, guests,
+  systems and day are unchanged; their order moves (Garlic Bread first), so a
+  seeded guest may order another dish at 28 of L11–150. Grandma's L5 tip
+  points at the menu. `early-menu-qa` (old saves, no retroactive guests,
+  the L5–10 dishes' cuts and stock, the baseline from L11);
+  `tools/e2e/earlymenu.mjs` (L4 locked, L5 Menu at 320 / 390, a Garlic Bread
+  guest pays once, Finish Level once).
 - `restaurant-day-qa` — the restaurant day clock (`restaurant/restaurantDay.ts`):
   services per day (`DAY_SCHEDULE`, developer 2026-10-10): Lunch + Dinner to
   L20, + Breakfast from L21 (3), + Afternoon Tea from L51 (4), + Brunch from
@@ -408,7 +421,8 @@ Focused suites (`npx tsx scripts/<name>.mts`):
 - `restaurant-guests-qa` — phase D, orders from the ACTIVE MENU inside
   campaign services (`restaurant/menuGuests.ts`): after a level's own orders
   (unchanged, deterministic) the service can take menu guests (none before
-  the menu opens; 1/2/3/4/5 from L11/21/51/121/201, `MENU_GUESTS_SCHEDULE`), optional,
+  the menu opens; 1/2/3/4/5 from L11/21/51/121/201, `MENU_GUESTS_SCHEDULE`; 150 levels:
+  1/2/4/5/6 from L5/16/35/76/117 since 2026-10-25), optional,
   one at a time ("🍽️ Menu guest n/N: dish · $price" next to Finish Level).
   At EVERY level 11–250 a guest orders only an unlocked, active dish; a dish
   switched off never appears; seeded per level; the count is saved
@@ -767,7 +781,7 @@ service, {recipe, levelNumber, index})`; the guest gate
   Completionist $185,172 → $187,057; the Staff screen says "half pay".
   150-level numbers (re-baselined 2026-10-17): half wages from L29 (the
   Prep Cook; `HALF_WAGES_FROM` had stayed at the raw 41) to L55, full
-  operation L56; menu guests 1 / 2 / 4 / 5 / 6 from L11 / 16 / 35 / 76 / 117. The Staff screen's "½ pay from Lv … · full pay from Lv …" reads the
+  operation L56; menu guests 1 / 2 / 4 / 5 / 6 from L5 (L11 until 2026-10-25) / 16 / 35 / 76 / 117. The Staff screen's "½ pay from Lv … · full pay from Lv …" reads the
   constants (it said Lv 41 / 91).
   With it, the tables' pieces (`serviceSuppliesCheck`): only the orders' own
   tables block START; the extra tables the menu guests need are a
@@ -832,7 +846,7 @@ service, {recipe, levelNumber, index})`; the guest gate
   (`business-cleanliness`, `BusinessCleanliness.tsx`). Cleaning starts with
   Level 10's service (`CLEANING_FROM_LEVEL` = 10, developer 2026-10-10; was
   21): tasks, the cupboard, the spotless streak; the tab shows in the
-  Restaurant section, open from Level 11. Kitchen / Dining Area / Restroom
+  Restaurant section, open from Level 5 (11 until 2026-10-25). Kitchen / Dining Area / Restroom
   cards (meter, spots with ✓/!, View details → each task's Clean button and
   "Buy …" for what it lacks), Today's cleanliness (Ready for service /
   Clean everything I can), Cleaning staff (the existing Cleaner — On duty,

@@ -140,11 +140,16 @@ console.log("O. Opening");
   assert(
     !!plan5 &&
       plan5.opening !== null &&
-      !servicePlanNeedsSheet(plan5) &&
+      // Rule changed (developer 2026-10-25, early game phase 2): the menu opens at L5, so L5's
+      // check now shows the "Your menu" news. The opening card is still not shown: without the
+      // news the sheet stays closed (was: no sheet at L5 at all).
+      plan5.news.systems.some((x) => x.id === "menu") &&
+      servicePlanNeedsSheet(plan5) &&
+      !servicePlanNeedsSheet({ ...plan5, news: { ...plan5.news, systems: [], dishes: [] } }) &&
       (!plan5.check.applies || plan5.check.ready) &&
       !!mid &&
       mid.opening === null &&
-      !servicePlanNeedsSheet(mid) &&
+      !servicePlanNeedsSheet({ ...mid, news: { ...mid.news, systems: [], dishes: [] } }) &&
       !dayCeremonyAt(15) &&
       dayCeremonyAt(16),
     "O4: before Level 16 a new day opens without its card (L5); mid-day a stock-free level starts at once; the card starts at L16 (old L21)",

@@ -124,8 +124,9 @@ console.log("C. Closing");
 console.log("M. Menu guests (F3)");
 {
   assert(
-    [10, 11, 16, 34, 35, 76, 117].map(menuGuestsPerService).join() === "0,1,2,2,4,5,6",
-    "M1: menu guests 1 / 2 from L11 / L16, one more per service from L35 (4 / 5 / 6 at L35 / L76 / L117)",
+    // Rule changed (developer 2026-10-25, early game phase 2): guests from L5 (was L11).
+    [4, 5, 16, 34, 35, 76, 117].map(menuGuestsPerService).join() === "0,1,2,2,4,5,6",
+    "M1: menu guests 1 / 2 from L5 / L16, one more per service from L35 (4 / 5 / 6 at L35 / L76 / L117)",
   );
 }
 

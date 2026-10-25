@@ -96,7 +96,8 @@ const expected: [RestaurantSystemId, number][] = [
   // The 150-level redesign (developer 2026-10-15): real stock from L3 (before the menu),
   // the rest through the remap (old 21/31/41/51/71/91/121/161/201/241).
   ["ingredient-stock", 3],
-  ["menu", 11],
+  // Rule changed (developer 2026-10-25, early game phase 2): the menu at L5 (was 11).
+  ["menu", 5],
   ["fridge-freshness", 16],
   ["dine-in", 21],
   ["staff", 29],
@@ -120,13 +121,17 @@ assert(
     liveSystems(2)
       .map((s) => s.id)
       .join() === "restaurant-day" &&
-    liveSystems(10)
+    // Rule changed (developer 2026-10-25): the menu joins at L5 (was L11).
+    liveSystems(4)
       .map((s) => s.id)
       .join() === "restaurant-day,ingredient-stock" &&
+    liveSystems(5)
+      .map((s) => s.id)
+      .join() === "restaurant-day,ingredient-stock,menu" &&
     liveSystems(15)
       .map((s) => s.id)
       .join() === "restaurant-day,ingredient-stock,menu",
-  "U2: Levels 1–2 are only the restaurant day; real stock from L3; the menu joins at L11 (to L15)",
+  "U2: Levels 1–2 are only the restaurant day; real stock from L3; the menu joins at L5 (to L15)",
 );
 assert(
   RESTAURANT_SYSTEMS.every((s) => s.title.length > 0 && s.covers.length > 0 && s.intro.length > 10),
@@ -145,8 +150,9 @@ assert(
 assert(
   liveSystems(LAST_CAMPAIGN_LEVEL).length === RESTAURANT_SYSTEMS.length &&
     nextSystemAfter(2)?.id === "ingredient-stock" &&
-    nextSystemAfter(10)?.id === "menu" &&
-    nextSystemAfter(11)?.id === "fridge-freshness" &&
+    // Rule changed (developer 2026-10-25): the menu comes after L4 (was L10).
+    nextSystemAfter(4)?.id === "menu" &&
+    nextSystemAfter(5)?.id === "fridge-freshness" &&
     nextSystemAfter(143) === null &&
     systemsIntroducedAt(1)
       .map((s) => s.id)

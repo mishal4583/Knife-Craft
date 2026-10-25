@@ -2,15 +2,18 @@
 // build (the default build). Since the first levels (developer 2026-10-09) the day's
 // ceremony — the opening card and Closing Time — starts at Level 21; before it a day opens
 // and ends quietly ("☀️ Day N begins" on Level Complete).
-//   1. Level 5 opens Day 1 with no card: the level starts at once and the day is open.
-//   2. Level 6 (the same day) starts with no sheet.
+//   1. Level 5 opens Day 1 with no opening card. Since early game phase 2 (developer
+//      2026-10-25) the menu opens at L5, so the check shows its "Your menu" news (no day
+//      card); Start service starts the level and the day is open.
+//   2. Level 6 (the same day) has no day card: since 2026-10-25 its check shows only the
+//      three dishes joining the menu there; Start service starts it.
 //   3. After the day's last service (L6): no Closing Time; Level Complete says "Day 2
 //      begins"; Day 2 in the save; the freshness clock doesn't move and the wallet moves
 //      only by the ledger's entries.
 //   4. From L21: a finished day shows Closing Time over the Order Board (services, chores
 //      with "Throw out spoiled food", the day's count) and blocks the next level; Close →
 //      the next day, and the next level opens with the opening card.
-//   5. Level 7: the Restaurant section (the menu) is still locked ("Lv 11").
+//   5. Level 4: the Restaurant section (the menu) is still locked ("Lv 5"; was L7 / "Lv 11").
 //   6. 320×568: the closing sheet fits, no sideways scroll, buttons ≥ 48 px.
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import {
@@ -129,11 +132,18 @@ const start = await readSave(page);
 // ---------- 1. Day 1 opens quietly ----------
 await prepare("Garlic Bread");
 const opening = await sheetText();
+// The sheet is there for the menu news only: no day card ("Opening time" / "Before opening").
+const newsOnly =
+  opening !== null && /Your menu/.test(opening) && !/Opening time|Before opening/i.test(opening);
+if (opening !== null) {
+  await clickButton(page, /^((?:START SERVICE|🔥 Start service))$/);
+  await sleep(900);
+}
 const started5 = await inHud();
 const open5 = (await readSave(page)).business.restaurantDay;
 check(
-  "1 Level 5 opens Day 1 with no card: the level starts at once and the day is open",
-  opening === null && started5 && open5?.opened === true && open5?.openingLevel === 5,
+  "1 Level 5 opens Day 1 with no day card (only the new menu's news); Start service starts it and the day is open",
+  newsOnly && started5 && open5?.opened === true && open5?.openingLevel === 5,
   { opening, open5 },
 );
 const played5 = await playLevel();
@@ -142,12 +152,19 @@ const after5 = await readSave(page);
 // ---------- 2. Level 6, same day ----------
 await prepare("Tomato Basil Toast");
 const midSheet = await sheetText();
+// Rule changed (developer 2026-10-25): three dishes join the menu at L6, so the check shows
+// that news (was: no sheet). Still no day card.
+const midNewsOnly =
+  midSheet !== null &&
+  /New on the menu/.test(midSheet) &&
+  !/Opening time|Before opening/i.test(midSheet);
+if (midSheet !== null) {
+  await clickButton(page, /^((?:START SERVICE|🔥 Start service))$/);
+  await sleep(900);
+}
 check(
-  "2 Level 6 (the same day) starts with no sheet",
-  played5 &&
-    midSheet === null &&
-    (await inHud()) &&
-    after5.business.restaurantDay?.servicesDone === 1,
+  "2 Level 6 (the same day): no day card, only the new menu dishes; Start service starts it",
+  played5 && midNewsOnly && (await inHud()) && after5.business.restaurantDay?.servicesDone === 1,
   { played5, midSheet, day: after5.business.restaurantDay },
 );
 const played6 = await playLevel();
@@ -270,9 +287,9 @@ await boot(
   seedSave({
     business: STOCKED_BUSINESS,
     levelProgress: {
-      currentLevelId: "level-7",
-      highestUnlockedLevelId: "level-7",
-      completedLevelIds: Array.from({ length: 6 }, (_, i) => `level-${i + 1}`),
+      currentLevelId: "level-4",
+      highestUnlockedLevelId: "level-4",
+      completedLevelIds: Array.from({ length: 3 }, (_, i) => `level-${i + 1}`),
     },
     story: { introDone: true, milestoneMask: 127, finaleSeen: false },
   }),
@@ -288,8 +305,9 @@ const restaurantTab = await page.evaluate(() => {
     : null;
 });
 check(
-  "5 Level 7: the Restaurant section (the menu) opens at Level 11",
-  restaurantTab?.locked === true && /Lv 11/.test(restaurantTab.text),
+  // Rule changed (developer 2026-10-25): the menu opens at L5 (was L11; checked at L7).
+  "5 Level 4: the Restaurant section (the menu) opens at Level 5",
+  restaurantTab?.locked === true && /Lv 5\b/.test(restaurantTab.text),
   restaurantTab,
 );
 

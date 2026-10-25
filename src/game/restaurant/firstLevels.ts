@@ -3,7 +3,7 @@
  * presentation only). The restaurant opens up one piece at a time:
  *
  *  - the bottom-bar sections open at a level each (Kitchen and the Restaurant
- *    map from the start, Inventory and Market at 3, Business at 11); before
+ *    map from the start, Inventory and Market at 3, Business at 5); before
  *    that a section shows a lock with its level. Progress stays reachable from
  *    the Kitchen and Business screens rather than occupying a bottom tab;
  *  - Grandma says one line on each of Levels 1–15's Level Complete;
@@ -122,7 +122,7 @@ export function firstPurchaseRows(): { label: string; value: string }[] {
   return [
     ...items.map((i) => ({ label: i.label, value: `in the Market · ${formatUsd(i.price)}` })),
     { label: "🧰 Kitchen tools", value: "on Grandma's list in the Market" },
-    { label: "📋 Next", value: "your first menu at Level 11" },
+    { label: "📋 Your menu", value: "new dishes in Business" },
   ];
 }
 
@@ -194,7 +194,11 @@ export const GRANDMA_TIPS: Record<number, GrandmaTip> = {
     to: "inventory",
     button: "Check Inventory",
   },
-  5: { text: "Bread and garlic — prepare each part for the warm plate." },
+  5: {
+    text: "We have a menu now! Guests order from it after the service.",
+    to: "business",
+    button: "Open Business",
+  },
   6: { text: "Dicing! Watch the goal on the order card." },
   7: { text: "Choose the right knife technique for each ingredient." },
   8: { text: "A new vegetable today — prepare the zucchini and its partner." },
@@ -207,7 +211,7 @@ export const GRANDMA_TIPS: Record<number, GrandmaTip> = {
     button: "Open Market",
   },
   11: {
-    text: "We have a menu now! Have a look at it in Business.",
+    text: "Our menu grows as you learn. Have a look in Business.",
     to: "business",
     button: "Open Business",
   },

@@ -1,4 +1,5 @@
 import type { HotspotZoneConfig } from './restaurantMap';
+import { BUSINESS_MENU_FIRST_LEVEL } from '@/game/restaurant/restaurantProgression';
 
 /**
  * Screen targets and coordinates for KnifeCraft Restaurant Map.
@@ -134,8 +135,8 @@ export const RESTAURANT_MAP_ZONES: HotspotZoneConfig[] = [
     description: 'Menu pricing, supplier contracts, daily profit reports, and business licenses.',
     roomBounds: { x: 3.8, y: 53.4, w: 26.2, h: 24.0 },
     bannerBounds: { x: 4.6, y: 54.5, w: 21.7, h: 3.9 },
-    unlockLevel: 11,
-    unlockDescription: 'Business opens at Level 11.'
+    unlockLevel: BUSINESS_MENU_FIRST_LEVEL,
+    unlockDescription: `Business opens at Level ${BUSINESS_MENU_FIRST_LEVEL}.`
   },
   {
     id: 'service',
@@ -147,8 +148,8 @@ export const RESTAURANT_MAP_ZONES: HotspotZoneConfig[] = [
     description: 'Food runner pick-up window, plate garnishing, order bells, and cashier POS.',
     roomBounds: { x: 30.5, y: 48.2, w: 50.5, h: 5.8 },
     bannerBounds: { x: 45.0, y: 49.7, w: 21.8, h: 3.6 },
-    unlockLevel: 11,
-    unlockDescription: 'Business service opens at Level 11.'
+    unlockLevel: BUSINESS_MENU_FIRST_LEVEL,
+    unlockDescription: `Business service opens at Level ${BUSINESS_MENU_FIRST_LEVEL}.`
   },
   {
     id: 'dining',

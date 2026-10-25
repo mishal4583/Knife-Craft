@@ -141,7 +141,7 @@ export function MarketIngredients({
   const measure = RESTAURANT_MODE ? measureOf(save) : "lb";
   // Pass 2 review: the restaurant's menu at its level (none before it opens), not the catalog.
   const menu = RESTAURANT_MODE ? inventoryMenuOf(save) : undefined;
-  // First levels: suppliers live in Restaurant → Suppliers (Level 11).
+  // First levels: suppliers live in Restaurant → Suppliers (Business, Level 5).
   const restaurantOpen = useTabOpen("business");
 
   /** − / +: the restaurant steps by ¼ for weighed goods (business/measure.ts); classic whole units. */

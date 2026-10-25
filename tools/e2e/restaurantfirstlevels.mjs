@@ -1,16 +1,17 @@
 // First levels (developer 2026-10-09, Levels 1–15 pass 1), restaurant build, in a real browser:
 //   1. Level 1 played: Level Complete carries Grandma's line; no day screen.
 //   2. Level 2 reached (the campaign redesign's levels: Inventory + Market at 3, Progress 10,
-//      Business 11): the bottom bar (Kitchen · Market · Restaurant) has the Market locked
-//      "Lv 3", the Restaurant map open; the Kitchen's Inventory and Business shortcuts show
-//      "Lv 3" / "Lv 11"; a tap on the Market says when it opens and stays on the Kitchen.
+//      Business 5 since early game phase 2, developer 2026-10-25; was 11): the bottom bar
+//      (Kitchen · Market · Restaurant) has the Market locked "Lv 3", the Restaurant map open;
+//      the Kitchen's Inventory and Business shortcuts show "Lv 3" / "Lv 5"; a tap on the
+//      Market says when it opens and stays on the Kitchen.
 //   3. Level 2 starts with no opening card; finished, Level Complete has Grandma's line,
 //      "📦 Inventory is open" and "☀️ Day 2 begins"; no Closing Time; Day 2 in the save,
 //      and the wallet moved only by the ledger's entries.
 //   4. Level 3: the Market opens, Ingredients to buy beside Knives and Cutting Boards.
 //   5. Level 10 played: the big milestone card (Santoku, Maple Board in the Market, the menu
-//      next), a tap dismisses it, then Level Complete with Grandma's line and the Restaurant
-//      opening; every section is open.
+//      in Business), a tap dismisses it, then Level Complete with Grandma's line; every section
+//      is open (Business has been open since L5, so L10 no longer announces it).
 //   6. 320×568: the bottom bar's locks fit, buttons ≥ 48 px, no sideways scroll.
 //   8. (developer 2026-10-10) Grandma's pointer: Level 7's Kitchen dims, a hand points at the
 //      Market tab with "This is the Market"; Show me → the Market, the save records it (no
@@ -184,7 +185,7 @@ const shortcuts = await page.evaluate(() =>
   ),
 );
 check(
-  "2a Level 2: Kitchen and the Restaurant map open, the Market locked Lv 3; Inventory Lv 3 and Business Lv 11 locked on the Kitchen",
+  "2a Level 2: Kitchen and the Restaurant map open, the Market locked Lv 3; Inventory Lv 3 and Business Lv 5 locked on the Kitchen",
   nav1.length === 3 &&
     navOf("kitchen")?.locked === false &&
     navOf("restaurant-map")?.locked === false &&
@@ -193,7 +194,7 @@ check(
     shortcuts.inventory?.locked &&
     /Lv 3/.test(shortcuts.inventory.text) &&
     shortcuts.business?.locked &&
-    /Lv 11/.test(shortcuts.business.text),
+    /Lv 5\b/.test(shortcuts.business.text),
   { nav1, shortcuts },
 );
 await page.click('nav button[data-nav="shop"]');
@@ -303,14 +304,16 @@ await page.click('[data-testid="milestone-grand"]');
 await sleep(900);
 const nav10 = await navState();
 check(
-  "5 Level 10: Level Complete with Grandma and the Restaurant open, then the big card (Santoku, Maple Board, the menu next)",
+  "5 Level 10: Level Complete with Grandma, then the big card (Santoku, Maple Board, the menu in Business)",
   played10 &&
     /THE ROOM COMES BACK/i.test(grand ?? "") &&
     /Santoku/.test(grand ?? "") &&
     /Maple Board/.test(grand ?? "") &&
-    /first menu at Level 11/.test(grand ?? "") &&
+    // Rule changed (developer 2026-10-25): the menu opens at L5, so the card's last row is
+    // "Your menu · new dishes in Business" and L10 no longer announces Business.
+    /Your menu/.test(grand ?? "") &&
     /Look at this place\./.test(b10 ?? "") &&
-    /Business is open/.test(b10 ?? "") &&
+    !/Business is open/.test(b10 ?? "") &&
     nav10.every((n) => !n.locked),
   { grand, b10 },
 );
@@ -367,7 +370,9 @@ await page.evaluate(() => document.querySelector('nav button[data-nav="kitchen"]
 await sleep(900);
 const back7 = await pointerState();
 check(
-  "8a Level 7: the hand points at the Market tab with Grandma's words; Show me → the Market, recorded once, no money; gone after",
+  // Rule changed (developer 2026-10-25): Business is open at L7 (from L5), so after the Market
+  // Grandma points at Business next (was: nothing left to point at).
+  "8a Level 7: the hand points at the Market tab with Grandma's words; Show me → the Market, recorded once, no money; then Business is next",
   p7.tab === "shop" &&
     p7.handOn === "shop" &&
     /This is the Market/.test(p7.text) &&
@@ -375,7 +380,7 @@ check(
     (after7.business.sectionsSeen ?? []).join() === "inventory,shop" &&
     after7.credits === before7.credits &&
     after7.economyLedger.length === before7.economyLedger.length &&
-    back7.tab === null,
+    back7.tab === "business",
   { p7, inMarket, seen: after7.business.sectionsSeen, back7 },
 );
 await page.setViewport({ width: 320, height: 568, deviceScaleFactor: 1 });

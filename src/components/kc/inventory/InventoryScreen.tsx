@@ -625,7 +625,7 @@ export function InventoryScreen({
   const s = view.summary;
   const selected = view.items.find((i) => i.ingredientId === selectedId) ?? null;
   const toEquipment = () => go(BUSINESS_TAB_SCREEN.equipment);
-  // First levels: the fridge is upgraded in Restaurant → Equipment (Level 11).
+  // First levels: the fridge is upgraded in Restaurant → Equipment (Business, Level 5).
   const restaurantOpen = useTabOpen("business");
   const scrollTo = (el: HTMLElement | null) => el?.scrollIntoView({ block: "start" });
 
