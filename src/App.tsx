@@ -3380,6 +3380,8 @@ export function App() {
                     mapUrl: kitchenMapImageUrl(save.equippedKitchenUpgradeId),
                     reducedMotion: save.settings.reducedMotion,
                   },
+                  // Phase C: the interactive oven for its recipes (Garlic Bread).
+                  ovenCooking: true,
                 }
               : {})}
             board={equippedBoard}

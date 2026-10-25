@@ -146,6 +146,24 @@ export async function playToReport(
       await sleep(300);
       continue;
     }
+    // Phase C (2026-10-25, restaurant build): an oven dish bakes after the cut —
+    // take it out in the golden window, like a player.
+    const oven = await page.evaluate(() => {
+      const o = document.querySelector('[data-testid="oven-step"]');
+      return o ? { state: o.dataset.state, zone: o.dataset.zone } : null;
+    });
+    if (oven) {
+      if (oven.state === "baking" && oven.zone === "golden") {
+        log.push("oven");
+        await page.evaluate(() =>
+          [...document.querySelectorAll('[data-testid="oven-step"] button')]
+            .find((b) => /Take it out/.test(b.textContent))
+            ?.click(),
+        );
+      }
+      await sleep(150);
+      continue;
+    }
     // Phase 2 (2026-10-21; the cloth since 2026-10-24): a messy board offers the
     // cloth at the start of an order and takes the board until it is
     // wiped — wipe it like a player, row by row, every corner (no Skip since 2026-10-24).

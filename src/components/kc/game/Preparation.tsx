@@ -66,6 +66,8 @@ import { checklistFor } from "@/game/restaurant/levelChecklist";
 import { OrderComplete } from "./OrderComplete";
 import { ServiceOrderComplete } from "./ServiceOrderComplete";
 import { ServiceFloor, type FloorMode } from "./ServiceFloor";
+import { OvenStep } from "./OvenStep";
+import { ovenStepFor } from "@/game/cooking/ovenStep";
 import {
   REACTION_FACE,
   noteDeparting,
@@ -148,6 +150,7 @@ export function Preparation({
   specials,
   kitchenArt,
   floor,
+  ovenCooking,
 }: {
   level?: LevelDefinition;
   /** The campaign level being played for the FIRST time (App decides) — which techniques it teaches (coaching.ts). Omitted for replays, Today's Special, Endless, Restaurant Service and Business: no coaching there. */
@@ -226,6 +229,8 @@ export function Preparation({
    * painting. Presentation only; absent: no floor (the classic game).
    */
   floor?: { stage: KitchenMapArtStage; mapUrl: string; reducedMotion: boolean };
+  /** Transformation Phase C (restaurant build): the interactive oven replaces the cooking film for its recipes (ovenStep.ts). */
+  ovenCooking?: boolean;
 }) {
   // The single source of "what does this session look like" — a real
   // level's own fields, or the equivalent ones derived from the active
@@ -265,6 +270,8 @@ export function Preparation({
     ...(s.destination ? { destination: s.destination } : {}),
   }));
   const firstStep = steps[0]!;
+  // Phase C: this dish is baked in the interactive oven instead of the film.
+  const ovenStep = !!ovenCooking && ovenStepFor(view.recipeId);
 
   const bridgeRef = useRef<GameBridge | null>(null);
   if (!bridgeRef.current) bridgeRef.current = new GameBridge();
@@ -1197,7 +1204,18 @@ export function Preparation({
         />
       ) : null}
 
-      {cooking !== "off" ? (
+      {cooking === "playing" && ovenStep ? (
+        <OvenStep
+          dish={{ emoji: view.emoji, name: view.title }}
+          reducedMotion={!!floor?.reducedMotion}
+          onDone={() => {
+            setCooking("off");
+            setPhase("result");
+          }}
+        />
+      ) : null}
+
+      {cooking !== "off" && !ovenStep ? (
         <CookingClip
           playing={cooking === "playing"}
           kind={dishKindFor(view.recipeId, view.title)}

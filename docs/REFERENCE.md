@@ -2353,6 +2353,23 @@ remove anything important)."
   `servicefloorstages.mjs` (all six stages at 320/390/768, plus Reduced Motion). The shared
   e2e solver and phase4's `startOrder` tap through the arrival.
 
+### The interactive oven — Transformation Phase C (developer 2026-10-25)
+
+- **Recipes:** `game/cooking/ovenStep.ts` lists them; Garlic Bread (`camp-garlic-bread`)
+  only for now, covering every order of it: campaign, menu guest, Business.
+- **Where:** Preparation shows `OvenStep` in the cooking film's place, when App gives
+  `ovenCooking` (the restaurant build). It hands over to the Knife Report exactly as the film does.
+- **The bake:** the tray slides in (600 ms), then the bread bakes for 5.2 s. Doneness 0–1
+  reads pale, then the golden window (0.55–0.80), then toasty.
+  - "🧤 Take it out" ends it once.
+  - Left alone, the tray comes out at toasty. There is no failure.
+  - A line follows (*Golden and crisp!* …) for 1.1 s.
+- **Presentation only:** the score, grade, pay, tip and stock come from the cut.
+- **Robustness:** an interrupted bake clears its timers. Reduced Motion drops the slide
+  and glow and keeps the same bake.
+- **Tests:** QA `oven-step-qa`; browser `tools/e2e/ovenstep.mjs` (O1–O6). The shared solver
+  takes the tray out in the golden window.
+
 ### Kitchen Moment cards — Phase 6 (developer 2026-10-21)
 
 - **Moments** (`game/kitchenMoments.ts`), from signals the game already has:

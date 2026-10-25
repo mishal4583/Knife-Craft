@@ -1,5 +1,14 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## Interactive oven for Garlic Bread (2026-10-25, work branch)
+
+- Transformation Phase C, Feature A. After the cut, Garlic Bread goes into the oven: the
+  bread bakes and the player takes it out in the golden window. It shows a line only; the
+  score and pay are unchanged. Other recipes keep the cooking film. Feature B (early
+  restoration) was audited only: it needs new prices and art (decision pending). QA
+  `oven-step-qa`; browser `ovenstep.mjs`; report
+  `docs/reports/TRANSFORMATION-PHASEC-2026-10-25.md`.
+
 ## Service floor: the customer walks in, sits, gets the plate (2026-10-25, `main`)
 
 - Transformation Phase B, slice 1. Each service order opens on the dining room: the
