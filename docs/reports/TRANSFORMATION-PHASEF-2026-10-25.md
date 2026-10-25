@@ -1,8 +1,9 @@
 # KnifeCraft — Transformation Phase F (2026-10-25): recipe classification audit
 
 Base: `main` at `62c8a6d` (Phase E, deployed). Work: `claude/sharp-wright-emfu2j` (does not
-deploy). **Audit only: no game code is changed.** A minimal patch is proposed below for
-review. Not merged; nothing uploaded to Playgama.
+deploy). The audit (§1–§7) proposed option B. **Option B is implemented on the
+developer's approval (§8)**; nothing else in the game changed. Not merged; nothing uploaded
+to Playgama.
 
 ## 1. Root cause
 
@@ -100,7 +101,7 @@ pans + oven mitts" in its tool reasons, and those tools are owned anyway by L114
 film alone would need a film-only override in `Preparation` (the `kind` passed to
 `CookingClip`), separate from supplies. Optional, and only if you want it.
 
-## 5. Proposed patch (option B, not applied)
+## 5. Proposed patch (option B; applied in §8)
 
 ```diff
 --- a/src/game/restaurant/dishService.ts
@@ -152,3 +153,52 @@ film alone would need a film-only override in `Preparation` (the `kind` passed t
   reclassify Family Antipasto for Two.
 - **Film:** under B the board still plays the bread film; a film change is a separate,
   optional decision.
+
+## 8. Implementation (option B, developer-approved, commit `3782656`)
+
+**Changed files:**
+- `src/game/restaurant/dishService.ts`: `COLD_BOARD_RECIPE_IDS` (only
+  `camp-peach-cheddar-board`); `dishServiceFor` skips "oven" for it. This is the §5 patch,
+  byte for byte.
+- `scripts/dish-classification-qa.mts` (new):
+  - A1–A4 the board: kind "bread", no oven, the rest of its profile as before, and no sheet
+    pans or oven mitts at L114.
+  - B1 the other 221 profiles equal `62c8a6d`'s, rebuilt at run time from
+    `git show 62c8a6d:src/game/restaurant/dishService.ts`.
+  - C1 the ten oven-step recipes still cook in the oven.
+  - D1 `dishKind.ts` and `ovenStep.ts` are identical to `62c8a6d`.
+- `scripts/oven-step-qa.mts`: E2 deliberately restated, by decision. Since Phase D, the only
+  changes allowed are the tray item and this cold-board exception in `dishService.ts`.
+
+**Untouched:** `dishKindFor`, `OVEN_STEP_RECIPES`, saves, wallet, ledger, rewards, scoring,
+progression and every other recipe.
+
+**Results:**
+- typecheck clean; ESLint 0 errors (the same 9 warnings); build and preflight pass;
+  Prettier clean on the changed files.
+- **QA 121 / 121** (120 plus `dish-classification-qa`).
+- **Mutation checks:**
+  - adding Garlic Bread to the exception made `dish-classification-qa` B1 and C1 fail;
+  - an unrelated `dishService` edit made `oven-step-qa` E2 fail;
+  - both were reverted, and the file is the exact patch.
+- **Economy, supplies and tools:** the same 32 scripts as the audit were run here and in a
+  clean `62c8a6d` worktree. **0 differ** (economy final sim and candidates, endless,
+  campaign simulation, restaurant final economy, economy pass, business supplies,
+  takeaway, tools, …).
+- **Browser, branch build:** pass for ovenbaguette (dev server), ovenrecipes, ovenstep,
+  restauranttools, restaurantsupplies, restauranttakeaway, restaurantstock,
+  restaurantcleanliness, restaurantday, restaurantguests, servicefloor, knifereport,
+  levelflow (restaurant and classic), phase5.
+- **Fail on both** (`62c8a6d` rebuilt as `index-jlEGAiop.js`):
+  - cookingclip: a timeout in `cookUntilClip` (line 44), 0 checks, on both;
+  - levelux: 3 PASS, then a timeout in `openLevel` (line 60), on both;
+  - phase2: C4 (the wallet pill `shown 40000`) on both; the baseline also failed A9 (the
+    cloth wipe) in this run.
+
+  All pre-existing. **No regression found.**
+
+**Caveats:**
+- The board still plays the bread film (by choice, §4).
+- A future cold board with bread must be added to `COLD_BOARD_RECIPE_IDS` by hand.
+- L114 was not played in the browser: the change is a tool requirement, covered by QA A4 and
+  the unchanged `restauranttools` suite.
