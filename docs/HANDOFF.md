@@ -1,5 +1,14 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## Service floor: the customer walks in, sits, gets the plate (2026-10-25, `main`)
+
+- Transformation Phase B, slice 1. Each service order opens on the dining room: the
+  customer walks in, sits and shows their real order. After Serve, the plate reaches
+  their table and their face follows the grade; the previous customer walks out as the
+  next one arrives. Presentation only: no save field, no money path, and the Business
+  Day still runs only after Level 150 (decision pending). REFERENCE §10 "The service
+  floor"; QA `service-floor-qa`; report `docs/reports/TRANSFORMATION-PHASEB-2026-10-25.md`.
+
 ## Night chores in Cleanliness; no board Skip; calmer dry splashes (2026-10-24, `main`)
 
 - The night chores are Cleanliness closing tasks (boards, spoiled food, fridge wrap,

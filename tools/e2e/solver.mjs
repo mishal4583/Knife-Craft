@@ -134,6 +134,18 @@ export async function playToReport(
       log.push("stopped");
       return { ok: true, log, stopped: true };
     }
+    // Phase B (2026-10-25, restaurant build): a service order opens on its
+    // customer walking in; a player taps to start cooking.
+    if (
+      await page.evaluate(
+        () => !!document.querySelector('[data-testid="service-floor"][data-mode="arrive"]'),
+      )
+    ) {
+      log.push("floor");
+      await page.evaluate(() => document.querySelector('[data-testid="service-floor"]')?.click());
+      await sleep(300);
+      continue;
+    }
     // Phase 2 (2026-10-21; the cloth since 2026-10-24): a messy board offers the
     // cloth at the start of an order and takes the board until it is
     // wiped — wipe it like a player, row by row, every corner (no Skip since 2026-10-24).

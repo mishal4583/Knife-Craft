@@ -2324,6 +2324,35 @@ remove anything important)."
   (108 px under 360 px), the item ≥ 56 px.
 - Browser: `tools/e2e/shopart.mjs`.
 
+### The service floor: the customer's walk — Transformation Phase B (developer 2026-10-25)
+
+- **What the player sees** (restaurant build, every service order: campaign tickets,
+  menu guests, batch views, Business / Endless orders). The order opens on the dining
+  room, cropped from the built stage's map painting (`kitchenMapArt.ts`). Then:
+  - the customer walks in through the front door and sits;
+  - their real dish shows in a bubble;
+  - "🔪 Start cooking", or a tap anywhere, opens the cutting board.
+- **After Serve:** the plate travels from the pass to their table, and their face follows
+  the dish's real grade (`REACTION_FACE`). Then the existing serve card shows, with its cash.
+- **Next Customer / a menu guest** advance at once. The customer who left walks out from
+  the other table during the next arrival. Finish Level goes straight to Level Complete.
+- **Files:** `game/restaurant/serviceFloor.ts` (pure) and `kc/game/ServiceFloor.tsx` +
+  `serviceFloor.css`. Preparation's `floor` prop is given by App in the restaurant build only.
+  - `serviceFloor.ts` holds the seats, walks and pass per stage, measured on each painting
+    (door x 50 / y ≈ 81, front-row chairs), and the timings.
+  - Seats alternate per order (`seatForOrder`). The leaving customer is kept in session
+    memory (`noteDeparting` / `takeDeparting`, stale after 30 s).
+- **Presentation only:**
+  - it never serves, pays, advances or saves;
+  - Serve calls the existing `service.onServe` once, and the plate shows only for a real serve;
+  - no save field; the Business Day still runs only after Level 150 (`businessDayAllowed`).
+- **Reduced Motion:** no walking, the end state at once. Any tap skips ahead, once.
+- **Cooking:** the existing cooking clip still plays after the cut. No new interactive
+  cooking step yet (proposal in `docs/reports/TRANSFORMATION-PHASEB-2026-10-25.md`).
+- **Tests:** QA `service-floor-qa`; browser `tools/e2e/servicefloor.mjs` (F1–F8) and
+  `servicefloorstages.mjs` (all six stages at 320/390/768, plus Reduced Motion). The shared
+  e2e solver and phase4's `startOrder` tap through the arrival.
+
 ### Kitchen Moment cards — Phase 6 (developer 2026-10-21)
 
 - **Moments** (`game/kitchenMoments.ts`), from signals the game already has:

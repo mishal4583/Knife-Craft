@@ -65,6 +65,14 @@ import { taughtTechniques, showsBeginnerHint, COACH_TEXT, CUT_WAYS } from "@/gam
 import { checklistFor } from "@/game/restaurant/levelChecklist";
 import { OrderComplete } from "./OrderComplete";
 import { ServiceOrderComplete } from "./ServiceOrderComplete";
+import { ServiceFloor, type FloorMode } from "./ServiceFloor";
+import {
+  REACTION_FACE,
+  noteDeparting,
+  seatForOrder,
+  takeDeparting,
+} from "@/game/restaurant/serviceFloor";
+import type { KitchenMapArtStage } from "@/game/kitchen/kitchenMapArt";
 import { Panel, KButton, DustMotes } from "../common/primitives";
 import { dollars } from "@/game/money";
 import { withRequiredPeelSteps } from "@/game/prepStepGuards";
@@ -139,6 +147,7 @@ export function Preparation({
   onNextLevel,
   specials,
   kitchenArt,
+  floor,
 }: {
   level?: LevelDefinition;
   /** The campaign level being played for the FIRST time (App decides) — which techniques it teaches (coaching.ts). Omitted for replays, Today's Special, Endless, Restaurant Service and Business: no coaching there. */
@@ -211,6 +220,12 @@ export function Preparation({
    * cutting-screen painting, unchanged.
    */
   kitchenArt?: string;
+  /**
+   * Transformation Phase B (restaurant build, service orders): the dining
+   * room the customer walks into (ServiceFloor) — the built stage's map
+   * painting. Presentation only; absent: no floor (the classic game).
+   */
+  floor?: { stage: KitchenMapArtStage; mapUrl: string; reducedMotion: boolean };
 }) {
   // The single source of "what does this session look like" — a real
   // level's own fields, or the equivalent ones derived from the active
@@ -333,6 +348,27 @@ export function Preparation({
   const shownCustomer = service
     ? presentedCustomer(service.order.customer, personality?.id ?? null)
     : null;
+  // Phase B: the service floor — the customer arrives before the cut and the
+  // plate reaches the table after Serve; the one before walks out as they
+  // arrive. It only shows; the order's own actions stay the existing ones.
+  const [floorMode, setFloorMode] = useState<FloorMode | null>(service && floor ? "arrive" : null);
+  const [floorSeat] = useState<0 | 1>(() => (service ? seatForOrder(service.order.order.id) : 0));
+  const [floorDeparting] = useState(() =>
+    service && floor ? takeDeparting(Date.now(), service.order.order.id) : null,
+  );
+  const [servedQuality, setServedQuality] = useState<QualityLabel | undefined>(undefined);
+  const specialsShown = useRef(false);
+  /** Runs the existing advance at once; this customer walks out in the next one's arrival. */
+  const departThen = (next: () => void) => {
+    if (floor && shownCustomer)
+      noteDeparting({
+        customerId: shownCustomer.id,
+        seat: floorSeat,
+        face: REACTION_FACE[servedQuality ?? result?.qualityLabel ?? "Honest"],
+        at: Date.now(),
+      });
+    next();
+  };
   // The Regular's par (cosmetic): unpaused prep time against regularParMs.
   const [regularPar] = useState(() =>
     regularParMs(
@@ -404,18 +440,22 @@ export function Preparation({
   // Phase 4 (B): a special customer's arrival card, with the order's own
   // twist if it has one (the same card, a few seconds, never a touch).
   useEffect(() => {
-    if (!personality || phase !== "prep") return;
+    // Phase B: after the arrival (the card would play unseen under it).
+    if (!personality || phase !== "prep" || floorMode || specialsShown.current) return;
+    specialsShown.current = true;
     setSpecialsCard(true);
     if (specialsTimer.current !== null) window.clearTimeout(specialsTimer.current);
     specialsTimer.current = window.setTimeout(() => setSpecialsCard(false), 3400);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once, as the order arrives
-  }, []);
+  }, [floorMode]);
   // The Regular's clock: counts unpaused cutting time only; past his par he
   // checks his watch once (on the order card — never over the board).
   useEffect(() => {
     if (personality?.id !== "impatient-regular" || phase !== "prep") return;
     const tick = window.setInterval(() => {
       if (paused) return;
+      // Phase B: the customer's arrival isn't prep time.
+      if (floorMode) return;
       prepMs.current += 250;
       if (prepMs.current >= regularPar && !regularChecked.current) {
         regularChecked.current = true;
@@ -424,7 +464,7 @@ export function Preparation({
       }
     }, 250);
     return () => window.clearInterval(tick);
-  }, [personality, phase, paused, regularPar]);
+  }, [personality, phase, paused, regularPar, floorMode]);
   // The cutting board is the game's active play: its frame rate is sampled (telemetry).
   useEffect(() => startPerformanceSampling(), []);
 
@@ -1132,6 +1172,31 @@ export function Preparation({
         </div>
       ) : null}
 
+      {floorMode && service && floor && shownCustomer ? (
+        <ServiceFloor
+          key={floorMode}
+          mode={floorMode}
+          stage={floor.stage}
+          mapUrl={floor.mapUrl}
+          seatIndex={floorSeat}
+          customer={shownCustomer}
+          line={levelGuide?.customerLine ?? shownCustomer.greeting}
+          dish={{ emoji: view.emoji, name: view.title }}
+          {...(servedQuality ? { quality: servedQuality } : {})}
+          departing={
+            floorDeparting
+              ? {
+                  customerId: floorDeparting.customerId,
+                  seatIndex: floorDeparting.seat,
+                  face: floorDeparting.face,
+                }
+              : null
+          }
+          reducedMotion={floor.reducedMotion}
+          onDone={() => setFloorMode(null)}
+        />
+      ) : null}
+
       {cooking !== "off" ? (
         <CookingClip
           playing={cooking === "playing"}
@@ -1223,8 +1288,21 @@ export function Preparation({
               : {})}
             {...(result ? { plateTier: tierFor(result.score, true) } : {})}
             credits={credits}
-            onServe={service.onServe}
-            onNextOrder={service.onNextOrder}
+            onServe={() => {
+              const served = service.onServe();
+              // The plate goes to the table only for a real serve (paid once, by App).
+              if (served && floor) {
+                setServedQuality(served.quality ?? result?.qualityLabel);
+                setFloorMode("deliver");
+              }
+              return served;
+            }}
+            onNextOrder={() =>
+              // Finish Level goes to Level Complete: nobody's arrival follows it.
+              service.nextLabel === "Finish Level"
+                ? service.onNextOrder()
+                : departThen(service.onNextOrder)
+            }
             onRetry={restart}
             onExit={onExit}
             knife={knife}
@@ -1238,7 +1316,17 @@ export function Preparation({
               ? { knifeSharpnessValue: service.knifeSharpnessValue }
               : {})}
             {...(service.isBusinessOrder ? { isBusinessOrder: true } : {})}
-            {...(service.extraAction ? { extraAction: service.extraAction } : {})}
+            {...(service.extraAction
+              ? {
+                  extraAction: {
+                    ...service.extraAction,
+                    onClick: () =>
+                      service.extraAction!.disabled
+                        ? undefined
+                        : departThen(service.extraAction!.onClick),
+                  },
+                }
+              : {})}
           />
         ) : (
           <OrderComplete

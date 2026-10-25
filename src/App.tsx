@@ -139,6 +139,7 @@ import {
 import { rankChange } from "@/game/restaurant/cityRanking";
 import { recordEndlessDayStars, starsForDay } from "@/game/restaurant/restaurantStanding";
 import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
+import { kitchenMapArtStage, kitchenMapImageUrl } from "@/game/kitchen/kitchenMapArt";
 import { ticketsFor } from "@/game/restaurant/serviceTickets";
 import { consumeCampaignOrderStock } from "@/game/restaurant/campaignStock";
 import { servicePlanFor, servicePlanNeedsSheet } from "@/game/restaurant/preServiceCheck";
@@ -3371,6 +3372,16 @@ export function App() {
             }
             knife={equippedKnife}
             {...(cuttingKitchenArt ? { kitchenArt: cuttingKitchenArt } : {})}
+            {...(RESTAURANT_MODE
+              ? {
+                  // Phase B: the customer's walk in the built stage's dining room.
+                  floor: {
+                    stage: kitchenMapArtStage(save.equippedKitchenUpgradeId),
+                    mapUrl: kitchenMapImageUrl(save.equippedKitchenUpgradeId),
+                    reducedMotion: save.settings.reducedMotion,
+                  },
+                }
+              : {})}
             board={equippedBoard}
           />
         ) : showCampaignPrep ? (

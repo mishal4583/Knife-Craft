@@ -152,6 +152,11 @@ async function startOrder() {
       timeout: 30000,
     },
   );
+  // Transformation Phase B (2026-10-25): the order opens on its customer walking in —
+  // a player taps "Start cooking" before the board (and the Regular's clock) starts.
+  await page.waitForSelector('[data-testid="service-floor"]', { timeout: 5000 }).catch(() => null);
+  await clickButton(page, /Start cooking$/);
+  await sleep(400);
 }
 const grade = () =>
   page.evaluate(
