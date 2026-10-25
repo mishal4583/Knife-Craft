@@ -10,7 +10,8 @@
  *      finishes once, cleans up when interrupted, restaurant build only;
  *   D. presentation only: no score, grade, pay, wallet, ledger or save;
  *   E. no save field, no economy file changed since Phase B (0e0d83b); since
- *      Phase D (cc46bbd) only the recipe list and the tray item changed.
+ *      Phase D (cc46bbd) only the recipe list, the tray item and the Phase F
+ *      cold-board exception in dishService changed.
  *
  * Run: npx tsx scripts/oven-step-qa.mts
  */
@@ -189,9 +190,24 @@ console.log("E. Nothing else moves");
   );
   // Since Phase D (cc46bbd): no flow, pay, achievement or ranking file changed, and in the
   // oven view and Preparation only lines about the tray item.
+  // Phase F (developer 2026-10-25, option B): dishService.ts may change only by the cold-board
+  // exception (the Peach & Cheddar Board loses "oven"); dish-classification-qa checks its effect.
   const flow = execSync(
-    "git diff cc46bbd -- src/App.tsx src/game/restaurant src/game/progression src/game/recipes/dishKind.ts",
+    "git diff cc46bbd -- src/App.tsx src/game/restaurant ':!src/game/restaurant/dishService.ts' src/game/progression src/game/recipes/dishKind.ts",
     { cwd: ROOT, encoding: "utf8" },
+  );
+  const serviceDiff = execSync("git diff -U0 cc46bbd -- src/game/restaurant/dishService.ts", {
+    cwd: ROOT,
+    encoding: "utf8",
+  })
+    .split("\n")
+    .filter((l) => /^[+-](?![+-])/.test(l));
+  const offBoard = serviceDiff.filter(
+    (l) =>
+      !/COLD_BOARD_RECIPE_IDS/.test(l) &&
+      !/^\+\s*cooking\.add\("oven"\);$/.test(l) &&
+      l !== '-  if (kind === "bread" || OVEN_NAME.test(recipe.name)) cooking.add("oven");' &&
+      !/^\+\s*(\/\*\*|\*\/|\* .*)$/.test(l),
   );
   const viewDiff = execSync(
     "git diff -U0 cc46bbd -- src/components/kc/game/Preparation.tsx src/components/kc/game/OvenStep.tsx",
@@ -207,9 +223,9 @@ console.log("E. Nothing else moves");
       l !== '-import { ovenStepFor } from "@/game/cooking/ovenStep";',
   );
   assert(
-    flow.trim() === "" && offTray.length === 0,
-    "E2: since Phase D only the tray item changed (no order, serve, pay, achievement, ranking, dishKind or dishService code)",
-    { flow: flow.slice(0, 200), offTray },
+    flow.trim() === "" && offTray.length === 0 && offBoard.length === 0,
+    "E2: since Phase D only the tray item and the Phase F cold-board exception changed (no order, serve, pay, achievement, ranking or dishKind code)",
+    { flow: flow.slice(0, 200), offTray, offBoard },
   );
 }
 

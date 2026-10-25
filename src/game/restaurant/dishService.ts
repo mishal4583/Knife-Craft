@@ -37,6 +37,12 @@ export type DishService = {
 };
 
 const OVEN_NAME = /bread|toast|bruschetta|crostini|baguette|gratin|rounds/i;
+/**
+ * Cold boards served with sliced bread (Transformation Phase F, 2026-10-25): their bread
+ * is sliced, not baked, so they need no oven (sheet pans, oven mitts). They stay kind
+ * "bread" for the clip, tableware and packaging.
+ */
+const COLD_BOARD_RECIPE_IDS: ReadonlySet<string> = new Set(["camp-peach-cheddar-board"]);
 const FRY_NAME = /fajita|hash/i;
 const SAUTE_NAME = /saut|duxelles|persillade|wok|stir/i;
 const SKEWER_NAME = /skewer/i;
@@ -55,7 +61,8 @@ export function dishServiceFor(recipe: RecipeDefinition): DishService {
   const techniques = recipe.components.map((c) => c.technique as string);
   const protein = (ids.find((id) => PROTEIN.has(id)) ?? null) as DishService["protein"];
   const cooking = new Set<Cooking>();
-  if (kind === "bread" || OVEN_NAME.test(recipe.name)) cooking.add("oven");
+  if (!COLD_BOARD_RECIPE_IDS.has(recipe.id) && (kind === "bread" || OVEN_NAME.test(recipe.name)))
+    cooking.add("oven");
   if (techniques.includes("rings") || FRY_NAME.test(recipe.name)) cooking.add("fry");
   if (kind === "curry") cooking.add("pot");
   if (SAUTE_NAME.test(recipe.name)) cooking.add("saute");
