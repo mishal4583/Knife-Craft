@@ -93,4 +93,13 @@ classic), platingskip, phase4, phase5, phase6.
 
 **Fail on the branch:** cookingclip, levelux, phase2 (A9 the cloth wipe; C4 the wallet pill
 `shown 40000` vs `credits 64500`). All three are recorded as pre-existing in the Phase B and
-Phase C reports; the comparison on `54e30cc` follows below.
+Phase C reports. Compared on `54e30cc` (rebuilt, the same bundle hash as deployed,
+`index-CwevwI_S.js`):
+
+| Suite | Branch | `54e30cc` | Verdict |
+|---|---|---|---|
+| cookingclip | timeout in `cookUntilClip` (line 44) before any check | the same | pre-existing |
+| levelux | 3 PASS, then timeouts at lines 60 / 125 | the same | pre-existing |
+| phase2 | run 1: A9 + C4; runs 2–3: C4 only, then 28 / 28 PASS | C4 in both runs (`shown 40000`) | pre-existing, intermittent (C4 the wallet pill, A9 the cloth wipe). phase2 also plays L17 (Bruschetta Trio): that part passes with the oven |
+
+**No regressions found.**
