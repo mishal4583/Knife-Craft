@@ -2370,6 +2370,17 @@ remove anything important)."
 - **Tests:** QA `oven-step-qa`; browser `tools/e2e/ovenstep.mjs` (O1–O6). The shared solver
   takes the tray out in the golden window.
 
+### The Kitchen's next-upgrade strip — Transformation Phase C (developer 2026-10-25)
+
+- **Where:** in the Kitchen's top-left column (restaurant build), under the rank and the
+  daily gift.
+- **What:** the first kitchen tier not yet built (`nextKitchenUpgrade`): its name, its
+  existing price (`kitchenTierPrice`) and a bar of credits ÷ price, capped at 100 %.
+  Beside the price: "🔒 Lv N", "N%" or "✓ Ready".
+- **Tap:** opens Kitchen Upgrades; the strip itself buys nothing.
+- **Hidden** when every tier is built.
+- **Tests:** QA `next-kitchen-strip-qa`; browser `tools/e2e/kitchenstrip.mjs` (K1–K5).
+
 ### Kitchen Moment cards — Phase 6 (developer 2026-10-21)
 
 - **Moments** (`game/kitchenMoments.ts`), from signals the game already has:

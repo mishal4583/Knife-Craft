@@ -1,5 +1,60 @@
 # KnifeCraft — Transformation Phase C (2026-10-25)
 
+## Update — approved follow-up (second commit on `claude/sharp-wright-emfu2j`)
+
+**1. The oven stays cosmetic.** Unchanged: QA `oven-step-qa` D1 forbids any score, grade,
+quality, pay, wallet, ledger or save code in the oven.
+
+**2. Oven audit (no recipe added).** The game cooks 12 recipes in the oven
+(`dishServiceFor` → `oven`):
+
+| Recipe | Level | Reuse `OvenStep` as is? |
+|---|---|---|
+| Garlic Bread | L5 | **in use** |
+| Tomato Basil Toast | L6 | yes — bread slices toasted on the tray |
+| Mushroom Bruschetta | L7 | yes |
+| Bruschetta for the House | L12 | yes |
+| Family Antipasto for Two | L15 | yes (one bake, then the shared plates) |
+| Bruschetta Trio | L17 | yes. Its batch partner arrives already READY, so it skips the cut and the oven |
+| Avocado Baguette Toast | L47 | almost — the tray draws 🍞; it needs a baguette emoji prop |
+| Baguette Rounds, Baguette & Cheddar Rounds, Baguette Crostini Prep | no level (menu / Business only) | almost — the same emoji prop |
+| Potato & Onion Gratin Prep | L31 | no — a gratin is not bread on a tray (different art and wording) |
+| Peach & Cheddar Board | L114 | no — a cold board; `dishService`'s name rule appears to tag it "oven" by mistake (reported, not changed) |
+
+**3. The Kitchen's next-upgrade strip.**
+- **What it shows:** under the rank badge and the daily gift (restaurant build), the
+  next kitchen tier not yet built: its name, its existing price (`kitchenTierPrice`) and a
+  gold bar of the wallet's progress. Beside the price: "🔒 Lv N" while locked, "N%" when
+  buildable, "✓ Ready" when buildable and affordable.
+- **Tap:** opens Kitchen Upgrades, which buys nothing by itself.
+- **Hidden** once every tier is built.
+- **Files:** `src/game/kitchen/nextKitchenUpgrade.ts` (pure; reads the catalog,
+  `getKitchenUpgradeState` and `kitchenTierPrice`); `Kitchen.tsx` (`NextKitchenStrip`).
+- **Untouched:** no save field, price, reward, tier or level.
+
+**Tests:**
+- New QA `next-kitchen-strip-qa`: A1–A3 tier, price, level, states and progress;
+  B1–B2 read-only and restaurant build only; E1 nothing else changed. Passes.
+- **All QA: 120 / 120.** `ui-copy-qa` (the long-copy guard) passes.
+- Typecheck clean; ESLint 0 errors (the same 9 warnings); build and preflight pass.
+- New browser test `tools/e2e/kitchenstrip.mjs` passes 5 / 5:
+  - K1: the Growing Kitchen, $16,000.00, "🔒 Lv 16" early on;
+  - K2: at 320 / 390 / 768 px the price shows in full, on screen, 54 px tall, no sideways
+    scroll, clear of Settings and the shortcut column;
+  - K3: a tap opens Kitchen Upgrades, with wallet and ledger unchanged;
+  - K4: "✓ Ready" when affordable; no strip once all tiers are built;
+  - K5: no console errors.
+- **Fixed during the check:** at 320 px the first version truncated the price
+  ("$16,0…"). The price now has its own span and always shows; only the tier name may
+  truncate (the full name is in the aria-label).
+- **Test-setup fix:** K4 at first used a version-1 save, which the game migrates by
+  granting every tier reached by level (so the strip rightly showed the next one). The test
+  now uses version-3 saves, as `phase5.mjs` does.
+- **Screenshots:** `kitchenstrip-320.png`, `kitchenstrip-390.png`, `kitchenstrip-768.png`
+  (local e2e `out/`).
+
+**Regressions:** see "Regression run (follow-up)" at the end of this report.
+
 **Scope delivered:** Feature A (interactive cooking), prototyped on Garlic Bread.
 Feature B (early restoration) was audited only: every option needs new prices and/or art,
 so it waits for your decision (§4).
@@ -124,3 +179,19 @@ the classic preview had stopped (`ERR_CONNECTION_REFUSED`). With them restarted,
   (QA E1).
 - The oven has no wallet, ledger, score, grade or save code (QA D1).
 - Serve pays once (browser O4).
+
+## Regression run (follow-up)
+
+**Pass on this branch:** ovenstep, servicefloor, kitchenstrip, restaurantday, achievements,
+adbonuses (the daily gift card the strip sits under), landscape, restaurantguests, phase5,
+classic levelflow (12 / 12).
+
+**Fail, the same on `main` (`0e0d83b`, served from a separate build):**
+
+| Suite | Evidence |
+|---|---|
+| levelux | 3 PASS, then timeouts at lines 60 and 125 — identical on `main`. |
+| phase2 | C4 failed in both runs here with `shown 40000` (vs `credits 64500` / `65400`). On `main`, 1 of 2 runs failed C4 the same way. C4 is the serve card's wallet pill, which nothing in this change touches. The rate is higher here (2 / 2 vs 1 / 2), but a few runs can't separate that from the known flakiness. |
+
+**Environment only:** classic levelflow first failed its "no console errors" check, on
+`ERR_ABORTED` requests just after its preview server restarted. Re-run: 12 / 12.

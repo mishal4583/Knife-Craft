@@ -50,6 +50,7 @@ import { getCafeProgress } from "@/game/cafe/CafeProgressionManager";
 import { CAFE_MILESTONES } from "@/game/cafe/cafeDefinitions";
 import { cityRanking } from "@/game/restaurant/cityRanking";
 import { kitchenUpgradeOrDefault } from "@/game/kitchen/kitchenUpgradeDefinitions";
+import { nextKitchenUpgrade } from "@/game/kitchen/nextKitchenUpgrade";
 import type { SaveData } from "@/game/SaveManager";
 import { ScrollCue } from "./common/ScrollCue";
 
@@ -268,6 +269,7 @@ export function Kitchen({
           {onOpenDailyGift ? (
             <DailyGiftCard save={save} levelNumber={reached} onOpen={onOpenDailyGift} />
           ) : null}
+          {RESTAURANT_MODE ? <NextKitchenStrip save={save} go={go} /> : null}
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <Coin n={save.credits} />
@@ -1125,6 +1127,51 @@ export function BottomNav({ active, go }: { active: ScreenId | null; go: (s: Scr
  * the restaurant's place in the city guide, a bar to the next rival and who
  * that is (restaurant/cityRanking.ts). Opens Restaurant Progress.
  */
+/**
+ * The next kitchen upgrade (Transformation Phase C): its existing name, price and
+ * level, and the wallet's progress towards it. Read-only — building happens on
+ * the Kitchen Upgrades screen it opens. Hidden once every tier is built.
+ */
+function NextKitchenStrip({ save, go }: { save: SaveData; go: (s: ScreenId) => void }) {
+  const next = nextKitchenUpgrade(save);
+  if (!next) return null;
+  const pct = Math.round(next.progress * 100);
+  return (
+    <button
+      type="button"
+      onClick={() => go("kitchen-upgrades")}
+      data-testid="next-kitchen-strip"
+      data-state={next.ready ? "ready" : next.state}
+      aria-label={`Next kitchen: ${next.name}, ${formatUsd(next.price)}${next.state === "locked" ? `, opens at Level ${next.unlockLevel}` : ""}. You have ${formatUsd(save.credits)}.`}
+      className="press min-h-12 w-[188px] max-w-full rounded-2xl border border-ivory/25 bg-walnut-dark/45 px-3 py-1.5 text-left backdrop-blur-sm"
+    >
+      <p className="truncate whitespace-nowrap font-ui text-[11px] font-extrabold text-gold">
+        🏠 {next.name}
+      </p>
+      <span className="mt-1 block h-[5px] overflow-hidden rounded-full bg-ivory/25">
+        <span
+          className="block h-full rounded-full"
+          style={{
+            width: `${pct}%`,
+            background: "linear-gradient(90deg,var(--color-gold),var(--color-copper))",
+          }}
+        />
+      </span>
+      {/* The price always shows in full; the status sits beside it (320 px: the name may truncate, never the price). */}
+      <p className="mt-1 flex items-center justify-between gap-1.5 whitespace-nowrap font-ui text-[11px] font-bold leading-none text-ivory/80">
+        <span>{formatUsd(next.price)}</span>
+        <span className={next.ready ? "text-gold" : undefined}>
+          {next.ready
+            ? "✓ Ready"
+            : next.state === "locked"
+              ? `🔒 Lv ${next.unlockLevel}`
+              : `${pct}%`}
+        </span>
+      </p>
+    </button>
+  );
+}
+
 function CityRankBadge({ save }: { save: SaveData }) {
   const c = cityRanking(save);
   return (

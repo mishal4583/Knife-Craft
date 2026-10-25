@@ -1,5 +1,13 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## Kitchen next-upgrade strip (2026-10-25, work branch)
+
+- The Kitchen shows the next kitchen tier not yet built: its existing price, its level
+  lock, and the wallet's progress. A tap opens Kitchen Upgrades. Read-only: no new price,
+  reward or save field. QA `next-kitchen-strip-qa`; browser `kitchenstrip.mjs`. Oven reuse
+  audit: report `TRANSFORMATION-PHASEC-2026-10-25.md` (5 bread recipes can reuse it as
+  is; none added).
+
 ## Interactive oven for Garlic Bread (2026-10-25, work branch)
 
 - Transformation Phase C, Feature A. After the cut, Garlic Bread goes into the oven: the
