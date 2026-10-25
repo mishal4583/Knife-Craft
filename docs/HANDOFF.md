@@ -1,11 +1,19 @@
 # KnifeCraft — Handoff (Playgama edition)
 
-## Oven for five more bread dishes (2026-10-25, work branch)
+## Oven for the four baguette dishes (2026-10-25, work branch)
+
+- Transformation Phase E. Avocado Baguette Toast (L47), Baguette Rounds, Baguette & Cheddar
+  Rounds and Baguette Crostini Prep bake in the oven on a 🥖 tray (`trayItemFor`). Still
+  cosmetic. The last three are on no level, menu or Business dish today. QA
+  `oven-step-qa`; browser `ovenbaguette.mjs` (dev server); report
+  `docs/reports/TRANSFORMATION-PHASEE-2026-10-25.md`.
+
+## Oven for five more bread dishes (2026-10-25, `main`)
 
 - Transformation Phase D. Tomato Basil Toast (L6), Mushroom Bruschetta (L7), Bruschetta for
   the House (L12), Family Antipasto for Two (L15) and Bruschetta Trio (L17) now bake in the
   Garlic Bread oven after the cut. Still cosmetic: score, grade, tips and pay unchanged.
-  Baguette dishes wait for a 🥖 tray (decision pending). QA `oven-step-qa`; browser
+  Baguette dishes: Phase E. QA `oven-step-qa`; browser
   `ovenrecipes.mjs`; report `docs/reports/TRANSFORMATION-PHASED-2026-10-25.md`.
 
 ## Kitchen next-upgrade strip (2026-10-25, `main`)

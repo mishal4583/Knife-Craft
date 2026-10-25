@@ -67,7 +67,7 @@ import { OrderComplete } from "./OrderComplete";
 import { ServiceOrderComplete } from "./ServiceOrderComplete";
 import { ServiceFloor, type FloorMode } from "./ServiceFloor";
 import { OvenStep } from "./OvenStep";
-import { ovenStepFor } from "@/game/cooking/ovenStep";
+import { ovenStepFor, trayItemFor } from "@/game/cooking/ovenStep";
 import {
   REACTION_FACE,
   noteDeparting,
@@ -1207,6 +1207,7 @@ export function Preparation({
       {cooking === "playing" && ovenStep ? (
         <OvenStep
           dish={{ emoji: view.emoji, name: view.title }}
+          tray={trayItemFor(view.recipeId)}
           reducedMotion={!!floor?.reducedMotion}
           onDone={() => {
             setCooking("off");

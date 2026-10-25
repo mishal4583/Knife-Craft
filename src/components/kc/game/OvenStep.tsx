@@ -6,6 +6,7 @@ import {
   donenessAt,
   donenessLabel,
   type Doneness,
+  type TrayItem,
 } from "@/game/cooking/ovenStep";
 import { AudioManager } from "@/game/AudioManager";
 import { KButton } from "../common/primitives";
@@ -24,10 +25,13 @@ import { KButton } from "../common/primitives";
  */
 export function OvenStep({
   dish,
+  tray,
   reducedMotion,
   onDone,
 }: {
   dish: { emoji: string; name: string };
+  /** What sits on the tray (`trayItemFor`): bread slices or a baguette. */
+  tray: TrayItem;
   reducedMotion: boolean;
   onDone: () => void;
 }) {
@@ -126,8 +130,9 @@ export function OvenStep({
                 key={i}
                 className="text-[28px] leading-none"
                 style={{ filter: breadFilter(doneness) }}
+                data-testid="oven-tray-item"
               >
-                🍞
+                {tray}
               </span>
             ))}
           </div>

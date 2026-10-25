@@ -2358,8 +2358,12 @@ remove anything important)."
 - **Recipes:** `game/cooking/ovenStep.ts` (`OVEN_STEP_RECIPES`) lists them, covering every
   order of each: campaign, menu guest, Business. Garlic Bread (L5); Phase D added Tomato
   Basil Toast (L6), Mushroom Bruschetta (L7), Bruschetta for the House (L12), Family
-  Antipasto for Two (L15) and Bruschetta Trio (L17). Not in the oven: the four baguette
-  dishes (they need a 🥖 tray), the Potato & Onion Gratin Prep and the Peach & Cheddar Board.
+  Antipasto for Two (L15) and Bruschetta Trio (L17); Phase E the four baguette dishes:
+  Avocado Baguette Toast (L47), Baguette Rounds, Baguette & Cheddar Rounds and Baguette
+  Crostini Prep (these three are on no level today). Not in the oven: the Potato & Onion
+  Gratin Prep and the Peach & Cheddar Board.
+- **The tray:** `trayItemFor(recipeId)` gives 🥖 for `BAGUETTE_TRAY_RECIPES`, 🍞 for every
+  other recipe; Preparation passes it to `OvenStep` (`tray`), which draws it three times.
 - **Where:** Preparation shows `OvenStep` in the cooking film's place, when App gives
   `ovenCooking` (the restaurant build). It hands over to the Knife Report exactly as the film does.
 - **The bake:** the tray slides in (600 ms), then the bread bakes for 5.2 s. Doneness 0–1
@@ -2371,8 +2375,10 @@ remove anything important)."
 - **Robustness:** an interrupted bake clears its timers. Reduced Motion drops the slide
   and glow and keeps the same bake.
 - **Tests:** QA `oven-step-qa`; browser `tools/e2e/ovenstep.mjs` (O1–O6, Garlic Bread) and
-  `tools/e2e/ovenrecipes.mjs` (R1–R7, the five Phase D dishes). The shared solver takes the
-  tray out in the golden window.
+  `tools/e2e/ovenrecipes.mjs` (R1–R7, the five Phase D dishes) and
+  `tools/e2e/ovenbaguette.mjs` (B1–B6, the four baguette dishes; development server only, as
+  it cooks each in Level 6's place in memory). The shared solver takes the tray out in the
+  golden window.
 
 ### The Kitchen's next-upgrade strip — Transformation Phase C (developer 2026-10-25)
 

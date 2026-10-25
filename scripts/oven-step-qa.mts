@@ -1,16 +1,16 @@
 /**
- * OVEN_STEP_QA — Transformation Phase C/D (developer 2026-10-25): the
- * interactive oven for the bread dishes (src/game/cooking/ovenStep.ts,
+ * OVEN_STEP_QA — Transformation Phase C/D/E (developer 2026-10-25): the
+ * interactive oven for the bread and baguette dishes (src/game/cooking/ovenStep.ts,
  * components/kc/game/OvenStep.tsx, Preparation.tsx, App.tsx).
  *   A. the bake: doneness over time, the golden window, the lines, the colour;
- *   B. scope: Garlic Bread plus the five Phase D bread dishes (L6, L7, L12, L15,
- *      L17); the baguette dishes, the gratin, the board and every other recipe
- *      keep the cooking film;
+ *   B. scope: Garlic Bread, the five Phase D bread dishes (L6, L7, L12, L15,
+ *      L17) and the four Phase E baguette dishes (🥖 tray); the gratin, the
+ *      Peach & Cheddar Board and every other recipe keep the cooking film;
  *   C. wiring: in the film's place (after the cut, before the Knife Report),
  *      finishes once, cleans up when interrupted, restaurant build only;
  *   D. presentation only: no score, grade, pay, wallet, ledger or save;
- *   E. no save field, no economy file changed since Phase B (0e0d83b); Phase D
- *      changed only the recipe list (since 54e30cc).
+ *   E. no save field, no economy file changed since Phase B (0e0d83b); since
+ *      Phase D (cc46bbd) only the recipe list and the tray item changed.
  *
  * Run: npx tsx scripts/oven-step-qa.mts
  */
@@ -20,11 +20,13 @@ import { execSync } from "node:child_process";
 import {
   DONENESS_LINE,
   OVEN,
+  BAGUETTE_TRAY_RECIPES,
   OVEN_STEP_RECIPES,
   breadFilter,
   donenessAt,
   donenessLabel,
   ovenStepFor,
+  trayItemFor,
 } from "../src/game/cooking/ovenStep.ts";
 import { getCampaignRecipe } from "../src/game/recipes/campaignRecipes.ts";
 import { getLevel } from "../src/game/levels/LevelManager.ts";
@@ -70,8 +72,9 @@ console.log("A. The bake");
 
 console.log("B. Scope");
 {
-  // Phase D (developer 2026-10-25): the rule changed from "Garlic Bread only" to these six.
-  const PHASE_D: Record<number, string> = {
+  // Phase D then Phase E (developer 2026-10-25): the rule changed from "Garlic Bread only"
+  // to six bread dishes, then to these ten.
+  const BREAD: Record<number, string> = {
     5: "camp-garlic-bread",
     6: "camp-tomato-basil-toast",
     7: "camp-mushroom-bruschetta",
@@ -79,38 +82,51 @@ console.log("B. Scope");
     15: "camp-family-antipasto-for-two",
     17: "camp-bruschetta-trio",
   };
-  const ids = Object.values(PHASE_D);
-  assert(
-    OVEN_STEP_RECIPES.length === ids.length && ids.every((id) => ovenStepFor(id)),
-    "B1: exactly Garlic Bread and the five Phase D bread dishes use the oven",
-    OVEN_STEP_RECIPES,
-  );
-  assert(
-    Object.entries(PHASE_D).every(([n, id]) => getLevel(`level-${n}`)?.recipeId === id),
-    "B2: each is the recipe its level (L5, L6, L7, L12, L15, L17) cooks",
-  );
-  assert(
-    ids.every((id) => {
-      const parts = getCampaignRecipe(id)?.components.map((c) => c.ingredientId) ?? [];
-      return parts.includes("bread") && !parts.includes("baguette");
-    }),
-    "B3: all are bread-slice dishes (the tray draws 🍞), none uses a baguette",
-  );
-  const excluded = [
-    "camp-avocado-baguette-toast",
+  const BAGUETTE = [
+    "camp-avocado-baguette-toast", // L47
     "camp-baguette-rounds",
     "camp-baguette-cheddar-rounds",
     "camp-baguette-crostini-prep",
-    "camp-potato-onion-gratin-prep",
-    "camp-peach-cheddar-board",
   ];
+  const bread = Object.values(BREAD);
+  const all = [...bread, ...BAGUETTE];
   assert(
-    excluded.every((id) => !!getCampaignRecipe(id) && !ovenStepFor(id)),
-    "B4: the four baguette dishes, the gratin and the Peach & Cheddar Board keep the film",
+    OVEN_STEP_RECIPES.length === all.length &&
+      new Set(OVEN_STEP_RECIPES).size === all.length &&
+      all.every((id) => ovenStepFor(id)),
+    "B1: exactly the ten recipes use the oven (Garlic Bread, five bread dishes, four baguette dishes)",
+    OVEN_STEP_RECIPES,
   );
   assert(
-    !ovenStepFor("camp-garden-tomato-cup") && !ovenStepFor(""),
-    "B5: other recipes (e.g. L17's batch partner) keep the film",
+    Object.entries(BREAD).every(([n, id]) => getLevel(`level-${n}`)?.recipeId === id) &&
+      getLevel("level-47")?.recipeId === "camp-avocado-baguette-toast",
+    "B2: each level's recipe (L5, L6, L7, L12, L15, L17, L47) is the one listed",
+  );
+  const parts = (id: string) => getCampaignRecipe(id)?.components.map((c) => c.ingredientId) ?? [];
+  assert(
+    bread.every((id) => parts(id).includes("bread") && !parts(id).includes("baguette")) &&
+      bread.every((id) => trayItemFor(id) === "🍞"),
+    "B3: the six bread dishes use bread, no baguette, and bake 🍞 on the tray",
+  );
+  assert(
+    BAGUETTE.every((id) => !!getCampaignRecipe(id) && parts(id).includes("baguette")) &&
+      BAGUETTE.every((id) => trayItemFor(id) === "🥖") &&
+      BAGUETTE_TRAY_RECIPES.length === BAGUETTE.length &&
+      BAGUETTE_TRAY_RECIPES.every((id) => ovenStepFor(id)),
+    "B4: the four baguette dishes exist, use a baguette, and bake 🥖 on the tray",
+  );
+  assert(
+    ["camp-potato-onion-gratin-prep", "camp-peach-cheddar-board"].every(
+      (id) => !!getCampaignRecipe(id) && !ovenStepFor(id),
+    ),
+    "B5: the Potato & Onion Gratin Prep and the Peach & Cheddar Board keep the film",
+  );
+  assert(
+    !ovenStepFor("camp-garden-tomato-cup") &&
+      !ovenStepFor("") &&
+      trayItemFor("camp-garden-tomato-cup") === "🍞" &&
+      trayItemFor("camp-peach-cheddar-board") === "🍞",
+    "B6: other recipes (e.g. L17's batch partner) keep the film; trayItemFor defaults to 🍞",
   );
 }
 
@@ -171,14 +187,29 @@ console.log("E. Nothing else moves");
     "E1: no save field, economy, level or recipe change",
     diff.slice(0, 300),
   );
+  // Since Phase D (cc46bbd): no flow, pay, achievement or ranking file changed, and in the
+  // oven view and Preparation only lines about the tray item.
   const flow = execSync(
-    "git diff 54e30cc -- src/components/kc/game/Preparation.tsx src/components/kc/game/OvenStep.tsx src/App.tsx src/game/restaurant src/game/progression",
+    "git diff cc46bbd -- src/App.tsx src/game/restaurant src/game/progression src/game/recipes/dishKind.ts",
     { cwd: ROOT, encoding: "utf8" },
   );
+  const viewDiff = execSync(
+    "git diff -U0 cc46bbd -- src/components/kc/game/Preparation.tsx src/components/kc/game/OvenStep.tsx",
+    { cwd: ROOT, encoding: "utf8" },
+  )
+    .split("\n")
+    .filter((l) => /^[+-](?![+-])/.test(l));
+  // Allowed: lines about the tray, the removed fixed 🍞, and the old one-name import.
+  const offTray = viewDiff.filter(
+    (l) =>
+      !/tray|TrayItem/i.test(l) &&
+      !/^-\s*🍞$/.test(l) &&
+      l !== '-import { ovenStepFor } from "@/game/cooking/ovenStep";',
+  );
   assert(
-    flow.trim() === "",
-    "E2: Phase D changes no order, serve, pay, oven-view, achievement or ranking code",
-    flow.slice(0, 300),
+    flow.trim() === "" && offTray.length === 0,
+    "E2: since Phase D only the tray item changed (no order, serve, pay, achievement, ranking, dishKind or dishService code)",
+    { flow: flow.slice(0, 200), offTray },
   );
 }
 

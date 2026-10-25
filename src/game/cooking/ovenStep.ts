@@ -16,8 +16,9 @@
 /**
  * The recipes that use the oven step (every order of them: campaign, menu guest, Business).
  * Phase D (developer 2026-10-25): the five bread dishes that bake as slices on the tray.
- * Baguette dishes wait for a baguette tray; the gratin and the cold Peach & Cheddar Board
- * never use it (dishService still tags the board "oven" through its baguette).
+ * Phase E (developer 2026-10-25): the four baguette dishes, on a baguette tray
+ * (`trayItemFor`). The gratin and the cold Peach & Cheddar Board never use it
+ * (dishService still tags the board "oven" through its baguette).
  */
 export const OVEN_STEP_RECIPES: readonly string[] = [
   "camp-garlic-bread", // L5
@@ -26,7 +27,26 @@ export const OVEN_STEP_RECIPES: readonly string[] = [
   "camp-bruschetta-for-the-house", // L12
   "camp-family-antipasto-for-two", // L15
   "camp-bruschetta-trio", // L17
+  // Phase E: baguette dishes (🥖 on the tray).
+  "camp-avocado-baguette-toast", // L47
+  "camp-baguette-rounds",
+  "camp-baguette-cheddar-rounds",
+  "camp-baguette-crostini-prep",
 ];
+
+/** The oven recipes baked as a baguette (Phase E); every other oven recipe bakes bread slices. */
+export const BAGUETTE_TRAY_RECIPES: readonly string[] = [
+  "camp-avocado-baguette-toast",
+  "camp-baguette-rounds",
+  "camp-baguette-cheddar-rounds",
+  "camp-baguette-crostini-prep",
+];
+
+export type TrayItem = "🥖" | "🍞";
+
+/** What sits on the oven tray for `recipeId`: a baguette for the baguette dishes, bread otherwise. */
+export const trayItemFor = (recipeId: string): TrayItem =>
+  BAGUETTE_TRAY_RECIPES.includes(recipeId) ? "🥖" : "🍞";
 
 export const ovenStepFor = (recipeId: string): boolean => OVEN_STEP_RECIPES.includes(recipeId);
 
