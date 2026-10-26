@@ -81,7 +81,7 @@ fast-forwarded into `main`. **No save field added.** Nothing uploaded to Playgam
 ## 4. Tests run
 
 - **Gates:** tsc clean, ESLint 0 errors, build and preflight pass.
-- **QA:** the full `scripts/*-qa.mts` run — see the result line in §6.
+- **QA:** the full `scripts/*-qa.mts` run, **124 / 124 pass**. 123 passed in the run; `next-kitchen-strip-qa` E1 needed the documented tip-file exclusion and passes on rerun. `phase6-qa` (HEAD-relative) passes after the commit.
 - **Browser** (headless Chrome, local Bridge file, `KC_URL=http://localhost:4173/`):
   - `servicefloor.mjs` 8/8: one serve pays once; the guest pays once; Reduced Motion; no
     console errors;
@@ -103,7 +103,6 @@ fast-forwarded into `main`. **No save field added.** Nothing uploaded to Playgam
 
 ## 6. Results and limits
 
-- **QA result:** see the commit message of the release commit.
 - **Limits:**
   - parties are session memory: a reload mid-party seats the next customer as a new party;
   - a walk-in turned away for stock leaves an empty place at the table until the party goes;
