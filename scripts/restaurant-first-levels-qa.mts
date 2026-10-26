@@ -73,21 +73,20 @@ console.log("T. Sections open one at a time");
       at(2) === "kitchen" &&
       at(3) === "kitchen,inventory,shop" &&
       at(4) === "kitchen,inventory,shop" &&
-      at(5) === "kitchen,inventory,shop,business" &&
-      at(9) === "kitchen,inventory,shop,business" &&
-      at(10) === "kitchen,inventory,shop,rack,business" &&
-      at(150) === at(10),
-    "T1: Kitchen from the start, Inventory and Market L3, Business L5, Progress L10; all open after",
+      // Rule changed (developer 2026-10-26: everything by Level 5): Progress opens at L5 too.
+      at(5) === "kitchen,inventory,shop,rack,business" &&
+      at(150) === at(5),
+    "T1: Kitchen from the start, Inventory and Market L3, Business and Progress L5; all open after",
   );
   assert(
     tabsOpeningAt(3).join() === "inventory,shop" &&
       tabsOpeningAt(7).length === 0 &&
-      tabsOpeningAt(10).join() === "rack" &&
-      tabsOpeningAt(5).join() === "business" &&
+      tabsOpeningAt(10).length === 0 &&
+      tabsOpeningAt(5).join() === "rack,business" &&
       tabsOpeningAt(11).length === 0 &&
       tabsOpeningAt(4).length === 0 &&
-      Object.values(TAB_OPENS_AT).every((n) => n <= 15),
-    "T2: each section opens at exactly one level (Inventory + Market together at L3), all of them by Level 15",
+      Object.values(TAB_OPENS_AT).every((n) => n <= 5),
+    "T2: each section opens at exactly one level (Inventory + Market at L3, Business + Progress at L5), all by Level 5",
   );
 }
 
@@ -174,11 +173,12 @@ console.log("E. Nothing paid changes");
   const santoku = KNIFE_CATALOG.find((k) => k.name === "Santoku");
   const maple = BOARD_CATALOG.find((b) => b.name === "Maple Board");
   assert(
-    santoku?.unlockLevel === 10 &&
+    // Rule changed (developer 2026-10-26): every knife and board is for sale by L5 (was L10).
+    santoku?.unlockLevel === 5 &&
       santoku.price === dollars(350) &&
-      maple?.unlockLevel === 10 &&
+      maple?.unlockLevel === 5 &&
       maple.price === dollars(300),
-    "E2: the first knife and board unlock at Level 10 at their old prices",
+    "E2: the first knife and board unlock at Level 5 (was 10) at their old prices",
   );
 }
 
@@ -192,7 +192,9 @@ console.log("L. Locked links and Grandma's tips (developer 2026-10-09)");
       lockedScreenHint("shop-ingredients", 2) === "🔒 Market opens at Level 3" &&
       lockedScreenHint("shop-ingredients", 3) === null &&
       lockedScreenHint("inventory-supplies", 2) === "🔒 Inventory opens at Level 3" &&
-      lockedScreenHint("rack", 9) === "🔒 Progress opens at Level 10" &&
+      // Rule changed (developer 2026-10-26): Progress opens at L5 (was L10).
+      lockedScreenHint("rack", 4) === "🔒 Progress opens at Level 5" &&
+      lockedScreenHint("rack", 5) === null &&
       lockedScreenHint("business-equipment", 11) === null &&
       lockedScreenHint("kitchen-upgrades", 1) === null &&
       lockedScreenHint("gameplay", 1) === null &&

@@ -185,8 +185,8 @@ export function BusinessDashboard({
   cancelSupplierContract: () => CancelContractResult;
   /** Restaurant build: the ingredient supplier is chosen on the Suppliers tab (phase 7). */
   selectSupplier: (id: string) => void;
-  /** A role or (restaurant build) a specialist chef id; only `ok` is read. */
-  hireStaff: (role: string) => { ok: boolean };
+  /** A role or (restaurant build) a specialist chef id; the restaurant's hire also says why it failed. */
+  hireStaff: (role: string) => { ok: boolean; reason?: string; fee?: number; onCredit?: boolean };
   fireStaff: (role: string) => { ok: boolean };
   buyStaff: (id: string) => BuyStaffResult;
   rushRestock: (payment: RushRestockPayment) => Promise<RushRestockOutcome>;

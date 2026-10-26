@@ -31,7 +31,7 @@ import { SupplyBottle } from "./SupplyBottle";
 import { CoverActions, type CoverAdOutcome } from "./CoverActions";
 import type { CoverOffer, CoverPart } from "@/game/restaurant/serviceCover";
 import type { RestaurantNews } from "@/game/restaurant/restaurantNews";
-import type { StaffRequirement } from "@/game/restaurant/staffRequirements";
+import { staffHireFee, type StaffRequirement } from "@/game/restaurant/staffRequirements";
 import type { FridgeUsage } from "@/game/restaurant/fridgeUsage";
 import type { KitLine } from "@/game/restaurant/restaurantMigration";
 import type { DayStock, GuestStock } from "@/game/restaurant/preServiceCheck";
@@ -454,7 +454,8 @@ export function PreServiceCheck({
               data-testid="psc-staff-needed"
             >
               <p className="font-ui text-[13.5px] font-extrabold text-walnut-dark">
-                👥 To hire · 🆓 free
+                👥 To hire ·{" "}
+                {formatUsd(staffMissing.reduce((n, r) => n + (staffHireFee(r.id) ?? 0), 0))} once
               </p>
               <NameChips names={staffMissing.map((r) => r.title)} />
             </div>
@@ -904,7 +905,8 @@ export function PreServiceCheck({
                       Menu guests · optional
                     </span>
                     <span className="block font-ui text-[10.5px] font-bold text-walnut/60">
-                      {guests.dishes.length} dishes · {guests.rows.length} stock items
+                      {guests.dishes.length} {guests.dishes.length === 1 ? "dish" : "dishes"} ·{" "}
+                      {guests.rows.length} {guests.rows.length === 1 ? "stock item" : "stock items"}
                     </span>
                   </span>
                   <span className="text-[18px] font-black text-copper" aria-hidden>

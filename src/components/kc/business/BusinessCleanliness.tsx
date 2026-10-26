@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { staffHireFee } from "@/game/restaurant/staffRequirements";
 import type { ScreenId } from "../data";
 import { KButton, Panel } from "../common/primitives";
 import { Eyebrow } from "../common/Meters";
@@ -567,7 +568,7 @@ function StaffCard({
           <p className="font-display text-[17px] font-black text-walnut-dark">Cleaner</p>
           <p className="font-ui text-[12.5px] text-walnut/70">
             {level < wagesFrom
-              ? `🆓 until Lv ${wagesFrom} · then ${formatUsd(wage)}/day`
+              ? `💵 Hire ${formatUsd(staffHireFee("cleaner") ?? 0)} · no pay until Lv ${wagesFrom}`
               : `💵 ${formatUsd(wage)}/day`}{" "}
             · 🧹 after each service
           </p>

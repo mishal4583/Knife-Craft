@@ -1,6 +1,7 @@
 // Market · Second Floor (developer 2026-10-16), restaurant build:
-//   1. Level 40: the Market's Second Floor section lists the six machines locked (Level 60)
-//      and the floor team ("Buy a machine first");
+//   1. Level 40: the Market's Second Floor section lists the six machines for sale (since
+//      2026-10-26 every station is on sale from Level 5; was locked until 60) and the floor
+//      team ("Buy a machine first");
 //   2. Level 60: Buy Coffee ($400) in the Market — one debit, one ledger entry, it shows Lv 1;
 //   3. Hire a Floor Server ($400) in the Market — one ledger entry, the team shows 1 / 3;
 //   4. Upgrade Coffee to Lv 2 ($600) in the Market — one ledger entry, it shows Lv 2;
@@ -63,9 +64,10 @@ const machines40 = await page.$$eval("[data-floor-machine]", (els) =>
 );
 const team40 = await textOf(page, '[data-floor-staff="server"]');
 check(
-  "1 Level 40: six machines listed, all locked until Level 60; the team waits for a machine",
+  // Rule changed (developer 2026-10-26): every station is for sale from Level 5 (was 60).
+  "1 Level 40: six machines listed, all for sale (no lock); the team waits for a machine",
   machines40.length === 6 &&
-    machines40.every((t) => /🔒 Level 60/.test(t)) &&
+    machines40.every((t) => /Buy \$/.test(t) && !/🔒/.test(t)) &&
     /Buy a machine first/.test(team40),
   { machines40: machines40.map((t) => t.slice(0, 60)), team40: team40.slice(0, 80) },
 );

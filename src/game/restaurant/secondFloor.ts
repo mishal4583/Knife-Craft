@@ -28,11 +28,15 @@ import type { SaveData } from "../SaveManager";
 import { appendLedgerEntry } from "../economy/EconomyLedger";
 import { debitWallet } from "../economy/wallet";
 import { dollars } from "../money";
+import { EARLY_UNLOCK_CAP } from "../config/earlyUnlocks";
 
-/** Players can visit the floor from this level (developer 2026-10-16). */
-export const SECOND_FLOOR_OPENS_AT = 10;
-/** Every station can be bought from this level; each stays locked until bought. */
-export const STATIONS_OPEN_AT = 60;
+/**
+ * Players can visit the floor from this level (developer 2026-10-16: L10; early game phase 4,
+ * developer 2026-10-26: everything by Level 5, `EARLY_UNLOCK_CAP`).
+ */
+export const SECOND_FLOOR_OPENS_AT = EARLY_UNLOCK_CAP;
+/** Every station can be bought from this level (was L60); each stays locked until bought. */
+export const STATIONS_OPEN_AT = EARLY_UNLOCK_CAP;
 
 /**
  * Testing switch (developer 2026-10-16): the floor itself is open at any level

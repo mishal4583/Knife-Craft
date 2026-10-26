@@ -179,7 +179,7 @@ import { isSystemLive } from "@/game/restaurant/restaurantProgression";
 import {
   fireSpecialist,
   getSpecialist,
-  hireSpecialist,
+  hireRestaurantStaff,
   paySpecialists,
 } from "@/game/restaurant/staffRequirements";
 import {
@@ -1722,12 +1722,20 @@ export function App() {
     return result;
   }
 
-  /** Economy V3 Phase 9 (Staff) — hiring is free, mirroring signSupplierContract exactly ("does not move money" — the real cost is the daily payroll endBusinessDay deducts). No ledger entry. Business Mode only — Campaign never calls this. */
-  function hireStaff(role: string): { ok: boolean } {
+  /** Economy V3 Phase 9 (Staff) — classic Business Mode: hiring is free (the cost is the daily payroll endBusinessDay deducts). No ledger entry. */
+  function hireStaff(role: string): { ok: boolean; reason?: string; fee?: number } {
     if (!save) return { ok: false };
-    // Unified Restaurant: a specialist chef (restaurant/staffRequirements.ts), free to hire.
-    if (RESTAURANT_MODE && getSpecialist(role)) {
-      const hired = hireSpecialist(save, role, restaurantLevelOf(save.levelProgress));
+    // Unified Restaurant (early game phase 4, developer 2026-10-26): every hire — a role or a
+    // specialist chef — pays its hiring fee, one "staff-purchase" entry (staffRequirements.ts).
+    if (RESTAURANT_MODE) {
+      // Needed by the next service (an unmet requirement blocks START): if the wallet is
+      // short, the fee goes on supplier credit instead of soft-locking the campaign.
+      const next = getLevel(save.levelProgress.highestUnlockedLevelId);
+      const plan = next ? servicePlanFor(save, next) : null;
+      const required = !!plan?.staff.some((r) => r.id === role && !r.met);
+      const hired = hireRestaurantStaff(save, role, restaurantLevelOf(save.levelProgress), {
+        required,
+      });
       if (hired.ok) persist(hired.save);
       return hired;
     }

@@ -48,9 +48,10 @@ function saveAtLevel(levelNumber: number, credits: number, extra: Partial<SaveDa
   assert(byId["prep-assistant"]!.price === dollars(3000), "B: prep-assistant price is $3,000.00");
   assert(byId["quality-chef"]!.price === dollars(6000), "B: quality-chef price is $6,000.00");
   assert(byId["kitchen-assistant"]!.price === dollars(4000), "B: kitchen-assistant price is $4,000.00");
-  assert(byId["prep-assistant"]!.unlockLevel === 13, "C: prep-assistant unlocks at L13 (old L20, 150-level remap)");
-  assert(byId["quality-chef"]!.unlockLevel === 32, "C: quality-chef unlocks at L32 (old L45, 150-level remap)");
-  assert(byId["kitchen-assistant"]!.unlockLevel === 44, "C: kitchen-assistant unlocks at L44 (old L65, 150-level remap)");
+  // Rule changed (developer 2026-10-26: everything unlocked at or before Level 5; were L13 / 32 / 44).
+  assert(byId["prep-assistant"]!.unlockLevel === 5, "C: prep-assistant unlocks at L5 (was L13)");
+  assert(byId["quality-chef"]!.unlockLevel === 5, "C: quality-chef unlocks at L5 (was L32)");
+  assert(byId["kitchen-assistant"]!.unlockLevel === 5, "C: kitchen-assistant unlocks at L5 (was L44)");
 }
 
 // ===== D: save migration — old save without staff data loads correctly. =====

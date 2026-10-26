@@ -12,11 +12,16 @@ import { KitchenHelpers } from "./KitchenHelpers";
 import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
 import {
   HALF_WAGES_FROM,
+  HIRE_FEE_DAYS,
   SPECIALIST_CHEFS,
+  STAFF_HIRE_FROM,
   halfPay,
   halfWage,
   restaurantStaffOf,
+  specialistOpensAt,
+  staffHireFee,
 } from "@/game/restaurant/staffRequirements";
+import { notEnoughMoneyText } from "@/game/economy/wallet";
 import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
 import { isSystemLive, restaurantSystem } from "@/game/restaurant/restaurantProgression";
 import { BusinessSectionBanner } from "./BusinessSectionBanner";
@@ -76,8 +81,8 @@ export function BusinessStaff({
   buyStaff,
 }: {
   save: SaveData;
-  /** A role or (restaurant build) a specialist chef id; only `ok` is read. */
-  hireStaff: (role: string) => { ok: boolean };
+  /** A role or (restaurant build) a specialist chef id; the restaurant's hire also says why it failed. */
+  hireStaff: (role: string) => { ok: boolean; reason?: string; fee?: number; onCredit?: boolean };
   fireStaff: (role: string) => { ok: boolean };
   /** The kitchen helpers' one-time hire (App.buyStaff → StaffManager.buyStaff). */
   buyStaff: (id: string) => BuyStaffResult;
@@ -98,7 +103,17 @@ export function BusinessStaff({
 
   function handleHire(role: string) {
     const result = hireStaff(role);
-    setMessage(result.ok ? null : "That role is already hired.");
+    setMessage(
+      result.ok
+        ? result.onCredit
+          ? `💳 Hired on account · ${formatUsd(result.fee ?? 0)} repaid from your next earnings`
+          : null
+        : result.reason === "insufficientFunds"
+          ? notEnoughMoneyText(result.fee ?? 0, save.credits)
+          : result.reason === "notYet"
+            ? `Hiring opens at Level ${STAFF_HIRE_FROM}.`
+            : "That role is already hired.",
+    );
   }
 
   function handleFire(role: string) {
@@ -133,7 +148,7 @@ export function BusinessStaff({
           <TeamHeading
             id="restaurant-team"
             title="🍽️ Restaurant Team"
-            line={`🆓 Free to hire · ½ pay Lv ${HALF_WAGES_FROM} · full Lv ${wagesFrom}`}
+            line={`💵 One-time hiring fee · ½ pay Lv ${HALF_WAGES_FROM} · full Lv ${wagesFrom}`}
           />
         </>
       ) : null}
@@ -162,16 +177,17 @@ export function BusinessStaff({
             data-testid="staff-free-until"
           >
             {halfWages
-              ? `🆓 Free to hire · ½ pay at closing until Lv ${wagesFrom}`
-              : `🆓 Free until Lv ${HALF_WAGES_FROM} · ½ pay to Lv ${wagesFrom}`}
+              ? `💵 Hiring fee once · ½ pay at closing until Lv ${wagesFrom}`
+              : `💵 Hiring fee once · no pay until Lv ${HALF_WAGES_FROM} · ½ pay to Lv ${wagesFrom}`}
             {payroll > 0 ? ` · then ${formatUsd(payroll)}/day` : ""}
           </p>
         ) : null}
         <p className="relative mt-1.5 flex items-center gap-1.5 font-hand text-[14px] leading-snug text-walnut/65">
           🌙 Payroll is settled at closing
           <InfoTip label="About pay">
-            Hiring is free — pay is charged at End Business Day. If the pay can't be covered, the
-            whole team is let go rather than left unpaid.
+            {restaurantTeams
+              ? `Each hire pays a one-time fee of ${HIRE_FEE_DAYS} days' full pay. Pay is charged at closing. If the pay can't be covered, the whole team is let go rather than left unpaid.`
+              : "Hiring is free — pay is charged at End Business Day. If the pay can't be covered, the whole team is let go rather than left unpaid."}
           </InfoTip>
         </p>
       </Panel>
@@ -223,7 +239,7 @@ export function BusinessStaff({
                   <StaffPay now={`${formatUsd(def.salary)}/day`} />
                 ) : (
                   <StaffPay
-                    now={halfWages ? `${formatUsd(halfWage(def.role))}/day now` : "Free now"}
+                    now={halfWages ? `${formatUsd(halfWage(def.role))}/day now` : "No pay yet"}
                     later={`${formatUsd(def.salary)}/day from Lv ${wagesFrom}`}
                   />
                 )
@@ -247,7 +263,9 @@ export function BusinessStaff({
                     className="min-h-12"
                     onClick={() => handleHire(def.role)}
                   >
-                    👋 Hire
+                    {restaurantTeams
+                      ? `👋 Hire · ${formatUsd(staffHireFee(def.role) ?? 0)}`
+                      : "👋 Hire"}
                   </KButton>
                 )
               }
@@ -276,8 +294,8 @@ function TeamHeading({ id, title, line }: { id: string; title: string; line: str
 
 /**
  * Unified Restaurant (RESTAURANT_MODE): the specialist chefs a cuisine needs
- * (restaurant/staffRequirements.ts). Free to hire; from full operation their wage
- * is paid at closing. A chef is hireable once its first cuisine has opened.
+ * (restaurant/staffRequirements.ts). A one-time hiring fee; from full operation their wage
+ * is paid at closing. Every chef can be hired from STAFF_HIRE_FROM (Level 5).
  */
 function SpecialistChefs({
   save,
@@ -302,7 +320,7 @@ function SpecialistChefs({
           <div>
             <Eyebrow>🌍 Specialist chefs</Eyebrow>
             <p className="mt-1 font-hand text-[14px] leading-snug text-walnut/65">
-              One chef per cuisine · free to hire · paid from Lv {wagesFrom}
+              One chef per cuisine · hiring fee once · paid from Lv {wagesFrom}
             </p>
           </div>
           <span className="rounded-full border border-gold/30 bg-gold/10 px-2 py-1 font-ui text-[11px] font-extrabold text-copper">
@@ -313,7 +331,7 @@ function SpecialistChefs({
           {[...SPECIALIST_CHEFS]
             .sort((a, b) => a.firstLevel - b.firstLevel)
             .map((chef) => {
-              const open = level >= chef.firstLevel;
+              const open = level >= specialistOpensAt(chef);
               const isHired = hired.has(chef.id);
               const isNeeded = needed.has(chef.id) && !isHired;
               const who = specialistCharacter(chef.id);
@@ -349,14 +367,14 @@ function SpecialistChefs({
                       <StaffPay now={`${formatUsd(chef.dailyWage)}/day`} />
                     ) : (
                       <StaffPay
-                        now="Free now"
+                        now="No pay yet"
                         later={`${formatUsd(chef.dailyWage)}/day from Lv ${wagesFrom}`}
                       />
                     )
                   }
                   action={
                     !open ? (
-                      <Badge tone="locked">Opens Lv {chef.firstLevel}</Badge>
+                      <Badge tone="locked">Opens Lv {specialistOpensAt(chef)}</Badge>
                     ) : isHired ? (
                       <KButton
                         full
@@ -375,7 +393,7 @@ function SpecialistChefs({
                         className="min-h-12"
                         onClick={() => onHire(chef.id)}
                       >
-                        👋 Hire
+                        👋 Hire · {formatUsd(staffHireFee(chef.id) ?? 0)}
                       </KButton>
                     )
                   }

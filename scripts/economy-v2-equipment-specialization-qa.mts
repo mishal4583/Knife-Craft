@@ -11,6 +11,7 @@ import { KNIFE_CATALOG } from "../src/game/knives/knifeDefinitions.ts";
 // the original numbers read as dollars — $69,110.00 / $46,585.00 / $16,092.00 / $1,402.00 / $101,005.00 (150-level baseline, recorded 2026-10-17).
 import { dollars } from "../src/game/money.ts";
 import { remapCampaignThreshold } from "../src/game/levels/campaignSelection.ts";
+import { earlyUnlock } from "../src/game/config/earlyUnlocks.ts";
 import { buyKnife, isKnifeOwned } from "../src/game/knives/KnifeManager.ts";
 import { BOARD_CATALOG } from "../src/game/boards/boardDefinitions.ts";
 import { buyBoard, isOwned as isBoardOwned } from "../src/game/boards/BoardManager.ts";
@@ -83,12 +84,13 @@ function fakeRecipe(components: Partial<RecipeComponent>[]): RecipeDefinition {
   for (const k of KNIFE_CATALOG) {
     const locked = LOCKED_KNIVES[k.id];
     // The locked table keeps the original numbers; the catalog now states them in dollars (cents)
-    // and the unlock level through the 150-level remap (developer 2026-10-15).
-    assert(!!locked && k.price === dollars(locked.price) && k.unlockLevel === remapCampaignThreshold(locked.unlockLevel), `A: knife ${k.id} price/unlockLevel unchanged ($${locked?.price} / L${k.unlockLevel})`);
+    // and the unlock level through the 150-level remap (developer 2026-10-15), capped at Level 5
+    // (rule changed, developer 2026-10-26: everything unlocked at or before Level 5).
+    assert(!!locked && k.price === dollars(locked.price) && k.unlockLevel === earlyUnlock(remapCampaignThreshold(locked.unlockLevel)), `A: knife ${k.id} price/unlockLevel unchanged ($${locked?.price} / L${k.unlockLevel})`);
   }
   for (const b of BOARD_CATALOG) {
     const locked = LOCKED_BOARDS[b.id];
-    assert(!!locked && b.price === dollars(locked.price) && b.unlockLevel === remapCampaignThreshold(locked.unlockLevel), `A: board ${b.id} price/unlockLevel unchanged ($${locked?.price} / L${b.unlockLevel})`);
+    assert(!!locked && b.price === dollars(locked.price) && b.unlockLevel === earlyUnlock(remapCampaignThreshold(locked.unlockLevel)), `A: board ${b.id} price/unlockLevel unchanged ($${locked?.price} / L${b.unlockLevel})`);
   }
 }
 

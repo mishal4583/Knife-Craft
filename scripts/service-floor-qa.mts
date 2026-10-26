@@ -184,7 +184,9 @@ console.log("E. Nothing else moves");
 {
   // Compared with the tree before Phase B (095115a, the Phase 0 report).
   const diff = execSync(
-    "git diff 095115a -- src/game/SaveManager.ts src/game/business/businessTypes.ts src/game/economy src/game/daily/EndlessServiceManager.ts src/game/restaurant/endlessRestaurant.ts",
+    // Early-game phase 4 (developer 2026-10-26): everything unlocked by Level 5 — only the unlock-level
+    // lines of these catalogs change (staff-hire-qa U5 checks no price moved).
+    "git diff 095115a -- src/game/SaveManager.ts src/game/business/businessTypes.ts src/game/economy ':!src/game/economy/staffDefinitions.ts' src/game/daily/EndlessServiceManager.ts src/game/restaurant/endlessRestaurant.ts",
     { cwd: ROOT, encoding: "utf8" },
   );
   assert(

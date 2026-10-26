@@ -11,7 +11,11 @@
  * (App.tsx) persists it.
  */
 import type { SaveData } from "../SaveManager";
-import { KITCHEN_UPGRADE_CATALOG, findKitchenUpgrade } from "./kitchenUpgradeDefinitions";
+import {
+  KITCHEN_UPGRADE_CATALOG,
+  LEGACY_KITCHEN_GRANT_LEVEL,
+  findKitchenUpgrade,
+} from "./kitchenUpgradeDefinitions";
 import { kitchenTierPrice } from "../restaurant/restaurantInvestments";
 import type { KitchenUpgradeDefinition } from "./kitchenUpgradeTypes";
 import { debitWallet } from "../economy/wallet";
@@ -98,7 +102,7 @@ export function migrateKitchenDevelopment(save: SaveData): SaveData {
   const highest = highestReachedLevelNumber(save);
   const owned = new Set(save.ownedKitchenUpgradeIds);
   for (const def of KITCHEN_UPGRADE_CATALOG) {
-    if (highest >= def.unlockLevel) owned.add(def.id);
+    if (highest >= (LEGACY_KITCHEN_GRANT_LEVEL[def.id] ?? def.unlockLevel)) owned.add(def.id);
   }
   return syncKitchenUpgradeOwnership({
     ...save,

@@ -1,5 +1,8 @@
 import type { HotspotZoneConfig } from './restaurantMap';
 import { BUSINESS_MENU_FIRST_LEVEL } from '@/game/restaurant/restaurantProgression';
+import { earlyUnlock } from '@/game/config/earlyUnlocks';
+// The Restroom opens Business → Cleanliness, which exists from cleaning's level (10).
+import { CLEANING_FROM_LEVEL } from '@/game/restaurant/cleanliness';
 
 /**
  * Screen targets and coordinates for KnifeCraft Restaurant Map.
@@ -31,8 +34,8 @@ export const RESTAURANT_MAP_ZONES: HotspotZoneConfig[] = [
     description: 'Perishable meats, fresh vegetables, seafood, and dairy chilled at peak freshness.',
     roomBounds: { x: 35.5, y: 1.8, w: 31.0, h: 16.8 },
     bannerBounds: { x: 39.4, y: 3.5, w: 22.1, h: 3.6 },
-    unlockLevel: 21,
-    unlockDescription: 'Unlocks at Level 21 (Cold Storage Upgrade).'
+    unlockLevel: earlyUnlock(21),
+    unlockDescription: 'Unlocks at Level 5.'
   },
   {
     id: 'staff',
@@ -44,8 +47,8 @@ export const RESTAURANT_MAP_ZONES: HotspotZoneConfig[] = [
     description: 'Manage sous-chefs, line cooks, dishwashers, and service staff stamina.',
     roomBounds: { x: 66.0, y: 1.8, w: 30.5, h: 16.8 },
     bannerBounds: { x: 69.4, y: 3.2, w: 25.5, h: 3.7 },
-    unlockLevel: 41,
-    unlockDescription: 'Unlocks at Level 41 (Restaurant Team Expansion).'
+    unlockLevel: earlyUnlock(41),
+    unlockDescription: 'Unlocks at Level 5.'
   },
   {
     id: 'knifeEquipment',
@@ -57,8 +60,8 @@ export const RESTAURANT_MAP_ZONES: HotspotZoneConfig[] = [
     description: 'Equip, hone, and customize chef knives, cleavers, and cutting boards.',
     roomBounds: { x: 44.5, y: 18.0, w: 36.0, h: 16.5 },
     bannerBounds: { x: 55.0, y: 19.2, w: 25.5, h: 4.0 },
-    unlockLevel: 7,
-    unlockDescription: 'The Market opens at Level 7.'
+    unlockLevel: earlyUnlock(7),
+    unlockDescription: 'Unlocks at Level 5.'
   },
   {
     id: 'blacksmith',
@@ -70,8 +73,8 @@ export const RESTAURANT_MAP_ZONES: HotspotZoneConfig[] = [
     description: 'Forge blade Damascus patterns, refine hardness, and sharpen edge angles.',
     roomBounds: { x: 26.5, y: 18.0, w: 22.5, h: 18.5 },
     bannerBounds: { x: 27.4, y: 19.4, w: 18.0, h: 3.9 },
-    unlockLevel: 10,
-    unlockDescription: 'Unlocks at Level 10 (Blacksmith Forge).'
+    unlockLevel: earlyUnlock(10),
+    unlockDescription: 'Unlocks at Level 5.'
   },
   {
     id: 'kitchen',
@@ -96,7 +99,7 @@ export const RESTAURANT_MAP_ZONES: HotspotZoneConfig[] = [
     description: 'Sanitizers, microfiber towels, floor buffers, and dishwashing detergents.',
     roomBounds: { x: 80.0, y: 18.0, w: 16.2, h: 15.5 },
     bannerBounds: { x: 81.1, y: 18.8, w: 16.0, h: 4.1 },
-    unlockLevel: 10,
+    unlockLevel: earlyUnlock(10),
     unlockDescription: 'Cleaning supplies are available in the Market.'
   },
   {
@@ -109,8 +112,8 @@ export const RESTAURANT_MAP_ZONES: HotspotZoneConfig[] = [
     description: 'Package bento boxes, seal meal bags, and fulfill delivery pickup couriers.',
     roomBounds: { x: 48.5, y: 34.0, w: 32.0, h: 14.2 },
     bannerBounds: { x: 50.5, y: 35.2, w: 27.0, h: 4.0 },
-    unlockLevel: 71,
-    unlockDescription: 'Unlocks at Level 71 (Delivery & Express Orders).'
+    unlockLevel: earlyUnlock(71),
+    unlockDescription: 'Unlocks at Level 5.'
   },
   {
     id: 'restroom',
@@ -122,7 +125,7 @@ export const RESTAURANT_MAP_ZONES: HotspotZoneConfig[] = [
     description: 'Guest restrooms maintained with pristine cleanliness, soap, and fresh amenities.',
     roomBounds: { x: 80.0, y: 33.0, w: 17.2, h: 18.0 },
     bannerBounds: { x: 81.3, y: 34.5, w: 15.3, h: 4.6 },
-    unlockLevel: 10,
+    unlockLevel: CLEANING_FROM_LEVEL,
     unlockDescription: 'Restroom care is part of Restaurant Cleanliness.'
   },
   {
@@ -161,8 +164,8 @@ export const RESTAURANT_MAP_ZONES: HotspotZoneConfig[] = [
     description: 'Guest tables, booths, ambient lighting, customer dining satisfaction.',
     roomBounds: { x: 30.5, y: 53.4, w: 67.0, h: 25.8 },
     bannerBounds: { x: 46.2, y: 66.0, w: 21.0, h: 3.8 },
-    unlockLevel: 31,
-    unlockDescription: 'Dine-in service begins at Level 31.'
+    unlockLevel: earlyUnlock(31),
+    unlockDescription: 'Unlocks at Level 5.'
   }
 ];
 

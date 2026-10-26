@@ -3,7 +3,7 @@
  * presentation only). The restaurant opens up one piece at a time:
  *
  *  - the bottom-bar sections open at a level each (Kitchen and the Restaurant
- *    map from the start, Inventory and Market at 3, Business at 5); before
+ *    map from the start, Inventory and Market at 3, Business and Progress at 5); before
  *    that a section shows a lock with its level. Progress stays reachable from
  *    the Kitchen and Business screens rather than occupying a bottom tab;
  *  - Grandma says one line on each of Levels 1–15's Level Complete;
@@ -16,6 +16,7 @@
  * level), the same reading the knife / board unlocks use.
  */
 import { BUSINESS_MENU_FIRST_LEVEL, isSystemLive } from "./restaurantProgression";
+import { EARLY_UNLOCK_CAP } from "../config/earlyUnlocks";
 import { KNIFE_CATALOG } from "../knives/knifeDefinitions";
 import { BOARD_CATALOG } from "../boards/boardDefinitions";
 import { formatUsd } from "../money";
@@ -27,7 +28,7 @@ export type LockableTab = "inventory" | "shop" | "rack" | "business";
 export const TAB_OPENS_AT: Record<LockableTab, number> = {
   inventory: 3,
   shop: 3,
-  rack: 10,
+  rack: EARLY_UNLOCK_CAP,
   business: BUSINESS_MENU_FIRST_LEVEL,
 };
 
@@ -101,7 +102,7 @@ export function dayCeremonyAt(restaurantLevel: number): boolean {
 /** Ingredient purchases first become available in the Market. */
 export const FIRST_INGREDIENT_PURCHASE_LEVEL = 3;
 
-/** The level the first new culinary tools are offered at (Santoku, Maple Board). */
+/** Level 10: the Market's kitchen tools and Grandma's shopping list (knives and boards are for sale from L5). */
 export const FIRST_PURCHASE_LEVEL = 10;
 
 /**
@@ -109,15 +110,15 @@ export const FIRST_PURCHASE_LEVEL = 10;
  * offered in the already-open Market, plus what the next level brings.
  */
 export function firstPurchaseRows(): { label: string; value: string }[] {
+  // Since early game phase 4 every knife and board is for sale by Level 5: the card names the
+  // first buy of each — the cheapest priced knife and board (the Santoku and the Maple Board).
+  const cheapest = <T extends { price: number }>(xs: readonly T[]): T[] => {
+    const priced = xs.filter((x) => x.price > 0).sort((a, b) => a.price - b.price);
+    return priced.length ? [priced[0]!] : [];
+  };
   const items = [
-    ...KNIFE_CATALOG.filter((k) => k.unlockLevel === FIRST_PURCHASE_LEVEL).map((k) => ({
-      label: `🔪 ${k.name}`,
-      price: k.price,
-    })),
-    ...BOARD_CATALOG.filter((b) => b.unlockLevel === FIRST_PURCHASE_LEVEL).map((b) => ({
-      label: `🪵 ${b.name}`,
-      price: b.price,
-    })),
+    ...cheapest(KNIFE_CATALOG).map((k) => ({ label: `🔪 ${k.name}`, price: k.price })),
+    ...cheapest(BOARD_CATALOG).map((b) => ({ label: `🪵 ${b.name}`, price: b.price })),
   ];
   return [
     ...items.map((i) => ({ label: i.label, value: `in the Market · ${formatUsd(i.price)}` })),
@@ -246,7 +247,7 @@ export const SECTION_POINTER: Record<LockableTab, { title: string; line: string 
   },
   shop: {
     title: "🛒 This is the Market",
-    line: "Buy the ingredients your next order needs. Culinary tools unlock at Level 10.",
+    line: "Buy the ingredients your next order needs. Knives and boards from Level 5.",
   },
   rack: {
     title: "🏆 This is Progress",

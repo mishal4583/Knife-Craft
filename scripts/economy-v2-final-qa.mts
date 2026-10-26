@@ -349,9 +349,11 @@ let lockedBaseline = { revenue: 0, rewards: 0, cogs: 0, qualityBonus: 0, net: 0 
   const prep = STAFF_CATALOG.find((s) => s.id === "prep-assistant")!;
   const quality = STAFF_CATALOG.find((s) => s.id === "quality-chef")!;
   const kitchen = STAFF_CATALOG.find((s) => s.id === "kitchen-assistant")!;
-  assert(prep.price === dollars(3000) && prep.unlockLevel === 13, "K2: Prep Assistant locked at $3,000.00 / Level 13 (old 20, 150-level remap)");
-  assert(quality.price === dollars(6000) && quality.unlockLevel === 32, "K3: Quality Chef locked at $6,000.00 / Level 32 (old 45, 150-level remap)");
-  assert(kitchen.price === dollars(4000) && kitchen.unlockLevel === 44, "K4: Kitchen Assistant locked at $4,000.00 / Level 44 (old 65, 150-level remap)");
+  // Rule changed (developer 2026-10-26: everything unlocked at or before Level 5): the helpers
+  // open at L5 (were L13 / L32 / L44); their prices are unchanged.
+  assert(prep.price === dollars(3000) && prep.unlockLevel === 5, "K2: Prep Assistant locked at $3,000.00 / Level 5 (was 13)");
+  assert(quality.price === dollars(6000) && quality.unlockLevel === 5, "K3: Quality Chef locked at $6,000.00 / Level 5 (was 32)");
+  assert(kitchen.price === dollars(4000) && kitchen.unlockLevel === 5, "K4: Kitchen Assistant locked at $4,000.00 / Level 5 (was 44)");
   const allThree = computeSettlement(recipe, 10, 75, undefined, undefined, undefined, ["prep-assistant", "kitchen-assistant"]).staffCOGSSavings;
   const noStaff = computeSettlement(recipe, 10, 75).staffCOGSSavings;
   assert(noStaff === 0, "K5: staffCOGSSavings is exactly 0 with no staff owned");

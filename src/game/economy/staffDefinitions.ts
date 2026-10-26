@@ -17,6 +17,7 @@
  */
 import { dollars } from "../money";
 import { remapCampaignThreshold } from "../levels/campaignSelection";
+import { earlyUnlock } from "../config/earlyUnlocks";
 
 export type StaffDefinition = {
   id: string;
@@ -52,7 +53,7 @@ const SOURCE_STAFF_CATALOG: StaffDefinition[] = [
 
 export const STAFF_CATALOG: StaffDefinition[] = SOURCE_STAFF_CATALOG.map((staff) => ({
   ...staff,
-  unlockLevel: remapCampaignThreshold(staff.unlockLevel),
+  unlockLevel: earlyUnlock(remapCampaignThreshold(staff.unlockLevel)),
 }));
 
 export function getStaffMember(id: string): StaffDefinition | undefined {

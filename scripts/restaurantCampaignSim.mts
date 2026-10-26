@@ -86,7 +86,6 @@ import {
 } from "../src/game/business/RefrigeratorManager.ts";
 import { REFRIGERATOR_CATALOG } from "../src/game/business/refrigeratorDefinitions.ts";
 import { discardExpiredStock } from "../src/game/business/discardExpired.ts";
-import { hireStaff } from "../src/game/business/BusinessStaffManager.ts";
 import { businessCustomerPayment } from "../src/game/business/BusinessServiceManager.ts";
 import { businessDishForRecipeId } from "../src/game/business/businessServiceCatalog.ts";
 import { dayStockFor, servicePlanFor } from "../src/game/restaurant/preServiceCheck.ts";
@@ -122,7 +121,7 @@ import {
   taskNeeds,
   tasksAfterService,
 } from "../src/game/restaurant/cleanliness.ts";
-import { hireSpecialist, getSpecialist } from "../src/game/restaurant/staffRequirements.ts";
+import { getSpecialist, hireRestaurantStaff } from "../src/game/restaurant/staffRequirements.ts";
 import {
   bulkDiscountFor,
   BULK_MAX_PACKS,
@@ -211,6 +210,11 @@ export type Stats = {
   /** Of `guests`, the walk-ins (early game phase 3) and what they paid, in cents. */
   walkIns: number;
   walkInRevenue: number;
+  /** Hiring fees paid (early game phase 4), in cents. */
+  hireFees: number;
+  /** Required hires whose fee went on supplier credit (the wallet was short). */
+  hiresOnCredit: number;
+  hireFeesOnCredit: number;
   closings: number;
   /** The longest spotless streak (supplies plan D). */
   bestStreak: number;
@@ -360,11 +364,18 @@ function playLevel(save: SaveData, n: number, opts: SimOptions, stats: Stats): S
     const missing = replan().staff.filter((x) => !x.met);
     if (missing.length === 0) break;
     for (const r of missing) {
-      const hired = getSpecialist(r.id)
-        ? hireSpecialist(s, r.id, restaurantLevelOf(s.levelProgress))
-        : hireStaff(s, r.id);
+      // Early game phase 4 (developer 2026-10-26): every hire pays its fee, as App.hireStaff.
+      // A required hire: short of the fee, it goes on supplier credit (never a soft-lock).
+      const hired = hireRestaurantStaff(s, r.id, restaurantLevelOf(s.levelProgress), {
+        required: true,
+      });
       if (hired.ok) {
         s = hired.save;
+        stats.hireFees += hired.fee;
+        if (hired.onCredit) {
+          stats.hiresOnCredit++;
+          stats.hireFeesOnCredit += hired.fee;
+        }
         stats.hires++;
         if (getSpecialist(r.id)) stats.specialists++;
       }
@@ -378,9 +389,10 @@ function playLevel(save: SaveData, n: number, opts: SimOptions, stats: Stats): S
       const want = menuGuestsPerService(n) + kitchenGuestSeats(s);
       if (want <= menuGuestCapacity(s)) break;
       if (s.business.staff.hiredRoles.includes(role as never)) continue;
-      const hired = hireStaff(s, role);
+      const hired = hireRestaurantStaff(s, role, restaurantLevelOf(s.levelProgress));
       if (hired.ok) {
         s = hired.save;
+        stats.hireFees += hired.fee;
         stats.hires++;
       }
     }
@@ -720,6 +732,9 @@ export function run(
     guests: 0,
     walkIns: 0,
     walkInRevenue: 0,
+    hireFees: 0,
+    hiresOnCredit: 0,
+    hireFeesOnCredit: 0,
     closings: 0,
     bestStreak: 0,
     ordersServed: 0,
@@ -764,7 +779,7 @@ export function run(
     );
   if (log)
     console.log(
-      `    help: supplier credit ×${stats.credit} (${$(stats.creditTaken)} taken, ${$(stats.creditRepaid)} repaid, ${$(supplierCreditOf(s).owed)} owed) · hires ${stats.hires} (${stats.specialists} specialists) · fridge upgrades ${stats.fridgeUpgrades} · fridge over capacity (covered goods) at ${stats.fridgeOverByGrandma} level ends`,
+      `    help: supplier credit ×${stats.credit} (${$(stats.creditTaken)} taken, ${$(stats.creditRepaid)} repaid, ${$(supplierCreditOf(s).owed)} owed) · hires ${stats.hires} (${stats.specialists} specialists, fees ${$(stats.hireFees)}, ${stats.hiresOnCredit} on credit) · fridge upgrades ${stats.fridgeUpgrades} · fridge over capacity (covered goods) at ${stats.fridgeOverByGrandma} level ends`,
     );
   if (log && stats.blocked.length)
     console.log(`    BLOCKED: ${stats.blocked.slice(0, 5).join(" | ")}`);

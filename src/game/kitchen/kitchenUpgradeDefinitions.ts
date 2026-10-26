@@ -19,6 +19,7 @@
 import type { KitchenUpgradeDefinition } from "./kitchenUpgradeTypes";
 import { dollars } from "../money";
 import { remapCampaignThreshold } from "../levels/campaignSelection";
+import { earlyUnlock } from "../config/earlyUnlocks";
 
 export const DEFAULT_KITCHEN_UPGRADE_ID = "humble-kitchen" as const;
 
@@ -79,7 +80,16 @@ const SOURCE_KITCHEN_UPGRADE_CATALOG: KitchenUpgradeDefinition[] = [
   },
 ];
 
-export const KITCHEN_UPGRADE_CATALOG: KitchenUpgradeDefinition[] = SOURCE_KITCHEN_UPGRADE_CATALOG.map((item) => ({ ...item, unlockLevel: remapCampaignThreshold(item.unlockLevel) }));
+export const KITCHEN_UPGRADE_CATALOG: KitchenUpgradeDefinition[] = SOURCE_KITCHEN_UPGRADE_CATALOG.map((item) => ({ ...item, unlockLevel: earlyUnlock(remapCampaignThreshold(item.unlockLevel)) }));
+
+/**
+ * The level each tier used to be GRANTED at before Economy V2.5 (the remapped catalog level,
+ * before EARLY_UNLOCK_CAP): `migrateKitchenDevelopment` keeps an old save's entitlement exactly,
+ * so opening every tier for sale at Level 5 never hands a pre-V2.5 save tiers for free.
+ */
+export const LEGACY_KITCHEN_GRANT_LEVEL: Readonly<Record<string, number>> = Object.fromEntries(
+  SOURCE_KITCHEN_UPGRADE_CATALOG.map((item) => [item.id, remapCampaignThreshold(item.unlockLevel)]),
+);
 
 export function findKitchenUpgrade(id: string): KitchenUpgradeDefinition | undefined {
   return KITCHEN_UPGRADE_CATALOG.find((u) => u.id === id);

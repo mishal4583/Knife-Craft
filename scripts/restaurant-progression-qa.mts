@@ -186,10 +186,14 @@ console.log("S. Staff requirements");
       hired.save.credits === saveAt(35).credits &&
       hired.save.economyLedger.length === 0 &&
       restaurantStaffOf(hired.save).specialists.join() === "indian-chef" &&
-      !hireSpecialist(saveAt(34), "indian-chef", 34).ok &&
+      // Rule changed (developer 2026-10-26): every hire opens at L5 (was: once its cuisine
+      // opened, L35). hireSpecialist only adds the chef; the paid hire is hireRestaurantStaff
+      // (staff-hire-qa H7).
+      hireSpecialist(saveAt(5), "indian-chef", 5).ok &&
+      !hireSpecialist(saveAt(4), "indian-chef", 4).ok &&
       !hireSpecialist(saveAt(60), "nope", 60).ok &&
       fireSpecialist(hired.save, "indian-chef").business.restaurantStaff?.specialists.length === 0,
-    "S6: hiring a specialist is free (no money, no ledger), only once its cuisine opened; letting go works",
+    "S6: adding a specialist moves no money itself (the paid hire charges the fee), from L5; letting go works",
   );
   const lvl = getLevel("level-36")!;
   const plan = servicePlanFor(openDay(saveAt(36), 36), lvl)!;

@@ -294,6 +294,29 @@ once). Restaurant browser tests run on the normal build, classic ones on a
 
 Focused suites (`npx tsx scripts/<name>.mts`):
 
+- `staff-hire-qa` + `tools/e2e/paidstaff.mjs` — EARLY GAME PHASE 4 (developer 2026-10-26: "I need
+  everything to be unlocked at or before level 5" and "don't make any staff hire for free, let
+  them pay for it"):
+  - **Everything for sale by Level 5** (`config/earlyUnlocks.ts` `EARLY_UNLOCK_CAP` = 5,
+    `earlyUnlock`): knives, boards, kitchen tiers, kitchen helpers, every staff role and
+    specialist chef (`STAFF_HIRE_FROM`, `specialistOpensAt`), the Second Floor and all six
+    stations (`SECOND_FLOOR_OPENS_AT` / `STATIONS_OPEN_AT`), every map room (the Dining Area
+    was L31; the Restroom follows its Cleanliness tab, `CLEANING_FROM_LEVEL` 10) and the
+    Progress section (`TAB_OPENS_AT.rack`, was L10). Prices and order unchanged. A pre-V2.5
+    save's kitchen-tier grant keeps its old levels (`LEGACY_KITCHEN_GRANT_LEVEL`). A level's
+    own knife/board "Unlocks" hint shows only while true (`liveUnlockReward`).
+  - **Not moved:** the campaign's teaching stages (fridge, dine-in, staff requirements,
+    cuisines, takeaway …, `RESTAURANT_SYSTEMS`), cleaning (L10), the tools requirement (L10),
+    the menu dishes (by the cuts taught) and Endless (after L150).
+  - **Paid hires** (`staffRequirements.ts` `hireRestaurantStaff`, `staffHireFee`): every role
+    and specialist chef pays `HIRE_FEE_DAYS` (3) days of its full wage once, in whole dollars
+    — Prep Cook $120, Line Cook $136, Head Chef $210, Server $113, Cleaner $84, Manager $180,
+    each specialist $136 — with one "staff-purchase" entry; all-or-nothing; letting go refunds
+    nothing; hiring again pays again. Wages unchanged (none before L29, half to L55, full
+    from L56). A hire the next service REQUIRES that the wallet can't cover goes on supplier
+    credit (owed, repaid from the next earnings), so a required hire never soft-locks. The
+    classic Business Mode hire is unchanged (free).
+
 - `story-intro-qa` — intro pacing, Skip story, story save semantics.
 - `audio-qa` — the synthesized sound (W3): the ten named effects, the shared
   gate (platform audio, pause, ad, Sound off), music only after a
@@ -468,7 +491,8 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   cuisines, Manager L161 with a team of ≥ 5; the specialist chef of every
   specialist cuisine on the active menu or in the tickets), announced 5
   levels ahead, shown with the reason in the Pre-Service Check, blocking
-  START until hired (hiring is free — no soft-lock); each specialist card
+  START until hired (since 2026-10-26 a hire pays its fee — `staff-hire-qa`; a
+  required hire the wallet can't cover goes on supplier credit, so no soft-lock); each specialist card
   shows its cuisine character (`chefs/chefDefinitions.ts`
   `specialistCharacter`: Chef Amara, Yusuf, Marisol, and Haruto for the
   Asian Chef — name, portrait, intro line behind ⓘ); specialist chefs in the
@@ -1437,7 +1461,9 @@ preparation = PreparationScene; events = `events.ts`; platform =
   - `src/components/kc/restaurantMap/SecondFloorView.tsx` (map, same CSS as the first
     floor);
   - art `public/restaurant-map/second-floor.webp` (source `art-source/second-floor-food-hall.png`).
-- **Unlock** (developer 2026-10-16): players can **visit the floor from Level 10**
+- **Unlock** (early game phase 4, developer 2026-10-26: everything by Level 5 — the floor and
+  every station now open at **Level 5**; the text below is the 2026-10-16 design):
+  players can **visit the floor from Level 10**
   (`SECOND_FLOOR_OPENS_AT`). The first-floor map shows "⬆ 2nd floor"
   (`data-testid="upstairs"`), or "🔒 2nd floor · Lv 10" before then. **Every station goes
   on sale at Level 60** (`STATIONS_OPEN_AT`) and stays locked until it is bought, like the

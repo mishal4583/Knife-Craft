@@ -100,10 +100,13 @@ for (const [tag, r, levels] of [
 assert(
   B.stats.credit > 0 &&
     B.stats.creditTaken > 0 &&
-    B.stats.creditRepaid === B.stats.creditTaken &&
+    // Rule changed (developer 2026-10-26, "let them pay for it"): hires pay a fee; a required
+    // hire the wallet can't cover goes on the same supplier credit (was: free hiring).
+    B.stats.creditRepaid === B.stats.creditTaken + B.stats.hireFeesOnCredit &&
     supplierCreditOf(B.s).owed === 0 &&
-    B.stats.hires > 0,
-  `B3: the broke player got through on supplier credit (×${B.stats.credit}, ${$(B.stats.creditTaken)}), all of it repaid from its earnings ($0 owed at the end), and free hiring`,
+    B.stats.hires > 0 &&
+    B.stats.hiresOnCredit > 0,
+  `B3: the broke player got through on supplier credit (×${B.stats.credit}, ${$(B.stats.creditTaken)}) and its required hires on credit (${B.stats.hiresOnCredit}, ${$(B.stats.hireFeesOnCredit)}), all of it repaid from its earnings ($0 owed at the end)`,
 );
 assert(
   D.stats.credit === 0 && D.stats.pantry === 0,

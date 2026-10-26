@@ -1,6 +1,15 @@
 # KnifeCraft — Handoff (Playgama edition)
 
 
+## Early game, phase 4: everything by Level 5, paid staff hires (2026-10-26, branch `claude/early-game-unlocks`)
+
+- Every knife, board, kitchen tier, kitchen helper, staff role, specialist chef, Second Floor
+  station, map room and the Progress section is for sale / open by L5 (`EARLY_UNLOCK_CAP`);
+  prices unchanged. Every restaurant hire pays 3 days' wage once ($84–$210, one
+  `staff-purchase` entry); a required hire short of money goes on supplier credit. Completionist
+  L150 $132,916. QA `staff-hire-qa`; browser `paidstaff.mjs`; report
+  `docs/reports/EARLYGAME-PHASE4-2026-10-26.md`.
+
 ## Early game, phase 3: walk-in customers from Level 5 (2026-10-26, branch `claude/early-game-walkins`)
 
 - One walk-in per service from L5, after the menu guests, within the team's capacity; same

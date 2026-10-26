@@ -21,6 +21,7 @@ import type {
   KnifeDefinition,
   KnifeVisual,
 } from "./knifeTypes";
+import { earlyUnlock } from "../config/earlyUnlocks";
 
 export const DEFAULT_KNIFE_ID = "chef" as const;
 
@@ -369,7 +370,7 @@ const SOURCE_KNIFE_CATALOG: KnifeDefinition[] = [
   },
 ];
 
-export const KNIFE_CATALOG: KnifeDefinition[] = SOURCE_KNIFE_CATALOG.map((item) => ({ ...item, unlockLevel: remapCampaignThreshold(item.unlockLevel) }));
+export const KNIFE_CATALOG: KnifeDefinition[] = SOURCE_KNIFE_CATALOG.map((item) => ({ ...item, unlockLevel: earlyUnlock(remapCampaignThreshold(item.unlockLevel)) }));
 
 export function findKnife(id: string): KnifeDefinition | undefined {
   return KNIFE_CATALOG.find((k) => k.id === id);

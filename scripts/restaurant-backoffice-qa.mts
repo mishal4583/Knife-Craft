@@ -99,7 +99,9 @@ console.log("S. One Suppliers screen");
 
 console.log("E. Equipment: restaurant development");
 {
-  const fresh = restaurantDevelopment(saveAt(5));
+  // Rule changed (developer 2026-10-26): every tier is for sale from L5, so a new restaurant
+  // is checked at L4 (the Growing Kitchen still locked; was L5 with it at L16).
+  const fresh = restaurantDevelopment(saveAt(4));
   const growing = KITCHEN_UPGRADE_CATALOG[1]!;
   assert(
     fresh.currentName === KITCHEN_UPGRADE_CATALOG[0]!.name &&

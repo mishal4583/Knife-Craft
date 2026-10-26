@@ -97,7 +97,9 @@ console.log("T. The Level-150 target (no Endless income)");
   const owns = c.save;
   assert(
     KITCHEN_UPGRADE_CATALOG.every((k) => owns.ownedKitchenUpgradeIds.includes(k.id)) &&
-      atL(c, LAST).purchases === dollars(168_430),
+      // Rule changed (developer 2026-10-26): hires pay a fee. The items are the same $168,430;
+      // the fees paid from the wallet come on top (a required hire short of cash goes on credit).
+      atL(c, LAST).purchases === dollars(168_430) + c.stats.hireFees - c.stats.hireFeesOnCredit,
     `T3: the completionist owns every kitchen tier and bought every item (${$(atL(c, LAST).purchases)})`,
   );
   assert(
@@ -121,12 +123,15 @@ console.log("S. Safety");
   assert(
     // Developer 2026-10-16: the prudent player spends down to its $500 reserve, then a
     // required supply buy can take it a little lower — never below $400, never credit.
-    g.minCash.cash >= dollars(400) &&
+    // Rule changed (developer 2026-10-26, "let them pay for it"): a required hire now pays its
+    // fee too (the Indian Chef, $136, at L35, with that service's supplies: $399.95) — never
+    // below $350, still never credit.
+    g.minCash.cash >= dollars(350) &&
       g.stats.credit === 0 &&
       supplierCreditOf(g.save).owed === 0 &&
       g.final >= dollars(100_000) &&
-      [20, 30, 40, 50, 75, 91].every((n) => atL(g, n).wallet >= dollars(400)),
-    `S3: a prudent completionist (keeps $500) never dips below $400 (lowest ${$(g.minCash.cash)}), never needs supplier credit, still ends ${$(g.final)}`,
+      [20, 30, 40, 50, 75, 91].every((n) => atL(g, n).wallet >= dollars(350)),
+    `S3: a prudent completionist (keeps $500) never dips below $350 (a required hire's fee; lowest ${$(g.minCash.cash)}), never needs supplier credit, still ends ${$(g.final)}`,
   );
 }
 

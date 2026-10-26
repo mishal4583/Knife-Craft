@@ -43,6 +43,7 @@ import {
   describeDifficulty,
   getNextKitchenStagePreview,
   getNextRewardPreview,
+  liveUnlockReward,
   opensInMarket,
   levelNumber,
 } from "@/game/levels/levelMastery";
@@ -733,18 +734,20 @@ export function OrderBoard({
               // every other level falls back to the derived "what's next"
               // timeline so the player always sees something truthful,
               // never a fabricated per-level reward.
-              const ownReward = level.unlockReward
+              // Only while it is still true (liveUnlockReward: since every knife and board
+              // is for sale by Level 5, a later level's knife no longer "unlocks" there).
+              const ownUnlock = liveUnlockReward(level);
+              const ownReward = ownUnlock
                 ? {
                     atLevel: levelNumber(level.id),
-                    name: level.unlockReward.name,
-                    icon: REWARD_TYPE_ICON[level.unlockReward.type],
+                    name: ownUnlock.name,
+                    icon: REWARD_TYPE_ICON[ownUnlock.type],
                   }
                 : null;
               const nextReward = ownReward ?? getNextRewardPreview(levelNumber(level.id));
               // A knife or board a level "unlocks" becomes BUYABLE in the Market —
               // it is never handed over, so the row says so rather than "Reward".
-              const marketUnlock =
-                level.unlockReward?.type === "knife" || level.unlockReward?.type === "board";
+              const marketUnlock = ownUnlock?.type === "knife" || ownUnlock?.type === "board";
               const rewardLabel = ownReward ? "Unlocks" : "Next";
               // A row showing its OWN reward would otherwise hide a kitchen
               // background unlocking right behind it (Lv 40 Cleaver → Lv 41

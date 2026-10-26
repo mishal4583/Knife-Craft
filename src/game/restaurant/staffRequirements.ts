@@ -37,7 +37,15 @@ import { debitWallet } from "../economy/wallet";
 import { appendLedgerEntry } from "../economy/EconomyLedger";
 import { addSpecialistWagesToLatestDay } from "../business/businessDayHistory";
 import { activeMenuDishes } from "./restaurantMenu";
-import { CUISINES, isSystemLive, menuGuestsPerService } from "./restaurantProgression";
+import {
+  BUSINESS_MENU_FIRST_LEVEL,
+  CUISINES,
+  isSystemLive,
+  menuGuestsPerService,
+} from "./restaurantProgression";
+import { hireStaff as addHiredRole } from "../business/BusinessStaffManager";
+import { takeOnCredit } from "./supplierCredit";
+import { formatUsd } from "../money";
 import type { OrderService } from "./serviceSupplies";
 import { remapCampaignThreshold } from "../levels/campaignSelection";
 
@@ -161,7 +169,20 @@ const withSpecialists = (save: SaveData, specialists: string[]): SaveData => ({
 export type HireSpecialistResult =
   { ok: true; save: SaveData } | { ok: false; reason: "unknown" | "alreadyHired" | "notYet" };
 
-/** Free (no money, no ledger), like every hire. Only once one of its cuisines has opened. */
+/**
+ * Every staff hire opens with Business (early game phase 4, developer 2026-10-26: "everything
+ * unlocked at or before Level 5"): a specialist chef no longer waits for its cuisine.
+ */
+export const STAFF_HIRE_FROM = BUSINESS_MENU_FIRST_LEVEL;
+
+/** The level a specialist chef can be hired from (its cuisine's level, or Business's if earlier). */
+export const specialistOpensAt = (chef: SpecialistChef): number =>
+  Math.min(chef.firstLevel, STAFF_HIRE_FROM);
+
+/**
+ * Adds the chef to the team (no money: the restaurant's paid hire is `hireRestaurantStaff`,
+ * which charges the hiring fee). From `specialistOpensAt`.
+ */
 export function hireSpecialist(
   save: SaveData,
   id: string,
@@ -169,10 +190,72 @@ export function hireSpecialist(
 ): HireSpecialistResult {
   const chef = getSpecialist(id);
   if (!chef) return { ok: false, reason: "unknown" };
-  if (restaurantLevel < chef.firstLevel) return { ok: false, reason: "notYet" };
+  if (restaurantLevel < specialistOpensAt(chef)) return { ok: false, reason: "notYet" };
   const { specialists } = restaurantStaffOf(save);
   if (specialists.includes(id)) return { ok: false, reason: "alreadyHired" };
   return { ok: true, save: withSpecialists(save, [...specialists, id]) };
+}
+
+/**
+ * HIRING FEE (developer 2026-10-26: "don't make any staff hire for free, let them pay for
+ * it"): every hire in the restaurant — a waged role or a specialist chef — pays
+ * `HIRE_FEE_DAYS` days of that person's full daily wage once, in whole dollars, with one
+ * "staff-purchase" ledger entry (description = the role or chef id). The wages themselves
+ * are unchanged (half pay from HALF_WAGES_FROM, full from full operation). Letting someone go
+ * is free and refunds nothing; hiring them again pays again.
+ */
+export const HIRE_FEE_DAYS = 3;
+
+/** The hiring fee in whole cents (whole dollars), or null for an unknown id. */
+export function staffHireFee(id: string): number | null {
+  const chef = getSpecialist(id);
+  const daily = chef
+    ? chef.dailyWage
+    : id in BUSINESS_STAFF_CATALOG
+      ? dailyPayroll([id as BusinessStaffRole])
+      : null;
+  if (daily === null) return null;
+  return Math.round((daily * HIRE_FEE_DAYS) / 100) * 100;
+}
+
+export type HireRestaurantStaffResult =
+  | { ok: true; save: SaveData; fee: number; onCredit?: boolean }
+  | { ok: false; reason: "unknown" | "alreadyHired" | "notYet" | "insufficientFunds"; fee: number };
+
+/**
+ * The restaurant's hire: the role (or chef) joins the team AND the fee leaves the wallet, in
+ * one step — all or nothing (no partial hire, no charge for a failed one; wallet.ts).
+ *
+ * `required`: the service the player is about to start needs this person (an unmet staff
+ * requirement blocks START). Then a wallet short of the fee never soft-locks the campaign:
+ * the fee goes on supplier credit (supplierCredit.ts — owed now, no money moves, repaid from
+ * the next earnings with one repayment entry). An optional hire that's short is refused.
+ */
+export function hireRestaurantStaff(
+  save: SaveData,
+  id: string,
+  restaurantLevel: number,
+  opts: { required?: boolean } = {},
+): HireRestaurantStaffResult {
+  const fee = staffHireFee(id);
+  if (fee === null) return { ok: false, reason: "unknown", fee: 0 };
+  if (restaurantLevel < STAFF_HIRE_FROM) return { ok: false, reason: "notYet", fee };
+  const joined = getSpecialist(id)
+    ? hireSpecialist(save, id, restaurantLevel)
+    : addHiredRole(save, id);
+  if (!joined.ok)
+    return {
+      ok: false,
+      reason:
+        joined.reason === "alreadyHired" || joined.reason === "notYet" ? joined.reason : "unknown",
+      fee,
+    };
+  const debit = debitWallet(joined.save, fee);
+  if (!debit.ok)
+    return opts.required
+      ? { ok: true, save: takeOnCredit(joined.save, fee), fee, onCredit: true }
+      : { ok: false, reason: "insufficientFunds", fee };
+  return { ok: true, save: appendLedgerEntry(debit.save, "staff-purchase", -fee, id), fee };
 }
 
 export function fireSpecialist(save: SaveData, id: string): SaveData {
@@ -360,7 +443,7 @@ export function staffComingUp(levelNumber: number): StaffNotice[] {
     ...SPECIALIST_CHEFS.filter((s) => soon(s.firstLevel)).map((s) => ({
       level: s.firstLevel,
       title: s.title,
-      why: `${s.cuisines[0]} dishes start at Level ${s.firstLevel} — hire the ${s.title} (free).`,
+      why: `${s.cuisines[0]} dishes start at Level ${s.firstLevel} — hire the ${s.title} (${formatUsd(staffHireFee(s.id) ?? 0)}).`,
     })),
   ].sort((a, b) => a.level - b.level);
 }

@@ -180,7 +180,10 @@ console.log("D. Presentation only");
 console.log("E. Nothing else moves");
 {
   const diff = execSync(
-    "git diff 0e0d83b -- src/game/SaveManager.ts src/game/business/businessTypes.ts src/game/economy src/game/levels src/game/recipes",
+    // Early-game phase 4 (developer 2026-10-26): everything unlocked by Level 5 — only the unlock-level
+    // lines of these catalogs change (staff-hire-qa U5 checks no price moved); levelMastery.ts only
+    // drops a level's stale knife/board "Unlocks" hint (liveUnlockReward, progression-preview-qa H).
+    "git diff 0e0d83b -- src/game/SaveManager.ts src/game/business/businessTypes.ts src/game/economy ':!src/game/economy/staffDefinitions.ts' src/game/levels ':!src/game/levels/levelMastery.ts' src/game/recipes",
     { cwd: ROOT, encoding: "utf8" },
   );
   assert(
@@ -200,13 +203,34 @@ console.log("E. Nothing else moves");
   // Early-game phase 3 (developer 2026-10-25): walk-ins — menuGuests.ts and the check's optional
   // customer rows (preServiceCheck.ts), guarded by walkin-qa; in App.tsx only the customer
   // offer's label may change (checked below: no pay, serve, ledger, save or reward code).
+  // Early-game phase 4 (developer 2026-10-26): secondFloor.ts (open levels only) and
+  // staffRequirements.ts (the paid hire), guarded by staff-hire-qa; in App.tsx the hire's call.
   const flow = execSync(
-    "git diff cc46bbd -- src/game/restaurant ':!src/game/restaurant/dishService.ts' ':!src/game/restaurant/levelPayPreview.ts' ':!src/game/restaurant/restaurantProgression.ts' ':!src/game/restaurant/firstLevels.ts' ':!src/game/restaurant/menuGuests.ts' ':!src/game/restaurant/preServiceCheck.ts' src/game/progression src/game/recipes/dishKind.ts",
+    "git diff cc46bbd -- src/game/restaurant ':!src/game/restaurant/dishService.ts' ':!src/game/restaurant/levelPayPreview.ts' ':!src/game/restaurant/restaurantProgression.ts' ':!src/game/restaurant/firstLevels.ts' ':!src/game/restaurant/menuGuests.ts' ':!src/game/restaurant/preServiceCheck.ts' ':!src/game/restaurant/secondFloor.ts' ':!src/game/restaurant/staffRequirements.ts' src/game/progression src/game/recipes/dishKind.ts",
     { cwd: ROOT, encoding: "utf8" },
   );
-  const appDiff = execSync("git diff -U0 cc46bbd -- src/App.tsx", { cwd: ROOT, encoding: "utf8" })
-    .split("\n")
-    .filter((l) => /^[+-](?![+-])/.test(l));
+  // App.tsx: only the walk-in offer's label (no pay / serve / save words) and, since phase 4,
+  // the lines inside `function hireStaff` (the paid hire: staff-hire-qa A1) may change.
+  const appNow = fs.readFileSync(path.join(ROOT, "src/App.tsx"), "utf8").split("\n");
+  const hireStart = appNow.findIndex((l) => /^ {2}function hireStaff\(/.test(l)) + 1;
+  const hireEnd = appNow.findIndex((l, k) => k >= hireStart && /^ {2}\}$/.test(l)) + 1;
+  const appDiff: string[] = [];
+  let newLine = 0;
+  for (const l of execSync("git diff -U0 cc46bbd -- src/App.tsx", {
+    cwd: ROOT,
+    encoding: "utf8",
+  }).split("\n")) {
+    const hunk = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/.exec(l);
+    if (hunk) {
+      newLine = Number(hunk[1]);
+      continue;
+    }
+    if (!/^[+-](?![+-])/.test(l)) continue;
+    // A hunk's lines (removed or added) at new lines hireStart..hireEnd belong to hireStaff.
+    const inHire = newLine >= hireStart - 1 && newLine <= hireEnd + 1;
+    if (l.startsWith("+")) newLine++;
+    if (!inHire) appDiff.push(l);
+  }
   const offLabel = appDiff.filter((l) =>
     /persist|credits|appendLedgerEntry|serve|complete|reward|settle|levelProgress|onClick: take/i.test(
       l,
@@ -244,7 +268,7 @@ console.log("E. Nothing else moves");
       offBoard.length === 0 &&
       offLabel.length === 0 &&
       appDiff.some((l) => /Walk-in/.test(l)),
-    "E2: since Phase D only the tray item, the Phase F cold-board exception, the Level 2 pay preview, the Level 5 menu unlock and the walk-in offer's label changed (no order, serve, pay, achievement, ranking or dishKind code)",
+    "E2: since Phase D only the tray item, the Phase F cold-board exception, the Level 2 pay preview, the Level 5 menu unlock, the walk-in offer's label and the paid hire changed (no order, serve, pay, achievement, ranking or dishKind code)",
     { flow: flow.slice(0, 200), offTray, offBoard, offLabel },
   );
 }

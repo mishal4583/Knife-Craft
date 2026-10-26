@@ -2,8 +2,8 @@
 //   1. the Market has no Staff tab (Knives · Cutting Boards · Campaign Supplier · Ingredients ·
 //      Blacksmith · Smallwares · Tableware · Takeaway);
 //   2. Business → Staff shows the waged team (6 roles) and the Kitchen helpers (3 one-time
-//      hires: Prep Assistant, Quality Chef, Kitchen Assistant) with their real prices and
-//      unlock levels;
+//      hires: Prep Assistant, Quality Chef, Kitchen Assistant) with their real prices, all for
+//      sale at Level 25 (since 2026-10-26 everything opens by Level 5);
 //   3. hiring the Prep Assistant there writes ONE "staff-purchase" ledger entry of −$3,000.00,
 //      adds it to the save's owned staff, and the wallet moves by exactly the new ledger
 //      entries (the First-staff milestone may pay too);
@@ -98,10 +98,13 @@ check(
     /Prep Assistant/.test(prep) &&
     /Hire · \$3,000\.00/.test(prep) &&
     /\$6,000\.00/.test(quality) &&
-    // Unlock levels on the 150-level campaign (remapCampaignThreshold: 45 → 32, 65 → 44).
-    /Level 32/i.test(quality) &&
+    // Rule changed (developer 2026-10-26: everything by Level 5): at Level 25 all three helpers
+    // are for sale (were locked to L32 / L44), at their prices.
+    /Hire · \$6,000\.00/.test(quality) &&
+    !/Level \d+/i.test(quality) &&
     /\$4,000\.00/.test(kitchen) &&
-    /Level 44/i.test(kitchen),
+    /Hire · \$4,000\.00/.test(kitchen) &&
+    !/Level \d+/i.test(kitchen),
   { prep, quality, kitchen },
 );
 check(

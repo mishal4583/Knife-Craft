@@ -334,12 +334,12 @@ console.log("E. No save, wallet, ledger or payment change");
   // Early game phase 3 (developer 2026-10-25): walk-ins change menuGuests.ts and App.tsx's
   // offer label; walkin-qa guards them. The save, wallet, ledger and payment stay unchanged.
   const diff = execSync(
-    `git diff ${BASE} --stat -- src/game/SaveManager.ts src/game/business/businessTypes.ts src/game/economy src/game/business/BusinessServiceManager.ts src/game/levels/LevelManager.ts`,
+    `git diff ${BASE} --stat -- src/game/SaveManager.ts src/game/business/businessTypes.ts src/game/economy ':!src/game/economy/staffDefinitions.ts' src/game/business/BusinessServiceManager.ts src/game/levels/LevelManager.ts`,
     { cwd: ROOT, encoding: "utf8" },
   );
   assert(
     diff.trim() === "",
-    "E1: SaveManager, the business and level save types, the wallet / ledger and payment are unchanged",
+    "E1: SaveManager, the business and level save types, the wallet / ledger and payment are unchanged (phase 4: staffDefinitions.ts changes its unlock levels only)",
     diff,
   );
 }

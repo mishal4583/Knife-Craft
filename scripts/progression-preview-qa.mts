@@ -40,12 +40,12 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { DEFAULT_SAVE, SaveManager, type SaveData } from "../src/game/SaveManager.ts";
-import { KITCHEN_UPGRADE_CATALOG } from "../src/game/kitchen/kitchenUpgradeDefinitions.ts";
+import { KITCHEN_UPGRADE_CATALOG, LEGACY_KITCHEN_GRANT_LEVEL } from "../src/game/kitchen/kitchenUpgradeDefinitions.ts";
 import { getKitchenUpgradeState, migrateKitchenDevelopment, purchaseKitchenUpgrade, syncKitchenUpgradeOwnership } from "../src/game/kitchen/KitchenUpgradeManager.ts";
 import { KNIFE_CATALOG } from "../src/game/knives/knifeDefinitions.ts";
 import { BOARD_CATALOG } from "../src/game/boards/boardDefinitions.ts";
 import { CAFE_MILESTONES } from "../src/game/cafe/cafeDefinitions.ts";
-import { getNextKitchenStagePreview, getNextRewardPreview, getRewardTimeline, levelNumber, opensInMarket } from "../src/game/levels/levelMastery.ts";
+import { getNextKitchenStagePreview, getNextRewardPreview, getRewardTimeline, levelNumber, liveUnlockReward, opensInMarket } from "../src/game/levels/levelMastery.ts";
 import { getLevels } from "../src/game/levels/LevelManager.ts";
 import { CHAPTER_TITLES } from "../src/game/levels/levelDefinitions.ts";
 
@@ -127,11 +127,13 @@ const INVESTMENT_NAMES = ["Prep Station Upgrade", "Storage Rack", "Service Count
     if (r) shown.add(r.name);
   }
   assert(INVESTMENT_NAMES.every((n) => !shown.has(n)), "C2: no level's Order Board hint ever names a retired investment");
-  // 150-level campaign (developer 2026-10-15): the backgrounds open at L29 / L56 (old 41 / 91).
+  // 150-level campaign (developer 2026-10-15): the backgrounds opened at L29 / L56 (old 41 / 91).
+  // Rule changed (developer 2026-10-26): every kitchen tier is for sale by L5, so the hints
+  // after L28 / L55 are the next café ranks — never a kitchen tier "opening" later.
   const p40 = getNextRewardPreview(28);
   const p90 = getNextRewardPreview(55);
-  assert(p40?.name === "Established Kitchen" && p40.atLevel === 29 && p40.icon === "🏠", `C3: after Lv 28 the hint is the "Established Kitchen" background (Lv 29)`);
-  assert(p90?.name === "Grand Kitchen" && p90.atLevel === 56 && p90.icon === "🏠", `C4: after Lv 55 the hint is the "Grand Kitchen" background (Lv 56)`);
+  assert(p40?.name === "Garden Café" && p40.atLevel === 40 && p40.icon === "🏆", `C3: after Lv 28 the hint is the next café rank (Garden Café, Lv 40); no kitchen tier opens later`);
+  assert(p90?.name === "Grand Café" && p90.atLevel === 58 && p90.icon === "🏆", `C4: after Lv 55 the hint is the next café rank (Grand Café, Lv 58)`);
   for (const u of KITCHEN_UPGRADE_CATALOG.filter((u) => u.unlockLevel > 1)) {
     const cafeClash = CAFE_MILESTONES.some((m) => m.title === u.name && m.levelRequired < u.unlockLevel);
     const entry = timeline.find((r) => r.name === u.name);
@@ -168,9 +170,11 @@ const INVESTMENT_NAMES = ["Prep Station Upgrade", "Storage Rack", "Service Count
 // ===== D: the six kitchen backgrounds =====
 {
   assert(
-    KITCHEN_UPGRADE_CATALOG.map((u) => `${u.name}@${u.unlockLevel}:${u.asset}`).join(", ") ===
-      "Humble Kitchen@1:skin-01, Growing Kitchen@16:skin-02, Established Kitchen@29:skin-03, Neighborhood Café@35:skin-04, Flourishing Café@46:skin-05, Grand Kitchen@56:skin-06",
-    "D: all six kitchen backgrounds intact — names and art unchanged, levels through the 150-level remap (old 1/21/41/51/71/91)",
+    // Rule changed (developer 2026-10-26): every tier is for sale by L5; the old levels stay as the
+    // pre-V2.5 grant levels (LEGACY_KITCHEN_GRANT_LEVEL, used by the migration only).
+    KITCHEN_UPGRADE_CATALOG.map((u) => `${u.name}@${u.unlockLevel}/${LEGACY_KITCHEN_GRANT_LEVEL[u.id]}:${u.asset}`).join(", ") ===
+      "Humble Kitchen@1/1:skin-01, Growing Kitchen@5/16:skin-02, Established Kitchen@5/29:skin-03, Neighborhood Café@5/35:skin-04, Flourishing Café@5/46:skin-05, Grand Kitchen@5/56:skin-06",
+    "D: all six kitchen backgrounds intact — names, art and order unchanged; for sale by L5 (old grant levels 1/16/29/35/46/56 kept for old saves)",
   );
   const bg = read("src/components/kc/KitchenBackground.tsx");
   for (const u of KITCHEN_UPGRADE_CATALOG) {
@@ -239,21 +243,27 @@ const INVESTMENT_NAMES = ["Prep Station Upgrade", "Storage Rack", "Service Count
   // Rebuild every row's hints the way Kitchen.tsx renders them.
   const rows = getLevels().map((l) => {
     const n = levelNumber(l.id);
-    const main = l.unlockReward ? `Unlocks: ${l.unlockReward.name}${l.unlockReward.type === "knife" || l.unlockReward.type === "board" ? " in the Market" : ""}` : (() => { const r = getNextRewardPreview(n); return r ? `Next: ${r.name}${opensInMarket(r) ? " in the Market" : ""} · Lv ${r.atLevel}` : null; })();
-    const stage = l.unlockReward ? getNextKitchenStagePreview(n) : null;
+    const own = liveUnlockReward(l);
+    const main = own ? `Unlocks: ${own.name}${own.type === "knife" || own.type === "board" ? " in the Market" : ""}` : (() => { const r = getNextRewardPreview(n); return r ? `Next: ${r.name}${opensInMarket(r) ? " in the Market" : ""} · Lv ${r.atLevel}` : null; })();
+    const stage = own ? getNextKitchenStagePreview(n) : null;
     return { n, main, extra: stage ? `Next: ${stage.name} · Lv ${stage.atLevel}` : null };
   });
   const extras = rows.filter((r) => r.extra).map((r) => `${r.n}→${r.extra}`);
   // Level 1–10 UX pass: a knife/board preview says where it opens. In the 150-level order the
   // Paring Knife (old L15) opens at L9, before the Santoku (L10).
-  assert(rows[0]!.main === "Next: Paring Knife in the Market · Lv 9" && /opensInMarket\(nextReward\) \? " in the Market" : ""/.test(board), `H9: Level 1's row reads "${rows[0]!.main}" — a knife opens in the Market, it isn't handed over`);
+  // Rule changed (developer 2026-10-26): every knife opens by L5 — the Santoku first.
+  assert(rows[0]!.main === "Next: Santoku in the Market · Lv 5" && /opensInMarket\(nextReward\) \? " in the Market" : ""/.test(board), `H9: Level 1's row reads "${rows[0]!.main}" — a knife opens in the Market, it isn't handed over`);
   console.log("     second hints:", JSON.stringify(extras));
   const at = (n: number) => rows.find((r) => r.n === n)!;
   // A knife/board is only unlocked for purchase, never handed over, so the row says "Unlocks … in the Market".
-  assert(at(28).main === "Unlocks: Cleaver in the Market" && at(28).extra === "Next: Established Kitchen · Lv 29", `H1: Lv 28 shows "${at(28).main}" + "${at(28).extra}"`);
-  assert(at(45).extra === "Next: Flourishing Café · Lv 46", `H2: Lv 45 shows "${at(45).main}" + "${at(45).extra}"`);
-  assert(at(55).extra === "Next: Grand Kitchen · Lv 56", `H3: Lv 55 shows "${at(55).main}" + "${at(55).extra}"`);
-  assert(JSON.stringify(extras) === JSON.stringify(["28→Next: Established Kitchen · Lv 29", "45→Next: Flourishing Café · Lv 46", "55→Next: Grand Kitchen · Lv 56"]), "H4: exactly those three rows gain a second hint — every other row is unchanged");
+  // Rule changed (developer 2026-10-26): no knife or board "unlocks" after L5 any more
+  // (liveUnlockReward drops the old per-level ones: Cleaver L28 was stale), and no kitchen tier
+  // opens later, so no row gains a second hint.
+  const lateItems = rows.filter((r) => r.n > 5 && / in the Market$/.test(r.main ?? "") && /^Unlocks:/.test(r.main ?? ""));
+  assert(at(28).main?.startsWith("Next: ") && !/Cleaver/.test(at(28).main ?? ""), `H1: Lv 28 no longer claims "Unlocks: Cleaver" (it shows "${at(28).main}")`);
+  assert(lateItems.length === 0, `H2: no row after Lv 5 says a knife or board unlocks there`, lateItems.map((r) => r.n));
+  assert(at(45).extra === null && at(55).extra === null, `H3: Lv 45 / 55 have no kitchen-tier second hint`);
+  assert(JSON.stringify(extras) === "[]", "H4: no row gains a second hint (every tier is for sale by L5)");
   const shownBgs = new Set(rows.flatMap((r) => [r.main, r.extra]).filter((h): h is string => !!h && /· Lv (16|29|35|46|56)$/.test(h) && KITCHEN_UPGRADE_CATALOG.some((u) => h.includes(u.name))));
   assert([...shownBgs].every((h) => !/Growing Kitchen|Neighborhood Café/.test(h)), "H5: Growing Kitchen / Neighborhood Café stay shown once, as their café rank — no name-clash duplicate");
   for (let lv = 0; lv <= 250; lv++) {
@@ -294,8 +304,10 @@ const INVESTMENT_NAMES = ["Prep Station Upgrade", "Storage Rack", "Service Count
     getKitchenUpgradeState("established-kitchen", moved) === "current" &&
       getKitchenUpgradeState("humble-kitchen", moved) === "past" &&
       getKitchenUpgradeState("growing-kitchen", moved) === "past" &&
-      getKitchenUpgradeState("grand-kitchen", moved) === "locked",
-    "K7: stages read current / past / locked",
+      // Rule changed (developer 2026-10-26): every tier is for sale by L5, so the Grand Kitchen
+      // waits on the tier before it (was "locked" by level).
+      getKitchenUpgradeState("grand-kitchen", moved) === "needsPrevious",
+    "K7: stages read current / past / needs the previous tier",
   );
   const managerExports = Object.keys(await import("../src/game/kitchen/KitchenUpgradeManager.ts"));
   assert(!managerExports.includes("equipKitchenUpgrade") && !managerExports.includes("canEquipKitchenUpgrade"), "K8: there is no way to switch back to an earlier kitchen (equip functions removed)");

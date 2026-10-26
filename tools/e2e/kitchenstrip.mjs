@@ -88,11 +88,12 @@ await boot(page, saveAt(3, 124000, ["humble-kitchen"]));
 await toKitchen();
 const k1 = await strip();
 check(
-  "K1 early on: the Growing Kitchen with its existing price, locked until Level 16",
+  // Rule changed (developer 2026-10-26): every kitchen tier is for sale from Level 5 (was 16).
+  "K1 early on: the Growing Kitchen with its existing price, locked until Level 5",
   !!k1 &&
     k1.state === "locked" &&
     /Growing Kitchen/.test(k1.text) &&
-    /Lv 16/.test(k1.text) &&
+    /Lv 5\b/.test(k1.text) &&
     /\$16,000\.00/.test(k1.text),
   k1,
 );

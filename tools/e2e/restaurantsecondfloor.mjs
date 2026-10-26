@@ -1,6 +1,8 @@
 // The Second Floor (developer 2026-10-16), restaurant build:
-//   1. Level 9: the first-floor map's 2nd-floor button is locked ("Lv 10");
-//   1b. Level 10: the floor can be visited; all six stations are locked ("🔒 Lv.60");
+//   (Rule changed, developer 2026-10-26: everything by Level 5 — the floor and every station open
+//   at L5; were L10 and L60.)
+//   1. Level 4: the first-floor map's 2nd-floor button is locked ("Lv 5");
+//   1b. Level 10: the floor can be visited; every station is already on sale ("🔒 $price");
 //   2. Level 60: all six stations go on sale, still locked until bought ("🔒 $price");
 //   3. buying Coffee debits the price once (one ledger entry); it needs a Floor Server;
 //      a server and a cleaner are one-time hires (one ledger entry each);
@@ -10,8 +12,8 @@
 //      2 × the hourly rate — one ledger entry; a second tap pays nothing;
 //   5. a reload never pays it again; Downstairs returns to the first floor;
 //   6. it fits at 320 / 390 / 768 (screenshots), no page errors;
-//   8. ?floor2 (testing) opens the floor at any level; every station still shows
-//      "🔒 Lv.60" (developer 2026-10-16); with nothing bought nobody walks the floor
+//   8. ?floor2 (testing) opens the floor at any level (checked at L3); every station still shows
+//      its level lock, "🔒 Lv.5" (developer 2026-10-16); with nothing bought nobody walks the floor
 //      (the preview cast is off since the developer's testing ended).
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import {
@@ -76,15 +78,15 @@ const labelsOf = (page) =>
     els.map((e) => e.getAttribute("aria-label")),
   );
 
-// ---------- 1. Locked at 9 ----------
-await boot(page, atLevel(9));
+// ---------- 1. Locked at 4 ----------
+await boot(page, atLevel(4));
 await openMap(page);
 const lockedLabel = await page.$eval('[data-testid="upstairs"]', (b) => b.textContent);
 await page.evaluate(() => document.querySelector('[data-testid="upstairs"]').click());
 await sleep(600);
 check(
-  "1 Level 9: the 2nd-floor button is locked and does nothing",
-  /🔒 2nd floor · Lv 10/.test(lockedLabel) && !(await page.$('[data-testid="second-floor"]')),
+  "1 Level 4: the 2nd-floor button is locked and does nothing",
+  /🔒 2nd floor · Lv 5/.test(lockedLabel) && !(await page.$('[data-testid="second-floor"]')),
   { lockedLabel },
 );
 
@@ -105,10 +107,11 @@ const l10Buy = await page.evaluate(() =>
   ),
 );
 check(
-  "1b Level 10: the floor can be visited; all six stations show 🔒 Lv.60 and can't be bought",
-  l10Labels.filter((z) => /opens at Level 60$/.test(z)).length === 6 &&
-    l10Pills.filter((t) => t === "🔒Lv.60").length === 6 &&
-    l10Buy,
+  "1b Level 10: the floor can be visited; every station is already on sale (🔒 + its price), none says 'For sale from Level'",
+  l10Labels.filter((z) => / — locked, buy for \$[\d,]+\.\d\d$/.test(z)).length === 6 &&
+    l10Pills.length === 6 &&
+    l10Pills.every((t) => /^🔒\$[\d,]+\.\d\d$/.test(t)) &&
+    !l10Buy,
   { l10Labels, l10Pills, l10Buy },
 );
 
@@ -293,7 +296,7 @@ check(
 
 // ---------- 8. The testing switch: ?floor2 opens the floor; stations keep their lock ----------
 await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });
-await boot(page, atLevel(5));
+await boot(page, atLevel(3));
 const base = process.env.KC_URL || "http://127.0.0.1:4173/";
 await page.goto(base + "?floor2", { waitUntil: "domcontentloaded" });
 await sleep(2500);
@@ -315,11 +318,11 @@ const lockPills = await page.$$eval(
 );
 await shot(page, "second-floor-test-locks-390");
 check(
-  "8 ?floor2 (testing): the floor opens at Level 5, all six stations stay locked with 🔒 Lv.60, and nobody walks the floor (nothing bought; the preview cast is off)",
+  "8 ?floor2 (testing): the floor opens at Level 3, all six stations stay locked with 🔒 Lv.5, and nobody walks the floor (nothing bought; the preview cast is off)",
   /⬆ 2nd floor/.test(testLabel) &&
     testZones.length === 9 &&
-    testZones.filter((z) => /opens at Level 60$/.test(z)).length === 6 &&
-    lockPills.filter((t) => t === "🔒Lv.60").length === 6 &&
+    testZones.filter((z) => /opens at Level 5$/.test(z)).length === 6 &&
+    lockPills.filter((t) => t === "🔒Lv.5").length === 6 &&
     previewKinds.length === 0,
   { testLabel, testZones, lockPills, previewKinds },
 );

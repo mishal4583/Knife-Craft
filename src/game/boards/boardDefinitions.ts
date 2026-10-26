@@ -8,6 +8,7 @@
 import type { BoardDefinition } from "./boardTypes";
 import { dollars } from "../money";
 import { remapCampaignThreshold } from "../levels/campaignSelection";
+import { earlyUnlock } from "../config/earlyUnlocks";
 
 export const DEFAULT_BOARD_ID = "walnut" as const;
 
@@ -131,7 +132,7 @@ const SOURCE_BOARD_CATALOG: BoardDefinition[] = [
   },
 ];
 
-export const BOARD_CATALOG: BoardDefinition[] = SOURCE_BOARD_CATALOG.map((item) => ({ ...item, unlockLevel: remapCampaignThreshold(item.unlockLevel) }));
+export const BOARD_CATALOG: BoardDefinition[] = SOURCE_BOARD_CATALOG.map((item) => ({ ...item, unlockLevel: earlyUnlock(remapCampaignThreshold(item.unlockLevel)) }));
 
 export function findBoard(id: string): BoardDefinition | undefined {
   return BOARD_CATALOG.find((b) => b.id === id);

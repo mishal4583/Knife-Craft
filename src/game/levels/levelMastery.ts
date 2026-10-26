@@ -211,6 +211,21 @@ export function getNextRewardPreview(levelNumber: number): RewardPreview | null 
  * Kitchen (Lv 41), Lv 70's Pasta Kitchen → Flourishing Café (Lv 71), Lv 90's
  * Obsidian Knife → Grand Kitchen (Lv 91).
  */
+/**
+ * A level's own `unlockReward`, while it is still true. A knife or board it names is shown
+ * only if the catalog still opens that item at this level — since early game phase 4
+ * (developer 2026-10-26) every knife and board is for sale by Level 5, so the old "Unlocks:
+ * Cleaver" at Level 28 would be false. Café ranks and story rewards are unchanged.
+ */
+export function liveUnlockReward(level: LevelDefinition): LevelDefinition["unlockReward"] {
+  const reward = level.unlockReward;
+  if (!reward || (reward.type !== "knife" && reward.type !== "board")) return reward;
+  const catalog: readonly { id: string; unlockLevel: number }[] =
+    reward.type === "knife" ? KNIFE_CATALOG : BOARD_CATALOG;
+  const item = catalog.find((x) => x.id === reward.id);
+  return item && item.unlockLevel === levelNumber(level.id) ? reward : undefined;
+}
+
 export function getNextKitchenStagePreview(levelNumber: number): RewardPreview | null {
   const next = getNextRewardPreview(levelNumber);
   if (!next) return null;

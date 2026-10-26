@@ -76,10 +76,12 @@ console.log("C. Catalog");
   const ids = STATIONS.map((s) => s.id).join();
   assert(
     ids === "coffee,drinks,pizza,burger,iceCream,hotFood" &&
-      SECOND_FLOOR_OPENS_AT === 10 &&
-      STATIONS_OPEN_AT === 60 &&
+      // Rule changed (developer 2026-10-26: everything by Level 5): the floor and every station
+      // open at L5 (were L10 and L60). Prices and income unchanged.
+      SECOND_FLOOR_OPENS_AT === 5 &&
+      STATIONS_OPEN_AT === 5 &&
       STATIONS.every((s) => s.unlockLevel === STATIONS_OPEN_AT),
-    "C1: six stations (Ice Cream, no Pasta & Noodle); the floor opens at L10, every station goes on sale at L60",
+    "C1: six stations (Ice Cream, no Pasta & Noodle); the floor opens at L5, every station goes on sale at L5",
   );
   assert(
     STATIONS.every(
@@ -97,8 +99,8 @@ console.log("C. Catalog");
     "C2: whole-cent prices and rates; upgrades cost more and earn more; the cap never shrinks",
   );
   assert(
-    !isSecondFloorOpen(9) && isSecondFloorOpen(10),
-    "C3: the floor is closed at L9, open to visit at L10",
+    !isSecondFloorOpen(4) && isSecondFloorOpen(5),
+    "C3: the floor is closed at L4, open to visit at L5 (was L9 / L10)",
   );
 }
 
@@ -133,11 +135,11 @@ console.log("E. Earnings");
 console.log("B. Buy and upgrade");
 {
   const coffee = stationDef("coffee");
-  const locked = buyStation(fresh(10_000_000), "pizza", 59, T0);
-  const closed = buyStation(fresh(10_000_000), "coffee", 9, T0);
+  const locked = buyStation(fresh(10_000_000), "pizza", 4, T0);
+  const closed = buyStation(fresh(10_000_000), "coffee", 4, T0);
   assert(
     !locked.ok && locked.reason === "locked" && !closed.ok && closed.reason === "locked",
-    "B1: no station can be bought before L60 (nor on a closed floor)",
+    "B1: no station can be bought before L5 (was L60), nor on a closed floor",
   );
   const short = fresh(coffee.price - 1);
   const poor = buyStation(short, "coffee", 60, T0);
@@ -322,11 +324,11 @@ console.log("L. Station locks");
       /const locked = !!station && !owned/.test(view),
     'L3: every unbought station shows the first floor\'s lock pill ("🔒 Lv.60", then its price)',
   );
-  const r = buyStation(fresh(1_000_000_00), "hotFood", 59, T0);
-  const ok = buyStation(fresh(1_000_000_00), "hotFood", 60, T0);
+  const r = buyStation(fresh(1_000_000_00), "hotFood", 4, T0);
+  const ok = buyStation(fresh(1_000_000_00), "hotFood", 5, T0);
   assert(
     !r.ok && r.reason === "locked" && ok.ok,
-    "L4: even the last station (Hot Food) is refused at L59 and can be bought at L60",
+    "L4: even the last station (Hot Food) is refused at L4 and can be bought at L5 (was L59 / L60)",
   );
   const noStation = hireFloorStaff(fresh(1_000_000_00), "server", T0);
   assert(
