@@ -8,6 +8,9 @@
   Server. No price changed: the first knife / board / Coffee machine is affordable by ~L5–7,
   the $16k Growing Kitchen by ~L36 for a saver. Report
   `docs/reports/EARLYGAME-RC-2026-10-26.md`.
+- Release gate: Second Floor audited (no change). Coffee + server = $60 per 8 h; a player who
+  reinvests the floor often can end L150 well above the band — developer decision (report §9,
+  `scripts/second-floor-early-sim.mts`). $0 start played L1–5 in the browser.
 
 
 ## Early game, phase 4: everything by Level 5, paid staff hires (2026-10-26, branch `claude/early-game-unlocks`)
