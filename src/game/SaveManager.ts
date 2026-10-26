@@ -243,8 +243,11 @@ export const DEFAULT_ENDLESS_PROGRESS: EndlessProgress = { date: "", coinsEarned
 
 export const DEFAULT_SAVE: SaveData = {
   version: SAVE_VERSION,
-  /** $1,240.00 starting balance (wallet amounts are integer US cents — see money.ts). */
-  credits: dollars(1240),
+  /**
+   * A new player starts with an empty wallet and earns everything (developer 2026-10-26; was
+   * $1,240.00). Wallet amounts are integer US cents — see money.ts.
+   */
+  credits: 0,
   equippedKnifeId: "chef",
   equippedBoardId: "walnut",
   ownedKnifeIds: ["chef"],

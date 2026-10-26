@@ -14,6 +14,7 @@
  *
  * Run: npx tsx scripts/service-floor-qa.mts
  */
+import { saveManagerChangesBeyondStartCash } from "./startCashGuard.mts";
 import fs from "node:fs";
 import path from "node:path";
 import { execSync } from "node:child_process";
@@ -183,12 +184,16 @@ console.log("D. Wiring");
 console.log("E. Nothing else moves");
 {
   // Compared with the tree before Phase B (095115a, the Phase 0 report).
-  const diff = execSync(
-    // Early-game phase 4 (developer 2026-10-26): everything unlocked by Level 5 — only the unlock-level
-    // lines of these catalogs change (staff-hire-qa U5 checks no price moved).
-    "git diff 095115a -- src/game/SaveManager.ts src/game/business/businessTypes.ts src/game/economy ':!src/game/economy/staffDefinitions.ts' src/game/daily/EndlessServiceManager.ts src/game/restaurant/endlessRestaurant.ts",
-    { cwd: ROOT, encoding: "utf8" },
-  );
+  // Rule changed (developer 2026-10-26, "the game starts at 0 cash"): SaveManager may change
+  // only the new save's opening credits (scripts/startCashGuard.mts).
+  const diff =
+    saveManagerChangesBeyondStartCash("095115a", ROOT).join("\n") +
+    execSync(
+      // Early-game phase 4 (developer 2026-10-26): everything unlocked by Level 5 — only the unlock-level
+      // lines of these catalogs change (staff-hire-qa U5 checks no price moved).
+      "git diff 095115a -- src/game/business/businessTypes.ts src/game/economy ':!src/game/economy/staffDefinitions.ts' src/game/daily/EndlessServiceManager.ts src/game/restaurant/endlessRestaurant.ts",
+      { cwd: ROOT, encoding: "utf8" },
+    );
   assert(
     diff.trim() === "",
     "E1: no save field, no wallet / ledger change, the Business Day gate (Endless only) untouched",

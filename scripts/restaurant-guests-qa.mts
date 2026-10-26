@@ -20,6 +20,7 @@
  *
  * Run: npx tsx scripts/restaurant-guests-qa.mts
  */
+import { dollars } from "../src/game/money.ts";
 import { lbPerMarketUnit, marketStep } from "../src/game/business/measure.ts";
 import fs from "node:fs";
 import { serviceUsesStock } from "../src/game/restaurant/campaignStock.ts";
@@ -77,6 +78,9 @@ const progressAt = (n: number): LevelProgress => ({
 });
 const saveAt = (n: number, inactive: string[] = []): SaveData => ({
   ...DEFAULT_SAVE,
+  // A Level-n player has earned money; since 2026-10-26 a new save starts at $0, so the
+  // fixture keeps the old opening wallet ($1,240) its K checks buy stock with.
+  credits: dollars(1240),
   levelProgress: progressAt(n),
   business: {
     ...DEFAULT_SAVE.business,

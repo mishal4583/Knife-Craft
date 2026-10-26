@@ -15,6 +15,7 @@
  *
  * Run: npx tsx scripts/oven-step-qa.mts
  */
+import { saveManagerChangesBeyondStartCash } from "./startCashGuard.mts";
 import fs from "node:fs";
 import path from "node:path";
 import { execSync } from "node:child_process";
@@ -179,13 +180,17 @@ console.log("D. Presentation only");
 
 console.log("E. Nothing else moves");
 {
-  const diff = execSync(
-    // Early-game phase 4 (developer 2026-10-26): everything unlocked by Level 5 — only the unlock-level
-    // lines of these catalogs change (staff-hire-qa U5 checks no price moved); levelMastery.ts only
-    // drops a level's stale knife/board "Unlocks" hint (liveUnlockReward, progression-preview-qa H).
-    "git diff 0e0d83b -- src/game/SaveManager.ts src/game/business/businessTypes.ts src/game/economy ':!src/game/economy/staffDefinitions.ts' src/game/levels ':!src/game/levels/levelMastery.ts' src/game/recipes",
-    { cwd: ROOT, encoding: "utf8" },
-  );
+  const diff =
+    saveManagerChangesBeyondStartCash("0e0d83b", ROOT).join("\n") +
+    execSync(
+      // Early-game phase 4 (developer 2026-10-26): everything unlocked by Level 5 — only the unlock-level
+      // lines of these catalogs change (staff-hire-qa U5 checks no price moved); levelMastery.ts only
+      // drops a level's stale knife/board "Unlocks" hint (liveUnlockReward, progression-preview-qa H).
+      // Rule changed (developer 2026-10-26, "the game starts at 0 cash"): SaveManager may change
+      // only the new save's opening credits (scripts/startCashGuard.mts).
+      "git diff 0e0d83b -- src/game/business/businessTypes.ts src/game/economy ':!src/game/economy/staffDefinitions.ts' src/game/levels ':!src/game/levels/levelMastery.ts' src/game/recipes",
+      { cwd: ROOT, encoding: "utf8" },
+    );
   assert(
     diff.trim() === "",
     "E1: no save field, economy, level or recipe change",

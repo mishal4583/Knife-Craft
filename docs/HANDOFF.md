@@ -1,5 +1,14 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## Early game, release candidate: $0 start, Second Floor and kitchen review (2026-10-26, branch `claude/early-game-unlocks`)
+
+- A new save starts with **$0** (`DEFAULT_SAVE.credits`, was $1,240; developer 2026-10-26).
+  Old saves keep their wallet. Completionist L150 $130,478, saver $266,442, prudent $131,426.
+- Second Floor station panel: shows "need $X more" and that a machine earns only with a Floor
+  Server. No price changed: the first knife / board / Coffee machine is affordable by ~L5–7,
+  the $16k Growing Kitchen by ~L36 for a saver. Report
+  `docs/reports/EARLYGAME-RC-2026-10-26.md`.
+
 
 ## Early game, phase 4: everything by Level 5, paid staff hires (2026-10-26, branch `claude/early-game-unlocks`)
 
@@ -692,7 +701,7 @@ conversation.
 
 ## 7. Useful facts
 
-- Starting wallet $1,240.00 (124,000 cents). Levels 1–10 on a first run pay
+- Starting wallet $0 since 2026-10-26 (was $1,240.00, 124,000 cents). Levels 1–10 on a first run pay
   $667 in order settlements + $636 completion rewards (after the G2 fix).
 - Intro timing: Part 1 7.6 s, Part 2 6.0 s, Part 3 7.9 s; measured live
   22.4 s including two prompt button presses; Skip closes in ~130 ms.

@@ -79,7 +79,9 @@ const read = (rel: string) => fs.readFileSync(path.resolve(ROOT, rel), "utf8");
   const oldBoards: Record<string, number> = { walnut: 0, maple: 300, herb: 500, marble: 750, darkoak: 1000, copper: 1500, butcherblock: 1800, seafoodslate: 2000 };
   assert(BOARD_CATALOG.every((b) => b.price === dollars(oldBoards[b.id]!)), "B3: every board is its old price read as dollars");
   assert(STAFF_CATALOG.map((s) => formatUsd(s.price)).join(" ") === "$3,000.00 $6,000.00 $4,000.00", "B4: staff $3,000 / $6,000 / $4,000");
-  assert(DEFAULT_SAVE.credits === dollars(1240) && formatUsd(DEFAULT_SAVE.credits) === "$1,240.00", "B5: a new player starts with $1,240.00");
+  // Rule changed (developer 2026-10-26, "the game starts at 0 cash and the player earns from
+  // it"): was $1,240.00.
+  assert(DEFAULT_SAVE.credits === 0 && formatUsd(DEFAULT_SAVE.credits) === "$0.00", "B5: a new player starts with $0.00 and earns from there");
   const s: SaveData = { ...structuredClone(DEFAULT_SAVE), credits: dollars(350), levelProgress: { ...DEFAULT_SAVE.levelProgress, highestUnlockedLevelId: "level-10" } };
   const r = buyKnife(s, "santoku");
   assert(r.ok && r.save.credits === 0, "B6: $350.00 buys the Santoku exactly, landing on $0.00");

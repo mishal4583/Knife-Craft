@@ -1462,7 +1462,9 @@ preparation = PreparationScene; events = `events.ts`; platform =
     floor);
   - art `public/restaurant-map/second-floor.webp` (source `art-source/second-floor-food-hall.png`).
 - **Unlock** (early game phase 4, developer 2026-10-26: everything by Level 5 — the floor and
-  every station now open at **Level 5**; the text below is the 2026-10-16 design):
+  every station now open at **Level 5**; the text below is the 2026-10-16 design). Since the
+  release candidate (2026-10-26) a station's map panel shows the shortfall ("$400.00 · need
+  $X more") and, when no Floor Server would run it, "Earns once a Floor Server runs it":
   players can **visit the floor from Level 10**
   (`SECOND_FLOOR_OPENS_AT`). The first-floor map shows "⬆ 2nd floor"
   (`data-testid="upstairs"`), or "🔒 2nd floor · Lv 10" before then. **Every station goes
@@ -1558,6 +1560,17 @@ preparation = PreparationScene; events = `events.ts`; platform =
   +2 h collect once, reload, Downstairs, widths 320 / 390 / 768).
 
 ## 7. ECONOMY RULES
+
+### Starting wallet $0 (developer 2026-10-26)
+
+A new save opens with **$0** (`DEFAULT_SAVE.credits`; was $1,240): the player earns everything
+from Level 1 (≈ $200 after L1). No ledger entry (it is the opening cash, as before). Old saves
+keep their wallet (a loaded save always carries `credits`). Nothing early needs money the
+first level hasn't paid; a short service is covered as before (rewarded ad or supplier
+credit). Restaurant L150: completionist $130,478 (−$2,438 vs phase 4), saver $266,442
+(−$1,240), prudent $131,426; the prudent $350 floor holds from when its $500 reserve is first
+earned (`minCashAfterReserve`). Classic sims: −$1,240 to −$1,260. The frozen campaign figure
+(Net $101,005) is unchanged.
 
 ### Gift streak rewards (developer 2026-10-21)
 

@@ -633,9 +633,12 @@ for (const [r] of profiles) {
 // Re-baselined 2026-10-17 (150 levels): the $100k–$150k target is the Restaurant build's
 // (CLAUDE.md §7, restaurant-final-economy-qa); this classic run's final is pinned as its
 // deterministic 150-level baseline (it collects achievements as they are earned).
+// Rule changed (developer 2026-10-26, "the game starts at 0 cash"): a new save starts with $0
+// instead of $1,240 — the classic completionist ends $1,260 lower ($33,878.07 → $32,618.07: the
+// $1,240 plus purchase timing).
 assert(
-  completionist.final === 3_387_807,
-  `K5: the classic completionist ends at ${fmt(completionist.final)} — the 150-level baseline $33,878.07`,
+  completionist.final === 3_261_807,
+  `K5: the classic completionist ends at ${fmt(completionist.final)} — the 150-level baseline $32,618.07`,
 );
 assert(
   completionist.everythingOwned &&

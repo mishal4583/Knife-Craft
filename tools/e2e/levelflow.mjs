@@ -104,10 +104,16 @@ check(
   g2.levelProgress,
 );
 const g2Sum = g2.economyLedger.reduce((s, e) => s + e.amount, 0);
-check("G2.6 wallet = $1,240 + signed ledger", g2.credits === 124000 + g2Sum, {
-  credits: g2.credits,
-  ledgerSum: g2Sum,
-});
+// Rule changed (developer 2026-10-26, "the game starts at 0 cash"): a new game opens with $0
+// (was $1,240), so the wallet is exactly what Level 1 earned.
+check(
+  "G2.6 wallet = $0 + signed ledger (a new game starts at $0)",
+  g2.credits === g2Sum && g2Sum > 0,
+  {
+    credits: g2.credits,
+    ledgerSum: g2Sum,
+  },
+);
 
 // ---------- G2 + G1: fresh player, Level 1, Serve -> Back to Kitchen ----------
 await freshPlayer(page);

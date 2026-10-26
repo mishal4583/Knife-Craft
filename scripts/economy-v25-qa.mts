@@ -160,9 +160,12 @@ table.push(fromRun(completionist), fromRun(normal), fromRun(saver), fromRun(zero
 // Rule changed (developer 2026-10-26: everything for sale by Level 5): the same items at the same
 // prices, bought earlier — the classic completionist ends $12 higher ($31,674 → $31,686) and the
 // normal player $12 lower ($29,808 → $29,796), from the purchase timing alone.
+// Rule changed (developer 2026-10-26, "the game starts at 0 cash"): a new save starts with $0
+// instead of $1,240 — completionist $31,686 → $30,446, normal player $29,796 → $28,550 (the
+// $1,240 plus purchase timing).
 assert(
-  completionist.final === dollars(31_686),
-  `A1 (18): classic completionist final cash ${fmt(completionist.final)} === the 150-level baseline $31,686.00`,
+  completionist.final === dollars(30_446),
+  `A1 (18): classic completionist final cash ${fmt(completionist.final)} === the 150-level baseline $30,446.00`,
 );
 assert(
   completionist.everythingOwned,
@@ -184,8 +187,8 @@ assert(
   "A4: Restaurant Development costs exactly $135,000 in total",
 );
 assert(
-  normal.final === dollars(29_796) && normal.everythingOwned,
-  `A5: a normal player who buys everything owns it all and ends at the 150-level baseline (${fmt(normal.final)} === $29,796.00)`,
+  normal.final === dollars(28_550) && normal.everythingOwned,
+  `A5: a normal player who buys everything owns it all and ends at the 150-level baseline (${fmt(normal.final)} === $28,550.00)`,
 );
 for (const r of [completionist, normal, saver, zeroStart]) {
   assert(

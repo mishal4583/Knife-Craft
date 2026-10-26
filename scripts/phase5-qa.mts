@@ -11,6 +11,7 @@
  *
  * Run: npx tsx scripts/phase5-qa.mts
  */
+import { saveManagerChangesBeyondStartCash } from "./startCashGuard.mts";
 import fs from "node:fs";
 import path from "node:path";
 import { execSync } from "node:child_process";
@@ -370,10 +371,13 @@ const L = (...e: EconomyLedgerEntry[]) => ({ economyLedger: e });
 // ───────────────────────────────────────────────────────────── E. save & money
 console.log("\nE. Save and money");
 {
-  const saveDiff = execSync(`git diff --stat ${PHASE_BASE} -- src/game/SaveManager.ts src/types`, {
-    cwd: ROOT,
-    encoding: "utf8",
-  });
+  const saveDiff = // Rule changed (developer 2026-10-26, "the game starts at 0 cash"): SaveManager may change
+    // only the new save's opening credits (scripts/startCashGuard.mts).
+    saveManagerChangesBeyondStartCash(PHASE_BASE, ROOT).join("\n") +
+    execSync(`git diff --stat ${PHASE_BASE} -- src/types`, {
+      cwd: ROOT,
+      encoding: "utf8",
+    });
   assert(
     saveDiff.trim() === "",
     "E1: no save-schema change (SaveManager.ts and src/types untouched)",

@@ -12,6 +12,7 @@ import { FLOOR_LIFE_ALWAYS_PREVIEW, FLOOR_LIFE_PREVIEW } from "@/game/restaurant
 import { KButton } from "@/components/kc/common/primitives";
 import { useAdBonus } from "@/components/kc/ads/adBonusApi";
 import { formatUsd } from "@/game/money";
+import { shortfall } from "@/game/economy/wallet";
 import type { SaveData } from "@/game/SaveManager";
 import {
   FLOOR_STAFF,
@@ -287,19 +288,35 @@ export function SecondFloorView({
     const owned = floor.stations[d.id];
     if (!owned) {
       const locked = !isStationUnlocked(d, playerLevel);
+      const short = shortfall(d.price, save.credits);
+      // Early game phase 5 (2026-10-26): a machine bought now earns only once a Floor Server
+      // runs it — say so before the purchase, with the server's one-time price.
+      const needsServer = (floor.servers ?? 0) * FLOOR_STAFF.server.covers <= ownedCount;
       return (
         <>
           <p className="font-ui text-[13px] leading-snug text-walnut/75">{d.blurb}</p>
           <p className="mt-2 font-ui text-[12.5px] text-walnut-dark">
             Earns {formatUsd(d.perHour[0])} an hour · stores up to {hoursText(d.capHours[0])}
           </p>
+          {needsServer ? (
+            <p
+              className="mt-1 font-ui text-[12px] text-walnut/65"
+              data-testid="station-needs-server"
+            >
+              🧑‍🍳 Earns once a Floor Server runs it ({formatUsd(FLOOR_STAFF.server.price)} once)
+            </p>
+          ) : null}
           <div className="mt-3">
             <KButton
               full
-              disabled={locked || save.credits < d.price}
+              disabled={locked || short > 0}
               onClick={() => act({ kind: "buy", id: d.id })}
             >
-              {locked ? `🔒 For sale from Level ${d.unlockLevel}` : `Buy for ${formatUsd(d.price)}`}
+              {locked
+                ? `🔒 For sale from Level ${d.unlockLevel}`
+                : short > 0
+                  ? `${formatUsd(d.price)} · need ${formatUsd(short)} more`
+                  : `Buy for ${formatUsd(d.price)}`}
             </KButton>
           </div>
         </>

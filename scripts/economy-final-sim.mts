@@ -65,6 +65,12 @@ export type ScenarioResult = {
   final: number;
   rows: Checkpoint[];
   minCash: { cash: number; where: string };
+  /**
+   * The lowest cash once the wallet first reached the profile's reserve (developer 2026-10-26:
+   * a new player starts at $0, so a reserve can only hold after it was first earned). Without
+   * a reserve, the same as `minCash`.
+   */
+  minCashAfterReserve: { cash: number; where: string };
   stats: Stats;
   save: SaveData;
 };
@@ -128,6 +134,8 @@ export function runScenario(sc: Scenario): ScenarioResult {
   const rows: Checkpoint[] = [];
   let peak = 0;
   let minCash = { cash: Number.POSITIVE_INFINITY, where: "" };
+  let minCashAfterReserve = { cash: Number.POSITIVE_INFINITY, where: "" };
+  let reserveReached = !sc.opts.reserve;
   const { s, stats } = run(
     sc.name,
     start,
@@ -137,6 +145,9 @@ export function runScenario(sc: Scenario): ScenarioResult {
       observe(where, x) {
         peak = Math.max(peak, getInventoryUsedCapacity(x.business.inventory));
         if (x.credits < minCash.cash) minCash = { cash: x.credits, where };
+        if (!reserveReached && x.credits >= (sc.opts.reserve ?? 0)) reserveReached = true;
+        if (reserveReached && x.credits < minCashAfterReserve.cash)
+          minCashAfterReserve = { cash: x.credits, where };
       },
       onLevel(n, x, st) {
         if (!(CHECKPOINTS as readonly number[]).includes(n)) return;
@@ -169,7 +180,16 @@ export function runScenario(sc: Scenario): ScenarioResult {
     },
     false,
   );
-  return { key: sc.key, name: sc.name, final: s.credits, rows, minCash, stats, save: s };
+  return {
+    key: sc.key,
+    name: sc.name,
+    final: s.credits,
+    rows,
+    minCash,
+    minCashAfterReserve,
+    stats,
+    save: s,
+  };
 }
 
 export function printScenario(r: ScenarioResult) {

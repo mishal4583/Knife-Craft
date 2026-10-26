@@ -337,10 +337,28 @@ console.log("E. No save, wallet, ledger or payment change");
     `git diff ${BASE} --stat -- src/game/SaveManager.ts src/game/business/businessTypes.ts src/game/economy ':!src/game/economy/staffDefinitions.ts' src/game/business/BusinessServiceManager.ts src/game/levels/LevelManager.ts`,
     { cwd: ROOT, encoding: "utf8" },
   );
+  // Rule changed (developer 2026-10-26, "the game starts at 0 cash"): SaveManager may change
+  // only the new save's opening credits (DEFAULT_SAVE.credits $1,240 → $0) and its comment.
+  const saveLines = execSync(`git diff -U0 ${BASE} -- src/game/SaveManager.ts`, {
+    cwd: ROOT,
+    encoding: "utf8",
+  })
+    .split("\n")
+    .filter((l) => /^[+-](?![+-])/.test(l))
+    .filter(
+      (l) =>
+        !/^-\s*\/\*\* \$1,240\.00 starting balance|^-\s*credits: dollars\(1240\),$|^\+\s*credits: 0,$|^\+\s*(\/\*\*|\*\/|\*( .*)?)$/.test(
+          l,
+        ),
+    );
+  const rest = execSync(
+    `git diff ${BASE} --stat -- src/game/business/businessTypes.ts src/game/economy ':!src/game/economy/staffDefinitions.ts' src/game/business/BusinessServiceManager.ts src/game/levels/LevelManager.ts`,
+    { cwd: ROOT, encoding: "utf8" },
+  );
   assert(
-    diff.trim() === "",
-    "E1: SaveManager, the business and level save types, the wallet / ledger and payment are unchanged (phase 4: staffDefinitions.ts changes its unlock levels only)",
-    diff,
+    saveLines.length === 0 && rest.trim() === "",
+    "E1: SaveManager (but the new save's opening $0), the business and level save types, the wallet / ledger and payment are unchanged (phase 4: staffDefinitions.ts changes its unlock levels only)",
+    { saveLines, rest },
   );
 }
 

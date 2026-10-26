@@ -126,12 +126,14 @@ console.log("S. Safety");
     // Rule changed (developer 2026-10-26, "let them pay for it"): a required hire now pays its
     // fee too (the Indian Chef, $136, at L35, with that service's supplies: $399.95) — never
     // below $350, still never credit.
-    g.minCash.cash >= dollars(350) &&
+    // Rule changed (developer 2026-10-26, "the game starts at 0 cash"): a new player starts with
+    // an empty wallet, so the $350 floor holds from the moment the $500 reserve was first earned.
+    g.minCashAfterReserve.cash >= dollars(350) &&
       g.stats.credit === 0 &&
       supplierCreditOf(g.save).owed === 0 &&
       g.final >= dollars(100_000) &&
       [20, 30, 40, 50, 75, 91].every((n) => atL(g, n).wallet >= dollars(350)),
-    `S3: a prudent completionist (keeps $500) never dips below $350 (a required hire's fee; lowest ${$(g.minCash.cash)}), never needs supplier credit, still ends ${$(g.final)}`,
+    `S3: a prudent completionist (keeps $500 once earned) never dips below $350 after that (a required hire's fee; lowest ${$(g.minCashAfterReserve.cash)}, ${g.minCashAfterReserve.where}), never needs supplier credit, still ends ${$(g.final)}`,
   );
 }
 

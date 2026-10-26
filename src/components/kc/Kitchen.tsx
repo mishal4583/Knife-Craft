@@ -303,7 +303,7 @@ export function Kitchen({
           aria-expanded={expandedShortcut === "daily-maintenance"}
           aria-label={
             attention.nav["restaurant-map"]
-              ? `Daily Check, ${attention.nav["restaurant-map"]} items need attention${expandedShortcut === "daily-maintenance" ? ". Tap again to open" : ". Tap to expand"}`
+              ? `Daily Check, ${attention.nav["restaurant-map"]} ${attention.nav["restaurant-map"] === 1 ? "item needs" : "items need"} attention${expandedShortcut === "daily-maintenance" ? ". Tap again to open" : ". Tap to expand"}`
               : `Daily Check${expandedShortcut === "daily-maintenance" ? ". Tap again to open" : ". Tap to expand"}`
           }
           onPointerEnter={(event) => {
@@ -390,7 +390,7 @@ export function Kitchen({
                 !unlocked
                   ? `${item.label}, opens at Level ${opensAt}${expandedShortcut === item.id ? ". Locked" : ". Tap to expand"}`
                   : count
-                    ? `${item.label}, ${count} items need attention${expandedShortcut === item.id ? ". Tap again to open" : ". Tap to expand"}`
+                    ? `${item.label}, ${count} ${count === 1 ? "item needs" : "items need"} attention${expandedShortcut === item.id ? ". Tap again to open" : ". Tap to expand"}`
                     : `${item.label}${expandedShortcut === item.id ? ". Tap again to open" : ". Tap to expand"}`
               }
               aria-disabled={!unlocked || undefined}
@@ -1048,7 +1048,7 @@ export function BottomNav({ active, go }: { active: ScreenId | null; go: (s: Scr
               locked
                 ? `${n.label}, opens at Level ${opensAt}`
                 : attention.nav[n.id]
-                  ? `${n.label}, ${attention.nav[n.id]} items need attention`
+                  ? `${n.label}, ${attention.nav[n.id]} ${attention.nav[n.id] === 1 ? "item needs" : "items need"} attention`
                   : undefined
             }
             data-nav={n.id}
@@ -1087,7 +1087,7 @@ export function BottomNav({ active, go }: { active: ScreenId | null; go: (s: Scr
             {!locked && attention.nav[n.id] ? (
               <span
                 aria-hidden="true"
-                title={`${attention.nav[n.id]} items need attention`}
+                title={`${attention.nav[n.id]} ${attention.nav[n.id] === 1 ? "item needs" : "items need"} attention`}
                 className="absolute -right-0.5 -top-1 grid h-[18px] w-[18px] place-items-center rounded-full border border-[#fff0d0] bg-[#d83b2e] font-ui text-[12px] font-black leading-none text-white shadow-[0_2px_5px_rgba(0,0,0,0.55)]"
               >
                 !

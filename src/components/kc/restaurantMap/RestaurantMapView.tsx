@@ -312,7 +312,7 @@ export const RestaurantMap: React.FC<RestaurantMapProps> = ({
                         aria-label={`${attentionCounts[zone.id]} attention ${
                           attentionCounts[zone.id] === 1 ? "item" : "items"
                         }; ${(attentionSymbols[zone.id] ?? ["⚠️"]).join(" ")}`}
-                        title={`${attentionCounts[zone.id]} items need attention`}
+                        title={`${attentionCounts[zone.id]} ${attentionCounts[zone.id] === 1 ? "item needs" : "items need"} attention`}
                       >
                         {(attentionSymbols[zone.id] ?? ["⚠️"]).map((symbol, index) => (
                           <span key={`${zone.id}-attention-${index}`} aria-hidden="true">{symbol}</span>

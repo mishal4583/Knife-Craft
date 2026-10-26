@@ -9,6 +9,7 @@
  *
  * Run: npx tsx scripts/next-kitchen-strip-qa.mts
  */
+import { saveManagerChangesBeyondStartCash } from "./startCashGuard.mts";
 import fs from "node:fs";
 import path from "node:path";
 import { execSync } from "node:child_process";
@@ -102,15 +103,19 @@ console.log("B. Read-only");
 
 console.log("E. Nothing else moves");
 {
-  const diff = execSync(
-    // Early-game phase 4 (developer 2026-10-26): everything unlocked by Level 5 — only the unlock-level
-    // lines of these catalogs change (staff-hire-qa U5 checks no price moved).
-    // KitchenUpgradeManager: the pre-V2.5 migration keeps its old grant levels.
-    // levelMastery.ts: a level's stale knife/board "Unlocks" hint is dropped (display only).
-    "git diff 876ac79 -- src/game/SaveManager.ts src/game/business/businessTypes.ts src/game/economy ':!src/game/economy/staffDefinitions.ts' src/game/kitchen/kitchenUpgradeDefinitions.ts src/game/kitchen/KitchenUpgradeManager.ts src/game/restaurant/restaurantInvestments.ts src/game/levels ':!src/game/levels/levelMastery.ts'" +
-      " ':!src/game/kitchen/kitchenUpgradeDefinitions.ts' ':!src/game/kitchen/KitchenUpgradeManager.ts'",
-    { cwd: ROOT, encoding: "utf8" },
-  );
+  const diff =
+    saveManagerChangesBeyondStartCash("876ac79", ROOT).join("\n") +
+    execSync(
+      // Early-game phase 4 (developer 2026-10-26): everything unlocked by Level 5 — only the unlock-level
+      // lines of these catalogs change (staff-hire-qa U5 checks no price moved).
+      // KitchenUpgradeManager: the pre-V2.5 migration keeps its old grant levels.
+      // levelMastery.ts: a level's stale knife/board "Unlocks" hint is dropped (display only).
+      // Rule changed (developer 2026-10-26, "the game starts at 0 cash"): SaveManager may change
+      // only the new save's opening credits (scripts/startCashGuard.mts).
+      "git diff 876ac79 -- src/game/business/businessTypes.ts src/game/economy ':!src/game/economy/staffDefinitions.ts' src/game/kitchen/kitchenUpgradeDefinitions.ts src/game/kitchen/KitchenUpgradeManager.ts src/game/restaurant/restaurantInvestments.ts src/game/levels ':!src/game/levels/levelMastery.ts'" +
+        " ':!src/game/kitchen/kitchenUpgradeDefinitions.ts' ':!src/game/kitchen/KitchenUpgradeManager.ts'",
+      { cwd: ROOT, encoding: "utf8" },
+    );
   assert(
     diff.trim() === "",
     "E1: no save field, price, reward, tier or level change",
