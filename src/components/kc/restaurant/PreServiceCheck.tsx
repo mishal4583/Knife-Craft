@@ -912,8 +912,9 @@ export function PreServiceCheck({
                   </span>
                 </button>
                 <InfoTip label="About menu guests">
-                  Menu guests order from your menu after your own orders. Stocking for them is
-                  optional — each one served pays the menu price.
+                  Menu guests order from your menu after your own orders; a 🚶 walk-in comes after
+                  them and leaves your next order's stock alone. Stocking for them is optional —
+                  each one served pays the menu price.
                 </InfoTip>
               </div>
               {showGuests ? (

@@ -309,9 +309,16 @@ console.log("D. Old saves and players already past Level 5");
     g && { number: g.number, total: g.total },
   );
   const served = saveAt(8, { "level-8": 1 });
+  // Rule changed (developer 2026-10-25, early game phase 3): after the menu guest a walk-in
+  // follows (was: nothing). The guest itself is still never offered again.
+  const afterGuest = nextMenuGuest(served, lv(8));
+  const bothServed = saveAt(8, { "level-8": 2 });
   assert(
-    nextMenuGuest(served, lv(8)) === null && remainingMenuGuests(served, lv(8)).length === 0,
-    "D4: a guest already served at L8 is never offered again (no duplicate guest or payment)",
+    remainingMenuGuests(served, lv(8)).length === 0 &&
+      afterGuest?.kind === "walk-in" &&
+      nextMenuGuest(bothServed, lv(8)) === null,
+    "D4: a guest already served at L8 is never offered again (no duplicate guest or payment); the walk-in follows, then nothing",
+    afterGuest && { kind: afterGuest.kind, number: afterGuest.number },
   );
   const later = saveAt(40, { "level-40": 1 });
   const g40 = nextMenuGuest(later, lv(40));
@@ -324,13 +331,15 @@ console.log("D. Old saves and players already past Level 5");
 
 console.log("E. No save, wallet, ledger or payment change");
 {
+  // Early game phase 3 (developer 2026-10-25): walk-ins change menuGuests.ts and App.tsx's
+  // offer label; walkin-qa guards them. The save, wallet, ledger and payment stay unchanged.
   const diff = execSync(
-    `git diff ${BASE} --stat -- src/game/SaveManager.ts src/game/business/businessTypes.ts src/game/economy src/game/restaurant/menuGuests.ts src/game/business/BusinessServiceManager.ts src/App.tsx`,
+    `git diff ${BASE} --stat -- src/game/SaveManager.ts src/game/business/businessTypes.ts src/game/economy src/game/business/BusinessServiceManager.ts src/game/levels/LevelManager.ts`,
     { cwd: ROOT, encoding: "utf8" },
   );
   assert(
     diff.trim() === "",
-    "E1: SaveManager, the business save type, the wallet / ledger, menu guests, payment and App are unchanged",
+    "E1: SaveManager, the business and level save types, the wallet / ledger and payment are unchanged",
     diff,
   );
 }

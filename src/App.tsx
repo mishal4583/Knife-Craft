@@ -3307,11 +3307,21 @@ export function App() {
                         }
                       : menuGuest.inStock
                         ? {
-                            label: `🍽️ Menu guest ${menuGuest.number}/${menuGuest.total}: ${menuGuest.dish.name} · ${formatUsd(menuGuest.pays)}`,
+                            label:
+                              menuGuest.kind === "walk-in"
+                                ? `🚶 Walk-in ${menuGuest.number}/${menuGuest.total}: ${menuGuest.dish.name} · ${formatUsd(menuGuest.pays)}`
+                                : `🍽️ Menu guest ${menuGuest.number}/${menuGuest.total}: ${menuGuest.dish.name} · ${formatUsd(menuGuest.pays)}`,
                             onClick: takeMenuGuest,
                           }
                         : {
-                            label: `Menu guest wants ${menuGuest.dish.name} — not in stock`,
+                            // Early game phase 3: a walk-in leaves the next level's stock alone,
+                            // so it says what to buy (the Pre-Service Check's Restock rows).
+                            label:
+                              menuGuest.kind === "walk-in"
+                                ? `🚶 Walk-in wants ${menuGuest.dish.name} — short of ${menuGuest.short
+                                    .map((x) => x.name.toLowerCase())
+                                    .join(", ")} (kept for your next order)`
+                                : `Menu guest wants ${menuGuest.dish.name} — not in stock`,
                             onClick: () => {},
                             disabled: true,
                           },

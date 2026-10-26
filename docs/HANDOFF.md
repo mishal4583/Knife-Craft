@@ -1,14 +1,21 @@
 # KnifeCraft — Handoff (Playgama edition)
 
 
+## Early game, phase 3: walk-in customers from Level 5 (2026-10-26, branch `claude/early-game-walkins`)
+
+- One walk-in per service from L5, after the menu guests, within the team's capacity; same
+  serve, payment (one `business-revenue` entry) and count (`levelProgress.menuGuests`; no
+  save field). It never takes the stock the next level's own orders need, and says what is
+  short. Completionist L150 $134,203 (+$1,994; 109 walk-ins). QA `walkin-qa`; browser
+  `walkins.mjs`; report `docs/reports/EARLYGAME-PHASE3-2026-10-26.md`.
+
 ## Early game, phase 2: the menu and menu guests from Level 5 (2026-10-25, branch `claude/early-game`)
 
 - `BUSINESS_MENU_FIRST_LEVEL` 11 → 5: the menu, Business and 1 menu guest per service open at
   L5 (Garlic Bread; 4 dishes from L6, the old six by L9). From L11 the dishes and guest counts
   are as before; their order moved, so seeded guests pick another dish at 28 levels.
   Completionist L150 $132,209 (+$142). QA `early-menu-qa` + 8 suites' pinned levels updated;
-  browser `earlymenu.mjs`; report `docs/reports/EARLYGAME-PHASE2-2026-10-25.md`. Next: walk-ins
-  (awaiting review).
+  browser `earlymenu.mjs`; report `docs/reports/EARLYGAME-PHASE2-2026-10-25.md`.
 
 ## Early game, phase 1: Level 2 pays $0, and says so (2026-10-25, branch `claude/early-game`)
 

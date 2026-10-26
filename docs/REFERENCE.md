@@ -434,6 +434,16 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   never opening the sheet; Inventory recommends them as "low") — K1–K4. `business-final-audit-qa` F2 and
   `business-wtp-qa` H2 name the two revenue writers (Business serve, menu
   guest). Browser: `tools/e2e/restaurantguests.mjs` (restaurant test build).
+  Walk-ins (early game phase 3, developer 2026-10-25; `walkin-qa`, browser
+  `tools/e2e/walkins.mjs`): from L5, after the menu guests, `WALK_IN_RULES.perService`
+  (1) walk-in per service within the same team capacity (none at L16–28 with the chef
+  alone; never a staff requirement). Same pipeline and count (`levelProgress.menuGuests`
+  continues past the guests; no save field), own seed (`n × 7919 + 31`; the guests' picks
+  unchanged). `walkInStock`: offered only when its dish fits beside the NEXT level's own
+  orders (`reservedTicketsFor`); otherwise "🚶 Walk-in wants … — short of … (kept for your
+  next order)", disabled. The Pre-Service Check's optional customer rows list it (🚶) with
+  that reserve. Leaving the result finishes the level, so a refused walk-in is not kept for
+  later; the next service brings its own.
 - `restaurant-supplies-qa` — phase G, consumable supplies in a service
   (`restaurant/serviceSupplies.ts`, every number in `SERVICE_SUPPLY_RULES`):
   nothing before dine-in (L31); every order dine-in until L71, then a seeded

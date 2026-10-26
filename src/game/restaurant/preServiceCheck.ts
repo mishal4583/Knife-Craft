@@ -33,7 +33,12 @@ import { serviceStockCheck, serviceUsesStock, type ServiceStockCheck } from "./c
 import { opensNewDay, restaurantDayOf, todaysServices, type DayService } from "./restaurantDay";
 import { hasNewsToShow, restaurantNewsAt, type RestaurantNews } from "./restaurantNews";
 import { unseenStarterCrate, type KitLine } from "./restaurantMigration";
-import { menuGuestQueue, remainingMenuGuests } from "./menuGuests";
+import {
+  menuGuestQueue,
+  remainingMenuGuests,
+  remainingWalkIns,
+  reservedTicketsFor,
+} from "./menuGuests";
 import { getLevel } from "../levels/LevelManager";
 import { restaurantQuote } from "./restaurantEconomy";
 import type { IngredientId } from "../definitions";
@@ -114,7 +119,7 @@ export type ServicePlan = {
 export type GuestStockRow = { ingredientId: IngredientId; buyUnits: number; cost: number };
 
 export type GuestStock = {
-  /** The guests still to come (recipe names, in order). */
+  /** The guests still to come (recipe names, in order; a walk-in's name starts with 🚶). */
   dishes: string[];
   /** What to buy so every unlocked menu guest can be served (empty when stocked or before menu unlock). */
   rows: GuestStockRow[];
@@ -124,6 +129,9 @@ export type GuestStock = {
  * Phase N: the menu guests' stock, as optional rows. The need of the level's
  * own orders AND its guests together, minus the own orders' need, so buying
  * these rows never double-counts. Priced at the Market's own price.
+ * Walk-ins (phase 3): their dishes' ingredients on top, with the next level's
+ * own orders counted (the reserve a walk-in leaves, `walkInStock`), so buying
+ * the rows makes every walk-in servable. Still optional: never blocks.
  */
 export function guestStockFor(
   save: SaveData,
@@ -132,19 +140,41 @@ export function guestStockFor(
   tickets: readonly RecipeDefinition[],
 ): GuestStock {
   const guests = remainingMenuGuests(save, level);
-  const dishes = guests.map((r) => r.name);
-  const all = serviceStockCheck(save, n, [...tickets, ...guests]);
+  const walkIns = remainingWalkIns(save, level);
+  const dishes = [...guests.map((r) => r.name), ...walkIns.map((r) => `🚶 ${r.name}`)];
   const own = serviceStockCheck(save, n, tickets);
-  if (!all.applies || !own.applies || guests.length === 0) return { dishes, rows: [] };
+  if (!own.applies || dishes.length === 0) return { dishes, rows: [] };
   const ownBuy = new Map(own.missingRows.map((r) => [r.ingredientId, r.buyUnits]));
+  // Units to buy beyond the own orders: the guests', then the walk-ins' (with the reserve).
+  const want = new Map<IngredientId, number>();
+  const all = serviceStockCheck(save, n, [...tickets, ...guests]);
+  if (all.applies)
+    for (const r of all.missingRows)
+      want.set(r.ingredientId, r.buyUnits - (ownBuy.get(r.ingredientId) ?? 0));
+  if (walkIns.length > 0) {
+    const mine = serviceStockCheck(save, n, walkIns);
+    const theirs = new Set(mine.applies ? mine.rows.map((r) => r.ingredientId) : []);
+    const withReserve = serviceStockCheck(save, n, [
+      ...tickets,
+      ...guests,
+      ...walkIns,
+      ...reservedTicketsFor(save, level),
+    ]);
+    if (withReserve.applies)
+      for (const r of withReserve.missingRows)
+        if (theirs.has(r.ingredientId))
+          want.set(
+            r.ingredientId,
+            Math.max(want.get(r.ingredientId) ?? 0, r.buyUnits - (ownBuy.get(r.ingredientId) ?? 0)),
+          );
+  }
   const rows: GuestStockRow[] = [];
-  for (const r of all.missingRows) {
-    const extra = r.buyUnits - (ownBuy.get(r.ingredientId) ?? 0);
+  for (const [ingredientId, extra] of want) {
     if (extra <= 0) continue;
     rows.push({
-      ingredientId: r.ingredientId,
+      ingredientId,
       buyUnits: extra,
-      cost: restaurantQuote(save, r.ingredientId, extra).totalCost,
+      cost: restaurantQuote(save, ingredientId, extra).totalCost,
     });
   }
   return { dishes, rows };

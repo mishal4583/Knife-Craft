@@ -208,6 +208,9 @@ export type Stats = {
   fridgeUpgrades: number;
   fridgeOverByGrandma: number;
   guests: number;
+  /** Of `guests`, the walk-ins (early game phase 3) and what they paid, in cents. */
+  walkIns: number;
+  walkInRevenue: number;
   closings: number;
   /** The longest spotless streak (supplies plan D). */
   bestStreak: number;
@@ -629,6 +632,11 @@ function playLevel(save: SaveData, n: number, opts: SimOptions, stats: Stats): S
     );
     s = persist(appendLedgerEntry(rec, "business-revenue", pays, dish.id), stats, `${where} guest`);
     stats.guests++;
+    // Early game phase 3: walk-ins come through the same loop, after the guests.
+    if (guest.kind === "walk-in") {
+      stats.walkIns++;
+      stats.walkInRevenue += pays;
+    }
   }
 
   // Finish Level (App.completeCampaignLevel).
@@ -710,6 +718,8 @@ export function run(
     fridgeUpgrades: 0,
     fridgeOverByGrandma: 0,
     guests: 0,
+    walkIns: 0,
+    walkInRevenue: 0,
     closings: 0,
     bestStreak: 0,
     ordersServed: 0,
@@ -742,7 +752,7 @@ export function run(
   if (log) console.log(`\n  ${name}`);
   if (log)
     console.log(
-      `    levels ${stats.levels}/${251 - from} · orders ${stats.ordersServed} · menu guests ${stats.guests} · closings ${stats.closings} · best spotless streak ${stats.bestStreak}`,
+      `    levels ${stats.levels}/${251 - from} · orders ${stats.ordersServed} · menu guests ${stats.guests} (walk-ins ${stats.walkIns}, $${Math.round(stats.walkInRevenue / 100).toLocaleString("en-US")}) · closings ${stats.closings} · best spotless streak ${stats.bestStreak}`,
     );
   if (log)
     console.log(

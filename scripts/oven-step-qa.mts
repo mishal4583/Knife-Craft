@@ -197,9 +197,20 @@ console.log("E. Nothing else moves");
   // Early-game phase 2 (developer 2026-10-25): the menu opens at Level 5 — the unlock level
   // (restaurantProgression.ts) and the first-levels copy (firstLevels.ts) only;
   // restaurant-guests-qa and restaurant-first-levels-qa check them. No pay, serve or oven code moves.
+  // Early-game phase 3 (developer 2026-10-25): walk-ins — menuGuests.ts and the check's optional
+  // customer rows (preServiceCheck.ts), guarded by walkin-qa; in App.tsx only the customer
+  // offer's label may change (checked below: no pay, serve, ledger, save or reward code).
   const flow = execSync(
-    "git diff cc46bbd -- src/App.tsx src/game/restaurant ':!src/game/restaurant/dishService.ts' ':!src/game/restaurant/levelPayPreview.ts' ':!src/game/restaurant/restaurantProgression.ts' ':!src/game/restaurant/firstLevels.ts' src/game/progression src/game/recipes/dishKind.ts",
+    "git diff cc46bbd -- src/game/restaurant ':!src/game/restaurant/dishService.ts' ':!src/game/restaurant/levelPayPreview.ts' ':!src/game/restaurant/restaurantProgression.ts' ':!src/game/restaurant/firstLevels.ts' ':!src/game/restaurant/menuGuests.ts' ':!src/game/restaurant/preServiceCheck.ts' src/game/progression src/game/recipes/dishKind.ts",
     { cwd: ROOT, encoding: "utf8" },
+  );
+  const appDiff = execSync("git diff -U0 cc46bbd -- src/App.tsx", { cwd: ROOT, encoding: "utf8" })
+    .split("\n")
+    .filter((l) => /^[+-](?![+-])/.test(l));
+  const offLabel = appDiff.filter((l) =>
+    /persist|credits|appendLedgerEntry|serve|complete|reward|settle|levelProgress|onClick: take/i.test(
+      l,
+    ),
   );
   const serviceDiff = execSync("git diff -U0 cc46bbd -- src/game/restaurant/dishService.ts", {
     cwd: ROOT,
@@ -228,9 +239,13 @@ console.log("E. Nothing else moves");
       l !== '-import { ovenStepFor } from "@/game/cooking/ovenStep";',
   );
   assert(
-    flow.trim() === "" && offTray.length === 0 && offBoard.length === 0,
-    "E2: since Phase D only the tray item, the Phase F cold-board exception, the Level 2 pay preview and the Level 5 menu unlock changed (no order, serve, pay, achievement, ranking or dishKind code)",
-    { flow: flow.slice(0, 200), offTray, offBoard },
+    flow.trim() === "" &&
+      offTray.length === 0 &&
+      offBoard.length === 0 &&
+      offLabel.length === 0 &&
+      appDiff.some((l) => /Walk-in/.test(l)),
+    "E2: since Phase D only the tray item, the Phase F cold-board exception, the Level 2 pay preview, the Level 5 menu unlock and the walk-in offer's label changed (no order, serve, pay, achievement, ranking or dishKind code)",
+    { flow: flow.slice(0, 200), offTray, offBoard, offLabel },
   );
 }
 
