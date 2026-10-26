@@ -124,7 +124,39 @@ See §6 for the final table. `restaurantfirstlevels` runs as the established pag
 
 ## 6. Results
 
-(filled in below after the final runs)
+**Gates:**
+- tsc clean; ESLint 0 errors / 9 warnings (the same as before);
+- build and preflight pass (rebuilt after the last change).
+
+**QA:** 124 / 124 suites pass. 123 pass in the full run on the working tree; `phase6-qa` E3
+compares against `HEAD` and passes once committed (verified).
+
+**Economy:** §3.
+
+**Browser:**
+
+| Test | Result |
+|---|---|
+| levelflow (a new game: L1 pays, wallet = $0 + ledger) | 12/12 |
+| restaurantfirstlevels (page-load variant) | 13/13 |
+| earlymenu, walkins, restaurantday, restaurantguests | 6/6, 6/6, 9/9, 9/9 |
+| paidstaff, staff, restaurantstafflife | 6/6, 7/7, 5/5 |
+| restaurantsecondfloor, marketsecondfloor | 11/11, 6/6 |
+| kitchenstrip, practicepay, restaurantmenu, ovenrecipes | 5/5, 4/4, 5/5, 7/7 |
+| new save at $0 (local check): Kitchen shows $0.00; Coffee panel at $50 shows "need $350.00 more" and the server note | pass, no sideways scroll at 320 px |
+
+- `restaurantsecondfloor` step 8 opens `127.0.0.1` unless `KC_URL` is set. It must point at
+  the same origin as the other steps (here `KC_URL=http://127.0.0.1:4173/`), else step 8 loads
+  a different, empty origin. That's a harness quirk, unchanged since phase 4.
+
+**Known baseline failures:**
+- `ingredients.mjs`: 6 pass, 14 fail — the same 14 check ids as on `1965342`. Only 4f's detail
+  text differs ("·4 dishes", the phase 2 menu; the same as phase 4).
+- `supplies.mjs`: 12 pass, 1 fail — the same check 7 as on `1965342`.
+- **No new failures.**
+
+**Screenshots (320 px):** `fresh-kitchen-320.png` (a new save's Kitchen at $0.00) and
+`floor-coffee-320.png` (the Coffee panel: shortfall + server note), in the local e2e `out/`.
 
 ## 7. Remaining issues and risks
 
