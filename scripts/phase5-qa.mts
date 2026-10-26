@@ -74,10 +74,28 @@ console.log("A. Restaurant restoration");
     encoding: "utf8",
   });
   const now = read("src/game/kitchen/kitchenUpgradeDefinitions.ts");
+  // Rule changed (developer 2026-10-26: everything for sale by Level 5): the catalog's unlock
+  // levels are capped (earlyUnlock) and the old grant levels kept for old saves
+  // (LEGACY_KITCHEN_GRANT_LEVEL). Every other line — tiers, names, prices, art — is still the
+  // base's.
+  const changed = execSync(
+    `git diff -U0 ${PHASE_BASE} -- src/game/kitchen/kitchenUpgradeDefinitions.ts`,
+    { cwd: ROOT, encoding: "utf8" },
+  )
+    .split("\n")
+    .filter((l) => /^[+-](?![+-])/.test(l));
+  const offUnlock = changed.filter(
+    (l) =>
+      !/earlyUnlock|LEGACY_KITCHEN_GRANT_LEVEL|remapCampaignThreshold\(item\.unlockLevel\)|EARLY_UNLOCK_CAP|^\+\s*(\/\*\*|\*\/|\*( .*)?)$|^\+\s*SOURCE_KITCHEN_UPGRADE_CATALOG\.map\(\(item\) => \[item\.id, remapCampaignThreshold\(item\.unlockLevel\)\]\),$|^\+\);$|^\+$/.test(
+        l,
+      ),
+  );
   assert(
     head === now.replace(/\r\n/g, "\n") ||
-      head.replace(/\r\n/g, "\n") === now.replace(/\r\n/g, "\n"),
-    "A1: the kitchen tiers, prices and unlock levels are byte-for-byte HEAD's",
+      head.replace(/\r\n/g, "\n") === now.replace(/\r\n/g, "\n") ||
+      offUnlock.length === 0,
+    "A1: the kitchen tiers, names, prices and art are the base's (only the unlock-level cap changed)",
+    offUnlock,
   );
   assert(
     KITCHEN_UPGRADE_CATALOG.map((u) => u.price / 100).join() === "0,20000,25000,25000,30000,35000",

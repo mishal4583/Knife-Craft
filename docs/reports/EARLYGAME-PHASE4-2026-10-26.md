@@ -95,11 +95,10 @@ the cap never hands out tiers.
 - Prettier clean on every changed file that was formatted at the base. The three catalogs
   (knives, boards, kitchen tiers) were not, and are left so.
 
-**QA:** 124 suites, one run per change set:
-- the final full run: 122 pass;
-- `staff-hire-qa` A1: fixed after that run, passes;
-- `phase5-qa` A1 / A3: compare the working tree with `HEAD` and pass once committed (verified
-  after the commit).
+**QA:** 124 suites, and every one passes in the final full run (§6).
+- `phase5-qa` A3 compares against `HEAD` and passes once committed.
+- `phase5-qa` A1 pins the kitchen-tier file to its base commit: updated to the new rule (only
+  the unlock-level cap changed; tiers, names, prices and art are the base's).
 
 **New `staff-hire-qa`** (21 checks):
 - the fee table;
@@ -124,6 +123,7 @@ the cap never hands out tiers.
 | `economy-v2-*` (equipment, final K2–4, staff C) | catalog / helper levels | capped at L5 |
 | `economy-v25-qa` A1 / A5 | $31,674 / $29,808 | $31,686 / $29,796 |
 | `level-ux-qa` S1, `progression-preview-qa` C / D / H / K7 | hints of tiers and knives after L5 | no late unlock hints; tiers in order, for sale by L5 |
+| `phase5-qa` A1 | the tier file byte-for-byte its base | only the unlock-level cap changed |
 | guards (`oven-step` E1 / E2, `next-kitchen-strip` E1, `service-floor` E1, `early-menu` E1) | the files they pin are unchanged | only the files this phase must change are excluded, each named; in App.tsx only lines inside `hireStaff` and the walk-in label |
 
 **Browser:**
