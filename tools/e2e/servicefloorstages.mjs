@@ -77,8 +77,13 @@ const floor = () =>
     const f = document.querySelector('[data-testid="service-floor"]');
     if (!f) return null;
     const view = f.querySelector(".sf-view")?.getBoundingClientRect();
-    const person = [...f.querySelectorAll(".sf-person")].at(-1)?.getBoundingClientRect();
-    const bubble = f.querySelector('[data-testid="service-floor-order"]')?.getBoundingClientRect();
+    // The member who ordered (in a party, the one with the bubble — not just the last drawn).
+    const bubbleEl = f.querySelector('[data-testid="service-floor-order"]');
+    const person = (
+      bubbleEl?.parentElement?.querySelector(".sf-person") ??
+      [...f.querySelectorAll(".sf-person")].at(-1)
+    )?.getBoundingClientRect();
+    const bubble = bubbleEl?.getBoundingClientRect();
     const map = f.querySelector(".sf-map")?.getAttribute("src") ?? "";
     return {
       state: f.dataset.state,

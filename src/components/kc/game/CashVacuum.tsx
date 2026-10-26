@@ -29,6 +29,7 @@ export function CashVacuum({
   auto,
   onRemaining,
   variant = "counter",
+  anchors,
   onDone,
 }: {
   payCents: number;
@@ -44,11 +45,19 @@ export function CashVacuum({
    * games"): the same pieces lying loose on the customer's table, no tray box, no line after.
    */
   variant?: "counter" | "table";
+  /**
+   * Table look (developer 2026-10-26, "money piled up … on the side of the table and chairs,
+   * spread across their seats"): where the bundles pile up, in % of the tray. Pieces go to the
+   * piles in turn and stack upward, so each pile reads as a small stack of bills.
+   */
+  anchors?: readonly { x: number; y: number }[];
   /** Called once, when the last piece is in. */
   onDone?: () => void;
 }) {
   const pieces = useMemo(() => cashPieces(payCents, tipCents), [payCents, tipCents]);
   const total = payCents + tipCents;
+  const table = variant === "table";
+  const piles = table && anchors && anchors.length > 0 ? anchors : null;
   const els = useRef<(HTMLSpanElement | null)[]>([]);
   const collected = useRef<boolean[]>(pieces.map(() => false));
   const trayRef = useRef<HTMLDivElement | null>(null);
@@ -68,21 +77,24 @@ export function CashVacuum({
     pieces.forEach((p, i) => {
       const el = els.current[i];
       if (!el || !tray) return;
-      const dx = ((50 - p.x) / 100) * tray.width;
-      const dy = ((50 - p.y) / 100) * tray.height;
+      const dx = piles ? 0 : ((50 - p.x) / 100) * tray.width;
+      const dy = piles ? -24 : ((50 - p.y) / 100) * tray.height;
       el.animate(
         [
           {
             transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) rotate(0deg) scale(0.3)`,
             opacity: 0,
           },
-          { transform: `translate(-50%, -50%) rotate(${p.rot}deg) scale(1)`, opacity: 1 },
+          { transform: `translate(-50%, -50%) rotate(${rotOf(p.rot)}deg) scale(1)`, opacity: 1 },
         ],
         { duration: 420, delay: i * 35, easing: "cubic-bezier(.2,1.4,.4,1)", fill: "backwards" },
       );
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- one burst per payment
   }, []);
+
+  /** A bundle in a pile lies nearly straight; a loose piece keeps its tilt. */
+  const rotOf = (rot: number) => (piles ? rot / 6 : rot);
 
   function collect(i: number) {
     if (collected.current[i]) return;
@@ -102,9 +114,9 @@ export function CashVacuum({
         const p = pieces[i]!;
         const flight = el.animate(
           [
-            { transform: `translate(-50%, -50%) rotate(${p.rot}deg) scale(1)`, opacity: 1 },
+            { transform: `translate(-50%, -50%) rotate(${rotOf(p.rot)}deg) scale(1)`, opacity: 1 },
             {
-              transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) rotate(${p.rot}deg) scale(0.35)`,
+              transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) rotate(${rotOf(p.rot)}deg) scale(0.35)`,
               opacity: 0.15,
             },
           ],
@@ -164,12 +176,12 @@ export function CashVacuum({
   }
 
   return (
-    <div className={variant === "table" ? "" : "mt-2"}>
+    <div className={table ? "absolute inset-0" : "mt-2"}>
       <div
         ref={trayRef}
         className={
           variant === "table"
-            ? "relative h-[64px] w-[132px] touch-none select-none"
+            ? "absolute inset-0 touch-none select-none"
             : "relative h-[68px] w-full touch-none select-none overflow-hidden rounded-[14px] border border-walnut/15 bg-walnut/[0.07] shadow-inner"
         }
         data-testid="cash-tray"
@@ -206,20 +218,29 @@ export function CashVacuum({
             data-tip={p.tip ? "1" : undefined}
             aria-hidden="true"
             className={
-              p.kind === "coin"
-                ? "pointer-events-none absolute h-[22px] w-[22px] rounded-full border border-[#9a7a2a] bg-[radial-gradient(circle_at_35%_35%,#f6dc8a,#c9a13e)] shadow-[0_1px_2px_rgba(62,40,25,0.35)]"
-                : p.tip
-                  ? "pointer-events-none absolute h-[22px] w-[40px] rounded-[4px] border border-[#a8862c] bg-[linear-gradient(135deg,#f3d77a,#d9b048)] shadow-[0_1px_3px_rgba(62,40,25,0.35)]"
-                  : "pointer-events-none absolute h-[22px] w-[40px] rounded-[4px] border border-[#5d7d44] bg-[linear-gradient(135deg,#a9c98a,#7fa262)] shadow-[0_1px_3px_rgba(62,40,25,0.35)]"
+              piles
+                ? p.tip
+                  ? "cash-bundle cash-bundle--tip pointer-events-none absolute"
+                  : "cash-bundle pointer-events-none absolute"
+                : p.kind === "coin"
+                  ? "pointer-events-none absolute h-[22px] w-[22px] rounded-full border border-[#9a7a2a] bg-[radial-gradient(circle_at_35%_35%,#f6dc8a,#c9a13e)] shadow-[0_1px_2px_rgba(62,40,25,0.35)]"
+                  : p.tip
+                    ? "pointer-events-none absolute h-[22px] w-[40px] rounded-[4px] border border-[#a8862c] bg-[linear-gradient(135deg,#f3d77a,#d9b048)] shadow-[0_1px_3px_rgba(62,40,25,0.35)]"
+                    : "pointer-events-none absolute h-[22px] w-[40px] rounded-[4px] border border-[#5d7d44] bg-[linear-gradient(135deg,#a9c98a,#7fa262)] shadow-[0_1px_3px_rgba(62,40,25,0.35)]"
             }
-            style={{
-              left: `${p.x}%`,
-              top: `${p.y}%`,
-              transform: `translate(-50%, -50%) rotate(${p.rot}deg)`,
-            }}
+            style={
+              piles
+                ? pileStyle(i, p.rot, piles)
+                : {
+                    left: `${p.x}%`,
+                    top: `${p.y}%`,
+                    transform: `translate(-50%, -50%) rotate(${p.rot}deg)`,
+                  }
+            }
           />
         ))}
-        {!touched && !auto ? (
+        {piles && !touched && !auto ? <SwipeHint at={piles[0]!} /> : null}
+        {!piles && !touched && !auto ? (
           // On a small ivory backing: the pieces spread over the whole tray, and
           // bare text over a bill was hard to read at 320 px.
           <span className="pointer-events-none absolute bottom-1 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-ivory/85 px-2 font-hand text-[13px] leading-tight text-walnut/75 shadow-soft">
@@ -228,5 +249,38 @@ export function CashVacuum({
         ) : null}
       </div>
     </div>
+  );
+}
+
+/**
+ * Where piece `i` lies in a pile: piles take pieces in turn, two bundles side by side per layer,
+ * each layer 6 px higher, so later pieces sit on top (they come later in the DOM).
+ */
+function pileStyle(i: number, rot: number, piles: readonly { x: number; y: number }[]) {
+  const a = piles[i % piles.length]!;
+  const k = Math.floor(i / piles.length);
+  const side = k % 2 === 0 ? -9 : 9;
+  const layer = Math.floor(k / 2);
+  return {
+    left: `calc(${a.x}% + ${side}px)`,
+    top: `calc(${a.y}% - ${layer * 6}px)`,
+    transform: `translate(-50%, -50%) rotate(${rot / 6}deg)`,
+    zIndex: 1 + k,
+  };
+}
+
+/** "Swipe to collect" by the first pile: gold chevrons, a pointing hand and a paper label. */
+function SwipeHint({ at }: { at: { x: number; y: number } }) {
+  return (
+    <span
+      className="cash-hint pointer-events-none absolute"
+      style={{ left: `${at.x}%`, top: `${at.y}%` }}
+      data-testid="cash-hint"
+    >
+      <span className="cash-hint-sparkle" />
+      <span className="cash-hint-chevrons">︽</span>
+      <span className="cash-hint-hand">👆</span>
+      <span className="cash-hint-label">Swipe to collect</span>
+    </span>
   );
 }

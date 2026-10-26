@@ -117,3 +117,24 @@ fast-forwarded into `main`. **No save field added.** Nothing uploaded to Playgam
 npm ci && npm run build && npm run preflight
 # zip: the contents of dist/ → releases/KnifeCraft-Playgama-v1.5.0.zip
 ```
+
+## 8. v1.5.1: cash piled beside the seats (developer's reference picture)
+
+- **Look:** the pay and tip are banded bundles of green bills (the tip's band is gold), piled
+  two side by side and stacked upward beside the chairs, with a gold sparkle, gold chevrons, a
+  pointing hand and a paper "Swipe to collect" label.
+- **Parties:** the pieces spread over one pile by each member's place, on the outer side of
+  their chair (a lone customer's to the left of the table).
+- **Collecting:** the whole floor view is the swipe area; "🧲 Collect all" still vacuums. The
+  money is unchanged: booked once at Serve, and the pile is display only.
+- **Tests:**
+  - full QA run: no failures;
+  - `servicefloor.mjs` 8/8;
+  - `servicefloorstages.mjs` all pass. Its seated-bubble check now measures the member who has
+    the bubble: it measured the last person drawn, which was wrong for a party;
+  - new $0 game through Level 5: every pile equalled what the serve paid ($63, $117, $127,
+    $146, $8.26 guest). Swiping each pile never changed the wallet, and Level 5's party of 2
+    showed a pile at each seat. No console errors.
+- **Stale:** `phase2.mjs` B2–B6, C1 and its `cash-auto` step still test the counter tray and
+  the old tip rule. Documented in HANDOFF.
+- **Version:** 1.5.1.

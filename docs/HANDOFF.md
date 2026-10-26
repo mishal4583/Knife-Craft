@@ -1,5 +1,17 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## v1.5.1: cash piled beside the seats (2026-10-26, `main`)
+
+- The table cash is banded bundles of green bills piled beside the chairs (gold band = tip),
+  one pile by each member's place in a party, with a sparkle, gold chevrons, a pointing hand
+  and a "Swipe to collect" label (developer's reference picture). Display only; the money is
+  still booked once at Serve. `servicefloorstages.mjs` now measures the member with the
+  bubble (it measured the last person drawn, which fails for a party).
+- **Stale e2e (documented, not removed):** `phase2.mjs` B2–B6, C1 and the `cash-auto` step
+  test the counter cash tray and the old tip rule; in the restaurant build the cash is on the
+  table (covered by `servicefloor.mjs` and the play-through). Its `expectedTip` follows the
+  new 15 % rule. Needs a rewrite for v1.5.
+
 ## v1.5.0: parties, cash on the table, tips with every payment (2026-10-26, `main`)
 
 - A service's customers arrive as a party of 1–4 at one table (deterministic, mostly pairs),

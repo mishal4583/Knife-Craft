@@ -116,7 +116,8 @@ const newEntries = (before, after) => {
   return (after.economyLedger ?? []).filter((e) => !ids.has(e.id));
 };
 const sum = (xs) => xs.reduce((a, b) => a + b, 0);
-const expectedTip = (pay) => Math.max(500, Math.round((pay * 0.1) / 100) * 100);
+// Developer rule change 2026-10-26 (customerTips.ts): a Masterful dish tips 15 %, whole dollars, at least $1.
+const expectedTip = (pay) => Math.max(100, Math.round((pay * 0.15) / 100) * 100);
 
 /**
  * Where a skilled player taps next: ON the scene's next open guide line (read-only, through

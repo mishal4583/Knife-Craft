@@ -172,6 +172,14 @@ export function ServiceFloor({
   const sitting = state !== "walking";
   const face = quality ? REACTION_FACE[quality] : "🙂";
   const others = party.size - 1;
+  // The cash piles up beside the chairs, one pile by each member's place (developer 2026-10-26:
+  // "on the side of the table and chairs … spread across their seats"); a lone customer's to
+  // the left of the table. Kept inside the view.
+  const cashPiles = spots.map((s) => {
+    const side = party.size > 1 && s.x > table.seat.x ? 1 : -1;
+    const v = inView({ x: Math.min(77, Math.max(23, s.x + side * 7.5)), y: s.y - 2.5 });
+    return { x: v.x, y: v.y };
+  });
 
   return (
     <div
@@ -279,13 +287,13 @@ export function ServiceFloor({
           })}
           {state === "cash" && cash ? (
             <div
-              className="sf-layer sf-cash"
-              style={at({ x: table.seat.x, y: table.table.y - 4 })}
+              className="sf-cash absolute inset-0"
               data-testid="service-floor-cash"
               onClick={(e) => e.stopPropagation()}
             >
               <CashVacuum
                 variant="table"
+                anchors={cashPiles}
                 payCents={cash.payCents}
                 tipCents={cash.tipCents}
                 walletRef={walletRef}
