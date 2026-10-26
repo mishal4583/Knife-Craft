@@ -157,3 +157,18 @@ each expectation was updated as the developer's rule change, with a comment in t
 
 Walk-ins, staff, the Second Floor, the Growing Kitchen and prices: the proposal is in the
 reply to the developer. Nothing is implemented beyond this phase.
+
+## 8. Final verification (2026-10-26, build of `362553e`)
+
+- **QA:** 122 of 122 suites pass (full rerun after every test edit).
+- **Gates:** typecheck clean. ESLint 0 errors and 9 warnings (unchanged). Build and preflight
+  pass.
+- **Browser, rebuilt from `362553e`:**
+  - earlymenu 6/6, restaurantguests 9/9, restaurantmenu 5/5, levelflow 12/12;
+  - restaurantday 9/9, practicepay 4/4, kitchenstrip 5/5, ovenrecipes 7/7;
+  - restaurantfirstlevels 13/13 (the local "load" copy; see §6).
+- **Failing before Phase 2:** `ingredients.mjs` (14 of 20 fail) and `supplies.mjs` (1 of 13,
+  check 7). The `1965342` build fails the same checks, check for check, so they are not
+  caused by this phase. They stay open: CLAUDE.md's "known pre-existing failures: none" is
+  out of date for these two.
+- `businessDishes.mjs` is a shared list of dish ids, not a test.
