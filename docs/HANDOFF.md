@@ -1,5 +1,13 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## v1.5.0: parties, cash on the table, tips with every payment (2026-10-26, `main`)
+
+- A service's customers arrive as a party of 1–4 at one table (deterministic, mostly pairs),
+  each showing their order; the next member is already seated. After Serve the pay and tip lie
+  on the table as cash to swipe or vacuum in (booked once at Serve; the pile is display). Every
+  first-paid order tips by grade (Masterful 15 %, Clean 10 %, Honest 5 %). No save field.
+  Report `docs/reports/PARTIES-TABLECASH-2026-10-26.md`.
+
 ## Early game, release candidate: $0 start, Second Floor and kitchen review (2026-10-26, branch `claude/early-game-unlocks`)
 
 - A new save starts with **$0** (`DEFAULT_SAVE.credits`, was $1,240; developer 2026-10-26).

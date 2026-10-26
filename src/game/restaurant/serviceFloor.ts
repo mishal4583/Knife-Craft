@@ -124,6 +124,7 @@ export function seatForOrder(orderId: string): 0 | 1 {
 export function resetSeatsForTests(): void {
   seatByOrder.clear();
   lastSeat = 1;
+  partyByOrderReset();
   departing = null;
   departingFor.clear();
 }
@@ -177,4 +178,153 @@ export function lookFor(customerId: string): { outfit: string; hair: string } {
   let h = 0;
   for (const c of customerId) h = (h * 31 + c.charCodeAt(0)) >>> 0;
   return { outfit: OUTFITS[h % OUTFITS.length]!, hair: HAIR[(h >>> 3) % HAIR.length]! };
+}
+
+/* ── Parties (developer 2026-10-26: "make it 1, 2, 3 or 4 at a time … like a real
+ * restaurant … order foods according to their number") ──────────────────────
+ *
+ * The customers a service still has (its own orders, then its menu guests and walk-in) arrive
+ * as parties at one table instead of one by one: a party of 1–4, never more than the service
+ * still has, sized by a fixed hash of the first order's id (mostly pairs, like a real dining
+ * room — the same service always seats the same way). Each member shows the dish they ordered;
+ * the next order of the party is already seated, so only a new party walks in, and the whole
+ * party walks out together when the next one arrives. Presentation only and session memory:
+ * every member is still served, paid and tipped by the existing order flow, one order at a time.
+ */
+export const MAX_PARTY = 4;
+/** Weights for a party of 1, 2, 3, 4. */
+const PARTY_WEIGHTS = [2, 4, 2, 2] as const;
+/** A party older than this is gone (a later service never continues it). */
+export const PARTY_FRESH_MS = 90_000;
+
+export type PartyDish = { emoji: string; name: string };
+
+function hashOf(s: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  h ^= h >>> 16;
+  h = Math.imul(h, 0x85ebca6b);
+  h ^= h >>> 13;
+  return h >>> 0;
+}
+
+/** How many sit down together: 1 + the customers still to come, at most MAX_PARTY, weighted. */
+export function partySizeFor(orderId: string, waiting: number): number {
+  const cap = Math.min(MAX_PARTY, 1 + Math.max(0, Math.floor(waiting)));
+  const weights = PARTY_WEIGHTS.slice(0, cap);
+  const total = weights.reduce((a, b) => a + b, 0);
+  let pick = hashOf(orderId) % total;
+  for (let i = 0; i < weights.length; i++) {
+    if (pick < weights[i]!) return i + 1;
+    pick -= weights[i]!;
+  }
+  return 1;
+}
+
+/** Where a party of `n` sits around a table: the front pair, then the back pair (map percent). */
+export function partySpots(s: FloorSeat, n: number): FloorPoint[] {
+  if (n <= 1) return [s.seat];
+  const dx = 4.5;
+  const back = s.table.y - 4;
+  return [
+    { x: s.seat.x - dx, y: s.seat.y },
+    { x: s.seat.x + dx, y: s.seat.y },
+    { x: s.seat.x - dx, y: back },
+    { x: s.seat.x + dx, y: back },
+  ].slice(0, Math.min(MAX_PARTY, n));
+}
+
+/** The walk to a party spot: the table's own path, then round the table's side for the back seats. */
+export function pathToSpot(s: FloorSeat, spot: FloorPoint): FloorPoint[] {
+  const lead = s.path.slice(0, -1);
+  if (spot.y >= s.seat.y - 0.01) return [...lead, spot];
+  const side = { x: spot.x + (spot.x < s.seat.x ? -4 : 4), y: s.seat.y };
+  return [...lead, side, spot];
+}
+
+export type Party = {
+  /** The first order's id: the party's identity. */
+  key: string;
+  table: 0 | 1;
+  size: number;
+  /** Fixed looks per member (the same person all evening). */
+  looks: string[];
+  /** The order each member placed, once it is being served (null: still waiting). */
+  orderIds: (string | null)[];
+  /** What each member ordered (the waiting ones' dishes as the service knows them). */
+  dishes: (PartyDish | null)[];
+  /** Members already served: their plate and face stay on the table. */
+  served: ({ emoji: string; face: string } | null)[];
+  at: number;
+};
+export type PartySeat = {
+  party: Party;
+  slot: number;
+  /** True when this order's party walks in now (false: already seated). */
+  arriving: boolean;
+  /** The party that walks out as this one comes in (fresh only). */
+  leaving: Party | null;
+};
+
+let party: Party | null = null;
+const partyByOrder = new Map<string, PartySeat>();
+
+/**
+ * The party seat for `orderId` — decided once per order (a re-render or remount keeps it).
+ * A seated party with a free place takes the order; otherwise a new party arrives (the old
+ * one leaves), sized by `waiting` (the dishes the service's later customers ordered).
+ */
+export function seatInParty(
+  orderId: string,
+  customerId: string,
+  dish: PartyDish,
+  waiting: readonly (PartyDish | null)[],
+  now: number,
+): PartySeat {
+  const known = partyByOrder.get(orderId);
+  if (known) return known;
+  const fresh = party && now - party.at <= PARTY_FRESH_MS ? party : null;
+  const free = fresh ? fresh.orderIds.indexOf(null) : -1;
+  let seat: PartySeat;
+  if (fresh && free >= 0) {
+    fresh.orderIds[free] = orderId;
+    fresh.dishes[free] = dish;
+    fresh.at = now;
+    seat = { party: fresh, slot: free, arriving: false, leaving: null };
+  } else {
+    const size = partySizeFor(orderId, waiting.length);
+    const next: Party = {
+      key: orderId,
+      table: seatForOrder(orderId),
+      size,
+      looks: Array.from({ length: size }, (_, i) => (i === 0 ? customerId : `${orderId}~${i}`)),
+      orderIds: Array.from({ length: size }, (_, i) => (i === 0 ? orderId : null)),
+      dishes: [dish, ...waiting.slice(0, size - 1)],
+      served: Array.from({ length: size }, () => null),
+      at: now,
+    };
+    seat = { party: next, slot: 0, arriving: true, leaving: fresh };
+    party = next;
+  }
+  partyByOrder.set(orderId, seat);
+  return seat;
+}
+
+/** A member was served: their plate and face stay at their place. Idempotent. */
+export function markPartyServed(orderId: string, emoji: string, face: string, now: number): void {
+  const s = partyByOrder.get(orderId);
+  if (!s) return;
+  s.party.served[s.slot] = { emoji, face };
+  s.party.at = now;
+}
+
+export function resetPartiesForTests(): void {
+  partyByOrderReset();
+}
+function partyByOrderReset(): void {
+  party = null;
+  partyByOrder.clear();
 }

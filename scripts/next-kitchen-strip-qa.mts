@@ -112,7 +112,9 @@ console.log("E. Nothing else moves");
       // levelMastery.ts: a level's stale knife/board "Unlocks" hint is dropped (display only).
       // Rule changed (developer 2026-10-26, "the game starts at 0 cash"): SaveManager may change
       // only the new save's opening credits (scripts/startCashGuard.mts).
-      "git diff 876ac79 -- src/game/business/businessTypes.ts src/game/economy ':!src/game/economy/staffDefinitions.ts' src/game/kitchen/kitchenUpgradeDefinitions.ts src/game/kitchen/KitchenUpgradeManager.ts src/game/restaurant/restaurantInvestments.ts src/game/levels ':!src/game/levels/levelMastery.ts'" +
+      // Rule changed (developer 2026-10-26, "tips along with payment"): customerTips.ts, guarded
+      // by phase2-qa C1–C9.
+      "git diff 876ac79 -- src/game/business/businessTypes.ts src/game/economy ':!src/game/economy/staffDefinitions.ts' ':!src/game/economy/customerTips.ts' src/game/kitchen/kitchenUpgradeDefinitions.ts src/game/kitchen/KitchenUpgradeManager.ts src/game/restaurant/restaurantInvestments.ts src/game/levels ':!src/game/levels/levelMastery.ts'" +
         " ':!src/game/kitchen/kitchenUpgradeDefinitions.ts' ':!src/game/kitchen/KitchenUpgradeManager.ts'",
       { cwd: ROOT, encoding: "utf8" },
     );

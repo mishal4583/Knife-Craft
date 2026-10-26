@@ -145,7 +145,12 @@ import { consumeCampaignOrderStock } from "@/game/restaurant/campaignStock";
 import { servicePlanFor, servicePlanNeedsSheet } from "@/game/restaurant/preServiceCheck";
 import { closeDay, openDay, recordService, restaurantDayOf } from "@/game/restaurant/restaurantDay";
 import { cleanerClosing, doClosingChore } from "@/game/restaurant/closingChores";
-import { nextMenuGuest, withMenuGuestServed } from "@/game/restaurant/menuGuests";
+import {
+  customerQueue,
+  menuGuestsServed,
+  nextMenuGuest,
+  withMenuGuestServed,
+} from "@/game/restaurant/menuGuests";
 import {
   cleanSettings,
   cleanSettingFor,
@@ -3214,6 +3219,32 @@ export function App() {
     campaignWillFinishNext
       ? nextMenuGuest(save, campaignLevelForSession)
       : null;
+  // Parties (developer 2026-10-26): the customers this service still has after the current
+  // one — its own tickets, then the menu guests and the walk-in — with what each ordered, so
+  // they can arrive together at one table. Presentation only (ServiceFloor).
+  const partyWaiting =
+    RESTAURANT_MODE &&
+    save &&
+    isCampaignService &&
+    campaignServiceSession?.tickets &&
+    campaignLevelForSession
+      ? (() => {
+          const required = campaignLevelForSession.requiredOrders ?? 1;
+          const at = campaignServiceSession.completedCount;
+          const tickets = campaignServiceSession.tickets
+            .slice(at + 1, Math.max(at + 1, required))
+            .map((r) => ({ emoji: r.emoji, name: r.name }));
+          const guests = isCompleted(campaignLevelForSession.id, save.levelProgress)
+            ? []
+            : customerQueue(save, campaignLevelForSession)
+                .slice(
+                  menuGuestsServed(save.levelProgress, campaignLevelForSession.id) +
+                    (at >= required ? 1 : 0),
+                )
+                .map((c) => ({ emoji: c.recipe.emoji, name: c.recipe.name }));
+          return [...tickets, ...guests];
+        })()
+      : undefined;
   const campaignLevelSatisfied =
     isCampaignService && campaignServiceSession
       ? campaignServiceSession.completedCount +
@@ -3305,6 +3336,7 @@ export function App() {
                   ? advanceBatchGroupView
                   : advanceBusinessServiceQueue,
               ...(isBusinessService ? { isBusinessOrder: true } : {}),
+              ...(partyWaiting ? { partyWaiting } : {}),
               ...(menuGuest
                 ? {
                     extraAction: !guestHasSetting(save, campaignLevelForSession!)

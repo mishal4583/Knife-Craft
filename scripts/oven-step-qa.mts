@@ -188,7 +188,7 @@ console.log("E. Nothing else moves");
       // drops a level's stale knife/board "Unlocks" hint (liveUnlockReward, progression-preview-qa H).
       // Rule changed (developer 2026-10-26, "the game starts at 0 cash"): SaveManager may change
       // only the new save's opening credits (scripts/startCashGuard.mts).
-      "git diff 0e0d83b -- src/game/business/businessTypes.ts src/game/economy ':!src/game/economy/staffDefinitions.ts' src/game/levels ':!src/game/levels/levelMastery.ts' src/game/recipes",
+      "git diff 0e0d83b -- src/game/business/businessTypes.ts src/game/economy ':!src/game/economy/staffDefinitions.ts' ':!src/game/economy/customerTips.ts' src/game/levels ':!src/game/levels/levelMastery.ts' src/game/recipes",
       { cwd: ROOT, encoding: "utf8" },
     );
   assert(
@@ -210,8 +210,13 @@ console.log("E. Nothing else moves");
   // offer's label may change (checked below: no pay, serve, ledger, save or reward code).
   // Early-game phase 4 (developer 2026-10-26): secondFloor.ts (open levels only) and
   // staffRequirements.ts (the paid hire), guarded by staff-hire-qa; in App.tsx the hire's call.
+  // Rule changed (developer 2026-10-26: parties of 1–4 and the cash left on the table):
+  // serviceFloor.ts (presentation, service-floor-qa) and, in App.tsx, the party's waiting list
+  // (`partyWaiting`, no pay or save code) and its menuGuests imports. Preparation's floor wiring
+  // changed with it; service-floor-qa D2 still checks its one serve call, so only OvenStep.tsx
+  // stays pinned here.
   const flow = execSync(
-    "git diff cc46bbd -- src/game/restaurant ':!src/game/restaurant/dishService.ts' ':!src/game/restaurant/levelPayPreview.ts' ':!src/game/restaurant/restaurantProgression.ts' ':!src/game/restaurant/firstLevels.ts' ':!src/game/restaurant/menuGuests.ts' ':!src/game/restaurant/preServiceCheck.ts' ':!src/game/restaurant/secondFloor.ts' ':!src/game/restaurant/staffRequirements.ts' src/game/progression src/game/recipes/dishKind.ts",
+    "git diff cc46bbd -- src/game/restaurant ':!src/game/restaurant/serviceFloor.ts' ':!src/game/restaurant/dishService.ts' ':!src/game/restaurant/levelPayPreview.ts' ':!src/game/restaurant/restaurantProgression.ts' ':!src/game/restaurant/firstLevels.ts' ':!src/game/restaurant/menuGuests.ts' ':!src/game/restaurant/preServiceCheck.ts' ':!src/game/restaurant/secondFloor.ts' ':!src/game/restaurant/staffRequirements.ts' src/game/progression src/game/recipes/dishKind.ts",
     { cwd: ROOT, encoding: "utf8" },
   );
   // App.tsx: only the walk-in offer's label (no pay / serve / save words) and, since phase 4,
@@ -219,6 +224,8 @@ console.log("E. Nothing else moves");
   const appNow = fs.readFileSync(path.join(ROOT, "src/App.tsx"), "utf8").split("\n");
   const hireStart = appNow.findIndex((l) => /^ {2}function hireStaff\(/.test(l)) + 1;
   const hireEnd = appNow.findIndex((l, k) => k >= hireStart && /^ {2}\}$/.test(l)) + 1;
+  const partyStart = appNow.findIndex((l) => /^ {2}const partyWaiting =$/.test(l)) + 1;
+  const partyEnd = appNow.findIndex((l, k) => k >= partyStart && /^ {6}: undefined;$/.test(l)) + 1;
   const appDiff: string[] = [];
   let newLine = 0;
   for (const l of execSync("git diff -U0 cc46bbd -- src/App.tsx", {
@@ -233,8 +240,13 @@ console.log("E. Nothing else moves");
     if (!/^[+-](?![+-])/.test(l)) continue;
     // A hunk's lines (removed or added) at new lines hireStart..hireEnd belong to hireStaff.
     const inHire = newLine >= hireStart - 1 && newLine <= hireEnd + 1;
+    const inParty = partyStart > 0 && newLine >= partyStart - 4 && newLine <= partyEnd + 1;
     if (l.startsWith("+")) newLine++;
-    if (!inHire) appDiff.push(l);
+    const partyImport =
+      /^[+-]\s*(customerQueue|menuGuestsServed|nextMenuGuest|withMenuGuestServed),$|^[+-]import \{$|^[+-]\} from "@\/game\/restaurant\/menuGuests";$|^-import \{ nextMenuGuest, withMenuGuestServed \} from "@\/game\/restaurant\/menuGuests";$|^\+\s*\.\.\.\(partyWaiting \? \{ partyWaiting \} : \{\}\),$/.test(
+        l,
+      );
+    if (!inHire && !inParty && !partyImport) appDiff.push(l);
   }
   const offLabel = appDiff.filter((l) =>
     /persist|credits|appendLedgerEntry|serve|complete|reward|settle|levelProgress|onClick: take/i.test(
@@ -254,10 +266,10 @@ console.log("E. Nothing else moves");
       l !== '-  if (kind === "bread" || OVEN_NAME.test(recipe.name)) cooking.add("oven");' &&
       !/^\+\s*(\/\*\*|\*\/|\* .*)$/.test(l),
   );
-  const viewDiff = execSync(
-    "git diff -U0 cc46bbd -- src/components/kc/game/Preparation.tsx src/components/kc/game/OvenStep.tsx",
-    { cwd: ROOT, encoding: "utf8" },
-  )
+  const viewDiff = execSync("git diff -U0 cc46bbd -- src/components/kc/game/OvenStep.tsx", {
+    cwd: ROOT,
+    encoding: "utf8",
+  })
     .split("\n")
     .filter((l) => /^[+-](?![+-])/.test(l));
   // Allowed: lines about the tray, the removed fixed 🍞, and the old one-name import.

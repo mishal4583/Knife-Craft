@@ -334,7 +334,7 @@ console.log("E. No save, wallet, ledger or payment change");
   // Early game phase 3 (developer 2026-10-25): walk-ins change menuGuests.ts and App.tsx's
   // offer label; walkin-qa guards them. The save, wallet, ledger and payment stay unchanged.
   const diff = execSync(
-    `git diff ${BASE} --stat -- src/game/SaveManager.ts src/game/business/businessTypes.ts src/game/economy ':!src/game/economy/staffDefinitions.ts' src/game/business/BusinessServiceManager.ts src/game/levels/LevelManager.ts`,
+    `git diff ${BASE} --stat -- src/game/SaveManager.ts src/game/business/businessTypes.ts src/game/economy ':!src/game/economy/staffDefinitions.ts' ':!src/game/economy/customerTips.ts' src/game/business/BusinessServiceManager.ts src/game/levels/LevelManager.ts`,
     { cwd: ROOT, encoding: "utf8" },
   );
   // Rule changed (developer 2026-10-26, "the game starts at 0 cash"): SaveManager may change
@@ -352,7 +352,7 @@ console.log("E. No save, wallet, ledger or payment change");
         ),
     );
   const rest = execSync(
-    `git diff ${BASE} --stat -- src/game/business/businessTypes.ts src/game/economy ':!src/game/economy/staffDefinitions.ts' src/game/business/BusinessServiceManager.ts src/game/levels/LevelManager.ts`,
+    `git diff ${BASE} --stat -- src/game/business/businessTypes.ts src/game/economy ':!src/game/economy/staffDefinitions.ts' ':!src/game/economy/customerTips.ts' src/game/business/BusinessServiceManager.ts src/game/levels/LevelManager.ts`,
     { cwd: ROOT, encoding: "utf8" },
   );
   assert(

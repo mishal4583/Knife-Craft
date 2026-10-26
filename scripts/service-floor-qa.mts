@@ -139,14 +139,21 @@ console.log("D. Wiring");
   const view = code("src/components/kc/game/ServiceFloor.tsx");
   const prep = code("src/components/kc/game/Preparation.tsx");
   const app = code("src/App.tsx");
+  // Rule changed (developer 2026-10-26: "the cash near their dining table … collect it like
+  // idle games"): the floor now shows the serve's pay and tip as cash on the table (CashVacuum,
+  // display only) and a wallet that rolls to the real balance — it may READ credits, never
+  // write money, the ledger or the save.
   assert(
     !/Math\.random/.test(floorLogic + view) &&
-      !/wallet|Ledger|Settlement|credits|SaveManager|persist/.test(floorLogic + view),
-    "D1: the floor is presentation only — no randomness, no wallet, ledger, settlement or save",
+      !/Ledger|Settlement|SaveManager|persist|debitWallet|credits\s*[+-]?=[^=>]/.test(
+        floorLogic + view,
+      ) &&
+      !/wallet|credits/.test(floorLogic),
+    "D1: the floor is presentation only — no randomness, ledger, settlement or save; it never writes money",
   );
   assert(
     /const served = service\.onServe\(\);/.test(prep) &&
-      /if \(served && floor\) \{[\s\S]{0,140}setFloorMode\("deliver"\)/.test(prep) &&
+      /if \(served && floor\) \{[\s\S]{0,400}setFloorMode\("deliver"\)/.test(prep) &&
       (prep.match(/service\.onServe\(/g) ?? []).length === 1,
     "D2: Serve calls the existing serve once; the plate goes to the table only for a real serve",
   );
@@ -191,7 +198,7 @@ console.log("E. Nothing else moves");
     execSync(
       // Early-game phase 4 (developer 2026-10-26): everything unlocked by Level 5 — only the unlock-level
       // lines of these catalogs change (staff-hire-qa U5 checks no price moved).
-      "git diff 095115a -- src/game/business/businessTypes.ts src/game/economy ':!src/game/economy/staffDefinitions.ts' src/game/daily/EndlessServiceManager.ts src/game/restaurant/endlessRestaurant.ts",
+      "git diff 095115a -- src/game/business/businessTypes.ts src/game/economy ':!src/game/economy/staffDefinitions.ts' ':!src/game/economy/customerTips.ts' src/game/daily/EndlessServiceManager.ts src/game/restaurant/endlessRestaurant.ts",
       { cwd: ROOT, encoding: "utf8" },
     );
   assert(

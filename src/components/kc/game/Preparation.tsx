@@ -70,10 +70,11 @@ import { OvenStep } from "./OvenStep";
 import { ovenStepFor, trayItemFor } from "@/game/cooking/ovenStep";
 import {
   REACTION_FACE,
-  noteDeparting,
-  seatForOrder,
-  takeDeparting,
+  markPartyServed,
+  seatInParty,
+  type PartyDish,
 } from "@/game/restaurant/serviceFloor";
+import { autoCollectOn } from "@/game/cashBurst";
 import type { KitchenMapArtStage } from "@/game/kitchen/kitchenMapArt";
 import { Panel, KButton, DustMotes } from "../common/primitives";
 import { dollars } from "@/game/money";
@@ -192,6 +193,11 @@ export function Preparation({
     isBusinessOrder?: boolean;
     /** Unified Restaurant: an optional second action after a serve (a menu guest). */
     extraAction?: { label: string; onClick: () => void; disabled?: boolean };
+    /**
+     * The service's customers still to come after this one, with what they ordered (null:
+     * not known yet) — they arrive with this one as a party (developer 2026-10-26). Absent: none.
+     */
+    partyWaiting?: readonly (PartyDish | null)[];
   };
   onExit: () => void;
   /** Returns this run's coin reward (0 on replay — Law 2 — or always 0 for a service session, where payment is deferred to the explicit Serve action) so OrderComplete can show it without a second App->Preparation round trip. */
@@ -359,21 +365,31 @@ export function Preparation({
   // plate reaches the table after Serve; the one before walks out as they
   // arrive. It only shows; the order's own actions stay the existing ones.
   const [floorMode, setFloorMode] = useState<FloorMode | null>(service && floor ? "arrive" : null);
-  const [floorSeat] = useState<0 | 1>(() => (service ? seatForOrder(service.order.order.id) : 0));
-  const [floorDeparting] = useState(() =>
-    service && floor ? takeDeparting(Date.now(), service.order.order.id) : null,
+  // Parties (developer 2026-10-26): this order's place at its party's table, decided once.
+  const [partySeat] = useState(() =>
+    service && floor && shownCustomer
+      ? seatInParty(
+          service.order.order.id,
+          shownCustomer.id,
+          { emoji: view.emoji, name: view.title },
+          service.partyWaiting ?? [],
+          Date.now(),
+        )
+      : null,
   );
   const [servedQuality, setServedQuality] = useState<QualityLabel | undefined>(undefined);
+  // What the serve paid (already in the wallet): left on the table as cash to sweep in.
+  const [servedCash, setServedCash] = useState<{ payCents: number; tipCents: number } | null>(null);
   const specialsShown = useRef(false);
-  /** Runs the existing advance at once; this customer walks out in the next one's arrival. */
+  /** Runs the existing advance at once; the party walks out when the next one arrives. */
   const departThen = (next: () => void) => {
-    if (floor && shownCustomer)
-      noteDeparting({
-        customerId: shownCustomer.id,
-        seat: floorSeat,
-        face: REACTION_FACE[servedQuality ?? result?.qualityLabel ?? "Honest"],
-        at: Date.now(),
-      });
+    if (floor && service)
+      markPartyServed(
+        service.order.order.id,
+        view.emoji,
+        REACTION_FACE[servedQuality ?? result?.qualityLabel ?? "Honest"],
+        Date.now(),
+      );
     next();
   };
   // The Regular's par (cosmetic): unpaused prep time against regularParMs.
@@ -1179,26 +1195,20 @@ export function Preparation({
         </div>
       ) : null}
 
-      {floorMode && service && floor && shownCustomer ? (
+      {floorMode && service && floor && shownCustomer && partySeat ? (
         <ServiceFloor
           key={floorMode}
           mode={floorMode}
           stage={floor.stage}
           mapUrl={floor.mapUrl}
-          seatIndex={floorSeat}
+          seat={partySeat}
           customer={shownCustomer}
           line={levelGuide?.customerLine ?? shownCustomer.greeting}
           dish={{ emoji: view.emoji, name: view.title }}
           {...(servedQuality ? { quality: servedQuality } : {})}
-          departing={
-            floorDeparting
-              ? {
-                  customerId: floorDeparting.customerId,
-                  seatIndex: floorDeparting.seat,
-                  face: floorDeparting.face,
-                }
-              : null
-          }
+          {...(floorMode === "deliver" && servedCash
+            ? { cash: { ...servedCash, credits, auto: autoCollectOn() } }
+            : {})}
           reducedMotion={floor.reducedMotion}
           onDone={() => setFloorMode(null)}
         />
@@ -1307,11 +1317,17 @@ export function Preparation({
               : {})}
             {...(result ? { plateTier: tierFor(result.score, true) } : {})}
             credits={credits}
+            cashAtTable={!!floor}
             onServe={() => {
               const served = service.onServe();
               // The plate goes to the table only for a real serve (paid once, by App).
               if (served && floor) {
                 setServedQuality(served.quality ?? result?.qualityLabel);
+                setServedCash(
+                  served.isReplay
+                    ? null
+                    : { payCents: served.coinsAwarded, tipCents: served.tip ?? 0 },
+                );
                 setFloorMode("deliver");
               }
               return served;

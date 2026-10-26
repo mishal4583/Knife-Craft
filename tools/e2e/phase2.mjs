@@ -524,9 +524,9 @@ if (grade17 === "Masterful") {
     },
   );
   check(
-    "C7 the card shows 'Generous tip!' with the amount, and the customer cheers",
+    "C7 the card shows '💸 Tip' with the amount, and the customer cheers",
     !!tipLine17 &&
-      /Generous tip!/i.test(tipLine17) &&
+      /💸 Tip/i.test(tipLine17) &&
       tipLine17.includes((want / 100).toFixed(2)) &&
       !!(await page.$('[data-testid="customer-reaction"]')),
     { tipLine17 },

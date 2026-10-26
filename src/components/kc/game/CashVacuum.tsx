@@ -28,6 +28,8 @@ export function CashVacuum({
   reducedMotion,
   auto,
   onRemaining,
+  variant = "counter",
+  onDone,
 }: {
   payCents: number;
   tipCents: number;
@@ -37,6 +39,13 @@ export function CashVacuum({
   /** Collect by itself (the session option, or Reduced Motion) — the parent owns the toggle. */
   auto: boolean;
   onRemaining: (cents: number) => void;
+  /**
+   * "table" (developer 2026-10-26: "the cash near their dining table … collect it like idle
+   * games"): the same pieces lying loose on the customer's table, no tray box, no line after.
+   */
+  variant?: "counter" | "table";
+  /** Called once, when the last piece is in. */
+  onDone?: () => void;
 }) {
   const pieces = useMemo(() => cashPieces(payCents, tipCents), [payCents, tipCents]);
   const total = payCents + tipCents;
@@ -46,6 +55,11 @@ export function CashVacuum({
   const last = useRef<{ x: number; y: number } | null>(null);
   const [done, setDone] = useState(pieces.length === 0);
   const [touched, setTouched] = useState(false);
+  const doneRef = useRef(onDone);
+  doneRef.current = onDone;
+  useEffect(() => {
+    if (done) doneRef.current?.();
+  }, [done]);
 
   // The burst: pieces pop out of the middle of the tray to where they land.
   useEffect(() => {
@@ -138,6 +152,7 @@ export function CashVacuum({
   }, [auto, done]);
 
   if (done) {
+    if (variant === "table") return null;
     return (
       <p
         className="mt-2 font-ui text-[12px] font-extrabold uppercase tracking-[0.16em] text-olive"
@@ -149,10 +164,14 @@ export function CashVacuum({
   }
 
   return (
-    <div className="mt-2">
+    <div className={variant === "table" ? "" : "mt-2"}>
       <div
         ref={trayRef}
-        className="relative h-[68px] w-full touch-none select-none overflow-hidden rounded-[14px] border border-walnut/15 bg-walnut/[0.07] shadow-inner"
+        className={
+          variant === "table"
+            ? "relative h-[64px] w-[132px] touch-none select-none"
+            : "relative h-[68px] w-full touch-none select-none overflow-hidden rounded-[14px] border border-walnut/15 bg-walnut/[0.07] shadow-inner"
+        }
         data-testid="cash-tray"
         onPointerDown={(e) => {
           e.currentTarget.setPointerCapture(e.pointerId);

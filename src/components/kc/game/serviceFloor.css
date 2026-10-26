@@ -191,3 +191,28 @@
   opacity: 0.85;
   font-size: 14px;
 }
+
+/* Parties (developer 2026-10-26): the other members' orders, smaller, so a table of 4 fits at
+   320 px; a served member's plate; the cash left on the table. */
+.sf .sf-bubble--small {
+  min-width: 0;
+  max-width: none;
+  transform: translate(-50%, calc(-100% - 9cqw));
+}
+.sf .sf-bubble--small .sf-bubble-body {
+  padding: 3px 6px;
+}
+.sf .sf-plate--small {
+  width: 6.5%;
+  font-size: 15px;
+}
+.sf .sf-cash {
+  z-index: 5;
+}
+.sf .sf-cash > div {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: auto;
+  transform: translate(-50%, -50%);
+}

@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AudioManager } from "@/game/AudioManager";
 import { CASH, autoCollectOn, reducedMotionOn, setAutoCollect } from "@/game/cashBurst";
 import { CashVacuum } from "./CashVacuum";
+import { useRolledNumber } from "./useRolledNumber";
 import { KButton, Panel } from "../common/primitives";
 import { CurrencyPill } from "../common/Indicators";
 import { BusinessPaymentLines } from "../business/BusinessPaymentLines";
@@ -167,6 +168,7 @@ export function ServiceOrderComplete({
   plateTier = null,
   bookNote,
   onCustomerMoment,
+  cashAtTable = false,
 }: {
   serviceOrder: ServiceOrder;
   credits: number;
@@ -198,6 +200,11 @@ export function ServiceOrderComplete({
   bookNote?: ReactNode;
   /** Phase 6: a special customer's reaction at Serve (for its Kitchen Moment) — once, on the real serve. */
   onCustomerMoment?: (c: { line: string; reveal?: string }) => void;
+  /**
+   * The dining room shows this payment as cash on the customer's table (ServiceFloor,
+   * developer 2026-10-26), swept in there — the card only says it was collected.
+   */
+  cashAtTable?: boolean;
 }) {
   const [served, setServed] = useState<ServeResult | null>(null);
   const { customer, recipe } = serviceOrder;
@@ -231,7 +238,7 @@ export function ServiceOrderComplete({
       return;
     }
     const paid = result.isReplay ? 0 : result.coinsAwarded + (result.tip ?? 0);
-    setRemaining(paid);
+    setRemaining(cashAtTable ? 0 : paid);
     setServed(result);
     if (personality) {
       const said = personalityReaction(personality, result.quality, prep);
@@ -358,11 +365,18 @@ export function ServiceOrderComplete({
                 data-testid="tip-line"
                 style={stage(360)}
               >
-                💸 Generous tip! {formatUsdChange(tip)}
+                💸 Tip {formatUsdChange(tip)}
               </p>
             ) : null}
             {/* Phase 2 (B2/B3): the payment (and tip) as cash to sweep in. */}
-            {paidCents + tip > 0 ? (
+            {paidCents + tip > 0 && cashAtTable ? (
+              <p
+                className="mt-2 font-ui text-[12px] font-extrabold uppercase tracking-[0.16em] text-olive"
+                data-testid="cash-collected"
+              >
+                ✓ Collected at the table {formatUsd(paidCents + tip)}
+              </p>
+            ) : paidCents + tip > 0 ? (
               <div className="kc-stage" style={stage(520)}>
                 <CashVacuum
                   payCents={paidCents}
@@ -461,34 +475,4 @@ export function ServiceOrderComplete({
       </Panel>
     </div>
   );
-}
-
-/**
- * Phase 2 (B4) — `target` shown as a short roll from its previous value
- * (CASH.COUNTER_MS), immediate with Reduced Motion. Display only: it
- * always ends on `target`, whatever interrupts it.
- */
-function useRolledNumber(target: number, reduced: boolean): number {
-  const [shown, setShown] = useState(target);
-  const from = useRef(target);
-  useEffect(() => {
-    if (reduced || from.current === target) {
-      from.current = target;
-      setShown(target);
-      return;
-    }
-    const start = performance.now();
-    const a = from.current;
-    let raf = 0;
-    const step = (now: number) => {
-      const k = Math.min(1, (now - start) / CASH.COUNTER_MS);
-      const v = Math.round(a + (target - a) * (1 - (1 - k) * (1 - k)));
-      from.current = v;
-      setShown(v);
-      if (k < 1) raf = requestAnimationFrame(step);
-    };
-    raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf);
-  }, [target, reduced]);
-  return shown;
 }

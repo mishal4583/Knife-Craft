@@ -472,25 +472,34 @@ for (let i = 0; i < 50 && (pickIdx < 0 || skipIdx < 0); i++) {
   if (isTippingOrder(base.levelId, base.recipeId, i)) pickIdx = pickIdx < 0 ? i : pickIdx;
   else skipIdx = skipIdx < 0 ? i : skipIdx;
 }
+// Rule changed (developer 2026-10-26, "let them leave some tips along with payment"): every
+// first-paid order tips by its dish's grade — Masterful 15 %, Clean 10 %, Honest 5 %, a weaker
+// dish none — in whole dollars, at least $1. Was: Masterful only, one order in three, 10 %, $5+.
 assert(
   tipFor({ ...base, orderIndex: pickIdx, firstPayment: false, score: 100 }) === 0,
   "C1: a replay (not a first payment) never tips",
 );
 assert(
-  tipFor({ ...base, orderIndex: pickIdx, firstPayment: true, score: 94 }) === 0,
-  "C2: a dish that isn't Masterful (94) never tips, even for a tipping customer",
+  tipFor({ ...base, firstPayment: true, score: 69 }) === 0 &&
+    tipFor({ ...base, firstPayment: true, score: 49 }) === 0,
+  "C2: a Rustic (69) or Learning (49) dish never tips",
 );
 assert(
-  tipFor({ ...base, orderIndex: skipIdx, firstPayment: true, score: 100 }) === 0,
-  "C3: a Masterful dish for a non-tipping order gets no tip (it is occasional)",
+  tipFor({ ...base, orderIndex: skipIdx, firstPayment: true, score: 100 }) === 1900 &&
+    tipFor({ ...base, orderIndex: pickIdx, firstPayment: true, score: 100 }) === 1900,
+  "C3: every customer tips — the same Masterful tip whatever the order's place in the level",
 );
 assert(
-  tipFor({ ...base, orderIndex: pickIdx, firstPayment: true, score: 100 }) === 1200,
-  "C4: Masterful + tipping order: 10% of the pay in whole dollars ($123.45 → $12.00)",
+  tipFor({ ...base, firstPayment: true, score: 100 }) === 1900 &&
+    tipFor({ ...base, firstPayment: true, score: 90 }) === 1200 &&
+    tipFor({ ...base, firstPayment: true, score: 75 }) === 600,
+  "C4: the tip follows the grade: $123.45 → Masterful $19, Clean $12, Honest $6 (whole dollars)",
 );
 assert(
-  tipAmount(1000) === TIPS.MIN_CENTS && tipAmount(12345) === 1200 && tipAmount(99950) === 10000,
-  "C5: fixed configured amounts — at least $5, otherwise 10% rounded to whole dollars",
+  tipAmount(1000, 0.05) === TIPS.MIN_CENTS &&
+    tipAmount(12345) === 1200 &&
+    tipAmount(99950) === 10000,
+  "C5: fixed configured amounts — at least $1, otherwise the share rounded to whole dollars",
 );
 assert(
   tipFor({ ...base, orderIndex: pickIdx, firstPayment: true, score: 100, payCents: 0 }) === 0,
@@ -499,9 +508,11 @@ assert(
 assert(
   !/Math\.random|Date\.now|performance\.now/.test(code("src/game/economy/customerTips.ts")) &&
     [0, 1, 2, 3].every(
-      (i) => isTippingOrder("level-3", "camp-y", i) === isTippingOrder("level-3", "camp-y", i),
+      (i) =>
+        tipFor({ ...base, orderIndex: i, firstPayment: true, score: 88 }) ===
+        tipFor({ ...base, orderIndex: i, firstPayment: true, score: 88 }),
     ),
-  "C7: deterministic — no random numbers or clocks; the same order always tips or never does",
+  "C7: deterministic — no random numbers or clocks; the same order and grade always tip the same",
 );
 
 // The REAL campaign, every order played Masterful (the worst case for tips).
@@ -532,26 +543,16 @@ for (const level of LEVELS) {
     tips += tip;
   });
 }
-const rate = picked / Math.max(1, orders);
-// A fair 1-in-N pick lands within 2 standard deviations of orders / N; the
-// unmixed FNV-1a picked 98 of 242 (40.5%), outside it (see customerTips.ts).
-const p = 1 / TIPS.EVERY_NTH;
-const twoSigma = 2 * Math.sqrt(orders * p * (1 - p));
+// Since 2026-10-26 every paid order tips (by grade), so at 100 every order tips.
 assert(
-  orders > 100 && Math.abs(picked - orders * p) <= twoSigma,
-  `C8: over the real campaign 1 in ${TIPS.EVERY_NTH} paid orders is a tipping one (within 2σ of chance)`,
-  {
-    orders,
-    picked,
-    expected: +(orders * p).toFixed(1),
-    twoSigma: +twoSigma.toFixed(1),
-    rate: +rate.toFixed(3),
-  },
+  orders > 100 && picked === orders,
+  "C8: over the real campaign every paid Masterful order tips",
+  { orders, picked },
 );
 const share = tips / (settlements + rewards);
 assert(
   share <= TIPS.MAX_SHARE_OF_INCOME,
-  `C9: worst case (every order Masterful) tips add <= ${TIPS.MAX_SHARE_OF_INCOME * 100}% to campaign income`,
+  `C9: worst case (every order Masterful, 15 %) tips add <= ${TIPS.MAX_SHARE_OF_INCOME * 100}% to campaign income`,
   {
     tips: `$${(tips / 100).toFixed(0)}`,
     income: `$${((settlements + rewards) / 100).toFixed(0)}`,

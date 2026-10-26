@@ -1,20 +1,20 @@
 import { qualityFor } from "../CutEvaluator";
 
 /**
- * CUSTOMER_TIPS — Phase 2 (C3, developer decision 2026-10-21): an
- * occasional generous tip for an exceptional dish.
+ * CUSTOMER_TIPS — Phase 2 (C3, developer decision 2026-10-21), widened on the
+ * developer's request 2026-10-26 ("let them leave some tips along with
+ * payment"): every paid customer leaves a tip that follows the dish.
  *
  * The rule, all from TIPS below — no random numbers anywhere:
  * - only a campaign order being PAID FOR THE FIRST TIME (the same
  *   `isReplay` / `mayPayOrder` gate as the order's own settlement), so a
  *   replay can never tip, and no order can tip twice;
- * - only a dish graded Masterful (CutEvaluator's own grade, 95+ — the very
- *   score the settlement is computed from);
- * - only every EVERY_NTH such order, picked by a fixed hash of the level, the
- *   recipe and the order's place in the level: the same order always tips
- *   or never does, so it is a surprise to the player but never a gamble;
- * - the tip is PCT of that order's own pay, in whole dollars, at least
- *   MIN_CENTS; an order that paid nothing never tips.
+ * - the share follows the dish's grade (CutEvaluator's own grade — the very
+ *   score the settlement is computed from): Masterful 15 %, Clean 10 %,
+ *   Honest 5 %, a weaker dish none;
+ * - in whole dollars, at least MIN_CENTS; an order that paid nothing never tips.
+ * (Until 2026-10-26 only a Masterful dish tipped, on one order in three —
+ * `isTippingOrder` is kept for that history and its test.)
  *
  * Money: a tip is real, extra money on top of the frozen campaign economy
  * (like the ad bonuses), credited by App in the SAME save write as the
@@ -25,11 +25,16 @@ import { qualityFor } from "../CutEvaluator";
  */
 export const TIPS = {
   EVERY_NTH: 3,
+  /** The tip's share of the order's pay, by the dish's grade (absent: no tip). */
+  PCT_BY_GRADE: { Masterful: 0.15, Clean: 0.1, Honest: 0.05 } as Readonly<
+    Partial<Record<string, number>>
+  >,
+  /** The old single rate (Masterful, one order in three), kept for `tipAmount`'s callers. */
   PCT: 0.1,
-  MIN_CENTS: 500,
+  MIN_CENTS: 100,
   /** Whole dollars. */
   ROUND_TO_CENTS: 100,
-  MAX_SHARE_OF_INCOME: 0.05,
+  MAX_SHARE_OF_INCOME: 0.1,
 } as const;
 
 /** FNV-1a: a fixed, platform-independent hash of the order's identity. */
@@ -63,16 +68,17 @@ export function isTippingOrder(levelId: string, recipeId: string, orderIndex: nu
   return fmix32(fnv1a(`${levelId}|${recipeId}|${orderIndex}`)) % TIPS.EVERY_NTH === 0;
 }
 
-/** The tip for a pay of `payCents`: PCT of it in whole dollars, at least MIN_CENTS. */
-export function tipAmount(payCents: number): number {
-  const pct = Math.round((payCents * TIPS.PCT) / TIPS.ROUND_TO_CENTS) * TIPS.ROUND_TO_CENTS;
-  return Math.max(TIPS.MIN_CENTS, pct);
+/** The tip for a pay of `payCents` at `pct` (default PCT): in whole dollars, at least MIN_CENTS. */
+export function tipAmount(payCents: number, pct: number = TIPS.PCT): number {
+  const amount = Math.round((payCents * pct) / TIPS.ROUND_TO_CENTS) * TIPS.ROUND_TO_CENTS;
+  return Math.max(TIPS.MIN_CENTS, amount);
 }
 
 /**
  * The tip (cents) this serve earns, or 0. `firstPayment` is the order's own
- * "this pays" decision (not a replay, still owed); `orderIndex` is how many
- * of the level's orders were paid before this one.
+ * "this pays" decision (not a replay, still owed). `levelId`, `recipeId` and
+ * `orderIndex` identify the order (kept for callers; the share no longer
+ * depends on them).
  */
 export function tipFor(input: {
   firstPayment: boolean;
@@ -83,7 +89,7 @@ export function tipFor(input: {
   payCents: number;
 }): number {
   if (!input.firstPayment || !(input.payCents > 0)) return 0;
-  if (qualityFor(input.score) !== "Masterful") return 0;
-  if (!isTippingOrder(input.levelId, input.recipeId, input.orderIndex)) return 0;
-  return tipAmount(input.payCents);
+  const pct = TIPS.PCT_BY_GRADE[qualityFor(input.score)];
+  if (!pct) return 0;
+  return tipAmount(input.payCents, pct);
 }
