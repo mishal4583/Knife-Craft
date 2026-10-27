@@ -46,6 +46,9 @@ import { getBusinessDish } from "../business/businessDishCatalog";
  */
 export const BUSINESS_MENU_FIRST_LEVEL = 5;
 
+/** Ingredients become a player-managed stock system when the Market opens. */
+export const INGREDIENT_STOCK_FIRST_LEVEL = 3;
+
 // ── Systems ─────────────────────────────────────────────────────────────
 
 export type RestaurantSystemId =
@@ -191,7 +194,15 @@ const SOURCE_RESTAURANT_SYSTEMS: readonly RestaurantSystem[] = [
 export const RESTAURANT_SYSTEMS: readonly RestaurantSystem[] = SOURCE_RESTAURANT_SYSTEMS
   .map((system) => ({
     ...system,
-    firstLevel: system.id === "menu" ? BUSINESS_MENU_FIRST_LEVEL : remapCampaignThreshold(system.firstLevel),
+    // These two unlocks are defined in the current campaign numbering. The
+    // old-source remapper would move ingredient stock to Level 1 after the
+    // opening tutorials were removed, before the Market is available.
+    firstLevel:
+      system.id === "menu"
+        ? BUSINESS_MENU_FIRST_LEVEL
+        : system.id === "ingredient-stock"
+          ? INGREDIENT_STOCK_FIRST_LEVEL
+          : remapCampaignThreshold(system.firstLevel),
   }))
   .sort((a, b) => a.firstLevel - b.firstLevel);
 

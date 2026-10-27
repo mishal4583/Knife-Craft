@@ -15,7 +15,11 @@
  * Level N" means the player has reached Level N (its highest unlocked
  * level), the same reading the knife / board unlocks use.
  */
-import { BUSINESS_MENU_FIRST_LEVEL, isSystemLive } from "./restaurantProgression";
+import {
+  BUSINESS_MENU_FIRST_LEVEL,
+  INGREDIENT_STOCK_FIRST_LEVEL,
+  isSystemLive,
+} from "./restaurantProgression";
 import { EARLY_UNLOCK_CAP } from "../config/earlyUnlocks";
 import { KNIFE_CATALOG } from "../knives/knifeDefinitions";
 import { BOARD_CATALOG } from "../boards/boardDefinitions";
@@ -26,8 +30,8 @@ import type { SaveData } from "../SaveManager";
 export type LockableTab = "inventory" | "shop" | "rack" | "business";
 
 export const TAB_OPENS_AT: Record<LockableTab, number> = {
-  inventory: 3,
-  shop: 3,
+  inventory: INGREDIENT_STOCK_FIRST_LEVEL,
+  shop: INGREDIENT_STOCK_FIRST_LEVEL,
   rack: EARLY_UNLOCK_CAP,
   business: BUSINESS_MENU_FIRST_LEVEL,
 };
@@ -100,7 +104,7 @@ export function dayCeremonyAt(restaurantLevel: number): boolean {
 }
 
 /** Ingredient purchases first become available in the Market. */
-export const FIRST_INGREDIENT_PURCHASE_LEVEL = 3;
+export const FIRST_INGREDIENT_PURCHASE_LEVEL = INGREDIENT_STOCK_FIRST_LEVEL;
 
 /** Level 10: the Market's kitchen tools and Grandma's shopping list (knives and boards are for sale from L5). */
 export const FIRST_PURCHASE_LEVEL = 10;
@@ -131,7 +135,7 @@ export function firstPurchaseRows(): { label: string; value: string }[] {
 /** Former level marker for the removed leftovers tutorial. */
 export const LEFTOVERS_AT = 3;
 /** Ingredient stock is active from this level; purchases are required. */
-export const STOCK_USED_FROM = 3;
+export const STOCK_USED_FROM = INGREDIENT_STOCK_FIRST_LEVEL;
 /** Former levels for the removed Grandma fridge tutorial. */
 export const RUNNING_LOW_AT = 12;
 /** Former top-up level for the removed Grandma fridge tutorial. */
