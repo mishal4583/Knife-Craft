@@ -2151,6 +2151,13 @@ export function App() {
   } | null {
     if (!campaignServiceSession?.current) return null;
     const { recipe, order } = campaignServiceSession.current;
+    // The result screen is only reachable after RECIPE_COMPLETED. Reconcile
+    // its completed prep outputs here as a final guard against stale service
+    // readiness state leaving the Serve button as a silent no-op.
+    const readySession =
+      order.status === "READY"
+        ? campaignServiceSession
+        : recordAllComponents(campaignServiceSession, order.preparationScore ?? 0);
     // A replay pays nothing, and neither does an order the level no longer
     // owes (its required orders were all paid before — levels/paidOrders.ts).
     const level = getLevel(campaignServiceSession.levelId);
@@ -2220,7 +2227,7 @@ export function App() {
         ? restaurantSettlement(computed, save ? restaurantQualityBonusPct(save) : 0)
         : computed;
     const amount = settlement?.netResult ?? 0;
-    const result = serveCurrentOrder(campaignServiceSession, Math.random, amount);
+    const result = serveCurrentOrder(readySession, Math.random, amount);
     if (!result) return null;
     setCampaignServiceSession(result.session);
     // Economy V2 Phase 6 — sharpness decay only ever happens on a
@@ -2709,6 +2716,16 @@ export function App() {
     if (!batchGroupSession || !batchViewOrderId) return null;
     const viewed = batchGroupSession.orders.find((o) => o.order.id === batchViewOrderId);
     if (!viewed) return null;
+    // Preparation's result screen confirms this recipe was completed. Repair
+    // a stale READY status before the service manager's strict serve guard.
+    const readyGroup =
+      viewed.order.status === "READY"
+        ? batchGroupSession
+        : recordBatchGroupComponents(
+            batchGroupSession,
+            batchViewOrderId,
+            viewed.order.preparationScore ?? 0,
+          );
     // Mirrors serveCampaignOrder: a replay, or a customer already paid, pays nothing.
     const level = getLevel(batchGroupSession.levelId);
     const isReplay =
@@ -2764,7 +2781,7 @@ export function App() {
         ? restaurantSettlement(computed, save ? restaurantQualityBonusPct(save) : 0)
         : computed;
     const amount = settlement?.netResult ?? 0;
-    const result = serveBatchGroupOrder(batchGroupSession, batchViewOrderId, Math.random, amount);
+    const result = serveBatchGroupOrder(readyGroup, batchViewOrderId, Math.random, amount);
     if (!result) return null;
     setBatchGroupSession(result.group);
     // Economy V2 Phase 6 — mirrors serveCampaignOrder's own doc exactly.

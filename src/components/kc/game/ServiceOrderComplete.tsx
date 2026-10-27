@@ -217,6 +217,7 @@ export function ServiceOrderComplete({
   const { customer, recipe } = serviceOrder;
   // Cash remains outside the wallet until each physical piece is swept in.
   const [localRemaining, setLocalRemaining] = useState(0);
+  const [serveError, setServeError] = useState(false);
   const remaining = cashRemainingOverride ?? localRemaining;
   const walletRef = useRef<HTMLSpanElement | null>(null);
   const [reduced] = useState(() => reducedMotionOn());
@@ -236,8 +237,10 @@ export function ServiceOrderComplete({
   function handleServe() {
     if (serveLatch.current) return;
     serveLatch.current = true;
+    setServeError(false);
     const result = onServe();
     if (!result) {
+      setServeError(true);
       serveLatch.current = false;
       return;
     }
@@ -454,6 +457,11 @@ export function ServiceOrderComplete({
             <p className="mt-2 font-hand text-[17px] text-walnut/70">
               Everything's prepared — {customer.name} is waiting.
             </p>
+            {serveError ? (
+              <p role="alert" className="mt-2 font-ui text-[13px] font-bold text-red-700">
+                Couldn’t serve this order. Check the required ingredients in Market and try again.
+              </p>
+            ) : null}
             <div className="mt-5 space-y-2">
               <KButton full variant="sage" onClick={handleServe}>
                 Serve to {customer.name}
