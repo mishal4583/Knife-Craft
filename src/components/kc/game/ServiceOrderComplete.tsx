@@ -1,7 +1,7 @@
 import { foodFromStock } from "@/game/restaurant/restaurantEconomy";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AudioManager } from "@/game/AudioManager";
-import { CASH, autoCollectOn, reducedMotionOn, setAutoCollect } from "@/game/cashBurst";
+import { reducedMotionOn } from "@/game/cashBurst";
 import { CashVacuum } from "./CashVacuum";
 import { useRolledNumber } from "./useRolledNumber";
 import { KButton, Panel } from "../common/primitives";
@@ -137,14 +137,12 @@ function Row({ label, value, strong }: { label: string; value: number; strong?: 
  * completely unchanged).
  *
  * Phase 2 (developer decision 2026-10-21) lifts this screen's old "no
- * tip" rule: a campaign order can now earn a customer tip (App credits it
- * with the order pay; economy/customerTips.ts has the rule), shown here
+ * tip" rule: a campaign order can now earn a customer tip (collected with
+ * the order pay; economy/customerTips.ts has the rule), shown here
  * as its own line. It also adds the serve celebration: the payment sound
  * on the real payment, the customer reacting to the dish's grade, and the
- * payment as cash on the counter (CashVacuum) — all presentation over
- * money App has already credited when Serve is tapped. The wallet pill
- * shows `credits − cash still on the counter`, so it rolls up to the real
- * balance as the cash is swept in and can never disagree with it. Serve is
+ * payment as cash on the counter (CashVacuum). Each bill or coin is credited
+ * only when physically swept into the wallet. Serve is
  * latched to one call per screen, so a double tap can never serve, pay or
  * tip twice.
  */
@@ -169,6 +167,10 @@ export function ServiceOrderComplete({
   bookNote,
   onCustomerMoment,
   cashAtTable = false,
+  onCashPieceCollected,
+  onCashRemaining,
+  onCashCollected,
+  cashRemainingOverride,
 }: {
   serviceOrder: ServiceOrder;
   credits: number;
@@ -205,18 +207,20 @@ export function ServiceOrderComplete({
    * developer 2026-10-26), swept in there — the card only says it was collected.
    */
   cashAtTable?: boolean;
+  /** Cash pieces move into the wallet only after a real swipe collects them. */
+  onCashPieceCollected?: (cents: number, isTip: boolean) => void;
+  onCashRemaining?: (cents: number) => void;
+  onCashCollected?: () => void;
+  cashRemainingOverride?: number;
 }) {
   const [served, setServed] = useState<ServeResult | null>(null);
   const { customer, recipe } = serviceOrder;
-  // Phase 2 (B4): cents still on the counter as cash. The pill shows
-  // `credits - remaining`, so it rolls toward the real balance as the cash
-  // is swept in and lands on it exactly.
-  const [remaining, setRemaining] = useState(0);
+  // Cash remains outside the wallet until each physical piece is swept in.
+  const [localRemaining, setLocalRemaining] = useState(0);
+  const remaining = cashRemainingOverride ?? localRemaining;
   const walletRef = useRef<HTMLSpanElement | null>(null);
   const [reduced] = useState(() => reducedMotionOn());
-  const shownCredits = useRolledNumber(credits - remaining, reduced);
-  // B5: auto-collect — a session option (no save field), always on with Reduced Motion.
-  const [auto, setAuto] = useState(() => reduced || autoCollectOn());
+  const shownCredits = useRolledNumber(credits, reduced);
   // One serve per screen: a second tap that lands before React re-renders
   // must not call onServe again (C1, "prevent double-clicking").
   const serveLatch = useRef(false);
@@ -238,8 +242,9 @@ export function ServiceOrderComplete({
       return;
     }
     const paid = result.isReplay ? 0 : result.coinsAwarded + (result.tip ?? 0);
-    setRemaining(cashAtTable ? 0 : paid);
+    setLocalRemaining(paid);
     setServed(result);
+    if (paid === 0) onCashCollected?.();
     if (personality) {
       const said = personalityReaction(personality, result.quality, prep);
       onCustomerMoment?.({ line: said.line, ...(said.reveal ? { reveal: said.reveal } : {}) });
@@ -263,7 +268,7 @@ export function ServiceOrderComplete({
         : null;
   // Phase 4 (C3): after Serve the card fills in in order — the customer's
   // reaction, then the payment, the tip, the cash — a beat apart (none with
-  // Reduced Motion). Presentation only: the money was credited on the tap.
+  // Reduced Motion).
   const stage = (ms: number) => (reduced ? undefined : ({ animationDelay: `${ms}ms` } as const));
 
   return (
@@ -372,9 +377,9 @@ export function ServiceOrderComplete({
             {paidCents + tip > 0 && cashAtTable ? (
               <p
                 className="mt-2 font-ui text-[12px] font-extrabold uppercase tracking-[0.16em] text-olive"
-                data-testid="cash-collected"
+                data-testid={remaining > 0 ? "cash-prompt" : "cash-collected"}
               >
-                ✓ Collected at the table {formatUsd(paidCents + tip)}
+                {remaining > 0 ? "💵 Swipe the cash at the table to collect it" : "✓ Cash collected"}
               </p>
             ) : paidCents + tip > 0 ? (
               <div className="kc-stage" style={stage(520)}>
@@ -383,8 +388,12 @@ export function ServiceOrderComplete({
                   tipCents={tip}
                   walletRef={walletRef}
                   reducedMotion={reduced}
-                  auto={auto}
-                  onRemaining={setRemaining}
+                  {...(onCashPieceCollected ? { onPieceCollected: onCashPieceCollected } : {})}
+                  onRemaining={(cents) => {
+                    setLocalRemaining(cents);
+                    onCashRemaining?.(cents);
+                  }}
+                  {...(onCashCollected ? { onDone: onCashCollected } : {})}
                 />
               </div>
             ) : null}
@@ -392,22 +401,8 @@ export function ServiceOrderComplete({
               <span ref={walletRef} data-testid="wallet-pill" data-credits={credits}>
                 <CurrencyPill amount={shownCredits} />
               </span>
-              {/* B5: the auto-collect toggle shares the wallet row while cash is on the counter. */}
-              {remaining > 0 ? (
-                <button
-                  type="button"
-                  className="min-h-12 px-2 font-ui text-[11px] font-extrabold uppercase tracking-[0.12em] text-walnut/55 disabled:opacity-60"
-                  data-testid="cash-auto"
-                  aria-pressed={auto}
-                  aria-label={reduced ? "Auto-collect (on with Reduced Motion)" : "Auto-collect"}
-                  disabled={reduced}
-                  onClick={() => {
-                    setAutoCollect(!auto);
-                    setAuto(!auto);
-                  }}
-                >
-                  {auto ? "✓ Auto" : "⚡ Auto"}
-                </button>
+              {remaining > 0 && !cashAtTable ? (
+                <span className="font-hand text-[14px] text-olive">Swipe the cash to collect it</span>
               ) : null}
             </div>
             {served.settlement ? (
@@ -433,7 +428,7 @@ export function ServiceOrderComplete({
             ) : null}
             <div className="mt-5 space-y-2 [@media(max-height:640px)]:mt-3">
               {isBusinessOrder && served.businessCustomers?.complete ? null : (
-                <KButton full onClick={nextOnce}>
+                <KButton full disabled={remaining > 0} onClick={nextOnce}>
                   {nextLabel}
                 </KButton>
               )}
@@ -442,13 +437,13 @@ export function ServiceOrderComplete({
                   full
                   variant="sage"
                   className="h-auto min-h-12 py-2 leading-tight [@media(max-height:640px)]:text-[12.5px]"
-                  disabled={!!extraAction.disabled}
+                  disabled={!!extraAction.disabled || remaining > 0}
                   onClick={extraAction.onClick}
                 >
                   {extraAction.label}
                 </KButton>
               ) : null}
-              <KButton full variant="ghost" onClick={onExit}>
+              <KButton full variant="ghost" disabled={remaining > 0} onClick={onExit}>
                 {isBusinessOrder ? "Back to Service" : "Back to Orders"}
               </KButton>
             </div>
@@ -460,13 +455,13 @@ export function ServiceOrderComplete({
               Everything's prepared — {customer.name} is waiting.
             </p>
             <div className="mt-5 space-y-2">
-              <KButton full onClick={handleServe}>
+              <KButton full variant="sage" onClick={handleServe}>
                 Serve to {customer.name}
               </KButton>
               <KButton full variant="cream" onClick={onRetry}>
                 Prepare Again
               </KButton>
-              <KButton full variant="ghost" onClick={onExit}>
+              <KButton full variant="ghost" disabled={remaining > 0} onClick={onExit}>
                 {isBusinessOrder ? "Back to Service" : "Back to Orders"}
               </KButton>
             </div>

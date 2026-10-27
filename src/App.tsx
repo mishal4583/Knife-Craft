@@ -273,6 +273,7 @@ import {
 import { buyStaff as buyStaffFromCatalog } from "@/game/economy/StaffManager";
 import { selectSupplier as selectSupplierFromCatalog } from "@/game/economy/SupplierManager";
 import { appendLedgerEntry } from "@/game/economy/EconomyLedger";
+import type { LedgerCategory } from "@/game/economy/ledgerTypes";
 import { tipFor } from "@/game/economy/customerTips";
 import { qualityFor } from "@/game/CutEvaluator";
 import type { QualityLabel } from "@/types/game";
@@ -599,6 +600,12 @@ export function App() {
   // never a stale closure. The Replay Bonus's claimed/granted state is NOT
   // stored here — it is derived from the save's ledger (replayBonus.ts).
   const saveRef = useRef<SaveData | null>(null);
+  const pendingServiceCashRef = useRef<{
+    remainingCents: number;
+    category: LedgerCategory;
+    description: string;
+    tipDescription?: string;
+  } | null>(null);
   /** Achievement rewards already announced this session (and those waiting at load). */
   const announcedRef = useRef<Set<string>>(new Set());
   const [replayOffer, setReplayOffer] = useState<ReplayBonusOffer | null>(null);
@@ -914,6 +921,49 @@ export function App() {
         },
       ]);
     }
+  }
+
+  /** Start a cash-on-floor transaction. Only swept pieces enter the wallet. */
+  function queueServiceCash(
+    amount: number,
+    tip: number,
+    category: LedgerCategory,
+    description: string,
+    tipDescription?: string,
+  ) {
+    pendingServiceCashRef.current = {
+      remainingCents: Math.max(0, amount) + Math.max(0, tip),
+      category,
+      description,
+      ...(tipDescription ? { tipDescription } : {}),
+    };
+  }
+
+  /** Called once for each bill or coin the player actually swipes into the wallet. */
+  function collectServiceCashPiece(cents: number, isTip: boolean) {
+    const pending = pendingServiceCashRef.current;
+    const current = saveRef.current;
+    if (!pending || !current || cents <= 0) return;
+    const amount = Math.min(cents, pending.remainingCents);
+    if (amount <= 0) return;
+    pending.remainingCents -= amount;
+    const category = isTip ? "customer-tip" : pending.category;
+    const description = isTip ? (pending.tipDescription ?? pending.description) : pending.description;
+    persist(
+      appendLedgerEntry(
+        { ...current, credits: current.credits + amount },
+        category,
+        amount,
+        description,
+      ),
+    );
+  }
+
+  /** Release the service queue after every cash piece has been collected. */
+  function finishServiceCashCollection() {
+    const pending = pendingServiceCashRef.current;
+    if (!pending || pending.remainingCents > 0) return;
+    pendingServiceCashRef.current = null;
   }
 
   /** Achievements tab: collect one earned reward (progression/achievements.ts). */
@@ -2006,11 +2056,8 @@ export function App() {
     const result = serveBusinessOrder(businessServiceSession, save, businessRand());
     if (!result) return null;
     setBusinessServiceSession(result.session);
-    const paid = withTodaysSpecialServed(
-      appendLedgerEntry(result.save, "business-revenue", result.amountCharged, result.dish.id),
-      result.dish.id,
-    );
-    persist(paid);
+    queueServiceCash(result.amountCharged, 0, "business-revenue", result.dish.id);
+    persist(withTodaysSpecialServed(result.save, result.dish.id));
     return {
       coinsAwarded: result.amountCharged,
       reaction: result.reaction,
@@ -2197,24 +2244,21 @@ export function App() {
         score: order.preparationScore ?? 0,
         payCents: result.coinsAwarded,
       });
-      const withCredits = {
-        ...base,
-        credits: base.credits + result.coinsAwarded + tip,
-        levelProgress: withPaidOrder(base.levelProgress, campaignServiceSession.levelId, recipe.id),
-      };
-      const withLedger = appendLedgerEntry(
-        withCredits,
-        "campaign-settlement",
+      const levelId = campaignServiceSession.levelId;
+      queueServiceCash(
         result.coinsAwarded,
-        recipe.id,
-      );
-      const withTip = appendLedgerEntry(
-        withLedger,
-        "customer-tip",
         tip,
-        `${campaignServiceSession.levelId}:${recipe.id}`,
+        "campaign-settlement",
+        recipe.id,
+        `${levelId}:${recipe.id}`,
       );
-      persist(applySharpnessDecay(withTip, base.equippedKnifeId, recipe));
+      // Lock this order as served before showing physical cash. If the app is
+      // closed mid-swipe, collected pieces stay paid and the order cannot pay twice.
+      const servedSave = {
+        ...base,
+        levelProgress: withPaidOrder(base.levelProgress, levelId, recipe.id),
+      };
+      persist(applySharpnessDecay(servedSave, base.equippedKnifeId, recipe));
     }
     return {
       coinsAwarded: result.coinsAwarded,
@@ -2254,13 +2298,13 @@ export function App() {
     const paid = recordRevenueAndCogs(
       {
         ...withSupplies,
-        credits: withSupplies.credits + result.coinsAwarded,
         levelProgress: withMenuGuestServed(withSupplies.levelProgress, level.id),
       },
       result.coinsAwarded,
       stock.cost,
     );
-    persist(appendLedgerEntry(paid, "business-revenue", result.coinsAwarded, dish.id));
+    queueServiceCash(result.coinsAwarded, 0, "business-revenue", dish.id);
+    persist(paid);
     return {
       coinsAwarded: result.coinsAwarded,
       reaction: result.reaction,
@@ -2433,7 +2477,7 @@ export function App() {
     completeCampaignLevel(level);
     setCampaignServiceSession(null);
     setSessionMode("campaign");
-    go("board");
+    go("kitchen");
   }
 
   /**
@@ -2593,7 +2637,7 @@ export function App() {
     if (paidOrdersFor(save.levelProgress, level.id).length < ordersRequired(level)) return false;
     completeCampaignLevel(level);
     setSessionMode("campaign");
-    go("board");
+    go("kitchen");
     return true;
   }
 
@@ -2736,28 +2780,19 @@ export function App() {
         score: viewed.order.preparationScore ?? 0,
         payCents: result.coinsAwarded,
       });
-      const withCredits = {
-        ...base,
-        credits: base.credits + result.coinsAwarded + tip,
-        levelProgress: withPaidOrder(
-          base.levelProgress,
-          batchGroupSession.levelId,
-          viewed.recipe.id,
-        ),
-      };
-      const withLedger = appendLedgerEntry(
-        withCredits,
-        "campaign-settlement",
+      const levelId = batchGroupSession.levelId;
+      queueServiceCash(
         result.coinsAwarded,
-        viewed.recipe.id,
-      );
-      const withTip = appendLedgerEntry(
-        withLedger,
-        "customer-tip",
         tip,
-        `${batchGroupSession.levelId}:${viewed.recipe.id}`,
+        "campaign-settlement",
+        viewed.recipe.id,
+        `${levelId}:${viewed.recipe.id}`,
       );
-      persist(applySharpnessDecay(withTip, base.equippedKnifeId, viewed.recipe));
+      const servedSave = {
+        ...base,
+        levelProgress: withPaidOrder(base.levelProgress, levelId, viewed.recipe.id),
+      };
+      persist(applySharpnessDecay(servedSave, base.equippedKnifeId, viewed.recipe));
     }
     return {
       coinsAwarded: result.coinsAwarded,
@@ -2790,7 +2825,7 @@ export function App() {
     setBatchGroupSession(null);
     setBatchViewOrderId(null);
     setSessionMode("campaign");
-    go("board");
+    go("kitchen");
   }
 
   /**
@@ -3075,23 +3110,8 @@ export function App() {
   const equippedKnife = effectiveKnife(save, knifeOrDefault(save.equippedKnifeId));
   const equippedBoard = boardOrDefault(save.equippedBoardId);
   const previousBest = save.recipeProgress[activeLevel.recipeId]?.best ?? 0;
-  // Progression pass — "Next Level" on the result screen. LEVELS is
-  // already campaign-ordered (LevelManager/OrderBoard both iterate it
-  // directly), so the next entry after the active one IS the next
-  // campaign level; only offered once it's actually unlocked (never
-  // skips ahead of what completing THIS level just unlocked, and never
-  // dangles a locked level in front of the player).
-  // "Next Level" only ever makes sense for an ordinary campaign session —
-  // a Daily Order/Endless Service run isn't campaign navigation, so it
-  // offers no next-level button at all (see their own onExit below).
-  const activeLevelIndex = LEVELS.findIndex((l) => l.id === activeLevel.id);
-  const nextCampaignLevel = LEVELS[activeLevelIndex + 1] ?? null;
-  const nextLevel =
-    sessionMode === "campaign" &&
-    nextCampaignLevel &&
-    isUnlocked(nextCampaignLevel, save.levelProgress)
-      ? nextCampaignLevel
-      : null;
+  // A completed recipe returns to Kitchen. The player chooses when to begin
+  // another level instead of being pushed into another cutting loop.
   const sessionOnComplete =
     sessionMode === "daily"
       ? recordDailyResult
@@ -3328,6 +3348,8 @@ export function App() {
                 : isBatchGroup
                   ? serveBatchGroupViewedOrder
                   : serveActiveBusinessOrder,
+              onCashPieceCollected: collectServiceCashPiece,
+              onCashCollected: finishServiceCashCollection,
               onNextOrder: isCampaignService
                 ? campaignWillFinishNext
                   ? finishCampaignLevel
@@ -3468,20 +3490,6 @@ export function App() {
             knife={equippedKnife}
             {...(cuttingKitchenArt ? { kitchenArt: cuttingKitchenArt } : {})}
             board={equippedBoard}
-            {...(nextLevel
-              ? {
-                  nextLevel,
-                  onNextLevel: () => {
-                    if (playSessionRef.current.completed) {
-                      maybeShowInterstitial(
-                        `level-finish:${activeLevel.id}:${playSessionRef.current.id}`,
-                        save.levelProgress.completedLevelIds.length,
-                      );
-                    }
-                    onSelectLevel(nextLevel.id);
-                  },
-                }
-              : {})}
           />
         ) : (
           <Suspense fallback={<LoadingScreen />}>

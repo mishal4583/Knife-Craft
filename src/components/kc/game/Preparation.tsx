@@ -74,7 +74,6 @@ import {
   seatInParty,
   type PartyDish,
 } from "@/game/restaurant/serviceFloor";
-import { autoCollectOn } from "@/game/cashBurst";
 import type { KitchenMapArtStage } from "@/game/kitchen/kitchenMapArt";
 import { Panel, KButton, DustMotes } from "../common/primitives";
 import { dollars } from "@/game/money";
@@ -179,6 +178,10 @@ export function Preparation({
       businessPayment?: BusinessCustomerPayment;
       businessCustomers?: BusinessCustomersToday;
     } | null;
+    /** Credit individual physical cash pieces after swipes, then finalize the transaction. */
+    onCashPieceCollected?: (cents: number, isTip: boolean) => void;
+    onCashRemaining?: (cents: number) => void;
+    onCashCollected?: () => void;
     /** §20 — advances the queue (or finishes a campaign level — see `nextLabel`) and remounts Preparation for the new current order. */
     onNextOrder: () => void;
     /** Phase 3 §16 — a one-sentence batching hint ("Batch tip: ...") when the active and next order share a real component; null otherwise. Presentation only, never gameplay-affecting. */
@@ -378,8 +381,9 @@ export function Preparation({
       : null,
   );
   const [servedQuality, setServedQuality] = useState<QualityLabel | undefined>(undefined);
-  // What the serve paid (already in the wallet): left on the table as cash to sweep in.
+  // What the serve earned: left on the table until the player sweeps it in.
   const [servedCash, setServedCash] = useState<{ payCents: number; tipCents: number } | null>(null);
+  const [serviceCashRemaining, setServiceCashRemaining] = useState(0);
   const specialsShown = useRef(false);
   /** Runs the existing advance at once; the party walks out when the next one arrives. */
   const departThen = (next: () => void) => {
@@ -1207,8 +1211,13 @@ export function Preparation({
           dish={{ emoji: view.emoji, name: view.title }}
           {...(servedQuality ? { quality: servedQuality } : {})}
           {...(floorMode === "deliver" && servedCash
-            ? { cash: { ...servedCash, credits, auto: autoCollectOn() } }
+            ? { cash: { ...servedCash, credits } }
             : {})}
+          {...(service.onCashPieceCollected
+            ? { onCashPieceCollected: service.onCashPieceCollected }
+            : {})}
+          {...(service.onCashCollected ? { onCashCollected: service.onCashCollected } : {})}
+          onCashRemaining={setServiceCashRemaining}
           reducedMotion={floor.reducedMotion}
           onDone={() => setFloorMode(null)}
         />
@@ -1318,8 +1327,16 @@ export function Preparation({
             {...(result ? { plateTier: tierFor(result.score, true) } : {})}
             credits={credits}
             cashAtTable={!!floor}
+            {...(floor ? { cashRemainingOverride: serviceCashRemaining } : {})}
+            {...(service.onCashPieceCollected
+              ? { onCashPieceCollected: service.onCashPieceCollected }
+              : {})}
+            onCashRemaining={(cents) => service.onCashRemaining?.(cents)}
+            {...(service.onCashCollected ? { onCashCollected: service.onCashCollected } : {})}
             onServe={() => {
               const served = service.onServe();
+              if (served)
+                setServiceCashRemaining(served.isReplay ? 0 : served.coinsAwarded + (served.tip ?? 0));
               // The plate goes to the table only for a real serve (paid once, by App).
               if (served && floor) {
                 setServedQuality(served.quality ?? result?.qualityLabel);

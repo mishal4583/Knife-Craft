@@ -39,10 +39,10 @@ import "./serviceFloor.css";
  *  - arrive:  walk in → sit → order bubbles → "Start cooking" (or a tap anywhere);
  *  - deliver: the plate goes from the pass to the member, then the face that
  *             follows the dish's real grade; then the pay and tip lie on the
- *             table as cash to swipe in (developer 2026-10-26, CashVacuum's
- *             "table" look) — the money was already booked by the serve, once.
+ *             table as cash to swipe into the wallet.
  *
- * A tap skips ahead. Reduced Motion: no walking, the end state at once.
+ * Taps can advance the arrival and serving beats; cash itself always needs a swipe.
+ * Reduced Motion skips the walking animation, never the cash collection.
  */
 export type FloorMode = "arrive" | "deliver";
 
@@ -69,6 +69,9 @@ export function ServiceFloor({
   quality,
   cash,
   reducedMotion,
+  onCashPieceCollected,
+  onCashRemaining,
+  onCashCollected,
   onDone,
 }: {
   mode: FloorMode;
@@ -82,9 +85,12 @@ export function ServiceFloor({
   dish: { emoji: string; name: string };
   /** The dish's real grade (deliver). */
   quality?: QualityLabel;
-  /** Deliver: what the serve paid (already in the wallet) — left on the table as cash. */
-  cash?: { payCents: number; tipCents: number; credits: number; auto: boolean };
+  /** Deliver: what the serve earned — left on the table as cash to collect. */
+  cash?: { payCents: number; tipCents: number; credits: number };
   reducedMotion: boolean;
+  onCashPieceCollected?: (cents: number, isTip: boolean) => void;
+  onCashRemaining?: (cents: number) => void;
+  onCashCollected?: () => void;
   onDone: () => void;
 }) {
   const uid = useId().replace(/[^a-zA-Z0-9]/g, "");
@@ -117,12 +123,12 @@ export function ServiceFloor({
         : "serving",
   );
   const [remaining, setRemaining] = useState(total);
-  const [auto, setAuto] = useState(!!cash?.auto || reducedMotion);
   const walletRef = useRef<HTMLSpanElement | null>(null);
-  const shownCredits = useRolledNumber((cash?.credits ?? 0) - remaining, reducedMotion);
+  const shownCredits = useRolledNumber(cash?.credits ?? 0, reducedMotion);
   const done = useRef(false);
   const finish = () => {
     if (done.current) return;
+    if (state === "cash" && remaining > 0) return;
     done.current = true;
     onDone();
   };
@@ -150,7 +156,6 @@ export function ServiceFloor({
   const tapAnywhere = () => {
     if (state === "cash") {
       if (remaining <= 0) finish();
-      else setAuto(true);
       return;
     }
     if (mode === "deliver" && total > 0 && state !== "reacting") {
@@ -298,9 +303,17 @@ export function ServiceFloor({
                 tipCents={cash.tipCents}
                 walletRef={walletRef}
                 reducedMotion={reducedMotion}
-                auto={auto}
-                onRemaining={setRemaining}
-                onDone={() => window.setTimeout(() => finishRef.current(), 450)}
+                onPieceCollected={(cents, isTip) => {
+                  onCashPieceCollected?.(cents, isTip);
+                }}
+                onRemaining={(cents) => {
+                  setRemaining(cents);
+                  onCashRemaining?.(cents);
+                }}
+                onDone={() => {
+                  onCashCollected?.();
+                  window.setTimeout(() => finishRef.current(), 450);
+                }}
               />
             </div>
           ) : null}
@@ -340,6 +353,7 @@ export function ServiceFloor({
               {formatUsd(cash.payCents)}
               {cash.tipCents > 0 ? ` + ${formatUsd(cash.tipCents)} tip` : ""}
             </p>
+            <p className="font-hand text-[14px] text-olive">Swipe over the cash to collect it</p>
             <span
               ref={walletRef}
               className="mt-1 inline-block rounded-full bg-walnut/10 px-2 py-0.5 font-ui text-[12px] font-extrabold text-walnut-dark"
@@ -348,13 +362,15 @@ export function ServiceFloor({
               💵 {formatUsd(shownCredits)}
             </span>
           </div>
-          <KButton
-            className="h-12 shrink-0 px-3 text-[13px]"
-            variant="copper"
-            onClick={() => (remaining <= 0 ? finish() : setAuto(true))}
-          >
-            {remaining <= 0 ? "Continue" : "🧲 Collect all"}
-          </KButton>
+          {remaining <= 0 ? (
+            <KButton className="h-12 shrink-0 px-3 text-[13px]" variant="copper" onClick={finish}>
+              Continue
+            </KButton>
+          ) : (
+            <span className="shrink-0 rounded-full bg-walnut/10 px-3 py-2 font-ui text-[12px] font-extrabold text-walnut-dark">
+              💵 {formatUsd(remaining)} left
+            </span>
+          )}
         </div>
       ) : (
         <p className="relative z-10 pb-6 pt-2 text-center font-hand text-[17px] text-ivory/90">

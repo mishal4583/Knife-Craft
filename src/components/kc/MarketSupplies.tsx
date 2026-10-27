@@ -222,7 +222,7 @@ export function MarketSupplies({
       {neededNow.length > 0 ? (
         <Panel className="border-copper/50 p-3" data-testid={`market-needed-${section}`}>
           <p className="font-ui text-[13px] font-extrabold text-walnut-dark">
-            📌 {neededNow.length} item{neededNow.length === 1 ? "" : "s"} needed for today
+            📌 {neededNow.length} needed
           </p>
           <p className="mt-0.5 font-ui text-[12px] leading-snug text-walnut/70">
             ⬇️ Listed first · amount preset
@@ -246,7 +246,7 @@ export function MarketSupplies({
       ) : soonCount > 0 ? (
         <Panel className="border-gold/60 p-3" data-testid={`market-soon-${section}`}>
           <p className="font-ui text-[13px] font-extrabold text-walnut-dark">
-            🔜 {soonCount} item{soonCount === 1 ? "" : "s"} needed for the next levels
+            ⭐ Important
           </p>
           <p className="mt-0.5 font-ui text-[12px] leading-snug text-walnut/70">
             ⬇️ Listed first · each card says which level

@@ -1,6 +1,6 @@
 /**
  * Source-of-truth catalog for the 250-level campaign. `LEVELS` below is
- * the curated 150-level campaign; this original catalog remains available
+ * the curated campaign; this original catalog remains available
  * as `LEGACY_CAMPAIGN_LEVELS` only for explicit save migration and audit.
  */
 import type { LevelDefinition } from "./levelTypes";
@@ -9808,9 +9808,9 @@ export const LEVELS: LevelDefinition[] = CAMPAIGN_150_SOURCE_LEVEL_NUMBERS.map((
   const source = SOURCE_LEVELS[oldNumber - 1]!;
   // Display chapter in play order; the cuisine chapter (pay, cuisine) is unchanged.
   const chapter = campaignChapterOf(index + 1);
-  const cuisineChapter = index < 4
+  const cuisineChapter = index < 2
     ? 1
-    : index < 20
+    : index < 18
       ? 2
       : CAMPAIGN_150_CHAPTER_BY_SOURCE_CHAPTER[source.chapter]!;
   const id = `level-${index + 1}`;
@@ -9837,10 +9837,15 @@ export const LEVELS: LevelDefinition[] = CAMPAIGN_150_SOURCE_LEVEL_NUMBERS.map((
     level.reward = { coins: 0 };
     level.campaignNoEconomy = true;
   }
-  Object.assign(level, LEVEL_FIXES[index + 1] ?? {});
+  // LEVEL_FIXES retains its original curated numbering; removing the two
+  // introductory services shifts every retained fix down by two.
+  Object.assign(level, LEVEL_FIXES[index + 3] ?? {});
   return level;
 });
 
-if (LEVELS.length !== 150 || LEVELS.some((level, index) => level.id !== `level-${index + 1}`)) {
-  throw new Error("Curated campaign must contain exactly sequential levels 1–150");
+if (
+  LEVELS.length !== CAMPAIGN_150_SOURCE_LEVEL_NUMBERS.length ||
+  LEVELS.some((level, index) => level.id !== `level-${index + 1}`)
+) {
+  throw new Error("Curated campaign must contain sequential levels matching its source selection");
 }

@@ -20,6 +20,7 @@
  */
 import type { LevelDefinition } from "./levelTypes";
 import { dollars } from "../money";
+import { CAMPAIGN_150_SOURCE_LEVEL_NUMBERS } from "./campaignSelection";
 
 /** Inclusive level-number bands and the share of the stored reward paid for them. */
 export const LEVEL_REWARD_SCHEDULE: ReadonlyArray<{ from: number; to: number; percent: number }> = [
@@ -60,15 +61,15 @@ export function paidLevelReward(level: Pick<LevelDefinition, "id" | "reward" | "
 }
 
 /** The curated campaign's last level: it keeps its stored finale reward. */
-export const CURATED_FINAL_LEVEL = 150;
+export const CURATED_FINAL_LEVEL = CAMPAIGN_150_SOURCE_LEVEL_NUMBERS.length;
 /** First-clear reward curve for the curated campaign: $50 at Level 1, +$3.10 a level. */
 export const CURATED_REWARD_BASE = 50;
 export const CURATED_REWARD_STEP = 3.1;
 
 /**
  * Economy plan 2026-10-16: `round(50 + 3.1 × (n − 1))` whole dollars, rising
- * every level (L1 $50, L75 $279, L149 $509); a level that pays nothing
- * (Level 2's practice) stays $0, and Level 150 keeps its stored $5,000
+ * every level (L1 $50, L75 $279); a level that pays nothing stays $0, and
+ * the final campaign level keeps its stored finale reward
  * finale. The total stays where it was (~$46.6k vs $46.3k before), so this only removes the
  * zig-zag the old bands caused on the renumbered levels.
  */

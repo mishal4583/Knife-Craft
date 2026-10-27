@@ -295,7 +295,7 @@ export function MarketIngredients({
 
       {[
         ...(group === "all" && neededIds.length > 0
-          ? [{ category: "needed", label: "Needed for today", emoji: "📌" }]
+          ? [{ category: "needed", label: "Needed", emoji: "📌" }]
           : []),
         ...groups,
       ].map((g) => {

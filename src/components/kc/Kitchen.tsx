@@ -650,7 +650,7 @@ export function OrderBoard({
             </button>
             <button
               type="button"
-              // Unified Restaurant: after L250 the restaurant carries on as the Endless
+              // Once the campaign is complete, the restaurant carries on as Endless
               // Restaurant (the Business engine, opened from the Business tab).
               onClick={() => go(RESTAURANT_MODE ? "business" : "endless")}
               data-testid="endless-tile"

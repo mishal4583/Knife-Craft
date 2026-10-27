@@ -203,7 +203,7 @@ export class KnifeFx {
     // only a few drops; dry food just a fleck or two (developer 2026-10-24:
     // "reduce the splashing while cutting non-juicy ingredients").
     if (juice !== null && amount >= 0.35) {
-      const mist = s.add.circle(at.x, at.y, w * 0.045 * amount, juice, 0.38 * amount).setDepth(23);
+      const mist = s.add.circle(at.x, at.y, w * 0.04 * amount, juice, 0.38 * amount).setDepth(23);
       s.tweens.add({
         targets: mist,
         scale: 2.4,
@@ -212,10 +212,10 @@ export class KnifeFx {
         ease: Phaser.Math.Easing.Quadratic.Out,
         onComplete: () => mist.destroy(),
       });
-      const n = Math.round((8 + R(0, 10)) * amount * amount + 4);
+      const n = Math.round((7 + R(0, 8)) * amount * amount + 3);
       for (let i = 0; i < n; i++) {
         const a = R(0, Math.PI * 2);
-        const size = w * R(0.006, 0.016);
+        const size = w * R(0.005, 0.014);
         const drop = s.add.graphics({ x: at.x, y: at.y }).setDepth(23);
         // A teardrop pointing back along its flight, with a highlight.
         drop.fillStyle(juice, 0.92);
@@ -227,7 +227,7 @@ export class KnifeFx {
         fly(drop, a, w * R(0.07, 0.22), R(520, 820));
       }
       if (seed !== null)
-        for (let i = 0; i < 4 + Math.floor(R(0, 4)); i++) {
+        for (let i = 0; i < 3 + Math.floor(R(0, 3)); i++) {
           const a = R(0, Math.PI * 2);
           const sd = s.add.ellipse(at.x, at.y, w * 0.017, w * 0.01, seed, 0.95).setDepth(23);
           sd.setRotation(a);

@@ -518,14 +518,14 @@ export function Shop({
                 {needCount[item.id] ? (
                   <span
                     className="absolute -right-1 -top-1 grid h-6 min-w-6 place-items-center rounded-full bg-copper px-1.5 font-ui text-[11px] font-extrabold text-ivory shadow-soft"
-                    aria-label={`${needCount[item.id]} needed for today`}
+                    aria-label={`${needCount[item.id]} needed`}
                   >
                     {needCount[item.id]}
                   </span>
                 ) : soonCount[item.id] ? (
                   <span
                     className="absolute -right-1 -top-1 grid h-6 min-w-6 place-items-center rounded-full bg-gold px-1.5 font-ui text-[11px] font-extrabold text-walnut-dark shadow-soft"
-                    aria-label={`${soonCount[item.id]} needed for the next levels`}
+                    aria-label={`${soonCount[item.id]} important`}
                     data-needs-soon={soonCount[item.id]}
                   >
                     {soonCount[item.id]}

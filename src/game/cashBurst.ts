@@ -2,13 +2,9 @@
  * CASH_BURST — Phase 2 (B): the physical bills and coins a customer's
  * payment drops on the counter, which the player sweeps into the wallet.
  *
- * Presentation over money that is ALREADY in the wallet. App credits the
- * order (and any tip) and writes its ledger entries in one save the moment
- * Serve is tapped; nothing here, and nothing in CashVacuum.tsx, ever
- * credits, records or saves anything. The pieces only stand for that
- * payment: their cents add up to it exactly (cashPieces), sweeping one up
- * only moves the wallet counter on screen toward the real balance, and
- * leaving the screen with cash still on the counter loses nothing.
+ * A served customer's payment is represented by physical bills and coins.
+ * App credits each piece and writes its ledger entry only after the player
+ * sweeps it into the wallet.
  */
 export const CASH = {
   /** Pieces for a payment: more for bigger ones, within these bounds (so a huge payment can't flood the screen). */
@@ -18,9 +14,6 @@ export const CASH = {
   HIT_RADIUS_PX: 34,
   /** A collected piece's flight to the wallet. */
   FLY_MS: 420,
-  /** Auto-collect: the pause before it starts, then one piece every AUTO_STEP_MS. */
-  AUTO_DELAY_MS: 500,
-  AUTO_STEP_MS: 70,
   /** The wallet counter's roll toward its new value. */
   COUNTER_MS: 260,
 } as const;
@@ -93,19 +86,6 @@ export function cashPieces(payCents: number, tipCents: number): CashPiece[] {
 /** The money still on the counter: what hasn't been swept up yet. */
 export function cashRemaining(pieces: readonly CashPiece[], collected: readonly boolean[]): number {
   return pieces.reduce((sum, p, i) => (collected[i] ? sum : sum + p.cents), 0);
-}
-
-/**
- * Auto-collect, for the session only (no save field — the brief allows a
- * non-persistent option when a saved one would need a new field). With
- * the game's Reduced Motion on, collection is always automatic.
- */
-let autoCollect = false;
-export function autoCollectOn(): boolean {
-  return autoCollect;
-}
-export function setAutoCollect(on: boolean): void {
-  autoCollect = on;
 }
 
 /** The player's Reduced Motion setting (App mirrors it onto <html>) or the system's. */

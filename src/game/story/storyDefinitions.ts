@@ -1,3 +1,5 @@
+import { CAMPAIGN_150_SOURCE_LEVEL_NUMBERS } from "../levels/campaignSelection";
+
 /**
  * STORY_DEFINITIONS — THE LAST WISH, ported directly (data, not
  * paraphrased) from knifecraft.html's actual `Story` IIFE
@@ -68,7 +70,7 @@ export type StoryBeat = {
  * beats below (FINALE) still play through StoryOverlay.
  */
 
-/** FINALE (4 beats), shown at the midpoint of the 150-level campaign. */
+/** FINALE (4 beats), shown at the midpoint of the curated campaign. */
 export const FINALE: StoryBeat[] = [
   {
     tint: "sThrive",
@@ -199,8 +201,8 @@ export const MILES_FULL_MASK = MILES.reduce(
   RETIRED_CAMPAIGN_COMPLETE_BIT,
 );
 
-/** The narrative midpoint of the 150-level campaign. */
-export const FINALE_AT = 75;
+/** The narrative midpoint of the curated campaign. */
+export const FINALE_AT = Math.ceil(CAMPAIGN_150_SOURCE_LEVEL_NUMBERS.length / 2);
 
 /**
  * LEGACY — "THE LAST PAGE", the Level 250 ending (developer 2026-10-11,
@@ -243,4 +245,4 @@ export const LEGACY: StoryBeat[] = [
 
 /** LEGACY's own bit in `story.milestoneMask`, and the completed-level count that plays it. */
 export const LEGACY_BIT = 2048;
-export const LEGACY_AT = 150;
+export const LEGACY_AT = CAMPAIGN_150_SOURCE_LEVEL_NUMBERS.length;

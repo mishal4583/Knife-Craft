@@ -421,7 +421,6 @@ export function serveBusinessOrder(
   const nextSave = recordRevenueAndCogs(
     {
       ...save,
-      credits: save.credits + served.coinsAwarded,
       business: {
         ...save.business,
         inventory: consumed.inventory,

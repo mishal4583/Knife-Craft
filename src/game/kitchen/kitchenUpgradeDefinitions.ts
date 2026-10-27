@@ -39,7 +39,7 @@ const SOURCE_KITCHEN_UPGRADE_CATALOG: KitchenUpgradeDefinition[] = [
     tagline: "A little more room",
     description: "More counter space, more light — the kitchen is starting to fill out.",
     unlockLevel: 21,
-    price: dollars(20_000),
+    price: dollars(60_000),
     asset: "skin-02",
   },
   {
@@ -48,7 +48,7 @@ const SOURCE_KITCHEN_UPGRADE_CATALOG: KitchenUpgradeDefinition[] = [
     tagline: "A kitchen that's found its rhythm",
     description: "Well-worn and well-loved, with the settled feel of real routine.",
     unlockLevel: 41,
-    price: dollars(25_000),
+    price: dollars(12_000),
     asset: "skin-03",
   },
   {
@@ -57,7 +57,7 @@ const SOURCE_KITCHEN_UPGRADE_CATALOG: KitchenUpgradeDefinition[] = [
     tagline: "Open to the street",
     description: "The kitchen opens up into a proper neighborhood café.",
     unlockLevel: 51,
-    price: dollars(25_000),
+    price: dollars(18_000),
     asset: "skin-04",
   },
   {

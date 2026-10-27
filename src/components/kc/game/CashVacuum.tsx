@@ -7,17 +7,12 @@ import { CASH, cashPieces, cashRemaining } from "@/game/cashBurst";
  * CASH_VACUUM — Phase 2 (B2–B5): the customer's payment as bills and coins
  * on the counter, swept into the wallet with a finger or the mouse.
  *
- * Purely presentation over a payment App has ALREADY credited and
- * recorded (see cashBurst.ts): it never credits, records or saves. It tells
- * its parent how much is still on the counter (`onRemaining`), and the
- * parent shows the wallet as `credits − remaining` — so the counter can
- * only ever roll toward the real balance, and lands on it exactly once the
- * last piece is in (or straight away, if the player just moves on).
+ * Each piece is physically collected by pointer swipe. The parent applies
+ * that piece's value to the wallet only after this component reports it.
  *
  * One broad swipe picks up every piece it passes near (CASH.HIT_RADIUS_PX
  * past the piece's own edge); more swipes get the rest. Each piece is
- * collected at most once — every path (swipe, auto-collect, both at once)
- * goes through the same guarded `collect`. The tray owns its pointer
+ * collected at most once. The tray owns its pointer
  * (pointer capture, `touch-action: none`) and sits on the order card, over
  * a finished dish, so a sweep here can never reach the cutting board.
  */
@@ -26,7 +21,7 @@ export function CashVacuum({
   tipCents,
   walletRef,
   reducedMotion,
-  auto,
+  onPieceCollected,
   onRemaining,
   variant = "counter",
   anchors,
@@ -37,9 +32,9 @@ export function CashVacuum({
   /** Where collected pieces fly to — the wallet counter. */
   walletRef: RefObject<HTMLElement | null>;
   reducedMotion: boolean;
-  /** Collect by itself (the session option, or Reduced Motion) — the parent owns the toggle. */
-  auto: boolean;
   onRemaining: (cents: number) => void;
+  /** Credit a bill/coin only after the player's swipe collects it. */
+  onPieceCollected?: (cents: number, isTip: boolean) => void;
   /**
    * "table" (developer 2026-10-26: "the cash near their dining table … collect it like idle
    * games"): the same pieces lying loose on the customer's table, no tray box, no line after.
@@ -101,6 +96,8 @@ export function CashVacuum({
     collected.current[i] = true;
     const remaining = cashRemaining(pieces, collected.current);
     onRemaining(remaining);
+    const piece = pieces[i]!;
+    onPieceCollected?.(piece.cents, piece.tip);
     AudioManager.playSfx("coin");
     const el = els.current[i];
     const target = walletRef.current?.getBoundingClientRect();
@@ -148,21 +145,6 @@ export function CashVacuum({
     });
   }
 
-  // Auto-collect (the session option, or Reduced Motion): the same `collect`, one piece at a time.
-  useEffect(() => {
-    if (!auto || done) return;
-    let timer = 0;
-    const next = () => {
-      const i = collected.current.findIndex((c) => !c);
-      if (i < 0) return;
-      collect(i);
-      timer = window.setTimeout(next, reducedMotion ? 0 : CASH.AUTO_STEP_MS);
-    };
-    timer = window.setTimeout(next, reducedMotion ? 0 : CASH.AUTO_DELAY_MS);
-    return () => window.clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- collect reads refs only
-  }, [auto, done]);
-
   if (done) {
     if (variant === "table") return null;
     return (
@@ -189,7 +171,6 @@ export function CashVacuum({
           e.currentTarget.setPointerCapture(e.pointerId);
           last.current = { x: e.clientX, y: e.clientY };
           setTouched(true);
-          sweep(last.current, last.current);
         }}
         onPointerMove={(e) => {
           if (!last.current) return;
@@ -239,8 +220,8 @@ export function CashVacuum({
             }
           />
         ))}
-        {piles && !touched && !auto ? <SwipeHint at={piles[0]!} /> : null}
-        {!piles && !touched && !auto ? (
+        {piles && !touched ? <SwipeHint at={piles[0]!} /> : null}
+        {!piles && !touched ? (
           // On a small ivory backing: the pieces spread over the whole tray, and
           // bare text over a bill was hard to read at 320 px.
           <span className="pointer-events-none absolute bottom-1 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-ivory/85 px-2 font-hand text-[13px] leading-tight text-walnut/75 shadow-soft">
