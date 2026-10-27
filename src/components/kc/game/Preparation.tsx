@@ -368,6 +368,9 @@ export function Preparation({
   // plate reaches the table after Serve; the one before walks out as they
   // arrive. It only shows; the order's own actions stay the existing ones.
   const [floorMode, setFloorMode] = useState<FloorMode | null>(service && floor ? "arrive" : null);
+  // Keep the served card mounted while the player switches to the table so
+  // its result and payment state survive a trip to collect cash and back.
+  const [cashTableView, setCashTableView] = useState(false);
   // Parties (developer 2026-10-26): this order's place at its party's table, decided once.
   const [partySeat] = useState(() =>
     service && floor && shownCustomer
@@ -1219,7 +1222,11 @@ export function Preparation({
           {...(service.onCashCollected ? { onCashCollected: service.onCashCollected } : {})}
           onCashRemaining={setServiceCashRemaining}
           reducedMotion={floor.reducedMotion}
-          onDone={() => setFloorMode(null)}
+          onBackToOrder={() => setCashTableView(false)}
+          onDone={() => {
+            setFloorMode(null);
+            setCashTableView(false);
+          }}
         />
       ) : null}
 
@@ -1289,6 +1296,7 @@ export function Preparation({
       {phase === "complete" ? (
         service ? (
           <ServiceOrderComplete
+            hidden={cashTableView}
             serviceOrder={
               shownCustomer ? { ...service.order, customer: shownCustomer } : service.order
             }
@@ -1327,6 +1335,7 @@ export function Preparation({
             {...(result ? { plateTier: tierFor(result.score, true) } : {})}
             credits={credits}
             cashAtTable={!!floor}
+            {...(floor ? { onOpenCashTable: () => setCashTableView(true) } : {})}
             {...(floor ? { cashRemainingOverride: serviceCashRemaining } : {})}
             {...(service.onCashPieceCollected
               ? { onCashPieceCollected: service.onCashPieceCollected }

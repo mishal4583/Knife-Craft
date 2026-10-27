@@ -34,6 +34,7 @@
 
 import {
   CAMPAIGN_150_INGREDIENT_FIRST_USE_LEVEL,
+  CAMPAIGN_150_SOURCE_LEVEL_NUMBERS,
   remapCampaignThreshold,
 } from "../levels/campaignSelection";
 import { LEVELS } from "../levels/levelDefinitions";
@@ -206,7 +207,8 @@ export const RESTAURANT_SYSTEMS: readonly RestaurantSystem[] = SOURCE_RESTAURANT
   }))
   .sort((a, b) => a.firstLevel - b.firstLevel);
 
-export const LAST_CAMPAIGN_LEVEL = 150;
+/** The endgame gates follow the actual curated catalog length. */
+export const LAST_CAMPAIGN_LEVEL = CAMPAIGN_150_SOURCE_LEVEL_NUMBERS.length;
 
 export function restaurantSystem(id: RestaurantSystemId): RestaurantSystem {
   const system = RESTAURANT_SYSTEMS.find((s) => s.id === id);

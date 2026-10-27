@@ -72,6 +72,7 @@ export function ServiceFloor({
   onCashPieceCollected,
   onCashRemaining,
   onCashCollected,
+  onBackToOrder,
   onDone,
 }: {
   mode: FloorMode;
@@ -91,6 +92,8 @@ export function ServiceFloor({
   onCashPieceCollected?: (cents: number, isTip: boolean) => void;
   onCashRemaining?: (cents: number) => void;
   onCashCollected?: () => void;
+  /** Returns to the served-order card without discarding uncollected table cash. */
+  onBackToOrder?: () => void;
   onDone: () => void;
 }) {
   const uid = useId().replace(/[^a-zA-Z0-9]/g, "");
@@ -367,9 +370,20 @@ export function ServiceFloor({
               Continue
             </KButton>
           ) : (
-            <span className="shrink-0 rounded-full bg-walnut/10 px-3 py-2 font-ui text-[12px] font-extrabold text-walnut-dark">
-              💵 {formatUsd(remaining)} left
-            </span>
+            <div className="flex shrink-0 flex-col items-end gap-2">
+              <span className="rounded-full bg-walnut/10 px-3 py-2 font-ui text-[12px] font-extrabold text-walnut-dark">
+                💵 {formatUsd(remaining)} left
+              </span>
+              {onBackToOrder ? (
+                <button
+                  type="button"
+                  className="rounded-full px-3 py-1.5 font-ui text-[11px] font-extrabold text-walnut underline decoration-walnut/40 underline-offset-2"
+                  onClick={onBackToOrder}
+                >
+                  Back to order
+                </button>
+              ) : null}
+            </div>
           )}
         </div>
       ) : (

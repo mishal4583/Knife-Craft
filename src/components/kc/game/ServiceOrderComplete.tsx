@@ -147,6 +147,7 @@ function Row({ label, value, strong }: { label: string; value: number; strong?: 
  * tip twice.
  */
 export function ServiceOrderComplete({
+  hidden = false,
   serviceOrder,
   credits,
   onServe,
@@ -167,11 +168,14 @@ export function ServiceOrderComplete({
   bookNote,
   onCustomerMoment,
   cashAtTable = false,
+  onOpenCashTable,
   onCashPieceCollected,
   onCashRemaining,
   onCashCollected,
   cashRemainingOverride,
 }: {
+  /** Keeps the served result mounted while a temporary cash-at-table view is open. */
+  hidden?: boolean;
   serviceOrder: ServiceOrder;
   credits: number;
   /** Returns null if the order somehow isn't READY yet (defensive — the button that calls this is only shown once RECIPE_COMPLETED has already fired). */
@@ -207,6 +211,8 @@ export function ServiceOrderComplete({
    * developer 2026-10-26), swept in there — the card only says it was collected.
    */
   cashAtTable?: boolean;
+  /** Opens the dining room so the player can physically swipe the cash from the table. */
+  onOpenCashTable?: () => void;
   /** Cash pieces move into the wallet only after a real swipe collects them. */
   onCashPieceCollected?: (cents: number, isTip: boolean) => void;
   onCashRemaining?: (cents: number) => void;
@@ -275,7 +281,9 @@ export function ServiceOrderComplete({
   const stage = (ms: number) => (reduced ? undefined : ({ animationDelay: `${ms}ms` } as const));
 
   return (
-    <div className="absolute inset-0 z-50 grid place-items-center bg-walnut-dark/55 backdrop-blur-[3px]">
+    <div
+      className={`absolute inset-0 z-50 grid place-items-center bg-walnut-dark/55 backdrop-blur-[3px]${hidden ? " hidden" : ""}`}
+    >
       <Panel
         tone="cream"
         className="anim-pop max-h-[calc(100%-12px)] w-[82%] land:max-w-[560px] overflow-y-auto overscroll-contain p-6 text-center [@media(max-height:640px)]:px-5 [@media(max-height:640px)]:py-4"
@@ -430,6 +438,11 @@ export function ServiceOrderComplete({
               </p>
             ) : null}
             <div className="mt-5 space-y-2 [@media(max-height:640px)]:mt-3">
+              {cashAtTable && remaining > 0 && onOpenCashTable ? (
+                <KButton full variant="sage" onClick={onOpenCashTable}>
+                  💵 Collect cash at the table
+                </KButton>
+              ) : null}
               {isBusinessOrder && served.businessCustomers?.complete ? null : (
                 <KButton full disabled={remaining > 0} onClick={nextOnce}>
                   {nextLabel}
