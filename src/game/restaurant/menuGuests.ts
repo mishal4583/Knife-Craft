@@ -53,6 +53,7 @@ import { BUSINESS_MENU_FIRST_LEVEL, menuGuestsPerService } from "./restaurantPro
 import { serviceStockCheck } from "./campaignStock";
 import { kitchenGuestSeats } from "./restaurantInvestments";
 import { ticketsFor } from "./serviceTickets";
+import { newDishWeight, pickGuestDish } from "./orderPool";
 
 /** The guests a service of `level` brings, in order (pure; same every time for the same menu). */
 export function menuGuestQueue(save: SaveData, level: LevelDefinition): RecipeDefinition[] {
@@ -69,6 +70,8 @@ export function menuGuestQueue(save: SaveData, level: LevelDefinition): RecipeDe
         unlockedRecipes: pool,
         recentRecipeIds: guests.map((r) => r.id),
         recentCuisineIds: guests.map((r) => r.cuisineId),
+        // Phase 2 (decision Q6): a dish new on the menu is ordered more often (orderPool.ts).
+        weightOf: (r) => newDishWeight(r, n),
       },
       rand,
     );
@@ -145,6 +148,7 @@ export function walkInQueue(save: SaveData, level: LevelDefinition): RecipeDefin
         unlockedRecipes: pool,
         recentRecipeIds: recent.map((r) => r.id),
         recentCuisineIds: recent.map((r) => r.cuisineId),
+        weightOf: (r) => newDishWeight(r, n),
       },
       rand,
     );
@@ -273,7 +277,17 @@ export function nextMenuGuest(save: SaveData, level: LevelDefinition): MenuGuest
   const served = menuGuestsServed(save.levelProgress, level.id);
   const next = queue[served];
   if (!next) return null;
-  const { recipe, kind } = next;
+  const { kind } = next;
+  // Phase 2 (developer 2026-10-30, orderPool.ts): the forecast dish when it can be made, else another
+  // dish in stock (weighted), else the forecast, out of stock. A walk-in keeps the next level's
+  // reserve (as before); a menu guest is planned by this service's check, so it needs none.
+  const reserve = kind === "walk-in" ? reservedTicketsFor(save, level) : [];
+  const recent = queue.slice(Math.max(0, served - 3), served).map((c) => c.recipe);
+  // A substitute leaves alone what the customers still to come were planned to order.
+  const later = queue.slice(served + 1).map((c) => c.recipe);
+  const recipe =
+    pickGuestDish(save, level, next.recipe, reserve, served, recent, [...reserve, ...later]) ??
+    next.recipe;
   const dish = businessDishForRecipeId(recipe.id);
   if (!dish) return null;
   const guests = queue.filter((c) => c.kind === "guest").length;

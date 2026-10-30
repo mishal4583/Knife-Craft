@@ -52,6 +52,7 @@ import {
   remainingMenuGuests,
 } from "../src/game/restaurant/menuGuests.ts";
 import { generateOrder } from "../src/game/service/OrderGenerator.ts";
+import { newDishWeight } from "../src/game/restaurant/orderPool.ts";
 import { makeSeededRand } from "../src/game/business/businessDeterministicRandom.ts";
 import { servicePlanFor } from "../src/game/restaurant/preServiceCheck.ts";
 import { purchaseIngredient } from "../src/game/business/BusinessInventoryManager.ts";
@@ -225,6 +226,8 @@ console.log(`C. Nothing moves from Level 11 on (against ${BASE})`);
           unlockedRecipes: pool,
           recentRecipeIds: out,
           recentCuisineIds: out.map((id) => getCampaignRecipe(id)?.cuisineId),
+          // Rule changed (developer 2026-10-30, Phase 2 Q6): new dishes weigh ×1.5 (orderPool.ts).
+          weightOf: (r) => newDishWeight(r, n),
         },
         rand,
       );

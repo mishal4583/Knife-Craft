@@ -1,7 +1,18 @@
 # KnifeCraft — Handoff (Playgama edition)
 
-**Next: Phase 2 plan** (2026-10-30, planning only) — `docs/planning/PHASE2-PLAN-2026-10-30.md`: arrival clock,
-queue with patience, stock-aware guest orders; no COOKING state, no save change; decisions Q1–Q7 waiting.
+## Phase 2: customers on a clock (2026-10-30, in progress, local commits, not pushed)
+
+Plan and decisions Q1–Q7: `docs/planning/PHASE2-PLAN-2026-10-30.md`. Built so far:
+- 2.1 `restaurant/serviceFlow.ts`: the clock and queue logic (`service-flow-qa`).
+- 2.2 `restaurant/orderPool.ts`: guests order what is in stock. The forecast list (what the Pre-Service Check
+  plans) is weighted toward new dishes (×1.5). An arriving guest orders the forecast dish when it can be made,
+  otherwise a stocked dish (weighted by new dish and portions in stock), never taking stock planned for the guests
+  after them. A walk-in still keeps the next level's reserve (`order-pool-qa`).
+- **Open economy item (for the end-of-phase pass, decision Q7):** `restaurant-final-economy-qa` S3 fails. The
+  prudent completionist's lowest cash after the $500 reserve is $313 at L33 (a supply buy), against the $350
+  floor (was $376 at L6). Either the weighting or the substitution alone moves the L33 supply purchase (the guests'
+  dishes decide the tableware). The test is not changed.
+- Popular-dish price rise (step 4b): designed (plan §12), waiting for the developer.
 
 ## Phase 1: the service loop hides the levels (2026-10-30, decisions P1–P6, local commits, not pushed)
 

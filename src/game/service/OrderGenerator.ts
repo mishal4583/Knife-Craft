@@ -19,6 +19,8 @@ export type OrderGeneratorInput = {
   /** Most-recently-served last. Only the tail matters; callers may pass the full history. */
   recentRecipeIds: string[];
   recentCuisineIds: (CuisineId | null)[];
+  /** Optional base weight per recipe (Phase 2's order pool: new dishes, stock); default 1. A weight of 0 is never picked unless every weight is 0. */
+  weightOf?: (recipe: RecipeDefinition) => number;
 };
 
 const RECENT_RECIPE_LOOKBACK = 3;
@@ -38,13 +40,14 @@ export function generateOrder(
   const recentCuisines = new Set(input.recentCuisineIds.slice(-RECENT_CUISINE_LOOKBACK));
 
   const weighted = pool.map((recipe) => {
-    let weight = 1;
+    let weight = Math.max(0, input.weightOf?.(recipe) ?? 1);
     if (recentRecipes.has(recipe.id)) weight *= RECENT_RECIPE_PENALTY;
     if (recipe.cuisineId && recentCuisines.has(recipe.cuisineId)) weight *= RECENT_CUISINE_PENALTY;
     return { recipe, weight };
   });
 
   const total = weighted.reduce((sum, w) => sum + w.weight, 0);
+  if (total <= 0) return pool[0]!;
   let roll = rand() * total;
   for (const w of weighted) {
     roll -= w.weight;
