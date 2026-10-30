@@ -483,3 +483,80 @@ export async function doClosingChores(page) {
   }
   return false;
 }
+
+/**
+ * The player sweeps the served order's cash off the table (developer 2026-10-29: money enters the
+ * wallet only as it is swept). Drags the pointer over every bill and coin, a few passes; returns how
+ * many pieces it saw. Safe to call when there is nothing to sweep.
+ */
+export async function sweepCash(page) {
+  let seen = 0;
+  for (let pass = 0; pass < 6; pass++) {
+    const boxes = await page.evaluate(() =>
+      [...document.querySelectorAll("[data-cash-piece]")].map((e) => {
+        const r = e.getBoundingClientRect();
+        return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+      }),
+    );
+    if (boxes.length === 0) break;
+    seen = Math.max(seen, boxes.length);
+    await page.mouse.move(boxes[0].x, boxes[0].y);
+    await page.mouse.down();
+    for (const b of boxes) await page.mouse.move(b.x, b.y, { steps: 6 });
+    await page.mouse.up();
+    await sleep(500);
+  }
+  await sleep(1200);
+  return seen;
+}
+
+/**
+ * A new player's first level on their own $10 (developer 2026-10-30): skip the intro, open the Market
+ * from Grandma's pointer, buy the plan's ingredients, go back, Prepare, and wait for the cutting board.
+ */
+export async function startFirstLevel(page) {
+  await freshPlayer(page);
+  await page.waitForFunction(() => !!document.querySelector('[aria-label="Skip intro"]'), {
+    timeout: 30000,
+  });
+  await page.evaluate(() => document.querySelector('[aria-label="Skip intro"]').click());
+  await page.waitForFunction(() => !document.querySelector("[data-intro-scene]"), {
+    timeout: 10000,
+  });
+  await sleep(2500);
+  await clickButton(page, /^Show me/);
+  await sleep(1500);
+  for (let i = 0; i < 4; i++) {
+    const had = await page.evaluate(() => {
+      const row = document.querySelector("[data-plan-ingredient]");
+      const b =
+        row && [...row.querySelectorAll("button")].find((x) => /^Buy /.test(x.textContent.trim()));
+      b?.click();
+      return !!b;
+    });
+    await sleep(900);
+    if (!had) break;
+  }
+  await page.evaluate(() => document.querySelector('[data-nav="kitchen"]')?.click());
+  await sleep(1200);
+  await clickButton(page, /^Prepare$/);
+  await sleep(1500);
+  for (let i = 0; i < 3; i++) {
+    const clicked = await page.evaluate(() => {
+      const b = [...document.querySelectorAll("button")].find(
+        (x) =>
+          /^(🔥 Start service|START SERVICE|🚪 Open restaurant|OPEN THE RESTAURANT)$/i.test(
+            x.textContent.trim(),
+          ) && !x.disabled,
+      );
+      b?.click();
+      return !!b;
+    });
+    await sleep(900);
+    if (!clicked) break;
+  }
+  await page.waitForFunction(
+    () => /·\s*(?:\d+\/\d+\s+[a-z-]+|\d+% peeled)/i.test(document.body.innerText),
+    { timeout: 30000 },
+  );
+}

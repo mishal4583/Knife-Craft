@@ -40,19 +40,43 @@ class AudioManagerImpl {
     PauseManager.subscribe(() => this.updateMusic());
     onAdActiveChange(() => this.updateMusic());
     if (typeof window !== "undefined") {
-      const onGesture = () => {
-        this.gestured = true;
-        window.removeEventListener("pointerdown", onGesture, true);
-        window.removeEventListener("keydown", onGesture, true);
-        this.updateMusic();
-      };
-      window.addEventListener("pointerdown", onGesture, true);
-      window.addEventListener("keydown", onGesture, true);
+      // iPhone Safari only lets audio start (or restart after a call, a lock
+      // or a tab switch) from a touchend / click, so the listeners stay on for
+      // the whole session: every tap re-unlocks the context if it was stopped.
+      // Not the Page Visibility API (preflight) — pageshow / focus only.
+      const onGesture = () => this.unlockFromGesture();
+      for (const type of ["pointerdown", "pointerup", "touchend", "click", "keydown"])
+        window.addEventListener(type, onGesture, true);
+      for (const type of ["pageshow", "focus"])
+        window.addEventListener(type, () => this.recoverContext(), true);
     }
+    try {
+      // Safari 16.4+: play as media, so the iPhone's silent switch doesn't mute Web Audio.
+      const session = (navigator as unknown as { audioSession?: { type: string } }).audioSession;
+      if (session) session.type = "playback";
+    } catch {
+      /* optional */
+    }
+  }
+
+  /** A real tap: unlock, create or resume the context inside the gesture (iOS needs that), then the music. */
+  private unlockFromGesture(): void {
+    this.gestured = true;
+    const was = this.ctx?.state;
+    this.ensureContext();
+    if (was !== "running") this.updateMusic();
+  }
+
+  /** The page came back: try to wake a stopped context (a tap does it if the browser refuses here). */
+  private recoverContext(): void {
+    if (!this.gestured || !this.ctx || this.ctx.state === "running") return;
+    this.ensureContext();
   }
 
   setUserSoundEnabled(enabled: boolean): void {
     this.userSoundEnabled = enabled;
+    // Turning Sound on is a tap: it also wakes a context the system stopped.
+    if (enabled && this.gestured) this.unlockFromGesture();
   }
 
   /** Whether sound may play right now (platform audio, the Sound setting, not paused, no ad). Media elements outside Web Audio — the cooking clip — follow the same rule. */
@@ -278,7 +302,8 @@ class AudioManagerImpl {
       if (!this.ctx) this.ctx = new Ctor();
 
       const ctx = this.ctx;
-      if (ctx.state === "suspended") {
+      // "suspended", or iOS's own "interrupted" (a call, a lock, a tab switch).
+      if (ctx.state !== "running") {
         // resume() is asynchronous. Wait for it before scheduling nodes, and
         // share the request so overlapping SFX/music updates don't spam it.
         if (!this.contextResumePending) {
@@ -290,6 +315,21 @@ class AudioManagerImpl {
             })
             .catch(() => {
               this.contextResumePending = null;
+              // A context the system won't wake is replaced on the next tap.
+              if (this.ctx === ctx) {
+                this.ctx = null;
+                this.sfxGain = null;
+                this.musicGain = null;
+                this.sharedNoise = null;
+                // The new context's clock restarts, so the music loop starts over with it.
+                if (this.musicTimer) clearInterval(this.musicTimer);
+                this.musicTimer = null;
+                try {
+                  void ctx.close();
+                } catch {
+                  /* already closed */
+                }
+              }
             });
         }
         return null;

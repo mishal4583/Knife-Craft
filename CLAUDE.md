@@ -11,10 +11,13 @@ status line in HANDOFF; this file changes only when a RULE changes.
 - Repo: GitHub `mishal4583/Knife-Craft`, branch `main`. It ships through
   **Playgama** (CrazyGames, Yandex, MSN, GameDistribution, YouTube Playables,
   TikTok, …), not straight to YouTube.
-- **No commit, push, merge, deploy or release-config change without the
-  developer's explicit approval** (2026-10-11). When approved, push to `main`
-  after the gates (§5). Every push to `main` deploys GitHub Pages
-  (`.github/workflows/deploy.yml`); check the run.
+- **Git and file operations: just do them** (developer 2026-10-29). When the
+  developer says pull, push, commit, merge or delete (files, branches,
+  stashes), do it directly without asking again. Run the gates (§5) before a
+  push. Every push to `main` deploys GitHub Pages
+  (`.github/workflows/deploy.yml`); check the run. Deploy / release-config
+  changes and the Playgama `publish_sandbox` / `start_sandbox_traffic` (§3)
+  still need an explicit yes.
 - **The Unified Restaurant is ON in every build** (`RESTAURANT_MODE`,
   `src/game/config/restaurantMode.ts`). The classic game is only a
   `VITE_RESTAURANT_MODE=0` build, used by the classic browser tests.
@@ -32,11 +35,14 @@ status line in HANDOFF; this file changes only when a RULE changes.
 - **Stack:** React 19 + Vite + TypeScript + Tailwind v4; Phaser 3.90 for
   the cutting (the lazy `Preparation` chunk).
 - **Screen:** portrait first, logical 540×960, `GameShell` contain-fits.
-- **Content:** 150 campaign levels in 13 chapters (developer 2026-10-15;
+- **Content:** 148 campaign levels in 13 chapters (150 until the developer removed the first two on 2026-10-29; developer 2026-10-15;
   `levels/campaignSelection.ts`), Market, Inventory, Restaurant (Economy V3),
   Achievements, story.
 - **Money:** one wallet in USD cents (`SaveData.credits`); every movement
-  goes in `SaveData.economyLedger`.
+  goes in `SaveData.economyLedger`. A new game starts with $10.00 and the Market
+  open at Level 1: nothing is given free (no Grandma tools, cupboard or leftovers);
+  the player buys the first order's ingredients with their own money (developer
+  2026-10-30).
 - **Reference-only folders** (not in the build): `Knifecraft vegetables/`,
   `Knifecraft Phase 1 review/`, `Shop UI/`, `knifecraft_kitchen_webp/`,
   `Market.png`, `*.docx`, the root `*.md` audits, `art-source/` (source art).
@@ -124,7 +130,7 @@ Release zip: the CONTENTS of `dist/` →
   `VITE_RESTAURANT_MODE=0` build.
 - `economy-v2-final-qa` is the frozen baseline; some suites use `git diff`,
   so run them in this repo.
-- Known pre-existing failures: none.
+- Known failures: none in the QA suites once the work is committed (`phase5-qa` A3 diffs `restaurantInvestments.ts` against `HEAD`, so it passes only after the 2026-10-30 commit). Stale browser tests (seeds written for the old numbering or the $0 start): `walkins`, `phase2` B2–B6/C1, `restaurantcleanliness` and others not re-run; see HANDOFF.
 
 ## 6. ARCHITECTURE — PRESERVE AND REUSE
 
@@ -156,23 +162,28 @@ Release zip: the CONTENTS of `dist/` →
 
 ## 7. ECONOMY RULES (figures: REFERENCE §7)
 
-- **Frozen campaign baseline (150 levels, recorded 2026-10-17 on the
-  developer's approval):** Revenue 69,110 · Completion 46,585 · COGS 16,092
-  · Quality 1,402 · Net 101,005 (`economy-v2-campaign-simulation`; the
-  250-level figures were 165,140 / 77,581 / 37,620 / 3,315 / 208,416). Pay follows each
-  level's `cuisineChapter` (`payChapterOf`). An unexplained change is still
+- **Frozen campaign baseline (148 levels, re-recorded 2026-10-30):** Revenue
+  69,925 · Completion 245,138 · COGS 16,604 · Quality 1,415 · Net 299,874
+  (`economy-v2-campaign-simulation`). Changes from the earlier figures are all
+  explained by the developer: removing the first two levels (2026-10-29: revenue
+  69,110 → 69,925, COGS 16,092 → 16,604, quality 1,402 → 1,415) and the level-pay
+  re-plan (2026-10-30: completion 45,623 → 245,138, so the completionist ends well
+  above $150k and the first kitchen tier is reachable around Level 44). The
+  250-level figures were 165,140 / 77,581 / 37,620 / 3,315 / 208,416. Pay follows
+  each level's `cuisineChapter` (`payChapterOf`). An unexplained change is still
   a regression.
 - **Level rewards:** `levels/levelRewards.ts` `paidLevelReward` is the ONE
-  rule: one rising curve by the new level number, `50 + 3.1 × (n − 1)`
-  dollars (L2 practice $0, L150 keeps $5,000).
+  rule (`curatedRewardAt`): $50 at Level 1, +$40 a level to Level 40, then +$6 a
+  level (developer 2026-10-30); the last level keeps its $5,000 finale; no level is
+  a $0 practice level any more.
 - **Achievement money** (developer 2026-10-16,
   `progression/achievements.ts`): the old milestones are achievements under
   their own ids, plus new reward tiers. Each pays once, only when the player
   taps Collect in Progress → Achievements (one `milestone-reward` ledger
   entry; claims in `economy.claimedMilestoneIds`). Only the $50,000 Family
   Legacy at L150 pays by itself.
-- **Restaurant target:** the completionist ends L150 with $100k–$150k (sim
-  ~$132k with achievements collected). Check with
+- **Restaurant target:** the completionist ends the last level with at least $150k
+  (developer 2026-10-30; sim ~$292k with achievements collected). Check with
   `restaurant-final-economy-qa` and `achievement-rewards-qa` after any
   economy change.
 - **Where things happen:**

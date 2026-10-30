@@ -42,7 +42,7 @@ import {
   createBusinessServiceSession,
   endlessFeaturedFor,
   recordBusinessServiceComponents,
-  serveBusinessOrder,
+  serveBusinessOrder as serveBusinessOrderRaw,
 } from "../src/game/business/BusinessServiceManager.ts";
 import {
   businessDishForRecipeId,
@@ -82,6 +82,16 @@ import {
   performRefrigeratorMaintenance,
 } from "../src/game/business/businessMaintenance.ts";
 import { recordMaintenanceCost } from "../src/game/business/BusinessFinanceManager.ts";
+
+import { settlePendingCash } from "../src/game/economy/pendingCash.ts";
+/**
+ * A serve leaves the payment on the table; the player sweeps it into the wallet (economy/pendingCash.ts,
+ * developer 2026-10-29). This simulation models that sweep right after the serve.
+ */
+const serveBusinessOrder: typeof serveBusinessOrderRaw = (...args) => {
+  const r = serveBusinessOrderRaw(...args);
+  return r ? { ...r, save: settlePendingCash(r.save) } : r;
+};
 
 let failures = 0;
 function assert(cond: unknown, msg: string) {
@@ -176,7 +186,7 @@ export function playDay(
     }
     const result = serveBusinessOrder(recordBusinessServiceComponents(session, 85), s, rand);
     if (!result) break;
-    s = appendLedgerEntry(result.save, "business-revenue", result.amountCharged, result.dish.id);
+    s = result.save; /* the sweep already wrote the entry (economy/pendingCash.ts) */
     // App.serveActiveBusinessOrder: note that today's featured dish was served (paid at closing).
     if (useEvents) s = withTodaysSpecialServed(s, result.dish.id);
     served++;

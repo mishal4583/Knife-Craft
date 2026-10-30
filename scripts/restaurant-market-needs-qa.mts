@@ -62,7 +62,7 @@ const atLevel = (n: number, measure: "lb" | "kg" = "lb"): SaveData => {
 console.log("N. Needs come from the game's own checks");
 {
   const problems: string[] = [];
-  for (const n of [3, 12, 25, 40, 60, 90, 120, 150]) {
+  for (const n of [3, 12, 25, 40, 60, 90, 120, 148]) {
     const save = atLevel(n);
     const plan = servicePlanFor(save, LEVELS[n - 1]!)!;
     const needs = marketNeeds(save);
@@ -144,7 +144,7 @@ console.log("Q. Quick restock price and amount (every level, lb and kg)");
   let lines = 0;
   const bad: string[] = [];
   for (const measure of ["lb", "kg"] as const)
-    for (let n = 3; n <= 150; n++) {
+    for (let n = 3; n <= 148; n++) {
       const save = atLevel(n, measure);
       const plan = servicePlanFor(save, LEVELS[n - 1]!);
       if (!plan) continue;
@@ -192,8 +192,8 @@ console.log("U. The Market shows it");
     /needsFirst\(/.test(ing) &&
       /needs\[id\]\?\.buy/.test(ing) &&
       /<NeedNote/.test(ing) &&
-      /Needed for today/.test(ing),
-    "U2: ingredients: a Needed for today group first, highlighted with the amount, preset",
+      /label: "Needed"/.test(ing),
+    "U2: ingredients: a Needed group first, highlighted with the amount, preset",
   );
   assert(
     /needCount\[item\.id\]/.test(shop),

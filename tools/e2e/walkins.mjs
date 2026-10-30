@@ -14,6 +14,7 @@
 //   W6 no console errors.
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import {
+  sweepCash,
   MOVED_IN_BUSINESS,
   launch,
   boot,
@@ -101,7 +102,9 @@ async function cookAndServe() {
   await sleep(900);
   if (/ORDER READY/i.test(await flat())) {
     await clickButton(page, /^Serve to /);
-    await sleep(1500);
+    await sleep(3500);
+    // The cash lies on the table: the player sweeps it into the wallet (it enters only then).
+    await sweepCash(page);
   }
   return played.ok;
 }

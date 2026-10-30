@@ -40,8 +40,14 @@ function saveAt(overrides: Partial<SaveData>): SaveData {
 
 // ===== A: default inventory is empty. =====
 {
-  assert(Object.keys(DEFAULT_BUSINESS_INVENTORY).length === 0, "A: DEFAULT_BUSINESS_INVENTORY is empty");
-  assert(Object.keys(DEFAULT_BUSINESS_STATE.inventory).length === 0, "A2: DEFAULT_BUSINESS_STATE.inventory is empty");
+  assert(
+    Object.keys(DEFAULT_BUSINESS_INVENTORY).length === 0,
+    "A: DEFAULT_BUSINESS_INVENTORY is empty",
+  );
+  assert(
+    Object.keys(DEFAULT_BUSINESS_STATE.inventory).length === 0,
+    "A2: DEFAULT_BUSINESS_STATE.inventory is empty",
+  );
 }
 
 // ===== B: empty inventory reports 0 quantity for everything. =====
@@ -63,32 +69,53 @@ function saveAt(overrides: Partial<SaveData>): SaveData {
   let inv = addStock({}, "tomato", 10, 10, 1);
   inv = addStock(inv, "tomato", 10, 20, 2);
   assert(getQuantity(inv, "tomato") === 20, "D: two adds of 10 each give quantity 20");
-  assert(inv.tomato!.unitCost === 15, `D2: unitCost is the quantity-weighted average (10*10 + 10*20)/20 = 15 (got ${inv.tomato!.unitCost})`);
+  assert(
+    inv.tomato!.unitCost === 15,
+    `D2: unitCost is the quantity-weighted average (10*10 + 10*20)/20 = 15 (got ${inv.tomato!.unitCost})`,
+  );
   assert(inv.tomato!.purchaseDay === 2, "D3: purchaseDay updates to the most recent purchase");
-  assert(Object.keys(inv).length === 1, "D4: still exactly ONE entry for tomato — no duplicate representation");
+  assert(
+    Object.keys(inv).length === 1,
+    "D4: still exactly ONE entry for tomato — no duplicate representation",
+  );
 }
 
 // ===== E: remove ingredient. =====
 {
   const inv = addStock({}, "tomato", 10, 10, 1);
   const result = removeStock(inv, "tomato", 4);
-  assert(result.ok && getQuantity(result.inventory, "tomato") === 6, "E: removing 4 from 10 leaves 6");
+  assert(
+    result.ok && getQuantity(result.inventory, "tomato") === 6,
+    "E: removing 4 from 10 leaves 6",
+  );
 }
 
 // ===== F: remove exact quantity clears the entry. =====
 {
   const inv = addStock({}, "tomato", 10, 10, 1);
   const result = removeStock(inv, "tomato", 10);
-  assert(result.ok && getQuantity(result.inventory, "tomato") === 0, "F: removing the exact quantity leaves 0");
-  assert(result.ok && !("tomato" in result.inventory), "F2: the entry is deleted outright, not left as a stale zero record");
+  assert(
+    result.ok && getQuantity(result.inventory, "tomato") === 0,
+    "F: removing the exact quantity leaves 0",
+  );
+  assert(
+    result.ok && !("tomato" in result.inventory),
+    "F2: the entry is deleted outright, not left as a stale zero record",
+  );
 }
 
 // ===== G: cannot remove too much. =====
 {
   const inv = addStock({}, "tomato", 5, 10, 1);
   const result = removeStock(inv, "tomato", 6);
-  assert(!result.ok && result.reason === "insufficientStock", "G: removing more than available fails with 'insufficientStock'");
-  assert(getQuantity(inv, "tomato") === 5, "G2: the original inventory is completely unaffected by the failed removal");
+  assert(
+    !result.ok && result.reason === "insufficientStock",
+    "G: removing more than available fails with 'insufficientStock'",
+  );
+  assert(
+    getQuantity(inv, "tomato") === 5,
+    "G2: the original inventory is completely unaffected by the failed removal",
+  );
 }
 
 // ===== H: availability check. =====
@@ -103,11 +130,17 @@ function saveAt(overrides: Partial<SaveData>): SaveData {
   let inv = addStock({}, "tomato", 2, 10, 1);
   inv = addStock(inv, "onion", 1, 10, 1);
   assert(
-    hasIngredients(inv, [{ ingredientId: "tomato", quantity: 2 }, { ingredientId: "onion", quantity: 1 }]),
+    hasIngredients(inv, [
+      { ingredientId: "tomato", quantity: 2 },
+      { ingredientId: "onion", quantity: 1 },
+    ]),
     "I: hasIngredients is true when every requirement is met",
   );
   assert(
-    !hasIngredients(inv, [{ ingredientId: "tomato", quantity: 2 }, { ingredientId: "chicken", quantity: 1 }]),
+    !hasIngredients(inv, [
+      { ingredientId: "tomato", quantity: 2 },
+      { ingredientId: "chicken", quantity: 1 },
+    ]),
     "I2: hasIngredients is false when even one requirement (chicken) is unmet",
   );
 }
@@ -156,7 +189,10 @@ function saveAt(overrides: Partial<SaveData>): SaveData {
     { ingredientId: "tomato", quantity: 2 },
     { ingredientId: "tomato", quantity: 2 },
   ]);
-  assert(!result.ok, "bonus: two requirements for the same ingredient are summed (2+2=4 > 3 in stock) rather than checked independently");
+  assert(
+    !result.ok,
+    "bonus: two requirements for the same ingredient are summed (2+2=4 > 3 in stock) rather than checked independently",
+  );
 }
 
 // ===== L/M/N/O: a valid purchase — deducts exact credits, adds exact inventory, creates exactly one ledger entry. =====
@@ -166,9 +202,18 @@ function saveAt(overrides: Partial<SaveData>): SaveData {
   const result = purchaseIngredient(save, "tomato", 10);
   assert(result.ok, "L: a valid purchase succeeds");
   if (result.ok) {
-    assert(result.totalCost === unitCost * 10, `L2: totalCost is exactly unitCost*quantity (${unitCost}*10=${unitCost * 10}, got ${result.totalCost})`);
-    assert(result.save.credits === 1000 - result.totalCost, `M: credits are deducted by exactly the total cost (got ${result.save.credits})`);
-    assert(getQuantity(result.save.business.inventory, "tomato") === 10, "N: inventory gains exactly the purchased quantity");
+    assert(
+      result.totalCost === unitCost * 10,
+      `L2: totalCost is exactly unitCost*quantity (${unitCost}*10=${unitCost * 10}, got ${result.totalCost})`,
+    );
+    assert(
+      result.save.credits === 1000 - result.totalCost,
+      `M: credits are deducted by exactly the total cost (got ${result.save.credits})`,
+    );
+    assert(
+      getQuantity(result.save.business.inventory, "tomato") === 10,
+      "N: inventory gains exactly the purchased quantity",
+    );
     assert(
       result.save.business.inventory.tomato!.purchaseDay === save.business.calendar.businessDay,
       "N2: purchaseDay is recorded as the CURRENT business day, not advanced or altered",
@@ -181,11 +226,22 @@ function saveAt(overrides: Partial<SaveData>): SaveData {
   const result = purchaseIngredient(save, "tomato", 10);
   if (result.ok) {
     const { appendLedgerEntry } = await import("../src/game/economy/EconomyLedger.ts");
-    const withLedger = appendLedgerEntry(result.save, "inventory-purchase", -result.totalCost, "tomato");
+    const withLedger = appendLedgerEntry(
+      result.save,
+      "inventory-purchase",
+      -result.totalCost,
+      "tomato",
+    );
     const newEntries = withLedger.economyLedger.length - save.economyLedger.length;
-    assert(newEntries === 1, `O: a successful purchase creates EXACTLY one ledger entry (got ${newEntries})`);
+    assert(
+      newEntries === 1,
+      `O: a successful purchase creates EXACTLY one ledger entry (got ${newEntries})`,
+    );
     const entry = withLedger.economyLedger[withLedger.economyLedger.length - 1]!;
-    assert(entry.category === "inventory-purchase" && entry.amount === -result.totalCost, "O2: the ledger entry has the correct category and exact signed amount");
+    assert(
+      entry.category === "inventory-purchase" && entry.amount === -result.totalCost,
+      "O2: the ledger entry has the correct category and exact signed amount",
+    );
   }
 }
 
@@ -193,9 +249,15 @@ function saveAt(overrides: Partial<SaveData>): SaveData {
 {
   const save = saveAt({ credits: 10 });
   const result = purchaseIngredient(save, "chicken", 5); // far more than 10 credits can afford
-  assert(!result.ok && result.reason === "insufficientFunds", "P0: an unaffordable purchase fails with 'insufficientFunds'");
+  assert(
+    !result.ok && result.reason === "insufficientFunds",
+    "P0: an unaffordable purchase fails with 'insufficientFunds'",
+  );
   assert(save.credits === 10, "P: a failed purchase does not change credits (still 10)");
-  assert(Object.keys(save.business.inventory).length === 0, "Q: a failed purchase does not change inventory");
+  assert(
+    Object.keys(save.business.inventory).length === 0,
+    "Q: a failed purchase does not change inventory",
+  );
   // R: no ledger entry — a failed result is never passed to appendLedgerEntry at all (mirrors App.tsx's own `if (result.ok)` gate).
   const entriesAppended = result.ok ? 1 : 0;
   assert(entriesAppended === 0, "R: a failed purchase creates ZERO ledger entries");
@@ -209,24 +271,35 @@ function saveAt(overrides: Partial<SaveData>): SaveData {
   const zero = purchaseIngredient(save, "tomato", 0);
   assert(!zero.ok && zero.reason === "invalidQuantity", "T: zero quantity is rejected");
   const unknown = purchaseIngredient(save, "not-a-real-ingredient", 5);
-  assert(!unknown.ok && unknown.reason === "unknownIngredient", "U: an unknown ingredient id is rejected");
+  assert(
+    !unknown.ok && unknown.reason === "unknownIngredient",
+    "U: an unknown ingredient id is rejected",
+  );
   // V: "invalid price rejected" — businessUnitCostFor always returns a real, positive, data-driven
   // price for every known IngredientId (never player-supplied), so the meaningful invalid-price
   // surface is an unknown ingredient id, already covered by U. Confirmed here that every real
   // ingredient resolves to a positive, finite, integer price.
-  const allIds = Object.keys((await import("../src/game/definitions.ts")).INGREDIENTS) as (keyof typeof import("../src/game/definitions.ts").INGREDIENTS)[];
+  const allIds = Object.keys(
+    (await import("../src/game/definitions.ts")).INGREDIENTS,
+  ) as (keyof typeof import("../src/game/definitions.ts").INGREDIENTS)[];
   const allPricesValid = allIds.every((id) => {
     const cost = businessUnitCostFor(id as never);
     return Number.isInteger(cost) && cost > 0;
   });
-  assert(allPricesValid, "V: every real ingredient resolves to a positive integer business unit cost");
+  assert(
+    allPricesValid,
+    "V: every real ingredient resolves to a positive integer business unit cost",
+  );
 }
 
 // ===== W: inventory value calculation. =====
 {
   let inv = addStock({}, "tomato", 10, 12, 1);
   inv = addStock(inv, "chicken", 5, 85, 1);
-  assert(inventoryValue(inv) === 10 * 12 + 5 * 85, `W: inventoryValue sums quantity*unitCost across every entry (got ${inventoryValue(inv)})`);
+  assert(
+    inventoryValue(inv) === 10 * 12 + 5 * 85,
+    `W: inventoryValue sums quantity*unitCost across every entry (got ${inventoryValue(inv)})`,
+  );
   assert(inventoryValue({}) === 0, "W2: inventoryValue of an empty inventory is 0");
 }
 
@@ -252,8 +325,14 @@ function saveAt(overrides: Partial<SaveData>): SaveData {
     ...parsed,
     business: { ...DEFAULT_SAVE.business, ...parsed.business },
   } as SaveData;
-  assert(Object.keys(migrated.business.inventory).length === 0, "Y: an old save missing `business` entirely migrates to an empty inventory");
-  assert(migrated.business.calendar.businessDay === 1, "Y2: ...and Day 1, matching V3-1's own default");
+  assert(
+    Object.keys(migrated.business.inventory).length === 0,
+    "Y: an old save missing `business` entirely migrates to an empty inventory",
+  );
+  assert(
+    migrated.business.calendar.businessDay === 1,
+    "Y2: ...and Day 1, matching V3-1's own default",
+  );
 }
 
 // ===== Z: BusinessState forward compatibility — a V3-1-era save (business.calendar only, no inventory) still loads correctly. =====
@@ -268,8 +347,14 @@ function saveAt(overrides: Partial<SaveData>): SaveData {
     ...v31Save,
     business: { ...DEFAULT_SAVE.business, ...v31Save.business },
   } as SaveData;
-  assert(migrated.business.calendar.businessDay === 10, "Z: business.calendar.businessDay === 10 survives exactly (the brief's own required scenario)");
-  assert(Object.keys(migrated.business.inventory).length === 0, "Z2: business.inventory === default (empty) inventory, added cleanly by this phase");
+  assert(
+    migrated.business.calendar.businessDay === 10,
+    "Z: business.calendar.businessDay === 10 survives exactly (the brief's own required scenario)",
+  );
+  assert(
+    Object.keys(migrated.business.inventory).length === 0,
+    "Z2: business.inventory === default (empty) inventory, added cleanly by this phase",
+  );
 }
 
 // ===== AA/AB: Campaign is unaffected except by an explicit business purchase. =====
@@ -289,7 +374,10 @@ function saveAt(overrides: Partial<SaveData>): SaveData {
   // A purchase changes credits ONLY via the purchase itself — never any other side channel.
   const before = save.credits;
   const after = result.ok ? result.save.credits : save.credits;
-  assert(result.ok && before - after === result.totalCost, "AA: credits changed by EXACTLY the purchase's own totalCost, nothing else");
+  assert(
+    result.ok && before - after === result.totalCost,
+    "AA: credits changed by EXACTLY the purchase's own totalCost, nothing else",
+  );
 }
 
 // ===== AC: save/load round-trip (JSON serialization survives). =====
@@ -298,8 +386,14 @@ function saveAt(overrides: Partial<SaveData>): SaveData {
   const result = purchaseIngredient(save, "tomato", 8);
   if (result.ok) {
     const roundTripped = JSON.parse(JSON.stringify(result.save)) as SaveData;
-    assert(getQuantity(roundTripped.business.inventory, "tomato") === 8, "AC: inventory survives a JSON save/load round-trip exactly");
-    assert(roundTripped.credits === result.save.credits, "AC2: credits survive the round-trip exactly");
+    assert(
+      getQuantity(roundTripped.business.inventory, "tomato") === 8,
+      "AC: inventory survives a JSON save/load round-trip exactly",
+    );
+    assert(
+      roundTripped.credits === result.save.credits,
+      "AC2: credits survive the round-trip exactly",
+    );
   }
 }
 
@@ -323,25 +417,37 @@ function saveAt(overrides: Partial<SaveData>): SaveData {
     const isDocMention = /(Never|No|not)\s+`?Math\.random\(\)/i.test(content);
     if (hasMention && !isDocMention) foundRandomCall = true;
   }
-  assert(!foundRandomCall, "AE: no Math.random() CALL exists anywhere in the new Business Inventory files (doc mentions of its absence are excluded)");
+  assert(
+    !foundRandomCall,
+    "AE: no Math.random() CALL exists anywhere in the new Business Inventory files (doc mentions of its absence are excluded)",
+  );
 }
 
 // ===== AF/AG: no negative inventory, no negative credits, ever. =====
 {
   const inv = addStock({}, "tomato", 3, 10, 1);
   const overRemove = removeStock(inv, "tomato", 100);
-  assert(!overRemove.ok, "AF: an over-large removal is rejected rather than producing negative quantity");
+  assert(
+    !overRemove.ok,
+    "AF: an over-large removal is rejected rather than producing negative quantity",
+  );
   const poorSave = saveAt({ credits: 5 });
   const tooExpensive = purchaseIngredient(poorSave, "chicken", 1);
   assert(!tooExpensive.ok, "AG0: an unaffordable purchase is rejected (precondition)");
-  assert(poorSave.credits === 5 && poorSave.credits >= 0, "AG: credits never go negative — the failed purchase left the original save untouched");
+  assert(
+    poorSave.credits === 5 && poorSave.credits >= 0,
+    "AG: credits never go negative — the failed purchase left the original save untouched",
+  );
 }
 
 // ===== AH: duplicate inventory representation prevented. =====
 {
   let inv: BusinessInventory = {};
   for (let i = 0; i < 5; i++) inv = addStock(inv, "tomato", 1, 10, 1);
-  assert(Object.keys(inv).length === 1, "AH: five separate adds of the same ingredient still produce exactly ONE entry, never five");
+  assert(
+    Object.keys(inv).length === 1,
+    "AH: five separate adds of the same ingredient still produce exactly ONE entry, never five",
+  );
   assert(getQuantity(inv, "tomato") === 5, "AH2: ...with the quantities correctly accumulated");
 }
 
@@ -351,9 +457,17 @@ function saveAt(overrides: Partial<SaveData>): SaveData {
   const result = purchaseIngredient(save, "tomato", 10);
   if (result.ok) {
     const { appendLedgerEntry } = await import("../src/game/economy/EconomyLedger.ts");
-    const withLedger = appendLedgerEntry(result.save, "inventory-purchase", -result.totalCost, "tomato");
+    const withLedger = appendLedgerEntry(
+      result.save,
+      "inventory-purchase",
+      -result.totalCost,
+      "tomato",
+    );
     const totals = ledgerTotals(withLedger.economyLedger);
-    assert(totals.byCategory["inventory-purchase"] === -result.totalCost, "bonus: ledgerTotals correctly isolates the inventory-purchase category's own signed sum");
+    assert(
+      totals.byCategory["inventory-purchase"] === -result.totalCost,
+      "bonus: ledgerTotals correctly isolates the inventory-purchase category's own signed sum",
+    );
   }
 }
 

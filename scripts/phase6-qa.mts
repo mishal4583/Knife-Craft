@@ -13,6 +13,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
+import { saveManagerChangesBeyondStartCash } from "./startCashGuard.mts";
 import { execSync } from "node:child_process";
 import {
   customerMoment,
@@ -244,10 +245,10 @@ assert(
   files.every((f) => !/credits|appendLedgerEntry|persist\(|SaveManager/.test(f)),
   "E2: no money, no ledger, no save in any of it",
 );
-const saveDiff = execSync("git diff --stat HEAD -- src/game/SaveManager.ts src/types", {
-  cwd: ROOT,
-  encoding: "utf8",
-});
+// SaveManager may carry only the approved opening-credits and write-queue changes (scripts/startCashGuard.mts).
+const saveDiff =
+  saveManagerChangesBeyondStartCash("HEAD", ROOT).join("\n") +
+  execSync("git diff --stat HEAD -- src/types", { cwd: ROOT, encoding: "utf8" });
 assert(saveDiff.trim() === "", "E3: no save-schema change", saveDiff);
 
 console.log(failures === 0 ? "\nPHASE 6 QA: ALL PASS" : `\nPHASE 6 QA: ${failures} FAILURE(S)`);

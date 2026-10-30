@@ -1,46 +1,43 @@
 /**
- * GRANDMA'S FRIDGE QA — the feature is RETIRED (developer redesign 2026-10-15,
- * commit 0b2ce52: "ingredients are purchased in the Market from Level 3
- * onward; there is no free pantry or ingredient handout").
+ * NO FREE GIFTS QA (developer 2026-10-30: "remove the grandma pantry, grandma left overs, all those
+ * things — let the players buy all of it from their own money, from the Market").
  *
- * Re-baselined 2026-10-17 (developer: "fix it according to your plan"). The
- * old suite (L / C / R / T / P / S / I / F / E, in git history before this
- * date) tested the Level 3 leftovers, Grandma's pantry and the Level 12–14
- * fridge notes — all removed by that redesign. What it checks now:
+ * This file used to test Grandma's fridge (retired 2026-10-15); that feature, her old tools and her
+ * cleaning cupboard are now gone for good. It keeps its name (docs link to it) and checks that
+ * nothing is given away any more and that the first run works on the player's own money:
  *
- *  R  Retired APIs stay as no-ops for old saves: no leftovers, giving them
- *     changes nothing, no fridge note on any level, no pantry export; an old
- *     save's legacy record still reads (never dropped).
- *  C  Stock from Level 3: Levels 1–2 use none; from Level 3 a level's own
- *     order takes exactly its planned ingredients (no money moves); an empty
- *     fridge refuses the serve with nothing taken, the Pre-Service Check
- *     applies, and with $0 an ad or supplier credit covers it (no
- *     soft-lock); a replay uses nothing.
- *  W  Wiring: no screen imports the retired fridge helpers.
+ *  N  Nothing is given: the gift modules and grants are gone from the source; a new save holds
+ *     only the starter knife and board
+ *  M  The Market opens at Level 1: ingredient stock is used from the very first level
+ *  F  The first order is affordable from the starting wallet, and a hand points the way
+ *  C  A short service still has a safety net (ad or supplier credit) — never a soft-lock
  *
  * Run: npx tsx scripts/restaurant-grandmas-fridge-qa.mts
  */
 import fs from "node:fs";
 import path from "node:path";
-import { DEFAULT_SAVE, type SaveData } from "../src/game/SaveManager.ts";
-import type { IngredientId } from "../src/game/definitions.ts";
-import {
-  giveGrandmasLeftovers,
-  grandmasFridgeNoteFor,
-  grandmasFridgeOf,
-  leftoversFor,
-} from "../src/game/restaurant/grandmasFridge.ts";
-import * as campaignStockModule from "../src/game/restaurant/campaignStock.ts";
-import {
-  consumeCampaignOrderStock,
-  orderRequirements,
-  serviceUsesStock,
-} from "../src/game/restaurant/campaignStock.ts";
-import { servicePlanFor, servicePlanNeedsSheet } from "../src/game/restaurant/preServiceCheck.ts";
-import { coverFor } from "../src/game/restaurant/serviceCover.ts";
-import { ticketsFor } from "../src/game/restaurant/serviceTickets.ts";
-import { addStock, getQuantity } from "../src/game/business/businessInventory.ts";
-import { getLevel } from "../src/game/levels/LevelManager.ts";
+
+const store: Record<string, string> = {};
+(globalThis as unknown as { localStorage: Storage }).localStorage = {
+  getItem: (k: string) => store[k] ?? null,
+  setItem: (k: string, v: string) => void (store[k] = v),
+  removeItem: (k: string) => void delete store[k],
+  clear: () => void Object.keys(store).forEach((k) => delete store[k]),
+  key: () => null,
+  length: 0,
+} as Storage;
+
+const ROOT = path.resolve(import.meta.dirname, "..");
+const { DEFAULT_SAVE } = await import("../src/game/SaveManager.ts");
+const { dollars } = await import("../src/game/money.ts");
+const { getLevel } = await import("../src/game/levels/LevelManager.ts");
+const { getCampaignRecipe } = await import("../src/game/recipes/campaignRecipes.ts");
+const { serviceStockCheck, serviceUsesStock } =
+  await import("../src/game/restaurant/campaignStock.ts");
+const { isTabOpen, sectionToPoint, grandmaTipFor } =
+  await import("../src/game/restaurant/firstLevels.ts");
+const { INGREDIENT_STOCK_FIRST_LEVEL } =
+  await import("../src/game/restaurant/restaurantProgression.ts");
 
 let failures = 0;
 function assert(cond: unknown, msg: string, detail?: unknown) {
@@ -50,123 +47,107 @@ function assert(cond: unknown, msg: string, detail?: unknown) {
     if (detail !== undefined) console.log("       ", JSON.stringify(detail));
   }
 }
-const root = path.resolve(import.meta.dirname, "..");
-const level = (n: number) => getLevel(`level-${n}`)!;
-const at = (s: SaveData, n: number): SaveData => ({
-  ...s,
-  levelProgress: {
-    ...s.levelProgress,
-    currentLevelId: `level-${n}`,
-    highestUnlockedLevelId: `level-${n}`,
-    completedLevelIds: Array.from({ length: n - 1 }, (_, i) => `level-${i + 1}`),
-    campaignVersion: 2,
-  },
-});
-const fresh = (n: number, credits = 300_000): SaveData =>
-  at({ ...DEFAULT_SAVE, credits, business: { ...DEFAULT_SAVE.business, inventory: {} } }, n);
-const qty = (s: SaveData, id: IngredientId) => getQuantity(s.business.inventory, id);
-/** Opens level n (its tickets saved, as the game does) and returns the save + its recipe. */
-function open(s: SaveData, n: number) {
-  const t = ticketsFor(s.levelProgress, level(n));
-  return { save: { ...s, levelProgress: t.progress }, recipe: t.tickets[0]! };
-}
+const read = (p: string) => fs.readFileSync(path.join(ROOT, p), "utf8");
+const walk = (d: string): string[] =>
+  fs
+    .readdirSync(path.join(ROOT, d), { withFileTypes: true })
+    .flatMap((e) => (e.isDirectory() ? walk(`${d}/${e.name}`) : [`${d}/${e.name}`]));
 
-console.log("R. Retired, kept as no-ops for old saves");
+console.log("N. Nothing is given");
 {
-  const s3 = fresh(3);
-  const given = giveGrandmasLeftovers(s3);
-  const notes = Array.from({ length: 15 }, (_, i) =>
-    grandmasFridgeNoteFor(s3, level(i + 1), i + 1),
+  const src = walk("src").filter((f) => /\.(ts|tsx)$/.test(f));
+  const offenders = src.filter((f) =>
+    /giveGrandmas|GRANDMAS_CUPBOARD|GRANDMAS_TOOL_SET|grandmasFridge\.ts|giveGrandmasLeftovers/.test(
+      read(f),
+    ),
   );
   assert(
-    leftoversFor(s3).length === 0 &&
-      given === s3 &&
-      notes.every((n) => n === null) &&
-      !("pantryForMissing" in campaignStockModule),
-    "R1: no leftovers, giving them changes nothing (no stock, money or ledger), no fridge note on Levels 1–15, no pantry",
+    !fs.existsSync(path.join(ROOT, "src/game/restaurant/grandmasFridge.ts")) &&
+      offenders.length === 0,
+    "N1: the leftovers fridge module and every Grandma grant (tools, cupboard, leftovers) are gone from the source",
+    offenders,
   );
-  const legacy = {
-    ...s3,
-    business: {
-      ...s3.business,
-      grandmasFridge: { atLevel: 3, lines: [{ ingredientId: "tomato", quantity: 1 }] },
-    },
-  } as SaveData;
+  const owned = DEFAULT_SAVE;
   assert(
-    grandmasFridgeOf(legacy)?.atLevel === 3 && grandmasFridgeOf(s3) === null,
-    "R2: an old save's legacy record still reads (never dropped); a new save has none",
+    JSON.stringify(owned.ownedKnifeIds) === '["chef"]' &&
+      JSON.stringify(owned.ownedBoardIds) === '["walnut"]' &&
+      !owned.business.grandmasTools &&
+      !owned.business.grandmasFridge &&
+      Object.keys(owned.business.supplies.stock).length === 0 &&
+      Object.keys(owned.business.inventory).length === 0,
+    "N2: a new save holds only the starter knife and board — no tools, supplies or ingredients",
+  );
+  assert(
+    DEFAULT_SAVE.credits === dollars(10),
+    "N3: a new game starts with $10.00 — the player's own money for the first shopping",
+    DEFAULT_SAVE.credits,
   );
 }
 
-console.log("C. Stock from Level 3");
+console.log("M. The Market opens at Level 1");
 {
   assert(
-    !serviceUsesStock(1) && !serviceUsesStock(2) && serviceUsesStock(3),
-    "C1: Levels 1–2 use no stock; from Level 3 every order uses its real ingredients",
-  );
-  const { save: opened, recipe } = open(fresh(3), 3);
-  const needs = orderRequirements(opened, recipe);
-  let stocked = opened;
-  for (const r of needs)
-    stocked = {
-      ...stocked,
-      business: {
-        ...stocked.business,
-        inventory: addStock(
-          stocked.business.inventory,
-          r.ingredientId,
-          r.quantity,
-          100,
-          stocked.business.calendar.businessDay,
-        ),
-      },
-    };
-  const served = consumeCampaignOrderStock(stocked, 3, recipe, true);
-  assert(
-    served.ok &&
-      needs.every((r) => qty(served.save, r.ingredientId) === 0) &&
-      served.save.credits === stocked.credits &&
-      served.save.economyLedger.length === stocked.economyLedger.length,
-    "C2: Level 3's order takes exactly its planned ingredients once; no money moves",
-    { needs, ok: served.ok },
-  );
-  const empty = consumeCampaignOrderStock(opened, 3, recipe, true);
-  const plan = servicePlanFor(opened, level(3))!;
-  const brokePlan = servicePlanFor({ ...opened, credits: 0 }, level(3))!;
-  assert(
-    !empty.ok &&
-      empty.reason === "missingStock" &&
-      plan.check.applies &&
-      !plan.check.ready &&
-      servicePlanNeedsSheet(plan) &&
-      coverFor(brokePlan, "stock") !== null,
-    "C3: an empty fridge refuses the serve (nothing taken); the check opens; with $0 an ad or supplier credit covers it (no soft-lock)",
-  );
-  const replay = consumeCampaignOrderStock(stocked, 3, recipe, false);
-  assert(
-    replay.ok &&
-      needs.every((r) => qty(replay.save, r.ingredientId) === qty(stocked, r.ingredientId)),
-    "C4: a replay (no order owed) uses nothing",
+    INGREDIENT_STOCK_FIRST_LEVEL === 1 &&
+      serviceUsesStock(1) &&
+      isTabOpen("shop", 1) &&
+      isTabOpen("inventory", 1),
+    "M1: ingredient stock is used from Level 1, and the Market and Inventory are open from the start",
   );
 }
 
-console.log("W. Wiring");
+console.log("F. The first order, with the player's own money");
 {
-  const files: string[] = [];
-  const walk = (d: string) => {
-    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
-      const p = path.join(d, e.name);
-      if (e.isDirectory()) walk(p);
-      else if (/\.tsx?$/.test(e.name)) files.push(p);
-    }
-  };
-  walk(path.join(root, "src/components"));
-  files.push(path.join(root, "src/App.tsx"));
-  const users = files.filter((f) => /grandmasFridge/.test(fs.readFileSync(f, "utf8")));
-  assert(users.length === 0, "W1: no screen uses the retired fridge helpers", users);
+  for (const n of [1, 2, 3, 4, 5]) {
+    const level = getLevel(`level-${n}`)!;
+    const ids = level.recipePoolIds ?? [level.recipeId!];
+    const worst = Math.max(
+      ...ids.map((id) => {
+        const c = serviceStockCheck(DEFAULT_SAVE, n, [getCampaignRecipe(id)!]);
+        return c.applies ? c.missingCost : Number.POSITIVE_INFINITY;
+      }),
+    );
+    if (n === 1)
+      assert(
+        worst > 0 && worst <= DEFAULT_SAVE.credits,
+        `F1: Level 1's food costs ${worst / 100} dollars — inside the $10.00 start`,
+        worst,
+      );
+    else
+      assert(
+        worst > 0 && worst < dollars(10),
+        `F${n}: Level ${n}'s food is under $10 (${worst / 100} dollars), paid from what the levels earn`,
+        worst,
+      );
+  }
+  const pointer = sectionToPoint(1, []);
+  const tip = grandmaTipFor(1);
+  assert(
+    pointer === "shop" && tip?.to === "shop" && tip.focus === "ingredients",
+    "F6: the hand points at the Market first, and Level 1's tip opens its ingredients",
+    { pointer, tip },
+  );
+  assert(
+    /first-shopping-hint/.test(read("src/components/kc/MarketPlanPanel.tsx")) &&
+      /first-shopping-hand/.test(read("src/components/kc/MarketPlanPanel.tsx")),
+    "F7: the Market's plan shows a hint and a hand on the first Buy before any level is done",
+  );
+  const app = read("src/App.tsx");
+  assert(
+    /setScreen\("kitchen"\);\s*setActiveLevelId\(loaded\.levelProgress\.currentLevelId\)/.test(app),
+    "F8: a brand-new player lands on the Kitchen after the intro, not inside the cutting",
+  );
+}
+
+console.log("C. Never a soft-lock");
+{
+  const cover = read("src/game/restaurant/serviceCover.ts");
+  assert(
+    /supplier/i.test(cover) && /ad/i.test(cover),
+    "C1: a service the player cannot afford still has the ad / supplier-credit safety net (serviceCover.ts)",
+  );
 }
 
 console.log(
-  failures ? `\nGRANDMA'S FRIDGE QA: ${failures} FAILURE(S)` : "\nGRANDMA'S FRIDGE QA: ALL PASS",
+  failures ? `\nNO FREE GIFTS QA: ${failures} FAILURE(S)` : "\nNO FREE GIFTS QA: ALL PASS",
 );
 process.exit(failures ? 1 : 0);

@@ -73,20 +73,21 @@ const sum = (s: SaveData) => s.economyLedger.reduce((t, e) => t + e.amount, 0);
 
 /* ── A. amounts ── */
 check(
-  "A1 floating cash: Level 1 $5 (floor), Level 3 $6, Level 50 $20, Level 149 $50 (cap)",
+  "A1 floating cash (10% of the level's pay, $5–$50): Level 1 $5 (floor), Level 3 $13, Level 50 and the last level $50 (cap) — on the 2026-10-30 pay curve",
   floatingCashAmount(1) === $(5) &&
-    floatingCashAmount(3) === $(6) &&
-    floatingCashAmount(50) === $(20) &&
-    floatingCashAmount(149) === $(50),
+    floatingCashAmount(3) === $(13) &&
+    floatingCashAmount(50) === $(50) &&
+    floatingCashAmount(148) === $(50),
   [floatingCashAmount(3), floatingCashAmount(50), floatingCashAmount(149)],
 );
 const l2 = LEVELS[1]!;
 const l40 = LEVELS[39]!;
-const l149 = LEVELS[148]!;
+const l149 = LEVELS[LEVELS.length - 1]!;
 check(
-  "A2 Level Complete: +50% of the first clear, whole dollars, ≤ $250; $0 for the $0 practice level",
-  levelDoubleAmount(l2) === 0 &&
-    levelDoubleAmount(l40) === Math.round(paidLevelReward(l40) / 200) * 100 &&
+  "A2 Level Complete: +50% of the first clear, whole dollars, ≤ $250; $0 for a level that pays nothing",
+  levelDoubleAmount({ id: "level-2", reward: { coins: 0 }, campaignRewardBasisLevel: 2 }) === 0 &&
+    levelDoubleAmount(l2) > 0 &&
+    levelDoubleAmount(l40) === Math.min($(250), Math.round(paidLevelReward(l40) / 200) * 100) &&
     levelDoubleAmount(l149) === Math.min($(250), Math.round(paidLevelReward(l149) / 200) * 100),
   [levelDoubleAmount(l2), levelDoubleAmount(l40), paidLevelReward(l40), levelDoubleAmount(l149)],
 );
@@ -106,8 +107,8 @@ check(
     floorDoubleAmount($(900)) === $(250),
 );
 check(
-  "A5 daily gift: Level 3 $20 (floor), Level 100 $36, Level 149 $51",
-  dailyGiftAmount(3) === $(20) && dailyGiftAmount(100) === $(36) && dailyGiftAmount(149) === $(51),
+  "A5 daily gift (10% of the level's pay, $20–$60): Level 3 $20 (floor), Level 100 and the last level $60 (cap) — on the 2026-10-30 pay curve",
+  dailyGiftAmount(3) === $(20) && dailyGiftAmount(100) === $(60) && dailyGiftAmount(148) === $(60),
   [dailyGiftAmount(3), dailyGiftAmount(100), dailyGiftAmount(149)],
 );
 
@@ -277,13 +278,14 @@ check(
 
 /* ── F. economy bound ── */
 {
-  const TARGET = $(132_000);
+  // The completionist ends the campaign near $292k (pay re-plan, developer 2026-10-30; was the $132k plan).
+  const TARGET = $(292_000);
   const LEVELS_PER_DAY = 10;
   let adMax = 0;
   let freeOnly = 0;
-  for (let day = 0; day * LEVELS_PER_DAY < 150; day++) {
+  for (let day = 0; day * LEVELS_PER_DAY < LEVELS.length; day++) {
     const from = Math.max(3, day * LEVELS_PER_DAY + 1);
-    const to = Math.min(149, (day + 1) * LEVELS_PER_DAY);
+    const to = Math.min(LEVELS.length - 1, (day + 1) * LEVELS_PER_DAY);
     if (from > to) continue;
     const mid = Math.round((from + to) / 2);
     freeOnly += dailyGiftAmount(mid);
@@ -299,10 +301,10 @@ check(
     if (to >= 60) adMax += AD_BONUS_DAILY_CAP.floor_double * $(250);
   }
   console.log(
-    `     ad-max player (every offer, ${LEVELS_PER_DAY} levels/day): +$${Math.round(adMax / 100).toLocaleString()} (${((adMax / TARGET) * 100).toFixed(1)}% of $132k); never watches: +$${Math.round(freeOnly / 100).toLocaleString()} (free gifts)`,
+    `     ad-max player (every offer, ${LEVELS_PER_DAY} levels/day): +$${Math.round(adMax / 100).toLocaleString()} (${((adMax / TARGET) * 100).toFixed(1)}% of $292k); never watches: +$${Math.round(freeOnly / 100).toLocaleString()} (free gifts)`,
   );
   check(
-    "F1 a player who takes every offer ends at most 20% above the $132k target",
+    "F1 a player who takes every offer ends at most 20% above the $292k target",
     adMax <= TARGET * 0.2,
   );
   check(

@@ -14,7 +14,11 @@
  *
  * Run: npx tsx scripts/business-dish-catalog-qa.mts
  */
-import { BUSINESS_ONLY_RECIPES, CAMPAIGN_RECIPES, getCampaignRecipe } from "../src/game/recipes/campaignRecipes.ts";
+import {
+  BUSINESS_ONLY_RECIPES,
+  CAMPAIGN_RECIPES,
+  getCampaignRecipe,
+} from "../src/game/recipes/campaignRecipes.ts";
 import { LEVELS } from "../src/game/levels/levelDefinitions.ts";
 import { setMenuPrice } from "../src/game/business/BusinessMenuManager.ts";
 import { DEFAULT_SAVE } from "../src/game/SaveManager.ts";
@@ -46,24 +50,50 @@ function assert(cond: boolean, label: string) {
   // kept out of the frozen campaign list — today just the butter dish's).
   const recipeIds = new Set([...CAMPAIGN_RECIPES, ...BUSINESS_ONLY_RECIPES].map((r) => r.id));
   const missing = BUSINESS_DISH_CATALOG.filter((d) => !recipeIds.has(d.sourceRecipeId));
-  assert(missing.length === 0, `A: every Business Dish's sourceRecipeId exists in the recipe system (${missing.length} missing: ${missing.map((d) => d.id).join(", ")})`);
-  const levelRecipeIds = new Set(LEVELS.flatMap((l) => [l.recipeId, ...(l.recipePoolIds ?? []), ...(l.batchGroupRecipeIds ?? [])]));
+  assert(
+    missing.length === 0,
+    `A: every Business Dish's sourceRecipeId exists in the recipe system (${missing.length} missing: ${missing.map((d) => d.id).join(", ")})`,
+  );
+  const levelRecipeIds = new Set(
+    LEVELS.flatMap((l) => [
+      l.recipeId,
+      ...(l.recipePoolIds ?? []),
+      ...(l.batchGroupRecipeIds ?? []),
+    ]),
+  );
   assert(
     BUSINESS_ONLY_RECIPES.length === 1 &&
-      BUSINESS_ONLY_RECIPES.every((r) => !levelRecipeIds.has(r.id) && !CAMPAIGN_RECIPES.some((c) => c.id === r.id)) &&
-      BUSINESS_ONLY_RECIPES.every((r) => BUSINESS_DISH_CATALOG.some((d) => d.sourceRecipeId === r.id)),
+      BUSINESS_ONLY_RECIPES.every(
+        (r) => !levelRecipeIds.has(r.id) && !CAMPAIGN_RECIPES.some((c) => c.id === r.id),
+      ) &&
+      BUSINESS_ONLY_RECIPES.every((r) =>
+        BUSINESS_DISH_CATALOG.some((d) => d.sourceRecipeId === r.id),
+      ),
     "A3: Business-only recipes are used by no campaign level, never duplicate a campaign recipe, and each backs a Business dish",
   );
-  const used = new Set(BUSINESS_DISH_CATALOG.flatMap((d) => businessDishRequirements(d).map((r) => r.ingredientId)));
+  const used = new Set(
+    BUSINESS_DISH_CATALOG.flatMap((d) => businessDishRequirements(d).map((r) => r.ingredientId)),
+  );
   const unused = Object.keys(INGREDIENTS).filter((id) => !used.has(id as never));
   const priced = setMenuPrice(structuredClone(DEFAULT_SAVE), "camp-ribeye-herb-butter", 4800);
-  assert(priced.ok && priced.save.business.menu["camp-ribeye-herb-butter"] === 4800, "A5: a Business-only dish's menu price can be set like any other (setMenuPrice finds its recipe)");
-  assert(unused.length === 0, `A4: every one of the ${Object.keys(INGREDIENTS).length} ingredients is used by at least one Business dish${unused.length ? " — unused: " + unused.join(", ") : ""}`);
+  assert(
+    priced.ok && priced.save.business.menu["camp-ribeye-herb-butter"] === 4800,
+    "A5: a Business-only dish's menu price can be set like any other (setMenuPrice finds its recipe)",
+  );
+  assert(
+    unused.length === 0,
+    `A4: every one of the ${Object.keys(INGREDIENTS).length} ingredients is used by at least one Business dish${unused.length ? " — unused: " + unused.join(", ") : ""}`,
+  );
 }
 {
   // A2: every source recipe is genuinely tagged authenticity "A" — never a lower-tier recipe smuggled in.
-  const nonA = BUSINESS_DISH_CATALOG.filter((d) => getCampaignRecipe(d.sourceRecipeId)?.authenticity !== "A");
-  assert(nonA.length === 0, `A2: every Business Dish's source recipe is authenticity "A" (${nonA.length} are not: ${nonA.map((d) => d.id).join(", ")})`);
+  const nonA = BUSINESS_DISH_CATALOG.filter(
+    (d) => getCampaignRecipe(d.sourceRecipeId)?.authenticity !== "A",
+  );
+  assert(
+    nonA.length === 0,
+    `A2: every Business Dish's source recipe is authenticity "A" (${nonA.length} are not: ${nonA.map((d) => d.id).join(", ")})`,
+  );
 }
 
 // ===== B: no duplicate Business Dish ids, no duplicate sourceRecipeId (one dish per recipe), no unintentional duplicate customer-facing names. =====
@@ -71,9 +101,15 @@ function assert(cond: boolean, label: string) {
   const ids = BUSINESS_DISH_CATALOG.map((d) => d.id);
   assert(new Set(ids).size === ids.length, "B: no duplicate Business Dish ids");
   const sourceIds = BUSINESS_DISH_CATALOG.map((d) => d.sourceRecipeId);
-  assert(new Set(sourceIds).size === sourceIds.length, "B2: no two Business Dishes share the same sourceRecipeId (one dish per underlying recipe)");
+  assert(
+    new Set(sourceIds).size === sourceIds.length,
+    "B2: no two Business Dishes share the same sourceRecipeId (one dish per underlying recipe)",
+  );
   const names = BUSINESS_DISH_CATALOG.map((d) => d.name);
-  assert(new Set(names).size === names.length, "B3: no duplicate customer-facing dish names (every included pair with similar names was deliberately given a distinct real identity)");
+  assert(
+    new Set(names).size === names.length,
+    "B3: no duplicate customer-facing dish names (every included pair with similar names was deliberately given a distinct real identity)",
+  );
 }
 
 // ===== C: no forbidden/placeholder/prep-step/knife-technique names ever appear as a customer-facing dish name. =====
@@ -89,12 +125,29 @@ function assert(cond: boolean, label: string) {
   ];
   const names = BUSINESS_DISH_CATALOG.map((d) => d.name);
   for (const forbidden of forbiddenExact) {
-    assert(!names.includes(forbidden), `C: the explicitly forbidden name "${forbidden}" never appears in the Business Dish catalog`);
+    assert(
+      !names.includes(forbidden),
+      `C: the explicitly forbidden name "${forbidden}" never appears in the Business Dish catalog`,
+    );
   }
-  const forbiddenSubstrings = ["Prep", "Base", "Paste", "Chop", "Dice", "Julienne", "Smash", "Two Ways", "Precision", "Chiffonade"];
+  const forbiddenSubstrings = [
+    "Prep",
+    "Base",
+    "Paste",
+    "Chop",
+    "Dice",
+    "Julienne",
+    "Smash",
+    "Two Ways",
+    "Precision",
+    "Chiffonade",
+  ];
   for (const dish of BUSINESS_DISH_CATALOG) {
     for (const bad of forbiddenSubstrings) {
-      assert(!dish.name.includes(bad), `C2: "${dish.name}" (${dish.id}) does not contain the forbidden prep-step/technique word "${bad}"`);
+      assert(
+        !dish.name.includes(bad),
+        `C2: "${dish.name}" (${dish.id}) does not contain the forbidden prep-step/technique word "${bad}"`,
+      );
     }
   }
 }
@@ -103,9 +156,17 @@ function assert(cond: boolean, label: string) {
 {
   for (const dish of BUSINESS_DISH_CATALOG) {
     const ingredients = businessDishIngredients(dish);
-    assert(ingredients.length > 0, `D: ${dish.id} (${dish.name}) requires at least one real ingredient`);
-    const allExist = ingredients.every((id) => Object.prototype.hasOwnProperty.call(INGREDIENTS, id));
-    assert(allExist, `D2: every ingredient ${dish.id} (${dish.name}) requires already exists in the Ingredient Registry (got [${ingredients.join(",")}])`);
+    assert(
+      ingredients.length > 0,
+      `D: ${dish.id} (${dish.name}) requires at least one real ingredient`,
+    );
+    const allExist = ingredients.every((id) =>
+      Object.prototype.hasOwnProperty.call(INGREDIENTS, id),
+    );
+    assert(
+      allExist,
+      `D2: every ingredient ${dish.id} (${dish.name}) requires already exists in the Ingredient Registry (got [${ingredients.join(",")}])`,
+    );
   }
 }
 
@@ -118,13 +179,19 @@ function assert(cond: boolean, label: string) {
     businessDishPrice(DEFAULT_BUSINESS_MENU, dish);
     businessDishMargin(DEFAULT_BUSINESS_MENU, dish);
   }
-  assert(JSON.stringify(CAMPAIGN_RECIPES) === before, "E: CAMPAIGN_RECIPES is byte-identical after reading every Business Dish's derived numbers — no Campaign recipe mutation");
+  assert(
+    JSON.stringify(CAMPAIGN_RECIPES) === before,
+    "E: CAMPAIGN_RECIPES is byte-identical after reading every Business Dish's derived numbers — no Campaign recipe mutation",
+  );
 }
 {
   // E2: the source recipe's own name/id are never altered — the Business Dish's OWN name is independent, never written back onto the recipe.
   for (const dish of BUSINESS_DISH_CATALOG) {
     const recipe = getCampaignRecipe(dish.sourceRecipeId)!;
-    assert(typeof recipe.name === "string" && recipe.name.length > 0, `E2: ${dish.sourceRecipeId}'s own Campaign name is untouched (still "${recipe.name}")`);
+    assert(
+      typeof recipe.name === "string" && recipe.name.length > 0,
+      `E2: ${dish.sourceRecipeId}'s own Campaign name is untouched (still "${recipe.name}")`,
+    );
   }
 }
 
@@ -136,10 +203,22 @@ function assert(cond: boolean, label: string) {
     const price = businessDishPrice(DEFAULT_BUSINESS_MENU, dish);
     const margin = businessDishMargin(DEFAULT_BUSINESS_MENU, dish);
     assert(cost > 0, `F: ${dish.id} has a positive food cost (got ${cost})`);
-    assert(price > cost, `F2: ${dish.id}'s default price exceeds its food cost (price ${price} > cost ${cost})`);
-    assert(margin.cost === cost && margin.price === price, `F3: ${dish.id}'s margin object reports the exact same cost/price as the standalone accessors`);
-    assert(margin.foodCostPercent > 0 && margin.foodCostPercent < 100, `F4: ${dish.id}'s food-cost percentage is a real, sane fraction of price (got ${margin.foodCostPercent}%)`);
-    assert(Math.round((margin.foodCostPercent + margin.grossMarginPercent) * 10) / 10 === 100, `F5: ${dish.id}'s foodCostPercent + grossMarginPercent sum to exactly 100`);
+    assert(
+      price > cost,
+      `F2: ${dish.id}'s default price exceeds its food cost (price ${price} > cost ${cost})`,
+    );
+    assert(
+      margin.cost === cost && margin.price === price,
+      `F3: ${dish.id}'s margin object reports the exact same cost/price as the standalone accessors`,
+    );
+    assert(
+      margin.foodCostPercent > 0 && margin.foodCostPercent < 100,
+      `F4: ${dish.id}'s food-cost percentage is a real, sane fraction of price (got ${margin.foodCostPercent}%)`,
+    );
+    assert(
+      Math.round((margin.foodCostPercent + margin.grossMarginPercent) * 10) / 10 === 100,
+      `F5: ${dish.id}'s foodCostPercent + grossMarginPercent sum to exactly 100`,
+    );
     // never a duplicated/second cost formula — cross-check directly against recipeCostBasis-equivalent (sum of businessUnitCostFor per component, not deduped), independent of the catalog's own accessor.
     void recipe;
   }
@@ -163,13 +242,22 @@ function assert(cond: boolean, label: string) {
   const content = fs.readFileSync(path.join(dir, "businessDishCatalog.ts"), "utf8");
   const hasMention = /Math\.random\(\)/.test(content);
   const isDocMention = /(Never|No|not)\s+`?Math\.random\(\)/i.test(content);
-  assert(!(hasMention && !isDocMention), "G4: no Math.random() CALL exists anywhere in businessDishCatalog.ts");
+  assert(
+    !(hasMention && !isDocMention),
+    "G4: no Math.random() CALL exists anywhere in businessDishCatalog.ts",
+  );
 }
 
 // ===== H: getBusinessDish — unknown id resolves to undefined, never throws. =====
 {
-  assert(getBusinessDish("not-a-real-dish") === undefined, "H: an unknown Business Dish id resolves to undefined, never throws");
-  assert(BUSINESS_DISH_CATALOG.every((d) => getBusinessDish(d.id) === d), "H2: every catalog entry resolves to itself via getBusinessDish");
+  assert(
+    getBusinessDish("not-a-real-dish") === undefined,
+    "H: an unknown Business Dish id resolves to undefined, never throws",
+  );
+  assert(
+    BUSINESS_DISH_CATALOG.every((d) => getBusinessDish(d.id) === d),
+    "H2: every catalog entry resolves to itself via getBusinessDish",
+  );
 }
 
 // ===== I: save/load safety — the catalog is static module data, never read from or written into SaveData; a player price override still resolves correctly through the existing menu system. =====
@@ -177,14 +265,23 @@ function assert(cond: boolean, label: string) {
   const dish = getBusinessDish("biz-garlic-bread")!;
   const recipe = getCampaignRecipe(dish.sourceRecipeId)!;
   const overriddenMenu = { [recipe.id]: 999 };
-  assert(businessDishPrice(overriddenMenu, dish) === 999, "I: a player-set menu price override (keyed by the source recipe id, exactly like the existing Menu screen) is honored by businessDishPrice");
-  assert(businessDishPrice(DEFAULT_BUSINESS_MENU, dish) !== 999, "I2: without an override, the dish falls back to the real default price, not the override from a different save/menu object");
+  assert(
+    businessDishPrice(overriddenMenu, dish) === 999,
+    "I: a player-set menu price override (keyed by the source recipe id, exactly like the existing Menu screen) is honored by businessDishPrice",
+  );
+  assert(
+    businessDishPrice(DEFAULT_BUSINESS_MENU, dish) !== 999,
+    "I2: without an override, the dish falls back to the real default price, not the override from a different save/menu object",
+  );
 }
 
 // ===== J: catalog size — a smaller, defensible catalog (never the full 109-candidate list, never the full 221-recipe Campaign catalog). =====
 {
   assert(BUSINESS_DISH_CATALOG.length > 0, "J: the catalog is non-empty");
-  assert(BUSINESS_DISH_CATALOG.length < 109, `J2: the catalog is deliberately smaller than the 109 authenticity:"A" candidate pool (got ${BUSINESS_DISH_CATALOG.length})`);
+  assert(
+    BUSINESS_DISH_CATALOG.length < 109,
+    `J2: the catalog is deliberately smaller than the 109 authenticity:"A" candidate pool (got ${BUSINESS_DISH_CATALOG.length})`,
+  );
   console.log(`    (catalog size: ${BUSINESS_DISH_CATALOG.length} dishes)`);
 }
 

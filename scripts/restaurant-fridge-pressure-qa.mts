@@ -56,7 +56,7 @@ type Point = {
 };
 
 /* ── Campaign ─────────────────────────────────────────────── */
-const POINTS = [11, 21, 35, 46, 56, 76, 101, 112, 150];
+const POINTS = [11, 21, 35, 46, 56, 76, 101, 112, 148];
 const perLevel = new Map<number, Point>();
 let prev: SaveData | null = null;
 let prevLevel = 0;
@@ -95,7 +95,7 @@ const sim = run(
     profile: "completionist",
     observe(where, s) {
       const m = /^L(\d+) (.+)$/.exec(where);
-      const n = m ? Number(m[1]) : prevLevel || 150;
+      const n = m ? Number(m[1]) : prevLevel || 148;
       const step = m ? m[2]! : where;
       const p = point(n, s);
       const before = prev ? used(prev) : 0;
@@ -255,16 +255,16 @@ for (const e of endlessRows)
 console.log("Checks");
 assert(
   [sim, diligent].every(
-    (r) => r.stats.blocked.length === 0 && r.stats.invariant.length === 0 && r.stats.levels === 150,
+    (r) => r.stats.blocked.length === 0 && r.stats.invariant.length === 0 && r.stats.levels === 148,
   ),
-  `F1: the campaign completes with no soft-lock and no invariant break (completionist ${sim.stats.levels}/150, diligent ${diligent.stats.levels}/150)`,
+  `F1: the campaign completes with no soft-lock and no invariant break (completionist ${sim.stats.levels}/148, diligent ${diligent.stats.levels}/148)`,
 );
 assert(
   overCap === sim.stats.fridgeOverByGrandma,
   `F2: the fridge is never over capacity except by Grandma's free goods (${overCap} observed steps)`,
 );
 assert(
-  POINTS.every((n) => perLevel.get(n)!.orders > 0) && restaurantLevelOf(L250.levelProgress) >= 150,
+  POINTS.every((n) => perLevel.get(n)!.orders > 0) && restaurantLevelOf(L250.levelProgress) >= 148,
   "F3: every measured level ran its service",
 );
 console.log(

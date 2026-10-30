@@ -29,8 +29,7 @@ import type { EconomyLedgerEntry } from "../economy/ledgerTypes";
 import { dollars } from "../money";
 import {
   CURATED_FINAL_LEVEL,
-  CURATED_REWARD_BASE,
-  CURATED_REWARD_STEP,
+  curatedRewardAt,
   paidLevelReward,
 } from "../levels/levelRewards";
 import { dailyKeyFor } from "../daily/DailyOrderManager";
@@ -77,7 +76,7 @@ const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n
 /** A level's first-clear pay on the curated curve (Level 150's finale excluded). */
 function levelPay(levelNumber: number): number {
   const n = clamp(Math.floor(levelNumber), 1, CURATED_FINAL_LEVEL - 1);
-  return dollars(Math.round(CURATED_REWARD_BASE + CURATED_REWARD_STEP * (n - 1)));
+  return dollars(curatedRewardAt(n));
 }
 
 export function floatingCashAmount(levelNumber: number): number {

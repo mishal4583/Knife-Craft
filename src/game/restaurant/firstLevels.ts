@@ -95,12 +95,13 @@ export function grandmaLineFor(level: number): string | null {
 
 /**
  * The day's ceremony (the opening card and the Closing Time screen) shows
- * from the fridge-and-freshness stage (Level 21), the first one where
- * closing does more than turn the page. `restaurantLevel` is the level the
+ * from Level 5 (developer 2026-10-29: the night chores and cleaning are
+ * mandatory from there). `restaurantLevel` is the level the
  * Closing Time screen would be shown for (the highest unlocked level).
  */
+export const DAY_CEREMONY_FROM_LEVEL = 5;
 export function dayCeremonyAt(restaurantLevel: number): boolean {
-  return isSystemLive("fridge-freshness", restaurantLevel);
+  return restaurantLevel >= DAY_CEREMONY_FROM_LEVEL;
 }
 
 /** Ingredient purchases first become available in the Market. */
@@ -126,7 +127,7 @@ export function firstPurchaseRows(): { label: string; value: string }[] {
   ];
   return [
     ...items.map((i) => ({ label: i.label, value: `in the Market · ${formatUsd(i.price)}` })),
-    { label: "🧰 Kitchen tools", value: "on Grandma's list in the Market" },
+    { label: "🧰 Kitchen tools", value: "buy them in the Market" },
     { label: "📋 Your menu", value: "new dishes in Business" },
   ];
 }
@@ -186,10 +187,15 @@ export type GrandmaTip = {
 };
 
 export const GRANDMA_TIPS: Record<number, GrandmaTip> = {
-  1: { text: "Tap Prepare — I'll show you how to hold the knife." },
+  1: {
+    text: "Buy today's ingredients in the Market first, then tap Prepare.",
+    to: "shop",
+    button: "Open Market",
+    focus: "ingredients",
+  },
   2: { text: "Same again, nice and steady. Your best cut earns the stars." },
   3: {
-    text: "The Market is open. Buy what today's order needs before you start.",
+    text: "Buy what today's order needs in the Market before you start.",
     to: "shop",
     button: "Buy Ingredients",
     focus: "ingredients",
@@ -211,7 +217,7 @@ export const GRANDMA_TIPS: Record<number, GrandmaTip> = {
   // Supplies plan A (developer 2026-10-10: "ask the player to buy some important
   // tools"): the Market sells from here — Grandma's first shopping list.
   10: {
-    text: "The Market sells tools now — buy what's on my list before Level 11!",
+    text: "Dishes now need kitchen tools. Buy them in the Market before Level 11!",
     to: "shop",
     button: "Open Market",
   },
@@ -251,7 +257,7 @@ export const SECTION_POINTER: Record<LockableTab, { title: string; line: string 
   },
   shop: {
     title: "🛒 This is the Market",
-    line: "Buy the ingredients your next order needs. Knives and boards from Level 5.",
+    line: "Buy today's ingredients here with your own money.",
   },
   rack: {
     title: "🏆 This is Progress",
@@ -263,7 +269,7 @@ export const SECTION_POINTER: Record<LockableTab, { title: string; line: string 
   },
 };
 
-const POINTER_ORDER: readonly LockableTab[] = ["inventory", "shop", "business"];
+const POINTER_ORDER: readonly LockableTab[] = ["shop", "inventory", "business"];
 
 /** Grandma points out sections through this level (the first levels); later saves never. */
 export const POINTER_THROUGH_LEVEL = 15;

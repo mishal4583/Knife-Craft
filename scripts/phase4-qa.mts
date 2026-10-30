@@ -439,8 +439,10 @@ console.log("\nE. Save and money");
   });
   const writes = (s: string) => (s.match(/appendLedgerEntry\(/g) ?? []).length;
   assert(
-    writes(read("src/App.tsx")) === writes(headApp) + 2,
-    "E2: no new money path (App's ledger writes = HEAD's + Phase 2's two tip entries)",
+    // Developer 2026-10-29: the swept cash (settlement and tip) is written by economy/pendingCash.ts, so App
+    // has no more ledger writes than the base.
+    writes(read("src/App.tsx")) <= writes(headApp),
+    "E2: no new money path (App's ledger writes are no more than HEAD's; the swept cash goes through economy/pendingCash.ts)",
   );
   const p4 = [
     "src/game/signatureDishes.ts",

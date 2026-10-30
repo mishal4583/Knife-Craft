@@ -62,7 +62,7 @@ function assert(cond: boolean, label: string) {
   }
 }
 const root = path.resolve(import.meta.dirname, "..");
-const read = (p: string) => fs.readFileSync(path.join(root, p), "utf8");
+const read = (p: string) => fs.readFileSync(path.join(root, p), "utf8").replace(/\r\n/g, "\n");
 
 const SALAD = getBusinessDish("biz-garden-salad")!;
 const QUIET_DAY = 7;

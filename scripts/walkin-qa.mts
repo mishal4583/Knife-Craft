@@ -96,20 +96,20 @@ const ids = (rs: readonly RecipeDefinition[]) => rs.map((r) => r.id).join();
 
 console.log("S. Schedule and capacity");
 {
-  const staffed = saveAt(16, { staff: { hiredRoles: ["prep-cook"] as never } });
+  const staffed = saveAt(14, { staff: { hiredRoles: ["prep-cook"] as never } });
   assert(
     WALK_IN_RULES.fromLevel === 5 &&
       WALK_IN_RULES.perService === 1 &&
       walkInsFor(saveAt(4), 4) === 0 &&
-      [5, 10, 15].every((n) => walkInsFor(saveAt(n), n) === 1),
+      [5, 10, 13].every((n) => walkInsFor(saveAt(n), n) === 1),
     "S1: none before L5; 1 walk-in per service from L5 (the chef's 2 seats: 1 guest + 1 walk-in)",
   );
   assert(
-    walkInsFor(saveAt(16), 16) === 0 && walkInsFor(staffed, 16) === 1,
-    "S2: within the team's capacity: at L16 (2 guests) the chef alone has no room; one hire makes room",
+    walkInsFor(saveAt(14), 14) === 0 && walkInsFor(staffed, 14) === 1,
+    "S2: within the team's capacity: at L14 (2 guests) the chef alone has no room; one hire makes room",
   );
   let over = 0;
-  for (let n = 1; n <= 150; n++) {
+  for (let n = 1; n <= 148; n++) {
     const s = saveAt(n, {
       staff: { hiredRoles: ["prep-cook", "server", "line-cook", "head-chef"] as never },
     });
@@ -117,7 +117,7 @@ console.log("S. Schedule and capacity");
     if (menuGuestsFor(s, n) + walkInsFor(s, n) > 6) over++;
   }
   assert(over === 0, "S3: bounded — never more than 1 walk-in a service, at every level", over);
-  const batch = [...Array(150)].map((_, i) => lv(i + 1)).find((l) => l.batchGroupRecipeIds?.length);
+  const batch = [...Array(148)].map((_, i) => lv(i + 1)).find((l) => l.batchGroupRecipeIds?.length);
   assert(
     !!batch && walkInQueue(saveAt(Number(batch.id.split("-")[1])), batch).length === 0,
     "S4: no walk-ins on a batch-group level (as menu guests)",
@@ -157,47 +157,47 @@ console.log("L. Lifecycle");
 
 console.log("R. The reserve for the next level's own orders");
 {
-  // L5 → L6: the walk-in orders Garlic Bread (bread, garlic); L6's order, Tomato Basil Toast,
-  // also uses bread. Stock exactly L5's own order + its guest + one walk-in, nothing for L6.
-  const base = saveAt(5);
-  const own = servicePlanFor(base, lv(5))!.tickets;
-  const guest = menuGuestQueue(base, lv(5));
-  const walkIn = walkInQueue(base, lv(5));
-  const next = reservedTicketsFor(base, lv(5));
+  // L8 → L9 (148-level campaign): the walk-in orders a Simple Garden Salad (tomato, …); L9's order,
+  // Onion Rings, also uses tomato. Stock exactly L8's own order + its guest + one walk-in, nothing for L9.
+  const base = saveAt(8);
+  const own = servicePlanFor(base, lv(8))!.tickets;
+  const guest = menuGuestQueue(base, lv(8));
+  const walkIn = walkInQueue(base, lv(8));
+  const next = reservedTicketsFor(base, lv(8));
   let s = stocked(base, [...own, ...guest, ...walkIn]);
   // The level's own order and its guest are served first (their stock taken, as in the game).
   for (const r of [...own, ...guest]) {
-    const c = consumeCampaignOrderStock(s, 5, r, true);
+    const c = consumeCampaignOrderStock(s, 8, r, true);
     if (c.ok) s = c.save;
   }
-  s = { ...s, levelProgress: { ...s.levelProgress, menuGuests: { "level-5": guest.length } } };
-  const tight = nextMenuGuest(s, lv(5));
+  s = { ...s, levelProgress: { ...s.levelProgress, menuGuests: { "level-8": guest.length } } };
+  const tight = nextMenuGuest(s, lv(8));
   const shared = next.flatMap((r) => orderRequirements(s, r).map((q) => q.ingredientId));
   assert(
     walkIn.length === 1 &&
-      ids(walkIn) === "camp-garlic-bread" &&
+      ids(walkIn) === "camp-simple-garden-salad" &&
       next.length > 0 &&
-      shared.includes("bread") &&
+      shared.includes("tomato") &&
       tight?.kind === "walk-in" &&
       tight.inStock === false &&
-      tight.short.some((x) => x.ingredientId === "bread") &&
-      !tight.short.some((x) => x.ingredientId === "garlic"),
-    "R1: with only the walk-in's own stock, it is refused — the bread is kept for L6's order (garlic isn't short)",
+      tight.short.some((x) => x.ingredientId === "tomato") &&
+      tight.short.every((x) => x.ingredientId === "tomato"),
+    "R1: with only the walk-in's own stock, it is refused — the tomato is kept for L9's order (nothing else is short)",
     { walkIn: ids(walkIn), next: ids(next), short: tight?.short },
   );
   const roomy = stocked(s, next);
-  const ok = nextMenuGuest(roomy, lv(5));
-  const served = consumeCampaignOrderStock(roomy, 5, walkIn[0]!, true);
-  const left = served.ok ? serviceStockCheck(served.save, 6, next) : null;
+  const ok = nextMenuGuest(roomy, lv(8));
+  const served = consumeCampaignOrderStock(roomy, 8, walkIn[0]!, true);
+  const left = served.ok ? serviceStockCheck(served.save, 9, next) : null;
   assert(
     ok?.inStock === true && served.ok && !!left && left.applies && left.ready,
     "R2: with L6's order stocked too, the walk-in is served — and L6's order is still fully in stock after it",
   );
-  const last = saveAt(150);
+  const last = saveAt(148);
   assert(
-    reservedTicketsFor(last, lv(150)).length === 0 &&
-      walkInStock(last, lv(150), walkIn[0]!).reservedFor === null,
-    "R3: at L150 there is no next level to reserve for",
+    reservedTicketsFor(last, lv(148)).length === 0 &&
+      walkInStock(last, lv(148), walkIn[0]!).reservedFor === null,
+    "R3: at L148 there is no next level to reserve for",
   );
 }
 
@@ -366,7 +366,9 @@ console.log("W. The App wiring");
       /— short of \$\{menuGuest\.short/.test(app) &&
       /return serveMenuGuestOrder\(level, recipe\);/.test(app) &&
       /levelProgress: withMenuGuestServed\(withSupplies\.levelProgress, level\.id\)/.test(app) &&
-      /persist\(appendLedgerEntry\(paid, "business-revenue", result\.coinsAwarded, dish\.id\)\)/.test(
+      // The payment is left on the table in that same save and swept in as ONE business-revenue entry
+      // (economy/pendingCash.ts, developer 2026-10-29).
+      /withPendingCash\(paid, \{\s*amount: result\.coinsAwarded,\s*category: "business-revenue",\s*description: dish\.id,?\s*\}\)/.test(
         app,
       ),
     "W1: the walk-in offer and its short-of-stock message; served through serveMenuGuestOrder — the count and one business-revenue entry in one persist",

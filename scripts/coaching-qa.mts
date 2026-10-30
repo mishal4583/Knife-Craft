@@ -42,17 +42,19 @@ assert(
 // B: rule changed (developer 2026-10-10: "how to slice already came once, don't let the
 // same instructions repeat"): Levels 1–5 no longer re-teach what an earlier level taught
 // (was: every step of Levels 1–5 taught).
+// 148-level campaign (developer 2026-10-29: the first two levels were removed, so every technique
+// moved two levels earlier: L2 halve + peel, L3 smash, L4 dice + chop).
 // 150-level campaign (developer 2026-10-15): L2's practice brings dice + peel, L3 nothing new,
 // L4 halve, L5 smash, L6 chop (was L1 slice, L3 chop, L5 peel + halve).
 assert(
   TEACH_ALL_THROUGH_LEVEL === 0 &&
     taughtTechniques("level-1", ALL).join() === "slice" &&
-    [...taughtTechniques("level-2", ALL)].sort().join() === "dice,peel" &&
-    taughtTechniques("level-3", ALL).length === 0 &&
-    taughtTechniques("level-4", ALL).join() === "halve" &&
-    taughtTechniques("level-5", ALL).join() === "smash" &&
-    taughtTechniques("level-6", ALL).join() === "chop",
-  "B: Levels 1–6 teach only what's new to them (L1 slice, L2 dice + peel, L4 halve, L5 smash, L6 chop; L3 nothing)",
+    [...taughtTechniques("level-2", ALL)].sort().join() === "halve,peel" &&
+    taughtTechniques("level-3", ALL).join() === "smash" &&
+    [...taughtTechniques("level-4", ALL)].sort().join() === "chop,dice" &&
+    taughtTechniques("level-5", ALL).length === 0 &&
+    taughtTechniques("level-6", ALL).length === 0,
+  "B: Levels 1–6 teach only what's new to them (L1 slice, L2 halve + peel, L3 smash, L4 dice + chop; L5, L6 nothing)",
 );
 
 // C: every technique is taught in the level that introduces it — and the first is the level that introduces it.

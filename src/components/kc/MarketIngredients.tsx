@@ -158,7 +158,7 @@ export function MarketIngredients({
     ALL_INGREDIENT_IDS.filter((id) => needs[id]),
     (id) => needs[id],
   );
-  // With anything needed the Market opens on All — its "Needed for today" group comes first —
+  // With anything needed the Market opens on All — its "Needed" group comes first —
   // so no needed ingredient hides in another category (developer 2026-10-17).
   const [group, setGroup] = useState<string>(
     focusId && neededIds.length === 0 ? (INGREDIENTS[focusId]?.category ?? "all") : "all",

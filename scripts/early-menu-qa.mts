@@ -29,6 +29,7 @@ import os from "node:os";
 import path from "node:path";
 import { execSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
+import { saveManagerChangesBeyondStartCash } from "./startCashGuard.mts";
 import { DEFAULT_SAVE, SaveManager, type SaveData } from "../src/game/SaveManager.ts";
 import { getLevel, type LevelProgress } from "../src/game/levels/LevelManager.ts";
 import * as progression from "../src/game/restaurant/restaurantProgression.ts";
@@ -58,6 +59,8 @@ import { lbPerMarketUnit, marketStep } from "../src/game/business/measure.ts";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const BASE = "1965342";
+// Later approved save additions are excluded from this phase's "nothing changed" diff (each has its own QA):
+// business.guideSeen (restaurant-guide-qa), business.pendingCash + the ledger `batch` (pending-cash-qa). Later approved save additions.
 let failures = 0;
 function assert(cond: unknown, label: string, detail?: unknown) {
   if (!cond) {
@@ -94,9 +97,9 @@ console.log("A. The unlock");
   );
   assert(
     menuGuestsPerService(4) === 0 &&
-      [5, 10, 15].every((n) => menuGuestsPerService(n) === 1) &&
-      menuGuestsPerService(16) === 2,
-    "A2: 1 menu guest per service from L5 (none before); 2 from L16 as before",
+      [5, 10, 13].every((n) => menuGuestsPerService(n) === 1) &&
+      menuGuestsPerService(14) === 2,
+    "A2: 1 menu guest per service from L5 (none before); 2 from L14 (the renumbered L16)",
   );
   assert(
     zone("office")?.unlockLevel === 5 &&
@@ -259,7 +262,8 @@ console.log(`C. Nothing moves from Level 11 on (against ${BASE})`);
     if (base.menuDishIdsAt(n).length || base.menuGuestsPerService(n)) before.push(`L${n}`);
   }
   assert(
-    before.length === 0 && menuDishIdsAt(4).length === 0 && menuDishIdsAt(5).length === 1,
+    // 148-level renumbering (2026-10-29): the menu curve (4 dishes at its first point) now starts at L5.
+    before.length === 0 && menuDishIdsAt(4).length === 0 && menuDishIdsAt(5).length === 4,
     "C3: the baseline had no menu or guests in L1–10; now the menu starts at L5",
     before,
   );
@@ -334,25 +338,17 @@ console.log("E. No save, wallet, ledger or payment change");
   // Early game phase 3 (developer 2026-10-25): walk-ins change menuGuests.ts and App.tsx's
   // offer label; walkin-qa guards them. The save, wallet, ledger and payment stay unchanged.
   const diff = execSync(
-    `git diff ${BASE} --stat -- src/game/SaveManager.ts src/game/business/businessTypes.ts src/game/economy ':!src/game/economy/staffDefinitions.ts' ':!src/game/economy/customerTips.ts' src/game/business/BusinessServiceManager.ts src/game/levels/LevelManager.ts`,
+    `git diff ${BASE} --stat -- src/game/SaveManager.ts src/game/business/businessTypes.ts src/game/economy :!src/game/economy/staffDefinitions.ts :!src/game/business/businessTypes.ts :!src/game/economy/EconomyLedger.ts :!src/game/economy/ledgerTypes.ts :!src/game/economy/customerTips.ts src/game/business/BusinessServiceManager.ts src/game/levels/LevelManager.ts`,
     { cwd: ROOT, encoding: "utf8" },
   );
   // Rule changed (developer 2026-10-26, "the game starts at 0 cash"): SaveManager may change
   // only the new save's opening credits (DEFAULT_SAVE.credits $1,240 → $0) and its comment.
-  const saveLines = execSync(`git diff -U0 ${BASE} -- src/game/SaveManager.ts`, {
-    cwd: ROOT,
-    encoding: "utf8",
-  })
-    .split("\n")
-    .filter((l) => /^[+-](?![+-])/.test(l))
-    .filter(
-      (l) =>
-        !/^-\s*\/\*\* \$1,240\.00 starting balance|^-\s*credits: dollars\(1240\),$|^\+\s*credits: 0,$|^\+\s*(\/\*\*|\*\/|\*( .*)?)$/.test(
-          l,
-        ),
-    );
+  // (developer 2026-10-30: $10.00 start + the write queue are also approved; see startCashGuard.mts)
+  const saveLines = saveManagerChangesBeyondStartCash(BASE, ROOT);
+  // Excluded by rule change (developer 2026-10-30): BusinessServiceManager.ts (a served order leaves its
+  // cash on the table: pendingCash) and LevelManager.ts (148-level campaign). Their own QAs guard them.
   const rest = execSync(
-    `git diff ${BASE} --stat -- src/game/business/businessTypes.ts src/game/economy ':!src/game/economy/staffDefinitions.ts' ':!src/game/economy/customerTips.ts' src/game/business/BusinessServiceManager.ts src/game/levels/LevelManager.ts`,
+    `git diff ${BASE} --stat -- src/game/business/businessTypes.ts src/game/economy :!src/game/economy/staffDefinitions.ts :!src/game/business/businessTypes.ts :!src/game/economy/EconomyLedger.ts :!src/game/economy/ledgerTypes.ts :!src/game/economy/customerTips.ts :!src/game/business/BusinessServiceManager.ts :!src/game/levels/LevelManager.ts`,
     { cwd: ROOT, encoding: "utf8" },
   );
   assert(

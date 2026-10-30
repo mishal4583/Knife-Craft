@@ -110,8 +110,8 @@ function stocked(save: SaveData, recipes: Parameters<typeof requirementsForRecip
 }
 
 // 150-level campaign (developer 2026-10-15): L19 is a 2-order pool service, L17 a batch of 2.
-const pool30 = getLevel("level-19")!; // order pool, 2 orders
-const batch26 = getLevel("level-17")!; // batch group of 2
+const pool30 = getLevel("level-17")!; // order pool, 2 orders (L19 before the first two levels were removed, 2026-10-29)
+const batch26 = getLevel("level-15")!; // batch group of 2 (L17 before the removal)
 
 console.log("T. Tickets");
 {
@@ -129,21 +129,21 @@ console.log("T. Tickets");
       .join() === batch26.batchGroupRecipeIds!.join(),
     "T2: a batch group's tickets are its fixed recipes, in order",
   );
-  const first = ticketsFor(progressAt(19), pool30);
+  const first = ticketsFor(progressAt(17), pool30);
   const again = ticketsFor(first.progress, pool30);
   assert(
-    savedTicketsFor(progressAt(19), pool30) === null &&
-      first.progress.tickets?.["level-19"]?.length === 2 &&
+    savedTicketsFor(progressAt(17), pool30) === null &&
+      first.progress.tickets?.["level-17"]?.length === 2 &&
       again.progress === first.progress,
     "T3: rolled once and saved; later calls reuse the saved tickets",
   );
-  const done = completeLevel("level-19", first.progress);
+  const done = completeLevel("level-17", first.progress);
   assert(
-    done.progress.tickets?.["level-19"] === undefined,
+    done.progress.tickets?.["level-17"] === undefined,
     "T4: completing the level drops its tickets",
   );
-  const s = createTicketedServiceSession("level-19", a, 0, Math.random, 3, false)!;
-  const retry = createTicketedServiceSession("level-19", a, 1, Math.random, 3, false)!;
+  const s = createTicketedServiceSession("level-17", a, 0, Math.random, 3, false)!;
+  const retry = createTicketedServiceSession("level-17", a, 1, Math.random, 3, false)!;
   const served = serveCurrentOrder(recordAllComponents(s, 90), Math.random, 0);
   const advanced = served ? advanceServiceSession(served.session, [], Math.random) : null;
   assert(
@@ -173,7 +173,9 @@ console.log("A/B/D/V. Stock use");
     // can cut and serve it"): from Level 4 a level's own order needs its stock, so an
     // empty fridge refuses it (was: L5 used no stock); guests and replays still use none.
     // Redesign 2026-10-15 (0b2ce52): every order AND menu guest uses real stock from Level 3.
-    !serviceUsesStock(2) &&
+    // Rule changed 2026-10-30 (own-money start): the Market opens at Level 1, so stock is used from L1.
+    serviceUsesStock(1) &&
+      serviceUsesStock(2) &&
       serviceUsesStock(3) &&
       !none.ok &&
       none.reason === "missingStock" &&
@@ -181,10 +183,10 @@ console.log("A/B/D/V. Stock use");
       guest5.reason === "missingStock" &&
       replay5.ok &&
       !replay5.used,
-    "A1: from L3 a level's own order and a menu guest need their stock (empty fridge → refused); replays never",
+    "A1: from L1 a level's own order and a menu guest need their stock (empty fridge → refused); replays never",
   );
   const [t1] = rollServiceTickets(pool30);
-  const before = stocked(saveAt(19), [t1!], 1);
+  const before = stocked(saveAt(17), [t1!], 1);
   const used = consumeCampaignOrderStock(before, 19, t1!, true);
   const req = requirementsForRecipes([t1!]);
   assert(
@@ -211,12 +213,12 @@ console.log("A/B/D/V. Stock use");
     replay.ok && replay.used === false && replay.save === before,
     "B2: a replay / an order the level no longer owes uses no stock",
   );
-  const empty = consumeCampaignOrderStock(saveAt(19), 19, t1!, true);
+  const empty = consumeCampaignOrderStock(saveAt(17), 17, t1!, true);
   assert(!empty.ok, "B3: without the stock the order is refused and the save is untouched");
-  const bought = purchaseIngredient(saveAt(19), "tomato", 2);
+  const bought = purchaseIngredient(saveAt(17), "tomato", 2);
   assert(
     bought.ok &&
-      bought.save.credits === saveAt(19).credits - bought.totalCost &&
+      bought.save.credits === saveAt(17).credits - bought.totalCost &&
       near(getQuantity(bought.save.business.inventory, "tomato"), 2) &&
       /appendLedgerEntry\([\s\S]{0,120}"inventory-purchase"/.test(read("src/App.tsx")),
     "V2: Market purchases still debit exactly their price through the existing purchase + one inventory-purchase entry",
@@ -227,7 +229,7 @@ console.log("E. Expired stock");
 {
   const [t1] = rollServiceTickets(pool30);
   const id = recipeRequirements(t1!)[0]!.ingredientId;
-  const old = stocked(saveAt(19), [t1!], 2);
+  const old = stocked(saveAt(17), [t1!], 2);
   const later: SaveData = {
     ...old,
     business: {
@@ -254,7 +256,7 @@ console.log("E. Expired stock");
 console.log("K. Pre-Service Check");
 {
   const tickets = rollServiceTickets(pool30);
-  const empty = saveAt(19);
+  const empty = saveAt(17);
   const check = serviceStockCheck(empty, 19, tickets);
   const quoteOk =
     check.applies &&
@@ -290,7 +292,7 @@ console.log("K. Pre-Service Check");
     ...empty,
     levelProgress: withPaidOrder(
       ticketsFor(empty.levelProgress, pool30).progress,
-      "level-19",
+      "level-17",
       tickets[0]!.id,
     ),
   };
@@ -303,7 +305,7 @@ console.log("K. Pre-Service Check");
     ...empty,
     levelProgress: {
       ...empty.levelProgress,
-      completedLevelIds: [...empty.levelProgress.completedLevelIds, "level-19"],
+      completedLevelIds: [...empty.levelProgress.completedLevelIds, "level-17"],
     },
   };
   assert(serviceCheckFor(replay, pool30) === null, "K5: a replay has no check (free practice)");
@@ -322,7 +324,7 @@ console.log("U. Never stuck");
   // money, no ledger) or, with no ad, supplier credit brings the Market's units
   // and owes their price. Was: "with no money the pantry covers the missing stock".
   const tickets = rollServiceTickets(pool30);
-  const rich = saveAt(19);
+  const rich = saveAt(17);
   const broke = saveAt(19, { credits: 0 });
   const richCheck = serviceStockCheck(rich, 19, tickets);
   const brokeCheck = serviceStockCheck(broke, 19, tickets);
@@ -360,7 +362,7 @@ console.log("U. Never stuck");
       afterCredit.ready,
     "U3: …or supplier credit: the Market's units now, their price owed, no money moved, ready to start",
   );
-  const repaid = viaCredit ? repayFromEarnings(viaCredit, 10_000, "level-19") : null;
+  const repaid = viaCredit ? repayFromEarnings(viaCredit, 10_000, "level-17") : null;
   const half = viaCredit ? repayFromEarnings({ ...viaCredit, credits: 5 }, 10_000) : null;
   assert(
     !!repaid &&

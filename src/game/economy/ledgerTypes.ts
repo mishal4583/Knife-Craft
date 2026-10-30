@@ -76,4 +76,9 @@ export type EconomyLedgerEntry = {
   amount: number;
   /** Opaque provenance — a recipe id, level id, chapter label, catalog item id. Never parsed by ledger logic itself. */
   description?: string;
+  /**
+   * One order's cash taken in several pieces: the pieces fold into ONE entry per category
+   * (EconomyLedger.accumulateLedgerEntry), so a swipe never floods the bounded ledger. Absent otherwise.
+   */
+  batch?: string;
 };

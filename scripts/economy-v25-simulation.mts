@@ -61,7 +61,7 @@ import {
   businessOrderAvailability,
   createBusinessServiceSession,
   recordBusinessServiceComponents,
-  serveBusinessOrder,
+  serveBusinessOrder as serveBusinessOrderRaw,
 } from "../src/game/business/BusinessServiceManager.ts";
 import {
   businessDishRequirements,
@@ -91,6 +91,16 @@ import { grantEarnedMilestoneRewards } from "../src/game/progression/milestoneRe
 import { collectAllAchievements } from "../src/game/progression/achievements.ts";
 import { formatUsd } from "../src/game/money.ts";
 import { simulateCampaign, type LevelResult } from "./economy-v2-campaign-simulation.mts";
+
+import { settlePendingCash } from "../src/game/economy/pendingCash.ts";
+/**
+ * A serve leaves the payment on the table; the player sweeps it into the wallet (economy/pendingCash.ts,
+ * developer 2026-10-29). This simulation models that sweep right after the serve.
+ */
+const serveBusinessOrder: typeof serveBusinessOrderRaw = (...args) => {
+  const r = serveBusinessOrderRaw(...args);
+  return r ? { ...r, save: settlePendingCash(r.save) } : r;
+};
 
 const HONEST = 75;
 
@@ -373,7 +383,7 @@ export function playBusinessDay(save: SaveData): { save: SaveData; served: numbe
     }
     const result = serveBusinessOrder(recordBusinessServiceComponents(session, 80), save, rand);
     if (!result) break;
-    save = appendLedgerEntry(result.save, "business-revenue", result.amountCharged, result.dish.id);
+    save = result.save; /* the sweep already wrote the entry (economy/pendingCash.ts) */
     served++;
     session = advanceBusinessServiceSession(result.session, rand, save.business.menuActivation);
   }

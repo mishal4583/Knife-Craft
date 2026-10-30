@@ -22,6 +22,7 @@
  * Run: npx tsx scripts/restaurant-first-levels-qa.mts
  */
 import fs from "node:fs";
+import { curatedRewardAt } from "../src/game/levels/levelRewards.ts";
 import path from "node:path";
 import { DEFAULT_SAVE, type SaveData } from "../src/game/SaveManager.ts";
 import {
@@ -69,24 +70,27 @@ console.log("T. Sections open one at a time");
     // Redesign 2026-10-15 (0b2ce52): Inventory and the Market both open at L3 (stock from L3).
     // Rule changed (developer 2026-10-25, early game phase 2): Business opens with the menu at
     // Level 5 (was L11), so it now opens before Progress (L10).
-    at(1) === "kitchen" &&
-      at(2) === "kitchen" &&
+    // Rule changed (developer 2026-10-30): the Market and Inventory open from Level 1 (stock from L1).
+    at(1) === "kitchen,inventory,shop" &&
+      at(2) === "kitchen,inventory,shop" &&
       at(3) === "kitchen,inventory,shop" &&
       at(4) === "kitchen,inventory,shop" &&
       // Rule changed (developer 2026-10-26: everything by Level 5): Progress opens at L5 too.
       at(5) === "kitchen,inventory,shop,rack,business" &&
       at(150) === at(5),
-    "T1: Kitchen from the start, Inventory and Market L3, Business and Progress L5; all open after",
+    "T1: Kitchen, Inventory and Market from the start (Level 1), Business and Progress L5; all open after",
   );
   assert(
-    tabsOpeningAt(3).join() === "inventory,shop" &&
+    // Rule changed (developer 2026-10-30): Inventory and the Market open at Level 1.
+    tabsOpeningAt(1).join() === "inventory,shop" &&
+      tabsOpeningAt(3).length === 0 &&
       tabsOpeningAt(7).length === 0 &&
       tabsOpeningAt(10).length === 0 &&
       tabsOpeningAt(5).join() === "rack,business" &&
       tabsOpeningAt(11).length === 0 &&
       tabsOpeningAt(4).length === 0 &&
       Object.values(TAB_OPENS_AT).every((n) => n <= 5),
-    "T2: each section opens at exactly one level (Inventory + Market at L3, Business + Progress at L5), all by Level 5",
+    "T2: each section opens at exactly one level (Inventory + Market at L1, Business + Progress at L5), all by Level 5",
   );
 }
 
@@ -120,25 +124,25 @@ console.log("D. Quiet day-end before Level 21");
     for (let i = 0; i < servicesForDayAt(n).length; i++) s = recordService(s, n + i);
     return s;
   };
-  const day = finished(9);
-  const closed = closeDay(day, 11);
+  const day = finished(2);
+  const closed = closeDay(day, 4);
   assert(
     restaurantDayOf(day).closingDue &&
-      !dayCeremonyAt(11) &&
+      !dayCeremonyAt(4) &&
       restaurantDayOf(closed).day === restaurantDayOf(day).day + 1 &&
       !restaurantDayOf(closed).closingDue &&
       closed.credits === day.credits &&
       closed.economyLedger.length === day.economyLedger.length &&
       JSON.stringify(closed.business.inventory) === JSON.stringify(day.business.inventory) &&
       JSON.stringify(closed.business.calendar) === JSON.stringify(day.business.calendar),
-    "D1: the quiet close before Level 21 only turns the day (no money, ledger, stock or calendar change)",
+    "D1: the quiet close before Level 5 (developer 2026-10-29; was L21) only turns the day (no money, ledger, stock or calendar change)",
   );
   assert(
-    // 150-level remap: fridge & freshness at L16 (old L21).
-    Array.from({ length: 15 }, (_, i) => dayCeremonyAt(i + 1)).every((v) => !v) &&
-      dayCeremonyAt(16) &&
+    // Developer 2026-10-29: the day's ceremony (opening card, Closing Time) starts at L5.
+    Array.from({ length: 4 }, (_, i) => dayCeremonyAt(i + 1)).every((v) => !v) &&
+      dayCeremonyAt(5) &&
       dayCeremonyAt(150),
-    "D2: the opening card and Closing Time show from Level 16 (fridge & freshness)",
+    "D2: the opening card and Closing Time show from Level 5 (developer 2026-10-29; was L16)",
   );
 }
 
@@ -160,15 +164,14 @@ console.log("M. The Level 10 card");
 console.log("E. Nothing paid changes");
 {
   // Rule changed (developer 2026-10-16): round(50 + 3.1 × (n − 1)) dollars; L2's practice $0.
-  const expected = Array.from({ length: 15 }, (_, i) =>
-    i === 1 ? 0 : Math.round(50 + 3.1 * i) * 100,
-  );
+  // Rule changed (developer 2026-10-30): $50, +$40 a level to Level 40 (curatedRewardAt); no $0 practice level.
+  const expected = Array.from({ length: 15 }, (_, i) => curatedRewardAt(i + 1) * 100);
   const levels = getLevels().slice(0, 15);
   assert(
     levels.every((l, i) => l.id === `level-${i + 1}`) &&
       levels.every((l, i) => paidLevelReward(l) === expected[i]) &&
-      getLevel("level-10")!.title === "Simple Garden Salad",
-    "E1: Levels 1–15 keep their order and pay the 2026-10-16 reward curve",
+      getLevel("level-10")!.title === "Bruschetta for the House",
+    "E1: Levels 1–15 keep their order and pay the 2026-10-30 reward curve",
   );
   const santoku = KNIFE_CATALOG.find((k) => k.name === "Santoku");
   const maple = BOARD_CATALOG.find((b) => b.name === "Maple Board");
@@ -189,9 +192,9 @@ console.log("L. Locked links and Grandma's tips (developer 2026-10-09)");
     lockedScreenHint("business-equipment", 3) === "🔒 Business opens at Level 5" &&
       lockedScreenHint("business-equipment", 4) === "🔒 Business opens at Level 5" &&
       lockedScreenHint("business-equipment", 5) === null &&
-      lockedScreenHint("shop-ingredients", 2) === "🔒 Market opens at Level 3" &&
-      lockedScreenHint("shop-ingredients", 3) === null &&
-      lockedScreenHint("inventory-supplies", 2) === "🔒 Inventory opens at Level 3" &&
+      // The Market and Inventory are open from Level 1 (developer 2026-10-30).
+      lockedScreenHint("shop-ingredients", 1) === null &&
+      lockedScreenHint("inventory-supplies", 1) === null &&
       // Rule changed (developer 2026-10-26): Progress opens at L5 (was L10).
       lockedScreenHint("rack", 4) === "🔒 Progress opens at Level 5" &&
       lockedScreenHint("rack", 5) === null &&
@@ -199,7 +202,7 @@ console.log("L. Locked links and Grandma's tips (developer 2026-10-09)");
       lockedScreenHint("kitchen-upgrades", 1) === null &&
       lockedScreenHint("gameplay", 1) === null &&
       lockedScreenHint("settings", 1) === null,
-    "L1: every screen of a closed section is refused with when it opens (Restaurant → Equipment at L3 included); other screens never",
+    "L1: every screen of a closed section is refused with when it opens (Restaurant → Equipment at L5 included); other screens never",
   );
   const tips = Array.from({ length: 15 }, (_, i) => [i + 1, grandmaTipFor(i + 1)] as const);
   assert(
@@ -211,10 +214,9 @@ console.log("L. Locked links and Grandma's tips (developer 2026-10-09)");
     "L2: a short tip for each of Levels 1–15 (L9's pointer is its own button); a tip's button only opens a section already open",
   );
   assert(
-    isTabNew("inventory", 3) &&
-      isTabNew("inventory", 4) &&
-      !isTabNew("inventory", 5) &&
-      !isTabNew("inventory", 2) &&
+    isTabNew("inventory", 1) &&
+      isTabNew("inventory", 2) &&
+      !isTabNew("inventory", 3) &&
       !isTabNew("kitchen", 1),
     "L3: a section says NEW for its first two levels",
   );
@@ -290,8 +292,8 @@ console.log("P. Grandma's pointer at a new section (developer 2026-10-10)");
   // Developer 2026-10-15 (5db9451): Progress is no longer pointed at (it left the bottom bar).
   const seenAll = ["inventory", "shop"];
   assert(
-    pointed.join() ===
-      ",,inventory,inventory,inventory,inventory,inventory,inventory,inventory,inventory,inventory,inventory,inventory,inventory,inventory," &&
+    // Developer 2026-10-30: the Market opens at Level 1 and the hand points at it FIRST (then Inventory, then Business).
+    pointed.join() === `${Array(15).fill("shop").join()},` &&
       sectionToPoint(12, ["inventory"]) === "shop" &&
       sectionToPoint(12, seenAll) === "business" &&
       // Rule changed (developer 2026-10-25): Business opens at L5 (was 11), so it is pointed

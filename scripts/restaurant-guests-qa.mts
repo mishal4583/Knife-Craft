@@ -98,18 +98,18 @@ assert(
     menuGuestsPerService(5) === 1 &&
     menuGuestsPerService(10) === 1 &&
     menuGuestsPerService(11) === 1 &&
-    // 150-level remap (developer 2026-10-15): old L21 / 51 / 121 / 201 → L16 / 35 / 76 / 117.
-    menuGuestsPerService(15) === 1 &&
-    menuGuestsPerService(16) === 2 &&
+    // 148-level renumbering (2026-10-29): old L21 / 51 / 121 / 201 → L14 / 33 / 74 / 115.
+    menuGuestsPerService(13) === 1 &&
+    menuGuestsPerService(14) === 2 &&
     // +1 from old L51 (economy F3, developer 2026-10-12).
-    menuGuestsPerService(34) === 2 &&
-    menuGuestsPerService(35) === 4 &&
-    menuGuestsPerService(76) === 5 &&
-    menuGuestsPerService(117) === 6 &&
-    menuGuestsPerService(150) === 6 &&
+    menuGuestsPerService(32) === 2 &&
+    menuGuestsPerService(33) === 4 &&
+    menuGuestsPerService(74) === 5 &&
+    menuGuestsPerService(115) === 6 &&
+    menuGuestsPerService(148) === 6 &&
     menuGuestQueue(saveAt(4), lv(4)).length === 0 &&
     menuGuestQueue(saveAt(5), lv(5)).length === 1,
-  "G1: no guests before the menu opens; 1 / 2 / 4 / 5 / 6 from L5 / 16 / 35 / 76 / 117",
+  "G1: no guests before the menu opens; 1 / 2 / 4 / 5 / 6 from L5 / 14 / 33 / 74 / 115",
 );
 
 console.log("M. Menu control");
@@ -334,10 +334,12 @@ console.log("W. Wiring");
       // Phase G: the guest's place setting + napkin are taken from that same save first.
       /const withSupplies = takeOrderSupplies\(\s*stock\.save,/.test(app) &&
       /levelProgress: withMenuGuestServed\(withSupplies\.levelProgress, level\.id\)/.test(app) &&
-      /persist\(appendLedgerEntry\(paid, "business-revenue", result\.coinsAwarded, dish\.id\)\)/.test(
+      // Developer 2026-10-29: the payment is left on the table in that same save and enters the wallet as ONE
+      // business-revenue entry when swept (economy/pendingCash.ts).
+      /withPendingCash\(paid, \{\s*amount: result\.coinsAwarded,\s*category: "business-revenue",\s*description: dish\.id,?\s*\}\)/.test(
         app,
       ),
-    "W2: a guest uses real stock and is paid with ONE business-revenue entry, its count saved in the same persist",
+    "W2: a guest uses real stock and is paid with ONE business-revenue entry (left on the table, swept in), its count saved in the same persist",
   );
   assert(
     /const menuGuest =\s*RESTAURANT_MODE &&/.test(app),

@@ -8,7 +8,7 @@
  */
 import { DEFAULT_SAVE, type SaveData } from "../src/game/SaveManager.ts";
 // USD: every wallet/settlement amount is integer US cents (money.ts). The frozen Economy V2 figures are
-// the original numbers read as dollars — $69,110.00 / $46,585.00 / $16,092.00 / $1,402.00 / $101,005.00 (150-level baseline, recorded 2026-10-17).
+// the original numbers read as dollars — $69,925.00 / $245,138.00 / $16,604.00 / $1,415.00 / $299,874.00 (148-level baseline, re-recorded 2026-10-30 after the level-pay re-plan (completion rewards and net only)).
 import { dollars } from "../src/game/money.ts";
 import { DEFAULT_LEVEL_PROGRESS } from "../src/game/levels/LevelManager.ts";
 import { CAMPAIGN_RECIPES } from "../src/game/recipes/campaignRecipes.ts";
@@ -199,10 +199,10 @@ function saveAtLevel(levelNumber: number, credits: number, extra: Partial<SaveDa
     }),
     { grossRecipeRevenue: 0, completionRewards: 0, cogs: 0, qualityBonus: 0 },
   );
-  assert(totals.grossRecipeRevenue === dollars(69110), `P: recipe revenue unchanged at $69,110.00 (got ${totals.grossRecipeRevenue})`);
-  assert(totals.completionRewards === dollars(46585), `P: completion rewards at the V2.5 locked $46,585.00 (got ${totals.completionRewards})`);
-  assert(totals.cogs === dollars(16092), `P: baseline COGS unchanged at $16,092.00 (got ${totals.cogs})`);
-  assert(totals.qualityBonus === dollars(1402), `P: quality bonus unchanged at $1,402.00 (got ${totals.qualityBonus})`);
+  assert(totals.grossRecipeRevenue === dollars(69925), `P: recipe revenue unchanged at $69,925.00 (got ${totals.grossRecipeRevenue})`);
+  assert(totals.completionRewards === dollars(245138), `P: completion rewards at the V2.5 locked $245,138.00 (got ${totals.completionRewards})`);
+  assert(totals.cogs === dollars(16604), `P: baseline COGS unchanged at $16,604.00 (got ${totals.cogs})`);
+  assert(totals.qualityBonus === dollars(1415), `P: quality bonus unchanged at $1,415.00 (got ${totals.qualityBonus})`);
 }
 
 // ===== Q: replay behavior — staff never bypasses replay's zero-economics rule. =====

@@ -168,19 +168,21 @@ console.log("W. Wages unchanged");
   const before = payHalfWages(team, 10);
   const half = payHalfWages(saveAt(HALF_WAGES_FROM, 50_000, ["prep-cook"]), HALF_WAGES_FROM);
   assert(
-    HALF_WAGES_FROM === 29 &&
-      restaurantSystem("full-operation").firstLevel === 56 &&
+    HALF_WAGES_FROM === 27 &&
+      restaurantSystem("full-operation").firstLevel === 54 &&
       before.paid === 0 &&
       before.save === team &&
       half.paid === 2_000 &&
       half.save.economyLedger.filter((e) => e.category === "business-staff-salary").length === 1,
-    "W1: no pay before L29 (the hire fee is the only charge); half pay ($20, one entry) from L29",
+    "W1: no pay before L27 (the hire fee is the only charge); half pay ($20, one entry) from L27",
   );
   // The half wages are paid in one place (closing, restaurantDay.ts); the hire never pays wages.
-  const src = execSync("git grep -n 'payHalfWages(' -- src", { cwd: ROOT, encoding: "utf8" })
+  const src = execSync('git grep -n "payHalfWages(" -- src', { cwd: ROOT, encoding: "utf8" })
     .split("\n")
     .filter((l) => l && !/export function payHalfWages/.test(l));
-  const hire = fs.readFileSync(path.join(ROOT, "src/game/restaurant/staffRequirements.ts"), "utf8");
+  const hire = fs
+    .readFileSync(path.join(ROOT, "src/game/restaurant/staffRequirements.ts"), "utf8")
+    .replace(/\r\n/g, "\n");
   const body = hire.slice(hire.indexOf("export function hireRestaurantStaff"));
   const hireBody = body.slice(0, body.indexOf("\n}\n"));
   assert(
@@ -246,7 +248,12 @@ console.log("U. Everything unlocked by Level 5");
   )
     .split("\n")
     .filter((l) => /^[+-](?![+-])/.test(l));
-  const priceLines = diff.filter((l) => /price|perHour|salary|dollars\(/i.test(l));
+  // Rule changed (developer 2026-10-29/30): the kitchen tier prices — Growing $60,000, Established
+  // $12,000, Neighborhood Café $18,000 (were $20,000 / $25,000 / $25,000). Nothing else may move.
+  const KITCHEN_PRICE_CHANGE = /^[+-]\s*price: dollars\((20_000|25_000|60_000|12_000|18_000)\),$/;
+  const priceLines = diff
+    .filter((l) => /price|perHour|salary|dollars\(/i.test(l))
+    .filter((l) => !KITCHEN_PRICE_CHANGE.test(l));
   assert(
     priceLines.length === 0,
     "U5: no price, wage or station income changed (only unlock levels)",

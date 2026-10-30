@@ -26,6 +26,9 @@ const code = (f: string) =>
     .readFileSync(path.resolve(ROOT, f), "utf8")
     .replace(/\/\*[\s\S]*?\*\//g, "")
     .replace(/\/\/.*$/gm, "");
+// The "nothing changed" audit is measured from 3ceac0f (the reviewed main before the 2026-10-29 work).
+// Later approved save additions are excluded from this phase's "nothing changed" diff (each has its own QA):
+// business.guideSeen (restaurant-guide-qa), business.pendingCash + the ledger `batch` (pending-cash-qa). Later approved save additions.
 let failures = 0;
 function assert(cond: boolean, label: string, detail?: unknown) {
   if (!cond) {
@@ -112,10 +115,13 @@ console.log("E. Nothing else moves");
       // levelMastery.ts: a level's stale knife/board "Unlocks" hint is dropped (display only).
       // Rule changed (developer 2026-10-26, "the game starts at 0 cash"): SaveManager may change
       // only the new save's opening credits (scripts/startCashGuard.mts).
+      // Rules changed (developer 2026-10-29/30): the kitchen tier prices (restaurantInvestments.ts), the level pay
+      // curve (levelRewards.ts) and the removed practice level (levelDefinitions.ts / levelTypes.ts) — guarded by
+      // economy-v2-final-qa, achievement-rewards-qa and phase5-qa A2.
       // Rule changed (developer 2026-10-26, "tips along with payment"): customerTips.ts, guarded
       // by phase2-qa C1–C9.
-      "git diff 876ac79 -- src/game/business/businessTypes.ts src/game/economy ':!src/game/economy/staffDefinitions.ts' ':!src/game/economy/customerTips.ts' src/game/kitchen/kitchenUpgradeDefinitions.ts src/game/kitchen/KitchenUpgradeManager.ts src/game/restaurant/restaurantInvestments.ts src/game/levels ':!src/game/levels/levelMastery.ts'" +
-        " ':!src/game/kitchen/kitchenUpgradeDefinitions.ts' ':!src/game/kitchen/KitchenUpgradeManager.ts'",
+      "git diff 3ceac0f -- src/game/business/businessTypes.ts src/game/economy :!src/game/economy/staffDefinitions.ts :!src/game/business/businessTypes.ts :!src/game/economy/EconomyLedger.ts :!src/game/economy/ledgerTypes.ts :!src/game/economy/customerTips.ts src/game/kitchen/kitchenUpgradeDefinitions.ts src/game/kitchen/KitchenUpgradeManager.ts src/game/restaurant/restaurantInvestments.ts src/game/levels :!src/game/levels/levelMastery.ts :!src/game/restaurant/restaurantInvestments.ts :!src/game/levels/levelDefinitions.ts :!src/game/levels/levelRewards.ts :!src/game/levels/levelTypes.ts" +
+        " :!src/game/kitchen/kitchenUpgradeDefinitions.ts :!src/game/kitchen/KitchenUpgradeManager.ts",
       { cwd: ROOT, encoding: "utf8" },
     );
   assert(

@@ -31,12 +31,28 @@ import {
 } from "./restaurantCampaignSim.mts";
 import type { SaveData } from "../src/game/SaveManager.ts";
 import { dollars } from "../src/game/money.ts";
+import { LAST_CAMPAIGN_LEVEL } from "../src/game/restaurant/restaurantProgression.ts";
 import {
   getInventoryUsedCapacity,
   getRefrigeratorCapacity,
 } from "../src/game/business/RefrigeratorManager.ts";
 
-export const CHECKPOINTS = [1, 10, 20, 30, 40, 50, 75, 91, 100, 121, 150, 200, 250] as const;
+// The last checkpoint is the campaign's actual last level (it was a hard-coded 150).
+export const CHECKPOINTS: readonly number[] = [
+  1,
+  10,
+  20,
+  30,
+  40,
+  50,
+  75,
+  91,
+  100,
+  121,
+  LAST_CAMPAIGN_LEVEL,
+  200,
+  250,
+];
 
 export type Checkpoint = {
   level: number;
@@ -150,7 +166,7 @@ export function runScenario(sc: Scenario): ScenarioResult {
           minCashAfterReserve = { cash: x.credits, where };
       },
       onLevel(n, x, st) {
-        if (!(CHECKPOINTS as readonly number[]).includes(n)) return;
+        if (!CHECKPOINTS.includes(n)) return;
         const lt = (x.economy.lifetime ?? {}) as Record<string, number | undefined>;
         const income = Object.values(lt).reduce((a, v) => a + Math.max(0, v ?? 0), 0);
         const costs = -Object.values(lt).reduce((a, v) => a + Math.min(0, v ?? 0), 0);

@@ -85,21 +85,23 @@ console.log("T. The Level-150 target (no Endless income)");
 {
   const c = R.C!;
   assert(
-    // Developer 2026-10-16 (150-level campaign + achievement money): the completionist
-    // ends Level 150 with $100k–$150k, the gap filled by achievements collected in the tab.
-    [c, R.D!, R.E!].every((r) => r.final >= dollars(100_000) && r.final <= dollars(150_000)),
-    `T1: completionist ends L150 with $100k–$150k — Local ${$(c.final)}, Wholesale ${$(R.D!.final)}, Premium ${$(R.E!.final)}`,
+    // Developer 2026-10-30: the completionist ends with AT LEAST $150,000 — above that, whatever is good.
+    [c, R.D!, R.E!].every((r) => r.final >= dollars(150_000)),
+    `T1: completionist ends the last level with at least $150k — Local ${$(c.final)}, Wholesale ${$(R.D!.final)}, Premium ${$(R.E!.final)}`,
   );
   assert(
-    c.final >= dollars(125_000) && c.final <= dollars(140_000),
-    `T2: and lands near the plan's aim ($125k–$140k) (${$(c.final)})`,
+    // The plan's aim after the 2026-10-30 pay re-plan: about $292k, never more than double the floor, so the
+    // late game is not left with nothing to spend on.
+    c.final >= dollars(250_000) && c.final <= dollars(350_000),
+    `T2: and lands near the plan's aim ($250k–$350k) (${$(c.final)})`,
   );
   const owns = c.save;
   assert(
     KITCHEN_UPGRADE_CATALOG.every((k) => owns.ownedKitchenUpgradeIds.includes(k.id)) &&
-      // Rule changed (developer 2026-10-26): hires pay a fee. The items are the same $168,430;
+      // Rule changed (developer 2026-10-26): hires pay a fee. The items are $168,430, plus $33,000 more of kitchen tiers since 2026-10-29;
       // the fees paid from the wallet come on top (a required hire short of cash goes on credit).
-      atL(c, LAST).purchases === dollars(168_430) + c.stats.hireFees - c.stats.hireFeesOnCredit,
+      atL(c, LAST).purchases ===
+        dollars(168_430 + 33_000) + c.stats.hireFees - c.stats.hireFeesOnCredit,
     `T3: the completionist owns every kitchen tier and bought every item (${$(atL(c, LAST).purchases)})`,
   );
   assert(
@@ -168,8 +170,12 @@ console.log("R. Rules");
   const prices = KITCHEN_UPGRADE_CATALOG.map((d) => kitchenTierPrice(d, stamped));
   const grand = kitchenTierPrice(KITCHEN_UPGRADE_CATALOG.at(-1)!, stamped);
   assert(
-    prices.reduce((a, b) => a + b, 0) === dollars(110_000) && grand === Math.max(...prices),
-    `R1: kitchen tiers cost $110,000 in the restaurant (${prices.map((p) => $(p)).join(" / ")}); the Grand Kitchen stays the dearest`,
+    // Developer 2026-10-29: Growing $60,000, Established $12,000, Neighborhood Café $18,000 — so the FIRST tier
+    // is now the dearest ($143,000 in all, was $110,000). Recorded here on purpose: a tier needs the one before it.
+    prices.reduce((a, b) => a + b, 0) === dollars(143_000) &&
+      prices[1] === Math.max(...prices) &&
+      grand === dollars(29_000),
+    `R1: kitchen tiers cost $143,000 in the restaurant (${prices.map((p) => $(p)).join(" / ")}); Growing is the dearest tier (developer's prices)`,
   );
   const withTiers = (ids: string[]): SaveData => ({ ...stamped, ownedKitchenUpgradeIds: ids });
   const tiers = KITCHEN_UPGRADE_CATALOG.map((d) => d.id);
@@ -252,8 +258,8 @@ console.log("X. Release untouched");
   assert(
     !isRestaurantSave(release) &&
       KITCHEN_UPGRADE_CATALOG.every((d) => kitchenTierPrice(d, release) === d.price) &&
-      KITCHEN_UPGRADE_CATALOG.reduce((n, d) => n + d.price, 0) === dollars(135_000),
-    "X1: a release save pays the catalog kitchen prices ($135,000 in total)",
+      KITCHEN_UPGRADE_CATALOG.reduce((n, d) => n + d.price, 0) === dollars(155_000),
+    "X1: a release save pays the catalog kitchen prices ($155,000 in total; was $135,000 before the 2026-10-29 prices)",
   );
   assert(
     ["restaurantInvestments", "emergencyService", "supplierCredit", "serviceCover"].every(

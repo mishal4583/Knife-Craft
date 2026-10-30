@@ -397,7 +397,8 @@ console.log("Q. Quick Restock");
 
 console.log("P. Market plan");
 {
-  const s = saveAt(31);
+  // 3 services a day from L14 to L32 (148-level renumbering; the 4th, Afternoon Tea, joins at L33).
+  const s = saveAt(20);
   const p1 = marketPlanFor(s, 1);
   const p3 = marketPlanFor(s, 3);
   assert(
@@ -405,9 +406,9 @@ console.log("P. Market plan");
       p1.rows.every((r) => r.firstDay === 0 && r.forToday) &&
       p3.rows.length >= p1.rows.length &&
       p3.dayLevels.length === 3 &&
-      // 3 services a day from L21 (developer 2026-10-10; was 2 to L50).
-      p3.dayLevels[0]!.join() === "31,32,33" &&
-      p3.dayLevels[1]!.join() === "34,35,36",
+      // 3 services a day from L14 (developer 2026-10-10; was 2 to L50).
+      p3.dayLevels[0]!.join() === "20,21,22" &&
+      p3.dayLevels[1]!.join() === "23,24,25",
     `P1: today's services first (Levels ${p3.dayLevels.map((d) => d.join("+")).join(" | ")}); a longer plan only adds`,
   );
   assert(
@@ -431,7 +432,7 @@ console.log("P. Market plan");
     );
     if (b.ok) bought = b.save;
   }
-  const level31 = getLevel("level-31")!;
+  const level31 = getLevel("level-20")!; // the plan above is for the save at L20
   const plan31 = servicePlanFor(bought, level31)!;
   assert(
     plan31.check.applies && plan31.check.ready,
@@ -533,43 +534,37 @@ console.log("A. Audit fixes (2026-10-08)");
       replay === null,
     `A1: Level 12 shows what it pays — orders ${pay.orders}c + completion ${pay.completion}c (it used to show only the completion); a replay shows nothing`,
   );
-  // A1b (2026-10-25, transformation audit B1) — the practice level (Level 2, campaignNoEconomy)
-  // pays nothing (App.serveCampaignOrder serves it as a replay), so its preview is $0. It used
-  // to show its order at recipe price ("about +$130") though nothing was ever paid.
+  // A1b (2026-10-30): there is no practice level any more — every level previews what it pays.
   const l2 = getLevel("level-2")!;
-  const practice = levelPayPreview(saveAt(2), l2);
+  const preview2 = levelPayPreview(saveAt(2), l2);
   assert(
-    l2.campaignNoEconomy === true &&
-      paidLevelReward(l2) === 0 &&
-      !!practice &&
-      practice.orders === 0 &&
-      practice.completion === 0 &&
-      practice.total === 0,
-    "A1b: Level 2 (practice) previews $0, as it pays",
-    practice,
+    paidLevelReward(l2) > 0 &&
+      !!preview2 &&
+      preview2.completion === paidLevelReward(l2) &&
+      preview2.total > 0,
+    "A1b: no level is a $0 practice level — Level 2 previews what it pays",
   );
   // A2 — the first restock guide. Developer 2026-10-09 (Pass 2 review): it is
   // progression-based now — the first service on real stock (Level 15) shows it
   // even with food in the fridge (Grandma's leftovers, the L13 top-up); once a
   // stock level is completed it never shows again (was: "until the first
   // ingredient is bought, or any stock is in the fridge").
-  // Redesign 2026-10-15 (0b2ce52): the first service on real stock is Level 3 (was 15).
-  const fresh = saveAt(3);
+  // Developer 2026-10-30: the first service on real stock is Level 1 (the Market opens at the start; was L3).
+  const fresh = saveAt(1);
   const bought = purchaseIngredient(fresh, "tomato", 1);
   const past3 = {
-    ...saveAt(4),
+    ...saveAt(2),
     levelProgress: {
-      ...saveAt(4).levelProgress,
-      completedLevelIds: Array.from({ length: 3 }, (_, i) => `level-${i + 1}`),
+      ...saveAt(2).levelProgress,
+      completedLevelIds: ["level-1"],
     },
   };
   assert(
-    isFirstStockService(fresh, 3) &&
+    isFirstStockService(fresh, 1) &&
       bought.ok &&
-      isFirstStockService(bought.save, 3) &&
-      !isFirstStockService(past3, 4) &&
-      !isFirstStockService(saveAt(2), 2),
-    "A2: the first-restock guide shows on the first stock service (Level 3), stock or not, and never after a stock level is done",
+      isFirstStockService(bought.save, 1) &&
+      !isFirstStockService(past3, 2),
+    "A2: the first-restock guide shows on the first stock service (Level 1), stock or not, and never after a stock level is done",
   );
   // A3 — supply packs say what they hold.
   assert(

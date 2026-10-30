@@ -23,9 +23,12 @@ import { businessUnitCostFor } from "../src/game/business/businessPricing.ts";
 import {
   createBusinessServiceSession,
   recordBusinessServiceComponents,
-  serveBusinessOrder,
+  serveBusinessOrder as serveBusinessOrderRaw,
 } from "../src/game/business/BusinessServiceManager.ts";
-import { makeSeededRand, businessServiceSeedFor } from "../src/game/business/businessDeterministicRandom.ts";
+import {
+  makeSeededRand,
+  businessServiceSeedFor,
+} from "../src/game/business/businessDeterministicRandom.ts";
 import { getBusinessDish, businessDishPrice } from "../src/game/business/businessDishCatalog.ts";
 import { recipeCostBasis } from "../src/game/business/businessMenu.ts";
 import { getCampaignRecipe } from "../src/game/recipes/campaignRecipes.ts";
@@ -50,12 +53,24 @@ import { performRefrigeratorMaintenance as performMaintenanceFromCatalog } from 
 import { cancelContract, signContract } from "../src/game/business/BusinessSupplierManager.ts";
 import { endBusinessDay } from "../src/game/business/BusinessDayManager.ts";
 
+import { settlePendingCash } from "../src/game/economy/pendingCash.ts";
+/**
+ * A serve leaves the payment on the table; the player sweeps it into the wallet (economy/pendingCash.ts,
+ * developer 2026-10-29). This QA models that sweep right after the serve, so the wallet and the ledger
+ * are read as they are once the money is in the till.
+ */
+const serveBusinessOrder: typeof serveBusinessOrderRaw = (...args) => {
+  const r = serveBusinessOrderRaw(...args);
+  return r ? { ...r, save: settlePendingCash(r.save) } : r;
+};
+
 let failures = 0;
 // Economy V3 Phase 16 (WTP, intentional rule change): a Business customer pays menu price ×
 // willingnessToPayMultiplierFor(popularity), rounded once to cents. These scenarios run at the
 // default popularity 50, so the exact expected payment is:
 const WTP_HUNDREDTHS_AT_50 = Math.round(willingnessToPayMultiplierFor(50) * 100);
-const customerPaysAt50 = (menuPrice: number) => Math.round((menuPrice * WTP_HUNDREDTHS_AT_50) / 100);
+const customerPaysAt50 = (menuPrice: number) =>
+  Math.round((menuPrice * WTP_HUNDREDTHS_AT_50) / 100);
 
 function assert(cond: boolean, label: string) {
   if (!cond) {
@@ -100,7 +115,11 @@ function cancelContractComposed(save: SaveData) {
 function endBusinessDayComposed(save: SaveData) {
   const result = endBusinessDay(save);
   const withPayroll = appendLedgerEntry(result.save, "business-staff-salary", -result.payrollPaid);
-  const withFine = appendLedgerEntry(withPayroll, "inspection-fine", -result.inspectionFine.finePaid);
+  const withFine = appendLedgerEntry(
+    withPayroll,
+    "inspection-fine",
+    -result.inspectionFine.finePaid,
+  );
   return { ...result, save: withFine };
 }
 
@@ -143,30 +162,74 @@ function sessionReadyFor(recipeId: string): ServiceSession {
 {
   const save = saveAt({});
   const summary = lifetimeSummary(save);
-  assert(summary.cumulativeRevenue === 0 && summary.orderCount === 0, "A: a fresh save has zero cumulative Business revenue and zero orders");
-  assert(save.business.finance.lastDailyPnL === null, "A2: a fresh save has never completed a Business Day");
-  assert(save.business.finance.dailyAccumulator.revenue === 0, "A3: a fresh save's daily accumulator starts at zero");
+  assert(
+    summary.cumulativeRevenue === 0 && summary.orderCount === 0,
+    "A: a fresh save has zero cumulative Business revenue and zero orders",
+  );
+  assert(
+    save.business.finance.lastDailyPnL === null,
+    "A2: a fresh save has never completed a Business Day",
+  );
+  assert(
+    save.business.finance.dailyAccumulator.revenue === 0,
+    "A3: a fresh save's daily accumulator starts at zero",
+  );
 }
 
 // ===== B: successful revenue — one real served order produces exactly one business-revenue ledger entry and the correct accumulator update. =====
 {
-  const save = saveAt({ credits: 1000, business: { ...DEFAULT_BUSINESS_STATE, calendar: { businessDay: 1 }, inventory: fullSaladInventory(1) } });
+  const save = saveAt({
+    credits: 1000,
+    business: {
+      ...DEFAULT_BUSINESS_STATE,
+      calendar: { businessDay: 1 },
+      inventory: fullSaladInventory(1),
+    },
+  });
   const session = sessionReadyFor(SALAD_RECIPE_ID);
   const price = businessDishPrice(save.business.menu, SALAD_DISH);
   const result = serveBusinessOrder(session, save, Math.random)!;
   assert(result !== null, "B: precondition — the serve succeeds");
-  const withLedger = appendLedgerEntry(result.save, "business-revenue", result.amountCharged, result.dish.id);
-  const revenueEntries = businessLedgerEntries(withLedger.economyLedger).filter((e) => e.category === "business-revenue");
-  assert(revenueEntries.length === 1 && revenueEntries[0]!.amount === customerPaysAt50(price), `B2: exactly one business-revenue ledger entry for the exact customer payment (${customerPaysAt50(price)}c from menu price ${price}c)`);
-  assert(withLedger.business.finance.dailyAccumulator.revenue === result.amountCharged && result.amountCharged === customerPaysAt50(price), "B3: the daily accumulator's revenue matches the amount charged exactly");
-  const realCost = realCogsFor(save.business.inventory, (["tomato", "cucumber", "carrot"] as const).map((ingredientId) => ({ ingredientId, quantity: INGREDIENT_MEASURES[ingredientId].serving })));
-  assert(withLedger.business.finance.dailyAccumulator.cogs === realCost, `B4: the daily accumulator's COGS matches the real ingredient cost (${realCost}c)`);
-  assert(withLedger.business.finance.lifetimeCogs === realCost, "B5: lifetimeCogs accumulates the same amount");
+  const withLedger = result.save; /* the sweep already wrote the entry (economy/pendingCash.ts) */
+  const revenueEntries = businessLedgerEntries(withLedger.economyLedger).filter(
+    (e) => e.category === "business-revenue",
+  );
+  assert(
+    revenueEntries.length === 1 && revenueEntries[0]!.amount === customerPaysAt50(price),
+    `B2: exactly one business-revenue ledger entry for the exact customer payment (${customerPaysAt50(price)}c from menu price ${price}c)`,
+  );
+  assert(
+    withLedger.business.finance.dailyAccumulator.revenue === result.amountCharged &&
+      result.amountCharged === customerPaysAt50(price),
+    "B3: the daily accumulator's revenue matches the amount charged exactly",
+  );
+  const realCost = realCogsFor(
+    save.business.inventory,
+    (["tomato", "cucumber", "carrot"] as const).map((ingredientId) => ({
+      ingredientId,
+      quantity: INGREDIENT_MEASURES[ingredientId].serving,
+    })),
+  );
+  assert(
+    withLedger.business.finance.dailyAccumulator.cogs === realCost,
+    `B4: the daily accumulator's COGS matches the real ingredient cost (${realCost}c)`,
+  );
+  assert(
+    withLedger.business.finance.lifetimeCogs === realCost,
+    "B5: lifetimeCogs accumulates the same amount",
+  );
 }
 
 // ===== C: multiple revenue transactions — revenue aggregates exactly, no duplicate revenue, ledger and wallet reconcile. =====
 {
-  let save = saveAt({ credits: 1000, business: { ...DEFAULT_BUSINESS_STATE, calendar: { businessDay: 1 }, inventory: fullSaladInventory(1) } });
+  let save = saveAt({
+    credits: 1000,
+    business: {
+      ...DEFAULT_BUSINESS_STATE,
+      calendar: { businessDay: 1 },
+      inventory: fullSaladInventory(1),
+    },
+  });
   const openingCash = save.credits;
   let totalRevenue = 0;
   let totalCogs = 0;
@@ -174,164 +237,394 @@ function sessionReadyFor(recipeId: string): ServiceSession {
     const session = sessionReadyFor(SALAD_RECIPE_ID);
     const result = serveBusinessOrder(session, save, Math.random)!;
     assert(result !== null, `C: serve #${i + 1} succeeds`);
-    save = appendLedgerEntry(result.save, "business-revenue", result.amountCharged, result.dish.id);
+    save = result.save; /* the sweep already wrote the entry (economy/pendingCash.ts) */
     totalRevenue += result.amountCharged;
     totalCogs += result.cogsCharged;
   }
   const summary = lifetimeSummary(save);
-  assert(summary.cumulativeRevenue === totalRevenue, `C2: cumulative revenue aggregates exactly across 3 serves (${summary.cumulativeRevenue}c === ${totalRevenue}c)`);
-  assert(summary.orderCount === 3, "C3: order count is exactly 3 — one per served order, never duplicated");
+  assert(
+    summary.cumulativeRevenue === totalRevenue,
+    `C2: cumulative revenue aggregates exactly across 3 serves (${summary.cumulativeRevenue}c === ${totalRevenue}c)`,
+  );
+  assert(
+    summary.orderCount === 3,
+    "C3: order count is exactly 3 — one per served order, never duplicated",
+  );
   assert(save.business.finance.lifetimeCogs === totalCogs, "C4: lifetimeCogs aggregates exactly");
-  assert(save.credits === openingCash + totalRevenue, "C5: wallet reflects exactly the sum of the 3 payments — no duplication, no loss");
+  assert(
+    save.credits === openingCash + totalRevenue,
+    "C5: wallet reflects exactly the sum of the 3 payments — no duplication, no loss",
+  );
 }
 
 // ===== D: generate order, do NOT serve — zero revenue, no ledger entry, no wallet mutation. =====
 {
-  const save = saveAt({ credits: 1000, business: { ...DEFAULT_BUSINESS_STATE, calendar: { businessDay: 1 }, inventory: fullSaladInventory(1) } });
+  const save = saveAt({
+    credits: 1000,
+    business: {
+      ...DEFAULT_BUSINESS_STATE,
+      calendar: { businessDay: 1 },
+      inventory: fullSaladInventory(1),
+    },
+  });
   createBusinessServiceSession(makeSeededRand(businessServiceSeedFor(1))); // generated, never served
   const summary = lifetimeSummary(save);
-  assert(summary.cumulativeRevenue === 0 && summary.orderCount === 0, "D: generating (never serving) an order creates zero revenue and zero ledger entries");
+  assert(
+    summary.cumulativeRevenue === 0 && summary.orderCount === 0,
+    "D: generating (never serving) an order creates zero revenue and zero ledger entries",
+  );
   assert(save.credits === 1000, "D2: the wallet is completely untouched by mere generation");
 }
 
 // ===== E: cancel/exit before serving — zero revenue, inventory/credits unaffected. =====
 {
-  const save = saveAt({ credits: 1000, business: { ...DEFAULT_BUSINESS_STATE, calendar: { businessDay: 1 }, inventory: fullSaladInventory(1) } });
+  const save = saveAt({
+    credits: 1000,
+    business: {
+      ...DEFAULT_BUSINESS_STATE,
+      calendar: { businessDay: 1 },
+      inventory: fullSaladInventory(1),
+    },
+  });
   sessionReadyFor(SALAD_RECIPE_ID); // reaches READY, but the caller never calls serveBusinessOrder — mirrors "exit mid-Preparation"
-  assert(save.credits === 1000, "E: reaching READY without serving (cancel) leaves credits untouched");
+  assert(
+    save.credits === 1000,
+    "E: reaching READY without serving (cancel) leaves credits untouched",
+  );
   assert(getQuantity(save.business.inventory, "tomato") === 10, "E2: ...and inventory untouched");
-  assert(lifetimeSummary(save).cumulativeRevenue === 0, "E3: no revenue is ever recorded for a cancelled order");
+  assert(
+    lifetimeSummary(save).cumulativeRevenue === 0,
+    "E3: no revenue is ever recorded for a cancelled order",
+  );
 }
 
 // ===== F: failed serve (order never reached READY) — zero revenue. =====
 {
-  const save = saveAt({ credits: 1000, business: { ...DEFAULT_BUSINESS_STATE, calendar: { businessDay: 1 }, inventory: fullSaladInventory(1) } });
+  const save = saveAt({
+    credits: 1000,
+    business: {
+      ...DEFAULT_BUSINESS_STATE,
+      calendar: { businessDay: 1 },
+      inventory: fullSaladInventory(1),
+    },
+  });
   const session = createBusinessServiceSession(makeSeededRand(businessServiceSeedFor(1)));
   const result = serveBusinessOrder(session, save, Math.random);
   assert(result === null, "F: an unprepared (not-READY) order can never be served");
-  assert(lifetimeSummary(save).cumulativeRevenue === 0, "F2: a failed serve attempt creates zero revenue");
+  assert(
+    lifetimeSummary(save).cumulativeRevenue === 0,
+    "F2: a failed serve attempt creates zero revenue",
+  );
 }
 
 // ===== G: menu-price change before serving — P&L uses the CURRENT price at serve time, never a stale one; also documents the real-COGS-vs-menu-cost-basis gap for Aromatic dishes. =====
 {
-  const save = saveAt({ credits: 1000, business: { ...DEFAULT_BUSINESS_STATE, calendar: { businessDay: 1 }, inventory: fullBreadInventory(1) } });
+  const save = saveAt({
+    credits: 1000,
+    business: {
+      ...DEFAULT_BUSINESS_STATE,
+      calendar: { businessDay: 1 },
+      inventory: fullBreadInventory(1),
+    },
+  });
   const originalPrice = businessDishPrice(save.business.menu, BREAD_DISH);
   const session = sessionReadyFor(BREAD_RECIPE_ID);
-  const repriced = { ...save, business: { ...save.business, menu: { ...save.business.menu, [BREAD_RECIPE_ID]: Math.round(originalPrice * 1.25) } } };
+  const repriced = {
+    ...save,
+    business: {
+      ...save.business,
+      menu: { ...save.business.menu, [BREAD_RECIPE_ID]: Math.round(originalPrice * 1.25) },
+    },
+  };
   const result = serveBusinessOrder(session, repriced, Math.random)!;
-  assert(result.amountCharged === customerPaysAt50(Math.round(originalPrice * 1.25)), `G: P&L revenue uses the CURRENT (changed) menu price, not the stale one (got ${result.amountCharged}, expected ${customerPaysAt50(Math.round(originalPrice * 1.25))})`);
+  assert(
+    result.amountCharged === customerPaysAt50(Math.round(originalPrice * 1.25)),
+    `G: P&L revenue uses the CURRENT (changed) menu price, not the stale one (got ${result.amountCharged}, expected ${customerPaysAt50(Math.round(originalPrice * 1.25))})`,
+  );
   const recipe = getCampaignRecipe(BREAD_RECIPE_ID)!;
   const menuCostBasis = recipeCostBasis(recipe);
   // V3-16 P1 fix: inventory now draws down the SAME portion the menu cost basis prices, so the two agree (the old whole-unit gap is closed).
-  assert(Math.abs(result.cogsCharged - menuCostBasis) <= 1, `G2: an Aromatic dish's real COGS equals its portion-scaled menu cost basis within 1c of rounding (COGS ${result.cogsCharged}c vs basis ${menuCostBasis}c)`);
+  assert(
+    Math.abs(result.cogsCharged - menuCostBasis) <= 1,
+    `G2: an Aromatic dish's real COGS equals its portion-scaled menu cost basis within 1c of rounding (COGS ${result.cogsCharged}c vs basis ${menuCostBasis}c)`,
+  );
 }
 
 // ===== H: inventory consumption — beginning inventory -> consumption -> ending inventory -> COGS, all consistent for a known dish. =====
 {
-  const save = saveAt({ credits: 1000, business: { ...DEFAULT_BUSINESS_STATE, calendar: { businessDay: 1 }, inventory: fullSaladInventory(1) } });
+  const save = saveAt({
+    credits: 1000,
+    business: {
+      ...DEFAULT_BUSINESS_STATE,
+      calendar: { businessDay: 1 },
+      inventory: fullSaladInventory(1),
+    },
+  });
   const session = sessionReadyFor(SALAD_RECIPE_ID);
   const result = serveBusinessOrder(session, save, Math.random)!;
-  assert(getQuantity(result.save.business.inventory, "tomato") === 9.7, "H: tomato inventory decreases by exactly one 0.3 lb tomato (beginning 10 -> ending 9.7)");
-  assert(getQuantity(result.save.business.inventory, "cucumber") === 9.7, "H2: cucumber by half a cucumber (0.3 lb)");
-  assert(getQuantity(result.save.business.inventory, "carrot") === 9.85, "H3: carrot by one 0.15 lb carrot");
-  assert(result.cogsCharged === 75, `H4: COGS for Garden Salad (0.3 lb tomato + 0.3 lb cucumber + 0.15 lb carrot, each 100c/lb) is exactly 75c (got ${result.cogsCharged})`);
-  assert(result.cogsCharged !== 0, "H5: a purchased-but-not-yet-consumed inventory value is never confused with COGS (COGS is only ever recognized at actual consumption, never at purchase)");
+  assert(
+    getQuantity(result.save.business.inventory, "tomato") === 9.7,
+    "H: tomato inventory decreases by exactly one 0.3 lb tomato (beginning 10 -> ending 9.7)",
+  );
+  assert(
+    getQuantity(result.save.business.inventory, "cucumber") === 9.7,
+    "H2: cucumber by half a cucumber (0.3 lb)",
+  );
+  assert(
+    getQuantity(result.save.business.inventory, "carrot") === 9.85,
+    "H3: carrot by one 0.15 lb carrot",
+  );
+  assert(
+    result.cogsCharged === 75,
+    `H4: COGS for Garden Salad (0.3 lb tomato + 0.3 lb cucumber + 0.15 lb carrot, each 100c/lb) is exactly 75c (got ${result.cogsCharged})`,
+  );
+  assert(
+    result.cogsCharged !== 0,
+    "H5: a purchased-but-not-yet-consumed inventory value is never confused with COGS (COGS is only ever recognized at actual consumption, never at purchase)",
+  );
 }
 
 // ===== I: payroll — no staff, one staff, multiple staff, Manager discount, insufficient cash, settlement matches the ledger. =====
 {
-  const noStaff = saveAt({ credits: 100000, business: { ...DEFAULT_BUSINESS_STATE, calendar: { businessDay: 1 } } });
+  const noStaff = saveAt({
+    credits: 100000,
+    business: { ...DEFAULT_BUSINESS_STATE, calendar: { businessDay: 1 } },
+  });
   const r0 = endBusinessDayComposed(noStaff);
-  assert(r0.payrollPaid === 0 && r0.dailyPnL.staffCost === 0, "I: no staff hired -> zero payroll, zero P&L labor cost");
+  assert(
+    r0.payrollPaid === 0 && r0.dailyPnL.staffCost === 0,
+    "I: no staff hired -> zero payroll, zero P&L labor cost",
+  );
 
-  const oneStaff = saveAt({ credits: 100000, business: { ...DEFAULT_BUSINESS_STATE, calendar: { businessDay: 1 }, staff: { hiredRoles: ["prep-cook"] } } });
+  const oneStaff = saveAt({
+    credits: 100000,
+    business: {
+      ...DEFAULT_BUSINESS_STATE,
+      calendar: { businessDay: 1 },
+      staff: { hiredRoles: ["prep-cook"] },
+    },
+  });
   const r1 = endBusinessDayComposed(oneStaff);
-  assert(r1.payrollPaid === 4000, `I2: Prep Cook's payroll is charged exactly ($16.00/hr x 2h service shift x 1.25 burden = $40.00, got ${r1.payrollPaid}c)`);
-  assert(r1.dailyPnL.staffCost === r1.payrollPaid, "I3: the P&L's staffCost line matches the actual paid payroll exactly");
-  const staffLedger = businessLedgerEntries(r1.save.economyLedger).filter((e) => e.category === "business-staff-salary");
-  assert(staffLedger.length === 1 && staffLedger[0]!.amount === -r1.payrollPaid, "I4: exactly one business-staff-salary ledger entry, matching the P&L exactly");
+  assert(
+    r1.payrollPaid === 4000,
+    `I2: Prep Cook's payroll is charged exactly ($16.00/hr x 2h service shift x 1.25 burden = $40.00, got ${r1.payrollPaid}c)`,
+  );
+  assert(
+    r1.dailyPnL.staffCost === r1.payrollPaid,
+    "I3: the P&L's staffCost line matches the actual paid payroll exactly",
+  );
+  const staffLedger = businessLedgerEntries(r1.save.economyLedger).filter(
+    (e) => e.category === "business-staff-salary",
+  );
+  assert(
+    staffLedger.length === 1 && staffLedger[0]!.amount === -r1.payrollPaid,
+    "I4: exactly one business-staff-salary ledger entry, matching the P&L exactly",
+  );
 
-  const multiStaff = saveAt({ credits: 100000, business: { ...DEFAULT_BUSINESS_STATE, calendar: { businessDay: 1 }, staff: { hiredRoles: ["prep-cook", "line-cook", "manager"] } } });
+  const multiStaff = saveAt({
+    credits: 100000,
+    business: {
+      ...DEFAULT_BUSINESS_STATE,
+      calendar: { businessDay: 1 },
+      staff: { hiredRoles: ["prep-cook", "line-cook", "manager"] },
+    },
+  });
   const r2 = endBusinessDayComposed(multiStaff);
-  const withoutManager = saveAt({ credits: 100000, business: { ...DEFAULT_BUSINESS_STATE, calendar: { businessDay: 1 }, staff: { hiredRoles: ["prep-cook", "line-cook"] } } });
+  const withoutManager = saveAt({
+    credits: 100000,
+    business: {
+      ...DEFAULT_BUSINESS_STATE,
+      calendar: { businessDay: 1 },
+      staff: { hiredRoles: ["prep-cook", "line-cook"] },
+    },
+  });
   const r2b = endBusinessDayComposed(withoutManager);
-  assert(r2.payrollPaid < r2b.payrollPaid + 6000, "I5: adding a Manager (who discounts the rest of payroll) does not simply add its own full wage on top with no discount applied");
+  assert(
+    r2.payrollPaid < r2b.payrollPaid + 6000,
+    "I5: adding a Manager (who discounts the rest of payroll) does not simply add its own full wage on top with no discount applied",
+  );
 
-  const insufficientCash = saveAt({ credits: 50, business: { ...DEFAULT_BUSINESS_STATE, calendar: { businessDay: 1 }, staff: { hiredRoles: ["prep-cook", "line-cook", "head-chef", "server", "cleaner", "manager"] } } });
+  const insufficientCash = saveAt({
+    credits: 50,
+    business: {
+      ...DEFAULT_BUSINESS_STATE,
+      calendar: { businessDay: 1 },
+      staff: {
+        hiredRoles: ["prep-cook", "line-cook", "head-chef", "server", "cleaner", "manager"],
+      },
+    },
+  });
   const r3 = endBusinessDayComposed(insufficientCash);
-  assert(r3.payrollPaid === 0 && r3.staffLaidOff.length === 6 && r3.save.credits === 50, "I6: insufficient cash lays off the whole staff rather than partial pay or going negative");
-  assert(r3.dailyPnL.staffCost === 0, "I7: the P&L reflects the ACTUAL charged payroll (0), never the theoretical one");
+  assert(
+    r3.payrollPaid === 0 && r3.staffLaidOff.length === 6 && r3.save.credits === 50,
+    "I6: insufficient cash lays off the whole staff rather than partial pay or going negative",
+  );
+  assert(
+    r3.dailyPnL.staffCost === 0,
+    "I7: the P&L reflects the ACTUAL charged payroll (0), never the theoretical one",
+  );
 }
 
 // ===== J: supplier costs — cancellation fee reduces cash and appears as a P&L operating expense, never as revenue. =====
 {
-  let save = saveAt({ credits: 100000, business: { ...DEFAULT_BUSINESS_STATE, calendar: { businessDay: 1 } } });
+  let save = saveAt({
+    credits: 100000,
+    business: { ...DEFAULT_BUSINESS_STATE, calendar: { businessDay: 1 } },
+  });
   const signed = signContract(save, "wholesale-supplier");
   assert(signed.ok, "J: precondition — contract signs successfully");
   if (signed.ok) save = signed.save;
   const cancelled = cancelContractComposed(save);
   assert(cancelled.ok, "J2: precondition — cancellation succeeds");
   if (cancelled.ok) {
-    const supplierLedger = businessLedgerEntries(cancelled.save.economyLedger).filter((e) => e.category === "supplier-contract-cancellation");
-    assert(supplierLedger.length === 1 && supplierLedger[0]!.amount < 0, "J3: exactly one supplier-contract-cancellation ledger entry, negative (an expense)");
-    assert(cancelled.save.business.finance.dailyAccumulator.supplierCost === -supplierLedger[0]!.amount, "J4: the daily accumulator's supplierCost matches the ledger exactly");
+    const supplierLedger = businessLedgerEntries(cancelled.save.economyLedger).filter(
+      (e) => e.category === "supplier-contract-cancellation",
+    );
+    assert(
+      supplierLedger.length === 1 && supplierLedger[0]!.amount < 0,
+      "J3: exactly one supplier-contract-cancellation ledger entry, negative (an expense)",
+    );
+    assert(
+      cancelled.save.business.finance.dailyAccumulator.supplierCost === -supplierLedger[0]!.amount,
+      "J4: the daily accumulator's supplierCost matches the ledger exactly",
+    );
     const summary = lifetimeSummary(cancelled.save);
-    assert(summary.cumulativeRevenue === 0, "J5: a supplier cancellation fee is never counted as revenue");
+    assert(
+      summary.cumulativeRevenue === 0,
+      "J5: a supplier cancellation fee is never counted as revenue",
+    );
   }
 }
 
 // ===== K: refrigerator maintenance — operating expense, never food COGS. =====
 {
-  const save = saveAt({ credits: 100000, business: { ...DEFAULT_BUSINESS_STATE, calendar: { businessDay: 1 }, equipmentCondition: { refrigeratorCondition: 20 } } });
+  const save = saveAt({
+    credits: 100000,
+    business: {
+      ...DEFAULT_BUSINESS_STATE,
+      calendar: { businessDay: 1 },
+      equipmentCondition: { refrigeratorCondition: 20 },
+    },
+  });
   const result = performMaintenanceComposed(save);
   assert(result.ok, "K: precondition — maintenance succeeds when condition is degraded");
   if (result.ok) {
-    assert(result.save.business.finance.dailyAccumulator.maintenanceCost === result.cost, "K2: maintenance cost is recorded in the accumulator, matching the actual charged cost");
-    assert(result.save.business.finance.dailyAccumulator.cogs === 0, "K3: maintenance is never classified as food COGS");
-    const maintLedger = businessLedgerEntries(result.save.economyLedger).filter((e) => e.category === "refrigerator-maintenance");
-    assert(maintLedger.length === 1 && maintLedger[0]!.amount === -result.cost, "K4: exactly one refrigerator-maintenance ledger entry matching the actual cost");
+    assert(
+      result.save.business.finance.dailyAccumulator.maintenanceCost === result.cost,
+      "K2: maintenance cost is recorded in the accumulator, matching the actual charged cost",
+    );
+    assert(
+      result.save.business.finance.dailyAccumulator.cogs === 0,
+      "K3: maintenance is never classified as food COGS",
+    );
+    const maintLedger = businessLedgerEntries(result.save.economyLedger).filter(
+      (e) => e.category === "refrigerator-maintenance",
+    );
+    assert(
+      maintLedger.length === 1 && maintLedger[0]!.amount === -result.cost,
+      "K4: exactly one refrigerator-maintenance ledger entry matching the actual cost",
+    );
   }
 }
 
 // ===== L: refrigerator investment — capital expenditure, separated from ordinary operating expense and from food COGS. =====
 {
   const startingCash = 500000;
-  const save = saveAt({ credits: startingCash, business: { ...DEFAULT_BUSINESS_STATE, calendar: { businessDay: 1 } } });
+  const save = saveAt({
+    credits: startingCash,
+    business: { ...DEFAULT_BUSINESS_STATE, calendar: { businessDay: 1 } },
+  });
   const result = purchaseRefrigeratorComposed(save, "commercial-refrigerator");
   assert(result.ok, "L: precondition — the upgrade succeeds");
   if (result.ok) {
-    assert(result.save.business.finance.dailyAccumulator.capitalExpenditure === result.price, "L2: the purchase is recorded as capital expenditure, matching the actual price");
-    assert(result.save.business.finance.dailyAccumulator.maintenanceCost === 0, "L3: a capital purchase is never classified as an ordinary operating expense");
+    assert(
+      result.save.business.finance.dailyAccumulator.capitalExpenditure === result.price,
+      "L2: the purchase is recorded as capital expenditure, matching the actual price",
+    );
+    assert(
+      result.save.business.finance.dailyAccumulator.maintenanceCost === 0,
+      "L3: a capital purchase is never classified as an ordinary operating expense",
+    );
     assert(result.save.business.finance.dailyAccumulator.cogs === 0, "L4: ...nor as food COGS");
     // No payroll/fine settlement in this isolated test, so cashBeforeSettlement === the post-purchase closingCash.
-    const pnl = computeDailyPnL({ cashBeforeSettlement: result.save.credits, closingCash: result.save.credits, accumulator: result.save.business.finance.dailyAccumulator, staffCost: 0, inspectionFines: 0, spoilageValue: 0 });
-    assert(pnl.openingCash === startingCash, `L5: the reconstructed true opening cash matches what the day actually started with (got ${pnl.openingCash}, expected ${startingCash})`);
-    assert(pnl.operatingProfit === 0, "L6: capital expenditure never reduces Operating Profit — it's excluded from that P&L line entirely");
-    assert(pnl.netCashChange === -result.price, "L7: capital expenditure DOES reduce the Cash Flow view's Net Cash Change");
+    const pnl = computeDailyPnL({
+      cashBeforeSettlement: result.save.credits,
+      closingCash: result.save.credits,
+      accumulator: result.save.business.finance.dailyAccumulator,
+      staffCost: 0,
+      inspectionFines: 0,
+      spoilageValue: 0,
+    });
+    assert(
+      pnl.openingCash === startingCash,
+      `L5: the reconstructed true opening cash matches what the day actually started with (got ${pnl.openingCash}, expected ${startingCash})`,
+    );
+    assert(
+      pnl.operatingProfit === 0,
+      "L6: capital expenditure never reduces Operating Profit — it's excluded from that P&L line entirely",
+    );
+    assert(
+      pnl.netCashChange === -result.price,
+      "L7: capital expenditure DOES reduce the Cash Flow view's Net Cash Change",
+    );
   }
 }
 
 // ===== M: inspection fines — PASS = no fine, FAIL/repeated-WARNING = the actual configured fine, insufficient cash = existing all-or-nothing behavior, P&L uses the ACTUAL charged fine. =====
 {
-  const healthy = saveAt({ credits: 100000, business: { ...DEFAULT_BUSINESS_STATE, calendar: { businessDay: 1 }, inventory: fullSaladInventory(1) } });
+  const healthy = saveAt({
+    credits: 100000,
+    business: {
+      ...DEFAULT_BUSINESS_STATE,
+      calendar: { businessDay: 1 },
+      inventory: fullSaladInventory(1),
+    },
+  });
   const rHealthy = endBusinessDayComposed(healthy);
-  assert(rHealthy.inspectionFine.finePaid === 0, `M: a healthy business (PASS) is charged zero inspection fine (got ${rHealthy.inspectionFine.finePaid})`);
+  assert(
+    rHealthy.inspectionFine.finePaid === 0,
+    `M: a healthy business (PASS) is charged zero inspection fine (got ${rHealthy.inspectionFine.finePaid})`,
+  );
   assert(rHealthy.dailyPnL.inspectionFines === 0, "M2: the P&L reflects that zero fine");
 
-  const brokenFridge = saveAt({ credits: 100000, business: { ...DEFAULT_BUSINESS_STATE, calendar: { businessDay: 1 }, equipmentCondition: { refrigeratorCondition: 0 } } });
+  const brokenFridge = saveAt({
+    credits: 100000,
+    business: {
+      ...DEFAULT_BUSINESS_STATE,
+      calendar: { businessDay: 1 },
+      equipmentCondition: { refrigeratorCondition: 0 },
+    },
+  });
   const rFail = endBusinessDayComposed(brokenFridge);
   if (rFail.inspectionFine.finePaid > 0) {
-    assert(rFail.dailyPnL.inspectionFines === rFail.inspectionFine.finePaid, "M3: the P&L's inspectionFines line matches the ACTUAL charged fine exactly (never the theoretical fineAmount when funds were short)");
-    const fineLedger = businessLedgerEntries(rFail.save.economyLedger).filter((e) => e.category === "inspection-fine");
-    assert(fineLedger.length === (rFail.inspectionFine.finePaid > 0 ? 1 : 0), "M4: the fine ledger entry count matches whether a real fine was actually paid");
+    assert(
+      rFail.dailyPnL.inspectionFines === rFail.inspectionFine.finePaid,
+      "M3: the P&L's inspectionFines line matches the ACTUAL charged fine exactly (never the theoretical fineAmount when funds were short)",
+    );
+    const fineLedger = businessLedgerEntries(rFail.save.economyLedger).filter(
+      (e) => e.category === "inspection-fine",
+    );
+    assert(
+      fineLedger.length === (rFail.inspectionFine.finePaid > 0 ? 1 : 0),
+      "M4: the fine ledger entry count matches whether a real fine was actually paid",
+    );
   } else {
-    console.log("    (M3/M4 skipped this run — a degraded refrigerator alone did not trigger a FAIL/repeated-WARNING this time; PASS/WARNING-only days assert zero fine above)");
+    console.log(
+      "    (M3/M4 skipped this run — a degraded refrigerator alone did not trigger a FAIL/repeated-WARNING this time; PASS/WARNING-only days assert zero fine above)",
+    );
   }
 }
 
 // ===== N: ledger reconciliation — Opening Cash + Signed Business Ledger Cash Flow = Closing Cash, across a real mixed sequence of Business actions. =====
 {
-  let save = saveAt({ credits: 100000, business: { ...DEFAULT_BUSINESS_STATE, calendar: { businessDay: 1 }, staff: { hiredRoles: ["prep-cook"] } } });
+  let save = saveAt({
+    credits: 100000,
+    business: {
+      ...DEFAULT_BUSINESS_STATE,
+      calendar: { businessDay: 1 },
+      staff: { hiredRoles: ["prep-cook"] },
+    },
+  });
   const openingCash = save.credits;
   const p1 = purchaseIngredientComposed(save, "tomato", 10);
   assert(p1.ok, "N: precondition — ingredient purchase succeeds");
@@ -342,38 +635,72 @@ function sessionReadyFor(recipeId: string): ServiceSession {
   if (p3.ok) save = p3.save;
   const session = sessionReadyFor(SALAD_RECIPE_ID);
   const served = serveBusinessOrder(session, save, Math.random)!;
-  save = appendLedgerEntry(served.save, "business-revenue", served.amountCharged, served.dish.id);
+  save = served.save; /* the sweep already wrote the entry (economy/pendingCash.ts) */
   const dayResult = endBusinessDayComposed(save);
   save = dayResult.save;
   const totals = ledgerTotals(businessLedgerEntries(save.economyLedger));
-  assert(openingCash + totals.netCashFlow === save.credits, `N2: Opening Cash (${openingCash}) + Signed Business Ledger Cash Flow (${totals.netCashFlow}) === Closing Cash (${save.credits})`);
+  assert(
+    openingCash + totals.netCashFlow === save.credits,
+    `N2: Opening Cash (${openingCash}) + Signed Business Ledger Cash Flow (${totals.netCashFlow}) === Closing Cash (${save.credits})`,
+  );
 }
 
 // ===== O: wallet reconciliation — no wallet mutation exists without a corresponding ledger entry, and vice versa, across the same mixed sequence. =====
 {
-  let save = saveAt({ credits: 100000, business: { ...DEFAULT_BUSINESS_STATE, calendar: { businessDay: 1 }, inventory: fullSaladInventory(1) } });
+  let save = saveAt({
+    credits: 100000,
+    business: {
+      ...DEFAULT_BUSINESS_STATE,
+      calendar: { businessDay: 1 },
+      inventory: fullSaladInventory(1),
+    },
+  });
   const beforeLedgerLen = save.economyLedger.length;
   const session = sessionReadyFor(SALAD_RECIPE_ID);
   const served = serveBusinessOrder(session, save, Math.random)!;
   assert(served.save.credits !== save.credits, "O: precondition — the wallet actually changed");
-  const withLedger = appendLedgerEntry(served.save, "business-revenue", served.amountCharged, served.dish.id);
-  assert(withLedger.economyLedger.length === beforeLedgerLen + 1, "O2: exactly one new ledger entry accompanies the one real wallet mutation — never a mutation without a ledger entry, never a ledger entry without one");
+  const withLedger = served.save; /* the sweep already wrote the entry (economy/pendingCash.ts) */
+  assert(
+    withLedger.economyLedger.length === beforeLedgerLen + 1,
+    "O2: exactly one new ledger entry accompanies the one real wallet mutation — never a mutation without a ledger entry, never a ledger entry without one",
+  );
 }
 
 // ===== P: persistence — the daily accumulator and lifetime COGS survive a JSON round-trip exactly. =====
 {
-  const save = saveAt({ business: { ...DEFAULT_BUSINESS_STATE, finance: { dailyAccumulator: { ...DEFAULT_DAILY_ACCUMULATOR, revenue: 1234, cogs: 567 }, lifetimeCogs: 890, lastDailyPnL: null } } });
+  const save = saveAt({
+    business: {
+      ...DEFAULT_BUSINESS_STATE,
+      finance: {
+        dailyAccumulator: { ...DEFAULT_DAILY_ACCUMULATOR, revenue: 1234, cogs: 567 },
+        lifetimeCogs: 890,
+        lastDailyPnL: null,
+      },
+    },
+  });
   const roundTripped = JSON.parse(JSON.stringify(save)) as SaveData;
-  assert(roundTripped.business.finance.dailyAccumulator.revenue === 1234, "P: dailyAccumulator.revenue survives a JSON round-trip exactly");
+  assert(
+    roundTripped.business.finance.dailyAccumulator.revenue === 1234,
+    "P: dailyAccumulator.revenue survives a JSON round-trip exactly",
+  );
   assert(roundTripped.business.finance.lifetimeCogs === 890, "P2: lifetimeCogs survives exactly");
 }
 {
   // P3: lastDailyPnL itself (a full nested object) survives a round-trip.
-  const save = saveAt({ credits: 5000, business: { ...DEFAULT_BUSINESS_STATE, calendar: { businessDay: 1 } } });
+  const save = saveAt({
+    credits: 5000,
+    business: { ...DEFAULT_BUSINESS_STATE, calendar: { businessDay: 1 } },
+  });
   const result = endBusinessDayComposed(save);
   const roundTripped = JSON.parse(JSON.stringify(result.save)) as SaveData;
-  assert(roundTripped.business.finance.lastDailyPnL !== null, "P3: lastDailyPnL is persisted after ending a Business Day");
-  assert(roundTripped.business.finance.lastDailyPnL?.closingCash === result.dailyPnL.closingCash, "P4: ...and survives a JSON round-trip with the exact same closingCash");
+  assert(
+    roundTripped.business.finance.lastDailyPnL !== null,
+    "P3: lastDailyPnL is persisted after ending a Business Day",
+  );
+  assert(
+    roundTripped.business.finance.lastDailyPnL?.closingCash === result.dailyPnL.closingCash,
+    "P4: ...and survives a JSON round-trip with the exact same closingCash",
+  );
 }
 
 // ===== Q: migration — an old save with no `finance` field defaults cleanly to zero, never throws. =====
@@ -387,41 +714,100 @@ function sessionReadyFor(recipeId: string): ServiceSession {
       refrigerator: { refrigeratorId: "basic-refrigerator" },
     },
   } as unknown as Partial<SaveData>;
-  const migrated = { ...DEFAULT_SAVE, ...oldSave, business: { ...DEFAULT_SAVE.business, ...oldSave.business } } as SaveData;
-  assert(migrated.business.finance.dailyAccumulator.revenue === 0, "Q: a pre-Phase-15 save's finance state defaults cleanly to zero");
-  assert(migrated.business.finance.lastDailyPnL === null, "Q2: ...and lastDailyPnL defaults to null, never throws");
-  assert(migrated.business.calendar.businessDay === 8, "Q3: the OLD save's own real fields (calendar) survive migration untouched");
+  const migrated = {
+    ...DEFAULT_SAVE,
+    ...oldSave,
+    business: { ...DEFAULT_SAVE.business, ...oldSave.business },
+  } as SaveData;
+  assert(
+    migrated.business.finance.dailyAccumulator.revenue === 0,
+    "Q: a pre-Phase-15 save's finance state defaults cleanly to zero",
+  );
+  assert(
+    migrated.business.finance.lastDailyPnL === null,
+    "Q2: ...and lastDailyPnL defaults to null, never throws",
+  );
+  assert(
+    migrated.business.calendar.businessDay === 8,
+    "Q3: the OLD save's own real fields (calendar) survive migration untouched",
+  );
 }
 
 // ===== R: deterministic calculations — identical inputs produce identical P&L output; no Math.random() CALL anywhere in the new file. =====
 {
-  const accumulator = { revenue: 5000, cogs: 1500, inventoryPurchaseCost: 800, maintenanceCost: 100, supplierCost: 50, capitalExpenditure: 0 };
-  const p1 = computeDailyPnL({ cashBeforeSettlement: 13550, closingCash: 13350, accumulator, staffCost: 200, inspectionFines: 0, spoilageValue: 0 });
-  const p2 = computeDailyPnL({ cashBeforeSettlement: 13550, closingCash: 13350, accumulator, staffCost: 200, inspectionFines: 0, spoilageValue: 0 });
-  assert(JSON.stringify(p1) === JSON.stringify(p2), "R: computeDailyPnL is deterministic across repeated calls with the same inputs");
+  const accumulator = {
+    revenue: 5000,
+    cogs: 1500,
+    inventoryPurchaseCost: 800,
+    maintenanceCost: 100,
+    supplierCost: 50,
+    capitalExpenditure: 0,
+  };
+  const p1 = computeDailyPnL({
+    cashBeforeSettlement: 13550,
+    closingCash: 13350,
+    accumulator,
+    staffCost: 200,
+    inspectionFines: 0,
+    spoilageValue: 0,
+  });
+  const p2 = computeDailyPnL({
+    cashBeforeSettlement: 13550,
+    closingCash: 13350,
+    accumulator,
+    staffCost: 200,
+    inspectionFines: 0,
+    spoilageValue: 0,
+  });
+  assert(
+    JSON.stringify(p1) === JSON.stringify(p2),
+    "R: computeDailyPnL is deterministic across repeated calls with the same inputs",
+  );
   const fs = await import("node:fs");
   const path = await import("node:path");
-  const content = fs.readFileSync(path.join(import.meta.dirname, "..", "src", "game", "business", "BusinessFinanceManager.ts"), "utf8");
+  const content = fs.readFileSync(
+    path.join(import.meta.dirname, "..", "src", "game", "business", "BusinessFinanceManager.ts"),
+    "utf8",
+  );
   const hasCall = /Math\.random\(\)/.test(content);
   assert(!hasCall, "R2: no Math.random() CALL exists anywhere in BusinessFinanceManager.ts");
 }
 
 // ===== S: no duplicate revenue — a second serve attempt on an already-paid order records zero additional revenue. =====
 {
-  const save = saveAt({ credits: 1000, business: { ...DEFAULT_BUSINESS_STATE, calendar: { businessDay: 1 }, inventory: fullSaladInventory(1) } });
+  const save = saveAt({
+    credits: 1000,
+    business: {
+      ...DEFAULT_BUSINESS_STATE,
+      calendar: { businessDay: 1 },
+      inventory: fullSaladInventory(1),
+    },
+  });
   const session = sessionReadyFor(SALAD_RECIPE_ID);
   const first = serveBusinessOrder(session, save, Math.random)!;
   const second = serveBusinessOrder(first.session, first.save, Math.random);
-  assert(second === null, "S: a repeat serve attempt on an already-paid order is refused — zero additional revenue can ever be recorded for it");
+  assert(
+    second === null,
+    "S: a repeat serve attempt on an already-paid order is refused — zero additional revenue can ever be recorded for it",
+  );
 }
 
 // ===== T: no duplicate expenses — a failed (insufficient-funds) purchase/maintenance/cancellation records nothing in the accumulator. =====
 {
-  const poor = saveAt({ credits: 0, business: { ...DEFAULT_BUSINESS_STATE, calendar: { businessDay: 1 } } });
+  const poor = saveAt({
+    credits: 0,
+    business: { ...DEFAULT_BUSINESS_STATE, calendar: { businessDay: 1 } },
+  });
   const failedFridge = purchaseRefrigeratorComposed(poor, "commercial-refrigerator");
   assert(!failedFridge.ok, "T: precondition — the purchase is refused for insufficient funds");
-  assert(poor.business.finance.dailyAccumulator.capitalExpenditure === 0, "T2: a refused purchase records zero capital expenditure — never a phantom expense");
-  const failedMaint = performMaintenanceComposed({ ...poor, business: { ...poor.business, equipmentCondition: { refrigeratorCondition: 0 } } });
+  assert(
+    poor.business.finance.dailyAccumulator.capitalExpenditure === 0,
+    "T2: a refused purchase records zero capital expenditure — never a phantom expense",
+  );
+  const failedMaint = performMaintenanceComposed({
+    ...poor,
+    business: { ...poor.business, equipmentCondition: { refrigeratorCondition: 0 } },
+  });
   assert(!failedMaint.ok, "T3: precondition — maintenance is refused for insufficient funds");
 }
 
@@ -430,21 +816,39 @@ function sessionReadyFor(recipeId: string): ServiceSession {
   const save = saveAt({
     credits: 100000,
     levelProgress: { ...DEFAULT_LEVEL_PROGRESS, highestUnlockedLevelId: "level-90" },
-    business: { ...DEFAULT_BUSINESS_STATE, calendar: { businessDay: 1 }, inventory: fullSaladInventory(1) },
+    business: {
+      ...DEFAULT_BUSINESS_STATE,
+      calendar: { businessDay: 1 },
+      inventory: fullSaladInventory(1),
+    },
   });
   const session = sessionReadyFor(SALAD_RECIPE_ID);
   const served = serveBusinessOrder(session, save, Math.random)!;
-  const withLedger = appendLedgerEntry(served.save, "business-revenue", served.amountCharged, served.dish.id);
+  const withLedger = served.save; /* the sweep already wrote the entry (economy/pendingCash.ts) */
   const dayResult = endBusinessDayComposed(withLedger);
-  assert(JSON.stringify(dayResult.save.levelProgress) === JSON.stringify(save.levelProgress), "U: levelProgress is byte-identical before/after a full Business Mode day");
-  const campaignLedgerEntries = dayResult.save.economyLedger.filter((e) => e.category === "campaign-settlement" || e.category === "service-revenue" || e.category === "completion-reward");
-  assert(campaignLedgerEntries.length === 0, "U2: zero Campaign-category ledger entries were ever created by pure Business Mode activity");
+  assert(
+    JSON.stringify(dayResult.save.levelProgress) === JSON.stringify(save.levelProgress),
+    "U: levelProgress is byte-identical before/after a full Business Mode day",
+  );
+  const campaignLedgerEntries = dayResult.save.economyLedger.filter(
+    (e) =>
+      e.category === "campaign-settlement" ||
+      e.category === "service-revenue" ||
+      e.category === "completion-reward",
+  );
+  assert(
+    campaignLedgerEntries.length === 0,
+    "U2: zero Campaign-category ledger entries were ever created by pure Business Mode activity",
+  );
 }
 
 // ===== V: combined-day reconciliation — an ingredient purchase AND a served order on the SAME Business Day must produce a Daily P&L whose reconstructed Opening Cash matches what the day actually started with, and whose Net Cash Change matches the real credits delta exactly. Directly reproduces the exact scenario that caught a real bug during this checkpoint's own live browser verification (Net Cash Change silently showing $0.00 for a day that actually moved $0.93 in real cash, because "opening cash" was read post-trading instead of reconstructed pre-trading). =====
 {
   const startingCash = 300000;
-  let save = saveAt({ credits: startingCash, business: { ...DEFAULT_BUSINESS_STATE, calendar: { businessDay: 1 } } });
+  let save = saveAt({
+    credits: startingCash,
+    business: { ...DEFAULT_BUSINESS_STATE, calendar: { businessDay: 1 } },
+  });
   const p1 = purchaseIngredientComposed(save, "tomato", 5);
   assert(p1.ok, "V: precondition — the ingredient purchase succeeds");
   if (p1.ok) save = p1.save;
@@ -454,11 +858,20 @@ function sessionReadyFor(recipeId: string): ServiceSession {
   if (p3.ok) save = p3.save;
   const session = sessionReadyFor(SALAD_RECIPE_ID);
   const served = serveBusinessOrder(session, save, Math.random)!;
-  save = appendLedgerEntry(served.save, "business-revenue", served.amountCharged, served.dish.id);
+  save = served.save; /* the sweep already wrote the entry (economy/pendingCash.ts) */
   const dayResult = endBusinessDayComposed(save);
-  assert(dayResult.dailyPnL.openingCash === startingCash, `V2: the Daily P&L's reconstructed Opening Cash matches what the day actually started with (got ${dayResult.dailyPnL.openingCash}, expected ${startingCash})`);
-  assert(dayResult.dailyPnL.netCashChange === dayResult.save.credits - startingCash, `V3: Net Cash Change matches the REAL credits delta for the whole day exactly (got ${dayResult.dailyPnL.netCashChange}, expected ${dayResult.save.credits - startingCash})`);
-  assert(dayResult.dailyPnL.netCashChange !== 0, "V4: a day with real revenue and real purchases never reports a misleadingly-zero Net Cash Change");
+  assert(
+    dayResult.dailyPnL.openingCash === startingCash,
+    `V2: the Daily P&L's reconstructed Opening Cash matches what the day actually started with (got ${dayResult.dailyPnL.openingCash}, expected ${startingCash})`,
+  );
+  assert(
+    dayResult.dailyPnL.netCashChange === dayResult.save.credits - startingCash,
+    `V3: Net Cash Change matches the REAL credits delta for the whole day exactly (got ${dayResult.dailyPnL.netCashChange}, expected ${dayResult.save.credits - startingCash})`,
+  );
+  assert(
+    dayResult.dailyPnL.netCashChange !== 0,
+    "V4: a day with real revenue and real purchases never reports a misleadingly-zero Net Cash Change",
+  );
 }
 
 console.log(failures === 0 ? "\nALL PASS" : `\n${failures} FAILURE(S)`);

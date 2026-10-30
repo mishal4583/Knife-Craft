@@ -116,7 +116,6 @@ import {
   choresAfterClose,
   choresAfterService,
   cleanlinessOf,
-  giveGrandmasCupboard,
   snapshotServiceStart,
   taskNeeds,
   tasksAfterService,
@@ -139,8 +138,6 @@ import { coverWithCredit } from "../src/game/restaurant/serviceCover.ts";
 import { repayFromEarnings, supplierCreditOf } from "../src/game/restaurant/supplierCredit.ts";
 import { HALF_WAGES_FROM, halfPay } from "../src/game/restaurant/staffRequirements.ts";
 import { levelOrderEarnings } from "../src/game/levels/levelEarnings.ts";
-import { giveGrandmasLeftovers } from "../src/game/restaurant/grandmasFridge.ts";
-import { giveGrandmasTools } from "../src/game/restaurant/kitchenTools.ts";
 import { tabOpensAt } from "../src/game/restaurant/firstLevels.ts";
 /** The Market sells ingredients from the level its tab opens (L3 since the 150-level campaign). */
 const MARKET_OPENS = tabOpensAt("shop") ?? 1;
@@ -343,12 +340,7 @@ function playLevel(save: SaveData, n: number, opts: SimOptions, stats: Stats): S
     stats.closings++;
   }
   if (profile === "broke") s = drain(s);
-  // As App: Grandma's leftovers arrive once Level 3 is done (grandmasFridge.ts).
-  s = giveGrandmasLeftovers(s);
-  // As App: Grandma's old tools once the Market opens (kitchenTools.ts).
-  s = giveGrandmasTools(s, restaurantLevelOf(s.levelProgress));
-  // As App: Grandma's cleaning cupboard once Cleanliness opens (cleanliness.ts).
-  s = giveGrandmasCupboard(s, restaurantLevelOf(s.levelProgress));
+  // Nothing is given (developer 2026-10-30): tools and supplies are bought like everything else.
   let plan = servicePlanFor(s, level);
   if (!plan) {
     stats.blocked.push(`${where}: no plan`);
@@ -414,12 +406,7 @@ function playLevel(save: SaveData, n: number, opts: SimOptions, stats: Stats): S
     if (d.ok) s = d.save;
     replan();
   }
-  if (
-    plan.check.applies &&
-    !plan.check.ready &&
-    profile === "diligent" &&
-    n >= MARKET_OPENS
-  ) {
+  if (plan.check.applies && !plan.check.ready && profile === "diligent" && n >= MARKET_OPENS) {
     for (const row of plan.check.missingRows) {
       let bought = buyIngredient(s, row.ingredientId, row.buyUnits);
       if (!bought.ok && bought.reason === "insufficientStorage") {
@@ -554,12 +541,6 @@ function playLevel(save: SaveData, n: number, opts: SimOptions, stats: Stats): S
 
   // Serve the level's own orders.
   for (const recipe of plan.tickets) {
-    // As App.serveCampaignOrder: a practice level (`campaignNoEconomy`, Level 2) is served
-    // like a replay — no stock, no supplies, no pay and no paid-order record.
-    if (level.campaignNoEconomy) {
-      stats.ordersServed++;
-      continue;
-    }
     const idx = paidOrdersFor(s.levelProgress, level.id).length;
     const stock = consumeCampaignOrderStock(s, n, recipe, true);
     if (!stock.ok) {

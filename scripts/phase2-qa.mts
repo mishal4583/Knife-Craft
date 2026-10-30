@@ -232,6 +232,23 @@ assert(
       DEBRIS.FILM_ROWS >= 4,
     "A15d: the film covers the whole board in patches",
   );
+  // Developer 2026-10-29: crumbs dragged by the cloth stay on the board face, where the cloth can
+  // still reach them (they used to be pushed off the edge and the board never finished).
+  resetDebrisForTests();
+  for (let i = 0; i < 20; i++) addDebris("tomato", "Vegetable", (i % 10) / 10, 1, 0.5);
+  startWipe();
+  for (let k = 0; k < 60; k++) wipeDebris(0.5, 0.5, 1.4, 0.5);
+  for (let k = 0; k < 60; k++) wipeDebris(0.5, 0.5, -0.4, 0.5);
+  const offBoard = boardDebris().filter((p) => {
+    const u = p.u + p.smearU;
+    const v = p.v + p.smearV;
+    return u < 0.03 || u > 0.97 || v < 0.03 || v > 0.97;
+  });
+  assert(
+    offBoard.length === 0,
+    "A15e: a piece dragged by the cloth never rests off the board edge",
+    offBoard.length,
+  );
   resetDebrisForTests();
   addDebris("tomato", "Vegetable", 0.5, 4, 0.5);
   wipeDebris(0.2, 0.5, 0.25, 0.5);
@@ -423,7 +440,7 @@ assert(
 const vacuumCode = code("src/components/kc/game/CashVacuum.tsx") + code("src/game/cashBurst.ts");
 assert(
   !/persist\(|appendLedgerEntry|credits\s*[+-]=|SaveData|localStorage/.test(vacuumCode),
-  "B5: the cash never credits, records or saves anything (the payment is already in the wallet)",
+  "B5: the cash tray itself never credits, records or saves anything — it reports each swept piece to App (economy/pendingCash.ts pays it)",
 );
 assert(
   /if \(collected\.current\[i\]\) return;\s*collected\.current\[i\] = true;/.test(
@@ -432,9 +449,9 @@ assert(
   "B6: each piece can be collected once — every path (swipe, auto) goes through one guarded collect",
 );
 assert(
-  /useRolledNumber\(credits - remaining, reduced\)/.test(soc) &&
+  /useRolledNumber\(credits, reduced\)/.test(soc) &&
     /<CurrencyPill amount=\{shownCredits\} \/>/.test(soc),
-  "B7: the wallet shows the real balance minus the cash still on the counter (lands on it exactly)",
+  "B7: the wallet shows the real balance (money enters it only as the player sweeps it up; developer 2026-10-29)",
 );
 assert(
   /if \(serveLatch\.current\) return;\s*serveLatch\.current = true;/.test(soc),
@@ -451,11 +468,10 @@ assert(
 // The toggle (and its state) moved from the tray to the serve card's wallet row
 // so the card fits 320×568; the tray is told by an `auto` prop.
 assert(
-  /let autoCollect = false;/.test(read("src/game/cashBurst.ts")) &&
-    /useState\(\(\) => reduced \|\| autoCollectOn\(\)\)/.test(soc) &&
-    /auto=\{auto\}/.test(soc) &&
-    /auto: boolean;/.test(vac),
-  "B10: auto-collect is a session option (no save field), always on with Reduced Motion",
+  !/autoCollect|setAutoCollect|AUTO_STEP_MS|AUTO_DELAY_MS/.test(
+    read("src/game/cashBurst.ts") + read("src/components/kc/game/CashVacuum.tsx") + soc,
+  ),
+  "B10: there is no auto-collect and no collect-all: the money enters the wallet only as the player sweeps it up (developer 2026-10-29)",
 );
 assert(
   CASH.HIT_RADIUS_PX >= 24,
@@ -522,7 +538,6 @@ let settlements = 0;
 let tips = 0;
 let rewards = 0;
 for (const level of LEVELS) {
-  if (level.campaignNoEconomy) continue;
   rewards += paidLevelReward(level);
   rollServiceTickets(level).forEach((recipe, idx) => {
     const pay = restaurantSettlement(
@@ -567,12 +582,13 @@ for (const fn of ["function serveCampaignOrder(", "function serveBatchGroupViewe
   const guarded = b.indexOf("if (base && !isReplay) {");
   assert(
     guarded > 0 &&
-      b.indexOf("tip = tipFor(") > guarded &&
-      /credits: base\.credits \+ result\.coinsAwarded \+ tip,/.test(b) &&
-      /"campaign-settlement",\s*result\.coinsAwarded,/.test(b) &&
-      /"customer-tip",\s*tip,/.test(b) &&
-      /persist\(applySharpnessDecay\(withTip,/.test(b),
-    `C10: ${fn.replace("function ", "").replace("(", "")}: the tip is computed only on a first payment and credited in the SAME save as the order pay, as its own entry — the settlement entry is unchanged`,
+      b.indexOf("tip = tipAfterHygiene(") > guarded &&
+      /withPendingCash\(\s*\{[\s\S]*?levelProgress: withPaidOrder\([\s\S]*?amount: result\.coinsAwarded,\s*tip,\s*category: "campaign-settlement"/.test(
+        b,
+      ) &&
+      /persist\(applySharpnessDecay\(servedSave,/.test(b) &&
+      /isTip \? "customer-tip"/.test(read("src/game/economy/pendingCash.ts")),
+    `C10: ${fn.replace("function ", "").replace("(", "")}: the tip is computed only on a first payment and left on the table in the SAME save that marks the order paid; it enters the wallet as its own "customer-tip" entry when swept`,
   );
 }
 assert(
@@ -617,9 +633,10 @@ const headApp = execSync(`git show ${PHASE_BASE}:src/App.tsx`, {
 });
 const headWrites = (headApp.match(/appendLedgerEntry\(/g) ?? []).length;
 assert(
-  ledgerWrites === headWrites + 2 &&
-    (code("src/App.tsx").match(/"customer-tip"/g) ?? []).length === 2,
-  "D2: the only new money paths are the two approved tip entries (one per first-payment path)",
+  ledgerWrites <= headWrites &&
+    (code("src/App.tsx").match(/"customer-tip"/g) ?? []).length === 0 &&
+    (code("src/game/economy/pendingCash.ts").match(/"customer-tip"/g) ?? []).length === 1,
+  'D2: the only tip money path is the one "customer-tip" entry written by economy/pendingCash.ts (App has no direct tip write)',
   { before: headWrites, now: ledgerWrites },
 );
 

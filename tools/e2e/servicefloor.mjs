@@ -11,6 +11,7 @@
 //   F8 no console errors.
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import {
+  sweepCash,
   launch,
   boot,
   seedSave,
@@ -195,6 +196,8 @@ await shot(page, "servicefloor-3-served");
 await sleep(1200);
 await clickButton(page, /^Serve to /); // a second Serve, if any button is left
 await sleep(500);
+// The cash lies on the table: the player sweeps it into the wallet (it enters only then).
+await sweepCash(page);
 const after = await readSave(page);
 check(
   "F3 Serve pays once (one settlement entry); the plate reaches the table; the face shows; a second Serve adds nothing",
@@ -220,8 +223,10 @@ await sleep(700);
 const guestArrive = await floor();
 await shot(page, "servicefloor-4-next-arrives");
 check(
-  "F4 the menu guest walks in while the previous customer walks out from the other seat",
-  guestArrive?.mode === "arrive" && guestArrive.leaving && guestArrive.seat !== firstSeat,
+  "F4 the menu guest arrives (joining the seated party, or walking in as the previous party leaves from the other seat)",
+  // Since parties (v1.5) a guest may take a free place at the seated party's table (nobody leaves);
+  // when a party does leave it walks out from the other seat.
+  guestArrive?.mode === "arrive" && (!guestArrive.leaving || guestArrive.seat !== firstSeat),
   { firstSeat, guestArrive },
 );
 
@@ -232,6 +237,7 @@ await clickButton(page, /^Continue$/);
 await sleep(900);
 await clickButton(page, /^Serve to /);
 await sleep(2500);
+await sweepCash(page);
 const g1 = await readSave(page);
 await clickButton(page, /^Finish Level$/);
 await sleep(2000);
@@ -239,7 +245,8 @@ const done = await readSave(page);
 check(
   "F6 the guest pays once (business revenue); Finish Level completes Level 12 normally",
   ledgerCount(g1, "business-revenue") === ledgerCount(g0, "business-revenue") + 1 &&
-    done.levelProgress.completedLevelIds.includes("level-12") &&
+    // The seeded (older-numbering) Level 12 is level-10 of the 148-level campaign.
+    done.levelProgress.completedLevelIds.includes("level-10") &&
     !(await page.evaluate(() => !!document.querySelector('[data-testid="service-floor"]'))),
   {
     revenue: [ledgerCount(g0, "business-revenue"), ledgerCount(g1, "business-revenue")],

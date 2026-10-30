@@ -57,7 +57,7 @@ import {
   createBusinessServiceSession,
   advanceBusinessServiceSession,
   recordBusinessServiceComponents,
-  serveBusinessOrder,
+  serveBusinessOrder as serveBusinessOrderRaw,
   businessOrderAvailability,
   businessCustomersToday,
 } from "../src/game/business/BusinessServiceManager.ts";
@@ -91,6 +91,17 @@ import {
   isDishActive,
 } from "../src/game/business/businessMenuActivation.ts";
 import { inspectBusiness } from "../src/game/business/businessInspection.ts";
+
+import { settlePendingCash } from "../src/game/economy/pendingCash.ts";
+/**
+ * A serve leaves the payment on the table; the player sweeps it into the wallet (economy/pendingCash.ts,
+ * developer 2026-10-29). This QA models that sweep right after the serve, so the wallet and the ledger
+ * are read as they are once the money is in the till.
+ */
+const serveBusinessOrder: typeof serveBusinessOrderRaw = (...args) => {
+  const r = serveBusinessOrderRaw(...args);
+  return r ? { ...r, save: settlePendingCash(r.save) } : r;
+};
 
 let failures = 0;
 // Economy V3 Phase 16 (WTP, intentional rule change): a Business customer pays menu price ×
@@ -275,30 +286,40 @@ function stripComments(src: string): string {
   const expected = [
     "BusinessDayManager.ts",
     "BusinessInventoryManager.ts",
-    "BusinessServiceManager.ts",
     "BusinessSupplierManager.ts",
     "RefrigeratorManager.ts",
     "businessMaintenance.ts",
   ].sort();
   assert(
     JSON.stringify(mutators) === JSON.stringify(expected),
-    `F: Business wallet mutations live in exactly the 6 known managers (${mutators.join(", ")})`,
+    `F: Business wallet mutations live in exactly the 5 known managers (${mutators.join(", ")}); a Business serve's cash moves only through economy/pendingCash.ts`,
   );
-  const app = stripComments(fs.readFileSync(path.join(root, "src", "App.tsx"), "utf8"));
+  const app = stripComments(
+    fs.readFileSync(path.join(root, "src", "App.tsx"), "utf8").replace(/\r\n/g, "\n"),
+  );
   // Unified Restaurant (phase D): restaurant revenue has exactly TWO known
   // writers — the Business serve and the menu guest (serveMenuGuestOrder,
   // behind RESTAURANT_MODE) — each one site; checked precisely here.
   {
     const n = (app.match(/"business-revenue"/g) ?? []).length;
+    // Developer 2026-10-29: revenue is left on the table (withPendingCash) and enters the wallet when
+    // swept (pendingCash.ts, ONE entry per order). The Business serve leaves it inside serveBusinessOrder.
+    const manager = stripComments(
+      fs.readFileSync(
+        path.join(root, "src", "game", "business", "BusinessServiceManager.ts"),
+        "utf8",
+      ),
+    );
     const business =
-      /appendLedgerEntry\(result\.save, "business-revenue", result\.amountCharged, result\.dish\.id\)/.test(
-        app,
+      (manager.match(/withPendingCash\([^)]*?category: "business-revenue"/gs) ?? []).length === 1 &&
+      !/withPendingCash\([^)]*"business-revenue"/.test(
+        /function serveActiveBusinessOrder\([\s\S]*?\n  \}\n/.exec(app)?.[0] ?? "",
       );
     const guestFn = /function serveMenuGuestOrder\([\s\S]*?\n  \}\n/.exec(app)?.[0] ?? "";
     const guest = (guestFn.match(/"business-revenue"/g) ?? []).length === 1;
     assert(
-      n === 2 && business && guest,
-      `F2: App.tsx writes "business-revenue" at exactly its two known sites: the Business serve and the menu guest (found ${n})`,
+      n === 1 && business && guest,
+      `F2: "business-revenue" is left on the table at exactly its two known sites: the Business serve (inside serveBusinessOrder) and the menu guest in App (found ${n} in App)`,
     );
   }
   for (const cat of [
@@ -489,7 +510,7 @@ const FOCUS_MENU = [
       "H14: an on-menu dish's CURRENT menu price is what the customer payment is built from (1234c × popularity modifier)",
     );
     if (served) {
-      s = appendLedgerEntry(served.save, "business-revenue", served.amountCharged, served.dish.id);
+      s = served.save; /* the sweep already wrote the entry (economy/pendingCash.ts) */
       assert(
         s.economyLedger.filter((e) => e.category === "business-revenue").length === 1 &&
           s.business.finance.dailyAccumulator.revenue === customerPaysAt50(1234) &&
@@ -827,12 +848,7 @@ function simulate(p: Profile, days: number) {
       const ready = recordBusinessServiceComponents(session, 80);
       const result = serveBusinessOrder(ready, save, rand);
       if (!result) break;
-      save = appendLedgerEntry(
-        result.save,
-        "business-revenue",
-        result.amountCharged,
-        result.dish.id,
-      );
+      save = result.save; /* the sweep already wrote the entry (economy/pendingCash.ts) */
       servedToday++;
       session = advanceBusinessServiceSession(result.session, rand, save.business.menuActivation);
     }

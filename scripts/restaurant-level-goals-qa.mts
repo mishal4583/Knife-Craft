@@ -21,6 +21,7 @@
  * Run: npx tsx scripts/restaurant-level-goals-qa.mts
  */
 import fs from "node:fs";
+import { curatedRewardAt } from "../src/game/levels/levelRewards.ts";
 import path from "node:path";
 import { DEFAULT_SAVE, type SaveData } from "../src/game/SaveManager.ts";
 import { getLevel, getLevels } from "../src/game/levels/LevelManager.ts";
@@ -77,10 +78,10 @@ console.log("G. Goals from the real dish");
   );
   const ungradedOne = CAMPAIGN_RECIPES.find((r) => !isGraded(r) && r.components.length === 1);
   assert(
-    goals[1]!.join() === "Even slices" &&
-      Array.from({ length: 14 }, (_, i) => goals[i + 2]!).every(
-        (g) => g.join() === "Clean, even cuts",
-      ) &&
+    // 148 levels (2026-10-29): Level 1 is the two-step Garden Prep plate, so no level opens with a lone slice.
+    Array.from({ length: 14 }, (_, i) => goals[i + 1]!).every(
+      (g) => g.join() === "Clean, even cuts",
+    ) &&
       !!oneStep &&
       goalFor(oneStep) === "A neat, even grid" &&
       !!ungradedOne &&
@@ -114,16 +115,16 @@ console.log("S. Stars = the engine's grade");
       ),
     });
   const s = played({
-    "camp-sliced-tomato-plate": 96,
+    "camp-garden-tomato-cucumber": 96,
     "camp-tomato-basil-toast": 72,
     "camp-bruschetta-for-the-house": 88,
   });
   assert(
     levelStars(s, level(1)) === 3 &&
       levelStars(s, level(2)) === null &&
-      levelStars(s, level(6)) === 1 &&
-      levelStars(s, level(12)) === 2,
-    "S2: from the save's best score (Level 1 ★★★, L6 ★, L12 ★★); unplayed → none",
+      levelStars(s, level(4)) === 1 &&
+      levelStars(s, level(10)) === 2,
+    "S2: from the save's best score (Level 1 ★★★, L4 ★, L10 ★★); unplayed → none",
   );
   const goals =
     read("src/game/restaurant/levelGoals.ts") + read("src/game/restaurant/levelChecklist.ts");
@@ -150,24 +151,22 @@ console.log("C. Customer lines");
 console.log("K. Checklist");
 {
   // Level 4 (150-level campaign): peel → halve the potato, slice a tomato.
-  const steps = recipesOf(4)[0]!.components.map((c) => ({
+  const steps = recipesOf(2)[0]!.components.map((c) => ({
     ingredientId: c.ingredientId,
     techniqueId: c.technique,
   }));
   const k0 = checklistFor(steps, 0, false);
   const k1 = checklistFor(steps, 1, false);
   const kDone = checklistFor(steps, 2, true);
-  const single = recipesOf(1)[0]!.components.map((c) => ({
-    ingredientId: c.ingredientId,
-    techniqueId: c.technique,
-  }));
+  // No campaign level up to 15 is a one-step dish any more: a one-step plan stands in.
+  const single = [{ ingredientId: "tomato" as const, techniqueId: "slice" as const }];
   assert(
     k0.map((c) => c.label).join("|") === "Potato — peel|Potato — halve|Tomato — slice" &&
       k0.map((c) => c.state).join() === "now,todo,todo" &&
       k1.map((c) => c.state).join() === "done,now,todo" &&
       kDone.every((c) => c.state === "done") &&
       checklistFor(single, 0, false).length === 0,
-    "K1: Level 4's real steps (peel → halve → slice), ticked by the active step; none for a one-step dish",
+    "K1: Level 2's real steps (peel → halve → slice), ticked by the active step; none for a one-step dish",
   );
 }
 
@@ -180,8 +179,8 @@ console.log("I. Ingredient list (Level 9+)");
     },
   });
   const before = JSON.stringify(s);
-  const l9 = dishIngredientsFor(s, level(9));
-  const l12 = dishIngredientsFor(at(12), level(12));
+  const l9 = dishIngredientsFor(s, level(7)); // Caprese Plate (was L9 before the renumbering)
+  const l12 = dishIngredientsFor(at(10), level(10));
   assert(
     l9.length === 1 &&
       l9[0]!.dish === "Caprese Plate" &&
@@ -189,7 +188,7 @@ console.log("I. Ingredient list (Level 9+)");
       l9[0]!.rows.find((r) => r.ingredientId === "basil")!.have === 0.1 &&
       JSON.stringify(s) === before &&
       l12.map((d) => d.dish).join("|") === "Bruschetta for the House",
-    "I1: Level 9 lists its Caprese Plate's ingredients with the fridge's amount, changes nothing; Level 12 its one dish",
+    "I1: Level 7 lists its Caprese Plate's ingredients with the fridge's amount, changes nothing; Level 10 its one dish",
     { l9, l12: l12.map((d) => d.dish) },
   );
 }
@@ -210,26 +209,24 @@ console.log("D. Grandma's lines");
 console.log("P. Pass 2 review fixes intact");
 {
   assert(
-    // Redesign 2026-10-15: the menu opens with 6 dishes (MENU_CURVE); real stock from L3.
+    // 148 levels (2026-10-29/30): the menu opens at L5 (7 legal dishes at L11); real stock from Level 1.
     inventoryMenuOf(at(3)).length === 0 &&
-      inventoryMenuOf(at(11)).length === 6 &&
-      isFirstStockService(at(3), 3) &&
+      inventoryMenuOf(at(11)).length === 7 &&
+      isFirstStockService(at(1), 1) &&
       !isFirstStockService(at(4), 4),
-    "P1: Inventory menu by level (none at L3, 6 at L11); the first stock hand-over at L3 by progression",
+    "P1: Inventory menu by level (none at L3, 7 at L11); the first stock hand-over at Level 1 by progression",
   );
 }
 
 console.log("E. Rewards unchanged");
 {
-  // Rule changed (developer 2026-10-16): round(50 + 3.1 × (n − 1)) dollars; L2's practice $0.
-  const expected = Array.from({ length: 15 }, (_, i) =>
-    i === 1 ? 0 : Math.round(50 + 3.1 * i) * 100,
-  );
+  // Rule changed (developer 2026-10-30): $50, +$40 a level to Level 40 (curatedRewardAt); no $0 practice level.
+  const expected = Array.from({ length: 15 }, (_, i) => curatedRewardAt(i + 1) * 100);
   assert(
     getLevels()
       .slice(0, 15)
       .every((l, i) => l.id === `level-${i + 1}` && paidLevelReward(l) === expected[i]),
-    "E1: Levels 1–15 keep their order and pay the 2026-10-16 reward curve",
+    "E1: Levels 1–15 keep their order and pay the 2026-10-30 reward curve",
   );
 }
 

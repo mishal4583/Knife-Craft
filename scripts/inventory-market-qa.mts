@@ -535,12 +535,12 @@ function buy(save: SaveData, id: string, qty: number) {
     !!getCampaignRecipe(ribeye.sourceRecipeId) &&
       BUSINESS_ONLY_RECIPES.some((r) => r.id === ribeye.sourceRecipeId) &&
       !CAMPAIGN_RECIPES.some((r) => r.id === ribeye.sourceRecipeId) &&
-      // The 2026-10-15 redesign added the L2 practice recipe and one butter dish to the campaign.
-      CAMPAIGN_RECIPES.length === 222 &&
+      // The 2026-10-15 redesign added one butter dish to the campaign (and the L2 practice recipe, removed again 2026-10-30).
+      CAMPAIGN_RECIPES.length === 221 &&
       CAMPAIGN_RECIPES.filter((r) => r.components.some((c) => c.ingredientId === "butter"))
         .map((r) => r.id)
         .join() === "camp-herb-butter-vegetable-plate",
-    "15: Ribeye with Herb Butter stays Business-only; the campaign's 222 recipes use butter only in the Herb Butter Vegetable Plate (2026-10-15)",
+    "15: Ribeye with Herb Butter stays Business-only; the campaign's 221 recipes use butter only in the Herb Butter Vegetable Plate (2026-10-15)",
   );
   const inv = Object.fromEntries(
     ["steak", "butter", "parsley", "garlic"].map((id) => [

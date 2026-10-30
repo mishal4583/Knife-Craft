@@ -81,14 +81,14 @@ console.log("A. When it applies");
   const l30 = saveAt(30, 0);
   const p30 = planAt(l30, 30);
   const rich = saveAt(30, 500_000);
-  // 2026-10-15 redesign: the Market sells ingredients from L3, so the cover starts there.
+  // Developer 2026-10-30: the Market sells ingredients from Level 1, so the cover starts there.
   assert(
     coverFor(p5, "stock") !== null &&
       p5.check.applies &&
       !p5.check.ready &&
       NO_PANTRY &&
-      coverFor(planAt(saveAt(2, 0), 2), "stock") === null,
-    "A1: from Level 3 (ingredients on sale) a short service with $0 gets an ad or credit; nothing before; no pantry",
+      coverFor(planAt(saveAt(1, 0), 1), "stock") !== null,
+    "A1: from Level 1 (ingredients on sale) a short service with $0 gets an ad or credit; no pantry",
   );
   assert(
     coverFor(p30, "stock") !== null && NO_PANTRY && coverFor(planAt(rich, 30), "stock") === null,

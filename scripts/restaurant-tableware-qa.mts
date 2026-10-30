@@ -15,7 +15,7 @@
  *     120 cutlery; a broken piece leaves the stock.
  *  S  Soap scales with the pieces washed (at least one wash-up's 5 %).
  *  T  Tables: two guests to a table (max 6); menu stands, salt & pepper,
- *     napkin holders from L31, water jugs from L46 — durable, blocking.
+ *     napkin holders from L31, water jugs from L31 — durable, blocking.
  *  G  Menu guests' tableware: optional rows that never block or open the
  *     sheet.
  *  L  An older save's `washing` (place settings) becomes dirty plates, forks
@@ -110,7 +110,8 @@ console.log("P. Pieces by dish");
   const salad = recipe(/^Simple Garden Salad$/);
   const steak = recipe(/Sliced Ribeye Plate/);
   const shared = recipe(/for Two/);
-  const plain = recipe(/^Sliced Tomato Plate$/);
+  // The old "Sliced Tomato Plate" (a removed level's recipe) is gone; the new first dish is a plain full-setting dish.
+  const plain = recipe(/^Garden Tomato \& Cucumber Plate$/);
   assert(
     pieces(soup, 40) === "soup-bowls,soup-spoons,water-glasses" &&
       pieces(fruitPlate, 40) === "dessert-plates,dessert-forks,water-glasses" &&
@@ -223,8 +224,9 @@ console.log("T. Tables");
   const r = levelRecipesAt(50)[0]!;
   const s = saveAt(50);
   const check = serviceSuppliesCheck(s, 50, ["dine-in", "dine-in"], { recipes: [r, r], guests: 3 });
-  const t31 = serviceSuppliesCheck(saveAt(31), 31, ["dine-in"], {
-    recipes: [levelRecipesAt(31)[0]!],
+  // Water jugs start at L31 (the renumbered old L46), so the "before jugs" check is L29.
+  const t31 = serviceSuppliesCheck(saveAt(29), 29, ["dine-in"], {
+    recipes: [levelRecipesAt(29)[0]!],
   });
   const ids = (c: typeof check) => (c.applies ? c.rows.map((x) => x.id) : []);
   const salt = check.applies ? check.rows.find((x) => x.id === "salt-pepper") : undefined;
@@ -241,7 +243,7 @@ console.log("T. Tables");
       salt.blocking &&
       !ids(t31).includes("water-jugs") &&
       ids(t31).includes("menu-stands"),
-    "T1: 2 orders + 3 guests — the orders' 1 table blocks (2 shakers, a menu stand, napkin holder, water jug — jugs from L46); the guests' extra tables only warn",
+    "T1: 2 orders + 3 guests — the orders' 1 table blocks (2 shakers, a menu stand, napkin holder, water jug — jugs from L31); the guests' extra tables only warn",
   );
 }
 

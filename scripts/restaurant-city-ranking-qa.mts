@@ -85,14 +85,14 @@ console.log("C2. The climb");
       maxGap <= 8 &&
       ranks[L - 1] === 2 &&
       ranks[L] === 1 &&
-      L === 150 &&
+      L === 148 &&
       ranks.slice(0, L).every((r) => r > 1),
-    `C2: #50 → #1 one rival at a time, never more than 8 levels without passing one (longest ${maxGap}); #1 only at Level 150`,
+    `C2: #50 → #1 one rival at a time, never more than 8 levels without passing one (longest ${maxGap}); #1 only at Level 148`,
   );
   const at = cityRankingAt(L);
   assert(
     at.next === null && at.fraction === 1 && at.table[0]!.player && at.table.length === 50,
-    "C2: at Level 150 you top the table — nobody left to pass",
+    "C2: at Level 148 you top the table — nobody left to pass",
   );
 }
 

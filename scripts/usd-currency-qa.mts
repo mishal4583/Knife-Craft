@@ -62,27 +62,78 @@ const read = (rel: string) => fs.readFileSync(path.resolve(ROOT, rel), "utf8");
 // ===== A: formatter =====
 {
   const cases: Array<[number, string]> = [
-    [0, "$0.00"], [dollars(61), "$61.00"], [dollars(80), "$80.00"], [21519, "$215.19"],
-    [dollars(350), "$350.00"], [dollars(2200), "$2,200.00"], [dollars(12450), "$12,450.00"], [dollars(461526), "$461,526.00"],
+    [0, "$0.00"],
+    [dollars(61), "$61.00"],
+    [dollars(80), "$80.00"],
+    [21519, "$215.19"],
+    [dollars(350), "$350.00"],
+    [dollars(2200), "$2,200.00"],
+    [dollars(12450), "$12,450.00"],
+    [dollars(461526), "$461,526.00"],
   ];
-  for (const [cents, want] of cases) assert(formatUsd(cents) === want, `A: ${cents} → ${want} (got ${formatUsd(cents)})`);
-  assert(formatUsdChange(dollars(223)) === "+$223.00" && formatUsdChange(-dollars(350)) === "−$350.00", "A2: signed changes read +$223.00 / −$350.00");
-  assert(dollars(2.49) === 249 && dollars(0.1 + 0.2) === 30 && formatUsd(dollars(215.19)) === "$215.19", "A3: money-safe — no float drift ($215.19 stays $215.19, 0.1+0.2 → $0.30)");
+  for (const [cents, want] of cases)
+    assert(formatUsd(cents) === want, `A: ${cents} → ${want} (got ${formatUsd(cents)})`);
+  assert(
+    formatUsdChange(dollars(223)) === "+$223.00" && formatUsdChange(-dollars(350)) === "−$350.00",
+    "A2: signed changes read +$223.00 / −$350.00",
+  );
+  assert(
+    dollars(2.49) === 249 && dollars(0.1 + 0.2) === 30 && formatUsd(dollars(215.19)) === "$215.19",
+    "A3: money-safe — no float drift ($215.19 stays $215.19, 0.1+0.2 → $0.30)",
+  );
 }
 
 // ===== B: Campaign prices =====
 {
   const knife = (id: string) => KNIFE_CATALOG.find((k) => k.id === id)!.price;
-  assert(formatUsd(knife("santoku")) === "$350.00" && formatUsd(knife("obsidian")) === "$2,200.00", "B: Santoku $350.00, Obsidian Knife $2,200.00");
-  const oldKnives: Record<string, number> = { chef: 0, santoku: 350, paring: 500, nakiri: 700, bread: 850, cleaver: 1100, damascus: 1800, obsidian: 2200 };
-  assert(KNIFE_CATALOG.every((k) => k.price === dollars(oldKnives[k.id]!)), "B2: every knife is its old price read as dollars");
-  const oldBoards: Record<string, number> = { walnut: 0, maple: 300, herb: 500, marble: 750, darkoak: 1000, copper: 1500, butcherblock: 1800, seafoodslate: 2000 };
-  assert(BOARD_CATALOG.every((b) => b.price === dollars(oldBoards[b.id]!)), "B3: every board is its old price read as dollars");
-  assert(STAFF_CATALOG.map((s) => formatUsd(s.price)).join(" ") === "$3,000.00 $6,000.00 $4,000.00", "B4: staff $3,000 / $6,000 / $4,000");
+  assert(
+    formatUsd(knife("santoku")) === "$350.00" && formatUsd(knife("obsidian")) === "$2,200.00",
+    "B: Santoku $350.00, Obsidian Knife $2,200.00",
+  );
+  const oldKnives: Record<string, number> = {
+    chef: 0,
+    santoku: 350,
+    paring: 500,
+    nakiri: 700,
+    bread: 850,
+    cleaver: 1100,
+    damascus: 1800,
+    obsidian: 2200,
+  };
+  assert(
+    KNIFE_CATALOG.every((k) => k.price === dollars(oldKnives[k.id]!)),
+    "B2: every knife is its old price read as dollars",
+  );
+  const oldBoards: Record<string, number> = {
+    walnut: 0,
+    maple: 300,
+    herb: 500,
+    marble: 750,
+    darkoak: 1000,
+    copper: 1500,
+    butcherblock: 1800,
+    seafoodslate: 2000,
+  };
+  assert(
+    BOARD_CATALOG.every((b) => b.price === dollars(oldBoards[b.id]!)),
+    "B3: every board is its old price read as dollars",
+  );
+  assert(
+    STAFF_CATALOG.map((s) => formatUsd(s.price)).join(" ") === "$3,000.00 $6,000.00 $4,000.00",
+    "B4: staff $3,000 / $6,000 / $4,000",
+  );
   // Rule changed (developer 2026-10-26, "the game starts at 0 cash and the player earns from
   // it"): was $1,240.00.
-  assert(DEFAULT_SAVE.credits === 0 && formatUsd(DEFAULT_SAVE.credits) === "$0.00", "B5: a new player starts with $0.00 and earns from there");
-  const s: SaveData = { ...structuredClone(DEFAULT_SAVE), credits: dollars(350), levelProgress: { ...DEFAULT_SAVE.levelProgress, highestUnlockedLevelId: "level-10" } };
+  assert(
+    // Rule changed (developer 2026-10-30, "buy everything from your own money"): the start is $10.00.
+    DEFAULT_SAVE.credits === 1000 && formatUsd(DEFAULT_SAVE.credits) === "$10.00",
+    "B5: a new player starts with $10.00 — their own money for the first shopping",
+  );
+  const s: SaveData = {
+    ...structuredClone(DEFAULT_SAVE),
+    credits: dollars(350),
+    levelProgress: { ...DEFAULT_SAVE.levelProgress, highestUnlockedLevelId: "level-10" },
+  };
   const r = buyKnife(s, "santoku");
   assert(r.ok && r.save.credits === 0, "B6: $350.00 buys the Santoku exactly, landing on $0.00");
   const short = buyKnife({ ...s, credits: dollars(349.99) }, "santoku");
@@ -91,12 +142,22 @@ const read = (rel: string) => fs.readFileSync(path.resolve(ROOT, rel), "utf8");
 
 // ===== C: Blacksmith / sharpening =====
 {
-  assert([1, 2, 3, 4].map((l) => formatUsd(upgradeCost(l)!)).join(" ") === "$80.00 $160.00 $280.00 $450.00", "C: Blacksmith steps $80 / $160 / $280 / $450");
-  assert(upgradeCost.length === 1, "C2: there is no discounted (video) price path — every upgrade is its listed dollar price");
+  assert(
+    [1, 2, 3, 4].map((l) => formatUsd(upgradeCost(l)!)).join(" ") ===
+      "$80.00 $160.00 $280.00 $450.00",
+    "C: Blacksmith steps $80 / $160 / $280 / $450",
+  );
+  assert(
+    upgradeCost.length === 1,
+    "C2: there is no discounted (video) price path — every upgrade is its listed dollar price",
+  );
   assert(formatUsd(SHARPEN_COST) === "$50.00", "C3: sharpening costs $50.00");
   const s: SaveData = { ...structuredClone(DEFAULT_SAVE), credits: dollars(80) };
   const up = upgradeKnife(s, "chef", "speed");
-  assert(up.ok && up.save.credits === 0 && up.cost === dollars(80), "C4: an $80 upgrade takes exactly $80.00");
+  assert(
+    up.ok && up.save.credits === 0 && up.cost === dollars(80),
+    "C4: an $80 upgrade takes exactly $80.00",
+  );
 }
 
 // ===== D: Campaign rewards + settlement are the old numbers read as dollars =====
@@ -106,12 +167,23 @@ const read = (rel: string) => fs.readFileSync(path.resolve(ROOT, rel), "utf8");
   for (const level of LEVELS) {
     const r = completeLevel(level.id, progress);
     // Economy V2.5: a level pays its paid reward (levelRewards.ts) — still whole dollars in cents.
-    if (r.isFirstCompletion && (r.rewardCoins !== paidLevelReward(level) || r.rewardCoins % 100 !== 0)) allExact = false;
+    if (
+      r.isFirstCompletion &&
+      (r.rewardCoins !== paidLevelReward(level) || r.rewardCoins % 100 !== 0)
+    )
+      allExact = false;
     progress = r.progress;
   }
-  assert(allExact, "D: all 250 level rewards pay their paid reward as whole dollars in cents (61 → $61.00 at 100%)");
+  assert(
+    allExact,
+    "D: all 250 level rewards pay their paid reward as whole dollars in cents (61 → $61.00 at 100%)",
+  );
   const lvl1 = LEVELS[0]!;
-  assert(formatUsdChange(completeLevel(lvl1.id, { ...DEFAULT_LEVEL_PROGRESS }).rewardCoins) === `+$${lvl1.reward.coins}.00`, `D2: Level 1 reward reads +$${lvl1.reward.coins}.00`);
+  assert(
+    formatUsdChange(completeLevel(lvl1.id, { ...DEFAULT_LEVEL_PROGRESS }).rewardCoins) ===
+      `+$${paidLevelReward(lvl1) / 100}.00`,
+    `D2: Level 1 reward reads +$${paidLevelReward(lvl1) / 100}.00 (the paid reward; the level data's own coin figure is legacy)`,
+  );
   let settleExact = true;
   let checked = 0;
   for (const recipe of CAMPAIGN_RECIPES) {
@@ -120,80 +192,178 @@ const read = (rel: string) => fs.readFileSync(path.resolve(ROOT, rel), "utf8");
         const st = computeSettlement(recipe, chapter, score);
         checked++;
         if (st.revenue !== dollars(recipePay(recipe, chapter))) settleExact = false;
-        if (st.netResult !== st.revenue - st.finalCOGS + st.qualityBonus && st.netResult !== 0) settleExact = false;
-        if (st.revenue % 100 !== 0 || st.finalCOGS % 100 !== 0 || st.qualityBonus % 100 !== 0) settleExact = false;
+        if (st.netResult !== st.revenue - st.finalCOGS + st.qualityBonus && st.netResult !== 0)
+          settleExact = false;
+        if (st.revenue % 100 !== 0 || st.finalCOGS % 100 !== 0 || st.qualityBonus % 100 !== 0)
+          settleExact = false;
       }
     }
   }
-  assert(settleExact, `D3: ${checked} settlements — revenue is recipePay in dollars, every amount is whole dollars, net = revenue − COGS + bonus`);
+  assert(
+    settleExact,
+    `D3: ${checked} settlements — revenue is recipePay in dollars, every amount is whole dollars, net = revenue − COGS + bonus`,
+  );
   const order = createCustomerOrder("c1", CAMPAIGN_RECIPES[0]!, 3);
-  assert(order.basePayment === dollars(recipePay(CAMPAIGN_RECIPES[0]!, 3)), "D4: an order's payment is its recipe pay in dollars");
-  assert(formatUsd(DAILY_ORDER_BONUS_COINS) === "$50.00" && formatUsd(ENDLESS_DAILY_COIN_CAP) === "$600.00", "D5: Daily bonus $50.00, Endless daily limit $600.00");
+  assert(
+    order.basePayment === dollars(recipePay(CAMPAIGN_RECIPES[0]!, 3)),
+    "D4: an order's payment is its recipe pay in dollars",
+  );
+  assert(
+    formatUsd(DAILY_ORDER_BONUS_COINS) === "$50.00" &&
+      formatUsd(ENDLESS_DAILY_COIN_CAP) === "$600.00",
+    "D5: Daily bonus $50.00, Endless daily limit $600.00",
+  );
 }
 
 // ===== E: Business unchanged (already cents) =====
 {
   const fridge = REFRIGERATOR_CATALOG.map((f) => f.price);
-  assert(fridge.every((p) => Number.isInteger(p)) && formatUsd(fridge[0]!) === formatUsd(REFRIGERATOR_CATALOG[0]!.price), "E: Business prices are used as-is (integer cents)");
-  assert(/export \{ formatUsd \} from "\.\.\/money";/.test(read("src/game/business/businessCurrency.ts")), "E2: Business screens use the same single formatter");
+  assert(
+    fridge.every((p) => Number.isInteger(p)) &&
+      formatUsd(fridge[0]!) === formatUsd(REFRIGERATOR_CATALOG[0]!.price),
+    "E: Business prices are used as-is (integer cents)",
+  );
+  assert(
+    /export \{ formatUsd \} from "\.\.\/money";/.test(
+      read("src/game/business/businessCurrency.ts"),
+    ),
+    "E2: Business screens use the same single formatter",
+  );
 }
 
 // ===== F: save migration =====
 {
-  const v1 = (credits: number, extra: Partial<SaveData> = {}): SaveData => ({ ...structuredClone(DEFAULT_SAVE), version: 1, credits, ...extra });
+  const v1 = (credits: number, extra: Partial<SaveData> = {}): SaveData => ({
+    ...structuredClone(DEFAULT_SAVE),
+    version: 1,
+    credits,
+    ...extra,
+  });
   const campaignOnly = migrateMoneyToUsd(v1(350));
-  assert(campaignOnly.credits === dollars(350) && formatUsd(campaignOnly.credits) === "$350.00" && campaignOnly.version === USD_SAVE_VERSION, "F: Campaign-only old save 350 → $350.00");
+  assert(
+    campaignOnly.credits === dollars(350) &&
+      formatUsd(campaignOnly.credits) === "$350.00" &&
+      campaignOnly.version === USD_SAVE_VERSION,
+    "F: Campaign-only old save 350 → $350.00",
+  );
   const biz = structuredClone(DEFAULT_SAVE.business);
   biz.finance.lifetime.revenue = 21519;
   const businessOnly = migrateMoneyToUsd(v1(21519, { business: biz }));
-  assert(businessOnly.credits === 21519 && formatUsd(businessOnly.credits) === "$215.19", "F2: money earned in Business (21519 cents) stays $215.19");
+  assert(
+    businessOnly.credits === 21519 && formatUsd(businessOnly.credits) === "$215.19",
+    "F2: money earned in Business (21519 cents) stays $215.19",
+  );
   const biz2 = structuredClone(DEFAULT_SAVE.business);
   biz2.finance.lifetime.revenue = 5000;
   biz2.finance.lifetime.inventoryPurchaseCost = 1200;
   const mixed = migrateMoneyToUsd(v1(1000 + 3800, { business: biz2 }));
-  assert(mixed.credits === dollars(1000) + 3800 && formatUsd(mixed.credits) === "$1,038.00", "F3: mixed wallet — 1,000 Campaign → $1,000.00 plus $38.00 Business net = $1,038.00");
+  assert(
+    mixed.credits === dollars(1000) + 3800 && formatUsd(mixed.credits) === "$1,038.00",
+    "F3: mixed wallet — 1,000 Campaign → $1,000.00 plus $38.00 Business net = $1,038.00",
+  );
   const twice = migrateMoneyToUsd(campaignOnly);
   assert(twice === campaignOnly, "F4: an already-migrated save is never converted twice");
-  const withLedger = migrateMoneyToUsd(v1(500, {
-    economyLedger: [
-      { id: "a", timestamp: 1, category: "completion-reward", amount: 223, description: "level-10" },
-      { id: "b", timestamp: 2, category: "knife-purchase", amount: -350, description: "santoku" },
-      { id: "c", timestamp: 3, category: "business-revenue", amount: 21519, description: "dish" },
-    ],
-    endless: { date: "2026-09-25", coinsEarnedToday: 120 },
-  }));
-  assert(withLedger.economyLedger.map((e) => formatUsdChange(e.amount)).join(" ") === "+$223.00 −$350.00 +$215.19", "F5: ledger history converts per entry: +$223.00 / −$350.00 / +$215.19");
-  assert(withLedger.economyLedger.length === 3 && withLedger.economyLedger.map((e) => e.id).join() === "a,b,c", "F6: no ledger entry added, removed or duplicated");
-  assert(withLedger.endless.coinsEarnedToday === dollars(120), "F7: Endless 'earned today' converts too ($120.00)");
+  const withLedger = migrateMoneyToUsd(
+    v1(500, {
+      economyLedger: [
+        {
+          id: "a",
+          timestamp: 1,
+          category: "completion-reward",
+          amount: 223,
+          description: "level-10",
+        },
+        { id: "b", timestamp: 2, category: "knife-purchase", amount: -350, description: "santoku" },
+        { id: "c", timestamp: 3, category: "business-revenue", amount: 21519, description: "dish" },
+      ],
+      endless: { date: "2026-09-25", coinsEarnedToday: 120 },
+    }),
+  );
+  assert(
+    withLedger.economyLedger.map((e) => formatUsdChange(e.amount)).join(" ") ===
+      "+$223.00 −$350.00 +$215.19",
+    "F5: ledger history converts per entry: +$223.00 / −$350.00 / +$215.19",
+  );
+  assert(
+    withLedger.economyLedger.length === 3 &&
+      withLedger.economyLedger.map((e) => e.id).join() === "a,b,c",
+    "F6: no ledger entry added, removed or duplicated",
+  );
+  assert(
+    withLedger.endless.coinsEarnedToday === dollars(120),
+    "F7: Endless 'earned today' converts too ($120.00)",
+  );
   // Real SaveManager: old save → load → save → reload.
-  const old = { ...v1(21519), knifeUpgrades: { chef: { sharpness: 3, speed: 1, handling: 2 } }, ownedKnifeIds: ["chef", "santoku"] };
+  const old = {
+    ...v1(21519),
+    knifeUpgrades: { chef: { sharpness: 3, speed: 1, handling: 2 } },
+    ownedKnifeIds: ["chef", "santoku"],
+  };
   localStorage.setItem("knifecraft.save.v1", JSON.stringify(old));
   const loaded = await SaveManager.load();
   // version 3 = USD (v2) + Economy V2.5 kitchen development (v3), both migrations run once.
-  assert(loaded.version === 3 && formatUsd(loaded.credits) === "$21,519.00", `F8: a Campaign-earned old wallet of 21,519 loads as $21,519.00 (got ${formatUsd(loaded.credits)})`);
-  assert(JSON.stringify(loaded.knifeUpgrades) === JSON.stringify(old.knifeUpgrades) && loaded.ownedKnifeIds.length === 2, "F9: knives and Blacksmith progress untouched");
+  assert(
+    loaded.version === 3 && formatUsd(loaded.credits) === "$21,519.00",
+    `F8: a Campaign-earned old wallet of 21,519 loads as $21,519.00 (got ${formatUsd(loaded.credits)})`,
+  );
+  assert(
+    JSON.stringify(loaded.knifeUpgrades) === JSON.stringify(old.knifeUpgrades) &&
+      loaded.ownedKnifeIds.length === 2,
+    "F9: knives and Blacksmith progress untouched",
+  );
   await SaveManager.save(loaded);
   const raw = JSON.parse(localStorage.getItem("knifecraft.save.v1")!) as SaveData;
-  assert(raw.version === 3 && raw.credits === loaded.credits && migrateMoneyToUsd(raw).credits === loaded.credits, "F10: save → reload keeps exactly the same dollar amount (no second conversion)");
+  assert(
+    raw.version === 3 &&
+      raw.credits === loaded.credits &&
+      migrateMoneyToUsd(raw).credits === loaded.credits,
+    "F10: save → reload keeps exactly the same dollar amount (no second conversion)",
+  );
 }
 
 // ===== G: no coin/cent wording or bare money in player-facing UI =====
 {
-  const uiFiles = ["src/App.tsx", ...fs.readdirSync(path.resolve(ROOT, "src/components/kc"), { recursive: true }).map(String).filter((f) => f.endsWith(".tsx")).map((f) => `src/components/kc/${f.replace(/\\/g, "/")}`)];
+  const uiFiles = [
+    "src/App.tsx",
+    ...fs
+      .readdirSync(path.resolve(ROOT, "src/components/kc"), { recursive: true })
+      .map(String)
+      .filter((f) => f.endsWith(".tsx"))
+      .map((f) => `src/components/kc/${f.replace(/\\/g, "/")}`),
+  ];
   const offenders: string[] = [];
   for (const f of uiFiles) {
-    read(f).split("\n").forEach((line, i) => {
-      const t = line.trim();
-      if (/^(\/\/|\*|\/\*|\{\/\*)/.test(t)) return;
-      if (/["'`>][^"'`<]*(?<![.\w])(Café Coins?|Kitchen Coins?|[Cc]oins|coin cap|cents)\b/.test(line)) offenders.push(`${f}:${i + 1}`);
-      if (/\{[a-zA-Z.]+\}c\b|\}c Completion|formatCoins|toLocaleString\(\)\}/.test(line)) offenders.push(`${f}:${i + 1}`);
-    });
+    read(f)
+      .split("\n")
+      .forEach((line, i) => {
+        const t = line.trim();
+        if (/^(\/\/|\*|\/\*|\{\/\*)/.test(t)) return;
+        if (
+          /["'`>][^"'`<]*(?<![.\w])(Café Coins?|Kitchen Coins?|[Cc]oins|coin cap|cents)\b/.test(
+            line,
+          )
+        )
+          offenders.push(`${f}:${i + 1}`);
+        if (/\{[a-zA-Z.]+\}c\b|\}c Completion|formatCoins|toLocaleString\(\)\}/.test(line))
+          offenders.push(`${f}:${i + 1}`);
+      });
   }
-  assert(offenders.length === 0, `G: no "coins"/"cents" text or bare money numbers in the UI${offenders.length ? " — " + offenders.join(", ") : ""}`);
+  assert(
+    offenders.length === 0,
+    `G: no "coins"/"cents" text or bare money numbers in the UI${offenders.length ? " — " + offenders.join(", ") : ""}`,
+  );
   const prim = read("src/components/kc/common/primitives.tsx");
   // Developer 2026-10-15 (5db9451): the chip's "$" glyph became a cash-stack icon; formatUsd itself writes the "$".
-  assert(/export function Coin\(\{ n \}: \{ n: number \}\)[\s\S]*?<CashStackIcon[^>]*\/>\s*\{formatUsd\(n\)\}/.test(prim) && formatUsd(124_000) === "$1,240.00", "G2: the wallet chip on every screen shows the cash icon + formatUsd (\"$1,240.00\")");
-  assert(/\{formatUsd\(amount\)\}/.test(read("src/components/kc/common/Indicators.tsx")), "G3: reward pills show formatUsd");
+  assert(
+    /export function Coin\(\{ n \}: \{ n: number \}\)[\s\S]*?<CashStackIcon[^>]*\/>\s*\{formatUsd\(n\)\}/.test(
+      prim,
+    ) && formatUsd(124_000) === "$1,240.00",
+    'G2: the wallet chip on every screen shows the cash icon + formatUsd ("$1,240.00")',
+  );
+  assert(
+    /\{formatUsd\(amount\)\}/.test(read("src/components/kc/common/Indicators.tsx")),
+    "G3: reward pills show formatUsd",
+  );
 }
 
 // ===== H: ledger reconciliation (opening + signed ledger = closing) =====
@@ -201,12 +371,22 @@ const read = (rel: string) => fs.readFileSync(path.resolve(ROOT, rel), "utf8");
   let s: SaveData = { ...structuredClone(DEFAULT_SAVE), economyLedger: [] };
   const opening = s.credits;
   const moves: Array<[Parameters<typeof appendLedgerEntry>[1], number]> = [
-    ["completion-reward", dollars(223)], ["knife-purchase", -dollars(350)], ["blacksmith-upgrade", -dollars(80)], ["business-revenue", 21519], ["inventory-purchase", -4567],
+    ["completion-reward", dollars(223)],
+    ["knife-purchase", -dollars(350)],
+    ["blacksmith-upgrade", -dollars(80)],
+    ["business-revenue", 21519],
+    ["inventory-purchase", -4567],
   ];
-  for (const [cat, amt] of moves) s = appendLedgerEntry({ ...s, credits: s.credits + amt }, cat, amt, cat);
+  for (const [cat, amt] of moves)
+    s = appendLedgerEntry({ ...s, credits: s.credits + amt }, cat, amt, cat);
   const t = ledgerTotals(s.economyLedger);
-  assert(opening + t.netCashFlow === s.credits, `H: opening ${formatUsd(opening)} + ledger ${formatUsdChange(t.netCashFlow)} = closing ${formatUsd(s.credits)}`);
+  assert(
+    opening + t.netCashFlow === s.credits,
+    `H: opening ${formatUsd(opening)} + ledger ${formatUsdChange(t.netCashFlow)} = closing ${formatUsd(s.credits)}`,
+  );
 }
 
-console.log(failures === 0 ? "\nUSD CURRENCY QA: ALL PASS" : `\nUSD CURRENCY QA: ${failures} FAILURE(S)`);
+console.log(
+  failures === 0 ? "\nUSD CURRENCY QA: ALL PASS" : `\nUSD CURRENCY QA: ${failures} FAILURE(S)`,
+);
 process.exit(failures === 0 ? 0 : 1);

@@ -156,11 +156,12 @@ assert(bladeTier(1, true) === 2 && bladeTier(20, true) === 3, "T2: Fever is at l
 }
 
 // Developer 2026-10-24: "reduce the splashing or spilling while cutting non-juicy ingredients".
+// Developer 2026-10-29 ("smaller juice splashes"): the base drop count went from 4 to 3.
 {
   const fx = read("src/game/scenes/knifeFx.ts");
   assert(
     /if \(juice !== null && amount >= 0\.35\)/.test(fx) &&
-      /\* amount \* amount \+ 4\)/.test(fx) &&
+      /\* amount \* amount \+ 3\)/.test(fx) &&
       /for \(let i = 0; i < Math\.floor\(R\(0, 3\)\); i\+\+\)/.test(fx) &&
       /\(liquid\?\.amount \?\? 0\) >= 0\.35/.test(fx),
     "D1: the splash and the blade's beads scale with juiciness; a barely-wet cut throws a few drops, a dry one at most two flecks",

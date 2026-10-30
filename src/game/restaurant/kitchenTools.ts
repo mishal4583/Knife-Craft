@@ -174,7 +174,6 @@ export const TOOL_RULES: readonly ToolRule[] = SOURCE_TOOL_RULES.map((rule) => (
 }));
 
 /** Grandma's old tools, hers to give once when the Market opens (Level 10). */
-export const GRANDMAS_TOOL_SET: readonly SupplyId[] = ["peelers", "mixing-bowls", "measuring-cups"];
 
 /** The cooks on the line: the chef + prep / line cooks + the Head Chef + specialists (max 4). */
 export function cooksOnLine(save: SaveData, levelNumber: number): number {
@@ -309,25 +308,8 @@ export function levelRecipesAt(levelNumber: number): RecipeDefinition[] {
 export const TOOLS_NOTICE_LEVELS = 5;
 export const FIRST_SHOPPING_LIST_LEVELS = 10;
 
-/** Grandma's tools, given once (recorded in `business.grandmasTools`). */
+/**
+ * Old saves only: Grandma gave these tools once (recorded in `business.grandmasTools`). Since
+ * 2026-10-30 nothing is given — the player buys every tool in the Market with their own money.
+ */
 export type GrandmasToolsState = { atLevel: number };
-
-/** Gives Grandma's old tools once the Market opens (Level 10); the same save otherwise. */
-export function giveGrandmasTools(save: SaveData, reachedLevel: number): SaveData {
-  if (save.business.grandmasTools || reachedLevel < FIRST_PURCHASE_LEVEL) return save;
-  const supplies = save.business.supplies;
-  const stock = { ...supplies.stock };
-  for (const id of GRANDMAS_TOOL_SET) {
-    const prev = stock[id] ?? { units: 0, costBasis: 0 };
-    if (prev.units > 0) continue;
-    stock[id] = { units: 1, costBasis: prev.costBasis };
-  }
-  return {
-    ...save,
-    business: {
-      ...save.business,
-      supplies: { ...supplies, stock },
-      grandmasTools: { atLevel: reachedLevel },
-    },
-  };
-}

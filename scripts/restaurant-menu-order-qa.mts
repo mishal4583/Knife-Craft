@@ -145,10 +145,10 @@ console.log("K. Cuts before dishes (2026-10-17 audit)");
     early,
   );
   const salad = MENU_UNLOCKS.find((u) => u.dishIds.includes("biz-zucchini-fennel-salad"));
-  // It waits for julienne (L20); the 150-level menu re-plan seats it at the L21 curve point.
+  // It waits for julienne (L18 since the 2026-10-29 renumbering); the menu re-plan seats it at the L19 curve point.
   assert(
-    !!salad && salad.level >= 20 && salad.level <= 21,
-    "K2: the Zucchini & Fennel Salad waits for julienne (L20 at the earliest, was L17)",
+    !!salad && salad.level >= 18 && salad.level <= 19,
+    "K2: the Zucchini & Fennel Salad waits for julienne (L18 at the earliest, was L20)",
     salad?.level,
   );
 }

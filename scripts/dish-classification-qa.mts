@@ -88,7 +88,7 @@ console.log("B. Every other recipe");
     .filter((r) => JSON.stringify(dishServiceFor(r)) !== JSON.stringify(baseline.dishServiceFor(r)))
     .map((r) => r.id);
   assert(
-    recipes.length === 222 && others.length === 221 && changed.length === 0,
+    recipes.length === 221 && others.length === 220 && changed.length === 0,
     `B1: the other ${others.length} recipe profiles equal ${BASE}'s`,
     { total: recipes.length, changed },
   );

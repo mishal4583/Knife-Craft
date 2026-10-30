@@ -200,8 +200,6 @@ export type LevelDefinition = {
    * declares.
    */
   requiredOrders?: number;
-  /** Practice-only campaign service: it serves/prepares normally, but cannot spend stock or move wallet/ledger money. */
-  campaignNoEconomy?: boolean;
   /**
    * Phase 4 — REAL batching (brief §3-§10). When present (2 or 3 recipe
    * ids), this level runs a ServiceManager.BatchGroupSession instead of

@@ -281,13 +281,13 @@ console.log(
 );
 {
   assert(
-    missingPurchases(after.s).length === 0 && after.stats.levels === 150,
-    "T1: the completionist owns everything at Level 150 (the 150-level campaign, developer 2026-10-15)",
+    missingPurchases(after.s).length === 0 && after.stats.levels === 148,
+    "T1: the completionist owns everything at the last level (the 148-level campaign)",
   );
   assert(
-    after.s.credits >= 100_000_00 && after.s.credits <= 150_000_00,
-    // Developer 2026-10-16: the 150-level campaign + achievement money ends $100k–$150k.
-    `T2: and finishes with ${$(after.s.credits)} — inside the $100k–$150k target`,
+    after.s.credits >= 150_000_00,
+    // Developer 2026-10-30: the completionist ends with at least $150,000 (the pay re-plan; sim ≈ $292k).
+    `T2: and finishes with ${$(after.s.credits)} — at least the $150k target`,
   );
   assert(
     after.s.credits > before.s.credits,

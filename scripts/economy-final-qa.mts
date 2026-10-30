@@ -42,6 +42,7 @@ import {
   LEVEL_REWARD_SCHEDULE,
   levelRewardPercent,
   paidLevelReward,
+  curatedRewardAt,
 } from "../src/game/levels/levelRewards.ts";
 import { appendLedgerEntry, MAX_LEDGER_ENTRIES } from "../src/game/economy/EconomyLedger.ts";
 import { notEnoughMoneyText, walletInvariantViolation } from "../src/game/economy/wallet.ts";
@@ -164,19 +165,22 @@ console.log("A. Level reward scaling");
         ? 0
         : n === FINAL
           ? dollars(Math.round(l.reward.coins))
-          : dollars(Math.round(50 + 3.1 * (n - 1)));
+          : dollars(curatedRewardAt(n));
     return l.campaignRewardBasisLevel !== undefined && paidLevelReward(l) === want;
   });
   assert(
-    FINAL === 150 && LEVELS.every((l) => l.campaignRewardBasisLevel !== undefined),
-    "A1: the curated 150-level campaign (every level carries its reward basis)",
+    FINAL === 148 && LEVELS.every((l) => l.campaignRewardBasisLevel !== undefined),
+    "A1: the curated 148-level campaign (every level carries its reward basis)",
   );
-  assert(curve, "A2: every level pays round(50 + 3.1 × (n − 1)) dollars (paidLevelReward)");
   assert(
-    paidLevelReward(LEVELS[1]!) === 0 &&
+    curve,
+    "A2: every level pays curatedRewardAt(n) dollars — $50, +$40 a level to Level 40, then +$6 (paidLevelReward)",
+  );
+  assert(
+    paidLevelReward(LEVELS[1]!) === dollars(90) &&
       paidLevelReward(LEVELS[0]!) === dollars(50) &&
       paidLevelReward(LAST) === dollars(5_000),
-    "A3: Level 1 pays $50, Level 2's practice $0, the last level keeps its $5,000",
+    "A3: Level 1 pays $50, Level 2 $90 (no practice level any more), the last level keeps its $5,000",
   );
   let progress = DEFAULT_LEVEL_PROGRESS;
   let payoutMatches = true;
@@ -306,7 +310,8 @@ console.log("D. Kitchen migration");
     /const current = saveRef\.current;/.test(handler.slice(0, 400)),
     "D4: the Build handler reads the latest save (saveRef), not the render closure",
   );
-  let ref = freshSave({ credits: dollars(50_000), levelProgress: progressThrough(30) });
+  // Growing Kitchen costs $60,000 (developer 2026-10-29; was $20,000).
+  let ref = freshSave({ credits: dollars(80_000), levelProgress: progressThrough(30) });
   const click = () => {
     const r = purchaseKitchenUpgrade(ref, "growing-kitchen");
     if (r.ok)
@@ -317,20 +322,20 @@ console.log("D. Kitchen migration");
   assert(
     clicks[0] &&
       !clicks[1] &&
-      ref.credits === dollars(30_000) &&
+      ref.credits === dollars(20_000) &&
       count(ref, "kitchen-investment-purchase").length === 1,
-    "D5: a double click builds Growing Kitchen once — $20,000 charged once, one ledger entry",
+    "D5: a double click builds Growing Kitchen once — $60,000 charged once, one ledger entry",
   );
 
   // Reload during a purchase: the purchase is one atomic save — before it lands nothing changed.
   memoryStore.clear();
-  const before = freshSave({ credits: dollars(20_000), levelProgress: progressThrough(30) });
+  const before = freshSave({ credits: dollars(60_000), levelProgress: progressThrough(30) });
   await SaveManager.save(before);
   const inFlight = purchaseKitchenUpgrade(before, "growing-kitchen");
   const reloadedMid = await loadRaw(undefined);
   assert(
     inFlight.ok &&
-      reloadedMid.credits === dollars(20_000) &&
+      reloadedMid.credits === dollars(60_000) &&
       reloadedMid.ownedKitchenUpgradeIds.length === 1,
     "D6: reload before the purchase is saved — money and kitchen both unchanged (no half purchase)",
   );
@@ -637,8 +642,10 @@ for (const [r] of profiles) {
 // instead of $1,240 — the classic completionist ends $1,260 lower ($33,878.07 → $32,618.07: the
 // $1,240 plus purchase timing).
 assert(
-  completionist.final === 3_261_807,
-  `K5: the classic completionist ends at ${fmt(completionist.final)} — the 150-level baseline $32,618.07`,
+  // Re-recorded 2026-10-30: the pay re-plan (+$199,515 of completion rewards), the two removed levels and the
+  // kitchen tiers at $60k / $12k / $18k (the classic catalog), the $10 start: $32,618.07 → $211,718.37.
+  completionist.final === 21_171_837,
+  `K5: the classic completionist ends at ${fmt(completionist.final)} — the 148-level baseline $211,718.37`,
 );
 assert(
   completionist.everythingOwned &&

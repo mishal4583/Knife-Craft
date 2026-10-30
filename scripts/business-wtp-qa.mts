@@ -33,7 +33,7 @@ import { getBusinessDish, businessDishPrice } from "../src/game/business/busines
 import {
   createBusinessServiceSession,
   recordBusinessServiceComponents,
-  serveBusinessOrder,
+  serveBusinessOrder as serveBusinessOrderRaw,
   businessCustomerPayment,
   popularityForPayment,
 } from "../src/game/business/BusinessServiceManager.ts";
@@ -50,6 +50,17 @@ import {
 } from "../src/game/service/ServiceManager.ts";
 import { getCampaignRecipe } from "../src/game/recipes/campaignRecipes.ts";
 import type { ServiceSession } from "../src/game/service/ServiceManager.ts";
+
+import { settlePendingCash } from "../src/game/economy/pendingCash.ts";
+/**
+ * A serve leaves the payment on the table; the player sweeps it into the wallet (economy/pendingCash.ts,
+ * developer 2026-10-29). This QA models that sweep right after the serve, so the wallet and the ledger
+ * are read as they are once the money is in the till.
+ */
+const serveBusinessOrder: typeof serveBusinessOrderRaw = (...args) => {
+  const r = serveBusinessOrderRaw(...args);
+  return r ? { ...r, save: settlePendingCash(r.save) } : r;
+};
 
 let failures = 0;
 function assert(cond: boolean, label: string) {
@@ -100,7 +111,7 @@ function readySalad(): ServiceSession {
 function serveViaApp(save: SaveData) {
   const r = serveBusinessOrder(readySalad(), save, makeSeededRand(1));
   if (!r) return null;
-  return { r, save: appendLedgerEntry(r.save, "business-revenue", r.amountCharged, r.dish.id) };
+  return { r, save: r.save /* the sweep already wrote the entry (economy/pendingCash.ts) */ };
 }
 
 function withPrice(save: SaveData, price: number): SaveData {
@@ -221,14 +232,15 @@ for (const score of [0, 50, 100]) {
   const app = fs.readFileSync(path.resolve(import.meta.dirname, "..", "src", "App.tsx"), "utf8");
   // Unified Restaurant (phase D): the menu guest (serveMenuGuestOrder) is the
   // one other, deliberate writer; the Business serve still writes exactly once.
-  const sites = app.match(/appendLedgerEntry\([^)]*"business-revenue"[^)]*\)/g) ?? [];
-  const businessSites = sites.filter((s) => /"business-revenue", result\.amountCharged,/.test(s));
-  const guestSites = sites.filter((s) =>
-    /appendLedgerEntry\(paid, "business-revenue", result\.coinsAwarded, dish\.id\)/.test(s),
+  const sites = app.match(/withPendingCash\([^)]*?category: "business-revenue"/gs) ?? [];
+  const manager = fs.readFileSync(
+    path.resolve(import.meta.dirname, "..", "src", "game", "business", "BusinessServiceManager.ts"),
+    "utf8",
   );
+  const managerSites = manager.match(/withPendingCash\([^)]*?category: "business-revenue"/gs) ?? [];
   assert(
-    sites.length === 2 && businessSites.length === 1 && guestSites.length === 1,
-    `H2: App.tsx appends business-revenue at the Business serve (from result.amountCharged) and the menu guest only, once each (found ${sites.length})`,
+    sites.length === 1 && managerSites.length === 1,
+    `H2: business-revenue is left on the table once in serveBusinessOrder and once for the menu guest in App (developer 2026-10-29; found ${managerSites.length} + ${sites.length})`,
   );
 }
 
@@ -490,12 +502,12 @@ for (const score of [0, 50, 100]) {
     new RegExp(`${label}:\\s*${value}(?![\\d,])`).test(honest);
   assert(
     v2.status === 0 &&
-      has("Gross recipe revenue", "\\$69,110\\.00") &&
-      has("Level-completion rewards", "\\$46,585\\.00") &&
-      has("Total COGS", "\\$16,092\\.00") &&
-      has("Total quality bonuses", "\\$1,402\\.00") &&
-      has("Total net campaign result", "\\$101,005\\.00"),
-    "Q: Economy V2 freeze exact — $69,110.00 / $46,585.00 / $16,092.00 / $1,402.00 / $101,005.00 (150-level baseline, recorded 2026-10-17)",
+      has("Gross recipe revenue", "\\$69,925\\.00") &&
+      has("Level-completion rewards", "\\$245,138\\.00") &&
+      has("Total COGS", "\\$16,604\\.00") &&
+      has("Total quality bonuses", "\\$1,415\\.00") &&
+      has("Total net campaign result", "\\$299,874\\.00"),
+    "Q: Economy V2 freeze exact — $69,925.00 / $245,138.00 / $16,604.00 / $1,415.00 / $299,874.00 (148-level baseline, re-recorded 2026-10-30 after the level-pay re-plan (completion rewards and net only))",
   );
 }
 

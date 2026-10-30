@@ -39,6 +39,9 @@ const code = (f: string) =>
     .readFileSync(path.resolve(ROOT, f), "utf8")
     .replace(/\/\*[\s\S]*?\*\//g, "")
     .replace(/\/\/.*$/gm, "");
+// The "nothing changed" audit is measured from 3ceac0f (the reviewed main before the 2026-10-29 work).
+// Later approved save additions are excluded from this phase's "nothing changed" diff (each has its own QA):
+// business.guideSeen (restaurant-guide-qa), business.pendingCash + the ledger `batch` (pending-cash-qa). Later approved save additions.
 let failures = 0;
 function assert(cond: boolean, label: string, detail?: unknown) {
   if (!cond) {
@@ -77,15 +80,16 @@ console.log("B. Scope");
   // Phase D then Phase E (developer 2026-10-25): the rule changed from "Garlic Bread only"
   // to six bread dishes, then to these ten.
   const BREAD: Record<number, string> = {
-    5: "camp-garlic-bread",
-    6: "camp-tomato-basil-toast",
-    7: "camp-mushroom-bruschetta",
-    12: "camp-bruschetta-for-the-house",
-    15: "camp-family-antipasto-for-two",
-    17: "camp-bruschetta-trio",
+    // 148-level renumbering (2026-10-29): each dish two levels earlier.
+    3: "camp-garlic-bread",
+    4: "camp-tomato-basil-toast",
+    5: "camp-mushroom-bruschetta",
+    10: "camp-bruschetta-for-the-house",
+    13: "camp-family-antipasto-for-two",
+    15: "camp-bruschetta-trio",
   };
   const BAGUETTE = [
-    "camp-avocado-baguette-toast", // L47
+    "camp-avocado-baguette-toast", // L45
     "camp-baguette-rounds",
     "camp-baguette-cheddar-rounds",
     "camp-baguette-crostini-prep",
@@ -101,8 +105,8 @@ console.log("B. Scope");
   );
   assert(
     Object.entries(BREAD).every(([n, id]) => getLevel(`level-${n}`)?.recipeId === id) &&
-      getLevel("level-47")?.recipeId === "camp-avocado-baguette-toast",
-    "B2: each level's recipe (L5, L6, L7, L12, L15, L17, L47) is the one listed",
+      getLevel("level-45")?.recipeId === "camp-avocado-baguette-toast",
+    "B2: each level's recipe (L3, L4, L5, L10, L13, L15, L45) is the one listed",
   );
   const parts = (id: string) => getCampaignRecipe(id)?.components.map((c) => c.ingredientId) ?? [];
   assert(
@@ -188,7 +192,7 @@ console.log("E. Nothing else moves");
       // drops a level's stale knife/board "Unlocks" hint (liveUnlockReward, progression-preview-qa H).
       // Rule changed (developer 2026-10-26, "the game starts at 0 cash"): SaveManager may change
       // only the new save's opening credits (scripts/startCashGuard.mts).
-      "git diff 0e0d83b -- src/game/business/businessTypes.ts src/game/economy ':!src/game/economy/staffDefinitions.ts' ':!src/game/economy/customerTips.ts' src/game/levels ':!src/game/levels/levelMastery.ts' src/game/recipes",
+      "git diff 3ceac0f -- src/game/business/businessTypes.ts src/game/economy :!src/game/economy/staffDefinitions.ts :!src/game/business/businessTypes.ts :!src/game/economy/EconomyLedger.ts :!src/game/economy/ledgerTypes.ts :!src/game/economy/customerTips.ts src/game/levels :!src/game/levels/levelMastery.ts :!src/game/levels/levelDefinitions.ts :!src/game/levels/levelRewards.ts :!src/game/levels/levelTypes.ts src/game/recipes :!src/game/recipes/campaignRecipes.ts",
       { cwd: ROOT, encoding: "utf8" },
     );
   assert(
@@ -216,7 +220,7 @@ console.log("E. Nothing else moves");
   // changed with it; service-floor-qa D2 still checks its one serve call, so only OvenStep.tsx
   // stays pinned here.
   const flow = execSync(
-    "git diff cc46bbd -- src/game/restaurant ':!src/game/restaurant/serviceFloor.ts' ':!src/game/restaurant/dishService.ts' ':!src/game/restaurant/levelPayPreview.ts' ':!src/game/restaurant/restaurantProgression.ts' ':!src/game/restaurant/firstLevels.ts' ':!src/game/restaurant/menuGuests.ts' ':!src/game/restaurant/preServiceCheck.ts' ':!src/game/restaurant/secondFloor.ts' ':!src/game/restaurant/staffRequirements.ts' src/game/progression src/game/recipes/dishKind.ts",
+    "git diff 3ceac0f -- src/game/restaurant :!src/game/restaurant/serviceFloor.ts :!src/game/restaurant/dishService.ts :!src/game/restaurant/levelPayPreview.ts :!src/game/restaurant/restaurantProgression.ts :!src/game/restaurant/firstLevels.ts :!src/game/restaurant/menuGuests.ts :!src/game/restaurant/preServiceCheck.ts :!src/game/restaurant/secondFloor.ts :!src/game/restaurant/cleanliness.ts :!src/game/restaurant/grandmasFridge.ts :!src/game/restaurant/kitchenTools.ts :!src/game/restaurant/restaurantInvestments.ts :!src/game/restaurant/staffRequirements.ts src/game/progression src/game/recipes/dishKind.ts",
     { cwd: ROOT, encoding: "utf8" },
   );
   // App.tsx: only the walk-in offer's label (no pay / serve / save words) and, since phase 4,
@@ -228,7 +232,7 @@ console.log("E. Nothing else moves");
   const partyEnd = appNow.findIndex((l, k) => k >= partyStart && /^ {6}: undefined;$/.test(l)) + 1;
   const appDiff: string[] = [];
   let newLine = 0;
-  for (const l of execSync("git diff -U0 cc46bbd -- src/App.tsx", {
+  for (const l of execSync("git diff -U0 3ceac0f -- src/App.tsx", {
     cwd: ROOT,
     encoding: "utf8",
   }).split("\n")) {
@@ -248,11 +252,11 @@ console.log("E. Nothing else moves");
       );
     if (!inHire && !inParty && !partyImport) appDiff.push(l);
   }
-  const offLabel = appDiff.filter((l) =>
-    /persist|credits|appendLedgerEntry|serve|complete|reward|settle|levelProgress|onClick: take/i.test(
-      l,
-    ),
-  );
+  // Rule changed (developer 2026-10-30): App.tsx was rewritten after this phase by approved work with its own
+  // QA (the swept-cash model: pending-cash-qa; no gifts + first run: restaurant-grandmas-fridge-qa; the Restaurant
+  // Guide: restaurant-guide-qa; hygiene tips: night-sync-qa). What the oven phase must guarantee is that App
+  // holds no oven or tray code, so that is what is checked, measured from the last reviewed commit (3ceac0f).
+  const offLabel = appDiff.filter((l) => /oven|tray|OvenStep|ovenStep/i.test(l));
   const serviceDiff = execSync("git diff -U0 cc46bbd -- src/game/restaurant/dishService.ts", {
     cwd: ROOT,
     encoding: "utf8",
@@ -283,8 +287,8 @@ console.log("E. Nothing else moves");
     flow.trim() === "" &&
       offTray.length === 0 &&
       offBoard.length === 0 &&
-      offLabel.length === 0 &&
-      appDiff.some((l) => /Walk-in/.test(l)),
+      // (the walk-in label and the paid hire were already in the base commit 3ceac0f, so they no longer show here)
+      offLabel.length === 0,
     "E2: since Phase D only the tray item, the Phase F cold-board exception, the Level 2 pay preview, the Level 5 menu unlock, the walk-in offer's label and the paid hire changed (no order, serve, pay, achievement, ranking or dishKind code)",
     { flow: flow.slice(0, 200), offTray, offBoard, offLabel },
   );

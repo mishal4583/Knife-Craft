@@ -93,21 +93,22 @@ console.log("U. Unlock table");
 // Re-baselined 2026-10-17 to the 150-level redesign (table below).
 const expected: [RestaurantSystemId, number][] = [
   ["restaurant-day", 1],
-  // The 150-level redesign (developer 2026-10-15): real stock from L3 (before the menu),
+  // Developer 2026-10-30: real stock (and the Market) from the very first level (was L3),
   // the rest through the remap (old 21/31/41/51/71/91/121/161/201/241).
-  ["ingredient-stock", 3],
+  ["ingredient-stock", 1],
   // Rule changed (developer 2026-10-25, early game phase 2): the menu at L5 (was 11).
   ["menu", 5],
-  ["fridge-freshness", 16],
-  ["dine-in", 21],
-  ["staff", 29],
-  ["cuisines", 35],
-  ["takeaway", 46],
-  ["full-operation", 56],
-  ["expansion", 76],
-  ["established", 101],
-  ["master", 117],
-  ["grand-service", 143],
+  // 148-level renumbering (2026-10-29) and the Market from Level 1 (2026-10-30): every later system two levels earlier.
+  ["fridge-freshness", 14],
+  ["dine-in", 19],
+  ["staff", 27],
+  ["cuisines", 33],
+  ["takeaway", 44],
+  ["full-operation", 54],
+  ["expansion", 74],
+  ["established", 99],
+  ["master", 115],
+  ["grand-service", 141],
 ];
 assert(
   RESTAURANT_SYSTEMS.map((s) => `${s.id}@${s.firstLevel}`).join() ===
@@ -117,21 +118,18 @@ assert(
 assert(
   liveSystems(1)
     .map((s) => s.id)
-    .join() === "restaurant-day" &&
-    liveSystems(2)
-      .map((s) => s.id)
-      .join() === "restaurant-day" &&
-    // Rule changed (developer 2026-10-25): the menu joins at L5 (was L11).
+    .join() === "restaurant-day,ingredient-stock" &&
+    // Developer 2026-10-30: real stock is live from Level 1, so the Market opens at the start.
     liveSystems(4)
       .map((s) => s.id)
       .join() === "restaurant-day,ingredient-stock" &&
     liveSystems(5)
       .map((s) => s.id)
       .join() === "restaurant-day,ingredient-stock,menu" &&
-    liveSystems(15)
+    liveSystems(13)
       .map((s) => s.id)
       .join() === "restaurant-day,ingredient-stock,menu",
-  "U2: Levels 1–2 are only the restaurant day; real stock from L3; the menu joins at L5 (to L15)",
+  "U2: from Level 1 the restaurant day and real stock; the menu joins at L5 (to L13)",
 );
 assert(
   RESTAURANT_SYSTEMS.every((s) => s.title.length > 0 && s.covers.length > 0 && s.intro.length > 10),
@@ -145,25 +143,26 @@ assert(
       isSystemLive(s.id, LAST_CAMPAIGN_LEVEL) &&
       systemsIntroducedAt(s.firstLevel).some((x) => x.id === s.id),
   ),
-  "U4: each system goes live exactly at its first level and stays live to L150",
+  "U4: each system goes live exactly at its first level and stays live to the last level",
 );
 assert(
   liveSystems(LAST_CAMPAIGN_LEVEL).length === RESTAURANT_SYSTEMS.length &&
-    nextSystemAfter(2)?.id === "ingredient-stock" &&
+    nextSystemAfter(0)?.id === "restaurant-day" &&
+    nextSystemAfter(1)?.id === "menu" &&
     // Rule changed (developer 2026-10-25): the menu comes after L4 (was L10).
     nextSystemAfter(4)?.id === "menu" &&
     nextSystemAfter(5)?.id === "fridge-freshness" &&
-    nextSystemAfter(143) === null &&
+    nextSystemAfter(141) === null &&
     systemsIntroducedAt(1)
       .map((s) => s.id)
-      .join() === "restaurant-day",
-  "U5: everything is live by L150; 'coming up' and 'introduced at' agree with the table",
+      .join() === "restaurant-day,ingredient-stock",
+  "U5: everything is live by the last level; 'coming up' and 'introduced at' agree with the table",
 );
 
 console.log("R. Recipe requirements");
 const all = [...CAMPAIGN_RECIPES, ...BUSINESS_ONLY_RECIPES];
 assert(
-  CAMPAIGN_RECIPES.length === 222 &&
+  CAMPAIGN_RECIPES.length === 221 &&
     all.every((r) => {
       const req = recipeRequirements(r);
       const items = ingredientInstancesFor(r);
@@ -175,7 +174,7 @@ assert(
         )
       );
     }),
-  "R1: all 222 campaign recipes (+ the Business-only one) have stock needs, one per PHYSICAL item prepared (consecutive steps on the same ingredient are one item unless chainBreak)",
+  "R1: all 221 campaign recipes (+ the Business-only one) have stock needs, one per PHYSICAL item prepared (consecutive steps on the same ingredient are one item unless chainBreak)",
 );
 assert(
   all.every((r) =>

@@ -62,9 +62,26 @@ export function paidLevelReward(level: Pick<LevelDefinition, "id" | "reward" | "
 
 /** The curated campaign's last level: it keeps its stored finale reward. */
 export const CURATED_FINAL_LEVEL = CAMPAIGN_150_SOURCE_LEVEL_NUMBERS.length;
-/** First-clear reward curve for the curated campaign: $50 at Level 1, +$3.10 a level. */
+/**
+ * First-clear reward curve for the curated campaign (developer 2026-10-30, re-planned): the player
+ * earns fast while the first goals are in sight — $50 at Level 1, then `CURATED_REWARD_STEP_EARLY`
+ * more each level up to the knee, and a gentler `CURATED_REWARD_STEP_LATE` after it. This is what
+ * makes the first kitchen tier reachable around Level 40 and puts the completionist well above $150k.
+ * ONE function (`curatedRewardAt`) — level pay and the ad bonuses both read it.
+ */
 export const CURATED_REWARD_BASE = 50;
-export const CURATED_REWARD_STEP = 3.1;
+export const CURATED_REWARD_KNEE = 40;
+export const CURATED_REWARD_STEP_EARLY = 40;
+export const CURATED_REWARD_STEP_LATE = 6;
+
+/** The curated pay (whole dollars) for level `n`, before the finale rule. */
+export function curatedRewardAt(n: number): number {
+  const early = Math.min(n, CURATED_REWARD_KNEE) - 1;
+  const late = Math.max(0, n - CURATED_REWARD_KNEE);
+  return Math.round(
+    CURATED_REWARD_BASE + CURATED_REWARD_STEP_EARLY * early + CURATED_REWARD_STEP_LATE * late,
+  );
+}
 
 /**
  * Economy plan 2026-10-16: `round(50 + 3.1 × (n − 1))` whole dollars, rising
@@ -77,5 +94,5 @@ function curatedLevelReward(level: Pick<LevelDefinition, "id" | "reward">): numb
   if (level.reward.coins <= 0) return 0;
   const n = levelNumberOf(level);
   if (n >= CURATED_FINAL_LEVEL) return dollars(Math.max(0, Math.round(level.reward.coins)));
-  return dollars(Math.round(CURATED_REWARD_BASE + CURATED_REWARD_STEP * (n - 1)));
+  return dollars(curatedRewardAt(n));
 }

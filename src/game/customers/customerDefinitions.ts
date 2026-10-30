@@ -65,6 +65,3 @@ export function randomCustomer(rand: () => number = Math.random): CustomerDefini
   return CUSTOMERS[Math.floor(rand() * CUSTOMERS.length)] ?? CUSTOMERS[0]!;
 }
 
-export function getCustomer(id: string): CustomerDefinition | undefined {
-  return CUSTOMERS.find((c) => c.id === id);
-}

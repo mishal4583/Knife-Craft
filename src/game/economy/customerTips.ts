@@ -93,3 +93,14 @@ export function tipFor(input: {
   if (!pct) return 0;
   return tipAmount(input.payCents, pct);
 }
+
+/**
+ * A tip scaled by the hygiene share (1 = unchanged; < 1 a dirty restaurant, > 1 a spotless one; see
+ * cleanliness.tipHygieneShare), still whole dollars, never below the minimum, never negative.
+ */
+export function tipAfterHygiene(tipCents: number, share: number): number {
+  if (!(tipCents > 0) || share === 1) return tipCents;
+  const scaled =
+    Math.round((tipCents * Math.max(0, share)) / TIPS.ROUND_TO_CENTS) * TIPS.ROUND_TO_CENTS;
+  return Math.max(TIPS.MIN_CENTS, scaled);
+}

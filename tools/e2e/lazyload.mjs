@@ -9,6 +9,7 @@
 //   5. no page errors.
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import {
+  sweepCash,
   launch,
   boot,
   seedSave,
@@ -85,7 +86,9 @@ async function playLevel(title) {
   await sleep(800);
   if (/ORDER READY/i.test(await body())) {
     await clickButton(page, /^Serve to /);
-    await sleep(800);
+    // The cash lies on the table: the player sweeps it into the wallet (Finish Level waits for it).
+    await sleep(3500);
+    await sweepCash(page);
   }
   await clickButton(page, /^(Finish Level|Back to Orders)$/);
   await sleep(1500);

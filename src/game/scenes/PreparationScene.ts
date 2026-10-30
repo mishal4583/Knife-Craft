@@ -3331,7 +3331,9 @@ export class PreparationScene extends Phaser.Scene {
         const at = this.facePoint(c.u, c.v);
         const x = at.x - b.x;
         const y = at.y - b.y;
-        const a = Math.min(0.32, d * 0.3) * (1 - fade);
+        // Visible right up to the last bit (developer 2026-10-29): a patch with any dirt left
+        // still shows, fainter as it wears, and is gone only when it is clean.
+        const a = Math.min(0.42, 0.14 + d * 0.3) * (1 - fade);
         const g = ctx.createRadialGradient(x, y, 0, x, y, cellW * 0.85);
         g.addColorStop(0, `rgba(${cr},${cg},${cb},${a})`);
         g.addColorStop(0.6, `rgba(${cr},${cg},${cb},${a * 0.75})`);

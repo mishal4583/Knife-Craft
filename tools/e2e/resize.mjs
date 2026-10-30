@@ -8,7 +8,16 @@
 //   3. Kitchen home survives a resize to 320 (no remount flash: a marker set on the page
 //      element is still there).
 // Prints PASS/FAIL per check and exits 1 on any failure.
-import { launch, boot, seedSave, sleep, clickButton, readSave, text } from "./harness.mjs";
+import {
+  sweepCash,
+  launch,
+  boot,
+  seedSave,
+  sleep,
+  clickButton,
+  readSave,
+  text,
+} from "./harness.mjs";
 import { playToReport } from "./solver.mjs";
 
 const results = [];
@@ -73,6 +82,21 @@ await page.evaluate(() => {
     }
   }
 });
+// The Pre-Service Check may come first (the seeded kitchen has no stock): restock, then start.
+await sleep(1200);
+for (let i = 0; i < 4; i++) {
+  const clicked = await page.evaluate(() => {
+    const btn = [...document.querySelectorAll("button")].find(
+      (x) =>
+        /^(⚡ Quick restock|🔥 Start service|🚪 Open restaurant)/i.test(x.textContent.trim()) &&
+        !x.disabled,
+    );
+    btn?.click();
+    return !!btn;
+  });
+  await sleep(900);
+  if (!clicked) break;
+}
 await page.waitForFunction(
   () => /·\s*(?:\d+\/\d+\s+[a-z-]+|\d+% peeled)/i.test(document.body.innerText),
   {
@@ -104,7 +128,7 @@ const played = await playToReport(page, { maxMs: 120000 });
 await clickButton(page, /^Continue$/);
 await sleep(900);
 await clickButton(page, /^Serve to /);
-await sleep(900);
+await sleep(3500);
 const servedBefore = /Finish Level/.test(await flat());
 await resizeAll();
 const servedAfter = /Finish Level/.test(await flat());
@@ -113,13 +137,16 @@ check(
   played && servedBefore && servedAfter,
   { servedBefore, servedAfter },
 );
+// The cash lies on the table: the player sweeps it into the wallet (Finish Level waits for it).
+await sweepCash(page);
 await clickButton(page, /^Finish Level$/);
 await sleep(1500);
 const s = await readSave(page);
 check(
   "2b Finish Level still completes the level once",
-  s.levelProgress.completedLevelIds.includes("level-4") &&
-    s.economyLedger.filter((e) => e.category === "completion-reward" && e.description === "level-4")
+  // The seeded (older-numbering) Level 4 is level-2 of the 148-level campaign.
+  s.levelProgress.completedLevelIds.includes("level-2") &&
+    s.economyLedger.filter((e) => e.category === "completion-reward" && e.description === "level-2")
       .length === 1,
 );
 

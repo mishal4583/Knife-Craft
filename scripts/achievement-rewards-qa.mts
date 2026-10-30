@@ -66,17 +66,30 @@ console.log("L. Level rewards");
   const rising = r.slice(2, LEVELS.length - 1).every((v, i, a) => i === 0 || v > a[i - 1]!);
   const total = r.reduce((a, b) => a + b, 0);
   assert(
-    r[0] === 5_000 && r[1] === 0 && r[74] === 27_900 && r[148] === 50_900 && r[149] === 500_000,
-    "L1: L1 $50, L2 practice $0, L75 $279, L149 $509, L150 keeps its $5,000",
-    { L1: r[0], L2: r[1], L75: r[74], L149: r[148], L150: r[149] },
+    // The 2026-10-30 pay curve: $50, +$40 a level to Level 40, then +$6; no $0 practice level.
+    r[0] === 5_000 &&
+      r[1] === 9_000 &&
+      r[39] === 161_000 &&
+      r[74] === 182_000 &&
+      r[LEVELS.length - 2] === 225_200 &&
+      r[LEVELS.length - 1] === 500_000,
+    "L1: L1 $50, L2 $90, L40 $1,610, L75 $1,820, the level before the last $2,252, the last keeps its $5,000",
+    {
+      L1: r[0],
+      L2: r[1],
+      L40: r[39],
+      L75: r[74],
+      beforeLast: r[LEVELS.length - 2],
+      last: r[LEVELS.length - 1],
+    },
   );
   assert(
     rising,
-    "L2: every first clear from L3 to L149 pays more than the one before (no zig-zag)",
+    "L2: every first clear before the finale pays more than the one before (no zig-zag)",
   );
   assert(
-    total >= 4_600_000 && total <= 4_700_000,
-    `L3: the campaign's first clears total ~$46.6k (was $46,318) — money-neutral (${total / 100})`,
+    total === 24_513_800,
+    `L3: the campaign's first clears total $245,138 (was $45,623 before the 2026-10-30 pay re-plan; the frozen baseline's completion rewards) (${total / 100})`,
   );
 }
 

@@ -1,5 +1,76 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## Own-money start, Market from Level 1, economy re-plan, fixes from the full analysis (2026-10-30, `main`)
+
+- **No gifts (developer 2026-10-30):** Grandma's tools, cleaning cupboard and leftovers fridge are gone
+  (`giveGrandmasTools`, `giveGrandmasCupboard`, `grandmasFridge.ts` removed; old saves keep their
+  records, nothing reads them). Grandma's TIPS (advice lines) stay.
+- **First run:** a new game starts with **$10.00** (was $0), lands on the **Kitchen** after the intro, and a
+  hand points at the **Market** (`INGREDIENT_STOCK_FIRST_LEVEL` = 1; Market and Inventory open at Level 1). In the
+  Market a banner and a hand point at the first plan item (plan starts on "Today"); the player buys Level 1's food
+  (under $1) with their own money, goes back, taps Prepare. The chef knife and walnut board are owned from the start
+  ($0 items), so the hint says so instead of asking for a purchase. Browser: `tools/e2e/firstshop.mjs` (7/7).
+- **Level pay re-plan** (`curatedRewardAt`): $50 at Level 1, +$40 a level to Level 40, then +$6 (finale keeps
+  $5,000). Frozen baseline re-recorded: revenue 69,925 · completion 245,138 · COGS 16,604 · quality 1,415 · net
+  299,874. The completionist now ends ≈ $292k (target ≥ $150k); a kitchen-focused player affords the $60,000 first
+  tier around Level 44; by Level 30 a player has earned ≈ $32k. Kitchen prices (restaurant build): Growing $60,000,
+  Established $12,000, Neighborhood Café $18,000 — they are in `RESTAURANT_INVESTMENT_RULES.kitchenPrices` (the
+  catalog in `kitchenUpgradeDefinitions` matches). NOTE the ladder is not ascending (a tier needs the one before).
+- **Cleaning and supplies:** tasks short of a supply or tool never count toward the hygiene penalty
+  (`lastStart.cleaning` ignores them); a fully clean start tips ×1.25 (`CLEAN_TIP_SHARE`), a dirty one ×0.5. The guide
+  has a "You're out of cleaning supplies → Market" step and early purchase goals (a better knife, board, the
+  Blacksmith) so there is always a next thing to do through Level 30.
+- **Saves:** `SaveManager.save` is a serialized, coalescing queue (never overlapping, never out of order; a swept
+  order = 2 writes, not ~10).
+- **Removed dead code:** the old Level 2 practice branch and recipe (`camp-level2-basics-tutorial`),
+  `campaignNoEconomy`, unused wrappers in `Buttons.tsx` / `modals/index.tsx`, three unused exports. KEPT on purpose:
+  the 46 recipes only the 250-level source catalog uses (old-save migration and audit; 3 are oven trays) and the
+  three modules tests import (`recipeDefinitions`, `cuisineDefinitions`, `testRecipePool`).
+- QA: `pending-cash-qa` (Q: saves), `night-sync-qa` (B: supplies, clean bonus), `restaurant-guide-qa` (early goals).
+
+
+## Deep check, 2026-10-30 (no game change except the Serve button label)
+
+- Core loop verified in a real browser (`tools/e2e/cashflow.mjs`, 5/5): Serve books nothing; the table
+  cash is swept in (10 pieces, 10 ledger entries for one $127 order); wallet = signed ledger; Finish
+  Level waits for the cash and then completes once.
+- The Serve button's label must stay `Serve to <name>` (the harness and most e2e find it with
+  `/^Serve to /`); a "✅" prefix broke them and was removed.
+- Stale because the money now arrives when swept, not at Serve (need a swipe step): `levelflow.mjs`,
+  `servicefloor.mjs` F3/F4, `walkins.mjs`, `resize.mjs` 2a/2b, `phase2.mjs`. `restaurantcleanliness.mjs`
+  5 still expects the Cleanliness tab to open at L11 (now L5).
+
+## Restaurant Guide: what to do next, and why (2026-10-29, `main`)
+
+- Developer 2026-10-29: the game felt like cutting and serving only. `restaurant/restaurantGuide.ts`
+  is a list of rules read from the save and level; the Kitchen shows the first applicable step as one
+  card (`GuideCard.tsx`, "🎯 Next step": why + a button to the section) at a calm moment, at most once
+  per level. Steps: achievement rewards waiting / how achievements work (L6), the 2nd floor → buy a
+  machine → hire a Floor Server (L5+), required and first staff, kitchen tier (once a third is saved),
+  fridge nearly full, a Cleaner when cleaning piles up, a supplier contract, and the city ranking
+  ("#N of 50, X reputation to pass …", L8+). A step is done when its rule stops applying. Later /
+  Show me write `business.guideSeen` ("id@level", optional field): not offered again for 10 levels
+  (one-off intros never). No money, no ledger, no randomness. QA `restaurant-guide-qa` (new); browser `tools/e2e/guide.mjs` (8/8).
+
+## Cleaning and the night chores from Level 5, night and morning in sync (2026-10-29, `main`)
+
+- Developer 2026-10-29: the whole cleaning system starts at **Level 5** (`CLEANING_FROM_LEVEL`,
+  `PHASE_CHORES_FROM`, Grandma's cupboard, the day's opening card and Closing Time via
+  `DAY_CEREMONY_FROM_LEVEL`). The night's chores hold the next day until done (a chore short of a
+  supply is "blocked" and never holds it). The freshness clock and spoilage still start later.
+- The night covers the day (`CLOSING_COVERS`), **nothing is deleted** (developer 2026-10-29: players like
+  cleaning): every leftover task stays on the list. Doing a night chore also cleans, in the same pass, the
+  day's leftovers of its kind (mop-all: floor, restroom floor, spill; restroom disinfect: toilet and the lull's
+  restroom refresh; clear-and-reset: tables; degrease: grease, equipment; wipe-down: the lull's sweep and
+  sanitizer bucket), all counted as cleaned. The morning restroom check stays but only comes when the
+  night's restroom pass was not done; the morning is otherwise setup (stations, tables).
+- Hygiene penalty: a service started with cleaning undone (`lastStart.cleaning`, not the morning's
+  setup) tips half (`tipHygieneShare`, `tipAfterHygiene`, both serve paths in `App.tsx`).
+- QA `night-sync-qa` (new); `restaurant-cleanliness-qa`, `restaurant-shift-chores-qa`,
+  `restaurant-day-qa` O4 and `restaurant-first-levels-qa` D1/D2 updated to the new rule.
+  Still failing from before (the 148-level change, not cleaning): `restaurant-day-qa` S1,
+  `restaurant-first-levels-qa` E1, `restaurant-par-audit-qa` D1.
+
 ## v1.5.1: cash piled beside the seats (2026-10-26, `main`)
 
 - The table cash is banded bundles of green bills piled beside the chairs (gold band = tip),

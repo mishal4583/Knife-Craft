@@ -65,6 +65,7 @@
  * DemandManager's existing `orderFrequencyMultiplierFor`; see
  * `businessCustomersToday` below.
  */
+import { withPendingCash } from "../economy/pendingCash";
 import { takePackagingForOrder } from "./BusinessSuppliesManager";
 import { endlessDemandFor, usesRestaurantDemand } from "../restaurant/endlessDemand";
 import {
@@ -432,7 +433,14 @@ export function serveBusinessOrder(
   );
   return {
     session: served.session,
-    save: nextSave,
+    // The payment is left on the table with the order marked served, in this one save; it
+    // enters the wallet (and ONE "business-revenue" ledger entry) when the player sweeps it
+    // up (economy/pendingCash.ts). Callers never queue it again.
+    save: withPendingCash(nextSave, {
+      amount: served.coinsAwarded,
+      category: "business-revenue",
+      description: dish.id,
+    }),
     dish,
     amountCharged: served.coinsAwarded,
     payment,

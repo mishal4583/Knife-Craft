@@ -63,9 +63,9 @@ function assert(cond: unknown, msg: string) {
 const root = path.resolve(import.meta.dirname, "..");
 const read = (p: string) => fs.readFileSync(path.join(root, p), "utf8");
 
-// 150-level campaign (developer 2026-10-15): L19 is a 2-order service, L45 a 3-customer batch group.
-const service = getLevel("level-19")!; // requiredOrders 2
-const batch = getLevel("level-45")!; // 3-customer batch group
+// 148-level campaign (2026-10-29): L17 is a 2-order service, L43 a 3-customer batch group (were L19 / L45).
+const service = getLevel("level-17")!; // requiredOrders 2
+const batch = getLevel("level-43")!; // 3-customer batch group
 const progressAt = (n: number): LevelProgress => ({
   currentLevelId: `level-${n}`,
   highestUnlockedLevelId: `level-${n}`,
@@ -74,7 +74,7 @@ const progressAt = (n: number): LevelProgress => ({
 
 console.log("A. Rules");
 {
-  const p0 = progressAt(19);
+  const p0 = progressAt(17);
   assert(
     ordersRequired(service) === 2 && ordersRequired(batch) === 3,
     "A1: orders required: 2 and 3",
@@ -95,7 +95,7 @@ console.log("A. Rules");
   const done = { ...p0, completedLevelIds: [...p0.completedLevelIds, service.id] };
   assert(!mayPayOrder(done, service, "x"), "A5: a completed level never pays through this rule");
   const recipes = batch.batchGroupRecipeIds!;
-  const b1 = withPaidOrder(progressAt(45), batch.id, recipes[0]!);
+  const b1 = withPaidOrder(progressAt(43), batch.id, recipes[0]!);
   assert(
     !mayPayOrder(b1, batch, recipes[0]!) && mayPayOrder(b1, batch, recipes[1]!),
     "A6: a batch group pays each customer once",
@@ -109,15 +109,15 @@ console.log("A. Rules");
 
 console.log("B. completeLevel");
 {
-  const p = withPaidOrder(withPaidOrder(progressAt(19), service.id, "a"), "level-20", "b");
+  const p = withPaidOrder(withPaidOrder(progressAt(17), service.id, "a"), "level-18", "b");
   const r = completeLevel(service.id, p);
   assert(
     r.isFirstCompletion &&
       r.progress.paidOrders?.[service.id] === undefined &&
-      r.progress.paidOrders?.["level-20"]?.join() === "b",
+      r.progress.paidOrders?.["level-18"]?.join() === "b",
     "B1: completing the level drops its own entry only",
   );
-  const plain = completeLevel(service.id, progressAt(19));
+  const plain = completeLevel(service.id, progressAt(17));
   assert(!("paidOrders" in plain.progress), "B2: a save without the field gets no new key");
 }
 
@@ -165,7 +165,7 @@ const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
 console.log("D. The exploit");
 {
   // Serve 1 of 2 → leave → retry (session rebuilt from the save) → serve.
-  let p = progressAt(19);
+  let p = progressAt(17);
   let paid = 0;
   const serve = (recipeId: string) => {
     if (!mayPayOrder(p, service, recipeId)) return;
@@ -180,7 +180,7 @@ console.log("D. The exploit");
   serve("extra"); // a third serve the level no longer owes
   assert(paid === 2 && finished, "D1: leave after 1 of 2 and retry → 2 orders paid in all, not 3");
   // Honest play: two serves, one sitting.
-  let q = progressAt(19);
+  let q = progressAt(17);
   let honest = 0;
   for (const r of ["a", "b"]) {
     if (mayPayOrder(q, service, r)) {
@@ -195,7 +195,7 @@ console.log("E. Saves");
 {
   const s: SaveData = {
     ...DEFAULT_SAVE,
-    levelProgress: withPaidOrder(progressAt(19), service.id, "chicken-curry"),
+    levelProgress: withPaidOrder(progressAt(17), service.id, "chicken-curry"),
   };
   await SaveManager.save(s);
   const back = await SaveManager.load();
@@ -204,7 +204,7 @@ console.log("E. Saves");
     "E1: the paid order survives the real SaveManager save/load",
   );
   memoryStore.clear();
-  await SaveManager.save({ ...DEFAULT_SAVE, levelProgress: progressAt(19) });
+  await SaveManager.save({ ...DEFAULT_SAVE, levelProgress: progressAt(17) });
   const old = await SaveManager.load();
   assert(
     !("paidOrders" in old.levelProgress) &&

@@ -89,6 +89,7 @@ const saveAt = (n: number, hired: string[] = [], stock = FULL): SaveData => ({
     },
   },
 });
+import { remapCampaignThreshold } from "../src/game/levels/campaignSelection.ts";
 const kinds = (s: SaveData, phase: "opening" | "lull" | "closing") =>
   phaseChecklist(s, phase)
     .map((t) => t.kind)
@@ -118,10 +119,11 @@ console.log("T. Timing");
   );
   assert(
     phaseChores("lull", PHASE_CHORES_FROM - 1).length === 0 &&
-      PHASE_CHORES_FROM === 16 &&
-      !phaseChores("opening", 20).includes("lay-tables") &&
-      phaseChores("opening", 21).includes("lay-tables"),
-    "T2: nothing before L16 (old L21); table chores from dine-in (L21, old L31)",
+      PHASE_CHORES_FROM === 5 &&
+      // Table chores start with dine-in (old L31, now L19 after the two opening levels went).
+      !phaseChores("opening", remapCampaignThreshold(31) - 1).includes("lay-tables") &&
+      phaseChores("opening", remapCampaignThreshold(31)).includes("lay-tables"),
+    "T2: nothing before L5 (developer 2026-10-29; was L16, old L21); table chores from dine-in (old L31)",
   );
 }
 

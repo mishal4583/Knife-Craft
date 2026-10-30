@@ -102,6 +102,42 @@ export function appendLedgerEntry(
 }
 
 /**
+ * One order's cash arrives piece by piece as the player sweeps it up: the pieces of
+ * the same `batch` and category fold into ONE ledger entry (its amount grows with each
+ * piece, in the same save as the wallet), so an order writes a single settlement entry
+ * and a single tip entry instead of one per bill. The wallet always equals the signed
+ * ledger after every piece. A new entry when the batch has none yet (or it was trimmed).
+ */
+export function accumulateLedgerEntry(
+  save: SaveData,
+  batch: string,
+  category: LedgerCategory,
+  amount: number,
+  description?: string,
+): SaveData {
+  if (amount === 0) return save;
+  const i = save.economyLedger
+    .map((e) => e.batch === batch && e.category === category)
+    .lastIndexOf(true);
+  if (i < 0) {
+    const entry: EconomyLedgerEntry = {
+      id: nextLedgerId(),
+      timestamp: Date.now(),
+      category,
+      amount,
+      batch,
+      ...(description ? { description } : {}),
+    };
+    const economyLedger = trimLedger([...save.economyLedger, entry], entry.timestamp);
+    return { ...save, economyLedger, economy: addToLifetime(save.economy, category, amount) };
+  }
+  const economyLedger = save.economyLedger.map((e, k) =>
+    k === i ? { ...e, amount: e.amount + amount } : e,
+  );
+  return { ...save, economyLedger, economy: addToLifetime(save.economy, category, amount) };
+}
+
+/**
  * Recent "rewarded-ad" entries survive trimming: they ARE the record of
  * which Replay Bonuses were claimed today (replayBonus.ts derives the daily
  * cap and "already claimed" from them, and adBonuses.ts its caps and the

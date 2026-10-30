@@ -22,7 +22,7 @@
  *     the streak; the existing soap / dirty / cleaning-liquid rules hold.
  *  I  The inspector warns on undone cleaning without a Cleaner; a Cleaner
  *     passes; Business Mode saves (no record) are unchanged.
- *  V  Saves: an odd / old state is clamped; Grandma's cupboard comes once
+ *  V  Saves: an odd / old state is clamped; no cupboard is given
  *     (cost 0, no ledger), also to an older save past L10.
  *  N  No soft-lock: with $0 and no supplies every task just stays open and
  *     the service still starts (nothing here blocks).
@@ -48,7 +48,6 @@ import { dailyPayroll } from "../src/game/business/businessStaff.ts";
 import { inspectBusiness } from "../src/game/business/businessInspection.ts";
 import {
   CLEANING_FROM_LEVEL,
-  GRANDMAS_CUPBOARD,
   TASK_RULES,
   applyCleanlinessAction,
   areaView,
@@ -60,7 +59,6 @@ import {
   dayCleanerPrice,
   dayCleanerToday,
   hireDayCleaner,
-  giveGrandmasCupboard,
   snapshotServiceStart,
   tasksAfterService,
   usesAvailable,
@@ -172,14 +170,14 @@ console.log("C. Catalog");
 
 console.log("G. Tasks from services");
 {
-  const before = tasksAfterService(saveAt(9), 9, { recipes: [plain], dineIn: 0, customers: 1 });
+  const before = tasksAfterService(saveAt(4), 4, { recipes: [plain], dineIn: 0, customers: 1 });
   const a = tasksAfterService(saveAt(25), 25, { recipes: [plain], dineIn: 0, customers: 1 });
   const b = tasksAfterService(saveAt(25), 25, { recipes: [plain], dineIn: 0, customers: 1 });
   assert(
     kinds(before) === "" &&
       kinds(a) === "bins,equipment,floor,restroom-floor,toilet" &&
       JSON.stringify(a) === JSON.stringify(b),
-    "G1: nothing before L10; from L10 a service leaves the kitchen's equipment and bins, the dining floor, the restroom's toilet and floor (deterministic)",
+    "G1: nothing before L5; from L5 (developer 2026-10-29, was L10) a service leaves the kitchen's equipment and bins, the dining floor, the restroom's toilet and floor (deterministic)",
     kinds(a),
   );
   const g = tasksAfterService(saveAt(40), 40, { recipes: [fried], dineIn: 2, customers: 2 });
@@ -327,11 +325,11 @@ console.log("P. Spotless");
     "P1: tasks open at the start → not spotless, the streak resets; cleaned first → spotless, the streak grows (3)",
     { r1: r1.report.hygiene, r2: r2.report.streak },
   );
-  const l21 = closeServiceReport(snapshotServiceStart(saveAt(10), 10), 10, false);
-  const l20 = closeServiceReport(snapshotServiceStart(saveAt(9), 9), 9, false);
+  const l21 = closeServiceReport(snapshotServiceStart(saveAt(5), 5), 5, false);
+  const l20 = closeServiceReport(snapshotServiceStart(saveAt(4), 4), 4, false);
   assert(
     l21.report.spotless === true && l20.report.spotless === null,
-    "P2: from L10 (no cleaning liquid needed before dine-in) a clean start is spotless; before L10 there's no streak",
+    "P2: from L5 (no cleaning liquid needed before dine-in) a clean start is spotless; before L5 there's no streak",
   );
 }
 
@@ -388,19 +386,14 @@ console.log("V. Saves");
     "V1: an odd state is clamped (unknown tasks and areas dropped, counts and opened uses capped)",
     c,
   );
-  const fresh = saveAt(9, {});
-  const at20 = giveGrandmasCupboard(fresh, 9);
-  const at21 = giveGrandmasCupboard(fresh, 10);
-  const again = giveGrandmasCupboard(at21, 11);
-  const old = giveGrandmasCupboard(saveAt(120, {}), 120);
+  // Developer 2026-10-30: nothing is given any more — the player buys every tool and supply in the Market.
+  const fresh = saveAt(4, {});
   assert(
-    at20 === fresh &&
-      GRANDMAS_CUPBOARD.every((x) => supplyUnits(at21.business.supplies, x.id) === x.units) &&
-      at21.economyLedger.length === 0 &&
-      at21.credits === fresh.credits &&
-      again === at21 &&
-      cleanlinessOf(old).cupboardAt === 120,
-    "V2: Grandma's cupboard once from L10 (cost 0, no ledger), also to an older save at L120",
+    Object.keys(fresh.business.supplies.stock).length === 0 &&
+      cleanlinessOf(fresh).cupboardAt === null &&
+      cleanlinessOf(fresh).tasks.length === 0 &&
+      !/giveGrandmasCupboard|GRANDMAS_CUPBOARD/.test(read("src/game/restaurant/cleanliness.ts")),
+    "V2: no cleaning cupboard is given at any level — the supplies are bought in the Market (an old save's record still reads)",
   );
 }
 
@@ -429,15 +422,15 @@ console.log("W. Wiring");
   assert(
     /snapshotServiceStart\(base, levelNumber\(level\.id\)\)/.test(app) &&
       /closeServiceReport\([\s\S]{0,400}tasksAfterService\([\s\S]{0,400}cleanerRound\(/.test(app) &&
-      /giveGrandmasCupboard\(/.test(app) &&
+      !/giveGrandmasCupboard/.test(app) &&
       /snapshotServiceStart\(s, n\)/.test(sim) &&
       /tasksAfterService\(next, n/.test(sim) &&
       !/Math\.random/.test(mod),
-    "W1: App and the sim snapshot at the start, add tasks after the report, then the Cleaner's round; the cupboard; no Math.random",
+    "W1: App and the sim snapshot at the start, add tasks after the report, then the Cleaner's round; no cupboard given; no Math.random",
   );
   assert(
-    CLEANING_FROM_LEVEL === 10,
-    "W2: cleaning starts with Level 10's service (developer 2026-10-10; was L21)",
+    CLEANING_FROM_LEVEL === 5,
+    "W2: cleaning starts with Level 5's service (developer 2026-10-29; was L10, before that L21)",
   );
 }
 

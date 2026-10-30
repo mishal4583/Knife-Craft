@@ -25,7 +25,9 @@
  *
  * Run: npx tsx scripts/restaurant-takeaway-qa.mts
  */
+import { getLevel } from "../src/game/levels/LevelManager.ts";
 import fs from "node:fs";
+import { ticketsFor } from "../src/game/restaurant/serviceTickets.ts";
 import path from "node:path";
 import { DEFAULT_SAVE, type SaveData } from "../src/game/SaveManager.ts";
 import { getLevels } from "../src/game/levels/LevelManager.ts";
@@ -206,8 +208,8 @@ console.log("P. Pieces by dish");
       takeawayPiecesFor(salad, SERVICE_SUPPLY_RULES.tamperFromLevel).extras.includes(
         "tamper-labels",
       ) &&
-      SERVICE_SUPPLY_RULES.tamperFromLevel === 56,
-    "P3: a cutlery kit (not bread), a wet wipe for messy dishes, a tamper label from L56 (old L91)",
+      SERVICE_SUPPLY_RULES.tamperFromLevel === 54,
+    "P3: a cutlery kit (not bread), a wet wipe for messy dishes, a tamper label from L54 (old L91; 148-level renumbering)",
   );
   assert(
     dineInExtrasFor(fried, 80).join() === "deli-sheets" &&
@@ -216,10 +218,10 @@ console.log("P. Pieces by dish");
         "toothpicks",
       ) &&
       dineInExtrasFor(chicken, SERVICE_SUPPLY_RULES.toothpickFromLevel).includes("toothpicks") &&
-      SERVICE_SUPPLY_RULES.toothpickFromLevel === 59 &&
+      SERVICE_SUPPLY_RULES.toothpickFromLevel === 57 &&
       dineInExtrasFor(salad, 150).length === 0 &&
       dineInExtrasFor(null, 150).length === 0,
-    "P4: dine-in: fried food and bread on a deli-sheet liner; grilled meat and fish with a toothpick from L59 (old L101)",
+    "P4: dine-in: fried food and bread on a deli-sheet liner; grilled meat and fish with a toothpick from L57 (old L101; 148-level renumbering)",
   );
 }
 
@@ -303,15 +305,15 @@ console.log("X. Closing tissues and deli wrap");
     basil: { ingredientId: "basil", quantity: 0, unitCost: 100, purchaseDay: 1 },
   } as unknown as SaveData["business"]["inventory"];
   assert(
-    // 150-level remap: wrap from L16 (old L21), tissues with dine-in at L21 (old L31).
-    closingSuppliesFor(saveAt(15, {}, fridge), 15).length === 0 &&
-      closingSuppliesFor(saveAt(16, {}, fridge), 16)
+    // 148-level renumbering: wrap from L14 (old L21), tissues with dine-in at L19 (old L31).
+    closingSuppliesFor(saveAt(13, {}, fridge), 13).length === 0 &&
+      closingSuppliesFor(saveAt(14, {}, fridge), 14)
         .map((l) => `${l.id}:${l.need}`)
         .join() === "food-wrap:2" &&
-      closingSuppliesFor(saveAt(21, {}, fridge), 21)
+      closingSuppliesFor(saveAt(19, {}, fridge), 19)
         .map((l) => `${l.id}:${l.need}`)
         .join() === "tissues:1,food-wrap:2",
-    "X1: from L16 a sheet of wrap per ingredient left in the fridge (empty lines skipped); from L21 a tissue cube for the dining room",
+    "X1: from L14 a sheet of wrap per ingredient left in the fridge (empty lines skipped); from L19 a tissue cube for the dining room",
   );
   const s = saveAt(40, { tissues: 3, "food-wrap": 10 }, fridge);
   const used = closingSupplies(s, 40);
@@ -346,16 +348,18 @@ console.log("M. The moving-in crate");
     ...structuredClone(DEFAULT_SAVE),
     story: { introDone: true, milestoneMask: 127, finaleSeen: false },
     levelProgress: {
-      currentLevelId: "level-120",
-      highestUnlockedLevelId: "level-120",
-      completedLevelIds: Array.from({ length: 119 }, (_, i) => `level-${i + 1}`),
+      currentLevelId: "level-118",
+      highestUnlockedLevelId: "level-118",
+      completedLevelIds: Array.from({ length: 117 }, (_, i) => `level-${i + 1}`),
     },
   };
   const moved = migrateToUnifiedRestaurant(old);
   const stock = moved.business.supplies.stock;
   const want = new Set<string>();
-  for (let n = 120; n < 124; n++)
-    levelRecipesAt(n).forEach((r, i) => {
+  for (let n = 118; n < 118 + 3; n++)
+    // the crate covers the next 3 services (KIT_SERVICES)
+    // The crate is stocked for the services' own TICKETS (what the level will really serve), as the migration reads them.
+    ticketsFor(old.levelProgress, getLevel(`level-${n}`)!).tickets.forEach((r, i) => {
       if (orderServiceFor(n, i, r) === "takeaway") {
         const t = takeawayPiecesFor(r, n);
         want.add(t.container);
@@ -364,7 +368,7 @@ console.log("M. The moving-in crate");
     });
   assert(
     want.size > 0 && [...want].every((id) => (stock[id as SupplyId]?.units ?? 0) >= 1),
-    "M1: an old save moving in at L120 gets its takeaway dishes' own containers and bags",
+    "M1: an old save moving in at L118 gets its takeaway dishes' own containers and bags",
     [...want].map((id) => [id, stock[id as SupplyId]?.units ?? 0]),
   );
 }

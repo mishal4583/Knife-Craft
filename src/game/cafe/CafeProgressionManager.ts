@@ -55,10 +55,6 @@ export function getUnlockedCafeFeatures(progress: LevelProgress): CafeUnlock[] {
   return reachedMilestones(progress).flatMap((m) => m.unlocks);
 }
 
-export function isCafeFeatureUnlocked(type: CafeUnlockType, progress: LevelProgress): boolean {
-  return getUnlockedCafeFeatures(progress).some((u) => u.type === type);
-}
-
 export type CafeProgressSummary = {
   current: string;
   previous: string | null;

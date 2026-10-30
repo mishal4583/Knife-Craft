@@ -412,6 +412,12 @@ Focused suites (`npx tsx scripts/<name>.mts`):
   spoilage, from L91 End Business Day exactly; old saves default to Day 1.
   Browser: `tools/e2e/restaurantday.mjs` (restaurant test build).
   The game map is `docs/GAME_MAP.md`.
+- `restaurant-guide-qa` — the Restaurant Guide (`restaurant/restaurantGuide.ts`, `GuideCard.tsx`):
+  pacing, done-means-gone, Later / 10-level reminders, `business.guideSeen` through the real
+  SaveManager, wiring. See HANDOFF 2026-10-29.
+- `night-sync-qa` — cleaning and the night chores from L5; the night covers the day's
+  leftovers (`CLOSING_COVERS`), no morning restroom check, half tips after an undone-cleaning
+  start (`tipHygieneShare`). See HANDOFF 2026-10-29.
 - `closing-chores-qa` — the night chores are Cleanliness tasks
   (`restaurant/closingChores.ts`; developer 2026-10-23: "let the player do
   everything unless he hires a cleaner"; 2026-10-24: "why is it not
@@ -1655,7 +1661,7 @@ levels a day ends about $19.5k (14.8%) richer; `ad-bonuses-qa` F1 keeps it
 
 Locked Campaign baseline (enforced by `economy-v2-final-qa`):
 
-- Revenue 69,110 · Completion Rewards 46,585 · COGS 16,092 ·
+- (148 levels since 2026-10-29: Revenue 69,925 · Completion Rewards 245,138 · COGS 16,604 · Quality 1,415 · Net 299,874; the 150-level figures were) Revenue 69,110 · Completion Rewards 46,585 · COGS 16,092 ·
   Quality Bonus 1,402 · Honest Chef Net 101,005 — the 150-level campaign,
   recorded 2026-10-17 (developer's approval of the re-baseline). The
   250-level figures were 165,140 / 77,581 / 37,620 / 3,315 / 208,416.

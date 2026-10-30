@@ -1,8 +1,8 @@
+import type { PendingCash } from "../economy/pendingCash";
 import type { RestaurantDayState } from "../restaurant/restaurantDay";
 import type { RestaurantSuppliesState } from "../restaurant/serviceSupplies";
 import type { RestaurantStaffState } from "../restaurant/staffRequirements";
 import type { RestaurantMigrationState } from "../restaurant/restaurantMigration";
-import type { GrandmasFridgeState } from "../restaurant/grandmasFridge";
 import type { SupplierCreditState } from "../restaurant/supplierCredit";
 import type { GrandmasToolsState } from "../restaurant/kitchenTools";
 import type { RestaurantRecord } from "../restaurant/serviceReport";
@@ -146,13 +146,27 @@ export type BusinessState = {
    * Legacy field retained when reading older saves. It no longer grants or
    * displays ingredients; new stock is bought in the Market.
    */
-  grandmasFridge?: GrandmasFridgeState;
+  /** Retired (Grandma's fridge gave leftovers; removed 2026-10-30). Old saves may still carry it; nothing reads it. */
+  grandmasFridge?: unknown;
   /**
    * Unified Restaurant (RESTAURANT_MODE): the sections Grandma has pointed
    * out (restaurant/firstLevels.ts `SECTION_POINTER`) — opened or "Later".
    * Optional; absent = none yet.
    */
   sectionsSeen?: ("inventory" | "shop" | "rack" | "business")[];
+  /**
+   * Unified Restaurant: the Restaurant Guide's steps the player has been offered
+   * ("id@level", restaurant/restaurantGuide.ts) — put off, so not offered again at once.
+   * Optional; absent = none yet.
+   */
+  guideSeen?: string[];
+  /**
+   * Unified Restaurant: what a served order left on the table and the player has not
+   * swept into the wallet yet (economy/pendingCash.ts). Saved in the SAME save that marks
+   * the order paid, so closing the game mid-sweep never loses it; settled on the next
+   * load or when the player leaves the table. Optional; absent = nothing owed.
+   */
+  pendingCash?: PendingCash;
   /**
    * Unified Restaurant (RESTAURANT_MODE): the Endless Restaurant's lifetime
    * stars — STATUS ONLY, never money (restaurant/restaurantStanding.ts).

@@ -7,11 +7,10 @@
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import {
   launch,
-  boot,
-  freshPlayer,
-  seedSave,
+  startFirstLevel,
   sleep,
   clickButton,
+  sweepCash,
   readSave,
   shot,
   text,
@@ -32,17 +31,6 @@ const newLedger = (b, a) =>
 
 const { browser, page, logs } = await launch();
 
-async function skipIntro() {
-  // The cinematic intro's SKIP control appears after INTRO_SKIP_AFTER_MS.
-  await page.waitForFunction(() => !!document.querySelector('[aria-label="Skip intro"]'), {
-    timeout: 30000,
-  });
-  await page.evaluate(() => document.querySelector('[aria-label="Skip intro"]').click());
-  await page.waitForFunction(() => !document.querySelector("[data-intro-scene]"), {
-    timeout: 10000,
-  });
-  await sleep(800);
-}
 async function waitHud() {
   await page.waitForFunction(
     () => /·\s*(?:\d+\/\d+\s+[a-z-]+|\d+% peeled)/i.test(document.body.innerText),
@@ -63,14 +51,15 @@ async function playAndServe() {
       : "unknown";
   if (flow === "service") {
     await clickButton(page, /^Serve to /);
-    await sleep(900);
+    // The cash lies on the table: the player sweeps it into the wallet (it enters only then).
+    await sleep(3500);
+    await sweepCash(page);
   }
   return { played: played.ok, flow };
 }
 
 // ---------- G2: fresh player, Level 1, Finish Level ----------
-await freshPlayer(page);
-await skipIntro();
+await startFirstLevel(page);
 const g2a = await playAndServe();
 check(
   "G2.1 first Level 1 uses the service flow (ORDER READY -> Serve)",
@@ -104,11 +93,11 @@ check(
   g2.levelProgress,
 );
 const g2Sum = g2.economyLedger.reduce((s, e) => s + e.amount, 0);
-// Rule changed (developer 2026-10-26, "the game starts at 0 cash"): a new game opens with $0
-// (was $1,240), so the wallet is exactly what Level 1 earned.
+// Rule changed (developer 2026-10-30, "buy everything from your own money"): a new game opens with
+// $10.00, spends some of it in the Market, then earns the Level 1 pay.
 check(
-  "G2.6 wallet = $0 + signed ledger (a new game starts at $0)",
-  g2.credits === g2Sum && g2Sum > 0,
+  "G2.6 wallet = $10.00 + signed ledger (a new game starts at $10.00)",
+  g2.credits === 1000 + g2Sum && g2Sum > 0,
   {
     credits: g2.credits,
     ledgerSum: g2Sum,
@@ -116,8 +105,7 @@ check(
 );
 
 // ---------- G2 + G1: fresh player, Level 1, Serve -> Back to Kitchen ----------
-await freshPlayer(page);
-await skipIntro();
+await startFirstLevel(page);
 const g1a = await playAndServe();
 check("G1.1 fresh Level 1 (second run) uses the service flow", g1a.flow === "service", g1a);
 await clickButton(page, /^Back to (Kitchen|Orders)$/);
@@ -132,82 +120,13 @@ check(
   { completed: g1.levelProgress.completedLevelIds, ledger: g1Ledger },
 );
 
-// ---------- G1: Level 2 Serve -> Back to Kitchen, twice ----------
-async function openFromBoard(title) {
-  await page.evaluate(() =>
-    [...document.querySelectorAll("nav button")]
-      .find((x) => x.textContent.includes("Kitchen"))
-      ?.click(),
-  );
-  await sleep(600);
-  await clickButton(page, /^See all orders/);
-  await sleep(600);
-  await page.evaluate((name) => {
-    const h = [...document.querySelectorAll("p")].find((p) => p.textContent.trim() === name);
-    let n = h;
-    for (let i = 0; i < 8 && n; i++) {
-      n = n.parentElement;
-      const b =
-        n &&
-        [...n.querySelectorAll("button")].find((x) =>
-          /^(Prepare|Replay)$/.test(x.textContent.trim()),
-        );
-      if (b) {
-        b.click();
-        return;
-      }
-    }
-  }, title);
-}
-await boot(
-  page,
-  seedSave({
-    credits: 124000,
-    levelProgress: {
-      currentLevelId: "level-2",
-      highestUnlockedLevelId: "level-2",
-      completedLevelIds: ["level-1"],
-    },
-    story: { introDone: true, milestoneMask: 0, finaleSeen: false },
-  }),
-);
-for (let run = 1; run <= 2; run++) {
-  const b = await readSave(page);
-  await openFromBoard("Basic Kitchen Learning");
-  const r = await playAndServe();
-  await clickButton(page, /^Back to (Kitchen|Orders)$/);
-  await sleep(1500);
-  const a = await readSave(page);
-  const led = newLedger(b, a);
-  const done = a.levelProgress.completedLevelIds.includes("level-2");
-  if (run === 1)
-    check(
-      // Level 2 is a guided practice since the campaign redesign (levelTypes: practice-only,
-      // no wallet or ledger money), so it completes with no entry at all.
-      "G1.3 Level 2 (practice) first Serve -> Back to Kitchen: completed once, no money moves",
-      r.flow === "service" && done && led.length === 0,
-      // No wallet delta here: the seeded save's legacy `credits` are migrated
-      // to cents on the first save, so only the ledger is compared.
-      { flow: r.flow, ledger: led },
-    );
-  else
-    check(
-      "G1.4 Level 2 retry is a replay: no ledger entry, no wallet change",
-      led.length === 0 && a.credits === b.credits,
-      {
-        ledger: led,
-        delta: a.credits - b.credits,
-      },
-    );
-  await page.evaluate(() => document.querySelector("[role=dialog] button")?.click());
-  await sleep(400);
-}
+// ---------- G1.3: the Level 2 practice level is gone (2026-10-29/30) ----------
+// Level 2 now pays like every other level; it is covered by firstshop.mjs / the QA suites.
 
 // ---------- pause exit mid-level still pays nothing ----------
 {
+  await startFirstLevel(page);
   const b = await readSave(page);
-  await openFromBoard("First Slice");
-  await waitHud();
   await page.evaluate(() =>
     [...document.querySelectorAll("button")]
       .find((x) => /pause/i.test(x.getAttribute("aria-label") ?? ""))
@@ -218,8 +137,8 @@ for (let run = 1; run <= 2; run++) {
   await sleep(1000);
   const a = await readSave(page);
   check(
-    "G1.5 pause -> Back to Kitchen before Serve: no ledger entry",
-    newLedger(b, a).length === 0,
+    "G1.5 pause -> Back to Kitchen before Serve: no ledger entry, wallet unchanged",
+    newLedger(b, a).length === 0 && a.credits === b.credits,
     newLedger(b, a),
   );
 }

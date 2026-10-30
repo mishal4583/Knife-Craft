@@ -1023,7 +1023,7 @@ export function BottomNav({ active, go }: { active: ScreenId | null; go: (s: Scr
               <KButton
                 variant="copper"
                 className="min-h-12 flex-[2]"
-                onClick={() => go(pointer.tab)}
+                onClick={() => (pointer.tab === "shop" ? openMarketIngredients(go) : go(pointer.tab))}
               >
                 Show me →
               </KButton>

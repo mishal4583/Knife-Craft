@@ -169,21 +169,22 @@ console.log("E. Events");
 console.log("S. Standing: rank, stage, Restaurant Complete");
 {
   const s1 = restaurantStanding(saveAt(1).levelProgress);
-  // 150-level campaign (2026-10-15): stages through the remap; Restaurant Complete at L150.
-  const s51 = restaurantStanding(saveAt(35).levelProgress);
-  const s245 = restaurantStanding(saveAt(145).levelProgress);
-  const s250 = restaurantStanding(saveAt(150).levelProgress);
-  const done = restaurantStanding(saveAt(151).levelProgress);
+  // 148-level campaign (2026-10-29/30): stages through the remap; Restaurant Complete at L148; the Pantry (real
+  // stock) is the very first stage change, at Level 1.
+  const s51 = restaurantStanding(saveAt(33).levelProgress);
+  const s245 = restaurantStanding(saveAt(143).levelProgress);
+  const s250 = restaurantStanding(saveAt(148).levelProgress);
+  const done = restaurantStanding(saveAt(149).levelProgress);
   assert(
     s1.rank === "Humble Kitchen" &&
-      s1.stage === RESTAURANT_SYSTEMS[0]!.stage &&
-      s1.stageNumber === 1 &&
-      s1.nextStage?.level === 3 &&
+      s1.stage === RESTAURANT_SYSTEMS[1]!.stage &&
+      s1.stageNumber === 2 &&
+      s1.nextStage?.level === 5 &&
       s51.stage === "Cuisines & Specialists" &&
       s245.stage === "Grand Service" &&
       s245.nextStage?.stage === "Restaurant Complete" &&
-      s245.nextStage.level === 150,
-    `S1: rank and stage from the existing tables (L1 ${s1.rank} · ${s1.stage} → Pantry at L3; L35 ${s51.stage}; L145 ${s245.stage} → next Restaurant Complete at 150)`,
+      s245.nextStage.level === 148,
+    `S1: rank and stage from the existing tables (L1 ${s1.rank} · ${s1.stage} → the Menu at L5; L33 ${s51.stage}; L143 ${s245.stage} → next Restaurant Complete at 148)`,
   );
   assert(
     !s250.complete &&
@@ -193,7 +194,7 @@ console.log("S. Standing: rank, stage, Restaurant Complete");
       done.stage === "Restaurant Complete" &&
       done.nextStage === null &&
       done.stageNumber === done.stageCount,
-    "S2: Level 150 still to play → not complete; every level done → Restaurant Complete and the Endless Restaurant unlocked",
+    "S2: Level 148 still to play → not complete; every level done → Restaurant Complete and the Endless Restaurant unlocked",
   );
   const before = JSON.stringify(endless);
   isRestaurantComplete(endless);
@@ -295,9 +296,8 @@ console.log("D. The Endless day");
       /claimDaily\(s\.dailyOrder, now\)/.test(serve) &&
       /const bonus = todaysSpecialBonus\(revenue\)/.test(serve) &&
       /"daily-reward",\s*bonus/.test(serve) &&
-      /withTodaysSpecialServed\(\s*appendLedgerEntry\(result\.save, "business-revenue"/.test(
-        serve,
-      ) &&
+      // The payment itself is left on the table inside serveBusinessOrder; App only notes the special.
+      /withTodaysSpecialServed\(result\.save, result\.dish\.id\)/.test(serve) &&
       /payTodaysSpecial\(/.test(adv) &&
       !/DAILY_ORDER_BONUS_COINS/.test(serve),
     "D4: serving Today's Special is noted; End Business Day pays 15 % of the day's revenue capped at the EXISTING $50, through the existing claim (hasClaimedToday → claimDaily, one \"daily-reward\" entry) — never twice a calendar day, never a second bonus",

@@ -9,9 +9,7 @@
  *    revenue is) — the quality bonus comes on top, so it's a floor ("about");
  *  - completion: the level's completion reward (`paidLevelReward`).
  *
- * Null for a level already completed (a replay pays nothing). A practice level
- * (`campaignNoEconomy`, Level 2) pays nothing either, as the serve does
- * (App.serveCampaignOrder treats it as a replay), so its preview is $0.
+ * Null for a level already completed (a replay pays nothing).
  * Pure; reads the same functions the serve uses. Nothing reads RESTAURANT_MODE.
  */
 import type { SaveData } from "../SaveManager";
@@ -28,7 +26,6 @@ export type LevelPayPreview = { orders: number; completion: number; total: numbe
 
 export function levelPayPreview(save: SaveData, level: LevelDefinition): LevelPayPreview | null {
   if (isCompleted(level.id, save.levelProgress)) return null;
-  if (level.campaignNoEconomy) return { orders: 0, completion: 0, total: 0 };
   const { tickets, progress } = ticketsFor(save.levelProgress, level);
   const owed = tickets.slice(paidOrdersFor(progress, level.id).length);
   const orders = owed.reduce((t, r) => t + dollars(recipePay(r, payChapterOf(level))), 0);

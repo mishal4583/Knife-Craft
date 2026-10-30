@@ -476,7 +476,7 @@ export function ServiceOrderComplete({
               </p>
             ) : null}
             <div className="mt-5 space-y-2">
-              <KButton full variant="sage" onClick={handleServe}>
+              <KButton full variant="green" size="lg" onClick={handleServe}>
                 Serve to {customer.name}
               </KButton>
               <KButton full variant="cream" onClick={onRetry}>

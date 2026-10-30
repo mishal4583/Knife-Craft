@@ -41,11 +41,14 @@ import {
 import { dollars } from "../money";
 
 export const RESTAURANT_INVESTMENT_RULES = {
-  /** Restaurant-build kitchen tier prices (release: kitchenUpgradeDefinitions). */
+  /**
+   * Restaurant-build kitchen tier prices (release: kitchenUpgradeDefinitions). Developer 2026-10-29:
+   * Growing $60,000, Established $12,000, Neighborhood Café $18,000 (were $16,000 / $20,000 / $21,000).
+   */
   kitchenPrices: {
-    "growing-kitchen": dollars(16_000),
-    "established-kitchen": dollars(20_000),
-    "neighborhood-cafe": dollars(21_000),
+    "growing-kitchen": dollars(60_000),
+    "established-kitchen": dollars(12_000),
+    "neighborhood-cafe": dollars(18_000),
     "flourishing-cafe": dollars(24_000),
     "grand-kitchen": dollars(29_000),
   } as Record<string, number>,

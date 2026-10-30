@@ -45,7 +45,8 @@ for (const r of CAMPAIGN_RECIPES) {
   seenIds.add(r.id);
 }
 // 222 since the 2026-10-15 150-level redesign added the L2 practice recipe.
-assert(CAMPAIGN_RECIPES.length === 222 && !dup, `2: all 222 recipes resolve with unique ids (${CAMPAIGN_RECIPES.length})`);
+// 221 since 2026-10-30 (the L2 practice recipe was removed with the practice level).
+assert(CAMPAIGN_RECIPES.length === 221 && !dup, `2: all 221 recipes resolve with unique ids (${CAMPAIGN_RECIPES.length})`);
 
 // ===== 3: all technique references resolve (engine-supported per ingredient). =====
 assert(
@@ -113,11 +114,11 @@ assert(seenIds.size === CAMPAIGN_RECIPES.length, "9: zero duplicate recipe ids")
 // ===== 11: the last level (150, was 250) resolves correctly. =====
 const level250 = LEVELS[LEVELS.length - 1]! as any;
 assert(
-  level250.id === "level-150" &&
+  level250.id === "level-148" &&
     level250.chapter === 13 &&
     level250.batchGroupRecipeIds?.length === 3 &&
     level250.batchGroupRecipeIds.every((id: string) => isRecipePlayable(recipeById.get(id)!)),
-  "11: Level 150 resolves correctly — chapter 13, real 3-recipe batch group, all playable",
+  "11: the last level (148) resolves correctly — chapter 13, real 3-recipe batch group, all playable",
 );
 
 // ===== 12: recipe name matches its own ingredients — the defect this pass originally found and fixed. =====

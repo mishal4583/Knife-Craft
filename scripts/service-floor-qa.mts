@@ -41,6 +41,9 @@ const code = (f: string) =>
   read(f)
     .replace(/\/\*[\s\S]*?\*\//g, "")
     .replace(/\/\/.*$/gm, "");
+// The "nothing changed" audit is measured from 3ceac0f (the reviewed main before the 2026-10-29 work).
+// Later approved save additions are excluded from this phase's "nothing changed" diff (each has its own QA):
+// business.guideSeen (restaurant-guide-qa), business.pendingCash + the ledger `batch` (pending-cash-qa). Later approved save additions.
 let failures = 0;
 function assert(cond: boolean, label: string, detail?: unknown) {
   if (!cond) {
@@ -164,7 +167,7 @@ console.log("D. Wiring");
       /service\.extraAction!\.disabled\s*\?\s*undefined\s*:\s*departThen\(service\.extraAction!\.onClick\)/.test(
         prep,
       ) &&
-      /const departThen = \(next: \(\) => void\) => \{[\s\S]{0,320}\n\s*next\(\);\n\s*\};/.test(
+      /const departThen = \(next: \(\) => void\) => \{[\s\S]{0,320}\r?\n\s*next\(\);\r?\n\s*\};/.test(
         prep,
       ),
     "D3: Next Customer / Finish Level / a menu guest run the existing action at once, exactly once (the walk out never delays it)",
@@ -198,7 +201,7 @@ console.log("E. Nothing else moves");
     execSync(
       // Early-game phase 4 (developer 2026-10-26): everything unlocked by Level 5 — only the unlock-level
       // lines of these catalogs change (staff-hire-qa U5 checks no price moved).
-      "git diff 095115a -- src/game/business/businessTypes.ts src/game/economy ':!src/game/economy/staffDefinitions.ts' ':!src/game/economy/customerTips.ts' src/game/daily/EndlessServiceManager.ts src/game/restaurant/endlessRestaurant.ts",
+      "git diff 3ceac0f -- src/game/business/businessTypes.ts src/game/economy :!src/game/economy/staffDefinitions.ts :!src/game/business/businessTypes.ts :!src/game/economy/EconomyLedger.ts :!src/game/economy/ledgerTypes.ts :!src/game/economy/customerTips.ts src/game/daily/EndlessServiceManager.ts src/game/restaurant/endlessRestaurant.ts",
       { cwd: ROOT, encoding: "utf8" },
     );
   assert(

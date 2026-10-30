@@ -11,22 +11,6 @@ type Common = {
   className?: string;
 };
 
-export function WoodButton(p: Common) {
-  return <KButton variant="wood" {...p} />;
-}
-
-export function CreamButton(p: Common) {
-  return <KButton variant="cream" {...p} />;
-}
-
-export function GhostButton(p: Common) {
-  return <KButton variant="ghost" {...p} />;
-}
-
-export function CopperButton(p: Common) {
-  return <KButton variant="copper" {...p} />;
-}
-
 export function IconButton({
   label,
   onClick,

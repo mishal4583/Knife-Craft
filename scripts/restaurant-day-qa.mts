@@ -86,14 +86,14 @@ const finishedDay = (n: number) => {
 
 console.log("S. Schedule");
 assert(
-  // 150-level remap (2026-10-15): old L21 / 51 / 101 / 161 → L16 / 35 / 59 / 101.
+  // 148-level renumbering (2026-10-29): old L21 / 51 / 101 / 161 → L14 / 33 / 57 / 99.
   servicesForDayAt(1).join() === "Lunch,Dinner" &&
-    servicesForDayAt(15).join() === "Lunch,Dinner" &&
-    servicesForDayAt(16).join() === "Breakfast,Lunch,Dinner" &&
-    servicesForDayAt(35).join() === "Breakfast,Lunch,Afternoon Tea,Dinner" &&
-    servicesForDayAt(59).join() === "Breakfast,Brunch,Lunch,Afternoon Tea,Dinner" &&
-    servicesForDayAt(101).join() === "Breakfast,Brunch,Lunch,Afternoon Tea,Dinner,Late Supper",
-  "S1: 2 services a day to L15, then one more meal at L16, L35, L59 and L101 (6 a day)",
+    servicesForDayAt(13).join() === "Lunch,Dinner" &&
+    servicesForDayAt(14).join() === "Breakfast,Lunch,Dinner" &&
+    servicesForDayAt(33).join() === "Breakfast,Lunch,Afternoon Tea,Dinner" &&
+    servicesForDayAt(57).join() === "Breakfast,Brunch,Lunch,Afternoon Tea,Dinner" &&
+    servicesForDayAt(99).join() === "Breakfast,Brunch,Lunch,Afternoon Tea,Dinner,Late Supper",
+  "S1: 2 services a day to L13, then one more meal at L14, L33, L57 and L99 (6 a day)",
 );
 
 console.log("O. Opening");
@@ -145,14 +145,15 @@ console.log("O. Opening");
       // news the sheet stays closed (was: no sheet at L5 at all).
       plan5.news.systems.some((x) => x.id === "menu") &&
       servicePlanNeedsSheet(plan5) &&
-      !servicePlanNeedsSheet({ ...plan5, news: { ...plan5.news, systems: [], dishes: [] } }) &&
+      // Developer 2026-10-29: the day's ceremony starts at L5, so the opening card shows even without news.
+      servicePlanNeedsSheet({ ...plan5, news: { ...plan5.news, systems: [], dishes: [] } }) &&
       (!plan5.check.applies || plan5.check.ready) &&
       !!mid &&
       mid.opening === null &&
       !servicePlanNeedsSheet({ ...mid, news: { ...mid.news, systems: [], dishes: [] } }) &&
-      !dayCeremonyAt(15) &&
-      dayCeremonyAt(16),
-    "O4: before Level 16 a new day opens without its card (L5); mid-day a stock-free level starts at once; the card starts at L16 (old L21)",
+      !dayCeremonyAt(4) &&
+      dayCeremonyAt(5),
+    "O4: before Level 5 a new day opens without its card; mid-day a stock-free level starts at once; the card starts at L5 (developer 2026-10-29; was L16, old L21)",
   );
 }
 
@@ -306,9 +307,8 @@ console.log("W. Wiring");
     // same closeDay, so the hold reads the save after that (`base`; pass 2 also gives
     // Grandma's leftovers there, once).
     // The redesign (2026-10-15) dropped Grandma's leftovers from this line.
-    /const base = giveGrandmasTools\(\s*quietDayEnd\(save\),\s*restaurantLevelOf\(save\.levelProgress\),?\s*\);/.test(
-      app,
-    ) &&
+    // Developer 2026-10-30: Grandma gives nothing any more, so the hold reads the quietly-closed save directly.
+    /const base = quietDayEnd\(save\);/.test(app) &&
       /if \(firstPlay && restaurantDayOf\(base\)\.closingDue\) \{\s*closingHoldRef\.current = true;/.test(
         app,
       ) &&
@@ -327,7 +327,7 @@ console.log("W. Wiring");
         app,
       ) &&
       /closingDue &&\s*dayCeremonyAt\(restaurantLevelOf\(save\.levelProgress\)\) &&/.test(app),
-    "W2: closing blocks the next first play (quietly closed before L16); START, or a start without the card, opens the day; the Closing Time sheet closes it from L16",
+    "W2: closing blocks the next first play (quietly closed before L5); START, or a start without the card, opens the day; the Closing Time sheet closes it from L5",
   );
 }
 

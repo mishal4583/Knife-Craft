@@ -107,8 +107,12 @@ console.log("M. Schedule (developer curve 2026-10-05; 150-level re-plan 2026-10-
 // taught at L6), 4 dishes from L6, the same 6 as the old L11 opening by L9.
 assert(
   menuDishIdsAt(4).length === 0 &&
-    menuDishIdsAt(5).join() === "biz-garlic-bread" &&
+    // 148-level renumbering (2026-10-29): cuts are taught two levels earlier, so all four opening dishes
+    // (caprese, mushroom bruschetta, garden salad, garlic bread) are already legal at L5; 6 from L7.
+    menuDishIdsAt(5).join() ===
+      "biz-caprese-salad,biz-mushroom-bruschetta,biz-garden-salad,biz-garlic-bread" &&
     menuDishIdsAt(6).length === 4 &&
+    menuDishIdsAt(7).length === 6 &&
     menuDishIdsAt(9).length === 6 &&
     menuDishIdsAt(10).length === 6 &&
     menuDishIdsAt(10).every(
@@ -117,8 +121,8 @@ assert(
     ) &&
     menuTargetAt(4) === 0 &&
     menuTargetAt(5) === 4 &&
-    menuTargetAt(9) === 6,
-  "M1: no menu in L1–4; it opens at L5 (Garlic Bread), 4 dishes from L6 and 6 by L9, each one the player can already cut",
+    menuTargetAt(7) === 6,
+  "M1: no menu in L1–4; it opens at L5 with its 4 dishes, 6 from L7, each one the player can already cut",
 );
 const curveMisses: string[] = [];
 for (const p of MENU_CURVE) {
@@ -131,12 +135,12 @@ assert(
     // The developer's curve through the 150-level remap (old 11:4 … 161:48; L11's point
     // merges the old 11 and 15).
     MENU_CURVE.map((p) => `${p.level}:${p.dishes}`).join() ===
-      // Rule changed (developer 2026-10-25): the first points are L5:4 and L9:6 (was 11:6).
-      "5:4,9:6,13:8,17:10,21:12,29:15,35:18,42:21,46:25,49:29,56:33,59:36,68:39,76:42,88:45,101:48",
+      // Rule changed (developer 2026-10-25): the first points are L5:4 and L9:6 (was 11:6); each point is two levels earlier since 2026-10-29.
+      "5:4,7:6,11:8,15:10,19:12,27:15,33:18,40:21,44:25,47:29,54:33,57:36,66:39,74:42,86:45,99:48",
   `M2: at every point of the developer's curve the menu has min(target, dishes the rules allow) ${curveMisses.join("; ")}`,
 );
 const over: string[] = [];
-for (let lv = 1; lv <= 150; lv++)
+for (let lv = 1; lv <= 148; lv++)
   if (menuDishIdsAt(lv).length > menuTargetAt(lv))
     over.push(`L${lv}: ${menuDishIdsAt(lv).length} > ${menuTargetAt(lv)}`);
 assert(
@@ -148,17 +152,17 @@ assert(
   // 150-level campaign: L13 (cuts not yet taught) and L56–68 (meat and fish not yet cooked).
   // Rule changed (developer 2026-10-25): also L5, the menu's new opening (target 4; only Garlic
   // Bread is legal before chop is taught at L6).
-  shortfalls.join() === "5,13,56,59,68",
-  `M2c: the only points the catalog can't reach are L5 (chop at L6), L13 (techniques) and L56–68 (meat and fish) — ${shortfalls.join()}`,
+  shortfalls.join() === "11,54,57,66",
+  `M2c: the only points the catalog can't reach are L11 (techniques not yet taught) and L54–66 (meat and fish not yet cooked) — ${shortfalls.join()}`,
 );
 const scheduled = MENU_UNLOCKS.flatMap((u) => [...u.dishIds]);
 assert(
   scheduled.length === 48 &&
     new Set(scheduled).size === 48 &&
     scheduled.every((id) => dishIds.includes(id)) &&
-    menuDishIdsAt(101).length === 48 &&
-    menuDishIdsAt(100).length === 45,
-  "M3: all 48 catalog dishes are scheduled once, the full menu at L101",
+    menuDishIdsAt(99).length === 48 &&
+    menuDishIdsAt(98).length === 45,
+  "M3: all 48 catalog dishes are scheduled once, the full menu at L99",
 );
 assert(
   MENU_UNLOCKS.every((u, i) => i === 0 || u.level > MENU_UNLOCKS[i - 1]!.level) &&
@@ -208,17 +212,19 @@ console.log("T. Tied to cuisine progression");
   );
   // Rule changed (developer 2026-10-25): the menu chain is explained at L5 (was L11).
   const news11 = restaurantNewsAt(5);
-  const news51 = restaurantNewsAt(35);
+  const news51 = restaurantNewsAt(33);
   assert(
     news11.chain?.join(" → ") ===
       "Menu → Customer Order → Inventory → Preparation → Service → Revenue" &&
-      news11.dishes.length === 1 &&
-      restaurantNewsAt(6).dishes.length === 3 &&
+      // 148-level renumbering (2026-10-29): the menu opens with its 4 dishes at L5; 2 more arrive at L7.
+      news11.dishes.length === 4 &&
+      restaurantNewsAt(6).dishes.length === 0 &&
+      restaurantNewsAt(7).dishes.length === 2 &&
       restaurantNewsAt(6).chain === null &&
       restaurantNewsAt(11).chain === null &&
       !!news11.dishWhy &&
       news51.cuisines.some((c) => c.name === "Indian" && c.specialist === "Indian Chef") &&
-      restaurantNewsAt(30).comingUp.some((c) => c.level === 35 && /Indian/.test(c.text)) &&
+      restaurantNewsAt(30).comingUp.some((c) => c.level === 33 && /Indian/.test(c.text)) &&
       restaurantNewsAt(12).chain === null,
     "T3: the news explains the menu chain at L5, new dishes with their reason, and a cuisine (with its chef) 5 levels ahead",
   );
@@ -270,11 +276,11 @@ assert(
   "C2: house cuisines need no specialist; every other cuisine has its specialist chef",
 );
 assert(
-  cuisineComingUp(30)?.id === "indian" &&
-    cuisineComingUp(29) === null &&
-    cuisineComingUp(11)?.id === "mexican" &&
+  cuisineComingUp(28)?.id === "indian" &&
+    cuisineComingUp(27) === null &&
+    cuisineComingUp(9)?.id === "mexican" &&
     CUISINE_NOTICE_LEVELS === 5 &&
-    cuisineComingUp(54)?.specialist?.title === "Asian Chef",
+    cuisineComingUp(52)?.specialist?.title === "Asian Chef",
   "C3: a cuisine and its specialist are announced 5 levels ahead",
 );
 
@@ -283,7 +289,7 @@ console.log("A. Active menu");
   const none = { inactiveDishIds: [] as string[] };
   const offEarly = { inactiveDishIds: ["biz-caprese-salad"] };
   assert(
-    activeMenuDishes(offEarly, 12).length === 6 && activeMenuDishes(none, 12).length === 6,
+    activeMenuDishes(offEarly, 12).length === 7 && activeMenuDishes(none, 12).length === 7,
     "A1: before the menu choice level every unlocked dish is on (saved switches ignored)",
   );
   const lv = MENU_CHOICE_LEVEL;
@@ -303,11 +309,11 @@ console.log("A. Active menu");
   const lockedId = lockedMenuDishes(12)[0]!.dish.id;
   assert(
     !canOrderDish(none, 12, lockedId) &&
-      // Rule changed (developer 2026-10-25): Caprese joins at L6 (was L11), so L5 is "locked".
-      !canOrderDish(none, 5, "biz-caprese-salad") &&
-      canOrderDish(none, 6, "biz-caprese-salad") &&
-      !canOrderDish(none, 100, "biz-thai-basil-salmon") &&
-      canOrderDish(none, 101, "biz-thai-basil-salmon"),
+      // 148-level renumbering (2026-10-29): Caprese Skewers join at L7 (the second menu step).
+      !canOrderDish(none, 6, "biz-caprese-skewers") &&
+      canOrderDish(none, 7, "biz-caprese-skewers") &&
+      !canOrderDish(none, 98, "biz-thai-basil-salmon") &&
+      canOrderDish(none, 99, "biz-thai-basil-salmon"),
     "A4: a locked dish is never orderable, whatever the saved switches say",
   );
   assert(
@@ -321,15 +327,15 @@ console.log("A. Active menu");
       currentLevelId: "level-3",
       highestUnlockedLevelId: "level-12",
       completedLevelIds: [],
-    }) === 12 && dishesUnlockedAt(35).length === 3,
+    }) === 12 && dishesUnlockedAt(33).length === 3,
     "A6: the restaurant's level is the furthest level reached",
   );
 }
 
 console.log("D. Data untouched");
 assert(
-  LEVELS.length === 150 && CAMPAIGN_RECIPES.length === 222 && BUSINESS_DISH_CATALOG.length === 48,
-  "D1: 150 levels, 222 campaign recipes, 48 menu dishes (a schedule over existing data)",
+  LEVELS.length === 148 && CAMPAIGN_RECIPES.length === 221 && BUSINESS_DISH_CATALOG.length === 48,
+  "D1: 148 levels, 221 campaign recipes, 48 menu dishes (a schedule over existing data)",
 );
 
 console.log("W. Wiring");

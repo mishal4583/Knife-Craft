@@ -169,7 +169,6 @@ import {
   cleanlinessOf,
   applyCleanlinessAction,
   type CleanlinessAction,
-  giveGrandmasCupboard,
   snapshotServiceStart,
   tasksAfterService,
   cleanerRestroomJob,
@@ -179,8 +178,17 @@ import {
   hireDayCleaner,
   type DayCleanerOutcome,
   newDayCleanerRewardId,
+  tipHygieneShare,
 } from "@/game/restaurant/cleanliness";
 import { isSystemLive } from "@/game/restaurant/restaurantProgression";
+import { guideStepFor, markGuideSeen } from "@/game/restaurant/restaurantGuide";
+import {
+  collectPendingCashPiece,
+  pendingCashTotal,
+  settlePendingCash,
+  withPendingCash,
+} from "@/game/economy/pendingCash";
+import { GuideCard } from "@/components/kc/restaurant/GuideCard";
 import {
   fireSpecialist,
   getSpecialist,
@@ -203,7 +211,6 @@ import {
 import { businessCustomerPayment } from "@/game/business/BusinessServiceManager";
 import { recordRevenueAndCogs } from "@/game/business/BusinessFinanceManager";
 import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
-import { giveGrandmasTools } from "@/game/restaurant/kitchenTools";
 import {
   STAR_GRADES,
   customerLineFor,
@@ -274,7 +281,7 @@ import { buyStaff as buyStaffFromCatalog } from "@/game/economy/StaffManager";
 import { selectSupplier as selectSupplierFromCatalog } from "@/game/economy/SupplierManager";
 import { appendLedgerEntry } from "@/game/economy/EconomyLedger";
 import type { LedgerCategory } from "@/game/economy/ledgerTypes";
-import { tipFor } from "@/game/economy/customerTips";
+import { tipAfterHygiene, tipFor } from "@/game/economy/customerTips";
 import { qualityFor } from "@/game/CutEvaluator";
 import type { QualityLabel } from "@/types/game";
 import type { SettlementResult } from "@/game/economy/economyTypes";
@@ -563,7 +570,6 @@ export function App() {
   // The intro ends exactly once, whether it finished or was skipped.
   const introCompletedRef = useRef(false);
   /** A fresh save's Level 1 waits under the intro; its play session opens when the intro ends. */
-  const firstLevelUnderIntroRef = useRef<LevelContext | null>(null);
 
   // Economy V2 Phase 9 — the level's own completion reward
   // (finishCampaignLevel/finishBatchGroupLevel's `rewardCoins`), shown via
@@ -600,12 +606,6 @@ export function App() {
   // never a stale closure. The Replay Bonus's claimed/granted state is NOT
   // stored here — it is derived from the save's ledger (replayBonus.ts).
   const saveRef = useRef<SaveData | null>(null);
-  const pendingServiceCashRef = useRef<{
-    remainingCents: number;
-    category: LedgerCategory;
-    description: string;
-    tipDescription?: string;
-  } | null>(null);
   /** Achievement rewards already announced this session (and those waiting at load). */
   const announcedRef = useRef<Set<string>>(new Set());
   const [replayOffer, setReplayOffer] = useState<ReplayBonusOffer | null>(null);
@@ -626,6 +626,8 @@ export function App() {
   const adBonusBusyRef = useRef(false);
   /** The daily gift is offered once per session at most (it waits for a calm Kitchen). */
   const dailyGiftOfferedRef = useRef(false);
+  /** The restaurant level a Restaurant Guide step was last answered at (one step per level). */
+  const guideLevelRef = useRef<number | null>(null);
   /** Phase 5 (A): the restoration reveal of a kitchen tier just built (RestorationReveal.tsx) — session-only, never saved. */
   const [restorationReveal, setRestorationReveal] = useState<{ from: string; to: string } | null>(
     null,
@@ -706,32 +708,19 @@ export function App() {
       const isFreshSave =
         loaded.levelProgress.completedLevelIds.length === 0 &&
         loaded.levelProgress.currentLevelId === LEVELS[0]!.id;
-      setScreen(isFreshSave ? "gameplay" : "kitchen");
+      // A brand-new player lands on the Kitchen after the intro (developer 2026-10-30): the
+      // Market is open from the very first level, and a hand points them there to buy the first
+      // order's ingredients with their own money before cutting anything.
+      setScreen("kitchen");
       setActiveLevelId(loaded.levelProgress.currentLevelId);
-      // A fresh save's Level 1 runs the SAME service pipeline
-      // (customer -> Serve -> Finish Level) as picking Level 1 from the
-      // Order Board (onSelectLevel -> startCampaignLevel), so the first
-      // play pays the order settlement AND the completion reward and
-      // shows Level Complete. Only a level without a recipe pool falls
-      // back to the legacy fixed-steps Preparation.
-      if (isFreshSave) {
-        const firstSession = buildCampaignServiceSession(LEVELS[0]!, loaded.levelProgress);
-        if (firstSession) {
-          setCampaignServiceSession(firstSession);
-          setSessionMode("campaign-service");
-          // Its level_started (and the analytics funnel's first step) is sent when
-          // the intro closes — Level 1 is what the player sees then (completeIntro).
-          firstLevelUnderIntroRef.current = {
-            world: `chapter-${LEVELS[0]!.chapter ?? 1}`,
-            level: String(levelNumber(LEVELS[0]!.id)),
-          };
-        }
-      }
       // Economy V2.5 — kitchen tiers are bought (Restaurant Development);
       // this only keeps the kitchen on the highest tier owned. Saves from
       // before V2.5 already got their level-earned tiers in
       // SaveManager.load (migrateKitchenDevelopment).
       let synced = syncKitchenUpgradeOwnership(loaded);
+      // Cash a served order left on the table when the game was closed goes in the till,
+      // once, on load (economy/pendingCash.ts) — whatever screen the player lands on.
+      synced = settlePendingCash(synced);
       // THE LAST WISH's intro (ported from boot()) is a "how you got
       // here" origin scene — only a genuinely brand-new player should
       // ever see it. Every save that predates this feature also has
@@ -882,9 +871,6 @@ export function App() {
     const current = saveRef.current;
     if (current && !current.story.introDone) persist(markIntroDone(current));
     sendAnalyticsEvent("intro_completed", { skipped: reason === "skipped" });
-    const firstLevel = firstLevelUnderIntroRef.current;
-    firstLevelUnderIntroRef.current = null;
-    if (firstLevel) startPlaySession(firstLevel);
   }
 
   /** The single place every save mutation flows through: keeps the kitchen
@@ -923,47 +909,15 @@ export function App() {
     }
   }
 
-  /** Start a cash-on-floor transaction. Only swept pieces enter the wallet. */
-  function queueServiceCash(
-    amount: number,
-    tip: number,
-    category: LedgerCategory,
-    description: string,
-    tipDescription?: string,
-  ) {
-    pendingServiceCashRef.current = {
-      remainingCents: Math.max(0, amount) + Math.max(0, tip),
-      category,
-      description,
-      ...(tipDescription ? { tipDescription } : {}),
-    };
-  }
-
-  /** Called once for each bill or coin the player actually swipes into the wallet. */
+  /**
+   * One swept bill or coin enters the wallet (economy/pendingCash.ts): its cents leave the
+   * table, join the wallet and the order's one ledger entry in a single save.
+   */
   function collectServiceCashPiece(cents: number, isTip: boolean) {
-    const pending = pendingServiceCashRef.current;
     const current = saveRef.current;
-    if (!pending || !current || cents <= 0) return;
-    const amount = Math.min(cents, pending.remainingCents);
-    if (amount <= 0) return;
-    pending.remainingCents -= amount;
-    const category = isTip ? "customer-tip" : pending.category;
-    const description = isTip ? (pending.tipDescription ?? pending.description) : pending.description;
-    persist(
-      appendLedgerEntry(
-        { ...current, credits: current.credits + amount },
-        category,
-        amount,
-        description,
-      ),
-    );
-  }
-
-  /** Release the service queue after every cash piece has been collected. */
-  function finishServiceCashCollection() {
-    const pending = pendingServiceCashRef.current;
-    if (!pending || pending.remainingCents > 0) return;
-    pendingServiceCashRef.current = null;
+    if (!current) return;
+    const next = collectPendingCashPiece(current, cents, isTip);
+    if (next !== current) persist(next);
   }
 
   /** Achievements tab: collect one earned reward (progression/achievements.ts). */
@@ -1836,8 +1790,8 @@ export function App() {
       const firstPlay = !!level && !isCompleted(level.id, save.levelProgress);
       // First levels (firstLevels.ts): before Level 21 a day that's due to
       // close closes quietly (the same closeDay the Closing Time button runs).
-      // Grandma's old culinary tools are still granted at their Level 10 unlock.
-      const base = giveGrandmasTools(quietDayEnd(save), restaurantLevelOf(save.levelProgress));
+      // Nothing is given any more (developer 2026-10-30): tools and supplies are bought in the Market.
+      const base = quietDayEnd(save);
       // Closing time comes before the next day's first service (the Closing
       // Time sheet shows over the Order Board / Kitchen until it is done).
       if (firstPlay && restaurantDayOf(base).closingDue) {
@@ -2056,7 +2010,7 @@ export function App() {
     const result = serveBusinessOrder(businessServiceSession, save, businessRand());
     if (!result) return null;
     setBusinessServiceSession(result.session);
-    queueServiceCash(result.amountCharged, 0, "business-revenue", result.dish.id);
+    // serveBusinessOrder already left the payment on the table (pendingCash) in result.save.
     persist(withTodaysSpecialServed(result.save, result.dish.id));
     return {
       coinsAwarded: result.amountCharged,
@@ -2170,7 +2124,6 @@ export function App() {
     )
       return serveMenuGuestOrder(level, recipe);
     const isReplay =
-      level?.campaignNoEconomy === true ||
       campaignServiceSession.isReplay ||
       !save ||
       !level ||
@@ -2243,28 +2196,34 @@ export function App() {
     // appendLedgerEntry is a no-op for a 0 tip.
     let tip = 0;
     if (base && !isReplay) {
-      tip = tipFor({
-        firstPayment: true,
-        levelId: campaignServiceSession.levelId,
-        recipeId: recipe.id,
-        orderIndex: paidOrdersFor(base.levelProgress, campaignServiceSession.levelId).length,
-        score: order.preparationScore ?? 0,
-        payCents: result.coinsAwarded,
-      });
-      const levelId = campaignServiceSession.levelId;
-      queueServiceCash(
-        result.coinsAwarded,
-        tip,
-        "campaign-settlement",
-        recipe.id,
-        `${levelId}:${recipe.id}`,
+      // A restaurant that opened this service with cleaning undone tips half (cleanliness.tipHygieneShare).
+      tip = tipAfterHygiene(
+        tipFor({
+          firstPayment: true,
+          levelId: campaignServiceSession.levelId,
+          recipeId: recipe.id,
+          orderIndex: paidOrdersFor(base.levelProgress, campaignServiceSession.levelId).length,
+          score: order.preparationScore ?? 0,
+          payCents: result.coinsAwarded,
+        }),
+        RESTAURANT_MODE ? tipHygieneShare(base, levelNumber(campaignServiceSession.levelId)) : 1,
       );
-      // Lock this order as served before showing physical cash. If the app is
-      // closed mid-swipe, collected pieces stay paid and the order cannot pay twice.
-      const servedSave = {
-        ...base,
-        levelProgress: withPaidOrder(base.levelProgress, levelId, recipe.id),
-      };
+      const levelId = campaignServiceSession.levelId;
+      // Lock this order as served AND leave its cash on the table in the same save: if the
+      // app is closed mid-swipe nothing is lost, and the order cannot pay twice.
+      const servedSave = withPendingCash(
+        {
+          ...base,
+          levelProgress: withPaidOrder(base.levelProgress, levelId, recipe.id),
+        },
+        {
+          amount: result.coinsAwarded,
+          tip,
+          category: "campaign-settlement",
+          description: recipe.id,
+          tipDescription: `${levelId}:${recipe.id}`,
+        },
+      );
       persist(applySharpnessDecay(servedSave, base.equippedKnifeId, recipe));
     }
     return {
@@ -2310,8 +2269,13 @@ export function App() {
       result.coinsAwarded,
       stock.cost,
     );
-    queueServiceCash(result.coinsAwarded, 0, "business-revenue", dish.id);
-    persist(paid);
+    persist(
+      withPendingCash(paid, {
+        amount: result.coinsAwarded,
+        category: "business-revenue",
+        description: dish.id,
+      }),
+    );
     return {
       coinsAwarded: result.coinsAwarded,
       reaction: result.reaction,
@@ -2537,16 +2501,6 @@ export function App() {
     // First levels: before Level 21 the day closes quietly, and Level Complete says so.
     const dayBefore = restaurantDayOf(nextSave).day;
     if (RESTAURANT_MODE && isFirstCompletion) nextSave = quietDayEnd(nextSave);
-    // Supplies plan A: reaching Level 10 (the Market opens) brings Grandma's old tools (once).
-    const hadTools = !!nextSave.business.grandmasTools;
-    if (RESTAURANT_MODE && isFirstCompletion)
-      nextSave = giveGrandmasTools(nextSave, restaurantLevelOf(nextSave.levelProgress));
-    const toolsNow = !hadTools && !!nextSave.business.grandmasTools;
-    // Cleanliness & Maintenance: Grandma's cleaning cupboard when the section opens (once).
-    const hadCupboard = cleanlinessOf(nextSave).cupboardAt !== null;
-    if (RESTAURANT_MODE && isFirstCompletion)
-      nextSave = giveGrandmasCupboard(nextSave, restaurantLevelOf(nextSave.levelProgress));
-    const cupboardNow = !hadCupboard && cleanlinessOf(nextSave).cupboardAt !== null;
     const newDay =
       restaurantDayOf(nextSave).day !== dayBefore ? restaurantDayOf(nextSave).day : null;
     // Economy V2 Phase 9 — the completion reward is its own real wallet
@@ -2586,8 +2540,6 @@ export function App() {
       const fridgeNotes =
         RESTAURANT_MODE && isFirstCompletion
           ? [
-              ...(toolsNow ? ["🧰 Grandma's peeler, bowl & cups · free"] : []),
-              ...(cupboardNow ? ["🧹 Grandma's cleaning cupboard · clean after each service"] : []),
               ...serviceLines,
               ...(brokenNow > 0
                 ? [
@@ -2789,26 +2741,32 @@ export function App() {
     // this first payment only, in the same persist, as its own entry.
     let tip = 0;
     if (base && !isReplay) {
-      tip = tipFor({
-        firstPayment: true,
-        levelId: batchGroupSession.levelId,
-        recipeId: viewed.recipe.id,
-        orderIndex: paidOrdersFor(base.levelProgress, batchGroupSession.levelId).length,
-        score: viewed.order.preparationScore ?? 0,
-        payCents: result.coinsAwarded,
-      });
-      const levelId = batchGroupSession.levelId;
-      queueServiceCash(
-        result.coinsAwarded,
-        tip,
-        "campaign-settlement",
-        viewed.recipe.id,
-        `${levelId}:${viewed.recipe.id}`,
+      // A restaurant that opened this service with cleaning undone tips half (cleanliness.tipHygieneShare).
+      tip = tipAfterHygiene(
+        tipFor({
+          firstPayment: true,
+          levelId: batchGroupSession.levelId,
+          recipeId: viewed.recipe.id,
+          orderIndex: paidOrdersFor(base.levelProgress, batchGroupSession.levelId).length,
+          score: viewed.order.preparationScore ?? 0,
+          payCents: result.coinsAwarded,
+        }),
+        RESTAURANT_MODE ? tipHygieneShare(base, levelNumber(batchGroupSession.levelId)) : 1,
       );
-      const servedSave = {
-        ...base,
-        levelProgress: withPaidOrder(base.levelProgress, levelId, viewed.recipe.id),
-      };
+      const levelId = batchGroupSession.levelId;
+      const servedSave = withPendingCash(
+        {
+          ...base,
+          levelProgress: withPaidOrder(base.levelProgress, levelId, viewed.recipe.id),
+        },
+        {
+          amount: result.coinsAwarded,
+          tip,
+          category: "campaign-settlement",
+          description: viewed.recipe.id,
+          tipDescription: `${levelId}:${viewed.recipe.id}`,
+        },
+      );
       persist(applySharpnessDecay(servedSave, base.equippedKnifeId, viewed.recipe));
     }
     return {
@@ -3083,6 +3041,13 @@ export function App() {
   useEffect(() => {
     if (storyEvent) AudioManager.playSfx("story");
   }, [storyEvent]);
+  // Cash left on the table is never stranded (economy/pendingCash.ts): leaving the service
+  // (any screen but the service itself) or loading the game puts what is still there in the till.
+  useEffect(() => {
+    const current = saveRef.current;
+    if (!current || screen === "gameplay") return;
+    if (pendingCashTotal(current) > 0) persist(settlePendingCash(current));
+  }, [save, screen]);
   // Ad bonuses: the home screens with nothing else on them — where the floating cash may
   // drift in and the daily gift opens (never over a card, a sheet, a pointer or an ad).
   const homeCalm =
@@ -3326,6 +3291,20 @@ export function App() {
       }
     : null;
 
+  // The Restaurant Guide: one "what to do next, and why" card over the Kitchen, at a calm
+  // moment, once per level (restaurant/restaurantGuide.ts).
+  const guideAtLevel = save ? restaurantLevelOf(save.levelProgress) : 0;
+  const guideStep =
+    RESTAURANT_MODE &&
+    save &&
+    homeCalm &&
+    screen === "kitchen" &&
+    !pointedTab &&
+    !askRestaurantName &&
+    guideLevelRef.current !== guideAtLevel
+      ? guideStepFor(save)
+      : null;
+
   return (
     <GameShell
       aside={
@@ -3366,7 +3345,6 @@ export function App() {
                   ? serveBatchGroupViewedOrder
                   : serveActiveBusinessOrder,
               onCashPieceCollected: collectServiceCashPiece,
-              onCashCollected: finishServiceCashCollection,
               onNextOrder: isCampaignService
                 ? campaignWillFinishNext
                   ? finishCampaignLevel
@@ -3759,6 +3737,20 @@ export function App() {
             : {})}
           {...(levelRewardNotice.grandma ? { quote: levelRewardNotice.grandma, ms: 3000 } : {})}
           onDismiss={() => setLevelRewardNotice(null)}
+        />
+      ) : null}
+      {guideStep ? (
+        <GuideCard
+          step={guideStep}
+          onLater={() => {
+            guideLevelRef.current = guideAtLevel;
+            if (saveRef.current) persist(markGuideSeen(saveRef.current, guideStep));
+          }}
+          onGo={() => {
+            guideLevelRef.current = guideAtLevel;
+            if (saveRef.current) persist(markGuideSeen(saveRef.current, guideStep));
+            go(guideStep.to as ScreenId);
+          }}
         />
       ) : null}
       {replayOffer ? (

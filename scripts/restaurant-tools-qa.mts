@@ -32,10 +32,8 @@ import { SUPPLY_CATALOG, type SupplyId } from "../src/game/business/businessSupp
 import { supplyUnits } from "../src/game/business/BusinessSuppliesManager.ts";
 import { dishServiceFor } from "../src/game/restaurant/dishService.ts";
 import {
-  GRANDMAS_TOOL_SET,
   TOOL_RULES,
   cooksOnLine,
-  giveGrandmasTools,
   levelRecipesAt,
   toolsCheck,
   toolsComingUp,
@@ -77,6 +75,20 @@ const withTools = (s: SaveData, ids: readonly SupplyId[], units = 1): SaveData =
   return { ...s, business: { ...s.business, supplies: { ...s.business.supplies, stock } } };
 };
 
+/**
+ * The three starter tools a player buys in the Market (developer 2026-10-30: Grandma no longer gives
+ * them). Modelled here as one unit each in stock, so the checks below read a player who owns them.
+ */
+const TOOL_SET: readonly SupplyId[] = ["peelers", "mixing-bowls", "measuring-cups"];
+function boughtTools(save: SaveData, _level: number): SaveData {
+  const stock = { ...save.business.supplies.stock };
+  for (const id of TOOL_SET) stock[id] = { units: 1, costBasis: 100 };
+  return {
+    ...save,
+    business: { ...save.business, supplies: { ...save.business.supplies, stock } },
+  };
+}
+
 console.log("T. Every culinary smallware has a use");
 {
   const culinary = SUPPLY_CATALOG.filter((i) => i.section === "culinary").map((i) => i.id);
@@ -93,7 +105,13 @@ console.log("T. Every culinary smallware has a use");
     for (const t of toolsNeeded(DEFAULT_SAVE, n, levelRecipesAt(n))) first[t.rule.id] ??= n;
   }
   assert(
-    TOOL_RULES.every((r) => first[r.id] !== undefined && first[r.id]! - r.fromLevel <= 1),
+    TOOL_RULES.every(
+      (r) =>
+        first[r.id] !== undefined &&
+        // The bowl and cups sit on the Level-10 first shopping list one dish early (bought together with the
+        // peeler); every other tool is needed from, or right after, its own level.
+        first[r.id]! - r.fromLevel <= (["mixing-bowls", "measuring-cups"].includes(r.id) ? 2 : 1),
+    ),
     "T2: every tool is needed by real campaign dishes from (or right after) its level — none without a use",
     Object.fromEntries(TOOL_RULES.map((r) => [r.id, [r.fromLevel, first[r.id]]])),
   );
@@ -121,51 +139,48 @@ console.log("D. Dish service");
   );
 }
 
-console.log("G. Grandma's old tools");
+console.log("G. Nothing is given");
 {
-  const s9 = saveAt(9);
   const s10 = saveAt(10);
-  const given = giveGrandmasTools(s10, 10);
   assert(
-    giveGrandmasTools(s9, 9) === s9 &&
-      GRANDMAS_TOOL_SET.every((id) => supplyUnits(given.business.supplies, id) === 1) &&
-      GRANDMAS_TOOL_SET.every((id) => given.business.supplies.stock[id]!.costBasis === 0) &&
-      given.credits === s10.credits &&
-      given.economyLedger.length === s10.economyLedger.length &&
-      given.business.grandmasTools?.atLevel === 10 &&
-      giveGrandmasTools(given, 12) === given,
-    "G1: once, when the Market opens (L10): peeler, mixing bowl, measuring cups at cost 0 — no money, no ledger; not before, never twice",
+    TOOL_SET.every((id) => supplyUnits(s10.business.supplies, id) === 0) &&
+      !s10.business.grandmasTools &&
+      !/giveGrandmasTools|GRANDMAS_TOOL_SET/.test(read("src/game/restaurant/kitchenTools.ts")),
+    "G1: Grandma gives no tools at any level (developer 2026-10-30) — peeler, mixing bowl and measuring cups are bought in the Market",
   );
 }
 
 console.log("C. The check");
 {
   const at = (n: number, s: SaveData) => toolsCheck(s, n, [...levelRecipesAt(n)].slice(0, 1));
+  // Nothing is given free (developer 2026-10-30): the Level 10 first shopping list is the player's own
+  // purchase — a peeler, a sheet pan and oven mitts for Bruschetta for the House.
   const c9 = at(9, saveAt(9));
-  const c10 = at(10, giveGrandmasTools(saveAt(10), 10));
-  // 150-level campaign (2026-10-15): L11 is the Onion Rings Basket, L12 the Bruschetta for the House.
-  const s11 = giveGrandmasTools(saveAt(12), 12);
-  const c11 = at(12, s11);
-  const bought = withTools(s11, ["sheet-pans", "oven-mitts"]);
-  const c11b = at(12, bought);
+  const c10first = at(10, saveAt(10));
+  const bought = withTools(saveAt(10), ["peelers", "sheet-pans", "oven-mitts"]);
+  const c10bought = at(10, bought);
   assert(
     !c9.applies &&
-      c10.applies &&
-      c10.ready &&
-      c11.applies &&
-      !c11.ready &&
-      c11.rows
+      c10first.applies &&
+      !c10first.ready &&
+      c10first.rows
         .filter((r) => r.missing > 0)
         .map((r) => r.id)
         .sort()
-        .join() === "oven-mitts,sheet-pans" &&
-      c11.rows.find((r) => r.id === "sheet-pans")!.dishes.includes("Bruschetta for the House") &&
-      c11.missingCost > 0 &&
-      c11b.applies &&
-      c11b.ready,
-    "C1: nothing before L10; L10 ready with Grandma's set; L12's Bruschetta waits for a sheet pan and oven mitts; bought → ready",
+        .join() === "oven-mitts,peelers,sheet-pans" &&
+      c10first.rows
+        .find((r) => r.id === "sheet-pans")!
+        .dishes.includes("Bruschetta for the House") &&
+      c10first.missingCost > 0 &&
+      c10bought.applies &&
+      c10bought.ready,
+    "C1: no tool check before L10; L10's first shopping list (peeler, sheet pan, oven mitts) is bought by the player, then ready",
   );
-  const s16 = giveGrandmasTools(saveAt(11), 11);
+  const c10 = at(10, boughtTools(saveAt(10), 10));
+  void c10;
+  const c11 = at(12, boughtTools(saveAt(12), 12));
+  void c11;
+  const s16 = boughtTools(saveAt(11), 11);
   const ownOnly = toolsCheck(s16, 11, levelRecipesAt(11));
   assert(
     ownOnly.applies &&
@@ -192,7 +207,7 @@ console.log("C. The check");
 
 console.log("S. First shopping list and what's coming");
 {
-  const s10 = giveGrandmasTools(saveAt(10), 10);
+  const s10 = boughtTools(saveAt(10), 10);
   const list = toolsComingUp(s10, 10, 10, levelRecipesAt).map((t) => t.id);
   const plan10 = servicePlanFor(s10, getLevel("level-10")!)!;
   const plan30 = servicePlanFor(saveAt(30), getLevel("level-30")!)!;
@@ -200,7 +215,7 @@ console.log("S. First shopping list and what's coming");
     ["sheet-pans", "oven-mitts", "frying-pans", "tongs", "skimmers", "stock-pot", "ladles"].every(
       (id) => list.includes(id as SupplyId),
     ) &&
-      !list.some((id) => (GRANDMAS_TOOL_SET as readonly string[]).includes(id)) &&
+      !list.some((id) => (TOOL_SET as readonly string[]).includes(id)) &&
       plan10.firstShoppingList &&
       plan10.toolsSoon.length === list.length &&
       servicePlanNeedsSheet(plan10) &&
@@ -213,11 +228,11 @@ console.log("S. First shopping list and what's coming");
 
 console.log("V. Covering missing tools");
 {
-  const s11 = giveGrandmasTools(saveAt(11, 0), 11);
+  const s11 = boughtTools(saveAt(11, 0), 11);
   const plan = servicePlanFor(s11, getLevel("level-11")!)!;
   const viaAd = coverWithAd(s11, plan, "tools")!;
   const viaCredit = coverWithCredit(s11, plan, "tools")!;
-  const rich = servicePlanFor(giveGrandmasTools(saveAt(11), 11), getLevel("level-11")!)!;
+  const rich = servicePlanFor(boughtTools(saveAt(11), 11), getLevel("level-11")!)!;
   assert(
     !!coverFor(plan, "tools") &&
       coverFor(rich, "tools") === null &&
@@ -248,11 +263,11 @@ console.log("W. Wiring");
     "W1: START waits for the tools; the sheet opens for Level 10's list and for a missing tool",
   );
   assert(
-    /giveGrandmasTools\(nextSave, restaurantLevelOf\(nextSave\.levelProgress\)\)/.test(app) &&
+    !/giveGrandmasTools/.test(app) &&
       /AD_PLACEMENT\.serviceTools/.test(app) &&
       AD_PLACEMENT.serviceTools === "service_tools" &&
       /"service_tools"/.test(read("public/playgama-bridge-config.json")),
-    "W2: App gives Grandma's tools at a first completion; the tools ad has its own placement (in the config too)",
+    "W2: App gives no tools; the tools ad has its own placement (in the config too)",
   );
   assert(
     ["kitchenTools", "dishService"].every(

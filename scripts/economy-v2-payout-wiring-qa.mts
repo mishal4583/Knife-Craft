@@ -67,34 +67,55 @@ function bodyOf(fnName: string): string {
 {
   const level = LEVELS[0]!;
   const recipe = getCampaignRecipe(level.recipeId);
-  assert(!!recipe, `setup: LEVELS[0].recipeId ("${level.recipeId}") resolves to a real CAMPAIGN_RECIPES entry`);
+  assert(
+    !!recipe,
+    `setup: LEVELS[0].recipeId ("${level.recipeId}") resolves to a real CAMPAIGN_RECIPES entry`,
+  );
   const { progress, isFirstCompletion } = completeLevel(level.id, DEFAULT_LEVEL_PROGRESS);
   assert(isFirstCompletion, "1a: a never-completed level reports isFirstCompletion");
   const settlement = computeSettlement(recipe!, level.chapter, 90);
   const payout = isFirstCompletion ? settlement.netResult : 0;
-  assert(payout === settlement.netResult && payout > 0, "1: Single first completion pays computeSettlement's netResult, matching Section 7's exact wiring");
+  assert(
+    payout === settlement.netResult && payout > 0,
+    "1: Single first completion pays computeSettlement's netResult, matching Section 7's exact wiring",
+  );
 
   // ===== 2: Single-level replay pays 0 (no campaign settlement at all). =====
   const r2 = completeLevel(level.id, progress);
-  assert(!r2.isFirstCompletion, "2a: completing the SAME level again reports isFirstCompletion === false");
-  const payout2 = r2.isFirstCompletion ? computeSettlement(recipe!, level.chapter, 90).netResult : 0;
+  assert(
+    !r2.isFirstCompletion,
+    "2a: completing the SAME level again reports isFirstCompletion === false",
+  );
+  const payout2 = r2.isFirstCompletion
+    ? computeSettlement(recipe!, level.chapter, 90).netResult
+    : 0;
   assert(payout2 === 0, "2: Single-level replay pays 0 campaign settlement");
 }
 
 // ===== 3/9/14: Order-pool first completion — 3 served orders, each exactly one settlement, one revenue, one COGS, quality score correctly carried, exactly-once payment guard holds. =====
 {
-  // 150-level campaign (2026-10-15): L71 is a real 4-recipe pool with 3 orders (was L114).
-  const level = getLevel("level-71")!; // real 4-recipe pool, requiredOrders: 3
+  // 150-level campaign (2026-10-15): L69 is a real 4-recipe pool (was L71 before the first two levels were removed) with 3 orders (was L114).
+  const level = getLevel("level-69")!; // real 4-recipe pool, requiredOrders: 3
   const pool = campaignPoolFor(level);
-  assert(pool.length >= 3, "setup: level-71's pool resolves to >= 3 real recipes");
+  assert(pool.length >= 3, "setup: level-69's pool resolves to >= 3 real recipes");
   let session = createServiceSession(level.id, pool, () => 0, level.chapter, false);
   const settlements: ReturnType<typeof computeSettlement>[] = [];
   for (let i = 0; i < 3; i++) {
     session = recordAllComponents(session, 80); // 80 -> "Honest" grade
-    assert(session.current!.order.preparationScore === 80, `9.${i}: the served order's OWN preparation score (80) is correctly carried from recordAllComponents to serve time`);
-    const settlement = computeSettlement(session.current!.recipe, session.chapter ?? 1, session.current!.order.preparationScore ?? 0);
+    assert(
+      session.current!.order.preparationScore === 80,
+      `9.${i}: the served order's OWN preparation score (80) is correctly carried from recordAllComponents to serve time`,
+    );
+    const settlement = computeSettlement(
+      session.current!.recipe,
+      session.chapter ?? 1,
+      session.current!.order.preparationScore ?? 0,
+    );
     const result = serveCurrentOrder(session, () => 0, settlement.netResult);
-    assert(result !== null && result.coinsAwarded === settlement.netResult, `3.${i}: served order #${i + 1} settles for exactly computeSettlement's netResult`);
+    assert(
+      result !== null && result.coinsAwarded === settlement.netResult,
+      `3.${i}: served order #${i + 1} settles for exactly computeSettlement's netResult`,
+    );
     assert(
       settlement.transactions.some((t) => t.type === "RECIPE_REVENUE") &&
         settlement.transactions.some((t) => t.type === "INGREDIENT_COGS"),
@@ -102,11 +123,17 @@ function bodyOf(fnName: string): string {
     );
     // Exactly-once guard: the order is no longer READY, so serving it again refuses.
     const doubleServe = serveCurrentOrder(result!.session, () => 0, settlement.netResult);
-    assert(doubleServe === null, `14.${i}: serving the SAME already-served order a second time is refused (no double payment)`);
+    assert(
+      doubleServe === null,
+      `14.${i}: serving the SAME already-served order a second time is refused (no double payment)`,
+    );
     settlements.push(settlement);
     session = advanceServiceSession(result!.session, pool, () => 0);
   }
-  assert(settlements.length === 3, "3: order-pool first completion produced exactly 3 settlements for 3 served orders (1:1, never duplicated or skipped)");
+  assert(
+    settlements.length === 3,
+    "3: order-pool first completion produced exactly 3 settlements for 3 served orders (1:1, never duplicated or skipped)",
+  );
   assert(
     settlements.every((s) => s.netResult >= 0),
     "15a: no settlement in the 3-order run is negative",
@@ -115,7 +142,7 @@ function bodyOf(fnName: string): string {
 
 // ===== 4: Order-pool REPLAY pays 0 campaign revenue/COGS/quality/net for every served order, while gameplay (serve/advance) proceeds normally. =====
 {
-  const level = getLevel("level-71")!;
+  const level = getLevel("level-69")!;
   const pool = campaignPoolFor(level);
   let session = createServiceSession(level.id, pool, () => 0, level.chapter, /* isReplay */ true);
   let totalCoins = 0;
@@ -123,21 +150,34 @@ function bodyOf(fnName: string): string {
     session = recordAllComponents(session, 95); // even a Masterful score...
     const amount = session.isReplay
       ? 0
-      : computeSettlement(session.current!.recipe, session.chapter ?? 1, session.current!.order.preparationScore ?? 0).netResult;
+      : computeSettlement(
+          session.current!.recipe,
+          session.chapter ?? 1,
+          session.current!.order.preparationScore ?? 0,
+        ).netResult;
     const result = serveCurrentOrder(session, () => 0, amount);
-    assert(result !== null, `4.${i}a: a replay order still serves normally (gameplay is never blocked)`);
-    assert(result!.coinsAwarded === 0, `4.${i}b: a replay order's coinsAwarded is exactly 0 regardless of score/grade`);
+    assert(
+      result !== null,
+      `4.${i}a: a replay order still serves normally (gameplay is never blocked)`,
+    );
+    assert(
+      result!.coinsAwarded === 0,
+      `4.${i}b: a replay order's coinsAwarded is exactly 0 regardless of score/grade`,
+    );
     totalCoins += result!.coinsAwarded;
     session = advanceServiceSession(result!.session, pool, () => 0);
   }
-  assert(totalCoins === 0, "4: order-pool replay run's total revenue/COGS/quality/net across all 3 served orders is 0 — matches §23's exact expectation");
+  assert(
+    totalCoins === 0,
+    "4: order-pool replay run's total revenue/COGS/quality/net across all 3 served orders is 0 — matches §23's exact expectation",
+  );
 }
 
-// ===== 5/22: Real-batch (level-100, 3 simultaneous recipes) first completion — N served orders, N settlements, no COGS/revenue double-counted at group completion. =====
+// ===== 5/22: Real-batch (level-98, 3 simultaneous recipes) first completion — N served orders, N settlements, no COGS/revenue double-counted at group completion. =====
 {
-  const level = getLevel("level-100")!;
+  const level = getLevel("level-98")!;
   const recipeIds = level.batchGroupRecipeIds!;
-  assert(recipeIds.length === 3, "setup: level-100 is a real 3-recipe batch group");
+  assert(recipeIds.length === 3, "setup: level-98 is a real 3-recipe batch group");
   const recipes = recipeIds.map((id) => getCampaignRecipe(id)!);
   let group = createBatchGroupSession(level.id, recipes, () => 0, level.chapter, false);
   for (const o of group.orders) group = recordBatchGroupComponents(group, o.order.id, 80);
@@ -147,21 +187,37 @@ function bodyOf(fnName: string): string {
     guard++;
     const ready = group.orders.find((o) => o.order.status === "READY");
     if (!ready) break;
-    const settlement = computeSettlement(ready.recipe, group.chapter ?? 1, ready.order.preparationScore ?? 0);
+    const settlement = computeSettlement(
+      ready.recipe,
+      group.chapter ?? 1,
+      ready.order.preparationScore ?? 0,
+    );
     const result = serveBatchGroupOrder(group, ready.order.id, () => 0, settlement.netResult);
-    assert(result !== null && result.coinsAwarded === settlement.netResult, "5: each real-batch order settles for exactly computeSettlement's netResult");
+    assert(
+      result !== null && result.coinsAwarded === settlement.netResult,
+      "5: each real-batch order settles for exactly computeSettlement's netResult",
+    );
     settlements.push(settlement);
     group = result!.group;
   }
   assert(isBatchGroupComplete(group), "setup: all 3 batch orders reached COMPLETED");
-  assert(settlements.length === 3, "22: real-batch (N=3) produced exactly N=3 settlements — one per served order, never re-settled as a group");
+  assert(
+    settlements.length === 3,
+    "22: real-batch (N=3) produced exactly N=3 settlements — one per served order, never re-settled as a group",
+  );
 }
 
 // ===== 6: Real-batch REPLAY pays 0 for every served order. =====
 {
-  const level = getLevel("level-100")!;
+  const level = getLevel("level-98")!;
   const recipes = level.batchGroupRecipeIds!.map((id) => getCampaignRecipe(id)!);
-  let group = createBatchGroupSession(level.id, recipes, () => 0, level.chapter, /* isReplay */ true);
+  let group = createBatchGroupSession(
+    level.id,
+    recipes,
+    () => 0,
+    level.chapter,
+    /* isReplay */ true,
+  );
   for (const o of group.orders) group = recordBatchGroupComponents(group, o.order.id, 95);
   let totalCoins = 0;
   let guard = 0;
@@ -171,9 +227,13 @@ function bodyOf(fnName: string): string {
     if (!ready) break;
     const amount = group.isReplay
       ? 0
-      : computeSettlement(ready.recipe, group.chapter ?? 1, ready.order.preparationScore ?? 0).netResult;
+      : computeSettlement(ready.recipe, group.chapter ?? 1, ready.order.preparationScore ?? 0)
+          .netResult;
     const result = serveBatchGroupOrder(group, ready.order.id, () => 0, amount);
-    assert(result !== null && result.coinsAwarded === 0, "6: a real-batch replay order's coinsAwarded is exactly 0");
+    assert(
+      result !== null && result.coinsAwarded === 0,
+      "6: a real-batch replay order's coinsAwarded is exactly 0",
+    );
     totalCoins += result!.coinsAwarded;
     group = result!.group;
   }
@@ -182,20 +242,34 @@ function bodyOf(fnName: string): string {
 
 // ===== 7: Level-completion bonus still occurs only once (LevelManager's own gate — the one App.tsx's finishCampaignLevel/finishBatchGroupLevel/recordPreparationResult all reuse, never a second completion system). =====
 {
-  const level = getLevel("level-71")!;
+  const level = getLevel("level-69")!;
   const r1 = completeLevel(level.id, DEFAULT_LEVEL_PROGRESS);
   const r2 = completeLevel(level.id, r1.progress);
-  // Rule changed (developer 2026-10-16): the 150-level curve, round(50 + 3.1 × (n − 1)) dollars (L71: $267).
-  assert(r1.rewardCoins === paidLevelReward(level) && r1.rewardCoins === dollars(Math.round(50 + 3.1 * 70)) && r1.rewardCoins > 0, "7a: first completion pays the level's paid reward (levelRewards.ts — the curve's $267 at Level 71)");
-  assert(r2.rewardCoins === 0, "7: replaying the same level a second time pays 0 level-completion bonus");
+  // Rule changed (developer 2026-10-30): $50 at Level 1, +$40 a level to Level 40, then +$6 a level (L69: $1,784).
+  assert(
+    r1.rewardCoins === paidLevelReward(level) &&
+      r1.rewardCoins === dollars(50 + 40 * 39 + 6 * 29) &&
+      r1.rewardCoins > 0,
+    "7a: first completion pays the level's paid reward (levelRewards.ts — the curve's $1,784 at Level 69)",
+  );
+  assert(
+    r2.rewardCoins === 0,
+    "7: replaying the same level a second time pays 0 level-completion bonus",
+  );
 }
 
 // ===== 8: COGS is never charged again at level completion — finishCampaignLevel/finishBatchGroupLevel never call computeSettlement (static source check on the actual shipped App.tsx). =====
 {
   const finishCampaign = bodyOf("finishCampaignLevel");
   const finishBatch = bodyOf("finishBatchGroupLevel");
-  assert(finishCampaign.length > 0 && !finishCampaign.includes("computeSettlement"), "8a: finishCampaignLevel's body never calls computeSettlement");
-  assert(finishBatch.length > 0 && !finishBatch.includes("computeSettlement"), "8: finishBatchGroupLevel's body never calls computeSettlement");
+  assert(
+    finishCampaign.length > 0 && !finishCampaign.includes("computeSettlement"),
+    "8a: finishCampaignLevel's body never calls computeSettlement",
+  );
+  assert(
+    finishBatch.length > 0 && !finishBatch.includes("computeSettlement"),
+    "8: finishBatchGroupLevel's body never calls computeSettlement",
+  );
 }
 
 // ===== 10: Yield affects COGS, not revenue — for the identical recipe/chapter, a better grade lowers finalCOGS while revenue is unchanged. =====
@@ -203,42 +277,61 @@ function bodyOf(fnName: string): string {
   const recipe = CAMPAIGN_RECIPES.find((r) => r.components.length >= 2)!;
   const masterful = computeSettlement(recipe, 5, 97);
   const rustic = computeSettlement(recipe, 5, 55);
-  assert(masterful.revenue === rustic.revenue, "10a: revenue is identical regardless of grade (Yield never touches revenue)");
-  assert(masterful.finalCOGS < rustic.finalCOGS, "10: Yield Bonus lowers finalCOGS for a better grade, at the same recipe/chapter");
+  assert(
+    masterful.revenue === rustic.revenue,
+    "10a: revenue is identical regardless of grade (Yield never touches revenue)",
+  );
+  assert(
+    masterful.finalCOGS < rustic.finalCOGS,
+    "10: Yield Bonus lowers finalCOGS for a better grade, at the same recipe/chapter",
+  );
 }
 
 // ===== 11: Today's Special (recordDailyResult) is untouched by this wiring — no computeSettlement/EconomySettlement reference in its body. =====
 {
   const body = bodyOf("recordDailyResult");
-  assert(body.length > 0 && !body.includes("computeSettlement") && !body.includes("EconomySettlement"), "11: recordDailyResult's body never references computeSettlement/EconomySettlement");
+  assert(
+    body.length > 0 && !body.includes("computeSettlement") && !body.includes("EconomySettlement"),
+    "11: recordDailyResult's body never references computeSettlement/EconomySettlement",
+  );
 }
 
 // ===== 12: Endless (recordEndlessResult) is untouched by this wiring. =====
 {
   const body = bodyOf("recordEndlessResult");
-  assert(body.length > 0 && !body.includes("computeSettlement") && !body.includes("EconomySettlement"), "12: recordEndlessResult's body never references computeSettlement/EconomySettlement");
+  assert(
+    body.length > 0 && !body.includes("computeSettlement") && !body.includes("EconomySettlement"),
+    "12: recordEndlessResult's body never references computeSettlement/EconomySettlement",
+  );
 }
 
 // ===== 13: the standalone Restaurant Service test harness (mock testRecipePool recipes, fixed pay) is no longer reachable from the game — its App entry point and payout handler were removed in the release pass. =====
 {
   assert(
-    bodyOf("serveActiveServiceOrder").length === 0 && bodyOf("startService").length === 0 && !appSrc.includes('from "@/game/service/testRecipePool"'),
+    bodyOf("serveActiveServiceOrder").length === 0 &&
+      bodyOf("startService").length === 0 &&
+      !appSrc.includes('from "@/game/service/testRecipePool"'),
     "13: no mock Restaurant Service payout path exists in App.tsx (startService / serveActiveServiceOrder / TEST_RECIPE_POOL all gone)",
   );
 }
 
 // ===== 15: No negative credits anywhere in this sweep (already exhaustively proven corpus-wide by economy-v2-qa.mts's own check 6b; re-asserted here against the two REAL levels this script exercises). =====
 {
-  const level71Pool = campaignPoolFor(getLevel("level-71")!);
-  const level100Recipes = getLevel("level-100")!.batchGroupRecipeIds!.map((id) => getCampaignRecipe(id)!);
+  const level71Pool = campaignPoolFor(getLevel("level-69")!);
+  const level98Recipes = getLevel("level-98")!.batchGroupRecipeIds!.map((id) =>
+    getCampaignRecipe(id)!,
+  );
   const grades = [30, 55, 75, 88, 97];
   let allNonNegative = true;
-  for (const r of [...level71Pool, ...level100Recipes]) {
+  for (const r of [...level71Pool, ...level98Recipes]) {
     for (const score of grades) {
       if (computeSettlement(r, 12, score).netResult < 0) allNonNegative = false;
     }
   }
-  assert(allNonNegative, "15: netResult is never negative across every recipe/grade this script exercises");
+  assert(
+    allNonNegative,
+    "15: netResult is never negative across every recipe/grade this script exercises",
+  );
 }
 
 console.log(failures === 0 ? "\nALL PASS" : `\n${failures} FAILURE(S)`);

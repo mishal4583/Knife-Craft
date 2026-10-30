@@ -1213,9 +1213,7 @@ export function Preparation({
           line={levelGuide?.customerLine ?? shownCustomer.greeting}
           dish={{ emoji: view.emoji, name: view.title }}
           {...(servedQuality ? { quality: servedQuality } : {})}
-          {...(floorMode === "deliver" && servedCash
-            ? { cash: { ...servedCash, credits } }
-            : {})}
+          {...(floorMode === "deliver" && servedCash ? { cash: { ...servedCash, credits } } : {})}
           {...(service.onCashPieceCollected
             ? { onCashPieceCollected: service.onCashPieceCollected }
             : {})}
@@ -1335,17 +1333,32 @@ export function Preparation({
             {...(result ? { plateTier: tierFor(result.score, true) } : {})}
             credits={credits}
             cashAtTable={!!floor}
-            {...(floor ? { onOpenCashTable: () => setCashTableView(true) } : {})}
+            {...(floor
+              ? {
+                  onOpenCashTable: () => {
+                    // The table view is always there to show: bring it back with
+                    // what is still unswept if it was closed (never a bare board).
+                    if (!floorMode && servedCash && serviceCashRemaining > 0) {
+                      const tip = Math.min(servedCash.tipCents, serviceCashRemaining);
+                      setServedCash({ payCents: serviceCashRemaining - tip, tipCents: tip });
+                      setFloorMode("deliver");
+                    }
+                    setCashTableView(true);
+                  },
+                }
+              : {})}
             {...(floor ? { cashRemainingOverride: serviceCashRemaining } : {})}
             {...(service.onCashPieceCollected
               ? { onCashPieceCollected: service.onCashPieceCollected }
               : {})}
-            onCashRemaining={(cents) => service.onCashRemaining?.(cents)}
+            onCashRemaining={(left) => service.onCashRemaining?.(left)}
             {...(service.onCashCollected ? { onCashCollected: service.onCashCollected } : {})}
             onServe={() => {
               const served = service.onServe();
               if (served)
-                setServiceCashRemaining(served.isReplay ? 0 : served.coinsAwarded + (served.tip ?? 0));
+                setServiceCashRemaining(
+                  served.isReplay ? 0 : served.coinsAwarded + (served.tip ?? 0),
+                );
               // The plate goes to the table only for a real serve (paid once, by App).
               if (served && floor) {
                 setServedQuality(served.quality ?? result?.qualityLabel);

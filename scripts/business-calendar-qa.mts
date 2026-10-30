@@ -55,7 +55,10 @@ function saveAt(overrides: Partial<SaveData>): SaveData {
   assert(businessWeekFor(1) === 1 && businessWeekFor(7) === 1, "C: Days 1-7 are all Week 1");
   assert(businessWeekFor(8) === 2 && businessWeekFor(14) === 2, "C2: Days 8-14 are all Week 2");
   assert(businessWeekFor(15) === 3, "C3: Day 15 is Week 3");
-  assert(businessWeekFor(365) === Math.floor(364 / 7) + 1, "C4: Day 365 computes the expected week number");
+  assert(
+    businessWeekFor(365) === Math.floor(364 / 7) + 1,
+    "C4: Day 365 computes the expected week number",
+  );
 }
 
 // ===== D: advanceBusinessDay is pure and strictly increments by 1. =====
@@ -66,7 +69,10 @@ function saveAt(overrides: Partial<SaveData>): SaveData {
   assert(start.businessDay === 1, "D2: advanceBusinessDay never mutates its input (pure function)");
   let calendar: BusinessCalendar = { businessDay: 1 };
   for (let i = 0; i < 364; i++) calendar = advanceBusinessDay(calendar);
-  assert(calendar.businessDay === 365, `D3: 364 sequential advances from Day 1 reach Day 365 (got ${calendar.businessDay})`);
+  assert(
+    calendar.businessDay === 365,
+    `D3: 364 sequential advances from Day 1 reach Day 365 (got ${calendar.businessDay})`,
+  );
 }
 
 // ===== E: deterministic — repeated calls with the same input give the same output (no Math.random anywhere). =====
@@ -76,15 +82,26 @@ function saveAt(overrides: Partial<SaveData>): SaveData {
   assert(a === b, "E: dayOfWeekFor(42) is deterministic across repeated calls");
   const fs = await import("node:fs");
   const path = await import("node:path");
-  const filePath = path.join(import.meta.dirname, "..", "src", "game", "business", "businessCalendar.ts");
+  const filePath = path.join(
+    import.meta.dirname,
+    "..",
+    "src",
+    "game",
+    "business",
+    "businessCalendar.ts",
+  );
   const content = fs.readFileSync(filePath, "utf8");
-  const hasRandomCall = /Math\.random\(\)/.test(content) && !/(Never|No|not)\s+Math\.random\(\)/i.test(content);
+  const hasRandomCall =
+    /Math\.random\(\)/.test(content) && !/(Never|No|not)\s+Math\.random\(\)/i.test(content);
   assert(!hasRandomCall, "E2: no Math.random() call exists in businessCalendar.ts");
 }
 
 // ===== F: DEFAULT_SAVE carries the default business calendar. =====
 {
-  assert(DEFAULT_SAVE.business.calendar.businessDay === 1, "F: DEFAULT_SAVE.business.calendar starts at Day 1");
+  assert(
+    DEFAULT_SAVE.business.calendar.businessDay === 1,
+    "F: DEFAULT_SAVE.business.calendar starts at Day 1",
+  );
   assert(
     JSON.stringify(DEFAULT_SAVE.business) === JSON.stringify(DEFAULT_BUSINESS_STATE),
     "F2: DEFAULT_SAVE.business matches DEFAULT_BUSINESS_STATE exactly",
@@ -101,7 +118,10 @@ function saveAt(overrides: Partial<SaveData>): SaveData {
     ...parsed,
     business: { ...DEFAULT_SAVE.business, ...parsed.business },
   } as SaveData;
-  assert(migrated.business.calendar.businessDay === 1, "G: an old save missing `business` entirely migrates to Day 1");
+  assert(
+    migrated.business.calendar.businessDay === 1,
+    "G: an old save missing `business` entirely migrates to Day 1",
+  );
   assert(migrated.credits === 5000, "G2: the old save's own fields (credits) survive untouched");
 }
 
@@ -117,24 +137,39 @@ function saveAt(overrides: Partial<SaveData>): SaveData {
     credits: 5000,
     business: { calendar: { businessDay: 42 } },
   } as unknown as Partial<SaveData>;
-  const defaultWithFuture: FutureBusinessState = { ...DEFAULT_SAVE.business, futureField: "default-value" };
+  const defaultWithFuture: FutureBusinessState = {
+    ...DEFAULT_SAVE.business,
+    futureField: "default-value",
+  };
   const migrated = {
     ...DEFAULT_SAVE,
     ...oldBusinessSave,
     business: { ...defaultWithFuture, ...oldBusinessSave.business },
   };
-  assert(migrated.business.calendar.businessDay === 42, "H: the save's OWN existing business.calendar value survives (Day 42, not reset to default)");
-  assert((migrated.business as FutureBusinessState).futureField === "default-value", "H2: a field added by a LATER phase correctly falls back to its own default, proving the two-step merge protects future BusinessState growth");
+  assert(
+    migrated.business.calendar.businessDay === 42,
+    "H: the save's OWN existing business.calendar value survives (Day 42, not reset to default)",
+  );
+  assert(
+    (migrated.business as FutureBusinessState).futureField === "default-value",
+    "H2: a field added by a LATER phase correctly falls back to its own default, proving the two-step merge protects future BusinessState growth",
+  );
 }
 
 // ===== I: independence from Campaign — advancing the business day never touches levelProgress/credits, and vice versa. =====
 {
-  const save = saveAt({ credits: 777, levelProgress: { ...DEFAULT_LEVEL_PROGRESS, highestUnlockedLevelId: "level-50" } });
+  const save = saveAt({
+    credits: 777,
+    levelProgress: { ...DEFAULT_LEVEL_PROGRESS, highestUnlockedLevelId: "level-50" },
+  });
   const nextSave = {
     ...save,
     business: { ...save.business, calendar: advanceBusinessDay(save.business.calendar) },
   };
-  assert(nextSave.business.calendar.businessDay === 2, "I: advancing the business day updates business.calendar as expected");
+  assert(
+    nextSave.business.calendar.businessDay === 2,
+    "I: advancing the business day updates business.calendar as expected",
+  );
   assert(nextSave.credits === 777, "I2: advancing the business day never touches credits");
   assert(
     nextSave.levelProgress.highestUnlockedLevelId === "level-50",
@@ -149,9 +184,15 @@ function saveAt(overrides: Partial<SaveData>): SaveData {
 // ===== J: save/load round-trip (JSON serialization survives). =====
 {
   let save = saveAt({});
-  save = { ...save, business: { ...save.business, calendar: advanceBusinessDay(save.business.calendar) } };
+  save = {
+    ...save,
+    business: { ...save.business, calendar: advanceBusinessDay(save.business.calendar) },
+  };
   const roundTripped = JSON.parse(JSON.stringify(save)) as SaveData;
-  assert(roundTripped.business.calendar.businessDay === 2, "J: business.calendar survives a JSON save/load round-trip exactly");
+  assert(
+    roundTripped.business.calendar.businessDay === 2,
+    "J: business.calendar survives a JSON save/load round-trip exactly",
+  );
 }
 
 console.log(failures === 0 ? "\nALL PASS" : `\n${failures} FAILURE(S)`);

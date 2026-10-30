@@ -127,28 +127,28 @@ const shapeAt = (s: SaveData, n: number) => {
 console.log("S. Staff requirements");
 {
   const reqs = (n: number, s = saveAt(n)) => staffRequirementsFor(s, n, shapeAt(s, n));
-  // 150-level remap (2026-10-15): staff roles from L29; the Mexican Chef is asked for with
-  // the first Mexican dish at L16 (developer 2026-10-17).
+  // 148-level renumbering (2026-10-29): staff roles from L27; the Mexican Chef is asked for with
+  // the first Mexican dish at L14 (developer 2026-10-17; each threshold two levels earlier).
   assert(
     // …and from L17 the Mexican menu dishes keep him needed while they are on the menu.
-    [1, 11, 15].every((n) => reqs(n).length === 0) &&
-      reqs(16)
+    [1, 9, 13].every((n) => reqs(n).length === 0) &&
+      reqs(14)
         .map((r) => r.id)
         .join() === "mexican-chef" &&
-      [20, 28].every((n) =>
+      [18, 26].every((n) =>
         reqs(n).every((r) => r.kind === "specialist" && r.id === "mexican-chef"),
       ),
-    "S1: early game the chef runs the restaurant alone (no role before L29; only the Mexican Chef from L16)",
+    "S1: early game the chef runs the restaurant alone (no role before L27; only the Mexican Chef from L14)",
   );
   assert(
     STAFF_RULES.map((r) => `${r.role}@${r.fromLevel}`).join() ===
-      "prep-cook@29,server@33,line-cook@42,cleaner@56,head-chef@76,manager@101",
-    "S2: Prep Cook (L29) → Server (L33) → Line Cook (L42) → Cleaner (L56) → Head Chef (L76) → Manager (L101)",
+      "prep-cook@27,server@31,line-cook@40,cleaner@54,head-chef@74,manager@99",
+    "S2: Prep Cook (L27) → Server (L31) → Line Cook (L40) → Cleaner (L54) → Head Chef (L74) → Manager (L99)",
   );
   const small = { orders: 2, dineIn: 1, specialists: [], specialistCuisines: 0 };
   const big = { orders: 5, dineIn: 4, specialists: [], specialistCuisines: 0 };
   assert(
-    // L50: past the Line Cook (L42), before the Cleaner (L56) — old L70 sat in that gap.
+    // L50: past the Line Cook (L40), before the Cleaner (L54).
     staffRequirementsFor(saveAt(50), 50, small)
       .map((r) => r.id)
       .join() === "" &&
@@ -157,11 +157,11 @@ console.log("S. Staff requirements");
         .join() === "prep-cook,server,line-cook",
     "S3: requirements scale with the service (2 orders / 1 table: none at L50; 5 orders / 4 tables: three)",
   );
-  const r51 = reqs(35);
+  const r51 = reqs(33);
   assert(
     r51.some((r) => r.id === "indian-chef" && r.kind === "specialist" && !r.met) &&
-      !reqs(34).some((r) => r.id === "indian-chef"),
-    "S4: from the Indian chapter (L35) the Indian Chef is needed; not before",
+      !reqs(32).some((r) => r.id === "indian-chef"),
+    "S4: from the Indian chapter (L33) the Indian Chef is needed; not before",
   );
   const noIndian = {
     ...saveAt(36),
@@ -219,18 +219,18 @@ console.log("S. Staff requirements");
     "S7: an unmet requirement opens the check, says why, and blocks START until hired",
   );
   assert(
-    staffComingUp(30).some((s) => s.title === "Indian Chef" && s.level === 35) &&
-      staffComingUp(24).some((s) => s.title === "Prep Cook" && s.level === 29) &&
-      staffComingUp(11).some((s) => s.title === "Mexican Chef" && s.level === 16) &&
-      staffComingUp(35).every((s) => s.level - 35 <= 5) &&
-      staffComingUp(30).every((s) => s.level > 30),
+    staffComingUp(28).some((s) => s.title === "Indian Chef" && s.level === 33) &&
+      staffComingUp(22).some((s) => s.title === "Prep Cook" && s.level === 27) &&
+      staffComingUp(9).some((s) => s.title === "Mexican Chef" && s.level === 14) &&
+      staffComingUp(33).every((s) => s.level - 33 <= 5) &&
+      staffComingUp(28).every((s) => s.level > 28),
     "S8: staff and specialists are announced 5 levels before they are needed",
   );
   assert(
     SPECIALIST_CHEFS.map((c) => `${c.id}@${c.firstLevel}`).join() ===
-      "indian-chef@35,mediterranean-chef@46,mexican-chef@16,asian-chef@59" &&
+      "indian-chef@33,mediterranean-chef@44,mexican-chef@14,asian-chef@57" &&
       SPECIALIST_CHEFS.every((c) => c.dailyWage === BUSINESS_STAFF_CATALOG["line-cook"].salary),
-    "S9: four specialist chefs, each from its cuisine's first dish (Mexican L16); wage = the Line Cook's existing figure (not balanced)",
+    "S9: four specialist chefs, each from its cuisine's first dish (Mexican L14); wage = the Line Cook's existing figure (not balanced)",
   );
 }
 
@@ -455,20 +455,20 @@ console.log("F. Fridge");
   );
 }
 
-console.log("N. One restaurant before L150, Endless Restaurant after");
+console.log("N. One restaurant before the last level, Endless Restaurant after");
 {
   // The 150-level campaign (2026-10-15): the Endless Restaurant opens after L150.
-  const done = saveAt(150);
+  const done = saveAt(148);
   const finished = {
     ...done.levelProgress,
-    completedLevelIds: Array.from({ length: 150 }, (_, i) => `level-${i + 1}`),
+    completedLevelIds: Array.from({ length: 148 }, (_, i) => `level-${i + 1}`),
   };
   assert(
-    !businessDayAllowed(true, saveAt(149).levelProgress) &&
+    !businessDayAllowed(true, saveAt(147).levelProgress) &&
       !businessDayAllowed(true, done.levelProgress) &&
       businessDayAllowed(true, finished) &&
       businessDayAllowed(false, saveAt(5).levelProgress),
-    "N1: no separate Business Day before Level 150 in the restaurant build; the Endless Restaurant after; the classic game unchanged",
+    "N1: no separate Business Day before Level 148 in the restaurant build; the Endless Restaurant after; the classic game unchanged",
   );
   const app = read("src/App.tsx");
   const dash = read("src/components/kc/business/BusinessDashboard.tsx");

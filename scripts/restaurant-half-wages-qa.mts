@@ -54,13 +54,13 @@ console.log("H. Half wages");
   const before40 = payHalfWages(s, HALF_WAGES_FROM - 1);
   const atFull = payHalfWages(s, FULL);
   assert(
-    HALF_WAGES_FROM === 29 &&
+    HALF_WAGES_FROM === 27 &&
       HALF_WAGES_FROM === STAFF_RULES.find((r) => r.role === "prep-cook")!.fromLevel &&
-      FULL === 56 &&
+      FULL === 54 &&
       before40.paid === 0 &&
       atFull.paid === 0 &&
       before40.save === s,
-    "H1: nothing before Level 29 (the Prep Cook), and nothing here from full operation (L56; the normal payroll applies there)",
+    "H1: nothing before Level 27 (the Prep Cook), and nothing here from full operation (L54; the normal payroll applies there)",
   );
   const r = payHalfWages(s, MID);
   const entries = salaryEntries(r.save);
@@ -125,8 +125,8 @@ console.log("M. Menu guests (F3)");
 {
   assert(
     // Rule changed (developer 2026-10-25, early game phase 2): guests from L5 (was L11).
-    [4, 5, 16, 34, 35, 76, 117].map(menuGuestsPerService).join() === "0,1,2,2,4,5,6",
-    "M1: menu guests 1 / 2 from L5 / L16, one more per service from L35 (4 / 5 / 6 at L35 / L76 / L117)",
+    [4, 5, 14, 32, 33, 74, 115].map(menuGuestsPerService).join() === "0,1,2,2,4,5,6",
+    "M1: menu guests 1 / 2 from L5 / L14, one more per service from L33 (4 / 5 / 6 at L33 / L74 / L115)",
   );
 }
 

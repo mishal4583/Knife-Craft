@@ -36,12 +36,13 @@ const levelByNum = new Map(LEVELS.map((l) => [Number(l.id.match(/-(\d+)$/)![1]),
 
 // ============================== STRUCTURE ==============================
 // Re-baselined 2026-10-17 to the developer's 150-level campaign (2026-10-15).
-assert(LEVELS.length === 150, `1: exactly 150 levels (${LEVELS.length})`);
+// Developer 2026-10-29: the first two levels (the lone tomato slice and basic training) were removed.
+assert(LEVELS.length === 148, `1: exactly 148 levels (${LEVELS.length})`);
 assert(Object.keys(CHAPTER_TITLES).length === 13, `2: exactly 13 chapters (${Object.keys(CHAPTER_TITLES).length})`);
 {
   const nums = LEVELS.map((l) => Number(l.id.match(/-(\d+)$/)![1])).sort((a, b) => a - b);
-  const expected = Array.from({ length: 150 }, (_, i) => i + 1);
-  assert(JSON.stringify(nums) === JSON.stringify(expected), "3: levels 1-150 present, no gaps");
+  const expected = Array.from({ length: 148 }, (_, i) => i + 1);
+  assert(JSON.stringify(nums) === JSON.stringify(expected), "3: levels 1-148 present, no gaps");
 }
 {
   const ids = LEVELS.map((l) => l.id);
@@ -66,8 +67,8 @@ assert(Object.keys(CHAPTER_TITLES).length === 13, `2: exactly 13 chapters (${Obj
 }
 
 // ============================== RECIPES ==============================
-// 222 since the redesign added the L2 practice recipe.
-assert(CAMPAIGN_RECIPES.length === 222, `9: exactly 222 campaign recipes (${CAMPAIGN_RECIPES.length})`);
+// 221 since 2026-10-30: the L2 practice recipe was removed with the practice level.
+assert(CAMPAIGN_RECIPES.length === 221, `9: exactly 221 campaign recipes (${CAMPAIGN_RECIPES.length})`);
 {
   const ids = CAMPAIGN_RECIPES.map((r) => r.id);
   const names = CAMPAIGN_RECIPES.map((r) => r.name);
@@ -130,12 +131,13 @@ assert(CAMPAIGN_INGREDIENT_IDS.has("butter" as IngredientId), "18: butter is in 
 
 // ============================== NEW INGREDIENT COVERAGE ==============================
 const NEW_ING_EXPECTED: Record<string, { count: number; first: number; last: number }> = {
-  // The 150-level campaign's coverage (recorded 2026-10-17; the 250-level one was 30/30/11/28/25).
-  ginger: { count: 15, first: 36, last: 135 },
-  chilli: { count: 17, first: 38, last: 100 },
-  cilantro: { count: 7, first: 53, last: 98 },
-  springonion: { count: 17, first: 77, last: 142 },
-  lime: { count: 19, first: 50, last: 132 },
+  // The 148-level campaign's coverage (re-recorded 2026-10-30: every position is two levels earlier
+  // since the first two levels were removed; the counts are unchanged — a pure renumbering).
+  ginger: { count: 15, first: 34, last: 133 },
+  chilli: { count: 17, first: 36, last: 98 },
+  cilantro: { count: 7, first: 51, last: 96 },
+  springonion: { count: 17, first: 75, last: 140 },
+  lime: { count: 19, first: 48, last: 130 },
 };
 for (const [ing, expected] of Object.entries(NEW_ING_EXPECTED)) {
   const levels: number[] = [];

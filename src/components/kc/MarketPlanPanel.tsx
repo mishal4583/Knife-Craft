@@ -1,3 +1,5 @@
+import { PointerHand } from "./common/PointerHand";
+import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { KButton, Panel } from "./common/primitives";
 import { cn } from "@/lib/utils";
@@ -46,7 +48,10 @@ export function MarketPlanPanel({
   /** Opened from the Pre-Service Check: start on Today and scroll here. */
   focused?: boolean;
 }) {
-  const [days, setDays] = useState<number>(focused ? 1 : 2);
+  // The very first shopping (developer 2026-10-30): before any level is done the plan starts on
+  // Today, and a hand shows what to buy for Level 1 with the player's own money.
+  const firstRun = RESTAURANT_MODE && save.levelProgress.completedLevelIds.length === 0;
+  const [days, setDays] = useState<number>(focused || firstRun ? 1 : 2);
   const ref = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     if (focused) ref.current?.scrollIntoView({ block: "start" });
@@ -139,6 +144,18 @@ export function MarketPlanPanel({
           </p>
         ) : (
           <>
+            {firstRun ? (
+              <p
+                data-testid="first-shopping-hint"
+                className="mt-2 flex items-center gap-2 rounded-xl bg-gold/20 px-3 py-2 font-hand text-[16px] leading-snug text-walnut-dark"
+              >
+                <span>👋 Tap Buy on these, then go back to the Kitchen.</span>
+                <InfoTip label="About your first order">
+                  Your first order needs these ingredients, bought with your own money. Your chef
+                  knife and walnut board are already yours — better ones are in the Market later.
+                </InfoTip>
+              </p>
+            ) : null}
             <ul className="mt-2 divide-y divide-walnut/10">
               {rows.map((row) => {
                 const count = itemCountText(row.ingredientId, row.stock);
@@ -173,18 +190,28 @@ export function MarketPlanPanel({
                         {count ? ` (${count})` : ""}
                       </p>
                     </div>
-                    <KButton
-                      size="sm"
-                      variant="ghost"
-                      className="h-auto min-h-12 shrink-0 px-3 py-1 leading-tight"
-                      onClick={() => buy(row)}
-                    >
-                      <span className="block">
-                        Buy {row.buyUnits}{" "}
-                        {marketUnitLabel(row.ingredientId, measure, row.buyUnits)}
-                      </span>
-                      <span className="block text-copper">{formatUsd(row.cost)}</span>
-                    </KButton>
+                    <div className="relative shrink-0">
+                      <KButton
+                        size="sm"
+                        variant="ghost"
+                        className="h-auto min-h-12 shrink-0 px-3 py-1 leading-tight"
+                        onClick={() => buy(row)}
+                      >
+                        <span className="block">
+                          Buy {row.buyUnits}{" "}
+                          {marketUnitLabel(row.ingredientId, measure, row.buyUnits)}
+                        </span>
+                        <span className="block text-copper">{formatUsd(row.cost)}</span>
+                      </KButton>
+                      {firstRun && row === rows[0] ? (
+                        <span
+                          data-testid="first-shopping-hand"
+                          className="pointer-events-none absolute left-1/2 top-full z-10 -translate-x-1/2"
+                        >
+                          <PointerHand size={38} />
+                        </span>
+                      ) : null}
+                    </div>
                   </li>
                 );
               })}

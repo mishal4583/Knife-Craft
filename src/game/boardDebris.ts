@@ -59,7 +59,7 @@ export const DEBRIS = {
   CLOTH_RU: 0.14,
   CLOTH_RV: 0.26,
   /** How much one full board-width of rubbing wears a toughness-1 piece. */
-  WIPE_RATE: 2.6,
+  WIPE_RATE: 2.0,
   /**
    * Done only at 1: every piece gone AND every patch of the board's film wiped
    * (developer 2026-10-24: "make the user wipe the board each and every
@@ -71,7 +71,7 @@ export const DEBRIS = {
   FILM_ROWS: 5,
   /** A patch's dirt to start with (plus more where the mess is), and how hard it is to wipe. */
   FILM_BASE: 0.55,
-  FILM_TOUGHNESS: 1.5,
+  FILM_TOUGHNESS: 1.8,
   /** Below this a patch counts as clean. */
   FILM_CLEAN: 0.06,
 } as const;
@@ -801,6 +801,9 @@ export function dirtiestPatch(): { u: number; v: number } | null {
   return p ? { u: p.u + p.smearU, v: p.v + p.smearV } : null;
 }
 
+/** How near the board edge a dragged piece may rest (fraction of the board face). */
+const EDGE_KEEP = 0.04;
+
 export type WipeResult = {
   /** Pieces the cloth picked up / wiped away on this rub. */
   cleared: number;
@@ -843,11 +846,15 @@ export function wipeDebris(u0: number, v0: number, u1: number, v1: number): Wipe
         return null;
       }
       const drag = isWet(p.kind) ? 0.35 : 0.55 * (1 - p.wear);
+      // A dragged piece stays on the board face (developer 2026-10-29: crumbs pushed off the
+      // edge could not be reached, so the board never finished).
+      const lo = (v: number) => Math.max(-0.3, EDGE_KEEP - v);
+      const hi = (v: number) => Math.min(0.3, 1 - EDGE_KEEP - v);
       return {
         ...p,
         wear,
-        smearU: Math.max(-0.3, Math.min(0.3, p.smearU + du * drag)),
-        smearV: Math.max(-0.3, Math.min(0.3, p.smearV + dv * drag)),
+        smearU: Math.max(lo(p.u), Math.min(hi(p.u), p.smearU + du * drag)),
+        smearV: Math.max(lo(p.v), Math.min(hi(p.v), p.smearV + dv * drag)),
       };
     })
     .filter((p): p is DebrisPiece => p !== null);

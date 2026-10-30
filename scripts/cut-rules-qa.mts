@@ -71,7 +71,7 @@ const cutting = steps.filter((s) => {
   const t = resolveTechniqueFor(TECHNIQUES[s.technique], INGREDIENTS[s.ingredient]);
   return t.interactionMode === "cut" && !t.radialSnap;
 });
-assert(levels.length === 150, `all 150 campaign levels enumerated (${levels.length})`);
+assert(levels.length === 148, `all 148 campaign levels enumerated (${levels.length})`);
 assert(
   cutting.length > 250,
   `every cutting step collected (${cutting.length} across the campaign)`,

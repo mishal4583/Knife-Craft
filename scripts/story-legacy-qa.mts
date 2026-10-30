@@ -109,10 +109,10 @@ console.log("T. Text (approved verbatim)");
   assert(
     added.map((m) => `${m.at}|${m.bit}|${m.kicker}|${m.line}`).join("\n") ===
       [
-        "87|128|A NAME IN TOWN|Strangers come in asking for the house dish by name now.",
-        "104|256|THE NEXT GENERATION|A young cook asked to learn from me today. I remember asking the same.",
-        "117|512|ONE OF THE BEST|The city guide put us on its list. The first page.",
-        "132|1024|THE OLD RECIPE BOOK|I found their old recipe book in the cellar. The last page is blank.",
+        "85|128|A NAME IN TOWN|Strangers come in asking for the house dish by name now.",
+        "102|256|THE NEXT GENERATION|A young cook asked to learn from me today. I remember asking the same.",
+        "115|512|ONE OF THE BEST|The city guide put us on its list. The first page.",
+        "130|1024|THE OLD RECIPE BOOK|I found their old recipe book in the cellar. The last page is blank.",
       ].join("\n"),
     "T1: the four new milestones exactly as approved",
   );
@@ -133,24 +133,24 @@ console.log("T. Text (approved verbatim)");
     "T3: no “Grandma”, no “We did it.”, none of the finale's frozen lines",
   );
   assert(
-    FINALE_AT === 75 &&
+    FINALE_AT === 74 &&
       FINALE.map(allText).join(" | ") ===
         "You came here to keep a promise. You stayed because you wanted to. | Years ago, this place was almost forgotten. Today, it’s the best restaurant in town. | You didn’t just inherit your grandparent’s restaurant. You built this. | THE RESTAURANT LIVES ON They would be proud. BACK TO THE KITCHEN" &&
       FINALE.map((b) => `${b.tint}:${b.veil ?? ""}:${b.art ?? ""}:${b.hold ?? "btn"}`).join() ===
         "sThrive:::4200,sThrive:::4400,sThrive:true:dining:4600,sThrive:true:dining:btn",
-    "T4: the finale (Level 75) unchanged (text, art, timings, gate)",
+    "T4: the finale (Level 74, the 148-level midpoint) unchanged (text, art, timings, gate)",
   );
 }
 
-console.log("P. A fresh player, 0 → 150");
+console.log("P. A fresh player, 0 → 148");
 {
   const run = playTo(saveAt(0, 0, false), LEGACY_AT);
   assert(
     run.events.join() ===
-      "10:m10,13:m13,32:m32,45:m45,67:m67,75:finale,76:m75,87:m87,104:m104,117:m117,132:m132,150:legacy" &&
+      "8:m8,11:m11,30:m30,43:m43,65:m65,73:m73,74:finale,85:m85,102:m102,115:m115,130:m130,148:legacy" &&
       run.save.story.finaleSeen &&
       run.save.story.milestoneMask === (MILES_FULL_MASK | LEGACY_BIT),
-    "P1: every milestone, the finale at 75 and THE LAST PAGE at 150 — once each, in order (GRAND SERVICE the level after the finale)",
+    "P1: every milestone, the finale at 74 and THE LAST PAGE at 148 — once each, in order (GRAND SERVICE at 73 now comes before the finale)",
     run.events,
   );
 }
@@ -158,43 +158,43 @@ console.log("P. A fresh player, 0 → 150");
 console.log("C. Catch-up (returning players)");
 {
   const at = (n: number, mask = OLD_SIX) => playTo(saveAt(n, mask), LEGACY_AT);
-  const r120 = at(76);
+  const r120 = at(74);
   assert(
-    r120.events.join() === "87:m87,104:m104,117:m117,132:m132,150:legacy",
-    "C1: a save at 76 (all shipped milestones seen) gets each new one on time, once",
+    r120.events.join() === "85:m85,102:m102,115:m115,130:m130,148:legacy",
+    "C1: a save at 74 (all shipped milestones seen) gets each new one on time, once",
     r120.events,
   );
-  const r145 = at(93);
+  const r145 = at(91);
   assert(
-    r145.events[0] === "94:m87" && r145.events.filter((e) => e.endsWith("m87")).length === 1,
-    "C2: a save at 93 — 87 is 6 levels behind, inside the window: shown once on the next completion",
+    r145.events[0] === "92:m85" && r145.events.filter((e) => e.endsWith("m85")).length === 1,
+    "C2: a save at 91 — 85 is 6 levels behind, inside the window: shown once on the next completion",
     r145.events,
   );
-  const r150 = at(98);
-  const first150 = complete(saveAt(98, OLD_SIX));
+  const r150 = at(96);
+  const first150 = complete(saveAt(96, OLD_SIX));
   assert(
     first150.event === null &&
       (first150.save.story.milestoneMask & 128) !== 0 &&
-      r150.events.join() === "104:m104,117:m117,132:m132,150:legacy",
-    "C3: a save at 98 — 87 is 11 behind: marked silently, never shown",
+      r150.events.join() === "102:m102,115:m115,130:m130,148:legacy",
+    "C3: a save at 96 — 85 is 11 behind: marked silently, never shown",
     r150.events,
   );
-  const first170 = complete(saveAt(110, OLD_SIX));
+  const first170 = complete(saveAt(108, OLD_SIX));
   assert(
-    label(first170.event) === "m104" && (first170.save.story.milestoneMask & 128) !== 0,
-    "C4: two reached at once (a save at 110): only the newest in-window one shows; the older is marked",
+    label(first170.event) === "m102" && (first170.save.story.milestoneMask & 128) !== 0,
+    "C4: two reached at once (a save at 108): only the newest in-window one shows; the older is marked",
   );
-  const r200 = at(128);
+  const r200 = at(126);
   assert(
-    r200.events.join() === "132:m132,150:legacy",
-    "C5: a save at 128 gets no backlog — 87/104/117 marked silently; only 132 and THE LAST PAGE",
+    r200.events.join() === "130:m130,148:legacy",
+    "C5: a save at 126 gets no backlog — 85/102/115 marked silently; only 130 and THE LAST PAGE",
     r200.events,
   );
   const r249 = at(LEGACY_AT - 1);
   assert(
-    r249.events.join() === "150:legacy" &&
+    r249.events.join() === "148:legacy" &&
       r249.save.story.milestoneMask === (MILES_FULL_MASK | LEGACY_BIT),
-    "C6: a save at 149 gets THE LAST PAGE at 150 and nothing else (132 marked silently)",
+    "C6: a save at 147 gets THE LAST PAGE at 148 and nothing else (130 marked silently)",
     r249.events,
   );
   // Never silence the finale or THE LAST PAGE, however far behind.

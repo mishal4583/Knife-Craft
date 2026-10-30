@@ -163,9 +163,15 @@ table.push(fromRun(completionist), fromRun(normal), fromRun(saver), fromRun(zero
 // Rule changed (developer 2026-10-26, "the game starts at 0 cash"): a new save starts with $0
 // instead of $1,240 — completionist $31,686 → $30,446, normal player $29,796 → $28,550 (the
 // $1,240 plus purchase timing).
+// Rule changed (developer 2026-10-29): the first two levels were removed (148 levels, no $0 practice level)
+// and the kitchen tiers were re-priced (Growing $60k, Established $12k, Neighborhood Café $18k: the tiers now
+// cost $155,000 in total, was $135,000). Re-recorded from the real simulation: classic completionist
+// $30,446 → $9,857, normal player and $0 start $28,550 → $7,927 (mostly the +$20,000 of kitchen tiers).
+// Re-recorded again 2026-10-30 after the level-pay re-plan (+$199,515 of completion rewards) and the $10 start:
+// completionist $209,611, normal player $207,699, a $0 start $207,690.
 assert(
-  completionist.final === dollars(30_446),
-  `A1 (18): classic completionist final cash ${fmt(completionist.final)} === the 150-level baseline $30,446.00`,
+  completionist.final === dollars(209_611),
+  `A1 (18): classic completionist final cash ${fmt(completionist.final)} === the 148-level baseline $209,611.00`,
 );
 assert(
   completionist.everythingOwned,
@@ -183,12 +189,12 @@ assert(
   `A3: every earned achievement collected exactly once (${fmt(completionist.byCategory["milestone-reward"] ?? 0)}) + Family Legacy ${fmt(FAMILY_LEGACY_REWARD)}`,
 );
 assert(
-  completionist.byCategory["kitchen-investment-purchase"] === -dollars(135_000),
-  "A4: Restaurant Development costs exactly $135,000 in total",
+  completionist.byCategory["kitchen-investment-purchase"] === -dollars(155_000),
+  "A4: Restaurant Development costs exactly $155,000 in total (developer 2026-10-29; was $135,000)",
 );
 assert(
-  normal.final === dollars(28_550) && normal.everythingOwned,
-  `A5: a normal player who buys everything owns it all and ends at the 150-level baseline (${fmt(normal.final)} === $28,550.00)`,
+  normal.final === dollars(207_699) && normal.everythingOwned,
+  `A5: a normal player who buys everything owns it all and ends at the 148-level baseline (${fmt(normal.final)} === $207,699.00)`,
 );
 for (const r of [completionist, normal, saver, zeroStart]) {
   assert(
@@ -201,12 +207,13 @@ for (const r of [completionist, normal, saver, zeroStart]) {
   );
 }
 assert(
-  zeroStart.everythingOwned && zeroStart.final === dollars(28_550),
-  `A8 (13): starting from $0 the campaign is fully playable and still ends with everything and ${fmt(zeroStart.final)} (150-level baseline $28,550.00)`,
+  zeroStart.everythingOwned && zeroStart.final === dollars(207_690),
+  `A8 (13): starting from $0 the campaign is fully playable and still ends with everything and ${fmt(zeroStart.final)} (148-level baseline $207,690.00: the $10 start is the only difference from the normal player, less purchase timing)`,
 );
 // Rule changed (developer 2026-10-16): one rising curve by level number (levelRewards.ts).
 assert(
-  LEVELS.every((l, i) => (i === 1 ? paidLevelReward(l) === 0 : paidLevelReward(l) > 0)) &&
+  // No practice level since 2026-10-29: every level pays.
+  LEVELS.every((l) => paidLevelReward(l) > 0) &&
     LEVELS.slice(2, -1).every((l, i) => paidLevelReward(l) > paidLevelReward(LEVELS[i + 1]!)) &&
     paidLevelReward(LAST) === dollars(5_000),
   "A9: every level but L2's practice pays a positive completion reward, rising every level; the finale keeps $5,000",

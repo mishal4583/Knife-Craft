@@ -7936,24 +7936,6 @@ const SOURCE_CAMPAIGN_RECIPES: RecipeDefinition[] = [
     basePayment: 570,
     unlockLevel: 250,
   },
-  {
-    id: "camp-level2-basics-tutorial",
-    name: "Basic Knife Skills Practice",
-    emoji: "🔪",
-    cuisineId: null,
-    authenticity: "B",
-    components: [
-      { ingredientId: "tomato", technique: "dice", resultingState: "diced", destinationIds: ["plate"] },
-      { ingredientId: "cucumber", technique: "slice", resultingState: "sliced", destinationIds: ["plate"] },
-      { ingredientId: "garlic", technique: "peel", resultingState: "peeled", destinationIds: ["plate"] },
-    ],
-    destinations: [{ id: "plate", name: "Practice Plate" }],
-    batchable: false,
-    chefInstruction: "Practice the basic cuts: dice the tomato, slice the cucumber, then peel the garlic.",
-    customerDialogue: "Let's practice together before the restaurant opens.",
-    basePayment: 0,
-    unlockLevel: 2,
-  },
 ];
 
 /**

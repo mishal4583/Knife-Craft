@@ -9702,18 +9702,6 @@ export const CAMPAIGN_150_OLD_TO_NEW_LEVEL = CAMPAIGN_150_OLD_TO_NEW;
 export const CAMPAIGN_150_SOURCE_LEVELS: readonly LevelDefinition[] =
   CAMPAIGN_150_SOURCE_LEVEL_NUMBERS.map((oldNumber) => SOURCE_LEVELS[oldNumber - 1]!);
 
-const tutorialSteps = [
-  { ingredient: "tomato", startingState: "whole", technique: "dice", resultingState: "diced", destination: "Practice Plate", optional: false },
-  { ingredient: "cucumber", startingState: "whole", technique: "slice", resultingState: "sliced", destination: "Practice Plate", optional: false },
-  { ingredient: "garlic", startingState: "whole", technique: "peel", resultingState: "peeled", destination: "Practice Plate", optional: false },
-] satisfies LevelDefinition["preparationSteps"];
-
-const tutorialObjectives: LevelDefinition["objectives"] = [
-  { type: "prepareIngredient", ingredientId: "tomato", technique: "dice" },
-  { type: "prepareIngredient", ingredientId: "cucumber", technique: "slice" },
-  { type: "prepareIngredient", ingredientId: "garlic", technique: "peel" },
-];
-
 /**
  * Text and recipe fixes from the 2026-10-15 level review (new level number →
  * fields). Single-ingredient dishes gained a second ingredient in
@@ -9823,20 +9811,6 @@ export const LEVELS: LevelDefinition[] = CAMPAIGN_150_SOURCE_LEVEL_NUMBERS.map((
     chapterId: CAMPAIGN_150_CHAPTER_IDS[chapter]!,
     unlockRequirements: index === 0 ? { type: "always" } : { type: "levelCompleted", levelId: `level-${index}` },
   };
-  if (oldNumber === 2) {
-    level.title = "Basic Kitchen Learning";
-    level.subtitle = "A guided practice: dice, slice and peel";
-    level.description = "Practice a tomato dice, cucumber slices, then peel a garlic clove. Training food is provided for this lesson.";
-    level.emoji = "🔪";
-    level.recipeId = "camp-level2-basics-tutorial";
-    level.recipePoolIds = ["camp-level2-basics-tutorial"];
-    level.requiredOrders = 1;
-    level.objectives = tutorialObjectives;
-    level.preparationSteps = tutorialSteps;
-    level.destinations = ["Practice Plate"];
-    level.reward = { coins: 0 };
-    level.campaignNoEconomy = true;
-  }
   // LEVEL_FIXES retains its original curated numbering; removing the two
   // introductory services shifts every retained fix down by two.
   Object.assign(level, LEVEL_FIXES[index + 3] ?? {});

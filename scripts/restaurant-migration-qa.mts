@@ -76,10 +76,10 @@ async function loadRaw(raw: object): Promise<SaveData> {
 // old 250-level layout and renumbers it (2026-10-15) — right for real old saves, which
 // E1 still uses on purpose.
 const progressAt = (n: number, done = n - 1) => ({
-  currentLevelId: `level-${Math.min(n, 150)}`,
-  highestUnlockedLevelId: `level-${Math.min(n, 150)}`,
+  currentLevelId: `level-${Math.min(n, 148)}`,
+  highestUnlockedLevelId: `level-${Math.min(n, 148)}`,
   completedLevelIds: Array.from({ length: done }, (_, i) => `level-${i + 1}`),
-  campaignVersion: 2,
+  campaignVersion: 3, // current layout (148 levels, 2026-10-29)
 });
 const oldLayoutAt = (n: number) => {
   const { campaignVersion: _v, ...rest } = progressAt(n);
@@ -321,10 +321,10 @@ console.log("E. Saves of every era");
       (b.business.inventory.tomato?.quantity ?? 0) >= 5,
     "E3: a Business-day player keeps staff, menu switches, calendar and stock — they become the restaurant's",
   );
-  const done = modern(150, { levelProgress: progressAt(150, 150) });
+  const done = modern(148, { levelProgress: progressAt(148, 148) });
   const d = migrateToUnifiedRestaurant(await loadRaw(done));
   assert(
-    d.business.restaurantMigration!.atLevel === 150 &&
+    d.business.restaurantMigration!.atLevel === 148 &&
       !d.business.restaurantMigration!.kit.some((k) => k.kind === "ingredient") &&
       units(d, "dinner-plates") >= 1 &&
       units(d, "paper-bags") >= KIT_PACKAGING,

@@ -167,15 +167,15 @@ console.log("D. Deep cleans");
   );
   assert(
     DEEP_CLEAN_EVERY === 7 &&
-      // 150-level remap (2026-10-15): from dine-in, L21 (AUDIT_FROM; was L31).
-      AUDIT_FROM === 21 &&
+      // 150-level remap (2026-10-15): L21; the 148-level campaign (2026-10-29) moves it to L19 (AUDIT_FROM).
+      AUDIT_FROM === 19 &&
       deepCleansFor(13, 41).length === 0 &&
       deepCleansFor(7, 41).join() === "deep-kitchen,deep-restroom" &&
       deepCleansFor(14, 41).join() === "deep-kitchen,deep-restroom,deep-dining" &&
       deepCleansFor(14, AUDIT_FROM - 1).length === 0 &&
       deepCleansFor(14, AUDIT_FROM).join() === "deep-kitchen,deep-restroom,deep-dining" &&
       phaseChores("closing", 41).every((k) => !deepKinds.includes(k)),
-    "D1: deep cleans only on their days — the weekly one on Day 7, 14 …, the dining one on the audit day; from L21 (with the audit)",
+    "D1: deep cleans only on their days — the weekly one on Day 7, 14 …, the dining one on the audit day; from L19 (with the audit)",
     { d7: deepCleansFor(7, 41), d14: deepCleansFor(14, 41) },
   );
   const daily = phaseChores("closing", 41, 13);

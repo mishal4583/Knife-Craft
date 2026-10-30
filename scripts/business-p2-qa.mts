@@ -23,7 +23,7 @@ import {
   createBusinessServiceSession,
   advanceBusinessServiceSession,
   recordBusinessServiceComponents,
-  serveBusinessOrder,
+  serveBusinessOrder as serveBusinessOrderRaw,
   businessOrderAvailability,
   nextCustomerDestination,
   businessCustomersToday,
@@ -48,6 +48,17 @@ import {
 import { endBusinessDay } from "../src/game/business/BusinessDayManager.ts";
 import type { ServiceSession } from "../src/game/service/ServiceManager.ts";
 
+import { settlePendingCash } from "../src/game/economy/pendingCash.ts";
+/**
+ * A serve leaves the payment on the table; the player sweeps it into the wallet (economy/pendingCash.ts,
+ * developer 2026-10-29). This QA models that sweep right after the serve, so the wallet and the ledger
+ * are read as they are once the money is in the till.
+ */
+const serveBusinessOrder: typeof serveBusinessOrderRaw = (...args) => {
+  const r = serveBusinessOrderRaw(...args);
+  return r ? { ...r, save: settlePendingCash(r.save) } : r;
+};
+
 let failures = 0;
 function assert(cond: boolean, label: string) {
   if (!cond) {
@@ -64,7 +75,12 @@ const base = (over: Partial<SaveData["business"]> = {}, credits = 100_000): Save
   economyLedger: [],
   business: { ...DEFAULT_BUSINESS_STATE, calendar: { businessDay: QUIET_DAY }, ...over },
 });
-const campaignView = (s: SaveData) => JSON.stringify(Object.fromEntries(Object.entries(s).filter(([k]) => !["business", "credits", "economyLedger"].includes(k))));
+const campaignView = (s: SaveData) =>
+  JSON.stringify(
+    Object.fromEntries(
+      Object.entries(s).filter(([k]) => !["business", "credits", "economyLedger"].includes(k)),
+    ),
+  );
 
 // Two-dish menu: Garden Salad (tomato/cucumber/carrot) + Chicken & Broccoli (chicken/broccoli/scallion).
 function twoDishMenu(save: SaveData): SaveData {
@@ -81,12 +97,31 @@ function twoDishMenu(save: SaveData): SaveData {
 {
   // Stock ONLY the salad; the chicken dish is on the menu but unavailable.
   let save = twoDishMenu(base());
-  save = { ...save, business: { ...save.business, inventory: addStock(addStock(addStock({}, "tomato", 5, 100, QUIET_DAY), "cucumber", 5, 100, QUIET_DAY), "carrot", 5, 100, QUIET_DAY) } };
+  save = {
+    ...save,
+    business: {
+      ...save.business,
+      inventory: addStock(
+        addStock(addStock({}, "tomato", 5, 100, QUIET_DAY), "cucumber", 5, 100, QUIET_DAY),
+        "carrot",
+        5,
+        100,
+        QUIET_DAY,
+      ),
+    },
+  };
   // Walk a real queue: the ServiceManager only advances a COMPLETED order, so each customer is genuinely
   // served (on a fully-stocked copy) to reach the next one. For every order that becomes current, Next
   // Customer's destination (on the salad-only save) must equal the Start-Preparing gate for that order.
   let stocked: SaveData = save;
-  for (const id of ["tomato", "cucumber", "carrot", "chicken", "broccoli", "springonion"] as const) stocked = { ...stocked, business: { ...stocked.business, inventory: addStock(stocked.business.inventory, id, 100, 100, QUIET_DAY) } };
+  for (const id of ["tomato", "cucumber", "carrot", "chicken", "broccoli", "springonion"] as const)
+    stocked = {
+      ...stocked,
+      business: {
+        ...stocked.business,
+        inventory: addStock(stocked.business.inventory, id, 100, 100, QUIET_DAY),
+      },
+    };
   const rand = makeSeededRand(3);
   let session: ServiceSession = createBusinessServiceSession(rand, save.business.menuActivation);
   let sawService = false;
@@ -105,60 +140,141 @@ function twoDishMenu(save: SaveData): SaveData {
     if (businessCustomersToday(stocked).complete) {
       stocked = endBusinessDay(stocked).save;
       const today = stocked.business.calendar.businessDay; // fresh fixture stock for the new day (same as the setup above)
-      for (const id of ["tomato", "cucumber", "carrot", "chicken", "broccoli", "springonion"] as const) stocked = { ...stocked, business: { ...stocked.business, inventory: addStock(stocked.business.inventory, id, 100, 100, today) } };
+      for (const id of [
+        "tomato",
+        "cucumber",
+        "carrot",
+        "chicken",
+        "broccoli",
+        "springonion",
+      ] as const)
+        stocked = {
+          ...stocked,
+          business: {
+            ...stocked.business,
+            inventory: addStock(stocked.business.inventory, id, 100, 100, today),
+          },
+        };
     }
     const served = serveBusinessOrder(recordBusinessServiceComponents(session, 80), stocked, rand);
     if (!served) break;
     stocked = served.save;
     session = advanceBusinessServiceSession(served.session, rand, save.business.menuActivation);
   }
-  assert(checked === 30 && consistent, `A: for ${checked} consecutive real customers, Next Customer's destination === the Start-Preparing ingredient gate`);
-  assert(sawService && sawPrep, "A2: the queue exercised both outcomes (available -> Preparation, unavailable -> Service screen)");
+  assert(
+    checked === 30 && consistent,
+    `A: for ${checked} consecutive real customers, Next Customer's destination === the Start-Preparing ingredient gate`,
+  );
+  assert(
+    sawService && sawPrep,
+    "A2: the queue exercised both outcomes (available -> Preparation, unavailable -> Service screen)",
+  );
 
   // An unavailable order that somehow reached READY is still never paid.
   let chickenSession: ServiceSession | null = null;
   for (let seed = 1; seed < 400 && !chickenSession; seed++) {
     const s = createBusinessServiceSession(makeSeededRand(seed), save.business.menuActivation);
-    if (s.current && businessDishForRecipeId(s.current.recipe.id)!.id === "biz-chicken-broccoli") chickenSession = recordBusinessServiceComponents(s, 80);
+    if (s.current && businessDishForRecipeId(s.current.recipe.id)!.id === "biz-chicken-broccoli")
+      chickenSession = recordBusinessServiceComponents(s, 80);
   }
-  assert(!!chickenSession && chickenSession.current!.order.status === "READY", "A3: precondition — an unavailable dish's order forced to READY");
+  assert(
+    !!chickenSession && chickenSession.current!.order.status === "READY",
+    "A3: precondition — an unavailable dish's order forced to READY",
+  );
   const refused = serveBusinessOrder(chickenSession!, save, makeSeededRand(1));
   assert(refused === null, "A4: serving an order whose ingredients are unavailable is refused");
-  assert(save.credits === 100_000 && save.economyLedger.length === 0 && getQuantity(save.business.inventory, "tomato") === 5, "A5: no revenue, no ledger entry, no stock touched by the refused serve");
-  assert(nextCustomerDestination(save, { ...chickenSession!, current: null }) === "service", "A6: an empty queue never sends the player into Preparation");
+  assert(
+    save.credits === 100_000 &&
+      save.economyLedger.length === 0 &&
+      getQuantity(save.business.inventory, "tomato") === 5,
+    "A5: no revenue, no ledger entry, no stock touched by the refused serve",
+  );
+  assert(
+    nextCustomerDestination(save, { ...chickenSession!, current: null }) === "service",
+    "A6: an empty queue never sends the player into Preparation",
+  );
 
   // Available path: serve once, pays exactly once.
   let saladSession: ServiceSession | null = null;
   for (let seed = 1; seed < 400 && !saladSession; seed++) {
     const s = createBusinessServiceSession(makeSeededRand(seed), save.business.menuActivation);
-    if (s.current && businessDishForRecipeId(s.current.recipe.id)!.id === "biz-garden-salad") saladSession = recordBusinessServiceComponents(s, 80);
+    if (s.current && businessDishForRecipeId(s.current.recipe.id)!.id === "biz-garden-salad")
+      saladSession = recordBusinessServiceComponents(s, 80);
   }
   const served = serveBusinessOrder(saladSession!, save, makeSeededRand(1))!;
-  const after = appendLedgerEntry(served.save, "business-revenue", served.amountCharged, served.dish.id);
-  assert(serveBusinessOrder(served.session, after, makeSeededRand(1)) === null, "A7: the same order can't be paid twice");
-  assert(after.economyLedger.length === 1 && after.credits === 100_000 + served.amountCharged && getQuantity(after.business.inventory, "tomato") === normalizeQuantity(5 - INGREDIENT_MEASURES.tomato.serving), "A8: exactly one payment, one ledger entry, one plate's serving of each ingredient consumed (a 0.3 lb tomato)");
-  assert(Object.values(after.business.inventory).every((e) => !e || e.quantity > 0), "A9: no inventory quantity is ever zero/negative");
+  const after = served.save; /* the sweep already wrote the entry (economy/pendingCash.ts) */
+  assert(
+    serveBusinessOrder(served.session, after, makeSeededRand(1)) === null,
+    "A7: the same order can't be paid twice",
+  );
+  assert(
+    after.economyLedger.length === 1 &&
+      after.credits === 100_000 + served.amountCharged &&
+      getQuantity(after.business.inventory, "tomato") ===
+        normalizeQuantity(5 - INGREDIENT_MEASURES.tomato.serving),
+    "A8: exactly one payment, one ledger entry, one plate's serving of each ingredient consumed (a 0.3 lb tomato)",
+  );
+  assert(
+    Object.values(after.business.inventory).every((e) => !e || e.quantity > 0),
+    "A9: no inventory quantity is ever zero/negative",
+  );
 }
 
 // ===== B: single-unit purchasing. =====
 {
-  assert(MIN_PURCHASE_QUANTITY === 1 && DEFAULT_PURCHASE_QUANTITY === 5, "B0: the smallest purchase is 1 unit; the default stays 5");
-  assert(stepPurchaseQuantity(1, -1) === 1 && stepPurchaseQuantity(1, 1) === 2 && stepPurchaseQuantity(4, 1) === 5 && stepPurchaseQuantity(5, 1) === 10 && stepPurchaseQuantity(10, -1) === 5 && stepPurchaseQuantity(5, -1) === 4 && stepPurchaseQuantity(25, 1) === 30, "B: stepper — 1-unit steps up to 5, then 5 at a time, never below 1");
+  assert(
+    MIN_PURCHASE_QUANTITY === 1 && DEFAULT_PURCHASE_QUANTITY === 5,
+    "B0: the smallest purchase is 1 unit; the default stays 5",
+  );
+  assert(
+    stepPurchaseQuantity(1, -1) === 1 &&
+      stepPurchaseQuantity(1, 1) === 2 &&
+      stepPurchaseQuantity(4, 1) === 5 &&
+      stepPurchaseQuantity(5, 1) === 10 &&
+      stepPurchaseQuantity(10, -1) === 5 &&
+      stepPurchaseQuantity(5, -1) === 4 &&
+      stepPurchaseQuantity(25, 1) === 30,
+    "B: stepper — 1-unit steps up to 5, then 5 at a time, never below 1",
+  );
   const save = base();
   const one = purchaseIngredient(save, "garlic", 1);
-  assert(one.ok && one.totalCost === businessUnitCostFor("garlic") && one.save.credits === save.credits - one.totalCost, `B2: 1 lb of garlic costs exactly one unit price (${businessUnitCostFor("garlic")}c)`);
-  assert(one.ok && getQuantity(one.save.business.inventory, "garlic") === 1, "B3: exactly 1 unit is stocked");
+  assert(
+    one.ok &&
+      one.totalCost === businessUnitCostFor("garlic") &&
+      one.save.credits === save.credits - one.totalCost,
+    `B2: 1 lb of garlic costs exactly one unit price (${businessUnitCostFor("garlic")}c)`,
+  );
+  assert(
+    one.ok && getQuantity(one.save.business.inventory, "garlic") === 1,
+    "B3: exactly 1 unit is stocked",
+  );
   // Contract discount still requires the contract's own minimum order.
   const signed = signContract(base(), "local-market");
   if (signed.ok) {
     const small = purchaseIngredient(signed.save, "tomato", 1);
     const big = purchaseIngredient(signed.save, "tomato", 5);
-    assert(small.ok && big.ok && small.unitCost === businessUnitCostFor("tomato") && big.unitCost === Math.round(businessUnitCostFor("tomato") * 0.95), "B4: a 1-unit purchase gets no contract discount; the 5-unit contract minimum still does");
+    assert(
+      small.ok &&
+        big.ok &&
+        small.unitCost === businessUnitCostFor("tomato") &&
+        big.unitCost === Math.round(businessUnitCostFor("tomato") * 0.95),
+      "B4: a 1-unit purchase gets no contract discount; the 5-unit contract minimum still does",
+    );
   }
-  const shortageDay = [1, 2, 3, 4, 5, 6].find((d) => eventForDay(d)?.maxPurchaseQuantity !== undefined)!;
+  const shortageDay = [1, 2, 3, 4, 5, 6].find(
+    (d) => eventForDay(d)?.maxPurchaseQuantity !== undefined,
+  )!;
   const capped = purchaseIngredient(base({ calendar: { businessDay: shortageDay } }), "tomato", 11);
-  assert(!capped.ok && capped.reason === "exceedsShortageLimit" && purchaseIngredient(base({ calendar: { businessDay: shortageDay } }), "tomato", 1).ok, "B5: shortage caps still apply; 1 unit is fine on a shortage day");
-  assert(!purchaseIngredient(save, "tomato", 0).ok && !purchaseIngredient(save, "tomato", 0.5).ok, "B6: 0 and fractional purchases are still refused (whole units only)");
+  assert(
+    !capped.ok &&
+      capped.reason === "exceedsShortageLimit" &&
+      purchaseIngredient(base({ calendar: { businessDay: shortageDay } }), "tomato", 1).ok,
+    "B5: shortage caps still apply; 1 unit is fine on a shortage day",
+  );
+  assert(
+    !purchaseIngredient(save, "tomato", 0).ok && !purchaseIngredient(save, "tomato", 0.5).ok,
+    "B6: 0 and fractional purchases are still refused (whole units only)",
+  );
 }
 
 // ===== C: per-unit wear through the real purchase path. =====
@@ -169,18 +285,51 @@ function twoDishMenu(save: SaveData): SaveData {
     if (r.ok) singles = r.save;
   }
   const lot = purchaseIngredient(base(), "tomato", 10);
-  assert(lot.ok && singles.business.equipmentCondition.refrigeratorCondition === 99 && lot.save.business.equipmentCondition.refrigeratorCondition === 99, "C: ten 1-unit purchases wear the refrigerator exactly like one 10-unit purchase (1 point each way)");
-  assert(singles.credits === lot.save.credits && getQuantity(singles.business.inventory, "tomato") === 10, "C2: and cost exactly the same");
-  const oldSave = JSON.parse(JSON.stringify(base({ equipmentCondition: { refrigeratorCondition: 70 } }))) as SaveData;
+  assert(
+    lot.ok &&
+      singles.business.equipmentCondition.refrigeratorCondition === 99 &&
+      lot.save.business.equipmentCondition.refrigeratorCondition === 99,
+    "C: ten 1-unit purchases wear the refrigerator exactly like one 10-unit purchase (1 point each way)",
+  );
+  assert(
+    singles.credits === lot.save.credits &&
+      getQuantity(singles.business.inventory, "tomato") === 10,
+    "C2: and cost exactly the same",
+  );
+  const oldSave = JSON.parse(
+    JSON.stringify(base({ equipmentCondition: { refrigeratorCondition: 70 } })),
+  ) as SaveData;
   delete (oldSave.business.equipmentCondition as { wearCarryUnits?: number }).wearCarryUnits;
-  const migrated = { ...DEFAULT_SAVE, ...oldSave, business: { ...DEFAULT_SAVE.business, ...oldSave.business } } as SaveData;
+  const migrated = {
+    ...DEFAULT_SAVE,
+    ...oldSave,
+    business: { ...DEFAULT_SAVE.business, ...oldSave.business },
+  } as SaveData;
   const w = purchaseIngredient(migrated, "tomato", 15);
-  assert(w.ok && w.save.business.equipmentCondition.refrigeratorCondition === 69 && w.save.business.equipmentCondition.wearCarryUnits === 5, "C3: a pre-V3-16 save with no carry field loads and wears correctly (15 units -> 1 point, 5 carried)");
+  assert(
+    w.ok &&
+      w.save.business.equipmentCondition.refrigeratorCondition === 69 &&
+      w.save.business.equipmentCondition.wearCarryUnits === 5,
+    "C3: a pre-V3-16 save with no carry field loads and wears correctly (15 units -> 1 point, 5 carried)",
+  );
   const worn = base({ equipmentCondition: { refrigeratorCondition: 45, wearCarryUnits: 7 } });
   const repaired = performRefrigeratorMaintenance(worn);
-  assert(repaired.ok && repaired.save.business.equipmentCondition.refrigeratorCondition === 100 && (repaired.save.business.equipmentCondition.wearCarryUnits ?? 0) === 0, "C4: a repair restores 100 and clears the partial-wear carry");
-  const upgraded = purchaseRefrigerator(base({ equipmentCondition: { refrigeratorCondition: 60, wearCarryUnits: 9 } }, 1_000_000), REFRIGERATOR_CATALOG[1]!.id);
-  assert(upgraded.ok && upgraded.save.business.equipmentCondition.refrigeratorCondition === 100 && (upgraded.save.business.equipmentCondition.wearCarryUnits ?? 0) === 0, "C5: a new refrigerator starts at 100 with no carried wear");
+  assert(
+    repaired.ok &&
+      repaired.save.business.equipmentCondition.refrigeratorCondition === 100 &&
+      (repaired.save.business.equipmentCondition.wearCarryUnits ?? 0) === 0,
+    "C4: a repair restores 100 and clears the partial-wear carry",
+  );
+  const upgraded = purchaseRefrigerator(
+    base({ equipmentCondition: { refrigeratorCondition: 60, wearCarryUnits: 9 } }, 1_000_000),
+    REFRIGERATOR_CATALOG[1]!.id,
+  );
+  assert(
+    upgraded.ok &&
+      upgraded.save.business.equipmentCondition.refrigeratorCondition === 100 &&
+      (upgraded.save.business.equipmentCondition.wearCarryUnits ?? 0) === 0,
+    "C5: a new refrigerator starts at 100 with no carried wear",
+  );
 }
 
 // ===== D: Campaign isolation. =====
@@ -192,8 +341,13 @@ function twoDishMenu(save: SaveData): SaveData {
   if (p.ok) s = p.save;
   const m = setDishActive(s, "biz-garden-salad", false);
   if (m.ok) s = m.save;
-  assert(campaignView(s) === before, "D: purchases, wear and menu changes never touch any Campaign field");
+  assert(
+    campaignView(s) === before,
+    "D: purchases, wear and menu changes never touch any Campaign field",
+  );
 }
 
-console.log(failures === 0 ? "\nBUSINESS P2 QA: ALL PASS" : `\nBUSINESS P2 QA: ${failures} FAILURE(S)`);
+console.log(
+  failures === 0 ? "\nBUSINESS P2 QA: ALL PASS" : `\nBUSINESS P2 QA: ${failures} FAILURE(S)`,
+);
 process.exit(failures === 0 ? 0 : 1);

@@ -9,7 +9,7 @@ import { CashStackIcon } from "./CashStackIcon";
 type BtnProps = {
   children: ReactNode;
   onClick?: () => void;
-  variant?: "wood" | "cream" | "sage" | "ghost" | "copper";
+  variant?: "wood" | "cream" | "sage" | "green" | "ghost" | "copper";
   size?: "sm" | "md" | "lg";
   full?: boolean;
   disabled?: boolean;
@@ -38,6 +38,8 @@ export function KButton({
       "text-ivory border border-walnut-dark/40 shadow-soft bg-[linear-gradient(170deg,var(--color-gold),var(--color-copper))]",
     cream: "card-warm text-walnut-dark",
     sage: "text-ivory border border-olive/60 shadow-soft bg-[linear-gradient(170deg,var(--color-sage),var(--color-olive))]",
+    green:
+      "text-white border border-[#2f8a3c] shadow-[0_6px_16px_-4px_rgba(47,138,60,0.65)] bg-[linear-gradient(170deg,#58c85f,#2f9e44)] [text-shadow:0_1px_1px_rgba(20,70,28,0.45)]",
     ghost: "text-walnut border border-walnut/25 bg-ivory/60",
   }[variant];
   return (

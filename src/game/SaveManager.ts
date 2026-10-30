@@ -244,10 +244,11 @@ export const DEFAULT_ENDLESS_PROGRESS: EndlessProgress = { date: "", coinsEarned
 export const DEFAULT_SAVE: SaveData = {
   version: SAVE_VERSION,
   /**
-   * A new player starts with an empty wallet and earns everything (developer 2026-10-26; was
-   * $1,240.00). Wallet amounts are integer US cents — see money.ts.
+   * A new player starts with $10.00 — enough to buy the first order's ingredients in the Market
+   * with their own money (Level 1 costs under $1; developer 2026-10-30; it was $0.00 from
+   * 2026-10-26 and $1,240.00 before). Wallet amounts are integer US cents — see money.ts.
    */
-  credits: 0,
+  credits: dollars(10),
   equippedKnifeId: "chef",
   equippedBoardId: "walnut",
   ownedKnifeIds: ["chef"],
@@ -395,12 +396,52 @@ class SaveManagerImpl {
     return this.cache;
   }
 
+  /** The write in flight (null when idle) and the newest state waiting behind it. */
+  private writing: Promise<void> | null = null;
+  private queued: {
+    serialized: string;
+    waiters: { resolve: () => void; reject: (e: unknown) => void }[];
+  } | null = null;
+
+  /**
+   * Saves `data`. Writes never overlap and never land out of order: while one is in flight only the
+   * NEWEST state waits behind it (a burst of saves — one per swept bill — becomes one write plus
+   * the last one), and every caller's promise resolves once its state, or a newer one, is stored.
+   */
   async save(data: SaveData): Promise<void> {
     // Economy V2.5 — never persist money the game can't have (economy/wallet.ts).
     const violation = walletInvariantViolation(data);
     if (violation) throw new Error(`Refusing to save: ${violation}`);
     this.cache = data;
     const serialized = JSON.stringify(data);
+    return new Promise<void>((resolve, reject) => {
+      const waiter = { resolve, reject };
+      if (!this.writing) this.startWrite(serialized, [waiter]);
+      else if (this.queued) {
+        this.queued.serialized = serialized;
+        this.queued.waiters.push(waiter);
+      } else this.queued = { serialized, waiters: [waiter] };
+    });
+  }
+
+  private startWrite(
+    serialized: string,
+    waiters: { resolve: () => void; reject: (e: unknown) => void }[],
+  ) {
+    this.writing = this.writeNow(serialized)
+      .then(
+        () => waiters.forEach((w) => w.resolve()),
+        (e: unknown) => waiters.forEach((w) => w.reject(e)),
+      )
+      .then(() => {
+        this.writing = null;
+        const next = this.queued;
+        this.queued = null;
+        if (next) this.startWrite(next.serialized, next.waiters);
+      });
+  }
+
+  private async writeNow(serialized: string): Promise<void> {
     if (await platformReady()) {
       await saveCloudSave(serialized);
       return;

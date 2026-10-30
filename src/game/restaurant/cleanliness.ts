@@ -52,7 +52,7 @@ import { BUSINESS_STAFF_CATALOG } from "../business/businessStaff";
  * 10"): its tasks, Grandma's cleaning cupboard and the spotless streak. The
  * management screen is in the Business section, which opens at Level 11.
  */
-export const CLEANING_FROM_LEVEL = 10;
+export const CLEANING_FROM_LEVEL = 5;
 
 export const isCleanlinessLive = (levelNumber: number) => levelNumber >= CLEANING_FROM_LEVEL;
 
@@ -470,7 +470,7 @@ export function deepCleansFor(day: number, levelNumber: number): TaskKind[] {
 }
 
 /** Shift chores (opening / lull / closing) come with the day's ceremony, from Level 21. */
-export const PHASE_CHORES_FROM = remapCampaignThreshold(21);
+export const PHASE_CHORES_FROM = CLEANING_FROM_LEVEL;
 
 export const TASK_KINDS = Object.keys(TASK_RULES) as TaskKind[];
 
@@ -512,7 +512,14 @@ export type CleanlinessState = {
    * tasks, and the pieces still dirty after the start's wash-up (no soap) —
    * since the sink game (2026-10-23) a service's own dishes wait in the sink.
    */
-  lastStart: { level: number; open: number; areas: CleanArea[]; dirty: number } | null;
+  lastStart: {
+    level: number;
+    open: number;
+    /** Open cleaning tasks, without the morning's setup (the hygiene penalty reads this). */
+    cleaning: number;
+    areas: CleanArea[];
+    dirty: number;
+  } | null;
   cleaned: number;
   byCleaner: number;
   /** The shift-chore batches already added ("day:phase:services"), so a phase never repeats. */
@@ -569,6 +576,7 @@ export function cleanlinessOf(save: SaveData): CleanlinessState {
         ? {
             level: whole(ls.level),
             open: whole(ls.open),
+            cleaning: whole((ls as { cleaning?: unknown }).cleaning ?? ls.open),
             areas: Array.isArray(ls.areas) ? ls.areas.filter(isArea) : [],
             dirty: whole((ls as { dirty?: unknown }).dirty),
           }
@@ -724,6 +732,9 @@ export function cleanTask(
     supplies = took.supplies;
     open = took.open;
   }
+  // A night chore also does the day's leftovers of its kind in the same pass (CLOSING_COVERS):
+  // they are cleaned together with it, never dropped.
+  const alsoDone = (CLOSING_COVERS[kind] ?? []).filter((k) => st.tasks.some((t) => t.kind === k));
   return {
     save: {
       ...save,
@@ -733,9 +744,9 @@ export function cleanTask(
         cleanliness: {
           ...st,
           open,
-          tasks: st.tasks.filter((t) => t.kind !== kind),
-          cleaned: st.cleaned + 1,
-          byCleaner: st.byCleaner + (by === "cleaner" ? 1 : 0),
+          tasks: st.tasks.filter((t) => t.kind !== kind && !alsoDone.includes(t.kind)),
+          cleaned: st.cleaned + 1 + alsoDone.length,
+          byCleaner: st.byCleaner + (by === "cleaner" ? 1 + alsoDone.length : 0),
         },
       },
     },
@@ -899,6 +910,20 @@ export function phaseChores(phase: ShiftPhase, levelNumber: number, day?: number
 }
 
 /**
+ * What a night chore also does (developer 2026-10-29: "I cleaned some portions
+ * at night and they came back in the morning"): doing the closing pass also
+ * cleans the day's leftover tasks of the same kind in the same pass, so nothing
+ * is cleaned twice. Nothing is deleted: until the pass is done, every task stays.
+ */
+export const CLOSING_COVERS: Partial<Record<TaskKind, readonly TaskKind[]>> = {
+  "mop-all": ["floor", "restroom-floor", "spill"],
+  "restroom-disinfect": ["toilet", "restroom-refresh"],
+  "clear-tables": ["tables"],
+  degrease: ["grease", "equipment"],
+  "wipe-boards": ["sweep-line", "sanitizer-bucket"],
+};
+
+/**
  * A phase's chores, added ONCE per restaurant day and phase (the key
  * "day:phase:services" is remembered): a reload, a second tap or a repeated
  * opening never adds them again. `day` / `servicesDone`: the restaurant
@@ -911,9 +936,18 @@ export function addPhaseChores(
   day: number,
   servicesDone: number,
 ): SaveData {
-  const kinds = phaseChores(phase, levelNumber, day);
-  if (kinds.length === 0) return save;
   const st = cleanlinessOf(save);
+  // The morning never repeats the night: the restroom check only comes when the night's
+  // restroom pass is still open (it was not done).
+  const kinds = phaseChores(phase, levelNumber, day).filter(
+    (k) =>
+      !(
+        phase === "opening" &&
+        k === "restroom-check" &&
+        !st.tasks.some((t) => t.kind === "restroom-disinfect")
+      ),
+  );
+  if (kinds.length === 0) return save;
   const key = `${day}:${phase}:${servicesDone}`;
   if (st.choreKeys.includes(key)) return save;
   const tasks = st.tasks.map((t) => ({ ...t }));
@@ -959,10 +993,31 @@ export function snapshotServiceStart(save: SaveData, levelNumber: number): SaveD
     lastStart: {
       level: levelNumber,
       open: st.tasks.length,
+      // Only tasks the player could have done: one short of a supply or a tool is not their fault
+      // (and never costs them tips) — the guide tells them what to restock instead.
+      cleaning: st.tasks.filter(
+        (t) => TASK_RULES[t.kind].phase !== "opening" && taskNeeds(save, t.kind).length === 0,
+      ).length,
       areas,
       dirty: sinkPieces(save),
     },
   });
+}
+
+/**
+ * Hygiene and tips (developer 2026-10-29, 2026-10-30): a restaurant that opened a service with
+ * cleaning the player could have done left undone tips half (`DIRTY_TIP_SHARE`); one that opened
+ * fully clean (every task done, no dirty dishes) tips a quarter more (`CLEAN_TIP_SHARE`). Tasks
+ * short of a supply or a tool never count against the player.
+ */
+export const DIRTY_TIP_SHARE = 0.5;
+export const CLEAN_TIP_SHARE = 1.25;
+export function tipHygieneShare(save: SaveData, levelNumber: number): number {
+  if (!isCleanlinessLive(levelNumber)) return 1;
+  const ls = cleanlinessOf(save).lastStart;
+  if (!ls || ls.level !== levelNumber) return 1;
+  if (ls.cleaning > 0) return DIRTY_TIP_SHARE;
+  return ls.open === 0 && ls.dirty === 0 ? CLEAN_TIP_SHARE : 1;
 }
 
 /** Level Complete's cleaning line: what the Cleaner did and what's left (empty before the section). */
@@ -978,41 +1033,6 @@ export function cleaningLines(save: SaveData, byCleaner: number): string[] {
       : "🧹 All clean for the next service",
   ];
   return [parts.join(" · ")];
-}
-
-// ── Grandma's cleaning cupboard ─────────────────────────────────────────
-
-/** What Grandma's cupboard holds (once, at CLEANING_FROM_LEVEL; cost 0, no ledger). */
-export const GRANDMAS_CUPBOARD: readonly { id: SupplyId; units: number }[] = [
-  { id: "mop-bucket", units: 1 },
-  { id: "brooms", units: 1 },
-  { id: "toilet-brushes", units: 1 },
-  { id: "floor-cleaner", units: 1 },
-  { id: "disinfectant", units: 2 },
-  { id: "hand-soap", units: 1 },
-  { id: "toilet-paper", units: 4 },
-  { id: "paper-towels", units: 500 },
-  { id: "sponges-cloths", units: 3 },
-  { id: "bin-liners", units: 30 },
-];
-
-/** Gives Grandma's cleaning cupboard once the section opens (an older save gets it on its next level). */
-export function giveGrandmasCupboard(save: SaveData, reachedLevel: number): SaveData {
-  const st = cleanlinessOf(save);
-  if (st.cupboardAt !== null || !isCleanlinessLive(reachedLevel)) return save;
-  const stock = { ...save.business.supplies.stock };
-  for (const { id, units } of GRANDMAS_CUPBOARD) {
-    const e = stock[id];
-    stock[id] = { units: (e?.units ?? 0) + units, costBasis: e?.costBasis ?? 0 };
-  }
-  return {
-    ...save,
-    business: {
-      ...save.business,
-      supplies: { ...save.business.supplies, stock },
-      cleanliness: { ...st, cupboardAt: reachedLevel },
-    },
-  };
 }
 
 // ── What the screen shows ───────────────────────────────────────────────

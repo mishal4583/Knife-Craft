@@ -131,6 +131,12 @@ export function ServiceFloor({
   const done = useRef(false);
   const finish = () => {
     if (done.current) return;
+    // Cash on the table is never abandoned: a tap during the plate / reaction
+    // beats moves on to the cash, and the view closes only once it is all swept in.
+    if (mode === "deliver" && total > 0 && remaining > 0) {
+      if (state !== "cash") setState("cash");
+      return;
+    }
     if (state === "cash" && remaining > 0) return;
     done.current = true;
     onDone();

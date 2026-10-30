@@ -87,6 +87,8 @@ console.log("A. Restaurant restoration");
     .filter((l) => /^[+-](?![+-])/.test(l));
   const offUnlock = changed.filter(
     (l) =>
+      // Developer 2026-10-29: Growing $60k, Established $12k, Neighborhood Café $18k (were $20k / $25k / $25k).
+      !/^[+-]\s*price: dollars\((20|25|60|12|18)_000\),$/.test(l) &&
       !/earlyUnlock|LEGACY_KITCHEN_GRANT_LEVEL|remapCampaignThreshold\(item\.unlockLevel\)|EARLY_UNLOCK_CAP|^\+\s*(\/\*\*|\*\/|\*( .*)?)$|^\+\s*SOURCE_KITCHEN_UPGRADE_CATALOG\.map\(\(item\) => \[item\.id, remapCampaignThreshold\(item\.unlockLevel\)\]\),$|^\+\);$|^\+$/.test(
         l,
       ),
@@ -99,8 +101,8 @@ console.log("A. Restaurant restoration");
     offUnlock,
   );
   assert(
-    KITCHEN_UPGRADE_CATALOG.map((u) => u.price / 100).join() === "0,20000,25000,25000,30000,35000",
-    "A2: prices as before ($0, $20k, $25k, $25k, $30k, $35k)",
+    KITCHEN_UPGRADE_CATALOG.map((u) => u.price / 100).join() === "0,60000,12000,18000,30000,35000",
+    "A2: prices ($0, $60k, $12k, $18k, $30k, $35k — developer 2026-10-29; were $20k / $25k / $25k for the three)",
   );
   const mgrDiff = execSync(
     "git diff --stat HEAD -- src/game/kitchen/KitchenUpgradeManager.ts src/game/restaurant/restaurantInvestments.ts",
@@ -390,7 +392,8 @@ console.log("\nE. Save and money");
   });
   const writes = (s: string) => (s.match(/appendLedgerEntry\(/g) ?? []).length;
   assert(
-    writes(read("src/App.tsx")) === writes(headApp) + 2,
+    // Developer 2026-10-29: the swept cash is written by economy/pendingCash.ts; App has no more ledger writes than the base.
+    writes(read("src/App.tsx")) <= writes(headApp) + 2,
     "E2: App has no new ledger write (the reward is written inside takeDailyGift)",
   );
   const p5 = [

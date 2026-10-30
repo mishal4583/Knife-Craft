@@ -198,6 +198,32 @@ console.log("M. Music");
   );
 }
 
+console.log("I. iPhone Safari (interrupted context, touchend unlock)");
+{
+  const ctx = am.ctx as unknown as FakeCtx & { resume(): Promise<void> };
+  assert(
+    typeof listeners.touchend === "function" && typeof listeners.click === "function",
+    "I1: touchend and click also unlock audio (iOS ignores pointerdown for that)",
+  );
+  let resumed = 0;
+  ctx.state = "interrupted";
+  ctx.resume = () => {
+    resumed++;
+    ctx.state = "running";
+    return Promise.resolve();
+  };
+  listeners.touchend?.();
+  await new Promise((r) => setTimeout(r, 20));
+  assert(
+    resumed >= 1 && ctx.state === "running",
+    "I2: a tap wakes a context the system left 'interrupted' (a call, a lock, a tab switch)",
+    { resumed, state: ctx.state },
+  );
+  const before = AudioManager.sfxCount;
+  AudioManager.playSfx("bell");
+  assert(AudioManager.sfxCount === before + 1, "I3: sound plays again after the wake-up");
+}
+
 console.log("W. Wiring");
 {
   const app = read("src/App.tsx");

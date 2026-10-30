@@ -5,7 +5,7 @@
  *
  *  U. Unlocks (150-level remap, 2026-10-17: dine-in L21, takeaway L46 — were
  *     L31 / L71): nothing before dine-in; until takeaway every order dine-in;
- *     from L46 a seeded share is takeaway (same every time, ~30%).
+ *     from L44 a seeded share is takeaway (same every time, ~30%).
  *  K. Catalog: dish soap and cleaning liquid are two sourced lines (retail ×
  *     0.65, the shared rule), bottles; a bottle line is low only with none
  *     in stock; the Market purchase is the existing one.
@@ -127,18 +127,18 @@ const SETTING = { "dinner-plates": 12, "dinner-forks": 12, "dinner-knives": 12 }
 console.log("U. Unlocks");
 {
   assert(
-    [1, 11, 15, 20].every((n) => [0, 1, 2].every((i) => orderServiceFor(n, i) === null)),
-    "U1: no supplies before dine-in (L21)",
+    [1, 9, 13, 18].every((n) => [0, 1, 2].every((i) => orderServiceFor(n, i) === null)),
+    "U1: no supplies before dine-in (L19)",
   );
   assert(
-    Array.from({ length: 25 }, (_, k) => 21 + k).every((n) =>
+    Array.from({ length: 25 }, (_, k) => 19 + k).every((n) =>
       [0, 1, 2, 3].every((i) => orderServiceFor(n, i) === "dine-in"),
     ),
-    "U2: L21–45 every order is dine-in",
+    "U2: L19–43 every order is dine-in (148-level renumbering: dine-in opens at L19)",
   );
   let take = 0;
   let all = 0;
-  for (let n = 46; n <= 150; n++)
+  for (let n = 44; n <= 148; n++)
     for (let i = 0; i < 4; i++) {
       all++;
       if (orderServiceFor(n, i) === "takeaway") take++;
@@ -146,7 +146,7 @@ console.log("U. Unlocks");
   const share = take / all;
   assert(
     share > 0.22 && share < 0.38,
-    `U3: from L46 about 30% takeaway (${(share * 100).toFixed(1)}%)`,
+    `U3: from L44 about 30% takeaway (${(share * 100).toFixed(1)}%)`,
   );
   assert(
     Array.from({ length: 50 }, (_, k) => 71 + k).every(
@@ -323,7 +323,7 @@ console.log("W. Wash-up");
   );
   const clean = stocked(saveAt(31), { ...SETTING, "dish-soap": 1 });
   assert(washUp(clean, 31).save === clean, "W3: nothing to wash → no soap used");
-  assert(washUp(used, 20).save === used, "W4: before dine-in there is no wash-up");
+  assert(washUp(used, 18).save === used, "W4: before dine-in there is no wash-up");
 }
 
 console.log("C. Pre-Service Check");
@@ -346,8 +346,8 @@ console.log("C. Pre-Service Check");
     "C1: no tableware: plate, fork and knife block (one Market pack each); napkins only warn",
   );
   assert(
-    !serviceSuppliesCheck(empty, 20, ["dine-in"]).applies,
-    "C2: no supplies section before L21",
+    !serviceSuppliesCheck(empty, 18, ["dine-in"]).applies,
+    "C2: no supplies section before L19",
   );
   const ready = stocked(saveAt(31), SETTING);
   const r = serviceSuppliesCheck(ready, 31, ["dine-in", "dine-in"]);
@@ -495,15 +495,15 @@ console.log("D. Closing");
     restaurantDayOf(closedDry).day === 2 && restaurantSuppliesOf(closedDry).cleanerPct === 0,
     "D2: no cleaning liquid → the day still closes (a warning, not a block)",
   );
-  const early = due(20, { "cleaning-liquid": 1 });
+  const early = due(18, { "cleaning-liquid": 1 });
   assert(
-    units(closeDay(early, 20), "cleaning-liquid") === 1 &&
-      closingPreview(early, 20).cleaner === null,
-    "D3: before L21 closing uses none and shows no bottle",
+    units(closeDay(early, 18), "cleaning-liquid") === 1 &&
+      closingPreview(early, 18).cleaner === null,
+    "D3: before L19 closing uses none and shows no bottle",
   );
   assert(
-    closingPreview(s, 31).cleaner?.spare === 1 && closingWipeDown(saveAt(20), 20).ok,
-    "D4: the closing preview shows the bottle; before L21 the wipe-down needs nothing",
+    closingPreview(s, 31).cleaner?.spare === 1 && closingWipeDown(saveAt(18), 18).ok,
+    "D4: the closing preview shows the bottle; before L19 the wipe-down needs nothing",
   );
 }
 
