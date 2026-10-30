@@ -51,6 +51,7 @@ import {
   recipeCostBasis,
   defaultMenuPrice,
   marginFor,
+  menuPriceCap,
   menuPriceFor,
   type BusinessMenu,
 } from "./businessMenu";
@@ -552,6 +553,11 @@ export function businessDishFoodCost(dish: BusinessDish): number {
 export function businessDishPrice(menu: BusinessMenu, dish: BusinessDish): number {
   const recipe = requireSourceRecipe(dish);
   return menuPriceFor(menu, recipe);
+}
+
+/** The highest price the dish may sell for (businessMenu.ts menuPriceCap: 1.5 × the suggested price). */
+export function businessDishPriceCap(dish: BusinessDish): number {
+  return menuPriceCap(requireSourceRecipe(dish));
 }
 
 /** Delegates entirely to businessMenu.ts's own marginFor — never a second margin formula. */

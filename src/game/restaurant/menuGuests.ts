@@ -53,7 +53,7 @@ import { BUSINESS_MENU_FIRST_LEVEL, menuGuestsPerService } from "./restaurantPro
 import { serviceStockCheck } from "./campaignStock";
 import { kitchenGuestSeats } from "./restaurantInvestments";
 import { ticketsFor } from "./serviceTickets";
-import { newDishWeight, pickGuestDish } from "./orderPool";
+import { dishWeight, pickGuestDish } from "./orderPool";
 
 /** The guests a service of `level` brings, in order (pure; same every time for the same menu). */
 export function menuGuestQueue(save: SaveData, level: LevelDefinition): RecipeDefinition[] {
@@ -70,8 +70,9 @@ export function menuGuestQueue(save: SaveData, level: LevelDefinition): RecipeDe
         unlockedRecipes: pool,
         recentRecipeIds: guests.map((r) => r.id),
         recentCuisineIds: guests.map((r) => r.cuisineId),
-        // Phase 2 (decision Q6): a dish new on the menu is ordered more often (orderPool.ts).
-        weightOf: (r) => newDishWeight(r, n),
+        // Phase 2 (decision Q6): a dish new on the menu is ordered more often, a popular (pricier)
+        // one a little less (orderPool.ts dishWeight).
+        weightOf: (r) => dishWeight(save, r, n),
       },
       rand,
     );
@@ -148,7 +149,7 @@ export function walkInQueue(save: SaveData, level: LevelDefinition): RecipeDefin
         unlockedRecipes: pool,
         recentRecipeIds: recent.map((r) => r.id),
         recentCuisineIds: recent.map((r) => r.cuisineId),
-        weightOf: (r) => newDishWeight(r, n),
+        weightOf: (r) => dishWeight(save, r, n),
       },
       rand,
     );
@@ -256,6 +257,8 @@ export type MenuGuest = {
   total: number;
   /** What the guest pays (the dish's menu price through the Business payment rule). */
   pays: number;
+  /** Phase 2 (dishHeat.ts): the popular-dish rise in whole percent included in `pays` (0: none). */
+  risePct: number;
   /** The stock for this dish is on hand (always true before Level 15). */
   inStock: boolean;
   /** A menu guest, or a walk-in (phase 3); `number` / `total` count within the kind. */
@@ -291,7 +294,9 @@ export function nextMenuGuest(save: SaveData, level: LevelDefinition): MenuGuest
   const dish = businessDishForRecipeId(recipe.id);
   if (!dish) return null;
   const guests = queue.filter((c) => c.kind === "guest").length;
-  const pays = businessCustomerPayment(save, dish).customerPays;
+  const payment = businessCustomerPayment(save, dish);
+  const pays = payment.customerPays;
+  const risePct = payment.risePct;
   if (kind === "walk-in") {
     const stock = walkInStock(save, level, recipe);
     return {
@@ -300,6 +305,7 @@ export function nextMenuGuest(save: SaveData, level: LevelDefinition): MenuGuest
       number: served - guests + 1,
       total: queue.length - guests,
       pays,
+      risePct,
       inStock: stock.ok,
       kind,
       short: stock.short,
@@ -312,6 +318,7 @@ export function nextMenuGuest(save: SaveData, level: LevelDefinition): MenuGuest
     number: served + 1,
     total: guests,
     pays,
+    risePct,
     inStock: !check.applies || check.ready,
     kind,
     short: [],

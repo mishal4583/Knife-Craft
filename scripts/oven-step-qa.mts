@@ -226,9 +226,11 @@ console.log("E. Nothing else moves");
   // (marketNeeds.ts, restaurantAttention.ts) and the new
   // nextService.ts / servicesToGo.ts (the service loop and its wording, no pay; wording only,
   // guarded by service-loop-qa L1). Phase 2 (developer 2026-10-30): the new serviceFlow.ts and orderPool.ts
-  // (the clock, the queue and the stock-aware pick; guarded by service-flow-qa and order-pool-qa).
+  // (the clock, the queue and the stock-aware pick; guarded by service-flow-qa and order-pool-qa),
+  // and dishHeat.ts with its one closing line in restaurantDay.ts (popular dishes cost more,
+  // developer 2026-10-31; guarded by dish-heat-qa A2 and restaurant-day-qa).
   const flow = execSync(
-    "git diff ae4ad52 -- src/game/restaurant :!src/game/restaurant/serviceFloor.ts :!src/game/restaurant/dishService.ts :!src/game/restaurant/levelPayPreview.ts :!src/game/restaurant/restaurantProgression.ts :!src/game/restaurant/firstLevels.ts :!src/game/restaurant/menuGuests.ts :!src/game/restaurant/preServiceCheck.ts :!src/game/restaurant/secondFloor.ts :!src/game/restaurant/cleanliness.ts :!src/game/restaurant/grandmasFridge.ts :!src/game/restaurant/kitchenTools.ts :!src/game/restaurant/restaurantInvestments.ts :!src/game/restaurant/staffRequirements.ts :!src/game/restaurant/restaurantGuide.ts :!src/game/restaurant/prepCookAuto.ts :!src/game/restaurant/marketNeeds.ts :!src/game/restaurant/nextService.ts :!src/game/restaurant/servicesToGo.ts :!src/game/restaurant/restaurantAttention.ts :!src/game/restaurant/serviceFlow.ts :!src/game/restaurant/orderPool.ts src/game/progression src/game/recipes/dishKind.ts",
+    "git diff ae4ad52 -- src/game/restaurant :!src/game/restaurant/serviceFloor.ts :!src/game/restaurant/dishService.ts :!src/game/restaurant/levelPayPreview.ts :!src/game/restaurant/restaurantProgression.ts :!src/game/restaurant/firstLevels.ts :!src/game/restaurant/menuGuests.ts :!src/game/restaurant/preServiceCheck.ts :!src/game/restaurant/secondFloor.ts :!src/game/restaurant/cleanliness.ts :!src/game/restaurant/grandmasFridge.ts :!src/game/restaurant/kitchenTools.ts :!src/game/restaurant/restaurantInvestments.ts :!src/game/restaurant/staffRequirements.ts :!src/game/restaurant/restaurantGuide.ts :!src/game/restaurant/prepCookAuto.ts :!src/game/restaurant/marketNeeds.ts :!src/game/restaurant/nextService.ts :!src/game/restaurant/servicesToGo.ts :!src/game/restaurant/restaurantAttention.ts :!src/game/restaurant/serviceFlow.ts :!src/game/restaurant/orderPool.ts :!src/game/restaurant/dishHeat.ts :!src/game/restaurant/restaurantDay.ts src/game/progression src/game/recipes/dishKind.ts",
     { cwd: ROOT, encoding: "utf8" },
   );
   // App.tsx: only the walk-in offer's label (no pay / serve / save words) and, since phase 4,

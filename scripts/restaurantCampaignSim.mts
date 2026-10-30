@@ -137,6 +137,7 @@ import { restaurantLevelOf } from "../src/game/restaurant/restaurantMenu.ts";
 import { coverWithCredit } from "../src/game/restaurant/serviceCover.ts";
 import { repayFromEarnings, supplierCreditOf } from "../src/game/restaurant/supplierCredit.ts";
 import { HALF_WAGES_FROM, closingPay, halfPay } from "../src/game/restaurant/staffRequirements.ts";
+import { withDishOrdered } from "../src/game/restaurant/dishHeat.ts";
 import { levelOrderEarnings } from "../src/game/levels/levelEarnings.ts";
 import { tabOpensAt } from "../src/game/restaurant/firstLevels.ts";
 /** The Market sells ingredients from the level its tab opens (L3 since the 150-level campaign). */
@@ -616,7 +617,8 @@ function playLevel(save: SaveData, n: number, opts: SimOptions, stats: Stats): S
     const pays = businessCustomerPayment(stock.save, dish).customerPays;
     const rec = recordRevenueAndCogs(
       {
-        ...withSupplies,
+        // As App.serveMenuGuestOrder (Phase 2, dishHeat.ts): the order heats the dish.
+        ...withDishOrdered(withSupplies, dish.id),
         credits: withSupplies.credits + pays,
         levelProgress: withMenuGuestServed(withSupplies.levelProgress, level.id),
       },

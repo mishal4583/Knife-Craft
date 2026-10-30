@@ -40,6 +40,8 @@ type ServeResult = {
   businessPayment?: BusinessCustomerPayment;
   /** Business Mode only — today's customer count after this serve (order frequency, Economy V3 Phase 16). */
   businessCustomers?: BusinessCustomersToday;
+  /** Phase 2 (restaurant/dishHeat.ts): what a popular dish's rise added to this guest's pay, in cents. */
+  popularExtra?: number;
 };
 
 /**
@@ -396,6 +398,15 @@ export function ServiceOrderComplete({
                 style={stage(180)}
               >
                 {formatUsdChange(served.coinsAwarded)}
+              </p>
+            ) : null}
+            {served.popularExtra && served.popularExtra > 0 && !served.isReplay ? (
+              <p
+                className="kc-stage font-ui text-[13px] font-extrabold uppercase tracking-[0.14em] text-tomato"
+                data-testid="popular-line"
+                style={stage(300)}
+              >
+                🔥 Popular +{formatUsd(served.popularExtra)}
               </p>
             ) : null}
             {/* Phase 2 (C3): the tip, as its own line under the order pay. */}

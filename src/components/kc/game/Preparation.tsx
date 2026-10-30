@@ -190,6 +190,8 @@ export function Preparation({
       /** Phase 2 (C2): the dish grade, from the same score its pay was computed from; the customer reaction follows it. */
       quality?: QualityLabel;
       businessPayment?: BusinessCustomerPayment;
+      /** Phase 2 (restaurant/dishHeat.ts): a popular dish's extra pay, in cents. */
+      popularExtra?: number;
       businessCustomers?: BusinessCustomersToday;
     } | null;
     /** Credit individual physical cash pieces after swipes, then finalize the transaction. */

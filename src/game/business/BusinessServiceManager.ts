@@ -90,7 +90,8 @@ import {
   businessDishForRecipeId,
   businessDishRequirements,
 } from "./businessServiceCatalog";
-import { businessDishPrice, getBusinessDish } from "./businessDishCatalog";
+import { businessDishPrice, businessDishPriceCap, getBusinessDish } from "./businessDishCatalog";
+import { dishRisePct, heatedPrice } from "../restaurant/dishHeat";
 import { orderFrequencyMultiplierFor, willingnessToPayMultiplierFor } from "./DemandManager";
 import { clampScore, DEFAULT_POPULARITY_STATE } from "./businessPopularity";
 import type { BusinessDish } from "./businessDishCatalog";
@@ -225,6 +226,10 @@ export type BusinessCustomerPayment = {
   popularity: number;
   multiplier: number;
   customerPays: number;
+  /** Phase 2 (restaurant/dishHeat.ts): the popular-dish rise in whole percent (0: none). */
+  risePct: number;
+  /** What the rise adds to `customerPays`, in whole cents (0: none). */
+  riseExtra: number;
 };
 
 /**
@@ -245,11 +250,18 @@ export function businessCustomerPayment(
   const popularity = popularityForPayment(save.business.popularity?.score);
   const multiplier = willingnessToPayMultiplierFor(popularity);
   const hundredths = Math.round(multiplier * 100);
+  // A popular dish costs more (dishHeat.ts), never above the menu cap.
+  const risePct = dishRisePct(save, dish.id);
+  const price = heatedPrice(menuPrice, risePct, businessDishPriceCap(dish));
+  const plain = Math.round((menuPrice * hundredths) / 100);
+  const customerPays = Math.round((price * hundredths) / 100);
   return {
     menuPrice,
     popularity,
     multiplier,
-    customerPays: Math.round((menuPrice * hundredths) / 100),
+    customerPays,
+    risePct: customerPays > plain ? risePct : 0,
+    riseExtra: customerPays - plain,
   };
 }
 

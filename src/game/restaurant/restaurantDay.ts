@@ -52,6 +52,7 @@ import {
   type ClosingSupply,
 } from "./serviceSupplies";
 import { payHalfWages, paySpecialists } from "./staffRequirements";
+import { coolDishHeat } from "./dishHeat";
 import { appendLedgerEntry } from "../economy/EconomyLedger";
 
 export type RestaurantDayState = {
@@ -244,5 +245,7 @@ export function closeDay(save: SaveData, levelNumber: number): SaveData {
   next = payHalfWages(next, levelNumber).save;
   next = closingWipeDown(next, levelNumber).save;
   next = closingSupplies(next, levelNumber);
+  // Phase 2 (dishHeat.ts): every dish cools a little each night.
+  next = coolDishHeat(next);
   return withDay(next, { ...DEFAULT_RESTAURANT_DAY_STATE, day: d.day + 1 });
 }

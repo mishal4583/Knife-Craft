@@ -161,6 +161,11 @@ export type BusinessState = {
    */
   guideSeen?: string[];
   /**
+   * Unified Restaurant (Phase 2, restaurant/dishHeat.ts): each dish's heat — guest orders add to
+   * it, every closing cools it; a popular dish costs more. Optional; absent = no heat.
+   */
+  dishHeat?: Record<string, number>;
+  /**
    * Unified Restaurant: what a served order left on the table and the player has not
    * swept into the wallet yet (economy/pendingCash.ts). Saved in the SAME save that marks
    * the order paid, so closing the game mid-sweep never loses it; settled on the next

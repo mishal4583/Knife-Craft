@@ -163,6 +163,7 @@ import {
   type ServiceProgress,
 } from "@/game/restaurant/serviceFlow";
 import { useServiceQueue } from "@/components/kc/game/useServiceQueue";
+import { withDishOrdered } from "@/game/restaurant/dishHeat";
 import {
   cleanSettings,
   cleanSettingFor,
@@ -2312,13 +2313,15 @@ export function App() {
       // Supplies plan B: the guest's own tableware (covers after the level's orders).
       { recipe, levelNumber: levelNumber(level.id), index: guestCover(save, level) },
     );
-    const pays = businessCustomerPayment(stock.save, dish).customerPays;
+    const payment = businessCustomerPayment(stock.save, dish);
+    const pays = payment.customerPays;
     const result = serveCurrentOrder(campaignServiceSession, Math.random, pays);
     if (!result) return null;
     setCampaignServiceSession(result.session);
     const paid = recordRevenueAndCogs(
       {
-        ...withSupplies,
+        // Phase 2 (dishHeat.ts): the order makes the dish a little more popular.
+        ...withDishOrdered(withSupplies, dish.id),
         levelProgress: withMenuGuestServed(withSupplies.levelProgress, level.id),
       },
       result.coinsAwarded,
@@ -2336,6 +2339,7 @@ export function App() {
       reaction: result.reaction,
       settlement: undefined,
       isReplay: false,
+      ...(payment.riseExtra > 0 ? { popularExtra: payment.riseExtra } : {}),
     };
   }
 
@@ -3613,8 +3617,8 @@ export function App() {
                         ? {
                             label:
                               menuGuest.kind === "walk-in"
-                                ? `🚶 Walk-in ${menuGuest.number}/${menuGuest.total}: ${menuGuest.dish.name} · ${formatUsd(menuGuest.pays)}`
-                                : `🍽️ Menu guest ${menuGuest.number}/${menuGuest.total}: ${menuGuest.dish.name} · ${formatUsd(menuGuest.pays)}`,
+                                ? `🚶 Walk-in ${menuGuest.number}/${menuGuest.total}: ${menuGuest.dish.name} · ${formatUsd(menuGuest.pays)}${menuGuest.risePct > 0 ? ` 🔥 +${menuGuest.risePct}%` : ""}`
+                                : `🍽️ Menu guest ${menuGuest.number}/${menuGuest.total}: ${menuGuest.dish.name} · ${formatUsd(menuGuest.pays)}${menuGuest.risePct > 0 ? ` 🔥 +${menuGuest.risePct}%` : ""}`,
                             onClick: takeMenuGuest,
                           }
                         : {

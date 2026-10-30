@@ -25,6 +25,7 @@ import { businessDishForRecipeId } from "../business/businessServiceCatalog";
 import { activeMenuRecipes } from "./restaurantMenu";
 import { dishesUnlockedAt } from "./restaurantProgression";
 import { serviceStockCheck, serviceUsesStock } from "./campaignStock";
+import { dishRisePct, heatWeight } from "./dishHeat";
 
 /** A dish counts as new for this many services after it joins the menu. */
 export const NEW_DISH_SERVICES = 5;
@@ -45,6 +46,12 @@ export function newDishIds(n: number): Set<string> {
 export function newDishWeight(recipe: RecipeDefinition, n: number): number {
   const dish = businessDishForRecipeId(recipe.id);
   return dish && newDishIds(n).has(dish.id) ? NEW_DISH_WEIGHT : 1;
+}
+
+/** The pick weight: new dishes ×1.5, and a popular dish's rise × (1 − rise / 2) (dishHeat.ts). */
+export function dishWeight(save: SaveData, recipe: RecipeDefinition, n: number): number {
+  const dish = businessDishForRecipeId(recipe.id);
+  return newDishWeight(recipe, n) * (dish ? heatWeight(dishRisePct(save, dish.id)) : 1);
 }
 
 /** Whole portions of `recipe` that fit beside `reserve` (0..STOCK_PORTIONS_COUNTED); stock not used yet: the max. */
@@ -82,7 +89,7 @@ export function orderPool(
     .map((e) => ({
       ...e,
       // ×0.5 for the last portion … ×1.5 for 3 or more.
-      weight: newDishWeight(e.recipe, n) * (e.portions / 2),
+      weight: dishWeight(save, e.recipe, n) * (e.portions / 2),
     }));
 }
 

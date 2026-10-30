@@ -241,6 +241,20 @@ export function BusinessMenu({
                 <div className="min-w-0 flex-1">
                   <p className="font-display text-[15.5px] font-black leading-tight text-walnut-dark">
                     {dish.name}
+                    {/* Phase 2 (restaurant/dishHeat.ts): a popular dish costs more. */}
+                    {payment.risePct > 0 ? (
+                      <span
+                        data-dish-hot={payment.risePct}
+                        className="ml-1.5 inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-tomato/15 px-2 py-0.5 align-middle font-ui text-[11px] font-extrabold text-tomato"
+                      >
+                        🔥 +{payment.risePct}%
+                        <InfoTip label="Why this dish costs more">
+                          Guests have been ordering this dish a lot, so it sells for more: +5% for
+                          each step of popularity, at most +25% and never above the menu price
+                          limit. It cools down each night when fewer guests order it.
+                        </InfoTip>
+                      </span>
+                    ) : null}
                   </p>
                   <p className="font-ui text-[11px] font-extrabold uppercase tracking-[0.14em] text-copper">
                     {dish.category}
