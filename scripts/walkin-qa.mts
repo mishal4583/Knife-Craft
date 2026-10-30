@@ -364,7 +364,8 @@ console.log("W. The App wiring");
       app,
     ) &&
       /— short of \$\{menuGuest\.short/.test(app) &&
-      /return serveMenuGuestOrder\(level, recipe\);/.test(app) &&
+      // Phase 2 step 5: the guest serve also takes the reconciled session (a dish just cut is READY).
+      /return serveMenuGuestOrder\(level, recipe, readySession\);/.test(app) &&
       /levelProgress: withMenuGuestServed\(withSupplies\.levelProgress, level\.id\)/.test(app) &&
       // The payment is left on the table in that same save and swept in as ONE business-revenue entry
       // (economy/pendingCash.ts, developer 2026-10-29).

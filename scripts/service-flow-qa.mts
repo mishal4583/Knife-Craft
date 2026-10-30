@@ -246,6 +246,33 @@ check(
 );
 check("A3 the door is shown on the service screen", /door: doorView\(doorQueue\)/.test(app));
 
+// ── D. the door on screen (step 4) and Auto (step 5) ─────────────────────
+const dv = doorView(run(startQueue(s1, 12), 35_000 * 3 + 50_000));
+check(
+  "D1 a face per person at the door, in order, with their patience (a level's own order: none)",
+  dv.faces.length === dv.waiting &&
+    dv.faces.every((f) =>
+      f.kind === "order" ? f.patience === null : f.patience !== null && f.patience <= 1,
+    ),
+  dv.faces,
+);
+check(
+  "D2 the service screen rings each face and notes a walk-out",
+  /data-door-face=\{f\.kind\}/.test(prep) &&
+    /conic-gradient/.test(prep) &&
+    /data-testid="walk-out-note"/.test(prep),
+);
+const card = fs.readFileSync(
+  path.join(process.cwd(), "src/components/kc/game/ServiceOrderComplete.tsx"),
+  "utf8",
+);
+check(
+  "D3 Auto seats a waiting guest it can serve before Next Customer",
+  /const guest = extraAction && !extraAction\.disabled \? extraAction\.onClick : null;/.test(
+    card,
+  ) && /collect \? onCollectCash! : \(guest \?\? nextOnce\)/.test(card),
+);
+
 // ── C. when the clock runs (developer 2026-10-30) ────────────────────────
 const on = { onServiceScreen: true, cardOpen: false, gamePaused: false, otherWork: false };
 check("C1 on the service screen, serving: the clock runs", serviceClockRuns(on));

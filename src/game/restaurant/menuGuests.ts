@@ -294,7 +294,7 @@ export function nextMenuGuest(save: SaveData, level: LevelDefinition): MenuGuest
   const dish = businessDishForRecipeId(recipe.id);
   if (!dish) return null;
   const guests = queue.filter((c) => c.kind === "guest").length;
-  const payment = businessCustomerPayment(save, dish);
+  const payment = businessCustomerPayment(save, dish, { popular: true });
   const pays = payment.customerPays;
   const risePct = payment.risePct;
   if (kind === "walk-in") {

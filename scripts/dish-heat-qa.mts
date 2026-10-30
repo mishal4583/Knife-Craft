@@ -103,8 +103,8 @@ check(
 );
 
 // ── P. payment ───────────────────────────────────────────────────────────
-const plain = businessCustomerPayment(base, dish);
-const hot = businessCustomerPayment(heated(4), dish);
+const plain = businessCustomerPayment(base, dish, { popular: true });
+const hot = businessCustomerPayment(heated(4), dish, { popular: true });
 check("P1 no heat: nothing extra", plain.risePct === 0 && plain.riseExtra === 0);
 const cap = businessDishPriceCap(dish);
 const menu = businessDishPrice(base.business.menu, dish);
@@ -115,7 +115,11 @@ check(
     (cap > menu ? hot.riseExtra > 0 && hot.risePct === 10 : hot.riseExtra === 0),
   { plain: plain.customerPays, hot: hot.customerPays, cap, menu, rise: hot.risePct },
 );
-const max = businessCustomerPayment(heated(30), dish);
+const max = businessCustomerPayment(heated(30), dish, { popular: true });
+check(
+  "P4 the Business engine / Endless Restaurant never pays the rise (it never cools heat)",
+  businessCustomerPayment(heated(30), dish).riseExtra === 0,
+);
 check(
   "P3 the rise never passes the menu cap",
   Math.round((cap * Math.round(max.multiplier * 100)) / 100) >= max.customerPays,

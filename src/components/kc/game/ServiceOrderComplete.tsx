@@ -283,8 +283,11 @@ export function ServiceOrderComplete({
     if (!auto || hidden || !served) return;
     const collect = cashAtTable && remaining > 0 && !!onCollectCash;
     if (!collect && remaining > 0) return; // cash that has to be swiped stays the player's
+    // Phase 2 step 5: Auto works through the queue — a waiting guest it can serve is seated
+    // (the Menu guest button) before Next Customer.
+    const guest = extraAction && !extraAction.disabled ? extraAction.onClick : null;
     const t = window.setTimeout(
-      collect ? onCollectCash! : nextOnce,
+      collect ? onCollectCash! : (guest ?? nextOnce),
       collect ? AUTO_COLLECT_MS : paidCents + tip > 0 ? AUTO_NEXT_MS : AUTO_COLLECT_MS,
     );
     return () => window.clearTimeout(t);

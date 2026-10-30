@@ -614,7 +614,7 @@ function playLevel(save: SaveData, n: number, opts: SimOptions, stats: Stats): S
       isSystemLive("dine-in", n) ? "dine-in" : null,
       { recipe: guest.recipe, levelNumber: n, index: cover },
     );
-    const pays = businessCustomerPayment(stock.save, dish).customerPays;
+    const pays = businessCustomerPayment(stock.save, dish, { popular: true }).customerPays;
     const rec = recordRevenueAndCogs(
       {
         // As App.serveMenuGuestOrder (Phase 2, dishHeat.ts): the order heats the dish.

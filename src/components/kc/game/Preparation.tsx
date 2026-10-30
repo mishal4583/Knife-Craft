@@ -236,7 +236,12 @@ export function Preparation({
     /** A hired Prep Cook (restaurant/prepCookAuto.ts): cuts this order for the player; `auto` also serves, collects and moves on. */
     prepCook?: { auto: boolean; onAuto: () => void };
     /** Phase 2 (restaurant/serviceFlow.ts): customers waiting at the door, and the first one's patience left (0..1, null: no clock). */
-    door?: { waiting: number; walkedOut: number; patience: number | null };
+    door?: {
+      waiting: number;
+      walkedOut: number;
+      patience: number | null;
+      faces?: { id: string; kind: string; patience: number | null }[];
+    };
     /** Phase 2: told when the player starts / stops other work here (cleaning the board) — the door clock waits meanwhile. */
     onOtherWork?: (busy: boolean) => void;
   };
@@ -514,6 +519,20 @@ export function Preparation({
   const [cleanupOffered, setCleanupOffered] = useState(false);
   // How much of the board the cloth has wiped clean (0–1), for the card's bar.
   const [cleanupProgress, setCleanupProgress] = useState(0);
+  // Phase 2 step 4: a guest who walked out is noted for a moment.
+  const walkedOut = service?.door?.walkedOut ?? 0;
+  const seenWalkOuts = useRef(walkedOut);
+  const [walkOutNote, setWalkOutNote] = useState(false);
+  useEffect(() => {
+    if (walkedOut <= seenWalkOuts.current) {
+      seenWalkOuts.current = walkedOut;
+      return;
+    }
+    seenWalkOuts.current = walkedOut;
+    setWalkOutNote(true);
+    const t = window.setTimeout(() => setWalkOutNote(false), 3500);
+    return () => window.clearTimeout(t);
+  }, [walkedOut]);
   // Phase 2 (developer 2026-10-30): cleaning the board is other work — the door clock waits.
   const cleaningBoard = cleanupOffered && phase === "prep";
   const onOtherWork = service?.onOtherWork;
@@ -1359,6 +1378,32 @@ export function Preparation({
               />
             </span>
           ) : null}
+          {/* Phase 2 step 4: a face per person at the door, ringed by the patience they have left. */}
+          {(service.door.faces ?? []).slice(0, 4).map((f) => (
+            <span
+              key={f.id}
+              data-door-face={f.kind}
+              className="grid h-6 w-6 place-items-center rounded-full text-[13px] leading-none"
+              style={{
+                background:
+                  f.patience === null
+                    ? "var(--color-ivory)"
+                    : `conic-gradient(${f.patience > 0.35 ? "var(--color-sage)" : "var(--color-tomato)"} ${Math.round(f.patience * 360)}deg, rgba(255,250,240,0.25) 0deg)`,
+              }}
+            >
+              <span className="grid h-[18px] w-[18px] place-items-center rounded-full bg-walnut-dark">
+                {f.kind === "walk-in" ? "🚶" : f.kind === "order" ? "🙂" : "🍽️"}
+              </span>
+            </span>
+          ))}
+        </div>
+      ) : null}
+      {walkOutNote ? (
+        <div
+          data-testid="walk-out-note"
+          className="pointer-events-none absolute right-2 top-11 z-[60] rounded-full bg-tomato/90 px-3 py-1 font-ui text-[12.5px] font-extrabold text-ivory shadow-soft"
+        >
+          😤 A guest left — the wait was too long
         </div>
       ) : null}
       {holding ? (

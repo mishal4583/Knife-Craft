@@ -178,10 +178,15 @@ check(
   ),
 );
 const card = src("src/components/kc/game/ServiceOrderComplete.tsx");
+// Rule changed (Phase 2 step 5, plan approved by the developer 2026-10-31): Auto works through the
+// door queue, so it also presses the player's Menu guest button (a waiting guest it can serve).
 check(
-  "A4 Auto presses only the player's own three taps (Serve, Collect cash, Next Customer)",
+  "A4 Auto presses only the player's own taps (Serve, Collect cash, the Menu guest button, Next Customer)",
   /handleServe, AUTO_SERVE_MS|window\.setTimeout\(handleServe, AUTO_SERVE_MS\)/.test(card) &&
-    /collect \? onCollectCash! : nextOnce/.test(card),
+    /collect \? onCollectCash! : \(guest \?\? nextOnce\)/.test(card) &&
+    /const guest = extraAction && !extraAction\.disabled \? extraAction\.onClick : null;/.test(
+      card,
+    ),
 );
 check(
   "A5 cash that has to be swiped by hand is never skipped",

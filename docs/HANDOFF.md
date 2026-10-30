@@ -1,6 +1,6 @@
 # KnifeCraft — Handoff (Playgama edition)
 
-## Phase 2: customers on a clock (2026-10-30, in progress, local commits, not pushed)
+## Phase 2: customers on a clock (2026-10-30/31, done)
 
 Plan and decisions Q1–Q7: `docs/planning/PHASE2-PLAN-2026-10-30.md`. Built so far:
 - 2.1 `restaurant/serviceFlow.ts`: the clock and queue logic (`service-flow-qa`).
@@ -16,6 +16,19 @@ Plan and decisions Q1–Q7: `docs/planning/PHASE2-PLAN-2026-10-30.md`. Built so 
   Browser: `tools/e2e/queue.mjs` (5/5, about 5 minutes).
 - 2.3b Customers only wait while the player is serving (developer 2026-10-30, `serviceClockRuns`): any other screen,
   a card, a pause or an ad, or cleaning the board freezes arrivals and patience. Coming back resumes the same queue.
+- 2.4 The door shows a face per person waiting, each ringed by the patience left, and "😤 A guest left" when one walks
+  out (`doorView().faces`, `Preparation.tsx`).
+- 2.4b Popular dishes cost more (`restaurant/dishHeat.ts`, `business.dishHeat`, optional): +1 heat per guest order,
+  x0.85 at every closing; from heat 3, +5% per point above 2, at most +25%, never above the menu cap. Shown as
+  "🔥 +N%" on the Menu and the guest button and "🔥 Popular +$X" on the served card. A pricier dish is picked a little
+  less (`orderPool` `dishWeight`). Tests: `dish-heat-qa`; browser `tools/e2e/dishheat.mjs` (3/3).
+- 2.5 Auto works through the queue: after Serve and Collect cash it seats a waiting guest it can serve (the Menu
+  guest button) before Next Customer. A guest's serve uses the reconciled session, like the level's own orders, so a
+  dish the Prep Cook just cut is ready to serve.
+- Economy at the end of Phase 2 (measured): completionist $292,322 (target ≥ $150k), saver $458,510, move-in
+  $227,200, broke $64,398, prudent completionist lowest $376 (floor $350). Frozen campaign baseline unchanged
+  (69,925 / 245,138 / 16,604 / 1,415 / 299,874).
+- Still stale, not re-run in Phase 2 (from before): `restaurantprogression.mjs` 1/5b/5c, `marketneedslevel.mjs` 1/2.
 - **Economy item resolved (2026-10-31):** `restaurant-final-economy-qa` S3 had dipped to $313 at L33 (floor $350).
   The cause was the simulated careful player's look-ahead, not prices. It kept the next service's stock, tools and
   supplies, and wages only from full operation, so it missed the closing wages before full operation (half wages,
@@ -23,7 +36,7 @@ Plan and decisions Q1–Q7: `docs/planning/PHASE2-PLAN-2026-10-30.md`. Built so 
   upgrade at L32, then paid wages $68 + a required Indian Chef $136 + tools $78 + supplies $12 at L33.
   `restaurantCampaignSim.mts` `nextServiceNeeds` now also keeps `closingPay`. Lowest is back to $376 (L6). No game
   price changed.
-- Popular-dish price rise (step 4b): designed (plan §12), waiting for the developer.
+
 
 ## Phase 1: the service loop hides the levels (2026-10-30, decisions P1–P6, local commits, not pushed)
 

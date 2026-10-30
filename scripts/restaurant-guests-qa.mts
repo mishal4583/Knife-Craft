@@ -320,7 +320,7 @@ console.log("W. Wiring");
 {
   const app = read("src/App.tsx");
   assert(
-    /if \(\s*RESTAURANT_MODE &&\s*level &&\s*campaignServiceSession\.tickets &&\s*campaignServiceSession\.completedCount >= ordersRequired\(level\)\s*\)\s*return serveMenuGuestOrder\(level, recipe\);/.test(
+    /if \(\s*RESTAURANT_MODE &&\s*level &&\s*campaignServiceSession\.tickets &&\s*campaignServiceSession\.completedCount >= ordersRequired\(level\)\s*\)\s*return serveMenuGuestOrder\(level, recipe, readySession\);/.test(
       app,
     ),
     "W1: only an order past the level's own, under RESTAURANT_MODE, is served as a menu guest",

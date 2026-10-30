@@ -245,13 +245,15 @@ export function popularityForPayment(score: unknown): number {
 export function businessCustomerPayment(
   save: SaveData,
   dish: BusinessDish,
+  /** Phase 2 (dishHeat.ts): a campaign menu guest pays the popular-dish rise; Business / Endless never. */
+  opts: { popular?: boolean } = {},
 ): BusinessCustomerPayment {
   const menuPrice = businessDishPrice(save.business.menu, dish);
   const popularity = popularityForPayment(save.business.popularity?.score);
   const multiplier = willingnessToPayMultiplierFor(popularity);
   const hundredths = Math.round(multiplier * 100);
   // A popular dish costs more (dishHeat.ts), never above the menu cap.
-  const risePct = dishRisePct(save, dish.id);
+  const risePct = opts.popular ? dishRisePct(save, dish.id) : 0;
   const price = heatedPrice(menuPrice, risePct, businessDishPriceCap(dish));
   const plain = Math.round((menuPrice * hundredths) / 100);
   const customerPays = Math.round((price * hundredths) / 100);

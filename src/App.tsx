@@ -2173,7 +2173,7 @@ export function App() {
       campaignServiceSession.tickets &&
       campaignServiceSession.completedCount >= ordersRequired(level)
     )
-      return serveMenuGuestOrder(level, recipe);
+      return serveMenuGuestOrder(level, recipe, readySession);
     const isReplay =
       campaignServiceSession.isReplay ||
       !save ||
@@ -2300,8 +2300,14 @@ export function App() {
    * guest is never paid twice). No campaign settlement, reward or
    * paid-order record.
    */
-  function serveMenuGuestOrder(level: LevelDefinition, recipe: RecipeDefinition) {
-    if (!save || !campaignServiceSession) return null;
+  function serveMenuGuestOrder(
+    level: LevelDefinition,
+    recipe: RecipeDefinition,
+    // The reconciled session (serveCampaignOrder's final guard): a guest cut a moment ago — by the
+    // Prep Cook under Auto — may not be READY in state yet.
+    session: ServiceSession | null = campaignServiceSession,
+  ) {
+    if (!save || !session) return null;
     const dish = businessDishForRecipeId(recipe.id);
     if (!dish) return null;
     const stock = consumeCampaignOrderStock(save, levelNumber(level.id), recipe, true, "guest");
@@ -2313,9 +2319,9 @@ export function App() {
       // Supplies plan B: the guest's own tableware (covers after the level's orders).
       { recipe, levelNumber: levelNumber(level.id), index: guestCover(save, level) },
     );
-    const payment = businessCustomerPayment(stock.save, dish);
+    const payment = businessCustomerPayment(stock.save, dish, { popular: true });
     const pays = payment.customerPays;
-    const result = serveCurrentOrder(campaignServiceSession, Math.random, pays);
+    const result = serveCurrentOrder(session, Math.random, pays);
     if (!result) return null;
     setCampaignServiceSession(result.session);
     const paid = recordRevenueAndCogs(

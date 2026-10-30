@@ -5,6 +5,7 @@
 //      handled (levelProgress.menuGuests), no business revenue, the wallet unchanged;
 //   Q5 the game paused (developer 2026-10-30: customers only wait while the player is serving):
 //      45 s later the waiting guest's patience has not moved;
+//   Q6 the door shows a face per person waiting (step 4);
 //   Q4 no console errors.
 // Slow on purpose (real time: ~4 minutes); the clock only runs with the service on screen.
 import {
@@ -84,6 +85,16 @@ try {
   const waiting = await door();
   await shot(page, "queue-waiting");
   check("Q2 ~35 s later a menu guest waits at the door", waiting >= 1, { waiting });
+  const faces = await page.$$eval("[data-door-face]", (els) =>
+    els.map((e) => e.getAttribute("data-door-face")),
+  );
+  check(
+    "Q6 a face per person waiting, ringed by patience",
+    faces.length === waiting && faces.includes("guest"),
+    {
+      faces,
+    },
+  );
   const patience = () =>
     page.evaluate(() =>
       document.querySelector('[data-testid="door-queue"]')?.getAttribute("data-patience"),

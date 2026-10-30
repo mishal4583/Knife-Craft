@@ -258,14 +258,20 @@ export function doorView(q: QueueState): {
   waiting: number;
   walkedOut: number;
   patience: number | null;
+  /** Each person at the door, in order: their patience left (0..1; null: never walks out). */
+  faces: { id: string; kind: GuestKind; patience: number | null }[];
 } {
   const waiting = waitingOf(q);
+  const left = (g: QueuedGuest) =>
+    g.arrival.patienceMs === Infinity || q.oneAtATime
+      ? null
+      : Math.max(0, 1 - g.waitedMs / g.arrival.patienceMs);
   const first = waiting.find((g) => g.arrival.patienceMs !== Infinity);
   return {
     waiting: waiting.length,
     walkedOut: q.guests.filter((g) => g.state === "WALKED_OUT").length,
-    patience:
-      first && !q.oneAtATime ? Math.max(0, 1 - first.waitedMs / first.arrival.patienceMs) : null,
+    patience: first ? left(first) : null,
+    faces: waiting.map((g) => ({ id: g.arrival.id, kind: g.arrival.kind, patience: left(g) })),
   };
 }
 

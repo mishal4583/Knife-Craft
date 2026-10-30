@@ -204,7 +204,8 @@ export function BusinessMenu({
             save.business.menu,
             dish,
           );
-          const payment = businessCustomerPayment(save, dish);
+          // A campaign guest pays the popular-dish rise (dishHeat.ts); the 🔥 tag shows it.
+          const payment = businessCustomerPayment(save, dish, { popular: restaurant });
           const recipeId = dish.sourceRecipeId;
           const recipe = getCampaignRecipe(recipeId);
           const suggested = recipe ? defaultMenuPrice(recipe) : price;

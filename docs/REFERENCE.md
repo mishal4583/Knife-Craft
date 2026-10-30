@@ -249,6 +249,9 @@ once). Restaurant browser tests run on the normal build, classic ones on a
 
 - Prep Cook at the board and Auto service: `prep-cook-auto-qa` (browser: `prepcook.mjs`); his pay by the hour
   (no fee, full shift wage at each closing): `staff-hire-qa` H8/W1, `restaurant-half-wages-qa` H1–H3.
+- Phase 2, customers on a clock: `service-flow-qa` (pace, schedule, queue, patience, the clock rule, sync, door,
+  Auto), `order-pool-qa` (guests order from stock), `dish-heat-qa` (popular dishes cost more); browser:
+  `queue.mjs` (slow, ~5 min), `dishheat.mjs`.
 - The service loop (Phase 1): `service-loop-qa` (next service, Kitchen button, no level copy, unlock wording;
   browser: `openservice.mjs`).
 - Restaurant: `restaurant-unlocks-qa`, `restaurant-stock-qa`,
