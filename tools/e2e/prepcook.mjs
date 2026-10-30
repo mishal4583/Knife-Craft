@@ -87,7 +87,7 @@ async function prepare() {
       ?.click(),
   );
   await sleep(500);
-  await clickButton(page, /^Prepare$/);
+  await clickButton(page, /^Open for service$/);
   await sleep(900);
   if (await page.evaluate(() => !!document.querySelector('[data-testid="pre-service-check"]'))) {
     await clickButton(

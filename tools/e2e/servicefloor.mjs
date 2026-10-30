@@ -80,7 +80,7 @@ async function prepare(title) {
       const b =
         n &&
         [...n.querySelectorAll("button")].find((x) =>
-          /^(Prepare|Replay)$/.test(x.textContent.trim()),
+          /^(Prepare|Replay|Open for service)$/.test(x.textContent.trim()),
         );
       if (b) return b.click();
     }

@@ -12,6 +12,7 @@ import {
   tabOpensAt,
 } from "@/game/restaurant/firstLevels";
 import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
+import { nextServiceLevel } from "@/game/restaurant/nextService";
 import { openMarketIngredients } from "./marketFocus";
 import { NavAttentionContext, NavGuideContext, NavLevelContext } from "./navLevel";
 import {
@@ -180,6 +181,9 @@ export function Kitchen({
   const [orderCardExpanded, setOrderCardExpanded] = useState(false);
   // Every level cleared: say so plainly — there is no hidden content left.
   const campaignComplete = getLevels().every((l) => isCompleted(l.id, levelProgress));
+  // Phase 1 (developer 2026-10-30): the restaurant build's one button opens the next service;
+  // replays are on the Order Board only, and after the last service it opens the restaurant.
+  const openService = RESTAURANT_MODE ? nextServiceLevel(levelProgress) : null;
   // First levels (restaurant build): a place that hasn't opened yet shows its level.
   const reached = restaurantLevelOf(levelProgress);
   const todayNumber = levelNumber(todayLevel.id);
@@ -487,8 +491,12 @@ export function Kitchen({
           <div className="flex items-center justify-between gap-2">
             <p className="font-ui text-[10px] font-extrabold uppercase tracking-[0.19em] text-[#95602c]">
               {campaignComplete
-                ? `Campaign Complete · ${LAST_CAMPAIGN_LEVEL} Levels Mastered`
-                : "Today's Order"}
+                ? RESTAURANT_MODE
+                  ? "🏆 Every recipe learned"
+                  : `Campaign Complete · ${LAST_CAMPAIGN_LEVEL} Levels Mastered`
+                : RESTAURANT_MODE
+                  ? "Next customer"
+                  : "Today's Order"}
             </p>
             <button
               type="button"
@@ -510,12 +518,16 @@ export function Kitchen({
               </p>
               <p className="mt-0.5 font-hand text-[13px] italic leading-snug text-[#795a3a] sm:text-[14px]">
                 {campaignComplete
-                  ? "📖 every recipe is yours · 🔁 replay or 🍽️ run the restaurant"
-                  : !todayUnlocked
-                    ? "locked · finish the level before it"
-                    : todayCompleted
-                      ? "prepared already · replay pays nothing"
-                      : `ready to prepare · ${payText(save, todayLevel)}`}
+                  ? RESTAURANT_MODE
+                    ? "📖 every recipe is yours · 🍽️ the restaurant runs on"
+                    : "📖 every recipe is yours · 🔁 replay or 🍽️ run the restaurant"
+                  : openService
+                    ? `ready · ${payText(save, todayLevel)}`
+                    : !todayUnlocked
+                      ? "locked · finish the level before it"
+                      : todayCompleted
+                        ? "prepared already · replay pays nothing"
+                        : `ready to prepare · ${payText(save, todayLevel)}`}
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-2">
@@ -526,20 +538,34 @@ export function Kitchen({
               >
                 {todayUnlocked ? todayLevel.emoji : "🔒"}
               </span>
-              <KButton
-                // Prepare (a new order) is the green "go" button; Replay is a quiet
-                // outlined one, so the two never look alike (developer 2026-10-08).
-                variant={todayCompleted ? "ghost" : "sage"}
-                className="min-h-[42px] rounded-[14px] px-3 font-ui text-[12px] font-extrabold shadow-[0_3px_7px_rgba(36,62,37,0.24)] sm:px-4 sm:text-[13px]"
-                disabled={!todayUnlocked}
-                onClick={() => {
-                  if (!todayUnlocked) return;
-                  onSelectLevel(todayLevel.id);
-                  go("gameplay");
-                }}
-              >
-                {todayCompleted ? "Replay" : "Prepare"}
-              </KButton>
+              {RESTAURANT_MODE ? (
+                <KButton
+                  variant="sage"
+                  className="min-h-[48px] rounded-[14px] px-3 font-ui text-[12px] font-extrabold shadow-[0_3px_7px_rgba(36,62,37,0.24)] sm:px-4 sm:text-[13px]"
+                  onClick={() => {
+                    if (!openService) return go("business");
+                    onSelectLevel(openService.id);
+                    go("gameplay");
+                  }}
+                >
+                  {openService ? "Open for service" : "🍽️ Run the restaurant"}
+                </KButton>
+              ) : (
+                <KButton
+                  // Prepare (a new order) is the green "go" button; Replay is a quiet
+                  // outlined one, so the two never look alike (developer 2026-10-08).
+                  variant={todayCompleted ? "ghost" : "sage"}
+                  className="min-h-[42px] rounded-[14px] px-3 font-ui text-[12px] font-extrabold shadow-[0_3px_7px_rgba(36,62,37,0.24)] sm:px-4 sm:text-[13px]"
+                  disabled={!todayUnlocked}
+                  onClick={() => {
+                    if (!todayUnlocked) return;
+                    onSelectLevel(todayLevel.id);
+                    go("gameplay");
+                  }}
+                >
+                  {todayCompleted ? "Replay" : "Prepare"}
+                </KButton>
+              )}
             </div>
           </div>
           <div

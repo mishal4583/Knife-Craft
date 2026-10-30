@@ -49,7 +49,7 @@ try {
   start.version = 3;
   await boot(page, start);
   await sleep(2500);
-  await clickButton(page, /^Prepare$/);
+  await clickButton(page, /^Open for service$/);
   await sleep(1500);
   for (let i = 0; i < 5; i++) {
     const clicked = await page.evaluate(() => {

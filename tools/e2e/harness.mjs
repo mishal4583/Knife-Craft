@@ -512,7 +512,7 @@ export async function sweepCash(page) {
 
 /**
  * A new player's first level on their own $10 (developer 2026-10-30): skip the intro, open the Market
- * from Grandma's pointer, buy the plan's ingredients, go back, Prepare, and wait for the cutting board.
+ * from Grandma's pointer, buy the plan's ingredients, go back, Open for service, and wait for the cutting board.
  */
 export async function startFirstLevel(page) {
   await freshPlayer(page);
@@ -539,7 +539,7 @@ export async function startFirstLevel(page) {
   }
   await page.evaluate(() => document.querySelector('[data-nav="kitchen"]')?.click());
   await sleep(1200);
-  await clickButton(page, /^Prepare$/);
+  await clickButton(page, /^Open for service$/);
   await sleep(1500);
   for (let i = 0; i < 3; i++) {
     const clicked = await page.evaluate(() => {

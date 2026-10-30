@@ -92,7 +92,7 @@ try {
 
   await page.evaluate(() => document.querySelector('[data-nav="kitchen"]')?.click());
   await sleep(1200);
-  await clickButton(page, /^Prepare$/);
+  await clickButton(page, /^Open for service$/);
   await sleep(1500);
   // A Pre-Service Check or opening card may come first.
   for (let i = 0; i < 3; i++) {
