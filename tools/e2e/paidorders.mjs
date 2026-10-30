@@ -99,7 +99,7 @@ check(
     settlements(afterLeave) - settlements(start) === 1 &&
     afterLeave.levelProgress.paidOrders?.["level-19"]?.length === 1 &&
     !afterLeave.levelProgress.completedLevelIds.includes("level-19") &&
-    !/Finish Level/.test(servedOne),
+    !/Next Customer/.test(servedOne),
   {
     first,
     paidOrders: afterLeave.levelProgress.paidOrders,
@@ -114,10 +114,10 @@ const servedTwo = await flat(page);
 await shot(page, "paidorders-2-retry-served");
 check(
   "2a the retry carries on: the next serve completes the level's 2 orders (Finish Level)",
-  second.played && second.ready && /Finish Level/.test(servedTwo),
+  second.played && second.ready && /Next Customer/.test(servedTwo),
   { second, text: servedTwo.slice(0, 200) },
 );
-await clickButton(page, /^Finish Level$/);
+await clickButton(page, /^Next Customer$/);
 await sleep(1800);
 const end = await readSave(page);
 check(

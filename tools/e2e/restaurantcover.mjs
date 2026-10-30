@@ -104,7 +104,7 @@ async function playLevel() {
       await clickButton(page, /^Serve to /);
       await sleep(900);
     }
-    if (await clickButton(page, /^Finish Level$/)) return true;
+    if (await clickButton(page, /^Next Customer$/)) return true;
     if (!(await clickButton(page, /^Next (Customer|Order)/))) return false;
     await sleep(900);
   }

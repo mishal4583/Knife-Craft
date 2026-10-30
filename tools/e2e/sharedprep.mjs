@@ -170,7 +170,7 @@ try {
     })
     .catch(() => {});
   await sleep(600);
-  await clickButton(page, /^(Finish Level|Back to Orders)$/).catch(() => {});
+  await clickButton(page, /^(Next Customer|Back to Kitchen)$/).catch(() => {});
   await sleep(2000);
   await page.evaluate(() => document.querySelector('[data-nav="kitchen"]')?.click());
   await sleep(1500);

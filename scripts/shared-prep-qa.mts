@@ -86,8 +86,8 @@ console.log("C. Optional cash, collected before closing");
   );
   const floor = read("src/components/kc/game/ServiceFloor.tsx");
   assert(
-    /data-testid="cash-later"/.test(floor) && /Collect later/.test(floor),
-    "C2: the table's cash screen offers 'Collect later'",
+    !/CashVacuum|cash-later|service-floor-cash/.test(floor),
+    "C2: the dining room has no cash screen any more (developer 2026-10-30: it was not needed)",
   );
   const kitchen = read("src/components/kc/Kitchen.tsx");
   assert(
@@ -106,13 +106,26 @@ console.log("C. Optional cash, collected before closing");
       !/setState\("cash"\)/.test(
         floor.slice(floor.indexOf("useEffect"), floor.indexOf("const tapAnywhere")),
       ),
-    "C5: after the plate and the reaction the customer walks out and the served card opens by itself — the cash screen only opens when the player asks (cashOnly)",
+    "C5: after the plate and the reaction the customer walks out and the served card opens by itself — there is no cash screen",
   );
   const prep = read("src/components/kc/game/Preparation.tsx");
   assert(
-    /setCashViewOnly\(true\)/.test(prep) &&
-      /\{\.\.\.\(cashViewOnly \? \{ cashOnly: true \} : \{\}\)\}/.test(prep),
-    "C6: 'Collect cash at the table' opens the cash view on purpose (cashOnly), swipe the piles in or 'Collect later'",
+    /onCollectCash: \(\) => \{\s*service\.onCollectTableCash!\(\);/.test(prep) &&
+      /💵 Collect cash/.test(soc) &&
+      !/💵 Collect cash at the table|onOpenCashTable|"Finish Level"/.test(soc + prep),
+    "C6: the served card has one-tap '💵 Collect cash' and 'Next Customer' — no 'Collect cash at the table', no 'Finish Level'",
+  );
+  const app = read("src/App.tsx");
+  assert(
+    /rollOnRef\.current = done\.first && !done\.story && next/.test(app) &&
+      /isCompleted\(roll\.from, save\.levelProgress\)/.test(app) &&
+      /onSelectLevel\(roll\.to\)/.test(app),
+    "C7: the last customer of a level rolls service on to the next level — only after a first completion with no story card, and only once the completion is saved (through the normal Pre-Service door)",
+  );
+  const orders = read("src/game/service/CustomerOrderManager.ts");
+  assert(
+    /id: `order-\$\{orderSequence\}`/.test(orders) && !/id: `order-\$\{now\}/.test(orders),
+    "C8: order ids no longer contain the clock, so a party's size (a hash of the id) is reproducible",
   );
 }
 

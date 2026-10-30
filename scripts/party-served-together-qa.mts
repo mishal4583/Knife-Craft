@@ -173,9 +173,7 @@ console.log("F. The floor");
     "F1: every held plate and this member's plate are delivered together, one per place",
   );
   assert(
-    /const partyLeaves = mode === "deliver" && !cashOnly && partyCompleteWith\(partySeat\)/.test(
-      fl,
-    ) &&
+    /const partyLeaves = mode === "deliver" && partyCompleteWith\(partySeat\)/.test(fl) &&
       /sfexit\$\{uid\}_\$\{i\}/.test(fl) &&
       /state === "leaving" && partyLeaves/.test(fl),
     "F2: when the party is complete they all walk out together (staggered at the door)",

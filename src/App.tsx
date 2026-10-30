@@ -61,6 +61,7 @@ import { PauseManager } from "@/game/PauseManager";
 import { AudioManager, type MusicMood } from "@/game/AudioManager";
 import {
   getLevel,
+  getLevels,
   completeLevel,
   selectLevel,
   isUnlocked,
@@ -528,6 +529,9 @@ export function App() {
   // level through the exact same LevelManager.completeLevel/story-flush
   // path every other campaign completion already uses — never a second
   // completion system. Session-only: never persisted.
+  // After a level's last customer: the level to start once its completion is saved (see the effect below).
+  const rollOnRef = useRef<{ from: string; to: string } | null>(null);
+  const keepNoticeRef = useRef(false);
   const [campaignServiceSession, setCampaignServiceSession] = useState<ServiceSession | null>(null);
   // Customers who ordered the same dish are cut one plate after another, cooked once and served
   // together: after the first plate is served, each next one arrives already prepared (READY)
@@ -1845,7 +1849,9 @@ export function App() {
     if (!base) return;
     // A new cutting session closes the last level's cards (developer 2026-10-09:
     // they stayed over the board); queued milestone notices wait for the menus.
-    setLevelRewardNotice(null);
+    // (Rolling on from the last level keeps its reward toast for a moment.)
+    if (!keepNoticeRef.current) setLevelRewardNotice(null);
+    keepNoticeRef.current = false;
     setStoryEvent((e) => (e?.kind === "milestone" ? null : e));
     setLateReplayBonus(null);
     const level = getLevel(levelId);
@@ -2487,12 +2493,18 @@ export function App() {
     if (!save || !campaignServiceSession) return;
     const level = getLevel(campaignServiceSession.levelId);
     if (!level) return;
-    completeCampaignLevel(level);
+    const done = completeCampaignLevel(level);
     resetParties();
     setCampaignServiceSession(null);
     setSharedPrep(null);
     setSessionMode("campaign");
     go("kitchen");
+    // The level system is hidden (developer 2026-10-30): service rolls on to the next customers.
+    // Only after a first completion with no story card to read; the next level opens through the
+    // normal door (closing time, then the Pre-Service Check) once the completion is saved.
+    const levels = getLevels();
+    const next = levels[levels.findIndex((l) => l.id === level.id) + 1];
+    rollOnRef.current = done.first && !done.story && next ? { from: level.id, to: next.id } : null;
   }
 
   /**
@@ -2501,8 +2513,8 @@ export function App() {
    * were all paid already): LevelManager.completeLevel + the completion
    * reward + the story flush, folded into one save and one persist().
    */
-  function completeCampaignLevel(level: LevelDefinition) {
-    if (!save) return;
+  function completeCampaignLevel(level: LevelDefinition): { story: boolean; first: boolean } {
+    if (!save) return { story: false, first: false };
     // Read before completion clears the level's paid-order record (display only).
     const orderCoins = levelOrderEarnings(save, level.id);
     const {
@@ -2627,6 +2639,7 @@ export function App() {
       !isFirstCompletion,
       flush?.kind === "finale" || flush?.kind === "legacy",
     );
+    return { story: !!flush, first: isFirstCompletion };
   }
 
   /**
@@ -3088,6 +3101,14 @@ export function App() {
   // Cash left on the table is optional to collect (developer 2026-10-30): it waits, saved with
   // the order, until the player collects it (Kitchen button, or the table's swipe); the next
   // served order's cash first takes it in (withPendingCash), and closing needs it in the till.
+  useEffect(() => {
+    const roll = rollOnRef.current;
+    if (!roll || !save || screen !== "kitchen") return;
+    if (!isCompleted(roll.from, save.levelProgress)) return;
+    rollOnRef.current = null;
+    keepNoticeRef.current = true;
+    onSelectLevel(roll.to);
+  });
   function collectTableCash() {
     const current = saveRef.current;
     if (!current || pendingCashTotal(current) <= 0) return;
@@ -3448,6 +3469,7 @@ export function App() {
               ...(partyWaiting ? { partyWaiting } : {}),
               ...(sameDishAhead > 0 ? { sameDishAhead } : {}),
               ...(ticketsAfter > 0 ? { ticketsAfter } : {}),
+              onCollectTableCash: collectTableCash,
               ...(menuGuest
                 ? {
                     extraAction: !guestHasSetting(save, campaignLevelForSession!)
@@ -3478,9 +3500,11 @@ export function App() {
                           },
                   }
                 : {}),
+              // The level system is hidden (developer 2026-10-30): the last customer's "Next Customer"
+              // completes the level behind the scenes (no "Finish Level" button).
               ...((isCampaignService && campaignWillFinishNext) ||
               (isBatchGroup && batchGroupWillFinish)
-                ? { nextLabel: "Finish Level" }
+                ? { endsLevel: true }
                 : isCampaignService && sharedPlateNext
                   ? { nextLabel: "Serve the next plate →" }
                   : {}),
@@ -3518,7 +3542,7 @@ export function App() {
               }
               resetParties();
               setSessionMode("campaign");
-              go(isBusinessService ? "business-service" : "board");
+              go(isBusinessService ? "business-service" : "kitchen");
             }}
             onComplete={
               isCampaignService

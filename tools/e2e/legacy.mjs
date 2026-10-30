@@ -90,7 +90,7 @@ if (/ORDER READY/i.test(await flat(page))) {
   await clickButton(page, /^Serve to /);
   await sleep(900);
 }
-await clickButton(page, /^Finish Level$/);
+await clickButton(page, /^Next Customer$/);
 await page
   .waitForFunction(
     (src) => new RegExp(src).test(document.body.innerText),

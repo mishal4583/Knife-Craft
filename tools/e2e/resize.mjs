@@ -3,8 +3,8 @@
 //   1. Mid-cut: Level 4 (Potato & Tomato, the 150-level campaign's peel dish; was Level 8) with
 //      its peel step done, resize 430 → 320 → 768 → 430: the same order, the same step, and the
 //      peel progress are still there.
-//   2. Served: the result panel ("Finish Level") survives a resize to 320×568 and to
-//      768×1024 and back, and Finish Level still completes the level once.
+//   2. Served: the result panel ("Next Customer (last order)") survives a resize to 320×568 and to
+//      768×1024 and back, and Next Customer (last order) still completes the level once.
 //   3. Kitchen home survives a resize to 320 (no remount flash: a marker set on the page
 //      element is still there).
 // Prints PASS/FAIL per check and exits 1 on any failure.
@@ -129,21 +129,21 @@ await clickButton(page, /^Continue$/);
 await sleep(900);
 await clickButton(page, /^Serve to /);
 await sleep(3500);
-const servedBefore = /Finish Level/.test(await flat());
+const servedBefore = /Next Customer/.test(await flat());
 await resizeAll();
-const servedAfter = /Finish Level/.test(await flat());
+const servedAfter = /Next Customer/.test(await flat());
 check(
   "2a the served result panel survives resizes to 320×568, 768×1024 and back",
   played && servedBefore && servedAfter,
   { servedBefore, servedAfter },
 );
-// The cash lies on the table: the player sweeps it into the wallet (Finish Level waits for it).
+// The cash lies on the table: the player sweeps it into the wallet (Next Customer (last order) waits for it).
 await sweepCash(page);
-await clickButton(page, /^Finish Level$/);
+await clickButton(page, /^Next Customer$/);
 await sleep(1500);
 const s = await readSave(page);
 check(
-  "2b Finish Level still completes the level once",
+  "2b Next Customer (last order) still completes the level once",
   // The seeded (older-numbering) Level 4 is level-2 of the 148-level campaign.
   s.levelProgress.completedLevelIds.includes("level-2") &&
     s.economyLedger.filter((e) => e.category === "completion-reward" && e.description === "level-2")

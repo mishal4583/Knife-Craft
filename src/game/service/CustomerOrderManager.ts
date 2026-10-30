@@ -38,7 +38,9 @@ export function createCustomerOrder(
 ): CustomerOrder {
   orderSequence += 1;
   return {
-    id: `order-${now}-${orderSequence}`,
+    // Deterministic (developer 2026-10-30): the same play makes the same ids, so a party's size
+    // (a hash of the first id) is reproducible. Unique for the page's lifetime.
+    id: `order-${orderSequence}`,
     customerId,
     recipeId: recipe.id,
     status: "PENDING",

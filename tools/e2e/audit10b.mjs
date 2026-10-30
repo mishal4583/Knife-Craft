@@ -148,7 +148,7 @@ await clickButton(page, /^Continue$/);
 await sleep(800);
 await clickButton(page, /^Serve to /);
 await sleep(800);
-await clickButton(page, /^Finish Level$/);
+await clickButton(page, /^Next Customer$/);
 await sleep(1200);
 const d1 = await readSave(page);
 note("D prep-again then finish", {

@@ -179,7 +179,7 @@ const price = Math.round(
 check(
   "E3 after Level 5's own order: Finish Level and 'Menu guest 1/1: Garlic Bread · $price'",
   own &&
-    /Finish Level/.test(await flat()) &&
+    /Next Customer/.test(await flat()) &&
     !!offer &&
     !offer.disabled &&
     /Menu guest 1\/1: Garlic Bread · \$/.test(offer.text) &&
@@ -208,7 +208,7 @@ check(
 );
 
 // ---------- E5: Finish Level ----------
-await clickButton(page, /^Finish Level$/);
+await clickButton(page, /^Next Customer$/);
 await sleep(1200);
 await toKitchen();
 const done = await readSave(page);

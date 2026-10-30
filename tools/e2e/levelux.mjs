@@ -158,7 +158,7 @@ await clickButton(page, /^Continue$/);
 await sleep(900);
 await clickButton(page, /^Serve to /);
 await sleep(900);
-await clickButton(page, /^Finish Level$/);
+await clickButton(page, /^Next Customer$/);
 await sleep(600);
 const first = await flat();
 await page.waitForFunction(() => /LEVEL COMPLETE/i.test(document.body.innerText), {

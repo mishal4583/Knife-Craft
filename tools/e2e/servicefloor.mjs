@@ -6,7 +6,7 @@
 //      shows; a second Serve does nothing.
 //   F4 a menu guest: the previous customer walks out from the other seat as the guest walks in.
 //   F5 the arrival fits 320×568, 390×844 and 768×1024 (no sideways scroll, bubble on screen).
-//   F6 Finish Level completes the level normally (the guest paid once, as business revenue).
+//   F6 Next Customer (last order) completes the level normally (the guest paid once, as business revenue).
 //   F7 Reduced Motion: the customer is already seated, nobody walks.
 //   F8 no console errors.
 // Prints PASS/FAIL per check and exits 1 on any failure.
@@ -230,7 +230,7 @@ check(
   { firstSeat, guestArrive },
 );
 
-// ---------- F6 guest served, Finish Level ----------
+// ---------- F6 guest served, Next Customer (last order) ----------
 const g0 = await readSave(page);
 await playToReport(page, { maxMs: 150000 });
 await clickButton(page, /^Continue$/);
@@ -239,11 +239,11 @@ await clickButton(page, /^Serve to /);
 await sleep(2500);
 await sweepCash(page);
 const g1 = await readSave(page);
-await clickButton(page, /^Finish Level$/);
+await clickButton(page, /^Next Customer$/);
 await sleep(2000);
 const done = await readSave(page);
 check(
-  "F6 the guest pays once (business revenue); Finish Level completes Level 12 normally",
+  "F6 the guest pays once (business revenue); Next Customer (last order) completes Level 12 normally",
   ledgerCount(g1, "business-revenue") === ledgerCount(g0, "business-revenue") + 1 &&
     // The seeded (older-numbering) Level 12 is level-10 of the 148-level campaign.
     done.levelProgress.completedLevelIds.includes("level-10") &&

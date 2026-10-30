@@ -268,7 +268,7 @@ check(
       bought.business.supplies.stock["soup-bowls"].units,
   { washing: served.business.restaurantSupplies, played: played.ok },
 );
-await clickButton(page, /^Finish Level$/);
+await clickButton(page, /^Next Customer$/);
 await sleep(1000);
 const done = await readSave(page);
 // The sink game (developer 2026-10-23; was "the wash-up runs: nothing washing, soap 95 %"):
@@ -366,7 +366,7 @@ await clickButton(page, /^Continue$/);
 await sleep(900);
 await clickButton(page, /^Serve to /);
 await sleep(1000);
-await clickButton(page, /^Finish Level$/);
+await clickButton(page, /^Next Customer$/);
 await sleep(1800);
 await page.evaluate(() =>
   [...document.querySelectorAll("nav button")]

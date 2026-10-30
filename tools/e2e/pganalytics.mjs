@@ -65,9 +65,20 @@ await sleep(35000);
 ev = await events();
 const sample = ev.find(([n]) => n === "performance_sample")?.[1];
 const required = [
-  "target_fps", "window_ms", "active_ms", "frame_count", "fps_avg", "fps_p10",
-  "frame_time_p50_ms", "frame_time_p95_ms", "frame_time_p99_ms", "frame_time_max_ms",
-  "frames_over_50ms", "frames_over_100ms", "frames_over_250ms", "frames_over_500ms",
+  "target_fps",
+  "window_ms",
+  "active_ms",
+  "frame_count",
+  "fps_avg",
+  "fps_p10",
+  "frame_time_p50_ms",
+  "frame_time_p95_ms",
+  "frame_time_p99_ms",
+  "frame_time_max_ms",
+  "frames_over_50ms",
+  "frames_over_100ms",
+  "frames_over_250ms",
+  "frames_over_500ms",
   "frames_over_1000ms",
 ];
 check(
@@ -89,7 +100,7 @@ if (/ORDER READY/i.test(await page.evaluate(() => document.body.innerText))) {
   await clickButton(page, /^Serve to /);
   await sleep(900);
 }
-await clickButton(page, /^Finish Level$/);
+await clickButton(page, /^Next Customer$/);
 await sleep(1500);
 ev = await events();
 const done = ev.find(([n]) => n === "progression_completed");
@@ -100,8 +111,7 @@ check(
 );
 check(
   "4 every event carries game_version; no name holds a digit",
-  ev.length > 0 &&
-    ev.every(([n, d]) => typeof d?.game_version === "string" && /^[a-z_]+$/.test(n)),
+  ev.length > 0 && ev.every(([n, d]) => typeof d?.game_version === "string" && /^[a-z_]+$/.test(n)),
   [...new Set(ev.map(([n]) => n))],
 );
 const errors = logs.filter((l) => /pageerror|error:/.test(l) && !/favicon/.test(l));
@@ -109,5 +119,7 @@ check("5 no page errors", errors.length === 0, errors.slice(0, 5));
 
 await browser.close();
 const failed = results.filter((r) => !r.ok);
-console.log(failed.length ? `PG ANALYTICS E2E: ${failed.length} FAILURE(S)` : "PG ANALYTICS E2E: ALL PASS");
+console.log(
+  failed.length ? `PG ANALYTICS E2E: ${failed.length} FAILURE(S)` : "PG ANALYTICS E2E: ALL PASS",
+);
 process.exit(failed.length ? 1 : 0);

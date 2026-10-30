@@ -490,40 +490,24 @@ export async function doClosingChores(page) {
  * many pieces it saw. Safe to call when there is nothing to sweep.
  */
 export async function sweepCash(page) {
-  let seen = 0;
   // The customer reacts and walks out, then the served card opens by itself; the cash waits on the
-  // table (developer 2026-10-30): open the table view from the card, then swipe the piles in.
+  // table (developer 2026-10-30): one tap on "Collect cash" takes it into the wallet. Returns 1 when
+  // there was cash to collect.
   await page
     .waitForFunction(() => !document.querySelector('[data-testid="service-floor"]'), {
       timeout: 12000,
     })
     .catch(() => {});
   await sleep(400);
-  const opened = await page.evaluate(() => {
+  const clicked = await page.evaluate(() => {
     const b = [...document.querySelectorAll("button")].find((x) =>
-      /Collect cash at the table/.test(x.textContent),
+      /^💵 Collect cash$/.test(x.textContent.trim()),
     );
     b?.click();
     return !!b;
   });
-  if (opened) await sleep(1200);
-  for (let pass = 0; pass < 6; pass++) {
-    const boxes = await page.evaluate(() =>
-      [...document.querySelectorAll("[data-cash-piece]")].map((e) => {
-        const r = e.getBoundingClientRect();
-        return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
-      }),
-    );
-    if (boxes.length === 0) break;
-    seen = Math.max(seen, boxes.length);
-    await page.mouse.move(boxes[0].x, boxes[0].y);
-    await page.mouse.down();
-    for (const b of boxes) await page.mouse.move(b.x, b.y, { steps: 6 });
-    await page.mouse.up();
-    await sleep(500);
-  }
   await sleep(1200);
-  return seen;
+  return clicked ? 1 : 0;
 }
 
 /**

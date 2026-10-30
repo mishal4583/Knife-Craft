@@ -1,8 +1,8 @@
 // Regression check for G1/G2 (docs/HANDOFF.md §4):
 //   G2 — a brand-new player's first Level 1 runs the service flow
-//        (Serve -> Finish Level), pays the settlement AND the $50 completion
+//        (Serve -> Next Customer (last order)), pays the settlement AND the $50 completion
 //        reward once, and shows Level Complete.
-//   G1 — Serve -> "Back to Kitchen" (no Finish Level) completes the level
+//   G1 — Serve -> "Back to Kitchen" (no Next Customer (last order)) completes the level
 //        once; a retry is a replay and pays nothing.
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import {
@@ -58,7 +58,7 @@ async function playAndServe() {
   return { played: played.ok, flow };
 }
 
-// ---------- G2: fresh player, Level 1, Finish Level ----------
+// ---------- G2: fresh player, Level 1, Next Customer (last order) ----------
 await startFirstLevel(page);
 const g2a = await playAndServe();
 check(
@@ -70,10 +70,14 @@ const g2Served = await readSave(page);
 check("G2.2 serving pays the Level 1 settlement once", !!g2Served, {
   ledger: g2Served ? newLedger(null, g2Served) : null,
 });
-await clickButton(page, /^Finish Level$/);
-await sleep(300);
+await clickButton(page, /^Next Customer$/);
+await sleep(3000);
 const g2Banner = await flat(page);
-check("G2.3 Level Complete shown after Finish Level", /LEVEL COMPLETE/i.test(g2Banner));
+check(
+  "G2.3 the level system is hidden: no Level Complete screen, service rolls on to the next customer",
+  !/LEVEL COMPLETE/i.test(g2Banner) && /Potato|Pre-Service|Start cooking/i.test(g2Banner),
+  { banner: g2Banner.slice(0, 120) },
+);
 await shot(page, "levelflow-G2-finish");
 await sleep(1500);
 const g2 = await readSave(page);

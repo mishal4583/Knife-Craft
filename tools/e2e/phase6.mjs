@@ -296,7 +296,7 @@ if (ONLY.includes("M")) {
     !(await chip()) &&
       (await page.evaluate(() =>
         [...document.querySelectorAll("button")].some((b) =>
-          /^(Next Customer|Finish Level)$/.test(b.textContent.trim()),
+          /^Next Customer$/.test(b.textContent.trim()),
         ),
       )),
   );

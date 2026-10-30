@@ -129,7 +129,7 @@ await boot(page, saveAt(12, 5000, LEVEL_12_FOOD));
 await prepare("Bruschetta for the House");
 const own = await cookAndServe();
 const offer = await guestButton();
-const finishShown = /Finish Level/.test(await flat());
+const finishShown = /Next Customer/.test(await flat());
 await shot(page, "restaurant-guest-offer");
 const dishName = /: (.+) · \$/.exec(offer?.text ?? "")?.[1];
 const price = Math.round(
@@ -168,7 +168,7 @@ await sleep(1200);
 const inOrder = await flat();
 check(
   "2 the guest's order comes into the same service",
-  /·\s*(?:\d+\/\d+\s+[a-z-]+|\d+% peeled)/i.test(inOrder) && !/Finish Level/.test(inOrder),
+  /·\s*(?:\d+\/\d+\s+[a-z-]+|\d+% peeled)/i.test(inOrder) && !/Next Customer/.test(inOrder),
 );
 
 // ---------- 3. Serving the guest ----------
@@ -186,12 +186,12 @@ check(
     after.credits - before.credits === price &&
     after.levelProgress.menuGuests?.["level-12"] === 1 &&
     afterOffer === null &&
-    /Finish Level/.test(await flat()),
+    /Next Customer/.test(await flat()),
   { entries, price, guests: after.levelProgress.menuGuests, afterOffer },
 );
 
 // ---------- 4. Finish, replay ----------
-await clickButton(page, /^Finish Level$/);
+await clickButton(page, /^Next Customer$/);
 await sleep(1000);
 // Developer 2026-10-10: the Level Complete card goes as soon as the player opens another page
 // (the Market here; an achievement-to-collect card may follow, so the Level Complete one is checked).

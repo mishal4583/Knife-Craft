@@ -192,7 +192,7 @@ export function Preparation({
     onNextOrder: () => void;
     /** Phase 3 §16 — a one-sentence batching hint ("Batch tip: ...") when the active and next order share a real component; null otherwise. Presentation only, never gameplay-affecting. */
     batchHint?: string | null;
-    /** Label for ServiceOrderComplete's advance button — defaults to "Next Customer"; a campaign level about to complete passes "Finish Level" instead (App.tsx decides which, based on ServiceSession.completedCount vs the level's own requiredOrders). */
+    /** Label for ServiceOrderComplete's advance button — defaults to "Next Customer"; a campaign level about to complete also passes `endsLevel` (App.tsx decides which, based on ServiceSession.completedCount vs the level's own requiredOrders). */
     nextLabel?: string;
     /** Economy V2 Phase 9 — display-only identity for the settlement breakdown (App.tsx passes the raw save fields; ServiceOrderComplete resolves them to catalog names itself, exactly like Shop.tsx already does). Omitted for plain Restaurant Service. */
     selectedSupplierId?: string;
@@ -219,6 +219,10 @@ export function Preparation({
      * the whole table when the party's last order is served.
      */
     ticketsAfter?: number;
+    /** This serve is the level's last: "Next Customer" completes the level and nobody's arrival follows. */
+    endsLevel?: boolean;
+    /** Takes the cash left on the table into the wallet (App.collectTableCash). */
+    onCollectTableCash?: () => void;
   };
   onExit: () => void;
   /** Returns this run's coin reward (0 on replay — Law 2 — or always 0 for a service session, where payment is deferred to the explicit Serve action) so OrderComplete can show it without a second App->Preparation round trip. */
@@ -408,11 +412,6 @@ export function Preparation({
     // A plate prepared together with the one before it arrives ready: its customer is already seated.
     service && floor && service.order.order.status !== "READY" ? "arrive" : null,
   );
-  // Keep the served card mounted while the player switches to the table so
-  // its result and payment state survive a trip to collect cash and back.
-  const [cashTableView, setCashTableView] = useState(false);
-  // The table view opened on purpose to swipe the cash in ("Collect cash at the table").
-  const [cashViewOnly, setCashViewOnly] = useState(false);
   // This plate was held for the table: a short "waiting for the rest" note, then the next order.
   const [holding, setHolding] = useState(false);
   // Parties (developer 2026-10-26): this order's place at its party's table, decided once.
@@ -1237,11 +1236,7 @@ export function Preparation({
                   onExit();
                 }}
               >
-                {service?.isBusinessOrder
-                  ? "Back to Service"
-                  : service
-                    ? "Back to Orders"
-                    : "Back to Kitchen"}
+                {service?.isBusinessOrder ? "Back to Service" : "Back to Kitchen"}
               </KButton>
             </div>
           </Panel>
@@ -1280,22 +1275,10 @@ export function Preparation({
           line={levelGuide?.customerLine ?? shownCustomer.greeting}
           dish={{ emoji: view.emoji, name: view.title }}
           {...(servedQuality ? { quality: servedQuality } : {})}
-          {...(floorMode === "deliver" && servedCash ? { cash: { ...servedCash, credits } } : {})}
-          {...(cashViewOnly ? { cashOnly: true } : {})}
-          {...(service.onCashPieceCollected
-            ? { onCashPieceCollected: service.onCashPieceCollected }
-            : {})}
-          {...(service.onCashCollected ? { onCashCollected: service.onCashCollected } : {})}
-          onCashRemaining={setServiceCashRemaining}
           reducedMotion={floor.reducedMotion}
-          onBackToOrder={() => {
-            setFloorMode(null);
-            setCashViewOnly(false);
-            setCashTableView(false);
-          }}
           onDone={() => {
             // Every plate has reached the table: they are all served now, and a complete party is gone.
-            if (!cashViewOnly && service)
+            if (service)
               finishPartyDelivery(
                 service.order.order.id,
                 view.emoji,
@@ -1303,8 +1286,6 @@ export function Preparation({
                 Date.now(),
               );
             setFloorMode(null);
-            setCashViewOnly(false);
-            setCashTableView(false);
           }}
         />
       ) : null}
@@ -1375,7 +1356,7 @@ export function Preparation({
       {phase === "complete" ? (
         service ? (
           <ServiceOrderComplete
-            hidden={cashTableView || holding}
+            hidden={holding}
             serviceOrder={
               shownCustomer ? { ...service.order, customer: shownCustomer } : service.order
             }
@@ -1414,18 +1395,13 @@ export function Preparation({
             {...(result ? { plateTier: tierFor(result.score, true) } : {})}
             credits={credits}
             cashAtTable={!!floor}
-            {...(floor
+            {...(floor && service.onCollectTableCash
               ? {
-                  onOpenCashTable: () => {
-                    // The table view is always there to show: bring it back with
-                    // what is still unswept if it was closed (never a bare board).
-                    if (!floorMode && servedCash && serviceCashRemaining > 0) {
-                      const tip = Math.min(servedCash.tipCents, serviceCashRemaining);
-                      setServedCash({ payCents: serviceCashRemaining - tip, tipCents: tip });
-                      setCashViewOnly(true);
-                      setFloorMode("deliver");
-                    }
-                    setCashTableView(true);
+                  // One tap takes the cash left on the table into the wallet (no swipe screen).
+                  onCollectCash: () => {
+                    service.onCollectTableCash!();
+                    setServiceCashRemaining(0);
+                    setServedCash(null);
                   },
                 }
               : {})}
@@ -1470,10 +1446,8 @@ export function Preparation({
               return served;
             }}
             onNextOrder={() =>
-              // Finish Level goes to Level Complete: nobody's arrival follows it.
-              service.nextLabel === "Finish Level"
-                ? service.onNextOrder()
-                : departThen(service.onNextOrder)
+              // The level's last Next Customer completes the level: nobody's arrival follows it.
+              service.endsLevel ? service.onNextOrder() : departThen(service.onNextOrder)
             }
             onRetry={restart}
             onExit={onExit}

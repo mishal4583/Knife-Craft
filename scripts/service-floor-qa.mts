@@ -161,7 +161,7 @@ console.log("D. Wiring");
     "D2: Serve calls the existing serve once (joining a party's cash pile when plates were held, 2026-10-30); the plate goes to the table only for a real serve",
   );
   assert(
-    /service\.nextLabel === "Finish Level"\s*\?\s*service\.onNextOrder\(\)\s*:\s*departThen\(service\.onNextOrder\)/.test(
+    /service\.endsLevel\s*\?\s*service\.onNextOrder\(\)\s*:\s*departThen\(service\.onNextOrder\)/.test(
       prep,
     ) &&
       /service\.extraAction!\.disabled\s*\?\s*undefined\s*:\s*departThen\(service\.extraAction!\.onClick\)/.test(
@@ -170,7 +170,7 @@ console.log("D. Wiring");
       /const departThen = \(next: \(\) => void\) => \{[\s\S]{0,320}\r?\n\s*next\(\);\r?\n\s*\};/.test(
         prep,
       ),
-    "D3: Next Customer / Finish Level / a menu guest run the existing action at once, exactly once (the walk out never delays it)",
+    "D3: Next Customer (the last one completes the level; there is no Finish Level button any more, 2026-10-30) / a menu guest run the existing action at once, exactly once (the walk out never delays it)",
   );
   assert(
     /useState<FloorMode \| null>\(\s*(?:\/\/[^\n]*\n\s*)*service && floor && service\.order\.order\.status !== "READY" \? "arrive" : null/.test(

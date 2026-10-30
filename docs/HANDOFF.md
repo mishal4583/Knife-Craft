@@ -1,5 +1,23 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## Service rolls on after the last customer; deterministic order ids (2026-10-30)
+
+- The level's last "Next Customer" completes the level (reward and story flush as before) and, after a **first**
+  completion with **no story card** pending, starts the next level through `onSelectLevel` (closing time, then the
+  Pre-Service Check) once the completion is saved (`rollOnRef` effect in `App.tsx`). The reward toast stays up.
+- Order ids are `order-N` (no clock): the same play makes the same ids and party sizes. `tools/e2e/rollon.mjs`.
+- Decisions D1–D9 are in `docs/reports/PHASE0-AUDIT-2026-10-30.md` §12.
+
+## Served card: Collect cash / Next Customer; level system hidden (2026-10-30)
+
+- The served card has two actions instead of the swipe screen: **💵 Collect cash** (one tap takes the cash on the table
+  into the wallet, `App.collectTableCash`) and **Next Customer** (cash keeps waiting). The cash is still required before
+  closing and shows in the Kitchen. The dining-room cash screen and its swipe piles are gone from `ServiceFloor`.
+- **No "Finish Level" button anywhere:** the last customer's Next Customer completes the level behind the scenes
+  (`endsLevel` → `finishCampaignLevel`); "Back to Orders" is now "Back to Kitchen" and leaves to the Kitchen, not the Order Board.
+- Browser tests were updated (`sweepCash` taps Collect cash; `/^Next Customer$/`). Older e2e scripts that look for
+  `/Finish Level/` text in other files were renamed mechanically and not all re-run (stale list unchanged).
+
 ## Parties served together; no cash screen after the serve (2026-10-30)
 
 - **After Serve:** the plate arrives, the customer reacts, walks out, and the served card opens by itself —

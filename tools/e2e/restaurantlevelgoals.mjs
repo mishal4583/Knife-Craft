@@ -144,7 +144,7 @@ if (/ORDER READY/i.test(await page.evaluate(() => document.body.innerText))) {
   await clickButton(page, /^Serve to /);
   await sleep(900);
 }
-await clickButton(page, /^Finish Level$/);
+await clickButton(page, /^Next Customer$/);
 await sleep(1200);
 const notes = await page.evaluate(
   () => document.querySelector('[data-testid="banner-notes"]')?.innerText ?? "",

@@ -90,7 +90,7 @@ async function playLevel(title) {
     await sleep(3500);
     await sweepCash(page);
   }
-  await clickButton(page, /^(Finish Level|Back to Orders)$/);
+  await clickButton(page, /^(Next Customer|Back to Kitchen)$/);
   await sleep(1500);
   // Restaurant test build: Closing Time after the day's last service.
   await doClosingChores(page);

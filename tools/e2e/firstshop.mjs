@@ -4,7 +4,7 @@
 //   S3 the Market shows the first-shopping hint and the hand on a needed item's Buy button.
 //   S4 buying spends the player's own money: one inventory-purchase entry, wallet = opening + ledger.
 //   S5 nothing is given for free: no Grandma tools, cupboard or leftovers in the save.
-//   S6 with the food bought, Prepare opens the cutting; serve, sweep and Finish Level complete level-1.
+//   S6 with the food bought, Prepare opens the cutting; serve, sweep and Next Customer (last order) complete level-1.
 //   S7 no console errors.
 import { launch, freshPlayer, sleep, clickButton, readSave, text, sweepCash } from "./harness.mjs";
 import { playToReport } from "./solver.mjs";
@@ -122,11 +122,11 @@ try {
   await clickButton(page, /^Serve to /);
   await sleep(3500);
   await sweepCash(page);
-  await clickButton(page, /^Finish Level$/);
+  await clickButton(page, /^Next Customer$/);
   await sleep(1500);
   const done = await readSave(page);
   check(
-    "S6 the bought food cooks, serves, sweeps and Finish Level completes level-1; wallet = $10 + signed ledger",
+    "S6 the bought food cooks, serves, sweeps and Next Customer (last order) completes level-1; wallet = $10 + signed ledger",
     done.levelProgress.completedLevelIds.includes("level-1") &&
       done.credits === 1000 + ledgerSum(done),
     { completed: done.levelProgress.completedLevelIds, credits: done.credits },

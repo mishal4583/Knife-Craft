@@ -21,8 +21,6 @@ import { formatUsd } from "@/game/money";
 import type { QualityLabel } from "@/types/game";
 import { GuestPoses } from "../restaurantMap/GuestPoses";
 import { KButton } from "../common/primitives";
-import { CashVacuum } from "./CashVacuum";
-import { useRolledNumber } from "./useRolledNumber";
 import "./serviceFloor.css";
 
 /**
@@ -40,10 +38,8 @@ import "./serviceFloor.css";
  *  - arrive:  walk in → sit → order bubbles → "Start cooking" (or a tap anywhere);
  *  - deliver: the plate goes from the pass to the member, then the face that
  *             follows the dish's real grade, then the customer walks out and the
- *             served card opens by itself (developer 2026-10-30: no cash screen
- *             in between). The pay and tip stay on the table, saved, to collect
- *             from the served card or the Kitchen — `cashOnly` opens the table
- *             view for that (swipe the piles in), and closing needs it all in.
+ *             served card opens by itself (developer 2026-10-30: no cash screen —
+ *             the cash waits on the table, collected from the served card in one tap).
  *
  * Taps can advance the arrival and serving beats. Reduced Motion skips the walking.
  */
@@ -72,13 +68,7 @@ export function ServiceFloor({
   line,
   dish,
   quality,
-  cash,
-  cashOnly = false,
   reducedMotion,
-  onCashPieceCollected,
-  onCashRemaining,
-  onCashCollected,
-  onBackToOrder,
   onDone,
 }: {
   mode: FloorMode;
@@ -92,16 +82,7 @@ export function ServiceFloor({
   dish: { emoji: string; name: string };
   /** The dish's real grade (deliver). */
   quality?: QualityLabel;
-  /** Deliver: what the serve earned — left on the table as cash to collect. */
-  cash?: { payCents: number; tipCents: number; credits: number };
-  /** Deliver: open straight on the cash piles (the player asked to collect), no plate or walk-out. */
-  cashOnly?: boolean;
   reducedMotion: boolean;
-  onCashPieceCollected?: (cents: number, isTip: boolean) => void;
-  onCashRemaining?: (cents: number) => void;
-  onCashCollected?: () => void;
-  /** Returns to the served-order card without discarding uncollected table cash. */
-  onBackToOrder?: () => void;
   onDone: () => void;
 }) {
   const uid = useId().replace(/[^a-zA-Z0-9]/g, "");
@@ -121,32 +102,16 @@ export function ServiceFloor({
   // The new party waits outside until the one leaving is through the door.
   const waitMs = leavers.length ? Math.max(...leavers.map((l) => walkMs(l.path))) : 0;
   const lastIn = walking ? Math.max(...paths.map((p, i) => walkMs(p) + i * FILE_GAP_MS)) : 0;
-  const total = cash ? cash.payCents + cash.tipCents : 0;
   // Served together: every plate held back for the table arrives with this one, they all eat, and
   // when the party is complete they all walk out together.
   const deliverers = spots.map((_, i) => i === slot || !!party.held[i]);
-  const partyLeaves = mode === "deliver" && !cashOnly && partyCompleteWith(partySeat);
-  const [state, setState] = useState<
-    "walking" | "seated" | "serving" | "reacting" | "leaving" | "cash"
-  >(
-    mode === "arrive"
-      ? walking
-        ? "walking"
-        : "seated"
-      : cashOnly && total > 0
-        ? "cash"
-        : reducedMotion
-          ? "reacting"
-          : "serving",
+  const partyLeaves = mode === "deliver" && partyCompleteWith(partySeat);
+  const [state, setState] = useState<"walking" | "seated" | "serving" | "reacting" | "leaving">(
+    mode === "arrive" ? (walking ? "walking" : "seated") : reducedMotion ? "reacting" : "serving",
   );
-  const [remaining, setRemaining] = useState(total);
-  const walletRef = useRef<HTMLSpanElement | null>(null);
-  const shownCredits = useRolledNumber(cash?.credits ?? 0, reducedMotion);
   const done = useRef(false);
   const finish = () => {
     if (done.current) return;
-    // The cash view closes only once it is all swept in (or the player chose "Collect later").
-    if (state === "cash" && remaining > 0) return;
     done.current = true;
     onDone();
   };
@@ -157,7 +122,7 @@ export function ServiceFloor({
     const timers: number[] = [];
     const later = (fn: () => void, t: number) => timers.push(window.setTimeout(fn, t));
     if (walking) later(() => setState("seated"), waitMs + lastIn + SIT_MS);
-    if (mode === "deliver" && !(cashOnly && total > 0)) {
+    if (mode === "deliver") {
       // The plate arrives, the customer reacts, walks out, and the served card opens.
       if (reducedMotion) {
         later(() => finishRef.current(), REACT_MS);
@@ -177,12 +142,8 @@ export function ServiceFloor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /** A tap anywhere: skip ahead — with cash on the table, sweep it all in first. */
+  /** A tap anywhere: skip ahead. */
   const tapAnywhere = () => {
-    if (state === "cash") {
-      if (remaining <= 0) finish();
-      return;
-    }
     finish();
   };
 
@@ -201,14 +162,6 @@ export function ServiceFloor({
   const sitting = state !== "walking";
   const face = quality ? REACTION_FACE[quality] : "🙂";
   const others = party.size - 1;
-  // The cash piles up beside the chairs, one pile by each member's place (developer 2026-10-26:
-  // "on the side of the table and chairs … spread across their seats"); a lone customer's to
-  // the left of the table. Kept inside the view.
-  const cashPiles = spots.map((s) => {
-    const side = party.size > 1 && s.x > table.seat.x ? 1 : -1;
-    const v = inView({ x: Math.min(77, Math.max(23, s.x + side * 7.5)), y: s.y - 2.5 });
-    return { x: v.x, y: v.y };
-  });
 
   return (
     <div
@@ -228,7 +181,7 @@ export function ServiceFloor({
     >
       <style>{keyframes}</style>
       <div className="sf-stage relative min-h-0 flex-1">
-        <div className="sf-view" aria-hidden={state === "cash" ? undefined : "true"}>
+        <div className="sf-view" aria-hidden="true">
           <img className="sf-map" src={mapUrl} alt="" draggable={false} />
           <div className="sf-dim" />
           {/* Plates of the members already served stay on the table. */}
@@ -309,8 +262,7 @@ export function ServiceFloor({
                     </div>
                   </div>
                 ) : null}
-                {deliverers[i] &&
-                (state === "reacting" || state === "leaving" || state === "cash") ? (
+                {deliverers[i] && (state === "reacting" || state === "leaving") ? (
                   <div
                     className="sf-face"
                     {...(isMe ? { "data-testid": "service-floor-face" } : {})}
@@ -331,33 +283,6 @@ export function ServiceFloor({
               </div>
             );
           })}
-          {state === "cash" && cash ? (
-            <div
-              className="sf-cash absolute inset-0"
-              data-testid="service-floor-cash"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <CashVacuum
-                variant="table"
-                anchors={cashPiles}
-                payCents={cash.payCents}
-                tipCents={cash.tipCents}
-                walletRef={walletRef}
-                reducedMotion={reducedMotion}
-                onPieceCollected={(cents, isTip) => {
-                  onCashPieceCollected?.(cents, isTip);
-                }}
-                onRemaining={(cents) => {
-                  setRemaining(cents);
-                  onCashRemaining?.(cents);
-                }}
-                onDone={() => {
-                  onCashCollected?.();
-                  window.setTimeout(() => finishRef.current(), 450);
-                }}
-              />
-            </div>
-          ) : null}
         </div>
       </div>
       {mode === "arrive" ? (
@@ -380,50 +305,6 @@ export function ServiceFloor({
               🔪 Start cooking
             </KButton>
           </div>
-        </div>
-      ) : state === "cash" && cash ? (
-        <div
-          className="relative z-10 flex items-center justify-between gap-2 rounded-t-[22px] border-t border-gold/40 bg-[linear-gradient(170deg,var(--color-ivory),var(--color-cream))] px-4 pb-4 pt-3"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="min-w-0">
-            <p className="font-ui text-[11px] font-extrabold uppercase tracking-[0.18em] text-copper">
-              💵 Left on the table
-            </p>
-            <p className="font-ui text-[13px] font-extrabold text-walnut-dark">
-              {formatUsd(cash.payCents)}
-              {cash.tipCents > 0 ? ` + ${formatUsd(cash.tipCents)} tip` : ""}
-            </p>
-            <p className="font-hand text-[14px] text-olive">Swipe over the cash to collect it</p>
-            <span
-              ref={walletRef}
-              className="mt-1 inline-block rounded-full bg-walnut/10 px-2 py-0.5 font-ui text-[12px] font-extrabold text-walnut-dark"
-              data-testid="floor-wallet"
-            >
-              💵 {formatUsd(shownCredits)}
-            </span>
-          </div>
-          {remaining <= 0 ? (
-            <KButton className="h-12 shrink-0 px-3 text-[13px]" variant="copper" onClick={finish}>
-              Continue
-            </KButton>
-          ) : (
-            <div className="flex shrink-0 flex-col items-end gap-2">
-              <span className="rounded-full bg-walnut/10 px-3 py-2 font-ui text-[12px] font-extrabold text-walnut-dark">
-                💵 {formatUsd(remaining)} left
-              </span>
-              {onBackToOrder ? (
-                <button
-                  type="button"
-                  data-testid="cash-later"
-                  className="press min-h-12 rounded-full border border-walnut/25 bg-ivory/80 px-4 font-ui text-[12.5px] font-extrabold text-walnut-dark"
-                  onClick={onBackToOrder}
-                >
-                  Collect later
-                </button>
-              ) : null}
-            </div>
-          )}
         </div>
       ) : (
         <p className="relative z-10 pb-6 pt-2 text-center font-hand text-[17px] text-ivory/90">

@@ -167,7 +167,7 @@ check(
   "W1 after the order and the menu guest: Finish Level and '🚶 Walk-in 1/1: Garlic Bread · $price'",
   own &&
     guest &&
-    /Finish Level/.test(await flat()) &&
+    /Next Customer/.test(await flat()) &&
     !!offer &&
     !offer.disabled &&
     /🚶 Walk-in 1\/1: Garlic Bread · \$/.test(offer.text) &&
@@ -194,7 +194,7 @@ check(
     (await guestButton()) === null,
   { added, price, wallet: after.credits - before.credits, guests: after.levelProgress.menuGuests },
 );
-await clickButton(page, /^Finish Level$/);
+await clickButton(page, /^Next Customer$/);
 await sleep(1200);
 await toKitchen();
 const done = await readSave(page);

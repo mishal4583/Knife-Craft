@@ -231,7 +231,7 @@ for (let lv = 1; lv <= 10; lv++) {
     await shot(page, `a10-L${lv}-served`);
     const mid = await readSave(page);
     L.creditsAfterServe = mid.credits;
-    L.finishClicked = await clickButton(page, /^Finish Level$/);
+    L.finishClicked = await clickButton(page, /^Next Customer$/);
     await sleep(300);
     L.afterFinishText = (await text(page)).replace(/\s+/g, " ").slice(0, 400);
     L.bannerVisible = /LEVEL COMPLETE|THE ROOM COMES BACK/i.test(L.afterFinishText);

@@ -168,7 +168,7 @@ export function ServiceOrderComplete({
   bookNote,
   onCustomerMoment,
   cashAtTable = false,
-  onOpenCashTable,
+  onCollectCash,
   onCashPieceCollected,
   onCashRemaining,
   onCashCollected,
@@ -184,7 +184,7 @@ export function ServiceOrderComplete({
   onNextOrder: () => void;
   onRetry: () => void;
   onExit: () => void;
-  /** Phase 3 — "Next Customer" for an open-ended service queue, or "Finish Level" for a campaign level session that's about to complete. */
+  /** Phase 3 — "Next Customer" for an open-ended service queue, (the last customer of a level completes it behind the scenes; there is no Finish Level button). */
   nextLabel?: string;
   /** Economy V2 Phase 9 — display-only context for SettlementBreakdown, all optional (absent entirely for plain Restaurant Service). */
   knife?: KnifeDefinition;
@@ -211,8 +211,8 @@ export function ServiceOrderComplete({
    * developer 2026-10-26), swept in there — the card only says it was collected.
    */
   cashAtTable?: boolean;
-  /** Opens the dining room so the player can physically swipe the cash from the table. */
-  onOpenCashTable?: () => void;
+  /** Takes the cash left on the table into the wallet in one tap (developer 2026-10-30: no swipe screen). */
+  onCollectCash?: () => void;
   /** Cash pieces move into the wallet only after a real swipe collects them. */
   onCashPieceCollected?: (cents: number, isTip: boolean) => void;
   onCashRemaining?: (cents: number) => void;
@@ -231,7 +231,7 @@ export function ServiceOrderComplete({
   // One serve per screen: a second tap that lands before React re-renders
   // must not call onServe again (C1, "prevent double-clicking").
   const serveLatch = useRef(false);
-  // Phase 4 (C4): the same for moving on — "Next Customer" / "Finish Level"
+  // Phase 4 (C4): the same for moving on — "Next Customer"
   // advances the queue (or finishes the level) exactly once per screen.
   const nextLatch = useRef(false);
   function nextOnce() {
@@ -390,9 +390,7 @@ export function ServiceOrderComplete({
                 className="mt-2 font-ui text-[12px] font-extrabold uppercase tracking-[0.16em] text-olive"
                 data-testid={remaining > 0 ? "cash-prompt" : "cash-collected"}
               >
-                {remaining > 0
-                  ? "💵 Swipe the cash at the table to collect it"
-                  : "✓ Cash collected"}
+                {remaining > 0 ? `💵 ${formatUsd(remaining)} on the table` : "✓ Cash collected"}
               </p>
             ) : paidCents + tip > 0 ? (
               <div className="kc-stage" style={stage(520)}>
@@ -442,9 +440,9 @@ export function ServiceOrderComplete({
               </p>
             ) : null}
             <div className="mt-5 space-y-2 [@media(max-height:640px)]:mt-3">
-              {cashAtTable && remaining > 0 && onOpenCashTable ? (
-                <KButton full variant="sage" onClick={onOpenCashTable}>
-                  💵 Collect cash at the table
+              {cashAtTable && remaining > 0 && onCollectCash ? (
+                <KButton full variant="sage" onClick={onCollectCash}>
+                  💵 Collect cash
                 </KButton>
               ) : null}
               {isBusinessOrder && served.businessCustomers?.complete ? null : (
@@ -464,7 +462,7 @@ export function ServiceOrderComplete({
                 </KButton>
               ) : null}
               <KButton full variant="ghost" onClick={onExit}>
-                {isBusinessOrder ? "Back to Service" : "Back to Orders"}
+                {isBusinessOrder ? "Back to Service" : "Back to Kitchen"}
               </KButton>
             </div>
           </>
@@ -487,7 +485,7 @@ export function ServiceOrderComplete({
                 Prepare Again
               </KButton>
               <KButton full variant="ghost" onClick={onExit}>
-                {isBusinessOrder ? "Back to Service" : "Back to Orders"}
+                {isBusinessOrder ? "Back to Service" : "Back to Kitchen"}
               </KButton>
             </div>
           </>
