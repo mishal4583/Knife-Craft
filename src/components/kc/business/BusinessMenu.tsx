@@ -1,4 +1,5 @@
 import { INGREDIENT_EMOJI } from "@/game/knives/knifeDefinitions";
+import { useUnlockText } from "../navLevel";
 import { useState } from "react";
 import type { SaveData } from "@/game/SaveManager";
 import { Panel, Badge } from "../common/primitives";
@@ -72,6 +73,7 @@ export function BusinessMenu({
   /** The restaurant's campaign level (Unified Restaurant only). */
   restaurantLevel?: number;
 }) {
+  const u = useUnlockText();
   const [messages, setMessages] = useState<Partial<Record<string, string>>>({});
   const [category, setCategory] = useState<string>("All");
   const activation = save.business.menuActivation;
@@ -139,12 +141,12 @@ export function BusinessMenu({
             className="mt-1 font-hand text-[15px] leading-snug text-walnut/70"
             data-testid="menu-opens-at"
           >
-            🔒 The menu opens at Level {restaurantSystem("menu").firstLevel}
+            🔒 The menu opens {u.when(restaurantSystem("menu").firstLevel)}
           </p>
         ) : null}
         {restaurant && !chooses && pool.length > 0 ? (
           <p className="mt-1 font-hand text-[15px] leading-snug text-walnut/70">
-            ✨ New dishes go straight on · 🎛️ you choose from Level {MENU_CHOICE_LEVEL}
+            ✨ New dishes go straight on · 🎛️ you choose {u.when(MENU_CHOICE_LEVEL)}
           </p>
         ) : null}
         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
@@ -404,7 +406,7 @@ export function BusinessMenu({
                       🔒 {dish.name}
                     </span>
                     <span className="shrink-0 text-right font-ui text-[12px] font-extrabold text-walnut/55">
-                      Level {unlockLevel} · {cuisine}
+                      {u.level(unlockLevel)} · {cuisine}
                       {specialist ? <span className="block">needs {specialist.title}</span> : null}
                     </span>
                   </li>

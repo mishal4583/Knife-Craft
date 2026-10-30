@@ -104,7 +104,8 @@ console.log("A. The unlock");
   assert(
     zone("office")?.unlockLevel === 5 &&
       zone("service")?.unlockLevel === 5 &&
-      /Level 5\./.test(zone("office")?.unlockDescription ?? ""),
+      // Phase 1 (developer 2026-10-30, P5): no level in the zone's text; the map counts services.
+      !/Level/.test(zone("office")?.unlockDescription ?? ""),
     "A3: the map's office and service counter open with Business at L5",
     { office: zone("office"), service: zone("service") },
   );

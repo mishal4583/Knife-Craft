@@ -189,14 +189,15 @@ console.log("L. Locked links and Grandma's tips (developer 2026-10-09)");
 {
   assert(
     // Rule changed (developer 2026-10-25): Business opens at Level 5 (was 11).
-    lockedScreenHint("business-equipment", 3) === "🔒 Business opens at Level 5" &&
-      lockedScreenHint("business-equipment", 4) === "🔒 Business opens at Level 5" &&
+    // Rule changed (developer 2026-10-30, Phase 1 P5): the hint counts services, never a level.
+    lockedScreenHint("business-equipment", 3) === "🔒 Business opens in 2 services" &&
+      lockedScreenHint("business-equipment", 4) === "🔒 Business opens after the next service" &&
       lockedScreenHint("business-equipment", 5) === null &&
       // The Market and Inventory are open from Level 1 (developer 2026-10-30).
       lockedScreenHint("shop-ingredients", 1) === null &&
       lockedScreenHint("inventory-supplies", 1) === null &&
       // Rule changed (developer 2026-10-26): Progress opens at L5 (was L10).
-      lockedScreenHint("rack", 4) === "🔒 Progress opens at Level 5" &&
+      lockedScreenHint("rack", 4) === "🔒 Progress opens after the next service" &&
       lockedScreenHint("rack", 5) === null &&
       lockedScreenHint("business-equipment", 11) === null &&
       lockedScreenHint("kitchen-upgrades", 1) === null &&
@@ -233,7 +234,8 @@ console.log("W. Wiring");
   assert(
     /const reached = useContext\(NavLevelContext\);/.test(kitchen) &&
       /RESTAURANT_MODE && reached !== null && !isTabOpen\(n\.id, reached\)/.test(kitchen) &&
-      /locked \? setHint\(`🔒 \$\{n\.label\} opens at Level \$\{opensAt\}`\) : go\(n\.id\)/.test(
+      // Phase 1 (P5): the tap says how many services are left (useUnlockText).
+      /locked \? setHint\(`🔒 \$\{n\.label\} opens \$\{u\.when\(opensAt!\)\}`\) : go\(n\.id\)/.test(
         kitchen,
       ) &&
       /<NavLevelContext\.Provider value=\{restaurantLevelOf\(save\.levelProgress\)\}>/.test(router),

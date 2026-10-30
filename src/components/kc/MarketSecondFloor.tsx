@@ -1,4 +1,5 @@
 import { Badge, KButton, Panel } from "./common/primitives";
+import { useUnlockText } from "./navLevel";
 import { ShopItemArt, StockPill } from "./common/ShopItemArt";
 import { BuyButton, PricePill, ShopCard, ShopLine } from "./market/ShopCard";
 import { ShortfallOffer } from "./ads/ShortfallOffer";
@@ -45,6 +46,7 @@ export function MarketSecondFloor({
   setNotice: (text: string) => void;
   go: (s: ScreenId) => void;
 }) {
+  const u = useUnlockText();
   const level = restaurantLevelOf(save.levelProgress);
   const floor = secondFloorOf(save);
   const owned = Object.keys(floor.stations).length;
@@ -55,7 +57,7 @@ export function MarketSecondFloor({
     const r = onAction(action);
     if (r.ok) setNotice(`${name} — done!`);
     else if (r.reason === "insufficientFunds") setNotice(notEnoughMoneyText(price, save.credits));
-    else if (r.reason === "locked") setNotice(`${name} goes on sale at Level ${STATIONS_OPEN_AT}.`);
+    else if (r.reason === "locked") setNotice(`${name} goes on sale ${u.when(STATIONS_OPEN_AT)}.`);
     else if (r.reason === "noStations") setNotice("🏬 Buy a machine first");
     else if (r.reason === "fullTeam") setNotice("The floor team is full.");
     else setNotice(`${name} couldn't be bought right now.`);
@@ -65,10 +67,10 @@ export function MarketSecondFloor({
     return (
       <Panel className="p-4" data-testid="market-second-floor">
         <p className="font-ui text-[13px] font-extrabold text-walnut-dark">
-          🔒 Opens at Level {SECOND_FLOOR_OPENS_AT}
+          🔒 Opens {u.when(SECOND_FLOOR_OPENS_AT)}
         </p>
         <p className="mt-1 font-ui text-[12.5px] text-walnut/65">
-          🛒 Machines on sale at Level {STATIONS_OPEN_AT}
+          🛒 Machines on sale {u.when(STATIONS_OPEN_AT)}
         </p>
       </Panel>
     );
@@ -161,7 +163,7 @@ export function MarketSecondFloor({
                         disabled={locked || save.credits < d.price}
                         onClick={() => run({ kind: "buy", id: d.id }, d.name, d.price)}
                       >
-                        {locked ? `🔒 Level ${d.unlockLevel}` : `Buy ${formatUsd(d.price)}`}
+                        {locked ? u.badge(d.unlockLevel) : `Buy ${formatUsd(d.price)}`}
                       </BuyButton>
                       {locked ? null : <ShortfallOffer price={d.price} item={d.name} />}
                     </div>

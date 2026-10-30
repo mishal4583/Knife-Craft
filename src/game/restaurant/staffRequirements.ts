@@ -48,6 +48,7 @@ import { takeOnCredit } from "./supplierCredit";
 import { formatUsd } from "../money";
 import type { OrderService } from "./serviceSupplies";
 import { remapCampaignThreshold } from "../levels/campaignSelection";
+import { opensInText } from "./servicesToGo";
 
 // ── Configuration ───────────────────────────────────────────────────────
 
@@ -443,7 +444,7 @@ export function staffComingUp(levelNumber: number): StaffNotice[] {
     ...SPECIALIST_CHEFS.filter((s) => soon(s.firstLevel)).map((s) => ({
       level: s.firstLevel,
       title: s.title,
-      why: `${s.cuisines[0]} dishes start at Level ${s.firstLevel} — hire the ${s.title} (${formatUsd(staffHireFee(s.id) ?? 0)}).`,
+      why: `${s.cuisines[0]} dishes start ${opensInText(s.firstLevel, levelNumber)} — hire the ${s.title} (${formatUsd(staffHireFee(s.id) ?? 0)}).`,
     })),
   ].sort((a, b) => a.level - b.level);
 }

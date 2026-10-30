@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useUnlockText } from "./navLevel";
 import { RestaurantNameField } from "./RestaurantNameCard";
 import type { Measure } from "@/game/business/measure";
 import type { ScreenId } from "./data";
@@ -138,6 +139,7 @@ export function EndlessService({
   save: SaveData;
   onStartEndless: () => void;
 }) {
+  const u = useUnlockText();
   const today = new Date();
   const pool = endlessPool(save.levelProgress);
   const earnedToday = coinsEarnedToday(save.endless, today);
@@ -189,7 +191,7 @@ export function EndlessService({
             <Panel className="p-5 text-center">
               <p className="text-[40px] leading-none">🔒</p>
               <p className="mt-2 font-display text-[17.5px] font-black text-walnut-dark">
-                Unlocks after Level {LAST_CAMPAIGN_LEVEL}
+                Unlocks {u.final}
               </p>
               <p className="mt-1 font-hand text-[17px] leading-snug text-walnut/65">
                 ♾️ Serve orders back to back · 💵 up to {formatUsd(ENDLESS_DAILY_COIN_CAP)} a day

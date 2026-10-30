@@ -22,7 +22,6 @@ export const RESTAURANT_MAP_ZONES: HotspotZoneConfig[] = [
     roomBounds: { x: 3.8, y: 1.8, w: 32.2, h: 16.8 },
     bannerBounds: { x: 4.8, y: 3.4, w: 23.2, h: 3.8 },
     unlockLevel: 3,
-    unlockDescription: 'Inventory opens at Level 3.'
   },
   {
     id: 'refrigerator',
@@ -35,7 +34,6 @@ export const RESTAURANT_MAP_ZONES: HotspotZoneConfig[] = [
     roomBounds: { x: 35.5, y: 1.8, w: 31.0, h: 16.8 },
     bannerBounds: { x: 39.4, y: 3.5, w: 22.1, h: 3.6 },
     unlockLevel: earlyUnlock(21),
-    unlockDescription: 'Unlocks at Level 5.'
   },
   {
     id: 'staff',
@@ -48,7 +46,6 @@ export const RESTAURANT_MAP_ZONES: HotspotZoneConfig[] = [
     roomBounds: { x: 66.0, y: 1.8, w: 30.5, h: 16.8 },
     bannerBounds: { x: 69.4, y: 3.2, w: 25.5, h: 3.7 },
     unlockLevel: earlyUnlock(41),
-    unlockDescription: 'Unlocks at Level 5.'
   },
   {
     id: 'knifeEquipment',
@@ -61,7 +58,6 @@ export const RESTAURANT_MAP_ZONES: HotspotZoneConfig[] = [
     roomBounds: { x: 44.5, y: 18.0, w: 36.0, h: 16.5 },
     bannerBounds: { x: 55.0, y: 19.2, w: 25.5, h: 4.0 },
     unlockLevel: earlyUnlock(7),
-    unlockDescription: 'Unlocks at Level 5.'
   },
   {
     id: 'blacksmith',
@@ -74,7 +70,6 @@ export const RESTAURANT_MAP_ZONES: HotspotZoneConfig[] = [
     roomBounds: { x: 26.5, y: 18.0, w: 22.5, h: 18.5 },
     bannerBounds: { x: 27.4, y: 19.4, w: 18.0, h: 3.9 },
     unlockLevel: earlyUnlock(10),
-    unlockDescription: 'Unlocks at Level 5.'
   },
   {
     id: 'kitchen',
@@ -113,7 +108,6 @@ export const RESTAURANT_MAP_ZONES: HotspotZoneConfig[] = [
     roomBounds: { x: 48.5, y: 34.0, w: 32.0, h: 14.2 },
     bannerBounds: { x: 50.5, y: 35.2, w: 27.0, h: 4.0 },
     unlockLevel: earlyUnlock(71),
-    unlockDescription: 'Unlocks at Level 5.'
   },
   {
     id: 'restroom',
@@ -139,7 +133,6 @@ export const RESTAURANT_MAP_ZONES: HotspotZoneConfig[] = [
     roomBounds: { x: 3.8, y: 53.4, w: 26.2, h: 24.0 },
     bannerBounds: { x: 4.6, y: 54.5, w: 21.7, h: 3.9 },
     unlockLevel: BUSINESS_MENU_FIRST_LEVEL,
-    unlockDescription: `Business opens at Level ${BUSINESS_MENU_FIRST_LEVEL}.`
   },
   {
     id: 'service',
@@ -152,7 +145,6 @@ export const RESTAURANT_MAP_ZONES: HotspotZoneConfig[] = [
     roomBounds: { x: 30.5, y: 48.2, w: 50.5, h: 5.8 },
     bannerBounds: { x: 45.0, y: 49.7, w: 21.8, h: 3.6 },
     unlockLevel: BUSINESS_MENU_FIRST_LEVEL,
-    unlockDescription: `Business service opens at Level ${BUSINESS_MENU_FIRST_LEVEL}.`
   },
   {
     id: 'dining',
@@ -165,7 +157,6 @@ export const RESTAURANT_MAP_ZONES: HotspotZoneConfig[] = [
     roomBounds: { x: 30.5, y: 53.4, w: 67.0, h: 25.8 },
     bannerBounds: { x: 46.2, y: 66.0, w: 21.0, h: 3.8 },
     unlockLevel: earlyUnlock(31),
-    unlockDescription: 'Unlocks at Level 5.'
   }
 ];
 

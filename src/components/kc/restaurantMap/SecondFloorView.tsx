@@ -7,6 +7,7 @@
  * only shows them and calls `onAction`.
  */
 import { useEffect, useState } from "react";
+import { useUnlockText } from "../navLevel";
 import { FloorLife } from "./FloorLife";
 import { FLOOR_LIFE_ALWAYS_PREVIEW, FLOOR_LIFE_PREVIEW } from "@/game/restaurant/floorLife";
 import { KButton } from "@/components/kc/common/primitives";
@@ -126,6 +127,7 @@ export function SecondFloorView({
   onOpenMarket?: () => void;
   reducedMotion?: boolean;
 }) {
+  const u = useUnlockText();
   // The floor earns by the real clock: re-read it every few seconds while open.
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -278,7 +280,7 @@ export function SecondFloorView({
         <p className="font-ui text-[13px] leading-snug text-walnut/75">
           {ownedCount === 0
             ? playerLevel < STATIONS_OPEN_AT
-              ? `🔒 Stations on sale at Level ${STATIONS_OPEN_AT} · look around`
+              ? `🔒 Stations on sale ${u.when(STATIONS_OPEN_AT)} · look around`
               : "🏬 Buy a station to bring guests upstairs"
             : `🍔 Guests eat what the machines make · ${formatUsd(perHour)}/h`}
         </p>
@@ -313,7 +315,7 @@ export function SecondFloorView({
               onClick={() => act({ kind: "buy", id: d.id })}
             >
               {locked
-                ? `🔒 For sale from Level ${d.unlockLevel}`
+                ? `🔒 For sale ${u.when(d.unlockLevel)}`
                 : short > 0
                   ? `${formatUsd(d.price)} · need ${formatUsd(short)} more`
                   : `Buy for ${formatUsd(d.price)}`}
@@ -424,7 +426,7 @@ export function SecondFloorView({
                     !locked
                       ? ""
                       : tooEarly
-                        ? ` — opens at Level ${station!.unlockLevel}`
+                        ? ` — opens ${u.when(station!.unlockLevel)}`
                         : ` — locked, buy for ${formatUsd(station!.price)}`
                   }`}
                   className={`map-hotspot-zone ${locked ? "is-locked" : "is-unlocked"} ${open === z.id ? "is-current-screen" : ""}`}
@@ -458,7 +460,7 @@ export function SecondFloorView({
                           🔒
                         </span>
                         <span className="lock-text">
-                          {tooEarly ? `Lv.${station!.unlockLevel}` : formatUsd(station!.price)}
+                          {tooEarly ? u.badge(station!.unlockLevel) : formatUsd(station!.price)}
                         </span>
                       </div>
                     ) : owned && !isStaffed(floor, station!.id) ? (

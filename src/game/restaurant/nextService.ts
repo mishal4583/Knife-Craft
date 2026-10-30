@@ -9,7 +9,8 @@
  *    `opensInText`, `lockBadge`): a feature that opens at level N is open once the furthest
  *    level reached (`restaurantLevelOf`) is N, so N − reached first services are still to play.
  *
- * Pure; reads only the level list and `levelProgress`.
+ * Pure; reads only the level list and `levelProgress`. The wording lives in servicesToGo.ts (no
+ * imports, so any game module can use it).
  */
 import { getLevels, isCompleted, isUnlocked, type LevelProgress } from "@/game/levels/LevelManager";
 import type { LevelDefinition } from "@/game/levels/levelTypes";
@@ -19,19 +20,4 @@ export function nextServiceLevel(progress: LevelProgress): LevelDefinition | nul
   return getLevels().find((l) => isUnlocked(l, progress) && !isCompleted(l.id, progress)) ?? null;
 }
 
-/** First services still to play before something that opens at `openLevel` (0 = open now). */
-export function servicesLeft(openLevel: number, reached: number): number {
-  return Math.max(0, Math.round(openLevel) - Math.round(reached));
-}
-
-/** "after the next service" / "in 3 services" / "now" (after "opens", "unlocks", …). */
-export function opensInText(openLevel: number, reached: number): string {
-  const n = servicesLeft(openLevel, reached);
-  return n === 0 ? "now" : n === 1 ? "after the next service" : `in ${n} services`;
-}
-
-/** A short lock badge: "🔒 next service" / "🔒 3 services". */
-export function lockBadge(openLevel: number, reached: number): string {
-  const n = servicesLeft(openLevel, reached);
-  return n <= 1 ? "🔒 next service" : `🔒 ${n} services`;
-}
+export { lockBadge, opensInText, servicesLeft } from "./servicesToGo";

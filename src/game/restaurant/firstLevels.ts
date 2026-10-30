@@ -25,6 +25,7 @@ import { KNIFE_CATALOG } from "../knives/knifeDefinitions";
 import { BOARD_CATALOG } from "../boards/boardDefinitions";
 import { formatUsd } from "../money";
 import type { SaveData } from "../SaveManager";
+import { opensInText } from "./servicesToGo";
 
 /** Destinations that open later (Kitchen and the Restaurant map are always open). */
 export type LockableTab = "inventory" | "shop" | "rack" | "business";
@@ -170,7 +171,7 @@ export function sectionOfScreen(screen: string): LockableTab | null {
 export function lockedScreenHint(screen: string, reachedLevel: number): string | null {
   const section = sectionOfScreen(screen);
   if (!section || isTabOpen(section, reachedLevel)) return null;
-  return `🔒 ${TAB_NAMES[section]} opens at Level ${TAB_OPENS_AT[section]}`;
+  return `🔒 ${TAB_NAMES[section]} opens ${opensInText(TAB_OPENS_AT[section], reachedLevel)}`;
 }
 
 /**
@@ -217,7 +218,7 @@ export const GRANDMA_TIPS: Record<number, GrandmaTip> = {
   // Supplies plan A (developer 2026-10-10: "ask the player to buy some important
   // tools"): the Market sells from here — Grandma's first shopping list.
   10: {
-    text: "Dishes now need kitchen tools. Buy them in the Market before Level 11!",
+    text: "Dishes now need kitchen tools. Buy them in the Market first!",
     to: "shop",
     button: "Open Market",
   },

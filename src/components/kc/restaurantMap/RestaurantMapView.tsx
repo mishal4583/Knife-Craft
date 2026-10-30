@@ -1,4 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { useUnlockText } from "../navLevel";
 import { LandscapeBackdrop } from '@/components/kc/game/LandscapeBackdrop';
 import {
   DEFAULT_RESTAURANT_NAME,
@@ -36,6 +37,7 @@ export const RestaurantMap: React.FC<RestaurantMapProps> = ({
   mapJpgUrl,
   className = ''
 }) => {
+  const u = useUnlockText();
   const [hoveredZone, setHoveredZone] = useState<HotspotZoneConfig | null>(null);
   const [lockedNotice, setLockedNotice] = useState<string | null>(null);
   const [zoomLevel, setZoomLevel] = useState<number>(1);
@@ -80,7 +82,7 @@ export const RestaurantMap: React.FC<RestaurantMapProps> = ({
   const handleZoneClick = useCallback((zone: HotspotZoneConfig) => {
     const unlocked = isZoneUnlocked(zone, playerLevel);
     if (!unlocked) {
-      const msg = zone.unlockDescription || `${zone.name} unlocks at Level ${zone.unlockLevel}.`;
+      const msg = zone.unlockDescription || `${zone.name} unlocks ${u.when(zone.unlockLevel)}.`;
       showLockedNotice(msg);
       if (onLockedZoneClick) {
         onLockedZoneClick(zone);
@@ -89,7 +91,7 @@ export const RestaurantMap: React.FC<RestaurantMapProps> = ({
     }
 
     onNavigateToScreen(zone.targetScreen, zone.id);
-  }, [playerLevel, showLockedNotice, onLockedZoneClick, onNavigateToScreen]);
+  }, [playerLevel, showLockedNotice, onLockedZoneClick, onNavigateToScreen, u]);
 
   const handleKeyDown = (e: React.KeyboardEvent, zone: HotspotZoneConfig) => {
     if (e.key === 'Enter' || e.key === ' ') {
@@ -146,7 +148,7 @@ export const RestaurantMap: React.FC<RestaurantMapProps> = ({
       <div className="restaurant-map-toolbar" role="toolbar" aria-label="Map View Controls">
         <div className="map-legend-pills">
           <span className="legend-pill level-pill">
-            <span className="pill-dot" /> Level {playerLevel}
+            <span className="pill-dot" /> {u.noun} {playerLevel}
           </span>
           <span className="legend-pill hub-pill">Restaurant Hub</span>
         </div>
@@ -269,7 +271,7 @@ export const RestaurantMap: React.FC<RestaurantMapProps> = ({
                   id={`hotspot-${zone.id}`}
                   tabIndex={0}
                   role="button"
-                  aria-label={`${zone.name} (${zone.subName}) - ${unlocked ? 'Available' : `Locked (Requires Level ${zone.unlockLevel})`}`}
+                  aria-label={`${zone.name} (${zone.subName}) - ${unlocked ? 'Available' : `Locked (opens ${u.when(zone.unlockLevel)})`}`}
                   aria-disabled={!unlocked}
                   className={`map-hotspot-zone ${
                     unlocked ? 'is-unlocked' : 'is-locked'
@@ -302,7 +304,7 @@ export const RestaurantMap: React.FC<RestaurantMapProps> = ({
                     {!unlocked && (
                       <div className="locked-pill-badge" title={zone.unlockDescription}>
                         <span className="lock-icon" aria-hidden="true">🔒</span>
-                        <span className="lock-text">Lv.{zone.unlockLevel}</span>
+                        <span className="lock-text">{u.lv(zone.unlockLevel)}</span>
                       </div>
                     )}
                     {unlocked && (attentionCounts[zone.id] ?? 0) > 0 && (
@@ -348,7 +350,7 @@ export const RestaurantMap: React.FC<RestaurantMapProps> = ({
               <span className="card-status-badge badge-ready">Open</span>
             ) : (
               <span className="card-status-badge badge-locked">
-                🔒 Lv.{hoveredZone.unlockLevel}
+                {u.badge(hoveredZone.unlockLevel)}
               </span>
             )}
           </div>
@@ -358,7 +360,7 @@ export const RestaurantMap: React.FC<RestaurantMapProps> = ({
               <span className="card-action-hint">Tap to Enter Station ➔</span>
             ) : (
               <span className="card-locked-hint">
-                {hoveredZone.unlockDescription || `Unlocks at Campaign Level ${hoveredZone.unlockLevel}`}
+                {hoveredZone.unlockDescription || `Unlocks ${u.when(hoveredZone.unlockLevel)}`}
               </span>
             )}
           </div>

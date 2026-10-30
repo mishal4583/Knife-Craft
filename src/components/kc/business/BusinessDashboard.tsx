@@ -1,4 +1,5 @@
 import type { DeliveryKind } from "@/game/restaurant/deliveries";
+import { useUnlockText } from "../navLevel";
 import { ENDLESS_RESTAURANT_NAME, businessDayAllowed } from "@/game/restaurant/endlessRestaurant";
 import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
 import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
@@ -771,6 +772,7 @@ function PopularityCard({
 }
 
 function RankCard({ save, go }: { save: SaveData; go: (s: ScreenId) => void }) {
+  const u = useUnlockText();
   const p = restaurantProgress(save);
   return (
     <Panel tone="cream" className="p-4">
@@ -782,9 +784,9 @@ function RankCard({ save, go }: { save: SaveData; go: (s: ScreenId) => void }) {
         <Bar fraction={p.rank.fraction} />
       </div>
       <p className="mt-1.5 font-ui text-[12.5px] font-bold text-walnut/70">
-        Level {p.campaignComplete ? p.level.total : p.level.current} / {p.level.total}
+        {u.noun} {p.campaignComplete ? p.level.total : p.level.current} / {p.level.total}
         {p.nextRank
-          ? ` · Next: ${p.nextRank.title} at Lv ${p.nextRank.levelRequired}`
+          ? ` · Next: ${p.nextRank.title} ${u.lv(p.nextRank.levelRequired)}`
           : " · every rank reached"}
       </p>
       <KButton full variant="cream" className="mt-3" onClick={() => go("rack")}>
@@ -869,7 +871,7 @@ function CampaignDayCard({ save, go }: { save: SaveData; go: (s: ScreenId) => vo
         <ul className="mt-2 space-y-1">
           {services.map((sv) => (
             <li key={sv.name} className="font-ui text-[13.5px] font-bold text-ivory/90">
-              {sv.done ? "✓" : "•"} {sv.name} · Level {sv.levelNumber}
+              {sv.done ? "✓" : "•"} {sv.name}
             </li>
           ))}
         </ul>
@@ -905,28 +907,28 @@ function CampaignDayCard({ save, go }: { save: SaveData; go: (s: ScreenId) => vo
 }
 
 function OneRestaurantNote() {
+  const u = useUnlockText();
   return (
     <Panel className="p-4">
       <div data-testid="one-restaurant-note">
         <div className="flex items-center justify-between gap-2">
           <Eyebrow>🍽️ One restaurant</Eyebrow>
           <InfoTip label="About your restaurant">
-            Your restaurant runs through the campaign: every level is a service, with menu orders,
-            stock, supplies and staff. Play the next level from the Kitchen. The{" "}
-            {ENDLESS_RESTAURANT_NAME} — open-ended days with everything you built — opens after
-            Level {LAST_CAMPAIGN_LEVEL}.
+            Your restaurant runs service after service, with menu orders, stock, supplies and staff.
+            Open for service from the Kitchen. The {ENDLESS_RESTAURANT_NAME} — open-ended days with
+            everything you built — opens after the final service.
           </InfoTip>
         </div>
         <Points
           className="mt-1"
           items={[
-            ["🎮", "Every level = one service"],
+            ["🎮", "Service after service"],
             ["🧾", "Orders · stock · supplies · staff"],
-            ["🏠", "Play the next level from the Kitchen"],
+            ["🏠", "Open for service from the Kitchen"],
           ]}
         />
         <p className="mt-1.5 font-ui text-[12.5px] font-bold text-walnut/60">
-          🔒 {ENDLESS_RESTAURANT_NAME} · after Level {LAST_CAMPAIGN_LEVEL}
+          🔒 {ENDLESS_RESTAURANT_NAME} · {u.final}
         </p>
       </div>
     </Panel>
@@ -1232,6 +1234,7 @@ function Operations({
   rushRestock: (payment: RushRestockPayment) => Promise<RushRestockOutcome>;
   rushAdAvailable: boolean;
 }) {
+  const u = useUnlockText();
   const blockedOrder = businessServiceSession?.current;
   const blockedDish = blockedOrder ? businessDishForRecipeId(blockedOrder.recipe.id) : undefined;
   const actionable = alerts.filter((a) => a.severity !== "ok");
@@ -1383,7 +1386,7 @@ function Operations({
           </KButton>
         ) : (
           <p className="mt-3 font-hand text-[15px] leading-snug text-walnut/70">
-            🌙 Day ends at closing · 🔒 {ENDLESS_RESTAURANT_NAME} after Lv {LAST_CAMPAIGN_LEVEL}
+            🌙 Day ends at closing · 🔒 {ENDLESS_RESTAURANT_NAME} {u.final}
           </p>
         )}
       </Panel>

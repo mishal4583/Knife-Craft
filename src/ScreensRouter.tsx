@@ -52,6 +52,7 @@ import type { ScreenId } from "@/components/kc/data";
 import type { SaveData } from "@/game/SaveManager";
 import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
 import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
+import { unlockText } from "@/components/kc/navLevel";
 import { kitchenMapArtStage, kitchenMapImageUrl } from "@/game/kitchen/kitchenMapArt";
 import {
   NavAttentionContext,
@@ -318,13 +319,13 @@ export function ScreensRouter({
                       aria-label={
                         open
                           ? `Upstairs to the second floor${waiting ? ", money waiting" : ""}`
-                          : `Second floor opens at Level ${SECOND_FLOOR_OPENS_AT}`
+                          : `Second floor opens ${unlockText(RESTAURANT_MODE ? level : null).when(SECOND_FLOOR_OPENS_AT)}`
                       }
                       onClick={() => (open ? routeGo("second-floor") : undefined)}
                     >
                       {open
                         ? `⬆ 2nd floor${waiting ? " 💰" : ""}`
-                        : `🔒 2nd floor · Lv ${SECOND_FLOOR_OPENS_AT}`}
+                        : `🔒 2nd floor · ${unlockText(RESTAURANT_MODE ? level : null).lv(SECOND_FLOOR_OPENS_AT)}`}
                     </button>
                   );
                 })()}

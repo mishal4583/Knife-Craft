@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useUnlockText } from "../navLevel";
 import { clearStaffFocus, peekStaffFocus } from "../staffFocus";
 import type { SaveData } from "@/game/SaveManager";
 import { KButton, Panel, Badge } from "../common/primitives";
@@ -87,6 +88,7 @@ export function BusinessStaff({
   /** The kitchen helpers' one-time hire (App.buyStaff → StaffManager.buyStaff). */
   buyStaff: (id: string) => BuyStaffResult;
 }) {
+  const u = useUnlockText();
   const [message, setMessage] = useState<string | null>(null);
   // Opened from the Pre-Service Check: the roles that service needs (staffFocus.ts).
   const [needed] = useState(() => new Set(peekStaffFocus() ?? []));
@@ -111,7 +113,7 @@ export function BusinessStaff({
         : result.reason === "insufficientFunds"
           ? notEnoughMoneyText(result.fee ?? 0, save.credits)
           : result.reason === "notYet"
-            ? `Hiring opens at Level ${STAFF_HIRE_FROM}.`
+            ? `Hiring opens ${u.when(STAFF_HIRE_FROM)}.`
             : "That role is already hired.",
     );
   }
@@ -148,7 +150,7 @@ export function BusinessStaff({
           <TeamHeading
             id="restaurant-team"
             title="🍽️ Restaurant Team"
-            line={`💵 One-time hiring fee · ½ pay Lv ${HALF_WAGES_FROM} · full Lv ${wagesFrom}`}
+            line={`💵 One-time hiring fee · ½ pay ${u.lv(HALF_WAGES_FROM)} · full ${u.lv(wagesFrom)}`}
           />
         </>
       ) : null}
@@ -177,8 +179,8 @@ export function BusinessStaff({
             data-testid="staff-free-until"
           >
             {halfWages
-              ? `💵 Hiring fee once · ½ pay at closing until Lv ${wagesFrom}`
-              : `💵 Hiring fee once · no pay until Lv ${HALF_WAGES_FROM} · ½ pay to Lv ${wagesFrom}`}
+              ? `💵 Hiring fee once · ½ pay at closing · full ${u.lv(wagesFrom)}`
+              : `💵 Hiring fee once · ½ pay ${u.lv(HALF_WAGES_FROM)} · full ${u.lv(wagesFrom)}`}
             {payroll > 0 ? ` · then ${formatUsd(payroll)}/day` : ""}
           </p>
         ) : null}
@@ -240,7 +242,7 @@ export function BusinessStaff({
                 ) : (
                   <StaffPay
                     now={halfWages ? `${formatUsd(halfWage(def.role))}/day now` : "No pay yet"}
-                    later={`${formatUsd(def.salary)}/day from Lv ${wagesFrom}`}
+                    later={`${formatUsd(def.salary)}/day ${u.lv(wagesFrom)}`}
                   />
                 )
               }
@@ -309,6 +311,7 @@ function SpecialistChefs({
   /** Opened from the Pre-Service Check: the chefs that service needs. */
   needed?: ReadonlySet<string>;
 }) {
+  const u = useUnlockText();
   const level = restaurantLevelOf(save.levelProgress);
   const wagesFrom = restaurantSystem("full-operation").firstLevel;
   const wagesStarted = isSystemLive("full-operation", level);
@@ -320,7 +323,7 @@ function SpecialistChefs({
           <div>
             <Eyebrow>🌍 Specialist chefs</Eyebrow>
             <p className="mt-1 font-hand text-[14px] leading-snug text-walnut/65">
-              One chef per cuisine · hiring fee once · paid from Lv {wagesFrom}
+              One chef per cuisine · hiring fee once · paid {u.lv(wagesFrom)}
             </p>
           </div>
           <span className="rounded-full border border-gold/30 bg-gold/10 px-2 py-1 font-ui text-[11px] font-extrabold text-copper">
@@ -368,13 +371,13 @@ function SpecialistChefs({
                     ) : (
                       <StaffPay
                         now="No pay yet"
-                        later={`${formatUsd(chef.dailyWage)}/day from Lv ${wagesFrom}`}
+                        later={`${formatUsd(chef.dailyWage)}/day ${u.lv(wagesFrom)}`}
                       />
                     )
                   }
                   action={
                     !open ? (
-                      <Badge tone="locked">Opens Lv {specialistOpensAt(chef)}</Badge>
+                      <Badge tone="locked">{u.badge(specialistOpensAt(chef))}</Badge>
                     ) : isHired ? (
                       <KButton
                         full

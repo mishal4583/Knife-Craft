@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useUnlockText } from "../navLevel";
 import type { SaveData } from "@/game/SaveManager";
 import { Badge, KButton, Panel } from "../common/primitives";
 import { ShortfallOffer } from "../ads/ShortfallOffer";
@@ -45,6 +46,7 @@ export function KitchenHelpers({
   save: SaveData;
   buyStaff: (id: string) => BuyStaffResult;
 }) {
+  const u = useUnlockText();
   const [message, setMessage] = useState<string | null>(null);
   /** The hire a "Not enough money" line is about (its small-gap ad top-up shows under it). */
   const [short, setShort] = useState<{ price: number; name: string } | null>(null);
@@ -58,7 +60,7 @@ export function KitchenHelpers({
       return setMessage(notEnoughMoneyText(price, save.credits));
     }
     if (result.reason === "notUnlocked")
-      return setMessage(`${name} unlocks at Level ${unlockLevel}.`);
+      return setMessage(`${name} unlocks ${u.when(unlockLevel)}.`);
     setMessage(`${name} couldn't be hired right now.`);
   }
 
@@ -101,7 +103,7 @@ export function KitchenHelpers({
                   state === "owned" ? (
                     <StaffStatus tone="hired">✓ Hired</StaffStatus>
                   ) : state === "locked" ? (
-                    <StaffStatus tone="locked">🔒 Level {st.unlockLevel}</StaffStatus>
+                    <StaffStatus tone="locked">{u.badge(st.unlockLevel)}</StaffStatus>
                   ) : null
                 }
                 title={st.name}
@@ -112,7 +114,7 @@ export function KitchenHelpers({
                   state === "owned" ? (
                     <Badge tone="sage">✓ Yours for good</Badge>
                   ) : state === "locked" ? (
-                    <Badge tone="locked">Level {st.unlockLevel}</Badge>
+                    <Badge tone="locked">{u.level(st.unlockLevel)}</Badge>
                   ) : (
                     <KButton
                       full

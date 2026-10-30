@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useUnlockText } from "./navLevel";
 import { KButton, Panel } from "./common/primitives";
 import { Bar, Eyebrow } from "./common/Meters";
 import { cn } from "@/lib/utils";
@@ -16,6 +17,7 @@ const pts = (n: number) => `${n.toLocaleString("en-US")} pts`;
  * rival to pass (restaurant/cityRanking.ts). Read-only.
  */
 export function CityRankHero({ save }: { save: SaveData }) {
+  const u = useUnlockText();
   const c = cityRanking(save);
   return (
     <div
@@ -35,7 +37,7 @@ export function CityRankHero({ save }: { save: SaveData }) {
           <div className="mt-3">
             <Bar fraction={c.fraction} />
             <p className="mt-1.5 font-ui text-[12px] font-bold text-ivory/75">
-              Next: pass {c.next.emoji} {c.next.name} at Level {c.next.passedAtLevel}
+              Next: pass {c.next.emoji} {c.next.name} {u.when(c.next.passedAtLevel)}
             </p>
           </div>
         ) : (

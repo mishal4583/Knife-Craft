@@ -1,3 +1,4 @@
+import { useUnlockText } from "./navLevel";
 import { InfoTip } from "./common/InfoTip";
 import { useState } from "react";
 import type { ScreenId } from "./data";
@@ -74,6 +75,7 @@ export function KitchenUpgrades({
   /** Render as a Business sub-section, sharing its header, scroll area and bottom nav. */
   embedded?: boolean;
 }) {
+  const t = useUnlockText();
   const [selectedId, setSelectedId] = useState<string>(
     () =>
       KITCHEN_UPGRADE_CATALOG.find((u) => getKitchenUpgradeState(u.id, save) === "available")?.id ??
@@ -118,8 +120,7 @@ export function KitchenUpgrades({
           <Divider />
           {state === "locked" ? (
             <KButton full variant="ghost" disabled>
-              Unlocks at Level {selected.unlockLevel} ·{" "}
-              {formatUsd(kitchenTierPrice(selected, save))}
+              Unlocks {t.when(selected.unlockLevel)} · {formatUsd(kitchenTierPrice(selected, save))}
             </KButton>
           ) : state === "needsPrevious" ? (
             <KButton full variant="ghost" disabled>
@@ -181,7 +182,7 @@ export function KitchenUpgrades({
               ) : uState === "past" ? (
                 <Badge tone="cream">Upgraded ✓</Badge>
               ) : uState === "locked" ? (
-                <Badge tone="locked">Lv {u.unlockLevel}</Badge>
+                <Badge tone="locked">{t.lv(u.unlockLevel)}</Badge>
               ) : (
                 <Badge tone="copper">{formatUsd(kitchenTierPrice(u, save))}</Badge>
               )}

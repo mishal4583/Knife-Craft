@@ -1,4 +1,5 @@
 import { collectableTotal } from "@/game/progression/achievements";
+import { useUnlockText } from "./navLevel";
 import { dayClockFor, dayStripText, type DayLight } from "@/game/restaurant/dayClock";
 import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
 import { ENDLESS_RESTAURANT_NAME } from "@/game/restaurant/endlessRestaurant";
@@ -82,6 +83,7 @@ function Hotspot({
   /** The level this place opens at, while it's still closed (first levels, firstLevels.ts). */
   opensAt?: number | null;
 }) {
+  const u = useUnlockText();
   const locked = typeof opensAt === "number";
   return (
     <button
@@ -96,7 +98,7 @@ function Hotspot({
         {locked ? `🔒 ${label}` : label}
       </span>
       <span className="block font-hand text-[14px] leading-tight text-gold/90">
-        {locked ? `opens at Level ${opensAt}` : sub}
+        {locked ? `opens ${u.when(opensAt)}` : sub}
       </span>
     </button>
   );
@@ -154,6 +156,7 @@ export function Kitchen({
   /** Phase 5 (B3): opens today's gift sheet (App's openDailyGift) — the one place a gift is taken. */
   onOpenDailyGift?: () => void;
 }) {
+  const u = useUnlockText();
   const levelProgress = save.levelProgress;
   const attention = useContext(NavAttentionContext);
   const [expandedShortcut, setExpandedShortcut] = useState<string | null>(null);
@@ -263,7 +266,7 @@ export function Kitchen({
                 </span>
                 <p className="mt-1 truncate whitespace-nowrap font-ui text-[10px] font-bold leading-none text-ivory/70">
                   {nextRank
-                    ? `Next: ${nextRank.title} · Lv ${nextRank.levelRequired}`
+                    ? `Next: ${nextRank.title} · ${u.lv(nextRank.levelRequired)}`
                     : "Highest rank reached"}
                 </p>
               </>
@@ -406,7 +409,7 @@ export function Kitchen({
               aria-expanded={expandedShortcut === item.id}
               aria-label={
                 !unlocked
-                  ? `${item.label}, opens at Level ${opensAt}${expandedShortcut === item.id ? ". Locked" : ". Tap to expand"}`
+                  ? `${item.label}, opens ${u.when(opensAt!)}${expandedShortcut === item.id ? ". Locked" : ". Tap to expand"}`
                   : count
                     ? `${item.label}, ${count} ${count === 1 ? "item needs" : "items need"} attention${expandedShortcut === item.id ? ". Tap again to open" : ". Tap to expand"}`
                     : `${item.label}${expandedShortcut === item.id ? ". Tap again to open" : ". Tap to expand"}`
@@ -448,7 +451,7 @@ export function Kitchen({
                   expandedShortcut === item.id && "ml-1 max-w-[94px] opacity-100",
                 )}
               >
-                {unlocked ? item.label : `Lv ${opensAt}`}
+                {unlocked ? item.label : u.lv(opensAt!)}
               </span>
               <span
                 aria-hidden
@@ -620,6 +623,7 @@ export function OrderBoard({
   save: SaveData;
   onSelectLevel: (levelId: string) => void;
 }) {
+  const u = useUnlockText();
   const levelProgress = save.levelProgress;
   const levels = getLevels();
   // The most recently-reached milestone, not just the highest chapter's —
@@ -702,7 +706,7 @@ export function OrderBoard({
               </span>
               <span className="block font-hand text-[13px] text-walnut/60">
                 {!isEndlessUnlocked(levelProgress)
-                  ? `🔒 unlocks after Level ${LAST_CAMPAIGN_LEVEL}`
+                  ? `🔒 unlocks ${u.final}`
                   : RESTAURANT_MODE
                     ? "your restaurant, open every day"
                     : `ongoing earnings · up to ${formatUsd(ENDLESS_DAILY_COIN_CAP).replace(/\.00$/, "")}/day`}
@@ -852,12 +856,12 @@ export function OrderBoard({
                                 ? marketUnlock
                                   ? " in the Market"
                                   : ""
-                                : `${opensInMarket(nextReward) ? " in the Market" : ""} · Lv ${nextReward.atLevel}`}
+                                : `${opensInMarket(nextReward) ? " in the Market" : ""} · ${u.lv(nextReward.atLevel)}`}
                             </span>
                           ) : null}
                           {stageAfter && !campaignComplete ? (
                             <span className="font-ui text-[11px] font-bold text-copper/80">
-                              {stageAfter.icon} Next: {stageAfter.name} · Lv {stageAfter.atLevel}
+                              {stageAfter.icon} Next: {stageAfter.name} · {u.lv(stageAfter.atLevel)}
                             </span>
                           ) : null}
                         </div>
@@ -1013,6 +1017,7 @@ const NAV: { id: ScreenId; label: string; glyph: string }[] = [
  * used to light up Kitchen, as if the player were on the Kitchen home).
  */
 export function BottomNav({ active, go }: { active: ScreenId | null; go: (s: ScreenId) => void }) {
+  const u = useUnlockText();
   // First levels (restaurant build): a section that hasn't opened shows a lock
   // and its level; a tap says when it opens (game/restaurant/firstLevels.ts).
   const reached = useContext(NavLevelContext);
@@ -1085,10 +1090,10 @@ export function BottomNav({ active, go }: { active: ScreenId | null; go: (s: Scr
           <button
             key={n.id}
             type="button"
-            onClick={() => (locked ? setHint(`🔒 ${n.label} opens at Level ${opensAt}`) : go(n.id))}
+            onClick={() => (locked ? setHint(`🔒 ${n.label} opens ${u.when(opensAt!)}`) : go(n.id))}
             aria-label={
               locked
-                ? `${n.label}, opens at Level ${opensAt}`
+                ? `${n.label}, opens ${u.when(opensAt!)}`
                 : attention.nav[n.id]
                   ? `${n.label}, ${attention.nav[n.id]} ${attention.nav[n.id] === 1 ? "item needs" : "items need"} attention`
                   : undefined
@@ -1144,7 +1149,7 @@ export function BottomNav({ active, go }: { active: ScreenId | null; go: (s: Scr
             >
               {locked ? (
                 <span className="whitespace-nowrap font-ui text-[11px] font-extrabold text-ivory">
-                  🔒 Lv {opensAt}
+                  {u.badge(opensAt!)}
                 </span>
               ) : (
                 n.glyph
@@ -1180,6 +1185,7 @@ export function BottomNav({ active, go }: { active: ScreenId | null; go: (s: Scr
  * the Kitchen Upgrades screen it opens. Hidden once every tier is built.
  */
 function NextKitchenStrip({ save, go }: { save: SaveData; go: (s: ScreenId) => void }) {
+  const u = useUnlockText();
   const next = nextKitchenUpgrade(save);
   if (!next) return null;
   const pct = Math.round(next.progress * 100);
@@ -1189,7 +1195,7 @@ function NextKitchenStrip({ save, go }: { save: SaveData; go: (s: ScreenId) => v
       onClick={() => go("kitchen-upgrades")}
       data-testid="next-kitchen-strip"
       data-state={next.ready ? "ready" : next.state}
-      aria-label={`Next kitchen: ${next.name}, ${formatUsd(next.price)}${next.state === "locked" ? `, opens at Level ${next.unlockLevel}` : ""}. You have ${formatUsd(save.credits)}.`}
+      aria-label={`Next kitchen: ${next.name}, ${formatUsd(next.price)}${next.state === "locked" ? `, opens ${u.when(next.unlockLevel)}` : ""}. You have ${formatUsd(save.credits)}.`}
       className="press min-h-12 w-[188px] max-w-full rounded-2xl border border-ivory/25 bg-walnut-dark/45 px-3 py-1.5 text-left backdrop-blur-sm"
     >
       <p className="truncate whitespace-nowrap font-ui text-[11px] font-extrabold text-gold">
@@ -1208,11 +1214,7 @@ function NextKitchenStrip({ save, go }: { save: SaveData; go: (s: ScreenId) => v
       <p className="mt-1 flex items-center justify-between gap-1.5 whitespace-nowrap font-ui text-[11px] font-bold leading-none text-ivory/80">
         <span>{formatUsd(next.price)}</span>
         <span className={next.ready ? "text-gold" : undefined}>
-          {next.ready
-            ? "✓ Ready"
-            : next.state === "locked"
-              ? `🔒 Lv ${next.unlockLevel}`
-              : `${pct}%`}
+          {next.ready ? "✓ Ready" : next.state === "locked" ? u.badge(next.unlockLevel) : `${pct}%`}
         </span>
       </p>
     </button>
@@ -1220,6 +1222,7 @@ function NextKitchenStrip({ save, go }: { save: SaveData; go: (s: ScreenId) => v
 }
 
 function CityRankBadge({ save }: { save: SaveData }) {
+  const u = useUnlockText();
   const c = cityRanking(save);
   return (
     <>
@@ -1240,7 +1243,7 @@ function CityRankBadge({ save }: { save: SaveData }) {
       </span>
       <p className="mt-1 truncate whitespace-nowrap font-ui text-[10px] font-bold leading-none text-ivory/70">
         {c.next
-          ? `Next: pass ${c.next.name} · Lv ${c.next.passedAtLevel}`
+          ? `Next: pass ${c.next.name} · ${u.lv(c.next.passedAtLevel)}`
           : "The city's best restaurant"}
       </p>
     </>

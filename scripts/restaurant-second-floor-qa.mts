@@ -320,9 +320,10 @@ console.log("L. Station locks");
   );
   assert(
     /locked-pill-badge/.test(view) &&
-      /Lv\.\$\{station!\.unlockLevel\}/.test(view) &&
+      // Phase 1 (developer 2026-10-30, P5): the pill counts services ("🔒 3 services").
+      /u\.badge\(station!\.unlockLevel\)/.test(view) &&
       /const locked = !!station && !owned/.test(view),
-    'L3: every unbought station shows the first floor\'s lock pill ("🔒 Lv.60", then its price)',
+    'L3: every unbought station shows the first floor\'s lock pill ("🔒 N services", then its price)',
   );
   const r = buyStation(fresh(1_000_000_00), "hotFood", 4, T0);
   const ok = buyStation(fresh(1_000_000_00), "hotFood", 5, T0);

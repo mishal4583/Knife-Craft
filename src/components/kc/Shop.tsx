@@ -1,4 +1,5 @@
 import { MarketSecondFloor } from "./MarketSecondFloor";
+import { useUnlockText } from "./navLevel";
 import { ShopItemArt } from "./common/ShopItemArt";
 import { BuyButton, PricePill, ShopCard, ShopLine } from "./market/ShopCard";
 import { marketNeeds } from "@/game/restaurant/marketNeeds";
@@ -272,6 +273,7 @@ export function Shop({
   /** The level whose Pre-Service Check is open: what the Market highlights is for it. */
   planLevelId?: string | null;
 }) {
+  const u = useUnlockText();
   // First levels (restaurant build, firstLevels.ts): before Level 3 the
   // Market is locked; from Level 3 all ingredient categories can be purchased.
   const browseOnly =
@@ -285,7 +287,7 @@ export function Shop({
   const [category, setCategory] = useState<ShopCategory>(startCategory);
   const [notice, setNotice] = useState(
     browseOnly
-      ? `🔒 Ingredients from Level ${FIRST_INGREDIENT_PURCHASE_LEVEL}`
+      ? `🔒 Ingredients ${u.when(FIRST_INGREDIENT_PURCHASE_LEVEL)}`
       : startCategory === "knives"
         ? "Welcome back, Chef!"
         : categoryCopy[startCategory].description,
@@ -316,7 +318,7 @@ export function Shop({
     if (result.reason === "insufficientFunds")
       return setNotice(notEnoughMoneyText(price, save.credits));
     if (result.reason === "notUnlocked" && unlockLevel)
-      return setNotice(`${name} unlocks at Level ${unlockLevel}.`);
+      return setNotice(`${name} unlocks ${u.when(unlockLevel)}.`);
     setNotice(`${name} couldn't be bought right now.`);
   }
 
@@ -369,7 +371,7 @@ export function Shop({
                     },
                   }
                 : state === "locked"
-                  ? { kind: "locked", label: `Unlocks at Level ${k.unlockLevel}` }
+                  ? { kind: "locked", label: `Unlocks ${u.when(k.unlockLevel)}` }
                   : {
                       kind: "buy",
                       label: "Buy",
@@ -406,7 +408,7 @@ export function Shop({
                     },
                   }
                 : state === "locked"
-                  ? { kind: "locked", label: `Unlocks at Level ${b.unlockLevel}` }
+                  ? { kind: "locked", label: `Unlocks ${u.when(b.unlockLevel)}` }
                   : {
                       kind: "buy",
                       label: "Buy",

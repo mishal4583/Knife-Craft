@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { useUnlockText } from "../navLevel";
 import { KButton, Panel } from "@/components/kc/common/primitives";
 import { AudioManager } from "@/game/AudioManager";
 import { Eyebrow } from "@/components/kc/common/Meters";
@@ -52,6 +53,7 @@ export function StandingOrdersCard({
   level: number;
   onToggle: (kind: DeliveryKind, on: boolean) => void;
 }) {
+  const u = useUnlockText();
   const st = deliveriesOf(save);
   const today = restaurantDayOf(save).day;
   if (level < DELIVERIES_FROM)
@@ -59,7 +61,7 @@ export function StandingOrdersCard({
       <Panel className="p-4" data-testid="standing-orders">
         <Eyebrow>🚚 Standing orders</Eyebrow>
         <p className="mt-1 font-ui text-[13.5px] text-walnut/70">
-          Deliveries start at Level {DELIVERIES_FROM}.
+          Deliveries start {u.when(DELIVERIES_FROM)}.
         </p>
       </Panel>
     );

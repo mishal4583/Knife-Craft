@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useUnlockText } from "../navLevel";
 import { staffHireFee } from "@/game/restaurant/staffRequirements";
 import type { ScreenId } from "../data";
 import { KButton, Panel } from "../common/primitives";
@@ -65,6 +66,7 @@ export function BusinessCleanliness({
   /** A Cleaner for today, paid or for an ad (App; developer 2026-10-17). */
   dayCleaner?: DayCleanerOffer;
 }) {
+  const u = useUnlockText();
   const level = restaurantLevelOf(save.levelProgress);
   const st = cleanlinessOf(save);
   const areas = CLEAN_AREAS.map((a) => areaView(save, a, level));
@@ -80,7 +82,7 @@ export function BusinessCleanliness({
           🧹
         </p>
         <p className="font-display text-[18px] font-black text-walnut-dark">
-          Cleanliness opens at Level {CLEANING_FROM_LEVEL}
+          Cleanliness opens {u.when(CLEANING_FROM_LEVEL)}
         </p>
       </Panel>
     );
@@ -538,6 +540,7 @@ function StaffCard({
   level: number;
   onAreas: (areas: CleanArea[]) => void;
 }) {
+  const u = useUnlockText();
   const hired = hasCleaner(save);
   const today = !hired && dayCleanerToday(save);
   const st = cleanlinessOf(save);
@@ -568,7 +571,7 @@ function StaffCard({
           <p className="font-display text-[17px] font-black text-walnut-dark">Cleaner</p>
           <p className="font-ui text-[12.5px] text-walnut/70">
             {level < wagesFrom
-              ? `💵 Hire ${formatUsd(staffHireFee("cleaner") ?? 0)} · no pay until Lv ${wagesFrom}`
+              ? `💵 Hire ${formatUsd(staffHireFee("cleaner") ?? 0)} · pay ${u.lv(wagesFrom)}`
               : `💵 ${formatUsd(wage)}/day`}{" "}
             · 🧹 after each service
           </p>
@@ -619,6 +622,7 @@ function StaffCard({
 /* ── Recent history + inspection ───────────────────────────────────── */
 
 function HistoryCard({ save, level }: { save: SaveData; level: number }) {
+  const u = useUnlockText();
   const rec = restaurantRecordOf(save);
   const inspections = restaurantSystem("full-operation").firstLevel;
   const dots = Array.from({ length: SPOTLESS_QUALITY_STREAK }, (_, i) => i < rec.streak);
@@ -661,7 +665,7 @@ function HistoryCard({ save, level }: { save: SaveData; level: number }) {
         <p className="font-ui text-[12.5px] font-bold leading-snug">
           {level >= inspections
             ? "🕵️ Checked at closing · ⚠️ undone = warning · 💸 repeat = fine"
-            : `🕵️ Inspections from Level ${inspections}`}
+            : `🕵️ Inspections ${u.when(inspections)}`}
         </p>
       </div>
     </Panel>

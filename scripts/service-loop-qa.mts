@@ -9,6 +9,9 @@
  *   S. after a story card nothing rolls on by itself (decision P3: back to the Kitchen, one tap);
  *   L. no level number on the service path (Pre-Service Check, its back link, Closing Time, Daily
  *      Maintenance, the restock panel and its notes, the Market's need label);
+ *   U. unlock copy names services, not levels (decision P5), everywhere in the restaurant screens
+ *      and game copy — except item levels (Blacksmith ★, Second-Floor machines) and the classic
+ *      build's own wording (`u.live ? … : …`, navLevel.ts);
  *   M. the module touches no wallet, ledger, save or random.
  *
  * Run: npx tsx scripts/service-loop-qa.mts
@@ -136,6 +139,41 @@ for (const p of [
     !LEVEL_COPY.test(codeOnly(p)),
     codeOnly(p).match(LEVEL_COPY)?.[0],
   );
+
+// ── U. unlock copy everywhere ────────────────────────────────────────────
+const ITEM_LEVEL =
+  /knifeLevel|result\.level|owned\.level|\blvl\b|\$\{level\}|\{level\}|demandLevelFor|u\.live \?/;
+const walk = (dir: string): string[] =>
+  fs
+    .readdirSync(path.join(process.cwd(), dir), { withFileTypes: true })
+    .flatMap((e) =>
+      e.isDirectory()
+        ? walk(path.join(dir, e.name))
+        : /\.tsx?$/.test(e.name)
+          ? [path.join(dir, e.name).replace(/\\/g, "/")]
+          : [],
+    );
+const ANY_LEVEL_COPY = /\b(Level|Lv\.?) ?(\$\{|\{)|["'`>][^"'`<]*\b(Level|Lv\.?) [0-9]+/;
+const leftovers = [
+  ...walk("src/components/kc"),
+  ...walk("src/game/restaurant"),
+  "src/ScreensRouter.tsx",
+]
+  .filter((p) => !p.endsWith("navLevel.ts"))
+  .flatMap((p) =>
+    codeOnly(p)
+      .split("\n")
+      .filter((l) => ANY_LEVEL_COPY.test(l) && !ITEM_LEVEL.test(l))
+      .map((l) => `${path.basename(p)}: ${l.trim().slice(0, 90)}`),
+  );
+check("U1 no unlock copy names a level", leftovers.length === 0, leftovers);
+const nav = src("src/components/kc/navLevel.ts");
+check(
+  "U2 the classic build keeps its level wording; the restaurant build counts services",
+  /RESTAURANT_MODE && reached !== null/.test(nav) &&
+    /`at Level \$\{n\}`/.test(nav) &&
+    /opensInText\(n, reached/.test(nav),
+);
 
 // ── M. purity ────────────────────────────────────────────────────────────
 const mod = src("src/game/restaurant/nextService.ts").replace(/\/\*[\s\S]*?\*\//g, "");

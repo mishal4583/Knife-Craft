@@ -1,4 +1,5 @@
 import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
+import { useUnlockText } from "../navLevel";
 import { kitchenMapArtStage } from "@/game/kitchen/kitchenMapArt";
 import { inventoryMenuOf, menuOpensAt, restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
 import { RestaurantAttentionPanel } from "./RestaurantAttentionPanel";
@@ -316,13 +317,14 @@ function StockCard({
   /** Restaurant build, before the menu opens: its level (there is no menu need yet). */
   menuOpensAt?: number | null;
 }) {
+  const u = useUnlockText();
   const t = STATUS_TILE[item.status];
   const price = `${formatUsd(pricePerMarketUnit(item.ingredientId, item.unitPrice, displayMeasure()))} / ${unitOf(item)}`;
   const need =
     item.todayRequirement !== undefined
       ? `Today's menu: ≈ ${approx(item.todayRequirement, item)} needed`
       : menuOpensAt !== null
-        ? `Your menu opens at Level ${menuOpensAt}`
+        ? `Your menu opens ${u.when(menuOpensAt)}`
         : "Not on today's menu";
   return (
     <article
@@ -362,7 +364,7 @@ function StockCard({
           {item.todayRequirement !== undefined
             ? `🍽️ ≈ ${approx(item.todayRequirement, item)}`
             : menuOpensAt !== null
-              ? `🔒 Lv ${menuOpensAt}`
+              ? u.badge(menuOpensAt)
               : "🍽️ —"}
         </span>
       </button>
@@ -400,6 +402,7 @@ function DetailSheet({
   /** Restaurant build, before the menu opens: its level. */
   menuOpensAt?: number | null;
 }) {
+  const u = useUnlockText();
   return (
     <div className="absolute inset-x-0 top-0 bottom-[78px] z-40 flex flex-col justify-end">
       <button
@@ -486,7 +489,7 @@ function DetailSheet({
           </ul>
         ) : (
           <p className="font-hand text-[15px] text-walnut/65">
-            {menuOpensAt !== null ? `🔒 Menu opens at Level ${menuOpensAt}` : "Not on today's menu"}
+            {menuOpensAt !== null ? `🔒 Menu opens ${u.when(menuOpensAt)}` : "Not on today's menu"}
           </p>
         )}
         {item.todayRequirement !== undefined ? (
@@ -604,6 +607,7 @@ export function InventoryScreen({
   initialKind?: InventoryKind;
   throwOutExpired: () => DiscardExpiredResult;
 }) {
+  const u = useUnlockText();
   const [kind, setKind] = useState<InventoryKind>(initialKind);
   // Restaurant build (Pass 2 review): stock is measured against the restaurant's
   // menu at its level — none before the menu opens — never the whole catalog.
@@ -813,7 +817,7 @@ export function InventoryScreen({
                         No menu yet
                       </span>
                       <span className="block font-ui text-[12px] font-bold text-walnut/65">
-                        🔒 Lv {menuOpensAtLevel}
+                        {u.badge(menuOpensAtLevel)}
                       </span>
                     </span>
                   </div>

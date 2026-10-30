@@ -1,4 +1,5 @@
 import { collectableTotal } from "@/game/progression/achievements";
+import { useUnlockText } from "./navLevel";
 import type { ReactNode } from "react";
 import type { ScreenId } from "./data";
 import { Badge, Coin, Divider, Panel, ScreenHeader, Stars } from "./common/primitives";
@@ -154,6 +155,7 @@ function NumbersCard({ save }: { save: SaveData }) {
 /* ── 1. WHERE AM I? ────────────────────────────────────── */
 
 function RankHero({ p }: { p: Progress }) {
+  const u = useUnlockText();
   const pct = Math.round(p.rank.fraction * 100);
   return (
     <div className="relative overflow-hidden rounded-[26px] border border-walnut-dark/50 wood p-5 shadow-lift">
@@ -164,7 +166,7 @@ function RankHero({ p }: { p: Progress }) {
           🏆 {p.rank.title}
         </p>
         <p className="font-hand text-[17px] text-gold/90">
-          {p.restaurantName} · Level {p.campaignComplete ? p.level.total : p.level.current} /{" "}
+          {p.restaurantName} · {u.noun} {p.campaignComplete ? p.level.total : p.level.current} /{" "}
           {p.level.total}
         </p>
         {p.nextRank ? (
@@ -176,7 +178,7 @@ function RankHero({ p }: { p: Progress }) {
               <span className="font-ui text-[12.5px] font-extrabold text-ivory">{pct}%</span>
             </div>
             <p className="mt-1.5 font-ui text-[12px] font-bold text-ivory/75">
-              Next rank · ⭐ {p.nextRank.title} at Level {p.nextRank.levelRequired}
+              Next rank · ⭐ {p.nextRank.title} {u.when(p.nextRank.levelRequired)}
             </p>
           </div>
         ) : (
@@ -195,6 +197,7 @@ function RankHero({ p }: { p: Progress }) {
  * stars (status only, never money). Read-only.
  */
 function StandingCard({ save }: { save: SaveData }) {
+  const u = useUnlockText();
   const s = restaurantStanding(save.levelProgress);
   const stars = endlessStarsOf(save);
   return (
@@ -205,7 +208,7 @@ function StandingCard({ save }: { save: SaveData }) {
           <Row label="Kitchen title" value={s.rank} />
           <Row label="Stage" value={`${s.stage} · ${s.stageNumber} / ${s.stageCount}`} />
           {s.nextStage ? (
-            <Row label="Next stage" value={`${s.nextStage.stage} · Level ${s.nextStage.level}`} />
+            <Row label="Next stage" value={`${s.nextStage.stage} · ${u.level(s.nextStage.level)}`} />
           ) : null}
           <Row label="Restaurant Complete" value={s.complete ? "✅ Yes" : "Not yet"} />
           <Row label="Endless Restaurant" value={s.endlessUnlocked ? "🔓 Open" : "🔒 Locked"} />
@@ -241,6 +244,7 @@ function StandingCard({ save }: { save: SaveData }) {
 }
 
 function Summary({ p }: { p: Progress }) {
+  const u = useUnlockText();
   const campaignRestaurant = RESTAURANT_MODE && !p.campaignComplete;
   return (
     <Panel className="p-4">
@@ -260,7 +264,7 @@ function Summary({ p }: { p: Progress }) {
         {/* Restaurant build before L250: popularity and the Business Day belong to
             the Endless Restaurant, which isn't open yet. */}
         {campaignRestaurant ? (
-          <Row label="Endless Restaurant" value={`Opens after Level ${LAST_CAMPAIGN_LEVEL}`} />
+          <Row label="Endless Restaurant" value={`Opens ${u.final}`} />
         ) : (
           <>
             <Row label="Popularity" value={`${p.popularity} / 100`} />
@@ -281,6 +285,7 @@ function Summary({ p }: { p: Progress }) {
 }
 
 function NextGoal({ p }: { p: Progress }) {
+  const u = useUnlockText();
   const goal = p.nextGoal;
   return (
     <Panel tone="cream" className="p-4">
@@ -292,8 +297,8 @@ function NextGoal({ p }: { p: Progress }) {
           </p>
           <p className="font-hand text-[16px] text-walnut/70">
             {opensInMarket(goal)
-              ? `Unlocks in the Market at Level ${goal.atLevel}`
-              : `Unlocks at Level ${goal.atLevel}`}
+              ? `Unlocks in the Market ${u.when(goal.atLevel)}`
+              : `Unlocks ${u.when(goal.atLevel)}`}
           </p>
           <div className="mt-2 flex items-center gap-2">
             <span className="flex-1">
@@ -398,6 +403,7 @@ function CampaignCard({ p }: { p: Progress }) {
 
 /** Chart 2 — the campaign's real milestones (kitchen stages) on the current campaign track. */
 function JourneyTrack({ p }: { p: Progress }) {
+  const u = useUnlockText();
   const W = 300;
   const H = 64;
   const pad = 12;
@@ -410,7 +416,7 @@ function JourneyTrack({ p }: { p: Progress }) {
       viewBox={`0 0 ${W} ${H}`}
       className="block h-auto w-full"
       role="img"
-      aria-label={`Level ${at} of ${total}`}
+      aria-label={`${u.noun} ${at} of ${total}`}
     >
       <line
         x1={x(1)}
@@ -477,6 +483,7 @@ function JourneyTrack({ p }: { p: Progress }) {
 /* ── 2. WHAT HAVE I BUILT? ─────────────────────────────── */
 
 function Earnings({ p }: { p: Progress }) {
+  const u = useUnlockText();
   return (
     <Panel className="p-4">
       <Eyebrow>💰 Restaurant earnings</Eyebrow>
@@ -485,13 +492,13 @@ function Earnings({ p }: { p: Progress }) {
         <Row label="Level rewards earned" value={formatUsd(p.money.levelRewards)} />
         <Row label="Milestone rewards" value={formatUsd(p.money.milestoneRewards)} />
         <Row
-          label={`Final Reward (Level ${LAST_CAMPAIGN_LEVEL})`}
+          label={u.live ? "Final Reward (final service)" : `Final Reward (Level ${LAST_CAMPAIGN_LEVEL})`}
           value={
             p.familyLegacy.paid
               ? formatUsd(p.money.familyLegacy)
               : p.familyLegacy.waived
                 ? "finished before it existed"
-                : `at Level ${LAST_CAMPAIGN_LEVEL}`
+                : u.live ? "at the final service" : `at Level ${LAST_CAMPAIGN_LEVEL}`
           }
         />
         <Row label="Business revenue" value={formatUsd(p.money.businessRevenue)} />
@@ -527,6 +534,7 @@ function Earnings({ p }: { p: Progress }) {
 
 /** Chart 1 — cumulative level rewards (exact: fixed per-level rewards of every completed level) against level number. */
 function EarningsChart({ p }: { p: Progress }) {
+  const u = useUnlockText();
   const W = 300;
   const H = 120;
   const left = 44;
@@ -598,7 +606,7 @@ function EarningsChart({ p }: { p: Progress }) {
           fontFamily="var(--font-ui)"
           fontWeight={700}
         >
-          Lv {t}
+          {u.live ? `#${t}` : `Lv ${t}`}
         </text>
       ))}
     </svg>
@@ -646,6 +654,7 @@ function Benchmark({ p }: { p: Progress }) {
 }
 
 function Journey({ p }: { p: Progress }) {
+  const u = useUnlockText();
   return (
     <Panel className="p-4">
       <Eyebrow>🏠 Your restaurant journey</Eyebrow>
@@ -666,7 +675,7 @@ function Journey({ p }: { p: Progress }) {
               {s.reached ? "✓" : "🔒"} {s.name}
             </p>
             <p className="font-ui text-[10px] font-bold text-walnut/55">
-              {s.current ? "your kitchen" : `Level ${s.unlockLevel}`}
+              {s.current ? "your kitchen" : s.reached && u.live ? "reached" : u.level(s.unlockLevel)}
             </p>
           </div>
         ))}
@@ -676,6 +685,7 @@ function Journey({ p }: { p: Progress }) {
 }
 
 function Knives({ p }: { p: Progress }) {
+  const u = useUnlockText();
   return (
     <Panel className="p-4">
       <div className="flex items-baseline justify-between">
@@ -706,7 +716,7 @@ function Knives({ p }: { p: Progress }) {
                 <Badge tone="cream">Owned · ★{k.blacksmithLevel}</Badge>
               ) : (
                 <Badge tone="locked">
-                  {k.unlocked ? "In the Market" : `🔒 Lv ${k.knife.unlockLevel}`}
+                  {k.unlocked ? "In the Market" : u.badge(k.knife.unlockLevel)}
                 </Badge>
               )}
             </div>
@@ -761,6 +771,7 @@ function Boards({ p }: { p: Progress }) {
 /* ── 3. WHAT AM I WORKING TOWARD? ──────────────────────── */
 
 function Milestones({ p }: { p: Progress }) {
+  const u = useUnlockText();
   return (
     <Panel className="p-4">
       <Eyebrow>🎯 Milestones</Eyebrow>
@@ -780,7 +791,7 @@ function Milestones({ p }: { p: Progress }) {
               {m.done ? "✓" : "○"}
             </span>
             <span className="min-w-0 flex-1">{m.label}</span>
-            {!m.done && m.atLevel ? <Badge tone="locked">Lv {m.atLevel}</Badge> : null}
+            {!m.done && m.atLevel ? <Badge tone="locked">{u.lv(m.atLevel)}</Badge> : null}
             <span
               className={cn(
                 "shrink-0 text-right font-ui text-[12.5px] font-extrabold",
