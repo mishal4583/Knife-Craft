@@ -1,5 +1,25 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## Prep Cook cuts for the player; Auto service (2026-10-30, decision D4)
+
+- Developer: "after certain levels, if needed by the players, let them hire a Prep Cook to cut the vegetables and
+  ingredients and automate the restaurant fully". One rule module, `restaurant/prepCookAuto.ts`:
+  hired Prep Cook + `PREP_COOK_CUTS_FROM` (Level 20, my pick, change it there) + not a teaching first play.
+- The arrival card (`ServiceFloor`, seated) gets **👨‍🍳 Prep Cook cuts it** and **Auto: on/off**. The cook "cuts" the whole
+  order (every step and shared plate, `PREP_COOK_MS`), then the normal Serve card opens. The plate is always **Honest 75**
+  (`PREP_COOK_SCORE`): neutral pay, the 5% Honest tip, no combo/moments/recipe-book page; hand-cut Clean/Masterful pay more.
+  Nothing else changes: same `onComplete` → `recordCampaignServiceResult` → serve → ledger path, no new money code.
+- **Auto** (`SaveData.settings.autoService`, optional, off by default): the cook starts each order when the customer sits,
+  and the served card presses Serve → 💵 Collect cash → Next Customer a beat apart (`AUTO_*_MS`), then the level rolls on.
+  It never buys anything: it stops at the Pre-Service Check when stock or supplies are short, at a story card, and
+  cash that must be swiped by hand is left to the player. **Stop Auto** is on the card; the toggle also sits on the arrival card.
+- The guide (`restaurantGuide.ts`) offers "Hire a Prep Cook to cut for you" from Level 20 until hired; hiring is unchanged
+  (opens at Level 5, 3 days' wages). Role text: "Cuts orders for you — 3% off every ingredient purchase."
+- Tests: `scripts/prep-cook-auto-qa.mts` (rule, plate pay/tip, save, hire, wiring); `tools/e2e/prepcook.mjs` (8/8: teaching
+  level by hand, button, cut, Serve, Auto chain with wallet = cash + ledger, Stop Auto). Headless Chrome once printed
+  "Framebuffer Unsupported" during Auto's many fast Phaser remounts (1 run in 5); not reproduced since.
+- Not done (next): restocking food by itself (standing orders cover supplies only), idle/offline income (D5), per-dish limits.
+
 ## Service rolls on after the last customer; deterministic order ids (2026-10-30)
 
 - The level's last "Next Customer" completes the level (reward and story flush as before) and, after a **first**

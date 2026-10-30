@@ -191,6 +191,9 @@ import {
   withPendingCash,
 } from "@/game/economy/pendingCash";
 import { resetParties } from "@/game/restaurant/serviceFloor";
+import { prepCookCanCut } from "@/game/restaurant/prepCookAuto";
+import { taughtTechniques } from "@/game/coaching";
+import { preparationStepsForRecipe } from "@/game/service/stepsForRecipe";
 import { GuideCard } from "@/components/kc/restaurant/GuideCard";
 import {
   fireSpecialist,
@@ -1285,6 +1288,15 @@ export function App() {
   function setMeasure(measure: Measure) {
     if (!save || measureOf(save) === measure) return;
     persist({ ...save, settings: { ...save.settings, measure } });
+  }
+
+  /** Auto service (restaurant/prepCookAuto.ts): the hired Prep Cook cuts, serves, collects and moves on. */
+  function toggleAutoService() {
+    if (!save) return;
+    persist({
+      ...save,
+      settings: { ...save.settings, autoService: save.settings.autoService !== true },
+    });
   }
 
   function toggleSetting(key: "sound" | "music" | "reducedMotion") {
@@ -3098,9 +3110,8 @@ export function App() {
   useEffect(() => {
     if (storyEvent) AudioManager.playSfx("story");
   }, [storyEvent]);
-  // Cash left on the table is optional to collect (developer 2026-10-30): it waits, saved with
-  // the order, until the player collects it (Kitchen button, or the table's swipe); the next
-  // served order's cash first takes it in (withPendingCash), and closing needs it in the till.
+  // The level system is hidden (developer 2026-10-30): once a finished level's completion is saved,
+  // the service rolls on to the next level's customers (finishCampaignLevel sets `rollOnRef`).
   useEffect(() => {
     const roll = rollOnRef.current;
     if (!roll || !save || screen !== "kitchen") return;
@@ -3109,6 +3120,9 @@ export function App() {
     keepNoticeRef.current = true;
     onSelectLevel(roll.to);
   });
+  // Cash left on the table is optional to collect (developer 2026-10-30): it waits, saved with
+  // the order, until the player collects it (Kitchen button, or the Collect cash button); the next
+  // served order's cash first takes it in (withPendingCash), and closing needs it in the till.
   function collectTableCash() {
     const current = saveRef.current;
     if (!current || pendingCashTotal(current) <= 0) return;
@@ -3232,6 +3246,23 @@ export function App() {
         ? { ...viewedBatchOrder, session: batchGroupSession.session }
         : null;
   const showServicePrep = screen === "gameplay" && !!currentServiceOrder;
+  // A hired Prep Cook can cut a campaign order for the player (restaurant/prepCookAuto.ts); never the
+  // first play of a level that teaches a technique.
+  const prepCookOn =
+    RESTAURANT_MODE &&
+    isCampaignService &&
+    !!save &&
+    !!currentServiceOrder &&
+    prepCookCanCut({
+      hiredRoles: save.business.staff.hiredRoles,
+      level: levelNumber(activeLevel.id),
+      teaching:
+        !!coachLevelId &&
+        taughtTechniques(
+          coachLevelId,
+          preparationStepsForRecipe(currentServiceOrder.recipe).map((s) => s.technique),
+        ).length > 0,
+    });
   // Pass 3 (restaurant build, Levels 1–15): the dish's goal, best stars and the
   // customer's own line, from the recipe and the save's best score (levelGoals.ts).
   const guideLevel =
@@ -3470,6 +3501,14 @@ export function App() {
               ...(sameDishAhead > 0 ? { sameDishAhead } : {}),
               ...(ticketsAfter > 0 ? { ticketsAfter } : {}),
               onCollectTableCash: collectTableCash,
+              ...(prepCookOn
+                ? {
+                    prepCook: {
+                      auto: save.settings.autoService === true,
+                      onAuto: toggleAutoService,
+                    },
+                  }
+                : {}),
               ...(menuGuest
                 ? {
                     extraAction: !guestHasSetting(save, campaignLevelForSession!)

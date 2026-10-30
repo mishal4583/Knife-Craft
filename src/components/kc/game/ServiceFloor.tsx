@@ -21,6 +21,7 @@ import { formatUsd } from "@/game/money";
 import type { QualityLabel } from "@/types/game";
 import { GuestPoses } from "../restaurantMap/GuestPoses";
 import { KButton } from "../common/primitives";
+import { AUTO_SERVE_MS } from "@/game/restaurant/prepCookAuto";
 import "./serviceFloor.css";
 
 /**
@@ -70,6 +71,7 @@ export function ServiceFloor({
   quality,
   reducedMotion,
   onDone,
+  prepCook,
 }: {
   mode: FloorMode;
   stage: KitchenMapArtStage;
@@ -84,6 +86,8 @@ export function ServiceFloor({
   quality?: QualityLabel;
   reducedMotion: boolean;
   onDone: () => void;
+  /** A hired Prep Cook (prepCookAuto.ts), offered on the arrival card: cut this order, or switch Auto. */
+  prepCook?: { auto: boolean; onCut: () => void; onAuto: () => void };
 }) {
   const uid = useId().replace(/[^a-zA-Z0-9]/g, "");
   const { party, slot, arriving, leaving } = partySeat;
@@ -141,6 +145,14 @@ export function ServiceFloor({
     // One run per mount: the mode, seat and walk are fixed for this view.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Auto: once the customer has sat, the Prep Cook takes the order by itself.
+  useEffect(() => {
+    if (!prepCook?.auto || state !== "seated" || mode !== "arrive") return;
+    const t = window.setTimeout(prepCook.onCut, AUTO_SERVE_MS);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- onCut only reads the order's own state
+  }, [prepCook?.auto, state, mode]);
 
   /** A tap anywhere: skip ahead. */
   const tapAnywhere = () => {
@@ -304,6 +316,16 @@ export function ServiceFloor({
             <KButton full variant="copper" onClick={finish}>
               🔪 Start cooking
             </KButton>
+            {prepCook && sitting ? (
+              <div className="mt-2 flex gap-2" onClick={(e) => e.stopPropagation()}>
+                <KButton full variant="sage" onClick={prepCook.onCut}>
+                  👨‍🍳 Prep Cook cuts it
+                </KButton>
+                <KButton full variant={prepCook.auto ? "green" : "cream"} onClick={prepCook.onAuto}>
+                  {prepCook.auto ? "Auto: on" : "Auto: off"}
+                </KButton>
+              </div>
+            ) : null}
           </div>
         </div>
       ) : (

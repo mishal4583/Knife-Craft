@@ -27,7 +27,8 @@ import {
   isStationUnlocked,
   secondFloorOf,
 } from "./secondFloor";
-import { STAFF_RULES, restaurantStaffOf } from "./staffRequirements";
+import { STAFF_RULES, restaurantStaffOf, staffHireFee } from "./staffRequirements";
+import { PREP_COOK_CUTS_FROM } from "./prepCookAuto";
 import { BUSINESS_STAFF_CATALOG } from "../business/businessStaff";
 import { cityRanking } from "./cityRanking";
 import { cleanlinessOf, hasCleaner, isCleanlinessLive, taskNeeds } from "./cleanliness";
@@ -161,6 +162,20 @@ const RULES: readonly Rule[] = [
       why: `The ${bigger.name} holds ${bigger.capacity} instead of ${u.capacity} (${formatUsd(bigger.price)}). More room, fewer trips to the Market.`,
       button: "Upgrade the fridge",
       to: "business-refrigerator",
+    };
+  },
+  // The Prep Cook who cuts for you (prepCookAuto.ts).
+  (save, level) => {
+    if (level < PREP_COOK_CUTS_FROM || save.business.staff.hiredRoles.includes("prep-cook"))
+      return null;
+    const fee = staffHireFee("prep-cook");
+    return {
+      id: "prep-cook-cuts",
+      icon: "👨‍🍳",
+      title: "Hire a Prep Cook to cut for you",
+      why: `A Prep Cook cuts each order for you, and Auto runs the whole service${fee ? ` — ${formatUsd(fee)} to hire` : ""}. Your own cuts still earn more.`,
+      button: "Open Staff",
+      to: "business-staff",
     };
   },
   // Staff the restaurant now needs.

@@ -220,8 +220,10 @@ console.log("E. Nothing else moves");
   // (`partyWaiting`, no pay or save code) and its menuGuests imports. Preparation's floor wiring
   // changed with it; service-floor-qa D2 still checks its one serve call, so only OvenStep.tsx
   // stays pinned here.
+  // Rule changed (developer 2026-10-30): restaurantGuide.ts (the "Hire a Prep Cook" card) and the new
+  // prepCookAuto.ts are guarded by prep-cook-auto-qa H3/H4/A7 and restaurant-guide-qa.
   const flow = execSync(
-    "git diff ae4ad52 -- src/game/restaurant :!src/game/restaurant/serviceFloor.ts :!src/game/restaurant/dishService.ts :!src/game/restaurant/levelPayPreview.ts :!src/game/restaurant/restaurantProgression.ts :!src/game/restaurant/firstLevels.ts :!src/game/restaurant/menuGuests.ts :!src/game/restaurant/preServiceCheck.ts :!src/game/restaurant/secondFloor.ts :!src/game/restaurant/cleanliness.ts :!src/game/restaurant/grandmasFridge.ts :!src/game/restaurant/kitchenTools.ts :!src/game/restaurant/restaurantInvestments.ts :!src/game/restaurant/staffRequirements.ts src/game/progression src/game/recipes/dishKind.ts",
+    "git diff ae4ad52 -- src/game/restaurant :!src/game/restaurant/serviceFloor.ts :!src/game/restaurant/dishService.ts :!src/game/restaurant/levelPayPreview.ts :!src/game/restaurant/restaurantProgression.ts :!src/game/restaurant/firstLevels.ts :!src/game/restaurant/menuGuests.ts :!src/game/restaurant/preServiceCheck.ts :!src/game/restaurant/secondFloor.ts :!src/game/restaurant/cleanliness.ts :!src/game/restaurant/grandmasFridge.ts :!src/game/restaurant/kitchenTools.ts :!src/game/restaurant/restaurantInvestments.ts :!src/game/restaurant/staffRequirements.ts :!src/game/restaurant/restaurantGuide.ts :!src/game/restaurant/prepCookAuto.ts src/game/progression src/game/recipes/dishKind.ts",
     { cwd: ROOT, encoding: "utf8" },
   );
   // App.tsx: only the walk-in offer's label (no pay / serve / save words) and, since phase 4,

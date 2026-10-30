@@ -247,6 +247,7 @@ Chrome, `puppeteer-core`, see `tools/e2e/README.md`; `npm install` there
 once). Restaurant browser tests run on the normal build, classic ones on a
 `VITE_RESTAURANT_MODE=0` build.
 
+- Prep Cook at the board and Auto service: `prep-cook-auto-qa` (browser: `prepcook.mjs`).
 - Restaurant: `restaurant-unlocks-qa`, `restaurant-stock-qa`,
   `restaurant-menu-qa`, `restaurant-day-qa`, `restaurant-guests-qa`,
   `restaurant-supplies-qa`, `restaurant-progression-qa`,

@@ -63,6 +63,14 @@ import { CookingClip } from "./CookingClip";
 import { dishKindFor } from "@/game/recipes/dishKind";
 import { taughtTechniques, showsBeginnerHint, COACH_TEXT, CUT_WAYS } from "@/game/coaching";
 import { checklistFor } from "@/game/restaurant/levelChecklist";
+import {
+  AUTO_COLLECT_MS,
+  AUTO_NEXT_MS,
+  AUTO_SERVE_MS,
+  PREP_COOK_GRADE,
+  PREP_COOK_MS,
+  PREP_COOK_SCORE,
+} from "@/game/restaurant/prepCookAuto";
 import { OrderComplete } from "./OrderComplete";
 import { ServiceOrderComplete } from "./ServiceOrderComplete";
 import { ServiceFloor, type FloorMode } from "./ServiceFloor";
@@ -223,6 +231,8 @@ export function Preparation({
     endsLevel?: boolean;
     /** Takes the cash left on the table into the wallet (App.collectTableCash). */
     onCollectTableCash?: () => void;
+    /** A hired Prep Cook (restaurant/prepCookAuto.ts): cuts this order for the player; `auto` also serves, collects and moves on. */
+    prepCook?: { auto: boolean; onAuto: () => void };
   };
   onExit: () => void;
   /** Returns this run's coin reward (0 on replay — Law 2 — or always 0 for a service session, where payment is deferred to the explicit Serve action) so OrderComplete can show it without a second App->Preparation round trip. */
@@ -860,6 +870,60 @@ export function Preparation({
     setPhase("complete");
   }
 
+  /** Every plate has reached the table (or the customer has sat down to order): they are all served now, and a complete party is gone. */
+  const floorDone = () => {
+    if (service)
+      finishPartyDelivery(
+        service.order.order.id,
+        view.emoji,
+        REACTION_FACE[servedQuality ?? result?.qualityLabel ?? "Honest"],
+        Date.now(),
+      );
+    setFloorMode(null);
+  };
+
+  // The hired Prep Cook cuts this whole order (restaurant/prepCookAuto.ts): a plain Honest plate,
+  // straight to the Serve card. Only before the player's first cut, once the customer has sat down.
+  const [cookBusy, setCookBusy] = useState(false);
+  const cookTimer = useRef<number | null>(null);
+  const cookReady =
+    !!service?.prepCook &&
+    service.order.order.status !== "READY" &&
+    phase === "prep" &&
+    (!floorMode || floorMode === "arrive") &&
+    !paused &&
+    !cookBusy &&
+    activeStep.index === 0 &&
+    cutProgress === 0;
+  function sendPrepCook() {
+    if (!cookReady) return;
+    if (floorMode === "arrive") floorDone();
+    setCookBusy(true);
+    cookTimer.current = window.setTimeout(
+      () => {
+        cookTimer.current = null;
+        reportContinued.current = true;
+        setResult({
+          score: PREP_COOK_SCORE,
+          evenness: 0.75,
+          consistency: 0.75,
+          rhythmBonus: 0,
+          qualityLabel: PREP_COOK_GRADE,
+          idealPath: [],
+          playerPath: [],
+        });
+        setCookBusy(false);
+        setPhase("complete");
+      },
+      floor?.reducedMotion ? 300 : PREP_COOK_MS,
+    );
+  }
+  useEffect(
+    () => () => {
+      if (cookTimer.current !== null) window.clearTimeout(cookTimer.current);
+    },
+    [],
+  );
   const activeIngredient = INGREDIENTS[activeStep.ingredientId];
   const activeTechnique = TECHNIQUES[activeStep.techniqueId];
   // Phase 16 — the destination-tray requirement from Levels 81-100 (§19:
@@ -1243,6 +1307,19 @@ export function Preparation({
         </div>
       ) : null}
 
+      {cookBusy ? (
+        <div
+          data-testid="prep-cook-busy"
+          className="absolute inset-0 z-[55] grid place-items-center bg-walnut-dark/70"
+        >
+          <p className="rounded-[18px] bg-ivory px-5 py-3 text-center font-display text-[18px] font-extrabold text-walnut-dark shadow-lift">
+            👨‍🍳 Prep Cook is cutting
+            <span className="block font-hand text-[16px] font-normal text-walnut/75">
+              {view.emoji} {view.title}
+            </span>
+          </p>
+        </div>
+      ) : null}
       {platesWaiting > 0 && !floorMode ? (
         <div
           data-testid="party-held"
@@ -1276,17 +1353,10 @@ export function Preparation({
           dish={{ emoji: view.emoji, name: view.title }}
           {...(servedQuality ? { quality: servedQuality } : {})}
           reducedMotion={floor.reducedMotion}
-          onDone={() => {
-            // Every plate has reached the table: they are all served now, and a complete party is gone.
-            if (service)
-              finishPartyDelivery(
-                service.order.order.id,
-                view.emoji,
-                REACTION_FACE[servedQuality ?? result?.qualityLabel ?? "Honest"],
-                Date.now(),
-              );
-            setFloorMode(null);
-          }}
+          onDone={floorDone}
+          {...(cookReady && service?.prepCook
+            ? { prepCook: { ...service.prepCook, onCut: sendPrepCook } }
+            : {})}
         />
       ) : null}
 
@@ -1451,6 +1521,7 @@ export function Preparation({
             }
             onRetry={restart}
             onExit={onExit}
+            {...(service.prepCook?.auto ? { auto: true, onStopAuto: service.prepCook.onAuto } : {})}
             knife={knife}
             board={board}
             {...(service.nextLabel ? { nextLabel: service.nextLabel } : {})}

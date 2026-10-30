@@ -2,6 +2,7 @@ import { foodFromStock } from "@/game/restaurant/restaurantEconomy";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AudioManager } from "@/game/AudioManager";
 import { reducedMotionOn } from "@/game/cashBurst";
+import { AUTO_COLLECT_MS, AUTO_NEXT_MS, AUTO_SERVE_MS } from "@/game/restaurant/prepCookAuto";
 import { CashVacuum } from "./CashVacuum";
 import { useRolledNumber } from "./useRolledNumber";
 import { KButton, Panel } from "../common/primitives";
@@ -173,6 +174,8 @@ export function ServiceOrderComplete({
   onCashRemaining,
   onCashCollected,
   cashRemainingOverride,
+  auto = false,
+  onStopAuto,
 }: {
   /** Keeps the served result mounted while a temporary cash-at-table view is open. */
   hidden?: boolean;
@@ -218,6 +221,9 @@ export function ServiceOrderComplete({
   onCashRemaining?: (cents: number) => void;
   onCashCollected?: () => void;
   cashRemainingOverride?: number;
+  /** The hired Prep Cook runs the service (restaurant/prepCookAuto.ts): Serve, Collect cash and Next Customer press themselves, a beat apart. */
+  auto?: boolean;
+  onStopAuto?: () => void;
 }) {
   const [served, setServed] = useState<ServeResult | null>(null);
   const { customer, recipe } = serviceOrder;
@@ -264,6 +270,24 @@ export function ServiceOrderComplete({
   }
   const tip = served && !served.isReplay ? (served.tip ?? 0) : 0;
   const paidCents = served && !served.isReplay ? served.coinsAwarded : 0;
+  // Auto: the same three taps the player makes (each latched once), with a beat between them.
+  useEffect(() => {
+    if (!auto || hidden || served) return;
+    const t = window.setTimeout(handleServe, AUTO_SERVE_MS);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- handleServe is latched and reads only props
+  }, [auto, hidden, served]);
+  useEffect(() => {
+    if (!auto || hidden || !served) return;
+    const collect = cashAtTable && remaining > 0 && !!onCollectCash;
+    if (!collect && remaining > 0) return; // cash that has to be swiped stays the player's
+    const t = window.setTimeout(
+      collect ? onCollectCash! : nextOnce,
+      collect ? AUTO_COLLECT_MS : paidCents + tip > 0 ? AUTO_NEXT_MS : AUTO_COLLECT_MS,
+    );
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- nextOnce is latched; only these decide the next tap
+  }, [auto, hidden, served, remaining]);
   // Phase 4 (B9): a special customer reacts in their own words to the same
   // grade (and the Regular to his wait); everyone else as before.
   const special =
@@ -490,6 +514,13 @@ export function ServiceOrderComplete({
             </div>
           </>
         )}
+        {auto && onStopAuto ? (
+          <div className="mt-2">
+            <KButton full variant="cream" onClick={onStopAuto}>
+              ⏸ Stop Auto
+            </KButton>
+          </div>
+        ) : null}
       </Panel>
     </div>
   );

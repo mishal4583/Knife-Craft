@@ -147,6 +147,8 @@ export type SaveData = {
     reducedMotion: boolean;
     measure?: "lb" | "kg";
     restaurantName?: string;
+    /** `autoService` (optional, developer 2026-10-30): the hired Prep Cook runs the service on its own — absent = off (restaurant/prepCookAuto.ts). */
+    autoService?: boolean;
   };
   /**
    * Level Engine progression (Phase 4 — design doc §15). Added as a field
