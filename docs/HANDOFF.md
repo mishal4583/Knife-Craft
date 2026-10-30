@@ -16,10 +16,13 @@ Plan and decisions Q1–Q7: `docs/planning/PHASE2-PLAN-2026-10-30.md`. Built so 
   Browser: `tools/e2e/queue.mjs` (5/5, about 5 minutes).
 - 2.3b Customers only wait while the player is serving (developer 2026-10-30, `serviceClockRuns`): any other screen,
   a card, a pause or an ad, or cleaning the board freezes arrivals and patience. Coming back resumes the same queue.
-- **Open economy item (for the end-of-phase pass, decision Q7):** `restaurant-final-economy-qa` S3 fails. The
-  prudent completionist's lowest cash after the $500 reserve is $313 at L33 (a supply buy), against the $350
-  floor (was $376 at L6). Either the weighting or the substitution alone moves the L33 supply purchase (the guests'
-  dishes decide the tableware). The test is not changed.
+- **Economy item resolved (2026-10-31):** `restaurant-final-economy-qa` S3 had dipped to $313 at L33 (floor $350).
+  The cause was the simulated careful player's look-ahead, not prices. It kept the next service's stock, tools and
+  supplies, and wages only from full operation, so it missed the closing wages before full operation (half wages,
+  and the Prep Cook's full wage since Phase 1). With guests earning a little more, it bought a fifth Blacksmith
+  upgrade at L32, then paid wages $68 + a required Indian Chef $136 + tools $78 + supplies $12 at L33.
+  `restaurantCampaignSim.mts` `nextServiceNeeds` now also keeps `closingPay`. Lowest is back to $376 (L6). No game
+  price changed.
 - Popular-dish price rise (step 4b): designed (plan §12), waiting for the developer.
 
 ## Phase 1: the service loop hides the levels (2026-10-30, decisions P1–P6, local commits, not pushed)

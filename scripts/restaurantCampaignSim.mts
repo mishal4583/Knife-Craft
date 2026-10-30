@@ -136,7 +136,7 @@ import { kitchenGuestSeats } from "../src/game/restaurant/restaurantInvestments.
 import { restaurantLevelOf } from "../src/game/restaurant/restaurantMenu.ts";
 import { coverWithCredit } from "../src/game/restaurant/serviceCover.ts";
 import { repayFromEarnings, supplierCreditOf } from "../src/game/restaurant/supplierCredit.ts";
-import { HALF_WAGES_FROM, halfPay } from "../src/game/restaurant/staffRequirements.ts";
+import { HALF_WAGES_FROM, closingPay, halfPay } from "../src/game/restaurant/staffRequirements.ts";
 import { levelOrderEarnings } from "../src/game/levels/levelEarnings.ts";
 import { tabOpensAt } from "../src/game/restaurant/firstLevels.ts";
 /** The Market sells ingredients from the level its tab opens (L3 since the 150-level campaign). */
@@ -819,6 +819,11 @@ function nextServiceNeeds(save: SaveData): number {
     cost +=
       (save.business.restaurantStaff?.specialists?.length ?? 0) *
       BUSINESS_STAFF_CATALOG[SPECIALIST_WAGE_FROM_ROLE].salary;
+  } else if (restaurantDayOf(save).closingDue) {
+    // Before full operation the closing still pays wages: the Prep Cook's full shift wage and half
+    // wages from L27 (closingWage; developer 2026-10-30 made the Prep Cook paid by the hour). The
+    // prudent player keeps them too, as it keeps the wages from full operation.
+    cost += closingPay(save.business.staff.hiredRoles, plan.levelNumber);
   }
   return cost;
 }
