@@ -9,10 +9,10 @@ export function servicesLeft(openLevel: number, reached: number): number {
   return Math.max(0, Math.round(openLevel) - Math.round(reached));
 }
 
-/** "after the next service" / "in 3 services" / "now" (after "opens", "unlocks", …). */
+/** "this service" / "after the next service" / "in 3 services" (after "opens", "unlocks", "pass X", …). */
 export function opensInText(openLevel: number, reached: number): string {
   const n = servicesLeft(openLevel, reached);
-  return n === 0 ? "now" : n === 1 ? "after the next service" : `in ${n} services`;
+  return n === 0 ? "this service" : n === 1 ? "after the next service" : `in ${n} services`;
 }
 
 /** A short lock badge: "🔒 next service" / "🔒 3 services". */

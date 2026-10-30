@@ -76,7 +76,7 @@ check("W1 never negative", servicesLeft(5, 9) === 0 && servicesLeft(5, 5) === 0)
 check("W2 counts the first services to play", servicesLeft(20, 17) === 3);
 check(
   "W3 phrases",
-  opensInText(5, 5) === "now" &&
+  opensInText(5, 5) === "this service" &&
     opensInText(6, 5) === "after the next service" &&
     opensInText(9, 5) === "in 4 services",
   [opensInText(5, 5), opensInText(6, 5), opensInText(9, 5)],

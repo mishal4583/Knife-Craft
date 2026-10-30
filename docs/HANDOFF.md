@@ -1,8 +1,28 @@
 # KnifeCraft — Handoff (Playgama edition)
 
-**Next: Phase 1 plan** (2026-10-30, planning only) — `docs/planning/PHASE1-PLAN-2026-10-30.md`: status after
-`ae37b1d`, the remaining level-centric pieces, slice P1-A (one "Open for service" button, roll on after story cards,
-no "Level N" on the service path; no save or economy change), test plan, decisions P1–P6 waiting.
+## Phase 1: the service loop hides the levels (2026-10-30, decisions P1–P6, local commits, not pushed)
+
+Plan and decisions: `docs/planning/PHASE1-PLAN-2026-10-30.md` §8.
+- **Open for service** (P1/P2/P4): the restaurant build's Kitchen card is "Next customer" with one button that starts
+  the first unlocked level not completed (`restaurant/nextService.ts`). No Replay on the Kitchen; replays are on the
+  Order Board. After the last service the button opens the restaurant.
+- **After a story card or a reload** (P3/P4): no roll-on. The player is back on the Kitchen and taps the button again.
+- **No level numbers on the service path**: the Pre-Service Check header is "Day N", Closing Time and Daily
+  Maintenance name services, the restock panel says "the next service", the Market says "Needed soon".
+- **Unlock copy counts services** (P5): "opens in 3 services", "after the next service", "this service",
+  "🔒 3 services", "after the final service". One source: `restaurant/servicesToGo.ts`, used by game copy and, in
+  the screens, through `useUnlockText()` (`navLevel.ts`). The classic build keeps its "Level N" wording. Item levels
+  (Blacksmith ★, Second-Floor machine Lv) stay.
+- **Prep Cook paid by the hour only** (P6): no hiring fee, and every closing before full operation pays his full
+  shift wage, $40 (`closingWage` / `closingPay`, `staffRequirements.ts`), from the day he is hired. Still cuts from Level 20.
+  Economy: completionist $291,692 → $291,672, saver $458,402 → $458,382, move-in at L120 +$120, broke player
+  unchanged. The frozen campaign baseline is unchanged.
+- Tests: `service-loop-qa` (new); browser `tools/e2e/openservice.mjs` (8/8, new). Browser tests that tapped the
+  Kitchen's "Prepare" tap "Open for service" (harness, firstshop, prepcook, sharedprep, servicefloor).
+- **Stale browser checks, already failing on the build before Phase 1** (same result on the previous commit's build,
+  not fixed here): `restaurantprogression.mjs` 1 (L11 news), 5b and 5c (expect free hiring; fees since 2026-10-26),
+  and `marketneedslevel.mjs` 1 and 2 (the Level 10 Market highlight).
+- Not done: the order queue and orders drawn from stocked menu items (P1-B, Phase 2), idle/offline income (D5).
 
 ## Prep Cook cuts for the player; Auto service (2026-10-30, decision D4)
 
@@ -17,8 +37,8 @@ no "Level N" on the service path; no save or economy change), test plan, decisio
   and the served card presses Serve → 💵 Collect cash → Next Customer a beat apart (`AUTO_*_MS`), then the level rolls on.
   It never buys anything: it stops at the Pre-Service Check when stock or supplies are short, at a story card, and
   cash that must be swiped by hand is left to the player. **Stop Auto** is on the card; the toggle also sits on the arrival card.
-- The guide (`restaurantGuide.ts`) offers "Hire a Prep Cook to cut for you" from Level 20 until hired; hiring is unchanged
-  (opens at Level 5, 3 days' wages). Role text: "Cuts orders for you — 3% off every ingredient purchase."
+- The guide (`restaurantGuide.ts`) offers "Hire a Prep Cook to cut for you" from Level 20 until hired; hiring opens at Level 5
+  (no fee and paid by the hour since Phase 1, see above). Role text: "Cuts orders for you — 3% off every ingredient purchase."
 - Tests: `scripts/prep-cook-auto-qa.mts` (rule, plate pay/tip, save, hire, wiring); `tools/e2e/prepcook.mjs` (8/8: teaching
   level by hand, button, cut, Serve, Auto chain with wallet = cash + ledger, Stop Auto). Headless Chrome once printed
   "Framebuffer Unsupported" during Auto's many fast Phaser remounts (1 run in 5); not reproduced since.
