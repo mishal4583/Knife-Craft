@@ -16,8 +16,9 @@ import {
   HIRE_FEE_DAYS,
   SPECIALIST_CHEFS,
   STAFF_HIRE_FROM,
-  halfPay,
-  halfWage,
+  closingPay,
+  closingWage,
+  HOURLY_ONLY_ROLES,
   restaurantStaffOf,
   specialistOpensAt,
   staffHireFee,
@@ -135,6 +136,9 @@ export function BusinessStaff({
   // Economy F2 (developer 2026-10-12): half pay at closing from the Prep Cook until full operation.
   const halfWages =
     restaurantTeams && !wagesStarted && restaurantLevelOf(save.levelProgress) >= HALF_WAGES_FROM;
+  // The Prep Cook is paid by the hour from his first closing (developer 2026-10-30; closingWage).
+  const reachedLevel = restaurantLevelOf(save.levelProgress);
+  const hourlyOnly = (role: string) => (HOURLY_ONLY_ROLES as readonly string[]).includes(role);
   return (
     <div className="space-y-3">
       <BusinessSectionBanner image="staff-banner.webp" title="Your Restaurant Team" />
@@ -165,7 +169,7 @@ export function BusinessStaff({
           <div>
             <Eyebrow>🍽️ Restaurant crew</Eyebrow>
             <p className="mt-1 font-display text-[24px] font-black leading-none text-walnut-dark">
-              {formatUsd(wagesStarted ? payroll : halfWages ? halfPay(hiredRoles) : 0)}
+              {formatUsd(wagesStarted ? payroll : closingPay(hiredRoles, reachedLevel))}
               <span className="ml-1 font-hand text-[15px] font-normal text-walnut/65">/ day</span>
             </p>
           </div>
@@ -188,7 +192,7 @@ export function BusinessStaff({
           🌙 Payroll is settled at closing
           <InfoTip label="About pay">
             {restaurantTeams
-              ? `Each hire pays a one-time fee of ${HIRE_FEE_DAYS} days' full pay. Pay is charged at closing. If the pay can't be covered, the whole team is let go rather than left unpaid.`
+              ? `Each hire pays a one-time fee of ${HIRE_FEE_DAYS} days' full pay — except the Prep Cook, who has no fee and is paid his hourly wage at every closing. Pay is charged at closing. If the pay can't be covered, the whole team is let go rather than left unpaid.`
               : "Hiring is free — pay is charged at End Business Day. If the pay can't be covered, the whole team is let go rather than left unpaid."}
           </InfoTip>
         </p>
@@ -237,11 +241,15 @@ export function BusinessStaff({
               }
               glance={ROLE_GLANCE[def.role] ?? "🍽️ Supports the restaurant team"}
               pay={
-                wagesStarted ? (
+                wagesStarted || hourlyOnly(def.role) ? (
                   <StaffPay now={`${formatUsd(def.salary)}/day`} />
                 ) : (
                   <StaffPay
-                    now={halfWages ? `${formatUsd(halfWage(def.role))}/day now` : "No pay yet"}
+                    now={
+                      halfWages
+                        ? `${formatUsd(closingWage(def.role, reachedLevel))}/day now`
+                        : "No pay yet"
+                    }
                     later={`${formatUsd(def.salary)}/day ${u.lv(wagesFrom)}`}
                   />
                 )
@@ -266,7 +274,9 @@ export function BusinessStaff({
                     onClick={() => handleHire(def.role)}
                   >
                     {restaurantTeams
-                      ? `👋 Hire · ${formatUsd(staffHireFee(def.role) ?? 0)}`
+                      ? staffHireFee(def.role)
+                        ? `👋 Hire · ${formatUsd(staffHireFee(def.role) ?? 0)}`
+                        : "👋 Hire · no fee"
                       : "👋 Hire"}
                   </KButton>
                 )

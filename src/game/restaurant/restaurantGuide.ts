@@ -29,7 +29,7 @@ import {
 } from "./secondFloor";
 import { STAFF_RULES, restaurantStaffOf, staffHireFee } from "./staffRequirements";
 import { PREP_COOK_CUTS_FROM } from "./prepCookAuto";
-import { BUSINESS_STAFF_CATALOG } from "../business/businessStaff";
+import { BUSINESS_STAFF_CATALOG, dailyPayroll } from "../business/businessStaff";
 import { cityRanking } from "./cityRanking";
 import { cleanlinessOf, hasCleaner, isCleanlinessLive, taskNeeds } from "./cleanliness";
 import { getSupplyItem, type SupplyId } from "../business/businessSupplies";
@@ -168,12 +168,13 @@ const RULES: readonly Rule[] = [
   (save, level) => {
     if (level < PREP_COOK_CUTS_FROM || save.business.staff.hiredRoles.includes("prep-cook"))
       return null;
-    const fee = staffHireFee("prep-cook");
+    // Paid by the hour only (developer 2026-10-30): no fee, his shift wage at each closing.
+    const wage = dailyPayroll(["prep-cook"]);
     return {
       id: "prep-cook-cuts",
       icon: "👨‍🍳",
       title: "Hire a Prep Cook to cut for you",
-      why: `A Prep Cook cuts each order for you, and Auto runs the whole service${fee ? ` — ${formatUsd(fee)} to hire` : ""}. Your own cuts still earn more.`,
+      why: `A Prep Cook cuts each order for you, and Auto runs the whole service — no hiring fee, ${formatUsd(wage)} a closing. Your own cuts still earn more.`,
       button: "Open Staff",
       to: "business-staff",
     };

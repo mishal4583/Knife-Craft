@@ -85,65 +85,68 @@ console.log("F. The hiring fee");
   const ids = [...ALL_STAFF_ROLES, ...SPECIALIST_CHEFS.map((c) => c.id)];
   const fees = Object.fromEntries(ids.map((id) => [id, staffHireFee(id)]));
   assert(
+    // Rule changed (developer 2026-10-30): the Prep Cook is paid by the hour only — no hiring fee, his full shift wage at every closing.
     HIRE_FEE_DAYS === 3 &&
-      ALL_STAFF_ROLES.every(
+      ALL_STAFF_ROLES.filter((r) => r !== "prep-cook").every(
         (r) => fees[r] === Math.round((dailyPayroll([r]) * 3) / 100) * 100 && fees[r]! > 0,
       ) &&
+      fees["prep-cook"] === 0 &&
       SPECIALIST_CHEFS.every((c) => fees[c.id] === Math.round((c.dailyWage * 3) / 100) * 100) &&
       ids.every((id) => fees[id]! % 100 === 0) &&
       staffHireFee("nobody") === null,
-    "F1: every role and chef has a fee of 3 days' full pay in whole dollars (none is free)",
+    "F1: every role and chef has a fee of 3 days' full pay in whole dollars — except the Prep Cook (no fee)",
     fees,
   );
   assert(
-    fees["prep-cook"] === 12_000 &&
+    fees["prep-cook"] === 0 &&
       fees["server"] === 11_300 &&
       fees["cleaner"] === 8_400 &&
       fees["head-chef"] === 21_000,
-    "F2: e.g. Prep Cook $120, Server $113, Cleaner $84, Head Chef $210",
+    "F2: e.g. Prep Cook $0 (paid by the hour), Server $113, Cleaner $84, Head Chef $210",
   );
 }
 
 console.log("H. A hire");
 {
   const s = saveAt(5, 50_000);
-  const h = hireRestaurantStaff(s, "prep-cook", 5);
+  // The fee rule is shown with the Server since the Prep Cook has no fee (developer 2026-10-30, H8).
+  const h = hireRestaurantStaff(s, "server", 5);
   assert(
     h.ok &&
-      h.fee === 12_000 &&
-      h.save.credits === s.credits - 12_000 &&
+      h.fee === 11_300 &&
+      h.save.credits === s.credits - 11_300 &&
       h.save.economyLedger.length === s.economyLedger.length + 1 &&
       h.save.economyLedger.at(-1)!.category === "staff-purchase" &&
-      h.save.economyLedger.at(-1)!.amount === -12_000 &&
-      h.save.economyLedger.at(-1)!.description === "prep-cook" &&
-      h.save.business.staff.hiredRoles.includes("prep-cook") &&
+      h.save.economyLedger.at(-1)!.amount === -11_300 &&
+      h.save.economyLedger.at(-1)!.description === "server" &&
+      h.save.business.staff.hiredRoles.includes("server") &&
       h.save.credits - s.credits === ledgerSum(h.save) - ledgerSum(s),
-    "H1: at L5 a Prep Cook hire takes $120 once — one staff-purchase entry; wallet = ledger",
+    "H1: at L5 a Server hire takes $113 once — one staff-purchase entry; wallet = ledger",
   );
-  const again = h.ok ? hireRestaurantStaff(h.save, "prep-cook", 5) : null;
+  const again = h.ok ? hireRestaurantStaff(h.save, "server", 5) : null;
   assert(
     !!again && !again.ok && again.reason === "alreadyHired",
     "H2: hiring someone already on the team fails and charges nothing",
   );
-  const poor = saveAt(5, 11_999);
-  const p = hireRestaurantStaff(poor, "prep-cook", 5);
+  const poor = saveAt(5, 11_299);
+  const p = hireRestaurantStaff(poor, "server", 5);
   assert(
-    !p.ok && p.reason === "insufficientFunds" && p.fee === 12_000,
-    "H3: $119.99 can't hire the Prep Cook — refused (the fee is reported)",
+    !p.ok && p.reason === "insufficientFunds" && p.fee === 11_300,
+    "H3: $112.99 can't hire the Server — refused (the fee is reported)",
   );
   assert(
-    poor.credits === 11_999 &&
+    poor.credits === 11_299 &&
       poor.business.staff.hiredRoles.length === 0 &&
       poor.economyLedger.length === 0,
     "H4: a refused hire changes nothing (no role, no money, no entry)",
   );
-  const fired = h.ok ? fireStaff(h.save, "prep-cook") : null;
-  const rehire = fired?.ok ? hireRestaurantStaff(fired.save, "prep-cook", 5) : null;
+  const fired = h.ok ? fireStaff(h.save, "server") : null;
+  const rehire = fired?.ok ? hireRestaurantStaff(fired.save, "server", 5) : null;
   assert(
     !!fired?.ok &&
       fired.save.credits === h.save.credits! &&
       !!rehire?.ok &&
-      rehire.save.credits === fired.save.credits - 12_000,
+      rehire.save.credits === fired.save.credits - 11_300,
     "H5: letting go refunds nothing; hiring again pays the fee again",
   );
   const early = hireRestaurantStaff(saveAt(4), "prep-cook", 4);
@@ -160,21 +163,41 @@ console.log("H. A hire");
       chef.save.economyLedger.at(-1)!.category === "staff-purchase",
     "H7: every specialist chef can be hired from L5, and pays its fee the same way",
   );
+  // Rule changed (developer 2026-10-30): the Prep Cook is paid by the hour only — no hiring fee, his full shift wage at every closing.
+  const cook = hireRestaurantStaff(saveAt(5, 50_000), "prep-cook", 5);
+  const broke = hireRestaurantStaff(saveAt(5, 0), "prep-cook", 5);
+  assert(
+    cook.ok &&
+      cook.fee === 0 &&
+      cook.save.credits === 50_000 &&
+      cook.save.economyLedger.length === 0 &&
+      cook.save.business.staff.hiredRoles.includes("prep-cook") &&
+      broke.ok &&
+      broke.save.credits === 0 &&
+      !broke.onCredit,
+    "H8: the Prep Cook joins for nothing — no money, no ledger entry, no credit, even with $0",
+  );
 }
 
 console.log("W. Wages unchanged");
 {
-  const team = saveAt(10, 50_000, ["prep-cook"]);
+  const team = saveAt(10, 50_000, ["server"]);
   const before = payHalfWages(team, 10);
-  const half = payHalfWages(saveAt(HALF_WAGES_FROM, 50_000, ["prep-cook"]), HALF_WAGES_FROM);
+  const half = payHalfWages(saveAt(HALF_WAGES_FROM, 50_000, ["server"]), HALF_WAGES_FROM);
+  // Rule changed (developer 2026-10-30): the Prep Cook is paid by the hour only — no hiring fee, his full shift wage at every closing.
+  const cook = payHalfWages(saveAt(10, 50_000, ["prep-cook"]), 10);
+  const cook27 = payHalfWages(saveAt(HALF_WAGES_FROM, 50_000, ["prep-cook"]), HALF_WAGES_FROM);
   assert(
     HALF_WAGES_FROM === 27 &&
       restaurantSystem("full-operation").firstLevel === 54 &&
       before.paid === 0 &&
       before.save === team &&
-      half.paid === 2_000 &&
-      half.save.economyLedger.filter((e) => e.category === "business-staff-salary").length === 1,
-    "W1: no pay before L27 (the hire fee is the only charge); half pay ($20, one entry) from L27",
+      half.paid === Math.round(dailyPayroll(["server"]) / 2) &&
+      half.save.economyLedger.filter((e) => e.category === "business-staff-salary").length === 1 &&
+      cook.paid === 4_000 &&
+      cook27.paid === 4_000,
+    "W1: a Server is not paid before L27 (the hire fee is the only charge), half pay from L27; the Prep Cook is paid his full $40 shift wage at every closing",
+    { before: before.paid, half: half.paid, cook: cook.paid, cook27: cook27.paid },
   );
   // The half wages are paid in one place (closing, restaurantDay.ts); the hire never pays wages.
   const src = execSync('git grep -n "payHalfWages(" -- src', { cwd: ROOT, encoding: "utf8" })
@@ -205,7 +228,7 @@ console.log("C. Capacity");
       menuGuestCapacity(hired.save) === 3 &&
       walkInsFor(chef, 16) === 0 &&
       walkInsFor(hired.save, 16) === 1,
-    "C1: a paid Prep Cook adds a seat — at L16 it makes room for the walk-in",
+    "C1: a Prep Cook adds a seat — at L16 it makes room for the walk-in",
   );
 }
 

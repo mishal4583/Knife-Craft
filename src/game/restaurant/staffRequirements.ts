@@ -207,8 +207,17 @@ export function hireSpecialist(
  */
 export const HIRE_FEE_DAYS = 3;
 
+/**
+ * THE PREP COOK IS PAID BY THE HOUR (developer 2026-10-30: "make him only for wages per hour"):
+ * no hiring fee, and from the day he is hired every closing pays his wage for the shift
+ * (`dailyPayroll`: hourly wage × shift hours + the employer cost, the same formula as every
+ * role) — no free days before Level 27 and no half pay after it (`closingWage`).
+ */
+export const HOURLY_ONLY_ROLES: readonly BusinessStaffRole[] = ["prep-cook"];
+
 /** The hiring fee in whole cents (whole dollars), or null for an unknown id. */
 export function staffHireFee(id: string): number | null {
+  if ((HOURLY_ONLY_ROLES as readonly string[]).includes(id)) return 0;
   const chef = getSpecialist(id);
   const daily = chef
     ? chef.dailyWage
@@ -251,6 +260,8 @@ export function hireRestaurantStaff(
         joined.reason === "alreadyHired" || joined.reason === "notYet" ? joined.reason : "unknown",
       fee,
     };
+  // A role paid by the hour only (the Prep Cook) joins for nothing: no money, no entry.
+  if (fee === 0) return { ok: true, save: joined.save, fee };
   const debit = debitWallet(joined.save, fee);
   if (!debit.ok)
     return opts.required
@@ -307,9 +318,24 @@ export const halfPay = (roles: readonly BusinessStaffRole[]): number =>
   roles.reduce((n, r) => n + halfWage(r), 0);
 
 /**
- * Closing between L41 and full operation (L91) — economy decision F2,
- * developer 2026-10-12: each hired waged role is paid HALF its daily wage,
- * one "business-staff-salary" entry per role (description = the role id).
+ * What closing charges one hired role before full operation (from full operation the normal
+ * payroll pays everyone): a role paid by the hour (the Prep Cook) its full shift wage at every
+ * level; every other role half its wage from `HALF_WAGES_FROM`, nothing before it.
+ */
+export function closingWage(role: BusinessStaffRole, levelNumber: number): number {
+  if (isSystemLive("full-operation", levelNumber)) return 0;
+  if (HOURLY_ONLY_ROLES.includes(role)) return dailyPayroll([role]);
+  return levelNumber < HALF_WAGES_FROM ? 0 : halfWage(role);
+}
+/** A team's closing wages a day before full operation (`closingWage` of each role). */
+export const closingPay = (roles: readonly BusinessStaffRole[], levelNumber: number): number =>
+  roles.reduce((n, r) => n + closingWage(r, levelNumber), 0);
+
+/**
+ * Closing before full operation — economy decision F2, developer 2026-10-12: from
+ * `HALF_WAGES_FROM` each hired waged role is paid HALF its daily wage; the Prep Cook (paid by
+ * the hour, developer 2026-10-30) his full shift wage at every closing (`closingWage`).
+ * One "business-staff-salary" entry per role paid (description = the role id).
  * A wage the wallet can't cover is skipped that day — no charge, no entry,
  * the staff stay (never debt). Specialist chefs are unchanged (paid from
  * L91, paySpecialists). From full operation the normal payroll applies.
@@ -318,13 +344,12 @@ export function payHalfWages(
   save: SaveData,
   levelNumber: number,
 ): { save: SaveData; paid: number; skipped: string[] } {
-  if (levelNumber < HALF_WAGES_FROM || isSystemLive("full-operation", levelNumber))
-    return { save, paid: 0, skipped: [] };
+  if (isSystemLive("full-operation", levelNumber)) return { save, paid: 0, skipped: [] };
   let next = save;
   let paid = 0;
   const skipped: string[] = [];
   for (const role of save.business.staff.hiredRoles) {
-    const wage = halfWage(role);
+    const wage = closingWage(role, levelNumber);
     if (wage <= 0) continue;
     const debit = debitWallet(next, wage);
     if (!debit.ok) {

@@ -15,6 +15,7 @@ import { DEFAULT_SAVE, type SaveData } from "../src/game/SaveManager.ts";
 import { dailyPayroll } from "../src/game/business/businessStaff.ts";
 import {
   HALF_WAGES_FROM,
+  closingWage,
   halfPay,
   halfWage,
   payHalfWages,
@@ -53,28 +54,32 @@ console.log("H. Half wages");
   const s = saveWith(100_000);
   const before40 = payHalfWages(s, HALF_WAGES_FROM - 1);
   const atFull = payHalfWages(s, FULL);
+  // Rule changed (developer 2026-10-30): the Prep Cook is paid by the hour only — no hiring fee, his full shift wage at every closing.
   assert(
     HALF_WAGES_FROM === 27 &&
       HALF_WAGES_FROM === STAFF_RULES.find((r) => r.role === "prep-cook")!.fromLevel &&
       FULL === 54 &&
-      before40.paid === 0 &&
-      atFull.paid === 0 &&
-      before40.save === s,
-    "H1: nothing before Level 27 (the Prep Cook), and nothing here from full operation (L54; the normal payroll applies there)",
+      before40.paid === dailyPayroll(["prep-cook"]) &&
+      salaryEntries(before40.save)
+        .map((e) => e.description)
+        .join() === "prep-cook" &&
+      atFull.paid === 0,
+    "H1: before Level 27 only the Prep Cook is paid (his full shift wage); nothing here from full operation (L54; the normal payroll applies there)",
+    { before: before40.paid, atFull: atFull.paid },
   );
   const r = payHalfWages(s, MID);
   const entries = salaryEntries(r.save);
   assert(
-    r.paid === halfPay([...ROLES]) &&
+    r.paid === dailyPayroll(["prep-cook"]) + halfPay(["server"]) &&
       ROLES.every((role) => halfWage(role) === Math.round(dailyPayroll([role]) / 2)) &&
       entries.length === ROLES.length &&
       entries.map((e) => e.description).join() === ROLES.join() &&
-      entries.every((e, i) => e.amount === -halfWage(ROLES[i]!)) &&
+      entries.every((e, i) => e.amount === -closingWage(ROLES[i]!, MID)) &&
       r.save.credits === s.credits - r.paid,
-    "H2: Level 29–55 — half of each role's daily wage, one ledger entry per role, the wallet moves by exactly that",
+    "H2: Level 29–55 — half of each role's daily wage (the Prep Cook his full wage), one ledger entry per role, the wallet moves by exactly that",
     { paid: r.paid, entries: entries.map((e) => [e.description, e.amount]) },
   );
-  const short = saveWith(halfWage("prep-cook"));
+  const short = saveWith(closingWage("prep-cook", MID));
   const rs = payHalfWages(short, MID);
   assert(
     rs.save.credits === 0 &&

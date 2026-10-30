@@ -123,7 +123,7 @@ export const BUSINESS_STAFF_CATALOG: Record<BusinessStaffRole, BusinessStaffDefi
   "prep-cook": {
     role: "prep-cook",
     name: "Prep Cook",
-    description: `Cuts orders for you — ${pct(PREP_COOK_PURCHASE_DISCOUNT)} off every ingredient purchase.`,
+    description: `Cuts orders for you — ${pct(PREP_COOK_PURCHASE_DISCOUNT)} off every ingredient purchase. No hiring fee: paid by the hour at every closing.`,
     hourlyWageCents: 1600,
     scheduledHours: SERVICE_SHIFT_HOURS,
     salary: dailySalaryFor(1600, SERVICE_SHIFT_HOURS),

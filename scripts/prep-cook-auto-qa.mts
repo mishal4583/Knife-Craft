@@ -6,7 +6,8 @@
  *   G. the plate: always the plain Honest score, never better than a hand-cut Clean/Masterful one
  *      in pay or tip, and never worse than the neutral Honest settlement;
  *   S. the save: `settings.autoService` is optional (old saves read as off) and survives a load;
- *   H. the hiring path is unchanged (3 days' wages, from Level 5) and the guide offers it from the
+ *   H. the Prep Cook is paid by the hour only (no fee, his shift wage at every closing; developer
+ *      2026-10-30), hiring opens at Level 5, and the guide offers it from the
  *      unlock level until hired;
  *   A. the wiring: App passes the Prep Cook only for a campaign service order and never on a
  *      teaching first play; Auto only repeats Serve / Collect cash / Next Customer, each latched once,
@@ -36,8 +37,12 @@ import {
   PREP_COOK_SCORE,
   prepCookCanCut,
 } from "../src/game/restaurant/prepCookAuto.ts";
-import { STAFF_HIRE_FROM, staffHireFee } from "../src/game/restaurant/staffRequirements.ts";
-import { BUSINESS_STAFF_CATALOG } from "../src/game/business/businessStaff.ts";
+import {
+  STAFF_HIRE_FROM,
+  closingWage,
+  staffHireFee,
+} from "../src/game/restaurant/staffRequirements.ts";
+import { BUSINESS_STAFF_CATALOG, dailyPayroll } from "../src/game/business/businessStaff.ts";
 import { TIPS, tipAmount } from "../src/game/economy/customerTips.ts";
 import { computeSettlement } from "../src/game/economy/EconomySettlement.ts";
 import { CAMPAIGN_RECIPES } from "../src/game/recipes/campaignRecipes.ts";
@@ -116,9 +121,13 @@ await SaveManager.reset();
 
 // ── H. hiring ────────────────────────────────────────────────────────────
 const fee = staffHireFee("prep-cook");
+// Rule changed (developer 2026-10-30): the Prep Cook is paid by the hour only — no hiring fee, his full shift wage at every closing.
 check(
-  "H1 the hire is still three days' wages in whole dollars",
-  fee !== null && fee % 100 === 0 && fee > 0,
+  "H1 the Prep Cook has no hiring fee; closing pays his full shift wage from his first day",
+  fee === 0 &&
+    closingWage("prep-cook", PREP_COOK_CUTS_FROM) === dailyPayroll(["prep-cook"]) &&
+    closingWage("prep-cook", 6) === dailyPayroll(["prep-cook"]) &&
+    closingWage("prep-cook", 40) === dailyPayroll(["prep-cook"]),
   { fee },
 );
 check(
