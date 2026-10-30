@@ -336,10 +336,10 @@ const tasksOf = (s: SaveData, n: number) =>
     /closingRows\(save, restaurantLevel\)/.test(view) &&
       /useCleaningGame\(save,/.test(view) &&
       /cleaning\.clean\(r\.task\)/.test(view) &&
-      /disabled=\{left > 0\}/.test(view) &&
+      /disabled=\{left > 0 \|\| tableCash > 0\}/.test(view) &&
       /variant="button"/.test(view) &&
       !/<ShiftChecklist/.test(view),
-    "U1: Closing Time lists tonight's Cleanliness tasks and cleans them in the cleaning game; Close stays locked until done",
+    "U1: Closing Time lists tonight's Cleanliness tasks and cleans them in the cleaning game; Close stays locked until done (and, since 2026-10-30, until the table cash is in the till)",
   );
   assert(
     /useCleaningGame\(save,/.test(shift) && /useCleaningGame\(save,/.test(page),

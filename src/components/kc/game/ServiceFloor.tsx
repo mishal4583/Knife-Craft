@@ -383,10 +383,11 @@ export function ServiceFloor({
               {onBackToOrder ? (
                 <button
                   type="button"
-                  className="rounded-full px-3 py-1.5 font-ui text-[11px] font-extrabold text-walnut underline decoration-walnut/40 underline-offset-2"
+                  data-testid="cash-later"
+                  className="press min-h-12 rounded-full border border-walnut/25 bg-ivory/80 px-4 font-ui text-[12.5px] font-extrabold text-walnut-dark"
                   onClick={onBackToOrder}
                 >
-                  Back to order
+                  Collect later
                 </button>
               ) : null}
             </div>

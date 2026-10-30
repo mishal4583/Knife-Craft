@@ -138,7 +138,7 @@ function checkSource(label: string, steps: readonly S[], problems: string[]) {
   assert(/withRequiredPeelSteps\(/.test(read("src/game/scenes/PreparationScene.ts")) && /this\.steps = withRequiredPeelSteps\(/.test(read("src/game/scenes/PreparationScene.ts")), "E: the scene normalizes its steps on start");
   const prep = read("src/components/kc/game/Preparation.tsx");
   // One normalization over both step sources (service/business recipe, or the campaign level), used by both views.
-  assert(/const givenSteps = service\s*\?\s*preparationStepsForRecipe\(service\.order\.recipe\)\s*:\s*level!\.preparationSteps;/.test(prep) && /const playableSteps = completableSteps\(givenSteps\);/.test(prep) && (prep.match(/preparationSteps: playableSteps,/g) ?? []).length === 2, "E2: Preparation.tsx normalizes both campaign-level and service/business step lists (the HUD indexes the same list the scene plays)");
+  assert(/const givenSteps = service\s*\?\s*preparationStepsForRecipe\(service\.order\.recipe\)\s*:\s*level!\.preparationSteps;/.test(prep) && /const onePortionSteps = completableSteps\(givenSteps\);/.test(prep) && /: onePortionSteps;/.test(prep) && (prep.match(/preparationSteps: playableSteps,/g) ?? []).length === 2, "E2: (shared plates repeat the normalized list, 2026-10-30) Preparation.tsx normalizes both campaign-level and service/business step lists (the HUD indexes the same list the scene plays)");
 }
 
 console.log(failures === 0 ? "\nPREP SOFT-LOCK QA: ALL PASS" : `\nPREP SOFT-LOCK QA: ${failures} FAILURE(S)`);

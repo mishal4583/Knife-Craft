@@ -173,9 +173,10 @@ console.log("D. Wiring");
     "D3: Next Customer / Finish Level / a menu guest run the existing action at once, exactly once (the walk out never delays it)",
   );
   assert(
-    /useState<FloorMode \| null>\(\s*service && floor \? "arrive" : null/.test(prep) &&
-      /if \(paused\) return;\s*if \(floorMode\) return;/.test(prep),
-    "D4: a service order starts with the arrival (only when the floor is given); the Regular's clock waits for it",
+    /useState<FloorMode \| null>\(\s*(?:\/\/[^\n]*\n\s*)*service && floor && service\.order\.order\.status !== "READY" \? "arrive" : null/.test(
+      prep,
+    ) && /if \(paused\) return;\s*if \(floorMode\) return;/.test(prep),
+    "D4: a service order starts with the arrival (only when the floor is given, and not for a plate prepared together with the one before it); the Regular's clock waits for it",
   );
   assert(
     /\.\.\.\(RESTAURANT_MODE\s*\?\s*\{[\s\S]{0,160}floor: \{[\s\S]{0,200}kitchenMapArtStage\(save\.equippedKitchenUpgradeId\)/.test(
@@ -201,7 +202,7 @@ console.log("E. Nothing else moves");
     execSync(
       // Early-game phase 4 (developer 2026-10-26): everything unlocked by Level 5 — only the unlock-level
       // lines of these catalogs change (staff-hire-qa U5 checks no price moved).
-      "git diff 3ceac0f -- src/game/business/businessTypes.ts src/game/economy :!src/game/economy/staffDefinitions.ts :!src/game/business/businessTypes.ts :!src/game/economy/EconomyLedger.ts :!src/game/economy/ledgerTypes.ts :!src/game/economy/customerTips.ts src/game/daily/EndlessServiceManager.ts src/game/restaurant/endlessRestaurant.ts",
+      "git diff ae4ad52 -- src/game/business/businessTypes.ts src/game/economy :!src/game/economy/staffDefinitions.ts :!src/game/business/businessTypes.ts :!src/game/economy/EconomyLedger.ts :!src/game/economy/ledgerTypes.ts :!src/game/economy/customerTips.ts src/game/daily/EndlessServiceManager.ts src/game/restaurant/endlessRestaurant.ts",
       { cwd: ROOT, encoding: "utf8" },
     );
   assert(

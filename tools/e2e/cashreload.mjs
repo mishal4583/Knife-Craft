@@ -1,8 +1,8 @@
 // Cash left on the table is never lost (developer 2026-10-29), restaurant build:
 //   R1 after Serve the unswept cash is SAVED (business.pendingCash), the wallet and ledger untouched.
-//   R2 closing the game (a reload) before sweeping loses nothing: the next load puts it in the
-//      wallet exactly once, wallet = signed ledger, one settlement + one tip entry.
-//   R3 a second reload pays nothing more.
+//   R2 closing the game (a reload) before sweeping loses nothing: the cash is still on the table
+//      (collecting is optional, developer 2026-10-30).
+//   R3 the Kitchen's Collect button pays it exactly once; R3b a second reload pays nothing more.
 //   R4 no console errors.
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import { launch, startFirstLevel, sleep, clickButton, readSave, text } from "./harness.mjs";
@@ -46,18 +46,29 @@ try {
   await sleep(4000);
   const after = await readSave(page);
   check(
-    "R2 the next load settles it exactly once: wallet = signed ledger, one settlement + one tip entry",
-    after.credits === base.credits + total &&
-      after.credits === 1000 + ledgerSum(after) &&
-      after.economyLedger.length === base.economyLedger.length + 2 &&
-      !after.business.pendingCash,
-    { credits: after.credits, total, entries: after.economyLedger.length },
+    "R2 the reload leaves the cash on the table (nothing is settled behind the player's back)",
+    after.credits === base.credits &&
+      after.economyLedger.length === base.economyLedger.length &&
+      after.business.pendingCash?.payCents + after.business.pendingCash?.tipCents === total,
+    { credits: after.credits, pending: after.business.pendingCash ?? null },
+  );
+  // The player collects it from the Kitchen when they want: once, one settlement + one tip entry.
+  await page.evaluate(() => document.querySelector('[data-testid="kitchen-table-cash"]')?.click());
+  await sleep(1500);
+  const taken = await readSave(page);
+  check(
+    "R3 collecting from the Kitchen pays it exactly once: wallet = $10 + signed ledger, one settlement + one tip entry",
+    taken.credits === base.credits + total &&
+      taken.credits === 1000 + ledgerSum(taken) &&
+      taken.economyLedger.length === base.economyLedger.length + 2 &&
+      !taken.business.pendingCash,
+    { credits: taken.credits, total, entries: taken.economyLedger.length },
   );
   await page.reload({ waitUntil: "load" });
   await sleep(3000);
   const again = await readSave(page);
   check(
-    "R3 a second reload pays nothing more",
+    "R3b a second reload pays nothing more",
     again.credits === base.credits + total &&
       again.economyLedger.length === base.economyLedger.length + 2,
     { credits: again.credits },

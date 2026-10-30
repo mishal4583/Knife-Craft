@@ -338,17 +338,17 @@ console.log("E. No save, wallet, ledger or payment change");
   // Early game phase 3 (developer 2026-10-25): walk-ins change menuGuests.ts and App.tsx's
   // offer label; walkin-qa guards them. The save, wallet, ledger and payment stay unchanged.
   const diff = execSync(
-    `git diff ${BASE} --stat -- src/game/SaveManager.ts src/game/business/businessTypes.ts src/game/economy :!src/game/economy/staffDefinitions.ts :!src/game/business/businessTypes.ts :!src/game/economy/EconomyLedger.ts :!src/game/economy/ledgerTypes.ts :!src/game/economy/customerTips.ts src/game/business/BusinessServiceManager.ts src/game/levels/LevelManager.ts`,
+    `git diff ${BASE} --stat -- src/game/SaveManager.ts src/game/business/businessTypes.ts src/game/economy :!src/game/economy/staffDefinitions.ts :!src/game/business/businessTypes.ts :!src/game/economy/EconomyLedger.ts :!src/game/economy/ledgerTypes.ts :!src/game/economy/customerTips.ts :!src/game/economy/pendingCash.ts src/game/business/BusinessServiceManager.ts src/game/levels/LevelManager.ts`,
     { cwd: ROOT, encoding: "utf8" },
   );
   // Rule changed (developer 2026-10-26, "the game starts at 0 cash"): SaveManager may change
   // only the new save's opening credits (DEFAULT_SAVE.credits $1,240 → $0) and its comment.
   // (developer 2026-10-30: $10.00 start + the write queue are also approved; see startCashGuard.mts)
   const saveLines = saveManagerChangesBeyondStartCash(BASE, ROOT);
-  // Excluded by rule change (developer 2026-10-30): BusinessServiceManager.ts (a served order leaves its
+  // Excluded by rule change (developer 2026-10-30): economy/pendingCash.ts (new), BusinessServiceManager.ts (a served order leaves its
   // cash on the table: pendingCash) and LevelManager.ts (148-level campaign). Their own QAs guard them.
   const rest = execSync(
-    `git diff ${BASE} --stat -- src/game/business/businessTypes.ts src/game/economy :!src/game/economy/staffDefinitions.ts :!src/game/business/businessTypes.ts :!src/game/economy/EconomyLedger.ts :!src/game/economy/ledgerTypes.ts :!src/game/economy/customerTips.ts :!src/game/business/BusinessServiceManager.ts :!src/game/levels/LevelManager.ts`,
+    `git diff ${BASE} --stat -- src/game/business/businessTypes.ts src/game/economy :!src/game/economy/staffDefinitions.ts :!src/game/business/businessTypes.ts :!src/game/economy/EconomyLedger.ts :!src/game/economy/ledgerTypes.ts :!src/game/economy/customerTips.ts :!src/game/economy/pendingCash.ts :!src/game/business/BusinessServiceManager.ts :!src/game/levels/LevelManager.ts`,
     { cwd: ROOT, encoding: "utf8" },
   );
   assert(

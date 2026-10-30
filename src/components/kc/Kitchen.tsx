@@ -33,6 +33,7 @@ import { KButton, Coin, DustMotes } from "./common/primitives";
 import { PointerHand } from "./common/PointerHand";
 import { gameReady } from "@/game/PlayablesSDK";
 import { dollars, formatUsd, formatUsdChange } from "@/game/money";
+import { pendingCashTotal } from "@/game/economy/pendingCash";
 import { DailyGiftCard } from "./DailyGiftCard";
 import { KitchenBackground } from "./KitchenBackground";
 import type { ScreenId } from "./data";
@@ -142,10 +143,13 @@ export function Kitchen({
   save,
   onSelectLevel,
   onOpenDailyGift,
+  onCollectTableCash,
 }: {
   go: (s: ScreenId) => void;
   save: SaveData;
   onSelectLevel: (levelId: string) => void;
+  /** Collects the cash a served order left on the table (optional; it must be in before closing). */
+  onCollectTableCash?: () => void;
   /** Phase 5 (B3): opens today's gift sheet (App's openDailyGift) — the one place a gift is taken. */
   onOpenDailyGift?: () => void;
 }) {
@@ -273,6 +277,16 @@ export function Kitchen({
             <DailyGiftCard save={save} levelNumber={reached} onOpen={onOpenDailyGift} />
           ) : null}
           {RESTAURANT_MODE ? <NextKitchenStrip save={save} go={go} /> : null}
+          {pendingCashTotal(save) > 0 && onCollectTableCash ? (
+            <button
+              type="button"
+              data-testid="kitchen-table-cash"
+              onClick={onCollectTableCash}
+              className="press mt-1.5 min-h-12 w-full rounded-[14px] border border-gold/60 bg-gold/85 px-3 py-2 text-left font-ui text-[13px] font-extrabold text-walnut-dark shadow-soft"
+            >
+              💵 {formatUsd(pendingCashTotal(save))} on the table · Collect
+            </button>
+          ) : null}
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <Coin n={save.credits} />
@@ -1023,7 +1037,9 @@ export function BottomNav({ active, go }: { active: ScreenId | null; go: (s: Scr
               <KButton
                 variant="copper"
                 className="min-h-12 flex-[2]"
-                onClick={() => (pointer.tab === "shop" ? openMarketIngredients(go) : go(pointer.tab))}
+                onClick={() =>
+                  pointer.tab === "shop" ? openMarketIngredients(go) : go(pointer.tab)
+                }
               >
                 Show me →
               </KButton>

@@ -1,10 +1,6 @@
 import { staffOnMap } from "@/game/restaurant/staffLife";
 import { restaurantNameOf } from "@/game/restaurant/restaurantName";
-import {
-  cleanerRestroomJob,
-  dayCleanerToday,
-  type TaskKind,
-} from "@/game/restaurant/cleanliness";
+import { cleanerRestroomJob, dayCleanerToday, type TaskKind } from "@/game/restaurant/cleanliness";
 import type { DeliveryKind } from "@/game/restaurant/deliveries";
 import type {
   CleanlinessAction,
@@ -27,7 +23,12 @@ import type { AdvanceDayResult } from "@/components/kc/business/BusinessDashboar
 import { businessTabForScreen } from "@/components/kc/business/businessTabs";
 import type { PurchaseIngredientResult } from "@/game/business/BusinessInventoryManager";
 import type { PurchaseSupplyResult } from "@/game/business/BusinessSuppliesManager";
-import { openMarketSupplies, openMarketSecondFloor, peekMarketSecondFloor, peekSupplySection } from "@/components/kc/marketFocus";
+import {
+  openMarketSupplies,
+  openMarketSecondFloor,
+  peekMarketSecondFloor,
+  peekSupplySection,
+} from "@/components/kc/marketFocus";
 import type { RestaurantZoneId } from "@/components/kc/restaurantMap/restaurantMap";
 import type { SecondFloorAction } from "@/components/kc/restaurantMap/SecondFloorView";
 import {
@@ -125,6 +126,7 @@ export function ScreensRouter({
   onSelectLevel,
   onStartDaily,
   onOpenDailyGift,
+  onCollectTableCash,
   onStartEndless,
   buyKnife,
   buyBoard,
@@ -177,6 +179,8 @@ export function ScreensRouter({
   onStartDaily: () => void;
   /** Phase 5 (B3): the Kitchen's daily gift card opens the gift sheet. */
   onOpenDailyGift?: () => void;
+  /** Collects the cash left on the table (Kitchen). */
+  onCollectTableCash?: () => void;
   onStartEndless: () => void;
   buyKnife: (id: string) => BuyKnifeResult;
   buyBoard: (id: string) => BuyBoardResult;
@@ -273,221 +277,226 @@ export function ScreensRouter({
   return (
     <NavLevelContext.Provider value={restaurantLevelOf(save.levelProgress)}>
       <NavAttentionContext.Provider value={attentionBadges}>
-       <NavGuideContext.Provider value={navGuide ?? null}>
-        {screen === "restaurant-map" ? (
-          <Suspense fallback={<RestaurantLoading go={routeGo} active="restaurant-map" />}>
-            <div className="relative h-full w-full overflow-hidden bg-[#f7edd7]">
-              <RestaurantMap
-                className="restaurant-map-production"
-                playerLevel={restaurantLevelOf(save.levelProgress)}
-                kitchenMapImage={kitchenMapImageUrl(save.equippedKitchenUpgradeId)}
-                fridgeTier={fridgeTier}
-                reducedMotion={save.settings.reducedMotion}
-                staffOnMap={staffOnMap(save.business.staff.hiredRoles, {
-                  stage: kitchenMapArtStage(save.equippedKitchenUpgradeId),
-                  diningOpen: true,
-                  serviceOpen: true,
-                  cleanerJob: cleanerRestroomJob(save),
-                  cleanerToday: dayCleanerToday(save),
-                })}
-                onCleanerDone={cleanerCleans}
-                attentionCounts={attentionBadges.map}
-                attentionSymbols={attentionBadges.mapSymbols}
-                currentScreen={screen}
-                onNavigateToScreen={openMapDestination}
-                restaurantName={restaurantNameOf(save)}
-                onRestaurantNameChange={setRestaurantName}
-              />
-              {(() => {
-                const level = restaurantLevelOf(save.levelProgress);
-                const open = isSecondFloorOpen(level);
-                const waiting = open && floorEarnings(save, Date.now()) > 0;
-                return (
-                  <button
-                    type="button"
-                    data-testid="upstairs"
-                    className={`press absolute bottom-24 right-3 z-20 min-h-12 rounded-2xl border px-4 font-ui text-[13px] font-extrabold shadow-lift ${
-                      open
-                        ? "border-walnut-dark/40 bg-walnut text-ivory"
-                        : "border-walnut/20 bg-ivory/90 text-walnut/60"
-                    }`}
-                    aria-label={
-                      open
-                        ? `Upstairs to the second floor${waiting ? ", money waiting" : ""}`
-                        : `Second floor opens at Level ${SECOND_FLOOR_OPENS_AT}`
-                    }
-                    onClick={() => (open ? routeGo("second-floor") : undefined)}
-                  >
-                    {open
-                      ? `⬆ 2nd floor${waiting ? " 💰" : ""}`
-                      : `🔒 2nd floor · Lv ${SECOND_FLOOR_OPENS_AT}`}
-                  </button>
-                );
-              })()}
-              <BottomNav active="restaurant-map" go={routeGo} />
-            </div>
-          </Suspense>
-        ) : null}
-        {screen === "second-floor" ? (
-          <Suspense fallback={<RestaurantLoading go={routeGo} active="restaurant-map" />}>
-            <div className="relative h-full w-full overflow-hidden bg-[#f7edd7]">
-              <SecondFloorView
-                save={save}
-                playerLevel={restaurantLevelOf(save.levelProgress)}
-                reducedMotion={save.settings.reducedMotion}
-                onAction={secondFloorAction}
-                onDownstairs={() => routeGo("restaurant-map")}
-                onOpenMarket={() => openMarketSecondFloor(routeGo)}
-              />
-              <BottomNav active="restaurant-map" go={routeGo} />
-            </div>
-          </Suspense>
-        ) : null}
-        {screen === "kitchen" ? (
-          <Kitchen
-            go={routeGo}
-            save={save}
-            onSelectLevel={onSelectLevel}
-            {...(onOpenDailyGift ? { onOpenDailyGift } : {})}
-          />
-        ) : null}
-        {screen === "board" ? (
-          <OrderBoard go={routeGo} save={save} onSelectLevel={onSelectLevel} />
-        ) : null}
-        {screen === "shop" || screen === "shop-ingredients" || screen === "shop-supplies" ? (
-          <Shop
-            key={screen}
-            initialCategory={
-              screen === "shop-ingredients"
-                ? "ingredients"
-                : screen === "shop-supplies"
-                  ? peekSupplySection()
-                  : peekMarketSecondFloor()
-                    ? "second-floor"
-                    : "knives"
-            }
-            purchaseIngredient={purchaseIngredient}
-            {...(purchaseIngredients ? { purchaseIngredients } : {})}
-            purchaseSupply={purchaseSupply}
-            secondFloorAction={secondFloorAction}
-            planLevelId={planLevelId}
-            go={routeGo}
-            save={save}
-            buyKnife={buyKnife}
-            buyBoard={buyBoard}
-            selectSupplier={selectSupplier}
-            equipKnife={setEquippedKnife}
-            equipBoard={setEquippedBoard}
-            sharpenKnife={sharpenKnife}
-            upgradeKnife={upgradeKnife}
-          />
-        ) : null}
-        {/* "rack" is the internal screen id; the player-facing screen is Restaurant Progress. */}
-        {screen === "rack" ? <RestaurantProgress go={routeGo} save={save} /> : null}
-        {screen === "achievements" ? (
-          <Achievements go={routeGo} save={save} onCollect={collectAchievement} />
-        ) : null}
-        {screen === "daily-maintenance" ? (
-          <DailyMaintenance go={routeGo} save={save} cleanlinessAction={cleanlinessAction} />
-        ) : null}
-        {screen === "inventory" || screen === "inventory-supplies" ? (
-          <Suspense fallback={<RestaurantLoading go={routeGo} active="inventory" />}>
-            <InventoryScreen
+        <NavGuideContext.Provider value={navGuide ?? null}>
+          {screen === "restaurant-map" ? (
+            <Suspense fallback={<RestaurantLoading go={routeGo} active="restaurant-map" />}>
+              <div className="relative h-full w-full overflow-hidden bg-[#f7edd7]">
+                <RestaurantMap
+                  className="restaurant-map-production"
+                  playerLevel={restaurantLevelOf(save.levelProgress)}
+                  kitchenMapImage={kitchenMapImageUrl(save.equippedKitchenUpgradeId)}
+                  fridgeTier={fridgeTier}
+                  reducedMotion={save.settings.reducedMotion}
+                  staffOnMap={staffOnMap(save.business.staff.hiredRoles, {
+                    stage: kitchenMapArtStage(save.equippedKitchenUpgradeId),
+                    diningOpen: true,
+                    serviceOpen: true,
+                    cleanerJob: cleanerRestroomJob(save),
+                    cleanerToday: dayCleanerToday(save),
+                  })}
+                  onCleanerDone={cleanerCleans}
+                  attentionCounts={attentionBadges.map}
+                  attentionSymbols={attentionBadges.mapSymbols}
+                  currentScreen={screen}
+                  onNavigateToScreen={openMapDestination}
+                  restaurantName={restaurantNameOf(save)}
+                  onRestaurantNameChange={setRestaurantName}
+                />
+                {(() => {
+                  const level = restaurantLevelOf(save.levelProgress);
+                  const open = isSecondFloorOpen(level);
+                  const waiting = open && floorEarnings(save, Date.now()) > 0;
+                  return (
+                    <button
+                      type="button"
+                      data-testid="upstairs"
+                      className={`press absolute bottom-24 right-3 z-20 min-h-12 rounded-2xl border px-4 font-ui text-[13px] font-extrabold shadow-lift ${
+                        open
+                          ? "border-walnut-dark/40 bg-walnut text-ivory"
+                          : "border-walnut/20 bg-ivory/90 text-walnut/60"
+                      }`}
+                      aria-label={
+                        open
+                          ? `Upstairs to the second floor${waiting ? ", money waiting" : ""}`
+                          : `Second floor opens at Level ${SECOND_FLOOR_OPENS_AT}`
+                      }
+                      onClick={() => (open ? routeGo("second-floor") : undefined)}
+                    >
+                      {open
+                        ? `⬆ 2nd floor${waiting ? " 💰" : ""}`
+                        : `🔒 2nd floor · Lv ${SECOND_FLOOR_OPENS_AT}`}
+                    </button>
+                  );
+                })()}
+                <BottomNav active="restaurant-map" go={routeGo} />
+              </div>
+            </Suspense>
+          ) : null}
+          {screen === "second-floor" ? (
+            <Suspense fallback={<RestaurantLoading go={routeGo} active="restaurant-map" />}>
+              <div className="relative h-full w-full overflow-hidden bg-[#f7edd7]">
+                <SecondFloorView
+                  save={save}
+                  playerLevel={restaurantLevelOf(save.levelProgress)}
+                  reducedMotion={save.settings.reducedMotion}
+                  onAction={secondFloorAction}
+                  onDownstairs={() => routeGo("restaurant-map")}
+                  onOpenMarket={() => openMarketSecondFloor(routeGo)}
+                />
+                <BottomNav active="restaurant-map" go={routeGo} />
+              </div>
+            </Suspense>
+          ) : null}
+          {screen === "kitchen" ? (
+            <Kitchen
+              go={routeGo}
+              save={save}
+              onSelectLevel={onSelectLevel}
+              {...(onOpenDailyGift ? { onOpenDailyGift } : {})}
+              {...(onCollectTableCash ? { onCollectTableCash } : {})}
+            />
+          ) : null}
+          {screen === "board" ? (
+            <OrderBoard go={routeGo} save={save} onSelectLevel={onSelectLevel} />
+          ) : null}
+          {screen === "shop" || screen === "shop-ingredients" || screen === "shop-supplies" ? (
+            <Shop
               key={screen}
+              initialCategory={
+                screen === "shop-ingredients"
+                  ? "ingredients"
+                  : screen === "shop-supplies"
+                    ? peekSupplySection()
+                    : peekMarketSecondFloor()
+                      ? "second-floor"
+                      : "knives"
+              }
+              purchaseIngredient={purchaseIngredient}
+              {...(purchaseIngredients ? { purchaseIngredients } : {})}
+              purchaseSupply={purchaseSupply}
+              secondFloorAction={secondFloorAction}
+              planLevelId={planLevelId}
               go={routeGo}
               save={save}
-              initialKind={screen === "inventory-supplies" ? "supplies" : "ingredients"}
-              throwOutExpired={throwOutExpired}
-            />
-          </Suspense>
-        ) : null}
-        {screen === "kitchen-upgrades" ? (
-          <KitchenUpgrades go={routeGo} save={save} buildKitchenUpgrade={buildKitchenUpgrade} />
-        ) : null}
-        {screen === "recipes" ? <RecipeBook go={routeGo} save={save} onOpen={onOpenRecipe} /> : null}
-        {screen === "recipe-detail" ? (
-          <RecipeDetail
-            levelId={recipeDetailLevelId}
-            save={save}
-            go={routeGo}
-            onSelectLevel={onSelectLevel}
-          />
-        ) : null}
-        {screen === "daily" ? <DailyOrder go={routeGo} save={save} onStartDaily={onStartDaily} /> : null}
-        {screen === "prep-rush" ? (
-          <Suspense fallback={<div className="h-full w-full bg-[#ecd7b1]" />}>
-            <PrepRush go={routeGo} />
-          </Suspense>
-        ) : null}
-        {screen === "endless" ? (
-          <EndlessService go={routeGo} save={save} onStartEndless={onStartEndless} />
-        ) : null}
-        {screen === "settings" ? (
-          <Settings
-            go={routeGo}
-            settings={save.settings}
-            onToggleSetting={toggleSetting}
-            onSetMeasure={RESTAURANT_MODE ? setMeasure : undefined}
-            {...(RESTAURANT_MODE
-              ? { restaurantName: restaurantNameOf(save), onSetRestaurantName: setRestaurantName }
-              : {})}
-            onResetProgress={resetProgress}
-          />
-        ) : null}
-        {/* Business Mode: one Market-style screen; every business route opens its tab.
-          Rendered from one place so the screen stays mounted while switching tabs. */}
-        {businessTabForScreen(screen) ? (
-          <Suspense fallback={<RestaurantLoading go={routeGo} active="business" />}>
-            <BusinessDashboard
-              go={routeGo}
-              save={save}
-              tab={businessTabForScreen(screen)!}
-              onAdvanceDay={advanceBusinessDay}
-              businessServiceSession={businessServiceSession}
-              purchaseRefrigerator={purchaseRefrigerator}
-              buildKitchenUpgrade={buildKitchenUpgrade}
-              performRefrigeratorMaintenance={performRefrigeratorMaintenance}
-              rushRestock={rushRestock}
-              rushAdAvailable={rushAdAvailable}
-              setMenuPrice={setMenuPrice}
-              setBusinessDishActive={setBusinessDishActive}
-              signSupplierContract={signSupplierContract}
-              cancelSupplierContract={cancelSupplierContract}
+              buyKnife={buyKnife}
+              buyBoard={buyBoard}
               selectSupplier={selectSupplier}
-              cleanlinessAction={cleanlinessAction}
-              {...(dayCleaner ? { dayCleaner } : {})}
-              setStandingOrder={setStandingOrder}
-              hireStaff={hireStaff}
-              buyStaff={buyStaff}
-              fireStaff={fireStaff}
+              equipKnife={setEquippedKnife}
+              equipBoard={setEquippedBoard}
+              sharpenKnife={sharpenKnife}
+              upgradeKnife={upgradeKnife}
             />
-          </Suspense>
-        ) : null}
-        {screen === "business-service" ? (
-          <Suspense fallback={<RestaurantLoading go={routeGo} active="business" />}>
-            <BusinessService
-              go={routeGo}
+          ) : null}
+          {/* "rack" is the internal screen id; the player-facing screen is Restaurant Progress. */}
+          {screen === "rack" ? <RestaurantProgress go={routeGo} save={save} /> : null}
+          {screen === "achievements" ? (
+            <Achievements go={routeGo} save={save} onCollect={collectAchievement} />
+          ) : null}
+          {screen === "daily-maintenance" ? (
+            <DailyMaintenance go={routeGo} save={save} cleanlinessAction={cleanlinessAction} />
+          ) : null}
+          {screen === "inventory" || screen === "inventory-supplies" ? (
+            <Suspense fallback={<RestaurantLoading go={routeGo} active="inventory" />}>
+              <InventoryScreen
+                key={screen}
+                go={routeGo}
+                save={save}
+                initialKind={screen === "inventory-supplies" ? "supplies" : "ingredients"}
+                throwOutExpired={throwOutExpired}
+              />
+            </Suspense>
+          ) : null}
+          {screen === "kitchen-upgrades" ? (
+            <KitchenUpgrades go={routeGo} save={save} buildKitchenUpgrade={buildKitchenUpgrade} />
+          ) : null}
+          {screen === "recipes" ? (
+            <RecipeBook go={routeGo} save={save} onOpen={onOpenRecipe} />
+          ) : null}
+          {screen === "recipe-detail" ? (
+            <RecipeDetail
+              levelId={recipeDetailLevelId}
               save={save}
-              businessServiceSession={businessServiceSession}
-              onStartService={onStartBusinessService}
-              onEnterPreparation={onEnterBusinessPreparation}
-              rushRestock={rushRestock}
-              rushAdAvailable={rushAdAvailable}
+              go={routeGo}
+              onSelectLevel={onSelectLevel}
             />
-          </Suspense>
-        ) : null}
-        {mapReturnAvailable && screen !== "restaurant-map" && screen !== "gameplay" ? (
-          <button
-            type="button"
-            data-map-return
-            aria-label="Return to restaurant map"
-            onClick={() => routeGo("restaurant-map")}
-            className="fixed bottom-[82px] right-3 z-[80] land:bottom-3 flex min-h-12 items-center gap-2 rounded-full border border-walnut-dark/60 bg-walnut-dark px-4 font-ui text-[12px] font-extrabold text-ivory shadow-lift"
-          >
-            🗺️ Map
-          </button>
-        ) : null}
-       </NavGuideContext.Provider>
+          ) : null}
+          {screen === "daily" ? (
+            <DailyOrder go={routeGo} save={save} onStartDaily={onStartDaily} />
+          ) : null}
+          {screen === "prep-rush" ? (
+            <Suspense fallback={<div className="h-full w-full bg-[#ecd7b1]" />}>
+              <PrepRush go={routeGo} />
+            </Suspense>
+          ) : null}
+          {screen === "endless" ? (
+            <EndlessService go={routeGo} save={save} onStartEndless={onStartEndless} />
+          ) : null}
+          {screen === "settings" ? (
+            <Settings
+              go={routeGo}
+              settings={save.settings}
+              onToggleSetting={toggleSetting}
+              onSetMeasure={RESTAURANT_MODE ? setMeasure : undefined}
+              {...(RESTAURANT_MODE
+                ? { restaurantName: restaurantNameOf(save), onSetRestaurantName: setRestaurantName }
+                : {})}
+              onResetProgress={resetProgress}
+            />
+          ) : null}
+          {/* Business Mode: one Market-style screen; every business route opens its tab.
+          Rendered from one place so the screen stays mounted while switching tabs. */}
+          {businessTabForScreen(screen) ? (
+            <Suspense fallback={<RestaurantLoading go={routeGo} active="business" />}>
+              <BusinessDashboard
+                go={routeGo}
+                save={save}
+                tab={businessTabForScreen(screen)!}
+                onAdvanceDay={advanceBusinessDay}
+                businessServiceSession={businessServiceSession}
+                purchaseRefrigerator={purchaseRefrigerator}
+                buildKitchenUpgrade={buildKitchenUpgrade}
+                performRefrigeratorMaintenance={performRefrigeratorMaintenance}
+                rushRestock={rushRestock}
+                rushAdAvailable={rushAdAvailable}
+                setMenuPrice={setMenuPrice}
+                setBusinessDishActive={setBusinessDishActive}
+                signSupplierContract={signSupplierContract}
+                cancelSupplierContract={cancelSupplierContract}
+                selectSupplier={selectSupplier}
+                cleanlinessAction={cleanlinessAction}
+                {...(dayCleaner ? { dayCleaner } : {})}
+                setStandingOrder={setStandingOrder}
+                hireStaff={hireStaff}
+                buyStaff={buyStaff}
+                fireStaff={fireStaff}
+              />
+            </Suspense>
+          ) : null}
+          {screen === "business-service" ? (
+            <Suspense fallback={<RestaurantLoading go={routeGo} active="business" />}>
+              <BusinessService
+                go={routeGo}
+                save={save}
+                businessServiceSession={businessServiceSession}
+                onStartService={onStartBusinessService}
+                onEnterPreparation={onEnterBusinessPreparation}
+                rushRestock={rushRestock}
+                rushAdAvailable={rushAdAvailable}
+              />
+            </Suspense>
+          ) : null}
+          {mapReturnAvailable && screen !== "restaurant-map" && screen !== "gameplay" ? (
+            <button
+              type="button"
+              data-map-return
+              aria-label="Return to restaurant map"
+              onClick={() => routeGo("restaurant-map")}
+              className="fixed bottom-[82px] right-3 z-[80] land:bottom-3 flex min-h-12 items-center gap-2 rounded-full border border-walnut-dark/60 bg-walnut-dark px-4 font-ui text-[12px] font-extrabold text-ivory shadow-lift"
+            >
+              🗺️ Map
+            </button>
+          ) : null}
+        </NavGuideContext.Provider>
       </NavAttentionContext.Provider>
     </NavLevelContext.Provider>
   );

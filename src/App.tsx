@@ -527,6 +527,15 @@ export function App() {
   // path every other campaign completion already uses — never a second
   // completion system. Session-only: never persisted.
   const [campaignServiceSession, setCampaignServiceSession] = useState<ServiceSession | null>(null);
+  // Customers who ordered the same dish are cut one plate after another, cooked once and served
+  // together: after the first plate is served, each next one arrives already prepared (READY)
+  // with the same score. `left` = plates still to hand out; cleared with every new session.
+  const [sharedPrep, setSharedPrep] = useState<{
+    levelId: string;
+    recipeId: string;
+    score: number;
+    left: number;
+  } | null>(null);
 
   // Phase 4 — REAL batching (brief §3-§10): a level with
   // `batchGroupRecipeIds` runs a BatchGroupSession instead of an
@@ -718,9 +727,8 @@ export function App() {
       // before V2.5 already got their level-earned tiers in
       // SaveManager.load (migrateKitchenDevelopment).
       let synced = syncKitchenUpgradeOwnership(loaded);
-      // Cash a served order left on the table when the game was closed goes in the till,
-      // once, on load (economy/pendingCash.ts) — whatever screen the player lands on.
-      synced = settlePendingCash(synced);
+      // Cash a served order left on the table stays there (it is saved with the order): the
+      // player collects it when they want (Kitchen), and it must be in before closing.
       // THE LAST WISH's intro (ported from boot()) is a "how you got
       // here" origin scene — only a genuinely brand-new player should
       // ever see it. Every save that predates this feature also has
@@ -2067,15 +2075,21 @@ export function App() {
     const session = buildCampaignServiceSession(level, save.levelProgress);
     if (!session) return;
     setCampaignServiceSession(session);
+    setSharedPrep(null);
     setActiveLevelId(level.id);
     setSessionMode("campaign-service");
     setScreen("gameplay");
   }
 
   /** Mirrors recordServiceResult exactly, for the campaign session instead of the Phase 2 harness session — same recipeProgress bookkeeping (§36 "no second recipe-progress system"), same deferred-payment rule. */
-  function recordCampaignServiceResult(score: number): number {
+  function recordCampaignServiceResult(score: number, portions = 1): number {
     if (!save || !campaignServiceSession?.current) return 0;
     const recipeId = campaignServiceSession.current.recipe.id;
+    setSharedPrep(
+      portions > 1
+        ? { levelId: campaignServiceSession.levelId, recipeId, score, left: portions - 1 }
+        : null,
+    );
     const prior = save.recipeProgress[recipeId];
     const best = Math.max(prior?.best ?? 0, score);
     const recipeProgress = { ...save.recipeProgress, [recipeId]: { best, done: true } };
@@ -2316,7 +2330,25 @@ export function App() {
     if (!save || !campaignServiceSession) return;
     const level = getLevel(campaignServiceSession.levelId);
     const pool = campaignPoolFor(level);
-    setCampaignServiceSession((s) => (s ? advanceServiceSession(s, pool, Math.random) : s));
+    setCampaignServiceSession((s) => {
+      if (!s) return s;
+      const advanced = advanceServiceSession(s, pool, Math.random);
+      // The next plate of a shared preparation arrives ready: same dish, same score.
+      return sharedPrep &&
+        sharedPrep.left > 0 &&
+        sharedPrep.levelId === advanced.levelId &&
+        advanced.current?.recipe.id === sharedPrep.recipeId
+        ? recordAllComponents(advanced, sharedPrep.score)
+        : advanced;
+    });
+    setSharedPrep((p) =>
+      p &&
+      p.left > 1 &&
+      campaignServiceSession?.next?.recipe.id === p.recipeId &&
+      campaignServiceSession.levelId === p.levelId
+        ? { ...p, left: p.left - 1 }
+        : null,
+    );
   }
 
   /**
@@ -2447,6 +2479,7 @@ export function App() {
     if (!level) return;
     completeCampaignLevel(level);
     setCampaignServiceSession(null);
+    setSharedPrep(null);
     setSessionMode("campaign");
     go("kitchen");
   }
@@ -3041,13 +3074,15 @@ export function App() {
   useEffect(() => {
     if (storyEvent) AudioManager.playSfx("story");
   }, [storyEvent]);
-  // Cash left on the table is never stranded (economy/pendingCash.ts): leaving the service
-  // (any screen but the service itself) or loading the game puts what is still there in the till.
-  useEffect(() => {
+  // Cash left on the table is optional to collect (developer 2026-10-30): it waits, saved with
+  // the order, until the player collects it (Kitchen button, or the table's swipe); the next
+  // served order's cash first takes it in (withPendingCash), and closing needs it in the till.
+  function collectTableCash() {
     const current = saveRef.current;
-    if (!current || screen === "gameplay") return;
-    if (pendingCashTotal(current) > 0) persist(settlePendingCash(current));
-  }, [save, screen]);
+    if (!current || pendingCashTotal(current) <= 0) return;
+    AudioManager.playSfx("coin");
+    persist(settlePendingCash(current));
+  }
   // Ad bonuses: the home screens with nothing else on them — where the floating cash may
   // drift in and the daily gift opens (never over a card, a sheet, a pointer or an ad).
   const homeCalm =
@@ -3247,6 +3282,37 @@ export function App() {
           return [...tickets, ...guests];
         })()
       : undefined;
+  // Same dish ordered by the customers right behind this one (required orders only, never menu
+  // guests): prepared together with this order.
+  const sameDishAhead =
+    RESTAURANT_MODE &&
+    isCampaignService &&
+    campaignServiceSession?.tickets &&
+    campaignLevelForSession &&
+    (campaignServiceSession.current?.order.status === "ACTIVE" ||
+      campaignServiceSession.current?.order.status === "PENDING")
+      ? (() => {
+          const at = campaignServiceSession.completedCount;
+          const required = campaignLevelForSession.requiredOrders ?? 1;
+          const id = campaignServiceSession.current!.recipe.id;
+          let n = 0;
+          while (
+            n < 3 &&
+            at + 1 + n < required &&
+            campaignServiceSession.tickets[at + 1 + n]?.id === id
+          )
+            n++;
+          return n;
+        })()
+      : 0;
+  // After this plate is served, the next one is already prepared: the button says so.
+  const sharedPlateNext =
+    sharedPrep &&
+    sharedPrep.left > 0 &&
+    campaignServiceSession?.levelId === sharedPrep.levelId &&
+    campaignServiceSession.next?.recipe.id === sharedPrep.recipeId
+      ? true
+      : false;
   const campaignLevelSatisfied =
     isCampaignService && campaignServiceSession
       ? campaignServiceSession.completedCount +
@@ -3354,6 +3420,7 @@ export function App() {
                   : advanceBusinessServiceQueue,
               ...(isBusinessService ? { isBusinessOrder: true } : {}),
               ...(partyWaiting ? { partyWaiting } : {}),
+              ...(sameDishAhead > 0 ? { sameDishAhead } : {}),
               ...(menuGuest
                 ? {
                     extraAction: !guestHasSetting(save, campaignLevelForSession!)
@@ -3387,7 +3454,9 @@ export function App() {
               ...((isCampaignService && campaignWillFinishNext) ||
               (isBatchGroup && batchGroupWillFinish)
                 ? { nextLabel: "Finish Level" }
-                : {}),
+                : isCampaignService && sharedPlateNext
+                  ? { nextLabel: "Serve the next plate →" }
+                  : {}),
               ...(activeServiceSession ? { batchHint: batchHintFor(activeServiceSession) } : {}),
               ...(isBatchGroup && batchGroupSession && batchViewOrderId
                 ? { batchHint: batchHintForGroup(batchGroupSession, batchViewOrderId) }
@@ -3505,6 +3574,7 @@ export function App() {
                 onOpenDailyGift={() => {
                   openDailyGift();
                 }}
+                onCollectTableCash={collectTableCash}
                 onStartEndless={startEndless}
                 buyKnife={buyKnife}
                 buyBoard={buyBoard}
@@ -3566,6 +3636,7 @@ export function App() {
             restaurantLevel={restaurantLevelOf(save.levelProgress)}
             cleanlinessAction={cleanlinessAction}
             go={go}
+            onCollectTableCash={collectTableCash}
             onChore={(id) => {
               // The owner's own closing tap: counting the till (the rest are Cleanliness tasks).
               const r = doClosingChore(save, id);

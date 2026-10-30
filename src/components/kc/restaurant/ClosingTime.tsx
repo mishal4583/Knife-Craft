@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import type { SaveData } from "@/game/SaveManager";
 import { INGREDIENTS } from "@/game/definitions";
 import { formatUsd } from "@/game/money";
+import { pendingCashTotal } from "@/game/economy/pendingCash";
 import { closingPreview } from "@/game/restaurant/restaurantDay";
 import { SupplyBottle } from "./SupplyBottle";
 import { InfoTip } from "@/components/kc/common/InfoTip";
@@ -38,6 +39,7 @@ export function ClosingTime({
   onClose,
   cleanlinessAction,
   onChore,
+  onCollectTableCash,
   go,
 }: {
   save: SaveData;
@@ -48,7 +50,10 @@ export function ClosingTime({
   go?: (s: ScreenId) => void;
   /** The player does one closing chore (App: closingChores.doClosingChore → save). */
   onChore?: (id: string) => void;
+  /** Takes the cash still on the table into the till (it must be in before the night closes). */
+  onCollectTableCash?: () => void;
 }) {
+  const tableCash = pendingCashTotal(save);
   const p = closingPreview(save, restaurantLevel);
   const rows = closingRows(save, restaurantLevel);
   const left = onChore ? rows.filter((r) => r.state === "todo").length : 0;
@@ -219,10 +224,23 @@ export function ClosingTime({
         </div>
 
         <div className="border-t border-walnut/10 px-5 py-3">
-          <KButton full className="min-h-12" onClick={onClose} disabled={left > 0}>
-            {left > 0
-              ? `🌙 ${left} ${left === 1 ? "chore" : "chores"} left`
-              : `Close for the night → Day ${p.day + 1}`}
+          {tableCash > 0 && onCollectTableCash ? (
+            <KButton
+              full
+              variant="sage"
+              className="mb-2 min-h-12"
+              data-testid="closing-table-cash"
+              onClick={onCollectTableCash}
+            >
+              💵 Collect {formatUsd(tableCash)} from the table
+            </KButton>
+          ) : null}
+          <KButton full className="min-h-12" onClick={onClose} disabled={left > 0 || tableCash > 0}>
+            {tableCash > 0
+              ? "💵 Collect the table cash first"
+              : left > 0
+                ? `🌙 ${left} ${left === 1 ? "chore" : "chores"} left`
+                : `Close for the night → Day ${p.day + 1}`}
           </KButton>
         </div>
       </div>

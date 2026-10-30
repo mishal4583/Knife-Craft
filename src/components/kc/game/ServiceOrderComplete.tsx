@@ -390,7 +390,9 @@ export function ServiceOrderComplete({
                 className="mt-2 font-ui text-[12px] font-extrabold uppercase tracking-[0.16em] text-olive"
                 data-testid={remaining > 0 ? "cash-prompt" : "cash-collected"}
               >
-                {remaining > 0 ? "💵 Swipe the cash at the table to collect it" : "✓ Cash collected"}
+                {remaining > 0
+                  ? "💵 Swipe the cash at the table to collect it"
+                  : "✓ Cash collected"}
               </p>
             ) : paidCents + tip > 0 ? (
               <div className="kc-stage" style={stage(520)}>
@@ -413,7 +415,9 @@ export function ServiceOrderComplete({
                 <CurrencyPill amount={shownCredits} />
               </span>
               {remaining > 0 && !cashAtTable ? (
-                <span className="font-hand text-[14px] text-olive">Swipe the cash to collect it</span>
+                <span className="font-hand text-[14px] text-olive">
+                  Swipe the cash to collect it
+                </span>
               ) : null}
             </div>
             {served.settlement ? (
@@ -444,7 +448,7 @@ export function ServiceOrderComplete({
                 </KButton>
               ) : null}
               {isBusinessOrder && served.businessCustomers?.complete ? null : (
-                <KButton full disabled={remaining > 0} onClick={nextOnce}>
+                <KButton full onClick={nextOnce}>
                   {nextLabel}
                 </KButton>
               )}
@@ -453,13 +457,13 @@ export function ServiceOrderComplete({
                   full
                   variant="sage"
                   className="h-auto min-h-12 py-2 leading-tight [@media(max-height:640px)]:text-[12.5px]"
-                  disabled={!!extraAction.disabled || remaining > 0}
+                  disabled={!!extraAction.disabled}
                   onClick={extraAction.onClick}
                 >
                   {extraAction.label}
                 </KButton>
               ) : null}
-              <KButton full variant="ghost" disabled={remaining > 0} onClick={onExit}>
+              <KButton full variant="ghost" onClick={onExit}>
                 {isBusinessOrder ? "Back to Service" : "Back to Orders"}
               </KButton>
             </div>
@@ -482,7 +486,7 @@ export function ServiceOrderComplete({
               <KButton full variant="cream" onClick={onRetry}>
                 Prepare Again
               </KButton>
-              <KButton full variant="ghost" disabled={remaining > 0} onClick={onExit}>
+              <KButton full variant="ghost" onClick={onExit}>
                 {isBusinessOrder ? "Back to Service" : "Back to Orders"}
               </KButton>
             </div>

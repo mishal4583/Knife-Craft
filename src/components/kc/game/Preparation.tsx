@@ -69,6 +69,7 @@ import { ServiceFloor, type FloorMode } from "./ServiceFloor";
 import { OvenStep } from "./OvenStep";
 import { ovenStepFor, trayItemFor } from "@/game/cooking/ovenStep";
 import {
+  MAX_PARTY,
   REACTION_FACE,
   markPartyServed,
   seatInParty,
@@ -201,10 +202,16 @@ export function Preparation({
      * not known yet) — they arrive with this one as a party (developer 2026-10-26). Absent: none.
      */
     partyWaiting?: readonly (PartyDish | null)[];
+    /**
+     * How many of the NEXT orders ask for this very dish (customers who came together and
+     * ordered the same): they are cut one plate after another, cooked once and served together
+     * (App.tsx `sharedPrep`). Absent / 0: this order is prepared alone.
+     */
+    sameDishAhead?: number;
   };
   onExit: () => void;
   /** Returns this run's coin reward (0 on replay — Law 2 — or always 0 for a service session, where payment is deferred to the explicit Serve action) so OrderComplete can show it without a second App->Preparation round trip. */
-  onComplete: (score: number) => number;
+  onComplete: (score: number, portions?: number) => number;
   credits: number;
   previousBest: number;
   knife?: KnifeDefinition;
@@ -249,12 +256,31 @@ export function Preparation({
   const givenSteps = service
     ? preparationStepsForRecipe(service.order.recipe)
     : level!.preparationSteps;
-  const playableSteps = completableSteps(givenSteps);
+  const onePortionSteps = completableSteps(givenSteps);
+  // Customers who ordered the same dish: cut plate 1, then plate 2 …, cook once, serve together.
+  // Decided once per order (the order's status moves on while it is cut).
+  const [portions] = useState(() =>
+    service && service.order.order.status !== "READY"
+      ? 1 + Math.max(0, Math.min(MAX_PARTY - 1, Math.floor(service.sameDishAhead ?? 0)))
+      : 1,
+  );
+  const playableSteps =
+    portions > 1
+      ? Array.from({ length: portions }, (_, k) =>
+          onePortionSteps.map((s) => ({
+            ...s,
+            destination: `${s.destination || "Plate"} ${k + 1}`,
+          })),
+        ).flat()
+      : onePortionSteps;
   const view = service
     ? {
         recipeId: service.order.recipe.id,
         title: service.order.recipe.name,
-        subtitle: withPeelNote(service.order.recipe.chefInstruction, playableSteps),
+        subtitle:
+          portions > 1
+            ? `${portions} plates together · ${withPeelNote(service.order.recipe.chefInstruction, onePortionSteps)}`
+            : withPeelNote(service.order.recipe.chefInstruction, playableSteps),
         emoji: service.order.recipe.emoji,
         // The order's OWN pay (computed once at order-creation time via
         // recipePay(recipe, chapter) — see CustomerOrderManager.ts), not
@@ -367,7 +393,10 @@ export function Preparation({
   // Phase B: the service floor — the customer arrives before the cut and the
   // plate reaches the table after Serve; the one before walks out as they
   // arrive. It only shows; the order's own actions stay the existing ones.
-  const [floorMode, setFloorMode] = useState<FloorMode | null>(service && floor ? "arrive" : null);
+  const [floorMode, setFloorMode] = useState<FloorMode | null>(
+    // A plate prepared together with the one before it arrives ready: its customer is already seated.
+    service && floor && service.order.order.status !== "READY" ? "arrive" : null,
+  );
   // Keep the served card mounted while the player switches to the table so
   // its result and payment state survive a trip to collect cash and back.
   const [cashTableView, setCashTableView] = useState(false);
@@ -722,7 +751,7 @@ export function Preparation({
   useEffect(() => {
     if (phase !== "complete" || awarded.current || !result) return;
     awarded.current = true;
-    setRewardCoins(onComplete(result.score));
+    setRewardCoins(onComplete(result.score, portions));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- onComplete/result are stable for this run
   }, [phase]);
 

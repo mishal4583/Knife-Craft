@@ -192,7 +192,8 @@ console.log("E. Nothing else moves");
       // drops a level's stale knife/board "Unlocks" hint (liveUnlockReward, progression-preview-qa H).
       // Rule changed (developer 2026-10-26, "the game starts at 0 cash"): SaveManager may change
       // only the new save's opening credits (scripts/startCashGuard.mts).
-      "git diff 3ceac0f -- src/game/business/businessTypes.ts src/game/economy :!src/game/economy/staffDefinitions.ts :!src/game/business/businessTypes.ts :!src/game/economy/EconomyLedger.ts :!src/game/economy/ledgerTypes.ts :!src/game/economy/customerTips.ts src/game/levels :!src/game/levels/levelMastery.ts :!src/game/levels/levelDefinitions.ts :!src/game/levels/levelRewards.ts :!src/game/levels/levelTypes.ts src/game/recipes :!src/game/recipes/campaignRecipes.ts",
+      // Base moved to ae4ad52 (the 2026-10-30 own-money commit, which committed the new files): "nothing else changed since".
+      "git diff ae4ad52 -- src/game/business/businessTypes.ts src/game/economy :!src/game/economy/staffDefinitions.ts :!src/game/business/businessTypes.ts :!src/game/economy/EconomyLedger.ts :!src/game/economy/ledgerTypes.ts :!src/game/economy/customerTips.ts src/game/levels :!src/game/levels/levelMastery.ts :!src/game/levels/levelDefinitions.ts :!src/game/levels/levelRewards.ts :!src/game/levels/levelTypes.ts src/game/recipes :!src/game/recipes/campaignRecipes.ts",
       { cwd: ROOT, encoding: "utf8" },
     );
   assert(
@@ -220,7 +221,7 @@ console.log("E. Nothing else moves");
   // changed with it; service-floor-qa D2 still checks its one serve call, so only OvenStep.tsx
   // stays pinned here.
   const flow = execSync(
-    "git diff 3ceac0f -- src/game/restaurant :!src/game/restaurant/serviceFloor.ts :!src/game/restaurant/dishService.ts :!src/game/restaurant/levelPayPreview.ts :!src/game/restaurant/restaurantProgression.ts :!src/game/restaurant/firstLevels.ts :!src/game/restaurant/menuGuests.ts :!src/game/restaurant/preServiceCheck.ts :!src/game/restaurant/secondFloor.ts :!src/game/restaurant/cleanliness.ts :!src/game/restaurant/grandmasFridge.ts :!src/game/restaurant/kitchenTools.ts :!src/game/restaurant/restaurantInvestments.ts :!src/game/restaurant/staffRequirements.ts src/game/progression src/game/recipes/dishKind.ts",
+    "git diff ae4ad52 -- src/game/restaurant :!src/game/restaurant/serviceFloor.ts :!src/game/restaurant/dishService.ts :!src/game/restaurant/levelPayPreview.ts :!src/game/restaurant/restaurantProgression.ts :!src/game/restaurant/firstLevels.ts :!src/game/restaurant/menuGuests.ts :!src/game/restaurant/preServiceCheck.ts :!src/game/restaurant/secondFloor.ts :!src/game/restaurant/cleanliness.ts :!src/game/restaurant/grandmasFridge.ts :!src/game/restaurant/kitchenTools.ts :!src/game/restaurant/restaurantInvestments.ts :!src/game/restaurant/staffRequirements.ts src/game/progression src/game/recipes/dishKind.ts",
     { cwd: ROOT, encoding: "utf8" },
   );
   // App.tsx: only the walk-in offer's label (no pay / serve / save words) and, since phase 4,
@@ -232,7 +233,7 @@ console.log("E. Nothing else moves");
   const partyEnd = appNow.findIndex((l, k) => k >= partyStart && /^ {6}: undefined;$/.test(l)) + 1;
   const appDiff: string[] = [];
   let newLine = 0;
-  for (const l of execSync("git diff -U0 3ceac0f -- src/App.tsx", {
+  for (const l of execSync("git diff -U0 ae4ad52 -- src/App.tsx", {
     cwd: ROOT,
     encoding: "utf8",
   }).split("\n")) {

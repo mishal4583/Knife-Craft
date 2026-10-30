@@ -1,5 +1,19 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## Same-dish parties prepared together; table cash optional (2026-10-30)
+
+- **Shared preparation (developer 2026-10-30):** when the next required orders of a level ask for the same
+  dish (customers who came together), the cutting runs plate after plate ("Plate 1", "Plate 2" in the step
+  label, "N plates together" in the subtitle), the dish is cooked once, and the first plate is served; the next
+  plate arrives READY with the same score (`sharedPrep` in `App.tsx`, `portions` in `Preparation.tsx`; up to a
+  party of 4, required orders only, never menu guests). Each plate is still its own order: its own serve,
+  pay, tip, stock use and paid-order record, so nothing is paid twice. The button reads "Serve the next plate →".
+- **Table cash is optional:** Next / Back / Finish never wait for the swipe; the cash screen has "Collect
+  later". The cash stays saved on the table (`business.pendingCash`) when the player leaves or reloads; the
+  Kitchen shows "💵 $X on the table · Collect"; the next served order's cash first takes in the older cash
+  (`withPendingCash`); "Close for the night" waits until it is in the till (`ClosingTime`).
+- QA: `shared-prep-qa`; browser: `tools/e2e/sharedprep.mjs` (6/6), `cashreload.mjs` re-pinned (R2/R3).
+
 ## Own-money start, Market from Level 1, economy re-plan, fixes from the full analysis (2026-10-30, `main`)
 
 - **No gifts (developer 2026-10-30):** Grandma's tools, cleaning cupboard and leftovers fridge are gone

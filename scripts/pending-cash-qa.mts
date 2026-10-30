@@ -246,15 +246,21 @@ console.log("W. Wiring");
       /collectPendingCashPiece\(current, cents, isTip\)/.test(app),
     "W1: every serve path (campaign, batch, menu guest in App; Business inside serveBusinessOrder) leaves its cash through withPendingCash, in the save that marks the order served",
   );
+  // Rule changed (developer 2026-10-30, "dont make it mandatory, let the players collect when they
+  // require, but it must be collected before night closing"): the cash waits on the table, saved with
+  // the order, instead of being settled when the player leaves or the game loads.
   assert(
-    /screen === "gameplay"[\s\S]{0,200}pendingCashTotal\(current\) > 0[\s\S]{0,100}settlePendingCash\(current\)/.test(
-      app,
-    ),
-    "W2: leaving the service (or loading the game) settles what is still on the table",
+    !/pendingCashTotal\(current\) > 0\) persist\(settlePendingCash\(current\)\)/.test(app) &&
+      !/syncKitchenUpgradeOwnership\(loaded\);[\s\S]{0,300}settlePendingCash\(synced\)/.test(app),
+    "W2: leaving the service or loading the game leaves the cash on the table (nothing is settled behind the player's back)",
   );
   assert(
-    /syncKitchenUpgradeOwnership\(loaded\);[\s\S]{0,300}settlePendingCash\(synced\)/.test(app),
-    "W3: the game load settles it whatever screen the player lands on (a first-time player lands in gameplay)",
+    /function collectTableCash\(\)[\s\S]{0,200}settlePendingCash\(current\)/.test(app) &&
+      /onCollectTableCash=\{collectTableCash\}/.test(app) &&
+      /disabled=\{left > 0 \|\| tableCash > 0\}/.test(
+        read("src/components/kc/restaurant/ClosingTime.tsx"),
+      ),
+    "W3: the player collects it from the Kitchen when they want, and Close for the night waits until it is in the till",
   );
   assert(!/Math\.random/.test(mod), "W4: no randomness");
 }
