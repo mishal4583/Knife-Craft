@@ -5522,13 +5522,7 @@ export class PreparationScene extends Phaser.Scene {
           }
         : null,
       cutPoint,
-      {
-        seed:
-          debrisLookFor(this.ingredientId, this.ingredient.category).find(
-            ([kind]) => kind === "seed",
-          )?.[1] ?? null,
-        fleck: this.cutFleckColor(),
-      },
+      { fleck: this.cutFleckColor() },
     );
     if (stepDone) AudioManager.playBladeRing();
 

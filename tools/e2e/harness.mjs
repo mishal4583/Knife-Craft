@@ -491,6 +491,22 @@ export async function doClosingChores(page) {
  */
 export async function sweepCash(page) {
   let seen = 0;
+  // The customer reacts and walks out, then the served card opens by itself; the cash waits on the
+  // table (developer 2026-10-30): open the table view from the card, then swipe the piles in.
+  await page
+    .waitForFunction(() => !document.querySelector('[data-testid="service-floor"]'), {
+      timeout: 12000,
+    })
+    .catch(() => {});
+  await sleep(400);
+  const opened = await page.evaluate(() => {
+    const b = [...document.querySelectorAll("button")].find((x) =>
+      /Collect cash at the table/.test(x.textContent),
+    );
+    b?.click();
+    return !!b;
+  });
+  if (opened) await sleep(1200);
   for (let pass = 0; pass < 6; pass++) {
     const boxes = await page.evaluate(() =>
       [...document.querySelectorAll("[data-cash-piece]")].map((e) => {

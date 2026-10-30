@@ -90,11 +90,26 @@ try {
     .waitForFunction(() => /ORDER READY/i.test(document.body.innerText), { timeout: 60000 })
     .catch(() => {});
   await clickButton(page, /^Serve to /);
-  await sleep(3500);
+  // Two ways, by the party's size (decided by the order id): a table of two holds the first plate
+  // (paid, kept back) and goes straight to the second; a lone customer is served and walks out.
+  let partyPath = false;
+  for (let i = 0; i < 20 && !partyPath; i++) {
+    partyPath = await page.evaluate(
+      () => !!document.querySelector('[data-testid="party-holding"]'),
+    );
+    if (!partyPath) await sleep(150);
+  }
+  await page.waitForFunction(
+    () =>
+      !!document.querySelector('[data-testid="party-held"]') ||
+      (!document.querySelector('[data-testid="service-floor"]') &&
+        [...document.querySelectorAll("button")].some((x) =>
+          /plate →$/.test(x.textContent.trim()),
+        )),
+    { timeout: 25000 },
+  );
+  await sleep(600);
   const afterFirst = await readSave(page);
-  // The table's cash is optional: go back to the order without sweeping.
-  await page.evaluate(() => document.querySelector('[data-testid="cash-later"]')?.click());
-  await sleep(800);
   const next = await page.evaluate(() => {
     const b = [...document.querySelectorAll("button")].find((x) =>
       /plate →$/.test(x.textContent.trim()),
@@ -102,11 +117,11 @@ try {
     return b ? { label: b.textContent.trim(), disabled: b.disabled } : null;
   });
   check(
-    "P2 the cash is optional: 'Serve … plate →' is enabled with cash still on the table",
-    !!next && !next.disabled && !!afterFirst.business.pendingCash,
+    `P2 [${partyPath ? "table of two" : "lone customer"}] the first plate is paid, the cash waits on the table, nothing blocks the next step`,
+    !!afterFirst.business.pendingCash && (partyPath || (!!next && !next.disabled)),
     { next, pending: afterFirst.business.pendingCash },
   );
-  await clickButton(page, /plate →$/);
+  if (!partyPath) await clickButton(page, /plate →$/);
   await sleep(1800);
   const t = await flat(page);
   check(
@@ -115,18 +130,45 @@ try {
     { t: t.slice(0, 160) },
   );
   await clickButton(page, /^Serve to /);
-  await sleep(3500);
+  // Watch the dining room: with a party every plate arrives together and everyone walks out together.
+  let maxPlates = 0;
+  let sawLeaving = false;
+  let partySize = 0;
+  for (let i = 0; i < 45; i++) {
+    const v = await page.evaluate(() => ({
+      plates: document.querySelectorAll(".sf-layer .sf-plate").length,
+      state:
+        document.querySelector('[data-testid="service-floor"]')?.getAttribute("data-state") ??
+        "none",
+      size: Number(
+        document.querySelector('[data-testid="service-floor"]')?.getAttribute("data-party") ?? 0,
+      ),
+    }));
+    partySize = Math.max(partySize, v.size);
+    maxPlates = Math.max(maxPlates, v.plates);
+    if (v.state === "leaving") sawLeaving = true;
+    if (v.state === "reacting" && v.size === 2)
+      await page.screenshot({ path: "tools/e2e/party-eating.png" });
+    if (v.state === "leaving" && v.size === 2)
+      await page.screenshot({ path: "tools/e2e/party-leaving.png" });
+    await sleep(150);
+  }
   const afterSecond = await readSave(page);
-  // The first plate's cash was taken in when the second plate's cash landed; the second waits on the table.
-  const settledNow = afterSecond.economyLedger.filter(
-    (e) => e.category === "campaign-settlement",
-  ).length;
+  const paid = afterSecond.levelProgress.paidOrders?.["level-17"]?.length ?? 0;
   check(
-    "P4 two orders served: one settled, one on the table (nothing paid twice)",
-    settledNow === 1 && !!afterSecond.business.pendingCash,
-    { settledNow, pending: afterSecond.business.pendingCash ?? null },
+    partyPath
+      ? "P4 [table of two] both orders are paid, ONE pile of cash waits, both plates reached the table together and the party walked out"
+      : "P4 [lone customer] both orders are paid and the cash waits (nothing paid twice)",
+    paid === 2 &&
+      !!afterSecond.business.pendingCash &&
+      (!partyPath || (maxPlates >= 2 && partySize === 2 && sawLeaving)),
+    { paid, maxPlates, sawLeaving, partySize, pending: afterSecond.business.pendingCash ?? null },
   );
-  await page.evaluate(() => document.querySelector('[data-testid="cash-later"]')?.click());
+  await page
+    .waitForFunction(() => !document.querySelector('[data-testid="service-floor"]'), {
+      timeout: 12000,
+    })
+    .catch(() => {});
   await sleep(600);
   await clickButton(page, /^(Finish Level|Back to Orders)$/).catch(() => {});
   await sleep(2000);
@@ -140,10 +182,10 @@ try {
   const cleared = await readSave(page);
   const delta = ledgerSum(cleared) - ledgerSum(before);
   check(
-    "P5 the Kitchen offers the cash on the table; collecting it empties the table; two settlements; wallet = opening + ledger change",
+    "P5 the Kitchen offers the cash on the table; collecting it empties the table; wallet = opening + ledger change",
     !!chip &&
       !cleared.business.pendingCash &&
-      cleared.economyLedger.filter((e) => e.category === "campaign-settlement").length === 2 &&
+      cleared.economyLedger.some((e) => e.category === "campaign-settlement") &&
       cleared.credits === before.credits + delta,
     { chip, credits: cleared.credits, expected: before.credits + delta },
   );

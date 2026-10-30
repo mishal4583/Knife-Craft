@@ -193,7 +193,7 @@ console.log("E. Nothing else moves");
       // Rule changed (developer 2026-10-26, "the game starts at 0 cash"): SaveManager may change
       // only the new save's opening credits (scripts/startCashGuard.mts).
       // Base moved to ae4ad52 (the 2026-10-30 own-money commit, which committed the new files): "nothing else changed since".
-      "git diff ae4ad52 -- src/game/business/businessTypes.ts src/game/economy :!src/game/economy/staffDefinitions.ts :!src/game/business/businessTypes.ts :!src/game/economy/EconomyLedger.ts :!src/game/economy/ledgerTypes.ts :!src/game/economy/customerTips.ts src/game/levels :!src/game/levels/levelMastery.ts :!src/game/levels/levelDefinitions.ts :!src/game/levels/levelRewards.ts :!src/game/levels/levelTypes.ts src/game/recipes :!src/game/recipes/campaignRecipes.ts",
+      "git diff ae4ad52 -- src/game/business/businessTypes.ts src/game/economy :!src/game/economy/staffDefinitions.ts :!src/game/business/businessTypes.ts :!src/game/economy/EconomyLedger.ts :!src/game/economy/ledgerTypes.ts :!src/game/economy/customerTips.ts :!src/game/economy/pendingCash.ts src/game/levels :!src/game/levels/levelMastery.ts :!src/game/levels/levelDefinitions.ts :!src/game/levels/levelRewards.ts :!src/game/levels/levelTypes.ts src/game/recipes :!src/game/recipes/campaignRecipes.ts",
       { cwd: ROOT, encoding: "utf8" },
     );
   assert(

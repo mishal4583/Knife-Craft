@@ -190,6 +190,12 @@ export function lookFor(customerId: string): { outfit: string; hair: string } {
  * the next order of the party is already seated, so only a new party walks in, and the whole
  * party walks out together when the next one arrives. Presentation only and session memory:
  * every member is still served, paid and tipped by the existing order flow, one order at a time.
+ *
+ * Served together (developer 2026-10-30: "serve everyone together, eat together, leave the cash
+ * and leave together"): a member whose party-mates are still to be cooked is only HELD — paid by
+ * the existing serve, plate kept back — and when the party's last order is served every plate
+ * reaches the table at once, they all react, the cash lies by their seats and the whole party
+ * walks out together (`markPartyHeld`, `finishPartyDelivery`).
  */
 export const MAX_PARTY = 4;
 /** Weights for a party of 1, 2, 3, 4. */
@@ -258,6 +264,10 @@ export type Party = {
   dishes: (PartyDish | null)[];
   /** Members already served: their plate and face stay on the table. */
   served: ({ emoji: string; face: string } | null)[];
+  /** Members whose plate is ready and paid but waits for the rest of the party to be served together. */
+  held: ({ emoji: string; face: string } | null)[];
+  /** The whole party has been served and has walked out. */
+  left: boolean;
   at: number;
 };
 export type PartySeat = {
@@ -286,7 +296,11 @@ export function seatInParty(
 ): PartySeat {
   const known = partyByOrder.get(orderId);
   if (known) return known;
-  const fresh = party && now - party.at <= PARTY_FRESH_MS ? party : null;
+  // A party with plates held back for the table never goes stale (the cooking takes as long as it takes).
+  const fresh =
+    party && !party.left && (now - party.at <= PARTY_FRESH_MS || party.held.some((h) => !!h))
+      ? party
+      : null;
   const free = fresh ? fresh.orderIds.indexOf(null) : -1;
   let seat: PartySeat;
   if (fresh && free >= 0) {
@@ -304,6 +318,8 @@ export function seatInParty(
       orderIds: Array.from({ length: size }, (_, i) => (i === 0 ? orderId : null)),
       dishes: [dish, ...waiting.slice(0, size - 1)],
       served: Array.from({ length: size }, () => null),
+      held: Array.from({ length: size }, () => null),
+      left: false,
       at: now,
     };
     seat = { party: next, slot: 0, arriving: true, leaving: fresh };
@@ -319,6 +335,53 @@ export function markPartyServed(orderId: string, emoji: string, face: string, no
   if (!s) return;
   s.party.served[s.slot] = { emoji, face };
   s.party.at = now;
+}
+
+/** Plates held back for this order's party (not counting this member). */
+export function heldPlatesOf(orderId: string): number {
+  const s = partyByOrder.get(orderId);
+  return s ? s.party.held.filter((h, i) => !!h && i !== s.slot).length : 0;
+}
+
+/** A member's plate is ready and paid; it waits for the rest of the party. Idempotent. */
+export function markPartyHeld(orderId: string, emoji: string, face: string, now: number): void {
+  const s = partyByOrder.get(orderId);
+  if (!s) return;
+  s.party.held[s.slot] = { emoji, face };
+  s.party.at = now;
+}
+
+/** True when every place of the party is served, held or this member's own (so all leave together). */
+export function partyCompleteWith(seat: PartySeat): boolean {
+  const p = seat.party;
+  return p.dishes.every((_, i) => i === seat.slot || !!p.served[i] || !!p.held[i]);
+}
+
+/**
+ * The party's plates have all reached the table: held plates become served, this member's too,
+ * and a complete party is marked as gone (the next party finds the room empty). Idempotent.
+ */
+export function finishPartyDelivery(
+  orderId: string,
+  emoji: string,
+  face: string,
+  now: number,
+): void {
+  const s = partyByOrder.get(orderId);
+  if (!s) return;
+  const complete = partyCompleteWith(s);
+  s.party.held.forEach((h, i) => {
+    if (h) s.party.served[i] = h;
+    s.party.held[i] = null;
+  });
+  s.party.served[s.slot] = { emoji, face };
+  if (complete) s.party.left = true;
+  s.party.at = now;
+}
+
+/** A new service starts (or ends): no party carries over. */
+export function resetParties(): void {
+  partyByOrderReset();
 }
 
 export function resetPartiesForTests(): void {

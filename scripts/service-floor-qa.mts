@@ -155,10 +155,10 @@ console.log("D. Wiring");
     "D1: the floor is presentation only — no randomness, ledger, settlement or save; it never writes money",
   );
   assert(
-    /const served = service\.onServe\(\);/.test(prep) &&
-      /if \(served && floor\) \{[\s\S]{0,400}setFloorMode\("deliver"\)/.test(prep) &&
+    /const served = service\.onServe\(\{ joinCash \}\);/.test(prep) &&
+      /if \(served && floor\) \{[\s\S]{0,900}setFloorMode\("deliver"\)/.test(prep) &&
       (prep.match(/service\.onServe\(/g) ?? []).length === 1,
-    "D2: Serve calls the existing serve once; the plate goes to the table only for a real serve",
+    "D2: Serve calls the existing serve once (joining a party's cash pile when plates were held, 2026-10-30); the plate goes to the table only for a real serve",
   );
   assert(
     /service\.nextLabel === "Finish Level"\s*\?\s*service\.onNextOrder\(\)\s*:\s*departThen\(service\.onNextOrder\)/.test(
@@ -202,7 +202,7 @@ console.log("E. Nothing else moves");
     execSync(
       // Early-game phase 4 (developer 2026-10-26): everything unlocked by Level 5 — only the unlock-level
       // lines of these catalogs change (staff-hire-qa U5 checks no price moved).
-      "git diff ae4ad52 -- src/game/business/businessTypes.ts src/game/economy :!src/game/economy/staffDefinitions.ts :!src/game/business/businessTypes.ts :!src/game/economy/EconomyLedger.ts :!src/game/economy/ledgerTypes.ts :!src/game/economy/customerTips.ts src/game/daily/EndlessServiceManager.ts src/game/restaurant/endlessRestaurant.ts",
+      "git diff ae4ad52 -- src/game/business/businessTypes.ts src/game/economy :!src/game/economy/staffDefinitions.ts :!src/game/business/businessTypes.ts :!src/game/economy/EconomyLedger.ts :!src/game/economy/ledgerTypes.ts :!src/game/economy/customerTips.ts :!src/game/economy/pendingCash.ts src/game/daily/EndlessServiceManager.ts src/game/restaurant/endlessRestaurant.ts",
       { cwd: ROOT, encoding: "utf8" },
     );
   assert(

@@ -1,5 +1,18 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## Parties served together; no cash screen after the serve (2026-10-30)
+
+- **After Serve:** the plate arrives, the customer reacts, walks out, and the served card opens by itself —
+  the cash-on-the-table screen only opens when the player taps "Collect cash at the table" (`cashOnly` in
+  `ServiceFloor`). The cash stays saved (`business.pendingCash`); Kitchen "on the table · Collect"; closing needs it in.
+- **A party is served together** (`serviceFloor.ts` held plates): a party of 2–4 is made of the level's own
+  required orders. While a party-mate is still to be cooked, a member's plate is HELD (paid by the normal serve,
+  kept back, "plate ready — waiting for the rest of the table"); the last order's serve sends every plate out at
+  once, everybody reacts, the cash is ONE pile (`withPendingCash` `merge`) and the whole party walks out together.
+  Menu guests / the walk-in are their own tables after the level's orders. `resetParties()` clears the memory when a
+  service starts, ends or is left.
+- QA: `party-served-together-qa`; browser: `tools/e2e/sharedprep.mjs` (both a table of two and a lone customer).
+
 ## Same-dish parties prepared together; table cash optional (2026-10-30)
 
 - **Shared preparation (developer 2026-10-30):** when the next required orders of a level ask for the same

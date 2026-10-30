@@ -71,6 +71,9 @@ import { ovenStepFor, trayItemFor } from "@/game/cooking/ovenStep";
 import {
   MAX_PARTY,
   REACTION_FACE,
+  finishPartyDelivery,
+  heldPlatesOf,
+  markPartyHeld,
   markPartyServed,
   seatInParty,
   type PartyDish,
@@ -167,7 +170,9 @@ export function Preparation({
   service?: {
     order: ServiceOrder;
     /** §17/§18 — the Serve action; returns null if the order somehow isn't READY (defensive only). Economy V2 Phase 9 — `settlement`/`isReplay` are present for a campaign/batch-group serve (never for plain Restaurant Service, which never computes a settlement) so ServiceOrderComplete can show the real breakdown without recalculating anything. */
-    onServe: () => {
+    onServe: (opts?: { joinCash?: boolean }) => {
+      /** The cash now on the table (a party's pile when plates were served together). */
+      tableCash?: { payCents: number; tipCents: number } | null;
       coinsAwarded: number;
       reaction: string;
       settlement?: SettlementResult | undefined;
@@ -208,6 +213,12 @@ export function Preparation({
      * (App.tsx `sharedPrep`). Absent / 0: this order is prepared alone.
      */
     sameDishAhead?: number;
+    /**
+     * Required orders still to come after this one. While the party this order sits with has
+     * places left and orders to fill them, its plate is HELD (paid, kept back) and goes out with
+     * the whole table when the party's last order is served.
+     */
+    ticketsAfter?: number;
   };
   onExit: () => void;
   /** Returns this run's coin reward (0 on replay — Law 2 — or always 0 for a service session, where payment is deferred to the explicit Serve action) so OrderComplete can show it without a second App->Preparation round trip. */
@@ -400,6 +411,10 @@ export function Preparation({
   // Keep the served card mounted while the player switches to the table so
   // its result and payment state survive a trip to collect cash and back.
   const [cashTableView, setCashTableView] = useState(false);
+  // The table view opened on purpose to swipe the cash in ("Collect cash at the table").
+  const [cashViewOnly, setCashViewOnly] = useState(false);
+  // This plate was held for the table: a short "waiting for the rest" note, then the next order.
+  const [holding, setHolding] = useState(false);
   // Parties (developer 2026-10-26): this order's place at its party's table, decided once.
   const [partySeat] = useState(() =>
     service && floor && shownCustomer
@@ -412,6 +427,8 @@ export function Preparation({
         )
       : null,
   );
+  // Plates of this party already cooked and waiting for the table (decided once per order).
+  const [platesWaiting] = useState(() => (service ? heldPlatesOf(service.order.order.id) : 0));
   const [servedQuality, setServedQuality] = useState<QualityLabel | undefined>(undefined);
   // What the serve earned: left on the table until the player sweeps it in.
   const [servedCash, setServedCash] = useState<{ payCents: number; tipCents: number } | null>(null);
@@ -1231,6 +1248,27 @@ export function Preparation({
         </div>
       ) : null}
 
+      {platesWaiting > 0 && !floorMode ? (
+        <div
+          data-testid="party-held"
+          className="pointer-events-none absolute left-1/2 top-2 z-[60] -translate-x-1/2 rounded-full bg-walnut-dark/80 px-3 py-1 font-ui text-[12px] font-extrabold text-ivory shadow-soft"
+        >
+          🍽️ {platesWaiting} {platesWaiting === 1 ? "plate" : "plates"} ready for the table
+        </div>
+      ) : null}
+      {holding ? (
+        <div
+          data-testid="party-holding"
+          className="pointer-events-none absolute inset-0 z-[70] grid place-items-center bg-walnut-dark/55"
+        >
+          <p className="rounded-[18px] bg-ivory px-5 py-3 text-center font-display text-[18px] font-extrabold text-walnut-dark shadow-lift">
+            🍽️ Plate ready
+            <span className="block font-hand text-[16px] font-normal text-walnut/75">
+              waiting for the rest of the table
+            </span>
+          </p>
+        </div>
+      ) : null}
       {floorMode && service && floor && shownCustomer && partySeat ? (
         <ServiceFloor
           key={floorMode}
@@ -1243,15 +1281,29 @@ export function Preparation({
           dish={{ emoji: view.emoji, name: view.title }}
           {...(servedQuality ? { quality: servedQuality } : {})}
           {...(floorMode === "deliver" && servedCash ? { cash: { ...servedCash, credits } } : {})}
+          {...(cashViewOnly ? { cashOnly: true } : {})}
           {...(service.onCashPieceCollected
             ? { onCashPieceCollected: service.onCashPieceCollected }
             : {})}
           {...(service.onCashCollected ? { onCashCollected: service.onCashCollected } : {})}
           onCashRemaining={setServiceCashRemaining}
           reducedMotion={floor.reducedMotion}
-          onBackToOrder={() => setCashTableView(false)}
-          onDone={() => {
+          onBackToOrder={() => {
             setFloorMode(null);
+            setCashViewOnly(false);
+            setCashTableView(false);
+          }}
+          onDone={() => {
+            // Every plate has reached the table: they are all served now, and a complete party is gone.
+            if (!cashViewOnly && service)
+              finishPartyDelivery(
+                service.order.order.id,
+                view.emoji,
+                REACTION_FACE[servedQuality ?? result?.qualityLabel ?? "Honest"],
+                Date.now(),
+              );
+            setFloorMode(null);
+            setCashViewOnly(false);
             setCashTableView(false);
           }}
         />
@@ -1323,7 +1375,7 @@ export function Preparation({
       {phase === "complete" ? (
         service ? (
           <ServiceOrderComplete
-            hidden={cashTableView}
+            hidden={cashTableView || holding}
             serviceOrder={
               shownCustomer ? { ...service.order, customer: shownCustomer } : service.order
             }
@@ -1370,6 +1422,7 @@ export function Preparation({
                     if (!floorMode && servedCash && serviceCashRemaining > 0) {
                       const tip = Math.min(servedCash.tipCents, serviceCashRemaining);
                       setServedCash({ payCents: serviceCashRemaining - tip, tipCents: tip });
+                      setCashViewOnly(true);
                       setFloorMode("deliver");
                     }
                     setCashTableView(true);
@@ -1383,20 +1436,36 @@ export function Preparation({
             onCashRemaining={(left) => service.onCashRemaining?.(left)}
             {...(service.onCashCollected ? { onCashCollected: service.onCashCollected } : {})}
             onServe={() => {
-              const served = service.onServe();
-              if (served)
-                setServiceCashRemaining(
-                  served.isReplay ? 0 : served.coinsAwarded + (served.tip ?? 0),
-                );
+              // Served together: while party-mates are still to be cooked this plate is held (paid,
+              // kept back); the last one sends every plate out at once.
+              const hold =
+                !!floor &&
+                !!partySeat &&
+                partySeat.party.size > 1 &&
+                partySeat.slot < partySeat.party.size - 1 &&
+                (service.ticketsAfter ?? 0) > 0;
+              const joinCash = !!floor && heldPlatesOf(service.order.order.id) > 0;
+              const served = service.onServe({ joinCash });
+              const onTable = served
+                ? (served.tableCash ?? { payCents: served.coinsAwarded, tipCents: served.tip ?? 0 })
+                : null;
+              if (served && onTable)
+                setServiceCashRemaining(served.isReplay ? 0 : onTable.payCents + onTable.tipCents);
               // The plate goes to the table only for a real serve (paid once, by App).
               if (served && floor) {
-                setServedQuality(served.quality ?? result?.qualityLabel);
-                setServedCash(
-                  served.isReplay
-                    ? null
-                    : { payCents: served.coinsAwarded, tipCents: served.tip ?? 0 },
-                );
-                setFloorMode("deliver");
+                const grade = served.quality ?? result?.qualityLabel;
+                setServedQuality(grade);
+                setServedCash(served.isReplay ? null : onTable);
+                if (hold) {
+                  markPartyHeld(
+                    service.order.order.id,
+                    view.emoji,
+                    REACTION_FACE[grade ?? "Honest"],
+                    Date.now(),
+                  );
+                  setHolding(true);
+                  window.setTimeout(() => service.onNextOrder(), 1100);
+                } else setFloorMode("deliver");
               }
               return served;
             }}

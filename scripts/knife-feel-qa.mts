@@ -130,12 +130,15 @@ assert(bladeTier(1, true) === 2 && bladeTier(20, true) === 3, "T2: Fever is at l
 // ---------- R. The reference board (developer 2026-10-24: "make the effects like this") ----------
 {
   const fx = read("src/game/scenes/knifeFx.ts");
+  const splashBody = fx.slice(fx.indexOf("private splash("), fx.indexOf("private star("));
   const last = cutMoment({ combo: 6, perfect: false, last: true });
   assert(
     /private splash\(/.test(fx) &&
       /if \(at && !still\) this\.splash\(/.test(fx) &&
-      /fillTriangle\(-size \* 0\.9/.test(fx),
-    "R1: impact — juice teardrops and seeds burst from the cut and land (dry food throws flecks)",
+      /drop\.fillCircle\(-size \* 0\.3, -size \* 0\.3, size \* 0\.3\)/.test(fx) &&
+      !/fillTriangle\(/.test(splashBody) &&
+      !/ellipse\(/.test(splashBody),
+    "R1: impact — small round juice drops burst from the cut and land; no seeds and no pointed teardrops (developer 2026-10-30); dry food throws flecks",
   );
   assert(
     /this\.trail\.push\(\{ pts: edgeWorld, t: now \}\)/.test(fx) && /TRAIL_MS/.test(fx),

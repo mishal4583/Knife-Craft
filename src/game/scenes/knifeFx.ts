@@ -101,14 +101,13 @@ export class KnifeFx {
   /**
    * One cut landed: what it gets comes from knifeFeel.cutMoment. `juice` = the
    * ingredient's juice colour (juicy ones splash and bead the blade), `at` =
-   * where the blade went through, `seed` / `fleck` = its seeds' and flesh's
-   * colours for the splash.
+   * where the blade went through, `fleck` = its flesh's colour for the splash.
    */
   onCut(
     m: CutMoment,
     liquid: { color: number; amount: number } | null,
     at?: Pt,
-    colours: { seed?: number | null; fleck?: number } = {},
+    colours: { fleck?: number } = {},
   ): void {
     const now = this.scene.time.now;
     this.tier = m.tier;
@@ -133,7 +132,7 @@ export class KnifeFx {
           m.flash || m.shing,
         );
     }
-    if (at && !still) this.splash(at, liquid, colours.seed ?? null, colours.fleck ?? 0xf2e6c8);
+    if (at && !still) this.splash(at, liquid, colours.fleck ?? 0xf2e6c8);
     // Beads only from a properly juicy cut, more the juicier.
     if (juice !== null && !still && (liquid?.amount ?? 0) >= 0.35) {
       const r = () => Phaser.Math.FloatBetween(0, 1);
@@ -157,16 +156,11 @@ export class KnifeFx {
   }
 
   /**
-   * The impact: juice droplets (teardrops stretched along their flight) and a
-   * few seeds burst out of the cut and arc down onto the board, with a soft
-   * wet mist; a dry ingredient throws a few flecks of itself instead.
+   * The impact: small round juice drops burst out of the cut and arc down onto
+   * the board, with a soft wet mist (no seeds, no pointed teardrops — developer
+   * 2026-10-30); a dry ingredient throws a few flecks of itself instead.
    */
-  private splash(
-    at: Pt,
-    liquid: { color: number; amount: number } | null,
-    seed: number | null,
-    fleck: number,
-  ): void {
+  private splash(at: Pt, liquid: { color: number; amount: number } | null, fleck: number): void {
     const juice = liquid?.color ?? null;
     const amount = liquid?.amount ?? 0;
     const s = this.scene;
@@ -215,24 +209,15 @@ export class KnifeFx {
       const n = Math.round((7 + R(0, 8)) * amount * amount + 3);
       for (let i = 0; i < n; i++) {
         const a = R(0, Math.PI * 2);
-        const size = w * R(0.005, 0.014);
+        const size = w * R(0.004, 0.009);
+        // A small round drop with a tiny shine.
         const drop = s.add.graphics({ x: at.x, y: at.y }).setDepth(23);
-        // A teardrop pointing back along its flight, with a highlight.
-        drop.fillStyle(juice, 0.92);
+        drop.fillStyle(juice, 0.9);
         drop.fillCircle(0, 0, size);
-        drop.fillTriangle(-size * 0.9, -size * 0.55, -size * 0.9, size * 0.55, -size * 3, 0);
-        drop.fillStyle(0xffffff, 0.55);
-        drop.fillCircle(size * 0.3, -size * 0.35, size * 0.35);
-        drop.setRotation(a);
+        drop.fillStyle(0xffffff, 0.45);
+        drop.fillCircle(-size * 0.3, -size * 0.3, size * 0.3);
         fly(drop, a, w * R(0.07, 0.22), R(520, 820));
       }
-      if (seed !== null)
-        for (let i = 0; i < 3 + Math.floor(R(0, 3)); i++) {
-          const a = R(0, Math.PI * 2);
-          const sd = s.add.ellipse(at.x, at.y, w * 0.017, w * 0.01, seed, 0.95).setDepth(23);
-          sd.setRotation(a);
-          fly(sd, a, w * R(0.05, 0.14), R(480, 700));
-        }
     } else if (juice !== null)
       for (let i = 0; i < 2 + Math.floor(R(0, 3)); i++) {
         const a = R(0, Math.PI * 2);

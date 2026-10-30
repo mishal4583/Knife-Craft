@@ -100,6 +100,20 @@ console.log("C. Optional cash, collected before closing");
       /Collect the table cash first/.test(closing),
     "C4: 'Close for the night' waits until the table's cash is in the till",
   );
+  assert(
+    /later\(\(\) => setState\("leaving"\), DELIVER_MS \+ REACT_MS\)/.test(floor) &&
+      /if \(partyLeaves\) \{[\s\S]{0,200}finishRef\.current\(\)[\s\S]{0,200}LEAVE_MS/.test(floor) &&
+      !/setState\("cash"\)/.test(
+        floor.slice(floor.indexOf("useEffect"), floor.indexOf("const tapAnywhere")),
+      ),
+    "C5: after the plate and the reaction the customer walks out and the served card opens by itself — the cash screen only opens when the player asks (cashOnly)",
+  );
+  const prep = read("src/components/kc/game/Preparation.tsx");
+  assert(
+    /setCashViewOnly\(true\)/.test(prep) &&
+      /\{\.\.\.\(cashViewOnly \? \{ cashOnly: true \} : \{\}\)\}/.test(prep),
+    "C6: 'Collect cash at the table' opens the cash view on purpose (cashOnly), swipe the piles in or 'Collect later'",
+  );
 }
 
 console.log(failures ? `\nSHARED PREP QA: ${failures} FAILURE(S)` : "\nSHARED PREP QA: ALL PASS");

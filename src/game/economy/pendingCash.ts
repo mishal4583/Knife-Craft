@@ -88,8 +88,21 @@ export function withPendingCash(
     category: LedgerCategory;
     description: string;
     tipDescription?: string;
+    /**
+     * A party served together: this order's cash joins the cash still on the table (same pay
+     * category) instead of settling it first — one pile for the whole table, one ledger entry.
+     */
+    merge?: boolean;
   },
 ): SaveData {
+  const prev = cash.merge ? pendingCashOf(save) : null;
+  if (prev && prev.category === cash.category) {
+    return withPending(save, {
+      ...prev,
+      payCents: prev.payCents + whole(cash.amount),
+      tipCents: prev.tipCents + whole(cash.tip ?? 0),
+    });
+  }
   const base = settlePendingCash(save);
   const payCents = whole(cash.amount);
   const tipCents = whole(cash.tip ?? 0);

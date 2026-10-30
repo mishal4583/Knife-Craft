@@ -184,10 +184,12 @@ import { isSystemLive } from "@/game/restaurant/restaurantProgression";
 import { guideStepFor, markGuideSeen } from "@/game/restaurant/restaurantGuide";
 import {
   collectPendingCashPiece,
+  pendingCashOf,
   pendingCashTotal,
   settlePendingCash,
   withPendingCash,
 } from "@/game/economy/pendingCash";
+import { resetParties } from "@/game/restaurant/serviceFloor";
 import { GuideCard } from "@/components/kc/restaurant/GuideCard";
 import {
   fireSpecialist,
@@ -2074,6 +2076,7 @@ export function App() {
     if (levelAlreadyPaidInFull(level)) return;
     const session = buildCampaignServiceSession(level, save.levelProgress);
     if (!session) return;
+    resetParties();
     setCampaignServiceSession(session);
     setSharedPrep(null);
     setActiveLevelId(level.id);
@@ -2107,7 +2110,9 @@ export function App() {
    * quality bonus, no revenue — while the serve/advance flow itself
    * proceeds completely normally.
    */
-  function serveCampaignOrder(): {
+  function serveCampaignOrder(opts?: { joinCash?: boolean }): {
+    /** The cash now on the table (this order's, plus the party-mates' it joined): what the table view swipes. */
+    tableCash?: { payCents: number; tipCents: number } | null;
     coinsAwarded: number;
     reaction: string;
     settlement?: SettlementResult | undefined;
@@ -2209,6 +2214,7 @@ export function App() {
     // "customer-tip" entry; the settlement and its entry are unchanged.
     // appendLedgerEntry is a no-op for a 0 tip.
     let tip = 0;
+    let tableCash: { payCents: number; tipCents: number } | null = null;
     if (base && !isReplay) {
       // A restaurant that opened this service with cleaning undone tips half (cleanliness.tipHygieneShare).
       tip = tipAfterHygiene(
@@ -2236,11 +2242,15 @@ export function App() {
           category: "campaign-settlement",
           description: recipe.id,
           tipDescription: `${levelId}:${recipe.id}`,
+          ...(opts?.joinCash ? { merge: true } : {}),
         },
       );
+      const onTable = pendingCashOf(servedSave);
+      tableCash = onTable ? { payCents: onTable.payCents, tipCents: onTable.tipCents } : null;
       persist(applySharpnessDecay(servedSave, base.equippedKnifeId, recipe));
     }
     return {
+      tableCash,
       coinsAwarded: result.coinsAwarded,
       reaction: result.reaction,
       settlement,
@@ -2478,6 +2488,7 @@ export function App() {
     const level = getLevel(campaignServiceSession.levelId);
     if (!level) return;
     completeCampaignLevel(level);
+    resetParties();
     setCampaignServiceSession(null);
     setSharedPrep(null);
     setSessionMode("campaign");
@@ -3279,7 +3290,9 @@ export function App() {
                     (at >= required ? 1 : 0),
                 )
                 .map((c) => ({ emoji: c.recipe.emoji, name: c.recipe.name }));
-          return [...tickets, ...guests];
+          // A party is made of the level's own orders, so it is always served, eats and leaves
+          // together; the optional menu guests and the walk-in come after, as their own tables.
+          return at < required ? tickets : guests;
         })()
       : undefined;
   // Same dish ordered by the customers right behind this one (required orders only, never menu
@@ -3304,6 +3317,19 @@ export function App() {
             n++;
           return n;
         })()
+      : 0;
+  // Required orders still to come after this one: a party's plates are held until its last one is served.
+  const ticketsAfter =
+    RESTAURANT_MODE &&
+    isCampaignService &&
+    campaignServiceSession?.tickets &&
+    campaignLevelForSession &&
+    campaignServiceSession.current?.order.status !== "COMPLETED"
+      ? Math.max(
+          0,
+          (campaignLevelForSession.requiredOrders ?? 1) -
+            (campaignServiceSession.completedCount + 1),
+        )
       : 0;
   // After this plate is served, the next one is already prepared: the button says so.
   const sharedPlateNext =
@@ -3421,6 +3447,7 @@ export function App() {
               ...(isBusinessService ? { isBusinessOrder: true } : {}),
               ...(partyWaiting ? { partyWaiting } : {}),
               ...(sameDishAhead > 0 ? { sameDishAhead } : {}),
+              ...(ticketsAfter > 0 ? { ticketsAfter } : {}),
               ...(menuGuest
                 ? {
                     extraAction: !guestHasSetting(save, campaignLevelForSession!)
@@ -3489,6 +3516,7 @@ export function App() {
                 finishBatchGroupLevel();
                 return;
               }
+              resetParties();
               setSessionMode("campaign");
               go(isBusinessService ? "business-service" : "board");
             }}

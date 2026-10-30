@@ -5,7 +5,15 @@
 //   C4 Finish Level completes level-1 (one completion reward) and lands on the Kitchen.
 //   C5 no console errors.
 // Prints PASS/FAIL per check and exits 1 on any failure.
-import { launch, startFirstLevel, sleep, clickButton, readSave, text } from "./harness.mjs";
+import {
+  launch,
+  startFirstLevel,
+  sleep,
+  clickButton,
+  readSave,
+  text,
+  sweepCash,
+} from "./harness.mjs";
 import { playToReport } from "./solver.mjs";
 
 const results = [];
@@ -48,8 +56,14 @@ try {
     { credits: afterServe.credits, ledger: afterServe.economyLedger.length },
   );
 
+  // The customer reacts and walks out, then the served card opens by itself (no cash screen in between).
+  await page
+    .waitForFunction(() => !document.querySelector('[data-testid="service-floor"]'), {
+      timeout: 12000,
+    })
+    .catch(() => {});
+  await sleep(500);
   const body = await flat(page);
-  const pieces = await page.evaluate(() => document.querySelectorAll("[data-cash-piece]").length);
   const gated = await page.evaluate(() => {
     const b = [...document.querySelectorAll("button")].find((x) =>
       /^Finish Level$/.test(x.textContent.trim()),
@@ -57,30 +71,13 @@ try {
     return b ? b.disabled : "absent";
   });
   check(
-    "C2a cash is on screen and Finish Level waits (disabled or not yet shown)",
-    pieces > 0 || /Collect cash|Swipe/i.test(body),
-    {
-      pieces,
-      gated,
-    },
+    "C2a after the reaction the served card opens by itself: cash waits (Collect cash at the table), Finish Level is NOT gated",
+    /Collect cash at the table/i.test(body) && gated === false,
+    { gated, body: body.slice(0, 160) },
   );
   await page.screenshot({ path: "tools/e2e/cashflow-table.png" });
-
-  // Sweep every piece with the pointer (several passes: pieces drift as they are collected).
-  for (let pass = 0; pass < 6; pass++) {
-    const boxes = await page.evaluate(() =>
-      [...document.querySelectorAll("[data-cash-piece]")].map((e) => {
-        const r = e.getBoundingClientRect();
-        return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
-      }),
-    );
-    if (boxes.length === 0) break;
-    await page.mouse.move(boxes[0].x, boxes[0].y);
-    await page.mouse.down();
-    for (const b of boxes) await page.mouse.move(b.x, b.y, { steps: 6 });
-    await page.mouse.up();
-    await sleep(500);
-  }
+  const pieces = await sweepCash(page);
+  check("C2b the table view shows the cash piles to swipe", pieces > 0, { pieces });
   await sleep(1500);
   const collected = await readSave(page);
   const kinds = collected.economyLedger.map((e) => e.category);
