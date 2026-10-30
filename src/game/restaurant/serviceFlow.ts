@@ -268,3 +268,25 @@ export function doorView(q: QueueState): {
       first && !q.oneAtATime ? Math.max(0, 1 - first.waitedMs / first.arrival.patienceMs) : null,
   };
 }
+
+/**
+ * WHEN THE CLOCK RUNS (developer 2026-10-30: "when players are cleaning or purchasing or doing any
+ * work other than cutting, don't make the customers wait and run out of patience"): only while the
+ * player is on the service screen, serving. Any other screen (Market, Kitchen, cleaning, upgrades),
+ * a card over the service (story, Pre-Service Check, intro), a paused game (pause menu, an ad) or
+ * other work on the service screen (cleaning the board) freezes arrivals AND patience together, so
+ * nobody waits and the door doesn't fill up while the player is away.
+ */
+export type ClockContext = {
+  /** The service (cutting / serving) screen is the one on screen. */
+  onServiceScreen: boolean;
+  /** A story card, the Pre-Service Check or the intro is over it. */
+  cardOpen: boolean;
+  /** The game is paused (pause menu, an ad, the platform). */
+  gamePaused: boolean;
+  /** The player is doing other work on the service screen (cleaning the board). */
+  otherWork: boolean;
+};
+
+export const serviceClockRuns = (c: ClockContext): boolean =>
+  c.onServiceScreen && !c.cardOpen && !c.gamePaused && !c.otherWork;

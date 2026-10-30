@@ -13,7 +13,9 @@ Plan and decisions Q1–Q7: `docs/planning/PHASE2-PLAN-2026-10-30.md`. Built so 
   Guests wait at the door ("🚪 N waiting" with a patience bar on the service screen). The served card's Menu guest
   button seats the first one, calling them in early if they have not arrived. A guest whose patience runs out is
   skipped (counted in `levelProgress.menuGuests`, no order, no money). Patience pauses under Auto. No save field.
-  Browser: `tools/e2e/queue.mjs` (4/4, about 4 minutes).
+  Browser: `tools/e2e/queue.mjs` (5/5, about 5 minutes).
+- 2.3b Customers only wait while the player is serving (developer 2026-10-30, `serviceClockRuns`): any other screen,
+  a card, a pause or an ad, or cleaning the board freezes arrivals and patience. Coming back resumes the same queue.
 - **Open economy item (for the end-of-phase pass, decision Q7):** `restaurant-final-economy-qa` S3 fails. The
   prudent completionist's lowest cash after the $500 reserve is $313 at L33 (a supply buy), against the $350
   floor (was $376 at L6). Either the weighting or the substitution alone moves the L33 supply purchase (the guests'

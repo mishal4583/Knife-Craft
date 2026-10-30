@@ -159,6 +159,7 @@ import {
   arrivalSchedule,
   doorView,
   nextGuestWalkedOut,
+  serviceClockRuns,
   type ServiceProgress,
 } from "@/game/restaurant/serviceFlow";
 import { useServiceQueue } from "@/components/kc/game/useServiceQueue";
@@ -595,6 +596,8 @@ export function App() {
   /** Level 1's kitchen, laid under the intro so its outro dissolves into it (W4). */
   const [introPlate, setIntroPlate] = useState(false);
   const [storyEvent, setStoryEvent] = useState<StoryFlushResult>(null);
+  // Phase 2: the service screen reports other work (cleaning the board): the door clock waits.
+  const [serviceOtherWork, setServiceOtherWork] = useState(false);
   // The intro ends exactly once, whether it finished or was skipped.
   const introCompletedRef = useRef(false);
   /** A fresh save's Level 1 waits under the intro; its play session opens when the intro ends. */
@@ -3221,8 +3224,16 @@ export function App() {
     key: queueLevel && queueFirstPlay ? queueLevel.id : null,
     schedule: queueSchedule,
     levelNumber: queueLevel ? levelNumber(queueLevel.id) : 1,
+    // Developer 2026-10-30: customers only wait while the player is serving. Any other screen or
+    // work (Market, cleaning, upgrades, the board cleanup, a pause or an ad) freezes the clock.
     running:
-      screen === "gameplay" && queueFirstPlay && !storyEvent && !serviceCheckLevelId && !showIntro,
+      queueFirstPlay &&
+      serviceClockRuns({
+        onServiceScreen: screen === "gameplay",
+        cardOpen: !!storyEvent || !!serviceCheckLevelId || showIntro,
+        gamePaused: false, // the hook follows PauseManager itself
+        otherWork: serviceOtherWork,
+      }),
     patiencePaused: !!save && save.settings.autoService === true,
     progress: queueProgress,
   });
@@ -3578,6 +3589,7 @@ export function App() {
               ...(isBusinessService ? { isBusinessOrder: true } : {}),
               ...(partyWaiting ? { partyWaiting } : {}),
               ...(doorQueue && isCampaignService ? { door: doorView(doorQueue) } : {}),
+              onOtherWork: setServiceOtherWork,
               ...(sameDishAhead > 0 ? { sameDishAhead } : {}),
               ...(ticketsAfter > 0 ? { ticketsAfter } : {}),
               onCollectTableCash: collectTableCash,

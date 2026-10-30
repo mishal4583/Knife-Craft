@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { PauseManager } from "@/game/PauseManager";
 import {
   startQueue,
   stepQueue,
@@ -10,10 +11,13 @@ import {
 
 /**
  * The service clock (Phase 2, restaurant/serviceFlow.ts): runs the door queue with animation
- * frames while `running` (a service on screen, no card open). The browser stops frames for a
- * hidden tab, so the clock stops too; a frame is clamped to 250 ms, so coming back is never a
- * burst. A new `key` (another level) starts a new queue. The queue follows `progress` (who has
- * been served), so it is right after a reload. Re-renders only when what the door shows changes.
+ * frames while `running` (serviceClockRuns: the service screen, serving, nothing else) and the
+ * game is not paused (PauseManager: pause menu, ads). The browser stops frames for a hidden tab,
+ * so the clock stops too; a frame is clamped to 250 ms, so coming back is never a burst.
+ * A new `key` (another level) starts a new queue; a null key (the player left the service) keeps
+ * the queue frozen, so coming back to the same service resumes it where it was. The queue
+ * follows `progress` (who has been served), so it is right after a reload. Re-renders only when
+ * what the door shows changes.
  */
 export function useServiceQueue(args: {
   key: string | null;
@@ -26,17 +30,20 @@ export function useServiceQueue(args: {
   const { key, schedule, levelNumber, running, patiencePaused, progress } = args;
   const ref = useRef<{ key: string | null; q: QueueState | null }>({ key: null, q: null });
   const [, setTick] = useState(0);
+  const [gamePaused, setGamePaused] = useState(() => PauseManager.isPaused());
+  useEffect(() => PauseManager.subscribe(setGamePaused), []);
   const progressRef = useRef(progress);
   progressRef.current = progress;
 
-  if (ref.current.key !== key) {
-    ref.current = { key, q: key ? syncQueue(startQueue(schedule, levelNumber), progress) : null };
-  } else if (ref.current.q) {
+  if (key && ref.current.key !== key) {
+    ref.current = { key, q: syncQueue(startQueue(schedule, levelNumber), progress) };
+  } else if (key && ref.current.q) {
     ref.current.q = syncQueue(ref.current.q, progress);
   }
+  const live = !!key && running && !gamePaused;
 
   useEffect(() => {
-    if (!running || !ref.current.q) return;
+    if (!live || !ref.current.q) return;
     let last = performance.now();
     let frame = 0;
     const view = (q: QueueState) =>
@@ -54,7 +61,7 @@ export function useServiceQueue(args: {
     };
     frame = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(frame);
-  }, [running, patiencePaused, key]);
+  }, [live, patiencePaused, key]);
 
-  return ref.current.q;
+  return key ? ref.current.q : null;
 }

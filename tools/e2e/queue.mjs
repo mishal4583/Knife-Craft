@@ -3,6 +3,8 @@
 //   Q2 ~35 s later a menu guest is waiting at the door ("🚪 1 waiting", patience shown);
 //   Q3 the guest's patience runs out while the player does nothing: they walk out — counted as
 //      handled (levelProgress.menuGuests), no business revenue, the wallet unchanged;
+//   Q5 the game paused (developer 2026-10-30: customers only wait while the player is serving):
+//      45 s later the waiting guest's patience has not moved;
 //   Q4 no console errors.
 // Slow on purpose (real time: ~4 minutes); the clock only runs with the service on screen.
 import {
@@ -82,6 +84,22 @@ try {
   const waiting = await door();
   await shot(page, "queue-waiting");
   check("Q2 ~35 s later a menu guest waits at the door", waiting >= 1, { waiting });
+  const patience = () =>
+    page.evaluate(() =>
+      document.querySelector('[data-testid="door-queue"]')?.getAttribute("data-patience"),
+    );
+  await clickButton(page, /Start cooking/);
+  await sleep(1500);
+  await page.evaluate(() => document.querySelector('[aria-label="Pause"]')?.click());
+  await sleep(500);
+  const p1 = await patience();
+  await sleep(45_000);
+  const p2 = await patience();
+  check("Q5 paused: 45 s later the waiting guest's patience has not moved", !!p1 && p1 === p2, {
+    p1,
+    p2,
+  });
+  await clickButton(page, /^Resume$/);
   let after = before;
   for (let t = 0; t < 30; t++) {
     await sleep(8_000);

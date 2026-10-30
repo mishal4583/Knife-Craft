@@ -235,6 +235,8 @@ export function Preparation({
     prepCook?: { auto: boolean; onAuto: () => void };
     /** Phase 2 (restaurant/serviceFlow.ts): customers waiting at the door, and the first one's patience left (0..1, null: no clock). */
     door?: { waiting: number; walkedOut: number; patience: number | null };
+    /** Phase 2: told when the player starts / stops other work here (cleaning the board) — the door clock waits meanwhile. */
+    onOtherWork?: (busy: boolean) => void;
   };
   onExit: () => void;
   /** Returns this run's coin reward (0 on replay — Law 2 — or always 0 for a service session, where payment is deferred to the explicit Serve action) so OrderComplete can show it without a second App->Preparation round trip. */
@@ -510,6 +512,13 @@ export function Preparation({
   const [cleanupOffered, setCleanupOffered] = useState(false);
   // How much of the board the cloth has wiped clean (0–1), for the card's bar.
   const [cleanupProgress, setCleanupProgress] = useState(0);
+  // Phase 2 (developer 2026-10-30): cleaning the board is other work — the door clock waits.
+  const cleaningBoard = cleanupOffered && phase === "prep";
+  const onOtherWork = service?.onOtherWork;
+  useEffect(() => {
+    onOtherWork?.(cleaningBoard);
+  }, [cleaningBoard, onOtherWork]);
+  useEffect(() => () => onOtherWork?.(false), [onOtherWork]);
   // A peel step's progress (0–1) from the scene's PEEL_PROGRESS — HUD feedback only.
   const [peelFraction, setPeelFraction] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -1334,6 +1343,9 @@ export function Preparation({
         <div
           data-testid="door-queue"
           data-waiting={service.door.waiting}
+          data-patience={
+            service.door.patience === null ? "" : Math.round(service.door.patience * 100)
+          }
           className="pointer-events-none absolute right-2 top-2 z-[60] flex items-center gap-1.5 rounded-full bg-walnut-dark/80 px-3 py-1 font-ui text-[12.5px] font-extrabold text-ivory shadow-soft"
         >
           🚪 {service.door.waiting} waiting

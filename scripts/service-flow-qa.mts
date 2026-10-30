@@ -152,6 +152,7 @@ check("Q13 done when nobody is waiting, seated or to come", queueDone(d) && !que
 
 // ── Y. sync with the service (reloads included) ──────────────────────────
 import {
+  serviceClockRuns,
   doorView,
   guestPlace,
   nextGuestWalkedOut,
@@ -203,11 +204,35 @@ check(
 
 // ── A. App wiring ────────────────────────────────────────────────────────
 const app = fs.readFileSync(path.join(process.cwd(), "src/App.tsx"), "utf8").replace(/\r\n/g, "\n");
+// Rule changed (developer 2026-10-30): customers only wait while the player is serving — any other
+// screen or work (Market, cleaning, upgrades, the board cleanup, a pause or an ad) freezes the clock.
 check(
-  "A1 the clock runs only on the service screen with no card open, and pauses patience under Auto",
-  /screen === "gameplay" &&\s*queueFirstPlay &&\s*!storyEvent &&\s*!serviceCheckLevelId &&\s*!showIntro/.test(
+  "A1 the clock runs through serviceClockRuns (service screen, no card, no other work) and pauses patience under Auto",
+  /running:\s*queueFirstPlay &&\s*serviceClockRuns\(\{\s*onServiceScreen: screen === "gameplay",\s*cardOpen: !!storyEvent \|\| !!serviceCheckLevelId \|\| showIntro,/.test(
     app,
-  ) && /patiencePaused: !!save && save\.settings\.autoService === true/.test(app),
+  ) &&
+    /otherWork: serviceOtherWork/.test(app) &&
+    /onOtherWork: setServiceOtherWork/.test(app) &&
+    /patiencePaused: !!save && save\.settings\.autoService === true/.test(app),
+);
+const hook = fs.readFileSync(
+  path.join(process.cwd(), "src/components/kc/game/useServiceQueue.ts"),
+  "utf8",
+);
+check(
+  "A4 a paused game (pause menu, an ad) stops the clock; leaving keeps the queue frozen for the same service",
+  /PauseManager\.subscribe\(setGamePaused\)/.test(hook) &&
+    /const live = !!key && running && !gamePaused;/.test(hook) &&
+    /if \(key && ref\.current\.key !== key\)/.test(hook),
+);
+const prep = fs.readFileSync(
+  path.join(process.cwd(), "src/components/kc/game/Preparation.tsx"),
+  "utf8",
+);
+check(
+  "A5 cleaning the board on the service screen is other work",
+  /const cleaningBoard = cleanupOffered && phase === "prep";/.test(prep) &&
+    /onOtherWork\?\.\(cleaningBoard\)/.test(prep),
 );
 const skip = app.slice(
   app.indexOf("useEffect(() => {\n    if (!guestWalkedOut"),
@@ -220,6 +245,22 @@ check(
     !/credits|appendLedgerEntry|debitWallet/.test(skip),
 );
 check("A3 the door is shown on the service screen", /door: doorView\(doorQueue\)/.test(app));
+
+// ── C. when the clock runs (developer 2026-10-30) ────────────────────────
+const on = { onServiceScreen: true, cardOpen: false, gamePaused: false, otherWork: false };
+check("C1 on the service screen, serving: the clock runs", serviceClockRuns(on));
+check(
+  "C2 any other screen, a card, a pause/ad or other work (cleaning): it stops",
+  !serviceClockRuns({ ...on, onServiceScreen: false }) &&
+    !serviceClockRuns({ ...on, cardOpen: true }) &&
+    !serviceClockRuns({ ...on, gamePaused: true }) &&
+    !serviceClockRuns({ ...on, otherWork: true }),
+);
+const frozen = run(startQueue(s1, 12), 35_000 * 2);
+check(
+  "C3 a stopped clock (dt 0) freezes arrivals and patience together",
+  stepQueue(frozen, 0) === frozen,
+);
 
 // ── M. module ────────────────────────────────────────────────────────────
 const mod = fs
