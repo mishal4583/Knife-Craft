@@ -1,5 +1,9 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+**Next: Phase 1 plan** (2026-10-30, planning only) — `docs/planning/PHASE1-PLAN-2026-10-30.md`: status after
+`ae37b1d`, the remaining level-centric pieces, slice P1-A (one "Open for service" button, roll on after story cards,
+no "Level N" on the service path; no save or economy change), test plan, decisions P1–P6 waiting.
+
 ## Prep Cook cuts for the player; Auto service (2026-10-30, decision D4)
 
 - Developer: "after certain levels, if needed by the players, let them hire a Prep Cook to cut the vegetables and
