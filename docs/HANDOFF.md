@@ -1,5 +1,8 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+**Next: Phase 2 plan** (2026-10-30, planning only) — `docs/planning/PHASE2-PLAN-2026-10-30.md`: arrival clock,
+queue with patience, stock-aware guest orders; no COOKING state, no save change; decisions Q1–Q7 waiting.
+
 ## Phase 1: the service loop hides the levels (2026-10-30, decisions P1–P6, local commits, not pushed)
 
 Plan and decisions: `docs/planning/PHASE1-PLAN-2026-10-30.md` §8.
