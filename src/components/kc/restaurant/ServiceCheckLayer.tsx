@@ -101,7 +101,7 @@ export function ServiceCheckLayer({
           onClick={() => go("board")}
           className="press pointer-events-auto min-h-12 rounded-full border border-walnut-dark/40 bg-[linear-gradient(170deg,var(--color-gold),var(--color-copper))] px-5 font-ui text-[14.5px] font-extrabold text-ivory shadow-lift"
         >
-          ↩ Back to Level {n} Pre-Service Check
+          ↩ Back to the Pre-Service Check
         </button>
       </div>
     );

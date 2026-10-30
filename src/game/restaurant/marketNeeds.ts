@@ -184,7 +184,7 @@ export function needLabel(need: MarketNeed): string {
     case "guests":
       return "For today's menu guests";
     case "soon":
-      return need.level ? `Needed at Level ${need.level}` : "Needed soon";
+      return "Needed soon";
   }
 }
 

@@ -40,7 +40,7 @@ export function RestaurantAttentionPanel({
         className="rounded-[16px] border border-olive/30 bg-olive/10 px-3 py-2 font-ui text-[13.5px] font-bold text-walnut-dark"
         data-testid="restaurant-attention-clear"
       >
-        ✓ Everything is stocked{a.nextLevel ? ` for Level ${a.nextLevel}` : ""}.
+        ✓ Everything is stocked{a.nextLevel ? " for the next service" : ""}.
       </p>
     );
   const rows = all ? a.rows : a.rows.slice(0, SHOWN);
@@ -84,9 +84,9 @@ export function RestaurantAttentionPanel({
         <p
           className="mt-0.5 font-ui text-[12.5px] font-bold text-walnut/70"
           data-testid="restaurant-recommended"
-          title={`Recommended restock for Level ${a.nextLevel} at Market prices`}
+          title="Recommended restock for the next service at Market prices"
         >
-          🛒 Lv {a.nextLevel} restock · {formatUsd(a.recommendedCost)}
+          🛒 Next service restock · {formatUsd(a.recommendedCost)}
         </p>
       ) : null}
       {/* Pictures of what's short (developer 2026-10-23); tap a tile to fix it. */}

@@ -388,8 +388,9 @@ console.log("I. Inventory: restaurant Needs Attention");
       a.rows
         // The level's own orders; the menu guests' optional rows are "guest:" (restaurant-guests-qa K4).
         .filter((r) => r.id.startsWith("ingredient:"))
-        .every((r) => /remaining \(Level 35 needs/.test(r.text)),
-    "I1: the next service's missing ingredients, worded 'X — N remaining (Level L needs M)'",
+        .every((r) => /remaining \(the next service needs/.test(r.text)),
+    // Rule changed (developer 2026-10-30, Phase 1): no level number on the service path.
+    "I1: the next service's missing ingredients, worded 'X — N remaining (the next service needs M)'",
   );
   const soap = a.rows.find((r) => r.id === "bottle:dish-soap");
   const cleaner = a.rows.find((r) => r.id === "bottle:cleaning-liquid");

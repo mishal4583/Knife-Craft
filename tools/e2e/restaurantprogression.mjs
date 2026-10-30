@@ -130,9 +130,10 @@ check(
   /NEEDS ATTENTION/.test(att.text ?? "") &&
     !!firstIngredient &&
     att.rows[0].sev === "urgent" &&
-    /remaining \(Level 35 needs/.test(att.text ?? "") &&
-    // "🛒 Lv 35 restock · $X" since the short-copy pass (2026-10-23; was "Recommended restock for Level 35: …").
-    /Lv 35 restock · \$/.test(att.rec ?? ""),
+    /remaining \(the next service needs/.test(att.text ?? "") &&
+    // "🛒 Next service restock · $X" since Phase 1 (developer 2026-10-30: no level numbers on the
+    // service path; was "🛒 Lv 35 restock", and before 2026-10-23 "Recommended restock for Level 35: …").
+    /Next service restock · \$/.test(att.rec ?? ""),
   att,
 );
 await page.evaluate(

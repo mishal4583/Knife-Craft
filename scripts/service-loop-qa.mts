@@ -7,6 +7,8 @@
  *   K. the Kitchen: the restaurant build's one button is "Open for service" → the next service; no Replay
  *      on the Kitchen (replays are the Order Board's); after the last service it opens the restaurant;
  *   S. after a story card nothing rolls on by itself (decision P3: back to the Kitchen, one tap);
+ *   L. no level number on the service path (Pre-Service Check, its back link, Closing Time, Daily
+ *      Maintenance, the restock panel and its notes, the Market's need label);
  *   M. the module touches no wallet, ledger, save or random.
  *
  * Run: npx tsx scripts/service-loop-qa.mts
@@ -111,6 +113,29 @@ check(
   "S1 roll-on only after a first completion with no story card",
   /rollOnRef\.current = done\.first && !done\.story && next/.test(app),
 );
+
+// ── L. no level number on the service path ───────────────────────────────
+const LEVEL_COPY = /\b(Level|Lv\.?) ?(\$\{|\{)/;
+const codeOnly = (p: string) =>
+  src(p)
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .split("\n")
+    .filter((l) => !/^\s*\/\//.test(l))
+    .join("\n");
+for (const p of [
+  "src/components/kc/restaurant/PreServiceCheck.tsx",
+  "src/components/kc/restaurant/ServiceCheckLayer.tsx",
+  "src/components/kc/restaurant/ClosingTime.tsx",
+  "src/components/kc/DailyMaintenance.tsx",
+  "src/components/kc/inventory/RestaurantAttentionPanel.tsx",
+  "src/game/restaurant/restaurantAttention.ts",
+  "src/game/restaurant/marketNeeds.ts",
+])
+  check(
+    `L1 no "Level N" copy: ${path.basename(p)}`,
+    !LEVEL_COPY.test(codeOnly(p)),
+    codeOnly(p).match(LEVEL_COPY)?.[0],
+  );
 
 // ── M. purity ────────────────────────────────────────────────────────────
 const mod = src("src/game/restaurant/nextService.ts").replace(/\/\*[\s\S]*?\*\//g, "");

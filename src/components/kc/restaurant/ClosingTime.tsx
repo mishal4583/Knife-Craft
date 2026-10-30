@@ -87,7 +87,7 @@ export function ClosingTime({
           <ul className="space-y-0.5" data-testid="closing-services">
             {p.services.map((s) => (
               <li key={s.name} className="font-ui text-[14.5px] font-bold text-walnut-dark">
-                ✓ {s.name} · Level {s.levelNumber}
+                ✓ {s.name}
               </li>
             ))}
           </ul>

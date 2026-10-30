@@ -34,6 +34,7 @@ import type { RestaurantNews } from "@/game/restaurant/restaurantNews";
 import { staffHireFee, type StaffRequirement } from "@/game/restaurant/staffRequirements";
 import type { FridgeUsage } from "@/game/restaurant/fridgeUsage";
 import type { KitLine } from "@/game/restaurant/restaurantMigration";
+import { opensInText } from "@/game/restaurant/nextService";
 import type { DayStock, GuestStock } from "@/game/restaurant/preServiceCheck";
 import { getSupplyItem as supplyItemOf } from "@/game/business/businessSupplies";
 
@@ -290,7 +291,7 @@ export function PreServiceCheck({
         <div className="px-5 pb-2 pt-3.5">
           <span className="mx-auto mb-2.5 block h-1 w-10 rounded-full bg-walnut/20" />
           <p className="font-ui text-[11.5px] font-extrabold uppercase tracking-[0.14em] text-walnut/60">
-            📆 Day {day} · Level {levelNumber}
+            📆 Day {day}
           </p>
           <p className="font-display text-[22px] font-black text-walnut-dark">
             🧾 Pre-Service Check
@@ -498,9 +499,6 @@ export function PreServiceCheck({
                     className="flex items-center justify-between gap-2 font-ui text-[13px] font-bold text-walnut-dark"
                   >
                     <span>🍽️ {s.name}</span>
-                    <span className="shrink-0 rounded-full bg-gold/15 px-2 py-0.5 text-[10px] text-copper">
-                      Lv {s.levelNumber}
-                    </span>
                   </li>
                 ))}
               </ul>
@@ -756,7 +754,12 @@ export function PreServiceCheck({
           ) : null}
 
           {firstShoppingList ? (
-            <FirstShoppingList soon={toolsSoon} credits={credits} onBuy={onBuyTool} />
+            <FirstShoppingList
+              soon={toolsSoon}
+              reached={levelNumber}
+              credits={credits}
+              onBuy={onBuyTool}
+            />
           ) : null}
 
           {kit && kit.rows.length > 0 ? (
@@ -819,7 +822,8 @@ export function PreServiceCheck({
               </p>
               <NameChips
                 names={toolsSoon.map(
-                  (t) => `${(getSupplyItem(t.id)?.name ?? t.id).split(" · ")[0]} · Lv ${t.level}`,
+                  (t) =>
+                    `${(getSupplyItem(t.id)?.name ?? t.id).split(" · ")[0]} · ${opensInText(t.level, levelNumber)}`,
                 )}
                 max={6}
               />
@@ -1339,10 +1343,10 @@ function NewsCard({ news }: { news: RestaurantNews }) {
               className="flex items-center gap-1.5 font-ui text-[12.5px] font-bold text-walnut/75"
             >
               <span className="rounded-full bg-copper/15 px-1.5 text-[11px] font-black text-copper">
-                Lv {c.level}
+                {opensInText(c.level, news.levelNumber)}
               </span>
               <span className="min-w-0 flex-1">{c.short}</span>
-              <InfoTip label={`About Level ${c.level}`}>{c.text}</InfoTip>
+              <InfoTip label={`About ${c.short}`}>{c.text}</InfoTip>
             </li>
           ))}
         </ul>
@@ -1425,10 +1429,13 @@ function ToolRowItem({
  */
 function FirstShoppingList({
   soon,
+  reached,
   credits,
   onBuy,
 }: {
   soon: readonly { id: SupplyId; level: number; why: string }[];
+  /** The service being prepared: "needed …" counts the services from it. */
+  reached: number;
   credits: number;
   onBuy: (id: SupplyId, packs: number) => void;
 }) {
@@ -1470,7 +1477,7 @@ function FirstShoppingList({
                     <InfoTip label={`Why the ${item?.name ?? "tool"}`}>{x.why}</InfoTip>
                   </p>
                   <p className="font-ui text-[12.5px] font-bold leading-snug text-copper">
-                    Level {x.level}
+                    Needed {opensInText(x.level, reached)}
                   </p>
                 </div>
                 <KButton

@@ -70,7 +70,8 @@ for (const [n, current] of [
       : "2 a save whose current level is already played still highlights the next level's tools",
     /^All/.test(m.group[0] ?? "") &&
       m.first.every((w) => w === "soon") &&
-      /Needed at Level \d+ · buy 1/.test(m.note) &&
+      // "Needed soon" since Phase 1 (developer 2026-10-30: no level numbers; was "Needed at Level N").
+      /Needed soon · buy 1/.test(m.note) &&
       m.chips >= 2 &&
       m.soon,
     m,

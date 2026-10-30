@@ -152,7 +152,7 @@ export function DailyMaintenance({
                 <div className="mt-3 rounded-xl border border-ivory/15 bg-walnut-dark/25 p-2.5">
                   <p className="font-ui text-[10px] font-extrabold uppercase tracking-wider text-gold">Today’s service plan</p>
                   <ul className="mt-1 space-y-1">
-                    {schedule.map((service) => <li key={`${service.name}-${service.levelNumber}`} className="font-ui text-[12px] font-bold text-ivory/90">{service.done ? "✓" : "•"} {service.name} · Level {service.levelNumber}</li>)}
+                    {schedule.map((service) => <li key={`${service.name}-${service.levelNumber}`} className="font-ui text-[12px] font-bold text-ivory/90">{service.done ? "✓" : "•"} {service.name}</li>)}
                   </ul>
                 </div>
               ) : null}
@@ -174,7 +174,7 @@ export function DailyMaintenance({
           {dayStock ? (
             <Panel className="p-4">
               <div className="flex items-center justify-between gap-2">
-                <div><Eyebrow>🥕 Ingredients for the full day</Eyebrow><p className="mt-0.5 font-ui text-[12px] text-walnut/60">{dayStock.levels.map((n) => `Level ${n}`).join(" · ")}</p></div>
+                <div><Eyebrow>🥕 Ingredients for the full day</Eyebrow><p className="mt-0.5 font-ui text-[12px] text-walnut/60">{dayStock.levels.length === 1 ? "1 service" : `${dayStock.levels.length} services`}</p></div>
                 <span className={`rounded-full px-2.5 py-1 font-ui text-[11px] font-extrabold ${dayStockMissing ? "bg-gold/20 text-copper" : "bg-sage/15 text-olive"}`}>{dayStockMissing ? `${dayStockMissing} to buy` : "Ready"}</span>
               </div>
               {dayStock.rows.length ? (
