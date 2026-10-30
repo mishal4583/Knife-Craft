@@ -150,6 +150,77 @@ let d = startQueue(arrivalSchedule({ ...input, orders: 1, guests: 0, walkIns: 0 
 d = guestLeft(seatGuest(d, "level-12:0"), "level-12:0");
 check("Q13 done when nobody is waiting, seated or to come", queueDone(d) && !queueDone(c));
 
+// ── Y. sync with the service (reloads included) ──────────────────────────
+import {
+  doorView,
+  guestPlace,
+  nextGuestWalkedOut,
+  syncQueue,
+  type ServiceProgress,
+} from "../src/game/restaurant/serviceFlow.ts";
+const P = (x: Partial<ServiceProgress>): ServiceProgress => ({
+  ordersDone: 0,
+  orderSeated: false,
+  guestsDone: 0,
+  guestSeated: false,
+  guestCount: 2,
+  ...x,
+});
+let y = syncQueue(startQueue(s1, 12), P({ orderSeated: true }));
+check("Y1 the order being cooked is SEATED", y.guests[0]!.state === "SEATED");
+y = syncQueue(y, P({ ordersDone: 2, guestSeated: true }));
+check(
+  "Y2 orders served have LEFT; a guest taken early is called in and SEATED",
+  y.guests.filter((g) => g.arrival.kind === "order").every((g) => g.state === "LEFT") &&
+    y.guests.find((g) => g.arrival.kind === "guest" && g.arrival.index === 0)?.state === "SEATED",
+  y.guests.map((g) => [g.arrival.id, g.state]),
+);
+check(
+  "Y3 a walk-in's place comes after the menu guests",
+  guestPlace(s1[4]!, 2) === 2 && guestPlace(s1[2]!, 2) === 0 && guestPlace(s1[0]!, 2) === -1,
+);
+const reload = syncQueue(startQueue(s1, 12), P({ ordersDone: 2, guestsDone: 1 }));
+check(
+  "Y4 after a reload the queue starts where the save is (served guests have left)",
+  reload.guests.filter((g) => g.state === "LEFT").length === 3,
+);
+let w = syncQueue(run(startQueue(s1, 12), 35_000 * 3), P({ ordersDone: 2 }));
+w = syncQueue(run(w, 150_000), P({ ordersDone: 2 }));
+check(
+  "Y5 the next guest walked out: the caller skips them",
+  nextGuestWalkedOut(w, P({ ordersDone: 2 })),
+);
+check(
+  "Y6 …never while a guest is being cooked",
+  !nextGuestWalkedOut(w, P({ ordersDone: 2, guestSeated: true })),
+);
+const view = doorView(run(startQueue(s1, 12), 35_000 * 2 + 75_000));
+check(
+  "Y7 the door shows who waits and the first guest's patience",
+  view.waiting >= 1 && view.patience !== null && view.patience < 1 && view.patience > 0,
+  view,
+);
+
+// ── A. App wiring ────────────────────────────────────────────────────────
+const app = fs.readFileSync(path.join(process.cwd(), "src/App.tsx"), "utf8").replace(/\r\n/g, "\n");
+check(
+  "A1 the clock runs only on the service screen with no card open, and pauses patience under Auto",
+  /screen === "gameplay" &&\s*queueFirstPlay &&\s*!storyEvent &&\s*!serviceCheckLevelId &&\s*!showIntro/.test(
+    app,
+  ) && /patiencePaused: !!save && save\.settings\.autoService === true/.test(app),
+);
+const skip = app.slice(
+  app.indexOf("useEffect(() => {\n    if (!guestWalkedOut"),
+  app.indexOf("if (!save) {\n    return ("),
+);
+check(
+  "A2 a walk-out only counts the guest as handled: no money, no ledger, never on a finished level",
+  /withMenuGuestServed\(current\.levelProgress, queueLevel\.id\)/.test(skip) &&
+    /isCompleted\(queueLevel\.id, current\.levelProgress\)/.test(skip) &&
+    !/credits|appendLedgerEntry|debitWallet/.test(skip),
+);
+check("A3 the door is shown on the service screen", /door: doorView\(doorQueue\)/.test(app));
+
 // ── M. module ────────────────────────────────────────────────────────────
 const mod = fs
   .readFileSync(path.join(process.cwd(), "src/game/restaurant/serviceFlow.ts"), "utf8")

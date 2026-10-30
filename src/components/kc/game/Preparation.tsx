@@ -233,6 +233,8 @@ export function Preparation({
     onCollectTableCash?: () => void;
     /** A hired Prep Cook (restaurant/prepCookAuto.ts): cuts this order for the player; `auto` also serves, collects and moves on. */
     prepCook?: { auto: boolean; onAuto: () => void };
+    /** Phase 2 (restaurant/serviceFlow.ts): customers waiting at the door, and the first one's patience left (0..1, null: no clock). */
+    door?: { waiting: number; walkedOut: number; patience: number | null };
   };
   onExit: () => void;
   /** Returns this run's coin reward (0 on replay — Law 2 — or always 0 for a service session, where payment is deferred to the explicit Serve action) so OrderComplete can show it without a second App->Preparation round trip. */
@@ -1326,6 +1328,23 @@ export function Preparation({
           className="pointer-events-none absolute left-1/2 top-2 z-[60] -translate-x-1/2 rounded-full bg-walnut-dark/80 px-3 py-1 font-ui text-[12px] font-extrabold text-ivory shadow-soft"
         >
           🍽️ {platesWaiting} {platesWaiting === 1 ? "plate" : "plates"} ready for the table
+        </div>
+      ) : null}
+      {service?.door && service.door.waiting > 0 ? (
+        <div
+          data-testid="door-queue"
+          data-waiting={service.door.waiting}
+          className="pointer-events-none absolute right-2 top-2 z-[60] flex items-center gap-1.5 rounded-full bg-walnut-dark/80 px-3 py-1 font-ui text-[12.5px] font-extrabold text-ivory shadow-soft"
+        >
+          🚪 {service.door.waiting} waiting
+          {service.door.patience !== null ? (
+            <span aria-hidden className="block h-1.5 w-8 overflow-hidden rounded-full bg-ivory/25">
+              <span
+                className={`block h-full rounded-full ${service.door.patience > 0.35 ? "bg-sage" : "bg-tomato"}`}
+                style={{ width: `${Math.round(service.door.patience * 100)}%` }}
+              />
+            </span>
+          ) : null}
         </div>
       ) : null}
       {holding ? (

@@ -197,3 +197,74 @@ export function callNext(q: QueueState): QueueState {
 
 /** Nobody waiting, seated or still to come. */
 export const queueDone = (q: QueueState) => q.outside.length === 0 && !q.guests.some(isActive);
+
+/** Where the service is, from the save and the session: the queue follows it (reloads included). */
+export type ServiceProgress = {
+  /** The level's own orders served. */
+  ordersDone: number;
+  /** A level's own order is being cooked now. */
+  orderSeated: boolean;
+  /** Menu guests + walk-ins handled (served, or skipped after walking out): `levelProgress.menuGuests`. */
+  guestsDone: number;
+  /** A menu guest or walk-in is being cooked now. */
+  guestSeated: boolean;
+  /** Menu guests in the service (a walk-in's place comes after them). */
+  guestCount: number;
+};
+
+/** A customer's place in the service's guest count (menu guests, then walk-ins); -1 for an order. */
+export const guestPlace = (a: Arrival, guestCount: number) =>
+  a.kind === "order" ? -1 : a.kind === "guest" ? a.index : guestCount + a.index;
+
+/**
+ * Brings the queue in line with the service: everyone already served has LEFT (walk-outs stay
+ * WALKED_OUT), the customer being cooked is SEATED (called in early if not at the door yet).
+ */
+export function syncQueue(q: QueueState, p: ServiceProgress): QueueState {
+  const doneOf = (a: Arrival) =>
+    a.kind === "order" ? a.index < p.ordersDone : guestPlace(a, p.guestCount) < p.guestsDone;
+  const seatedOf = (a: Arrival) =>
+    a.kind === "order"
+      ? p.orderSeated && a.index === p.ordersDone
+      : p.guestSeated && guestPlace(a, p.guestCount) === p.guestsDone;
+  const pulled = q.outside.filter((a) => doneOf(a) || seatedOf(a));
+  const outside = q.outside.filter((a) => !pulled.includes(a));
+  const guests = [
+    ...q.guests,
+    ...pulled.map((arrival): QueuedGuest => ({ arrival, state: "WAITING", waitedMs: 0 })),
+  ].map((g): QueuedGuest => {
+    if (g.state === "WALKED_OUT") return g;
+    if (doneOf(g.arrival)) return g.state === "LEFT" ? g : { ...g, state: "LEFT" };
+    if (seatedOf(g.arrival)) return g.state === "SEATED" ? g : { ...g, state: "SEATED" };
+    return g.state === "SEATED" ? { ...g, state: "WAITING" } : g;
+  });
+  const changed =
+    pulled.length > 0 ||
+    guests.some((g, i) => g !== q.guests[i]) ||
+    guests.length !== q.guests.length;
+  return changed ? admit({ ...q, outside, guests }) : q;
+}
+
+/** The next guest to handle walked out: the caller skips them (no order, no pay). */
+export function nextGuestWalkedOut(q: QueueState, p: ServiceProgress): boolean {
+  if (p.guestSeated) return false;
+  return q.guests.some(
+    (g) => g.state === "WALKED_OUT" && guestPlace(g.arrival, p.guestCount) === p.guestsDone,
+  );
+}
+
+/** What the floor shows: people waiting at the door, and how full the first one's patience still is (0..1). */
+export function doorView(q: QueueState): {
+  waiting: number;
+  walkedOut: number;
+  patience: number | null;
+} {
+  const waiting = waitingOf(q);
+  const first = waiting.find((g) => g.arrival.patienceMs !== Infinity);
+  return {
+    waiting: waiting.length,
+    walkedOut: q.guests.filter((g) => g.state === "WALKED_OUT").length,
+    patience:
+      first && !q.oneAtATime ? Math.max(0, 1 - first.waitedMs / first.arrival.patienceMs) : null,
+  };
+}

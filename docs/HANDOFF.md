@@ -8,6 +8,12 @@ Plan and decisions Q1–Q7: `docs/planning/PHASE2-PLAN-2026-10-30.md`. Built so 
   plans) is weighted toward new dishes (×1.5). An arriving guest orders the forecast dish when it can be made,
   otherwise a stocked dish (weighted by new dish and portions in stock), never taking stock planned for the guests
   after them. A walk-in still keeps the next level's reserve (`order-pool-qa`).
+- 2.3 The clock and queue are wired (`App.tsx`, `components/kc/game/useServiceQueue.ts`). A campaign service's customers
+  arrive on the clock; the clock runs only with the service on screen and no card open (a hidden tab stops it).
+  Guests wait at the door ("🚪 N waiting" with a patience bar on the service screen). The served card's Menu guest
+  button seats the first one, calling them in early if they have not arrived. A guest whose patience runs out is
+  skipped (counted in `levelProgress.menuGuests`, no order, no money). Patience pauses under Auto. No save field.
+  Browser: `tools/e2e/queue.mjs` (4/4, about 4 minutes).
 - **Open economy item (for the end-of-phase pass, decision Q7):** `restaurant-final-economy-qa` S3 fails. The
   prudent completionist's lowest cash after the $500 reserve is $313 at L33 (a supply buy), against the $350
   floor (was $376 at L6). Either the weighting or the substitution alone moves the L33 supply purchase (the guests'

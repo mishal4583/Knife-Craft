@@ -1,5 +1,5 @@
 import { afterNight, setStandingOrder, type DeliveryKind } from "@/game/restaurant/deliveries";
-import { Suspense, lazy, useEffect, useRef, useState } from "react";
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { Preparation, preloadPreparation } from "@/components/kc/game/lazyPreparation";
 import kitchenBg from "@/assets/kitchen-bg.jpg";
 import { ReplayBonusSheet, AdPlayingShield } from "@/components/kc/ReplayBonusSheet";
@@ -148,10 +148,20 @@ import { closeDay, openDay, recordService, restaurantDayOf } from "@/game/restau
 import { cleanerClosing, doClosingChore } from "@/game/restaurant/closingChores";
 import {
   customerQueue,
+  menuGuestCapacity,
+  menuGuestQueue,
   menuGuestsServed,
   nextMenuGuest,
+  walkInQueue,
   withMenuGuestServed,
 } from "@/game/restaurant/menuGuests";
+import {
+  arrivalSchedule,
+  doorView,
+  nextGuestWalkedOut,
+  type ServiceProgress,
+} from "@/game/restaurant/serviceFlow";
+import { useServiceQueue } from "@/components/kc/game/useServiceQueue";
 import {
   cleanSettings,
   cleanSettingFor,
@@ -3161,6 +3171,75 @@ export function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- openDailyGift reads saveRef
   }, [homeCalm]);
 
+  // Phase 2 (developer 2026-10-30, restaurant/serviceFlow.ts): a campaign service's customers arrive
+  // on a clock and wait at the door. The clock runs only while the service is on screen with no card
+  // open; patience pauses under Auto (decision Q4). A guest whose patience runs out is skipped below.
+  const queueLevel =
+    RESTAURANT_MODE && save && sessionMode === "campaign-service" && campaignServiceSession
+      ? (getLevel(campaignServiceSession.levelId) ?? null)
+      : null;
+  const queueFirstPlay = !!queueLevel && !!save && !isCompleted(queueLevel.id, save.levelProgress);
+  const queueSchedule = useMemo(
+    () =>
+      queueLevel && save && queueFirstPlay
+        ? arrivalSchedule({
+            levelId: queueLevel.id,
+            levelNumber: levelNumber(queueLevel.id),
+            orders: queueLevel.requiredOrders ?? 1,
+            guests: menuGuestQueue(save, queueLevel).length,
+            walkIns: walkInQueue(save, queueLevel).length,
+            capacity: menuGuestCapacity(save),
+          })
+        : [],
+    // The schedule is fixed for the service: a new level (or a replay) makes a new one.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [queueLevel?.id, queueFirstPlay],
+  );
+  const queueProgress: ServiceProgress = (() => {
+    if (!queueLevel || !save || !campaignServiceSession)
+      return {
+        ordersDone: 0,
+        orderSeated: false,
+        guestsDone: 0,
+        guestSeated: false,
+        guestCount: 0,
+      };
+    const required = queueLevel.requiredOrders ?? 1;
+    const current = campaignServiceSession.current;
+    const currentDone = current?.order.status === "COMPLETED";
+    const done = campaignServiceSession.completedCount;
+    const cooking = !!current && !currentDone;
+    return {
+      ordersDone: Math.min(required, done + (currentDone ? 1 : 0)),
+      orderSeated: cooking && done < required,
+      guestsDone: menuGuestsServed(save.levelProgress, queueLevel.id),
+      guestSeated: cooking && done >= required,
+      guestCount: menuGuestQueue(save, queueLevel).length,
+    };
+  })();
+  const doorQueue = useServiceQueue({
+    key: queueLevel && queueFirstPlay ? queueLevel.id : null,
+    schedule: queueSchedule,
+    levelNumber: queueLevel ? levelNumber(queueLevel.id) : 1,
+    running:
+      screen === "gameplay" && queueFirstPlay && !storyEvent && !serviceCheckLevelId && !showIntro,
+    patiencePaused: !!save && save.settings.autoService === true,
+    progress: queueProgress,
+  });
+  const guestWalkedOut = !!doorQueue && nextGuestWalkedOut(doorQueue, queueProgress);
+  // The next guest left (their wait ran out): they are counted as handled, with no order and no
+  // money (decision Q3: a lost sale only), so the next guest is offered.
+  useEffect(() => {
+    if (!guestWalkedOut || !queueLevel) return;
+    const current = saveRef.current;
+    if (!current || isCompleted(queueLevel.id, current.levelProgress)) return;
+    persist({
+      ...current,
+      levelProgress: withMenuGuestServed(current.levelProgress, queueLevel.id),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- persist reads saveRef
+  }, [guestWalkedOut, queueLevel?.id, queueProgress.guestsDone]);
+
   if (!save) {
     return (
       <GameShell>
@@ -3498,6 +3577,7 @@ export function App() {
                   : advanceBusinessServiceQueue,
               ...(isBusinessService ? { isBusinessOrder: true } : {}),
               ...(partyWaiting ? { partyWaiting } : {}),
+              ...(doorQueue && isCampaignService ? { door: doorView(doorQueue) } : {}),
               ...(sameDishAhead > 0 ? { sameDishAhead } : {}),
               ...(ticketsAfter > 0 ? { ticketsAfter } : {}),
               onCollectTableCash: collectTableCash,
