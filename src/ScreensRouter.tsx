@@ -54,6 +54,7 @@ import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
 import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
 import { unlockText } from "@/components/kc/navLevel";
 import { kitchenMapArtStage, kitchenMapImageUrl } from "@/game/kitchen/kitchenMapArt";
+import { pendingCashTotal } from "@/game/economy/pendingCash";
 import {
   NavAttentionContext,
   NavGuideContext,
@@ -298,6 +299,15 @@ export function ScreensRouter({
                   onCleanerDone={cleanerCleans}
                   attentionCounts={attentionBadges.map}
                   attentionSymbols={attentionBadges.mapSymbols}
+                  {...(pendingCashTotal(save) > 0 && onCollectTableCash
+                    ? {
+                        tableCash: {
+                          stage: kitchenMapArtStage(save.equippedKitchenUpgradeId),
+                          cents: pendingCashTotal(save),
+                          onCollect: onCollectTableCash,
+                        },
+                      }
+                    : {})}
                   currentScreen={screen}
                   onNavigateToScreen={openMapDestination}
                   restaurantName={restaurantNameOf(save)}

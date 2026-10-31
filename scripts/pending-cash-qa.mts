@@ -5,7 +5,7 @@
  *   P. Pieces: each swept piece moves exactly its cents; the wallet equals the ledger
  *   L. Ledger: one settlement entry and one tip entry per order, however many pieces
  *   R. Reload: the cash on the table survives a save and load; settling pays it once
- *   S. Safety: never negative, never more than owed, never two orders on one table
+ *   S. Safety: never negative, never more than owed; cash piles up (one pile per pay kind), nothing is collected for the player
  *   W. Wiring in App.tsx
  *
  * Run: npx tsx scripts/pending-cash-qa.mts
@@ -28,6 +28,7 @@ type SaveData = import("../src/game/SaveManager.ts").SaveData;
 const {
   collectPendingCashPiece,
   pendingCashOf,
+  pendingPiles,
   pendingCashTotal,
   settlePendingCash,
   withPendingCash,
@@ -173,12 +174,51 @@ console.log("S. Safety");
   );
   const wrongKind = collectPendingCashPiece(owed, 500, true);
   assert(wrongKind === owed, "S3: a tip piece with no tip owed pays nothing");
+  // Rule changed (developer 2026-10-31, "let it pile up like other idle games until the user
+  // collects it"): a new order no longer collects the one before it. Same pay kind = one pile.
   const two = serve(owed, 700, 0);
   assert(
-    two.credits === 500 + 1_000 &&
-      pendingCashTotal(two) === 700 &&
-      two.credits === 500 + ledgerSum(two),
-    "S4: a new order settles the one before it first — never two orders on one table",
+    two.credits === 500 &&
+      two.economyLedger.length === 0 &&
+      pendingCashTotal(two) === 1_700 &&
+      pendingCashOf(two)!.batch === pendingCashOf(owed)!.batch &&
+      pendingCashOf(two)!.more === undefined,
+    "S4: a new order leaves the cash before it on the table — it piles up, nothing is collected, one pile per pay kind",
+  );
+  const guests = withPendingCash(two, {
+    amount: 450,
+    category: "business-revenue",
+    description: "menu-dish",
+  });
+  const piles = pendingPiles(guests);
+  assert(
+    pendingCashTotal(guests) === 2_150 &&
+      piles.length === 2 &&
+      piles[0]!.batch !== piles[1]!.batch &&
+      guests.credits === 500,
+    "S4b: another pay kind (menu guests) is its own pile with its own batch; still nothing collected",
+    piles,
+  );
+  const all = settlePendingCash(JSON.parse(JSON.stringify(guests)) as SaveData);
+  const byKind = (k: string) =>
+    all.economyLedger.filter((e) => e.category === k).reduce((t, e) => t + e.amount, 0);
+  assert(
+    all.credits === 500 + 2_150 &&
+      pendingCashOf(all) === null &&
+      all.credits === 500 + ledgerSum(all) &&
+      byKind("campaign-settlement") === 1_700 &&
+      byKind("business-revenue") === 450,
+    "S4c: one tap collects every pile (after a reload too): wallet = opening + ledger, one entry per pay kind",
+    { credits: all.credits, ledger: all.economyLedger.map((e) => [e.category, e.amount]) },
+  );
+  // A swipe takes the first pile, then the next one moves up.
+  const swiped = collectPendingCashPiece(guests, 1_700, false);
+  assert(
+    pendingPiles(swiped).length === 1 &&
+      pendingCashOf(swiped)!.category === "business-revenue" &&
+      pendingCashTotal(swiped) === 450 &&
+      swiped.credits === 500 + 1_700,
+    "S4d: a swipe takes the first pile; the next pile moves up",
   );
   assert(
     pendingCashOf(serve(base(), 0, 0)) === null,

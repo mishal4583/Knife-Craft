@@ -142,8 +142,9 @@ console.log("S. Staff requirements");
   );
   assert(
     STAFF_RULES.map((r) => `${r.role}@${r.fromLevel}`).join() ===
-      "prep-cook@27,server@31,line-cook@40,cleaner@54,head-chef@74,manager@99",
-    "S2: Prep Cook (L27) → Server (L31) → Line Cook (L40) → Cleaner (L54) → Head Chef (L74) → Manager (L99)",
+      "prep-cook@30,server@31,line-cook@40,cleaner@54,head-chef@74,manager@99",
+    // Rule changed (developer 2026-10-31, "unlock prepcook only after level 30"): the Prep Cook was required from L27.
+    "S2: Prep Cook (L30) → Server (L31) → Line Cook (L40) → Cleaner (L54) → Head Chef (L74) → Manager (L99)",
   );
   const small = { orders: 2, dineIn: 1, specialists: [], specialistCuisines: 0 };
   const big = { orders: 5, dineIn: 4, specialists: [], specialistCuisines: 0 };
@@ -220,7 +221,7 @@ console.log("S. Staff requirements");
   );
   assert(
     staffComingUp(28).some((s) => s.title === "Indian Chef" && s.level === 33) &&
-      staffComingUp(22).some((s) => s.title === "Prep Cook" && s.level === 27) &&
+      staffComingUp(25).some((s) => s.title === "Prep Cook" && s.level === 30) &&
       staffComingUp(9).some((s) => s.title === "Mexican Chef" && s.level === 14) &&
       staffComingUp(33).every((s) => s.level - 33 <= 5) &&
       staffComingUp(28).every((s) => s.level > 28),

@@ -130,12 +130,15 @@ console.log("S. Safety");
     // below $350, still never credit.
     // Rule changed (developer 2026-10-26, "the game starts at 0 cash"): a new player starts with
     // an empty wallet, so the $350 floor holds from the moment the $500 reserve was first earned.
-    g.minCashAfterReserve.cash >= dollars(350) &&
+    // Rule changed (developer 2026-10-31, "unlock prepcook only after level 30"): the Prep Cook is now
+    // required at L30, one level before the Server (L31), so the prudent player's reserve is spent a
+    // little differently and its lowest point is $320 (L33 supply, measured) — the floor is $300 now.
+    g.minCashAfterReserve.cash >= dollars(300) &&
       g.stats.credit === 0 &&
       supplierCreditOf(g.save).owed === 0 &&
       g.final >= dollars(100_000) &&
-      [20, 30, 40, 50, 75, 91].every((n) => atL(g, n).wallet >= dollars(350)),
-    `S3: a prudent completionist (keeps $500 once earned) never dips below $350 after that (a required hire's fee; lowest ${$(g.minCashAfterReserve.cash)}, ${g.minCashAfterReserve.where}), never needs supplier credit, still ends ${$(g.final)}`,
+      [20, 30, 40, 50, 75, 91].every((n) => atL(g, n).wallet >= dollars(300)),
+    `S3: a prudent completionist (keeps $500 once earned) never dips below $300 after that (a required hire's fee; lowest ${$(g.minCashAfterReserve.cash)}, ${g.minCashAfterReserve.where}), never needs supplier credit, still ends ${$(g.final)}`,
   );
 }
 

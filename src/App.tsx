@@ -10,6 +10,7 @@ import {
   AD_BONUSES_FROM_LEVEL,
   adBonusOffer,
   adBonusesLeftToday,
+  awayMsSince,
   commitAdBonus,
   dailyGiftDue,
   floatingCashAmount,
@@ -17,6 +18,8 @@ import {
   levelDoubleAmount,
   shortfallAmount,
   takeDailyGift,
+  welcomeBackAmount,
+  welcomeBackPaidText,
   type AdBonusKind,
   type AdBonusOffer,
 } from "@/game/ads/adBonuses";
@@ -658,6 +661,10 @@ export function App() {
   const adBonusBusyRef = useRef(false);
   /** The daily gift is offered once per session at most (it waits for a calm Kitchen). */
   const dailyGiftOfferedRef = useRef(false);
+  /** Welcome back (adBonuses.ts): how long the player was away when this session opened, and whether it was tried. */
+  const awayMsRef = useRef<number | null>(null);
+  const awayMeasuredRef = useRef(false);
+  const welcomeBackTriedRef = useRef(false);
   /** The restaurant level a Restaurant Guide step was last answered at (one step per level). */
   const guideLevelRef = useRef<number | null>(null);
   /** Phase 5 (A): the restoration reveal of a kitchen tier just built (RestorationReveal.tsx) — session-only, never saved. */
@@ -1140,6 +1147,7 @@ export function App() {
     shortfall: AD_PLACEMENT.shortfallTopUp,
     floor_double: AD_PLACEMENT.floorDouble,
     daily_gift: AD_PLACEMENT.dailyGift,
+    welcome_back: AD_PLACEMENT.welcomeBack,
   };
 
   /** Are ad bonuses on offer at all: an ad platform, and the Market open (Level 3). */
@@ -1181,6 +1189,19 @@ export function App() {
       ...(reward ? { streakReward: reward.amount } : {}),
     });
     return true;
+  }
+
+  /**
+   * Back after 30+ minutes (developer 2026-10-31): a few hours of earnings for a rewarded ad, and
+   * only for the ad. Measured once, when the session opened (the newest ledger entry), so what the
+   * player does in this session never counts as time away.
+   */
+  function openWelcomeBack(): boolean {
+    const current = saveRef.current;
+    const away = awayMsRef.current;
+    if (!current || away === null || !adBonusesOpen(current)) return false;
+    const amount = welcomeBackAmount(restaurantLevelOf(current.levelProgress), away);
+    return amount > 0 && openAdBonus("welcome_back", amount, welcomeBackPaidText(away));
   }
 
   /** The daily gift's free "Take": one "daily-reward" entry, no ad. */
@@ -3174,14 +3195,27 @@ export function App() {
       screen === "kitchen" &&
       sectionToPoint(restaurantLevelOf(save.levelProgress), save.business.sectionsSeen ?? [])
     );
-  // The day's welcome gift opens once, at the first calm moment of the session.
+  // The day's welcome gift opens once, at the first calm moment of the session; when there is
+  // none (taken already) or once it is closed, the welcome-back ad offer gets its one try.
   useEffect(() => {
-    if (!homeCalm || dailyGiftOfferedRef.current) return;
+    if (!save || awayMeasuredRef.current) return;
+    awayMeasuredRef.current = true;
+    awayMsRef.current = awayMsSince(save, Date.now());
+  }, [save]);
+  useEffect(() => {
+    if (!homeCalm || (dailyGiftOfferedRef.current && welcomeBackTriedRef.current)) return;
     const t = window.setTimeout(() => {
-      if (openDailyGift()) dailyGiftOfferedRef.current = true;
+      if (!dailyGiftOfferedRef.current && openDailyGift()) {
+        dailyGiftOfferedRef.current = true;
+        return;
+      }
+      if (!welcomeBackTriedRef.current) {
+        welcomeBackTriedRef.current = true;
+        openWelcomeBack();
+      }
     }, 1200);
     return () => window.clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- openDailyGift reads saveRef
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- openDailyGift / openWelcomeBack read saveRef
   }, [homeCalm]);
 
   // Phase 2 (developer 2026-10-30, restaurant/serviceFlow.ts): a campaign service's customers arrive
@@ -3603,6 +3637,7 @@ export function App() {
               ...(sameDishAhead > 0 ? { sameDishAhead } : {}),
               ...(ticketsAfter > 0 ? { ticketsAfter } : {}),
               onCollectTableCash: collectTableCash,
+              tableCashCents: pendingCashTotal(save),
               ...(prepCookOn
                 ? {
                     prepCook: {
@@ -3860,6 +3895,7 @@ export function App() {
         <Suspense fallback={null}>
           <ServiceCheckLayer
             save={save}
+            onCollectTableCash={collectTableCash}
             levelId={serviceCheckLevelId}
             screen={screen}
             go={go}

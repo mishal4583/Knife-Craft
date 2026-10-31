@@ -617,10 +617,12 @@ Date.now = realDateNow;
           AD_PLACEMENT.shortfallTopUp,
           AD_PLACEMENT.floorDouble,
           AD_PLACEMENT.dailyGift,
+          // Added 2026-10-31 (developer): the welcome-back offer has its own placement.
+          AD_PLACEMENT.welcomeBack,
         ]
           .sort()
           .join(),
-    "E6: Bridge config — 120 s minimum between interstitials, every ad spot listed as its own placement (day_cleaner since 2026-10-17; the five ad bonuses since 2026-10-18), fallbacks = the defaults",
+    "E6: Bridge config — 120 s minimum between interstitials, every ad spot listed as its own placement (day_cleaner since 2026-10-17; the five ad bonuses since 2026-10-18, welcome_back since 2026-10-31), fallbacks = the defaults",
   );
 }
 

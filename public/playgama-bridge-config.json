@@ -21,7 +21,8 @@
                 { "id": "level_bonus" },
                 { "id": "shortfall_topup" },
                 { "id": "floor_double" },
-                { "id": "daily_gift" }
+                { "id": "daily_gift" },
+                { "id": "welcome_back" }
             ]
         }
     }

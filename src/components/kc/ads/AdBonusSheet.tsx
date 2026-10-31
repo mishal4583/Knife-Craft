@@ -35,6 +35,7 @@ const COPY: Record<AdBonusKind, { icon: string; kicker: string; line: string }> 
   shortfall: { icon: "🛒", kicker: "Almost there", line: "Get what you're missing" },
   floor_double: { icon: "🏬", kicker: "Second Floor ×2", line: "Collect it twice" },
   daily_gift: { icon: "🎁", kicker: "Daily gift", line: "A little something for today" },
+  welcome_back: { icon: "🌙", kicker: "Welcome back", line: "Earned while you were away" },
 };
 
 /**

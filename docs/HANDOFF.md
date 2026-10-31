@@ -1,5 +1,31 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## Table cash lies on the tables and piles up; Phases 3 and 4 (2026-10-31, working tree, not committed)
+
+Plan, evidence and the open decisions (D8-b, D10): `docs/planning/PHASE3-4-PLAN-2026-10-31.md`.
+- **Table cash (developer 2026-10-31: "let it lay there, collect whenever, let it pile up like other idle games").**
+  `economy/pendingCash.ts`: serving never collects older cash; one pile per pay kind (`business.pendingCash`, optional
+  `more` for a second kind). Drawn as bundles with the amount by the front tables (`common/TableCash.tsx`,
+  `restaurant/tableCash.ts`) in the dining room and on the restaurant map; one tap collects (`App.collectTableCash`).
+  The Kitchen chip and the Pre-Service Check's "Collect $X from the tables" do the same. **Auto no longer collects it.**
+  Closing Time: Collect first, then the chores and the count ("💵 First"), then Close.
+- **Phase 3:** `tools/e2e/reveal.mjs` proves the restoration reveal shows only after the purchase is saved;
+  `scripts/early-upgrade-payback-qa.mts` measures reach and payback (no price changed: items return 0.25x, kitchen tiers
+  never pay back in money — decision D8-b).
+- **Phase 4:** the Prep Cook's cutting already existed; now one order state for hand-cut and Prep Cook orders
+  (`PreparedBy` tag, served card "Cut by your Prep Cook"). Who automates what (Line Cook, Server): decision D10, not changed.
+- **Decisions (developer 2026-10-31):** the Prep Cook opens only at **level 30** (`PREP_COOK_CUTS_FROM`; hiring, the
+  guide tip and cutting all wait for it, and the service that requires him starts there too, `staffHireFrom` /
+  `STAFF_RULES`); **D8-b: keep the kitchen tiers as restoration milestones** (no re-pricing); **D5: no offline/idle
+  income without an ad** (the player hires staff and plays each day; the capped real-time Second Floor income stays
+  as it is). **Added instead (developer 2026-10-31): "Welcome back"**, a 6th ad bonus: after 30+ minutes away, a few
+  hours of earnings (up to 3 h, $10-$90) **only for a rewarded ad**, no free part and no doubling
+  (`adBonuses.ts`, `AD_PLACEMENT.welcomeBack`; `ad-bonuses-qa` G1-G6, `tools/e2e/welcomeback.mjs` 6/6).
+- Rules changed in tests (said here and in the commit): `pending-cash-qa` S4, `party-served-together-qa` C3,
+  `prep-cook-auto-qa` A4/A5, `service-flow-qa` D3, `prepcook.mjs` P4. Browser: `tablecash.mjs` 7/7, `reveal.mjs` 5/5.
+- Harness note: `tools/e2e/harness.mjs` `OUT` keeps `%20` from the URL, so screenshots land in `D:\WORKS\GAMES\Knife%20Craft	ools\e2e\out`
+  (outside the repo), not in the repo.
+
 ## Phase 2: customers on a clock (2026-10-30/31, done)
 
 Plan and decisions Q1–Q7: `docs/planning/PHASE2-PLAN-2026-10-30.md`. Built so far:
@@ -52,7 +78,7 @@ Plan and decisions: `docs/planning/PHASE1-PLAN-2026-10-30.md` §8.
   the screens, through `useUnlockText()` (`navLevel.ts`). The classic build keeps its "Level N" wording. Item levels
   (Blacksmith ★, Second-Floor machine Lv) stay.
 - **Prep Cook paid by the hour only** (P6): no hiring fee, and every closing before full operation pays his full
-  shift wage, $40 (`closingWage` / `closingPay`, `staffRequirements.ts`), from the day he is hired. Still cuts from Level 20.
+  shift wage, $40 (`closingWage` / `closingPay`, `staffRequirements.ts`), from the day he is hired. (Cuts, and can be hired, from Level 30 since 2026-10-31.)
   Economy: completionist $291,692 → $291,672, saver $458,402 → $458,382, move-in at L120 +$120, broke player
   unchanged. The frozen campaign baseline is unchanged.
 - Tests: `service-loop-qa` (new); browser `tools/e2e/openservice.mjs` (8/8, new). Browser tests that tapped the
@@ -66,16 +92,17 @@ Plan and decisions: `docs/planning/PHASE1-PLAN-2026-10-30.md` §8.
 
 - Developer: "after certain levels, if needed by the players, let them hire a Prep Cook to cut the vegetables and
   ingredients and automate the restaurant fully". One rule module, `restaurant/prepCookAuto.ts`:
-  hired Prep Cook + `PREP_COOK_CUTS_FROM` (Level 20, my pick, change it there) + not a teaching first play.
+  hired Prep Cook + `PREP_COOK_CUTS_FROM` (Level 30 since 2026-10-31, was 20; change it there) + not a teaching first play.
 - The arrival card (`ServiceFloor`, seated) gets **👨‍🍳 Prep Cook cuts it** and **Auto: on/off**. The cook "cuts" the whole
   order (every step and shared plate, `PREP_COOK_MS`), then the normal Serve card opens. The plate is always **Honest 75**
   (`PREP_COOK_SCORE`): neutral pay, the 5% Honest tip, no combo/moments/recipe-book page; hand-cut Clean/Masterful pay more.
   Nothing else changes: same `onComplete` → `recordCampaignServiceResult` → serve → ledger path, no new money code.
 - **Auto** (`SaveData.settings.autoService`, optional, off by default): the cook starts each order when the customer sits,
-  and the served card presses Serve → 💵 Collect cash → Next Customer a beat apart (`AUTO_*_MS`), then the level rolls on.
+  and the served card presses Serve → Next Customer a beat apart (`AUTO_*_MS`), then the level rolls on. (Since 2026-10-31 it
+  no longer presses Collect cash: the cash stays on the tables for the player.)
   It never buys anything: it stops at the Pre-Service Check when stock or supplies are short, at a story card, and
   cash that must be swiped by hand is left to the player. **Stop Auto** is on the card; the toggle also sits on the arrival card.
-- The guide (`restaurantGuide.ts`) offers "Hire a Prep Cook to cut for you" from Level 20 until hired; hiring opens at Level 5
+- The guide (`restaurantGuide.ts`) offers "Hire a Prep Cook to cut for you" from Level 30 until hired; hiring opens at Level 30 too (was Level 5)
   (no fee and paid by the hour since Phase 1, see above). Role text: "Cuts orders for you — 3% off every ingredient purchase."
 - Tests: `scripts/prep-cook-auto-qa.mts` (rule, plate pay/tip, save, hire, wiring); `tools/e2e/prepcook.mjs` (8/8: teaching
   level by hand, button, cut, Serve, Auto chain with wallet = cash + ledger, Stop Auto). Headless Chrome once printed

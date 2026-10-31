@@ -10,6 +10,7 @@ import {
 import { ShiftChecklist } from "./ShiftChecklist";
 import { SinkWash } from "./SinkWash";
 import type { SaveData } from "@/game/SaveManager";
+import { pendingCashTotal } from "@/game/economy/pendingCash";
 import { openStaffFor } from "../staffFocus";
 import type { ScreenId } from "@/components/kc/data";
 import { getLevel } from "@/game/levels/LevelManager";
@@ -20,10 +21,7 @@ import type { CoverAdOutcome } from "./CoverActions";
 import { getSupplyItem } from "@/game/business/businessSupplies";
 import { fridgeUsage } from "@/game/restaurant/fridgeUsage";
 import { isSystemLive } from "@/game/restaurant/restaurantProgression";
-import {
-  FIRST_INGREDIENT_PURCHASE_LEVEL,
-  dayCeremonyAt,
-} from "@/game/restaurant/firstLevels";
+import { FIRST_INGREDIENT_PURCHASE_LEVEL, dayCeremonyAt } from "@/game/restaurant/firstLevels";
 import {
   openMarketIngredients,
   openMarketPlan,
@@ -60,6 +58,7 @@ export function ServiceCheckLayer({
   onCoverWithAd,
   onCoverWithCredit,
   cleanlinessAction,
+  onCollectTableCash,
 }: {
   save: SaveData;
   levelId: string;
@@ -80,6 +79,8 @@ export function ServiceCheckLayer({
   /** Quick restock bought: App records one ledger entry per ingredient and saves. */
   onQuickRestock: (next: SaveData, lines: readonly QuickRestockLine[]) => void;
   onDismissFirstRestock: () => void;
+  /** Takes the cash lying on the tables into the wallet (App.collectTableCash). */
+  onCollectTableCash?: () => void;
 }) {
   const level = getLevel(levelId);
   const plan = level ? servicePlanFor(save, level) : null;
@@ -114,6 +115,8 @@ export function ServiceCheckLayer({
       levelNumber={n}
       day={plan.day}
       credits={save.credits}
+      tableCash={pendingCashTotal(save)}
+      {...(onCollectTableCash ? { onCollectTableCash } : {})}
       tickets={plan.tickets}
       check={check}
       // Before Level 21 a new day opens without its card (firstLevels.ts).

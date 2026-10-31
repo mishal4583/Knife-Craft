@@ -2,7 +2,12 @@ import { foodFromStock } from "@/game/restaurant/restaurantEconomy";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AudioManager } from "@/game/AudioManager";
 import { reducedMotionOn } from "@/game/cashBurst";
-import { AUTO_COLLECT_MS, AUTO_NEXT_MS, AUTO_SERVE_MS } from "@/game/restaurant/prepCookAuto";
+import {
+  AUTO_COLLECT_MS,
+  AUTO_NEXT_MS,
+  AUTO_SERVE_MS,
+  type PreparedBy,
+} from "@/game/restaurant/prepCookAuto";
 import { CashVacuum } from "./CashVacuum";
 import { useRolledNumber } from "./useRolledNumber";
 import { KButton, Panel } from "../common/primitives";
@@ -170,6 +175,7 @@ export function ServiceOrderComplete({
   plateTier = null,
   bookNote,
   onCustomerMoment,
+  preparedBy = "player",
   cashAtTable = false,
   onCollectCash,
   onCashPieceCollected,
@@ -223,7 +229,9 @@ export function ServiceOrderComplete({
   onCashRemaining?: (cents: number) => void;
   onCashCollected?: () => void;
   cashRemainingOverride?: number;
-  /** The hired Prep Cook runs the service (restaurant/prepCookAuto.ts): Serve, Collect cash and Next Customer press themselves, a beat apart. */
+  /** Who cut this order (restaurant/prepCookAuto.ts `PreparedBy`): the player's own hands, or the hired Prep Cook. */
+  preparedBy?: PreparedBy;
+  /** The hired Prep Cook runs the service (restaurant/prepCookAuto.ts): Serve and Next Customer press themselves, a beat apart; the cash stays on the tables. */
   auto?: boolean;
   onStopAuto?: () => void;
 }) {
@@ -272,7 +280,9 @@ export function ServiceOrderComplete({
   }
   const tip = served && !served.isReplay ? (served.tip ?? 0) : 0;
   const paidCents = served && !served.isReplay ? served.coinsAwarded : 0;
-  // Auto: the same three taps the player makes (each latched once), with a beat between them.
+  // Auto: the player's own taps (Serve, Next Customer; each latched once), with a beat between them.
+  // It never collects the cash on the tables (developer 2026-10-31): that piles up until the
+  // player takes it (the tables, the map, the Kitchen), and closing needs it in the till.
   useEffect(() => {
     if (!auto || hidden || served) return;
     const t = window.setTimeout(handleServe, AUTO_SERVE_MS);
@@ -281,14 +291,13 @@ export function ServiceOrderComplete({
   }, [auto, hidden, served]);
   useEffect(() => {
     if (!auto || hidden || !served) return;
-    const collect = cashAtTable && remaining > 0 && !!onCollectCash;
-    if (!collect && remaining > 0) return; // cash that has to be swiped stays the player's
+    if (!cashAtTable && remaining > 0) return; // cash that has to be swiped stays the player's
     // Phase 2 step 5: Auto works through the queue — a waiting guest it can serve is seated
     // (the Menu guest button) before Next Customer.
     const guest = extraAction && !extraAction.disabled ? extraAction.onClick : null;
     const t = window.setTimeout(
-      collect ? onCollectCash! : (guest ?? nextOnce),
-      collect ? AUTO_COLLECT_MS : paidCents + tip > 0 ? AUTO_NEXT_MS : AUTO_COLLECT_MS,
+      guest ?? nextOnce,
+      paidCents + tip > 0 ? AUTO_COLLECT_MS : AUTO_NEXT_MS,
     );
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- nextOnce is latched; only these decide the next tap
@@ -401,6 +410,14 @@ export function ServiceOrderComplete({
                 style={stage(180)}
               >
                 {formatUsdChange(served.coinsAwarded)}
+              </p>
+            ) : null}
+            {preparedBy === "prep-cook" ? (
+              <p
+                className="mt-1 font-ui text-[12px] font-extrabold uppercase tracking-[0.14em] text-olive"
+                data-testid="prepared-by"
+              >
+                👨‍🍳 Cut by your Prep Cook
               </p>
             ) : null}
             {served.popularExtra && served.popularExtra > 0 && !served.isReplay ? (

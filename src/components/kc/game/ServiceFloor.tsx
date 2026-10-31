@@ -21,6 +21,7 @@ import { formatUsd } from "@/game/money";
 import type { QualityLabel } from "@/types/game";
 import { GuestPoses } from "../restaurantMap/GuestPoses";
 import { KButton } from "../common/primitives";
+import { TableCash } from "../common/TableCash";
 import { AUTO_SERVE_MS } from "@/game/restaurant/prepCookAuto";
 import "./serviceFloor.css";
 
@@ -72,6 +73,7 @@ export function ServiceFloor({
   reducedMotion,
   onDone,
   prepCook,
+  tableCash,
 }: {
   mode: FloorMode;
   stage: KitchenMapArtStage;
@@ -88,6 +90,8 @@ export function ServiceFloor({
   onDone: () => void;
   /** A hired Prep Cook (prepCookAuto.ts), offered on the arrival card: cut this order, or switch Auto. */
   prepCook?: { auto: boolean; onCut: () => void; onAuto: () => void };
+  /** The cash lying on the tables (economy/pendingCash.ts): shown as piles; one tap collects it. */
+  tableCash?: { cents: number; onCollect: () => void };
 }) {
   const uid = useId().replace(/[^a-zA-Z0-9]/g, "");
   const { party, slot, arriving, leaving } = partySeat;
@@ -223,6 +227,15 @@ export function ServiceFloor({
                 ) : null,
               )
             : null}
+          {tableCash && tableCash.cents > 0 ? (
+            <TableCash
+              stage={stage}
+              cents={tableCash.cents}
+              onCollect={tableCash.onCollect}
+              place={inView}
+              first={party.table === 0 ? 1 : 0}
+            />
+          ) : null}
           {leavers.map((l, i) => (
             <div
               key={`leave${i}`}

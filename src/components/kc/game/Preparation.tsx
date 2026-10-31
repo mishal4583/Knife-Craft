@@ -70,6 +70,7 @@ import {
   PREP_COOK_GRADE,
   PREP_COOK_MS,
   PREP_COOK_SCORE,
+  type PreparedBy,
 } from "@/game/restaurant/prepCookAuto";
 import { OrderComplete } from "./OrderComplete";
 import { ServiceOrderComplete } from "./ServiceOrderComplete";
@@ -233,6 +234,8 @@ export function Preparation({
     endsLevel?: boolean;
     /** Takes the cash left on the table into the wallet (App.collectTableCash). */
     onCollectTableCash?: () => void;
+    /** Cents lying on the tables now (economy/pendingCash.ts): drawn as piles in the dining room. */
+    tableCashCents?: number;
     /** A hired Prep Cook (restaurant/prepCookAuto.ts): cuts this order for the player; `auto` also serves, collects and moves on. */
     prepCook?: { auto: boolean; onAuto: () => void };
     /** Phase 2 (restaurant/serviceFlow.ts): customers waiting at the door, and the first one's patience left (0..1, null: no clock). */
@@ -917,6 +920,8 @@ export function Preparation({
   // The hired Prep Cook cuts this whole order (restaurant/prepCookAuto.ts): a plain Honest plate,
   // straight to the Serve card. Only before the player's first cut, once the customer has sat down.
   const [cookBusy, setCookBusy] = useState(false);
+  // Who prepared this order (shared by the hand-cut and the Prep Cook route; one state, one result path).
+  const [preparedBy, setPreparedBy] = useState<PreparedBy>("player");
   const cookTimer = useRef<number | null>(null);
   const cookReady =
     !!service?.prepCook &&
@@ -945,6 +950,7 @@ export function Preparation({
           playerPath: [],
         });
         setCookBusy(false);
+        setPreparedBy("prep-cook");
         setPhase("complete");
       },
       floor?.reducedMotion ? 300 : PREP_COOK_MS,
@@ -1435,6 +1441,14 @@ export function Preparation({
           {...(cookReady && service?.prepCook
             ? { prepCook: { ...service.prepCook, onCut: sendPrepCook } }
             : {})}
+          {...(service.tableCashCents && service.onCollectTableCash
+            ? {
+                tableCash: {
+                  cents: service.tableCashCents,
+                  onCollect: service.onCollectTableCash,
+                },
+              }
+            : {})}
         />
       ) : null}
 
@@ -1505,6 +1519,7 @@ export function Preparation({
         service ? (
           <ServiceOrderComplete
             hidden={holding}
+            preparedBy={preparedBy}
             serviceOrder={
               shownCustomer ? { ...service.order, customer: shownCustomer } : service.order
             }

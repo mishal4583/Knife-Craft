@@ -9,6 +9,8 @@
  *  3. shortfall     — a purchase a little out of reach: the missing dollars.
  *  4. floor_double  — Second Floor: collect the stations' income ×2.
  *  5. daily_gift    — the day's welcome gift (free), doubled by an ad.
+ *  6. welcome_back  — back after 30+ minutes: a few hours of earnings, ONLY for an ad
+ *                     (developer 2026-10-31; not a doubling, there is no free part).
  *
  * Source of truth = the save's ledger, as for the Replay Bonus: a claimed
  * bonus IS one "rewarded-ad" entry whose description is the offer's reward
@@ -27,16 +29,12 @@ import type { LevelDefinition } from "../levels/levelTypes";
 import { appendLedgerEntry } from "../economy/EconomyLedger";
 import type { EconomyLedgerEntry } from "../economy/ledgerTypes";
 import { dollars } from "../money";
-import {
-  CURATED_FINAL_LEVEL,
-  curatedRewardAt,
-  paidLevelReward,
-} from "../levels/levelRewards";
+import { CURATED_FINAL_LEVEL, curatedRewardAt, paidLevelReward } from "../levels/levelRewards";
 import { dailyKeyFor } from "../daily/DailyOrderManager";
 import { streakRewardOnTake } from "../daily/giftStreak";
 
 export type AdBonusKind =
-  "floating_cash" | "level_double" | "shortfall" | "floor_double" | "daily_gift";
+  "floating_cash" | "level_double" | "shortfall" | "floor_double" | "daily_gift" | "welcome_back";
 
 /** Offers a day (device-local day, like the Replay Bonus) per kind. */
 export const AD_BONUS_DAILY_CAP: Record<AdBonusKind, number> = {
@@ -45,6 +43,7 @@ export const AD_BONUS_DAILY_CAP: Record<AdBonusKind, number> = {
   shortfall: 2,
   floor_double: 2,
   daily_gift: 1,
+  welcome_back: 1,
 };
 
 /** Nothing before the Market opens (Level 3): the first levels stay a plain tutorial. */
@@ -69,6 +68,18 @@ export const FLOOR_DOUBLE_MAX = dollars(250);
 export const DAILY_GIFT_SHARE = 0.1;
 export const DAILY_GIFT_MIN = dollars(20);
 export const DAILY_GIFT_MAX = dollars(60);
+
+/**
+ * Welcome back (developer 2026-10-31: "when the player returns he gets the money of only a few hours,
+ * but to get it he needs to watch the ad, not twice the amount"). Away at least 30 minutes, the
+ * offer covers the time away up to 3 hours: 15% of the level's pay for the full 3 hours, $10–$90,
+ * once a day. There is no free part, and a player who never watches is unchanged.
+ */
+export const WELCOME_BACK_MIN_AWAY_MS = 30 * 60_000;
+export const WELCOME_BACK_MAX_AWAY_MS = 3 * 60 * 60_000;
+export const WELCOME_BACK_SHARE = 0.15;
+export const WELCOME_BACK_MIN = dollars(10);
+export const WELCOME_BACK_MAX = dollars(90);
 
 const wholeDollars = (cents: number) => Math.round(cents / 100) * 100;
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
@@ -117,6 +128,39 @@ export function dailyGiftAmount(levelNumber: number): number {
     DAILY_GIFT_MIN,
     DAILY_GIFT_MAX,
   );
+}
+
+/** When the player last did anything with money (the newest ledger entry), or null for a new game. */
+export function lastActivityAt(save: SaveData): number | null {
+  let last: number | null = null;
+  for (const e of save.economyLedger) if (last === null || e.timestamp > last) last = e.timestamp;
+  return last;
+}
+
+/** How long the player was away at `now` (ms), or null when there is nothing to measure. */
+export function awayMsSince(save: SaveData, now: number): number | null {
+  const last = lastActivityAt(save);
+  return last === null || now < last ? null : now - last;
+}
+
+/** The hours that pay: the time away, never more than 3 h. */
+export const welcomeBackPaidMs = (awayMs: number) => Math.min(awayMs, WELCOME_BACK_MAX_AWAY_MS);
+
+/** What the ad pays on return: 0 when the player was away less than 30 minutes. */
+export function welcomeBackAmount(levelNumber: number, awayMs: number | null): number {
+  if (awayMs === null || !(awayMs >= WELCOME_BACK_MIN_AWAY_MS)) return 0;
+  const share = welcomeBackPaidMs(awayMs) / WELCOME_BACK_MAX_AWAY_MS;
+  return clamp(
+    wholeDollars(levelPay(levelNumber) * WELCOME_BACK_SHARE * share),
+    WELCOME_BACK_MIN,
+    WELCOME_BACK_MAX,
+  );
+}
+
+/** "45 min" or "2 h": the time the offer pays for (shown before the ad). */
+export function welcomeBackPaidText(awayMs: number): string {
+  const minutes = Math.round(welcomeBackPaidMs(awayMs) / 60_000);
+  return minutes < 60 ? `${minutes} min` : `${Math.floor(minutes / 60)} h`;
 }
 
 /* ── claims, read from the ledger ── */

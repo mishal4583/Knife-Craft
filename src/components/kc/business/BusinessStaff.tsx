@@ -15,7 +15,7 @@ import {
   HALF_WAGES_FROM,
   HIRE_FEE_DAYS,
   SPECIALIST_CHEFS,
-  STAFF_HIRE_FROM,
+  staffHireFrom,
   closingPay,
   closingWage,
   HOURLY_ONLY_ROLES,
@@ -114,7 +114,7 @@ export function BusinessStaff({
         : result.reason === "insufficientFunds"
           ? notEnoughMoneyText(result.fee ?? 0, save.credits)
           : result.reason === "notYet"
-            ? `Hiring opens ${u.when(STAFF_HIRE_FROM)}.`
+            ? `Hiring opens ${u.when(staffHireFrom(role))}.`
             : "That role is already hired.",
     );
   }
@@ -265,6 +265,8 @@ export function BusinessStaff({
                   >
                     🗑️ Let go
                   </KButton>
+                ) : reachedLevel < staffHireFrom(def.role) ? (
+                  <Badge tone="locked">{u.badge(staffHireFrom(def.role))}</Badge>
                 ) : (
                   <KButton
                     full

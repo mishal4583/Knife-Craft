@@ -118,6 +118,8 @@ export function PreServiceCheck({
   levelNumber,
   day,
   credits,
+  tableCash = 0,
+  onCollectTableCash,
   tickets,
   check,
   opening,
@@ -163,6 +165,9 @@ export function PreServiceCheck({
   levelNumber: number;
   day: number;
   credits: number;
+  /** Cents lying on the tables (not in the wallet until collected), and the one-tap Collect. */
+  tableCash?: number;
+  onCollectTableCash?: () => void;
   tickets: readonly RecipeDefinition[];
   check: ServiceStockCheck;
   /** Today's services when this level opens the day; null mid-day. */
@@ -1067,6 +1072,16 @@ export function PreServiceCheck({
               <p className="font-ui text-[12.5px] text-walnut/70">
                 💵 You have {formatUsd(credits)}
               </p>
+              {tableCash > 0 && onCollectTableCash ? (
+                <KButton
+                  size="sm"
+                  variant="sage"
+                  data-testid="psc-table-cash"
+                  onClick={onCollectTableCash}
+                >
+                  💵 Collect {formatUsd(tableCash)} from the tables
+                </KButton>
+              ) : null}
               {canBuy && onBuyAllInMarket && stock.affordable ? (
                 <KButton
                   size="sm"

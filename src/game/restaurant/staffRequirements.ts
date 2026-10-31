@@ -49,6 +49,7 @@ import { formatUsd } from "../money";
 import type { OrderService } from "./serviceSupplies";
 import { remapCampaignThreshold } from "../levels/campaignSelection";
 import { opensInText } from "./servicesToGo";
+import { PREP_COOK_CUTS_FROM } from "./prepCookAuto";
 
 // ── Configuration ───────────────────────────────────────────────────────
 
@@ -107,7 +108,12 @@ const SOURCE_STAFF_RULES: readonly StaffRule[] = [
 
 export const STAFF_RULES: readonly StaffRule[] = SOURCE_STAFF_RULES.map((rule) => ({
   ...rule,
-  fromLevel: remapCampaignThreshold(rule.fromLevel),
+  // A service never needs a Prep Cook before he can be hired (PREP_COOK_CUTS_FROM, developer
+  // 2026-10-31), or the player could not start it.
+  fromLevel:
+    rule.role === "prep-cook"
+      ? Math.max(remapCampaignThreshold(rule.fromLevel), PREP_COOK_CUTS_FROM)
+      : remapCampaignThreshold(rule.fromLevel),
 }));
 
 /** How many levels ahead a staff requirement (or a specialist) is announced. */
@@ -175,6 +181,14 @@ export type HireSpecialistResult =
  * unlocked at or before Level 5"): a specialist chef no longer waits for its cuisine.
  */
 export const STAFF_HIRE_FROM = BUSINESS_MENU_FIRST_LEVEL;
+
+/**
+ * The level a role can be hired from. The Prep Cook waits for the level he starts cutting at
+ * (developer 2026-10-31: "unlock prepcook only after level 30"), so nobody pays a wage for a
+ * Prep Cook who can't cut yet. Every other role opens with Business.
+ */
+export const staffHireFrom = (id: string): number =>
+  id === "prep-cook" ? Math.max(STAFF_HIRE_FROM, PREP_COOK_CUTS_FROM) : STAFF_HIRE_FROM;
 
 /** The level a specialist chef can be hired from (its cuisine's level, or Business's if earlier). */
 export const specialistOpensAt = (chef: SpecialistChef): number =>
@@ -249,7 +263,7 @@ export function hireRestaurantStaff(
 ): HireRestaurantStaffResult {
   const fee = staffHireFee(id);
   if (fee === null) return { ok: false, reason: "unknown", fee: 0 };
-  if (restaurantLevel < STAFF_HIRE_FROM) return { ok: false, reason: "notYet", fee };
+  if (restaurantLevel < staffHireFrom(id)) return { ok: false, reason: "notYet", fee };
   const joined = getSpecialist(id)
     ? hireSpecialist(save, id, restaurantLevel)
     : addHiredRole(save, id);

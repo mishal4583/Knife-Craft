@@ -43,6 +43,11 @@ import {
   newAdBonusRewardId,
   shortfallAmount,
   takeDailyGift,
+  WELCOME_BACK_MAX,
+  WELCOME_BACK_MIN,
+  awayMsSince,
+  welcomeBackAmount,
+  welcomeBackPaidText,
   type AdBonusKind,
 } from "../src/game/ads/adBonuses.ts";
 import {
@@ -228,6 +233,78 @@ check(
   );
 }
 
+/* ── G. welcome back (developer 2026-10-31): a few hours of earnings, only for an ad ── */
+{
+  const H = 60 * 60_000;
+  const l40 = 10; // a level where the amount is below the $90 cap, so the hours show
+  const full = welcomeBackAmount(l40, 3 * H);
+  check(
+    "G1 away under 30 minutes (or never measured) pays nothing; 30 minutes pays a small part, 3 hours the full amount, longer never more",
+    welcomeBackAmount(l40, null) === 0 &&
+      welcomeBackAmount(l40, 29 * 60_000) === 0 &&
+      welcomeBackAmount(l40, 30 * 60_000) > 0 &&
+      welcomeBackAmount(l40, 30 * 60_000) < welcomeBackAmount(l40, 2 * H) &&
+      welcomeBackAmount(l40, 2 * H) < full &&
+      welcomeBackAmount(l40, 50 * H) === full,
+    { half: welcomeBackAmount(l40, 30 * 60_000), full },
+  );
+  const levels = [3, 10, 25, 40, 80, 120, 147];
+  check(
+    "G2 whole dollars, always $10–$90, growing with the level",
+    levels.every((n) => {
+      const a = welcomeBackAmount(n, 3 * H);
+      return a % 100 === 0 && a >= WELCOME_BACK_MIN && a <= WELCOME_BACK_MAX;
+    }) && welcomeBackAmount(3, 3 * H) <= welcomeBackAmount(40, 3 * H),
+    levels.map((n) => welcomeBackAmount(n, 3 * H)),
+  );
+  check(
+    "G3 the offer says what it covers: '45 min' / '2 h' / '3 h' (never more than 3 h)",
+    welcomeBackPaidText(45 * 60_000) === "45 min" &&
+      welcomeBackPaidText(2 * H) === "2 h" &&
+      welcomeBackPaidText(30 * H) === "3 h",
+  );
+  // The time away is read from the newest ledger entry; a new game has none.
+  let s = base();
+  const at = Date.now() - 4 * H;
+  s = {
+    ...s,
+    economyLedger: [
+      { ...appendLedgerEntry(s, "completion-reward", 100, "x").economyLedger[0]!, timestamp: at },
+    ],
+  };
+  const away = awayMsSince(s, Date.now());
+  check(
+    "G4 the time away is measured from the newest ledger entry; a new game (empty ledger) has none",
+    awayMsSince(base(), Date.now()) === null && away !== null && Math.abs(away - 4 * H) < 5_000,
+    { away },
+  );
+  // No free part: one ad, ONE "rewarded-ad" entry for exactly the shown amount; once a day.
+  const s0 = { ...base(), credits: $(500), economyLedger: [] as SaveData["economyLedger"] };
+  const offer = adBonusOffer(s0, "welcome_back", full, NOW)!;
+  const r = commitAdBonus(s0, offer, NOW);
+  const again = r.ok ? adBonusOffer(r.save, "welcome_back", full, NOW) : offer;
+  check(
+    "G5 the ad pays exactly the shown amount as ONE rewarded-ad entry (no doubling, no free part); one a day, back tomorrow",
+    r.ok &&
+      r.save.credits === s0.credits + full &&
+      r.save.economyLedger.length === 1 &&
+      r.save.economyLedger[0]!.category === "rewarded-ad" &&
+      sum(r.save) === full &&
+      again === null &&
+      r.ok &&
+      adBonusOffer(r.save, "welcome_back", full, TOMORROW) !== null &&
+      AD_BONUS_DAILY_CAP.welcome_back === 1,
+  );
+  const app = fs.readFileSync(path.resolve("src/App.tsx"), "utf8");
+  check(
+    "G6 App offers it only through the ad sheet (never pays without the ad), after the daily gift, once a session",
+    /function openWelcomeBack\(\)/.test(app) &&
+      /openAdBonus\("welcome_back"/.test(app) &&
+      /welcomeBackTriedRef/.test(app) &&
+      !/takeWelcomeBack/.test(app),
+  );
+}
+
 /* ── E. placements and source ── */
 {
   const cfg = JSON.parse(
@@ -240,10 +317,11 @@ check(
     AD_PLACEMENT.shortfallTopUp,
     AD_PLACEMENT.floorDouble,
     AD_PLACEMENT.dailyGift,
+    AD_PLACEMENT.welcomeBack,
   ];
   check(
     "E1 each bonus has its own placement, listed in the Bridge config",
-    new Set(mine).size === 5 && mine.every((id) => ids.includes(id)),
+    new Set(mine).size === 6 && mine.every((id) => ids.includes(id)),
     { mine, ids },
   );
   const app = fs.readFileSync(path.resolve("src/App.tsx"), "utf8");
@@ -298,6 +376,7 @@ check(
       .slice(0, AD_BONUS_DAILY_CAP.level_double);
     adMax += doubles.reduce((t, n) => t + n, 0);
     adMax += AD_BONUS_DAILY_CAP.shortfall * $(150);
+    adMax += AD_BONUS_DAILY_CAP.welcome_back * WELCOME_BACK_MAX;
     if (to >= 60) adMax += AD_BONUS_DAILY_CAP.floor_double * $(250);
   }
   console.log(

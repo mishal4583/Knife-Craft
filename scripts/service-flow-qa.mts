@@ -270,7 +270,7 @@ check(
   "D3 Auto seats a waiting guest it can serve before Next Customer",
   /const guest = extraAction && !extraAction\.disabled \? extraAction\.onClick : null;/.test(
     card,
-  ) && /collect \? onCollectCash! : \(guest \?\? nextOnce\)/.test(card),
+  ) && /window\.setTimeout\(\s*guest \?\? nextOnce,/.test(card),
 );
 
 // ── C. when the clock runs (developer 2026-10-30) ────────────────────────

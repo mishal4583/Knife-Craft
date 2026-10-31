@@ -39,8 +39,11 @@ import {
 } from "../src/game/restaurant/prepCookAuto.ts";
 import {
   STAFF_HIRE_FROM,
+  STAFF_RULES,
   closingWage,
+  hireRestaurantStaff,
   staffHireFee,
+  staffHireFrom,
 } from "../src/game/restaurant/staffRequirements.ts";
 import { BUSINESS_STAFF_CATALOG, dailyPayroll } from "../src/game/business/businessStaff.ts";
 import { TIPS, tipAmount } from "../src/game/economy/customerTips.ts";
@@ -84,6 +87,35 @@ check(
   PREP_COOK_CUTS_FROM > STAFF_HIRE_FROM && PREP_COOK_CUTS_FROM < 148,
   { from: PREP_COOK_CUTS_FROM, hire: STAFF_HIRE_FROM },
 );
+check(
+  'R7 the Prep Cook unlocks at level 30 (developer 2026-10-31: "only after level 30"), every other role at Level 5',
+  PREP_COOK_CUTS_FROM === 30 &&
+    staffHireFrom("prep-cook") === 30 &&
+    staffHireFrom("server") === STAFF_HIRE_FROM,
+  { from: PREP_COOK_CUTS_FROM, hire: staffHireFrom("prep-cook") },
+);
+{
+  const base = { ...DEFAULT_SAVE, credits: 100_000 } as SaveData;
+  const early = hireRestaurantStaff(base, "prep-cook", PREP_COOK_CUTS_FROM - 1);
+  const onTime = hireRestaurantStaff(base, "prep-cook", PREP_COOK_CUTS_FROM);
+  const other = hireRestaurantStaff(base, "server", PREP_COOK_CUTS_FROM - 1);
+  check(
+    "R8 hiring a Prep Cook before level 30 is refused (no wage for a cook who can't cut), at level 30 it joins for no fee, other roles still open early",
+    !early.ok &&
+      early.reason === "notYet" &&
+      onTime.ok &&
+      onTime.save.business.staff.hiredRoles.includes("prep-cook") &&
+      onTime.save.credits === base.credits &&
+      other.ok,
+    { early, onTime: onTime.ok, other: other.ok },
+  );
+  const needed = STAFF_RULES.find((r) => r.role === "prep-cook")!;
+  check(
+    "R9 the service that REQUIRES a Prep Cook comes after the level he opens at",
+    needed.fromLevel >= PREP_COOK_CUTS_FROM,
+    { requiredFrom: needed.fromLevel, opens: PREP_COOK_CUTS_FROM },
+  );
+}
 
 // ── G. the plate ─────────────────────────────────────────────────────────
 check("G1 the grade is Honest", PREP_COOK_GRADE === "Honest");
@@ -181,16 +213,19 @@ const card = src("src/components/kc/game/ServiceOrderComplete.tsx");
 // Rule changed (Phase 2 step 5, plan approved by the developer 2026-10-31): Auto works through the
 // door queue, so it also presses the player's Menu guest button (a waiting guest it can serve).
 check(
-  "A4 Auto presses only the player's own taps (Serve, Collect cash, the Menu guest button, Next Customer)",
+  // Rule changed (developer 2026-10-31, "let it pile up until the user collects it"): Auto no longer
+  // presses Collect cash; the cash stays on the tables for the player.
+  "A4 Auto presses only the player's own taps (Serve, the Menu guest button, Next Customer) and never Collect cash",
   /handleServe, AUTO_SERVE_MS|window\.setTimeout\(handleServe, AUTO_SERVE_MS\)/.test(card) &&
-    /collect \? onCollectCash! : \(guest \?\? nextOnce\)/.test(card) &&
+    /window\.setTimeout\(\s*guest \?\? nextOnce,/.test(card) &&
+    !/onCollectCash!/.test(card) &&
     /const guest = extraAction && !extraAction\.disabled \? extraAction\.onClick : null;/.test(
       card,
     ),
 );
 check(
   "A5 cash that has to be swiped by hand is never skipped",
-  /if \(!collect && remaining > 0\) return;/.test(card),
+  /if \(!cashAtTable && remaining > 0\) return;/.test(card),
 );
 check(
   "A6 a held party plate (card hidden) is not auto-advanced twice",
@@ -208,6 +243,28 @@ check(
   "A8 the beats are positive and ordered for the eye",
   AUTO_SERVE_MS > 0 && AUTO_NEXT_MS > 0 && AUTO_COLLECT_MS > AUTO_SERVE_MS,
 );
+
+// ── B. Phase 4: one order state for hand-cut and Prep Cook orders ────────
+{
+  const prep = src("src/components/kc/game/Preparation.tsx");
+  check(
+    "B1 who cut the order is one tag on the order's own view (PreparedBy), set by the Prep Cook route and shown on the served card",
+    /export type PreparedBy = "player" \| "prep-cook";/.test(auto) &&
+      /setPreparedBy\("prep-cook"\)/.test(prep) &&
+      /preparedBy=\{preparedBy\}/.test(prep) &&
+      /data-testid="prepared-by"/.test(card),
+  );
+  check(
+    "B2 the pay path does not know who cut: App's serve, settlement and cash code never read the tag (the same score gives the same pay and tip)",
+    !/preparedBy|PreparedBy/.test(app),
+  );
+  check(
+    "B3 the Prep Cook route ends in the very same result state the hand-cut route does (setResult, then the complete phase, reported once)",
+    /reportContinued\.current = true;\s*setResult\(\{\s*score: PREP_COOK_SCORE,[\s\S]*?setPhase\("complete"\)/.test(
+      prep,
+    ),
+  );
+}
 
 console.log(failed ? `\n${failed} FAILED` : "\nALL PASS");
 process.exit(failed ? 1 : 0);

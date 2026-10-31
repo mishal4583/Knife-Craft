@@ -164,8 +164,10 @@ console.log("H. A hire");
     "H7: every specialist chef can be hired from L5, and pays its fee the same way",
   );
   // Rule changed (developer 2026-10-30): the Prep Cook is paid by the hour only — no hiring fee, his full shift wage at every closing.
-  const cook = hireRestaurantStaff(saveAt(5, 50_000), "prep-cook", 5);
-  const broke = hireRestaurantStaff(saveAt(5, 0), "prep-cook", 5);
+  // Rule changed (developer 2026-10-31): the Prep Cook opens at level 30, so H8 hires him there (was Level 5).
+  const cook = hireRestaurantStaff(saveAt(30, 50_000), "prep-cook", 30);
+  const broke = hireRestaurantStaff(saveAt(30, 0), "prep-cook", 30);
+  const tooSoon = hireRestaurantStaff(saveAt(29, 50_000), "prep-cook", 29);
   assert(
     cook.ok &&
       cook.fee === 0 &&
@@ -176,6 +178,10 @@ console.log("H. A hire");
       broke.save.credits === 0 &&
       !broke.onCredit,
     "H8: the Prep Cook joins for nothing — no money, no ledger entry, no credit, even with $0",
+  );
+  assert(
+    !tooSoon.ok && tooSoon.reason === "notYet",
+    "H9: the Prep Cook can't be hired before level 30 (developer 2026-10-31)",
   );
 }
 
@@ -221,7 +227,8 @@ console.log("W. Wages unchanged");
 console.log("C. Capacity");
 {
   const chef = saveAt(16);
-  const hired = hireRestaurantStaff(chef, "prep-cook", 16);
+  // Rule changed (developer 2026-10-31): he is hired from level 30; the seat he adds is the same at any level.
+  const hired = hireRestaurantStaff(chef, "prep-cook", 30);
   assert(
     hired.ok &&
       menuGuestCapacity(chef) === 2 &&

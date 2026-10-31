@@ -1,12 +1,16 @@
 // Prep Cook at the board (developer 2026-10-30), restaurant build, in a real browser:
-// (Level 23 is a first play that teaches no technique; Level 21 teaches rock-mincing.)
-//   P0 the first play of a level that teaches a technique (Level 21, hired Prep Cook) is the player's: no button.
+// (The Prep Cook opens at level 30 of the game's own numbering, developer 2026-10-31; seed 32 is a first play
+// of a level past it. Level 21, below it, teaches rock-mincing. No level past 22 teaches a technique, so the
+// "teaching first play is by hand" rule is covered by prep-cook-auto-qa.)
+//   P0 before the Prep Cook's level (seed 23), a hired Prep Cook does not cut: no button.
 //   P1 without a hired Prep Cook there is no "Prep Cook cuts it" button on the board.
 //   P2 with one hired, the button shows once the customer has sat; it cuts the whole order (no knife
 //      work) and the Serve card opens with the plain Honest plate saved as the recipe's score.
 //   P3 Serve pays once and the wallet still equals the opening cash plus the signed ledger.
-//   P4 Auto on: the next order is cut, served, its cash collected and the queue moved on with no tap.
+//   P4 Auto on: the next order is cut and served with no tap and its cash is LEFT on the tables (piles up);
+//   P4b one tap on the Kitchen's Collect takes it in (wallet = cash + ledger).
 //   P5 "Stop Auto" on the card turns it off for good (saved setting).
+//   P5b before level 30 the Staff screen shows the Prep Cook locked: no Hire button, and from level 30 it has one.
 //   P6 no console errors.
 import fs from "node:fs";
 import {
@@ -19,6 +23,7 @@ import {
   readSave,
   sweepCash,
   text,
+  openShortcut,
 } from "./harness.mjs";
 
 const results = [];
@@ -49,6 +54,11 @@ const FOOD = stocked([
   "fennel",
   "lettuce",
   "pepper",
+  "butter",
+  "celery",
+  "apple",
+  "lemon",
+  "parsley",
 ]);
 // A bigger restaurant's service needs tableware, napkins and soap: every supply is stocked (read from the type).
 const SUPPLY_IDS = [
@@ -72,7 +82,7 @@ const saveAt = (seedLevel, hired, autoService) => {
     levelProgress: {
       currentLevelId: `level-${seedLevel}`,
       highestUnlockedLevelId: `level-${seedLevel}`,
-      // Seeds use the 150-level numbers (two more than the game's): seed 25 is Level 23, a first play (it pays).
+      // Seeds use the 150-level numbers (two more than the game's): seed 32 is Level 30, a first play (it pays).
       completedLevelIds: Array.from({ length: seedLevel - 1 }, (_, i) => `level-${i + 1}`),
     },
     story: { introDone: true, milestoneMask: 127, finaleSeen: false },
@@ -104,18 +114,18 @@ try {
   await prepare();
   await sleep(3500);
   check(
-    "P0 a level that teaches a technique (21) is always cut by hand",
+    "P0 below the Prep Cook's level (30) a hired Prep Cook does not cut: by hand only",
     (await has(/Start cooking/)) && !(await has(/Prep Cook cuts it/)),
   );
 
   // ---------- P1 not hired ----------
-  await boot(page, saveAt(25, [], false));
+  await boot(page, saveAt(32, [], false));
   await prepare();
   await sleep(3500);
   check("P1 no Prep Cook hired: no Prep Cook button", !(await has(/Prep Cook cuts it/)));
 
   // ---------- P2 / P3 hired, by hand ----------
-  await boot(page, saveAt(25, ["prep-cook"], false));
+  await boot(page, saveAt(32, ["prep-cook"], false));
   await prepare();
   await sleep(3500);
   const offered = await has(/Prep Cook cuts it/);
@@ -141,6 +151,8 @@ try {
   );
   await clickButton(page, /^Serve to /);
   await sleep(3500);
+  const byCook = await page.evaluate(() => !!document.querySelector('[data-testid="prepared-by"]'));
+  check("P2c the served card says the Prep Cook cut it", byCook);
   await sweepCash(page);
   await sleep(800);
   const served = await readSave(page);
@@ -155,33 +167,58 @@ try {
   );
 
   // ---------- P4 Auto ----------
-  await boot(page, saveAt(25, ["prep-cook"], true));
+  // Rule changed (developer 2026-10-31): Auto never collects the table cash; it piles up for the player.
+  await boot(page, saveAt(32, ["prep-cook"], true));
   await prepare();
   const start = await readSave(page);
+  const owedOf = (s) =>
+    s.business.pendingCash ? s.business.pendingCash.payCents + s.business.pendingCash.tipCents : 0;
   let autoRan = false;
   let seen = "";
   for (let i = 0; i < 40; i++) {
     await sleep(1500);
     const cur = await readSave(page);
     seen = (await flat()).slice(0, 120);
-    if (cur.economyLedger.length > start.economyLedger.length + 1) {
+    if (
+      owedOf(cur) > 0 &&
+      (cur.levelProgress.completedLevelIds.length > start.levelProgress.completedLevelIds.length ||
+        cur.business.guestsServed > 0)
+    ) {
       autoRan = true;
       break;
     }
   }
   const after = await readSave(page);
   check(
-    "P4 Auto cuts, serves and collects without a tap (ledger grew, wallet = cash + ledger)",
-    autoRan && after.credits - start.credits === ledgerSum(after) - ledgerSum(start),
-    {
-      seen,
-      entries: after.economyLedger.length - start.economyLedger.length,
-      credits: after.credits,
-    },
+    "P4 Auto cuts and serves without a tap and leaves the cash on the tables (no order pay in the ledger yet; wallet = ledger)",
+    autoRan &&
+      owedOf(after) > 0 &&
+      !after.economyLedger
+        .slice(start.economyLedger.length)
+        .some((e) => e.category === "campaign-settlement" || e.category === "customer-tip") &&
+      after.credits - start.credits === ledgerSum(after) - ledgerSum(start),
+    { seen, owed: owedOf(after), credits: after.credits, start: start.credits },
+  );
+  // The player collects it when they like: from the Kitchen, in one tap; the wallet equals cash + ledger.
+  await page.evaluate(() =>
+    [...document.querySelectorAll("nav button")]
+      .find((x) => x.textContent.includes("Kitchen"))
+      ?.click(),
+  );
+  await sleep(700);
+  await clickButton(page, /on the table · Collect/);
+  await sleep(800);
+  const collected = await readSave(page);
+  check(
+    "P4b one tap on Collect takes it all in: wallet = opening cash + signed ledger, the table is empty",
+    owedOf(collected) === 0 &&
+      collected.credits - start.credits === ledgerSum(collected) - ledgerSum(start) &&
+      collected.credits > start.credits,
+    { credits: collected.credits, owed: owedOf(collected) },
   );
 
   // ---------- P5 stop ----------
-  await boot(page, saveAt(25, ["prep-cook"], true));
+  await boot(page, saveAt(32, ["prep-cook"], true));
   await prepare();
   for (let i = 0; i < 20 && !(await has(/Stop Auto|ORDER READY|SERVED/i)); i++) await sleep(700);
   if (await has(/Stop Auto/)) await clickButton(page, /Stop Auto/);
@@ -190,6 +227,35 @@ try {
   check("P5 Stop Auto saves the setting off", stopped.settings.autoService === false, {
     autoService: stopped.settings.autoService,
   });
+
+  // ---------- P5b hiring waits for level 30 ----------
+  const staffCard = async (seedLevel) => {
+    await boot(page, saveAt(seedLevel, [], false));
+    await openShortcut(page, "business");
+    await sleep(600);
+    await page.evaluate(() =>
+      [...document.querySelectorAll("button")]
+        .find((b) => /Staff$/.test(b.textContent.trim()))
+        ?.click(),
+    );
+    await sleep(800);
+    return page.evaluate(() => {
+      const c = document.querySelector('[data-staff-role="prep-cook"]');
+      return c
+        ? {
+            found: true,
+            hire: [...c.querySelectorAll("button")].some((b) => /Hire/.test(b.textContent)),
+          }
+        : { found: false, hire: false };
+    });
+  };
+  const early = await staffCard(23);
+  const open = await staffCard(32);
+  check(
+    "P5b before level 30 the Prep Cook card has no Hire button; at level 30 it does",
+    early.found && !early.hire && open.found && open.hire,
+    { early, open },
+  );
 
   const errors = logs.filter(
     (l) => /error/i.test(l) && !/favicon|Failed to load resource/i.test(l),

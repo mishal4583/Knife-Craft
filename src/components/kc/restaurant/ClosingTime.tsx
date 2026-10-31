@@ -92,6 +92,19 @@ export function ClosingTime({
             ))}
           </ul>
 
+          {/* Developer 2026-10-31: the table cash comes first — before the chores and the count. */}
+          {tableCash > 0 && onCollectTableCash ? (
+            <KButton
+              full
+              variant="sage"
+              className="mt-3 min-h-12"
+              data-testid="closing-table-cash"
+              onClick={onCollectTableCash}
+            >
+              💵 Collect {formatUsd(tableCash)} from the tables
+            </KButton>
+          ) : null}
+
           <div className="mt-3 flex items-center gap-2">
             <p className="font-ui text-[12.5px] font-extrabold uppercase tracking-wide text-walnut/60">
               Close up
@@ -113,6 +126,7 @@ export function ClosingTime({
                 row={r}
                 index={i}
                 interactive={!!onChore && !!cleanlinessAction}
+                locked={tableCash > 0}
                 onDo={() =>
                   r.type === "count"
                     ? onChore?.("count")
@@ -224,17 +238,6 @@ export function ClosingTime({
         </div>
 
         <div className="border-t border-walnut/10 px-5 py-3">
-          {tableCash > 0 && onCollectTableCash ? (
-            <KButton
-              full
-              variant="sage"
-              className="mb-2 min-h-12"
-              data-testid="closing-table-cash"
-              onClick={onCollectTableCash}
-            >
-              💵 Collect {formatUsd(tableCash)} from the table
-            </KButton>
-          ) : null}
           <KButton full className="min-h-12" onClick={onClose} disabled={left > 0 || tableCash > 0}>
             {tableCash > 0
               ? "💵 Collect the table cash first"
@@ -254,6 +257,7 @@ function ChoreRow({
   row: r,
   index,
   interactive,
+  locked,
   onDo,
   onBuy,
   sink,
@@ -261,6 +265,8 @@ function ChoreRow({
   row: ClosingRow;
   index: number;
   interactive: boolean;
+  /** Cash is still on the tables: no chore (and no count) until it is collected. */
+  locked: boolean;
   onDo: () => void;
   onBuy: (id: SupplyId) => void;
   sink: ReactNode;
@@ -311,6 +317,13 @@ function ChoreRow({
       </span>
       {done ? (
         <span className="anim-pop shrink-0 font-ui text-[12px] font-extrabold text-olive">✓</span>
+      ) : locked ? (
+        <span
+          className="shrink-0 font-ui text-[12px] font-extrabold text-walnut/60"
+          data-testid="chore-locked"
+        >
+          💵 First
+        </span>
       ) : r.state === "blocked" ? (
         r.type === "task" && r.needs[0] ? (
           <button

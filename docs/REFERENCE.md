@@ -121,8 +121,8 @@ create a second engine, and do not duplicate existing systems.
   `rewarded` state. One placement per ad spot (`AD_PLACEMENT`, listed in
   the config): `level_completed`, `business_day_end`, `replay_bonus`,
   `rush_restock`, `service_stock`, `service_supplies`, `service_tools`,
-  `day_cleaner`, and the five ad bonuses below (`floating_cash`, `level_bonus`,
-  `shortfall_topup`, `floor_double`, `daily_gift`). Locally the mock platform
+  `day_cleaner`, and the six ad bonuses below (`floating_cash`, `level_bonus`,
+  `shortfall_topup`, `floor_double`, `daily_gift`, and since 2026-10-31 `welcome_back`). Locally the mock platform
   reports ads as unsupported.
 - Level messages: `level_started` / `level_completed` (App play sessions
   and Business orders) and `level_paused` / `level_resumed` (in-game pause
@@ -153,7 +153,7 @@ create a second engine, and do not duplicate existing systems.
 - A new player's Level 1 (under the intro) opens its play session when the
   intro closes, so it sends `level_started` / `level_completed` like every
   other level (before 2026-10-18 it sent neither).
-- Ad bonuses (developer 2026-10-18, `src/game/ads/adBonuses.ts`): five optional
+- Ad bonuses (developer 2026-10-18, `src/game/ads/adBonuses.ts`): six optional
   rewarded-ad cash offers, each with its own placement, from Level 3, all through
   one sheet (`kc/ads/AdBonusSheet.tsx`: what it gives, 📺 Watch, No thanks; a tap
   in its first 600 ms is ignored):
@@ -175,6 +175,12 @@ create a second engine, and do not duplicate existing systems.
   5. **Daily gift** (`daily_gift`): the first calm Kitchen or map of the day opens
      it once (from Level 3): Take the gift (10% of the level's pay, $20–$60; one
      `daily-reward` entry, works without ads) or 📺 take it twice; Later keeps it.
+  6. **Welcome back** (`welcome_back`, developer 2026-10-31): back after 30+ minutes away (measured once, at
+     launch, from the newest ledger entry), the first calm Kitchen or map offers a few hours of earnings,
+     **only for the ad** (no free part, no doubling): the time away up to 3 h, 15% of the level's pay for the
+     full 3 h, $10–$90, once a day. It follows the daily gift (gift first, then this). Sheet: "Welcome back
+     +$X · 3 h · Earned while you were away". Never offered to a new game or without an ad platform.
+     Offline income with no ad is NOT wanted (decision D5): the restaurant does not earn while closed.
   - Money: one `rewarded-ad` ledger entry per bonus (description
     `knifecraft-adbonus-<kind>-<uuid>`); today's count per kind is read from those
     entries, so the caps survive reloads and ledger trims. The Replay Bonus counts
@@ -249,6 +255,11 @@ once). Restaurant browser tests run on the normal build, classic ones on a
 
 - Prep Cook at the board and Auto service: `prep-cook-auto-qa` (browser: `prepcook.mjs`); his pay by the hour
   (no fee, full shift wage at each closing): `staff-hire-qa` H8/W1, `restaurant-half-wages-qa` H1–H3.
+- Table cash (lies on the tables, piles up, drawn on the dining room and the map, collected in one tap, needed before the
+  closing chores): `pending-cash-qa`, `table-cash-qa`, `party-served-together-qa` C; browser: `tablecash.mjs`,
+  `cashflow.mjs`, `cashreload.mjs`, `sharedprep.mjs`.
+- Phase 3 / 4 (2026-10-31): `early-upgrade-payback-qa` (ladders, reach, measured payback; slow, runs the economy
+  simulation twice); browser `reveal.mjs` (the reveal follows the saved purchase), `prepcook.mjs` (Prep Cook, who cut it, Auto).
 - Phase 2, customers on a clock: `service-flow-qa` (pace, schedule, queue, patience, the clock rule, sync, door,
   Auto), `order-pool-qa` (guests order from stock), `dish-heat-qa` (popular dishes cost more); browser:
   `queue.mjs` (slow, ~5 min), `dishheat.mjs`.
@@ -1224,7 +1235,7 @@ taken, repaid}`; taking on credit moves no money (no entry);
   px) never restarts the game: `GameShell` keeps ONE wrapper and changes
   only its style (swapping the tree remounted everything).
 - `playables-ads-qa` — Bridge ads (interstitial policy, rewarded Replay Bonus).
-- `ad-bonuses-qa` — the five ad bonuses (§2): amounts, one entry per claim,
+- `ad-bonuses-qa` — the six ad bonuses (§2, incl. welcome back): amounts, one entry per claim,
   caps per kind and day (apart from the Replay Bonus's), the free daily gift,
   ledger-trim survival, placements, and the economy bound (an every-offer
   player at 10 levels a day: +$19.5k, 14.8% of the $132k target; ≤ 20% allowed).
@@ -1625,7 +1636,7 @@ were Masterful they would add $2,151 (1.79%) to campaign income —
 
 ### Ad bonus money (developer 2026-10-18)
 
-The five ad bonuses (§2) are extra, on top of the campaign economy, like the
+The six ad bonuses (§2) are extra, on top of the campaign economy, like the
 Replay Bonus: the frozen baseline and the $100k–$150k completionist target are
 for a player who watches nothing (that player gets only the free daily gift,
 about $460 over the campaign). A player who takes every offer every day at 10

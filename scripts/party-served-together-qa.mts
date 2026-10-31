@@ -159,8 +159,11 @@ console.log("C. One pile of cash");
   );
   const c = withPendingCash(a, cash(5_000, 0));
   assert(
-    c.credits === 1000 + 11_000 && pendingCashOf(c)?.payCents === 5_000,
-    "C3: without 'merge' an older pile is taken in first (a different table)",
+    c.credits === 1000 &&
+      pendingCashOf(c)?.payCents === 15_000 &&
+      pendingCashOf(c)?.more === undefined,
+    // Rule changed (developer 2026-10-31, piles up like an idle game): an older pile is never taken in by the next order.
+    "C3: without 'merge' the next order still joins the pile of the same pay kind; nothing is collected for the player",
   );
 }
 

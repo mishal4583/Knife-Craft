@@ -80,6 +80,15 @@ export interface RestaurantMapProps {
   attentionCounts?: Partial<Record<RestaurantZoneId, number>>;
   /** Contextual emoji pictograms for every active issue type in a map room. */
   attentionSymbols?: Partial<Record<RestaurantZoneId, string[]>>;
+  /**
+   * The cash lying on the tables (economy/pendingCash.ts): drawn as piles by the front tables;
+   * one tap collects it. Absent or 0 cents: nothing is drawn.
+   */
+  tableCash?: {
+    stage: import('@/game/kitchen/kitchenMapArt').KitchenMapArtStage;
+    cents: number;
+    onCollect: () => void;
+  };
   /** Optional callback when a locked hotspot is tapped */
   onLockedZoneClick?: (zone: HotspotZoneConfig) => void;
   /** Optional custom URL for the WebP map asset */

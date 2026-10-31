@@ -18,6 +18,7 @@ import {
 import './RestaurantMap.css';
 import { GuestPoses } from './GuestPoses';
 import { StaffLife } from './StaffLife';
+import { TableCash } from '../common/TableCash';
 
 export const RestaurantMap: React.FC<RestaurantMapProps> = ({
   playerLevel,
@@ -33,6 +34,7 @@ export const RestaurantMap: React.FC<RestaurantMapProps> = ({
   onCleanerDone,
   attentionCounts = {},
   attentionSymbols = {},
+  tableCash,
   mapWebpUrl,
   mapJpgUrl,
   className = ''
@@ -215,6 +217,10 @@ export const RestaurantMap: React.FC<RestaurantMapProps> = ({
           <FridgeMapOverlay tier={fridgeTier} />
           <AnimatedGuestTraffic />
           {staffOnMap ? <StaffLife hiredRoles={staffOnMap.roles} context={{ ...staffOnMap.context, diningOpen: staffOnMap.context.diningOpen && mapRoomOpen('dining', playerLevel), serviceOpen: staffOnMap.context.serviceOpen && mapRoomOpen('service', playerLevel) }} preview={staffOnMap.preview} onCleanerDone={onCleanerDone} /> : null}
+
+          {tableCash && tableCash.cents > 0 ? (
+            <TableCash stage={tableCash.stage} cents={tableCash.cents} onCollect={tableCash.onCollect} />
+          ) : null}
 
           <div className="restaurant-nameboard-wrap">
             {isEditingRestaurantName ? (

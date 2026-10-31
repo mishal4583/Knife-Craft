@@ -64,8 +64,9 @@ status line in HANDOFF; this file changes only when a RULE changes.
   ≥ 150 s apart.
 - **Rewarded ads:** Replay Bonus, Rush Restock, the Pre-Service Check
   covers, the day's Cleaner (`day_cleaner`, developer 2026-10-17) and the
-  five ad bonuses (`ads/adBonuses.ts`, developer 2026-10-18: floating cash,
-  level bonus, short by, Second Floor ×2, daily gift), granted only on the
+  six ad bonuses (`ads/adBonuses.ts`, developer 2026-10-18: floating cash,
+  level bonus, short by, Second Floor ×2, daily gift; 2026-10-31: welcome back, a few hours of
+  earnings after 30+ minutes away, only for the ad), granted only on the
   `rewarded` state. One placement per spot (`AD_PLACEMENT`). Each says what
   it gives before the ad, is never needed to progress, has a daily cap, and
   pays with one `rewarded-ad` ledger entry.

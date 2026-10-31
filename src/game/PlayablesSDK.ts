@@ -92,6 +92,8 @@ export const AD_PLACEMENT = {
   floorDouble: "floor_double",
   /** Rewarded: the daily welcome gift, doubled. */
   dailyGift: "daily_gift",
+  /** Rewarded: back after a while — a few hours of earnings, only for the ad. */
+  welcomeBack: "welcome_back",
 } as const;
 export type InterstitialPlacement =
   typeof AD_PLACEMENT.levelCompleted | typeof AD_PLACEMENT.businessDayEnd;
@@ -106,7 +108,8 @@ export type RewardedPlacement =
   | typeof AD_PLACEMENT.levelBonus
   | typeof AD_PLACEMENT.shortfallTopUp
   | typeof AD_PLACEMENT.floorDouble
-  | typeof AD_PLACEMENT.dailyGift;
+  | typeof AD_PLACEMENT.dailyGift
+  | typeof AD_PLACEMENT.welcomeBack;
 /** The defaults (also the config's placementFallback values). */
 export const INTERSTITIAL_PLACEMENT: InterstitialPlacement = AD_PLACEMENT.levelCompleted;
 export const REWARDED_PLACEMENT: RewardedPlacement = AD_PLACEMENT.replayBonus;

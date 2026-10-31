@@ -57,7 +57,9 @@ console.log("H. Half wages");
   // Rule changed (developer 2026-10-30): the Prep Cook is paid by the hour only — no hiring fee, his full shift wage at every closing.
   assert(
     HALF_WAGES_FROM === 27 &&
-      HALF_WAGES_FROM === STAFF_RULES.find((r) => r.role === "prep-cook")!.fromLevel &&
+      // Rule changed (developer 2026-10-31): the Prep Cook is hired from level 30, so the half wages (27) now start
+      // a little before the first Prep Cook can be on the payroll, never after.
+      HALF_WAGES_FROM <= STAFF_RULES.find((r) => r.role === "prep-cook")!.fromLevel &&
       FULL === 54 &&
       before40.paid === dailyPayroll(["prep-cook"]) &&
       salaryEntries(before40.save)
