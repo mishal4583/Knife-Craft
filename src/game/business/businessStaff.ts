@@ -96,7 +96,7 @@ const EMPLOYER_BURDEN_MULTIPLIER = 1.25;
  * 8-hour day every hire cost more than the restaurant's whole daily revenue
  * (~$130) and was laid off within weeks in the 365-day simulation.
  */
-const SERVICE_SHIFT_HOURS = 2;
+export const SERVICE_SHIFT_HOURS = 2;
 const CLEANER_SHIFT_HOURS = 1.5;
 
 function dailySalaryFor(hourlyWageCents: number, scheduledHours: number): number {

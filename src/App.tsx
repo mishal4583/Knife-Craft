@@ -18,6 +18,7 @@ import {
   levelDoubleAmount,
   shortfallAmount,
   takeDailyGift,
+  WELCOME_BACK_MIN_AWAY_MS,
   welcomeBackAmount,
   welcomeBackPaidText,
   type AdBonusKind,
@@ -78,6 +79,7 @@ import {
   buyStation,
   collectFloor,
   floorEarnings,
+  isSecondFloorOpen,
   hireFloorStaff,
   upgradeStation,
   type FloorResult,
@@ -1199,9 +1201,45 @@ export function App() {
   function openWelcomeBack(): boolean {
     const current = saveRef.current;
     const away = awayMsRef.current;
-    if (!current || away === null || !adBonusesOpen(current)) return false;
-    const amount = welcomeBackAmount(restaurantLevelOf(current.levelProgress), away);
-    return amount > 0 && openAdBonus("welcome_back", amount, welcomeBackPaidText(away));
+    if (!current || away === null || away < WELCOME_BACK_MIN_AWAY_MS) return false;
+    const now = new Date();
+    // What was already earned while away: the Second Floor's pile and the cash left on the tables
+    // (idle phase 5C): free to collect, nothing new is created. The ad line is the only extra.
+    const floorWaiting = isSecondFloorOpen(restaurantLevelOf(current.levelProgress))
+      ? floorEarnings(current, now.getTime())
+      : 0;
+    const tableWaiting = pendingCashTotal(current);
+    const amount = adBonusesOpen(current)
+      ? welcomeBackAmount(restaurantLevelOf(current.levelProgress), away)
+      : 0;
+    const offer = amount > 0 ? adBonusOffer(current, "welcome_back", amount, now) : null;
+    if (!offer && floorWaiting <= 0 && tableWaiting <= 0) return false;
+    adBonusOfferRef.current = offer;
+    setAdBonus({
+      kind: "welcome_back",
+      amount: offer ? amount : 0,
+      phase: "offer",
+      ...(offer ? { item: welcomeBackPaidText(away) } : {}),
+      floorWaiting,
+      tableWaiting,
+    });
+    return true;
+  }
+
+  /** The welcome-back sheet's free rows: take what the floor / the tables already hold (one ledger entry each). */
+  function collectWelcomeFloor() {
+    const current = saveRef.current;
+    if (!current || adBonusBusyRef.current) return;
+    const r = collectFloor(current, Date.now());
+    if (!r.ok) return;
+    AudioManager.playSfx("coin");
+    persist(r.save);
+    setAdBonus((b) => (b ? { ...b, floorWaiting: 0 } : b));
+  }
+  function collectWelcomeTables() {
+    if (adBonusBusyRef.current) return;
+    collectTableCash();
+    setAdBonus((b) => (b ? { ...b, tableWaiting: 0 } : b));
   }
 
   /** The daily gift's free "Take": one "daily-reward" entry, no ad. */
@@ -4098,6 +4136,8 @@ export function App() {
           canClose={!adActive}
           onWatch={() => void watchAdBonus()}
           onTakeFree={takeDailyGiftFree}
+          onCollectFloor={collectWelcomeFloor}
+          onCollectTables={collectWelcomeTables}
           onClose={closeAdBonus}
         />
       ) : null}

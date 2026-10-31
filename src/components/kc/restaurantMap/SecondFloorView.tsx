@@ -11,6 +11,14 @@ import { useUnlockText } from "../navLevel";
 import { FloorLife } from "./FloorLife";
 import { FLOOR_LIFE_ALWAYS_PREVIEW, FLOOR_LIFE_PREVIEW } from "@/game/restaurant/floorLife";
 import { KButton } from "@/components/kc/common/primitives";
+import { TableCash } from "@/components/kc/common/TableCash";
+import {
+  FLOOR_NEARLY_FULL,
+  floorFill,
+  fillText,
+  stationFill,
+  type Fill,
+} from "@/game/restaurant/floorFill";
 import { useAdBonus } from "@/components/kc/ads/adBonusApi";
 import { formatUsd } from "@/game/money";
 import { shortfall } from "@/game/economy/wallet";
@@ -111,6 +119,37 @@ function hoursText(h: number): string {
   return `${h} h`;
 }
 
+/** A thin bar for how full a station (or the floor) is, with "Full in 2 h 10 min" under it. */
+function FillBar({ fill, testId }: { fill: Fill; testId: string }) {
+  const pct = Math.round(fill.fraction * 100);
+  const warm = fill.full || fill.fraction >= FLOOR_NEARLY_FULL;
+  return (
+    <div className="mt-2" data-testid={testId} data-full={fill.full ? "true" : "false"}>
+      <div
+        className="h-2 overflow-hidden rounded-full bg-walnut/12"
+        role="progressbar"
+        aria-label="How full"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={pct}
+      >
+        <div
+          className={`h-full rounded-full ${warm ? "bg-copper" : "bg-sage"}`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <p
+        className={`mt-1 font-ui text-[12px] ${warm ? "font-extrabold text-copper" : "text-walnut/65"}`}
+      >
+        {fillText(fill)}
+      </p>
+    </div>
+  );
+}
+
+/** Where the cash lies on the Pickup Counter (inside its room on the painting, in percent). */
+const PICKUP_CASH_AT = { x: 65.3, y: 49.6 };
+
 export function SecondFloorView({
   save,
   playerLevel,
@@ -141,6 +180,7 @@ export function SecondFloorView({
   const floor = secondFloorOf(save);
   const waiting = floorEarnings(save, now);
   const perHour = floorPerHour(save);
+  const wholeFill = floorFill(save, now);
   // The full preview cast only while the animation-testing flag is on (off: the save's floor).
   const previewLife = FLOOR_LIFE_ALWAYS_PREVIEW;
   const ownedCount = Object.keys(floor.stations).length;
@@ -196,6 +236,7 @@ export function SecondFloorView({
             The floor earns {formatUsd(perHour)} per hour from {ownedCount}{" "}
             {ownedCount === 1 ? "station" : "stations"}.
           </p>
+          {wholeFill ? <FillBar fill={wholeFill} testId="floor-fill" /> : null}
           <div className="mt-3">
             <KButton
               full
@@ -337,12 +378,17 @@ export function SecondFloorView({
           {hoursText(d.capHours[i]!)}
         </p>
         {staffed ? (
-          <p className="mt-1 font-ui text-[12px] text-walnut/65">
-            Made so far: {formatUsd(here)}
-            {here >= Math.floor(cap * cleanFactor(floor))
-              ? " · full, collect at the Pickup Counter"
-              : ""}
-          </p>
+          <>
+            <p className="mt-1 font-ui text-[12px] text-walnut/65">
+              Made so far: {formatUsd(here)}
+              {here >= Math.floor(cap * cleanFactor(floor))
+                ? " · full, collect at the Pickup Counter"
+                : ""}
+            </p>
+            {stationFill(floor, d.id, now) ? (
+              <FillBar fill={stationFill(floor, d.id, now)!} testId="station-fill" />
+            ) : null}
+          </>
         ) : (
           <p className="mt-1 font-ui text-[12.5px] font-extrabold text-copper">
             🧑‍🍳 Needs a Floor Server · Pickup Counter
@@ -407,6 +453,14 @@ export function SecondFloorView({
             floor={previewLife ? FLOOR_LIFE_PREVIEW : floor}
             earning={previewLife || perHour > 0}
             preview={previewLife}
+          />
+          {/* What the machines have made lies on the Pickup Counter, like the cash on the tables. */}
+          <TableCash
+            at={PICKUP_CASH_AT}
+            where="the Pickup Counter"
+            testId="floor-cash"
+            cents={waiting}
+            onCollect={() => act({ kind: "collect" })}
           />
           <div className="restaurant-map-hotspots-layer">
             {ZONES.map((z) => {

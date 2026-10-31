@@ -54,6 +54,10 @@ import {
 import { payHalfWages, paySpecialists } from "./staffRequirements";
 import { coolDishHeat } from "./dishHeat";
 import { appendLedgerEntry } from "../economy/EconomyLedger";
+import { dayFigures, type PaceDay } from "../economy/paceFigures";
+
+/** How many closed days the pace keeps. */
+const PACE_DAYS_KEPT = 7;
 
 export type RestaurantDayState = {
   /** The restaurant's day number, from 1. */
@@ -76,6 +80,14 @@ export type RestaurantDayState = {
    * Optional: old saves and a new day start with none.
    */
   closingDone?: string[];
+  /**
+   * Idle phase 5A (developer 2026-10-31): the id of the newest ledger entry when the day opened
+   * (null for an empty ledger), so closing can total what the day earned and cost from the entries
+   * after it. Optional: old saves and a new day start without it.
+   */
+  openingLedgerId?: string | null;
+  /** The latest closed days' takings and running costs (economy/paceFigures.ts), oldest first, at most 7. */
+  paceDays?: PaceDay[];
 };
 
 export const DEFAULT_RESTAURANT_DAY_STATE: RestaurantDayState = {
@@ -132,6 +144,7 @@ export function openDay(save: SaveData, levelNumber: number): SaveData {
     servicesPlanned: servicesForDayAt(levelNumber).length,
     openingCredits: save.credits,
     openingLevel: levelNumber,
+    openingLedgerId: save.economyLedger.at(-1)?.id ?? null,
   });
 }
 
@@ -247,5 +260,20 @@ export function closeDay(save: SaveData, levelNumber: number): SaveData {
   next = closingSupplies(next, levelNumber);
   // Phase 2 (dishHeat.ts): every dish cools a little each night.
   next = coolDishHeat(next);
-  return withDay(next, { ...DEFAULT_RESTAURANT_DAY_STATE, day: d.day + 1 });
+  return withDay(next, {
+    ...DEFAULT_RESTAURANT_DAY_STATE,
+    day: d.day + 1,
+    paceDays: withClosedDay(d, next),
+  });
+}
+
+/** The closed-day list with tonight added: totals of the ledger entries after the day's opening mark. */
+function withClosedDay(d: RestaurantDayState, closed: SaveData): PaceDay[] {
+  const before = d.paceDays ?? [];
+  const mark = d.openingLedgerId;
+  if (mark === undefined) return before; // the day opened before this was recorded
+  const ledger = closed.economyLedger;
+  const from = mark === null ? 0 : ledger.findIndex((e) => e.id === mark) + 1;
+  if (mark !== null && from === 0) return before; // the mark fell out of the kept ledger: unknown
+  return [...before, dayFigures(ledger.slice(from))].slice(-PACE_DAYS_KEPT);
 }

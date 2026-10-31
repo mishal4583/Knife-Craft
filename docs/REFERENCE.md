@@ -1235,6 +1235,8 @@ taken, repaid}`; taking on credit moves no money (no entry);
   px) never restarts the game: `GameShell` keeps ONE wrapper and changes
   only its style (swapping the tree remounted everything).
 - `playables-ads-qa` — Bridge ads (interstitial policy, rewarded Replay Bonus).
+- `idle-qa` — the idle economy's readable side (phase 5, 2026-10-31): the Pace (a closed day's figures from the ledger, per
+  shift hour, net = gross − costs), the Second Floor's fill and clock rules, the badge-only floor achievements, the wiring.
 - `ad-bonuses-qa` — the six ad bonuses (§2, incl. welcome back): amounts, one entry per claim,
   caps per kind and day (apart from the Replay Bonus's), the free daily gift,
   ledger-trim survival, placements, and the economy bound (an every-offer

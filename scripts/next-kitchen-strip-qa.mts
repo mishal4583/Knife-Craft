@@ -108,6 +108,7 @@ console.log("E. Nothing else moves");
 {
   const diff =
     saveManagerChangesBeyondStartCash("876ac79", ROOT).join("\n") +
+    // Rule changed (developer 2026-10-31, idle phase 5): economy/pace.ts and paceFigures.ts are read-only numbers (the Pace), no wallet or ledger code; guarded by idle-qa.
     execSync(
       // Early-game phase 4 (developer 2026-10-26): everything unlocked by Level 5 — only the unlock-level
       // lines of these catalogs change (staff-hire-qa U5 checks no price moved).
@@ -121,7 +122,7 @@ console.log("E. Nothing else moves");
       // Rule changed (developer 2026-10-26, "tips along with payment"): customerTips.ts, guarded
       // by phase2-qa C1–C9.
       // Base moved to ae4ad52 (the 2026-10-30 own-money commit, which committed the new files): "nothing else changed since".
-      "git diff ae4ad52 -- src/game/business/businessTypes.ts src/game/economy :!src/game/economy/staffDefinitions.ts :!src/game/business/businessTypes.ts :!src/game/economy/EconomyLedger.ts :!src/game/economy/ledgerTypes.ts :!src/game/economy/customerTips.ts :!src/game/economy/pendingCash.ts src/game/kitchen/kitchenUpgradeDefinitions.ts src/game/kitchen/KitchenUpgradeManager.ts src/game/restaurant/restaurantInvestments.ts src/game/levels :!src/game/levels/levelMastery.ts :!src/game/restaurant/restaurantInvestments.ts :!src/game/levels/levelDefinitions.ts :!src/game/levels/levelRewards.ts :!src/game/levels/levelTypes.ts" +
+      "git diff ae4ad52 -- src/game/business/businessTypes.ts src/game/economy :!src/game/economy/staffDefinitions.ts :!src/game/business/businessTypes.ts :!src/game/economy/EconomyLedger.ts :!src/game/economy/ledgerTypes.ts :!src/game/economy/customerTips.ts :!src/game/economy/pendingCash.ts :!src/game/economy/pace.ts :!src/game/economy/paceFigures.ts src/game/kitchen/kitchenUpgradeDefinitions.ts src/game/kitchen/KitchenUpgradeManager.ts src/game/restaurant/restaurantInvestments.ts src/game/levels :!src/game/levels/levelMastery.ts :!src/game/restaurant/restaurantInvestments.ts :!src/game/levels/levelDefinitions.ts :!src/game/levels/levelRewards.ts :!src/game/levels/levelTypes.ts" +
         " :!src/game/kitchen/kitchenUpgradeDefinitions.ts :!src/game/kitchen/KitchenUpgradeManager.ts",
       { cwd: ROOT, encoding: "utf8" },
     );

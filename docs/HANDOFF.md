@@ -9,6 +9,13 @@ Plan, evidence and the open decisions (D8-b, D10): `docs/planning/PHASE3-4-PLAN-
   `restaurant/tableCash.ts`) in the dining room and on the restaurant map; one tap collects (`App.collectTableCash`).
   The Kitchen chip and the Pre-Service Check's "Collect $X from the tables" do the same. **Auto no longer collects it.**
   Closing Time: Collect first, then the chores and the count ("💵 First"), then Close.
+- **Phase 5 (idle, 2026-10-31, working tree, not committed; plan `docs/planning/PHASE5-IDLE-PLAN-2026-10-31.md`):**
+  the Pace card (Business overview: Earned / Costs / Net per SHIFT hour from the closed days' own ledger figures saved by
+  `closeDay` in `restaurantDay.paceDays`, the Second Floor on its own per REAL hour), fill bars and "Full in …" on the
+  Second Floor, its takings as a pile on the Pickup Counter, the amount on the map's upstairs button, the Welcome-back
+  sheet listing the floor's pile and the table cash as free rows, a floor line in Closing Time, badge-only floor
+  achievements. No new money source; no offline income for the main restaurant (D5). Not built: staff-run services while the
+  app is open (D11, later), the 7-days-running badge.
 - **Phase 3:** `tools/e2e/reveal.mjs` proves the restoration reveal shows only after the purchase is saved;
   `scripts/early-upgrade-payback-qa.mts` measures reach and payback (no price changed: items return 0.25x, kitchen tiers
   never pay back in money — decision D8-b).

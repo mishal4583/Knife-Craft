@@ -13,6 +13,8 @@ import { INGREDIENTS } from "@/game/definitions";
 import { formatUsd } from "@/game/money";
 import { pendingCashTotal } from "@/game/economy/pendingCash";
 import { closingPreview } from "@/game/restaurant/restaurantDay";
+import { floorEarnings, isSecondFloorOpen } from "@/game/restaurant/secondFloor";
+import { fillText, floorFill } from "@/game/restaurant/floorFill";
 import { SupplyBottle } from "./SupplyBottle";
 import { InfoTip } from "@/components/kc/common/InfoTip";
 import { closingRows, type ClosingRow } from "@/game/restaurant/closingChores";
@@ -54,6 +56,11 @@ export function ClosingTime({
   onCollectTableCash?: () => void;
 }) {
   const tableCash = pendingCashTotal(save);
+  const nowMs = Date.now();
+  const floorOpen = isSecondFloorOpen(restaurantLevel);
+  const floorWaiting = floorOpen ? floorEarnings(save, nowMs) : 0;
+  const fill = floorOpen ? floorFill(save, nowMs) : null;
+  const floorLeft = fill ? fillText(fill) : "";
   const p = closingPreview(save, restaurantLevel);
   const rows = closingRows(save, restaurantLevel);
   const left = onChore ? rows.filter((r) => r.state === "todo").length : 0;
@@ -103,6 +110,17 @@ export function ClosingTime({
             >
               💵 Collect {formatUsd(tableCash)} from the tables
             </KButton>
+          ) : null}
+
+          {/* Idle phase 5D: the night's ritual includes the Second Floor (collecting it stays optional). */}
+          {floorWaiting > 0 ? (
+            <p
+              className="mt-2 font-ui text-[13px] font-bold text-walnut-dark"
+              data-testid="closing-floor"
+            >
+              🏬 Second Floor · {formatUsd(floorWaiting)} waiting
+              {floorLeft ? ` · ${floorLeft}` : ""}
+            </p>
           ) : null}
 
           <div className="mt-3 flex items-center gap-2">

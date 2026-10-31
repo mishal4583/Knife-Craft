@@ -24,6 +24,9 @@ export type AdBonusSheetState = {
   streakReward?: number;
   /** Phase 5 (B): the streak reward that landed with the gift, once done. */
   streak?: { day: number; amount: number } | null;
+  /** Welcome back (idle phase 5C): what the Second Floor and the tables already hold, free to collect (cents). */
+  floorWaiting?: number;
+  tableWaiting?: number;
 };
 
 /** A tap that lands within this time of the sheet opening is ignored (never an ad by accident). */
@@ -48,6 +51,8 @@ export function AdBonusSheet({
   canClose,
   onWatch,
   onTakeFree,
+  onCollectFloor,
+  onCollectTables,
   onClose,
 }: {
   state: AdBonusSheetState;
@@ -55,6 +60,9 @@ export function AdBonusSheet({
   onWatch: () => void;
   /** The daily gift's free "Take" button. */
   onTakeFree?: () => void;
+  /** Welcome back: the free rows. */
+  onCollectFloor?: () => void;
+  onCollectTables?: () => void;
   onClose: () => void;
 }) {
   const openedAt = useRef(performance.now());
@@ -69,7 +77,9 @@ export function AdBonusSheet({
       ? formatUsd(state.free ?? 0)
       : state.kind === "shortfall"
         ? `Short by ${formatUsd(state.amount)}`
-        : formatUsdChange(state.amount);
+        : state.kind === "welcome_back" && state.amount <= 0
+          ? formatUsd((state.floorWaiting ?? 0) + (state.tableWaiting ?? 0))
+          : formatUsdChange(state.amount);
   return (
     <Modal open onClose={canClose ? onClose : () => {}}>
       {state.phase === "done" ? (
@@ -106,7 +116,7 @@ export function AdBonusSheet({
           </p>
           <p className="mt-1 font-hand text-[16px] leading-snug text-walnut/70">
             {state.item ? `${state.item} · ` : ""}
-            {copy.line}
+            {state.kind === "welcome_back" && state.amount <= 0 ? "Waiting for you" : copy.line}
           </p>
           {state.kind === "daily_gift" && state.streakDay ? (
             <p
@@ -130,6 +140,20 @@ export function AdBonusSheet({
             </p>
           ) : null}
           <div className="mt-4 space-y-2">
+            {state.kind === "welcome_back" && (state.floorWaiting ?? 0) > 0 && onCollectFloor ? (
+              <div data-testid="away-floor">
+                <KButton full variant="sage" disabled={busy} onClick={armed(onCollectFloor)}>
+                  {`🏬 Collect Second Floor · ${formatUsd(state.floorWaiting ?? 0)}`}
+                </KButton>
+              </div>
+            ) : null}
+            {state.kind === "welcome_back" && (state.tableWaiting ?? 0) > 0 && onCollectTables ? (
+              <div data-testid="away-tables">
+                <KButton full variant="sage" disabled={busy} onClick={armed(onCollectTables)}>
+                  {`💵 Collect from the tables · ${formatUsd(state.tableWaiting ?? 0)}`}
+                </KButton>
+              </div>
+            ) : null}
             {state.kind === "daily_gift" && onTakeFree ? (
               <KButton full variant="sage" disabled={busy} onClick={armed(onTakeFree)}>
                 {`Take ${formatUsd(state.free ?? 0)}`}
@@ -145,7 +169,11 @@ export function AdBonusSheet({
               </KButton>
             ) : null}
             <KButton full variant="ghost" disabled={!canClose} onClick={onClose}>
-              {busy ? "Keep playing" : state.kind === "daily_gift" ? "Later" : "No thanks"}
+              {busy
+                ? "Keep playing"
+                : state.kind === "daily_gift" || state.kind === "welcome_back"
+                  ? "Later"
+                  : "No thanks"}
             </KButton>
           </div>
         </div>

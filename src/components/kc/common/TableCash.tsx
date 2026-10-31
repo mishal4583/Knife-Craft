@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import { formatUsd } from "@/game/money";
-import { tablePiles } from "@/game/restaurant/tableCash";
+import { bundleCount, tablePiles } from "@/game/restaurant/tableCash";
 import type { FloorPoint } from "@/game/restaurant/serviceFloor";
 import type { KitchenMapArtStage } from "@/game/kitchen/kitchenMapArt";
 import "./tableCash.css";
@@ -13,13 +13,22 @@ import "./tableCash.css";
  */
 export function TableCash({
   stage,
+  at,
+  where = "the tables",
+  testId = "table-cash",
   cents,
   onCollect,
   place = (p) => p,
   first = 0,
   className = "",
 }: {
-  stage: KitchenMapArtStage;
+  /** The kitchen's art stage, for the table points (omit when `at` places the pile). */
+  stage?: KitchenMapArtStage;
+  /** One pile at this map point instead of on the tables (the Second Floor's Pickup Counter). */
+  at?: FloorPoint;
+  /** Where the cash lies, for the button's name. */
+  where?: string;
+  testId?: string;
   cents: number;
   onCollect: () => void;
   place?: (p: FloorPoint) => FloorPoint;
@@ -27,11 +36,17 @@ export function TableCash({
   first?: 0 | 1;
   className?: string;
 }) {
-  const piles = tablePiles(stage, cents, first);
+  const piles = at
+    ? cents > 0
+      ? [{ at, bundles: bundleCount(cents) }]
+      : []
+    : stage
+      ? tablePiles(stage, cents, first)
+      : [];
   if (piles.length === 0) return null;
   const owed = formatUsd(cents);
   return (
-    <div className={`tc-layer ${className}`} data-testid="table-cash">
+    <div className={`tc-layer ${className}`} data-testid={testId}>
       {piles.map((pile, i) => {
         const p = place(pile.at);
         return (
@@ -40,8 +55,8 @@ export function TableCash({
             type="button"
             className="tc-pile press"
             style={{ left: `${p.x}%`, top: `${p.y}%` } as CSSProperties}
-            aria-label={`Collect ${owed} from the tables`}
-            data-testid="table-cash-pile"
+            aria-label={`Collect ${owed} from ${where}`}
+            data-testid={`${testId}-pile`}
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => {
               e.stopPropagation();
@@ -58,7 +73,7 @@ export function TableCash({
               ))}
             </span>
             {i === 0 ? (
-              <span className="tc-label" data-testid="table-cash-amount">
+              <span className="tc-label" data-testid={`${testId}-amount`}>
                 💵 {owed}
               </span>
             ) : null}

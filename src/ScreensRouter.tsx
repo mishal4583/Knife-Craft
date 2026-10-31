@@ -37,6 +37,8 @@ import {
   isSecondFloorOpen,
   type FloorResult,
 } from "@/game/restaurant/secondFloor";
+import { floorFill, needsVisit } from "@/game/restaurant/floorFill";
+import { formatUsd } from "@/game/money";
 import type { PurchaseRefrigeratorResult } from "@/game/business/RefrigeratorManager";
 import type { DiscardExpiredResult } from "@/game/business/discardExpired";
 import type { PerformMaintenanceResult } from "@/game/business/businessMaintenance";
@@ -316,7 +318,9 @@ export function ScreensRouter({
                 {(() => {
                   const level = restaurantLevelOf(save.levelProgress);
                   const open = isSecondFloorOpen(level);
-                  const waiting = open && floorEarnings(save, Date.now()) > 0;
+                  const waitingCents = open ? floorEarnings(save, Date.now()) : 0;
+                  const waiting = waitingCents > 0;
+                  const full = open && needsVisit(floorFill(save, Date.now()));
                   return (
                     <button
                       type="button"
@@ -334,7 +338,7 @@ export function ScreensRouter({
                       onClick={() => (open ? routeGo("second-floor") : undefined)}
                     >
                       {open
-                        ? `⬆ 2nd floor${waiting ? " 💰" : ""}`
+                        ? `⬆ 2nd floor${waiting ? ` 💰 ${formatUsd(waitingCents)}` : ""}${full ? " · full" : ""}`
                         : `🔒 2nd floor · ${unlockText(RESTAURANT_MODE ? level : null).lv(SECOND_FLOOR_OPENS_AT)}`}
                     </button>
                   );

@@ -199,10 +199,11 @@ console.log("E. Nothing else moves");
   // only the new save's opening credits (scripts/startCashGuard.mts).
   const diff =
     saveManagerChangesBeyondStartCash("095115a", ROOT).join("\n") +
+    // Rule changed (developer 2026-10-31, idle phase 5): economy/pace.ts and paceFigures.ts are read-only numbers (the Pace), no wallet or ledger code; guarded by idle-qa.
     execSync(
       // Early-game phase 4 (developer 2026-10-26): everything unlocked by Level 5 — only the unlock-level
       // lines of these catalogs change (staff-hire-qa U5 checks no price moved).
-      "git diff ae4ad52 -- src/game/business/businessTypes.ts src/game/economy :!src/game/economy/staffDefinitions.ts :!src/game/business/businessTypes.ts :!src/game/economy/EconomyLedger.ts :!src/game/economy/ledgerTypes.ts :!src/game/economy/customerTips.ts :!src/game/economy/pendingCash.ts src/game/daily/EndlessServiceManager.ts src/game/restaurant/endlessRestaurant.ts",
+      "git diff ae4ad52 -- src/game/business/businessTypes.ts src/game/economy :!src/game/economy/staffDefinitions.ts :!src/game/business/businessTypes.ts :!src/game/economy/EconomyLedger.ts :!src/game/economy/ledgerTypes.ts :!src/game/economy/customerTips.ts :!src/game/economy/pendingCash.ts :!src/game/economy/pace.ts :!src/game/economy/paceFigures.ts src/game/daily/EndlessServiceManager.ts src/game/restaurant/endlessRestaurant.ts",
       { cwd: ROOT, encoding: "utf8" },
     );
   assert(

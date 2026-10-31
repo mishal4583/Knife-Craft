@@ -150,7 +150,9 @@ const read = (p: string) =>
   );
   check(
     "W5 the pile is a real button with a name, in the touch target size (48 px area)",
-    /aria-label=\{`Collect \$\{owed\} from the tables`\}/.test(tc) &&
+    // Generalised 2026-10-31 (idle phase 5B): the same pile also lies on the Second Floor's Pickup Counter.
+    /aria-label=\{`Collect \$\{owed\} from \$\{where\}`\}/.test(tc) &&
+      /where = "the tables"/.test(tc) &&
       /width: 52px;\s*height: 52px;/.test(read("src/components/kc/common/tableCash.css")),
   );
 }

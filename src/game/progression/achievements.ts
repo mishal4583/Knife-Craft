@@ -232,6 +232,23 @@ const LADDERS: readonly Ladder[] = [
     tiers: () => [{ target: 100, reward: D(10_000) }],
     value: (s) => endlessStarsOf(s).total,
   },
+  {
+    // Idle phase 5D (developer 2026-10-31): the Second Floor's lifetime takings, badge only (reward 0 —
+    // pure pride, no money, so the achievement economy and the campaign target do not move).
+    key: "floor",
+    group: "Business",
+    icon: "🏬",
+    unit: "dollars",
+    title: (t) => `${t.toLocaleString("en-US")} dollars from the Second Floor`,
+    description: (t) =>
+      `Collect ${t.toLocaleString("en-US")} dollars from the Second Floor in all.`,
+    tiers: () => [
+      { target: 1_000, reward: 0 },
+      { target: 10_000, reward: 0 },
+      { target: 50_000, reward: 0 },
+    ],
+    value: (s) => Math.floor((s.economy?.lifetime?.["automation-income"] ?? 0) / 100),
+  },
 ];
 
 /** Which group an old milestone shows in. */

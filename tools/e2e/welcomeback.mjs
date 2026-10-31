@@ -8,6 +8,7 @@
 //   W4 a skipped ad pays nothing and says so; "No thanks" leaves the wallet alone.
 //   W5 with today's daily gift still due, the gift opens first; after "Later" the welcome-back offer follows.
 //   W6 no console errors.
+//   W7 (idle phase 5C) with the Second Floor's pile and table cash waiting, the same sheet offers them free.
 import {
   MOVED_IN_BUSINESS,
   launch,
@@ -223,6 +224,55 @@ try {
     "W5 with today's gift due, the gift opens first; after Later the welcome-back offer follows",
     first?.kind === "daily_gift" && second?.kind === "welcome_back",
     { first: first?.kind, second: second?.kind },
+  );
+
+  // ---------- W7 while you were away: the free rows ----------
+  const awaySave = seedAway(4 * H);
+  awaySave.business.secondFloor = {
+    stations: { coffee: { level: 1, lastCollectAt: Date.now() - 3 * H } },
+    servers: 1,
+    cleaners: 1,
+  };
+  awaySave.business.pendingCash = {
+    batch: "cash-1",
+    category: "campaign-settlement",
+    description: "camp-garden-tomato-cucumber",
+    tipDescription: "level-9:camp-garden-tomato-cucumber",
+    payCents: 6000,
+    tipCents: 400,
+  };
+  await boot(page, awaySave);
+  await sleep(2800);
+  const away = await sheet();
+  const rows = await page.evaluate(() => ({
+    floor: !!document.querySelector('[data-testid="away-floor"]'),
+    tables: !!document.querySelector('[data-testid="away-tables"]'),
+  }));
+  const w0 = await readSave(page);
+  await sleep(700);
+  await page.evaluate(() => document.querySelector('[data-testid="away-floor"] button')?.click());
+  await sleep(700);
+  await page.evaluate(() => document.querySelector('[data-testid="away-tables"] button')?.click());
+  await sleep(700);
+  const w1 = await readSave(page);
+  const stillAd = await sheet();
+  const floorPaid = w1.economyLedger.filter(
+    (e) => e.category === "automation-income" && !w0.economyLedger.some((o) => o.id === e.id),
+  );
+  const tablePaid = w1.economyLedger.filter(
+    (e) => e.category === "campaign-settlement" && !w0.economyLedger.some((o) => o.id === e.id),
+  );
+  check(
+    "W7 with money already waiting, the welcome-back sheet also offers it free (Second Floor, tables): one entry each, wallet = ledger, the ad line stays",
+    away?.kind === "welcome_back" &&
+      rows.floor &&
+      rows.tables &&
+      floorPaid.length === 1 &&
+      tablePaid.length === 1 &&
+      balanced(w0, w1) &&
+      stillAd?.buttons.some((t) => /^📺 Watch/.test(t)) === true &&
+      !stillAd?.buttons.some((t) => /Collect/.test(t)),
+    { rows, floor: floorPaid.map((e) => e.amount), tables: tablePaid.map((e) => e.amount) },
   );
 
   const errors = logs.filter(

@@ -299,7 +299,8 @@ check(
   check(
     "G6 App offers it only through the ad sheet (never pays without the ad), after the daily gift, once a session",
     /function openWelcomeBack\(\)/.test(app) &&
-      /openAdBonus\("welcome_back"/.test(app) &&
+      /adBonusOffer\(current, "welcome_back"/.test(app) &&
+      /kind: "welcome_back"/.test(app) &&
       /welcomeBackTriedRef/.test(app) &&
       !/takeWelcomeBack/.test(app),
   );

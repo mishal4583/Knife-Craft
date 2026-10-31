@@ -186,6 +186,7 @@ console.log("E. Nothing else moves");
 {
   const diff =
     saveManagerChangesBeyondStartCash("0e0d83b", ROOT).join("\n") +
+    // Rule changed (developer 2026-10-31, idle phase 5): economy/pace.ts and paceFigures.ts are read-only numbers (the Pace), no wallet or ledger code; guarded by idle-qa.
     execSync(
       // Early-game phase 4 (developer 2026-10-26): everything unlocked by Level 5 — only the unlock-level
       // lines of these catalogs change (staff-hire-qa U5 checks no price moved); levelMastery.ts only
@@ -193,7 +194,7 @@ console.log("E. Nothing else moves");
       // Rule changed (developer 2026-10-26, "the game starts at 0 cash"): SaveManager may change
       // only the new save's opening credits (scripts/startCashGuard.mts).
       // Base moved to ae4ad52 (the 2026-10-30 own-money commit, which committed the new files): "nothing else changed since".
-      "git diff ae4ad52 -- src/game/business/businessTypes.ts src/game/economy :!src/game/economy/staffDefinitions.ts :!src/game/business/businessTypes.ts :!src/game/economy/EconomyLedger.ts :!src/game/economy/ledgerTypes.ts :!src/game/economy/customerTips.ts :!src/game/economy/pendingCash.ts src/game/levels :!src/game/levels/levelMastery.ts :!src/game/levels/levelDefinitions.ts :!src/game/levels/levelRewards.ts :!src/game/levels/levelTypes.ts src/game/recipes :!src/game/recipes/campaignRecipes.ts",
+      "git diff ae4ad52 -- src/game/business/businessTypes.ts src/game/economy :!src/game/economy/staffDefinitions.ts :!src/game/business/businessTypes.ts :!src/game/economy/EconomyLedger.ts :!src/game/economy/ledgerTypes.ts :!src/game/economy/customerTips.ts :!src/game/economy/pendingCash.ts :!src/game/economy/pace.ts :!src/game/economy/paceFigures.ts src/game/levels :!src/game/levels/levelMastery.ts :!src/game/levels/levelDefinitions.ts :!src/game/levels/levelRewards.ts :!src/game/levels/levelTypes.ts src/game/recipes :!src/game/recipes/campaignRecipes.ts",
       { cwd: ROOT, encoding: "utf8" },
     );
   assert(
@@ -229,8 +230,11 @@ console.log("E. Nothing else moves");
   // (the clock, the queue and the stock-aware pick; guarded by service-flow-qa and order-pool-qa),
   // and dishHeat.ts with its one closing line in restaurantDay.ts (popular dishes cost more,
   // developer 2026-10-31; guarded by dish-heat-qa A2 and restaurant-day-qa).
+  // Rule changed (developer 2026-10-31): table cash (tableCash.ts: the pile's picture, no pay; guarded by
+  // table-cash-qa), the Second Floor's fill (floorFill.ts: read-only numbers; idle-qa F) and the badge-only
+  // floor achievements (achievements.ts, reward 0, so no achievement money moves; idle-qa B and achievement-rewards-qa).
   const flow = execSync(
-    "git diff ae4ad52 -- src/game/restaurant :!src/game/restaurant/serviceFloor.ts :!src/game/restaurant/dishService.ts :!src/game/restaurant/levelPayPreview.ts :!src/game/restaurant/restaurantProgression.ts :!src/game/restaurant/firstLevels.ts :!src/game/restaurant/menuGuests.ts :!src/game/restaurant/preServiceCheck.ts :!src/game/restaurant/secondFloor.ts :!src/game/restaurant/cleanliness.ts :!src/game/restaurant/grandmasFridge.ts :!src/game/restaurant/kitchenTools.ts :!src/game/restaurant/restaurantInvestments.ts :!src/game/restaurant/staffRequirements.ts :!src/game/restaurant/restaurantGuide.ts :!src/game/restaurant/prepCookAuto.ts :!src/game/restaurant/marketNeeds.ts :!src/game/restaurant/nextService.ts :!src/game/restaurant/servicesToGo.ts :!src/game/restaurant/restaurantAttention.ts :!src/game/restaurant/serviceFlow.ts :!src/game/restaurant/orderPool.ts :!src/game/restaurant/dishHeat.ts :!src/game/restaurant/restaurantDay.ts src/game/progression src/game/recipes/dishKind.ts",
+    "git diff ae4ad52 -- src/game/restaurant :!src/game/restaurant/serviceFloor.ts :!src/game/restaurant/dishService.ts :!src/game/restaurant/levelPayPreview.ts :!src/game/restaurant/restaurantProgression.ts :!src/game/restaurant/firstLevels.ts :!src/game/restaurant/menuGuests.ts :!src/game/restaurant/preServiceCheck.ts :!src/game/restaurant/secondFloor.ts :!src/game/restaurant/cleanliness.ts :!src/game/restaurant/grandmasFridge.ts :!src/game/restaurant/kitchenTools.ts :!src/game/restaurant/restaurantInvestments.ts :!src/game/restaurant/staffRequirements.ts :!src/game/restaurant/restaurantGuide.ts :!src/game/restaurant/prepCookAuto.ts :!src/game/restaurant/marketNeeds.ts :!src/game/restaurant/nextService.ts :!src/game/restaurant/servicesToGo.ts :!src/game/restaurant/restaurantAttention.ts :!src/game/restaurant/serviceFlow.ts :!src/game/restaurant/orderPool.ts :!src/game/restaurant/dishHeat.ts :!src/game/restaurant/restaurantDay.ts :!src/game/restaurant/tableCash.ts :!src/game/restaurant/floorFill.ts :!src/game/progression/achievements.ts src/game/progression src/game/recipes/dishKind.ts",
     { cwd: ROOT, encoding: "utf8" },
   );
   // App.tsx: only the walk-in offer's label (no pay / serve / save words) and, since phase 4,

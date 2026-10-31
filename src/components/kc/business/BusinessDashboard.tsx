@@ -30,6 +30,7 @@ import { KitchenUpgrades } from "../KitchenUpgrades";
 import type { PurchaseKitchenUpgradeResult } from "@/game/kitchen/KitchenUpgradeManager";
 import { OperationsAnalytics, TodayAtAGlance } from "./BusinessAnalytics";
 import { BusinessStaff } from "./BusinessStaff";
+import { PaceCard } from "./PaceCard";
 import { BusinessSuppliers } from "./BusinessSuppliers";
 import { BusinessMenu } from "./BusinessMenu";
 import { BusinessSectionBanner } from "./BusinessSectionBanner";
@@ -427,6 +428,7 @@ function Overview({
     return (
       <div className="space-y-3">
         <CampaignDayCard save={save} go={go} />
+        <PaceCard save={save} />
         <RankCard save={save} go={go} />
         <OneRestaurantNote />
       </div>
@@ -444,6 +446,7 @@ function Overview({
       />
       {/* Endless Restaurant only: today's events (renders nothing on any other day). */}
       <EndlessDayEvents save={save} compact />
+      <PaceCard save={save} />
       <button
         type="button"
         aria-expanded={showBusinessFigures}
