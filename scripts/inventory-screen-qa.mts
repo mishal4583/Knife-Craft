@@ -266,11 +266,11 @@ const ALL_IDS = Object.keys(INGREDIENTS) as IngredientId[];
   assert(
     v.summary.fridgeName === "Professional Refrigerator" &&
       v.summary.fridgeShortName === "Professional" &&
-      v.summary.capacity === 140 &&
+      v.summary.capacity === 240 &&
       v.summary.capacity === fridge.capacity &&
       v.summary.used === fridge.used &&
       v.summary.available === fridge.available,
-    "A4: fridge model and capacity come from the save (Professional, 140 units)",
+    "A4: fridge model and capacity come from the save (Professional, 240 units; Phase 9A, was 140)",
   );
   const groups = new Set(A.INGREDIENT_GROUPS.map((g) => g.label));
   assert(
@@ -569,10 +569,10 @@ const ALL_IDS = Object.keys(INGREDIENTS) as IngredientId[];
   assert(
     after === snapshot &&
       v.summary.fridgeShortName === "Commercial" &&
-      v.summary.capacity === 80 &&
+      v.summary.capacity === 100 &&
       v.items.find((i) => i.ingredientId === "tomato")!.daysRemaining ===
         shelfLifeForIngredient("tomato") - (DAY - 5),
-    "C2: the Inventory screen shows the loaded save as it is (Commercial, 80 units, freshness from the save) and changes nothing",
+    "C2: the Inventory screen shows the loaded save as it is (Commercial, 100 units, freshness from the save) and changes nothing",
   );
   assert(
     !/inventory|fridge/i.test(

@@ -1,7 +1,7 @@
 /**
  * FRIDGE_USAGE — how full the refrigerator is, for the Pre-Service Check and
  * Inventory's Needs Attention (developer 2026-10-05 §9). The fridge tiers
- * are unchanged (Basic 40 · Commercial 80 · Professional 140,
+ * are unchanged (Basic 40 · Commercial 100 · Professional 240 since Phase 9A,
  * RefrigeratorManager); this only reads them. Pure.
  */
 import type { SaveData } from "../SaveManager";

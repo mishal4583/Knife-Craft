@@ -101,7 +101,7 @@ console.log("C. Optional cash, collected before closing");
     "C4: 'Close for the night' waits until the table's cash is in the till",
   );
   assert(
-    /later\(\(\) => setState\("leaving"\), DELIVER_MS \+ REACT_MS\)/.test(floor) &&
+    /later\(\(\) => setState\("leaving"\), deliverMs \+ REACT_MS\)/.test(floor) &&
       /if \(partyLeaves\) \{[\s\S]{0,200}finishRef\.current\(\)[\s\S]{0,200}LEAVE_MS/.test(floor) &&
       !/setState\("cash"\)/.test(
         floor.slice(floor.indexOf("useEffect"), floor.indexOf("const tapAnywhere")),

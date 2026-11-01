@@ -157,6 +157,7 @@ import {
   menuGuestQueue,
   menuGuestsServed,
   nextMenuGuest,
+  serviceGuestPlan,
   walkInQueue,
   withMenuGuestServed,
 } from "@/game/restaurant/menuGuests";
@@ -164,6 +165,7 @@ import {
   arrivalSchedule,
   doorView,
   nextGuestWalkedOut,
+  paceAt,
   serviceClockRuns,
   type ServiceProgress,
 } from "@/game/restaurant/serviceFlow";
@@ -179,6 +181,11 @@ import {
   sinkNoticeLines,
 } from "@/game/restaurant/serviceSupplies";
 import { closeServiceReport, serviceReportLines } from "@/game/restaurant/serviceReport";
+import {
+  rateService,
+  serviceResultLines,
+  withRecordedResult,
+} from "@/game/restaurant/serviceQuality";
 import {
   cleanerRound,
   choresAfterClose,
@@ -197,7 +204,15 @@ import {
   type DayCleanerOutcome,
   newDayCleanerRewardId,
   tipHygieneShare,
+  AREA_META,
+  dismissHourlyCleaners,
+  hireHourlyCleaner,
+  hourlyCleanerPrice,
+  tableStaff,
+  wipeTable,
+  type CleanArea,
 } from "@/game/restaurant/cleanliness";
+import { areaOfOffer, diningOffers, type DiningHireId } from "@/game/restaurant/diningHire";
 import { isSystemLive } from "@/game/restaurant/restaurantProgression";
 import { guideStepFor, markGuideSeen } from "@/game/restaurant/restaurantGuide";
 import {
@@ -551,6 +566,12 @@ export function App() {
   // completion system. Session-only: never persisted.
   // After a level's last customer: the level to start once its completion is saved (see the effect below).
   const rollOnRef = useRef<{ from: string; to: string } | null>(null);
+  // Phase 8C: the preparation scores of the plates served in the service on screen (the Service Report's
+  // "dishes" part). Session only: a reload mid-service reports the plates served after it.
+  const serviceScoresRef = useRef<{ levelId: string; scores: number[] }>({
+    levelId: "",
+    scores: [],
+  });
   const keepNoticeRef = useRef(false);
   const [campaignServiceSession, setCampaignServiceSession] = useState<ServiceSession | null>(null);
   // Customers who ordered the same dish are cut one plate after another, cooked once and served
@@ -1139,6 +1160,55 @@ export function App() {
     } finally {
       dayCleanerAdBusyRef.current = false;
     }
+  }
+
+  /**
+   * Phase 9E (developer 2026-11-01): a Cleaner by the hour for one area, from the side of the dining area. One shift
+   * hour of the Cleaner's hourly wage, all-or-nothing, ONE Staff Hire ledger entry; they clean the area's routine
+   * tasks at once and after this service, then leave.
+   */
+  function hireHourlyCleanerPaid(area: CleanArea): boolean {
+    const current = saveRef.current ?? save;
+    if (!current || !campaignServiceSession) return false;
+    const price = hourlyCleanerPrice();
+    const r = hireHourlyCleaner(current, area, levelNumber(campaignServiceSession.levelId));
+    if (!r.ok) return false;
+    const paid = debitWallet(r.save, price);
+    if (!paid.ok) return false;
+    persist(
+      appendLedgerEntry(
+        paid.save,
+        "staff-purchase",
+        -price,
+        `Cleaner · 1 hour · ${AREA_META[area].title}`,
+      ),
+    );
+    if (r.cleaned.length > 0) AudioManager.playSfx("squeak");
+    return true;
+  }
+
+  /** A hire from the dining area's side panel: the Server (the existing paid hire) or an hourly Cleaner. */
+  function hireFromDining(id: DiningHireId): void {
+    const area = areaOfOffer(id);
+    if (area) hireHourlyCleanerPaid(area);
+    else hireStaff("server");
+  }
+
+  /** Phase 9D: a table's guests have left and the table is wiped (the player's tap, or the Server / Dining cleaner). */
+  function wipeTableFromFloor(
+    guests: number,
+    by: "player" | "staff",
+  ): { ok: boolean; need?: string } {
+    const current = saveRef.current ?? save;
+    if (!current || !campaignServiceSession) return { ok: false };
+    const r = wipeTable(current, levelNumber(campaignServiceSession.levelId), guests, by);
+    if (!r.ok) {
+      const id = r.needs[0];
+      return { ok: false, ...(id ? { need: getSupplyItem(id)?.name ?? id } : {}) };
+    }
+    persist(r.save);
+    AudioManager.playSfx("squeak");
+    return { ok: true };
   }
 
   /* ── Ad bonuses (ads/adBonuses.ts) ──────────────────────────────────── */
@@ -2192,6 +2262,16 @@ export function App() {
     return 0;
   }
 
+  /** Keeps a served plate's score for the Service Report (a replay pays nothing and is not reported). */
+  function noteServedScore(levelId: string, score: number | null | undefined, isReplay: boolean) {
+    if (isReplay || typeof score !== "number") return;
+    const t = serviceScoresRef.current;
+    serviceScoresRef.current = {
+      levelId,
+      scores: t.levelId === levelId ? [...t.scores, score] : [score],
+    };
+  }
+
   /**
    * Mirrors serveActiveServiceOrder, for the campaign session — with
    * Economy V2 settlement replacing the raw per-order payment (§8):
@@ -2293,6 +2373,7 @@ export function App() {
     const result = serveCurrentOrder(readySession, Math.random, amount);
     if (!result) return null;
     setCampaignServiceSession(result.session);
+    noteServedScore(campaignServiceSession.levelId, order.preparationScore, isReplay);
     // Economy V2 Phase 6 — sharpness decay only ever happens on a
     // genuine (non-replay) serve, mirroring the payout amount's own
     // isReplay gate exactly (brief §11 — replay must never create a
@@ -2383,6 +2464,7 @@ export function App() {
     const result = serveCurrentOrder(session, Math.random, pays);
     if (!result) return null;
     setCampaignServiceSession(result.session);
+    noteServedScore(level.id, session.current?.order.preparationScore, false);
     const paid = recordRevenueAndCogs(
       {
         // Phase 2 (dishHeat.ts): the order makes the dish a little more popular.
@@ -2640,12 +2722,49 @@ export function App() {
       // A real restaurant's day (2026-10-11): the lull's chores, or closing's after the last service.
       nextSave = choresAfterService(nextSave, levelNumber(level.id));
       const round = cleanerRound(nextSave);
-      nextSave = round.save;
+      // Phase 9E: the hourly Cleaners' hour is over with the service: they leave.
+      nextSave = dismissHourlyCleaners(round.save);
       serviceLines = [
         ...serviceLines,
         ...cleaningLines(nextSave, round.cleaned.length),
         ...sinkNoticeLines(nextSave),
       ];
+      // Phase 8C (developer 2026-11-01): from dine-in the service gets its star report (numbers, never money).
+      const n = levelNumber(level.id);
+      if (isSystemLive("dine-in", n)) {
+        const tally = serviceScoresRef.current;
+        const pace = paceAt(n);
+        const door = doorQueue && doorQueue.guests.length ? doorQueue : null;
+        const rated = rateService({
+          scores: tally.levelId === level.id ? tally.scores : [],
+          walkedOut: door ? doorView(door).walkedOut : 0,
+          waitsMs: door
+            ? door.guests
+                .filter((g) => g.state === "LEFT" || g.state === "SEATED")
+                .map((g) => g.waitedMs)
+            : [],
+          patienceMs: door && Number.isFinite(pace.patienceMs) ? pace.patienceMs : null,
+          spotless: report.report.spotless,
+        });
+        if (rated) {
+          const result = {
+            level: n,
+            ...rated,
+            covers: report.report.covers,
+            walkedOut: door ? doorView(door).walkedOut : 0,
+            turnedAway: serviceGuestPlan(save, n).turnedAwayTotal,
+          };
+          nextSave = withRecordedResult(nextSave, result);
+          serviceLines = [...serviceLines, ...serviceResultLines(result)];
+          sendAnalyticsEvent("service_report", {
+            stars: result.stars,
+            covers: result.covers,
+            walked_out: result.walkedOut,
+            turned_away: result.turnedAway,
+            spotless: report.report.spotless === true,
+          });
+        }
+      }
     }
     const brokenNow = restaurantSuppliesOf(nextSave).brokenTotal - brokenBefore;
     // First levels: before Level 21 the day closes quietly, and Level Complete says so.
@@ -3494,6 +3613,30 @@ export function App() {
   // Parties (developer 2026-10-26): the customers this service still has after the current
   // one — its own tickets, then the menu guests and the walk-in — with what each ordered, so
   // they can arrive together at one table. Presentation only (ServiceFloor).
+  // Phase 9C: whether this service's own order `offset` places after the current one is a takeaway customer —
+  // the same seeded rule the supplies use (orderServiceFor), so the floor shows the bag that is taken from stock.
+  const takeawayAt = (offset: number): boolean => {
+    if (
+      !RESTAURANT_MODE ||
+      !save ||
+      !isCampaignService ||
+      !campaignServiceSession?.tickets ||
+      !campaignLevelForSession
+    )
+      return false;
+    const required = campaignLevelForSession.requiredOrders ?? 1;
+    const at = campaignServiceSession.completedCount;
+    if (at + offset >= required) return false;
+    const recipe =
+      offset === 0
+        ? campaignServiceSession.current?.recipe
+        : campaignServiceSession.tickets[at + offset];
+    const paid = paidOrdersFor(save.levelProgress, campaignLevelForSession.id).length;
+    return (
+      orderServiceFor(levelNumber(campaignLevelForSession.id), paid + offset, recipe) === "takeaway"
+    );
+  };
+  const currentTakeaway = takeawayAt(0);
   const partyWaiting =
     RESTAURANT_MODE &&
     save &&
@@ -3503,8 +3646,11 @@ export function App() {
       ? (() => {
           const required = campaignLevelForSession.requiredOrders ?? 1;
           const at = campaignServiceSession.completedCount;
+          // A takeaway customer never sits with a party: the dishes of the tickets behind this one that are
+          // takeaway are left out of it (and the party never holds a plate for them).
           const tickets = campaignServiceSession.tickets
             .slice(at + 1, Math.max(at + 1, required))
+            .filter((_, j) => !takeawayAt(j + 1))
             .map((r) => ({ emoji: r.emoji, name: r.name }));
           const guests = isCompleted(campaignLevelForSession.id, save.levelProgress)
             ? []
@@ -3533,10 +3679,13 @@ export function App() {
           const required = campaignLevelForSession.requiredOrders ?? 1;
           const id = campaignServiceSession.current!.recipe.id;
           let n = 0;
+          // A takeaway order is never cut together with a table's: the shared plates stop at one.
+          if (takeawayAt(0)) return 0;
           while (
             n < 3 &&
             at + 1 + n < required &&
-            campaignServiceSession.tickets[at + 1 + n]?.id === id
+            campaignServiceSession.tickets[at + 1 + n]?.id === id &&
+            !takeawayAt(1 + n)
           )
             n++;
           return n;
@@ -3549,11 +3698,18 @@ export function App() {
     campaignServiceSession?.tickets &&
     campaignLevelForSession &&
     campaignServiceSession.current?.order.status !== "COMPLETED"
-      ? Math.max(
-          0,
-          (campaignLevelForSession.requiredOrders ?? 1) -
-            (campaignServiceSession.completedCount + 1),
-        )
+      ? currentTakeaway
+        ? 0
+        : Array.from(
+            {
+              length: Math.max(
+                0,
+                (campaignLevelForSession.requiredOrders ?? 1) -
+                  (campaignServiceSession.completedCount + 1),
+              ),
+            },
+            (_, j) => j + 1,
+          ).filter((offset) => !takeawayAt(offset)).length
       : 0;
   // After this plate is served, the next one is already prepared: the button says so.
   const sharedPlateNext =
@@ -3670,6 +3826,24 @@ export function App() {
                   : advanceBusinessServiceQueue,
               ...(isBusinessService ? { isBusinessOrder: true } : {}),
               ...(partyWaiting ? { partyWaiting } : {}),
+              ...(currentTakeaway ? { takeaway: true } : {}),
+              waiter: save.business.staff.hiredRoles.includes("server") ? "server" : "cook",
+              ...(RESTAURANT_MODE &&
+              isCampaignService &&
+              campaignLevelForSession &&
+              isSystemLive("dine-in", levelNumber(campaignLevelForSession.id))
+                ? {
+                    tableWipe: { staff: tableStaff(save), onWipe: wipeTableFromFloor },
+                  }
+                : {}),
+              ...(RESTAURANT_MODE && isCampaignService && campaignLevelForSession
+                ? {
+                    hire: {
+                      offers: diningOffers(save, levelNumber(campaignLevelForSession.id)),
+                      onHire: hireFromDining,
+                    },
+                  }
+                : {}),
               ...(doorQueue && isCampaignService ? { door: doorView(doorQueue) } : {}),
               onOtherWork: setServiceOtherWork,
               ...(sameDishAhead > 0 ? { sameDishAhead } : {}),

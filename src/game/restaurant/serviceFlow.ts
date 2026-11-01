@@ -15,7 +15,12 @@
  *    always be finished. A walk-out is a lost sale only: no pay, no ledger entry, no penalty.
  *
  * Pure: no React, no wallet, no ledger, no Math.random, no save.
+ *
+ * HURRIED GUESTS (Phase 8B, developer 2026-11-01): from dine-in, about one menu guest or walk-in in four is in a
+ * hurry: their patience is `HURRIED_RULES.patienceFactor` of the pace's, the door shows a ⏱️ on their face.
+ * Which ones is fixed by the service and the guest's place (no randomness), so a service always brings the same.
  */
+import { isSystemLive } from "./restaurantProgression";
 
 export type GuestKind = "order" | "guest" | "walk-in";
 
@@ -29,6 +34,15 @@ export type GuestState =
   /** Patience ran out while waiting: no order, no pay. */
   | "WALKED_OUT";
 
+/** Hurried guests: one place in `every`, with a shorter patience. */
+export const HURRIED_RULES = { every: 4, patienceFactor: 0.7 };
+
+/** True for a hurried guest (a level's own orders are never hurried: they must always be finishable). */
+export function isHurried(levelNumber: number, kind: GuestKind, index: number): boolean {
+  if (kind === "order" || !isSystemLive("dine-in", levelNumber)) return false;
+  return (levelNumber + index * 3 + (kind === "walk-in" ? 2 : 0)) % HURRIED_RULES.every === 0;
+}
+
 export type Arrival = {
   /** Stable and deterministic: "<levelId>:<index>". */
   id: string;
@@ -39,6 +53,8 @@ export type Arrival = {
   index: number;
   /** How long they wait at the door before walking out (Infinity: never). */
   patienceMs: number;
+  /** In a hurry (isHurried): the patience above is already the shorter one. */
+  hurried?: boolean;
 };
 
 export type Pace = { fromLevel: number; gapMs: number; patienceMs: number };
@@ -98,13 +114,20 @@ export function arrivalSchedule(input: ScheduleInput): Arrival[] {
   for (const [kind, count] of kinds)
     for (let index = 0; index < count; index++) {
       const i = out.length;
+      const hurried = isHurried(input.levelNumber, kind, index);
       out.push({
         id: `${input.levelId}:${i}`,
         atMs: gap === Infinity ? 0 : i * gap,
         kind,
         index,
         // A level's own order never walks out (it must be cookable to finish the level).
-        patienceMs: kind === "order" ? Infinity : pace.patienceMs,
+        patienceMs:
+          kind === "order"
+            ? Infinity
+            : hurried
+              ? Math.round(pace.patienceMs * HURRIED_RULES.patienceFactor)
+              : pace.patienceMs,
+        ...(hurried ? { hurried: true } : {}),
       });
     }
   return out;
@@ -259,7 +282,7 @@ export function doorView(q: QueueState): {
   walkedOut: number;
   patience: number | null;
   /** Each person at the door, in order: their patience left (0..1; null: never walks out). */
-  faces: { id: string; kind: GuestKind; patience: number | null }[];
+  faces: { id: string; kind: GuestKind; patience: number | null; hurried: boolean }[];
 } {
   const waiting = waitingOf(q);
   const left = (g: QueuedGuest) =>
@@ -271,7 +294,12 @@ export function doorView(q: QueueState): {
     waiting: waiting.length,
     walkedOut: q.guests.filter((g) => g.state === "WALKED_OUT").length,
     patience: first ? left(first) : null,
-    faces: waiting.map((g) => ({ id: g.arrival.id, kind: g.arrival.kind, patience: left(g) })),
+    faces: waiting.map((g) => ({
+      id: g.arrival.id,
+      kind: g.arrival.kind,
+      patience: left(g),
+      hurried: g.arrival.hurried === true,
+    })),
   };
 }
 

@@ -11,6 +11,7 @@ import { useUnlockText } from "../navLevel";
 import { FloorLife } from "./FloorLife";
 import { FLOOR_LIFE_ALWAYS_PREVIEW, FLOOR_LIFE_PREVIEW } from "@/game/restaurant/floorLife";
 import { KButton } from "@/components/kc/common/primitives";
+import { InfoTip } from "@/components/kc/common/InfoTip";
 import { TableCash } from "@/components/kc/common/TableCash";
 import {
   FLOOR_NEARLY_FULL,
@@ -27,6 +28,7 @@ import {
   FLOOR_STAFF,
   cleanFactor,
   cleanersNeeded,
+  floorPopularityDelta,
   isStaffed,
   serversNeeded,
   stationTakings,
@@ -237,6 +239,18 @@ export function SecondFloorView({
             {ownedCount === 1 ? "station" : "stations"}.
           </p>
           {wholeFill ? <FillBar fill={wholeFill} testId="floor-fill" /> : null}
+          {ownedCount > 0 ? (
+            <p
+              className="mt-1 flex items-center gap-1 font-ui text-[12px] text-walnut/65"
+              data-testid="floor-popularity"
+            >
+              ⭐ +{floorPopularityDelta(save)} popularity a day
+              <InfoTip label="How the machines add popularity">
+                Every working machine counts its level (Lv 1 = 1, Lv 3 = 3). Each 6 points add +1
+                popularity a day, up to +3 with a full floor. Messy tables count for less.
+              </InfoTip>
+            </p>
+          ) : null}
           <div className="mt-3">
             <KButton
               full

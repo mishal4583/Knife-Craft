@@ -51,7 +51,7 @@ import { businessCustomerPayment } from "../business/BusinessServiceManager";
 import { activeMenuRecipes } from "./restaurantMenu";
 import { BUSINESS_MENU_FIRST_LEVEL, menuGuestsPerService } from "./restaurantProgression";
 import { serviceStockCheck } from "./campaignStock";
-import { kitchenGuestSeats } from "./restaurantInvestments";
+import { guestDemandFor, type GuestDemand } from "./guestDemand";
 import { ticketsFor } from "./serviceTickets";
 import { dishWeight, pickGuestDish } from "./orderPool";
 
@@ -113,9 +113,10 @@ export function menuGuestCapacity(save: SaveData): number {
  * requirements still read the schedule alone, so they never depend on this.
  */
 export function menuGuestsFor(save: SaveData, n: number): number {
-  const demand = menuGuestsPerService(n);
-  if (demand <= 0) return 0;
-  return Math.min(demand + kitchenGuestSeats(save), menuGuestCapacity(save));
+  if (menuGuestsPerService(n) <= 0) return 0;
+  // Phase 8A (developer 2026-11-01): the timetable and the seats are the floor, the pull (guestDemand.ts:
+  // reputation, menu, lunch/dinner rush, a spotless last service) adds on top, the team's capacity rules.
+  return guestDemandFor(save, n, menuGuestCapacity(save)).served;
 }
 
 /** Walk-ins: how many per service, from the level the menu opens (developer 2026-10-25). */
@@ -130,6 +131,31 @@ export function walkInsFor(save: SaveData, n: number): number {
   if (n < WALK_IN_RULES.fromLevel) return 0;
   const room = menuGuestCapacity(save) - menuGuestsFor(save, n);
   return Math.max(0, Math.min(WALK_IN_RULES.perService, room));
+}
+
+export type ServiceGuestPlan = GuestDemand & {
+  /** Menu guests and walk-ins the service takes. */
+  guests: number;
+  walkIns: number;
+  /** Everyone the service takes, and the guests it had to turn away (menu guests and the walk-in). */
+  total: number;
+  turnedAwayTotal: number;
+};
+
+/** One service's guest numbers in one place, for the Pace card and the Service Report (read-only). */
+export function serviceGuestPlan(save: SaveData, n: number): ServiceGuestPlan {
+  const demand = guestDemandFor(save, n, menuGuestCapacity(save));
+  const guests = menuGuestsFor(save, n);
+  const walkIns = walkInsFor(save, n);
+  const walkInWanted = n >= WALK_IN_RULES.fromLevel ? WALK_IN_RULES.perService : 0;
+  const total = guests + walkIns;
+  return {
+    ...demand,
+    guests,
+    walkIns,
+    total,
+    turnedAwayTotal: Math.max(0, demand.wanted + walkInWanted - total),
+  };
 }
 
 /** The walk-ins of `level`, in order (seeded on their own: the menu guests' picks never move). */

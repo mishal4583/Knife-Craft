@@ -1237,6 +1237,15 @@ taken, repaid}`; taking on credit moves no money (no entry);
 - `playables-ads-qa` — Bridge ads (interstitial policy, rewarded Replay Bonus).
 - `idle-qa` — the idle economy's readable side (phase 5, 2026-10-31): the Pace (a closed day's figures from the ledger, per
   shift hour, net = gross − costs), the Second Floor's fill and clock rules, the badge-only floor achievements, the wiring.
+- `guest-demand-qa` — Phase 8A/8B (2026-11-01): demand that scales with capacity (`restaurant/guestDemand.ts`): the old timetable is the
+  floor at every level, nothing changes before dine-in, the pull (reputation 60/75, a 10-dish menu, the Lunch/Dinner rush, a spotless last
+  service) is capped at 4, served = min(wanted, team capacity), the queue has the planned length; hurried guests (1 in 4, patience ×0.7).
+- `service-quality-qa` — Phase 8C/8D: the star report (`restaurant/serviceQuality.ts`: dishes / waits / clean), the last 7 kept in
+  `restaurantDay.serviceResults`, the ±1 popularity nudge, never money, the closing-card lines, the App wiring, the Pace card's numbers
+  (`guestReport.ts`). Browser: `tools/e2e/guests.mjs`.
+- `dining-floor-qa` — Phase 9 (2026-11-01): the fridge tiers (40 / 100 / 240), the takeaway tag and the solo takeaway seat, the waiter's walk
+  (`serviceFloor.ts`), `wipeTable` and the closing tables task, hourly cleaners (`cleanliness.ts`), the dining side panel's offers
+  (`diningHire.ts`) and the Server from Level 3, the wiring. Browser: `tools/e2e/dining.mjs`.
 - `ad-bonuses-qa` — the six ad bonuses (§2, incl. welcome back): amounts, one entry per claim,
   caps per kind and day (apart from the Replay Bonus's), the free daily gift,
   ledger-trim survival, placements, and the economy bound (an every-offer

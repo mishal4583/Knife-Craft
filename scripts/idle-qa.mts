@@ -40,10 +40,14 @@ const {
   collectFloor,
   floorEarnings,
   floorPerHour,
+  FLOOR_POPULARITY_MAX,
+  floorPopularityDelta,
   hireFloorStaff,
   secondFloorOf,
+  upgradeStation,
   stationDef,
 } = await import("../src/game/restaurant/secondFloor.ts");
+const { dailyPopularityDelta } = await import("../src/game/business/PopularityManager.ts");
 const { durationText, fillText, floorFill, needsVisit, stationFill } =
   await import("../src/game/restaurant/floorFill.ts");
 const { achievementsFor, collectableTotal } =
@@ -323,6 +327,67 @@ function floorSave(now: number): SaveData {
       taken.save.credits - s.credits === taken.amount &&
       taken.save.economyLedger.length === s.economyLedger.length + 1 &&
       taken.save.economyLedger.at(-1)!.category === "automation-income",
+  );
+}
+
+// ── D. popularity (developer 2026-10-31, D-6: the machines give "income and popularity") ──
+{
+  const T0 = 1_800_000_000_000;
+  const none = fresh();
+  const one = floorSave(T0); // one Lv 1 coffee machine, a server and a cleaner
+  const buyMore = (
+    s: SaveData,
+    ids: ("drinks" | "pizza" | "burger" | "iceCream" | "hotFood")[],
+  ) => {
+    let x = s;
+    for (const id of ids) {
+      const b = buyStation(x, id, 60, T0);
+      if (b.ok) x = b.save;
+    }
+    return x;
+  };
+  const full = (() => {
+    let x = buyMore(one, ["drinks", "pizza", "burger", "iceCream", "hotFood"]);
+    for (let i = 0; i < 2; i++) {
+      const h = hireFloorStaff(x, "server", T0);
+      if (h.ok) x = h.save;
+    }
+    const c = hireFloorStaff(x, "cleaner", T0);
+    if (c.ok) x = c.save;
+    for (const id of ["coffee", "drinks", "pizza", "burger", "iceCream", "hotFood"] as const)
+      for (let i = 0; i < 2; i++) {
+        const u = upgradeStation(x, id, T0);
+        if (u.ok) x = u.save;
+      }
+    return x;
+  })();
+  const noServer = {
+    ...one,
+    business: {
+      ...one.business,
+      secondFloor: { ...secondFloorOf(one), servers: 0 },
+    },
+  } as SaveData;
+  check(
+    "D1 no machine, or machines no server runs, add nothing: a player without a floor is exactly as before",
+    floorPopularityDelta(none) === 0 && floorPopularityDelta(noServer) === 0,
+  );
+  check(
+    "D2 a small floor adds nothing yet (6 working-machine points make +1); a full Lv 3 floor adds the most, +3, never more",
+    floorPopularityDelta(one) === 0 &&
+      floorPopularityDelta(full) === FLOOR_POPULARITY_MAX &&
+      FLOOR_POPULARITY_MAX === 3,
+    { one: floorPopularityDelta(one), full: floorPopularityDelta(full) },
+  );
+  check(
+    "D3 it composes into the day's popularity delta: exactly the floor's part is added, nothing else",
+    dailyPopularityDelta(full) ===
+      dailyPopularityDelta({
+        ...full,
+        business: { ...full.business, secondFloor: undefined },
+      } as SaveData) +
+        floorPopularityDelta(full),
+    { withFloor: dailyPopularityDelta(full), floor: floorPopularityDelta(full) },
   );
 }
 

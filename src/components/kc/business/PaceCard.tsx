@@ -4,6 +4,8 @@ import { InfoTip } from "../common/InfoTip";
 import { formatUsd, formatUsdChange } from "@/game/money";
 import { paceOf, type PaceLine } from "@/game/economy/pace";
 import { fillText } from "@/game/restaurant/floorFill";
+import { lastServiceResult, nextServiceGuests, pullChips } from "@/game/restaurant/guestReport";
+import { starsText } from "@/game/restaurant/serviceQuality";
 import type { SaveData } from "@/game/SaveManager";
 
 /**
@@ -64,6 +66,7 @@ export function PaceCard({ save }: { save: SaveData }) {
           🌙 Close your first day to see your pace
         </p>
       )}
+      <GuestsRow save={save} />
       {pace.floorOpen && pace.floorPerHour > 0 ? (
         <p
           className="mt-3 flex flex-wrap items-baseline justify-between gap-x-3 border-t border-walnut/10 pt-2 font-ui text-[13px] font-bold text-walnut-dark"
@@ -77,6 +80,51 @@ export function PaceCard({ save }: { save: SaveData }) {
         </p>
       ) : null}
     </Panel>
+  );
+}
+
+/**
+ * Phase 8D: the guests of the next service (the timetable, the seats, what pulls) and the last service's stars.
+ * Short: numbers and icons; how it adds up is behind the ⓘ.
+ */
+function GuestsRow({ save }: { save: SaveData }) {
+  const next = nextServiceGuests(save);
+  const last = lastServiceResult(save);
+  if (!next && !last) return null;
+  const chips = next ? pullChips(next.pull) : [];
+  return (
+    <div
+      className="mt-3 border-t border-walnut/10 pt-2 font-ui text-[13px] font-bold text-walnut-dark"
+      data-testid="pace-guests"
+    >
+      <div className="flex items-center justify-between gap-2">
+        <span>
+          🍽️ Guests next{next?.service ? ` · ${next.service}` : ""}
+          {next ? ` ${next.served}` : ""}
+          {next && next.turnedAway > 0 ? ` · 🙁 ${next.turnedAway} turned away` : ""}
+        </span>
+        <InfoTip label="How the guests add up">
+          A service takes its timetable of guests plus a seat for each kitchen upgrade, and a pull
+          from your reputation, a big menu, the lunch and dinner rush, and a spotless last service.
+          Your team&apos;s capacity is the limit, so a new hire or a bigger kitchen seats the guests
+          who are turned away. Extra guests pay their dish&apos;s menu price like any other.
+        </InfoTip>
+      </div>
+      {next ? (
+        <p
+          className="mt-1 text-[12px] font-semibold text-walnut/65"
+          data-testid="pace-guests-parts"
+        >
+          {next.base} booked{next.seats > 0 ? ` + ${next.seats} seats` : ""}
+          {chips.length ? ` · ${chips.join(" · ")}` : ""}
+        </p>
+      ) : null}
+      {last ? (
+        <p className="mt-1 text-[12px] font-semibold text-walnut/65" data-testid="pace-last-stars">
+          ⭐ Last service {starsText(last.stars)}
+        </p>
+      ) : null}
+    </div>
   );
 }
 

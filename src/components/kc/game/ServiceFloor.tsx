@@ -1,26 +1,33 @@
 import { useEffect, useId, useRef, useState } from "react";
 import type { KitchenMapArtStage } from "@/game/kitchen/kitchenMapArt";
 import {
-  DELIVER_MS,
-  FLOOR_PASS,
   FLOOR_SEATS,
   REACTION_FACE,
   REACT_MS,
   SIT_MS,
+  TAKEAWAY_SPOT,
+  TAKEAWAY_STAND,
+  WAITER_LOOKS,
   inView,
   lookFor,
   partySpots,
   partyCompleteWith,
   pathToSpot,
+  serveMs,
+  takeawayPath,
+  waiterPath,
+  waiterStand,
   walkFrames,
   walkMs,
   type FloorPoint,
   type PartySeat,
+  type WaiterKind,
 } from "@/game/restaurant/serviceFloor";
 import { formatUsd } from "@/game/money";
 import type { QualityLabel } from "@/types/game";
 import { GuestPoses } from "../restaurantMap/GuestPoses";
 import { KButton } from "../common/primitives";
+import type { DiningHireId, DiningOffer } from "@/game/restaurant/diningHire";
 import { TableCash } from "../common/TableCash";
 import { AUTO_SERVE_MS } from "@/game/restaurant/prepCookAuto";
 import "./serviceFloor.css";
@@ -38,10 +45,13 @@ import "./serviceFloor.css";
  * leaves when the next one walks in.
  *
  *  - arrive:  walk in → sit → order bubbles → "Start cooking" (or a tap anywhere);
- *  - deliver: the plate goes from the pass to the member, then the face that
- *             follows the dish's real grade, then the customer walks out and the
- *             served card opens by itself (developer 2026-10-30: no cash screen —
- *             the cash waits on the table, collected from the served card in one tap).
+ *  - deliver: a waiter carries the plate from the pass to the table (Phase 9B: the Server when one is
+ *             hired, else the cook), sets it down and walks back; then the face that follows the dish's
+ *             real grade, then the customer walks out and the served card opens by itself (developer
+ *             2026-10-30: no cash screen — the cash waits on the table, collected from the served card
+ *             in one tap).
+ *  - takeaway (Phase 9C): the customer never sits: they wait just inside the door, the waiter hands over
+ *             a bag, and they walk out with it.
  *
  * Taps can advance the arrival and serving beats. Reduced Motion skips the walking.
  */
@@ -74,6 +84,9 @@ export function ServiceFloor({
   onDone,
   prepCook,
   tableCash,
+  takeaway = false,
+  waiter = "cook",
+  hire,
 }: {
   mode: FloorMode;
   stage: KitchenMapArtStage;
@@ -92,15 +105,21 @@ export function ServiceFloor({
   prepCook?: { auto: boolean; onCut: () => void; onAuto: () => void };
   /** The cash lying on the tables (economy/pendingCash.ts): shown as piles; one tap collects it. */
   tableCash?: { cents: number; onCollect: () => void };
+  /** A customer who takes a parcel (orderServiceFor): no table, a bag at the door. */
+  takeaway?: boolean;
+  /** Who carries the plate: a hired Server, otherwise the cook. */
+  waiter?: WaiterKind;
+  /** Phase 9E: who can be hired from the side of the dining area now; an offer is gone once the person is hired. */
+  hire?: { offers: DiningOffer[]; onHire: (id: DiningHireId) => void };
 }) {
   const uid = useId().replace(/[^a-zA-Z0-9]/g, "");
   const { party, slot, arriving, leaving } = partySeat;
   const table = FLOOR_SEATS[stage][party.table];
-  const spots = partySpots(table, party.size);
-  const paths = spots.map((s) => pathToSpot(table, s));
+  const spots = takeaway ? [TAKEAWAY_SPOT] : partySpots(table, party.size);
+  const paths = takeaway ? [takeawayPath()] : spots.map((s) => pathToSpot(table, s));
   const walking = mode === "arrive" && arriving && !reducedMotion;
   const leavers =
-    mode === "arrive" && arriving && leaving && !reducedMotion
+    mode === "arrive" && arriving && leaving && !takeaway && !reducedMotion
       ? partySpots(FLOOR_SEATS[stage][leaving.table], leaving.size).map((s, i) => ({
           look: leaving.looks[i]!,
           face: leaving.served[i]?.face ?? "🙂",
@@ -114,6 +133,11 @@ export function ServiceFloor({
   // when the party is complete they all walk out together.
   const deliverers = spots.map((_, i) => i === slot || !!party.held[i]);
   const partyLeaves = mode === "deliver" && partyCompleteWith(partySeat);
+  // The waiter's walk from the pass: beside the table (or the customer at the door), and how long the beat takes.
+  const stand = takeaway ? TAKEAWAY_STAND : waiterStand(table);
+  const wPath = waiterPath(stand);
+  const wWalkMs = walkMs(wPath);
+  const deliverMs = serveMs(stand);
   const [state, setState] = useState<"walking" | "seated" | "serving" | "reacting" | "leaving">(
     mode === "arrive" ? (walking ? "walking" : "seated") : reducedMotion ? "reacting" : "serving",
   );
@@ -135,14 +159,14 @@ export function ServiceFloor({
       if (reducedMotion) {
         later(() => finishRef.current(), REACT_MS);
       } else {
-        later(() => setState("reacting"), DELIVER_MS);
+        later(() => setState("reacting"), deliverMs);
         if (partyLeaves) {
-          later(() => setState("leaving"), DELIVER_MS + REACT_MS);
+          later(() => setState("leaving"), deliverMs + REACT_MS);
           later(
             () => finishRef.current(),
-            DELIVER_MS + REACT_MS + LEAVE_MS + FILE_GAP_MS * spots.length,
+            deliverMs + REACT_MS + LEAVE_MS + FILE_GAP_MS * spots.length,
           );
-        } else later(() => finishRef.current(), DELIVER_MS + REACT_MS);
+        } else later(() => finishRef.current(), deliverMs + REACT_MS);
       }
     }
     return () => timers.forEach((t) => window.clearTimeout(t));
@@ -163,17 +187,12 @@ export function ServiceFloor({
     finish();
   };
 
-  const passAt = inView(FLOOR_PASS);
   const keyframes =
     paths.map((p, i) => walkKeyframes(`sfwalk${uid}_${i}`, p)).join("") +
     leavers.map((l, i) => walkKeyframes(`sfleave${uid}_${i}`, l.path)).join("") +
     paths.map((p, i) => walkKeyframes(`sfexit${uid}_${i}`, [...p].reverse())).join("") +
-    spots
-      .map((s, i) => {
-        const to = inView({ x: s.x, y: s.y - 3.5 });
-        return `@keyframes sfplate${uid}_${i}{0%{transform:translate(${pct(passAt.x)},${pct(passAt.y)}) scale(.6);opacity:0}15%{opacity:1}100%{transform:translate(${pct(to.x)},${pct(to.y)}) scale(1);opacity:1}}`;
-      })
-      .join("") +
+    walkKeyframes(`sfwout${uid}`, wPath) +
+    walkKeyframes(`sfwback${uid}`, [...wPath].reverse()) +
     `@keyframes sfgone${uid}{0%,85%{opacity:1}100%{opacity:0}}`;
   const sitting = state !== "walking";
   const face = quality ? REACTION_FACE[quality] : "🙂";
@@ -186,6 +205,7 @@ export function ServiceFloor({
       data-mode={mode}
       data-state={state}
       data-seat={party.table}
+      data-service={takeaway ? "takeaway" : "dine-in"}
       data-party={party.size}
       role="dialog"
       aria-label={
@@ -197,6 +217,31 @@ export function ServiceFloor({
     >
       <style>{keyframes}</style>
       <div className="sf-stage relative min-h-0 flex-1">
+        {mode === "arrive" && hire && hire.offers.length > 0 ? (
+          <div
+            className="absolute right-2 top-2 z-20 flex flex-col gap-1.5"
+            data-testid="dining-hire"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {hire.offers.map((o) => (
+              <button
+                key={o.id}
+                type="button"
+                data-hire={o.id}
+                disabled={!o.affordable}
+                aria-label={`Hire ${o.label} for ${formatUsd(o.price)}${o.per === "hour" ? " an hour" : ""}`}
+                className="flex min-h-12 min-w-[3.25rem] flex-col items-center justify-center rounded-2xl border border-gold/50 bg-walnut-dark/85 px-2 py-1 font-ui text-ivory shadow-soft active:scale-95 disabled:opacity-50"
+                onClick={() => hire.onHire(o.id)}
+              >
+                <span className="text-[20px] leading-none">{o.icon}</span>
+                <span className="text-[10.5px] font-extrabold leading-tight">
+                  {formatUsd(o.price)}
+                  {o.per === "hour" ? "/h" : ""}
+                </span>
+              </button>
+            ))}
+          </div>
+        ) : null}
         <div className="sf-view" aria-hidden="true">
           <img className="sf-map" src={mapUrl} alt="" draggable={false} />
           <div className="sf-dim" />
@@ -208,20 +253,45 @@ export function ServiceFloor({
               </div>
             ) : null,
           )}
-          {mode === "deliver"
+          {/* The waiter carries the plate (a tray of plates for a party) from the pass, sets it down, walks back. */}
+          {mode === "deliver" && !reducedMotion ? (
+            <div
+              className="sf-layer"
+              data-testid="service-floor-waiter"
+              data-waiter={waiter}
+              style={
+                state === "serving"
+                  ? { animation: `sfwout${uid} ${wWalkMs}ms linear both` }
+                  : {
+                      animation: `sfwback${uid} ${wWalkMs}ms linear both, sfgone${uid} ${wWalkMs}ms linear both`,
+                    }
+              }
+            >
+              <div className="sf-person sf-pose-walk">
+                <GuestPoses {...WAITER_LOOKS[waiter]} />
+              </div>
+              {state === "serving" ? (
+                <div className="sf-carry">
+                  {spots.map((_, i) =>
+                    deliverers[i] ? (
+                      <span key={i}>{i === slot ? dish.emoji : party.held[i]!.emoji}</span>
+                    ) : null,
+                  )}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+          {/* Once it is set down: the plate on the table, or the bag in the takeaway customer's hand. */}
+          {mode === "deliver" && (state !== "serving" || reducedMotion)
             ? spots.map((s, i) =>
                 deliverers[i] ? (
                   <div
                     key={`serve${i}`}
                     className="sf-layer"
-                    style={
-                      state === "serving"
-                        ? { animation: `sfplate${uid}_${i} ${DELIVER_MS}ms ease-out both` }
-                        : at({ x: s.x, y: s.y - 3.5 })
-                    }
+                    style={at({ x: s.x + (takeaway ? 2.5 : 0), y: s.y - (takeaway ? 4.5 : 3.5) })}
                   >
                     <span className="sf-plate">
-                      {i === slot ? dish.emoji : party.held[i]!.emoji}
+                      {takeaway ? "🛍️" : i === slot ? dish.emoji : party.held[i]!.emoji}
                     </span>
                   </div>
                 ) : null,
@@ -273,7 +343,15 @@ export function ServiceFloor({
                 }
               >
                 <div
-                  className={`sf-person ${sitting && !(state === "leaving" && partyLeaves) ? "sf-pose-sit" : "sf-pose-walk"}`}
+                  className={`sf-person ${
+                    state === "leaving" && partyLeaves
+                      ? "sf-pose-walk"
+                      : sitting
+                        ? takeaway
+                          ? "sf-pose-stand"
+                          : "sf-pose-sit"
+                        : "sf-pose-walk"
+                  }`}
                 >
                   <GuestPoses outfit={look.outfit} hair={look.hair} />
                 </div>
@@ -283,7 +361,10 @@ export function ServiceFloor({
                   <div className="sf-bubble" data-testid="service-floor-order">
                     <div className="sf-bubble-body anim-pop">
                       <span className="text-[26px] leading-none">{dish.emoji}</span>
-                      <span className="sf-bubble-name">{dish.name}</span>
+                      <span className="sf-bubble-name">
+                        {takeaway ? "🥡 " : ""}
+                        {dish.name}
+                      </span>
                     </div>
                   </div>
                 ) : null}
@@ -314,10 +395,14 @@ export function ServiceFloor({
         <div className="relative z-10 rounded-t-[22px] border-t border-gold/40 bg-[linear-gradient(170deg,var(--color-ivory),var(--color-cream))] px-4 pb-4 pt-3 text-center shadow-lift">
           <p className="font-ui text-[11px] font-extrabold uppercase tracking-[0.2em] text-copper">
             {state === "walking"
-              ? party.size > 1
-                ? `🚪 A party of ${party.size}`
-                : "🚪 A customer"
-              : `${customer.avatarEmoji} ${customer.name}'s order${others > 0 ? ` · table of ${party.size}` : ""}`}
+              ? takeaway
+                ? "🚪 A takeaway customer"
+                : party.size > 1
+                  ? `🚪 A party of ${party.size}`
+                  : "🚪 A customer"
+              : takeaway
+                ? `${customer.avatarEmoji} ${customer.name} · 🥡 To go`
+                : `${customer.avatarEmoji} ${customer.name}'s order${others > 0 ? ` · table of ${party.size}` : ""}`}
           </p>
           <p className="mt-1 font-display text-[20px] font-extrabold leading-tight text-walnut-dark">
             {dish.emoji} {dish.name}
@@ -344,10 +429,14 @@ export function ServiceFloor({
       ) : (
         <p className="relative z-10 pb-6 pt-2 text-center font-hand text-[17px] text-ivory/90">
           {state === "reacting"
-            ? `${partyCompleteWith(partySeat) && party.size > 1 ? "The table" : customer.name} digs in`
+            ? takeaway
+              ? `${customer.name} takes the bag`
+              : `${partyCompleteWith(partySeat) && party.size > 1 ? "The table" : customer.name} digs in`
             : state === "leaving"
-              ? `${party.size > 1 ? "The table" : customer.name} heads out`
-              : `Bringing it to ${party.size > 1 ? "the table" : customer.name}…`}
+              ? `${party.size > 1 && !takeaway ? "The table" : customer.name} heads out`
+              : takeaway
+                ? `Handing ${customer.name} the bag…`
+                : `Bringing it to ${party.size > 1 ? "the table" : customer.name}…`}
         </p>
       )}
     </div>

@@ -119,8 +119,8 @@ const ALL_IDS = Object.keys(INGREDIENTS) as IngredientId[];
   assert(
     v0.tiers.map((t) => `${t.id}:${t.capacity}:${t.price}`).join() ===
       REFRIGERATOR_CATALOG.map((r) => `${r.id}:${r.capacity}:${r.price}`).join() &&
-      v0.tiers.map((t) => t.capacity).join() === "40,80,140",
-    "B1: tiers are the production catalog — Basic 40, Commercial 80, Professional 140",
+      v0.tiers.map((t) => t.capacity).join() === "40,100,240",
+    "B1: tiers are the production catalog — Basic 40, Commercial 100, Professional 240 (Phase 9A, developer 2026-11-01)",
   );
   assert(
     v0.tier.id === "basic-refrigerator" &&
@@ -133,7 +133,7 @@ const ALL_IDS = Object.keys(INGREDIENTS) as IngredientId[];
     saveWith({}, { refrigerator: { refrigeratorId: "professional-refrigerator" } }),
   );
   assert(
-    pro.tier.rank === 2 && pro.capacity === 140 && pro.nextTier === null,
+    pro.tier.rank === 2 && pro.capacity === 240 && pro.nextTier === null,
     "B3: Professional is the top model (no next tier)",
   );
 }

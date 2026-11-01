@@ -526,6 +526,16 @@ export type CleanlinessState = {
   choreKeys: string[];
   /** The restaurant day a Cleaner was hired for one day (paid or for an ad); null = none. */
   dayCleanerDay: number | null;
+  /**
+   * Phase 9E (developer 2026-11-01): the areas whose hourly Cleaner is on shift right now (one per area, hired
+   * for the service on screen and gone when it ends). Optional: absent = none.
+   */
+  hourly?: CleanArea[];
+  /**
+   * Phase 9D: the tables wiped on the floor in a service (guests at the wiped tables, and whether the
+   * supplies were taken). Optional: absent = none.
+   */
+  wipes?: { level: number; n: number };
 };
 
 export const DEFAULT_CLEANLINESS: CleanlinessState = {
@@ -563,6 +573,16 @@ export function cleanlinessOf(save: SaveData): CleanlinessState {
       if (getSupplyItem(id) && whole(n) > 0)
         open[id as SupplyId] = Math.min(usesPerUnit(id as SupplyId), whole(n));
   const areas = Array.isArray(raw.cleanerAreas) ? raw.cleanerAreas.filter(isArea) : null;
+  const hourly = Array.isArray(raw.hourly)
+    ? CLEAN_AREAS.filter((a) => raw.hourly!.includes(a))
+    : [];
+  const wipes =
+    raw.wipes &&
+    typeof raw.wipes === "object" &&
+    whole(raw.wipes.level) > 0 &&
+    whole(raw.wipes.n) > 0
+      ? { level: whole(raw.wipes.level), n: whole(raw.wipes.n) }
+      : null;
   const ls = raw.lastStart;
   return {
     tasks,
@@ -587,6 +607,8 @@ export function cleanlinessOf(save: SaveData): CleanlinessState {
       ? raw.choreKeys.filter((k): k is string => typeof k === "string").slice(-CHORE_KEYS_KEPT)
       : [],
     dayCleanerDay: raw.dayCleanerDay == null ? null : whole(raw.dayCleanerDay),
+    ...(hourly.length ? { hourly } : {}),
+    ...(wipes ? { wipes } : {}),
   };
 }
 
@@ -684,7 +706,10 @@ export function tasksAfterService(
   const recipes = service.recipes.filter((r): r is RecipeDefinition => !!r);
   if (recipes.some((r) => dishServiceFor(r).cooking.some((c) => c !== "oven" && c !== "pot")))
     add.push("grease");
-  if (service.dineIn > 0 && isSystemLive("dine-in", levelNumber)) add.push("tables");
+  // Phase 9D: tables the player (or the Server / Dining cleaner) already wiped on the floor need no closing task.
+  const wiped = st.wipes && st.wipes.level === levelNumber ? st.wipes.n : 0;
+  if (service.dineIn > 0 && wiped < service.dineIn && isSystemLive("dine-in", levelNumber))
+    add.push("tables");
   const rand = makeSeededRand(levelNumber * 7_727 + 31);
   for (const r of recipes)
     if (dishServiceFor(r).messy && rand() < CLEANING_RULES.spillChance) add.push("spill");
@@ -846,6 +871,119 @@ export function hireDayCleaner(save: SaveData, levelNumber: number): DayCleanerR
   return { ok: true, save: round.save, cleaned: round.cleaned };
 }
 
+// ── Phase 9: cleaners by the hour (one per area) and tables wiped on the floor ─────────────────────────────
+
+/**
+ * An hourly Cleaner (developer 2026-11-01: "for cleaning let him be for hourly wages not permanent, only if the
+ * player likes to hire", "three cleaners for the three areas"): one per area, hired for the service on screen — one
+ * shift hour at the Cleaner's hourly wage — and gone when it ends. They do their area's routine tasks (at once and
+ * after the service); the Dining one also clears each table as its guests leave. The permanent Cleaner and the
+ * day Cleaner stay as they are; spills and anything short of supplies stay the player's.
+ */
+export const HOURLY_CLEANER_HOURS = 1;
+export const hourlyCleanerPrice = (): number =>
+  BUSINESS_STAFF_CATALOG.cleaner.hourlyWageCents * HOURLY_CLEANER_HOURS;
+
+/** The areas an hourly Cleaner is on shift in. */
+export const hourlyAreas = (save: SaveData): readonly CleanArea[] =>
+  cleanlinessOf(save).hourly ?? [];
+
+/** Someone already looks after `area` now: the hourly one, or the permanent / day Cleaner assigned to it. */
+export function areaCovered(save: SaveData, area: CleanArea): boolean {
+  return (
+    hourlyAreas(save).includes(area) ||
+    (cleanerOnDuty(save) && cleanlinessOf(save).cleanerAreas.includes(area))
+  );
+}
+
+export type HourlyHireResult =
+  { ok: true; save: SaveData; cleaned: TaskKind[] } | { ok: false; reason: "locked" | "covered" };
+
+/**
+ * Puts an hourly Cleaner on `area` (the wage is the caller's: App debits `hourlyCleanerPrice()` with one ledger
+ * entry) and runs their round at once.
+ */
+export function hireHourlyCleaner(
+  save: SaveData,
+  area: CleanArea,
+  levelNumber: number,
+): HourlyHireResult {
+  if (!isCleanlinessLive(levelNumber)) return { ok: false, reason: "locked" };
+  if (areaCovered(save, area)) return { ok: false, reason: "covered" };
+  const st = cleanlinessOf(save);
+  const next = CLEAN_AREAS.filter((a) => a === area || (st.hourly ?? []).includes(a));
+  const round = cleanerRound(withState(save, { ...st, hourly: next }));
+  return { ok: true, save: round.save, cleaned: round.cleaned };
+}
+
+/** The hourly Cleaners' shift is over (the service ended): they leave. */
+export function dismissHourlyCleaners(save: SaveData): SaveData {
+  const st = cleanlinessOf(save);
+  if (!st.hourly?.length) return save;
+  const { hourly: _gone, ...rest } = st;
+  void _gone;
+  return withState(save, rest);
+}
+
+/** Who clears a table by themself as its guests leave: the Dining cleaner, or a hired Server; null = the player. */
+export function tableStaff(save: SaveData): "cleaner" | "server" | null {
+  if (areaCovered(save, "dining")) return "cleaner";
+  return save.business.staff.hiredRoles.includes("server") ? "server" : null;
+}
+
+export type WipeResult =
+  { save: SaveData; ok: true } | { save: SaveData; ok: false; needs: SupplyId[] };
+
+/**
+ * A table's guests have left and the table is wiped (by the player's tap, or by the Server / Dining cleaner).
+ * The first wipe of a service takes the supplies the closing "tables" task would have (disinfectant and a cloth),
+ * so cleaning each table as you go costs the same as the closing task; the rest of that service's tables are free.
+ * Wiping every guest's table of a service means `tasksAfterService` adds no closing tables task.
+ * With the supplies short nothing changes and it says what is needed: the closing task stays the player's.
+ */
+export function wipeTable(
+  save: SaveData,
+  levelNumber: number,
+  guests: number,
+  by: "player" | "staff" = "player",
+): WipeResult {
+  const st = cleanlinessOf(save);
+  const n = Math.max(1, Math.floor(guests));
+  const mine = st.wipes && st.wipes.level === levelNumber ? st.wipes : null;
+  if (mine)
+    return {
+      ok: true,
+      save: withState(save, { ...st, wipes: { level: levelNumber, n: mine.n + n } }),
+    };
+  const needs = taskNeeds(save, "tables");
+  if (needs.length) return { ok: false, save, needs };
+  let supplies = save.business.supplies;
+  let open = st.open;
+  for (const u of TASK_RULES.tables.uses) {
+    const took = takeUses(supplies, open, u.id, u.n);
+    if (!took) return { ok: false, save, needs: [u.id] };
+    supplies = took.supplies;
+    open = took.open;
+  }
+  return {
+    ok: true,
+    save: {
+      ...save,
+      business: {
+        ...save.business,
+        supplies,
+        cleanliness: {
+          ...st,
+          open,
+          cleaned: st.cleaned + 1,
+          byCleaner: st.byCleaner + (by === "staff" ? 1 : 0),
+          wipes: { level: levelNumber, n },
+        },
+      },
+    },
+  };
+}
+
 /** Who does a routine task when hired: its own role (server, prep cook) or the Cleaner. */
 const staffFor = (kind: TaskKind): ChoreStaff => TASK_RULES[kind].staff ?? "cleaner";
 
@@ -866,8 +1004,11 @@ export function cleanerRound(save: SaveData): { save: SaveData; cleaned: TaskKin
     const rule = TASK_RULES[t.kind];
     if (!rule.routine) continue;
     const role = staffFor(t.kind);
-    if (role === "cleaner" ? !cleanerToday : !hired.includes(role)) continue;
-    if (role === "cleaner" && !st.cleanerAreas.includes(rule.area)) continue;
+    const hourlyHere = role === "cleaner" && (st.hourly ?? []).includes(rule.area);
+    if (!hourlyHere) {
+      if (role === "cleaner" ? !cleanerToday : !hired.includes(role)) continue;
+      if (role === "cleaner" && !st.cleanerAreas.includes(rule.area)) continue;
+    }
     const r = cleanTask(s, t.kind, "cleaner");
     if (r.ok) {
       s = r.save;

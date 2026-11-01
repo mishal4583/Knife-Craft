@@ -869,6 +869,9 @@ const SWIPE_ACTIVATE_PX = 10;
  * as the original Slice port ("the guide the player is working").
  * Direction (axis + slope, including PERP_SNAP/PARALLEL_SNAP) is exact.
  */
+/** How long one frame may spend painting new piece textures (see PreparationScene.pieceJobs); at least one piece is painted. */
+const PIECE_PAINT_BUDGET_MS = 6;
+
 export class PreparationScene extends Phaser.Scene {
   private bus!: Phaser.Events.EventEmitter;
 
@@ -1009,6 +1012,18 @@ export class PreparationScene extends Phaser.Scene {
   private pieceSeq = 0;
   private pieces: Piece[] = [];
   private pieceImages = new Map<Piece, Phaser.GameObjects.Image>();
+  /**
+   * Cuts whose new piece textures are still being painted (developer 2026-11-01, "lag while cutting
+   * beef steak into dice"). A dice cut splits up to a dozen pieces at once and painting each one's
+   * texture is 5-10 ms, so the whole cut used to land in one frame (a 150-260 ms freeze). applyCut now
+   * makes the images at once (the Map is always complete) and paints them a few per frame in update();
+   * the old pieces stay on the board, and the 90 ms reveal starts, only when the new ones are painted.
+   */
+  private pieceJobs: Array<{
+    later: Array<() => void>;
+    old: Phaser.GameObjects.Image[];
+    done: () => void;
+  }> = [];
 
   // Plate geometry — set by startPlating(), read by drawPlateShape() and the
   // hands sequence. plateCx/Cy/Rx/Ry are the OVERALL bounding box across
@@ -1403,6 +1418,7 @@ export class PreparationScene extends Phaser.Scene {
    * needs them already cleared.
    */
   private beginFreshIngredient(): void {
+    this.dropPieceJobs();
     for (const img of this.pieceImages.values()) this.destroyPieceImage(img);
     this.pieceImages.clear();
     // Each ingredient stains the board its own way (boardDebris.ts); the blade cools and dries.
@@ -2001,6 +2017,7 @@ export class PreparationScene extends Phaser.Scene {
     // wasted work. The follow-up real RESIZE does the real rebuild.
     if (this.scale.width <= 1 || this.scale.height <= 1) return;
     this.layout();
+    this.flushPieceJobs();
     for (const piece of this.pieces) {
       const old = this.pieceImages.get(piece);
       // No live board image means this piece has already been closed out
@@ -2683,7 +2700,7 @@ export class PreparationScene extends Phaser.Scene {
   }
 
   /** Renders one piece into its own small CanvasTexture and returns the Image displaying it — see textures/pieceTexture.ts. */
-  private createPieceImage(piece: Piece): Phaser.GameObjects.Image {
+  private createPieceImage(piece: Piece, later?: Array<() => void>): Phaser.GameObjects.Image {
     const b = pieceBounds(piece.cons, this.silhouette) ?? {
       x0: this.ingCx - this.ingRx,
       y0: this.ingCy - this.ingRy,
@@ -2713,7 +2730,10 @@ export class PreparationScene extends Phaser.Scene {
     const key = `piece-${this.pieceSeq++}`;
     const tex = this.textures.createCanvas(key, Math.ceil(w), Math.ceil(h));
     const reach = Math.max(this.ingRx, this.ingRy) * 6 + 200;
-    if (tex && this.ingredientCanvas) {
+    const img = this.add.image(x0, y0, key).setOrigin(0, 0).setDepth(20).setAlpha(0);
+    const paint = () => {
+      // A piece cut again, or a board reset, before its turn: the image is gone, nothing to paint.
+      if (!tex || !this.ingredientCanvas || !img.active) return;
       // Proteins only, from here through `paintProteinCutFace` below —
       // every other ingredient's `depth`/`face` are undefined, so none
       // of this runs and their piece rendering is byte-for-byte what it
@@ -2738,8 +2758,36 @@ export class PreparationScene extends Phaser.Scene {
       const face = this.ingredient.face;
       if (face) this.paintProteinCutFace(tex.context, piece.cons, x0, y0, reach, face);
       tex.refresh();
+    };
+    if (later) later.push(paint);
+    else paint();
+    return img;
+  }
+
+  /** Paints queued piece textures until `budgetMs` is spent (at least one), finishing each cut once all its pieces are painted. */
+  private runPieceJobs(budgetMs: number): void {
+    const t0 = performance.now();
+    while (this.pieceJobs.length) {
+      const job = this.pieceJobs[0]!;
+      while (job.later.length && job === this.pieceJobs[0] && performance.now() - t0 < budgetMs) {
+        job.later.shift()!();
+      }
+      if (job.later.length) return;
+      this.pieceJobs.shift();
+      for (const img of job.old) this.destroyPieceImage(img);
+      job.done();
     }
-    return this.add.image(x0, y0, key).setOrigin(0, 0).setDepth(20).setAlpha(0);
+  }
+
+  /** Every queued cut finished now (a new cut, a resize, the last cut of a step). */
+  private flushPieceJobs(): void {
+    this.runPieceJobs(Infinity);
+  }
+
+  /** A fresh ingredient: nothing queued matters any more; the images the cuts replaced still have to go. */
+  private dropPieceJobs(): void {
+    for (const job of this.pieceJobs) for (const img of job.old) this.destroyPieceImage(img);
+    this.pieceJobs = [];
   }
 
   /**
@@ -5665,6 +5713,8 @@ export class PreparationScene extends Phaser.Scene {
    * object reference, so this is cheap and exact).
    */
   private applyCut(cut: Cut, perfect: boolean, hitstopMs = 0, immediate = false): void {
+    // The cut before this one finishes first, so every image a cut removes is a painted one.
+    this.flushPieceJobs();
     const before = this.pieces;
     const after = rebuildPieces(before, cut, this.silhouette);
     this.pieces = after;
@@ -5672,14 +5722,19 @@ export class PreparationScene extends Phaser.Scene {
     const removed = before.filter((p) => !after.includes(p));
     const added = after.filter((p) => !before.includes(p));
 
+    const oldImages: Phaser.GameObjects.Image[] = [];
     for (const p of removed) {
       const img = this.pieceImages.get(p);
-      if (img) this.destroyPieceImage(img);
+      if (img) oldImages.push(img);
       this.pieceImages.delete(p);
     }
+    // A cut that splits several pieces (a dice grid) paints them over a few frames; the pieces it
+    // replaces stay on the board until then. The recipe's last cut paints now (plating needs them).
+    const later: Array<() => void> | undefined = !immediate && added.length > 2 ? [] : undefined;
+    if (!later) for (const img of oldImages) this.destroyPieceImage(img);
 
     const addedImages = added.map((p) => {
-      const img = this.createPieceImage(p);
+      const img = this.createPieceImage(p, later);
       this.pieceImages.set(p, img);
       return img;
     });
@@ -5718,8 +5773,11 @@ export class PreparationScene extends Phaser.Scene {
         // cut's own normal instead of purely radially — see
         // settleProteinPiece's own doc. Every other ingredient keeps
         // calling settlePiece() unchanged.
+        // One centroid per piece for the whole batch: the protein fan reads every piece's centroid
+        // for each piece it settles (a 12-piece dice cut was ~600 grid scans in one frame).
+        const centroids = new Map<Piece, { gx: number; gy: number }>();
         const settle = this.ingredient.depth?.spread
-          ? (p: Piece) => this.settleProteinPiece(p)
+          ? (p: Piece) => this.settleProteinPiece(p, centroids)
           : (p: Piece) => this.settlePiece(p);
         for (const p of added) settle(p);
       },
@@ -5729,7 +5787,11 @@ export class PreparationScene extends Phaser.Scene {
     // but the priority is explicit rather than accidental).
     const delay = perfect ? PERFECT.HITSTOP_MS : hitstopMs;
     if (delay > 0) tweenConfig.delay = delay;
-    this.tweens.add(tweenConfig);
+    if (later) {
+      this.pieceJobs.push({ later, old: oldImages, done: () => void this.tweens.add(tweenConfig) });
+    } else {
+      this.tweens.add(tweenConfig);
+    }
   }
 
   /**
@@ -5824,10 +5886,18 @@ export class PreparationScene extends Phaser.Scene {
    * each newly-settled piece is still correctly fanned relative to the
    * group as it exists at that moment.
    */
-  private settleProteinPiece(piece: Piece): void {
+  private settleProteinPiece(piece: Piece, memo: Map<Piece, { gx: number; gy: number }>): void {
     const img = this.pieceImages.get(piece);
     if (!img) return;
-    const centroid = pieceCentroid(piece, this.silhouette);
+    const centroidOf = (p: Piece) => {
+      let c = memo.get(p);
+      if (!c) {
+        c = pieceCentroid(p, this.silhouette);
+        memo.set(p, c);
+      }
+      return c;
+    };
+    const centroid = centroidOf(piece);
     const vx = centroid.gx - this.ingCx;
     const vy = centroid.gy - this.ingCy;
     const m = Math.hypot(vx, vy) || 1;
@@ -5844,7 +5914,7 @@ export class PreparationScene extends Phaser.Scene {
         const nx = axis === "h" ? -c0.slope / mm : 1 / mm;
         const ny = axis === "h" ? 1 / mm : -c0.slope / mm;
         const proj = allPieces.map((p) => {
-          const c = pieceCentroid(p, this.silhouette);
+          const c = centroidOf(p);
           return (c.gx - this.ingCx) * nx + (c.gy - this.ingCy) * ny;
         });
         if (!proj.length) continue;
@@ -6815,6 +6885,7 @@ export class PreparationScene extends Phaser.Scene {
 
   override update(_time: number, _delta: number): void {
     if (this.paused) return;
+    if (this.pieceJobs.length) this.runPieceJobs(PIECE_PAINT_BUDGET_MS);
     // Phase 2 (A2): a wipe the browser never finished (focus lost, the
     // touch cancelled) is let go, so the cloth can't stay stuck to nothing.
     if (this.cleanup?.dragging && !this.input.activePointer.isDown) this.onClothUp();

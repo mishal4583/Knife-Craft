@@ -172,8 +172,10 @@ console.log("F. The floor");
   const fl = read("src/components/kc/game/ServiceFloor.tsx");
   assert(
     /const deliverers = spots\.map\(\(_, i\) => i === slot \|\| !!party\.held\[i\]\)/.test(fl) &&
-      /sfplate\$\{uid\}_\$\{i\}/.test(fl),
-    "F1: every held plate and this member's plate are delivered together, one per place",
+      // Rule changed (developer 2026-11-01, Phase 9B): a waiter carries the plates on one tray (no flying plate).
+      /deliverers\[i\] \? \(/.test(fl) &&
+      /sf-carry/.test(fl),
+    "F1: every held plate and this member's plate are delivered together, one per place (on the waiter's tray)",
   );
   assert(
     /const partyLeaves = mode === "deliver" && partyCompleteWith\(partySeat\)/.test(fl) &&

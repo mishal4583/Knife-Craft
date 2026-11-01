@@ -431,9 +431,10 @@ console.log("F. Fridge");
 {
   assert(
     getRefrigeratorCapacity("basic-refrigerator") === 40 &&
-      getRefrigeratorCapacity("commercial-refrigerator") === 80 &&
-      getRefrigeratorCapacity("professional-refrigerator") === 140,
-    "F1: the fridge tiers are unchanged — Basic 40, Commercial 80, Professional 140",
+      getRefrigeratorCapacity("commercial-refrigerator") === 100 &&
+      getRefrigeratorCapacity("professional-refrigerator") === 240,
+    // Rule changed (developer 2026-11-01, Phase 9A): Commercial 80 → 100, Professional 140 → 240.
+    "F1: the fridge tiers — Basic 40, Commercial 100, Professional 240 (Phase 9A)",
   );
   const fill = (q: number) => {
     const s = saveAt(30);

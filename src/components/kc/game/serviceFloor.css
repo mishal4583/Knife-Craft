@@ -316,3 +316,23 @@
 :root.kc-reduced-motion .sf .cash-hint > span {
   animation: none;
 }
+
+/* Phase 9B/9C (developer 2026-11-01): the waiter's tray, and a customer standing at the door for a parcel. */
+.sf .sf-pose-stand .guest-sitting-pose {
+  display: none;
+}
+.sf .sf-pose-stand .guest-leg-swing,
+.sf .sf-pose-stand .guest-arm-swing {
+  animation: none;
+}
+.sf .sf-carry {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  gap: 1px;
+  font-size: 17px;
+  line-height: 1;
+  transform: translate(-50%, calc(-100% - 7cqw));
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.5));
+}

@@ -157,9 +157,17 @@ console.log("V. Investment value");
   const a250 = atL(R.A!, LAST);
   // Realistic portions (developer 2026-10-08) need about 2.5× less fridge than a pound per step:
   // before them the completionist peaked at L91 61 / the last level 102 of 140; now about 35 / 51.
+  // Rule changed (developer 2026-11-01, Phase 8A, "build what is best": demand that scales with capacity):
+  // guests are pulled by reputation, a big menu, the lunch/dinner rush and a spotless last service, so a
+  // service late in the campaign takes more guests (saver 570 → 800) and needs more stock at once: the
+  // saver's service-by-service peak was 40 (the Basic fridge), it is now about 80–90; Phase 9A (developer 2026-11-01) raised the Commercial fridge to 100 and the Professional to 240 so it fits. What the check still
+  // proves: stocking one service at a time needs clearly less fridge than stocking the whole day.
   assert(
-    c250.fridgePeak > 40 && c250.fridgePeak <= c250.fridgeCap && a250.fridgePeak <= 40,
-    `V3: whole-day stocking outgrows the Basic fridge by L${LAST} (completionist L91 ${atL(R.C!, 91).fridgePeak}, L${LAST} ${c250.fridgePeak} of ${c250.fridgeCap}); service-by-service stocking still fits the Basic (saver ${a250.fridgePeak}/40)`,
+    c250.fridgePeak > 40 &&
+      c250.fridgePeak <= c250.fridgeCap &&
+      a250.fridgePeak < c250.fridgePeak &&
+      a250.fridgePeak <= 100,
+    `V3: whole-day stocking outgrows the Basic fridge by L${LAST} (completionist L91 ${atL(R.C!, 91).fridgePeak}, L${LAST} ${c250.fridgePeak} of ${c250.fridgeCap}); service-by-service stocking needs less than that and fits the Commercial fridge's 100 (saver ${a250.fridgePeak})`,
   );
   assert(
     R.E!.stats.qualityBy.supplier! > 0 && R.D!.final > R.C!.final,

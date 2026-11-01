@@ -44,6 +44,11 @@ export const DEFAULT_REFRIGERATOR_ID = "basic-refrigerator";
 /** Rule-of-thumb only, for `approxCubicFeet` display — never used by any real capacity/storage calculation. */
 const APPROX_LB_PER_CUBIC_FOOT = 2;
 
+// Phase 9A (developer 2026-11-01, "increase the fridge capacity according to the needs in the future"): after Phase 8
+// a big late service (guests pulled by reputation, menu, rush and a spotless kitchen) needs about 80 units at once for
+// the saver and about 120 for a whole day's stocking, and an Endless day more. So the two upgrades hold more:
+// Commercial 80 → 100, Professional 140 → 240. Prices and the Basic 40 are unchanged (no money moves, the early game
+// and old saves read the same).
 export const REFRIGERATOR_CATALOG: RefrigeratorDefinition[] = [
   {
     id: "basic-refrigerator",
@@ -57,17 +62,17 @@ export const REFRIGERATOR_CATALOG: RefrigeratorDefinition[] = [
     id: "commercial-refrigerator",
     name: "Commercial Refrigerator",
     description: "A two-door reach-in, built for a busier kitchen.",
-    capacity: 80,
+    capacity: 100,
     price: 200_000,
-    approxCubicFeet: Math.round(80 / APPROX_LB_PER_CUBIC_FOOT),
+    approxCubicFeet: Math.round(100 / APPROX_LB_PER_CUBIC_FOOT),
   },
   {
     id: "professional-refrigerator",
     name: "Professional Refrigerator",
     description: "A three-door reach-in for a restaurant running at scale.",
-    capacity: 140,
+    capacity: 240,
     price: 480_000,
-    approxCubicFeet: Math.round(140 / APPROX_LB_PER_CUBIC_FOOT),
+    approxCubicFeet: Math.round(240 / APPROX_LB_PER_CUBIC_FOOT),
   },
 ];
 

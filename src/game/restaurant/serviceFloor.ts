@@ -78,6 +78,44 @@ export const SIT_MS = 350;
 export const DELIVER_MS = 900;
 export const REACT_MS = 900;
 
+/**
+ * A PERSON carries the food (Phase 9B, developer 2026-11-01: "there is no person serving animation"): the waiter
+ * walks from the pass to the table with the plate, sets it down, and walks back. The Server's look when one is
+ * hired, otherwise the cook runs it out.
+ */
+export type WaiterKind = "server" | "cook";
+export const WAITER_LOOKS: Readonly<Record<WaiterKind, { outfit: string; hair: string }>> = {
+  server: { outfit: "#7a2e2e", hair: "#473222" },
+  cook: { outfit: "#f4efe6", hair: "#35271f" },
+};
+/** How long the waiter takes to put the plate down once there. */
+export const SET_DOWN_MS = 450;
+
+/** Where the waiter stands to serve a table: beside it, on the side of the aisle (map percent). */
+export function waiterStand(s: FloorSeat): FloorPoint {
+  const side = s.seat.x < 50 ? 1 : -1;
+  return { x: s.seat.x + side * 9, y: s.table.y + 1 };
+}
+
+/** The waiter's walk out: the pass, down beside the counter, then to `stand`. */
+export const waiterPath = (stand: FloorPoint): FloorPoint[] => [
+  FLOOR_PASS,
+  { x: stand.x, y: FLOOR_PASS.y + 4 },
+  stand,
+];
+
+/** The whole serve beat (ms): the walk out and setting the plate down; the waiter walks back while the guests react. */
+export const serveMs = (stand: FloorPoint): number => walkMs(waiterPath(stand)) + SET_DOWN_MS;
+
+/**
+ * TAKEAWAY (Phase 9C): a customer who takes a parcel never sits. They walk in, wait just inside the door, are
+ * handed a bag by the waiter and walk out with it.
+ */
+export const TAKEAWAY_SPOT: FloorPoint = { x: 50, y: 78.5 };
+export const takeawayPath = (): FloorPoint[] => [OUTSIDE, DOOR, TAKEAWAY_SPOT];
+/** The waiter hands the bag over standing beside the customer. */
+export const TAKEAWAY_STAND: FloorPoint = { x: 55, y: 77.5 };
+
 /** Each leg's duration (ms) along `path`, at the walking pace. */
 export function legDurations(path: readonly FloorPoint[]): number[] {
   return path
@@ -293,9 +331,32 @@ export function seatInParty(
   dish: PartyDish,
   waiting: readonly (PartyDish | null)[],
   now: number,
+  /** A takeaway customer (Phase 9C): alone, never joins or starts a seated party, leaves with the bag. */
+  solo = false,
 ): PartySeat {
   const known = partyByOrder.get(orderId);
   if (known) return known;
+  if (solo) {
+    const alone: PartySeat = {
+      party: {
+        key: orderId,
+        table: 0,
+        size: 1,
+        looks: [customerId],
+        orderIds: [orderId],
+        dishes: [dish],
+        served: [null],
+        held: [null],
+        left: false,
+        at: now,
+      },
+      slot: 0,
+      arriving: true,
+      leaving: null,
+    };
+    partyByOrder.set(orderId, alone);
+    return alone;
+  }
   // A party with plates held back for the table never goes stale (the cooking takes as long as it takes).
   const fresh =
     party && !party.left && (now - party.at <= PARTY_FRESH_MS || party.held.some((h) => !!h))

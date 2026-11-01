@@ -199,10 +199,10 @@ function playedSave(): SaveData {
     JSON.stringify(REFRIGERATOR_CATALOG.map((r) => [r.id, r.price, r.capacity])) ===
       JSON.stringify([
         ["basic-refrigerator", 0, 40],
-        ["commercial-refrigerator", 200000, 80],
-        ["professional-refrigerator", 480000, 140],
+        ["commercial-refrigerator", 200000, 100],
+        ["professional-refrigerator", 480000, 240],
       ]),
-    "J: refrigerators unchanged (free/40, $2,000/80, $4,800/140)",
+    "J: refrigerators: prices unchanged; capacity free/40, $2,000/100, $4,800/240 (Phase 9A raised the two upgrades)",
   );
   assert(
     maintenanceCostFor(59) === 15000 &&

@@ -55,6 +55,7 @@ import { payHalfWages, paySpecialists } from "./staffRequirements";
 import { coolDishHeat } from "./dishHeat";
 import { appendLedgerEntry } from "../economy/EconomyLedger";
 import { dayFigures, type PaceDay } from "../economy/paceFigures";
+import type { ServiceResult } from "./serviceQuality";
 
 /** How many closed days the pace keeps. */
 const PACE_DAYS_KEPT = 7;
@@ -88,6 +89,11 @@ export type RestaurantDayState = {
   openingLedgerId?: string | null;
   /** The latest closed days' takings and running costs (economy/paceFigures.ts), oldest first, at most 7. */
   paceDays?: PaceDay[];
+  /**
+   * Phase 8C (developer 2026-11-01): the latest services' star reports (serviceQuality.ts), oldest first, at
+   * most 7. Optional: old saves have none; a new day keeps them (the day's own are told by `openingLevel`).
+   */
+  serviceResults?: ServiceResult[];
 };
 
 export const DEFAULT_RESTAURANT_DAY_STATE: RestaurantDayState = {
@@ -264,6 +270,7 @@ export function closeDay(save: SaveData, levelNumber: number): SaveData {
     ...DEFAULT_RESTAURANT_DAY_STATE,
     day: d.day + 1,
     paceDays: withClosedDay(d, next),
+    ...(d.serviceResults ? { serviceResults: d.serviceResults } : {}),
   });
 }
 

@@ -75,6 +75,7 @@ import {
 import { OrderComplete } from "./OrderComplete";
 import { ServiceOrderComplete } from "./ServiceOrderComplete";
 import { ServiceFloor, type FloorMode } from "./ServiceFloor";
+import type { DiningHireId, DiningOffer } from "@/game/restaurant/diningHire";
 import { OvenStep } from "./OvenStep";
 import { ovenStepFor, trayItemFor } from "@/game/cooking/ovenStep";
 import {
@@ -243,10 +244,25 @@ export function Preparation({
       waiting: number;
       walkedOut: number;
       patience: number | null;
-      faces?: { id: string; kind: string; patience: number | null }[];
+      faces?: { id: string; kind: string; patience: number | null; hurried?: boolean }[];
     };
     /** Phase 2: told when the player starts / stops other work here (cleaning the board) — the door clock waits meanwhile. */
     onOtherWork?: (busy: boolean) => void;
+    /** Phase 9C (restaurant/serviceSupplies.ts orderServiceFor): this customer takes a parcel — no table, a bag at the door. */
+    takeaway?: boolean;
+    /** Phase 9B: who carries the plate — the hired Server, otherwise the cook. */
+    waiter?: "server" | "cook";
+    /**
+     * Phase 9D: the table of a party that has just left. `staff`: who clears it by themself (a hired Server or
+     * the Dining cleaner), null = the player's tap. `onWipe` really wipes it (cleanliness.wipeTable) and says
+     * what is missing when the supplies are short.
+     */
+    /** Phase 9E: the people that can be hired from the side of the dining area right now (restaurant/diningHire.ts). */
+    hire?: { offers: DiningOffer[]; onHire: (id: DiningHireId) => void };
+    tableWipe?: {
+      staff: "cleaner" | "server" | null;
+      onWipe: (guests: number, by: "player" | "staff") => { ok: boolean; need?: string };
+    };
   };
   onExit: () => void;
   /** Returns this run's coin reward (0 on replay — Law 2 — or always 0 for a service session, where payment is deferred to the explicit Serve action) so OrderComplete can show it without a second App->Preparation round trip. */
@@ -447,6 +463,7 @@ export function Preparation({
           { emoji: view.emoji, name: view.title },
           service.partyWaiting ?? [],
           Date.now(),
+          !!service.takeaway,
         )
       : null,
   );
@@ -914,8 +931,32 @@ export function Preparation({
         REACTION_FACE[servedQuality ?? result?.qualityLabel ?? "Honest"],
         Date.now(),
       );
+    // Phase 9D: a dine-in party has just left: the table is dirty. A Server / Dining cleaner clears it by
+    // themself; otherwise the player is offered the wipe (one tap; nothing blocks).
+    if (
+      service &&
+      floorMode === "deliver" &&
+      service.tableWipe &&
+      !service.takeaway &&
+      partySeat?.party.left
+    ) {
+      const size = partySeat.party.size;
+      if (service.tableWipe.staff) {
+        const r = service.tableWipe.onWipe(size, "staff");
+        setWipe(
+          r.ok ? { state: "staff", by: service.tableWipe.staff } : { state: "offer", need: r.need },
+        );
+      } else setWipe({ state: "offer" });
+    }
     setFloorMode(null);
   };
+  /** The dirty table after a party left (Phase 9D): offered, cleared by the player, or cleared by staff. */
+  const [wipe, setWipe] = useState<
+    | { state: "offer"; need?: string | undefined }
+    | { state: "done" }
+    | { state: "staff"; by: "cleaner" | "server" }
+    | null
+  >(null);
 
   // The hired Prep Cook cuts this whole order (restaurant/prepCookAuto.ts): a plain Honest plate,
   // straight to the Serve card. Only before the player's first cut, once the customer has sat down.
@@ -1389,6 +1430,7 @@ export function Preparation({
             <span
               key={f.id}
               data-door-face={f.kind}
+              data-hurried={f.hurried ? "true" : undefined}
               className="grid h-6 w-6 place-items-center rounded-full text-[13px] leading-none"
               style={{
                 background:
@@ -1398,7 +1440,7 @@ export function Preparation({
               }}
             >
               <span className="grid h-[18px] w-[18px] place-items-center rounded-full bg-walnut-dark">
-                {f.kind === "walk-in" ? "🚶" : f.kind === "order" ? "🙂" : "🍽️"}
+                {f.hurried ? "⏱️" : f.kind === "walk-in" ? "🚶" : f.kind === "order" ? "🙂" : "🍽️"}
               </span>
             </span>
           ))}
@@ -1438,6 +1480,9 @@ export function Preparation({
           {...(servedQuality ? { quality: servedQuality } : {})}
           reducedMotion={floor.reducedMotion}
           onDone={floorDone}
+          takeaway={!!service.takeaway}
+          {...(service.hire ? { hire: service.hire } : {})}
+          waiter={service.waiter ?? "cook"}
           {...(cookReady && service?.prepCook
             ? { prepCook: { ...service.prepCook, onCut: sendPrepCook } }
             : {})}
@@ -1450,6 +1495,38 @@ export function Preparation({
               }
             : {})}
         />
+      ) : null}
+
+      {wipe && service?.tableWipe && !floorMode ? (
+        <div
+          data-testid="table-wipe"
+          data-wipe={wipe.state}
+          className="pointer-events-none absolute inset-x-3 top-3 z-[75] flex justify-center"
+        >
+          {wipe.state === "offer" ? (
+            <button
+              type="button"
+              className="pointer-events-auto flex min-h-12 items-center gap-2 rounded-full bg-copper px-5 font-ui text-[14px] font-extrabold text-ivory shadow-lift active:scale-95"
+              onClick={() => {
+                const r = service.tableWipe!.onWipe(partySeat?.party.size ?? 1, "player");
+                setWipe(r.ok ? { state: "done" } : { state: "offer", need: r.need });
+              }}
+            >
+              🧽 Wipe the table
+              {wipe.need ? (
+                <span className="text-[12px] font-bold opacity-90">· needs {wipe.need}</span>
+              ) : null}
+            </button>
+          ) : (
+            <span className="pointer-events-none rounded-full bg-sage px-4 py-2 font-ui text-[13px] font-extrabold text-ivory shadow-soft">
+              {wipe.state === "staff"
+                ? wipe.by === "server"
+                  ? "🧑‍🍳 The Server clears the table"
+                  : "🧹 The cleaner clears the table"
+                : "✨ Table wiped"}
+            </span>
+          )}
+        </div>
       ) : null}
 
       {cooking === "playing" && ovenStep ? (

@@ -304,6 +304,28 @@ export function floorPerHour(save: SaveData): number {
   return Math.floor(gross * cleanFactor(floor));
 }
 
+/**
+ * What the machines do for the restaurant's reputation (developer 2026-10-31, D-6: "income and popularity").
+ * A working station (one a Floor Server runs) gives its level in points (Lv 1 = 1 … Lv 3 = 3); every 6 points
+ * add +1 to the day's popularity, at most +3 (a full floor), less when the tables are left messy
+ * (`cleanFactor`). It composes into `PopularityManager.dailyPopularityDelta` like the staff's boost, so it moves
+ * the same 0-100 score (city ranking, order frequency, what guests pay) and nothing else. Zero without a
+ * working machine, so a player without a floor is exactly as before.
+ */
+export const FLOOR_POPULARITY_POINTS_PER_STEP = 6;
+export const FLOOR_POPULARITY_MAX = 3;
+export function floorPopularityDelta(save: SaveData): number {
+  const floor = secondFloorOf(save);
+  const points = STATIONS.reduce((t, d) => {
+    const s = floor.stations[d.id];
+    return t + (s && isStaffed(floor, d.id) ? s.level : 0);
+  }, 0);
+  return Math.min(
+    FLOOR_POPULARITY_MAX,
+    Math.floor((points * cleanFactor(floor)) / FLOOR_POPULARITY_POINTS_PER_STEP),
+  );
+}
+
 export type FloorResult =
   | { ok: true; save: SaveData; amount: number }
   | {

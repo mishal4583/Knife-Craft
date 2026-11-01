@@ -188,7 +188,19 @@ export const STAFF_HIRE_FROM = BUSINESS_MENU_FIRST_LEVEL;
  * Prep Cook who can't cut yet. Every other role opens with Business.
  */
 export const staffHireFrom = (id: string): number =>
-  id === "prep-cook" ? Math.max(STAFF_HIRE_FROM, PREP_COOK_CUTS_FROM) : STAFF_HIRE_FROM;
+  id === "prep-cook"
+    ? Math.max(STAFF_HIRE_FROM, PREP_COOK_CUTS_FROM)
+    : id === "server"
+      ? Math.min(STAFF_HIRE_FROM, SERVER_HIRE_FROM)
+      : STAFF_HIRE_FROM;
+
+/**
+ * The Server can be hired from Level 3 (developer 2026-11-01, Phase 9E: "hire the server and billing staff early
+ * in the game like level 3") — from the side of the dining area, before the Business section opens. Only the
+ * hiring opens early: the staff RULE (a service that needs a Server) is unchanged (STAFF_RULES), so nobody is
+ * forced to hire. The counter's cashier is drawn with the Server (staffLife.ts), so they come together.
+ */
+export const SERVER_HIRE_FROM = 3;
 
 /** The level a specialist chef can be hired from (its cuisine's level, or Business's if earlier). */
 export const specialistOpensAt = (chef: SpecialistChef): number =>

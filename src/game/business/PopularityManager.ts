@@ -36,6 +36,8 @@ import { CAMPAIGN_RECIPES } from "../recipes/campaignRecipes";
 import { clampScore, DEFAULT_POPULARITY_STATE } from "./businessPopularity";
 import { staffPopularityDelta } from "./businessStaff";
 import { refrigeratorPopularityDelta } from "./businessEquipmentCondition";
+import { floorPopularityDelta } from "../restaurant/secondFloor";
+import { serviceQualityDelta } from "../restaurant/serviceQuality";
 
 /**
  * Deterministic, based on the ratio of set price to the suggested
@@ -78,7 +80,9 @@ export function dailyPopularityDelta(save: SaveData): number {
     pricingDelta(save.business.menu) +
     menuVarietyDelta(save.business.menu) +
     staffPopularityDelta(save.business.staff.hiredRoles) +
-    refrigeratorPopularityDelta(save.business.equipmentCondition.refrigeratorCondition)
+    refrigeratorPopularityDelta(save.business.equipmentCondition.refrigeratorCondition) +
+    // Second Floor machines (developer 2026-10-31, D-6): +1 per 6 working-machine points, at most +3.
+    floorPopularityDelta(save)
   );
 }
 
@@ -158,7 +162,8 @@ export function endOfDayPopularity(
   const startScore = save.business.popularity.score;
   const operations = dailyPopularityDelta(save);
   const inspectionTerm = inspectionDelta(inspection);
-  const service = dailyServiceDelta(ordersServed);
+  // Phase 8C (developer 2026-11-01): the day's star reports nudge the service term by ±1 (0 without any).
+  const service = dailyServiceDelta(ordersServed) + serviceQualityDelta(save);
   const pull = neutralPullDelta(startScore);
   const total = operations + inspectionTerm + service + pull;
   return {

@@ -449,7 +449,7 @@ html.kc-reduced-motion .kc-fever-vignette {
   }
 }
 .kc-tap-hand {
-  transform-origin: 47% 10%;
+  transform-origin: 35% 4%;
   animation: kc-tap-hand 1.4s ease-in-out infinite;
 }
 .kc-tap-ripple {
