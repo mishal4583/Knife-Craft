@@ -151,9 +151,11 @@ console.log("O. Opening");
       !!mid &&
       mid.opening === null &&
       !servicePlanNeedsSheet({ ...mid, news: { ...mid.news, systems: [], dishes: [] } }) &&
-      !dayCeremonyAt(4) &&
+      // Rule changed (developer 2026-11-01): cleaning, the shift chores and the day ceremony start at Day 2 (Level 3), not Level 5.
+      !dayCeremonyAt(2) &&
+      dayCeremonyAt(3) &&
       dayCeremonyAt(5),
-    "O4: before Level 5 a new day opens without its card; mid-day a stock-free level starts at once; the card starts at L5 (developer 2026-10-29; was L16, old L21)",
+    "O4: before Level 3 a new day opens without its card; mid-day a stock-free level starts at once; the card starts at L3 (developer 2026-11-01; was L5)",
   );
 }
 

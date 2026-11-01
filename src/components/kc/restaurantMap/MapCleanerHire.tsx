@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { formatUsd } from "@/game/money";
 import { cleanerSlots } from "@/game/restaurant/diningHire";
@@ -24,6 +24,14 @@ export function MapCleanerHire({
 }) {
   const [open, setOpen] = useState(false);
   const [say, setSay] = useState<string | null>(null);
+  // One message timer: a second hire restarts it (the first timer must not cut the new message short).
+  const timer = useRef<number | null>(null);
+  useEffect(
+    () => () => {
+      if (timer.current !== null) window.clearTimeout(timer.current);
+    },
+    [],
+  );
   const slots = cleanerSlots(save, restaurantLevelOf(save.levelProgress));
   if (slots.length === 0) return null;
   const onShift = slots.filter((s) => s.onShift).length;
@@ -67,7 +75,11 @@ export function MapCleanerHire({
                         ? "💸 Not enough money"
                         : null,
                   );
-                  window.setTimeout(() => setSay(null), 1800);
+                  if (timer.current !== null) window.clearTimeout(timer.current);
+                  timer.current = window.setTimeout(() => {
+                    timer.current = null;
+                    setSay(null);
+                  }, 1800);
                 }}
               >
                 <span className="text-[20px] leading-none" aria-hidden>

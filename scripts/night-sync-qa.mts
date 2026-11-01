@@ -84,15 +84,17 @@ function dayAt(n: number) {
   return choresAfterService(s, n + 1);
 }
 
-console.log("S. Starts at Level 5");
+console.log("S. Starts at Level 3 (Day 2)");
 {
   assert(
-    CLEANING_FROM_LEVEL === 5 &&
-      dayCeremonyAt(5) &&
-      !dayCeremonyAt(4) &&
-      phaseChores("closing", 5).length > 0 &&
-      phaseChores("closing", 4).length === 0,
-    "S1: cleaning, the night chores and the day's ceremony (opening card, Closing Time) start at Level 5",
+    // Rule changed (developer 2026-11-01): cleaning, the shift chores and the day ceremony start at Day 2 (Level 3), not Level 5
+    // (a restaurant day is two services, so Day 2 is Levels 3-4; was Level 5).
+    CLEANING_FROM_LEVEL === 3 &&
+      dayCeremonyAt(3) &&
+      !dayCeremonyAt(2) &&
+      phaseChores("closing", 3).length > 0 &&
+      phaseChores("closing", 2).length === 0,
+    "S1: cleaning, the night chores and the day's ceremony (opening card, Closing Time) start at Level 3, Day 2 (developer 2026-11-01; was L5)",
   );
   const night = dayAt(6);
   const rows = closingRows(night, 7);

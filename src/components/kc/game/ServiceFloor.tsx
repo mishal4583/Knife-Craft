@@ -28,6 +28,7 @@ import type { QualityLabel } from "@/types/game";
 import { GuestPoses } from "../restaurantMap/GuestPoses";
 import { KButton } from "../common/primitives";
 import { TableCash } from "../common/TableCash";
+import { cashSpotBeside } from "@/game/restaurant/tableCash";
 import { AUTO_SERVE_MS } from "@/game/restaurant/prepCookAuto";
 import "./serviceFloor.css";
 
@@ -286,11 +287,11 @@ export function ServiceFloor({
             : null}
           {tableCash && tableCash.cents > 0 ? (
             <TableCash
-              stage={stage}
+              at={cashSpotBeside(stage, party.table, party.size, takeaway)}
               cents={tableCash.cents}
               onCollect={tableCash.onCollect}
               place={inView}
-              first={party.table === 0 ? 1 : 0}
+              swipe
             />
           ) : null}
           {leavers.map((l, i) => (

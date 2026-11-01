@@ -153,9 +153,11 @@ export function MarketPlanPanel({
                 className="mt-2 flex items-center gap-2 rounded-xl bg-gold/20 px-3 py-2 font-hand text-[16px] leading-snug text-walnut-dark"
               >
                 <span>
-                  {handStep === "buy"
-                    ? "1️⃣ Tap Buy on each one. Next: hire your team."
-                    : "✓ Food bought. Now hire your team, then go back to the Kitchen."}
+                  {handStep === "hire"
+                    ? "👆 Hire your team above first, then buy the food."
+                    : handStep === "to-kitchen"
+                      ? "✓ Food bought. Go back to the Kitchen."
+                      : "2️⃣ Tap Buy on each one. Then back to the Kitchen."}
                 </span>
                 <InfoTip label="About your first order">
                   Your first order needs these ingredients, bought with your own money. Your chef

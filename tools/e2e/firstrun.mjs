@@ -1,7 +1,7 @@
 // The first-run hand (developer 2026-11-01: "proper hand instructions to buy the ingredients, hire them and then go
 // back to cutting"), restaurant build, in a real browser, from a brand-new save:
-//   H1 the Market's hand is on the first Buy button (numbered caption "1️⃣"); buying everything moves it on.
-//   H2 the hand is then on a Hire button (Server first); hiring both moves it on.
+//   H1 the Market's hand is on the first Hire button (Server first, "1️⃣ Tap Hire"); hiring both moves it on.
+//   H2 the hand is then on the first Buy button ("2️⃣ Tap Buy"); buying everything moves it on.
 //   H3 the bottom bar's Kitchen tab has the hand and the caption "3️⃣ … back to the Kitchen".
 //   H4 on the Kitchen the hand is on "Open for service".
 //   H5 the Pre-Service Check (when it opens) has the hand on its start button; starting opens the cutting.
@@ -50,14 +50,37 @@ try {
   await clickButton(page, /^Show me/);
   await sleep(1500);
 
-  // ---------- H1: buy ----------
-  const buyHand = await handFor();
+  // ---------- H1: hire first ----------
+  const hireHand = await handFor();
   const hint1 = await flat();
-  await shot(page, "firstrun-1-buy");
+  await shot(page, "firstrun-1-hire");
   check(
-    "H1a the Market starts with the hand on the first Buy button and the numbered line",
-    buyHand.includes("buy") && /1️⃣ Tap Buy/.test(hint1),
-    buyHand,
+    "H1 the Market starts with the hand on the Server's Hire button and the line 1️⃣ Tap Hire (hire before buying)",
+    hireHand.includes("hire-server") && !hireHand.includes("buy") && /1️⃣ Tap Hire/.test(hint1),
+    hireHand,
+  );
+  for (let i = 0; i < 2; i++) {
+    await page.evaluate(() => {
+      const b = [...document.querySelectorAll('[data-testid="team-hire"] button')].find((x) =>
+        /^Hire/.test(x.textContent.trim()),
+      );
+      b?.click();
+    });
+    await sleep(800);
+  }
+
+  // ---------- H2: then buy ----------
+  const buyHand = await handFor();
+  const hint2 = await flat();
+  await shot(page, "firstrun-2-buy");
+  const cashAfterHire = (await readSave(page)).credits;
+  check(
+    "H2a with both hired the hand is on the first Buy button with the numbered line, and the $10.00 for food is left",
+    buyHand.includes("buy") &&
+      !buyHand.some((h) => /^hire-/.test(h)) &&
+      /2️⃣ Tap Buy/.test(hint2) &&
+      cashAfterHire === 1000,
+    { buyHand, cashAfterHire },
   );
   for (let i = 0; i < 4; i++) {
     const had = await page.evaluate(() => {
@@ -69,24 +92,6 @@ try {
     });
     await sleep(900);
     if (!had) break;
-  }
-
-  // ---------- H2: hire ----------
-  const hireHand = await handFor();
-  await shot(page, "firstrun-2-hire");
-  check(
-    "H2a with the food bought the hand is on a Hire button (the Server first), no longer on Buy",
-    hireHand.includes("hire-server") && !hireHand.includes("buy"),
-    hireHand,
-  );
-  for (let i = 0; i < 2; i++) {
-    await page.evaluate(() => {
-      const b = [...document.querySelectorAll('[data-testid="team-hire"] button')].find((x) =>
-        /^Hire/.test(x.textContent.trim()),
-      );
-      b?.click();
-    });
-    await sleep(800);
   }
 
   // ---------- H3: back to the Kitchen ----------

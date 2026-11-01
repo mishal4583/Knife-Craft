@@ -8,7 +8,7 @@
  * money itself is `economy/pendingCash.ts`.
  */
 import type { KitchenMapArtStage } from "../kitchen/kitchenMapArt";
-import { FLOOR_SEATS, type FloorPoint } from "./serviceFloor";
+import { FLOOR_SEATS, partySpots, takeawaySpot, type FloorPoint } from "./serviceFloor";
 
 /** The most bundles one table shows. */
 export const MAX_BUNDLES = 5;
@@ -46,4 +46,34 @@ export function tablePiles(
   if (total > onFirst)
     piles.push({ at: { x: b.table.x + 3.2, y: b.table.y }, bundles: total - onFirst });
   return piles;
+}
+
+/**
+ * Where a party's cash lies: right beside the people who paid, between their chairs and the aisle, never on the
+ * other (empty) table (developer 2026-11-01: "keep it next to the person who sat, near the table and chair").
+ * A takeaway customer pays at the counter, so their cash lies by them there.
+ */
+export function cashSpotBeside(
+  stage: KitchenMapArtStage,
+  table: 0 | 1,
+  size = 1,
+  takeaway = false,
+): FloorPoint {
+  if (takeaway) {
+    const c = takeawaySpot(stage);
+    return { x: c.x - 4.5, y: c.y + 0.5 };
+  }
+  const seats = FLOOR_SEATS[stage];
+  const mine = seats[table];
+  const other = seats[table === 0 ? 1 : 0];
+  const xs = partySpots(mine, Math.max(1, size)).map((p) => p.x);
+  // Beside the party on the side that is clear of the other table and stays well inside the painting (a label on
+  // the far edge was cut off): the left of the group or the right of it, whichever sits farther from the other seat.
+  const sides = [
+    { x: Math.min(...xs) - 5.5, y: mine.seat.y - 1 },
+    { x: Math.max(...xs) + 5.5, y: mine.seat.y - 1 },
+  ].filter((p) => p.x >= 10 && p.x <= 80);
+  const far = (p: FloorPoint) => Math.hypot(p.x - other.seat.x, p.y - other.seat.y);
+  const best = [...sides].sort((a, b) => far(b) - far(a))[0];
+  return best ?? { x: mine.seat.x + 5.5, y: mine.seat.y - 1 };
 }

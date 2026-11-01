@@ -37,6 +37,6 @@ left, the wage rising with progress**; table care **from the first customer**.
 ## First-run hand (added after this plan)
 
 A guided first run (developer 2026-11-01: "proper hand instructions to buy ingredients, hire them and then go back to cutting"):
-`restaurant/firstRunGuide.ts` `firstRunHand(save, where)` is pure and derived from the save only. Steps: buy the first order, hire the Server
+`restaurant/firstRunGuide.ts` `firstRunHand(save, where)` is pure and derived from the save only. Steps (hire first, then buy, since 2026-11-01 "ask the player to hire them first"): hire the Server
 and Cashier (skipped if unaffordable), back to the Kitchen tab, Open for service, Start service. Numbered captions; gone after the first
 service. Tests: `first-run-guide-qa`, `tools/e2e/firstrun.mjs`.

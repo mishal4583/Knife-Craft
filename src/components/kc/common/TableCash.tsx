@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import { useEffect, useRef, type CSSProperties } from "react";
 import { formatUsd } from "@/game/money";
 import { bundleCount, tablePiles } from "@/game/restaurant/tableCash";
 import type { FloorPoint } from "@/game/restaurant/serviceFloor";
@@ -20,6 +20,7 @@ export function TableCash({
   onCollect,
   place = (p) => p,
   first = 0,
+  swipe = false,
   className = "",
 }: {
   /** The kitchen's art stage, for the table points (omit when `at` places the pile). */
@@ -34,8 +35,44 @@ export function TableCash({
   place?: (p: FloorPoint) => FloorPoint;
   /** The table the pile fills first (the dining room passes the one nobody sits at). */
   first?: 0 | 1;
+  /** Dragging a finger (or a pressed mouse) across a pile collects it too, as well as a tap (the dining room). */
+  swipe?: boolean;
   className?: string;
 }) {
+  const layer = useRef<HTMLDivElement | null>(null);
+  const collect = useRef(onCollect);
+  collect.current = onCollect;
+  const done = useRef(false);
+  useEffect(() => {
+    done.current = false;
+  }, [cents]);
+  useEffect(() => {
+    if (!swipe) return;
+    const move = (e: PointerEvent) => {
+      if (done.current) return;
+      // Only a gesture inside the room itself counts: never one on an overlay above it (the table-scrubbing game
+      // covers the room while the pile is still mounted underneath).
+      const room = layer.current?.parentElement;
+      if (!room || !(e.target instanceof Node) || !room.contains(e.target)) return;
+      // A mouse has to be pressed; a finger or pen only moves while it touches.
+      if (e.pointerType === "mouse" && (e.buttons & 1) === 0) return;
+      for (const el of layer.current?.querySelectorAll<HTMLElement>(".tc-pile") ?? []) {
+        const r = el.getBoundingClientRect();
+        // The pile's own 52 px target (tableCash.css), a little generous for a quick swipe.
+        if (
+          Math.abs(e.clientX - r.left) <= 32 &&
+          e.clientY >= r.top - 40 &&
+          e.clientY <= r.top + 24
+        ) {
+          done.current = true;
+          collect.current();
+          return;
+        }
+      }
+    };
+    window.addEventListener("pointermove", move, { passive: true });
+    return () => window.removeEventListener("pointermove", move);
+  }, [swipe]);
   const piles = at
     ? cents > 0
       ? [{ at, bundles: bundleCount(cents) }]
@@ -46,7 +83,7 @@ export function TableCash({
   if (piles.length === 0) return null;
   const owed = formatUsd(cents);
   return (
-    <div className={`tc-layer ${className}`} data-testid={testId}>
+    <div ref={layer} className={`tc-layer ${className}`} data-testid={testId}>
       {piles.map((pile, i) => {
         const p = place(pile.at);
         return (
@@ -60,6 +97,8 @@ export function TableCash({
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => {
               e.stopPropagation();
+              if (done.current) return;
+              done.current = true;
               onCollect();
             }}
           >

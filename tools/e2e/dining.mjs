@@ -23,6 +23,7 @@ import {
   shot,
   startFirstLevel,
   sweepCash,
+  wipeServedTable,
 } from "./harness.mjs";
 import { playToReport } from "./solver.mjs";
 
@@ -204,8 +205,8 @@ try {
   const dirtyShown = await q('[data-testid="dirty-table"]');
   await shot(page, "dining-4-dirty");
   const beforeWipe = await readSave(page);
-  if (dirtyShown)
-    await page.evaluate(() => document.querySelector('[data-testid="dirty-table"]')?.click());
+  // The player scrubs the table in the cleaning game (developer 2026-11-01), then it is wiped for real.
+  const scrubbed = dirtyShown ? await wipeServedTable(page) : 0;
   await sleep(700);
   const afterWipe = await readSave(page);
   const napkins = await q('[data-testid="napkin-refill"]');
@@ -214,9 +215,10 @@ try {
   await sleep(600);
   const afterRefill = await readSave(page);
   check(
-    "D4b without a cleaner the dirty table shows in the room, a tap wipes it (wallet untouched), the third table's napkins ask for a refill and one tap fills them",
+    "D4b without a cleaner the dirty table shows in the room, scrubbing it in the cleaning game wipes it (wallet untouched), the third table's napkins ask for a refill and one tap fills them",
     offer === "offer" &&
       dirtyShown &&
+      scrubbed === 1 &&
       (afterWipe.business.cleanliness?.wipes?.n ?? 0) >= 1 &&
       afterWipe.credits === beforeWipe.credits &&
       napkins &&
@@ -227,6 +229,10 @@ try {
       napkins,
       tissueBefore: beforeWipe.business.cleanliness?.tissue,
       tissueAfter: afterRefill.business.cleanliness?.tissue ?? 0,
+      scrubbed,
+      wipes: afterWipe.business.cleanliness?.wipes,
+      creditsBefore: beforeWipe.credits,
+      creditsAfter: afterWipe.credits,
     },
   );
 
@@ -267,13 +273,16 @@ try {
   }
   await shot(page, "dining-7-level1");
   const l1Dirty = await q('[data-testid="dirty-table"]');
-  if (first === "offer") await clickButton(page, /Wipe the table/);
+  const l1Scrubbed = first === "offer" ? await wipeServedTable(page) : 0;
   await sleep(600);
   const l1 = await readSave(page);
   await sweepCash(page);
   check(
-    "D6 at Level 1, the very first customer: the dirty table shows, a tap wipes it for free (no supplies exist yet)",
-    first === "offer" && l1Dirty && (l1.business.cleanliness?.wipes?.n ?? 0) >= 1,
+    "D6 at Level 1, the very first customer: the dirty table shows, scrubbing it in the cleaning game wipes it for free (no supplies exist yet)",
+    first === "offer" &&
+      l1Dirty &&
+      l1Scrubbed === 1 &&
+      (l1.business.cleanliness?.wipes?.n ?? 0) >= 1,
     { first, l1Dirty, wipes: l1.business.cleanliness?.wipes },
   );
 

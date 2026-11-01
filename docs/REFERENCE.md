@@ -902,8 +902,7 @@ service, {recipe, levelNumber, index})`; the guest gate
 - `restaurant-cleanliness-qa` — CLEANLINESS & MAINTENANCE (developer
   2026-10-10; restaurant build). Restaurant → 🧹 Cleanliness tab
   (`business-cleanliness`, `BusinessCleanliness.tsx`). Cleaning starts with
-  Level 10's service (`CLEANING_FROM_LEVEL` = 10, developer 2026-10-10; was
-  21): tasks, the cupboard, the spotless streak; the tab shows in the
+  Level 3's service, Day 2 (`CLEANING_FROM_LEVEL` = 3 in `config/cleaningStart.ts`, developer 2026-11-01; was 5, 10, 21): tasks, the cupboard, the spotless streak; the tab shows in the
   Restaurant section, open from Level 5 (11 until 2026-10-25). Kitchen / Dining Area / Restroom
   cards (meter, spots with ✓/!, View details → each task's Clean button and
   "Buy …" for what it lacks), Today's cleanliness (Ready for service /
@@ -1249,7 +1248,14 @@ taken, repaid}`; taking on credit moves no money (no entry);
   Phase 10 (2026-11-01) updated it: the Server and Cashier hired in the first shop with the opening cash
   (`config/startingTeam.ts`, $236.00), hourly cleaners on the map (`MapCleanerHire`), table care from the first customer, the
   Cashier's counter. Browser: `tools/e2e/cashroom.mjs` (cash piles, Served card room).
-- `first-run-guide-qa` — the first-run hand (`restaurant/firstRunGuide.ts`, derived from the save only): buy, hire, back to the
+- `phase11-qa` — Phase 11 (2026-11-01/02): Grandma's pointer timing, the Business hub from Level 1, the cash spot beside the party
+  (`cashSpotBeside`, every stage/table/size), swipe collect, no Collect cash button, the dirty-table gate on Next Customer, the table scrub
+  game, cleaning from Day 2 (`CLEANING_FROM_LEVEL` = 3 in `config/cleaningStart.ts`; the first morning's restroom check). Browser:
+  `tools/e2e/day2.mjs` (plays Day 1 and Day 2 for real), `cashroom.mjs`, `dining.mjs`.
+- `guide-reality-qa` — every promise the guide makes is true by the game's own rules: Levels 1-80 x 5 wallets, knives/boards by the
+  Market's own verdicts, staff by `staffHireFrom`, kitchen tiers, 2nd floor, cleaning, suppliers; "You can afford" only about what can be
+  bought; a locked tab carries no attention count. A mutation check (the old price-only rule) fails it.
+- `first-run-guide-qa` — the first-run hand (`restaurant/firstRunGuide.ts`, derived from the save only): hire, buy, back to the
   Kitchen, Open for service, Start service; skips an unaffordable hire; gone after the first service. Browser:
   `tools/e2e/firstrun.mjs`.
 - `ad-bonuses-qa` — the six ad bonuses (§2, incl. welcome back): amounts, one entry per claim,

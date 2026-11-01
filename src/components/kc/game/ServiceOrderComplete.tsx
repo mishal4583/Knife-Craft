@@ -178,8 +178,8 @@ export function ServiceOrderComplete({
   preparedBy = "player",
   cashAtTable = false,
   bill = false,
+  blockNext,
   room,
-  onCollectCash,
   onCashPieceCollected,
   onCashRemaining,
   onCashCollected,
@@ -226,10 +226,10 @@ export function ServiceOrderComplete({
   cashAtTable?: boolean;
   /** A Cashier is on the team: the customer's bill is made (a line on the card). */
   bill?: boolean;
+  /** The table is still dirty: "Next Customer" waits until the player wipes it (text says how). */
+  blockNext?: string;
   /** The dining room above the Served card (DiningCashView): the card becomes a sheet under it. */
   room?: ReactNode;
-  /** Takes the cash left on the table into the wallet in one tap (developer 2026-10-30: no swipe screen). */
-  onCollectCash?: () => void;
   /** Cash pieces move into the wallet only after a real swipe collects them. */
   onCashPieceCollected?: (cents: number, isTip: boolean) => void;
   onCashRemaining?: (cents: number) => void;
@@ -257,7 +257,7 @@ export function ServiceOrderComplete({
   // advances the queue (or finishes the level) exactly once per screen.
   const nextLatch = useRef(false);
   function nextOnce() {
-    if (nextLatch.current) return;
+    if (nextLatch.current || blockNext) return;
     nextLatch.current = true;
     onNextOrder();
   }
@@ -298,6 +298,7 @@ export function ServiceOrderComplete({
   useEffect(() => {
     if (!auto || hidden || !served) return;
     if (!cashAtTable && remaining > 0) return; // cash that has to be swiped stays the player's
+    if (blockNext) return; // a dirty table waits for the player's cloth, Auto or not
     // Phase 2 step 5: Auto works through the queue — a waiting guest it can serve is seated
     // (the Menu guest button) before Next Customer.
     const guest = extraAction && !extraAction.disabled ? extraAction.onClick : null;
@@ -307,7 +308,7 @@ export function ServiceOrderComplete({
     );
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- nextOnce is latched; only these decide the next tap
-  }, [auto, hidden, served, remaining]);
+  }, [auto, hidden, served, remaining, blockNext]);
   // Phase 4 (B9): a special customer reacts in their own words to the same
   // grade (and the Regular to his wait); everyone else as before.
   const special =
@@ -519,15 +520,21 @@ export function ServiceOrderComplete({
               </p>
             ) : null}
             <div className="mt-5 space-y-2 [@media(max-height:640px)]:mt-3">
-              {cashAtTable && remaining > 0 && onCollectCash ? (
-                <KButton full variant="sage" onClick={onCollectCash}>
-                  💵 Collect cash
-                </KButton>
-              ) : null}
               {isBusinessOrder && served.businessCustomers?.complete ? null : (
-                <KButton full onClick={nextOnce}>
-                  {nextLabel}
-                </KButton>
+                <>
+                  {blockNext ? (
+                    <p
+                      role="status"
+                      data-testid="next-blocked"
+                      className="font-hand text-[16px] leading-snug text-copper"
+                    >
+                      {blockNext}
+                    </p>
+                  ) : null}
+                  <KButton full disabled={!!blockNext} onClick={nextOnce}>
+                    {nextLabel}
+                  </KButton>
+                </>
               )}
               {extraAction ? (
                 <KButton

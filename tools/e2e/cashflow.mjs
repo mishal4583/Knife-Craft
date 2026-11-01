@@ -72,13 +72,17 @@ try {
     return b ? b.disabled : "absent";
   });
   check(
-    "C2a after the reaction the served card opens by itself: cash waits (Collect cash), Next Customer is NOT gated",
-    /Collect cash/i.test(body) && gated === false,
+    // Rule changed (developer 2026-11-01): no Collect cash button (the pile is tapped or swiped), and a dirty table
+    // holds Next Customer back (the cash never does: it waits on the table).
+    "C2a after the reaction the served card opens by itself: the cash waits on the table (no button), Next Customer waits only for the dirty table",
+    /on the table/i.test(body) && !/Collect cash/i.test(body) && gated === true,
     { gated, body: body.slice(0, 160) },
   );
   await page.screenshot({ path: "tools/e2e/cashflow-table.png" });
   const pieces = await sweepCash(page);
-  check("C2b one tap on Collect cash takes it in", pieces > 0, { pieces });
+  check("C2b one tap on the pile takes the cash in (and the table is scrubbed)", pieces > 0, {
+    pieces,
+  });
   await sleep(1500);
   const collected = await readSave(page);
   const kinds = collected.economyLedger.map((e) => e.category);

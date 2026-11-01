@@ -379,7 +379,10 @@ assert(
 );
 assert(
   /if \(serveLatch\.current\) return;/.test(soc) &&
-    /if \(nextLatch\.current\) return;\s*nextLatch\.current = true;\s*onNextOrder\(\);/.test(soc) &&
+    // Rule changed (developer 2026-11-01): a dirty table also holds Next Customer back (blockNext); the latch stays.
+    /if \(nextLatch\.current \|\| blockNext\) return;\s*nextLatch\.current = true;\s*onNextOrder\(\);/.test(
+      soc,
+    ) &&
     /onClick=\{nextOnce\}/.test(soc),
   "C2: Serve pays once; Next Customer / Finish Level advances once (it used to advance the queue twice on a double tap)",
 );

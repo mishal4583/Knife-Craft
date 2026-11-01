@@ -2,7 +2,8 @@
 //   S1 a new game starts with $10.00 + the Server's and the Cashier's hiring fees (developer 2026-11-01: $236.00)
 //      and lands on the Kitchen after the intro (not in the cutting).
 //   S2 a hand points at the Market (Grandma's section pointer), and "Show me" opens the ingredients.
-//   S3 the Market shows the first-shopping hint and the hand on a needed item's Buy button.
+//   S3 the Market asks to hire first (developer 2026-11-01): the hint is there and the hand is on the Server's
+//      Hire button, not yet on Buy; once both are hired (S3b) the hand moves to a needed item's Buy button (S3c).
 //   S4 buying spends the player's own money: one inventory-purchase entry, wallet = opening + ledger.
 //   S5 nothing is given for free: no Grandma tools, cupboard or leftovers in the save.
 //   S6 with the food bought, Prepare opens the cutting; serve, sweep and Next Customer (last order) complete level-1.
@@ -54,13 +55,21 @@ try {
   const hint = await page.evaluate(
     () => !!document.querySelector('[data-testid="first-shopping-hint"]'),
   );
-  const hand = await page.evaluate(
-    () => !!document.querySelector('[data-testid="first-shopping-hand"]'),
+  const buyHand = () =>
+    page.evaluate(() => !!document.querySelector('[data-testid="first-shopping-hand"]'));
+  const hireHand = await page.evaluate(
+    () => !!document.querySelector('[data-hand-for="hire-server"]'),
   );
-  check("S3 the Market shows the first-shopping hint and the hand on Buy", hint && hand, {
-    hint,
-    hand,
-  });
+  const hand = await buyHand();
+  check(
+    "S3 the Market asks to hire first: the hint shows, the hand is on Hire, not on Buy yet",
+    hint && hireHand && !hand,
+    {
+      hint,
+      hireHand,
+      hand,
+    },
+  );
   await page.screenshot({ path: "tools/e2e/firstshop-2-market.png" });
 
   // The team is hired in the first shop with the opening cash that pays for it.
@@ -88,6 +97,11 @@ try {
       teamed.economyLedger.filter((e) => e.category === "staff-purchase").length === 2 &&
       !(await page.evaluate(() => !!document.querySelector('[data-testid="team-hire"]'))),
     { teamCard, credits: teamed.credits },
+  );
+  await sleep(500);
+  check(
+    "S3c with the team hired, the hand moves to the first needed item's Buy button",
+    await buyHand(),
   );
 
   // Buy every ingredient in the plan, one tap each (the hand moves to the next one).

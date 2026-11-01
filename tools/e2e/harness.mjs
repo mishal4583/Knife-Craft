@@ -485,13 +485,28 @@ export async function doClosingChores(page) {
 }
 
 /**
- * The player sweeps the served order's cash off the table (developer 2026-10-29: money enters the
- * wallet only as it is swept). Drags the pointer over every bill and coin, a few passes; returns how
- * many pieces it saw. Safe to call when there is nothing to sweep.
+ * The table the served customer left (developer 2026-11-01): a dirty table is wiped in the cleaning game (the
+ * player's own job until a Cleaner is hired) and Next Customer waits for it. Opens the game from the dirty table
+ * in the room (or the "Wipe the table" button), plays it to spotless. Returns 1 when a table was cleaned.
  */
+export async function wipeServedTable(page) {
+  const opened = await page.evaluate(() => {
+    const b =
+      document.querySelector('[data-testid="dirty-table"]') ??
+      [...document.querySelectorAll("button")].find((x) => /Wipe the table/.test(x.textContent));
+    b?.click();
+    return !!b;
+  });
+  if (!opened) return 0;
+  const ok = await playCleaningGame(page);
+  await sleep(500);
+  return ok ? 1 : 0;
+}
+
 export async function sweepCash(page) {
-  // The customer reacts and walks out, then the served card opens by itself; the cash waits on the
-  // table (developer 2026-10-30): one tap on "Collect cash" takes it into the wallet. Returns 1 when
+  // The customer reacts and walks out, then the served card opens by itself; the cash lies on the table
+  // beside them (developer 2026-11-01: no Collect cash button): a tap on the pile takes it into the wallet.
+  // The dirty table is then wiped (wipeServedTable), because Next Customer waits for it. Returns 1 when
   // there was cash to collect.
   await page
     .waitForFunction(() => !document.querySelector('[data-testid="service-floor"]'), {
@@ -500,13 +515,16 @@ export async function sweepCash(page) {
     .catch(() => {});
   await sleep(400);
   const clicked = await page.evaluate(() => {
-    const b = [...document.querySelectorAll("button")].find((x) =>
-      /^💵 Collect cash$/.test(x.textContent.trim()),
-    );
+    const b =
+      document.querySelector('[data-testid="table-cash-pile"]') ??
+      [...document.querySelectorAll("button")].find((x) =>
+        /^💵 Collect cash$/.test(x.textContent.trim()),
+      );
     b?.click();
     return !!b;
   });
   await sleep(1200);
+  await wipeServedTable(page);
   return clicked ? 1 : 0;
 }
 

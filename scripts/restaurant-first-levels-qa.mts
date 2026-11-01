@@ -124,25 +124,26 @@ console.log("D. Quiet day-end before Level 21");
     for (let i = 0; i < servicesForDayAt(n).length; i++) s = recordService(s, n + i);
     return s;
   };
-  const day = finished(2);
-  const closed = closeDay(day, 4);
+  // Rule changed (developer 2026-11-01): cleaning, the shift chores and the day ceremony start at Day 2 (Level 3), not Level 5; the quiet close is Day 1's (Levels 1-2).
+  const day = finished(1);
+  const closed = closeDay(day, 2);
   assert(
     restaurantDayOf(day).closingDue &&
-      !dayCeremonyAt(4) &&
+      !dayCeremonyAt(2) &&
       restaurantDayOf(closed).day === restaurantDayOf(day).day + 1 &&
       !restaurantDayOf(closed).closingDue &&
       closed.credits === day.credits &&
       closed.economyLedger.length === day.economyLedger.length &&
       JSON.stringify(closed.business.inventory) === JSON.stringify(day.business.inventory) &&
       JSON.stringify(closed.business.calendar) === JSON.stringify(day.business.calendar),
-    "D1: the quiet close before Level 5 (developer 2026-10-29; was L21) only turns the day (no money, ledger, stock or calendar change)",
+    "D1: the quiet close before Level 3 (developer 2026-11-01; was L5) only turns the day (no money, ledger, stock or calendar change)",
   );
   assert(
     // Developer 2026-10-29: the day's ceremony (opening card, Closing Time) starts at L5.
-    Array.from({ length: 4 }, (_, i) => dayCeremonyAt(i + 1)).every((v) => !v) &&
-      dayCeremonyAt(5) &&
+    Array.from({ length: 2 }, (_, i) => dayCeremonyAt(i + 1)).every((v) => !v) &&
+      dayCeremonyAt(3) &&
       dayCeremonyAt(150),
-    "D2: the opening card and Closing Time show from Level 5 (developer 2026-10-29; was L16)",
+    "D2: the opening card and Closing Time show from Level 3, Day 2 (developer 2026-11-01; was L5)",
   );
 }
 

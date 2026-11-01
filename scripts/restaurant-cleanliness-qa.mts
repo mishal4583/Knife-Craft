@@ -170,14 +170,15 @@ console.log("C. Catalog");
 
 console.log("G. Tasks from services");
 {
-  const before = tasksAfterService(saveAt(4), 4, { recipes: [plain], dineIn: 0, customers: 1 });
+  // Rule changed (developer 2026-11-01): cleaning, the shift chores and the day ceremony start at Day 2 (Level 3), not Level 5.
+  const before = tasksAfterService(saveAt(2), 2, { recipes: [plain], dineIn: 0, customers: 1 });
   const a = tasksAfterService(saveAt(25), 25, { recipes: [plain], dineIn: 0, customers: 1 });
   const b = tasksAfterService(saveAt(25), 25, { recipes: [plain], dineIn: 0, customers: 1 });
   assert(
     kinds(before) === "" &&
       kinds(a) === "bins,equipment,floor,restroom-floor,toilet" &&
       JSON.stringify(a) === JSON.stringify(b),
-    "G1: nothing before L5; from L5 (developer 2026-10-29, was L10) a service leaves the kitchen's equipment and bins, the dining floor, the restroom's toilet and floor (deterministic)",
+    "G1: nothing before L3; from L3 (developer 2026-11-01, was L5) a service leaves the kitchen's equipment and bins, the dining floor, the restroom's toilet and floor (deterministic)",
     kinds(a),
   );
   const g = tasksAfterService(saveAt(40), 40, { recipes: [fried], dineIn: 2, customers: 2 });
@@ -326,10 +327,10 @@ console.log("P. Spotless");
     { r1: r1.report.hygiene, r2: r2.report.streak },
   );
   const l21 = closeServiceReport(snapshotServiceStart(saveAt(5), 5), 5, false);
-  const l20 = closeServiceReport(snapshotServiceStart(saveAt(4), 4), 4, false);
+  const l20 = closeServiceReport(snapshotServiceStart(saveAt(2), 2), 2, false);
   assert(
     l21.report.spotless === true && l20.report.spotless === null,
-    "P2: from L5 (no cleaning liquid needed before dine-in) a clean start is spotless; before L5 there's no streak",
+    "P2: from L3 (no cleaning liquid needed before dine-in) a clean start is spotless; before L3 there's no streak (developer 2026-11-01; was L5)",
   );
 }
 
@@ -429,8 +430,8 @@ console.log("W. Wiring");
     "W1: App and the sim snapshot at the start, add tasks after the report, then the Cleaner's round; no cupboard given; no Math.random",
   );
   assert(
-    CLEANING_FROM_LEVEL === 5,
-    "W2: cleaning starts with Level 5's service (developer 2026-10-29; was L10, before that L21)",
+    CLEANING_FROM_LEVEL === 3,
+    "W2: cleaning starts with Level 3's service, Day 2 (developer 2026-11-01; was L5, L10, L21)",
   );
 }
 

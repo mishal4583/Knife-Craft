@@ -145,7 +145,12 @@ import {
 import { rankChange } from "@/game/restaurant/cityRanking";
 import { recordEndlessDayStars, starsForDay } from "@/game/restaurant/restaurantStanding";
 import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
-import { kitchenMapArtStage, kitchenMapImageUrl } from "@/game/kitchen/kitchenMapArt";
+import {
+  cleanlinessRoomImageUrl,
+  kitchenMapArtStage,
+  kitchenMapImageUrl,
+} from "@/game/kitchen/kitchenMapArt";
+import { cleaningVariant } from "@/game/restaurant/cleaningDirt";
 import { ticketsFor } from "@/game/restaurant/serviceTickets";
 import { consumeCampaignOrderStock } from "@/game/restaurant/campaignStock";
 import { servicePlanFor, servicePlanNeedsSheet } from "@/game/restaurant/preServiceCheck";
@@ -3841,6 +3846,17 @@ export function App() {
                       onWipe: wipeTableFromFloor,
                       napkinsLow: napkinsLow(save),
                       onRefill: refillNapkinsFromFloor,
+                      // The player scrubs the table in the cleaning game (a fresh layout of dirt every time)
+                      // until a Cleaner takes it over (developer 2026-11-01).
+                      scrub: {
+                        image: cleanlinessRoomImageUrl("dining", save.equippedKitchenUpgradeId),
+                        stage: kitchenMapArtStage(save.equippedKitchenUpgradeId),
+                        variant: cleaningVariant(
+                          cleanlinessOf(save).cleaned + (cleanlinessOf(save).wipes?.n ?? 0),
+                          0,
+                          "tables",
+                        ),
+                      },
                     },
                   }
                 : {}),

@@ -367,6 +367,19 @@ const base = (credits = dollars(500)): SaveData =>
       !CL.areaCovered(nextDay(hired), "kitchen") &&
       CL.hireHourlyCleaner(nextDay(hired), "kitchen", n).ok,
   );
+  // Review fix (2026-11-01): `hourly` stays in the save after the day ends; the team's round must not use it.
+  const tomorrow = CL.tasksAfterService(nextDay(hired), n, {
+    recipes: [CAMPAIGN_RECIPES[0]!],
+    dineIn: 2,
+    customers: 2,
+  });
+  const round = CL.cleanerRound(tomorrow);
+  check(
+    "H6b yesterday's hourly Cleaner does not keep cleaning for free: the team's round on the next day cleans nothing in their area",
+    CL.cleanlinessOf(tomorrow).tasks.some((t) => CL.TASK_RULES[t.kind].area === "kitchen") &&
+      round.cleaned.every((k) => CL.TASK_RULES[k].area !== "kitchen"),
+    { cleaned: round.cleaned },
+  );
   check(
     "H7 only a Cleaner on the dining room clears tables by themself; a Server does not (the player cleans), otherwise the player",
     CL.tableStaff(s0) === null &&
@@ -612,15 +625,17 @@ const base = (credits = dollars(500)): SaveData =>
   const room = read("src/components/kc/game/DiningCashView.tsx");
   const prep = read("src/components/kc/game/Preparation.tsx");
   check(
-    "B1 the Served card sits under the dining room with the cash on the table: a tap on the pile or the button is the same collect; the dirty table and the napkins are tappable there too, and the card makes the bill",
+    // Rule changed (developer 2026-11-01): no Collect cash button; a tap or a swipe on the pile collects it.
+    "B1 the Served card sits under the dining room with the cash beside the party: a tap or a swipe on the pile collects it (no button); the dirty table and the napkins are tappable there too, and the card makes the bill",
     /room\?: ReactNode/.test(soc) &&
       /served && room/.test(soc) &&
       /bill-line/.test(soc) &&
       /<TableCash/.test(room) &&
-      /Tap the cash on the table/.test(room) &&
+      /Tap or swipe the cash/.test(room) &&
+      /swipe/.test(room) &&
+      !/Collect cash/.test(soc) &&
       /data-testid="dirty-table"/.test(room) &&
       /data-testid="napkins-low"/.test(room) &&
-      /onCollectCash: collectTableCash/.test(prep) &&
       /onCollect=\{collectTableCash\}/.test(prep),
   );
   const chores = read("src/components/kc/restaurant/ShiftChecklist.tsx");

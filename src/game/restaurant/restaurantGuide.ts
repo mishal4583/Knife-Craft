@@ -32,6 +32,8 @@ import { PREP_COOK_CUTS_FROM } from "./prepCookAuto";
 import { BUSINESS_STAFF_CATALOG, dailyPayroll } from "../business/businessStaff";
 import { cityRanking } from "./cityRanking";
 import { cleanlinessOf, hasCleaner, isCleanlinessLive, taskNeeds } from "./cleanliness";
+import { getKnifePurchaseState } from "../knives/KnifeManager";
+import { canBuy as canBuyBoard } from "../boards/BoardManager";
 import { getSupplyItem, type SupplyId } from "../business/businessSupplies";
 import { isSystemLive } from "./restaurantProgression";
 import { formatUsd } from "../money";
@@ -81,9 +83,10 @@ const RULES: readonly Rule[] = [
   // Early goals (the first levels): a better knife and board you can afford now, then the Blacksmith.
   (save, level) => {
     if (level < 3) return null;
-    const owned = new Set(save.ownedKnifeIds);
+    // The Market's OWN verdict decides ("affordable" = its level reached, not owned, the wallet covers it), so a
+    // guide step can never name a knife the Market still shows as locked (developer 2026-11-01).
     const knife = [...KNIFE_CATALOG]
-      .filter((k) => k.price > 0 && !owned.has(k.id) && k.price <= save.credits)
+      .filter((k) => k.price > 0 && getKnifePurchaseState(save, k.id) === "affordable")
       .sort((a, b) => a.price - b.price)[0];
     return knife
       ? {
@@ -98,9 +101,8 @@ const RULES: readonly Rule[] = [
   },
   (save, level) => {
     if (level < 4) return null;
-    const owned = new Set(save.ownedBoardIds);
     const board = [...BOARD_CATALOG]
-      .filter((b) => b.price > 0 && !owned.has(b.id) && b.price <= save.credits)
+      .filter((b) => b.price > 0 && canBuyBoard(b.id, save))
       .sort((a, b) => a.price - b.price)[0];
     return board
       ? {

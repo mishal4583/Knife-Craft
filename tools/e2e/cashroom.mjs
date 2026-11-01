@@ -1,8 +1,11 @@
 // Developer 2026-11-01, restaurant build, in a real browser:
 //   K1 after Serve the Served card sits under the dining room with the cash lying on the table; the hint says
 //      to tap it (the cash never appears out of nowhere behind a button).
-//   K2 one tap on the pile collects it all: wallet = opening cash + signed ledger, the pile and the
-//      Collect cash button are gone, the card says "Cash collected".
+//   K2 one tap on the pile collects it all: wallet = opening cash + signed ledger, the pile is gone and there is no
+//      Collect cash button anywhere (developer 2026-11-01), the card says "Cash collected".
+//   K2b Next Customer waits for the dirty table: it is disabled and says so; the table is scrubbed in the cleaning
+//      game (not a one-tap wipe), then Next Customer is open.
+//   K2c a swipe (a pressed pointer dragged across the pile) collects the cash too.
 //   K3 the Pre-Service Check's opening chore keeps its name readable (not one word per line) with its Buy button
 //      under it, at 320 and 390 px.
 //   K4 Cleanliness: the "Hire a Cleaner for today" offer is the LAST card of the page, below the areas and the
@@ -19,6 +22,7 @@ import {
   readSave,
   text,
   shot,
+  wipeServedTable,
 } from "./harness.mjs";
 
 const results = [];
@@ -113,7 +117,7 @@ try {
   const before = await readSave(page);
   check(
     "K1 the Served card sits under the dining room with the cash on the table and a hint to tap it",
-    room && /Tap the cash/.test(hint ?? "") && owed(before) > 0,
+    room && /Tap or swipe the cash/.test(hint ?? "") && owed(before) > 0,
     { room, hint, owed: owed(before) },
   );
   await page.evaluate(() =>
@@ -134,6 +138,72 @@ try {
       !/Collect cash/i.test(body.replace(/Collect cash at/g, "")) &&
       /Cash collected/i.test(body),
     { collected: after.credits - before.credits, owedBefore: owed(before) },
+  );
+
+  // ---------- K2b: Next Customer waits; the scrub game cleans the table ----------
+  const nextState = () =>
+    page.evaluate(() => {
+      const b = [...document.querySelectorAll("button")].find((x) =>
+        /^Next Customer$/.test(x.textContent.trim()),
+      );
+      return b ? (b.disabled ? "disabled" : "enabled") : "missing";
+    });
+  const blockedNote = await q('[data-testid="next-blocked"]');
+  const nextBefore = await nextState();
+  const wipesBefore = after.business.cleanliness?.wipes?.n ?? 0;
+  const scrubbed = await wipeServedTable(page);
+  const afterScrub = await readSave(page);
+  const nextAfter = await nextState();
+  await shot(page, "cashroom-2b");
+  check(
+    "K2b a dirty table blocks Next Customer (disabled, with the reason); the cleaning game scrubs it and then Next Customer is open",
+    blockedNote &&
+      nextBefore === "disabled" &&
+      scrubbed === 1 &&
+      (afterScrub.business.cleanliness?.wipes?.n ?? 0) > wipesBefore &&
+      nextAfter === "enabled" &&
+      !(await q('[data-testid="next-blocked"]')),
+    { blockedNote, nextBefore, scrubbed, nextAfter, wipes: afterScrub.business.cleanliness?.wipes },
+  );
+
+  // ---------- K2c: a swipe collects too ----------
+  await boot(page, saveAt(32));
+  await openForService();
+  await startService();
+  await sleep(3500);
+  await clickButton(page, /Prep Cook cuts it/);
+  await sleep(3200);
+  await clickButton(page, /^Serve to /);
+  let room2 = false;
+  for (let i = 0; i < 50 && !room2; i++) {
+    await sleep(250);
+    room2 = await q('[data-testid="dining-cash-view"] [data-testid="table-cash-pile"]');
+    if (room2 && (await q('[data-testid="service-floor"]'))) room2 = false;
+  }
+  await sleep(400);
+  const beforeSwipe = await readSave(page);
+  const box = await page.evaluate(() => {
+    const r = document
+      .querySelector('[data-testid="dining-cash-view"] [data-testid="table-cash-pile"]')
+      ?.getBoundingClientRect();
+    return r ? { x: r.left, y: r.top } : null;
+  });
+  if (box) {
+    await page.mouse.move(box.x - 60, box.y - 4);
+    await page.mouse.down();
+    for (let dx = -60; dx <= 60; dx += 10)
+      await page.mouse.move(box.x + dx, box.y - 4, { steps: 2 });
+    await page.mouse.up();
+  }
+  await sleep(900);
+  const afterSwipe = await readSave(page);
+  check(
+    "K2c dragging a pressed pointer across the pile collects the cash (no tap needed)",
+    !!box &&
+      owed(beforeSwipe) > 0 &&
+      owed(afterSwipe) === 0 &&
+      afterSwipe.credits - beforeSwipe.credits === owed(beforeSwipe),
+    { box, owed: owed(beforeSwipe), after: afterSwipe.credits - beforeSwipe.credits },
   );
 
   // ---------- K3: the opening chore row ----------

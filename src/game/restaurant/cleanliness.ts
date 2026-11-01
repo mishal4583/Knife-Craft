@@ -46,13 +46,10 @@ import {
 import { isAuditDay } from "./parAudit";
 import { remapCampaignThreshold } from "../levels/campaignSelection";
 import { BUSINESS_STAFF_CATALOG } from "../business/businessStaff";
+import { CLEANING_FROM_LEVEL } from "../config/cleaningStart";
 
-/**
- * Cleaning starts with this level's service (developer 2026-10-10: "from level
- * 10"): its tasks, Grandma's cleaning cupboard and the spotless streak. The
- * management screen is in the Business section, which opens at Level 11.
- */
-export const CLEANING_FROM_LEVEL = 5;
+/** When cleaning starts (config/cleaningStart.ts: Day 2, Level 3). */
+export { CLEANING_FROM_LEVEL };
 
 export const isCleanlinessLive = (levelNumber: number) => levelNumber >= CLEANING_FROM_LEVEL;
 
@@ -1049,11 +1046,13 @@ export function cleanerRound(save: SaveData): { save: SaveData; cleaned: TaskKin
   let s = save;
   const cleaned: TaskKind[] = [];
   const cleanerToday = cleanerOnDuty(save);
+  // Only TODAY's hourly Cleaners count: `st.hourly` is kept after the day ends (hourlyAreas checks the day).
+  const hourlyToday = hourlyAreas(save);
   for (const t of st.tasks) {
     const rule = TASK_RULES[t.kind];
     if (!rule.routine) continue;
     const role = staffFor(t.kind);
-    const hourlyHere = role === "cleaner" && (st.hourly ?? []).includes(rule.area);
+    const hourlyHere = role === "cleaner" && hourlyToday.includes(rule.area);
     if (!hourlyHere) {
       if (role === "cleaner" ? !cleanerToday : !hired.includes(role)) continue;
       if (role === "cleaner" && !st.cleanerAreas.includes(rule.area)) continue;
@@ -1128,12 +1127,15 @@ export function addPhaseChores(
 ): SaveData {
   const st = cleanlinessOf(save);
   // The morning never repeats the night: the restroom check only comes when the night's
-  // restroom pass is still open (it was not done).
+  // restroom pass is still open (it was not done) - or when there has been no night pass at all yet, as on the
+  // first cleaning morning (Day 2): nobody has looked at the restroom since cleaning started (developer 2026-11-01).
+  const noNightYet = !st.choreKeys.some((k) => k.includes(":closing:"));
   const kinds = phaseChores(phase, levelNumber, day).filter(
     (k) =>
       !(
         phase === "opening" &&
         k === "restroom-check" &&
+        !noNightYet &&
         !st.tasks.some((t) => t.kind === "restroom-disinfect")
       ),
   );

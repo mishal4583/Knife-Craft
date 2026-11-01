@@ -4,6 +4,7 @@ import { businessAlertsFor } from "../business/businessAlerts";
 import { restaurantAttention } from "./restaurantAttention";
 import { areaView, isCleanlinessLive, STRIP_SUPPLIES, supplyGauge } from "./cleanliness";
 import { levelNumber } from "../levels/levelMastery";
+import { isTabOpen } from "./firstLevels";
 import type { ScreenId } from "@/components/kc/data";
 import type { RestaurantZoneId } from "@/components/kc/restaurantMap/restaurantMap";
 import type { SupplyId } from "../business/businessSupplies";
@@ -20,11 +21,7 @@ export type AttentionBadges = {
 const add = <K extends string>(target: Partial<Record<K, number>>, key: K, count: number) => {
   if (count > 0) target[key] = count;
 };
-const CLEANING_SUPPLIES = new Set<SupplyId>([
-  ...STRIP_SUPPLIES,
-  "dish-soap",
-  "cleaning-liquid",
-]);
+const CLEANING_SUPPLIES = new Set<SupplyId>([...STRIP_SUPPLIES, "dish-soap", "cleaning-liquid"]);
 
 function uniqueSymbols(symbols: readonly string[]): string[] {
   return [...new Set(symbols)];
@@ -90,7 +87,8 @@ export function attentionBadgesFor(save: SaveData): AttentionBadges {
   const fridgeCount =
     attention.rows.filter((row) => row.kind === "fridge").length +
     business.filter((alert) => alert.key.startsWith("fridge:")).length;
-  const businessCount = business.length + attention.rows.filter((row) => row.kind === "staff").length;
+  const businessCount =
+    business.length + attention.rows.filter((row) => row.kind === "staff").length;
 
   let kitchenCount = 0;
   let diningCount = 0;
@@ -105,7 +103,8 @@ export function attentionBadgesFor(save: SaveData): AttentionBadges {
     kitchenCount = kitchen.tasks.length;
     diningCount = dining.tasks.length;
     diningCount += attention.rows.filter(
-      (row) => row.kind === "supply" && row.action.to === "supply" && row.action.id === "paper-napkins",
+      (row) =>
+        row.kind === "supply" && row.action.to === "supply" && row.action.id === "paper-napkins",
     ).length;
     restroomCount = restroom.tasks.length;
     // Refill consumables are a restroom attention item even before a scheduled paper check.
@@ -116,7 +115,12 @@ export function attentionBadgesFor(save: SaveData): AttentionBadges {
     diningSymbols = uniqueSymbols([
       ...dining.tasks.map((task) => task.rule.icon),
       ...attention.rows
-        .filter((row) => row.kind === "supply" && row.action.to === "supply" && row.action.id === "paper-napkins")
+        .filter(
+          (row) =>
+            row.kind === "supply" &&
+            row.action.to === "supply" &&
+            row.action.id === "paper-napkins",
+        )
         .map(() => "🧻"),
     ]);
     restroomSymbols = uniqueSymbols([
@@ -131,7 +135,9 @@ export function attentionBadgesFor(save: SaveData): AttentionBadges {
     attention.rows.filter(
       (row) =>
         row.kind === "bottle" ||
-        (row.kind === "supply" && row.action.to === "supply" && CLEANING_SUPPLIES.has(row.action.id)),
+        (row.kind === "supply" &&
+          row.action.to === "supply" &&
+          CLEANING_SUPPLIES.has(row.action.id)),
     ).length + lowCleaningSupplies;
   const serviceCount = business.filter(
     (alert) => alert.key === "no-dishes" || alert.key.startsWith("order-blocked:"),
@@ -151,9 +157,13 @@ export function attentionBadgesFor(save: SaveData): AttentionBadges {
   if (stockCount + inventoryBusiness.length > 0) {
     mapSymbols.inventory = uniqueSymbols([
       ...attention.rows.map((row) =>
-        row.action.to === "supply" ? supplySymbol(row.action.id) :
-          row.action.to === "fridge" ? "❄️" :
-            row.action.to === "staff" ? "👥" : INGREDIENT_EMOJI[row.action.id],
+        row.action.to === "supply"
+          ? supplySymbol(row.action.id)
+          : row.action.to === "fridge"
+            ? "❄️"
+            : row.action.to === "staff"
+              ? "👥"
+              : INGREDIENT_EMOJI[row.action.id],
       ),
       ...inventoryBusiness.map((alert) =>
         alert.key.startsWith("spoil-tonight:") || alert.key.startsWith("near-expiry:")
@@ -185,7 +195,11 @@ export function attentionBadgesFor(save: SaveData): AttentionBadges {
     mapSymbols.cleaning = uniqueSymbols([
       ...attention.rows.flatMap((row) => {
         if (row.kind === "bottle") return ["🧴"];
-        if (row.kind === "supply" && row.action.to === "supply" && CLEANING_SUPPLIES.has(row.action.id)) {
+        if (
+          row.kind === "supply" &&
+          row.action.to === "supply" &&
+          CLEANING_SUPPLIES.has(row.action.id)
+        ) {
           return [supplySymbol(row.action.id)];
         }
         return [];
@@ -216,19 +230,26 @@ export function attentionBadgesFor(save: SaveData): AttentionBadges {
           return icons.length ? icons : ["🧾"];
         }
         return [
-          alert.key.startsWith("spoil-tonight:") || alert.key.startsWith("near-expiry:") ? "⏳" :
-            alert.key.startsWith("fridge:") ? "🛠️" :
-              alert.key.startsWith("payroll-") ? "💰" :
-                alert.key.startsWith("supplier-event:") ? "🚚" :
-                  alert.key === "no-dishes" || alert.key.startsWith("order-blocked:") ? "🍽️" : "⚠️",
+          alert.key.startsWith("spoil-tonight:") || alert.key.startsWith("near-expiry:")
+            ? "⏳"
+            : alert.key.startsWith("fridge:")
+              ? "🛠️"
+              : alert.key.startsWith("payroll-")
+                ? "💰"
+                : alert.key.startsWith("supplier-event:")
+                  ? "🚚"
+                  : alert.key === "no-dishes" || alert.key.startsWith("order-blocked:")
+                    ? "🍽️"
+                    : "⚠️",
         ];
       }),
       ...attention.rows.filter((row) => row.kind === "staff").map(() => "👥"),
     ]);
   }
 
-  // Achievement rewards waiting to be collected (progression/achievements.ts).
-  add(nav, "rack", collectable(save).length);
+  // Achievement rewards waiting to be collected (progression/achievements.ts): only once Progress is open, so
+  // a locked section never carries a count (guide-reality-qa T4).
+  if (isTabOpen("rack", level)) add(nav, "rack", collectable(save).length);
 
   return { nav, map, mapSymbols };
 }

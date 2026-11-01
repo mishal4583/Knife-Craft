@@ -24,6 +24,7 @@ import {
 } from "../common/Meters";
 import { BottomNav } from "../Kitchen";
 import { BUSINESS_TAB_SCREEN, type BusinessTab } from "./businessTabs";
+import { lockedScreenHint } from "@/game/restaurant/firstLevels";
 import { BusinessCash } from "./BusinessCash";
 import { BusinessRefrigerator } from "./BusinessRefrigerator";
 import { KitchenUpgrades } from "../KitchenUpgrades";
@@ -242,7 +243,14 @@ export function BusinessDashboard({
     RESTAURANT_MODE &&
     !!cleanlinessAction &&
     restaurantLevelOf(save.levelProgress) >= CLEANING_FROM_LEVEL;
-  const tabs = cleanlinessOpen ? TABS : TABS.filter((t) => t.id !== "cleanliness");
+  // The hub opens from Level 1 (firstLevels.ts BUSINESS_HUB_FROM_LEVEL) but its pages keep their own levels: a tab
+  // whose page is still locked is not offered (the Overview and, from Day 2, Cleanliness come first).
+  const level = restaurantLevelOf(save.levelProgress);
+  const tabs = TABS.filter(
+    (t) =>
+      (t.id !== "cleanliness" || cleanlinessOpen) &&
+      (!RESTAURANT_MODE || !lockedScreenHint(BUSINESS_TAB_SCREEN[t.id], level)),
+  );
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-cream">

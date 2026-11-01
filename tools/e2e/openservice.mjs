@@ -5,7 +5,7 @@
 //   O4 no level number on the Kitchen: closed sections count services ("🔒 N services", "opens in N services");
 //   O5 replays live on the Order Board (Level 1 shows Replay there);
 //   O6 one tap on "Open for service" opens Level 2 (its check or its customer), never Level 1 again;
-//   O7 wallet = $10 + signed ledger; O8 no console errors.
+//   O7 wallet = $10 + the two hiring fees ($236.00, config/startingTeam.ts) + signed ledger; O8 no console errors.
 import {
   launch,
   startFirstLevel,
@@ -106,7 +106,7 @@ try {
       s6.levelProgress.currentLevelId !== "level-1",
     { current: s6.levelProgress.currentLevelId, t: t6.slice(0, 200) },
   );
-  check("O7 wallet = $10 + signed ledger", s6.credits === 1000 + ledgerSum(s6), {
+  check("O7 wallet = $236.00 opening cash + signed ledger", s6.credits === 23600 + ledgerSum(s6), {
     credits: s6.credits,
   });
   const errors = logs.filter(

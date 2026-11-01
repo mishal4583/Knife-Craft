@@ -76,6 +76,7 @@ import { OrderComplete } from "./OrderComplete";
 import { ServiceOrderComplete } from "./ServiceOrderComplete";
 import { ServiceFloor, type FloorMode } from "./ServiceFloor";
 import { DiningCashView } from "./DiningCashView";
+import { AreaCleaningPrototype } from "../business/AreaCleaningPrototype";
 import { OvenStep } from "./OvenStep";
 import { ovenStepFor, trayItemFor } from "@/game/cooking/ovenStep";
 import {
@@ -265,6 +266,8 @@ export function Preparation({
       /** The napkin holders are low (every third table) and `onRefill` fills them. */
       napkinsLow: boolean;
       onRefill: () => void;
+      /** The cleaning game's room image, art stage and dirt layout for this table (the player scrubs it). */
+      scrub?: { image: string; stage: KitchenMapArtStage; variant: number };
     };
   };
   onExit: () => void;
@@ -954,7 +957,7 @@ export function Preparation({
     }
     setFloorMode(null);
   };
-  /** One tap takes the cash left on the table into the wallet (the Collect cash button, or a pile in the dining room). */
+  /** One tap takes the cash left on the table into the wallet (a tap or a swipe on the pile in the dining room). */
   const collectTableCash = () => {
     service?.onCollectTableCash?.();
     setServiceCashRemaining(0);
@@ -967,10 +970,19 @@ export function Preparation({
     need?: string | undefined;
     refilled?: boolean;
   } | null>(null);
-  const wipeNow = () => {
+  /** The player is scrubbing the table in the cleaning game. */
+  const [scrubbing, setScrubbing] = useState(false);
+  /** The table is wiped for real (supplies and the ledger-free counters are App's). */
+  const wipeDone = () => {
     if (!service?.tableWipe) return;
     const r = service.tableWipe.onWipe(partySeat?.party.size ?? 1, "player");
     setCare(r.ok ? { wiped: true } : { wiped: false, need: r.need });
+  };
+  /** Tapping the dirty table opens the scrubbing game (the old satisfying clean); it wipes when finished. */
+  const wipeNow = () => {
+    if (!service?.tableWipe) return;
+    if (service.tableWipe.scrub) setScrubbing(true);
+    else wipeDone();
   };
   const refillNow = () => {
     service?.tableWipe?.onRefill();
@@ -1551,6 +1563,21 @@ export function Preparation({
         </div>
       ) : null}
 
+      {scrubbing && service?.tableWipe?.scrub ? (
+        <AreaCleaningPrototype
+          area="dining"
+          task="tables"
+          stage={service.tableWipe.scrub.stage}
+          image={service.tableWipe.scrub.image}
+          variant={service.tableWipe.scrub.variant}
+          onClose={() => setScrubbing(false)}
+          onComplete={() => {
+            setScrubbing(false);
+            wipeDone();
+          }}
+        />
+      ) : null}
+
       {cooking === "playing" && ovenStep ? (
         <OvenStep
           dish={{ emoji: view.emoji, name: view.title }}
@@ -1658,11 +1685,13 @@ export function Preparation({
             credits={credits}
             cashAtTable={!!floor}
             bill={!!service.cashier}
+            {...(care && !care.wiped && !care.need
+              ? { blockNext: "🧽 Wipe the table first: tap it above" }
+              : {})}
             {...(floor && service.onCollectTableCash
               ? {
-                  // One tap takes the cash left on the table into the wallet (no swipe screen) — on the
-                  // button, or on the pile itself in the dining room above the card.
-                  onCollectCash: collectTableCash,
+                  // The cash is collected on the pile itself in the dining room above the card: a tap or a
+                  // swipe (no Collect cash button; developer 2026-11-01).
                   room: (
                     <DiningCashView
                       stage={floor.stage}

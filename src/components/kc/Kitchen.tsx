@@ -10,6 +10,7 @@ import {
   grandmaTipFor,
   isTabNew,
   isTabOpen,
+  isShortcutOpen,
   tabOpensAt,
 } from "@/game/restaurant/firstLevels";
 import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
@@ -399,7 +400,7 @@ export function Kitchen({
             { id: "business", label: "Business", glyph: "📊" },
           ] as const
         ).map((item) => {
-          const unlocked = isTabOpen(item.id, reached);
+          const unlocked = isShortcutOpen(item.id, reached);
           const opensAt = unlocked ? null : tabOpensAt(item.id);
           const count = unlocked ? attention.nav[item.id] : undefined;
           return (

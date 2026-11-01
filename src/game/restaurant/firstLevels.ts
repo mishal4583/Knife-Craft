@@ -20,6 +20,7 @@ import {
   INGREDIENT_STOCK_FIRST_LEVEL,
   isSystemLive,
 } from "./restaurantProgression";
+import { CLEANING_FROM_LEVEL } from "../config/cleaningStart";
 import { EARLY_UNLOCK_CAP } from "../config/earlyUnlocks";
 import { KNIFE_CATALOG } from "../knives/knifeDefinitions";
 import { BOARD_CATALOG } from "../boards/boardDefinitions";
@@ -46,6 +47,19 @@ export const TAB_NAMES: Record<LockableTab, string> = {
 };
 
 const isLockable = (id: string): id is LockableTab => id in TAB_OPENS_AT;
+
+/**
+ * The Business HUB (its Kitchen button and its first screen) is open from the very first service (developer
+ * 2026-11-01: "unlock the kitchen when the game starts"). Only the hub: every `business-*` screen behind it (Menu,
+ * Staff, Equipment, Cleanliness, …) keeps the Business section's own level (BUSINESS_MENU_FIRST_LEVEL), so no
+ * rule about the menu, the guests, upgrades or money changes.
+ */
+export const BUSINESS_HUB_FROM_LEVEL = 1;
+
+/** True when the Kitchen's round shortcut for `id` can be opened at `reachedLevel` (the Business hub: always). */
+export function isShortcutOpen(id: string, reachedLevel: number): boolean {
+  return id === "business" ? reachedLevel >= BUSINESS_HUB_FROM_LEVEL : isTabOpen(id, reachedLevel);
+}
 
 /** True when the section is open at the player's `reachedLevel`. */
 export function isTabOpen(id: string, reachedLevel: number): boolean {
@@ -96,11 +110,11 @@ export function grandmaLineFor(level: number): string | null {
 
 /**
  * The day's ceremony (the opening card and the Closing Time screen) shows
- * from Level 5 (developer 2026-10-29: the night chores and cleaning are
- * mandatory from there). `restaurantLevel` is the level the
+ * from Level 3, Day 2 (developer 2026-11-01; Level 5 before): the night chores and
+ * cleaning are mandatory from there. `restaurantLevel` is the level the
  * Closing Time screen would be shown for (the highest unlocked level).
  */
-export const DAY_CEREMONY_FROM_LEVEL = 5;
+export const DAY_CEREMONY_FROM_LEVEL = CLEANING_FROM_LEVEL;
 export function dayCeremonyAt(restaurantLevel: number): boolean {
   return restaurantLevel >= DAY_CEREMONY_FROM_LEVEL;
 }
@@ -162,7 +176,10 @@ export function sectionOfScreen(screen: string): LockableTab | null {
   // The Restaurant map is a primary always-open hub. Individual map rooms
   // retain their existing screen/level gates when tapped.
   if (screen === "restaurant-map") return null;
-  if (screen === "business" || screen.startsWith("business-")) return "business";
+  if (screen === "business") return null; // the hub opens with the first service (BUSINESS_HUB_FROM_LEVEL)
+  // The Cleanliness page opens with cleaning itself (Day 2), and checks its own level.
+  if (screen === "business-cleanliness") return null;
+  if (screen.startsWith("business-")) return "business";
   if (screen === "rack") return "rack";
   return null;
 }
@@ -258,7 +275,7 @@ export const SECTION_POINTER: Record<LockableTab, { title: string; line: string 
   },
   shop: {
     title: "🛒 This is the Market",
-    line: "Buy today's ingredients here with your own money.",
+    line: "Hire your team first, then buy today's food with your own money.",
   },
   rack: {
     title: "🏆 This is Progress",
@@ -275,10 +292,24 @@ const POINTER_ORDER: readonly LockableTab[] = ["shop", "inventory", "business"];
 /** Grandma points out sections through this level (the first levels); later saves never. */
 export const POINTER_THROUGH_LEVEL = 15;
 
+/**
+ * Only the Market's pointer comes before the first service (it starts the first run: hire, then buy). Every other
+ * pointer waits until the player has FINISHED Level 1, i.e. reached Level 2 (developer 2026-11-01: "don't show this
+ * before the first level, let him at least finish the first level").
+ */
+export const POINTER_AFTER_FIRST_SERVICE = 2;
+
 /** The section Grandma points at now: open, not seen yet (the earliest first), or null. */
 export function sectionToPoint(reachedLevel: number, seen: readonly string[]): LockableTab | null {
   if (reachedLevel > POINTER_THROUGH_LEVEL) return null;
-  return POINTER_ORDER.find((t) => isTabOpen(t, reachedLevel) && !seen.includes(t)) ?? null;
+  return (
+    POINTER_ORDER.find(
+      (t) =>
+        isTabOpen(t, reachedLevel) &&
+        !seen.includes(t) &&
+        (t === "shop" || reachedLevel >= POINTER_AFTER_FIRST_SERVICE),
+    ) ?? null
+  );
 }
 
 /** The save with `tab` marked as seen (the same save when it already was). */

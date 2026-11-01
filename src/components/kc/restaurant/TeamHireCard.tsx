@@ -23,7 +23,7 @@ export function TeamHireCard({
 }) {
   const offers = teamOffers(save, restaurantLevelOf(save.levelProgress));
   if (offers.length === 0) return null;
-  // The first-run hand: on the first Hire button once the food is bought (restaurant/firstRunGuide.ts).
+  // The first-run hand: on the first Hire button (the team is hired before the food is bought) (restaurant/firstRunGuide.ts).
   const handRole =
     firstRunHand(save, "market")?.step === "hire" ? offers.find((o) => o.affordable)?.role : null;
   return (
@@ -35,7 +35,7 @@ export function TeamHireCard({
           </p>
           {handRole ? (
             <span className="font-hand text-[15px] text-copper" data-testid="first-run-hire-hint">
-              2️⃣ Tap Hire
+              1️⃣ Tap Hire
             </span>
           ) : null}
           <InfoTip label="About your team">
@@ -78,7 +78,11 @@ export function TeamHireCard({
                     setNotice(
                       r.ok
                         ? `✓ ${o.name} hired · ${formatUsd(o.fee)}`
-                        : `✗ ${o.name} · 💸 not enough money`,
+                        : r.reason === "insufficientFunds"
+                          ? `✗ ${o.name} · 💸 not enough money`
+                          : r.reason === "alreadyHired"
+                            ? `✓ ${o.name} is already on your team`
+                            : `✗ ${o.name} can't be hired yet`,
                     );
                   }}
                 >

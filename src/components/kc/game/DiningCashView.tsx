@@ -12,6 +12,7 @@ import {
 } from "@/game/restaurant/serviceFloor";
 import { GuestPoses } from "../restaurantMap/GuestPoses";
 import { TableCash } from "../common/TableCash";
+import { cashSpotBeside } from "@/game/restaurant/tableCash";
 import "./serviceFloor.css";
 
 const pct = (n: number) => `${Math.round(n * 100) / 100}%`;
@@ -72,7 +73,7 @@ export function DiningCashView({
   return (
     <div className="sf relative h-full w-full bg-walnut-dark" data-testid="dining-cash-view">
       <div className="sf-stage relative h-full min-h-0">
-        <div className="sf-view" aria-hidden="true">
+        <div className="sf-view touch-none" aria-hidden="true">
           <img className="sf-map" src={mapUrl} alt="" draggable={false} />
           <div className="sf-dim" />
           {cashier ? (
@@ -93,11 +94,13 @@ export function DiningCashView({
             : null}
           {cents > 0 ? (
             <TableCash
-              stage={stage}
+              {...(party
+                ? { at: cashSpotBeside(stage, party.table, party.size, takeaway) }
+                : { stage })}
               cents={cents}
               onCollect={onCollect}
               place={inView}
-              first={party && party.table === 0 ? 1 : 0}
+              swipe
             />
           ) : null}
           {dirty && onWipe && party && !takeaway ? (
@@ -139,7 +142,7 @@ export function DiningCashView({
           data-testid="dining-cash-hint"
         >
           {cents > 0
-            ? "👆 Tap the cash on the table to collect it"
+            ? "👆 Tap or swipe the cash to collect it"
             : care
               ? dirty
                 ? "👆 Tap the dirty table to wipe it"

@@ -122,11 +122,13 @@ const read = (p: string) =>
   const closing = read("src/components/kc/restaurant/ClosingTime.tsx");
   const card = read("src/components/kc/game/ServiceOrderComplete.tsx");
   check(
-    "W1 the dining room draws the piles (first on the free table) and collecting does not skip the arrival",
-    /<TableCash[\s\S]{0,200}stage=\{stage\}[\s\S]{0,300}first=\{party\.table === 0 \? 1 : 0\}/.test(
+    // Rule changed (developer 2026-11-01): the cash lies beside the party's own seats (cashSpotBeside), not on the
+    // free table (was: first on the free table).
+    "W1 the dining room draws the pile beside the party that paid and collecting does not skip the arrival",
+    /<TableCash[\s\S]{0,200}at=\{cashSpotBeside\(stage, party\.table, party\.size, takeaway\)\}/.test(
       floor,
     ) &&
-      /e\.stopPropagation\(\);\s*onCollect\(\);/.test(tc) &&
+      /e\.stopPropagation\(\);[\s\S]{0,160}onCollect\(\);/.test(tc) &&
       /tableCashCents: pendingCashTotal\(save\)/.test(app) &&
       /service\.tableCashCents && service\.onCollectTableCash/.test(prep),
   );

@@ -1,7 +1,7 @@
 /**
  * FIRST RUN GUIDE QA (developer 2026-11-01: "ensure there are proper hand instructions to buy the ingredients, hire
- * them, and then go back to cutting"; restaurant/firstRunGuide.ts):
- *   R. One hand at a time, in order: buy the food → hire the Server and the Cashier → back to the Kitchen → Open for
+ * them, and then go back to cutting", then "ask the player to hire them first, then buy the ingredients"; restaurant/firstRunGuide.ts):
+ *   R. One hand at a time, in order: hire the Server and the Cashier → buy the food → back to the Kitchen → Open for
  *      service → start the service; a finished step never returns; a hire the player cannot pay for is skipped (the hand
  *      never points at a button that cannot be tapped); nothing after the first service; nothing before the intro is done.
  *   W. The wiring: the Market's Buy and Hire buttons, the bottom bar's tabs, the Kitchen's button and the sheet's button.
@@ -64,38 +64,37 @@ const step = (s: SaveData, where: Parameters<typeof G.firstRunHand>[1]) =>
 {
   const s0 = fresh();
   check(
-    "R1 a new game: the food is to buy, so the Market's hand is on Buy, and anywhere else it points at the Market",
-    step(s0, "market") === "buy" &&
+    "R1 a new game: the team is hired FIRST, so the Market's hand is on Hire, and anywhere else it points at the Market",
+    step(s0, "market") === "hire" &&
       step(s0, "kitchen") === "to-market" &&
       step(s0, "other") === "to-market" &&
       marketPlanFor(s0, 1).rows.length > 0,
   );
-  const s1 = withFood(s0);
+  const s1 = hired(s0, ["server"]);
   check(
-    "R2 food bought: the hand moves to Hire (on the Market) — or to the Market tab from elsewhere",
-    marketPlanFor(s1, 1).rows.length === 0 &&
-      step(s1, "market") === "hire" &&
-      step(s1, "kitchen") === "to-market",
-    step(s1, "market"),
+    "R2 one of the two hired: still the Hire step for the other",
+    step(s1, "market") === "hire",
   );
-  const s2 = hired(s1, ["server"]);
+  const s2 = hired(s0, ["server", "cashier"]);
   check(
-    "R3 one of the two hired: still the Hire step for the other",
-    step(s2, "market") === "hire",
+    "R3 both hired, the food still to buy: the hand moves to Buy (on the Market) — or to the Market tab from elsewhere",
+    step(s2, "market") === "buy" && step(s2, "kitchen") === "to-market",
+    step(s2, "market"),
   );
-  const s3 = hired(s1, ["server", "cashier"]);
+  const s3 = withFood(s2);
   check(
-    "R4 both hired: back to the Kitchen (the tab) — and once there, Open for service; on the sheet, start the service",
-    step(s3, "market") === "to-kitchen" &&
+    "R4 team hired and food bought: back to the Kitchen (the tab) — and once there, Open for service; on the sheet, start the service",
+    marketPlanFor(s3, 1).rows.length === 0 &&
+      step(s3, "market") === "to-kitchen" &&
       step(s3, "other") === "to-kitchen" &&
       step(s3, "kitchen") === "open" &&
       step(s3, "sheet") === "start",
     { market: step(s3, "market"), kitchen: step(s3, "kitchen"), sheet: step(s3, "sheet") },
   );
-  const broke = { ...s1, credits: 0 };
+  const broke = { ...s0, credits: 0 };
   check(
-    "R5 a hire the player cannot pay for is skipped: the hand goes on to the Kitchen instead of pointing at a dead button",
-    step(broke, "market") === "to-kitchen" && step(broke, "kitchen") === "open",
+    "R5 a hire the player cannot pay for is skipped: the hand goes on to Buy instead of pointing at a dead button",
+    step(broke, "market") === "buy" && step(withFood(broke), "kitchen") === "open",
   );
   const done = { ...s3, levelProgress: { ...s3.levelProgress, completedLevelIds: ["level-1"] } };
   const early = { ...fresh(), story: { ...DEFAULT_SAVE.story, introDone: false } };
@@ -107,27 +106,20 @@ const step = (s: SaveData, where: Parameters<typeof G.firstRunHand>[1]) =>
       !G.isFirstRun(done),
   );
   const order: string[] = [];
-  let cur = s0;
-  order.push(step(cur, "market")!);
-  cur = withFood(cur);
-  order.push(step(cur, "market")!);
-  cur = hired(cur, ["server", "cashier"]);
-  order.push(step(cur, "market")!, step(cur, "kitchen")!, step(cur, "sheet")!);
+  order.push(step(s0, "market")!, step(s2, "market")!);
+  order.push(step(s3, "market")!, step(s3, "kitchen")!, step(s3, "sheet")!);
   check(
-    "R7 the whole walk is buy → hire → to-kitchen → open → start, each with its own numbered caption",
-    order.join() === "buy,hire,to-kitchen,open,start" &&
-      ["buy", "hire", "to-kitchen", "open", "start"].every((x, i) => {
-        const hand = G.firstRunHand(cur, "kitchen");
-        void hand;
-        return order[i] === x;
-      }) &&
-      ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣"].every((n) =>
-        [s0, s1, s3].some((sv) =>
-          (["market", "kitchen", "sheet", "other"] as const).some((w) =>
-            G.firstRunHand(sv, w)?.caption.startsWith(n),
-          ),
-        ),
-      ),
+    "R7 the whole walk is hire → buy → to-kitchen → open → start, each with its own numbered caption in that order",
+    order.join() === "hire,buy,to-kitchen,open,start" &&
+      (
+        [
+          [s0, "market", "1️⃣"],
+          [s2, "market", "2️⃣"],
+          [s3, "market", "3️⃣"],
+          [s3, "kitchen", "4️⃣"],
+          [s3, "sheet", "5️⃣"],
+        ] as const
+      ).every(([sv, w, n]) => G.firstRunHand(sv, w)?.caption.startsWith(n)),
     order,
   );
 }
