@@ -1,3 +1,4 @@
+// Note (2026-11-01): a new game opens with $236.00 ($10 for food + the Server's and the Cashier's hiring fees): 23600 below.
 // The core loop with swipe-to-collect cash (developer 2026-10-29), restaurant build:
 //   C1 Serve books nothing: the wallet and ledger are untouched until cash is swept in.
 //   C2 Next / Next Customer (last order) wait for the cash (disabled), then work once it is all collected.
@@ -84,7 +85,7 @@ try {
   check(
     "C3 sweeping pays the order exactly once: wallet = signed ledger, ONE settlement + ONE tip entry, nothing left on the table",
     collected.credits > base.credits &&
-      collected.credits === 1000 + ledgerSum(collected) &&
+      collected.credits === 23600 + ledgerSum(collected) &&
       collected.economyLedger.filter((e) => e.category !== "inventory-purchase").length === 2 &&
       !collected.business.pendingCash,
     {
@@ -106,7 +107,7 @@ try {
     "C4 Next Customer (last order) completes level-1 once and the wallet still equals the ledger",
     done.levelProgress.completedLevelIds.includes("level-1") &&
       rewards.length === 1 &&
-      done.credits === 1000 + ledgerSum(done),
+      done.credits === 23600 + ledgerSum(done),
     {
       completed: done.levelProgress.completedLevelIds,
       rewards: rewards.length,

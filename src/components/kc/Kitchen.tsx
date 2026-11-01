@@ -15,7 +15,7 @@ import {
 import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
 import { nextServiceLevel } from "@/game/restaurant/nextService";
 import { openMarketIngredients } from "./marketFocus";
-import { NavAttentionContext, NavGuideContext, NavLevelContext } from "./navLevel";
+import { NavAttentionContext, NavGuideContext, NavHandContext, NavLevelContext } from "./navLevel";
 import {
   INGREDIENT_LIST_FROM,
   STAR_GRADES,
@@ -33,6 +33,7 @@ import { levelPayPreview } from "@/game/restaurant/levelPayPreview";
 import type { LevelDefinition } from "@/game/levels/levelTypes";
 import { KButton, Coin, DustMotes } from "./common/primitives";
 import { PointerHand } from "./common/PointerHand";
+import { firstRunHand } from "@/game/restaurant/firstRunGuide";
 import { gameReady } from "@/game/PlayablesSDK";
 import { dollars, formatUsd, formatUsdChange } from "@/game/money";
 import { pendingCashTotal } from "@/game/economy/pendingCash";
@@ -542,17 +543,28 @@ export function Kitchen({
                 {todayUnlocked ? todayLevel.emoji : "🔒"}
               </span>
               {RESTAURANT_MODE ? (
-                <KButton
-                  variant="sage"
-                  className="min-h-[48px] rounded-[14px] px-3 font-ui text-[12px] font-extrabold shadow-[0_3px_7px_rgba(36,62,37,0.24)] sm:px-4 sm:text-[13px]"
-                  onClick={() => {
-                    if (!openService) return go("business");
-                    onSelectLevel(openService.id);
-                    go("gameplay");
-                  }}
-                >
-                  {openService ? "Open for service" : "🍽️ Run the restaurant"}
-                </KButton>
+                <div className="relative">
+                  {openService && firstRunHand(save, "kitchen")?.step === "open" ? (
+                    <span
+                      data-testid="first-run-hand"
+                      data-hand-for="open-service"
+                      className="pointer-events-none absolute left-1/2 top-full z-10 -translate-x-1/2"
+                    >
+                      <PointerHand size={40} />
+                    </span>
+                  ) : null}
+                  <KButton
+                    variant="sage"
+                    className="min-h-[48px] rounded-[14px] px-3 font-ui text-[12px] font-extrabold shadow-[0_3px_7px_rgba(36,62,37,0.24)] sm:px-4 sm:text-[13px]"
+                    onClick={() => {
+                      if (!openService) return go("business");
+                      onSelectLevel(openService.id);
+                      go("gameplay");
+                    }}
+                  >
+                    {openService ? "Open for service" : "🍽️ Run the restaurant"}
+                  </KButton>
+                </div>
               ) : (
                 <KButton
                   // Prepare (a new order) is the green "go" button; Replay is a quiet
@@ -1025,6 +1037,9 @@ export function BottomNav({ active, go }: { active: ScreenId | null; go: (s: Scr
   // Grandma points at a section that just opened (firstLevels.ts SECTION_POINTER).
   const guide = useContext(NavGuideContext);
   const pointer = guide && active === "kitchen" ? guide : null;
+  // The first-run hand (restaurant/firstRunGuide.ts): the glove on one tab and a one-line caption.
+  const firstHand = useContext(NavHandContext);
+  const handed = pointer ? null : firstHand;
   const [hint, setHint] = useState<string | null>(null);
   useEffect(() => {
     if (!hint) return;
@@ -1046,6 +1061,15 @@ export function BottomNav({ active, go }: { active: ScreenId | null; go: (s: Scr
           className="anim-up pointer-events-none absolute inset-x-4 bottom-full mb-2 land:inset-x-auto land:bottom-4 land:left-full land:mb-0 land:ml-2 land:w-max land:max-w-[300px] rounded-full border border-walnut-dark/40 bg-walnut-dark/90 px-4 py-2 text-center font-ui text-[13.5px] font-extrabold text-ivory shadow-lift"
         >
           {hint}
+        </p>
+      ) : null}
+      {handed ? (
+        <p
+          role="status"
+          data-testid="first-run-caption"
+          className="anim-up pointer-events-none absolute inset-x-4 bottom-full mb-2 land:inset-x-auto land:bottom-4 land:left-full land:mb-0 land:ml-2 land:w-max land:max-w-[300px] rounded-full border border-gold/60 bg-walnut-dark/90 px-4 py-2 text-center font-ui text-[13.5px] font-extrabold text-ivory shadow-lift"
+        >
+          {handed.caption}
         </p>
       ) : null}
       {pointer ? (
@@ -1116,6 +1140,16 @@ export function BottomNav({ active, go }: { active: ScreenId | null; go: (s: Scr
               // tilted around it so the hand leans off the tab's name.
               <span
                 data-testid="pointer-hand"
+                className="pointer-events-none absolute left-1/2 top-2 z-10 -ml-[20px]"
+                style={{ transformOrigin: "20px 4px", transform: "rotate(-24deg)" }}
+              >
+                <PointerHand size={42} />
+              </span>
+            ) : null}
+            {handed?.tab === n.id && !pointed ? (
+              <span
+                data-testid="first-run-hand"
+                data-hand-tab={n.id}
                 className="pointer-events-none absolute left-1/2 top-2 z-10 -ml-[20px]"
                 style={{ transformOrigin: "20px 4px", transform: "rotate(-24deg)" }}
               >

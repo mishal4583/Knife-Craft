@@ -126,8 +126,9 @@ const read = (rel: string) => fs.readFileSync(path.resolve(ROOT, rel), "utf8");
   // it"): was $1,240.00.
   assert(
     // Rule changed (developer 2026-10-30, "buy everything from your own money"): the start is $10.00.
-    DEFAULT_SAVE.credits === 1000 && formatUsd(DEFAULT_SAVE.credits) === "$10.00",
-    "B5: a new player starts with $10.00 — their own money for the first shopping",
+    // Rule changed (developer 2026-11-01, Phase 10): + the Server's and the Cashier's hiring fees ($226.00): $236.00.
+    DEFAULT_SAVE.credits === 1000 + 22600 && formatUsd(DEFAULT_SAVE.credits) === "$236.00",
+    "B5: a new player starts with $10.00 for the food + $226.00 of hiring fees = $236.00 — their own money for the first shopping",
   );
   const s: SaveData = {
     ...structuredClone(DEFAULT_SAVE),

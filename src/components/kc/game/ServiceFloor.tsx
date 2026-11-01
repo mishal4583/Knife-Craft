@@ -5,16 +5,17 @@ import {
   REACTION_FACE,
   REACT_MS,
   SIT_MS,
-  TAKEAWAY_SPOT,
-  TAKEAWAY_STAND,
+  BAG_MS,
   WAITER_LOOKS,
+  cashierSpot,
   inView,
   lookFor,
   partySpots,
   partyCompleteWith,
   pathToSpot,
   serveMs,
-  takeawayPath,
+  takeawaySpot,
+  takeawayStand,
   waiterPath,
   waiterStand,
   walkFrames,
@@ -23,11 +24,9 @@ import {
   type PartySeat,
   type WaiterKind,
 } from "@/game/restaurant/serviceFloor";
-import { formatUsd } from "@/game/money";
 import type { QualityLabel } from "@/types/game";
 import { GuestPoses } from "../restaurantMap/GuestPoses";
 import { KButton } from "../common/primitives";
-import type { DiningHireId, DiningOffer } from "@/game/restaurant/diningHire";
 import { TableCash } from "../common/TableCash";
 import { AUTO_SERVE_MS } from "@/game/restaurant/prepCookAuto";
 import "./serviceFloor.css";
@@ -86,7 +85,7 @@ export function ServiceFloor({
   tableCash,
   takeaway = false,
   waiter = "cook",
-  hire,
+  cashier = false,
 }: {
   mode: FloorMode;
   stage: KitchenMapArtStage;
@@ -109,15 +108,16 @@ export function ServiceFloor({
   takeaway?: boolean;
   /** Who carries the plate: a hired Server, otherwise the cook. */
   waiter?: WaiterKind;
-  /** Phase 9E: who can be hired from the side of the dining area now; an offer is gone once the person is hired. */
-  hire?: { offers: DiningOffer[]; onHire: (id: DiningHireId) => void };
+  /** Phase 10: a Cashier stands at the counter — takeaway customers order beside them and are handed the bag by them. */
+  cashier?: boolean;
 }) {
   const uid = useId().replace(/[^a-zA-Z0-9]/g, "");
   const { party, slot, arriving, leaving } = partySeat;
   const table = FLOOR_SEATS[stage][party.table];
-  const spots = takeaway ? [TAKEAWAY_SPOT] : partySpots(table, party.size);
-  const paths = takeaway ? [takeawayPath()] : spots.map((s) => pathToSpot(table, s));
-  const walking = mode === "arrive" && arriving && !reducedMotion;
+  const spots = takeaway ? [takeawaySpot(stage)] : partySpots(table, party.size);
+  const paths = takeaway ? [[takeawaySpot(stage)]] : spots.map((s) => pathToSpot(table, s));
+  // A takeaway customer is simply there at the counter (the tables are in the way of a walk to it).
+  const walking = mode === "arrive" && arriving && !reducedMotion && !takeaway;
   const leavers =
     mode === "arrive" && arriving && leaving && !takeaway && !reducedMotion
       ? partySpots(FLOOR_SEATS[stage][leaving.table], leaving.size).map((s, i) => ({
@@ -134,10 +134,12 @@ export function ServiceFloor({
   const deliverers = spots.map((_, i) => i === slot || !!party.held[i]);
   const partyLeaves = mode === "deliver" && partyCompleteWith(partySeat);
   // The waiter's walk from the pass: beside the table (or the customer at the door), and how long the beat takes.
-  const stand = takeaway ? TAKEAWAY_STAND : waiterStand(table);
+  const stand = takeaway ? takeawayStand(stage) : waiterStand(table);
   const wPath = waiterPath(stand);
   const wWalkMs = walkMs(wPath);
-  const deliverMs = serveMs(stand);
+  // With a Cashier the bag changes hands at the counter: nobody walks.
+  const bagByCashier = takeaway && cashier;
+  const deliverMs = bagByCashier ? BAG_MS : serveMs(stand);
   const [state, setState] = useState<"walking" | "seated" | "serving" | "reacting" | "leaving">(
     mode === "arrive" ? (walking ? "walking" : "seated") : reducedMotion ? "reacting" : "serving",
   );
@@ -217,31 +219,6 @@ export function ServiceFloor({
     >
       <style>{keyframes}</style>
       <div className="sf-stage relative min-h-0 flex-1">
-        {mode === "arrive" && hire && hire.offers.length > 0 ? (
-          <div
-            className="absolute right-2 top-2 z-20 flex flex-col gap-1.5"
-            data-testid="dining-hire"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {hire.offers.map((o) => (
-              <button
-                key={o.id}
-                type="button"
-                data-hire={o.id}
-                disabled={!o.affordable}
-                aria-label={`Hire ${o.label} for ${formatUsd(o.price)}${o.per === "hour" ? " an hour" : ""}`}
-                className="flex min-h-12 min-w-[3.25rem] flex-col items-center justify-center rounded-2xl border border-gold/50 bg-walnut-dark/85 px-2 py-1 font-ui text-ivory shadow-soft active:scale-95 disabled:opacity-50"
-                onClick={() => hire.onHire(o.id)}
-              >
-                <span className="text-[20px] leading-none">{o.icon}</span>
-                <span className="text-[10.5px] font-extrabold leading-tight">
-                  {formatUsd(o.price)}
-                  {o.per === "hour" ? "/h" : ""}
-                </span>
-              </button>
-            ))}
-          </div>
-        ) : null}
         <div className="sf-view" aria-hidden="true">
           <img className="sf-map" src={mapUrl} alt="" draggable={false} />
           <div className="sf-dim" />
@@ -254,7 +231,17 @@ export function ServiceFloor({
             ) : null,
           )}
           {/* The waiter carries the plate (a tray of plates for a party) from the pass, sets it down, walks back. */}
-          {mode === "deliver" && !reducedMotion ? (
+          {cashier ? (
+            <div className="sf-layer" data-testid="floor-cashier" style={at(cashierSpot(stage))}>
+              <div className="sf-person sf-pose-stand">
+                <GuestPoses outfit="#3f5f8a" hair="#35271f" />
+              </div>
+              {mode === "deliver" && state !== "serving" ? (
+                <div className="sf-face sf-face--small">🧾</div>
+              ) : null}
+            </div>
+          ) : null}
+          {mode === "deliver" && !reducedMotion && !bagByCashier ? (
             <div
               className="sf-layer"
               data-testid="service-floor-waiter"

@@ -110,7 +110,10 @@ console.log("C. Optional cash, collected before closing");
   );
   const prep = read("src/components/kc/game/Preparation.tsx");
   assert(
-    /onCollectCash: \(\) => \{\s*service\.onCollectTableCash!\(\);/.test(prep) &&
+    // Rule changed (developer 2026-11-01): the same one-tap collect is the button AND a pile in the dining room above the card.
+    /onCollectCash: collectTableCash/.test(prep) &&
+      /service\?\.onCollectTableCash\?\.\(\)/.test(prep) &&
+      /room: \(\s*<DiningCashView/.test(prep) &&
       /💵 Collect cash/.test(soc) &&
       !/💵 Collect cash at the table|onOpenCashTable|"Finish Level"/.test(soc + prep),
     "C6: the served card has one-tap '💵 Collect cash' and 'Next Customer' — no 'Collect cash at the table', no 'Finish Level'",

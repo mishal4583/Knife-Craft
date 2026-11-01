@@ -30,6 +30,7 @@ const store: Record<string, string> = {};
 const ROOT = path.resolve(import.meta.dirname, "..");
 const { DEFAULT_SAVE } = await import("../src/game/SaveManager.ts");
 const { dollars } = await import("../src/game/money.ts");
+const { STARTING_TEAM_FEES } = await import("../src/game/config/startingTeam.ts");
 const { getLevel } = await import("../src/game/levels/LevelManager.ts");
 const { getCampaignRecipe } = await import("../src/game/recipes/campaignRecipes.ts");
 const { serviceStockCheck, serviceUsesStock } =
@@ -78,8 +79,9 @@ console.log("N. Nothing is given");
     "N2: a new save holds only the starter knife and board — no tools, supplies or ingredients",
   );
   assert(
-    DEFAULT_SAVE.credits === dollars(10),
-    "N3: a new game starts with $10.00 — the player's own money for the first shopping",
+    // Rule changed (developer 2026-11-01, Phase 10): $10.00 for the food plus the Server's and the Cashier's hiring fees.
+    DEFAULT_SAVE.credits === dollars(10) + STARTING_TEAM_FEES,
+    "N3: a new game starts with $10.00 for the food + the two hiring fees — the player's own money for the first shopping",
     DEFAULT_SAVE.credits,
   );
 }

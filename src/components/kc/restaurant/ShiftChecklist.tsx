@@ -90,7 +90,7 @@ export function ShiftChecklist({
             <span className="text-[18px]" aria-hidden>
               {t.rule.icon}
             </span>
-            <span className="min-w-0 flex-1 font-ui text-[13.5px] font-bold text-walnut-dark">
+            <span className="min-w-[9rem] flex-[1_1_9rem] font-ui text-[13.5px] font-bold leading-snug text-walnut-dark">
               {t.rule.label}
             </span>
             {t.needs.length === 0 ? (
@@ -110,7 +110,7 @@ export function ShiftChecklist({
                   data-need={id}
                   onClick={() => onBuy(id)}
                   className={cn(
-                    "press min-h-12 shrink-0 rounded-full bg-tomato/90 px-3 font-ui text-[12px] font-extrabold text-ivory",
+                    "press min-h-12 max-w-full shrink-0 rounded-full bg-tomato/90 px-3 py-1 font-ui text-[12px] font-extrabold leading-tight text-ivory",
                   )}
                 >
                   Buy {getSupplyItem(id)?.name.split(" ·")[0]} ›

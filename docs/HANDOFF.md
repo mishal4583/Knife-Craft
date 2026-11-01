@@ -52,6 +52,20 @@ Plan, evidence and the open decisions (D8-b, D10): `docs/planning/PHASE3-4-PLAN-
   (`restaurant/diningHire.ts`): Server from Level 3 (`SERVER_HIRE_FROM`, hiring only; the staff rule is unchanged) and three hourly Cleaners
   ($15 = one shift hour, one per area, gone when the service ends; `hireHourlyCleaner`). Suites `dining-floor-qa`; browser `tools/e2e/dining.mjs`.
   Not built: a separate billing role (the counter cashier comes with the Server), takeaway before L44, per-area cleaner portraits.
+- **Fixes (developer 2026-11-01, after Phase 9):** the cash is on the table when the Served card opens: the card is a sheet under the
+  dining room (`game/DiningCashView.tsx`, `ServiceOrderComplete` `room` prop) with the pile tappable like in an idle game (the same collect
+  as the button; it also covers a plate held for its party); the Pre-Service Check chore row no longer squeezes its name (`ShiftChecklist`);
+  the "Hire a Cleaner for today" offer and the Cleaner staff card moved to the bottom of Cleanliness, worded "Not in the mood to clean?".
+  Browser: `tools/e2e/cashroom.mjs`; `dining-floor-qa` B1–B3.
+- **Phase 10 (the team and the table care), 2026-11-01** (`docs/planning/PHASE10-TEAM-AND-TABLES-PLAN-2026-11-01.md`): a new game starts
+  with $10 + the Server's and the Cashier's fees ($236) and the first Market visit has a "Hire your team" card (`restaurant/TeamHireCard`,
+  `diningHire.teamOffers`); the Cashier is a 7th staff role (`businessStaff`): makes the bill on the Served card, takeaway customers stand
+  at the counter beside them and are handed the bag, and the closing "count the takings" row is done by them. The Server only carries the
+  food (no longer clears tables). Cleaners by the hour moved to a small 🧹 button on the restaurant map (`MapCleanerHire`): rest of today,
+  wage × hours left, the wage grows with the restaurant, gone the next day; gone from the dining floor and from the Cleanliness page. Table
+  care from the first customer: the dirty table and the napkin holders (every 3rd table) are tappable in the Served room
+  (`cleanliness.wipeTable` free before Level 5, `refillNapkins`). Suites `dining-floor-qa`; browser `dining.mjs`, `firstshop.mjs`.
+- **First-run hand (2026-11-01):** `restaurant/firstRunGuide.ts` puts one hand at a time in order: buy the food, hire the Server and the Cashier, the Kitchen tab (with a numbered caption), Open for service, the sheet's Start service; a hire the player cannot pay for is skipped and nothing returns once done. `first-run-guide-qa`, `tools/e2e/firstrun.mjs`.
 - **Phase 3:** `tools/e2e/reveal.mjs` proves the restoration reveal shows only after the purchase is saved;
   `scripts/early-upgrade-payback-qa.mts` measures reach and payback (no price changed: items return 0.25x, kitchen tiers
   never pay back in money — decision D8-b).

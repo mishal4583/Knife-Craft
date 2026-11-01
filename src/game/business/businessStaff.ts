@@ -55,7 +55,7 @@
 import type { SaveData } from "../SaveManager";
 
 export type BusinessStaffRole =
-  "prep-cook" | "line-cook" | "head-chef" | "server" | "cleaner" | "manager";
+  "prep-cook" | "line-cook" | "head-chef" | "server" | "cleaner" | "manager" | "cashier";
 
 export type BusinessStaffDefinition = {
   role: BusinessStaffRole;
@@ -159,6 +159,18 @@ export const BUSINESS_STAFF_CATALOG: Record<BusinessStaffRole, BusinessStaffDefi
     hourlyWageCents: 1500,
     scheduledHours: CLEANER_SHIFT_HOURS,
     salary: dailySalaryFor(1500, CLEANER_SHIFT_HOURS),
+  },
+  // Phase 10 (developer 2026-11-01): the billing staff at the service counter. Hired with the Server in the
+  // first shop. No popularity or spoilage effect: they make each customer's bill, take the takeaway orders
+  // beside them, and count the till at night (closing's "count the takings" row is done for you).
+  cashier: {
+    role: "cashier",
+    name: "Cashier",
+    description:
+      "Billing at the service counter — makes each customer's bill, takes the takeaway orders, and counts the till at closing.",
+    hourlyWageCents: 1500,
+    scheduledHours: SERVICE_SHIFT_HOURS,
+    salary: dailySalaryFor(1500, SERVICE_SHIFT_HOURS),
   },
   manager: {
     role: "manager",

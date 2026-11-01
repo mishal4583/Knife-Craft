@@ -222,9 +222,11 @@ function playedSave(): SaveData {
         "head-chef": 7000,
         server: 3750,
         cleaner: 2813,
+        // Rule changed (developer 2026-11-01, Phase 10): the Cashier (billing) is paid like the Server.
+        cashier: 3750,
         manager: 6000,
       }),
-    "K: staff salaries = hourly wage × service shift × 1.25 ($40 / $45.35 / $70 / $37.50 / $28.13 / $60)",
+    "K: staff salaries = hourly wage × service shift × 1.25 ($40 / $45.35 / $70 / $37.50 / $28.13 / $37.50 cashier / $60)",
   );
   const sup = Object.fromEntries(
     Object.entries(SUPPLIER_CONTRACT_CATALOG).map(([k, t]) => [

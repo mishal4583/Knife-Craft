@@ -199,8 +199,13 @@ const WORK = { stage: "grand", diningOpen: true, serviceOpen: true, cleanerJob: 
       .match(/"[a-z-]+"/g)
       ?.map((r) => r.slice(1, -1)) ?? [];
   assert(
-    roles.length === 6 && [...STAFF_LIFE_ROLES].sort().join() === [...roles].sort().join(),
-    "F1: exactly the six roles the game has (BusinessStaffRole) — no invented role (the Cleaner looks after the restroom)",
+    // Rule changed (developer 2026-11-01, Phase 10): the Cashier is the 7th role; it stands at the counter
+    // (staffCast's own "service-cashier"), so the walking loop of STAFF_LIFE_ROLES is the other six.
+    roles.length === 7 &&
+      roles.includes("cashier") &&
+      [...STAFF_LIFE_ROLES].sort().join() ===
+        [...roles.filter((r) => r !== "cashier")].sort().join(),
+    "F1: exactly the seven roles the game has (BusinessStaffRole) — no invented role (the Cleaner looks after the restroom, the Cashier stands at the counter)",
     roles,
   );
   const ids = (cast: ReturnType<typeof staffCast>) => cast.map((a) => a.id).join();
@@ -252,7 +257,8 @@ console.log("G. First-floor placement, per kitchen stage (developer 2026-10-16)"
   const problems: string[] = [];
   for (const stage of MAP_STAGES) {
     const byId = Object.fromEntries(
-      staffCast(STAFF_LIFE_ROLES, { ...WORK, stage }).map((a) => [a.id, a]),
+      // Phase 10: the counter's cashier is the hired Cashier role.
+      staffCast([...STAFF_LIFE_ROLES, "cashier"], { ...WORK, stage }).map((a) => [a.id, a]),
     );
     if (!byId["staff-head-chef"]!.stops.every((p) => p.y <= 45.5 && inside(p, kitchen)))
       problems.push(`${stage}: chef off the kitchen aisle`);
@@ -295,10 +301,12 @@ console.log("H. Only when hired and needed; the Cleaner really cleans (developer
     "H2: the Server is there only once the dining room is open",
   );
   assert(
+    // Rule changed (developer 2026-11-01, Phase 10): the counter's cashier is the hired Cashier role (not the Server).
     !kinds([], {}).includes("cashier") &&
-      !kinds(["server"], { serviceOpen: false }).includes("cashier") &&
-      kinds(["server"], {}).includes("cashier"),
-    "H3: the counter's cashier comes with a hired Server (the game has no cashier role), once the counter is open",
+      !kinds(["server"], {}).includes("cashier") &&
+      !kinds(["cashier"], { serviceOpen: false }).includes("cashier") &&
+      kinds(["cashier"], {}).includes("cashier"),
+    "H3: the counter's cashier is the hired Cashier (not the Server), once the counter is open",
   );
   assert(
     !kinds(["cleaner"], { cleanerJob: null }).includes("cleaner") &&

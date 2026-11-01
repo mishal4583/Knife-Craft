@@ -38,6 +38,7 @@ const ROLE_ICON: Record<string, string> = {
   server: "🧑‍💼",
   cleaner: "🧽",
   manager: "📋",
+  cashier: "🧾",
 };
 
 /** Portraits are presentation only; staff rules and save state remain data-driven. */
@@ -58,6 +59,7 @@ const ROLE_GLANCE: Record<string, string> = {
   server: "⭐ +2 popularity / day",
   cleaner: "🛡️ Inspection · ♻️ 20% less loss",
   manager: "💸 10% off other staff wages",
+  cashier: "🧾 Bills · parcels · counts the till",
 };
 
 const SPECIALIST_PORTRAIT: Record<string, string> = {

@@ -1,4 +1,5 @@
 import { PointerHand } from "./common/PointerHand";
+import { firstRunHand } from "@/game/restaurant/firstRunGuide";
 import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { KButton, Panel } from "./common/primitives";
@@ -51,6 +52,8 @@ export function MarketPlanPanel({
   // The very first shopping (developer 2026-10-30): before any level is done the plan starts on
   // Today, and a hand shows what to buy for Level 1 with the player's own money.
   const firstRun = RESTAURANT_MODE && save.levelProgress.completedLevelIds.length === 0;
+  // The first-run hand (restaurant/firstRunGuide.ts): on the first Buy button while the food is still to buy.
+  const handStep = RESTAURANT_MODE ? (firstRunHand(save, "market")?.step ?? null) : null;
   const [days, setDays] = useState<number>(focused || firstRun ? 1 : 2);
   const ref = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
@@ -149,7 +152,11 @@ export function MarketPlanPanel({
                 data-testid="first-shopping-hint"
                 className="mt-2 flex items-center gap-2 rounded-xl bg-gold/20 px-3 py-2 font-hand text-[16px] leading-snug text-walnut-dark"
               >
-                <span>👋 Tap Buy on these, then go back to the Kitchen.</span>
+                <span>
+                  {handStep === "buy"
+                    ? "1️⃣ Tap Buy on each one. Next: hire your team."
+                    : "✓ Food bought. Now hire your team, then go back to the Kitchen."}
+                </span>
                 <InfoTip label="About your first order">
                   Your first order needs these ingredients, bought with your own money. Your chef
                   knife and walnut board are already yours — better ones are in the Market later.
@@ -203,7 +210,7 @@ export function MarketPlanPanel({
                         </span>
                         <span className="block text-copper">{formatUsd(row.cost)}</span>
                       </KButton>
-                      {firstRun && row === rows[0] ? (
+                      {handStep === "buy" && row === rows[0] ? (
                         <span
                           data-testid="first-shopping-hand"
                           className="pointer-events-none absolute left-1/2 top-full z-10 -translate-x-1/2"

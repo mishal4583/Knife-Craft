@@ -1246,6 +1246,12 @@ taken, repaid}`; taking on credit moves no money (no entry);
 - `dining-floor-qa` — Phase 9 (2026-11-01): the fridge tiers (40 / 100 / 240), the takeaway tag and the solo takeaway seat, the waiter's walk
   (`serviceFloor.ts`), `wipeTable` and the closing tables task, hourly cleaners (`cleanliness.ts`), the dining side panel's offers
   (`diningHire.ts`) and the Server from Level 3, the wiring. Browser: `tools/e2e/dining.mjs`.
+  Phase 10 (2026-11-01) updated it: the Server and Cashier hired in the first shop with the opening cash
+  (`config/startingTeam.ts`, $236.00), hourly cleaners on the map (`MapCleanerHire`), table care from the first customer, the
+  Cashier's counter. Browser: `tools/e2e/cashroom.mjs` (cash piles, Served card room).
+- `first-run-guide-qa` — the first-run hand (`restaurant/firstRunGuide.ts`, derived from the save only): buy, hire, back to the
+  Kitchen, Open for service, Start service; skips an unaffordable hire; gone after the first service. Browser:
+  `tools/e2e/firstrun.mjs`.
 - `ad-bonuses-qa` — the six ad bonuses (§2, incl. welcome back): amounts, one entry per claim,
   caps per kind and day (apart from the Replay Bonus's), the free daily gift,
   ledger-trim survival, placements, and the economy bound (an every-offer

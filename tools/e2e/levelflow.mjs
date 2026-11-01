@@ -100,8 +100,8 @@ const g2Sum = g2.economyLedger.reduce((s, e) => s + e.amount, 0);
 // Rule changed (developer 2026-10-30, "buy everything from your own money"): a new game opens with
 // $10.00, spends some of it in the Market, then earns the Level 1 pay.
 check(
-  "G2.6 wallet = $10.00 + signed ledger (a new game starts at $10.00)",
-  g2.credits === 1000 + g2Sum && g2Sum > 0,
+  "G2.6 wallet = opening cash + signed ledger (a new game starts at $236.00: $10 for food + the two hiring fees, 2026-11-01)",
+  g2.credits === 23600 + g2Sum && g2Sum > 0,
   {
     credits: g2.credits,
     ledgerSum: g2Sum,

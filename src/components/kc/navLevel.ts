@@ -55,5 +55,16 @@ export function unlockText(reached: number | null) {
 export type NavGuide = { tab: LockableTab; dismiss: () => void } | null;
 export const NavGuideContext = createContext<NavGuide>(null);
 
+/**
+ * The first-run hand on a bottom-bar tab (restaurant/firstRunGuide.ts): which tab the glove rests on and the one-line
+ * caption above the bar. ScreensRouter provides it from the save; null = none.
+ */
+export type NavHand = { tab: "shop" | "kitchen"; caption: string } | null;
+export const NavHandContext = createContext<NavHand>(null);
+
 /** Current live attention counts for the shared bottom navigation and restaurant map. */
-export const NavAttentionContext = createContext<AttentionBadges>({ nav: {}, map: {}, mapSymbols: {} });
+export const NavAttentionContext = createContext<AttentionBadges>({
+  nav: {},
+  map: {},
+  mapSymbols: {},
+});

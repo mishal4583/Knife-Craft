@@ -75,7 +75,7 @@ import {
 import { OrderComplete } from "./OrderComplete";
 import { ServiceOrderComplete } from "./ServiceOrderComplete";
 import { ServiceFloor, type FloorMode } from "./ServiceFloor";
-import type { DiningHireId, DiningOffer } from "@/game/restaurant/diningHire";
+import { DiningCashView } from "./DiningCashView";
 import { OvenStep } from "./OvenStep";
 import { ovenStepFor, trayItemFor } from "@/game/cooking/ovenStep";
 import {
@@ -257,11 +257,14 @@ export function Preparation({
      * the Dining cleaner), null = the player's tap. `onWipe` really wipes it (cleanliness.wipeTable) and says
      * what is missing when the supplies are short.
      */
-    /** Phase 9E: the people that can be hired from the side of the dining area right now (restaurant/diningHire.ts). */
-    hire?: { offers: DiningOffer[]; onHire: (id: DiningHireId) => void };
+    /** Phase 10: a Cashier is on the team — the customer's bill is made, takeaway orders are taken beside them. */
+    cashier?: boolean;
     tableWipe?: {
-      staff: "cleaner" | "server" | null;
+      staff: "cleaner" | null;
       onWipe: (guests: number, by: "player" | "staff") => { ok: boolean; need?: string };
+      /** The napkin holders are low (every third table) and `onRefill` fills them. */
+      napkinsLow: boolean;
+      onRefill: () => void;
     };
   };
   onExit: () => void;
@@ -931,8 +934,9 @@ export function Preparation({
         REACTION_FACE[servedQuality ?? result?.qualityLabel ?? "Honest"],
         Date.now(),
       );
-    // Phase 9D: a dine-in party has just left: the table is dirty. A Server / Dining cleaner clears it by
-    // themself; otherwise the player is offered the wipe (one tap; nothing blocks).
+    // Phase 9D/10: a dine-in party has just left: the table is dirty (and the napkin holders run low every
+    // third table). A Cleaner on the dining room today clears it by themself; otherwise the player wipes it
+    // and refills the napkins with one tap each (nothing blocks).
     if (
       service &&
       floorMode === "deliver" &&
@@ -940,23 +944,38 @@ export function Preparation({
       !service.takeaway &&
       partySeat?.party.left
     ) {
-      const size = partySeat.party.size;
       if (service.tableWipe.staff) {
-        const r = service.tableWipe.onWipe(size, "staff");
-        setWipe(
-          r.ok ? { state: "staff", by: service.tableWipe.staff } : { state: "offer", need: r.need },
+        const r = service.tableWipe.onWipe(partySeat.party.size, "staff");
+        if (r.ok) service.tableWipe.onRefill();
+        setCare(
+          r.ok ? { wiped: true, by: service.tableWipe.staff } : { wiped: false, need: r.need },
         );
-      } else setWipe({ state: "offer" });
+      } else setCare({ wiped: false });
     }
     setFloorMode(null);
   };
-  /** The dirty table after a party left (Phase 9D): offered, cleared by the player, or cleared by staff. */
-  const [wipe, setWipe] = useState<
-    | { state: "offer"; need?: string | undefined }
-    | { state: "done" }
-    | { state: "staff"; by: "cleaner" | "server" }
-    | null
-  >(null);
+  /** One tap takes the cash left on the table into the wallet (the Collect cash button, or a pile in the dining room). */
+  const collectTableCash = () => {
+    service?.onCollectTableCash?.();
+    setServiceCashRemaining(0);
+    setServedCash(null);
+  };
+  /** The table after a party left (Phase 9D/10): dirty until wiped by the player or by a Cleaner; the napkins refilled. */
+  const [care, setCare] = useState<{
+    wiped: boolean;
+    by?: "cleaner";
+    need?: string | undefined;
+    refilled?: boolean;
+  } | null>(null);
+  const wipeNow = () => {
+    if (!service?.tableWipe) return;
+    const r = service.tableWipe.onWipe(partySeat?.party.size ?? 1, "player");
+    setCare(r.ok ? { wiped: true } : { wiped: false, need: r.need });
+  };
+  const refillNow = () => {
+    service?.tableWipe?.onRefill();
+    setCare((c) => (c ? { ...c, refilled: true } : c));
+  };
 
   // The hired Prep Cook cuts this whole order (restaurant/prepCookAuto.ts): a plain Honest plate,
   // straight to the Serve card. Only before the player's first cut, once the customer has sat down.
@@ -1481,7 +1500,7 @@ export function Preparation({
           reducedMotion={floor.reducedMotion}
           onDone={floorDone}
           takeaway={!!service.takeaway}
-          {...(service.hire ? { hire: service.hire } : {})}
+          cashier={!!service.cashier}
           waiter={service.waiter ?? "cook"}
           {...(cookReady && service?.prepCook
             ? { prepCook: { ...service.prepCook, onCut: sendPrepCook } }
@@ -1497,35 +1516,38 @@ export function Preparation({
         />
       ) : null}
 
-      {wipe && service?.tableWipe && !floorMode ? (
+      {care && service?.tableWipe && !floorMode ? (
         <div
           data-testid="table-wipe"
-          data-wipe={wipe.state}
-          className="pointer-events-none absolute inset-x-3 top-3 z-[75] flex justify-center"
+          data-wipe={!care.wiped ? "offer" : care.by ? "staff" : "done"}
+          className="pointer-events-none absolute inset-x-3 top-3 z-[75] flex flex-col items-center gap-1.5"
         >
-          {wipe.state === "offer" ? (
+          {!care.wiped ? (
             <button
               type="button"
               className="pointer-events-auto flex min-h-12 items-center gap-2 rounded-full bg-copper px-5 font-ui text-[14px] font-extrabold text-ivory shadow-lift active:scale-95"
-              onClick={() => {
-                const r = service.tableWipe!.onWipe(partySeat?.party.size ?? 1, "player");
-                setWipe(r.ok ? { state: "done" } : { state: "offer", need: r.need });
-              }}
+              onClick={wipeNow}
             >
               🧽 Wipe the table
-              {wipe.need ? (
-                <span className="text-[12px] font-bold opacity-90">· needs {wipe.need}</span>
+              {care.need ? (
+                <span className="text-[12px] font-bold opacity-90">· needs {care.need}</span>
               ) : null}
             </button>
           ) : (
             <span className="pointer-events-none rounded-full bg-sage px-4 py-2 font-ui text-[13px] font-extrabold text-ivory shadow-soft">
-              {wipe.state === "staff"
-                ? wipe.by === "server"
-                  ? "🧑‍🍳 The Server clears the table"
-                  : "🧹 The cleaner clears the table"
-                : "✨ Table wiped"}
+              {care.by ? "🧹 The cleaner clears the table" : "✨ Table wiped"}
             </span>
           )}
+          {care.wiped && !care.by && !care.refilled && service.tableWipe.napkinsLow ? (
+            <button
+              type="button"
+              data-testid="napkin-refill"
+              className="pointer-events-auto flex min-h-12 items-center gap-2 rounded-full bg-tomato/90 px-5 font-ui text-[14px] font-extrabold text-ivory shadow-lift active:scale-95"
+              onClick={refillNow}
+            >
+              🧻 Refill the napkins
+            </button>
+          ) : null}
         </div>
       ) : null}
 
@@ -1635,14 +1657,33 @@ export function Preparation({
             {...(result ? { plateTier: tierFor(result.score, true) } : {})}
             credits={credits}
             cashAtTable={!!floor}
+            bill={!!service.cashier}
             {...(floor && service.onCollectTableCash
               ? {
-                  // One tap takes the cash left on the table into the wallet (no swipe screen).
-                  onCollectCash: () => {
-                    service.onCollectTableCash!();
-                    setServiceCashRemaining(0);
-                    setServedCash(null);
-                  },
+                  // One tap takes the cash left on the table into the wallet (no swipe screen) — on the
+                  // button, or on the pile itself in the dining room above the card.
+                  onCollectCash: collectTableCash,
+                  room: (
+                    <DiningCashView
+                      stage={floor.stage}
+                      mapUrl={floor.mapUrl}
+                      seat={partySeat}
+                      cents={service.tableCashCents ?? 0}
+                      onCollect={collectTableCash}
+                      takeaway={!!service.takeaway}
+                      cashier={!!service.cashier}
+                      dirty={!!care && !care.wiped}
+                      onWipe={wipeNow}
+                      napkinsLow={
+                        !!care &&
+                        care.wiped &&
+                        !care.by &&
+                        !care.refilled &&
+                        !!service.tableWipe?.napkinsLow
+                      }
+                      onRefill={refillNow}
+                    />
+                  ),
                 }
               : {})}
             {...(floor ? { cashRemainingOverride: serviceCashRemaining } : {})}

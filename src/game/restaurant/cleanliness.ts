@@ -34,7 +34,7 @@ import { supplyUnits, takeOne } from "../business/BusinessSuppliesManager";
 import { makeSeededRand } from "../business/businessDeterministicRandom";
 import type { RecipeDefinition } from "../recipes/recipeTypes";
 import { dishServiceFor } from "./dishService";
-import { isSystemLive } from "./restaurantProgression";
+import { isSystemLive, servicesForDayAt } from "./restaurantProgression";
 import { restaurantDayOf } from "./restaurantDay";
 import {
   bottleView,
@@ -531,11 +531,15 @@ export type CleanlinessState = {
    * for the service on screen and gone when it ends). Optional: absent = none.
    */
   hourly?: CleanArea[];
+  /** The restaurant day those hourly Cleaners were hired for: they are gone the next day (hire again). */
+  hourlyDay?: number;
   /**
    * Phase 9D: the tables wiped on the floor in a service (guests at the wiped tables, and whether the
    * supplies were taken). Optional: absent = none.
    */
   wipes?: { level: number; n: number };
+  /** Phase 10: tables wiped since the napkin holders were last refilled (see `napkinsLow`). Optional: absent = 0. */
+  tissue?: number;
 };
 
 export const DEFAULT_CLEANLINESS: CleanlinessState = {
@@ -607,8 +611,9 @@ export function cleanlinessOf(save: SaveData): CleanlinessState {
       ? raw.choreKeys.filter((k): k is string => typeof k === "string").slice(-CHORE_KEYS_KEPT)
       : [],
     dayCleanerDay: raw.dayCleanerDay == null ? null : whole(raw.dayCleanerDay),
-    ...(hourly.length ? { hourly } : {}),
+    ...(hourly.length ? { hourly, hourlyDay: whole(raw.hourlyDay) } : {}),
     ...(wipes ? { wipes } : {}),
+    ...(whole(raw.tissue) > 0 ? { tissue: whole(raw.tissue) } : {}),
   };
 }
 
@@ -875,18 +880,36 @@ export function hireDayCleaner(save: SaveData, levelNumber: number): DayCleanerR
 
 /**
  * An hourly Cleaner (developer 2026-11-01: "for cleaning let him be for hourly wages not permanent, only if the
- * player likes to hire", "three cleaners for the three areas"): one per area, hired for the service on screen — one
- * shift hour at the Cleaner's hourly wage — and gone when it ends. They do their area's routine tasks (at once and
- * after the service); the Dining one also clears each table as its guests leave. The permanent Cleaner and the
- * day Cleaner stay as they are; spills and anything short of supplies stay the player's.
+ * player likes to hire", "three cleaners for the three areas", and — Phase 10 — "each day he needs to be hired
+ * again", "increase the wage when the restaurant progresses"): one per area, hired from the restaurant map for
+ * the REST OF TODAY and paid up front for the hours left (each service of the day is one shift hour). They do
+ * their area's routine tasks (at once and after every service); the Dining one also clears each table as its
+ * guests leave. The next day they are gone. The permanent Cleaner and the day Cleaner stay as they are; spills
+ * and anything short of supplies stay the player's.
  */
-export const HOURLY_CLEANER_HOURS = 1;
-export const hourlyCleanerPrice = (): number =>
-  BUSINESS_STAFF_CATALOG.cleaner.hourlyWageCents * HOURLY_CLEANER_HOURS;
+export const HOURLY_CLEANER_BASE_CENTS = BUSINESS_STAFF_CATALOG.cleaner.hourlyWageCents;
+/** The hourly wage grows with the restaurant: $15 at the start, about $33 at the last service (to $0.50). */
+export const hourlyCleanerWage = (levelNumber: number): number =>
+  Math.round((HOURLY_CLEANER_BASE_CENTS + 12 * Math.max(1, Math.round(levelNumber))) / 50) * 50;
 
-/** The areas an hourly Cleaner is on shift in. */
-export const hourlyAreas = (save: SaveData): readonly CleanArea[] =>
-  cleanlinessOf(save).hourly ?? [];
+/** The shift hours left today: the services still to play (at least 1 — closing needs a hand too). */
+export function hoursLeftToday(save: SaveData, levelNumber: number): number {
+  const d = restaurantDayOf(save);
+  if (d.closingDue) return 1;
+  const planned = d.opened ? d.servicesPlanned : servicesForDayAt(levelNumber).length;
+  const done = d.opened ? d.servicesDone : 0;
+  return Math.max(1, planned - done);
+}
+
+/** What one hourly Cleaner costs now: today's wage for each hour left. */
+export const hourlyCleanerPrice = (save: SaveData, levelNumber: number): number =>
+  hourlyCleanerWage(levelNumber) * hoursLeftToday(save, levelNumber);
+
+/** The areas an hourly Cleaner is on shift in today (hired on an earlier day: none). */
+export function hourlyAreas(save: SaveData): readonly CleanArea[] {
+  const st = cleanlinessOf(save);
+  return st.hourlyDay === restaurantDayOf(save).day ? (st.hourly ?? []) : [];
+}
 
 /** Someone already looks after `area` now: the hourly one, or the permanent / day Cleaner assigned to it. */
 export function areaCovered(save: SaveData, area: CleanArea): boolean {
@@ -900,8 +923,8 @@ export type HourlyHireResult =
   { ok: true; save: SaveData; cleaned: TaskKind[] } | { ok: false; reason: "locked" | "covered" };
 
 /**
- * Puts an hourly Cleaner on `area` (the wage is the caller's: App debits `hourlyCleanerPrice()` with one ledger
- * entry) and runs their round at once.
+ * Puts an hourly Cleaner on `area` for the rest of today (the wage is the caller's: App debits
+ * `hourlyCleanerPrice()` with one ledger entry) and runs their round at once.
  */
 export function hireHourlyCleaner(
   save: SaveData,
@@ -911,24 +934,17 @@ export function hireHourlyCleaner(
   if (!isCleanlinessLive(levelNumber)) return { ok: false, reason: "locked" };
   if (areaCovered(save, area)) return { ok: false, reason: "covered" };
   const st = cleanlinessOf(save);
-  const next = CLEAN_AREAS.filter((a) => a === area || (st.hourly ?? []).includes(a));
-  const round = cleanerRound(withState(save, { ...st, hourly: next }));
+  const today = [...hourlyAreas(save), area];
+  const next = CLEAN_AREAS.filter((a) => today.includes(a));
+  const round = cleanerRound(
+    withState(save, { ...st, hourly: next, hourlyDay: restaurantDayOf(save).day }),
+  );
   return { ok: true, save: round.save, cleaned: round.cleaned };
 }
 
-/** The hourly Cleaners' shift is over (the service ended): they leave. */
-export function dismissHourlyCleaners(save: SaveData): SaveData {
-  const st = cleanlinessOf(save);
-  if (!st.hourly?.length) return save;
-  const { hourly: _gone, ...rest } = st;
-  void _gone;
-  return withState(save, rest);
-}
-
-/** Who clears a table by themself as its guests leave: the Dining cleaner, or a hired Server; null = the player. */
-export function tableStaff(save: SaveData): "cleaner" | "server" | null {
-  if (areaCovered(save, "dining")) return "cleaner";
-  return save.business.staff.hiredRoles.includes("server") ? "server" : null;
+/** Who clears a table by themself as its guests leave: a Cleaner on the dining room today; null = the player. */
+export function tableStaff(save: SaveData): "cleaner" | null {
+  return areaCovered(save, "dining") ? "cleaner" : null;
 }
 
 export type WipeResult =
@@ -950,10 +966,23 @@ export function wipeTable(
   const st = cleanlinessOf(save);
   const n = Math.max(1, Math.floor(guests));
   const mine = st.wipes && st.wipes.level === levelNumber ? st.wipes : null;
+  const tissue = (st.tissue ?? 0) + 1;
   if (mine)
     return {
       ok: true,
-      save: withState(save, { ...st, wipes: { level: levelNumber, n: mine.n + n } }),
+      save: withState(save, { ...st, tissue, wipes: { level: levelNumber, n: mine.n + n } }),
+    };
+  // Before cleaning starts (Level 5) a wipe is just a cloth and a minute: no supplies yet.
+  if (!isCleanlinessLive(levelNumber))
+    return {
+      ok: true,
+      save: withState(save, {
+        ...st,
+        tissue,
+        cleaned: st.cleaned + 1,
+        byCleaner: st.byCleaner + (by === "staff" ? 1 : 0),
+        wipes: { level: levelNumber, n },
+      }),
     };
   const needs = taskNeeds(save, "tables");
   if (needs.length) return { ok: false, save, needs };
@@ -977,11 +1006,31 @@ export function wipeTable(
           open,
           cleaned: st.cleaned + 1,
           byCleaner: st.byCleaner + (by === "staff" ? 1 : 0),
+          tissue,
           wipes: { level: levelNumber, n },
         },
       },
     },
   };
+}
+
+/** The napkin holders run low after this many wiped tables (Phase 10, developer 2026-11-01: "tissue refill"). */
+export const TISSUE_EVERY = 3;
+
+/** The napkin holders need a refill now. */
+export const napkinsLow = (save: SaveData): boolean =>
+  (cleanlinessOf(save).tissue ?? 0) >= TISSUE_EVERY;
+
+/**
+ * Refills the napkin holders (one tap, or the Dining cleaner by themself). A chore of its own: it takes no extra
+ * supply (the napkins each dine-in order uses are already taken from the stock, serviceSupplies.takeOrderSupplies).
+ */
+export function refillNapkins(save: SaveData): SaveData {
+  const st = cleanlinessOf(save);
+  if (!st.tissue) return save;
+  const { tissue: _used, ...rest } = st;
+  void _used;
+  return withState(save, rest);
 }
 
 /** Who does a routine task when hired: its own role (server, prep cook) or the Cleaner. */

@@ -1,12 +1,14 @@
-// Phase 9 (developer 2026-11-01), restaurant build, in a real browser: the dining floor.
-//   D1 the dining area's side panel offers the Server (from Level 3) and the three hourly Cleaners before cooking.
-//   D2 hiring a Cleaner takes the hourly wage in one ledger entry, the offer disappears, the wallet = opening cash + ledger.
+// Phase 9 + 10 (developer 2026-11-01), restaurant build, in a real browser: the dining floor and the team.
+//   D1 the dining floor has NO hire panel (the cleaners are on the map, the team in the first shop).
+//   D2 the map's small 🧹 button opens a tray of three area cleaners; hiring one for the rest of today costs wage ×
+//      hours left in ONE staff-purchase entry, the button says it is on shift, the wallet = opening cash + ledger.
 //   D3 serving: a person (the waiter) carries the plate — there is a waiter on the floor, no flying plate.
-//   D4 the table is left to wipe: with the Dining cleaner on shift the staff clear it by themself; without one the player's
-//      "Wipe the table" button works and costs the closing task's supplies once.
-//   D5 a takeaway customer (seed 69 = the game's Level 67: its first order is takeaway) stands at the door with a 🥡
-//      bag, no table, and the next two orders still sit together.
-//   D6 no console errors.
+//   D4 with a Cleaner on the dining room the table is cleared by them; without one the dirty table shows in the
+//      room, a tap wipes it, and after every third table the napkins ask for a refill.
+//   D5 a takeaway customer (seed 69 = the game's Level 67: its first order is takeaway) stands at the counter with the
+//      Cashier next to them (no table).
+//   D6 the table care works from the very first customer (Level 1), not only once dine-in opens.
+//   D7 no console errors.
 // (Seeds use the 150-level numbers, two more than the game's.)
 import fs from "node:fs";
 import {
@@ -19,7 +21,10 @@ import {
   readSave,
   text,
   shot,
+  startFirstLevel,
+  sweepCash,
 } from "./harness.mjs";
+import { playToReport } from "./solver.mjs";
 
 const results = [];
 const check = (id, ok, detail) => {
@@ -47,7 +52,20 @@ const SUPPLY_IDS = [
     .matchAll(/\|\s*"([a-z-]+)"/g),
 ].map((m) => m[1]);
 const SUPPLIES = Object.fromEntries(SUPPLY_IDS.map((id) => [id, { units: 60, costBasis: 100 }]));
-const saveAt = (seedLevel, hired = ["prep-cook"], stock = 12) =>
+const CLEAN = {
+  tasks: [],
+  open: {},
+  counters: { sink: 0, paper: 0 },
+  cleanerAreas: ["kitchen", "dining", "restroom"],
+  introSeen: true,
+  cupboardAt: null,
+  lastStart: null,
+  cleaned: 0,
+  byCleaner: 0,
+  choreKeys: [],
+  dayCleanerDay: null,
+};
+const saveAt = (seedLevel, { hired = ["prep-cook"], stock = 12, cleanliness } = {}) =>
   seedSave({
     business: {
       ...MOVED_IN_BUSINESS,
@@ -64,6 +82,7 @@ const saveAt = (seedLevel, hired = ["prep-cook"], stock = 12) =>
         ],
       },
       staff: { hiredRoles: hired },
+      cleanliness: { ...CLEAN, ...(cleanliness ?? {}) },
     },
     credits: 50_000,
     levelProgress: {
@@ -95,47 +114,51 @@ const attr = (sel, a) =>
   page.evaluate((s, n) => document.querySelector(s)?.getAttribute(n) ?? null, sel, a);
 
 try {
-  // ---------- D1, D2: the side panel and an hourly Cleaner ----------
+  // ---------- D1: no hire panel on the dining floor ----------
   await boot(page, saveAt(32));
   await prepare();
-  await sleep(600);
-  const offers = await page.evaluate(() =>
-    [...document.querySelectorAll('[data-testid="dining-hire"] [data-hire]')].map((b) =>
-      b.getAttribute("data-hire"),
-    ),
-  );
-  await shot(page, "dining-1-panel");
+  await sleep(3500);
+  await shot(page, "dining-1-floor");
   check(
-    "D1 the side panel offers the Server and the three hourly Cleaners",
-    offers.includes("server") &&
-      ["cleaner-kitchen", "cleaner-dining", "cleaner-restroom"].every((o) => offers.includes(o)),
-    offers,
-  );
-  const before = await readSave(page);
-  await page.evaluate(() =>
-    document.querySelector('[data-testid="dining-hire"] [data-hire="cleaner-dining"]')?.click(),
-  );
-  await sleep(900);
-  const after = await readSave(page);
-  const offersAfter = await page.evaluate(() =>
-    [...document.querySelectorAll('[data-testid="dining-hire"] [data-hire]')].map((b) =>
-      b.getAttribute("data-hire"),
-    ),
-  );
-  const entry = after.economyLedger.slice(before.economyLedger.length);
-  check(
-    "D2 the Dining cleaner costs $15 (one staff-purchase entry), the offer is gone, the others stay, the wallet = opening cash + ledger",
-    entry.length === 1 &&
-      entry[0].category === "staff-purchase" &&
-      entry[0].amount === -1500 &&
-      after.business.cleanliness?.hourly?.includes("dining") &&
-      !offersAfter.includes("cleaner-dining") &&
-      offersAfter.includes("cleaner-kitchen") &&
-      after.credits - before.credits === ledgerSum(after) - ledgerSum(before),
-    { entry, offersAfter },
+    "D1 the dining floor has no hire panel",
+    (await q('[data-testid="service-floor"]')) && !(await q('[data-testid="dining-hire"]')),
   );
 
-  // ---------- D3, D4: a person serves; the Dining cleaner clears the table ----------
+  // ---------- D2: the map's cleaner button ----------
+  await boot(page, saveAt(32));
+  await page.evaluate(() => document.querySelector('[data-nav="restaurant-map"]')?.click());
+  await page.waitForSelector(".map-hotspot-zone", { timeout: 15000 }).catch(() => null);
+  await sleep(900);
+  await page.evaluate(() => document.querySelector('[data-testid="map-cleaners-button"]')?.click());
+  await sleep(400);
+  const slots = await page.evaluate(() =>
+    [...document.querySelectorAll("[data-cleaner]")].map((b) => b.getAttribute("data-cleaner")),
+  );
+  const before = await readSave(page);
+  await shot(page, "dining-2-map");
+  await page.evaluate(() => document.querySelector('[data-cleaner="dining"]')?.click());
+  await sleep(900);
+  const after = await readSave(page);
+  const entry = after.economyLedger.slice(before.economyLedger.length);
+  const onShift = await attr('[data-cleaner="dining"]', "data-on-shift");
+  const day = after.business.restaurantDay?.day ?? 1;
+  check(
+    "D2 the map's 🧹 button offers the three area cleaners; hiring the Dining one is ONE staff-purchase entry (wage × hours left), it shows on shift, wallet = opening cash + ledger",
+    slots.join() === "kitchen,dining,restroom" &&
+      entry.length === 1 &&
+      entry[0].category === "staff-purchase" &&
+      entry[0].amount < 0 &&
+      -entry[0].amount % 50 === 0 &&
+      after.business.cleanliness?.hourly?.includes("dining") &&
+      after.business.cleanliness?.hourlyDay === day &&
+      onShift === "true" &&
+      after.credits - before.credits === ledgerSum(after) - ledgerSum(before),
+    { slots, entry: entry.map((e) => [e.category, e.amount]), onShift },
+  );
+
+  // ---------- D3, D4a: a person serves; the Dining cleaner clears the table ----------
+  await prepare();
+  await sleep(3500);
   await clickButton(page, /Prep Cook cuts it/);
   await sleep(3200);
   await clickButton(page, /^Serve to /);
@@ -144,27 +167,25 @@ try {
   for (let i = 0; i < 40; i++) {
     await sleep(250);
     if (await q('[data-testid="service-floor-waiter"]')) {
-      if (!sawWaiter) await shot(page, "dining-2-waiter");
+      if (!sawWaiter) await shot(page, "dining-3-waiter");
       sawWaiter = true;
     }
     wipe = await attr('[data-testid="table-wipe"]', "data-wipe");
     if (wipe) break;
   }
-  await shot(page, "dining-3-after");
   check("D3 a waiter carries the plate to the table (no flying plate)", sawWaiter);
   const afterServe = await readSave(page);
   check(
-    "D4a with the Dining cleaner on shift the staff clear the table by themself (one wipe taken from the supplies, counted as theirs)",
+    "D4a with a Cleaner on the dining room the table is cleared by them (counted as theirs)",
     wipe === "staff" && (afterServe.business.cleanliness?.wipes?.n ?? 0) >= 1,
     { wipe, wipes: afterServe.business.cleanliness?.wipes },
   );
 
-  // ---------- D4b: no cleaner: the player wipes ----------
-  await boot(page, saveAt(32));
+  // ---------- D4b: no cleaner: the dirty table, the wipe, the napkins ----------
+  await boot(page, saveAt(32, { cleanliness: { tissue: 2 } }));
   await prepare();
-  await sleep(600);
+  await sleep(3500);
   let offer = null;
-  // A party leaves when its last order is served: serve customers until a table is left to wipe.
   for (let round = 0; round < 4 && offer !== "offer"; round++) {
     await clickButton(page, /Prep Cook cuts it/);
     await sleep(3200);
@@ -180,39 +201,86 @@ try {
       await sleep(2500);
     }
   }
-  await shot(page, "dining-5-d4b");
+  const dirtyShown = await q('[data-testid="dirty-table"]');
+  await shot(page, "dining-4-dirty");
   const beforeWipe = await readSave(page);
-  if (offer === "offer") await clickButton(page, /Wipe the table/);
+  if (dirtyShown)
+    await page.evaluate(() => document.querySelector('[data-testid="dirty-table"]')?.click());
   await sleep(700);
   const afterWipe = await readSave(page);
-  const supplyUsed = (s) => s.business.supplies?.lifetime?.cleaning?.unitsUsed ?? 0;
+  const napkins = await q('[data-testid="napkin-refill"]');
+  await shot(page, "dining-5-napkins");
+  if (napkins) await clickButton(page, /Refill the napkins/);
+  await sleep(600);
+  const afterRefill = await readSave(page);
   check(
-    "D4b without a cleaner the player's tap wipes the table (once, the closing task's supplies), the wallet is untouched",
+    "D4b without a cleaner the dirty table shows in the room, a tap wipes it (wallet untouched), the third table's napkins ask for a refill and one tap fills them",
     offer === "offer" &&
+      dirtyShown &&
       (afterWipe.business.cleanliness?.wipes?.n ?? 0) >= 1 &&
       afterWipe.credits === beforeWipe.credits &&
-      supplyUsed(afterWipe) >= supplyUsed(beforeWipe) &&
-      (await attr('[data-testid="table-wipe"]', "data-wipe")) === "done",
-    { offer, wipes: afterWipe.business.cleanliness?.wipes },
+      napkins &&
+      (afterRefill.business.cleanliness?.tissue ?? 0) === 0,
+    {
+      offer,
+      dirtyShown,
+      napkins,
+      tissueBefore: beforeWipe.business.cleanliness?.tissue,
+      tissueAfter: afterRefill.business.cleanliness?.tissue ?? 0,
+    },
   );
 
-  // ---------- D5: a takeaway customer ----------
-  await boot(page, saveAt(69, ["prep-cook", "line-cook", "server", "cleaner", "head-chef"], 3));
+  // ---------- D5: a takeaway customer beside the Cashier ----------
+  await boot(
+    page,
+    saveAt(69, {
+      hired: ["prep-cook", "line-cook", "server", "cashier", "cleaner", "head-chef"],
+      stock: 3,
+    }),
+  );
   await prepare();
   await sleep(1500);
   const svc = await attr('[data-testid="service-floor"]', "data-service");
-  await shot(page, "dining-4-takeaway");
+  const cashier = await q('[data-testid="floor-cashier"]');
+  await shot(page, "dining-6-takeaway");
   const txt = await flat();
   check(
-    "D5 the first customer of this service takes a parcel: no table, a 🥡 tag on the order",
-    svc === "takeaway" && /takeaway customer|to go/i.test(txt),
-    { svc },
+    "D5 the first customer of this service takes a parcel: no table, a 🥡 tag on the order, the Cashier at the counter beside them",
+    svc === "takeaway" && cashier && /takeaway customer|to go/i.test(txt),
+    { svc, cashier },
+  );
+
+  // ---------- D6: from the very first customer ----------
+  await startFirstLevel(page);
+  for (let step = 0; step < 4; step++) {
+    await playToReport(page);
+    await clickButton(page, /^Continue$/);
+    await sleep(1200);
+    if (/ORDER READY/i.test(await flat())) break;
+  }
+  await clickButton(page, /^Serve to /);
+  let first = null;
+  for (let i = 0; i < 40; i++) {
+    await sleep(250);
+    first = await attr('[data-testid="table-wipe"]', "data-wipe");
+    if (first) break;
+  }
+  await shot(page, "dining-7-level1");
+  const l1Dirty = await q('[data-testid="dirty-table"]');
+  if (first === "offer") await clickButton(page, /Wipe the table/);
+  await sleep(600);
+  const l1 = await readSave(page);
+  await sweepCash(page);
+  check(
+    "D6 at Level 1, the very first customer: the dirty table shows, a tap wipes it for free (no supplies exist yet)",
+    first === "offer" && l1Dirty && (l1.business.cleanliness?.wipes?.n ?? 0) >= 1,
+    { first, l1Dirty, wipes: l1.business.cleanliness?.wipes },
   );
 
   const errors = logs.filter(
     (l) => /error/i.test(l) && !/favicon|Failed to load resource/i.test(l),
   );
-  check("D6 no console errors", errors.length === 0, errors.slice(0, 3));
+  check("D7 no console errors", errors.length === 0, errors.slice(0, 3));
 } catch (e) {
   check("run", false, String(e).slice(0, 400));
 } finally {

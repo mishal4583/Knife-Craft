@@ -128,7 +128,7 @@ console.log("W. Wiring");
     "W1: after the intro the naming card shows (restaurant build) and Level 1 waits under it; the name is saved through persist",
   );
   assert(
-    /restaurantName: restaurantNameOf\(save\), onSetRestaurantName: setRestaurantName/.test(
+    /restaurantName: restaurantNameOf\(save\),\s+onSetRestaurantName: setRestaurantName/.test(
       router,
     ) &&
       /data-testid="restaurant-name-setting"/.test(journal) &&

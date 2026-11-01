@@ -50,6 +50,7 @@ import type { OrderService } from "./serviceSupplies";
 import { remapCampaignThreshold } from "../levels/campaignSelection";
 import { opensInText } from "./servicesToGo";
 import { PREP_COOK_CUTS_FROM } from "./prepCookAuto";
+import { STARTING_TEAM_ROLES } from "../config/startingTeam";
 
 // ── Configuration ───────────────────────────────────────────────────────
 
@@ -190,17 +191,17 @@ export const STAFF_HIRE_FROM = BUSINESS_MENU_FIRST_LEVEL;
 export const staffHireFrom = (id: string): number =>
   id === "prep-cook"
     ? Math.max(STAFF_HIRE_FROM, PREP_COOK_CUTS_FROM)
-    : id === "server"
-      ? Math.min(STAFF_HIRE_FROM, SERVER_HIRE_FROM)
+    : (STARTING_TEAM_ROLES as readonly string[]).includes(id)
+      ? TEAM_HIRE_FROM
       : STAFF_HIRE_FROM;
 
 /**
- * The Server can be hired from Level 3 (developer 2026-11-01, Phase 9E: "hire the server and billing staff early
- * in the game like level 3") — from the side of the dining area, before the Business section opens. Only the
- * hiring opens early: the staff RULE (a service that needs a Server) is unchanged (STAFF_RULES), so nobody is
- * forced to hire. The counter's cashier is drawn with the Server (staffLife.ts), so they come together.
+ * The Server and the Cashier (the billing staff) are hired from the very first shop (developer 2026-11-01,
+ * Phase 10: "hired permanently when the game starts … along with that ten dollars"), with the opening cash that
+ * pays their fees (config/startingTeam.ts). Only the hiring opens at Level 1: the staff RULE that needs a Server
+ * (STAFF_RULES) is unchanged, and the wages start at the same level as for everyone.
  */
-export const SERVER_HIRE_FROM = 3;
+export const TEAM_HIRE_FROM = 1;
 
 /** The level a specialist chef can be hired from (its cuisine's level, or Business's if earlier). */
 export const specialistOpensAt = (chef: SpecialistChef): number =>

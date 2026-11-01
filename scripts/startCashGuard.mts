@@ -3,7 +3,9 @@
  *
  * SaveManager.ts may carry exactly three approved changes — and no field, type or migration:
  *  1. the new save's opening credits (`DEFAULT_SAVE.credits`): $1,240 → $0 (developer 2026-10-26)
- *     → $10.00 (developer 2026-10-30, "buy everything from your own money");
+ *     → $10.00 (developer 2026-10-30, "buy everything from your own money")
+ *     → STARTING_CASH = $10.00 + the Server's and the Cashier's hiring fees (developer 2026-11-01, Phase 10,
+ *     config/startingTeam.ts; its import line is allowed too);
  *  2. the serialized, coalescing write queue behind `save()` (2026-10-30; guarded by
  *     pending-cash-qa Q: never overlapping, never out of order, a burst is two writes).
  *  3. the optional `settings.autoService` flag (developer 2026-10-30, the hired Prep Cook's Auto service;
@@ -15,7 +17,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 const ALLOWED =
-  /^\s*(\/\*\*|\*\/|\*( .*)?|\/\/.*)$|^\s*autoService\?: boolean;$|^\s*\/\*\* `autoService` \(optional, developer 2026-10-30\).*\*\/$|^\s*credits: (0|dollars\((10|1240)\)),$|^\s*\/\*\* \$1,240\.00 starting balance/;
+  /^\s*(\/\*\*|\*\/|\*( .*)?|\/\/.*)$|^\s*autoService\?: boolean;$|^\s*\/\*\* `autoService` \(optional, developer 2026-10-30\).*\*\/$|^\s*credits: (0|STARTING_CASH|dollars\((10|1240)\)),$|^import \{ STARTING_CASH \} from "\.\/config\/startingTeam";$|^\s*\/\*\* \$1,240\.00 starting balance/;
 
 /** The write path (old `save()` or the new queue) is compared by its own QA, not line by line. */
 function withoutWritePath(text: string): string {

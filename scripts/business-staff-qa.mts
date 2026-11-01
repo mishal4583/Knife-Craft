@@ -49,7 +49,8 @@ function saveAt(overrides: Partial<SaveData>): SaveData {
     DEFAULT_BUSINESS_STATE.staff.hiredRoles.length === 0,
     "A: DEFAULT_BUSINESS_STATE starts with nobody hired",
   );
-  assert(ALL_STAFF_ROLES.length === 6, `A2: exactly 6 roles exist (got ${ALL_STAFF_ROLES.length})`);
+  // Rule changed (developer 2026-11-01, Phase 10): the Cashier (billing staff) is the 7th role.
+  assert(ALL_STAFF_ROLES.length === 7, `A2: exactly 7 roles exist (got ${ALL_STAFF_ROLES.length})`);
   for (const role of ["prep-cook", "line-cook", "head-chef", "server", "cleaner", "manager"]) {
     assert(!!getStaffDefinition(role), `A3: ${role} exists in the Business Mode catalog`);
   }

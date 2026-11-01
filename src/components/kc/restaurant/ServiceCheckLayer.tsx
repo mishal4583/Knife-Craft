@@ -28,6 +28,7 @@ import {
   openMarketSupplies,
 } from "@/components/kc/marketFocus";
 import { PreServiceCheck } from "./PreServiceCheck";
+import { firstRunHand } from "@/game/restaurant/firstRunGuide";
 import { measureOf } from "@/game/business/measure";
 import {
   quickRestock,
@@ -122,6 +123,7 @@ export function ServiceCheckLayer({
       // Before Level 21 a new day opens without its card (firstLevels.ts).
       opening={dayCeremonyAt(n) ? plan.opening : null}
       onStart={() => onStart(!!plan.opening)}
+      guideHand={firstRunHand(save, "sheet")?.step === "start"}
       onRestock={(id) =>
         openMarketIngredients(
           go,

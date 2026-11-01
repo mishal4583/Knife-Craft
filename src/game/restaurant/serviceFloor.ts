@@ -108,13 +108,33 @@ export const waiterPath = (stand: FloorPoint): FloorPoint[] => [
 export const serveMs = (stand: FloorPoint): number => walkMs(waiterPath(stand)) + SET_DOWN_MS;
 
 /**
- * TAKEAWAY (Phase 9C): a customer who takes a parcel never sits. They walk in, wait just inside the door, are
- * handed a bag by the waiter and walk out with it.
+ * TAKEAWAY (Phase 9C, moved to the counter in Phase 10, developer 2026-11-01: "let the parcel or takeaway people
+ * stand next to him and make the order"): a customer who takes a parcel never sits. They stand at the service
+ * counter beside the Cashier (the billing staff), order there, and are handed a bag.
  */
-export const TAKEAWAY_SPOT: FloorPoint = { x: 50, y: 78.5 };
-export const takeawayPath = (): FloorPoint[] => [OUTSIDE, DOOR, TAKEAWAY_SPOT];
-/** The waiter hands the bag over standing beside the customer. */
-export const TAKEAWAY_STAND: FloorPoint = { x: 55, y: 77.5 };
+export const COUNTER_SPOT: Readonly<Record<KitchenMapArtStage, FloorPoint>> = {
+  // The Cashier stands at the counter's computer (staffLife.cashierStops: x, y of STAGE_SPOTS[stage].counter).
+  humble: { x: 37.2, y: 55.6 },
+  growing: { x: 37.6, y: 55.3 },
+  established: { x: 37, y: 55.3 },
+  "neighborhood-cafe": { x: 36.8, y: 55.6 },
+  "flourishing-cafe": { x: 38.9, y: 56.8 },
+  grand: { x: 37.6, y: 55.3 },
+};
+/** Where the Cashier stands (the counter's computer). */
+export const cashierSpot = (stage: KitchenMapArtStage): FloorPoint => COUNTER_SPOT[stage];
+/** Where a takeaway customer stands: right beside the Cashier, in front of the counter. */
+export const takeawaySpot = (stage: KitchenMapArtStage): FloorPoint => ({
+  x: COUNTER_SPOT[stage].x + 6.5,
+  y: COUNTER_SPOT[stage].y + 1.2,
+});
+/** Without a Cashier the waiter hands the bag over, standing beside the customer. */
+export const takeawayStand = (stage: KitchenMapArtStage): FloorPoint => ({
+  x: takeawaySpot(stage).x + 5,
+  y: takeawaySpot(stage).y + 0.5,
+});
+/** With a Cashier the bag changes hands at once (ms). */
+export const BAG_MS = 750;
 
 /** Each leg's duration (ms) along `path`, at the walking pace. */
 export function legDurations(path: readonly FloorPoint[]): number[] {

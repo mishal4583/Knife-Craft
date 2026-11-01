@@ -1,5 +1,6 @@
 // The first run (developer 2026-10-30), restaurant build:
-//   S1 a new game starts with $10.00 and lands on the Kitchen after the intro (not in the cutting).
+//   S1 a new game starts with $10.00 + the Server's and the Cashier's hiring fees (developer 2026-11-01: $236.00)
+//      and lands on the Kitchen after the intro (not in the cutting).
 //   S2 a hand points at the Market (Grandma's section pointer), and "Show me" opens the ingredients.
 //   S3 the Market shows the first-shopping hint and the hand on a needed item's Buy button.
 //   S4 buying spends the player's own money: one inventory-purchase entry, wallet = opening + ledger.
@@ -16,6 +17,8 @@ const check = (id, ok, detail) => {
 };
 const flat = async (page) => (await text(page)).replace(/\s+/g, " ");
 const { browser, page, logs } = await launch();
+// $10.00 for the food + the Server's and the Cashier's hiring fees ($113.00 each): config/startingTeam.ts.
+const START = 1000 + 2 * 11300;
 const ledgerSum = (s) => s.economyLedger.reduce((t, e) => t + e.amount, 0);
 
 try {
@@ -39,8 +42,8 @@ try {
       null,
   );
   check(
-    "S1 starts with $10.00 on the Kitchen (not in the cutting)",
-    start.credits === 1000 && !onBoard,
+    "S1 starts with $10.00 + the two hiring fees on the Kitchen (not in the cutting)",
+    start.credits === START && !onBoard,
     { credits: start.credits, onBoard },
   );
   check("S2 a hand points at the Market first", pointer === "shop", { pointer });
@@ -60,6 +63,33 @@ try {
   });
   await page.screenshot({ path: "tools/e2e/firstshop-2-market.png" });
 
+  // The team is hired in the first shop with the opening cash that pays for it.
+  const teamCard = await page.evaluate(() =>
+    [...document.querySelectorAll("[data-team-offer]")].map((e) =>
+      e.getAttribute("data-team-offer"),
+    ),
+  );
+  for (let i = 0; i < 2; i++) {
+    await page.evaluate(() => {
+      const b = [...document.querySelectorAll('[data-testid="team-hire"] button')].find((x) =>
+        /^Hire/.test(x.textContent.trim()),
+      );
+      b?.click();
+    });
+    await sleep(700);
+  }
+  const teamed = await readSave(page);
+  check(
+    "S3b the first shop offers the Server and the Cashier; hiring both leaves exactly $10.00 for the food, with two staff-purchase entries, and the card is gone",
+    teamCard.join() === "server,cashier" &&
+      teamed.business.staff.hiredRoles.includes("server") &&
+      teamed.business.staff.hiredRoles.includes("cashier") &&
+      teamed.credits === 1000 &&
+      teamed.economyLedger.filter((e) => e.category === "staff-purchase").length === 2 &&
+      !(await page.evaluate(() => !!document.querySelector('[data-testid="team-hire"]'))),
+    { teamCard, credits: teamed.credits },
+  );
+
   // Buy every ingredient in the plan, one tap each (the hand moves to the next one).
   for (let i = 0; i < 4; i++) {
     const had = await page.evaluate(() => {
@@ -75,10 +105,10 @@ try {
   const bought = await readSave(page);
   const purchases = bought.economyLedger.filter((e) => e.category === "inventory-purchase");
   check(
-    "S4 buying spends the player's own money: inventory-purchase entries, wallet = $10 + signed ledger",
+    "S4 buying spends the player's own money: inventory-purchase entries, wallet = opening cash + signed ledger",
     purchases.length >= 1 &&
       bought.credits < start.credits &&
-      bought.credits === 1000 + ledgerSum(bought) &&
+      bought.credits === START + ledgerSum(bought) &&
       bought.credits >= 0,
     { credits: bought.credits, purchases: purchases.length },
   );
@@ -128,7 +158,7 @@ try {
   check(
     "S6 the bought food cooks, serves, sweeps and Next Customer (last order) completes level-1; wallet = $10 + signed ledger",
     done.levelProgress.completedLevelIds.includes("level-1") &&
-      done.credits === 1000 + ledgerSum(done),
+      done.credits === START + ledgerSum(done),
     { completed: done.levelProgress.completedLevelIds, credits: done.credits },
   );
   const errors = logs.filter(

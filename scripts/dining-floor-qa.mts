@@ -4,9 +4,11 @@
  *   T. Takeaway customers: the order rule that tags them, and that the floor now seats them alone (never in a party).
  *   W. A person carries the food: the waiter's walk from the pass, the Server's look, no flying plate.
  *   C. Wiping the table (cleanliness.wipeTable) and the closing tables task.
- *   H. Cleaners by the hour, three of them, one per area (cleanliness.hireHourlyCleaner).
- *   D. The dining side panel's offers (restaurant/diningHire.ts) and the Server from Level 3.
- *   A. The App / Preparation / ServiceFloor wiring, old saves.
+ *   H. Cleaners by the hour (Phase 10): three, one per area, hired for the rest of today at a wage that grows, gone tomorrow.
+ *   N. Table care from the first customer: a free wipe before supplies, the napkin refill every third table.
+ *   D. The starting team (Server + Cashier, opening cash = $10 + their fees) and the map's cleaner slots.
+ *   K. The Cashier: counts the till, stands at the counter, takeaway customers beside them.
+ *   A/B. The App / Preparation / ServiceFloor wiring, the fixes of 2026-11-01.
  *
  * Run: npx tsx scripts/dining-floor-qa.mts
  */
@@ -35,6 +37,11 @@ const P = await import("../src/game/restaurant/restaurantProgression.ts");
 const { BUSINESS_STAFF_CATALOG } = await import("../src/game/business/businessStaff.ts");
 const { CAMPAIGN_RECIPES } = await import("../src/game/recipes/campaignRecipes.ts");
 const { dollars } = await import("../src/game/money.ts");
+const ST = await import("../src/game/config/startingTeam.ts");
+const CC = await import("../src/game/restaurant/closingChores.ts");
+const SL = await import("../src/game/restaurant/staffLife.ts");
+const { openDay, recordService, restaurantDayOf } =
+  await import("../src/game/restaurant/restaurantDay.ts");
 
 let failed = 0;
 function check(id: string, ok: boolean, detail?: unknown) {
@@ -145,15 +152,12 @@ const base = (credits = dollars(500)): SaveData =>
   SF.resetPartiesForTests();
 }
 {
-  const p = SF.takeawayPath();
   check(
-    "T4 the takeaway customer walks door → just inside the door and waits there (no table); the waiter hands over beside them",
-    p[0]!.y > p[1]!.y &&
-      p.at(-1)!.x === SF.TAKEAWAY_SPOT.x &&
-      Math.hypot(
-        SF.TAKEAWAY_STAND.x - SF.TAKEAWAY_SPOT.x,
-        SF.TAKEAWAY_STAND.y - SF.TAKEAWAY_SPOT.y,
-      ) < 8,
+    "T4 the takeaway customer has no table to walk to: they stand at the counter beside the Cashier (see K3), and the waiter hands the bag over right beside them when there is no Cashier",
+    Math.hypot(
+      SF.takeawayStand("humble").x - SF.takeawaySpot("humble").x,
+      SF.takeawayStand("humble").y - SF.takeawaySpot("humble").y,
+    ) < 8,
   );
 }
 
@@ -267,17 +271,33 @@ const base = (credits = dollars(500)): SaveData =>
   );
 }
 
-// ── H: cleaners by the hour ──────────────────────────────────────────────
+// ── H: cleaners by the hour (Phase 10: the rest of today, the wage grows, gone tomorrow) ────────────────
 {
   const n = Math.max(DINE_IN, CL.CLEANING_FROM_LEVEL + 1);
   const s0 = base();
   check(
-    "H1 an hourly Cleaner costs one shift hour of the Cleaner's hourly wage ($15) — not the day's wage",
-    CL.hourlyCleanerPrice() ===
-      BUSINESS_STAFF_CATALOG.cleaner.hourlyWageCents * CL.HOURLY_CLEANER_HOURS &&
-      CL.hourlyCleanerPrice() === 1500 &&
-      CL.hourlyCleanerPrice() < CL.dayCleanerPrice(),
-    { hourly: CL.hourlyCleanerPrice(), day: CL.dayCleanerPrice() },
+    "H1 an hourly Cleaner costs the hourly wage for each hour left today: $15 an hour at the start, more as the restaurant progresses",
+    CL.hourlyCleanerWage(1) === 1500,
+    CL.hourlyCleanerWage(1),
+  );
+  check(
+    "H1b the wage grows with the restaurant (never falls), about doubling by the last service",
+    CL.hourlyCleanerWage(148) > CL.hourlyCleanerWage(74) &&
+      CL.hourlyCleanerWage(74) > CL.hourlyCleanerWage(1) &&
+      CL.hourlyCleanerWage(148) / CL.hourlyCleanerWage(1) > 1.8 &&
+      CL.hourlyCleanerWage(148) % 50 === 0,
+    [CL.hourlyCleanerWage(1), CL.hourlyCleanerWage(74), CL.hourlyCleanerWage(148)],
+  );
+  const hoursFresh = CL.hoursLeftToday(s0, n);
+  const opened = openDay(s0, n);
+  const afterOne = recordService(opened, n);
+  check(
+    "H1c the price is the wage × the hours (services) left today: a fresh day has the whole day, each finished service takes one hour off, never below 1",
+    hoursFresh === P.servicesForDayAt(n).length &&
+      CL.hoursLeftToday(afterOne, n) === Math.max(1, hoursFresh - 1) &&
+      CL.hourlyCleanerPrice(s0, n) === CL.hourlyCleanerWage(n) * hoursFresh &&
+      CL.hoursLeftToday(s0, n) >= 1,
+    { hoursFresh },
   );
   const dining = CL.hireHourlyCleaner(s0, "dining", n);
   check(
@@ -314,7 +334,6 @@ const base = (credits = dollars(500)): SaveData =>
         return !r.ok && r.reason === "covered";
       })(),
   );
-  // Their round: only their area's routine tasks.
   const withTasks = CL.tasksAfterService(s0, n, {
     recipes: [CAMPAIGN_RECIPES[0]!],
     dineIn: 2,
@@ -329,30 +348,41 @@ const base = (credits = dollars(500)): SaveData =>
     kitchen.ok &&
       kitchen.cleaned.length > 0 &&
       kitchen.cleaned.every((k) => CL.TASK_RULES[k].area === "kitchen") &&
-      left.every((a) => a !== "kitchen" || false) === true &&
       left.some((a) => a === "dining" || a === "restroom"),
     { cleaned: kitchen.ok ? kitchen.cleaned : null, left },
   );
-  const gone = kitchen.ok ? CL.dismissHourlyCleaners(kitchen.save) : s0;
+  // They stay all day (through every service) and are gone the next day: hire again.
+  const nextDay = (sv: SaveData): SaveData => ({
+    ...sv,
+    business: {
+      ...sv.business,
+      restaurantDay: { ...restaurantDayOf(sv), day: restaurantDayOf(sv).day + 1 },
+    },
+  });
+  const hired = kitchen.ok ? kitchen.save : s0;
   check(
-    "H6 the shift ends with the service: the hourly Cleaners leave (the same save otherwise)",
-    CL.hourlyAreas(gone).length === 0 &&
-      !CL.areaCovered(gone, "kitchen") &&
-      CL.dismissHourlyCleaners(s0) === s0,
+    "H6 hired for the rest of today: still on shift after a service; the next day they are gone and must be hired again",
+    CL.areaCovered(hired, "kitchen") &&
+      CL.areaCovered(recordService(openDay(hired, n), n), "kitchen") &&
+      !CL.areaCovered(nextDay(hired), "kitchen") &&
+      CL.hireHourlyCleaner(nextDay(hired), "kitchen", n).ok,
   );
   check(
-    "H7 the Server or the Dining cleaner clears tables by themself: the Dining cleaner, or a hired Server; otherwise the player",
+    "H7 only a Cleaner on the dining room clears tables by themself; a Server does not (the player cleans), otherwise the player",
     CL.tableStaff(s0) === null &&
       CL.tableStaff(dining.ok ? dining.save : s0) === "cleaner" &&
       CL.tableStaff({
         ...s0,
-        business: { ...s0.business, staff: { ...s0.business.staff, hiredRoles: ["server"] } },
-      } as unknown as SaveData) === "server",
+        business: {
+          ...s0.business,
+          staff: { ...s0.business.staff, hiredRoles: ["server", "cashier"] },
+        },
+      } as unknown as SaveData) === null,
   );
   const mod = code("src/game/restaurant/cleanliness.ts");
   const hireFn = mod.slice(
     mod.indexOf("export function hireHourlyCleaner"),
-    mod.indexOf("export function dismissHourlyCleaners"),
+    mod.indexOf("export function tableStaff"),
   );
   check(
     "H8 hiring is pure: the module function moves no money (App debits the wage with one ledger entry) and uses no random",
@@ -360,73 +390,170 @@ const base = (credits = dollars(500)): SaveData =>
   );
 }
 
-// ── D: the dining side panel ─────────────────────────────────────────────
+// ── N: table care from the first customer, napkins ──────────────────────
 {
-  const ids = (sv: SaveData, n: number) => DH.diningOffers(sv, n).map((o) => o.id);
   const s0 = base();
+  const free = CL.wipeTable({ ...structuredClone(DEFAULT_SAVE) }, 1, 1, "player");
   check(
-    "D1 the Server can be hired from Level 3 (hiring only: the staff RULE that needs a Server is unchanged), the cleaners from the level cleaning starts",
-    SR.staffHireFrom("server") === 3 &&
-      SR.SERVER_HIRE_FROM === 3 &&
+    "N1 from the first customer a table can be wiped: before cleaning supplies exist (Level 5) it is just a cloth, free, and still counts",
+    free.ok &&
+      CL.cleanlinessOf(free.save).wipes?.n === 1 &&
+      CL.cleanlinessOf(free.save).cleaned === 1,
+  );
+  let sv = s0;
+  const marks: boolean[] = [];
+  for (let i = 0; i < CL.TISSUE_EVERY; i++) {
+    const r = CL.wipeTable(sv, 10 + i, 1, "player");
+    if (!r.ok) break;
+    sv = r.save;
+    marks.push(CL.napkinsLow(sv));
+  }
+  check(
+    "N2 the napkin holders run low after every third wiped table, and one refill tap fills them (no extra supply)",
+    CL.TISSUE_EVERY === 3 &&
+      marks.length === 3 &&
+      !marks[0] &&
+      !marks[1] &&
+      marks[2] &&
+      !CL.napkinsLow(CL.refillNapkins(sv)) &&
+      CL.refillNapkins(s0) === s0,
+    marks,
+  );
+}
+
+// ── D: the starting team and the cleaner slots ──────────────────────────
+{
+  const TEAM = ["server", "cashier"] as const;
+  const fresh = structuredClone(DEFAULT_SAVE);
+  const fees = TEAM.map((r) => SR.staffHireFee(r)!);
+  check(
+    "D1 a new game starts with $10.00 for the food plus exactly the Server's and the Cashier's hiring fees (config/startingTeam.ts mirrors staffHireFee)",
+    ST.STARTING_FOOD_CASH === dollars(10) &&
+      ST.STARTING_TEAM_FEES === fees[0]! + fees[1]! &&
+      ST.STARTING_CASH === dollars(10) + fees[0]! + fees[1]! &&
+      DEFAULT_SAVE.credits === ST.STARTING_CASH &&
+      fees.every((f) => f > 0),
+    { start: DEFAULT_SAVE.credits, fees },
+  );
+  check(
+    "D2 the Server and the Cashier can be hired from Level 1 (hiring only: the staff RULE that needs a Server is unchanged), the Prep Cook still at 30",
+    SR.TEAM_HIRE_FROM === 1 &&
+      SR.staffHireFrom("server") === 1 &&
+      SR.staffHireFrom("cashier") === 1 &&
       SR.staffHireFrom("prep-cook") === 30 &&
       SR.staffHireFrom("line-cook") === SR.STAFF_HIRE_FROM &&
       SR.STAFF_RULES.find((r) => r.role === "server")!.fromLevel > 30 &&
-      !ids(s0, 2).includes("server") &&
-      ids(s0, 3).includes("server") &&
-      !ids(s0, 3).some((x) => x.startsWith("cleaner-")) &&
-      ids(s0, CL.CLEANING_FROM_LEVEL).filter((x) => x.startsWith("cleaner-")).length === 3,
-    { l3: ids(s0, 3), l5: ids(s0, 5) },
+      !SR.STAFF_RULES.some((r) => r.role === "cashier"),
   );
-  const offers = DH.diningOffers(s0, DINE_IN);
+  const offers = DH.teamOffers(fresh, 1);
   check(
-    "D2 the offers: the Server first (the hiring fee, once), then the three Cleaners at the hourly wage; affordable follows the wallet",
-    offers[0]!.id === "server" &&
-      offers[0]!.price === SR.staffHireFee("server") &&
-      offers[0]!.per === "once" &&
-      offers.slice(1).every((o) => o.per === "hour" && o.price === CL.hourlyCleanerPrice()) &&
-      DH.diningOffers({ ...s0, credits: 0 }, DINE_IN).every((o) => !o.affordable) &&
-      offers.every((o) => o.affordable),
-    offers.map((o) => [o.id, o.price]),
+    "D3 the first shop's Hire your team card: the Server then the Cashier, each at its fee, both affordable from the opening cash",
+    offers.map((o) => o.role).join() === "server,cashier" &&
+      offers.every((o) => o.affordable && o.fee === SR.staffHireFee(o.role)) &&
+      fresh.credits >= ST.STARTING_TEAM_FEES,
+    offers.map((o) => [o.role, o.fee]),
   );
-  const hiredServer = {
-    ...s0,
-    business: { ...s0.business, staff: { ...s0.business.staff, hiredRoles: ["server"] } },
-  } as unknown as SaveData;
-  const hiredKitchen = CL.hireHourlyCleaner(s0, "kitchen", DINE_IN);
+  const both = TEAM.reduce<SaveData>((sv, r) => {
+    const h = SR.hireRestaurantStaff(sv, r, 1);
+    return h.ok ? h.save : sv;
+  }, fresh);
   check(
-    "D3 an offer is gone once the person is hired: no Server offer with a Server on the team, no kitchen offer with a kitchen Cleaner on shift",
-    !ids(hiredServer, DINE_IN).includes("server") &&
-      hiredKitchen.ok &&
-      !ids(hiredKitchen.save, DINE_IN).includes("cleaner-kitchen") &&
-      ids(hiredKitchen.save, DINE_IN).includes("cleaner-dining"),
+    "D4 hiring both takes exactly their two fees from the opening cash (the $10 for food is left), puts them on the team for good, and the card is gone",
+    both.business.staff.hiredRoles.includes("server") &&
+      both.business.staff.hiredRoles.includes("cashier") &&
+      both.credits === dollars(10) &&
+      DH.teamOffers(both, 1).length === 0 &&
+      DH.teamOffers({ ...fresh, credits: 0 }, 1).every((o) => !o.affordable),
+    both.credits,
   );
+  const slots = DH.cleanerSlots(base(), DINE_IN);
   check(
-    "D4 the offer ids map to their area (a Server has none)",
-    DH.areaOfOffer("server") === null &&
-      DH.areaOfOffer("cleaner-dining") === "dining" &&
-      DH.areaOfOffer("cleaner-restroom") === "restroom",
+    "D5 the map's cleaner slots: the three areas from the level cleaning starts (none before), priced wage × hours, not on shift until hired",
+    DH.cleanerSlots(base(), CL.CLEANING_FROM_LEVEL - 1).length === 0 &&
+      slots.map((s) => s.area).join() === CL.CLEAN_AREAS.join() &&
+      slots.every((s) => s.price === s.wage * s.hours && !s.onShift && s.affordable),
+    slots.map((s) => [s.area, s.price]),
   );
-  const hire = SR.hireRestaurantStaff(s0, "server", 3);
+  const k = CL.hireHourlyCleaner(base(), "kitchen", DINE_IN);
   check(
-    "D5 the Server really can be hired at Level 3 (one hiring fee, the wallet pays it, the Server joins the team)",
-    hire.ok &&
-      hire.save.business.staff.hiredRoles.includes("server") &&
-      hire.save.credits === s0.credits - SR.staffHireFee("server")!,
-    hire.ok ? null : hire,
+    "D6 a slot shows 'on shift' once hired and cannot be bought again",
+    k.ok &&
+      DH.cleanerSlots(k.save, DINE_IN).find((s) => s.area === "kitchen")!.onShift &&
+      !DH.cleanerSlots(k.save, DINE_IN).find((s) => s.area === "dining")!.onShift,
   );
-  check("D6 …and not at Level 2", !SR.hireRestaurantStaff(s0, "server", 2).ok);
 }
 
-// ── A: wiring and old saves ──────────────────────────────────────────────
+// ── K: the Cashier ──────────────────────────────────────────────────────
+{
+  const withCashier = (sv: SaveData, on: boolean): SaveData =>
+    ({
+      ...sv,
+      business: {
+        ...sv.business,
+        staff: { ...sv.business.staff, hiredRoles: on ? ["cashier"] : [] },
+      },
+    }) as unknown as SaveData;
+  const rowOf = (sv: SaveData) => CC.closingRows(sv, 30).find((r) => r.id === "count")!;
+  check(
+    "K1 the Cashier counts the till at night: with one on the team the closing 'count the takings' row is done for you, without one it is the player's tap",
+    rowOf(withCashier(base(), true)).state === "done" &&
+      /Cashier/.test(rowOf(withCashier(base(), true)).label) &&
+      rowOf(withCashier(base(), false)).state === "todo",
+  );
+  const cast = (hired: string[]) => SL.staffCast(hired).map((a) => a.id);
+  check(
+    "K2 the counter's cashier is shown when a Cashier is hired (not by the Server); the Server is shown separately",
+    cast(["cashier"]).includes("service-cashier") &&
+      !cast(["server"]).includes("service-cashier") &&
+      cast(["server"]).includes("staff-server"),
+  );
+  const stage = "humble" as const;
+  const c = SF.cashierSpot(stage);
+  const t = SF.takeawaySpot(stage);
+  check(
+    "K3 a takeaway customer stands right beside the Cashier, in front of the counter, on every stage and inside the floor view",
+    (Object.keys(SF.COUNTER_SPOT) as (keyof typeof SF.COUNTER_SPOT)[]).every((st) => {
+      const a = SF.cashierSpot(st);
+      const b = SF.takeawaySpot(st);
+      return (
+        b.x > a.x &&
+        b.x - a.x < 9 &&
+        b.y >= a.y &&
+        b.y - a.y < 3 &&
+        b.x < SF.FLOOR_VIEW.x1 &&
+        b.y > SF.FLOOR_VIEW.y0 &&
+        a.y > SF.FLOOR_VIEW.y0
+      );
+    }) && t.x > c.x,
+  );
+  const stands = Object.keys(SF.COUNTER_SPOT).map((st) =>
+    SF.takeawayStand(st as keyof typeof SF.COUNTER_SPOT),
+  );
+  check(
+    "K4 with a Cashier the bag changes hands at the counter (a short beat, nobody walks); the cashier positions match the staff map's counter",
+    SF.BAG_MS > 0 &&
+      SF.BAG_MS < SF.serveMs(stands[0]!) &&
+      (Object.keys(SF.COUNTER_SPOT) as (keyof typeof SF.COUNTER_SPOT)[]).every((st) => {
+        const cs = SL.cashierStops(st)[0]!;
+        return (
+          Math.abs(cs.x - SF.cashierSpot(st).x) < 0.01 &&
+          Math.abs(cs.y - SF.cashierSpot(st).y) < 0.01
+        );
+      }),
+  );
+}
+
+// ── A: wiring ───────────────────────────────────────────────────────────
 {
   const app = read("src/App.tsx");
   const prep = read("src/components/kc/game/Preparation.tsx");
   const floor = read("src/components/kc/game/ServiceFloor.tsx");
   check(
-    "A1 App: the hourly Cleaner is one wallet debit and one staff-purchase ledger entry; the shift ends with the service round; a wipe goes through cleanliness.wipeTable",
-    /hireHourlyCleaner\(current/.test(app) &&
-      /"staff-purchase",\s*-price,\s*`Cleaner · 1 hour/.test(app) &&
-      /dismissHourlyCleaners\(round\.save\)/.test(app) &&
+    "A1 App: the hourly Cleaner is one wallet debit and one staff-purchase ledger entry for the hours left; no end-of-service dismissal; a wipe goes through cleanliness.wipeTable",
+    /hireHourlyCleaner\(current, area, level\)/.test(app) &&
+      /hourlyCleanerPrice\(current, level\)/.test(app) &&
+      /"staff-purchase",\s*-price,\s*`Cleaner · rest of the day/.test(app) &&
+      !/dismissHourlyCleaners/.test(app) &&
       /wipeTable\(current, levelNumber\(campaignServiceSession\.levelId\), guests, by\)/.test(app),
   );
   check(
@@ -440,29 +567,81 @@ const base = (credits = dollars(500)): SaveData =>
       /\.\.\.\(currentTakeaway \? \{ takeaway: true \} : \{\}\)/.test(app),
   );
   check(
-    "A3 Preparation: a takeaway customer is seated alone, the floor gets the waiter, the table wipe is offered after a party left; the player's wipe never blocks",
+    "A3 Preparation: a takeaway customer is seated alone, the floor gets the waiter and the cashier, the table care shows after a party left (from the first customer, not only dine-in)",
     /!!service\.takeaway,\s*\)/.test(prep) &&
       /waiter=\{service\.waiter \?\? "cook"\}/.test(prep) &&
+      /cashier=\{!!service\.cashier\}/.test(prep) &&
       /data-testid="table-wipe"/.test(prep) &&
-      /Wipe the table/.test(prep) &&
-      /service\.tableWipe &&\s*!service\.takeaway/.test(prep),
+      /Refill the napkins/.test(prep) &&
+      /service\.tableWipe &&\s*!service\.takeaway/.test(prep) &&
+      !/isSystemLive\("dine-in", levelNumber\(campaignLevelForSession\.id\)\)\s*\?\s*\{\s*tableWipe/.test(
+        app,
+      ),
   );
   check(
-    "A4 ServiceFloor: the hire panel shows only before cooking, stops taps reaching the floor, and each offer is a 48 px+ button",
-    /mode === "arrive" && hire && hire\.offers\.length > 0/.test(floor) &&
-      /data-testid="dining-hire"/.test(floor) &&
-      /e\.stopPropagation\(\)/.test(floor) &&
-      /min-h-12/.test(floor),
+    "A4 the dining floor has no hire panel any more (the cleaners are on the map, the team in the first shop)",
+    !/dining-hire/.test(floor) && !/data-hire/.test(floor) && !/hire\.offers/.test(floor),
+  );
+  const router = read("src/ScreensRouter.tsx");
+  const map = read("src/components/kc/restaurantMap/MapCleanerHire.tsx");
+  const market = read("src/components/kc/MarketIngredients.tsx");
+  check(
+    "A5 the map has the small cleaner button (a tray of three areas), the Market has the Hire your team card, and neither is on the Cleanliness page",
+    /<MapCleanerHire/.test(router) &&
+      /map-cleaners-button/.test(map) &&
+      /<TeamHireCard/.test(market) &&
+      !/hireHourlyCleaner|MapCleanerHire|TeamHireCard/.test(
+        read("src/components/kc/business/BusinessCleanliness.tsx"),
+      ),
   );
   const fl = code("src/game/restaurant/serviceFloor.ts");
   check(
-    "A5 the floor modules stay pure: no wallet, ledger, save write or random in serviceFloor.ts or diningHire.ts",
+    "A6 the floor modules stay pure: no wallet, ledger, save write or random in serviceFloor.ts or diningHire.ts",
     !/EconomyLedger|economy\/wallet|debitWallet|appendLedgerEntry|Math\.random|SaveManager\./.test(
       fl,
     ) &&
       !/EconomyLedger|economy\/wallet|debitWallet|appendLedgerEntry|Math\.random|SaveManager\./.test(
         code("src/game/restaurant/diningHire.ts"),
       ),
+  );
+}
+
+// ── B: the cash on the table, the chore row, the Cleanliness page (developer 2026-11-01 fixes) ──
+{
+  const soc = read("src/components/kc/game/ServiceOrderComplete.tsx");
+  const room = read("src/components/kc/game/DiningCashView.tsx");
+  const prep = read("src/components/kc/game/Preparation.tsx");
+  check(
+    "B1 the Served card sits under the dining room with the cash on the table: a tap on the pile or the button is the same collect; the dirty table and the napkins are tappable there too, and the card makes the bill",
+    /room\?: ReactNode/.test(soc) &&
+      /served && room/.test(soc) &&
+      /bill-line/.test(soc) &&
+      /<TableCash/.test(room) &&
+      /Tap the cash on the table/.test(room) &&
+      /data-testid="dirty-table"/.test(room) &&
+      /data-testid="napkins-low"/.test(room) &&
+      /onCollectCash: collectTableCash/.test(prep) &&
+      /onCollect=\{collectTableCash\}/.test(prep),
+  );
+  const chores = read("src/components/kc/restaurant/ShiftChecklist.tsx");
+  check(
+    "B2 the chore row keeps its name readable: the label has a minimum width so a long Buy button wraps under it",
+    /flex-\[1_1_9rem\]/.test(chores) && /max-w-full/.test(chores),
+  );
+  const cl = read("src/components/kc/business/BusinessCleanliness.tsx");
+  const iReady = cl.indexOf("<ReadyCard");
+  const iAreas = cl.indexOf("{areas.map((v)");
+  const iDay = cl.indexOf("<DayCleanerCard");
+  const iStaff = cl.indexOf("<StaffCard");
+  const iHist = cl.indexOf("<HistoryCard");
+  check(
+    "B3 Cleanliness: the Hire a Cleaner offers are the LAST cards (after the areas, supplies and history), worded as optional",
+    iReady < iAreas &&
+      iAreas < iHist &&
+      iHist < iStaff &&
+      iStaff < iDay &&
+      /Not in the mood to clean\?/.test(cl),
+    { iReady, iAreas, iHist, iStaff, iDay },
   );
 }
 

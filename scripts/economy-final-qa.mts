@@ -644,8 +644,10 @@ for (const [r] of profiles) {
 assert(
   // Re-recorded 2026-10-30: the pay re-plan (+$199,515 of completion rewards), the two removed levels and the
   // kitchen tiers at $60k / $12k / $18k (the classic catalog), the $10 start: $32,618.07 → $211,718.37.
-  completionist.final === 21_171_837,
-  `K5: the classic completionist ends at ${fmt(completionist.final)} — the 148-level baseline $211,718.37`,
+  // Rule changed (developer 2026-11-01, Phase 10): a new game starts with $10 + the Server's and the Cashier's hiring
+  // fees ($226.00); the classic simulation hires nobody, so it ends exactly $226.00 higher: $211,718.37 → $211,944.37.
+  completionist.final === 21_194_437,
+  `K5: the classic completionist ends at ${fmt(completionist.final)} — the 148-level baseline $211,944.37 ($211,718.37 + the $226.00 team fund)`,
 );
 assert(
   completionist.everythingOwned &&

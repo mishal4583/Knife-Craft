@@ -247,6 +247,7 @@ export function Shop({
   initialCategory = "knives",
   secondFloorAction,
   planLevelId = null,
+  hireStaff,
 }: {
   go: (s: ScreenId) => void;
   save: SaveData;
@@ -272,6 +273,8 @@ export function Shop({
   secondFloorAction?: (action: SecondFloorAction) => FloorResult;
   /** The level whose Pre-Service Check is open: what the Market highlights is for it. */
   planLevelId?: string | null;
+  /** The first shop's "Hire your team" (the Server and the Cashier): App.hireStaff. */
+  hireStaff?: (role: string) => { ok: boolean; reason?: string; fee?: number };
 }) {
   const u = useUnlockText();
   // First levels (restaurant build, firstLevels.ts): before Level 3 the
@@ -559,6 +562,7 @@ export function Shop({
               focusPlan={planFocus}
               planLevelId={planLevelId}
               setNotice={setNotice}
+              {...(hireStaff ? { hireStaff } : {})}
               {...(RESTAURANT_MODE ? { onChangeSupplier: () => go("business-suppliers") } : {})}
             />
           ) : isSupplySection(category) ? (

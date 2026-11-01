@@ -21,6 +21,7 @@ import { getSelectedSupplierId } from "@/game/economy/SupplierManager";
 import { BulkPresets } from "./BulkPresets";
 import { ingredientBulkDiscount } from "@/game/restaurant/bulkBuying";
 import { MarketPlanPanel } from "./MarketPlanPanel";
+import { TeamHireCard } from "./restaurant/TeamHireCard";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Badge, KButton, Panel } from "./common/primitives";
 import { cn } from "@/lib/utils";
@@ -100,6 +101,7 @@ export function MarketIngredients({
   setNotice,
   onChangeSupplier,
   planLevelId = null,
+  hireStaff,
 }: {
   save: SaveData;
   /** The open Pre-Service Check's level: what is highlighted is for it. */
@@ -120,6 +122,8 @@ export function MarketIngredients({
   setNotice: (text: string) => void;
   /** Restaurant build: opens Restaurant → Suppliers, where the ingredient supplier is chosen (phase 7). */
   onChangeSupplier?: () => void;
+  /** Restaurant build: the first shop's "Hire your team" (the Server and the Cashier; App.hireStaff). */
+  hireStaff?: (role: string) => { ok: boolean; reason?: string; fee?: number };
 }) {
   const [quantities, setQuantities] = useState<Partial<Record<IngredientId, number>>>(() =>
     focusId && focusQuantity ? { [focusId]: focusQuantity } : {},
@@ -198,6 +202,9 @@ export function MarketIngredients({
 
   return (
     <div className="space-y-3">
+      {RESTAURANT_MODE && hireStaff ? (
+        <TeamHireCard save={save} onHire={hireStaff} setNotice={setNotice} />
+      ) : null}
       {RESTAURANT_MODE ? (
         <MarketPlanPanel
           save={save}

@@ -205,14 +205,14 @@ import {
   newDayCleanerRewardId,
   tipHygieneShare,
   AREA_META,
-  dismissHourlyCleaners,
   hireHourlyCleaner,
   hourlyCleanerPrice,
+  napkinsLow,
+  refillNapkins,
   tableStaff,
   wipeTable,
   type CleanArea,
 } from "@/game/restaurant/cleanliness";
-import { areaOfOffer, diningOffers, type DiningHireId } from "@/game/restaurant/diningHire";
 import { isSystemLive } from "@/game/restaurant/restaurantProgression";
 import { guideStepFor, markGuideSeen } from "@/game/restaurant/restaurantGuide";
 import {
@@ -1163,35 +1163,30 @@ export function App() {
   }
 
   /**
-   * Phase 9E (developer 2026-11-01): a Cleaner by the hour for one area, from the side of the dining area. One shift
-   * hour of the Cleaner's hourly wage, all-or-nothing, ONE Staff Hire ledger entry; they clean the area's routine
-   * tasks at once and after this service, then leave.
+   * Phase 10 (developer 2026-11-01): a Cleaner by the hour for one area, from the small button on the restaurant map.
+   * Hired for the rest of today and paid up front for the hours left at today's hourly wage (it grows with the
+   * restaurant), all-or-nothing, ONE Staff Hire ledger entry; they clean the area's routine tasks at once and after
+   * every service today, and are gone tomorrow (hire again).
    */
-  function hireHourlyCleanerPaid(area: CleanArea): boolean {
+  function hireHourlyCleanerPaid(area: CleanArea): "hired" | "funds" | "no" {
     const current = saveRef.current ?? save;
-    if (!current || !campaignServiceSession) return false;
-    const price = hourlyCleanerPrice();
-    const r = hireHourlyCleaner(current, area, levelNumber(campaignServiceSession.levelId));
-    if (!r.ok) return false;
+    if (!current) return "no";
+    const level = restaurantLevelOf(current.levelProgress);
+    const price = hourlyCleanerPrice(current, level);
+    const r = hireHourlyCleaner(current, area, level);
+    if (!r.ok) return "no";
     const paid = debitWallet(r.save, price);
-    if (!paid.ok) return false;
+    if (!paid.ok) return "funds";
     persist(
       appendLedgerEntry(
         paid.save,
         "staff-purchase",
         -price,
-        `Cleaner · 1 hour · ${AREA_META[area].title}`,
+        `Cleaner · rest of the day · ${AREA_META[area].title}`,
       ),
     );
-    if (r.cleaned.length > 0) AudioManager.playSfx("squeak");
-    return true;
-  }
-
-  /** A hire from the dining area's side panel: the Server (the existing paid hire) or an hourly Cleaner. */
-  function hireFromDining(id: DiningHireId): void {
-    const area = areaOfOffer(id);
-    if (area) hireHourlyCleanerPaid(area);
-    else hireStaff("server");
+    AudioManager.playSfx("squeak");
+    return "hired";
   }
 
   /** Phase 9D: a table's guests have left and the table is wiped (the player's tap, or the Server / Dining cleaner). */
@@ -1209,6 +1204,14 @@ export function App() {
     persist(r.save);
     AudioManager.playSfx("squeak");
     return { ok: true };
+  }
+
+  /** Phase 10: the napkin holders are refilled (one tap, or the Dining cleaner by themself). */
+  function refillNapkinsFromFloor(): void {
+    const current = saveRef.current ?? save;
+    if (!current || !napkinsLow(current)) return;
+    persist(refillNapkins(current));
+    AudioManager.playSfx("squeak");
   }
 
   /* ── Ad bonuses (ads/adBonuses.ts) ──────────────────────────────────── */
@@ -2722,8 +2725,8 @@ export function App() {
       // A real restaurant's day (2026-10-11): the lull's chores, or closing's after the last service.
       nextSave = choresAfterService(nextSave, levelNumber(level.id));
       const round = cleanerRound(nextSave);
-      // Phase 9E: the hourly Cleaners' hour is over with the service: they leave.
-      nextSave = dismissHourlyCleaners(round.save);
+      // Phase 10: the hourly Cleaners stay for the whole day (they are gone the next one).
+      nextSave = round.save;
       serviceLines = [
         ...serviceLines,
         ...cleaningLines(nextSave, round.cleaned.length),
@@ -3828,19 +3831,16 @@ export function App() {
               ...(partyWaiting ? { partyWaiting } : {}),
               ...(currentTakeaway ? { takeaway: true } : {}),
               waiter: save.business.staff.hiredRoles.includes("server") ? "server" : "cook",
-              ...(RESTAURANT_MODE &&
-              isCampaignService &&
-              campaignLevelForSession &&
-              isSystemLive("dine-in", levelNumber(campaignLevelForSession.id))
+              ...(save.business.staff.hiredRoles.includes("cashier") ? { cashier: true } : {}),
+              // Phase 10: the table is cleaned after every customer from the first one (a Cleaner on the
+              // dining room today does it by themself), and the napkin holders run low every third table.
+              ...(RESTAURANT_MODE && isCampaignService
                 ? {
-                    tableWipe: { staff: tableStaff(save), onWipe: wipeTableFromFloor },
-                  }
-                : {}),
-              ...(RESTAURANT_MODE && isCampaignService && campaignLevelForSession
-                ? {
-                    hire: {
-                      offers: diningOffers(save, levelNumber(campaignLevelForSession.id)),
-                      onHire: hireFromDining,
+                    tableWipe: {
+                      staff: tableStaff(save),
+                      onWipe: wipeTableFromFloor,
+                      napkinsLow: napkinsLow(save),
+                      onRefill: refillNapkinsFromFloor,
                     },
                   }
                 : {}),
@@ -4015,6 +4015,7 @@ export function App() {
                   openDailyGift();
                 }}
                 onCollectTableCash={collectTableCash}
+                onHireCleaner={hireHourlyCleanerPaid}
                 onStartEndless={startEndless}
                 buyKnife={buyKnife}
                 buyBoard={buyBoard}

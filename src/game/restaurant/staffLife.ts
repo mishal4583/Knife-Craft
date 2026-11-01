@@ -162,6 +162,7 @@ const LOOKS: Readonly<Record<BusinessStaffRole, Look>> = {
   server: { kind: "server", food: "🍽️", outfit: "#7a2e2e", hair: "#473222", delay: -6 },
   cleaner: { kind: "cleaner", food: "🧽", outfit: "#5d8a8a", hair: "#493324", delay: -3 },
   manager: { kind: "manager", food: "📋", outfit: "#2f3e4f", hair: "#35271f", delay: -5 },
+  cashier: { kind: "cashier", food: "🧾", outfit: "#3f5f8a", hair: "#35271f", delay: -1 },
 };
 
 /** Each role's loop on one stage's art. */
@@ -197,13 +198,15 @@ export function roleStops(role: BusinessStaffRole, stage: KitchenMapArtStage): S
     case "manager":
       // Sits in the chair behind the desk only (developer 2026-10-16).
       return [{ ...s.managerSeat, hold: 12, pose: "sit" }];
+    case "cashier":
+      return cashierStops(stage);
   }
 }
 
 /**
  * The service counter's cashier (developer 2026-10-16: "a person on the service
- * counter working on the computer, not inside Take Away / Parcel"). The game
- * has no cashier role, so this person belongs to the counter and is shown once
+ * counter working on the computer, not inside Take Away / Parcel"). Since Phase 10
+ * (developer 2026-11-01) this is the hired Cashier (the billing staff): shown once
  * the service counter is open. They stand at the counter, at its computer.
  */
 export function cashierStops(stage: KitchenMapArtStage): Stop[] {
@@ -272,15 +275,11 @@ export function staffCast(
     }
     cast.push({ ...LOOKS[role], id: `staff-${role}`, stops: roleStops(role, c.stage) });
   }
-  if (c.serviceOpen && hiredRoles.includes("server")) {
+  if (c.serviceOpen && hiredRoles.includes("cashier")) {
     cast.push({
+      ...LOOKS.cashier,
       id: "service-cashier",
-      kind: "cashier",
-      food: "🧾",
-      outfit: "#3f5f8a",
-      hair: "#35271f",
       stops: cashierStops(c.stage),
-      delay: -1,
     });
   }
   return cast;

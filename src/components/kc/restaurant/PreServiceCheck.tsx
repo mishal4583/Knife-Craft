@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { KButton } from "@/components/kc/common/primitives";
+import { PointerHand } from "@/components/kc/common/PointerHand";
 import { cn } from "@/lib/utils";
 import { StaffPortrait } from "../business/StaffCard";
 import { staffPortraitFile } from "../business/staffPortraits";
@@ -124,6 +125,7 @@ export function PreServiceCheck({
   check,
   opening,
   onStart,
+  guideHand = false,
   onRestock,
   onThrowOutExpired,
   onUpgradeFridge,
@@ -173,6 +175,8 @@ export function PreServiceCheck({
   /** Today's services when this level opens the day; null mid-day. */
   opening: DayService[] | null;
   onStart: () => void;
+  /** The very first service: a hand on the start button (restaurant/firstRunGuide.ts). */
+  guideHand?: boolean;
   onRestock: (ingredientId: IngredientId) => void;
   onThrowOutExpired: () => void;
   onUpgradeFridge: () => void;
@@ -1189,15 +1193,26 @@ export function PreServiceCheck({
                 : `Hire ${staffMissing.length} → 👥`}
             </KButton>
           ) : (
-            <KButton full className="min-h-12" disabled={!canStart} onClick={onStart}>
-              {canStart
-                ? opening
-                  ? "🚪 Open restaurant"
-                  : "🔥 Start service"
-                : stockOrSuppliesShort
-                  ? "🛒 Restock to start"
-                  : "👥 Hire staff to start"}
-            </KButton>
+            <div className="relative flex-1">
+              {guideHand && canStart ? (
+                <span
+                  data-testid="first-run-hand"
+                  data-hand-for="start-service"
+                  className="pointer-events-none absolute -top-12 left-1/2 z-10 -translate-x-1/2 rotate-180"
+                >
+                  <PointerHand size={40} />
+                </span>
+              ) : null}
+              <KButton full className="min-h-12" disabled={!canStart} onClick={onStart}>
+                {canStart
+                  ? opening
+                    ? "🚪 Open restaurant"
+                    : "🔥 Start service"
+                  : stockOrSuppliesShort
+                    ? "🛒 Restock to start"
+                    : "👥 Hire staff to start"}
+              </KButton>
+            </div>
           )}
         </div>
       </div>

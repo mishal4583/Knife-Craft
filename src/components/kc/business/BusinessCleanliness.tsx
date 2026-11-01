@@ -149,8 +149,6 @@ export function BusinessCleanliness({
       <ReadyCard
         areas={areas}
         save={save}
-        dayCleaner={dayCleaner}
-        onDayCleaner={dayCleanerSaid}
         onArea={(a) => {
           setDetails(a);
           document
@@ -177,14 +175,20 @@ export function BusinessCleanliness({
         />
       ))}
 
+      <SuppliesCard save={save} go={go} />
+      <HistoryCard save={save} level={level} />
       <StaffCard
         save={save}
         go={go}
         level={level}
         onAreas={(a) => run({ kind: "areas", areas: a })}
       />
-      <SuppliesCard save={save} go={go} />
-      <HistoryCard save={save} level={level} />
+      <DayCleanerCard
+        save={save}
+        areas={areas}
+        dayCleaner={dayCleaner}
+        onDayCleaner={dayCleanerSaid}
+      />
 
       {!st.introSeen ? <Intro onDone={() => run({ kind: "intro-seen" })} /> : null}
       {cleaning.game}
@@ -197,18 +201,13 @@ export function BusinessCleanliness({
 function ReadyCard({
   areas,
   save,
-  dayCleaner,
-  onDayCleaner,
   onArea,
 }: {
   areas: AreaView[];
   save: SaveData;
-  dayCleaner: DayCleanerOffer | undefined;
-  onDayCleaner: (r: DayCleanerOutcome) => void;
   onArea: (area: CleanArea) => void;
 }) {
   const ready = areas.every((a) => a.tasks.length === 0);
-  const [adBusy, setAdBusy] = useState(false);
   const onDuty = cleanerOnDuty(save);
   const today = dayCleanerToday(save);
   return (
@@ -257,43 +256,66 @@ function ReadyCard({
             of supplies, stay yours: tap Clean on those.
           </InfoTip>
         </p>
-      ) : dayCleaner ? (
-        <div className="mt-2" data-testid="day-cleaner">
-          <p className="flex items-center gap-1.5 font-ui text-[12.5px] font-extrabold text-walnut-dark">
-            🧑‍🔧 Hire a Cleaner for today
-            <InfoTip label="A Cleaner for today">
-              They clean the routine tasks now and after each service until closing. Spills, and
-              anything short of supplies, stay yours. Hire one for good in Staff.
-            </InfoTip>
-          </p>
-          <div className="mt-1.5 grid grid-cols-2 gap-2">
-            <KButton
-              variant="sage"
-              className="h-12 px-2 text-[12.5px]"
-              disabled={save.credits < dayCleaner.price || adBusy}
-              onClick={() => onDayCleaner(dayCleaner.onPay())}
-            >
-              {`Today · ${formatUsd(dayCleaner.price)}`}
-            </KButton>
-            {dayCleaner.adAvailable ? (
-              <KButton
-                variant="copper"
-                className="h-12 px-2 text-[12.5px]"
-                disabled={adBusy}
-                onClick={() => {
-                  setAdBusy(true);
-                  void dayCleaner
-                    .onAd()
-                    .then(onDayCleaner)
-                    .finally(() => setAdBusy(false));
-                }}
-              >
-                {adBusy ? "Loading ad…" : "🎬 Free with an ad"}
-              </KButton>
-            ) : null}
-          </div>
-        </div>
       ) : null}
+    </Panel>
+  );
+}
+
+/**
+ * A Cleaner for today (developer 2026-11-01: moved to the bottom of the page — a player who opens Cleanliness
+ * must not think they have to hire someone to do the cleaning; it is for those who are tired or don't like it).
+ */
+function DayCleanerCard({
+  save,
+  areas,
+  dayCleaner,
+  onDayCleaner,
+}: {
+  save: SaveData;
+  areas: AreaView[];
+  dayCleaner: DayCleanerOffer | undefined;
+  onDayCleaner: (r: DayCleanerOutcome) => void;
+}) {
+  const [adBusy, setAdBusy] = useState(false);
+  const ready = areas.every((a) => a.tasks.length === 0);
+  if (!dayCleaner || ready || cleanerOnDuty(save)) return null;
+  return (
+    <Panel className="p-3" data-testid="day-cleaner">
+      <Eyebrow>Not in the mood to clean?</Eyebrow>
+      <p className="mt-1 flex items-center gap-1.5 font-ui text-[12.5px] font-extrabold text-walnut-dark">
+        🧑‍🔧 Hire a Cleaner for today
+        <InfoTip label="A Cleaner for today">
+          Totally optional: you can always clean everything yourself. A Cleaner does the routine
+          tasks now and after each service until closing. Spills, and anything short of supplies,
+          stay yours. Hire one for good in Staff.
+        </InfoTip>
+      </p>
+      <div className="mt-1.5 grid grid-cols-2 gap-2">
+        <KButton
+          variant="sage"
+          className="h-12 px-2 text-[12.5px]"
+          disabled={save.credits < dayCleaner.price || adBusy}
+          onClick={() => onDayCleaner(dayCleaner.onPay())}
+        >
+          {`Today · ${formatUsd(dayCleaner.price)}`}
+        </KButton>
+        {dayCleaner.adAvailable ? (
+          <KButton
+            variant="copper"
+            className="h-12 px-2 text-[12.5px]"
+            disabled={adBusy}
+            onClick={() => {
+              setAdBusy(true);
+              void dayCleaner
+                .onAd()
+                .then(onDayCleaner)
+                .finally(() => setAdBusy(false));
+            }}
+          >
+            {adBusy ? "Loading ad…" : "🎬 Free with an ad"}
+          </KButton>
+        ) : null}
+      </div>
     </Panel>
   );
 }

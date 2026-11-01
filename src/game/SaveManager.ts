@@ -11,6 +11,7 @@
 import { migrateBusinessSuppliesState } from "./business/businessSupplies";
 import { migrateEconomy } from "./progression/economyMigration";
 import { RESTAURANT_MODE } from "./config/restaurantMode";
+import { STARTING_CASH } from "./config/startingTeam";
 import { migrateToUnifiedRestaurant } from "./restaurant/restaurantMigration";
 import {
   DEFAULT_ECONOMY_STATE,
@@ -246,11 +247,11 @@ export const DEFAULT_ENDLESS_PROGRESS: EndlessProgress = { date: "", coinsEarned
 export const DEFAULT_SAVE: SaveData = {
   version: SAVE_VERSION,
   /**
-   * A new player starts with $10.00 — enough to buy the first order's ingredients in the Market
-   * with their own money (Level 1 costs under $1; developer 2026-10-30; it was $0.00 from
-   * 2026-10-26 and $1,240.00 before). Wallet amounts are integer US cents — see money.ts.
+   * A new player starts with $10.00 for the first order's ingredients (developer 2026-10-30; it was $0.00
+   * from 2026-10-26 and $1,240.00 before) plus the Server's and the Cashier's hiring fees, hired in the
+   * first shop (developer 2026-11-01, config/startingTeam.ts). Wallet amounts are integer US cents.
    */
-  credits: dollars(10),
+  credits: STARTING_CASH,
   equippedKnifeId: "chef",
   equippedBoardId: "walnut",
   ownedKnifeIds: ["chef"],

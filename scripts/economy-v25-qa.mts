@@ -170,8 +170,9 @@ table.push(fromRun(completionist), fromRun(normal), fromRun(saver), fromRun(zero
 // Re-recorded again 2026-10-30 after the level-pay re-plan (+$199,515 of completion rewards) and the $10 start:
 // completionist $209,611, normal player $207,699, a $0 start $207,690.
 assert(
-  completionist.final === dollars(209_611),
-  `A1 (18): classic completionist final cash ${fmt(completionist.final)} === the 148-level baseline $209,611.00`,
+  // Rule changed (developer 2026-11-01, Phase 10): the $226.00 team fund added to the opening cash ($209,611 → $209,837).
+  completionist.final === dollars(209_837),
+  `A1 (18): classic completionist final cash ${fmt(completionist.final)} === the 148-level baseline $209,837.00`,
 );
 assert(
   completionist.everythingOwned,
@@ -193,8 +194,10 @@ assert(
   "A4: Restaurant Development costs exactly $155,000 in total (developer 2026-10-29; was $135,000)",
 );
 assert(
-  normal.final === dollars(207_699) && normal.everythingOwned,
-  `A5: a normal player who buys everything owns it all and ends at the 148-level baseline (${fmt(normal.final)} === $207,699.00)`,
+  // Rule changed (developer 2026-11-01, Phase 10): the $226.00 team fund, measured +$225.00 here ($207,699 → $207,924:
+  // purchase timing, as the $0-start move was).
+  normal.final === dollars(207_924) && normal.everythingOwned,
+  `A5: a normal player who buys everything owns it all and ends at the 148-level baseline (${fmt(normal.final)} === $207,924.00)`,
 );
 for (const r of [completionist, normal, saver, zeroStart]) {
   assert(

@@ -88,12 +88,13 @@ check(
   { from: PREP_COOK_CUTS_FROM, hire: STAFF_HIRE_FROM },
 );
 check(
-  // Rule changed (developer 2026-11-01, Phase 9E): the Server can be hired from Level 3 (hiring only), so the line
-  // is: the Prep Cook at 30, the Server at 3, every other role at Level 5.
-  'R7 the Prep Cook unlocks at level 30 (developer 2026-10-31: "only after level 30"), the Server at Level 3 (Phase 9E), every other role at Level 5',
+  // Rule changed (developer 2026-11-01, Phase 10): the Server and the Cashier can be hired from Level 1 (the first
+  // shop; hiring only), so the line is: the Prep Cook at 30, the Server and the Cashier at 1, every other role at Level 5.
+  'R7 the Prep Cook unlocks at level 30 (developer 2026-10-31: "only after level 30"), the Server and the Cashier at Level 1 (Phase 10), every other role at Level 5',
   PREP_COOK_CUTS_FROM === 30 &&
     staffHireFrom("prep-cook") === 30 &&
-    staffHireFrom("server") === 3 &&
+    staffHireFrom("server") === 1 &&
+    staffHireFrom("cashier") === 1 &&
     staffHireFrom("line-cook") === STAFF_HIRE_FROM,
   { from: PREP_COOK_CUTS_FROM, hire: staffHireFrom("prep-cook") },
 );

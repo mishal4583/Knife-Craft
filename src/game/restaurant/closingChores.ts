@@ -103,12 +103,14 @@ export function closingRows(save: SaveData, levelNumber: number): ClosingRow[] {
     // No soap: the dishes wait for START (the row says so; it never holds the close).
     state: pieces === 0 ? "done" : soap ? "todo" : "blocked",
   });
+  // Phase 10 (developer 2026-11-01): the Cashier counts the till at night, so with one on the team the count is done.
+  const cashier = save.business.staff.hiredRoles.includes("cashier");
   rows.push({
     id: "count",
     type: "count",
-    label: "Count the day's takings",
+    label: cashier ? "The Cashier counts the day's takings" : "Count the day's takings",
     icon: "💵",
-    state: (d.closingDone ?? []).includes("count") ? "done" : "todo",
+    state: cashier || (d.closingDone ?? []).includes("count") ? "done" : "todo",
   });
   return rows;
 }

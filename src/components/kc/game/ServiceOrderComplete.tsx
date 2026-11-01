@@ -177,6 +177,8 @@ export function ServiceOrderComplete({
   onCustomerMoment,
   preparedBy = "player",
   cashAtTable = false,
+  bill = false,
+  room,
   onCollectCash,
   onCashPieceCollected,
   onCashRemaining,
@@ -222,6 +224,10 @@ export function ServiceOrderComplete({
    * developer 2026-10-26), swept in there — the card only says it was collected.
    */
   cashAtTable?: boolean;
+  /** A Cashier is on the team: the customer's bill is made (a line on the card). */
+  bill?: boolean;
+  /** The dining room above the Served card (DiningCashView): the card becomes a sheet under it. */
+  room?: ReactNode;
   /** Takes the cash left on the table into the wallet in one tap (developer 2026-10-30: no swipe screen). */
   onCollectCash?: () => void;
   /** Cash pieces move into the wallet only after a real swipe collects them. */
@@ -320,11 +326,20 @@ export function ServiceOrderComplete({
 
   return (
     <div
-      className={`absolute inset-0 z-50 grid place-items-center bg-walnut-dark/55 backdrop-blur-[3px]${hidden ? " hidden" : ""}`}
+      className={`absolute inset-0 z-50 ${
+        served && room
+          ? "flex flex-col bg-walnut-dark"
+          : "grid place-items-center bg-walnut-dark/55 backdrop-blur-[3px]"
+      }${hidden ? " hidden" : ""}`}
     >
+      {served && room ? <div className="relative min-h-0 flex-[0_0_40%]">{room}</div> : null}
       <Panel
         tone="cream"
-        className="anim-pop max-h-[calc(100%-12px)] w-[82%] land:max-w-[560px] overflow-y-auto overscroll-contain p-6 text-center [@media(max-height:640px)]:px-5 [@media(max-height:640px)]:py-4"
+        className={
+          served && room
+            ? "min-h-0 w-full flex-1 overflow-y-auto overscroll-contain rounded-b-none rounded-t-[22px] p-5 text-center [@media(max-height:640px)]:px-4 [@media(max-height:640px)]:py-3"
+            : "anim-pop max-h-[calc(100%-12px)] w-[82%] land:max-w-[560px] overflow-y-auto overscroll-contain p-6 text-center [@media(max-height:640px)]:px-5 [@media(max-height:640px)]:py-4"
+        }
       >
         <p className="font-ui text-[11px] font-extrabold uppercase tracking-[0.24em] text-copper">
           {served ? "Served" : "Order Ready"}
@@ -437,6 +452,15 @@ export function ServiceOrderComplete({
                 style={stage(360)}
               >
                 💸 Tip {formatUsdChange(tip)}
+              </p>
+            ) : null}
+            {bill && paidCents + tip > 0 ? (
+              <p
+                className="mt-1 font-ui text-[12.5px] font-extrabold uppercase tracking-[0.14em] text-walnut/70"
+                data-testid="bill-line"
+                style={stage(420)}
+              >
+                🧾 Bill {formatUsd(paidCents + tip)}
               </p>
             ) : null}
             {/* Phase 2 (B2/B3): the payment (and tip) as cash to sweep in. */}
