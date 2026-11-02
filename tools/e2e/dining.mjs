@@ -66,7 +66,10 @@ const CLEAN = {
   choreKeys: [],
   dayCleanerDay: null,
 };
-const saveAt = (seedLevel, { hired = ["prep-cook"], stock = 12, cleanliness } = {}) =>
+const saveAt = (
+  seedLevel,
+  { hired = ["prep-cook", "server", "cashier"], stock = 12, cleanliness } = {},
+) =>
   seedSave({
     business: {
       ...MOVED_IN_BUSINESS,

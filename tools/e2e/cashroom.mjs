@@ -59,7 +59,7 @@ const saveAt = (seedLevel, { supplies = SUPPLY_IDS, cleanliness } = {}) =>
       restaurantStaff: {
         specialists: ["mexican-chef", "indian-chef", "mediterranean-chef", "asian-chef"],
       },
-      staff: { hiredRoles: ["prep-cook"] },
+      staff: { hiredRoles: ["prep-cook", "server", "cashier"] },
       ...(cleanliness ? { cleanliness } : {}),
     },
     credits: 50_000,

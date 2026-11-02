@@ -14,6 +14,7 @@
  * one-off intro). Presentation only: no money moves, nothing is bought here.
  * Pure and deterministic; reuses the existing sections, prices and rankings.
  */
+import { STARTING_TEAM_ROLES } from "../config/startingTeam";
 import type { SaveData } from "../SaveManager";
 import { collectableTotal } from "../progression/achievements";
 import { nextKitchenUpgrade } from "../kitchen/nextKitchenUpgrade";
@@ -192,7 +193,10 @@ const RULES: readonly Rule[] = [
         r.minDineIn === undefined &&
         r.minSpecialistCuisines === undefined &&
         r.minTeam === undefined &&
-        !hired.has(r.role),
+        !hired.has(r.role) &&
+        // The Server and the Cashier are hired in the first shop (the first-run hand, config/startingTeam.ts) and the
+        // Pre-Service Check will not start a service without them: no guide card for them.
+        !(STARTING_TEAM_ROLES as readonly string[]).includes(r.role),
     );
     if (rule)
       return {

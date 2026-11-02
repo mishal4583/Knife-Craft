@@ -95,6 +95,9 @@ export function TableCash({
             aria-label={`Collect ${owed} from ${where}`}
             data-testid={`${testId}-pile`}
             onPointerDown={(e) => e.stopPropagation()}
+            // A tap or a click must not leave focus on the pile: in the dining room it sits inside an aria-hidden picture, and the
+            // browser warns ("Blocked aria-hidden on an element because its descendant retained focus"). Keyboard use is unchanged.
+            onMouseDown={(e) => e.preventDefault()}
             onClick={(e) => {
               e.stopPropagation();
               if (done.current) return;

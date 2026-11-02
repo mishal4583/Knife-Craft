@@ -131,7 +131,16 @@ console.log("O. Opening");
         100,
         base5.business.calendar.businessDay,
       );
-  const stocked5 = { ...base5, business: { ...base5.business, inventory: inv5 } };
+  // Rule changed (developer 2026-11-02): a service needs the Server and the Cashier from the first level, so a check
+  // that is "ready" has them hired (this test is about the opening card, not about the starting team).
+  const stocked5 = {
+    ...base5,
+    business: {
+      ...base5.business,
+      inventory: inv5,
+      staff: { ...base5.business.staff, hiredRoles: ["server", "cashier"] as never },
+    },
+  };
   const plan5 = servicePlanFor(stocked5, getLevel("level-5")!);
   const mid = servicePlanFor(openDay(stocked5, 5), getLevel("level-5")!);
   // Developer 2026-10-09 (first levels, firstLevels.ts): the opening card is the

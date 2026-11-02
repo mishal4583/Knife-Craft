@@ -131,32 +131,44 @@ console.log("S. Staff requirements");
   // the first Mexican dish at L14 (developer 2026-10-17; each threshold two levels earlier).
   assert(
     // …and from L17 the Mexican menu dishes keep him needed while they are on the menu.
-    [1, 9, 13].every((n) => reqs(n).length === 0) &&
+    // Rule changed (developer 2026-11-02): the Server and the Cashier are needed from the very first service ("make them necessary");
+    // every other role still waits (none before L27), and the Mexican Chef comes with the first Mexican dish at L14.
+    [1, 9, 13].every(
+      (n) =>
+        reqs(n)
+          .map((r) => r.id)
+          .join() === "server,cashier",
+    ) &&
       reqs(14)
         .map((r) => r.id)
-        .join() === "mexican-chef" &&
+        .join() === "mexican-chef,server,cashier" &&
       [18, 26].every((n) =>
-        reqs(n).every((r) => r.kind === "specialist" && r.id === "mexican-chef"),
+        reqs(n).every(
+          (r) =>
+            (r.kind === "specialist" && r.id === "mexican-chef") ||
+            ["server", "cashier"].includes(r.id),
+        ),
       ),
-    "S1: early game the chef runs the restaurant alone (no role before L27; only the Mexican Chef from L14)",
+    "S1: the Server and the Cashier are needed from the first service; no other role before L27; only the Mexican Chef from L14",
   );
   assert(
     STAFF_RULES.map((r) => `${r.role}@${r.fromLevel}`).join() ===
-      "prep-cook@30,server@31,line-cook@40,cleaner@54,head-chef@74,manager@99",
+      "server@1,cashier@1,prep-cook@30,line-cook@40,cleaner@54,head-chef@74,manager@99",
     // Rule changed (developer 2026-10-31, "unlock prepcook only after level 30"): the Prep Cook was required from L27.
-    "S2: Prep Cook (L30) → Server (L31) → Line Cook (L40) → Cleaner (L54) → Head Chef (L74) → Manager (L99)",
+    // Rule changed (developer 2026-11-02): the Server (was L31, two tables) and the Cashier (new) are required from L1.
+    "S2: Server and Cashier (L1) → Prep Cook (L30) → Line Cook (L40) → Cleaner (L54) → Head Chef (L74) → Manager (L99)",
   );
   const small = { orders: 2, dineIn: 1, specialists: [], specialistCuisines: 0 };
   const big = { orders: 5, dineIn: 4, specialists: [], specialistCuisines: 0 };
   assert(
-    // L50: past the Line Cook (L40), before the Cleaner (L54).
+    // L50: past the Line Cook (L40), before the Cleaner (L54). The Server and the Cashier are always needed (2026-11-02).
     staffRequirementsFor(saveAt(50), 50, small)
       .map((r) => r.id)
-      .join() === "" &&
+      .join() === "server,cashier" &&
       staffRequirementsFor(saveAt(50), 50, big)
         .map((r) => r.id)
-        .join() === "prep-cook,server,line-cook",
-    "S3: requirements scale with the service (2 orders / 1 table: none at L50; 5 orders / 4 tables: three)",
+        .join() === "server,cashier,prep-cook,line-cook",
+    "S3: requirements scale with the service (2 orders / 1 table: Server + Cashier only at L50; 5 orders / 4 tables: two more)",
   );
   const r51 = reqs(33);
   assert(
@@ -206,7 +218,7 @@ console.log("S. Staff requirements");
           const h = hireSpecialist(x, id, 36);
           return h.ok ? h.save : x;
         }, saveAt(36)),
-        ["prep-cook", "server"],
+        ["prep-cook", "server", "cashier"],
       ),
       36,
     ),

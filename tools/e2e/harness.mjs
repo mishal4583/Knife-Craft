@@ -544,6 +544,16 @@ export async function startFirstLevel(page) {
   await sleep(2500);
   await clickButton(page, /^Show me/);
   await sleep(1500);
+  // The Server and the Cashier are necessary from the first service (developer 2026-11-02): hire both first, with the opening cash.
+  for (let i = 0; i < 2; i++) {
+    await page.evaluate(() => {
+      const b = [...document.querySelectorAll('[data-testid="team-hire"] button')].find((x) =>
+        /^Hire/.test(x.textContent.trim()),
+      );
+      b?.click();
+    });
+    await sleep(800);
+  }
   for (let i = 0; i < 4; i++) {
     const had = await page.evaluate(() => {
       const row = document.querySelector("[data-plan-ingredient]");

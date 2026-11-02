@@ -536,14 +536,15 @@ const base = (credits = dollars(500)): SaveData =>
     { start: DEFAULT_SAVE.credits, fees },
   );
   check(
-    "D2 the Server and the Cashier can be hired from Level 1 (hiring only: the staff RULE that needs a Server is unchanged), the Prep Cook still at 30",
+    // Rule changed (developer 2026-11-02): the Server and the Cashier are also REQUIRED from the first service (staff-hire / progression QA).
+    "D2 the Server and the Cashier can be hired from Level 1 (and, since 2026-11-02, a service needs both), the Prep Cook still at 30",
     SR.TEAM_HIRE_FROM === 1 &&
       SR.staffHireFrom("server") === 1 &&
       SR.staffHireFrom("cashier") === 1 &&
       SR.staffHireFrom("prep-cook") === 30 &&
       SR.staffHireFrom("line-cook") === SR.STAFF_HIRE_FROM &&
-      SR.STAFF_RULES.find((r) => r.role === "server")!.fromLevel > 30 &&
-      !SR.STAFF_RULES.some((r) => r.role === "cashier"),
+      SR.STAFF_RULES.find((r) => r.role === "server")!.fromLevel === 1 &&
+      SR.STAFF_RULES.find((r) => r.role === "cashier")!.fromLevel === 1,
   );
   const offers = DH.teamOffers(fresh, 1);
   check(

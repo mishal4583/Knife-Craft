@@ -1,5 +1,20 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## The Server and the Cashier are necessary (developer 2026-11-02, working tree, not committed)
+
+"Without hiring both the Server and the Cashier the game still delivers food: make them necessary." `STAFF_RULES` (`restaurant/staffRequirements.ts`) now lists
+`server@1` and `cashier@1` first, unconditional: every service needs both from Level 1 (the old "a Server from the second table, Level 46" rule is replaced). The
+Pre-Service Check lists them as missing, says why, and its main button becomes "Hire Server & Cashier →" instead of "Start service" (the existing blocking rule); a hire the
+wallet cannot cover goes on supplier credit (the existing rule for a REQUIRED hire), so it cannot soft-lock. The new game already starts with $10 plus both fees and the first-run
+hand sends the player to hire them first. The guide skips the starting team (`restaurantGuide.ts`), and "· free" was removed from the check's hire row (the hire has a fee).
+Also: the dining cash pile no longer keeps focus after a tap (`TableCash.tsx`: the browser warned "Blocked aria-hidden ... descendant retained focus").
+
+- Tests updated to the rule, each saying so: `restaurant-progression-qa` S1/S2/S3/S7, `dining-floor-qa` D2, `restaurant-day-qa` O4 (the check is ready only with both hired),
+  `journey-qa` J11 (the disposition document regenerated: Level 1 now says "Hire a Server; Hire a Cashier"), `restaurant-second-floor-qa` A2 (it used a fixed date, so it failed
+  the next day: it now uses the real clock). Browser: new `tools/e2e/firstteam.mjs`; `harness.mjs startFirstLevel` hires both first; `dining.mjs` / `cashroom.mjs` seeds hire them.
+- `oven-step-qa` E2 failed once inside a full run and passed alone five times afterwards (not understood; a git-reading guard).
+- Browser tests that use `startFirstLevel` and were not re-run: `cashflow`, `cashreload`, `levelflow`, `openservice`, `rollon`.
+
 ## Fixes (developer 2026-11-02, after the Second Floor rebuild; committed with it)
 
 - **Market hand:** a new game opens the Market on Knives, but hiring and buying food are in Ingredients, and nothing pointed there. While the first-run hand is on the

@@ -879,7 +879,8 @@ console.log("W. Skip ahead (rewarded timer skip)");
 
 console.log("A. The new ad rewards use the existing reward and ledger path");
 {
-  const now = new Date("2026-11-02T12:00:00Z");
+  // The ledger stamps entries with the real clock, so the daily cap is counted against the real day (not a fixed date).
+  const now = new Date();
   for (const [kind, cap] of [
     ["flood", 8],
     ["golden", 8],

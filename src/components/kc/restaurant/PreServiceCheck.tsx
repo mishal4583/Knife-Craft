@@ -703,8 +703,8 @@ export function PreServiceCheck({
                   onClick={onHireStaff}
                 >
                   {staffMissing.length <= 2
-                    ? `Hire ${staffMissing.map((r) => r.title).join(", ")} → Staff · free`
-                    : `Hire ${staffMissing.length} → Staff · free`}
+                    ? `Hire ${staffMissing.map((r) => r.title).join(", ")} → Staff`
+                    : `Hire ${staffMissing.length} → Staff`}
                 </KButton>
               ) : null}
             </>

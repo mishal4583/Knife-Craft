@@ -70,17 +70,26 @@ export type StaffRule = {
 };
 
 const SOURCE_STAFF_RULES: readonly StaffRule[] = [
+  // The starting team (developer 2026-11-02: "without hiring both the Server and the Cashier the game still delivers food, make
+  // them necessary"): from the very first service the Server carries the plates and the Cashier takes the bill. The player hires
+  // both in the first shop with the opening cash (config/startingTeam.ts); a hire the wallet cannot cover goes on supplier credit
+  // (the existing rule for a REQUIRED hire), so this can never soft-lock a service. Replaces the old rule "a Server from the
+  // second table on" (from level 46), which this covers.
+  {
+    role: "server",
+    fromLevel: 1,
+    why: "Someone has to carry the plates to the tables.",
+  },
+  {
+    role: "cashier",
+    fromLevel: 1,
+    why: "Someone has to take the bill and the payment.",
+  },
   {
     role: "prep-cook",
     fromLevel: 41,
     minOrders: 3,
     why: "Three or more orders a service is more prep than one chef can do alone.",
-  },
-  {
-    role: "server",
-    fromLevel: 46,
-    minDineIn: 2,
-    why: "With two or more tables, someone has to take orders and carry the plates.",
   },
   {
     role: "line-cook",
