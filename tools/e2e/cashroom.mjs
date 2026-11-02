@@ -3,8 +3,8 @@
 //      to tap it (the cash never appears out of nowhere behind a button).
 //   K2 one tap on the pile collects it all: wallet = opening cash + signed ledger, the pile is gone and there is no
 //      Collect cash button anywhere (developer 2026-11-01), the card says "Cash collected".
-//   K2b Next Customer waits for the dirty table: it is disabled and says so; the table is scrubbed in the cleaning
-//      game (not a one-tap wipe), then Next Customer is open.
+//   K2b the first party leaves a free table (rule 2026-11-02): Next Customer is open at once and nothing is asked; the wipe is
+//      asked only when both tables are dirty (the scrubbing game itself is covered in dining.mjs / dining-floor-qa).
 //   K2c a swipe (a pressed pointer dragged across the pile) collects the cash too.
 //   K3 the Pre-Service Check's opening chore keeps its name readable (not one word per line) with its Buy button
 //      under it, at 320 and 390 px.
@@ -155,14 +155,15 @@ try {
   const afterScrub = await readSave(page);
   const nextAfter = await nextState();
   await shot(page, "cashroom-2b");
+  // Rule changed (developer 2026-11-02): the first party leaves one table dirty and the other free, so Next Customer is NOT blocked and
+  // nothing is asked; the player wipes only when both tables are dirty (dining.mjs / dining-floor-qa T).
   check(
-    "K2b a dirty table blocks Next Customer (disabled, with the reason); the cleaning game scrubs it and then Next Customer is open",
-    blockedNote &&
-      nextBefore === "disabled" &&
-      scrubbed === 1 &&
-      (afterScrub.business.cleanliness?.wipes?.n ?? 0) > wipesBefore &&
-      nextAfter === "enabled" &&
-      !(await q('[data-testid="next-blocked"]')),
+    "K2b the first party leaves a free table: Next Customer is open at once, no 'wipe the table' reason, nothing wiped",
+    !blockedNote &&
+      nextBefore === "enabled" &&
+      scrubbed === 0 &&
+      (afterScrub.business.cleanliness?.wipes?.n ?? 0) === wipesBefore &&
+      nextAfter === "enabled",
     { blockedNote, nextBefore, scrubbed, nextAfter, wipes: afterScrub.business.cleanliness?.wipes },
   );
 

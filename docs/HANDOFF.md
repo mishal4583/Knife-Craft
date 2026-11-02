@@ -1,5 +1,19 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## Fixes (developer 2026-11-02, after the Second Floor rebuild; committed with it)
+
+- **Market hand:** a new game opens the Market on Knives, but hiring and buying food are in Ingredients, and nothing pointed there. While the first-run hand is on the
+  "hire" or "buy" step and the player is not in Ingredients, the Ingredients tab gets the pointing hand and the line "Open Ingredients: hire your team, then buy the food"
+  (`Shop.tsx`, `data-testid="first-run-hand"` / `first-run-ingredients-hint`). Browser: `tools/e2e/firstmarket.mjs`.
+- **Wipe the table only when no table is free:** the dining room has two tables. A party that leaves only DIRTIES its table (`serviceFloor.ts`: `markTableDirty`,
+  `cleanTableCount`, `nextTable`); the next party sits at a clean table; the player is asked to wipe (and Next Customer waits) only when both tables are dirty, and then only
+  the one the next party will use (`Preparation.tsx` `floorDone` / `wipeDone`). Tables are clean again when a service starts (`resetParties`). A Cleaner on the dining room
+  still clears each table by themself. The closing "tables" chore is unchanged: a service never wipes every guest's table any more, so it always remains tonight.
+  Tests: `dining-floor-qa` T1-T7 (the rule replayed on the real functions), `dining.mjs` D4b / D6 / D6b and `cashroom.mjs` K2b (rewritten to the new rule). Not covered in a
+  browser: two separate PARTIES in one service (Level 1's two customers share one table), so "both tables dirty, wipe asked" is only unit-tested.
+- `oven-step-qa` E2 now also excludes `floorFlood.ts` / `goldenGuest.ts` (they became tracked with commit 6e0349e; that commit left this guard failing until now).
+- `adbonuses.mjs` check 3b is still flaky (see the notes above); the developer said they will look into it.
+
 ## The Second Floor rebuilt for engagement and ads (2026-11-02, working tree, not committed)
 
 Developer: "the main goal is real money: engaging, dopamine, players engage for hours and watch ads"; Level 3 opening; "let the player be rich";

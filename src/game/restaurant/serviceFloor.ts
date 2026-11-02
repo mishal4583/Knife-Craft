@@ -172,15 +172,34 @@ export function walkFrames(path: readonly FloorPoint[]): { at: number; x: number
  */
 const seatByOrder = new Map<string, 0 | 1>();
 let lastSeat: 0 | 1 = 1;
+
+/**
+ * Which tables are dirty (developer 2026-11-02: "show the wipe-the-table only when no table is free"). A party that leaves
+ * dirties its table; the next party sits at a CLEAN table if there is one, so the player wipes only when both tables are
+ * dirty, and then just the one the next party will use. The dirty ones left at the end are the closing "tables" chore.
+ * Session memory only (reset with the parties when a service starts).
+ */
+const dirtyTables = new Set<0 | 1>();
+export const markTableDirty = (t: 0 | 1): void => void dirtyTables.add(t);
+export const markTableClean = (t: 0 | 1): void => void dirtyTables.delete(t);
+/** How many of the two tables are clean right now. */
+export const cleanTableCount = (): number => 2 - dirtyTables.size;
+/** The table the next party sits at: a clean one when there is one, otherwise the other one from the last customer's. */
+export function nextTable(): 0 | 1 {
+  const clean = ([0, 1] as const).filter((t) => !dirtyTables.has(t));
+  if (clean.length === 1) return clean[0]!;
+  return lastSeat === 0 ? 1 : 0;
+}
 export function seatForOrder(orderId: string): 0 | 1 {
   const known = seatByOrder.get(orderId);
   if (known !== undefined) return known;
-  lastSeat = lastSeat === 0 ? 1 : 0;
+  lastSeat = nextTable();
   seatByOrder.set(orderId, lastSeat);
   return lastSeat;
 }
 export function resetSeatsForTests(): void {
   seatByOrder.clear();
+  dirtyTables.clear();
   lastSeat = 1;
   partyByOrderReset();
   departing = null;
@@ -463,6 +482,7 @@ export function finishPartyDelivery(
 /** A new service starts (or ends): no party carries over. */
 export function resetParties(): void {
   partyByOrderReset();
+  dirtyTables.clear();
 }
 
 export function resetPartiesForTests(): void {

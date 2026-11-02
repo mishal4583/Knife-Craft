@@ -6,6 +6,8 @@ import { marketNeeds } from "@/game/restaurant/marketNeeds";
 import type { SecondFloorAction } from "./restaurantMap/SecondFloorView";
 import type { FloorResult } from "@/game/restaurant/secondFloor";
 import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
+import { firstRunHand } from "@/game/restaurant/firstRunGuide";
+import { PointerHand } from "./common/PointerHand";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { ScreenId } from "./data";
 import { BottomNav } from "./Kitchen";
@@ -306,6 +308,14 @@ export function Shop({
     clearMarketSecondFloor();
   }, []);
 
+  // The first-run hand (restaurant/firstRunGuide.ts): the team is hired and the food bought in Ingredients, but a new game opens
+  // the Market on Knives, so the hand points at the Ingredients tab until the player is there (developer 2026-11-02).
+  const firstRunStep = RESTAURANT_MODE ? (firstRunHand(save, "market")?.step ?? null) : null;
+  const pointAtIngredients =
+    (firstRunStep === "hire" || firstRunStep === "buy") &&
+    category !== "ingredients" &&
+    visibleCategories.some((c) => c.id === "ingredients");
+
   function selectCategory(next: ShopCategory) {
     setCategory(next);
     setNotice(categoryCopy[next].description);
@@ -495,6 +505,15 @@ export function Shop({
           </div>
         </div>
 
+        {pointAtIngredients ? (
+          <p
+            className="px-4 pt-3 text-center font-hand text-[17px] leading-snug text-copper"
+            data-testid="first-run-ingredients-hint"
+          >
+            🛒 Open Ingredients: hire your team, then buy the food
+          </p>
+        ) : null}
+
         {/* Categories */}
         <nav
           className={cn(
@@ -534,6 +553,15 @@ export function Shop({
                     data-needs-soon={soonCount[item.id]}
                   >
                     {soonCount[item.id]}
+                  </span>
+                ) : null}
+                {pointAtIngredients && item.id === "ingredients" ? (
+                  <span
+                    data-testid="first-run-hand"
+                    data-hand-for="market-ingredients"
+                    className="pointer-events-none absolute left-1/2 top-[calc(100%-14px)] z-10 -translate-x-1/2"
+                  >
+                    <PointerHand size={38} />
                   </span>
                 ) : null}
                 <span className="text-[20px] leading-none" aria-hidden>

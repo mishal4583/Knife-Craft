@@ -87,6 +87,10 @@ import {
   markPartyHeld,
   markPartyServed,
   seatInParty,
+  cleanTableCount,
+  markTableClean,
+  markTableDirty,
+  nextTable,
   type PartyDish,
 } from "@/game/restaurant/serviceFloor";
 import type { KitchenMapArtStage } from "@/game/kitchen/kitchenMapArt";
@@ -950,10 +954,16 @@ export function Preparation({
       if (service.tableWipe.staff) {
         const r = service.tableWipe.onWipe(partySeat.party.size, "staff");
         if (r.ok) service.tableWipe.onRefill();
+        else markTableDirty(partySeat.party.table);
         setCare(
           r.ok ? { wiped: true, by: service.tableWipe.staff } : { wiped: false, need: r.need },
         );
-      } else setCare({ wiped: false });
+      } else {
+        // Developer 2026-11-02: the table is only dirty; the player is asked to wipe ONLY when no table is clean for the
+        // next party (the other table is still free, so they simply sit there). The rest is the closing "tables" chore.
+        markTableDirty(partySeat.party.table);
+        setCare(cleanTableCount() > 0 ? null : { wiped: false });
+      }
     }
     setFloorMode(null);
   };
@@ -976,6 +986,8 @@ export function Preparation({
   const wipeDone = () => {
     if (!service?.tableWipe) return;
     const r = service.tableWipe.onWipe(partySeat?.party.size ?? 1, "player");
+    // The table the next party will sit at is the one that is clean now.
+    if (r.ok) markTableClean(nextTable());
     setCare(r.ok ? { wiped: true } : { wiped: false, need: r.need });
   };
   /** Tapping the dirty table opens the scrubbing game (the old satisfying clean); it wipes when finished. */

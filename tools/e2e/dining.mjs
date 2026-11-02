@@ -182,58 +182,25 @@ try {
     { wipe, wipes: afterServe.business.cleanliness?.wipes },
   );
 
-  // ---------- D4b: no cleaner: the dirty table, the wipe, the napkins ----------
+  // ---------- D4b: no cleaner: the first party leaves a free table, so nothing to wipe ----------
+  // Rule changed (developer 2026-11-02): "show the wipe the table only when no table is free". The first party's table is dirty
+  // but the other table is clean, so there is no wipe offer and no dirty-table tap; the wipe itself is D6b below (second party).
+  // (The napkin refill after the third wiped table is unit-tested in dining-floor-qa; a service here has one party.)
   await boot(page, saveAt(32, { cleanliness: { tissue: 2 } }));
   await prepare();
   await sleep(3500);
-  let offer = null;
-  for (let round = 0; round < 4 && offer !== "offer"; round++) {
-    await clickButton(page, /Prep Cook cuts it/);
-    await sleep(3200);
-    await clickButton(page, /^Serve to /);
-    for (let i = 0; i < 36; i++) {
-      await sleep(250);
-      offer = await attr('[data-testid="table-wipe"]', "data-wipe");
-      if (offer) break;
-    }
-    if (offer !== "offer") {
-      await sleep(1500);
-      await clickButton(page, /^Next Customer$/);
-      await sleep(2500);
-    }
-  }
+  await clickButton(page, /Prep Cook cuts it/);
+  await sleep(3200);
+  await clickButton(page, /^Serve to /);
+  await sleep(9000);
+  const offer = await attr('[data-testid="table-wipe"]', "data-wipe");
   const dirtyShown = await q('[data-testid="dirty-table"]');
-  await shot(page, "dining-4-dirty");
-  const beforeWipe = await readSave(page);
-  // The player scrubs the table in the cleaning game (developer 2026-11-01), then it is wiped for real.
-  const scrubbed = dirtyShown ? await wipeServedTable(page) : 0;
-  await sleep(700);
-  const afterWipe = await readSave(page);
-  const napkins = await q('[data-testid="napkin-refill"]');
-  await shot(page, "dining-5-napkins");
-  if (napkins) await clickButton(page, /Refill the napkins/);
-  await sleep(600);
-  const afterRefill = await readSave(page);
+  await shot(page, "dining-4-no-wipe");
+  const afterFirst = await readSave(page);
   check(
-    "D4b without a cleaner the dirty table shows in the room, scrubbing it in the cleaning game wipes it (wallet untouched), the third table's napkins ask for a refill and one tap fills them",
-    offer === "offer" &&
-      dirtyShown &&
-      scrubbed === 1 &&
-      (afterWipe.business.cleanliness?.wipes?.n ?? 0) >= 1 &&
-      afterWipe.credits === beforeWipe.credits &&
-      napkins &&
-      (afterRefill.business.cleanliness?.tissue ?? 0) === 0,
-    {
-      offer,
-      dirtyShown,
-      napkins,
-      tissueBefore: beforeWipe.business.cleanliness?.tissue,
-      tissueAfter: afterRefill.business.cleanliness?.tissue ?? 0,
-      scrubbed,
-      wipes: afterWipe.business.cleanliness?.wipes,
-      creditsBefore: beforeWipe.credits,
-      creditsAfter: afterWipe.credits,
-    },
+    "D4b without a cleaner the first party leaves one table dirty and one free: no 'Wipe the table' offer, no dirty-table tap, nothing is wiped yet",
+    offer === null && !dirtyShown && (afterFirst.business.cleanliness?.wipes?.n ?? 0) === 0,
+    { offer, dirtyShown, wipes: afterFirst.business.cleanliness?.wipes },
   );
 
   // ---------- D5: a takeaway customer beside the Cashier ----------
@@ -277,13 +244,47 @@ try {
   await sleep(600);
   const l1 = await readSave(page);
   await sweepCash(page);
+  // Rule changed (developer 2026-11-02): the very first party leaves one table dirty and the other one is still free, so there is
+  // nothing to wipe yet and "Next Customer" is not blocked; the wipe comes when both tables are dirty (D4b).
+  const nextOpen = await page.evaluate(() =>
+    [...document.querySelectorAll("button")].some(
+      (b) => /^Next Customer$/.test(b.textContent.trim()) && !b.disabled,
+    ),
+  );
   check(
-    "D6 at Level 1, the very first customer: the dirty table shows, scrubbing it in the cleaning game wipes it for free (no supplies exist yet)",
-    first === "offer" &&
-      l1Dirty &&
-      l1Scrubbed === 1 &&
-      (l1.business.cleanliness?.wipes?.n ?? 0) >= 1,
-    { first, l1Dirty, wipes: l1.business.cleanliness?.wipes },
+    "D6 at Level 1, the very first customer: a table is still free, so no wipe is asked and Next Customer is not blocked",
+    first === null && !l1Dirty && l1Scrubbed === 0 && nextOpen,
+    { first, l1Dirty, nextOpen, wipes: l1.business.cleanliness?.wipes },
+  );
+
+  // ---------- D6b: two customers at one table are one party: still a free table ----------
+  // The second customer of Level 1's service sits with the first (a party of 1-4 shares a table), so after both are served the other
+  // table is still clean: no wipe is asked and nothing waits. (Two separate parties need a service with more customers; the rule for
+  // them is replayed in dining-floor-qa T on the real functions.)
+  await sweepCash(page);
+  await sleep(500);
+  const nextHit = await clickButton(page, /^Next Customer$/);
+  await sleep(2500);
+  for (let step = 0; step < 4; step++) {
+    await playToReport(page);
+    await clickButton(page, /^Continue$/);
+    await sleep(1200);
+    if (/ORDER READY/i.test(await flat())) break;
+  }
+  await clickButton(page, /^Serve to /);
+  await sleep(9000);
+  const second = await attr('[data-testid="table-wipe"]', "data-wipe");
+  const dirty2 = await q('[data-testid="dirty-table"]');
+  const stuck = await page.evaluate(() =>
+    [...document.querySelectorAll("button")].some(
+      (b) => /^(Next Customer|Back to Kitchen)$/.test(b.textContent.trim()) && b.disabled,
+    ),
+  );
+  await shot(page, "dining-8-second-customer");
+  check(
+    "D6b the second customer joins the first one's table (one party): a table is still free, so no wipe is asked and nothing waits",
+    nextHit && second === null && !dirty2 && !stuck,
+    { nextHit, second, dirty2, stuck },
   );
 
   const errors = logs.filter(

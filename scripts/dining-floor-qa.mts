@@ -271,6 +271,93 @@ const base = (credits = dollars(500)): SaveData =>
   );
 }
 
+// ── T: two tables, a wipe only when no table is clean (developer 2026-11-02) ─────────────────────────────
+{
+  // "Show the wipe the table concept only when no table is free ... when both tables become used or dirty ask the player to wipe
+  // it ... at night chores both the tables are wiped properly." The rule lives in Preparation (floorDone / wipeDone) on top of
+  // serviceFloor's dirty-table memory; here the same rule is replayed on the real functions.
+  const n = DINE_IN + 4;
+  const rec = CAMPAIGN_RECIPES[0]!;
+  const play = (sizes: number[]) => {
+    SF.resetSeatsForTests();
+    let sv = base();
+    const asks: boolean[] = [];
+    const tables: number[] = [];
+    let wiped = 0;
+    sizes.forEach((size, i) => {
+      const table = SF.seatForOrder(`order-${i}`);
+      tables.push(table);
+      SF.markTableDirty(table); // the party leaves: its table is dirty
+      const ask = SF.cleanTableCount() === 0; // ask only when no table is clean
+      asks.push(ask);
+      if (ask) {
+        const w = CL.wipeTable(sv, n, size, "player");
+        if (w.ok) {
+          sv = w.save;
+          wiped += size;
+          SF.markTableClean(SF.nextTable());
+        }
+      }
+    });
+    return { sv, asks, tables, wiped, total: sizes.reduce((a, b) => a + b, 0) };
+  };
+  const one = play([2]);
+  check(
+    "T1 one customer: one table dirty, the other still free: the player is NOT asked to wipe",
+    one.asks.join() === "false" && SF.cleanTableCount() === 1,
+    one.asks,
+  );
+  const four = play([1, 3, 2, 4]);
+  check(
+    "T2 the first customer leaves a free table (no wipe); from the second on both tables are dirty, so the player is asked each time",
+    four.asks.join() === "false,true,true,true",
+    four.asks,
+  );
+  check(
+    "T3 the next customer sits at a clean table: the two tables alternate, and a wiped table is the one used next",
+    four.tables.join() === "0,1,0,1" &&
+      four.tables.every((t, i) => i === 0 || t !== four.tables[i - 1]),
+    four.tables,
+  );
+  const closing = CL.tasksAfterService(four.sv, n, {
+    recipes: [rec],
+    dineIn: four.total,
+    customers: four.total,
+  });
+  check(
+    "T4 the tables left dirty (never both wiped during the service) are the closing chore: the 'tables' task is added, so tonight both tables are wiped properly",
+    four.wiped < four.total && CL.cleanlinessOf(closing).tasks.some((t) => t.kind === "tables"),
+    { wiped: four.wiped, total: four.total },
+  );
+  for (const sizes of [[1], [2, 2], [1, 1, 1], [4, 1, 3, 2, 1, 1]]) {
+    const r = play(sizes);
+    const c = CL.tasksAfterService(r.sv, n, {
+      recipes: [rec],
+      dineIn: r.total,
+      customers: r.total,
+    });
+    if (!(r.wiped < r.total) || !CL.cleanlinessOf(c).tasks.some((t) => t.kind === "tables")) {
+      check("T5 every service shape leaves the closing 'tables' chore", false, sizes);
+    }
+  }
+  check(
+    "T5 every service shape ([1], [2,2], [1,1,1], six parties) leaves the closing 'tables' chore",
+    true,
+  );
+  SF.resetParties();
+  check("T6 a new service starts with both tables clean", SF.cleanTableCount() === 2);
+  const src = fs.readFileSync(
+    path.resolve(import.meta.dirname, "../src/components/kc/game/Preparation.tsx"),
+    "utf8",
+  );
+  check(
+    "T7 wiring: a leaving party only dirties its table and the wipe is offered only when no table is clean; a wipe cleans the next party's table",
+    /markTableDirty\(partySeat\.party\.table\);\s*setCare\(cleanTableCount\(\) > 0 \? null : \{ wiped: false \}\)/.test(
+      src,
+    ) && /markTableClean\(nextTable\(\)\)/.test(src),
+  );
+}
+
 // ── H: cleaners by the hour (Phase 10: the rest of today, the wage grows, gone tomorrow) ────────────────
 {
   const n = Math.max(DINE_IN, CL.CLEANING_FROM_LEVEL + 1);

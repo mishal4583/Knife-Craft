@@ -19,6 +19,8 @@
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import fs from "node:fs";
 import {
+  sweepCash,
+  wipeServedTable,
   MOVED_IN_BUSINESS,
   launch,
   boot,
@@ -259,20 +261,34 @@ async function playLevelThrough() {
     page,
     /^((?:START SERVICE|🔥 Start service)|(?:OPEN THE RESTAURANT|🚪 Open restaurant))$/,
   );
-  for (let order = 0; order < 8; order++) {
+  for (let order = 0; order < 20; order++) {
     await page.waitForFunction(
       () => /·\s*(?:\d+\/\d+\s+[a-z-]+|\d+% peeled)/i.test(document.body.innerText),
       { timeout: 30000 },
     );
-    await playToReport(page);
-    await clickButton(page, /^Continue$/);
+    // The cutting solver is a real player's hands: if the order was not finished (no "Continue" to press) it plays it again.
+    for (let attempt = 0; attempt < 3; attempt++) {
+      await playToReport(page, { maxMs: 45000 });
+      await sleep(900); // the Knife Report settles before its Continue answers (a click straight away was lost, about one run in two)
+      if (await clickButton(page, /^Continue$/)) break;
+    }
     await sleep(900);
     if (/ORDER READY/i.test(await page.evaluate(() => document.body.innerText))) {
       await clickButton(page, /^Serve to /);
       await sleep(900);
     }
-    if (await clickButton(page, /^Next Customer$/)) return true;
-    if (!(await clickButton(page, /^Next (Customer|Order)/))) return false;
+    // The last customer's "Next Customer" ends the level; it may wait a moment for the cash on the table or a dirty table.
+    let moved = false;
+    for (let k = 0; k < 8 && !moved; k++) {
+      if (await clickButton(page, /^Next Customer$/)) return true;
+      if (await clickButton(page, /^Next (Customer|Order)/)) moved = true;
+      else {
+        await sweepCash(page);
+        await wipeServedTable(page);
+        await sleep(700);
+      }
+    }
+    if (!moved) return false;
     await sleep(900);
   }
   return false;
@@ -326,6 +342,52 @@ check(
     (await rewarded()).includes("level_bonus") &&
     balanced(b3, a3),
   { finished5, lv, completion: completion?.amount, ads: adEntries(a3) },
+);
+
+// ---------- 3c. Flood (the Second Floor's surge after a first clear), in a real level ----------
+// A player who owns a machine upstairs: the first clear puts the free surge on the Pickup Counter (floor.bonus, once per level);
+// the next clear inside the 150 s interstitial gap offers the ad's bigger part as a "flood" sheet instead of the plain +50%.
+await boot(
+  page,
+  at(6, {
+    ledger: [giftTaken()],
+    business: {
+      inventory: ALL_FOOD,
+      secondFloor: {
+        stations: { coffee: { level: 1, lastCollectAt: Date.now() - 3600 * 1000 } },
+      },
+    },
+  }),
+);
+await sleep(1200);
+const floodA = await playLevelThrough();
+await sleep(900);
+const afterA = await readSave(page);
+await closeCard();
+await sheet();
+await closeSheet();
+const floodB = await playLevelThrough();
+await closeCard();
+const fl = await sheet();
+const b3c = await readSave(page);
+await watch();
+const a3c = await readSave(page);
+await closeSheet();
+const sf3c = a3c.business.secondFloor;
+check(
+  "3c Flood: a first clear with a machine upstairs puts the free surge on the Pickup Counter (once per level); the next clear offers the ad's bigger part as a 'flood' sheet; the ad pays it with ONE rewarded-ad entry (placement flood)",
+  floodA &&
+    floodB &&
+    afterA.business.secondFloor.bonus > 0 &&
+    typeof afterA.business.secondFloor.floodTag === "string" &&
+    fl?.kind === "flood" &&
+    /already on the counter/.test(fl.text) &&
+    adEntries(a3c).length === 1 &&
+    adEntries(a3c)[0].amount > 0 &&
+    (await rewarded()).includes("flood") &&
+    sf3c.bonus >= afterA.business.secondFloor.bonus &&
+    balanced(b3c, a3c),
+  { floodA, floodB, bonus: afterA.business.secondFloor.bonus, fl, ads: adEntries(a3c) },
 );
 
 // ---------- 4. Short by ----------
