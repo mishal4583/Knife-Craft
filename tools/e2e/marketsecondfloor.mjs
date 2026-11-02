@@ -2,9 +2,10 @@
 //   1. Level 40: the Market's Second Floor section lists the six machines for sale (since
 //      2026-10-26 every station is on sale from Level 5; was locked until 60) and the floor
 //      team ("Buy a machine first");
-//   2. Level 60: Buy Coffee ($400) in the Market — one debit, one ledger entry, it shows Lv 1;
-//   3. Hire a Floor Server ($400) in the Market — one ledger entry, the team shows 1 / 3;
-//   4. Upgrade Coffee to Lv 2 ($600) in the Market — one ledger entry, it shows Lv 2;
+// (Rewritten for the rebuilt floor, developer 2026-11-02: Coffee $500, a Server $1,200 (team of 2), Tier 2 $1,500.)
+//   2. Level 60: Buy Coffee ($500) in the Market — one debit, one ledger entry, it shows Lv 1;
+//   3. Hire a Floor Server ($1,200) in the Market — one ledger entry, the team shows 1 / 2;
+//   4. Tier 2 Coffee ($1,500) in the Market — one ledger entry, it shows Lv 2;
 //   5. the floor's Pickup Counter opens the Market on its Second Floor section;
 //   6. fits at 320 / 390 (no sideways scroll), no page errors.
 // Prints PASS/FAIL per check and exits 1 on any failure.
@@ -23,7 +24,7 @@ const atLevel = (n, credits = 1_000_000) =>
       currentLevelId: `level-${n}`,
       highestUnlockedLevelId: `level-${n}`,
       completedLevelIds: Array.from({ length: n - 1 }, (_, i) => `level-${i + 1}`),
-      campaignVersion: 2,
+      campaignVersion: 3,
     },
     story: { introDone: true, milestoneMask: 0xffff, finaleSeen: true },
   });
@@ -77,43 +78,43 @@ await boot(page, atLevel(60));
 await openSection(page);
 await shot(page, "market-second-floor-390");
 const s0 = await readSave(page);
-const bought = await clickIn(page, '[data-floor-machine="coffee"]', /^Buy \$400\.00$/);
+const bought = await clickIn(page, '[data-floor-machine="coffee"]', /^Buy \$500\.00$/);
 await sleep(500);
 const s1 = await readSave(page);
 const coffee1 = await textOf(page, '[data-floor-machine="coffee"]');
 check(
-  "2 Level 60: Buy Coffee ($400) in the Market — one debit, one ledger entry, it shows Lv 1",
+  "2 Level 60: Buy Coffee ($500) in the Market — one debit, one ledger entry, it shows Lv 1",
   bought &&
-    s1.credits === s0.credits - 40000 &&
+    s1.credits === s0.credits - 50000 &&
     floorEntries(s1).length === 1 &&
     /Lv 1/.test(coffee1),
   { bought, paid: s0.credits - s1.credits, entries: floorEntries(s1).length },
 );
 
 // 3. Hire a server
-const hired = await clickIn(page, '[data-floor-staff="server"]', /^Hire \$400\.00$/);
+const hired = await clickIn(page, '[data-floor-staff="server"]', /^Hire \$1,200\.00$/);
 await sleep(500);
 const s2 = await readSave(page);
 const team2 = await textOf(page, '[data-floor-staff="server"]');
 check(
-  "3 Hire a Floor Server ($400) in the Market — one ledger entry, the team shows 1 / 3",
+  "3 Hire a Floor Server ($1,200) in the Market — one ledger entry, the team shows 1 / 2",
   hired &&
-    s2.credits === s1.credits - 40000 &&
+    s2.credits === s1.credits - 120000 &&
     floorEntries(s2).length === 2 &&
     s2.business.secondFloor.servers === 1 &&
-    /1 \/ 3/.test(team2),
+    /1 \/ 2/.test(team2),
   { hired, team2: team2.slice(0, 60) },
 );
 
 // 4. Upgrade Coffee
-const upgraded = await clickIn(page, '[data-floor-machine="coffee"]', /^Upgrade \$600\.00$/);
+const upgraded = await clickIn(page, '[data-floor-machine="coffee"]', /^Tier 2 \$1,500\.00$/);
 await sleep(500);
 const s3 = await readSave(page);
 const coffee3 = await textOf(page, '[data-floor-machine="coffee"]');
 check(
-  "4 Upgrade Coffee to Lv 2 ($600) in the Market — one ledger entry, it shows Lv 2",
+  "4 Tier 2 Coffee ($1,500) in the Market — one ledger entry, it shows Lv 2",
   upgraded &&
-    s3.credits <= s2.credits - 60000 &&
+    s3.credits <= s2.credits - 150000 &&
     floorEntries(s3).length === 3 &&
     s3.business.secondFloor.stations.coffee.level === 2 &&
     /Lv 2/.test(coffee3),

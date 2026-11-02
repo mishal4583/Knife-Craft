@@ -67,8 +67,9 @@ status line in HANDOFF; this file changes only when a RULE changes.
   covers, the day's Cleaner (`day_cleaner`, developer 2026-10-17) and the
   six ad bonuses (`ads/adBonuses.ts`, developer 2026-10-18: floating cash,
   level bonus, short by, Second Floor ×2, daily gift; 2026-10-31: welcome back, a few hours of
-  earnings after 30+ minutes away, only for the ad), granted only on the
-  `rewarded` state. One placement per spot (`AD_PLACEMENT`). Each says what
+  earnings after 30+ minutes away, only for the ad; 2026-11-02: Flood after a
+  first clear, the Golden Guest ×3, Skip ahead — `restaurant/floorFlood.ts`,
+  `goldenGuest.ts`), granted only on the `rewarded` state. One placement per spot (`AD_PLACEMENT`). Each says what
   it gives before the ad, is never needed to progress, has a daily cap, and
   pays with one `rewarded-ad` ledger entry.
 - **Level messages:** `level_started/completed/paused/resumed` with
@@ -213,8 +214,12 @@ Release zip: the CONTENTS of `dist/` →
 - **Saves:** keep old saves working (missing fields, old shapes, legacy
   keys); never drop known fields; migrate with the nested pattern in
   `SaveManager`.
-- **Second Floor income** (`restaurant/secondFloor.ts`) is real time, capped, and
-  collected with one ledger entry. It is extra on top of the campaign economy.
+- **Second Floor income** (`restaurant/secondFloor.ts`, rebuilt 2026-11-02) is real
+  time (whole customer cycles), capped (4 / 5 / 6 h a counter), and collected with
+  one ledger entry. It opens at Level 3, and **may exceed the campaign's income**
+  (developer 2026-11-02: "let the player be rich, like every idle game"; the old "extra
+  on top" and "ads make the player ~20% richer" limits no longer apply to the floor;
+  campaign pay is unchanged). Spec: `docs/planning/SECOND-FLOOR-FINAL-SPEC-2026-11-02.md`.
 - **Menu price cap:** a dish sells for at most 1.5 × its suggested price
   (`menuPriceCap`; old saves read at the cap).
 - **Never negative:** credits, inventory, capacity, menu price, equipment

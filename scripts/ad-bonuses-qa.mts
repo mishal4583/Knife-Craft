@@ -109,7 +109,8 @@ check(
   "A4 Second Floor ×2: under $50 none; $120 → +$120; $900 → +$250 (cap)",
   floorDoubleAmount($(49)) === 0 &&
     floorDoubleAmount($(120)) === $(120) &&
-    floorDoubleAmount($(900)) === $(250),
+    // Rule changed (developer 2026-11-02): no $250 ceiling, the extra equals the collection.
+    floorDoubleAmount($(900)) === $(900),
 );
 check(
   "A5 daily gift (10% of the level's pay, $20–$60): Level 3 $20 (floor), Level 100 and the last level $60 (cap) — on the 2026-10-30 pay curve",

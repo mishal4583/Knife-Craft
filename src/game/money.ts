@@ -40,6 +40,29 @@ export function formatUsd(cents: Cents): string {
   return cents < 0 ? `−${text}` : text;
 }
 
+/** Names for each power of a thousand, up to a number no wallet reaches (the Second Floor's branches grow tenfold each). */
+const BIG_SUFFIXES = ["", "K", "M", "B", "T", "Qa", "Qi", "Sx", "Sp"] as const;
+
+/**
+ * Money for the Second Floor's big numbers (the idle-game way): the plain "$61.00" format below $100,000, then "$123K",
+ * "$1.23M", "$45.6B", "$7.89T" ... with three significant digits. Never used for the ledger or the wallet's own math.
+ */
+export function formatUsdBig(cents: Cents): string {
+  const dollarsAbs = Math.abs(cents) / 100;
+  if (dollarsAbs < 100_000) return formatUsd(cents);
+  let tier = Math.min(BIG_SUFFIXES.length - 1, Math.floor(Math.log10(dollarsAbs) / 3));
+  let value = dollarsAbs / 1000 ** tier;
+  // 999.6K rounds up to 1000K: move to the next name instead.
+  if (Number(value.toPrecision(3)) >= 1000 && tier < BIG_SUFFIXES.length - 1) {
+    tier += 1;
+    value = dollarsAbs / 1000 ** tier;
+  }
+  const r = Number(value.toPrecision(3));
+  const shown = r >= 100 ? r.toFixed(0) : r >= 10 ? r.toFixed(1) : r.toFixed(2);
+  const text = `$${shown}${BIG_SUFFIXES[tier]}`;
+  return cents < 0 ? `−${text}` : text;
+}
+
 /** A signed change for rewards/ledger lines: "+$223.00", "−$350.00", "$0.00". */
 export function formatUsdChange(cents: Cents): string {
   return cents > 0 ? `+${formatUsd(cents)}` : formatUsd(cents);

@@ -73,32 +73,34 @@ const count = (c: ReturnType<typeof floorCast>, k: string) => c.filter((a) => a.
 
 console.log("Q. Quiet floor");
 assert(floorCast(floorOf([])).length === 0, "Q1: an empty floor has nobody on it");
+// Rule changed (developer 2026-11-02): the first two machines are self-serve; a Server runs the machines after them.
 assert(
-  floorCast(floorOf(["coffee", "drinks"], 0, 1)).length === 0,
-  "Q2: stations without a Floor Server make no food, so nobody comes (cleaners included)",
+  floorCast(floorOf([], 0, 1)).length === 0 &&
+    workingStations(floorOf(["coffee", "drinks", "pizza"], 0, 0)).join() === "coffee,drinks",
+  "Q2: no machines = nobody comes (cleaners included); a third machine without a Floor Server makes no food",
 );
 
 console.log("C. Cast");
 {
-  const one = floorCast(floorOf(["coffee"], 1, 0));
+  const one = floorCast(floorOf(["coffee"], 0, 0));
   assert(
-    count(one, "server") === 1 && count(one, "guest") === 2 && count(one, "cleaner") === 0,
-    "C1: one staffed station → one server, two guests, no cleaner",
+    count(one, "server") === 0 && count(one, "guest") === 2 && count(one, "cleaner") === 0,
+    "C1: one self-serve machine → no server walks, two guests, no cleaner",
   );
-  const full = floorCast(floorOf(ALL, 3, 2));
+  const full = floorCast(floorOf(ALL, 2, 2));
   assert(
-    count(full, "server") === 3 &&
+    count(full, "server") === 2 &&
       count(full, "guest") === MAX_GUESTS &&
       count(full, "cleaner") === 2,
-    `C2: a full floor (6 stations, 3 servers, 2 cleaners) → 3 servers, ${MAX_GUESTS} guests, 2 cleaners`,
+    `C2: a full floor (6 stations, 2 servers, 2 cleaners) → 2 servers, ${MAX_GUESTS} guests, 2 cleaners`,
   );
   const short = floorOf(ALL, 1, 0);
   const shortCast = floorCast(short);
   assert(
-    workingStations(short).join() === "coffee,drinks" &&
+    workingStations(short).join() === "coffee,drinks,pizza,burger" &&
       count(shortCast, "server") === 1 &&
-      count(shortCast, "guest") === 4,
-    "C3: one server runs 2 of 6 stations → only those two work (2 × 2 guests)",
+      count(shortCast, "guest") === 8,
+    "C3: 2 self-serve machines + one server running 2 more → 4 of 6 stations work (4 × 2 guests)",
   );
   const seats = full
     .filter((a) => a.kind === "guest")
@@ -113,8 +115,8 @@ console.log("C. Cast");
   const s0 = full.find((a) => a.id === "server-0")!;
   const picks = s0.stops.filter((s) => s.pose === "pick").length;
   assert(
-    picks === 2 && s0.food === "☕",
-    "C5: the first server serves its own two stations (coffee first)",
+    picks === 2 && s0.food === "🍕",
+    "C5: the first server serves its own two stations, the ones after the two self-serve machines (pizza first)",
   );
 }
 
@@ -419,10 +421,10 @@ console.log("V. View");
   );
   const preview = floorCast(FLOOR_LIFE_PREVIEW);
   assert(
-    count(preview, "server") === 3 &&
+    count(preview, "server") === 2 &&
       count(preview, "guest") === MAX_GUESTS &&
       count(preview, "cleaner") === 2,
-    "V6: the testing preview (when switched on) still shows the full cast",
+    "V6: the testing preview (when switched on) still shows the full cast (2 servers since 2026-11-02)",
   );
 }
 

@@ -1,20 +1,14 @@
-// The Second Floor (developer 2026-10-16), restaurant build:
-//   (Rule changed, developer 2026-10-26: everything by Level 5 — the floor and every station open
-//   at L5; were L10 and L60.)
-//   1. Level 4: the first-floor map's 2nd-floor button is locked ("Lv 5");
-//   1b. Level 10: the floor can be visited; every station is already on sale ("🔒 $price");
-//   2. Level 60: all six stations go on sale, still locked until bought ("🔒 $price");
-//   3. buying Coffee debits the price once (one ledger entry); it needs a Floor Server;
-//      a server and a cleaner are one-time hires (one ledger entry each);
-//   3c. nobody walks the floor before a server is hired; then a server, 2 guests and a
-//      cleaner move on the map (FloorLife, decorative: aria-hidden, no taps);
-//   4. two hours later (the save's clock moved back 2 h) the Pickup Counter collects
-//      2 × the hourly rate — one ledger entry; a second tap pays nothing;
-//   5. a reload never pays it again; Downstairs returns to the first floor;
-//   6. it fits at 320 / 390 / 768 (screenshots), no page errors;
-//   8. ?floor2 (testing) opens the floor at any level (checked at L3); every station still shows
-//      its level lock, "🔒 Lv.5" (developer 2026-10-16); with nothing bought nobody walks the floor
-//      (the preview cast is off since the developer's testing ended).
+// The Second Floor, rebuilt (developer 2026-11-02; docs/planning/SECOND-FLOOR-FINAL-SPEC-2026-11-02.md), restaurant build.
+// (Rewritten for the new rules: it opens at Level 3, machines cost $500..$4,000, the first two are self-serve, tables / polish /
+// tiers, the next-goal strip. The older version of this file tested the hourly model, Level 5 and a Server for every machine.)
+//   1. Level 2: the first-floor map's 2nd-floor button is locked ("Lv 3") and does nothing;
+//   2. Level 3: the floor opens; Coffee is for sale ($500 pill), Drinks is still locked (its level);
+//   3. the next-goal strip points at the $500 Coffee machine; its Buy button buys it: ONE ledger entry, -$500;
+//   4. Coffee is self-serve: no "needs a server" label, and the floor comes alive (guests move on the map);
+//   5. an hour later (the save's clock moved back 1 h) the Pickup Counter holds $60.00; one tap collects it with ONE
+//      automation-income entry; a second tap pays nothing; a reload never pays it again;
+//   6. the station panel: Table #2 ($60) and Polish 1 ($40) are bought: wallet debited, tables 2, polish 1, one entry each;
+//   7. fits at 320x568 and 390x844 with no sideways scroll and Buy / table buttons at least 48 px high; no page errors.
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import {
   MOVED_IN_BUSINESS,
@@ -25,7 +19,6 @@ import {
   readSave,
   writeSave,
   shot,
-  text,
 } from "./harness.mjs";
 
 const results = [];
@@ -33,8 +26,7 @@ const check = (id, ok, detail) => {
   results.push({ id, ok, detail });
   console.log(`${ok ? "PASS" : "FAIL"} ${id}`, detail === undefined ? "" : JSON.stringify(detail));
 };
-const flat = async (page) => (await text(page)).replace(/\s+/g, " ");
-const atLevel = (n, credits = 1_000_000) =>
+const atLevel = (n, credits = 100_000) =>
   seedSave({
     credits,
     business: { ...MOVED_IN_BUSINESS },
@@ -42,296 +34,339 @@ const atLevel = (n, credits = 1_000_000) =>
       currentLevelId: `level-${n}`,
       highestUnlockedLevelId: `level-${n}`,
       completedLevelIds: Array.from({ length: n - 1 }, (_, i) => `level-${i + 1}`),
-      campaignVersion: 2,
+      campaignVersion: 3,
     },
     story: { introDone: true, milestoneMask: 0xffff, finaleSeen: true },
   });
-const openMap = async (page) => {
-  await page.evaluate(() => document.querySelector('[data-nav="restaurant-map"]')?.click());
-  await page.waitForSelector('[data-testid="upstairs"]', { timeout: 15000 });
+const dismiss = async (page) => {
+  for (let i = 0; i < 4; i++) {
+    const hit = await page.evaluate(() => {
+      const b = [...document.querySelectorAll("button")].find((x) =>
+        /^(Later|No thanks|Continue|Close|Keep playing)$/.test((x.textContent ?? "").trim()),
+      );
+      if (b && !b.disabled) {
+        b.click();
+        return true;
+      }
+      return false;
+    });
+    if (!hit) break;
+    await sleep(500);
+  }
 };
-const tapZone = (page, re) =>
-  page.evaluate((src) => {
+const openMap = async (page) => {
+  await page.waitForSelector('[data-nav="restaurant-map"]', { timeout: 20000 });
+  await sleep(1200);
+  await dismiss(page);
+  await page.evaluate(() => document.querySelector('[data-nav="restaurant-map"]')?.click());
+  try {
+    await page.waitForSelector('[data-testid="upstairs"]', { timeout: 15000 });
+  } catch (e) {
+    console.log(
+      "STUCK:",
+      (await page.evaluate(() => document.body.innerText)).replace(/\s+/g, " ").slice(0, 600),
+    );
+    await shot(page, "floor3-stuck");
+    throw e;
+  }
+};
+const goUp = async (page) => {
+  await openMap(page);
+  await page.evaluate(() => document.querySelector('[data-testid="upstairs"]').click());
+  await page.waitForSelector('[data-testid="second-floor"]', { timeout: 15000 });
+  await sleep(700);
+};
+const tapZone = (page, src) =>
+  page.evaluate((s) => {
     const z = [...document.querySelectorAll('[data-testid="second-floor"] .map-hotspot-zone')].find(
-      (e) => new RegExp(src).test(e.getAttribute("aria-label") ?? ""),
+      (e) => new RegExp(s).test(e.getAttribute("aria-label") ?? ""),
     );
     z?.click();
     return !!z;
-  }, re.source);
-const clickText = (page, re) =>
-  page.evaluate((src) => {
+  }, src);
+const clickText = (page, src) =>
+  page.evaluate((s) => {
     const b = [...document.querySelectorAll("button")].find((x) =>
-      new RegExp(src).test(x.textContent ?? ""),
+      new RegExp(s).test(x.textContent ?? ""),
     );
     if (b && !b.disabled) b.click();
     return b ? !b.disabled : false;
-  }, re.source);
+  }, src);
+const flat = (page) => page.evaluate(() => (document.body.innerText ?? "").replace(/\s+/g, " "));
 
 const { browser, page, logs } = await launch();
 
-const pillsOf = (page) =>
-  page.$$eval('[data-testid="second-floor"] .map-hotspot-zone .locked-pill-badge', (els) =>
-    els.map((e) => (e.textContent ?? "").replace(/\s+/g, "")),
-  );
-const labelsOf = (page) =>
-  page.$$eval('[data-testid="second-floor"] .map-hotspot-zone', (els) =>
-    els.map((e) => e.getAttribute("aria-label")),
-  );
-
-// ---------- 1. Locked at 4 ----------
-await boot(page, atLevel(4));
+// ---------- 1. Locked at Level 2 ----------
+await boot(page, atLevel(2));
 await openMap(page);
 const lockedLabel = await page.$eval('[data-testid="upstairs"]', (b) => b.textContent);
 await page.evaluate(() => document.querySelector('[data-testid="upstairs"]').click());
-await sleep(600);
+await sleep(500);
 check(
-  "1 Level 4: the 2nd-floor button is locked and does nothing",
-  /🔒 2nd floor · Lv 5/.test(lockedLabel) && !(await page.$('[data-testid="second-floor"]')),
+  "1 Level 2: the 2nd-floor button is locked (a lock and the services to go) and does nothing",
+  /🔒 2nd floor · (in \d+ services|after the next service)/.test(lockedLabel) &&
+    !(await page.$('[data-testid="second-floor"]')),
   { lockedLabel },
 );
 
-// ---------- 1b. Visit at 10 ----------
-await boot(page, atLevel(10));
-await openMap(page);
-await page.evaluate(() => document.querySelector('[data-testid="upstairs"]').click());
-await page.waitForSelector('[data-testid="second-floor"]', { timeout: 15000 });
-await sleep(800);
-await shot(page, "second-floor-l10-390");
-const l10Labels = await labelsOf(page);
-const l10Pills = await pillsOf(page);
-await tapZone(page, /^Smart Coffee/);
-await sleep(300);
-const l10Buy = await page.evaluate(() =>
-  [...document.querySelectorAll("button")].some(
-    (b) => /For sale from Level 60/.test(b.textContent ?? "") && b.disabled,
-  ),
+// ---------- 2. Open at Level 3 ----------
+await boot(page, atLevel(3));
+await goUp(page);
+await shot(page, "floor3-l3-390");
+const labels = await page.$$eval('[data-testid="second-floor"] .map-hotspot-zone', (els) =>
+  els.map((e) => e.getAttribute("aria-label")),
 );
+const coffeeLabel = labels.find((l) => /^Smart Coffee/.test(l ?? "")) ?? "";
+const drinksLabel = labels.find((l) => /^Drinks/.test(l ?? "")) ?? "";
 check(
-  "1b Level 10: the floor can be visited; every station is already on sale (🔒 + its price), none says 'For sale from Level'",
-  l10Labels.filter((z) => / — locked, buy for \$[\d,]+\.\d\d$/.test(z)).length === 6 &&
-    l10Pills.length === 6 &&
-    l10Pills.every((t) => /^🔒\$[\d,]+\.\d\d$/.test(t)) &&
-    !l10Buy,
-  { l10Labels, l10Pills, l10Buy },
+  "2 Level 3: the floor opens; Coffee is for sale ($500), Drinks still waits for its level",
+  /locked, buy for \$500\.00/.test(coffeeLabel) && /opens/.test(drinksLabel),
+  { coffeeLabel, drinksLabel },
 );
 
-// ---------- 2. Open at 60 ----------
-await boot(page, atLevel(60));
-await openMap(page);
-await page.evaluate(() => document.querySelector('[data-testid="upstairs"]').click());
-await page.waitForSelector('[data-testid="second-floor"]', { timeout: 15000 });
-await sleep(800);
-await shot(page, "second-floor-390");
-const zones = await labelsOf(page);
-const l60Pills = await pillsOf(page);
-check(
-  "2 Level 60: every station is on sale, still locked until bought (🔒 + its price)",
-  zones.filter((z) => / — locked, buy for \$[\d,]+\.\d\d$/.test(z)).length === 6 &&
-    l60Pills.length === 6 &&
-    l60Pills.every((t) => /^🔒\$[\d,]+\.\d\d$/.test(t)) &&
-    zones.length === 9,
-  { zones, l60Pills },
-);
-
-// ---------- 3. Buy Coffee ----------
+// ---------- 3. The next-goal strip buys Coffee ----------
 const s0 = await readSave(page);
-await tapZone(page, /^Smart Coffee/);
-await sleep(300);
-await clickText(page, /^Buy for \$400\.00$/);
+const goalText = await page.$eval('[data-testid="floor-goal"]', (e) =>
+  e.innerText.replace(/\s+/g, " "),
+);
+const stripBtn = await page.$eval('[data-testid="floor-goal"] button', (b) => ({
+  h: b.getBoundingClientRect().height,
+  disabled: b.disabled,
+}));
+await page.evaluate(() => document.querySelector('[data-testid="floor-goal"] button')?.click());
 await sleep(600);
+const fanfare = await page
+  .$eval('[data-testid="floor-fanfare"]', (e) => e.innerText.replace(/\s+/g, " "))
+  .catch(() => null);
 const s1 = await readSave(page);
 const buys = s1.economyLedger.filter((e) => e.category === "automation-purchase");
 check(
-  "3 buying Coffee debits $400 once (economy plan 2026-10-16), with one ledger entry",
-  s1.credits === s0.credits - 40000 &&
+  "3 the goal strip says 'Next: Coffee machine · $500.00' and its Buy button buys it: -$500, ONE ledger entry",
+  /Next: .*Coffee machine/.test(goalText) &&
+    /\$500\.00/.test(goalText) &&
+    !stripBtn.disabled &&
+    stripBtn.h >= 47.5 &&
+    s1.credits === s0.credits - 50000 &&
     buys.length === 1 &&
     s1.business.secondFloor?.stations?.coffee?.level === 1,
-  { credits: [s0.credits, s1.credits], buys: buys.length },
+  { goalText, stripBtn, credits: [s0.credits, s1.credits], buys: buys.length },
 );
 
-// ---------- 3b. Floor staff: a server and a cleaner, hired for good ----------
-const lifeBeforeHire = await page.$$eval(".floor-actor", (els) => els.length);
-// While the temporary always-preview flag is on (developer 2026-10-16) the full cast plays
-// whatever the save owns; otherwise only the bought, staffed floor comes alive.
-const previewOn = await page.$eval(
-  '[data-testid="second-floor"]',
-  (el) => el.querySelector('[data-testid="floor-life"]')?.getAttribute("data-preview") === "true",
-);
-const needsServer = await page.evaluate(() =>
-  /Needs a server/.test(document.querySelector('[data-testid="second-floor"]').innerText),
-);
-await page.evaluate(() => document.querySelector('[aria-label="Close"]')?.click());
-await sleep(200);
-await tapZone(page, /^Pickup Counter/);
-await sleep(300);
-const hiredServer = await clickText(page, /^Hire for \$400\.00$/);
-await sleep(500);
-const hiredCleaner = await clickText(page, /^Hire for \$300\.00$/);
-await sleep(500);
-const s1b = await readSave(page);
-const hires = s1b.economyLedger.filter((e) => /^hire-/.test(e.description ?? ""));
-check(
-  "3b an unstaffed station says it needs a server; a Floor Server ($400) and a Floor Cleaner ($300) are one-time hires — one ledger entry each, no wages",
-  needsServer &&
-    hiredServer &&
-    hiredCleaner &&
-    hires.length === 2 &&
-    s1b.credits === s1.credits - 40000 - 30000 &&
-    s1b.business.secondFloor.servers === 1 &&
-    s1b.business.secondFloor.cleaners === 1,
-  { needsServer, hires: hires.length },
-);
-
-// ---------- 3c. Floor life: the server, guests and cleaner come alive ----------
-await page.evaluate(() => document.querySelector('[aria-label="Close"]')?.click());
-await sleep(600);
-const life = await page.evaluate(async () => {
+// ---------- 4. Self-serve and alive ----------
+await sleep(900);
+const alive = await page.evaluate(async () => {
   const actors = [...document.querySelectorAll(".floor-actor")];
-  const kinds = actors.map((a) => a.getAttribute("data-actor"));
   const where = () => actors.map((a) => getComputedStyle(a).transform).join("|");
   const t0 = where();
   await new Promise((r) => setTimeout(r, 1200));
-  const layer = document.querySelector('[data-testid="floor-life"]');
-  return {
-    kinds,
-    moved: where() !== t0,
-    running: actors.every((a) => a.getAnimations().some((x) => x.playState === "running")),
-    hidden: layer?.getAttribute("aria-hidden") === "true",
-    taps: layer ? getComputedStyle(layer).pointerEvents : null,
-  };
+  return { n: actors.length, moved: where() !== t0 };
 });
-await shot(page, "second-floor-life-390");
-check(
-  "3c floor life: nobody before a server; after the hire a server, 2 guests and a cleaner move on the map (decorative, no taps) — or, with the temporary preview on, the full cast moves",
-  (previewOn
-    ? lifeBeforeHire === 15 &&
-      life.kinds.filter((k) => k === "server").length === 3 &&
-      life.kinds.filter((k) => k === "guest").length === 10 &&
-      life.kinds.filter((k) => k === "cleaner").length === 2
-    : lifeBeforeHire === 0 &&
-      life.kinds.filter((k) => k === "server").length === 1 &&
-      life.kinds.filter((k) => k === "guest").length === 2 &&
-      life.kinds.filter((k) => k === "cleaner").length === 1) &&
-    life.moved &&
-    life.running &&
-    life.hidden &&
-    life.taps === "none",
-  { previewOn, lifeBeforeHire, ...life },
+const pills = await page.$$eval(
+  '[data-testid="second-floor"] .map-hotspot-zone .locked-pill-badge',
+  (els) => els.map((e) => (e.textContent ?? "").replace(/\s+/g, " ")),
 );
+check(
+  "3b buying a machine celebrates it (a short fanfare naming the machine)",
+  !!fanfare && /Coffee is open/.test(fanfare),
+  { fanfare },
+);
+check(
+  "4 Coffee is self-serve: no 'Needs a server' pill, and guests walk the floor",
+  !pills.some((t) => /Needs a server/i.test(t)) && alive.n > 0 && alive.moved,
+  { pills, alive },
+);
+await shot(page, "floor3-bought-390");
 
-// ---------- 4. Two hours later: collect ----------
-const moved = structuredClone(s1b);
-moved.business.secondFloor.stations.coffee.lastCollectAt -= 2 * 3_600_000;
+// ---------- 5. An hour later: collect ----------
+const moved = await readSave(page);
+moved.business.secondFloor.stations.coffee.lastCollectAt -= 3_600_000;
 await writeSave(page, moved);
 await page.reload({ waitUntil: "domcontentloaded" });
-await sleep(2500);
-await openMap(page);
-await page.evaluate(() => document.querySelector('[data-testid="upstairs"]').click());
-await page.waitForSelector('[data-testid="second-floor"]', { timeout: 15000 });
-await sleep(500);
-const s2 = await readSave(page);
-await tapZone(page, /^Pickup Counter/);
-await sleep(300);
-const collected = await clickText(page, /^Collect \$/);
+await goUp(page);
+const pile = await page.evaluate(
+  () => document.querySelector('[data-testid="floor-cash"]')?.innerText ?? "",
+);
+const before = await readSave(page);
+await page.evaluate(() => document.querySelector('[data-testid="floor-cash-pile"]')?.click());
 await sleep(600);
-const s3 = await readSave(page);
-const incomes = s3.economyLedger.filter((e) => e.category === "automation-income");
-await shot(page, "second-floor-collected");
-const again = await clickText(page, /^Collect \$/);
+const after = await readSave(page);
+const incomes = after.economyLedger.filter((e) => e.category === "automation-income");
+await page.evaluate(() => document.querySelector('[data-testid="floor-cash-pile"]')?.click());
 await sleep(400);
-const s4 = await readSave(page);
+const again = await readSave(page);
 check(
-  "4 two hours later the Pickup Counter collects 2 × $10 — one ledger entry; a second tap pays nothing",
-  collected &&
-    s3.credits - s2.credits >= 2000 &&
-    s3.credits - s2.credits < 2100 &&
+  "5 an hour of Coffee at one table is $60.00: one tap collects it with ONE automation-income entry; a second tap pays nothing",
+  /60/.test(pile) &&
+    after.credits - before.credits >= 6000 &&
+    after.credits - before.credits <= 6100 &&
     incomes.length === 1 &&
-    !again &&
-    s4.credits === s3.credits,
-  { gained: s3.credits - s2.credits, incomes: incomes.length, again },
+    again.credits === after.credits,
+  { pile, gained: after.credits - before.credits, incomes: incomes.length },
 );
-
-// ---------- 5. Reload; Downstairs ----------
 await page.reload({ waitUntil: "domcontentloaded" });
-await sleep(2500);
-const s5 = await readSave(page);
-await openMap(page);
-await page.evaluate(() => document.querySelector('[data-testid="upstairs"]').click());
-await page.waitForSelector('[data-testid="second-floor"]', { timeout: 15000 });
-await clickText(page, /Downstairs/);
 await sleep(800);
+const afterReload = await readSave(page);
+check("5b a reload pays nothing more", afterReload.credits - after.credits < 100, {
+  delta: afterReload.credits - after.credits,
+});
+
+// ---------- 6. Table and Polish ----------
+await goUp(page);
+await tapZone(page, "^Smart Coffee");
+await sleep(400);
+const stats = await page.$eval('[data-testid="station-stats"]', (e) =>
+  e.innerText.replace(/\s+/g, " "),
+);
+const c0 = await readSave(page);
+const gotTable = await clickText(page, "Table #2 · \\$60\\.00");
+await sleep(500);
+const gotPolish = await clickText(page, "Polish 1/10 · \\$40\\.00");
+await sleep(500);
+const c1 = await readSave(page);
+const st = c1.business.secondFloor.stations.coffee;
 check(
-  "5 a reload pays nothing more; Downstairs returns to the first-floor map",
-  s5.credits === s4.credits &&
-    s5.economyLedger.filter((e) => e.category === "automation-income").length === 1 &&
-    !!(await page.$('[data-testid="upstairs"]')) &&
-    !(await page.$('[data-testid="second-floor"]')),
+  "6 Table #2 ($60) and Polish 1 ($40) are bought: tables 2, polish 1, wallet down by $100 (less what the floor paid in)",
+  /Tier 1 · 1 table · polish 0\/10/.test(stats) &&
+    gotTable &&
+    gotPolish &&
+    st.tables === 2 &&
+    st.polish === 1 &&
+    c0.credits - c1.credits <= 10000 &&
+    c1.economyLedger.filter((e) => /^coffee-(table|polish)-/.test(e.description ?? "")).length ===
+      2,
+  { stats, st, spent: c0.credits - c1.credits },
 );
 
-// ---------- 6. Widths ----------
-const fits = {};
+// ---------- 7. Fits at 320 and 390 ----------
+const fits = [];
 for (const [w, h] of [
   [320, 568],
   [390, 844],
-  [768, 1024],
 ]) {
   await page.setViewport({ width: w, height: h, deviceScaleFactor: 1 });
-  await sleep(300);
-  await page.evaluate(() => document.querySelector('[data-testid="upstairs"]')?.click());
-  await page.waitForSelector('[data-testid="second-floor"]', { timeout: 15000 });
-  await sleep(700);
-  await shot(page, `second-floor-${w}`);
-  fits[w] = await page.evaluate(() => ({
-    overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
-    shown: !!document.querySelector('[data-testid="second-floor"] img'),
-  }));
-  await clickText(page, /Downstairs/);
   await sleep(500);
+  await page.evaluate(() => document.querySelector('[aria-label="Close"]')?.click());
+  await sleep(300);
+  const m = await page.evaluate(() => ({
+    sw: document.scrollingElement.scrollWidth,
+    iw: window.innerWidth,
+  }));
+  fits.push({ w, ok: m.sw <= m.iw + 1, m });
+  await shot(page, `floor3-fit-${w}`);
 }
 check(
-  "6 fits at 320 / 390 / 768",
-  Object.values(fits).every((f) => f.shown && f.overflow <= 0),
+  "7 fits at 320 and 390 with no sideways scroll",
+  fits.every((f) => f.ok),
   fits,
 );
 
-// ---------- 8. The testing switch: ?floor2 opens the floor; stations keep their lock ----------
-await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });
-await boot(page, atLevel(3));
-const base = process.env.KC_URL || "http://127.0.0.1:4173/";
-await page.goto(base + "?floor2", { waitUntil: "domcontentloaded" });
-await sleep(2500);
-await openMap(page);
-const testLabel = await page.$eval('[data-testid="upstairs"]', (b) => b.textContent);
-await page.evaluate(() => document.querySelector('[data-testid="upstairs"]').click());
-await page
-  .waitForSelector('[data-testid="second-floor"]', { timeout: 15000 })
-  .catch(() => undefined);
-const testZones = await page.$$eval('[data-testid="second-floor"] .map-hotspot-zone', (els) =>
-  els.map((e) => e.getAttribute("aria-label")),
-);
-const previewKinds = await page.$$eval(".floor-actor", (els) =>
-  els.map((e) => e.getAttribute("data-actor")),
-);
-const lockPills = await page.$$eval(
-  '[data-testid="second-floor"] .map-hotspot-zone .locked-pill-badge',
-  (els) => els.map((e) => (e.textContent ?? "").replace(/\s+/g, "")),
-);
-await shot(page, "second-floor-test-locks-390");
-check(
-  "8 ?floor2 (testing): the floor opens at Level 3, all six stations stay locked with 🔒 Lv.5, and nobody walks the floor (nothing bought; the preview cast is off)",
-  /⬆ 2nd floor/.test(testLabel) &&
-    testZones.length === 9 &&
-    testZones.filter((z) => /opens at Level 5$/.test(z)).length === 6 &&
-    lockPills.filter((t) => t === "🔒Lv.5").length === 6 &&
-    previewKinds.length === 0,
-  { testLabel, testZones, lockPills, previewKinds },
-);
+// ---------- 9. The Golden Guest (a VIP) ----------
+// The VIP's slot, arrival and place come from an integer hash of the 4-minute slot number (restaurant/goldenGuest.ts); the
+// same hash here lets the test freeze the page's clock one second after a VIP arrives.
+{
+  const SLOT = 240_000;
+  const hash = (n, salt) => {
+    let h = Math.imul((n ^ salt) >>> 0, 2654435761) >>> 0;
+    h ^= h >>> 15;
+    h = Math.imul(h, 2246822519) >>> 0;
+    h ^= h >>> 13;
+    return h >>> 0;
+  };
+  const arrive = (slot) => slot * SLOT + 15_000 + (hash(slot, 11) % 200_000);
+  const slot = Math.floor(Date.now() / SLOT) + 1;
+  const frozen = arrive(slot) + 1000;
+  await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });
+  const seeded = await readSave(page);
+  seeded.credits = 1000; // so the next goal is still ahead
+  await writeSave(page, seeded);
+  await page.evaluateOnNewDocument((t) => {
+    Date.now = () => t;
+  }, frozen);
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await goUp(page);
+  const seen = await page
+    .waitForSelector('[data-testid="golden-guest"]', { timeout: 8000 })
+    .then(() => true)
+    .catch(() => false);
+  const h = seen
+    ? await page.$eval('[data-testid="golden-guest"]', (b) => b.getBoundingClientRect().height)
+    : 0;
+  const w = seen
+    ? await page.$eval('[data-testid="golden-guest"]', (b) => b.getBoundingClientRect().width)
+    : 0;
+  await shot(page, "floor3-golden");
+  const g0 = await readSave(page);
+  if (seen)
+    await page.evaluate(() => document.querySelector('[data-testid="golden-guest"]')?.click());
+  await sleep(700);
+  const g1 = await readSave(page);
+  const gone = !(await page.$('[data-testid="golden-guest"]'));
+  check(
+    "9 a Golden Guest (VIP) stands on the floor at the right second (a 🌟 button of at least 48 px); one tap puts the tip on the Pickup Counter once; the button then goes",
+    seen &&
+      h >= 47.5 &&
+      w >= 47.5 &&
+      g1.business.secondFloor.bonus > 0 &&
+      g1.business.secondFloor.goldenSlot === slot &&
+      g1.credits === g0.credits &&
+      gone,
+    {
+      seen,
+      h,
+      w,
+      bonus: g1.business.secondFloor.bonus,
+      slot: g1.business.secondFloor.goldenSlot,
+      wallet: [g0.credits, g1.credits],
+      gone,
+    },
+  );
+}
 
-const errors = logs.filter((l) => /pageerror|error:/.test(l) && !/favicon/.test(l));
-check("7 no page errors", errors.length === 0, errors.slice(0, 5));
+// ---------- 10. Hype and Rush Hour ----------
+{
+  await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });
+  const seeded = await readSave(page);
+  seeded.business.secondFloor.hype = 100;
+  delete seeded.business.secondFloor.goldenSlot;
+  await writeSave(page, seeded);
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await goUp(page);
+  const ready = await page
+    .waitForSelector('[data-testid="rush-ready"]', { timeout: 8000 })
+    .then(() => true)
+    .catch(() => false);
+  await shot(page, "floor3-rush-ready");
+  await clickText(page, "^⚡ Start Rush$");
+  await sleep(700);
+  const on = await page
+    .$eval('[data-testid="rush-on"]', (e) => e.innerText.replace(/\s+/g, " "))
+    .catch(() => null);
+  const fan = await page
+    .$eval('[data-testid="floor-fanfare"]', (e) => e.innerText.replace(/\s+/g, " "))
+    .catch(() => null);
+  const r1 = await readSave(page);
+  await shot(page, "floor3-rush-on");
+  const f = r1.business.secondFloor;
+  check(
+    "10 a full Hype meter offers 'Start Rush'; starting it spends the Hype, shows '⚡ RUSH ×3 · m:ss' and a fanfare, and the save holds a 3-minute window",
+    ready &&
+      /RUSH ×3 · [0-3]:\d\d/.test(on ?? "") &&
+      /RUSH HOUR/.test(fan ?? "") &&
+      f.hype === 0 &&
+      f.rushUntil - f.rushFrom === 180000,
+    { ready, on, fan, hype: f.hype, window: f.rushUntil - f.rushFrom },
+  );
+}
+
+const errors = logs.filter(
+  (l) =>
+    /error|pageerror/i.test(l.type ?? l) &&
+    !/favicon|Failed to load resource/i.test(JSON.stringify(l)),
+);
+check("8 no page errors", errors.length === 0, errors.slice(0, 3));
+
 await browser.close();
 const failed = results.filter((r) => !r.ok);
-console.log(
-  failed.length ? `SECOND FLOOR E2E: ${failed.length} FAILURE(S)` : "SECOND FLOOR E2E: ALL PASS",
-);
+console.log(failed.length ? `\n${failed.length} FAILED` : "\nALL PASS");
 process.exit(failed.length ? 1 : 0);
+void flat;

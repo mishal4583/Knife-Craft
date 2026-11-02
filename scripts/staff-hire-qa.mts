@@ -266,14 +266,17 @@ console.log("U. Everything unlocked by Level 5");
     "U3: every map room opens by L5 (the Dining Area too; was L31); the Restroom with its Cleanliness tab (L10)",
   );
   assert(
-    SECOND_FLOOR_OPENS_AT === 5 &&
-      STATIONS_OPEN_AT === 5 &&
+    // Rule changed (developer 2026-11-02): the Second Floor opens at Level 3 and its machines at 3 / 5 / 8 / 12 / 17 / 23.
+    SECOND_FLOOR_OPENS_AT === 3 &&
+      STATIONS_OPEN_AT === 3 &&
       Object.values(TAB_OPENS_AT).every((n) => n <= 5),
-    "U4: the Second Floor and all its stations (was L10 / L60) and every section (Progress was L10) by L5",
+    "U4: the Second Floor opens at L3 (rule 2026-11-02) and every section (Progress was L10) by L5",
   );
   // Prices are untouched: in the catalog files only unlock-level lines changed.
   const diff = execSync(
-    `git diff -U0 ${BASE} -- src/game/knives/knifeDefinitions.ts src/game/boards/boardDefinitions.ts src/game/kitchen/kitchenUpgradeDefinitions.ts src/game/economy/staffDefinitions.ts src/game/restaurant/secondFloor.ts`,
+    // secondFloor.ts is no longer diffed against the old base: its prices and rates were rebuilt on purpose (developer 2026-11-02,
+    // docs/planning/SECOND-FLOOR-FINAL-SPEC-2026-11-02.md) and are guarded by restaurant-second-floor-qa.
+    `git diff -U0 ${BASE} -- src/game/knives/knifeDefinitions.ts src/game/boards/boardDefinitions.ts src/game/kitchen/kitchenUpgradeDefinitions.ts src/game/economy/staffDefinitions.ts`,
     { cwd: ROOT, encoding: "utf8" },
   )
     .split("\n")
@@ -286,7 +289,7 @@ console.log("U. Everything unlocked by Level 5");
     .filter((l) => !KITCHEN_PRICE_CHANGE.test(l));
   assert(
     priceLines.length === 0,
-    "U5: no price, wage or station income changed (only unlock levels)",
+    "U5: no knife, board, kitchen or staff price changed (the Second Floor was rebuilt on purpose, see restaurant-second-floor-qa)",
     priceLines,
   );
 }

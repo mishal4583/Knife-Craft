@@ -6,7 +6,7 @@ import { ShortfallOffer } from "./ads/ShortfallOffer";
 import { InfoTip, Points, StatChip } from "./common/InfoTip";
 import { cn } from "@/lib/utils";
 import type { SaveData } from "@/game/SaveManager";
-import { formatUsd } from "@/game/money";
+import { formatUsdBig as formatUsd } from "@/game/money";
 import { notEnoughMoneyText } from "@/game/economy/wallet";
 import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
 import {
@@ -15,7 +15,11 @@ import {
   SECOND_FLOOR_OPENS_AT,
   STATIONS,
   STATIONS_OPEN_AT,
+  TIER3_MIN_LEVEL,
   cleanersNeeded,
+  machinePrice,
+  staffPrice,
+  tierPrice,
   floorPerHour,
   isSecondFloorOpen,
   isStationUnlocked,
@@ -84,16 +88,17 @@ export function MarketSecondFloor({
             🏬 Automated food hall
           </p>
           <InfoTip label="How the food hall works">
-            Machines cook while you play; a Floor Server runs 2 of them and a Floor Cleaner keeps 3
-            clean. Collect the takings at the Pickup Counter — each machine stores a few hours, so
-            come back twice a day.
+            Machines cook while you play. The first 2 are self-serve; a Floor Server runs 2 more and
+            a Floor Cleaner adds +10% income. Seat more tables and polish machines upstairs. Collect
+            the takings at the Pickup Counter — each machine stores a few hours, so come back twice
+            a day.
           </InfoTip>
         </div>
         <Points
           className="mt-1"
           items={[
             ["🤖", "Machines cook while you play"],
-            ["🧑‍🍳", "1 server runs 2 · 1 cleaner keeps 3"],
+            ["🧑‍🍳", "First 2 self-serve · 1 server runs 2 more"],
             ["💰", "Collect at the Pickup Counter, twice a day"],
           ]}
         />
@@ -120,7 +125,10 @@ export function MarketSecondFloor({
             const o = floor.stations[d.id];
             const locked = !isStationUnlocked(d, level);
             const lvl = o?.level ?? 0;
-            const next = o && lvl < MAX_STATION_LEVEL ? d.upgradePrices[lvl - 1]! : null;
+            const price = machinePrice(d, floor.branch);
+            const next =
+              o && lvl < MAX_STATION_LEVEL ? tierPrice(d, (lvl + 1) as 2 | 3, floor.branch) : null;
+            const tierLocked = lvl + 1 === 3 && level < TIER3_MIN_LEVEL;
             const nextGain =
               o && lvl < MAX_STATION_LEVEL ? d.perHour[lvl]! - d.perHour[lvl - 1]! : 0;
             return (
@@ -140,7 +148,7 @@ export function MarketSecondFloor({
               >
                 {!o ? (
                   <>
-                    <PricePill price={formatUsd(d.price)} />
+                    <PricePill price={formatUsd(price)} />
                     <div className="mt-1.5 flex flex-wrap justify-center gap-1">
                       <StatChip
                         icon="⏱"
@@ -151,21 +159,21 @@ export function MarketSecondFloor({
                       </StatChip>
                       <StatChip
                         icon="↩"
-                        title={`Pays itself back in about ${hours(d.price, d.perHour[0])} hours of service`}
+                        title={`Pays itself back in about ${hours(price, d.perHour[0])} hours of service`}
                       >
-                        ~{hours(d.price, d.perHour[0])} h
+                        ~{hours(price, d.perHour[0])} h
                       </StatChip>
                     </div>
                     <div className="mt-auto pt-2">
                       <BuyButton
-                        tone={locked || save.credits < d.price ? "short" : "go"}
+                        tone={locked || save.credits < price ? "short" : "go"}
                         icon={!locked}
-                        disabled={locked || save.credits < d.price}
-                        onClick={() => run({ kind: "buy", id: d.id }, d.name, d.price)}
+                        disabled={locked || save.credits < price}
+                        onClick={() => run({ kind: "buy", id: d.id }, d.name, price)}
                       >
-                        {locked ? u.badge(d.unlockLevel) : `Buy ${formatUsd(d.price)}`}
+                        {locked ? u.badge(d.unlockLevel) : `Buy ${formatUsd(price)}`}
                       </BuyButton>
-                      {locked ? null : <ShortfallOffer price={d.price} item={d.name} />}
+                      {locked ? null : <ShortfallOffer price={price} item={d.name} />}
                     </div>
                   </>
                 ) : next !== null ? (
@@ -186,16 +194,18 @@ export function MarketSecondFloor({
                     </div>
                     <div className="mt-auto pt-2">
                       <BuyButton
-                        tone={save.credits < next ? "short" : "go"}
+                        tone={tierLocked || save.credits < next ? "short" : "go"}
                         icon={false}
-                        disabled={save.credits < next}
+                        disabled={tierLocked || save.credits < next}
                         onClick={() =>
-                          run({ kind: "upgrade", id: d.id }, `${d.name} Lv ${lvl + 1}`, next)
+                          run({ kind: "upgrade", id: d.id }, `${d.name} Tier ${lvl + 1}`, next)
                         }
                       >
-                        {`Upgrade ${formatUsd(next)}`}
+                        {tierLocked
+                          ? u.badge(TIER3_MIN_LEVEL)
+                          : `Tier ${lvl + 1} ${formatUsd(next)}`}
                       </BuyButton>
-                      <ShortfallOffer price={next} item={d.name} />
+                      {tierLocked ? null : <ShortfallOffer price={next} item={d.name} />}
                     </div>
                   </>
                 ) : (
@@ -220,6 +230,7 @@ export function MarketSecondFloor({
             const def = FLOOR_STAFF[role];
             const have = (role === "server" ? floor.servers : floor.cleaners) ?? 0;
             const need = role === "server" ? serversNeeded(floor) : cleanersNeeded(floor);
+            const hirePrice = staffPrice(role, have, floor.branch);
             return (
               <ShopCard
                 key={role}
@@ -236,31 +247,35 @@ export function MarketSecondFloor({
                   </ShopItemArt>
                 }
               >
-                <PricePill price={formatUsd(def.price)} />
+                <PricePill price={formatUsd(staffPrice(role, have, floor.branch))} />
                 <ShopLine hand>
                   {need > have
-                    ? `you need ${need}`
+                    ? role === "server"
+                      ? `you need ${need}`
+                      : `+10% income each`
                     : need === 0
-                      ? "for your first machine"
+                      ? role === "server"
+                        ? "your first 2 machines are self-serve"
+                        : "for your first machine"
                       : "enough"}
                 </ShopLine>
                 <div className="mt-auto pt-2">
                   <BuyButton
                     tone={
-                      owned === 0 || have >= def.max || save.credits < def.price ? "short" : "go"
+                      owned === 0 || have >= def.max || save.credits < hirePrice ? "short" : "go"
                     }
                     icon={false}
-                    disabled={owned === 0 || have >= def.max || save.credits < def.price}
-                    onClick={() => run({ kind: "hire", role }, def.name, def.price)}
+                    disabled={owned === 0 || have >= def.max || save.credits < hirePrice}
+                    onClick={() => run({ kind: "hire", role }, def.name, hirePrice)}
                   >
                     {owned === 0
                       ? "Buy a machine first"
                       : have >= def.max
                         ? "Team full"
-                        : `Hire ${formatUsd(def.price)}`}
+                        : `Hire ${formatUsd(hirePrice)}`}
                   </BuyButton>
                   {owned > 0 && have < def.max ? (
-                    <ShortfallOffer price={def.price} item={def.name} />
+                    <ShortfallOffer price={hirePrice} item={def.name} />
                   ) : null}
                 </div>
               </ShopCard>

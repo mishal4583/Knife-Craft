@@ -39,6 +39,10 @@ const COPY: Record<AdBonusKind, { icon: string; kicker: string; line: string }> 
   floor_double: { icon: "🏬", kicker: "Second Floor ×2", line: "Collect it twice" },
   daily_gift: { icon: "🎁", kicker: "Daily gift", line: "A little something for today" },
   welcome_back: { icon: "🌙", kicker: "Welcome back", line: "Earned while you were away" },
+  flood: { icon: "🏬", kicker: "Guests flood in!", line: "Even more on the Pickup Counter" },
+  golden: { icon: "🌟", kicker: "VIP guest", line: "Tips three times as much" },
+  skip: { icon: "⏩", kicker: "Skip ahead", line: "Two hours of earnings, now" },
+  rush: { icon: "⚡", kicker: "Rush hour", line: "Ten minutes at ×3, paid now" },
 };
 
 /**

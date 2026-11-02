@@ -58,8 +58,9 @@ const ids = (s: SaveData) => guideStepsApplying(s).map((x) => x.id);
 console.log("A. Pacing");
 {
   assert(
-    guideStepFor(saveAt(1)) === null && guideStepFor(saveAt(3)) === null,
-    "A1: nothing in the first levels (Grandma's tips cover them)",
+    // Rule changed (developer 2026-11-02): the Second Floor opens at Level 3, so the guide points upstairs from Level 3.
+    guideStepFor(saveAt(1)) === null && guideStepFor(saveAt(2)) === null,
+    "A1: nothing in the first two levels (Grandma's tips cover them)",
   );
   const l5 = saveAt(5);
   assert(
@@ -130,13 +131,20 @@ console.log("B. Done means gone");
   const withMachine = saveAt(6, {
     business: {
       ...DEFAULT_SAVE.business,
-      secondFloor: { stations: { [station.id]: { level: 1, lastCollectAt: 0 } } },
+      secondFloor: {
+        stations: {
+          [station.id]: { level: 1, lastCollectAt: 0 },
+          [STATIONS[1]!.id]: { level: 1, lastCollectAt: 0 },
+          [STATIONS[2]!.id]: { level: 1, lastCollectAt: 0 },
+        },
+      },
     },
   });
   const a = ids(withMachine);
   assert(
     !a.includes("floor-machine") && a.includes("floor-server"),
-    'B1: with a machine the step becomes "hire a Floor Server"',
+    // Rule changed (2026-11-02): the first two machines are self-serve, so the Server step appears with the third machine.
+    'B1: with three machines the step becomes "hire a Floor Server" (the first two are self-serve)',
     a,
   );
   const staffed = {

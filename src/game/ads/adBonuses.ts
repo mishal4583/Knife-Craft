@@ -11,6 +11,11 @@
  *  5. daily_gift    — the day's welcome gift (free), doubled by an ad.
  *  6. welcome_back  — back after 30+ minutes: a few hours of earnings, ONLY for an ad
  *                     (developer 2026-10-31; not a doubling, there is no free part).
+ *  7. flood         — Level Complete (first clear, a machine owned): the floor's surge of guests, the bigger part for the ad.
+ *  8. golden        — Second Floor: the VIP's tip, three times as much with the ad.
+ *  9. skip          — Second Floor: two hours of earnings now (a rewarded timer skip).
+ *     (7-9: developer 2026-11-02, "let the player be rich"; the ~20% limit below applies to bonuses 1-6, the floor's own
+ *     amounts follow the floor's income and goal: restaurant/floorFlood.ts, goldenGuest.ts.)
  *
  * Source of truth = the save's ledger, as for the Replay Bonus: a claimed
  * bonus IS one "rewarded-ad" entry whose description is the offer's reward
@@ -34,7 +39,16 @@ import { dailyKeyFor } from "../daily/DailyOrderManager";
 import { streakRewardOnTake } from "../daily/giftStreak";
 
 export type AdBonusKind =
-  "floating_cash" | "level_double" | "shortfall" | "floor_double" | "daily_gift" | "welcome_back";
+  | "floating_cash"
+  | "level_double"
+  | "shortfall"
+  | "floor_double"
+  | "daily_gift"
+  | "welcome_back"
+  | "flood"
+  | "golden"
+  | "skip"
+  | "rush";
 
 /** Offers a day (device-local day, like the Replay Bonus) per kind. */
 export const AD_BONUS_DAILY_CAP: Record<AdBonusKind, number> = {
@@ -44,6 +58,14 @@ export const AD_BONUS_DAILY_CAP: Record<AdBonusKind, number> = {
   floor_double: 2,
   daily_gift: 1,
   welcome_back: 1,
+  /** Flood (restaurant/floorFlood.ts, developer 2026-11-02): one offer per first-clear level, up to 8 a day. */
+  flood: 8,
+  /** Golden Guest (restaurant/goldenGuest.ts, developer 2026-11-02): up to 8 VIP bonuses a day. */
+  golden: 8,
+  /** Skip ahead (restaurant/floorFlood.ts, developer 2026-11-02): up to 3 a day. */
+  skip: 3,
+  /** Rush Hour (restaurant/floorFlood.ts, developer 2026-11-02): up to 4 a day. */
+  rush: 4,
 };
 
 /** Nothing before the Market opens (Level 3): the first levels stay a plain tutorial. */
@@ -61,9 +83,11 @@ export const LEVEL_DOUBLE_MAX = dollars(250);
 /** Short by: offered when the gap is at most 25% of the price and at most $150. */
 export const SHORTFALL_PRICE_SHARE = 0.25;
 export const SHORTFALL_MAX = dollars(150);
-/** Second Floor ×2: a collection of at least $50; the extra is at most $250. */
+/**
+ * Second Floor ×2: a collection of at least $50; the extra equals the collection (a real ×2). Rule changed (developer 2026-11-02,
+ * "let the player be rich"): there is no $250 ceiling any more, the floor is allowed to grow far past it.
+ */
 export const FLOOR_DOUBLE_MIN = dollars(50);
-export const FLOOR_DOUBLE_MAX = dollars(250);
 /** Daily gift: 10% of the current level's pay, $20–$60 (the ad doubles it). */
 export const DAILY_GIFT_SHARE = 0.1;
 export const DAILY_GIFT_MIN = dollars(20);
@@ -119,7 +143,7 @@ export function shortfallAmount(price: number, credits: number): number {
 /** The extra for collecting the Second Floor ×2 — or 0 for a small collection. */
 export function floorDoubleAmount(collected: number): number {
   if (collected < FLOOR_DOUBLE_MIN) return 0;
-  return Math.min(FLOOR_DOUBLE_MAX, collected);
+  return collected;
 }
 
 export function dailyGiftAmount(levelNumber: number): number {

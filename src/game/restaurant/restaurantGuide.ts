@@ -22,6 +22,7 @@ import { REFRIGERATOR_CATALOG } from "../business/refrigeratorDefinitions";
 import { restaurantLevelOf } from "./restaurantMenu";
 import {
   FLOOR_STAFF,
+  SELF_SERVE_MACHINES,
   STATIONS,
   isSecondFloorOpen,
   isStationUnlocked,
@@ -232,12 +233,13 @@ const RULES: readonly Rule[] = [
         to: "second-floor",
       };
     }
-    if ((floor.servers ?? 0) === 0)
+    // The first two machines are self-serve; a third one runs at half speed until a Floor Server is hired.
+    if ((floor.servers ?? 0) === 0 && owned > SELF_SERVE_MACHINES)
       return {
         id: "floor-server",
         icon: "🧑‍🍳",
         title: "Hire a Floor Server",
-        why: `Your machine only earns when a Floor Server runs it (${formatUsd(FLOOR_STAFF.server.price)}, hired for good).`,
+        why: `Your newest machine runs at half speed until a Floor Server runs it (${formatUsd(FLOOR_STAFF.server.price)}, hired for good).`,
         button: "Go upstairs",
         to: "second-floor",
       };

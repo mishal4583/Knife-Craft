@@ -163,7 +163,8 @@ try {
     "I3 the Pickup Counter pile shows the takings and 'Full in …'; one tap collects ONE automation-income entry (wallet = ledger); the pile is gone and a second tap pays nothing",
     !!pile &&
       /Collect \$\d/.test(pile.label ?? "") &&
-      /Full in 5 h/.test(bar) &&
+      // Rule changed (developer 2026-11-02): the counter holds 4 h at Tier 1 (was 8), so 3 h in it is full in 1 h.
+      /Full in 1 h/.test(bar) &&
       entries.length === 1 &&
       after.credits - before.credits === entries[0].amount &&
       entries[0].amount > 0 &&

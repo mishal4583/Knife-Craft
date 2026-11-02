@@ -76,8 +76,15 @@ import { payChapterOf } from "@/game/levels/levelMastery";
 import { collectAchievement, collectable } from "@/game/progression/achievements";
 import type { SecondFloorAction } from "@/components/kc/restaurantMap/SecondFloorView";
 import {
+  addFloodBonus,
+  buyPolish,
   buyStation,
+  buyTable,
   collectFloor,
+  openBranch,
+  secondFloorOf,
+  startHypeRush,
+  addHype,
   floorEarnings,
   isSecondFloorOpen,
   hireFloorStaff,
@@ -315,6 +322,8 @@ import type { RecipeDefinition } from "@/game/recipes/recipeTypes";
 import type { LevelDefinition } from "@/game/levels/levelTypes";
 import { computeSettlement } from "@/game/economy/EconomySettlement";
 import { dollars, formatUsd, formatUsdChange } from "@/game/money";
+import { floodAmounts, rushAdAmount, skipAheadAmount } from "@/game/restaurant/floorFlood";
+import { claimGolden } from "@/game/restaurant/goldenGuest";
 import {
   getKnifeSharpness,
   applySharpnessDecay,
@@ -1009,8 +1018,36 @@ export function App() {
           ? hireFloorStaff(current, action.role, now)
           : action.kind === "buy"
             ? buyStation(current, action.id, restaurantLevelOf(current.levelProgress), now)
-            : upgradeStation(current, action.id, now);
-    if (result.ok) persist(result.save);
+            : action.kind === "table"
+              ? buyTable(current, action.id, now)
+              : action.kind === "polish"
+                ? buyPolish(current, action.id, now)
+                : action.kind === "branch"
+                  ? openBranch(current, now)
+                  : action.kind === "golden"
+                    ? claimGolden(
+                        current,
+                        action.slot,
+                        restaurantLevelOf(current.levelProgress),
+                        now,
+                      )
+                    : action.kind === "rush"
+                      ? startHypeRush(current, now)
+                      : upgradeStation(
+                          current,
+                          action.id,
+                          now,
+                          restaurantLevelOf(current.levelProgress),
+                        );
+    if (result.ok) {
+      persist(result.save);
+      // Only the Second Floor's own knowledge: what kind of step, which machine, how much (stable names; values in the data).
+      sendAnalyticsEvent("floor_action", {
+        action: action.kind,
+        ...("id" in action ? { station: action.id } : {}),
+        amount_cents: result.amount,
+      });
+    }
     return result;
   }
 
@@ -1228,6 +1265,10 @@ export function App() {
     floor_double: AD_PLACEMENT.floorDouble,
     daily_gift: AD_PLACEMENT.dailyGift,
     welcome_back: AD_PLACEMENT.welcomeBack,
+    flood: AD_PLACEMENT.flood,
+    golden: AD_PLACEMENT.goldenGuest,
+    skip: AD_PLACEMENT.skipAhead,
+    rush: AD_PLACEMENT.rushHour,
   };
 
   /** Are ad bonuses on offer at all: an ad platform, and the Market open (Level 3). */
@@ -1419,6 +1460,37 @@ export function App() {
       const current = saveRef.current;
       if (current)
         openAdBonus("floor_double", floorDoubleAmount(floorEarnings(current, Date.now())));
+    },
+    openGolden: (extra) => {
+      openAdBonus("golden", extra, "VIP guest");
+    },
+    skipFor: () => {
+      const current = saveRef.current ?? save;
+      if (!adBonusesOpen(current)) return 0;
+      if (adBonusesLeftToday(current, "skip", new Date()) === 0) return 0;
+      return skipAheadAmount(current, restaurantLevelOf(current.levelProgress), Date.now());
+    },
+    openSkip: () => {
+      const current = saveRef.current;
+      if (!current) return;
+      openAdBonus(
+        "skip",
+        skipAheadAmount(current, restaurantLevelOf(current.levelProgress), Date.now()),
+      );
+    },
+    rushFor: () => {
+      const current = saveRef.current ?? save;
+      if (!adBonusesOpen(current)) return 0;
+      if (adBonusesLeftToday(current, "rush", new Date()) === 0) return 0;
+      return rushAdAmount(current, restaurantLevelOf(current.levelProgress), Date.now());
+    },
+    openRush: () => {
+      const current = saveRef.current;
+      if (!current) return;
+      openAdBonus(
+        "rush",
+        rushAdAmount(current, restaurantLevelOf(current.levelProgress), Date.now()),
+      );
     },
   };
 
@@ -2595,7 +2667,47 @@ export function App() {
       `level-finish:${level.id}:${playSessionRef.current.id}`,
       finalSave.levelProgress.completedLevelIds.length,
     );
-    if (!interstitial.show && !wasReplay) openAdBonus("level_double", levelDoubleAmount(level));
+    // FLOOD (developer 2026-11-02): a first clear sends a surge of guests upstairs. The free part lands on the Pickup
+    // Counter at once; the ad adds the bigger part. Players without a machine keep the plain "+50%" offer.
+    const flood = wasReplay ? null : floodAfterLevel(level);
+    if (!wasReplay) hypeAfterLevel(finalSave, level);
+    if (!interstitial.show && !wasReplay) {
+      const shown =
+        !!flood &&
+        flood.adExtra > 0 &&
+        openAdBonus("flood", flood.adExtra, `${formatUsd(flood.free)} already on the counter`);
+      if (!shown) openAdBonus("level_double", levelDoubleAmount(level));
+    }
+  }
+
+  /**
+   * HYPE (developer 2026-11-02): a well-cooked first clear fills the Second Floor's Hype meter, 20 points and 20 more per star
+   * (0-3 stars); full Hype starts a free three-minute Rush Hour. Only with a machine upstairs; no money moves.
+   */
+  function hypeAfterLevel(finalSave: SaveData, level: LevelDefinition) {
+    const current = saveRef.current;
+    if (!current) return;
+    if (!isSecondFloorOpen(restaurantLevelOf(current.levelProgress))) return;
+    if (Object.keys(secondFloorOf(current).stations).length === 0) return;
+    const stars = levelStars(finalSave, level) ?? 0;
+    const next = addHype(current, 20 + 20 * stars);
+    if (next !== current) persist(next);
+  }
+
+  /** Adds the level's free Flood to the Pickup Counter (once per level); returns what it and the ad are worth. */
+  function floodAfterLevel(level: LevelDefinition): { free: number; adExtra: number } | null {
+    const current = saveRef.current;
+    if (!current) return null;
+    const amounts = floodAmounts(current, restaurantLevelOf(current.levelProgress), Date.now());
+    if (amounts.free <= 0) return null;
+    const next = addFloodBonus(current, amounts.free, level.id);
+    if (next === current) return null;
+    persist(next);
+    sendAnalyticsEvent("floor_flood", {
+      free_cents: amounts.free,
+      ad_extra_cents: amounts.adExtra,
+    });
+    return amounts;
   }
 
   /**

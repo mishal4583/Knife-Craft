@@ -94,6 +94,14 @@ export const AD_PLACEMENT = {
   dailyGift: "daily_gift",
   /** Rewarded: back after a while — a few hours of earnings, only for the ad. */
   welcomeBack: "welcome_back",
+  /** Rewarded: Level Complete — the Second Floor's surge of guests (Flood), the bigger part for the ad. */
+  flood: "flood",
+  /** Rewarded: the Second Floor's Golden Guest — three times the burst. */
+  goldenGuest: "golden_guest",
+  /** Rewarded: the Second Floor's "skip ahead" — two hours of earnings. */
+  skipAhead: "skip_ahead",
+  /** Rewarded: the Second Floor's Rush Hour — what ten minutes at x3 would add, paid now. */
+  rushHour: "rush_hour",
 } as const;
 export type InterstitialPlacement =
   typeof AD_PLACEMENT.levelCompleted | typeof AD_PLACEMENT.businessDayEnd;
@@ -109,7 +117,11 @@ export type RewardedPlacement =
   | typeof AD_PLACEMENT.shortfallTopUp
   | typeof AD_PLACEMENT.floorDouble
   | typeof AD_PLACEMENT.dailyGift
-  | typeof AD_PLACEMENT.welcomeBack;
+  | typeof AD_PLACEMENT.welcomeBack
+  | typeof AD_PLACEMENT.flood
+  | typeof AD_PLACEMENT.goldenGuest
+  | typeof AD_PLACEMENT.skipAhead
+  | typeof AD_PLACEMENT.rushHour;
 /** The defaults (also the config's placementFallback values). */
 export const INTERSTITIAL_PLACEMENT: InterstitialPlacement = AD_PLACEMENT.levelCompleted;
 export const REWARDED_PLACEMENT: RewardedPlacement = AD_PLACEMENT.replayBonus;

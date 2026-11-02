@@ -1,6 +1,6 @@
 /**
  * HOW FULL THE SECOND FLOOR IS (idle phase 5B, developer 2026-10-31): the floor stores up to
- * 8 / 9 / 10 hours of takings per station (secondFloor.ts, `capHours`) and then stops. These are
+ * 4 / 5 / 6 hours of takings per station (Tier 1 / 2 / 3, rebuilt 2026-11-02) (secondFloor.ts, `capHours`) and then stops. These are
  * the read-only numbers the screens show so the player can feel it fill: a fraction, the time to
  * full and a short "full in" text.
  *
@@ -30,7 +30,7 @@ export type Fill = {
   full: boolean;
 };
 
-/** One working station's fill, or null when it is not owned or has no Floor Server (it stores nothing). */
+/** One working station's fill, or null when it is not owned or is not staffed (an unstaffed machine keeps only a short tray). */
 export function stationFill(floor: SecondFloorState, id: StationId, now: number): Fill | null {
   const owned = floor.stations[id];
   if (!owned || !isStaffed(floor, id)) return null;

@@ -22,7 +22,11 @@
                 { "id": "shortfall_topup" },
                 { "id": "floor_double" },
                 { "id": "daily_gift" },
-                { "id": "welcome_back" }
+                { "id": "welcome_back" },
+                { "id": "flood" },
+                { "id": "golden_guest" },
+                { "id": "skip_ahead" },
+                { "id": "rush_hour" }
             ]
         }
     }

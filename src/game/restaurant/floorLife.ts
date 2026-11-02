@@ -13,6 +13,7 @@
 import { makeSeededRand } from "../business/businessDeterministicRandom";
 import {
   FLOOR_STAFF,
+  SELF_SERVE_MACHINES,
   STATIONS,
   isStaffed,
   type SecondFloorState,
@@ -198,12 +199,14 @@ export function floorCast(floor: SecondFloorState): FloorActor[] {
   const S = FLOOR_SPOTS;
 
   // Servers: each runs its own stations (2 each), station → counter → station.
+  // The first two machines are self-serve (no Server walks to them); a Server runs the machines after them.
+  const served = working.slice(SELF_SERVE_MACHINES);
   const servers = Math.min(
     floor.servers ?? 0,
-    Math.ceil(working.length / FLOOR_STAFF.server.covers),
+    Math.ceil(served.length / FLOOR_STAFF.server.covers),
   );
   for (let i = 0; i < servers; i++) {
-    const mine = working.slice(i * FLOOR_STAFF.server.covers, (i + 1) * FLOOR_STAFF.server.covers);
+    const mine = served.slice(i * FLOOR_STAFF.server.covers, (i + 1) * FLOOR_STAFF.server.covers);
     const stops: Stop[] = [];
     for (const id of mine) {
       const route = STATION_ROUTE[id];

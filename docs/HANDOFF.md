@@ -1,8 +1,39 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## The Second Floor rebuilt for engagement and ads (2026-11-02, working tree, not committed)
+
+Developer: "the main goal is real money: engaging, dopamine, players engage for hours and watch ads"; Level 3 opening; "let the player be rich";
+the rest "whatever is best, you fix it". Spec and evidence: `docs/planning/SECOND-FLOOR-FINAL-SPEC-2026-11-02.md` (decisions, numbers),
+`...-ENGAGEMENT-AND-ADS-DESIGN-...` (telemetry and ad plan), `...-IDLE-GAME-RESEARCH-AND-INCOME-...`, calculators `scripts/second-floor-*.mts`.
+
+- **Built (A-C, partly D):** `restaurant/secondFloor.ts` is now a customer-cycle economy: opens at **Level 3**, machines $500 / $1,000 / $1,500 / $2,000 /
+  $2,500 / $4,000 (own campaign levels 3 / 5 / 8 / 12 / 17 / 23), **tables** (√n guests, ×1.25 at 5, ×1.5 at 10, room 6 / 8 / 10 by tier), **Polish** (10
+  steps, +6% each), **tiers** (Tier 3 needs Level 30), counters 4 / 5 / 6 h, whole cycles in integer mills with a carried anchor, the first two machines
+  **self-serve**, Servers $1,200 / $6,000 (half speed + 10-minute tray without one), Cleaners a +10% bonus only, **branches** (Franchise: reset, prices and
+  payouts ×10, +50% income per branch). State only in `business.secondFloor` (all new fields optional: `tables`, `polish`, `branch`, `bonus`,
+  `floodTag`, `goldenSlot`). `floorGoal.ts` (the next-goal strip, best payback), `floorFlood.ts` (Flood after a first clear, ad extra, Skip ahead),
+  `goldenGuest.ts` (a seeded VIP every 4 minutes, tap for a tip, ad ×3). New ad bonuses `flood`, `golden`, `skip` (placements `flood`, `golden_guest`,
+  `skip_ahead` in `PlayablesSDK` and `public/playgama-bridge-config.json`); analytics `floor_action`, `floor_flood`. `formatUsdBig` ($123K, $1.23M ...).
+- **Tests:** `restaurant-second-floor-qa` rewritten (rule change documented at its top, 100+ checks); updated to the new rules and said so: `idle-qa` F/D,
+  `restaurant-floor-life-qa`, `restaurant-guide-qa` A1/B1, `staff-hire-qa` U4/U5, `oven-step-qa` E2 (exclusions), `playables-ads-qa` E6; browser
+  `tools/e2e/restaurantsecondfloor.mjs` (rewritten, 10 checks incl. the Golden Guest), `marketsecondfloor.mjs`, `idle.mjs` I3. `adbonuses.mjs` 1-2 pass; its
+  check 3 plays a real level through and timed out waiting for the cooking screen (not investigated; may be one of the stale old-numbering tests).
+- **Also built (2026-11-02, second pass):** Hype (a first clear adds 20 + 20 per star, full = a free 3-minute **Rush Hour** at ×3, exact time-warp math in
+  `secondFloor.ts`: `rushFrom/rushUntil`, `anchorForRest`; proved by `restaurant-second-floor-qa` R4-R7 including a 200-schedule property test and two
+  mutation checks), the rewarded **Rush hour** offer (ten minutes at ×3 paid now, kind `rush`, placement `rush_hour`, cap 4 a day), the milestone **fanfare**
+  (machine, tier, 5 / 10 tables, ten Polish, branch, Rush), and the rate pill shows ×3 during a Rush. `Collect ×2` has no $250 ceiling any more (rule change,
+  `ad-bonuses-qa` updated).
+- **adbonuses.mjs:** found stale (it also fails on the committed build): no team, no supplies, "Prepare" is now "Open for service". Repaired seeds and flow, so
+  checks 1, 2, 3a, 4, 5, 6, 7, 8 pass. **3b still fails** (the day's second service ends in Closing Time, not "Next Customer"): documented in the file; the
+  Level bonus path itself is unchanged. The Flood offer is therefore NOT exercised in a real level playthrough in a browser (only in unit tests).
+- **Not built yet:** a floor streak, per-branch looks and the Franchise reward art, Level 1-2 first-minute work, the Closing Time step in the adbonuses level
+  helper, a real-device / Playgama QA-tool pass. Playgama's live build is old (developer), so its telemetry (median session 60 s, 4% sessions with a
+  rewarded ad) is not a measure of this build.
+
 ## Table cash lies on the tables and piles up; Phases 3 and 4 (2026-10-31, working tree, not committed)
 
 Plan, evidence and the open decisions (D8-b, D10): `docs/planning/PHASE3-4-PLAN-2026-10-31.md`.
+
 - **Table cash (developer 2026-10-31: "let it lay there, collect whenever, let it pile up like other idle games").**
   `economy/pendingCash.ts`: serving never collects older cash; one pile per pay kind (`business.pendingCash`, optional
   `more` for a second kind). Drawn as bundles with the amount by the front tables (`common/TableCash.tsx`,
@@ -107,6 +138,7 @@ Plan, evidence and the open decisions (D8-b, D10): `docs/planning/PHASE3-4-PLAN-
 ## Phase 2: customers on a clock (2026-10-30/31, done)
 
 Plan and decisions Q1–Q7: `docs/planning/PHASE2-PLAN-2026-10-30.md`. Built so far:
+
 - 2.1 `restaurant/serviceFlow.ts`: the clock and queue logic (`service-flow-qa`).
 - 2.2 `restaurant/orderPool.ts`: guests order what is in stock. The forecast list (what the Pre-Service Check
   plans) is weighted toward new dishes (×1.5). An arriving guest orders the forecast dish when it can be made,
@@ -141,10 +173,10 @@ Plan and decisions Q1–Q7: `docs/planning/PHASE2-PLAN-2026-10-30.md`. Built so 
   `restaurantCampaignSim.mts` `nextServiceNeeds` now also keeps `closingPay`. Lowest is back to $376 (L6). No game
   price changed.
 
-
 ## Phase 1: the service loop hides the levels (2026-10-30, decisions P1–P6, local commits, not pushed)
 
 Plan and decisions: `docs/planning/PHASE1-PLAN-2026-10-30.md` §8.
+
 - **Open for service** (P1/P2/P4): the restaurant build's Kitchen card is "Next customer" with one button that starts
   the first unlocked level not completed (`restaurant/nextService.ts`). No Replay on the Kitchen; replays are on the
   Order Board. After the last service the button opens the restaurant.
@@ -260,7 +292,6 @@ Plan and decisions: `docs/planning/PHASE1-PLAN-2026-10-30.md` §8.
   three modules tests import (`recipeDefinitions`, `cuisineDefinitions`, `testRecipePool`).
 - QA: `pending-cash-qa` (Q: saves), `night-sync-qa` (B: supplies, clean bonus), `restaurant-guide-qa` (early goals).
 
-
 ## Deep check, 2026-10-30 (no game change except the Serve button label)
 
 - Core loop verified in a real browser (`tools/e2e/cashflow.mjs`, 5/5): Serve books nothing; the table
@@ -334,7 +365,6 @@ Plan and decisions: `docs/planning/PHASE1-PLAN-2026-10-30.md` §8.
 - Release gate: Second Floor audited (no change). Coffee + server = $60 per 8 h; a player who
   reinvests the floor often can end L150 well above the band — developer decision (report §9,
   `scripts/second-floor-early-sim.mts`). $0 start played L1–5 in the browser.
-
 
 ## Early game, phase 4: everything by Level 5, paid staff hires (2026-10-26, branch `claude/early-game-unlocks`)
 
@@ -476,6 +506,7 @@ Plan and decisions: `docs/planning/PHASE1-PLAN-2026-10-30.md` §8.
 - Staff cards no longer overlap on desktop: one kit (`business/StaffCard.tsx`) sized by
   the card's own width (container queries), like the developer's reference. REFERENCE §10
   "Staff portraits and roster cards".
+
 ## Pre-Service Check rows unified (2026-10-23, `main`)
 
 - Tools, supplies, bottles and ingredients share one card-row look; staff are portrait
@@ -491,6 +522,7 @@ Plan and decisions: `docs/planning/PHASE1-PLAN-2026-10-30.md` §8.
   remain available. No service, inventory, or economy rules changed.
 - UI: `components/kc/restaurant/PreServiceCheck.tsx`, `SupplyBottle.tsx`. Details: REFERENCE
   §10 "Glance copy".
+
 ## Staff portraits and roster refresh (2026-10-23)
 
 - Business → Staff now uses illustrated portraits for the six restaurant roles

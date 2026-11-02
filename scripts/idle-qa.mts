@@ -241,8 +241,9 @@ function floorSave(now: number): SaveData {
   const half = stationFill(floor, "coffee", T0 + (cap / 2) * H)!;
   const full = stationFill(floor, "coffee", T0 + (cap + 5) * H)!;
   check(
-    "F1 a working station fills over the real hours of its cap (Lv 1 = 8 h): half way is 50%, past the cap it is full and stays 100%",
-    cap === 8 &&
+    // Rule changed (developer 2026-11-02, Second Floor rebuilt): the counter holds 4 / 5 / 6 h (was 8 / 9 / 10).
+    "F1 a working station fills over the real hours of its cap (Tier 1 = 4 h): half way is 50%, past the cap it is full and stays 100%",
+    cap === 4 &&
       Math.abs(half.fraction - 0.5) < 1e-9 &&
       !half.full &&
       Math.abs(half.msToFull - (cap / 2) * H) < 2 &&
@@ -252,7 +253,8 @@ function floorSave(now: number): SaveData {
     { half, full },
   );
   check(
-    "F2 a station that isn't owned, or has no Floor Server, stores nothing: no fill",
+    // Rule changed (2026-11-02): the first two machines are self-serve, so only a THIRD machine without a Server stores nothing.
+    "F2 a station that isn't owned, or is a third machine with no Floor Server, stores nothing: no fill; the first two are self-serve",
     stationFill(floor, "pizza", T0 + H) === null &&
       stationFill(
         secondFloorOf({
@@ -261,7 +263,15 @@ function floorSave(now: number): SaveData {
         } as SaveData),
         "coffee",
         T0 + H,
-      ) === null,
+      ) !== null &&
+      (() => {
+        let x = fresh($(100_000));
+        for (const id of ["coffee", "drinks", "pizza"] as const) {
+          const b = buyStation(x, id, 60, T0);
+          if (b.ok) x = b.save;
+        }
+        return stationFill(secondFloorOf(x), "pizza", T0 + H) === null;
+      })(),
   );
   check(
     "F3 the whole floor: nothing working → null; nearly full from 80%; 'full in' text names the time",
@@ -271,7 +281,7 @@ function floorSave(now: number): SaveData {
       durationText(2 * H + 10 * 60_000) === "2 h 10 min" &&
       durationText(45 * 60_000) === "45 min" &&
       durationText(30_000) === "under a minute" &&
-      fillText(floorFill(s, T0 + 2 * H)!) === "Full in 6 h" &&
+      fillText(floorFill(s, T0 + 2 * H)!) === "Full in 2 h" &&
       fillText(floorFill(s, T0 + 9 * H)!) === "Full · not earning",
     fillText(floorFill(s, T0 + 2 * H)!),
   );
@@ -334,7 +344,7 @@ function floorSave(now: number): SaveData {
 {
   const T0 = 1_800_000_000_000;
   const none = fresh();
-  const one = floorSave(T0); // one Lv 1 coffee machine, a server and a cleaner
+  const one = floorSave(T0); // one Tier 1 coffee machine, a server and a cleaner
   const buyMore = (
     s: SaveData,
     ids: ("drinks" | "pizza" | "burger" | "iceCream" | "hotFood")[],
@@ -347,7 +357,14 @@ function floorSave(now: number): SaveData {
     return x;
   };
   const full = (() => {
-    let x = buyMore(one, ["drinks", "pizza", "burger", "iceCream", "hotFood"]);
+    // The whole floor at Tier 3 costs more than the default wallet (2026-11-02 prices): give it room.
+    let x = buyMore({ ...one, credits: $(2_000_000) }, [
+      "drinks",
+      "pizza",
+      "burger",
+      "iceCream",
+      "hotFood",
+    ]);
     for (let i = 0; i < 2; i++) {
       const h = hireFloorStaff(x, "server", T0);
       if (h.ok) x = h.save;
