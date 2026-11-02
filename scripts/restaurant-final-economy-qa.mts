@@ -92,8 +92,10 @@ console.log("T. The Level-150 target (no Endless income)");
   assert(
     // The plan's aim after the 2026-10-30 pay re-plan: about $292k, never more than double the floor, so the
     // late game is not left with nothing to spend on.
-    c.final >= dollars(250_000) && c.final <= dollars(350_000),
-    `T2: and lands near the plan's aim ($250k–$350k) (${$(c.final)})`,
+    // Rule changed (developer 2026-11-02): Growing Kitchen costs $6,000 (was $60,000), so the tiers cost $54,000 less in all
+    // and the completionist ends $54,000 richer ($350,720; was about $296k). The ceiling moves with it, to $360k.
+    c.final >= dollars(250_000) && c.final <= dollars(360_000),
+    `T2: and lands near the plan's aim ($250k–$360k) (${$(c.final)})`,
   );
   const owns = c.save;
   assert(
@@ -101,7 +103,8 @@ console.log("T. The Level-150 target (no Endless income)");
       // Rule changed (developer 2026-10-26): hires pay a fee. The items are $168,430, plus $33,000 more of kitchen tiers since 2026-10-29;
       // the fees paid from the wallet come on top (a required hire short of cash goes on credit).
       atL(c, LAST).purchases ===
-        dollars(168_430 + 33_000) + c.stats.hireFees - c.stats.hireFeesOnCredit,
+        // (kitchen tiers $89,000 in all since 2026-11-02, Growing $6,000: $54,000 less than at $143,000, so 33,000 → -21,000)
+        dollars(168_430 - 21_000) + c.stats.hireFees - c.stats.hireFeesOnCredit,
     `T3: the completionist owns every kitchen tier and bought every item (${$(atL(c, LAST).purchases)})`,
   );
   assert(
@@ -181,12 +184,13 @@ console.log("R. Rules");
   const prices = KITCHEN_UPGRADE_CATALOG.map((d) => kitchenTierPrice(d, stamped));
   const grand = kitchenTierPrice(KITCHEN_UPGRADE_CATALOG.at(-1)!, stamped);
   assert(
-    // Developer 2026-10-29: Growing $60,000, Established $12,000, Neighborhood Café $18,000 — so the FIRST tier
-    // is now the dearest ($143,000 in all, was $110,000). Recorded here on purpose: a tier needs the one before it.
-    prices.reduce((a, b) => a + b, 0) === dollars(143_000) &&
-      prices[1] === Math.max(...prices) &&
+    // Rule changed (developer 2026-11-02): Growing is $6,000 ("it should be 6000"), so the tiers rise one after the
+    // other, 6 / 12 / 18 / 24 / 29 ($89,000 in all; was $143,000 with Growing at $60,000, the dearest tier).
+    prices.reduce((a, b) => a + b, 0) === dollars(89_000) &&
+      prices.every((p, i) => i === 0 || p > prices[i - 1]!) &&
+      prices[1] === dollars(6_000) &&
       grand === dollars(29_000),
-    `R1: kitchen tiers cost $143,000 in the restaurant (${prices.map((p) => $(p)).join(" / ")}); Growing is the dearest tier (developer's prices)`,
+    `R1: kitchen tiers cost $89,000 in the restaurant (${prices.map((p) => $(p)).join(" / ")}); each tier costs more than the one before, Growing ($6,000) the least`,
   );
   const withTiers = (ids: string[]): SaveData => ({ ...stamped, ownedKitchenUpgradeIds: ids });
   const tiers = KITCHEN_UPGRADE_CATALOG.map((d) => d.id);

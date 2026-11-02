@@ -956,6 +956,21 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+  /* A tall sheet (the Pickup Counter's floor team) scrolls inside the card instead of growing past the top of
+     the screen, and its header with the Close button stays in view (developer 2026-11-02). */
+  max-height: calc(100% - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+.map-zone-detail-card > .card-header {
+  position: sticky;
+  top: -14px;
+  z-index: 2;
+  margin: -14px -16px 0;
+  padding: 14px 16px 6px;
+  background: rgba(255, 250, 237, 0.98);
 }
 
 @keyframes cardSlideUp {

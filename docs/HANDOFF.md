@@ -65,6 +65,11 @@ Plan, evidence and the open decisions (D8-b, D10): `docs/planning/PHASE3-4-PLAN-
   wage × hours left, the wage grows with the restaurant, gone the next day; gone from the dining floor and from the Cleanliness page. Table
   care from the first customer: the dirty table and the napkin holders (every 3rd table) are tappable in the Served room
   (`cleanliness.wipeTable` free before Level 5, `refillNapkins`). Suites `dining-floor-qa`; browser `dining.mjs`, `firstshop.mjs`.
+- **Growing Kitchen costs $6,000 (developer 2026-11-02)** in the restaurant build (`restaurantInvestments.kitchenPrices`); the tiers are now
+  $6k / $12k / $18k / $24k / $29k ($89,000 in all, was $143,000 with Growing at $60,000). The classic catalog price (`kitchenUpgradeDefinitions`,
+  classic test build only) is unchanged. The Pickup Counter sheet now scrolls and keeps its Close button in view.
+  `restaurant-final-economy` T2/T3/R1 and `early-upgrade-payback` L4 updated; `phase5-qa` A3 diffs `restaurantInvestments.ts` against HEAD, so it
+  passes only once this is committed.
 - **Phase 11 (eight fixes, 2026-11-02)** (`docs/planning/PHASE11-FIXES-AND-DAY2-CLEANING-PLAN-2026-11-01.md`): (1) Grandma's pointers other than
   the Market's wait until Level 1 is finished; (2) the cash lies beside the party that paid (`tableCash.cashSpotBeside`), never on the other table;
   (3) the Business hub (its Kitchen button and first screen) opens at Level 1, its pages keep their levels; (4) no Collect cash button: tap or

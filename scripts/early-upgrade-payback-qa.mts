@@ -67,10 +67,10 @@ check("L3 refrigerator prices rise", fridges.length < 2 || rises(fridges), fridg
 const tiers = KITCHEN_UPGRADE_CATALOG.filter((k) => R.kitchenPrices[k.id] !== undefined);
 const tierPrices = tiers.map((k) => R.kitchenPrices[k.id]!);
 check(
-  "L4 KNOWN exception (D8, left as set): the first kitchen tier costs more than the next three",
-  tierPrices[0]! > tierPrices[1]! &&
-    tierPrices[0]! > tierPrices[2]! &&
-    tierPrices[0]! > tierPrices[3]!,
+  // Rule changed (developer 2026-11-02): Growing is $6,000, so the kitchen tiers rise tier by tier (the old
+  // exception, a first tier dearer than the next three, is gone).
+  "L4 the kitchen tier prices rise tier by tier ($6,000 / $12,000 / $18,000 / $24,000 / $29,000)",
+  tierPrices.every((p, i) => i === 0 || p > tierPrices[i - 1]!),
   tierPrices.map(usd),
 );
 check(

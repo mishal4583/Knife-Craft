@@ -44,9 +44,10 @@ export const RESTAURANT_INVESTMENT_RULES = {
   /**
    * Restaurant-build kitchen tier prices (release: kitchenUpgradeDefinitions). Developer 2026-10-29:
    * Growing $60,000, Established $12,000, Neighborhood Café $18,000 (were $16,000 / $20,000 / $21,000).
+   * Developer 2026-11-02: Growing is $6,000 ("it should be 6000": the first tier is the cheapest, 6 / 12 / 18 / 24 / 29).
    */
   kitchenPrices: {
-    "growing-kitchen": dollars(60_000),
+    "growing-kitchen": dollars(6_000),
     "established-kitchen": dollars(12_000),
     "neighborhood-cafe": dollars(18_000),
     "flourishing-cafe": dollars(24_000),

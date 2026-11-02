@@ -170,7 +170,8 @@ Release zip: the CONTENTS of `dist/` →
   explained by the developer: removing the first two levels (2026-10-29: revenue
   69,110 → 69,925, COGS 16,092 → 16,604, quality 1,402 → 1,415) and the level-pay
   re-plan (2026-10-30: completion 45,623 → 245,138, so the completionist ends well
-  above $150k and the first kitchen tier is reachable around Level 44). The
+  above $150k; the restaurant's Growing Kitchen costs $6,000, developer 2026-11-02, so it is
+  reachable within the first dozen levels). The
   250-level figures were 165,140 / 77,581 / 37,620 / 3,315 / 208,416. Pay follows
   each level's `cuisineChapter` (`payChapterOf`). An unexplained change is still
   a regression.
@@ -185,7 +186,8 @@ Release zip: the CONTENTS of `dist/` →
   entry; claims in `economy.claimedMilestoneIds`). Only the $50,000 Family
   Legacy at L150 pays by itself.
 - **Restaurant target:** the completionist ends the last level with at least $150k
-  (developer 2026-10-30; sim ~$292k with achievements collected). Check with
+  (developer 2026-10-30; sim ~$351k with achievements collected since the
+  2026-11-02 kitchen prices $6k / $12k / $18k / $24k / $29k). Check with
   `restaurant-final-economy-qa` and `achievement-rewards-qa` after any
   economy change.
 - **Where things happen:**
