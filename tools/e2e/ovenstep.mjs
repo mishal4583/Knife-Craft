@@ -1,6 +1,8 @@
 // Transformation Phase C (2026-10-25) — the interactive oven, restaurant build, Level 5
-// (Garlic Bread), in a real browser:
-//   O1 after the cut the oven appears instead of the cooking film; the tray goes in and bakes.
+// (Garlic Bread), in a real browser. Rebuilt 2026-11-03 for the bread FILM (oven-bread.*): the oven window is a film of the bread going in
+// and baking, raw -> golden -> burnt, the golden window is about half a second wide, no skip button. Seeds: the Server and the Cashier are
+// hired (a service needs them) and "Prepare" is now "Open for service".
+//   O1 after the cut the oven appears with the film (data-film="on"); the bread goes in and bakes.
 //   O2 it fits 320×568, 390×844 and 768×1024 (no sideways scroll, the button on screen).
 //   O3 a double tap in the golden window takes it out once: "Golden and crisp!", then the
 //      Knife Report (the order is not served or paid by the oven).
@@ -34,7 +36,12 @@ const FOOD = Object.fromEntries(
 );
 const saveAt5 = (reducedMotion) => {
   const s = seedSave({
-    business: { ...MOVED_IN_BUSINESS, inventory: FOOD },
+    business: {
+      ...MOVED_IN_BUSINESS,
+      inventory: FOOD,
+      refrigerator: { refrigeratorId: "professional-refrigerator" },
+      staff: { hiredRoles: ["server", "cashier"] },
+    },
     credits: 5000,
     levelProgress: {
       currentLevelId: "level-5",
@@ -53,7 +60,9 @@ async function startLevel5() {
       ?.click(),
   );
   await sleep(500);
-  await clickButton(page, /^Prepare$/);
+  await clickButton(page, /^Later$/);
+  await sleep(300);
+  await clickButton(page, /^Open for service$/);
   await sleep(900);
   if (await page.evaluate(() => !!document.querySelector('[data-testid="pre-service-check"]')))
     await clickButton(
@@ -73,7 +82,15 @@ const oven = () =>
       state: o.dataset.state,
       zone: o.dataset.zone,
       result: o.querySelector('[data-testid="oven-result"]')?.textContent ?? null,
-      clip: !!document.querySelector("video"),
+      film: o.dataset.film,
+      video: !!o.querySelector("video"),
+      skip: [...o.querySelectorAll("button")].some((x) => /skip/i.test(x.textContent)),
+      window: (() => {
+        const w = o.querySelector('[data-testid="oven-window"]');
+        const bar = w?.parentElement?.getBoundingClientRect();
+        const r = w?.getBoundingClientRect();
+        return w && bar && r ? Math.round((r.width / bar.width) * 100) : null;
+      })(),
       buttonOn: b ? b.top >= 0 && b.bottom <= innerHeight && b.height >= 47.5 : null,
       overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
     };
@@ -87,8 +104,15 @@ const cut = await playToReport(page, { maxMs: 150000, until: untilOven });
 const first = await oven();
 await shot(page, "oven-1-in");
 check(
-  "O1 after the cut the oven appears instead of the film; the tray goes in",
-  cut.stopped && !!first && !first.clip,
+  "O1 after the cut the oven appears with the bread film (a video, no skip button) and the thin golden window (about 8 % of the bar)",
+  cut.stopped &&
+    !!first &&
+    first.film === "on" &&
+    first.video &&
+    !first.skip &&
+    first.window !== null &&
+    first.window >= 6 &&
+    first.window <= 10,
   first,
 );
 
@@ -110,18 +134,28 @@ check(
   sizes,
 );
 
-await page.waitForFunction(
-  () => document.querySelector('[data-testid="oven-step"]')?.dataset.zone === "golden",
-  { timeout: 15000 },
+// The golden window is about half a second: an in-page frame loop taps (twice) in the first frame it is open.
+const tapped = await page.evaluate(
+  () =>
+    new Promise((resolve) => {
+      const t0 = performance.now();
+      const look = () => {
+        const o = document.querySelector('[data-testid="oven-step"]');
+        if (o?.dataset.zone === "golden") {
+          const b = [...o.querySelectorAll("button")].find((x) =>
+            /Take it out/.test(x.textContent),
+          );
+          b?.click();
+          b?.click();
+          return resolve(true);
+        }
+        if (performance.now() - t0 > 15000) return resolve(false);
+        requestAnimationFrame(look);
+      };
+      look();
+    }),
 );
 await shot(page, "oven-2-golden");
-await page.evaluate(() => {
-  const b = [...document.querySelectorAll('[data-testid="oven-step"] button')].find((x) =>
-    /Take it out/.test(x.textContent),
-  );
-  b?.click();
-  b?.click();
-});
 await sleep(200);
 const out = await oven();
 await shot(page, "oven-3-out");
@@ -134,8 +168,12 @@ const report = await page.evaluate(() => ({
 }));
 check(
   "O3 a double tap in the golden window takes it out once: 'Golden and crisp!', then the Knife Report",
-  out?.state === "done" && out.result === "Golden and crisp!" && report.report && !report.oven,
-  { out, report },
+  tapped &&
+    out?.state === "done" &&
+    out.result === "Golden and crisp!" &&
+    report.report &&
+    !report.oven,
+  { tapped, out, report },
 );
 
 await clickButton(page, /^Continue$/);
@@ -146,12 +184,14 @@ await sleep(2500);
 await clickButton(page, /^Serve to /);
 await sleep(400);
 const after = await readSave(page);
-const n = (s) =>
-  (s?.economyLedger ?? []).filter((e) => e.category === "campaign-settlement").length;
-check("O4 Serve pays once (one settlement entry), as for any dish", n(after) === n(before) + 1, [
-  n(before),
-  n(after),
-]);
+// Since 2026-10-31 the pay lies on the table until the player collects it (pendingCash), so a serve shows as cash owed, not yet as a settlement.
+const owed = (s) =>
+  s?.business?.pendingCash ? s.business.pendingCash.payCents + s.business.pendingCash.tipCents : 0;
+check(
+  "O4 Serve puts the dish's pay on the table once (cash waiting to be collected), as for any dish",
+  owed(after) > owed(before) && owed(after) - owed(before) < 100000,
+  [owed(before), owed(after)],
+);
 
 // ---------- O5 Reduced Motion ----------
 await boot(page, saveAt5(true));
@@ -163,8 +203,8 @@ await page
   .catch(() => null);
 const rmEnd = await page.evaluate(() => /KNIFE REPORT/i.test(document.body.innerText));
 check(
-  "O5 Reduced Motion: baking at once (no sliding tray); left alone it comes out by itself, then the Knife Report",
-  rm0?.state === "baking" && rmEnd,
+  "O5 Reduced Motion: baking at once with the painted oven (no film, no sliding tray); left alone it comes out by itself, burnt, then the Knife Report",
+  rm0?.state === "baking" && rm0.film === "off" && !rm0.video && rmEnd,
   { rm0, rmEnd },
 );
 

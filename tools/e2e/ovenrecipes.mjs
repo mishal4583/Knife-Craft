@@ -1,7 +1,7 @@
 // Transformation Phase D (2026-10-25) — the oven for the five bread dishes, restaurant build:
-//   R1–R5 at L6, L7, L12, L15 and L17: after the cut the oven appears (no cooking film), it
-//         bakes, "Take it out" ends it, the Knife Report follows, and Serve pays once (one
-//         settlement entry, the wallet moves by exactly that entry).
+//   R1–R5 at L6, L7, L12, L15 and L17: after the cut the oven appears (with the bread film since 2026-11-03), it
+//         bakes, "Take it out" ends it, the Knife Report follows, and Serve puts its pay on the table once
+//         (rule 2026-10-31: the cash waits to be collected; the Server and the Cashier are hired, "Prepare" is "Open for service").
 //   R6 a 390×844 and a 320×568 mid-bake view (L6): no sideways scroll, the button on screen.
 //   R7 no console errors.
 // Prints PASS/FAIL per check and exits 1 on any failure.
@@ -34,6 +34,8 @@ const saveAt = (n, food) =>
   seedSave({
     business: {
       ...MOVED_IN_BUSINESS,
+      refrigerator: { refrigeratorId: "professional-refrigerator" },
+      staff: { hiredRoles: ["server", "cashier"] },
       // L16 brings the free Mexican Chef hire (as phase5.mjs); 8 each fits cold storage.
       ...(n >= 16 ? { restaurantStaff: { specialists: ["mexican-chef"] } } : {}),
       inventory: Object.fromEntries(
@@ -55,7 +57,9 @@ async function startLevel() {
       ?.click(),
   );
   await sleep(500);
-  await clickButton(page, /^Prepare$/);
+  await clickButton(page, /^Later$/);
+  await sleep(300);
+  await clickButton(page, /^Open for service$/);
   await sleep(900);
   if (await page.evaluate(() => !!document.querySelector('[data-testid="pre-service-check"]')))
     await clickButton(
@@ -74,7 +78,7 @@ const oven = () =>
     return {
       state: o.dataset.state,
       title: o.getAttribute("aria-label"),
-      clip: !!document.querySelector("video"),
+      clip: !!o.querySelector("video"),
       buttonOn: b ? b.top >= 0 && b.bottom <= innerHeight && b.height >= 47.5 : null,
       overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
     };
@@ -128,17 +132,17 @@ for (const [i, [n, dish, food]] of LEVELS.entries()) {
   await sleep(2500);
   const after = await readSave(page);
   const added = settlements(after).slice(settlements(before).length);
-  // Every wallet move is in the ledger: one settlement per Serve, plus whatever the normal
-  // serve already writes (e.g. a batch partner's or tip entry) — all of it, and only it.
-  const moved = (after.economyLedger ?? []).slice((before.economyLedger ?? []).length);
-  const paidOnce =
-    added.length === 1 &&
-    after.credits - before.credits === moved.reduce((t, e) => t + (e.amount ?? 0), 0);
+  // Since 2026-10-31 the pay lies on the table until it is collected: a serve adds cash owed (pendingCash), not yet a settlement.
+  const owed = (sv) =>
+    sv?.business?.pendingCash
+      ? sv.business.pendingCash.payCents + sv.business.pendingCash.tipCents
+      : 0;
+  const paidOnce = owed(after) > owed(before) && after.credits === before.credits;
   check(
-    `R${i + 1} L${n} ${dish}: oven after the cut (no film), Take it out, the Knife Report, Serve pays once`,
+    `R${i + 1} L${n} ${dish}: oven after the cut (the bread film), Take it out, the Knife Report, Serve puts the pay on the table once`,
     cut.stopped &&
       inOven?.state === "baking" &&
-      !inOven.clip &&
+      inOven.clip &&
       inOven.title === `Baking ${dish}` &&
       report.report &&
       !report.oven &&
@@ -149,7 +153,7 @@ for (const [i, [n, dish, food]] of LEVELS.entries()) {
       added: added.length,
       walletDelta: after.credits - before.credits,
       paidOnce,
-      entries: moved.map((e) => [e.category, e.amount, e.description]),
+      owed: [owed(before), owed(after)],
     },
   );
   if (views)

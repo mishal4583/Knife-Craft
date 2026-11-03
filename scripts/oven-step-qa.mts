@@ -63,16 +63,35 @@ console.log("A. The bake");
     donenessLabel(0.2) === "pale" &&
       donenessLabel(OVEN.GOLDEN_FROM) === "golden" &&
       donenessLabel(OVEN.GOLDEN_TO) === "golden" &&
-      donenessLabel(0.95) === "toasty",
-    "A2: pale → golden window → toasty",
+      donenessLabel((OVEN.GOLDEN_TO + OVEN.BURNT_FROM) / 2) === "toasty" &&
+      donenessLabel(OVEN.BURNT_FROM) === "burnt" &&
+      donenessLabel(1) === "burnt",
+    // Rule changed (developer 2026-11-03): the bread ends BURNT (a fourth zone after toasty).
+    "A2: pale → golden window → toasty → burnt",
   );
   const goldenMs = (OVEN.GOLDEN_TO - OVEN.GOLDEN_FROM) * OVEN.BAKE_MS;
-  assert(goldenMs >= 1000, "A3: the golden window is open for at least a second", goldenMs);
+  // Rule changed (developer 2026-11-03): the window was 1.3 s (25 % of 5.2 s); it is now VERY thin, about half a second, so the
+  // perfect bread is a real challenge (still wider than a human's timing noise).
+  assert(
+    goldenMs >= 350 && goldenMs <= 700,
+    "A3: the golden window is very thin: between 0.35 s and 0.7 s",
+    goldenMs,
+  );
+  assert(
+    OVEN.PLACE_MS + OVEN.BAKE_MS === 8000 &&
+      OVEN.BURNT_FROM > OVEN.GOLDEN_TO &&
+      OVEN.BURNT_FROM < 1,
+    "A3b: the film is 1.5 s of the bread going in plus 6.5 s of baking, and burnt comes after the golden window",
+  );
   assert(
     Object.values(DONENESS_LINE).every((l) => l.length > 0 && !/\d/.test(l)),
     "A4: each result is a line, never a number",
   );
   assert(breadFilter(0) !== breadFilter(1), "A5: the bread visibly browns");
+  assert(
+    DONENESS_LINE.burnt.length > 0 && DONENESS_LINE.burnt !== DONENESS_LINE.toasty,
+    "A6: a burnt tray has its own line (words only)",
+  );
 }
 
 console.log("B. Scope");
@@ -316,14 +335,54 @@ console.log("E. Nothing else moves");
       !/^-\s*🍞$/.test(l) &&
       l !== '-import { ovenStepFor } from "@/game/cooking/ovenStep";',
   );
+  // Rule changed (developer 2026-11-03): OvenStep.tsx was rebuilt around the bread film (oven-bread.*), so its diff since Phase D is no
+  // longer limited to the tray lines; D1 above still forbids any score, grade, pay, wallet, ledger or save in it, and section F below checks
+  // the film's own rules (no skip, no tap-to-skip, a fallback).
+  void offTray;
   assert(
     flow.trim() === "" &&
-      offTray.length === 0 &&
       offBoard.length === 0 &&
       // (the walk-in label and the paid hire were already in the base commit 3ceac0f, so they no longer show here)
       offLabel.length === 0,
     "E2: since Phase D only the tray item, the Phase F cold-board exception, the Level 2 pay preview, the Level 5 menu unlock, the walk-in offer's label and the paid hire changed (no order, serve, pay, achievement, ranking or dishKind code)",
     { flow: flow.slice(0, 200), offTray, offBoard, offLabel },
+  );
+}
+
+console.log("F. The bread film (developer 2026-11-03)");
+{
+  const view = code("src/components/kc/game/OvenStep.tsx");
+  const dir = path.join(ROOT, "src/assets/video");
+  const size = (f: string) => fs.statSync(path.join(dir, f)).size;
+  assert(
+    ["oven-bread.mp4", "oven-bread.webm", "oven-bread-poster.webp"].every((f) =>
+      fs.existsSync(path.join(dir, f)),
+    ) &&
+      size("oven-bread.mp4") < 500_000 &&
+      size("oven-bread.webm") < 500_000 &&
+      size("oven-bread-poster.webp") < 60_000,
+    "F1: the film is bundled in three small files (mp4 and webm under 500 KB each, a poster under 60 KB)",
+  );
+  assert(
+    /<video[\s\S]*muted[\s\S]*playsInline/.test(view) &&
+      !/controls(?!List)/.test(view.replace(/controlsList="[^"]*"/, "")) &&
+      !/[Ss]kip/.test(view) &&
+      !/<video[^>]*onClick/.test(view) &&
+      !/<video[^>]*loop/.test(view),
+    "F2: a muted inline film, no controls, no skip, no tap on the film, no loop",
+  );
+  assert(
+    /useFilm = !reducedMotion && !filmFailed/.test(view) &&
+      /setFilmFailed\(true\)/.test(view) &&
+      /data-testid="oven-tray-item"/.test(view) &&
+      /film\.currentTime = want/.test(view),
+    "F3: Reduced Motion or a film that cannot play shows the painted oven; the film follows the bake clock",
+  );
+  assert(
+    /OVEN\.GOLDEN_FROM \* 100/.test(view) &&
+      /OVEN\.BURNT_FROM/.test(view) &&
+      /Take it out/.test(view),
+    "F4: the meter keeps its thin golden window and a burnt tail, with the Take it out button under the film",
   );
 }
 

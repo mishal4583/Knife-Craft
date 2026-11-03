@@ -8,7 +8,7 @@
  * grade): the doneness the player lands on picks a line ("Golden and crisp!")
  * and nothing else. The dish's score, grade, pay, tip and stock are the ones
  * the cut already produced; this module never reads or writes them. There is
- * no failure: left alone, the tray comes out by itself at "extra toasty".
+ * no failure: left alone, the tray comes out by itself, burnt (words only).
  *
  * Pure: time in, doneness out. The view (OvenStep.tsx) drives the clock.
  */
@@ -50,19 +50,27 @@ export const trayItemFor = (recipeId: string): TrayItem =>
 
 export const ovenStepFor = (recipeId: string): boolean => OVEN_STEP_RECIPES.includes(recipeId);
 
+/**
+ * Developer 2026-11-03: the oven shows a FILM of the bread baking (src/assets/video/oven-bread.*, built by scripts/make-oven-bread-video.py):
+ * raw and pale at first, then golden, then deep brown and finally burnt. The film is 8.0 s: PLACE_MS of the bread going in, then BAKE_MS of
+ * baking, and the timings below mirror it. The golden window is VERY thin (8 % of the bake, about half a second): the small challenge is to tap
+ * "Take it out" at the perfect moment. Still presentation only: no grade, score or pay depends on it.
+ */
 export const OVEN = {
-  /** The tray sliding in. */
-  PLACE_MS: 600,
+  /** The bread going into the oven (the film's first part). */
+  PLACE_MS: 1500,
   /** From raw to the end of the bake (doneness 0 → 1). */
-  BAKE_MS: 5200,
-  /** The golden window, in doneness. */
-  GOLDEN_FROM: 0.55,
-  GOLDEN_TO: 0.8,
+  BAKE_MS: 6500,
+  /** The golden window, in doneness: 0.60-0.68 of 6.5 s = 520 ms. */
+  GOLDEN_FROM: 0.6,
+  GOLDEN_TO: 0.68,
+  /** From here on the bread is burnt. */
+  BURNT_FROM: 0.88,
   /** How long the result line stays before the Knife Report. */
   RESULT_MS: 1100,
 } as const;
 
-export type Doneness = "pale" | "golden" | "toasty";
+export type Doneness = "pale" | "golden" | "toasty" | "burnt";
 
 /** Doneness 0–1 after `ms` of baking (clamped). */
 export function donenessAt(ms: number): number {
@@ -73,7 +81,8 @@ export function donenessAt(ms: number): number {
 export function donenessLabel(d: number): Doneness {
   if (d < OVEN.GOLDEN_FROM) return "pale";
   if (d <= OVEN.GOLDEN_TO) return "golden";
-  return "toasty";
+  if (d < OVEN.BURNT_FROM) return "toasty";
+  return "burnt";
 }
 
 /** The line shown when the tray comes out — words only, no score. */
@@ -81,6 +90,7 @@ export const DONENESS_LINE: Readonly<Record<Doneness, string>> = {
   pale: "A touch pale — still tasty.",
   golden: "Golden and crisp!",
   toasty: "Extra toasty!",
+  burnt: "Burnt! A bit too long in the oven.",
 };
 
 /** The bread's colour on the tray: a brightness/sepia filter from raw to dark. */
