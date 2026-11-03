@@ -60,6 +60,7 @@ import {
   DEFAULT_PURCHASE_QUANTITY,
   stepPurchaseQuantity,
 } from "@/game/business/businessPurchaseQuantity";
+import { IngredientIcon } from "@/components/kc/common/IngredientIcon";
 
 /** From this quantity on, the card phrases the balance as "You'll have $X remaining". */
 const LARGE_PURCHASE_QUANTITY = 25;
@@ -349,7 +350,7 @@ export function MarketIngredients({
                     title={def.name}
                     art={
                       <ShopItemArt
-                        icon={INGREDIENT_EMOJI[id]}
+                        icon={<IngredientIcon id={id} fallback={INGREDIENT_EMOJI[id]} />}
                         crate
                         sign={GROUP_SIGN[def.category]}
                       >

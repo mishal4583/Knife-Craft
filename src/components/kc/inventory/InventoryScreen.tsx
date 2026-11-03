@@ -45,6 +45,7 @@ import { PhysicalFridge } from "./fridge/PhysicalFridge";
 import { InventorySupplies } from "./InventorySupplies";
 import { AmountChip, ItemPic, type TileTone } from "./ItemTile";
 import { expiredStockPreview, type DiscardExpiredResult } from "@/game/business/discardExpired";
+import { IngredientIcon } from "@/components/kc/common/IngredientIcon";
 
 /** How many tiles each Needs Attention group shows before "View all" (two rows of three). */
 const ATTENTION_PREVIEW = 6;
@@ -242,7 +243,9 @@ function AttentionRow({
         title={`${INVENTORY_STATUS_META[item.status].label} · ${sentence}`}
       >
         <ItemPic
-          icon={INGREDIENT_EMOJI[item.ingredientId]}
+          icon={
+            <IngredientIcon id={item.ingredientId} fallback={INGREDIENT_EMOJI[item.ingredientId]} />
+          }
           tone={t.tone}
           badge={t.badge}
           size={52}
@@ -340,7 +343,9 @@ function StockCard({
         title={`${price} · ${formatUsd(item.stockValue)} · ${need}`}
       >
         <ItemPic
-          icon={INGREDIENT_EMOJI[item.ingredientId]}
+          icon={
+            <IngredientIcon id={item.ingredientId} fallback={INGREDIENT_EMOJI[item.ingredientId]} />
+          }
           tone={t.tone}
           badge={t.badge}
           size={54}
@@ -419,7 +424,12 @@ function DetailSheet({
       >
         <div className="flex items-center gap-3">
           <ItemPic
-            icon={INGREDIENT_EMOJI[item.ingredientId]}
+            icon={
+              <IngredientIcon
+                id={item.ingredientId}
+                fallback={INGREDIENT_EMOJI[item.ingredientId]}
+              />
+            }
             tone={STATUS_TILE[item.status].tone}
             badge={STATUS_TILE[item.status].badge}
             size={60}
@@ -919,7 +929,9 @@ export function InventoryScreen({
                             className="press flex h-12 items-center gap-1.5 rounded-full border border-walnut/15 px-3 font-ui text-[12.5px] font-extrabold text-walnut-dark card-warm"
                             aria-label={`${INGREDIENTS[n.id].name}: needed by ${n.blocks} dish${n.blocks === 1 ? "" : "es"}. Restock in Market`}
                           >
-                            <span aria-hidden>{INGREDIENT_EMOJI[n.id]}</span>
+                            <span aria-hidden>
+                              <IngredientIcon id={n.id} fallback={INGREDIENT_EMOJI[n.id]} />
+                            </span>
                             {INGREDIENTS[n.id].name}
                             <span className="text-walnut/55">· {n.blocks}</span>
                           </button>

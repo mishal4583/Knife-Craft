@@ -6,6 +6,8 @@ import { getSupplyItem } from "@/game/business/businessSupplies";
 import { restaurantAttention, type AttentionRow } from "@/game/restaurant/restaurantAttention";
 import { openMarketIngredients, openMarketSupplies } from "../marketFocus";
 import { ItemTile } from "./ItemTile";
+import { IngredientIcon } from "@/components/kc/common/IngredientIcon";
+import { SupplyIcon } from "@/components/kc/common/SupplyIcon";
 
 /** Tiles shown before "View all" (two rows of three). */
 const SHOWN = 6;
@@ -99,7 +101,15 @@ export function RestaurantAttentionPanel({
             data-attention-severity={row.severity}
           >
             <ItemTile
-              icon={row.icon}
+              icon={
+                row.action.to === "ingredient" ? (
+                  <IngredientIcon id={row.action.id} fallback={row.icon} />
+                ) : row.action.to === "supply" ? (
+                  <SupplyIcon id={row.action.id} fallback={row.icon} />
+                ) : (
+                  row.icon
+                )
+              }
               name={row.name}
               amount={row.amount}
               tone={row.severity}

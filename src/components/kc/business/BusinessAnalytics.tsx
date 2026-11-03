@@ -17,6 +17,7 @@ import {
   ingredientConsumption,
   purchasingStats,
 } from "@/game/business/inventoryAnalytics";
+import { IngredientIcon } from "@/components/kc/common/IngredientIcon";
 
 /** How many ranked rows the Best sellers / Ingredients used lists show. */
 const TOP_ROWS = 5;
@@ -166,7 +167,8 @@ export function OperationsAnalytics({ save }: { save: SaveData }) {
                   className="flex items-center justify-between gap-2 border-b border-walnut/10 py-1.5 font-ui text-[12.5px] last:border-b-0"
                 >
                   <span className="min-w-0 truncate font-extrabold text-walnut-dark">
-                    {INGREDIENT_EMOJI[item.id]} {name(item.id)}
+                    <IngredientIcon id={item.id} fallback={INGREDIENT_EMOJI[item.id]} />{" "}
+                    {name(item.id)}
                   </span>
                   <span className="shrink-0 font-bold text-walnut/65">
                     {formatStockAmount(item.id, item.quantity, displayMeasure())} ·{" "}

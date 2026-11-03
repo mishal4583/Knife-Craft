@@ -7,12 +7,15 @@
  *   D  the two Floor team portraits exist (320 x 320 WebP, <= 40 KB)
  *   E  the screens use the pictures and fall back to the emoji when one cannot load (nothing ever blank)
  *   F  the 59 MB of source PNGs stay out of git; only the optimized files are tracked
+ *   G  the 57 INGREDIENT pictures (public/business/ingredients): one per ingredient, same format and budget, the build script covers
+ *      every ingredient exactly once, the screens draw them with the emoji as the fallback
  * Prints PASS/FAIL per check and exits 1 on any failure.
  */
 import fs from "node:fs";
 import path from "node:path";
 import { execSync } from "node:child_process";
 import { SUPPLY_CATALOG } from "../src/game/business/businessSupplies.ts";
+import { INGREDIENTS } from "../src/game/definitions.ts";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 let failures = 0;
@@ -163,6 +166,72 @@ console.log("F. Sources stay out of git");
       ].every((p) => ignore.includes(p)),
     "F1: the generated source PNGs are gitignored and none is tracked",
     pngs,
+  );
+}
+
+console.log("G. Ingredient pictures");
+{
+  const idir = path.join(ROOT, "public/business/ingredients");
+  const all = Object.keys(INGREDIENTS);
+  const files = fs
+    .readdirSync(idir)
+    .filter((f) => f.endsWith(".webp"))
+    .map((f) => f.replace(/\.webp$/, ""));
+  const missing = all.filter((id) => !files.includes(id));
+  const extra = files.filter((f) => !all.includes(f));
+  assert(
+    all.length === 57 && missing.length === 0 && extra.length === 0,
+    "G1: 57 ingredients, 57 pictures, none missing, none extra",
+    { missing, extra },
+  );
+  const bad: string[] = [];
+  let total = 0;
+  for (const id of all) {
+    const f = path.join(idir, `${id}.webp`);
+    const info = fs.existsSync(f) ? webpInfo(f) : null;
+    const size = fs.existsSync(f) ? fs.statSync(f).size : 0;
+    total += size;
+    if (!info || info.w !== 160 || info.h !== 160 || !info.alpha || size > 12 * 1024) bad.push(id);
+  }
+  assert(
+    bad.length === 0,
+    "G2: every ingredient picture is a 160 x 160 WebP with alpha, at most 12 KB",
+    bad,
+  );
+  assert(total <= 450 * 1024, "G3: all 57 together stay under 450 KB", {
+    kb: Math.round(total / 1024),
+  });
+  const py = read("scripts/make-market-assets.py");
+  const block = py.slice(py.indexOf("ING_ATLASES = {"), py.indexOf("def clean"));
+  const cells = [...block.matchAll(/"([a-z]+)"/g)].map((m) => m[1]!).filter((x) => all.includes(x));
+  const dup = cells.filter((x, i) => cells.indexOf(x) !== i);
+  assert(
+    [...new Set(cells)].length === all.length &&
+      dup.sort().join() === "chicken,chilli" &&
+      /ING_SINGLES = \{[^}]*chilli[^}]*chicken/.test(block),
+    "G4: the build script covers every ingredient; only chilli and chicken appear twice (their sheet cell is replaced by the corrected green chili and chicken breast)",
+    { unique: [...new Set(cells)].length, dup },
+  );
+  const ic = read("src/components/kc/common/IngredientIcon.tsx");
+  assert(
+    /onError=\{\(\) => setFailed\(true\)\}/.test(ic) &&
+      /if \(failed\) return <>\{fallback\}<\/>/.test(ic) &&
+      !/https?:\/\//.test(ic),
+    "G5: IngredientIcon shows the emoji if the picture fails, and loads nothing from the network",
+  );
+  const sites = [
+    "src/components/kc/MarketIngredients.tsx",
+    "src/components/kc/inventory/InventoryScreen.tsx",
+    "src/components/kc/inventory/fridge/PhysicalFridge.tsx",
+    "src/components/kc/restaurant/PreServiceCheck.tsx",
+    "src/components/kc/MarketPlanPanel.tsx",
+    "src/components/kc/inventory/RestaurantAttentionPanel.tsx",
+  ];
+  const lacking = sites.filter((s) => !/<IngredientIcon /.test(read(s)));
+  assert(
+    lacking.length === 0,
+    "G6: the Market, Inventory, fridge, Pre-Service Check and Market plan draw the pictures",
+    lacking,
   );
 }
 

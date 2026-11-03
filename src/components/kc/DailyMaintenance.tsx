@@ -20,6 +20,7 @@ import { BottomNav } from "./Kitchen";
 import { Eyebrow } from "./common/Meters";
 import { KButton, Panel, ScreenHeader } from "./common/primitives";
 import { InfoTip } from "./common/InfoTip";
+import { IngredientIcon } from "@/components/kc/common/IngredientIcon";
 
 const urgencyClass = {
   urgent: "border-tomato/35 bg-tomato/5",
@@ -181,7 +182,7 @@ export function DailyMaintenance({
                 <ul className="mt-3 space-y-2">
                   {dayStock.rows.map((row) => (
                     <li key={row.ingredientId} className="flex items-center gap-2 rounded-xl border border-gold/30 bg-gold/5 px-3 py-2">
-                      <span aria-hidden="true" className="text-lg">{INGREDIENT_EMOJI[row.ingredientId]}</span>
+                      <span aria-hidden="true" className="text-lg"><IngredientIcon id={row.ingredientId} fallback={INGREDIENT_EMOJI[row.ingredientId]} /></span>
                       <p className="min-w-0 flex-1 font-ui text-[12.5px] font-bold text-walnut-dark">{INGREDIENTS[row.ingredientId]?.name ?? row.ingredientId} · buy {row.buyUnits}</p>
                       <button type="button" onClick={() => openMarketIngredients(go, row.ingredientId, row.buyUnits)} className="press min-h-11 shrink-0 rounded-full bg-walnut px-3 font-ui text-[11px] font-extrabold text-ivory">Buy ›</button>
                     </li>

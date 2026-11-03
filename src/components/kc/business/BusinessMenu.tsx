@@ -40,6 +40,7 @@ import {
   restaurantSystem,
 } from "@/game/restaurant/restaurantProgression";
 import { BusinessSectionBanner } from "./BusinessSectionBanner";
+import { IngredientIcon } from "@/components/kc/common/IngredientIcon";
 
 /** A quarter-dollar step — sensible for real USD menu pricing. */
 const PRICE_STEP = 25;
@@ -276,7 +277,9 @@ export function BusinessMenu({
                         title={INGREDIENTS[id]?.name ?? id}
                       >
                         {i > 0 ? " · " : ""}
-                        <span aria-hidden>{INGREDIENT_EMOJI[id] ?? "🥬"}</span>
+                        <span aria-hidden>
+                          <IngredientIcon id={id} fallback={INGREDIENT_EMOJI[id] ?? "🥬"} />
+                        </span>
                         <span className="sr-only">{INGREDIENTS[id]?.name ?? id}</span>{" "}
                         {formatStockAmount(id, q, displayMeasure())}
                       </span>

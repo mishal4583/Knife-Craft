@@ -18,6 +18,7 @@ import {
 } from "@/game/business/measure";
 import { MARKET_PLAN_DAYS, marketPlanFor, type MarketPlanRow } from "@/game/restaurant/marketPlan";
 import type { PurchaseIngredientResult } from "@/game/business/BusinessInventoryManager";
+import { IngredientIcon } from "@/components/kc/common/IngredientIcon";
 
 /** Rows shown before "Show all". */
 const FIRST_ROWS = 6;
@@ -176,7 +177,10 @@ export function MarketPlanPanel({
                     data-plan-day={row.firstDay}
                   >
                     <span className="text-[20px]" aria-hidden>
-                      {INGREDIENT_EMOJI[row.ingredientId]}
+                      <IngredientIcon
+                        id={row.ingredientId}
+                        fallback={INGREDIENT_EMOJI[row.ingredientId]}
+                      />
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="font-ui text-[13.5px] font-extrabold leading-tight text-walnut-dark">
@@ -272,7 +276,7 @@ export function MarketPlanPanel({
               .filter((id) => !plan.noRoomToday.includes(id))
               .map((id) => (
                 <span key={id} title={INGREDIENTS[id].name} aria-label={INGREDIENTS[id].name}>
-                  {INGREDIENT_EMOJI[id] ?? "🥬"}{" "}
+                  <IngredientIcon id={id} fallback={INGREDIENT_EMOJI[id] ?? "🥬"} />{" "}
                 </span>
               ))}
           </p>

@@ -3,7 +3,7 @@ import { KButton } from "@/components/kc/common/primitives";
 import { PointerHand } from "@/components/kc/common/PointerHand";
 import { cn } from "@/lib/utils";
 import { StaffPortrait } from "../business/StaffCard";
-import { staffPortraitFile } from "../business/staffPortraits";
+import { staffFallbackEmoji, staffPortraitFile } from "../business/staffPortraits";
 import { InfoTip, StatChip } from "@/components/kc/common/InfoTip";
 import type { RecipeDefinition } from "@/game/recipes/recipeTypes";
 import type { IngredientId } from "@/game/definitions";
@@ -39,6 +39,7 @@ import { opensInText } from "@/game/restaurant/nextService";
 import type { DayStock, GuestStock } from "@/game/restaurant/preServiceCheck";
 import { getSupplyItem as supplyItemOf } from "@/game/business/businessSupplies";
 import { SupplyIcon } from "@/components/kc/common/SupplyIcon";
+import { IngredientIcon } from "@/components/kc/common/IngredientIcon";
 
 function RoutineStatus({
   icon,
@@ -619,7 +620,14 @@ export function PreServiceCheck({
               ) : (
                 <p className="rounded-xl bg-sage/10 px-2.5 py-2 font-ui text-[12px] font-bold text-olive">
                   ✨ All covered ·{" "}
-                  {readyIngredients.map((row) => INGREDIENT_EMOJI[row.ingredientId]).join(" ")}
+                  {readyIngredients.map((row) => (
+                    <span key={row.ingredientId} className="mr-0.5">
+                      <IngredientIcon
+                        id={row.ingredientId}
+                        fallback={INGREDIENT_EMOJI[row.ingredientId]}
+                      />
+                    </span>
+                  ))}
                 </p>
               )}
               {readyIngredients.length > 0 ? (
@@ -674,7 +682,7 @@ export function PreServiceCheck({
                         <StaffPortrait
                           file={staffPortraitFile(r.id)}
                           name={r.title}
-                          emoji={r.kind === "specialist" ? "👩‍🍳" : "🧑‍🍳"}
+                          emoji={staffFallbackEmoji(r.id, r.kind === "specialist")}
                           className="h-full w-full text-[20px]"
                         />
                       </span>
@@ -952,7 +960,10 @@ export function PreServiceCheck({
                       data-psc-guest-ingredient={row.ingredientId}
                     >
                       <span className="text-[20px]" aria-hidden>
-                        {INGREDIENT_EMOJI[row.ingredientId]}
+                        <IngredientIcon
+                          id={row.ingredientId}
+                          fallback={INGREDIENT_EMOJI[row.ingredientId]}
+                        />
                       </span>
                       <p className="min-w-0 flex-1 font-ui text-[14.5px] font-bold text-walnut-dark">
                         {INGREDIENTS[row.ingredientId].name}
@@ -1026,7 +1037,10 @@ export function PreServiceCheck({
                       data-psc-day-ingredient={row.ingredientId}
                     >
                       <span className="text-[20px]" aria-hidden>
-                        {INGREDIENT_EMOJI[row.ingredientId]}
+                        <IngredientIcon
+                          id={row.ingredientId}
+                          fallback={INGREDIENT_EMOJI[row.ingredientId]}
+                        />
                       </span>
                       <p className="min-w-0 flex-1 font-ui text-[14.5px] font-bold text-walnut-dark">
                         {INGREDIENTS[row.ingredientId].name}
@@ -1245,7 +1259,7 @@ function IngredientRow({
         className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-gold/15 text-[19px]"
         aria-hidden
       >
-        {INGREDIENT_EMOJI[row.ingredientId]}
+        <IngredientIcon id={row.ingredientId} fallback={INGREDIENT_EMOJI[row.ingredientId]} />
       </span>
       <div className="min-w-0 flex-1">
         <p className="font-ui text-[12.5px] font-extrabold leading-tight text-walnut-dark">

@@ -30,6 +30,7 @@ import {
 import { BusinessPaymentLines } from "./BusinessPaymentLines";
 import { EndlessDayEvents } from "./EndlessDayEvents";
 import { usesRestaurantDemand } from "@/game/restaurant/endlessDemand";
+import { IngredientIcon } from "@/components/kc/common/IngredientIcon";
 
 const FLOW_STEPS = [
   "Order",
@@ -209,7 +210,8 @@ export function BusinessService({
                     return (
                       <div key={id} className="flex items-center justify-between py-0.5">
                         <span className="font-hand text-[15px] text-walnut/70">
-                          {INGREDIENT_EMOJI[id] ?? ""} {INGREDIENTS[id]?.name ?? id}
+                          <IngredientIcon id={id} fallback={INGREDIENT_EMOJI[id] ?? ""} />{" "}
+                          {INGREDIENTS[id]?.name ?? id}
                         </span>
                         <span
                           className={`font-ui text-[12.5px] font-bold tabular-nums ${have >= need ? "text-olive" : "text-copper"}`}

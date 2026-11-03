@@ -59,6 +59,7 @@ import { kitchenUpgradeOrDefault } from "@/game/kitchen/kitchenUpgradeDefinition
 import { nextKitchenUpgrade } from "@/game/kitchen/nextKitchenUpgrade";
 import type { SaveData } from "@/game/SaveManager";
 import { ScrollCue } from "./common/ScrollCue";
+import { IngredientIcon } from "@/components/kc/common/IngredientIcon";
 
 /** Icon for a level's own `unlockReward.type` (levelTypes.ts) — display-only. */
 const REWARD_TYPE_ICON: Record<"knife" | "board" | "cafe_milestone" | "story", string> = {
@@ -999,7 +1000,11 @@ function DishIngredientsToggle({ save, level }: { save: SaveData; level: LevelDe
                     data-dish-ingredient={r.ingredientId}
                     className="font-ui text-[12.5px] text-walnut-dark"
                   >
-                    {INGREDIENT_EMOJI[r.ingredientId]} {INGREDIENTS[r.ingredientId].name} ·{" "}
+                    <IngredientIcon
+                      id={r.ingredientId}
+                      fallback={INGREDIENT_EMOJI[r.ingredientId]}
+                    />{" "}
+                    {INGREDIENTS[r.ingredientId].name} ·{" "}
                     {formatStockAmount(r.ingredientId, r.need, measure)}
                     <span className={r.have >= r.need ? "text-olive" : "text-tomato"}>
                       {" "}

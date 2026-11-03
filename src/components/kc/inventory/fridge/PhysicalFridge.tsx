@@ -15,6 +15,7 @@ import { formatQuantity } from "@/game/business/businessInventory";
 import type { IngredientId } from "@/game/definitions";
 import type { FridgeItem, FridgeView, FridgeZone, FridgeZoneId } from "@/game/business/fridgeView";
 import "./PhysicalFridge.css";
+import { IngredientIcon } from "@/components/kc/common/IngredientIcon";
 
 /** One row inside a compartment: a shelf, or a row of crisper drawers. */
 type Row = { shelf: FridgeZoneId } | { drawers: FridgeZoneId[] };
@@ -204,7 +205,6 @@ function Crate({
   onSelect: (id: IngredientId) => void;
 }) {
   const warn = item.attention !== null;
-  const emoji = INGREDIENT_EMOJI[item.id];
   return (
     <button
       type="button"
@@ -221,7 +221,9 @@ function Crate({
     >
       <span className={cn("kcf-pile", `kcf-pile--${pileSize(item.id, item.quantity)}`)} aria-hidden>
         {Array.from({ length: pileSize(item.id, item.quantity) }, (_, i) => (
-          <span key={i}>{emoji}</span>
+          <span key={i}>
+            <IngredientIcon id={item.id} fallback={INGREDIENT_EMOJI[item.id]} />
+          </span>
         ))}
       </span>
       <span className="kcf-crate" aria-hidden />
@@ -266,7 +268,7 @@ function BinItem({
       )}
     >
       <span className="kcf-bin-item__icon" aria-hidden>
-        {INGREDIENT_EMOJI[item.id]}
+        <IngredientIcon id={item.id} fallback={INGREDIENT_EMOJI[item.id]} />
       </span>
       <span className="kcf-tag kcf-tag--bin">
         <span className="kcf-tag__name">{item.name}</span>

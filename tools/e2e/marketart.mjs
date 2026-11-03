@@ -4,8 +4,26 @@
 //   M2 the four tabs together show all 62 supplies' icons
 //   M3 the Second Floor tab shows the Floor Server and Floor Cleaner portraits, loaded
 //   M4 no network errors for the pictures and no console errors
+//   M5 the Ingredients tab: every crate shows a painted picture, loaded (none fell back to an emoji)
+//   M6 the Inventory fridge shows pictures for the stock on its shelves
+//   M7 the Inventory's Needs attention tiles show pictures too (ingredients and supplies)
 // Prints PASS/FAIL per check and exits 1 on any failure.
-import { MOVED_IN_BUSINESS, launch, boot, seedSave, sleep, shot } from "./harness.mjs";
+import {
+  MOVED_IN_BUSINESS,
+  launch,
+  boot,
+  seedSave,
+  sleep,
+  shot,
+  openShortcut,
+} from "./harness.mjs";
+
+// Stock on the shelves (the ones with the worst old emoji) so the Inventory fridge has something to draw.
+const STOCK = Object.fromEntries(
+  ["cauliflower", "radish", "tofu", "lime", "zucchini", "tomato", "springonion", "pomegranate"].map(
+    (id) => [id, { ingredientId: id, quantity: 6, unitCost: 100, purchaseDay: 1 }],
+  ),
+);
 
 const results = [];
 const check = (id, ok, detail) => {
@@ -14,7 +32,7 @@ const check = (id, ok, detail) => {
 };
 const save = seedSave({
   credits: 1_000_000,
-  business: { ...MOVED_IN_BUSINESS },
+  business: { ...MOVED_IN_BUSINESS, inventory: STOCK },
   levelProgress: {
     currentLevelId: "level-40",
     highestUnlockedLevelId: "level-40",
@@ -114,6 +132,77 @@ check(
     faces.every((f) => f.ok && f.w >= 80),
   faces,
 );
+// M5: the Ingredients tab
+await page.evaluate(() =>
+  [...document.querySelectorAll('nav[aria-label="Shop categories"] button')]
+    .find((b) => /Ingredients/.test(b.textContent ?? ""))
+    ?.click(),
+);
+await sleep(900);
+await page.evaluate(async () => {
+  const scroller = [...document.querySelectorAll("*")].find(
+    (e) =>
+      e.scrollHeight > e.clientHeight + 200 && /auto|scroll/.test(getComputedStyle(e).overflowY),
+  );
+  if (scroller)
+    for (let y = 0; y <= scroller.scrollHeight; y += 260) {
+      scroller.scrollTop = y;
+      await new Promise((r) => setTimeout(r, 120));
+    }
+});
+await sleep(1000);
+const ing = await page.evaluate(() => {
+  const crates = [...document.querySelectorAll("[data-ingredient]")];
+  const shown = crates.map((c) => c.querySelector("img[data-ingredient-icon]"));
+  return {
+    crates: crates.length,
+    withPicture: shown.filter(Boolean).length,
+    broken: shown.filter((i) => i && !(i.complete && i.naturalWidth > 0)).length,
+  };
+});
+check(
+  "M5 every ingredient crate in the Market shows a painted picture, loaded",
+  ing.crates >= 20 && ing.withPicture === ing.crates && ing.broken === 0,
+  ing,
+);
+
+// M6: the Inventory fridge
+await openShortcut(page, "inventory");
+await sleep(1500);
+// "broken" = finished loading with nothing in it (a lazy picture below the fold has simply not started yet; a failed one is swapped for
+// the emoji by IngredientIcon and M4 would show its failed request).
+const fridge = await page.evaluate(() => ({
+  imgs: document.querySelectorAll("img[data-ingredient-icon]").length,
+  broken: [...document.querySelectorAll("img[data-ingredient-icon]")].filter(
+    (i) => i.complete && i.naturalWidth === 0,
+  ).length,
+  loaded: [...document.querySelectorAll("img[data-ingredient-icon]")].filter(
+    (i) => i.complete && i.naturalWidth > 0,
+  ).length,
+}));
+await shot(page, "market-art-inventory");
+// M7: the "Needs attention" tiles (rows built from strings) draw pictures too, for ingredients AND supplies
+const tiles = await page.evaluate(() => {
+  const rows = [...document.querySelectorAll("[data-attention]")];
+  return {
+    rows: rows.length,
+    painted: rows.filter((r) => r.querySelector("img[data-ingredient-icon], img[data-supply-icon]"))
+      .length,
+    supplies: rows.filter((r) => r.querySelector("img[data-supply-icon]")).length,
+    ingredients: rows.filter((r) => r.querySelector("img[data-ingredient-icon]")).length,
+  };
+});
+check(
+  "M7 the Inventory's Needs attention tiles show painted pictures (ingredients and supplies)",
+  tiles.rows >= 4 && tiles.painted === tiles.rows && tiles.supplies > 0 && tiles.ingredients > 0,
+  tiles,
+);
+check(
+  "M6 the Inventory shows ingredient pictures, loaded",
+  fridge.imgs > 0 && fridge.broken === 0,
+  fridge,
+);
+
 const errors = logs.filter((l) => /error/i.test(l) && !/favicon|Failed to load resource/i.test(l));
 check(
   "M4 no failed picture requests, no console errors",

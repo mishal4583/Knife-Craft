@@ -6,10 +6,13 @@ Run:  python scripts/make-market-assets.py        (needs Pillow, numpy and scipy
 
 Input (LOCAL ONLY, gitignored: the PNGs are 59 MB, they never go into git):
   art-source/market-supplies/S1..S6-*.png   4 x 3 atlases of 362 x 362 cells, read left to right, top to bottom
+  art-source/fridge-sort/A7..A11.png, ingredient-green-chili.png, ingredient-chicken-breast.png
   art-source/staff/floor-server.png, floor-cleaner.png
 
 Output (these small WebP files ARE committed):
   public/business/supplies/<supply id>.webp         160 x 160, transparent, ~6-10 KB each (62 files)
+  public/business/ingredients/<ingredient id>.webp  160 x 160, transparent (57 files), from art-source/fridge-sort/A7..A11 (+ two
+                                                    corrected single sprites: green chili and chicken breast)
   public/business/staff-portraits/floor-server.webp, floor-cleaner.webp   320 x 320 like the existing portraits
 
 What it does to a supply atlas cell:
@@ -35,6 +38,8 @@ SRC = os.path.join(ROOT, "art-source", "market-supplies")
 STAFF_SRC = os.path.join(ROOT, "art-source", "staff")
 OUT = os.path.join(ROOT, "public", "business", "supplies")
 PORTRAITS = os.path.join(ROOT, "public", "business", "staff-portraits")
+FRIDGE_SRC = os.path.join(ROOT, "art-source", "fridge-sort")
+ING_OUT = os.path.join(ROOT, "public", "business", "ingredients")
 
 CELL = 362
 COLS, ROWS = 4, 3
@@ -68,9 +73,23 @@ ATLASES = {
 }
 
 
-def clean(cell: Image.Image) -> Image.Image | None:
+# The ingredient sheets: A7..A11, 12 cells each ("" = an intentionally empty cell). Their glow is stronger than the supplies' (a pale
+# halo around each item), so the alpha ramp starts higher.
+ING_LO, ING_HI = 96, 215
+ING_ATLASES = {
+    "A7.png": ["tomato", "carrot", "cucumber", "onion", "potato", "mushroom", "pepper", "zucchini", "eggplant", "broccoli", "corn", "celery"],
+    "A8.png": ["lettuce", "cabbage", "cauliflower", "spinach", "asparagus", "radish", "beetroot", "sweetpotato", "greenbean", "fennel", "artichoke", "peapod"],
+    "A9.png": ["pumpkin", "turnip", "chilli", "springonion", "garlic", "ginger", "basil", "parsley", "cilantro", "bread", "baguette", ""],
+    "A10.png": ["strawberry", "apple", "orange", "lemon", "avocado", "pear", "peach", "pineapple", "watermelon", "mango", "kiwi", "pomegranate"],
+    "A11.png": ["grapes", "coconut", "lime", "cheddar", "mozzarella", "butter", "tofu", "chicken", "steak", "salmon", "", ""],
+}
+# Corrected single sprites (the original cell is replaced): the chili is GREEN (the name says so), the chicken is a raw BREAST.
+ING_SINGLES = {"chilli": "ingredient-green-chili.png", "chicken": "ingredient-chicken-breast.png"}
+
+
+def clean(cell: Image.Image, lo: int = LO, hi: int = HI) -> Image.Image | None:
     a = np.array(cell.convert("RGBA")).astype(np.float32)
-    alpha = np.clip((a[..., 3] - LO) / (HI - LO), 0.0, 1.0)
+    alpha = np.clip((a[..., 3] - lo) / (hi - lo), 0.0, 1.0)
     # drop islands: keep blobs at least ISLAND_FRACTION of the biggest one
     labels, n = ndimage.label(alpha > 0.5)
     if n == 0:
@@ -96,6 +115,48 @@ def fit(img: Image.Image) -> Image.Image:
     return canvas
 
 
+def build_ingredients() -> int:
+    os.makedirs(ING_OUT, exist_ok=True)
+    total = 0
+    count = 0
+    for name, ids in ING_ATLASES.items():
+        src = os.path.join(FRIDGE_SRC, name)
+        if not os.path.exists(src):
+            print("missing ingredient atlas (local-only):", src)
+            return 1
+        atlas = Image.open(src).convert("RGBA")
+        for i, iid in enumerate(ids):
+            if not iid:
+                continue
+            if iid in ING_SINGLES:
+                continue  # the corrected sprite below replaces this cell
+            col, row = i % COLS, i // COLS
+            cell = atlas.crop((col * CELL, row * CELL, (col + 1) * CELL, (row + 1) * CELL))
+            item = clean(cell, ING_LO, ING_HI)
+            if item is None:
+                print("EMPTY CELL", name, i, iid)
+                return 1
+            path = os.path.join(ING_OUT, f"{iid}.webp")
+            fit(item).save(path, "WEBP", quality=82, method=6, alpha_quality=85)
+            total += os.path.getsize(path)
+            count += 1
+    for iid, fname in ING_SINGLES.items():
+        src = os.path.join(FRIDGE_SRC, fname)
+        if not os.path.exists(src):
+            print("missing corrected sprite (local-only):", src)
+            return 1
+        item = clean(Image.open(src).convert("RGBA"), ING_LO, ING_HI)
+        if item is None:
+            print("EMPTY SPRITE", fname)
+            return 1
+        path = os.path.join(ING_OUT, f"{iid}.webp")
+        fit(item).save(path, "WEBP", quality=82, method=6, alpha_quality=85)
+        total += os.path.getsize(path)
+        count += 1
+    print(f"{count} ingredient sprites, {total / 1024:.0f} KB total, {total / count / 1024:.1f} KB each")
+    return 0
+
+
 def main() -> int:
     missing = [n for n in list(ATLASES) if not os.path.exists(os.path.join(SRC, n))]
     if missing:
@@ -118,6 +179,8 @@ def main() -> int:
             total += os.path.getsize(path)
             count += 1
     print(f"{count} supply icons, {total / 1024:.0f} KB total, {total / count / 1024:.1f} KB each")
+    if build_ingredients() != 0:
+        return 1
     os.makedirs(PORTRAITS, exist_ok=True)
     for name in ("floor-server", "floor-cleaner"):
         src = os.path.join(STAFF_SRC, f"{name}.png")

@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 /** A staff portrait image (presentation only), or the role's emoji when there is none. */
@@ -14,7 +14,8 @@ export function StaffPortrait({
   emoji?: string | undefined;
   className?: string;
 } & Record<`data-${string}`, string | undefined>) {
-  if (!file)
+  const [failed, setFailed] = useState(false);
+  if (!file || failed)
     return (
       <span
         className={cn("grid place-items-center bg-walnut/10 text-[34px]", className)}
@@ -31,6 +32,7 @@ export function StaffPortrait({
       loading="lazy"
       decoding="async"
       draggable={false}
+      onError={() => setFailed(true)}
       className={cn("select-none object-cover object-top", className)}
     />
   );
