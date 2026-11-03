@@ -4,7 +4,8 @@
  * the read-only numbers the screens show so the player can feel it fill: a fraction, the time to
  * full and a short "full in" text.
  *
- * Real hours, as the floor earns (developer 2026-10-31: "let the second floor stay real hours").
+ * Real hours, as the floor earns (developer 2026-10-31: "let the second floor stay real hours"); during a Rush the bar and "Full in"
+ * follow the money (x3 for what is left of the Rush). A station whose cycle is longer than its counter shows no bar.
  * Pure: the caller passes `now` (epoch ms); no save field, no wallet, no ledger.
  */
 import type { SaveData } from "../SaveManager";
@@ -21,12 +22,22 @@ import {
 export const FLOOR_NEARLY_FULL = 0.8;
 
 export type Fill = {
-  /** 0..1 of the station's cap (hours stored ÷ cap hours). */
+  /** 0..1 of the station's cap: station time stored (a Rush counts x3) ÷ what the counter holds (a whole number of cycles). */
   fraction: number;
   /** Ms until it stops earning (0 when full). */
   msToFull: number;
   full: boolean;
 };
+
+/**
+ * Real ms until `remaining` ms of station time have passed: the Rush that is on counts x`speed` only for what is LEFT of it
+ * (a Rush lasts minutes, a counter hours), then the clock runs at x1 again.
+ */
+export function msToFull(remaining: number, speed: number, rushLeft: number): number {
+  if (remaining <= 0) return 0;
+  const boosted = speed * rushLeft;
+  return Math.round(remaining <= boosted ? remaining / speed : rushLeft + (remaining - boosted));
+}
 
 /** One working station's fill, or null when it is not owned or is not staffed (an unstaffed machine keeps only a short tray). */
 export function stationFill(floor: SecondFloorState, id: StationId, now: number): Fill | null {
@@ -38,7 +49,7 @@ export function stationFill(floor: SecondFloorState, id: StationId, now: number)
   const fraction = Math.min(1, f.effMs / f.capMs);
   return {
     fraction,
-    msToFull: Math.max(0, Math.round((f.capMs - f.effMs) / f.speed)),
+    msToFull: msToFull(f.capMs - f.effMs, f.speed, f.rushLeftMs),
     full: f.effMs >= f.capMs,
   };
 }

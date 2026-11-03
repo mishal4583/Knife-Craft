@@ -98,6 +98,7 @@ export const CLEANER_PERMILLE = 100;
  * of the best floor at branch 5 is 1.5e15 mills, and every money value in this file must stay an EXACT integer (below 2^53, about
  * 9.0e15). At branch 6 that pile is already 1.7e16 mills and at branch 9 one single cycle is 2e16, so money would silently lose
  * precision: found in the 2026-11-03 review (the earlier limit of 9 was wrong, and its test only repeated the constant).
+ * Developer 2026-11-03 ("do whats best"): keep this cap rather than swap the wallet for big numbers; the view says "final branch".
  */
 export const MAX_BRANCH = 5;
 export const BRANCH_BONUS_PERMILLE = 500;
@@ -491,7 +492,7 @@ export function stationFillMs(
   floor: SecondFloorState,
   id: StationId,
   now: number,
-): { effMs: number; capMs: number; speed: number } | null {
+): { effMs: number; capMs: number; speed: number; rushLeftMs: number } | null {
   const owned = floor.stations[id];
   if (!owned) return null;
   const def = stationDef(id);
@@ -502,6 +503,7 @@ export function stationFillMs(
     effMs: effectiveElapsed(floor, owned.lastCollectAt, now),
     capMs: Math.floor(holdMs / c) * c,
     speed: rushActive(floor, now) ? RUSH_SPEED : 1,
+    rushLeftMs: rushLeftMs(floor, now),
   };
 }
 

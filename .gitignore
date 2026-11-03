@@ -13,3 +13,6 @@ releases/
 tools/e2e/out/
 tools/e2e/profile-*/
 .claude/settings.local.json
+
+# Browser-test screenshots written next to the tests
+tools/e2e/*.png

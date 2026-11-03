@@ -1,8 +1,9 @@
 # KnifeCraft — Handoff (Playgama edition)
 
-## Deep review (developer 2026-11-03: "deep check for bugs and issues"; working tree, not committed)
+## Deep review (developer 2026-11-03: "deep check for bugs and issues"; committed and pushed `d8588f2`)
 
 Real bugs found and fixed (each has a test):
+- **Decision (developer 2026-11-03, "do whats best"):** the cap stays at 5 branches (the spec said endless; going endless would mean big-number money everywhere, too risky for the wallet). The view shows "final branch" at the cap. A save above 5 reads as 5 (development saves only; nothing past 5 was ever shipped). The wallet is NOT clamped: past 2^53 cents is about four years of maximum play.
 - **Franchise overflow:** money is kept as exact integers (below 2^53); at branch 6 the pile reached 1.7e16 mills. `MAX_BRANCH` is now 5 (`secondFloor.ts`), with a worst-case test (`F6`/`F7`).
 - **Clock-rewind exploit:** `restartClock` could move a machine's clock BACK (a device clock set earlier), paying a pile twice. It now keeps `Math.max(lastCollectAt, now)`; found by the new fuzz test `Z1` (random actions, the clock going forward AND back).
 - **Goal strip offered locked machines** under the dev `?floor2` flag (`floorGoal.ts` now reads the raw level); the locked message says "Tier 3 opens" only for a tier upgrade (`SecondFloorView.tsx`).
@@ -18,7 +19,7 @@ Failing the same way on the old build too (stale, not caused by this work): `fir
 Not tested in a browser: the Pre-Service Check "Hire Server & Cashier →" path with supplier credit; two parties in one service (unit-tested).
 Clean-up done: the baseline worktree and `tools/e2e/_base/` were temporary and are removed. The system stopped the preview servers once for low memory; run browser suites with one server.
 
-## The oven shows a film of the bread baking (developer 2026-11-03, working tree, not committed)
+## The oven shows a film of the bread baking (developer 2026-11-03, committed and pushed `deca28a`)
 
 The developer added `Bread.mp4` (10 s, 720x1280, 6 MB, AI-made, a sparkle logo bottom-right). The oven step (`OvenStep.tsx`) now shows a FILM in its window instead of the
 painted oven: the bread goes in (1.5 s), then bakes for 6.5 s: raw and pale, gradually cooking, perfect golden, deep brown, and at the end burnt. The meter and "Take it out"
@@ -32,7 +33,7 @@ Tests: `oven-step-qa` A2/A3/A3b/A6 and new F1-F4 (E2's tray-only view guard rela
 Motion, O4 for the cash-on-table rule) and `ovenrecipes.mjs` (repaired too: team hired, "Open for service", the film, cash on the table; six dishes pass). Not run: `ovenbaguette.mjs`
 (needs the dev server), `earlymenu.mjs`, `walkins.mjs` (they use the oven).
 
-## The Server and the Cashier are necessary (developer 2026-11-02, working tree, not committed)
+## The Server and the Cashier are necessary (developer 2026-11-02, committed and pushed `458066a`)
 
 "Without hiring both the Server and the Cashier the game still delivers food: make them necessary." `STAFF_RULES` (`restaurant/staffRequirements.ts`) now lists
 `server@1` and `cashier@1` first, unconditional: every service needs both from Level 1 (the old "a Server from the second table, Level 46" rule is replaced). The
@@ -61,7 +62,7 @@ Also: the dining cash pile no longer keeps focus after a tap (`TableCash.tsx`: t
 - `oven-step-qa` E2 now also excludes `floorFlood.ts` / `goldenGuest.ts` (they became tracked with commit 6e0349e; that commit left this guard failing until now).
 - `adbonuses.mjs` check 3b is still flaky (see the notes above); the developer said they will look into it.
 
-## The Second Floor rebuilt for engagement and ads (2026-11-02, working tree, not committed)
+## The Second Floor rebuilt for engagement and ads (2026-11-02, committed and pushed `6e0349e`)
 
 Developer: "the main goal is real money: engaging, dopamine, players engage for hours and watch ads"; Level 3 opening; "let the player be rich";
 the rest "whatever is best, you fix it". Spec and evidence: `docs/planning/SECOND-FLOOR-FINAL-SPEC-2026-11-02.md` (decisions, numbers),

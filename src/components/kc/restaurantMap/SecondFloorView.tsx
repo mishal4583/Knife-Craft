@@ -35,6 +35,7 @@ import {
   MAX_POLISH,
   SELF_SERVE_MACHINES,
   TIER3_MIN_LEVEL,
+  MAX_BRANCH,
   canOpenBranch,
   cleanersNeeded,
   floorPopularityDelta,
@@ -498,6 +499,7 @@ export function SecondFloorView({
           ) : (floor.branch ?? 0) > 0 ? (
             <p className="mt-2 font-ui text-[12px] text-walnut/65" data-testid="branch-line">
               🏬 Branch {(floor.branch ?? 0) + 1} · +{(floor.branch ?? 0) * 50}% income
+              {(floor.branch ?? 0) >= MAX_BRANCH ? " · 🏆 final branch" : ""}
             </p>
           ) : null}
         </>

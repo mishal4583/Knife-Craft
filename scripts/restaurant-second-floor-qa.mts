@@ -79,7 +79,7 @@ import {
 } from "../src/game/ads/adBonuses.ts";
 import { formatUsd, formatUsdBig } from "../src/game/money.ts";
 import { floorGoals, nextFloorGoal } from "../src/game/restaurant/floorGoal.ts";
-import { stationFill } from "../src/game/restaurant/floorFill.ts";
+import { msToFull, stationFill } from "../src/game/restaurant/floorFill.ts";
 import {
   GOLDEN_SLOT_MS,
   GOLDEN_VISIBLE_MS,
@@ -845,10 +845,20 @@ console.log("R. Hype and Rush Hour");
         !!fillPlain &&
         fillNow.fraction === 180_000 / 14_400_000 &&
         fillPlain.fraction === 60_000 / 14_400_000 &&
-        fillNow.msToFull === (14_400_000 - 180_000) / 3 &&
+        fillNow.msToFull === 13_980_000 &&
         fillPlain.msToFull === 14_400_000 - 60_000,
-      "R6b: the fill bar counts a Rush at x3 (a minute in: 3 minutes of takings stored, full in a third of the time)",
+      "R6b: the fill bar counts a Rush at x3 (a minute in: 3 minutes of takings stored)",
       { fillNow, fillPlain },
+    );
+    // Code review 2026-11-03: "Full in" must not divide the WHOLE remaining time by 3: the Rush lasts 2 more minutes, then the clock is x1 again.
+    assert(
+      !!fillNow &&
+        fillNow.msToFull === 120_000 + (14_400_000 - 180_000 - 3 * 120_000) &&
+        msToFull(100, 3, 1000) === 33 &&
+        msToFull(5000, 3, 1000) === 1000 + 2000 &&
+        msToFull(0, 3, 1000) === 0,
+      "R6c: Full in = what is left of the Rush at x3, then the rest at x1 (not the whole remainder at x3)",
+      fillNow,
     );
   }
   // Property: collecting at random moments (inside, before, across and after a Rush) pays exactly what one collection at the end
@@ -970,6 +980,44 @@ console.log("A. The new ad rewards use the existing reward and ledger path");
       rushAdAmount(own, 2, T0) === 0,
     "W3: the Rush Hour ad pays what ten minutes at x3 would add (2 x ten minutes of income), at least 10 % of the goal; nothing without a machine",
     { a },
+  );
+}
+
+console.log("Z2. A rewound clock never pays the same time twice");
+{
+  // Code review 2026-11-03 asked whether the clock guard (restartClock) was the only one. Tried first: replaying the same actions with a
+  // rewinding clock against a never-rewinding clock. That is NOT a valid invariant: "set the clock back, buy, set it forward" earns the
+  // time that passed on the device, exactly like skipping the clock forward, which a game without a server cannot tell apart. What must
+  // hold is narrower: no period is ever paid twice, and a Rush never stacks.
+  const onePerHour = (sv: SaveData, at: number) => floorEarnings(sv, at);
+  let sv = owning(["coffee"]);
+  const base = onePerHour(sv, T0 + H);
+  const c1 = collectFloor(sv, T0 + 2 * H);
+  const c2 = c1.ok ? collectFloor(c1.save, T0 + H) : null; // the clock goes BACK an hour
+  const afterBack = c2 && c2.ok ? c2.save : c1.ok ? c1.save : sv;
+  const station = secondFloorOf(afterBack).stations.coffee!;
+  const later = onePerHour(afterBack, T0 + 3 * H);
+  assert(
+    base > 0 &&
+      c1.ok &&
+      (!c2 || !c2.ok || c2.save.credits === c1.save.credits) &&
+      station.lastCollectAt >= T0 + 2 * H - 12_000 &&
+      later === base,
+    "Z2a: a collect at a rewound clock pays nothing and keeps the station clock; the next collect pays only the hour after the first one",
+    { base, later, anchor: station.lastCollectAt - T0 },
+  );
+  // A Rush started at a rewound clock REPLACES the old Rush window (it never adds a second one).
+  let r = addHype(owning(["coffee"]), 100);
+  const first = startHypeRush(r, T0 + 5 * H);
+  const second = first.ok ? startHypeRush(addHype(first.save, 100), T0 + 4 * H) : null;
+  const f2 = second && second.ok ? secondFloorOf(second.save) : null;
+  assert(
+    first.ok &&
+      !!f2 &&
+      f2.rushUntil! - f2.rushFrom! === HYPE_RUSH_MS &&
+      (f2.rushFrom === T0 + 4 * H || f2.rushFrom === T0 + 5 * H),
+    "Z2b: a second Rush started with the clock rewound leaves ONE Rush window of 3 minutes (never two, never longer)",
+    f2 && { from: f2.rushFrom! - T0, until: f2.rushUntil! - T0 },
   );
 }
 
