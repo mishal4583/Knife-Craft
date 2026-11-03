@@ -38,6 +38,7 @@ import type { KitLine } from "@/game/restaurant/restaurantMigration";
 import { opensInText } from "@/game/restaurant/nextService";
 import type { DayStock, GuestStock } from "@/game/restaurant/preServiceCheck";
 import { getSupplyItem as supplyItemOf } from "@/game/business/businessSupplies";
+import { SupplyIcon } from "@/components/kc/common/SupplyIcon";
 
 function RoutineStatus({
   icon,
@@ -1410,7 +1411,7 @@ function ToolRowItem({
         className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-gold/15 text-[18px]"
         aria-hidden
       >
-        {row.icon}
+        <SupplyIcon id={row.id} fallback={row.icon} />
       </span>
       <div className="min-w-0 flex-1">
         <p className="flex items-start gap-1 font-ui text-[12.5px] font-extrabold leading-tight text-walnut-dark">
@@ -1499,7 +1500,7 @@ function FirstShoppingList({
                 data-shopping-tool={x.id}
               >
                 <span className="text-[20px]" aria-hidden>
-                  {item?.icon}
+                  <SupplyIcon id={x.id} fallback={item?.icon} />
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="flex items-center gap-1.5 font-ui text-[14.5px] font-bold text-walnut-dark">
@@ -1556,7 +1557,7 @@ function SupplyRow({ row, onRestock }: { row: SupplyCheckRow; onRestock: (id: Su
         className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-gold/15 text-[18px]"
         aria-hidden
       >
-        {item?.icon}
+        <SupplyIcon id={row.id} fallback={item?.icon} />
       </span>
       <div className="min-w-0 flex-1">
         <p className="font-ui text-[12.5px] font-extrabold leading-tight text-walnut-dark">

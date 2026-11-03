@@ -3,6 +3,7 @@ import type { SaveData } from "@/game/SaveManager";
 import { getSupplyItem, type SupplyId } from "@/game/business/businessSupplies";
 import { AUDIT_EVERY, PAR_PER_SEAT, parAuditFor, type AuditRow } from "@/game/restaurant/parAudit";
 import { InfoTip } from "@/components/kc/common/InfoTip";
+import { SupplyIcon } from "@/components/kc/common/SupplyIcon";
 
 /**
  * The opening card's par audit (parAudit.ts — every AUDIT_EVERY restaurant
@@ -69,7 +70,7 @@ function AuditLine({
   return (
     <div className="flex items-center gap-2" data-audit-line={row.id}>
       <span className="text-[20px]" aria-hidden>
-        {item?.icon ?? "📦"}
+        <SupplyIcon id={row.id} fallback={item?.icon ?? "📦"} />
       </span>
       <div className="min-w-0 flex-1 font-ui">
         <p className="truncate text-[13px] font-bold text-walnut-dark">

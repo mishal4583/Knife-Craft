@@ -29,6 +29,7 @@ import {
 } from "@/game/restaurant/secondFloor";
 import type { ScreenId } from "./data";
 import type { SecondFloorAction } from "./restaurantMap/SecondFloorView";
+import { FloorStaffFace } from "@/components/kc/common/FloorStaffFace";
 
 /**
  * MARKET · SECOND FLOOR (developer 2026-10-16: "in the market add the new
@@ -237,7 +238,15 @@ export function MarketSecondFloor({
                 data-floor-staff={role}
                 title={def.name}
                 art={
-                  <ShopItemArt icon={def.icon}>
+                  <ShopItemArt
+                    icon={
+                      <FloorStaffFace
+                        role={role}
+                        fallback={def.icon}
+                        className="h-[116px] w-[116px] border-2 border-[#2b211b]/60 shadow-lift"
+                      />
+                    }
+                  >
                     <span className="flex items-center gap-1">
                       <Badge tone={have < need ? "copper" : "sage"}>
                         {have} / {def.max}

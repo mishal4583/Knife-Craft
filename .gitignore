@@ -16,3 +16,8 @@ tools/e2e/profile-*/
 
 # Browser-test screenshots written next to the tests
 tools/e2e/*.png
+
+# Generated source art (59 MB of PNG, local only). The small WebP built from it by scripts/make-market-assets.py is committed.
+art-source/fridge-sort/*.png
+art-source/market-supplies/*.png
+art-source/staff/*.png

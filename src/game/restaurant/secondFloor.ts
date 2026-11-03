@@ -277,7 +277,7 @@ export const FLOOR_STAFF: Record<
 > = {
   server: {
     name: "Floor Server",
-    icon: "🧑‍🍳",
+    icon: "🤵", // the fallback; the portrait is public/business/staff-portraits/floor-server.webp
     price: dollars(1200),
     prices: [dollars(1200), dollars(6000)],
     max: 2,
@@ -287,7 +287,7 @@ export const FLOOR_STAFF: Record<
   },
   cleaner: {
     name: "Floor Cleaner",
-    icon: "🧽",
+    icon: "🧹", // the fallback; the portrait is public/business/staff-portraits/floor-cleaner.webp
     price: dollars(600),
     prices: [dollars(600), dollars(3000)],
     max: 2,

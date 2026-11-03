@@ -67,6 +67,7 @@ import { goldenAmounts, goldenAt, goldenAvailable } from "@/game/restaurant/gold
 import type { NormalizedRect } from "./restaurantMap";
 import "./RestaurantMap.css";
 import { LandscapeBackdrop } from "@/components/kc/game/LandscapeBackdrop";
+import { FloorStaffFace } from "@/components/kc/common/FloorStaffFace";
 
 export type SecondFloorAction =
   | { kind: "buy"; id: StationId }
@@ -449,7 +450,12 @@ export function SecondFloorView({
               >
                 <div className="flex items-center justify-between gap-2 font-ui text-[13px] font-extrabold text-walnut-dark">
                   <span>
-                    {def.icon} {def.name}s: {have} / {def.max}
+                    <FloorStaffFace
+                      role={role}
+                      fallback={def.icon}
+                      className="mr-1.5 h-9 w-9 rounded-xl align-middle"
+                    />{" "}
+                    {def.name}s: {have} / {def.max}
                   </span>
                   <span className={have < need ? "text-copper" : "text-sage"}>
                     {need === 0 ? "" : have < need ? `needs ${need}` : "enough"}

@@ -1,5 +1,16 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## Market art: painted supply icons and Floor team portraits (developer 2026-11-03, working tree, not pushed)
+
+The Market audit found emoji that did not match the products (a wavy dash for the whisk, chopsticks for the tongs, a toilet-paper roll for the napkin dispenser, a chef for the Floor Server...).
+Codex generated the art (branch `codex/fridge-sort-art-publish`, fetched read-only into the local ref `codex-local/fridge-sort-art-publish`, never merged: its 59 MB of PNG stay OUT of git).
+- **Sources (local only, gitignored):** `art-source/market-supplies/S1..S6-*.png` (4 x 3 atlases), `art-source/staff/*.png`, `art-source/fridge-sort/*.png` (not used yet). The two manifests are tracked.
+- **Build:** `python scripts/make-market-assets.py` (use `python`, Pillow + numpy + scipy): cuts the cells, removes the generator's haze (alpha ramp 56..205 and stray islands), fits 160 x 160, writes lossy WebP. Output is committed: `public/business/supplies/<supply id>.webp` (62 files, 284 KB total, <= 8 KB each) and `public/business/staff-portraits/floor-server.webp` / `floor-cleaner.webp` (320 px, like the other portraits).
+- **Code:** `common/SupplyIcon.tsx` and `common/FloorStaffFace.tsx` (the emoji is the fallback if a picture fails). Used in the Market supply tabs, Inventory supplies, Business Cleaning, Par Audit, the Pre-Service Check, the sink chips, and the Floor team (Market Second Floor tab and the floor view). `ItemTile`/`ItemPic` take a ReactNode icon. The `FLOOR_STAFF` emoji (now the fallback) are 🤵 and 🧹.
+- **Tests:** `scripts/market-art-qa.mts` (every supply has one 160 x 160 WebP with alpha, budgets, the script's cell order equals `SUPPLY_CATALOG` order (mutation-checked), portraits, fallbacks, sources not tracked), browser `tools/e2e/marketart.mjs` (62 of 62 icons load on the four tabs, both portraits show, no failed requests).
+- **Not done yet:** the 57 INGREDIENT sprites (`art-source/fridge-sort/A7-A11.png`, plus the corrected `ingredient-green-chili.png` and `ingredient-chicken-breast.png`) still need the same slicing and a wiring pass (`INGREDIENT_EMOJI` is used in the Market, Inventory, the fridge, recipe cards...); the Fridge Sort art (A1-A6, A12-A21) waits for the mini-game. `WashUpSink.tsx` draws its dishes with emoji on a canvas and still uses the old emoji.
+- The harness writes screenshots to `D:/WORKS/GAMES/Knife%20Craft/tools/e2e/out` (a percent-encoded copy of the repo path, `harness.mjs` `OUT`); not fixed.
+
 ## Deep review (developer 2026-11-03: "deep check for bugs and issues"; committed and pushed `d8588f2`)
 
 Real bugs found and fixed (each has a test):
@@ -194,7 +205,7 @@ Plan, evidence and the open decisions (D8-b, D10): `docs/planning/PHASE3-4-PLAN-
   (`adBonuses.ts`, `AD_PLACEMENT.welcomeBack`; `ad-bonuses-qa` G1-G6, `tools/e2e/welcomeback.mjs` 6/6).
 - Rules changed in tests (said here and in the commit): `pending-cash-qa` S4, `party-served-together-qa` C3,
   `prep-cook-auto-qa` A4/A5, `service-flow-qa` D3, `prepcook.mjs` P4. Browser: `tablecash.mjs` 7/7, `reveal.mjs` 5/5.
-- Harness note: `tools/e2e/harness.mjs` `OUT` keeps `%20` from the URL, so screenshots land in `D:\WORKS\GAMES\Knife%20Craft	ools\e2e\out`
+- Harness note: `tools/e2e/harness.mjs` `OUT` keeps `%20` from the URL, so screenshots land in `D:/WORKS/GAMES/Knife%20Craft/tools/e2e/out`
   (outside the repo), not in the repo.
 
 ## Phase 2: customers on a clock (2026-10-30/31, done)

@@ -44,6 +44,7 @@ import { openStaffFor } from "../staffFocus";
 import { useCleaningGame } from "../restaurant/CleaningGame";
 import { SinkWash } from "../restaurant/SinkWash";
 import { cleanlinessRoomImageUrl } from "@/game/kitchen/kitchenMapArt";
+import { SupplyIcon } from "@/components/kc/common/SupplyIcon";
 
 /**
  * RESTAURANT → CLEANLINESS & MAINTENANCE (restaurant build, from Level 10 —
@@ -762,7 +763,7 @@ function SuppliesCard({ save, go }: { save: SaveData; go: (s: ScreenId) => void 
               )}
             >
               <span className="text-[20px]" aria-hidden>
-                {item.icon}
+                <SupplyIcon id={item.id} fallback={item.icon} />
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-ui text-[12.5px] font-extrabold text-walnut-dark">
@@ -812,7 +813,8 @@ function SuppliesCard({ save, go }: { save: SaveData; go: (s: ScreenId) => void 
                   : "border-tomato/40 bg-tomato/10 text-tomato",
               )}
             >
-              {item.icon} {item.name.split(" ·")[0]} {owned ? "✓" : "· Buy"}
+              <SupplyIcon id={item.id} fallback={item.icon} /> {item.name.split(" ·")[0]}{" "}
+              {owned ? "✓" : "· Buy"}
             </button>
           );
         })}

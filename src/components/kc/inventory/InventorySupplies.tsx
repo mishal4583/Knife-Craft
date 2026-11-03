@@ -35,6 +35,7 @@ import {
 } from "@/game/restaurant/serviceSupplies";
 import { SupplyBottle } from "../restaurant/SupplyBottle";
 import { ItemPic, ItemTile, type TileTone } from "./ItemTile";
+import { SupplyIcon } from "@/components/kc/common/SupplyIcon";
 
 type SupplyStatus = "low" | "in-stock" | "owned" | "none";
 
@@ -225,7 +226,7 @@ export function InventorySupplies({ go, save }: { go: (s: ScreenId) => void; sav
               {(allLow ? lowAll : lowAll.slice(0, 3)).map((item) => (
                 <li key={item.id} className="min-w-0" data-supply-attention={item.id}>
                   <ItemTile
-                    icon={item.icon}
+                    icon={<SupplyIcon id={item.id} fallback={item.icon} />}
                     name={shortName(item)}
                     amount={`${supplyUnits(supplies, item.id)} left`}
                     tone="low"
@@ -343,7 +344,7 @@ export function InventorySupplies({ go, save }: { go: (s: ScreenId) => void; sav
                 className="flex min-w-0 flex-col items-center gap-1 rounded-[16px] border border-walnut/12 bg-ivory/80 px-1.5 pb-2 pt-2 text-center"
               >
                 <ItemPic
-                  icon={item.icon}
+                  icon={<SupplyIcon id={item.id} fallback={item.icon} />}
                   tone={STATUS_TONE[status]}
                   badge={status === "low" ? "🟡" : undefined}
                   size={48}

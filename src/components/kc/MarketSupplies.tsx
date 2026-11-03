@@ -36,6 +36,7 @@ import {
   supplyUnits,
   type PurchaseSupplyResult,
 } from "@/game/business/BusinessSuppliesManager";
+import { SupplyIcon } from "@/components/kc/common/SupplyIcon";
 
 /** A balance for the card: whole dollars when there are no cents ("$1,332"), else "$1,332.40". */
 function balanceText(cents: number): string {
@@ -245,9 +246,7 @@ export function MarketSupplies({
         </Panel>
       ) : soonCount > 0 ? (
         <Panel className="border-gold/60 p-3" data-testid={`market-soon-${section}`}>
-          <p className="font-ui text-[13px] font-extrabold text-walnut-dark">
-            ⭐ Important
-          </p>
+          <p className="font-ui text-[13px] font-extrabold text-walnut-dark">⭐ Important</p>
           <p className="mt-0.5 font-ui text-[12px] leading-snug text-walnut/70">
             ⬇️ Listed first · each card says which level
           </p>
@@ -301,7 +300,7 @@ export function MarketSupplies({
               ring={item.id === focusItem?.id ? "focus" : needs[item.id] ? "need" : null}
               title={item.name}
               art={
-                <ShopItemArt icon={item.icon}>
+                <ShopItemArt icon={<SupplyIcon id={item.id} fallback={item.icon} />}>
                   {onHand > 0 ? (
                     <StockPill
                       amount={onHand.toLocaleString("en-US")}

@@ -29,7 +29,7 @@ export function ItemPic({
   badge,
   size = 56,
 }: {
-  icon: string;
+  icon: ReactNode;
   tone?: TileTone;
   badge?: string | undefined;
   size?: number;
@@ -84,7 +84,7 @@ export function ItemTile({
   className,
   children,
 }: {
-  icon: string;
+  icon: ReactNode;
   name: string;
   amount?: ReactNode;
   tone?: TileTone;

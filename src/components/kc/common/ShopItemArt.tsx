@@ -3,8 +3,8 @@ import { cn } from "@/lib/utils";
 
 /**
  * A shop item's picture (market/ShopCard): a warm, softly lit market stall
- * behind the item. The products are drawn with emoji (there is no per-item
- * art). `crate` piles the item in a wooden produce crate with a checked cloth
+ * behind the item. The ingredients are still drawn with emoji; the Business Supplies and the Floor team pass a painted picture
+ * (`SupplyIcon`, `FloorStaffFace`, developer 2026-11-03) as `icon`. `crate` piles the item in a wooden produce crate with a checked cloth
  * (ingredients, developer 2026-10-22); otherwise it stands on a lit display.
  * `children` sits in the top-right corner (the stock / owned pill), `sign` is
  * a small chalkboard ("Fresh Produce").

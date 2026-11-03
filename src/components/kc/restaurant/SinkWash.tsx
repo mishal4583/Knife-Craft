@@ -14,6 +14,7 @@ import { getSupplyItem } from "@/game/business/businessSupplies";
 import { KButton } from "../common/primitives";
 import { InfoTip } from "../common/InfoTip";
 import { WashUpSink, type SinkLine } from "./WashUpSink";
+import { SupplyIcon } from "@/components/kc/common/SupplyIcon";
 
 /**
  * "🫧 18 in the sink · Wash ›" (developer 2026-10-23: dishwashing back,
@@ -213,7 +214,7 @@ function DishwashingCard({
                   title={item?.name ?? l.id}
                   className="rounded-full border border-walnut/15 bg-ivory px-2 py-0.5 font-ui text-[12.5px] font-extrabold text-walnut-dark"
                 >
-                  {item?.icon ?? "🍽️"} ×{l.n}
+                  <SupplyIcon id={l.id} fallback={item?.icon ?? "🍽️"} /> ×{l.n}
                 </span>
               );
             })}
