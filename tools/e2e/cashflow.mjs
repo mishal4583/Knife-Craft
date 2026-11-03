@@ -74,8 +74,10 @@ try {
   check(
     // Rule changed (developer 2026-11-01): no Collect cash button (the pile is tapped or swiped), and a dirty table
     // holds Next Customer back (the cash never does: it waits on the table).
-    "C2a after the reaction the served card opens by itself: the cash waits on the table (no button), Next Customer waits only for the dirty table",
-    /on the table/i.test(body) && !/Collect cash/i.test(body) && gated === true,
+    // Rule changed again (developer 2026-11-03): the table is wiped only when NO table is free. One party sat at one of the two tables, so
+    // the other is still clean and Next Customer is not held back.
+    "C2a after the reaction the served card opens by itself: the cash waits on the table (no button), Next Customer is open (the second table is clean)",
+    /on the table/i.test(body) && !/Collect cash/i.test(body) && gated === false,
     { gated, body: body.slice(0, 160) },
   );
   await page.screenshot({ path: "tools/e2e/cashflow-table.png" });
@@ -90,7 +92,10 @@ try {
     "C3 sweeping pays the order exactly once: wallet = signed ledger, ONE settlement + ONE tip entry, nothing left on the table",
     collected.credits > base.credits &&
       collected.credits === 23600 + ledgerSum(collected) &&
-      collected.economyLedger.filter((e) => e.category !== "inventory-purchase").length === 2 &&
+      // The harness hires the Server and the Cashier (two staff-purchase entries, since 2026-11-03 a service needs both).
+      collected.economyLedger.filter(
+        (e) => e.category !== "inventory-purchase" && e.category !== "staff-purchase",
+      ).length === 2 &&
       !collected.business.pendingCash,
     {
       credits: collected.credits,

@@ -43,6 +43,8 @@ await boot(
   page,
   seedSave({
     credits: 5000,
+    // The Server and the Cashier are required for a service (2026-11-03).
+    business: { staff: { hiredRoles: ["server", "cashier"] } },
     levelProgress: {
       currentLevelId: "level-4",
       highestUnlockedLevelId: "level-4",

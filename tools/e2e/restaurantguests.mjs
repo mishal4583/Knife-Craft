@@ -114,6 +114,8 @@ const saveAt = (n, credits, inventory = {}) =>
       ...MOVED_IN_BUSINESS,
       inventory,
       restaurantStaff: { specialists: ["mexican-chef"] },
+      // The Server and the Cashier are required for a service (2026-11-03).
+      staff: { hiredRoles: ["server", "cashier"] },
     },
     credits,
     levelProgress: {

@@ -40,6 +40,7 @@ import {
   addHype,
   buyPolish,
   buyStation,
+  branchPriceScale,
   buyTable,
   canOpenBranch,
   cleanFactor,
@@ -78,6 +79,7 @@ import {
 } from "../src/game/ads/adBonuses.ts";
 import { formatUsd, formatUsdBig } from "../src/game/money.ts";
 import { floorGoals, nextFloorGoal } from "../src/game/restaurant/floorGoal.ts";
+import { stationFill } from "../src/game/restaurant/floorFill.ts";
 import {
   GOLDEN_SLOT_MS,
   GOLDEN_VISIBLE_MS,
@@ -568,9 +570,36 @@ console.log("F. Franchise (branches)");
   const g = b.ok ? floorEarnings(b.save, T0 + H) : 0;
   assert(g === 90_000, "F5: branch 1 Coffee pays $900 an hour (x10, +50 %)", { g });
   void open;
+  // The worst floor at the last branch: every station Tier 3, 10 tables, 10 polish, both Cleaners, a FULL counter of each (6 h), plus a Flood bonus.
+  // Every number in the money path must stay an exact integer: below 2^53 with a wide margin (the pile is summed in mills).
+  const worst = (b: number) => {
+    const floor = { stations: {}, branch: b, cleaners: 2 } as SecondFloorState;
+    return STATIONS.reduce((t, d) => {
+      const o = { level: 3, tables: 10, polish: 10 };
+      const cycles = Math.floor((6 * H) / cycleMs(d, 3, true));
+      return t + cycles * millsPerCycle(d, o, floor);
+    }, 0);
+  };
   assert(
-    MAX_BRANCH === 9,
-    "F6: branches stop at 9 (the largest money value stays far below the safe integer limit)",
+    MAX_BRANCH === 5 &&
+      worst(MAX_BRANCH) < Number.MAX_SAFE_INTEGER / 4 &&
+      // (a further branch multiplies the pile by 10 and more: the branch is clamped, so it is computed here)
+      worst(MAX_BRANCH) * 10 > Number.MAX_SAFE_INTEGER / 4,
+    "F6: branches stop at 5: the largest pile (mills) stays below a quarter of 2^53, and one more branch would not (money must stay exact integers)",
+    { atMax: worst(MAX_BRANCH), nextAtLeast: worst(MAX_BRANCH) * 10 },
+  );
+  const rich: SaveData = { ...fresh(0), credits: 1_000_000_000_000_000 };
+  const deep = {
+    ...rich,
+    business: {
+      ...rich.business,
+      secondFloor: { stations: {}, branch: MAX_BRANCH + 4 } as SecondFloorState,
+    },
+  };
+  assert(
+    secondFloorOf(deep).branch === MAX_BRANCH &&
+      branchPriceScale(MAX_BRANCH + 4) === 10 ** MAX_BRANCH,
+    "F7: a saved branch beyond the limit is clamped to it (a hand-edited or newer save cannot break the numbers)",
   );
 }
 
@@ -808,6 +837,19 @@ console.log("R. Hype and Rush Hour");
       "R6: a second Rush while one runs extends it (never x9)",
       ef,
     );
+    // Review fix 2026-11-03: the "full in" bar followed the wall clock, so during a Rush it showed a counter filling at x1 while the money came in at x3.
+    const fillNow = stationFill(secondFloorOf(r.save), "coffee", T0 + 60_000);
+    const fillPlain = stationFill(secondFloorOf(h2), "coffee", T0 + 60_000);
+    assert(
+      !!fillNow &&
+        !!fillPlain &&
+        fillNow.fraction === 180_000 / 14_400_000 &&
+        fillPlain.fraction === 60_000 / 14_400_000 &&
+        fillNow.msToFull === (14_400_000 - 180_000) / 3 &&
+        fillPlain.msToFull === 14_400_000 - 60_000,
+      "R6b: the fill bar counts a Rush at x3 (a minute in: 3 minutes of takings stored, full in a third of the time)",
+      { fillNow, fillPlain },
+    );
   }
   // Property: collecting at random moments (inside, before, across and after a Rush) pays exactly what one collection at the end
   // pays (1 table = whole cents), the anchor never moves backwards, and nothing is lost.
@@ -958,6 +1000,144 @@ console.log("N. Big numbers");
     "N2: the largest safe wallet still prints",
     formatUsdBig(Number.MAX_SAFE_INTEGER),
   );
+}
+
+console.log("Z. Fuzz: random sequences of every action, the clock going forward AND back");
+{
+  // Seeded (deterministic). After EVERY action: the wallet is a whole number of cents, never negative, below 2^53, and equals the
+  // opening cash plus the signed ledger; every field is inside its limits; a failed action changes nothing; a station's clock never
+  // moves backwards (a rewound device clock must not pay twice); the pile is a whole number of cents and never negative.
+  let seed = 987654321;
+  const rnd = () => {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    return seed / 2 ** 32;
+  };
+  const pick = <T,>(xs: readonly T[]) => xs[Math.floor(rnd() * xs.length)]!;
+  const ids = STATIONS.map((d) => d.id);
+  let violations: string[] = [];
+  let actions = 0;
+  let moneyMoves = 0;
+  for (let run = 0; run < 250 && violations.length === 0; run++) {
+    const opening = Math.floor(rnd() * 5_000_000_00);
+    let sv: SaveData = { ...fresh(opening), economyLedger: [] };
+    const branch = Math.floor(rnd() * (MAX_BRANCH + 1));
+    if (branch > 0) sv = withFloor(sv, { stations: {}, branch });
+    let t = T0 + Math.floor(rnd() * 10_000_000);
+    for (let step = 0; step < 70; step++) {
+      // time: mostly forward, sometimes a long jump, sometimes BACK (a rewound clock)
+      const r = rnd();
+      t +=
+        r < 0.15
+          ? -Math.floor(rnd() * 20 * H)
+          : r < 0.25
+            ? Math.floor(rnd() * 400 * H)
+            : Math.floor(rnd() * 3 * H);
+      const level = 1 + Math.floor(rnd() * 70);
+      const before = sv;
+      const f0 = secondFloorOf(before);
+      const kind = pick([
+        "buy",
+        "table",
+        "polish",
+        "tier",
+        "server",
+        "cleaner",
+        "collect",
+        "flood",
+        "golden",
+        "hype",
+        "rush",
+        "branch",
+      ] as const);
+      const id = pick(ids);
+      let res: ReturnType<typeof collectFloor> | null = null;
+      switch (kind) {
+        case "buy":
+          res = buyStation(sv, id, level, t);
+          break;
+        case "table":
+          res = buyTable(sv, id, t);
+          break;
+        case "polish":
+          res = buyPolish(sv, id, t);
+          break;
+        case "tier":
+          res = upgradeStation(sv, id, t, level);
+          break;
+        case "server":
+          res = hireFloorStaff(sv, "server", t);
+          break;
+        case "cleaner":
+          res = hireFloorStaff(sv, "cleaner", t);
+          break;
+        case "collect":
+          res = collectFloor(sv, t);
+          break;
+        case "branch":
+          res = openBranch(sv, t);
+          break;
+        case "rush":
+          res = startHypeRush(sv, t);
+          break;
+        case "hype":
+          sv = addHype(sv, 1 + Math.floor(rnd() * 100));
+          break;
+        case "flood": {
+          const a = floodAmounts(sv, level, t);
+          sv = addFloodBonus(sv, a.free, `lvl-${Math.floor(rnd() * 5)}`);
+          break;
+        }
+        case "golden": {
+          const g = goldenAt(t) ?? goldenOfSlot(Math.floor(t / GOLDEN_SLOT_MS));
+          res = claimGolden(sv, g.slot, level, Math.max(g.arriveAt, t));
+          break;
+        }
+      }
+      actions++;
+      if (res) {
+        if (res.ok) {
+          sv = res.save;
+          moneyMoves += before.economyLedger.length === sv.economyLedger.length ? 0 : 1;
+        } else if (res.ok === false && JSON.stringify(sv) !== JSON.stringify(before))
+          violations.push(`${kind}: a refused action changed the save`);
+      }
+      const f = secondFloorOf(sv);
+      const bad = (m: string) => violations.push(`run ${run} step ${step} ${kind}: ${m}`);
+      if (!Number.isInteger(sv.credits) || sv.credits < 0 || sv.credits > Number.MAX_SAFE_INTEGER)
+        bad(`wallet ${sv.credits}`);
+      if (opening + ledgerSum(sv) !== sv.credits)
+        bad(`wallet ${sv.credits} != opening ${opening} + ledger ${ledgerSum(sv)}`);
+      for (const d of STATIONS) {
+        const o = f.stations[d.id];
+        if (!o) continue;
+        if (
+          o.level < 1 ||
+          o.level > 3 ||
+          (o.tables ?? 1) < 1 ||
+          (o.tables ?? 1) > maxTablesAt(o.level) ||
+          (o.polish ?? 0) < 0 ||
+          (o.polish ?? 0) > MAX_POLISH
+        )
+          bad(`${d.id} out of limits ${JSON.stringify(o)}`);
+        const o0 = f0.stations[d.id];
+        if (o0 && (f.branch ?? 0) === (f0.branch ?? 0) && o.lastCollectAt < o0.lastCollectAt)
+          bad(`${d.id} clock moved back ${o0.lastCollectAt} -> ${o.lastCollectAt} (${kind})`);
+      }
+      const pile = floorEarnings(sv, t);
+      if (!Number.isInteger(pile) || pile < 0 || pile > Number.MAX_SAFE_INTEGER / 2)
+        bad(`pile ${pile}`);
+      if ((f.hype ?? 0) < 0 || (f.hype ?? 0) > HYPE_MAX || (f.bonus ?? 0) < 0)
+        bad("hype or bonus out of range");
+      if (violations.length) break;
+    }
+  }
+  assert(
+    violations.length === 0 && actions > 15_000,
+    `Z1 ${actions} random actions over 250 runs (all twelve kinds, every branch, the clock going back): wallet = opening + ledger, whole non-negative cents below 2^53, every field in its limits, a refused action changes nothing, no station clock moves back`,
+    violations.slice(0, 4),
+  );
+  void moneyMoves;
+  violations = [];
 }
 
 console.log("L. Station locks");

@@ -12,12 +12,10 @@ import {
   STATIONS,
   isStaffed,
   secondFloorOf,
-  stationDef,
+  stationFillMs,
   type SecondFloorState,
   type StationId,
 } from "./secondFloor";
-
-const HOUR_MS = 3_600_000;
 
 /** At or above this share of the cap the floor is "nearly full" (the map nudges the player). */
 export const FLOOR_NEARLY_FULL = 0.8;
@@ -34,13 +32,14 @@ export type Fill = {
 export function stationFill(floor: SecondFloorState, id: StationId, now: number): Fill | null {
   const owned = floor.stations[id];
   if (!owned || !isStaffed(floor, id)) return null;
-  const capHours = stationDef(id).capHours[owned.level - 1]!;
-  const hours = Math.max(0, now - owned.lastCollectAt) / HOUR_MS;
-  const fraction = Math.min(1, hours / capHours);
+  // Station time (a Rush counts x3) against what the counter holds, so the bar and "Full in" follow the money, not the wall clock.
+  const f = stationFillMs(floor, id, now);
+  if (!f || f.capMs <= 0) return null;
+  const fraction = Math.min(1, f.effMs / f.capMs);
   return {
     fraction,
-    msToFull: Math.max(0, Math.round((capHours - hours) * HOUR_MS)),
-    full: hours >= capHours,
+    msToFull: Math.max(0, Math.round((f.capMs - f.effMs) / f.speed)),
+    full: f.effMs >= f.capMs,
   };
 }
 

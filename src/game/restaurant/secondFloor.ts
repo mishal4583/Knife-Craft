@@ -93,8 +93,13 @@ export const UNSTAFFED_TRAY_MS = 10 * 60_000;
 export const SELF_SERVE_MACHINES = 2;
 /** Cleaner income bonus, permille per cleaner (up to the cleaners the floor needs). */
 export const CLEANER_PERMILLE = 100;
-/** Branches: prices and payouts x10 each; +50 % income per finished branch. */
-export const MAX_BRANCH = 9;
+/**
+ * Branches: prices and payouts x10 each; +50 % income per finished branch. The last branch is number 5 (six in all): a full counter
+ * of the best floor at branch 5 is 1.5e15 mills, and every money value in this file must stay an EXACT integer (below 2^53, about
+ * 9.0e15). At branch 6 that pile is already 1.7e16 mills and at branch 9 one single cycle is 2e16, so money would silently lose
+ * precision: found in the 2026-11-03 review (the earlier limit of 9 was wrong, and its test only repeated the constant).
+ */
+export const MAX_BRANCH = 5;
 export const BRANCH_BONUS_PERMILLE = 500;
 /** Rush Hour: stations work this many times as fast; full Hype (100) starts a free Rush of this length. */
 export const RUSH_SPEED = 3;
@@ -478,6 +483,28 @@ export function stationCycles(floor: SecondFloorState, id: StationId, now: numbe
   return Math.min(Math.floor(elapsed / c), capCycles);
 }
 
+/**
+ * How full a staffed or tray-only station's counter is, in station time: `effMs` has passed since its clock (Rush counted x3), the
+ * counter holds `capMs` (a whole number of cycles). The screens' fill bar and "Full in ..." read this (floorFill.ts).
+ */
+export function stationFillMs(
+  floor: SecondFloorState,
+  id: StationId,
+  now: number,
+): { effMs: number; capMs: number; speed: number } | null {
+  const owned = floor.stations[id];
+  if (!owned) return null;
+  const def = stationDef(id);
+  const staffed = isStaffed(floor, id);
+  const c = cycleMs(def, owned.level, staffed);
+  const holdMs = staffed ? def.capHours[owned.level - 1]! * HOUR_MS : UNSTAFFED_TRAY_MS;
+  return {
+    effMs: effectiveElapsed(floor, owned.lastCollectAt, now),
+    capMs: Math.floor(holdMs / c) * c,
+    speed: rushActive(floor, now) ? RUSH_SPEED : 1,
+  };
+}
+
 /** Mills waiting at one station. */
 export function stationMills(floor: SecondFloorState, id: StationId, now: number): number {
   const owned = floor.stations[id];
@@ -611,7 +638,10 @@ function bankFloor(save: SaveData, now: number): SaveData {
   return appendLedgerEntry(next, "automation-income", amount, "floor");
 }
 
-/** After a purchase changes a station's rate its new clock starts at `now`. */
+/**
+ * After a purchase changes a station's rate its new clock starts at `now`, but NEVER earlier than it already was: a device clock set
+ * back must not move a station's clock back (the next collection would pay the same hours twice). Found by the fuzz test Z1.
+ */
 function restartClock(
   floor: SecondFloorState,
   id: StationId,
@@ -621,7 +651,10 @@ function restartClock(
   const s = floor.stations[id]!;
   return {
     ...floor,
-    stations: { ...floor.stations, [id]: { ...s, ...patch, lastCollectAt: now } },
+    stations: {
+      ...floor.stations,
+      [id]: { ...s, ...patch, lastCollectAt: Math.max(s.lastCollectAt, now) },
+    },
   };
 }
 

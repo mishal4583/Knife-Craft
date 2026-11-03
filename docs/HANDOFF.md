@@ -1,5 +1,37 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## Deep review (developer 2026-11-03: "deep check for bugs and issues"; working tree, not committed)
+
+Real bugs found and fixed (each has a test):
+- **Franchise overflow:** money is kept as exact integers (below 2^53); at branch 6 the pile reached 1.7e16 mills. `MAX_BRANCH` is now 5 (`secondFloor.ts`), with a worst-case test (`F6`/`F7`).
+- **Clock-rewind exploit:** `restartClock` could move a machine's clock BACK (a device clock set earlier), paying a pile twice. It now keeps `Math.max(lastCollectAt, now)`; found by the new fuzz test `Z1` (random actions, the clock going forward AND back).
+- **Goal strip offered locked machines** under the dev `?floor2` flag (`floorGoal.ts` now reads the raw level); the locked message says "Tier 3 opens" only for a tier upgrade (`SecondFloorView.tsx`).
+- **The "full in" bar ignored a Rush** (it followed the wall clock while the money came in at x3): `stationFillMs` (`secondFloor.ts`) is now the one source for `floorFill.ts` (test `R6b`).
+- **The machine panel's price check** counted only that machine's takings; it now counts the whole floor's waiting pile (the purchase banks it first).
+
+Browser comparison (current build vs the commit before the Second Floor rebuild, about 40 maintained tests, both builds run side by side): **no regression in the game.**
+Every test that passed before and failed now was checking an old rule; updated to the new rule (each file says so): `cashflow` (C2a: a free second table means Next Customer is not held back;
+C3: the two hires are ledger entries), `levelflow` G2.6, `rollon` R2 ($236 opening wallet), `guests`, `resize` and `restaurantguests` (their seeds now hire the Server and the Cashier).
+`dish-classification-qa` D1/D2 now guard `dishKind.ts` and the LIST of oven recipes (the whole `ovenStep.ts` changed with the film).
+Failing the same way on the old build too (stale, not caused by this work): `firstload`, `cashreload`, `paidstaff`, `earlymenu`, `walkins`, `longcopy` (times out), `landscape`, `legacy`, `history`,
+`inventory`, `knifereport`, `kitchenstrip`, `fridge`, `phase5`, `phase6`, `restaurantguests` checks 3 and 4a (the cash now lies on the table, so the revenue entry comes later). `adbonuses` 3b is still flaky.
+Not tested in a browser: the Pre-Service Check "Hire Server & Cashier →" path with supplier credit; two parties in one service (unit-tested).
+Clean-up done: the baseline worktree and `tools/e2e/_base/` were temporary and are removed. The system stopped the preview servers once for low memory; run browser suites with one server.
+
+## The oven shows a film of the bread baking (developer 2026-11-03, working tree, not committed)
+
+The developer added `Bread.mp4` (10 s, 720x1280, 6 MB, AI-made, a sparkle logo bottom-right). The oven step (`OvenStep.tsx`) now shows a FILM in its window instead of the
+painted oven: the bread goes in (1.5 s), then bakes for 6.5 s: raw and pale, gradually cooking, perfect golden, deep brown, and at the end burnt. The meter and "Take it out"
+sit under it. **The golden window is very thin: 8 % of the bake (0.60-0.68, 520 ms)**; a burnt zone follows (from 0.88: a new result line "Burnt!", words only, still no effect on
+grade, score or pay). No skip button, no tap on the film. Files: `src/assets/video/oven-bread.mp4` (295 KB) / `.webm` (281 KB) / `-poster.webp`, built by
+`scripts/make-oven-bread-video.py` (ffmpeg): crops 720x900 from y=160 (the logo is cut OUT, not hidden), keeps the carry-in at 2x speed and the close-up after the
+source's own dissolve (4.95-10 s), stretches it to the bake, drops the audio, and COLOUR-GRADES the loaf only (an ellipse; the flames stay) over time, because the source loaf
+only ever reaches a light golden crust and has no burnt stage. The film follows the bake clock (moved back when it drifts more than 0.25 s); if it cannot play (error, no frame in
+3 s) or Reduced Motion is on, the painted oven is shown and the bake plays the same. The same film is used for the baguette dishes (it is a round loaf).
+Tests: `oven-step-qa` A2/A3/A3b/A6 and new F1-F4 (E2's tray-only view guard relaxed, documented), browser `ovenstep.mjs` (rewritten: film on, thin window, the golden tap, Reduced
+Motion, O4 for the cash-on-table rule) and `ovenrecipes.mjs` (repaired too: team hired, "Open for service", the film, cash on the table; six dishes pass). Not run: `ovenbaguette.mjs`
+(needs the dev server), `earlymenu.mjs`, `walkins.mjs` (they use the oven).
+
 ## The Server and the Cashier are necessary (developer 2026-11-02, working tree, not committed)
 
 "Without hiring both the Server and the Cashier the game still delivers food: make them necessary." `STAFF_RULES` (`restaurant/staffRequirements.ts`) now lists

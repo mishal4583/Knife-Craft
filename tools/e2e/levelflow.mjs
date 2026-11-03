@@ -101,7 +101,9 @@ const g2Sum = g2.economyLedger.reduce((s, e) => s + e.amount, 0);
 // $10.00, spends some of it in the Market, then earns the Level 1 pay.
 check(
   "G2.6 wallet = opening cash + signed ledger (a new game starts at $236.00: $10 for food + the two hiring fees, 2026-11-01)",
-  g2.credits === 23600 + g2Sum && g2Sum > 0,
+  // Since 2026-11-03 the harness hires the Server and the Cashier (two purchases of $113), so the signed sum is below zero; what matters is
+  // that the wallet equals the ledger and that the level's pay is in it.
+  g2.credits === 23600 + g2Sum && g2.economyLedger.some((e) => e.amount > 0),
   {
     credits: g2.credits,
     ledgerSum: g2Sum,

@@ -308,7 +308,11 @@ export function SecondFloorView({
     } else if (r.reason === "notReady") {
       setNote("Fill the Hype meter to start a Rush");
     } else if (r.reason === "locked") {
-      setNote(`🔒 Tier 3 opens ${u.when(TIER3_MIN_LEVEL)}`);
+      setNote(
+        action.kind === "upgrade"
+          ? `🔒 Tier 3 opens ${u.when(TIER3_MIN_LEVEL)}`
+          : "🔒 Not open yet",
+      );
     } else if (r.reason === "maxTables" || r.reason === "maxPolish") {
       setNote("Full for this tier");
     } else if (r.reason === "fullTeam") {
@@ -564,7 +568,8 @@ export function SecondFloorView({
     const nextPrice =
       owned.level < MAX_STATION_LEVEL ? tierPrice(d, to as 2 | 3, floor.branch) : null;
     const tierLocked = to === 3 && playerLevel < TIER3_MIN_LEVEL;
-    const funds = save.credits + here;
+    // What waits on the whole floor counts toward a price (the purchase banks the pile first), not just this machine.
+    const funds = save.credits + waiting;
     return (
       <>
         <p className="font-ui text-[13px] leading-snug text-walnut/75">{d.blurb}</p>

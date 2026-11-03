@@ -109,14 +109,22 @@ console.log("C. The oven recipes");
 
 console.log("D. Nothing else moved");
 {
-  const diff = execSync(
-    `git diff ${BASE} -- src/game/recipes/dishKind.ts src/game/cooking/ovenStep.ts`,
-    { cwd: ROOT, encoding: "utf8" },
+  const diff = execSync(`git diff ${BASE} -- src/game/recipes/dishKind.ts`, {
+    cwd: ROOT,
+    encoding: "utf8",
+  });
+  assert(diff.trim() === "", "D1: dishKind.ts is identical to the baseline", diff.slice(0, 200));
+  // Rule changed (developer 2026-11-03): ovenStep.ts gained the bread film's timings and the burnt zone, so the whole file can no longer be
+  // diffed against the baseline. What this suite guards is WHICH dishes use the oven: that list must be byte-identical.
+  const listOf = (src: string) => /export const OVEN_STEP_RECIPES[\s\S]*?\];/.exec(src)?.[0] ?? "";
+  const was = listOf(
+    execSync(`git show ${BASE}:src/game/cooking/ovenStep.ts`, { cwd: ROOT, encoding: "utf8" }),
   );
+  const now = listOf(fs.readFileSync(path.join(ROOT, "src/game/cooking/ovenStep.ts"), "utf8"));
   assert(
-    diff.trim() === "",
-    "D1: dishKind.ts and the oven list are identical to the baseline",
-    diff.slice(0, 200),
+    was.length > 50 && was.replace(/\r/g, "") === now.replace(/\r/g, ""),
+    "D2: the list of oven-step recipes is identical to the baseline",
+    { was: was.length, now: now.length },
   );
 }
 

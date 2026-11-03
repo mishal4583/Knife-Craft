@@ -71,7 +71,8 @@ const save = seedSave({
     inventory: FOOD,
     supplies: { stock: SUPPLIES },
     restaurantStaff: { specialists: ["mexican-chef"] },
-    staff: { hiredRoles: ["prep-cook"] },
+    // The Server and the Cashier are required for a service (2026-11-03).
+    staff: { hiredRoles: ["server", "cashier", "prep-cook"] },
   },
   credits: 5000,
   levelProgress: {

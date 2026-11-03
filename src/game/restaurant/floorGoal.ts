@@ -64,7 +64,7 @@ export function floorGoals(save: SaveData, reachedLevel: number): FloorGoal[] {
     const owned = floor.stations[d.id];
     if (!owned) {
       const previousOwned = i === 0 || !!floor.stations[STATIONS[i - 1]!.id];
-      if (!previousOwned || !isStationUnlocked(d, floorLevel(reachedLevel))) return;
+      if (!previousOwned || !isStationUnlocked(d, reachedLevel)) return;
       const price = machinePrice(d, branch);
       // A machine's own income, as if bought now at one table (the next two are always staffed).
       const probe = {

@@ -247,7 +247,10 @@ Release zip: the CONTENTS of `dist/` →
   - The FINALE (frozen copy) plays at L75; THE LAST PAGE plays at L150
     (mask bit 2048).
 - **Clips:** the only bundled videos are the six cooking clips
-  (`CookingClip.tsx`). A tap can't skip the plating in its first 1.2 s.
+  (`CookingClip.tsx`) and the oven's bread film (`OvenStep.tsx`, `src/assets/video/oven-bread.*`,
+  built from the developer's `Bread.mp4` by `scripts/make-oven-bread-video.py`; developer
+  2026-11-03: no skip button, the AI logo is cropped out). A tap can't skip the plating in
+  its first 1.2 s.
 - **Coaching** (`src/game/coaching.ts`): only on the first play of a level
   that teaches the technique. It never commits a cut or touches scoring.
 - **Knives:** every knife is drawn by `scenes/knifeProfile.ts`. The cut

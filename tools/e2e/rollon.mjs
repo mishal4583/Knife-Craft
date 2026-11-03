@@ -1,7 +1,7 @@
 // The level system is hidden (developer 2026-10-30), restaurant build:
 //   R1 after the last customer of Level 1 ("Next Customer") the service rolls on: no Level Complete screen, no
 //      Order Board — Level 2's customer arrives (its own Pre-Service Check first when stock is short).
-//   R2 Level 1 is completed once (one completion reward), wallet = $10 + signed ledger.
+//   R2 Level 1 is completed once (one completion reward), wallet = $236 + signed ledger.
 //   R3 no console errors.
 import {
   launch,
@@ -46,10 +46,11 @@ try {
     t: t.slice(0, 220),
   });
   check(
-    "R2 Level 1 completed once with one completion reward; wallet = $10 + signed ledger",
+    "R2 Level 1 completed once with one completion reward; wallet = $236 + signed ledger",
     done.levelProgress.completedLevelIds.includes("level-1") &&
       rewards.length === 1 &&
-      done.credits === 1000 + ledgerSum(done),
+      // Rule changed (developer 2026-11-01): a new game opens with $236.00 ($10 for food + the two hiring fees).
+      done.credits === 23600 + ledgerSum(done),
     {
       completed: done.levelProgress.completedLevelIds,
       rewards: rewards.length,
