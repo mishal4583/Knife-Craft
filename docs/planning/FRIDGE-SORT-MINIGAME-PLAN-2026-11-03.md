@@ -1,96 +1,208 @@
-# Fridge Sort — "Put the delivery away" mini-game (plan + Codex asset prompts)
+# Fridge Sort — "Put the delivery away" (detailed plan + Codex asset prompts)
 
-Status: PLAN ONLY (developer idea 2026-11-03, concept image `images/75.png`). No game code written. Decisions the developer must make are in §9.
-Where it would live: Inventory (the fridge) and the Market's "order arrived" moment. It never changes money, stock or the economy baselines.
+Status: PLAN ONLY, rewritten 2026-11-03 after reading the code (the real fridge zones, the real unlock levels, the delivery and closing systems). No game code yet.
+Developer idea 2026-11-03 (concept image `images/75.png`). Decisions the developer must make are in §9.
+Companion file with every art prompt ready to paste: `FRIDGE-SORT-CODEX-PROMPTS-2026-11-03.md`.
+
+**Short answers**
+- **Where does it live?** In the Inventory (the fridge) and right after the player buys food in the Market. Four entry points (§2.2).
+- **Which level?** It unlocks at **Level 14**, the first level of the game's "Fridge & Freshness" stage (the fridge, spoilage and the closing chores "Throw out spoiled food" and "Wrap and label" all start there). Before Level 14 food never spoils, so there is nothing to put away.
+- **How does it work?** After a purchase, a crate of what was just bought appears. The player drags (or taps) each item to the right fridge shelf, drawer or door rack before a 25–50 second timer ends. Right = combo points, wrong = the item springs back. 1–3 stars. Stars give Hype (the Second Floor's Rush meter) and fridge magnets. Never required, never costs money.
+- **How big?** About 7 working days; the art is already generated (§5).
 
 ---
 
-## 1. The idea in one line
+## 1. The idea, and why build it
 
-After a Market purchase arrives, the player can tap **"Put it away"** and drag (or tap) the ingredients into the right fridge shelves before a short timer ends.
-Fast and clean sorting gives stars and a small non-money reward. Skipping it costs nothing: the food is already in the Business Inventory.
+After a Market purchase the player can tap **"📦 Put it away"** and sort the delivery into the fridge in a short, hands-on round.
 
-Why it is worth building (the developer's goal is real revenue: long sessions, return visits, rewarded-ad moments):
-- It fills the dead moment right after every purchase with a 30–50 second "hands-on" toy, the kind of loop short-session players love.
-- It shows the fridge the player paid for ($2,000 / $4,800 upgrades): a bigger fridge means a bigger, more fun puzzle, which is a reason to upgrade.
-- It gives a repeatable star score to chase, plus collectible fridge magnets: a reason to come back.
-- It is the natural place for one more optional rewarded-ad offer (see §9, needs an explicit yes).
+Why (the developer's goal is real revenue: long sessions, return visits, rewarded-ad moments):
+- It fills the dead moment after every purchase with a 30–50 second "hands-on toy", the kind of loop short-session players love.
+- It makes the fridge the player owns (and the $2,000 / $4,800 upgrades) feel real, and it gives the closing chore "Wrap and label what's left in the fridge" a playable twin later (§9).
+- It gives a repeatable star score to chase, plus 12 collectible fridge magnets: a reason to come back tomorrow.
+- It carries the one more optional rewarded-ad offer (§9, needs an explicit yes).
 
-## 2. Rules it must obey (from CLAUDE.md)
+## 2. Where it lives and when it unlocks
 
-| Rule | What it means here |
-|---|---|
-| Inventory is read-only (§7) | The game NEVER adds, removes or moves stock. It only reads which ingredients just arrived. Quantities stay in Business Inventory. |
-| One wallet, one ledger | The game moves **no money** and writes **no ledger entry**. |
-| Never required to progress | Always skippable ("Later"). No level, service or Pre-Service Check depends on it. |
-| No new top-level save field | State lives in `SaveData.business.fridgeSort` (optional, nested migration in `SaveManager`). Old saves read as "nothing pending". |
-| Determinism | Item order and spawn come from the seeded generator (seed = delivery id), never `Math.random()`. |
-| Short game copy | Icons and numbers on screen; any explanation behind an ⓘ (`InfoTip`). `ui-copy-qa` guards it. |
-| Touch ≥ 48 px, 540×960 logical, no sideways scroll | Test at 320×568, 360×640, 390×844, 430×900, 768×1024. |
-| Audio synthesized only | New cues are made in `AudioManager.ts` (pick up, place, wrong, combo, tick, finish). No sound files. |
-| No external fonts or network | Fraunces / Nunito / Caveat only. All art bundled. |
-| Analytics through `sendAnalyticsEvent` only | `fridge_sort_started`, `fridge_sort_completed` (stars, items, mistakes, seconds), snake_case, no personal data. |
-| Ads | Rewarded only, one placement per spot, says what it gives first, daily cap, one `rewarded-ad` ledger entry if it pays money. NOT included until the developer says yes. |
+### 2.1 The level: 14
 
-## 3. Gameplay spec (proposal, numbers to be tuned by the QA suite)
+The campaign has 148 levels (`restaurantProgression.ts`, the real levels after the 150 → 148 remap):
 
-**Trigger.** A purchase in the Market that arrives sets `business.fridgeSort.pending` (the ingredient ids of that delivery, at most 12 per crate; the rest wait for the next crate). Entry points:
-1. The Market "order arrived" sheet gets a second button: **📦 Put it away**.
-2. The Inventory fridge header shows the same button while a crate is pending (badge with the item count).
-Starting a new purchase replaces an unsorted crate (nothing is lost; the stock is in the Inventory either way).
-
-**Shelves = the real fridge tier** (`refrigeratorDefinitions.ts`; the fridge tier is the difficulty):
-
-| Fridge | Zones (shelves) | Crate size |
+| Level | What opens (existing system) | What it means for this game |
 |---|---|---|
-| Basic (40) | 3: Vegetables & Fruit · Cold (dairy, protein) · Pantry basket | up to 8 |
-| Commercial (100) | 4: Vegetables · Fruit · Leafy & Herbs · Cold | up to 10 |
-| Professional (240) | 5: Vegetables · Fruit · Leafy & Herbs · Dairy · Meat & Fish | up to 12 |
+| 1 | Market, ingredient stock | the player buys food from the first level, but nothing spoils yet |
+| 3 | Second Floor | Hype (the reward) is useful: a Rush needs a machine |
+| 5 | Menu | |
+| **14** | **Fridge & Freshness** (fridge capacity, spoilage, stock rotation) and the closing chores "Throw out spoiled food" and "Wrap and label" | **Fridge Sort unlocks here**, with its own unlock card ("Food doesn't keep forever. Put it away.") |
+| 19 | Dine-in | |
+| 21 | Standing-order deliveries (`DELIVERIES_FROM`) | entry point E3 (a delivery to unpack every morning) |
+| 27 | Staff | a hired Prep Cook can put crates away automatically (§3.7) |
+| 44 / 54 / 74 | Takeaway / a bigger restaurant / full management | bigger crates, all 7 zones, no hints (§3.6) |
 
-**Which ingredient goes where** (all 57 ingredients, checked by a test that every id has exactly one zone per tier):
-- *Leafy & Herbs:* lettuce, spinach, cabbage, celery, basil, parsley, cilantro, springonion, asparagus.
-- *Vegetables:* the other vegetables that keep cold (tomato, carrot, cucumber, mushroom, pepper, zucchini, eggplant, broccoli, cauliflower, radish, beetroot, greenbean, fennel, artichoke, peapod, chilli, corn).
-- *Pantry basket (not the fridge, on the counter):* onion, potato, sweetpotato, pumpkin, turnip, garlic, ginger, bread, baguette, watermelon, coconut. (A small real-life lesson, and a pleasant "trap": the player learns not everything goes cold.)
-- *Fruit:* strawberry, apple, orange, lemon, avocado, pear, peach, pineapple, mango, kiwi, pomegranate, grapes, lime.
-- *Cold / Dairy / Meat & Fish:* cheddar, mozzarella, butter, tofu · chicken, steak, salmon.
-(On Basic, Leafy folds into Vegetables and Fruit shares the first shelf; Dairy and Meat share Cold.)
+Why 14 and not earlier: a sorting game about freshness before freshness exists is a chore with no reason. Why not later: the player already owns 14 ingredients and a 40-unit Basic fridge, and the first spoiled food arrives about now, so the game teaches the idea at the exact moment the need appears.
 
-**Controls.** Drag an item to a shelf, OR tap an item then tap a shelf (accessibility and phones in a bus). Correct: the item snaps in with a pop and a tick. Wrong: it springs back, the combo resets, no time penalty (gentle).
-**Timer.** `20 s + 2.5 s × items` (8 items = 40 s, 12 items = 50 s). The timer never makes the player lose anything: at zero the round ends with the stars earned so far.
-**Score.** 100 per correct item × a combo multiplier (+0.25 per item in a row, up to ×3), +20 per second left on a full sort. The star bar fills with the score; stars at 50 % / 75 % / 95 % of the best possible score (to be tuned).
-**Reward (non-money, once per crate):**
-- ★ +5 · ★★ +10 · ★★★ +15 **Hype** (the existing Second Floor meter, `addHype`; 100 Hype starts the free 3-minute ×3 Rush).
-- A **fridge magnet** on the fridge door for the first ★★★ of each ingredient group (12 collectible magnets, shown in the Inventory fridge).
-- Achievements: "Tidy Fridge" (10 crates), "Perfect Crate" (5 ★★★ crates).
-- Replaying a crate gives no second reward (nothing to farm: crates only come from real purchases).
+### 2.2 Entry points (all optional, none blocks anything)
 
-**Never negative, never stuck:** no timer penalty, no lost stock, no forced play, Reduced Motion removes the flying/popping animation (items just appear in place), and the Pause button freezes the clock.
+| # | Where | When | Notes |
+|---|---|---|---|
+| E1 | Market, Ingredients tab: a "📦 Put it away · 6" chip near the top | after any ingredient purchase (one line, "Buy all", Rush Restock) from Level 14 | the crate collects everything bought since the last sort, so a long shopping trip is ONE round, not ten |
+| E2 | Inventory screen, the fridge header: the same chip | while a crate is waiting | the permanent home; works after a reload |
+| E3 | The morning "Delivery arrived" card (standing orders) | from Level 21, each delivery day | the delivery's lines become a crate |
+| E4 | Closing Time, the chore row "Wrap and label what's left in the fridge" | v2 (§9 decision) | not in the first version |
+
+Never: a full-screen interruption, a button that blocks Start service, or a requirement of any kind (CLAUDE.md §7: "the campaign never requires a Business system").
+
+### 2.3 What does not change
+
+The Business Inventory stays the only record of quantities (CLAUDE.md §6, §7: "Inventory is read-only"). The game reads which ingredients just arrived; it adds, removes and moves **no stock, no money, no ledger entry**. Spoilage, freshness and the fridge capacity rules are untouched, so every economy baseline stays frozen.
+
+## 3. How the game works
+
+### 3.1 One round, step by step
+
+1. **The crate.** The player taps "📦 Put it away". The screen opens (a new `fridgeSort` screen, §4) on the open fridge, the crate on the counter below it. The crate holds one token per DIFFERENT ingredient bought (6–12 tokens; a stack badge shows "×4"). A longer shopping list is split into more than one crate.
+2. **The tutorial moment** (first time only): the existing pointer hand drags the first token to its shelf; "Drag each item to its shelf" is the only sentence (short-copy rule, an ⓘ explains the rest).
+3. **Ready · 3 · 2 · 1 · Go.** The timer starts on the first touch, not on screen open, so a slow reader loses nothing.
+4. **Sorting.** The player picks a token (it lifts, a soft glow marks where it can go, and from Level 14 to 26 the right shelf also lights up) and drops it on a shelf, drawer or door rack.
+   - Right zone: the token snaps in with a pop and a tick, the shelf's counter goes up (the checklist board on the left: "Dairy 2/3"), the combo grows.
+   - Wrong zone: the token springs back to the crate with a soft thud and the combo resets. No time penalty, no lost stock (gentle on purpose).
+5. **The end.** All tokens placed, or the timer reaches zero. Time running out is not a failure: the stars earned so far count.
+6. **The result card.** Stars, score, the best score for this fridge, what was earned (Hype, a magnet), and two buttons: "Done" and "Again" (a practice round with no reward). If the player never opens it, nothing is lost: the crate simply waits in the Inventory.
+
+### 3.2 The screen (540 × 960 logical, portrait)
+
+```
+┌───────────────────────────────┐
+│ ⏸      ⏱ 0:38        ★ 1,200  │  HUD: pause, timer plaque, score plaque (blank plaques, text drawn in code)
+│ ▓▓▓▓▓▓▓░░░░░ ★ ░░ ★ ░░ ☆     │  star bar: fills with the score, three star marks
+│ ┌─────────┐ ┌───────────────┐ │
+│ │ Sort &  │ │ DAIRY & TOFU   │ │  left: the checklist board (rows of zone icon + n/m)
+│ │ Store   │ │  🧀 🧀          │ │  centre: the open fridge, shelves top to bottom
+│ │ 🧀 0/2  │ ├───────────────┤ │         dairy · vegetables (bins) · meat, fish & bread
+│ │ 🥕 2/5  │ │ VEGETABLES    │ │         then the drawers (fruit | greens)
+│ │ 🥩 0/1  │ │  🥕 🍅        │ │  right edge: the door racks (butter, aromatics)
+│ │ 🍎 1/2  │ ├───────────────┤ │
+│ └─────────┘ │ MEAT, FISH …  │ │
+│             ├──────┬────────┤ │
+│             │ FRUIT│ GREENS │ │
+│             └──────┴────────┘ │
+│  ┌─────────── crate ────────┐ │  the crate (back + front art) with the tokens inside; one is lifted
+│  │ 🍅 🥕 🧀 🍎 🥩 🧈 ✋      │ │
+│  └──────────────────────────┘ │
+└───────────────────────────────┘
+```
+Touch targets ≥ 48 px (CLAUDE.md §10); the shelves are wide bands, easy to hit on a 320 px phone. Text sizes follow the project's scale (HUD plaques 14–17 px, shelf labels 11–12 px).
+
+### 3.3 The shelves are the fridge's REAL zones
+
+The game does not invent a second classification: it uses `FRIDGE_ZONES` and `fridgeZoneFor` (`business/fridgeView.ts`), the same grouping the Inventory fridge already shows. There are 7 zones:
+
+| Zone | Where | Ingredients (of 57) |
+|---|---|---|
+| Dairy & Tofu | top shelf | 3: cheddar, mozzarella, tofu |
+| Vegetables | middle shelf | 25 (see the problem below) |
+| Meat, Fish & Bread | low shelf | 5: bread, baguette, chicken, steak, salmon |
+| Fruit | crisper drawer | 15 |
+| Greens & Herbs | crisper drawer | 5: basil, parsley, lettuce, spinach, cilantro |
+| Butter | door rack | 1 |
+| Aromatics | door rack | 3: garlic, ginger, chilli |
+
+**The problem found while planning.** Counted by the level where each ingredient first appears: at Level 14 the player knows 14 ingredients and 9 of them are vegetables; at Level 27, 13 of 20. A plain 7-zone sort would be "drop almost everything on Vegetables": no puzzle, no combos.
+**The fix (decision D1, §9):** the game splits the Vegetables shelf into 4 game-only **bins** by how a cook thinks about them, so the biggest group becomes a real choice. The fridge itself and `fridgeZoneFor` do not change; the bins live in the new rules file with a test that every one of the 25 vegetables has exactly one bin:
+- *Roots & bulbs:* potato, onion, carrot, turnip, beetroot, radish, sweetpotato, pumpkin
+- *Salad & fruiting:* tomato, cucumber, pepper, zucchini, eggplant, corn
+- *Cabbages & stems:* broccoli, cauliflower, cabbage, celery, asparagus, fennel, artichoke, springonion
+- *Pods & fungi:* greenbean, peapod, mushroom
+
+Result: at Level 14 the player sees about 6 targets (3 vegetable bins, dairy, a protein/bread shelf, a drawer) and every token is a real decision.
+
+### 3.4 Controls and feedback
+
+- **Drag** (pointer events, works with touch and mouse) **or tap-then-tap** (tap a token, tap a shelf): the second is the accessibility path and the default for slow connections or small thumbs. Both always work.
+- **Feedback:** the token lifts with a shadow; the target shelf glows; right = pop + tick + a "+100" that floats up; wrong = shake + thud. Combo 3, 5, 8 each get a small flourish. All sounds are **synthesized** in `AudioManager.ts` (pick, place, wrong, combo, tick, finish): no sound files.
+- **Reduced Motion:** no flying, floating numbers or shake; tokens appear in place and the shelf just flashes. The timer and rules are identical.
+- **Pause:** freezes the clock and hides the fridge (so it cannot be used to plan), "Resume" / "Skip this crate".
+
+### 3.5 Rules, score and stars
+
+- **Time:** `20 s + 2.5 s × tokens` (8 tokens = 40 s, 12 tokens = 50 s). Level 14–26 adds +30 % (the player is learning).
+- **Score:** 100 per right placement × a combo multiplier (+0.25 per right in a row, up to ×3), plus 20 per second left when every token was placed.
+- **Stars** (thresholds to be tuned by the QA suite and real play): ★ at 50 % of the best possible score, ★★ at 75 %, ★★★ at 95 %. The bar fills as the score grows.
+- **Practice rounds** ("Again") score and show stars but give no reward, so nothing can be farmed (crates only come from real purchases anyway).
+- **Best score** is kept per fridge tier.
+
+### 3.6 Difficulty by level
+
+| Levels | Crate | Targets | Help | Time |
+|---|---|---|---|---|
+| 14 – 26 | 6 tokens | 5–6 (3 veg bins + what the crate needs) | the right shelf glows when a token is lifted | +30 % |
+| 27 – 43 | 8 tokens | 6–7 | glow only after a wrong drop | normal |
+| 44 – 73 | 10 tokens | all 7 zones + 4 veg bins (10 targets) | no glow | normal |
+| 74 + | 12 tokens | all targets; an ⏳ token (it expires tomorrow) is worth ×2 if placed before the timer's last third | none | normal |
+
+(Crate size is also capped by what was really bought; a crate is never padded with items the player does not own.)
+
+### 3.7 Rewards and what keeps people coming back
+
+All rewards are non-money (CLAUDE.md §7: the economy baselines stay frozen).
+- **Hype** (`addHype`, the Second Floor's Rush meter; 100 starts a free 3-minute ×3 Rush): ★ +5, ★★ +10, ★★★ +15, once per crate. A normal day has about 2–3 crates, so this adds about 10–25 Hype a day on top of the level-clear Hype (20 + 20 per star).
+- **12 fridge magnets**, shown on the fridge door in the Inventory: one per 3 ★★★ crates, in a fixed order (deterministic).
+- **Achievements** (the existing Progress → Achievements): "Tidy Fridge" (10 crates), "Perfect Crate" (5 × ★★★).
+- **Tidy streak** (v2): a business day with at least one ★★ crate keeps the streak; 3 and 7 days give a magnet.
+- **Prep Cook helper** (from Level 27, the staff stage): a hired Prep Cook puts a crate away on its own, with no stars and no reward. So the game stays optional forever and late-game players who do not want it never see a chore.
+- **An optional rewarded ad** (not in the first version): "Watch to double the Hype from this crate", which needs its own `AD_PLACEMENT`, a daily cap and a line in `ads/adBonuses.ts`; only with the developer's explicit yes (§9).
+
+### 3.8 Edge cases
+
+| Case | What happens |
+|---|---|
+| Nothing was bought | the chip is not shown |
+| The fridge was full / a line was skipped by the wallet | only what was really bought is in the crate |
+| Reload or app switch mid-round | the round is not saved; the crate is still waiting and the next open starts it fresh (no half-state, no exploit) |
+| Several purchases before sorting | the crate grows (max 12 tokens, the rest queue as the next crate) |
+| The player buys again after sorting | a new crate starts |
+| Old saves | `business.fridgeSort` missing = nothing waiting; nothing breaks |
+| Device clock changes | no time-based reward: the timer is local to the round; streak days use the game's own restaurant day |
+| A player below Level 14 | the chip never appears |
 
 ## 4. Technical plan
 
-New files (reuse the existing UI primitives; React DOM + CSS, no Phaser, no animation library):
-- `src/game/business/fridgeSort.ts` — PURE rules: `zonesForTier`, `zoneOf(ingredientId, tier)`, `makeCrate(seed, delivery, tier)`, `timeLimitMs`, `scoreRound`, `starsFor`, `rewardFor`, `reducePending`. No I/O, no money.
-- `src/components/kc/inventory/FridgeSortGame.tsx` — the screen (pointer events for drag, tap-select fallback, `data-testid` hooks), `FridgeSortButton.tsx` for the two entry points.
-- `ScreenId "fridgeSort"` in `components/kc/data.ts` + `ScreensRouter`.
-- Save: `business.fridgeSort?: { pending?: IngredientId[]; crateId?: number; bestStars?: number; totalStars?: number; magnets?: string[]; perfect?: number }` with the nested-migration pattern (missing = empty). Hype goes through the existing `addHype`.
-- Market hook: where a purchase is committed (the Market is the only place to buy), set `pending`. Exactly one place; found in the Market commit path.
+New files (React DOM + CSS, no Phaser, no animation library; the existing UI primitives):
+- `src/game/business/fridgeSort.ts` — PURE rules: `crateFrom(delivery)`, the zone and vegetable-bin mapping (`zoneOf`, using `fridgeZoneFor`), `targetsFor(crate, level)`, `timeLimitMs`, `scoreRound`, `starsFor`, `rewardFor`, the seeded token order (seed = crate id; no `Math.random()`). No I/O, no money.
+- `src/components/kc/inventory/FridgeSortGame.tsx` (the screen), `FridgeSortChip.tsx` (the entry chip used by E1/E2/E3).
+- `ScreenId "fridgeSort"` in `components/kc/data.ts` + the router.
+- Save: `business.fridgeSort?: { crate?: IngredientId[]; crateId?: number; best?: { basic?: number; commercial?: number; professional?: number }; totalStars?: number; magnets?: number; perfect?: number; streak?: { day: number; days: number } }` through the nested-migration pattern in `SaveManager`; Hype goes through the existing `addHype`. No new top-level field, no new wallet/ledger/registry.
+- The crate is set in exactly ONE place: where an ingredient purchase is committed (`persistIngredientPurchases` in `App.tsx`, the single place every Market line, "Buy all" and Rush Restock pass through) and by the delivery arrival (`deliveries.ts`).
 - `AudioManager.ts`: six synthesized cues.
-- Tests: `scripts/fridge-sort-qa.mts` (every one of the 57 ingredients has a zone in every tier; crates deterministic for a seed; scoring and stars table; reward granted once per crate; **no change to credits, inventory or ledger**; old saves read as empty; never-negative), browser `tools/e2e/fridgesort.mjs` (drag and tap paths, timer end, skip, 320 px layout, Reduced Motion), additions to `ui-copy-qa` and `unused-assets-qa`.
+- Analytics through `sendAnalyticsEvent` (snake_case, no personal data): `fridge_sort_offered`, `fridge_sort_started` {level, tokens, targets}, `fridge_sort_finished` {stars, score, mistakes, seconds_left}, `fridge_sort_skipped`, `fridge_sort_auto` (the Prep Cook).
+- A dev flag `?fridgeSort` to show it below Level 14 for testing (the same pattern as `?floor2`).
+- Tests: `scripts/fridge-sort-qa.mts` (all 57 ingredients map to exactly one zone and the 25 vegetables to exactly one bin; crates are deterministic for a seed; time, score and star tables; reward once per crate; **credits, inventory and ledger are byte-identical before and after a round**; old saves read as empty; never negative; a perfect player always reaches ★★★ and a random player never reaches ★); browser `tools/e2e/fridgesort.mjs` (the drag path and the tap path, the timer ending, skip, Reduced Motion, the layout at 320 / 390 / 768, the chip showing only from Level 14); additions to `ui-copy-qa` and `market-art-qa`.
 
-Phases (each ends with the gates in CLAUDE.md §5):
-- **P0 (decision, 0.5 day)** — the questions in §9.
-- **P1 pure rules + tests (1 day)** — `fridgeSort.ts`, the save field, `fridge-sort-qa`.
-- **P2 playable with PLACEHOLDERS (2 days)** — the screen using emoji on round plates (the same look as `ItemTile`) and CSS shelves. Fully playable before any art exists, so art never blocks the work.
-- **P3 art integration (1–1.5 days)** — drop the generated WebP in, 9-slice the UI, measure the budget.
-- **P4 polish (1 day)** — synthesized sound, combo feedback, Reduced Motion, analytics, the browser test, the real-device pass.
+## 5. Art, phases and how we will know it works
 
-## 5. Art budget and pipeline
+**Art is mostly done** (generated by Codex; sources local-only in `art-source/`, only optimized WebP is committed):
+- Already in the game: the 57 ingredient pictures (`public/business/ingredients/`), reused here as the tokens.
+- Generated, waiting for the game screen (A1–A21): the open fridge (A1) and door (A2), the crate back and front (A4, A5), the wall (A3), HUD plaques (A12), star bar (A13), stars (A14), checklist board (A15), result panel (A16), 12 magnets (A17), glass bin (A18), and three fridge skins by tier (A19–A21, optional later: the zone layout is the same in every tier).
+- Budget: new art ≤ 1.3 MB of WebP. The slicing script `scripts/make-market-assets.py` is extended for these, like the supplies and ingredients.
+- Missing: nothing for this game. (The Cashier portrait, A22, is a separate staff gap.)
 
-- All art is WebP, designed at **2× the logical 540×960** screen (so the full background is 1080×1920).
-- Total new art target: **≤ 1.3 MB** (the project already has 8 MB of assets; the oven film is 295 KB). Item sprites ≤ 9 KB each; backgrounds ≤ 180 KB each.
-- Source PNGs from Codex go to `art-source/fridge-sort/` (reference-only, not in the build). A script `scripts/make-fridge-sort-assets.py` (like `make-oven-bread-video.py`) slices the sheets, removes the background if needed, resizes, and writes `src/assets/fridge-sort/*.webp`.
-- **Ingredients are emoji in the game today** (`ItemTile`, the Market). So painted item sprites are the one big art cost: 57 ingredients. Plan: P2 ships on emoji; P3 adds the painted sprites; any missing sprite falls back to the emoji on a round plate. This means art can arrive in batches.
-- Reused (not regenerated): `src/assets/ui/pointer-hand.webp` (the tutorial hand), the game's Fraunces / Nunito / Caveat fonts (ALL text is drawn in code, never baked into art), `src/assets/kitchen/skin-0x.webp` as the wall behind the fridge if one fits.
+**Phases** (each ends with the CLAUDE.md §5 gates):
+
+| Phase | Work | Time |
+|---|---|---|
+| P0 | the decisions in §9 | 0.5 d |
+| P1 | `fridgeSort.ts`, the save field, the migration, `fridge-sort-qa` | 1.5 d |
+| P2 | the playable screen on the existing emoji/pictures and CSS shelves; the chips E1/E2; the unlock card at Level 14 | 2.5 d |
+| P3 | art integration: A1/A2 fridge, crate, HUD, stars, magnets; slicing script; budget check | 1.5 d |
+| P4 | synthesized sound, combo feedback, Reduced Motion, the delivery entry E3, analytics, the browser test, a real-device pass | 1.5 d |
+
+**How we will know it works** (Bridge analytics; the live Playgama build is old, so measure only after the new build ships):
+- offered → started ≥ 50 %, started → finished ≥ 90 %, average stars ≥ 2, a round under 50 s;
+- more crates per day among players who tried it; a longer session and a better next-day return than players who did not;
+- guardrail: no drop in levels played per session and no rise in Quit during the round.
+Rollout: ship dark behind the flag, then on for everyone; if the funnel is weak, tune the time and thresholds (data in `fridgeSort.ts`) before touching anything else.
+
+---
 
 ## 6. Style bible (paste this at the top of EVERY Codex image request)
 
@@ -119,7 +231,7 @@ Workflow tip: use ONE Codex conversation per group (so the style stays the same)
 | A3 | Wall / room behind | `sort-bg.webp` | 1080 × 1920 | OPTIONAL: reuse a `kitchen/skin-0x` first | P3 |
 | A4 | Wooden crate, BACK part | `crate-back.webp` | 1000 × 420 | the inside of the crate | P3 |
 | A5 | Wooden crate, FRONT part with cloth | `crate-front.webp` | 1000 × 420 | overlays the items so they sit inside the crate | P3 |
-| A6 | Pantry basket (wicker) | `pantry-basket.webp` | 640 × 360 | the "not in the fridge" zone | P3 |
+| A6 | Pantry basket (wicker) | (not used) | 640 × 360 | NOT USED: the real fridge has no pantry zone (every ingredient has a fridge zone). The art exists; leave it out of the build. | never |
 | A7–A11 | Painted ingredient sprites, 5 sheets of 12 cells (57 items) | `ing-<id>.webp` ×57 | 192 × 192 each | cells 256 × 256 in the sheet | P3 (emoji until then) |
 | A12 | HUD plaques sheet (timer, score, pause, shelf tag) | `hud-*.webp` | 4 pieces | blank, 9-slice friendly | P3 |
 | A13 | Star progress bar (frame + fill) | `starbar-*.webp` | 720 × 90 | the fill is a separate strip | P3 |
@@ -128,6 +240,7 @@ Workflow tip: use ONE Codex conversation per group (so the style stays the same)
 | A16 | Result ribbon + panel, blank | `result-*.webp` | 900 × 700 | 9-slice | P3 |
 | A17 | Fridge magnets sheet (12 magnets) | `magnet-*.webp` ×12 | 128 × 128 each | collectibles on the door | P3/P4 |
 | A18 | Optional glass bins (drawer) | `bin.webp` | 940 × 220 | OPTIONAL (CSS glass if too hard) | P4 |
+| A22 | Cashier portrait (staff gap, not fridge-related) | `public/business/staff-portraits/cashier.webp` | 320 × 320 (generate 1254 square) | head and shoulders, like server.webp | now |
 
 Not needed as art: the glow ring around the target shelf (CSS), the flying arrow trail (CSS), sparkles/confetti (CSS), all sounds (synthesized), the tutorial hand (exists).
 
@@ -178,7 +291,7 @@ and a red-and-cream checkered kitchen cloth draped over the front rim. The top e
 it look as if they are inside the crate. Transparent background above the rim. 1000 x 420 px. Match the wood color and the grain of A4.
 ```
 
-### A6 — pantry basket
+### A6 — pantry basket (NOT USED, kept only because it was already generated)
 ```
 [STYLE BIBLE]
 ASSET A6: an empty wide wicker basket with a linen liner, seen from slightly above, rim only (the inside is soft and empty), placed on a
@@ -271,18 +384,39 @@ ASSET A18 (OPTIONAL): an empty transparent glass-and-steel fridge drawer bin, fr
 940 x 220 px, a see-through look that works on top of a lit fridge shelf. Transparent background.
 ```
 
+### A22 — Cashier portrait (a gap found 2026-11-03, NOT part of the fridge game)
+The Cashier is required from Level 1 and is the only staff role with no portrait (it shows an emoji). Match the existing portraits in
+`public/business/staff-portraits/` (server.webp, cleaner.webp): head and shoulders, a warm restaurant interior with soft bokeh lamps behind.
+```
+[STYLE BIBLE]
+ASSET A22 (FULL SCENE, no transparency, square 1254 x 1254 px): a head-and-shoulders portrait of a friendly restaurant CASHIER in his late
+twenties, short dark hair, a warm smile, round glasses, looking at the viewer. He wears a white collared shirt under a dark-green apron with
+brown leather straps, a small pen behind his ear, and holds a BLANK paper receipt (no printed text or numbers on it) in one hand. Behind him,
+softly out of focus: a wooden front counter with a brass cash register and warm hanging lamps in a cozy restaurant. Same framing, face
+position (upper third, centered), warm golden light and painterly style as the other staff portraits (the server with the bow tie and the
+cleaner with the green apron). No text anywhere, no logos.
+```
+
 ## 9. Decisions for the developer (my recommendation first)
 
-1. **Rewards.** Recommended: Hype + magnets + achievements (no money, no spoilage change, economy baselines untouched). Hype feeds the Second Floor Rush, so it is real value without touching the wallet.
-2. **A rewarded-ad offer** (for example "watch to double the Hype from this crate", or "+15 s"). Recommended: add it in P4 only if you say yes; it needs its own `AD_PLACEMENT`, a daily cap and a line in `ads/adBonuses.ts`.
-3. **Ingredient art.** Recommended: ship P2 on emoji, add the 57 painted sprites in P3. Alternative: only the 24 most common ones first (sheets A7, A8 and A10) and emoji for the rest.
-4. **Optional vs required.** Recommended: always optional. (A required version would turn every purchase into a chore and break "never needed to progress".)
-5. **Night-chore link.** The closing chore "Wrap and label what's left in the fridge" (Level 21+) could open this game as its hands-on version. Recommended: not in the first version; look at it after the numbers come in.
-6. **Does a well-sorted fridge matter for the economy?** Recommended: NO (cosmetic and Hype only). A freshness bonus would change spoilage and break the frozen economy baselines.
+| # | Question | Recommendation |
+|---|---|---|
+| D1 | Split the Vegetables shelf into 4 game-only bins (roots & bulbs, salad & fruiting, cabbages & stems, pods & fungi)? | **Yes.** Without it, 9 of the 14 ingredients at Level 14 (25 of 57 overall) go to one shelf and the game has no puzzle. The fridge screen itself is not changed. |
+| D2 | Unlock level | **14** (the start of Fridge & Freshness). Attach the unlock to the existing stage's card; do not add a new restaurant system id (that would touch `restaurant-progression-qa`). |
+| D3 | Rewards | **Hype + 12 magnets + 2 achievements, no money, no spoilage bonus.** A freshness bonus would change spoilage and break the frozen economy baselines. |
+| D4 | A rewarded-ad offer (double the Hype, or +15 s) | **Not in the first version.** Add in P4 only with your explicit yes: it needs its own `AD_PLACEMENT`, a daily cap, and a line in `ads/adBonuses.ts`. |
+| D5 | A hired Prep Cook puts crates away by itself (no stars, no reward) | **Yes.** It keeps the game optional for good, and gives the Prep Cook one more visible job. |
+| D6 | Closing chore "Wrap and label what's left in the fridge" opens the game | **Not in v1.** Look at it after the first numbers (it would be the third entry point to the same game). |
+| D7 | Fridge skins by tier (A19–A21) | **Later.** One fridge body for all tiers first; the zones are identical in every tier. |
+| D8 | One crate per shopping trip (max 12 tokens, the rest queue) | **Yes.** Ten separate rounds after ten purchases would turn a toy into a chore. |
+| D9 | Optional or required | **Always optional.** |
 
 ## 10. Risks
 
-- Art volume (57 sprites + ~15 pieces) is the main cost: mitigated by the emoji fallback and the sheet workflow.
-- Dragging on small phones: mitigated by the tap-tap fallback and ≥ 48 px targets.
-- AI sheets rarely keep a perfect grid: the slicing script crops by the cell grid and trims; any wrong cell is regenerated alone with the same style bible.
-- The concept image has a text-like brand plate on the fridge: the prompts forbid any text and logo.
+- **A lopsided puzzle** (25 of 57 ingredients are vegetables): handled by D1 and checked by a test.
+- **Friction after every purchase:** the entry is a small chip, never a popup; the crate collects a whole trip; the Prep Cook can do it; skipping costs nothing.
+- **Dragging on small phones:** the tap-then-tap path is always available, targets are wide bands ≥ 48 px, and a round has at most 12 tokens (transform-only animation, no layout thrash).
+- **Looks that do not match the game's fridge:** the generated fridge was sampled from the Inventory's own fridge (cream enamel, brown trim); the Inventory fridge and the game must be compared side by side in P3.
+- **Art volume:** already generated; the slicing and the WebP budget are the same pipeline that already shipped the supplies and ingredients.
+- **A weak reason to come back:** the magnets, the streak and the Hype are the hooks; if the funnel is weak the tuning data is in one file.
+- **Playgama's live build is old:** no measurement is meaningful until the new build ships (the analytics events carry `game_version`).
