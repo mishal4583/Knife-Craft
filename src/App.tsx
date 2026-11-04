@@ -4270,14 +4270,20 @@ export function App() {
               // Tomorrow morning's opening chores come with the new day (once).
               // …and the night's standing orders arrive with the morning (deliveries.ts, once).
               // A Cleaner on duty washes the sink's dishes by hand first (closingChores.ts).
-              persist(
-                afterNight(
-                  choresAfterClose(
-                    closeDay(cleanerClosing(save).save, restaurantLevelOf(save.levelProgress)),
-                    restaurantLevelOf(save.levelProgress),
-                  ).save,
+              const night = afterNight(
+                choresAfterClose(
+                  closeDay(cleanerClosing(save).save, restaurantLevelOf(save.levelProgress)),
                   restaurantLevelOf(save.levelProgress),
                 ).save,
+                restaurantLevelOf(save.levelProgress),
+              );
+              // …what arrived goes on Fridge Sort's crate (business/fridgeSort.ts; nothing is bought or moved).
+              persist(
+                addToCrate(
+                  night.save,
+                  night.received.flatMap((r) => r.lines.map((l) => l.id)),
+                  restaurantLevelOf(save.levelProgress),
+                ),
               );
             }}
           />

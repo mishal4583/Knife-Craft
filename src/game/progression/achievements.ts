@@ -25,6 +25,7 @@ import {
   paidMilestoneIds,
 } from "./milestoneRewards";
 import { endlessStarsOf } from "../restaurant/restaurantStanding";
+import { fridgeSortOf } from "../business/fridgeSort";
 import { restaurantRecordOf } from "../restaurant/serviceReport";
 import { restaurantSuppliesOf } from "../restaurant/serviceSupplies";
 
@@ -248,6 +249,33 @@ const LADDERS: readonly Ladder[] = [
       { target: 50_000, reward: 0 },
     ],
     value: (s) => Math.floor((s.economy?.lifetime?.["automation-income"] ?? 0) / 100),
+  },
+  {
+    // Fridge Sort (developer 2026-11-03): badges only, reward 0, so the achievement economy and the campaign target do not move.
+    key: "tidy",
+    group: "Business",
+    icon: "📦",
+    unit: "crates",
+    title: (t) => (t <= 10 ? "Tidy fridge" : "Fridge keeper"),
+    description: (t) => `Put away ${t} crates in Fridge Sort.`,
+    tiers: () => [
+      { target: 10, reward: 0 },
+      { target: 50, reward: 0 },
+    ],
+    value: (s) => fridgeSortOf(s).rounds ?? 0,
+  },
+  {
+    key: "perfect",
+    group: "Business",
+    icon: "🧲",
+    unit: "crates",
+    title: (t) => (t <= 5 ? "Perfect crate" : "Flawless fridge"),
+    description: (t) => `Finish ${t} crates in Fridge Sort with three stars.`,
+    tiers: () => [
+      { target: 5, reward: 0 },
+      { target: 25, reward: 0 },
+    ],
+    value: (s) => fridgeSortOf(s).perfect ?? 0,
   },
 ];
 

@@ -16,6 +16,9 @@ import path from "node:path";
 import { DEFAULT_SAVE, type SaveData } from "../src/game/SaveManager.ts";
 import { INGREDIENTS, type IngredientId } from "../src/game/definitions.ts";
 import { fridgeZoneFor } from "../src/game/business/fridgeView.ts";
+import { shelfLifeForIngredient } from "../src/game/business/perishability.ts";
+import { achievementsFor } from "../src/game/progression/achievements.ts";
+import { afterNight, setStandingOrder } from "../src/game/restaurant/deliveries.ts";
 import { secondFloorOf } from "../src/game/restaurant/secondFloor.ts";
 import {
   COMBO_MAX,
@@ -29,9 +32,12 @@ import {
   VEG_BINS,
   addToCrate,
   autoPutAway,
+  MAX_EXPIRING_TOKENS,
   bestPossible,
   comboMultiplier,
   difficultyAt,
+  expiringTokens,
+  expiryDoubleActive,
   finishRound,
   fridgeSortOf,
   fridgeTierOf,
@@ -518,6 +524,149 @@ console.log("H. Simulated players");
     randomThree === 0 && randomStars / randomRuns < 0.35,
     "H7: a player dropping at random never gets three stars and averages under a third of a star",
     { avg: randomStars / randomRuns, three: randomThree, runs: randomRuns },
+  );
+}
+
+console.log("J. Expiring food (Level 74+), achievements, magnets");
+{
+  const day = 12;
+  const withStock = (ids: IngredientId[], ageLeft: number[]): SaveData => {
+    const s = fresh();
+    s.business.calendar = { ...s.business.calendar, businessDay: day };
+    ids.forEach((id, i) => {
+      s.business.inventory[id] = {
+        ingredientId: id,
+        quantity: 3,
+        unitCost: 100,
+        purchaseDay: day - (shelfLifeForIngredient(id) - ageLeft[i]!),
+      };
+    });
+    return s;
+  };
+  const crate: IngredientId[] = ["tomato", "carrot", "cheddar", "apple", "salmon", "basil"];
+  const sv = withStock(["tomato", "cheddar", "salmon", "apple"], [1, 1, 2, 30]);
+  const stockBefore = JSON.stringify(sv.business.inventory);
+  const at74 = expiringTokens(sv, crate, 74);
+  assert(
+    at74.size === MAX_EXPIRING_TOKENS &&
+      MAX_EXPIRING_TOKENS === 2 &&
+      at74.has("tomato") &&
+      at74.has("cheddar"),
+    "J1: exactly two tokens are expiring (⏳) in the crate: the two spoiling tonight, never more than two",
+    [...at74],
+  );
+  assert(
+    expiringTokens(sv, crate, 73).size === 0 && expiringTokens(sv, crate, 20).size === 0,
+    "J2: no expiring tokens below Level 74 (the bonus is off there)",
+  );
+  assert(
+    [...at74].every((id) => crate.includes(id) && sv.business.inventory[id]) && !at74.has("apple"),
+    "J3: only food in the crate that is really about to spoil counts (a fresh apple never does)",
+    [...at74],
+  );
+  assert(
+    JSON.stringify(sv.business.inventory) === stockBefore,
+    "J4: looking at expiring food never changes the stock",
+  );
+  assert(
+    expiringTokens(sv, crate, 74).size === at74.size &&
+      [...expiringTokens(sv, crate, 74)].join() === [...at74].join(),
+    "J5: the same save gives the same ⏳ tokens (deterministic)",
+  );
+  const flat = scoreRound({ drops: [true, true, true], tokens: 3, msLeft: 0 });
+  const dbl = scoreRound({ drops: [true, true, true], tokens: 3, msLeft: 0 }, new Set([2]));
+  assert(
+    dbl === flat + pointsFor(2),
+    "J6: a doubled right drop pays exactly twice its own points, nothing else changes",
+    { flat, dbl },
+  );
+  assert(
+    expiryDoubleActive(20_000, 45_000) && !expiryDoubleActive(15_000, 45_000),
+    "J7: the double holds while more than a third of the clock is left",
+  );
+  const b0 = bestPossible(12, 74);
+  const b2 = bestPossible(12, 74, 2);
+  assert(
+    b2 > b0 && b2 - b0 <= 2 * pointsFor(11),
+    "J8: the best possible score counts the ⏳ tokens too, so a crate with expiring food is not easier to ace",
+    { b0, b2 },
+  );
+  const idealLeft = timeLimitMs(12, 74) - 12 * 1000;
+  const doubledScore = scoreRound(
+    { drops: Array.from({ length: 12 }, () => true), tokens: 12, msLeft: idealLeft },
+    new Set([10, 11]),
+  );
+  assert(
+    doubledScore === b2 && starsFor(doubledScore, 12, 74, 2) === 3,
+    "J9: a flawless round at the reference pace that doubles the two ⏳ tokens at the end of the streak equals the best possible and gets three stars",
+    { doubledScore, b2 },
+  );
+  // achievements: badges only
+  const a = fresh();
+  a.business.fridgeSort = { rounds: 10, perfect: 5 };
+  const ach = achievementsFor(a).filter((x) => /^ach-(tidy|perfect)-/.test(x.id));
+  assert(
+    ach.length === 4 && ach.every((x) => x.reward === 0),
+    "J10: Tidy fridge / Perfect crate are four badge-only achievements (no money, so the economy does not move)",
+    ach.map((x) => [x.id, x.reward]),
+  );
+  assert(
+    ach.find((x) => x.id === "ach-tidy-10")?.reached === true &&
+      ach.find((x) => x.id === "ach-perfect-5")?.reached === true &&
+      ach.find((x) => x.id === "ach-tidy-50")?.reached === false &&
+      ach.find((x) => x.id === "ach-perfect-25")?.reached === false,
+    "J11: 10 crates reach Tidy fridge, 5 three-star crates reach Perfect crate, the next tiers are not reached",
+  );
+  const m = fresh();
+  m.business.fridgeSort = { perfect: 40 };
+  assert(
+    magnetsOf(m) === MAX_MAGNETS && magnetsOf(fresh()) === 0,
+    "J12: magnets cap at 12 and a new save has none",
+  );
+}
+
+console.log("K. The morning delivery fills the crate");
+{
+  const base = fresh();
+  base.levelProgress = {
+    currentLevelId: "level-40",
+    highestUnlockedLevelId: "level-40",
+    completedLevelIds: Array.from({ length: 39 }, (_, i) => `level-${i + 1}`),
+    campaignVersion: 3,
+  } as SaveData["levelProgress"];
+  base.credits = 5_000_000;
+  base.business.inventory = {};
+  base.business.restaurantDay = {
+    day: 12,
+    opened: false,
+    servicesDone: 0,
+    servicesPlanned: 0,
+    closingDue: false,
+    openingCredits: null,
+    openingLevel: null,
+  } as SaveData["business"]["restaurantDay"];
+  const night = afterNight(setStandingOrder(base, "fresh", true), 40);
+  const arrived = night.received.flatMap((r) => r.lines.map((l) => l.id));
+  const filled = addToCrate(night.save, arrived, 40);
+  const crate = fridgeSortOf(filled).crate ?? [];
+  assert(arrived.length > 0, "K1: the standing order really delivered something", arrived);
+  assert(
+    crate.length > 0 && crate.every((id) => arrived.includes(id) && id in INGREDIENTS),
+    "K2: what arrived (ingredients only) is on the crate",
+    { arrived, crate },
+  );
+  assert(
+    filled.credits === night.save.credits &&
+      JSON.stringify(filled.economyLedger) === JSON.stringify(night.save.economyLedger) &&
+      JSON.stringify(filled.business.inventory) === JSON.stringify(night.save.business.inventory),
+    "K3: filling the crate moves no money, no ledger entry and no stock",
+  );
+  const app = fs.readFileSync(path.join(ROOT, "src/App.tsx"), "utf8");
+  assert(
+    /afterNight\([\s\S]{0,400}\)[\s\S]{0,300}addToCrate\(\s*night\.save,\s*night\.received/.test(
+      app,
+    ),
+    "K4: App puts the night's delivery on the crate when the day closes",
   );
 }
 

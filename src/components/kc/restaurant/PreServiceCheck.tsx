@@ -1350,6 +1350,21 @@ function NewsCard({ news }: { news: RestaurantNews }) {
           <InfoTip label={`About ${s.title}`}>{s.intro}</InfoTip>
         </div>
       ))}
+      {news.systems.some((s) => s.id === "fridge-freshness") ? (
+        <div className="mt-1 flex items-center gap-1.5" data-news-minigame="fridge-sort">
+          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-copper/10 text-[16px]">
+            📦
+          </span>
+          <p className="min-w-0 flex-1 font-ui text-[13px] font-extrabold text-walnut-dark">
+            Fridge Sort
+          </p>
+          <InfoTip label="About Fridge Sort">
+            Food you buy waits in a crate. Put each item on its shelf before the clock ends: stars
+            give Hype and fridge magnets. It is optional and costs nothing. Find it in the Market
+            and the Inventory once you buy food.
+          </InfoTip>
+        </div>
+      ) : null}
       {news.chain ? (
         <p
           className="mt-1 font-ui text-[12.5px] font-bold text-walnut-dark"

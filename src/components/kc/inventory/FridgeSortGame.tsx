@@ -11,6 +11,9 @@ import {
   TARGETS,
   bestPossible,
   comboMultiplier,
+  expiringTokens,
+  expiryDoubleActive,
+  magnetsOf,
   fridgeSortOf,
   fridgeTierOf,
   pointsFor,
@@ -67,6 +70,78 @@ function SortButton({
 }
 
 type Phase = "ready" | "playing" | "paused" | "done";
+
+const fsUrl = (name: string) => `${import.meta.env.BASE_URL}business/fridge-sort/${name}.webp`;
+
+/** One painted piece (public/business/fridge-sort/, cut from the generated art by scripts/make-market-assets.py); hidden if it fails to load. */
+function Art({
+  name,
+  className,
+  style,
+}: {
+  name: string;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  return (
+    <img
+      src={fsUrl(name)}
+      alt=""
+      draggable={false}
+      data-fridge-art={name}
+      onError={(e) => {
+        e.currentTarget.style.display = "none";
+      }}
+      className={cn("pointer-events-none select-none", className)}
+      style={style}
+    />
+  );
+}
+
+/** A wooden plaque: the painted frame is a 9-slice border so the carving never stretches, the text sits on a plain layer above it. */
+function Plaque({
+  children,
+  className,
+  testId,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  testId?: string;
+}) {
+  return (
+    <div
+      data-testid={testId}
+      className={cn("relative flex items-center justify-center bg-[#3a2417]/80", className)}
+      style={{ borderRadius: 14 }}
+    >
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{
+          borderStyle: "solid",
+          borderWidth: "14px 26px",
+          borderImage: `url(${fsUrl("hud-wide")}) 40 80 40 80 fill / 14px 26px 14px 26px stretch`,
+        }}
+      />
+      <span className="relative z-10 flex items-center justify-center gap-1.5">{children}</span>
+    </div>
+  );
+}
+
+/** Where on the painted star bar (fraction of its width) the score marks sit, and the bar's usable track. */
+const BAR_MARKS = [0.406, 0.682, 0.917] as const;
+const BAR_LEFT = 0.06;
+const BAR_RIGHT = 0.95;
+/** Score share -> where the fill ends on the bar: piecewise linear through the star marks, so each star lands on a painted ring. */
+function barX(share: number): number {
+  const at = [0, ...STAR_AT, 1];
+  const xs = [BAR_LEFT, ...BAR_MARKS, BAR_RIGHT];
+  const v = Math.min(1, Math.max(0, share));
+  for (let i = 1; i < at.length; i++)
+    if (v <= at[i]!)
+      return xs[i - 1]! + ((v - at[i - 1]!) / (at[i]! - at[i - 1]!)) * (xs[i]! - xs[i - 1]!);
+  return BAR_RIGHT;
+}
 
 const pad = (n: number) => String(n).padStart(2, "0");
 const clock = (ms: number) =>
@@ -167,6 +242,12 @@ export function FridgeSortGame({
     effects: RoundEffects;
   } | null>(null);
   const [tick, setTick] = useState(0);
+  /** The ⏳ tokens of this crate (Level 74+): worth double while more than a third of the clock is left. */
+  const [expiring, setExpiring] = useState<ReadonlySet<IngredientId>>(() =>
+    round ? expiringTokens(save, round.tokens, playerLevel) : new Set(),
+  );
+  /** Which right drops (by their order among the right ones) were doubled. */
+  const doubledRef = useRef<Set<number>>(new Set());
 
   // The fast-changing facts live in refs so a pointer event never sees an old render.
   const dropsRef = useRef<boolean[]>([]);
@@ -203,8 +284,11 @@ export function FridgeSortGame({
       if (!round || doneRef.current) return;
       doneRef.current = true;
       const drops = dropsRef.current;
-      const score = scoreRound({ drops, tokens: round.tokens.length, msLeft: left });
-      const stars = starsFor(score, round.tokens.length, playerLevel);
+      const score = scoreRound(
+        { drops, tokens: round.tokens.length, msLeft: left },
+        doubledRef.current,
+      );
+      const stars = starsFor(score, round.tokens.length, playerLevel, expiring.size);
       let effects = NO_EFFECTS;
       if (!practice) {
         const r = onAction({ kind: "finish", outcome: { stars, score, tokens: round.tokens } });
@@ -217,7 +301,7 @@ export function FridgeSortGame({
       setHover(null);
       AudioManager.playSfx(stars > 0 ? "levelComplete" : "plate");
     },
-    [onAction, playerLevel, practice, round],
+    [onAction, playerLevel, practice, round, expiring],
   );
 
   // The clock: runs only while playing (it starts with the first touch, and pausing freezes it).
@@ -259,6 +343,7 @@ export function FridgeSortGame({
     if (placedRef.current.has(id)) return;
     start();
     const ok = targetOf(id) === target;
+    const doubled = ok && expiring.has(id) && expiryDoubleActive(leftRef.current, round.timeMs);
     const streakBefore = (() => {
       let n = 0;
       for (let i = dropsRef.current.length - 1; i >= 0 && dropsRef.current[i]; i--) n++;
@@ -268,10 +353,11 @@ export function FridgeSortGame({
     setSelected(null);
     setHover(null);
     if (ok) {
+      if (doubled) doubledRef.current.add(placedRef.current.size);
       placedRef.current = new Set(placedRef.current).add(id);
       setPlaced(placedRef.current);
       setHint(null);
-      const pts = pointsFor(streakBefore);
+      const pts = pointsFor(streakBefore, doubled);
       AudioManager.playSfx(
         streakBefore + 1 === 3 || streakBefore + 1 === 5 || streakBefore + 1 === 8
           ? "sortCombo"
@@ -279,7 +365,7 @@ export function FridgeSortGame({
       );
       if (!reducedMotion) {
         const key = ++popKey.current;
-        setPops((p) => [...p.slice(-4), { key, text: `+${pts}`, target }]);
+        setPops((p) => [...p.slice(-4), { key, text: `+${pts}${doubled ? " ×2" : ""}`, target }]);
         window.setTimeout(() => setPops((p) => p.filter((x) => x.key !== key)), 900);
       }
       if (placedRef.current.size >= round.tokens.length) finish(leftRef.current);
@@ -342,6 +428,7 @@ export function FridgeSortGame({
     const r = round;
     if (!r) return;
     dropsRef.current = [];
+    doubledRef.current = new Set();
     placedRef.current = new Set();
     doneRef.current = false;
     leftRef.current = r.timeMs;
@@ -355,11 +442,13 @@ export function FridgeSortGame({
   const nextCrate = () => {
     const next = roundFor(save, playerLevel);
     dropsRef.current = [];
+    doubledRef.current = new Set();
     placedRef.current = new Set();
     doneRef.current = false;
     leftRef.current = next?.timeMs ?? 0;
     lastTickRef.current = 0;
     setRound(next);
+    setExpiring(next ? expiringTokens(save, next.tokens, playerLevel) : new Set());
     setPlaced(new Set());
     setMsLeft(next?.timeMs ?? 0);
     setResult(null);
@@ -391,8 +480,11 @@ export function FridgeSortGame({
     );
   }
 
-  const live = scoreRound({ drops: dropsRef.current, tokens: round.tokens.length, msLeft: 0 });
-  const maxScore = bestPossible(round.tokens.length, playerLevel);
+  const live = scoreRound(
+    { drops: dropsRef.current, tokens: round.tokens.length, msLeft: 0 },
+    doubledRef.current,
+  );
+  const maxScore = bestPossible(round.tokens.length, playerLevel, expiring.size);
   const progress = Math.min(1, live / Math.max(1, maxScore));
   const streak = (() => {
     let n = 0;
@@ -498,54 +590,68 @@ export function FridgeSortGame({
       data-tokens={round.tokens.length}
       data-left={crateLeft.length}
     >
-      {/* HUD */}
+      {/* HUD: pause, clock and score on the painted wooden plaques */}
       <div className="flex items-center gap-2 px-3 pt-3">
         <button
           type="button"
           onClick={pause}
           aria-label="Pause"
           data-testid="sort-pause"
-          className="grid h-12 w-12 shrink-0 place-items-center rounded-full border-2 border-[#d6b46a] bg-walnut text-[18px] text-gold"
+          className="relative grid h-12 w-12 shrink-0 place-items-center rounded-full bg-walnut text-[18px] text-gold"
         >
-          ⏸
+          <Art name="hud-round" className="absolute inset-0 h-full w-full object-fill" />
+          <span className="relative">⏸</span>
         </button>
-        <div
+        <Plaque
+          testId="sort-timer"
           className={cn(
-            "flex h-12 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-2xl border-2 border-[#d6b46a] bg-walnut-dark font-ui text-[22px] font-black tabular-nums",
+            "h-12 min-w-0 flex-1 font-ui text-[22px] font-black tabular-nums",
             low ? "text-tomato" : "text-ivory",
           )}
-          data-testid="sort-timer"
         >
           <span aria-hidden>⏱</span> {clock(msLeft)}
-        </div>
-        <div
-          className="flex h-12 min-w-[104px] items-center justify-center gap-1 rounded-2xl border-2 border-[#d6b46a] bg-walnut-dark px-2 font-ui text-[16px] font-black tabular-nums text-ivory"
-          data-testid="sort-score"
+        </Plaque>
+        <Plaque
+          testId="sort-score"
+          className="h-12 min-w-[104px] px-2 font-ui text-[16px] font-black tabular-nums text-ivory"
         >
           <span aria-hidden className="text-gold">
             ★
           </span>
           {live.toLocaleString("en-US")}
-        </div>
+        </Plaque>
       </div>
-      {/* the star bar: it fills with the score, three marks */}
+      {/* the star bar: the painted frame, a fill that grows with the score, and a star on each painted ring */}
       <div className="px-4 pt-2">
-        <div className="relative h-4 overflow-hidden rounded-full bg-black/35" aria-hidden>
+        <div className="relative mx-auto aspect-[480/72] w-full max-w-[420px]" aria-hidden>
+          <Art name="starbar-frame" className="absolute inset-0 h-full w-full object-fill" />
           <div
-            className="absolute inset-y-0 left-0 rounded-full bg-[linear-gradient(90deg,#8bc34a,#f2c230)] transition-[width] duration-200"
-            style={{ width: `${Math.round(progress * 100)}%` }}
-          />
+            className="absolute overflow-hidden rounded-full"
+            style={{
+              left: `${BAR_LEFT * 100}%`,
+              right: `${(1 - BAR_RIGHT) * 100}%`,
+              top: "27%",
+              bottom: "27%",
+            }}
+          >
+            <Art
+              name="starbar-fill"
+              className="h-full w-full object-fill transition-[clip-path] duration-200"
+              style={{
+                clipPath: `inset(0 ${(100 - ((barX(progress) - BAR_LEFT) / (BAR_RIGHT - BAR_LEFT)) * 100).toFixed(1)}% 0 0)`,
+              }}
+            />
+          </div>
           {STAR_AT.map((s, i) => (
-            <span
+            <Art
               key={i}
+              name={progress >= s ? "star-full" : "star-empty"}
               className={cn(
-                "absolute top-1/2 -translate-x-1/2 -translate-y-1/2 text-[13px] leading-none",
-                progress >= s ? "text-gold" : "text-ivory/45",
+                "absolute top-1/2 h-[62%] w-auto -translate-x-1/2 -translate-y-1/2",
+                progress >= s && "drop-shadow-[0_0_4px_rgba(255,214,90,0.9)]",
               )}
-              style={{ left: `${s * 100}%` }}
-            >
-              ★
-            </span>
+              style={{ left: `${BAR_MARKS[i]! * 100}%` }}
+            />
           ))}
         </div>
         <div className="mt-1 flex items-center justify-between font-ui text-[11px] font-bold text-ivory/75">
@@ -578,12 +684,13 @@ export function FridgeSortGame({
       </div>
 
       {/* the crate */}
-      <div
-        className="relative mx-3 mb-3 mt-2 rounded-[22px] border-4 border-[#6b4a2b] bg-[#9a6b3d] p-2 pb-3 shadow-lift"
-        data-testid="sort-crate"
-      >
+      <div className="relative mx-3 mb-3 mt-2" data-testid="sort-crate">
+        <Art
+          name="crate-back"
+          className="absolute inset-x-0 top-0 h-[calc(100%-22px)] w-full object-fill"
+        />
         <div
-          className="flex min-h-[72px] flex-wrap items-center justify-center gap-2"
+          className="relative flex min-h-[72px] flex-wrap items-center justify-center gap-2 px-5 pb-1 pt-6"
           style={dense ? { minHeight: 56, gap: 6 } : undefined}
         >
           {crateLeft.map((id) => {
@@ -594,9 +701,10 @@ export function FridgeSortGame({
                 key={id}
                 type="button"
                 data-token={id}
+                data-expiring={expiring.has(id) ? "1" : undefined}
                 data-testid={`sort-token-${id}`}
                 aria-pressed={isSel}
-                aria-label={`${INGREDIENTS[id].name}${isSel ? " (selected)" : ""}`}
+                aria-label={`${INGREDIENTS[id].name}${expiring.has(id) ? " (expires soon, worth double)" : ""}${isSel ? " (selected)" : ""}`}
                 onPointerDown={(e) => onTokenDown(e, id)}
                 onPointerMove={onTokenMove}
                 onPointerUp={onTokenUp}
@@ -613,7 +721,7 @@ export function FridgeSortGame({
                   if (next) AudioManager.playSfx("sortPick");
                 }}
                 className={cn(
-                  "flex touch-none flex-col items-center justify-center rounded-2xl border-2 bg-[#fff7e6] leading-none",
+                  "relative flex touch-none flex-col items-center justify-center rounded-2xl border-2 bg-[#fff7e6] leading-none",
                   dense ? "h-[54px] w-[50px] text-[22px]" : "h-[64px] w-[58px] text-[26px]",
                   isSel
                     ? "border-gold -translate-y-1 shadow-[0_4px_0_rgba(0,0,0,0.25)]"
@@ -630,6 +738,17 @@ export function FridgeSortGame({
                 <span className="mt-0.5 max-w-[54px] truncate font-ui text-[10px] font-extrabold text-walnut-dark">
                   {INGREDIENTS[id].name.split(" ")[0]}
                 </span>
+                {expiring.has(id) ? (
+                  <span
+                    aria-hidden
+                    className={cn(
+                      "absolute -right-1.5 -top-2 rounded-full border border-[#c0392b] bg-[#fff1d6] px-1 font-ui text-[10px] font-black leading-[16px] text-[#c0392b]",
+                      expiryDoubleActive(msLeft, round.timeMs) ? "" : "opacity-40",
+                    )}
+                  >
+                    ⏳×2
+                  </span>
+                ) : null}
               </button>
             );
           })}
@@ -637,19 +756,26 @@ export function FridgeSortGame({
             <span className="font-ui text-[13px] font-bold text-ivory">Empty ✓</span>
           ) : null}
         </div>
-        {phase === "ready" ? (
-          <p
-            className="mt-1 text-center font-ui text-[12px] font-bold text-ivory"
-            data-testid="sort-ready"
-          >
-            Drag an item to its shelf to start
-          </p>
-        ) : null}
-        {round.queued > 0 ? (
-          <p className="mt-1 text-center font-ui text-[11px] font-bold text-ivory/80">
-            + {round.queued} more waiting
-          </p>
-        ) : null}
+        {/* the front of the crate: a wooden lip with the hint on it */}
+        <div className="relative -mt-1 flex h-[46px] flex-col items-center justify-center overflow-hidden rounded-b-xl">
+          <Art
+            name="crate-front"
+            className="absolute inset-x-0 bottom-0 h-auto w-full max-w-none"
+          />
+          {phase === "ready" ? (
+            <p
+              className="relative text-center font-ui text-[12px] font-extrabold text-ivory [text-shadow:0_1px_2px_rgba(0,0,0,0.7)]"
+              data-testid="sort-ready"
+            >
+              Drag an item to its shelf to start
+            </p>
+          ) : null}
+          {round.queued > 0 ? (
+            <p className="relative text-center font-ui text-[11px] font-bold text-ivory/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.7)]">
+              + {round.queued} more waiting
+            </p>
+          ) : null}
+        </div>
       </div>
 
       {/* the token under the finger */}
@@ -701,8 +827,17 @@ export function FridgeSortGame({
           data-testid="sort-result"
           data-stars={result.stars}
         >
-          <div className="w-full max-w-[340px] rounded-3xl border-4 border-[#b8873f] bg-[#f7edd7] p-4 text-center shadow-lift">
-            <p className="font-display text-[22px] font-extrabold text-walnut-dark">
+          <div className="relative w-full max-w-[340px] px-[22px] pb-[50px] pt-[96px] text-center">
+            <span
+              aria-hidden
+              className="pointer-events-none absolute inset-0"
+              style={{
+                borderStyle: "solid",
+                borderWidth: "82px 17px 19px 17px",
+                borderImage: `url(${fsUrl("result-panel")}) 124 26 29 26 fill / 82px 17px 19px 17px stretch`,
+              }}
+            />
+            <p className="absolute inset-x-0 top-[34px] font-display text-[20px] font-extrabold text-[#fff3d6] [text-shadow:0_2px_3px_rgba(90,20,10,0.8)]">
               {result.stars === 3
                 ? "Perfectly sorted!"
                 : result.stars > 0
@@ -710,17 +845,19 @@ export function FridgeSortGame({
                   : "Time's up"}
             </p>
             <p
-              className="mt-1 text-[34px] leading-none tracking-[0.15em]"
+              className="relative flex items-center justify-center gap-1.5"
               aria-label={`${result.stars} of 3 stars`}
             >
               {[1, 2, 3].map((n) => (
-                <span key={n} className={n <= result.stars ? "text-gold" : "text-walnut/25"}>
-                  ★
-                </span>
+                <Art
+                  key={n}
+                  name={n <= result.stars ? "star-full" : "star-empty"}
+                  className={cn("h-[46px] w-auto", n === 2 && "-translate-y-1")}
+                />
               ))}
             </p>
             <p
-              className="mt-2 font-ui text-[15px] font-black text-walnut-dark"
+              className="relative mt-2 font-ui text-[15px] font-black text-walnut-dark"
               data-testid="sort-final-score"
             >
               {result.score.toLocaleString("en-US")}
@@ -729,19 +866,25 @@ export function FridgeSortGame({
               ) : null}
             </p>
             {practice ? (
-              <p className="mt-1 font-ui text-[12.5px] font-bold text-walnut/65">
+              <p className="relative mt-1 font-ui text-[12.5px] font-bold text-walnut/65">
                 Practice: no reward
               </p>
             ) : (
               <p
-                className="mt-1 font-ui text-[13px] font-extrabold text-olive"
+                className="relative mt-1 font-ui text-[13px] font-extrabold text-olive"
                 data-testid="sort-reward"
               >
                 {result.effects.hype > 0 ? `⚡ +${result.effects.hype} Hype` : "No Hype this time"}
                 {result.effects.magnet ? " · 🧲 new fridge magnet!" : ""}
               </p>
             )}
-            <div className="mt-3 grid gap-2">
+            {!practice && result.effects.magnet ? (
+              <Art
+                name={`magnet-${String(Math.max(1, magnetsOf(save))).padStart(2, "0")}`}
+                className="relative mx-auto mt-1 h-[52px] w-[52px]"
+              />
+            ) : null}
+            <div className="relative mt-3 grid gap-2">
               {!practice && roundFor(save, playerLevel) ? (
                 <SortButton onClick={nextCrate} testId="sort-next">
                   Next crate

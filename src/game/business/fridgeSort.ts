@@ -15,7 +15,7 @@ import type { SaveData } from "../SaveManager";
 import { INGREDIENTS, type IngredientId } from "../definitions";
 import { RESTAURANT_SYSTEMS } from "../restaurant/restaurantProgression";
 import { addHype } from "../restaurant/secondFloor";
-import { FRIDGE_ZONES, fridgeZoneFor, type FridgeZoneId } from "./fridgeView";
+import { FRIDGE_ZONES, fridgeView, fridgeZoneFor, type FridgeZoneId } from "./fridgeView";
 
 // ── When it opens ────────────────────────────────────────────────────────────
 
@@ -326,16 +326,55 @@ export function scoreRound(r: RoundResult, doubledRight: ReadonlySet<number> = n
   return score;
 }
 
-/** The score of a flawless round at the reference pace (what the stars are measured against). */
-export function bestPossible(tokens: number, level: number): number {
+/**
+ * The score of a flawless round at the reference pace (what the stars are measured against). `doubles` = how many ⏳ tokens the crate has:
+ * the best round counts them at the end of the streak (where a token is worth most), so a crate with expiring food is not easier to ace.
+ */
+export function bestPossible(tokens: number, level: number, doubles = 0): number {
   const left = Math.max(0, timeLimitMs(tokens, level) - REFERENCE_MS_PER_TOKEN * tokens);
-  return scoreRound({ drops: Array.from({ length: tokens }, () => true), tokens, msLeft: left });
+  const n = Math.min(Math.max(0, Math.floor(doubles)), tokens);
+  const doubled = new Set(Array.from({ length: n }, (_, i) => tokens - 1 - i));
+  return scoreRound(
+    { drops: Array.from({ length: tokens }, () => true), tokens, msLeft: left },
+    doubled,
+  );
 }
 
-export function starsFor(score: number, tokens: number, level: number): 0 | 1 | 2 | 3 {
-  const share = score / Math.max(1, bestPossible(tokens, level));
+export function starsFor(score: number, tokens: number, level: number, doubles = 0): 0 | 1 | 2 | 3 {
+  const share = score / Math.max(1, bestPossible(tokens, level, doubles));
   return share >= STAR_AT[2] ? 3 : share >= STAR_AT[1] ? 2 : share >= STAR_AT[0] ? 1 : 0;
 }
+
+// ── Expiring food (Level 74 and up) ──────────────────────────────────────────
+
+/** At most this many ⏳ tokens a crate shows, so the stars stay fair. */
+export const MAX_EXPIRING_TOKENS = 2;
+
+/**
+ * The ⏳ tokens of a round: the crate's ingredients whose stock in the fridge spoils tonight or soon, the soonest first, at most
+ * MAX_EXPIRING_TOKENS. Empty below the level that turns the bonus on. Read-only: it never touches the stock.
+ */
+export function expiringTokens(
+  save: SaveData,
+  tokens: readonly IngredientId[],
+  reachedLevel: number,
+): Set<IngredientId> {
+  if (!difficultyAt(reachedLevel).expiryBonus) return new Set();
+  const inCrate = new Set<IngredientId>(tokens);
+  const soon: { id: IngredientId; daysLeft: number }[] = [];
+  for (const z of fridgeView(save).zones)
+    for (const item of z.items)
+      if (
+        inCrate.has(item.id) &&
+        (item.attention === "spoils-tonight" || item.attention === "expiring")
+      )
+        soon.push({ id: item.id, daysLeft: item.daysLeft });
+  soon.sort((a, b) => a.daysLeft - b.daysLeft || (a.id < b.id ? -1 : 1));
+  return new Set(soon.slice(0, MAX_EXPIRING_TOKENS).map((x) => x.id));
+}
+
+/** A ⏳ token counts double only while more than a third of the clock is left. */
+export const expiryDoubleActive = (msLeft: number, timeMs: number): boolean => msLeft > timeMs / 3;
 
 // ── Finishing a round ────────────────────────────────────────────────────────
 

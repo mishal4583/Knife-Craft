@@ -238,6 +238,59 @@ console.log("G. Ingredient pictures");
   );
 }
 
+console.log("H. The Fridge Sort pieces");
+{
+  const dir = path.join(ROOT, "public/business/fridge-sort");
+  const need = [
+    ...["roots", "salad", "stems", "pods"].map((b) => `bin-${b}`),
+    "drawer-fruit",
+    "drawer-greens",
+    "rack-butter",
+    "rack-aromatics",
+    "shelf-glass",
+    "hud-wide",
+    "hud-small",
+    "hud-round",
+    "hud-tag",
+    "starbar-frame",
+    "starbar-fill",
+    "star-full",
+    "star-empty",
+    "crate-back",
+    "crate-front",
+    "result-panel",
+    ...Array.from({ length: 12 }, (_, i) => `magnet-${String(i + 1).padStart(2, "0")}`),
+  ];
+  const missing = need.filter((n) => !fs.existsSync(path.join(dir, `${n}.webp`)));
+  assert(
+    missing.length === 0,
+    "H1: every Fridge Sort piece (bins, drawers, racks, shelf, HUD, bar, stars, crate, panel, 12 magnets) exists",
+    missing,
+  );
+  const total = fs.readdirSync(dir).reduce((n, f) => n + fs.statSync(path.join(dir, f)).size, 0);
+  assert(
+    total <= 600 * 1024,
+    "H2: the Fridge Sort art stays under 600 KB in all",
+    `${(total / 1024).toFixed(0)} KB`,
+  );
+  const game = read("src/components/kc/inventory/FridgeSortGame.tsx");
+  const names = [...game.matchAll(/(?:name|file)[=:]\s*"([a-z][a-z-]+)"/g)].map((m) => m[1]!);
+  const unknown = names.filter(
+    (n) =>
+      /^(bin|drawer|rack|shelf|hud|starbar|star|crate|result|magnet)-/.test(n) &&
+      !fs.existsSync(path.join(dir, `${n}.webp`)),
+  );
+  assert(
+    names.length >= 12 && unknown.length === 0,
+    "H3: the screen asks only for pieces that exist (no 404)",
+    { names: names.length, unknown },
+  );
+  assert(
+    /e\.currentTarget\.style\.display = "none"/.test(game),
+    "H4: a piece that fails to load hides itself (the screen still works)",
+  );
+}
+
 console.log(
   failures === 0 ? "\nMARKET ART QA: ALL PASS" : `\nMARKET ART QA: ${failures} FAILURE(S)`,
 );

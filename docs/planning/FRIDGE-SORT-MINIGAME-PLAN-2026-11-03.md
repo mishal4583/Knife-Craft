@@ -193,8 +193,8 @@ New files (React DOM + CSS, no Phaser, no animation library; the existing UI pri
 | P0 | the decisions in §9 | 0.5 d |
 | P1 ✅ | `fridgeSort.ts`, the save field, the migration, `fridge-sort-qa` — DONE 2026-11-03 | 1.5 d |
 | P2 ✅ | the playable screen on the ingredient pictures and CSS shelves; the chips E1/E2; the crate filled by the purchase commit; the Prep Cook button; sounds; analytics; `fridgesort.mjs` — DONE 2026-11-03 (the Level 14 unlock card is still to do, see P4) | 2.5 d |
-| P3 | art integration: A1/A2 fridge, crate, HUD, stars, magnets; slicing script; budget check | 1.5 d |
-| P4 | synthesized sound, combo feedback, Reduced Motion, the delivery entry E3, analytics, the browser test, a real-device pass | 1.5 d |
+| P3 ✅ | art integration: bins, drawers, racks, shelves, crate, HUD, star bar, stars, result board, magnets; slicing script; budget check — DONE 2026-11-04 | 1.5 d |
+| P4 ✅ (except the real-device pass) | sound, combo, Reduced Motion, the delivery entry E3, the expiring token, achievements, the Level 14 card, analytics, the browser test — DONE 2026-11-04 | 1.5 d |
 
 **How we will know it works** (Bridge analytics; the live Playgama build is old, so measure only after the new build ships):
 - offered → started ≥ 50 %, started → finished ≥ 90 %, average stars ≥ 2, a round under 50 s;

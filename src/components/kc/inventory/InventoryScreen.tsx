@@ -47,6 +47,7 @@ import { AmountChip, ItemPic, type TileTone } from "./ItemTile";
 import { expiredStockPreview, type DiscardExpiredResult } from "@/game/business/discardExpired";
 import { IngredientIcon } from "@/components/kc/common/IngredientIcon";
 import { FridgeSortChip } from "./FridgeSortChip";
+import { magnetsOf } from "@/game/business/fridgeSort";
 
 /** How many tiles each Needs Attention group shows before "View all" (two rows of three). */
 const ATTENTION_PREVIEW = 6;
@@ -887,6 +888,7 @@ export function InventoryScreen({
                   selectedId={selectedId}
                   onSelect={setSelectedId}
                   onEquipment={restaurantOpen ? toEquipment : undefined}
+                  magnets={magnetsOf(save)}
                 />
               </div>
 

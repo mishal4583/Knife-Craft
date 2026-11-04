@@ -334,7 +334,7 @@ console.log("W. Wiring");
         app,
       ) &&
       // …and the night's standing orders (deliveries.ts afterNight wraps it too).
-      /persist\(\s*(?:afterNight\(\s*)?(?:choresAfterClose\(\s*)?closeDay\((?:cleanerClosing\(save\)\.save|save), restaurantLevelOf\(save\.levelProgress\)\)/.test(
+      /(?:persist\(|const night = )\s*(?:afterNight\(\s*)?(?:choresAfterClose\(\s*)?closeDay\((?:cleanerClosing\(save\)\.save|save), restaurantLevelOf\(save\.levelProgress\)\)/.test(
         app,
       ) &&
       /closingDue &&\s*dayCeremonyAt\(restaurantLevelOf\(save\.levelProgress\)\) &&/.test(app),

@@ -11,6 +11,9 @@
 //   S10 Reduced Motion: no floating-score animation; the round still works
 //   S11 at 320 x 568 nothing scrolls sideways and every token and shelf is at least 48 px tall
 //   S12 no console errors
+//   S13 Level 80: food that spoils tonight shows an hourglass x2 token and pays double (200 for the first drop)
+//   S14 earned magnets are stuck on the Inventory fridge door (none before the first)
+//   S15 the painted pieces (HUD, star bar, crate, bins, drawers, racks, shelves) all load
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import {
   MOVED_IN_BUSINESS,
@@ -361,6 +364,74 @@ try {
     "S11 at 320 x 568: no sideways scroll and every token and shelf is at least 48 px tall",
     small.overflowX <= 0 && small.minH >= 48 && small.count >= 11,
     small,
+  );
+
+  // ---- S13: an expiring token pays double (Level 74+) ----
+  await boot(
+    page,
+    saveAt(
+      80,
+      {},
+      {
+        calendar: { businessDay: 20 },
+        inventory: {
+          ...STOCK,
+          tomato: { ingredientId: "tomato", quantity: 4, unitCost: 100, purchaseDay: 14 },
+          cheddar: { ingredientId: "cheddar", quantity: 4, unitCost: 100, purchaseDay: 17 },
+        },
+      },
+    ),
+  );
+  await openInventory(page);
+  await tap(page, '[data-testid="fridge-sort-chip"]');
+  await sleep(900);
+  const exp = await page.evaluate(() =>
+    [...document.querySelectorAll('[data-token][data-expiring="1"]')].map((e) => e.dataset.token),
+  );
+  await tap(page, '[data-token="tomato"]');
+  await tap(page, '[data-target-id="veg-salad"]');
+  const first = await state(page);
+  check(
+    "S13 Level 80: tomato and cheddar (spoiling tonight) are hourglass tokens, and the first right drop of one pays 200",
+    exp.length === 2 && exp.includes("tomato") && exp.includes("cheddar") && first?.score === "200",
+    { exp, score: first?.score },
+  );
+
+  // ---- S14: magnets on the Inventory fridge door ----
+  await boot(page, saveAt(20, {}, { fridgeSort: { perfect: 7 } }));
+  await openInventory(page);
+  const mag2 = await page.evaluate(() => {
+    const m = document.querySelector('[data-testid="fridge-magnets"]');
+    return m ? { n: Number(m.dataset.count), imgs: m.querySelectorAll("img").length } : null;
+  });
+  await boot(page, saveAt(20, {}, { fridgeSort: { perfect: 2 } }));
+  await openInventory(page);
+  const mag0 = await page.evaluate(
+    () => !!document.querySelector('[data-testid="fridge-magnets"]'),
+  );
+  check(
+    "S14 7 three-star crates = 2 magnets on the door; 2 crates = none",
+    mag2?.n === 2 && mag2.imgs === 2 && !mag0,
+    { mag2, mag0 },
+  );
+
+  // ---- S15: the painted pieces load ----
+  await boot(page, saveAt(80));
+  await openInventory(page);
+  await tap(page, '[data-testid="fridge-sort-chip"]');
+  await sleep(1200);
+  const art = await page.evaluate(() => {
+    const imgs = [...document.querySelectorAll("img[data-fridge-art]")];
+    return {
+      n: imgs.length,
+      bad: imgs.filter((i) => !(i.complete && i.naturalWidth > 0)).map((i) => i.dataset.fridgeArt),
+      names: [...new Set(imgs.map((i) => i.dataset.fridgeArt))],
+    };
+  });
+  check(
+    "S15 the painted HUD, star bar, crate, bins, drawers, racks and shelves all load",
+    art.n >= 14 && art.bad.length === 0,
+    art,
   );
 
   const errors = logs.filter(

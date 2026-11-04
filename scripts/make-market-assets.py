@@ -206,6 +206,58 @@ def build_fridge_sort() -> int:
     return 0
 
 
+# the game screen's frame pieces: (output name, source sheet, box in the sheet or None = find by blob, output width, alpha lo, hi)
+FS_UI = [
+    ("hud-wide", "A12.png", (26, 196, 791, 496), 360),
+    ("hud-small", "A12.png", (820, 226, 1385, 468), 260),
+    ("hud-round", "A12.png", (1391, 218, 1661, 499), 96),
+    ("hud-tag", "A12.png", (1675, 204, 2168, 474), 220),
+    ("starbar-frame", "A13.png", (35, 93, 2137, 450), 480),
+    ("starbar-fill", "A13.png", (67, 455, 2100, 628), 480),
+    ("star-full", "A14.png", (176, 119, 670, 598), 96),
+    ("star-empty", "A14.png", (839, 119, 1333, 599), 96),
+    ("crate-back", "A4.png", (31, 26, 1903, 801), 560),
+    ("crate-front", "A5.png", (31, 88, 1903, 766), 560),
+    ("result-panel", "A16.png", (0, 0, 1422, 1103), 520),
+]
+MAGNET_ORDER = ["tomato", "carrot", "apple", "lemon", "cheese", "fish", "chef-hat", "whisk", "star", "heart", "chilli", "mushroom"]
+
+
+def build_fridge_ui() -> int:
+    total = 0
+    for name, sheet, box, width in FS_UI:
+        src = os.path.join(FRIDGE_SRC, sheet)
+        if not os.path.exists(src):
+            print("missing fridge art (local-only):", src)
+            return 1
+        item = clean(Image.open(src).convert("RGBA").crop(box), 50, 160)
+        if item is None:
+            print("EMPTY", name)
+            return 1
+        item = item.resize((width, max(1, round(item.height * width / item.width))), Image.LANCZOS)
+        path = os.path.join(FS_OUT, f"{name}.webp")
+        item.save(path, "WEBP", quality=84, method=6, alpha_quality=85)
+        total += os.path.getsize(path)
+    src = os.path.join(FRIDGE_SRC, "A17.png")
+    if not os.path.exists(src):
+        print("missing fridge art (local-only):", src)
+        return 1
+    sheet = Image.open(src).convert("RGBA")
+    cw, ch = sheet.width // 4, sheet.height // 3
+    for i, mid in enumerate(MAGNET_ORDER):
+        col, row = i % 4, i // 4
+        cell = sheet.crop((col * cw, row * ch, (col + 1) * cw, (row + 1) * ch))
+        item = clean(cell, 110, 215)
+        if item is None:
+            print("EMPTY MAGNET", mid)
+            return 1
+        path = os.path.join(FS_OUT, f"magnet-{i + 1:02d}.webp")
+        fit(item).save(path, "WEBP", quality=84, method=6, alpha_quality=85)
+        total += os.path.getsize(path)
+    print(f"fridge sort frame art: {total / 1024:.0f} KB")
+    return 0
+
+
 def main() -> int:
     missing = [n for n in list(ATLASES) if not os.path.exists(os.path.join(SRC, n))]
     if missing:
@@ -230,7 +282,7 @@ def main() -> int:
     print(f"{count} supply icons, {total / 1024:.0f} KB total, {total / count / 1024:.1f} KB each")
     if build_ingredients() != 0:
         return 1
-    if build_fridge_sort() != 0:
+    if build_fridge_sort() != 0 or build_fridge_ui() != 0:
         return 1
     os.makedirs(PORTRAITS, exist_ok=True)
     for name in ("floor-server", "floor-cleaner", "cashier"):
