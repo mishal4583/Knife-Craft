@@ -49,6 +49,7 @@ const ROLE_PORTRAIT: Record<string, string> = {
   server: "server",
   cleaner: "cleaner",
   manager: "manager",
+  cashier: "cashier",
 };
 
 /** Compact summaries for the cards; the full, authoritative text stays behind ⓘ. */

@@ -39,11 +39,12 @@ assert(
       router,
     ) &&
     // Four since the restaurant map (developer 2026-10-15), five with the second
-    // floor (2026-10-16): both maps live in the lazy restaurant chunk.
-    (router.match(/lazy\(\(\) =>\s*loadRestaurantScreens\(\)/g) ?? []).length === 5 &&
-    (router.match(/<Suspense fallback=\{<RestaurantLoading/g) ?? []).length === 5 &&
+    // floor (2026-10-16): both maps live in the lazy restaurant chunk. Six with Fridge Sort (developer
+    // 2026-11-03): its screen is in the same lazy chunk, so the campaign never carries it.
+    (router.match(/lazy\(\(\) =>\s*loadRestaurantScreens\(\)/g) ?? []).length === 6 &&
+    (router.match(/<Suspense fallback=\{<RestaurantLoading/g) ?? []).length === 6 &&
     /Opening the restaurant…/.test(router),
-  "L1: the five Restaurant screens (both map floors included) are lazy from one module, each in Suspense with a loading state",
+  "L1: the six Restaurant screens (both map floors and Fridge Sort included) are lazy from one module, each in Suspense with a loading state",
 );
 
 function walk(dir: string, out: string[] = []): string[] {

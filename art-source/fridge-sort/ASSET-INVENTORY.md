@@ -46,4 +46,15 @@ Commercial uses four shelves; Professional uses five. A19 and A20 are additions 
 4. Use nine-slice treatment for the stretchable HUD, checklist, and result panels; draw all text and the pause glyph in code.
 5. Verify transparent edges, cell mapping/order, mobile layout, asset budget, and tier-specific placement in game.
 
-The later visual mismatch audit added 62 Market supply icons, two Second Floor team portraits, and replacement green-chili and chicken-breast sprites; see the adjacent `art-source/market-supplies/ASSET-MANIFEST.md`. Audio cues, effects, pointer/tutorial hand, labels, drag trails, and sparkle/confetti are specified as synthesized, existing, or code-drawn—not image assets.
+The later visual mismatch audit added 62 Market supply icons, three Second Floor team portraits, and replacement green-chili and chicken-breast sprites; see the adjacent `art-source/market-supplies/ASSET-MANIFEST.md`. Audio cues, effects, pointer/tutorial hand, labels, drag trails, and sparkle/confetti are specified as synthesized, existing, or code-drawn—not image assets.
+
+
+## Fridge layout follow-up
+
+| File | Contents |
+|---|---|
+| `A23-door-empty.png` | Empty-rack fridge door: butter nook and lower wire-front rack, with checklist and ivy |
+| `A24-veg-bins.png` | Exact 2048 × 512 four-bin sheet; original generated sheet retained as `A24-veg-bins-source.png` |
+| `A25-drawers.png` | Exact 1024 × 512 amber fruit and green herb crisper drawers; original retained as `A25-drawers-source.png` |
+
+Cashier portrait is at `art-source/staff/cashier.png`. Optional O1 token plates and O2 badge stickers were marked for a later pass and were not generated.

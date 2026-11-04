@@ -127,7 +127,7 @@ Result: at Level 14 the player sees about 6 targets (3 vegetable bins, dairy, a 
 
 - **Time:** `20 s + 2.5 s × tokens` (8 tokens = 40 s, 12 tokens = 50 s). Level 14–26 adds +30 % (the player is learning).
 - **Score:** 100 per right placement × a combo multiplier (+0.25 per right in a row, up to ×3), plus 20 per second left when every token was placed.
-- **Stars** (thresholds to be tuned by the QA suite and real play): ★ at 50 % of the best possible score, ★★ at 75 %, ★★★ at 95 %. The bar fills as the score grows.
+- **Stars** (tuned 2026-11-03 with simulated players, `fridge-sort-qa` H): ★ at 50 % of the best possible score, ★★ at 75 %, ★★★ at **92 %** (the first plan said 95 %, which made even a flawless player at 2 s a token get only two stars). In practice: no mistakes at about 2 s a token or faster = ★★★; one mistake or a slower pace = ★★; finishing slowly = ★. The bar fills as the score grows.
 - **Practice rounds** ("Again") score and show stars but give no reward, so nothing can be farmed (crates only come from real purchases anyway).
 - **Best score** is kept per fridge tier.
 
@@ -191,8 +191,8 @@ New files (React DOM + CSS, no Phaser, no animation library; the existing UI pri
 | Phase | Work | Time |
 |---|---|---|
 | P0 | the decisions in §9 | 0.5 d |
-| P1 | `fridgeSort.ts`, the save field, the migration, `fridge-sort-qa` | 1.5 d |
-| P2 | the playable screen on the existing emoji/pictures and CSS shelves; the chips E1/E2; the unlock card at Level 14 | 2.5 d |
+| P1 ✅ | `fridgeSort.ts`, the save field, the migration, `fridge-sort-qa` — DONE 2026-11-03 | 1.5 d |
+| P2 ✅ | the playable screen on the ingredient pictures and CSS shelves; the chips E1/E2; the crate filled by the purchase commit; the Prep Cook button; sounds; analytics; `fridgesort.mjs` — DONE 2026-11-03 (the Level 14 unlock card is still to do, see P4) | 2.5 d |
 | P3 | art integration: A1/A2 fridge, crate, HUD, stars, magnets; slicing script; budget check | 1.5 d |
 | P4 | synthesized sound, combo feedback, Reduced Motion, the delivery entry E3, analytics, the browser test, a real-device pass | 1.5 d |
 

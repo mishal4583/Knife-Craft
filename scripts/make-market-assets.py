@@ -157,6 +157,55 @@ def build_ingredients() -> int:
     return 0
 
 
+FS_OUT = os.path.join(ROOT, "public", "business", "fridge-sort")
+# (output name, source sheet, cell box (x0, y0, x1, y1) in the sheet, output width)
+FS_PARTS = [
+    ("bin-roots", "A24-veg-bins.png", (0, 0, 512, 512), 300),
+    ("bin-salad", "A24-veg-bins.png", (512, 0, 1024, 512), 300),
+    ("bin-stems", "A24-veg-bins.png", (1024, 0, 1536, 512), 300),
+    ("bin-pods", "A24-veg-bins.png", (1536, 0, 2048, 512), 300),
+    ("drawer-fruit", "A25-drawers.png", (0, 0, 512, 512), 300),
+    ("drawer-greens", "A25-drawers.png", (512, 0, 1024, 512), 300),
+]
+# the door's two racks are cut out of the empty door (A23, an opaque painting): (x0, y0, x1, y1) in its 737 x 2135 pixels
+FS_DOOR = [("rack-butter", (80, 540, 665, 760), 300), ("rack-aromatics", (80, 1085, 650, 1400), 300)]
+# one glass shelf cut from the fridge (A1): the floor of the Dairy and Meat bands
+FS_SHELF = ("shelf-glass", (205, 435, 895, 520), 360)
+
+
+def build_fridge_sort() -> int:
+    os.makedirs(FS_OUT, exist_ok=True)
+    total = 0
+    for name, sheet, box, width in FS_PARTS:
+        src = os.path.join(FRIDGE_SRC, sheet)
+        if not os.path.exists(src):
+            print("missing fridge art (local-only):", src)
+            return 1
+        cell = Image.open(src).convert("RGBA").crop(box)
+        item = clean(cell, 70, 200)
+        if item is None:
+            print("EMPTY", name)
+            return 1
+        item = item.resize((width, max(1, round(item.height * width / item.width))), Image.LANCZOS)
+        path = os.path.join(FS_OUT, f"{name}.webp")
+        item.save(path, "WEBP", quality=84, method=6, alpha_quality=85)
+        total += os.path.getsize(path)
+    door_src = os.path.join(FRIDGE_SRC, "A23-door-empty.png")
+    shelf_src = os.path.join(FRIDGE_SRC, "A1.png")
+    for name, box, width in FS_DOOR + [FS_SHELF]:
+        src = door_src if name.startswith("rack") else shelf_src
+        if not os.path.exists(src):
+            print("missing fridge art (local-only):", src)
+            return 1
+        part = Image.open(src).convert("RGBA").crop(box)
+        part = part.resize((width, max(1, round(part.height * width / part.width))), Image.LANCZOS)
+        path = os.path.join(FS_OUT, f"{name}.webp")
+        part.save(path, "WEBP", quality=84, method=6, alpha_quality=85)
+        total += os.path.getsize(path)
+    print(f"fridge sort art: {total / 1024:.0f} KB")
+    return 0
+
+
 def main() -> int:
     missing = [n for n in list(ATLASES) if not os.path.exists(os.path.join(SRC, n))]
     if missing:
@@ -181,8 +230,10 @@ def main() -> int:
     print(f"{count} supply icons, {total / 1024:.0f} KB total, {total / count / 1024:.1f} KB each")
     if build_ingredients() != 0:
         return 1
+    if build_fridge_sort() != 0:
+        return 1
     os.makedirs(PORTRAITS, exist_ok=True)
-    for name in ("floor-server", "floor-cleaner"):
+    for name in ("floor-server", "floor-cleaner", "cashier"):
         src = os.path.join(STAFF_SRC, f"{name}.png")
         if not os.path.exists(src):
             print("missing staff portrait", src)

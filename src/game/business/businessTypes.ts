@@ -9,6 +9,7 @@ import type { RestaurantRecord } from "../restaurant/serviceReport";
 import type { CleanlinessState } from "../restaurant/cleanliness";
 import type { DeliveriesState } from "../restaurant/deliveries";
 import type { SecondFloorState } from "../restaurant/secondFloor";
+import type { FridgeSortState } from "./fridgeSort";
 import type { EndlessStarsState } from "../restaurant/restaurantStanding";
 /**
  * BUSINESS_TYPES — Economy V3's own persisted-state container. A single
@@ -190,6 +191,11 @@ export type BusinessState = {
    * stations, their level and last collect time. Absent = nothing owned.
    */
   secondFloor?: SecondFloorState;
+  /**
+   * Fridge Sort (business/fridgeSort.ts): the crate of food waiting to be put away, the best scores, stars and magnets.
+   * Absent = nothing waiting. Never holds money or stock.
+   */
+  fridgeSort?: FridgeSortState;
 };
 
 export const DEFAULT_BUSINESS_STATE: BusinessState = {

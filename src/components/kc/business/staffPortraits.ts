@@ -6,6 +6,7 @@ const PORTRAIT: Record<string, string> = {
   server: "server",
   cleaner: "cleaner",
   manager: "manager",
+  cashier: "cashier",
   "mexican-chef": "specialist-mexican",
   "indian-chef": "specialist-indian",
   "mediterranean-chef": "specialist-mediterranean",
@@ -17,9 +18,8 @@ export function staffPortraitFile(id: string): string | undefined {
 }
 
 /**
- * The emoji shown for a role with no portrait yet, or when the picture cannot load. The Cashier has no portrait file yet (not generated,
- * see docs/planning/FRIDGE-SORT-CODEX-PROMPTS-2026-11-03.md, A22): add `cashier: "cashier"` to PORTRAIT above (and ROLE_PORTRAIT in
- * BusinessStaff.tsx) together with `public/business/staff-portraits/cashier.webp`, never before the file exists (that would be a 404).
+ * The emoji shown when a role's picture cannot load (offline, a missing file) or a role has no portrait (every hireable role has one now,
+ * the Cashier's added 2026-11-04).
  */
 const FALLBACK_EMOJI: Record<string, string> = {
   server: "🤵",

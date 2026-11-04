@@ -4,7 +4,7 @@
  *   A  every supply has exactly one icon: public/business/supplies/<id>.webp, none extra, none missing
  *   B  each icon is a 160 x 160 WebP with an alpha channel, small (<= 12 KB), all together <= 400 KB
  *   C  the build script lists the supplies in the SAME order as SUPPLY_CATALOG (a swapped cell would show the wrong picture)
- *   D  the two Floor team portraits exist (320 x 320 WebP, <= 40 KB)
+ *   D  the Floor team portraits and the Cashier portrait exist (320 x 320 WebP, <= 40 KB)
  *   E  the screens use the pictures and fall back to the emoji when one cannot load (nothing ever blank)
  *   F  the 59 MB of source PNGs stay out of git; only the optimized files are tracked
  *   G  the 57 INGREDIENT pictures (public/business/ingredients): one per ingredient, same format and budget, the build script covers
@@ -104,12 +104,15 @@ console.log("C. The build script's order matches the catalog");
 
 console.log("D. The Floor team portraits");
 {
-  const ok = ["floor-server", "floor-cleaner"].every((n) => {
+  const ok = ["floor-server", "floor-cleaner", "cashier"].every((n) => {
     const f = path.join(ROOT, `public/business/staff-portraits/${n}.webp`);
     const info = fs.existsSync(f) ? webpInfo(f) : null;
     return !!info && info.w === 320 && info.h === 320 && fs.statSync(f).size <= 40 * 1024;
   });
-  assert(ok, "D1: floor-server.webp and floor-cleaner.webp are 320 x 320 WebP, at most 40 KB");
+  assert(
+    ok,
+    "D1: floor-server.webp, floor-cleaner.webp and cashier.webp are 320 x 320 WebP, at most 40 KB",
+  );
 }
 
 console.log("E. The screens use them, with the emoji as the fallback");

@@ -46,6 +46,7 @@ import { InventorySupplies } from "./InventorySupplies";
 import { AmountChip, ItemPic, type TileTone } from "./ItemTile";
 import { expiredStockPreview, type DiscardExpiredResult } from "@/game/business/discardExpired";
 import { IngredientIcon } from "@/components/kc/common/IngredientIcon";
+import { FridgeSortChip } from "./FridgeSortChip";
 
 /** How many tiles each Needs Attention group shows before "View all" (two rows of three). */
 const ATTENTION_PREVIEW = 6;
@@ -875,6 +876,9 @@ export function InventoryScreen({
                   </div>
                 </Panel>
               </div>
+
+              {/* Fridge Sort: the food that was just bought waits here to be put away (from Level 14) */}
+              <FridgeSortChip save={save} go={go} />
 
               {/* The physical fridge */}
               <div ref={fridgeRef} className="-mx-2 scroll-mt-3">

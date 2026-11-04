@@ -400,6 +400,13 @@ import {
   computeDailyPnL,
   DEFAULT_DAILY_ACCUMULATOR,
 } from "@/game/business/BusinessFinanceManager";
+import {
+  addToCrate,
+  autoPutAway,
+  finishRound,
+  type FridgeSortAction,
+  type FridgeSortResult,
+} from "@/game/business/fridgeSort";
 
 // Split away from the initial bundle — Preparation (and the Phaser it
 // pulls in) is needed immediately since Prep is the first screen, but
@@ -1049,6 +1056,44 @@ export function App() {
       });
     }
     return result;
+  }
+
+  /**
+   * Fridge Sort (business/fridgeSort.ts): a round finished, was skipped, or the Prep Cook put the crate away. Applied to the LATEST save so a
+   * double tap cannot pay twice. It moves no money and no stock; the only effects are the sort state, stars and Hype.
+   */
+  function fridgeSortAction(action: FridgeSortAction): FridgeSortResult {
+    const current = saveRef.current;
+    if (!current) return { ok: false };
+    const level = restaurantLevelOf(current.levelProgress);
+    const none = { hype: 0, magnet: false, newBest: false };
+    if (action.kind === "start") {
+      sendAnalyticsEvent("fridge_sort_started", {
+        level,
+        tokens: action.tokens,
+        targets: action.targets,
+      });
+      return { ok: true, effects: none };
+    }
+    if (action.kind === "skip") {
+      sendAnalyticsEvent("fridge_sort_skipped", { level });
+      return { ok: true, effects: none };
+    }
+    if (action.kind === "auto") {
+      persist(autoPutAway(current));
+      sendAnalyticsEvent("fridge_sort_auto", { level });
+      return { ok: true, effects: none };
+    }
+    const out = finishRound(current, action.outcome);
+    persist(out.save);
+    sendAnalyticsEvent("fridge_sort_finished", {
+      level,
+      stars: action.outcome.stars,
+      score: action.outcome.score,
+      tokens: action.outcome.tokens.length,
+      hype: out.effects.hype,
+    });
+    return { ok: true, effects: out.effects };
   }
 
   /**
@@ -1723,10 +1768,15 @@ export function App() {
       );
     }
     persist(
-      recordInventoryPurchase(
-        recorded,
-        lines.reduce((sum, line) => sum + line.totalCost, 0),
-        lines.length,
+      // Fridge Sort (from Level 14): what was just bought waits in a crate to be put away. It moves no money or stock.
+      addToCrate(
+        recordInventoryPurchase(
+          recorded,
+          lines.reduce((sum, line) => sum + line.totalCost, 0),
+          lines.length,
+        ),
+        lines.map((line) => line.ingredientId),
+        restaurantLevelOf(next.levelProgress),
       ),
     );
   }
@@ -4176,6 +4226,7 @@ export function App() {
                 buildKitchenUpgrade={buildKitchenUpgrade}
                 collectAchievement={collectAchievementReward}
                 secondFloorAction={secondFloorAction}
+                fridgeSortAction={fridgeSortAction}
                 cleanerCleans={cleanerCleans}
                 rushAdAvailable={rewardedAdsAvailable()}
                 setMenuPrice={setMenuPrice}

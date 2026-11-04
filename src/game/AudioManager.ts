@@ -884,7 +884,13 @@ export type SfxName =
   | "lightsOff"
   | "squeak"
   | "levelComplete"
-  | "story";
+  | "story"
+  // Fridge Sort (developer 2026-11-03): picking a token up, the right shelf, the wrong one, a combo, the last seconds.
+  | "sortPick"
+  | "sortPlace"
+  | "sortWrong"
+  | "sortCombo"
+  | "sortTick";
 
 type SfxNote = {
   freq: number;
@@ -933,6 +939,21 @@ export const SFX: Record<SfxName, readonly SfxNote[]> = {
     { freq: 494, dur: 1.6, gain: 0.03, attack: 0.5, at: 0.1, wave: "sine", filter: 1500 },
     { freq: 587, dur: 1.8, gain: 0.03, attack: 0.6, at: 0.2, wave: "sine", filter: 1500 },
   ],
+  sortPick: [{ freq: 520, to: 700, dur: 0.07, gain: 0.04, wave: "triangle", filter: 3000 }],
+  sortPlace: [
+    { freq: 0, dur: 0.05, gain: 0.04, noise: true, filter: 900, attack: 0.003 },
+    { freq: 880, dur: 0.14, gain: 0.04, at: 0.03, wave: "sine", filter: 4000 },
+  ],
+  sortWrong: [
+    { freq: 0, dur: 0.07, gain: 0.05, noise: true, filter: 380, attack: 0.004 },
+    { freq: 196, to: 140, dur: 0.18, gain: 0.04, at: 0.02, wave: "sine", filter: 700 },
+  ],
+  sortCombo: [
+    { freq: 784, dur: 0.12, gain: 0.04, wave: "triangle" },
+    { freq: 988, dur: 0.12, gain: 0.04, at: 0.07, wave: "triangle" },
+    { freq: 1319, dur: 0.22, gain: 0.045, at: 0.14, wave: "triangle" },
+  ],
+  sortTick: [{ freq: 0, dur: 0.03, gain: 0.03, noise: true, filter: 2200, attack: 0.002 }],
 };
 const SFX_MIN_GAP_MS = 60;
 

@@ -1553,3 +1553,33 @@ html.kc-reduced-motion .kc-clean-sheen {
 [data-orient="landscape"] .kc-prep .kc-prep-side :is(.mt-1, .mt-1\.5, .mt-2) {
   margin-top: 2px;
 }
+
+/* Fridge Sort (business/fridgeSort.ts): the score that floats up from a shelf, and a wrong token's shake. Reduced Motion never uses them. */
+@keyframes floatUp {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-26px);
+  }
+}
+@keyframes sortShake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-6px);
+  }
+  40% {
+    transform: translateX(6px);
+  }
+  60% {
+    transform: translateX(-4px);
+  }
+  80% {
+    transform: translateX(4px);
+  }
+}

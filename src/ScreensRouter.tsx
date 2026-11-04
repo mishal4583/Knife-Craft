@@ -81,6 +81,7 @@ import type { SharpenKnifeResult } from "@/game/economy/sharpness";
 import type { BlacksmithStat, UpgradeKnifeResult } from "@/game/knives/blacksmith";
 import type { BuyStaffResult } from "@/game/economy/StaffManager";
 import type { ServiceSession } from "@/game/service/ServiceManager";
+import type { FridgeSortAction, FridgeSortResult } from "@/game/business/fridgeSort";
 
 // The Restaurant screens load as their own chunk the first time one opens (task #24).
 const loadRestaurantScreens = () => import("@/components/kc/restaurantScreens");
@@ -98,6 +99,9 @@ const RestaurantMap = lazy(() =>
 );
 const SecondFloorView = lazy(() =>
   loadRestaurantScreens().then((m) => ({ default: m.SecondFloorView })),
+);
+const FridgeSortGame = lazy(() =>
+  loadRestaurantScreens().then((m) => ({ default: m.FridgeSortGame })),
 );
 
 /** Shown for the moment the Restaurant chunk takes to arrive: the screen's own frame, never a blank. */
@@ -178,6 +182,7 @@ export function ScreensRouter({
   onStartBusinessService,
   onEnterBusinessPreparation,
   secondFloorAction,
+  fridgeSortAction,
   cleanerCleans,
   collectAchievement,
 }: {
@@ -258,6 +263,8 @@ export function ScreensRouter({
   onEnterBusinessPreparation: () => void;
   /** The Second Floor: buy / upgrade a station or collect (restaurant/secondFloor.ts). */
   secondFloorAction: (action: SecondFloorAction) => FloorResult;
+  /** Fridge Sort: a round ended / was skipped (App applies it to the latest save). */
+  fridgeSortAction: (action: FridgeSortAction) => FridgeSortResult;
   /** The map's Cleaner finished a real restroom job (App: cleanTask by the Cleaner). */
   cleanerCleans: (job: TaskKind) => void;
   /** Achievements: collect one earned reward (progression/achievements.ts). */
@@ -397,6 +404,20 @@ export function ScreensRouter({
                     onOpenMarket={() => openMarketSecondFloor(routeGo)}
                   />
                   <BottomNav active="restaurant-map" go={routeGo} />
+                </div>
+              </Suspense>
+            ) : null}
+            {screen === "fridge-sort" ? (
+              <Suspense fallback={<RestaurantLoading go={routeGo} active="inventory" />}>
+                <div className="relative h-full w-full overflow-hidden">
+                  <FridgeSortGame
+                    save={save}
+                    playerLevel={restaurantLevelOf(save.levelProgress)}
+                    reducedMotion={save.settings.reducedMotion}
+                    hasPrepCook={save.business.staff?.hiredRoles?.includes("prep-cook") ?? false}
+                    onAction={fridgeSortAction}
+                    onExit={() => routeGo("inventory")}
+                  />
                 </div>
               </Suspense>
             ) : null}

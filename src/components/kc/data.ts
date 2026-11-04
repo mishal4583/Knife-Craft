@@ -42,6 +42,8 @@ export type ScreenId =
   | "restaurant-map"
   /** The Second Floor: the automated food hall (restaurant/secondFloor.ts). */
   | "second-floor"
+  /** Fridge Sort: put the food you bought into the fridge (business/fridgeSort.ts). Optional, from Level 14. */
+  | "fridge-sort"
   | "gameplay"
   | "kitchen"
   | "board"

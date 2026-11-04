@@ -101,9 +101,11 @@ console.log("S. Effects");
   await new Promise((r) => setTimeout(r, 70));
   const names = Object.keys(SFX) as (keyof typeof SFX)[];
   assert(
-    names.join() === "tap,coin,till,bell,plate,delivery,lightsOff,squeak,levelComplete,story" &&
+    // Rule changed (developer 2026-11-03): Fridge Sort added five effects (pick, place, wrong, combo, tick) after the first ten.
+    names.join() ===
+      "tap,coin,till,bell,plate,delivery,lightsOff,squeak,levelComplete,story,sortPick,sortPlace,sortWrong,sortCombo,sortTick" &&
       names.every((n) => SFX[n].length > 0 && SFX[n].every((x) => x.gain > 0 && x.gain <= 0.1)),
-    "S1: ten named effects, each short and quiet (gain ≤ 0.1)",
+    "S1: fifteen named effects (ten + the five Fridge Sort ones), each short and quiet (gain ≤ 0.1)",
   );
   const before = AudioManager.sfxCount;
   for (const n of names) AudioManager.playSfx(n);
