@@ -208,6 +208,8 @@ def build_fridge_sort() -> int:
 
 # the game screen's frame pieces: (output name, source sheet, box in the sheet or None = find by blob, output width, alpha lo, hi)
 FS_UI = [
+    # the big woven basket the bought food arrives in (Fridge Sort, 2026-11-05): A6 whole
+    ("basket", "A6.png", (0, 0, 1672, 941), 560),
     ("hud-wide", "A12.png", (26, 196, 791, 496), 360),
     ("hud-small", "A12.png", (820, 226, 1385, 468), 260),
     ("hud-round", "A12.png", (1391, 218, 1661, 499), 96),
@@ -258,6 +260,20 @@ def build_fridge_ui() -> int:
     return 0
 
 
+def build_wall() -> int:
+    """The kitchen wall and counter behind Fridge Sort (A3, opaque): scaled to 420 px wide."""
+    src = os.path.join(FRIDGE_SRC, "A3.png")
+    if not os.path.exists(src):
+        print("missing fridge art (local-only):", src)
+        return 1
+    im = Image.open(src).convert("RGB")
+    im = im.resize((420, round(im.height * 420 / im.width)), Image.LANCZOS)
+    path = os.path.join(FS_OUT, "kitchen-wall.webp")
+    im.save(path, "WEBP", quality=74, method=6)
+    print(f"kitchen-wall.webp {os.path.getsize(path) / 1024:.0f} KB")
+    return 0
+
+
 def main() -> int:
     missing = [n for n in list(ATLASES) if not os.path.exists(os.path.join(SRC, n))]
     if missing:
@@ -282,7 +298,7 @@ def main() -> int:
     print(f"{count} supply icons, {total / 1024:.0f} KB total, {total / count / 1024:.1f} KB each")
     if build_ingredients() != 0:
         return 1
-    if build_fridge_sort() != 0 or build_fridge_ui() != 0:
+    if build_fridge_sort() != 0 or build_fridge_ui() != 0 or build_wall() != 0:
         return 1
     os.makedirs(PORTRAITS, exist_ok=True)
     for name in ("floor-server", "floor-cleaner", "cashier"):

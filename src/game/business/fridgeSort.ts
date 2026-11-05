@@ -13,16 +13,17 @@
  */
 import type { SaveData } from "../SaveManager";
 import { INGREDIENTS, type IngredientId } from "../definitions";
-import { RESTAURANT_SYSTEMS } from "../restaurant/restaurantProgression";
 import { addHype } from "../restaurant/secondFloor";
 import { FRIDGE_ZONES, fridgeView, fridgeZoneFor, type FridgeZoneId } from "./fridgeView";
+import { itemCount } from "./measure";
 
 // ── When it opens ────────────────────────────────────────────────────────────
 
-/** The first level of the "Fridge & Freshness" stage (Level 14): food starts to spoil, so there is something to put away. */
-export const FRIDGE_SORT_FIRST_LEVEL: number = RESTAURANT_SYSTEMS.find(
-  (s) => s.id === "fridge-freshness",
-)!.firstLevel;
+/**
+ * The level the game opens (Level 3, developer 2026-11-05: it used to open at Level 14, which was too late). The Market opens at Level 1 and
+ * the first service that uses bought food is Level 3 (firstRestock.ts), so the first baskets are small and the first levels teach the fridge.
+ */
+export const FRIDGE_SORT_FIRST_LEVEL = 3;
 
 /** Dev test: `?fridgeSort` in the address shows the game below its level (the same pattern as `?floor2`). */
 export const FRIDGE_SORT_TEST_UNLOCK: boolean =
@@ -97,12 +98,30 @@ export function targetOf(id: IngredientId): TargetId {
   return `veg-${BIN_OF.get(id) ?? "salad"}`;
 }
 
+/**
+ * Up to `count` ingredients that belong to a target, for the pictures on its shelf: the ones in `prefer` first (the basket's own), then the
+ * target's usual members in the registry's order. The screen shows them faded on an empty shelf so a beginner can see what goes where.
+ */
+export function zoneExamples(
+  target: TargetId,
+  prefer: readonly IngredientId[] = [],
+  count = 3,
+): IngredientId[] {
+  const out: IngredientId[] = [];
+  for (const id of prefer) if (targetOf(id) === target && !out.includes(id)) out.push(id);
+  for (const id of Object.keys(INGREDIENTS) as IngredientId[]) {
+    if (out.length >= count) break;
+    if (targetOf(id) === target && !out.includes(id)) out.push(id);
+  }
+  return out.slice(0, count);
+}
+
 // ── Difficulty by level ──────────────────────────────────────────────────────
 
 export type Difficulty = {
   /** From this level. */
   from: number;
-  /** The most tokens one crate holds (a longer shopping list queues as the next crate). */
+  /** The most PIECES one basket holds (a longer shopping list queues as the next basket). */
   maxTokens: number;
   /** At least this many targets are on screen (the crate's own targets always are; the rest are decoys in fridge order). */
   minTargets: number;
@@ -115,10 +134,18 @@ export type Difficulty = {
 };
 
 export const DIFFICULTY: readonly Difficulty[] = [
-  { from: 14, maxTokens: 6, minTargets: 5, hint: "always", timeFactor: 1.3, expiryBonus: false },
-  { from: 27, maxTokens: 8, minTargets: 6, hint: "after-miss", timeFactor: 1, expiryBonus: false },
-  { from: 44, maxTokens: 10, minTargets: 8, hint: "never", timeFactor: 1, expiryBonus: false },
-  { from: 74, maxTokens: 12, minTargets: 10, hint: "never", timeFactor: 1, expiryBonus: true },
+  { from: 3, maxTokens: 8, minTargets: 3, hint: "always", timeFactor: 1.6, expiryBonus: false },
+  { from: 14, maxTokens: 10, minTargets: 5, hint: "always", timeFactor: 1.3, expiryBonus: false },
+  {
+    from: 27,
+    maxTokens: 12,
+    minTargets: 6,
+    hint: "after-miss",
+    timeFactor: 1.1,
+    expiryBonus: false,
+  },
+  { from: 44, maxTokens: 14, minTargets: 8, hint: "never", timeFactor: 1, expiryBonus: false },
+  { from: 74, maxTokens: 16, minTargets: 10, hint: "never", timeFactor: 1, expiryBonus: true },
 ];
 
 export function difficultyAt(level: number): Difficulty {
@@ -134,6 +161,8 @@ export type FridgeTier = "basic" | "commercial" | "professional";
 export type FridgeSortState = {
   /** The ingredients waiting to be put away (one entry per different ingredient; the order they were bought). */
   crate?: IngredientId[];
+  /** How many loose pieces of each crate ingredient were bought (1 lb of tomato is about 3 tomatoes); absent = what one pound holds. */
+  counts?: Partial<Record<IngredientId, number>>;
   /** Raises each time a new crate starts: the seed of its token order. */
   seed?: number;
   /** The best score per fridge tier. */
@@ -144,9 +173,13 @@ export type FridgeSortState = {
   perfect?: number;
   /** Rewarded rounds finished. */
   rounds?: number;
+  /** Baskets of the CURRENT delivery already put away with at least one star (0 = none; a 0-star basket starts it over). */
+  chain?: number;
 };
 
 export const MAX_CRATE_QUEUE = 24;
+/** The most pieces of ONE ingredient that go in the basket (a 10 lb sack of potatoes is not 30 pieces to sort). */
+export const MAX_PIECES_PER_INGREDIENT = 5;
 export const MAX_MAGNETS = 12;
 export const PERFECTS_PER_MAGNET = 3;
 const KNOWN = new Set<string>(Object.keys(INGREDIENTS));
@@ -169,13 +202,20 @@ export function fridgeSortOf(save: SaveData): FridgeSortState {
     const v = whole(raw?.best?.[t]);
     if (v > 0) best[t] = v;
   }
+  const counts: Partial<Record<IngredientId, number>> = {};
+  for (const id of crate) {
+    const n = whole(raw?.counts?.[id], MAX_PIECES_PER_INGREDIENT);
+    if (n > 0) counts[id] = n;
+  }
   return {
     ...(crate.length > 0 ? { crate } : {}),
+    ...(Object.keys(counts).length > 0 ? { counts } : {}),
     seed: whole(raw?.seed),
     best,
     stars: whole(raw?.stars),
     perfect: whole(raw?.perfect),
     rounds: whole(raw?.rounds),
+    ...(whole(raw?.chain, 50) > 0 ? { chain: whole(raw?.chain, 50) } : {}),
   };
 }
 
@@ -199,27 +239,62 @@ export const magnetsOf = (save: SaveData): number =>
 
 // ── The crate ────────────────────────────────────────────────────────────────
 
+/** Pieces in the basket for `stock` of an ingredient (lb or pieces): 1 lb of tomato ≈ 3 tomatoes. At least 1, at most MAX_PIECES_PER_INGREDIENT. */
+export const piecesFor = (id: IngredientId, stock: number): number =>
+  Math.min(MAX_PIECES_PER_INGREDIENT, Math.max(1, Math.round(itemCount(id, stock))));
+
+/** The pieces of `id` waiting: what was bought, or what one pound holds when no amount was recorded (an old save). */
+export const piecesOf = (state: FridgeSortState, id: IngredientId): number =>
+  state.counts?.[id] ?? piecesFor(id, 1);
+
+/** Every loose piece waiting in the crate (what the "Put it away" chip counts). */
+export const piecesWaiting = (save: SaveData): number => {
+  const state = fridgeSortOf(save);
+  return (state.crate ?? []).reduce((n, id) => n + piecesOf(state, id), 0);
+};
+
 /**
- * Puts what was just bought on the crate (the ONE place that fills it is the ingredient purchase commit and the morning delivery).
- * Only from the game's level; ingredients already waiting are not added twice; nothing is lost if more than a crate waits.
+ * Puts what was just bought in the basket (the ONE place that fills it is the ingredient purchase commit and the morning delivery).
+ * `stock` = how much of each ingredient arrived (lb, or pieces): the basket holds that many loose pieces. Only from the game's level;
+ * an ingredient already waiting gets more pieces (up to the cap); nothing is lost if more than a basket waits.
  */
 export function addToCrate(
   save: SaveData,
   bought: readonly string[],
   reachedLevel: number,
+  stock?: Readonly<Record<string, number>>,
 ): SaveData {
   if (!isFridgeSortOpen(reachedLevel)) return save;
   const state = fridgeSortOf(save);
   const crate = [...(state.crate ?? [])];
+  const counts = { ...(state.counts ?? {}) };
   const had = crate.length;
-  for (const id of bought) {
-    if (!KNOWN.has(id) || crate.includes(id as IngredientId) || crate.length >= MAX_CRATE_QUEUE)
+  let changed = false;
+  for (const raw of new Set(bought)) {
+    if (!KNOWN.has(raw)) continue;
+    const id = raw as IngredientId;
+    const add = piecesFor(id, stock?.[id] ?? 1);
+    if (crate.includes(id)) {
+      const now = Math.min(MAX_PIECES_PER_INGREDIENT, (counts[id] ?? piecesFor(id, 1)) + add);
+      if (now !== (counts[id] ?? piecesFor(id, 1))) {
+        counts[id] = now;
+        changed = true;
+      }
       continue;
-    crate.push(id as IngredientId);
+    }
+    if (crate.length >= MAX_CRATE_QUEUE) continue;
+    crate.push(id);
+    counts[id] = add;
+    changed = true;
   }
-  if (crate.length === had) return save;
-  // A new crate (the old one was empty) gets a new seed, so its token order is new and never repeats by accident.
-  return withState(save, { ...state, crate, seed: had === 0 ? state.seed! + 1 : state.seed! });
+  if (!changed) return save;
+  // A new basket (the old one was empty) gets a new seed, so its order is new and never repeats by accident.
+  return withState(save, {
+    ...state,
+    crate,
+    counts,
+    seed: had === 0 ? state.seed! + 1 : state.seed!,
+  });
 }
 
 /** Deterministic shuffle (a small seeded generator): the same crate and seed always give the same order. */
@@ -238,8 +313,10 @@ function shuffled<T>(items: readonly T[], seed: number): T[] {
 }
 
 export type Round = {
-  /** The tokens of this round, in the order they lie in the crate. */
+  /** The pieces of this round (an ingredient appears once per piece), mixed, in the order they lie in the basket. */
   tokens: IngredientId[];
+  /** The different ingredients in the basket. */
+  ingredients: IngredientId[];
   /** How many more are waiting for the next round. */
   queued: number;
   /** The targets drawn on the screen, top to bottom. */
@@ -262,7 +339,46 @@ export function targetsFor(tokens: readonly IngredientId[], level: number): Targ
 }
 
 export const timeLimitMs = (tokens: number, level: number): number =>
-  Math.round((20 + 2.5 * tokens) * difficultyAt(level).timeFactor) * 1000;
+  Math.round((15 + 2.8 * tokens) * difficultyAt(level).timeFactor) * 1000;
+
+/** One basket: whole ingredients, in the order bought, while their pieces fit; the first always goes in (cut to the basket's size). */
+function packBasket(
+  state: FridgeSortState,
+  crate: readonly IngredientId[],
+  max: number,
+): { ingredients: IngredientId[]; pieces: IngredientId[] } {
+  const ingredients: IngredientId[] = [];
+  const pieces: IngredientId[] = [];
+  for (const id of crate) {
+    const n = piecesOf(state, id);
+    if (ingredients.length > 0 && pieces.length + n > max) break;
+    ingredients.push(id);
+    for (let i = 0; i < Math.min(n, max); i++) pieces.push(id);
+  }
+  return { ingredients, pieces };
+}
+
+/** How many baskets the waiting crate makes at this level (0 = nothing waits, or the game is not open). */
+export function basketsLeft(save: SaveData, reachedLevel: number): number {
+  if (!isFridgeSortOpen(reachedLevel)) return 0;
+  const state = fridgeSortOf(save);
+  const max = difficultyAt(reachedLevel).maxTokens;
+  let rest = [...(state.crate ?? [])];
+  let n = 0;
+  while (rest.length > 0) {
+    const { ingredients } = packBasket(state, rest, max);
+    rest = rest.slice(ingredients.length);
+    n++;
+  }
+  return n;
+}
+
+/** About how many baskets `extraPieces` more loose pieces would add to what already waits (the Market plan's hint). */
+export function basketsFor(save: SaveData, reachedLevel: number, extraPieces: number): number {
+  if (!isFridgeSortOpen(reachedLevel)) return 0;
+  const total = piecesWaiting(save) + Math.max(0, Math.floor(extraPieces));
+  return Math.ceil(total / difficultyAt(reachedLevel).maxTokens);
+}
 
 /** The round the crate offers now, or null when nothing waits or the game is not open yet. */
 export function roundFor(save: SaveData, reachedLevel: number): Round | null {
@@ -271,10 +387,12 @@ export function roundFor(save: SaveData, reachedLevel: number): Round | null {
   const crate = state.crate ?? [];
   if (crate.length === 0) return null;
   const d = difficultyAt(reachedLevel);
-  const tokens = shuffled(crate.slice(0, d.maxTokens), state.seed!);
+  const { ingredients, pieces } = packBasket(state, crate, d.maxTokens);
+  const tokens = shuffled(pieces, state.seed!);
   return {
     tokens,
-    queued: Math.max(0, crate.length - tokens.length),
+    ingredients,
+    queued: Math.max(0, crate.length - ingredients.length),
     targets: targetsFor(tokens, reachedLevel),
     timeMs: timeLimitMs(tokens.length, reachedLevel),
     difficulty: d,
@@ -293,7 +411,7 @@ export const REFERENCE_MS_PER_TOKEN = 1000;
  * Score (as a share of the best possible) for one, two and three stars. Tuned with simulated players (fridge-sort-qa H): three stars
  * = no mistakes at about two seconds a token or faster; one mistake or a slower pace = two; finishing slowly = one.
  */
-export const STAR_AT: readonly [number, number, number] = [0.5, 0.75, 0.92];
+export const STAR_AT: readonly [number, number, number] = [0.5, 0.74, 0.92];
 
 export const comboMultiplier = (streak: number): number =>
   Math.min(COMBO_MAX, 1 + COMBO_STEP * streak);
@@ -381,16 +499,64 @@ export const expiryDoubleActive = (msLeft: number, timeMs: number): boolean => m
 /** Hype for 0, 1, 2 and 3 stars (once per crate). */
 export const HYPE_BY_STARS: readonly [number, number, number, number] = [0, 5, 10, 15];
 
+/**
+ * Extra days of freshness the food put away well keeps (developer 2026-11-05: "a real effect"): two stars +1 day, three stars +2. It moves
+ * the stock's purchase day forward (the age clamps at 0, so a fresh item simply starts ageing later), never past 2 days ahead of today, and
+ * never touches quantity, credits or the ledger. Only ingredients the player actually has in stock.
+ */
+export const FRESH_DAYS_BY_STARS: readonly [number, number, number, number] = [0, 0, 1, 2];
+export const MAX_FRESH_DAYS_AHEAD = 2;
+
+/**
+ * A "big delivery" (developer 2026-11-05: buy for several days, sort it all): when the LAST basket of a delivery of two or more baskets
+ * is put away and every basket earned a star, the Second Floor's Hype gets +5 for each basket after the first, at most +20.
+ */
+export const BIG_DELIVERY_HYPE_PER_BASKET = 5;
+export const BIG_DELIVERY_HYPE_MAX = 20;
+export const bigDeliveryHype = (baskets: number): number =>
+  baskets >= 2 ? Math.min(BIG_DELIVERY_HYPE_MAX, BIG_DELIVERY_HYPE_PER_BASKET * (baskets - 1)) : 0;
+
+export function freshenStock(
+  save: SaveData,
+  ids: readonly IngredientId[],
+  days: number,
+): { save: SaveData; freshened: IngredientId[] } {
+  if (days <= 0) return { save, freshened: [] };
+  const today = save.business.calendar.businessDay;
+  const inventory = { ...save.business.inventory };
+  const freshened: IngredientId[] = [];
+  for (const id of new Set(ids)) {
+    const entry = inventory[id];
+    if (!entry || !(entry.quantity > 0)) continue;
+    const next = Math.min(entry.purchaseDay + days, today + MAX_FRESH_DAYS_AHEAD);
+    if (next <= entry.purchaseDay) continue;
+    inventory[id] = { ...entry, purchaseDay: next };
+    freshened.push(id);
+  }
+  if (freshened.length === 0) return { save, freshened };
+  return { save: { ...save, business: { ...save.business, inventory } }, freshened };
+}
+
 export type RoundOutcome = {
   stars: 0 | 1 | 2 | 3;
   score: number;
-  /** The ingredients of the round (the whole shown crate is put away when the round ends, placed or not). */
+  /** The pieces of the round (the whole shown basket is put away when the round ends, placed or not). */
   tokens: readonly IngredientId[];
   /** "Again" rounds score and show stars but give nothing and keep nothing. */
   practice?: boolean;
 };
 
-export type RoundEffects = { hype: number; magnet: boolean; newBest: boolean };
+export type RoundEffects = {
+  hype: number;
+  magnet: boolean;
+  newBest: boolean;
+  /** The ingredients that now keep fresh longer, and by how many days (0 = none). */
+  freshened?: readonly IngredientId[];
+  freshDays?: number;
+  /** The big-delivery Hype on top of `hype` (0 = none), and how many baskets the delivery had. */
+  bigHype?: number;
+  baskets?: number;
+};
 
 /**
  * Applies a finished round: the shown tokens leave the crate, the best score, stars and perfect count are kept, and Hype is added.
@@ -402,7 +568,8 @@ export function finishRound(
 ): { save: SaveData; effects: RoundEffects } {
   if (o.practice) return { save, effects: { hype: 0, magnet: false, newBest: false } };
   const state = fridgeSortOf(save);
-  const left = (state.crate ?? []).filter((id) => !o.tokens.includes(id));
+  const taken = new Set(o.tokens);
+  const left = (state.crate ?? []).filter((id) => !taken.has(id));
   const tier = fridgeTierOf(save);
   const best = state.best ?? {};
   const newBest = o.score > (best[tier] ?? 0);
@@ -410,19 +577,42 @@ export function finishRound(
   const magnet =
     Math.min(MAX_MAGNETS, Math.floor(perfect / PERFECTS_PER_MAGNET)) >
     Math.min(MAX_MAGNETS, Math.floor(state.perfect! / PERFECTS_PER_MAGNET));
+  const counts = { ...(state.counts ?? {}) };
+  for (const id of taken) delete counts[id];
+  // A delivery is a run of baskets: each needs a star to keep the run; a 0-star basket starts it over.
+  const chain = o.stars > 0 ? (state.chain ?? 0) + 1 : 0;
+  const bigHype = left.length === 0 ? bigDeliveryHype(chain) : 0;
   const next: FridgeSortState = {
     ...state,
-    ...(left.length > 0 ? { crate: left } : {}),
+    ...(left.length > 0 ? { crate: left, counts } : {}),
     best: newBest ? { ...best, [tier]: o.score } : best,
     stars: state.stars! + o.stars,
     perfect,
     rounds: state.rounds! + 1,
   };
-  if (left.length === 0) delete next.crate;
+  if (left.length === 0) {
+    delete next.crate;
+    delete next.counts;
+    delete next.chain;
+  } else if (chain > 0) next.chain = chain;
+  else delete next.chain;
   const hype = HYPE_BY_STARS[o.stars];
   let out = withState(save, next);
-  if (hype > 0) out = addHype(out, hype);
-  return { save: out, effects: { hype, magnet, newBest } };
+  if (hype + bigHype > 0) out = addHype(out, hype + bigHype);
+  const fresh = freshenStock(out, [...taken], FRESH_DAYS_BY_STARS[o.stars]);
+  out = fresh.save;
+  return {
+    save: out,
+    effects: {
+      hype,
+      magnet,
+      newBest,
+      freshened: fresh.freshened,
+      freshDays: fresh.freshened.length > 0 ? FRESH_DAYS_BY_STARS[o.stars] : 0,
+      bigHype,
+      baskets: chain,
+    },
+  };
 }
 
 /** The Prep Cook puts the crate away on its own: no stars, no reward, no Hype. */
@@ -431,6 +621,8 @@ export function autoPutAway(save: SaveData): SaveData {
   if (!state.crate || state.crate.length === 0) return save;
   const next = { ...state };
   delete next.crate;
+  delete next.counts;
+  delete next.chain;
   return withState(save, next);
 }
 

@@ -1,6 +1,7 @@
-// Fridge Sort (developer 2026-11-03), restaurant build, in a real browser: the "Put it away" mini-game (business/fridgeSort.ts).
-//   S1 below Level 14 there is no chip; from Level 14 a crate of bought food shows "Put it away · 6" above the Inventory fridge
-//   S2 the chip opens the game: the clock does NOT run until the first touch; 6 tokens, the targets, the timer
+// Fridge Sort (developer 2026-11-03; the basket of loose pieces, developer 2026-11-05), restaurant build, in a real browser: the "Put it away"
+// mini-game (business/fridgeSort.ts). A purchase becomes loose PIECES (1 lb of tomato = 3 tomatoes) mixed in one basket; each piece goes to a shelf.
+//   S1 below Level 3 there is no chip; from Level 3 a basket of bought food shows "Put it away · 7" (the pieces) above the Inventory fridge
+//   S2 the chip opens the game: the how-to card shows the first time, the clock does NOT run until the first touch; 7 pieces, the targets
 //   S3 a WRONG drop springs back (no token placed, no score) and a RIGHT one by TAP then TAP places it
 //   S4 the DRAG path (pointer down, move, up on the shelf) places a token too
 //   S5 sorting the whole crate ends the round: stars, a score, Hype added to the Second Floor, the crate is gone
@@ -13,7 +14,12 @@
 //   S12 no console errors
 //   S13 Level 80: food that spoils tonight shows an hourglass x2 token and pays double (200 for the first drop)
 //   S14 earned magnets are stuck on the Inventory fridge door (none before the first)
-//   S15 the painted pieces (HUD, star bar, crate, bins, drawers, racks, shelves) all load
+//   S15 the painted pieces (HUD, star bar, basket, bins, drawers, racks, shelves) all load
+//   S16 the how-to card is shown once (until a crate is finished) and the ? button brings it back
+//   S17 an empty shelf shows faded pictures of what lives there (Level 3-43), none from Level 44
+//   S18 Level 3: the first basket is small (8 pieces at most) and a wrong shelf tells where the piece goes
+//   S20 a delivery of 30 pieces is 3 baskets: the run is shown, and the whole delivery adds bonus Hype
+//   S19 two or more stars keep the stock fresh longer: the result says so and the stock's purchase day moves (quantity unchanged)
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import {
   MOVED_IN_BUSINESS,
@@ -33,6 +39,8 @@ const check = (id, ok, detail) => {
 };
 
 const CRATE = ["tomato", "carrot", "cheddar", "apple", "salmon", "basil"];
+// 2 tomatoes and one piece of everything else = 7 loose pieces in the basket
+const COUNTS = { tomato: 2, carrot: 1, cheddar: 1, apple: 1, salmon: 1, basil: 1 };
 const WHERE = {
   tomato: "veg-salad",
   carrot: "veg-roots",
@@ -54,7 +62,7 @@ const saveAt = (n, extra = {}, business = {}) =>
     business: {
       ...MOVED_IN_BUSINESS,
       inventory: STOCK,
-      fridgeSort: { crate: CRATE, seed: 1 },
+      fridgeSort: { crate: CRATE, counts: COUNTS, seed: 1 },
       ...business,
     },
     levelProgress: {
@@ -108,17 +116,45 @@ const openInventory = async (page) => {
   await openShortcut(page, "inventory");
   await sleep(1200);
 };
+/** Opens the game from the chip and dismisses the first-time how-to card (returns whether it was shown). */
+const openGame = async (page) => {
+  await tap(page, '[data-testid="fridge-sort-chip"]');
+  await sleep(800);
+  const guide = await page.evaluate(() => !!document.querySelector('[data-testid="sort-guide"]'));
+  if (guide) await tap(page, '[data-testid="sort-guide-ok"]');
+  await sleep(200);
+  return guide;
+};
+/** Sorts every piece still in the basket onto its right shelf (tap the piece, then the shelf). */
+const sortAll = async (page) => {
+  for (let k = 0; k < 40; k++) {
+    const id = await page.evaluate(
+      () => document.querySelector("[data-piece]")?.getAttribute("data-token") ?? null,
+    );
+    if (!id) return;
+    await tap(page, "[data-piece]");
+    await tap(page, `[data-testid="sort-target-${WHERE[id]}"]`);
+  }
+};
+// the freshness reward moves the stock's purchase day, so the stock is compared without it
 const strip = (s) => {
   const c = structuredClone(s);
   delete c.business.fridgeSort;
   delete c.business.secondFloor;
+  delete c.business.inventory;
   return JSON.stringify(c);
 };
+const quantities = (s) =>
+  JSON.stringify(
+    Object.fromEntries(
+      Object.entries(s.business.inventory).map(([k, v]) => [k, [v.quantity, v.unitCost]]),
+    ),
+  );
 
 const { browser, page, logs } = await launch();
 try {
-  // ---- S1: closed below Level 14, open from it ----
-  await boot(page, saveAt(13));
+  // ---- S1: closed below Level 3, open from it ----
+  await boot(page, saveAt(2));
   await openInventory(page);
   const closed = await page.evaluate(
     () => !!document.querySelector('[data-testid="fridge-sort-chip"]'),
@@ -129,8 +165,8 @@ try {
     () => document.querySelector('[data-testid="fridge-sort-chip"]')?.textContent?.trim() ?? null,
   );
   check(
-    "S1 no chip at Level 13; at Level 20 the chip says Put it away · 6",
-    !closed && /Put it away · 6/.test(chip ?? ""),
+    "S1 no chip at Level 2; at Level 20 the chip says Put it away · 7 (the loose pieces)",
+    !closed && /Put it away · 7/.test(chip ?? ""),
     {
       closed,
       chip,
@@ -139,8 +175,7 @@ try {
   const before = await readSave(page);
 
   // ---- S2: open the game ----
-  await tap(page, '[data-testid="fridge-sort-chip"]');
-  await sleep(900);
+  const guideShown = await openGame(page);
   const s2 = await state(page);
   const targets = await page.$$eval('[data-testid="sort-targets"] [data-target-id]', (els) =>
     els.map((e) => e.dataset.targetId),
@@ -149,10 +184,11 @@ try {
   await sleep(1500);
   const s2b = await state(page);
   check(
-    "S2 the game opens ready: 6 tokens, 5+ shelves, and the clock waits for the first touch",
-    s2?.phase === "ready" &&
-      s2.tokens === 6 &&
-      s2.left === 6 &&
+    "S2 the game opens with the how-to card, then ready: 7 pieces, 5+ shelves, and the clock waits for the first touch",
+    guideShown &&
+      s2?.phase === "ready" &&
+      s2.tokens === 7 &&
+      s2.left === 7 &&
       targets.length >= 5 &&
       s2.timer === s2b?.timer,
     { s2, s2b, targets },
@@ -161,6 +197,9 @@ try {
   // ---- S3: a wrong drop, then a right one by tap + tap ----
   await dragTo(page, '[data-testid="sort-token-tomato"]', '[data-testid="sort-target-dairy"]');
   const wrong = await state(page);
+  const wrongNote = await page.evaluate(
+    () => document.querySelector('[data-testid="sort-note"]')?.textContent ?? null,
+  );
   const wrongBack = await page.evaluate(
     () => !!document.querySelector('[data-testid="sort-token-tomato"]'),
   );
@@ -168,11 +207,12 @@ try {
   await tap(page, `[data-testid="sort-target-${WHERE.tomato}"]`);
   const right = await state(page);
   check(
-    "S3 a wrong drop springs back (nothing placed, no points); tap the token then its shelf places it",
-    wrong?.left === 6 &&
+    "S3 a wrong drop springs back (nothing placed, no points) and says where it goes; tap the piece then its shelf places it",
+    wrong?.left === 7 &&
       wrongBack &&
       wrong.score === "0" &&
-      right?.left === 5 &&
+      /Tomato goes in/.test(wrongNote ?? "") &&
+      right?.left === 6 &&
       Number(right.score) === 100 &&
       right.phase === "playing",
     { wrong, right },
@@ -186,16 +226,13 @@ try {
   );
   const dragged = await state(page);
   check(
-    "S4 dragging a token onto its shelf places it (and the combo scores 125)",
-    dragged?.left === 4 && Number(dragged.score) === 225,
+    "S4 dragging a piece onto its shelf places it (and the combo scores 125)",
+    dragged?.left === 5 && Number(dragged.score) === 225,
     dragged,
   );
 
   // ---- S5: finish the crate ----
-  for (const id of ["cheddar", "apple", "salmon", "basil"]) {
-    await tap(page, `[data-testid="sort-token-${id}"]`);
-    await tap(page, `[data-testid="sort-target-${WHERE[id]}"]`);
-  }
+  await sortAll(page);
   await sleep(600);
   const result = await page.evaluate(() => {
     const r = document.querySelector('[data-testid="sort-result"]');
@@ -206,6 +243,7 @@ try {
             .querySelector('[data-testid="sort-final-score"]')
             ?.textContent?.replace(/\D/g, ""),
           reward: document.querySelector('[data-testid="sort-reward"]')?.textContent ?? "",
+          fresh: document.querySelector('[data-testid="sort-fresh"]')?.textContent ?? "",
         }
       : null;
   });
@@ -217,15 +255,16 @@ try {
       result.stars >= 2 &&
       Number(result.score) > 0 &&
       /Hype/.test(result.reward) &&
+      /Stays fresh/.test(result.fresh) &&
       (after.business.secondFloor?.hype ?? 0) > 0 &&
       !after.business.fridgeSort?.crate?.length &&
       after.business.fridgeSort?.rounds === 1,
     { result, hype: after.business.secondFloor?.hype, fs: after.business.fridgeSort },
   );
   check(
-    "S6 credits, inventory and the ledger are identical before and after the whole round",
+    "S6 credits, quantities, prices and the ledger are identical before and after the whole round (only the freshness days move)",
     after.credits === before.credits &&
-      JSON.stringify(after.business.inventory) === JSON.stringify(before.business.inventory) &&
+      quantities(after) === quantities(before) &&
       JSON.stringify(after.economyLedger) === JSON.stringify(before.economyLedger) &&
       strip(after) === strip(before),
     { credits: [before.credits, after.credits] },
@@ -270,18 +309,19 @@ try {
     () => document.querySelector('[data-testid="fridge-sort-chip"]')?.textContent?.trim() ?? null,
   );
   check(
-    "S8 buying in the Market puts the food on the crate (Level 14+) and the chip shows it",
+    "S8 buying in the Market puts the food in the basket (Level 3+): the chip counts the pieces bought (1 lb of tomato = 3)",
     bought.clicked &&
       afterBuy.business.fridgeSort?.crate?.includes(bought.id) &&
-      /Put it away · 1/.test(chipInMarket ?? ""),
-    { bought, crate: afterBuy.business.fridgeSort?.crate, chipInMarket },
+      Number(/Put it away · (\d+)/.exec(chipInMarket ?? "")?.[1]) ===
+        afterBuy.business.fridgeSort?.counts?.[bought.id] &&
+      afterBuy.business.fridgeSort?.counts?.[bought.id] >= 1,
+    { bought, fs: afterBuy.business.fridgeSort, chipInMarket },
   );
 
   // ---- S9: skip keeps the crate; the Prep Cook clears it ----
   await boot(page, saveAt(20));
   await openInventory(page);
-  await tap(page, '[data-testid="fridge-sort-chip"]');
-  await sleep(700);
+  await openGame(page);
   await tap(page, '[data-testid="sort-token-tomato"]'); // select (does not start the clock)
   await tap(page, `[data-testid="sort-target-${WHERE.tomato}"]`); // starts and places
   await tap(page, '[data-testid="sort-pause"]');
@@ -307,8 +347,7 @@ try {
   );
   await boot(page, saveAt(20, {}, { staff: { hiredRoles: ["prep-cook"] } }));
   await openInventory(page);
-  await tap(page, '[data-testid="fridge-sort-chip"]');
-  await sleep(700);
+  await openGame(page);
   const hasAuto = await page.evaluate(() => !!document.querySelector('[data-testid="sort-auto"]'));
   await tap(page, '[data-testid="sort-auto"]');
   await sleep(900);
@@ -327,8 +366,7 @@ try {
   rm.settings = { ...rm.settings, reducedMotion: true };
   await boot(page, rm);
   await openInventory(page);
-  await tap(page, '[data-testid="fridge-sort-chip"]');
-  await sleep(700);
+  await openGame(page);
   await tap(page, '[data-testid="sort-token-tomato"]');
   await tap(page, `[data-testid="sort-target-${WHERE.tomato}"]`);
   const floating = await page.evaluate(
@@ -337,7 +375,7 @@ try {
   const placedRM = (await state(page))?.left;
   check(
     "S10 Reduced Motion: no floating-score animation, and the round still works",
-    floating === 0 && placedRM === 5,
+    floating === 0 && placedRM === 6,
     { floating, placedRM },
   );
 
@@ -346,8 +384,7 @@ try {
   await page.setViewport({ width: 320, height: 568, deviceScaleFactor: 1 });
   await sleep(500);
   await openInventory(page);
-  await tap(page, '[data-testid="fridge-sort-chip"]');
-  await sleep(900);
+  await openGame(page);
   const small = await page.evaluate(() => {
     const els = [
       ...document.querySelectorAll('[data-testid^="sort-token-"]'),
@@ -361,8 +398,8 @@ try {
   });
   await shot(page, "fridgesort-320");
   check(
-    "S11 at 320 x 568: no sideways scroll and every token and shelf is at least 48 px tall",
-    small.overflowX <= 0 && small.minH >= 48 && small.count >= 11,
+    "S11 at 320 x 568: no sideways scroll and every piece and shelf is at least 48 px tall",
+    small.overflowX <= 0 && small.minH >= 48 && small.count >= 12,
     small,
   );
 
@@ -383,16 +420,17 @@ try {
     ),
   );
   await openInventory(page);
-  await tap(page, '[data-testid="fridge-sort-chip"]');
-  await sleep(900);
-  const exp = await page.evaluate(() =>
-    [...document.querySelectorAll('[data-token][data-expiring="1"]')].map((e) => e.dataset.token),
-  );
+  await openGame(page);
+  const exp = await page.evaluate(() => [
+    ...new Set(
+      [...document.querySelectorAll('[data-token][data-expiring="1"]')].map((e) => e.dataset.token),
+    ),
+  ]);
   await tap(page, '[data-token="tomato"]');
   await tap(page, '[data-target-id="veg-salad"]');
   const first = await state(page);
   check(
-    "S13 Level 80: tomato and cheddar (spoiling tonight) are hourglass tokens, and the first right drop of one pays 200",
+    "S13 Level 80: tomato and cheddar (spoiling tonight) are hourglass pieces, and the first right drop of one pays 200",
     exp.length === 2 && exp.includes("tomato") && exp.includes("cheddar") && first?.score === "200",
     { exp, score: first?.score },
   );
@@ -418,8 +456,8 @@ try {
   // ---- S15: the painted pieces load ----
   await boot(page, saveAt(80));
   await openInventory(page);
-  await tap(page, '[data-testid="fridge-sort-chip"]');
-  await sleep(1200);
+  await openGame(page);
+  await sleep(800);
   const art = await page.evaluate(() => {
     const imgs = [...document.querySelectorAll("img[data-fridge-art]")];
     return {
@@ -429,9 +467,135 @@ try {
     };
   });
   check(
-    "S15 the painted HUD, star bar, crate, bins, drawers, racks and shelves all load",
+    "S15 the painted HUD, star bar, basket, bins, drawers, racks and shelves all load",
     art.n >= 14 && art.bad.length === 0,
     art,
+  );
+
+  // ---- S16: the how-to card shows once, the ? button brings it back ----
+  await boot(page, saveAt(20));
+  await openInventory(page);
+  await tap(page, '[data-testid="fridge-sort-chip"]');
+  await sleep(800);
+  const g1 = await page.evaluate(() => !!document.querySelector('[data-testid="sort-guide"]'));
+  await tap(page, '[data-testid="sort-guide-ok"]');
+  const g2 = await page.evaluate(() => !!document.querySelector('[data-testid="sort-guide"]'));
+  await tap(page, '[data-testid="sort-help"]');
+  const g3 = await page.evaluate(() => !!document.querySelector('[data-testid="sort-guide"]'));
+  await tap(page, '[data-testid="sort-guide-ok"]');
+  await boot(
+    page,
+    saveAt(20, {}, { fridgeSort: { crate: CRATE, counts: COUNTS, seed: 1, rounds: 3 } }),
+  );
+  await openInventory(page);
+  await tap(page, '[data-testid="fridge-sort-chip"]');
+  await sleep(800);
+  const g4 = await page.evaluate(() => !!document.querySelector('[data-testid="sort-guide"]'));
+  check(
+    "S16 the how-to card shows the first time, closes with Got it, comes back from the ? button, and stays away once a crate was finished",
+    g1 && !g2 && g3 && !g4,
+    { g1, g2, g3, g4 },
+  );
+
+  // ---- S17: pictures of what lives on a shelf ----
+  const pics = async (n) => {
+    await boot(page, saveAt(n));
+    await openInventory(page);
+    await openGame(page);
+    return page.evaluate(
+      () => document.querySelectorAll("[data-target-id] img[data-ingredient-icon]").length,
+    );
+  };
+  const p20 = await pics(20);
+  const p80 = await pics(80);
+  check(
+    "S17 an empty shelf shows faded pictures of what lives there at Level 20, none at Level 80",
+    p20 >= 9 && p80 === 0,
+    { p20, p80 },
+  );
+
+  // ---- S18: Level 3 ----
+  await boot(
+    page,
+    saveAt(
+      3,
+      {},
+      { fridgeSort: { crate: ["tomato", "cheddar"], counts: { tomato: 3, cheddar: 2 }, seed: 1 } },
+    ),
+  );
+  await openInventory(page);
+  await openGame(page);
+  const l3 = await state(page);
+  const l3targets = await page.$$eval("[data-target-id]", (e) => e.length);
+  await tap(page, '[data-testid="sort-token-tomato"]');
+  await tap(page, '[data-target-id="dairy"]');
+  const l3note = await page.evaluate(
+    () => document.querySelector('[data-testid="sort-note"]')?.textContent ?? "",
+  );
+  check(
+    "S18 Level 3: a basket of 5 pieces and 3 shelves; a wrong shelf says where the tomato goes",
+    l3?.tokens === 5 && l3targets === 3 && /Tomato goes in: Salad/.test(l3note),
+    { l3, l3targets, l3note },
+  );
+
+  // ---- S19: freshness days ----
+  await boot(page, saveAt(20));
+  await openInventory(page);
+  await openGame(page);
+  const beforeDays = (await readSave(page)).business.inventory.tomato.purchaseDay;
+  await sortAll(page);
+  await sleep(500);
+  const afterSave = await readSave(page);
+  const today = afterSave.business.calendar.businessDay;
+  check(
+    "S19 a well sorted basket keeps the tomatoes fresh longer: the purchase day moves forward (never more than 2 days past today), quantity unchanged",
+    afterSave.business.inventory.tomato.purchaseDay > beforeDays &&
+      afterSave.business.inventory.tomato.purchaseDay <= today + 2 &&
+      afterSave.business.inventory.tomato.quantity === 4,
+    { beforeDays, after: afterSave.business.inventory.tomato.purchaseDay, today },
+  );
+
+  // ---- S20: a big delivery (30 pieces = 3 baskets at Level 20): the run, then the bonus ----
+  const five = Object.fromEntries(CRATE.map((id) => [id, 5]));
+  await boot(
+    page,
+    saveAt(20, {}, { fridgeSort: { crate: CRATE, counts: five, seed: 1, rounds: 1 } }),
+  );
+  await openInventory(page);
+  const chipBig = await page.evaluate(
+    () => document.querySelector('[data-testid="fridge-sort-chip"]')?.textContent ?? "",
+  );
+  await openGame(page);
+  const slipMore = await page.evaluate(
+    () => document.querySelector('[data-testid="sort-more-baskets"]')?.textContent ?? "",
+  );
+  await sortAll(page);
+  await sleep(500);
+  const chain1 = await page.evaluate(
+    () => document.querySelector('[data-testid="sort-chain"]')?.textContent ?? "",
+  );
+  await tap(page, '[data-testid="sort-next"]');
+  await sleep(400);
+  await sortAll(page);
+  await sleep(500);
+  await tap(page, '[data-testid="sort-next"]');
+  await sleep(400);
+  await sortAll(page);
+  await sleep(500);
+  const bigText = await page.evaluate(
+    () => document.querySelector('[data-testid="sort-big-delivery"]')?.textContent ?? "",
+  );
+  const bigSave = await readSave(page);
+  check(
+    "S20 30 pieces = 3 baskets: the chip counts 30, the first basket says 2 more + the bonus, the last shows 'Whole delivery put away' +10 Hype",
+    /Put it away · 30/.test(chipBig) &&
+      /\+2 more baskets/.test(slipMore) &&
+      /2 more baskets/.test(chain1) &&
+      /\+10 Hype/.test(chain1) &&
+      /Whole delivery put away \(3 baskets\)/.test(bigText) &&
+      !bigSave.business.fridgeSort?.crate?.length &&
+      !bigSave.business.fridgeSort?.chain,
+    { chipBig, slipMore, chain1, bigText },
   );
 
   const errors = logs.filter(

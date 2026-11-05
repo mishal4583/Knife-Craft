@@ -50,6 +50,7 @@ import {
   type LevelContext,
   type RewardedPlacement,
 } from "@/game/PlayablesSDK";
+import type { IngredientId } from "@/game/definitions";
 import { levelNumber } from "@/game/levels/levelMastery";
 import { CHAOS } from "@/game/kitchenChaos";
 import { RestorationReveal } from "@/components/kc/RestorationReveal";
@@ -1718,7 +1719,13 @@ export function App() {
     if (!save) return { ok: false as const, reason: "unknownIngredient" as const };
     const result = buyOn(save, ingredientId, quantity);
     if (result.ok) {
-      persistIngredientPurchases(result.save, [{ ingredientId, totalCost: result.totalCost }]);
+      persistIngredientPurchases(result.save, [
+        {
+          ingredientId,
+          totalCost: result.totalCost,
+          stock: quantity * lbPerMarketUnit(ingredientId as IngredientId, measureOf(save)),
+        },
+      ]);
     }
     return result;
   }
@@ -1733,12 +1740,16 @@ export function App() {
   function purchaseIngredients(lines: ReadonlyArray<{ ingredientId: string; quantity: number }>) {
     if (!save) return { bought: 0, skipped: lines.length, totalCost: 0 };
     let next = save;
-    const recorded: { ingredientId: string; totalCost: number }[] = [];
+    const recorded: { ingredientId: string; totalCost: number; stock: number }[] = [];
     for (const line of lines) {
       const r = buyOn(next, line.ingredientId, line.quantity);
       if (!r.ok) continue;
       next = r.save;
-      recorded.push({ ingredientId: line.ingredientId, totalCost: r.totalCost });
+      recorded.push({
+        ingredientId: line.ingredientId,
+        totalCost: r.totalCost,
+        stock: line.quantity * lbPerMarketUnit(line.ingredientId as IngredientId, measureOf(next)),
+      });
     }
     if (recorded.length > 0) persistIngredientPurchases(next, recorded);
     return {
@@ -1756,7 +1767,7 @@ export function App() {
    */
   function persistIngredientPurchases(
     next: SaveData,
-    lines: ReadonlyArray<{ ingredientId: string; totalCost: number }>,
+    lines: ReadonlyArray<{ ingredientId: string; totalCost: number; stock?: number }>,
   ) {
     let recorded = next;
     for (const line of lines) {
@@ -1777,6 +1788,10 @@ export function App() {
         ),
         lines.map((line) => line.ingredientId),
         restaurantLevelOf(next.levelProgress),
+        // How much arrived (lb or pieces), so the basket holds that many loose pieces (1 lb of tomato is about 3).
+        Object.fromEntries(
+          lines.filter((l) => l.stock !== undefined).map((l) => [l.ingredientId, l.stock!]),
+        ),
       ),
     );
   }
@@ -4283,6 +4298,14 @@ export function App() {
                   night.save,
                   night.received.flatMap((r) => r.lines.map((l) => l.id)),
                   restaurantLevelOf(save.levelProgress),
+                  Object.fromEntries(
+                    night.received.flatMap((r) =>
+                      r.lines.map((l) => [
+                        l.id,
+                        l.qty * lbPerMarketUnit(l.id as IngredientId, measureOf(night.save)),
+                      ]),
+                    ),
+                  ),
                 ),
               );
             }}

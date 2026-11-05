@@ -4,6 +4,7 @@ import { InfoTip } from "@/components/kc/common/InfoTip";
 import { IngredientIcon } from "@/components/kc/common/IngredientIcon";
 import { AudioManager } from "@/game/AudioManager";
 import { INGREDIENTS, type IngredientId } from "@/game/definitions";
+import { PointerHand } from "@/components/kc/common/PointerHand";
 import { INGREDIENT_EMOJI } from "@/game/knives/knifeDefinitions";
 import type { SaveData } from "@/game/SaveManager";
 import {
@@ -21,6 +22,9 @@ import {
   scoreRound,
   starsFor,
   targetOf,
+  zoneExamples,
+  basketsLeft,
+  bigDeliveryHype,
   type FridgeSortAction,
   type FridgeSortResult,
   type Round,
@@ -195,6 +199,39 @@ const ART_ITEMS: Record<ArtKind, string> = {
   shelf: "inset-x-2 bottom-[10px] top-0 content-end",
 };
 
+/** A small deterministic number in [0, 1) from two integers (the pile's jitter: the same basket always looks the same). */
+function noise(a: number, b: number): number {
+  let h = Math.imul(a + 1, 374761393) ^ Math.imul(b + 7, 668265263);
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return ((h ^ (h >>> 16)) >>> 0) / 2 ** 32;
+}
+
+/**
+ * The loose pieces lie in a heap on the basket's cloth: a jittered grid, so they overlap a little and none hides another's middle.
+ * Positions are percentages of the basket's box (the piece's own centre); `size` is the piece's side in px.
+ */
+function pileLayout(n: number): { x: number; y: number; rot: number; size: number }[] {
+  const size = n <= 8 ? 60 : n <= 12 ? 54 : 48;
+  const cols = n <= 4 ? n : n <= 9 ? Math.ceil(n / 2) : Math.ceil(n / 3);
+  const rows = Math.ceil(n / Math.max(1, cols));
+  const out: { x: number; y: number; rot: number; size: number }[] = [];
+  for (let i = 0; i < n; i++) {
+    const r = Math.floor(i / cols);
+    const c = i % cols;
+    const inRow = Math.min(cols, n - r * cols);
+    // a short last row is centred
+    const colX = (c + 0.5 + (cols - inRow) / 2) / cols;
+    const rowY = (r + 0.5) / rows;
+    out.push({
+      x: 14 + colX * 72 + (noise(i, 1) - 0.5) * 5,
+      y: 12 + rowY * 42 + (noise(i, 2) - 0.5) * 6,
+      rot: Math.round((noise(i, 3) - 0.5) * 40),
+      size,
+    });
+  }
+  return out;
+}
+
 /** Where the dragged token is drawn: the finger's position inside the screen, in the screen's own units (the shell may scale it). */
 function ghostPosition(
   root: HTMLElement | null,
@@ -226,11 +263,17 @@ export function FridgeSortGame({
   const [round, setRound] = useState<Round | null>(() => roundFor(save, playerLevel));
   const [practice, setPractice] = useState(false);
   const [phase, setPhase] = useState<Phase>("ready");
-  const [placed, setPlaced] = useState<ReadonlySet<IngredientId>>(new Set());
-  const [selected, setSelected] = useState<IngredientId | null>(null);
-  const [drag, setDrag] = useState<{ id: IngredientId; x: number; y: number } | null>(null);
+  /** Pieces are told apart by their place in `round.tokens` (an ingredient has one piece per count). */
+  const [placed, setPlaced] = useState<ReadonlySet<number>>(new Set());
+  const [selected, setSelected] = useState<number | null>(null);
+  const [drag, setDrag] = useState<{ i: number; x: number; y: number } | null>(null);
   const [hover, setHover] = useState<TargetId | null>(null);
-  const [wrongId, setWrongId] = useState<IngredientId | null>(null);
+  const [wrongId, setWrongId] = useState<number | null>(null);
+  /** The how-to card: shown by itself the first time (no finished crate yet), and from the "?" button any time. */
+  const [guide, setGuide] = useState<boolean>(() => (fridgeSortOf(save).rounds ?? 0) === 0);
+  /** The line under the star bar: what to do now, what the held piece is, and how the last drop went. */
+  const [note, setNote] = useState<{ text: string; tone: "good" | "bad" } | null>(null);
+  const noteTimer = useRef<number | null>(null);
   const [hint, setHint] = useState<TargetId | null>(null);
   const [pops, setPops] = useState<ReadonlyArray<{ key: number; text: string; target: TargetId }>>(
     [],
@@ -251,13 +294,11 @@ export function FridgeSortGame({
 
   // The fast-changing facts live in refs so a pointer event never sees an old render.
   const dropsRef = useRef<boolean[]>([]);
-  const placedRef = useRef<Set<IngredientId>>(new Set());
+  const placedRef = useRef<Set<number>>(new Set());
   const phaseRef = useRef<Phase>("ready");
   const leftRef = useRef(round?.timeMs ?? 0);
   const lastTickRef = useRef(0);
-  const gestureRef = useRef<{ id: IngredientId; x0: number; y0: number; moved: boolean } | null>(
-    null,
-  );
+  const gestureRef = useRef<{ i: number; x0: number; y0: number; moved: boolean } | null>(null);
   const popKey = useRef(0);
   const doneRef = useRef(false);
   /** A drag just ended: the click the browser sends after it must not also select the token. */
@@ -267,6 +308,22 @@ export function FridgeSortGame({
   const tier = fridgeTierOf(save);
   const best = fridgeSortOf(save).best?.[tier] ?? 0;
   const tokens = useMemo(() => round?.tokens ?? [], [round]);
+  const doublePieces = useMemo(
+    () => tokens.filter((id) => expiring.has(id)).length,
+    [tokens, expiring],
+  );
+  const pile = useMemo(() => pileLayout(tokens.length), [tokens.length]);
+  const say = (text: string, tone: "good" | "bad", ms = 2400) => {
+    setNote({ text, tone });
+    if (noteTimer.current !== null) window.clearTimeout(noteTimer.current);
+    noteTimer.current = window.setTimeout(() => setNote(null), ms);
+  };
+  useEffect(
+    () => () => {
+      if (noteTimer.current !== null) window.clearTimeout(noteTimer.current);
+    },
+    [],
+  );
   const expected = useMemo(() => {
     const m = new Map<TargetId, number>();
     for (const id of tokens) m.set(targetOf(id), (m.get(targetOf(id)) ?? 0) + 1);
@@ -288,7 +345,7 @@ export function FridgeSortGame({
         { drops, tokens: round.tokens.length, msLeft: left },
         doubledRef.current,
       );
-      const stars = starsFor(score, round.tokens.length, playerLevel, expiring.size);
+      const stars = starsFor(score, round.tokens.length, playerLevel, doublePieces);
       let effects = NO_EFFECTS;
       if (!practice) {
         const r = onAction({ kind: "finish", outcome: { stars, score, tokens: round.tokens } });
@@ -301,7 +358,7 @@ export function FridgeSortGame({
       setHover(null);
       AudioManager.playSfx(stars > 0 ? "levelComplete" : "plate");
     },
-    [onAction, playerLevel, practice, round, expiring],
+    [onAction, playerLevel, practice, round, doublePieces],
   );
 
   // The clock: runs only while playing (it starts with the first touch, and pausing freezes it).
@@ -338,15 +395,16 @@ export function FridgeSortGame({
       });
   };
 
-  const resolveDrop = (id: IngredientId, target: TargetId) => {
+  const resolveDrop = (i: number, target: TargetId) => {
     if (!round || (phaseRef.current !== "playing" && phaseRef.current !== "ready")) return;
-    if (placedRef.current.has(id)) return;
+    if (placedRef.current.has(i)) return;
+    const id = round.tokens[i]!;
     start();
     const ok = targetOf(id) === target;
     const doubled = ok && expiring.has(id) && expiryDoubleActive(leftRef.current, round.timeMs);
     const streakBefore = (() => {
       let n = 0;
-      for (let i = dropsRef.current.length - 1; i >= 0 && dropsRef.current[i]; i--) n++;
+      for (let k = dropsRef.current.length - 1; k >= 0 && dropsRef.current[k]; k--) n++;
       return n;
     })();
     dropsRef.current = [...dropsRef.current, ok];
@@ -354,15 +412,18 @@ export function FridgeSortGame({
     setHover(null);
     if (ok) {
       if (doubled) doubledRef.current.add(placedRef.current.size);
-      placedRef.current = new Set(placedRef.current).add(id);
+      placedRef.current = new Set(placedRef.current).add(i);
       setPlaced(placedRef.current);
       setHint(null);
       const pts = pointsFor(streakBefore, doubled);
+      const streakNow = streakBefore + 1;
       AudioManager.playSfx(
-        streakBefore + 1 === 3 || streakBefore + 1 === 5 || streakBefore + 1 === 8
-          ? "sortCombo"
-          : "sortPlace",
+        streakNow === 3 || streakNow === 5 || streakNow === 8 ? "sortCombo" : "sortPlace",
       );
+      if (streakNow === 3) say("Nice! 🔥 Keep going", "good", 1600);
+      else if (streakNow === 5) say("Great sorting! 🔥🔥", "good", 1600);
+      else if (streakNow === 8) say("Unstoppable! 🔥🔥🔥", "good", 1600);
+      else if (placedRef.current.size === round.tokens.length - 1) say("Last one!", "good", 1500);
       if (!reducedMotion) {
         const key = ++popKey.current;
         setPops((p) => [...p.slice(-4), { key, text: `+${pts}${doubled ? " ×2" : ""}`, target }]);
@@ -371,8 +432,11 @@ export function FridgeSortGame({
       if (placedRef.current.size >= round.tokens.length) finish(leftRef.current);
     } else {
       AudioManager.playSfx("sortWrong");
-      setWrongId(id);
+      setWrongId(i);
       window.setTimeout(() => setWrongId(null), 450);
+      // Teach on a miss: say where it really goes (always, at every level: the points are lost, the lesson is free).
+      const home = TARGETS.find((t) => t.id === targetOf(id));
+      say(`${INGREDIENTS[id].name} goes in: ${home?.label ?? "another shelf"}`, "bad", 3000);
       if (hintMode === "after-miss") {
         setHint(targetOf(id));
         window.setTimeout(() => setHint(null), 2500);
@@ -381,11 +445,11 @@ export function FridgeSortGame({
     setTick((n) => n + 1);
   };
 
-  // ── pointer handling on a token ──
-  const onTokenDown = (e: React.PointerEvent, id: IngredientId) => {
+  // ── pointer handling on a piece ──
+  const onTokenDown = (e: React.PointerEvent, i: number) => {
     if (phaseRef.current !== "ready" && phaseRef.current !== "playing") return;
     (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
-    gestureRef.current = { id, x0: e.clientX, y0: e.clientY, moved: false };
+    gestureRef.current = { i, x0: e.clientX, y0: e.clientY, moved: false };
   };
   const onTokenMove = (e: React.PointerEvent) => {
     const g = gestureRef.current;
@@ -395,9 +459,9 @@ export function FridgeSortGame({
       g.moved = true;
       start();
       AudioManager.playSfx("sortPick");
-      setSelected(g.id);
+      setSelected(g.i);
     }
-    setDrag({ id: g.id, x: e.clientX, y: e.clientY });
+    setDrag({ i: g.i, x: e.clientX, y: e.clientY });
     const t = document.elementFromPoint(e.clientX, e.clientY)?.closest("[data-target-id]");
     setHover((t?.getAttribute("data-target-id") as TargetId | null) ?? null);
   };
@@ -412,7 +476,7 @@ export function FridgeSortGame({
     const t = document.elementFromPoint(e.clientX, e.clientY)?.closest("[data-target-id]");
     const target = t?.getAttribute("data-target-id") as TargetId | null;
     setDrag(null);
-    if (target) resolveDrop(g.id, target);
+    if (target) resolveDrop(g.i, target);
     else setSelected(null);
   };
 
@@ -436,6 +500,7 @@ export function FridgeSortGame({
     setPlaced(new Set());
     setMsLeft(r.timeMs);
     setResult(null);
+    setNote(null);
     setPractice(true);
     setPhaseBoth("ready");
   };
@@ -452,6 +517,7 @@ export function FridgeSortGame({
     setPlaced(new Set());
     setMsLeft(next?.timeMs ?? 0);
     setResult(null);
+    setNote(null);
     setPractice(false);
     setPhaseBoth("ready");
   };
@@ -484,7 +550,7 @@ export function FridgeSortGame({
     { drops: dropsRef.current, tokens: round.tokens.length, msLeft: 0 },
     doubledRef.current,
   );
-  const maxScore = bestPossible(round.tokens.length, playerLevel, expiring.size);
+  const maxScore = bestPossible(round.tokens.length, playerLevel, doublePieces);
   const progress = Math.min(1, live / Math.max(1, maxScore));
   const streak = (() => {
     let n = 0;
@@ -494,15 +560,22 @@ export function FridgeSortGame({
   const shown = TARGETS.filter((t) => round.targets.includes(t.id));
   /** A full crate (8+ shelves, Level 44 and up): lower pieces and smaller tokens, so every shelf stays on screen. */
   const dense = shown.length >= 8;
-  const crateLeft = round.tokens.filter((id) => !placed.has(id));
+  const crateLeft = round.tokens.filter((_, i) => !placed.has(i));
   const low = phase === "playing" && msLeft <= 8000;
   void tick;
 
   const targetBand = (t: (typeof TARGETS)[number]) => {
     const need = expected.get(t.id) ?? 0;
-    const inside = round.tokens.filter((id) => placed.has(id) && targetOf(id) === t.id);
+    const inside = tokens
+      .map((id, i) => ({ id, i }))
+      .filter((x) => placed.has(x.i) && targetOf(x.id) === t.id);
+    // An empty shelf shows faded pictures of what lives here (hidden from Level 44, where the player is expected to know).
+    const examples =
+      inside.length === 0 && hintMode !== "never"
+        ? zoneExamples(t.id, hintMode === "always" ? round.ingredients : [], 3)
+        : [];
     const glow =
-      (selected && hintMode === "always" && targetOf(selected) === t.id) ||
+      (selected !== null && hintMode === "always" && targetOf(tokens[selected]!) === t.id) ||
       hint === t.id ||
       hover === t.id;
     return (
@@ -515,7 +588,7 @@ export function FridgeSortGame({
         data-need={need}
         aria-label={`${t.label}${need ? `: ${inside.length} of ${need}` : ""}`}
         onClick={() => {
-          if (selected) resolveDrop(selected, t.id);
+          if (selected !== null) resolveDrop(selected, t.id);
         }}
         className={cn(
           "relative flex min-h-[56px] flex-col items-center gap-0.5 rounded-2xl border-2 px-1.5 pb-1 pt-1 text-left transition-colors",
@@ -552,17 +625,30 @@ export function FridgeSortGame({
               ART_CHIP[artOf(t.id).kind],
             )}
           >
-            {t.icon} {t.label}
+            {t.label}
             {need > 0 ? ` ${inside.length}/${need}` : ""}
           </span>
           <span
             className={cn(
-              "absolute flex flex-wrap justify-center gap-0 text-[17px] leading-none",
+              "absolute flex flex-wrap items-end justify-center gap-0 text-[22px] leading-none",
               ART_ITEMS[artOf(t.id).kind],
             )}
           >
-            {inside.slice(0, artOf(t.id).kind === "shelf" ? 12 : 8).map((id) => (
-              <IngredientIcon key={id} id={id} fallback={INGREDIENT_EMOJI[id]} />
+            {inside.slice(0, artOf(t.id).kind === "shelf" ? 12 : 8).map((x) => (
+              <IngredientIcon
+                key={x.i}
+                id={x.id}
+                fallback={INGREDIENT_EMOJI[x.id]}
+                className="h-[1.25em] w-[1.25em] -mx-[3px]"
+              />
+            ))}
+            {examples.map((id) => (
+              <IngredientIcon
+                key={id}
+                id={id}
+                fallback={INGREDIENT_EMOJI[id]}
+                className="h-[1.15em] w-[1.15em] opacity-60 saturate-75"
+              />
             ))}
           </span>
         </span>
@@ -584,6 +670,11 @@ export function FridgeSortGame({
     <div
       ref={rootRef}
       className="relative flex h-full w-full select-none flex-col overflow-hidden bg-[#3b2a1d] touch-none"
+      style={{
+        backgroundImage: `url(${fsUrl("kitchen-wall")})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center bottom",
+      }}
       data-testid="fridge-sort"
       data-phase={phase}
       data-practice={practice ? "1" : "0"}
@@ -654,25 +745,45 @@ export function FridgeSortGame({
             />
           ))}
         </div>
-        <div className="mt-1 flex items-center justify-between font-ui text-[11px] font-bold text-ivory/75">
-          <span>
-            {practice
-              ? "Practice · no reward"
-              : `Fridge · best ${best ? best.toLocaleString("en-US") : "—"}`}
-          </span>
-          <span data-testid="sort-combo">
+        <div className="mt-1 flex min-h-[34px] items-center gap-2 font-ui">
+          <p
+            className={cn(
+              "min-w-0 flex-1 rounded-xl px-2.5 py-1 text-[13px] font-extrabold leading-tight",
+              note?.tone === "bad"
+                ? "bg-[#7a2a1d]/85 text-[#ffe1d6]"
+                : note?.tone === "good"
+                  ? "bg-[#3f6b2c]/85 text-[#eaffd9]"
+                  : "bg-[#3b2a1d]/80 text-ivory",
+            )}
+            data-testid="sort-note"
+            aria-live="polite"
+          >
+            {note
+              ? note.text
+              : selected !== null
+                ? `${INGREDIENTS[tokens[selected]!].name}: tap or drag it to its shelf`
+                : phase === "ready"
+                  ? "Pick a piece from the basket 👇"
+                  : practice
+                    ? "Practice · no reward"
+                    : `${crateLeft.length} left in the basket`}
+          </p>
+          <span data-testid="sort-combo" className="text-[12px] font-bold text-ivory/80">
             {streak >= 2
               ? `🔥 ×${comboMultiplier(streak)
                   .toFixed(2)
                   .replace(/\.?0+$/, "")}`
               : ""}
           </span>
-          <InfoTip label="How Fridge Sort works">
-            Drag each item to the shelf where it belongs, or tap the item and then the shelf. Right
-            = points, and a run of rights makes a combo. A wrong shelf only resets the combo. The
-            clock starts with your first touch. Stars give Hype for the Second Floor. Nothing here
-            costs money.
-          </InfoTip>
+          <button
+            type="button"
+            data-testid="sort-help"
+            aria-label="How to play"
+            onClick={() => setGuide(true)}
+            className="press grid h-10 w-10 shrink-0 place-items-center rounded-full border-2 border-[#d6b46a] bg-walnut-dark text-[16px] font-black text-gold"
+          >
+            ?
+          </button>
         </div>
       </div>
 
@@ -683,113 +794,217 @@ export function FridgeSortGame({
         </div>
       </div>
 
-      {/* the crate */}
-      <div className="relative mx-3 mb-3 mt-2" data-testid="sort-crate">
-        <Art
-          name="crate-back"
-          className="absolute inset-x-0 top-0 h-[calc(100%-22px)] w-full object-fill"
-        />
-        <div
-          className="relative flex min-h-[72px] flex-wrap items-center justify-center gap-2 px-5 pb-1 pt-6"
-          style={dense ? { minHeight: 56, gap: 6 } : undefined}
-        >
-          {crateLeft.map((id) => {
-            const isSel = selected === id;
-            const dragging = drag?.id === id;
-            return (
-              <button
-                key={id}
-                type="button"
-                data-token={id}
-                data-expiring={expiring.has(id) ? "1" : undefined}
-                data-testid={`sort-token-${id}`}
-                aria-pressed={isSel}
-                aria-label={`${INGREDIENTS[id].name}${expiring.has(id) ? " (expires soon, worth double)" : ""}${isSel ? " (selected)" : ""}`}
-                onPointerDown={(e) => onTokenDown(e, id)}
-                onPointerMove={onTokenMove}
-                onPointerUp={onTokenUp}
-                onPointerCancel={() => {
-                  gestureRef.current = null;
-                  setDrag(null);
-                  setHover(null);
-                }}
-                onClick={() => {
-                  if (draggedRef.current) return;
-                  // tap: select it (tap again to put it back); the clock starts with the first drop or drag, not a select
-                  const next = isSel ? null : id;
-                  setSelected(next);
-                  if (next) AudioManager.playSfx("sortPick");
-                }}
-                className={cn(
-                  "relative flex touch-none flex-col items-center justify-center rounded-2xl border-2 bg-[#fff7e6] leading-none",
-                  dense ? "h-[54px] w-[50px] text-[22px]" : "h-[64px] w-[58px] text-[26px]",
-                  isSel
-                    ? "border-gold -translate-y-1 shadow-[0_4px_0_rgba(0,0,0,0.25)]"
-                    : "border-[#e0c89a]",
-                  dragging && "opacity-35",
-                  wrongId === id && !reducedMotion && "animate-[sortShake_0.4s_ease-in-out]",
-                )}
-              >
-                <IngredientIcon
-                  id={id}
-                  fallback={INGREDIENT_EMOJI[id]}
-                  className="h-[1.25em] w-[1.25em]"
-                />
-                <span className="mt-0.5 max-w-[54px] truncate font-ui text-[10px] font-extrabold text-walnut-dark">
-                  {INGREDIENTS[id].name.split(" ")[0]}
-                </span>
-                {expiring.has(id) ? (
-                  <span
-                    aria-hidden
-                    className={cn(
-                      "absolute -right-1.5 -top-2 rounded-full border border-[#c0392b] bg-[#fff1d6] px-1 font-ui text-[10px] font-black leading-[16px] text-[#c0392b]",
-                      expiryDoubleActive(msLeft, round.timeMs) ? "" : "opacity-40",
-                    )}
-                  >
-                    ⏳×2
-                  </span>
-                ) : null}
-              </button>
-            );
-          })}
-          {crateLeft.length === 0 && phase !== "done" ? (
-            <span className="font-ui text-[13px] font-bold text-ivory">Empty ✓</span>
-          ) : null}
-        </div>
-        {/* the front of the crate: a wooden lip with the hint on it */}
-        <div className="relative -mt-1 flex h-[46px] flex-col items-center justify-center overflow-hidden rounded-b-xl">
-          <Art
-            name="crate-front"
-            className="absolute inset-x-0 bottom-0 h-auto w-full max-w-none"
-          />
-          {phase === "ready" ? (
-            <p
-              className="relative text-center font-ui text-[12px] font-extrabold text-ivory [text-shadow:0_1px_2px_rgba(0,0,0,0.7)]"
-              data-testid="sort-ready"
-            >
-              Drag an item to its shelf to start
-            </p>
-          ) : null}
-          {round.queued > 0 ? (
-            <p className="relative text-center font-ui text-[11px] font-bold text-ivory/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.7)]">
-              + {round.queued} more waiting
-            </p>
-          ) : null}
-        </div>
+      {/* the delivery slip: what was bought, and how many loose pieces that is (1 lb of tomato is about 3 tomatoes) */}
+      <div
+        className="mx-3 mt-2 flex items-center gap-1.5 overflow-x-auto rounded-xl bg-[#3b2a1d]/75 px-2 py-1"
+        data-testid="sort-slip"
+      >
+        <span className="shrink-0 font-ui text-[11px] font-extrabold text-ivory/80">
+          🧾 Delivery
+        </span>
+        {round.ingredients.map((id) => (
+          <span
+            key={id}
+            className="flex shrink-0 items-center gap-0.5 rounded-full bg-[#fff7e6]/90 px-1.5 py-0.5 font-ui text-[11px] font-black text-walnut-dark"
+          >
+            <IngredientIcon
+              id={id}
+              fallback={INGREDIENT_EMOJI[id]}
+              className="h-[1.5em] w-[1.5em]"
+            />
+            ×{tokens.filter((t) => t === id).length}
+          </span>
+        ))}
+        {basketsLeft(save, playerLevel) > 1 ? (
+          <span
+            className="shrink-0 font-ui text-[11px] font-bold text-ivory/80"
+            data-testid="sort-more-baskets"
+          >
+            🧺 +{basketsLeft(save, playerLevel) - 1} more basket
+            {basketsLeft(save, playerLevel) - 1 === 1 ? "" : "s"} · ⚡ bonus for all
+          </span>
+        ) : null}
       </div>
 
-      {/* the token under the finger */}
+      {/* the basket: every piece of the delivery lies mixed on the cloth */}
+      <div
+        className="relative mx-auto mb-3 mt-1 aspect-[1.5] w-[calc(100%-24px)] max-w-[340px]"
+        data-testid="sort-crate"
+      >
+        <Art name="basket" className="absolute inset-0 h-full w-full object-fill" />
+        {tokens.map((id, i) => {
+          if (placed.has(i)) return null;
+          const isSel = selected === i;
+          const dragging = drag?.i === i;
+          const spot = pile[i]!;
+          const first =
+            guide === false &&
+            phase === "ready" &&
+            !practice &&
+            i === 0 &&
+            (fridgeSortOf(save).rounds ?? 0) === 0;
+          return (
+            <button
+              key={i}
+              type="button"
+              data-token={id}
+              data-piece={i}
+              data-expiring={expiring.has(id) ? "1" : undefined}
+              data-testid={`sort-token-${id}`}
+              aria-pressed={isSel}
+              aria-label={`${INGREDIENTS[id].name}${expiring.has(id) ? " (expires soon, worth double)" : ""}${isSel ? " (selected)" : ""}`}
+              onPointerDown={(e) => onTokenDown(e, i)}
+              onPointerMove={onTokenMove}
+              onPointerUp={onTokenUp}
+              onPointerCancel={() => {
+                gestureRef.current = null;
+                setDrag(null);
+                setHover(null);
+              }}
+              onClick={() => {
+                if (draggedRef.current) return;
+                // tap: pick it up (tap again to put it back); the clock starts with the first drop or drag, not a pick
+                const next = isSel ? null : i;
+                setSelected(next);
+                if (next !== null) AudioManager.playSfx("sortPick");
+              }}
+              className={cn(
+                "absolute grid touch-none place-items-center rounded-full leading-none transition-transform",
+                isSel && "z-20 -translate-y-1.5 scale-110 drop-shadow-[0_6px_6px_rgba(0,0,0,0.35)]",
+                dragging && "opacity-35",
+                first && !reducedMotion && "animate-pulse",
+                wrongId === i && !reducedMotion && "animate-[sortShake_0.4s_ease-in-out]",
+              )}
+              style={{
+                left: `${spot.x}%`,
+                top: `${spot.y}%`,
+                width: spot.size,
+                height: spot.size,
+                marginLeft: -spot.size / 2,
+                marginTop: -spot.size / 2,
+                zIndex: isSel ? 20 : 1 + (i % 7),
+                transform: isSel ? undefined : `rotate(${spot.rot}deg)`,
+                fontSize: spot.size,
+              }}
+            >
+              <IngredientIcon
+                id={id}
+                fallback={INGREDIENT_EMOJI[id]}
+                className="h-[0.95em] w-[0.95em] drop-shadow-[0_2px_2px_rgba(60,30,10,0.45)]"
+              />
+              {isSel ? (
+                <span className="pointer-events-none absolute -top-5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-walnut-dark px-2 py-0.5 font-ui text-[11px] font-extrabold leading-none text-ivory">
+                  {INGREDIENTS[id].name}
+                </span>
+              ) : null}
+              {expiring.has(id) ? (
+                <span
+                  aria-hidden
+                  className={cn(
+                    "absolute -right-1 -top-1 rounded-full border border-[#c0392b] bg-[#fff1d6] px-1 font-ui text-[10px] font-black leading-[16px] text-[#c0392b]",
+                    expiryDoubleActive(msLeft, round.timeMs) ? "" : "opacity-40",
+                  )}
+                >
+                  ⏳×2
+                </span>
+              ) : null}
+            </button>
+          );
+        })}
+        {/* the basket's front: it covers the lower part of the pieces, so they sit INSIDE it */}
+        <Art
+          name="basket"
+          className="absolute inset-0 h-full w-full object-fill"
+          style={{ clipPath: "inset(56% 0 0 0)", zIndex: 30 }}
+        />
+        {crateLeft.length === 0 && phase !== "done" ? (
+          <span className="absolute inset-x-0 top-[28%] z-30 text-center font-ui text-[14px] font-extrabold text-walnut-dark">
+            Empty ✓
+          </span>
+        ) : (
+          <span
+            className="absolute bottom-[10%] left-1/2 z-40 -translate-x-1/2 rounded-full bg-walnut-dark/85 px-3 py-0.5 font-ui text-[12px] font-extrabold text-ivory"
+            data-testid="sort-ready"
+          >
+            {crateLeft.length} piece{crateLeft.length === 1 ? "" : "s"}
+          </span>
+        )}
+        {guide === false &&
+        selected === null &&
+        phase === "ready" &&
+        (fridgeSortOf(save).rounds ?? 0) === 0 &&
+        !practice ? (
+          <PointerHand size={44} className="absolute left-[18%] top-[20%] z-40" />
+        ) : null}
+      </div>
+
+      {/* the piece under the finger */}
       {drag ? (
         <div
-          className="pointer-events-none absolute z-50 grid h-[58px] w-[58px] -translate-x-1/2 -translate-y-[70%] place-items-center rounded-2xl border-2 border-gold bg-[#fff7e6] text-[28px] shadow-lg"
+          className="pointer-events-none absolute z-50 grid h-[64px] w-[64px] -translate-x-1/2 -translate-y-[75%] place-items-center text-[60px] leading-none"
           style={ghostPosition(rootRef.current, drag.x, drag.y)}
           aria-hidden
         >
           <IngredientIcon
-            id={drag.id}
-            fallback={INGREDIENT_EMOJI[drag.id]}
-            className="h-[1.3em] w-[1.3em]"
+            id={tokens[drag.i]!}
+            fallback={INGREDIENT_EMOJI[tokens[drag.i]!]}
+            className="h-[1em] w-[1em] drop-shadow-[0_8px_8px_rgba(0,0,0,0.45)]"
           />
+          <span className="absolute -top-6 whitespace-nowrap rounded-full bg-walnut-dark px-2 py-0.5 font-ui text-[11px] font-extrabold leading-none text-ivory">
+            {INGREDIENTS[tokens[drag.i]!].name}
+          </span>
+        </div>
+      ) : null}
+
+      {/* how to play: shown by itself the first time, and from the ? button */}
+      {guide ? (
+        <div
+          className="absolute inset-0 z-[60] grid place-items-center bg-black/75 p-5"
+          data-testid="sort-guide"
+        >
+          <div className="w-full max-w-[330px] rounded-3xl border-4 border-[#b8873f] bg-[#f7edd7] p-4 text-center">
+            <p className="font-display text-[22px] font-extrabold text-walnut-dark">
+              Put the food away
+            </p>
+            <ol className="mt-3 grid gap-2 text-left font-ui text-[14px] font-bold text-walnut-dark">
+              <li className="flex items-center gap-2.5 rounded-xl bg-white/50 p-2">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-copper/15 text-[20px]">
+                  🧺
+                </span>
+                <span>
+                  What you bought is mixed in the basket. 1 lb of tomatoes is about 3 tomatoes.
+                </span>
+              </li>
+              <li className="flex items-center gap-2.5 rounded-xl bg-white/50 p-2">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-copper/15 text-[20px]">
+                  👆
+                </span>
+                <span>Pick a piece (its name shows), then drag it or tap its shelf.</span>
+              </li>
+              <li className="flex items-center gap-2.5 rounded-xl bg-white/50 p-2">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-copper/15 text-[20px]">
+                  ❄️
+                </span>
+                <span>
+                  Each shelf shows pictures of what lives there. Right = points and combos.
+                </span>
+              </li>
+              <li className="flex items-center gap-2.5 rounded-xl bg-white/50 p-2">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-copper/15 text-[20px]">
+                  ⭐
+                </span>
+                <span>Two or three stars keep your food fresh longer, and add Hype.</span>
+              </li>
+            </ol>
+            <p className="mt-2 font-ui text-[12px] font-bold text-walnut/70">
+              The clock starts at your first move. Mistakes are free.
+            </p>
+            <div className="mt-3">
+              <SortButton onClick={() => setGuide(false)} testId="sort-guide-ok">
+                Got it
+              </SortButton>
+            </div>
+          </div>
         </div>
       ) : null}
 
@@ -878,6 +1093,45 @@ export function FridgeSortGame({
                 {result.effects.magnet ? " · 🧲 new fridge magnet!" : ""}
               </p>
             )}
+            {!practice && (result.effects.bigHype ?? 0) > 0 ? (
+              <p
+                className="relative mt-1 font-ui text-[13px] font-extrabold text-copper"
+                data-testid="sort-big-delivery"
+              >
+                🎉 Whole delivery put away ({result.effects.baskets} baskets): ⚡ +
+                {result.effects.bigHype} Hype
+              </p>
+            ) : null}
+            {!practice && roundFor(save, playerLevel) && (result.effects.baskets ?? 0) > 0 ? (
+              <p
+                className="relative mt-1 font-ui text-[12.5px] font-bold text-walnut-dark"
+                data-testid="sort-chain"
+              >
+                🧺 {basketsLeft(save, playerLevel)} more basket
+                {basketsLeft(save, playerLevel) === 1 ? "" : "s"}: finish them all for ⚡ +
+                {bigDeliveryHype((result.effects.baskets ?? 0) + basketsLeft(save, playerLevel))}{" "}
+                Hype
+              </p>
+            ) : null}
+            {!practice && (result.effects.freshened?.length ?? 0) > 0 ? (
+              <p
+                className="relative mt-1 flex flex-wrap items-center justify-center gap-1 font-ui text-[12.5px] font-extrabold text-walnut-dark"
+                data-testid="sort-fresh"
+              >
+                <span>
+                  🧊 Stays fresh +{result.effects.freshDays} day
+                  {result.effects.freshDays === 1 ? "" : "s"}:
+                </span>
+                {result.effects.freshened!.slice(0, 6).map((id) => (
+                  <IngredientIcon
+                    key={id}
+                    id={id}
+                    fallback={INGREDIENT_EMOJI[id]}
+                    className="h-[1.6em] w-[1.6em]"
+                  />
+                ))}
+              </p>
+            ) : null}
             {!practice && result.effects.magnet ? (
               <Art
                 name={`magnet-${String(Math.max(1, magnetsOf(save))).padStart(2, "0")}`}

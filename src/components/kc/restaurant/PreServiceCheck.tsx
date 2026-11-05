@@ -1330,7 +1330,11 @@ function WelcomeCrate({ kit }: { kit: readonly KitLine[] }) {
 }
 
 function NewsCard({ news }: { news: RestaurantNews }) {
-  const fresh = news.systems.length > 0 || news.dishes.length > 0 || news.cuisines.length > 0;
+  const fresh =
+    news.systems.length > 0 ||
+    news.dishes.length > 0 ||
+    news.cuisines.length > 0 ||
+    news.minigame !== null;
   return (
     <div
       className="mb-2 rounded-2xl border border-copper/30 bg-[linear-gradient(170deg,var(--color-ivory),rgba(214,160,90,0.12))] p-3"
@@ -1350,7 +1354,7 @@ function NewsCard({ news }: { news: RestaurantNews }) {
           <InfoTip label={`About ${s.title}`}>{s.intro}</InfoTip>
         </div>
       ))}
-      {news.systems.some((s) => s.id === "fridge-freshness") ? (
+      {news.minigame === "fridge-sort" ? (
         <div className="mt-1 flex items-center gap-1.5" data-news-minigame="fridge-sort">
           <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-copper/10 text-[16px]">
             📦
@@ -1359,7 +1363,8 @@ function NewsCard({ news }: { news: RestaurantNews }) {
             Fridge Sort
           </p>
           <InfoTip label="About Fridge Sort">
-            Food you buy waits in a crate. Put each item on its shelf before the clock ends: stars
+            Food you buy arrives in a basket, all mixed up (1 lb of tomatoes is about 3 tomatoes).
+            Put every piece on its shelf before the clock ends: stars keep the food fresh longer and
             give Hype and fridge magnets. It is optional and costs nothing. Find it in the Market
             and the Inventory once you buy food.
           </InfoTip>

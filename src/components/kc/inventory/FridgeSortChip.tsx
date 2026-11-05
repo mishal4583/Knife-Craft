@@ -1,12 +1,12 @@
 import { cn } from "@/lib/utils";
 import type { SaveData } from "@/game/SaveManager";
-import { fridgeSortOf, roundFor } from "@/game/business/fridgeSort";
+import { piecesWaiting, roundFor } from "@/game/business/fridgeSort";
 import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
 import type { ScreenId } from "../data";
 
 /**
  * "📦 Put it away · 6": the entry to Fridge Sort (business/fridgeSort.ts), shown in the Market's Ingredients tab and above the Inventory fridge
- * while a crate of food waits and the game is open (Level 14). It is a small chip, never a popup, and nothing waits on it (plan §2.2).
+ * while a basket of food waits and the game is open (Level 3). The number is the loose pieces to sort. It is a small chip, never a popup, and nothing waits on it (plan §2.2).
  */
 export function FridgeSortChip({
   save,
@@ -19,7 +19,7 @@ export function FridgeSortChip({
 }) {
   const level = restaurantLevelOf(save.levelProgress);
   if (!roundFor(save, level)) return null;
-  const waiting = fridgeSortOf(save).crate?.length ?? 0;
+  const waiting = piecesWaiting(save);
   return (
     <button
       type="button"
@@ -30,7 +30,7 @@ export function FridgeSortChip({
         className,
       )}
     >
-      <span aria-hidden>📦</span> Put it away · {waiting}
+      <span aria-hidden>🧺</span> Put it away · {waiting}
     </button>
   );
 }

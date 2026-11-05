@@ -259,6 +259,8 @@ console.log("H. The Fridge Sort pieces");
     "crate-back",
     "crate-front",
     "result-panel",
+    "basket",
+    "kitchen-wall",
     ...Array.from({ length: 12 }, (_, i) => `magnet-${String(i + 1).padStart(2, "0")}`),
   ];
   const missing = need.filter((n) => !fs.existsSync(path.join(dir, `${n}.webp`)));

@@ -17,6 +17,8 @@ import {
   measureOf,
 } from "@/game/business/measure";
 import { MARKET_PLAN_DAYS, marketPlanFor, type MarketPlanRow } from "@/game/restaurant/marketPlan";
+import { basketsFor, piecesFor } from "@/game/business/fridgeSort";
+import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
 import type { PurchaseIngredientResult } from "@/game/business/BusinessInventoryManager";
 import { IngredientIcon } from "@/components/kc/common/IngredientIcon";
 
@@ -65,6 +67,12 @@ export function MarketPlanPanel({
   const plan = useMemo(() => marketPlanFor(save, days), [save, days]);
   const rows = showAll ? plan.rows : plan.rows.slice(0, FIRST_ROWS);
   const affordable = save.credits >= plan.totalCost;
+  // Fridge Sort: this plan's food is loose pieces to put away; a bigger plan = more baskets (a bonus for finishing them all).
+  const baskets = basketsFor(
+    save,
+    restaurantLevelOf(save.levelProgress),
+    plan.rows.reduce((n, r) => n + piecesFor(r.ingredientId, r.stock), 0),
+  );
 
   function buy(row: MarketPlanRow) {
     const r = purchaseIngredient(row.ingredientId, row.buyUnits);
@@ -105,6 +113,15 @@ export function MarketPlanPanel({
           <StatChip icon="❄️" tone="sage">
             {formatQuantity(plan.storageFree)} free
           </StatChip>
+          {baskets >= 2 ? (
+            <span data-testid="market-plan-baskets" className="inline-flex items-center gap-1">
+              <StatChip icon="🧺">{baskets} baskets</StatChip>
+              <InfoTip label="About the baskets">
+                Food you buy arrives as baskets to put away in Fridge Sort. Buy for 2–3 days, put
+                every basket away, and get bonus Hype.
+              </InfoTip>
+            </span>
+          ) : null}
         </div>
         {focused ? (
           <p

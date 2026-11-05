@@ -17,6 +17,7 @@
  * only, so it needs no save state.
  */
 import { getBusinessDish } from "../business/businessDishCatalog";
+import { FRIDGE_SORT_FIRST_LEVEL } from "../business/fridgeSort";
 import {
   CUISINES,
   RESTAURANT_SYSTEMS,
@@ -49,6 +50,8 @@ export type RestaurantNews = {
   cuisines: { name: string; specialist: string | null }[];
   /** `short`: what the card shows (an icon and a name); `text` behind its ⓘ. */
   comingUp: { level: number; text: string; short: string }[];
+  /** The Fridge Sort mini-game opens at this level (business/fridgeSort.ts). */
+  minigame: "fridge-sort" | null;
 };
 
 export function restaurantNewsAt(levelNumber: number): RestaurantNews {
@@ -87,10 +90,16 @@ export function restaurantNewsAt(levelNumber: number): RestaurantNews {
       specialist: c.specialist?.title ?? null,
     })),
     comingUp,
+    minigame: levelNumber === FRIDGE_SORT_FIRST_LEVEL ? "fridge-sort" : null,
   };
 }
 
 /** True when something NEW happens at this level (the check opens to show it). */
 export function hasNewsToShow(news: RestaurantNews): boolean {
-  return news.systems.length > 0 || news.dishes.length > 0 || news.cuisines.length > 0;
+  return (
+    news.systems.length > 0 ||
+    news.dishes.length > 0 ||
+    news.cuisines.length > 0 ||
+    news.minigame !== null
+  );
 }

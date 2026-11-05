@@ -1,8 +1,9 @@
 /**
  * FRIDGE SORT QA (developer 2026-11-03): the rules of the "Put it away" mini-game, business/fridgeSort.ts.
  *   A  the targets: all 57 ingredients have exactly one, the 25 vegetables exactly one of 4 game-only bins, 10 targets in fridge order
- *   B  it opens at Level 14 (the start of Fridge & Freshness) and not before
- *   C  the crate: only real ingredients, no duplicates, a new seed for a new crate, a queue, deterministic rounds, the level's size
+ *   B  it opens at Level 3 (the Pantry stage: the first food bought; developer 2026-11-05, it was Level 14) and not before
+ *   C  the basket: only real ingredients, one entry each, the loose PIECES bought (1 lb of tomato = 3 tomatoes), a new seed for a new
+ *      basket, a queue, deterministic rounds, the level's size
  *   D  time, points, combo, stars: the numbers of the plan
  *   E  finishing a round: tokens leave the crate, best / stars / magnets / Hype, practice changes nothing, the Prep Cook gives nothing
  *   F  it NEVER touches money or stock: credits, inventory and the ledger are identical before and after
@@ -19,6 +20,7 @@ import { fridgeZoneFor } from "../src/game/business/fridgeView.ts";
 import { shelfLifeForIngredient } from "../src/game/business/perishability.ts";
 import { achievementsFor } from "../src/game/progression/achievements.ts";
 import { afterNight, setStandingOrder } from "../src/game/restaurant/deliveries.ts";
+import { hasNewsToShow, restaurantNewsAt } from "../src/game/restaurant/restaurantNews.ts";
 import { secondFloorOf } from "../src/game/restaurant/secondFloor.ts";
 import {
   COMBO_MAX,
@@ -26,14 +28,21 @@ import {
   FRIDGE_SORT_FIRST_LEVEL,
   HYPE_BY_STARS,
   MAX_CRATE_QUEUE,
+  BIG_DELIVERY_HYPE_MAX,
+  FRESH_DAYS_BY_STARS,
+  MAX_FRESH_DAYS_AHEAD,
   MAX_MAGNETS,
+  MAX_PIECES_PER_INGREDIENT,
   STAR_AT,
   TARGETS,
   VEG_BINS,
   addToCrate,
   autoPutAway,
   MAX_EXPIRING_TOKENS,
+  basketsFor,
+  basketsLeft,
   bestPossible,
+  bigDeliveryHype,
   comboMultiplier,
   difficultyAt,
   expiringTokens,
@@ -43,6 +52,8 @@ import {
   fridgeTierOf,
   isFridgeSortOpen,
   magnetsOf,
+  piecesFor,
+  piecesWaiting,
   pointsFor,
   roundFor,
   scoreRound,
@@ -50,6 +61,7 @@ import {
   targetOf,
   targetsFor,
   timeLimitMs,
+  zoneExamples,
 } from "../src/game/business/fridgeSort.ts";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
@@ -112,18 +124,18 @@ console.log("A. Targets");
 console.log("B. When it opens");
 {
   assert(
-    FRIDGE_SORT_FIRST_LEVEL === 14,
-    "B1: it opens at Level 14, the first level of Fridge & Freshness",
+    FRIDGE_SORT_FIRST_LEVEL === 3,
+    "B1: it opens at Level 3, the first level of the Pantry stage (the first food bought; it was Level 14)",
     FRIDGE_SORT_FIRST_LEVEL,
   );
   assert(
-    !isFridgeSortOpen(13) && isFridgeSortOpen(14) && isFridgeSortOpen(120),
-    "B2: closed at Level 13, open from Level 14",
+    !isFridgeSortOpen(2) && isFridgeSortOpen(3) && isFridgeSortOpen(120),
+    "B2: closed at Level 2, open from Level 3",
   );
   const s = fresh();
   assert(
-    addToCrate(s, ["tomato"], 13) === s && roundFor(s, 13) === null,
-    "B3: below Level 14 nothing is put on a crate",
+    addToCrate(s, ["tomato"], 2) === s && roundFor(s, 2) === null,
+    "B3: below Level 3 nothing is put in the basket",
   );
 }
 
@@ -136,9 +148,41 @@ console.log("C. The crate");
     "C1: only real ingredients, once each, in the order bought",
     fridgeSortOf(s1).crate,
   );
+  const more = addToCrate(s1, ["tomato"], 14);
   assert(
-    addToCrate(s1, ["tomato"], 14) === s1 && addToCrate(s1, [], 14) === s1,
-    "C2: buying what already waits changes nothing",
+    addToCrate(s1, [], 14) === s1 &&
+      JSON.stringify(fridgeSortOf(more).crate) === JSON.stringify(fridgeSortOf(s1).crate) &&
+      fridgeSortOf(more).counts!.tomato! > fridgeSortOf(s1).counts!.tomato! &&
+      fridgeSortOf(more).seed === fridgeSortOf(s1).seed,
+    "C2: buying what already waits adds pieces to its entry (no second entry, same seed); buying nothing changes nothing",
+    [fridgeSortOf(s1).counts, fridgeSortOf(more).counts],
+  );
+  const full = addToCrate(fresh(), ["tomato"], 14, { tomato: 30 });
+  assert(
+    fridgeSortOf(full).counts!.tomato === MAX_PIECES_PER_INGREDIENT &&
+      addToCrate(full, ["tomato"], 14, { tomato: 30 }) === full,
+    "C2b: a big sack is capped (5 pieces of one ingredient), and a full entry changes nothing",
+    fridgeSortOf(full).counts,
+  );
+  assert(
+    piecesFor("tomato", 1) === 3 &&
+      piecesFor("tomato", 0.25) === 1 &&
+      piecesFor("tomato", 2) === 5 &&
+      piecesFor("tomato", 100) === MAX_PIECES_PER_INGREDIENT &&
+      piecesFor("tomato", 0) === 1,
+    "C2c: 1 lb of tomato is 3 tomatoes (a quarter pound 1, two pounds 5, never fewer than 1 nor more than 5)",
+    [piecesFor("tomato", 1), piecesFor("tomato", 0.25), piecesFor("tomato", 2)],
+  );
+  const tw = roundFor(
+    addToCrate(fresh(), ["tomato", "cheddar"], 14, { tomato: 2, cheddar: 0.5 }),
+    14,
+  )!;
+  assert(
+    tw.tokens.filter((x) => x === "tomato").length === 5 &&
+      tw.ingredients.join() === "tomato,cheddar" &&
+      tw.tokens.length === tw.tokens.filter((x) => x === "tomato" || x === "cheddar").length,
+    "C2d: the round holds one piece per count, all the ingredients mixed in one basket",
+    tw.tokens,
   );
   assert(fridgeSortOf(s1).seed === 1, "C3: a new crate takes a new seed", fridgeSortOf(s1).seed);
   const s2 = addToCrate(s1, ["salmon"], 14);
@@ -154,12 +198,17 @@ console.log("C. The crate");
   );
   const sizes = DIFFICULTY.map((d) => roundFor(many, d.from)!.tokens.length);
   assert(
-    sizes.join() === "6,8,10,12" && DIFFICULTY.map((d) => d.maxTokens).join() === "6,8,10,12",
-    "C6: a crate holds 6, 8, 10 and 12 tokens by level (14, 27, 44, 74)",
+    DIFFICULTY.map((d) => d.maxTokens).join() === "8,10,12,14,16" &&
+      sizes.every((n, i) => n <= DIFFICULTY[i]!.maxTokens && n > DIFFICULTY[i]!.maxTokens - 5),
+    "C6: a basket holds up to 8, 10, 12, 14 and 16 pieces by level (3, 14, 27, 44, 74), filled with whole ingredients",
     sizes,
   );
   const r1 = roundFor(many, 14)!;
-  assert(r1.queued === 18, "C7: what does not fit waits for the next round", r1.queued);
+  assert(
+    r1.queued === MAX_CRATE_QUEUE - r1.ingredients.length && r1.queued > 0,
+    "C7: the ingredients that do not fit wait for the next round",
+    r1.queued,
+  );
   const a = roundFor(s1, 14)!;
   const b = roundFor(structuredClone(s1), 14)!;
   assert(
@@ -210,14 +259,16 @@ console.log("C. The crate");
 console.log("D. Time, points, stars");
 {
   assert(
-    timeLimitMs(8, 30) === 40_000 && timeLimitMs(12, 80) === 50_000,
-    "D1: 20 s + 2.5 s a token: 8 tokens = 40 s, 12 tokens = 50 s",
-    [timeLimitMs(8, 30), timeLimitMs(12, 80)],
+    timeLimitMs(8, 50) === 37_000 && timeLimitMs(12, 80) === 49_000,
+    "D1: 15 s + 2.8 s a piece (a piece is quicker than a whole ingredient): 8 pieces = 37 s (37.4), 12 = 49 s (48.6)",
+    [timeLimitMs(8, 50), timeLimitMs(12, 80)],
   );
   assert(
-    timeLimitMs(6, 14) === 46_000 && timeLimitMs(8, 20) === 52_000,
-    "D2: +30 % in the first stage (Level 14-26), to the whole second: 6 tokens = 45.5 -> 46 s, 8 = 52 s",
-    [timeLimitMs(6, 14), timeLimitMs(8, 20)],
+    timeLimitMs(8, 5) === 60_000 &&
+      timeLimitMs(10, 14) === 56_000 &&
+      timeLimitMs(12, 30) === 53_000,
+    "D2: more time while learning: x1.6 at Level 3-13 (8 pieces = 60 s), x1.3 at 14-26 (10 = 56 s), x1.1 at 27-43 (12 = 53 s)",
+    [timeLimitMs(8, 5), timeLimitMs(10, 14), timeLimitMs(12, 30)],
   );
   assert(
     [0, 1, 2, 3, 4, 8, 20].map((n) => pointsFor(n)).join() === "100,125,150,175,200,300,300" &&
@@ -248,8 +299,8 @@ console.log("D. Time, points, stars");
   );
   const best = bestPossible(8, 30);
   assert(
-    best === 1500 + 20 * 32 && best === 2140,
-    "D9: the best possible 8-token round at the reference pace (1 s a token) = 2140",
+    best === 1500 + 20 * Math.floor((timeLimitMs(8, 30) - 8000) / 1000) && best === 2160,
+    "D9: the best possible 8-piece round at the reference pace (1 s a piece) = 1500 + 20 a second left = 2160",
     best,
   );
   const stars = (score: number) => starsFor(score, 8, 30);
@@ -265,32 +316,39 @@ console.log("D. Time, points, stars");
     "D10: one, two and three stars at 50 %, 75 % and 95 % of the best possible, exactly on the boundary",
   );
   assert(
-    DIFFICULTY.map((d) => d.hint).join() === "always,after-miss,never,never" &&
-      difficultyAt(10).from === 14 &&
+    DIFFICULTY.map((d) => d.hint).join() === "always,always,after-miss,never,never" &&
+      difficultyAt(10).from === 3 &&
+      difficultyAt(20).from === 14 &&
       difficultyAt(30).from === 27 &&
       difficultyAt(500).from === 74 &&
-      DIFFICULTY[3]!.expiryBonus &&
-      !DIFFICULTY[2]!.expiryBonus,
+      DIFFICULTY[4]!.expiryBonus &&
+      !DIFFICULTY[3]!.expiryBonus,
     "D11: hints always, after a miss, then none; the double ⏳ token only from Level 74",
   );
 }
 
 console.log("E. Finishing a round");
 {
-  const s = addToCrate(fresh(), ["tomato", "carrot", "cheddar", "apple"], 20);
+  const s = addToCrate(fresh(), ["tomato", "cheddar"], 20);
   const r = roundFor(s, 20)!;
   const done = finishRound(s, { stars: 3, score: 2000, tokens: r.tokens });
   assert(
-    fridgeSortOf(done.save).crate === undefined,
-    "E1: the shown tokens leave the crate (and the key goes when it is empty)",
+    r.queued === 0 &&
+      fridgeSortOf(done.save).crate === undefined &&
+      fridgeSortOf(done.save).counts === undefined,
+    "E1: the shown pieces leave the basket (and the keys go when it is empty)",
   );
   const part = addToCrate(fresh(), all.slice(0, 10), 20);
   const rp = roundFor(part, 20)!;
   const afterPart = finishRound(part, { stars: 1, score: 500, tokens: rp.tokens }).save;
   assert(
-    fridgeSortOf(afterPart).crate!.length === 10 - rp.tokens.length &&
-      rp.queued === 10 - rp.tokens.length,
-    "E2: what did not fit stays for the next round",
+    fridgeSortOf(afterPart).crate!.length === 10 - rp.ingredients.length &&
+      rp.queued === 10 - rp.ingredients.length &&
+      all
+        .slice(0, 10)
+        .slice(rp.ingredients.length)
+        .every((id) => fridgeSortOf(afterPart).counts![id]),
+    "E2: the ingredients that did not fit stay for the next round, with their pieces",
   );
   assert(
     done.effects.hype === 15 &&
@@ -379,14 +437,21 @@ console.log("F. It never touches money or stock");
     const c = structuredClone(x) as SaveData;
     delete c.business.fridgeSort;
     delete c.business.secondFloor;
+    delete (c.business as { inventory?: unknown }).inventory;
     return JSON.stringify(c);
   };
+  const t0 = base.business.inventory.tomato!;
+  const t1 = out.save.business.inventory.tomato!;
   assert(
     out.save.credits === base.credits &&
-      JSON.stringify(out.save.business.inventory) === JSON.stringify(base.business.inventory) &&
+      t1.quantity === t0.quantity &&
+      t1.unitCost === t0.unitCost &&
+      t1.purchaseDay === Math.min(t0.purchaseDay + 2, base.business.calendar.businessDay + 2) &&
+      Object.keys(out.save.business.inventory).join() === "tomato" &&
       JSON.stringify(out.save.economyLedger) === JSON.stringify(base.economyLedger) &&
       strip(out.save) === strip(base),
-    "F1: credits, inventory, the ledger and everything else are identical before and after a round (only the sort state and Hype change)",
+    "F1: credits, quantities, prices, the ledger and everything else are identical before and after a round; only the sort state, Hype and the stock's purchase day (the freshness reward, +2 days at three stars) change",
+    [t0, t1],
   );
   s = autoPutAway(s);
   assert(
@@ -494,8 +559,8 @@ console.log("H. Simulated players");
   );
   const careful = profile(2200, 0.05);
   assert(
-    careful.atLeast(1) === 1 && careful.atLeast(2) >= 0.75 && careful.d[3] / careful.n <= 0.05,
-    "H4: a careful player (2.2 s, 5 % wrong drops): always a star, two or more at least 3 times in 4, a mistake costs the third star",
+    careful.atLeast(1) === 1 && careful.atLeast(2) >= 0.75 && careful.d[3] / careful.n <= 0.06,
+    "H4: a careful player (2.2 s, 5 % wrong drops): always a star, two or more at least 3 times in 4, a mistake costs the third star (at most 6 % of careful rounds still get three; it was 5 % before the basket of loose pieces, developer 2026-11-05)",
     careful.d,
   );
   const average = profile(3000, 0.1);
@@ -667,6 +732,192 @@ console.log("K. The morning delivery fills the crate");
       app,
     ),
     "K4: App puts the night's delivery on the crate when the day closes",
+  );
+}
+
+console.log("L. The basket: pieces, the freshness reward, the pictures on the shelves, Level 3");
+{
+  // the reward: two stars +1 day, three +2, capped two days ahead of today, only for stock the player has
+  const day = 10;
+  const stocked = (): SaveData => {
+    const s = fresh();
+    s.business.calendar = { ...s.business.calendar, businessDay: day };
+    s.business.inventory.tomato = {
+      ingredientId: "tomato",
+      quantity: 2,
+      unitCost: 90,
+      purchaseDay: day,
+    };
+    return s;
+  };
+  const base = addToCrate(stocked(), ["tomato", "cheddar"], 20);
+  const r = roundFor(base, 20)!;
+  const day0 = (o: { save: SaveData }) => o.save.business.inventory.tomato!.purchaseDay;
+  const o1 = finishRound(base, { stars: 1, score: 400, tokens: r.tokens });
+  const o2 = finishRound(base, { stars: 2, score: 800, tokens: r.tokens });
+  const o3 = finishRound(base, { stars: 3, score: 1200, tokens: r.tokens });
+  assert(
+    FRESH_DAYS_BY_STARS.join() === "0,0,1,2" &&
+      day0(o1) === day &&
+      day0(o2) === day + 1 &&
+      day0(o3) === day + 2 &&
+      o3.effects.freshDays === 2 &&
+      o3.effects.freshened!.join() === "tomato" &&
+      o1.effects.freshened!.length === 0,
+    "L1: 1 star keeps the stock as it is, 2 stars +1 day, 3 stars +2 days of freshness (only on stock the player has)",
+    [day0(o1), day0(o2), day0(o3)],
+  );
+  const again = finishRound(addToCrate(o3.save, ["tomato"], 20), {
+    stars: 3,
+    score: 1200,
+    tokens: ["tomato"],
+  });
+  assert(
+    day0(again) === day + MAX_FRESH_DAYS_AHEAD &&
+      o3.save.business.inventory.tomato!.quantity === 2 &&
+      o3.save.business.inventory.tomato!.unitCost === 90 &&
+      o3.save.credits === base.credits,
+    "L2: it never goes more than 2 days past today, and never changes quantity, price or credits",
+    day0(again),
+  );
+  const practice = finishRound(base, { stars: 3, score: 1200, tokens: r.tokens, practice: true });
+  assert(practice.save === base, "L3: a practice round gives no freshness either");
+  // the pictures on the shelves
+  const salad = zoneExamples("veg-salad", ["tomato", "carrot", "cucumber"], 3);
+  assert(
+    salad.join() === "tomato,cucumber,pepper" &&
+      zoneExamples("veg-roots").length === 3 &&
+      zoneExamples("veg-roots").every((id) => targetOf(id) === "veg-roots") &&
+      zoneExamples("dairy", ["cheddar"], 2)[0] === "cheddar",
+    "L4: a shelf shows up to 3 pictures of what lives there, the basket's own first",
+    salad,
+  );
+  // the chip counts pieces
+  const w = addToCrate(fresh(), ["tomato", "cheddar"], 20, { tomato: 1, cheddar: 1 });
+  assert(
+    piecesWaiting(w) === piecesFor("tomato", 1) + piecesFor("cheddar", 1) &&
+      piecesWaiting(fresh()) === 0,
+    "L5: the 'Put it away' chip counts the loose pieces waiting",
+    piecesWaiting(w),
+  );
+  // Level 3: the news card, the first baskets are small and have hints
+  const news = restaurantNewsAt(3);
+  assert(
+    news.minigame === "fridge-sort" &&
+      restaurantNewsAt(2).minigame === null &&
+      restaurantNewsAt(4).minigame === null &&
+      hasNewsToShow(news),
+    "L6: Level 3's pre-service check announces Fridge Sort (once)",
+  );
+  const first = roundFor(addToCrate(fresh(), all.slice(0, 12), 3), 3)!;
+  assert(
+    first.tokens.length <= 8 && first.difficulty.hint === "always" && first.targets.length >= 3,
+    "L7: the first baskets are small (8 pieces at most), with the shelf hint always on",
+    first.tokens.length,
+  );
+  const game = fs.readFileSync(
+    path.join(ROOT, "src/components/kc/inventory/FridgeSortGame.tsx"),
+    "utf8",
+  );
+  assert(
+    /data-testid="sort-guide"/.test(game) &&
+      /fridgeSortOf\(save\)\.rounds \?\? 0\) === 0/.test(game) &&
+      /data-testid="sort-help"/.test(game) &&
+      !/\{t\.icon\}/.test(game),
+    "L8: the screen opens with a how-to card the first time and from the ? button, and the shelves use pictures, not emoji",
+  );
+}
+
+console.log("M. Big deliveries: several baskets, a bonus for putting them all away");
+{
+  assert(
+    bigDeliveryHype(1) === 0 &&
+      bigDeliveryHype(2) === 5 &&
+      bigDeliveryHype(3) === 10 &&
+      bigDeliveryHype(5) === BIG_DELIVERY_HYPE_MAX &&
+      bigDeliveryHype(9) === BIG_DELIVERY_HYPE_MAX,
+    "M1: +5 Hype for each basket after the first, never more than +20",
+  );
+  // 10 ingredients of 5 pieces = 50 pieces; at Level 20 a basket holds 10 pieces = 2 ingredients, so 5 baskets
+  const ids = all.slice(0, 10);
+  let s = addToCrate(fresh(), ids, 20, Object.fromEntries(ids.map((id) => [id, 100])));
+  const total = basketsLeft(s, 20);
+  assert(
+    total === 5 && basketsLeft(fresh(), 20) === 0 && basketsLeft(s, 2) === 0,
+    "M2: the waiting crate makes 5 baskets at Level 20 (0 when nothing waits or the game is closed)",
+    total,
+  );
+  assert(
+    basketsFor(fresh(), 20, 0) === 0 &&
+      basketsFor(fresh(), 20, 10) === 1 &&
+      basketsFor(fresh(), 20, 11) === 2 &&
+      basketsFor(s, 20, 20) === 7,
+    "M3: the Market plan's hint rounds the pieces up to baskets, counting what already waits",
+  );
+  // put every basket away with a star: the chain grows, the last one adds the bonus
+  const bonuses: number[] = [];
+  const chains: (number | undefined)[] = [];
+  for (let i = 0; i < total; i++) {
+    const r = roundFor(s, 20)!;
+    const out = finishRound(s, { stars: 2, score: 900, tokens: r.tokens });
+    bonuses.push(out.effects.bigHype ?? 0);
+    chains.push(fridgeSortOf(out.save).chain);
+    s = out.save;
+  }
+  assert(
+    bonuses.join() === "0,0,0,0,20" &&
+      chains.join() === "1,2,3,4," &&
+      fridgeSortOf(s).crate === undefined &&
+      secondFloorOf(s).hype === 5 * 10 + 20,
+    "M4: five baskets with a star each: the chain counts up, the last basket adds +20 Hype (5 x 10 from the stars, + 20)",
+    { bonuses, chains, hype: secondFloorOf(s).hype },
+  );
+  // a basket with no star starts the delivery over
+  let t = addToCrate(fresh(), ids, 20, Object.fromEntries(ids.map((id) => [id, 100])));
+  const first = roundFor(t, 20)!;
+  t = finishRound(t, { stars: 3, score: 1500, tokens: first.tokens }).save;
+  const second = roundFor(t, 20)!;
+  t = finishRound(t, { stars: 0, score: 10, tokens: second.tokens }).save;
+  assert(
+    fridgeSortOf(t).chain === undefined,
+    "M5: a basket without a star starts the delivery over (no chain)",
+  );
+  // a single basket gets no bonus, a practice round and the Prep Cook change nothing about the chain
+  const one = addToCrate(fresh(), ["tomato"], 20);
+  const oneOut = finishRound(one, { stars: 3, score: 900, tokens: roundFor(one, 20)!.tokens });
+  const mid = addToCrate(fresh(), ids, 20, Object.fromEntries(ids.map((id) => [id, 100])));
+  const midRound = roundFor(mid, 20)!;
+  const midDone = finishRound(mid, { stars: 1, score: 400, tokens: midRound.tokens }).save;
+  assert(
+    (oneOut.effects.bigHype ?? 0) === 0 &&
+      finishRound(midDone, {
+        stars: 3,
+        score: 1500,
+        tokens: roundFor(midDone, 20)!.tokens,
+        practice: true,
+      }).save === midDone &&
+      fridgeSortOf(autoPutAway(midDone)).chain === undefined,
+    "M6: one basket = no bonus; practice changes nothing; the Prep Cook clears the chain",
+  );
+  assert(
+    fridgeSortOf({
+      ...fresh(),
+      business: { ...fresh().business, fridgeSort: { chain: -4 as never } },
+    }).chain === undefined,
+    "M7: a bad saved chain reads as none",
+  );
+  const panel = fs.readFileSync(path.join(ROOT, "src/components/kc/MarketPlanPanel.tsx"), "utf8");
+  const gameSrc = fs.readFileSync(
+    path.join(ROOT, "src/components/kc/inventory/FridgeSortGame.tsx"),
+    "utf8",
+  );
+  assert(
+    /basketsFor\(/.test(panel) &&
+      /market-plan-baskets/.test(panel) &&
+      /sort-big-delivery/.test(gameSrc) &&
+      /sort-chain/.test(gameSrc) &&
+      /sort-more-baskets/.test(gameSrc),
+    "M8: the Market plan shows the baskets, and the game shows the run and the bonus",
   );
 }
 
