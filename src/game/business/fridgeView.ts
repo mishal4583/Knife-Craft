@@ -33,6 +33,7 @@ import {
   fridgeStatus,
   lowStockItems,
   type MenuInEffect,
+  type TodayNeed,
 } from "./inventoryAnalytics";
 
 /**
@@ -271,7 +272,7 @@ const ATTENTION_FOR_STATUS: Record<InventoryStatus, FridgeAttentionReason | null
 };
 
 /** `menu`: the menu in effect (inventoryAnalytics.MenuInEffect); the Business menu by default. */
-export function fridgeView(save: SaveData, menu?: MenuInEffect): FridgeView {
+export function fridgeView(save: SaveData, menu?: MenuInEffect, todayNeed?: TodayNeed): FridgeView {
   const business = save.business;
   const day = business.calendar.businessDay;
   const fridge = fridgeStatus(save);
@@ -280,7 +281,7 @@ export function fridgeView(save: SaveData, menu?: MenuInEffect): FridgeView {
     REFRIGERATOR_CATALOG.findIndex((r) => r.id === business.refrigerator.refrigeratorId),
   );
   const tiers = REFRIGERATOR_CATALOG.map((_, i) => tierOf(i));
-  const low = new Map(lowStockItems(save, menu).map((l) => [l.id, l]));
+  const low = new Map(lowStockItems(save, menu, todayNeed).map((l) => [l.id, l]));
 
   const items: FridgeItem[] = [];
   const unknown: string[] = [];

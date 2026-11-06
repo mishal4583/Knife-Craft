@@ -21,6 +21,7 @@ import { basketsFor, piecesFor } from "@/game/business/fridgeSort";
 import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
 import type { PurchaseIngredientResult } from "@/game/business/BusinessInventoryManager";
 import { IngredientIcon } from "@/components/kc/common/IngredientIcon";
+import { repairScroller } from "./common/scrollRepair";
 
 /** Rows shown before "Show all". */
 const FIRST_ROWS = 6;
@@ -66,6 +67,15 @@ export function MarketPlanPanel({
   const measure = measureOf(save);
   const plan = useMemo(() => marketPlanFor(save, days), [save, days]);
   const rows = showAll ? plan.rows : plan.rows.slice(0, FIRST_ROWS);
+  // The list changed height (a day tab, Show all, a purchase): iPhones can lose the Market's scroll until it is rebuilt.
+  const listShape = `${days}:${showAll}:${plan.rows.length}`;
+  const shownShape = useRef(listShape);
+  useEffect(() => {
+    if (shownShape.current === listShape) return;
+    shownShape.current = listShape;
+    const frame = requestAnimationFrame(() => repairScroller(ref.current));
+    return () => cancelAnimationFrame(frame);
+  }, [listShape]);
   const affordable = save.credits >= plan.totalCost;
   // Fridge Sort: this plan's food is loose pieces to put away; a bigger plan = more baskets (a bonus for finishing them all).
   const baskets = basketsFor(

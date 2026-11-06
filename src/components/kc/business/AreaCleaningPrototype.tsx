@@ -588,7 +588,7 @@ export function AreaCleaningPrototype({
   const pctOf = (v: number, total: number) => `${(v / total) * 100}%`;
   const modal = (
     <div
-      className="absolute inset-0 z-[100] flex min-h-0 items-stretch justify-stretch overflow-hidden bg-[#1b100a]/85 p-0 backdrop-blur-sm"
+      className="absolute inset-0 z-[100] flex min-h-0 items-stretch justify-stretch overflow-hidden bg-[#1b100a]/90 p-0"
       style={{ touchAction: "none", overscrollBehavior: "contain" }}
       role="presentation"
       onMouseDown={(event) => {
@@ -649,15 +649,16 @@ export function AreaCleaningPrototype({
 
         {/* The room, fitted whole between the header and the tools (nothing covers the dirt). */}
         <div
-          className="relative min-h-0 flex-1 bg-[#2a1b12] land:col-start-1 land:row-span-2 land:row-start-1"
+          className="relative grid min-h-0 flex-1 place-items-center bg-[#2a1b12] land:col-start-1 land:row-span-2 land:row-start-1"
           style={{ containerType: "size" }}
         >
+          {/* Centred by layout, on its own still layer, with no filter or blur over the painting: on an iPhone a
+              half-pixel transform and a live filter made the room shiver while the guide pulsed (developer 2026-11-06). */}
           <div
-            className="absolute left-1/2 top-1/2 overflow-hidden bg-[#38261b] ring-1 ring-[#89603e]"
+            className="kc-clean-stage relative overflow-hidden bg-[#38261b] ring-1 ring-[#89603e]"
             style={{
               width: `min(100cqw, calc(100cqh * ${dimensions.width} / ${dimensions.height}))`,
               aspectRatio: `${dimensions.width} / ${dimensions.height}`,
-              transform: "translate(-50%, -50%)",
               touchAction: "none",
               overscrollBehavior: "contain",
             }}
@@ -666,11 +667,16 @@ export function AreaCleaningPrototype({
             <img
               src={roomImage}
               alt={`${roomTitle} from the current restaurant map`}
-              className="block h-full w-full select-none object-fill transition-[filter] duration-300"
-              style={{
-                filter: `saturate(${0.82 + 0.18 * shine}) brightness(${0.92 + 0.1 * shine})`,
-              }}
+              className="block h-full w-full select-none object-fill"
+              decoding="sync"
               draggable={false}
+            />
+            {/* The room brightens as it gets clean. */}
+            <span
+              className="pointer-events-none absolute inset-0 bg-[#2a1b12] transition-opacity duration-300"
+              style={{ opacity: 0.16 * (1 - shine) }}
+              data-testid="cleaning-dim"
+              aria-hidden
             />
             <canvas
               ref={canvasRef}
@@ -704,7 +710,7 @@ export function AreaCleaningPrototype({
                 aria-hidden
               >
                 <span className="kc-clean-ring absolute -left-7 -top-7 h-14 w-14 rounded-full border-[3px] border-white/90 shadow-[0_0_14px_rgba(255,236,170,.9)]" />
-                <span className="kc-clean-ghost absolute -left-2 -top-9 drop-shadow-[0_3px_3px_rgba(40,20,5,.45)]">
+                <span className="kc-clean-ghost absolute -left-2 -top-9">
                   <CleaningToolIcon tool={guide.tool} size={38} />
                 </span>
               </span>

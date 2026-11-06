@@ -25,6 +25,7 @@ import {
   menuDemand,
   menuReadiness,
   type MenuInEffect,
+  type TodayNeed,
 } from "./inventoryAnalytics";
 import { fridgeView, type FridgeView } from "./fridgeView";
 import { inventoryStatusRank, type InventoryStatus } from "./inventoryStatus";
@@ -109,10 +110,14 @@ const ATTENTION_GROUPS: ReadonlyArray<Omit<InventoryAttentionGroup, "items">> = 
  * restaurant build passes its campaign menu, so before the menu opens there
  * is no menu need, no "low for today's menu" and no dish count.
  */
-export function inventoryView(save: SaveData, menu?: MenuInEffect): InventoryView {
-  const fridge = fridgeView(save, menu);
+export function inventoryView(
+  save: SaveData,
+  menu?: MenuInEffect,
+  todayNeed?: TodayNeed,
+): InventoryView {
+  const fridge = fridgeView(save, menu, todayNeed);
   const day = save.business.calendar.businessDay;
-  const demand = menuDemand(save, menu);
+  const demand = menuDemand(save, menu, todayNeed);
   const readiness = menuReadiness(save, menu);
 
   const items: InventoryItemView[] = fridge.items.map((f) => {
@@ -156,7 +161,7 @@ export function inventoryView(save: SaveData, menu?: MenuInEffect): InventoryVie
       stockValue: fridge.stockValue,
       stocked: items.length,
       ingredientCount: ALL_INGREDIENT_IDS.length,
-      runningLow: lowStockItems(save, menu).length,
+      runningLow: lowStockItems(save, menu, todayNeed).length,
       expiringSoon: expiringSoon(save).length,
       readyDishes: readiness.ready,
       menuDishes: readiness.total,

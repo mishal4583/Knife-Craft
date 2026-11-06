@@ -1234,6 +1234,7 @@ taken, repaid}`; taking on credit moves no money (no entry);
   px) never restarts the game: `GameShell` keeps ONE wrapper and changes
   only its style (swapping the tree remounted everything).
 - `playables-ads-qa` — Bridge ads (interstitial policy, rewarded Replay Bonus).
+- `iphone-fixes-qa` — the iPhone playtest fixes (2026-11-06): Inventory's "low" follows the Market's Today plan, the Market's scroll repair, the painted Cleaner, a failed Hire shown on screen, nothing filtering the cleaning room; browser: `iphonefixes.mjs`.
 - `idle-qa` — the idle economy's readable side (phase 5, 2026-10-31): the Pace (a closed day's figures from the ledger, per
   shift hour, net = gross − costs), the Second Floor's fill and clock rules, the badge-only floor achievements, the wiring.
 - `guest-demand-qa` — Phase 8A/8B (2026-11-01): demand that scales with capacity (`restaurant/guestDemand.ts`): the old timetable is the

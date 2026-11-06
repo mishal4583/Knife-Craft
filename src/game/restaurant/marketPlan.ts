@@ -160,6 +160,14 @@ function dailyNeeds(
   return { levels, needs, next };
 }
 
+/**
+ * Today's real need per ingredient: the same figures as the plan's Today tab, for Inventory's "low" (developer 2026-11-06:
+ * the Market said stocked while Inventory said low). The Endless Restaurant has no plan of its own: undefined keeps menu demand.
+ */
+export function todayPlanNeed(save: SaveData): ReadonlyMap<IngredientId, number> | undefined {
+  return isEndlessUnlocked(save.levelProgress) ? undefined : dailyNeeds(save, 1).needs[0];
+}
+
 export function marketPlanFor(save: SaveData, days: number): MarketPlan {
   const measure = measureOf(save);
   const today = save.business.calendar.businessDay;

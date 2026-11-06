@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useUnlockText } from "../navLevel";
-import { staffHireFee } from "@/game/restaurant/staffRequirements";
+import { closingWage, staffHireFee } from "@/game/restaurant/staffRequirements";
+import { StaffPortrait } from "./StaffCard";
 import type { ScreenId } from "../data";
 import { KButton, Panel } from "../common/primitives";
 import { Eyebrow } from "../common/Meters";
@@ -251,7 +252,8 @@ function ReadyCard({
           className="mt-2 flex items-center gap-1.5 rounded-2xl bg-sage/15 px-3 py-2 font-ui text-[13px] font-extrabold text-olive"
           data-testid="cleaner-on-duty"
         >
-          🧑‍🔧 {today ? "Cleaner on today" : "Your Cleaner is on duty"} · cleans after each service
+          <CleanerFace className="h-7 w-7" />{" "}
+          {today ? "Cleaner on today" : "Your Cleaner is on duty"} · cleans after each service
           <InfoTip label="What the Cleaner does">
             The routine tasks in their areas, now and after each service. Spills, and anything short
             of supplies, stay yours: tap Clean on those.
@@ -284,7 +286,7 @@ function DayCleanerCard({
     <Panel className="p-3" data-testid="day-cleaner">
       <Eyebrow>Not in the mood to clean?</Eyebrow>
       <p className="mt-1 flex items-center gap-1.5 font-ui text-[12.5px] font-extrabold text-walnut-dark">
-        🧑‍🔧 Hire a Cleaner for today
+        <CleanerFace className="h-7 w-7" /> Hire a Cleaner for today
         <InfoTip label="A Cleaner for today">
           Totally optional: you can always clean everything yourself. A Cleaner does the routine
           tasks now and after each service until closing. Spills, and anything short of supplies,
@@ -573,15 +575,12 @@ function StaffCard({
     <Panel className="p-3" data-testid="cleanliness-staff">
       <Eyebrow>Cleaning staff</Eyebrow>
       <div className="mt-2 flex items-center gap-3">
-        <span
+        <CleanerFace
           className={cn(
-            "grid h-16 w-16 shrink-0 place-items-center rounded-2xl text-[34px] shadow-soft",
+            "h-16 w-16 rounded-2xl shadow-soft",
             hired || today ? "bg-sage/25" : "bg-walnut/10 grayscale",
           )}
-          aria-hidden
-        >
-          🧑‍🔧
-        </span>
+        />
         <div className="min-w-0 flex-1">
           <span
             className={cn(
@@ -593,9 +592,13 @@ function StaffCard({
           </span>
           <p className="font-display text-[17px] font-black text-walnut-dark">Cleaner</p>
           <p className="font-ui text-[12.5px] text-walnut/70">
-            {level < wagesFrom
-              ? `💵 Hire ${formatUsd(staffHireFee("cleaner") ?? 0)} · pay ${u.lv(wagesFrom)}`
-              : `💵 ${formatUsd(wage)}/day`}{" "}
+            {level >= wagesFrom
+              ? `💵 ${formatUsd(wage)}/day`
+              : `💵 ${hired ? "" : `Hire ${formatUsd(staffHireFee("cleaner") ?? 0)} · `}${
+                  closingWage("cleaner", level) > 0
+                    ? `${formatUsd(closingWage("cleaner", level))}/day now`
+                    : `pay ${u.lv(wagesFrom)}`
+                }`}{" "}
             · 🧹 after each service
           </p>
         </div>
@@ -639,6 +642,19 @@ function StaffCard({
         🥤 Spills &amp; 🧴 missing supplies are yours
       </p>
     </Panel>
+  );
+}
+
+/** The Cleaner's painted portrait, the same one as the Staff screen (the emoji shows if it cannot load). */
+function CleanerFace({ className }: { className?: string }) {
+  return (
+    <StaffPortrait
+      file="cleaner"
+      name="Cleaner"
+      emoji="🧽"
+      data-cleaner-face="true"
+      className={cn("shrink-0 rounded-full", className)}
+    />
   );
 }
 
@@ -825,7 +841,7 @@ function SuppliesCard({ save, go }: { save: SaveData; go: (s: ScreenId) => void 
 
 /* ── The guided introduction (once) ────────────────────────────────── */
 
-const INTRO_STEPS: readonly { icon: string; title: string; line: string }[] = [
+const INTRO_STEPS: readonly { icon: ReactNode; title: string; line: string }[] = [
   {
     icon: "🏠",
     title: "Three areas",
@@ -842,9 +858,9 @@ const INTRO_STEPS: readonly { icon: string; title: string; line: string }[] = [
     line: "🛒 Cleaner, sanitizer, refills & liners from the Market · tap + to restock.",
   },
   {
-    icon: "🧑‍🔧",
+    icon: <CleanerFace className="mx-auto h-16 w-16 rounded-2xl" />,
     title: "Your Cleaner",
-    line: "🧑‍🔧 Does routine tasks after each service · ✨×3 = +1% dish quality.",
+    line: "Does routine tasks after each service · ✨×3 = +1% dish quality.",
   },
 ];
 

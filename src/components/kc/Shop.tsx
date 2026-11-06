@@ -470,7 +470,8 @@ export function Shop({
   return (
     <div className="relative h-full w-full overflow-hidden bg-cream">
       <div className="absolute inset-0 bg-[radial-gradient(90%_50%_at_50%_0%,rgba(216,168,78,0.28),transparent_60%)]" />
-      <div className="relative h-full overflow-y-auto no-scrollbar pb-24">
+      {/* pb-40: the end of the page clears the bottom bar and the "Back to the Pre-Service Check" pill. */}
+      <div className="relative h-full overflow-y-auto no-scrollbar pb-40">
         <ScreenHeader
           title="Market"
           subtitle={

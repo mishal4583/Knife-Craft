@@ -2,6 +2,7 @@ import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
 import { useUnlockText } from "../navLevel";
 import { kitchenMapArtStage } from "@/game/kitchen/kitchenMapArt";
 import { inventoryMenuOf, menuOpensAt, restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
+import { todayPlanNeed } from "@/game/restaurant/marketPlan";
 import { RestaurantAttentionPanel } from "./RestaurantAttentionPanel";
 import { useMemo, useRef, useState, type ReactNode } from "react";
 import type { ScreenId } from "../data";
@@ -624,7 +625,10 @@ export function InventoryScreen({
   // Restaurant build (Pass 2 review): stock is measured against the restaurant's
   // menu at its level — none before the menu opens — never the whole catalog.
   const view = useMemo(
-    () => inventoryView(save, RESTAURANT_MODE ? inventoryMenuOf(save) : undefined),
+    () =>
+      RESTAURANT_MODE
+        ? inventoryView(save, inventoryMenuOf(save), todayPlanNeed(save))
+        : inventoryView(save),
     [save],
   );
   const menuOpensAtLevel = RESTAURANT_MODE

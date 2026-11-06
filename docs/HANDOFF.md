@@ -1,5 +1,14 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## iPhone playtest fixes (developer 2026-11-06)
+
+Four bugs from the live site on an iPhone in Safari. Tests: `iphone-fixes-qa`, `tools/e2e/iphonefixes.mjs` (390x844 with touch, headless Chrome; WebKit is not installed, so none of this was run in Safari).
+- **Market scroll locked:** no touch handler or scroll lock exists in the game; the likely cause is iOS keeping a scroller's old scrollable area when the Plan ahead list changes height. `common/scrollRepair.ts` rebuilds it after a day tab, Show all or a purchase. The Market's page padding is `pb-40`, so its end clears the Pre-Service Check pill. Not reproduced: needs a real iPhone check.
+- **"Low" after Buy all:** Fridge Sort's "Put it away" is not the cause, its crate holds no stock (a purchase counts at once). Inventory's "low" used the customers-per-day estimate (`menuDemand`) while the Market's plan uses the real services. The restaurant's Inventory now passes `todayPlanNeed` (restaurant/marketPlan.ts), so "low" means the Market's Today tab still has that line. Endless and the classic build keep the estimate.
+- **Cleaner:** the two screens read the same `hiredRoles`; the screenshots were 4 services apart (42 and 38 left). The "stuck" Hire was a refusal shown above the scrolled view: the message is now sticky (`staff-message`) and the Staff screen opens on the card asked for. The Cleaning page no longer quotes the hiring fee once hired, and shows `cleaner.webp` (the panel, its lines, the intro). Emoji stay only inside strings (the toast, `businessInspection` glances).
+- **Restroom shiver:** the room had a live CSS filter, a half-pixel centring transform and a backdrop blur while the guide pulsed. Now centred by layout, on its own layer, no filter or blur; the brighten-as-you-clean effect is an opacity layer (`cleaning-dim`). In Chrome the stage holds still for 3 s; the shiver itself was never reproduced.
+- **Stale browser tests, same failures on the previous build (`204360c`, run side by side; not fixed here):** `prepcook` (8), `restaurantmeasures` (8), `restaurantcleanliness` 5, `marketneeds` (times out waiting for "Tonight's close"). `lazy-load-qa` L1 had been red since Stockroom Sort (it counted six lazy screens, there are seven): updated.
+
 ## Stockroom Sort: built (developer 2026-11-06)
 
 A match-3 "stock the shelves" mini-game for SUPPLIES (Fridge Sort keeps the food). A Market supply purchase becomes sets of 3 identical goods (1-2 packs = 1 set, 3-5 = 2, 6+ = 3) scattered over wooden cubbies (3 slots each); tap a product then a free slot (or drag); 3 alike in a cubby are stocked and pop; stock everything before the clock. Plan: `docs/planning/STOCKROOM-SORT-MINIGAME-PLAN-2026-11-06.md`; art prompts: `...-CODEX-PROMPTS-2026-11-06.md`.

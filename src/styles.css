@@ -1421,8 +1421,13 @@ html.kc-reduced-motion .kc-fx {
     opacity: 0.45;
   }
 }
+.kc-clean-stage {
+  isolation: isolate;
+  transform: translateZ(0);
+}
 .kc-clean-ring {
   animation: kc-clean-ring 1.2s ease-in-out infinite;
+  will-change: transform, opacity;
 }
 @keyframes kc-clean-ghost {
   0%,
@@ -1435,6 +1440,7 @@ html.kc-reduced-motion .kc-fx {
 }
 .kc-clean-ghost {
   animation: kc-clean-ghost 0.9s ease-in-out infinite;
+  will-change: transform;
 }
 @keyframes kc-clean-suggest {
   0%,

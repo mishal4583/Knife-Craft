@@ -99,9 +99,11 @@ export function BusinessStaff({
   useEffect(() => {
     if (needed.size === 0) return;
     clearStaffFocus();
-    document
-      .querySelector("[data-testid=restaurant-team]")
-      ?.scrollIntoView({ block: "start", behavior: "instant" as ScrollBehavior });
+    // Straight to the person asked for (the Cleaner's card sits low on the page).
+    (
+      document.querySelector("[data-staff-needed=true]") ??
+      document.querySelector("[data-testid=restaurant-team]")
+    )?.scrollIntoView({ block: "center", behavior: "instant" as ScrollBehavior });
   }, [needed]);
   const hiredRoles = save.business.staff.hiredRoles;
   const payroll = dailyPayroll(hiredRoles);
@@ -201,7 +203,16 @@ export function BusinessStaff({
         </p>
       </Panel>
 
-      {message ? <p className="text-center font-hand text-[16px] text-copper">{message}</p> : null}
+      {/* Sticky: a Hire that fails low on the page must say why where the player is (developer 2026-11-06: "stuck"). */}
+      {message ? (
+        <p
+          role="alert"
+          data-testid="staff-message"
+          className="sticky top-2 z-30 rounded-2xl bg-ivory px-3 py-2 text-center font-hand text-[16px] text-copper shadow-soft"
+        >
+          {message}
+        </p>
+      ) : null}
 
       <TeamHeading
         id="restaurant-team-roster"

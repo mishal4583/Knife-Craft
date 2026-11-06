@@ -66,6 +66,11 @@ function dishNeeds(dish: BusinessDish): Map<IngredientId, number> {
  * before the menu opens). Only WHICH dishes count changes, never a formula.
  */
 export type MenuInEffect = readonly BusinessDish[];
+/**
+ * What today's services really need of each ingredient (restaurant/marketPlan.ts `todayPlanNeed`). Given, it replaces the
+ * customers-per-day estimate, so Inventory's "low" and the Market's plan never disagree.
+ */
+export type TodayNeed = ReadonlyMap<IngredientId, number>;
 const menuOf = (save: SaveData, menu?: MenuInEffect): readonly BusinessDish[] =>
   menu ?? activeBusinessDishes(save.business.menuActivation);
 
@@ -157,6 +162,7 @@ export type IngredientDemand = {
 export function menuDemand(
   save: SaveData,
   menu?: MenuInEffect,
+  todayNeed?: TodayNeed,
 ): Map<IngredientId, IngredientDemand> {
   const active = menuOf(save, menu);
   const target = businessCustomersToday(save).target;
@@ -171,7 +177,11 @@ export function menuDemand(
   for (const [id, t] of totals) {
     demand.set(id, {
       perOrder: t.need / t.dishes,
-      perDay: active.length > 0 ? (target * t.need) / active.length : 0,
+      perDay: todayNeed
+        ? (todayNeed.get(id) ?? 0)
+        : active.length > 0
+          ? (target * t.need) / active.length
+          : 0,
       dishCount: t.dishes,
     });
   }
@@ -194,10 +204,14 @@ export type LowStockItem = {
  * Ingredients with no usable stock at all are not "low", they are missing
  * (menuReadiness.mostNeeded).
  */
-export function lowStockItems(save: SaveData, menu?: MenuInEffect): LowStockItem[] {
+export function lowStockItems(
+  save: SaveData,
+  menu?: MenuInEffect,
+  todayNeed?: TodayNeed,
+): LowStockItem[] {
   const day = save.business.calendar.businessDay;
   const items: LowStockItem[] = [];
-  for (const [id, d] of menuDemand(save, menu)) {
+  for (const [id, d] of menuDemand(save, menu, todayNeed)) {
     const usable = usableQuantity(save.business.inventory, id, day);
     if (usable <= 0 || usable >= d.perDay) continue;
     items.push({

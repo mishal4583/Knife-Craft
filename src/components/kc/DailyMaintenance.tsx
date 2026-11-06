@@ -4,6 +4,7 @@ import { INVENTORY_STATUS_META } from "@/game/business/inventoryStatus";
 import { formatQuantity } from "@/game/business/businessInventory";
 import { getSupplyItem } from "@/game/business/businessSupplies";
 import { inventoryMenuOf, restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
+import { todayPlanNeed } from "@/game/restaurant/marketPlan";
 import { closingPreview, restaurantDayOf, todaysServices } from "@/game/restaurant/restaurantDay";
 import { INGREDIENTS } from "@/game/definitions";
 import { INGREDIENT_EMOJI, knifeOrDefault } from "@/game/knives/knifeDefinitions";
@@ -98,7 +99,7 @@ export function DailyMaintenance({
     (!serviceSuppliesShown || r.kind !== "supply") &&
     !(r.action.to === "ingredient" && dayStockIngredientIds.has(r.action.id)),
   );
-  const inventory = inventoryView(save, inventoryMenuOf(save));
+  const inventory = inventoryView(save, inventoryMenuOf(save), todayPlanNeed(save));
   const inventoryAttention = inventory.attention.flatMap((group) => group.items)
     .filter((item) => item.status !== "expired")
     .filter((item) => !dayStockIngredientIds.has(item.ingredientId))
