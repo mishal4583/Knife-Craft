@@ -162,15 +162,33 @@ await sleep(900);
 const f1 = await face();
 check(
   "3a the Cleaning page shows the painted Cleaner",
-  /staff-portraits\/cleaner\.webp/.test(f1?.src ?? "") && f1.w > 0,
+  /staff-portraits\/floor-cleaner\.webp/.test(f1?.src ?? "") && f1.w > 0,
   f1,
 );
+await shot(page, "iphone-cleaning-card");
 await page.evaluate(() =>
   [...document.querySelectorAll('[data-testid="cleanliness-staff"] button')]
     .find((b) => /Hire a Cleaner/.test(b.textContent))
     ?.click(),
 );
 await sleep(900);
+const teamFace = await page.evaluate(
+  () => document.querySelector('[data-staff-role="cleaner"] img')?.getAttribute("src") ?? "",
+);
+check("3a2 the Staff card shows the same portrait", /floor-cleaner\.webp/.test(teamFace), teamFace);
+const clearFace = await page.evaluate(() => {
+  const c = document.querySelector('[data-staff-role="cleaner"]');
+  const i = c.querySelector("img").getBoundingClientRect();
+  const p = [...c.querySelectorAll("span")]
+    .find((x) => /^Needed now$/i.test(x.textContent.trim()))
+    ?.getBoundingClientRect();
+  return p ? { pill: p.top, half: i.top + i.height / 2 } : null;
+});
+check(
+  "3a3 the status pill stays clear of her face",
+  clearFace && clearFace.pill >= clearFace.half,
+  clearFace,
+);
 const card = await page.evaluate(() => {
   const c = document.querySelector('[data-staff-role="cleaner"]');
   const r = c?.getBoundingClientRect();

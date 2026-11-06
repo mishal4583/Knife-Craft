@@ -649,7 +649,7 @@ function StaffCard({
 function CleanerFace({ className }: { className?: string }) {
   return (
     <StaffPortrait
-      file="cleaner"
+      file="floor-cleaner"
       name="Cleaner"
       emoji="🧽"
       data-cleaner-face="true"

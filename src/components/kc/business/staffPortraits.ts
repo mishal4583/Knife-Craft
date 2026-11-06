@@ -4,7 +4,7 @@ const PORTRAIT: Record<string, string> = {
   "line-cook": "line-cook",
   "head-chef": "head-chef",
   server: "server",
-  cleaner: "cleaner",
+  cleaner: "floor-cleaner",
   manager: "manager",
   cashier: "cashier",
   "mexican-chef": "specialist-mexican",

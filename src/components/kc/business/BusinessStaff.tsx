@@ -47,7 +47,8 @@ const ROLE_PORTRAIT: Record<string, string> = {
   "line-cook": "line-cook",
   "head-chef": "head-chef",
   server: "server",
-  cleaner: "cleaner",
+  // The woman with the broom and dustpan (developer 2026-11-06): cleaner.webp looked like a cook.
+  cleaner: "floor-cleaner",
   manager: "manager",
   cashier: "cashier",
 };

@@ -172,12 +172,17 @@ check(
 const cleaning = read("src/components/kc/business/BusinessCleanliness.tsx");
 check(
   "C1 the Cleaning page draws the painted Cleaner; only a toast string keeps the emoji",
-  /file="cleaner"/.test(cleaning) &&
+  /file="floor-cleaner"/.test(cleaning) &&
     cleaning.split("\n").filter((l) => l.includes("🧑‍🔧")).length === 2 &&
     cleaning
       .split("\n")
       .filter((l) => l.includes("🧑‍🔧"))
       .every((l) => /Cleaner on today/.test(l) && /[`"]🧑‍🔧/.test(l)),
+);
+check(
+  "C1b the Cleaner is the broom-and-dustpan portrait on every screen (developer 2026-11-06)",
+  /cleaner: "floor-cleaner"/.test(read("src/components/kc/business/BusinessStaff.tsx")) &&
+    /cleaner: "floor-cleaner"/.test(read("src/components/kc/business/staffPortraits.ts")),
 );
 check(
   "C2 a hired Cleaner's line has no hiring fee",

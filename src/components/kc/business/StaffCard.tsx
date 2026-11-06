@@ -123,8 +123,8 @@ export function StaffCard({
         <div className="relative h-[104px] overflow-hidden rounded-[14px] border border-walnut/15 bg-walnut/10 @min-[200px]:h-full @min-[200px]:min-h-[128px]">
           {portrait}
           {status ? (
-            // Narrow card: the pill sits on the picture; wide: at the top of the text column.
-            <span className="absolute right-1.5 top-1.5 @min-[200px]:hidden">{status}</span>
+            // Narrow card: the pill sits low on the picture, clear of the face; wide: at the top of the text column.
+            <span className="absolute bottom-1.5 right-1.5 @min-[200px]:hidden">{status}</span>
           ) : null}
         </div>
         <div className="flex min-w-0 flex-col gap-1">
