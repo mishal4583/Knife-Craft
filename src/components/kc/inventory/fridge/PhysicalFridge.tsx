@@ -344,14 +344,15 @@ function Drawer({ zone, items, selected, onSelect, filtered }: ZoneProps) {
 }
 
 /** The magnets Fridge Sort has earned (business/fridgeSort.ts magnetsOf), stuck on the door in a fixed order: purely a trophy. */
-function DoorMagnets({ count }: { count: number }) {
-  if (count <= 0) return null;
+function DoorMagnets({ count, pins = 0 }: { count: number; pins?: number }) {
+  if (count <= 0 && pins <= 0) return null;
   return (
     <div
       className="flex flex-wrap justify-center gap-1 px-1 pb-1"
       data-testid="fridge-magnets"
       data-count={count}
-      aria-label={`${count} fridge magnet${count === 1 ? "" : "s"} from Fridge Sort`}
+      data-pins={pins}
+      aria-label={`${count} fridge magnet${count === 1 ? "" : "s"} from Fridge Sort, ${pins} freshness pin${pins === 1 ? "" : "s"} from Fridge Check`}
     >
       {Array.from({ length: Math.min(12, count) }, (_, i) => (
         <img
@@ -365,6 +366,20 @@ function DoorMagnets({ count }: { count: number }) {
           className="pointer-events-none h-[30px] w-[30px] -rotate-3 odd:rotate-6 object-contain drop-shadow-[0_1px_1px_rgba(0,0,0,0.35)]"
         />
       ))}
+      {/* the freshness pins Fridge Check has earned (restaurant/fridgeCheck.ts pinsOf), pinned beside the magnets */}
+      {Array.from({ length: Math.min(12, pins) }, (_, i) => (
+        <img
+          key={`pin-${i}`}
+          data-fridge-pin={i + 1}
+          src={`${import.meta.env.BASE_URL}business/fridge-check/pin-${String(i + 1).padStart(2, "0")}.webp`}
+          alt=""
+          draggable={false}
+          onError={(e) => {
+            e.currentTarget.style.display = "none";
+          }}
+          className="pointer-events-none h-[30px] w-[30px] rotate-3 odd:-rotate-6 object-contain drop-shadow-[0_1px_1px_rgba(0,0,0,0.35)]"
+        />
+      ))}
     </div>
   );
 }
@@ -374,11 +389,14 @@ function Door({
   zones,
   props,
   magnets = 0,
+  pins = 0,
 }: {
   side: "left" | "right";
   zones: FridgeZoneId[];
   /** Earned Fridge Sort magnets, drawn on the right-hand door only. */
   magnets?: number;
+  /** Earned Fridge Check freshness pins, beside the magnets. */
+  pins?: number;
   props: Omit<ZoneProps, "zone" | "items"> & {
     itemsOf: (id: FridgeZoneId) => FridgeItem[];
     zoneOf: (id: FridgeZoneId) => FridgeZone;
@@ -415,7 +433,7 @@ function Door({
           </section>
         );
       })}
-      {side === "right" ? <DoorMagnets count={magnets} /> : null}
+      {side === "right" ? <DoorMagnets count={magnets} pins={pins} /> : null}
       {/* Decorative: on the door's own outer edge, never over a bin, never takes a tap. */}
       <span className="kcf-door__handle" aria-hidden data-testid="fridge-handle" />
     </div>
@@ -574,10 +592,13 @@ export function PhysicalFridge({
   onSelect,
   onEquipment,
   magnets = 0,
+  pins = 0,
 }: {
   view: FridgeView;
   /** Fridge Sort magnets earned (shown on the door). */
   magnets?: number;
+  /** Fridge Check freshness pins earned (shown on the door beside the magnets). */
+  pins?: number;
   selectedId: IngredientId | null;
   onSelect: (id: IngredientId) => void;
   /** Absent before Business opens (first levels): no upgrade button then. */
@@ -735,6 +756,7 @@ export function PhysicalFridge({
                     zones={current.zones}
                     props={doorProps}
                     magnets={magnets}
+                    pins={pins}
                   />
                 ) : (
                   <div className="kcf-cabinet">
@@ -793,7 +815,13 @@ export function PhysicalFridge({
                 </div>
               ))}
               {layout.rightDoor.length > 0 ? (
-                <Door side="right" zones={layout.rightDoor} props={doorProps} magnets={magnets} />
+                <Door
+                  side="right"
+                  zones={layout.rightDoor}
+                  props={doorProps}
+                  magnets={magnets}
+                  pins={pins}
+                />
               ) : null}
             </div>
             {steel ? <div className="kcf-kick" aria-hidden /> : null}

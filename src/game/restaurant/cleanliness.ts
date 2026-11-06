@@ -47,6 +47,7 @@ import { isAuditDay } from "./parAudit";
 import { remapCampaignThreshold } from "../levels/campaignSelection";
 import { BUSINESS_STAFF_CATALOG } from "../business/businessStaff";
 import { CLEANING_FROM_LEVEL } from "../config/cleaningStart";
+import { finishCheck, stageOfTask, type CheckOutcome, type CheckEffects } from "./fridgeCheck";
 
 /** When cleaning starts (config/cleaningStart.ts: Day 2, Level 3). */
 export { CLEANING_FROM_LEVEL };
@@ -1359,9 +1360,17 @@ export type CleanlinessAction =
   | { kind: "areas"; areas: CleanArea[] }
   | { kind: "intro-seen" }
   /** The sink game (2026-10-23): these lines washed by hand (soap, nothing breaks). */
-  | { kind: "wash"; ids: SupplyId[] };
+  | { kind: "wash"; ids: SupplyId[] }
+  /** Fridge Check (restaurant/fridgeCheck.ts): a night's stage was played; it completes ITS chore only, then the stars and Hype are kept. */
+  | { kind: "check"; task: TaskKind; outcome: CheckOutcome };
 
-export type CleanlinessActionResult = { save: SaveData; cleaned: TaskKind[]; needs: SupplyId[] };
+export type CleanlinessActionResult = {
+  save: SaveData;
+  cleaned: TaskKind[];
+  needs: SupplyId[];
+  /** Only for the "check" action: what the stage earned. */
+  checkEffects?: CheckEffects;
+};
 
 /** One player action on the Cleanliness screen; `cleaned` = tasks done, `needs` = what's missing. */
 export function applyCleanlinessAction(
@@ -1400,6 +1409,14 @@ export function applyCleanlinessAction(
     case "wash": {
       const w = handWash(save, action.ids);
       return { save: w.save, cleaned: [], needs: w.noSoap ? ["dish-soap"] : [] };
+    }
+    case "check": {
+      // Only the two night chores the game stands for, and only while the chore is still open (a double tap or the Prep Cook cannot pay twice).
+      if (!stageOfTask(action.task)) return { save, cleaned: [], needs: [] };
+      const r = cleanTask(save, action.task);
+      if (!r.ok) return { save, cleaned: [], needs: r.needs };
+      const done = finishCheck(r.save, action.outcome);
+      return { save: done.save, cleaned: [action.task], needs: [], checkEffects: done.effects };
     }
   }
 }

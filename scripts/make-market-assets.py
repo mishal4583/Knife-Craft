@@ -157,6 +157,44 @@ def build_ingredients() -> int:
     return 0
 
 
+# The SPOILED TWINS (Fridge Check, "Fresh Check Assets/C20..C24"): every ingredient drawn spoiled, in the same cell order as A7..A11.
+SPOILED_OUT = os.path.join(ROOT, "public", "business", "ingredients-spoiled")
+SPOILED_SHEETS = {"C20-spoiled-1.png": "A7.png", "C21-spoiled-2.png": "A8.png", "C22-spoiled-3.png": "A9.png",
+                  "C23-spoiled-4.png": "A10.png", "C24-spoiled-5.png": "A11.png"}
+
+
+# The chicken's twin is a drumstick but the game's chicken is a raw breast (ING_SINGLES): it keeps the generic overlays instead.
+SPOILED_SKIP = {"chicken"}
+
+
+def build_spoiled() -> int:
+    os.makedirs(SPOILED_OUT, exist_ok=True)
+    total = 0
+    count = 0
+    for sheet, fresh_sheet in SPOILED_SHEETS.items():
+        src = os.path.join(ROOT, "Fresh Check Assets", sheet)
+        if not os.path.exists(src):
+            print("missing spoiled sheet (local-only):", src)
+            return 1
+        atlas = Image.open(src).convert("RGBA")
+        cw, ch = atlas.width // COLS, atlas.height // ROWS
+        for i, iid in enumerate(ING_ATLASES[fresh_sheet]):
+            if not iid or iid in SPOILED_SKIP:
+                continue
+            col, row = i % COLS, i // COLS
+            cell = atlas.crop((col * cw, row * ch, (col + 1) * cw, (row + 1) * ch))
+            item = clean(cell, ING_LO, ING_HI)
+            if item is None:
+                print("EMPTY SPOILED CELL", sheet, i, iid)
+                return 1
+            path = os.path.join(SPOILED_OUT, f"{iid}.webp")
+            fit(item).save(path, "WEBP", quality=80, method=6, alpha_quality=85)
+            total += os.path.getsize(path)
+            count += 1
+    print(f"{count} spoiled twins, {total / 1024:.0f} KB total, {total / count / 1024:.1f} KB each")
+    return 0
+
+
 FS_OUT = os.path.join(ROOT, "public", "business", "fridge-sort")
 # (output name, source sheet, cell box (x0, y0, x1, y1) in the sheet, output width)
 FS_PARTS = [
@@ -402,9 +440,74 @@ def build_stockroom() -> int:
     return 0
 
 
+# ── Fridge Check (restaurant/fridgeCheck.ts): the closing-night inspection, Codex art in "Fresh Check Assets/" ───────────────────
+FC_SRC = os.path.join(ROOT, "Fresh Check Assets")
+FC_OUT = os.path.join(ROOT, "public", "business", "fridge-check")
+# (sheet, columns, rows, [(cell, output name, output width)]); every cell is cut by shape (the sheets carry a faint haze, alpha 1-39).
+FC_UI = [
+    ("C03-stamps.png", 3, 1, [(0, "stamp-keep", 176), (1, "stamp-bin", 176), (2, "stamp-first", 176)]),
+    ("C04-bins.png", 2, 1, [(0, "bin-open", 240), (1, "bin-closed", 240)]),
+    ("C05-props.png", 4, 2, [(0, "flag", 112), (1, "label-green", 128), (2, "label-yellow", 128), (3, "label-red", 128),
+                             (4, "tape", 112), (5, "marker", 128), (6, "film-dispenser", 128), (7, "tray", 144)]),
+    ("C07-freshness-icons.png", 4, 1, [(0, "icon-fresh", 88), (1, "icon-aging", 88), (2, "icon-near", 88), (3, "icon-spoiled", 88)]),
+    ("C08-overlays.png", 4, 3, [(i, f"ov-{i + 1:02d}", 200) for i in range(12)]),
+    ("C09-spoil-fx.png", 4, 2, [(0, "fly-1", 72), (1, "fly-2", 72), (2, "fly-3", 72), (3, "wisp-tall", 96), (4, "wisp-wide", 128),
+                                (5, "drop", 56), (6, "drip", 72), (7, "cobweb", 120)]),
+    ("C10-wrap-film.png", 3, 1, [(0, "wrap-round", 300), (1, "wrap-box", 300), (2, "wrap-long", 300)]),
+    ("C11-badges.png", 4, 3, [(i, f"pin-{i + 1:02d}", 112) for i in range(12)]),
+]
+FC_SINGLE = [("C02-card.png", "card", 340), ("C06-steel-shelf.png", "shelf", 640)]
+
+
+def build_fridge_check() -> int:
+    if not os.path.isdir(FC_SRC):
+        print("missing source folder (local-only):", FC_SRC)
+        return 1
+    os.makedirs(FC_OUT, exist_ok=True)
+    total = 0
+    for sheet, cols, rows, parts in FC_UI:
+        src = os.path.join(FC_SRC, sheet)
+        if not os.path.exists(src):
+            print("missing sheet:", src)
+            return 1
+        cells = _cells_by_shape(Image.open(src), cols, rows)
+        for cell, name, width in parts:
+            if cell not in cells:
+                print("EMPTY CELL", sheet, cell, name)
+                return 1
+            img = cells[cell]
+            img = img.resize((width, max(1, round(img.height * width / img.width))), Image.LANCZOS)
+            total += _save(img, name, FC_OUT)
+    for fname, name, width in FC_SINGLE:
+        src = os.path.join(FC_SRC, fname)
+        if not os.path.exists(src):
+            print("missing image:", src)
+            return 1
+        img = Image.open(src).convert("RGBA")
+        # crop to the VISIBLE art (alpha over 40): the faint shadow around it would make it bigger than it looks
+        ys, xs = np.where(np.array(img)[..., 3] > 40)
+        img = img.crop((int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1))
+        img = img.resize((width, max(1, round(img.height * width / img.width))), Image.LANCZOS)
+        total += _save(img, name, FC_OUT)
+    # the cold room behind the cards (opaque)
+    src = os.path.join(FC_SRC, "C01-backdrop-coldroom.png")
+    if not os.path.exists(src):
+        print("missing image:", src)
+        return 1
+    im = Image.open(src).convert("RGB")
+    im = im.resize((540, round(im.height * 540 / im.width)), Image.LANCZOS)
+    path = os.path.join(FC_OUT, "backdrop.webp")
+    im.save(path, "WEBP", quality=70, method=6)
+    total += os.path.getsize(path)
+    print(f"fridge check art: {len(os.listdir(FC_OUT))} files, {total / 1024:.0f} KB in all")
+    return 0
+
+
 def main() -> int:
     if "--stockroom" in sys.argv:  # only the Stockroom Sort art (needs just "Iventory Assets/")
         return build_stockroom()
+    if "--fridgecheck" in sys.argv:  # only the Fridge Check art (needs just "Fresh Check Assets/")
+        return build_fridge_check() or build_spoiled()
     missing = [n for n in list(ATLASES) if not os.path.exists(os.path.join(SRC, n))]
     if missing:
         print("missing source atlases (they are local-only, copy them from the Codex branch):", missing)
@@ -431,6 +534,8 @@ def main() -> int:
     if build_fridge_sort() != 0 or build_fridge_ui() != 0 or build_wall() != 0:
         return 1
     if build_stockroom() != 0:
+        return 1
+    if os.path.isdir(FC_SRC) and (build_fridge_check() != 0 or build_spoiled() != 0):
         return 1
     os.makedirs(PORTRAITS, exist_ok=True)
     for name in ("floor-server", "floor-cleaner", "cashier"):

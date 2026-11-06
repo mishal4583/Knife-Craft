@@ -11,6 +11,14 @@ import {
 import { cleaningVariant } from "@/game/restaurant/cleaningDirt";
 import { cleanlinessRoomImageUrl, kitchenMapArtStage } from "@/game/kitchen/kitchenMapArt";
 import { AreaCleaningPrototype } from "../business/AreaCleaningPrototype";
+import { FridgeCheckGame } from "./FridgeCheckGame";
+import {
+  isFridgeCheckOpen,
+  stageOfTask,
+  CHECK_TASK,
+  type CheckStage,
+} from "@/game/restaurant/fridgeCheck";
+import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
 
 /**
  * The tasks cleaned in the cleaning game (scrubbing the room's painting) —
@@ -43,16 +51,23 @@ export const cleaningVariantFor = (st: ReturnType<typeof cleanlinessOf>, task: T
  * the Pre-Service Check, Closing Time): `clean(task)` opens the cleaning game
  * for a scrubbing task — finishing it is the cleanliness action "clean" — or
  * cleans a one-tap task at once. Render `game` where the overlay belongs.
+ *
+ * The two closing chores "Throw out spoiled food" and "Wrap and label" open Fridge Check (restaurant/fridgeCheck.ts) when there is something
+ * to judge tonight; its Skip, a quiet night and the Prep Cook all keep the one tap, so the day can always close.
  */
 export function useCleaningGame(
   save: SaveData,
   run: (action: CleanlinessAction) => CleanlinessActionResult | null,
 ): { clean: (task: TaskKind) => void; game: ReactNode } {
   const [active, setActive] = useState<{ area: CleanArea; task: TaskKind } | null>(null);
+  const [check, setCheck] = useState<CheckStage | null>(null);
   const st = cleanlinessOf(save);
   const stage = kitchenMapArtStage(save.equippedKitchenUpgradeId);
+  const level = restaurantLevelOf(save.levelProgress);
   const clean = (task: TaskKind) => {
-    if (isInteractiveTask(task)) setActive({ area: TASK_RULES[task].area, task });
+    const checkStage = stageOfTask(task);
+    if (checkStage && isFridgeCheckOpen(save, level, task)) setCheck(checkStage);
+    else if (isInteractiveTask(task)) setActive({ area: TASK_RULES[task].area, task });
     else run({ kind: "clean", task });
   };
   const game = active ? (
@@ -68,6 +83,21 @@ export function useCleaningGame(
         run({ kind: "clean", task: active.task });
         setActive(null);
       }}
+    />
+  ) : check ? (
+    <FridgeCheckGame
+      key={check}
+      save={save}
+      level={level}
+      stage={check}
+      reducedMotion={save.settings.reducedMotion}
+      onFinish={(outcome) => run({ kind: "check", task: CHECK_TASK[check], outcome })}
+      onSkip={() => {
+        run({ kind: "clean", task: CHECK_TASK[check] });
+        setCheck(null);
+      }}
+      onClose={() => setCheck(null)}
+      onNext={(next) => setCheck(next)}
     />
   ) : null;
   return { clean, game };

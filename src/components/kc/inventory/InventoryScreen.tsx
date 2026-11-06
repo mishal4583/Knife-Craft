@@ -48,6 +48,8 @@ import { AmountChip, ItemPic, type TileTone } from "./ItemTile";
 import { expiredStockPreview, type DiscardExpiredResult } from "@/game/business/discardExpired";
 import { IngredientIcon } from "@/components/kc/common/IngredientIcon";
 import { FridgeSortChip } from "./FridgeSortChip";
+import { FridgeCheckChip } from "./FridgeCheckChip";
+import { pinsOf } from "@/game/restaurant/fridgeCheck";
 import { magnetsOf } from "@/game/business/fridgeSort";
 
 /** How many tiles each Needs Attention group shows before "View all" (two rows of three). */
@@ -884,6 +886,7 @@ export function InventoryScreen({
 
               {/* Fridge Sort: the food that was just bought waits here to be put away (from Level 14) */}
               <FridgeSortChip save={save} go={go} />
+              <FridgeCheckChip save={save} go={go} className="mt-2" />
 
               {/* The physical fridge */}
               <div ref={fridgeRef} className="-mx-2 scroll-mt-3">
@@ -893,6 +896,7 @@ export function InventoryScreen({
                   onSelect={setSelectedId}
                   onEquipment={restaurantOpen ? toEquipment : undefined}
                   magnets={magnetsOf(save)}
+                  pins={pinsOf(save)}
                 />
               </div>
 

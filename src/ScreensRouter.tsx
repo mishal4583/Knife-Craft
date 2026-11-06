@@ -61,6 +61,7 @@ import type { ScreenId } from "@/components/kc/data";
 import type { SaveData } from "@/game/SaveManager";
 import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
 import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
+import { FridgeCheckGame } from "@/components/kc/restaurant/FridgeCheckGame";
 import { firstRunHand } from "@/game/restaurant/firstRunGuide";
 import { unlockText } from "@/components/kc/navLevel";
 import { kitchenMapArtStage, kitchenMapImageUrl } from "@/game/kitchen/kitchenMapArt";
@@ -441,6 +442,21 @@ export function ScreensRouter({
                   />
                 </div>
               </Suspense>
+            ) : null}
+            {screen === "fridge-check" ? (
+              <div className="relative h-full w-full overflow-hidden">
+                <FridgeCheckGame
+                  save={save}
+                  level={restaurantLevelOf(save.levelProgress)}
+                  stage="sort"
+                  reducedMotion={save.settings.reducedMotion}
+                  initialPractice
+                  onFinish={() => null}
+                  onSkip={() => routeGo("inventory")}
+                  onClose={() => routeGo("inventory")}
+                  onNext={() => undefined}
+                />
+              </div>
             ) : null}
             {screen === "kitchen" ? (
               <Kitchen

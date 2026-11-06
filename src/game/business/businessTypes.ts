@@ -11,6 +11,7 @@ import type { DeliveriesState } from "../restaurant/deliveries";
 import type { SecondFloorState } from "../restaurant/secondFloor";
 import type { FridgeSortState } from "./fridgeSort";
 import type { StockroomSortState } from "./stockroomSort";
+import type { FridgeCheckState } from "../restaurant/fridgeCheck";
 import type { EndlessStarsState } from "../restaurant/restaurantStanding";
 /**
  * BUSINESS_TYPES — Economy V3's own persisted-state container. A single
@@ -202,6 +203,11 @@ export type BusinessState = {
    * Absent = nothing waiting. Never holds money or stock.
    */
   stockroomSort?: StockroomSortState;
+  /**
+   * Fridge Check (restaurant/fridgeCheck.ts): the closing-night inspection's best scores, stars, freshness pins and perfect-night streak.
+   * Absent = nothing earned. Never holds money or stock.
+   */
+  fridgeCheck?: FridgeCheckState;
 };
 
 export const DEFAULT_BUSINESS_STATE: BusinessState = {
