@@ -1,8 +1,8 @@
 // The first-run hand on the Market's Ingredients tab (developer 2026-11-02: "when the game starts it goes to market but it stays in
 // the knife section, there is no hand instruction to go to the ingredients page"), restaurant build, brand-new save:
 //   M1 opening the Market from the bottom bar lands on Knives; the hand points at the Ingredients tab with the line
-//      "Open Ingredients: hire your team, then buy the food";
-//   M2 tapping Ingredients moves the hand on to the Server's Hire button and the tab hint is gone;
+//      "Open Ingredients: buy the food";
+//   M2 tapping Ingredients moves the hand on to the first Buy button (no Hire step: developer 2026-11-07) and the tab hint is gone;
 //   M3 the hand never shows once the first service is done (not covered here) and no console errors.
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import { launch, freshPlayer, sleep, text, shot } from "./harness.mjs";
@@ -72,8 +72,11 @@ try {
     .catch(() => null);
   await shot(page, "firstmarket-2");
   check(
-    "M2 in Ingredients the tab hint is gone and the hand is on the Server's Hire button",
-    hint2 === null && !h2.includes("market-ingredients") && h2.includes("hire-server"),
+    "M2 in Ingredients the tab hint is gone and the hand is on the first Buy button (no Hire hand)",
+    hint2 === null &&
+      !h2.includes("market-ingredients") &&
+      !h2.some((h) => /^hire-/.test(h ?? "")) &&
+      (await page.evaluate(() => !!document.querySelector('[data-testid="first-shopping-hand"]'))),
     { h2, hint2, text: (await flat()).slice(0, 120) },
   );
   const errors = logs.filter(

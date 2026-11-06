@@ -1,11 +1,11 @@
 // The first-run hand (developer 2026-11-01: "proper hand instructions to buy the ingredients, hire them and then go
 // back to cutting"), restaurant build, in a real browser, from a brand-new save:
-//   H1 the Market's hand is on the first Hire button (Server first, "1️⃣ Tap Hire"); hiring both moves it on.
-//   H2 the hand is then on the first Buy button ("2️⃣ Tap Buy"); buying everything moves it on.
-//   H3 the bottom bar's Kitchen tab has the hand and the caption "3️⃣ … back to the Kitchen".
+//   H1 the Market's hand is on the first Buy button ("1️⃣ Tap Buy"); there is no Hire card (developer 2026-11-07: hire when the game needs them).
+//   H2 buying everything moves it on.
+//   H3 the bottom bar's Kitchen tab has the hand and the caption "2️⃣ … back to the Kitchen".
 //   H4 on the Kitchen the hand is on "Open for service".
 //   H5 the Pre-Service Check (when it opens) has the hand on its start button; starting opens the cutting.
-//   H6 the hand is gone once the first service is done.
+//   H6 the plate is ready: the Server's card (a, b hire); the guest has eaten: the Cashier's card (c, d hire); the hand is gone once the service is done.
 //   H7 no console errors.
 import {
   launch,
@@ -50,37 +50,19 @@ try {
   await clickButton(page, /^Show me/);
   await sleep(1500);
 
-  // ---------- H1: hire first ----------
-  const hireHand = await handFor();
-  const hint1 = await flat();
-  await shot(page, "firstrun-1-hire");
-  check(
-    "H1 the Market starts with the hand on the Server's Hire button and the line 1️⃣ Tap Hire (hire before buying)",
-    hireHand.includes("hire-server") && !hireHand.includes("buy") && /1️⃣ Tap Hire/.test(hint1),
-    hireHand,
-  );
-  for (let i = 0; i < 2; i++) {
-    await page.evaluate(() => {
-      const b = [...document.querySelectorAll('[data-testid="team-hire"] button')].find((x) =>
-        /^Hire/.test(x.textContent.trim()),
-      );
-      b?.click();
-    });
-    await sleep(800);
-  }
-
-  // ---------- H2: then buy ----------
+  // ---------- H1: buy first (the hires come inside the service) ----------
   const buyHand = await handFor();
-  const hint2 = await flat();
-  await shot(page, "firstrun-2-buy");
-  const cashAfterHire = (await readSave(page)).credits;
+  const hint1 = await flat();
+  await shot(page, "firstrun-1-buy");
+  const cash0 = (await readSave(page)).credits;
   check(
-    "H2a with both hired the hand is on the first Buy button with the numbered line, and the $10.00 for food is left",
+    "H1 the Market starts with the hand on the first Buy button and the line 1️⃣ Tap Buy; no Hire card yet; the opening cash is there",
     buyHand.includes("buy") &&
       !buyHand.some((h) => /^hire-/.test(h)) &&
-      /2️⃣ Tap Buy/.test(hint2) &&
-      cashAfterHire === 1000,
-    { buyHand, cashAfterHire },
+      /1️⃣ Tap Buy/.test(hint1) &&
+      !(await q('[data-testid="team-hire"]')) &&
+      cash0 === 23600,
+    { buyHand, cash0 },
   );
   for (let i = 0; i < 4; i++) {
     const had = await page.evaluate(() => {
@@ -101,8 +83,8 @@ try {
   );
   await shot(page, "firstrun-3-kitchen-tab");
   check(
-    "H3 both hired: the hand is on the Kitchen tab with the caption 3️⃣ back to the Kitchen",
-    toKitchen.includes("kitchen") && /3️⃣/.test(cap ?? "") && /Kitchen/.test(cap ?? ""),
+    "H3 food bought: the hand is on the Kitchen tab with the caption 2️⃣ back to the Kitchen",
+    toKitchen.includes("kitchen") && /2️⃣/.test(cap ?? "") && /Kitchen/.test(cap ?? ""),
     { toKitchen, cap },
   );
   await page.evaluate(() => document.querySelector('[data-nav="kitchen"]')?.click());
@@ -157,8 +139,87 @@ try {
     await sleep(1200);
     if (/ORDER READY/i.test(await flat())) break;
   }
+  const before = await readSave(page);
   await clickButton(page, /^Serve to /);
-  await sleep(3500);
+  await sleep(900);
+  // ---------- H6a: the plate is ready and nobody can carry it: the Server's card ----------
+  const srv = await page.evaluate(() => {
+    const el = document.querySelector('[data-testid="service-hire"]');
+    const img = el?.querySelector("img");
+    return el
+      ? {
+          role: el.getAttribute("data-hire-role"),
+          portrait: !!img && img.complete && img.naturalWidth > 0,
+          src: img?.getAttribute("src") ?? null,
+          hand: !!el.querySelector('[data-testid="first-run-hand"]'),
+          buttons: el.querySelectorAll("button").length,
+          text: el.textContent.replace(/\s+/g, " ").slice(0, 120),
+        }
+      : null;
+  });
+  await shot(page, "firstrun-6a-server-prompt");
+  check(
+    "H6a the plate is ready and there is no Server: the game offers to hire one, with her portrait, the hand on Hire and NO skip button (one button)",
+    !!srv &&
+      srv.role === "server" &&
+      srv.portrait &&
+      /server\.webp/.test(srv.src ?? "") &&
+      srv.hand &&
+      srv.buttons === 1,
+    srv,
+  );
+  await page.evaluate(() =>
+    [...document.querySelectorAll('[data-testid="service-hire"] button')]
+      .find((b) => /^Hire /.test(b.textContent.trim()))
+      ?.click(),
+  );
+  await sleep(600);
+  const afterServer = await readSave(page);
+  const staffEntries = (s) =>
+    (s.economyLedger ?? []).filter((e) => e.category === "staff-purchase");
+  check(
+    "H6b hiring the Server is permanent and paid once from the opening cash (one staff-purchase entry)",
+    afterServer.business.staff.hiredRoles.includes("server") &&
+      afterServer.credits < before.credits &&
+      staffEntries(afterServer).length === staffEntries(before).length + 1,
+    {
+      roles: afterServer.business.staff.hiredRoles,
+      paid: before.credits - afterServer.credits,
+    },
+  );
+  // The plate is carried out and eaten; then the bill is due and nobody is at the till.
+  let cashier = null;
+  for (let i = 0; i < 30 && !cashier; i++) {
+    await sleep(500);
+    cashier = await page.evaluate(() => {
+      const el = document.querySelector('[data-testid="service-hire"]');
+      return el
+        ? { role: el.getAttribute("data-hire-role"), img: !!el.querySelector("img") }
+        : null;
+    });
+  }
+  await shot(page, "firstrun-6c-cashier-prompt");
+  check(
+    "H6c the guest has eaten and nobody is at the till: the game offers to hire a Cashier",
+    !!cashier && cashier.role === "cashier" && cashier.img,
+    cashier,
+  );
+  await page.evaluate(() =>
+    [...document.querySelectorAll('[data-testid="service-hire"] button')]
+      .find((b) => /^Hire /.test(b.textContent.trim()))
+      ?.click(),
+  );
+  await sleep(600);
+  const afterCashier = await readSave(page);
+  check(
+    "H6d both are on the team for good, the prompt is gone, and the bill is made",
+    afterCashier.business.staff.hiredRoles.includes("server") &&
+      afterCashier.business.staff.hiredRoles.includes("cashier") &&
+      !(await q('[data-testid="service-hire"]')) &&
+      staffEntries(afterCashier).length === staffEntries(before).length + 2,
+    afterCashier.business.staff.hiredRoles,
+  );
+  await sleep(1500);
   await sweepCash(page);
   await clickButton(page, /^Next Customer$/);
   await sleep(1800);

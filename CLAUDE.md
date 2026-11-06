@@ -43,7 +43,9 @@ status line in HANDOFF; this file changes only when a RULE changes.
   Server's and the Cashier's hiring fees (`config/startingTeam.ts`: $236.00; developer
   2026-11-01), with the Market open at Level 1: nothing is given free (no Grandma
   tools, cupboard or leftovers); the player buys the first order's ingredients with
-  their own money (developer 2026-10-30) and hires the two in the first shop.
+  their own money (developer 2026-10-30) and hires the two permanently inside the first service, when the game needs
+  them: the Server when the first plate is ready, the Cashier when the guest has eaten (developer 2026-11-07;
+  `restaurant/serviceHire.ts`); from Level 2 the Pre-Service Check requires both.
 - **Reference-only folders** (not in the build): `Knifecraft vegetables/`,
   `Knifecraft Phase 1 review/`, `Shop UI/`, `knifecraft_kitchen_webp/`,
   `Market.png`, `*.docx`, the root `*.md` audits, `art-source/` (source art).

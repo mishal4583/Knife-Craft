@@ -133,12 +133,15 @@ console.log("S. Staff requirements");
     // …and from L17 the Mexican menu dishes keep him needed while they are on the menu.
     // Rule changed (developer 2026-11-02): the Server and the Cashier are needed from the very first service ("make them necessary");
     // every other role still waits (none before L27), and the Mexican Chef comes with the first Mexican dish at L14.
-    [1, 9, 13].every(
-      (n) =>
-        reqs(n)
-          .map((r) => r.id)
-          .join() === "server,cashier",
-    ) &&
+    // Rule changed (developer 2026-11-07, "hire them when the game needs them"): the first service offers them inside it, so
+    // the first requirement is at Level 2 (game numbering).
+    reqs(1).length === 0 &&
+      [2, 9, 13].every(
+        (n) =>
+          reqs(n)
+            .map((r) => r.id)
+            .join() === "server,cashier",
+      ) &&
       reqs(14)
         .map((r) => r.id)
         .join() === "mexican-chef,server,cashier" &&
@@ -149,14 +152,14 @@ console.log("S. Staff requirements");
             ["server", "cashier"].includes(r.id),
         ),
       ),
-    "S1: the Server and the Cashier are needed from the first service; no other role before L27; only the Mexican Chef from L14",
+    "S1: the Server and the Cashier are needed from the second service (offered inside the first); no other role before L27; only the Mexican Chef from L14",
   );
   assert(
     STAFF_RULES.map((r) => `${r.role}@${r.fromLevel}`).join() ===
-      "server@1,cashier@1,prep-cook@30,line-cook@40,cleaner@54,head-chef@74,manager@99",
+      "server@2,cashier@2,prep-cook@30,line-cook@40,cleaner@54,head-chef@74,manager@99",
     // Rule changed (developer 2026-10-31, "unlock prepcook only after level 30"): the Prep Cook was required from L27.
     // Rule changed (developer 2026-11-02): the Server (was L31, two tables) and the Cashier (new) are required from L1.
-    "S2: Server and Cashier (L1) → Prep Cook (L30) → Line Cook (L40) → Cleaner (L54) → Head Chef (L74) → Manager (L99)",
+    "S2: Server and Cashier (L2) → Prep Cook (L30) → Line Cook (L40) → Cleaner (L54) → Head Chef (L74) → Manager (L99)",
   );
   const small = { orders: 2, dineIn: 1, specialists: [], specialistCuisines: 0 };
   const big = { orders: 5, dineIn: 4, specialists: [], specialistCuisines: 0 };
@@ -431,7 +434,11 @@ console.log("I. Inventory: restaurant Needs Attention");
   const panel = read("src/components/kc/inventory/RestaurantAttentionPanel.tsx");
   assert(
     !/purchase|persist|appendLedgerEntry|credits\s*[-+]/.test(panel) &&
-      /openMarketIngredients\(go, t\.id, t\.quantity\)/.test(panel) &&
+      // Rule changed (developer 2026-11-06): every attention row opens through attentionActions.ts (asset-mapping-qa D).
+      /openAttentionRow\(row, go\)/.test(panel) &&
+      /openMarketIngredients\(go, t\.id, t\.quantity\)/.test(
+        read("src/components/kc/attentionActions.ts"),
+      ) &&
       /RESTAURANT_MODE \? <RestaurantAttentionPanel/.test(
         read("src/components/kc/inventory/InventoryScreen.tsx"),
       ),

@@ -95,6 +95,8 @@ import {
 } from "@/game/restaurant/serviceFloor";
 import type { KitchenMapArtStage } from "@/game/kitchen/kitchenMapArt";
 import { Panel, KButton, DustMotes } from "../common/primitives";
+import { ServiceHireSheet } from "./ServiceHireSheet";
+import type { ServiceHirePrompt, ServiceHireRole } from "@/game/restaurant/serviceHire";
 import { dollars } from "@/game/money";
 import { withRequiredPeelSteps } from "@/game/prepStepGuards";
 import type { PreparationStep } from "@/game/levels/levelTypes";
@@ -264,6 +266,11 @@ export function Preparation({
      */
     /** Phase 10: a Cashier is on the team — the customer's bill is made, takeaway orders are taken beside them. */
     cashier?: boolean;
+    /** Developer 2026-11-07: the Server / Cashier still to hire, offered when the game needs them (restaurant/serviceHire.ts). */
+    hire?: {
+      prompts: Partial<Record<ServiceHireRole, ServiceHirePrompt>>;
+      onHire: (role: string) => { ok: boolean; reason?: string; fee?: number };
+    };
     tableWipe?: {
       staff: "cleaner" | null;
       onWipe: (guests: number, by: "player" | "staff") => { ok: boolean; need?: string };
@@ -464,6 +471,28 @@ export function Preparation({
   );
   // This plate was held for the table: a short "waiting for the rest" note, then the next order.
   const [holding, setHolding] = useState(false);
+  // Hire when the game needs them (developer 2026-11-07): the Server's card when the plate is ready to go out, the Cashier's when the
+  // guest has eaten. Hiring is the only way on (no skip: developer 2026-11-07), asked once per customer, and a hired role stops being asked.
+  const [hirePrompt, setHirePrompt] = useState<ServiceHireRole | null>(null);
+  const hireAsked = useRef<Set<ServiceHireRole>>(new Set());
+  const hireAfter = useRef<(() => void) | null>(null);
+  /** Shows the role's card if it is still to hire and not yet asked for this customer; `then` runs when it is answered (or at once). */
+  const askToHire = (role: ServiceHireRole, then: () => void): boolean => {
+    if (!service?.hire?.prompts[role] || hireAsked.current.has(role)) return false;
+    hireAsked.current.add(role);
+    hireAfter.current = then;
+    setHirePrompt(role);
+    return true;
+  };
+  const answerHire = () => {
+    const role = hirePrompt;
+    if (!role) return;
+    service?.hire?.onHire(role);
+    setHirePrompt(null);
+    const next = hireAfter.current;
+    hireAfter.current = null;
+    next?.();
+  };
   // Parties (developer 2026-10-26): this order's place at its party's table, decided once.
   const [partySeat] = useState(() =>
     service && floor && shownCustomer
@@ -965,7 +994,10 @@ export function Preparation({
         setCare(cleanTableCount() > 0 ? null : { wiped: false });
       }
     }
+    const guestAte = floorMode === "deliver";
     setFloorMode(null);
+    // The guest has eaten and the bill is due: no Cashier yet, so the game asks for one.
+    if (guestAte) askToHire("cashier", () => undefined);
   };
   /** One tap takes the cash left on the table into the wallet (a tap or a swipe on the pile in the dining room). */
   const collectTableCash = () => {
@@ -1497,6 +1529,9 @@ export function Preparation({
           😤 A guest left — the wait was too long
         </div>
       ) : null}
+      {hirePrompt && service?.hire?.prompts[hirePrompt] ? (
+        <ServiceHireSheet prompt={service.hire.prompts[hirePrompt]!} onHire={answerHire} />
+      ) : null}
       {holding ? (
         <div
           data-testid="party-holding"
@@ -1763,7 +1798,8 @@ export function Preparation({
                   );
                   setHolding(true);
                   window.setTimeout(() => service.onNextOrder(), 1100);
-                } else setFloorMode("deliver");
+                } else if (!askToHire("server", () => setFloorMode("deliver")))
+                  setFloorMode("deliver");
               }
               return served;
             }}

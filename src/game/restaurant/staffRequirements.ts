@@ -70,19 +70,19 @@ export type StaffRule = {
 };
 
 const SOURCE_STAFF_RULES: readonly StaffRule[] = [
-  // The starting team (developer 2026-11-02: "without hiring both the Server and the Cashier the game still delivers food, make
-  // them necessary"): from the very first service the Server carries the plates and the Cashier takes the bill. The player hires
-  // both in the first shop with the opening cash (config/startingTeam.ts); a hire the wallet cannot cover goes on supplier credit
-  // (the existing rule for a REQUIRED hire), so this can never soft-lock a service. Replaces the old rule "a Server from the
-  // second table on" (from level 46), which this covers.
+  // The starting team (developer 2026-11-02: "make them necessary"; 2026-11-07: "hire them when the game needs them"): the
+  // first service is offered the hires inside it (restaurant/serviceHire.ts: the Server when the first plate is ready, the
+  // Cashier when the first guest has eaten), paid from the opening cash (config/startingTeam.ts); from the SECOND service on
+  // the Pre-Service Check will not start without both. A hire the wallet cannot cover goes on supplier credit (the existing
+  // rule for a REQUIRED hire), so this can never soft-lock a service. Level numbers here are game levels (no remap).
   {
     role: "server",
-    fromLevel: 1,
+    fromLevel: 2,
     why: "Someone has to carry the plates to the tables.",
   },
   {
     role: "cashier",
-    fromLevel: 1,
+    fromLevel: 2,
     why: "Someone has to take the bill and the payment.",
   },
   {
@@ -123,7 +123,9 @@ export const STAFF_RULES: readonly StaffRule[] = SOURCE_STAFF_RULES.map((rule) =
   fromLevel:
     rule.role === "prep-cook"
       ? Math.max(remapCampaignThreshold(rule.fromLevel), PREP_COOK_CUTS_FROM)
-      : remapCampaignThreshold(rule.fromLevel),
+      : (STARTING_TEAM_ROLES as readonly string[]).includes(rule.role)
+        ? rule.fromLevel // the starting team is already in game numbering (no remap)
+        : remapCampaignThreshold(rule.fromLevel),
 }));
 
 /** How many levels ahead a staff requirement (or a specialist) is announced. */

@@ -53,7 +53,8 @@ export type AttentionRow = {
     | { to: "ingredient"; id: IngredientId; quantity: number }
     | { to: "supply"; id: SupplyId }
     | { to: "fridge" }
-    | { to: "staff" };
+    /** The role or specialist chef the service needs: the Staff screen opens on THAT card (components/kc/staffFocus.ts). */
+    | { to: "staff"; id: string; specialist: boolean };
 };
 
 export type RestaurantAttention = {
@@ -142,7 +143,7 @@ export function restaurantAttention(save: SaveData): RestaurantAttention {
         icon: "👥",
         name: r.title,
         amount: "Hire",
-        action: { to: "staff" },
+        action: { to: "staff", id: r.id, specialist: r.kind === "specialist" },
       });
   }
 

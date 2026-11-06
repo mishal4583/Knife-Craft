@@ -1,5 +1,7 @@
 import { KButton } from "../common/primitives";
 import type { GuideStep } from "@/game/restaurant/restaurantGuide";
+import { StaffPortrait } from "../business/StaffCard";
+import { staffFallbackEmoji, staffPortraitFile } from "../business/staffPortraits";
 
 /**
  * The Restaurant Guide's card (restaurant/restaurantGuide.ts): one "what to do
@@ -30,7 +32,20 @@ export function GuideCard({
           🎯 Next step
         </p>
         <p className="mt-1 font-display text-[20px] font-black leading-tight text-walnut-dark">
-          <span aria-hidden>{step.icon}</span> {step.title}
+          {step.focus && staffPortraitFile(step.focus) ? (
+            // A hire step shows the person themself (the same portrait as their Staff card).
+            <span className="mr-1.5 inline-block h-10 w-10 overflow-hidden rounded-full border-2 border-copper/40 align-middle">
+              <StaffPortrait
+                file={staffPortraitFile(step.focus)}
+                name={step.title}
+                emoji={staffFallbackEmoji(step.focus)}
+                className="h-full w-full text-[20px]"
+              />
+            </span>
+          ) : (
+            <span aria-hidden>{step.icon}</span>
+          )}{" "}
+          {step.title}
         </p>
         <p className="mt-1.5 font-hand text-[16.5px] leading-snug text-walnut">{step.why}</p>
         <div className="mt-3 flex gap-2">

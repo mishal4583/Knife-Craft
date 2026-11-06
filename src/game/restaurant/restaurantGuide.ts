@@ -52,6 +52,10 @@ export type GuideStep = {
   /** The button's words, and the screen it opens (a ScreenId). */
   button: string;
   to: string;
+  /** For a Staff step: the role to hire. The Staff screen opens scrolled to that card, and the guide card shows their portrait. */
+  focus?: string;
+  /** For a restock step: the first supply that is missing. The Market opens on THAT card, not just the tab. */
+  supply?: SupplyId;
   /** A one-off introduction: offered once, never again. */
   once?: boolean;
 };
@@ -181,6 +185,7 @@ const RULES: readonly Rule[] = [
       why: `A Prep Cook cuts each order for you, and Auto runs the whole service — no hiring fee, ${formatUsd(wage)} a closing. Your own cuts still earn more.`,
       button: "Open Staff",
       to: "business-staff",
+      focus: "prep-cook",
     };
   },
   // Staff the restaurant now needs.
@@ -206,6 +211,7 @@ const RULES: readonly Rule[] = [
         why: rule.why,
         button: "Open Staff",
         to: "business-staff",
+        focus: rule.role,
       };
     const team = hired.size + restaurantStaffOf(save).specialists.length;
     return level >= 8 && team === 0
@@ -267,6 +273,7 @@ const RULES: readonly Rule[] = [
       why: `${names}${missing.size > 3 ? " and more" : ""} — buy ${missing.size > 1 ? "them" : "it"} in the Market (Cleaning) so the restaurant can be cleaned. Tasks you have no supplies for never cost you tips.`,
       button: "Open the Market",
       to: "shop-supplies",
+      supply: [...missing][0]!,
     };
   },
   // Cleaning is piling up.

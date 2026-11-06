@@ -310,11 +310,11 @@ export function Shop({
     clearMarketSecondFloor();
   }, []);
 
-  // The first-run hand (restaurant/firstRunGuide.ts): the team is hired and the food bought in Ingredients, but a new game opens
+  // The first-run hand (restaurant/firstRunGuide.ts): the food is bought in Ingredients, but a new game opens
   // the Market on Knives, so the hand points at the Ingredients tab until the player is there (developer 2026-11-02).
   const firstRunStep = RESTAURANT_MODE ? (firstRunHand(save, "market")?.step ?? null) : null;
   const pointAtIngredients =
-    (firstRunStep === "hire" || firstRunStep === "buy") &&
+    firstRunStep === "buy" &&
     category !== "ingredients" &&
     visibleCategories.some((c) => c.id === "ingredients");
 
@@ -513,7 +513,7 @@ export function Shop({
             className="px-4 pt-3 text-center font-hand text-[17px] leading-snug text-copper"
             data-testid="first-run-ingredients-hint"
           >
-            🛒 Open Ingredients: hire your team, then buy the food
+            🛒 Open Ingredients: buy the food
           </p>
         ) : null}
 

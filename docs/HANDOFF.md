@@ -1,5 +1,28 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## Hire the Server and the Cashier when the game needs them (developer 2026-11-07, UNCOMMITTED with the section below)
+
+- Was: both hired in the Market's first-shop card before the food was bought, and the Pre-Service Check required both from Level 1.
+- Now (idle-game style): the Level 1 walk is buy food → Kitchen → open → start. In the service, when the plate is ready and there is
+  no Server, a card (`game/ServiceHireSheet.tsx`, her portrait, the price, the hand on Hire) offers the hire; when the
+  guest has eaten and there is no Cashier, the same card offers the Cashier. ONE button, no skip (developer 2026-11-07: "they need to be
+  hired anyway"); asked once per customer. Pure rules/copy: `game/restaurant/serviceHire.ts`; App: `hireInService` (one `hireRestaurantStaff`, `required: true` so a short
+  wallet goes on supplier credit, never stuck). Both are permanent (`hiredRoles`, no expiry); the opening cash ($10 + both fees,
+  `config/startingTeam.ts`) is unchanged and pays them.
+- `STAFF_RULES`: Server and Cashier `fromLevel` 1 → 2 (game numbering, no remap): Level 1 never stops for them; from Level 2 the check
+  requires both. The Market's "Hire your team" card shows from Level 2 only (for a player who said "Not now"). First-run hand: the
+  `hire` step is gone (buy → to-kitchen → open → start, captions 1️⃣–4️⃣).
+- Tests updated to the new rule (with dated comments): dining-floor D2, first-run-guide R1/R2/R7/W1, restaurant-progression S1/S2,
+  e2e firstrun (now plays both prompts: H6a–d), firstshop S3/S3b, firstmarket M2, firstteam (T0, Level 2), staffhire T4. New:
+  `scripts/service-hire-qa.mts` (A–E).
+
+## Hiring: portraits and "Hire" opens THEIR card; asset-mapping audit (developer 2026-11-06)
+
+Bug report: Inventory -> Needs attention showed the missing Cashier as a 👥 emoji and its Hire button only opened the Staff page. Fixed, and the same two problems hunted across the game. Tests: `scripts/asset-mapping-qa.mts` (A-G), `tools/e2e/staffhire.mjs` (T1-T5, ALL PASS on a `vite preview` build).
+- **Fixed:** the attention row's staff action now carries the role / specialist id (`restaurantAttention.ts`); ONE helper `components/kc/attentionActions.ts` (`openAttentionRow`) opens every attention row (used by Inventory's panel and Daily Maintenance) and a missing person opens Staff scrolled to THEIR card, marked "Needed now" (`openStaffFor`). The tile, the Market's "Hire your team" card (it showed 🤵 / 🧾), Daily Maintenance's required team and the guide card show the person's portrait. The guide's hire steps (`GuideStep.focus`) and its out-of-cleaning-supplies step (`GuideStep.supply`) open the exact card. `BusinessStaff` had its own copy of the role -> portrait map: it now reads `staffPortraits.ts` like everything else. The wash-up strip draws the supply pictures, "Missing: ..." on a blocked order draws ingredient pictures, and the Overview's spoil / near-expiry / blocked-order alerts draw them too (`BusinessAlert.glanceParts`; `glance` stays the full text).
+- **Checked and fine:** every ingredient (57), supply (62) and Stockroom good has its file; no picture file is missing; the Staff screen, Pre-Service Check, Second Floor and Market already used portraits; the other "go to Staff / Market" buttons are section shortcuts, not item buttons.
+- **Left as it is (no art exists, or it is decoration):** dishes are emoji everywhere (there is no dish art); alert glance text in notifications; the Service Floor's 🧾 bubble; rivals in the city ranking; `staff-portraits/cleaner.webp` is unused (the Cleaner is the floor-cleaner portrait since 2026-11-06). The Kitchen Helpers (Prep Assistant, Kitchen Assistant, Quality Chef) reuse the Prep Cook / Line Cook / Head Chef portraits, so each helper shows the same face as that hireable role: new portraits would be needed to tell them apart.
+
 ## iPhone playtest fixes (developer 2026-11-06)
 
 Four bugs from the live site on an iPhone in Safari. Tests: `iphone-fixes-qa`, `tools/e2e/iphonefixes.mjs` (390x844 with touch, headless Chrome; WebKit is not installed, so none of this was run in Safari).

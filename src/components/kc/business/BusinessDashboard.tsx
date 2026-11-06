@@ -72,6 +72,8 @@ import {
   businessOrderAvailability,
 } from "@/game/business/BusinessServiceManager";
 import { INGREDIENTS } from "@/game/definitions";
+import { IngredientIcon } from "@/components/kc/common/IngredientIcon";
+import { INGREDIENT_EMOJI } from "@/game/knives/knifeDefinitions";
 import {
   businessAlertsFor,
   previewBusinessDayClose,
@@ -1286,7 +1288,20 @@ function Operations({
                   className="mt-0.5 font-ui text-[12.5px] font-bold leading-snug text-walnut/80"
                   data-testid="alert-glance"
                 >
-                  {alert.glance}
+                  {alert.glanceParts ? (
+                    <>
+                      {alert.glanceParts.before}
+                      {alert.glanceParts.ingredients.slice(0, 5).map((id) => (
+                        <IngredientIcon key={id} id={id} fallback={INGREDIENT_EMOJI[id] ?? "🥬"} />
+                      ))}
+                      {alert.glanceParts.ingredients.length > 5
+                        ? ` +${alert.glanceParts.ingredients.length - 5}`
+                        : ""}
+                      {alert.glanceParts.after}
+                    </>
+                  ) : (
+                    alert.glance
+                  )}
                 </p>
                 {alert.action?.kind === "rush-restock" ? (
                   blockedDish ? (

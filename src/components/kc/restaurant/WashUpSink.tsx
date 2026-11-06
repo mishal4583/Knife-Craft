@@ -27,6 +27,7 @@ import {
   type DishShape,
 } from "@/game/restaurant/dishDirt";
 import { KButton } from "../common/primitives";
+import { SupplyIcon } from "../common/SupplyIcon";
 import { CleaningFx } from "../business/cleaning/cleaningFx";
 import { paintStain, stainReach } from "../business/cleaning/dirtArt";
 
@@ -663,7 +664,9 @@ export function WashUpSink({
                       : "border-walnut/15 bg-ivory/50 text-walnut/70")
                 }
               >
-                <span aria-hidden>{done ? "✓" : item.icon}</span>
+                <span aria-hidden>
+                  {done ? "✓" : <SupplyIcon id={item.id} fallback={item.icon} />}
+                </span>
                 <span className="block truncate">{item.label}</span>
                 <span className="block text-[11px] font-black">×{item.n}</span>
               </li>

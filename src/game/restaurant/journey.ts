@@ -32,7 +32,8 @@ import {
   MENU_UNLOCKS,
   RESTAURANT_SYSTEMS,
 } from "./restaurantProgression";
-import { SPECIALIST_CHEFS, STAFF_RULES } from "./staffRequirements";
+import { SPECIALIST_CHEFS, STAFF_RULES, TEAM_HIRE_FROM } from "./staffRequirements";
+import { STARTING_TEAM_ROLES } from "../config/startingTeam";
 
 /** How many milestones the journey has (developer 2026-10-31, D-7: keep 100). */
 export const MILESTONE_COUNT = 100;
@@ -82,7 +83,14 @@ export function unlockEvents(): Map<number, Ev[]> {
   for (const s of RESTAURANT_SYSTEMS)
     if (s.firstLevel > 1 || s.id === "restaurant-day") add(s.firstLevel, 3, s.title);
   for (const c of SPECIALIST_CHEFS) add(c.firstLevel, 4, `Hire the ${title(c.id)}`);
-  for (const r of STAFF_RULES) add(r.fromLevel, 5, `Hire a ${title(r.role)}`);
+  // The Server and the Cashier are hired DURING the first service (restaurant/serviceHire.ts) and required from the second, so the
+  // journey keeps them at the level where the player hires them.
+  for (const r of STAFF_RULES)
+    add(
+      (STARTING_TEAM_ROLES as readonly string[]).includes(r.role) ? TEAM_HIRE_FROM : r.fromLevel,
+      5,
+      `Hire a ${title(r.role)}`,
+    );
   for (const c of CAFE_MILESTONES) add(c.levelRequired, 6, c.title);
   for (const [t, n] of Object.entries(CAMPAIGN_150_TECHNIQUE_FIRST_USE_LEVEL))
     add(n, 7, `Learn the ${t.replace(/([A-Z])/g, " $1").toLowerCase()} cut`);

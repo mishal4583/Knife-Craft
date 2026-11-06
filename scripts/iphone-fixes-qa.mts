@@ -181,7 +181,8 @@ check(
 );
 check(
   "C1b the Cleaner is the broom-and-dustpan portrait on every screen (developer 2026-11-06)",
-  /cleaner: "floor-cleaner"/.test(read("src/components/kc/business/BusinessStaff.tsx")) &&
+  // Rule changed (developer 2026-11-06): the Staff screen no longer keeps its own role map; it reads staffPortraits.ts (asset-mapping-qa B1/B2).
+  /staffPortraitFile\(def\.role\)/.test(read("src/components/kc/business/BusinessStaff.tsx")) &&
     /cleaner: "floor-cleaner"/.test(read("src/components/kc/business/staffPortraits.ts")),
 );
 check(

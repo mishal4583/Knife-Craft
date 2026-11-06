@@ -1,16 +1,18 @@
 import { KButton, Panel } from "../common/primitives";
-import { PointerHand } from "../common/PointerHand";
-import { firstRunHand } from "@/game/restaurant/firstRunGuide";
 import { InfoTip } from "../common/InfoTip";
+import { StaffPortrait } from "../business/StaffCard";
+import { staffPortraitFile } from "../business/staffPortraits";
 import { formatUsd } from "@/game/money";
 import { teamOffers } from "@/game/restaurant/diningHire";
+import { TEAM_CARD_FROM } from "@/game/restaurant/serviceHire";
 import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
 import type { SaveData } from "@/game/SaveManager";
 
 /**
- * HIRE YOUR TEAM (Phase 10, developer 2026-11-01): the Server and the Cashier (the billing staff) are hired for good
- * in the first shop, with the opening cash that pays their fees (config/startingTeam.ts). Each hire is a normal
- * paid hire (App.hireStaff: one wallet debit, one ledger entry); the card is gone once both are on the team.
+ * HIRE YOUR TEAM (Phase 10, developer 2026-11-01; moved 2026-11-07): the Server and the Cashier (the billing staff) are hired
+ * for good. The FIRST service offers each hire at the moment it is needed (restaurant/serviceHire.ts); this Market card is
+ * the later way (Level 2 on), if one was put off. Each hire is a normal paid hire (App.hireStaff: one wallet debit, one
+ * ledger entry); the card is gone once both are on the team.
  */
 export function TeamHireCard({
   save,
@@ -21,11 +23,10 @@ export function TeamHireCard({
   onHire: (role: string) => { ok: boolean; reason?: string; fee?: number };
   setNotice: (text: string) => void;
 }) {
-  const offers = teamOffers(save, restaurantLevelOf(save.levelProgress));
-  if (offers.length === 0) return null;
-  // The first-run hand: on the first Hire button (the team is hired before the food is bought) (restaurant/firstRunGuide.ts).
-  const handRole =
-    firstRunHand(save, "market")?.step === "hire" ? offers.find((o) => o.affordable)?.role : null;
+  const level = restaurantLevelOf(save.levelProgress);
+  const offers = teamOffers(save, level);
+  // The first service offers these hires inside it (restaurant/serviceHire.ts); the card is the later, calmer way (Level 2 on).
+  if (offers.length === 0 || level < TEAM_CARD_FROM) return null;
   return (
     <div data-testid="team-hire">
       <Panel tone="cream" className="p-3">
@@ -33,11 +34,6 @@ export function TeamHireCard({
           <p className="font-ui text-[12px] font-extrabold uppercase tracking-[0.12em] text-copper">
             🧑‍🤝‍🧑 Hire your team
           </p>
-          {handRole ? (
-            <span className="font-hand text-[15px] text-copper" data-testid="first-run-hire-hint">
-              1️⃣ Tap Hire
-            </span>
-          ) : null}
           <InfoTip label="About your team">
             The Server carries the food to the tables. The Cashier makes each customer&apos;s bill,
             takes the parcel orders at the counter and counts the till at night. They stay with you
@@ -51,23 +47,23 @@ export function TeamHireCard({
               className="flex items-center gap-2 rounded-xl bg-ivory/70 px-2 py-1.5"
               data-team-offer={o.role}
             >
-              <span className="text-[26px]" aria-hidden>
-                {o.icon}
+              {/* The person themself (public/business/staff-portraits/), the same picture as their Staff card; the emoji only if it fails to load. */}
+              <span
+                className="h-12 w-12 shrink-0 overflow-hidden rounded-full border-2 border-copper/35 bg-walnut/10"
+                data-team-portrait={o.role}
+              >
+                <StaffPortrait
+                  file={staffPortraitFile(o.role)}
+                  name={o.name}
+                  emoji={o.icon}
+                  className="h-full w-full text-[26px]"
+                />
               </span>
               <span className="min-w-0 flex-1 font-ui text-[13.5px] font-bold leading-snug text-walnut-dark">
                 {o.name}
                 <span className="block text-[12px] font-semibold text-walnut/65">{o.job}</span>
               </span>
               <div className="relative shrink-0">
-                {handRole === o.role ? (
-                  <span
-                    data-testid="first-run-hand"
-                    data-hand-for={`hire-${o.role}`}
-                    className="pointer-events-none absolute right-full top-1/2 z-10 mr-0.5 -translate-y-1/2 rotate-90"
-                  >
-                    <PointerHand size={38} />
-                  </span>
-                ) : null}
                 <KButton
                   size="sm"
                   variant="sage"

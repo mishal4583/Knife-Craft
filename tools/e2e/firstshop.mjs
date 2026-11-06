@@ -2,8 +2,8 @@
 //   S1 a new game starts with $10.00 + the Server's and the Cashier's hiring fees (developer 2026-11-01: $236.00)
 //      and lands on the Kitchen after the intro (not in the cutting).
 //   S2 a hand points at the Market (Grandma's section pointer), and "Show me" opens the ingredients.
-//   S3 the Market asks to hire first (developer 2026-11-01): the hint is there and the hand is on the Server's
-//      Hire button, not yet on Buy; once both are hired (S3b) the hand moves to a needed item's Buy button (S3c).
+//   S3 the Market asks to buy the food first (developer 2026-11-07: the Server and the Cashier are hired inside the first service,
+//      when the game needs them): the hint is there and the hand is on a needed item's Buy button, with no Hire card (S3b, S3c).
 //   S4 buying spends the player's own money: one inventory-purchase entry, wallet = opening + ledger.
 //   S5 nothing is given for free: no Grandma tools, cupboard or leftovers in the save.
 //   S6 with the food bought, Prepare opens the cutting; serve, sweep and Next Customer (last order) complete level-1.
@@ -62,8 +62,8 @@ try {
   );
   const hand = await buyHand();
   check(
-    "S3 the Market asks to hire first: the hint shows, the hand is on Hire, not on Buy yet",
-    hint && hireHand && !hand,
+    "S3 the Market asks to buy first: the hint shows, the hand is on Buy, and there is no Hire hand",
+    hint && !hireHand && hand,
     {
       hint,
       hireHand,
@@ -72,37 +72,23 @@ try {
   );
   await page.screenshot({ path: "tools/e2e/firstshop-2-market.png" });
 
-  // The team is hired in the first shop with the opening cash that pays for it.
+  // No team card in the first shop: the opening cash is all there, untouched, for the two hires inside the service.
   const teamCard = await page.evaluate(() =>
     [...document.querySelectorAll("[data-team-offer]")].map((e) =>
       e.getAttribute("data-team-offer"),
     ),
   );
-  for (let i = 0; i < 2; i++) {
-    await page.evaluate(() => {
-      const b = [...document.querySelectorAll('[data-testid="team-hire"] button')].find((x) =>
-        /^Hire/.test(x.textContent.trim()),
-      );
-      b?.click();
-    });
-    await sleep(700);
-  }
   const teamed = await readSave(page);
   check(
-    "S3b the first shop offers the Server and the Cashier; hiring both leaves exactly $10.00 for the food, with two staff-purchase entries, and the card is gone",
-    teamCard.join() === "server,cashier" &&
-      teamed.business.staff.hiredRoles.includes("server") &&
-      teamed.business.staff.hiredRoles.includes("cashier") &&
-      teamed.credits === 1000 &&
-      teamed.economyLedger.filter((e) => e.category === "staff-purchase").length === 2 &&
+    "S3b the first shop shows no Hire card and keeps the whole opening cash ($10.00 for food plus both fees); nobody is hired yet",
+    teamCard.length === 0 &&
+      teamed.business.staff.hiredRoles.length === 0 &&
+      teamed.credits === START &&
       !(await page.evaluate(() => !!document.querySelector('[data-testid="team-hire"]'))),
     { teamCard, credits: teamed.credits },
   );
   await sleep(500);
-  check(
-    "S3c with the team hired, the hand moves to the first needed item's Buy button",
-    await buyHand(),
-  );
+  check("S3c the hand is on the first needed item's Buy button", await buyHand());
 
   // Buy every ingredient in the plan, one tap each (the hand moves to the next one).
   for (let i = 0; i < 4; i++) {

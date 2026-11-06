@@ -70,6 +70,11 @@ export type BusinessAlert = {
    * sentences … show the issues with emojis"): a few icons, names and numbers.
    */
   glance: string;
+  /**
+   * For the alerts that name ingredients: the same glance split around the ingredients, so the screen can show their painted pictures
+   * (IngredientIcon) where `glance` has emoji. `glance` stays the full text (tests, screen readers).
+   */
+  glanceParts?: { before: string; ingredients: IngredientId[]; after: string };
   action?: BusinessAlertAction;
   /** Whether this alert's first appearance deserves a banner notification. */
   notify: boolean;
@@ -335,6 +340,7 @@ export function businessAlertsFor(
       severity: "warning",
       title: "Stock Spoils Tonight",
       glance: `🗑️ ${ingredientIcons(spoilingTonight)} · use today`,
+      glanceParts: { before: "🗑️ ", ingredients: spoilingTonight, after: " · use today" },
       detail: `${ingredientNames(spoilingTonight)} will be discarded at End Business Day. Use it in orders today.`,
       action: { kind: "navigate", label: "View Inventory", screen: "inventory" },
       notify: true,
@@ -347,6 +353,7 @@ export function businessAlertsFor(
       severity: "info",
       title: "Nearing Expiry",
       glance: `⏳ ${ingredientIcons(nearExpiry)} · use soon`,
+      glanceParts: { before: "⏳ ", ingredients: nearExpiry, after: " · use soon" },
       detail: `${ingredientNames(nearExpiry)} — best used soon. Holding stock this close to its shelf life shows up as an Ingredient Expiry WARNING at inspection, and a WARNING two days running is fined ${formatUsd(repeatedWarningFineAmount())}.`,
       action: { kind: "navigate", label: "View Inventory", screen: "inventory" },
       notify: false,
@@ -364,6 +371,11 @@ export function businessAlertsFor(
         severity: "warning",
         title: "Current Order Blocked",
         glance: `🧾 ${currentDish.name} · missing ${ingredientIcons(missing)}`,
+        glanceParts: {
+          before: `🧾 ${currentDish.name} · missing `,
+          ingredients: missing,
+          after: "",
+        },
         detail: `A customer wants ${currentDish.name} — missing ${ingredientNames(missing)}. It can't be accepted until you restock.`,
         action: { kind: "rush-restock", label: "Restock" },
         notify: true,

@@ -240,6 +240,9 @@ import { prepCookCanCut } from "@/game/restaurant/prepCookAuto";
 import { taughtTechniques } from "@/game/coaching";
 import { preparationStepsForRecipe } from "@/game/service/stepsForRecipe";
 import { GuideCard } from "@/components/kc/restaurant/GuideCard";
+import { openStaffFor } from "@/components/kc/staffFocus";
+import { openMarketSupplies } from "@/components/kc/marketFocus";
+import { serviceHirePrompts } from "@/game/restaurant/serviceHire";
 import {
   fireSpecialist,
   getSpecialist,
@@ -2118,6 +2121,20 @@ export function App() {
     return result;
   }
 
+  /**
+   * The first service's own hire prompts (restaurant/serviceHire.ts): the Server when the plate is ready, the Cashier when the
+   * guest has eaten. The same permanent paid hire as everywhere (one wallet debit, one "staff-purchase" entry); a wallet that is
+   * short puts it on supplier credit (a hire the Pre-Service Check will require), so the prompt can never leave the player stuck.
+   */
+  function hireInService(role: string): { ok: boolean; reason?: string; fee?: number } {
+    if (!save || !RESTAURANT_MODE) return { ok: false };
+    const hired = hireRestaurantStaff(save, role, restaurantLevelOf(save.levelProgress), {
+      required: true,
+    });
+    if (hired.ok) persist(hired.save);
+    return hired;
+  }
+
   /** Economy V3 Phase 9 (Staff) — firing is free (no cancellation-style fee; an employee isn't under a fixed-term contract). No ledger entry. Business Mode only — Campaign never calls this. */
   function fireStaff(role: string): { ok: boolean } {
     if (!save) return { ok: false };
@@ -3720,6 +3737,11 @@ export function App() {
   // otherwise try to render with nothing to show.
   const isCampaignService = sessionMode === "campaign-service";
   const isBatchGroup = sessionMode === "batch-group";
+  // The Server / Cashier still to hire, offered inside the service (restaurant/serviceHire.ts).
+  const servicePrompts =
+    RESTAURANT_MODE && isCampaignService && save
+      ? serviceHirePrompts(save, restaurantLevelOf(save.levelProgress))
+      : {};
   // Beginner coaching (coaching.ts) runs only in a campaign level being
   // played for the first time — never on a replay, Today's Special, Endless,
   // Restaurant Service or Business.
@@ -4064,6 +4086,10 @@ export function App() {
               ...(partyWaiting ? { partyWaiting } : {}),
               ...(currentTakeaway ? { takeaway: true } : {}),
               waiter: save.business.staff.hiredRoles.includes("server") ? "server" : "cook",
+              // Hire when the game needs them (developer 2026-11-07): the Server / Cashier prompts, only while one is missing.
+              ...(RESTAURANT_MODE && isCampaignService && Object.keys(servicePrompts).length > 0
+                ? { hire: { prompts: servicePrompts, onHire: hireInService } }
+                : {}),
               ...(save.business.staff.hiredRoles.includes("cashier") ? { cashier: true } : {}),
               // Phase 10: the table is cleaned after every customer from the first one (a Cleaner on the
               // dining room today does it by themself), and the napkin holders run low every third table.
@@ -4522,7 +4548,15 @@ export function App() {
           onGo={() => {
             guideLevelRef.current = guideAtLevel;
             if (saveRef.current) persist(markGuideSeen(saveRef.current, guideStep));
-            go(guideStep.to as ScreenId);
+            if (guideStep.to === "business-staff" && guideStep.focus)
+              openStaffFor(go, [guideStep.focus]);
+            else if (guideStep.to === "shop-supplies" && guideStep.supply)
+              openMarketSupplies(
+                go,
+                getSupplyItem(guideStep.supply)?.section ?? "cleaning",
+                guideStep.supply,
+              );
+            else go(guideStep.to as ScreenId);
           }}
         />
       ) : null}

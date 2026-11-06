@@ -245,9 +245,15 @@ export function BusinessService({
                 <>
                   <p className="mb-2 text-center font-hand text-[15px] text-copper">
                     Missing:{" "}
-                    {(availability && !availability.available ? availability.missing : [])
-                      .map((id) => `${INGREDIENT_EMOJI[id] ?? ""} ${INGREDIENTS[id]?.name ?? id}`)
-                      .join(", ")}
+                    {(availability && !availability.available ? availability.missing : []).map(
+                      (id, i) => (
+                        <span key={id}>
+                          {i > 0 ? ", " : ""}
+                          <IngredientIcon id={id} fallback={INGREDIENT_EMOJI[id] ?? ""} />{" "}
+                          {INGREDIENTS[id]?.name ?? id}
+                        </span>
+                      ),
+                    )}
                     . Restock before this order can be accepted.
                   </p>
                   {dish ? (

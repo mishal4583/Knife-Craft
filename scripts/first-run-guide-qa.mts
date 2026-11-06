@@ -64,16 +64,18 @@ const step = (s: SaveData, where: Parameters<typeof G.firstRunHand>[1]) =>
 {
   const s0 = fresh();
   check(
-    "R1 a new game: the team is hired FIRST, so the Market's hand is on Hire, and anywhere else it points at the Market",
-    step(s0, "market") === "hire" &&
+    // Rule changed (developer 2026-11-07): the Server and the Cashier are hired inside the service when the game needs them
+    // (serviceHire.ts), so the first-run walk starts with the food.
+    "R1 a new game: the Market's hand is on Buy (no Hire step), and anywhere else it points at the Market",
+    step(s0, "market") === "buy" &&
       step(s0, "kitchen") === "to-market" &&
       step(s0, "other") === "to-market" &&
       marketPlanFor(s0, 1).rows.length > 0,
   );
   const s1 = hired(s0, ["server"]);
   check(
-    "R2 one of the two hired: still the Hire step for the other",
-    step(s1, "market") === "hire",
+    "R2 one of the two hired: the walk is unchanged (hiring is not a step of it)",
+    step(s1, "market") === "buy" && step(s1, "kitchen") === "to-market",
   );
   const s2 = hired(s0, ["server", "cashier"]);
   check(
@@ -109,15 +111,14 @@ const step = (s: SaveData, where: Parameters<typeof G.firstRunHand>[1]) =>
   order.push(step(s0, "market")!, step(s2, "market")!);
   order.push(step(s3, "market")!, step(s3, "kitchen")!, step(s3, "sheet")!);
   check(
-    "R7 the whole walk is hire → buy → to-kitchen → open → start, each with its own numbered caption in that order",
-    order.join() === "hire,buy,to-kitchen,open,start" &&
+    "R7 the whole walk is buy → to-kitchen → open → start, each with its own numbered caption in that order",
+    order.join() === "buy,buy,to-kitchen,open,start" &&
       (
         [
           [s0, "market", "1️⃣"],
-          [s2, "market", "2️⃣"],
-          [s3, "market", "3️⃣"],
-          [s3, "kitchen", "4️⃣"],
-          [s3, "sheet", "5️⃣"],
+          [s3, "market", "2️⃣"],
+          [s3, "kitchen", "3️⃣"],
+          [s3, "sheet", "4️⃣"],
         ] as const
       ).every(([sv, w, n]) => G.firstRunHand(sv, w)?.caption.startsWith(n)),
     order,
@@ -132,10 +133,10 @@ const step = (s: SaveData, where: Parameters<typeof G.firstRunHand>[1]) =>
   const sheet = read("src/components/kc/restaurant/PreServiceCheck.tsx");
   const layer = read("src/components/kc/restaurant/ServiceCheckLayer.tsx");
   check(
-    "W1 the Market: the hand is on the first Buy button only while the food is to buy, and on the first affordable Hire button only at the hire step",
+    "W1 the Market: the hand is on the first Buy button only while the food is to buy; the Hire card has no hand (the hires are in the service)",
     /handStep === "buy" && row === rows\[0\]/.test(plan) &&
-      /firstRunHand\(save, "market"\)\?\.step === "hire"/.test(team) &&
-      /handRole === o\.role/.test(team),
+      !/firstRunHand/.test(team) &&
+      /TEAM_CARD_FROM/.test(team),
   );
   check(
     "W2 the bottom bar: a hand and a numbered caption on the Market tab, then the Kitchen tab (not while Grandma's own pointer is up)",

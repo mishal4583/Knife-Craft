@@ -29,29 +29,7 @@ import { isSystemLive, restaurantSystem } from "@/game/restaurant/restaurantProg
 import { BusinessSectionBanner } from "./BusinessSectionBanner";
 import { specialistCharacter } from "@/game/chefs/chefDefinitions";
 import { StaffCard, StaffPay, StaffPortrait, StaffRow, StaffStatus } from "./StaffCard";
-
-/** A face per role — visual only. */
-const ROLE_ICON: Record<string, string> = {
-  "prep-cook": "🧑‍🍳",
-  "line-cook": "👨‍🍳",
-  "head-chef": "👨‍🍳",
-  server: "🧑‍💼",
-  cleaner: "🧽",
-  manager: "📋",
-  cashier: "🧾",
-};
-
-/** Portraits are presentation only; staff rules and save state remain data-driven. */
-const ROLE_PORTRAIT: Record<string, string> = {
-  "prep-cook": "prep-cook",
-  "line-cook": "line-cook",
-  "head-chef": "head-chef",
-  server: "server",
-  // The woman with the broom and dustpan (developer 2026-11-06): cleaner.webp looked like a cook.
-  cleaner: "floor-cleaner",
-  manager: "manager",
-  cashier: "cashier",
-};
+import { staffFallbackEmoji, staffPortraitFile } from "./staffPortraits";
 
 /** Compact summaries for the cards; the full, authoritative text stays behind ⓘ. */
 const ROLE_GLANCE: Record<string, string> = {
@@ -232,9 +210,9 @@ export function BusinessStaff({
               tone={hired ? "hired" : isNeeded ? "needed" : "plain"}
               portrait={
                 <StaffPortrait
-                  file={ROLE_PORTRAIT[def.role]}
+                  file={staffPortraitFile(def.role)}
                   name={def.name}
-                  emoji={ROLE_ICON[def.role]}
+                  emoji={staffFallbackEmoji(def.role)}
                   className="h-full w-full"
                 />
               }

@@ -537,14 +537,16 @@ const base = (credits = dollars(500)): SaveData =>
   );
   check(
     // Rule changed (developer 2026-11-02): the Server and the Cashier are also REQUIRED from the first service (staff-hire / progression QA).
-    "D2 the Server and the Cashier can be hired from Level 1 (and, since 2026-11-02, a service needs both), the Prep Cook still at 30",
+    // Rule changed (developer 2026-11-07): "hire them when the game needs them" - the first service offers both inside it
+    // (serviceHire.ts); from the second service the Pre-Service Check requires them.
+    "D2 the Server and the Cashier can be hired from Level 1 (and a service needs both from Level 2), the Prep Cook still at 30",
     SR.TEAM_HIRE_FROM === 1 &&
       SR.staffHireFrom("server") === 1 &&
       SR.staffHireFrom("cashier") === 1 &&
       SR.staffHireFrom("prep-cook") === 30 &&
       SR.staffHireFrom("line-cook") === SR.STAFF_HIRE_FROM &&
-      SR.STAFF_RULES.find((r) => r.role === "server")!.fromLevel === 1 &&
-      SR.STAFF_RULES.find((r) => r.role === "cashier")!.fromLevel === 1,
+      SR.STAFF_RULES.find((r) => r.role === "server")!.fromLevel === 2 &&
+      SR.STAFF_RULES.find((r) => r.role === "cashier")!.fromLevel === 2,
   );
   const offers = DH.teamOffers(fresh, 1);
   check(

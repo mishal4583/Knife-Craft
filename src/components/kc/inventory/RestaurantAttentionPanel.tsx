@@ -2,9 +2,10 @@ import { useState } from "react";
 import type { SaveData } from "@/game/SaveManager";
 import type { ScreenId } from "../data";
 import { formatUsd } from "@/game/money";
-import { getSupplyItem } from "@/game/business/businessSupplies";
 import { restaurantAttention, type AttentionRow } from "@/game/restaurant/restaurantAttention";
-import { openMarketIngredients, openMarketSupplies } from "../marketFocus";
+import { openAttentionRow } from "../attentionActions";
+import { StaffPortrait } from "../business/StaffCard";
+import { staffFallbackEmoji, staffPortraitFile } from "../business/staffPortraits";
 import { ItemTile } from "./ItemTile";
 import { IngredientIcon } from "@/components/kc/common/IngredientIcon";
 import { SupplyIcon } from "@/components/kc/common/SupplyIcon";
@@ -46,14 +47,6 @@ export function RestaurantAttentionPanel({
       </p>
     );
   const rows = all ? a.rows : a.rows.slice(0, SHOWN);
-  function act(row: AttentionRow) {
-    const t = row.action;
-    if (t.to === "ingredient") openMarketIngredients(go, t.id, t.quantity);
-    else if (t.to === "supply")
-      openMarketSupplies(go, getSupplyItem(t.id)?.section ?? "packaging", t.id);
-    else if (t.to === "fridge") go("business-refrigerator");
-    else go("business-staff");
-  }
   const urgent = a.rows.filter((r) => r.severity === "urgent").length;
   const low = a.rows.length - urgent;
   return (
@@ -106,6 +99,16 @@ export function RestaurantAttentionPanel({
                   <IngredientIcon id={row.action.id} fallback={row.icon} />
                 ) : row.action.to === "supply" ? (
                   <SupplyIcon id={row.action.id} fallback={row.icon} />
+                ) : row.action.to === "staff" ? (
+                  // The person's own portrait (public/business/staff-portraits/), the same one their Staff card shows.
+                  <span className="block h-[46px] w-[46px] overflow-hidden rounded-full">
+                    <StaffPortrait
+                      file={staffPortraitFile(row.action.id)}
+                      name={row.name}
+                      emoji={staffFallbackEmoji(row.action.id, row.action.specialist)}
+                      className="h-full w-full text-[24px]"
+                    />
+                  </span>
                 ) : (
                   row.icon
                 )
@@ -116,7 +119,7 @@ export function RestaurantAttentionPanel({
               badge={row.severity === "urgent" ? "⛔" : "🟠"}
               action={ACTION[row.action.to]}
               label={`${row.text}${row.severity === "urgent" ? " (urgent)" : " (low)"}. ${ACTION[row.action.to]}`}
-              onClick={() => act(row)}
+              onClick={() => openAttentionRow(row, go)}
             >
               <span className="sr-only">
                 {row.text}
