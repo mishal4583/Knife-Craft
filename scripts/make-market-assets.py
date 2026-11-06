@@ -274,7 +274,137 @@ def build_wall() -> int:
     return 0
 
 
+# ── Stockroom Sort (developer 2026-11-06; plan docs/planning/STOCKROOM-SORT-MINIGAME-PLAN-2026-11-06.md) ─────────────────────────────────
+# Source: the Codex PNGs in "Iventory Assets/" (the developer's folder name; local only, gitignored). Output: public/business/stockroom/.
+SR_SRC = os.path.join(ROOT, "Iventory Assets")
+SR_OUT = os.path.join(ROOT, "public", "business", "stockroom")
+SR_GOODS = os.path.join(SR_OUT, "goods")
+SR_CANVAS, SR_BOX = 112, 106  # a slot is about 52 px wide: 2x for sharp phone screens
+SR_SHEETS = {
+    "I10-goods-1.png": ATLASES["S1-culinary-tools.png"],
+    "I11-goods-2.png": ATLASES["S2-culinary-tableware.png"],
+    "I12-goods-3.png": ATLASES["S3-tableware-packaging.png"],
+    "I13-goods-4.png": ATLASES["S4-packaging.png"],
+    "I14-goods-5.png": ATLASES["S5-cleaning.png"],
+    "I15-goods-6.png": ATLASES["S6-cleaning-tools.png"],
+}
+
+
+def _cells_by_shape(sheet: Image.Image, cols: int, rows: int) -> dict[int, Image.Image]:
+    """Cuts a sheet into its cells by SHAPE, not by the grid lines: Codex let tall items (spatula, ladle, peeler) reach past their cell, so
+    every blob goes to the cell holding its centre, and a cell is the union of its blobs (two glasses, a broom and its dustpan)."""
+    a = np.array(sheet.convert("RGBA"))
+    cw, ch = a.shape[1] // cols, a.shape[0] // rows
+    labels, n = ndimage.label(a[..., 3] > 40)
+    out: dict[int, Image.Image] = {}
+    groups: dict[int, list[int]] = {}
+    for i, (cy, cx) in enumerate(ndimage.center_of_mass(a[..., 3] > 40, labels, range(1, n + 1)), start=1):
+        if (labels == i).sum() < 600:
+            continue  # a speck
+        cell = min(rows - 1, int(cy // ch)) * cols + min(cols - 1, int(cx // cw))
+        groups.setdefault(cell, []).append(i)
+    for cell, ids in groups.items():
+        mask = np.isin(labels, ids)
+        mask = ndimage.binary_dilation(mask, iterations=4)  # keep the soft edge
+        b = a.copy()
+        b[..., 3] = np.where(mask, b[..., 3], 0)
+        img = Image.fromarray(b, "RGBA")
+        box = img.getbbox()
+        if box:
+            out[cell] = img.crop(box)
+    return out
+
+
+def _fit_to(img: Image.Image, canvas: int, box: int) -> Image.Image:
+    w, h = img.size
+    scale = min(box / w, box / h)
+    img = img.resize((max(1, round(w * scale)), max(1, round(h * scale))), Image.LANCZOS)
+    c = Image.new("RGBA", (canvas, canvas), (0, 0, 0, 0))
+    c.paste(img, ((canvas - img.width) // 2, (canvas - img.height) // 2), img)
+    return c
+
+
+def _save(img: Image.Image, name: str, folder: str, quality: int = 82) -> int:
+    path = os.path.join(folder, name + ".webp")
+    img.save(path, "WEBP", quality=quality, method=6, alpha_quality=88)
+    return os.path.getsize(path)
+
+
+# (sheet, columns, rows, [(cell, output name, output width)]); every cell is cut by shape.
+SR_UI = [
+    ("I06-lock-parts.png", 2, 1, [(0, "lock-closed", 96), (1, "lock-open", 96)]),
+    ("I07-parcels.png", 2, 1, [(0, "parcel-closed", 96), (1, "parcel-open", 96)]),
+    ("I20-boosters.png", 4, 2, [(0, "boost-undo", 96), (1, "boost-hint", 96), (2, "boost-shelf", 96), (3, "boost-time", 96), (4, "boost-shuffle", 96), (5, "boost-blank", 96), (6, "boost-locked", 96), (7, "boost-ad", 96)]),
+    ("I21-ribbons.png", 4, 1, [(0, "ribbon-sage", 260), (1, "ribbon-gold", 260), (2, "ribbon-copper", 260), (3, "burst", 160)]),
+    ("I22-fx.png", 4, 2, [(0, "spark-1", 64), (1, "spark-2", 64), (2, "spark-3", 64), (3, "spark-4", 64), (4, "puff-1", 96), (5, "puff-2", 96), (6, "puff-3", 96), (7, "puff-4", 96)]),
+    ("I26-badges.png", 4, 3, [(i, f"badge-{i + 1:02d}", 112) for i in range(12)]),
+]
+SR_SINGLE = [("I23-stamp.png", "stamp", 176), ("I25-delivery-truck.png", "truck", 240),
+             ("I03-cubby.png", "cubby", 520), ("I04-unit-top.png", "unit-top", 640), ("I05-unit-plinth.png", "unit-plinth", 640)]
+
+
+def build_stockroom() -> int:
+    if not os.path.isdir(SR_SRC):
+        print("missing source folder (local-only):", SR_SRC)
+        return 1
+    os.makedirs(SR_GOODS, exist_ok=True)
+    total = 0
+    count = 0
+    for sheet, ids in SR_SHEETS.items():
+        src = os.path.join(SR_SRC, sheet)
+        if not os.path.exists(src):
+            print("missing goods sheet:", src)
+            return 1
+        cells = _cells_by_shape(Image.open(src), COLS, ROWS)
+        for i, sid in enumerate(ids):
+            if i not in cells:
+                print("EMPTY GOODS CELL", sheet, i, sid)
+                return 1
+            total += _save(_fit_to(cells[i], SR_CANVAS, SR_BOX), sid, SR_GOODS)
+            count += 1
+    goods = total
+    for sheet, cols, rows, parts in SR_UI:
+        src = os.path.join(SR_SRC, sheet)
+        if not os.path.exists(src):
+            print("missing sheet:", src)
+            return 1
+        cells = _cells_by_shape(Image.open(src), cols, rows)
+        for cell, name, width in parts:
+            if cell not in cells:
+                print("EMPTY CELL", sheet, cell, name)
+                return 1
+            img = cells[cell]
+            img = img.resize((width, max(1, round(img.height * width / img.width))), Image.LANCZOS)
+            total += _save(img, name, SR_OUT)
+    for fname, name, width in SR_SINGLE:
+        src = os.path.join(SR_SRC, fname)
+        if not os.path.exists(src):
+            print("missing image:", src)
+            return 1
+        img = Image.open(src).convert("RGBA")
+        if name in ("unit-top", "unit-plinth", "cubby"):
+            # crop to the VISIBLE wood (alpha over 40): the faint shadow around it would make the picture bigger than the cubby it shows
+            ys, xs = np.where(np.array(img)[..., 3] > 40)
+            img = img.crop((int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1))
+        else:
+            cells = _cells_by_shape(img, 1, 1)
+            img = cells[0]
+        img = img.resize((width, max(1, round(img.height * width / img.width))), Image.LANCZOS)
+        total += _save(img, name, SR_OUT)
+    # the supplies room behind the board (opaque)
+    for fname, name in (("I01-backdrop-supplies.png", "backdrop"),):
+        im = Image.open(os.path.join(SR_SRC, fname)).convert("RGB")
+        im = im.resize((540, round(im.height * 540 / im.width)), Image.LANCZOS)
+        path = os.path.join(SR_OUT, name + ".webp")
+        im.save(path, "WEBP", quality=70, method=6)
+        total += os.path.getsize(path)
+    print(f"stockroom sort art: {count} goods ({goods / 1024:.0f} KB), {total / 1024:.0f} KB in all")
+    return 0
+
+
 def main() -> int:
+    if "--stockroom" in sys.argv:  # only the Stockroom Sort art (needs just "Iventory Assets/")
+        return build_stockroom()
     missing = [n for n in list(ATLASES) if not os.path.exists(os.path.join(SRC, n))]
     if missing:
         print("missing source atlases (they are local-only, copy them from the Codex branch):", missing)
@@ -299,6 +429,8 @@ def main() -> int:
     if build_ingredients() != 0:
         return 1
     if build_fridge_sort() != 0 or build_fridge_ui() != 0 or build_wall() != 0:
+        return 1
+    if build_stockroom() != 0:
         return 1
     os.makedirs(PORTRAITS, exist_ok=True)
     for name in ("floor-server", "floor-cleaner", "cashier"):

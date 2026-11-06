@@ -82,6 +82,7 @@ import type { BlacksmithStat, UpgradeKnifeResult } from "@/game/knives/blacksmit
 import type { BuyStaffResult } from "@/game/economy/StaffManager";
 import type { ServiceSession } from "@/game/service/ServiceManager";
 import type { FridgeSortAction, FridgeSortResult } from "@/game/business/fridgeSort";
+import type { StockroomSortAction, StockroomSortResult } from "@/game/business/stockroomSort";
 
 // The Restaurant screens load as their own chunk the first time one opens (task #24).
 const loadRestaurantScreens = () => import("@/components/kc/restaurantScreens");
@@ -102,6 +103,9 @@ const SecondFloorView = lazy(() =>
 );
 const FridgeSortGame = lazy(() =>
   loadRestaurantScreens().then((m) => ({ default: m.FridgeSortGame })),
+);
+const StockroomSortGame = lazy(() =>
+  loadRestaurantScreens().then((m) => ({ default: m.StockroomSortGame })),
 );
 
 /** Shown for the moment the Restaurant chunk takes to arrive: the screen's own frame, never a blank. */
@@ -183,6 +187,7 @@ export function ScreensRouter({
   onEnterBusinessPreparation,
   secondFloorAction,
   fridgeSortAction,
+  stockroomSortAction,
   cleanerCleans,
   collectAchievement,
 }: {
@@ -265,6 +270,8 @@ export function ScreensRouter({
   secondFloorAction: (action: SecondFloorAction) => FloorResult;
   /** Fridge Sort: a round ended / was skipped (App applies it to the latest save). */
   fridgeSortAction: (action: FridgeSortAction) => FridgeSortResult;
+  /** Stockroom Sort: a board ended / was skipped (App applies it to the latest save). */
+  stockroomSortAction: (action: StockroomSortAction) => StockroomSortResult;
   /** The map's Cleaner finished a real restroom job (App: cleanTask by the Cleaner). */
   cleanerCleans: (job: TaskKind) => void;
   /** Achievements: collect one earned reward (progression/achievements.ts). */
@@ -417,6 +424,20 @@ export function ScreensRouter({
                     hasPrepCook={save.business.staff?.hiredRoles?.includes("prep-cook") ?? false}
                     onAction={fridgeSortAction}
                     onExit={() => routeGo("inventory")}
+                  />
+                </div>
+              </Suspense>
+            ) : null}
+            {screen === "stockroom-sort" ? (
+              <Suspense fallback={<RestaurantLoading go={routeGo} active="inventory" />}>
+                <div className="relative h-full w-full overflow-hidden">
+                  <StockroomSortGame
+                    save={save}
+                    playerLevel={restaurantLevelOf(save.levelProgress)}
+                    reducedMotion={save.settings.reducedMotion}
+                    hasPrepCook={save.business.staff?.hiredRoles?.includes("prep-cook") ?? false}
+                    onAction={stockroomSortAction}
+                    onExit={() => routeGo("inventory-supplies")}
                   />
                 </div>
               </Suspense>

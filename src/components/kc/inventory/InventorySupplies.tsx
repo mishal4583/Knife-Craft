@@ -36,6 +36,7 @@ import {
 import { SupplyBottle } from "../restaurant/SupplyBottle";
 import { ItemPic, ItemTile, type TileTone } from "./ItemTile";
 import { SupplyIcon } from "@/components/kc/common/SupplyIcon";
+import { StockroomBadges, StockroomSortChip } from "./StockroomSortChip";
 
 type SupplyStatus = "low" | "in-stock" | "owned" | "none";
 
@@ -137,6 +138,8 @@ export function InventorySupplies({ go, save }: { go: (s: ScreenId) => void; sav
 
   return (
     <div className="space-y-3" data-testid="inventory-supplies">
+      {RESTAURANT_MODE ? <StockroomSortChip save={save} go={go} /> : null}
+      {RESTAURANT_MODE ? <StockroomBadges save={save} /> : null}
       <div className="grid grid-cols-2 gap-2" data-testid="supplies-summary">
         <Card
           icon="🧰"

@@ -44,6 +44,8 @@ export type ScreenId =
   | "second-floor"
   /** Fridge Sort: put the food you bought into the fridge (business/fridgeSort.ts). Optional, from Level 14. */
   | "fridge-sort"
+  /** Stockroom Sort: match 3 and stock the supplies you bought (business/stockroomSort.ts). Optional, from Level 10. */
+  | "stockroom-sort"
   | "gameplay"
   | "kitchen"
   | "board"

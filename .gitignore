@@ -21,3 +21,6 @@ tools/e2e/*.png
 art-source/fridge-sort/*.png
 art-source/market-supplies/*.png
 art-source/staff/*.png
+
+# Stockroom Sort source art (Codex PNGs, local only; the small WebP built from it by scripts/make-market-assets.py is committed)
+Iventory Assets/

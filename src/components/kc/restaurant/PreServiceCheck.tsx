@@ -1370,6 +1370,22 @@ function NewsCard({ news }: { news: RestaurantNews }) {
           </InfoTip>
         </div>
       ) : null}
+      {news.minigame === "stockroom-sort" ? (
+        <div className="mt-1 flex items-center gap-1.5" data-news-minigame="stockroom-sort">
+          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-copper/10 text-[16px]">
+            🗄️
+          </span>
+          <p className="min-w-0 flex-1 font-ui text-[13px] font-extrabold text-walnut-dark">
+            Stockroom Sort
+          </p>
+          <InfoTip label="About Stockroom Sort">
+            Supplies you buy arrive as sets of 3 on the shelves, all mixed up. Move them between the
+            cubbies until 3 alike stand together, and stock everything before the clock ends: stars
+            give Hype and shelf badges. It is optional and costs nothing. Find it in the Market and
+            the Inventory once you buy supplies.
+          </InfoTip>
+        </div>
+      ) : null}
       {news.chain ? (
         <p
           className="mt-1 font-ui text-[12.5px] font-bold text-walnut-dark"

@@ -81,6 +81,7 @@ import {
   type UpgradeKnifeResult,
 } from "@/game/knives/blacksmith";
 import { FridgeSortChip } from "./inventory/FridgeSortChip";
+import { StockroomSortChip } from "./inventory/StockroomSortChip";
 
 /**
  * SHOP — the one purchase destination. Every item, price, ownership state
@@ -583,6 +584,9 @@ export function Shop({
 
           {category === "ingredients" && RESTAURANT_MODE ? (
             <FridgeSortChip save={save} go={go} className="mb-3" />
+          ) : null}
+          {isSupplySection(category) && RESTAURANT_MODE ? (
+            <StockroomSortChip save={save} go={go} className="mb-3" />
           ) : null}
           {category === "ingredients" ? (
             <MarketIngredients

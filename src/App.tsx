@@ -408,6 +408,13 @@ import {
   type FridgeSortAction,
   type FridgeSortResult,
 } from "@/game/business/fridgeSort";
+import {
+  addToSupplyCrate,
+  autoStock,
+  finishRound as finishStockroomRound,
+  type StockroomSortAction,
+  type StockroomSortResult,
+} from "@/game/business/stockroomSort";
 
 // Split away from the initial bundle — Preparation (and the Phaser it
 // pulls in) is needed immediately since Prep is the first screen, but
@@ -1092,6 +1099,44 @@ export function App() {
       stars: action.outcome.stars,
       score: action.outcome.score,
       tokens: action.outcome.tokens.length,
+      hype: out.effects.hype,
+    });
+    return { ok: true, effects: out.effects };
+  }
+
+  /**
+   * Stockroom Sort (business/stockroomSort.ts): a board finished, was skipped, or the Prep Cook stocked the crate. Applied to the LATEST save so
+   * a double tap cannot pay twice. It moves no money and no stock; the only effects are the sort state, stars and Hype.
+   */
+  function stockroomSortAction(action: StockroomSortAction): StockroomSortResult {
+    const current = saveRef.current;
+    if (!current) return { ok: false };
+    const level = restaurantLevelOf(current.levelProgress);
+    const none = { hype: 0, badge: false, newBest: false };
+    if (action.kind === "start") {
+      sendAnalyticsEvent("stockroom_sort_started", {
+        level,
+        sets: action.sets,
+        cubbies: action.cubbies,
+      });
+      return { ok: true, effects: none };
+    }
+    if (action.kind === "skip") {
+      sendAnalyticsEvent("stockroom_sort_skipped", { level });
+      return { ok: true, effects: none };
+    }
+    if (action.kind === "auto") {
+      persist(autoStock(current));
+      sendAnalyticsEvent("stockroom_sort_auto", { level });
+      return { ok: true, effects: none };
+    }
+    const out = finishStockroomRound(current, action.outcome);
+    persist(out.save);
+    sendAnalyticsEvent("stockroom_sort_finished", {
+      level,
+      stars: action.outcome.stars,
+      score: action.outcome.score,
+      sets: action.outcome.stocked.length,
       hype: out.effects.hype,
     });
     return { ok: true, effects: out.effects };
@@ -1939,10 +1984,16 @@ export function App() {
         -result.totalCost,
         result.item.id,
       );
+      const booked = packaging
+        ? recordPackagingPurchase(recorded, result.totalCost)
+        : recordCapitalExpenditure(recorded, result.totalCost);
+      // …what arrived goes on Stockroom Sort's crate as sets of three (business/stockroomSort.ts; nothing is bought or moved).
       persist(
-        packaging
-          ? recordPackagingPurchase(recorded, result.totalCost)
-          : recordCapitalExpenditure(recorded, result.totalCost),
+        addToSupplyCrate(
+          booked,
+          [{ id: result.item.id, packs }],
+          restaurantLevelOf(booked.levelProgress),
+        ),
       );
     }
     return result;
@@ -4242,6 +4293,7 @@ export function App() {
                 collectAchievement={collectAchievementReward}
                 secondFloorAction={secondFloorAction}
                 fridgeSortAction={fridgeSortAction}
+                stockroomSortAction={stockroomSortAction}
                 cleanerCleans={cleanerCleans}
                 rushAdAvailable={rewardedAdsAvailable()}
                 setMenuPrice={setMenuPrice}

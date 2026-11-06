@@ -18,6 +18,7 @@
  */
 import { getBusinessDish } from "../business/businessDishCatalog";
 import { FRIDGE_SORT_FIRST_LEVEL } from "../business/fridgeSort";
+import { STOCKROOM_FIRST_LEVEL } from "../business/stockroomSort";
 import {
   CUISINES,
   RESTAURANT_SYSTEMS,
@@ -50,8 +51,8 @@ export type RestaurantNews = {
   cuisines: { name: string; specialist: string | null }[];
   /** `short`: what the card shows (an icon and a name); `text` behind its ⓘ. */
   comingUp: { level: number; text: string; short: string }[];
-  /** The Fridge Sort mini-game opens at this level (business/fridgeSort.ts). */
-  minigame: "fridge-sort" | null;
+  /** A sorting mini-game opens at this level: Fridge Sort (business/fridgeSort.ts) or Stockroom Sort (business/stockroomSort.ts). */
+  minigame: "fridge-sort" | "stockroom-sort" | null;
 };
 
 export function restaurantNewsAt(levelNumber: number): RestaurantNews {
@@ -90,7 +91,12 @@ export function restaurantNewsAt(levelNumber: number): RestaurantNews {
       specialist: c.specialist?.title ?? null,
     })),
     comingUp,
-    minigame: levelNumber === FRIDGE_SORT_FIRST_LEVEL ? "fridge-sort" : null,
+    minigame:
+      levelNumber === FRIDGE_SORT_FIRST_LEVEL
+        ? "fridge-sort"
+        : levelNumber === STOCKROOM_FIRST_LEVEL
+          ? "stockroom-sort"
+          : null,
   };
 }
 

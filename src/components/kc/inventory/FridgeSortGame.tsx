@@ -7,6 +7,8 @@ import { INGREDIENTS, type IngredientId } from "@/game/definitions";
 import { PointerHand } from "@/components/kc/common/PointerHand";
 import { INGREDIENT_EMOJI } from "@/game/knives/knifeDefinitions";
 import type { SaveData } from "@/game/SaveManager";
+import { Art, Plaque, SortButton, StarBar } from "./sort/SortParts";
+import { clock, fsUrl } from "./sort/sortUtils";
 import {
   STAR_AT,
   TARGETS,
@@ -41,115 +43,8 @@ import {
  * Reduced Motion: no flying ghost animation, floating numbers or shake: tokens just appear in place.
  */
 
-/** A button in the game's own look (KButton has no test ids): wood = the main action, ghost = the quiet one. */
-function SortButton({
-  children,
-  onClick,
-  quiet,
-  testId,
-}: {
-  children: React.ReactNode;
-  onClick: () => void;
-  quiet?: boolean;
-  testId?: string;
-}) {
-  return (
-    <button
-      type="button"
-      data-testid={testId}
-      onClick={() => {
-        AudioManager.playSfx("tap");
-        onClick();
-      }}
-      className={cn(
-        "press inline-flex h-12 w-full items-center justify-center rounded-2xl font-ui text-[14.5px] font-extrabold tracking-wide",
-        quiet
-          ? "border border-walnut/25 bg-ivory/70 text-walnut"
-          : "wood border border-walnut-dark/50 text-ivory shadow-soft",
-      )}
-    >
-      {children}
-    </button>
-  );
-}
-
 type Phase = "ready" | "playing" | "paused" | "done";
 
-const fsUrl = (name: string) => `${import.meta.env.BASE_URL}business/fridge-sort/${name}.webp`;
-
-/** One painted piece (public/business/fridge-sort/, cut from the generated art by scripts/make-market-assets.py); hidden if it fails to load. */
-function Art({
-  name,
-  className,
-  style,
-}: {
-  name: string;
-  className?: string;
-  style?: React.CSSProperties;
-}) {
-  return (
-    <img
-      src={fsUrl(name)}
-      alt=""
-      draggable={false}
-      data-fridge-art={name}
-      onError={(e) => {
-        e.currentTarget.style.display = "none";
-      }}
-      className={cn("pointer-events-none select-none", className)}
-      style={style}
-    />
-  );
-}
-
-/** A wooden plaque: the painted frame is a 9-slice border so the carving never stretches, the text sits on a plain layer above it. */
-function Plaque({
-  children,
-  className,
-  testId,
-}: {
-  children: React.ReactNode;
-  className?: string;
-  testId?: string;
-}) {
-  return (
-    <div
-      data-testid={testId}
-      className={cn("relative flex items-center justify-center bg-[#3a2417]/80", className)}
-      style={{ borderRadius: 14 }}
-    >
-      <span
-        aria-hidden
-        className="pointer-events-none absolute inset-0"
-        style={{
-          borderStyle: "solid",
-          borderWidth: "14px 26px",
-          borderImage: `url(${fsUrl("hud-wide")}) 40 80 40 80 fill / 14px 26px 14px 26px stretch`,
-        }}
-      />
-      <span className="relative z-10 flex items-center justify-center gap-1.5">{children}</span>
-    </div>
-  );
-}
-
-/** Where on the painted star bar (fraction of its width) the score marks sit, and the bar's usable track. */
-const BAR_MARKS = [0.406, 0.682, 0.917] as const;
-const BAR_LEFT = 0.06;
-const BAR_RIGHT = 0.95;
-/** Score share -> where the fill ends on the bar: piecewise linear through the star marks, so each star lands on a painted ring. */
-function barX(share: number): number {
-  const at = [0, ...STAR_AT, 1];
-  const xs = [BAR_LEFT, ...BAR_MARKS, BAR_RIGHT];
-  const v = Math.min(1, Math.max(0, share));
-  for (let i = 1; i < at.length; i++)
-    if (v <= at[i]!)
-      return xs[i - 1]! + ((v - at[i - 1]!) / (at[i]! - at[i - 1]!)) * (xs[i]! - xs[i - 1]!);
-  return BAR_RIGHT;
-}
-
-const pad = (n: number) => String(n).padStart(2, "0");
-const clock = (ms: number) =>
-  `${Math.floor(Math.max(0, ms) / 60000)}:${pad(Math.floor((Math.max(0, ms) % 60000) / 1000))}`;
 const NO_EFFECTS: RoundEffects = { hype: 0, magnet: false, newBest: false };
 /** A drag counts as a drag after this many pixels; below it the touch is a tap (select the token). */
 const DRAG_PX = 8;
@@ -714,37 +609,7 @@ export function FridgeSortGame({
       </div>
       {/* the star bar: the painted frame, a fill that grows with the score, and a star on each painted ring */}
       <div className="px-4 pt-2">
-        <div className="relative mx-auto aspect-[480/72] w-full max-w-[420px]" aria-hidden>
-          <Art name="starbar-frame" className="absolute inset-0 h-full w-full object-fill" />
-          <div
-            className="absolute overflow-hidden rounded-full"
-            style={{
-              left: `${BAR_LEFT * 100}%`,
-              right: `${(1 - BAR_RIGHT) * 100}%`,
-              top: "27%",
-              bottom: "27%",
-            }}
-          >
-            <Art
-              name="starbar-fill"
-              className="h-full w-full object-fill transition-[clip-path] duration-200"
-              style={{
-                clipPath: `inset(0 ${(100 - ((barX(progress) - BAR_LEFT) / (BAR_RIGHT - BAR_LEFT)) * 100).toFixed(1)}% 0 0)`,
-              }}
-            />
-          </div>
-          {STAR_AT.map((s, i) => (
-            <Art
-              key={i}
-              name={progress >= s ? "star-full" : "star-empty"}
-              className={cn(
-                "absolute top-1/2 h-[62%] w-auto -translate-x-1/2 -translate-y-1/2",
-                progress >= s && "drop-shadow-[0_0_4px_rgba(255,214,90,0.9)]",
-              )}
-              style={{ left: `${BAR_MARKS[i]! * 100}%` }}
-            />
-          ))}
-        </div>
+        <StarBar progress={progress} marks={STAR_AT} />
         <div className="mt-1 flex min-h-[34px] items-center gap-2 font-ui">
           <p
             className={cn(
