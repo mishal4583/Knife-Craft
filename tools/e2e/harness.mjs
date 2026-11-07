@@ -40,6 +40,17 @@ export async function launch({ nameCard = false } = {}) {
           ?.click();
       new MutationObserver(keep).observe(document, { childList: true, subtree: true });
     });
+  // Offline runs (2026-11-07: the Playgama CDN was unreachable and every test timed out waiting for the Bridge): with KC_OFFLINE_BRIDGE=1 the
+  // CDN script is answered by a small local stand-in (storage in localStorage, no ads), so the game boots without the network.
+  if (process.env.KC_OFFLINE_BRIDGE) {
+    const STUB = `window.bridge={EVENT_NAME:{PAUSE_STATE_CHANGED:"pause",AUDIO_STATE_CHANGED:"audio",INTERSTITIAL_STATE_CHANGED:"interstitial",REWARDED_STATE_CHANGED:"rewarded"},initialize:()=>Promise.resolve(),platform:{language:"en",isAudioEnabled:true,on(){},sendMessage(){}},storage:{get:(k)=>Promise.resolve(k.map((x)=>localStorage.getItem("stub:"+x))),set:(k,v)=>{k.forEach((x,i)=>localStorage.setItem("stub:"+x,v[i]));return Promise.resolve();}},advertisement:{isInterstitialSupported:false,isRewardedSupported:false,on(){},off(){},showInterstitial(){},showRewarded(){}},analytics:{send:()=>Promise.resolve()}};`;
+    await page.setRequestInterception(true);
+    page.on("request", (r) =>
+      /bridge\.playgama\.com/.test(r.url())
+        ? r.respond({ status: 200, contentType: "application/javascript", body: STUB })
+        : r.continue(),
+    );
+  }
   const logs = [];
   page.on("console", (m) => {
     if (["error", "warning"].includes(m.type())) logs.push(`${m.type()}: ${m.text()}`);

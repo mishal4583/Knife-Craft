@@ -16,7 +16,7 @@
 //   S14 earned magnets are stuck on the Inventory fridge door (none before the first)
 //   S15 the painted pieces (HUD, star bar, basket, bins, drawers, racks, shelves) all load
 //   S16 the how-to card is shown once (until a crate is finished) and the ? button brings it back
-//   S17 an empty shelf shows faded pictures of what lives there (Level 3-43), none from Level 44
+//   S17 an empty shelf shows pictures of what lives there at EVERY level (developer 2026-11-07: players could not tell the shelves apart)
 //   S18 Level 3: the first basket is small (8 pieces at most) and a wrong shelf tells where the piece goes
 //   S20 a delivery of 30 pieces is 3 baskets: the run is shown, and the whole delivery adds bonus Hype
 //   S19 two or more stars keep the stock fresh longer: the result says so and the stock's purchase day moves (quantity unchanged)
@@ -502,6 +502,7 @@ try {
     await boot(page, saveAt(n));
     await openInventory(page);
     await openGame(page);
+    await shot(page, `fridgesort-level-${n}`);
     return page.evaluate(
       () => document.querySelectorAll("[data-target-id] img[data-ingredient-icon]").length,
     );
@@ -509,8 +510,8 @@ try {
   const p20 = await pics(20);
   const p80 = await pics(80);
   check(
-    "S17 an empty shelf shows faded pictures of what lives there at Level 20, none at Level 80",
-    p20 >= 9 && p80 === 0,
+    "S17 an empty shelf shows pictures of what lives there at Level 20 AND at Level 80 (it was none from Level 44)",
+    p20 >= 9 && p80 >= 9,
     { p20, p80 },
   );
 
@@ -534,7 +535,7 @@ try {
   );
   check(
     "S18 Level 3: a basket of 5 pieces and 3 shelves; a wrong shelf says where the tomato goes",
-    l3?.tokens === 5 && l3targets === 3 && /Tomato goes in: Salad/.test(l3note),
+    l3?.tokens === 5 && l3targets === 3 && /Tomato goes in: .*Salad/.test(l3note),
     { l3, l3targets, l3note },
   );
 
@@ -596,6 +597,174 @@ try {
       !bigSave.business.fridgeSort?.crate?.length &&
       !bigSave.business.fridgeSort?.chain,
     { chipBig, slipMore, chain1, bigText },
+  );
+
+  // ---- S21-S26: the 2026-11-07 fixes (player reviews), at a normal phone size ----
+  await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });
+  await boot(page, saveAt(20));
+  await openInventory(page);
+  await openGame(page);
+  await sleep(500);
+
+  // S22: every shelf is on screen with no scrolling; S23: the stool is cropped off and the basket sits low
+  const fit = await page.evaluate(() => {
+    const panel = document.querySelector('[data-testid="sort-fridge"]');
+    const crate = document.querySelector('[data-testid="sort-crate"]')?.getBoundingClientRect();
+    const root = document.querySelector('[data-testid="fridge-sort"]')?.getBoundingClientRect();
+    const shelves = [...document.querySelectorAll("[data-target-id]")].map((e) => {
+      const r = e.getBoundingClientRect();
+      return { top: r.top, bottom: r.bottom };
+    });
+    const pr = panel?.getBoundingClientRect();
+    return {
+      overflow: panel ? panel.scrollHeight - panel.clientHeight : null,
+      cue: !!document.querySelector('[data-testid="sort-more-shelves"]'),
+      allInside: shelves.every(
+        (s) => s.top >= (pr?.top ?? 0) - 1 && s.bottom <= (pr?.bottom ?? 0) + 1,
+      ),
+      shelves: shelves.length,
+      panelH: Math.round(pr?.height ?? 0),
+      basketRatio: crate ? +(crate.width / crate.height).toFixed(2) : null,
+      basketH: crate ? Math.round(crate.height) : null,
+      gapToBottom: crate && root ? Math.round(root.bottom - crate.bottom) : null,
+    };
+  });
+  await shot(page, "fridgesort-390-fit");
+  check(
+    "S22 at 390 x 844 all 6 shelves are inside the fridge with nothing to scroll and no 'more shelves' cue",
+    fit.overflow !== null && fit.overflow <= 1 && !fit.cue && fit.allInside && fit.shelves === 6,
+    fit,
+  );
+  check(
+    "S23 the stool is cropped off: the basket is wide and low (ratio about 2.2) and sits within 12 px of the screen's bottom",
+    fit.basketRatio !== null &&
+      fit.basketRatio >= 2.1 &&
+      fit.basketRatio <= 2.3 &&
+      fit.gapToBottom !== null &&
+      fit.gapToBottom <= 12,
+    fit,
+  );
+
+  // S24: every shelf carries its emoji in the name chip
+  const chips = await page.evaluate(() =>
+    [...document.querySelectorAll("[data-shelf-chip]")].map(
+      (c) => c.querySelector("[data-shelf-icon]")?.textContent?.trim() ?? "",
+    ),
+  );
+  check(
+    "S24 every shelf's name chip carries its emoji",
+    chips.length === 6 && chips.every((c) => c.length > 0),
+    chips,
+  );
+
+  // S21: a drop that misses the shelf by a thumb still lands on it: the finger is let go well BELOW the lowest shelf
+  const low = await page.evaluate((WHERE) => {
+    let best = null;
+    for (const [id, where] of Object.entries(WHERE)) {
+      const el = document.querySelector(`[data-target-id="${where}"]`);
+      const tok = document.querySelector(`[data-token="${id}"]`);
+      if (!el || !tok) continue;
+      const r = el.getBoundingClientRect();
+      if (!best || r.bottom > best.bottom)
+        best = { id, where, bottom: r.bottom, x: r.left + r.width / 2 };
+    }
+    return best;
+  }, WHERE);
+  const tokA = await center(page, `[data-token="${low.id}"]`);
+  await page.mouse.move(tokA.x, tokA.y);
+  await page.mouse.down();
+  await page.mouse.move((tokA.x + low.x) / 2, (tokA.y + low.bottom) / 2, { steps: 6 });
+  await page.mouse.move(low.x, low.bottom + 28, { steps: 6 });
+  await page.mouse.up();
+  await sleep(300);
+  const missed = await page.evaluate(
+    (w) => Number(document.querySelector(`[data-target-id="${w}"]`)?.getAttribute("data-count")),
+    low.where,
+  );
+  check("S21 a piece let go 28 px below its shelf (not on it) still lands there", missed === 1, {
+    low,
+    missed,
+  });
+
+  // S25: a wrong drop lights the RIGHT shelf (at every level)
+  await boot(page, saveAt(60));
+  await openInventory(page);
+  await openGame(page);
+  await tap(page, '[data-testid="sort-token-tomato"]');
+  await tap(page, '[data-target-id="dairy"]');
+  await sleep(150);
+  const lit = await page.evaluate(() => ({
+    right: /border-gold/.test(
+      document.querySelector('[data-target-id="veg-salad"]')?.getAttribute("class") ?? "",
+    ),
+    wrong: /border-gold/.test(
+      document.querySelector('[data-target-id="dairy"]')?.getAttribute("class") ?? "",
+    ),
+    note: document.querySelector('[data-testid="sort-note"]')?.textContent ?? "",
+  }));
+  check(
+    "S25 at Level 60 a wrong drop lights the right shelf (Salad) and the note names it",
+    lit.right && !lit.wrong && /Tomato goes in: .*Salad/.test(lit.note),
+    lit,
+  );
+
+  // S26: practice as often as you like: three practice rounds in a row, the button is still there
+  await boot(page, saveAt(20));
+  await openInventory(page);
+  await openGame(page);
+  await sortAll(page);
+  await sleep(500);
+  const practiceLabels = [];
+  for (let k = 0; k < 3; k++) {
+    const label = await page.evaluate(
+      () => document.querySelector('[data-testid="sort-again"]')?.textContent?.trim() ?? null,
+    );
+    practiceLabels.push(label);
+    if (!label) break;
+    await tap(page, '[data-testid="sort-again"]');
+    await sleep(300);
+    await sortAll(page);
+    await sleep(500);
+  }
+  const lastLabel = await page.evaluate(
+    () => document.querySelector('[data-testid="sort-again"]')?.textContent?.trim() ?? null,
+  );
+  const prac = await state(page);
+  check(
+    "S26 'Again · practice' then 'Practice again' three times in a row: every result still offers another practice",
+    practiceLabels.length === 3 &&
+      practiceLabels[0] === "Again · practice" &&
+      practiceLabels[1] === "Practice again" &&
+      lastLabel === "Practice again" &&
+      prac?.practice === "1",
+    { practiceLabels, lastLabel, prac },
+  );
+
+  // S27: the full 10-shelf fridge (Level 80) at a normal phone: every shelf is in view, no scrolling
+  await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });
+  await boot(page, saveAt(80));
+  await openInventory(page);
+  await openGame(page);
+  await sleep(500);
+  const full = await page.evaluate(() => {
+    const panel = document.querySelector('[data-testid="sort-fridge"]');
+    const pr = panel?.getBoundingClientRect();
+    const shelves = [...document.querySelectorAll("[data-target-id]")].map((e) =>
+      e.getBoundingClientRect(),
+    );
+    return {
+      shelves: shelves.length,
+      overflow: panel ? panel.scrollHeight - panel.clientHeight : null,
+      allInside: shelves.every((r) => r.top >= pr.top - 1 && r.bottom <= pr.bottom + 1),
+      minH: Math.round(Math.min(...shelves.map((r) => r.height))),
+      cue: !!document.querySelector('[data-testid="sort-more-shelves"]'),
+    };
+  });
+  await shot(page, "fridgesort-390-level80");
+  check(
+    "S27 at 390 x 844 the full 10-shelf fridge (Level 80) is all in view, nothing to scroll, every shelf at least 48 px tall",
+    full.shelves === 10 && full.overflow <= 1 && full.allInside && full.minH >= 48 && !full.cue,
+    full,
   );
 
   const errors = logs.filter(

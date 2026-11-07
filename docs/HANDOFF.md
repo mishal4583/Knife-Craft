@@ -1,5 +1,14 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## Fridge Sort fixes from player reviews (developer 2026-11-07, UNCOMMITTED)
+
+- **Drops:** the piece is judged where its PICTURE is (drawn ~16 px above the finger) and ANY release over the fridge or within 40 px of its frame lands on the NEAREST visible shelf (`shelfAt`); a hovered shelf glows as the finger moves. Dragging near the fridge's top or bottom edge scrolls it (`EDGE_SCROLL_PX`).
+- **Layout:** the shelves share the fridge's height (explicit grid rows from `rowSizes`), so all of them are in view with no scrolling: 6 shelves at Level 20 and the full 10 at Level 80 at 390 x 844; a tiny screen (320 x 568) still scrolls and shows a "More shelves below" pill. The basket's stool is cropped off in CSS (`BASKET_RATIO`, `BASKET_CROP`; the picture is untouched) and the basket sits flush low (163 px tall, was 227).
+- **Which shelf is which:** every name chip carries its emoji (`TARGETS` icon) and an empty shelf shows 3 ingredient pictures at EVERY level (they were hidden from Level 44; `hint: "never"` now only means the lifted piece does not glow its shelf). A WRONG drop lights the right shelf for 3 s at every level, scrolls it into view and the note names it with its emoji ("Green Bean goes in: 🍄 Pods & fungi").
+- **Practice:** "Again · practice" then "Practice again" any number of times (it used to be once); "Next crate" also shows after a practice round.
+- **Clock:** the screen redraws when the whole second changes, not ten times a second.
+- **Tests:** `fridge-sort-qa` L8 now expects the emoji in the chip (the old "no emoji" rule was the developer's earlier choice, changed 2026-11-07); `fridgesort.mjs` S17 (pictures at Level 80 too), S18 (emoji in the note) and new S21-S27 (a drop 28 px below the shelf lands, all shelves fit at 390 x 844, stool gone, emoji on every chip, wrong drop lights the right shelf, three practice rounds in a row, 10 shelves fit). ALL PASS. New: `KC_OFFLINE_BRIDGE=1` makes `harness.mjs` answer the Playgama CDN script with a local stand-in (the CDN was unreachable for a while and every browser test timed out).
+
 ## NPC realism: planned, not built (developer 2026-11-07)
 
 - Player reviews: improve the people's look, costumes, size, faces, male / female identification, hair, walking and behaviour.
@@ -9,7 +18,7 @@
   Codex prompts: `docs/planning/NPC-CODEX-PROMPTS-2026-11-07.md` (style anchor, sheet A walk / sit, sheet B work, busts, props; 50 sheets in
   3 priorities). Art goes in `NPC Assets/`.
 
-## Paige, the personal assistant: BUILT; the cleaners' art placed (developer 2026-11-07, UNCOMMITTED)
+## Paige, the personal assistant: BUILT; the cleaners' art placed (developer 2026-11-07, committed `340bae1`)
 
 - **Art** (local-only sheets in `Assistant Assets/` and `Cleaner Assets/`, now gitignored): `python scripts/make-assistant-assets.py` cuts them
   into `public/business/assistant/` (12 poses on one canvas, aligned on the hips; 4 oval avatars; bubble, warning and success frames, ribbon,
@@ -38,7 +47,7 @@
   the `startFirstLevel` helper follow the new first-run order.
 - Not built (noted in the plan): typed-in text, a "meet" backdrop, outfit variants, one beat per ad placement, Paige's own hire card in the Market.
 
-## Fridge Check: a proper how-to tour (developer 2026-11-07, UNCOMMITTED)
+## Fridge Check: a proper how-to tour (developer 2026-11-07, committed `340bae1`)
 
 - Complaint: past Level 40 there was no real instruction (one thin card, first night only), and from tier 4 (Level 44+) the days and the
   icon are hidden, so a player must judge by the picture alone without ever being taught what spoiled looks like.

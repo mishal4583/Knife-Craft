@@ -69,15 +69,6 @@ const ART: Record<string, { file: string; kind: ArtKind }> = {
 };
 const artOf = (id: string): { file: string; kind: ArtKind } =>
   ART[id] ?? { file: "shelf-glass", kind: "shelf" };
-/** The art's height: a full crate (8+ shelves on screen, Level 44 and up) gets lower pieces so every shelf fits without scrolling. */
-const ART_HEIGHT = (kind: ArtKind, dense: boolean): number =>
-  ({
-    bin: dense ? 64 : 100,
-    drawer: dense ? 64 : 100,
-    "rack-butter": dense ? 52 : 74,
-    "rack-aromatics": dense ? 62 : 96,
-    shelf: dense ? 36 : 52,
-  })[kind];
 /** Where the name chip sits on the art: over the piece's blank label plaque (bins, drawers, racks) or the shelf's top-left corner. */
 const ART_CHIP: Record<ArtKind, string> = {
   bin: "left-1/2 top-[72%] -translate-x-1/2 -translate-y-1/2",
@@ -102,11 +93,30 @@ function noise(a: number, b: number): number {
 }
 
 /**
+ * The basket picture is 560 x 336 with a wooden stool under it (the stool starts about 76 % of the way down). The screen crops the stool
+ * off (developer 2026-11-07: "remove the stool") and draws the basket flush with the bottom of the screen, so the basket's box is only the
+ * top 254 px of the picture: `BASKET_CROP` is how much taller than the box the picture is drawn (336 / 254).
+ */
+const BASKET_RATIO = 560 / 254;
+const BASKET_CROP = (336 / 254) * 100;
+
+/**
+ * How far a drop may miss a shelf (developer 2026-11-07: "it is not going to the cabinet unless it is exact top of the cabinet"). The
+ * piece is judged where its PICTURE is (it is drawn a little above the finger), and any release over the fridge, or just outside its
+ * frame, lands on the nearest shelf that can be seen.
+ */
+const DROP_SLACK_PX = 40;
+/** The drawn piece's middle is this far above the finger, in the screen's own units (the ghost is 64 px, lifted by 75 % of that). */
+const GHOST_LIFT_PX = 16;
+/** While a piece is dragged, the fridge scrolls when the piece is this close to its top or bottom edge. */
+const EDGE_SCROLL_PX = 44;
+
+/**
  * The loose pieces lie in a heap on the basket's cloth: a jittered grid, so they overlap a little and none hides another's middle.
  * Positions are percentages of the basket's box (the piece's own centre); `size` is the piece's side in px.
  */
 function pileLayout(n: number): { x: number; y: number; rot: number; size: number }[] {
-  const size = n <= 8 ? 60 : n <= 12 ? 54 : 48;
+  const size = n <= 8 ? 56 : n <= 12 ? 52 : 48;
   const cols = n <= 4 ? n : n <= 9 ? Math.ceil(n / 2) : Math.ceil(n / 3);
   const rows = Math.ceil(n / Math.max(1, cols));
   const out: { x: number; y: number; rot: number; size: number }[] = [];
@@ -118,8 +128,9 @@ function pileLayout(n: number): { x: number; y: number; rot: number; size: numbe
     const colX = (c + 0.5 + (cols - inRow) / 2) / cols;
     const rowY = (r + 0.5) / rows;
     out.push({
-      x: 14 + colX * 72 + (noise(i, 1) - 0.5) * 5,
-      y: 12 + rowY * 42 + (noise(i, 2) - 0.5) * 6,
+      x: 13 + colX * 74 + (noise(i, 1) - 0.5) * 5,
+      // (the old 12..54 % of the tall picture, stretched to the cropped box)
+      y: (12 + rowY * 42) * 1.32 + (noise(i, 2) - 0.5) * 6,
       rot: Math.round((noise(i, 3) - 0.5) * 40),
       size,
     });
@@ -199,6 +210,13 @@ export function FridgeSortGame({
   /** A drag just ended: the click the browser sends after it must not also select the token. */
   const draggedRef = useRef(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  /** The fridge's own scroll box (the shelves) and the last pointer position while a piece is dragged. */
+  const panelRef = useRef<HTMLDivElement>(null);
+  const pointerRef = useRef<{ x: number; y: number } | null>(null);
+  /** The whole second the clock shows: the screen redraws when it changes, not ten times a second. */
+  const shownSecRef = useRef(Math.ceil((round?.timeMs ?? 0) / 1000));
+  /** More shelves below the visible ones (the fridge is scrollable and not at its bottom): shows a "more shelves" cue. */
+  const [moreBelow, setMoreBelow] = useState(false);
 
   const tier = fridgeTierOf(save);
   const best = fridgeSortOf(save).best?.[tier] ?? 0;
@@ -264,8 +282,11 @@ export function FridgeSortGame({
       const now = performance.now();
       leftRef.current = Math.max(0, leftRef.current - (now - last));
       last = now;
-      setMsLeft(leftRef.current);
       const sec = Math.ceil(leftRef.current / 1000);
+      if (sec !== shownSecRef.current) {
+        shownSecRef.current = sec;
+        setMsLeft(leftRef.current);
+      }
       if (sec <= 8 && sec > 0 && sec !== lastTickRef.current) {
         lastTickRef.current = sec;
         AudioManager.playSfx("sortTick");
@@ -331,13 +352,67 @@ export function FridgeSortGame({
       window.setTimeout(() => setWrongId(null), 450);
       // Teach on a miss: say where it really goes (always, at every level: the points are lost, the lesson is free).
       const home = TARGETS.find((t) => t.id === targetOf(id));
-      say(`${INGREDIENTS[id].name} goes in: ${home?.label ?? "another shelf"}`, "bad", 3000);
-      if (hintMode === "after-miss") {
-        setHint(targetOf(id));
-        window.setTimeout(() => setHint(null), 2500);
-      }
+      say(
+        `${INGREDIENTS[id].name} goes in: ${home?.icon ?? ""} ${home?.label ?? "another shelf"}`,
+        "bad",
+        3200,
+      );
+      // Show WHERE it goes at every level (developer 2026-11-07: "the green thing is not even going to any box, what does it belong to?"):
+      // the right shelf glows, and is scrolled into view if the fridge had it out of sight.
+      setHint(targetOf(id));
+      window.setTimeout(() => setHint(null), 3000);
+      scrollShelfIntoView(targetOf(id));
     }
     setTick((n) => n + 1);
+  };
+
+  /** Scrolls the fridge so a shelf is fully visible (does nothing when it already is, or on a screen with no scrolling). */
+  const scrollShelfIntoView = (id: TargetId) => {
+    const panel = panelRef.current;
+    const el = panel?.querySelector<HTMLElement>(`[data-target-id="${id}"]`);
+    if (!panel || !el) return;
+    const pr = panel.getBoundingClientRect();
+    const r = el.getBoundingClientRect();
+    if (r.top < pr.top) panel.scrollTop -= pr.top - r.top + 6;
+    else if (r.bottom > pr.bottom) panel.scrollTop += r.bottom - pr.bottom + 6;
+  };
+
+  /**
+   * The shelf a piece dropped at the finger (x, y) lands on, or null when it is let go away from the fridge. The piece is judged where its
+   * picture is, and the NEAREST shelf that can be seen wins, so the gaps between the shelves and the fridge's own frame all count.
+   */
+  const shelfAt = (x: number, y: number): TargetId | null => {
+    const panel = panelRef.current;
+    if (!panel) return null;
+    const root = rootRef.current;
+    const scale =
+      root && root.offsetHeight > 0 ? root.getBoundingClientRect().height / root.offsetHeight : 1;
+    const py = y - GHOST_LIFT_PX * (scale || 1);
+    const slack = DROP_SLACK_PX * (scale || 1);
+    const pr = panel.getBoundingClientRect();
+    if (
+      x < pr.left - slack ||
+      x > pr.right + slack ||
+      py < pr.top - slack ||
+      py > pr.bottom + slack
+    )
+      return null;
+    let best: string | null = null;
+    let bestD = Infinity;
+    for (const el of panel.querySelectorAll<HTMLElement>("[data-target-id]")) {
+      const r = el.getBoundingClientRect();
+      // a shelf scrolled out of sight can't be the answer
+      if (r.bottom <= pr.top + 4 || r.top >= pr.bottom - 4) continue;
+      const d = Math.hypot(
+        Math.max(r.left - x, 0, x - r.right),
+        Math.max(r.top - py, 0, py - r.bottom),
+      );
+      if (d < bestD) {
+        bestD = d;
+        best = el.getAttribute("data-target-id");
+      }
+    }
+    return best as TargetId | null;
   };
 
   // ── pointer handling on a piece ──
@@ -356,9 +431,9 @@ export function FridgeSortGame({
       AudioManager.playSfx("sortPick");
       setSelected(g.i);
     }
+    pointerRef.current = { x: e.clientX, y: e.clientY };
     setDrag({ i: g.i, x: e.clientX, y: e.clientY });
-    const t = document.elementFromPoint(e.clientX, e.clientY)?.closest("[data-target-id]");
-    setHover((t?.getAttribute("data-target-id") as TargetId | null) ?? null);
+    setHover(shelfAt(e.clientX, e.clientY));
   };
   const onTokenUp = (e: React.PointerEvent) => {
     const g = gestureRef.current;
@@ -368,12 +443,52 @@ export function FridgeSortGame({
     if (!g.moved) return;
     draggedRef.current = true;
     window.setTimeout(() => (draggedRef.current = false), 80);
-    const t = document.elementFromPoint(e.clientX, e.clientY)?.closest("[data-target-id]");
-    const target = t?.getAttribute("data-target-id") as TargetId | null;
+    const target = shelfAt(e.clientX, e.clientY);
+    pointerRef.current = null;
     setDrag(null);
     if (target) resolveDrop(g.i, target);
     else setSelected(null);
   };
+
+  // While a piece is dragged near the top or bottom of the fridge, the fridge scrolls under it (no need to let go to find a shelf).
+  const isDragging = drag !== null;
+  useEffect(() => {
+    if (!isDragging) return;
+    const id = window.setInterval(() => {
+      const panel = panelRef.current;
+      const p = pointerRef.current;
+      if (!panel || !p) return;
+      const root = rootRef.current;
+      const scale =
+        root && root.offsetHeight > 0 ? root.getBoundingClientRect().height / root.offsetHeight : 1;
+      const pr = panel.getBoundingClientRect();
+      const y = p.y - GHOST_LIFT_PX * (scale || 1);
+      const edge = EDGE_SCROLL_PX * (scale || 1);
+      if (y < pr.top + edge && panel.scrollTop > 0) panel.scrollTop -= 10;
+      else if (y > pr.bottom - edge && y < pr.bottom + edge) panel.scrollTop += 10;
+      else return;
+      setHover(shelfAt(p.x, p.y));
+    }, 30);
+    return () => window.clearInterval(id);
+    // (shelfAt only reads refs and the DOM)
+  }, [isDragging]);
+
+  // The "more shelves below" cue: on when the fridge can scroll and is not at its bottom.
+  useEffect(() => {
+    const panel = panelRef.current;
+    if (!panel) return;
+    const update = () =>
+      setMoreBelow(panel.scrollHeight - panel.scrollTop - panel.clientHeight > 12);
+    update();
+    panel.addEventListener("scroll", update, { passive: true });
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(update) : null;
+    ro?.observe(panel);
+    if (panel.firstElementChild) ro?.observe(panel.firstElementChild);
+    return () => {
+      panel.removeEventListener("scroll", update);
+      ro?.disconnect();
+    };
+  }, [round, phase]);
 
   const pause = () => {
     if (phaseRef.current === "playing") setPhaseBoth("paused");
@@ -392,10 +507,16 @@ export function FridgeSortGame({
     doneRef.current = false;
     leftRef.current = r.timeMs;
     lastTickRef.current = 0;
+    shownSecRef.current = Math.ceil(r.timeMs / 1000);
     setPlaced(new Set());
     setMsLeft(r.timeMs);
     setResult(null);
     setNote(null);
+    setSelected(null);
+    setDrag(null);
+    setHover(null);
+    setHint(null);
+    setPops([]);
     setPractice(true);
     setPhaseBoth("ready");
   };
@@ -407,12 +528,18 @@ export function FridgeSortGame({
     doneRef.current = false;
     leftRef.current = next?.timeMs ?? 0;
     lastTickRef.current = 0;
+    shownSecRef.current = Math.ceil((next?.timeMs ?? 0) / 1000);
     setRound(next);
     setExpiring(next ? expiringTokens(save, next.tokens, playerLevel) : new Set());
     setPlaced(new Set());
     setMsLeft(next?.timeMs ?? 0);
     setResult(null);
     setNote(null);
+    setSelected(null);
+    setDrag(null);
+    setHover(null);
+    setHint(null);
+    setPops([]);
     setPractice(false);
     setPhaseBoth("ready");
   };
@@ -461,12 +588,14 @@ export function FridgeSortGame({
 
   const targetBand = (t: (typeof TARGETS)[number]) => {
     const need = expected.get(t.id) ?? 0;
+    const kind = artOf(t.id).kind;
     const inside = tokens
       .map((id, i) => ({ id, i }))
       .filter((x) => placed.has(x.i) && targetOf(x.id) === t.id);
-    // An empty shelf shows faded pictures of what lives here (hidden from Level 44, where the player is expected to know).
+    // An empty shelf shows pictures of what lives here, at EVERY level (developer 2026-11-07: players could not tell which shelf was which).
+    // Lower levels show the basket's own food first; from Level 27 the shelf's usual food (a reminder, not the answer).
     const examples =
-      inside.length === 0 && hintMode !== "never"
+      inside.length === 0
         ? zoneExamples(t.id, hintMode === "always" ? round.ingredients : [], 3)
         : [];
     const glow =
@@ -486,19 +615,15 @@ export function FridgeSortGame({
           if (selected !== null) resolveDrop(selected, t.id);
         }}
         className={cn(
-          "relative flex min-h-[56px] flex-col items-center gap-0.5 rounded-2xl border-2 px-1.5 pb-1 pt-1 text-left transition-colors",
-          t.id === "dairy" || t.id === "protein" ? "col-span-2" : "",
+          "relative flex h-full min-h-0 flex-col items-center gap-0.5 rounded-2xl border-2 px-1.5 pb-1 pt-1 text-left transition-colors",
+          kind === "shelf" ? "col-span-2" : "",
           glow
             ? "border-gold bg-gold/30 shadow-[0_0_0_3px_rgba(230,180,60,0.4)]"
             : "border-[#d9b779]/70 bg-white/25",
           need === 0 && "opacity-70",
         )}
       >
-        <span
-          className="relative block w-full"
-          style={{ height: ART_HEIGHT(artOf(t.id).kind, dense) }}
-          aria-hidden
-        >
+        <span className="relative block min-h-0 w-full flex-1" aria-hidden>
           <img
             src={`${import.meta.env.BASE_URL}business/fridge-sort/${artOf(t.id).file}.webp`}
             alt=""
@@ -509,27 +634,28 @@ export function FridgeSortGame({
             }}
             className={cn(
               "pointer-events-none absolute",
-              artOf(t.id).kind === "shelf"
+              kind === "shelf"
                 ? "inset-x-0 bottom-0 h-[16px] w-full object-fill"
                 : "inset-0 h-full w-full object-contain",
             )}
           />
           <span
             className={cn(
-              "pointer-events-none absolute z-10 whitespace-nowrap rounded-full bg-[#f3e1b8]/95 px-2 py-0.5 font-ui text-[11px] font-extrabold text-walnut-dark shadow-sm",
-              ART_CHIP[artOf(t.id).kind],
+              "pointer-events-none absolute z-10 max-w-[98%] truncate whitespace-nowrap rounded-full bg-[#f3e1b8]/95 px-2 py-0.5 font-ui text-[11px] font-extrabold text-walnut-dark shadow-sm max-[360px]:px-1 max-[360px]:text-[10px]",
+              ART_CHIP[kind],
             )}
+            data-shelf-chip={t.id}
           >
-            {t.label}
+            <span data-shelf-icon>{t.icon}</span> {t.label}
             {need > 0 ? ` ${inside.length}/${need}` : ""}
           </span>
           <span
             className={cn(
               "absolute flex flex-wrap items-end justify-center gap-0 text-[22px] leading-none",
-              ART_ITEMS[artOf(t.id).kind],
+              ART_ITEMS[kind],
             )}
           >
-            {inside.slice(0, artOf(t.id).kind === "shelf" ? 12 : 8).map((x) => (
+            {inside.slice(0, kind === "shelf" ? 12 : 8).map((x) => (
               <IngredientIcon
                 key={x.i}
                 id={x.id}
@@ -542,7 +668,7 @@ export function FridgeSortGame({
                 key={id}
                 id={id}
                 fallback={INGREDIENT_EMOJI[id]}
-                className="h-[1.15em] w-[1.15em] opacity-60 saturate-75"
+                className="h-[1.15em] w-[1.15em] opacity-75"
               />
             ))}
           </span>
@@ -561,6 +687,27 @@ export function FridgeSortGame({
     );
   };
 
+  // The shelves' rows: a wide shelf (Dairy, Meat) takes a whole row, the bins, drawers and racks sit two to a row. The rows share the
+  // fridge's height, so every shelf is on screen with no scrolling (a very small screen still scrolls, with a "more shelves" cue).
+  const rowSizes = (() => {
+    const rows: string[] = [];
+    let col = 0;
+    for (const t of shown) {
+      if (artOf(t.id).kind === "shelf") {
+        if (col !== 0) rows.push(`minmax(${dense ? 48 : 58}px, 1fr)`);
+        rows.push(`minmax(${dense ? 48 : 52}px, 0.62fr)`);
+        col = 0;
+      } else if (col === 0) {
+        col = 1;
+      } else {
+        rows.push(`minmax(${dense ? 48 : 58}px, 1fr)`);
+        col = 0;
+      }
+    }
+    if (col !== 0) rows.push(`minmax(${dense ? 48 : 58}px, 1fr)`);
+    return rows.join(" ");
+  })();
+
   return (
     <div
       ref={rootRef}
@@ -577,7 +724,7 @@ export function FridgeSortGame({
       data-left={crateLeft.length}
     >
       {/* HUD: pause, clock and score on the painted wooden plaques */}
-      <div className="flex items-center gap-2 px-3 pt-3">
+      <div className="flex items-center gap-2 px-3 pt-2">
         <button
           type="button"
           onClick={pause}
@@ -652,16 +799,34 @@ export function FridgeSortGame({
         </div>
       </div>
 
-      {/* the fridge */}
-      <div className="mx-3 mt-2 min-h-0 flex-1 overflow-y-auto rounded-[26px] border-4 border-[#b9773a] bg-[radial-gradient(ellipse_at_50%_0%,#fde7b0,#f0c377_55%,#e2a65a)] p-2 shadow-inner">
-        <div className="grid grid-cols-2 gap-2" data-testid="sort-targets">
-          {shown.map(targetBand)}
+      {/* the fridge: the shelves share its height, so they are all in view (a tiny screen scrolls, with a cue) */}
+      <div className="relative mx-3 mt-1.5 min-h-0 flex-1">
+        <div
+          ref={panelRef}
+          data-testid="sort-fridge"
+          className="h-full overflow-y-auto rounded-[26px] border-4 border-[#b9773a] bg-[radial-gradient(ellipse_at_50%_0%,#fde7b0,#f0c377_55%,#e2a65a)] p-1 shadow-inner"
+        >
+          <div
+            className="grid h-full grid-cols-2 gap-1"
+            style={{ gridTemplateRows: rowSizes, gridAutoRows: "minmax(56px, 1fr)" }}
+            data-testid="sort-targets"
+          >
+            {shown.map(targetBand)}
+          </div>
         </div>
+        {moreBelow ? (
+          <span
+            data-testid="sort-more-shelves"
+            className="pointer-events-none absolute inset-x-0 bottom-1.5 mx-auto w-fit rounded-full bg-walnut-dark/90 px-3 py-1 font-ui text-[12px] font-extrabold text-ivory shadow"
+          >
+            ▼ More shelves below
+          </span>
+        ) : null}
       </div>
 
       {/* the delivery slip: what was bought, and how many loose pieces that is (1 lb of tomato is about 3 tomatoes) */}
       <div
-        className="mx-3 mt-2 flex items-center gap-1.5 overflow-x-auto rounded-xl bg-[#3b2a1d]/75 px-2 py-1"
+        className="mx-3 mt-1.5 flex items-center gap-1.5 overflow-x-auto rounded-xl bg-[#3b2a1d]/75 px-2 py-1"
         data-testid="sort-slip"
       >
         <span className="shrink-0 font-ui text-[11px] font-extrabold text-ivory/80">
@@ -691,12 +856,19 @@ export function FridgeSortGame({
         ) : null}
       </div>
 
-      {/* the basket: every piece of the delivery lies mixed on the cloth */}
+      {/* the basket: every piece of the delivery lies mixed on the cloth. Its stool is cropped off and it sits low on the screen. */}
       <div
-        className="relative mx-auto mb-3 mt-1 aspect-[1.5] w-[calc(100%-24px)] max-w-[340px]"
+        className="relative mx-auto mb-1 mt-1 w-[calc(100%-24px)] max-w-[360px] shrink-0"
+        style={{ aspectRatio: BASKET_RATIO }}
         data-testid="sort-crate"
       >
-        <Art name="basket" className="absolute inset-0 h-full w-full object-fill" />
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <Art
+            name="basket"
+            className="absolute inset-x-0 top-0 w-full object-fill"
+            style={{ height: `${BASKET_CROP}%` }}
+          />
+        </div>
         {tokens.map((id, i) => {
           if (placed.has(i)) return null;
           const isSel = selected === i;
@@ -777,11 +949,13 @@ export function FridgeSortGame({
           );
         })}
         {/* the basket's front: it covers the lower part of the pieces, so they sit INSIDE it */}
-        <Art
-          name="basket"
-          className="absolute inset-0 h-full w-full object-fill"
-          style={{ clipPath: "inset(56% 0 0 0)", zIndex: 30 }}
-        />
+        <div className="pointer-events-none absolute inset-0 z-30 overflow-hidden">
+          <Art
+            name="basket"
+            className="absolute inset-x-0 top-0 w-full object-fill"
+            style={{ height: `${BASKET_CROP}%`, clipPath: "inset(56% 0 0 0)" }}
+          />
+        </div>
         {crateLeft.length === 0 && phase !== "done" ? (
           <span className="absolute inset-x-0 top-[28%] z-30 text-center font-ui text-[14px] font-extrabold text-walnut-dark">
             Empty ✓
@@ -851,7 +1025,7 @@ export function FridgeSortGame({
                   ❄️
                 </span>
                 <span>
-                  Each shelf shows pictures of what lives there. Right = points and combos.
+                  Shelves show what lives there. Right = points. A miss lights the right shelf.
                 </span>
               </li>
               <li className="flex items-center gap-2.5 rounded-xl bg-white/50 p-2">
@@ -1004,23 +1178,18 @@ export function FridgeSortGame({
               />
             ) : null}
             <div className="relative mt-3 grid gap-2">
-              {!practice && roundFor(save, playerLevel) ? (
+              {roundFor(save, playerLevel) ? (
                 <SortButton onClick={nextCrate} testId="sort-next">
                   Next crate
                 </SortButton>
               ) : null}
-              <SortButton
-                quiet={!practice && !!roundFor(save, playerLevel)}
-                onClick={onExit}
-                testId="sort-done"
-              >
+              <SortButton quiet={!!roundFor(save, playerLevel)} onClick={onExit} testId="sort-done">
                 Done
               </SortButton>
-              {!practice ? (
-                <SortButton quiet onClick={again} testId="sort-again">
-                  Again · practice
-                </SortButton>
-              ) : null}
+              {/* Practice as often as you like (developer 2026-11-07: it could only be replayed once): same crate, no reward */}
+              <SortButton quiet onClick={again} testId="sort-again">
+                {practice ? "Practice again" : "Again · practice"}
+              </SortButton>
             </div>
           </div>
         </div>

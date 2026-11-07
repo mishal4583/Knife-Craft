@@ -823,8 +823,11 @@ console.log("L. The basket: pieces, the freshness reward, the pictures on the sh
     /data-testid="sort-guide"/.test(game) &&
       /fridgeSortOf\(save\)\.rounds \?\? 0\) === 0/.test(game) &&
       /data-testid="sort-help"/.test(game) &&
-      !/\{t\.icon\}/.test(game),
-    "L8: the screen opens with a how-to card the first time and from the ? button, and the shelves use pictures, not emoji",
+      // changed 2026-11-07 (developer: "you can add emojis or ingredient assets to show which goes to which box"): each shelf's name chip
+      // now carries its emoji next to the painted piece and the ingredient pictures
+      /data-shelf-icon/.test(game) &&
+      /\{t\.icon\}/.test(game),
+    "L8: the screen opens with a how-to card the first time and from the ? button, and each shelf's name chip carries its emoji",
   );
 }
 

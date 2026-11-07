@@ -18,6 +18,9 @@ Tests without a build in their row are **classic-build** tests
 (`VITE_RESTAURANT_MODE=0 npx vite build --outDir <dir>`, serve it, point
 `KC_URL` at it); the rows marked restaurant run on the normal build.
 
+**No network (2026-11-07):** every test waits for the Playgama Bridge script from its CDN. With `KC_OFFLINE_BRIDGE=1` the harness answers that
+request with a small local stand-in (storage in localStorage, no ads), so the tests run without the network.
+
 **Writing a test (2026-10-18)** — the harness follows the current game:
 
 - `seedSave`'s ledger holds today's daily-gift entry (`GIFT_TAKEN_TODAY()`),
