@@ -98,6 +98,7 @@ export function useCleaningGame(
       }}
       onClose={() => setCheck(null)}
       onNext={(next) => setCheck(next)}
+      onGuideSeen={(stage) => run({ kind: "check-howto", stage })}
     />
   ) : null;
   return { clean, game };

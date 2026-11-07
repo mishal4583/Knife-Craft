@@ -8,6 +8,7 @@
 //   H6 the plate is ready: the Server's card (a, b hire); the guest has eaten: the Cashier's card (c, d hire); the hand is gone once the service is done.
 //   H7 no console errors.
 import {
+  hirePaige,
   launch,
   freshPlayer,
   sleep,
@@ -47,6 +48,7 @@ try {
   });
   await sleep(2500);
   // Grandma's own pointer at the Market, then "Show me".
+  await hirePaige(page);
   await clickButton(page, /^Show me/);
   await sleep(1500);
 

@@ -2,6 +2,8 @@ import { KButton } from "../common/primitives";
 import type { GuideStep } from "@/game/restaurant/restaurantGuide";
 import { StaffPortrait } from "../business/StaffCard";
 import { staffFallbackEmoji, staffPortraitFile } from "../business/staffPortraits";
+import { PaigeAvatar } from "../assistant/PaigeArt";
+import { ASSISTANT_NAME } from "@/game/restaurant/assistant";
 
 /**
  * The Restaurant Guide's card (restaurant/restaurantGuide.ts): one "what to do
@@ -10,10 +12,13 @@ import { staffFallbackEmoji, staffPortraitFile } from "../business/staffPortrait
  */
 export function GuideCard({
   step,
+  paige = false,
   onLater,
   onGo,
 }: {
   step: GuideStep;
+  /** Paige is hired: the card speaks in her voice (her face and name), same step, same buttons. */
+  paige?: boolean;
   onLater: () => void;
   onGo: () => void;
 }) {
@@ -28,8 +33,16 @@ export function GuideCard({
         aria-label={step.title}
         className="paper w-full max-w-[420px] rounded-3xl p-4 shadow-lift"
       >
-        <p className="font-ui text-[11px] font-extrabold uppercase tracking-[0.18em] text-copper">
-          🎯 Next step
+        <p className="flex items-center gap-1.5 font-ui text-[11px] font-extrabold uppercase tracking-[0.18em] text-copper">
+          {paige ? (
+            // Paige's voice once she is hired (developer 2026-11-07): the same step, the same buttons.
+            <>
+              <PaigeAvatar className="inline-block h-6 w-8" />
+              <span data-testid="guide-card-paige">{ASSISTANT_NAME} · Next step</span>
+            </>
+          ) : (
+            "🎯 Next step"
+          )}
         </p>
         <p className="mt-1 font-display text-[20px] font-black leading-tight text-walnut-dark">
           {step.focus && staffPortraitFile(step.focus) ? (

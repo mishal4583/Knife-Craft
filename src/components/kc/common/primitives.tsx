@@ -14,6 +14,7 @@ type BtnProps = {
   full?: boolean;
   disabled?: boolean;
   className?: string;
+  "data-testid"?: string;
 };
 
 export function KButton({
@@ -24,6 +25,7 @@ export function KButton({
   full,
   disabled,
   className,
+  "data-testid": testId,
 }: BtnProps) {
   const base =
     "press relative inline-flex items-center justify-center gap-2 rounded-2xl font-ui font-extrabold tracking-wide select-none";
@@ -45,6 +47,7 @@ export function KButton({
   return (
     <button
       type="button"
+      data-testid={testId}
       onClick={
         onClick
           ? () => {

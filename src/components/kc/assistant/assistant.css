@@ -1,0 +1,50 @@
+/* Paige, the assistant (components/kc/assistant). Transform and opacity only; Reduced Motion turns every animation off. */
+@keyframes paige-pop {
+  0% { opacity: 0; transform: translateY(14px) scale(0.94); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes paige-ring {
+  0%, 100% { opacity: 0.55; transform: scale(0.96); }
+  50% { opacity: 1; transform: scale(1.06); }
+}
+@keyframes paige-point {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(8px); }
+}
+@keyframes paige-sparkle {
+  0%, 100% { opacity: 0.3; transform: scale(0.7) rotate(0deg); }
+  50% { opacity: 1; transform: scale(1.1) rotate(12deg); }
+}
+
+.paige-in { animation: paige-pop 0.28s ease-out both; }
+.paige-ring { animation: paige-ring 1.4s ease-in-out infinite; }
+.paige-point { animation: paige-point 0.9s ease-in-out infinite; }
+.paige-sparkle { animation: paige-sparkle 1.6s ease-in-out infinite; }
+
+.kc-reduced-motion .paige-in,
+.kc-reduced-motion .paige-ring,
+.kc-reduced-motion .paige-point,
+.kc-reduced-motion .paige-sparkle {
+  animation: none;
+}
+
+/* The speech bubble: the painted frame (bubble-*.webp) stretched on its 9 parts, so it grows with the text. The numbers are the source
+   pixels of each frame (measured on the 344-wide art); the widths are those pixels at the display scale. */
+.paige-bubble {
+  --s: 0.62;
+  border-style: solid;
+  border-color: transparent;
+  box-sizing: border-box;
+}
+.paige-bubble[data-tone="normal"] {
+  border-width: calc(44px * var(--s)) calc(44px * var(--s)) calc(62px * var(--s)) calc(92px * var(--s));
+  border-image-slice: 44 44 62 92 fill;
+}
+.paige-bubble[data-tone="success"] {
+  border-width: calc(77px * var(--s)) calc(44px * var(--s)) calc(62px * var(--s)) calc(92px * var(--s));
+  border-image-slice: 77 44 62 92 fill;
+}
+.paige-bubble[data-tone="warning"] {
+  border-width: calc(82px * var(--s)) calc(44px * var(--s)) calc(62px * var(--s)) calc(92px * var(--s));
+  border-image-slice: 82 44 62 92 fill;
+}

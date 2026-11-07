@@ -240,8 +240,20 @@ import { prepCookCanCut } from "@/game/restaurant/prepCookAuto";
 import { taughtTechniques } from "@/game/coaching";
 import { preparationStepsForRecipe } from "@/game/service/stepsForRecipe";
 import { GuideCard } from "@/components/kc/restaurant/GuideCard";
+import {
+  assistantBeatFor,
+  assistantHired,
+  assistantOf,
+  hireAssistant,
+  markAssistantSeen,
+  setAssistantTips,
+  type AssistantBeat,
+} from "@/game/restaurant/assistant";
+import { AssistantHost, type AssistantReplay } from "@/components/kc/assistant/AssistantHost";
+import { AssistantProvider, type AssistantApi } from "@/components/kc/assistant/AssistantContext";
+import { PaigeNotebook } from "@/components/kc/assistant/PaigeNotebook";
 import { openStaffFor } from "@/components/kc/staffFocus";
-import { openMarketSupplies } from "@/components/kc/marketFocus";
+import { openMarketIngredients, openMarketSupplies } from "@/components/kc/marketFocus";
 import { serviceHirePrompts } from "@/game/restaurant/serviceHire";
 import {
   fireSpecialist,
@@ -735,6 +747,9 @@ export function App() {
   const coverAdBusyRef = useRef(false);
   /** A day-Cleaner ad is in flight (hireDayCleanerWithAd). */
   const dayCleanerAdBusyRef = useRef(false);
+  // Paige's notebook sheet and a tip she is asked to say again (components/kc/assistant).
+  const [paigeNotebook, setPaigeNotebook] = useState(false);
+  const [paigeReplay, setPaigeReplay] = useState<AssistantReplay | null>(null);
   const businessSessionRef = useRef<ServiceSession | null>(null);
   // One id per play session (level/daily/endless start) + whether it reached a
   // completion — so an interstitial only follows a finished session, never a
@@ -3585,6 +3600,8 @@ export function App() {
   }
   // Ad bonuses: the home screens with nothing else on them — where the floating cash may
   // drift in and the daily gift opens (never over a card, a sheet, a pointer or an ad).
+  // Paige's introduction comes first (developer 2026-11-07): Grandma's section pointer waits until she is hired.
+  const meetPending = RESTAURANT_MODE && !!save && save.story.introDone && !assistantHired(save);
   const homeCalm =
     !!save &&
     (screen === "kitchen" || screen === "restaurant-map") &&
@@ -3602,6 +3619,7 @@ export function App() {
     !(RESTAURANT_MODE && save.story.introDone && needsRestaurantName(save)) &&
     !(
       RESTAURANT_MODE &&
+      !meetPending &&
       screen === "kitchen" &&
       sectionToPoint(restaurantLevelOf(save.levelProgress), save.business.sectionsSeen ?? [])
     );
@@ -4002,6 +4020,7 @@ export function App() {
   // on the Kitchen only, when nothing else is on screen.
   const pointedTab =
     RESTAURANT_MODE &&
+    !meetPending &&
     screen === "kitchen" &&
     !showIntro &&
     !storyEvent &&
@@ -4034,6 +4053,56 @@ export function App() {
     guideLevelRef.current !== guideAtLevel
       ? guideStepFor(save)
       : null;
+
+  // PAIGE (restaurant/assistant.ts, components/kc/assistant): the tip the rules offer now, shown only at a calm moment on the two home
+  // screens, never over the guide card or Grandma's pointer, one per screen visit (the host).
+  const paigeCandidate: AssistantBeat | null =
+    RESTAURANT_MODE && save ? assistantBeatFor(save) : null;
+  const paigeCalm =
+    RESTAURANT_MODE &&
+    !!save &&
+    homeCalm &&
+    !guideStep &&
+    !pointedTab &&
+    !paigeNotebook &&
+    (screen === "kitchen" || screen === "restaurant-map");
+  const hirePaige = () => {
+    const cur = saveRef.current;
+    if (!cur || assistantHired(cur)) return;
+    persist(hireAssistant(cur));
+    sendAnalyticsEvent("assistant_hired", { level: restaurantLevelOf(cur.levelProgress) });
+  };
+  const paigeSeen = (id: string) => {
+    const cur = saveRef.current;
+    if (!cur) return;
+    const next = markAssistantSeen(cur, id);
+    if (next === cur) return;
+    persist(next);
+    sendAnalyticsEvent("assistant_beat_shown", {
+      beat: id.split(":")[0] ?? id,
+      level: restaurantLevelOf(cur.levelProgress),
+    });
+  };
+  const paigeGo = (to: string) => {
+    if (to === "shop") openMarketIngredients(go);
+    else go(to as ScreenId);
+  };
+  const paigeTips = (on: boolean) => {
+    const cur = saveRef.current;
+    if (!cur) return;
+    const next = setAssistantTips(cur, on);
+    if (next === cur) return;
+    persist(next);
+    if (!on)
+      sendAnalyticsEvent("assistant_tips_off", { level: restaurantLevelOf(cur.levelProgress) });
+  };
+  const assistantApi: AssistantApi = {
+    hired: !!save && assistantHired(save),
+    tipsOff: !!save && assistantOf(save).tipsOff === true,
+    openNotebook: () => setPaigeNotebook(true),
+    setTips: paigeTips,
+    hire: hirePaige,
+  };
 
   return (
     <GameShell
@@ -4267,72 +4336,74 @@ export function App() {
           />
         ) : (
           <Suspense fallback={<LoadingScreen />}>
-            <AdBonusContext.Provider value={adBonusApi}>
-              <ScreensRouter
-                screen={screen}
-                go={go}
-                save={save}
-                planLevelId={serviceCheckLevelId}
-                navGuide={navGuide}
-                recipeDetailLevelId={recipeDetailLevelId}
-                onOpenRecipe={(levelId) => {
-                  setRecipeDetailLevelId(levelId);
-                  setScreen("recipe-detail");
-                }}
-                onSelectLevel={onSelectLevel}
-                onStartDaily={startDaily}
-                onOpenDailyGift={() => {
-                  openDailyGift();
-                }}
-                onCollectTableCash={collectTableCash}
-                onHireCleaner={hireHourlyCleanerPaid}
-                onStartEndless={startEndless}
-                buyKnife={buyKnife}
-                buyBoard={buyBoard}
-                sharpenKnife={sharpenKnife}
-                upgradeKnife={upgradeKnife}
-                buyStaff={buyStaff}
-                selectSupplier={selectSupplier}
-                cleanlinessAction={cleanlinessAction}
-                dayCleaner={{
-                  price: dayCleanerPrice(),
-                  adAvailable: rewardedAdsAvailable(),
-                  onPay: hireDayCleanerPaid,
-                  onAd: hireDayCleanerWithAd,
-                }}
-                setStandingOrder={setStandingOrderOn}
-                setEquippedKnife={setEquippedKnife}
-                setEquippedBoard={setEquippedBoard}
-                toggleSetting={toggleSetting}
-                setMeasure={setMeasure}
-                setRestaurantName={setRestaurantName}
-                resetProgress={resetProgress}
-                advanceBusinessDay={advanceBusinessDay}
-                purchaseIngredient={purchaseIngredient}
-                purchaseIngredients={purchaseIngredients}
-                purchaseSupply={purchaseSupply}
-                purchaseRefrigerator={purchaseRefrigerator}
-                throwOutExpired={throwOutExpired}
-                performRefrigeratorMaintenance={performRefrigeratorMaintenance}
-                rushRestock={rushRestockCurrentOrder}
-                buildKitchenUpgrade={buildKitchenUpgrade}
-                collectAchievement={collectAchievementReward}
-                secondFloorAction={secondFloorAction}
-                fridgeSortAction={fridgeSortAction}
-                stockroomSortAction={stockroomSortAction}
-                cleanerCleans={cleanerCleans}
-                rushAdAvailable={rewardedAdsAvailable()}
-                setMenuPrice={setMenuPrice}
-                setBusinessDishActive={setBusinessDishActive}
-                signSupplierContract={signSupplierContract}
-                cancelSupplierContract={cancelSupplierContract}
-                hireStaff={hireStaff}
-                fireStaff={fireStaff}
-                businessServiceSession={businessServiceSession}
-                onStartBusinessService={startBusinessService}
-                onEnterBusinessPreparation={enterBusinessPreparation}
-              />
-            </AdBonusContext.Provider>
+            <AssistantProvider value={assistantApi}>
+              <AdBonusContext.Provider value={adBonusApi}>
+                <ScreensRouter
+                  screen={screen}
+                  go={go}
+                  save={save}
+                  planLevelId={serviceCheckLevelId}
+                  navGuide={navGuide}
+                  recipeDetailLevelId={recipeDetailLevelId}
+                  onOpenRecipe={(levelId) => {
+                    setRecipeDetailLevelId(levelId);
+                    setScreen("recipe-detail");
+                  }}
+                  onSelectLevel={onSelectLevel}
+                  onStartDaily={startDaily}
+                  onOpenDailyGift={() => {
+                    openDailyGift();
+                  }}
+                  onCollectTableCash={collectTableCash}
+                  onHireCleaner={hireHourlyCleanerPaid}
+                  onStartEndless={startEndless}
+                  buyKnife={buyKnife}
+                  buyBoard={buyBoard}
+                  sharpenKnife={sharpenKnife}
+                  upgradeKnife={upgradeKnife}
+                  buyStaff={buyStaff}
+                  selectSupplier={selectSupplier}
+                  cleanlinessAction={cleanlinessAction}
+                  dayCleaner={{
+                    price: dayCleanerPrice(),
+                    adAvailable: rewardedAdsAvailable(),
+                    onPay: hireDayCleanerPaid,
+                    onAd: hireDayCleanerWithAd,
+                  }}
+                  setStandingOrder={setStandingOrderOn}
+                  setEquippedKnife={setEquippedKnife}
+                  setEquippedBoard={setEquippedBoard}
+                  toggleSetting={toggleSetting}
+                  setMeasure={setMeasure}
+                  setRestaurantName={setRestaurantName}
+                  resetProgress={resetProgress}
+                  advanceBusinessDay={advanceBusinessDay}
+                  purchaseIngredient={purchaseIngredient}
+                  purchaseIngredients={purchaseIngredients}
+                  purchaseSupply={purchaseSupply}
+                  purchaseRefrigerator={purchaseRefrigerator}
+                  throwOutExpired={throwOutExpired}
+                  performRefrigeratorMaintenance={performRefrigeratorMaintenance}
+                  rushRestock={rushRestockCurrentOrder}
+                  buildKitchenUpgrade={buildKitchenUpgrade}
+                  collectAchievement={collectAchievementReward}
+                  secondFloorAction={secondFloorAction}
+                  fridgeSortAction={fridgeSortAction}
+                  stockroomSortAction={stockroomSortAction}
+                  cleanerCleans={cleanerCleans}
+                  rushAdAvailable={rewardedAdsAvailable()}
+                  setMenuPrice={setMenuPrice}
+                  setBusinessDishActive={setBusinessDishActive}
+                  signSupplierContract={signSupplierContract}
+                  cancelSupplierContract={cancelSupplierContract}
+                  hireStaff={hireStaff}
+                  fireStaff={fireStaff}
+                  businessServiceSession={businessServiceSession}
+                  onStartBusinessService={startBusinessService}
+                  onEnterBusinessPreparation={enterBusinessPreparation}
+                />
+              </AdBonusContext.Provider>
+            </AssistantProvider>
           </Suspense>
         )}
       </Suspense>
@@ -4541,6 +4612,7 @@ export function App() {
       {guideStep ? (
         <GuideCard
           step={guideStep}
+          paige={assistantApi.hired}
           onLater={() => {
             guideLevelRef.current = guideAtLevel;
             if (saveRef.current) persist(markGuideSeen(saveRef.current, guideStep));
@@ -4638,6 +4710,29 @@ export function App() {
           kicker={businessNoticeQueue[0].title}
           line={businessNoticeQueue[0].glance}
           onDismiss={() => setBusinessNoticeQueue((q) => q.slice(1))}
+        />
+      ) : null}
+      {RESTAURANT_MODE && save ? (
+        <AssistantHost
+          candidate={paigeCandidate}
+          visit={screen}
+          calm={paigeCalm}
+          replay={paigeReplay}
+          onHire={hirePaige}
+          onSeen={paigeSeen}
+          onGo={paigeGo}
+        />
+      ) : null}
+      {RESTAURANT_MODE && save && paigeNotebook ? (
+        <PaigeNotebook
+          save={save}
+          tipsOff={assistantApi.tipsOff}
+          onTips={paigeTips}
+          onReplay={(beat) => {
+            setPaigeNotebook(false);
+            setPaigeReplay({ beat, nonce: Date.now() });
+          }}
+          onClose={() => setPaigeNotebook(false)}
         />
       ) : null}
     </GameShell>

@@ -25,3 +25,6 @@ art-source/staff/*.png
 # Stockroom Sort source art (Codex PNGs, local only; the small WebP built from it by scripts/make-market-assets.py is committed)
 Iventory Assets/
 Fresh Check Assets/
+Assistant Assets/
+Cleaner Assets/
+NPC Assets/

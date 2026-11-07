@@ -90,7 +90,13 @@ try {
   const kinds = collected.economyLedger.map((e) => e.category);
   check(
     "C3 sweeping pays the order exactly once: wallet = signed ledger, ONE settlement + ONE tip entry, nothing left on the table",
-    collected.credits > base.credits &&
+    // Rule changed (developer 2026-11-07): the Server and the Cashier are hired INSIDE the service (two staff-purchase entries), so the pay
+    // is judged net of those two fees; nothing else moves.
+    collected.credits +
+      -collected.economyLedger
+        .filter((e) => e.category === "staff-purchase")
+        .reduce((t, e) => t + e.amount, 0) >
+      base.credits &&
       collected.credits === 23600 + ledgerSum(collected) &&
       // The harness hires the Server and the Cashier (two staff-purchase entries, since 2026-11-03 a service needs both).
       collected.economyLedger.filter(

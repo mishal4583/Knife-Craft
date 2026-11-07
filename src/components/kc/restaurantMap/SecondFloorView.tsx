@@ -450,11 +450,19 @@ export function SecondFloorView({
               >
                 <div className="flex items-center justify-between gap-2 font-ui text-[13px] font-extrabold text-walnut-dark">
                   <span>
-                    <FloorStaffFace
-                      role={role}
-                      fallback={def.icon}
-                      className="mr-1.5 h-9 w-9 rounded-xl align-middle"
-                    />{" "}
+                    {/* One face per hired Floor Cleaner (two different people); the Server has one portrait. */}
+                    {Array.from(
+                      { length: role === "cleaner" ? Math.min(def.max, Math.max(1, have)) : 1 },
+                      (_, i) => (
+                        <FloorStaffFace
+                          key={i}
+                          role={role}
+                          index={i}
+                          fallback={def.icon}
+                          className="mr-1 h-9 w-9 rounded-xl align-middle"
+                        />
+                      ),
+                    )}{" "}
                     {def.name}s: {have} / {def.max}
                   </span>
                   <span className={have < need ? "text-copper" : "text-sage"}>

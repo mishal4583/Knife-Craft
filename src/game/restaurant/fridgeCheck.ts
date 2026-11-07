@@ -151,6 +151,8 @@ export type FridgeCheckState = {
   /** The last business day each stage paid Hype (once a night per stage). */
   hypeSortDay?: number;
   hypeWrapDay?: number;
+  /** Which how-to tours the player has seen (bit 1 = Sort, bit 2 = Wrap): shown once, then only from the "?" button. */
+  howto?: number;
 };
 
 export const MAX_PINS = 12;
@@ -171,7 +173,25 @@ export function fridgeCheckOf(save: SaveData): FridgeCheckState {
     streakDay: whole(raw?.streakDay),
     hypeSortDay: whole(raw?.hypeSortDay),
     hypeWrapDay: whole(raw?.hypeWrapDay),
+    howto: whole(raw?.howto, 3),
   };
+}
+
+const HOWTO_BIT: Record<CheckStage, number> = { sort: 1, wrap: 2 };
+
+/** The how-to tour of this stage has been seen (it shows by itself once, to every player, whatever they played before). */
+export const howtoSeen = (save: SaveData, stage: CheckStage): boolean =>
+  (fridgeCheckOf(save).howto! & HOWTO_BIT[stage]) !== 0;
+
+/** Remembers that the tour was seen (the same save back when it already was). Never touches money or stock. */
+export function withHowtoSeen(save: SaveData, stage: CheckStage): SaveData {
+  if (howtoSeen(save, stage)) return save;
+  const state = fridgeCheckOf(save);
+  return withState(save, {
+    ...(save.business.fridgeCheck ?? {}),
+    ...state,
+    howto: state.howto! | HOWTO_BIT[stage],
+  });
 }
 
 /** How many freshness pins the player has earned (shown beside the fridge magnets): purely a trophy. */

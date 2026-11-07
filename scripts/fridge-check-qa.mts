@@ -36,6 +36,7 @@ import {
   checkTiers,
   finishCheck,
   fridgeCheckOf,
+  howtoSeen,
   isFridgeCheckOpen,
   isNextToWrap,
   isPracticeOpen,
@@ -54,6 +55,7 @@ import {
   wrapItems,
   wrapStars,
   wrapTimeMs,
+  withHowtoSeen,
   type CheckOutcome,
 } from "../src/game/restaurant/fridgeCheck.ts";
 import type { IngredientId } from "../src/game/definitions.ts";
@@ -573,6 +575,95 @@ console.log("K. The practice entry");
     !isPracticeOpen(stocked(NIGHT.slice(0, MIN_CARDS - 1)), FULL) &&
       !isPracticeOpen(structuredClone(DEFAULT_SAVE), FULL),
     "K3: too little stock = no practice",
+  );
+}
+
+console.log(
+  "L. The how-to tour (developer 2026-11-07: show beginners what is spoiled, what to use first, and how it works)",
+);
+{
+  const s = stocked(NIGHT);
+  assert(
+    !howtoSeen(s, "sort") && !howtoSeen(s, "wrap"),
+    "L1: a save that never saw the tour (every old save) has seen neither stage's tour",
+  );
+  const sort = withHowtoSeen(s, "sort");
+  assert(
+    howtoSeen(sort, "sort") && !howtoSeen(sort, "wrap") && fridgeCheckOf(sort).howto === 1,
+    "L2: seeing the Sort tour is remembered, and only for Sort",
+  );
+  const both = withHowtoSeen(sort, "wrap");
+  assert(
+    howtoSeen(both, "wrap") &&
+      fridgeCheckOf(both).howto === 3 &&
+      withHowtoSeen(both, "sort") === both,
+    "L3: Wrap has its own bit, and a second mark is the same save back (nothing to persist)",
+  );
+  const played = finishCheck(
+    withHowtoSeen(
+      {
+        ...s,
+        business: { ...s.business, fridgeCheck: { best: 5, stars: 2, perfect: 1, rounds: 1 } },
+      },
+      "sort",
+    ),
+    { stage: "sort", stars: 3, score: 99, practice: false } as CheckOutcome,
+  );
+  assert(
+    fridgeCheckOf(played.save).howto === 1 && fridgeCheckOf(played.save).rounds === 2,
+    "L4: finishing a night keeps the seen flag (and the earlier stars)",
+  );
+  const r = applyCleanlinessAction(s, { kind: "check-howto", stage: "sort" });
+  assert(
+    howtoSeen(r.save, "sort") &&
+      r.cleaned.length === 0 &&
+      r.save.credits === s.credits &&
+      JSON.stringify(r.save.business.inventory) === JSON.stringify(s.business.inventory) &&
+      JSON.stringify(r.save.economyLedger) === JSON.stringify(s.economyLedger) &&
+      JSON.stringify(cleanlinessOf(r.save).tasks) === JSON.stringify(cleanlinessOf(s).tasks),
+    "L5: the 'seen' action touches no money, stock, ledger or chore",
+  );
+  const junk = { ...s, business: { ...s.business, fridgeCheck: { howto: 99 } } } as SaveData;
+  assert(
+    fridgeCheckOf(junk).howto === 3 &&
+      fridgeCheckOf({ ...s, business: { ...s.business, fridgeCheck: { howto: -4 } } } as SaveData)
+        .howto === 0,
+    "L6: a bad saved number is clamped (0..3)",
+  );
+  const game = fs.readFileSync(
+    path.join(ROOT, "src/components/kc/restaurant/FridgeCheckGame.tsx"),
+    "utf8",
+  );
+  const tour = fs.readFileSync(
+    path.join(ROOT, "src/components/kc/restaurant/FridgeCheckHowTo.tsx"),
+    "utf8",
+  );
+  assert(
+    /useState\(!howtoSeen\(save, stage\)\)/.test(game) &&
+      /<FridgeCheckHowTo/.test(game) &&
+      /onGuideSeen/.test(game) &&
+      /fc-guide-ok/.test(tour) &&
+      /fc-guide-skip/.test(tour),
+    "L7: the tour shows by itself the first time (practice too), is saved on close, and can be skipped",
+  );
+  assert(
+    /FRESH/.test(tour) &&
+      /NEAR_EXPIRY/.test(tour) &&
+      /EXPIRED/.test(tour) &&
+      /InspectionCard/.test(tour) &&
+      /SHELF_LIFE_GUIDE/.test(tour) &&
+      /6 \+ 1 = 7/.test(tour) &&
+      /ingredients-spoiled/.test(tour),
+    "L8: the tour shows a fresh, a going-off and a spoiled card (the game's own pieces), the days rule and the shelf lives; the spoiled picture is preloaded",
+  );
+  const cleanSrc = fs.readFileSync(
+    path.join(ROOT, "src/components/kc/restaurant/CleaningGame.tsx"),
+    "utf8",
+  );
+  const router = fs.readFileSync(path.join(ROOT, "src/ScreensRouter.tsx"), "utf8");
+  assert(
+    /kind: "check-howto"/.test(cleanSrc) && /kind: "check-howto"/.test(router),
+    "L9: both entries (the night chore and the Inventory practice chip) save that the tour was seen",
   );
 }
 

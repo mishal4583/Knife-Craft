@@ -82,6 +82,7 @@ import {
 } from "@/game/knives/blacksmith";
 import { FridgeSortChip } from "./inventory/FridgeSortChip";
 import { StockroomSortChip } from "./inventory/StockroomSortChip";
+import { AskPaigeButton } from "./assistant/AskPaigeButton";
 
 /**
  * SHOP — the one purchase destination. Every item, price, ownership state
@@ -478,7 +479,12 @@ export function Shop({
             RESTAURANT_MODE ? "tools, ingredients & supplies" : "tools, ingredients & suppliers"
           }
           onBack={() => go("kitchen")}
-          right={<Coin n={save.credits} />}
+          right={
+            <span className="flex items-center gap-2">
+              <AskPaigeButton />
+              <Coin n={save.credits} />
+            </span>
+          }
         />
 
         {/* Shopfront — the shop illustration in the same rounded hero frame Rack uses for its knife. */}

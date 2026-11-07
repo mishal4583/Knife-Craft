@@ -172,7 +172,8 @@ check(
 const cleaning = read("src/components/kc/business/BusinessCleanliness.tsx");
 check(
   "C1 the Cleaning page draws the painted Cleaner; only a toast string keeps the emoji",
-  /file="floor-cleaner"/.test(cleaning) &&
+  // Rule changed (developer 2026-11-07): the team's Cleaner is still `floor-cleaner`; "a Cleaner for today" is another person (DAY_CLEANER_PORTRAIT).
+  /today \? DAY_CLEANER_PORTRAIT : "floor-cleaner"/.test(cleaning) &&
     cleaning.split("\n").filter((l) => l.includes("🧑‍🔧")).length === 2 &&
     cleaning
       .split("\n")

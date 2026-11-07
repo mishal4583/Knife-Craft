@@ -9,6 +9,8 @@
  *   E  the screens that show a hireable person use the portrait component, not an emoji
  *   F  a guide step that sends the player to hire someone names the role, and App opens that card
  *   G  the ingredient-naming alerts carry the ingredients for the screen to draw
+ *   H  the cleaners (developer 2026-11-07, "add the cleaner's assets"): the second Floor Cleaner and the Cleaner for today are the two
+ *      male portraits, one mapping, every screen reads it; Paige's staff portrait exists
  * Prints a line per check and exits 1 on any failure.
  */
 import fs from "node:fs";
@@ -17,7 +19,11 @@ import { INGREDIENTS } from "../src/game/definitions.ts";
 import { SUPPLY_CATALOG } from "../src/game/business/businessSupplies.ts";
 import { BUSINESS_STAFF_CATALOG } from "../src/game/business/businessStaff.ts";
 import { SPECIALIST_CHEFS } from "../src/game/restaurant/staffRequirements.ts";
-import { staffPortraitFile } from "../src/components/kc/business/staffPortraits.ts";
+import {
+  DAY_CLEANER_PORTRAIT,
+  floorStaffPortraitFile,
+  staffPortraitFile,
+} from "../src/components/kc/business/staffPortraits.ts";
 import { FLOOR_STAFF } from "../src/game/restaurant/secondFloor.ts";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
@@ -183,6 +189,55 @@ console.log("G. Alerts that name ingredients");
   assert(
     /glanceParts \?/.test(read("src/components/kc/business/BusinessDashboard.tsx")),
     "G2: the Overview draws their pictures",
+  );
+}
+
+console.log("H. The cleaners and Paige");
+{
+  const portraits = files("public/business/staff-portraits");
+  assert(
+    portraits.includes("floor-cleaner-male") &&
+      portraits.includes("cleaner-today") &&
+      portraits.includes("assistant"),
+    "H1: the male Floor Cleaner, the Cleaner for today and Paige have their portrait files",
+    portraits,
+  );
+  assert(
+    floorStaffPortraitFile("cleaner", 0) === "floor-cleaner" &&
+      floorStaffPortraitFile("cleaner", 1) === "floor-cleaner-male" &&
+      floorStaffPortraitFile("server", 0) === "floor-server" &&
+      floorStaffPortraitFile("server", 1) === "floor-server" &&
+      DAY_CLEANER_PORTRAIT === "cleaner-today",
+    "H2: first Floor Cleaner = the woman (broom), second = the man (broom and dustpan), the Floor Server has one portrait, the day Cleaner is the man with the mop",
+  );
+  assert(
+    FLOOR_STAFF.cleaner.max <= 2,
+    "H3: the Second Floor hires at most 2 Floor Cleaners, so the two portraits cover every hire (a bigger team needs another portrait)",
+    FLOOR_STAFF.cleaner.max,
+  );
+  const face = read("src/components/kc/common/FloorStaffFace.tsx");
+  assert(
+    /floorStaffPortraitFile\(role, index\)/.test(face) && !/floor-\$\{role\}\.webp/.test(face),
+    "H4: the Floor Staff face reads the one mapping (no private file name)",
+  );
+  assert(
+    /index=\{Math\.min\(have, def\.max - 1\)\}/.test(
+      read("src/components/kc/MarketSecondFloor.tsx"),
+    ),
+    "H5: the Market's Floor team card shows the NEXT person to hire (the second Floor Cleaner is the man)",
+  );
+  const view = read("src/components/kc/restaurantMap/SecondFloorView.tsx");
+  assert(
+    /role === "cleaner"\s*\?\s*Math\.min\(def\.max, Math\.max\(1, have\)\)/.test(view) &&
+      /index=\{i\}/.test(view),
+    "H6: the Second Floor screen shows one face per hired Floor Cleaner",
+  );
+  const clean = read("src/components/kc/business/BusinessCleanliness.tsx");
+  assert(
+    /today \? DAY_CLEANER_PORTRAIT : "floor-cleaner"/.test(clean) &&
+      /<CleanerFace className="h-7 w-7" today \/>/.test(clean) &&
+      /<CleanerFace className="h-7 w-7" today=\{!!today\} \/>/.test(clean),
+    "H7: 'A Cleaner for today' (the offer and the one on duty) is the man with the mop; the team's Cleaner stays the woman",
   );
 }
 

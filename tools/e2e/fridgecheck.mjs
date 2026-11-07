@@ -14,7 +14,11 @@
 //   T12 a spoiled card shows its painted spoiled twin (the salmon), and a card without a twin still works
 //   T13 Inventory -> the practice chip opens the same game as free play: it changes nothing and leaves the chores alone
 //   T14 earned freshness pins show on the Inventory fridge door
-//   T15 no console errors
+//   T16 the how-to tour (developer 2026-11-07): 4 pages with the game's own pictures (fresh / going off / spoiled cards, the spoiled twin, the days
+//       rule, the swipes); "Got it" saves it as seen, and the ? button brings it back
+//   T17 a player who has seen the sort tour gets none for Sort, and the Wrap stage has its own 3-page tour
+//   T18 from tier 4 (Level 50) the days are hidden on the cards, so the tour says to trust the picture and shows the shelf-life list
+//   T19 no console errors
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import {
   MOVED_IN_BUSINESS,
@@ -174,7 +178,7 @@ try {
   const total = Number(await attr('[data-testid="fridge-check"]', "data-total"));
   const guide = await q('[data-testid="fc-guide"]');
   await shot(page, "fridgecheck-guide");
-  await click('[data-testid="fc-guide-ok"]');
+  await click('[data-testid="fc-guide-skip"]');
   const clock0 = await text('[data-testid="fc-timer"]');
   await sleep(1300);
   const clock1 = await text('[data-testid="fc-timer"]');
@@ -219,7 +223,7 @@ try {
       exp: Number(b.getAttribute("data-expires")),
     })),
   );
-  await click('[data-testid="fc-guide-ok"]');
+  await click('[data-testid="fc-guide-skip"]');
   const ordered = [...items].sort((a, b) => a.exp - b.exp);
   const wrongOne = ordered.at(-1);
   await click(`[data-testid="fc-item-${wrongOne.id}"]`);
@@ -250,7 +254,7 @@ try {
   await boot(page, saveAt(40));
   await openCleanliness();
   await tapChore("spoiled-out");
-  await click('[data-testid="fc-guide-ok"]');
+  await click('[data-testid="fc-guide-skip"]');
   const verdict = await attr('[data-testid="fc-card"]', "data-verdict");
   const c = await page.evaluate(() => {
     const r = document.querySelector('[data-testid="fc-swipe"]')?.getBoundingClientRect();
@@ -304,7 +308,7 @@ try {
   await boot(page, saveAt(20));
   await openCleanliness();
   await tapChore("spoiled-out");
-  await click('[data-testid="fc-guide-ok"]');
+  await click('[data-testid="fc-guide-skip"]');
   const piles1 = await page.evaluate(() => ({
     first: !!document.querySelector('[data-testid="fc-first"]'),
     bin: !!document.querySelector('[data-testid="fc-bin"]'),
@@ -314,7 +318,7 @@ try {
   await boot(page, saveAt(40));
   await openCleanliness();
   await tapChore("spoiled-out");
-  await click('[data-testid="fc-guide-ok"]');
+  await click('[data-testid="fc-guide-skip"]');
   const piles3 = await page.evaluate(() => ({
     first: !!document.querySelector('[data-testid="fc-first"]'),
     tier: document.querySelector('[data-testid="fridge-check"]')?.getAttribute("data-tier"),
@@ -382,7 +386,7 @@ try {
   await boot(page, saveAt(40, { reducedMotion: true }));
   await openCleanliness();
   await tapChore("spoiled-out");
-  await click('[data-testid="fc-guide-ok"]');
+  await click('[data-testid="fc-guide-skip"]');
   const idBefore = await attr('[data-testid="fc-card"]', "data-id");
   const v0 = await attr('[data-testid="fc-card"]', "data-verdict");
   await click(`[data-testid="fc-${v0 === "use-first" ? "first" : v0}"]`, 120);
@@ -397,7 +401,7 @@ try {
   await boot(page, saveAt(40));
   await openCleanliness();
   await tapChore("spoiled-out");
-  await click('[data-testid="fc-guide-ok"]');
+  await click('[data-testid="fc-guide-skip"]');
   await sleep(600);
   const art = await page.evaluate(() =>
     [...document.querySelectorAll("img[data-fc-art]")].map((i) => ({
@@ -418,7 +422,7 @@ try {
   await boot(page, saveAt(40));
   await openCleanliness();
   await tapChore("spoiled-out");
-  await click('[data-testid="fc-guide-ok"]');
+  await click('[data-testid="fc-guide-skip"]');
   let twin = null;
   for (let i = 0; i < 8; i++) {
     const id = await attr('[data-testid="fc-card"]', "data-id");
@@ -445,7 +449,7 @@ try {
   await click('[data-testid="fridge-check-chip"]', 600);
   const prOpen = await q('[data-testid="fridge-check"]');
   const prFlag = await attr('[data-testid="fridge-check"]', "data-practice");
-  await click('[data-testid="fc-guide-ok"]').catch(() => null);
+  await click('[data-testid="fc-guide-skip"]').catch(() => null);
   await answerAll();
   await sleep(400);
   const prDone = await q('[data-testid="fc-result"]');
@@ -464,8 +468,12 @@ try {
       JSON.stringify(strip(afterPractice)) === JSON.stringify(strip(beforePractice)) &&
       JSON.stringify(afterPractice.business.cleanliness) ===
         JSON.stringify(beforePractice.business.cleanliness) &&
-      JSON.stringify(afterPractice.business.fridgeCheck ?? null) ===
-        JSON.stringify(beforePractice.business.fridgeCheck ?? null),
+      // Rule changed (developer 2026-11-07): closing the how-to tour for the first time is saved as seen, in practice too (the state is then
+      // written out with zeros); practice earns nothing: every other number stays 0.
+      Object.entries(afterPractice.business.fridgeCheck ?? {}).every(
+        ([k, v]) => k === "howto" || !v,
+      ) &&
+      afterPractice.business.fridgeCheck?.howto === 1,
     { chip, prOpen, prFlag, prDone, prReward, prNext },
   );
 
@@ -489,11 +497,118 @@ try {
     pins,
   );
 
-  // ---- T15: no console errors ----
+  // ---- T16: the how-to tour ----
+  await boot(page, saveAt(40));
+  await openCleanliness();
+  await tapChore("spoiled-out");
+  const tour = async () =>
+    page.evaluate(() => {
+      const g = document.querySelector('[data-testid="fc-guide"]');
+      if (!g) return null;
+      const cards = [...g.querySelectorAll('[data-testid="fc-card"]')].map((c) =>
+        c.getAttribute("data-state"),
+      );
+      const twin = g.querySelector("img[data-fc-twin]");
+      return {
+        page: Number(g.getAttribute("data-page")),
+        pages: Number(g.getAttribute("data-pages")),
+        cards,
+        twin: !!twin && twin.complete && twin.naturalWidth > 0,
+        text: g.textContent.replace(/\s+/g, " "),
+      };
+    });
+  const p1 = await tour();
+  await shot(page, "fridgecheck-tour-1");
+  await click('[data-testid="fc-guide-next"]', 400);
+  // the spoiled example must show its painted picture (wait for it, as a player would)
+  await page
+    .waitForFunction(
+      () => {
+        const t = document.querySelector('[data-testid="fc-guide"] img[data-fc-twin]');
+        return !!t && t.complete && t.naturalWidth > 0;
+      },
+      { timeout: 4000 },
+    )
+    .catch(() => null);
+  const p2 = await tour();
+  await shot(page, "fridgecheck-tour-2");
+  await click('[data-testid="fc-guide-next"]', 400);
+  const p3 = await tour();
+  await shot(page, "fridgecheck-tour-3");
+  await click('[data-testid="fc-guide-next"]', 400);
+  const p4 = await tour();
+  await shot(page, "fridgecheck-tour-4");
+  const hasOk = await q('[data-testid="fc-guide-ok"]');
+  await click('[data-testid="fc-guide-ok"]', 500);
+  const gone = !(await q('[data-testid="fc-guide"]'));
+  const seen = (await readSave(page)).business.fridgeCheck?.howto;
+  await click('[data-testid="fc-help"]', 400);
+  const again = (await tour())?.page;
+  check(
+    "T16 the tour: 4 pages; page 2 shows a fresh, a going-off and a spoiled card with the spoiled twin; page 3 counts the days; Got it saves it; ? brings it back",
+    p1?.pages === 4 &&
+      p1.page === 1 &&
+      /Fresh or spoiled/.test(p1.text) &&
+      p2?.cards.join() === "FRESH,NEAR_EXPIRY,EXPIRED" &&
+      p2.twin &&
+      /Spoiled/.test(p2.text) &&
+      /6 \+ 1 = 7/.test(p3?.text ?? "") &&
+      /Shelf life/.test(p3?.text ?? "") &&
+      /Swipe/.test(p4?.text ?? "") &&
+      hasOk &&
+      gone &&
+      seen === 1 &&
+      again === 1,
+    { p1, p2, p3: p3?.text.slice(0, 160), p4: p4?.text.slice(0, 100), gone, seen, again },
+  );
+
+  // ---- T17: seen once = not shown again; Wrap has its own tour ----
+  const seenSave = saveAt(40);
+  seenSave.business.fridgeCheck = { howto: 1 };
+  await boot(page, seenSave);
+  await openCleanliness();
+  await tapChore("spoiled-out");
+  const noTour = !(await q('[data-testid="fc-guide"]'));
+  await answerAll();
+  await sleep(500);
+  await click('[data-testid="fc-next"]', 600);
+  const w1 = await tour();
+  await shot(page, "fridgecheck-tour-wrap");
+  await click('[data-testid="fc-guide-next"]', 400);
+  const w2 = await tour();
+  await click('[data-testid="fc-guide-next"]', 400);
+  const w3 = await tour();
+  await click('[data-testid="fc-guide-ok"]', 500);
+  const seenWrap = (await readSave(page)).business.fridgeCheck?.howto;
+  check(
+    "T17 after the sort tour was seen none shows for Sort; Wrap has its own 3-page tour that is saved as seen too",
+    noTour &&
+      w1?.pages === 3 &&
+      /Wrap and label/.test(w1.text) &&
+      /fewest days/.test(w2?.text ?? "") &&
+      /Stars and Hype/.test(w3?.text ?? "") &&
+      seenWrap === 3,
+    { noTour, w1: w1?.text.slice(0, 80), w2: w2?.text.slice(0, 120), seenWrap },
+  );
+
+  // ---- T18: the days are hidden from tier 4 ----
+  await boot(page, saveAt(50));
+  await openCleanliness();
+  await tapChore("spoiled-out");
+  await click('[data-testid="fc-guide-next"]', 400);
+  await click('[data-testid="fc-guide-next"]', 400);
+  const hid = await tour();
+  check(
+    "T18 at Level 50 the days are hidden on the cards, so the tour says to trust the picture and lists the shelf lives",
+    /Later nights hide the days/.test(hid?.text ?? "") && /vegetables 7/.test(hid?.text ?? ""),
+    hid?.text.slice(0, 220),
+  );
+
+  // ---- T19: no console errors ----
   const bad = logs.filter(
     (l) => !/favicon|bridge|playgama|Failed to load resource.*(404|net::)/i.test(l),
   );
-  check("T15 no console errors", bad.length === 0, bad.slice(0, 5));
+  check("T19 no console errors", bad.length === 0, bad.slice(0, 5));
 } finally {
   await browser.close();
 }

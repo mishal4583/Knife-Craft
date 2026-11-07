@@ -30,6 +30,7 @@ import { BusinessSectionBanner } from "./BusinessSectionBanner";
 import { specialistCharacter } from "@/game/chefs/chefDefinitions";
 import { StaffCard, StaffPay, StaffPortrait, StaffRow, StaffStatus } from "./StaffCard";
 import { staffFallbackEmoji, staffPortraitFile } from "./staffPortraits";
+import { AssistantCard } from "../assistant/AssistantCard";
 
 /** Compact summaries for the cards; the full, authoritative text stays behind ⓘ. */
 const ROLE_GLANCE: Record<string, string> = {
@@ -126,6 +127,8 @@ export function BusinessStaff({
   return (
     <div className="space-y-3">
       <BusinessSectionBanner image="staff-banner.webp" title="Your Restaurant Team" />
+      {/* Paige, the free assistant (restaurant/assistant.ts): not a hireable role, no wage, no ledger entry. */}
+      {restaurantTeams ? <AssistantCard /> : null}
       {restaurantTeams ? (
         <>
           <TeamHeading

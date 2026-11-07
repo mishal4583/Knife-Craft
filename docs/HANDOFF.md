@@ -1,5 +1,58 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## NPC realism: planned, not built (developer 2026-11-07)
+
+- Player reviews: improve the people's look, costumes, size, faces, male / female identification, hair, walking and behaviour.
+- Cause: one tiny faceless SVG puppet (`restaurantMap/GuestPoses.tsx`) for everyone, ~30-38 px, straight-line walks at one speed.
+- Plan: `docs/planning/NPC-REALISM-PLAN-2026-11-07.md` (Phase 0 fixes with no new art: size, depth order, facing, queue spacing, speed;
+  Phase 1 painted sprite engine with the SVG as fallback; Phase 2 paths and behaviour; Phase 3 busts for the 12 regulars and props).
+  Codex prompts: `docs/planning/NPC-CODEX-PROMPTS-2026-11-07.md` (style anchor, sheet A walk / sit, sheet B work, busts, props; 50 sheets in
+  3 priorities). Art goes in `NPC Assets/`.
+
+## Paige, the personal assistant: BUILT; the cleaners' art placed (developer 2026-11-07, UNCOMMITTED)
+
+- **Art** (local-only sheets in `Assistant Assets/` and `Cleaner Assets/`, now gitignored): `python scripts/make-assistant-assets.py` cuts them
+  into `public/business/assistant/` (12 poses on one canvas, aligned on the hips; 4 oval avatars; bubble, warning and success frames, ribbon,
+  2 chevrons; 12 UI pieces; about 350 KB) and three portraits in `public/business/staff-portraits/`: `assistant.webp`,
+  `floor-cleaner-male.webp`, `cleaner-today.webp`. The sheets had a baked soft glow and colour noise in the alpha: solid pieces are
+  thresholded, the two glow rings keep their translucency. M01 (the identity sheet) and the thought cloud are not drawn (reserved).
+- **Rules** `restaurant/assistant.ts` (pure, free: no wage, no ledger, no wallet; `business.assistant = { hired, seen[], tipsOff? }`, nested,
+  old saves = not hired). A beat = 1-2 lines of at most 90 chars, a pose, an optional ring on a bottom-bar tab, an optional "Take me there",
+  a frame tone. Beats: `meet` (new game, Hire Paige · Free), `meet-late` (a player past the first service), `first-pay`, `restock`,
+  `fridge-sort`, `cleaning`, `stockroom-sort`, `fridge-check`, `ads-optional`, one per system (menu ... grand service; given from the unlock level
+  for 3 levels), a cheer every 10 levels, `finale`. Highest priority first, once each. The existing guidance stays (first-run hand,
+  Restaurant Guide card, Grandma's pointer, mini-game tours); she is the voice on top.
+- **UI** `components/kc/assistant/`: `AssistantHost` (half-body Paige bottom-left, a painted 9-slice bubble, a glowing ring and a bobbing arrow
+  on the real tab; no scrim; calm moments only; the beat on screen is latched; one beat per screen visit; `Next` / `Hire Paige · Free` /
+  `Take me there` / `Got it`), `PaigeNotebook` (every tip, "Show again", Tips: On/Off), `AskPaigeButton` (her face on a porthole, Kitchen and Market
+  top bars), `AssistantCard` (her portrait, free, notebook, tips, on the Staff screen), `AssistantContext`. App owns the hire, the seen mark, Tips
+  and analytics (`assistant_hired`, `assistant_beat_shown`, `assistant_tips_off`).
+- **Order of the first run:** intro -> restaurant name -> Paige meets the player and is hired -> Grandma's Market pointer (now with Paige's face)
+  -> the first-run hand (buy, kitchen, open, start) -> the in-service Server and Cashier cards. The guide card also speaks as Paige once hired.
+  The Market pointer's old line "Hire your team first" was stale since the 2026-11-07 hiring change and is now "Buy today's food...".
+- **Cleaners:** the Second Floor's two Floor Cleaners are two people (`floorStaffPortraitFile`: first = the woman, second = the man, F01); the
+  Market's floor-team card shows the NEXT hire, the Second Floor screen one face per hired cleaner. "A Cleaner for today" (the offer and the one
+  on duty) is the man with the mop (F02, `DAY_CLEANER_PORTRAIT`); the team's Cleaner stays the woman.
+- **Tests:** new `scripts/assistant-qa.mts` (A-H), `tools/e2e/paige.mjs` (P1-P8, real browser), `tools/e2e/cleaners.mjs` (K1-K5: the Market card, the Pickup Counter sheet, "a Cleaner for today"), `asset-mapping-qa` H1-H7; the harness gained
+  `PAIGE_QUIET` (every seeded save has Paige hired with tips off), `hirePaige` and `answerServiceHires`; firstrun / firstshop / firstmarket and
+  the `startFirstLevel` helper follow the new first-run order.
+- Not built (noted in the plan): typed-in text, a "meet" backdrop, outfit variants, one beat per ad placement, Paige's own hire card in the Market.
+
+## Fridge Check: a proper how-to tour (developer 2026-11-07, UNCOMMITTED)
+
+- Complaint: past Level 40 there was no real instruction (one thin card, first night only), and from tier 4 (Level 44+) the days and the
+  icon are hidden, so a player must judge by the picture alone without ever being taught what spoiled looks like.
+- Now: `restaurant/FridgeCheckHowTo.tsx`, an illustrated tour with the game's OWN pieces (`FridgeCheckParts.tsx`, moved out of the game
+  file: `FcArt`, `FoodPicture`, `InspectionCard`, `SHELF_LIFE_GUIDE`). Sort = 4 pages: what the game is; one tomato fresh / going off /
+  spoiled (the painted twin) with KEEP / USE FIRST / BIN; "count the days" (Bought + 1 vs Lasts, three quarters = use first, the shelf
+  lives, and "later nights hide the days, trust the picture" from tier 4); the swipes, stars, Hype, pins. Wrap = 3 pages (what, which goes
+  off first with the label colours, stars). Next / Back / Skip; the ? button brings it back.
+- Shown ONCE per stage to EVERY player, old saves and practice included: `FridgeCheckState.howto` (bit 1 Sort, bit 2 Wrap, 0..3), saved on
+  close by the new cleanliness action `{ kind: "check-howto", stage }` (no money, stock, ledger or chore; `withHowtoSeen` returns the same
+  save if already seen). The spoiled picture is preloaded so page 2 is never an empty card.
+- Tests: fridge-check-qa L1-L9 (new); e2e fridgecheck T16-T18 (the tour, seen-once, hidden days), T13 updated (practice now saves the
+  tour as seen, nothing else), the old `fc-guide-ok` clicks became `fc-guide-skip`.
+
 ## Hire the Server and the Cashier when the game needs them (developer 2026-11-07, UNCOMMITTED with the section below)
 
 - Was: both hired in the Market's first-shop card before the food was bought, and the Pre-Service Check required both from Level 1.

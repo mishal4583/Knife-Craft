@@ -8,7 +8,16 @@
 //   S5 nothing is given for free: no Grandma tools, cupboard or leftovers in the save.
 //   S6 with the food bought, Prepare opens the cutting; serve, sweep and Next Customer (last order) complete level-1.
 //   S7 no console errors.
-import { launch, freshPlayer, sleep, clickButton, readSave, text, sweepCash } from "./harness.mjs";
+import {
+  hirePaige,
+  launch,
+  freshPlayer,
+  sleep,
+  clickButton,
+  readSave,
+  text,
+  sweepCash,
+} from "./harness.mjs";
 import { playToReport } from "./solver.mjs";
 
 const results = [];
@@ -32,6 +41,8 @@ try {
     timeout: 10000,
   });
   await sleep(2500);
+  // Paige introduces herself first (developer 2026-11-07); Grandma's pointer comes after she is hired.
+  await hirePaige(page);
 
   const start = await readSave(page);
   const onBoard = await page.evaluate(() =>

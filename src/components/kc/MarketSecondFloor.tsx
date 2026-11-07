@@ -242,6 +242,8 @@ export function MarketSecondFloor({
                     icon={
                       <FloorStaffFace
                         role={role}
+                        // The next person to hire (the second Floor Cleaner is the man); a full team shows the last.
+                        index={Math.min(have, def.max - 1)}
                         fallback={def.icon}
                         className="h-[116px] w-[116px] border-2 border-[#2b211b]/60 shadow-lift"
                       />

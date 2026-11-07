@@ -60,6 +60,9 @@ import { nextKitchenUpgrade } from "@/game/kitchen/nextKitchenUpgrade";
 import type { SaveData } from "@/game/SaveManager";
 import { ScrollCue } from "./common/ScrollCue";
 import { IngredientIcon } from "@/components/kc/common/IngredientIcon";
+import { AskPaigeButton } from "./assistant/AskPaigeButton";
+import { useAssistant } from "./assistant/AssistantContext";
+import { PaigeAvatar } from "./assistant/PaigeArt";
 
 /** Icon for a level's own `unlockReward.type` (levelTypes.ts) — display-only. */
 const REWARD_TYPE_ICON: Record<"knife" | "board" | "cafe_milestone" | "story", string> = {
@@ -299,6 +302,7 @@ export function Kitchen({
           ) : null}
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          <AskPaigeButton />
           <Coin n={save.credits} />
           {/* Settings — Phase 15 dissolved the Journal hub, so this is the
               one small persistent entry point Step 7 asks for ("keep
@@ -1036,6 +1040,7 @@ const NAV: { id: ScreenId; label: string; glyph: string }[] = [
  */
 export function BottomNav({ active, go }: { active: ScreenId | null; go: (s: ScreenId) => void }) {
   const u = useUnlockText();
+  const paige = useAssistant();
   // First levels (restaurant build): a section that hasn't opened shows a lock
   // and its level; a tap says when it opens (game/restaurant/firstLevels.ts).
   const reached = useContext(NavLevelContext);
@@ -1089,7 +1094,13 @@ export function BottomNav({ active, go }: { active: ScreenId | null; go: (s: Scr
               {SECTION_POINTER[pointer.tab].title}
             </p>
             <p className="mt-1 font-hand text-[16px] leading-snug text-walnut">
-              👵 “{SECTION_POINTER[pointer.tab].line}”
+              {paige?.hired ? (
+                // Paige is the voice once she is hired (developer 2026-11-07); Grandma until then.
+                <PaigeAvatar className="mr-1.5 inline-block h-6 w-8 align-middle" />
+              ) : (
+                "👵 "
+              )}
+              “{SECTION_POINTER[pointer.tab].line}”
             </p>
             <div className="mt-3 flex gap-2">
               <KButton variant="ghost" className="min-h-12 flex-1" onClick={pointer.dismiss}>

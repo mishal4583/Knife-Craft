@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { useUnlockText } from "../navLevel";
 import { closingWage, staffHireFee } from "@/game/restaurant/staffRequirements";
 import { StaffPortrait } from "./StaffCard";
+import { DAY_CLEANER_PORTRAIT } from "./staffPortraits";
 import type { ScreenId } from "../data";
 import { KButton, Panel } from "../common/primitives";
 import { Eyebrow } from "../common/Meters";
@@ -252,7 +253,7 @@ function ReadyCard({
           className="mt-2 flex items-center gap-1.5 rounded-2xl bg-sage/15 px-3 py-2 font-ui text-[13px] font-extrabold text-olive"
           data-testid="cleaner-on-duty"
         >
-          <CleanerFace className="h-7 w-7" />{" "}
+          <CleanerFace className="h-7 w-7" today={!!today} />{" "}
           {today ? "Cleaner on today" : "Your Cleaner is on duty"} · cleans after each service
           <InfoTip label="What the Cleaner does">
             The routine tasks in their areas, now and after each service. Spills, and anything short
@@ -286,7 +287,7 @@ function DayCleanerCard({
     <Panel className="p-3" data-testid="day-cleaner">
       <Eyebrow>Not in the mood to clean?</Eyebrow>
       <p className="mt-1 flex items-center gap-1.5 font-ui text-[12.5px] font-extrabold text-walnut-dark">
-        <CleanerFace className="h-7 w-7" /> Hire a Cleaner for today
+        <CleanerFace className="h-7 w-7" today /> Hire a Cleaner for today
         <InfoTip label="A Cleaner for today">
           Totally optional: you can always clean everything yourself. A Cleaner does the routine
           tasks now and after each service until closing. Spills, and anything short of supplies,
@@ -645,14 +646,18 @@ function StaffCard({
   );
 }
 
-/** The Cleaner's painted portrait, the same one as the Staff screen (the emoji shows if it cannot load). */
-function CleanerFace({ className }: { className?: string }) {
+/**
+ * The Cleaner's painted portrait, the same one as the Staff screen (the emoji shows if it cannot load). "A Cleaner for today" is another
+ * person: the man with the mop and the bucket (staffPortraits.ts DAY_CLEANER_PORTRAIT).
+ */
+function CleanerFace({ className, today = false }: { className?: string; today?: boolean }) {
   return (
     <StaffPortrait
-      file="floor-cleaner"
+      file={today ? DAY_CLEANER_PORTRAIT : "floor-cleaner"}
       name="Cleaner"
       emoji="🧽"
       data-cleaner-face="true"
+      data-cleaner-today={today ? "true" : undefined}
       className={cn("shrink-0 rounded-full", className)}
     />
   );

@@ -275,7 +275,7 @@ export const SECTION_POINTER: Record<LockableTab, { title: string; line: string 
   },
   shop: {
     title: "🛒 This is the Market",
-    line: "Hire your team first, then buy today's food with your own money.",
+    line: "Buy today's food with your own money, then start cooking.",
   },
   rack: {
     title: "🏆 This is Progress",

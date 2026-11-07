@@ -5,7 +5,7 @@
 //   M2 tapping Ingredients moves the hand on to the first Buy button (no Hire step: developer 2026-11-07) and the tab hint is gone;
 //   M3 the hand never shows once the first service is done (not covered here) and no console errors.
 // Prints PASS/FAIL per check and exits 1 on any failure.
-import { launch, freshPlayer, sleep, text, shot } from "./harness.mjs";
+import { hirePaige, launch, freshPlayer, sleep, text, shot } from "./harness.mjs";
 
 const results = [];
 const check = (id, ok, detail) => {
@@ -31,6 +31,7 @@ try {
     timeout: 10000,
   });
   await sleep(2500);
+  await hirePaige(page); // Paige introduces herself first (developer 2026-11-07), then Grandma's pointer
   // Grandma's own pointer: not "Show me" (that opens Ingredients itself), the player goes to the Market tab on their own.
   await page.evaluate(() =>
     [...document.querySelectorAll("button")]

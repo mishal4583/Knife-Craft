@@ -12,6 +12,7 @@ import type { SecondFloorState } from "../restaurant/secondFloor";
 import type { FridgeSortState } from "./fridgeSort";
 import type { StockroomSortState } from "./stockroomSort";
 import type { FridgeCheckState } from "../restaurant/fridgeCheck";
+import type { AssistantState } from "../restaurant/assistant";
 import type { EndlessStarsState } from "../restaurant/restaurantStanding";
 /**
  * BUSINESS_TYPES — Economy V3's own persisted-state container. A single
@@ -208,6 +209,11 @@ export type BusinessState = {
    * Absent = nothing earned. Never holds money or stock.
    */
   fridgeCheck?: FridgeCheckState;
+  /**
+   * Paige, the personal assistant (restaurant/assistant.ts): hired (free, no wage, no ledger entry), the tips she has given and "Tips: Off".
+   * Absent = not hired. Never holds money.
+   */
+  assistant?: AssistantState;
 };
 
 export const DEFAULT_BUSINESS_STATE: BusinessState = {

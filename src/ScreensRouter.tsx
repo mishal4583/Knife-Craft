@@ -455,6 +455,7 @@ export function ScreensRouter({
                   onSkip={() => routeGo("inventory")}
                   onClose={() => routeGo("inventory")}
                   onNext={() => undefined}
+                  onGuideSeen={(stage) => cleanlinessAction({ kind: "check-howto", stage })}
                 />
               </div>
             ) : null}

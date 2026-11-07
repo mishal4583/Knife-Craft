@@ -103,8 +103,15 @@ export function GIFT_TAKEN_TODAY() {
   };
 }
 
+/**
+ * Paige (restaurant/assistant.ts) is hired with her tips OFF in every seeded save, so a test that seeds a save is never interrupted by her
+ * bubble; paige.mjs and the fresh-player tests (which start with no save) are the ones that see her.
+ */
+export const PAIGE_QUIET = { hired: true, seen: [], tipsOff: true };
+
 export function seedSave(overrides = {}) {
   const completed = Array.from({ length: 9 }, (_, i) => `level-${i + 1}`);
+  const { business: ownBusiness, ...rest } = overrides;
   return {
     version: 1,
     credits: 400,
@@ -119,13 +126,14 @@ export function seedSave(overrides = {}) {
     // Today's welcome gift (ads/adBonuses.ts, 2026-10-18) is already taken, so its sheet doesn't
     // cover the Kitchen; adbonuses.mjs seeds a save without it on purpose.
     economyLedger: [GIFT_TAKEN_TODAY()],
-    ...overrides,
+    ...rest,
+    business: { ...(ownBusiness ?? {}), assistant: ownBusiness?.assistant ?? PAIGE_QUIET },
     // Seeds use the 150-level campaign's numbers (2026-10-15). Without the stamp the game
     // renumbers a save as a 250-level one; a test of that migration passes
     // `campaignVersion: undefined` (dropped when the save is written).
     levelProgress: {
       campaignVersion: 2,
-      ...(overrides.levelProgress ?? {
+      ...(rest.levelProgress ?? {
         currentLevelId: "level-10",
         highestUnlockedLevelId: "level-10",
         completedLevelIds: completed,
@@ -138,9 +146,31 @@ export function seedSave(overrides = {}) {
       music: true,
       reducedMotion: false,
       restaurantName: "Test Kitchen",
-      ...(overrides.settings ?? {}),
+      ...(rest.settings ?? {}),
     },
   };
+}
+
+/**
+ * A brand-new player meets Paige after the intro (restaurant/assistant.ts): two lines, then "Hire Paige · Free". Grandma's section pointer
+ * comes only after that, so a test that starts from a new game and expects the pointer calls this first. No-op if she never shows.
+ */
+export async function hirePaige(page) {
+  await page.waitForSelector('[data-testid="assistant-host"]', { timeout: 8000 }).catch(() => null);
+  for (let i = 0; i < 3; i++) {
+    const done = await page.evaluate(() => {
+      const hire = document.querySelector('[data-testid="assistant-hire"]');
+      if (hire) {
+        hire.click();
+        return true;
+      }
+      document.querySelector('[data-testid="assistant-next"]')?.click();
+      return false;
+    });
+    await new Promise((r) => setTimeout(r, 500));
+    if (done) break;
+  }
+  await new Promise((r) => setTimeout(r, 500));
 }
 
 /** A brand-new player meets the naming card after the intro: keep the default name. */
@@ -503,17 +533,42 @@ export async function wipeServedTable(page) {
   return ok ? 1 : 0;
 }
 
+/**
+ * The first service offers the Server (plate ready) and the Cashier (guest has eaten) as one-button cards (restaurant/serviceHire.ts): this
+ * taps Hire on whichever is showing, until the floor has finished and no card is left. No-op when none shows (a later level).
+ */
+export async function answerServiceHires(page, maxMs = 14000) {
+  const start = Date.now();
+  let quiet = 0;
+  while (Date.now() - start < maxMs && quiet < 4) {
+    const clicked = await page.evaluate(() => {
+      const b = [...document.querySelectorAll('[data-testid="service-hire"] button')].find((x) =>
+        /^Hire /.test(x.textContent.trim()),
+      );
+      b?.click();
+      return !!b;
+    });
+    const floor = await page.evaluate(
+      () => !!document.querySelector('[data-testid="service-floor"]'),
+    );
+    quiet = clicked || floor ? 0 : quiet + 1;
+    await new Promise((r) => setTimeout(r, 450));
+  }
+}
+
 export async function sweepCash(page) {
   // The customer reacts and walks out, then the served card opens by itself; the cash lies on the table
   // beside them (developer 2026-11-01: no Collect cash button): a tap on the pile takes it into the wallet.
   // The dirty table is then wiped (wipeServedTable), because Next Customer waits for it. Returns 1 when
   // there was cash to collect.
+  await answerServiceHires(page);
   await page
     .waitForFunction(() => !document.querySelector('[data-testid="service-floor"]'), {
       timeout: 12000,
     })
     .catch(() => {});
   await sleep(400);
+  await answerServiceHires(page);
   const clicked = await page.evaluate(() => {
     const b =
       document.querySelector('[data-testid="table-cash-pile"]') ??
@@ -542,18 +597,12 @@ export async function startFirstLevel(page) {
     timeout: 10000,
   });
   await sleep(2500);
+  // Paige introduces herself first (developer 2026-11-07), then Grandma's pointer.
+  await hirePaige(page);
   await clickButton(page, /^Show me/);
   await sleep(1500);
-  // The Server and the Cashier are necessary from the first service (developer 2026-11-02): hire both first, with the opening cash.
-  for (let i = 0; i < 2; i++) {
-    await page.evaluate(() => {
-      const b = [...document.querySelectorAll('[data-testid="team-hire"] button')].find((x) =>
-        /^Hire/.test(x.textContent.trim()),
-      );
-      b?.click();
-    });
-    await sleep(800);
-  }
+  // The Server and the Cashier are offered INSIDE the first service when the game needs them (developer 2026-11-07): sweepCash and
+  // answerServiceHires answer those cards; the opening cash pays both fees.
   for (let i = 0; i < 4; i++) {
     const had = await page.evaluate(() => {
       const row = document.querySelector("[data-plan-ingredient]");

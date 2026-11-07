@@ -57,9 +57,10 @@ try {
   await sleep(1500);
   const taken = await readSave(page);
   check(
-    "R3 collecting from the Kitchen pays it exactly once: wallet = $10 + signed ledger, one settlement + one tip entry",
+    "R3 collecting from the Kitchen pays it exactly once: wallet = the opening cash + signed ledger, one settlement + one tip entry",
     taken.credits === base.credits + total &&
-      taken.credits === 1000 + ledgerSum(taken) &&
+      // Rule changed (developer 2026-11-01): a new game opens with $236.00 ($10 for food + the two hiring fees), not $10.
+      taken.credits === 23600 + ledgerSum(taken) &&
       taken.economyLedger.length === base.economyLedger.length + 2 &&
       !taken.business.pendingCash,
     { credits: taken.credits, total, entries: taken.economyLedger.length },
