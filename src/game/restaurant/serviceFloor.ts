@@ -17,6 +17,7 @@
  * furniture or a wall). Seats alternate between customers so one leaving and
  * the next arriving never share a chair.
  */
+import { guestLookFor } from "./peopleLooks";
 import type { KitchenMapArtStage } from "../kitchen/kitchenMapArt";
 import type { QualityLabel } from "@/types/game";
 
@@ -84,9 +85,11 @@ export const REACT_MS = 900;
  * hired, otherwise the cook runs it out.
  */
 export type WaiterKind = "server" | "cook";
-export const WAITER_LOOKS: Readonly<Record<WaiterKind, { outfit: string; hair: string }>> = {
-  server: { outfit: "#7a2e2e", hair: "#473222" },
-  cook: { outfit: "#f4efe6", hair: "#35271f" },
+export const WAITER_LOOKS: Readonly<
+  Record<WaiterKind, { outfit: string; hair: string; look: string }>
+> = {
+  server: { outfit: "#7a2e2e", hair: "#473222", look: "server" },
+  cook: { outfit: "#f4efe6", hair: "#35271f", look: "line-cook" },
 };
 /** How long the waiter takes to put the plate down once there. */
 export const SET_DOWN_MS = 450;
@@ -161,6 +164,22 @@ export function walkFrames(path: readonly FloorPoint[]): { at: number; x: number
     if (i > 0) t += legs[i - 1]!;
     const v = inView(p);
     return { at: Math.round((t / total) * 1000) / 10, x: v.x, y: v.y };
+  });
+}
+
+/**
+ * The way a walker faces on each stretch of a walk (painted people turn): "down" (toward the viewer), "up", "r" or "l" for the leg
+ * that STARTS at each of `walkFrames`' points (the last point keeps the previous leg's).
+ */
+export function walkFacing(path: readonly FloorPoint[]): ("down" | "up" | "r" | "l")[] {
+  return path.map((p, i) => {
+    const a = i < path.length - 1 ? p : path[i - 1];
+    const b = i < path.length - 1 ? path[i + 1]! : p;
+    if (!a) return "down";
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    if (Math.abs(dx) >= Math.abs(dy) * 0.8) return dx >= 0 ? "r" : "l";
+    return dy >= 0 ? "down" : "up";
   });
 }
 
@@ -251,10 +270,15 @@ const OUTFITS = [
   "#7a6a3a",
 ];
 const HAIR = ["#493324", "#35271f", "#473222", "#2b211b", "#6b4a2e", "#8a8a8a"];
-export function lookFor(customerId: string): { outfit: string; hair: string } {
+export function lookFor(customerId: string): { outfit: string; hair: string; look: string } {
   let h = 0;
   for (const c of customerId) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-  return { outfit: OUTFITS[h % OUTFITS.length]!, hair: HAIR[(h >>> 3) % HAIR.length]! };
+  return {
+    outfit: OUTFITS[h % OUTFITS.length]!,
+    hair: HAIR[(h >>> 3) % HAIR.length]!,
+    // The painted person (peopleLooks.ts): a regular is always themselves, everyone else a fixed pick by the id.
+    look: guestLookFor(customerId),
+  };
 }
 
 /* ── Parties (developer 2026-10-26: "make it 1, 2, 3 or 4 at a time … like a real

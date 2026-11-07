@@ -79,7 +79,7 @@ export function DiningCashView({
           {cashier ? (
             <div className="sf-layer" style={at(cashierSpot(stage))}>
               <div className="sf-person sf-pose-stand">
-                <GuestPoses outfit="#3f5f8a" hair="#35271f" />
+                <GuestPoses outfit="#3f5f8a" hair="#35271f" look="cashier" />
               </div>
             </div>
           ) : null}

@@ -25,6 +25,8 @@ import type { BoardDefinition } from "@/game/boards/boardTypes";
 import { getSupplier } from "@/game/economy/supplierDefinitions";
 import { STAFF_CATALOG } from "@/game/economy/staffDefinitions";
 import type { QualityLabel } from "@/types/game";
+import { CustomerBust } from "@/components/kc/common/CustomerBust";
+import { expressionFor } from "@/game/restaurant/peopleLooks";
 import {
   PERSONALITIES,
   personalityReaction,
@@ -369,7 +371,12 @@ export function ServiceOrderComplete({
             data-testid={personality ? "special-customer" : undefined}
             data-customer={personality?.id}
           >
-            {customer.avatarEmoji}
+            <CustomerBust
+              customerId={customer.id}
+              expression={served ? expressionFor(reaction) : "neutral"}
+              fallback={customer.avatarEmoji}
+              em={1.7}
+            />
           </span>
           {personality ? (
             <span className="ml-0.5 text-[0.8em]" aria-hidden="true">

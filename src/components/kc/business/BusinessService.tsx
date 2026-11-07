@@ -31,6 +31,7 @@ import { BusinessPaymentLines } from "./BusinessPaymentLines";
 import { EndlessDayEvents } from "./EndlessDayEvents";
 import { usesRestaurantDemand } from "@/game/restaurant/endlessDemand";
 import { IngredientIcon } from "@/components/kc/common/IngredientIcon";
+import { CustomerBust } from "@/components/kc/common/CustomerBust";
 
 const FLOW_STEPS = [
   "Order",
@@ -195,7 +196,12 @@ export function BusinessService({
           ) : (
             <Panel className="p-4">
               <p className="font-ui text-[11px] font-extrabold uppercase tracking-[0.2em] text-copper">
-                {order.customer.avatarEmoji} {order.customer.name} wants
+                <CustomerBust
+                  customerId={order.customer.id}
+                  fallback={order.customer.avatarEmoji}
+                  em={1.9}
+                />{" "}
+                {order.customer.name} wants
               </p>
               <p className="mt-1.5 flex items-center gap-1 font-display text-[20px] font-black leading-tight text-walnut-dark">
                 {emoji} {dish.name}

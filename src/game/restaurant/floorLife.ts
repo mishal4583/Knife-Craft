@@ -12,6 +12,14 @@
  */
 import { makeSeededRand } from "../business/businessDeterministicRandom";
 import {
+  FLOOR_CLEANER_LOOKS,
+  FLOOR_SERVER_LOOKS,
+  GUEST_LOOKS,
+  PEOPLE_LOOKS,
+  REGULAR_LOOKS,
+  pickLooks,
+} from "./peopleLooks";
+import {
   FLOOR_STAFF,
   SELF_SERVE_MACHINES,
   STATIONS,
@@ -35,10 +43,19 @@ export type FloorActor = {
   food?: string;
   outfit: string;
   hair: string;
+  /**
+   * The painted character (peopleLooks.ts, `public/people/<id>/`). Absent or a sheet that fails to load: the old SVG puppet
+   * (outfit and hair) is drawn instead.
+   */
+  look?: string;
   stops: Stop[];
   /** Seconds before the first lap starts (staggers the cast). */
   delay: number;
 };
+
+/** The walking pace of an actor next to an adult (elders slower, a child quicker); 1 without a look. */
+export const speedOf = (actor: Pick<FloorActor, "look">): number =>
+  (actor.look ? PEOPLE_LOOKS[actor.look]?.speed : undefined) ?? 1;
 
 /** Walking speed in map percent per second. */
 export const WALK_SPEED = 6;
@@ -197,6 +214,11 @@ export function floorCast(floor: SecondFloorState): FloorActor[] {
   const pick = <T>(list: readonly T[]) => list[Math.floor(rand() * list.length)]!;
   const cast: FloorActor[] = [];
   const S = FLOOR_SPOTS;
+  const seed = seedOf(floor);
+  // Painted people: a bigger crew is not clones (four floor servers, four floor cleaners), the guests are all different.
+  const serverLooks = pickLooks(seed ^ 0x51, FLOOR_STAFF.server.max, FLOOR_SERVER_LOOKS);
+  const cleanerLooks = pickLooks(seed ^ 0xc1, FLOOR_STAFF.cleaner.max, FLOOR_CLEANER_LOOKS);
+  const guestLooks = pickLooks(seed ^ 0x6e, MAX_GUESTS, [...GUEST_LOOKS, ...REGULAR_LOOKS]);
 
   // Servers: each runs its own stations (2 each), station → counter → station.
   // The first two machines are self-serve (no Server walks to them); a Server runs the machines after them.
@@ -221,6 +243,7 @@ export function floorCast(floor: SecondFloorState): FloorActor[] {
       food: iconOf(mine[0]!),
       outfit: SERVER_OUTFIT,
       hair: pick(HAIRS),
+      look: serverLooks[i]!,
       stops,
       delay: -rand() * 20,
     });
@@ -237,6 +260,7 @@ export function floorCast(floor: SecondFloorState): FloorActor[] {
       food: iconOf(working[i % working.length]!),
       outfit: pick(OUTFITS),
       hair: pick(HAIRS),
+      look: guestLooks[i]!,
       stops: [
         { ...S.door },
         { x: S.aisleX, y: S.aisleBottom },
@@ -270,6 +294,7 @@ export function floorCast(floor: SecondFloorState): FloorActor[] {
       food: "🧽",
       outfit: CLEANER_OUTFIT,
       hair: pick(HAIRS),
+      look: cleanerLooks[i]!,
       stops,
       delay: -rand() * 15,
     });
@@ -288,7 +313,11 @@ export type Frame = Spot & {
  * to the first. Each stop gives two frames (arrive, leave) when the person
  * stays there. Returns the lap length in seconds too.
  */
-export function timeline(stops: readonly Stop[]): { seconds: number; frames: Frame[] } {
+export function timeline(
+  stops: readonly Stop[],
+  /** Walking pace next to an adult (peopleLooks `speed`). */
+  speed = 1,
+): { seconds: number; frames: Frame[] } {
   if (stops.length === 0) return { seconds: 0, frames: [] };
   const points: { t: number; x: number; y: number; pose: Frame["pose"] }[] = [];
   let t = 0;
@@ -297,7 +326,7 @@ export function timeline(stops: readonly Stop[]): { seconds: number; frames: Fra
     const s = loop[i]!;
     if (i > 0) {
       const p = loop[i - 1]!;
-      t += Math.hypot(s.x - p.x, s.y - p.y) / WALK_SPEED;
+      t += Math.hypot(s.x - p.x, s.y - p.y) / (WALK_SPEED * speed);
     }
     if (i === loop.length - 1) {
       points.push({ t, x: s.x, y: s.y, pose: "walk" });

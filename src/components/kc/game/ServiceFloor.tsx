@@ -18,6 +18,7 @@ import {
   takeawayStand,
   waiterPath,
   waiterStand,
+  walkFacing,
   walkFrames,
   walkMs,
   type FloorPoint,
@@ -25,6 +26,7 @@ import {
   type WaiterKind,
 } from "@/game/restaurant/serviceFloor";
 import type { QualityLabel } from "@/types/game";
+import { CustomerBust } from "@/components/kc/common/CustomerBust";
 import { GuestPoses } from "../restaurantMap/GuestPoses";
 import { KButton } from "../common/primitives";
 import { TableCash } from "../common/TableCash";
@@ -61,6 +63,17 @@ const pct = (n: number) => `${Math.round(n * 100) / 100}%`;
 const at = (p: FloorPoint) => {
   const v = inView(p);
   return { transform: `translate(${pct(v.x)},${pct(v.y)})` };
+};
+/** The painted walker turns to face its way: one opacity track per direction (down, up, right, left), on the walk's own timing. */
+const faceKeyframes = (name: string, path: readonly FloorPoint[]) => {
+  const frames = walkFrames(path);
+  const dirs = walkFacing(path);
+  return (["down", "up", "r", "l"] as const)
+    .map(
+      (d) =>
+        `@keyframes ${name}-${d}{${frames.map((f, i) => `${f.at}%{opacity:${dirs[i] === d ? 1 : 0}}`).join("")}}`,
+    )
+    .join("");
 };
 const walkKeyframes = (name: string, path: readonly FloorPoint[]) =>
   `@keyframes ${name}{${walkFrames(path)
@@ -191,14 +204,43 @@ export function ServiceFloor({
   };
 
   const keyframes =
-    paths.map((p, i) => walkKeyframes(`sfwalk${uid}_${i}`, p)).join("") +
-    leavers.map((l, i) => walkKeyframes(`sfleave${uid}_${i}`, l.path)).join("") +
-    paths.map((p, i) => walkKeyframes(`sfexit${uid}_${i}`, [...p].reverse())).join("") +
+    paths
+      .map((p, i) => walkKeyframes(`sfwalk${uid}_${i}`, p) + faceKeyframes(`sfwalk${uid}_${i}`, p))
+      .join("") +
+    leavers
+      .map(
+        (l, i) =>
+          walkKeyframes(`sfleave${uid}_${i}`, l.path) + faceKeyframes(`sfleave${uid}_${i}`, l.path),
+      )
+      .join("") +
+    paths
+      .map(
+        (p, i) =>
+          walkKeyframes(`sfexit${uid}_${i}`, [...p].reverse()) +
+          faceKeyframes(`sfexit${uid}_${i}`, [...p].reverse()),
+      )
+      .join("") +
     walkKeyframes(`sfwout${uid}`, wPath) +
+    faceKeyframes(`sfwout${uid}`, wPath) +
     walkKeyframes(`sfwback${uid}`, [...wPath].reverse()) +
+    faceKeyframes(`sfwback${uid}`, [...wPath].reverse()) +
     `@keyframes sfgone${uid}{0%,85%{opacity:1}100%{opacity:0}}`;
   const sitting = state !== "walking";
   const face = quality ? REACTION_FACE[quality] : "🙂";
+  const bust = (
+    <CustomerBust
+      customerId={customer.id}
+      expression={
+        mode === "deliver"
+          ? quality === "Masterful" || quality === "Clean"
+            ? "delighted"
+            : "pleased"
+          : "neutral"
+      }
+      fallback={customer.avatarEmoji}
+      em={1.7}
+    />
+  );
   const others = party.size - 1;
 
   return (
@@ -235,7 +277,7 @@ export function ServiceFloor({
           {cashier ? (
             <div className="sf-layer" data-testid="floor-cashier" style={at(cashierSpot(stage))}>
               <div className="sf-person sf-pose-stand">
-                <GuestPoses outfit="#3f5f8a" hair="#35271f" />
+                <GuestPoses outfit="#3f5f8a" hair="#35271f" look="cashier" />
               </div>
               {mode === "deliver" && state !== "serving" ? (
                 <div className="sf-face sf-face--small">🧾</div>
@@ -256,7 +298,13 @@ export function ServiceFloor({
               }
             >
               <div className="sf-person sf-pose-walk">
-                <GuestPoses {...WAITER_LOOKS[waiter]} />
+                <GuestPoses
+                  {...WAITER_LOOKS[waiter]}
+                  face={{
+                    name: state === "serving" ? `sfwout${uid}` : `sfwback${uid}`,
+                    timing: `${wWalkMs}ms linear both`,
+                  }}
+                />
               </div>
               {state === "serving" ? (
                 <div className="sf-carry">
@@ -304,7 +352,10 @@ export function ServiceFloor({
               }}
             >
               <div className="sf-person sf-pose-walk">
-                <GuestPoses {...lookFor(l.look)} />
+                <GuestPoses
+                  {...lookFor(l.look)}
+                  face={{ name: `sfleave${uid}_${i}`, timing: `${walkMs(l.path)}ms linear both` }}
+                />
               </div>
               <div className="sf-face sf-face--small">{l.face}</div>
             </div>
@@ -341,7 +392,24 @@ export function ServiceFloor({
                         : "sf-pose-walk"
                   }`}
                 >
-                  <GuestPoses outfit={look.outfit} hair={look.hair} />
+                  <GuestPoses
+                    outfit={look.outfit}
+                    hair={look.hair}
+                    look={look.look}
+                    face={
+                      state === "walking"
+                        ? {
+                            name: `sfwalk${uid}_${i}`,
+                            timing: `${walkMs(paths[i]!)}ms linear ${waitMs + i * FILE_GAP_MS}ms both`,
+                          }
+                        : state === "leaving" && partyLeaves
+                          ? {
+                              name: `sfexit${uid}_${i}`,
+                              timing: `${LEAVE_MS}ms linear ${i * FILE_GAP_MS}ms both`,
+                            }
+                          : undefined
+                    }
+                  />
                 </div>
                 {/* The outer box places the bubble / face; the inner one pops (anim-pop's
                     own transform would otherwise replace the placement). */}
@@ -382,15 +450,23 @@ export function ServiceFloor({
       {mode === "arrive" ? (
         <div className="relative z-10 rounded-t-[22px] border-t border-gold/40 bg-[linear-gradient(170deg,var(--color-ivory),var(--color-cream))] px-4 pb-4 pt-3 text-center shadow-lift">
           <p className="font-ui text-[11px] font-extrabold uppercase tracking-[0.2em] text-copper">
-            {state === "walking"
-              ? takeaway
-                ? "🚪 A takeaway customer"
-                : party.size > 1
-                  ? `🚪 A party of ${party.size}`
-                  : "🚪 A customer"
-              : takeaway
-                ? `${customer.avatarEmoji} ${customer.name} · 🥡 To go`
-                : `${customer.avatarEmoji} ${customer.name}'s order${others > 0 ? ` · table of ${party.size}` : ""}`}
+            {state === "walking" ? (
+              takeaway ? (
+                "🚪 A takeaway customer"
+              ) : party.size > 1 ? (
+                `🚪 A party of ${party.size}`
+              ) : (
+                "🚪 A customer"
+              )
+            ) : takeaway ? (
+              <>
+                {bust} {customer.name} · 🥡 To go
+              </>
+            ) : (
+              <>
+                {bust} {customer.name}'s order{others > 0 ? ` · table of ${party.size}` : ""}
+              </>
+            )}
           </p>
           <p className="mt-1 font-display text-[20px] font-extrabold leading-tight text-walnut-dark">
             {dish.emoji} {dish.name}

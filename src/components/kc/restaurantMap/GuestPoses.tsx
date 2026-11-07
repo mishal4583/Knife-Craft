@@ -1,9 +1,71 @@
+import type React from "react";
+import { PEOPLE_LOOKS, CELL } from "@/game/restaurant/peopleLooks";
+import { PoseCell } from "./CharacterSprite";
+import { usePeopleSheets } from "./peopleSheets";
+
 /**
- * The small walking / sitting people drawn on the restaurant maps. Shared by
- * the first floor's guests (RestaurantMapView) and the Second Floor's cast
- * (FloorLife). Pure SVG; the poses are shown or hidden by the caller's CSS.
+ * The small walking / sitting people drawn in the dining-room views (ServiceFloor, DiningCashView). Shared by those and the old map
+ * puppets. A `look` (peopleLooks.ts) draws the painted character: a front walk cycle (or, with `face`, the four directions switched
+ * by the walk's own keyframes) and a seated pose, with the same `guest-walking-pose` / `guest-sitting-pose` classes as the old SVG puppet
+ * so the caller's CSS shows and hides them as before. No look, or a sheet that fails to load: the SVG puppet (outfit and hair), as
+ * before. The poses are shown or hidden by the caller's CSS.
  */
-export function GuestPoses({ outfit, hair }: { outfit: string; hair: string }) {
+export function GuestPoses({
+  outfit,
+  hair,
+  look,
+  face,
+}: {
+  outfit: string;
+  hair: string;
+  look?: string | undefined;
+  /** For a walker: the name of the walk's keyframes and its timing (`2000ms linear 0ms both`): the figure turns to face its way. */
+  face?: { name: string; timing: string } | undefined;
+}) {
+  const info = look ? PEOPLE_LOOKS[look] : undefined;
+  const status = usePeopleSheets(info ? [info.id] : [], "a");
+  if (!info || status(info.id) === "fail") return <SvgPoses outfit={outfit} hair={hair} />;
+  if (status(info.id) === "loading") return null;
+  const dirs = [
+    { d: "down", row: 0, flip: false },
+    { d: "up", row: 1, flip: false },
+    { d: "r", row: 2, flip: false },
+    { d: "l", row: 2, flip: true },
+  ] as const;
+  const seconds = 0.72 / info.speed;
+  return (
+    <div
+      className="guest-sprite"
+      style={{ "--cs-scale": info.scale } as React.CSSProperties}
+      data-look={info.id}
+      data-gender={info.gender}
+    >
+      <div className="guest-pose guest-walking-pose">
+        {face ? (
+          dirs.map(({ d, row, flip }) => (
+            <div
+              key={d}
+              className="cs-layer"
+              style={{
+                opacity: d === "down" ? 1 : 0,
+                animation: `${face.name}-${d} ${face.timing}`,
+              }}
+            >
+              <PoseCell id={info.id} row={row} walk flip={flip} seconds={seconds} />
+            </div>
+          ))
+        ) : (
+          <PoseCell id={info.id} walk seconds={seconds} />
+        )}
+      </div>
+      <div className="guest-pose guest-sitting-pose">
+        <PoseCell id={info.id} col={CELL.seated} row={0} />
+      </div>
+    </div>
+  );
+}
+
+function SvgPoses({ outfit, hair }: { outfit: string; hair: string }) {
   return (
     <>
       <svg className="guest-pose guest-walking-pose" viewBox="0 0 24 32" focusable="false">

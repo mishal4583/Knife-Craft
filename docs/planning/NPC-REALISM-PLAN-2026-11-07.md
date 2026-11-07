@@ -1,7 +1,7 @@
 # NPC REALISM PLAN (developer 2026-11-07)
 
 Player reviews asked for the people in the restaurant to look and act more real: appearance, costumes, size, faces, male / female
-identification, hair, walking and behaviour. Status: PLAN ONLY (nothing built). The Codex prompts are in
+identification, hair, walking and behaviour. Status 2026-11-07: the art is delivered and phases 0, 1 and the faces of phase 3 are built (see HANDOFF "NPC realism"); the path graph and behaviour of phase 2 are not. The Codex prompts are in
 `NPC-CODEX-PROMPTS-2026-11-07.md`.
 
 ## 1. What the players see today (and why)

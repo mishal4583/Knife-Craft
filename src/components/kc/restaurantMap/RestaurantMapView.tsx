@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useUnlockText } from "../navLevel";
 import { LandscapeBackdrop } from '@/components/kc/game/LandscapeBackdrop';
 import {
@@ -16,7 +16,8 @@ import {
   mapRoomOpen
 } from './restaurantMapZones';
 import './RestaurantMap.css';
-import { GuestPoses } from './GuestPoses';
+import { MapCast } from './FloorLife';
+import { firstFloorGuests } from '@/game/restaurant/guestLife';
 import { StaffLife } from './StaffLife';
 import { TableCash } from '../common/TableCash';
 
@@ -386,33 +387,10 @@ export const RestaurantMap: React.FC<RestaurantMapProps> = ({
 
 export default RestaurantMap;
 
+/** The walking guests (guestLife.ts): painted people on the same engine as the staff and the Second Floor. */
 function AnimatedGuestTraffic() {
-  return (
-    <div className="restaurant-guest-layer" aria-hidden="true">
-      <div className="map-guest-party map-guest-party--solo">
-        <GuestPerson outfit="#bb633e" hair="#493324" order="Order" food="Food" />
-      </div>
-      <div className="map-guest-party map-guest-party--couple">
-        <GuestPerson outfit="#4f7180" hair="#35271f" order="Order" food="Food" />
-        <GuestPerson outfit="#9a5260" hair="#473222" />
-      </div>
-      <div className="map-guest-party map-guest-party--friends">
-        <GuestPerson outfit="#547a55" hair="#35271f" order="Order" food="Food" />
-        <GuestPerson outfit="#a16b3f" hair="#473222" />
-        <GuestPerson outfit="#637da8" hair="#35271f" />
-        <GuestPerson outfit="#9b667f" hair="#493324" />
-      </div>
-    </div>
-  );
-}
-function GuestPerson({ outfit, hair, order, food, takeaway = false }: { outfit: string; hair: string; order?: string; food?: string; takeaway?: boolean }) {
-  return (
-    <div className="guest-person">
-      <div className="guest-figure"><GuestPoses outfit={outfit} hair={hair} /></div>
-      {order && <span className={`guest-action-bubble ${takeaway ? 'guest-takeaway-order' : 'guest-order-bubble'}`}>{order}</span>}
-      {food && <span className={`guest-action-bubble ${takeaway ? 'guest-pickup-bubble' : 'guest-food-bubble'}`}>{food}</span>}
-    </div>
-  );
+  const cast = useMemo(() => firstFloorGuests(), []);
+  return <MapCast cast={cast} testId="guest-life" />;
 }
 
 const FRIDGE_SHAPES = {

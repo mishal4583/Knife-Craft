@@ -19,6 +19,7 @@ import type { BusinessStaffRole } from "../business/businessStaff";
 import type { KitchenMapArtStage } from "../kitchen/kitchenMapArt";
 import { TASK_RULES, type TaskKind } from "./cleanliness";
 import { FLOOR_LIFE_ALWAYS_PREVIEW, type FloorActor, type Stop } from "./floorLife";
+import { STAFF_LOOK } from "./peopleLooks";
 
 export const STAFF_LIFE_ROLES: readonly BusinessStaffRole[] = [
   "line-cook",
@@ -150,19 +151,75 @@ export function restroomSpot(job: TaskKind): Stop {
 export const CLEANING_SECONDS = 5;
 
 const WHITES = "#f4efe6";
-type Look = Pick<FloorActor, "kind" | "food" | "outfit" | "hair"> & { delay: number };
+type Look = Pick<FloorActor, "kind" | "food" | "outfit" | "hair" | "look"> & { delay: number };
 
 /** The Old Chef: the kitchen's own chef from the start (not a hire), always at the range. */
-const OLD_CHEF: Look = { kind: "chef", food: "🍲", outfit: WHITES, hair: "#9a9a9a", delay: -1.5 };
+const OLD_CHEF: Look = {
+  kind: "chef",
+  food: "🍲",
+  outfit: WHITES,
+  hair: "#9a9a9a",
+  look: STAFF_LOOK["old-chef"]!,
+  delay: -1.5,
+};
 
 const LOOKS: Readonly<Record<BusinessStaffRole, Look>> = {
-  "line-cook": { kind: "cook", food: "🍳", outfit: WHITES, hair: "#35271f", delay: 0 },
-  "prep-cook": { kind: "cook", food: "🥕", outfit: WHITES, hair: "#6b4a2e", delay: -2 },
-  "head-chef": { kind: "chef", food: "📋", outfit: WHITES, hair: "#2b211b", delay: -4 },
-  server: { kind: "server", food: "🍽️", outfit: "#7a2e2e", hair: "#473222", delay: -6 },
-  cleaner: { kind: "cleaner", food: "🧽", outfit: "#5d8a8a", hair: "#493324", delay: -3 },
-  manager: { kind: "manager", food: "📋", outfit: "#2f3e4f", hair: "#35271f", delay: -5 },
-  cashier: { kind: "cashier", food: "🧾", outfit: "#3f5f8a", hair: "#35271f", delay: -1 },
+  "line-cook": {
+    kind: "cook",
+    food: "🍳",
+    outfit: WHITES,
+    hair: "#35271f",
+    look: STAFF_LOOK["line-cook"]!,
+    delay: 0,
+  },
+  "prep-cook": {
+    kind: "cook",
+    food: "🥕",
+    outfit: WHITES,
+    hair: "#6b4a2e",
+    look: STAFF_LOOK["prep-cook"]!,
+    delay: -2,
+  },
+  "head-chef": {
+    kind: "chef",
+    food: "📋",
+    outfit: WHITES,
+    hair: "#2b211b",
+    look: STAFF_LOOK["head-chef"]!,
+    delay: -4,
+  },
+  server: {
+    kind: "server",
+    food: "🍽️",
+    outfit: "#7a2e2e",
+    hair: "#473222",
+    look: STAFF_LOOK["server"]!,
+    delay: -6,
+  },
+  cleaner: {
+    kind: "cleaner",
+    food: "🧽",
+    outfit: "#5d8a8a",
+    hair: "#493324",
+    look: STAFF_LOOK["cleaner"]!,
+    delay: -3,
+  },
+  manager: {
+    kind: "manager",
+    food: "📋",
+    outfit: "#2f3e4f",
+    hair: "#35271f",
+    look: STAFF_LOOK["manager"]!,
+    delay: -5,
+  },
+  cashier: {
+    kind: "cashier",
+    food: "🧾",
+    outfit: "#3f5f8a",
+    hair: "#35271f",
+    look: STAFF_LOOK["cashier"]!,
+    delay: -1,
+  },
 };
 
 /** Each role's loop on one stage's art. */

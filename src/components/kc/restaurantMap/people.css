@@ -1,0 +1,108 @@
+/* Painted people (CharacterSprite.tsx, FloorLife.tsx). One sheet = equal cells; a pose is a background-position, a walk is four cells
+   stepped by `steps()`. Only background-position, transform and opacity animate; no library. */
+.cs-cell {
+  position: absolute;
+  inset: 0;
+  background-repeat: no-repeat;
+  pointer-events: none;
+}
+
+/* One pose of a person (FloorLife.tsx): the wrapper is switched on and off by keyframes, the cell inside draws the picture. */
+.cs-layer {
+  position: absolute;
+  inset: 0;
+}
+
+.cs-flip {
+  transform: scaleX(-1);
+}
+
+/* Four walk cells of one row: contact, pass, contact, pass. Only x moves; the row stays where the inline style put it. */
+.cs-walk {
+  animation: cs-walk .72s steps(4) infinite;
+}
+
+@keyframes cs-walk {
+  from { background-position-x: 0%; }
+  to { background-position-x: 80%; }
+}
+
+/* A guest at the table: sits, eats, sips, eats, delighted at the end (cells of sheet A: seated, eating, drinking, delighted). */
+.cs-eat {
+  animation: cs-eat 16s steps(1) infinite;
+}
+
+@keyframes cs-eat {
+  0%   { background-position: 100% 0%; }
+  8%   { background-position: 40% 100%; }
+  30%  { background-position: 60% 100%; }
+  38%  { background-position: 40% 100%; }
+  62%  { background-position: 60% 100%; }
+  70%  { background-position: 40% 100%; }
+  90%  { background-position: 80% 100%; }
+  97%  { background-position: 100% 0%; }
+}
+
+/* A person on a map: a square box the size of one cell. The figure is 80 % of the cell tall, feet on its 92.5 % line, so the box is
+   lifted by that much and the feet land on the actor's spot. `--cs-scale` is the look's size next to an adult (a child 0.74). */
+.floor-person.floor-person--sprite {
+  --cs-size: clamp(48px, 16vw, 92px);
+  width: calc(var(--cs-size) * var(--cs-scale, 1));
+  height: calc(var(--cs-size) * var(--cs-scale, 1));
+  transform: translate(-50%, -92.5%);
+  filter: none;
+}
+
+/* A soft contact shadow under the feet, so the figure sits on the floor of the painted map instead of floating above it. */
+.floor-person.floor-person--sprite::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 4%;
+  width: 46%;
+  height: 11%;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(38, 22, 8, .5), rgba(38, 22, 8, 0) 70%);
+}
+
+.floor-person.floor-person--sprite .floor-carry {
+  display: none;
+}
+
+.floor-person.floor-person--sprite .floor-carry--guest {
+  display: block;
+  bottom: 70%;
+  left: 50%;
+}
+
+/* The dining-room views (ServiceFloor, DiningCashView): the painted person fills the old puppet's box (the caller's `.sf-person`). The
+   figure is 80 % of its cell, feet on the 92.5 % line, so the cell is scaled up to the puppet's box and lifted a little. */
+.guest-sprite {
+  position: absolute;
+  left: 50%;
+  top: 89%; /* the old puppet's feet line in its box */
+  width: calc(190% * var(--cs-scale, 1));
+  aspect-ratio: 1 / 1;
+  transform: translate(-50%, -92.5%);
+}
+
+.guest-sprite .guest-pose {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* Standing guests (a parcel customer, the Cashier): the idle pose, not a walk. */
+.sf .sf-pose-stand .guest-walking-pose .cs-walk {
+  animation: none;
+  background-position-x: 80%;
+}
+
+/* Sitting: only the seated pose; walking: only the walk (the old rules hide the other SVG; the sprites follow the same classes). */
+.sf .sf-pose-walk .guest-sitting-pose,
+.sf .sf-pose-sit .guest-walking-pose,
+.sf .sf-pose-stand .guest-sitting-pose {
+  display: none;
+}
