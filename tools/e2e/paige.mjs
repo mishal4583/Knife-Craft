@@ -178,6 +178,7 @@ try {
     { b3: b3 && { beat: b3.beat, ring: b3.ring, text: b3.text }, marketTab },
   );
   await click('[data-testid="assistant-next"]');
+  await shot(page, "paige-3b-last-line");
   await click('[data-testid="assistant-ok"]', 700);
   const s3 = await readSave(page);
   const gone = !(await q('[data-testid="assistant-bubble"]'));

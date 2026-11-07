@@ -127,6 +127,63 @@ export function AssistantHost({
     setActive(null);
   };
 
+  const inline = !last || (!beat.hire && !beat.go && current.text.length <= 46);
+  const actions = (
+    <>
+      {!last ? (
+        <button
+          type="button"
+          data-testid="assistant-next"
+          aria-label="Next"
+          onClick={() => {
+            AudioManager.playSfx("tap");
+            setLine(line + 1);
+          }}
+          className="press grid h-12 w-12 place-items-center"
+        >
+          <PaigePiece name="chevron-large" className="h-11 w-11 object-contain" />
+        </button>
+      ) : beat.hire ? (
+        <KButton
+          variant="sage"
+          className="min-h-12 flex-1"
+          data-testid="assistant-hire"
+          onClick={() => {
+            onHire();
+            setActive(null);
+          }}
+        >
+          Hire {ASSISTANT_NAME} · Free
+        </KButton>
+      ) : (
+        <>
+          {beat.go ? (
+            <KButton
+              variant="copper"
+              className="min-h-12 px-3"
+              data-testid="assistant-go"
+              onClick={() => {
+                const to = beat.go!;
+                close();
+                onGo(to);
+              }}
+            >
+              Take me there →
+            </KButton>
+          ) : null}
+          <KButton
+            variant={beat.go ? "ghost" : "sage"}
+            className="min-h-12 px-4"
+            data-testid="assistant-ok"
+            onClick={close}
+          >
+            Got it
+          </KButton>
+        </>
+      )}
+    </>
+  );
+
   const wide = rect ? rect.w / Math.max(1, rect.h) > 1.7 : false;
   const ringW = rect ? rect.w + (wide ? 30 : 40) : 0;
   const ringH = rect ? rect.h + (wide ? 22 : 40) : 0;
@@ -181,64 +238,20 @@ export function AssistantHost({
           <span className="absolute -top-[15px] left-[14px] z-[2] font-display text-[13px] font-black leading-none text-ivory drop-shadow">
             {ASSISTANT_NAME}
           </span>
-          <p
-            data-testid="assistant-text"
-            className="px-0.5 pb-1 pt-0.5 font-hand text-[17px] leading-snug text-walnut-dark"
-          >
-            {current.text}
-          </p>
-          <div className="mt-1 flex items-center justify-end gap-2">
-            {!last ? (
-              <button
-                type="button"
-                data-testid="assistant-next"
-                aria-label="Next"
-                onClick={() => {
-                  AudioManager.playSfx("tap");
-                  setLine(line + 1);
-                }}
-                className="press grid h-12 w-12 place-items-center"
+          <div className="paige-body">
+            {/* a short tip puts its one button on the same row as the words (no blank band under them); the wide buttons wrap below */}
+            <div className={inline ? "flex items-end gap-1" : undefined}>
+              <p
+                data-testid="assistant-text"
+                className="min-w-0 flex-1 px-1 pb-1.5 pt-2 font-hand text-[19px] leading-[1.22] text-walnut-dark"
               >
-                <PaigePiece name="chevron-large" className="h-11 w-11 object-contain" />
-              </button>
-            ) : beat.hire ? (
-              <KButton
-                variant="sage"
-                className="min-h-12 flex-1"
-                data-testid="assistant-hire"
-                onClick={() => {
-                  onHire();
-                  setActive(null);
-                }}
-              >
-                Hire {ASSISTANT_NAME} · Free
-              </KButton>
-            ) : (
-              <>
-                {beat.go ? (
-                  <KButton
-                    variant="copper"
-                    className="min-h-12 px-3"
-                    data-testid="assistant-go"
-                    onClick={() => {
-                      const to = beat.go!;
-                      close();
-                      onGo(to);
-                    }}
-                  >
-                    Take me there →
-                  </KButton>
-                ) : null}
-                <KButton
-                  variant="ghost"
-                  className="min-h-12 px-3"
-                  data-testid="assistant-ok"
-                  onClick={close}
-                >
-                  Got it
-                </KButton>
-              </>
-            )}
+                {current.text}
+              </p>
+              {inline ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
+            </div>
+            {!inline ? (
+              <div className="flex items-center justify-end gap-2 px-1">{actions}</div>
+            ) : null}
           </div>
         </div>
         <div className="relative -mt-2 ml-1">

@@ -48,3 +48,10 @@
   border-width: calc(82px * var(--s)) calc(44px * var(--s)) calc(62px * var(--s)) calc(92px * var(--s));
   border-image-slice: 82 44 62 92 fill;
 }
+
+/* The frame's left border is wide only because the speech tail is drawn in the bottom-left corner; the parchment itself reaches almost to the
+   edge. The words (and buttons) use that parchment: they are pulled out into the border by what the frame does not cover, so a short line
+   no longer sits in a narrow strip with a blank band beside it (developer 2026-11-07: "optimize the card, the texts and other things"). */
+.paige-body {
+  margin: 0 calc(-12px * var(--s)) calc(-14px * var(--s)) calc(-52px * var(--s));
+}
