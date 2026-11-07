@@ -5,6 +5,7 @@ import type { ScreenId } from "../data";
 import type { CleanlinessAction, CleanlinessActionResult } from "@/game/restaurant/cleanliness";
 import {
   bottleView,
+  piecesWashed,
   restaurantSuppliesOf,
   sinkLines,
   sinkPieces,
@@ -44,7 +45,7 @@ export function SinkWash({
   const pieces = sinkPieces(save);
   const soap = bottleView(save, "dish-soap");
   const openSink = () =>
-    setOpen({ lines: sinkLines(save), seed: restaurantSuppliesOf(save).washedTotal });
+    setOpen({ lines: sinkLines(save), seed: piecesWashed(restaurantSuppliesOf(save)) });
   if (variant !== "card" && pieces === 0 && !open) return null;
   return (
     <>
@@ -109,7 +110,8 @@ export function SinkWash({
           lines={open.lines}
           seed={open.seed}
           onWash={(id) => {
-            const r = cleanlinessAction({ kind: "wash", ids: [id] });
+            // One piece at a time (developer 2026-11-07): each piece scrubbed and rinsed is washed for real.
+            const r = cleanlinessAction({ kind: "wash", ids: [id], each: 1 });
             if (!r) return { ok: false };
             return r.needs.includes("dish-soap") ? { ok: false, noSoap: true } : { ok: true };
           }}
@@ -229,14 +231,15 @@ function DishwashingCard({
             🧴 {soap.status === "empty" ? "No soap" : `${Math.round(soap.openPct)}%`}
             {soap.spare > 0 ? ` +${soap.spare}` : ""}
           </span>
-          {st.washedTotal > 0 ? (
-            <span>· 🫧 {st.washedTotal.toLocaleString("en-US")} washed</span>
+          {piecesWashed(st) > 0 ? (
+            <span>· 🫧 {piecesWashed(st).toLocaleString("en-US")} washed</span>
           ) : null}
           {st.brokenTotal > 0 ? <span>· 💥 {st.brokenTotal} broken</span> : null}
           <InfoTip label="About dishwashing">
-            After a service its plates, cutlery and glasses wait here. Wash them by hand and nothing
-            breaks. Left in the sink, they are washed when the next service starts — and now and
-            then a plate, glass or fork breaks.
+            Every plate, fork, glass, pot and pan a service uses waits here, as many as the orders
+            used. Wash them by hand, one at a time — scrub, then rinse — and nothing breaks. Left in
+            the sink, they are washed when the next service starts — and now and then a plate, glass
+            or fork breaks.
           </InfoTip>
         </div>
         {pieces > 0 ? (

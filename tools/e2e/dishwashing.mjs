@@ -1,14 +1,14 @@
-// The sink (developer 2026-10-23: dishwashing back, integrated), restaurant build, in a real browser:
-//   1. Level 40 with last service's dishes in the sink (4 plates, 4 forks, 4 knives) and dish soap:
-//      the Pre-Service Check shows "🫧 12 in the sink" with Wash ›; it opens the sink game on
-//      the real lines.
-//   2. Scrubbing the plate (pointer drags) washes that line for real: the save's sink drops by 4,
-//      soap is used, nothing breaks, no money moves and no ledger entry is written.
-//   3. Closing half-way keeps it; reopening shows what's left (8); scrubbing the rest empties the
-//      sink ("Sink empty") and the row disappears.
-//   4. Restaurant → Cleanliness's Dishwashing card ("🧽 Wash 12 dishes") offers the same sink; with no soap the game says so
-//      and offers 🛒 Dish soap (the Market's exact line).
-//   5. 320 px: the sink fits, no sideways scroll, its buttons ≥ 48 px; no console errors.
+// The sink (developer 2026-10-23: dishwashing back, integrated; 2026-11-07: every piece, slowly), restaurant build, real browser:
+//   1. Level 40 with last service's dishes in the sink (2 plates, 1 frying pan) and dish soap:
+//      the Pre-Service Check shows "3 in the sink" with Wash; it opens the sink game on the real lines.
+//   2. ONE piece: a short swipe does not clean a pan; scrubbing takes real strokes, then the suds
+//      (the rinse) must be washed off; only then is that ONE piece washed for real: the save's sink drops by 1
+//      (not by the whole line), soap is used by the piece, nothing breaks, no money moves, no ledger entry.
+//   3. Closing half-way keeps it; reopening shows what is left (2); washing the rest, piece by piece
+//      (the two plates), empties the sink ("Sink empty") and the row disappears.
+//   4. Restaurant > Cleanliness's Dishwashing card ("Wash 3 dishes") offers the same sink; with no soap the game says so
+//      and offers Dish soap (the Market's exact line).
+//   5. 320 px: the sink fits, no sideways scroll, its buttons >= 48 px; no console errors.
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import {
   MOVED_IN_BUSINESS,
@@ -29,7 +29,7 @@ const check = (id, ok, detail) => {
 };
 const { browser, page, logs } = await launch();
 
-const SINK = { "dinner-plates": 4, "dinner-forks": 4, "dinner-knives": 4 };
+const SINK = { "frying-pans": 1, "dinner-plates": 2 };
 const saveAt = (n, { soap = 2 } = {}) =>
   seedSave({
     credits: 500_000,
@@ -40,7 +40,7 @@ const saveAt = (n, { soap = 2 } = {}) =>
           ...MOVED_IN_BUSINESS.supplies.stock,
           "dinner-plates": { units: 24, costBasis: 2400 },
           "dinner-forks": { units: 24, costBasis: 1200 },
-          "dinner-knives": { units: 24, costBasis: 1200 },
+          "frying-pans": { units: 2, costBasis: 1868 },
           ...(soap ? { "dish-soap": { units: soap, costBasis: soap * 1500 } } : {}),
         },
       },
@@ -50,6 +50,8 @@ const saveAt = (n, { soap = 2 } = {}) =>
         washing: 0,
         dirty: SINK,
         washedTotal: 100,
+        washedKitchen: 0,
+        used: {},
         brokenTotal: 0,
       },
     },
@@ -63,46 +65,103 @@ const saveAt = (n, { soap = 2 } = {}) =>
 const sinkOf = (s) =>
   Object.values(s.business.restaurantSupplies?.dirty ?? {}).reduce((t, v) => t + v, 0);
 
-/** Scrub the sink's current piece: zig-zag drags across the basin until the line is done. */
-async function scrubCurrent() {
-  const before = await page.evaluate(
-    () => document.querySelectorAll('[data-wash-state="done"]').length,
+/** The "next step" guide card (rewards are waiting) sits over the Kitchen of a level-40 save: wait for it and send it away (Later). */
+const dismissPaige = async () => {
+  await page.waitForSelector('[data-testid="guide-card"]', { timeout: 5000 }).catch(() => null);
+  await page.evaluate(() =>
+    [...document.querySelectorAll('[data-testid="guide-card"] button')]
+      .find((b) => b.textContent.includes("Later"))
+      ?.click(),
   );
+  await sleep(400);
+};
+
+const pieceKey = () =>
+  page.evaluate(() => {
+    const p = document.querySelector("[data-piece-id]");
+    if (p) return `${p.getAttribute("data-piece-id")}#${p.getAttribute("data-piece-nth")}`;
+    return /Sink empty/.test(
+      document.querySelector('[data-testid="wash-up-status"]')?.textContent ?? "",
+    )
+      ? "done"
+      : "none";
+  });
+const phaseNow = () =>
+  page.evaluate(() =>
+    document.querySelector("[data-piece-phase]")?.getAttribute("data-piece-phase"),
+  );
+
+/** One zig-zag pass over the basin (scene 360 x 280; every piece sits in about x 60-330, y 88-248). */
+async function zigzag(pass) {
   const box = await page.evaluate(() => {
     const r = document.querySelector('[data-testid="wash-up-surface"]')?.getBoundingClientRect();
     return r ? { x: r.left, y: r.top, w: r.width, h: r.height } : null;
   });
   if (!box) return false;
-  // Scene coordinates are 360 × 280; every piece sits in about x 80–280, y 90–245.
   const at = (sx, sy) => [box.x + (sx / 360) * box.w, box.y + (sy / 280) * box.h];
-  for (let pass = 0; pass < 3; pass++) {
-    const [x0, y0] = at(180, 160);
-    await page.mouse.move(x0, y0);
-    await page.mouse.down();
-    for (let sy = 88; sy <= 248; sy += 6) {
-      const [ax, ay] = at(pass % 2 ? 290 : 70, sy);
-      const [bx, by] = at(pass % 2 ? 70 : 290, sy + 3);
-      await page.mouse.move(ax, ay, { steps: 4 });
-      await page.mouse.move(bx, by, { steps: 14 });
-    }
-    await page.mouse.up();
-    const done = await page.evaluate(
-      () =>
-        document.querySelectorAll('[data-wash-state="done"]').length ||
-        /Sink empty/.test(
-          document.querySelector('[data-testid="wash-up-status"]')?.textContent ?? "",
-        ),
-    );
-    if (done > before || done === true) return true;
+  const [x0, y0] = at(180, 160);
+  await page.mouse.move(x0, y0);
+  await page.mouse.down();
+  for (let sy = 90; sy <= 246; sy += 12) {
+    const [ax, ay] = at(pass % 2 ? 330 : 60, sy);
+    const [bx, by] = at(pass % 2 ? 60 : 330, sy + 3);
+    await page.mouse.move(ax, ay, { steps: 2 });
+    await page.mouse.move(bx, by, { steps: 9 });
   }
-  return false;
+  await page.mouse.up();
+  return true;
+}
+
+/**
+ * Wash the sink's current PIECE: scrub, then rinse, until the sink moves on to the next piece (or is empty).
+ * Returns what was seen on the way: the passes it took and whether the rinse (suds) phase showed.
+ */
+async function washPiece() {
+  // Record every phase the piece goes through (the rinse can start and end inside one pass).
+  await page.evaluate(() => {
+    window.__phases = [];
+    window.__phaseObs?.disconnect();
+    const watch = () => {
+      const el = document.querySelector("[data-piece-phase]");
+      if (!el) return;
+      const ph = el.getAttribute("data-piece-phase");
+      if (window.__phases[window.__phases.length - 1] !== ph) window.__phases.push(ph);
+    };
+    window.__phaseObs = new MutationObserver(watch);
+    window.__phaseObs.observe(document.body, {
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["data-piece-phase"],
+      childList: true,
+    });
+    watch();
+  });
+  const key0 = await pieceKey();
+  const seen = { passes: 0, rinse: false, key0 };
+  for (let pass = 0; pass < 30; pass++) {
+    if (!(await zigzag(pass))) break;
+    seen.passes++;
+    if ((await phaseNow()) === "rinse") seen.rinse = true;
+    await sleep(120);
+    const key = await pieceKey();
+    if (key !== key0) {
+      seen.ok = true;
+      seen.phases = await page.evaluate(() => window.__phases);
+      seen.rinse = seen.phases.includes("rinse");
+      return seen;
+    }
+  }
+  seen.ok = false;
+  return seen;
 }
 
 // ---------- 1. The Pre-Service Check shows the sink ----------
 await boot(page, saveAt(40));
 await page.evaluate(() => document.querySelector('[data-nav="kitchen"]')?.click());
 await sleep(700);
-await clickButton(page, /Prepare$/);
+await dismissPaige();
+await sleep(300);
+await clickButton(page, /Open for service$|Prepare$/);
 await sleep(1400);
 const row = await page.evaluate(
   () => document.querySelector('[data-testid="sink-wash"]')?.innerText.replace(/\s+/g, " ") ?? "",
@@ -121,37 +180,63 @@ const lines = await page.evaluate(() =>
   })),
 );
 check(
-  "1 the Pre-Service Check shows 🫧 12 in the sink · Wash ›, which opens the sink on the real lines",
-  /12 in the sink/.test(row) &&
-    lines.length === 3 &&
-    lines.every((l) => /×4/.test(l.text)) &&
+  "1 the Pre-Service Check shows 3 in the sink · Wash, which opens the sink on the real lines (the pan first)",
+  /3 in the sink/.test(row) &&
+    lines.length === 2 &&
+    lines[0].id === "frying-pans" &&
+    lines.map((l) => l.text.match(/×(\d)/)?.[1]).join("") === "12" &&
     lines[0].state === "current",
   { row, lines },
 );
 await shot(page, "dishwashing-1-sink");
 
-// ---------- 2. Scrub one kind: washed for real ----------
+// ---------- 2. ONE piece: scrub, then rinse ----------
 const s0 = await readSave(page);
-const first = lines[0]?.id;
-const scrubbed = await scrubCurrent();
-await sleep(500);
+const first = lines[0]?.id; // the frying pan
+const piece0 = await pieceKey();
+// A short swipe does not clean a pan.
+{
+  const box = await page.evaluate(() => {
+    const r = document.querySelector('[data-testid="wash-up-surface"]')?.getBoundingClientRect();
+    return r ? { x: r.left, y: r.top, w: r.width, h: r.height } : null;
+  });
+  await page.mouse.move(box.x + box.w * 0.4, box.y + box.h * 0.57);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.w * 0.46, box.y + box.h * 0.57, { steps: 4 });
+  await page.mouse.up();
+}
+await sleep(200);
+const afterSwipe = { key: await pieceKey(), phase: await phaseNow() };
+const t0 = Date.now();
+const washed = await washPiece();
+const secs = Math.round((Date.now() - t0) / 100) / 10;
+// Let the shine and the slide finish.
+await sleep(1100);
 const s1 = await readSave(page);
+const rack = await page.evaluate(() =>
+  [...document.querySelectorAll("[data-rack]")].map((e) => ({
+    id: e.getAttribute("data-rack"),
+    n: e.getAttribute("data-rack-n"),
+  })),
+);
 check(
-  "2 scrubbing the first kind clean washes that line in the save: sink 12 → 8, soap used, nothing broke, no money, no ledger",
-  scrubbed &&
-    sinkOf(s0) === 12 &&
-    sinkOf(s1) === 8 &&
+  "2 a short swipe cleans nothing; one piece takes scrubbing AND rinsing; then exactly that ONE pan is washed in the save (sink 3 to 2, soap by the piece, nothing broke, no money, no ledger)",
+  afterSwipe.key === piece0 &&
+    afterSwipe.phase === "scrub" &&
+    washed.ok &&
+    washed.rinse &&
+    washed.passes >= 2 &&
+    sinkOf(s0) === 3 &&
+    sinkOf(s1) === 2 &&
     (s1.business.restaurantSupplies.dirty[first] ?? 0) === 0 &&
     s1.business.restaurantSupplies.soapPct < s0.business.restaurantSupplies.soapPct &&
     s1.business.restaurantSupplies.brokenTotal === 0 &&
-    s1.business.supplies.stock[first].units === 24 &&
+    s1.business.restaurantSupplies.washedKitchen === 1 &&
+    s1.business.supplies.stock[first].units === 2 &&
     s1.credits === s0.credits &&
-    s1.economyLedger.length === s0.economyLedger.length,
-  {
-    scrubbed,
-    sink: [sinkOf(s0), sinkOf(s1)],
-    soap: [s0.business.restaurantSupplies.soapPct, s1.business.restaurantSupplies.soapPct],
-  },
+    s1.economyLedger.length === s0.economyLedger.length &&
+    rack.some((r) => r.id === first && r.n === "1"),
+  { piece0, afterSwipe, washed, secs, rack, sink: [sinkOf(s0), sinkOf(s1)] },
 );
 
 // ---------- 3. Close half-way, reopen, finish ----------
@@ -168,8 +253,14 @@ await page.evaluate(() =>
 await sleep(700);
 const lines2 = await page.evaluate(() => document.querySelectorAll("[data-wash-line]").length);
 let all = true;
-for (let i = 0; i < lines2; i++) all = (await scrubCurrent()) && all;
-await sleep(600);
+const order = [];
+for (let i = 0; i < 2; i++) {
+  order.push(await pieceKey());
+  const w = await washPiece();
+  all = w.ok && all;
+  await sleep(1000);
+}
+await sleep(400);
 const status = await page.evaluate(
   () => document.querySelector('[data-testid="wash-up-status"]')?.textContent ?? "",
 );
@@ -183,15 +274,17 @@ await page.evaluate(() =>
 await sleep(500);
 const rowGone = await page.evaluate(() => !document.querySelector('[data-testid="sink-wash"]'));
 check(
-  "3 closing half-way keeps it (8 left, 2 lines); the rest scrubbed → Sink empty, the save's sink is 0, the row goes",
-  /8 in the sink/.test(row2) &&
-    lines2 === 2 &&
+  "3 closing half-way keeps it (2 left, 1 line); the rest washed piece by piece (plate 1, plate 2) then Sink empty, the save's sink is 0, the row goes",
+  /2 in the sink/.test(row2) &&
+    lines2 === 1 &&
     all &&
+    order.join(",") === "dinner-plates#1,dinner-plates#2" &&
     /Sink empty/.test(status) &&
     sinkOf(s2) === 0 &&
     s2.business.restaurantSupplies.brokenTotal === 0 &&
+    s2.business.restaurantSupplies.washedTotal === 102 &&
     rowGone,
-  { row2, lines2, all, status, sink: sinkOf(s2), rowGone },
+  { row2, lines2, all, order, status, sink: sinkOf(s2), rowGone },
 );
 
 // ---------- 4. Cleanliness, and no soap ----------
@@ -218,7 +311,7 @@ await page.evaluate(() =>
 );
 await sleep(700);
 const n0 = await readSave(page);
-await scrubCurrent();
+await zigzag(0);
 await sleep(500);
 const n1 = await readSave(page);
 const noSoap = await page.evaluate(() => ({
@@ -229,7 +322,7 @@ const noSoap = await page.evaluate(() => ({
 }));
 check(
   "4 Restaurant → Cleanliness offers the same sink; with no soap nothing is washed and it offers 🛒 Dish soap",
-  /Wash 12 dishes/.test(card) &&
+  /Wash 3 dishes/.test(card) &&
     /No soap/.test(card) &&
     sinkOf(n1) === sinkOf(n0) &&
     /Out of dish soap/.test(noSoap.status) &&
@@ -243,7 +336,9 @@ await page.setViewport({ width: 320, height: 568, deviceScaleFactor: 1 });
 await boot(page, saveAt(40));
 await page.evaluate(() => document.querySelector('[data-nav="kitchen"]')?.click());
 await sleep(700);
-await clickButton(page, /Prepare$/);
+await dismissPaige();
+await sleep(300);
+await clickButton(page, /Open for service$|Prepare$/);
 await sleep(1200);
 await page.evaluate(() =>
   [...document.querySelectorAll('[data-testid="sink-wash"] button')]

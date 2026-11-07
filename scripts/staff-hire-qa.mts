@@ -330,7 +330,8 @@ console.log("A. The App wiring");
   const app = fs.readFileSync(path.join(ROOT, "src/App.tsx"), "utf8");
   assert(
     /const required = !!plan\?\.staff\.some\(\(r\) => r\.id === role && !r\.met\);/.test(app) &&
-      /const hired = hireRestaurantStaff\(save, role, restaurantLevelOf\(save\.levelProgress\), \{\s*required,\s*\}\);\s*if \(hired\.ok\) persist\(hired\.save\);/.test(
+      // changed 2026-11-07: a hire also puts the new person to work on the open chores that are theirs (cleanerRound); still ONE persisted save
+      /const hired = hireRestaurantStaff\(save, role, restaurantLevelOf\(save\.levelProgress\), \{\s*required,\s*\}\);\s*(?:\/\/[^\n]*\s*)*if \(hired\.ok\) persist\(cleanerRound\(hired\.save\)\.save\);/.test(
         app,
       ),
     "A1: the restaurant's Hire goes through hireRestaurantStaff (required = the next service needs them) and persists its one save",

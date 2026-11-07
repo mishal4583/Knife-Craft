@@ -63,6 +63,8 @@ import {
   tasksAfterService,
   usesAvailable,
   usesPerUnit,
+  waitingCounts,
+  waitingReason,
   type CleaningTask,
 } from "../src/game/restaurant/cleanliness.ts";
 import { closeServiceReport, restaurantRecordOf } from "../src/game/restaurant/serviceReport.ts";
@@ -554,6 +556,79 @@ console.log("D. A Cleaner for today (developer 2026-10-17: instead of Clean ever
     /cleanerToday: dayCleanerToday\(save\)/.test(read("src/ScreensRouter.tsx")) &&
       /role === "cleaner" && c\.cleanerToday/.test(read("src/game/restaurant/staffLife.ts")),
     "D8: the day's Cleaner walks the restaurant map like the hired one",
+  );
+}
+
+console.log(
+  "Q. The team catches up, and the screen says why a task is still open (developer 2026-11-07)",
+);
+{
+  const T = (kind: string, since = 41) => ({ kind, count: 1, since }) as CleaningTask;
+  const reason = (s: SaveData, k: string) => waitingReason(s, k as never);
+  // Q1: with only a Cleaner hired, the Prep Cook's and the Server's chores wait, and the screen can say who they wait for
+  const only = saveAt(
+    41,
+    FULL,
+    [T("stations"), T("lay-tables"), T("spill"), T("equipment")],
+    ["cleaner"],
+  );
+  const done = cleanerRound(only).save;
+  assert(
+    kinds(done) === "lay-tables,spill,stations" &&
+      reason(done, "stations") === "prep-cook" &&
+      reason(done, "lay-tables") === "server" &&
+      reason(done, "spill") === "yours",
+    "Q1: a Cleaner alone leaves the Prep Cook's chore, the Server's chore and spills; waitingReason names each",
+    kinds(done),
+  );
+  const both = saveAt(
+    41,
+    FULL,
+    [T("stations"), T("lay-tables")],
+    ["cleaner", "server", "prep-cook"],
+  );
+  assert(
+    kinds(cleanerRound(both).save) === "",
+    "Q2: with the Server and the Prep Cook hired those chores are done too",
+  );
+  // Q3: short of supplies -> "supplies"; the 'team-round' action cleans it the moment the supplies are there
+  const dry = saveAt(41, {}, [T("equipment"), T("bins")], ["cleaner"]);
+  const stocked = saveAt(41, FULL, [T("equipment"), T("bins")], ["cleaner"]);
+  const caught = applyCleanlinessAction(stocked, { kind: "team-round" });
+  assert(
+    reason(dry, "equipment") === "supplies" &&
+      reason(dry, "bins") === "supplies" &&
+      kinds(caught.save) === "" &&
+      caught.cleaned.length === 2,
+    "Q3: short of supplies the task is 'supplies'; the 'team-round' action cleans it as soon as they are there",
+  );
+  // Q4: an area the Cleaner is not set to
+  const off = applyCleanlinessAction(saveAt(41, FULL, [T("floor"), T("equipment")], ["cleaner"]), {
+    kind: "areas",
+    areas: ["kitchen"],
+  }).save;
+  const offRound = applyCleanlinessAction(off, { kind: "team-round" });
+  assert(
+    kinds(offRound.save) === "floor" && reason(offRound.save, "floor") === "area-off",
+    "Q4: an area the Cleaner is not set to stays open and says 'area-off'",
+    kinds(offRound.save),
+  );
+  // Q5: no Cleaner at all: nothing claims to be waiting for one; a round with nothing to do changes nothing
+  const none = saveAt(41, FULL, [T("equipment")], []);
+  const same = applyCleanlinessAction(none, { kind: "team-round" });
+  assert(
+    reason(none, "equipment") === null && waitingCounts(none).supplies === 0 && same.save === none,
+    "Q5: with no Cleaner nothing claims to be waiting; a round with nothing to do returns the same save",
+  );
+  const app = read("src/App.tsx");
+  const screen = read("src/components/kc/business/BusinessCleanliness.tsx");
+  assert(
+    /RESTAURANT_MODE \? cleanerRound\(booked\)\.save : booked/.test(app) &&
+      (app.match(/persist\(cleanerRound\(hired\.save\)\.save\)/g) ?? []).length === 2 &&
+      /kind: "team-round"/.test(screen) &&
+      /data-testid="cleaner-waiting"/.test(screen) &&
+      /data-need-staff/.test(screen),
+    "Q6: App runs the team's round after a supply purchase and after a hire; the screen runs it on opening, lists who tasks wait for and offers Hire a Prep Cook / Server",
   );
 }
 

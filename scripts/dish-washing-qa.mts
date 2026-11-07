@@ -39,10 +39,18 @@ const memoryStore = new Map<string, string>();
 
 import fs from "node:fs";
 import {
+  DISH_BRUSH,
   DISH_ITEMS,
+  DISH_MAX_WEAR_PER_SEC,
   DISH_ORDER,
+  DISH_RINSE_THRESHOLD,
+  DISH_SCRUB_RATE,
+  DISH_TOUGH,
   DISH_ZOOM,
   dishMarks,
+  dishRinsePoints,
+  dishShapeFor,
+  paceAmount,
   dishSeed,
   dishStains,
   inDishSurface,
@@ -50,8 +58,11 @@ import {
 } from "../src/game/restaurant/dishDirt.ts";
 import path from "node:path";
 import { DEFAULT_SAVE, SaveManager, type SaveData } from "../src/game/SaveManager.ts";
+import { getCampaignRecipe } from "../src/game/recipes/campaignRecipes.ts";
+import { cleanedShare, scrubAmount } from "../src/game/restaurant/cleaningDirt.ts";
 import {
   SERVICE_SUPPLY_RULES,
+  bottleView,
   handWash,
   restaurantSuppliesOf,
   sinkLines,
@@ -304,12 +315,13 @@ console.log("W. Wiring");
     "W3: the sink opens from Cleanliness, the Pre-Service Check and Closing Time",
   );
   assert(
-    /cleanlinessAction\(\{ kind: "wash", ids: \[id\] \}\)/.test(sink) &&
+    // Developer 2026-11-07: every piece is washed on its own ("each: 1"), no longer a whole kind at once.
+    /cleanlinessAction\(\{ kind: "wash", ids: \[id\], each: 1 \}\)/.test(sink) &&
       /const result = onWash\(activeItem\.id\)/.test(game) &&
       /dishwashing\/premium-sink\.webp/.test(game) &&
       fs.existsSync(path.resolve("public/dishwashing/premium-sink.webp")) &&
       fs.statSync(path.resolve("public/dishwashing/premium-sink.webp")).size < 120_000,
-    "W4: each kind scrubbed clean is one cleanliness action; the sink art is bundled and small",
+    "W4: each PIECE scrubbed and rinsed clean is one cleanliness action (each: 1); the sink art is bundled and small",
   );
 }
 
@@ -327,6 +339,10 @@ console.log("W. Wiring");
     "cup-set": /coffee-ring|smear|water-spots/,
     jug: /water-spots|scale|smear/,
     shakers: /grime|crumbs|smear/,
+    pot: /crust|sauce|grease|grime|coffee-ring/,
+    pan: /grease|crust|sauce|grime/,
+    tray: /crust|grease|crumbs|grime/,
+    utensil: /sauce|grease|crust/,
   };
   let few = "";
   let off = "";
@@ -368,7 +384,8 @@ console.log("W. Wiring");
     shapes.every((s) => DISH_ZOOM[s] >= 1) &&
       DISH_ZOOM.fork > DISH_ZOOM.plate &&
       DISH_ORDER.plate < DISH_ORDER.fork &&
-      DISH_ORDER.bowl < DISH_ORDER.spoon,
+      DISH_ORDER.bowl < DISH_ORDER.spoon &&
+      DISH_ORDER.pot < DISH_ORDER.plate,
     "R6: big pieces come first; thin cutlery is zoomed in so its dirt shows",
   );
   const game = read("src/components/kc/restaurant/WashUpSink.tsx");
@@ -381,6 +398,338 @@ console.log("W. Wiring");
       /reducedMotionOn\(\)/.test(game) &&
       !/Math\.random\(/.test(game + read("src/game/restaurant/dishDirt.ts")),
     "R7: the sink uses the rooms' feel engine (wet scrub sound, sparkles, suds, spotless chime; reduced motion honoured), seeded",
+  );
+}
+
+// ---------- N. Every piece the orders used is washed, slowly (developer 2026-11-07) ----------
+console.log("N. Pots, pans, plates, glasses: used per order, washed one by one");
+{
+  const recipe = (id: string) => getCampaignRecipe(id)!;
+  const fry = recipe("camp-onion-rings-basket");
+  const curry = recipe("camp-indian-steak-curry");
+  const salad = recipe("camp-simple-garden-salad");
+  const kitchen = {
+    "dinner-plates": 20,
+    "dinner-forks": 20,
+    "dinner-knives": 20,
+    "water-glasses": 20,
+    "soup-bowls": 20,
+    "soup-spoons": 20,
+    "frying-pans": 2,
+    tongs: 1,
+    skimmers: 1,
+    spatulas: 1,
+    "stock-pot": 1,
+    saucepans: 2,
+    ladles: 1,
+    whisks: 1,
+    "mixing-bowls": 2,
+    "measuring-cups": 1,
+    "salt-pepper": 6,
+    "water-jugs": 3,
+    "dish-soap": 3,
+  } as const;
+  const serve = (
+    s: SaveData,
+    service: "dine-in" | "takeaway",
+    r: typeof fry,
+    n: number,
+    lvl = 60,
+  ) =>
+    Array.from({ length: n }).reduce<SaveData>(
+      (acc, _, i) => takeOrderSupplies(acc, service, { recipe: r, levelNumber: lvl, index: i }),
+      s,
+    );
+  const dirtyOf = (s: SaveData, id: SupplyId) => restaurantSuppliesOf(s).dirty[id] ?? 0;
+
+  // N1: a cooked order dirties the pots, pans and utensils ITS dish needs (the tool rules' own reading)
+  const base = stocked(saveAt(60), kitchen);
+  const one = serve(base, "dine-in", fry, 1);
+  assert(
+    dirtyOf(one, "frying-pans") === 1 &&
+      dirtyOf(one, "tongs") === 1 &&
+      dirtyOf(one, "skimmers") === 1 &&
+      dirtyOf(one, "spatulas") === 1 &&
+      dirtyOf(one, "stock-pot") === 0 &&
+      dirtyOf(one, "ladles") === 0,
+    "N1: an order of fried onion rings dirties a pan, tongs, a skimmer and a turner — not the stock pot or the ladle",
+  );
+  // N2: a pan serves 3 orders before it is dirty again; the count never passes what you own
+  const four = serve(base, "dine-in", fry, 4);
+  const many = serve(base, "dine-in", fry, 30);
+  assert(
+    dirtyOf(four, "frying-pans") === 2 &&
+      dirtyOf(many, "frying-pans") === 2 &&
+      dirtyOf(many, "tongs") === 1,
+    "N2: a pan is dirty again after 3 orders (4 orders = 2 pans); never more pieces than you own (30 orders, 2 pans)",
+  );
+  // N3: the curry's soup bowls, spoons, glasses AND the pot and ladle it was cooked in
+  const soupy = serve(base, "dine-in", curry, 3);
+  assert(
+    dirtyOf(soupy, "soup-bowls") === 3 &&
+      dirtyOf(soupy, "soup-spoons") === 3 &&
+      dirtyOf(soupy, "water-glasses") === 3 &&
+      dirtyOf(soupy, "stock-pot") === 1 &&
+      dirtyOf(soupy, "ladles") === 1 &&
+      dirtyOf(soupy, "saucepans") === 1,
+    "N3: three bowls of curry: 3 bowls, 3 spoons, 3 glasses, plus the stock pot, a saucepan and the ladle",
+  );
+  // N4: a takeaway order is cooked too (pots and pans dirty) but uses no tableware
+  const away = serve(base, "takeaway", fry, 1);
+  assert(
+    dirtyOf(away, "frying-pans") === 1 &&
+      dirtyOf(away, "dinner-plates") === 0 &&
+      dirtyOf(away, "water-glasses") === 0,
+    "N4: a takeaway order dirties the pans it was cooked in but no plates or glasses",
+  );
+  // N5: what you don't own is never dirty
+  const bare = stocked(saveAt(60), {
+    "dinner-plates": 20,
+    "dinner-forks": 20,
+    "dinner-knives": 20,
+    "water-glasses": 20,
+  });
+  const bareServed = serve(bare, "dine-in", fry, 3);
+  assert(
+    dirtyOf(bareServed, "frying-pans") === 0 &&
+      dirtyOf(bareServed, "tongs") === 0 &&
+      dirtyOf(bareServed, "dinner-plates") === 3,
+    "N5: a pan you don't own is not in the sink; the 3 plates are",
+  );
+  // N6: the table's shakers and jug are used by the guests (a table seats two; a pair of shakers each, one jug a table)
+  const six = serve(base, "dine-in", salad, 6);
+  assert(
+    dirtyOf(six, "salt-pepper") === 6 &&
+      dirtyOf(six, "water-jugs") === 3 &&
+      dirtyOf(serve(base, "dine-in", salad, 3), "water-jugs") === 2,
+    "N6: six guests use six shakers and three jugs (a jug a table of two); three guests leave two jugs",
+  );
+  assert(
+    dirtyOf(serve(base, "dine-in", salad, 6, 12), "salt-pepper") === 0 &&
+      dirtyOf(serve(base, "dine-in", salad, 6, 25), "water-jugs") === 0 &&
+      dirtyOf(serve(base, "dine-in", salad, 6, 25), "salt-pepper") === 6,
+    "N7: the shakers come with the dine-in stage, the jugs a stage later — before that they stay clean",
+  );
+  // N8: the sink holds all of it: tableware + cookware + table pieces
+  const day = serve(serve(base, "dine-in", fry, 5), "dine-in", curry, 3);
+  const lines = sinkLines(day);
+  const total = sinkPieces(day);
+  assert(
+    lines.some((l) => l.id === "frying-pans") &&
+      lines.some((l) => l.id === "stock-pot") &&
+      lines.some((l) => l.id === "dinner-plates" && l.n === 5) &&
+      lines.some((l) => l.id === "soup-bowls" && l.n === 3) &&
+      total === lines.reduce((t, l) => t + l.n, 0),
+    `N8: the sink holds every plate, bowl, glass, pot and pan the orders used (${total} pieces)`,
+  );
+  // N9: one piece at a time: washing ONE pan leaves the other, costs one piece of soap
+  const pans = serve(base, "dine-in", fry, 4);
+  const soap0 = restaurantSuppliesOf(pans).soapPct;
+  const wOne = handWash(pans, ["frying-pans"], 1);
+  const afterOne = restaurantSuppliesOf(wOne.save);
+  const opened = soap0 === 0 ? 100 : soap0;
+  assert(
+    wOne.washed === 1 &&
+      dirtyOf(wOne.save, "frying-pans") === 1 &&
+      // Pots and pans are counted apart from the tableware (the breakage seed and the $500 tiers keep their pace).
+      afterOne.washedKitchen === restaurantSuppliesOf(pans).washedKitchen + 1 &&
+      afterOne.washedTotal === restaurantSuppliesOf(pans).washedTotal &&
+      Math.abs(afterOne.soapPct - (opened - SERVICE_SUPPLY_RULES.soapPerPiece)) < 1e-9,
+    "N9: washing one pan washes one pan (one piece of soap); the other waits",
+  );
+  const wTwo = handWash(wOne.save, ["frying-pans"], 1);
+  assert(
+    dirtyOf(wTwo.save, "frying-pans") === 0 &&
+      (restaurantSuppliesOf(wTwo.save).used["frying-pans"] ?? 0) === 0 &&
+      handWash(wTwo.save, ["frying-pans"], 1).save === wTwo.save,
+    "N10: the second pan is washed too; a clean pan starts counting its orders from zero; nothing left, nothing changes",
+  );
+  // The action the sink game sends does the same.
+  const viaAction = applyCleanlinessAction(pans, { kind: "wash", ids: ["frying-pans"], each: 1 });
+  const wholeLine = applyCleanlinessAction(pans, { kind: "wash", ids: ["frying-pans"] });
+  assert(
+    JSON.stringify(viaAction.save) === JSON.stringify(wOne.save) &&
+      dirtyOf(wholeLine.save, "frying-pans") === 0,
+    "N11: the wash action with `each: 1` washes one piece; without `each` it washes the whole line (closing, the Cleaner)",
+  );
+  // A half-washed set keeps its share.
+  const refill = serve(wOne.save, "dine-in", fry, 3);
+  assert(
+    dirtyOf(refill, "frying-pans") >= 1 && dirtyOf(refill, "frying-pans") <= 2,
+    "N12: after washing one pan, more orders dirty pans again — never above what you own",
+  );
+  // N13: the START wash-up washes the pots too and breaks none
+  const started = washUp(day, 60);
+  assert(
+    sinkPieces(started.save) === 0 &&
+      started.washed === total &&
+      Object.keys(restaurantSuppliesOf(started.save).used).length === 0 &&
+      units(started.save, "frying-pans") === units(day, "frying-pans") &&
+      units(started.save, "stock-pot") === units(day, "stock-pot"),
+    "N13: the START wash-up washes the pots too; nothing is lost (pots and pans never break)",
+  );
+  // N14: an old save without `used` still reads
+  const old = structuredClone(day);
+  delete (old.business.restaurantSupplies as { used?: unknown }).used;
+  assert(
+    Object.keys(restaurantSuppliesOf(old).used).length === 0 && sinkPieces(old) === total,
+    "N14: an older save without `used` reads as nothing used, the sink unchanged",
+  );
+  // N15: every washable smallware has a picture
+  const kd = read("src/game/restaurant/kitchenDirt.ts");
+  const ids = [...kd.matchAll(/^\s+"?([a-z-]+)"?: \d+,/gm)].map((m) => m[1]!);
+  assert(
+    ids.length >= 12 &&
+      ids.every((id) => DISH_ITEMS.some((t) => t.id === id)) &&
+      !/Math\.random\(/.test(kd),
+    `N15: every washable smallware (${ids.length}) has a sink picture; the rules are pure`,
+  );
+  assert(
+    dishShapeFor("stock-pot" as SupplyId) === "pot" &&
+      dishShapeFor("frying-pans" as SupplyId) === "pan" &&
+      dishShapeFor("sheet-pans" as SupplyId) === "tray" &&
+      dishShapeFor("ladles" as SupplyId) === "utensil" &&
+      dishShapeFor("x" as SupplyId, "Cast-iron skillet") === "pan",
+    "N16: pots, pans, trays and utensils get their own pictures (and a name decides for the rest)",
+  );
+
+  // N17: the pace — a patient, thorough scrub (zig-zag at 500 px/s) takes real time
+  const paceOf = (shape: DishShape, seedN: number) => {
+    const stains = dishStains(shape, dishSeed(seedN, "dinner-plates"));
+    const marks = dishMarks(stains, shape);
+    const wear = new Float64Array(marks.length);
+    const r = DISH_BRUSH[shape];
+    const b = marks.reduce(
+      (acc, m) => ({
+        x0: Math.min(acc.x0, m.point.x),
+        x1: Math.max(acc.x1, m.point.x),
+        y0: Math.min(acc.y0, m.point.y),
+        y1: Math.max(acc.y1, m.point.y),
+      }),
+      { x0: 1e9, x1: -1e9, y0: 1e9, y1: -1e9 },
+    );
+    const step = 500 / 60; // px per event at 500 px/s
+    let t = 0;
+    let dir = 1;
+    let row = 0;
+    let x = b.x0;
+    let y = b.y0;
+    let prev = { x, y };
+    for (let i = 0; i < 60 * 600; i++) {
+      x += dir * step;
+      if (x > b.x1 || x < b.x0) {
+        dir = -dir;
+        x = Math.max(b.x0, Math.min(b.x1, x));
+        row++;
+        y = b.y0 + ((row * r * 1.1) % (b.y1 - b.y0 + 1));
+      }
+      const cur = { x, y };
+      const amount = scrubAmount(Math.hypot(cur.x - prev.x, cur.y - prev.y)) * DISH_SCRUB_RATE;
+      const dx = cur.x - prev.x;
+      const dy = cur.y - prev.y;
+      const len = dx * dx + dy * dy;
+      marks.forEach((m, k) => {
+        const tough = stains[m.stain]!.toughness;
+        if (wear[k]! >= tough) return;
+        const u = len
+          ? Math.max(0, Math.min(1, ((m.point.x - prev.x) * dx + (m.point.y - prev.y) * dy) / len))
+          : 0;
+        const d2 = (m.point.x - (prev.x + u * dx)) ** 2 + (m.point.y - (prev.y + u * dy)) ** 2;
+        if (d2 <= r * r) wear[k] = Math.min(tough, wear[k]! + amount);
+      });
+      prev = cur;
+      t += 1 / 60;
+      if (cleanedShare(wear, marks, stains) >= 0.9) return t;
+    }
+    return Infinity;
+  };
+  // The quickest of five different washes: even the luckiest dirt takes this long.
+  const pace = (shape: DishShape) => Math.min(...[1, 2, 3, 4, 5].map((n) => paceOf(shape, n)));
+  const times = Object.fromEntries(
+    (["plate", "pot", "pan", "tray", "glass", "fork", "utensil"] as DishShape[]).map((sh) => [
+      sh,
+      pace(sh),
+    ]),
+  ) as Record<string, number>;
+  console.log(
+    "      scrub seconds (zig-zag, 500 px/s):",
+    JSON.stringify(times, (_, v) => (typeof v === "number" ? Math.round(v * 10) / 10 : v)),
+  );
+  assert(
+    times.plate! >= 6 &&
+      times.pot! >= 4 &&
+      times.pan! >= 4 &&
+      times.tray! >= 4 &&
+      times.glass! >= 1.5 &&
+      times.fork! >= 1.5 &&
+      times.utensil! >= 1.5 &&
+      Math.max(...Object.values(times)) <= 30 &&
+      DISH_TOUGH >= 1.6 &&
+      DISH_SCRUB_RATE <= 0.15,
+    "N17: the pace — an ideal zig-zag scrub still takes real time (a plate ≥ 6 s, a pot or pan ≥ 4 s, a fork or glass ≥ 1.5 s; the rinse comes after), never a chore without end (≤ 30 s)",
+  );
+  // N17b: a frantic scribble is no quicker than a steady scrub (the pace cap per second)
+  const perSec = (pxPerSec: number, hz: number) => {
+    const stroke = pxPerSec / hz;
+    return paceAmount(scrubAmount(stroke) * DISH_SCRUB_RATE, 1000 / hz) * hz;
+  };
+  const steady = perSec(500, 60);
+  assert(
+    perSec(3000, 60) <= steady * 1.05 &&
+      perSec(3000, 240) <= steady * 1.05 &&
+      perSec(12000, 120) <= steady * 1.05 &&
+      DISH_MAX_WEAR_PER_SEC <= 2.5,
+    `N17b: scribbling at 3000 px/s wears no faster than a steady 500 px/s (${perSec(3000, 60).toFixed(2)} vs ${steady.toFixed(2)} a second)`,
+  );
+  // N18: the rinse — suds to wash off every piece
+  const rinseOk = (
+    [
+      "plate",
+      "pot",
+      "pan",
+      "tray",
+      "glass",
+      "fork",
+      "knife",
+      "spoon",
+      "utensil",
+      "bowl",
+      "jug",
+      "shakers",
+      "cup-set",
+      "small-plate",
+    ] as DishShape[]
+  ).every(
+    (sh) =>
+      dishRinsePoints(sh).length >= 6 &&
+      dishRinsePoints(sh).every((p) => inDishSurface(p.x, p.y, sh)),
+  );
+  assert(
+    rinseOk && DISH_RINSE_THRESHOLD >= 0.9 && DISH_RINSE_THRESHOLD < 1,
+    "N18: every piece has points to rinse, all on the piece; the rinse needs 90 %+ of them",
+  );
+  // N20: the soap estimate is honest — a full sink needs its pieces' share, so "services left" is not a guess
+  const emptySink = bottleView(stocked(saveAt(60), { "dish-soap": 1 }), "dish-soap");
+  const fullSink = bottleView(stocked(day, { "dish-soap": 1 }), "dish-soap");
+  assert(
+    fullSink.usePer >= Math.ceil(total * SERVICE_SUPPLY_RULES.soapPerPiece) &&
+      fullSink.usePer >= emptySink.usePer &&
+      emptySink.usePer === SERVICE_SUPPLY_RULES.soapPerWashUp,
+    `N20: dish soap "services left" counts what is in the sink (${total} pieces use ${fullSink.usePer}% a wash, an empty sink ${emptySink.usePer}%)`,
+  );
+  // N19: wiring — one piece at a time, then the rinse, then the rack
+  const game = read("src/components/kc/restaurant/WashUpSink.tsx");
+  assert(
+    /const \[queue\] = useState/.test(game) &&
+      /startRinse\(\)/.test(game) &&
+      /rinseSegment\(/.test(game) &&
+      /paintFoam\(/.test(game) &&
+      /data-testid="wash-up-foam"/.test(game) &&
+      /data-rack=\{item\.id\}/.test(game) &&
+      /DISH_SCRUB_RATE/.test(game) &&
+      /paceAmount\(amount, dt\)|paceAmount\(/.test(game) &&
+      !/setWashedPieces\(\(p\) => p \+ activeItem\.n\)/.test(game),
+    "N19: the sink queues every piece, scrubs (slowly), rinses off the suds, then racks it — one washed piece at a time",
   );
 }
 

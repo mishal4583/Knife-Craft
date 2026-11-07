@@ -25,7 +25,7 @@ import {
   endlessStarsOf,
   restaurantStanding,
 } from "@/game/restaurant/restaurantStanding";
-import { restaurantSuppliesOf } from "@/game/restaurant/serviceSupplies";
+import { piecesWashed, restaurantSuppliesOf } from "@/game/restaurant/serviceSupplies";
 import { LAST_CAMPAIGN_LEVEL } from "@/game/restaurant/restaurantProgression";
 import {
   SPOTLESS_QUALITY_PCT,
@@ -61,17 +61,26 @@ export function RestaurantProgress({ go, save }: { go: (s: ScreenId) => void; sa
             className="flex w-full items-center justify-between rounded-2xl border border-gold/50 bg-[linear-gradient(120deg,rgba(255,248,230,0.96),rgba(235,210,161,0.88))] px-4 py-3 text-left shadow-soft transition-transform active:scale-[0.99]"
           >
             <span className="flex items-center gap-3">
-              <span className="grid h-10 w-10 place-items-center rounded-xl bg-walnut text-xl text-ivory">🏆</span>
+              <span className="grid h-10 w-10 place-items-center rounded-xl bg-walnut text-xl text-ivory">
+                🏆
+              </span>
               <span>
-                <span className="block font-display text-[16px] font-bold text-walnut-dark">Achievements</span>
-                <span className="block font-ui text-[12px] text-walnut/65" data-testid="achievements-entry-note">
+                <span className="block font-display text-[16px] font-bold text-walnut-dark">
+                  Achievements
+                </span>
+                <span
+                  className="block font-ui text-[12px] text-walnut/65"
+                  data-testid="achievements-entry-note"
+                >
                   {collectableTotal(save) > 0
                     ? `💰 ${formatUsd(collectableTotal(save))} waiting to collect`
                     : "Cash rewards for your real game progress"}
                 </span>
               </span>
             </span>
-            <span aria-hidden="true" className="font-ui text-xl font-bold text-copper">›</span>
+            <span aria-hidden="true" className="font-ui text-xl font-bold text-copper">
+              ›
+            </span>
           </button>
         </div>
 
@@ -118,7 +127,7 @@ function NumbersCard({ save }: { save: SaveData }) {
     ["🍽️", "Guests at the tables", sup.coversTotal],
     ["🥡", "Takeaway orders", sup.takeawayTotal],
     ["📦", "Pieces packed", sup.packedTotal],
-    ["🧼", "Pieces washed", sup.washedTotal],
+    ["🧼", "Pieces washed", piecesWashed(sup)],
     ["✨", "Spotless services", rec.spotless],
   ];
   return (
@@ -208,7 +217,10 @@ function StandingCard({ save }: { save: SaveData }) {
           <Row label="Kitchen title" value={s.rank} />
           <Row label="Stage" value={`${s.stage} · ${s.stageNumber} / ${s.stageCount}`} />
           {s.nextStage ? (
-            <Row label="Next stage" value={`${s.nextStage.stage} · ${u.level(s.nextStage.level)}`} />
+            <Row
+              label="Next stage"
+              value={`${s.nextStage.stage} · ${u.level(s.nextStage.level)}`}
+            />
           ) : null}
           <Row label="Restaurant Complete" value={s.complete ? "✅ Yes" : "Not yet"} />
           <Row label="Endless Restaurant" value={s.endlessUnlocked ? "🔓 Open" : "🔒 Locked"} />
@@ -410,7 +422,12 @@ function JourneyTrack({ p }: { p: Progress }) {
   const total = p.level.total;
   const x = (lv: number) => pad + ((lv - 1) / (total - 1)) * (W - pad * 2);
   const at = p.campaignComplete ? total : p.level.current;
-  const ticks = [...new Set([1, 0.2, 0.4, 0.6, 0.8].map((value) => value < 1 ? Math.round(total * value) : value)), total];
+  const ticks = [
+    ...new Set(
+      [1, 0.2, 0.4, 0.6, 0.8].map((value) => (value < 1 ? Math.round(total * value) : value)),
+    ),
+    total,
+  ];
   return (
     <svg
       viewBox={`0 0 ${W} ${H}`}
@@ -492,13 +509,17 @@ function Earnings({ p }: { p: Progress }) {
         <Row label="Level rewards earned" value={formatUsd(p.money.levelRewards)} />
         <Row label="Milestone rewards" value={formatUsd(p.money.milestoneRewards)} />
         <Row
-          label={u.live ? "Final Reward (final service)" : `Final Reward (Level ${LAST_CAMPAIGN_LEVEL})`}
+          label={
+            u.live ? "Final Reward (final service)" : `Final Reward (Level ${LAST_CAMPAIGN_LEVEL})`
+          }
           value={
             p.familyLegacy.paid
               ? formatUsd(p.money.familyLegacy)
               : p.familyLegacy.waived
                 ? "finished before it existed"
-                : u.live ? "at the final service" : `at Level ${LAST_CAMPAIGN_LEVEL}`
+                : u.live
+                  ? "at the final service"
+                  : `at Level ${LAST_CAMPAIGN_LEVEL}`
           }
         />
         <Row label="Business revenue" value={formatUsd(p.money.businessRevenue)} />
@@ -518,8 +539,8 @@ function Earnings({ p }: { p: Progress }) {
       <p className="mt-1 flex items-center gap-1.5 font-hand text-[14px] leading-snug text-walnut/60">
         📈 The reward curve
         <InfoTip label="About this chart">
-          What each completed level pays at today's reward rates — the reward curve, not a record
-          of past payouts (those are "Level rewards earned" above).
+          What each completed level pays at today's reward rates — the reward curve, not a record of
+          past payouts (those are "Level rewards earned" above).
           {p.money.businessCoverage === "partial"
             ? " Business revenue counts from your earliest saved record."
             : ""}
@@ -675,7 +696,11 @@ function Journey({ p }: { p: Progress }) {
               {s.reached ? "✓" : "🔒"} {s.name}
             </p>
             <p className="font-ui text-[10px] font-bold text-walnut/55">
-              {s.current ? "your kitchen" : s.reached && u.live ? "reached" : u.level(s.unlockLevel)}
+              {s.current
+                ? "your kitchen"
+                : s.reached && u.live
+                  ? "reached"
+                  : u.level(s.unlockLevel)}
             </p>
           </div>
         ))}

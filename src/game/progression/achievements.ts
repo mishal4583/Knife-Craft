@@ -181,6 +181,7 @@ const LADDERS: readonly Ladder[] = [
       { target: 1_000, reward: D(3_000) },
       { target: 2_000, reward: D(5_000) },
     ],
+    // Tableware only, as it says (developer 2026-11-07: pots and pans are washed too, but the $500 tiers keep their pace).
     value: (s) => restaurantSuppliesOf(s).washedTotal,
   },
   {

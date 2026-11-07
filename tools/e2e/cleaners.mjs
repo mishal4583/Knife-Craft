@@ -4,6 +4,8 @@
 //   K3 the Second Floor screen shows one face per hired Floor Cleaner (two when two are hired), the woman then the man
 //   K4 Cleanliness: "A Cleaner for today" is the man with the mop (cleaner-today.webp); every picture loaded
 //   K5 no console errors
+//   K6 (2026-11-07) a Cleaner hired: opening Cleanliness puts the team to work on what it can (supplies there), the rest says who it waits for
+//      ("Still open: ... for a Prep Cook ... for a Server"), each such row offers "Hire a Prep Cook / Server", and the Cleaner's own chores are gone
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import { MOVED_IN_BUSINESS, launch, boot, seedSave, sleep, shot } from "./harness.mjs";
 
@@ -177,6 +179,103 @@ try {
     "K4 'A Cleaner for today' is the man with the mop (cleaner-today.webp), loaded",
     !!day && day.file === "cleaner-today.webp" && day.today === "true" && day.ok,
     day,
+  );
+
+  // ---- K6: a Cleaner is hired, but some chores belong to the Prep Cook and the Server ----
+  await boot(
+    page,
+    seedSave({
+      credits: 50_000,
+      business: {
+        ...MOVED_IN_BUSINESS,
+        staff: { hiredRoles: ["cleaner", "server", "cashier"] },
+        supplies: {
+          stock: Object.fromEntries(
+            [
+              "mop-bucket",
+              "brooms",
+              "toilet-brushes",
+              "floor-cleaner",
+              "disinfectant",
+              "sponges-cloths",
+              "bin-liners",
+              "hand-soap",
+              "toilet-paper",
+              "paper-towels",
+            ].map((id) => [id, { units: 6, costBasis: 600 }]),
+          ),
+        },
+        calendar: { businessDay: 40 },
+        cleanliness: {
+          tasks: [
+            { kind: "equipment", count: 1, since: 40 },
+            { kind: "bins", count: 1, since: 40 },
+            { kind: "toilet", count: 1, since: 40 },
+            { kind: "stations", count: 1, since: 40 },
+            { kind: "spoiled-out", count: 1, since: 40 },
+          ],
+          open: {},
+          counters: { sink: 0, paper: 0 },
+          cleanerAreas: ["kitchen", "dining", "restroom"],
+          introSeen: true,
+          cupboardAt: 21,
+          lastStart: null,
+          cleaned: 0,
+          byCleaner: 0,
+        },
+      },
+      levelProgress: {
+        currentLevelId: "level-40",
+        highestUnlockedLevelId: "level-40",
+        completedLevelIds: Array.from({ length: 39 }, (_, i) => `level-${i + 1}`),
+        campaignVersion: 3,
+      },
+      story: { introDone: true, milestoneMask: 0xffff, finaleSeen: true },
+      settings: {
+        sound: false,
+        music: false,
+        reducedMotion: false,
+        restaurantName: "Test Kitchen",
+      },
+    }),
+  );
+  await page.evaluate(() => document.querySelector('[data-nav="restaurant-map"]')?.click());
+  await page.waitForSelector(".map-hotspot-zone", { timeout: 15000 }).catch(() => null);
+  await sleep(600);
+  await page.evaluate(() =>
+    [...document.querySelectorAll(".map-hotspot-zone")]
+      .find((e) => /Manager \/ Office/.test(e.getAttribute("aria-label") ?? ""))
+      ?.click(),
+  );
+  await sleep(900);
+  await page.evaluate(() => {
+    [...document.querySelectorAll('nav[aria-label="Business sections"] button')]
+      .find((x) => x.textContent.includes("Cleanliness"))
+      ?.click();
+  });
+  await sleep(1500);
+  // open the Kitchen's card (the rows are inside it)
+  await page.evaluate(() => document.querySelector('[data-ready-area="kitchen"]')?.click());
+  await sleep(900);
+  const wait = await page.evaluate(() => ({
+    line: document.querySelector('[data-testid="cleaner-waiting"]')?.textContent ?? "",
+    onDuty: !!document.querySelector('[data-testid="cleaner-on-duty"]'),
+    hireChips: [...document.querySelectorAll("[data-need-staff]")].map((e) =>
+      e.getAttribute("data-need-staff"),
+    ),
+    tasks: [...document.querySelectorAll("[data-task]")].map((e) => e.getAttribute("data-task")),
+  }));
+  await shot(page, "cleaners-6-waiting");
+  check(
+    "K6 a Cleaner is hired: the catch-up cleaned equipment, bins and the toilet on opening; what is left waits for the Prep Cook, and says so",
+    wait.onDuty &&
+      /for a Prep Cook/.test(wait.line) &&
+      !/for a Server/.test(wait.line) &&
+      wait.hireChips.includes("prep-cook") &&
+      !wait.tasks.includes("equipment") &&
+      !wait.tasks.includes("bins") &&
+      !wait.tasks.includes("toilet"),
+    wait,
   );
 
   const bad = logs.filter(

@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useUnlockText } from "../navLevel";
 import { closingWage, staffHireFee } from "@/game/restaurant/staffRequirements";
 import { StaffPortrait } from "./StaffCard";
@@ -35,6 +35,9 @@ import {
   type DayCleanerOffer,
   type DayCleanerOutcome,
   supplyGauge,
+  waitingCounts,
+  waitingReason,
+  type WaitingReason,
   type AreaView,
   type CleanArea,
   type CleanlinessAction,
@@ -77,6 +80,13 @@ export function BusinessCleanliness({
   const [details, setDetails] = useState<CleanArea | null>(null);
   // The cleaning game (or a one-tap clean) for any task, shared with Closing Time (CleaningGame.tsx).
   const cleaning = useCleaningGame(save, (a) => run(a));
+  // The team catches up when the screen opens (developer 2026-11-07): supplies bought or a hire made elsewhere put them to work on
+  // the open chores that are theirs; nothing happens when there is nothing to do.
+  useEffect(() => {
+    cleanlinessAction({ kind: "team-round" });
+    // once per visit: the action is the app's and changes each render
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (level < CLEANING_FROM_LEVEL)
     return (
@@ -175,6 +185,8 @@ export function BusinessCleanliness({
           onToggle={() => setDetails((d) => (d === v.area ? null : v.area))}
           onClean={cleaning.clean}
           onBuy={(id) => openMarketSupplies(go, getSupplyItem(id)?.section ?? "cleaning", id)}
+          onStaff={(role) => openStaffFor(go, [role])}
+          reasons={Object.fromEntries(st.tasks.map((t) => [t.kind, waitingReason(save, t.kind)]))}
         />
       ))}
 
@@ -196,6 +208,27 @@ export function BusinessCleanliness({
       {!st.introSeen ? <Intro onDone={() => run({ kind: "intro-seen" })} /> : null}
       {cleaning.game}
     </div>
+  );
+}
+
+/** Why tasks are still open although a Cleaner is on duty: who they wait for, in a few words (cleanliness.ts waitingCounts). */
+function WaitingLine({ save }: { save: SaveData }) {
+  const c = waitingCounts(save);
+  const parts = [
+    c["prep-cook"] ? `${c["prep-cook"]} for a Prep Cook` : "",
+    c.server ? `${c.server} for a Server` : "",
+    c.supplies ? `${c.supplies} need supplies` : "",
+    c["area-off"] ? `${c["area-off"]} outside their areas` : "",
+    c.yours ? `${c.yours} for you` : "",
+  ].filter(Boolean);
+  if (parts.length === 0) return null;
+  return (
+    <p
+      className="mt-1.5 px-1 font-ui text-[12.5px] font-bold leading-snug text-walnut/75"
+      data-testid="cleaner-waiting"
+    >
+      Still open: {parts.join(" · ")}
+    </p>
   );
 }
 
@@ -256,11 +289,13 @@ function ReadyCard({
           <CleanerFace className="h-7 w-7" today={!!today} />{" "}
           {today ? "Cleaner on today" : "Your Cleaner is on duty"} · cleans after each service
           <InfoTip label="What the Cleaner does">
-            The routine tasks in their areas, now and after each service. Spills, and anything short
-            of supplies, stay yours: tap Clean on those.
+            The routine tasks in their areas, now and after each service. Spills, the Prep Cook's
+            and the Server's chores, and anything short of supplies, stay open: tap Clean on those,
+            or hire the person.
           </InfoTip>
         </p>
       ) : null}
+      {!ready && onDuty ? <WaitingLine save={save} /> : null}
     </Panel>
   );
 }
@@ -354,6 +389,8 @@ function AreaCard({
   onToggle,
   onClean,
   onBuy,
+  onStaff,
+  reasons,
   roomImage,
 }: {
   view: AreaView;
@@ -361,6 +398,10 @@ function AreaCard({
   onToggle: () => void;
   onClean: (task: TaskKind) => void;
   onBuy: (id: SupplyId) => void;
+  /** Open the Staff screen for a role (Prep Cook / Server). */
+  onStaff: (role: string) => void;
+  /** Why each open task is still open although a Cleaner is on duty (cleanliness.ts waitingReason). */
+  reasons: Partial<Record<TaskKind, WaitingReason>>;
   roomImage: string;
 }) {
   const meta = AREA_META[view.area];
@@ -509,7 +550,10 @@ function AreaCard({
                       {t.rule.uses.length
                         ? `Uses ${t.rule.uses.map((u) => getSupplyItem(u.id)?.name.split(" ·")[0]).join(", ")}`
                         : "No supplies"}
-                      {t.rule.routine ? "" : " · not a Cleaner's job"}
+                      {reasons[t.kind] === "yours" ? " · not a Cleaner's job" : ""}
+                      {reasons[t.kind] === "prep-cook" ? " · the Prep Cook's job" : ""}
+                      {reasons[t.kind] === "server" ? " · the Server's job" : ""}
+                      {reasons[t.kind] === "area-off" ? " · your Cleaner is not on this area" : ""}
                     </p>
                   </div>
                   <KButton
@@ -522,6 +566,18 @@ function AreaCard({
                     Clean
                   </KButton>
                 </div>
+                {reasons[t.kind] === "prep-cook" || reasons[t.kind] === "server" ? (
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    <button
+                      type="button"
+                      onClick={() => onStaff(reasons[t.kind] as string)}
+                      data-need-staff={reasons[t.kind]}
+                      className="press min-h-12 rounded-full bg-copper/90 px-3 font-ui text-[12.5px] font-extrabold text-ivory"
+                    >
+                      Hire a {reasons[t.kind] === "server" ? "Server" : "Prep Cook"} ›
+                    </button>
+                  </div>
+                ) : null}
                 {t.needs.length ? (
                   <div className="mt-1 flex flex-wrap gap-1">
                     {t.needs.map((id) => (

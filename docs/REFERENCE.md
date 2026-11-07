@@ -278,7 +278,7 @@ once). Restaurant browser tests run on the normal build, classic ones on a
   `restaurant-tools-qa`, `restaurant-tableware-qa`,
   `restaurant-takeaway-qa`, `restaurant-service-report-qa`,
   `restaurant-cleanliness-qa`, `cleaning-dirt-qa` (browser: `cleaningfeel.mjs`),
-  `dish-washing-qa` (browser: `dishwashing.mjs`),
+  `dish-washing-qa` (browser: `dishwashing.mjs`), `npc-sprites-qa` (browser: `npcpeople.mjs`),
   `restaurant-day-clock-qa`,
   `restaurant-shift-chores-qa`, `restaurant-deliveries-qa`,
   `restaurant-par-audit-qa`, `restaurant-half-wages-qa`, `restaurant-second-floor-qa`,
@@ -964,6 +964,12 @@ service, {recipe, levelNumber, index})`; the guest gate
       ("🫧 N in the sink · 🧽 Wash ›") on the Pre-Service Check (with the opening chores) and Closing
       Time; Level Complete adds "🫧 N in the sink · 🧽 wash by hand, nothing
       breaks" (`sinkNoticeLines`).
+    - Every piece, slowly (developer 2026-11-07): the sink holds one entry per piece the orders used
+      (tableware per guest by their dish; NEW pots, pans, sheet pans and utensils per cooked order via
+      `restaurant/kitchenDirt.ts`, read from the Pre-Service Check's `TOOL_RULES`; the table's shakers and
+      jug). `WashUpSink` washes each on its own: scrub (`DISH_TOUGH` 1.8, `DISH_SCRUB_RATE` 0.12), then rinse
+      the suds (`DISH_RINSE_*`), then rack; each is one `{ kind: "wash", ids, each: 1 }`. Starts at the
+      dine-in stage. HANDOFF has the details; QA `dish-washing-qa` N.
     - Economy: the sim's player never washes by hand, so its numbers barely
       move (completionist Local $132,088 → $132,066: soap and breakage one
       service later); hand washing only saves the odd broken piece.
@@ -1577,8 +1583,17 @@ preparation = PreparationScene; events = `events.ts`; platform =
     servers, 2 cleaners); only the drawing changes, never the save, the locks or the money;
   - view `components/kc/restaurantMap/FloorLife.tsx`: inline CSS keyframes, transform and
     opacity only, no library; aria-hidden, `pointer-events: none`; hidden by the game's Reduced
-    Motion setting, like the first floor's guests. The people are the first floor's
-    (`restaurantMap/GuestPoses.tsx`, shared).
+    Motion setting, like the first floor's guests. Since 2026-11-07 the people are PAINTED
+    (see "Painted people" below); the old SVG puppet (`restaurantMap/GuestPoses.tsx`) is the
+    fallback when a sheet fails to load.
+  - **Painted people** (NPC realism, developer 2026-11-07; HANDOFF has the details):
+    `restaurant/peopleLooks.ts` (35 looks: first-floor staff, the 12 regulars, 8 generic guests,
+    4 floor servers and 4 floor cleaners; gender, age, size, pace; seeded `pickLooks`,
+    `guestLookFor`), sheets `public/people/<id>/{a,b,bust}.webp` from `scripts/make-npc-assets.py`
+    (source `NPC Assets/`, local only), `FloorLife.tsx` `MapCast` (pose stack switched by
+    keyframes: facing, carrying, seated, work poses; z-index follows y), `restaurant/guestLife.ts`
+    (the first floor's 7 guests), `GuestPoses` `look` / `face` (the dining room), `CustomerBust`
+    (the regulars' faces on the order cards). Tests: `npc-sprites-qa`; e2e `npcpeople.mjs`.
   - Tests: `restaurant-floor-life-qa`; e2e `restaurantsecondfloor.mjs` check 3c.
 - **First-floor staff life** (developer 2026-10-16): `restaurant/staffLife.ts` +
   `restaurantMap/StaffLife.tsx`, drawn by the shared `MapCast` (FloorLife.tsx).

@@ -51,6 +51,7 @@ import { makeSeededRand } from "../business/businessDeterministicRandom";
 import { isSystemLive } from "./restaurantProgression";
 import type { RecipeDefinition } from "../recipes/recipeTypes";
 import { dishServiceFor } from "./dishService";
+import { KITCHEN_USES_PER_WASH, dirtyAfterUses, kitchenPiecesFor } from "./kitchenDirt";
 import { remapCampaignThreshold } from "../levels/campaignSelection";
 
 /** Every number the restaurant's supplies use (configurable; not balanced — Economy TODO). */
@@ -59,7 +60,7 @@ export const SERVICE_SUPPLY_RULES = {
   placeSetting: ["dinner-plates", "dinner-forks", "dinner-knives"] as readonly SupplyId[],
   napkin: "paper-napkins" as SupplyId,
   napkinsPerOrder: 1,
-  /** % of a gallon bottle of dish soap one wash-up uses. */
+  /** % of a gallon bottle of dish soap one wash-up uses, at least. */
   soapPerWashUp: 5,
   /** % of a gallon bottle of cleaning liquid one closing wipe-down uses. */
   cleanerPerClosing: 10,
@@ -121,8 +122,15 @@ export type RestaurantSuppliesState = {
   washing: number;
   /** Plan B: each tableware piece waiting to be washed (an older save's `washing` = plate + fork + knife). */
   dirty: Partial<Record<SupplyId, number>>;
-  /** Pieces ever washed and broken (the breakage seed, and the restaurant's record). */
+  /**
+   * Kitchen smallware (pots, pans, utensils) and table pieces: orders served with it since it was last
+   * washed (developer 2026-11-07). A piece is dirty after `KITCHEN_USES_PER_WASH` orders; reset when washed.
+   */
+  used: Partial<Record<SupplyId, number>>;
+  /** Tableware pieces ever washed and broken (the breakage seed, and the restaurant's record). */
   washedTotal: number;
+  /** Pots, pans, utensils and table pieces ever washed (a record only; they never break). */
+  washedKitchen: number;
   brokenTotal: number;
   /** Plan D: guests served at the tables, takeaway orders and pieces packed (running totals). */
   coversTotal: number;
@@ -135,7 +143,9 @@ export const DEFAULT_RESTAURANT_SUPPLIES: RestaurantSuppliesState = {
   cleanerPct: 0,
   washing: 0,
   dirty: {},
+  used: {},
   washedTotal: 0,
+  washedKitchen: 0,
   brokenTotal: 0,
   coversTotal: 0,
   takeawayTotal: 0,
@@ -159,12 +169,19 @@ export function restaurantSuppliesOf(save: SaveData): RestaurantSuppliesState {
     // An older save: `washing` place settings = that many plates, forks and knives.
     for (const id of SERVICE_SUPPLY_RULES.placeSetting) dirty[id] = washing;
   }
+  const used: Partial<Record<SupplyId, number>> = {};
+  if (raw?.used && typeof raw.used === "object") {
+    for (const [id, n] of Object.entries(raw.used))
+      if (getSupplyItem(id) && whole(n) > 0) used[id as SupplyId] = whole(n);
+  }
   return {
     soapPct: pct(raw?.soapPct),
     cleanerPct: pct(raw?.cleanerPct),
     washing,
     dirty,
+    used,
     washedTotal: whole(raw?.washedTotal),
+    washedKitchen: whole(raw?.washedKitchen),
     brokenTotal: whole(raw?.brokenTotal),
     coversTotal: whole(raw?.coversTotal),
     takeawayTotal: whole(raw?.takeawayTotal),
@@ -173,6 +190,10 @@ export function restaurantSuppliesOf(save: SaveData): RestaurantSuppliesState {
 }
 
 const dirtyOf = (state: RestaurantSuppliesState, id: SupplyId) => state.dirty[id] ?? 0;
+
+/** Every piece ever washed: tableware plus pots, pans, utensils and table pieces (what the screens count). */
+export const piecesWashed = (state: RestaurantSuppliesState) =>
+  state.washedTotal + state.washedKitchen;
 
 /** A piece ready to serve on: owned and not waiting to be washed. */
 export function cleanUnits(save: SaveData, id: SupplyId): number {
@@ -403,7 +424,12 @@ const openOf = (state: RestaurantSuppliesState, id: BottleId) =>
 export function bottleView(save: SaveData, id: BottleId): BottleView {
   const openPct = openOf(restaurantSuppliesOf(save), id);
   const spare = supplyUnits(save.business.supplies, id);
-  const usePer = perServiceOf(id);
+  // Dish soap: a wash-up is at least `soapPerWashUp`, and a full sink needs its pieces' share
+  // (developer 2026-11-07: pots and pans join the sink, so "services left" must not be a guess).
+  const usePer =
+    id === "dish-soap"
+      ? Math.max(perServiceOf(id), Math.ceil(sinkPieces(save) * SERVICE_SUPPLY_RULES.soapPerPiece))
+      : perServiceOf(id);
   const servicesLeft = Math.floor((openPct + spare * 100) / usePer);
   return {
     id,
@@ -526,7 +552,10 @@ export function washUp(
   let supplies = soap.save.business.supplies;
   const broken: SupplyId[] = [];
   let count = state.washedTotal;
+  let tableware = 0;
   for (const [id, n] of Object.entries(state.dirty) as [SupplyId, number][]) {
+    if (isKitchenPiece(id)) continue; // pots, pans and utensils never break
+    tableware += n;
     for (let k = 0; k < n; k++) {
       count++;
       if (!breaks(id, count)) continue;
@@ -543,7 +572,9 @@ export function washUp(
         ...restaurantSuppliesOf(soap.save),
         washing: 0,
         dirty: {},
-        washedTotal: state.washedTotal + pieces,
+        used: {},
+        washedTotal: state.washedTotal + tableware,
+        washedKitchen: state.washedKitchen + (pieces - tableware),
         brokenTotal: state.brokenTotal + broken.length,
       },
       supplies,
@@ -585,11 +616,19 @@ export function sinkPieces(save: SaveData): number {
 export function handWash(
   save: SaveData,
   ids: readonly SupplyId[],
+  /** At most this many pieces of each line (the sink game washes one piece at a time); all when absent. */
+  each?: number,
 ): { save: SaveData; washed: number; noSoap: boolean } {
   const state = restaurantSuppliesOf(save);
-  const pick = [...new Set(ids)].filter((id) => (state.dirty[id] ?? 0) > 0);
-  const pieces = pick.reduce((t, id) => t + (state.dirty[id] ?? 0), 0);
+  const take = new Map<SupplyId, number>();
+  for (const id of new Set(ids)) {
+    const have = state.dirty[id] ?? 0;
+    const k = Math.min(have, each === undefined ? have : Math.max(0, Math.floor(each)));
+    if (k > 0) take.set(id, k);
+  }
+  const pieces = [...take.values()].reduce((t, n) => t + n, 0);
   if (pieces === 0) return { save, washed: 0, noSoap: false };
+  const tableware = [...take].reduce((t, [id, n]) => (isKitchenPiece(id) ? t : t + n), 0);
   const soap = drawFromBottle(
     save,
     "dish-soap",
@@ -598,13 +637,26 @@ export function handWash(
   if (!soap.ok) return { save, washed: 0, noSoap: true };
   const after = restaurantSuppliesOf(soap.save);
   const dirty = { ...after.dirty };
-  for (const id of pick) delete dirty[id];
+  const used = { ...after.used };
+  for (const [id, k] of take) {
+    const left = (dirty[id] ?? 0) - k;
+    if (left > 0) dirty[id] = left;
+    else delete dirty[id];
+    // A washed pot is a clean pot: the orders it served are forgotten (a half-washed set keeps its share).
+    const perWash =
+      KITCHEN_USES_PER_WASH[id] ?? tableUsesFor(Infinity).find(([t]) => t === id)?.[1];
+    if (left <= 0 || perWash === undefined) delete used[id];
+    else used[id] = Math.max(0, (used[id] ?? 0) - k * perWash);
+    if ((used[id] ?? 0) === 0) delete used[id];
+  }
   return {
     save: withState(soap.save, {
       ...after,
       dirty,
+      used,
       washing: 0,
-      washedTotal: after.washedTotal + pieces,
+      washedTotal: after.washedTotal + tableware,
+      washedKitchen: after.washedKitchen + (pieces - tableware),
     }),
     washed: pieces,
     noSoap: false,
@@ -666,6 +718,41 @@ export function closingSupplies(save: SaveData, levelNumber: number): SaveData {
 
 // ── Serving ─────────────────────────────────────────────────────────────
 
+/** A pot, pan, utensil or table piece (not tableware): washed, never broken, and not part of the breakage seed. */
+const isKitchenPiece = (id: SupplyId) =>
+  KITCHEN_USES_PER_WASH[id] !== undefined || WASHED_TABLE_PIECES.includes(id);
+
+/** The table pieces the sink washes (the other table pieces — menu stands, napkin holders — are wiped, not washed). */
+const WASHED_TABLE_PIECES: readonly SupplyId[] = ["salt-pepper", "water-jugs"];
+
+/**
+ * One more order used these pieces (developer 2026-11-07): a piece is dirty once it has served
+ * its `perWash` orders, and never more pieces than you own.
+ */
+function notePieceUse(
+  state: RestaurantSuppliesState,
+  supplies: BusinessSuppliesState,
+  uses: readonly (readonly [SupplyId, number])[],
+): RestaurantSuppliesState {
+  if (uses.length === 0) return state;
+  const used = { ...state.used };
+  const dirty = { ...state.dirty };
+  for (const [id, perWash] of uses) {
+    used[id] = (used[id] ?? 0) + 1;
+    const want = dirtyAfterUses(used[id]!, perWash, supplyUnits(supplies, id));
+    if (want > (dirty[id] ?? 0)) dirty[id] = want;
+  }
+  return { ...state, used, dirty };
+}
+
+/** What a dine-in guest's table uses: their share of the shakers and the jug (a table seats `coversPerTable`). */
+function tableUsesFor(levelNumber: number): [SupplyId, number][] {
+  const R = SERVICE_SUPPLY_RULES;
+  return R.tablePieces
+    .filter((t) => WASHED_TABLE_PIECES.includes(t.id) && levelNumber >= t.fromLevel)
+    .map((t) => [t.id, R.coversPerTable / t.perTable] as [SupplyId, number]);
+}
+
 /**
  * What one served order uses, automatically: dine-in a clean setting (→
  * washing) and a napkin; takeaway a container, a bag and a napkin. Whatever
@@ -698,6 +785,8 @@ export function takeOrderSupplies(
     };
     for (const id of dineInExtrasFor(cover?.recipe, cover?.levelNumber ?? 0))
       supplies = consumeOne(supplies, id);
+    // Developer 2026-11-07: the table's shakers and jug are used too.
+    if (cover) state = notePieceUse(state, supplies, tableUsesFor(cover.levelNumber));
   } else if (cover) {
     // Plan C: the dish's own container, bag and extras.
     const t = takeawayPiecesFor(cover.recipe, cover.levelNumber);
@@ -716,6 +805,15 @@ export function takeOrderSupplies(
     supplies = takePackagingForOrder(supplies).supplies;
     state = { ...state, takeawayTotal: state.takeawayTotal + 1 };
   }
+  // Developer 2026-11-07: the kitchen cooked it — the pots, pans and utensils its dish needs are used.
+  if (cover)
+    state = notePieceUse(
+      state,
+      supplies,
+      kitchenPiecesFor(cover.recipe, cover.levelNumber).map(
+        (id) => [id, KITCHEN_USES_PER_WASH[id] ?? 3] as const,
+      ),
+    );
   for (let i = 0; i < napkinsFor(cover?.recipe); i++) {
     const took = takeOne(supplies.stock, SERVICE_SUPPLY_RULES.napkin);
     if (!took) break;

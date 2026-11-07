@@ -44,6 +44,20 @@ export const DISH_ITEMS = [
   { id: "coffee-tea-set", label: "Coffee cup & saucer", shape: "cup-set" },
   { id: "water-jugs", label: "Water jug", shape: "jug" },
   { id: "salt-pepper", label: "Salt & pepper shakers", shape: "shakers" },
+  // The kitchen's own smallware (developer 2026-11-07): every cooked order dirties what its dish needs.
+  { id: "stock-pot", label: "Stock pot", shape: "pot" },
+  { id: "saucepans", label: "Saucepan", shape: "pot" },
+  { id: "frying-pans", label: "Frying pan", shape: "pan" },
+  { id: "saute-pans", label: "Sauté pan", shape: "pan" },
+  { id: "sheet-pans", label: "Sheet pan", shape: "tray" },
+  { id: "mixing-bowls", label: "Mixing bowl", shape: "bowl" },
+  { id: "measuring-cups", label: "Measuring cups", shape: "bowl" },
+  { id: "ladles", label: "Ladle", shape: "utensil" },
+  { id: "tongs", label: "Tongs", shape: "utensil" },
+  { id: "spatulas", label: "Turner", shape: "utensil" },
+  { id: "skimmers", label: "Skimmer", shape: "utensil" },
+  { id: "whisks", label: "Whisk", shape: "utensil" },
+  { id: "graters", label: "Box grater", shape: "utensil" },
 ] as const;
 export type DishShape = (typeof DISH_ITEMS)[number]["shape"];
 
@@ -52,6 +66,10 @@ export function dishShapeFor(id: SupplyId, name: string = id): DishShape {
   const known = DISH_ITEMS.find((t) => t.id === id);
   if (known) return known.shape;
   const n = name.toLowerCase();
+  if (/stock ?pot|saucepan|\bpot\b/.test(n)) return "pot";
+  if (/\bpan\b|skillet|wok/.test(n)) return "pan";
+  if (/sheet|tray|baking/.test(n)) return "tray";
+  if (/ladle|tongs|turner|spatula|skimmer|whisk|grater/.test(n)) return "utensil";
   if (/glass|tumbler|goblet/.test(n)) return "glass";
   if (/fork/.test(n)) return "fork";
   if (/knife|knives/.test(n)) return "knife";
@@ -75,6 +93,19 @@ export function inDishSurface(x: number, y: number, shape: DishShape): boolean {
     const rx = shape === "small-plate" ? 63 : 60;
     const ry = shape === "small-plate" ? 44 : 40;
     return ((x - 180) / rx) ** 2 + ((y - 165) / ry) ** 2 <= 1;
+  }
+  if (shape === "pot") return ((x - 180) / 70) ** 2 + ((y - 160) / 50) ** 2 <= 1;
+  if (shape === "pan") {
+    const body = ((x - 150) / 66) ** 2 + ((y - 160) / 50) ** 2 <= 1;
+    const handle = x >= 212 && x <= 318 && y >= 153 && y <= 167;
+    return body || handle;
+  }
+  if (shape === "tray") return x >= 94 && x <= 266 && y >= 120 && y <= 204;
+  if (shape === "utensil") {
+    const head = ((x - 180) / 22) ** 2 + ((y - 122) / 20) ** 2 <= 1;
+    const handle = y >= 138 && y <= 222 && x >= 175 && x <= 185;
+    const handleEnd = ((x - 180) / 6) ** 2 + ((y - 221) / 8) ** 2 <= 1;
+    return head || handle || handleEnd;
   }
   if (shape === "fork") {
     const inTines =
@@ -138,6 +169,10 @@ export const DISH_BRUSH: Record<DishShape, number> = {
   "cup-set": 17,
   jug: 17,
   shakers: 14,
+  pot: 24,
+  pan: 22,
+  tray: 22,
+  utensil: 13,
 };
 
 /**
@@ -156,34 +191,68 @@ export const DISH_ZOOM: Record<DishShape, number> = {
   "cup-set": 1.25,
   jug: 1.3,
   shakers: 1.55,
+  pot: 1,
+  pan: 1,
+  tray: 1,
+  utensil: 1.6,
 };
 
-/** The order pieces come to the sink: the big satisfying ones first, cutlery last. */
+/** The order pieces come to the sink: the big satisfying ones first (pots, pans, plates), cutlery last. */
 export const DISH_ORDER: Record<DishShape, number> = {
-  plate: 0,
-  bowl: 1,
-  "small-plate": 2,
-  "cup-set": 3,
-  glass: 4,
-  jug: 5,
-  shakers: 6,
-  knife: 7,
-  fork: 8,
-  spoon: 9,
+  pot: 0,
+  pan: 1,
+  tray: 2,
+  plate: 3,
+  bowl: 4,
+  "small-plate": 5,
+  "cup-set": 6,
+  glass: 7,
+  jug: 8,
+  shakers: 9,
+  utensil: 10,
+  knife: 11,
+  fork: 12,
+  spoon: 13,
 };
 
 /** Clean enough: past this share the last specks wipe themselves (as the room cleaning). */
 export const DISH_CLEAN_THRESHOLD = 0.9;
+
+/**
+ * THE PACE (developer 2026-11-07: "don't make the cleaning very easy; make it satisfying and slow").
+ * A dish stain is `DISH_TOUGH` times tougher than a room's and a stroke wears it `DISH_SCRUB_RATE`
+ * as fast, so a plate takes many honest passes (the first sink was one quick swipe for the whole
+ * stack). Then the suds are rinsed off (`DISH_RINSE_*`) before the piece goes to the rack.
+ */
+export const DISH_TOUGH = 1.8;
+export const DISH_SCRUB_RATE = 0.12;
+/**
+ * The pace cap: a stroke wears a stain at most this much per SECOND whatever the finger's speed, so a frantic
+ * scribble is no quicker than a steady scrub (about 500 px/s); scrubbing faster only wastes effort.
+ */
+export const DISH_MAX_WEAR_PER_SEC = 2.2;
+
+/** `amount` (one pointer event's wear) held to the pace cap for the `dtMs` since the previous event. */
+export function paceAmount(amount: number, dtMs: number): number {
+  const dt = Math.min(100, Math.max(4, dtMs));
+  return Math.min(amount, (dt / 1000) * DISH_MAX_WEAR_PER_SEC);
+}
+
+/** The rinse: the share of the piece the water must pass over, and its reach next to the sponge's. */
+export const DISH_RINSE_THRESHOLD = 0.93;
+export const DISH_RINSE_REACH = 0.85;
+/** Spacing of the points the rinse has to pass over (scene px). */
+export const DISH_RINSE_GRID = 15;
 
 type Recipe = { kind: StainKind; r: [number, number]; stretch?: [number, number]; n: number };
 
 /** What each piece collects (kinds, size range in scene px, how many). */
 const RECIPES: Record<DishShape, Recipe[]> = {
   plate: [
-    { kind: "sauce", r: [13, 20], n: 2 },
-    { kind: "crust", r: [8, 12], n: 1 },
-    { kind: "grease", r: [9, 12], stretch: [2.2, 3.2], n: 1 },
-    { kind: "crumbs", r: [10, 14], n: 1 },
+    { kind: "sauce", r: [13, 20], n: 3 },
+    { kind: "crust", r: [8, 12], n: 2 },
+    { kind: "grease", r: [9, 12], stretch: [2.2, 3.2], n: 2 },
+    { kind: "crumbs", r: [10, 14], n: 2 },
     { kind: "smear", r: [7, 10], stretch: [2, 2.8], n: 1 },
   ],
   "small-plate": [
@@ -199,9 +268,9 @@ const RECIPES: Record<DishShape, Recipe[]> = {
     { kind: "crumbs", r: [7, 9], n: 1 },
   ],
   fork: [
-    { kind: "sauce", r: [5, 7], n: 2 },
-    { kind: "grease", r: [4, 5], stretch: [2.4, 3.2], n: 1 },
-    { kind: "crust", r: [4, 5], n: 1 },
+    { kind: "sauce", r: [5, 7], n: 3 },
+    { kind: "grease", r: [4, 5], stretch: [2.4, 3.2], n: 2 },
+    { kind: "crust", r: [4, 5], n: 2 },
   ],
   knife: [
     { kind: "grease", r: [4, 6], stretch: [2.6, 3.4], n: 1 },
@@ -216,8 +285,8 @@ const RECIPES: Record<DishShape, Recipe[]> = {
     { kind: "grease", r: [3, 4], stretch: [2.4, 3], n: 1 },
   ],
   glass: [
-    { kind: "water-spots", r: [8, 11], n: 2 },
-    { kind: "smear", r: [5, 7], stretch: [1.6, 2.2], n: 1 },
+    { kind: "water-spots", r: [8, 11], n: 3 },
+    { kind: "smear", r: [5, 7], stretch: [1.6, 2.2], n: 2 },
     { kind: "coffee-ring", r: [9, 12], n: 1 },
   ],
   "cup-set": [
@@ -235,6 +304,31 @@ const RECIPES: Record<DishShape, Recipe[]> = {
     { kind: "crumbs", r: [6, 8], n: 1 },
     { kind: "smear", r: [4, 6], stretch: [1.6, 2], n: 1 },
   ],
+  // The kitchen's smallware: burnt-on crust, grease and sauce, soot grime.
+  pot: [
+    { kind: "crust", r: [13, 18], n: 2 },
+    { kind: "sauce", r: [14, 20], n: 2 },
+    { kind: "grease", r: [9, 12], stretch: [2.2, 3], n: 1 },
+    { kind: "grime", r: [10, 14], n: 1 },
+    { kind: "coffee-ring", r: [16, 20], n: 1 },
+  ],
+  pan: [
+    { kind: "grease", r: [10, 14], stretch: [2, 2.8], n: 3 },
+    { kind: "crust", r: [10, 14], n: 3 },
+    { kind: "sauce", r: [11, 16], n: 1 },
+    { kind: "grime", r: [8, 11], n: 1 },
+  ],
+  tray: [
+    { kind: "crust", r: [11, 15], n: 2 },
+    { kind: "grease", r: [10, 14], stretch: [2.2, 3], n: 2 },
+    { kind: "crumbs", r: [10, 14], n: 2 },
+    { kind: "grime", r: [9, 12], n: 1 },
+  ],
+  utensil: [
+    { kind: "sauce", r: [6, 8], n: 3 },
+    { kind: "grease", r: [4, 5], stretch: [2.4, 3.2], n: 2 },
+    { kind: "crust", r: [4, 5], n: 1 },
+  ],
 };
 
 /** The bounding box to look for a spot on (scene units). */
@@ -249,6 +343,10 @@ const BOUNDS: Record<DishShape, { x: [number, number]; y: [number, number] }> = 
   "cup-set": { x: [138, 222], y: [120, 205] },
   jug: { x: [150, 208], y: [104, 214] },
   shakers: { x: [148, 212], y: [118, 190] },
+  pot: { x: [112, 248], y: [112, 208] },
+  pan: { x: [86, 316], y: [112, 208] },
+  tray: { x: [96, 264], y: [122, 202] },
+  utensil: { x: [160, 200], y: [102, 222] },
 };
 
 /** Stays on the piece: the centre and a ring at 60% of the radius must be on it. */
@@ -282,7 +380,8 @@ export function dishStains(shape: DishShape, seed: number): Stain[] {
         if (fits(x, y, r, shape) && !crowded) spot = { x, y };
       }
       if (!spot) continue;
-      const thin = shape === "fork" || shape === "knife" || shape === "spoon";
+      const thin =
+        shape === "fork" || shape === "knife" || shape === "spoon" || shape === "utensil";
       const strength = (thin ? 0.7 : 0.45) + rnd() * (thin ? 0.3 : 0.55);
       out.push({
         id: out.length,
@@ -297,7 +396,7 @@ export function dishStains(shape: DishShape, seed: number): Stain[] {
         angle: thin ? Math.PI / 2 + (rnd() - 0.5) * 0.4 : rnd() * Math.PI * 2,
         seed: Math.floor(rnd() * 1e9),
         strength,
-        toughness: TOUGHNESS[rec.kind] * strengthToughness(strength),
+        toughness: TOUGHNESS[rec.kind] * strengthToughness(strength) * DISH_TOUGH,
       });
     }
   }
@@ -334,4 +433,17 @@ export function dishSeed(washedTotal: number, id: SupplyId): number {
   let h = 7;
   for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) | 0;
   return Math.abs(h ^ (washedTotal * 7_919));
+}
+
+/**
+ * The points the rinse has to pass over (a grid on the piece, scene units): the
+ * suds are gone once the water has passed `DISH_RINSE_THRESHOLD` of them.
+ */
+export function dishRinsePoints(shape: DishShape): Point[] {
+  const b = BOUNDS[shape];
+  const out: Point[] = [];
+  const step = DISH_RINSE_GRID;
+  for (let y = b.y[0]; y <= b.y[1]; y += step)
+    for (let x = b.x[0]; x <= b.x[1]; x += step) if (inDishSurface(x, y, shape)) out.push({ x, y });
+  return out;
 }

@@ -2006,9 +2006,11 @@ export function App() {
         ? recordPackagingPurchase(recorded, result.totalCost)
         : recordCapitalExpenditure(recorded, result.totalCost);
       // …what arrived goes on Stockroom Sort's crate as sets of three (business/stockroomSort.ts; nothing is bought or moved).
+      // The team catches up as soon as the supplies are there (developer 2026-11-07: a Cleaner who is hired must not leave
+      // tasks open that only waited for a mop or liners): the same round as after a service, no extra cost.
       persist(
         addToSupplyCrate(
-          booked,
+          RESTAURANT_MODE ? cleanerRound(booked).save : booked,
           [{ id: result.item.id, packs }],
           restaurantLevelOf(booked.levelProgress),
         ),
@@ -2128,7 +2130,8 @@ export function App() {
       const hired = hireRestaurantStaff(save, role, restaurantLevelOf(save.levelProgress), {
         required,
       });
-      if (hired.ok) persist(hired.save);
+      // A new hire starts on the open chores that are theirs at once (cleanerRound).
+      if (hired.ok) persist(cleanerRound(hired.save).save);
       return hired;
     }
     const result = hireStaffImpl(save, role);
@@ -2146,7 +2149,7 @@ export function App() {
     const hired = hireRestaurantStaff(save, role, restaurantLevelOf(save.levelProgress), {
       required: true,
     });
-    if (hired.ok) persist(hired.save);
+    if (hired.ok) persist(cleanerRound(hired.save).save);
     return hired;
   }
 

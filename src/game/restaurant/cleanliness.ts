@@ -1075,6 +1075,44 @@ export function cleanerRound(save: SaveData): { save: SaveData; cleaned: TaskKin
 }
 
 /**
+ * Why an OPEN task is still open although the team exists (developer 2026-11-07: "cleaner already hired but it still shows needs cleaning
+ * in every section"). Pure and read-only, the same rules as `cleanerRound`:
+ *  - "yours": a spill, always the player's;
+ *  - "prep-cook" / "server": the chore is that role's and nobody of that role is hired (a Cleaner does not do it);
+ *  - "area-off": the Cleaner is on duty but not set to this area (the chips on this screen);
+ *  - "supplies": the person is there but a tool or a supply is missing (the Market button on the row);
+ *  - null: nobody is assigned at all (no Cleaner) or the task is not open.
+ */
+export type WaitingReason = "yours" | "prep-cook" | "server" | "area-off" | "supplies" | null;
+
+export function waitingReason(save: SaveData, kind: TaskKind): WaitingReason {
+  const st = cleanlinessOf(save);
+  if (!st.tasks.some((t) => t.kind === kind)) return null;
+  const rule = TASK_RULES[kind];
+  if (!rule.routine) return "yours";
+  const role = staffFor(kind);
+  const hired = save.business.staff.hiredRoles as readonly string[];
+  const hourlyHere = role === "cleaner" && hourlyAreas(save).includes(rule.area);
+  if (!hourlyHere) {
+    if (role === "cleaner") {
+      if (!cleanerOnDuty(save)) return null;
+      if (!st.cleanerAreas.includes(rule.area)) return "area-off";
+    } else if (!hired.includes(role)) return role;
+  }
+  return taskNeeds(save, kind).length > 0 ? "supplies" : null;
+}
+
+/** How many open tasks wait for each reason (the Cleanliness card's one-line summary). */
+export function waitingCounts(save: SaveData): Record<Exclude<WaitingReason, null>, number> {
+  const out = { yours: 0, "prep-cook": 0, server: 0, "area-off": 0, supplies: 0 };
+  for (const t of cleanlinessOf(save).tasks) {
+    const r = waitingReason(save, t.kind);
+    if (r) out[r]++;
+  }
+  return out;
+}
+
+/**
  * The restroom job a hired Cleaner can do right now, or null (developer
  * 2026-10-16: the map's Cleaner is in the restroom only when hired AND cleaning
  * is needed, and really cleans). Same rules as `cleanerRound`: a routine task
@@ -1366,8 +1404,14 @@ export type CleanlinessAction =
   | { kind: "phase-all"; phase: ShiftPhase }
   | { kind: "areas"; areas: CleanArea[] }
   | { kind: "intro-seen" }
+  /** The team catches up (developer 2026-11-07): supplies arrived, someone was hired or the screen opened; the same round as after a service. */
+  | { kind: "team-round" }
   /** The sink game (2026-10-23): these lines washed by hand (soap, nothing breaks). */
-  | { kind: "wash"; ids: SupplyId[] }
+  | {
+      kind: "wash";
+      ids: SupplyId[];
+      /** Wash at most this many pieces of each line (the sink game washes one at a time). */ each?: number;
+    }
   /** Fridge Check (restaurant/fridgeCheck.ts): a night's stage was played; it completes ITS chore only, then the stars and Hype are kept. */
   | { kind: "check"; task: TaskKind; outcome: CheckOutcome }
   /** Fridge Check: the stage's how-to tour was seen (shown once; no money, no chore). */
@@ -1413,10 +1457,14 @@ export function applyCleanlinessAction(
     }
     case "areas":
       return { save: setCleanerAreas(save, action.areas), cleaned: [], needs: [] };
+    case "team-round": {
+      const r = cleanerRound(save);
+      return { save: r.save, cleaned: r.cleaned, needs: [] };
+    }
     case "intro-seen":
       return { save: markCleanlinessIntroSeen(save), cleaned: [], needs: [] };
     case "wash": {
-      const w = handWash(save, action.ids);
+      const w = handWash(save, action.ids, action.each);
       return { save: w.save, cleaned: [], needs: w.noSoap ? ["dish-soap"] : [] };
     }
     case "check-howto":

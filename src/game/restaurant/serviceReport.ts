@@ -22,7 +22,7 @@
  */
 import type { SaveData } from "../SaveManager";
 import { isSystemLive } from "./restaurantProgression";
-import { bottleView, restaurantSuppliesOf } from "./serviceSupplies";
+import { bottleView, piecesWashed, restaurantSuppliesOf } from "./serviceSupplies";
 import { isSpotless, type ServiceHygiene } from "./hygiene";
 import { AREA_META, cleanlinessOf, isCleanlinessLive } from "./cleanliness";
 
@@ -125,7 +125,7 @@ export function closeServiceReport(
     covers: sup.coversTotal,
     takeaway: sup.takeawayTotal,
     packed: sup.packedTotal,
-    washed: sup.washedTotal,
+    washed: piecesWashed(sup),
     broken: sup.brokenTotal,
   };
   const diff = (k: keyof typeof now) => Math.max(0, now[k] - rec.at[k]);

@@ -7,6 +7,7 @@ import {
   cleanedShare,
   nextStreak,
   scrubAmount,
+  seeded,
   strengthOpacity,
   type DirtMark,
   type Point,
@@ -16,10 +17,15 @@ import {
   DISH_BRUSH,
   DISH_CLEAN_THRESHOLD,
   DISH_ORDER,
+  DISH_RINSE_REACH,
+  DISH_RINSE_THRESHOLD,
+  DISH_SCRUB_RATE,
+  paceAmount,
   DISH_ZOOM,
   DISH_PLATE,
   DISH_SCENE,
   dishMarks,
+  dishRinsePoints,
   dishSeed,
   dishShapeFor,
   dishStains,
@@ -58,6 +64,11 @@ const WASH_VISUAL_FRAMES: Record<
   "cup-set": { viewBox: "0 0 120 140", left: "35%", top: "36%", width: "30%", height: "42%" },
   jug: { viewBox: "0 0 120 160", left: "36%", top: "31%", width: "28%", height: "50%" },
   shakers: { viewBox: "0 0 120 140", left: "36%", top: "36%", width: "28%", height: "43%" },
+  // The kitchen's smallware is drawn in the scene's own units, full frame (as the plate).
+  pot: { viewBox: "0 0 360 280", left: "0%", top: "0%", width: "100%", height: "100%" },
+  pan: { viewBox: "0 0 360 280", left: "0%", top: "0%", width: "100%", height: "100%" },
+  tray: { viewBox: "0 0 360 280", left: "0%", top: "0%", width: "100%", height: "100%" },
+  utensil: { viewBox: "0 0 360 280", left: "0%", top: "0%", width: "100%", height: "100%" },
 };
 
 function clipSurface(ctx: CanvasRenderingContext2D, shape: DishShape) {
@@ -119,6 +130,17 @@ function clipSurface(ctx: CanvasRenderingContext2D, shape: DishShape) {
     ctx.roundRect(153, 117, 17, 17, 3);
     ctx.roundRect(186, 128, 26, 62, 8);
     ctx.roundRect(190, 117, 17, 17, 3);
+  } else if (shape === "pot") {
+    ctx.ellipse(180, 160, 70, 50, 0, 0, Math.PI * 2);
+  } else if (shape === "pan") {
+    ctx.ellipse(150, 160, 66, 50, 0, 0, Math.PI * 2);
+    ctx.roundRect(212, 153, 106, 14, 6);
+  } else if (shape === "tray") {
+    ctx.roundRect(94, 120, 172, 84, 8);
+  } else if (shape === "utensil") {
+    ctx.ellipse(180, 122, 22, 20, 0, 0, Math.PI * 2);
+    ctx.roundRect(175, 138, 10, 84, 4);
+    ctx.ellipse(180, 221, 6, 8, 0, 0, Math.PI * 2);
   } else {
     ctx.ellipse(180, 158, 62, 67, 0, 0, Math.PI * 2);
   }
@@ -173,6 +195,7 @@ function cheerFor(shape: DishShape): string {
   if (shape === "glass" || shape === "jug") return "Crystal clear!";
   if (shape === "fork" || shape === "knife" || shape === "spoon") return "Shiny!";
   if (shape === "cup-set") return "Spotless!";
+  if (shape === "pot" || shape === "pan" || shape === "tray") return "Good as new!";
   return "Squeaky clean!";
 }
 
@@ -227,9 +250,17 @@ export function WashUpSink({
       })
       .sort((a, b) => DISH_ORDER[a.shape] - DISH_ORDER[b.shape]),
   );
+  // Every piece is washed on its own (developer 2026-11-07: "all the pots, pans, forks, plates, glass…
+  // used and washed according to the orders"): ×6 plates is six plates, one after the other.
+  const [queue] = useState(() =>
+    items.flatMap((i) => Array.from({ length: i.n }, (_, k) => ({ ...i, nth: k + 1 }))),
+  );
   const [reduced] = useState(() => reducedMotionOn());
-  const total = items.reduce((t, i) => t + i.n, 0);
+  const total = queue.length;
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const foamRef = useRef<HTMLCanvasElement>(null);
+  const lastEventAtRef = useRef(0);
+  const rinseRef = useRef<{ points: Point[]; dose: Float64Array; left: number } | null>(null);
   const fxCanvasRef = useRef<HTMLCanvasElement>(null);
   const spongeRef = useRef<HTMLSpanElement>(null);
   const fxRef = useRef<CleaningFx | null>(null);
@@ -244,8 +275,8 @@ export function WashUpSink({
   const completedRef = useRef(noSoapAtStart);
   const [scrubbing, setScrubbing] = useState(false);
   const [hasStartedWashing, setHasStartedWashing] = useState(false);
-  const [phase, setPhase] = useState<"scrub" | "shine" | "leaving">("scrub");
-  const [complete, setComplete] = useState(items.length === 0);
+  const [phase, setPhase] = useState<"scrub" | "rinse" | "shine" | "leaving">("scrub");
+  const [complete, setComplete] = useState(queue.length === 0);
   const [noSoap, setNoSoap] = useState(noSoapAtStart);
   const [activeItemIndex, setActiveItemIndex] = useState(0);
   const [cleanedCount, setCleanedCount] = useState(0);
@@ -255,8 +286,9 @@ export function WashUpSink({
   const [toast, setToast] = useState<{ text: string; key: number } | null>(null);
   const [summary, setSummary] = useState<{ best: number; secs: number } | null>(null);
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
-  const activeItem = items[Math.min(activeItemIndex, Math.max(0, items.length - 1))] ?? {
+  const activeItem = queue[Math.min(activeItemIndex, Math.max(0, queue.length - 1))] ?? {
     id: "dinner-plates" as SupplyId,
+    nth: 1,
     n: 0,
     label: "Plate",
     icon: "🍽️",
@@ -312,6 +344,11 @@ export function WashUpSink({
     const ratio = Math.min(window.devicePixelRatio || 1, 2);
     canvas.width = Math.round(WIDTH * ratio);
     canvas.height = Math.round(HEIGHT * ratio);
+    rinseRef.current = null;
+    if (foamRef.current) {
+      foamRef.current.width = canvas.width;
+      foamRef.current.height = canvas.height;
+    }
     draw();
     setProgress(0);
     setScrubbing(false);
@@ -422,7 +459,7 @@ export function WashUpSink({
       setNoSoap(Boolean(result.noSoap));
       return;
     }
-    setWashedPieces((p) => p + activeItem.n);
+    setWashedPieces((p) => p + 1);
     setCleanedCount(index + 1);
     const left = pc.stains.filter((s) => !pc.cleared[s.id]);
     const step = reduced ? 0 : 45;
@@ -445,7 +482,7 @@ export function WashUpSink({
     );
     later(
       () => {
-        if (index >= items.length - 1) {
+        if (index >= queue.length - 1) {
           completedRef.current = true;
           setComplete(true);
           setPhase("scrub");
@@ -472,7 +509,7 @@ export function WashUpSink({
             lastPointRef.current = null;
             setScrubbing(false);
             setPhase("scrub");
-            setActiveItemIndex((i) => Math.min(i + 1, items.length - 1));
+            setActiveItemIndex((i) => Math.min(i + 1, queue.length - 1));
           },
           reduced ? 0 : SLIDE_MS,
         );
@@ -491,11 +528,123 @@ export function WashUpSink({
     sponge.style.opacity = "1";
   }
 
+  /** One pointer event's wear, held to the pace cap (a frantic scribble is no quicker than a steady scrub). */
+  function paced(amount: number): number {
+    const now = performance.now();
+    const dt = lastEventAtRef.current ? now - lastEventAtRef.current : 16;
+    lastEventAtRef.current = now;
+    return paceAmount(amount, dt);
+  }
+
+  /** The suds: a soapy film and bubbles all over the piece, painted once, rinsed off by the water. */
+  function paintFoam(seedN: number) {
+    const canvas = foamRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx) return;
+    const ratio = canvas.width / WIDTH;
+    const rnd = seeded(seedN * 31 + 7);
+    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    ctx.clearRect(0, 0, WIDTH, HEIGHT);
+    ctx.save();
+    clipSurface(ctx, shape);
+    ctx.fillStyle = "rgba(228,244,250,.62)";
+    ctx.fillRect(0, 0, WIDTH, HEIGHT);
+    for (let i = 0; i < 170; i++) {
+      const x = 80 + rnd() * 200;
+      const y = 96 + rnd() * 140;
+      const r = 3 + rnd() * 11;
+      const g = ctx.createRadialGradient(x - r * 0.3, y - r * 0.3, r * 0.1, x, y, r);
+      g.addColorStop(0, "rgba(255,255,255,.95)");
+      g.addColorStop(0.7, "rgba(214,238,248,.62)");
+      g.addColorStop(1, "rgba(150,196,218,.55)");
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,.7)";
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  /** The piece is scrubbed clean: the last specks wipe themselves, then it is covered in suds to rinse off. */
+  function startRinse() {
+    const pc = pieceRef.current;
+    if (!pc || pc.done || rinseRef.current) return;
+    const step = reduced ? 0 : 45;
+    pc.stains
+      .filter((s) => !pc.cleared[s.id])
+      .forEach((s, k) => later(() => clearStain(s.id, true), step * (k + 1)));
+    const points = dishRinsePoints(shape);
+    rinseRef.current = { points, dose: new Float64Array(points.length), left: points.length };
+    paintFoam(dishSeed(seed + activeItemIndex * 13, activeItem.id));
+    setProgress(0);
+    setPhase("rinse");
+    AudioManager.playSfx("squeak");
+    const key = performance.now();
+    setToast({ text: "💧 Now rinse the suds off", key });
+    later(() => setToast((t) => (t?.key === key ? null : t)), 1400);
+  }
+
+  /** The water passes over the suds: they wash away where it runs (two passes to be thorough). */
+  function rinseSegment(start: Point, end: Point, first: boolean) {
+    const rn = rinseRef.current;
+    const pc = pieceRef.current;
+    if (!rn || !pc || pc.done || completedRef.current) return;
+    const reach = DISH_BRUSH[shape] * DISH_RINSE_REACH;
+    const amount = paced(
+      scrubAmount(first ? null : Math.hypot(end.x - start.x, end.y - start.y)) * 0.55,
+    );
+    let touched = 0;
+    rn.points.forEach((pt, i) => {
+      if (rn.dose[i]! >= 1) return;
+      if (distanceToSegmentSquared(pt, start, end) > reach ** 2) return;
+      rn.dose[i] = Math.min(1, rn.dose[i]! + amount);
+      touched++;
+      if (rn.dose[i]! >= 1) rn.left--;
+    });
+    const foam = foamRef.current?.getContext("2d");
+    if (foam && foamRef.current) {
+      const ratio = foamRef.current.width / WIDTH;
+      foam.save();
+      foam.setTransform(ratio, 0, 0, ratio, 0, 0);
+      foam.globalCompositeOperation = "destination-out";
+      foam.globalAlpha = Math.min(1, amount * 1.4);
+      foam.lineCap = "round";
+      foam.lineWidth = reach * 1.6;
+      foam.beginPath();
+      foam.moveTo(start.x, start.y);
+      foam.lineTo(end.x, end.y);
+      foam.stroke();
+      foam.restore();
+    }
+    if (touched) {
+      AudioManager.playScrub("wet");
+      fxRef.current?.scrub("mop", end.x, end.y, 1);
+    }
+    const share = 1 - rn.left / Math.max(1, rn.points.length);
+    setProgress((p) => {
+      const next = Math.min(99, Math.round(share * 100));
+      return next === p ? p : next;
+    });
+    if (share >= DISH_RINSE_THRESHOLD) {
+      // The last of the suds slips away; the piece shines.
+      if (foam && foamRef.current)
+        foam.clearRect(0, 0, foamRef.current.width, foamRef.current.height);
+      pieceDone();
+    }
+  }
+
   function scrubSegment(start: Point, end: Point, first: boolean) {
+    if (phase === "rinse") {
+      rinseSegment(start, end, first);
+      return;
+    }
     const pc = pieceRef.current;
     if (!pc || pc.done || completedRef.current) return;
     const stroke = first ? null : Math.hypot(end.x - start.x, end.y - start.y);
-    const amount = scrubAmount(stroke);
+    const amount = paced(scrubAmount(stroke) * DISH_SCRUB_RATE);
     const radius = DISH_BRUSH[shape];
     const touched = new Set<number>();
     pc.marks.forEach((mark, i) => {
@@ -529,11 +678,12 @@ export function WashUpSink({
       const next = Math.min(99, Math.round(share * 100));
       return next === p ? p : next;
     });
-    if (share >= DISH_CLEAN_THRESHOLD) pieceDone();
+    if (share >= DISH_CLEAN_THRESHOLD) startRinse();
   }
 
   function onPointerDown(event: PointerEvent<HTMLElement>) {
-    if (completedRef.current || pieceRef.current?.done || phase !== "scrub") return;
+    if (completedRef.current || pieceRef.current?.done || (phase !== "scrub" && phase !== "rinse"))
+      return;
     const surface = canvasRef.current;
     if (!surface) return;
     const point = positionFromEvent(event, surface);
@@ -543,6 +693,7 @@ export function WashUpSink({
     event.currentTarget.setPointerCapture(event.pointerId);
     activePointerRef.current = event.pointerId;
     lastPointRef.current = point;
+    lastEventAtRef.current = 0;
     setHasStartedWashing(true);
     setScrubbing(true);
     moveSponge(event);
@@ -582,24 +733,37 @@ export function WashUpSink({
                 ? "ellipse(16% 22% at 50% 59%)"
                 : shape === "jug"
                   ? "ellipse(14% 25% at 50% 57%)"
-                  : "ellipse(9% 15% at 50% 55%)";
+                  : shape === "pot"
+                    ? "ellipse(19.6% 18% at 50% 57%)"
+                    : shape === "pan"
+                      ? "inset(37% 12% 25% 20%)"
+                      : shape === "tray"
+                        ? "inset(42% 26% 26% 26%)"
+                        : shape === "utensil"
+                          ? "inset(34% 41% 20% 41%)"
+                          : "ellipse(9% 15% at 50% 55%)";
   const visualFrame = WASH_VISUAL_FRAMES[shape];
   // Thin pieces are zoomed in around the basin's centre (scene units stay the same).
   const zoomStyle = {
     transform: DISH_ZOOM[shape] === 1 ? undefined : `scale(${DISH_ZOOM[shape]})`,
     transformOrigin: "50% 59%",
   };
+  const ofN = `${activeItem.nth} of ${activeItem.n}`;
   const status = noSoap
     ? "🧴 Out of dish soap — the rest waits for the next START"
     : complete
-      ? `✨ Sink empty · ${washedPieces} pieces · nothing broke`
-      : phase !== "scrub"
+      ? `✨ Sink empty · ${washedPieces} ${washedPieces === 1 ? "piece" : "pieces"} · nothing broke`
+      : phase === "shine" || phase === "leaving"
         ? `✓ ${activeItem.label} clean!`
-        : scrubbing
-          ? progress >= 60
-            ? "Almost there…"
-            : "Keep scrubbing…"
-          : `🧽 Scrub the ${activeItem.label.toLowerCase()} · ×${activeItem.n}`;
+        : phase === "rinse"
+          ? scrubbing
+            ? "Rinsing…"
+            : `💧 Rinse the suds off · ${ofN}`
+          : scrubbing
+            ? progress >= 60
+              ? "Almost there…"
+              : "Keep scrubbing…"
+            : `🧽 Scrub the ${activeItem.label.toLowerCase()} · ${ofN}`;
   const pieceMotion = reduced
     ? ""
     : phase === "leaving"
@@ -646,9 +810,10 @@ export function WashUpSink({
           className="mt-2 grid grid-cols-3 gap-1.5"
           data-testid="wash-up-lines"
         >
-          {items.map((item, index) => {
-            const done = index < cleanedCount;
-            const current = index === activeItemIndex && !complete && !noSoap && !done;
+          {items.map((item) => {
+            const washedOf = queue.slice(0, cleanedCount).filter((q) => q.id === item.id).length;
+            const done = washedOf >= item.n;
+            const current = activeItem.id === item.id && !complete && !noSoap && !done;
             return (
               <li
                 key={item.id}
@@ -668,7 +833,9 @@ export function WashUpSink({
                   {done ? "✓" : <SupplyIcon id={item.id} fallback={item.icon} />}
                 </span>
                 <span className="block truncate">{item.label}</span>
-                <span className="block text-[11px] font-black">×{item.n}</span>
+                <span className="block text-[11px] font-black">
+                  {done || washedOf === 0 ? `×${item.n}` : `${washedOf}/${item.n}`}
+                </span>
               </li>
             );
           })}
@@ -691,6 +858,9 @@ export function WashUpSink({
                 key={activeItemIndex}
                 className={`absolute inset-0 ${pieceMotion}`}
                 data-piece-phase={phase}
+                data-piece-id={activeItem.id}
+                data-piece-nth={activeItem.nth}
+                data-piece-shape={shape}
               >
                 <div className="absolute inset-0" style={zoomStyle}>
                   <svg
@@ -1036,6 +1206,267 @@ export function WashUpSink({
                         <circle cx="34.5" cy="77" r="5" fill="#f3ead3" stroke="#b39a6e" />
                         <circle cx="85.5" cy="77" r="5" fill="#a9b278" stroke="#7f8959" />
                       </g>
+                    ) : activeItem.shape === "pot" ? (
+                      <g stroke="#5f5a50" strokeLinejoin="round">
+                        <ellipse
+                          cx="180"
+                          cy="174"
+                          rx="102"
+                          ry="66"
+                          fill="rgba(18,13,9,.4)"
+                          stroke="none"
+                        />
+                        <rect
+                          x="80"
+                          y="150"
+                          width="40"
+                          height="22"
+                          rx="9"
+                          fill="url(#wash-metal)"
+                          strokeWidth="2"
+                        />
+                        <rect
+                          x="240"
+                          y="150"
+                          width="40"
+                          height="22"
+                          rx="9"
+                          fill="url(#wash-metal)"
+                          strokeWidth="2"
+                        />
+                        <ellipse
+                          cx="180"
+                          cy="160"
+                          rx="79"
+                          ry="59"
+                          fill="url(#wash-metal)"
+                          strokeWidth="3"
+                        />
+                        <ellipse cx="180" cy="160" rx="71" ry="51" fill="#d8d3c4" strokeWidth="2" />
+                        <ellipse
+                          cx="180"
+                          cy="164"
+                          rx="58"
+                          ry="38"
+                          fill="#e6e1d3"
+                          stroke="#fffbed"
+                          strokeOpacity=".7"
+                          strokeWidth="2"
+                        />
+                        <path
+                          d="M118 150 Q126 118 160 110"
+                          fill="none"
+                          stroke="#fff"
+                          strokeOpacity=".7"
+                          strokeWidth="3"
+                          strokeLinecap="round"
+                        />
+                      </g>
+                    ) : activeItem.shape === "pan" ? (
+                      <g stroke="#5f5a50" strokeLinejoin="round">
+                        <ellipse
+                          cx="152"
+                          cy="172"
+                          rx="74"
+                          ry="56"
+                          fill="rgba(18,13,9,.4)"
+                          stroke="none"
+                        />
+                        <rect
+                          x="208"
+                          y="150"
+                          width="114"
+                          height="20"
+                          rx="9"
+                          fill="url(#wash-metal)"
+                          strokeWidth="2"
+                        />
+                        <circle cx="314" cy="160" r="4" fill="#4d4a42" stroke="none" />
+                        <ellipse
+                          cx="150"
+                          cy="160"
+                          rx="72"
+                          ry="55"
+                          fill="url(#wash-metal)"
+                          strokeWidth="3"
+                        />
+                        <ellipse cx="150" cy="160" rx="66" ry="50" fill="#d6d1c3" strokeWidth="2" />
+                        <ellipse
+                          cx="150"
+                          cy="163"
+                          rx="52"
+                          ry="37"
+                          fill="#e4dfd1"
+                          stroke="#fffbed"
+                          strokeOpacity=".7"
+                          strokeWidth="2"
+                        />
+                        <path
+                          d="M96 150 Q104 120 134 112"
+                          fill="none"
+                          stroke="#fff"
+                          strokeOpacity=".7"
+                          strokeWidth="3"
+                          strokeLinecap="round"
+                        />
+                      </g>
+                    ) : activeItem.shape === "tray" ? (
+                      <g stroke="#5f5a50" strokeLinejoin="round">
+                        <rect
+                          x="88"
+                          y="124"
+                          width="184"
+                          height="96"
+                          rx="12"
+                          fill="rgba(18,13,9,.4)"
+                          stroke="none"
+                        />
+                        <rect
+                          x="88"
+                          y="114"
+                          width="184"
+                          height="96"
+                          rx="12"
+                          fill="url(#wash-metal)"
+                          strokeWidth="3"
+                        />
+                        <rect
+                          x="94"
+                          y="120"
+                          width="172"
+                          height="84"
+                          rx="8"
+                          fill="#d8d3c4"
+                          strokeWidth="2"
+                        />
+                        <rect
+                          x="102"
+                          y="128"
+                          width="156"
+                          height="68"
+                          rx="5"
+                          fill="#e6e1d3"
+                          stroke="#fffbed"
+                          strokeOpacity=".7"
+                          strokeWidth="2"
+                        />
+                        <path
+                          d="M108 134 H190"
+                          fill="none"
+                          stroke="#fff"
+                          strokeOpacity=".7"
+                          strokeWidth="3"
+                          strokeLinecap="round"
+                        />
+                      </g>
+                    ) : activeItem.shape === "utensil" ? (
+                      <g
+                        fill="url(#wash-metal)"
+                        stroke="#716b60"
+                        strokeWidth="1.4"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M176 138 H184 L185 220 Q185 230 180 230 Q175 230 175 220Z" />
+                        {activeItem.id === "ladles" ? (
+                          <>
+                            <ellipse cx="180" cy="122" rx="22" ry="20" />
+                            <ellipse
+                              cx="180"
+                              cy="124"
+                              rx="15"
+                              ry="13"
+                              fill="#e6e1d3"
+                              strokeOpacity=".5"
+                            />
+                          </>
+                        ) : activeItem.id === "spatulas" ? (
+                          <>
+                            <rect x="158" y="102" width="44" height="38" rx="6" />
+                            <path
+                              d="M166 108 V132 M174 108 V132 M182 108 V132 M190 108 V132"
+                              fill="none"
+                              stroke="#a8a394"
+                              strokeWidth="2"
+                            />
+                          </>
+                        ) : activeItem.id === "skimmers" ? (
+                          <>
+                            <ellipse cx="180" cy="122" rx="22" ry="20" />
+                            {[
+                              [172, 114],
+                              [180, 112],
+                              [188, 114],
+                              [168, 122],
+                              [176, 121],
+                              [184, 121],
+                              [192, 122],
+                              [172, 130],
+                              [180, 130],
+                              [188, 130],
+                            ].map(([x, y]) => (
+                              <circle
+                                key={`${x}-${y}`}
+                                cx={x}
+                                cy={y}
+                                r="1.8"
+                                fill="#8d887b"
+                                stroke="none"
+                              />
+                            ))}
+                          </>
+                        ) : activeItem.id === "whisks" ? (
+                          <>
+                            {[22, 15, 8].map((rx) => (
+                              <ellipse
+                                key={rx}
+                                cx="180"
+                                cy="122"
+                                rx={rx}
+                                ry="20"
+                                fill="none"
+                                stroke="#8d887b"
+                                strokeWidth="2.4"
+                              />
+                            ))}
+                            <path
+                              d="M180 102 V142"
+                              fill="none"
+                              stroke="#8d887b"
+                              strokeWidth="2.4"
+                            />
+                          </>
+                        ) : activeItem.id === "graters" ? (
+                          <>
+                            <rect x="158" y="102" width="44" height="40" rx="4" />
+                            {[
+                              [166, 110],
+                              [180, 110],
+                              [194, 110],
+                              [166, 122],
+                              [180, 122],
+                              [194, 122],
+                              [166, 134],
+                              [180, 134],
+                              [194, 134],
+                            ].map(([x, y]) => (
+                              <ellipse
+                                key={`${x}-${y}`}
+                                cx={x}
+                                cy={y}
+                                rx="3"
+                                ry="2"
+                                fill="#8d887b"
+                                stroke="none"
+                              />
+                            ))}
+                          </>
+                        ) : (
+                          <>
+                            <path d="M164 104 Q158 122 172 140 L178 138 Q168 122 172 104Z" />
+                            <path d="M196 104 Q202 122 188 140 L182 138 Q192 122 188 104Z" />
+                          </>
+                        )}
+                      </g>
                     ) : null}
                     {activeItem.shape === "fork" || activeItem.shape === "knife" ? (
                       <path
@@ -1059,7 +1490,7 @@ export function WashUpSink({
                   </svg>
                   <canvas
                     ref={canvasRef}
-                    aria-label={`Dirty ${activeItem.label.toLowerCase()}. Press and scrub across it to clean it.`}
+                    aria-label={`Dirty ${activeItem.label.toLowerCase()}. Press and scrub across it to clean it, then rinse the suds off.`}
                     data-testid="wash-up-surface"
                     className="absolute inset-0 z-[2] h-full w-full cursor-grab active:cursor-grabbing"
                     onLostPointerCapture={onPointerUp}
@@ -1068,6 +1499,14 @@ export function WashUpSink({
                     onPointerMove={onPointerMove}
                     onPointerUp={onPointerUp}
                     style={{ touchAction: "none", clipPath: surfaceClipPath }}
+                  />
+                  <canvas
+                    ref={foamRef}
+                    aria-hidden="true"
+                    data-testid="wash-up-foam"
+                    data-rinse={phase === "rinse" ? "1" : "0"}
+                    className="pointer-events-none absolute inset-0 z-[3] h-full w-full"
+                    style={{ clipPath: surfaceClipPath }}
                   />
                   {phase === "shine" && !reduced ? (
                     // The clean piece catches the light: a bright band sweeps across it.
@@ -1087,9 +1526,10 @@ export function WashUpSink({
               data-testid="wash-up-fx"
               style={zoomStyle}
             />
-            {!complete && !noSoap && phase === "scrub" ? (
+            {!complete && !noSoap && (phase === "scrub" || phase === "rinse") ? (
               <span
                 aria-hidden="true"
+                data-tool={phase === "rinse" ? "water" : "sponge"}
                 className={`absolute z-10 -translate-x-1/2 -translate-y-1/2 select-none drop-shadow-md ${scrubbing && !reduced ? "scale-110 transition-transform duration-75" : ""}`}
                 ref={spongeRef}
                 onPointerDown={onPointerDown}
@@ -1106,86 +1546,133 @@ export function WashUpSink({
                   cursor: scrubbing ? "grabbing" : "grab",
                 }}
               >
-                <svg
-                  aria-hidden="true"
-                  viewBox="0 0 96 96"
-                  width={spongeSize}
-                  height={spongeSize}
-                  style={{ overflow: "visible" }}
-                >
-                  <defs>
-                    <linearGradient id="dish-sponge-yellow" x1="0" y1="0" x2="0.8" y2="1">
-                      <stop stopColor="#ffe174" />
-                      <stop offset=".55" stopColor="#f7b936" />
-                      <stop offset="1" stopColor="#d98923" />
-                    </linearGradient>
-                    <pattern
-                      id="dish-sponge-pores"
-                      width="11"
-                      height="11"
-                      patternUnits="userSpaceOnUse"
-                    >
-                      <circle cx="3" cy="3" r="1.2" fill="#fff1b5" opacity=".62" />
-                      <circle cx="8" cy="8" r="1.6" fill="#a96724" opacity=".28" />
-                    </pattern>
-                    <filter id="dish-sponge-shadow" x="-40%" y="-40%" width="180%" height="180%">
-                      <feDropShadow
-                        dx="0"
-                        dy="3"
-                        stdDeviation="3"
-                        floodColor="#20130d"
-                        floodOpacity=".55"
+                {phase === "rinse" ? (
+                  // The water: a spray head that runs over the suds.
+                  <svg
+                    aria-hidden="true"
+                    viewBox="0 0 96 96"
+                    width={spongeSize}
+                    height={spongeSize}
+                    style={{ overflow: "visible" }}
+                  >
+                    <g style={{ filter: "drop-shadow(0 3px 3px rgba(32,19,13,.55))" }}>
+                      <rect
+                        x="30"
+                        y="14"
+                        width="36"
+                        height="22"
+                        rx="9"
+                        fill="#9fb4bd"
+                        stroke="#4d6772"
+                        strokeWidth="3"
                       />
-                    </filter>
-                  </defs>
-                  <g transform="rotate(-25 43 48)" filter="url(#dish-sponge-shadow)">
-                    <rect
-                      x="17"
-                      y="28"
-                      width="55"
-                      height="42"
-                      rx="10"
-                      fill="#14765d"
-                      stroke="#075440"
-                      strokeWidth="3"
-                    />
-                    <rect
-                      x="17"
-                      y="20"
-                      width="55"
-                      height="42"
-                      rx="10"
-                      fill="url(#dish-sponge-yellow)"
-                      stroke="#a96120"
-                      strokeWidth="2.5"
-                    />
-                    <rect
-                      x="19"
-                      y="22"
-                      width="51"
-                      height="38"
-                      rx="8"
-                      fill="url(#dish-sponge-pores)"
-                    />
-                    <path
-                      d="M24 28q15-8 31-2"
-                      fill="none"
-                      stroke="#fff6d4"
-                      strokeOpacity=".66"
-                      strokeWidth="3"
-                      strokeLinecap="round"
-                    />
-                  </g>
-                  {!hasStartedWashing ? (
-                    <path
-                      d="M65 61V44c0-4 6-4 6 0v9-15c0-4 6-4 6 0v15-11c0-4 6-4 6 0v13l2-7c2-5 7-3 6 1l-3 15c-1 6-5 10-11 10h-4c-6 0-10-3-13-8l-5-8c-2-4 3-7 6-4l4 7Z"
-                      fill="#fffdf8"
-                      stroke="#3d281b"
-                      strokeWidth="3.5"
-                      strokeLinejoin="round"
-                    />
-                  ) : null}
-                </svg>
+                      <rect
+                        x="36"
+                        y="34"
+                        width="24"
+                        height="12"
+                        rx="4"
+                        fill="#7e97a2"
+                        stroke="#4d6772"
+                        strokeWidth="2.5"
+                      />
+                      {[34, 42, 50, 58].map((x) => (
+                        <path
+                          key={x}
+                          d={`M${x} 50 q-2 14 0 26`}
+                          fill="none"
+                          stroke="#6ec1e8"
+                          strokeWidth="4"
+                          strokeLinecap="round"
+                          opacity=".85"
+                        />
+                      ))}
+                      <circle cx="40" cy="82" r="3" fill="#9fdaf5" />
+                      <circle cx="54" cy="86" r="2.5" fill="#9fdaf5" />
+                    </g>
+                  </svg>
+                ) : (
+                  <svg
+                    aria-hidden="true"
+                    viewBox="0 0 96 96"
+                    width={spongeSize}
+                    height={spongeSize}
+                    style={{ overflow: "visible" }}
+                  >
+                    <defs>
+                      <linearGradient id="dish-sponge-yellow" x1="0" y1="0" x2="0.8" y2="1">
+                        <stop stopColor="#ffe174" />
+                        <stop offset=".55" stopColor="#f7b936" />
+                        <stop offset="1" stopColor="#d98923" />
+                      </linearGradient>
+                      <pattern
+                        id="dish-sponge-pores"
+                        width="11"
+                        height="11"
+                        patternUnits="userSpaceOnUse"
+                      >
+                        <circle cx="3" cy="3" r="1.2" fill="#fff1b5" opacity=".62" />
+                        <circle cx="8" cy="8" r="1.6" fill="#a96724" opacity=".28" />
+                      </pattern>
+                      <filter id="dish-sponge-shadow" x="-40%" y="-40%" width="180%" height="180%">
+                        <feDropShadow
+                          dx="0"
+                          dy="3"
+                          stdDeviation="3"
+                          floodColor="#20130d"
+                          floodOpacity=".55"
+                        />
+                      </filter>
+                    </defs>
+                    <g transform="rotate(-25 43 48)" filter="url(#dish-sponge-shadow)">
+                      <rect
+                        x="17"
+                        y="28"
+                        width="55"
+                        height="42"
+                        rx="10"
+                        fill="#14765d"
+                        stroke="#075440"
+                        strokeWidth="3"
+                      />
+                      <rect
+                        x="17"
+                        y="20"
+                        width="55"
+                        height="42"
+                        rx="10"
+                        fill="url(#dish-sponge-yellow)"
+                        stroke="#a96120"
+                        strokeWidth="2.5"
+                      />
+                      <rect
+                        x="19"
+                        y="22"
+                        width="51"
+                        height="38"
+                        rx="8"
+                        fill="url(#dish-sponge-pores)"
+                      />
+                      <path
+                        d="M24 28q15-8 31-2"
+                        fill="none"
+                        stroke="#fff6d4"
+                        strokeOpacity=".66"
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                      />
+                    </g>
+                    {!hasStartedWashing ? (
+                      <path
+                        d="M65 61V44c0-4 6-4 6 0v9-15c0-4 6-4 6 0v15-11c0-4 6-4 6 0v13l2-7c2-5 7-3 6 1l-3 15c-1 6-5 10-11 10h-4c-6 0-10-3-13-8l-5-8c-2-4 3-7 6-4l4 7Z"
+                        fill="#fffdf8"
+                        stroke="#3d281b"
+                        strokeWidth="3.5"
+                        strokeLinejoin="round"
+                      />
+                    ) : null}
+                  </svg>
+                )}
               </span>
             ) : null}
             {streak >= 2 && phase === "scrub" && !complete ? (
@@ -1233,7 +1720,7 @@ export function WashUpSink({
         {!complete && !noSoap ? (
           <div className="mt-2 flex items-center gap-3">
             <div
-              aria-label={`${progress}% ${activeItem.label.toLowerCase()} clean`}
+              aria-label={`${progress}% ${activeItem.label.toLowerCase()} ${phase === "rinse" ? "rinsed" : "clean"}`}
               aria-valuemax={100}
               aria-valuemin={0}
               aria-valuenow={progress}
@@ -1258,14 +1745,22 @@ export function WashUpSink({
           <span className="font-ui text-[11px] font-extrabold uppercase tracking-wide text-walnut/55">
             🧺 Rack
           </span>
-          {items.slice(0, cleanedCount).map((item) => (
-            <span
-              key={item.id}
-              className="anim-pop rounded-full border border-olive/30 bg-sage/15 px-2 py-0.5 font-ui text-[12px] font-extrabold text-olive"
-            >
-              {iconOf(item.id)} ×{item.n} ✓
-            </span>
-          ))}
+          {items
+            .map((item) => ({
+              item,
+              washed: queue.slice(0, cleanedCount).filter((q) => q.id === item.id).length,
+            }))
+            .filter((r) => r.washed > 0)
+            .map(({ item, washed }) => (
+              <span
+                key={`${item.id}-${washed}`}
+                className="anim-pop rounded-full border border-olive/30 bg-sage/15 px-2 py-0.5 font-ui text-[12px] font-extrabold text-olive"
+                data-rack={item.id}
+                data-rack-n={washed}
+              >
+                {iconOf(item.id)} ×{washed} ✓
+              </span>
+            ))}
           {cleanedCount === 0 ? (
             <span className="font-ui text-[11.5px] font-bold text-walnut/45">empty</span>
           ) : null}
@@ -1290,7 +1785,7 @@ export function WashUpSink({
             </KButton>
           ) : (
             <p className="flex-1 font-ui text-[12px] font-bold text-walnut/60">
-              {cleanedCount} / {items.length} · 🔁 the rest washes at the next START
+              {cleanedCount} / {queue.length} · 🔁 the rest washes at the next START
             </p>
           )}
         </div>
