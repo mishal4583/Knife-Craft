@@ -44,10 +44,14 @@ export function rollServiceTickets(level: LevelDefinition): RecipeDefinition[] {
   const rand = makeSeededRand(ticketSeedFor(level));
   const count = Math.max(1, level.requiredOrders ?? 1);
   const tickets: RecipeDefinition[] = [];
+  // A service serves DIFFERENT dishes while the pool has enough of them (91-level campaign, 2026-11-07: "a party of 2" is two different
+  // dishes, not one dish twice); only a pool smaller than the orders repeats.
+  let remaining = [...pool];
   for (let i = 0; i < count; i++) {
+    if (remaining.length === 0) remaining = [...pool];
     const pick = generateOrder(
       {
-        unlockedRecipes: pool,
+        unlockedRecipes: remaining,
         recentRecipeIds: tickets.map((r) => r.id),
         recentCuisineIds: tickets.map((r) => r.cuisineId),
       },
@@ -55,6 +59,7 @@ export function rollServiceTickets(level: LevelDefinition): RecipeDefinition[] {
     );
     if (!pick) break;
     tickets.push(pick);
+    remaining = remaining.filter((r) => r.id !== pick.id);
   }
   return tickets;
 }

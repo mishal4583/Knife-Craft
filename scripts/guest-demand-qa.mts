@@ -129,7 +129,7 @@ const oldTotal = (s: SaveData, n: number) => {
         bad.push(`L${n}/shape${i}: ${g}/${t} < ${oldGuests(s, n)}/${oldTotal(s, n)}`);
     }
   check(
-    "D1 the floor never drops: at all 148 levels and 6 kinds of restaurant, guests (and guests + walk-in) are at least the old timetable's",
+    "D1 the floor never drops: at all 91 levels and 6 kinds of restaurant, guests (and guests + walk-in) are at least the old timetable's",
     bad.length === 0,
     bad.slice(0, 5),
   );
@@ -225,7 +225,7 @@ const oldTotal = (s: SaveData, n: number) => {
 }
 {
   const bad: string[] = [];
-  for (const n of [DINE_IN, DINE_IN + 10, 90, 120, 148])
+  for (const n of [DINE_IN, DINE_IN + 10, 55, 75, 91])
     for (const sh of shapes) {
       const s = saveAt(n, sh);
       const d = G.guestDemandFor(s, n, M.menuGuestCapacity(s));
@@ -246,7 +246,7 @@ const oldTotal = (s: SaveData, n: number) => {
   );
 }
 {
-  const n = 120;
+  const n = 70;
   const served = [0, 1, 2, 3, 4].map((r) =>
     M.menuGuestsFor(saveAt(n, { roles: r, pop: 80, spotless: true }), n),
   );
@@ -266,7 +266,7 @@ const oldTotal = (s: SaveData, n: number) => {
   );
 }
 {
-  const n = 95;
+  const n = 75;
   const s = saveAt(n, { roles: 4, specialists: true, pop: 80, spotless: true });
   const level = getLevel(`level-${n}`)!;
   const a = JSON.stringify(M.serviceGuestPlan(s, n));

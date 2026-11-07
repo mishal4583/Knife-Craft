@@ -1360,11 +1360,11 @@ function NewsCard({ news }: { news: RestaurantNews }) {
             📦
           </span>
           <p className="min-w-0 flex-1 font-ui text-[13px] font-extrabold text-walnut-dark">
-            Fridge Sort
+            Unpack the delivery
           </p>
-          <InfoTip label="About Fridge Sort">
-            Food you buy arrives in a basket, all mixed up (1 lb of tomatoes is about 3 tomatoes).
-            Put every piece on its shelf before the clock ends: stars keep the food fresh longer and
+          <InfoTip label="About Unpack the delivery">
+            Your order arrives in a basket, all mixed up (1 lb of tomatoes is about 3 tomatoes). Put
+            every piece on its shelf before the clock ends: stars keep the food fresh longer and
             give Hype and fridge magnets. It is optional and costs nothing. Find it in the Market
             and the Inventory once you buy food.
           </InfoTip>

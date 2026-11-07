@@ -53,7 +53,8 @@ const key = (c: { ingredientId: string; technique: string; resultingState: strin
     }
   }
   // Developer 2026-10-29: the first two levels were removed (150 → 148; 250 before the 2026-10-15 redesign).
-  assert(LEVELS.length === 148, `A0: the campaign has 148 levels (${LEVELS.length})`);
+  // Rule changed (developer 2026-11-07): 91 levels (the campaign plan).
+  assert(LEVELS.length === 91, `A0: the campaign has 91 levels (${LEVELS.length})`);
   assert(
     missing.length === 0,
     `A: every served recipe exists${missing.length ? " — " + missing.join(", ") : ""}`,

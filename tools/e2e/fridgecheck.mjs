@@ -91,7 +91,7 @@ const saveAt = (n, { lines = NIGHT, reducedMotion = false, staff } = {}) =>
       currentLevelId: `level-${n}`,
       highestUnlockedLevelId: `level-${n}`,
       completedLevelIds: Array.from({ length: n - 1 }, (_, i) => `level-${i + 1}`),
-      campaignVersion: 3,
+      campaignVersion: 4,
     },
     story: { introDone: true, milestoneMask: 0xffff, finaleSeen: true },
     settings: { sound: false, music: false, reducedMotion, restaurantName: "Test Kitchen" },

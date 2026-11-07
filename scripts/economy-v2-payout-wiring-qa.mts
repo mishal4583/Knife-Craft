@@ -11,7 +11,7 @@
  *
  * Run: npx tsx scripts/economy-v2-payout-wiring-qa.mts
  */
-import { paidLevelReward } from "../src/game/levels/levelRewards.ts";
+import { curatedRewardAt, paidLevelReward } from "../src/game/levels/levelRewards.ts";
 import * as fs from "node:fs";
 // USD: wallet amounts are integer cents; Campaign formulas (recipePay, level rewards) are whole dollars (money.ts).
 import { dollars } from "../src/game/money.ts";
@@ -95,9 +95,9 @@ function bodyOf(fnName: string): string {
 // ===== 3/9/14: Order-pool first completion — 3 served orders, each exactly one settlement, one revenue, one COGS, quality score correctly carried, exactly-once payment guard holds. =====
 {
   // 150-level campaign (2026-10-15): L69 is a real 4-recipe pool (was L71 before the first two levels were removed) with 3 orders (was L114).
-  const level = getLevel("level-69")!; // real 4-recipe pool, requiredOrders: 3
+  const level = getLevel("level-45")!; // real 4-recipe pool, requiredOrders: 3
   const pool = campaignPoolFor(level);
-  assert(pool.length >= 3, "setup: level-69's pool resolves to >= 3 real recipes");
+  assert(pool.length >= 3, "setup: level-45's pool resolves to >= 3 real recipes");
   let session = createServiceSession(level.id, pool, () => 0, level.chapter, false);
   const settlements: ReturnType<typeof computeSettlement>[] = [];
   for (let i = 0; i < 3; i++) {
@@ -142,7 +142,7 @@ function bodyOf(fnName: string): string {
 
 // ===== 4: Order-pool REPLAY pays 0 campaign revenue/COGS/quality/net for every served order, while gameplay (serve/advance) proceeds normally. =====
 {
-  const level = getLevel("level-69")!;
+  const level = getLevel("level-45")!;
   const pool = campaignPoolFor(level);
   let session = createServiceSession(level.id, pool, () => 0, level.chapter, /* isReplay */ true);
   let totalCoins = 0;
@@ -173,11 +173,11 @@ function bodyOf(fnName: string): string {
   );
 }
 
-// ===== 5/22: Real-batch (level-98, 3 simultaneous recipes) first completion — N served orders, N settlements, no COGS/revenue double-counted at group completion. =====
+// ===== 5/22: Real-batch (level-86, 3 simultaneous recipes) first completion — N served orders, N settlements, no COGS/revenue double-counted at group completion. =====
 {
-  const level = getLevel("level-98")!;
+  const level = getLevel("level-86")!;
   const recipeIds = level.batchGroupRecipeIds!;
-  assert(recipeIds.length === 3, "setup: level-98 is a real 3-recipe batch group");
+  assert(recipeIds.length === 3, "setup: level-86 is a real 3-recipe batch group");
   const recipes = recipeIds.map((id) => getCampaignRecipe(id)!);
   let group = createBatchGroupSession(level.id, recipes, () => 0, level.chapter, false);
   for (const o of group.orders) group = recordBatchGroupComponents(group, o.order.id, 80);
@@ -209,7 +209,7 @@ function bodyOf(fnName: string): string {
 
 // ===== 6: Real-batch REPLAY pays 0 for every served order. =====
 {
-  const level = getLevel("level-98")!;
+  const level = getLevel("level-86")!;
   const recipes = level.batchGroupRecipeIds!.map((id) => getCampaignRecipe(id)!);
   let group = createBatchGroupSession(
     level.id,
@@ -242,15 +242,15 @@ function bodyOf(fnName: string): string {
 
 // ===== 7: Level-completion bonus still occurs only once (LevelManager's own gate — the one App.tsx's finishCampaignLevel/finishBatchGroupLevel/recordPreparationResult all reuse, never a second completion system). =====
 {
-  const level = getLevel("level-69")!;
+  const level = getLevel("level-45")!;
   const r1 = completeLevel(level.id, DEFAULT_LEVEL_PROGRESS);
   const r2 = completeLevel(level.id, r1.progress);
-  // Rule changed (developer 2026-10-30): $50 at Level 1, +$40 a level to Level 40, then +$6 a level (L69: $1,784).
+  // Rule changed (developer 2026-10-30): $50 at Level 1, +$40 a level to Level 40, then +$6 a level; re-tuned 2026-11-07 for 91 levels (curatedRewardAt).
   assert(
     r1.rewardCoins === paidLevelReward(level) &&
-      r1.rewardCoins === dollars(50 + 40 * 39 + 6 * 29) &&
+      r1.rewardCoins === dollars(curatedRewardAt(45)) &&
       r1.rewardCoins > 0,
-    "7a: first completion pays the level's paid reward (levelRewards.ts — the curve's $1,784 at Level 69)",
+    "7a: first completion pays the level's paid reward (levelRewards.ts — the 91-level curve's $2,949 at Level 45)",
   );
   assert(
     r2.rewardCoins === 0,
@@ -317,8 +317,8 @@ function bodyOf(fnName: string): string {
 
 // ===== 15: No negative credits anywhere in this sweep (already exhaustively proven corpus-wide by economy-v2-qa.mts's own check 6b; re-asserted here against the two REAL levels this script exercises). =====
 {
-  const level71Pool = campaignPoolFor(getLevel("level-69")!);
-  const level98Recipes = getLevel("level-98")!.batchGroupRecipeIds!.map((id) =>
+  const level71Pool = campaignPoolFor(getLevel("level-45")!);
+  const level98Recipes = getLevel("level-86")!.batchGroupRecipeIds!.map((id) =>
     getCampaignRecipe(id)!,
   );
   const grades = [30, 55, 75, 88, 97];

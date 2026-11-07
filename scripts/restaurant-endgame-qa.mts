@@ -171,10 +171,11 @@ console.log("S. Standing: rank, stage, Restaurant Complete");
   const s1 = restaurantStanding(saveAt(1).levelProgress);
   // 148-level campaign (2026-10-29/30): stages through the remap; Restaurant Complete at L148; the Pantry (real
   // stock) is the very first stage change, at Level 1.
-  const s51 = restaurantStanding(saveAt(33).levelProgress);
-  const s245 = restaurantStanding(saveAt(143).levelProgress);
-  const s250 = restaurantStanding(saveAt(148).levelProgress);
-  const done = restaurantStanding(saveAt(149).levelProgress);
+  // 91-level campaign (2026-11-07): the Cuisines stage at L31, the Grand Service stage at L88, Restaurant Complete at L91.
+  const s51 = restaurantStanding(saveAt(31).levelProgress);
+  const s245 = restaurantStanding(saveAt(88).levelProgress);
+  const s250 = restaurantStanding(saveAt(91).levelProgress);
+  const done = restaurantStanding(saveAt(92).levelProgress);
   assert(
     s1.rank === "Humble Kitchen" &&
       s1.stage === RESTAURANT_SYSTEMS[1]!.stage &&
@@ -183,8 +184,8 @@ console.log("S. Standing: rank, stage, Restaurant Complete");
       s51.stage === "Cuisines & Specialists" &&
       s245.stage === "Grand Service" &&
       s245.nextStage?.stage === "Restaurant Complete" &&
-      s245.nextStage.level === 148,
-    `S1: rank and stage from the existing tables (L1 ${s1.rank} · ${s1.stage} → the Menu at L5; L33 ${s51.stage}; L143 ${s245.stage} → next Restaurant Complete at 148)`,
+      s245.nextStage.level === 91,
+    `S1: rank and stage from the existing tables (L1 ${s1.rank} · ${s1.stage} → the Menu at L5; L31 ${s51.stage}; L88 ${s245.stage} → next Restaurant Complete at 91)`,
   );
   assert(
     !s250.complete &&
@@ -194,7 +195,7 @@ console.log("S. Standing: rank, stage, Restaurant Complete");
       done.stage === "Restaurant Complete" &&
       done.nextStage === null &&
       done.stageNumber === done.stageCount,
-    "S2: Level 148 still to play → not complete; every level done → Restaurant Complete and the Endless Restaurant unlocked",
+    "S2: Level 91 still to play → not complete; every level done → Restaurant Complete and the Endless Restaurant unlocked",
   );
   const before = JSON.stringify(endless);
   isRestaurantComplete(endless);
@@ -208,7 +209,7 @@ console.log("S. Standing: rank, stage, Restaurant Complete");
 console.log("D. The Endless day");
 {
   const classic = saveAt(251, { restaurantStaff: { specialists: allChefs } }); // never moved in (release build)
-  const campaign = saveAt(120, { restaurantMigration: MOVED_IN });
+  const campaign = saveAt(60, { restaurantMigration: MOVED_IN });
   const days = Array.from({ length: 200 }, (_, i) => i + 1);
   const at = (save: SaveData, d: number): SaveData => ({
     ...save,

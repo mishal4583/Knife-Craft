@@ -5,12 +5,13 @@
  */
 import type { LevelDefinition } from "./levelTypes";
 import {
-  CAMPAIGN_150_CHAPTER_BY_SOURCE_CHAPTER,
   CAMPAIGN_150_CHAPTER_IDS,
   campaignChapterOf,
+  campaignCuisineChapterOf,
   CAMPAIGN_150_CHAPTER_TITLES,
   CAMPAIGN_150_OLD_TO_NEW,
   CAMPAIGN_150_SOURCE_LEVEL_NUMBERS,
+  CAMPAIGN_PLAN_LEVELS,
 } from "./campaignSelection";
 
 /** Chapter display names, colocated with the level data they describe rather than hardcoded in a UI component — Kitchen.tsx's "Today's Board" derives its per-chapter section dividers from this instead of a literal string. */
@@ -9711,7 +9712,8 @@ export const CAMPAIGN_150_SOURCE_LEVELS: readonly LevelDefinition[] =
  * also carry their recipe's steps (2026-10-24: the level's own snapshot still
  * listed the old dish, which the difficulty badge and the derived recipe read).
  */
-const LEVEL_FIXES: Record<number, Partial<LevelDefinition>> = {
+/** The 2026-10-15 text fixes, keyed by previous (148-level) number + 2. Read once by `campaign-v2-plan.mts --emit` to carry the texts into the plan; no longer applied. */
+export const CAMPAIGN_148_LEVEL_FIXES: Record<number, Partial<LevelDefinition>> = {
   4: {
     title: "Potato & Tomato",
     description: "Peel the potato and halve it evenly, then slice a tomato alongside it.",
@@ -9792,28 +9794,44 @@ const LEVEL_FIXES: Record<number, Partial<LevelDefinition>> = {
   145: { description: "Sliced, julienned and diced — everything this kitchen learned about chicken, with carrot julienne." },
 };
 
-export const LEVELS: LevelDefinition[] = CAMPAIGN_150_SOURCE_LEVEL_NUMBERS.map((oldNumber, index) => {
+/**
+ * The campaign the player plays: the plan in `campaignPlan.ts` (91 levels). Each level inherits the definition of the old level it grows
+ * from (rewards, unlock items, story, theme) and takes its title, dishes and service shape from the plan.
+ */
+export const LEVELS: LevelDefinition[] = CAMPAIGN_PLAN_LEVELS.map((plan, index) => {
+  const oldNumber = CAMPAIGN_150_SOURCE_LEVEL_NUMBERS[index]!;
   const source = SOURCE_LEVELS[oldNumber - 1]!;
-  // Display chapter in play order; the cuisine chapter (pay, cuisine) is unchanged.
-  const chapter = campaignChapterOf(index + 1);
-  const cuisineChapter = index < 2
-    ? 1
-    : index < 18
-      ? 2
-      : CAMPAIGN_150_CHAPTER_BY_SOURCE_CHAPTER[source.chapter]!;
-  const id = `level-${index + 1}`;
+  const n = index + 1;
+  const chapter = campaignChapterOf(n);
   const level: LevelDefinition = {
     ...source,
-    id,
+    id: `level-${n}`,
     campaignRewardBasisLevel: oldNumber,
     chapter,
-    cuisineChapter,
+    cuisineChapter: campaignCuisineChapterOf(n),
     chapterId: CAMPAIGN_150_CHAPTER_IDS[chapter]!,
     unlockRequirements: index === 0 ? { type: "always" } : { type: "levelCompleted", levelId: `level-${index}` },
+    title: plan.title,
+    subtitle: plan.subtitle ?? source.subtitle,
+    description: plan.description ?? source.description,
+    recipeId: plan.recipes[0]!,
   };
-  // LEVEL_FIXES retains its original curated numbering; removing the two
-  // introductory services shifts every retained fix down by two.
-  Object.assign(level, LEVEL_FIXES[index + 3] ?? {});
+  // The service shape: a pool (orders drawn from it), a batch (shared prep) or one dish.
+  delete level.recipePoolIds;
+  delete level.batchGroupRecipeIds;
+  delete level.requiredOrders;
+  if (plan.mode === "batch") {
+    level.batchGroupRecipeIds = [...plan.recipes];
+  } else {
+    level.recipePoolIds = [...plan.recipes];
+    const orders = plan.orders ?? Math.min(3, plan.recipes.length);
+    if (orders > 1) level.requiredOrders = orders;
+  }
+  level.type = plan.mode === "batch" || (level.requiredOrders ?? 1) > 1 ? "SERVICE" : source.type === "RELAX" ? "RELAX" : "ORDER";
+  if (plan.steps) {
+    level.preparationSteps = plan.steps.map((s) => ({ ...s }));
+    level.objectives = plan.steps.map((s) => ({ type: "prepareIngredient" as const, ingredientId: s.ingredient, technique: s.technique }));
+  }
   return level;
 });
 

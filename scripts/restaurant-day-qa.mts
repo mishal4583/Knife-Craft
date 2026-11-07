@@ -86,21 +86,21 @@ const finishedDay = (n: number) => {
 
 console.log("S. Schedule");
 assert(
-  // 148-level renumbering (2026-10-29): old L21 / 51 / 101 / 161 → L14 / 33 / 57 / 99.
+  // 91-level campaign (2026-11-07): old L21 / 51 / 101 / 161 → L11 / 31 / 47 / 68.
   servicesForDayAt(1).join() === "Lunch,Dinner" &&
-    servicesForDayAt(13).join() === "Lunch,Dinner" &&
-    servicesForDayAt(14).join() === "Breakfast,Lunch,Dinner" &&
-    servicesForDayAt(33).join() === "Breakfast,Lunch,Afternoon Tea,Dinner" &&
-    servicesForDayAt(57).join() === "Breakfast,Brunch,Lunch,Afternoon Tea,Dinner" &&
-    servicesForDayAt(99).join() === "Breakfast,Brunch,Lunch,Afternoon Tea,Dinner,Late Supper",
-  "S1: 2 services a day to L13, then one more meal at L14, L33, L57 and L99 (6 a day)",
+    servicesForDayAt(10).join() === "Lunch,Dinner" &&
+    servicesForDayAt(11).join() === "Breakfast,Lunch,Dinner" &&
+    servicesForDayAt(31).join() === "Breakfast,Lunch,Afternoon Tea,Dinner" &&
+    servicesForDayAt(47).join() === "Breakfast,Brunch,Lunch,Afternoon Tea,Dinner" &&
+    servicesForDayAt(68).join() === "Breakfast,Brunch,Lunch,Afternoon Tea,Dinner,Late Supper",
+  "S1: 2 services a day to L10, then one more meal at L11, L31, L47 and L68 (6 a day)",
 );
 
 console.log("O. Opening");
 {
-  const s = saveAt(12);
+  const s = saveAt(8);
   const d0 = restaurantDayOf(s);
-  const opened = openDay(s, 12);
+  const opened = openDay(s, 8);
   const d1 = restaurantDayOf(opened);
   assert(
     d0.day === 1 && !d0.opened && opensNewDay(s),
@@ -110,14 +110,14 @@ console.log("O. Opening");
     d1.opened &&
       d1.servicesPlanned === 2 &&
       d1.openingCredits === 100_000 &&
-      d1.openingLevel === 12 &&
+      d1.openingLevel === 8 &&
       !opensNewDay(opened) &&
-      todaysServices(opened, 12)
+      todaysServices(opened, 8)
         .map((x) => `${x.name}@${x.levelNumber}`)
-        .join() === "Lunch@12,Dinner@13",
-    "O2: opening notes the cash and the day's services (Lunch L12, Dinner L13)",
+        .join() === "Lunch@8,Dinner@9",
+    "O2: opening notes the cash and the day's services (Lunch L8, Dinner L9)",
   );
-  assert(openDay(opened, 13) === opened, "O3: an open day doesn't open again");
+  assert(openDay(opened, 9) === opened, "O3: an open day doesn't open again");
   // Stock from Level 3 (redesign 2026-10-15; Grandma's leftovers are retired): stock
   // Level 5's own ingredients so its check is ready.
   const base5 = saveAt(5);
@@ -170,9 +170,9 @@ console.log("O. Opening");
 
 console.log("V. Services");
 {
-  const one = recordService(openDay(saveAt(12), 12), 12);
-  const two = recordService(one, 13);
-  const three = recordService(two, 14);
+  const one = recordService(openDay(saveAt(8), 8), 8);
+  const two = recordService(one, 9);
+  const three = recordService(two, 10);
   assert(
     restaurantDayOf(one).servicesDone === 1 &&
       !restaurantDayOf(one).closingDue &&
@@ -198,14 +198,14 @@ console.log("V. Services");
       restaurantDayOf(four).servicesPlanned === 4 &&
       !notYet &&
       restaurantDayOf(four).closingDue,
-    "V3: from L16 a day holds three services, from L35 four",
+    "V3: from L11 a day holds three services, from L31 four",
   );
 }
 
 console.log("C. Closing");
 {
-  const early = finishedDay(12);
-  const closed = closeDay(early, 13);
+  const early = finishedDay(8);
+  const closed = closeDay(early, 9);
   assert(
     restaurantDayOf(closed).day === 2 &&
       !restaurantDayOf(closed).opened &&
@@ -213,7 +213,7 @@ console.log("C. Closing");
       closed.business.calendar.businessDay === early.business.calendar.businessDay &&
       closed.business.inventory === early.business.inventory &&
       closed.credits === early.credits,
-    "C1: before L21 closing only moves the day number (food doesn't age yet)",
+    "C1: before L11 closing only moves the day number (food doesn't age yet)",
   );
   let fresh = finishedDay(25);
   fresh = {
@@ -238,7 +238,7 @@ console.log("C. Closing");
       night.credits === fresh.credits &&
       night.economyLedger.length === fresh.economyLedger.length &&
       restaurantDayOf(night).day === 2,
-    "C2: from L21 closing advances the freshness clock and throws out expired stock as waste, no money",
+    "C2: from L11 closing advances the freshness clock and throws out expired stock as waste, no money",
   );
   const late = finishedDay(95);
   const lateClosed = closeDay(late, 96);
@@ -247,7 +247,7 @@ console.log("C. Closing");
     JSON.stringify({ ...lateClosed.business, restaurantDay: null }) ===
       JSON.stringify({ ...reference.business, restaurantDay: null }) &&
       lateClosed.credits === reference.credits,
-    "C3: from L91 closing is exactly End Business Day (payroll, inspection, P&L)",
+    "C3: from L41 closing is exactly End Business Day (payroll, inspection, P&L)",
   );
   const midDay = recordService(openDay(saveAt(30), 30), 30);
   assert(closeDay(midDay, 30) === midDay, "C4: a day that isn't finished never closes");
@@ -255,7 +255,7 @@ console.log("C. Closing");
 
 console.log("P. Preview");
 {
-  const p12 = closingPreview(finishedDay(12), 13);
+  const p12 = closingPreview(finishedDay(8), 9);
   let fresh = finishedDay(35);
   fresh = {
     ...fresh,
@@ -270,7 +270,7 @@ console.log("P. Preview");
     p12.chores.map((c) => c.id).join() === "wash-up,wipe-down,count" &&
       p35.chores.map((c) => c.id).join() === "wash-up,wipe-down,spoiled,wrap,dining-room,count" &&
       p12.spoiled === null,
-    "P1: the chores grow with the stages (spoiled food and wrapping what's left from L21, the dining room from L31)",
+    "P1: the chores grow with the stages (spoiled food and wrapping what's left from L11, the dining room from L23)",
   );
   assert(
     p35.spoiled !== null &&

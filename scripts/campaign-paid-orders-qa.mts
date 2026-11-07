@@ -65,7 +65,7 @@ const read = (p: string) => fs.readFileSync(path.join(root, p), "utf8");
 
 // 148-level campaign (2026-10-29): L17 is a 2-order service, L43 a 3-customer batch group (were L19 / L45).
 const service = getLevel("level-17")!; // requiredOrders 2
-const batch = getLevel("level-43")!; // 3-customer batch group
+const batch = getLevel("level-37")!; // 3-customer batch group
 const progressAt = (n: number): LevelProgress => ({
   currentLevelId: `level-${n}`,
   highestUnlockedLevelId: `level-${n}`,
@@ -95,7 +95,7 @@ console.log("A. Rules");
   const done = { ...p0, completedLevelIds: [...p0.completedLevelIds, service.id] };
   assert(!mayPayOrder(done, service, "x"), "A5: a completed level never pays through this rule");
   const recipes = batch.batchGroupRecipeIds!;
-  const b1 = withPaidOrder(progressAt(43), batch.id, recipes[0]!);
+  const b1 = withPaidOrder(progressAt(37), batch.id, recipes[0]!);
   assert(
     !mayPayOrder(b1, batch, recipes[0]!) && mayPayOrder(b1, batch, recipes[1]!),
     "A6: a batch group pays each customer once",

@@ -132,8 +132,8 @@ const INVESTMENT_NAMES = ["Prep Station Upgrade", "Storage Rack", "Service Count
   // after L28 / L55 are the next café ranks — never a kitchen tier "opening" later.
   const p40 = getNextRewardPreview(28);
   const p90 = getNextRewardPreview(55);
-  assert(p40?.name === "Garden Café" && p40.atLevel === 38 && p40.icon === "🏆", `C3: after Lv 28 the hint is the next café rank (Garden Café, Lv 38); no kitchen tier opens later`);
-  assert(p90?.name === "Grand Café" && p90.atLevel === 56 && p90.icon === "🏆", `C4: after Lv 55 the hint is the next café rank (Grand Café, Lv 56)`);
+  assert(p40?.name === "Bakery Corner" && p40.atLevel === 30 && p40.icon === "🏆", `C3: after Lv 28 the hint is the next café rank (Bakery Corner, Lv 30; 91-level campaign, 2026-11-07); no kitchen tier opens later`);
+  assert(p90?.name === "Chapter 8 · Italian & French Encore" && p90.atLevel === 56 && p90.icon === "📖", `C4: after Lv 55 the hint is the next real goal (the Encore chapter opens at Lv 56)`);
   for (const u of KITCHEN_UPGRADE_CATALOG.filter((u) => u.unlockLevel > 1)) {
     const cafeClash = CAFE_MILESTONES.some((m) => m.title === u.name && m.levelRequired < u.unlockLevel);
     const entry = timeline.find((r) => r.name === u.name);
@@ -160,11 +160,11 @@ const INVESTMENT_NAMES = ["Prep Station Upgrade", "Storage Rack", "Service Count
   assert(keys.every((k) => sources.includes(k)), "C7: every entry is a real knife/board/café rank/kitchen background/cuisine chapter/campaign finale at its own level (nothing invented)");
   assert(timeline.every((r, i) => i === 0 || timeline[i - 1]!.atLevel <= r.atLevel), "C8: timeline is level-ordered");
   const last = timeline[timeline.length - 1]!;
-  assert(last.name === "Campaign Finale" && last.atLevel === 148 && getNextRewardPreview(148) === null, `C9: the last real goal is "${last.name}" at Lv ${last.atLevel}; after the campaign nothing is invented`);
+  assert(last.name === "Campaign Finale" && last.atLevel === getLevels().length && getNextRewardPreview(getLevels().length) === null, `C9: the last real goal is "${last.name}" at Lv ${last.atLevel}; after the campaign nothing is invented`);
   const dead: number[] = [];
-  for (let lv = 1; lv < 148; lv++) if (!getNextRewardPreview(lv)) dead.push(lv);
-  assert(dead.length === 0, `C10: every level 1-147 shows a real next goal on the Order Board (no dead stretch after Lv 120)${dead.length ? " — none at " + dead.slice(0, 10).join(",") : ""}`);
-  assert(timeline.filter((r) => r.atLevel > 120).every((r) => r.icon === "📖" || r.icon === "🏁"), "C11: after Lv 120 the goals are only real cuisine chapters and the finale — no invented rewards");
+  for (let lv = 1; lv < getLevels().length; lv++) if (!getNextRewardPreview(lv)) dead.push(lv);
+  assert(dead.length === 0, `C10: every level before the last shows a real next goal on the Order Board (no dead stretch after Lv 55)${dead.length ? " — none at " + dead.slice(0, 10).join(",") : ""}`);
+  assert(timeline.filter((r) => r.atLevel > 55).every((r) => r.icon === "📖" || r.icon === "🏁"), "C11: after Lv 55 the goals are only real cuisine chapters and the finale — no invented rewards");
 }
 
 // ===== D: the six kitchen backgrounds =====
@@ -173,8 +173,8 @@ const INVESTMENT_NAMES = ["Prep Station Upgrade", "Storage Rack", "Service Count
     // Rule changed (developer 2026-10-26): every tier is for sale by L5; the old levels stay as the
     // pre-V2.5 grant levels (LEGACY_KITCHEN_GRANT_LEVEL, used by the migration only).
     KITCHEN_UPGRADE_CATALOG.map((u) => `${u.name}@${u.unlockLevel}/${LEGACY_KITCHEN_GRANT_LEVEL[u.id]}:${u.asset}`).join(", ") ===
-      "Humble Kitchen@1/1:skin-01, Growing Kitchen@5/14:skin-02, Established Kitchen@5/27:skin-03, Neighborhood Café@5/33:skin-04, Flourishing Café@5/44:skin-05, Grand Kitchen@5/54:skin-06",
-    "D: all six kitchen backgrounds intact — names, art and order unchanged; for sale by L5 (old grant levels 1/14/27/33/44/54, after the 148-level renumbering kept for old saves)",
+      "Humble Kitchen@1/1:skin-01, Growing Kitchen@5/11:skin-02, Established Kitchen@5/27:skin-03, Neighborhood Café@5/31:skin-04, Flourishing Café@5/38:skin-05, Grand Kitchen@5/41:skin-06",
+    "D: all six kitchen backgrounds intact — names, art and order unchanged; for sale by L5 (old grant levels 1/11/27/31/38/41, after the 91-level renumbering kept for old saves)",
   );
   const bg = read("src/components/kc/KitchenBackground.tsx");
   for (const u of KITCHEN_UPGRADE_CATALOG) {
@@ -324,8 +324,8 @@ const INVESTMENT_NAMES = ["Prep Station Upgrade", "Storage Rack", "Service Count
   const honest = v2.stdout.slice(v2.stdout.indexOf("SIMULATION HONEST"), v2.stdout.indexOf("Total net campaign result") + 60);
   const has = (label: string, value: string) => new RegExp(`${label}:\\s*${value}(?![\\d,])`).test(honest);
   assert(
-    v2.status === 0 && has("Gross recipe revenue", "\\$69,925\\.00") && has("Level-completion rewards", "\\$245,138\\.00") && has("Total COGS", "\\$16,604\\.00") && has("Total quality bonuses", "\\$1,415\\.00") && has("Total net campaign result", "\\$299,874\\.00"),
-    "G: Economy V2 freeze exact — $69,925.00 / $245,138.00 / $16,604.00 / $1,415.00 / $299,874.00 (148-level baseline, re-recorded 2026-10-30 after the level-pay re-plan (completion rewards and net only))",
+    v2.status === 0 && has("Gross recipe revenue", "\\$51,275\\.00") && has("Level-completion rewards", "\\$243,953\\.00") && has("Total COGS", "\\$11,317\\.00") && has("Total quality bonuses", "\\$1,040\\.00") && has("Total net campaign result", "\\$284,951\\.00"),
+    "G: Economy V2 freeze exact — $51,275.00 / $243,953.00 / $11,317.00 / $1,040.00 / $284,951.00 (91-level campaign baseline, re-recorded 2026-11-08 (the first-20-levels dishes; before: 51,560 / 243,953 / 11,337 / 1,047 / 285,223 after the 2026-11-07 campaign plan))",
   );
 }
 

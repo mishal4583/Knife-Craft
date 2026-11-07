@@ -17,6 +17,7 @@ import {
   DISH_BRUSH,
   DISH_CLEAN_THRESHOLD,
   DISH_ORDER,
+  DISH_RINSE_RATE,
   DISH_RINSE_REACH,
   DISH_RINSE_THRESHOLD,
   DISH_SCRUB_RATE,
@@ -594,7 +595,7 @@ export function WashUpSink({
     if (!rn || !pc || pc.done || completedRef.current) return;
     const reach = DISH_BRUSH[shape] * DISH_RINSE_REACH;
     const amount = paced(
-      scrubAmount(first ? null : Math.hypot(end.x - start.x, end.y - start.y)) * 0.55,
+      scrubAmount(first ? null : Math.hypot(end.x - start.x, end.y - start.y)) * DISH_RINSE_RATE,
     );
     let touched = 0;
     rn.points.forEach((pt, i) => {

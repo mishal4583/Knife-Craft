@@ -127,14 +127,14 @@ const SETTING = { "dinner-plates": 12, "dinner-forks": 12, "dinner-knives": 12 }
 console.log("U. Unlocks");
 {
   assert(
-    [1, 9, 13, 18].every((n) => [0, 1, 2].every((i) => orderServiceFor(n, i) === null)),
-    "U1: no supplies before dine-in (L19)",
+    [1, 9, 10, 11].every((n) => [0, 1, 2].every((i) => orderServiceFor(n, i) === null)),
+    "U1: no supplies before dine-in (L12; rule 2026-11-08, was L23)",
   );
   assert(
-    Array.from({ length: 25 }, (_, k) => 19 + k).every((n) =>
+    Array.from({ length: 15 }, (_, k) => 12 + k).every((n) =>
       [0, 1, 2, 3].every((i) => orderServiceFor(n, i) === "dine-in"),
     ),
-    "U2: L19–43 every order is dine-in (148-level renumbering: dine-in opens at L19)",
+    "U2: L12–26 every order is dine-in (dine-in opens at L12, rule 2026-11-08; takeaway at L38)",
   );
   let take = 0;
   let all = 0;
@@ -323,7 +323,7 @@ console.log("W. Wash-up");
   );
   const clean = stocked(saveAt(31), { ...SETTING, "dish-soap": 1 });
   assert(washUp(clean, 31).save === clean, "W3: nothing to wash → no soap used");
-  assert(washUp(used, 18).save === used, "W4: before dine-in there is no wash-up");
+  assert(washUp(used, 11).save === used, "W4: before dine-in there is no wash-up");
 }
 
 console.log("C. Pre-Service Check");
@@ -346,8 +346,8 @@ console.log("C. Pre-Service Check");
     "C1: no tableware: plate, fork and knife block (one Market pack each); napkins only warn",
   );
   assert(
-    !serviceSuppliesCheck(empty, 18, ["dine-in"]).applies,
-    "C2: no supplies section before L19",
+    !serviceSuppliesCheck(empty, 11, ["dine-in"]).applies,
+    "C2: no supplies section before L12",
   );
   const ready = stocked(saveAt(31), SETTING);
   const r = serviceSuppliesCheck(ready, 31, ["dine-in", "dine-in"]);
@@ -479,31 +479,31 @@ console.log("D. Closing");
     s = recordService(recordService(recordService(s, n), n), n);
     return s;
   };
-  const s = due(31, { "cleaning-liquid": 1 });
-  const closed = closeDay(s, 31);
+  const s = due(30, { "cleaning-liquid": 1 });
+  const closed = closeDay(s, 30);
   assert(
     restaurantDayOf(s).closingDue &&
       restaurantDayOf(closed).day === 2 &&
       restaurantSuppliesOf(closed).cleanerPct === 100 - SERVICE_SUPPLY_RULES.cleanerPerClosing &&
       units(closed, "cleaning-liquid") === 0 &&
       closed.credits === s.credits,
-    "D1: from L31 the closing wipe-down uses cleaning liquid (no money)",
+    "D1: from dine-in (L12) the closing wipe-down uses cleaning liquid (no money; sampled at L30, a three-service day)",
   );
-  const dry = due(31, {});
-  const closedDry = closeDay(dry, 31);
+  const dry = due(30, {});
+  const closedDry = closeDay(dry, 30);
   assert(
     restaurantDayOf(closedDry).day === 2 && restaurantSuppliesOf(closedDry).cleanerPct === 0,
     "D2: no cleaning liquid → the day still closes (a warning, not a block)",
   );
-  const early = due(18, { "cleaning-liquid": 1 });
+  const early = due(11, { "cleaning-liquid": 1 });
   assert(
-    units(closeDay(early, 18), "cleaning-liquid") === 1 &&
-      closingPreview(early, 18).cleaner === null,
-    "D3: before L19 closing uses none and shows no bottle",
+    units(closeDay(early, 11), "cleaning-liquid") === 1 &&
+      closingPreview(early, 11).cleaner === null,
+    "D3: before L12 closing uses none and shows no bottle",
   );
   assert(
-    closingPreview(s, 31).cleaner?.spare === 1 && closingWipeDown(saveAt(18), 18).ok,
-    "D4: the closing preview shows the bottle; before L19 the wipe-down needs nothing",
+    closingPreview(s, 31).cleaner?.spare === 1 && closingWipeDown(saveAt(11), 11).ok,
+    "D4: the closing preview shows the bottle; before L12 the wipe-down needs nothing",
   );
 }
 

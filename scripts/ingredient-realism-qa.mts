@@ -114,11 +114,11 @@ assert(seenIds.size === CAMPAIGN_RECIPES.length, "9: zero duplicate recipe ids")
 // ===== 11: the last level (150, was 250) resolves correctly. =====
 const level250 = LEVELS[LEVELS.length - 1]! as any;
 assert(
-  level250.id === "level-148" &&
+  level250.id === "level-91" &&
     level250.chapter === 13 &&
     level250.batchGroupRecipeIds?.length === 3 &&
     level250.batchGroupRecipeIds.every((id: string) => isRecipePlayable(recipeById.get(id)!)),
-  "11: the last level (148) resolves correctly — chapter 13, real 3-recipe batch group, all playable",
+  "11: the last level (91) resolves correctly — chapter 13, real 3-recipe batch group, all playable",
 );
 
 // ===== 12: recipe name matches its own ingredients — the defect this pass originally found and fixed. =====

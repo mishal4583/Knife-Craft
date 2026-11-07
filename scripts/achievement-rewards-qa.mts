@@ -68,12 +68,12 @@ console.log("L. Level rewards");
   assert(
     // The 2026-10-30 pay curve: $50, +$40 a level to Level 40, then +$6; no $0 practice level.
     r[0] === 5_000 &&
-      r[1] === 9_000 &&
-      r[39] === 161_000 &&
-      r[74] === 182_000 &&
-      r[LEVELS.length - 2] === 225_200 &&
+      r[1] === 15_800 &&
+      r[39] === 286_900 &&
+      r[74] === 343_400 &&
+      r[LEVELS.length - 2] === 367_700 &&
       r[LEVELS.length - 1] === 500_000,
-    "L1: L1 $50, L2 $90, L40 $1,610, L75 $1,820, the level before the last $2,252, the last keeps its $5,000",
+    "L1: L1 $50, L2 $158, L40 $2,869, L75 $3,434, the level before the last $3,677, the last keeps its $5,000 (the 91-level pay curve, 2026-11-07)",
     {
       L1: r[0],
       L2: r[1],
@@ -88,8 +88,8 @@ console.log("L. Level rewards");
     "L2: every first clear before the finale pays more than the one before (no zig-zag)",
   );
   assert(
-    total === 24_513_800,
-    `L3: the campaign's first clears total $245,138 (was $45,623 before the 2026-10-30 pay re-plan; the frozen baseline's completion rewards) (${total / 100})`,
+    total === 24_395_300,
+    `L3: the campaign's first clears total $243,953 (was $45,623 before the 2026-10-30 pay re-plan; the frozen baseline's completion rewards) (${total / 100})`,
   );
 }
 
@@ -170,12 +170,12 @@ console.log("P. App rules");
       (app.match(/grantEarnedMilestoneRewards\([a-zA-Z]+, legacyOnly\)/g) ?? []).length === 2,
     "P1: the app pays only the Family Legacy by itself (both grant calls pass legacyOnly)",
   );
-  const s = saveAt(150);
+  const s = saveAt(LEVELS.length);
   const g = grantEarnedMilestoneRewards(s, (m) => m.id === FAMILY_LEGACY_ID);
   assert(
     g.granted.map((m) => m.id).join() === FAMILY_LEGACY_ID &&
       collectable(g.save).some((a) => a.id === "levels-100"),
-    "P2: at L150 the Legacy pays itself; the other rewards wait in the tab",
+    "P2: at the last level the Legacy pays itself; the other rewards wait in the tab",
   );
   // An old save that was auto-paid a milestone keeps it paid (the ledger entry is the record).
   const paidOld = grantEarnedMilestoneRewards(saveAt(25)).save;

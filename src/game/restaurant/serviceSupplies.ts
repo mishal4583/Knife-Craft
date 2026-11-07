@@ -32,6 +32,7 @@
  * washing); stock is `business.supplies`. Pure; nothing reads
  * RESTAURANT_MODE.
  */
+import { DINE_IN_FROM_LEVEL, FRIDGE_FROM_LEVEL } from "../config/earlyLevels";
 import type { SaveData } from "../SaveManager";
 import {
   getSupplyItem,
@@ -52,7 +53,7 @@ import { isSystemLive } from "./restaurantProgression";
 import type { RecipeDefinition } from "../recipes/recipeTypes";
 import { dishServiceFor } from "./dishService";
 import { KITCHEN_USES_PER_WASH, dirtyAfterUses, kitchenPiecesFor } from "./kitchenDirt";
-import { remapCampaignThreshold } from "../levels/campaignSelection";
+import { remapCampaignContent, remapCampaignThreshold } from "../levels/campaignSelection";
 
 /** Every number the restaurant's supplies use (configurable; not balanced — Economy TODO). */
 export const SERVICE_SUPPLY_RULES = {
@@ -85,16 +86,16 @@ export const SERVICE_SUPPLY_RULES = {
   coffeeFromLevel: remapCampaignThreshold(161),
   coffeeShare: 0.3,
   /** Steak is served with a steak knife from the first steak (L106). */
-  steakKnifeFromLevel: remapCampaignThreshold(106),
+  steakKnifeFromLevel: remapCampaignContent(106),
   /** Two dine-in guests to a table, at most this many tables. */
   coversPerTable: 2,
   maxTables: 6,
   /** What each table has (durable, never used up): pieces per table, from a level. */
   tablePieces: [
-    { id: "menu-stands" as SupplyId, perTable: 1, fromLevel: remapCampaignThreshold(31) },
-    { id: "salt-pepper" as SupplyId, perTable: 2, fromLevel: remapCampaignThreshold(31) },
-    { id: "napkin-holders" as SupplyId, perTable: 1, fromLevel: remapCampaignThreshold(31) },
-    { id: "water-jugs" as SupplyId, perTable: 1, fromLevel: remapCampaignThreshold(46) },
+    { id: "menu-stands" as SupplyId, perTable: 1, fromLevel: DINE_IN_FROM_LEVEL },
+    { id: "salt-pepper" as SupplyId, perTable: 2, fromLevel: DINE_IN_FROM_LEVEL },
+    { id: "napkin-holders" as SupplyId, perTable: 1, fromLevel: DINE_IN_FROM_LEVEL },
+    { id: "water-jugs" as SupplyId, perTable: 1, fromLevel: DINE_IN_FROM_LEVEL + 2 },
   ],
   /** One in this many washed pieces breaks (seeded): plates, bowls and glasses; cutlery goes missing less often. */
   breakOneIn: { crockery: 60, cutlery: 120 },
@@ -110,7 +111,7 @@ export const SERVICE_SUPPLY_RULES = {
   /** Closing: a tissue cube for the dining room every night (from dine-in). */
   tissuesPerClosing: 1,
   /** Closing: what's left in the fridge is wrapped and labelled, a sheet per ingredient (from L21). */
-  wrapFromLevel: remapCampaignThreshold(21),
+  wrapFromLevel: FRIDGE_FROM_LEVEL,
 } as const;
 
 export type RestaurantSuppliesState = {

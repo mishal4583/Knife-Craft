@@ -119,11 +119,11 @@ console.log("T. Timing");
   );
   assert(
     phaseChores("lull", PHASE_CHORES_FROM - 1).length === 0 &&
-      PHASE_CHORES_FROM === 3 &&
-      // Table chores start with dine-in (old L31, now L19 after the two opening levels went).
-      !phaseChores("opening", remapCampaignThreshold(31) - 1).includes("lay-tables") &&
-      phaseChores("opening", remapCampaignThreshold(31)).includes("lay-tables"),
-    "T2: nothing before L3, Day 2 (developer 2026-11-01; was L5); table chores from dine-in (old L31)",
+      // Rule changed (developer 2026-11-08): the chores start with Level 4 (was Level 3) and the table chores with dine-in, Level 12.
+      PHASE_CHORES_FROM === 4 &&
+      !phaseChores("opening", 11).includes("lay-tables") &&
+      phaseChores("opening", 12).includes("lay-tables"),
+    "T2: nothing before L4 (rule 2026-11-08; was L3); table chores from dine-in (L12)",
   );
 }
 

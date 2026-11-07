@@ -19,7 +19,7 @@ import fs from "node:fs";
  */
 import { DEFAULT_SAVE, type SaveData } from "../src/game/SaveManager.ts";
 // USD: every wallet/settlement amount is integer US cents (money.ts). The frozen Economy V2 figures are
-// the original numbers read as dollars — $69,925.00 / $245,138.00 / $16,604.00 / $1,415.00 / $299,874.00 (148-level baseline, re-recorded 2026-10-30 after the level-pay re-plan (completion rewards and net only)).
+// the original numbers read as dollars — $51,275.00 / $243,953.00 / $11,317.00 / $1,040.00 / $284,951.00 (91-level campaign baseline, re-recorded 2026-11-08 (the first-20-levels dishes; before: 51,560 / 243,953 / 11,337 / 1,047 / 285,223 after the 2026-11-07 campaign plan)).
 import { dollars } from "../src/game/money.ts";
 import { DEFAULT_LEVEL_PROGRESS, completeLevel, isChapterComplete } from "../src/game/levels/LevelManager.ts";
 import { LEVELS } from "../src/game/levels/levelDefinitions.ts";
@@ -346,11 +346,11 @@ const recipe = CAMPAIGN_RECIPES[30]!;
     }),
     { grossRecipeRevenue: 0, completionRewards: 0, cogs: 0, qualityBonus: 0, net: 0 },
   );
-  assert(totals.grossRecipeRevenue === dollars(69925), `X: recipe revenue unchanged at $69,925.00 (got ${totals.grossRecipeRevenue})`);
-  assert(totals.completionRewards === dollars(245138), `X2: completion rewards at the V2.5 locked $245,138.00 (got ${totals.completionRewards})`);
-  assert(totals.cogs === dollars(16604), `X3: baseline COGS unchanged at $16,604.00 (got ${totals.cogs})`);
-  assert(totals.qualityBonus === dollars(1415), `X4: quality bonus unchanged at $1,415.00 (got ${totals.qualityBonus})`);
-  assert(totals.net === dollars(299874), `X5: Honest net at the V2.5 locked $299,874.00 (got ${totals.net})`);
+  assert(totals.grossRecipeRevenue === dollars(51275), `X: recipe revenue unchanged at $51,275.00 (got ${totals.grossRecipeRevenue})`);
+  assert(totals.completionRewards === dollars(243953), `X2: completion rewards at the V2.5 locked $243,953.00 (got ${totals.completionRewards})`);
+  assert(totals.cogs === dollars(11317), `X3: baseline COGS unchanged at $11,317.00 (got ${totals.cogs})`);
+  assert(totals.qualityBonus === dollars(1040), `X4: quality bonus unchanged at $1,040.00 (got ${totals.qualityBonus})`);
+  assert(totals.net === dollars(284951), `X5: Honest net at the V2.5 locked $284,951.00 (got ${totals.net})`);
 }
 
 console.log(`\nMAX_LEDGER_ENTRIES bound in effect: ${MAX_LEDGER_ENTRIES}`);

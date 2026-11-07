@@ -101,7 +101,7 @@ console.log("S. Schedule and capacity");
     WALK_IN_RULES.fromLevel === 5 &&
       WALK_IN_RULES.perService === 1 &&
       walkInsFor(saveAt(4), 4) === 0 &&
-      [5, 10, 13].every((n) => walkInsFor(saveAt(n), n) === 1),
+      [5, 8, 10].every((n) => walkInsFor(saveAt(n), n) === 1),
     "S1: none before L5; 1 walk-in per service from L5 (the chef's 2 seats: 1 guest + 1 walk-in)",
   );
   assert(
@@ -117,7 +117,7 @@ console.log("S. Schedule and capacity");
     if (menuGuestsFor(s, n) + walkInsFor(s, n) > 6) over++;
   }
   assert(over === 0, "S3: bounded — never more than 1 walk-in a service, at every level", over);
-  const batch = [...Array(148)].map((_, i) => lv(i + 1)).find((l) => l.batchGroupRecipeIds?.length);
+  const batch = [...Array(91)].map((_, i) => lv(i + 1)).find((l) => l.batchGroupRecipeIds?.length);
   assert(
     !!batch && walkInQueue(saveAt(Number(batch.id.split("-")[1])), batch).length === 0,
     "S4: no walk-ins on a batch-group level (as menu guests)",
@@ -193,11 +193,11 @@ console.log("R. The reserve for the next level's own orders");
     ok?.inStock === true && served.ok && !!left && left.applies && left.ready,
     "R2: with L6's order stocked too, the walk-in is served — and L6's order is still fully in stock after it",
   );
-  const last = saveAt(148);
+  const last = saveAt(91);
   assert(
-    reservedTicketsFor(last, lv(148)).length === 0 &&
-      walkInStock(last, lv(148), walkIn[0]!).reservedFor === null,
-    "R3: at L148 there is no next level to reserve for",
+    reservedTicketsFor(last, lv(91)).length === 0 &&
+      walkInStock(last, lv(91), walkIn[0]!).reservedFor === null,
+    "R3: at L91 (the last level) there is no next level to reserve for",
   );
 }
 
@@ -211,9 +211,9 @@ console.log("I. Insufficient stock");
       w.short
         .map((x) => x.ingredientId)
         .sort()
-        .join() === "bread,garlic" &&
+        .join() === "basil,bread,garlic,tomato" &&
       w.short.every((x) => x.buyUnits > 0 && x.name.length > 0),
-    "I1: an empty fridge: the walk-in is refused and says what to buy (bread, garlic), nothing is taken",
+    "I1: an empty fridge: the walk-in (L5: a Bruschetta Trio in the 91-level campaign) is refused and says what to buy (basil, bread, garlic, tomato), nothing is taken",
     w?.short,
   );
   // The Pre-Service Check lists the walk-in and its optional rows; buying them makes it servable.
@@ -222,8 +222,8 @@ console.log("I. Insufficient stock");
   // Market units are whole (1 lb of bread covers L5's order, its guest, the walk-in and L6's
   // reserve), so an empty fridge may need no extra row: I3 checks that buying is enough.
   assert(
-    plan.guests.dishes.includes("🚶 Garlic Bread"),
-    "I2: the check lists the walk-in (🚶 Garlic Bread) among the optional customers",
+    plan.guests.dishes.includes("🚶 Bruschetta Trio"),
+    "I2: the check lists the walk-in (🚶 Bruschetta Trio) among the optional customers",
     plan.guests,
   );
   for (const r of [...(plan.check.applies ? plan.check.missingRows : []), ...plan.guests.rows]) {
@@ -254,7 +254,7 @@ console.log("I. Insufficient stock");
   assert(
     barePlan.check.applies &&
       barePlan.check.ready &&
-      barePlan.guests.dishes.includes("🚶 Garlic Bread") &&
+      barePlan.guests.dishes.includes("🚶 Bruschetta Trio") &&
       barePlan.guests.rows.length > 0,
     "I4: with only the own order stocked the check is ready (START allowed); the walk-in's rows stay optional",
   );
@@ -335,7 +335,7 @@ console.log("D. Determinism, staff and the guests unchanged");
   const b = walkInQueue(saveAt(30), lv(30));
   assert(ids(a) === ids(b), "D1: the same level always brings the same walk-in");
   let staffMoved = 0;
-  for (const n of [5, 16, 29, 41, 46, 61, 91, 121]) {
+  for (const n of [5, 11, 18, 27, 31, 41, 61, 75, 91]) {
     const s = saveAt(n);
     const plan = servicePlanFor(s, lv(n));
     if (!plan) continue;

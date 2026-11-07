@@ -13,6 +13,7 @@
  * timer is built from, and the Hint button's next move.
  */
 import type { SaveData } from "../SaveManager";
+import { STOCKROOM_FROM_LEVEL } from "../config/earlyLevels";
 import { addHype } from "../restaurant/secondFloor";
 import { getSupplyItem } from "./businessSupplies";
 import { HYPE_BY_STARS, bigDeliveryHype } from "./fridgeSort";
@@ -20,7 +21,7 @@ import { HYPE_BY_STARS, bigDeliveryHype } from "./fridgeSort";
 // ── When it opens ────────────────────────────────────────────────────────────
 
 /** The first supply purchase: the kitchen-tools shopping list is Level 10 (preServiceCheck.ts), the Market's supplies come with it. */
-export const STOCKROOM_FIRST_LEVEL = 10;
+export const STOCKROOM_FIRST_LEVEL = STOCKROOM_FROM_LEVEL;
 
 /** Dev test: `?stockroomSort` in the address shows the game below its level (the same pattern as `?fridgeSort`). */
 export const STOCKROOM_TEST_UNLOCK: boolean =
@@ -52,7 +53,7 @@ export type Tier = {
 
 export const TIERS: readonly Tier[] = [
   {
-    from: 10,
+    from: STOCKROOM_FIRST_LEVEL,
     maxSets: 2,
     spare: 2,
     depth: 0,

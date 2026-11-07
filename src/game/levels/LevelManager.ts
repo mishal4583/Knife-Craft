@@ -66,7 +66,7 @@ export const DEFAULT_LEVEL_PROGRESS: LevelProgress = {
   currentLevelId: LEVELS[0]!.id,
   highestUnlockedLevelId: LEVELS[0]!.id,
   completedLevelIds: [],
-  campaignVersion: 3,
+  campaignVersion: 4,
 };
 
 export function getLevels(): LevelDefinition[] {

@@ -1,6 +1,6 @@
-// Fridge Sort (developer 2026-11-03; the basket of loose pieces, developer 2026-11-05), restaurant build, in a real browser: the "Put it away"
+// Fridge Sort (developer 2026-11-03; the basket of loose pieces, developer 2026-11-05), restaurant build, in a real browser: the "Unpack the delivery"
 // mini-game (business/fridgeSort.ts). A purchase becomes loose PIECES (1 lb of tomato = 3 tomatoes) mixed in one basket; each piece goes to a shelf.
-//   S1 below Level 3 there is no chip; from Level 3 a basket of bought food shows "Put it away · 7" (the pieces) above the Inventory fridge
+//   S1 below Level 3 there is no chip; from Level 3 a basket of bought food shows "Unpack delivery · 7" (the pieces) above the Inventory fridge
 //   S2 the chip opens the game: the how-to card shows the first time, the clock does NOT run until the first touch; 7 pieces, the targets
 //   S3 a WRONG drop springs back (no token placed, no score) and a RIGHT one by TAP then TAP places it
 //   S4 the DRAG path (pointer down, move, up on the shelf) places a token too
@@ -69,7 +69,7 @@ const saveAt = (n, extra = {}, business = {}) =>
       currentLevelId: `level-${n}`,
       highestUnlockedLevelId: `level-${n}`,
       completedLevelIds: Array.from({ length: n - 1 }, (_, i) => `level-${i + 1}`),
-      campaignVersion: 3,
+      campaignVersion: 4,
     },
     story: { introDone: true, milestoneMask: 0xffff, finaleSeen: true },
     ...extra,
@@ -165,8 +165,8 @@ try {
     () => document.querySelector('[data-testid="fridge-sort-chip"]')?.textContent?.trim() ?? null,
   );
   check(
-    "S1 no chip at Level 2; at Level 20 the chip says Put it away · 7 (the loose pieces)",
-    !closed && /Put it away · 7/.test(chip ?? ""),
+    "S1 no chip at Level 2; at Level 20 the chip says Unpack delivery · 7 (the loose pieces)",
+    !closed && /Unpack delivery · 7/.test(chip ?? ""),
     {
       closed,
       chip,
@@ -312,7 +312,7 @@ try {
     "S8 buying in the Market puts the food in the basket (Level 3+): the chip counts the pieces bought (1 lb of tomato = 3)",
     bought.clicked &&
       afterBuy.business.fridgeSort?.crate?.includes(bought.id) &&
-      Number(/Put it away · (\d+)/.exec(chipInMarket ?? "")?.[1]) ===
+      Number(/Unpack delivery · (\d+)/.exec(chipInMarket ?? "")?.[1]) ===
         afterBuy.business.fridgeSort?.counts?.[bought.id] &&
       afterBuy.business.fridgeSort?.counts?.[bought.id] >= 1,
     { bought, fs: afterBuy.business.fridgeSort, chipInMarket },
@@ -588,12 +588,12 @@ try {
   );
   const bigSave = await readSave(page);
   check(
-    "S20 30 pieces = 3 baskets: the chip counts 30, the first basket says 2 more + the bonus, the last shows 'Whole delivery put away' +10 Hype",
-    /Put it away · 30/.test(chipBig) &&
+    "S20 30 pieces = 3 baskets: the chip counts 30, the first basket says 2 more + the bonus, the last shows 'Whole delivery unpacked' +10 Hype",
+    /Unpack delivery · 30/.test(chipBig) &&
       /\+2 more baskets/.test(slipMore) &&
       /2 more baskets/.test(chain1) &&
       /\+10 Hype/.test(chain1) &&
-      /Whole delivery put away \(3 baskets\)/.test(bigText) &&
+      /Whole delivery unpacked \(3 baskets\)/.test(bigText) &&
       !bigSave.business.fridgeSort?.crate?.length &&
       !bigSave.business.fridgeSort?.chain,
     { chipBig, slipMore, chain1, bigText },

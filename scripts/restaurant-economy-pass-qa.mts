@@ -281,8 +281,8 @@ console.log(
 );
 {
   assert(
-    missingPurchases(after.s).length === 0 && after.stats.levels === 148,
-    "T1: the completionist owns everything at the last level (the 148-level campaign)",
+    missingPurchases(after.s).length === 0 && after.stats.levels === 91,
+    "T1: the completionist owns everything at the last level (the 91-level campaign)",
   );
   assert(
     after.s.credits >= 150_000_00,

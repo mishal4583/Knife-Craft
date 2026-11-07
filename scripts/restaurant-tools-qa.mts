@@ -108,9 +108,11 @@ console.log("T. Every culinary smallware has a use");
     TOOL_RULES.every(
       (r) =>
         first[r.id] !== undefined &&
-        // The bowl and cups sit on the Level-10 first shopping list one dish early (bought together with the
-        // peeler); every other tool is needed from, or right after, its own level.
-        first[r.id]! - r.fromLevel <= (["mixing-bowls", "measuring-cups"].includes(r.id) ? 2 : 1),
+        // Rule changed (developer 2026-11-08): the first shopping list is at Level 6 (was 10). The peeler, bowls and cups
+        // are bought together on it, up to two dishes before their first use (peel L8, salads L7); every other tool is
+        // needed from, or right after, its own level.
+        first[r.id]! - r.fromLevel <=
+          (["peelers", "mixing-bowls", "measuring-cups"].includes(r.id) ? 2 : 1),
     ),
     "T2: every tool is needed by real campaign dishes from (or right after) its level — none without a use",
     Object.fromEntries(TOOL_RULES.map((r) => [r.id, [r.fromLevel, first[r.id]]])),
@@ -132,7 +134,8 @@ console.log("D. Dish service");
       d("camp-garden-minestrone-base").cooking.includes("pot") &&
       dishServiceFor(all.find((r) => /Ribeye/.test(r.name))!).protein === "steak" &&
       dishServiceFor(all.find((r) => /Skewers/.test(r.name))!).skewer &&
-      dishServiceFor(all.find((r) => /for Two/.test(r.name))!).shared &&
+      // Rule changed (developer 2026-11-08): Level 9 serves the Eggplant Antipasto, so the "for Two" check reads the recipe by id.
+      dishServiceFor(getCampaignRecipe("camp-family-antipasto-for-two")!).shared &&
       dishServiceFor(all.find((r) => /Caprese Plate/.test(r.name))!).cheese &&
       dishServiceFor(all[0]!) === dishServiceFor(all[0]!),
     `D1: every one of the campaign's ${all.length} dishes is read (oven / fry / pot / protein / skewer / shared / cheese), cached`,
@@ -153,53 +156,51 @@ console.log("G. Nothing is given");
 console.log("C. The check");
 {
   const at = (n: number, s: SaveData) => toolsCheck(s, n, [...levelRecipesAt(n)].slice(0, 1));
-  // Nothing is given free (developer 2026-10-30): the Level 10 first shopping list is the player's own
-  // purchase — a peeler, a sheet pan and oven mitts for Bruschetta for the House.
-  const c9 = at(9, saveAt(9));
-  const c10first = at(10, saveAt(10));
-  const bought = withTools(saveAt(10), ["peelers", "sheet-pans", "oven-mitts"]);
-  const c10bought = at(10, bought);
+  // Nothing is given free (developer 2026-10-30): the first shopping list is the player's own purchase.
+  // Rule changed (developer 2026-11-08): it is at Level 6 (was 10), with the first protein: a frying pan and tongs for the sliced chicken.
+  const c5 = at(5, saveAt(5));
+  const c6first = at(6, saveAt(6));
+  const bought = withTools(saveAt(6), ["frying-pans", "tongs"]);
+  const c6bought = at(6, bought);
   assert(
-    !c9.applies &&
-      c10first.applies &&
-      !c10first.ready &&
-      c10first.rows
+    !c5.applies &&
+      c6first.applies &&
+      !c6first.ready &&
+      c6first.rows
         .filter((r) => r.missing > 0)
         .map((r) => r.id)
         .sort()
-        .join() === "oven-mitts,peelers,sheet-pans" &&
-      c10first.rows
-        .find((r) => r.id === "sheet-pans")!
-        .dishes.includes("Bruschetta for the House") &&
-      c10first.missingCost > 0 &&
-      c10bought.applies &&
-      c10bought.ready,
-    "C1: no tool check before L10; L10's first shopping list (peeler, sheet pan, oven mitts) is bought by the player, then ready",
+        .join() === "frying-pans,tongs" &&
+      c6first.rows.find((r) => r.id === "frying-pans")!.dishes.includes("Sliced Chicken Plate") &&
+      c6first.missingCost > 0 &&
+      c6bought.applies &&
+      c6bought.ready,
+    "C1: no tool check before L6; L6's first shopping list (frying pan, tongs for the first chicken) is bought by the player, then ready",
   );
   const c10 = at(10, boughtTools(saveAt(10), 10));
   void c10;
   const c11 = at(12, boughtTools(saveAt(12), 12));
   void c11;
-  const s16 = boughtTools(saveAt(11), 11);
-  const ownOnly = toolsCheck(s16, 11, levelRecipesAt(11));
+  const s16 = boughtTools(saveAt(15), 15);
+  const ownOnly = toolsCheck(s16, 15, levelRecipesAt(15));
   assert(
     ownOnly.applies &&
-      ["frying-pans", "tongs", "skimmers"].every((id) =>
+      ["frying-pans", "tongs"].every((id) =>
         ownOnly.rows.some((r) => r.id === id && r.missing > 0),
       ),
-    "C2: L11's onion rings need a frying pan, tongs and a skimmer before the service",
+    "C2: L15's ribeye (meat sears) needs a frying pan and tongs before the service",
   );
   const crew = {
-    ...saveAt(61),
+    ...saveAt(75),
     business: {
-      ...saveAt(61).business,
+      ...saveAt(75).business,
       staff: { ...DEFAULT_SAVE.business.staff, hiredRoles: ["prep-cook", "line-cook"] },
     },
   } as SaveData;
   const solo = saveAt(30);
-  const pans = toolsNeeded(crew, 61, levelRecipesAt(61)).find((t) => t.rule.id === "frying-pans");
+  const pans = toolsNeeded(crew, 75, levelRecipesAt(75)).find((t) => t.rule.id === "frying-pans");
   assert(
-    cooksOnLine(solo, 30) === 1 && cooksOnLine(crew, 61) === 3 && !!pans && pans.need === 3,
+    cooksOnLine(solo, 30) === 1 && cooksOnLine(crew, 75) === 3 && !!pans && pans.need === 3,
     "C3: pans are per cook from the staff stage — the chef + 2 cooks need 3 of each",
     { pans: pans?.need },
   );
@@ -207,21 +208,19 @@ console.log("C. The check");
 
 console.log("S. First shopping list and what's coming");
 {
-  const s10 = boughtTools(saveAt(10), 10);
-  const list = toolsComingUp(s10, 10, 10, levelRecipesAt).map((t) => t.id);
-  const plan10 = servicePlanFor(s10, getLevel("level-10")!)!;
+  const s6 = boughtTools(saveAt(6), 6);
+  const list = toolsComingUp(s6, 6, 5, levelRecipesAt).map((t) => t.id);
+  const plan6 = servicePlanFor(s6, getLevel("level-6")!)!;
   const plan30 = servicePlanFor(saveAt(30), getLevel("level-30")!)!;
   assert(
-    ["sheet-pans", "oven-mitts", "frying-pans", "tongs", "skimmers", "stock-pot", "ladles"].every(
-      (id) => list.includes(id as SupplyId),
+    ["skimmers", "sheet-pans", "oven-mitts", "stock-pot"].every((id) =>
+      list.includes(id as SupplyId),
     ) &&
-      !list.some((id) => (TOOL_SET as readonly string[]).includes(id)) &&
-      plan10.firstShoppingList &&
-      plan10.toolsSoon.length === list.length &&
-      servicePlanNeedsSheet(plan10) &&
+      plan6.firstShoppingList &&
+      plan6.toolsSoon.length === list.length &&
       !plan30.firstShoppingList &&
       plan30.toolsSoon.every((t) => t.level > 30 && t.level <= 35),
-    "S1: Level 10's sheet opens with the first shopping list (L11–20's tools, not Grandma's); later levels look 5 ahead",
+    "S1: Level 6's sheet opens with the first shopping list (the next levels' tools; rule 2026-11-08, was Level 10); later levels look 5 ahead",
     list,
   );
 }

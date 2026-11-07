@@ -22,6 +22,7 @@ import {
   FINALE_AT,
   LEGACY_AT,
   LEGACY_BIT,
+  MILES_FULL_MASK,
   RETIRED_CAMPAIGN_COMPLETE_BIT,
   type MilestoneDef,
 } from "./storyDefinitions";
@@ -115,8 +116,14 @@ export function applyLegacySeen(save: SaveData): SaveData {
 export function applyStoryFlush(save: SaveData, flush: StoryFlushResult): SaveData {
   let next = save;
   if (flush?.kind === "finale") next = applyFinaleSeen(next);
-  else if (flush?.kind === "legacy") next = applyLegacySeen(next);
-  else if (flush?.kind === "milestone") next = applyMilestoneFired(next, flush.milestone);
+  else if (flush?.kind === "legacy") {
+    // THE LAST PAGE ends the story: any milestone still unseen (a returning player close behind it) is marked seen with it.
+    next = applyLegacySeen(next);
+    next = {
+      ...next,
+      story: { ...next.story, milestoneMask: next.story.milestoneMask | MILES_FULL_MASK },
+    };
+  } else if (flush?.kind === "milestone") next = applyMilestoneFired(next, flush.milestone);
   return markMissedMilestones(next, flush?.kind === "milestone" ? flush.milestone : null);
 }
 

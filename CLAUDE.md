@@ -35,9 +35,9 @@ status line in HANDOFF; this file changes only when a RULE changes.
 - **Stack:** React 19 + Vite + TypeScript + Tailwind v4; Phaser 3.90 for
   the cutting (the lazy `Preparation` chunk).
 - **Screen:** portrait first, logical 540×960, `GameShell` contain-fits.
-- **Content:** 148 campaign levels in 13 chapters (150 until the developer removed the first two on 2026-10-29; developer 2026-10-15;
-  `levels/campaignSelection.ts`), Market, Inventory, Restaurant (Economy V3),
-  Achievements, story.
+- **Content:** 91 campaign levels in 13 chapters (148 until the developer's campaign plan of 2026-11-07: fewer, richer levels, chicken
+  at Level 6, steak 15, salmon 16; data in `levels/campaignPlan.ts`, numbering in `levels/campaignSelection.ts`), Market, Inventory,
+  Restaurant (Economy V3), Achievements, story. Every one of the 221 dishes stays in the Menu.
 - **Money:** one wallet in USD cents (`SaveData.credits`); every movement
   goes in `SaveData.economyLedger`. A new game starts with $10.00 for food PLUS the
   Server's and the Cashier's hiring fees (`config/startingTeam.ts`: $236.00; developer
@@ -167,29 +167,34 @@ Release zip: the CONTENTS of `dist/` →
 
 ## 7. ECONOMY RULES (figures: REFERENCE §7)
 
-- **Frozen campaign baseline (148 levels, re-recorded 2026-10-30):** Revenue
-  69,925 · Completion 245,138 · COGS 16,604 · Quality 1,415 · Net 299,874
+- **Frozen campaign baseline (91 levels, re-recorded 2026-11-08):** Revenue
+  51,275 · Completion 243,953 · COGS 11,317 · Quality 1,040 · Net 284,951
   (`economy-v2-campaign-simulation`). Changes from the earlier figures are all
-  explained by the developer: removing the first two levels (2026-10-29: revenue
-  69,110 → 69,925, COGS 16,092 → 16,604, quality 1,402 → 1,415) and the level-pay
-  re-plan (2026-10-30: completion 45,623 → 245,138, so the completionist ends well
+  explained by the developer: the first-20-levels plan of 2026-11-08 (new dishes at L2, L5,
+  L9, L12, L13, L17, L19, L20: revenue 51,560 → 51,275, COGS 11,337 → 11,317, quality
+  1,047 → 1,040, net 285,223 → 284,951; the classic completionist $190,329.07 → $190,015.07);
+  the campaign plan of 2026-11-07 (148 → 91 levels: revenue
+  69,925 → 51,560, COGS 16,604 → 11,337, quality 1,415 → 1,047; the level pay re-tuned
+  to the same completion total, 245,138 → 243,953, so the completionist still ends well
   above $150k; the restaurant's Growing Kitchen costs $6,000, developer 2026-11-02, so it is
-  reachable within the first dozen levels). The
+  reachable within the first dozen levels). The 148-level figures were 69,925 / 245,138 /
+  16,604 / 1,415 / 299,874 and the
   250-level figures were 165,140 / 77,581 / 37,620 / 3,315 / 208,416. Pay follows
   each level's `cuisineChapter` (`payChapterOf`). An unexplained change is still
   a regression.
 - **Level rewards:** `levels/levelRewards.ts` `paidLevelReward` is the ONE
-  rule (`curatedRewardAt`): $50 at Level 1, +$40 a level to Level 40, then +$6 a
-  level (developer 2026-10-30); the last level keeps its $5,000 finale; no level is
-  a $0 practice level any more.
+  rule (`curatedRewardAt`): $50 at Level 1, then the 2026-10-30 curve (+$40 a level to
+  "Level 40", then +$6) read at the former-campaign position of the level and scaled ×1.65
+  (developer 2026-11-07, 91 levels: L2 $158, L40 $2,869, L90 $3,677); the last level keeps
+  its $5,000 finale; no level is a $0 practice level any more.
 - **Achievement money** (developer 2026-10-16,
   `progression/achievements.ts`): the old milestones are achievements under
   their own ids, plus new reward tiers. Each pays once, only when the player
   taps Collect in Progress → Achievements (one `milestone-reward` ledger
   entry; claims in `economy.claimedMilestoneIds`). Only the $50,000 Family
-  Legacy at L150 pays by itself.
+  Legacy at the last level (L91) pays by itself.
 - **Restaurant target:** the completionist ends the last level with at least $150k
-  (developer 2026-10-30; sim ~$351k with achievements collected since the
+  (developer 2026-10-30; sim ~$299k in the 91-level campaign, ~$351k in the 148-level one, with achievements collected since the
   2026-11-02 kitchen prices $6k / $12k / $18k / $24k / $29k). Check with
   `restaurant-final-economy-qa` and `achievement-rewards-qa` after any
   economy change.
@@ -218,7 +223,7 @@ Release zip: the CONTENTS of `dist/` →
   `SaveManager`.
 - **Second Floor income** (`restaurant/secondFloor.ts`, rebuilt 2026-11-02) is real
   time (whole customer cycles), capped (4 / 5 / 6 h a counter), and collected with
-  one ledger entry. It opens at Level 3, and **may exceed the campaign's income**
+  one ledger entry. It opens at Level 11 (developer 2026-11-08, was 3; Paige and the guide offer it only with the first machine's price + $300 in the till), and **may exceed the campaign's income**
   (developer 2026-11-02: "let the player be rich, like every idle game"; the old "extra
   on top" and "ads make the player ~20% richer" limits no longer apply to the floor;
   campaign pay is unchanged). Spec: `docs/planning/SECOND-FLOOR-FINAL-SPEC-2026-11-02.md`.
@@ -246,8 +251,8 @@ Release zip: the CONTENTS of `dist/` →
   — no new fields.
   - The intro's finish and SKIP › share one completion path; the finale's
     last button ends on the Kitchen.
-  - The FINALE (frozen copy) plays at L75; THE LAST PAGE plays at L150
-    (mask bit 2048).
+  - The FINALE (frozen copy) plays at L56 (right after the GRAND SERVICE
+    milestone, the midpoint); THE LAST PAGE plays at L91 (mask bit 2048).
 - **Clips:** the only bundled videos are the six cooking clips
   (`CookingClip.tsx`) and the oven's bread film (`OvenStep.tsx`, `src/assets/video/oven-bread.*`,
   built from the developer's `Bread.mp4` by `scripts/make-oven-bread-video.py`; developer

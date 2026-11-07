@@ -76,10 +76,10 @@ async function loadRaw(raw: object): Promise<SaveData> {
 // old 250-level layout and renumbers it (2026-10-15) — right for real old saves, which
 // E1 still uses on purpose.
 const progressAt = (n: number, done = n - 1) => ({
-  currentLevelId: `level-${Math.min(n, 148)}`,
-  highestUnlockedLevelId: `level-${Math.min(n, 148)}`,
+  currentLevelId: `level-${Math.min(n, 91)}`,
+  highestUnlockedLevelId: `level-${Math.min(n, 91)}`,
   completedLevelIds: Array.from({ length: done }, (_, i) => `level-${i + 1}`),
-  campaignVersion: 3, // current layout (148 levels, 2026-10-29)
+  campaignVersion: 4, // current layout (91 levels, 2026-11-07)
 });
 const oldLayoutAt = (n: number) => {
   const { campaignVersion: _v, ...rest } = progressAt(n);
@@ -104,7 +104,7 @@ const withoutRestaurant = (s: SaveData) => {
 
 console.log("K. Nothing is lost");
 {
-  const loaded = await loadRaw(modern(60));
+  const loaded = await loadRaw(modern(30));
   const moved = migrateToUnifiedRestaurant(loaded);
   assert(
     JSON.stringify(withoutRestaurant(moved)) === JSON.stringify(withoutRestaurant(loaded)) &&
@@ -144,21 +144,22 @@ console.log("F. Fresh saves");
   );
   // Rule changed (supplies plan A, 2026-10-10): from Level 10 the dishes need kitchen
   // tools, so an L12 save's crate holds its stage's tools — and nothing else (was: no crate).
-  const l9 = migrateToUnifiedRestaurant(await loadRaw(modern(9)));
-  const l12 = migrateToUnifiedRestaurant(await loadRaw(modern(12)));
+  // Rule changed (developer 2026-11-08): the first shopping list is at Level 6 (was 10), so the crate starts there.
+  const l9 = migrateToUnifiedRestaurant(await loadRaw(modern(5)));
+  const l12 = migrateToUnifiedRestaurant(await loadRaw(modern(11))); // Level 11: the tools (sheet pans from L9), no dine-in yet (L12)
   const kit12 = l12.business.restaurantMigration!.kit;
   assert(
     l9.business.restaurantMigration!.kit.length === 0 &&
       kit12.length > 0 &&
       kit12.every((k) => k.kind === "supply" && getSupplyItem(k.id)?.section === "culinary") &&
       kit12.some((k) => k.id === "sheet-pans"),
-    "F2: a save before Level 10 needs no crate; an L12 save's crate holds only its stage's kitchen tools (sheet pans for the bread)",
+    "F2: a save before Level 6 needs no crate; an L11 save's crate holds only its stage's kitchen tools (sheet pans for the bread)",
   );
 }
 
 console.log("C. The starter crate");
 {
-  const loaded = await loadRaw(modern(60));
+  const loaded = await loadRaw(modern(30));
   const moved = migrateToUnifiedRestaurant(loaded);
   const kit = moved.business.restaurantMigration!.kit;
   const cap = getRefrigeratorCapacity(moved.business.refrigerator.refrigeratorId);
@@ -179,9 +180,9 @@ console.log("C. The starter crate");
       units(moved, "cleaning-liquid") === 1 &&
       units(moved, "microwave-containers") === 0 &&
       Object.values(moved.business.supplies.stock).every((e) => e!.costBasis === 0),
-    "C2: L60 (dine-in, no takeaway yet): place settings, 100 napkins, a bottle of soap and of cleaning liquid — cost 0",
+    "C2: L30 (dine-in, no takeaway yet): place settings, 100 napkins, a bottle of soap and of cleaning liquid — cost 0",
   );
-  const l120 = migrateToUnifiedRestaurant(await loadRaw(modern(120)));
+  const l120 = migrateToUnifiedRestaurant(await loadRaw(modern(70)));
   assert(
     // Supplies plan C (developer 2026-10-10): each takeaway dish's own container and bag
     // (was: the first container and bag in the Business priority list).
@@ -197,7 +198,7 @@ console.log("C. The starter crate");
     "C3: from L71 the crate adds its takeaway dishes' own containers and bags (at least KIT_PACKAGING each)",
   );
   const stocked = await loadRaw(
-    modern(60, {
+    modern(30, {
       business: {
         ...structuredClone(DEFAULT_SAVE.business),
         supplies: {
@@ -222,7 +223,7 @@ console.log("C. The starter crate");
       units(topped, "cleaning-liquid") === 1,
     "C4: only tops up — napkins 40 → 100 (cost basis kept), enough plates → none, an open soap bottle → no new one",
   );
-  const full = modern(60);
+  const full = modern(30);
   full.business.inventory = addStock(full.business.inventory, "potato", 40, 100, 1);
   const fullMoved = migrateToUnifiedRestaurant(await loadRaw(full));
   assert(
@@ -234,8 +235,8 @@ console.log("C. The starter crate");
 
 console.log("R. Ready for the next service");
 {
-  const moved = migrateToUnifiedRestaurant(await loadRaw(modern(60)));
-  const plan = servicePlanFor(openDay(moved, 60), getLevel("level-60")!)!;
+  const moved = migrateToUnifiedRestaurant(await loadRaw(modern(30)));
+  const plan = servicePlanFor(openDay(moved, 30), getLevel("level-30")!)!;
   assert(
     // Ingredients are bought (redesign 2026-10-15); the crate makes the place settings ready.
     plan.check.applies && !plan.check.ready && plan.supplies.applies && plan.supplies.ready,
@@ -245,7 +246,7 @@ console.log("R. Ready for the next service");
 
 console.log("O. Once");
 {
-  const moved = migrateToUnifiedRestaurant(await loadRaw(modern(60)));
+  const moved = migrateToUnifiedRestaurant(await loadRaw(modern(30)));
   assert(migrateToUnifiedRestaurant(moved) === moved, "O1: a migrated save comes back unchanged");
   await SaveManager.save(moved);
   (SaveManager as unknown as { cache: SaveData | null }).cache = null;
@@ -261,8 +262,8 @@ console.log("O. Once");
 
 console.log("W. The welcome note");
 {
-  const moved = migrateToUnifiedRestaurant(await loadRaw(modern(60)));
-  const plan = servicePlanFor(openDay(moved, 60), getLevel("level-60")!)!;
+  const moved = migrateToUnifiedRestaurant(await loadRaw(modern(30)));
+  const plan = servicePlanFor(openDay(moved, 30), getLevel("level-30")!)!;
   const seen = markStarterCrateSeen(moved);
   assert(
     unseenStarterCrate(moved)?.length === moved.business.restaurantMigration!.kit.length &&
@@ -293,17 +294,17 @@ console.log("E. Saves of every era");
       units(a, "dinner-plates") >= 1,
     "E1: a version-1 save without `business` (old 250-level layout, renumbered) loads, keeps its money and gets its crate",
   );
-  const mid = modern(60, {
+  const mid = modern(30, {
     levelProgress: {
-      ...progressAt(60),
-      tickets: { "level-60": ["missing-recipe-id"] },
-      paidOrders: { "level-60": [] },
+      ...progressAt(30),
+      tickets: { "level-30": ["missing-recipe-id"] },
+      paidOrders: { "level-30": [] },
     } as SaveData["levelProgress"],
   });
   const m = migrateToUnifiedRestaurant(await loadRaw(mid));
   assert(
     JSON.stringify(m.levelProgress.tickets) ===
-      JSON.stringify({ "level-60": ["missing-recipe-id"] }) &&
+      JSON.stringify({ "level-30": ["missing-recipe-id"] }) &&
       // RESTAURANT_MIGRATION_VERSION is 2 since the 2026-10-15 redesign.
       m.business.restaurantMigration!.version === RESTAURANT_MIGRATION_VERSION,
     "E2: a save mid-level keeps its saved tickets and paid orders",
@@ -321,10 +322,10 @@ console.log("E. Saves of every era");
       (b.business.inventory.tomato?.quantity ?? 0) >= 5,
     "E3: a Business-day player keeps staff, menu switches, calendar and stock — they become the restaurant's",
   );
-  const done = modern(148, { levelProgress: progressAt(148, 148) });
+  const done = modern(91, { levelProgress: progressAt(91, 91) });
   const d = migrateToUnifiedRestaurant(await loadRaw(done));
   assert(
-    d.business.restaurantMigration!.atLevel === 148 &&
+    d.business.restaurantMigration!.atLevel === 91 &&
       !d.business.restaurantMigration!.kit.some((k) => k.kind === "ingredient") &&
       units(d, "dinner-plates") >= 1 &&
       units(d, "paper-bags") >= KIT_PACKAGING,
@@ -343,7 +344,7 @@ console.log("S. The switch");
       /const fresh = intoRestaurant\(\{ \.\.\.DEFAULT_SAVE \}\);/.test(sm),
     "S1: SaveManager moves every save in once (load, fresh, reset) in the restaurant build and writes it back",
   );
-  const loaded = await loadRaw(modern(60));
+  const loaded = await loadRaw(modern(30));
   assert(
     RESTAURANT_MODE === false && loaded.business.restaurantMigration === undefined,
     "S2: the release build (switch off) never migrates — saves are untouched",

@@ -177,7 +177,7 @@ check(
 // ── F. forecast ──────────────────────────────────────────────────────────
 check(
   "F1 the forecast keeps the service's guest count",
-  [12, 40, 80].every(
+  [11, 40, 70].every(
     (n) => menuGuestQueue(saveAt(n), lv(n)).length === menuGuestsFor(saveAt(n), n),
   ),
 );

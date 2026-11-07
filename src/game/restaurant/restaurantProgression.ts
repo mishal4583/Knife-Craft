@@ -32,9 +32,11 @@
  * not live here (docs/ECONOMY_TODO.md).
  */
 
+import { DINE_IN_FROM_LEVEL, FRIDGE_FROM_LEVEL } from "../config/earlyLevels";
 import {
   CAMPAIGN_150_INGREDIENT_FIRST_USE_LEVEL,
   CAMPAIGN_150_SOURCE_LEVEL_NUMBERS,
+  remapCampaignContent,
   remapCampaignThreshold,
 } from "../levels/campaignSelection";
 import { LEVELS } from "../levels/levelDefinitions";
@@ -106,7 +108,8 @@ const SOURCE_RESTAURANT_SYSTEMS: readonly RestaurantSystem[] = [
     stage: "Pantry",
     title: "Ingredient stock",
     covers: "Buying ingredients in the Market, stock quantities and restocking",
-    intro: "Every service needs ingredients. Check your stock and buy what the order needs in the Market.",
+    intro:
+      "Every service needs ingredients. Check your stock and buy what the order needs in the Market.",
   },
   {
     id: "fridge-freshness",
@@ -192,8 +195,8 @@ const SOURCE_RESTAURANT_SYSTEMS: readonly RestaurantSystem[] = [
   },
 ];
 
-export const RESTAURANT_SYSTEMS: readonly RestaurantSystem[] = SOURCE_RESTAURANT_SYSTEMS
-  .map((system) => ({
+export const RESTAURANT_SYSTEMS: readonly RestaurantSystem[] = SOURCE_RESTAURANT_SYSTEMS.map(
+  (system) => ({
     ...system,
     // These two unlocks are defined in the current campaign numbering. Ingredient stock (and the
     // Market) open at Level 1 since 2026-10-30: the player buys the first order's food themselves.
@@ -202,9 +205,13 @@ export const RESTAURANT_SYSTEMS: readonly RestaurantSystem[] = SOURCE_RESTAURANT
         ? BUSINESS_MENU_FIRST_LEVEL
         : system.id === "ingredient-stock"
           ? INGREDIENT_STOCK_FIRST_LEVEL
-          : remapCampaignThreshold(system.firstLevel),
-  }))
-  .sort((a, b) => a.firstLevel - b.firstLevel);
+          : system.id === "fridge-freshness"
+            ? FRIDGE_FROM_LEVEL
+            : system.id === "dine-in"
+              ? DINE_IN_FROM_LEVEL
+              : remapCampaignThreshold(system.firstLevel),
+  }),
+).sort((a, b) => a.firstLevel - b.firstLevel);
 
 /** The endgame gates follow the actual curated catalog length. */
 export const LAST_CAMPAIGN_LEVEL = CAMPAIGN_150_SOURCE_LEVEL_NUMBERS.length;
@@ -287,7 +294,9 @@ const SOURCE_CUISINES: readonly CuisineUnlock[] = [
     id: "japanese",
     name: "Japanese",
     cuisineIds: ["japanese"],
-    firstLevel: 101,
+    // The Asian Chef arrives with the wok chapter (old 121). Japanese dishes themselves are first cooked at the Meat & Fish Counter
+    // (new L6-L22), which needs no specialist (FIRST_CUISINE_LEVEL skips it).
+    firstLevel: 121,
     specialist: { id: "asian-chef", title: "Asian Chef" },
   },
   {
@@ -317,8 +326,14 @@ const SOURCE_CUISINES: readonly CuisineUnlock[] = [
 const FIRST_CUISINE_LEVEL: ReadonlyMap<CuisineKey, number> = (() => {
   const first = new Map<CuisineKey, number>();
   LEVELS.forEach((level, i) => {
+    // The Meat & Fish Counter teaches meat and fish before any specialist chef is needed.
     for (const id of [level.recipeId, ...(level.recipePoolIds ?? [])]) {
       const key = getCampaignRecipe(id ?? "")?.cuisineId ?? null;
+      // A starter dish of a cuisine can appear early in the campaign (Japanese at the Meat & Fish Counter, Mexican peppers and corn,
+      // the Mediterranean kiwi plate, the French baguette). Developer 2026-11-08: that never opens the cuisine, its card or its
+      // specialist before the cuisine's own chapter.
+      const home = SOURCE_CUISINES.find((c) => key !== null && c.cuisineIds.includes(key));
+      if (key && home && i + 1 < remapCampaignContent(home.firstLevel)) continue;
       if (key && !first.has(key)) first.set(key, i + 1);
     }
   });
@@ -334,7 +349,7 @@ const FIRST_CUISINE_LEVEL: ReadonlyMap<CuisineKey, number> = (() => {
 export const CUISINES: readonly CuisineUnlock[] = SOURCE_CUISINES.map((cuisine) => ({
   ...cuisine,
   firstLevel: Math.min(
-    remapCampaignThreshold(cuisine.firstLevel),
+    remapCampaignContent(cuisine.firstLevel),
     ...cuisine.cuisineIds.map((k) => FIRST_CUISINE_LEVEL.get(k) ?? Infinity),
   ),
 }));
@@ -392,7 +407,9 @@ export const MENU_CURVE: readonly { level: number; dishes: number }[] = (() => {
     const level = Math.max(BUSINESS_MENU_FIRST_LEVEL, remapCampaignThreshold(point.level));
     points.set(level, Math.max(points.get(level) ?? 0, point.dishes));
   }
-  return [...points].map(([level, dishes]) => ({ level, dishes })).sort((a, b) => a.level - b.level);
+  return [...points]
+    .map(([level, dishes]) => ({ level, dishes }))
+    .sort((a, b) => a.level - b.level);
 })();
 /** The developer's target menu size at `levelNumber` (0 before the menu opens). */
 export function menuTargetAt(levelNumber: number): number {
@@ -539,7 +556,10 @@ const FIRST_CUT_LEVEL: ReadonlyMap<string, number> = (() => {
  */
 function cutsReadyLevel(dishId: string): number {
   const recipe = getCampaignRecipe(getBusinessDish(dishId)?.sourceRecipeId ?? "");
-  return Math.max(0, ...(recipe?.components ?? []).map((c) => FIRST_CUT_LEVEL.get(c.technique) ?? 0));
+  return Math.max(
+    0,
+    ...(recipe?.components ?? []).map((c) => FIRST_CUT_LEVEL.get(c.technique) ?? 0),
+  );
 }
 
 /** Meat and fish wait for the campaign level that first cooks them (its "introduction"). */
@@ -559,7 +579,7 @@ function dishLegalLevel(dishId: string): number {
   const recipe = getCampaignRecipe(dish?.sourceRecipeId ?? "");
   let at = Math.max(cutsReadyLevel(dishId), cuisineFor(dish?.cuisineId ?? null).firstLevel);
   for (const c of recipe?.components ?? []) at = Math.max(at, PROTEIN_FIRST[c.ingredientId] ?? 0);
-  if (dishId === "biz-ribeye-herb-butter") at = Math.max(at, remapCampaignThreshold(106));
+  if (dishId === "biz-ribeye-herb-butter") at = Math.max(at, remapCampaignContent(106));
   return at;
 }
 
@@ -572,52 +592,65 @@ function dishLegalLevel(dishId: string): number {
  * 250 → 150 remap had left points short, and Mexican dishes at L49 after the
  * cuisine and its chef opened at L16). Its news line is its group's reason.
  */
-export const MENU_UNLOCKS: readonly { level: number; dishIds: readonly string[]; why: string }[] = (() => {
-  const source = SOURCE_MENU_UNLOCKS.flatMap((unlock, g) =>
-    unlock.dishIds.map((dishId, k) => ({
-      dishId,
-      why: unlock.why,
-      order: g * 100 + k,
-      scheduled: Math.max(BUSINESS_MENU_FIRST_LEVEL, remapCampaignThreshold(unlock.level)),
-      legal: dishLegalLevel(dishId),
-    })),
-  );
-  const seen = new Set<string>();
-  const dishes = source
-    .filter((d) => (seen.has(d.dishId) ? false : (seen.add(d.dishId), true)))
-    .sort((x, y) => Math.max(x.scheduled, x.legal) - Math.max(y.scheduled, y.legal) || x.order - y.order);
-  const placed = new Map<string, number>();
-  const count = () => placed.size;
-  const points = [...MENU_CURVE].sort((a, b) => a.level - b.level);
-  points.forEach((point, k) => {
-    const next = points[k + 1]?.level ?? Infinity;
-    // At the point: exactly min(target, the dishes legal by now).
-    const legalNow = dishes.filter((d) => d.legal <= point.level).length;
-    const need = Math.min(point.dishes, legalNow);
-    for (const d of dishes) {
-      if (count() >= need) break;
-      if (!placed.has(d.dishId) && d.legal <= point.level) placed.set(d.dishId, point.level);
+export const MENU_UNLOCKS: readonly { level: number; dishIds: readonly string[]; why: string }[] =
+  (() => {
+    const source = SOURCE_MENU_UNLOCKS.flatMap((unlock, g) =>
+      unlock.dishIds.map((dishId, k) => ({
+        dishId,
+        why: unlock.why,
+        order: g * 100 + k,
+        // Progress, like the curve (the meat and fish dishes keep their place in the menu's growth; the campaign teaches meat early, but
+        // each dish still waits for its cuisine, its cuts and its protein through `dishLegalLevel`).
+        scheduled: Math.max(
+          BUSINESS_MENU_FIRST_LEVEL,
+          // A cuisine's own dishes come with its chapter (content); the meat and fish groups (old 101-109) follow the menu's growth (progress).
+          unlock.level >= 101 && unlock.level <= 109
+            ? remapCampaignThreshold(unlock.level)
+            : remapCampaignContent(unlock.level),
+        ),
+        legal: dishLegalLevel(dishId),
+      })),
+    );
+    const seen = new Set<string>();
+    const dishes = source
+      .filter((d) => (seen.has(d.dishId) ? false : (seen.add(d.dishId), true)))
+      .sort(
+        (x, y) =>
+          Math.max(x.scheduled, x.legal) - Math.max(y.scheduled, y.legal) || x.order - y.order,
+      );
+    const placed = new Map<string, number>();
+    const count = () => placed.size;
+    const points = [...MENU_CURVE].sort((a, b) => a.level - b.level);
+    points.forEach((point, k) => {
+      const next = points[k + 1]?.level ?? Infinity;
+      // At the point: exactly min(target, the dishes legal by now).
+      const legalNow = dishes.filter((d) => d.legal <= point.level).length;
+      const need = Math.min(point.dishes, legalNow);
+      for (const d of dishes) {
+        if (count() >= need) break;
+        if (!placed.has(d.dishId) && d.legal <= point.level) placed.set(d.dishId, point.level);
+      }
+      // Between points: a dish may still join on its own level while there is room.
+      for (const d of dishes) {
+        if (count() >= point.dishes) break;
+        const at = Math.max(d.scheduled, d.legal, point.level + 1);
+        if (!placed.has(d.dishId) && at < next) placed.set(d.dishId, at);
+      }
+    });
+    for (const d of dishes)
+      if (!placed.has(d.dishId)) placed.set(d.dishId, Math.max(d.scheduled, d.legal));
+    const groups = new Map<number, { dishIds: string[]; reasons: string[] }>();
+    for (const d of [...dishes].sort((x, y) => x.order - y.order)) {
+      const level = placed.get(d.dishId)!;
+      const group = groups.get(level) ?? { dishIds: [], reasons: [] };
+      group.dishIds.push(d.dishId);
+      if (!group.reasons.includes(d.why)) group.reasons.push(d.why);
+      groups.set(level, group);
     }
-    // Between points: a dish may still join on its own level while there is room.
-    for (const d of dishes) {
-      if (count() >= point.dishes) break;
-      const at = Math.max(d.scheduled, d.legal, point.level + 1);
-      if (!placed.has(d.dishId) && at < next) placed.set(d.dishId, at);
-    }
-  });
-  for (const d of dishes) if (!placed.has(d.dishId)) placed.set(d.dishId, Math.max(d.scheduled, d.legal));
-  const groups = new Map<number, { dishIds: string[]; reasons: string[] }>();
-  for (const d of [...dishes].sort((x, y) => x.order - y.order)) {
-    const level = placed.get(d.dishId)!;
-    const group = groups.get(level) ?? { dishIds: [], reasons: [] };
-    group.dishIds.push(d.dishId);
-    if (!group.reasons.includes(d.why)) group.reasons.push(d.why);
-    groups.set(level, group);
-  }
-  return [...groups]
-    .map(([level, group]) => ({ level, dishIds: group.dishIds, why: group.reasons.join(" ") }))
-    .sort((a, b) => a.level - b.level);
-})();
+    return [...groups]
+      .map(([level, group]) => ({ level, dishIds: group.dishIds, why: group.reasons.join(" ") }))
+      .sort((a, b) => a.level - b.level);
+  })();
 const UNLOCK_LEVEL = new Map<string, number>(
   MENU_UNLOCKS.flatMap((u) => u.dishIds.map((id) => [id, u.level] as const)),
 );
@@ -661,10 +694,11 @@ const SOURCE_DAY_SCHEDULE: readonly { fromLevel: number; services: readonly stri
   },
 ];
 
-export const DAY_SCHEDULE: readonly { fromLevel: number; services: readonly string[] }[] = SOURCE_DAY_SCHEDULE.map((schedule) => ({
-  ...schedule,
-  fromLevel: remapCampaignThreshold(schedule.fromLevel),
-}));
+export const DAY_SCHEDULE: readonly { fromLevel: number; services: readonly string[] }[] =
+  SOURCE_DAY_SCHEDULE.map((schedule) => ({
+    ...schedule,
+    fromLevel: remapCampaignThreshold(schedule.fromLevel),
+  }));
 /** The service names of a day that starts with level `levelNumber`. */
 export function servicesForDayAt(levelNumber: number): readonly string[] {
   let services = DAY_SCHEDULE[0]!.services;
@@ -682,10 +716,17 @@ const SOURCE_CLOSING_CHORES: readonly { id: string; label: string; fromLevel: nu
   { id: "count", label: "Count the day's takings", fromLevel: 1 },
 ];
 
-export const CLOSING_CHORES: readonly { id: string; label: string; fromLevel: number }[] = SOURCE_CLOSING_CHORES.map((chore) => ({
-  ...chore,
-  fromLevel: remapCampaignThreshold(chore.fromLevel),
-}));
+export const CLOSING_CHORES: readonly { id: string; label: string; fromLevel: number }[] =
+  SOURCE_CLOSING_CHORES.map((chore) => ({
+    ...chore,
+    // Developer 2026-11-08: the fridge chores open with the fridge (L10), the dining room with dine-in (L12).
+    fromLevel:
+      chore.id === "spoiled" || chore.id === "wrap"
+        ? FRIDGE_FROM_LEVEL
+        : chore.id === "dining-room"
+          ? DINE_IN_FROM_LEVEL
+          : remapCampaignThreshold(chore.fromLevel),
+  }));
 // ── Menu guests (phase D) ───────────────────────────────────────────────
 
 /**
@@ -705,10 +746,15 @@ const SOURCE_MENU_GUESTS_SCHEDULE: readonly { fromLevel: number; guests: number 
 export const MENU_GUESTS_SCHEDULE: readonly { fromLevel: number; guests: number }[] = (() => {
   const points = new Map<number, number>();
   for (const schedule of SOURCE_MENU_GUESTS_SCHEDULE) {
-    const fromLevel = Math.max(BUSINESS_MENU_FIRST_LEVEL, remapCampaignThreshold(schedule.fromLevel));
+    const fromLevel = Math.max(
+      BUSINESS_MENU_FIRST_LEVEL,
+      remapCampaignThreshold(schedule.fromLevel),
+    );
     points.set(fromLevel, Math.max(points.get(fromLevel) ?? 0, schedule.guests));
   }
-  return [...points].map(([fromLevel, guests]) => ({ fromLevel, guests })).sort((a, b) => a.fromLevel - b.fromLevel);
+  return [...points]
+    .map(([fromLevel, guests]) => ({ fromLevel, guests }))
+    .sort((a, b) => a.fromLevel - b.fromLevel);
 })();
 /** How many menu guests a service of `levelNumber` can take (0 before L6). */
 export function menuGuestsPerService(levelNumber: number): number {

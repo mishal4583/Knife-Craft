@@ -180,7 +180,7 @@ const hired = (s: SaveData) => A.hireAssistant(s);
   const ms = A.ASSISTANT_BEATS.filter((b) => b.id.startsWith("milestone:"));
   check(
     "C9 a cheer every ten services ('Service N'), none on the last ones",
-    ms.length >= 12 &&
+    ms.length >= 8 && // one every ten services below the last: 8 in the 91-level campaign (12+ in the 148-level one)
       ms.every(
         (b) =>
           Number(b.id.split(":")[1]) % 10 === 0 &&

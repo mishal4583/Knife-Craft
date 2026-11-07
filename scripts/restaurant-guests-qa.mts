@@ -97,19 +97,18 @@ assert(
   menuGuestsPerService(4) === 0 &&
     menuGuestsPerService(5) === 1 &&
     menuGuestsPerService(10) === 1 &&
-    menuGuestsPerService(11) === 1 &&
-    // 148-level renumbering (2026-10-29): old L21 / 51 / 121 / 201 → L14 / 33 / 74 / 115.
-    menuGuestsPerService(13) === 1 &&
-    menuGuestsPerService(14) === 2 &&
+    // 91-level campaign (2026-11-07): old L21 / 51 / 121 / 201 → L11 / 31 / 55 / 75.
+    menuGuestsPerService(10) === 1 &&
+    menuGuestsPerService(11) === 2 &&
     // +1 from old L51 (economy F3, developer 2026-10-12).
-    menuGuestsPerService(32) === 2 &&
-    menuGuestsPerService(33) === 4 &&
-    menuGuestsPerService(74) === 5 &&
-    menuGuestsPerService(115) === 6 &&
-    menuGuestsPerService(148) === 6 &&
+    menuGuestsPerService(30) === 2 &&
+    menuGuestsPerService(31) === 4 &&
+    menuGuestsPerService(55) === 5 &&
+    menuGuestsPerService(75) === 6 &&
+    menuGuestsPerService(91) === 6 &&
     menuGuestQueue(saveAt(4), lv(4)).length === 0 &&
     menuGuestQueue(saveAt(5), lv(5)).length === 1,
-  "G1: no guests before the menu opens; 1 / 2 / 4 / 5 / 6 from L5 / 14 / 33 / 74 / 115",
+  "G1: no guests before the menu opens; 1 / 2 / 4 / 5 / 6 from L5 / 11 / 31 / 55 / 75",
 );
 
 console.log("M. Menu control");
@@ -155,7 +154,7 @@ console.log("M. Menu control");
         .join() && menuGuestQueue(saveAt(40), lv(40)).length === 2,
     "M3: the same level brings the same guests (deterministic)",
   );
-  const early = menuGuestQueue(saveAt(12, ["biz-garden-salad"]), lv(12));
+  const early = menuGuestQueue(saveAt(8, ["biz-garden-salad"]), lv(8));
   assert(
     early.length === 1,
     "M4: before the menu-choice level the menu runs itself (a saved switch is ignored)",
@@ -204,7 +203,7 @@ console.log("N. The next guest");
   // since 2026-10-25), so every guest needs the dish's stock (the old L11–14 stock-free menu is gone).
   assert(
     serviceUsesStock(BUSINESS_MENU_FIRST_LEVEL) &&
-      nextMenuGuest(saveAt(12), lv(12))!.inStock === false &&
+      nextMenuGuest(saveAt(10), lv(10))!.inStock === false &&
       nextMenuGuest(saveAt(40), lv(40))!.inStock === false,
     "N4: stock is live before the menu opens (L3), so from L5 a guest needs the dish's stock",
   );

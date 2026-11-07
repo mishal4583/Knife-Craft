@@ -21,6 +21,7 @@ import {
   isSystemLive,
 } from "./restaurantProgression";
 import { CLEANING_FROM_LEVEL } from "../config/cleaningStart";
+import { FIRST_SHOPPING_LEVEL } from "../config/earlyLevels";
 import { EARLY_UNLOCK_CAP } from "../config/earlyUnlocks";
 import { KNIFE_CATALOG } from "../knives/knifeDefinitions";
 import { BOARD_CATALOG } from "../boards/boardDefinitions";
@@ -114,7 +115,8 @@ export function grandmaLineFor(level: number): string | null {
  * cleaning are mandatory from there. `restaurantLevel` is the level the
  * Closing Time screen would be shown for (the highest unlocked level).
  */
-export const DAY_CEREMONY_FROM_LEVEL = CLEANING_FROM_LEVEL;
+// Level 3 stays (developer 2026-11-08): Day 2 opens with Level 3; the first night chore waits for Level 4 (CLEANING_FROM_LEVEL).
+export const DAY_CEREMONY_FROM_LEVEL = 3;
 export function dayCeremonyAt(restaurantLevel: number): boolean {
   return restaurantLevel >= DAY_CEREMONY_FROM_LEVEL;
 }
@@ -122,8 +124,8 @@ export function dayCeremonyAt(restaurantLevel: number): boolean {
 /** Ingredient purchases first become available in the Market. */
 export const FIRST_INGREDIENT_PURCHASE_LEVEL = INGREDIENT_STOCK_FIRST_LEVEL;
 
-/** Level 10: the Market's kitchen tools and Grandma's shopping list (knives and boards are for sale from L5). */
-export const FIRST_PURCHASE_LEVEL = 10;
+/** Level 6 (was 10, developer 2026-11-08): the Market's kitchen tools, the first shopping list and Stock the shelves (knives and boards are for sale from L5). */
+export const FIRST_PURCHASE_LEVEL = FIRST_SHOPPING_LEVEL;
 
 /**
  * The Level 10 milestone's card (story bit 1): the new knives and boards

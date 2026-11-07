@@ -66,6 +66,7 @@ import {
 } from "../src/game/business/BusinessInventoryManager.ts";
 import { getCampaignRecipe } from "../src/game/recipes/campaignRecipes.ts";
 
+import { restaurantQuote } from "../src/game/restaurant/restaurantEconomy.ts";
 import * as campaignStockModule from "../src/game/restaurant/campaignStock.ts";
 // Grandma's pantry was removed in the 2026-10-15 redesign (0b2ce52): "no free pantry or
 // ingredient handout" — a short service is covered by an ad or supplier credit from L3.
@@ -111,7 +112,7 @@ function stocked(save: SaveData, recipes: Parameters<typeof requirementsForRecip
 
 // 150-level campaign (developer 2026-10-15): L19 is a 2-order pool service, L17 a batch of 2.
 const pool30 = getLevel("level-17")!; // order pool, 2 orders (L19 before the first two levels were removed, 2026-10-29)
-const batch26 = getLevel("level-15")!; // batch group of 2 (L17 before the removal)
+const batch26 = getLevel("level-12")!; // batch group of 2 (L15 in the 148-level campaign)
 
 console.log("T. Tickets");
 {
@@ -261,7 +262,8 @@ console.log("K. Pre-Service Check");
   const quoteOk =
     check.applies &&
     check.missingRows.every((r) => {
-      const q = purchaseQuote(empty, r.ingredientId, r.buyUnits);
+      // Rule changed (developer 2026-11-08): Level 17 now sells a whole watermelon (a ~10 lb piece), so the Market unit is read like the Market does (restaurantQuote).
+      const q = restaurantQuote(empty, r.ingredientId, r.buyUnits);
       // The restaurant Market sells weighed goods by the ¼ lb (audit 2026-10-08), pieces whole.
       return (
         r.buyUnits === marketUnitsCovering(r.ingredientId, r.missing, "lb") &&

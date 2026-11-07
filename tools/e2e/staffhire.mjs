@@ -35,7 +35,7 @@ const saveAt = (n, hired) =>
       currentLevelId: `level-${n}`,
       highestUnlockedLevelId: `level-${n}`,
       completedLevelIds: Array.from({ length: n - 1 }, (_, i) => `level-${i + 1}`),
-      campaignVersion: 3,
+      campaignVersion: 4,
     },
     story: { introDone: true, milestoneMask: 0xffff, finaleSeen: true },
     settings: { sound: false, music: false, reducedMotion: false, restaurantName: "Test Kitchen" },
@@ -77,7 +77,7 @@ const cardState = (role) =>
 
 try {
   // ---- T1, T2: the Cashier alone is missing ----
-  await boot(page, saveAt(14, ["server"]));
+  await boot(page, saveAt(11, ["server"])); // L11 (2 ingredients): the panel shows six tiles, so a level with fewer stock needs keeps the staff tile in view
   await openShortcut(page, "inventory");
   await sleep(600);
   const tile = await attentionTile("cashier");
@@ -100,7 +100,7 @@ try {
   );
 
   // ---- T3: both missing, each tile goes to its own card ----
-  await boot(page, saveAt(14, []));
+  await boot(page, saveAt(11, []));
   await openShortcut(page, "inventory");
   await sleep(600);
   const both = {

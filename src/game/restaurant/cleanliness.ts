@@ -24,6 +24,13 @@
  * State: `business.cleanliness` (optional; read through `cleanlinessOf`,
  * which clamps). Pure; deterministic (seeded); never reads RESTAURANT_MODE.
  */
+import {
+  DINE_IN_FROM_LEVEL,
+  FRIDGE_FROM_LEVEL,
+  MOP_FROM_LEVEL,
+  PAN_LIST_FROM_LEVEL,
+  RESTROOM_FROM_LEVEL,
+} from "../config/earlyLevels";
 import type { SaveData } from "../SaveManager";
 import {
   getSupplyItem,
@@ -260,6 +267,7 @@ export const TASK_RULES: Record<TaskKind, TaskRule> = {
     tools: [],
     routine: true,
     phase: "opening",
+    fromLevel: RESTROOM_FROM_LEVEL,
   },
   "lay-tables": {
     area: "dining",
@@ -270,7 +278,7 @@ export const TASK_RULES: Record<TaskKind, TaskRule> = {
     tools: [],
     routine: true,
     phase: "opening",
-    fromLevel: remapCampaignThreshold(31),
+    fromLevel: DINE_IN_FROM_LEVEL,
     staff: "server",
   },
   // ── Lull: reset ──
@@ -294,6 +302,7 @@ export const TASK_RULES: Record<TaskKind, TaskRule> = {
     tools: ["brooms"],
     routine: true,
     phase: "lull",
+    fromLevel: PAN_LIST_FROM_LEVEL,
   },
   "restroom-refresh": {
     area: "restroom",
@@ -304,6 +313,7 @@ export const TASK_RULES: Record<TaskKind, TaskRule> = {
     tools: [],
     routine: true,
     phase: "lull",
+    fromLevel: RESTROOM_FROM_LEVEL,
   },
   // ── Closing: clean and plan ──
   // The night chores that were Closing Time's own taps (developer 2026-10-24):
@@ -330,6 +340,7 @@ export const TASK_RULES: Record<TaskKind, TaskRule> = {
     tools: [],
     routine: true,
     phase: "closing",
+    fromLevel: FRIDGE_FROM_LEVEL,
     staff: "prep-cook",
   },
   "wrap-fridge": {
@@ -341,6 +352,7 @@ export const TASK_RULES: Record<TaskKind, TaskRule> = {
     tools: [],
     routine: true,
     phase: "closing",
+    fromLevel: FRIDGE_FROM_LEVEL,
     staff: "prep-cook",
   },
   "clear-tables": {
@@ -352,7 +364,7 @@ export const TASK_RULES: Record<TaskKind, TaskRule> = {
     tools: [],
     routine: true,
     phase: "closing",
-    fromLevel: remapCampaignThreshold(31),
+    fromLevel: DINE_IN_FROM_LEVEL,
     staff: "server",
   },
   degrease: {
@@ -367,6 +379,7 @@ export const TASK_RULES: Record<TaskKind, TaskRule> = {
     tools: [],
     routine: true,
     phase: "closing",
+    fromLevel: PAN_LIST_FROM_LEVEL,
   },
   "mop-all": {
     area: "dining",
@@ -377,6 +390,7 @@ export const TASK_RULES: Record<TaskKind, TaskRule> = {
     tools: ["mop-bucket"],
     routine: true,
     phase: "closing",
+    fromLevel: MOP_FROM_LEVEL,
   },
   "restroom-disinfect": {
     area: "restroom",
@@ -387,6 +401,7 @@ export const TASK_RULES: Record<TaskKind, TaskRule> = {
     tools: ["toilet-brushes"],
     routine: true,
     phase: "closing",
+    fromLevel: RESTROOM_FROM_LEVEL,
   },
   condiments: {
     area: "dining",
@@ -543,6 +558,11 @@ export type CleanlinessState = {
    * supplies were taken). Optional: absent = none.
    */
   wipes?: { level: number; n: number };
+  /**
+   * The restaurant day whose services last added their tasks (`tasksAfterService`): a heavy closing pass is skipped as "already
+   * cleaned" only on such a day (developer 2026-11-08), never on a day that had nothing to clean yet. Optional.
+   */
+  serviced?: number;
   /** Phase 10: tables wiped since the napkin holders were last refilled (see `napkinsLow`). Optional: absent = 0. */
   tissue?: number;
 };
@@ -619,6 +639,7 @@ export function cleanlinessOf(save: SaveData): CleanlinessState {
     ...(hourly.length ? { hourly, hourlyDay: whole(raw.hourlyDay) } : {}),
     ...(wipes ? { wipes } : {}),
     ...(whole(raw.tissue) > 0 ? { tissue: whole(raw.tissue) } : {}),
+    ...(whole(raw.serviced) > 0 ? { serviced: whole(raw.serviced) } : {}),
   };
 }
 
@@ -736,6 +757,7 @@ export function tasksAfterService(
   return withState(save, {
     ...st,
     tasks,
+    serviced: restaurantDayOf(save).day,
     counters: {
       sink: sink >= CLEANING_RULES.sinkEvery ? sink % CLEANING_RULES.sinkEvery : sink,
       paper: paper >= CLEANING_RULES.paperEvery ? paper % CLEANING_RULES.paperEvery : paper,
@@ -1158,6 +1180,14 @@ export const CLOSING_COVERS: Partial<Record<TaskKind, readonly TaskKind[]>> = {
   "wipe-boards": ["sweep-line", "sanitizer-bucket"],
 };
 
+/** The closing passes that are skipped when the day's work in their area is already done (see addPhaseChores). */
+const CLEAN_ONCE: readonly TaskKind[] = [
+  "mop-all",
+  "restroom-disinfect",
+  "clear-tables",
+  "degrease",
+];
+
 /**
  * A phase's chores, added ONCE per restaurant day and phase (the key
  * "day:phase:services" is remembered): a reload, a second tap or a repeated
@@ -1183,6 +1213,14 @@ export function addPhaseChores(
         k === "restroom-check" &&
         !noNightYet &&
         !st.tasks.some((t) => t.kind === "restroom-disinfect")
+      ) &&
+      // Cleaned is cleaned (developer 2026-11-08: "I cleaned between the services and had to do it again"): a heavy closing
+      // pass whose whole area the player already cleaned today (none of the tasks it covers is open) is not asked twice.
+      !(
+        phase === "closing" &&
+        st.serviced === day &&
+        CLEAN_ONCE.includes(k) &&
+        !(CLOSING_COVERS[k] ?? []).some((c) => st.tasks.some((t) => t.kind === c))
       ),
   );
   if (kinds.length === 0) return save;

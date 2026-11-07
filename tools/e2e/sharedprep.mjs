@@ -41,7 +41,7 @@ try {
       currentLevelId: `level-${n}`,
       highestUnlockedLevelId: `level-${n}`,
       completedLevelIds: Array.from({ length: n - 1 }, (_, i) => `level-${i + 1}`),
-      campaignVersion: 3,
+      campaignVersion: 4,
       tickets: { "level-17": ["camp-bruschetta-trio", "camp-bruschetta-trio"] },
     },
     story: { introDone: true, milestoneMask: 0, finaleSeen: false },

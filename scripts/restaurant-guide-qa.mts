@@ -29,6 +29,7 @@ type SaveData = import("../src/game/SaveManager.ts").SaveData;
 const { REMIND_EVERY_LEVELS, guideStepDue, guideStepFor, guideStepsApplying, markGuideSeen } =
   await import("../src/game/restaurant/restaurantGuide.ts");
 const { STATIONS } = await import("../src/game/restaurant/secondFloor.ts");
+const { achievementsFor } = await import("../src/game/progression/achievements.ts");
 
 let failures = 0;
 function assert(cond: unknown, msg: string, detail?: unknown) {
@@ -53,6 +54,14 @@ const saveAt = (n: number, patch: Partial<SaveData> = {}): SaveData => ({
   },
   ...patch,
 });
+/** A save at Level `n` whose achievements are all collected already (so the money waiting does not come first). */
+const collected = (n: number, patch: Partial<SaveData> = {}): SaveData => {
+  const s = saveAt(n, patch);
+  return {
+    ...s,
+    economy: { ...s.economy, claimedMilestoneIds: achievementsFor(s).map((a) => a.id) },
+  };
+};
 const ids = (s: SaveData) => guideStepsApplying(s).map((x) => x.id);
 
 console.log("A. Pacing");
@@ -62,11 +71,12 @@ console.log("A. Pacing");
     guideStepFor(saveAt(1)) === null && guideStepFor(saveAt(2)) === null,
     "A1: nothing in the first two levels (Grandma's tips cover them)",
   );
-  const l5 = saveAt(5);
+  // Rule changed (developer 2026-11-08): the floor opens at Level 11 and is offered only with the first machine + $300 in the till.
+  const l5 = collected(11, { credits: 100_000 });
   assert(
     ids(l5).includes("floor-machine") &&
       guideStepsApplying(l5).find((x) => x.id === "floor-machine")?.to === "second-floor",
-    "A2: from Level 5 the 2nd floor is introduced, with a button to it",
+    "A2: from Level 11 the 2nd floor is introduced (with $800+), with a button to it",
     ids(l5),
   );
   assert(
@@ -95,7 +105,7 @@ console.log("A. Pacing");
     !ids(saveAt(30)).some((i) => i.startsWith("kitchen:")),
     "A6b: a player with an empty wallet is not sent to buy the kitchen (it appears once a third is saved)",
   );
-  const first = guideStepFor(saveAt(5));
+  const first = guideStepFor(collected(11, { credits: 100_000 }));
   assert(
     first?.id === "floor-machine",
     "A7: the first step is the one that matters most right now (the 2nd floor)",
@@ -128,7 +138,7 @@ console.log("A2. Early purchase goals (developer 2026-10-30: things to do throug
 console.log("B. Done means gone");
 {
   const station = STATIONS[0]!;
-  const withMachine = saveAt(6, {
+  const withMachine = collected(14, {
     business: {
       ...DEFAULT_SAVE.business,
       secondFloor: {
@@ -175,17 +185,17 @@ console.log("B. Done means gone");
 
 console.log("C. Later, reminders, one-off intros");
 {
-  const s = saveAt(5);
+  const s = collected(11, { credits: 100_000 });
   const step = guideStepFor(s)!;
   const later = markGuideSeen(s, step);
   assert(
-    later.business.guideSeen?.includes(`${step.id}@5`) && guideStepFor(later)?.id !== step.id,
+    later.business.guideSeen?.includes(`${step.id}@11`) && guideStepFor(later)?.id !== step.id,
     "C1: after Later the same step is not offered again at once",
     later.business.guideSeen,
   );
   assert(
-    guideStepDue(step, later.business.guideSeen ?? [], 5 + REMIND_EVERY_LEVELS - 1) === false &&
-      guideStepDue(step, later.business.guideSeen ?? [], 5 + REMIND_EVERY_LEVELS) === true,
+    guideStepDue(step, later.business.guideSeen ?? [], 11 + REMIND_EVERY_LEVELS - 1) === false &&
+      guideStepDue(step, later.business.guideSeen ?? [], 11 + REMIND_EVERY_LEVELS) === true,
     "C2: a put-off step returns after 10 levels (while it still applies)",
   );
   const intro = guideStepsApplying(saveAt(7)).find((x) => x.id === "achievements-intro")!;
@@ -209,8 +219,8 @@ console.log("C. Later, reminders, one-off intros");
 
 console.log("D. Save");
 {
-  const step = guideStepFor(saveAt(5))!;
-  const withSeen = markGuideSeen(saveAt(5), step);
+  const step = guideStepFor(collected(11, { credits: 100_000 }))!;
+  const withSeen = markGuideSeen(collected(11, { credits: 100_000 }), step);
   store["knifecraft.save.v1"] = JSON.stringify(withSeen);
   (SaveManager as unknown as { cache: unknown }).cache = null;
   const loaded = await SaveManager.load();

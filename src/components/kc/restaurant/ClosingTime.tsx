@@ -88,6 +88,13 @@ export function ClosingTime({
           <p className="font-display text-[22px] font-black text-walnut-dark">
             🌙 Time to close up
           </p>
+          {/* Developer 2026-11-08: say it plainly - the restaurant is closed, and when the next day starts. */}
+          <p
+            className="mt-0.5 font-ui text-[13px] font-bold text-walnut/75"
+            data-testid="closing-notice"
+          >
+            🔒 Closed for tonight · Day {p.day + 1} opens with your next service
+          </p>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-3">

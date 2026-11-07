@@ -1,6 +1,6 @@
 // Stockroom Sort (developer 2026-11-06), restaurant build, in a real browser: the "Stock the shelves" mini-game (business/stockroomSort.ts).
 // A supply purchase becomes SETS of 3 identical goods on wooden cubbies; the player moves them until 3 alike stand together.
-//   T1 below Level 10 there is no chip; from Level 10 a crate of bought supplies shows "Stock the shelves · 3" in Inventory -> Supplies
+//   T1 below Level 6 there is no chip; from Level 6 a crate of bought supplies shows "Stock the shelves · 3" in Inventory -> Supplies
 //   T2 the chip opens the game: the how-to card shows the first time, the clock does NOT run until the first move; 3 sets = 9 goods, cubbies, a slip
 //   T3 the hint button shows a move and playing the hinted moves (tap piece, tap cubby) stocks everything: stars, a score, Hype added, crate gone
 //   T4 the DRAG path (pointer down, move, up on the cubby) moves a piece too
@@ -51,7 +51,7 @@ const saveAt = (n, extra = {}, business = {}) =>
       currentLevelId: `level-${n}`,
       highestUnlockedLevelId: `level-${n}`,
       completedLevelIds: Array.from({ length: n - 1 }, (_, i) => `level-${i + 1}`),
-      campaignVersion: 3,
+      campaignVersion: 4,
     },
     story: { introDone: true, milestoneMask: 0xffff, finaleSeen: true },
     ...extra,
@@ -141,8 +141,8 @@ const strip = (s) => {
 
 const { browser, page, logs } = await launch();
 try {
-  // ---- T1: closed below Level 10, open from it ----
-  await boot(page, saveAt(9));
+  // ---- T1: closed below Level 6 (rule 2026-11-08, was 10), open from it ----
+  await boot(page, saveAt(5));
   await openSupplies(page);
   const closed = await page.evaluate(
     () => !!document.querySelector('[data-testid="stockroom-sort-chip"]'),
@@ -154,7 +154,7 @@ try {
       document.querySelector('[data-testid="stockroom-sort-chip"]')?.textContent?.trim() ?? null,
   );
   check(
-    "T1 no chip at Level 9; at Level 20 the chip says Stock the shelves · 3 (the sets to stock)",
+    "T1 no chip at Level 5; at Level 20 the chip says Stock the shelves · 3 (the sets to stock)",
     !closed && /Stock the shelves · 3/.test(chip ?? ""),
     { closed, chip },
   );

@@ -60,13 +60,13 @@ console.log("H. Half wages");
       // Rule changed (developer 2026-10-31): the Prep Cook is hired from level 30, so the half wages (27) now start
       // a little before the first Prep Cook can be on the payroll, never after.
       HALF_WAGES_FROM <= STAFF_RULES.find((r) => r.role === "prep-cook")!.fromLevel &&
-      FULL === 54 &&
+      FULL === 41 &&
       before40.paid === dailyPayroll(["prep-cook"]) &&
       salaryEntries(before40.save)
         .map((e) => e.description)
         .join() === "prep-cook" &&
       atFull.paid === 0,
-    "H1: before Level 27 only the Prep Cook is paid (his full shift wage); nothing here from full operation (L54; the normal payroll applies there)",
+    "H1: before Level 27 only the Prep Cook is paid (his full shift wage); nothing here from full operation (L41 in the 91-level campaign; the normal payroll applies there)",
     { before: before40.paid, atFull: atFull.paid },
   );
   const r = payHalfWages(s, MID);
@@ -132,8 +132,8 @@ console.log("M. Menu guests (F3)");
 {
   assert(
     // Rule changed (developer 2026-10-25, early game phase 2): guests from L5 (was L11).
-    [4, 5, 14, 32, 33, 74, 115].map(menuGuestsPerService).join() === "0,1,2,2,4,5,6",
-    "M1: menu guests 1 / 2 from L5 / L14, one more per service from L33 (4 / 5 / 6 at L33 / L74 / L115)",
+    [4, 5, 11, 30, 31, 55, 75].map(menuGuestsPerService).join() === "0,1,2,2,4,5,6",
+    "M1: menu guests 1 / 2 from L5 / L11, one more per service from L31 (4 / 5 / 6 at L31 / L55 / L75)",
   );
 }
 

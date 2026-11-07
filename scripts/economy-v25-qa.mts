@@ -171,8 +171,8 @@ table.push(fromRun(completionist), fromRun(normal), fromRun(saver), fromRun(zero
 // completionist $209,611, normal player $207,699, a $0 start $207,690.
 assert(
   // Rule changed (developer 2026-11-01, Phase 10): the $226.00 team fund added to the opening cash ($209,611 → $209,837).
-  completionist.final === dollars(209_837),
-  `A1 (18): classic completionist final cash ${fmt(completionist.final)} === the 148-level baseline $209,837.00`,
+  completionist.final === dollars(189_166),
+  `A1 (18): classic completionist final cash ${fmt(completionist.final)} === the 91-level baseline $189,166.00 (was $209,837.00 with 148 levels; re-recorded 2026-11-07)`,
 );
 assert(
   completionist.everythingOwned,
@@ -196,8 +196,8 @@ assert(
 assert(
   // Rule changed (developer 2026-11-01, Phase 10): the $226.00 team fund, measured +$225.00 here ($207,699 → $207,924:
   // purchase timing, as the $0-start move was).
-  normal.final === dollars(207_924) && normal.everythingOwned,
-  `A5: a normal player who buys everything owns it all and ends at the 148-level baseline (${fmt(normal.final)} === $207,924.00)`,
+  normal.final === dollars(187_759) && normal.everythingOwned,
+  `A5: a normal player who buys everything owns it all and ends at the 91-level baseline (${fmt(normal.final)} === $187,759.00; was $207,924.00)`,
 );
 for (const r of [completionist, normal, saver, zeroStart]) {
   assert(
@@ -210,8 +210,8 @@ for (const r of [completionist, normal, saver, zeroStart]) {
   );
 }
 assert(
-  zeroStart.everythingOwned && zeroStart.final === dollars(207_690),
-  `A8 (13): starting from $0 the campaign is fully playable and still ends with everything and ${fmt(zeroStart.final)} (148-level baseline $207,690.00: the $10 start is the only difference from the normal player, less purchase timing)`,
+  zeroStart.everythingOwned && zeroStart.final === dollars(187_523),
+  `A8 (13): starting from $0 the campaign is fully playable and still ends with everything and ${fmt(zeroStart.final)} (91-level baseline $187,523.00, was $207,690.00 with 148 levels: the $10 start is the only difference from the normal player, less purchase timing)`,
 );
 // Rule changed (developer 2026-10-16): one rising curve by level number (levelRewards.ts).
 assert(
@@ -458,7 +458,7 @@ console.log("E. Poor player and $0 player");
   const now = new Date();
   const endless = applyEndlessEarn(
     structuredClone(DEFAULT_SAVE).endless,
-    paidLevelReward(LEVELS[99]!),
+    paidLevelReward(LEVELS[LEVELS.length - 10]!),
     now,
   );
   const recovered = endless.earned + DAILY_ORDER_BONUS_COINS;

@@ -35,7 +35,7 @@ import {
 } from "@/game/business/fridgeSort";
 
 /**
- * FRIDGE SORT — the screen of the "Put it away" mini-game (rules: business/fridgeSort.ts, plan: docs/planning/FRIDGE-SORT-MINIGAME-PLAN-2026-11-03.md).
+ * FRIDGE SORT — the screen of the "Unpack the delivery" mini-game (rules: business/fridgeSort.ts, plan: docs/planning/FRIDGE-SORT-MINIGAME-PLAN-2026-11-03.md).
  *
  * A crate of what was just bought sits at the bottom; the fridge's zones are the targets. The player DRAGS a token to a zone, or TAPS a token
  * and then the zone (both always work). The clock starts on the first touch. A right drop scores with a combo; a wrong one springs back and
@@ -1003,7 +1003,7 @@ export function FridgeSortGame({
         >
           <div className="w-full max-w-[330px] rounded-3xl border-4 border-[#b8873f] bg-[#f7edd7] p-4 text-center">
             <p className="font-display text-[22px] font-extrabold text-walnut-dark">
-              Put the food away
+              Unpack the delivery
             </p>
             <ol className="mt-3 grid gap-2 text-left font-ui text-[14px] font-bold text-walnut-dark">
               <li className="flex items-center gap-2.5 rounded-xl bg-white/50 p-2">
@@ -1011,7 +1011,7 @@ export function FridgeSortGame({
                   🧺
                 </span>
                 <span>
-                  What you bought is mixed in the basket. 1 lb of tomatoes is about 3 tomatoes.
+                  Your order arrived, all mixed in the basket. 1 lb of tomatoes is about 3 tomatoes.
                 </span>
               </li>
               <li className="flex items-center gap-2.5 rounded-xl bg-white/50 p-2">
@@ -1095,7 +1095,7 @@ export function FridgeSortGame({
               {result.stars === 3
                 ? "Perfectly sorted!"
                 : result.stars > 0
-                  ? "Put away!"
+                  ? "Unpacked!"
                   : "Time's up"}
             </p>
             <p
@@ -1137,7 +1137,7 @@ export function FridgeSortGame({
                 className="relative mt-1 font-ui text-[13px] font-extrabold text-copper"
                 data-testid="sort-big-delivery"
               >
-                🎉 Whole delivery put away ({result.effects.baskets} baskets): ⚡ +
+                🎉 Whole delivery unpacked ({result.effects.baskets} baskets): ⚡ +
                 {result.effects.bigHype} Hype
               </p>
             ) : null}

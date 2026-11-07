@@ -82,9 +82,17 @@ create a second engine, and do not duplicate existing systems.
 - React 19 + Vite + TypeScript + Tailwind v4, Phaser 3.90 for the cutting
   gameplay (lazy-loaded `Preparation` chunk).
 - Portrait-first (9:16 logical 540×960, `GameShell` contain-fits it).
-- 250 campaign levels (25 chapters), Market (knives, boards, suppliers,
+- 91 campaign levels (13 chapters; the campaign plan of 2026-11-07, below), Market (knives, boards, suppliers,
   ingredients, Blacksmith, supplies), Restaurant Progress, Business Mode
   (Economy V3), opening story + milestones + finale.
+
+### The 91-level campaign (developer 2026-11-07)
+
+- **Plan and data:** docs/planning/CAMPAIGN-V2-PLAN-2026-11-07.md (every level, its dishes, the rules, the decisions), CAMPAIGN-V2-REMOVED-AND-MERGED-2026-11-07.md (what happened to each of the 148 levels and the 9 dishes left without a level) and CAMPAIGN-LEVELS-INGREDIENTS-2026-11-07.md (the 148-level list). The data is `src/game/levels/campaignPlan.ts` (chapters > levels with `recipes`, `mode` single / party / batch, `orders`, `from` = previous-campaign level numbers, `steps`, `subtitle`, `description`); `scripts/campaign-v2-plan.mts` validates it (`--write`, `--detail`, `--tables`; `--emit` regenerates the data file, so after the first emit edit the data file).
+- **Three numberings:** old 250 (knife, board, chef, staff, café, menu and system thresholds are authored in it), previous 148 (`CAMPAIGN_148_SOURCE_LEVEL_NUMBERS`, `CAMPAIGN_148_TO_NEW`) and new 91. `remapCampaignThreshold` = progress (monotone), `remapCampaignContent` = where the content now is, `remapCampaignOrdered` = progress kept in the old number order (price ladders).
+- **First uses:** chicken 6, steak 15, salmon 16; techniques slice 1, peel/halve 2, smash 3, dice/chop 4, rings 8, radial 11, julienne 14, rockMince/chiffonade 24 (`CAMPAIGN_150_TECHNIQUE_FIRST_USE_LEVEL`, `..._INGREDIENT_FIRST_USE_LEVEL`).
+- **Pay:** see §7. **Saves:** `campaignVersion` 4, `campaignMigration.ts` (v3 > v4 as in HANDOFF).
+- **Rules the plan keeps (checked by the script):** a new ingredient or cut at least every 4 levels to Level 50 and every 7 after; no more than 2 new cuts in a level; 3-6 ingredients and at most 8 prep steps per dish; the last 13 levels are mastery.
 - One wallet in **USD cents** (`SaveData.credits`), every movement in
   `SaveData.economyLedger`.
 
@@ -433,7 +441,12 @@ Focused suites (`npx tsx scripts/<name>.mts`):
 - `restaurant-guide-qa` — the Restaurant Guide (`restaurant/restaurantGuide.ts`, `GuideCard.tsx`):
   pacing, done-means-gone, Later / 10-level reminders, `business.guideSeen` through the real
   SaveManager, wiring. See HANDOFF 2026-10-29.
-- `night-sync-qa` — cleaning and the night chores from L5; the night covers the day's
+- `early-levels-qa` — the first-20-levels schedule (`config/earlyLevels.ts`, developer 2026-11-08):
+  where each system, mini-game and chore opens, the dishes with something new, "Unpack the
+  delivery", Paige's Second Floor offer (needs the first machine + $300), "Closed for tonight",
+  cleaned-is-cleaned, the L15 / L16 tips, specialist chefs waiting for their chapter. Browser:
+  `tools/e2e/earlylevels.mjs`. See HANDOFF 2026-11-08.
+- `night-sync-qa` — cleaning and the night chores from L4 (L5 before 2026-11-01, then L3); the night covers the day's
   leftovers (`CLOSING_COVERS`), no morning restroom check, half tips after an undone-cleaning
   start (`tipHygieneShare`). See HANDOFF 2026-10-29.
 - `closing-chores-qa` — the night chores are Cleanliness tasks
@@ -1718,7 +1731,7 @@ levels a day ends about $19.5k (14.8%) richer; `ad-bonuses-qa` F1 keeps it
 
 Locked Campaign baseline (enforced by `economy-v2-final-qa`):
 
-- (148 levels since 2026-10-29: Revenue 69,925 · Completion Rewards 245,138 · COGS 16,604 · Quality 1,415 · Net 299,874; the 150-level figures were) Revenue 69,110 · Completion Rewards 46,585 · COGS 16,092 ·
+- (91 levels, re-recorded 2026-11-08 after the first-20-levels dishes: Revenue 51,275 · Completion Rewards 243,953 · COGS 11,317 · Quality 1,040 · Net 284,951; 2026-11-07: 51,560 / 243,953 / 11,337 / 1,047 / 285,223; the 148-level figures were 69,925 / 245,138 / 16,604 / 1,415 / 299,874; the 150-level figures were) Revenue 69,110 · Completion Rewards 46,585 · COGS 16,092 ·
   Quality Bonus 1,402 · Honest Chef Net 101,005 — the 150-level campaign,
   recorded 2026-10-17 (developer's approval of the re-baseline). The
   250-level figures were 165,140 / 77,581 / 37,620 / 3,315 / 208,416.

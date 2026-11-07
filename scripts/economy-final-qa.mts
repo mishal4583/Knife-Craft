@@ -169,18 +169,18 @@ console.log("A. Level reward scaling");
     return l.campaignRewardBasisLevel !== undefined && paidLevelReward(l) === want;
   });
   assert(
-    FINAL === 148 && LEVELS.every((l) => l.campaignRewardBasisLevel !== undefined),
-    "A1: the curated 148-level campaign (every level carries its reward basis)",
+    FINAL === 91 && LEVELS.every((l) => l.campaignRewardBasisLevel !== undefined),
+    "A1: the curated 91-level campaign (every level carries its reward basis)",
   );
   assert(
     curve,
     "A2: every level pays curatedRewardAt(n) dollars — $50, +$40 a level to Level 40, then +$6 (paidLevelReward)",
   );
   assert(
-    paidLevelReward(LEVELS[1]!) === dollars(90) &&
+    paidLevelReward(LEVELS[1]!) === dollars(158) &&
       paidLevelReward(LEVELS[0]!) === dollars(50) &&
       paidLevelReward(LAST) === dollars(5_000),
-    "A3: Level 1 pays $50, Level 2 $90 (no practice level any more), the last level keeps its $5,000",
+    "A3: Level 1 pays $50, Level 2 $158 (91-level pay curve), the last level keeps its $5,000",
   );
   let progress = DEFAULT_LEVEL_PROGRESS;
   let payoutMatches = true;
@@ -602,7 +602,7 @@ const aggressive = runCampaign({
   businessStaff: ALL_STAFF_ROLES,
 });
 memoryStore.clear();
-const oldRaw = oldRawSave(120, dollars(18_500));
+const oldRaw = oldRawSave(60, dollars(18_500));
 const existingLoaded = (await appLoad(oldRaw)).save;
 const existing = runCampaign({
   name: "Existing Save",
@@ -615,7 +615,7 @@ const profiles: Array<[RunReport, string]> = [
   [normal, "knives, boards, all kitchens; a Business day every 5 levels"],
   [completionist, "owns everything, all milestones; Business every 10 levels"],
   [aggressive, "buys everything the moment it can; all Business staff; Business every 3 levels"],
-  [existing, "pre-V2.5 save at L120 ($18,500), migrated, then buys everything"],
+  [existing, "pre-V2.5 save at L60 ($18,500), migrated, then buys everything"],
 ];
 for (const [r] of profiles) {
   assert(
@@ -646,8 +646,10 @@ assert(
   // kitchen tiers at $60k / $12k / $18k (the classic catalog), the $10 start: $32,618.07 → $211,718.37.
   // Rule changed (developer 2026-11-01, Phase 10): a new game starts with $10 + the Server's and the Cashier's hiring
   // fees ($226.00); the classic simulation hires nobody, so it ends exactly $226.00 higher: $211,718.37 → $211,944.37.
-  completionist.final === 21_194_437,
-  `K5: the classic completionist ends at ${fmt(completionist.final)} — the 148-level baseline $211,944.37 ($211,718.37 + the $226.00 team fund)`,
+  // Re-recorded 2026-11-07 for the 91-level campaign (the pay curve re-tuned to about the same completion total; 148 levels ended at $211,944.37).
+  // Re-recorded 2026-11-08 (the first-20-levels dishes: revenue $51,560 -> $51,275, COGS $11,337 -> $11,317): $190,329.07 -> $190,015.07.
+  completionist.final === 19_001_507,
+  `K5: the classic completionist ends at ${fmt(completionist.final)} — the 91-level baseline $190,015.07 (re-recorded 2026-11-08, the first-20-levels dishes; $190,329.07 before; $211,944.37 in the 148-level campaign)`,
 );
 assert(
   completionist.everythingOwned &&
@@ -722,7 +724,7 @@ console.log("J. Historical reward accounting");
 {
   const s = existingLoaded;
   const pr = restaurantProgress(s);
-  const completed = LEVELS.slice(0, 120);
+  const completed = LEVELS.slice(0, 60);
   const actuallyPaid = sumOf(completed.map((l) => dollars(l.reward.coins)));
   const atTodaysRates = sumOf(completed.map((l) => paidLevelReward(l)));
   assert(

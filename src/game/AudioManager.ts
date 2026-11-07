@@ -553,6 +553,33 @@ class AudioManagerImpl {
   }
 
   /**
+   * Peeling (developer 2026-11-07, "slow and satisfying"): the soft rustle of a blade lifting a ribbon of skin. A short band of noise
+   * that glides down in pitch, with a light wobble so it never sounds like the same sample twice. The scene rate-limits it
+   * (PEEL.SOUND_EVERY_MS); `size` (0..1) is the strip's width. Gated on the Sound setting.
+   */
+  playPeelRustle(size = 0.5): void {
+    if (!this.enabled) return;
+    const ctx = this.ensureContext();
+    if (!ctx) return;
+    const t0 = ctx.currentTime;
+    const dur = 0.11 + size * 0.05;
+    const src = this.noiseSource(ctx);
+    const bp = ctx.createBiquadFilter();
+    bp.type = "bandpass";
+    bp.Q.value = 1.1;
+    const top = 2400 + Math.random() * 700;
+    bp.frequency.setValueAtTime(top, t0);
+    bp.frequency.exponentialRampToValueAtTime(top * 0.55, t0 + dur);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(0.045 + size * 0.025, t0 + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    src.connect(bp).connect(g).connect(this.sfxOut(ctx));
+    src.start(t0);
+    src.stop(t0 + dur + 0.02);
+  }
+
+  /**
    * Cleaning (developer 2026-10-21): one stroke of a cleaning tool — a short
    * band of noise shaped by the tool: "wet" (sponge, cloth, mop) low and soft,
    * "dry" (broom) a high swish, "brush" (toilet brush, scraper) a gritty mid.

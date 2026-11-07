@@ -46,6 +46,8 @@ import {
   takeawayPiecesFor,
 } from "../src/game/restaurant/serviceSupplies.ts";
 import { levelRecipesAt } from "../src/game/restaurant/kitchenTools.ts";
+import { getBusinessDish } from "../src/game/business/businessDishCatalog.ts";
+import { menuDishIdsAt } from "../src/game/restaurant/restaurantProgression.ts";
 import { closeDay, closingPreview, recordService } from "../src/game/restaurant/restaurantDay.ts";
 import { migrateToUnifiedRestaurant } from "../src/game/restaurant/restaurantMigration.ts";
 import {
@@ -100,9 +102,28 @@ const piecesOf = (r: RecipeDefinition, n: number) => {
   return [t.container, t.bag, ...t.extras].join();
 };
 
+/**
+ * The menu's dishes (91-level campaign, 2026-11-07): the Indian chapter now comes before takeaway opens, so the curries reach the
+ * thali tray through the menu guests who order them, not through a campaign level.
+ */
+const menuRecipes = (): RecipeDefinition[] =>
+  menuDishIdsAt(LAST_LEVEL)
+    .map((id) => getCampaignRecipe(getBusinessDish(id)?.sourceRecipeId ?? ""))
+    .filter((r): r is RecipeDefinition => !!r);
+
 console.log("U. Every packaging and hygiene item has a use");
 {
   const used = new Set<string>();
+  for (let n = restaurantSystem("takeaway").firstLevel; n <= LAST_LEVEL; n++)
+    for (const r of menuRecipes())
+      for (let i = 0; i < 4; i++) {
+        const service = orderServiceFor(n, i, r);
+        if (service === "takeaway") {
+          const t = takeawayPiecesFor(r, n);
+          [t.container, t.bag, ...t.extras].forEach((id) => used.add(id));
+        }
+        if (service === "dine-in") dineInExtrasFor(r, n).forEach((id) => used.add(id));
+      }
   // The whole 150-level campaign (re-baselined 2026-10-17; was L31–250).
   for (let n = 1; n <= LAST_LEVEL; n++)
     levelRecipesAt(n).forEach((r, i) => {
@@ -134,6 +155,11 @@ console.log("U. Every packaging and hygiene item has a use");
       if (orderServiceFor(n, i, r) === "takeaway")
         containers.add(takeawayPiecesFor(r, n).container);
     });
+  for (let n = restaurantSystem("takeaway").firstLevel; n <= LAST_LEVEL; n++)
+    for (const r of menuRecipes())
+      for (let i = 0; i < 4; i++)
+        if (orderServiceFor(n, i, r) === "takeaway")
+          containers.add(takeawayPiecesFor(r, n).container);
   assert(
     [
       "thali-containers",
@@ -142,7 +168,7 @@ console.log("U. Every packaging and hygiene item has a use");
       "foil-containers",
       "kraft-boxes",
     ].every((id) => containers.has(id)),
-    "U2: the campaign's own takeaway orders use five different containers",
+    "U2: the campaign's takeaway orders (levels and menu guests) use five different containers",
     [...containers],
   );
 }
@@ -154,22 +180,28 @@ console.log("K. Curries travel (developer 2026-10-17)");
   let curry = 0;
   let curryOut = 0;
   let same = true;
-  for (let n = 46; n <= LAST_LEVEL; n++)
-    levelRecipesAt(n).forEach((r, i) => {
+  const takeawayFrom = restaurantSystem("takeaway").firstLevel;
+  for (let n = takeawayFrom; n <= LAST_LEVEL; n++) {
+    const orders: [RecipeDefinition, number][] = [
+      ...levelRecipesAt(n).map((r, i): [RecipeDefinition, number] => [r, i]),
+      ...menuRecipes().flatMap((r) => [0, 1, 2, 3].map((i): [RecipeDefinition, number] => [r, i])),
+    ];
+    orders.forEach(([r, i]) => {
       const thali = takeawayPiecesFor(r, n).container === "thali-containers";
       if (thali) {
         curry++;
         if (orderServiceFor(n, i, r) === "takeaway") curryOut++;
       } else if (orderServiceFor(n, i, r) !== orderServiceFor(n, i)) same = false;
     });
+  }
   assert(
     SERVICE_SUPPLY_RULES.curryTakeawayShare === 0.6 &&
       SERVICE_SUPPLY_RULES.takeawayShare === 0.3 &&
       curry > 0 &&
       curryOut > 0 &&
       same &&
-      orderServiceFor(45, 0, levelRecipesAt(45)[0]) === "dine-in",
-    `K1: curries go home in thali trays (${curryOut} of the campaign's ${curry} curry orders); other orders unchanged; nothing before takeaway (L46)`,
+      orderServiceFor(takeawayFrom - 1, 0, levelRecipesAt(takeawayFrom - 1)[0]) === "dine-in",
+    `K1: curries go home in thali trays (${curryOut} of the campaign's ${curry} curry orders, levels and menu guests); other orders unchanged; nothing before takeaway (L${takeawayFrom})`,
   );
 }
 
@@ -199,8 +231,8 @@ console.log("P. Pieces by dish");
     "P2: heavy orders (grilled, pot, shared) a carry bag; the rest a paper bag",
   );
   assert(
-    takeawayPiecesFor(fried, 50).extras.join() === "cutlery-packs,wet-wipes" &&
-      !takeawayPiecesFor(bread, 50).extras.includes("cutlery-packs") &&
+    takeawayPiecesFor(fried, 40).extras.join() === "cutlery-packs,wet-wipes" &&
+      !takeawayPiecesFor(bread, 40).extras.includes("cutlery-packs") &&
       // 150-level remap (2026-10-15): the old L91 / L101 thresholds are SERVICE_SUPPLY_RULES'.
       !takeawayPiecesFor(salad, SERVICE_SUPPLY_RULES.tamperFromLevel - 1).extras.includes(
         "tamper-labels",
@@ -208,8 +240,8 @@ console.log("P. Pieces by dish");
       takeawayPiecesFor(salad, SERVICE_SUPPLY_RULES.tamperFromLevel).extras.includes(
         "tamper-labels",
       ) &&
-      SERVICE_SUPPLY_RULES.tamperFromLevel === 54,
-    "P3: a cutlery kit (not bread), a wet wipe for messy dishes, a tamper label from L54 (old L91; 148-level renumbering)",
+      SERVICE_SUPPLY_RULES.tamperFromLevel === 41,
+    "P3: a cutlery kit (not bread), a wet wipe for messy dishes, a tamper label from L41 (old L91; 91-level campaign)",
   );
   assert(
     dineInExtrasFor(fried, 80).join() === "deli-sheets" &&
@@ -218,10 +250,10 @@ console.log("P. Pieces by dish");
         "toothpicks",
       ) &&
       dineInExtrasFor(chicken, SERVICE_SUPPLY_RULES.toothpickFromLevel).includes("toothpicks") &&
-      SERVICE_SUPPLY_RULES.toothpickFromLevel === 57 &&
+      SERVICE_SUPPLY_RULES.toothpickFromLevel === 47 &&
       dineInExtrasFor(salad, 150).length === 0 &&
       dineInExtrasFor(null, 150).length === 0,
-    "P4: dine-in: fried food and bread on a deli-sheet liner; grilled meat and fish with a toothpick from L57 (old L101; 148-level renumbering)",
+    "P4: dine-in: fried food and bread on a deli-sheet liner; grilled meat and fish with a toothpick from L47 (old L101; 91-level campaign)",
   );
 }
 
@@ -305,15 +337,15 @@ console.log("X. Closing tissues and deli wrap");
     basil: { ingredientId: "basil", quantity: 0, unitCost: 100, purchaseDay: 1 },
   } as unknown as SaveData["business"]["inventory"];
   assert(
-    // 148-level renumbering: wrap from L14 (old L21), tissues with dine-in at L19 (old L31).
-    closingSuppliesFor(saveAt(13, {}, fridge), 13).length === 0 &&
-      closingSuppliesFor(saveAt(14, {}, fridge), 14)
+    // Rule changed (developer 2026-11-08): wrap from L10 (the fridge, was L11), tissues with dine-in at L12 (was L23).
+    closingSuppliesFor(saveAt(9, {}, fridge), 9).length === 0 &&
+      closingSuppliesFor(saveAt(10, {}, fridge), 10)
         .map((l) => `${l.id}:${l.need}`)
         .join() === "food-wrap:2" &&
-      closingSuppliesFor(saveAt(19, {}, fridge), 19)
+      closingSuppliesFor(saveAt(12, {}, fridge), 12)
         .map((l) => `${l.id}:${l.need}`)
         .join() === "tissues:1,food-wrap:2",
-    "X1: from L14 a sheet of wrap per ingredient left in the fridge (empty lines skipped); from L19 a tissue cube for the dining room",
+    "X1: from L10 a sheet of wrap per ingredient left in the fridge (empty lines skipped); from L12 a tissue cube for the dining room",
   );
   const s = saveAt(40, { tissues: 3, "food-wrap": 10 }, fridge);
   const used = closingSupplies(s, 40);
@@ -348,15 +380,15 @@ console.log("M. The moving-in crate");
     ...structuredClone(DEFAULT_SAVE),
     story: { introDone: true, milestoneMask: 127, finaleSeen: false },
     levelProgress: {
-      currentLevelId: "level-118",
-      highestUnlockedLevelId: "level-118",
-      completedLevelIds: Array.from({ length: 117 }, (_, i) => `level-${i + 1}`),
+      currentLevelId: "level-70",
+      highestUnlockedLevelId: "level-70",
+      completedLevelIds: Array.from({ length: 69 }, (_, i) => `level-${i + 1}`),
     },
   };
   const moved = migrateToUnifiedRestaurant(old);
   const stock = moved.business.supplies.stock;
   const want = new Set<string>();
-  for (let n = 118; n < 118 + 3; n++)
+  for (let n = 70; n < 70 + 3; n++)
     // the crate covers the next 3 services (KIT_SERVICES)
     // The crate is stocked for the services' own TICKETS (what the level will really serve), as the migration reads them.
     ticketsFor(old.levelProgress, getLevel(`level-${n}`)!).tickets.forEach((r, i) => {
@@ -368,7 +400,7 @@ console.log("M. The moving-in crate");
     });
   assert(
     want.size > 0 && [...want].every((id) => (stock[id as SupplyId]?.units ?? 0) >= 1),
-    "M1: an old save moving in at L118 gets its takeaway dishes' own containers and bags",
+    "M1: an old save moving in at L70 gets its takeaway dishes' own containers and bags",
     [...want].map((id) => [id, stock[id as SupplyId]?.units ?? 0]),
   );
 }

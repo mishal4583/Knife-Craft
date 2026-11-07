@@ -104,8 +104,13 @@ console.log("A. Tiers and when it opens");
   const t = checkTiers();
   assert(t.length === 5, "A1: five tiers");
   assert(
-    t.map((x) => x.from).join() === [FRESH, FRESH + 10, FRESH + 20, FRESH + 30, FULL].join(),
-    "A2: tiers start at the freshness stage, +10, +20, +30 and full operation",
+    t.map((x) => x.from).join() ===
+      [
+        FRESH,
+        ...[1, 2, 3].map((k) => FRESH + Math.max(k, Math.round(((FULL - FRESH) * k) / 4))),
+        FULL,
+      ].join(),
+    "A2: tiers start at the freshness stage, then a quarter, half and three quarters of the way to full operation (+10 / +20 / +30 in the 148-level campaign), and full operation",
     t.map((x) => x.from),
   );
   assert(
@@ -123,7 +128,8 @@ console.log("A. Tiers and when it opens");
     "A4: tier 1 has two piles; the cues fade out (icon, then days)",
   );
   assert(tierNumberAt(FRESH) === 1 && tierNumberAt(FULL + 50) === 5, "A5: tierNumberAt");
-  assert(checkTierAt(FRESH + 11).from === FRESH + 10, "A6: tierAt picks the last tier reached");
+  const second = checkTiers()[1]!.from;
+  assert(checkTierAt(second + 1).from === second, "A6: tierAt picks the last tier reached");
   const s = stocked(NIGHT);
   assert(
     !isSortOpen(s, FRESH - 1),

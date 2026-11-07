@@ -27,7 +27,7 @@ const atLevel = (n, floor = {}) =>
       currentLevelId: `level-${n}`,
       highestUnlockedLevelId: `level-${n}`,
       completedLevelIds: Array.from({ length: n - 1 }, (_, i) => `level-${i + 1}`),
-      campaignVersion: 3,
+      campaignVersion: 4,
     },
     story: { introDone: true, milestoneMask: 0xffff, finaleSeen: true },
     settings: { sound: false, music: false, reducedMotion: false, restaurantName: "Test Kitchen" },
@@ -132,7 +132,7 @@ try {
         currentLevelId: "level-40",
         highestUnlockedLevelId: "level-40",
         completedLevelIds: Array.from({ length: 39 }, (_, i) => `level-${i + 1}`),
-        campaignVersion: 3,
+        campaignVersion: 4,
       },
       story: { introDone: true, milestoneMask: 0xffff, finaleSeen: true },
       settings: {
@@ -228,7 +228,7 @@ try {
         currentLevelId: "level-40",
         highestUnlockedLevelId: "level-40",
         completedLevelIds: Array.from({ length: 39 }, (_, i) => `level-${i + 1}`),
-        campaignVersion: 3,
+        campaignVersion: 4,
       },
       story: { introDone: true, milestoneMask: 0xffff, finaleSeen: true },
       settings: {

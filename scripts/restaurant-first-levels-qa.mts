@@ -151,14 +151,14 @@ console.log("M. The Level 10 card");
 {
   const rows = firstPurchaseRows();
   assert(
-    FIRST_PURCHASE_LEVEL === 10 &&
+    FIRST_PURCHASE_LEVEL === 6 && // Rule changed (developer 2026-11-08): the first shopping list and the tools card move from Level 10 to Level 6.
       rows.some((r) => r.label === "🔪 Santoku" && r.value === "in the Market · $350.00") &&
       rows.some((r) => r.label === "🪵 Maple Board" && r.value === "in the Market · $300.00") &&
       // Rule changed (developer 2026-10-25): the menu is already open at L10 (from L5), so the
       // last row points at it instead of "your first menu at Level 11".
       rows.at(-1)?.label === "📋 Your menu" &&
       rows.at(-1)?.value === "new dishes in Business",
-    "M1: Santoku and Maple Board from their catalogs (prices unchanged), then the menu (open since L5)",
+    "M1: the Level 6 card (was L10): Santoku and Maple Board from their catalogs (prices unchanged), then the menu (open since L5)",
   );
 }
 
@@ -171,7 +171,7 @@ console.log("E. Nothing paid changes");
   assert(
     levels.every((l, i) => l.id === `level-${i + 1}`) &&
       levels.every((l, i) => paidLevelReward(l) === expected[i]) &&
-      getLevel("level-10")!.title === "Bruschetta for the House",
+      getLevel("level-9")!.title === "House Bruschetta & Eggplant",
     "E1: Levels 1–15 keep their order and pay the 2026-10-30 reward curve",
   );
   const santoku = KNIFE_CATALOG.find((k) => k.name === "Santoku");

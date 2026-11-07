@@ -225,12 +225,33 @@ export const DISH_CLEAN_THRESHOLD = 0.9;
  * stack). Then the suds are rinsed off (`DISH_RINSE_*`) before the piece goes to the rack.
  */
 export const DISH_TOUGH = 1.8;
-export const DISH_SCRUB_RATE = 0.12;
+/**
+ * Per-shape ease (developer 2026-11-08: "none of the dish utensils should take more than 4 seconds"): the big, heavily stained pieces
+ * (plates, pans, trays, forks, utensils) were 8-12 s on a bad draw; their stains are this many times easier, so even the worst dirt
+ * of every piece is gone in about 3 s of an ideal scrub, and with the rinse (about 1 s) a whole piece is under 4 s (dish-washing-qa N17 measures 30 draws of every shape).
+ */
+export const DISH_EASE: Record<DishShape, number> = {
+  plate: 4.86,
+  "small-plate": 2.76,
+  bowl: 2.6,
+  "cup-set": 1.79,
+  glass: 1.62,
+  jug: 2.03,
+  shakers: 1.79,
+  knife: 2.76,
+  fork: 3.38,
+  spoon: 2.27,
+  pot: 3.38,
+  pan: 7.19,
+  tray: 5.49,
+  utensil: 5.28,
+};
+export const DISH_SCRUB_RATE = 0.2;
 /**
  * The pace cap: a stroke wears a stain at most this much per SECOND whatever the finger's speed, so a frantic
  * scribble is no quicker than a steady scrub (about 500 px/s); scrubbing faster only wastes effort.
  */
-export const DISH_MAX_WEAR_PER_SEC = 2.2;
+export const DISH_MAX_WEAR_PER_SEC = 3.7;
 
 /** `amount` (one pointer event's wear) held to the pace cap for the `dtMs` since the previous event. */
 export function paceAmount(amount: number, dtMs: number): number {
@@ -239,8 +260,10 @@ export function paceAmount(amount: number, dtMs: number): number {
 }
 
 /** The rinse: the share of the piece the water must pass over, and its reach next to the sponge's. */
-export const DISH_RINSE_THRESHOLD = 0.93;
-export const DISH_RINSE_REACH = 0.85;
+export const DISH_RINSE_THRESHOLD = 0.8;
+export const DISH_RINSE_REACH = 2;
+/** How fast the water takes the suds off a point (a stroke's share per event, before the pace cap). */
+export const DISH_RINSE_RATE = 1.5;
 /** Spacing of the points the rinse has to pass over (scene px). */
 export const DISH_RINSE_GRID = 15;
 
@@ -396,7 +419,8 @@ export function dishStains(shape: DishShape, seed: number): Stain[] {
         angle: thin ? Math.PI / 2 + (rnd() - 0.5) * 0.4 : rnd() * Math.PI * 2,
         seed: Math.floor(rnd() * 1e9),
         strength,
-        toughness: TOUGHNESS[rec.kind] * strengthToughness(strength) * DISH_TOUGH,
+        toughness:
+          (TOUGHNESS[rec.kind] * strengthToughness(strength) * DISH_TOUGH) / DISH_EASE[shape],
       });
     }
   }

@@ -195,7 +195,7 @@ console.log("W. Wages unchanged");
   const cook27 = payHalfWages(saveAt(HALF_WAGES_FROM, 50_000, ["prep-cook"]), HALF_WAGES_FROM);
   assert(
     HALF_WAGES_FROM === 27 &&
-      restaurantSystem("full-operation").firstLevel === 54 &&
+      restaurantSystem("full-operation").firstLevel === 41 &&
       before.paid === 0 &&
       before.save === team &&
       half.paid === Math.round(dailyPayroll(["server"]) / 2) &&
@@ -266,11 +266,11 @@ console.log("U. Everything unlocked by Level 5");
     "U3: every map room opens by L5 (the Dining Area too; was L31); the Restroom with its Cleanliness tab (L10)",
   );
   assert(
-    // Rule changed (developer 2026-11-02): the Second Floor opens at Level 3 and its machines at 3 / 5 / 8 / 12 / 17 / 23.
-    SECOND_FLOOR_OPENS_AT === 3 &&
-      STATIONS_OPEN_AT === 3 &&
+    // Rule changed (developer 2026-11-08): the Second Floor opens at Level 11 (was 3, 2026-11-02) and its machines at 11 / 12 / 14 / 16 / 19 / 23.
+    SECOND_FLOOR_OPENS_AT === 11 &&
+      STATIONS_OPEN_AT === 11 &&
       Object.values(TAB_OPENS_AT).every((n) => n <= 5),
-    "U4: the Second Floor opens at L3 (rule 2026-11-02) and every section (Progress was L10) by L5",
+    "U4: the Second Floor opens at L11 (rule 2026-11-08, was L3) and every section (Progress was L10) by L5",
   );
   // Prices are untouched: in the catalog files only unlock-level lines changed.
   const diff = execSync(

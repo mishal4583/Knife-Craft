@@ -1,6 +1,6 @@
 /**
  * THE JOURNEY (Phase 7A, developer 2026-10-31: the hybrid — "levels hidden, milestones shown"): the 100
- * milestones that become the player-facing progression, laid over the 148 hidden services.
+ * milestones that become the player-facing progression, laid over the hidden services (100 over the former 148; one per service, 91, over the 91-level campaign of 2026-11-07).
  *
  *  - The service ladder (`levelProgress`, `levelNumber`, `restaurantLevelOf`) stays the engine's clock: every
  *    unlock, price, pay and story still reads it. Nothing here changes a rule, a price or a save.
@@ -34,11 +34,15 @@ import {
 } from "./restaurantProgression";
 import { SPECIALIST_CHEFS, STAFF_RULES, TEAM_HIRE_FROM } from "./staffRequirements";
 import { STARTING_TEAM_ROLES } from "../config/startingTeam";
+import { FINALE_AT } from "../story/storyDefinitions";
 
-/** How many milestones the journey has (developer 2026-10-31, D-7: keep 100). */
-export const MILESTONE_COUNT = 100;
+/**
+ * How many milestones the journey has (developer 2026-10-31, D-7: keep 100). A milestone needs at least one service, so with the
+ * 91-level campaign (2026-11-07) every service is its own milestone (91); the cap of 100 stays for a longer campaign.
+ */
+export const MILESTONE_COUNT = Math.min(100, LAST_CAMPAIGN_LEVEL);
 /** The finale story's service (mask bit in `SaveData.story`). */
-const FINALE_STORY_LEVEL = 75;
+const FINALE_STORY_LEVEL = FINALE_AT;
 
 export type MilestoneKind = "Unlock" | "Practice" | "Story";
 

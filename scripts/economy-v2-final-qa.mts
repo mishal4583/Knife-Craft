@@ -14,7 +14,7 @@ import fs from "node:fs";
  */
 import { DEFAULT_SAVE, type SaveData } from "../src/game/SaveManager.ts";
 // USD: every wallet/settlement amount is integer US cents (money.ts). The frozen Economy V2 figures are
-// the original numbers read as dollars — $69,925.00 / $245,138.00 / $16,604.00 / $1,415.00 / $299,874.00 (148-level baseline, re-recorded 2026-10-30 after the level-pay re-plan (completion rewards and net only)).
+// the original numbers read as dollars — $51,275.00 / $243,953.00 / $11,317.00 / $1,040.00 / $284,951.00 (91-level campaign baseline, re-recorded 2026-11-08 (the first-20-levels dishes; before: 51,560 / 243,953 / 11,337 / 1,047 / 285,223 after the 2026-11-07 campaign plan)).
 import { dollars } from "../src/game/money.ts";
 import { DEFAULT_LEVEL_PROGRESS, completeLevel, isChapterComplete } from "../src/game/levels/LevelManager.ts";
 import { LEVELS } from "../src/game/levels/levelDefinitions.ts";
@@ -304,11 +304,11 @@ let lockedBaseline = { revenue: 0, rewards: 0, cogs: 0, qualityBonus: 0, net: 0 
     { revenue: 0, rewards: 0, cogs: 0, qualityBonus: 0, net: 0 },
   );
   lockedBaseline = totals;
-  assert(totals.revenue === dollars(69925), `H: recipe revenue unchanged at $69,925.00 (got ${totals.revenue})`);
-  assert(totals.rewards === dollars(245138), `H2: completion rewards at the V2.5 locked $245,138.00 (got ${totals.rewards})`);
-  assert(totals.cogs === dollars(16604), `H3: baseline COGS unchanged at $16,604.00 (got ${totals.cogs})`);
-  assert(totals.qualityBonus === dollars(1415), `H4: quality bonus unchanged at $1,415.00 (got ${totals.qualityBonus})`);
-  assert(totals.net === dollars(299874), `H5: Honest net at the V2.5 locked $299,874.00 (got ${totals.net})`);
+  assert(totals.revenue === dollars(51275), `H: recipe revenue unchanged at $51,275.00 (got ${totals.revenue})`);
+  assert(totals.rewards === dollars(243953), `H2: completion rewards at the V2.5 locked $243,953.00 (got ${totals.rewards})`);
+  assert(totals.cogs === dollars(11317), `H3: baseline COGS unchanged at $11,317.00 (got ${totals.cogs})`);
+  assert(totals.qualityBonus === dollars(1040), `H4: quality bonus unchanged at $1,040.00 (got ${totals.qualityBonus})`);
+  assert(totals.net === dollars(284951), `H5: Honest net at the V2.5 locked $284,951.00 (got ${totals.net})`);
 }
 
 /* ============================================================
@@ -468,16 +468,16 @@ let lockedBaseline = { revenue: 0, rewards: 0, cogs: 0, qualityBonus: 0, net: 0 
  * change to this baseline is the completion-reward line. Each level's
  * stored reward.coins is untouched; levels/levelRewards.ts pays a tapering
  * share of it (100% for Levels 1–20 and 250, down to 15% for 201–249), so
- * completion rewards are $245,138.00 (was $330,691.00) and the Honest net
- * $299,874.00 (was $461,526.00). Recipe revenue, COGS and quality bonuses
+ * completion rewards are $243,953.00 (was $330,691.00) and the Honest net
+ * $284,951.00 (was $461,526.00). Recipe revenue, COGS and quality bonuses
  * are unchanged and still gated exactly. Any OTHER drift is a regression.
  * ============================================================ */
 {
-  assert(lockedBaseline.revenue === dollars(69925), "R: FREEZE GATE — recipe revenue === $69,925.00");
-  assert(lockedBaseline.rewards === dollars(245138), "R2: FREEZE GATE — completion rewards === $245,138.00 (V2.5)");
-  assert(lockedBaseline.cogs === dollars(16604), "R3: FREEZE GATE — baseline COGS === $16,604.00");
-  assert(lockedBaseline.qualityBonus === dollars(1415), "R4: FREEZE GATE — quality bonus === $1,415.00");
-  assert(lockedBaseline.net === dollars(299874), "R5: FREEZE GATE — Honest net === $299,874.00 (V2.5)");
+  assert(lockedBaseline.revenue === dollars(51275), "R: FREEZE GATE — recipe revenue === $51,275.00");
+  assert(lockedBaseline.rewards === dollars(243953), "R2: FREEZE GATE — completion rewards === $243,953.00 (V2.5)");
+  assert(lockedBaseline.cogs === dollars(11317), "R3: FREEZE GATE — baseline COGS === $11,317.00");
+  assert(lockedBaseline.qualityBonus === dollars(1040), "R4: FREEZE GATE — quality bonus === $1,040.00");
+  assert(lockedBaseline.net === dollars(284951), "R5: FREEZE GATE — Honest net === $284,951.00 (V2.5)");
 }
 
 console.log(failures === 0 ? "\nALL PASS — ECONOMY V2 FROZEN — NO KNOWN ECONOMY REGRESSIONS." : `\n${failures} FAILURE(S) — DO NOT FREEZE`);

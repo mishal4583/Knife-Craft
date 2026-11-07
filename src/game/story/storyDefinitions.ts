@@ -201,8 +201,14 @@ export const MILES_FULL_MASK = MILES.reduce(
   RETIRED_CAMPAIGN_COMPLETE_BIT,
 );
 
-/** The narrative midpoint of the curated campaign. */
-export const FINALE_AT = Math.ceil(CAMPAIGN_150_SOURCE_LEVEL_NUMBERS.length / 2);
+/**
+ * The narrative midpoint of the curated campaign: the middle level, but never before the GRAND SERVICE milestone (the finale comes right
+ * after it, as it did at 73 / 74 in the 148-level campaign). 91 levels: GRAND SERVICE at 55, the finale at 56.
+ */
+export const FINALE_AT = Math.max(
+  Math.ceil(CAMPAIGN_150_SOURCE_LEVEL_NUMBERS.length / 2),
+  (MILES.find((m) => m.kicker === "GRAND SERVICE")?.at ?? 0) + 1,
+);
 
 /**
  * LEGACY — "THE LAST PAGE", the Level 250 ending (developer 2026-10-11,

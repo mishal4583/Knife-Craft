@@ -70,7 +70,7 @@ const save = seedSave({
     ...MOVED_IN_BUSINESS,
     inventory: FOOD,
     supplies: { stock: SUPPLIES },
-    restaurantStaff: { specialists: ["mexican-chef"] },
+    restaurantStaff: { specialists: ["mexican-chef", "indian-chef"] }, // the Indian chapter opens at L31 in the 91-level campaign
     // The Server and the Cashier are required for a service (2026-11-03).
     staff: { hiredRoles: ["server", "cashier", "prep-cook"] },
   },
@@ -79,6 +79,7 @@ const save = seedSave({
     currentLevelId: "level-32",
     highestUnlockedLevelId: "level-32",
     completedLevelIds: Array.from({ length: 31 }, (_, i) => `level-${i + 1}`),
+    campaignVersion: 4,
   },
   story: { introDone: true, milestoneMask: 127, finaleSeen: false },
 });

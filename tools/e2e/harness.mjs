@@ -139,11 +139,11 @@ export function seedSave(overrides = {}) {
     economyLedger: [GIFT_TAKEN_TODAY()],
     ...rest,
     business: { ...(ownBusiness ?? {}), assistant: ownBusiness?.assistant ?? PAIGE_QUIET },
-    // Seeds use the 150-level campaign's numbers (2026-10-15). Without the stamp the game
+    // Seeds use the current campaign numbers (the 91-level plan, 2026-11-07; they were the 150-level numbers before). Without the stamp the game
     // renumbers a save as a 250-level one; a test of that migration passes
     // `campaignVersion: undefined` (dropped when the save is written).
     levelProgress: {
-      campaignVersion: 2,
+      campaignVersion: 4,
       ...(rest.levelProgress ?? {
         currentLevelId: "level-10",
         highestUnlockedLevelId: "level-10",

@@ -142,7 +142,8 @@ export const MILESTONES: readonly MilestoneDefinition[] = [
     atLevel: k.unlockLevel,
     done: (f) => f.ownedKnifeIds.includes(k.id),
   })),
-  levelsMilestone(100, dollars(3_000)),
+  // 91-level campaign (developer 2026-11-07): the counts beyond 91 scale by 91/148 so every reward stays reachable; ids unchanged.
+  remappedLevelMilestone(100, 62, dollars(3_000)),
   {
     id: "halfway",
     label: "Halfway through the campaign",
@@ -150,8 +151,8 @@ export const MILESTONES: readonly MilestoneDefinition[] = [
     atLevel: HALFWAY,
     done: (f) => f.completed >= HALFWAY,
   },
-  remappedLevelMilestone(150, 125, dollars(5_000)),
-  remappedLevelMilestone(200, 140, dollars(7_500)),
+  remappedLevelMilestone(150, 77, dollars(5_000)),
+  remappedLevelMilestone(200, 86, dollars(7_500)),
   {
     id: "every-kitchen-stage",
     label: "Every kitchen stage built",

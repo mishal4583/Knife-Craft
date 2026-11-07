@@ -19,6 +19,8 @@ import { CLEANING_FROM_LEVEL } from "../config/cleaningStart";
 import { FRIDGE_SORT_FIRST_LEVEL } from "../business/fridgeSort";
 import { STOCKROOM_FIRST_LEVEL } from "../business/stockroomSort";
 import { marketPlanFor } from "./marketPlan";
+import { SECOND_FLOOR_RESERVE_CENTS, SECOND_FLOOR_FROM_LEVEL } from "../config/earlyLevels";
+import { STATIONS, secondFloorOf } from "./secondFloor";
 import {
   LAST_CAMPAIGN_LEVEL,
   RESTAURANT_SYSTEMS,
@@ -113,7 +115,7 @@ const SYSTEM_TIPS: Partial<
     go: "business-refrigerator",
   },
   "dine-in": {
-    text: "Guests eat at tables now. Keep plates and napkins stocked.",
+    text: "Guests eat at tables now! Keep plates stocked and wash up.",
     pose: "explain",
     go: "inventory-supplies",
   },
@@ -229,10 +231,45 @@ export const ASSISTANT_BEATS: readonly AssistantBeat[] = [
   },
   {
     id: "fridge-sort",
-    lines: [{ text: "Sort your delivery into the fridge for bonus Hype.", pose: "tip" }],
+    lines: [
+      {
+        text: "Your order arrived! Unpack the delivery into the fridge for bonus Hype.",
+        pose: "tip",
+      },
+    ],
     go: "inventory",
     priority: 55,
     when: (_save, level) => within(level, FRIDGE_SORT_FIRST_LEVEL),
+  },
+  {
+    // Developer 2026-11-08: the Second Floor is introduced only when the player can pay the first machine and still has money to carry on.
+    id: "second-floor",
+    lines: [
+      { text: "The Second Floor is open! Machines earn while you rest.", pose: "cheer" },
+      { text: "You can afford your first machine. Take a look!", pose: "point" },
+    ],
+    go: "second-floor",
+    tone: "success",
+    priority: 56,
+    when: (save, level) =>
+      level >= SECOND_FLOOR_FROM_LEVEL &&
+      Object.keys(secondFloorOf(save).stations).length === 0 &&
+      save.credits >= STATIONS[0]!.price + SECOND_FLOOR_RESERVE_CENTS,
+  },
+  {
+    // Developer 2026-11-08: a small moment at the first steak and the first fish; it only points at the Market (no discount, no money).
+    id: "steak-knife",
+    lines: [{ text: "Steak is tough! A better knife in the Market helps.", pose: "tip" }],
+    go: "shop",
+    priority: 45,
+    when: (_save, level) => within(level, 15),
+  },
+  {
+    id: "fish-board",
+    lines: [{ text: "Fish is delicate. Look at the Market's boards.", pose: "tip" }],
+    go: "shop",
+    priority: 45,
+    when: (_save, level) => within(level, 16),
   },
   {
     id: "cleaning",

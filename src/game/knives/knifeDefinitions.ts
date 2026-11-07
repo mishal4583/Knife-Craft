@@ -14,7 +14,7 @@
  */
 import type { IngredientId, TechniqueId } from "../definitions";
 import { dollars } from "../money";
-import { remapCampaignThreshold } from "../levels/campaignSelection";
+import { remapCampaignOrdered } from "../levels/campaignSelection";
 import type {
   KnifeAnimationProfile,
   KnifeAudioProfile,
@@ -370,7 +370,7 @@ const SOURCE_KNIFE_CATALOG: KnifeDefinition[] = [
   },
 ];
 
-export const KNIFE_CATALOG: KnifeDefinition[] = SOURCE_KNIFE_CATALOG.map((item) => ({ ...item, unlockLevel: earlyUnlock(remapCampaignThreshold(item.unlockLevel)) }));
+export const KNIFE_CATALOG: KnifeDefinition[] = SOURCE_KNIFE_CATALOG.map((item) => ({ ...item, unlockLevel: earlyUnlock(remapCampaignOrdered(item.unlockLevel)) }));
 
 export function findKnife(id: string): KnifeDefinition | undefined {
   return KNIFE_CATALOG.find((k) => k.id === id);

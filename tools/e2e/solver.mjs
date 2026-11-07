@@ -62,13 +62,14 @@ async function tap(page, x, y) {
   await page.mouse.up();
 }
 
-async function stroke(page, x0, y0, x1, y1, steps = 14) {
+async function stroke(page, x0, y0, x1, y1, steps = 14, holdMs = 0) {
   await page.mouse.move(x0, y0);
   await page.mouse.down();
   for (let i = 1; i <= steps; i++) {
     await page.mouse.move(x0 + ((x1 - x0) * i) / steps, y0 + ((y1 - y0) * i) / steps);
     await sleep(12);
   }
+  if (holdMs) await sleep(holdMs); // a held finger lets the paced blade (the peel) catch up
   await page.mouse.up();
 }
 
@@ -198,13 +199,15 @@ export async function playToReport(
     lastKey = key;
     if (s.n !== null && s.n < s.m) {
       if (s.tech === "peel") {
-        // horizontal full-width strokes at staggered heights (a peel's counter only changes when the step ends)
-        const rows = [0, -18, 18, -36, 36, -9, 9, -27, 27, -50, 50, -60, 60];
-        const y = CY + rows[peelIdx++ % rows.length] * k;
-        // start ON the ingredient (a peel only begins from a press on it), sweep out to each side
-        await stroke(page, CX, y, CX - 115 * k, y, 14);
-        await stroke(page, CX, y, CX + 115 * k, y, 14);
-        await sleep(250);
+        // Slow peel (developer 2026-11-07): the blade takes a steady strip behind the finger (PEEL.MAX_SPEED), so each stroke is a
+        // full-width sweep that is held until the blade has crossed the ingredient. Rows are one strip apart.
+        const rows = [0, -24, 24, -48, 48, -12, 12, -36, 36, -58, 58, -6, 6, -30, 30, -54, 54];
+        const idx = peelIdx++;
+        const y = CY + rows[idx % rows.length] * k;
+        const dir = idx % 2 === 0 ? 1 : -1;
+        // start ON the ingredient (a peel only begins from a press on it), sweep out the far side and wait for the blade
+        await stroke(page, CX - dir * 50 * k, y, CX + dir * 115 * k, y, 14, 2300);
+        await sleep(150);
         stuck = Math.min(stuck, 20);
         // a finished peel in a multi-step recipe waits for the plate drag (its counter stays "0/1")
         if (peelIdx >= 6 && peelIdx % 3 === 0) {

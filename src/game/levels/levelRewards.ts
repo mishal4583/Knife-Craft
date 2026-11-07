@@ -73,14 +73,23 @@ export const CURATED_REWARD_BASE = 50;
 export const CURATED_REWARD_KNEE = 40;
 export const CURATED_REWARD_STEP_EARLY = 40;
 export const CURATED_REWARD_STEP_LATE = 6;
+/**
+ * 2026-11-07, the 91-level campaign (docs/planning/CAMPAIGN-V2-PLAN-2026-11-07.md): the curve above was set for 148 levels. Each new
+ * level holds about 1.6 former levels of work, so level `n` is paid as former level `1 + (n-1) * 147 / (final - 1)` (still $50 at Level 1,
+ * still the same knee and steps), and everything above the first $50 is multiplied by this scale so the first clears total about what
+ * they did before (~$245k) and the completionist still ends well above $150k.
+ */
+export const CURATED_REWARD_SCALE = 1.65;
+/** How many levels the curve was authored for. */
+export const CURATED_REWARD_FORMER_LEVELS = 148;
 
 /** The curated pay (whole dollars) for level `n`, before the finale rule. */
 export function curatedRewardAt(n: number): number {
-  const early = Math.min(n, CURATED_REWARD_KNEE) - 1;
-  const late = Math.max(0, n - CURATED_REWARD_KNEE);
-  return Math.round(
-    CURATED_REWARD_BASE + CURATED_REWARD_STEP_EARLY * early + CURATED_REWARD_STEP_LATE * late,
-  );
+  const former = 1 + ((n - 1) * (CURATED_REWARD_FORMER_LEVELS - 1)) / Math.max(1, CURATED_FINAL_LEVEL - 1);
+  const early = Math.min(former, CURATED_REWARD_KNEE) - 1;
+  const late = Math.max(0, former - CURATED_REWARD_KNEE);
+  const extra = CURATED_REWARD_STEP_EARLY * early + CURATED_REWARD_STEP_LATE * late;
+  return Math.round(CURATED_REWARD_BASE + CURATED_REWARD_SCALE * extra);
 }
 
 /**

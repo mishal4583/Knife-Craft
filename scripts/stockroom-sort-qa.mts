@@ -1,6 +1,6 @@
 /**
  * STOCKROOM SORT QA (developer 2026-11-06): the rules of the "Stock the shelves" mini-game, business/stockroomSort.ts.
- *   A  it opens at Level 10 (the first supply purchase) and has five tiers
+ *   A  it opens at Level 6 (the first shopping list; was 10) and has five tiers
  *   B  the crate: only real supplies, one line each, sets of three by packs bought, a cap, a new seed for a new delivery, look-alikes wait
  *   C  the board: legal moves, three alike pop, hidden rows slide forward, locks open, no triple at the start, sizes by tier
  *   D  every dealt board is proven solvable (thousands of seeds per tier), deterministic, and replayable from its solution
@@ -83,26 +83,26 @@ const cub = (front: (Piece | null)[], back: Piece[] = [], lockAt = 0): Cubby => 
 
 console.log("A. When it opens");
 {
-  assert(STOCKROOM_FIRST_LEVEL === 10, "A1: it opens at Level 10, the first supply purchase");
+  assert(STOCKROOM_FIRST_LEVEL === 6, "A1: it opens at Level 6, the first shopping list (rule 2026-11-08, was Level 10)");
   assert(
-    !isStockroomOpen(9) && isStockroomOpen(10) && isStockroomOpen(150),
-    "A2: closed at Level 9, open from Level 10",
+    !isStockroomOpen(5) && isStockroomOpen(6) && isStockroomOpen(150),
+    "A2: closed at Level 5, open from Level 6",
   );
   const s = fresh();
   assert(
-    addToSupplyCrate(s, [{ id: ids[0]!, packs: 1 }], 9) === s && roundFor(s, 9) === null,
-    "A3: below Level 10 nothing is put on the crate",
+    addToSupplyCrate(s, [{ id: ids[0]!, packs: 1 }], 5) === s && roundFor(s, 5) === null,
+    "A3: below Level 6 nothing is put on the crate",
   );
   assert(
-    TIERS.map((t) => t.from).join() === "10,19,31,44,74" &&
+    TIERS.map((t) => t.from).join() === "6,19,31,44,74" &&
       TIERS.map((t) => t.maxSets).join() === "2,4,6,8,8" &&
       TIERS.map((t) => t.timeFactor).join() === "2,1.6,1.3,1.1,1" &&
       TIERS.map((t) => t.hint).join() === "always,always,after-miss,never,never",
     "A4: five tiers: 2 / 4 / 6 / 8 / 8 sets, clock x2 / 1.6 / 1.3 / 1.1 / 1, hints fade out",
   );
   assert(
-    tierAt(10).from === 10 &&
-      tierAt(18).from === 10 &&
+    tierAt(6).from === 6 &&
+      tierAt(18).from === 6 &&
       tierAt(19).from === 19 &&
       tierAt(43).from === 31 &&
       tierAt(500).from === 74,
@@ -687,7 +687,7 @@ console.log("J. Wiring");
       restaurantNewsAt(3).minigame === "fridge-sort" &&
       restaurantNewsAt(11).minigame === null &&
       hasNewsToShow(restaurantNewsAt(STOCKROOM_FIRST_LEVEL)),
-    "J2: Level 10's Pre-Service Check shows a Stockroom Sort line (Level 3 still shows Fridge Sort)",
+    "J2: Level 6's Pre-Service Check shows a Stockroom Sort line (Level 3 still shows Fridge Sort)",
   );
   assert(
     [

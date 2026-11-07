@@ -8017,10 +8017,12 @@ const SECOND_INGREDIENT: Record<
     add: AddedComponent[];
   }
 > = {
+  // Developer 2026-11-08: Level 2 repeated Level 1's tomato; the potato now comes with a carrot (new at Level 2).
   "camp-halved-potato-bowl": {
-    add: [{ ingredientId: "tomato", technique: "slice", resultingState: "sliced" }],
-    chefInstruction: "Peel the potato and halve it evenly, then slice the tomato alongside it.",
-    customerDialogue: "A halved potato with some sliced tomato, please.",
+    name: "Potato & Carrot Bowl",
+    add: [{ ingredientId: "carrot", technique: "slice", resultingState: "sliced" }],
+    chefInstruction: "Peel the potato and halve it evenly, then slice the carrot alongside it.",
+    customerDialogue: "A halved potato with some sliced carrot, please.",
   },
   "camp-onion-rings-basket": {
     add: [{ ingredientId: "tomato", technique: "dice", resultingState: "diced" }],
@@ -8030,7 +8032,7 @@ const SECOND_INGREDIENT: Record<
   "camp-onion-two-ways": {
     add: [{ ingredientId: "carrot", technique: "dice", resultingState: "diced", to: "soup" }],
     chefInstruction: "Peel the onion. Halve the onion. Slice the onion. Dice the onion. Dice the carrot for the soup.",
-    customerDialogue: "Prepare the onion, then split it between the two — carrot in the soup.",
+    customerDialogue: "One onion, split between the two — carrot in the soup.",
   },
   "camp-potato-veloute-base": {
     add: [

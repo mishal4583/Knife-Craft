@@ -61,29 +61,29 @@ function assert(cond: unknown, msg: string) {
 }
 const fresh = freshRestaurantSave;
 
-console.log("Simulating the campaign (this plays the 150 levels three times)…");
+console.log("Simulating the campaign (this plays the 91 levels three times)…");
 const D = run("D. Diligent player, fresh save", fresh(), 1, { profile: "diligent" });
 const B = run("B. Broke player ($0 before every level)", fresh(), 1, { profile: "broke" });
 const old: SaveData = {
   ...structuredClone(DEFAULT_SAVE),
   credits: 40_000_00,
   levelProgress: {
-    currentLevelId: "level-120",
-    highestUnlockedLevelId: "level-120",
-    completedLevelIds: Array.from({ length: 119 }, (_, i) => `level-${i + 1}`),
+    currentLevelId: "level-60",
+    highestUnlockedLevelId: "level-60",
+    completedLevelIds: Array.from({ length: 59 }, (_, i) => `level-${i + 1}`),
   },
   story: { introDone: true, milestoneMask: 127, finaleSeen: true },
 };
-const M = run("M. Moving in at Level 120 (old save)", migrateToUnifiedRestaurant(old), 120, {
+const M = run("M. Moving in at Level 60 (old save)", migrateToUnifiedRestaurant(old), 60, {
   profile: "diligent",
 });
 
 console.log("\nChecks");
 for (const [tag, r, levels] of [
-  // The 150-level campaign (2026-10-15): moving in at L120 plays L120–150.
+  // The 91-level campaign (2026-11-07): moving in at L60 plays L60–91.
   ["D", D, LAST_CAMPAIGN_LEVEL],
   ["B", B, LAST_CAMPAIGN_LEVEL],
-  ["M", M, LAST_CAMPAIGN_LEVEL - 119],
+  ["M", M, LAST_CAMPAIGN_LEVEL - 59],
 ] as const) {
   assert(
     r.stats.blocked.length === 0 && r.stats.levels === levels,

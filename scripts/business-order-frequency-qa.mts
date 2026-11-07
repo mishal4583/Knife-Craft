@@ -459,12 +459,12 @@ for (const score of [0, 50, 100]) {
     new RegExp(`${label}:\\s*${value}(?![\\d,])`).test(honest);
   assert(
     v2.status === 0 &&
-      has("Gross recipe revenue", "\\$69,925\\.00") &&
-      has("Level-completion rewards", "\\$245,138\\.00") &&
-      has("Total COGS", "\\$16,604\\.00") &&
-      has("Total quality bonuses", "\\$1,415\\.00") &&
-      has("Total net campaign result", "\\$299,874\\.00"),
-    "I4: Economy V2 freeze exact — $69,925.00 / $245,138.00 / $16,604.00 / $1,415.00 / $299,874.00 (148-level baseline, re-recorded 2026-10-30 after the level-pay re-plan (completion rewards and net only))",
+      has("Gross recipe revenue", "\\$51,275\\.00") &&
+      has("Level-completion rewards", "\\$243,953\\.00") &&
+      has("Total COGS", "\\$11,317\\.00") &&
+      has("Total quality bonuses", "\\$1,040\\.00") &&
+      has("Total net campaign result", "\\$284,951\\.00"),
+    "I4: Economy V2 freeze exact — $51,275.00 / $243,953.00 / $11,317.00 / $1,040.00 / $284,951.00 (91-level campaign baseline, re-recorded 2026-11-08 (the first-20-levels dishes; before: 51,560 / 243,953 / 11,337 / 1,047 / 285,223 after the 2026-11-07 campaign plan))",
   );
 }
 

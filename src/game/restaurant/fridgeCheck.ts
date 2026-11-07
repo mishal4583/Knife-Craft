@@ -73,6 +73,9 @@ const full = () => restaurantSystem("full-operation").firstLevel;
 /** The five tiers (built on demand so they follow `restaurantProgression`). */
 export function checkTiers(): readonly CheckTier[] {
   const f = fresh();
+  // Evenly spread from the freshness stage to full operation (+10 / +20 / +30 when they are 40 levels apart, as in the 148-level
+  // campaign; 8 / 15 / 23 apart in the 91-level one, where full operation is at L41).
+  const gap = (k: number) => f + Math.max(k, Math.round(((full() - f) * k) / 4));
   return [
     {
       from: f,
@@ -84,7 +87,7 @@ export function checkTiers(): readonly CheckTier[] {
       wrapClock: false,
     },
     {
-      from: f + 10,
+      from: gap(1),
       maxCards: 8,
       piles: 3,
       cues: { icon: true, days: true },
@@ -93,7 +96,7 @@ export function checkTiers(): readonly CheckTier[] {
       wrapClock: false,
     },
     {
-      from: f + 20,
+      from: gap(2),
       maxCards: 10,
       piles: 3,
       cues: { icon: false, days: true },
@@ -102,7 +105,7 @@ export function checkTiers(): readonly CheckTier[] {
       wrapClock: true,
     },
     {
-      from: f + 30,
+      from: gap(3),
       maxCards: 12,
       piles: 3,
       cues: { icon: false, days: false },
@@ -111,7 +114,7 @@ export function checkTiers(): readonly CheckTier[] {
       wrapClock: true,
     },
     {
-      from: Math.max(f + 31, full()),
+      from: Math.max(gap(3) + 1, full()),
       maxCards: 12,
       piles: 3,
       cues: { icon: false, days: false },

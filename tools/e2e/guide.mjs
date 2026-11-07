@@ -22,7 +22,7 @@ const saveAt = (n) => {
       highestUnlockedLevelId: `level-${n}`,
       completedLevelIds: Array.from({ length: n - 1 }, (_, i) => `level-${i + 1}`),
       // The current campaign numbering (the harness still stamps the older one).
-      campaignVersion: 3,
+      campaignVersion: 4,
     },
     story: { introDone: true, milestoneMask: 0, finaleSeen: false },
   });

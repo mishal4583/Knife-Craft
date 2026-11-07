@@ -85,9 +85,9 @@ console.log("C2. The climb");
       maxGap <= 8 &&
       ranks[L - 1] === 2 &&
       ranks[L] === 1 &&
-      L === 148 &&
+      L === 91 &&
       ranks.slice(0, L).every((r) => r > 1),
-    `C2: #50 → #1 one rival at a time, never more than 8 levels without passing one (longest ${maxGap}); #1 only at Level 148`,
+    `C2: #50 → #1 one rival at a time, never more than 8 levels without passing one (longest ${maxGap}); #1 only at Level 91`,
   );
   const at = cityRankingAt(L);
   assert(

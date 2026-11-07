@@ -29,6 +29,7 @@ type SaveData = import("../src/game/SaveManager.ts").SaveData;
 const { LEVELS } = await import("../src/game/levels/levelDefinitions.ts");
 const J = await import("../src/game/restaurant/journey.ts");
 const { LAST_CAMPAIGN_LEVEL } = await import("../src/game/restaurant/restaurantProgression.ts");
+const { FINALE_AT } = await import("../src/game/story/storyDefinitions.ts");
 const { render, DOC_PATH } = await import("./level-disposition.mts");
 
 let failed = 0;
@@ -44,9 +45,10 @@ const read = (p: string) =>
 const M = J.MILESTONES;
 
 check(
-  "J1 100 milestones, numbered 1..100 in order, contiguous, from service 1 to the last service",
+  "J1 one milestone per service (91; the journey is capped at 100), numbered in order, contiguous, from service 1 to the last service",
   M.length === J.MILESTONE_COUNT &&
-    J.MILESTONE_COUNT === 100 &&
+    // Rule changed (developer 2026-11-07): the 91-level campaign has 91 milestones (a milestone needs a service).
+    J.MILESTONE_COUNT === Math.min(100, LEVELS.length) &&
     M.every((m, i) => m.no === i + 1 && m.from === (M[i - 1]?.to ?? 0) + 1 && m.to >= m.from) &&
     M[0]!.from === 1 &&
     M[M.length - 1]!.to === LAST_CAMPAIGN_LEVEL &&
@@ -72,7 +74,7 @@ check(
   const mid = [...events.keys()].filter((n) => J.milestoneOf(n).to !== n);
   check(
     "J3 every real unlock event (system, staff, chef, kitchen rank, technique, menu, days, chapter, story) ends a milestone: nothing opens mid-milestone",
-    events.size > 40 && mid.length === 0,
+    events.size > 35 && mid.length === 0,
     { events: events.size, mid },
   );
 }
@@ -81,9 +83,9 @@ check(
   const story = M.filter((m) => m.kind === "Story").map((m) => m.to);
   const practice = M.filter((m) => m.kind === "Practice");
   check(
-    "J4 the finale (75) and the last page (148) are Story milestones; Practice milestones fill the rest, are named after the dish they end on, and none runs long",
-    story.includes(75) &&
-      story.includes(148) &&
+    "J4 the finale (the midpoint) and the last page (the last level) are Story milestones; Practice milestones fill the rest, are named after the dish they end on, and none runs long",
+    story.includes(FINALE_AT) &&
+      story.includes(LEVELS.length) &&
       practice.length === J.MILESTONE_COUNT - J.NATURAL_MILESTONES &&
       practice.every((m) => m.name === LEVELS[m.to - 1]!.title) &&
       Math.max(...M.map((m) => m.to - m.from + 1)) <= 3,
@@ -111,7 +113,7 @@ const upTo = (n: number) => Array.from({ length: n }, (_, i) => i + 1);
   check(
     "J5 a new game: nothing done, milestone 1 is current with 1 service to go, milestone 2 is next, chapter 1",
     start.done === 0 &&
-      start.total === 100 &&
+      start.total === J.MILESTONE_COUNT &&
       start.current?.no === 1 &&
       start.servicesLeft === 1 &&
       start.next?.no === 2 &&
@@ -128,17 +130,35 @@ const upTo = (n: number) => Array.from({ length: n }, (_, i) => i + 1);
       at30.servicesLeft === at30.current!.to - 30,
     { done: at30.done, expected: doneBy30, current: at30.current?.no },
   );
-  const multi = M.find((m) => m.to - m.from >= 1)!;
-  const half = J.journeyOf(saveWith(upTo(multi.from)));
-  check(
-    "J7 a milestone of 2 services is not done after its first service; 1 service is left in it",
-    half.current?.no === multi.no && half.servicesLeft === multi.to - multi.from,
-    { current: half.current?.no, left: half.servicesLeft, multi: multi.no },
-  );
+  // 91-level campaign (2026-11-07): every service is its own milestone, so no milestone spans two services. The mid-milestone case
+  // is still checked whenever one exists (a longer campaign); otherwise it checks that a lone service is not done until it is finished.
+  const multi = M.find((m) => m.to - m.from >= 1);
+  if (multi) {
+    const half = J.journeyOf(saveWith(upTo(multi.from)));
+    check(
+      "J7 a milestone of 2 services is not done after its first service; 1 service is left in it",
+      half.current?.no === multi.no && half.servicesLeft === multi.to - multi.from,
+      { current: half.current?.no, left: half.servicesLeft, multi: multi.no },
+    );
+  } else {
+    const first = J.journeyOf(saveWith([]));
+    const second = J.journeyOf(saveWith(upTo(1)));
+    check(
+      "J7 every milestone is one service (91 levels): the first is current with 1 service left until it is finished",
+      first.current?.no === 1 &&
+        first.servicesLeft === 1 &&
+        second.done === 1 &&
+        second.current?.no === 2,
+      { first: first.current?.no, second: second.current?.no },
+    );
+  }
   const all = J.journeyOf(saveWith(upTo(LEVELS.length)));
   check(
-    "J8 everything finished: 100 of 100, no current or next milestone (the Endless Restaurant is next)",
-    all.done === 100 && all.current === null && all.next === null && all.servicesLeft === 0,
+    "J8 everything finished: every milestone done, no current or next milestone (the Endless Restaurant is next)",
+    all.done === J.MILESTONE_COUNT &&
+      all.current === null &&
+      all.next === null &&
+      all.servicesLeft === 0,
     all,
   );
   const odd = J.journeyOf({

@@ -14,6 +14,7 @@
  * one-off intro). Presentation only: no money moves, nothing is bought here.
  * Pure and deterministic; reuses the existing sections, prices and rankings.
  */
+import { SECOND_FLOOR_RESERVE_CENTS } from "../config/earlyLevels";
 import { STARTING_TEAM_ROLES } from "../config/startingTeam";
 import type { SaveData } from "../SaveManager";
 import { collectableTotal } from "../progression/achievements";
@@ -85,6 +86,38 @@ const RULES: readonly Rule[] = [
           to: "achievements",
         }
       : null;
+  },
+  // The Second Floor: a machine, then someone to run it (before the early shopping goals: developer 2026-11-08, the first machine is the goal at Level 11).
+  (save, level) => {
+    if (!isSecondFloorOpen(level)) return null;
+    const floor = secondFloorOf(save);
+    const owned = Object.keys(floor.stations).length;
+    if (owned === 0) {
+      const list = unlockedStations(level);
+      if (list.length === 0) return null;
+      const cheapest = list.reduce((a, b) => (b.price < a.price ? b : a));
+      // Developer 2026-11-08: pointed upstairs only when the first machine is affordable with money left to carry on.
+      if (save.credits < cheapest.price + SECOND_FLOOR_RESERVE_CENTS) return null;
+      return {
+        id: "floor-machine",
+        icon: "⬆️",
+        title: "Go up to the 2nd floor",
+        why: `Machines there earn money while you cook. The ${cheapest.name} starts at ${formatUsd(cheapest.price)}.`,
+        button: "Go upstairs",
+        to: "second-floor",
+      };
+    }
+    // The first two machines are self-serve; a third one runs at half speed until a Floor Server is hired.
+    if ((floor.servers ?? 0) === 0 && owned > SELF_SERVE_MACHINES)
+      return {
+        id: "floor-server",
+        icon: "🧑‍🍳",
+        title: "Hire a Floor Server",
+        why: `Your newest machine runs at half speed until a Floor Server runs it (${formatUsd(FLOOR_STAFF.server.price)}, hired for good).`,
+        button: "Go upstairs",
+        to: "second-floor",
+      };
+    return null;
   },
   // Early goals (the first levels): a better knife and board you can afford now, then the Blacksmith.
   (save, level) => {
@@ -224,36 +257,6 @@ const RULES: readonly Rule[] = [
           to: "business-staff",
         }
       : null;
-  },
-  // The Second Floor: a machine, then someone to run it.
-  (save, level) => {
-    if (!isSecondFloorOpen(level)) return null;
-    const floor = secondFloorOf(save);
-    const owned = Object.keys(floor.stations).length;
-    if (owned === 0) {
-      const list = unlockedStations(level);
-      if (list.length === 0) return null;
-      const cheapest = list.reduce((a, b) => (b.price < a.price ? b : a));
-      return {
-        id: "floor-machine",
-        icon: "⬆️",
-        title: "Go up to the 2nd floor",
-        why: `Machines there earn money while you cook. The ${cheapest.name} starts at ${formatUsd(cheapest.price)}.`,
-        button: "Go upstairs",
-        to: "second-floor",
-      };
-    }
-    // The first two machines are self-serve; a third one runs at half speed until a Floor Server is hired.
-    if ((floor.servers ?? 0) === 0 && owned > SELF_SERVE_MACHINES)
-      return {
-        id: "floor-server",
-        icon: "🧑‍🍳",
-        title: "Hire a Floor Server",
-        why: `Your newest machine runs at half speed until a Floor Server runs it (${formatUsd(FLOOR_STAFF.server.price)}, hired for good).`,
-        button: "Go upstairs",
-        to: "second-floor",
-      };
-    return null;
   },
   // Out of cleaning supplies or tools: say what to restock (the cause of tasks left undone).
   (save, level) => {

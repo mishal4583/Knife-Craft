@@ -2,7 +2,7 @@
  * The Second Floor — an automated food hall (developer 2026-10-16), rebuilt 2026-11-02 as a customer-cycle idle economy
  * (spec: docs/planning/SECOND-FLOOR-FINAL-SPEC-2026-11-02.md; engagement and ads: ...-ENGAGEMENT-AND-ADS-DESIGN-...).
  *
- * Opens at Level 3. Each station is a machine the player buys once (its own campaign level, `unlockLevel`), then grows:
+ * Opens at Level 11 (developer 2026-11-08: was 3; the first machine is on sale from the start). Each station is a machine the player buys once (its own campaign level, `unlockLevel`), then grows:
  *  - TABLES: guests per cycle = √tables (a fixed lookup, never Math.sqrt at run time), x1.25 from 5 tables, x1.5 from 10;
  *    room for 6 / 8 / 10 tables at Tier 1 / 2 / 3.
  *  - POLISH: ten cheap upgrades (+6 % of the station's income each) so there is always something affordable to buy.
@@ -28,9 +28,10 @@ import type { SaveData } from "../SaveManager";
 import { appendLedgerEntry } from "../economy/EconomyLedger";
 import { debitWallet } from "../economy/wallet";
 import { dollars } from "../money";
+import { SECOND_FLOOR_FROM_LEVEL } from "../config/earlyLevels";
 
 /** Players can visit the floor from this level (developer 2026-11-02: Level 3; was 5). */
-export const SECOND_FLOOR_OPENS_AT = 3;
+export const SECOND_FLOOR_OPENS_AT = SECOND_FLOOR_FROM_LEVEL;
 /** The first machine can be bought from this level; each later one has its own `unlockLevel`. */
 export const STATIONS_OPEN_AT = SECOND_FLOOR_OPENS_AT;
 /** Tier 3 needs this campaign level. */
@@ -140,7 +141,7 @@ const RAW: readonly Raw[] = [
     name: "Smart Coffee & Espresso",
     icon: "☕",
     blurb: "Bean-to-cup machines grind, tamp, brew and steam milk by themselves.",
-    unlockLevel: 3,
+    unlockLevel: SECOND_FLOOR_OPENS_AT,
     price: dollars(500),
     upgradePrices: [dollars(1500), dollars(4500)],
     cycleSeconds: 12,
@@ -153,7 +154,7 @@ const RAW: readonly Raw[] = [
     name: "Drinks Dispenser",
     icon: "🥤",
     blurb: "Touchscreen fountain, juices and mocktails mixed to order.",
-    unlockLevel: 5,
+    unlockLevel: 12,
     price: dollars(1000),
     upgradePrices: [dollars(3000), dollars(9000)],
     cycleSeconds: 18,
@@ -166,7 +167,7 @@ const RAW: readonly Raw[] = [
     name: "Auto Pizza Station",
     icon: "🍕",
     blurb: "A robot arm presses the dough, tops it and bakes a pizza in minutes.",
-    unlockLevel: 8,
+    unlockLevel: 14,
     price: dollars(1500),
     upgradePrices: [dollars(4500), dollars(13500)],
     cycleSeconds: 30,
@@ -179,7 +180,7 @@ const RAW: readonly Raw[] = [
     name: "Burger Station",
     icon: "🍔",
     blurb: "Grills the patty, toasts the bun and stacks every burger the same.",
-    unlockLevel: 12,
+    unlockLevel: 16,
     price: dollars(2000),
     upgradePrices: [dollars(6000), dollars(18000)],
     cycleSeconds: 45,
@@ -192,7 +193,7 @@ const RAW: readonly Raw[] = [
     name: "Ice Cream Station",
     icon: "🍦",
     blurb: "Three soft-serve machines and a topping bar, cones always ready.",
-    unlockLevel: 17,
+    unlockLevel: 19,
     price: dollars(2500),
     upgradePrices: [dollars(7500), dollars(22500)],
     cycleSeconds: 65,

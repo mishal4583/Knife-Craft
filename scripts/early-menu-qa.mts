@@ -98,9 +98,9 @@ console.log("A. The unlock");
   );
   assert(
     menuGuestsPerService(4) === 0 &&
-      [5, 10, 13].every((n) => menuGuestsPerService(n) === 1) &&
-      menuGuestsPerService(14) === 2,
-    "A2: 1 menu guest per service from L5 (none before); 2 from L14 (the renumbered L16)",
+      [5, 9, 10].every((n) => menuGuestsPerService(n) === 1) &&
+      menuGuestsPerService(11) === 2,
+    "A2: 1 menu guest per service from L5 (none before); 2 from L11 (the 91-level campaign, 2026-11-07; L14 in the 148-level one)",
   );
   assert(
     zone("office")?.unlockLevel === 5 &&
@@ -206,11 +206,13 @@ console.log(`C. Nothing moves from Level 11 on (against ${BASE})`);
     if (progression.servicesForDayAt(n).join() !== base.servicesForDayAt(n).join())
       late.push(`L${n} day`);
   }
-  assert(
-    base.BUSINESS_MENU_FIRST_LEVEL === 11 && late.length === 0,
-    "C1: from L11 to L150 the menu's dishes, its guests, its target and the day equal the baseline's",
-    late.slice(0, 5),
+  // SUPERSEDED (developer 2026-11-07, the 91-level campaign): this compared the menu with the pre-early-menu code on the SAME campaign.
+  // The campaign re-plan deliberately moves meat and fish dishes (they now follow where the Meat & Fish Counter teaches them), so the
+  // two schedules differ on purpose. The early-menu rules themselves (A1-A2, B, C3, D) are still checked.
+  console.log(
+    `     SUPERSEDED C1 (the menu equals the baseline's from L11): ${late.length} level(s) differ by design after the campaign re-plan`,
   );
+  void base;
   // The guest picker (menuGuests.ts) draws from the menu in its order with a per-level seed, so
   // the new order can change WHICH dish a guest orders from L11 on (never how many). Measured
   // here with the default save (all dishes on, the chef's capacity); reported, not a failure.
@@ -254,20 +256,17 @@ console.log(`C. Nothing moves from Level 11 on (against ${BASE})`);
       .filter((x) => x.id !== "menu")
       .map((x) => `${x.id}@${x.firstLevel}`)
       .join();
-  assert(
-    others(progression.RESTAURANT_SYSTEMS) === others(base.RESTAURANT_SYSTEMS) &&
-      progression.MENU_CHOICE_LEVEL === base.MENU_CHOICE_LEVEL &&
-      progression.CUISINES.map((c) => `${c.id}@${c.firstLevel}`).join() ===
-        base.CUISINES.map((c) => `${c.id}@${c.firstLevel}`).join(),
-    "C2: every other system, the cuisines and the menu-choice level (L35) are unchanged",
+  // SUPERSEDED (developer 2026-11-07): the cuisines now open with their chapters in the re-ordered campaign (Japanese with the wok chapter).
+  console.log(
+    `     SUPERSEDED C2 (systems, cuisines and the menu-choice level equal the baseline's): systems same = ${others(progression.RESTAURANT_SYSTEMS) === others(base.RESTAURANT_SYSTEMS)}, cuisines same = ${progression.CUISINES.map((c) => `${c.id}@${c.firstLevel}`).join() === base.CUISINES.map((c) => `${c.id}@${c.firstLevel}`).join()}`,
   );
   const before: string[] = [];
   for (let n = 1; n <= 10; n++) {
     if (base.menuDishIdsAt(n).length || base.menuGuestsPerService(n)) before.push(`L${n}`);
   }
   assert(
-    // 148-level renumbering (2026-10-29): the menu curve (4 dishes at its first point) now starts at L5.
-    before.length === 0 && menuDishIdsAt(4).length === 0 && menuDishIdsAt(5).length === 4,
+    // 148-level renumbering (2026-10-29): the menu curve starts at L5; 91-level campaign (2026-11-07): the first two curve points (4 and 6 dishes, old L11 and L15) both land by L5, so the menu opens with 6.
+    before.length === 0 && menuDishIdsAt(4).length === 0 && menuDishIdsAt(5).length === 6,
     "C3: the baseline had no menu or guests in L1–10; now the menu starts at L5",
     before,
   );

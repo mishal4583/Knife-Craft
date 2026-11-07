@@ -129,10 +129,10 @@ console.log("C. Catalog");
 {
   assert(
     STATIONS.map((s) => s.id).join() === "coffee,drinks,pizza,burger,iceCream,hotFood" &&
-      SECOND_FLOOR_OPENS_AT === 3 &&
-      STATIONS_OPEN_AT === 3 &&
-      STATIONS.map((s) => s.unlockLevel).join() === "3,5,8,12,17,23",
-    "C1: six stations; the floor opens at Level 3 (rule 2026-11-02, was 5); machines open at 3, 5, 8, 12, 17, 23",
+      SECOND_FLOOR_OPENS_AT === 11 &&
+      STATIONS_OPEN_AT === 11 &&
+      STATIONS.map((s) => s.unlockLevel).join() === "11,12,14,16,19,23",
+    "C1: six stations; the floor opens at Level 11 (rule 2026-11-08, was 3); machines open at 11, 12, 14, 16, 19, 23",
   );
   assert(
     STATIONS.map((s) => s.price).join() === [500, 1000, 1500, 2000, 2500, 4000].map(D).join() &&
@@ -147,8 +147,8 @@ console.log("C. Catalog");
     "C2: the developer's prices $500..$4,000, whole cents, tiers cost and earn more, counters hold 4/5/6 h",
   );
   assert(
-    !isSecondFloorOpen(2) && isSecondFloorOpen(3),
-    "C3: the floor is closed at Level 2 and open at Level 3",
+    !isSecondFloorOpen(10) && isSecondFloorOpen(11),
+    "C3: the floor is closed at Level 10 and open at Level 11",
   );
   assert(
     STATIONS.map((s) => s.perHour[0]).join() === [6000, 8000, 9600, 10400, 11077, 11520].join(),
@@ -299,10 +299,10 @@ console.log("B. Buy, tables, polish, tiers");
 {
   const coffee = stationDef("coffee");
   const closed = buyStation(fresh(10_000_000), "coffee", 2, T0);
-  const early = buyStation(fresh(10_000_000), "drinks", 4, T0);
+  const early = buyStation(fresh(10_000_000), "drinks", 11, T0);
   assert(
     !closed.ok && closed.reason === "locked" && !early.ok && early.reason === "locked",
-    "B1: Coffee cannot be bought before Level 3, Drinks not before Level 5",
+    "B1: Coffee cannot be bought before Level 11, Drinks not before Level 12",
   );
   const short = fresh(coffee.price - 1);
   const poor = buyStation(short, "coffee", 60, T0);
@@ -310,7 +310,7 @@ console.log("B. Buy, tables, polish, tiers");
     !poor.ok && poor.reason === "insufficientFunds" && short.credits === coffee.price - 1,
     "B2: can't afford -> nothing changes (all-or-nothing)",
   );
-  const b = buyStation(fresh(coffee.price + 100), "coffee", 3, T0);
+  const b = buyStation(fresh(coffee.price + 100), "coffee", 11, T0);
   assert(
     b.ok &&
       b.save.credits === 100 &&
@@ -606,10 +606,10 @@ console.log("F. Franchise (branches)");
 console.log("G. Next goal");
 {
   const s = fresh(D(600));
-  const g = nextFloorGoal(s, 3, s.credits);
+  const g = nextFloorGoal(s, 11, s.credits);
   assert(
     g?.kind === "machine" && g.id === "coffee" && g.price === D(500),
-    "G1: a new Level-3 player is pointed at the $500 Coffee machine",
+    "G1: a new Level-11 player is pointed at the $500 Coffee machine",
     g,
   );
   assert(
@@ -617,18 +617,18 @@ console.log("G. Next goal");
     "G2: no goal while the floor is closed",
   );
   const owned = { ...owning(["coffee"]), credits: D(1) };
-  const goals = floorGoals(owned, 3);
+  const goals = floorGoals(owned, 11);
   assert(
     goals.some((x) => x.kind === "table") &&
       goals.some((x) => x.kind === "polish") &&
       goals.some((x) => x.kind === "tier") &&
       !goals.some((x) => x.kind === "machine"),
-    "G3: Drinks is not offered at Level 3 (it needs Level 5); tables, polish and the tier are",
+    "G3: Drinks is not offered at Level 11 (it needs Level 12); tables, polish and the tier are",
   );
-  const at5 = floorGoals(owned, 5);
+  const at5 = floorGoals(owned, 12);
   assert(
     at5.some((x) => x.kind === "machine" && x.id === "drinks"),
-    "G4: Drinks appears at Level 5",
+    "G4: Drinks appears at Level 12",
   );
   const t3 = floorGoals(owning(["coffee"]), 20).some((x) => x.kind === "tier");
   const r = (() => {
@@ -636,14 +636,14 @@ console.log("G. Next goal");
     return u.ok ? floorGoals(u.save, 20).some((x) => x.kind === "tier") : true;
   })();
   assert(t3 && !r, "G5: Tier 3 is not offered below Level 30");
-  const broke = nextFloorGoal(owned, 3, 10);
+  const broke = nextFloorGoal(owned, 11, 10);
   assert(
     broke !== null && broke.price > 10,
     "G6: when nothing is affordable the goal is still a real, cheap-ish target",
   );
-  const best = floorGoals(owned, 3)[0]!;
+  const best = floorGoals(owned, 11)[0]!;
   assert(
-    floorGoals(owned, 3).every(
+    floorGoals(owned, 11).every(
       (x) => x.price / Math.max(1, x.gain) >= best.price / Math.max(1, best.gain) - 1e-9,
     ),
     "G7: goals are sorted by payback",
@@ -652,15 +652,15 @@ console.log("G. Next goal");
 
 console.log("H. Flood (the surge of guests after a level)");
 {
-  const nothing = floodAmounts(fresh(D(600)), 3, T0);
+  const nothing = floodAmounts(fresh(D(600)), 11, T0);
   const closed = floodAmounts(owning(["coffee"]), 2, T0);
   assert(
     nothing.free === 0 && nothing.adExtra === 0 && closed.free === 0,
     "H1: no machine = no Flood; a closed floor = no Flood",
   );
   const own = { ...owning(["coffee"]), credits: D(20) };
-  const a = floodAmounts(own, 3, T0);
-  const goal = floorGoals(own, 3).find((g) => g.price > own.credits)!;
+  const a = floodAmounts(own, 11, T0);
+  const goal = floorGoals(own, 11).find((g) => g.price > own.credits)!;
   const rate15 = Math.floor((floorPerHour(own) * FLOOD_FREE_MINUTES) / 60);
   const rate60 = Math.floor((floorPerHour(own) * FLOOD_AD_MINUTES) / 60);
   assert(
@@ -755,22 +755,22 @@ console.log("V. Golden Guest (the VIP)");
   );
   const own = { ...owning(["coffee"]), credits: D(20) };
   const when = g.arriveAt + 1000;
-  const a = goldenAmounts(own, 3, when);
+  const a = goldenAmounts(own, 11, when);
   assert(
-    a.burst > 0 && a.adExtra === a.burst * 2 && goldenAmounts(fresh(D(20)), 3, when).burst === 0,
+    a.burst > 0 && a.adExtra === a.burst * 2 && goldenAmounts(fresh(D(20)), 11, when).burst === 0,
     "V4: the tip is at least a minute of income (or 2 % of the goal); the ad adds twice that; no machine = no tip",
     a,
   );
-  const c1 = claimGolden(own, g.slot, 3, when);
-  const c2 = c1.ok ? claimGolden(c1.save, g.slot, 3, when + 500) : null;
-  const early = claimGolden(own, g.slot, 3, g.arriveAt - 1000);
-  const wrong = claimGolden(own, g.slot + 1, 3, when);
+  const c1 = claimGolden(own, g.slot, 11, when);
+  const c2 = c1.ok ? claimGolden(c1.save, g.slot, 11, when + 500) : null;
+  const early = claimGolden(own, g.slot, 11, g.arriveAt - 1000);
+  const wrong = claimGolden(own, g.slot + 1, 11, when);
   assert(
     c1.ok && floorEarnings(c1.save, when) >= a.burst && c2 && !c2.ok && !early.ok && !wrong.ok,
     "V5: tapping in time puts the tip on the Pickup Counter once; again, too early, or the wrong slot pays nothing",
   );
   const next = goldenOfSlot(g.slot + 1);
-  const c3 = c1.ok ? claimGolden(c1.save, next.slot, 3, next.arriveAt + 1000) : null;
+  const c3 = c1.ok ? claimGolden(c1.save, next.slot, 11, next.arriveAt + 1000) : null;
   assert(c3?.ok === true, "V6: the next slot's VIP can be tipped");
   const col = c1.ok ? collectFloor(c1.save, when) : null;
   assert(
@@ -913,18 +913,18 @@ console.log("R. Hype and Rush Hour");
 console.log("W. Skip ahead (rewarded timer skip)");
 {
   const own = { ...owning(["coffee"]), credits: D(20) };
-  const a = skipAheadAmount(own, 3, T0);
-  const goal = floorGoals(own, 3).find((g) => g.price > own.credits)!;
+  const a = skipAheadAmount(own, 11, T0);
+  const goal = floorGoals(own, 11).find((g) => g.price > own.credits)!;
   assert(
     a === Math.max(floorPerHour(own) * 2, Math.floor((goal.price * 30) / 100)) &&
-      skipAheadAmount(fresh(D(600)), 3, T0) === 0 &&
+      skipAheadAmount(fresh(D(600)), 11, T0) === 0 &&
       skipAheadAmount(own, 2, T0) === 0,
     "W1: skip ahead pays the larger of two hours of income and 30 % of the goal; nothing without a machine or on a closed floor",
     { a },
   );
   const rich = { ...owning(["coffee"]), credits: 1_000_000_000 };
   assert(
-    skipAheadAmount(rich, 3, T0) === 0 || floorGoals(rich, 3).some((g) => g.price > rich.credits),
+    skipAheadAmount(rich, 11, T0) === 0 || floorGoals(rich, 11).some((g) => g.price > rich.credits),
     "W2: with every goal affordable there is nothing to skip (no offer)",
   );
 }
@@ -972,11 +972,11 @@ console.log("A. The new ad rewards use the existing reward and ledger path");
 
 {
   const own = { ...owning(["coffee"]), credits: D(20) };
-  const a = rushAdAmount(own, 3, T0);
-  const goal = floorGoals(own, 3).find((g) => g.price > own.credits)!;
+  const a = rushAdAmount(own, 11, T0);
+  const goal = floorGoals(own, 11).find((g) => g.price > own.credits)!;
   assert(
     a === Math.max(Math.floor((floorPerHour(own) * 20) / 60), Math.floor(goal.price / 10)) &&
-      rushAdAmount(fresh(D(600)), 3, T0) === 0 &&
+      rushAdAmount(fresh(D(600)), 11, T0) === 0 &&
       rushAdAmount(own, 2, T0) === 0,
     "W3: the Rush Hour ad pays what ten minutes at x3 would add (2 x ten minutes of income), at least 10 % of the goal; nothing without a machine",
     { a },

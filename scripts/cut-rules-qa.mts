@@ -71,7 +71,8 @@ const cutting = steps.filter((s) => {
   const t = resolveTechniqueFor(TECHNIQUES[s.technique], INGREDIENTS[s.ingredient]);
   return t.interactionMode === "cut" && !t.radialSnap;
 });
-assert(levels.length === 148, `all 148 campaign levels enumerated (${levels.length})`);
+// Rule changed (developer 2026-11-07): 91 campaign levels.
+assert(levels.length === 91, `all 91 campaign levels enumerated (${levels.length})`);
 assert(
   cutting.length > 250,
   `every cutting step collected (${cutting.length} across the campaign)`,

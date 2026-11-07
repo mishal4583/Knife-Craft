@@ -40,6 +40,8 @@ export type ToolRule = {
   fromLevel: number;
   /** The dishes that need it (always: every service from `fromLevel`). */
   when: "always" | ((d: DishService, recipe: RecipeDefinition) => boolean);
+  /** The level is already in the current campaign numbering (never remapped). */
+  exact?: true;
   /** One, or one per cook on the line (from the staff stage). */
   perCook?: boolean;
   /** Why the kitchen needs it — shown on the row. */
@@ -73,26 +75,32 @@ const SOURCE_TOOL_RULES: readonly ToolRule[] = [
   },
   {
     id: "sheet-pans",
-    fromLevel: 11,
+    // Developer 2026-11-08: the oven tools are a shopping moment of their own at Level 9, the first oven dish after the first list.
+    fromLevel: 9,
+    exact: true,
     when: (d) => has(d, "oven"),
     why: "Bread, toast, crostini and gratins go into the oven on a sheet pan",
   },
   {
     id: "oven-mitts",
-    fromLevel: 11,
+    // Developer 2026-11-08: the oven tools are a shopping moment of their own at Level 9, the first oven dish after the first list.
+    fromLevel: 9,
+    exact: true,
     when: (d) => has(d, "oven"),
     why: "Nothing comes out of a hot oven without oven mitts",
   },
   {
     id: "frying-pans",
-    fromLevel: 16,
+    // Developer 2026-11-08: Level 6 brings the first protein (chicken), so the first shopping list holds the pan and the tongs.
+    fromLevel: FIRST_PURCHASE_LEVEL,
     when: (d) => has(d, "fry") || has(d, "grill"),
     perCook: true,
     why: "Rings, fajitas and hash fry in a pan; chicken, steak and salmon sear in one",
   },
   {
     id: "tongs",
-    fromLevel: 16,
+    // Developer 2026-11-08: Level 6 brings the first protein (chicken), so the first shopping list holds the pan and the tongs.
+    fromLevel: FIRST_PURCHASE_LEVEL,
     when: (d) => has(d, "fry") || has(d, "grill"),
     why: "Hot rings and seared meat are turned with tongs, never fingers",
   },
@@ -168,9 +176,10 @@ const SOURCE_TOOL_RULES: readonly ToolRule[] = [
 
 export const TOOL_RULES: readonly ToolRule[] = SOURCE_TOOL_RULES.map((rule) => ({
   ...rule,
-  fromLevel: rule.fromLevel === FIRST_PURCHASE_LEVEL
-    ? FIRST_PURCHASE_LEVEL
-    : remapCampaignThreshold(rule.fromLevel),
+  fromLevel:
+    rule.exact || rule.fromLevel === FIRST_PURCHASE_LEVEL
+      ? rule.fromLevel
+      : remapCampaignThreshold(rule.fromLevel),
 }));
 
 /** Grandma's old tools, hers to give once when the Market opens (Level 10). */

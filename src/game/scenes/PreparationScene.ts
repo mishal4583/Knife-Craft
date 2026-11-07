@@ -1132,6 +1132,16 @@ export class PreparationScene extends Phaser.Scene {
   private peelCoveredCells = 0;
   /** The last pointer position actually validated as inside the ingredient's true silhouette. A segment is only drawn/credited between two such points, so a brief excursion off the ingredient (or the pointer re-entering from outside) never draws one long illegal "teleport" stroke (§11 "only pointer movement intersecting the actual silhouette contributes"). */
   private lastValidPeelPoint: { x: number; y: number } | null = null;
+  /** Where the finger is now. The blade follows it at PEEL.MAX_SPEED (tickPeel), so the skin comes off behind the finger, never ahead of it. */
+  private peelTarget: { x: number; y: number } | null = null;
+  /** Blade travel since the last curl of skin lifted off, and the clocks of the soft sound and the light buzz (PEEL.*_EVERY). */
+  private peelRibbonPx = 0;
+  /** The finger lifted while the blade was still behind it: the blade finishes the stroke (then the knife leaves) instead of dropping it. */
+  private peelFinishing = false;
+  /** The finger is off the ingredient. The blade keeps going to the skin's edge; coming back on starts a fresh segment at the finger. */
+  private peelOutside = false;
+  private lastPeelSoundAt = 0;
+  private lastPeelBuzzAt = 0;
 
   // ---- Smash (single decisive press, no cut geometry) — see runSmash.
   private smashBusy = false;
@@ -1472,6 +1482,8 @@ export class PreparationScene extends Phaser.Scene {
     this.queuedTap = null;
     this.knifeSeq++;
     this.peeling = false;
+    this.peelFinishing = false;
+    this.peelTarget = null;
     this.lastValidPeelPoint = null;
     this.initPeelGrid();
     this.smashBusy = false;
@@ -4481,7 +4493,11 @@ export class PreparationScene extends Phaser.Scene {
   private onPeelDown(pointer: Phaser.Input.Pointer): void {
     const p = this.toBoardSpace(pointer);
     if (!this.pointInIngredientBounds(p.x, p.y)) return;
+    if (this.peelFinishing) this.retirePeelKnife();
     this.peeling = true;
+    this.peelOutside = false;
+    this.peelTarget = p;
+    this.peelRibbonPx = 0;
     this.lastValidPeelPoint = this.silhouette.inside(p.x, p.y) ? p : null;
     // The knife visibly contacts the ingredient and tracks the pointer for
     // the whole stroke (§7 "should feel like scrape, not slice... no
@@ -4498,57 +4514,95 @@ export class PreparationScene extends Phaser.Scene {
   private onPeelMove(pointer: Phaser.Input.Pointer): void {
     if (!this.peeling || this.peeled) return;
     const p = this.toBoardSpace(pointer);
-
-    // Knife-follow: always tracks the raw pointer, valid-or-not — exactly
-    // as responsive as the normal cut swipe (§7).
     this.currentPath.push(p);
     this.updateKnifeDirection();
+    // The finger's place is only remembered here; the blade (and the skin) catch up with it at a steady pace in tickPeel, every frame.
+    this.peelTarget = p;
+    if (!this.silhouette.inside(p.x, p.y)) {
+      // Off the ingredient: the blade carries on to the skin's edge. Before it ever touched, the knife simply follows the finger.
+      this.peelOutside = true;
+      if (!this.lastValidPeelPoint && this.knife) {
+        this.knife.x = p.x;
+        this.knife.y = p.y;
+      }
+    } else if (!this.lastValidPeelPoint || this.peelOutside) {
+      // First touch, or back on after leaving: a fresh segment starts at the finger (never a stroke across dead space).
+      this.peelOutside = false;
+      this.lastValidPeelPoint = p;
+      if (this.knife) {
+        this.knife.x = p.x;
+        this.knife.y = p.y;
+      }
+    }
+  }
+
+  /**
+   * Slow and satisfying peel (developer 2026-11-07): each frame the blade moves toward the finger by at most PEEL.MAX_SPEED (x the
+   * ingredient's paceMult) half-extents per second and takes off the strip it crosses. The knife is drawn where the blade IS, so it
+   * visibly drags behind a fast finger, like pushing through skin; scribbling or a faster drag changes nothing, and holding the finger
+   * still lets the blade finish catching up. Coverage, the visual erase and completion are exactly as before, per credited segment.
+   */
+  private tickPeel(deltaMs: number): void {
+    if ((!this.peeling && !this.peelFinishing) || this.peeled || !this.peelTarget) return;
+    const t = this.peelTarget;
+    const q = this.lastValidPeelPoint;
+    if (!q) return;
+    const d = Math.hypot(t.x - q.x, t.y - q.y);
+    if (d < 0.5) {
+      if (this.peelFinishing) this.retirePeelKnife();
+      return;
+    }
+    const { hw, hh } = this.peelHalfExtents();
+    const pace = this.ingredient.peelConfig?.paceMult ?? 1;
+    const rate = PEEL.MAX_SPEED * pace * ((hw + hh) / 2); // px per second
+    const step = Math.min(d, (rate * Math.min(deltaMs, 50)) / 1000);
+    if (step < 0.4) return;
+    const k = step / d;
+    const p = { x: q.x + (t.x - q.x) * k, y: q.y + (t.y - q.y) * k };
+    // The blade stops at the skin's edge when the finger is off the ingredient.
+    if (!this.silhouette.inside(p.x, p.y)) {
+      if (this.peelFinishing) this.retirePeelKnife();
+      return;
+    }
+    const u0 = (q.x - this.ingCx) / hw;
+    const v0 = (q.y - this.ingCy) / hh;
+    const u1 = (p.x - this.ingCx) / hw;
+    const v1 = (p.y - this.ingCy) / hh;
+    this.peelStrokes.push({ u0, v0, u1, v1 });
+    const before = this.peelCoveredCells;
+    const strip = this.peelConfig().strokeWidthFrac;
+    this.markPeelSegmentCovered(u0, v0, u1, v1, strip);
+    this.redrawIngredientTexture();
+    this.repaintPeelPieceImage();
+    this.lastValidPeelPoint = p;
     if (this.knife) {
       this.knife.x = p.x;
       this.knife.y = p.y;
     }
-
-    // Coverage/visual-mask credit: ONLY for movement that both starts and
-    // ends over the ingredient's true silhouette (§11) — never a bounding-
-    // box approximation, and never a stray long segment drawn across dead
-    // space when the pointer re-enters from outside (lastValidPeelPoint is
-    // cleared the instant the pointer leaves, so re-entry always starts a
-    // fresh segment).
-    const inside = this.silhouette.inside(p.x, p.y);
-    if (inside && this.lastValidPeelPoint) {
-      const q = this.lastValidPeelPoint;
-      const d = Math.hypot(p.x - q.x, p.y - q.y);
-      if (d >= 1) {
-        const { hw, hh } = this.peelHalfExtents();
-        const u0 = (q.x - this.ingCx) / hw;
-        const v0 = (q.y - this.ingCy) / hh;
-        const u1 = (p.x - this.ingCx) / hw;
-        const v1 = (p.y - this.ingCy) / hh;
-        this.peelStrokes.push({ u0, v0, u1, v1 });
-        const before = this.peelCoveredCells;
-        this.markPeelSegmentCovered(u0, v0, u1, v1, this.peelConfig().strokeWidthFrac);
-        this.redrawIngredientTexture();
-        this.repaintPeelPieceImage();
-        // A light, restrained tactile trail (§"never a particle
-        // explosion") — real strips of skin curling away along the drag's
-        // own direction, and only when genuinely NEW surface was just
-        // uncovered (§13 "no fake progress from retracing").
-        if (this.peelCoveredCells > before && Math.random() < 0.45) {
-          this.spawnPeelFleck(p.x, p.y, Math.atan2(p.y - q.y, p.x - q.x));
-        }
-        // HUD feedback only (read-only): how far the skin is towards done.
-        if (this.peelCoveredCells > before) {
-          this.bus.emit(EVT.PEEL_PROGRESS, {
-            fraction: Math.min(
-              1,
-              this.peelCoveredCells / (this.peelTotalCells * this.peelConfig().completionThreshold),
-            ),
-          });
-        }
+    if (this.peelCoveredCells > before) {
+      // Real new skin came away: a curl of skin lifts every few pixels of travel, a soft scrape, a light buzz.
+      this.peelRibbonPx += step;
+      if (this.peelRibbonPx >= PEEL.RIBBON_EVERY_PX) {
+        this.peelRibbonPx = 0;
+        this.spawnPeelFleck(p.x, p.y, Math.atan2(p.y - q.y, p.x - q.x));
       }
+      const now = this.time.now;
+      if (now - this.lastPeelSoundAt >= PEEL.SOUND_EVERY_MS) {
+        this.lastPeelSoundAt = now;
+        AudioManager.playPeelRustle(Math.min(1, strip / 0.3));
+      }
+      if (now - this.lastPeelBuzzAt >= PEEL.BUZZ_EVERY_MS) {
+        this.lastPeelBuzzAt = now;
+        if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate?.(3);
+      }
+      // HUD feedback only (read-only): how far the skin is towards done.
+      this.bus.emit(EVT.PEEL_PROGRESS, {
+        fraction: Math.min(
+          1,
+          this.peelCoveredCells / (this.peelTotalCells * this.peelConfig().completionThreshold),
+        ),
+      });
     }
-    this.lastValidPeelPoint = inside ? p : null;
-
     if (
       this.peelTotalCells > 0 &&
       this.peelCoveredCells / this.peelTotalCells >= this.peelConfig().completionThreshold
@@ -4559,8 +4613,24 @@ export class PreparationScene extends Phaser.Scene {
 
   private onPeelUp(): void {
     this.peeling = false;
-    this.lastValidPeelPoint = null;
     this.currentPath = [];
+    // The blade is still behind the finger on a quick stroke: let it finish the stroke (tickPeel), then retire the knife.
+    const q = this.lastValidPeelPoint;
+    const t = this.peelTarget;
+    if (q && t && !this.peeled && Math.hypot(t.x - q.x, t.y - q.y) > 2) {
+      this.peelFinishing = true;
+      return;
+    }
+    this.peelTarget = null;
+    this.lastValidPeelPoint = null;
+    this.retirePeelKnife();
+  }
+
+  /** The knife leaves the board (phase "exit") and the stroke is over. */
+  private retirePeelKnife(): void {
+    this.peelFinishing = false;
+    this.peelTarget = null;
+    this.lastValidPeelPoint = null;
     if (this.knife && this.knife.phase !== "exit") {
       this.knife.phase = "exit";
       this.knife.exitT = this.time.now;
@@ -4591,6 +4661,8 @@ export class PreparationScene extends Phaser.Scene {
     this.peeled = true;
     this.addBoardDebris(this.ingCx, DEBRIS.PER_PEEL);
     this.peeling = false;
+    this.peelFinishing = false;
+    this.peelTarget = null;
     this.lastValidPeelPoint = null;
     this.currentPath = [];
     if (this.knife && this.knife.phase !== "exit") {
@@ -6883,7 +6955,7 @@ export class PreparationScene extends Phaser.Scene {
     for (let i = 0; i < 3; i++) g.fillEllipse(-side * (7 + i * 8), 17 - i * 3, 13, 8.8);
   }
 
-  override update(_time: number, _delta: number): void {
+  override update(_time: number, delta: number): void {
     if (this.paused) return;
     if (this.pieceJobs.length) this.runPieceJobs(PIECE_PAINT_BUDGET_MS);
     // Phase 2 (A2): a wipe the browser never finished (focus lost, the
@@ -6892,6 +6964,7 @@ export class PreparationScene extends Phaser.Scene {
     this.stepCloth();
     if (this.debrisDirty) this.redrawDebris();
     if (this.avalanche?.swipe && !this.input.activePointer.isDown) this.avalanche.swipe = null;
+    this.tickPeel(delta);
     this.drawKnife();
     if (this.fever) this.drawFever();
     this.updateCoach();

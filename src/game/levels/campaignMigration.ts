@@ -6,9 +6,91 @@ import {
   LEGACY_CAMPAIGN_LEVELS,
   LEVELS,
 } from "./levelDefinitions";
-import { CAMPAIGN_150_SOURCE_LEVEL_NUMBERS } from "./campaignSelection";
+import {
+  CAMPAIGN_148_SOURCE_LEVEL_NUMBERS,
+  CAMPAIGN_148_TO_NEW,
+  CAMPAIGN_150_SOURCE_LEVEL_NUMBERS,
+  CAMPAIGN_PLAN_LEVELS,
+} from "./campaignSelection";
 
-export const CAMPAIGN_PROGRESS_VERSION = 3;
+/** 1: the 250-level ids; 2: the 150-level curated ids; 3: the 148-level campaign; 4: the 91-level plan (2026-11-07). */
+export const CAMPAIGN_PROGRESS_VERSION = 4;
+
+const PREVIOUS_LEVEL_COUNT = CAMPAIGN_148_SOURCE_LEVEL_NUMBERS.length;
+
+/**
+ * Version 3 (the 148-level campaign) -> version 4 (the 91-level plan, developer 2026-11-07). A new level counts as done when every
+ * previous level it grows from or absorbs is done (a level the plan only moved keeps its credit; a merged one asks for all of its
+ * parts). A brand-new level (no previous level) is never pre-done. Cut levels owe nothing: their dishes live on in the Menu. A save that
+ * finished the last previous level has finished the campaign, so every level is done. Per-level data (paid orders, tickets, menu
+ * guests) follows the level it grows from. Never pays money and touches no other save field.
+ */
+function fromPreviousCampaign(progress: LevelProgress): LevelProgress {
+  const prevDone = new Set<number>();
+  for (const id of progress.completedLevelIds ?? []) {
+    const n = oldNumber(id);
+    if (n !== null && n >= 1 && n <= PREVIOUS_LEVEL_COUNT) prevDone.add(n);
+  }
+  const finished = prevDone.has(PREVIOUS_LEVEL_COUNT);
+  const completed = new Set<string>();
+  CAMPAIGN_PLAN_LEVELS.forEach((plan, index) => {
+    const done = finished || (plan.from.length > 0 && plan.from.every((n) => prevDone.has(n)));
+    if (done) completed.add(`level-${index + 1}`);
+  });
+  const completedLevelIds = LEVELS.filter((level) => completed.has(level.id)).map((level) => level.id);
+  let prefix = 0;
+  while (prefix < LEVELS.length && completed.has(`level-${prefix + 1}`)) prefix += 1;
+  const nextUnlocked = Math.min(prefix + 1, LEVELS.length);
+  const newOf = (id: string | undefined): number | null => {
+    const n = id ? oldNumber(id) : null;
+    return n !== null && n >= 1 && n <= PREVIOUS_LEVEL_COUNT ? CAMPAIGN_148_TO_NEW[n - 1]! : null;
+  };
+  const current = newOf(progress.currentLevelId);
+  const highest = newOf(progress.highestUnlockedLevelId);
+  const next: LevelProgress = {
+    ...progress,
+    currentLevelId: `level-${current !== null && current <= nextUnlocked ? current : nextUnlocked}`,
+    highestUnlockedLevelId: `level-${Math.min(LEVELS.length, Math.max(highest ?? nextUnlocked, nextUnlocked))}`,
+    completedLevelIds,
+    campaignVersion: CAMPAIGN_PROGRESS_VERSION,
+  };
+  // Per-level data follows the level each new level grows from.
+  const follow = <T>(value: Record<string, T> | undefined): Record<string, T> | undefined => {
+    if (!value) return undefined;
+    const mapped: Record<string, T> = {};
+    CAMPAIGN_PLAN_LEVELS.forEach((plan, index) => {
+      const base = plan.from[0];
+      if (base === undefined || completed.has(`level-${index + 1}`)) return;
+      const entry = value[`level-${base}`];
+      if (entry !== undefined) mapped[`level-${index + 1}`] = entry;
+    });
+    return mapped;
+  };
+  delete next.paidOrders;
+  delete next.tickets;
+  delete next.menuGuests;
+  delete next.emergency;
+  // Recorded orders only carry over when the dish is still on the new level's menu pool.
+  const keepKnown = (value: Record<string, string[]> | undefined): Record<string, string[]> | undefined => {
+    const mapped = follow(value);
+    if (!mapped) return undefined;
+    const out: Record<string, string[]> = {};
+    for (const [id, recipes] of Object.entries(mapped)) {
+      const plan = CAMPAIGN_PLAN_LEVELS[Number(id.slice("level-".length)) - 1];
+      const known = recipes.filter((r) => plan?.recipes.includes(r));
+      if (known.length > 0) out[id] = known;
+    }
+    return out;
+  };
+  const paidOrders = keepKnown(progress.paidOrders);
+  const tickets = keepKnown(progress.tickets);
+  const menuGuests = follow(progress.menuGuests);
+  // `emergency` is a retired legacy flag (it is dropped).
+  if (paidOrders) next.paidOrders = paidOrders;
+  if (tickets) next.tickets = tickets;
+  if (menuGuests) next.menuGuests = menuGuests;
+  return next;
+}
 
 function sourceRecipeIds(level: (typeof LEGACY_CAMPAIGN_LEVELS)[number]): string[] {
   return [...(level.batchGroupRecipeIds ?? level.recipePoolIds ?? [level.recipeId])].sort();
@@ -69,6 +151,7 @@ function mapKeyed<T>(value: Record<string, T> | undefined): Record<string, T> | 
  */
 export function migrateCampaignProgress(progress: LevelProgress): LevelProgress {
   if ((progress.campaignVersion ?? 0) >= CAMPAIGN_PROGRESS_VERSION) return progress;
+  if ((progress.campaignVersion ?? 0) === 3) return fromPreviousCampaign(progress);
 
   // Version 2 already used the curated sequential numbering. The opening
   // tomato and cucumber tutorials have now been removed, so shift retained
@@ -77,14 +160,14 @@ export function migrateCampaignProgress(progress: LevelProgress): LevelProgress 
     const shiftId = (id: string | undefined): string | null => {
       const number = id ? oldNumber(id) : null;
       if (number === null) return null;
-      return `level-${number <= 2 ? 1 : Math.min(LEVELS.length, number - 2)}`;
+      return `level-${number <= 2 ? 1 : Math.min(PREVIOUS_LEVEL_COUNT, number - 2)}`;
     };
     const shiftKeys = <T>(value: Record<string, T> | undefined): Record<string, T> | undefined => {
       if (!value) return undefined;
       const mapped: Record<string, T> = {};
       for (const [id, entry] of Object.entries(value)) {
         const number = oldNumber(id);
-        if (number !== null && number >= 3 && number - 2 <= LEVELS.length)
+        if (number !== null && number >= 3 && number - 2 <= PREVIOUS_LEVEL_COUNT)
           mapped[`level-${number - 2}`] = entry;
       }
       return mapped;
@@ -92,24 +175,26 @@ export function migrateCampaignProgress(progress: LevelProgress): LevelProgress 
     const completed = new Set<string>();
     for (const id of progress.completedLevelIds ?? []) {
       const number = oldNumber(id);
-      if (number !== null && number >= 3 && number - 2 <= LEVELS.length)
+      if (number !== null && number >= 3 && number - 2 <= PREVIOUS_LEVEL_COUNT)
         completed.add(`level-${number - 2}`);
     }
     if ((progress.completedLevelIds ?? []).includes("level-150"))
-      for (const level of LEVELS) completed.add(level.id);
-    const completedLevelIds = LEVELS.filter((level) => completed.has(level.id)).map((level) => level.id);
+      for (let n = 1; n <= PREVIOUS_LEVEL_COUNT; n += 1) completed.add(`level-${n}`);
+    const completedLevelIds = Array.from({ length: PREVIOUS_LEVEL_COUNT }, (_, i) => `level-${i + 1}`).filter((id) =>
+      completed.has(id),
+    );
     let completedPrefix = 0;
     while (completed.has(`level-${completedPrefix + 1}`)) completedPrefix += 1;
-    const nextUnlocked = Math.min(completedPrefix + 1, LEVELS.length);
+    const nextUnlocked = Math.min(completedPrefix + 1, PREVIOUS_LEVEL_COUNT);
     const currentLevelId = shiftId(progress.currentLevelId) ?? `level-${nextUnlocked}`;
     const oldHighest = oldNumber(progress.highestUnlockedLevelId ?? "") ?? 1;
-    const highestLevel = Math.min(LEVELS.length, Math.max(oldHighest <= 2 ? 1 : oldHighest - 2, nextUnlocked));
+    const highestLevel = Math.min(PREVIOUS_LEVEL_COUNT, Math.max(oldHighest <= 2 ? 1 : oldHighest - 2, nextUnlocked));
     const next: LevelProgress = {
       ...progress,
       currentLevelId,
       highestUnlockedLevelId: `level-${highestLevel}`,
       completedLevelIds,
-      campaignVersion: CAMPAIGN_PROGRESS_VERSION,
+      campaignVersion: 3,
     };
     const paidOrders = shiftKeys(progress.paidOrders);
     const tickets = shiftKeys(progress.tickets);
@@ -119,7 +204,7 @@ export function migrateCampaignProgress(progress: LevelProgress): LevelProgress 
     if (tickets) next.tickets = tickets;
     if (menuGuests) next.menuGuests = menuGuests;
     if (emergency) next.emergency = emergency;
-    return next;
+    return fromPreviousCampaign(next);
   }
 
   const completed = new Set<string>();

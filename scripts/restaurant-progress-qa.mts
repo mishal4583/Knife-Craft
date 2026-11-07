@@ -89,7 +89,7 @@ function saveAt(n: number, extra: Partial<SaveData> = {}): SaveData {
 
 // ===== A: real derived values =====
 {
-  const s = saveAt(86, {
+  const s = saveAt(60, {
     ownedKnifeIds: ["chef", "santoku", "paring", "nakiri", "bread"],
     equippedKnifeId: "nakiri",
     ownedBoardIds: ["walnut", "maple", "herb", "marble"],
@@ -98,17 +98,17 @@ function saveAt(n: number, extra: Partial<SaveData> = {}): SaveData {
   s.business = { ...s.business, popularity: { score: 84 } };
   const p = restaurantProgress(s);
   assert(
-    p.level.current === 87 && p.level.completed === 86 && p.level.total === 148,
-    `A: level 87 / 148 with 86 completed (got ${p.level.current}, ${p.level.completed})`,
+    p.level.current === 61 && p.level.completed === 60 && p.level.total === 91,
+    `A: level 61 / 91 with 60 completed (got ${p.level.current}, ${p.level.completed})`,
   );
   assert(
-    p.chapter.number === LEVELS[86]!.chapter &&
+    p.chapter.number === LEVELS[60]!.chapter &&
       p.chapter.total === 13 &&
-      p.chapter.title === CHAPTER_TITLES[LEVELS[86]!.chapter],
+      p.chapter.title === CHAPTER_TITLES[LEVELS[60]!.chapter],
     `A2: chapter ${p.chapter.number} / 13 · ${p.chapter.title} (from the level data)`,
   );
-  const expectedRank = [...CAFE_MILESTONES].reverse().find((m) => 87 >= m.levelRequired)!;
-  const expectedNext = CAFE_MILESTONES.find((m) => m.levelRequired > 87);
+  const expectedRank = [...CAFE_MILESTONES].reverse().find((m) => 61 >= m.levelRequired)!;
+  const expectedNext = CAFE_MILESTONES.find((m) => m.levelRequired > 61);
   assert(
     p.rank.title === expectedRank.title &&
       p.nextRank?.title === expectedNext?.title &&
@@ -137,11 +137,11 @@ function saveAt(n: number, extra: Partial<SaveData> = {}): SaveData {
     p.boardsOwned === 4 && p.boards.length === BOARD_CATALOG.length,
     `A8: boards 4 / ${BOARD_CATALOG.length}`,
   );
-  const expectedKitchen = [...KITCHEN_UPGRADE_CATALOG].reverse().find((u) => 87 >= u.unlockLevel)!;
+  const expectedKitchen = [...KITCHEN_UPGRADE_CATALOG].reverse().find((u) => 61 >= u.unlockLevel)!;
   assert(
     p.kitchen.current === expectedKitchen.name &&
       p.kitchen.stages.filter((st) => st.reached).length ===
-        KITCHEN_UPGRADE_CATALOG.filter((u) => 87 >= u.unlockLevel).length,
+        KITCHEN_UPGRADE_CATALOG.filter((u) => 61 >= u.unlockLevel).length,
     `A9: kitchen stage "${p.kitchen.current}" and journey reflect the real kitchen upgrades`,
   );
   const fresh = restaurantProgress(saveAt(0));
@@ -158,7 +158,7 @@ function saveAt(n: number, extra: Partial<SaveData> = {}): SaveData {
 
 // ===== B: next goal =====
 {
-  for (const n of [5, 40, 89, 90, 125, 145]) {
+  for (const n of [5, 40, 60, 75, 85]) {
     const s = saveAt(n);
     const p = restaurantProgress(s);
     const want = getNextRewardPreview(p.level.reached);
@@ -170,10 +170,10 @@ function saveAt(n: number, extra: Partial<SaveData> = {}): SaveData {
       `B: at ${n} completed → next goal "${p.nextGoal?.icon} ${p.nextGoal?.name} · Lv ${p.nextGoal?.atLevel}" (the existing reward timeline)`,
     );
   }
-  const done = restaurantProgress(saveAt(148));
+  const done = restaurantProgress(saveAt(LEVELS.length));
   assert(
-    done.campaignComplete && done.nextGoal === null && done.level.completed === 148,
-    "B2: after Level 148 there is no future goal — Campaign Complete",
+    done.campaignComplete && done.nextGoal === null && done.level.completed === LEVELS.length,
+    "B2: after the last level there is no future goal — Campaign Complete",
   );
 }
 
@@ -232,7 +232,7 @@ function saveAt(n: number, extra: Partial<SaveData> = {}): SaveData {
   assert(
     m("Completed 10 levels") === true &&
       m("Completed 50 levels") === true &&
-      m("Completed 100 levels") === false,
+      m("Completed 62 levels") === false,
     "D: level milestones follow completed levels",
   );
   assert(
@@ -243,10 +243,10 @@ function saveAt(n: number, extra: Partial<SaveData> = {}): SaveData {
   );
   assert(
     p.milestones.find((x) => x.id === "campaign-complete")?.done === false &&
-      restaurantProgress(saveAt(250)).milestones.every((x) =>
+      restaurantProgress(saveAt(LEVELS.length)).milestones.every((x) =>
         x.label.startsWith("Completed") ? x.done : true,
       ),
-    "D3: the campaign milestone is only done at 250",
+    "D3: the campaign milestone is only done at the last level",
   );
   const b84 = cityBenchmark(84);
   assert(
@@ -402,14 +402,14 @@ function saveAt(n: number, extra: Partial<SaveData> = {}): SaveData {
 
 // ===== G: rank, popularity, statistics, milestones, one progression screen =====
 {
-  const s87 = saveAt(86);
+  const s87 = saveAt(60);
   const p87 = restaurantProgress(s87);
   const cafe = getCafeProgress(s87.levelProgress);
   assert(
     p87.rank.fraction === cafe.progressFraction && p87.rank.fraction >= 0 && p87.rank.fraction <= 1,
     `G: rank bar = the café rank's own progress fraction (${Math.round(p87.rank.fraction * 100)}%)`,
   );
-  const p125 = restaurantProgress(saveAt(125));
+  const p125 = restaurantProgress(saveAt(LEVELS.length));
   assert(
     p125.nextRank === null && p125.rank.fraction === 1,
     "G2: past the last café rank (Lv 120) there is no next rank and the bar is full",
@@ -427,27 +427,27 @@ function saveAt(n: number, extra: Partial<SaveData> = {}): SaveData {
       popularityMood(50) === "Your restaurant is becoming more popular.",
     "G4: a popularity line for each band; 50 reads 'becoming more popular'",
   );
-  const p184 = restaurantProgress(saveAt(120));
+  const p184 = restaurantProgress(saveAt(60));
   assert(
-    p184.level.completed === 120 &&
-      Math.abs((p184.level.completed / p184.level.total) * 100 - 81.08) < 0.01,
-    "G5: campaign completion % is completed / 148 (120 → 81.08%)",
+    p184.level.completed === 60 &&
+      Math.abs((p184.level.completed / p184.level.total) * 100 - 65.93) < 0.01,
+    "G5: campaign completion % is completed / 91 (60 → 65.93%)",
   );
   const chaptersDone = [...new Set(LEVELS.map((l) => l.chapter))].filter((c) =>
-    LEVELS.filter((l) => l.chapter === c).every((l) => LEVELS.indexOf(l) < 120),
+    LEVELS.filter((l) => l.chapter === c).every((l) => LEVELS.indexOf(l) < 60),
   ).length;
   assert(
     p184.chapter.completed === chaptersDone &&
-      restaurantProgress(saveAt(150)).chapter.completed === 13 &&
+      restaurantProgress(saveAt(LEVELS.length)).chapter.completed === 13 &&
       restaurantProgress(saveAt(0)).chapter.completed === 0,
-    `G6: chapters completed counts fully-finished chapters (${chaptersDone} at 120; 13 at 150; 0 new)`,
+    `G6: chapters completed counts fully-finished chapters (${chaptersDone} at 60; 13 at the last level; 0 new)`,
   );
   const recipeIds = (ls: typeof LEVELS) =>
     new Set(ls.flatMap((l) => [l.recipeId, ...(l.recipePoolIds ?? [])]));
   assert(
-    p184.recipes.cooked === recipeIds(LEVELS.slice(0, 120)).size &&
+    p184.recipes.cooked === recipeIds(LEVELS.slice(0, 60)).size &&
       p184.recipes.total === recipeIds(LEVELS).size &&
-      restaurantProgress(saveAt(150)).recipes.cooked === p184.recipes.total,
+      restaurantProgress(saveAt(LEVELS.length)).recipes.cooked === p184.recipes.total,
     `G7: recipes cooked = distinct recipes of completed levels (${p184.recipes.cooked} / ${p184.recipes.total})`,
   );
   const staffSave = saveAt(30, { ownedStaffIds: [STAFF_CATALOG[0]!.id] });
@@ -490,8 +490,8 @@ function saveAt(n: number, extra: Partial<SaveData> = {}): SaveData {
     restaurantProgress(saveAt(n)).milestones.find((x) => x.label === "Halfway through the campaign")
       ?.done;
   assert(
-    half(73) === false && half(74) === true,
-    "G12: 'Halfway through the campaign' flips at exactly 74 completed levels (half of 148)",
+    half(45) === false && half(46) === true,
+    "G12: 'Halfway through the campaign' flips at exactly 46 completed levels (half of 91, rounded up)",
   );
   const lastChapter = Math.max(...LEVELS.map((l) => l.chapter));
   const finalStart = Math.min(
@@ -514,7 +514,7 @@ function saveAt(n: number, extra: Partial<SaveData> = {}): SaveData {
     "G14: locked campaign milestones show the real level that unlocks them",
   );
   const all250 = restaurantProgress(
-    saveAt(250, {
+    saveAt(LEVELS.length, {
       ownedKnifeIds: KNIFE_CATALOG.map((k) => k.id),
       ownedStaffIds: STAFF_CATALOG.map((x) => x.id),
       knifeUpgrades: { chef: { speed: 2 } },
@@ -524,7 +524,7 @@ function saveAt(n: number, extra: Partial<SaveData> = {}): SaveData {
     all250.milestones
       .filter((x) => x.label !== "First Business day completed")
       .every((x) => x.done),
-    "G15: at 250 with every knife/staff and one upgrade, every milestone except the Business-day one is done (that needs a real Business day)",
+    "G15: at the last level with every knife/staff and one upgrade, every milestone except the Business-day one is done (that needs a real Business day)",
   );
   const screen = read("src/components/kc/RestaurantProgress.tsx");
   assert(

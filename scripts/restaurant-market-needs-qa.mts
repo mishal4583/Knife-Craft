@@ -62,7 +62,7 @@ const atLevel = (n: number, measure: "lb" | "kg" = "lb"): SaveData => {
 console.log("N. Needs come from the game's own checks");
 {
   const problems: string[] = [];
-  for (const n of [3, 12, 25, 40, 60, 90, 120, 148]) {
+  for (const n of [3, 12, 25, 40, 60, 75, 91]) {
     const save = atLevel(n);
     const plan = servicePlanFor(save, LEVELS[n - 1]!)!;
     const needs = marketNeeds(save);
@@ -144,7 +144,7 @@ console.log("Q. Quick restock price and amount (every level, lb and kg)");
   let lines = 0;
   const bad: string[] = [];
   for (const measure of ["lb", "kg"] as const)
-    for (let n = 3; n <= 148; n++) {
+    for (let n = 3; n <= LEVELS.length; n++) {
       const save = atLevel(n, measure);
       const plan = servicePlanFor(save, LEVELS[n - 1]!);
       if (!plan) continue;
@@ -207,11 +207,12 @@ console.log("L. Which level the Market plans for");
   const tools = marketNeeds(l10, "level-10").supplies;
   assert(
     planningLevelId(l10, "level-10") === "level-10" &&
-      tools["frying-pans"]?.when === "soon" &&
-      tools["frying-pans"]?.level === 11 &&
-      tools["stock-pot"]?.when === "soon" &&
+      tools["frying-pans"]?.when === "today" &&
+      tools["storage-containers"]?.when === "soon" &&
+      tools["storage-containers"]?.level === 11 &&
+      tools["stock-pot"]?.when === "today" &&
       tools["mixing-bowls"]?.when === "today",
-    "L1: Level 10's check → the Market highlights today's tools and the shopping list's (fry pan at L11, stock pot …)",
+    "L1: Level 10's check → the Market highlights today's tools (fry pan, stock pot, bowls) and the shopping list's (storage containers at L11; 91-level campaign)",
     tools,
   );
   // A save whose current level is already played (or missing) still plans the next one.
@@ -225,7 +226,7 @@ console.log("L. Which level the Market plans for");
   assert(
     planningLevelId(stale) === "level-10" &&
       planningLevelId(none) === "level-10" &&
-      marketNeeds(stale).supplies["frying-pans"]?.when === "soon" &&
+      marketNeeds(stale).supplies["storage-containers"]?.when === "soon" &&
       planningLevelId(stale, "level-3") === "level-10",
     "L2: a played or missing current level falls back to the next unplayed one; a played check level is skipped",
     { stale: planningLevelId(stale), none: planningLevelId(none) },

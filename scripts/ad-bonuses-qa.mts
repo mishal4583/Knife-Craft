@@ -78,12 +78,12 @@ const sum = (s: SaveData) => s.economyLedger.reduce((t, e) => t + e.amount, 0);
 
 /* ── A. amounts ── */
 check(
-  "A1 floating cash (10% of the level's pay, $5–$50): Level 1 $5 (floor), Level 3 $13, Level 50 and the last level $50 (cap) — on the 2026-10-30 pay curve",
+  "A1 floating cash (10% of the level's pay, $5–$50): Level 1 $5 (floor), Level 3 $27, Level 50 and the last level $50 (cap) — on the 91-level pay curve (2026-11-07)",
   floatingCashAmount(1) === $(5) &&
-    floatingCashAmount(3) === $(13) &&
+    floatingCashAmount(3) === $(27) &&
     floatingCashAmount(50) === $(50) &&
-    floatingCashAmount(148) === $(50),
-  [floatingCashAmount(3), floatingCashAmount(50), floatingCashAmount(149)],
+    floatingCashAmount(91) === $(50),
+  [floatingCashAmount(3), floatingCashAmount(50), floatingCashAmount(91)],
 );
 const l2 = LEVELS[1]!;
 const l40 = LEVELS[39]!;
@@ -113,9 +113,9 @@ check(
     floorDoubleAmount($(900)) === $(900),
 );
 check(
-  "A5 daily gift (10% of the level's pay, $20–$60): Level 3 $20 (floor), Level 100 and the last level $60 (cap) — on the 2026-10-30 pay curve",
-  dailyGiftAmount(3) === $(20) && dailyGiftAmount(100) === $(60) && dailyGiftAmount(148) === $(60),
-  [dailyGiftAmount(3), dailyGiftAmount(100), dailyGiftAmount(149)],
+  "A5 daily gift (10% of the level's pay, $20–$60): Level 1 $20 (floor), Level 3 $27, the last level $60 (cap) — on the 91-level pay curve (2026-11-07)",
+  dailyGiftAmount(1) === $(20) && dailyGiftAmount(3) === $(27) && dailyGiftAmount(91) === $(60),
+  [dailyGiftAmount(1), dailyGiftAmount(3), dailyGiftAmount(91)],
 );
 
 /* ── B. commit ── */
@@ -237,7 +237,7 @@ check(
 /* ── G. welcome back (developer 2026-10-31): a few hours of earnings, only for an ad ── */
 {
   const H = 60 * 60_000;
-  const l40 = 10; // a level where the amount is below the $90 cap, so the hours show
+  const l40 = 3; // a level where the amount is below the $90 cap, so the hours show (91-level pay curve: Level 3 pays $266)
   const full = welcomeBackAmount(l40, 3 * H);
   check(
     "G1 away under 30 minutes (or never measured) pays nothing; 30 minutes pays a small part, 3 hours the full amount, longer never more",
@@ -249,7 +249,7 @@ check(
       welcomeBackAmount(l40, 50 * H) === full,
     { half: welcomeBackAmount(l40, 30 * 60_000), full },
   );
-  const levels = [3, 10, 25, 40, 80, 120, 147];
+  const levels = [3, 10, 25, 40, 60, 75, 90];
   check(
     "G2 whole dollars, always $10–$90, growing with the level",
     levels.every((n) => {

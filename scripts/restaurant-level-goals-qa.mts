@@ -54,7 +54,10 @@ function assert(cond: unknown, msg: string, detail?: unknown) {
 const root = path.resolve(import.meta.dirname, "..");
 const read = (p: string) => fs.readFileSync(path.join(root, p), "utf8");
 const level = (n: number) => getLevel(`level-${n}`)!;
-const recipesOf = (n: number) => (level(n).recipePoolIds ?? []).map((id) => getCampaignRecipe(id)!);
+const recipesOf = (n: number) =>
+  (level(n).recipePoolIds ?? level(n).batchGroupRecipeIds ?? []).map((id) =>
+    getCampaignRecipe(id)!,
+  );
 const at = (n: number, extra: Partial<SaveData> = {}): SaveData => ({
   ...DEFAULT_SAVE,
   levelProgress: {
@@ -80,7 +83,7 @@ console.log("G. Goals from the real dish");
   assert(
     // 148 levels (2026-10-29): Level 1 is the two-step Garden Prep plate, so no level opens with a lone slice.
     Array.from({ length: 14 }, (_, i) => goals[i + 1]!).every(
-      (g) => g.join() === "Clean, even cuts",
+      (g) => g.length > 0 && g.every((x) => x === "Clean, even cuts"),
     ) &&
       !!oneStep &&
       goalFor(oneStep) === "A neat, even grid" &&
@@ -123,8 +126,8 @@ console.log("S. Stars = the engine's grade");
     levelStars(s, level(1)) === 3 &&
       levelStars(s, level(2)) === null &&
       levelStars(s, level(4)) === 1 &&
-      levelStars(s, level(10)) === 2,
-    "S2: from the save's best score (Level 1 ★★★, L4 ★, L10 ★★); unplayed → none",
+      levelStars(s, level(9)) === 2,
+    "S2: from the save's best score (Level 1 ★★★, L4 ★, L9 ★★); unplayed → none",
   );
   const goals =
     read("src/game/restaurant/levelGoals.ts") + read("src/game/restaurant/levelChecklist.ts");
@@ -161,7 +164,7 @@ console.log("K. Checklist");
   // No campaign level up to 15 is a one-step dish any more: a one-step plan stands in.
   const single = [{ ingredientId: "tomato" as const, techniqueId: "slice" as const }];
   assert(
-    k0.map((c) => c.label).join("|") === "Potato — peel|Potato — halve|Tomato — slice" &&
+    k0.map((c) => c.label).join("|") === "Potato — peel|Potato — halve|Carrot — slice" &&
       k0.map((c) => c.state).join() === "now,todo,todo" &&
       k1.map((c) => c.state).join() === "done,now,todo" &&
       kDone.every((c) => c.state === "done") &&
@@ -179,16 +182,20 @@ console.log("I. Ingredient list (Level 9+)");
     },
   });
   const before = JSON.stringify(s);
-  const l9 = dishIngredientsFor(s, level(7)); // Caprese Plate (was L9 before the renumbering)
-  const l12 = dishIngredientsFor(at(10), level(10));
+  const l9 = dishIngredientsFor(s, level(4)); // Tomato Basil Toast + Caprese Plate (91-level campaign: the Caprese Plate is part of Level 4)
+  const caprese = l9.find((d) => d.dish === "Caprese Plate");
+  const l12 = dishIngredientsFor(at(10), level(9));
   assert(
-    l9.length === 1 &&
-      l9[0]!.dish === "Caprese Plate" &&
-      l9[0]!.rows.map((r) => r.ingredientId).join() === "tomato,mozzarella,basil" &&
-      l9[0]!.rows.find((r) => r.ingredientId === "basil")!.have === 0.1 &&
+    l9.length === 2 &&
+      !!caprese &&
+      caprese.rows.map((r) => r.ingredientId).join() === "tomato,mozzarella,basil" &&
+      caprese.rows.find((r) => r.ingredientId === "basil")!.have === 0.1 &&
       JSON.stringify(s) === before &&
-      l12.map((d) => d.dish).join("|") === "Bruschetta for the House",
-    "I1: Level 7 lists its Caprese Plate's ingredients with the fridge's amount, changes nothing; Level 10 its one dish",
+      l12
+        .map((d) => d.dish)
+        .sort()
+        .join("|") === "Bruschetta for the House|Eggplant Antipasto",
+    "I1: Level 4 lists its Caprese Plate's ingredients with the fridge's amount, changes nothing; Level 9 its two dishes",
     { l9, l12: l12.map((d) => d.dish) },
   );
 }

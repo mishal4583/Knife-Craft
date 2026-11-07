@@ -518,9 +518,10 @@ function run(ctxs: ChaosContext[]): (ChaosEventId | null)[] {
       `Grandma fits ${grandmaOk.length}, Giant fits ${giantOk.length}`,
   );
   assert(
-    eligible.length > 100 &&
+    // 91-level campaign (2026-11-07): 78 eligible levels (was 130+); more levels open with a peel, so the Giant fits 77% (was over 80%).
+    eligible.length > 70 &&
       grandmaOk.length / eligible.length > 0.8 &&
-      giantOk.length / eligible.length > 0.8,
+      giantOk.length / eligible.length > 0.7,
     "C23: over the real campaign, most eligible orders can host Grandma (8+ cuts) and Giant",
   );
 }
@@ -604,7 +605,10 @@ function run(ctxs: ChaosContext[]): (ChaosEventId | null)[] {
   console.log(
     `     real campaign: ${withBase.length}/${campaign.length} non-teaching levels carry a variant ingredient`,
   );
-  assert(withBase.length > 40, "D9: the variants' ingredients turn up across the real campaign");
+  assert(
+    withBase.length > 30,
+    "D9: the variants' ingredients turn up across the real campaign (36 of 91 levels; was over 40 of 148)",
+  );
 }
 
 // ───────────────────────────────────────────────────────────── E. Save, money, ingredients

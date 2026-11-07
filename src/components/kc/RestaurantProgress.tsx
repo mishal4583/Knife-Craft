@@ -501,6 +501,9 @@ function JourneyTrack({ p }: { p: Progress }) {
 
 function Earnings({ p }: { p: Progress }) {
   const u = useUnlockText();
+  const last = LAST_CAMPAIGN_LEVEL;
+  const finalLabel = u.live ? "Final Reward (final service)" : `Final Reward (Level ${last})`;
+  const finalWhen = u.live ? "at the final service" : `at Level ${last}`;
   return (
     <Panel className="p-4">
       <Eyebrow>💰 Restaurant earnings</Eyebrow>
@@ -509,17 +512,13 @@ function Earnings({ p }: { p: Progress }) {
         <Row label="Level rewards earned" value={formatUsd(p.money.levelRewards)} />
         <Row label="Milestone rewards" value={formatUsd(p.money.milestoneRewards)} />
         <Row
-          label={
-            u.live ? "Final Reward (final service)" : `Final Reward (Level ${LAST_CAMPAIGN_LEVEL})`
-          }
+          label={finalLabel}
           value={
             p.familyLegacy.paid
               ? formatUsd(p.money.familyLegacy)
               : p.familyLegacy.waived
                 ? "finished before it existed"
-                : u.live
-                  ? "at the final service"
-                  : `at Level ${LAST_CAMPAIGN_LEVEL}`
+                : finalWhen
           }
         />
         <Row label="Business revenue" value={formatUsd(p.money.businessRevenue)} />

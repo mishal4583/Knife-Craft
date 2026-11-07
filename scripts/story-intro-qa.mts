@@ -209,7 +209,11 @@ assert(
 console.log("B. Finale and milestones");
 // The 150-level redesign (developer 2026-10-15, CLAUDE.md §9): the finale plays at L75 (was 100).
 // Developer 2026-10-29: 148 levels, so the midpoint is 74.
-assert(FINALE_AT === 74, "B1: finale at 74 completed levels (the 148-level campaign's midpoint)");
+// Developer 2026-11-07: 91 levels; the finale comes right after the GRAND SERVICE milestone (55), so at 56.
+assert(
+  FINALE_AT === 56,
+  "B1: finale at 56 completed levels (the 91-level campaign: just after GRAND SERVICE)",
+);
 assert(
   FINALE.length === 4 && FINALE[3]!.btn === "BACK TO THE KITCHEN",
   "B2: finale still 4 beats ending on BACK TO THE KITCHEN",
@@ -230,8 +234,9 @@ assert(
     // (story-legacy-qa covers both).
     // 150-level remap (2026-10-15): the same ten beats, bits and titles at the remapped levels.
     // 148-level renumbering (2026-10-29): the same ten beats, bits and titles, each two levels earlier.
-    "8:1:THE ROOM COMES BACK,11:2:WORD GETS AROUND,30:4:SOMETHING WORTH KEEPING,43:8:THE LAST WISH,65:16:THE KITCHEN GROWS,73:32:GRAND SERVICE,85:128:A NAME IN TOWN,102:256:THE NEXT GENERATION,115:512:ONE OF THE BEST,130:1024:THE OLD RECIPE BOOK",
-  "B5: milestone thresholds (148-level renumbering), bits and titles (six shipped + the four approved)",
+    // 91-level campaign (2026-11-07): the same ten beats, bits and titles at the remapped levels.
+    "7:1:THE ROOM COMES BACK,10:2:WORD GETS AROUND,28:4:SOMETHING WORTH KEEPING,37:8:THE LAST WISH,51:16:THE KITCHEN GROWS,55:32:GRAND SERVICE,61:128:A NAME IN TOWN,69:256:THE NEXT GENERATION,75:512:ONE OF THE BEST,83:1024:THE OLD RECIPE BOOK",
+  "B5: milestone thresholds (91-level renumbering), bits and titles (six shipped + the four approved)",
 );
 assert(
   MILES[0]!.line === "It’s starting to feel like a real restaurant again." &&

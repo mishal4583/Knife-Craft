@@ -127,8 +127,8 @@ export function MarketPlanPanel({
             <span data-testid="market-plan-baskets" className="inline-flex items-center gap-1">
               <StatChip icon="🧺">{baskets} baskets</StatChip>
               <InfoTip label="About the baskets">
-                Food you buy arrives as baskets to put away in Fridge Sort. Buy for 2–3 days, put
-                every basket away, and get bonus Hype.
+                Your order arrives as baskets. Unpack the delivery into the fridge: buy for 2–3
+                days, unpack every basket, and get bonus Hype.
               </InfoTip>
             </span>
           ) : null}

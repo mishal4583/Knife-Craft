@@ -43,6 +43,8 @@ import {
   DISH_ITEMS,
   DISH_MAX_WEAR_PER_SEC,
   DISH_ORDER,
+  DISH_RINSE_RATE,
+  DISH_RINSE_REACH,
   DISH_RINSE_THRESHOLD,
   DISH_SCRUB_RATE,
   DISH_TOUGH,
@@ -505,10 +507,10 @@ console.log("N. Pots, pans, plates, glasses: used per order, washed one by one")
     "N6: six guests use six shakers and three jugs (a jug a table of two); three guests leave two jugs",
   );
   assert(
-    dirtyOf(serve(base, "dine-in", salad, 6, 12), "salt-pepper") === 0 &&
-      dirtyOf(serve(base, "dine-in", salad, 6, 25), "water-jugs") === 0 &&
-      dirtyOf(serve(base, "dine-in", salad, 6, 25), "salt-pepper") === 6,
-    "N7: the shakers come with the dine-in stage, the jugs a stage later — before that they stay clean",
+    dirtyOf(serve(base, "dine-in", salad, 6, 11), "salt-pepper") === 0 &&
+      dirtyOf(serve(base, "dine-in", salad, 6, 13), "water-jugs") === 0 &&
+      dirtyOf(serve(base, "dine-in", salad, 6, 13), "salt-pepper") === 6,
+    "N7: the shakers come with the dine-in stage (L12), the jugs two levels later (rule 2026-11-08) — before that they stay clean",
   );
   // N8: the sink holds all of it: tableware + cookware + table pieces
   const day = serve(serve(base, "dine-in", fry, 5), "dine-in", curry, 3);
@@ -621,7 +623,7 @@ console.log("N. Pots, pans, plates, glasses: used per order, washed one by one")
         dir = -dir;
         x = Math.max(b.x0, Math.min(b.x1, x));
         row++;
-        y = b.y0 + ((row * r * 1.1) % (b.y1 - b.y0 + 1));
+        y = b.y0 + ((row * r * 0.9) % (b.y1 - b.y0 + 1));
       }
       const cur = { x, y };
       const amount = scrubAmount(Math.hypot(cur.x - prev.x, cur.y - prev.y)) * DISH_SCRUB_RATE;
@@ -643,30 +645,98 @@ console.log("N. Pots, pans, plates, glasses: used per order, washed one by one")
     }
     return Infinity;
   };
-  // The quickest of five different washes: even the luckiest dirt takes this long.
-  const pace = (shape: DishShape) => Math.min(...[1, 2, 3, 4, 5].map((n) => paceOf(shape, n)));
-  const times = Object.fromEntries(
-    (["plate", "pot", "pan", "tray", "glass", "fork", "utensil"] as DishShape[]).map((sh) => [
-      sh,
-      pace(sh),
-    ]),
+  // The rinse: the same ideal zig-zag (500 px/s) over the suds, rows one rinse reach apart.
+  const rinseOf = (shape: DishShape) => {
+    const pts = dishRinsePoints(shape);
+    const dose = new Float64Array(pts.length);
+    const reach = DISH_BRUSH[shape] * DISH_RINSE_REACH;
+    const b = pts.reduce(
+      (acc, q) => ({
+        x0: Math.min(acc.x0, q.x),
+        x1: Math.max(acc.x1, q.x),
+        y0: Math.min(acc.y0, q.y),
+        y1: Math.max(acc.y1, q.y),
+      }),
+      { x0: 1e9, x1: -1e9, y0: 1e9, y1: -1e9 },
+    );
+    const step = 500 / 60;
+    let t = 0;
+    let dir = 1;
+    let row = 0;
+    let x = b.x0;
+    let y = b.y0;
+    let prev = { x, y };
+    for (let i = 0; i < 60 * 120; i++) {
+      x += dir * step;
+      if (x > b.x1 || x < b.x0) {
+        dir = -dir;
+        x = Math.max(b.x0, Math.min(b.x1, x));
+        row++;
+        // rows top to bottom, then back up (a whole piece is covered, never skipped by a wrap-around)
+        const rows = Math.max(1, Math.ceil((b.y1 - b.y0) / (reach * 1.2)));
+        const k = row % (2 * rows);
+        y = b.y0 + Math.min(k, 2 * rows - k) * reach * 1.2;
+      }
+      const cur = { x, y };
+      const amount = paceAmount(
+        scrubAmount(Math.hypot(cur.x - prev.x, cur.y - prev.y)) * DISH_RINSE_RATE,
+        1000 / 60,
+      );
+      const dx = cur.x - prev.x;
+      const dy = cur.y - prev.y;
+      const len = dx * dx + dy * dy;
+      pts.forEach((q, k) => {
+        const u = len
+          ? Math.max(0, Math.min(1, ((q.x - prev.x) * dx + (q.y - prev.y) * dy) / len))
+          : 0;
+        const d2 = (q.x - (prev.x + u * dx)) ** 2 + (q.y - (prev.y + u * dy)) ** 2;
+        if (d2 <= reach * reach) dose[k] = Math.min(1, dose[k]! + amount);
+      });
+      prev = cur;
+      t += 1 / 60;
+      if (dose.filter((d) => d >= 1).length / pts.length >= DISH_RINSE_THRESHOLD) return t;
+    }
+    return Infinity;
+  };
+  // Rule changed (developer 2026-11-08): "none of the dish utensils should exceed 5 s, if 5 is too much 4": EVERY piece, on the
+  // WORST of 60 draws of dirt, is scrubbed clean and rinsed in 4 s or less (the earlier check read the quickest of five draws).
+  const SHAPES = [
+    "plate",
+    "small-plate",
+    "bowl",
+    "cup-set",
+    "glass",
+    "jug",
+    "shakers",
+    "knife",
+    "fork",
+    "spoon",
+    "pot",
+    "pan",
+    "tray",
+    "utensil",
+  ] as DishShape[];
+  const draws = Array.from({ length: 60 }, (_, i) => i + 1);
+  const worst = Object.fromEntries(
+    SHAPES.map((sh) => [sh, Math.max(...draws.map((n) => paceOf(sh, n))) + rinseOf(sh)]),
+  ) as Record<string, number>;
+  const mean = Object.fromEntries(
+    SHAPES.map((sh) => [sh, draws.reduce((t, n) => t + paceOf(sh, n), 0) / draws.length]),
   ) as Record<string, number>;
   console.log(
-    "      scrub seconds (zig-zag, 500 px/s):",
-    JSON.stringify(times, (_, v) => (typeof v === "number" ? Math.round(v * 10) / 10 : v)),
+    "      worst scrub + rinse seconds (zig-zag, 500 px/s, 60 draws):",
+    JSON.stringify(worst, (_, v) => (typeof v === "number" ? Math.round(v * 10) / 10 : v)),
   );
   assert(
-    times.plate! >= 6 &&
-      times.pot! >= 4 &&
-      times.pan! >= 4 &&
-      times.tray! >= 4 &&
-      times.glass! >= 1.5 &&
-      times.fork! >= 1.5 &&
-      times.utensil! >= 1.5 &&
-      Math.max(...Object.values(times)) <= 30 &&
+    Math.max(...Object.values(worst)) <= 4 &&
+      // still a real scrub, never an instant tap: an average plate, pot or pan takes real scrubbing (about a second of scrub before the rinse)
+      mean.plate! >= 0.8 &&
+      mean.pan! >= 0.8 &&
+      mean.pot! >= 0.8 &&
       DISH_TOUGH >= 1.6 &&
-      DISH_SCRUB_RATE <= 0.15,
-    "N17: the pace — an ideal zig-zag scrub still takes real time (a plate ≥ 6 s, a pot or pan ≥ 4 s, a fork or glass ≥ 1.5 s; the rinse comes after), never a chore without end (≤ 30 s)",
+      DISH_SCRUB_RATE <= 0.25,
+    "N17: the pace — EVERY dish piece (plate, bowl, glass, cutlery, pot, pan, tray, utensil) is scrubbed and rinsed in 4 s or less even on the worst of 60 draws of dirt, and an average plate, pot or pan still takes real scrubbing (0.8 s+ before the rinse)",
+    { worst, mean },
   );
   // N17b: a frantic scribble is no quicker than a steady scrub (the pace cap per second)
   const perSec = (pxPerSec: number, hz: number) => {
@@ -678,7 +748,7 @@ console.log("N. Pots, pans, plates, glasses: used per order, washed one by one")
     perSec(3000, 60) <= steady * 1.05 &&
       perSec(3000, 240) <= steady * 1.05 &&
       perSec(12000, 120) <= steady * 1.05 &&
-      DISH_MAX_WEAR_PER_SEC <= 2.5,
+      DISH_MAX_WEAR_PER_SEC <= 4,
     `N17b: scribbling at 3000 px/s wears no faster than a steady 500 px/s (${perSec(3000, 60).toFixed(2)} vs ${steady.toFixed(2)} a second)`,
   );
   // N18: the rinse — suds to wash off every piece
@@ -705,8 +775,8 @@ console.log("N. Pots, pans, plates, glasses: used per order, washed one by one")
       dishRinsePoints(sh).every((p) => inDishSurface(p.x, p.y, sh)),
   );
   assert(
-    rinseOk && DISH_RINSE_THRESHOLD >= 0.9 && DISH_RINSE_THRESHOLD < 1,
-    "N18: every piece has points to rinse, all on the piece; the rinse needs 90 %+ of them",
+    rinseOk && DISH_RINSE_THRESHOLD >= 0.8 && DISH_RINSE_THRESHOLD < 1,
+    "N18: every piece has points to rinse, all on the piece; the rinse needs 80 %+ of them (was 93 %: one quick pass of water, developer 2026-11-08)",
   );
   // N20: the soap estimate is honest — a full sink needs its pieces' share, so "services left" is not a guess
   const emptySink = bottleView(stocked(saveAt(60), { "dish-soap": 1 }), "dish-soap");

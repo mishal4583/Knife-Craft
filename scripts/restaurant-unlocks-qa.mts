@@ -98,17 +98,18 @@ const expected: [RestaurantSystemId, number][] = [
   ["ingredient-stock", 1],
   // Rule changed (developer 2026-10-25, early game phase 2): the menu at L5 (was 11).
   ["menu", 5],
-  // 148-level renumbering (2026-10-29) and the Market from Level 1 (2026-10-30): every later system two levels earlier.
-  ["fridge-freshness", 14],
-  ["dine-in", 19],
+  // 91-level campaign (developer 2026-11-07): the same systems at the new levels (they follow the old thresholds through remapCampaignThreshold).
+  // First-20 plan (developer 2026-11-08): the fridge opens at Level 10 and dine-in (the sink, tableware) at Level 12.
+  ["fridge-freshness", 10],
+  ["dine-in", 12],
   ["staff", 27],
-  ["cuisines", 33],
-  ["takeaway", 44],
-  ["full-operation", 54],
-  ["expansion", 74],
-  ["established", 99],
-  ["master", 115],
-  ["grand-service", 141],
+  ["cuisines", 31],
+  ["takeaway", 38],
+  ["full-operation", 41],
+  ["expansion", 55],
+  ["established", 68],
+  ["master", 75],
+  ["grand-service", 88],
 ];
 assert(
   RESTAURANT_SYSTEMS.map((s) => `${s.id}@${s.firstLevel}`).join() ===
@@ -126,10 +127,10 @@ assert(
     liveSystems(5)
       .map((s) => s.id)
       .join() === "restaurant-day,ingredient-stock,menu" &&
-    liveSystems(13)
+    liveSystems(9)
       .map((s) => s.id)
       .join() === "restaurant-day,ingredient-stock,menu",
-  "U2: from Level 1 the restaurant day and real stock; the menu joins at L5 (to L13)",
+  "U2: from Level 1 the restaurant day and real stock; the menu joins at L5 (to L9; the fridge opens at L10)",
 );
 assert(
   RESTAURANT_SYSTEMS.every((s) => s.title.length > 0 && s.covers.length > 0 && s.intro.length > 10),

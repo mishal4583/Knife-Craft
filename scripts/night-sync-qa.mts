@@ -7,6 +7,7 @@
  *
  * Run: npx tsx scripts/night-sync-qa.mts
  */
+import { servicesForDayAt } from "../src/game/restaurant/restaurantProgression.ts";
 import { DEFAULT_SAVE, type SaveData } from "../src/game/SaveManager.ts";
 import type { SupplyId } from "../src/game/business/businessSupplies.ts";
 import {
@@ -49,6 +50,9 @@ const FULL: Partial<Record<SupplyId, number>> = {
   "bin-liners": 30,
   "cleaning-liquid": 5,
   "dish-soap": 5,
+  // A 3-service day (Levels 16-18) also fills the restroom sink and paper counters (developer 2026-11-08: the schedule moved).
+  "hand-soap": 20,
+  "toilet-paper": 20,
 };
 const saveAt = (n: number, stock: Partial<Record<SupplyId, number>> = FULL): SaveData => ({
   ...DEFAULT_SAVE,
@@ -75,13 +79,14 @@ const open = (s: SaveData) =>
     .sort();
 const service = { recipes: [], dineIn: 2, customers: 2 };
 
-// A day of two services at L6/L7 (two meals a day before L15).
+// The 3-service day of Levels 16-18: every chore is live (mop L14, restroom L16).
 function dayAt(n: number) {
   let s = openDay(saveAt(n), n);
-  s = tasksAfterService(recordService(s, n), n, service);
-  s = choresAfterService(s, n);
-  s = tasksAfterService(recordService(s, n + 1), n + 1, service);
-  return choresAfterService(s, n + 1);
+  for (let i = 0; i < servicesForDayAt(n).length; i++) {
+    s = tasksAfterService(recordService(s, n + i), n + i, service);
+    s = choresAfterService(s, n + i);
+  }
+  return s;
 }
 
 console.log("S. Starts at Level 3 (Day 2)");
@@ -89,25 +94,25 @@ console.log("S. Starts at Level 3 (Day 2)");
   assert(
     // Rule changed (developer 2026-11-01): cleaning, the shift chores and the day ceremony start at Day 2 (Level 3), not Level 5
     // (a restaurant day is two services, so Day 2 is Levels 3-4; was Level 5).
-    CLEANING_FROM_LEVEL === 3 &&
+    CLEANING_FROM_LEVEL === 4 &&
       dayCeremonyAt(3) &&
       !dayCeremonyAt(2) &&
-      phaseChores("closing", 3).length > 0 &&
-      phaseChores("closing", 2).length === 0,
-    "S1: cleaning, the night chores and the day's ceremony (opening card, Closing Time) start at Level 3, Day 2 (developer 2026-11-01; was L5)",
+      phaseChores("closing", 4).length > 0 &&
+      phaseChores("closing", 3).length === 0,
+    "S1: the day ceremony starts at Level 3 (Day 2); cleaning and the night chores at Level 4 (developer 2026-11-08; was L3)",
   );
-  const night = dayAt(6);
-  const rows = closingRows(night, 7);
+  const night = dayAt(16);
+  const rows = closingRows(night, 18);
   assert(
-    rows.some((r) => r.type === "task") && closingChoresLeft(night, 7) > 0,
-    "S2: at L7 the night has closing chores and Closing Time waits for them",
+    rows.some((r) => r.type === "task") && closingChoresLeft(night, 18) > 0,
+    "S2: at L18 the night has closing chores and Closing Time waits for them",
     rows.map((r) => `${r.id}:${r.state}`),
   );
 }
 
 console.log("N. The night covers the day — nothing is deleted");
 {
-  const night = dayAt(6);
+  const night = dayAt(16);
   const left = open(night);
   assert(
     [
@@ -150,13 +155,31 @@ console.log("N. The night covers the day — nothing is deleted");
   );
 }
 
+console.log("C. Cleaned is cleaned (developer 2026-11-08)");
+{
+  // The player mops the floors and the restroom floor after every service: the night does not ask for the mop again.
+  let s = openDay(saveAt(16), 16);
+  for (let i = 0; i < servicesForDayAt(16).length; i++) {
+    s = tasksAfterService(recordService(s, 16 + i), 16 + i, service);
+    for (const t of ["floor", "restroom-floor", "spill"] as const)
+      if (open(s).includes(t)) s = applyCleanlinessAction(s, { kind: "clean", task: t }).save;
+    s = choresAfterService(s, 16 + i);
+  }
+  const left = open(s);
+  assert(
+    !left.includes("mop-all") && !left.includes("floor") && left.includes("restroom-disinfect"),
+    "C1: floors cleaned between the services -> no 'Mop all the floors' at night (the restroom pass, still open, stays)",
+    left,
+  );
+}
+
 console.log("M. The morning is setup, not cleaning");
 {
-  let night = dayAt(6);
+  let night = dayAt(16);
   for (const t of open(night))
     night = applyCleanlinessAction(night, { kind: "clean", task: t as never }).save;
-  const closed = closeDay(night, 7);
-  const morning = choresAfterClose(closed, 7).save;
+  const closed = closeDay(night, 18);
+  const morning = choresAfterClose(closed, 18).save;
   const left = open(morning);
   assert(
     !left.includes("restroom-check") &&
@@ -168,7 +191,7 @@ console.log("M. The morning is setup, not cleaning");
     left,
   );
   // The night's restroom pass was skipped: the morning check comes back (never lost).
-  const skipped = choresAfterClose(closeDay(dayAt(6), 7), 7).save;
+  const skipped = choresAfterClose(closeDay(dayAt(16), 18), 18).save;
   assert(
     open(skipped).includes("restroom-check"),
     "M2: if the night's restroom pass was not done, the morning restroom check is still there",
@@ -178,7 +201,7 @@ console.log("M. The morning is setup, not cleaning");
 
 console.log("H. Hygiene penalty");
 {
-  const dirty = snapshotServiceStart(dayAt(6), 8);
+  const dirty = snapshotServiceStart(dayAt(16), 8);
   const clean = snapshotServiceStart(saveAt(8), 8);
   assert(
     tipHygieneShare(dirty, 8) === DIRTY_TIP_SHARE &&
@@ -238,7 +261,7 @@ console.log("B. Supplies (developer 2026-10-30: nothing is given free)");
 
 console.log("Z. Never a soft-lock");
 {
-  const bare = dayAt(6);
+  const bare = dayAt(16);
   const noSupplies = {
     ...bare,
     business: { ...bare.business, supplies: { ...bare.business.supplies, stock: {} } },

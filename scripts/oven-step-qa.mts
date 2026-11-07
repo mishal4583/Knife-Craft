@@ -103,17 +103,24 @@ console.log("B. Scope");
     3: "camp-garlic-bread",
     4: "camp-tomato-basil-toast",
     5: "camp-mushroom-bruschetta",
-    10: "camp-bruschetta-for-the-house",
-    13: "camp-family-antipasto-for-two",
-    15: "camp-bruschetta-trio",
+    // 91-level campaign (2026-11-07): the dishes sit in these levels' pools (merged levels serve a party of dishes).
+    // First-20 plan (2026-11-08): Level 9 serves the House Bruschetta with an Eggplant Antipasto, the Bruschetta Trio moved to Level 13,
+    // and the Family Antipasto for Two is in no campaign level any more (it stays a menu dish with its oven step).
+    9: "camp-bruschetta-for-the-house",
+    13: "camp-bruschetta-trio",
+    1005: "camp-baguette-crostini-prep", // Level 5's second dish (a party of two)
   };
+  const BREAD_NOT_IN_THE_CAMPAIGN = ["camp-family-antipasto-for-two"];
   const BAGUETTE = [
-    "camp-avocado-baguette-toast", // L45
+    "camp-avocado-baguette-toast", // L38
     "camp-baguette-rounds",
     "camp-baguette-cheddar-rounds",
     "camp-baguette-crostini-prep",
   ];
-  const bread = Object.values(BREAD);
+  const bread = [
+    ...Object.values(BREAD).filter((id) => id !== "camp-baguette-crostini-prep"),
+    ...BREAD_NOT_IN_THE_CAMPAIGN,
+  ];
   const all = [...bread, ...BAGUETTE];
   assert(
     OVEN_STEP_RECIPES.length === all.length &&
@@ -123,9 +130,15 @@ console.log("B. Scope");
     OVEN_STEP_RECIPES,
   );
   assert(
-    Object.entries(BREAD).every(([n, id]) => getLevel(`level-${n}`)?.recipeId === id) &&
-      getLevel("level-45")?.recipeId === "camp-avocado-baguette-toast",
-    "B2: each level's recipe (L3, L4, L5, L10, L13, L15, L45) is the one listed",
+    Object.entries(BREAD).every(([n, id]) => {
+      const level = getLevel(`level-${Number(n) % 1000}`);
+      return [
+        level?.recipeId,
+        ...(level?.recipePoolIds ?? []),
+        ...(level?.batchGroupRecipeIds ?? []),
+      ].includes(id);
+    }) && (getLevel("level-38")?.recipePoolIds ?? []).includes("camp-avocado-baguette-toast"),
+    "B2: each level serves the recipe listed (L3, L4, L5 twice, L9, L13, L38)",
   );
   const parts = (id: string) => getCampaignRecipe(id)?.components.map((c) => c.ingredientId) ?? [];
   assert(
@@ -213,7 +226,9 @@ console.log("E. Nothing else moves");
       // Rule changed (developer 2026-10-26, "the game starts at 0 cash"): SaveManager may change
       // only the new save's opening credits (scripts/startCashGuard.mts).
       // Base moved to ae4ad52 (the 2026-10-30 own-money commit, which committed the new files): "nothing else changed since".
-      "git diff ae4ad52 -- src/game/business/businessTypes.ts src/game/economy :!src/game/economy/staffDefinitions.ts :!src/game/business/businessTypes.ts :!src/game/economy/EconomyLedger.ts :!src/game/economy/ledgerTypes.ts :!src/game/economy/customerTips.ts :!src/game/economy/pendingCash.ts :!src/game/economy/pace.ts :!src/game/economy/paceFigures.ts src/game/levels :!src/game/levels/levelMastery.ts :!src/game/levels/levelDefinitions.ts :!src/game/levels/levelRewards.ts :!src/game/levels/levelTypes.ts src/game/recipes :!src/game/recipes/campaignRecipes.ts",
+      // Rule changed (developer 2026-11-07, the 91-level campaign): campaignSelection.ts, campaignMigration.ts and LevelManager.ts (the
+      // campaign version) change on purpose — guarded by campaign-integrity-qa, level-system-v2-qa and restaurant-migration-qa.
+      "git diff ae4ad52 -- src/game/business/businessTypes.ts src/game/economy :!src/game/economy/staffDefinitions.ts :!src/game/business/businessTypes.ts :!src/game/economy/EconomyLedger.ts :!src/game/economy/ledgerTypes.ts :!src/game/economy/customerTips.ts :!src/game/economy/pendingCash.ts :!src/game/economy/pace.ts :!src/game/economy/paceFigures.ts src/game/levels :!src/game/levels/levelMastery.ts :!src/game/levels/levelDefinitions.ts :!src/game/levels/levelRewards.ts :!src/game/levels/levelTypes.ts :!src/game/levels/campaignSelection.ts :!src/game/levels/campaignMigration.ts :!src/game/levels/LevelManager.ts src/game/recipes :!src/game/recipes/campaignRecipes.ts",
       { cwd: ROOT, encoding: "utf8" },
     );
   assert(
@@ -276,7 +291,11 @@ console.log("E. Nothing else moves");
     // Rule changed (developer 2026-11-05): restaurantNews.ts gained the Fridge Sort announcement at Level 3 (RestaurantNews.minigame; fridge-sort-qa L6 checks it).
     // Rule changed (developer 2026-11-07): serviceHire.ts is the new pure rule that offers the Server and the Cashier when the first service needs them (no order, serve, pay or ranking code; service-hire-qa).
     // Rule changed (developer 2026-11-06): fridgeCheck.ts is the new Fridge Check mini-game (a closing-night check; it never touches orders, pay, ledger or stock; fridge-check-qa).
-    "git diff ae4ad52 -- src/game/restaurant :!src/game/restaurant/fridgeCheck.ts :!src/game/restaurant/serviceHire.ts :!src/game/restaurant/serviceFloor.ts :!src/game/restaurant/dishService.ts :!src/game/restaurant/marketPlan.ts :!src/game/restaurant/levelPayPreview.ts :!src/game/restaurant/restaurantProgression.ts :!src/game/restaurant/firstLevels.ts :!src/game/restaurant/menuGuests.ts :!src/game/restaurant/preServiceCheck.ts :!src/game/restaurant/restaurantNews.ts :!src/game/restaurant/secondFloor.ts :!src/game/restaurant/floorGoal.ts :!src/game/restaurant/floorFlood.ts :!src/game/restaurant/goldenGuest.ts :!src/game/restaurant/floorLife.ts :!src/game/restaurant/cleanliness.ts :!src/game/restaurant/grandmasFridge.ts :!src/game/restaurant/kitchenTools.ts :!src/game/restaurant/restaurantInvestments.ts :!src/game/restaurant/staffRequirements.ts :!src/game/restaurant/restaurantGuide.ts :!src/game/restaurant/prepCookAuto.ts :!src/game/restaurant/marketNeeds.ts :!src/game/restaurant/nextService.ts :!src/game/restaurant/servicesToGo.ts :!src/game/restaurant/restaurantAttention.ts :!src/game/restaurant/serviceFlow.ts :!src/game/restaurant/orderPool.ts :!src/game/restaurant/dishHeat.ts :!src/game/restaurant/restaurantDay.ts :!src/game/restaurant/tableCash.ts :!src/game/restaurant/floorFill.ts :!src/game/restaurant/journey.ts :!src/game/restaurant/guestDemand.ts :!src/game/restaurant/serviceQuality.ts :!src/game/restaurant/guestReport.ts :!src/game/restaurant/diningHire.ts :!src/game/restaurant/fridgeUsage.ts :!src/game/restaurant/closingChores.ts :!src/game/restaurant/staffLife.ts :!src/game/restaurant/firstRunGuide.ts :!src/game/restaurant/attentionBadges.ts :!src/game/progression/achievements.ts src/game/progression src/game/recipes/dishKind.ts",
+    // Rule changed (developer 2026-11-07): the 91-level campaign (milestoneRewards.ts counts, serviceTickets.ts serves different dishes in a party,
+    // serviceSupplies.ts content thresholds) and the work committed the same day — dishwashing (dishDirt.ts, kitchenDirt.ts, serviceReport.ts,
+    // serviceSupplies.ts), painted people (guestLife.ts, peopleLooks.ts) and the assistant (assistant.ts). None touches order, serve, pay or ranking
+    // rules; each has its own suite (achievement-rewards-qa, campaign-integrity-qa, dish-washing-qa, npc-sprites-qa, assistant-qa).
+    "git diff ae4ad52 -- src/game/restaurant :!src/game/restaurant/fridgeCheck.ts :!src/game/restaurant/serviceHire.ts :!src/game/restaurant/serviceFloor.ts :!src/game/restaurant/dishService.ts :!src/game/restaurant/marketPlan.ts :!src/game/restaurant/levelPayPreview.ts :!src/game/restaurant/restaurantProgression.ts :!src/game/restaurant/firstLevels.ts :!src/game/restaurant/menuGuests.ts :!src/game/restaurant/preServiceCheck.ts :!src/game/restaurant/restaurantNews.ts :!src/game/restaurant/secondFloor.ts :!src/game/restaurant/floorGoal.ts :!src/game/restaurant/floorFlood.ts :!src/game/restaurant/goldenGuest.ts :!src/game/restaurant/floorLife.ts :!src/game/restaurant/cleanliness.ts :!src/game/restaurant/grandmasFridge.ts :!src/game/restaurant/kitchenTools.ts :!src/game/restaurant/restaurantInvestments.ts :!src/game/restaurant/staffRequirements.ts :!src/game/restaurant/restaurantGuide.ts :!src/game/restaurant/prepCookAuto.ts :!src/game/restaurant/marketNeeds.ts :!src/game/restaurant/nextService.ts :!src/game/restaurant/servicesToGo.ts :!src/game/restaurant/restaurantAttention.ts :!src/game/restaurant/serviceFlow.ts :!src/game/restaurant/orderPool.ts :!src/game/restaurant/dishHeat.ts :!src/game/restaurant/restaurantDay.ts :!src/game/restaurant/tableCash.ts :!src/game/restaurant/floorFill.ts :!src/game/restaurant/journey.ts :!src/game/restaurant/guestDemand.ts :!src/game/restaurant/serviceQuality.ts :!src/game/restaurant/guestReport.ts :!src/game/restaurant/diningHire.ts :!src/game/restaurant/fridgeUsage.ts :!src/game/restaurant/closingChores.ts :!src/game/restaurant/staffLife.ts :!src/game/restaurant/firstRunGuide.ts :!src/game/restaurant/attentionBadges.ts :!src/game/progression/achievements.ts src/game/progression src/game/recipes/dishKind.ts :!src/game/progression/milestoneRewards.ts :!src/game/restaurant/assistant.ts :!src/game/restaurant/dishDirt.ts :!src/game/restaurant/kitchenDirt.ts :!src/game/restaurant/guestLife.ts :!src/game/restaurant/peopleLooks.ts :!src/game/restaurant/serviceReport.ts :!src/game/restaurant/serviceSupplies.ts :!src/game/restaurant/serviceTickets.ts",
     { cwd: ROOT, encoding: "utf8" },
   );
   // App.tsx: only the walk-in offer's label (no pay / serve / save words) and, since phase 4,

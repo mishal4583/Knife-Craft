@@ -143,7 +143,7 @@ const tasksOf = (s: SaveData, n: number) =>
 // ---------- C. Tonight's rows ----------
 {
   const late = closingAt(40);
-  const early = closingAt(18); // before dine-in (L21 after the 150-level remap)
+  const early = closingAt(11); // before dine-in (L12; rule 2026-11-08)
   const night = tasksOf(late, 40);
   assert(
     (
@@ -157,7 +157,7 @@ const tasksOf = (s: SaveData, n: number) =>
         "restroom-disinfect",
       ] as TaskKind[]
     ).every((k) => night.includes(k)) &&
-      !tasksOf(early, 18).includes("clear-tables") &&
+      !tasksOf(early, 11).includes("clear-tables") &&
       night.every((k) => TASK_RULES[k].phase === "closing") &&
       closingRows(late, 40)[0]!.id === "wash-up" &&
       closingRows(late, 40).at(-1)!.id === "count",

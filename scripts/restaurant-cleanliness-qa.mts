@@ -432,8 +432,8 @@ console.log("W. Wiring");
     "W1: App and the sim snapshot at the start, add tasks after the report, then the Cleaner's round; no cupboard given; no Math.random",
   );
   assert(
-    CLEANING_FROM_LEVEL === 3,
-    "W2: cleaning starts with Level 3's service, Day 2 (developer 2026-11-01; was L5, L10, L21)",
+    CLEANING_FROM_LEVEL === 4,
+    "W2: cleaning starts with the night of Level 4 (developer 2026-11-08; Day 2 itself opens at Level 3; was L3, L5, L10, L21)",
   );
 }
 
