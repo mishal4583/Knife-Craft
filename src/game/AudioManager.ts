@@ -266,6 +266,9 @@ class AudioManagerImpl {
     const ctx = this.ctx;
     if (!ctx || !this.musicGain || !this.musicBus) return;
     if (!this.musicWanted()) return this.updateMusic();
+    // After a long stall (a slow device, a busy frame) the next bar may already be in the past: start it now instead of piling up bars that would
+    // all sound at once.
+    if (this.nextBarAt < ctx.currentTime - 0.5) this.nextBarAt = ctx.currentTime + 0.05;
     while (this.nextBarAt < ctx.currentTime + 1.2) {
       const mood = this.mood === "off" ? "kitchen" : this.mood;
       const plan = this.composer.nextBar(mood);

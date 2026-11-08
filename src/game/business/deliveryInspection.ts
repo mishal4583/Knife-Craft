@@ -52,10 +52,10 @@ export const DEFECT_LABEL: Readonly<Record<DefectKind, string>> = {
 };
 /** How big the mark is next to the ingredient picture. */
 export const MARK_SCALE: Readonly<Record<MarkSize, number>> = {
-  big: 0.78,
-  medium: 0.56,
-  small: 0.4,
-  tiny: 0.28,
+  big: 0.92,
+  medium: 0.7,
+  small: 0.52,
+  tiny: 0.36,
 };
 
 export type Mark =
@@ -129,7 +129,7 @@ const KINDS_4: readonly DefectKind[] = [...KINDS_3, "pests", "shrivel"];
 export const INSPECTION_TIERS: readonly InspectionTier[] = [
   {
     from: DIFFICULTY[0]!.from,
-    items: [8, 10],
+    items: [8, 9],
     defects: [2, 2],
     hidden: 0,
     peek: 0.12,
@@ -137,14 +137,14 @@ export const INSPECTION_TIERS: readonly InspectionTier[] = [
     kinds: KINDS_1,
     sizes: ["big"],
     crowd: 0.9,
-    diameter: [15.5, 17.5],
+    diameter: [21, 23.5],
     timeMs: 60_000,
     lensSec: 0,
     hint: true,
   },
   {
     from: DIFFICULTY[1]!.from,
-    items: [12, 12],
+    items: [10, 10],
     defects: [3, 3],
     hidden: 1,
     peek: 0.5,
@@ -152,14 +152,14 @@ export const INSPECTION_TIERS: readonly InspectionTier[] = [
     kinds: KINDS_2,
     sizes: ["big", "medium"],
     crowd: 0.82,
-    diameter: [14, 16],
+    diameter: [19.5, 21.5],
     timeMs: 55_000,
     lensSec: 0,
     hint: true,
   },
   {
     from: DIFFICULTY[2]!.from,
-    items: [15, 15],
+    items: [12, 12],
     defects: [3, 4],
     hidden: 1,
     peek: 0.12,
@@ -167,14 +167,14 @@ export const INSPECTION_TIERS: readonly InspectionTier[] = [
     kinds: KINDS_3,
     sizes: ["medium", "small"],
     crowd: 0.74,
-    diameter: [13, 15],
+    diameter: [18, 20],
     timeMs: 50_000,
     lensSec: 10,
     hint: false,
   },
   {
     from: DIFFICULTY[3]!.from,
-    items: [18, 18],
+    items: [14, 14],
     defects: [4, 5],
     hidden: 2,
     peek: 0.12,
@@ -182,14 +182,14 @@ export const INSPECTION_TIERS: readonly InspectionTier[] = [
     kinds: KINDS_4,
     sizes: ["medium", "small", "small"],
     crowd: 0.7,
-    diameter: [12.5, 14],
+    diameter: [16.5, 18.5],
     timeMs: 45_000,
     lensSec: 10,
     hint: false,
   },
   {
     from: DIFFICULTY[4]!.from,
-    items: [22, 22],
+    items: [17, 17],
     defects: [5, 6],
     hidden: 3,
     peek: 0.12,
@@ -197,7 +197,7 @@ export const INSPECTION_TIERS: readonly InspectionTier[] = [
     kinds: KINDS_4,
     sizes: ["small", "small", "tiny"],
     crowd: 0.7,
-    diameter: [12, 13.5],
+    diameter: [15, 17],
     timeMs: 45_000,
     lensSec: 8,
     hint: false,
@@ -470,7 +470,8 @@ function build(
   let id = 0;
   for (let r = 0; r < rowCount; r++) {
     const layer = Math.min(2, Math.floor((r * 3) / rowCount)) as 0 | 1 | 2;
-    const y = (rowCount === 4 ? 22 : 24) + ((rowCount === 4 ? 26 : 22) * r) / (rowCount - 1);
+    // The bottom row sits against the front wall (its lower part is hidden by it): the pile is IN the crate, heaped above the rim.
+    const y = (rowCount === 4 ? 24 : 27) + ((rowCount === 4 ? 25 : 22) * r) / (rowCount - 1);
     const count = per[r]!;
     const spread = 76 * Math.max(0.7, tier.crowd);
     for (let k = 0; k < count; k++) {

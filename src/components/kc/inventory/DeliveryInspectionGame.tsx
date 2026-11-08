@@ -37,7 +37,7 @@ import {
 } from "@/game/business/deliveryInspection";
 import { Art, Plaque, SortButton, StarBar } from "./sort/SortParts";
 import { clock } from "./sort/sortUtils";
-import { MarkArt, MarkerArt, PinArt } from "./inspection/InspectionParts";
+import { BlendedMark, MarkArt, MarkerArt, PinArt } from "./inspection/InspectionParts";
 import { inspUrl, useArt, useMarkers } from "./inspection/inspectionArt";
 
 /**
@@ -52,6 +52,16 @@ const DRAG_PX = 10;
 const HINT_AFTER_MS = 12_000;
 
 type Note = { text: string; tone: "good" | "bad" | "info" };
+
+/** How much duller and browner a spoiled ingredient looks all over: a big defect a lot, a tiny one not at all. */
+const DULL: Record<string, number> = { big: 0.5, medium: 0.36, small: 0.2, tiny: 0 };
+function dullness(it: CrateItem): string | undefined {
+  if (it.mark?.type !== "defect") return undefined;
+  const k = DULL[it.mark.size] ?? 0;
+  return k > 0
+    ? `saturate(${(1 - 0.45 * k).toFixed(2)}) sepia(${(0.5 * k).toFixed(2)}) brightness(${(1 - 0.12 * k).toFixed(2)})`
+    : undefined;
+}
 
 export function DeliveryInspectionGame(props: {
   save: SaveData;
@@ -159,6 +169,9 @@ function Round({
   const lastFind = useRef(0);
   const doneRef = useRef(false);
   const liftN = useRef(0);
+  // What the round has counted so far, for end(): the timer's closure is made once and must never read an old render's state.
+  const foundRef = useRef<ReadonlySet<number>>(new Set());
+  const wrongsRef = useRef(0);
 
   // ── the clock ──
   useEffect(() => {
@@ -189,8 +202,8 @@ function Round({
     (timedOut: boolean, foundNow?: number, wrongsNow?: number) => {
       if (doneRef.current) return;
       doneRef.current = true;
-      const f = foundNow ?? found.size;
-      const w = wrongsNow ?? wrongs;
+      const f = foundNow ?? foundRef.current.size;
+      const w = wrongsNow ?? wrongsRef.current;
       const r = { found: f, total, wrongs: w, msLeft: msRef.current, timeMs: crate.timeMs };
       const stars = starsFor(r);
       const score = scoreRound(finds.current, r);
@@ -213,7 +226,7 @@ function Round({
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [found, wrongs, practice, crate, total],
+    [practice, crate, total],
   );
 
   const start = () => {
@@ -242,7 +255,8 @@ function Round({
       const pts = findPoints(streak.current);
       finds.current.push(streak.current);
       streak.current += 1;
-      const nextFound = new Set(found).add(id);
+      const nextFound = new Set(foundRef.current).add(id);
+      foundRef.current = nextFound;
       setFound(nextFound);
       setLive((s) => s + pts);
       lastFind.current = 0;
@@ -256,7 +270,8 @@ function Round({
     } else {
       streak.current = 0;
       setCleared((c) => new Set(c).add(id));
-      const w = wrongs + 1;
+      const w = wrongsRef.current + 1;
+      wrongsRef.current = w;
       setWrongs(w);
       setShake(id);
       window.setTimeout(() => setShake((s) => (s === id ? null : s)), 450);
@@ -270,7 +285,7 @@ function Round({
             : "This one is fine! −4 s",
       });
       AudioManager.playSfx("sortWrong");
-      if (msRef.current <= 0) end(true, found.size, w);
+      if (msRef.current <= 0) end(true, foundRef.current.size, w);
     }
   };
 
@@ -345,8 +360,21 @@ function Round({
         data-defect={isDefective(it) ? "1" : "0"}
         data-found={isFound ? "1" : "0"}
         data-hidden={it.hidden ? "1" : "0"}
+        {...(lens
+          ? {}
+          : {
+              role: "button",
+              tabIndex: 0,
+              "aria-label": `${INGREDIENTS[it.ingredient].name}: flag as not fresh`,
+              onKeyDown: (e: React.KeyboardEvent) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  flag(it.id);
+                }
+              },
+            })}
         className={cn(
-          "absolute",
+          "absolute rounded-full",
           !lens && "touch-none cursor-grab active:cursor-grabbing",
           !lens && shake === it.id && !reducedMotion && "insp-shake",
         )}
@@ -369,16 +397,20 @@ function Round({
               },
             })}
       >
-        <IngredientIcon
-          id={it.ingredient}
-          fallback={<span className="text-[28px]">🥬</span>}
-          className="pointer-events-none !h-full !w-full object-contain drop-shadow-[0_3px_3px_rgba(40,20,5,0.45)]"
-        />
+        {/* a spoiled ingredient is also a little duller and browner all over (more for a big defect), so the mark is part of the food */}
+        <span className="pointer-events-none block h-full w-full" style={{ filter: dullness(it) }}>
+          <IngredientIcon
+            id={it.ingredient}
+            fallback={<span className="text-[28px]">🥬</span>}
+            className="pointer-events-none !h-full !w-full object-contain drop-shadow-[0_3px_3px_rgba(40,20,5,0.45)]"
+          />
+        </span>
         {it.mark ? (
-          <MarkArt
+          <BlendedMark
+            ingredient={it.ingredient}
             mark={it.mark}
             scale={MARK_SCALE[it.mark.size]}
-            style={{ opacity: tiny && !lens && !isFound && !missed ? 0 : 1 }}
+            style={{ opacity: tiny && !lens && !isFound && !missed ? 0.3 : 1 }}
           />
         ) : null}
         {!lens && (isFound || missed) ? (

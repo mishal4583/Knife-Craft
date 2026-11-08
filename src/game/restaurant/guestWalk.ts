@@ -164,6 +164,57 @@ class Heap {
   }
 }
 
+const GRIDS = new Map<string, Uint8Array>();
+/** 1 = open floor, 0 = closed, for every cell of the half-percent grid; cached per stage and own table (the tables never move). */
+function freeGrid(stage: KitchenMapArtStage, own?: Pt): Uint8Array {
+  const key = `${stage}|${own ? `${own.x},${own.y}` : "-"}`;
+  const hit = GRIDS.get(key);
+  if (hit) return hit;
+  const free = new Uint8Array(GW * GH);
+  for (let cy = 0; cy < GH; cy++)
+    for (let cx = 0; cx < GW; cx++)
+      free[cy * GW + cx] = blockedAt(stage, { x: cx * STEP + GX0, y: cy * STEP + GY0 }, own)
+        ? 0
+        : 1;
+  GRIDS.set(key, free);
+  return free;
+}
+
+/** Whether a walker can get from `from` to `to` at all (a flood fill over the cached grid: much cheaper than finding the path). */
+export function canWalk(stage: KitchenMapArtStage, from: Pt, to: Pt, own?: Pt): boolean {
+  if (segmentFree(stage, from, to, own)) return true;
+  const base = freeGrid(stage, own).slice();
+  const at = (p: Pt) =>
+    Math.min(GH - 1, Math.max(0, Math.round((p.y - GY0) / STEP))) * GW +
+    Math.min(GW - 1, Math.max(0, Math.round((p.x - GX0) / STEP)));
+  const start = at(from);
+  const goal = at(to);
+  base[start] = 1;
+  base[goal] = 1;
+  const seen = new Uint8Array(GW * GH);
+  const stack = [start];
+  seen[start] = 1;
+  while (stack.length > 0) {
+    const cur = stack.pop()!;
+    if (cur === goal) return true;
+    const cx = cur % GW;
+    const cy = Math.floor(cur / GW);
+    for (let dy = -1; dy <= 1; dy++)
+      for (let dx = -1; dx <= 1; dx++) {
+        if (dx === 0 && dy === 0) continue;
+        const nx = cx + dx;
+        const ny = cy + dy;
+        if (nx < 0 || ny < 0 || nx >= GW || ny >= GH) continue;
+        const ni = ny * GW + nx;
+        if (!base[ni] || seen[ni]) continue;
+        if (dx !== 0 && dy !== 0 && (!base[cy * GW + nx] || !base[ny * GW + cx])) continue;
+        seen[ni] = 1;
+        stack.push(ni);
+      }
+  }
+  return false;
+}
+
 /** The shortest way between two spots around the tables: A* on a half-percent grid, then straightened. null when there is none. */
 export function walkPath(stage: KitchenMapArtStage, from: Pt, to: Pt, own?: Pt): Pt[] | null {
   if (segmentFree(stage, from, to, own)) return [to];
@@ -172,16 +223,16 @@ export function walkPath(stage: KitchenMapArtStage, from: Pt, to: Pt, own?: Pt):
     cy: Math.min(GH - 1, Math.max(0, Math.round((p.y - GY0) / STEP))),
   });
   const at = (cx: number, cy: number): Pt => ({ x: cx * STEP + GX0, y: cy * STEP + GY0 });
-  const free = new Uint8Array(GW * GH);
-  for (let cy = 0; cy < GH; cy++)
-    for (let cx = 0; cx < GW; cx++) free[cy * GW + cx] = blockedAt(stage, at(cx, cy), own) ? 0 : 1;
+  // The open floor of this stage for this walker (built once per stage and own table: the build used to be most of the time of a route).
+  const base = freeGrid(stage, own);
   const s = cell(from);
   const g = cell(to);
-  // The two ends may sit just inside a closed cell (a chair on the edge of another's chair): open them.
-  free[s.cy * GW + s.cx] = 1;
-  free[g.cy * GW + g.cx] = 1;
   const start = s.cy * GW + s.cx;
   const goal = g.cy * GW + g.cx;
+  // The two ends may sit just inside a closed cell (a chair on the edge of another's chair): open them, on a copy.
+  const free = base.slice();
+  free[start] = 1;
+  free[goal] = 1;
   const dist = new Float64Array(GW * GH).fill(Infinity);
   const prev = new Int32Array(GW * GH).fill(-1);
   const done = new Uint8Array(GW * GH);
@@ -256,10 +307,12 @@ export function counterSpot(
     for (const x of d === 0 ? [wantX] : [wantX - d, wantX + d]) {
       if (x < ROOM.x0 + 1 || x > (ROOM_X1[stage] ?? ROOM.x1) - 1 || blockedAt(stage, { x, y }))
         continue;
-      if (!walkPath(stage, from, { x, y })) continue; // a pocket nobody can walk into
       const room = taken.reduce((m, t) => Math.min(m, Math.abs(t - x)), Infinity);
+      // Only a spot that would be used is tested for being a pocket nobody can walk into.
+      if (room < gap && best && room <= best.room) continue;
+      if (!canWalk(stage, from, { x, y })) continue;
       if (room >= gap) return { x, y };
-      if (!best || room > best.room) best = { p: { x, y }, room }; // the least crowded open spot
+      best = { p: { x, y }, room }; // the least crowded open spot
     }
   }
   const fallback = best?.p ?? null;

@@ -15,6 +15,7 @@ import type { FloorActor, Stop } from "./floorLife";
 import {
   STAGE_TABLES,
   blockedAt,
+  canWalk,
   chairOf,
   counterSpot,
   walkPath,
@@ -84,7 +85,7 @@ function reachableChairs(stage: KitchenMapArtStage): Map<string, Seat | null> {
       const chair = chairOf(t, slot);
       out.set(
         `${ti}:${slot}`,
-        t.booth || blockedAt(stage, chair, t) || !walkPath(stage, { x: 50, y: INSIDE_Y }, chair, t)
+        t.booth || blockedAt(stage, chair, t) || !canWalk(stage, { x: 50, y: INSIDE_Y }, chair, t)
           ? null
           : { table: t, chair },
       );

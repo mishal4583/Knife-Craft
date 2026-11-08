@@ -6,7 +6,7 @@ Companion file with every Codex art prompt: `DELIVERY-INSPECTION-CODEX-PROMPTS-2
 Decisions the developer must make are in §11 (recommendation first); the plan assumes the recommendations.
 
 **Short answers**
-- **What is it?** A hidden-defect inspection. A delivery crate of 8–22 mixed ingredients is tipped onto the bench. N of them are not fresh (mold, wilt, rot, bruises, later tiny pest holes). Tap an ingredient to flag it NOT FRESH; drag ingredients aside to search behind them; a magnifier shows subtle defects. Find them all before the clock runs out. A wrong flag costs time and the combo.
+- **What is it?** A hidden-defect inspection. A delivery crate of 8–17 mixed ingredients (bigger and fewer than first planned: 8–22, changed 2026-11-08 after play-testing) is tipped onto the bench. N of them are not fresh (mold, wilt, rot, bruises, later tiny pest holes). Tap an ingredient to flag it NOT FRESH; drag ingredients aside to search behind them; a magnifier shows subtle defects. Find them all before the clock runs out. A wrong flag costs time and the combo.
 - **Real data?** The ingredient pictures are the REAL ingredients of the delivery that arrived (the crate in `business.fridgeSort`, the morning's standing-order lines), padded with other produce the player owns. The defects are the game's own (no stock is ever really bad because of this game: see §3.5).
 - **How is it different from Fridge Sort?** Fridge Sort is "where does it go" (placing, knowledge of the fridge). Delivery Inspection is "is it any good" (searching and looking: observation). Different verb (find, not place), different skill (eyes, not memory), different moment (the delivery just arrived, before it is unpacked).
 - **How is it different from the planned Fridge Check?** Fridge Check (plan 2026-11-06) is the closing-night SWIPE over the real freshness of the stock (rule knowledge: shelf life). Delivery Inspection is the morning LOOK at a crate (visual search). They share the spoilage art (overlays, flies, wisps) so the cost of the second one is small.
@@ -87,11 +87,11 @@ Decisions the developer must make are in §11 (recommendation first); the plan a
 ### 4.4 Tiers (the exact levels are `DIFFICULTY.from` of Fridge Sort, read at build time)
 | Tier | From | Items | Defects | Hidden | Decoys | Defect size | Clock | Help |
 |---|---|---|---|---|---|---|---|---|
-| 1 First look | L3 | 8–10 | 2 | none (no overlap on the bad ones) | 0 | big | 60 s | pulse hint, guide open |
-| 2 Sharp eyes | L14 | 12 | 3 | 1 partly behind | 0 | medium | 55 s | pulse hint |
-| 3 Behind the pile | L27 | 15 | 3–4 | 1 fully under another | 2 | medium + small | 50 s | magnifier ×3 |
-| 4 Inspector | L44 | 18 | 4–5 | 2 fully hidden | 4 | small, pests | 45 s | magnifier ×3 |
-| 5 Head inspector | L74 | 22 | 5–6 | 3 hidden | 6 | tiny | 45 s | magnifier ×2 |
+| 1 First look | L3 | 8–9 | 2 | none (no overlap on the bad ones) | 0 | big | 60 s | pulse hint, guide open |
+| 2 Sharp eyes | L14 | 10 | 3 | 1 partly behind | 0 | medium | 55 s | pulse hint |
+| 3 Behind the pile | L27 | 12 | 3–4 | 1 fully under another | 2 | medium + small | 50 s | magnifier ×3 |
+| 4 Inspector | L44 | 14 | 4–5 | 2 fully hidden | 4 | small, pests | 45 s | magnifier ×3 |
+| 5 Head inspector | L74 | 17 | 5–6 | 3 hidden | 6 | tiny | 45 s | magnifier ×2 |
 - Item pictures are drawn about 64 px at 540 wide (never below 56 px, so touch ≥ 48 px holds after the overlap).
 - **Fairness guarantees** (tested): every defect is findable (its visible area ≥ 25 % at the start, or ≥ 60 % after moving ONE item aside); the layout never hides a defect behind a defect; decoys never sit on the same item as a defect; the sum of the clock is long enough for a flawless player at ~4.5 s per defect.
 

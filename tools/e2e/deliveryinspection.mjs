@@ -368,8 +368,8 @@ await sleep(200);
 const lens = await page.evaluate(() => !!document.querySelector('[data-testid="insp-lens"]'));
 await shot(page, "insp-11-tier3");
 check(
-  "I11 tier 3: 15 ingredients, 3-4 defects, the magnifier button and its lens",
-  t3?.tier === 3 && t3.items === 15 && t3.total >= 3 && lensBtn && lens,
+  "I11 tier 3: 12 ingredients (bigger, 15 before 2026-11-08), 3-4 defects, the magnifier button and its lens",
+  t3?.tier === 3 && t3.items === 12 && t3.total >= 3 && lensBtn && lens,
   { tier: t3?.tier, items: t3?.items, total: t3?.total, lensBtn, lens },
 );
 const decoyAt = await page.evaluate(() => {

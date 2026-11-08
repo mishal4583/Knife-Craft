@@ -69,6 +69,62 @@ const DECOY_CSS: Record<DecoyKind, string> = {
   speck: "radial-gradient(ellipse at 50% 50%, #4a7a2a 0 22%, transparent 44%)",
 };
 
+/** How each mark sits on the ingredient's own colours: a tint (multiply) for the brown, dull kinds, painted on top for fuzz, gloss and wet rot. */
+const BLEND: Record<string, "multiply" | "normal"> = {
+  "defect-mold": "normal",
+  "defect-rot": "normal",
+  "defect-bruise": "multiply",
+  "defect-wilt": "multiply",
+  "defect-slime": "normal",
+  "defect-pests": "normal",
+  "defect-shrivel": "multiply",
+  "decoy-soil": "multiply",
+  "decoy-drop": "normal",
+  "decoy-scuff": "normal",
+  "decoy-freckles": "multiply",
+  "decoy-sun": "normal",
+  "decoy-speck": "multiply",
+};
+
+/**
+ * A mark blended INTO its ingredient (developer 2026-11-08: "fungus and other defects are not blended in with the ingredients"): the mark is cut to
+ * the ingredient's own outline (the picture is its mask), so it can never hang off the edge like a sticker, and the dull kinds are multiplied with
+ * the colours underneath so the food shows through.
+ */
+export function BlendedMark({
+  ingredient,
+  mark,
+  scale,
+  style,
+}: {
+  ingredient: string;
+  mark: Mark;
+  scale: number;
+  style?: CSSProperties;
+}) {
+  const url = `url(${import.meta.env.BASE_URL}business/ingredients/${ingredient}.webp)`;
+  return (
+    <span
+      aria-hidden
+      className="pointer-events-none absolute inset-0"
+      style={{
+        WebkitMaskImage: url,
+        maskImage: url,
+        WebkitMaskSize: "contain",
+        maskSize: "contain",
+        WebkitMaskRepeat: "no-repeat",
+        maskRepeat: "no-repeat",
+        WebkitMaskPosition: "center",
+        maskPosition: "center",
+        mixBlendMode: BLEND[`${mark.type}-${mark.kind}`] ?? "normal",
+        ...style,
+      }}
+    >
+      <MarkArt mark={mark} scale={scale} />
+    </span>
+  );
+}
+
 /** One mark (a defect or a harmless look-alike), drawn over an ingredient: `scale` is its share of the picture's box. */
 export function MarkArt({
   mark,
