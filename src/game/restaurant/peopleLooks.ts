@@ -84,6 +84,16 @@ export const PEOPLE_LOOKS: Readonly<Record<string, PeopleLook>> = Object.fromEnt
     look("tourist-m", "guest", "m"),
     look("sporty-m", "guest", "m"),
     look("elder-f2", "guest", "f", "elder"),
+    // More customer variety (developer 2026-11-08): tourists, food bloggers, a businessman, an affluent diner and a family.
+    look("international-tourist-f", "guest", "f"),
+    look("international-tourist-m", "guest", "m"),
+    look("food-blogger-f", "guest", "f"),
+    look("food-blogger-m", "guest", "m"),
+    look("businessman", "guest", "m"),
+    look("affluent-diner-f", "guest", "f"),
+    look("family-mother", "guest", "f"),
+    look("family-father", "guest", "m"),
+    look("family-child", "guest", "f", "child"),
     // The Second Floor's crew.
     look("floor-server-1", "crew", "m"),
     look("floor-server-2", "crew", "f"),

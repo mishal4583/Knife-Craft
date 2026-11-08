@@ -501,9 +501,26 @@ function buildCampaignServiceSession(
 }
 
 function LoadingScreen() {
+  // Browsers keep a page silent until the first tap: until then the loading screen says so, in three words.
+  const [locked, setLocked] = useState(() => !AudioManager.unlocked);
+  useEffect(() => {
+    if (!locked) return;
+    const unlocked = () => setLocked(false);
+    window.addEventListener("pointerdown", unlocked, { once: true, capture: true });
+    window.addEventListener("keydown", unlocked, { once: true, capture: true });
+    return () => {
+      window.removeEventListener("pointerdown", unlocked, true);
+      window.removeEventListener("keydown", unlocked, true);
+    };
+  }, [locked]);
   return (
-    <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(180deg,var(--color-ivory),var(--color-cream))]">
+    <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-[linear-gradient(180deg,var(--color-ivory),var(--color-cream))]">
       <p className="font-hand text-[26px] text-walnut/70">warming the kitchen…</p>
+      {locked ? (
+        <p className="font-hand text-[16px] text-walnut/55" data-testid="loading-music-hint">
+          🎵 tap for music
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -3584,13 +3601,16 @@ export function App() {
     dayCeremonyAt(restaurantLevelOf(save.levelProgress)) &&
     (screen === "board" || screen === "kitchen");
   const musicMood: MusicMood =
-    showIntro || storyEvent?.kind === "finale" || storyEvent?.kind === "legacy"
-      ? "off"
-      : closingShown
-        ? "night"
-        : screen === "gameplay" || screen === "prep-rush"
-          ? "cutting"
-          : "kitchen";
+    // The save is still loading (developer 2026-11-08): the slow loading music, which carries on into the Kitchen's piece.
+    !save
+      ? "loading"
+      : showIntro || storyEvent?.kind === "finale" || storyEvent?.kind === "legacy"
+        ? "off"
+        : closingShown
+          ? "night"
+          : screen === "gameplay" || screen === "prep-rush"
+            ? "cutting"
+            : "kitchen";
   useEffect(() => AudioManager.setMusicMood(musicMood), [musicMood]);
   const ledgerLength = save?.economyLedger.length ?? 0;
   const lastLedgerAmount = save?.economyLedger[ledgerLength - 1]?.amount ?? 0;

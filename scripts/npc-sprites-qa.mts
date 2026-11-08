@@ -127,8 +127,8 @@ console.log("A. The art");
     `A3: each sheet is within its size budget (a 90 KB, b 25 KB, bust 95 KB) ${tooBig}`,
   );
   assert(
-    total / 1024 < 3.2,
-    `A4: the whole cast is ${(total / 1024).toFixed(2)} MB, under 3.2 MB (lazy loaded: only the people on screen are fetched)`,
+    total / 1024 < 3.6,
+    `A4: the whole cast is ${(total / 1024).toFixed(2)} MB, under 3.6 MB (3.2 before the nine extra customer looks of 2026-11-08; lazy loaded: only the people on screen are fetched)`,
   );
   const known = new Set(looks.map((l) => l.id));
   const stray = fs.readdirSync(PEOPLE).filter((d) => !known.has(d));
@@ -192,9 +192,9 @@ console.log("B. The cast of looks");
 console.log("C. Picks are seeded and fair");
 {
   const pool = [...GUEST_LOOKS, ...REGULAR_LOOKS];
-  const a = pickLooks(123, 20, pool);
-  const b = pickLooks(123, 20, pool);
-  const c = pickLooks(124, 20, pool);
+  const a = pickLooks(123, pool.length + 6, pool);
+  const b = pickLooks(123, pool.length + 6, pool);
+  const c = pickLooks(124, pool.length + 6, pool);
   assert(
     JSON.stringify(a) === JSON.stringify(b) && JSON.stringify(a) !== JSON.stringify(c),
     "C1: the same seed gives the same people, another seed others",
@@ -283,7 +283,7 @@ console.log("D. The casts");
           a.stops[0]!.pose === "away",
       ) &&
       JSON.stringify(firstFloorGuests()) === JSON.stringify(g),
-    "D4: the first floor has 7 painted guests (a solo, a couple, four friends), all different, men and women; each comes in, orders, sits and leaves",
+    "D4: the first floor has 7 painted guests (a solo, a couple, a family of four), all different, men and women; each comes in, orders, sits and leaves",
   );
   const stops = g[0]!.stops;
   const adult = timeline(stops, 1).seconds;

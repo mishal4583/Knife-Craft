@@ -1611,8 +1611,9 @@ preparation = PreparationScene; events = `events.ts`; platform =
     `guestLookFor`), sheets `public/people/<id>/{a,b,bust}.webp` from `scripts/make-npc-assets.py`
     (source `NPC Assets/`, local only), `FloorLife.tsx` `MapCast` (pose stack switched by
     keyframes: facing, carrying, seated, work poses; z-index follows y), `restaurant/guestLife.ts`
-    (the first floor's 7 guests), `GuestPoses` `look` / `face` (the dining room), `CustomerBust`
-    (the regulars' faces on the order cards). Tests: `npc-sprites-qa`; e2e `npcpeople.mjs`.
+    (the first floor's 7 guests: a food blogger, a businessman and an affluent diner, a family of four; routes per art stage from `restaurant/guestWalk.ts`: table centres per artwork,
+    A* around every cloth and chair, own chair reached through its own table; nine more customer looks since 2026-11-08), `GuestPoses` `look` / `face` (the dining room), `CustomerBust`
+    (the regulars' faces on the order cards). Tests: `npc-sprites-qa`, `guest-walk-qa`; e2e `npcpeople.mjs`.
   - Tests: `restaurant-floor-life-qa`; e2e `restaurantsecondfloor.mjs` check 3c.
 - **First-floor staff life** (developer 2026-10-16): `restaurant/staffLife.ts` +
   `restaurantMap/StaffLife.tsx`, drawn by the shared `MapCast` (FloorLife.tsx).
@@ -2108,6 +2109,9 @@ finaleSeen }` — no new fields. QA `story-legacy-qa`; browser
   silent while paused (the platform's pause covers a hidden page — preflight
   forbids our own Page Visibility use), during an ad or with platform audio
   off. Settings: Sound and Music toggles (the existing `settings.music` key).
+  **Music since 2026-11-08:** the kitchen-jazz loop is replaced by a relaxing, never-repeating generated score (`music/relaxComposer.ts`, pure and seeded;
+  moods loading / kitchen / cutting / night / off; loading music while the save loads, from the first tap or at once when the page already had one; no sound
+  file, no sample, original by construction: see HANDOFF). Tests: `music-qa`, `audio-qa`; e2e `music.mjs`.
 - **Story polish (W4):** the outro dissolves into Level 1's kitchen (above);
   beats may declare `fx` (dust / spark / coins) — CSS particles, off under
   reduced motion (THE LAST PAGE uses dust and spark; the finale is

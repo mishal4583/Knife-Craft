@@ -66,7 +66,7 @@
 /* A person on a map: a square box the size of one cell. The figure is 80 % of the cell tall, feet on its 92.5 % line, so the box is
    lifted by that much and the feet land on the actor's spot. `--cs-scale` is the look's size next to an adult (a child 0.74). */
 .floor-person.floor-person--sprite {
-  --cs-size: clamp(32px, 10.5vw, 62px); /* 2026-11-08: was clamp(48px, 16vw, 92px) - the people were too big next to the rooms */
+  --cs-size: clamp(29px, 9.6vw, 56px); /* 2026-11-08: was clamp(48px, 16vw, 92px); a little smaller again the same day (was 10.5vw / 62px) */
   width: calc(var(--cs-size) * var(--cs-scale, 1));
   height: calc(var(--cs-size) * var(--cs-scale, 1));
   transform: translate(-50%, -92.5%);
@@ -102,7 +102,7 @@
   position: absolute;
   left: 50%;
   top: 89%; /* the old puppet's feet line in its box */
-  width: calc(135% * var(--cs-scale, 1)); /* 2026-11-08: was 190% - too big next to the tables and chairs */
+  width: calc(124% * var(--cs-scale, 1)); /* 2026-11-08: was 190%, then 135% - too big next to the tables and chairs */
   aspect-ratio: 1 / 1;
   transform: translate(-50%, -92.5%);
 }

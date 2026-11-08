@@ -48,11 +48,13 @@ A_IDS = (
     "server cashier cleaner line-cook prep-cook head-chef manager spec-asian spec-indian spec-mediterranean spec-mexican "
     "mara tobias priya oscar lena diego yuki amir rosa felix sana noah "
     "office-f office-m student-f student-m tourist-f tourist-m sporty-m elder-f2 "
-    "floor-server-1 floor-server-2 floor-server-3 floor-server-4 floor-cleaner-1 floor-cleaner-2 floor-cleaner-3 floor-cleaner-4"
+    "floor-server-1 floor-server-2 floor-server-3 floor-server-4 floor-cleaner-1 floor-cleaner-2 floor-cleaner-3 floor-cleaner-4 "
+    "international-tourist-f international-tourist-m food-blogger-f food-blogger-m businessman affluent-diner-f family-mother family-father family-child"
 ).split()
 B_IDS = "server cashier cleaner line-cook prep-cook head-chef".split()  # + SPEC_IDS with --all
 GUEST_IDS = set(
-    "mara tobias priya oscar lena diego yuki amir rosa felix sana noah office-f office-m student-f student-m tourist-f tourist-m sporty-m elder-f2".split()
+    "mara tobias priya oscar lena diego yuki amir rosa felix sana noah office-f office-m student-f student-m tourist-f tourist-m sporty-m elder-f2 "
+    "international-tourist-f international-tourist-m food-blogger-f food-blogger-m businessman affluent-diner-f family-mother family-father family-child".split()
 )
 BUST_IDS = "mara tobias priya oscar lena diego yuki amir rosa felix sana noah".split()
 
@@ -64,6 +66,8 @@ def solid_alpha(a: np.ndarray, lo: int, hi: int) -> np.ndarray:
 
 def thresholds(a: np.ndarray) -> tuple[int, int]:
     """Normal sheets: the glow is below alpha 200. One sheet (floor-server-1) has a haze up to 249 over everything: its figure is 250+."""
+    if (a >= 250).mean() < 0.02 and ((a >= 200) & (a < 250)).mean() > 0.15:
+        return (201, 235)  # family-mother: the whole figure is alpha 230-249 (no glow), figures touch across rows: cut by rectangles
     haze = ((a >= 200) & (a < 250)).mean()
     return (249, 250) if haze > 0.15 else (200, 250)
 

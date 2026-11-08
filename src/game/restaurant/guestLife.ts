@@ -1,217 +1,148 @@
 /**
- * The first floor's walking guests (NPC realism, developer 2026-11-07). They used to be three CSS-keyframe parties of identical puppets
- * that never turned to face where they walked; now they are ordinary map actors (`FloorActor`, the same engine as the Second Floor and
- * the staff): painted people with a facing, a pace of their own, a place of their own at the counter and a chair of their own.
+ * The first floor's walking guests (NPC realism, developer 2026-11-07). They are ordinary map actors (`FloorActor`, the same engine as the
+ * Second Floor and the staff): painted people with a facing, a pace of their own, a place of their own at the counter and a chair of their own.
  *
- * The routes are the old parties' (map percent of the first-floor art, the same on every stage): in through the door, up the aisle to the
- * counter to order, to the table, a long sit, and out. A party never walks on top of itself: each member has their own counter spot
- * and chair, and the party's members start a few seconds apart. Pure; seeded by nothing (the cast is fixed); never touches the save.
+ * ROUTES (developer 2026-11-08: "they are walking on top of tables, optimize their walking"): the map has six artworks with the tables in
+ * different places, so a route is found on the stage's own plan (guestWalk.ts: table centres per artwork, a grid search around every table
+ * and its chairs, then pulled straight): in through the door, to the counter to order, around the tables to their own chair, a long sit, and
+ * out the same careful way. Nobody steps on a table top; a party never walks on top of itself (each member has their own counter spot and
+ * chair; the party's members start a few seconds apart). The cast (2026-11-08): a food blogger on her own, a businessman and an
+ * affluent diner, and a family of four (father, mother, child and grandmother). Pure; seeded by nothing (the cast is fixed per stage); never
+ * touches the save.
  */
+import type { KitchenMapArtStage } from "../kitchen/kitchenMapArt";
 import type { FloorActor, Stop } from "./floorLife";
+import {
+  STAGE_TABLES,
+  blockedAt,
+  chairOf,
+  counterSpot,
+  walkPath,
+  type Pt,
+  type Slot,
+  type StageTable,
+} from "./guestWalk";
 
 const door = (x: number, away: number): Stop => ({ x, y: 91, hold: away, pose: "away" });
+
+/** The row the guests stand on to order (in front of the service counter). */
+const COUNTER_Y = 56;
+/** Just inside the street door. */
+const INSIDE_Y = 80;
 
 type Member = {
   id: string;
   look: string;
-  /** Where the guest stands at the counter to order, and what they pass through to get there. */
-  counter: { x: number; y: number };
-  /** The way from the aisle to the counter spot. */
-  toCounter: [number, number][];
-  /** From the counter to the chair, ending on it. */
-  toChair: [number, number][];
-  /** The way back out, ending at the door's x. */
-  out: [number, number][];
-  /** Seconds after the map opens until this guest steps through the door (the party's start + the member's stagger). */
-  delay: number;
+  /** Where this guest would like to stand at the counter (the nearest open spot is used). */
+  wantX: number;
   /** The way in: the door x. */
   doorX: number;
   /** Seconds at the door between laps (keeps the room from being a crowd). */
   away: number;
+  /** Seconds after the map opens until this guest steps through the door (the party's start + the member's stagger). */
+  delay: number;
 };
 
-const SOLO: Member = {
-  id: "guest-solo",
-  look: "office-f",
-  doorX: 50,
-  away: 14,
-  counter: { x: 52, y: 56 },
-  toCounter: [
-    [50, 87],
-    [50, 72],
-    [51, 61],
-  ],
-  toChair: [
-    [43, 56],
-    [43, 59],
-    [43, 65.2],
-  ],
-  out: [
-    [43, 58],
-    [50, 58],
-    [50, 76],
-  ],
-  delay: 0,
-};
+type Party = { slots: readonly Slot[]; first: number; members: Member[] };
 
-const COUPLE: Member[] = [
+const PARTIES: readonly Party[] = [
   {
-    id: "guest-couple-1",
-    look: "tourist-m",
-    doorX: 48,
-    away: 22,
-    counter: { x: 46, y: 56 },
-    toCounter: [
-      [48, 87],
-      [48, 72],
-      [47, 61],
+    slots: ["bottom", "left", "right", "top"],
+    first: 0,
+    members: [
+      { id: "guest-family-1", look: "family-father", wantX: 42, doorX: 47, away: 34, delay: 14 },
+      { id: "guest-family-2", look: "family-mother", wantX: 50, doorX: 49, away: 34, delay: 17.5 },
+      { id: "guest-family-3", look: "family-child", wantX: 59, doorX: 51, away: 34, delay: 21 },
+      { id: "guest-family-4", look: "elder-f2", wantX: 68, doorX: 53, away: 34, delay: 24.5 },
     ],
-    toChair: [
-      [52, 56],
-      [64, 56],
-      [70, 60],
-      [70, 65],
-    ],
-    out: [
-      [66, 70],
-      [59, 76],
-      [54, 82],
-    ],
-    delay: 6,
   },
   {
-    id: "guest-couple-2",
-    look: "tourist-f",
-    doorX: 52,
-    away: 22,
-    counter: { x: 56, y: 56 },
-    toCounter: [
-      [52, 87],
-      [52, 72],
-      [55, 61],
+    slots: ["left", "right", "bottom", "top"],
+    first: 1,
+    members: [
+      { id: "guest-couple-1", look: "businessman", wantX: 46, doorX: 48, away: 22, delay: 6 },
+      { id: "guest-couple-2", look: "affluent-diner-f", wantX: 56, doorX: 52, away: 22, delay: 8 },
     ],
-    toChair: [
-      [62, 56],
-      [70, 56],
-      [76.5, 63],
-      [76.5, 68.5],
+  },
+  {
+    slots: ["bottom", "top", "left", "right"],
+    first: 2,
+    members: [
+      { id: "guest-solo", look: "food-blogger-f", wantX: 52, doorX: 50, away: 14, delay: 0 },
     ],
-    out: [
-      [72, 73],
-      [62, 79],
-      [56, 85],
-    ],
-    delay: 8,
   },
 ];
 
-const FRIENDS: Member[] = [
-  {
-    id: "guest-friends-1",
-    look: "student-m",
-    doorX: 47,
-    away: 34,
-    counter: { x: 42, y: 56 },
-    toCounter: [
-      [50, 87],
-      [50, 82],
-      [50, 78],
-      [45, 65],
-    ],
-    toChair: [
-      [40, 60],
-      [37, 68.5],
-    ],
-    out: [
-      [36, 61],
-      [47, 76],
-    ],
-    delay: 14,
-  },
-  {
-    id: "guest-friends-2",
-    look: "student-f",
-    doorX: 49,
-    away: 34,
-    counter: { x: 50, y: 56 },
-    toCounter: [
-      [50, 87],
-      [50, 82],
-      [50, 78],
-      [48, 65],
-    ],
-    toChair: [
-      [47, 60],
-      [43, 65.2],
-    ],
-    out: [
-      [43, 60],
-      [49, 76],
-    ],
-    delay: 17.5,
-  },
-  {
-    id: "guest-friends-3",
-    look: "sporty-m",
-    doorX: 51,
-    away: 34,
-    counter: { x: 59, y: 56 },
-    toCounter: [
-      [50, 87],
-      [50, 82],
-      [50, 78],
-      [52, 65],
-    ],
-    toChair: [
-      [54, 61],
-      [49, 68.5],
-    ],
-    out: [
-      [50, 61],
-      [51, 76],
-    ],
-    delay: 21,
-  },
-  {
-    id: "guest-friends-4",
-    look: "elder-f2",
-    doorX: 53,
-    away: 34,
-    counter: { x: 68, y: 56 },
-    toCounter: [
-      [50, 87],
-      [50, 82],
-      [50, 78],
-      [56, 65],
-    ],
-    toChair: [
-      [70, 61],
-      [70, 66],
-      [60, 72],
-      [45, 73],
-      [43, 72.5],
-    ],
-    out: [
-      [57, 64],
-      [53, 76],
-    ],
-    delay: 24.5,
-  },
-];
+type Seat = { table: StageTable; chair: Pt };
 
-function actorOf(m: Member): FloorActor {
+/** Every chair of the stage's tables that a guest can walk to from the door (a packed room leaves some tables out). */
+function reachableChairs(stage: KitchenMapArtStage): Map<string, Seat | null> {
+  const out = new Map<string, Seat | null>();
+  const tables = STAGE_TABLES[stage];
+  tables.forEach((t, ti) => {
+    for (const slot of ["bottom", "left", "right", "top"] as const) {
+      const chair = chairOf(t, slot);
+      out.set(
+        `${ti}:${slot}`,
+        t.booth || blockedAt(stage, chair, t) || !walkPath(stage, { x: 50, y: INSIDE_Y }, chair, t)
+          ? null
+          : { table: t, chair },
+      );
+    }
+  });
+  return out;
+}
+
+/** The stage's seats given out: every member of every party gets their own chair (tables are tried from the party's own first one). */
+function seatsFor(stage: KitchenMapArtStage): Map<string, Seat> {
+  const chairs = reachableChairs(stage);
+  const seated = STAGE_TABLES[stage].map((t, i) => ({ t, i })).filter((x) => !x.t.booth);
+  const taken = new Set<string>();
+  const out = new Map<string, Seat>();
+  for (const party of PARTIES) {
+    for (const m of party.members) {
+      let pick: { key: string; seat: Seat } | null = null;
+      for (const reuse of [false, true]) {
+        for (let k = 0; k < seated.length && !pick; k++) {
+          const { i } = seated[(party.first + k) % seated.length]!;
+          for (const slot of party.slots) {
+            const key = `${i}:${slot}`;
+            const seat = chairs.get(key);
+            if (seat && (reuse || !taken.has(key))) {
+              pick = { key, seat };
+              break;
+            }
+          }
+        }
+        if (pick) break;
+      }
+      if (pick) {
+        taken.add(pick.key);
+        out.set(m.id, pick.seat);
+      }
+    }
+  }
+  return out;
+}
+
+function actorOf(stage: KitchenMapArtStage, m: Member, seat: Seat, taken: number[]): FloorActor {
+  const entry: Pt = { x: m.doorX, y: 87 };
+  // A room packed to the counter may leave no way to it: that guest sits down without queueing.
+  const counter = counterSpot(stage, m.wantX, COUNTER_Y, taken, entry);
+  if (counter) taken.push(counter.x);
+  const inside: Pt = { x: m.doorX, y: INSIDE_Y };
+  const toCounter = counter ? (walkPath(stage, entry, counter) ?? [counter]) : [];
+  const toChair = walkPath(stage, counter ?? entry, seat.chair, seat.table) ?? [seat.chair];
+  const out = walkPath(stage, seat.chair, inside, seat.table) ?? [inside];
   const stops: Stop[] = [
     door(m.doorX, m.away),
-    ...m.toCounter.map(([x, y]) => ({ x, y })),
-    { ...m.counter, hold: 2.6, pose: "pick" },
-    ...m.toChair.slice(0, -1).map(([x, y]) => ({ x, y })),
-    {
-      x: m.toChair[m.toChair.length - 1]![0],
-      y: m.toChair[m.toChair.length - 1]![1],
-      hold: 15,
-      pose: "sit",
-    },
-    ...m.out.map(([x, y]) => ({ x, y })),
+    entry,
+    ...(counter
+      ? [...toCounter.slice(0, -1), { ...counter, hold: 2.6, pose: "pick" as const }]
+      : []),
+    ...toChair.slice(0, -1),
+    { ...seat.chair, hold: 15, pose: "sit" },
+    ...out,
     { x: m.doorX, y: 88 },
   ];
   return {
@@ -227,7 +158,22 @@ function actorOf(m: Member): FloorActor {
   };
 }
 
-/** The first floor's guests: one on their own, a couple and four friends. Fixed (the same every time the map opens). */
-export function firstFloorGuests(): FloorActor[] {
-  return [actorOf(SOLO), ...COUPLE.map(actorOf), ...FRIENDS.map(actorOf)];
+const CACHE = new Map<KitchenMapArtStage, FloorActor[]>();
+
+/** The first floor's guests on this stage's artwork: a food blogger on her own, a businessman and an affluent diner, a family of four. */
+export function firstFloorGuests(stage: KitchenMapArtStage = "humble"): FloorActor[] {
+  const hit = CACHE.get(stage);
+  if (hit) return hit;
+  const seats = seatsFor(stage);
+  const taken: number[] = [];
+  const cast: FloorActor[] = [];
+  // The solo guest and the couple first on the counter row (they arrive first), then the family.
+  for (const party of [PARTIES[2]!, PARTIES[1]!, PARTIES[0]!]) {
+    for (const m of party.members) {
+      const seat = seats.get(m.id);
+      if (seat) cast.push(actorOf(stage, m, seat, taken));
+    }
+  }
+  CACHE.set(stage, cast);
+  return cast;
 }

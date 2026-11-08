@@ -337,6 +337,7 @@ export function ScreensRouter({
                     className="restaurant-map-production"
                     playerLevel={restaurantLevelOf(save.levelProgress)}
                     kitchenMapImage={kitchenMapImageUrl(save.equippedKitchenUpgradeId)}
+                    stage={kitchenMapArtStage(save.equippedKitchenUpgradeId)}
                     fridgeTier={fridgeTier}
                     reducedMotion={save.settings.reducedMotion}
                     staffOnMap={staffOnMap(save.business.staff.hiredRoles, {

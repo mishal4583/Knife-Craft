@@ -227,8 +227,8 @@ console.log("8, 9. The people");
   const poses = read("src/components/kc/restaurantMap/GuestPoses.tsx");
   const life = read("src/components/kc/restaurantMap/FloorLife.tsx");
   assert(
-    /clamp\(32px, 10\.5vw, 62px\)/.test(css) && /135%/.test(css),
-    "8: a person is two thirds of the size it was (map 10.5vw up to 62 px, was 16vw up to 92 px; the dining room 135%, was 190%)",
+    /clamp\(29px, 9\.6vw, 56px\)/.test(css) && /124%/.test(css),
+    '8: a person is about 0.6 of the size it was (map 9.6vw up to 56 px, was 16vw up to 92 px, and 10.5vw / 62 px before the developer\'s "only a little smaller" of 2026-11-08; the dining room 124%, was 190% then 135%)',
   );
   assert(
     /guest-back-view/.test(poses) &&

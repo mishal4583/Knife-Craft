@@ -18,6 +18,8 @@ import {
 import './RestaurantMap.css';
 import { MapCast } from './FloorLife';
 import { firstFloorGuests } from '@/game/restaurant/guestLife';
+import type { KitchenMapArtStage } from '@/game/kitchen/kitchenMapArt';
+import { MAP_STAGES } from '@/game/restaurant/staffLife';
 import { StaffLife } from './StaffLife';
 import { TableCash } from '../common/TableCash';
 
@@ -27,6 +29,7 @@ export const RestaurantMap: React.FC<RestaurantMapProps> = ({
   onNavigateToScreen,
   onLockedZoneClick,
   kitchenMapImage,
+  stage,
   fridgeTier = 'basic',
   restaurantName: restaurantNameProp,
   onRestaurantNameChange,
@@ -216,7 +219,7 @@ export const RestaurantMap: React.FC<RestaurantMapProps> = ({
           </picture>
 
           <FridgeMapOverlay tier={fridgeTier} />
-          <AnimatedGuestTraffic />
+          <AnimatedGuestTraffic stage={stage ?? stageOfImage(kitchenMapImage)} />
           {staffOnMap ? <StaffLife hiredRoles={staffOnMap.roles} context={{ ...staffOnMap.context, diningOpen: staffOnMap.context.diningOpen && mapRoomOpen('dining', playerLevel), serviceOpen: staffOnMap.context.serviceOpen && mapRoomOpen('service', playerLevel) }} preview={staffOnMap.preview} onCleanerDone={onCleanerDone} /> : null}
 
           {tableCash && tableCash.cents > 0 ? (
@@ -388,8 +391,14 @@ export const RestaurantMap: React.FC<RestaurantMapProps> = ({
 export default RestaurantMap;
 
 /** The walking guests (guestLife.ts): painted people on the same engine as the staff and the Second Floor. */
-function AnimatedGuestTraffic() {
-  const cast = useMemo(() => firstFloorGuests(), []);
+/** The stage named in the artwork's file name (kitchen-upgrade-map-<stage>.webp); the first artwork when it is not one of them. */
+function stageOfImage(url?: string): KitchenMapArtStage {
+  const name = /kitchen-upgrade-map-([a-z-]+)\.(?:webp|jpg)/.exec(url ?? '')?.[1];
+  return (MAP_STAGES as readonly string[]).includes(name ?? '') ? (name as KitchenMapArtStage) : 'humble';
+}
+
+function AnimatedGuestTraffic({ stage }: { stage: KitchenMapArtStage }) {
+  const cast = useMemo(() => firstFloorGuests(stage), [stage]);
   return <MapCast cast={cast} testId="guest-life" />;
 }
 

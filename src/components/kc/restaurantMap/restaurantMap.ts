@@ -56,6 +56,8 @@ export interface RestaurantMapProps {
   playerLevel: number;
   /** Selected kitchen art stage in the QA preview. */
   kitchenMapImage?: string;
+  /** The kitchen art stage of the map (kitchen/kitchenMapArt.ts): the guests walk around that artwork's tables. */
+  stage?: import('@/game/kitchen/kitchenMapArt').KitchenMapArtStage;
   /** Selected cold-storage equipment stage in the QA preview. */
   fridgeTier?: 'basic' | 'commercial' | 'professional';
   /** Optional restaurant name supplied by the host game's saved player data. */

@@ -77,8 +77,8 @@ check(
   guests.map((g) => `${g.look}/${g.gender}`),
 );
 check(
-  "P3 the people are bigger than the old puppets (a box at least 44 px at this width), and on the map",
-  [...staff, ...guests].every((p) => p.w >= 40 && p.inside),
+  "P3 the people have a real size (a box of at least 29 px, the clamp minimum of 2026-11-08; a child 0.74 of that) and are on the map",
+  [...staff, ...guests].every((p) => p.w >= 29 && p.inside),
   [...staff, ...guests].map((p) => p.w),
 );
 
