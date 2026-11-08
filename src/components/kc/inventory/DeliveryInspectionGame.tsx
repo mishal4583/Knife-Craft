@@ -37,14 +37,8 @@ import {
 } from "@/game/business/deliveryInspection";
 import { Art, Plaque, SortButton, StarBar } from "./sort/SortParts";
 import { clock } from "./sort/sortUtils";
-import {
-  MarkArt,
-  MarkerArt,
-  PinArt,
-  inspUrl,
-  useArt,
-  useMarkers,
-} from "./inspection/InspectionParts";
+import { MarkArt, MarkerArt, PinArt } from "./inspection/InspectionParts";
+import { inspUrl, useArt, useMarkers } from "./inspection/inspectionArt";
 
 /**
  * DELIVERY INSPECTION — the screen (rules: business/deliveryInspection.ts, plan: docs/planning/DELIVERY-INSPECTION-MINIGAME-PLAN-2026-11-08.md).
@@ -67,6 +61,8 @@ export function DeliveryInspectionGame(props: {
   /** Go and unpack the delivery (Fridge Sort). */
   onUnpack: () => void;
   onExit: () => void;
+  /** A Prep Cook is hired: he can do this inspection for the player (no stars, no reward). */
+  hasPrepCook?: boolean;
 }) {
   // "Again · practice" and "Next inspection" start a new round with its own state.
   const [attempt, setAttempt] = useState(0);
@@ -96,6 +92,7 @@ function Round({
   onAction,
   onUnpack,
   onExit,
+  hasPrepCook = false,
   attempt,
   forcePractice,
   onAgain,
@@ -107,6 +104,7 @@ function Round({
   onAction: (a: DeliveryInspectionAction) => DeliveryInspectionResult;
   onUnpack: () => void;
   onExit: () => void;
+  hasPrepCook?: boolean;
   attempt: number;
   forcePractice: boolean;
   onAgain: () => void;
@@ -224,7 +222,15 @@ function Round({
     setPhase("playing");
     onAction({ kind: "start", items: items.length, defects: total, practice });
   };
-  const pause = () => phase === "playing" && setPhase("paused");
+  const pause = () => {
+    // Before Start the clock is not running: the button is a Back arrow.
+    if (phase === "ready") {
+      onAction({ kind: "skip" });
+      onExit();
+      return;
+    }
+    if (phase === "playing") setPhase("paused");
+  };
   const resume = () => phase === "paused" && setPhase("playing");
 
   // ── flagging ──
@@ -449,12 +455,12 @@ function Round({
         <button
           type="button"
           onClick={pause}
-          aria-label="Pause"
+          aria-label={phase === "ready" ? "Back" : "Pause"}
           data-testid="insp-pause"
           className="relative grid h-12 w-12 shrink-0 place-items-center rounded-full bg-walnut text-[18px] text-gold"
         >
           <Art name="hud-round" className="absolute inset-0 h-full w-full object-fill" />
-          <span className="relative">⏸</span>
+          <span className="relative">{phase === "ready" ? "←" : "⏸"}</span>
         </button>
         <Plaque
           testId="insp-timer"
@@ -715,6 +721,18 @@ function Round({
               <SortButton onClick={start} testId="insp-start">
                 Start
               </SortButton>
+              {hasPrepCook && !practice ? (
+                <SortButton
+                  quiet
+                  testId="insp-auto"
+                  onClick={() => {
+                    onAction({ kind: "auto" });
+                    onExit();
+                  }}
+                >
+                  🧑‍🍳 Prep Cook does it
+                </SortButton>
+              ) : null}
               <SortButton quiet onClick={onExit} testId="insp-leave">
                 Not now
               </SortButton>
@@ -848,7 +866,7 @@ function Round({
                   onClick={onUnpack}
                   testId="insp-unpack"
                 >
-                  Unpack delivery
+                  Fridge Sort
                 </SortButton>
               ) : null}
               <SortButton quiet onClick={onExit} testId="insp-done">

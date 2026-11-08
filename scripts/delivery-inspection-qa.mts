@@ -20,6 +20,7 @@ import {
   buildCrate,
   crateIngredients,
   crateIssues,
+  autoInspect,
   deliveriesTag,
   deliveryInspectionOf,
   finishRound,
@@ -118,9 +119,16 @@ console.log("A. When it opens");
   const prep = saveWith(3, {
     staff: { ...DEFAULT_SAVE.business.staff, hiredRoles: ["prep-cook"] } as never,
   });
+  const before7 = roundsLeft(prep, 3);
+  const auto = autoInspect(prep);
   assert(
-    roundsLeft(prep, 3) === 0,
-    "A7: a hired Prep Cook inspects himself: nothing for the player",
+    before7 >= 1 &&
+      roundsLeft(auto, 3) === before7 - 1 &&
+      deliveryInspectionOf(auto).rounds === 0 &&
+      deliveryInspectionOf(auto).today === 0 &&
+      auto.credits === prep.credits,
+    "A7: a hired Prep Cook does not hide the game (developer 2026-11-08); his button counts the basket as inspected and gives no stars, Hype, pins or day count",
+    { before7 },
   );
   // The daily limit and the basket count.
   const big = saveWith(3, {}, Object.keys(INGREDIENTS).slice(0, 24));

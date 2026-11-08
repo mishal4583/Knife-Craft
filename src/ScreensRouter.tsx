@@ -468,6 +468,7 @@ export function ScreensRouter({
                     playerLevel={restaurantLevelOf(save.levelProgress)}
                     reducedMotion={save.settings.reducedMotion}
                     onAction={deliveryInspectionAction}
+                    hasPrepCook={save.business.staff?.hiredRoles?.includes("prep-cook") ?? false}
                     onUnpack={() => routeGo("fridge-sort")}
                     onExit={() => routeGo("inventory")}
                   />

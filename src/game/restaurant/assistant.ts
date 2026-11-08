@@ -233,7 +233,7 @@ export const ASSISTANT_BEATS: readonly AssistantBeat[] = [
     id: "fridge-sort",
     lines: [
       {
-        text: "Your order arrived! Unpack the delivery into the fridge for bonus Hype.",
+        text: "Your order arrived! Play Fridge Sort for bonus Hype.",
         pose: "tip",
       },
     ],

@@ -1360,9 +1360,9 @@ function NewsCard({ news }: { news: RestaurantNews }) {
             📦
           </span>
           <p className="min-w-0 flex-1 font-ui text-[13px] font-extrabold text-walnut-dark">
-            Unpack the delivery
+            Fridge Sort
           </p>
-          <InfoTip label="About Unpack the delivery">
+          <InfoTip label="About Fridge Sort">
             Your order arrives in a basket, all mixed up (1 lb of tomatoes is about 3 tomatoes). Put
             every piece on its shelf before the clock ends: stars keep the food fresh longer and
             give Hype and fridge magnets. It is optional and costs nothing. Find it in the Market

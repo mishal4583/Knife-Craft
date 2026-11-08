@@ -160,19 +160,21 @@ console.log("C. Unpack the delivery");
   const check = read("src/components/kc/restaurant/PreServiceCheck.tsx");
   const fs3 = beatById("fridge-sort");
   assert(
-    /Unpack delivery/.test(chip) && !/Put it away/.test(chip.replace(/\/\*[\s\S]*?\*\//g, "")),
-    "C1: the chip says 'Unpack delivery · N'",
+    /Fridge Sort/.test(chip) &&
+      !/Unpack delivery/.test(chip.replace(/\/\*[\s\S]*?\*\//g, "")) &&
+      !/Put it away/.test(chip.replace(/\/\*[\s\S]*?\*\//g, "")),
+    "C1: the chip says 'Fridge Sort · N' (developer 2026-11-08: was 'Unpack delivery')",
   );
   assert(
-    /Unpack the delivery/.test(game) && /Unpack the delivery/.test(check),
-    "C2: the game's how-to and the Pre-Service Check name it 'Unpack the delivery'",
+    /Fridge Sort/.test(game) && /Fridge Sort/.test(check),
+    "C2: the game's how-to and the Pre-Service Check name it 'Fridge Sort'",
   );
   assert(
     !!fs3 &&
       /order arrived/i.test(fs3.lines[0]!.text) &&
-      /Unpack the delivery/.test(fs3.lines[0]!.text) &&
+      /Fridge Sort/.test(fs3.lines[0]!.text) &&
       fs3.lines[0]!.text.length <= MAX_LINE_CHARS,
-    "C3: Paige says the order arrived and to unpack the delivery (within the line limit)",
+    "C3: Paige says the order arrived and to play Fridge Sort (within the line limit)",
     fs3?.lines[0]?.text,
   );
 }

@@ -427,6 +427,7 @@ import {
   type FridgeSortResult,
 } from "@/game/business/fridgeSort";
 import {
+  autoInspect,
   finishRound as finishInspectionRound,
   withHowtoSeen as withInspectionHowtoSeen,
   type DeliveryInspectionAction,
@@ -1170,6 +1171,11 @@ export function App() {
     }
     if (action.kind === "skip") {
       sendAnalyticsEvent("delivery_inspection_skipped", { level });
+      return { ok: true, effects: none };
+    }
+    if (action.kind === "auto") {
+      persist(autoInspect(current));
+      sendAnalyticsEvent("delivery_inspection_auto", { level });
       return { ok: true, effects: none };
     }
     if (action.kind === "howto") {

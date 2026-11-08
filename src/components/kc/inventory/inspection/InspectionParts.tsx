@@ -1,42 +1,13 @@
-import { useEffect, useState, type CSSProperties } from "react";
+import type { CSSProperties } from "react";
 import { cn } from "@/lib/utils";
 import type { DecoyKind, DefectKind, Mark } from "@/game/business/deliveryInspection";
+import { inspUrl, useArt } from "./inspectionArt";
 
 /**
  * The look of Delivery Inspection's marks (rules: business/deliveryInspection.ts). The painted art (public/business/inspection/: `defects.webp` a 4 x 3
  * sheet, `decoys.webp` a 3 x 2 sheet, `crate-back.webp`, `crate-front.webp`, `backdrop.webp`, built from the Codex kit D01-D10) is used when it is there;
  * until then every mark is drawn from plain CSS so the game is complete without it. Presentation only.
  */
-
-export const inspUrl = (name: string) =>
-  `${import.meta.env.BASE_URL}business/inspection/${name}.webp`;
-
-const probed = new Map<string, boolean>();
-/** Whether an art file exists (one tiny probe per file, remembered). */
-export function useArt(name: string): boolean {
-  const [ok, setOk] = useState<boolean>(probed.get(name) ?? false);
-  useEffect(() => {
-    if (probed.has(name)) {
-      setOk(probed.get(name)!);
-      return;
-    }
-    let alive = true;
-    const img = new Image();
-    img.onload = () => {
-      probed.set(name, true);
-      if (alive) setOk(true);
-    };
-    img.onerror = () => {
-      probed.set(name, false);
-      if (alive) setOk(false);
-    };
-    img.src = inspUrl(name);
-    return () => {
-      alive = false;
-    };
-  }, [name]);
-  return ok;
-}
 
 /** The sheet cell of each defect / decoy (the order the Codex prompts D04 and D05 ask for). */
 const DEFECT_CELL: Record<DefectKind, (v: number) => number> = {
@@ -171,9 +142,6 @@ export function MarkerArt({ cell, className }: { cell: 0 | 1 | 2 | 3; className?
     />
   );
 }
-
-/** Whether the painted feedback marks exist (then the CSS rings step aside). */
-export const useMarkers = (): boolean => useArt("markers");
 
 /** The Sharp Eye pin number `n` (1-12) of `pins.webp` (a 4 x 3 sheet); null until the art is there. */
 export function PinArt({ n, className }: { n: number; className?: string }) {

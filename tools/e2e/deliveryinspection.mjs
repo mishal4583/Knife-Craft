@@ -7,7 +7,7 @@
 //   I6 finding every defect ends the round: stars, a score, Hype is added, the day's count goes up
 //   I7 money and stock never move: credits, inventory and the ledger are identical before and after
 //   I8 Done returns to the Inventory; the chip shows the next inspection (or is gone)
-//   I9 a hired Prep Cook: no chip; Skip (Pause) leaves the delivery waiting and no stars are saved
+//   I9 a hired Prep Cook: the chip stays and his button inspects for you; Back before Start; Skip (Pause) leaves the delivery waiting and no stars are saved
 //   I10 at 320 x 568 nothing scrolls sideways and every ingredient is at least 40 px wide
 //   I11 Level 30 (tier 3): the magnifier button shows and the lens appears; a little dirt (decoy) exists and a tap on it is a wrong flag
 //   I12 no console errors
@@ -275,7 +275,38 @@ await openInventory(page);
 const chipPrep = await page.evaluate(
   () => !!document.querySelector('[data-testid="delivery-inspection-chip"]'),
 );
-check("I9 a hired Prep Cook inspects the delivery himself: no chip", chipPrep === false);
+check("I9 a hired Prep Cook does not hide the game: the chip is still there", chipPrep === true);
+await openGame(page);
+const autoBtn = await page.evaluate(() => !!document.querySelector('[data-testid="insp-auto"]'));
+await tap(page, '[data-testid="insp-auto"]');
+await sleep(800);
+const afterAuto = await readSave(page);
+const chipAfterAuto = await page.evaluate(
+  () => !!document.querySelector('[data-testid="delivery-inspection-chip"]'),
+);
+check(
+  "I9a his button inspects the basket for you: no stars, no reward, the chip is gone",
+  autoBtn && chipAfterAuto === false && !(afterAuto?.business?.deliveryInspection?.rounds > 0),
+  afterAuto?.business?.deliveryInspection,
+);
+
+// I9c: before Start the top-left button is a Back arrow (the pause button used to do nothing there)
+await boot(page, saveAt(3));
+await openInventory(page);
+await openGame(page);
+const backLabel = await page.evaluate(() =>
+  document.querySelector('[data-testid="insp-pause"]')?.getAttribute("aria-label"),
+);
+await tap(page, '[data-testid="insp-pause"]');
+await sleep(800);
+const leftGame = await page.evaluate(
+  () => !document.querySelector('[data-testid="delivery-inspection"]'),
+);
+check(
+  "I9c before Start the top-left button says Back and leaves the game",
+  backLabel === "Back" && leftGame,
+  { backLabel, leftGame },
+);
 
 // I9b: Skip leaves it waiting
 await boot(page, saveAt(3));

@@ -1,5 +1,5 @@
 // The first 20 levels (developer 2026-11-08), restaurant build, in a real browser.
-//   E1 Level 3 with food bought: the Inventory chip says "Unpack delivery · N" and Paige's tip says the order arrived
+//   E1 Level 3 with food bought: the Inventory chip says "Fridge Sort · N" and Paige's tip says the order arrived
 //   E2 Level 11 with $900: Paige offers the Second Floor and her button opens it
 //   E3 Level 11 with $400: Paige does NOT offer the Second Floor (the first machine is $500 and $300 must be left)
 //   E4 no console errors
@@ -77,7 +77,7 @@ try {
   await shot(page, "earlylevels-1-level3");
   check(
     "E1 Level 3: Paige says the order arrived and to unpack the delivery",
-    !!b1 && /order arrived/i.test(b1.text) && /Unpack the delivery/.test(b1.text),
+    !!b1 && /order arrived/i.test(b1.text) && /Fridge Sort/.test(b1.text),
     b1,
   );
 

@@ -409,6 +409,12 @@ export function StockroomSortGame({
   };
 
   const pause = () => {
+    // Before the first touch the clock is not running: the button is a Back arrow (developer 2026-11-08).
+    if (phaseRef.current === "ready") {
+      onAction({ kind: "skip" });
+      onExit();
+      return;
+    }
     if (phaseRef.current === "playing") setPhaseBoth("paused");
   };
   const resume = () => {
@@ -682,12 +688,12 @@ export function StockroomSortGame({
         <button
           type="button"
           onClick={pause}
-          aria-label="Pause"
+          aria-label={phase === "ready" ? "Back" : "Pause"}
           data-testid="stock-pause"
           className="relative grid h-12 w-12 shrink-0 place-items-center rounded-full bg-walnut text-[18px] text-gold"
         >
           <Art name="hud-round" className="absolute inset-0 h-full w-full object-fill" />
-          <span className="relative">⏸</span>
+          <span className="relative">{phase === "ready" ? "←" : "⏸"}</span>
         </button>
         <Plaque
           testId="stock-timer"

@@ -270,13 +270,25 @@ export function withHowtoSeen(save: SaveData): SaveData {
 export const pinsOf = (save: SaveData): number =>
   Math.min(MAX_PINS, Math.floor(deliveryInspectionOf(save).perfect! / PERFECTS_PER_PIN));
 
-/** A hired Prep Cook inspects the deliveries himself (no stars, no reward): the chip goes away. */
-export const prepCookInspects = (save: SaveData): boolean =>
+/** A hired Prep Cook can do an inspection for the player (a button in the game: no stars, no reward). The chip stays so the game is always playable. */
+export const hasPrepCook = (save: SaveData): boolean =>
   save.business.staff?.hiredRoles?.includes("prep-cook") ?? false;
+
+/** The Prep Cook inspects the basket on his own: it counts as inspected (it is not offered again), nothing else: no stars, Hype, pins or day count. */
+export function autoInspect(save: SaveData): SaveData {
+  const st = deliveryInspectionOf(save);
+  const seed = fridgeSortOf(save).seed ?? 0;
+  return withState(save, {
+    ...(save.business.deliveryInspection ?? {}),
+    ...st,
+    seed,
+    inspected: (st.seed === seed ? st.inspected! : 0) + 1,
+  });
+}
 
 /** The inspections the player can do now (baskets waiting that were not inspected yet, within today's limit). */
 export function roundsLeft(save: SaveData, level: number): number {
-  if (!isInspectionOpen(level) || prepCookInspects(save)) return 0;
+  if (!isInspectionOpen(level)) return 0;
   const st = deliveryInspectionOf(save);
   const day = save.business.calendar.businessDay;
   const doneToday = st.day === day ? st.today! : 0;
@@ -794,6 +806,8 @@ export type DeliveryInspectionAction =
   /** Only for analytics: a round began (the clock started) / the player left an inspection. */
   | { kind: "start"; items: number; defects: number; practice: boolean }
   | { kind: "skip" }
+  /** The Prep Cook did this inspection (no reward). */
+  | { kind: "auto" }
   /** The how-to tour was closed for the first time. */
   | { kind: "howto" };
 

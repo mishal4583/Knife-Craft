@@ -39,8 +39,8 @@ export function afterServeChips(save: SaveData, now: number = Date.now()): After
   if (waiting > 0 && fridgeRound(save, level))
     out.push({
       id: "unpack",
-      icon: "📦",
-      label: `Unpack delivery · ${waiting}`,
+      icon: "🧊",
+      label: `Fridge Sort · ${waiting}`,
       to: "fridge-sort",
     });
   if (stockroomRound(save, level))

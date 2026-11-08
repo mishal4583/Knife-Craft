@@ -5,7 +5,7 @@ import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
 import type { ScreenId } from "../data";
 
 /**
- * "📦 Unpack delivery · 6" (developer 2026-11-08: was "Put it away"): the entry to Fridge Sort (business/fridgeSort.ts), shown in the Market's Ingredients tab and above the Inventory fridge
+ * "🧊 Fridge Sort · 6" (developer 2026-11-08: was "Unpack delivery", before that "Put it away"): the entry to Fridge Sort (business/fridgeSort.ts), shown in the Market's Ingredients tab and above the Inventory fridge
  * while a basket of food waits and the game is open (Level 3). The number is the loose pieces to sort. It is a small chip, never a popup, and nothing waits on it (plan §2.2).
  */
 export function FridgeSortChip({
@@ -30,7 +30,7 @@ export function FridgeSortChip({
         className,
       )}
     >
-      <span aria-hidden>📦</span> Unpack delivery · {waiting}
+      <span aria-hidden>🧊</span> Fridge Sort · {waiting}
     </button>
   );
 }

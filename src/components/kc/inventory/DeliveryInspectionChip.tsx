@@ -5,7 +5,7 @@ import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
 import type { ScreenId } from "../data";
 
 /**
- * "🔎 Inspect delivery · 2" (developer 2026-11-08): the entry to Delivery Inspection (business/deliveryInspection.ts), beside "Unpack delivery" in
+ * "🔎 Inspect delivery · 2" (developer 2026-11-08): the entry to Delivery Inspection (business/deliveryInspection.ts), beside "Fridge Sort" in
  * the Market's Ingredients tab and above the Inventory fridge while a delivery waits (not inspected yet, within today's five) and no Prep Cook
  * does it. The number is the inspections waiting. A small chip, never a popup; nothing waits on it.
  */

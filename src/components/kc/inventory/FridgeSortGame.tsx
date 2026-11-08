@@ -35,7 +35,7 @@ import {
 } from "@/game/business/fridgeSort";
 
 /**
- * FRIDGE SORT — the screen of the "Unpack the delivery" mini-game (rules: business/fridgeSort.ts, plan: docs/planning/FRIDGE-SORT-MINIGAME-PLAN-2026-11-03.md).
+ * FRIDGE SORT — the screen of the "Fridge Sort" mini-game (rules: business/fridgeSort.ts, plan: docs/planning/FRIDGE-SORT-MINIGAME-PLAN-2026-11-03.md).
  *
  * A crate of what was just bought sits at the bottom; the fridge's zones are the targets. The player DRAGS a token to a zone, or TAPS a token
  * and then the zone (both always work). The clock starts on the first touch. A right drop scores with a combo; a wrong one springs back and
@@ -491,6 +491,12 @@ export function FridgeSortGame({
   }, [round, phase]);
 
   const pause = () => {
+    // Before the first touch the clock is not running: the button is a Back arrow (developer 2026-11-08: the pause button did nothing and there was no way back).
+    if (phaseRef.current === "ready") {
+      onAction({ kind: "skip" });
+      onExit();
+      return;
+    }
     if (phaseRef.current === "playing") setPhaseBoth("paused");
   };
   const resume = () => {
@@ -728,12 +734,12 @@ export function FridgeSortGame({
         <button
           type="button"
           onClick={pause}
-          aria-label="Pause"
+          aria-label={phase === "ready" ? "Back" : "Pause"}
           data-testid="sort-pause"
           className="relative grid h-12 w-12 shrink-0 place-items-center rounded-full bg-walnut text-[18px] text-gold"
         >
           <Art name="hud-round" className="absolute inset-0 h-full w-full object-fill" />
-          <span className="relative">⏸</span>
+          <span className="relative">{phase === "ready" ? "←" : "⏸"}</span>
         </button>
         <Plaque
           testId="sort-timer"
@@ -1002,9 +1008,7 @@ export function FridgeSortGame({
           data-testid="sort-guide"
         >
           <div className="w-full max-w-[330px] rounded-3xl border-4 border-[#b8873f] bg-[#f7edd7] p-4 text-center">
-            <p className="font-display text-[22px] font-extrabold text-walnut-dark">
-              Unpack the delivery
-            </p>
+            <p className="font-display text-[22px] font-extrabold text-walnut-dark">Fridge Sort</p>
             <ol className="mt-3 grid gap-2 text-left font-ui text-[14px] font-bold text-walnut-dark">
               <li className="flex items-center gap-2.5 rounded-xl bg-white/50 p-2">
                 <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-copper/15 text-[20px]">
