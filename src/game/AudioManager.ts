@@ -10,6 +10,7 @@
 import { isAdActive, isAudioEnabled, onAdActiveChange, onAudioEnabledChange } from "./PlayablesSDK";
 import { PauseManager } from "./PauseManager";
 import { INGREDIENTS, PLATING, type IngredientId } from "./definitions";
+import { RelaxComposer, type MoodName, type MusicEvent } from "./music/relaxComposer";
 
 type AudioContextCtor = typeof AudioContext;
 
@@ -33,6 +34,14 @@ class AudioManagerImpl {
     if (this.initialized) return;
     this.initialized = true;
     this.platformEnabled = isAudioEnabled();
+    // The page may already have had a tap (the portal's Play button, a tap while loading): then the browser lets audio start now, so the
+    // loading music can play. Without it nothing starts before the first real tap (and no autoplay warning is ever logged).
+    try {
+      if (typeof navigator !== "undefined" && navigator.userActivation?.hasBeenActive)
+        this.gestured = true;
+    } catch {
+      /* optional */
+    }
     onAudioEnabledChange((enabled) => {
       this.platformEnabled = enabled;
       this.updateMusic();
@@ -154,13 +163,15 @@ class AudioManagerImpl {
   /** Effects played so far (tests read it to check a sound is wired). */
   sfxCount = 0;
 
-  // ── Music: a warm kitchen-jazz loop, scheduled Web Audio notes, seeded ──
+  // ── Music (developer 2026-11-08): a relaxing, never-repeating score made note by note (music/relaxComposer.ts: copyright-free by
+  // construction, no samples), played here with plain waves through a soft reverb. One loop, seeded. ──
   private userMusicEnabled = true;
   private mood: MusicMood = "off";
   private musicTimer: ReturnType<typeof setInterval> | null = null;
   private nextBarAt = 0;
-  private bar = 0;
-  private musicRand = seededRand(20261012);
+  private composer = new RelaxComposer();
+  /** Where every voice goes: dry to the limiter and, through a long soft reverb, wet. */
+  private musicBus: GainNode | null = null;
   /** A user gesture has happened (browsers block audio before one; music never starts before it). */
   private gestured = false;
   /** Music loops started (one at most is ever running — tests read it). */
@@ -171,7 +182,7 @@ class AudioManagerImpl {
     this.updateMusic();
   }
 
-  /** What the music should be now: the Kitchen and menus, ducked while cutting, calmer at night, or off. */
+  /** What the music should be now: loading, the Kitchen and menus, ducked while cutting, calmer at night, or off. */
   setMusicMood(mood: MusicMood): void {
     if (this.mood === mood) return;
     this.mood = mood;
@@ -182,8 +193,51 @@ class AudioManagerImpl {
     return this.musicTimer !== null;
   }
 
+  /** Whether the browser has let audio start (a tap has happened): the loading screen shows its "tap for music" hint until then. */
+  get unlocked(): boolean {
+    this.init();
+    return this.gestured;
+  }
+
   private musicWanted(): boolean {
     return this.gestured && this.userMusicEnabled && this.mood !== "off" && this.audible;
+  }
+
+  /** The music's own chain: voices -> bus -> (dry + reverb) -> a gentle limiter -> the fader (`musicGain`). Built once per context. */
+  private buildMusicChain(ctx: AudioContext): void {
+    const fader = ctx.createGain();
+    fader.gain.value = 0.0001;
+    const limiter = ctx.createDynamicsCompressor();
+    limiter.threshold.value = -16;
+    limiter.ratio.value = 4;
+    limiter.attack.value = 0.02;
+    limiter.release.value = 0.4;
+    limiter.connect(fader);
+    fader.connect(ctx.destination);
+    const bus = ctx.createGain();
+    bus.connect(limiter);
+    const reverb = ctx.createConvolver();
+    reverb.buffer = this.reverbBuffer(ctx);
+    const wet = ctx.createGain();
+    wet.gain.value = 0.5;
+    bus.connect(reverb);
+    reverb.connect(wet);
+    wet.connect(limiter);
+    this.musicGain = fader;
+    this.musicBus = bus;
+  }
+
+  /** A soft hall: 3 s of decaying noise in two channels, from its own seeded generator (nothing unseeded). */
+  private reverbBuffer(ctx: AudioContext): AudioBuffer {
+    const length = Math.floor(ctx.sampleRate * 3);
+    const buf = ctx.createBuffer(2, length, ctx.sampleRate);
+    for (let c = 0; c < 2; c++) {
+      const data = buf.getChannelData(c);
+      const rand = seededRand(7919 + c * 104729);
+      for (let i = 0; i < length; i++)
+        data[i] = (rand() * 2 - 1) * Math.pow(1 - i / length, 2.6) * 0.5;
+    }
+    return buf;
   }
 
   /** Starts the one loop, fades the bus to the mood's level, or fades out and stops. */
@@ -191,15 +245,12 @@ class AudioManagerImpl {
     if (typeof window === "undefined") return;
     const ctx = this.musicWanted() ? this.ensureContext() : this.ctx;
     if (!ctx) return;
-    if (!this.musicGain) {
-      this.musicGain = ctx.createGain();
-      this.musicGain.gain.value = 0.0001;
-      this.musicGain.connect(ctx.destination);
-    }
+    if (!this.musicGain) this.buildMusicChain(ctx);
     const t = ctx.currentTime;
     const level = this.musicWanted() ? MUSIC_LEVEL[this.mood] : 0.0001;
-    this.musicGain.gain.cancelScheduledValues(t);
-    this.musicGain.gain.setTargetAtTime(level, t, 0.35);
+    this.musicGain!.gain.cancelScheduledValues(t);
+    // A slow fade in and out: the music arrives and leaves like a breath, never with a click.
+    this.musicGain!.gain.setTargetAtTime(level, t, this.musicWanted() ? 0.9 : 0.35);
     if (this.musicWanted() && !this.musicTimer) {
       this.musicLoopsStarted++;
       this.nextBarAt = t + 0.1;
@@ -210,77 +261,111 @@ class AudioManagerImpl {
     }
   }
 
-  /** Schedules the bars that start within the next ~0.6 s (one interval, never two). */
+  /** Schedules the bars that start within the next ~1.2 s (one interval, never two). */
   private scheduleMusic(): void {
     const ctx = this.ctx;
-    if (!ctx || !this.musicGain) return;
+    if (!ctx || !this.musicGain || !this.musicBus) return;
     if (!this.musicWanted()) return this.updateMusic();
-    while (this.nextBarAt < ctx.currentTime + 0.6) {
-      this.playBar(ctx, this.nextBarAt);
-      const bpm = this.mood === "night" ? 72 : 92;
-      this.nextBarAt += (60 / bpm) * 4;
-      this.bar++;
+    while (this.nextBarAt < ctx.currentTime + 1.2) {
+      const mood = this.mood === "off" ? "kitchen" : this.mood;
+      const plan = this.composer.nextBar(mood);
+      this.playBar(ctx, this.nextBarAt, plan.bpm, plan.events);
+      this.nextBarAt += (60 / plan.bpm) * plan.beats;
     }
   }
 
-  private playBar(ctx: AudioContext, t: number): void {
-    const out = this.musicGain!;
-    const night = this.mood === "night";
-    const beat = 60 / (night ? 72 : 92);
-    const prog = PROGRESSIONS[Math.floor(this.bar / 4) % PROGRESSIONS.length]!;
-    const chord = prog[this.bar % 4]!;
+  /** Plays one bar of the score: plain waves and a little filtered noise, a bounded handful of short-lived nodes. */
+  private playBar(ctx: AudioContext, t: number, bpm: number, events: readonly MusicEvent[]): void {
+    const out = this.musicBus!;
+    const beat = 60 / bpm;
     const hz = (m: number) => 440 * Math.pow(2, (m - 69) / 12);
-    // Electric-piano chord: soft sines with a slow fade, on 1 (and a push on the "and" of 2).
-    const hits = night ? [0] : [0, 1.5 + (this.musicRand() < 0.5 ? 0 : 1)];
-    for (const at of hits) {
-      for (const m of chord.slice(1)) {
-        const osc = ctx.createOscillator();
-        osc.type = "sine";
-        osc.frequency.value = hz(m) * (1 + (this.musicRand() - 0.5) * 0.002);
-        const g = ctx.createGain();
-        const s0 = t + at * beat;
-        g.gain.setValueAtTime(0.0001, s0);
-        g.gain.exponentialRampToValueAtTime(0.05, s0 + 0.02);
-        g.gain.exponentialRampToValueAtTime(0.0001, s0 + beat * (night ? 3.6 : 1.8));
-        osc.connect(g).connect(out);
-        osc.start(s0);
-        osc.stop(s0 + beat * (night ? 3.7 : 1.9));
+    // All the pad notes of the bar share one soft low-pass filter.
+    const padFilter = ctx.createBiquadFilter();
+    padFilter.type = "lowpass";
+    padFilter.frequency.value = 1500;
+    padFilter.connect(out);
+    for (const e of events) {
+      const s0 = t + e.at * beat;
+      const len = e.dur * beat;
+      const env = ctx.createGain();
+      env.gain.setValueAtTime(0.0001, s0);
+      switch (e.voice) {
+        case "pad": {
+          // Two slightly apart waves make the chord warm and slow-moving.
+          const attack = Math.min(1.8, len * 0.4);
+          env.gain.exponentialRampToValueAtTime(e.gain, s0 + attack);
+          env.gain.exponentialRampToValueAtTime(0.0001, s0 + len);
+          env.connect(padFilter);
+          this.tone(ctx, "sine", hz(e.midi), env, s0, len + 0.05, 1);
+          this.tone(ctx, "triangle", hz(e.midi) * 1.0035, env, s0, len + 0.05, 0.4);
+          break;
+        }
+        case "pluck": {
+          // A soft music-box note: a sine with a quiet octave above, a quick start and a long fade.
+          env.gain.exponentialRampToValueAtTime(e.gain, s0 + 0.012);
+          env.gain.exponentialRampToValueAtTime(0.0001, s0 + len);
+          env.connect(out);
+          this.tone(ctx, "sine", hz(e.midi), env, s0, len + 0.05, 1);
+          this.tone(ctx, "sine", hz(e.midi) * 2, env, s0, Math.min(len, 1.2) + 0.05, 0.22);
+          break;
+        }
+        case "bell": {
+          // A wind-chime: a pure note with two bell-like partials.
+          env.gain.exponentialRampToValueAtTime(e.gain, s0 + 0.01);
+          env.gain.exponentialRampToValueAtTime(0.0001, s0 + len);
+          env.connect(out);
+          this.tone(ctx, "sine", hz(e.midi), env, s0, len + 0.05, 1);
+          this.tone(ctx, "sine", hz(e.midi) * 2.76, env, s0, len * 0.5 + 0.05, 0.3);
+          this.tone(ctx, "sine", hz(e.midi) * 5.4, env, s0, len * 0.25 + 0.05, 0.1);
+          break;
+        }
+        case "bass": {
+          env.gain.exponentialRampToValueAtTime(e.gain, s0 + 0.12);
+          env.gain.exponentialRampToValueAtTime(0.0001, s0 + len);
+          env.connect(out);
+          this.tone(ctx, "sine", hz(e.midi), env, s0, len + 0.05, 1);
+          break;
+        }
+        case "breath": {
+          // Filtered noise that swells and fades over the bar, like a soft sea far away.
+          const src = this.noiseSource(ctx);
+          const bp = ctx.createBiquadFilter();
+          bp.type = "bandpass";
+          bp.frequency.value = 520;
+          bp.Q.value = 0.7;
+          env.gain.exponentialRampToValueAtTime(e.gain, s0 + len * 0.45);
+          env.gain.exponentialRampToValueAtTime(0.0001, s0 + len);
+          src.connect(bp).connect(env).connect(out);
+          src.start(s0);
+          src.stop(s0 + len + 0.05);
+          break;
+        }
       }
     }
-    // Walking bass: a chord tone on each beat (half notes at night).
-    const steps = night ? [0, 2] : [0, 1, 2, 3];
-    for (const b of steps) {
-      const tones = [chord[0]!, chord[0]! + 7, chord[1]! - 12, chord[0]! + 5];
-      const m = b === 0 ? chord[0]! : tones[Math.floor(this.musicRand() * tones.length)]!;
-      const osc = ctx.createOscillator();
-      osc.type = "triangle";
-      osc.frequency.value = hz(m - 12);
+  }
+
+  /** One wave through an envelope: `share` is its part of the voice's loudness. */
+  private tone(
+    ctx: AudioContext,
+    type: OscillatorType,
+    freq: number,
+    env: GainNode,
+    start: number,
+    len: number,
+    share: number,
+  ): void {
+    const osc = ctx.createOscillator();
+    osc.type = type;
+    osc.frequency.value = freq;
+    if (share === 1) {
+      osc.connect(env);
+    } else {
       const g = ctx.createGain();
-      const s0 = t + b * beat;
-      g.gain.setValueAtTime(0.0001, s0);
-      g.gain.exponentialRampToValueAtTime(0.09, s0 + 0.015);
-      g.gain.exponentialRampToValueAtTime(0.0001, s0 + beat * (night ? 1.9 : 0.9));
-      osc.connect(g).connect(out);
-      osc.start(s0);
-      osc.stop(s0 + beat * (night ? 2 : 1));
+      g.gain.value = share;
+      osc.connect(g).connect(env);
     }
-    // Brushes on 2 and 4 (not at night).
-    if (!night) {
-      for (const b of [1, 3]) {
-        const src = this.noiseSource(ctx);
-        const bp = ctx.createBiquadFilter();
-        bp.type = "bandpass";
-        bp.frequency.value = 5200;
-        const g = ctx.createGain();
-        const s0 = t + b * beat;
-        g.gain.setValueAtTime(0.0001, s0);
-        g.gain.exponentialRampToValueAtTime(0.02, s0 + 0.03);
-        g.gain.exponentialRampToValueAtTime(0.0001, s0 + 0.22);
-        src.connect(bp).connect(g).connect(out);
-        src.start(s0);
-        src.stop(s0 + 0.25);
-      }
-    }
+    osc.start(start);
+    osc.stop(start + len);
   }
 
   private ensureContext(): AudioContext | null {
@@ -297,6 +382,7 @@ class AudioManagerImpl {
         this.ctx = null;
         this.sfxGain = null;
         this.musicGain = null;
+        this.musicBus = null;
         this.sharedNoise = null;
       }
       if (!this.ctx) this.ctx = new Ctor();
@@ -320,6 +406,7 @@ class AudioManagerImpl {
                 this.ctx = null;
                 this.sfxGain = null;
                 this.musicGain = null;
+                this.musicBus = null;
                 this.sharedNoise = null;
                 // The new context's clock restarts, so the music loop starts over with it.
                 if (this.musicTimer) clearInterval(this.musicTimer);
@@ -858,42 +945,15 @@ class AudioManagerImpl {
   }
 }
 
-export type MusicMood = "off" | "kitchen" | "cutting" | "night";
-/** The music bus level per mood (quiet; ducked while cutting). */
+export type MusicMood = "off" | MoodName;
+/** The music fader level per mood (quiet; ducked while cutting). */
 const MUSIC_LEVEL: Record<MusicMood, number> = {
   off: 0.0001,
-  kitchen: 0.5,
-  cutting: 0.18,
-  night: 0.4,
+  loading: 0.8,
+  kitchen: 0.9,
+  cutting: 0.33,
+  night: 0.75,
 };
-
-/** ii–V–I kitchen-jazz progressions (MIDI: [bass root, chord tones…]), four bars each. */
-const PROGRESSIONS: readonly (readonly (readonly number[])[])[] = [
-  [
-    [50, 65, 69, 72, 76],
-    [43, 65, 69, 71, 74],
-    [48, 64, 67, 71, 74],
-    [48, 64, 67, 71, 74],
-  ],
-  [
-    [45, 64, 67, 72, 76],
-    [50, 65, 69, 72, 74],
-    [43, 65, 67, 71, 74],
-    [48, 64, 67, 72, 76],
-  ],
-  [
-    [53, 64, 69, 72, 76],
-    [52, 62, 67, 71, 74],
-    [50, 65, 69, 72, 77],
-    [43, 65, 67, 71, 74],
-  ],
-  [
-    [48, 64, 67, 71, 76],
-    [45, 64, 67, 72, 76],
-    [50, 65, 69, 72, 76],
-    [43, 62, 65, 71, 74],
-  ],
-];
 
 /** A small seeded generator (Park–Miller) — the music's choices are reproducible. */
 function seededRand(seed: number): () => number {

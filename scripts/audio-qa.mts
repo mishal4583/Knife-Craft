@@ -64,6 +64,13 @@ class FakeCtx {
   createBufferSource() {
     return node({ buffer: null });
   }
+  // The music's chain (developer 2026-11-08): a soft reverb and a gentle limiter.
+  createConvolver() {
+    return node({ buffer: null });
+  }
+  createDynamicsCompressor() {
+    return node({ threshold: param(), ratio: param(), attack: param(), release: param() });
+  }
   createBuffer(_c: number, len: number) {
     return { getChannelData: () => new Float32Array(len) };
   }
@@ -192,11 +199,20 @@ console.log("M. Music");
     "M2: a bounded number of short-lived nodes per second while playing; none at all when off",
     { perSecond },
   );
+  // Rule changed (developer 2026-11-08): the kitchen-jazz loop is replaced by the relaxing generated score (music/relaxComposer.ts, seeded
+  // there; music-qa has the full checks). AudioManager's own music code plays it and builds the reverb from a seeded generator.
   const src = read("src/game/AudioManager.ts");
-  const music = src.slice(src.indexOf("private playBar"), src.indexOf("private init"));
+  const music = src.slice(
+    src.indexOf("private buildMusicChain"),
+    src.indexOf("private ensureContext"),
+  );
   assert(
-    !/Math\.random/.test(music) && /seededRand\(20261012\)/.test(src),
-    "M3: the music's choices are seeded (no Math.random in the score)",
+    !/Math\.random/.test(music) &&
+      /seeded\(seed = 20261108\)|constructor\(seed = 20261108\)/.test(
+        read("src/game/music/relaxComposer.ts"),
+      ) &&
+      /seededRand\(7919/.test(src),
+    "M3: the music's choices are seeded (no Math.random in the score, the reverb or the playing)",
   );
 }
 
