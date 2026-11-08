@@ -427,6 +427,12 @@ import {
   type FridgeSortResult,
 } from "@/game/business/fridgeSort";
 import {
+  finishRound as finishInspectionRound,
+  withHowtoSeen as withInspectionHowtoSeen,
+  type DeliveryInspectionAction,
+  type DeliveryInspectionResult,
+} from "@/game/business/deliveryInspection";
+import {
   addToSupplyCrate,
   autoStock,
   finishRound as finishStockroomRound,
@@ -1139,6 +1145,45 @@ export function App() {
       stars: action.outcome.stars,
       score: action.outcome.score,
       tokens: action.outcome.tokens.length,
+      hype: out.effects.hype,
+    });
+    return { ok: true, effects: out.effects };
+  }
+
+  /**
+   * Delivery Inspection (business/deliveryInspection.ts): a round finished, was skipped, or the how-to tour was seen. Applied to the LATEST save so a
+   * double tap cannot pay twice. It moves no money and no stock; the only effects are the inspection state, stars, Hype and the pins.
+   */
+  function deliveryInspectionAction(action: DeliveryInspectionAction): DeliveryInspectionResult {
+    const current = saveRef.current;
+    if (!current) return { ok: false };
+    const level = restaurantLevelOf(current.levelProgress);
+    const none = { hype: 0, pin: false, newBest: false, streak: 0 };
+    if (action.kind === "start") {
+      sendAnalyticsEvent("delivery_inspection_started", {
+        level,
+        items: action.items,
+        defects: action.defects,
+        practice: action.practice,
+      });
+      return { ok: true, effects: none };
+    }
+    if (action.kind === "skip") {
+      sendAnalyticsEvent("delivery_inspection_skipped", { level });
+      return { ok: true, effects: none };
+    }
+    if (action.kind === "howto") {
+      persist(withInspectionHowtoSeen(current));
+      return { ok: true, effects: none };
+    }
+    const out = finishInspectionRound(current, action.outcome);
+    persist(out.save);
+    sendAnalyticsEvent("delivery_inspection_finished", {
+      level,
+      stars: action.outcome.stars,
+      score: action.outcome.score,
+      found: action.outcome.found,
+      defects: action.outcome.total,
       hype: out.effects.hype,
     });
     return { ok: true, effects: out.effects };
@@ -4463,6 +4508,7 @@ export function App() {
                   collectAchievement={collectAchievementReward}
                   secondFloorAction={secondFloorAction}
                   fridgeSortAction={fridgeSortAction}
+                  deliveryInspectionAction={deliveryInspectionAction}
                   stockroomSortAction={stockroomSortAction}
                   cleanerCleans={cleanerCleans}
                   rushAdAvailable={rewardedAdsAvailable()}

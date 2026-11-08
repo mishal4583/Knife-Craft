@@ -2112,6 +2112,8 @@ finaleSeen }` — no new fields. QA `story-legacy-qa`; browser
   **Music since 2026-11-08:** the kitchen-jazz loop is replaced by a relaxing, never-repeating generated score (`music/relaxComposer.ts`, pure and seeded;
   moods loading / kitchen / cutting / night / off; loading music while the save loads, from the first tap or at once when the page already had one; no sound
   file, no sample, original by construction: see HANDOFF). Tests: `music-qa`, `audio-qa`; e2e `music.mjs`.
+
+- **Delivery Inspection (2026-11-08):** `business/deliveryInspection.ts` + `inventory/DeliveryInspectionGame.tsx`: find the NOT FRESH ingredients in the waiting delivery's crate (tap = flag, drag = look behind, magnifier from tier 3, 4 s off for a wrong flag). One round per basket, at most 5 a day; a Prep Cook inspects for the player. Hype + Sharp Eye pins only (no money, no stock, no ledger). State `business.deliveryInspection`. Art in `public/business/inspection/` (`scripts/make-inspection-assets.py`). Tests: `delivery-inspection-qa`; e2e `deliveryinspection.mjs`.
 - **Story polish (W4):** the outro dissolves into Level 1's kitchen (above);
   beats may declare `fx` (dust / spark / coins) — CSS particles, off under
   reduced motion (THE LAST PAGE uses dust and spark; the finale is

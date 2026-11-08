@@ -49,6 +49,7 @@ import { expiredStockPreview, type DiscardExpiredResult } from "@/game/business/
 import { IngredientIcon } from "@/components/kc/common/IngredientIcon";
 import { FridgeSortChip } from "./FridgeSortChip";
 import { FridgeCheckChip } from "./FridgeCheckChip";
+import { DeliveryInspectionChip } from "./DeliveryInspectionChip";
 import { pinsOf } from "@/game/restaurant/fridgeCheck";
 import { magnetsOf } from "@/game/business/fridgeSort";
 
@@ -885,6 +886,7 @@ export function InventoryScreen({
               </div>
 
               {/* Fridge Sort: the food that was just bought waits here to be put away (from Level 14) */}
+              <DeliveryInspectionChip save={save} go={go} className="mb-2" />
               <FridgeSortChip save={save} go={go} />
               <FridgeCheckChip save={save} go={go} className="mt-2" />
 

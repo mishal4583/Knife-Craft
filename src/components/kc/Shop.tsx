@@ -81,6 +81,7 @@ import {
   type UpgradeKnifeResult,
 } from "@/game/knives/blacksmith";
 import { FridgeSortChip } from "./inventory/FridgeSortChip";
+import { DeliveryInspectionChip } from "./inventory/DeliveryInspectionChip";
 import { StockroomSortChip } from "./inventory/StockroomSortChip";
 import { AskPaigeButton } from "./assistant/AskPaigeButton";
 
@@ -590,7 +591,10 @@ export function Shop({
           </SectionTitle>
 
           {category === "ingredients" && RESTAURANT_MODE ? (
-            <FridgeSortChip save={save} go={go} className="mb-3" />
+            <>
+              <DeliveryInspectionChip save={save} go={go} className="mb-2" />
+              <FridgeSortChip save={save} go={go} className="mb-3" />
+            </>
           ) : null}
           {isSupplySection(category) && RESTAURANT_MODE ? (
             <StockroomSortChip save={save} go={go} className="mb-3" />

@@ -12,6 +12,7 @@ import type { SecondFloorState } from "../restaurant/secondFloor";
 import type { FridgeSortState } from "./fridgeSort";
 import type { StockroomSortState } from "./stockroomSort";
 import type { FridgeCheckState } from "../restaurant/fridgeCheck";
+import type { DeliveryInspectionState } from "./deliveryInspection";
 import type { AssistantState } from "../restaurant/assistant";
 import type { EndlessStarsState } from "../restaurant/restaurantStanding";
 /**
@@ -209,6 +210,11 @@ export type BusinessState = {
    * Absent = nothing earned. Never holds money or stock.
    */
   fridgeCheck?: FridgeCheckState;
+  /**
+   * Delivery Inspection (business/deliveryInspection.ts): the baskets of the waiting delivery already inspected, today's rounds, the best score,
+   * stars and Sharp Eye pins. Absent = nothing done yet. Never holds money or stock.
+   */
+  deliveryInspection?: DeliveryInspectionState;
   /**
    * Paige, the personal assistant (restaurant/assistant.ts): hired (free, no wage, no ledger entry), the tips she has given and "Tips: Off".
    * Absent = not hired. Never holds money.
