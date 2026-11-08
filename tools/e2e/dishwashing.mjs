@@ -172,12 +172,48 @@ await page.evaluate(() =>
     ?.click(),
 );
 await sleep(700);
+// Full screen (developer 2026-11-09): the list is ONE "Up next" strip; the whole list is a sheet one tap away. Layout facts first.
+const layout = await page.evaluate(() => {
+  const content = document.querySelector("[data-game-content]")?.getBoundingClientRect();
+  const stage = document.querySelector('[data-testid="wash-up-stage"]')?.getBoundingClientRect();
+  const strip = document.querySelector('[data-testid="wash-up-queue"]')?.getBoundingClientRect();
+  const scene = document.querySelector('[data-testid="wash-up-scene"]');
+  return {
+    stageShare: stage && content ? stage.width / content.width : 0,
+    sceneShare: (() => {
+      const r = document.querySelector('[data-testid="wash-up-scene"]')?.getBoundingClientRect();
+      return r && content ? r.width / content.width : 0;
+    })(),
+    stripShare: strip && content ? strip.height / content.height : 1,
+    listInDom: document.querySelectorAll("[data-wash-line]").length,
+    scale: Number(scene?.getAttribute("data-scale") ?? 0),
+    scroll: (() => {
+      const sec = document.querySelector('[data-testid="wash-up-sink"] section');
+      return sec ? sec.scrollHeight - sec.clientHeight : -1;
+    })(),
+  };
+});
+await shot(page, "dishwashing-0-fullscreen");
+await page.evaluate(() => document.querySelector('[data-testid="wash-up-queue"]')?.click());
+await sleep(400);
 const lines = await page.evaluate(() =>
   [...document.querySelectorAll("[data-wash-line]")].map((l) => ({
     id: l.getAttribute("data-wash-line"),
     state: l.getAttribute("data-wash-state"),
     text: l.textContent.replace(/\s+/g, " ").trim(),
   })),
+);
+await shot(page, "dishwashing-0-list");
+await page.evaluate(() => document.querySelector('[data-testid="wash-up-sheet-close"]')?.click());
+await sleep(300);
+check(
+  "0 the sink is the screen: the stage is at least 90% of the width, the one-row strip is under 10% of the height, no list on screen until it is opened, the scene itself fills nearly the whole width (it was a card at about 80% with the list above it), nothing scrolls",
+  layout.stageShare >= 0.9 &&
+    layout.stripShare <= 0.1 &&
+    layout.listInDom === 0 &&
+    layout.sceneShare >= 0.88 &&
+    layout.scroll <= 1,
+  layout,
 );
 check(
   "1 the Pre-Service Check shows 3 in the sink · Wash, which opens the sink on the real lines (the pan first)",
@@ -251,7 +287,11 @@ await page.evaluate(() =>
     ?.click(),
 );
 await sleep(700);
+await page.evaluate(() => document.querySelector('[data-testid="wash-up-queue"]')?.click());
+await sleep(300);
 const lines2 = await page.evaluate(() => document.querySelectorAll("[data-wash-line]").length);
+await page.evaluate(() => document.querySelector('[data-testid="wash-up-sheet-close"]')?.click());
+await sleep(300);
 let all = true;
 const order = [];
 for (let i = 0; i < 2; i++) {

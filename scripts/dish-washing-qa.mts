@@ -296,7 +296,10 @@ console.log("W. Wiring");
   const app = read("src/App.tsx");
   const sim = read("scripts/restaurantCampaignSim.mts");
   const sink = read("src/components/kc/restaurant/SinkWash.tsx");
-  const game = read("src/components/kc/restaurant/WashUpSink.tsx");
+  // Moved with the full-screen sink (developer 2026-11-09): the rack is its own component (wash/SinkRack.tsx), still marked data-rack per finished kind.
+  const game =
+    read("src/components/kc/restaurant/WashUpSink.tsx") +
+    read("src/components/kc/restaurant/wash/SinkRack.tsx");
   assert(
     !/washUp\(\s*recordService\(/.test(app) &&
       /closeServiceReport\(recorded, levelNumber\(level\.id\), false\)/.test(app) &&
@@ -788,14 +791,16 @@ console.log("N. Pots, pans, plates, glasses: used per order, washed one by one")
     `N20: dish soap "services left" counts what is in the sink (${total} pieces use ${fullSink.usePer}% a wash, an empty sink ${emptySink.usePer}%)`,
   );
   // N19: wiring — one piece at a time, then the rinse, then the rack
-  const game = read("src/components/kc/restaurant/WashUpSink.tsx");
+  const game =
+    read("src/components/kc/restaurant/WashUpSink.tsx") +
+    read("src/components/kc/restaurant/wash/SinkRack.tsx");
   assert(
     /const \[queue\] = useState/.test(game) &&
       /startRinse\(\)/.test(game) &&
       /rinseSegment\(/.test(game) &&
       /paintFoam\(/.test(game) &&
       /data-testid="wash-up-foam"/.test(game) &&
-      /data-rack=\{item\.id\}/.test(game) &&
+      /data-rack=\{(item|k)\.id\}/.test(game) &&
       /DISH_SCRUB_RATE/.test(game) &&
       /paceAmount\(amount, dt\)|paceAmount\(/.test(game) &&
       !/setWashedPieces\(\(p\) => p \+ activeItem\.n\)/.test(game),

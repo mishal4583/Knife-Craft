@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type PointerEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent } from "react";
 import { createPortal } from "react-dom";
 import { AudioManager } from "@/game/AudioManager";
 import { reducedMotionOn } from "@/game/cashBurst";
@@ -34,6 +34,15 @@ import {
   type DishShape,
 } from "@/game/restaurant/dishDirt";
 import { KButton } from "../common/primitives";
+import { InfoTip } from "../common/InfoTip";
+import { Art, Plaque } from "../inventory/sort/SortParts";
+import { SinkQueueSheet, SinkQueueStrip } from "./wash/SinkQueue";
+import { SinkAmbient } from "./wash/SinkAmbient";
+import { SinkRack } from "./wash/SinkRack";
+import { SinkSoap } from "./wash/SinkSoap";
+import { SinkCleanBurst } from "./wash/SinkCleanBurst";
+import { useWashArt, washUrl } from "./wash/washArt";
+import { SINK_LAYOUT, kindViews, sceneScale, stripView } from "@/game/restaurant/sinkQueue";
 import { SupplyIcon } from "../common/SupplyIcon";
 import { CleaningFx } from "../business/cleaning/cleaningFx";
 import { paintStain, stainReach } from "../business/cleaning/dirtArt";
@@ -287,6 +296,13 @@ export function WashUpSink({
   const [toast, setToast] = useState<{ text: string; key: number } | null>(null);
   const [summary, setSummary] = useState<{ best: number; secs: number } | null>(null);
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
+  // The sink is the whole screen (developer 2026-11-09): the scene (drawn in 360 x 280 units) is fitted into the stage box of the full-screen art.
+  const stageBoxRef = useRef<HTMLDivElement>(null);
+  const [stageBox, setStageBox] = useState<{ w: number; h: number } | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const hasBackdrop = useWashArt("backdrop");
+  const toolsArt = useWashArt("tools");
+  const scale = stageBox ? sceneScale(stageBox.w, stageBox.h, WIDTH, HEIGHT) : 1;
   const activeItem = queue[Math.min(activeItemIndex, Math.max(0, queue.length - 1))] ?? {
     id: "dinner-plates" as SupplyId,
     nth: 1,
@@ -296,7 +312,8 @@ export function WashUpSink({
     shape: "plate" as DishShape,
   };
   const shape = activeItem.shape;
-  const spongeSize = shape === "plate" ? 72 : 60;
+  const spongeSize = (shape === "plate" ? 72 : 60) * scale;
+  const brushShape = shape === "pot" || shape === "pan" || shape === "tray";
   const later = (fn: () => void, ms: number) => {
     const id = window.setTimeout(() => {
       timersRef.current.delete(id);
@@ -308,6 +325,17 @@ export function WashUpSink({
   useEffect(() => {
     setPortalTarget(document.querySelector<HTMLElement>("[data-game-content]"));
   }, []);
+
+  // The stage box's real size (the scene is fitted into it; re-fitted if the screen changes).
+  useLayoutEffect(() => {
+    const box = stageBoxRef.current;
+    if (!box || !portalTarget) return;
+    const measure = () => setStageBox({ w: box.clientWidth, h: box.clientHeight });
+    measure();
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
+    ro?.observe(box);
+    return () => ro?.disconnect();
+  }, [portalTarget]);
 
   // The effects layer for the whole sink; everything is cleaned up on close.
   useEffect(() => {
@@ -342,7 +370,9 @@ export function WashUpSink({
       sprites: stains.map(paintStain),
       done: false,
     };
-    const ratio = Math.min(window.devicePixelRatio || 1, 2);
+    // Sharp at the bigger size: the bitmap follows how many real pixels one scene unit covers (at most 3x).
+    const cssPerUnit = canvas.getBoundingClientRect().width / WIDTH || 1;
+    const ratio = Math.min(3, Math.max(1, (window.devicePixelRatio || 1) * cssPerUnit));
     canvas.width = Math.round(WIDTH * ratio);
     canvas.height = Math.round(HEIGHT * ratio);
     rinseRef.current = null;
@@ -772,88 +802,127 @@ export function WashUpSink({
       : "animate-[dish-in_360ms_ease-out]";
   const iconOf = (id: SupplyId) => items.find((i) => i.id === id)?.icon ?? "🍽️";
 
+  const activeKindId = !complete && !noSoap ? activeItem.id : null;
+  const views = kindViews(items, queue, cleanedCount, activeKindId, complete || noSoap);
+  const strip = stripView(views, queue.length - cleanedCount);
+  const L = SINK_LAYOUT;
+  const pct = (v: number) => `${(v * 100).toFixed(3)}%`;
+  const sceneStyle = stageBox
+    ? { width: WIDTH * scale, height: HEIGHT * scale }
+    : { width: "100%", aspectRatio: `${WIDTH} / ${HEIGHT}` };
+
   const modal = (
     <div
-      className="absolute inset-0 z-[110] flex items-center justify-center bg-walnut-dark/75 p-3 backdrop-blur-[6px]"
+      className="absolute inset-0 z-[110] overflow-hidden bg-[#2a170c]"
       data-testid="wash-up-sink"
     >
       <section
         aria-label="Wash-up"
         aria-modal="true"
         role="dialog"
-        className="flex max-h-[calc(100%-24px)] w-[min(420px,100%)] flex-col overflow-y-auto rounded-[28px] border border-[#d6b16c] bg-[linear-gradient(165deg,#fff8e9,#f1dfbd)] p-4 text-walnut-dark shadow-lift land:max-w-[640px]"
+        className="absolute inset-0 text-ivory"
         onKeyDown={(event) => {
           if (event.key === "Escape") onClose();
         }}
       >
-        <header className="flex items-start gap-3">
-          <span aria-hidden className="text-[25px] leading-tight">
-            🫧
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="font-display text-[21px] font-black leading-tight">Dishwashing</p>
-            <p className="mt-0.5 font-ui text-[12.5px] font-bold text-walnut/65">
-              🍽️ {total} in the sink · 🧽 by hand, nothing breaks
-            </p>
-          </div>
+        {/* the whole screen is the sink: the painted portrait picture when it exists, a dark-wood backdrop otherwise */}
+        {hasBackdrop ? (
+          <img
+            alt=""
+            aria-hidden="true"
+            draggable={false}
+            src={washUrl("backdrop")}
+            className="pointer-events-none absolute inset-0 h-full w-full select-none object-cover"
+          />
+        ) : (
+          <div
+            aria-hidden
+            className="absolute inset-0 bg-[linear-gradient(180deg,#6b4423,#3a2417_45%,#211710)]"
+          />
+        )}
+
+        {/* the water, the suds, the tap, the steam: alive behind the dish (they fit the painted picture, so only with it) */}
+        {hasBackdrop ? (
+          <SinkAmbient
+            phase={phase}
+            progress={progress}
+            reduced={reduced}
+            active={!complete && !noSoap}
+          />
+        ) : null}
+
+        {hasBackdrop && !complete && !noSoap ? (
+          <SinkSoap key={`soap-${activeItemIndex}`} reduced={reduced} />
+        ) : null}
+
+        {/* HUD: Back, the title, what is left */}
+        <div
+          className="absolute inset-x-0 z-20 flex items-center gap-2 px-3"
+          style={{ top: pct(L.hud.top), height: pct(L.hud.height) }}
+        >
           <button
             type="button"
             aria-label="Close the sink"
+            data-testid="wash-up-close"
             onClick={onClose}
-            className="press grid h-12 w-12 shrink-0 place-items-center rounded-full border border-walnut/15 bg-ivory font-ui text-[20px] font-black shadow-soft"
+            className="relative grid h-12 w-12 shrink-0 place-items-center rounded-full bg-walnut text-[20px] font-black text-gold"
           >
-            ×
+            <Art name="hud-round" className="absolute inset-0 h-full w-full object-fill" />
+            <span className="relative">←</span>
           </button>
-        </header>
-
-        <ol
-          aria-label="What's in the sink"
-          className="mt-2 grid grid-cols-3 gap-1.5"
-          data-testid="wash-up-lines"
-        >
-          {items.map((item) => {
-            const washedOf = queue.slice(0, cleanedCount).filter((q) => q.id === item.id).length;
-            const done = washedOf >= item.n;
-            const current = activeItem.id === item.id && !complete && !noSoap && !done;
-            return (
-              <li
-                key={item.id}
-                data-wash-line={item.id}
-                data-wash-state={done ? "done" : current ? "current" : "waiting"}
-                aria-current={current ? "step" : undefined}
-                className={
-                  "min-w-0 rounded-xl border px-1.5 py-1.5 text-center font-ui text-[11px] font-bold transition-colors " +
-                  (done
-                    ? "border-olive/40 bg-[#718568] text-ivory"
-                    : current
-                      ? "border-[#b47b32] bg-[#f3d99c] text-walnut-dark"
-                      : "border-walnut/15 bg-ivory/50 text-walnut/70")
-                }
-              >
-                <span aria-hidden>
-                  {done ? "✓" : <SupplyIcon id={item.id} fallback={item.icon} />}
-                </span>
-                <span className="block truncate">{item.label}</span>
-                <span className="block text-[11px] font-black">
-                  {done || washedOf === 0 ? `×${item.n}` : `${washedOf}/${item.n}`}
-                </span>
-              </li>
-            );
-          })}
-        </ol>
-
-        <div className="mt-3 rounded-[24px] border border-[#c08b43] bg-[linear-gradient(145deg,#5b341d,#211710)] p-2 shadow-inner">
-          <div
-            className="relative mx-auto w-full overflow-hidden rounded-[22px]"
-            style={{ aspectRatio: `${WIDTH} / ${HEIGHT}`, maxWidth: WIDTH }}
+          <Plaque
+            testId="wash-up-title"
+            className="h-12 min-w-0 flex-1 font-display text-[20px] font-black text-ivory"
           >
-            <img
-              alt=""
-              aria-hidden="true"
-              className="absolute inset-0 h-full w-full select-none object-cover"
-              draggable={false}
-              src={`${import.meta.env.BASE_URL}dishwashing/premium-sink.webp`}
-            />
+            <span aria-hidden>🫧</span> Dishwashing
+            <InfoTip tone="light" label="About dishwashing">
+              By hand: nothing breaks and no money moves. Each finished piece uses a little dish
+              soap.
+            </InfoTip>
+          </Plaque>
+          <Plaque
+            testId="wash-up-left"
+            className="h-12 min-w-[92px] px-2 font-ui text-[16px] font-black tabular-nums text-ivory"
+          >
+            <span aria-hidden>🍽️</span> {Math.max(0, total - cleanedCount)}
+          </Plaque>
+        </div>
+
+        {/* Up next: one row; tap for the whole list */}
+        <div
+          className="absolute inset-x-2 z-20"
+          style={{ top: pct(L.strip.top), height: pct(L.strip.height) }}
+        >
+          <SinkQueueStrip strip={strip} onOpen={() => setSheetOpen(true)} />
+        </div>
+
+        {/* THE SINK: the stage box of the picture; the scene is fitted into it */}
+        <div
+          ref={stageBoxRef}
+          className="absolute z-10"
+          style={{
+            left: pct(L.stage.left),
+            top: pct(L.stage.top),
+            width: pct(L.stage.width),
+            height: pct(L.stage.height),
+          }}
+          data-testid="wash-up-stage"
+        >
+          <div
+            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-[18px]"
+            style={sceneStyle}
+            data-testid="wash-up-scene"
+            data-scale={scale.toFixed(3)}
+          >
+            {!hasBackdrop ? (
+              <img
+                alt=""
+                aria-hidden="true"
+                className="absolute inset-0 h-full w-full select-none object-cover"
+                draggable={false}
+                src={`${import.meta.env.BASE_URL}dishwashing/premium-sink.webp`}
+              />
+            ) : null}
             {!complete && !noSoap ? (
               <div
                 key={activeItemIndex}
@@ -1592,6 +1661,24 @@ export function WashUpSink({
                       <circle cx="54" cy="86" r="2.5" fill="#9fdaf5" />
                     </g>
                   </svg>
+                ) : toolsArt ? (
+                  // The painted sponge (foamy while it scrubs), a pot brush for pots, pans and trays (tools.webp, 4 x 1: sponge, foamy, brush, pad).
+                  <span
+                    aria-hidden="true"
+                    data-tool-art={brushShape ? "brush" : scrubbing ? "foamy" : "sponge"}
+                    className="block"
+                    style={{
+                      width: spongeSize * 1.3,
+                      height: spongeSize * 1.3,
+                      marginLeft: -spongeSize * 0.15,
+                      marginTop: -spongeSize * 0.15,
+                      backgroundImage: `url(${washUrl("tools")})`,
+                      backgroundSize: "400% 100%",
+                      backgroundPosition: `${((brushShape ? 2 : scrubbing ? 1 : 0) / 3) * 100}% 0`,
+                      backgroundRepeat: "no-repeat",
+                      filter: "drop-shadow(0 3px 3px rgba(32,19,13,.55))",
+                    }}
+                  />
                 ) : (
                   <svg
                     aria-hidden="true"
@@ -1686,6 +1773,9 @@ export function WashUpSink({
                 ✨ Combo ×{streak}
               </span>
             ) : null}
+            {phase === "shine" && !complete ? (
+              <SinkCleanBurst key={`burst-${activeItemIndex}`} reduced={reduced} />
+            ) : null}
             {toast ? (
               <span
                 key={toast.key}
@@ -1711,21 +1801,26 @@ export function WashUpSink({
           </div>
         </div>
 
+        {/* the status, the progress and the rack (the dock) */}
         <p
-          className="mt-3 rounded-2xl border border-[#d5ae6c] bg-[linear-gradient(135deg,#fff8e8,#f2dfbd)] px-3 py-2 text-center font-ui text-[14px] font-extrabold text-[#50331f]"
+          className="absolute inset-x-3 z-20 grid place-items-center rounded-2xl border border-[#d5ae6c] bg-[linear-gradient(135deg,#fff8e8,#f2dfbd)] px-3 text-center font-ui text-[14px] font-extrabold leading-tight text-[#50331f]"
+          style={{ top: pct(L.status.top), height: pct(L.status.height) }}
           role="status"
           data-testid="wash-up-status"
         >
           {status}
         </p>
         {!complete && !noSoap ? (
-          <div className="mt-2 flex items-center gap-3">
+          <div
+            className="absolute inset-x-3 z-20 flex items-center gap-3"
+            style={{ top: pct(L.progress.top), height: pct(L.progress.height) }}
+          >
             <div
               aria-label={`${progress}% ${activeItem.label.toLowerCase()} ${phase === "rinse" ? "rinsed" : "clean"}`}
               aria-valuemax={100}
               aria-valuemin={0}
               aria-valuenow={progress}
-              className="h-3 flex-1 overflow-hidden rounded-full bg-walnut/15"
+              className="h-4 flex-1 overflow-hidden rounded-full border border-[#e6b866]/60 bg-[#2a170c]/70"
               role="progressbar"
             >
               <div
@@ -1733,48 +1828,44 @@ export function WashUpSink({
                 style={{ width: `${progress}%` }}
               />
             </div>
-            <span className="w-10 text-right font-ui text-[12px] font-extrabold text-walnut/70">
+            <span className="w-12 rounded-full bg-[#2a170c]/75 px-1 py-0.5 text-center font-ui text-[13px] font-extrabold text-ivory">
               {progress}%
             </span>
           </div>
         ) : null}
         {/* The drying rack: each finished kind lands here. */}
         <div
-          className="mt-2 flex min-h-9 flex-wrap items-center gap-1.5 rounded-2xl border border-walnut/10 bg-ivory/60 px-2 py-1.5"
-          data-testid="wash-up-rack"
+          className="absolute z-20"
+          style={{
+            left: pct(L.rack.left),
+            width: pct(L.rack.width),
+            top: pct(L.rack.top),
+            height: pct(L.rack.height),
+          }}
         >
-          <span className="font-ui text-[11px] font-extrabold uppercase tracking-wide text-walnut/55">
-            🧺 Rack
-          </span>
-          {items
-            .map((item) => ({
-              item,
+          <SinkRack
+            kinds={items.map((item) => ({
+              id: item.id,
+              icon: iconOf(item.id),
               washed: queue.slice(0, cleanedCount).filter((q) => q.id === item.id).length,
-            }))
-            .filter((r) => r.washed > 0)
-            .map(({ item, washed }) => (
-              <span
-                key={`${item.id}-${washed}`}
-                className="anim-pop rounded-full border border-olive/30 bg-sage/15 px-2 py-0.5 font-ui text-[12px] font-extrabold text-olive"
-                data-rack={item.id}
-                data-rack-n={washed}
-              >
-                {iconOf(item.id)} ×{washed} ✓
-              </span>
-            ))}
-          {cleanedCount === 0 ? (
-            <span className="font-ui text-[11.5px] font-bold text-walnut/45">empty</span>
-          ) : null}
+            }))}
+            cleaned={cleanedCount}
+            total={queue.length}
+          />
         </div>
         {summary ? (
           <p
-            className="mt-2 text-center font-ui text-[12.5px] font-extrabold text-walnut/70"
+            className="absolute inset-x-3 z-20 text-center font-ui text-[12.5px] font-extrabold text-ivory"
+            style={{ top: pct(L.footer.top - 0.02) }}
             data-testid="wash-up-summary"
           >
             {summary.best >= 2 ? `🔥 Best combo ×${summary.best} · ` : ""}⏱ {summary.secs}s
           </p>
         ) : null}
-        <div className="mt-3 flex items-center justify-end gap-2">
+        <div
+          className="absolute inset-x-3 z-20 flex items-center justify-end gap-2"
+          style={{ top: pct(L.footer.top), height: pct(L.footer.height) }}
+        >
           {noSoap && onBuySoap ? (
             <KButton size="sm" variant="copper" className="min-h-12" onClick={onBuySoap}>
               🛒 Dish soap
@@ -1785,11 +1876,13 @@ export function WashUpSink({
               ✓ Done
             </KButton>
           ) : (
-            <p className="flex-1 font-ui text-[12px] font-bold text-walnut/60">
-              {cleanedCount} / {queue.length} · 🔁 the rest washes at the next START
+            <p className="flex-1 font-ui text-[12.5px] font-bold text-ivory/80">
+              🔁 The rest washes at the next START
             </p>
           )}
         </div>
+
+        {sheetOpen ? <SinkQueueSheet views={views} onClose={() => setSheetOpen(false)} /> : null}
       </section>
       <style>{`
         @keyframes dish-shine {

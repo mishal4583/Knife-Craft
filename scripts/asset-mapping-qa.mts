@@ -152,9 +152,10 @@ console.log("E. People are shown as people");
     /staffPortraitFile\(person\.id\)/,
     "E5: Daily Maintenance's required team shows portraits",
   );
+  // Moved with the full-screen sink (developer 2026-11-09): the strip and the list sheet draw the supply pictures (wash/SinkQueue.tsx).
   need(
-    "src/components/kc/restaurant/WashUpSink.tsx",
-    /<SupplyIcon id=\{item\.id\}/,
+    "src/components/kc/restaurant/wash/SinkQueue.tsx",
+    /<SupplyIcon\s+id=\{view\.id as never\}|<SupplyIcon id=\{v\.id as never\}/,
     "E6: the wash-up strip draws the supply pictures",
   );
 }
