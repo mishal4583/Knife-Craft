@@ -239,7 +239,7 @@ await clickButton(page, /^Serve to /);
 await sleep(2500);
 await sweepCash(page);
 const g1 = await readSave(page);
-await clickButton(page, /^Next Customer$/);
+await clickButton(page, /^(Next Customer|Back to Kitchen)$/);
 await sleep(2000);
 const done = await readSave(page);
 check(

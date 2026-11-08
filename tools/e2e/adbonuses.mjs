@@ -280,7 +280,7 @@ async function playLevelThrough() {
     // The last customer's "Next Customer" ends the level; it may wait a moment for the cash on the table or a dirty table.
     let moved = false;
     for (let k = 0; k < 8 && !moved; k++) {
-      if (await clickButton(page, /^Next Customer$/)) return true;
+      if (await clickButton(page, /^(Next Customer|Back to Kitchen)$/)) return true;
       if (await clickButton(page, /^Next (Customer|Order)/)) moved = true;
       else {
         await sweepCash(page);

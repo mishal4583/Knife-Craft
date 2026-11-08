@@ -1,3 +1,4 @@
+import type { AfterServeChip } from "@/game/restaurant/afterServe";
 import { useEffect, useRef, useState } from "react";
 import { paidLevelReward } from "@/game/levels/levelRewards";
 import { GameBridge, type GameBridgeEvent } from "@/game/GameBridge";
@@ -213,6 +214,8 @@ export function Preparation({
     batchHint?: string | null;
     /** Label for ServiceOrderComplete's advance button — defaults to "Next Customer"; a campaign level about to complete also passes `endsLevel` (App.tsx decides which, based on ServiceSession.completedCount vs the level's own requiredOrders). */
     nextLabel?: string;
+    /** The first levels: no "Next Customer" on the served card; chips for things to do on the way back to the Kitchen (restaurant/afterServe.ts). */
+    afterServe?: { chips: AfterServeChip[]; onGo: (to: string) => void };
     /** Economy V2 Phase 9 — display-only identity for the settlement breakdown (App.tsx passes the raw save fields; ServiceOrderComplete resolves them to catalog names itself, exactly like Shop.tsx already does). Omitted for plain Restaurant Service. */
     selectedSupplierId?: string;
     ownedStaffIds?: readonly string[];
@@ -1813,6 +1816,7 @@ export function Preparation({
             knife={knife}
             board={board}
             {...(service.nextLabel ? { nextLabel: service.nextLabel } : {})}
+            {...(service.afterServe ? { afterServe: service.afterServe } : {})}
             {...(service.selectedSupplierId !== undefined
               ? { selectedSupplierId: service.selectedSupplierId }
               : {})}

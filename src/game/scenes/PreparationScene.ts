@@ -82,6 +82,7 @@ import {
   pieceCentroid,
   rebuildPieces,
   resolveContinuousPosition,
+  magnetToSlot,
   visibleSeamSpanFor,
 } from "../CutGeometry";
 import {
@@ -4745,10 +4746,17 @@ export class PreparationScene extends Phaser.Scene {
           this.technique.placementJitterFrac;
       }
       const existing = this.cuts.filter((c) => c.axis === axis).map((c) => c.c);
+      // Slice-like techniques (not Chop, which is irregular on purpose): a soft magnet toward the even slots, so an honest tap
+      // scores almost perfectly and tapping the same spot walks the knife across the ingredient in even steps.
+      const slots =
+        this.technique.placementJitterFrac || this.technique.fixedRequiredCuts
+          ? 0
+          : requiredCutsFor(this.technique);
+      const magnet = slots ? magnetToSlot(band, existing, rawTarget, slots) : null;
       const c = resolveContinuousPosition(
         band,
         existing,
-        rawTarget,
+        magnet ?? rawTarget,
         TAP_KNIFE.MIN_EDGE_FRAC,
         TAP_KNIFE.MIN_GAP_FRAC,
       );

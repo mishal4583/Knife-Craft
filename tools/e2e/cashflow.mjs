@@ -69,7 +69,11 @@ try {
     const b = [...document.querySelectorAll("button")].find((x) =>
       /^Next Customer$/.test(x.textContent.trim()),
     );
-    return b ? b.disabled : "absent";
+    // Rule changed (developer 2026-11-08): level 1 has no "Next Customer" (the first 20 levels); "Back to Kitchen" is the way on.
+    const k = [...document.querySelectorAll("button")].find((x) =>
+      /^Back to Kitchen$/.test(x.textContent.trim()),
+    );
+    return b ? b.disabled : k ? k.disabled : "absent";
   });
   check(
     // Rule changed (developer 2026-11-01): no Collect cash button (the pile is tapped or swiped), and a dirty table
@@ -114,7 +118,7 @@ try {
   );
 
   const t = await flat(page);
-  await clickButton(page, /^Next Customer$/);
+  await clickButton(page, /^(Next Customer|Back to Kitchen)$/);
   await sleep(1500);
   const done = await readSave(page);
   const rewards = done.economyLedger.filter((e) => e.category === "completion-reward");

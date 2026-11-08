@@ -1,0 +1,117 @@
+/* The 2nd Floor button on the map (UpstairsButton.tsx). Transform and opacity animation only; Reduced Motion turns it off. */
+.upstairs-btn {
+  position: absolute;
+  bottom: 6rem;
+  right: 0.75rem;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 56px;
+  padding: 5px 16px 5px 5px;
+  border-radius: 999px;
+  border: 2px solid #f1c76e;
+  background: linear-gradient(180deg, #9a5c34 0%, #6b3d20 55%, #4f2b15 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 238, 196, 0.65),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.22),
+    0 7px 16px rgba(35, 16, 4, 0.55);
+  color: #fff4dc;
+  text-align: left;
+}
+.upstairs-btn.is-locked {
+  border-color: #cdb78d;
+  background: linear-gradient(180deg, #f3e6c8, #e0cda3);
+  color: #7a6342;
+  box-shadow: 0 4px 10px rgba(35, 16, 4, 0.3);
+}
+.upstairs-medal {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  flex: none;
+  border-radius: 999px;
+  background: radial-gradient(circle at 35% 30%, #fff1b8, #f0bd4c 55%, #c98a1d);
+  border: 2px solid #fff2c4;
+  box-shadow: 0 2px 4px rgba(35, 16, 4, 0.45);
+}
+.upstairs-btn.is-locked .upstairs-medal {
+  background: radial-gradient(circle at 35% 30%, #efe3c6, #d2bd90);
+  border-color: #f6ecd2;
+}
+.upstairs-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+.upstairs-title {
+  font-family: "Fraunces", serif;
+  font-weight: 900;
+  font-size: 17px;
+  letter-spacing: 0.01em;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
+}
+.upstairs-btn.is-locked .upstairs-title {
+  text-shadow: none;
+}
+.upstairs-note {
+  margin-top: 2px;
+  font-family: "Nunito", sans-serif;
+  font-weight: 800;
+  font-size: 12px;
+  color: #ffe3a0;
+}
+.upstairs-btn.is-locked .upstairs-note {
+  color: #8d7650;
+}
+.upstairs-chip {
+  position: absolute;
+  top: -9px;
+  right: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 2px solid #fff4dc;
+  background: linear-gradient(180deg, #ef6a4f, #c9382a);
+  font-family: "Nunito", sans-serif;
+  font-weight: 900;
+  font-size: 12px;
+  color: #fff;
+  box-shadow: 0 2px 4px rgba(35, 16, 4, 0.45);
+}
+.upstairs-glow {
+  position: absolute;
+  inset: -5px;
+  border-radius: 999px;
+  border: 3px solid #ffd978;
+  box-shadow: 0 0 16px 3px rgba(255, 210, 110, 0.85);
+  animation: upstairs-breathe 1.5s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes upstairs-breathe {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.98);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+.upstairs-btn[data-attention="1"] .upstairs-medal {
+  animation: upstairs-bob 1.5s ease-in-out infinite;
+}
+@keyframes upstairs-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+.kc-reduced-motion .upstairs-glow,
+.kc-reduced-motion .upstairs-btn[data-attention="1"] .upstairs-medal {
+  animation: none;
+}

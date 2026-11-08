@@ -100,7 +100,7 @@ if (/ORDER READY/i.test(await page.evaluate(() => document.body.innerText))) {
   await clickButton(page, /^Serve to /);
   await sleep(900);
 }
-await clickButton(page, /^Next Customer$/);
+await clickButton(page, /^(Next Customer|Back to Kitchen)$/);
 await sleep(1500);
 ev = await events();
 const done = ev.find(([n]) => n === "progression_completed");

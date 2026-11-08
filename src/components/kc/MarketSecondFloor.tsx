@@ -1,3 +1,4 @@
+import { firstMachineNeeded } from "@/game/restaurant/floorGuide";
 import { Badge, KButton, Panel } from "./common/primitives";
 import { useUnlockText } from "./navLevel";
 import { ShopItemArt, StockPill } from "./common/ShopItemArt";
@@ -127,6 +128,7 @@ export function MarketSecondFloor({
             const locked = !isStationUnlocked(d, level);
             const lvl = o?.level ?? 0;
             const price = machinePrice(d, floor.branch);
+            const needed = owned === 0 ? firstMachineNeeded(price) : price;
             const next =
               o && lvl < MAX_STATION_LEVEL ? tierPrice(d, (lvl + 1) as 2 | 3, floor.branch) : null;
             const tierLocked = lvl + 1 === 3 && level < TIER3_MIN_LEVEL;
@@ -166,13 +168,18 @@ export function MarketSecondFloor({
                       </StatChip>
                     </div>
                     <div className="mt-auto pt-2">
+                      {/* The FIRST machine needs money left to carry on (developer 2026-11-08): the price + the reserve. */}
                       <BuyButton
-                        tone={locked || save.credits < price ? "short" : "go"}
+                        tone={locked || save.credits < needed ? "short" : "go"}
                         icon={!locked}
-                        disabled={locked || save.credits < price}
+                        disabled={locked || save.credits < needed}
                         onClick={() => run({ kind: "buy", id: d.id }, d.name, price)}
                       >
-                        {locked ? u.badge(d.unlockLevel) : `Buy ${formatUsd(price)}`}
+                        {locked
+                          ? u.badge(d.unlockLevel)
+                          : save.credits >= price && save.credits < needed
+                            ? `Keep ${formatUsd(needed - price)} for food`
+                            : `Buy ${formatUsd(price)}`}
                       </BuyButton>
                       {locked ? null : <ShortfallOffer price={price} item={d.name} />}
                     </div>

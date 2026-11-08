@@ -7,9 +7,9 @@ import { PaigePiece, PaigePoseImg, paigeUrl } from "./PaigeArt";
 import "./assistant.css";
 
 /**
- * PAIGE'S BUBBLE (developer 2026-11-07; rules and beats: game/restaurant/assistant.ts). A half-body Paige bottom-left, a painted speech
- * bubble above her, an optional glowing ring and arrow on a real button. It never covers the screen (no scrim: the player can ignore her
- * and tap anything), never shows over another card (`calm`), shows at most ONE beat per screen visit (`visit`), and the beat on screen is
+ * PAIGE'S POPUP (developer 2026-11-07; the popup look and the dimmed, blurred background 2026-11-08; rules and beats:
+ * game/restaurant/assistant.ts). A card like every instruction popup (her round portrait, her words, the buttons) over a dimmed and blurred
+ * screen, with an optional glowing ring and arrow on a real button, which is left bright. It never shows over another card (`calm`), shows at most ONE beat per screen visit (`visit`), and the beat on screen is
  * LATCHED: saving "seen" can never swap it for another mid-sentence. Presentation only: the hire, the seen mark and "Take me there" are the
  * app's (`onHire`, `onSeen`, `onGo`).
  */
@@ -127,7 +127,6 @@ export function AssistantHost({
     setActive(null);
   };
 
-  const inline = !last || (!beat.hire && !beat.go && current.text.length <= 46);
   const actions = (
     <>
       {!last ? (
@@ -187,6 +186,10 @@ export function AssistantHost({
   const wide = rect ? rect.w / Math.max(1, rect.h) > 1.7 : false;
   const ringW = rect ? rect.w + (wide ? 30 : 40) : 0;
   const ringH = rect ? rect.h + (wide ? 22 : 40) : 0;
+  // The card sits away from what she points at: a button in the lower half puts her at the top, otherwise at the bottom.
+  const hostH = hostRef.current?.offsetHeight ?? 0;
+  const cardTop = !!rect && hostH > 0 && rect.y + rect.h / 2 > hostH * 0.5;
+  const dismiss = beat.hire ? undefined : close;
 
   return (
     <div
@@ -195,10 +198,27 @@ export function AssistantHost({
       data-beat={beat.id}
       data-line={line}
       data-pose={current.pose}
-      className="pointer-events-none absolute inset-0 z-[45] overflow-hidden"
+      className="absolute inset-0 z-[70] overflow-hidden"
     >
+      {/* The popup is the one thing on the screen (developer 2026-11-08): the background is dimmed and blurred; what she points at is
+          left bright by a spotlight, so the ring and the button stay in view. Tapping the dark closes the tip. */}
+      <div
+        data-testid="assistant-scrim"
+        onClick={dismiss}
+        className={cn("absolute inset-0", rect ? "" : "bg-walnut-dark/55 backdrop-blur-[3px]")}
+      />
       {rect ? (
         <>
+          <div
+            onClick={dismiss}
+            className="absolute rounded-2xl shadow-[0_0_0_200vmax_rgba(36,20,10,0.6)]"
+            style={{
+              left: rect.x - 6,
+              top: rect.y - 6,
+              width: rect.w + 12,
+              height: rect.h + 12,
+            }}
+          />
           <PaigePiece
             name={wide ? "ui-ring-rect" : "ui-ring-round"}
             className="paige-ring absolute"
@@ -220,48 +240,49 @@ export function AssistantHost({
       ) : null}
 
       <div
-        className="paige-in absolute bottom-[72px] left-2 flex max-w-[calc(100%-16px)] flex-col items-start land:bottom-3 land:left-[calc(var(--kc-rail)+8px)]"
+        className={cn(
+          "pointer-events-none absolute inset-x-0 flex justify-center p-3",
+          rect
+            ? cardTop
+              ? "top-[max(56px,env(safe-area-inset-top))]"
+              : "bottom-[88px]"
+            : "inset-y-0 items-center",
+        )}
         role="status"
         aria-live="polite"
       >
         <div
-          className="paige-bubble pointer-events-auto relative w-[300px] max-w-full"
+          className="paige-in pointer-events-auto relative w-full max-w-[360px] rounded-[22px] border-2 bg-ivory p-3 shadow-lift data-[tone=success]:border-olive/60 data-[tone=warning]:border-tomato/60 data-[tone=normal]:border-copper/50"
           data-tone={tone}
           data-testid="assistant-bubble"
-          style={{ borderImageSource: `url(${paigeUrl(`bubble-${tone}`)})` }}
         >
-          <PaigePiece
-            name="ribbon"
-            className="absolute -left-1 -top-5 h-[34px] w-auto"
-            style={{ zIndex: 1 }}
-          />
-          <span className="absolute -top-[15px] left-[14px] z-[2] font-display text-[13px] font-black leading-none text-ivory drop-shadow">
-            {ASSISTANT_NAME}
-          </span>
-          <div className="paige-body">
-            {/* a short tip puts its one button on the same row as the words (no blank band under them); the wide buttons wrap below */}
-            <div className={inline ? "flex items-end gap-1" : undefined}>
+          <div className="flex items-center gap-3">
+            <span className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full border-2 border-copper/40 bg-walnut/10">
+              <PaigePoseImg
+                pose={current.pose}
+                className="h-full w-full object-cover object-[50%_12%]"
+              />
+              {current.pose === "cheer" || current.pose === "clap" ? (
+                <PaigePiece
+                  name="ui-sparkle"
+                  className={cn("paige-sparkle absolute -right-1 -top-1 h-7 w-7")}
+                />
+              ) : null}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="font-ui text-[11px] font-extrabold uppercase tracking-[0.14em] text-copper">
+                {ASSISTANT_NAME} ·{" "}
+                {tone === "success" ? "Well done" : tone === "warning" ? "Heads up" : "Tip"}
+              </p>
               <p
                 data-testid="assistant-text"
-                className="min-w-0 flex-1 px-1 pb-1.5 pt-2 font-hand text-[19px] leading-[1.22] text-walnut-dark"
+                className="mt-0.5 font-display text-[16px] font-extrabold leading-snug text-walnut-dark"
               >
                 {current.text}
               </p>
-              {inline ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
             </div>
-            {!inline ? (
-              <div className="flex items-center justify-end gap-2 px-1">{actions}</div>
-            ) : null}
           </div>
-        </div>
-        <div className="relative -mt-2 ml-1">
-          <PaigePoseImg pose={current.pose} className="h-[clamp(120px,23vh,200px)] w-auto" />
-          {current.pose === "cheer" || current.pose === "clap" ? (
-            <PaigePiece
-              name="ui-sparkle"
-              className={cn("paige-sparkle absolute -right-3 top-2 h-8 w-8")}
-            />
-          ) : null}
+          <div className="mt-3 flex items-center justify-end gap-2">{actions}</div>
         </div>
       </div>
     </div>

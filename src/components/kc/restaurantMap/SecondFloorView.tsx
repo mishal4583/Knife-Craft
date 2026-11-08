@@ -63,6 +63,8 @@ import {
   type StationId,
 } from "@/game/restaurant/secondFloor";
 import { SHORT, nextFloorGoal } from "@/game/restaurant/floorGoal";
+import { firstMachineGuide, firstMachineNeeded } from "@/game/restaurant/floorGuide";
+import { PointerHand } from "../common/PointerHand";
 import { goldenAmounts, goldenAt, goldenAvailable } from "@/game/restaurant/goldenGuest";
 import type { NormalizedRect } from "./restaurantMap";
 import "./RestaurantMap.css";
@@ -220,6 +222,8 @@ export function SecondFloorView({
   // The best purchase to aim at; what waits on the floor counts toward the price.
   const goal = nextFloorGoal(save, playerLevel, save.credits + waiting);
   const goalShort = goal ? Math.max(0, goal.price - (save.credits + waiting)) : 0;
+  // The first machine, step by step (game/restaurant/floorGuide.ts): save up, then buy it with money left to carry on.
+  const firstGuide = firstMachineGuide(save, playerLevel, save.credits + waiting);
 
   const hype = floor.hype ?? 0;
   const rushOn = rushActive(floor, tick);
@@ -536,6 +540,9 @@ export function SecondFloorView({
       const locked = !isStationUnlocked(d, playerLevel);
       const price = machinePrice(d, floor.branch);
       const short = shortfall(price, save.credits);
+      // The FIRST machine is bought only with money left to carry on (food, wages): developer 2026-11-08.
+      const reserveShort =
+        ownedCount === 0 ? shortfall(firstMachineNeeded(price), save.credits) : 0;
       // The first two machines are self-serve; later ones run at half speed until a Floor Server is hired.
       const needsServer =
         SELF_SERVE_MACHINES + (floor.servers ?? 0) * FLOOR_STAFF.server.covers <= ownedCount;
@@ -558,14 +565,16 @@ export function SecondFloorView({
           <div className="mt-3">
             <KButton
               full
-              disabled={locked || short > 0}
+              disabled={locked || short > 0 || reserveShort > 0}
               onClick={() => act({ kind: "buy", id: d.id })}
             >
               {locked
                 ? `🔒 For sale ${u.when(d.unlockLevel)}`
                 : short > 0
                   ? `${formatUsd(price)} · need ${formatUsd(short)} more`
-                  : `Buy for ${formatUsd(price)}`}
+                  : reserveShort > 0
+                    ? `Save ${formatUsd(reserveShort)} more to keep cooking`
+                    : `Buy for ${formatUsd(price)}`}
             </KButton>
           </div>
         </>
@@ -833,7 +842,70 @@ export function SecondFloorView({
         </div>
       ) : null}
 
-      {!open && goal ? (
+      {!open && firstGuide ? (
+        <div
+          className="absolute bottom-[88px] left-2 right-2 z-20 rounded-2xl border-2 border-copper/50 bg-ivory/95 p-3 shadow-lg"
+          data-testid="floor-first-machine"
+          data-stage={firstGuide.stage}
+        >
+          <p className="font-ui text-[11px] font-extrabold uppercase tracking-[0.14em] text-copper">
+            Your first machine
+          </p>
+          {firstGuide.stage === "save" ? (
+            <>
+              <p className="mt-0.5 font-display text-[16px] font-extrabold leading-snug text-walnut-dark">
+                Save {formatUsd(firstGuide.missing)} more
+              </p>
+              <p className="font-hand text-[16px] leading-snug text-walnut/80">
+                The {firstGuide.name} machine is {formatUsd(firstGuide.price)}. Keep{" "}
+                {formatUsd(firstGuide.needed - firstGuide.price)} for food and wages.
+              </p>
+              <div
+                className="mt-1.5 h-3 overflow-hidden rounded-full bg-walnut/15"
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={Math.round(firstGuide.fraction * 100)}
+              >
+                <div
+                  className="h-full rounded-full bg-[linear-gradient(90deg,#8aa07a,#d7a85a)]"
+                  style={{ width: `${Math.round(firstGuide.fraction * 100)}%` }}
+                />
+              </div>
+              <p className="mt-0.5 font-ui text-[12px] font-bold text-walnut/70">
+                {formatUsd(firstGuide.have)} of {formatUsd(firstGuide.needed)} · every service pays
+                more
+              </p>
+            </>
+          ) : (
+            <div className="flex items-center gap-2">
+              <div className="min-w-0 flex-1">
+                <p className="font-display text-[16px] font-extrabold leading-snug text-walnut-dark">
+                  Buy the {firstGuide.name} machine
+                </p>
+                <p className="font-hand text-[16px] leading-snug text-walnut/80">
+                  {formatUsd(firstGuide.price)} · you still keep{" "}
+                  {formatUsd(firstGuide.have - firstGuide.price)}. It earns while you cook.
+                </p>
+              </div>
+              <div className="relative shrink-0">
+                <span
+                  className="pointer-events-none absolute -top-9 left-1/2 z-10 -translate-x-1/2 rotate-180"
+                  data-testid="floor-first-machine-hand"
+                >
+                  <PointerHand size={34} />
+                </span>
+                <KButton
+                  className="h-12 px-4 text-[13px]"
+                  onClick={() => act({ kind: "buy", id: firstGuide.id })}
+                >
+                  Buy
+                </KButton>
+              </div>
+            </div>
+          )}
+        </div>
+      ) : !open && goal ? (
         <div
           className="absolute bottom-[88px] left-2 right-2 z-20 flex items-center gap-2 rounded-2xl border border-walnut/15 bg-ivory/95 p-2 shadow-lg"
           data-testid="floor-goal"

@@ -208,7 +208,7 @@ check(
 );
 
 // ---------- E5: Finish Level ----------
-await clickButton(page, /^Next Customer$/);
+await clickButton(page, /^(Next Customer|Back to Kitchen)$/);
 await sleep(1200);
 await toKitchen();
 const done = await readSave(page);

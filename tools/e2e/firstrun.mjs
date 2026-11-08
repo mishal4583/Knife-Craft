@@ -223,7 +223,7 @@ try {
   );
   await sleep(1500);
   await sweepCash(page);
-  await clickButton(page, /^Next Customer$/);
+  await clickButton(page, /^(Next Customer|Back to Kitchen)$/);
   await sleep(1800);
   const done = await readSave(page);
   await page.evaluate(() => document.querySelector('[data-nav="kitchen"]')?.click());

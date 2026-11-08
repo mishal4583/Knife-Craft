@@ -99,7 +99,7 @@ async function serveOne() {
   await clickButton(page, /^Serve to /);
   await sleep(3500);
   await sweepCash(page);
-  await clickButton(page, /^Next Customer$/);
+  await clickButton(page, /^(Next Customer|Back to Kitchen)$/);
   await sleep(2000);
 }
 

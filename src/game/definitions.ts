@@ -160,7 +160,7 @@ export const TECHNIQUES: Record<TechniqueId, TechniqueDefinition> = {
     description: "Fine, parallel strokes — every cut follows the first.",
     guideType: "parallel-free",
     axis: "v",
-    requiredCuts: 10, // knifecraft.html recipe "carrot-julienne-10"
+    requiredCuts: 8, // was 10 ("carrot-julienne-10"); developer 2026-11-08: fewer taps, the cutting must not feel hectic
     counts: null,
     perpSnap: false,
     parallelSnap: true,
@@ -333,14 +333,16 @@ export const TAP_KNIFE = {
   // A small natural tilt so the blade never reads as mathematically
   // vertical/robotic (§8) — randomized per cut within this range.
   ANGLE_JITTER_DEG: 4,
-  PREP_MS: 100,
-  PAUSE_MS: 55,
-  CUT_MS: 130,
-  IMPACT_MS: 40,
-  RETRACT_MS: 130,
+  // Developer 2026-11-08 ("increase the cutting speed ... I do not want players to feel the cutting too hectic"): one tap cut keeps the
+  // knife busy 320 ms (was 455), so quick tapping never waits on the blade.
+  PREP_MS: 70,
+  PAUSE_MS: 30,
+  CUT_MS: 100,
+  IMPACT_MS: 30,
+  RETRACT_MS: 90,
   // How close to the end of the current sequence a new tap still buffers
   // instead of being dropped (§17).
-  BUFFER_TAIL_MS: 80,
+  BUFFER_TAIL_MS: 110,
   // Reuses the SAME hitstop mechanic Perfect Slice already uses (a short
   // delay before the piece-reveal tween starts — §12's "thunk, not a
   // freeze"), just a touch lighter so Perfect Slice's own hitstop
@@ -356,7 +358,8 @@ export const TAP_KNIFE = {
   // why stacking a second 13%-of-band margin here used to exclude a huge
   // swath of visibly-cuttable ingredient near every edge).
   MIN_EDGE_FRAC: 0.03,
-  MIN_GAP_FRAC: 0.07,
+  // 0.10 (was 0.07): a slice holds 8 cuts, not 12 - fewer taps to finish an ingredient (developer 2026-11-08).
+  MIN_GAP_FRAC: 0.1,
 } as const;
 
 /**

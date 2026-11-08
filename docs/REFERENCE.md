@@ -441,6 +441,12 @@ Focused suites (`npx tsx scripts/<name>.mts`):
 - `restaurant-guide-qa` — the Restaurant Guide (`restaurant/restaurantGuide.ts`, `GuideCard.tsx`):
   pacing, done-means-gone, Later / 10-level reminders, `business.guideSeen` through the real
   SaveManager, wiring. See HANDOFF 2026-10-29.
+- `tap-cut-qa` — the cutting speed and tap magnet (developer 2026-11-08): a tap cut is 320 ms at 1.0, every knife is 0.9 or faster
+  and the basic knife 0.85, a slice and a chop are 8 cuts, `magnetToSlot` (tapping one spot gives a perfect even run); Chop and
+  Halve are left alone. Browser: none (the feel is the player's).
+- `bug-batch-qa` — the 11 items of "Bugs and Issues KnifeCraft.docx" (2026-11-08): the restroom picture stays still, Paige's popup,
+  `celebrations.ts`, `floorGuide.ts` (the first machine), the 2nd Floor button, NPC size and seating, names, `afterServe.ts` (no
+  "Next Customer" for 20 levels). Browser: `tools/e2e/bugbatch.mjs`. See HANDOFF 2026-11-08.
 - `early-levels-qa` — the first-20-levels schedule (`config/earlyLevels.ts`, developer 2026-11-08):
   where each system, mini-game and chore opens, the dishes with something new, "Unpack the
   delivery", Paige's Second Floor offer (needs the first machine + $300), "Closed for tonight",

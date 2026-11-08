@@ -1,3 +1,4 @@
+import type { AfterServeChip } from "@/game/restaurant/afterServe";
 import { foodFromStock } from "@/game/restaurant/restaurantEconomy";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AudioManager } from "@/game/AudioManager";
@@ -188,6 +189,7 @@ export function ServiceOrderComplete({
   cashRemainingOverride,
   auto = false,
   onStopAuto,
+  afterServe,
 }: {
   /** Keeps the served result mounted while a temporary cash-at-table view is open. */
   hidden?: boolean;
@@ -242,6 +244,11 @@ export function ServiceOrderComplete({
   /** The hired Prep Cook runs the service (restaurant/prepCookAuto.ts): Serve and Next Customer press themselves, a beat apart; the cash stays on the tables. */
   auto?: boolean;
   onStopAuto?: () => void;
+  /**
+   * The first levels (developer 2026-11-08): no "Next Customer" here. The player goes back to the Kitchen (the next customer waits
+   * there) and may do something useful on the way: these chips open it (game/restaurant/afterServe.ts). Absent = the usual buttons.
+   */
+  afterServe?: { chips: AfterServeChip[]; onGo: (to: string) => void };
 }) {
   const [served, setServed] = useState<ServeResult | null>(null);
   const { customer, recipe } = serviceOrder;
@@ -527,7 +534,31 @@ export function ServiceOrderComplete({
               </p>
             ) : null}
             <div className="mt-5 space-y-2 [@media(max-height:640px)]:mt-3">
-              {isBusinessOrder && served.businessCustomers?.complete ? null : (
+              {afterServe ? (
+                <div data-testid="after-serve">
+                  <p className="font-hand text-[17px] leading-snug text-walnut/80">
+                    {afterServe.chips.length > 0
+                      ? "While you wait, you could…"
+                      : "Your next customer is waiting in the Kitchen."}
+                  </p>
+                  {afterServe.chips.length > 0 ? (
+                    <div className="mt-1.5 flex flex-wrap justify-center gap-1.5">
+                      {afterServe.chips.map((c) => (
+                        <button
+                          key={c.id}
+                          type="button"
+                          data-testid={`after-serve-${c.id}`}
+                          onClick={() => afterServe.onGo(c.to)}
+                          className="press flex min-h-12 items-center gap-1.5 rounded-2xl border-2 border-[#b8873f] bg-[linear-gradient(170deg,#f7e3b0,#e8c27a)] px-3 font-ui text-[13.5px] font-extrabold text-walnut-dark shadow-soft"
+                        >
+                          <span aria-hidden>{c.icon}</span>
+                          {c.label}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              ) : isBusinessOrder && served.businessCustomers?.complete ? null : (
                 <>
                   {blockNext ? (
                     <p
@@ -554,7 +585,7 @@ export function ServiceOrderComplete({
                   {extraAction.label}
                 </KButton>
               ) : null}
-              <KButton full variant="ghost" onClick={onExit}>
+              <KButton full variant={afterServe ? "wood" : "ghost"} onClick={onExit}>
                 {isBusinessOrder ? "Back to Service" : "Back to Kitchen"}
               </KButton>
             </div>

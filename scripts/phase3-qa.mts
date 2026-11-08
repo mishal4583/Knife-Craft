@@ -120,14 +120,14 @@ const campaign = LEVELS.map((l, i) => {
 // ───────────────────────────────────────────────────────────── A. Fever
 assert(
   FEVER_ON_A_MILESTONE && (COMBO.MILESTONES as readonly number[]).includes(FEVER.AT_COMBO),
-  "A1: Fever lights on an existing combo milestone (×10), not a new threshold",
+  "A1: Fever lights on an existing combo milestone (×5, was ×10 before 2026-11-08), not a new threshold",
 );
 assert(
   !feverLights(FEVER.AT_COMBO - 1, false, false) &&
     feverLights(FEVER.AT_COMBO, false, false) &&
     !feverLights(FEVER.AT_COMBO, true, false) &&
     !feverLights(FEVER.AT_COMBO + 3, false, true),
-  "A2: lights at ×10, not before, never twice an order, never while already on",
+  "A2: lights at ×5, not before, never twice an order, never while already on",
 );
 const startFever = body(scene, "private startFever(");
 const endFever = body(scene, "private endFever(");

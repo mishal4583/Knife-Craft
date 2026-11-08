@@ -117,7 +117,7 @@ check(
   second.played && second.ready && /Next Customer/.test(servedTwo),
   { second, text: servedTwo.slice(0, 200) },
 );
-await clickButton(page, /^Next Customer$/);
+await clickButton(page, /^(Next Customer|Back to Kitchen)$/);
 await sleep(1800);
 const end = await readSave(page);
 check(

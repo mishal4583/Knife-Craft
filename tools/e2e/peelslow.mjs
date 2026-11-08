@@ -23,7 +23,7 @@ const check = (id, ok, detail) => {
   console.log(`${ok ? "PASS" : "FAIL"} ${id}`, detail === undefined ? "" : JSON.stringify(detail));
 };
 const FOOD = Object.fromEntries(
-  ["potato", "tomato", "bread", "garlic", "onion"].map((id) => [
+  ["potato", "carrot", "tomato", "bread", "garlic", "onion"].map((id) => [
     id,
     { ingredientId: id, quantity: 12, unitCost: 0, purchaseDay: 1 },
   ]),

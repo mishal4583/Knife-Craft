@@ -66,13 +66,18 @@ function stepsFor(actor: FloorActor, frames: Frame[], carrying: boolean[]): Step
 }
 
 /** What each layer shows (sheet, column, row, whether it walks, whether it is mirrored, whether it is the table cycle). */
-function layerProps(key: string): {
+function layerProps(
+  key: string,
+  guest = false,
+): {
   sheet: "a" | "b";
   col: number;
   row: number;
   walk?: boolean;
   flip?: boolean;
   eat?: boolean;
+  /** A seated guest seen from behind: they face the table, away from the camera (developer 2026-11-08). */
+  back?: boolean;
 } {
   if (key.startsWith("work:")) return { sheet: "b", col: Number(key.slice(5)), row: 0 };
   switch (key) {
@@ -93,9 +98,13 @@ function layerProps(key: string): {
     case "hand":
       return { sheet: "a", col: CELL.hand, row: 3 };
     case "sit":
-      return { sheet: "a", col: CELL.seated, row: 0 };
+      return guest
+        ? { sheet: "a", col: 1, row: 1, back: true }
+        : { sheet: "a", col: CELL.seated, row: 0 };
     case "eat":
-      return { sheet: "a", col: CELL.seated, row: 0, eat: true };
+      return guest
+        ? { sheet: "a", col: 1, row: 1, back: true, eat: true }
+        : { sheet: "a", col: CELL.seated, row: 0, eat: true };
     default:
       return { sheet: "a", col: CELL.idle, row: 0 };
   }
@@ -235,7 +244,7 @@ export function MapCast({
                 style={{ "--cs-scale": info.scale } as CSSProperties}
               >
                 {layers.map((layer, n) => {
-                  const p = layerProps(layer);
+                  const p = layerProps(layer, actor.kind === "guest");
                   return (
                     <div
                       key={layer}
@@ -251,7 +260,15 @@ export function MapCast({
                         walk={!!p.walk}
                         flip={!!p.flip}
                         seconds={0.72 / info.speed}
-                        className={p.eat ? "cs-eat" : ""}
+                        className={
+                          p.back
+                            ? p.eat
+                              ? "cs-back cs-back-eat"
+                              : "cs-back"
+                            : p.eat
+                              ? "cs-eat"
+                              : ""
+                        }
                         style={p.eat ? { animationDelay: `${-(actor.delay % 16)}s` } : undefined}
                       />
                     </div>

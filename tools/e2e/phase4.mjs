@@ -204,7 +204,7 @@ const orderId = () =>
 const seqOf = (id) => Number(String(id).split("-").pop());
 /** From a serve card: finish the order/level and get back to the Kitchen (past any level-complete cards). */
 async function backToKitchen() {
-  await clickButton(page, /^Next Customer$/);
+  await clickButton(page, /^(Next Customer|Back to Kitchen)$/);
   await sleep(2500);
   for (let k = 0; k < 4; k++) {
     if (await page.$('[data-nav="kitchen"]')) break;

@@ -21,3 +21,5 @@ export const MOP_FROM_LEVEL = 14;
 export const RESTROOM_FROM_LEVEL = 16;
 /** The Second Floor's first machine (the Coffee machine) costs $500: the card appears when the player has that and this much to carry on. */
 export const SECOND_FLOOR_RESERVE_CENTS = 30_000;
+/** The served card has no "Next Customer" through this level (developer 2026-11-08): the player walks back to the Kitchen and does something else on the way. */
+export const NEXT_CUSTOMER_HIDDEN_THROUGH_LEVEL = 20;

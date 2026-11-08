@@ -43,10 +43,30 @@
   97%  { background-position: 100% 0%; }
 }
 
+/* A seated guest seen from behind (they face the table, away from the camera): the waist up; the chair hides the legs. A guest who is
+   eating bobs a little (transform only). */
+.cs-back {
+  clip-path: inset(0 0 36% 0);
+  transform: translateY(8%);
+}
+
+.cs-back-eat {
+  animation: cs-back-eat 3.2s ease-in-out infinite;
+}
+
+@keyframes cs-back-eat {
+  0%, 100% { transform: translateY(8%); }
+  50% { transform: translateY(6.5%); }
+}
+
+.kc-reduced-motion .cs-back-eat {
+  animation: none;
+}
+
 /* A person on a map: a square box the size of one cell. The figure is 80 % of the cell tall, feet on its 92.5 % line, so the box is
    lifted by that much and the feet land on the actor's spot. `--cs-scale` is the look's size next to an adult (a child 0.74). */
 .floor-person.floor-person--sprite {
-  --cs-size: clamp(48px, 16vw, 92px);
+  --cs-size: clamp(32px, 10.5vw, 62px); /* 2026-11-08: was clamp(48px, 16vw, 92px) - the people were too big next to the rooms */
   width: calc(var(--cs-size) * var(--cs-scale, 1));
   height: calc(var(--cs-size) * var(--cs-scale, 1));
   transform: translate(-50%, -92.5%);
@@ -82,9 +102,17 @@
   position: absolute;
   left: 50%;
   top: 89%; /* the old puppet's feet line in its box */
-  width: calc(190% * var(--cs-scale, 1));
+  width: calc(135% * var(--cs-scale, 1)); /* 2026-11-08: was 190% - too big next to the tables and chairs */
   aspect-ratio: 1 / 1;
   transform: translate(-50%, -92.5%);
+}
+
+/* A seated guest seen from behind (they face the table): the waist up, the legs are behind the chair. */
+.guest-sprite .guest-back-view {
+  position: absolute;
+  inset: 0;
+  clip-path: inset(0 0 36% 0);
+  transform: translateY(8%);
 }
 
 .guest-sprite .guest-pose {

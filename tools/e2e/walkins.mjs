@@ -194,7 +194,7 @@ check(
     (await guestButton()) === null,
   { added, price, wallet: after.credits - before.credits, guests: after.levelProgress.menuGuests },
 );
-await clickButton(page, /^Next Customer$/);
+await clickButton(page, /^(Next Customer|Back to Kitchen)$/);
 await sleep(1200);
 await toKitchen();
 const done = await readSave(page);

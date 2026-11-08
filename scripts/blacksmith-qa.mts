@@ -263,8 +263,10 @@ const levelKnife = (stat: "sharpness" | "speed" | "handling", level: number) => 
   const base = knifeTapCadence(TAP_KNIFE, chef);
   const fast = knifeTapCadence(TAP_KNIFE, levelKnife("speed", 5));
   assert(
-    tapSequenceMs(base) === 455,
-    `G: level-1 chef Slice cut keeps the knife busy 455 ms (unchanged) — got ${tapSequenceMs(base)}`,
+    // Rule changed (developer 2026-11-08, cutting speed): the basic knife has the top knife's speed (timingMult 0.85) and the tap cut is
+    // 320 ms at 1.0 (was 455): the level-1 chef keeps the knife busy 272 ms (was 455).
+    Math.round(tapSequenceMs(base)) === 272,
+    `G: level-1 chef Slice cut keeps the knife busy 272 ms (was 455 before 2026-11-08) — got ${tapSequenceMs(base)}`,
   );
   assert(
     fast.PREP_MS < base.PREP_MS &&
@@ -275,8 +277,8 @@ const levelKnife = (stat: "sharpness" | "speed" | "handling", level: number) => 
   );
   const saved = tapSequenceMs(base) - tapSequenceMs(fast);
   assert(
-    Math.round(saved) === 43,
-    `G3: Speed 5 saves ~43 ms per Slice cut (${Math.round(saved)} ms, −15% of the movement beats)`,
+    Math.round(saved) === 24,
+    `G3: Speed 5 saves ~24 ms per Slice cut (${Math.round(saved)} ms, −15% of the movement beats; was 43 at the old cadence)`,
   );
   let monotone = true;
   for (let l = 2; l <= 5; l++)
@@ -320,9 +322,9 @@ const levelKnife = (stat: "sharpness" | "speed" | "handling", level: number) => 
 // ===== I: Handling effect =====
 {
   assert(
-    tapBufferWindowMs(TAP_KNIFE.BUFFER_TAIL_MS, chef) === 80 &&
-      tapBufferWindowMs(TAP_KNIFE.BUFFER_TAIL_MS, levelKnife("handling", 5)) === 240,
-    "I: Handling 5 queues a tap from 240 ms before the cut ends (was 80 ms)",
+    tapBufferWindowMs(TAP_KNIFE.BUFFER_TAIL_MS, chef) === 110 &&
+      tapBufferWindowMs(TAP_KNIFE.BUFFER_TAIL_MS, levelKnife("handling", 5)) === 330,
+    "I: Handling 5 queues a tap from 330 ms before the cut ends (was 110 ms; 80 / 240 before 2026-11-08)",
   );
   const base = knifeTapCadence(TAP_KNIFE, chef);
   const handy = knifeTapCadence(TAP_KNIFE, levelKnife("handling", 5));
@@ -358,25 +360,25 @@ function cutsLanded(knife: typeof chef, intervalMs: number, durationMs: number):
 }
 {
   const full = { ...chef, tuning: knifeTuningFor({ sharpness: 5, speed: 5, handling: 5 }) };
-  const a = cutsLanded(chef, 300, 10_000),
-    b = cutsLanded(full, 300, 10_000);
+  const a = cutsLanded(chef, 200, 10_000),
+    b = cutsLanded(full, 200, 10_000);
   assert(
     b > a,
-    `J: tapping every 300 ms for 10 s — the level-1 chef lands ${a} cuts, a fully forged chef ${b} (+${Math.round((b / a - 1) * 100)}%)`,
+    `J: tapping every 200 ms for 10 s — the level-1 chef lands ${a} cuts, a fully forged chef ${b} (+${Math.round((b / a - 1) * 100)}%)`,
   );
   const c = cutsLanded(chef, 120, 10_000),
     d = cutsLanded(full, 120, 10_000);
   assert(d > c, `J2: tapping as fast as possible (every 120 ms) — ${c} vs ${d} cuts in 10 s`);
-  const e = cutsLanded(chef, 400, 10_000),
+  const e = cutsLanded(chef, 200, 10_000),
     f = cutsLanded(
       { ...chef, tuning: knifeTuningFor({ sharpness: 1, speed: 1, handling: 5 }) },
-      400,
+      200,
       10_000,
     );
-  assert(f > e, `J3: Handling alone — a 400 ms tapper loses fewer taps (${e} → ${f} cuts)`);
+  assert(f > e, `J3: Handling alone — a 200 ms tapper loses fewer taps (${e} → ${f} cuts)`);
   assert(
     tapSequenceMs(knifeTapCadence(TAP_KNIFE, full)) >=
-      tapSequenceMs(knifeTapCadence(TAP_KNIFE, knifeOrDefault("paring"))) * 0.85,
+      tapSequenceMs(knifeTapCadence(TAP_KNIFE, knifeOrDefault("paring"))) * 0.8,
     "J4: even fully forged, the cadence stays within the catalog's own range of knife feels",
   );
 }

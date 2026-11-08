@@ -314,9 +314,10 @@ const hired = (s: SaveData) => A.hireAssistant(s);
   );
   const host = read("src/components/kc/assistant/AssistantHost.tsx");
   check(
-    "G6 the bubble never blocks the screen (no scrim), the ring follows the real button, the beat on screen is latched, and Reduced Motion turns the animation off",
-    /pointer-events-none absolute inset-0/.test(host) &&
-      !/bg-\[rgba/.test(host) &&
+    "G6 (popup, developer 2026-11-08) the popup dims and blurs the screen with a scrim that closes the tip, the ring follows the real button and leaves it bright, the beat on screen is latched, and Reduced Motion turns the animation off",
+    /data-testid="assistant-scrim"/.test(host) &&
+      /backdrop-blur/.test(host) &&
+      /shadow-\[0_0_0_200vmax_rgba/.test(host) &&
       /querySelector\(target\)/.test(host) &&
       /setActive\(\{ beat: candidate, replay: false \}\)/.test(host) &&
       /\.kc-reduced-motion \.paige-in/.test(read("src/components/kc/assistant/assistant.css")),
@@ -363,10 +364,10 @@ const hired = (s: SaveData) => A.hireAssistant(s);
     fs.existsSync(portrait) && fs.statSync(portrait).size < 40_000,
   );
   check(
-    "H5 the bubble frames are real art on a 9-slice (no CSS stand-in)",
-    /border-image-slice: 44 44 62 92 fill/.test(
-      read("src/components/kc/assistant/assistant.css"),
-    ) && /borderImageSource/.test(read("src/components/kc/assistant/AssistantHost.tsx")),
+    "H5 (popup, developer 2026-11-08) the popup is the shared ivory card with Paige's round portrait, no speech-bubble stand-in",
+    /rounded-\[22px\] border-2 bg-ivory/.test(
+      read("src/components/kc/assistant/AssistantHost.tsx"),
+    ) && !/borderImageSource/.test(read("src/components/kc/assistant/AssistantHost.tsx")),
   );
 }
 

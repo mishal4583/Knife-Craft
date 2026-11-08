@@ -193,7 +193,7 @@ check(
 );
 
 // ---------- 4. Finish, replay ----------
-await clickButton(page, /^Next Customer$/);
+await clickButton(page, /^(Next Customer|Back to Kitchen)$/);
 await sleep(1000);
 // Developer 2026-10-10: the Level Complete card goes as soon as the player opens another page
 // (the Market here; an achievement-to-collect card may follow, so the Level Complete one is checked).
@@ -273,7 +273,7 @@ await clickButton(
 );
 await sleep(900);
 await cookAndServe();
-await clickButton(page, /^Next Customer$/);
+await clickButton(page, /^(Next Customer|Back to Kitchen)$/);
 await sleep(900);
 await cookAndServe();
 const stockOffer = await guestButton();

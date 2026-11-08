@@ -109,7 +109,7 @@ async function playLevel() {
     await clickButton(page, /^Serve to /);
     await sleep(900);
   }
-  await clickButton(page, /^Next Customer$/);
+  await clickButton(page, /^(Next Customer|Back to Kitchen)$/);
   await sleep(1800);
   return played.ok;
 }

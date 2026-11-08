@@ -549,6 +549,38 @@ export function resolveContinuousPosition(
   return null; // no room left at this margin — the band is fully cut
 }
 
+/** How much of a tap's own offset from the nearest even slot is kept (0 = the cut always lands exactly on the slot). */
+export const SLOT_MAGNET_KEEP = 0.15;
+
+/**
+ * A soft magnet toward the even division points (developer 2026-11-08: "I just tapped without moving my finger, as fast as I could,
+ * and it is still not 100 percent; give the necessary satisfaction"). A tap lands near the nearest still-free even slot and keeps only
+ * SLOT_MAGNET_KEEP of its own offset, so an honest tap scores almost perfectly; a tap on (or pushed off) a slot that is already cut goes
+ * exactly onto the nearest free slot, so tapping the same spot over and over walks the knife across the whole ingredient in even steps.
+ * Returns null when no slot is free (then the free placement above takes over). Pure.
+ */
+export function magnetToSlot(
+  band: { lo: number; hi: number },
+  existing: readonly number[],
+  target: number,
+  slots: number,
+): number | null {
+  const span = band.hi - band.lo;
+  if (slots < 1 || span <= 0) return null;
+  const spacing = span / (slots + 1);
+  const free = idealPositions(band.lo, band.hi, slots).filter((p) =>
+    existing.every((e) => Math.abs(e - p) >= spacing * 0.6),
+  );
+  if (!free.length) return null;
+  let best = free[0]!;
+  for (const p of free) if (Math.abs(p - target) < Math.abs(best - target)) best = p;
+  const ownCell =
+    Math.abs(target - best) <= spacing * 0.5 &&
+    existing.every((e) => Math.abs(e - target) >= spacing * 0.6);
+  // The first cut of an ingredient goes exactly onto its slot: tapping one spot, however fast, then scores a perfect 100.
+  return ownCell && existing.length > 0 ? best + (target - best) * SLOT_MAGNET_KEEP : best;
+}
+
 // ---------- grading: parallel groups, per-group spacing, n-weighted combine ----------
 
 export type ScoringTol = {

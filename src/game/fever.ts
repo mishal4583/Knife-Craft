@@ -6,7 +6,7 @@ import { COMBO } from "./definitions";
  *
  * The rule — the existing combo, no second counter:
  * - it lights when the scene's own combo (cuts landed on the current step,
- *   COMBO in definitions.ts) reaches AT_COMBO, the existing x10 milestone.
+ *   COMBO in definitions.ts) reaches AT_COMBO, the existing x5 milestone (x10 until 2026-11-08).
  *   Over the real campaign (243 orders, 716 cut steps) a step long enough to
  *   reach x10 exists in 95% of orders and x15 in none, so x10 is earned by
  *   keeping a run going through a long step, not handed out (x5 would light
@@ -24,7 +24,9 @@ import { COMBO } from "./definitions";
  * every payout are exactly as without it.
  */
 export const FEVER = {
-  AT_COMBO: 10,
+  // Developer 2026-11-08: a slice, a chop and a julienne are 8 cuts now (were 12 / 12 / 10), so a run of ten can no longer happen in one step;
+  // Fever lights at the x5 milestone: five clean cuts in a row (the combo resets between steps, as before).
+  AT_COMBO: 5,
   MS: 6000,
   /** Board give along the blade while it lasts (× CUT_DRAG). */
   DRAG_MULT: 1.6,

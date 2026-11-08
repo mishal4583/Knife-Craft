@@ -266,7 +266,7 @@ try {
   // them is replayed in dining-floor-qa T on the real functions.)
   await sweepCash(page);
   await sleep(500);
-  const nextHit = await clickButton(page, /^Next Customer$/);
+  const nextHit = await clickButton(page, /^(Next Customer|Back to Kitchen)$/);
   await sleep(2500);
   for (let step = 0; step < 4; step++) {
     await playToReport(page);

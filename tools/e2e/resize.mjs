@@ -141,7 +141,7 @@ check(
 );
 // The cash lies on the table: the player sweeps it into the wallet (Next Customer (last order) waits for it).
 await sweepCash(page);
-await clickButton(page, /^Next Customer$/);
+await clickButton(page, /^(Next Customer|Back to Kitchen)$/);
 await sleep(1500);
 const s = await readSave(page);
 check(

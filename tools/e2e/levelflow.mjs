@@ -70,7 +70,7 @@ const g2Served = await readSave(page);
 check("G2.2 serving pays the Level 1 settlement once", !!g2Served, {
   ledger: g2Served ? newLedger(null, g2Served) : null,
 });
-await clickButton(page, /^Next Customer$/);
+await clickButton(page, /^(Next Customer|Back to Kitchen)$/);
 await sleep(3000);
 const g2Banner = await flat(page);
 check(

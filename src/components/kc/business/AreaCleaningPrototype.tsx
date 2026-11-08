@@ -800,16 +800,20 @@ export function AreaCleaningPrototype({
               ))}
             </div>
           ) : null}
-          {toolHint ? (
-            <p
-              className="mb-1 flex min-h-6 items-center justify-center gap-1 rounded-lg border border-[#d89d52]/60 bg-[#fff9e8] px-2 py-1 text-center font-ui text-[12px] font-extrabold text-[#8e5423]"
-              role="status"
-              aria-live="polite"
-            >
-              {suggest ? <CleaningToolIcon tool={suggest} size={18} /> : null}
-              {toolHint}
-            </p>
-          ) : null}
+          {/* A fixed slot: the "use the other tool" hint and the status line below never change the footer's height, so the room
+              above never resizes or shifts when wiping starts (developer 2026-11-08: "the restroom image still shakes"). */}
+          <div className="mb-1 h-8" data-testid="cleaning-hint-slot">
+            {toolHint ? (
+              <p
+                className="flex h-8 items-center justify-center gap-1 overflow-hidden rounded-lg border border-[#d89d52]/60 bg-[#fff9e8] px-2 text-center font-ui text-[12px] font-extrabold text-[#8e5423]"
+                role="status"
+                aria-live="polite"
+              >
+                {suggest ? <CleaningToolIcon tool={suggest} size={18} /> : null}
+                <span className="truncate">{toolHint}</span>
+              </p>
+            ) : null}
+          </div>
           <div className="mb-1 flex items-center justify-between font-ui text-[12px] font-extrabold text-walnut-dark">
             <span data-testid="cleaning-stains-left">
               {stainsLeft > 0
@@ -839,7 +843,7 @@ export function AreaCleaningPrototype({
               {progress}%
             </span>
           </div>
-          <p className="mt-1 flex min-h-5 items-center justify-center text-center font-hand text-[14px] leading-tight text-walnut/70">
+          <p className="mt-1 flex h-5 items-center justify-center overflow-hidden whitespace-nowrap text-center font-hand text-[14px] leading-tight text-walnut/70">
             {phase !== "play"
               ? "✨ Sparkling!"
               : scrubbing

@@ -45,6 +45,8 @@ import {
   type FloorResult,
 } from "@/game/restaurant/secondFloor";
 import { floorFill, needsVisit } from "@/game/restaurant/floorFill";
+import { firstMachineGuide } from "@/game/restaurant/floorGuide";
+import { UpstairsButton } from "@/components/kc/restaurantMap/UpstairsButton";
 import { formatUsd } from "@/game/money";
 import type { PurchaseRefrigeratorResult } from "@/game/business/RefrigeratorManager";
 import type { DiscardExpiredResult } from "@/game/business/discardExpired";
@@ -367,26 +369,44 @@ export function ScreensRouter({
                     const waitingCents = open ? floorEarnings(save, Date.now()) : 0;
                     const waiting = waitingCents > 0;
                     const full = open && needsVisit(floorFill(save, Date.now()));
+                    const guide = firstMachineGuide(save, level, save.credits + waitingCents);
+                    const note = !open
+                      ? null
+                      : waiting
+                        ? "Money waiting"
+                        : full
+                          ? "Full · collect"
+                          : guide?.stage === "buy"
+                            ? "Buy a machine"
+                            : guide?.stage === "save"
+                              ? "Save for a machine"
+                              : null;
                     return (
-                      <button
-                        type="button"
-                        data-testid="upstairs"
-                        className={`press absolute bottom-24 right-3 z-20 min-h-12 rounded-2xl border px-4 font-ui text-[13px] font-extrabold shadow-lift ${
-                          open
-                            ? "border-walnut-dark/40 bg-walnut text-ivory"
-                            : "border-walnut/20 bg-ivory/90 text-walnut/60"
-                        }`}
-                        aria-label={
+                      <UpstairsButton
+                        open={open}
+                        note={note}
+                        attention={open && (waiting || full || guide?.stage === "buy")}
+                        chip={
+                          !open
+                            ? null
+                            : waiting
+                              ? formatUsd(waitingCents)
+                              : full
+                                ? "Full"
+                                : guide?.stage === "buy"
+                                  ? "New!"
+                                  : null
+                        }
+                        ariaLabel={
                           open
                             ? `Upstairs to the second floor${waiting ? ", money waiting" : ""}`
                             : `Second floor opens ${unlockText(RESTAURANT_MODE ? level : null).when(SECOND_FLOOR_OPENS_AT)}`
                         }
+                        lockedText={unlockText(RESTAURANT_MODE ? level : null).lv(
+                          SECOND_FLOOR_OPENS_AT,
+                        )}
                         onClick={() => (open ? routeGo("second-floor") : undefined)}
-                      >
-                        {open
-                          ? `⬆ 2nd floor${waiting ? ` 💰 ${formatUsd(waitingCents)}` : ""}${full ? " · full" : ""}`
-                          : `🔒 2nd floor · ${unlockText(RESTAURANT_MODE ? level : null).lv(SECOND_FLOOR_OPENS_AT)}`}
-                      </button>
+                      />
                     );
                   })()}
                   {onHireCleaner ? (

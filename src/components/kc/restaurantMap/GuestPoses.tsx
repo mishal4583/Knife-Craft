@@ -1,5 +1,5 @@
 import type React from "react";
-import { PEOPLE_LOOKS, CELL } from "@/game/restaurant/peopleLooks";
+import { PEOPLE_LOOKS } from "@/game/restaurant/peopleLooks";
 import { PoseCell } from "./CharacterSprite";
 import { usePeopleSheets } from "./peopleSheets";
 
@@ -58,8 +58,12 @@ export function GuestPoses({
           <PoseCell id={info.id} walk seconds={seconds} />
         )}
       </div>
+      {/* Developer 2026-11-08: a guest sits in the FRONT chair, so they face the table, away from the camera: the back view (the walk-up
+          row), cut off at the waist so the chair hides the legs. (The sheets only draw the seated poses facing the viewer.) */}
       <div className="guest-pose guest-sitting-pose">
-        <PoseCell id={info.id} col={CELL.seated} row={0} />
+        <div className="guest-back-view">
+          <PoseCell id={info.id} col={1} row={1} />
+        </div>
       </div>
     </div>
   );

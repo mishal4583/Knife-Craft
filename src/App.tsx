@@ -151,6 +151,9 @@ import {
   withTodaysSpecialServed,
 } from "@/game/restaurant/restaurantEvents";
 import { rankChange } from "@/game/restaurant/cityRanking";
+import { celebrationFor, type Celebration } from "@/game/restaurant/celebrations";
+import { afterServeChips, nextCustomerHidden } from "@/game/restaurant/afterServe";
+import { CelebrationCard } from "@/components/kc/common/CelebrationCard";
 import { recordEndlessDayStars, starsForDay } from "@/game/restaurant/restaurantStanding";
 import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
 import {
@@ -749,6 +752,8 @@ export function App() {
   const dayCleanerAdBusyRef = useRef(false);
   // Paige's notebook sheet and a tip she is asked to say again (components/kc/assistant).
   const [paigeNotebook, setPaigeNotebook] = useState(false);
+  // A moment worth feeling (game/restaurant/celebrations.ts): the ranking climbed, popularity rose, a spotless run.
+  const [celebration, setCelebration] = useState<Celebration | null>(null);
   const [paigeReplay, setPaigeReplay] = useState<AssistantReplay | null>(null);
   const businessSessionRef = useRef<ServiceSession | null>(null);
   // One id per play session (level/daily/endless start) + whether it reached a
@@ -2976,6 +2981,7 @@ export function App() {
     const brokenBefore = restaurantSuppliesOf(nextSave).brokenTotal;
     // Supplies plan D: then the service's report (guests, takeaway, washed, spotless streak).
     let serviceLines: string[] = [];
+    let spotlessStreak = 0;
     // The sink game (developer 2026-10-23): this service's dishes wait in the sink — washed
     // by hand (nothing breaks), or by the automatic wash-up when the next service starts.
     if (RESTAURANT_MODE && isFirstCompletion) {
@@ -2993,6 +2999,7 @@ export function App() {
       // A real restaurant's day (2026-10-11): the lull's chores, or closing's after the last service.
       nextSave = choresAfterService(nextSave, levelNumber(level.id));
       const round = cleanerRound(nextSave);
+      spotlessStreak = report.report.spotless ? report.report.streak : 0;
       // Phase 10: the hourly Cleaners stay for the whole day (they are gone the next one).
       nextSave = round.save;
       serviceLines = [
@@ -3115,6 +3122,25 @@ export function App() {
             }
           : {}),
       });
+    }
+    // Congratulations (developer 2026-11-08): a climb in the ranking, rising popularity or a spotless run gets its own card.
+    if (RESTAURANT_MODE && isFirstCompletion) {
+      const rise = rankChange(save, finalSave);
+      const c = celebrationFor({
+        rank: rise
+          ? {
+              from: rise.from,
+              to: rise.to,
+              passed: rise.passed.map((r) => `${r.emoji} ${r.name}`).join(", "),
+            }
+          : null,
+        popularity: {
+          before: save.business.popularity.score,
+          after: finalSave.business.popularity.score,
+        },
+        spotlessStreak,
+      });
+      if (c) setCelebration(c);
     }
     // No ad or Replay Bonus behind the Campaign Finale or THE LAST PAGE.
     afterLevelFinished(
@@ -4238,6 +4264,31 @@ export function App() {
                 : isCampaignService && sharedPlateNext
                   ? { nextLabel: "Serve the next plate →" }
                   : {}),
+              // The first levels (developer 2026-11-08): no "Next Customer" on the served card. The player walks back to the
+              // Kitchen and may do something useful on the way (unpack, stock, clean, restock, upstairs).
+              ...(RESTAURANT_MODE &&
+              isCampaignService &&
+              nextCustomerHidden(levelNumber(activeLevel.id)) &&
+              !save.levelProgress.completedLevelIds.includes(activeLevel.id)
+                ? {
+                    afterServe: {
+                      chips:
+                        campaignWillFinishNext || (isBatchGroup && batchGroupWillFinish)
+                          ? []
+                          : afterServeChips(save),
+                      onGo: (to: string) => {
+                        // The same way out as "Back to Kitchen", then on to what they chose.
+                        if (campaignLevelSatisfied) {
+                          finishCampaignLevel();
+                          return;
+                        }
+                        resetParties();
+                        setSessionMode("campaign");
+                        go(to as ScreenId);
+                      },
+                    },
+                  }
+                : {}),
               ...(activeServiceSession ? { batchHint: batchHintFor(activeServiceSession) } : {}),
               ...(isBatchGroup && batchGroupSession && batchViewOrderId
                 ? { batchHint: batchHintForGroup(batchGroupSession, batchViewOrderId) }
@@ -4460,6 +4511,14 @@ export function App() {
                   ),
                 ),
               );
+              // Congratulations: the night's popularity rose.
+              const popAfter = night.save.business.popularity.score;
+              const popCard = celebrationFor({
+                rank: null,
+                popularity: { before: save.business.popularity.score, after: popAfter },
+                spotlessStreak: 0,
+              });
+              if (popCard) setCelebration(popCard);
             }}
           />
         </Suspense>
@@ -4714,6 +4773,9 @@ export function App() {
           line={businessNoticeQueue[0].glance}
           onDismiss={() => setBusinessNoticeQueue((q) => q.slice(1))}
         />
+      ) : null}
+      {celebration && !levelRewardNotice && !storyEvent && screen !== "gameplay" ? (
+        <CelebrationCard celebration={celebration} onClose={() => setCelebration(null)} />
       ) : null}
       {RESTAURANT_MODE && save ? (
         <AssistantHost

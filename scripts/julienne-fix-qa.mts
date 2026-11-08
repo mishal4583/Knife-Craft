@@ -70,8 +70,9 @@ function assert(cond: boolean, label: string) {
 // ===== 6: existing cut count / validation semantics are unchanged — julienne.requiredCuts is still exactly 10, untouched by this fix (§10). =====
 {
   assert(
-    TECHNIQUES.julienne.requiredCuts === 10,
-    `6: julienne.requiredCuts is still 10 (got ${TECHNIQUES.julienne.requiredCuts}) — this fix never touched requiredCutsFor/recipe validation`,
+    // Rule changed (developer 2026-11-08, "do not make the cutting too hectic"): a julienne is 8 cuts (was 10).
+    TECHNIQUES.julienne.requiredCuts === 8,
+    `6: julienne.requiredCuts is 8, was 10 until 2026-11-08 (got ${TECHNIQUES.julienne.requiredCuts}) — this fix never touched requiredCutsFor/recipe validation`,
   );
 }
 

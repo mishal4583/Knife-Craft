@@ -39,14 +39,16 @@ const bubble = () =>
     const b = h.querySelector('[data-testid="assistant-bubble"]');
     const pose = h.querySelector("img[data-paige-pose]");
     const r = b?.getBoundingClientRect();
-    const frame = b ? getComputedStyle(b).borderImageSource : "";
+    // 2026-11-08: a popup card over a dimmed, blurred scrim (was a painted speech bubble)
+    const scrim = h.querySelector('[data-testid="assistant-scrim"]');
+    const frame = b ? getComputedStyle(b).borderTopWidth !== "0px" : "";
     return {
       beat: h.getAttribute("data-beat"),
       line: Number(h.getAttribute("data-line")),
       pose: h.getAttribute("data-pose"),
       text: h.querySelector('[data-testid="assistant-text"]')?.textContent ?? "",
       poseLoaded: !!pose && pose.complete && pose.naturalWidth > 0,
-      frame: /bubble-(normal|success|warning)\.webp/.test(frame),
+      frame: !!frame && !!scrim && /blur/.test(getComputedStyle(scrim).backdropFilter || ""),
       buttons: [...h.querySelectorAll("button")].map((x) => ({
         t: x.textContent.trim() || x.getAttribute("aria-label"),
         id: x.getAttribute("data-testid"),
@@ -86,7 +88,7 @@ try {
   const sectionPointerFirst = await q('[data-testid="section-pointer"]');
   await shot(page, "paige-1-meet");
   check(
-    "P1 after the intro Paige introduces herself in the Kitchen: her wave pose, the painted bubble, her name, and the Hire button",
+    "P1 after the intro Paige introduces herself in the Kitchen: her wave pose, the popup card on a dimmed, blurred screen, her name, and the Hire button",
     !!b1 &&
       b1.beat === "meet" &&
       b1.pose === "wave" &&
