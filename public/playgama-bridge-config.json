@@ -26,7 +26,8 @@
                 { "id": "flood" },
                 { "id": "golden_guest" },
                 { "id": "skip_ahead" },
-                { "id": "rush_hour" }
+                { "id": "rush_hour" },
+                { "id": "sauce_rounds" }
             ]
         }
     }

@@ -6,6 +6,7 @@
 //   H4 on the Kitchen the hand is on "Open for service".
 //   H5 the Pre-Service Check (when it opens) has the hand on its start button; starting opens the cutting.
 //   H6 the plate is ready: the Server's card (a, b hire); the guest has eaten: the Cashier's card (c, d hire); the hand is gone once the service is done.
+//   H6e the last plate of Level 1 shows the "Next: ..." teaser for Level 2.
 //   H7 no console errors.
 import {
   hirePaige,
@@ -223,6 +224,15 @@ try {
   );
   await sleep(1500);
   await sweepCash(page);
+  // Level-end teaser (developer 2026-11-10): the last plate of Level 1 says what Level 2 brings.
+  const teaser = await page.evaluate(
+    () => document.querySelector('[data-testid="level-teaser"]')?.textContent?.trim() ?? null,
+  );
+  check(
+    "H6e the last plate of Level 1 ends with the teaser for Level 2",
+    !!teaser && /Next: carrots, and peeling potatoes/.test(teaser),
+    teaser,
+  );
   await clickButton(page, /^(Next Customer|Back to Kitchen)$/);
   await sleep(1800);
   const done = await readSave(page);

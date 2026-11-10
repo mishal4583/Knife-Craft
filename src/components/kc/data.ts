@@ -46,6 +46,10 @@ export type ScreenId =
   | "fridge-sort"
   /** Delivery Inspection: find the NOT FRESH ingredients in the delivery crate (business/deliveryInspection.ts). Optional, from Level 3. */
   | "delivery-inspection"
+  /** Sauce Station: mix a sauce to the target colour, blend it, bottle it (business/sauceStation.ts). Optional, from Level 23. */
+  | "sauce-station"
+  /** The Sauce Shelf: the 24 sauces and which are mastered (read-only). */
+  | "sauce-shelf"
   /** Stockroom Sort: match 3 and stock the supplies you bought (business/stockroomSort.ts). Optional, from Level 10. */
   | "stockroom-sort"
   /** Fridge Check practice: the closing-night inspection on the real stock, free play with no reward (restaurant/fridgeCheck.ts). */

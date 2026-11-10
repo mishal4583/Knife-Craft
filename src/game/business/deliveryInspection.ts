@@ -17,18 +17,15 @@ import type { IngredientId } from "../definitions";
 import { INGREDIENTS } from "../definitions";
 import type { SaveData } from "../SaveManager";
 import { addHype } from "../restaurant/secondFloor";
-import {
-  DIFFICULTY,
-  FRIDGE_SORT_FIRST_LEVEL,
-  HYPE_BY_STARS,
-  basketsLeft,
-  fridgeSortOf,
-} from "./fridgeSort";
+import { DIFFICULTY, HYPE_BY_STARS, basketsLeft, fridgeSortOf } from "./fridgeSort";
 
 // ── When it opens ────────────────────────────────────────────────────────────
 
-/** The first level (the same as Fridge Sort: the first level whose food can arrive in a crate). */
-export const INSPECTION_FIRST_LEVEL = FRIDGE_SORT_FIRST_LEVEL;
+/**
+ * The first level (developer 2026-11-10, plan FIRST-20-LEVELS-ENGAGEMENT-PLAN-2026-11-10.md): Level 9, the eggplant level with no system of its own.
+ * It used to be Fridge Sort's level 3, so two games landed together; the difficulty tiers still follow Fridge Sort's levels.
+ */
+export const INSPECTION_FIRST_LEVEL = 9;
 export const isInspectionOpen = (level: number): boolean => level >= INSPECTION_FIRST_LEVEL;
 /** The reference's "Deliveries 2/5": at most this many rounds a day. */
 export const MAX_ROUNDS_PER_DAY = 5;

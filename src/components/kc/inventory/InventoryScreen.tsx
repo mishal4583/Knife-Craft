@@ -50,6 +50,7 @@ import { IngredientIcon } from "@/components/kc/common/IngredientIcon";
 import { FridgeSortChip } from "./FridgeSortChip";
 import { FridgeCheckChip } from "./FridgeCheckChip";
 import { DeliveryInspectionChip } from "./DeliveryInspectionChip";
+import { SauceStationChip } from "../sauce/SauceStationChip";
 import { pinsOf } from "@/game/restaurant/fridgeCheck";
 import { magnetsOf } from "@/game/business/fridgeSort";
 
@@ -889,6 +890,7 @@ export function InventoryScreen({
               <DeliveryInspectionChip save={save} go={go} className="mb-2" />
               <FridgeSortChip save={save} go={go} />
               <FridgeCheckChip save={save} go={go} className="mt-2" />
+              <SauceStationChip save={save} go={go} className="mt-2" />
 
               {/* The physical fridge */}
               <div ref={fridgeRef} className="-mx-2 scroll-mt-3">

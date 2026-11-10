@@ -153,6 +153,10 @@ import {
 import { rankChange } from "@/game/restaurant/cityRanking";
 import { celebrationFor, type Celebration } from "@/game/restaurant/celebrations";
 import { afterServeChips, nextCustomerHidden } from "@/game/restaurant/afterServe";
+import { newSauceRoundsRewardId } from "@/game/ads/sauceRoundsAd";
+import { levelTeaser } from "@/game/restaurant/levelTeasers";
+import { featuresOpeningAt } from "@/game/config/featureUnlocks";
+import { chestAt, chestCelebration } from "@/game/restaurant/milestoneChests";
 import { CelebrationCard } from "@/components/kc/common/CelebrationCard";
 import { recordEndlessDayStars, starsForDay } from "@/game/restaurant/restaurantStanding";
 import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
@@ -433,6 +437,15 @@ import {
   type DeliveryInspectionAction,
   type DeliveryInspectionResult,
 } from "@/game/business/deliveryInspection";
+import {
+  autoSauce,
+  finishRound as finishSauceRound,
+  withHowtoSeen as withSauceHowtoSeen,
+  withAdRounds as withSauceAdRounds,
+  canOfferRoundsAd as canOfferSauceAd,
+  type SauceStationAction,
+  type SauceStationResult,
+} from "@/game/business/sauceStation";
 import {
   addToSupplyCrate,
   autoStock,
@@ -774,6 +787,7 @@ export function App() {
   const coverAdBusyRef = useRef(false);
   /** A day-Cleaner ad is in flight (hireDayCleanerWithAd). */
   const dayCleanerAdBusyRef = useRef(false);
+  const sauceAdBusyRef = useRef(false);
   // Paige's notebook sheet and a tip she is asked to say again (components/kc/assistant).
   const [paigeNotebook, setPaigeNotebook] = useState(false);
   // A moment worth feeling (game/restaurant/celebrations.ts): the ranking climbed, popularity rose, a spotless run.
@@ -1193,6 +1207,77 @@ export function App() {
       hype: out.effects.hype,
     });
     return { ok: true, effects: out.effects };
+  }
+
+  /**
+   * Sauce Station (business/sauceStation.ts): a round finished, was skipped, the Prep Cook made a batch, or the how-to tour was seen. Applied to the
+   * LATEST save so a double tap cannot pay twice. It moves no money and no stock; the only effects are the state, stars, Hype, pins and the shelf.
+   */
+  function sauceStationAction(action: SauceStationAction): SauceStationResult {
+    const current = saveRef.current;
+    if (!current) return { ok: false };
+    const level = restaurantLevelOf(current.levelProgress);
+    const none = { hype: 0, pin: false, newBest: false, streak: 0, mastered: false };
+    if (action.kind === "start") {
+      sendAnalyticsEvent("sauce_station_started", {
+        level,
+        sauce: action.sauceId,
+        practice: action.practice,
+      });
+      return { ok: true, effects: none };
+    }
+    if (action.kind === "skip") {
+      sendAnalyticsEvent("sauce_station_skipped", { level });
+      return { ok: true, effects: none };
+    }
+    if (action.kind === "auto") {
+      persist(autoSauce(current));
+      sendAnalyticsEvent("sauce_station_auto", { level });
+      return { ok: true, effects: none };
+    }
+    if (action.kind === "howto") {
+      persist(withSauceHowtoSeen(current));
+      return { ok: true, effects: none };
+    }
+    const out = finishSauceRound(current, action.outcome);
+    persist(out.save);
+    sendAnalyticsEvent("sauce_station_finished", {
+      level,
+      sauce: action.outcome.sauceId,
+      stars: action.outcome.stars,
+      score: action.outcome.score,
+      hype: out.effects.hype,
+    });
+    if (out.effects.mastered)
+      sendAnalyticsEvent("sauce_mastered", { level, sauce: action.outcome.sauceId });
+    return { ok: true, effects: out.effects };
+  }
+
+  /**
+   * The Sauce Station's rewarded ad (developer 2026-11-10): "3 more rounds today". Offered only when the free rounds are used and today's ad was
+   * not watched; granted ONLY on Bridge's `rewarded` state, to the LATEST save. It moves no money, no stock and no ledger entry.
+   */
+  async function watchSauceRoundsAd(): Promise<"ok" | "no"> {
+    if (sauceAdBusyRef.current) return "no";
+    const first = saveRef.current;
+    if (!first || !canOfferSauceAd(first, restaurantLevelOf(first.levelProgress))) return "no";
+    sauceAdBusyRef.current = true;
+    try {
+      const ad = await requestRewardedAd(newSauceRoundsRewardId(), AD_PLACEMENT.sauceRounds);
+      sendAnalyticsEvent("sauce_station_ad", {
+        level: restaurantLevelOf(first.levelProgress),
+        status: ad.status,
+      });
+      if (ad.status !== "rewarded") return "no";
+      const latest = saveRef.current;
+      if (!latest) return "no";
+      const next = withSauceAdRounds(latest, restaurantLevelOf(latest.levelProgress));
+      if (next === latest) return "no";
+      persist(next);
+      return "ok";
+    } finally {
+      sauceAdBusyRef.current = false;
+    }
   }
 
   /**
@@ -3043,6 +3128,13 @@ export function App() {
       rewardCoins,
     } = completeLevel(level.id, save.levelProgress);
     let nextSave = { ...save, credits: save.credits + rewardCoins, levelProgress };
+    // Funnel (developer 2026-11-10): the features that open at the next level, once per first completion.
+    if (isFirstCompletion)
+      for (const f of featuresOpeningAt(levelNumber(level.id) + 1))
+        sendAnalyticsEvent("feature_unlocked", { feature: f.id, level: f.level });
+    // Milestone chest (developer 2026-11-10): Level 5, 10, 15 and 20 give Hype (never money) on their first completion.
+    const chest = RESTAURANT_MODE && isFirstCompletion ? chestAt(levelNumber(level.id)) : null;
+    if (chest) nextSave = addHype(nextSave, chest.hype);
     // Unified Restaurant: a first completion is one service of the day.
     // Phase G: then the wash-up (dish soap) for the settings it used.
     // Supplies plan B: what broke in this service's wash-up (Level Complete says so).
@@ -3208,7 +3300,8 @@ export function App() {
         },
         spotlessStreak,
       });
-      if (c) setCelebration(c);
+      if (chest) setCelebration(chestCelebration(chest, c ? c.lines : []));
+      else if (c) setCelebration(c);
     }
     // No ad or Replay Bonus behind the Campaign Finale or THE LAST PAGE.
     afterLevelFinished(
@@ -4343,6 +4436,9 @@ export function App() {
               !save.levelProgress.completedLevelIds.includes(activeLevel.id)
                 ? {
                     afterServe: {
+                      ...(campaignWillFinishNext || (isBatchGroup && batchGroupWillFinish)
+                        ? { teaser: levelTeaser(levelNumber(activeLevel.id)) ?? undefined }
+                        : {}),
                       chips:
                         campaignWillFinishNext || (isBatchGroup && batchGroupWillFinish)
                           ? []
@@ -4515,6 +4611,8 @@ export function App() {
                   secondFloorAction={secondFloorAction}
                   fridgeSortAction={fridgeSortAction}
                   deliveryInspectionAction={deliveryInspectionAction}
+                  sauceStationAction={sauceStationAction}
+                  sauceRoundsAd={watchSauceRoundsAd}
                   stockroomSortAction={stockroomSortAction}
                   cleanerCleans={cleanerCleans}
                   rushAdAvailable={rewardedAdsAvailable()}

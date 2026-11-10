@@ -42,10 +42,11 @@ assert(
     // floor (2026-10-16): both maps live in the lazy restaurant chunk. Six with Fridge Sort (developer
     // 2026-11-03): its screen is in the same lazy chunk, so the campaign never carries it.
     // Seven with Stockroom Sort (developer 2026-11-06, 204360c): the same lazy chunk. Eight with Delivery Inspection (developer 2026-11-08): the same chunk again.
-    (router.match(/lazy\(\(\) =>\s*loadRestaurantScreens\(\)/g) ?? []).length === 8 &&
-    (router.match(/<Suspense fallback=\{<RestaurantLoading/g) ?? []).length === 8 &&
+    // Ten with the Sauce Station and the Sauce Shelf (developer 2026-11-09): both in the same lazy chunk.
+    (router.match(/lazy\(\(\) =>\s*loadRestaurantScreens\(\)/g) ?? []).length === 10 &&
+    (router.match(/<Suspense fallback=\{<RestaurantLoading/g) ?? []).length === 10 &&
     /Opening the restaurant…/.test(router),
-  "L1: the eight Restaurant screens (both map floors, Fridge Sort, Stockroom Sort and Delivery Inspection included) are lazy from one module, each in Suspense with a loading state",
+  "L1: the ten Restaurant screens (both map floors, Fridge Sort, Stockroom Sort, Delivery Inspection, Sauce Station and Sauce Shelf included) are lazy from one module, each in Suspense with a loading state",
 );
 
 function walk(dir: string, out: string[] = []): string[] {

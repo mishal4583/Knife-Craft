@@ -18,6 +18,7 @@ import type { SaveData } from "../SaveManager";
 import { CLEANING_FROM_LEVEL } from "../config/cleaningStart";
 import { FRIDGE_SORT_FIRST_LEVEL } from "../business/fridgeSort";
 import { STOCKROOM_FIRST_LEVEL } from "../business/stockroomSort";
+import { SAUCE_FIRST_LEVEL } from "../business/sauceStation";
 import { marketPlanFor } from "./marketPlan";
 import { SECOND_FLOOR_RESERVE_CENTS, SECOND_FLOOR_FROM_LEVEL } from "../config/earlyLevels";
 import { STATIONS, secondFloorOf } from "./secondFloor";
@@ -284,6 +285,17 @@ export const ASSISTANT_BEATS: readonly AssistantBeat[] = [
     go: "inventory-supplies",
     priority: 53,
     when: (_save, level) => within(level, STOCKROOM_FIRST_LEVEL),
+  },
+  {
+    // Developer 2026-11-10: the Sauce Station opens at Level 7 (the Simple Garden Salad), before Level 20.
+    id: "sauce-station",
+    lines: [
+      { text: "Make a salad dressing! Mix it, whisk it, bottle it.", pose: "cheer" },
+      { text: "It's in Inventory. Stars give you Hype!", pose: "tip" },
+    ],
+    go: "inventory",
+    priority: 51,
+    when: (_save, level) => within(level, SAUCE_FIRST_LEVEL),
   },
   {
     id: "fridge-check",

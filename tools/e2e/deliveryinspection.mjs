@@ -1,5 +1,5 @@
 // Delivery Inspection (developer 2026-11-08), restaurant build, in a real browser: the "Spot the bad ones" mini-game (business/deliveryInspection.ts).
-//   I1 below Level 3 there is no chip; from Level 3 a delivery that waits shows "Inspect delivery · N" above the Inventory fridge
+//   I1 below Level 9 there is no chip; from Level 9 a delivery that waits shows "Inspect delivery · N" above the Inventory fridge
 //   I2 the chip opens the game: the how-to guide shows the first time (and is saved as seen), Start is needed before the clock runs
 //   I3 the crate is on screen: mixed ingredients, the goal line says how many are NOT FRESH, the slots match
 //   I4 a RIGHT tap flags a defect (stamp, slot filled, score); a WRONG tap costs time and shows the green tick, never twice on the same one
@@ -83,7 +83,25 @@ const tapItem = async (page, id) => {
   const c = await page.evaluate((i) => {
     const el = document.querySelector(`[data-testid="insp-item"][data-id="${i}"]`);
     const r = el?.getBoundingClientRect();
-    return r ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null;
+    if (!r) return null;
+    // The middle of the item, or (when a neighbour is drawn over it in this crate's layout) the first point of it that is really on top.
+    for (const [fx, fy] of [
+      [0.5, 0.5],
+      [0.5, 0.3],
+      [0.5, 0.7],
+      [0.3, 0.5],
+      [0.7, 0.5],
+      [0.3, 0.3],
+      [0.7, 0.7],
+      [0.3, 0.7],
+      [0.7, 0.3],
+    ]) {
+      const x = r.left + r.width * fx;
+      const y = r.top + r.height * fy;
+      const top = document.elementFromPoint(x, y);
+      if (top && (top === el || el.contains(top))) return { x, y };
+    }
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
   }, id);
   if (!c) return false;
   await page.mouse.move(c.x, c.y);
@@ -96,7 +114,25 @@ const dragItem = async (page, id, dx, dy) => {
   const c = await page.evaluate((i) => {
     const el = document.querySelector(`[data-testid="insp-item"][data-id="${i}"]`);
     const r = el?.getBoundingClientRect();
-    return r ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null;
+    if (!r) return null;
+    // The middle of the item, or (when a neighbour is drawn over it in this crate's layout) the first point of it that is really on top.
+    for (const [fx, fy] of [
+      [0.5, 0.5],
+      [0.5, 0.3],
+      [0.5, 0.7],
+      [0.3, 0.5],
+      [0.7, 0.5],
+      [0.3, 0.3],
+      [0.7, 0.7],
+      [0.3, 0.7],
+      [0.7, 0.3],
+    ]) {
+      const x = r.left + r.width * fx;
+      const y = r.top + r.height * fy;
+      const top = document.elementFromPoint(x, y);
+      if (top && (top === el || el.contains(top))) return { x, y };
+    }
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
   }, id);
   if (!c) return false;
   await page.mouse.move(c.x, c.y);
@@ -149,20 +185,20 @@ const snapshot = (page) =>
 const { browser, page, logs } = await launch();
 
 // I1: the chip
-await boot(page, saveAt(2));
+await boot(page, saveAt(8));
 await openInventory(page);
 const chip2 = await page.evaluate(
   () => !!document.querySelector('[data-testid="delivery-inspection-chip"]'),
 );
-check("I1 below Level 3 there is no Inspect chip", chip2 === false);
-await boot(page, saveAt(3));
+check("I1 below Level 9 there is no Inspect chip", chip2 === false);
+await boot(page, saveAt(9));
 await openInventory(page);
 const chip3 = await page.evaluate(
   () =>
     document.querySelector('[data-testid="delivery-inspection-chip"]')?.textContent?.trim() ?? null,
 );
 check(
-  "I1b from Level 3 a waiting delivery shows 'Inspect delivery · N'",
+  "I1b from Level 9 a waiting delivery shows 'Inspect delivery · N'",
   !!chip3 && /Inspect delivery · \d/.test(chip3),
   chip3,
 );
@@ -270,7 +306,7 @@ check(
 );
 
 // I9: Prep Cook
-await boot(page, saveAt(3, { staff: { hiredRoles: ["prep-cook"] } }));
+await boot(page, saveAt(9, { staff: { hiredRoles: ["prep-cook"] } }));
 await openInventory(page);
 const chipPrep = await page.evaluate(
   () => !!document.querySelector('[data-testid="delivery-inspection-chip"]'),
@@ -291,7 +327,7 @@ check(
 );
 
 // I9c: before Start the top-left button is a Back arrow (the pause button used to do nothing there)
-await boot(page, saveAt(3));
+await boot(page, saveAt(9));
 await openInventory(page);
 await openGame(page);
 const backLabel = await page.evaluate(() =>
@@ -309,7 +345,7 @@ check(
 );
 
 // I9b: Skip leaves it waiting
-await boot(page, saveAt(3));
+await boot(page, saveAt(9));
 await openInventory(page);
 await openGame(page);
 await start(page);

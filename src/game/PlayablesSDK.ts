@@ -102,6 +102,8 @@ export const AD_PLACEMENT = {
   skipAhead: "skip_ahead",
   /** Rewarded: the Second Floor's Rush Hour — what ten minutes at x3 would add, paid now. */
   rushHour: "rush_hour",
+  /** Rewarded: the Sauce Station's "3 more rounds today" (developer 2026-11-10); no money, one offer a day. */
+  sauceRounds: "sauce_rounds",
 } as const;
 export type InterstitialPlacement =
   typeof AD_PLACEMENT.levelCompleted | typeof AD_PLACEMENT.businessDayEnd;
@@ -121,7 +123,8 @@ export type RewardedPlacement =
   | typeof AD_PLACEMENT.flood
   | typeof AD_PLACEMENT.goldenGuest
   | typeof AD_PLACEMENT.skipAhead
-  | typeof AD_PLACEMENT.rushHour;
+  | typeof AD_PLACEMENT.rushHour
+  | typeof AD_PLACEMENT.sauceRounds;
 /** The defaults (also the config's placementFallback values). */
 export const INTERSTITIAL_PLACEMENT: InterstitialPlacement = AD_PLACEMENT.levelCompleted;
 export const REWARDED_PLACEMENT: RewardedPlacement = AD_PLACEMENT.replayBonus;

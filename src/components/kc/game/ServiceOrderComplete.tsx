@@ -248,7 +248,11 @@ export function ServiceOrderComplete({
    * The first levels (developer 2026-11-08): no "Next Customer" here. The player goes back to the Kitchen (the next customer waits
    * there) and may do something useful on the way: these chips open it (game/restaurant/afterServe.ts). Absent = the usual buttons.
    */
-  afterServe?: { chips: AfterServeChip[]; onGo: (to: string) => void };
+  afterServe?: {
+    chips: AfterServeChip[];
+    onGo: (to: string) => void;
+    teaser?: string | undefined;
+  };
 }) {
   const [served, setServed] = useState<ServeResult | null>(null);
   const { customer, recipe } = serviceOrder;
@@ -541,6 +545,14 @@ export function ServiceOrderComplete({
                       ? "While you wait, you could…"
                       : "Your next customer is waiting in the Kitchen."}
                   </p>
+                  {afterServe.teaser ? (
+                    <p
+                      data-testid="level-teaser"
+                      className="mt-1.5 font-ui text-[13.5px] font-extrabold text-copper"
+                    >
+                      ✨ {afterServe.teaser}
+                    </p>
+                  ) : null}
                   {afterServe.chips.length > 0 ? (
                     <div className="mt-1.5 flex flex-wrap justify-center gap-1.5">
                       {afterServe.chips.map((c) => (

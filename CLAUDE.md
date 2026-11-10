@@ -71,7 +71,7 @@ status line in HANDOFF; this file changes only when a RULE changes.
   level bonus, short by, Second Floor ×2, daily gift; 2026-10-31: welcome back, a few hours of
   earnings after 30+ minutes away, only for the ad; 2026-11-02: Flood after a
   first clear, the Golden Guest ×3, Skip ahead — `restaurant/floorFlood.ts`,
-  `goldenGuest.ts`), granted only on the `rewarded` state. One placement per spot (`AD_PLACEMENT`). Each says what
+  `goldenGuest.ts`; 2026-11-10: the Sauce Station's "3 more rounds today", `sauce_rounds`, once a business day, no money so no ledger entry), granted only on the `rewarded` state. One placement per spot (`AD_PLACEMENT`). Each says what
   it gives before the ad, is never needed to progress, has a daily cap, and
   pays with one `rewarded-ad` ledger entry.
 - **Level messages:** `level_started/completed/paused/resumed` with

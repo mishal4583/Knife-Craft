@@ -90,6 +90,7 @@ import type {
   DeliveryInspectionResult,
 } from "@/game/business/deliveryInspection";
 import type { StockroomSortAction, StockroomSortResult } from "@/game/business/stockroomSort";
+import type { SauceStationAction, SauceStationResult } from "@/game/business/sauceStation";
 
 // The Restaurant screens load as their own chunk the first time one opens (task #24).
 const loadRestaurantScreens = () => import("@/components/kc/restaurantScreens");
@@ -117,6 +118,10 @@ const StockroomSortGame = lazy(() =>
 const DeliveryInspectionGame = lazy(() =>
   loadRestaurantScreens().then((m) => ({ default: m.DeliveryInspectionGame })),
 );
+const SauceStationGame = lazy(() =>
+  loadRestaurantScreens().then((m) => ({ default: m.SauceStationGame })),
+);
+const SauceShelf = lazy(() => loadRestaurantScreens().then((m) => ({ default: m.SauceShelf })));
 
 /** Shown for the moment the Restaurant chunk takes to arrive: the screen's own frame, never a blank. */
 function RestaurantLoading({ go, active }: { go: (s: ScreenId) => void; active: ScreenId }) {
@@ -198,6 +203,8 @@ export function ScreensRouter({
   secondFloorAction,
   fridgeSortAction,
   deliveryInspectionAction,
+  sauceStationAction,
+  sauceRoundsAd,
   stockroomSortAction,
   cleanerCleans,
   collectAchievement,
@@ -283,6 +290,10 @@ export function ScreensRouter({
   fridgeSortAction: (action: FridgeSortAction) => FridgeSortResult;
   /** Delivery Inspection: a round ended / was skipped / the tour was seen (App applies it to the latest save). */
   deliveryInspectionAction: (action: DeliveryInspectionAction) => DeliveryInspectionResult;
+  /** Sauce Station: a round ended / was skipped / the tour was seen (App applies it to the latest save). */
+  sauceStationAction: (action: SauceStationAction) => SauceStationResult;
+  /** The Sauce Station's rewarded ad ("3 more rounds today"): resolves "ok" when the rounds were granted. */
+  sauceRoundsAd: () => Promise<"ok" | "no">;
   /** Stockroom Sort: a board ended / was skipped (App applies it to the latest save). */
   stockroomSortAction: (action: StockroomSortAction) => StockroomSortResult;
   /** The map's Cleaner finished a real restroom job (App: cleanTask by the Cleaner). */
@@ -470,6 +481,34 @@ export function ScreensRouter({
                     onAction={deliveryInspectionAction}
                     hasPrepCook={save.business.staff?.hiredRoles?.includes("prep-cook") ?? false}
                     onUnpack={() => routeGo("fridge-sort")}
+                    onExit={() => routeGo("inventory")}
+                  />
+                </div>
+              </Suspense>
+            ) : null}
+            {screen === "sauce-station" ? (
+              <Suspense fallback={<RestaurantLoading go={routeGo} active="inventory" />}>
+                <div className="relative h-full w-full overflow-hidden">
+                  <SauceStationGame
+                    save={save}
+                    playerLevel={restaurantLevelOf(save.levelProgress)}
+                    reducedMotion={save.settings.reducedMotion}
+                    onAction={sauceStationAction}
+                    onWatchAd={sauceRoundsAd}
+                    hasPrepCook={save.business.staff?.hiredRoles?.includes("prep-cook") ?? false}
+                    onShelf={() => routeGo("sauce-shelf")}
+                    onExit={() => routeGo("inventory")}
+                  />
+                </div>
+              </Suspense>
+            ) : null}
+            {screen === "sauce-shelf" ? (
+              <Suspense fallback={<RestaurantLoading go={routeGo} active="inventory" />}>
+                <div className="relative h-full w-full overflow-hidden">
+                  <SauceShelf
+                    save={save}
+                    playerLevel={restaurantLevelOf(save.levelProgress)}
+                    onPlay={() => routeGo("sauce-station")}
                     onExit={() => routeGo("inventory")}
                   />
                 </div>

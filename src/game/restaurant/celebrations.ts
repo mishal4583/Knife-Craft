@@ -12,8 +12,8 @@ export const POPULARITY_CARD_DELTA = 3;
 export const SPOTLESS_RUN_FOR_THANKS = 2;
 
 export type Celebration = {
-  /** Stable id of the kind: "rank", "popularity" or "spotless" (the card's data attribute). */
-  kind: "rank" | "popularity" | "spotless";
+  /** Stable id of the kind: "rank", "popularity", "spotless" or "chest" (the card's data attribute). */
+  kind: "rank" | "popularity" | "spotless" | "chest";
   emoji: string;
   title: string;
   /** The facts, one short line each. */
