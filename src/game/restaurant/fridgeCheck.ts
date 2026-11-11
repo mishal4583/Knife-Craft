@@ -391,23 +391,34 @@ function trainingCard(
 }
 
 /**
- * The night's SORT deck: up to the tier's card count. The real stock comes first, every card that needs a verdict other than Keep before the rest (a
- * night never hides the spoiled ones); then, when the fridge is quiet, training cards give the tier its minimum of Bin / Use next cards and its minimum
- * deck size; then the whole deck is shuffled by the day's seed. `salt` gives "Play again" a new deck.
+ * The night's SORT deck: up to the tier's card count, always a MIX. The tier's minimum of Bin and Use next cards come first (real cards, then training
+ * cards for what the fridge cannot give), then the other real Bin / Use next cards, but a quarter of the deck is kept for food that is fine; then training
+ * cards bring the deck to the tier's minimum size; then the whole deck is shuffled by the day's seed. `salt` gives "Play again" a new deck.
  */
 export function checkCards(save: SaveData, level: number, salt = 0): CheckCard[] {
   const tier = checkTierAt(level);
   const rnd = rng(seedOf(save, level, "sort") + salt * 31);
   const all = allCards(save, level);
-  const tricky = shuffled(
-    all.filter((c) => c.verdict !== "keep"),
+  const realBins = shuffled(
+    all.filter((c) => c.verdict === "bin"),
     rnd,
-  ).slice(0, tier.maxCards);
+  );
+  const realUse = shuffled(
+    all.filter((c) => c.verdict === "use-first"),
+    rnd,
+  );
   const calm = shuffled(
     all.filter((c) => c.verdict === "keep"),
     rnd,
   );
-  const deck: CheckCard[] = [...tricky];
+  // The deck is always a MIX (a fridge full of spoiled food used to make an all-Bin deck with nothing to keep or use next): the tier's minimum of Bin and
+  // Use next first (real cards first, training cards for what is missing), the other real Bin / Use next cards next, but a quarter of the deck stays for
+  // food that is fine, so there is always something to Keep.
+  const keepRoom = Math.max(1, Math.round(tier.maxCards * 0.25));
+  const trickyRoom = Math.max(tier.minBin + tier.minUse, tier.maxCards - keepRoom);
+  const firstBins = realBins.splice(0, tier.minBin);
+  const firstUse = realUse.splice(0, tier.minUse);
+  const deck: CheckCard[] = [...firstBins, ...firstUse];
   const used = new Set<string>(all.map((c) => c.id));
   const pool = shuffled(TRAINING_POOL, rnd);
   const nextId = (): IngredientId | null => {
@@ -415,7 +426,6 @@ export function checkCards(save: SaveData, level: number, salt = 0): CheckCard[]
     if (id) used.add(id);
     return id ?? null;
   };
-  const count = (v: Verdict) => deck.filter((c) => c.verdict === v).length;
   const add = (v: Verdict, n: number) => {
     for (let i = 0; i < n && deck.length < tier.maxCards; i++) {
       // A very short shelf life has no whole day in its last quarter, so such an ingredient cannot be a "use next" card: try the next one.
@@ -430,8 +440,10 @@ export function checkCards(save: SaveData, level: number, salt = 0): CheckCard[]
       deck.push(card);
     }
   };
-  add("bin", tier.minBin - count("bin"));
-  add("use-first", tier.minUse - count("use-first"));
+  add("bin", tier.minBin - firstBins.length);
+  add("use-first", tier.minUse - firstUse.length);
+  for (const c of shuffled([...realBins, ...realUse], rnd))
+    if (deck.length < trickyRoom) deck.push(c);
   for (const c of calm) if (deck.length < tier.maxCards) deck.push(c);
   while (deck.length < tier.minCards) {
     const id = nextId();

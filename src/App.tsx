@@ -3836,7 +3836,9 @@ export function App() {
   // `cleaned` is empty and nothing is saved, so this never loops.
   useEffect(() => {
     if (!save || !RESTAURANT_MODE) return;
-    const round = cleanerRound(save);
+    // Always from the LATEST save (persist keeps saveRef current), so two changes in one tick can never be overwritten by an older copy.
+    const latest = saveRef.current ?? save;
+    const round = cleanerRound(latest);
     if (round.cleaned.length > 0) persist(round.save);
   }, [save]);
 

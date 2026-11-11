@@ -18,6 +18,8 @@ import {
   MIN_GAP_MS,
   QUEUE_MAX,
   arrivalSchedule,
+  HURRIED_RULES,
+  isHurried,
   callNext,
   gapFor,
   guestLeft,
@@ -84,9 +86,18 @@ check(
   s1.map((a) => a.atMs).join() === [0, 1, 2, 3, 4].map((i) => i * 35_000).join(),
 );
 check(
-  "S4 a level's own order never walks out; guests have the level's patience",
+  // Dine-in opens at Level 12 since 2026-11-08, so Level 12's guests can be HURRIED (70 % of the patience, Phase 8B): the rule is read through `isHurried`.
+  "S4 a level's own order never walks out; guests have the level's patience (a hurried guest 70 % of it)",
   s1.filter((a) => a.kind === "order").every((a) => a.patienceMs === Infinity) &&
-    s1.filter((a) => a.kind !== "order").every((a) => a.patienceMs === 150_000),
+    s1
+      .filter((a) => a.kind !== "order")
+      .every(
+        (a) =>
+          a.patienceMs ===
+          (isHurried(12, a.kind, a.index)
+            ? Math.round(150_000 * HURRIED_RULES.patienceFactor)
+            : 150_000),
+      ),
 );
 check(
   "S5 Levels 1–4: everyone due at 0 (taken one at a time)",

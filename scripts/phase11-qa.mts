@@ -204,33 +204,42 @@ const read = (p: string) =>
 // ── D. cleaning from Day 2 ───────────────────────────────────────────────
 {
   check(
-    "D1 cleaning starts at Level 3, the first service of Day 2 (a day is two services)",
-    CLEANING_FROM_LEVEL === 3 &&
-      CL.isCleanlinessLive(3) &&
-      !CL.isCleanlinessLive(2) &&
+    // Rule changed (developer 2026-11-08, the first-20-levels plan): Day 2 still opens at Level 3 (the day ceremony) but cleaning starts one level later, Level 4.
+    "D1 cleaning starts at Level 4, the level after Day 2 opens (the day ceremony stays at Level 3; a day is two services)",
+    CLEANING_FROM_LEVEL === 4 &&
+      CL.isCleanlinessLive(4) &&
+      !CL.isCleanlinessLive(3) &&
       FL.dayCeremonyAt(3) &&
       !FL.dayCeremonyAt(2),
   );
   const areaOf = (kinds: string[]) =>
     new Set(kinds.map((k) => CL.TASK_RULES[k as keyof typeof CL.TASK_RULES].area));
-  const opening = CL.phaseChores("opening", 3);
-  const lull = CL.phaseChores("lull", 3);
-  const closing = CL.phaseChores("closing", 4);
+  // Rule changed (developer 2026-11-08): chores are staged by cause: the first cleaning level has the stations, one bucket and ONE closing chore (the boards);
+  // the dining reset arrives with dine-in (Level 12 / 14) and the restroom at Level 16 (early-levels-qa A3 / the staged schedule in cleanliness.ts).
+  const opening = CL.phaseChores("opening", 4);
+  const lull = CL.phaseChores("lull", 4);
+  const closingFirst = CL.phaseChores("closing", 4, 1);
+  const openingLate = CL.phaseChores("opening", 16);
+  const closing = CL.phaseChores("closing", 40, 1);
   check(
-    "D2 the morning brings opening chores (kitchen and restroom), the lull brings its chores, and the night of Day 2 brings closing chores in the kitchen, the dining area AND the restroom",
+    "D2 the first cleaning level brings the stations, a bucket and ONE closing chore (the boards); from Level 16 the morning also checks the restroom; the full night (Level 40) has closing chores in the kitchen, the dining area AND the restroom",
     opening.length > 0 &&
       areaOf(opening).has("kitchen") &&
-      areaOf(opening).has("restroom") &&
       lull.length > 0 &&
       areaOf(lull).has("kitchen") &&
+      closingFirst.join() === "wipe-boards" &&
+      areaOf(openingLate).has("restroom") &&
       ["kitchen", "dining", "restroom"].every((a) => areaOf(closing).has(a as never)),
-    { opening, lull, closing },
+    { opening, lull, closingFirst, openingLate, closing },
   );
   check(
-    "D3 Level 2 (Day 1) has none of them",
-    CL.phaseChores("opening", 2).length === 0 &&
-      CL.phaseChores("lull", 2).length === 0 &&
-      CL.phaseChores("closing", 2).length === 0,
+    "D3 Levels 2 and 3 (before cleaning starts) have none of them",
+    [2, 3].every(
+      (n) =>
+        CL.phaseChores("opening", n).length === 0 &&
+        CL.phaseChores("lull", n).length === 0 &&
+        CL.phaseChores("closing", n).length === 0,
+    ),
   );
   const cleaning = RESTAURANT_ZONES.find((z: { id: string }) => z.id === "cleaning");
   const restroom = RESTAURANT_ZONES.find((z: { id: string }) => z.id === "restroom");
@@ -242,19 +251,19 @@ const read = (p: string) =>
   const s: SaveData = {
     ...DEFAULT_SAVE,
     levelProgress: {
-      currentLevelId: "level-3",
-      highestUnlockedLevelId: "level-3",
-      completedLevelIds: ["level-1", "level-2"],
-      campaignVersion: 3,
+      currentLevelId: "level-4",
+      highestUnlockedLevelId: "level-4",
+      completedLevelIds: ["level-1", "level-2", "level-3"],
+      campaignVersion: 4,
     },
   };
-  const after = CL.tasksAfterService(s, 3, {
+  const after = CL.tasksAfterService(s, 4, {
     recipes: [],
     dineIn: 0,
     customers: 1,
   } as never);
   check(
-    "D5 a Day-2 service leaves cleaning tasks behind (the service-time cleaning)",
+    "D5 the first cleaning level's service leaves cleaning tasks behind (the service-time cleaning)",
     CL.cleanlinessOf(after).tasks.length > 0,
     CL.cleanlinessOf(after).tasks.map((t) => t.kind),
   );
@@ -265,13 +274,14 @@ const read = (p: string) =>
   const base: SaveData = {
     ...DEFAULT_SAVE,
     levelProgress: {
-      currentLevelId: "level-3",
-      highestUnlockedLevelId: "level-3",
-      completedLevelIds: ["level-1", "level-2"],
-      campaignVersion: 3,
+      currentLevelId: "level-16",
+      highestUnlockedLevelId: "level-16",
+      completedLevelIds: Array.from({ length: 15 }, (_, i) => `level-${i + 1}`),
+      campaignVersion: 4,
     },
   };
-  const first = CL.addPhaseChores(base, "opening", 3, 2, 0);
+  // The restroom arrives at Level 16 (2026-11-08 schedule): its first cleaning morning checks it; a morning after a done night does not repeat that.
+  const first = CL.addPhaseChores(base, "opening", 16, 2, 0);
   const firstKinds = CL.cleanlinessOf(first).tasks.map((t) => t.kind);
   const later = {
     ...base,
@@ -280,7 +290,7 @@ const read = (p: string) =>
       cleanliness: { ...CL.cleanlinessOf(base), choreKeys: ["2:closing:2"] },
     },
   } as SaveData;
-  const laterKinds = CL.cleanlinessOf(CL.addPhaseChores(later, "opening", 5, 3, 0)).tasks.map(
+  const laterKinds = CL.cleanlinessOf(CL.addPhaseChores(later, "opening", 17, 3, 0)).tasks.map(
     (t) => t.kind,
   );
   check(

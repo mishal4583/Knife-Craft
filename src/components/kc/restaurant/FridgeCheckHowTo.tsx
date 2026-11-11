@@ -91,7 +91,7 @@ function sortPages(tier: CheckTier, measure: "lb" | "kg"): Page[] {
       art: "bin-open",
       body: (
         <ol className="grid gap-2 text-left">
-          <Line icon="🧊">Every card is real food in your fridge.</Line>
+          <Line icon="🧊">Cards show your fridge food. Quiet nights add a few extra.</Line>
           <Line icon="🌙">Closing Time throws out what has spoiled. You judge it first.</Line>
           <Line icon="⭐">Right answers give stars and Hype. Nothing here costs money.</Line>
         </ol>

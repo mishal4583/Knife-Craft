@@ -769,7 +769,7 @@ console.log("M. 2026-11-11: the pot's liquid, Play again, the Pour button");
 {
   const parts = read("src/components/kc/sauce/SauceParts.tsx");
   const gameSrc = read("src/components/kc/sauce/SauceStationGame.tsx");
-  const { surfaceOf } = await import("../src/components/kc/sauce/SauceParts.tsx");
+  const { surfaceOf } = await import("../src/components/kc/sauce/sauceSurface.ts");
   const lv = [0.05, 0.2, 0.4, 0.6, 0.8, 1];
   for (const kind of ["bowl", "pan"] as const) {
     const tops = lv.map((l) => surfaceOf(kind, l).top);

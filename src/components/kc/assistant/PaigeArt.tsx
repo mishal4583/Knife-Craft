@@ -62,13 +62,19 @@ export function PaigePoseImg({ pose, className }: { pose: PaigePose; className?:
  * docs/planning/PAIGE-CUTOUT-CODEX-PROMPTS-2026-11-11.md) are used when they exist; otherwise the half-body pose of the first set, then an emoji.
  * One fixed box, so she never jumps between poses.
  */
+// Which new cutout files do not exist (any subset of the twelve may be delivered): remembered per pose, so a missing file is ONE 404 per visit and not
+// one every time she gives a tip with that pose; a delivered one is always tried.
+const missingCutouts = new Set<string>();
+const art = { nameplate: true };
+
 export function PaigeCutout({ pose, className }: { pose: PaigePose; className?: string }) {
-  const [stage, setStage] = useState<"new" | "old" | "none">("new");
-  // A new pose starts by trying the new cutout again.
+  const startStage = (p: PaigePose) => (missingCutouts.has(p) ? "old" : "new");
+  const [stage, setStage] = useState<"new" | "old" | "none">(startStage(pose));
+  // A new pose starts with the new cutout again (unless none exists).
   const [forPose, setForPose] = useState(pose);
   if (forPose !== pose) {
     setForPose(pose);
-    setStage("new");
+    setStage(startStage(pose));
   }
   if (stage === "none")
     return (
@@ -83,7 +89,10 @@ export function PaigeCutout({ pose, className }: { pose: PaigePose; className?: 
       draggable={false}
       data-paige-pose={pose}
       data-paige-art={stage}
-      onError={() => setStage(stage === "new" ? "old" : "none")}
+      onError={() => {
+        if (stage === "new") missingCutouts.add(pose);
+        setStage(stage === "new" ? "old" : "none");
+      }}
       className={cn("pointer-events-none select-none", className)}
     />
   );
@@ -91,7 +100,7 @@ export function PaigeCutout({ pose, className }: { pose: PaigePose; className?: 
 
 /** The small PAIGE nameplate on the bubble: the painted plate (`nameplate.webp`) when it exists, else a brass plate in CSS. */
 export function PaigeNameplate({ tone = "normal" }: { tone?: "normal" | "success" | "warning" }) {
-  const [painted, setPainted] = useState(true);
+  const [painted, setPainted] = useState(art.nameplate);
   return (
     <span className="paige-nameplate" data-tone={tone} data-testid="assistant-nameplate">
       {painted ? (
@@ -100,7 +109,10 @@ export function PaigeNameplate({ tone = "normal" }: { tone?: "normal" | "success
           alt=""
           aria-hidden="true"
           draggable={false}
-          onError={() => setPainted(false)}
+          onError={() => {
+            art.nameplate = false;
+            setPainted(false);
+          }}
           className="paige-nameplate-art"
         />
       ) : null}

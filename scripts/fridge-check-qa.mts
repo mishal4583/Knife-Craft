@@ -174,6 +174,32 @@ console.log("A. Tiers and when it opens");
     ) && checkTiers().every((x) => x.minCards <= x.maxCards),
     "A11: the minimum deck, Bin and Use next counts only grow tier by tier (the challenge rises gradually)",
   );
+  // A fridge FULL of spoiled food must still be a mix (it used to be an all-Bin deck: nothing to keep, nothing to use next).
+  const spoiledFridge = stocked(
+    [
+      "apple",
+      "parsley",
+      "greenbean",
+      "radish",
+      "strawberry",
+      "bread",
+      "lettuce",
+      "tomato",
+      "carrot",
+      "garlic",
+      "basil",
+    ].map((id, i) => [id, i < 8 ? 25 : 41] as [string, number]),
+  );
+  const mixDeck = checkCards(spoiledFridge, FULL);
+  assert(
+    mixDeck.some((c) => c.verdict === "keep") &&
+      mixDeck.filter((c) => c.verdict === "use-first").length >= checkTierAt(FULL).minUse &&
+      mixDeck.filter((c) => c.verdict === "bin").length >= checkTierAt(FULL).minBin &&
+      mixDeck.length <= checkTierAt(FULL).maxCards &&
+      new Set(mixDeck.map((c) => c.id)).size === mixDeck.length,
+    "A13: a fridge full of spoiled food is still a mix: Bin, Use next AND Keep cards (never an all-Bin deck)",
+    mixDeck.map((c) => `${c.id}:${c.verdict}`),
+  );
   const real = new Set(Object.values(quiet.business.inventory).map((e) => e!.ingredientId));
   assert(
     JSON.stringify(checkCards(quiet, FULL)) === JSON.stringify(checkCards(quiet, FULL)) &&
