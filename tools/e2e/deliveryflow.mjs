@@ -91,7 +91,7 @@ const { browser, page, logs } = await launch();
 await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });
 
 // F1 + F2: the Inventory
-await boot(page, saveAt(3, waiting));
+await boot(page, saveAt(4, waiting));
 await openInventory(page);
 const card = await page.evaluate(() => {
   const c = document.querySelector('[data-testid="delivery-routine"]');
@@ -129,7 +129,7 @@ check(
 );
 
 // F3 + F4: the Kitchen
-await boot(page, saveAt(3, waiting));
+await boot(page, saveAt(4, waiting));
 const clicked = await openKitchenAndOpenService(page);
 await sleep(700);
 const gate = await page.evaluate(() => ({
@@ -155,7 +155,7 @@ check(
 // F5: checked, not unpacked
 await boot(
   page,
-  saveAt(3, { ...waiting, deliveryInspection: { seed: 1, inspected: 99, howto: 1 } }),
+  saveAt(4, { ...waiting, deliveryInspection: { seed: 1, inspected: 99, howto: 1 } }),
 );
 await openKitchenAndOpenService(page);
 await sleep(700);
@@ -172,7 +172,7 @@ check(
 );
 
 // F6: nothing waits
-await boot(page, saveAt(3, { fridgeSort: { crate: [], counts: {}, seed: 1 } }));
+await boot(page, saveAt(4, { fridgeSort: { crate: [], counts: {}, seed: 1 } }));
 await openKitchenAndOpenService(page);
 await sleep(900);
 check(
@@ -182,7 +182,7 @@ check(
 
 // F7: small phone
 await page.setViewport({ width: 320, height: 568, deviceScaleFactor: 1 });
-await boot(page, saveAt(3, waiting));
+await boot(page, saveAt(4, waiting));
 await openKitchenAndOpenService(page);
 await sleep(700);
 const small = await page.evaluate(() => {

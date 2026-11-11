@@ -24,6 +24,7 @@ import {
 } from "../business/perishability";
 import type { PerishabilityState } from "../business/perishability";
 import { HYPE_BY_STARS } from "../business/fridgeSort";
+import { rampOf } from "../business/difficultyRamp";
 import { POINTS_PER_SET, TIME_BONUS_PER_SECOND, pointsFor } from "../business/stockroomSort";
 import { addHype } from "./secondFloor";
 import { isSystemLive, restaurantSystem } from "./restaurantProgression";
@@ -55,7 +56,12 @@ export type CheckTier = {
   from: number;
   /** The most cards a night shows. */
   maxCards: number;
-  /** 2 = Keep / Bin; 3 = Keep / Bin / Use first. */
+  /** The fewest cards a night shows (developer 2026-11-11: "increase the amount of things to check"): a thin fridge is topped up with training cards. */
+  minCards: number;
+  /** The fewest Bin and Use next cards a night always has (a quiet fridge is given them), so every round is a real decision. */
+  minBin: number;
+  minUse: number;
+  /** 2 = Keep / Bin; 3 = Keep / Bin / Use next. Every tier has the three piles since 2026-11-11 (Use next was hidden until the second tier). */
   piles: 2 | 3;
   /** The cues printed on the card. */
   cues: { icon: boolean; days: boolean };
@@ -80,7 +86,10 @@ export function checkTiers(): readonly CheckTier[] {
     {
       from: f,
       maxCards: 6,
-      piles: 2,
+      minCards: 5,
+      minBin: 1,
+      minUse: 1,
+      piles: 3,
       cues: { icon: true, days: true },
       timeFactor: 2.0,
       maxWrap: 4,
@@ -89,6 +98,9 @@ export function checkTiers(): readonly CheckTier[] {
     {
       from: gap(1),
       maxCards: 8,
+      minCards: 7,
+      minBin: 2,
+      minUse: 1,
       piles: 3,
       cues: { icon: true, days: true },
       timeFactor: 1.6,
@@ -98,6 +110,9 @@ export function checkTiers(): readonly CheckTier[] {
     {
       from: gap(2),
       maxCards: 10,
+      minCards: 9,
+      minBin: 2,
+      minUse: 2,
       piles: 3,
       cues: { icon: false, days: true },
       timeFactor: 1.3,
@@ -107,6 +122,9 @@ export function checkTiers(): readonly CheckTier[] {
     {
       from: gap(3),
       maxCards: 12,
+      minCards: 11,
+      minBin: 3,
+      minUse: 2,
       piles: 3,
       cues: { icon: false, days: false },
       timeFactor: 1.1,
@@ -116,6 +134,9 @@ export function checkTiers(): readonly CheckTier[] {
     {
       from: Math.max(gap(3) + 1, full()),
       maxCards: 12,
+      minCards: 12,
+      minBin: 3,
+      minUse: 3,
       piles: 3,
       cues: { icon: false, days: false },
       timeFactor: 1.0,
@@ -129,7 +150,14 @@ export function checkTierAt(level: number): CheckTier {
   const tiers = checkTiers();
   let t = tiers[0]!;
   for (const x of tiers) if (level >= x.from) t = x;
-  return t;
+  // More cards and more Bin / Use next cards as the levels rise, smoothly between the tiers (business/difficultyRamp.ts); exactly the tier's own on its first level.
+  return {
+    ...t,
+    maxCards: rampOf(tiers, level, (x) => x.maxCards),
+    minCards: rampOf(tiers, level, (x) => x.minCards),
+    minBin: rampOf(tiers, level, (x) => x.minBin),
+    minUse: rampOf(tiers, level, (x) => x.minUse),
+  };
 }
 
 /** 1..5, for analytics and the how-to card. */
@@ -221,6 +249,8 @@ export type CheckCard = {
   /** The freshness tomorrow (what closing sees). */
   state: PerishabilityState;
   verdict: Verdict;
+  /** A training card (not in your fridge): it tops a thin night up so every round has enough to judge. Never real stock. */
+  training?: boolean;
   /** The sort key for wrapping: the day it expires (earlier = use first). */
   expires: number;
   /** Whole days it still lasts, counting tomorrow (0 = closing throws it out tonight). */
@@ -292,53 +322,168 @@ export function allCards(save: SaveData, level: number): CheckCard[] {
 const seedOf = (save: SaveData, level: number, stage: CheckStage): number =>
   save.business.calendar.businessDay * 7919 + level * 104729 + (stage === "wrap" ? 13 : 1);
 
+// Training cards (developer 2026-11-11: "increase the amount of things to check, good and bad, gradually"): the fridge is often nearly empty and all fresh,
+// so the deck is topped up with seeded cards from a pool of common ingredients, each with a made-up age that makes it Keep, Use next or Bin. They are
+// never real stock: nothing is removed, bought or earned from them, and the game only reads their verdict.
+const TRAINING_POOL = [
+  "tomato",
+  "lettuce",
+  "carrot",
+  "mushroom",
+  "cucumber",
+  "potato",
+  "onion",
+  "bread",
+  "baguette",
+  "mozzarella",
+  "avocado",
+  "pepper",
+  "eggplant",
+  "corn",
+  "lime",
+  "garlic",
+  "chicken",
+] as IngredientId[];
+
+/** The freshness the stock rule gives an item of `ageDays` with this shelf life (the same thresholds as `perishabilityStateFor`). */
+function stateForAge(ageDays: number, shelfLife: number): PerishabilityState {
+  if (ageDays >= shelfLife) return "EXPIRED";
+  const fraction = ageDays / shelfLife;
+  if (fraction >= 0.75) return "NEAR_EXPIRY";
+  if (fraction >= 0.35) return "AGING";
+  return "FRESH";
+}
+
+function trainingCard(
+  save: SaveData,
+  id: IngredientId,
+  want: Verdict,
+  piles: 2 | 3,
+  rnd: () => number,
+): CheckCard {
+  const def = INGREDIENTS[id]!;
+  const shelfLife = Math.max(2, shelfLifeForIngredient(id));
+  // The age TOMORROW (what the verdict reads): past the shelf life = Bin, 75-99% = Use next, under 35% = fresh, in between = aging (Keep).
+  let tomorrowAge: number;
+  if (want === "bin") tomorrowAge = shelfLife + Math.floor(rnd() * 2);
+  else if (want === "use-first") {
+    const lo = Math.ceil(shelfLife * 0.75);
+    tomorrowAge = Math.min(shelfLife - 1, lo + Math.floor(rnd() * Math.max(1, shelfLife - lo)));
+  } else tomorrowAge = Math.floor(rnd() * Math.ceil(shelfLife * 0.7));
+  const state = stateForAge(tomorrowAge, shelfLife);
+  const today = save.business.calendar.businessDay;
+  const tomorrow = tomorrowOf(save);
+  const age = Math.max(0, tomorrowAge - Math.max(1, tomorrow - today));
+  const expires = today - age + shelfLife;
+  return {
+    id,
+    name: def.name,
+    quantity: Math.round((0.6 + rnd() * 3) * 100) / 100,
+    age,
+    shelfLife,
+    state,
+    verdict: verdictOf(state, piles),
+    expires,
+    daysLeft: Math.max(0, Math.ceil(expires - tomorrow)),
+    category: def.category,
+    training: true,
+  };
+}
+
 /**
- * The night's SORT deck: up to the tier's card count; every card that needs a verdict other than Keep comes first (a night never hides the
- * spoiled ones), the rest are company; then the whole deck is shuffled by the day's seed.
+ * The night's SORT deck: up to the tier's card count. The real stock comes first, every card that needs a verdict other than Keep before the rest (a
+ * night never hides the spoiled ones); then, when the fridge is quiet, training cards give the tier its minimum of Bin / Use next cards and its minimum
+ * deck size; then the whole deck is shuffled by the day's seed. `salt` gives "Play again" a new deck.
  */
-export function checkCards(save: SaveData, level: number): CheckCard[] {
+export function checkCards(save: SaveData, level: number, salt = 0): CheckCard[] {
   const tier = checkTierAt(level);
-  const rnd = rng(seedOf(save, level, "sort"));
+  const rnd = rng(seedOf(save, level, "sort") + salt * 31);
   const all = allCards(save, level);
   const tricky = shuffled(
     all.filter((c) => c.verdict !== "keep"),
     rnd,
-  );
+  ).slice(0, tier.maxCards);
   const calm = shuffled(
     all.filter((c) => c.verdict === "keep"),
     rnd,
   );
-  return shuffled([...tricky, ...calm].slice(0, tier.maxCards), rnd);
+  const deck: CheckCard[] = [...tricky];
+  const used = new Set<string>(all.map((c) => c.id));
+  const pool = shuffled(TRAINING_POOL, rnd);
+  const nextId = (): IngredientId | null => {
+    const id = pool.find((x) => !used.has(x) && INGREDIENTS[x]);
+    if (id) used.add(id);
+    return id ?? null;
+  };
+  const count = (v: Verdict) => deck.filter((c) => c.verdict === v).length;
+  const add = (v: Verdict, n: number) => {
+    for (let i = 0; i < n && deck.length < tier.maxCards; i++) {
+      // A very short shelf life has no whole day in its last quarter, so such an ingredient cannot be a "use next" card: try the next one.
+      let card: CheckCard | null = null;
+      for (let tries = 0; tries < pool.length && !card; tries++) {
+        const id = nextId();
+        if (!id) return;
+        const c = trainingCard(save, id, v, tier.piles, rnd);
+        if (c.verdict === v) card = c;
+      }
+      if (!card) return;
+      deck.push(card);
+    }
+  };
+  add("bin", tier.minBin - count("bin"));
+  add("use-first", tier.minUse - count("use-first"));
+  for (const c of calm) if (deck.length < tier.maxCards) deck.push(c);
+  while (deck.length < tier.minCards) {
+    const id = nextId();
+    if (!id) break;
+    deck.push(trainingCard(save, id, "keep", tier.piles, rnd));
+  }
+  return shuffled(deck, rnd);
 }
 
 /** Whether the sort game has something to judge tonight (freshness live, enough cards, at least one Bin / Use first). */
 export function isSortOpen(save: SaveData, level: number): boolean {
-  if (!FRIDGE_CHECK_TEST_UNLOCK && !isSystemLive("fridge-freshness", level)) return false;
-  const cards = allCards(save, level);
-  return cards.length >= MIN_CARDS && cards.some((c) => c.verdict !== "keep");
+  void save;
+  // Always a game once freshness is live (2026-11-11): a quiet fridge is topped up with training cards (checkCards), so there is always something to judge.
+  return FRIDGE_CHECK_TEST_UNLOCK || isSystemLive("fridge-freshness", level);
 }
 
 /** Free practice from the Inventory fridge (no chore, no reward): freshness is live and there are enough cards for a deck. */
 export function isPracticeOpen(save: SaveData, level: number): boolean {
-  if (!FRIDGE_CHECK_TEST_UNLOCK && !isSystemLive("fridge-freshness", level)) return false;
-  return allCards(save, level).length >= MIN_CARDS;
+  void save;
+  return FRIDGE_CHECK_TEST_UNLOCK || isSystemLive("fridge-freshness", level);
 }
 
-/** The food that stays in the fridge tonight (not binned), in a seeded order, up to the tier's wrap count. */
-export function wrapItems(save: SaveData, level: number): CheckCard[] {
+/**
+ * The food that stays in the fridge tonight (not binned), in a seeded order, up to the tier's wrap count. A thin fridge is topped up with training
+ * items (never real stock) so the shelf always has enough to put in use-by order, and always more than one use-by day.
+ */
+export function wrapItems(save: SaveData, level: number, salt = 0): CheckCard[] {
   const tier = checkTierAt(level);
-  const rnd = rng(seedOf(save, level, "wrap"));
-  const stays = allCards(save, level).filter((c) => c.state !== "EXPIRED");
-  return shuffled(stays, rnd).slice(0, tier.maxWrap);
+  const rnd = rng(seedOf(save, level, "wrap") + salt * 31);
+  const all = allCards(save, level);
+  const stays = all.filter((c) => c.state !== "EXPIRED");
+  const deck: CheckCard[] = shuffled(stays, rnd).slice(0, tier.maxWrap);
+  const want = Math.min(tier.maxWrap, Math.max(MIN_WRAP_ITEMS, tier.maxWrap - 1));
+  const used = new Set<string>(all.map((c) => c.id));
+  const pool = shuffled(TRAINING_POOL, rnd).filter((x) => !used.has(x) && INGREDIENTS[x]);
+  const kinds: Verdict[] = ["use-first", "keep", "keep", "use-first", "keep"];
+  let k = 0;
+  while (deck.length < want && pool.length > 0) {
+    deck.push(trainingCard(save, pool.shift()!, kinds[k++ % kinds.length]!, tier.piles, rnd));
+  }
+  // At least two different use-by days, or there is nothing to put in order.
+  if (deck.length >= MIN_WRAP_ITEMS && new Set(deck.map((c) => Math.ceil(c.expires))).size < 2) {
+    const id = pool.shift();
+    if (id) deck[deck.length - 1] = trainingCard(save, id, "use-first", tier.piles, rnd);
+  }
+  return shuffled(deck, rnd);
 }
 
-/** Whether the wrap game has something to order (enough items with at least two different use-by days). */
+/** Whether the wrap game has something to order: always, once freshness is live (a thin fridge is topped up with training items). */
 export function isWrapOpen(save: SaveData, level: number): boolean {
-  if (!FRIDGE_CHECK_TEST_UNLOCK && !isSystemLive("fridge-freshness", level)) return false;
-  const items = wrapItems(save, level);
-  return (
-    items.length >= MIN_WRAP_ITEMS && new Set(items.map((c) => Math.ceil(c.expires))).size >= 2
-  );
+  void save;
+  return FRIDGE_CHECK_TEST_UNLOCK || isSystemLive("fridge-freshness", level);
 }
 
 /** Whether the game replaces the one tap for `task` tonight (the ONE branch `useCleaningGame` asks). */
@@ -376,7 +521,7 @@ export function reasonOf(card: CheckCard, tier: CheckTier): string {
     card.verdict === "bin"
       ? "spoils tonight"
       : card.verdict === "use-first"
-        ? "use it first"
+        ? "use it next"
         : card.state === "NEAR_EXPIRY"
           ? "still fine, use it soon"
           : "still fresh";

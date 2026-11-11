@@ -75,7 +75,7 @@ export function DeliveryInspectionGame(props: {
   /** A Prep Cook is hired: he can do this inspection for the player (no stars, no reward). */
   hasPrepCook?: boolean;
 }) {
-  // "Again · practice" and "Next inspection" start a new round with its own state.
+  // "Play again" and "Next inspection" start a new round with its own state.
   const [attempt, setAttempt] = useState(0);
   const [practice, setPractice] = useState(false);
   return (
@@ -723,7 +723,11 @@ function Round({
           data-tone={note?.tone ?? "info"}
           aria-live="polite"
         >
-          {note ? note.text : practice ? "Practice · no reward" : "Look behind the big ones!"}
+          {note
+            ? note.text
+            : practice
+              ? "Extra round · no reward"
+              : "Tap bad food · drag fresh ones aside · 🔎 magnifies"}
           {streak.current >= 2 ? ` 🔥 ${streak.current}` : ""}
         </p>
         {lensBtn ? (
@@ -758,8 +762,13 @@ function Round({
             </p>
             <p className="mt-1 font-ui text-[13.5px] font-bold text-walnut/80">
               Find <b>{total}</b> NOT FRESH · {Math.round(crate.timeMs / 1000)} s
-              {practice ? " · practice" : ""}
+              {practice ? " · extra round" : ""}
             </p>
+            <ul className="mt-1.5 space-y-0.5 text-left font-ui text-[12.5px] font-bold text-walnut-dark">
+              <li>👆 Tap the bad ones</li>
+              <li>✋ Drag fresh food aside to look behind it</li>
+              <li>🔎 Magnifier: slide over the pile to zoom in</li>
+            </ul>
             <div className="mt-3 grid gap-2">
               <SortButton onClick={start} testId="insp-start">
                 Start
@@ -875,7 +884,7 @@ function Round({
             </p>
             {practice ? (
               <p className="relative mt-1 font-ui text-[12.5px] font-bold text-walnut/65">
-                Practice: no reward
+                Extra round: no reward
               </p>
             ) : (
               <p
@@ -912,7 +921,7 @@ function Round({
                 Done
               </SortButton>
               <SortButton quiet onClick={onAgain} testId="insp-again">
-                Again · practice
+                Play again
               </SortButton>
             </div>
           </div>
@@ -1017,8 +1026,7 @@ function HowTo({ tierNumber, onDone }: { tierNumber: number; onDone: () => void 
             👆
           </span>
           <span>
-            <b>Tap</b> a bad one. <b>Drag</b> things aside to look behind them.
-            {tierNumber >= 3 ? " Use 🔎 for tiny ones." : ""}
+            <b>Tap</b> bad food. <b>Drag</b> fresh food aside to look behind. 🔎 magnifies.
           </span>
           <span className="pointer-events-none absolute -right-1 -top-4">
             <PointerHand size={34} />

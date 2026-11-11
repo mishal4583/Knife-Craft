@@ -57,6 +57,58 @@ export function PaigePoseImg({ pose, className }: { pose: PaigePose; className?:
   );
 }
 
+/**
+ * Paige as a standalone cutout (developer 2026-11-11). The new full cutouts (`cutout-<pose>.webp`, drawn from the Codex prompts in
+ * docs/planning/PAIGE-CUTOUT-CODEX-PROMPTS-2026-11-11.md) are used when they exist; otherwise the half-body pose of the first set, then an emoji.
+ * One fixed box, so she never jumps between poses.
+ */
+export function PaigeCutout({ pose, className }: { pose: PaigePose; className?: string }) {
+  const [stage, setStage] = useState<"new" | "old" | "none">("new");
+  // A new pose starts by trying the new cutout again.
+  const [forPose, setForPose] = useState(pose);
+  if (forPose !== pose) {
+    setForPose(pose);
+    setStage("new");
+  }
+  if (stage === "none")
+    return (
+      <span className={cn("grid place-items-center text-[88px]", className)} aria-hidden="true">
+        👩‍🍳
+      </span>
+    );
+  return (
+    <img
+      src={paigeUrl(stage === "new" ? `cutout-${pose}` : `pose-${pose}`)}
+      alt={ASSISTANT_NAME}
+      draggable={false}
+      data-paige-pose={pose}
+      data-paige-art={stage}
+      onError={() => setStage(stage === "new" ? "old" : "none")}
+      className={cn("pointer-events-none select-none", className)}
+    />
+  );
+}
+
+/** The small PAIGE nameplate on the bubble: the painted plate (`nameplate.webp`) when it exists, else a brass plate in CSS. */
+export function PaigeNameplate({ tone = "normal" }: { tone?: "normal" | "success" | "warning" }) {
+  const [painted, setPainted] = useState(true);
+  return (
+    <span className="paige-nameplate" data-tone={tone} data-testid="assistant-nameplate">
+      {painted ? (
+        <img
+          src={paigeUrl("nameplate")}
+          alt=""
+          aria-hidden="true"
+          draggable={false}
+          onError={() => setPainted(false)}
+          className="paige-nameplate-art"
+        />
+      ) : null}
+      <span className="paige-nameplate-text">{ASSISTANT_NAME}</span>
+    </span>
+  );
+}
+
 export type PaigeFace = "kind" | "laugh" | "worried" | "wink";
 
 /** Her oval cameo (as drawn: about 1.3 : 1); the emoji shows if it cannot load. */

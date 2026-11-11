@@ -119,13 +119,13 @@ console.log("A. Tiers and when it opens");
     "A3: 6 / 8 / 10 / 12 / 12 cards, clock x2 / 1.6 / 1.3 / 1.1 / 1",
   );
   assert(
-    t.map((x) => x.piles).join() === "2,3,3,3,3" &&
+    t.map((x) => x.piles).join() === "3,3,3,3,3" &&
       t[0]!.cues.icon &&
       t[0]!.cues.days &&
       !t[2]!.cues.icon &&
       t[2]!.cues.days &&
       !t[3]!.cues.days,
-    "A4: tier 1 has two piles; the cues fade out (icon, then days)",
+    "A4: every tier has three piles (Use next from the start, developer 2026-11-11); the cues fade out (icon, then days)",
   );
   assert(tierNumberAt(FRESH) === 1 && tierNumberAt(FULL + 50) === 5, "A5: tierNumberAt");
   const second = checkTiers()[1]!.from;
@@ -145,10 +145,42 @@ console.log("A. Tiers and when it opens");
     ["garlic", 41],
     ["tomato", 41],
   ]);
-  assert(!isSortOpen(quiet, FULL), "A9: a quiet night (nothing to bin or use first) stays one tap");
+  // Rule changed 2026-11-11 ("sauce station and fridge check are not mandatory", "increase the amount of things to check"): a quiet or thin fridge is
+  // topped up with training cards, so the game is always there once freshness is live and every night has Bin and Use next cards.
+  const quietDeck = checkCards(quiet, FULL);
   assert(
-    !isSortOpen(stocked(NIGHT.slice(0, MIN_CARDS - 1)), FULL),
-    "A10: too few cards stays one tap",
+    isSortOpen(quiet, FULL) &&
+      quietDeck.filter((c) => c.verdict === "bin").length >= checkTierAt(FULL).minBin &&
+      quietDeck.filter((c) => c.verdict === "use-first").length >= checkTierAt(FULL).minUse &&
+      quietDeck.some((c) => c.training),
+    "A9: a quiet night is topped up with training cards: enough Bin and Use next to judge",
+    quietDeck.map((c) => `${c.id}:${c.verdict}`),
+  );
+  const thinDeck = checkCards(stocked(NIGHT.slice(0, MIN_CARDS - 1)), FULL);
+  assert(
+    isSortOpen(stocked(NIGHT.slice(0, MIN_CARDS - 1)), FULL) &&
+      thinDeck.length >= checkTierAt(FULL).minCards &&
+      thinDeck.length <= checkTierAt(FULL).maxCards,
+    "A10: too few real cards is topped up to the tier's minimum, never over its maximum",
+    thinDeck.length,
+  );
+  assert(
+    checkTiers().every(
+      (x, i, all) =>
+        i === 0 ||
+        (x.minCards >= all[i - 1]!.minCards &&
+          x.minBin >= all[i - 1]!.minBin &&
+          x.minUse >= all[i - 1]!.minUse),
+    ) && checkTiers().every((x) => x.minCards <= x.maxCards),
+    "A11: the minimum deck, Bin and Use next counts only grow tier by tier (the challenge rises gradually)",
+  );
+  const real = new Set(Object.values(quiet.business.inventory).map((e) => e!.ingredientId));
+  assert(
+    JSON.stringify(checkCards(quiet, FULL)) === JSON.stringify(checkCards(quiet, FULL)) &&
+      JSON.stringify(checkCards(quiet, FULL, 1)) !== JSON.stringify(checkCards(quiet, FULL, 0)) &&
+      quietDeck.filter((c) => c.training).every((c) => !real.has(c.id)) &&
+      new Set(quietDeck.map((c) => c.id)).size === quietDeck.length,
+    "A12: the deck is seeded (same night, same deck), Play again deals a new one, training cards never repeat a real ingredient",
   );
   assert(
     stageOfTask(CHECK_TASK.sort) === "sort" &&
@@ -229,8 +261,9 @@ console.log("C. The deck");
   const deck = checkCards(s, T3);
   assert(deck.length === checkTierAt(T3).maxCards, "C1: capped by the tier", deck.length);
   assert(
-    deck.filter((c) => c.verdict === "bin").length === 2,
-    "C2: both spoiled cards are always in the deck",
+    deck.filter((c) => c.verdict === "bin" && !c.training).length === 2 &&
+      deck.filter((c) => c.verdict === "bin").length >= checkTierAt(T3).minBin,
+    "C2: both real spoiled cards are always in the deck (training cards may add more, up to the tier's minimum)",
   );
   assert(
     JSON.stringify(checkCards(s, T3).map((c) => c.id)) === JSON.stringify(deck.map((c) => c.id)),
@@ -255,7 +288,10 @@ console.log("D. Piles by tier");
     verdictOf("EXPIRED", 2) === "bin" && verdictOf("EXPIRED", 3) === "bin",
     "D1: expired is always Bin",
   );
-  assert(verdictOf("NEAR_EXPIRY", 2) === "keep", "D2: tier 1 keeps near-expiry food");
+  assert(
+    verdictOf("NEAR_EXPIRY", 2) === "keep",
+    "D2: a two-pile verdict keeps near-expiry food (the rule function; no tier uses it now)",
+  );
   assert(verdictOf("NEAR_EXPIRY", 3) === "use-first", "D3: later tiers put near-expiry food first");
   assert(
     verdictOf("AGING", 3) === "keep" && verdictOf("FRESH", 3) === "keep",
@@ -263,9 +299,9 @@ console.log("D. Piles by tier");
   );
   const s = stocked(NIGHT);
   assert(
-    allCards(s, FRESH).filter((c) => c.verdict === "use-first").length === 0 &&
+    allCards(s, FRESH).filter((c) => c.verdict === "use-first").length === 3 &&
       allCards(s, FULL).filter((c) => c.verdict === "use-first").length === 3,
-    "D5: the same stock has no Use first cards in tier 1 and three in tier 5",
+    "D5: Use next is there from tier 1 (2026-11-11): the same stock has three Use next cards in tier 1 and in tier 5",
   );
 }
 
@@ -278,8 +314,9 @@ console.log("E. Wrap and label");
     "E1: only the food that stays is wrapped",
   );
   assert(
-    items.length <= checkTierAt(FULL).maxWrap && items.length === NIGHT.length - 1,
-    "E2: capped by the tier",
+    items.length <= checkTierAt(FULL).maxWrap &&
+      items.filter((c) => !c.training).length === NIGHT.length - 1,
+    "E2: capped by the tier; every real item that stays is on the shelf",
     items.length,
   );
   const first = [...items].sort((a, b) => a.expires - b.expires)[0]!;
@@ -302,7 +339,11 @@ console.log("E. Wrap and label");
     ["carrot", 40],
     ["cucumber", 40],
   ]);
-  assert(!isWrapOpen(same, FULL), "E6: all the same use-by day = nothing to order, one tap");
+  const sameItems = wrapItems(same, FULL);
+  assert(
+    isWrapOpen(same, FULL) && new Set(sameItems.map((c) => Math.ceil(c.expires))).size >= 2,
+    "E6: all the same use-by day: training items make it a real ordering job (more than one use-by day)",
+  );
   const c = items.find((x) => x.id === "tomato")!;
   assert(
     stickerText({ ...c, daysLeft: 0 }) === "Today" &&
@@ -556,8 +597,9 @@ console.log("I. Saves");
   );
   assert(
     allCards(structuredClone(DEFAULT_SAVE), FULL).length === 0 &&
-      !isSortOpen(structuredClone(DEFAULT_SAVE), FULL),
-    "I4: an empty fridge has no cards and does not open",
+      isSortOpen(structuredClone(DEFAULT_SAVE), FULL) &&
+      checkCards(structuredClone(DEFAULT_SAVE), FULL).length >= checkTierAt(FULL).minCards,
+    "I4: an empty fridge has no real cards, and the game still opens with a full training deck",
   );
 }
 
@@ -574,13 +616,14 @@ console.log("K. The practice entry");
     ["garlic", 41],
   ]);
   assert(
-    isPracticeOpen(quiet, FULL) && !isSortOpen(quiet, FULL),
-    "K2: practice also opens on a quiet night (the real chore does not)",
+    isPracticeOpen(quiet, FULL) && isSortOpen(quiet, FULL),
+    "K2: the game opens on a quiet night too (training cards)",
   );
   assert(
-    !isPracticeOpen(stocked(NIGHT.slice(0, MIN_CARDS - 1)), FULL) &&
-      !isPracticeOpen(structuredClone(DEFAULT_SAVE), FULL),
-    "K3: too little stock = no practice",
+    isPracticeOpen(stocked(NIGHT.slice(0, MIN_CARDS - 1)), FULL) &&
+      isPracticeOpen(structuredClone(DEFAULT_SAVE), FULL) &&
+      !isPracticeOpen(structuredClone(DEFAULT_SAVE), FRESH - 1),
+    "K3: too little stock still opens (training cards), but never before the freshness stage",
   );
 }
 

@@ -17,6 +17,8 @@
 import type { SaveData } from "../SaveManager";
 import { CLEANING_FROM_LEVEL } from "../config/cleaningStart";
 import { FRIDGE_SORT_FIRST_LEVEL } from "../business/fridgeSort";
+import { INSPECTION_FIRST_LEVEL } from "../business/deliveryInspection";
+import { flowSteps } from "../business/deliveryFlow";
 import { STOCKROOM_FIRST_LEVEL } from "../business/stockroomSort";
 import { SAUCE_FIRST_LEVEL } from "../business/sauceStation";
 import { marketPlanFor } from "./marketPlan";
@@ -231,20 +233,33 @@ export const ASSISTANT_BEATS: readonly AssistantBeat[] = [
       level >= 2 && completed(save) >= 1 && marketPlanFor(save, 1).rows.length > 0,
   },
   {
-    id: "fridge-sort",
+    // Developer 2026-11-11: the delivery check opens at Level 3 and the sorting one level later; each tip comes only while its step really waits
+    // (a tip that sent the player to an Inventory with nothing to do was a bug).
+    id: "check-delivery",
     lines: [
+      { text: "Your order arrived! Look it over for bad food.", pose: "tip" },
       {
-        text: "Your order arrived! Check it, then play Fridge Sort.",
-        pose: "tip",
-      },
-      {
-        text: "Check for damaged food, then put it in the fridge. Both come before service.",
+        text: "Tap anything that looks off. Move the big ones to look behind them!",
         pose: "explain",
       },
     ],
     go: "inventory",
     priority: 55,
-    when: (_save, level) => within(level, FRIDGE_SORT_FIRST_LEVEL),
+    when: (save, level) =>
+      within(level, INSPECTION_FIRST_LEVEL) &&
+      flowSteps(save, level).some((x) => x.id === "inspect"),
+  },
+  {
+    id: "fridge-sort",
+    lines: [
+      { text: "Checked food goes into the fridge. Sort it onto the right shelves!", pose: "tip" },
+      { text: "Drop each piece where it belongs. Do it before service.", pose: "explain" },
+    ],
+    go: "inventory",
+    priority: 55,
+    when: (save, level) =>
+      within(level, FRIDGE_SORT_FIRST_LEVEL) &&
+      flowSteps(save, level).some((x) => x.id === "unpack" && !x.lockedBy),
   },
   {
     // Developer 2026-11-08: the Second Floor is introduced only when the player can pay the first machine and still has money to carry on.

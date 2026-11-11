@@ -6,8 +6,8 @@
 //   T4 "Next: Wrap and label": a wrong tap is refused with a note (free), the right order wraps everything, the wrap chore is done
 //   T5 the SWIPE path (pointer down, move, up) answers a card
 //   T6 Skip from Pause does the chore with one tap: no stars, no Hype, no state
-//   T7 a quiet night (nothing to bin or use first) keeps the one tap: no game opens
-//   T8 Level 20 (tier 1) has two piles (no Use first button); Level 40 has three
+//   T7 a quiet night is topped up with training cards: the game opens (2026-11-11)
+//   T8 every tier has three piles (Use next from the start)
 //   T9 at 320 x 568 nothing scrolls sideways and every button is at least 48 px
 //   T10 Reduced Motion: the card changes at once and the game still works
 //   T11 the painted pieces all load
@@ -298,9 +298,9 @@ try {
   const quietOpen = await q('[data-testid="fridge-check"]');
   const quietSave = await readSave(page);
   check(
-    "T7 a quiet night (nothing to bin or use first) keeps the one tap: no game, the chore is done",
-    !quietOpen &&
-      !(quietSave.business.cleanliness?.tasks ?? []).some((t) => t.kind === "spoiled-out"),
+    "T7 a quiet night is topped up with training cards (2026-11-11): the game opens and the chore waits until it is played (no one-tap fallback)",
+    quietOpen &&
+      (quietSave.business.cleanliness?.tasks ?? []).some((t) => t.kind === "spoiled-out"),
     { quietOpen },
   );
 
@@ -324,13 +324,13 @@ try {
     tier: document.querySelector('[data-testid="fridge-check"]')?.getAttribute("data-tier"),
   }));
   check(
-    "T8 Level 20 (tier 1) has two piles; Level 40 (tier 3) has three",
+    "T8 every tier has three piles, Use next from the start (2026-11-11; the 91-level campaign puts Level 20 in tier 2 and Level 40 in tier 4)",
     piles1.bin &&
       piles1.keep &&
-      !piles1.first &&
-      piles1.tier === "1" &&
+      piles1.first &&
+      piles1.tier === "2" &&
       piles3.first &&
-      piles3.tier === "3",
+      piles3.tier === "4",
     { piles1, piles3 },
   );
 
@@ -424,7 +424,7 @@ try {
   await tapChore("spoiled-out");
   await click('[data-testid="fc-guide-skip"]');
   let twin = null;
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < 14; i++) {
     const id = await attr('[data-testid="fc-card"]', "data-id");
     if (id === "salmon") {
       await sleep(400);

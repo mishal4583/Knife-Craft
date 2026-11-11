@@ -127,8 +127,8 @@ export function MarketPlanPanel({
             <span data-testid="market-plan-baskets" className="inline-flex items-center gap-1">
               <StatChip icon="🧺">{baskets} baskets</StatChip>
               <InfoTip label="About the baskets">
-                Your order arrives as baskets. Play Fridge Sort: buy for 2–3 days, sort every
-                basket, and get bonus Hype.
+                Your order arrives as baskets. Check them, then sort every basket into the fridge
+                for bonus Hype. Buy for 2–3 days to get more baskets.
               </InfoTip>
             </span>
           ) : null}

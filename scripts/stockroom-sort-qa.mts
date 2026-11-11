@@ -83,7 +83,10 @@ const cub = (front: (Piece | null)[], back: Piece[] = [], lockAt = 0): Cubby => 
 
 console.log("A. When it opens");
 {
-  assert(STOCKROOM_FIRST_LEVEL === 6, "A1: it opens at Level 6, the first shopping list (rule 2026-11-08, was Level 10)");
+  assert(
+    STOCKROOM_FIRST_LEVEL === 6,
+    "A1: it opens at Level 6, the first shopping list (rule 2026-11-08, was Level 10)",
+  );
   assert(
     !isStockroomOpen(5) && isStockroomOpen(6) && isStockroomOpen(150),
     "A2: closed at Level 5, open from Level 6",
@@ -684,10 +687,11 @@ console.log("J. Wiring");
   assert(
     /STOCKROOM_FIRST_LEVEL/.test(news) &&
       restaurantNewsAt(STOCKROOM_FIRST_LEVEL).minigame === "stockroom-sort" &&
-      restaurantNewsAt(3).minigame === "fridge-sort" &&
+      restaurantNewsAt(3).minigame === "delivery-inspection" &&
+      restaurantNewsAt(4).minigame === "fridge-sort" &&
       restaurantNewsAt(11).minigame === null &&
       hasNewsToShow(restaurantNewsAt(STOCKROOM_FIRST_LEVEL)),
-    "J2: Level 6's Pre-Service Check shows a Stockroom Sort line (Level 3 still shows Fridge Sort)",
+    "J2: Level 6's Pre-Service Check shows a Stockroom Sort line (Level 3 shows Delivery Inspection, Level 4 Fridge Sort)",
   );
   assert(
     [

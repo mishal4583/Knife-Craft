@@ -363,11 +363,28 @@ const hired = (s: SaveData) => A.hireAssistant(s);
     "H4 her staff-card portrait exists",
     fs.existsSync(portrait) && fs.statSync(portrait).size < 40_000,
   );
+  const host = read("src/components/kc/assistant/AssistantHost.tsx");
+  const css = read("src/components/kc/assistant/assistant.css");
   check(
-    "H5 (popup, developer 2026-11-08) the popup is the shared ivory card with Paige's round portrait, no speech-bubble stand-in",
-    /rounded-\[22px\] border-2 bg-ivory/.test(
-      read("src/components/kc/assistant/AssistantHost.tsx"),
-    ) && !/borderImageSource/.test(read("src/components/kc/assistant/AssistantHost.tsx")),
+    "H5 (developer 2026-11-11, replaces the 2026-11-08 ivory card) Paige is a standalone cutout on the left with ONE big speech bubble reaching to the right and a small PAIGE nameplate; no rectangular tutorial card, no round portrait",
+    /<PaigeCutout/.test(host) &&
+      /<PaigeNameplate/.test(host) &&
+      /data-testid="assistant-bubble"/.test(host) &&
+      !/rounded-\[22px\] border-2 bg-ivory/.test(host) &&
+      !/overflow-hidden rounded-full/.test(host) &&
+      /\.paige-speech/.test(css) &&
+      /\.paige-speech::before/.test(css),
+  );
+  check(
+    "H6 the cutout is always the same box (she never moves: only the pose, the text, the bubble size and the Next arrow change); the Next arrow is kept and the new painted pieces fall back to the first set / CSS",
+    /paige-cutout absolute bottom-0 left-0/.test(host) &&
+      /data-testid="assistant-next"/.test(host) &&
+      /cutout-\$\{pose\}/.test(read("src/components/kc/assistant/PaigeArt.tsx")) &&
+      /pose-\$\{pose\}/.test(read("src/components/kc/assistant/PaigeArt.tsx")),
+  );
+  check(
+    "H7 mobile: the stage height and the words scale with the screen (clamp), the bubble scrolls instead of overflowing, nothing smaller than 14 px",
+    /height: clamp\(/.test(css) && /overflow: auto/.test(css) && /font-size: clamp\(15px/.test(css),
   );
 }
 

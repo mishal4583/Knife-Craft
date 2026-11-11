@@ -75,10 +75,10 @@ console.log("2. Paige is a popup");
     /data-testid="assistant-scrim"/.test(host) &&
       /backdrop-blur/.test(host) &&
       /bg-walnut-dark\/55/.test(host) &&
-      /rounded-\[22px\]/.test(host) &&
-      /PaigePoseImg/.test(host) &&
+      /PaigeCutout/.test(host) &&
+      /PaigeNameplate/.test(host) &&
       !/paige-bubble/.test(host),
-    "2a: a card like the other instruction popups (round portrait, words, buttons) over a dimmed and blurred screen; no speech bubble any more",
+    "2a: Paige's popup over a dimmed and blurred screen (developer 2026-11-11: a standalone cutout, one big speech bubble and a PAIGE nameplate; was the shared card with a round portrait)",
   );
   assert(
     /shadow-\[0_0_0_200vmax/.test(host),

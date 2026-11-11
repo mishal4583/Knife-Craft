@@ -1,10 +1,13 @@
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { useAdBonus } from "@/components/kc/ads/adBonusApi";
 import { InfoTip } from "@/components/kc/common/InfoTip";
 import { KButton } from "@/components/kc/common/primitives";
 import type { FlowStep, ServiceGate } from "@/game/business/deliveryFlow";
 
 /**
- * THE DELIVERY ROUTINE on screen (developer 2026-11-11: check the delivery, unpack, stock the shelves, Fridge Check; each one mandatory, in order).
+ * THE DELIVERY ROUTINE on screen (developer 2026-11-11: check the delivery, unpack, stock the shelves, Fridge Check, the day's sauce; each one mandatory, in order;
+ * a player who does not want to play a step can skip it by watching a rewarded ad, a few a day).
  * Two pieces, both reading game/business/deliveryFlow.ts:
  *   - `DeliveryRoutineCard`: at the TOP of the Inventory, so the games are never hidden below the fold: the waiting steps in order, the one to do now
  *     highlighted, a later one locked until the earlier one is done.
@@ -63,12 +66,53 @@ function StepRow({
   );
 }
 
+/** "Skip this step: watch an ad" (rewarded `skip_step`). It says what it gives before the ad; renders nothing when no skip is on offer. */
+function SkipButton({
+  step,
+  left,
+  onSkip,
+}: {
+  step: FlowStep;
+  left: number;
+  onSkip: (stepId: string) => Promise<"ok" | "no">;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
+  if (left <= 0 || step.lockedBy) return null;
+  return (
+    <div className="mt-1.5">
+      <KButton
+        full
+        variant="ghost"
+        className="h-12 px-2 text-[12.5px]"
+        disabled={busy}
+        data-testid={`flow-skip-${step.id}`}
+        onClick={async () => {
+          setBusy(true);
+          setFailed(false);
+          const r = await onSkip(step.id);
+          setBusy(false);
+          if (r === "no") setFailed(true);
+        }}
+      >
+        ▶ Skip “{step.label}” with an ad · {left} left today
+      </KButton>
+      {failed ? (
+        <p className="mt-1 font-ui text-[12px] font-bold text-walnut/70">
+          No ad right now. You can still play it.
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 /** The ⓘ that says why the routine comes before service (the longer explanation sits behind it). */
 function WhyTip() {
   return (
     <InfoTip label="Why these steps?" tone="copper">
       In a real kitchen every delivery is checked for damaged food, unpacked and put in the fridge,
-      and the supplies go on their shelves, before service. Finish these steps and you can open.
+      and the supplies go on their shelves, before service. Finish these steps and you can open. Not
+      in the mood? An ad can skip a step, a few times a day.
     </InfoTip>
   );
 }
@@ -83,6 +127,7 @@ export function DeliveryRoutineCard({
   go: (to: string) => void;
   className?: string;
 }) {
+  const ads = useAdBonus();
   if (steps.length === 0) return null;
   const next = steps.find((s) => !s.lockedBy);
   return (
@@ -105,6 +150,7 @@ export function DeliveryRoutineCard({
           <StepRow key={s.id} step={s} active={s.id === next?.id} onGo={go} compact />
         ))}
       </div>
+      {next ? <SkipButton step={next} left={ads.skipStepsLeft()} onSkip={ads.skipStep} /> : null}
     </section>
   );
 }
@@ -115,12 +161,22 @@ export function ServiceGateSheet({
   hasPrepCook,
   go,
   onClose,
+  skipsLeft = 0,
+  onSkip,
 }: {
   gate: ServiceGate;
   hasPrepCook: boolean;
   go: (to: string) => void;
   onClose: () => void;
+  /** Rewarded skips left today (0 = none on offer) and the skip itself. */
+  skipsLeft?: number;
+  onSkip?: (stepId: string) => Promise<"ok" | "no">;
 }) {
+  // The last step was skipped: nothing waits any more, so the sheet goes away by itself.
+  useEffect(() => {
+    if (gate.open) onClose();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gate.open]);
   return (
     <div
       data-testid="service-gate"
@@ -153,6 +209,9 @@ export function ServiceGateSheet({
           <p className="mt-2 font-ui text-[12.5px] font-bold text-walnut/70">
             🧑‍🍳 Your Prep Cook can do a step for you inside each game.
           </p>
+        ) : null}
+        {gate.next && onSkip ? (
+          <SkipButton step={gate.next} left={skipsLeft} onSkip={onSkip} />
         ) : null}
         <div className="mt-3 grid gap-2">
           {gate.next ? (

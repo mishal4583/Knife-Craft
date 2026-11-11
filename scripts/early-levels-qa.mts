@@ -78,8 +78,8 @@ assert(
     MOP_FROM_LEVEL === 14 &&
     RESTROOM_FROM_LEVEL === 16 &&
     CLEANING_FROM_LEVEL === 4 &&
-    FRIDGE_SORT_FIRST_LEVEL === 3,
-  "A1: shopping list + Stock the shelves L6, fridge L10, Second Floor L11, dine-in L12, cleaning L4, Unpack the delivery L3",
+    FRIDGE_SORT_FIRST_LEVEL === 4,
+  "A1: shopping list + Stock the shelves L6, fridge L10, Second Floor L11, dine-in L12, cleaning L4, Fridge Sort L4 (the delivery check is L3, developer 2026-11-11)",
 );
 assert(
   !isSystemLive("fridge-freshness", 9) &&
@@ -159,6 +159,7 @@ console.log("C. Unpack the delivery");
   const game = read("src/components/kc/inventory/FridgeSortGame.tsx");
   const check = read("src/components/kc/restaurant/PreServiceCheck.tsx");
   const fs3 = beatById("fridge-sort");
+  const cd3 = beatById("check-delivery");
   assert(
     /Fridge Sort/.test(chip) &&
       !/Unpack delivery/.test(chip.replace(/\/\*[\s\S]*?\*\//g, "")) &&
@@ -171,11 +172,13 @@ console.log("C. Unpack the delivery");
   );
   assert(
     !!fs3 &&
-      /order arrived/i.test(fs3.lines[0]!.text) &&
-      /Fridge Sort/.test(fs3.lines[0]!.text) &&
-      fs3.lines[0]!.text.length <= MAX_LINE_CHARS,
-    "C3: Paige says the order arrived and to play Fridge Sort (within the line limit)",
-    fs3?.lines[0]?.text,
+      !!cd3 &&
+      /order arrived/i.test(cd3.lines[0]!.text) &&
+      /sort/i.test(fs3.lines[0]!.text) &&
+      ![...fs3.lines, ...cd3.lines].some((l) => /play/i.test(l.text)) &&
+      [...fs3.lines, ...cd3.lines].every((l) => l.text.length <= MAX_LINE_CHARS),
+    "C3: Paige says the order arrived (check it) and then to sort it into the fridge, never 'play Fridge Sort' (developer 2026-11-11), within the line limit",
+    [cd3?.lines[0]?.text, fs3?.lines[0]?.text],
   );
 }
 

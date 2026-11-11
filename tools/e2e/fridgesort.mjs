@@ -17,7 +17,7 @@
 //   S15 the painted pieces (HUD, star bar, basket, bins, drawers, racks, shelves) all load
 //   S16 the how-to card is shown once (until a crate is finished) and the ? button brings it back
 //   S17 an empty shelf shows pictures of what lives there at EVERY level (developer 2026-11-07: players could not tell the shelves apart)
-//   S18 Level 3: the first basket is small (8 pieces at most) and a wrong shelf tells where the piece goes
+//   S18 Level 4: the first basket is small (8 pieces at most) and a wrong shelf tells where the piece goes
 //   S20 a delivery of 30 pieces is 3 baskets: the run is shown, and the whole delivery adds bonus Hype
 //   S19 two or more stars keep the stock fresh longer: the result says so and the stock's purchase day moves (quantity unchanged)
 // Prints PASS/FAIL per check and exits 1 on any failure.
@@ -519,11 +519,11 @@ try {
     { p20, p80 },
   );
 
-  // ---- S18: Level 3 ----
+  // ---- S18: Level 4, the first level of the game (2026-11-11: Delivery Inspection opens at Level 3, Fridge Sort a level later) ----
   await boot(
     page,
     saveAt(
-      3,
+      4,
       {},
       { fridgeSort: { crate: ["tomato", "cheddar"], counts: { tomato: 3, cheddar: 2 }, seed: 1 } },
     ),
@@ -538,7 +538,7 @@ try {
     () => document.querySelector('[data-testid="sort-note"]')?.textContent ?? "",
   );
   check(
-    "S18 Level 3: a basket of 5 pieces and 3 shelves; a wrong shelf says where the tomato goes",
+    "S18 Level 4: a basket of 5 pieces and 3 shelves; a wrong shelf says where the tomato goes",
     l3?.tokens === 5 && l3targets === 3 && /Tomato goes in: .*Salad/.test(l3note),
     { l3, l3targets, l3note },
   );
@@ -735,11 +735,11 @@ try {
   );
   const prac = await state(page);
   check(
-    "S26 'Again · practice' then 'Practice again' three times in a row: every result still offers another practice",
+    "S26 'Play again' three times in a row: every result still offers another round",
     practiceLabels.length === 3 &&
-      practiceLabels[0] === "Again · practice" &&
-      practiceLabels[1] === "Practice again" &&
-      lastLabel === "Practice again" &&
+      practiceLabels[0] === "Play again" &&
+      practiceLabels[1] === "Play again" &&
+      lastLabel === "Play again" &&
       prac?.practice === "1",
     { practiceLabels, lastLabel, prac },
   );

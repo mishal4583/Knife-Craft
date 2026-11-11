@@ -113,10 +113,20 @@ export function MarketSupplies({
     return packs[id] ?? needs[id]?.buy ?? 1;
   }
 
-  function buyAllNeeded() {
+  /** The ones the cards mark "needed soon": listed with the important ones, bought by their own button (developer 2026-11-11: "buy everything left some behind"). */
+  const neededSoon = SUPPLY_CATALOG.filter(
+    (item) => item.section === section && needs[item.id]?.when === "soon",
+  );
+  const quoteOf = (list: typeof neededNow) =>
+    list.reduce((t, item) => {
+      const n = needs[item.id]!.buy;
+      return t + supplyQuote(save, item, n, bulk(item, n)).totalCost;
+    }, 0);
+
+  function buyAllNeeded(list: typeof neededNow = neededNow) {
     let bought = 0;
     let spent = 0;
-    for (const item of neededNow) {
+    for (const item of list) {
       const r = purchaseSupply(item.id, needs[item.id]!.buy);
       if (r.ok) {
         bought += 1;
@@ -124,9 +134,9 @@ export function MarketSupplies({
       }
     }
     setNotice(
-      bought === neededNow.length
+      bought === list.length
         ? `✓ Bought all ${bought} · ${formatUsd(spent)}`
-        : `✓ Bought ${bought}/${neededNow.length} · 💸 not enough for the rest`,
+        : `✓ Bought ${bought}/${list.length} · 💸 not enough for the rest`,
     );
   }
 
@@ -233,15 +243,21 @@ export function MarketSupplies({
               full
               className="h-12 px-2 text-[12.5px]"
               variant="copper"
-              onClick={buyAllNeeded}
+              onClick={() => buyAllNeeded(neededNow)}
             >
-              {`Buy everything needed · ${formatUsd(
-                neededNow.reduce((t, item) => {
-                  const n = needs[item.id]!.buy;
-                  return t + supplyQuote(save, item, n, bulk(item, n)).totalCost;
-                }, 0),
-              )}`}
+              {`Buy everything needed · ${formatUsd(quoteOf(neededNow))}`}
             </KButton>
+            {neededSoon.length > 0 ? (
+              <KButton
+                full
+                className="mt-2 h-12 px-2 text-[12.5px]"
+                variant="wood"
+                onClick={() => buyAllNeeded(neededSoon)}
+                data-testid={`market-buy-soon-${section}`}
+              >
+                {`Also buy the ${neededSoon.length} needed soon · ${formatUsd(quoteOf(neededSoon))}`}
+              </KButton>
+            ) : null}
           </div>
         </Panel>
       ) : soonCount > 0 ? (
@@ -250,6 +266,17 @@ export function MarketSupplies({
           <p className="mt-0.5 font-ui text-[12px] leading-snug text-walnut/70">
             ⬇️ Listed first · each card says which level
           </p>
+          <div className="mt-2" data-testid={`market-buy-soon-wrap-${section}`}>
+            <KButton
+              full
+              className="h-12 px-2 text-[12.5px]"
+              variant="copper"
+              onClick={() => buyAllNeeded(neededSoon)}
+              data-testid={`market-buy-soon-${section}`}
+            >
+              {`Buy all ${neededSoon.length} now · ${formatUsd(quoteOf(neededSoon))}`}
+            </KButton>
+          </div>
         </Panel>
       ) : null}
 

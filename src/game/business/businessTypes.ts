@@ -222,6 +222,11 @@ export type BusinessState = {
    */
   sauceStation?: SauceStationState;
   /**
+   * The delivery routine's rewarded "skip this step" (developer 2026-11-11): the business day and how many were used that day. No money, no ledger.
+   * Absent = none used.
+   */
+  stepSkips?: { day: number; used: number };
+  /**
    * Paige, the personal assistant (restaurant/assistant.ts): hired (free, no wage, no ledger entry), the tips she has given and "Tips: Off".
    * Absent = not hired. Never holds money.
    */

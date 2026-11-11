@@ -17,9 +17,10 @@ import type { IngredientId } from "../definitions";
 import { INGREDIENTS } from "../definitions";
 import type { SaveData } from "../SaveManager";
 import { addHype } from "../restaurant/secondFloor";
+import { rampOf } from "./difficultyRamp";
 import {
   DIFFICULTY,
-  FRIDGE_SORT_FIRST_LEVEL,
+  FRIDGE_SORT_CRATE_LEVEL,
   HYPE_BY_STARS,
   basketsLeft,
   fridgeSortOf,
@@ -30,9 +31,10 @@ import {
 /**
  * The first level: the same as Fridge Sort's, because a delivery is checked BEFORE it is unpacked (developer 2026-11-11: "receive the delivery,
  * check for damaged product, unpack, sort to the fridge, then the Fridge Check, like the real world"). Level 3. (2026-11-10 had it at Level 9, which
- * let Unpack the delivery be played before the check existed; business/deliveryFlow.ts now puts the steps in order.)
+ * let Unpack the delivery be played before the check existed; business/deliveryFlow.ts now puts the steps in order.) Fridge Sort itself opens one level
+ * later, at Level 4 (developer 2026-11-11: never two new games in one level).
  */
-export const INSPECTION_FIRST_LEVEL = FRIDGE_SORT_FIRST_LEVEL;
+export const INSPECTION_FIRST_LEVEL = FRIDGE_SORT_CRATE_LEVEL;
 export const isInspectionOpen = (level: number): boolean => level >= INSPECTION_FIRST_LEVEL;
 /** The reference's "Deliveries 2/5": at most this many rounds a day. */
 export const MAX_ROUNDS_PER_DAY = 5;
@@ -120,6 +122,7 @@ export type InspectionTier = {
   diameter: readonly [number, number];
   timeMs: number;
   /** Seconds of the magnifier a round has (0 = none). */
+  /** Seconds of the 🔎 magnifier a round gives (developer 2026-11-11: every tier has it, "it is hard to find the bad ones and the screen cannot be zoomed"; it shrinks as the tiers rise). */
   lensSec: number;
   /** After 12 s with nothing found the nearest defect pulses. */
   hint: boolean;
@@ -143,7 +146,7 @@ export const INSPECTION_TIERS: readonly InspectionTier[] = [
     crowd: 0.9,
     diameter: [21, 23.5],
     timeMs: 60_000,
-    lensSec: 0,
+    lensSec: 30,
     hint: true,
   },
   {
@@ -158,7 +161,7 @@ export const INSPECTION_TIERS: readonly InspectionTier[] = [
     crowd: 0.82,
     diameter: [19.5, 21.5],
     timeMs: 55_000,
-    lensSec: 0,
+    lensSec: 22,
     hint: true,
   },
   {
@@ -173,7 +176,7 @@ export const INSPECTION_TIERS: readonly InspectionTier[] = [
     crowd: 0.74,
     diameter: [18, 20],
     timeMs: 50_000,
-    lensSec: 10,
+    lensSec: 16,
     hint: false,
   },
   {
@@ -188,7 +191,7 @@ export const INSPECTION_TIERS: readonly InspectionTier[] = [
     crowd: 0.7,
     diameter: [16.5, 18.5],
     timeMs: 45_000,
-    lensSec: 10,
+    lensSec: 12,
     hint: false,
   },
   {
@@ -203,7 +206,7 @@ export const INSPECTION_TIERS: readonly InspectionTier[] = [
     crowd: 0.7,
     diameter: [15, 17],
     timeMs: 45_000,
-    lensSec: 8,
+    lensSec: 10,
     hint: false,
   },
 ];
@@ -674,7 +677,19 @@ export function buildCrate(
   ingredientsOf: (n: number) => IngredientId[],
   seed: number,
 ): Crate {
-  const tier = tierAt(level);
+  const base = tierAt(level);
+  // More to look over and more to find as the levels rise, smoothly between the tiers (difficultyRamp.ts).
+  const tier = {
+    ...base,
+    items: [
+      rampOf(INSPECTION_TIERS, level, (t) => t.items[0]),
+      rampOf(INSPECTION_TIERS, level, (t) => t.items[1]),
+    ] as const,
+    defects: [
+      rampOf(INSPECTION_TIERS, level, (t) => t.defects[0]),
+      rampOf(INSPECTION_TIERS, level, (t) => t.defects[1]),
+    ] as const,
+  };
   const rand = rng(seed);
   const n = tier.items[0] + Math.floor(rand() * (tier.items[1] - tier.items[0] + 1));
   const defects = tier.defects[0] + Math.floor(rand() * (tier.defects[1] - tier.defects[0] + 1));

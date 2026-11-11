@@ -253,6 +253,15 @@ console.log("L. Which level the Market plans for");
     /data-needs-soon=\{soonCount\[item\.id\]\}/.test(read("src/components/kc/Shop.tsx")),
     "L5: a Market tab with only next-level needs shows them in a gold badge",
   );
+  const sup2 = read("src/components/kc/MarketSupplies.tsx");
+  assert(
+    /const neededSoon = /.test(sup2) &&
+      /buyAllNeeded\(neededSoon\)/.test(sup2) &&
+      /market-buy-soon-/.test(sup2) &&
+      /Also buy the \$\{neededSoon\.length\} needed soon/.test(sup2) &&
+      /Buy all \$\{neededSoon\.length\} now/.test(sup2),
+    "L6: the cards marked 'needed soon' have their own buy button (developer 2026-11-11: 'Buy everything' left some behind): beside the main one, and alone when nothing is needed right now",
+  );
 }
 
 console.log(failures ? `\nMARKET NEEDS QA: ${failures} FAILURE(S)` : "\nMARKET NEEDS QA: ALL PASS");

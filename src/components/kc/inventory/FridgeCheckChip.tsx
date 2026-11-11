@@ -5,7 +5,7 @@ import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
 import type { ScreenId } from "../data";
 
 /**
- * "🔍 Fridge Check · practice": the free entry to Fridge Check (restaurant/fridgeCheck.ts) above the Inventory fridge, once freshness is live
+ * "🔍 Fridge Check": the free entry to Fridge Check (restaurant/fridgeCheck.ts) above the Inventory fridge, once freshness is live
  * and there is stock to judge. The real closing-night game opens from the two night chores (only about one night in three is a judging night),
  * so this is how a player plays it any time: the same deck from the real stock, no reward, nothing changes. A small chip, never a popup.
  */
@@ -31,7 +31,7 @@ export function FridgeCheckChip({
         className,
       )}
     >
-      <span aria-hidden>🔍</span> Fridge Check · practice
+      <span aria-hidden>🔍</span> Fridge Check
       {pins > 0 ? <span className="text-[12px] font-bold text-walnut/70">· 📍 {pins}</span> : null}
     </button>
   );

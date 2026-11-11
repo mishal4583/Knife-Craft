@@ -6,10 +6,12 @@
  *   2  UNPACK   Unpack the delivery   (business/fridgeSort.ts, "Fridge Sort"): sort the checked food into the fridge. Locked until step 1 is done
  *   3  SHELVES  Stock the shelves     (business/stockroomSort.ts): the supplies bought go on the shelves
  *   4  FRIDGE   Fridge Check          (restaurant/fridgeCheck.ts): the closing chores "throw out spoiled food" / "wrap and label" are the game
+ *   5  SAUCE    Sauce Station         (business/sauceStation.ts): from Level 10 one round a business day before the first service (developer
+ *               2026-11-11: "Sauce Station and Fridge Check are still not mandatory")
  *
  * A step is only ever waiting when there is something for it (a delivery, a crate of supplies, a fridge chore) AND its game is open at the
  * player's level. While any step waits, the next service cannot be opened (`serviceGate`): the Kitchen shows the steps in order instead. A hired
- * Prep Cook can do the first three for the player (a button inside each game, no reward), so nobody is ever stuck.
+ * Prep Cook can do a step for the player (a button inside each game, no reward), and a rewarded ad can skip one (`SKIPS_PER_DAY` a day), so nobody is ever stuck.
  *
  * Pure: it reads the save and moves nothing. No money, stock or ledger.
  */
@@ -19,12 +21,13 @@ import { pendingInspections } from "./deliveryInspection";
 import { roundFor as stockroomRound } from "./stockroomSort";
 import { cleanlinessOf } from "../restaurant/cleanliness";
 import { CHECK_TASK, isFridgeCheckOpen } from "../restaurant/fridgeCheck";
+import { sauceDue } from "./sauceStation";
 
-export type FlowStepId = "inspect" | "unpack" | "shelves" | "fridge-check";
+export type FlowStepId = "inspect" | "unpack" | "shelves" | "fridge-check" | "sauce";
 
 export type FlowStep = {
   id: FlowStepId;
-  /** 1-4: the number shown beside it. */
+  /** 1-5: the number shown beside it. */
   n: number;
   icon: string;
   /** The action, short ("Check the delivery"). */
@@ -89,6 +92,16 @@ export function flowSteps(save: SaveData, level: number): FlowStep[] {
       to: "business-cleanliness",
       lockedBy: null,
     });
+  if (sauceDue(save, level))
+    out.push({
+      id: "sauce",
+      n: 5,
+      icon: "🥣",
+      label: "Make today's sauce",
+      detail: "Sauce Station",
+      to: "sauce-station",
+      lockedBy: null,
+    });
   return out;
 }
 
@@ -107,4 +120,26 @@ export type ServiceGate = {
 export function serviceGate(save: SaveData, level: number): ServiceGate {
   const steps = flowSteps(save, level);
   return { open: steps.length === 0, steps, next: steps.find((s) => !s.lockedBy) ?? null };
+}
+
+// ── The rewarded skip (developer 2026-11-11: "if the player does not want to play them, let them skip by watching an ad") ──
+
+/** Steps a rewarded ad may skip in one business day. */
+export const SKIPS_PER_DAY = 3;
+
+/** How many skips are left today. */
+export function skipsLeft(save: SaveData): number {
+  const s = save.business.stepSkips;
+  const day = save.business.calendar.businessDay;
+  return Math.max(0, SKIPS_PER_DAY - (s && s.day === day ? Math.max(0, Math.floor(s.used)) : 0));
+}
+
+/** Counts one skip for today. Never touches money, stock or the ledger. */
+export function withSkipUsed(save: SaveData): SaveData {
+  const day = save.business.calendar.businessDay;
+  const used =
+    save.business.stepSkips && save.business.stepSkips.day === day
+      ? save.business.stepSkips.used
+      : 0;
+  return { ...save, business: { ...save.business, stepSkips: { day, used: used + 1 } } };
 }

@@ -783,7 +783,7 @@ export function FridgeSortGame({
                 : phase === "ready"
                   ? "Pick a piece from the basket 👇"
                   : practice
-                    ? "Practice · no reward"
+                    ? "Extra round · no reward"
                     : `${crateLeft.length} left in the basket`}
           </p>
           <span data-testid="sort-combo" className="text-[12px] font-bold text-ivory/80">
@@ -1125,7 +1125,7 @@ export function FridgeSortGame({
             </p>
             {practice ? (
               <p className="relative mt-1 font-ui text-[12.5px] font-bold text-walnut/65">
-                Practice: no reward
+                Extra round: no reward
               </p>
             ) : (
               <p
@@ -1192,7 +1192,7 @@ export function FridgeSortGame({
               </SortButton>
               {/* Practice as often as you like (developer 2026-11-07: it could only be replayed once): same crate, no reward */}
               <SortButton quiet onClick={again} testId="sort-again">
-                {practice ? "Practice again" : "Again · practice"}
+                {practice ? "Play again" : "Play again"}
               </SortButton>
             </div>
           </div>

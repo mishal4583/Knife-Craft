@@ -114,7 +114,7 @@ export const COACH_TEXT: Record<TechniqueId, { title: string; how: string; why: 
   },
   peel: {
     title: "How to peel",
-    how: "Drag slowly across the skin, strip by strip. The blade takes its time.",
+    how: "Drag across the skin, strip by strip, until it is all off.",
     why: "The tough skin comes off before any knife work.",
   },
   smash: {

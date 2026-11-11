@@ -629,6 +629,8 @@ Date.now = realDateNow;
           AD_PLACEMENT.rushHour,
           // Added 2026-11-10 (developer): the Sauce Station's "3 more rounds today" (no money).
           AD_PLACEMENT.sauceRounds,
+          // Added 2026-11-11 (developer): the delivery routine's "skip this step" (no money).
+          AD_PLACEMENT.skipStep,
         ]
           .sort()
           .join(),

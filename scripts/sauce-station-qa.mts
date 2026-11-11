@@ -24,6 +24,7 @@ import {
   SAUCE_FIRST_LEVEL,
   SAUCE_TIERS,
   autoSauce,
+  sauceDutyDone,
   blendStep,
   bottleScore,
   bottleStars,
@@ -552,7 +553,15 @@ console.log("E. Bottling, stars, finishing");
   assert(pinsOf(many) === MAX_PINS, "E18: pins stop at 12");
   const pr = finishRound(s, { ...outcome("tomato-sauce", 3), practice: true });
   assert(pr.save === s && pr.effects.hype === 0, "E19: practice changes nothing");
-  assert(autoSauce(s) === s, "E20: the Prep Cook's batch counts for nothing");
+  const autoed = autoSauce(s);
+  assert(
+    sauceStationOf(autoed).rounds === sauceStationOf(s).rounds &&
+      sauceStationOf(autoed).stars === sauceStationOf(s).stars &&
+      sauceStationOf(autoed).today === sauceStationOf(s).today &&
+      autoed.credits === s.credits &&
+      sauceDutyDone(autoed),
+    "E20: the Prep Cook's batch counts for nothing (no round, stars, Hype or day count); since 2026-11-11 it only meets the day's duty (doneDay)",
+  );
   const rnd = rng(5);
   const rnd2 = rng(5);
   assert(rnd() === rnd2() && rnd() === rnd2(), "E21: the generator is seeded");

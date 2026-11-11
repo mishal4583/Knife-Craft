@@ -26,6 +26,7 @@ import {
   COMBO_MAX,
   DIFFICULTY,
   FRIDGE_SORT_FIRST_LEVEL,
+  FRIDGE_SORT_CRATE_LEVEL,
   HYPE_BY_STARS,
   MAX_CRATE_QUEUE,
   BIG_DELIVERY_HYPE_MAX,
@@ -124,18 +125,21 @@ console.log("A. Targets");
 console.log("B. When it opens");
 {
   assert(
-    FRIDGE_SORT_FIRST_LEVEL === 3,
-    "B1: it opens at Level 3, the first level of the Pantry stage (the first food bought; it was Level 14)",
+    FRIDGE_SORT_FIRST_LEVEL === 4 && FRIDGE_SORT_CRATE_LEVEL === 3,
+    "B1: the game opens at Level 4, one level after Delivery Inspection (developer 2026-11-11: never two new games in one level); the crate waits from Level 3",
     FRIDGE_SORT_FIRST_LEVEL,
   );
   assert(
-    !isFridgeSortOpen(2) && isFridgeSortOpen(3) && isFridgeSortOpen(120),
-    "B2: closed at Level 2, open from Level 3",
+    !isFridgeSortOpen(3) && isFridgeSortOpen(4) && isFridgeSortOpen(120),
+    "B2: closed at Level 3, open from Level 4",
   );
   const s = fresh();
   assert(
-    addToCrate(s, ["tomato"], 2) === s && roundFor(s, 2) === null,
-    "B3: below Level 3 nothing is put in the basket",
+    addToCrate(s, ["tomato"], 2) === s &&
+      roundFor(s, 2) === null &&
+      roundFor(addToCrate(s, ["tomato"], 3), 3) === null &&
+      fridgeSortOf(addToCrate(s, ["tomato"], 3)).crate!.length === 1,
+    "B3: below Level 3 nothing is put in the basket; at Level 3 the delivery waits in the crate (to be checked) but the game is not open until Level 4",
   );
 }
 
@@ -196,7 +200,9 @@ console.log("C. The crate");
     "C5: the queue is capped (24), nothing breaks when the whole shop is bought",
     fridgeSortOf(many).crate!.length,
   );
-  const sizes = DIFFICULTY.map((d) => roundFor(many, d.from)!.tokens.length);
+  const sizes = DIFFICULTY.map(
+    (d) => roundFor(many, Math.max(d.from, FRIDGE_SORT_FIRST_LEVEL))!.tokens.length,
+  );
   assert(
     DIFFICULTY.map((d) => d.maxTokens).join() === "8,10,12,14,16" &&
       sizes.every((n, i) => n <= DIFFICULTY[i]!.maxTokens && n > DIFFICULTY[i]!.maxTokens - 5),
@@ -559,8 +565,8 @@ console.log("H. Simulated players");
   );
   const careful = profile(2200, 0.05);
   assert(
-    careful.atLeast(1) === 1 && careful.atLeast(2) >= 0.75 && careful.d[3] / careful.n <= 0.06,
-    "H4: a careful player (2.2 s, 5 % wrong drops): always a star, two or more at least 3 times in 4, a mistake costs the third star (at most 6 % of careful rounds still get three; it was 5 % before the basket of loose pieces, developer 2026-11-05)",
+    careful.atLeast(1) === 1 && careful.atLeast(2) >= 0.72 && careful.d[3] / careful.n <= 0.06,
+    "H4: a careful player (2.2 s, 5 % wrong drops): always a star, two or more at least 18 times in 25 (was 3 in 4 before the 2026-11-11 ramp made the levels between the tiers a little harder: 74 % measured), a mistake costs the third star (at most 6 % of careful rounds still get three; it was 5 % before the basket of loose pieces, developer 2026-11-05)",
     careful.d,
   );
   const average = profile(3000, 0.1);
@@ -800,16 +806,16 @@ console.log("L. The basket: pieces, the freshness reward, the pictures on the sh
     "L5: the 'Put it away' chip counts the loose pieces waiting",
     piecesWaiting(w),
   );
-  // Level 3: the news card, the first baskets are small and have hints
-  const news = restaurantNewsAt(3);
+  // Level 4: the news card, the first baskets are small and have hints
+  const news = restaurantNewsAt(FRIDGE_SORT_FIRST_LEVEL);
   assert(
     news.minigame === "fridge-sort" &&
-      restaurantNewsAt(2).minigame === null &&
-      restaurantNewsAt(4).minigame === null &&
+      restaurantNewsAt(3).minigame === "delivery-inspection" &&
+      restaurantNewsAt(5).minigame === null &&
       hasNewsToShow(news),
-    "L6: Level 3's pre-service check announces Fridge Sort (once)",
+    "L6: Level 4's pre-service check announces Fridge Sort (once)",
   );
-  const first = roundFor(addToCrate(fresh(), all.slice(0, 12), 3), 3)!;
+  const first = roundFor(addToCrate(fresh(), all.slice(0, 12), 3), FRIDGE_SORT_FIRST_LEVEL)!;
   assert(
     first.tokens.length <= 8 && first.difficulty.hint === "always" && first.targets.length >= 3,
     "L7: the first baskets are small (8 pieces at most), with the shelf hint always on",
@@ -841,27 +847,27 @@ console.log("M. Big deliveries: several baskets, a bonus for putting them all aw
       bigDeliveryHype(9) === BIG_DELIVERY_HYPE_MAX,
     "M1: +5 Hype for each basket after the first, never more than +20",
   );
-  // 10 ingredients of 5 pieces = 50 pieces; at Level 20 a basket holds 10 pieces = 2 ingredients, so 5 baskets
+  // 10 ingredients of 5 pieces = 50 pieces; at Level 14 (the tier's first level, where the ramp equals the tier) a basket holds 10 pieces = 2 ingredients, so 5 baskets
   const ids = all.slice(0, 10);
-  let s = addToCrate(fresh(), ids, 20, Object.fromEntries(ids.map((id) => [id, 100])));
-  const total = basketsLeft(s, 20);
+  let s = addToCrate(fresh(), ids, 14, Object.fromEntries(ids.map((id) => [id, 100])));
+  const total = basketsLeft(s, 14);
   assert(
-    total === 5 && basketsLeft(fresh(), 20) === 0 && basketsLeft(s, 2) === 0,
-    "M2: the waiting crate makes 5 baskets at Level 20 (0 when nothing waits or the game is closed)",
+    total === 5 && basketsLeft(fresh(), 14) === 0 && basketsLeft(s, 2) === 0,
+    "M2: the waiting crate makes 5 baskets at Level 14 (0 when nothing waits or the game is closed)",
     total,
   );
   assert(
-    basketsFor(fresh(), 20, 0) === 0 &&
-      basketsFor(fresh(), 20, 10) === 1 &&
-      basketsFor(fresh(), 20, 11) === 2 &&
-      basketsFor(s, 20, 20) === 7,
+    basketsFor(fresh(), 14, 0) === 0 &&
+      basketsFor(fresh(), 14, 10) === 1 &&
+      basketsFor(fresh(), 14, 11) === 2 &&
+      basketsFor(s, 14, 14) === 7,
     "M3: the Market plan's hint rounds the pieces up to baskets, counting what already waits",
   );
   // put every basket away with a star: the chain grows, the last one adds the bonus
   const bonuses: number[] = [];
   const chains: (number | undefined)[] = [];
   for (let i = 0; i < total; i++) {
-    const r = roundFor(s, 20)!;
+    const r = roundFor(s, 14)!;
     const out = finishRound(s, { stars: 2, score: 900, tokens: r.tokens });
     bonuses.push(out.effects.bigHype ?? 0);
     chains.push(fridgeSortOf(out.save).chain);
@@ -877,26 +883,26 @@ console.log("M. Big deliveries: several baskets, a bonus for putting them all aw
   );
   // a basket with no star starts the delivery over
   let t = addToCrate(fresh(), ids, 20, Object.fromEntries(ids.map((id) => [id, 100])));
-  const first = roundFor(t, 20)!;
+  const first = roundFor(t, 14)!;
   t = finishRound(t, { stars: 3, score: 1500, tokens: first.tokens }).save;
-  const second = roundFor(t, 20)!;
+  const second = roundFor(t, 14)!;
   t = finishRound(t, { stars: 0, score: 10, tokens: second.tokens }).save;
   assert(
     fridgeSortOf(t).chain === undefined,
     "M5: a basket without a star starts the delivery over (no chain)",
   );
   // a single basket gets no bonus, a practice round and the Prep Cook change nothing about the chain
-  const one = addToCrate(fresh(), ["tomato"], 20);
-  const oneOut = finishRound(one, { stars: 3, score: 900, tokens: roundFor(one, 20)!.tokens });
+  const one = addToCrate(fresh(), ["tomato"], 14);
+  const oneOut = finishRound(one, { stars: 3, score: 900, tokens: roundFor(one, 14)!.tokens });
   const mid = addToCrate(fresh(), ids, 20, Object.fromEntries(ids.map((id) => [id, 100])));
-  const midRound = roundFor(mid, 20)!;
+  const midRound = roundFor(mid, 14)!;
   const midDone = finishRound(mid, { stars: 1, score: 400, tokens: midRound.tokens }).save;
   assert(
     (oneOut.effects.bigHype ?? 0) === 0 &&
       finishRound(midDone, {
         stars: 3,
         score: 1500,
-        tokens: roundFor(midDone, 20)!.tokens,
+        tokens: roundFor(midDone, 14)!.tokens,
         practice: true,
       }).save === midDone &&
       fridgeSortOf(autoPutAway(midDone)).chain === undefined,

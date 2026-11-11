@@ -53,8 +53,8 @@ class AudioManagerImpl {
       // or a tab switch) from a touchend / click, so the listeners stay on for
       // the whole session: every tap re-unlocks the context if it was stopped.
       // Not the Page Visibility API (preflight) — pageshow / focus only.
-      const onGesture = () => this.unlockFromGesture();
-      for (const type of ["pointerdown", "pointerup", "touchend", "click", "keydown"])
+      const onGesture = (e?: Event) => this.unlockFromGesture(e?.type);
+      for (const type of ["pointerdown", "pointerup", "touchstart", "touchend", "click", "keydown"])
         window.addEventListener(type, onGesture, true);
       for (const type of ["pageshow", "focus"])
         window.addEventListener(type, () => this.recoverContext(), true);
@@ -69,11 +69,37 @@ class AudioManagerImpl {
   }
 
   /** A real tap: unlock, create or resume the context inside the gesture (iOS needs that), then the music. */
-  private unlockFromGesture(): void {
+  private unlockFromGesture(eventType?: string): void {
     this.gestured = true;
     const was = this.ctx?.state;
-    this.ensureContext();
+    // iPhone Safari (developer 2026-11-11: "no sounds in Safari mobile except the videos"): it counts only touchend / click / keydown as the tap that may start audio.
+    // A resume() asked from a pointerdown / touchstart never settles there, and the shared pending promise then blocked every later, valid ask. So a real
+    // activation drops a stale pending ask, asks again itself, and plays one silent sample (the classic unlock) so the output really opens.
+    const real =
+      eventType === "touchend" ||
+      eventType === "click" ||
+      eventType === "keydown" ||
+      eventType === "pointerup";
+    if (real && this.ctx && this.ctx.state !== "running") this.contextResumePending = null;
+    const ctx = this.ensureContext() ?? this.ctx;
+    if (real && ctx) this.primeOutput(ctx);
     if (was !== "running") this.updateMusic();
+  }
+
+  /** One silent sample through the output, started inside a real tap: iOS opens the audio output on it. */
+  private primed: AudioContext | null = null;
+  private primeOutput(ctx: AudioContext): void {
+    if (this.primed === ctx) return;
+    try {
+      if (ctx.state !== "running") void ctx.resume().catch(() => undefined);
+      const src = ctx.createBufferSource();
+      src.buffer = ctx.createBuffer(1, 1, 22050);
+      src.connect(ctx.destination);
+      src.start(0);
+      this.primed = ctx;
+    } catch {
+      /* optional */
+    }
   }
 
   /** The page came back: try to wake a stopped context (a tap does it if the browser refuses here). */
@@ -388,7 +414,21 @@ class AudioManagerImpl {
         this.musicBus = null;
         this.sharedNoise = null;
       }
-      if (!this.ctx) this.ctx = new Ctor();
+      if (!this.ctx) {
+        this.ctx = new Ctor();
+        const fresh = this.ctx;
+        try {
+          // Safari 14+ reports "interrupted" / "running" changes here: wake the music the moment the output opens.
+          fresh.addEventListener?.("statechange", () => {
+            if (this.ctx === fresh && fresh.state === "running") {
+              this.contextResumePending = null;
+              this.updateMusic();
+            }
+          });
+        } catch {
+          /* optional */
+        }
+      }
 
       const ctx = this.ctx;
       // "suspended", or iOS's own "interrupted" (a call, a lock, a tab switch).
@@ -396,7 +436,7 @@ class AudioManagerImpl {
         // resume() is asynchronous. Wait for it before scheduling nodes, and
         // share the request so overlapping SFX/music updates don't spam it.
         if (!this.contextResumePending) {
-          this.contextResumePending = ctx
+          const ask = ctx
             .resume()
             .then(() => {
               this.contextResumePending = null;
@@ -421,6 +461,11 @@ class AudioManagerImpl {
                 }
               }
             });
+          this.contextResumePending = ask;
+          // A resume that never settles (iOS, when asked outside a real tap) must not block the next ask.
+          setTimeout(() => {
+            if (this.contextResumePending === ask) this.contextResumePending = null;
+          }, 1200);
         }
         return null;
       }

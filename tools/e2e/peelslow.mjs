@@ -1,6 +1,7 @@
-// Slow, satisfying peeling (developer 2026-11-07: "make the peeling slow and satisfying because players enjoy it"). Restaurant build.
-//   P1 scribbling fast does not beat a steady stroke: 3 seconds of frantic zigzag leave the potato well short of done
-//   P2 the blade bites at a capped pace behind the finger: finishing the potato takes 2.5-9 s of real time (a little slow, not a crawl)
+// Peeling: THE OLD METHOD IS BACK (developer 2026-11-11: the 2026-11-07 slow, paced peel was "very slow and irritating"). Restaurant build.
+//   (File name kept from the slow-peel round.) The blade is under the finger at once: no pace limit.
+//   P1 the skin comes away under the finger at once: 3 seconds of zigzag peel a good part of the potato (at least 40 %)
+//   P2 the old method is quick: three seconds of zigzag peel the whole potato
 //   P3 a steady, slow peel does finish (and moves on to the next step)
 //   P4 lifting the finger mid-stroke lets the blade finish the stroke (the progress keeps rising a moment after the release)
 //   P5 no console errors
@@ -106,8 +107,8 @@ await sleep(100);
 const after3 = await pct(page);
 await shot(page, "peelslow-1-after-scribble");
 check(
-  "P1 three seconds of scribbling leave the peel under 45% done",
-  after3 !== null && after3 < 45,
+  "P1 the blade is under the finger at once: three seconds of zigzag peel at least 40% (the 2026-11-07 pace limit left it under 45%)",
+  after3 !== null && after3 >= 40,
   after3,
 );
 
@@ -127,6 +128,7 @@ check(
 // P2 + P3: a patient, full-width sweep row by row; measure how long the whole peel takes.
 const startAll = Date.now();
 let done = false;
+let firstSweep = null;
 let row = 0;
 const rows = [0, -24, 24, -48, 48, -12, 12, -36, 36, -58, 58, -6, 6, -30, 30, -54, 54];
 for (let n = 0; n < 40 && !done; n++) {
@@ -150,15 +152,16 @@ for (let n = 0; n < 40 && !done; n++) {
   await page.mouse.up();
   await sleep(300);
   const p = await pct(page);
+  if (n === 0) firstSweep = p;
   if (p !== null && p >= 100) done = true;
 }
 const secs = (Date.now() - startAll) / 1000;
 await shot(page, "peelslow-2-done");
 check("P3 a steady slow peel finishes", done, { rows: row });
 check(
-  "P2 the rest of a potato (after the scribble) takes 2.5-9 seconds of real time: a little slow, never crawling, never instant (2026-11-11: 3.4, was 1.1 and at least 6 s)",
-  done && secs >= 2.5 && secs <= 9,
-  { secs: Math.round(secs) },
+  "P2 the old method is quick: the whole potato is peeled within the three seconds of zigzag (the 2026-11-07 pace made a whole potato take 6 s or more)",
+  after3 !== null && after3 >= 90,
+  { after3, secs: Math.round(secs) },
 );
 
 const bad = logs.filter(

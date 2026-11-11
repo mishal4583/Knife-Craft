@@ -45,7 +45,7 @@ const SPOILED = sample("tomato", 6, 7, "EXPIRED", "bin");
 
 const CHIP: Record<Verdict, { label: string; cls: string }> = {
   keep: { label: "KEEP", cls: "bg-[#3f8a52] text-white" },
-  "use-first": { label: "USE FIRST", cls: "bg-[#c98a1f] text-white" },
+  "use-first": { label: "USE NEXT", cls: "bg-[#c98a1f] text-white" },
   bin: { label: "BIN", cls: "bg-[#b4452f] text-white" },
 };
 
@@ -173,7 +173,7 @@ function sortPages(tier: CheckTier, measure: "lb" | "kg"): Page[] {
             {three ? (
               <>
                 {" "}
-                Swipe <b>up</b> for <b>USE FIRST</b>.
+                Swipe <b>up</b> for <b>USE NEXT</b>.
               </>
             ) : null}
           </Line>

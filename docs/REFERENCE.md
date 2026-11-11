@@ -1473,6 +1473,21 @@ preparation = PreparationScene; events = `events.ts`; platform =
 
 ---
 
+### The delivery routine, the difficulty ramp and Paige's popup (developer 2026-11-11)
+
+- **Routine** (`business/deliveryFlow.ts`): 1 check the delivery (Delivery Inspection, Level 3) -> 2 Fridge Sort (Level 4; the crate waits from Level 3) -> 3 stock the
+  shelves (Level 6) -> 4 Fridge Check (the closing chores, Level 10) -> 5 Make today's sauce (Sauce Station, from `SAUCE_REQUIRED_FROM` = 10). A waiting step holds the next
+  service (`serviceGate`). A Prep Cook does a step (button inside each game, no reward); a rewarded ad skips one (`skip_step`, `SKIPS_PER_DAY` = 3, `business.stepSkips`,
+  `App.skipRoutineStep`, granted only on `rewarded`, same effect as the Prep Cook, no money, no ledger).
+- **Ramp** (`business/difficultyRamp.ts`): `rampOf(tiers, level, pick)` moves a tier number smoothly to the next tier's value; equal to the tier's own on its first level.
+  Used by Fridge Sort (`difficultyAt`), Stockroom Sort (`tierAt`), Delivery Inspection (the crate's items and defects), Fridge Check (`checkTierAt`).
+- **Fridge Check deck** (`restaurant/fridgeCheck.ts`): three piles in every tier; each tier has `minCards`, `minBin`, `minUse`; a quiet fridge is topped up with seeded TRAINING
+  cards (`training: true`, never real stock). `isSortOpen` / `isWrapOpen` / `isPracticeOpen` are true once freshness is live (Level 10).
+- **Paige's popup:** `AssistantHost.tsx` (a cutout on the left, one CSS speech bubble to the right, a PAIGE nameplate, the Next arrow), `PaigeArt.tsx` (`PaigeCutout`: `cutout-<pose>.webp`
+  first, then `pose-<pose>.webp`, then an emoji; `PaigeNameplate`: `nameplate.webp` or CSS). Art prompts: docs/planning/PAIGE-CUTOUT-CODEX-PROMPTS-2026-11-11.md.
+- **Peeling** is the old method again (the blade goes straight to the finger; `PEEL.STROKE_WIDTH_FRAC` 0.34, `COMPLETION_THRESHOLD` 0.8).
+- Tests: `delivery-flow-qa`, `difficulty-ramp-qa`, `fridge-check-qa`, `fridge-sort-qa`, `assistant-qa`, `audio-qa` (X1-X3), e2e `deliveryflow.mjs`, `paige.mjs`.
+
 ### Market needs: what today needs, highlighted (developer 2026-10-16)
 
 - `restaurant/marketNeeds.ts` (read-only, from the game's own checks): for the current level's

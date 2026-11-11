@@ -1133,7 +1133,7 @@ export class PreparationScene extends Phaser.Scene {
   private peelCoveredCells = 0;
   /** The last pointer position actually validated as inside the ingredient's true silhouette. A segment is only drawn/credited between two such points, so a brief excursion off the ingredient (or the pointer re-entering from outside) never draws one long illegal "teleport" stroke (§11 "only pointer movement intersecting the actual silhouette contributes"). */
   private lastValidPeelPoint: { x: number; y: number } | null = null;
-  /** Where the finger is now. The blade follows it at PEEL.MAX_SPEED (tickPeel), so the skin comes off behind the finger, never ahead of it. */
+  /** Where the finger is now. The blade goes straight to it (tickPeel). */
   private peelTarget: { x: number; y: number } | null = null;
   /** Blade travel since the last curl of skin lifted off, and the clocks of the soft sound and the light buzz (PEEL.*_EVERY). */
   private peelRibbonPx = 0;
@@ -4538,10 +4538,8 @@ export class PreparationScene extends Phaser.Scene {
   }
 
   /**
-   * Slow and satisfying peel (developer 2026-11-07, eased 2026-11-11: a realistic follow and 3.4 half-extents a second, was 1.1): each frame the blade moves toward the finger by at most PEEL.MAX_SPEED (x the
-   * ingredient's paceMult) half-extents per second and takes off the strip it crosses. The knife is drawn where the blade IS, so it
-   * visibly drags behind a fast finger, like pushing through skin; scribbling or a faster drag changes nothing, and holding the finger
-   * still lets the blade finish catching up. Coverage, the visual erase and completion are exactly as before, per credited segment.
+   * The OLD peel is back (developer 2026-11-11: the 2026-11-07 slow pace was "very slow and irritating"): each frame the blade goes straight to the finger and takes off
+   * the strip it crosses, so the skin comes away exactly where the finger drags. The curls of skin, the rustle and the buzz of the 2026-11-07 feel are kept.
    */
   private tickPeel(deltaMs: number): void {
     if ((!this.peeling && !this.peelFinishing) || this.peeled || !this.peelTarget) return;
@@ -4554,13 +4552,8 @@ export class PreparationScene extends Phaser.Scene {
       return;
     }
     const { hw, hh } = this.peelHalfExtents();
-    const pace = this.ingredient.peelConfig?.paceMult ?? 1;
-    const rate = PEEL.MAX_SPEED * pace * ((hw + hh) / 2); // px per second
-    const dt = Math.min(deltaMs, 50) / 1000;
-    // A real blade follows the hand smoothly (it closes a share of the gap each frame) and is only held back by the speed limit on a flick.
-    const follow = d * (1 - Math.exp(-PEEL.FOLLOW_RATE * dt));
-    const step = Math.min(d, rate * dt, Math.max(follow, Math.min(d, 0.5)));
-    if (step < 0.4) return;
+    // The old method (developer 2026-11-11: "bring back the old peeling"): the blade is under the finger at once; no pace limit.
+    const step = d;
     const k = step / d;
     const p = { x: q.x + (t.x - q.x) * k, y: q.y + (t.y - q.y) * k };
     // The blade stops at the skin's edge when the finger is off the ingredient.

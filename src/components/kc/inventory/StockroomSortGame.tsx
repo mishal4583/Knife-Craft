@@ -736,7 +736,7 @@ export function StockroomSortGame({
                 : phase === "ready"
                   ? "Tap a product, then a free slot 👇"
                   : practice
-                    ? "Practice · no reward"
+                    ? "Extra round · no reward"
                     : `${sets - stockedN} set${sets - stockedN === 1 ? "" : "s"} left to stock`}
           </p>
           <span data-testid="stock-combo" className="text-[12px] font-bold text-ivory/80">
@@ -978,7 +978,7 @@ export function StockroomSortGame({
             </p>
             {practice ? (
               <p className="relative mt-1 font-ui text-[12.5px] font-bold text-walnut/65">
-                Practice: no reward
+                Extra round: no reward
               </p>
             ) : (
               <p
@@ -1040,7 +1040,7 @@ export function StockroomSortGame({
               </SortButton>
               {!practice ? (
                 <SortButton quiet onClick={again} testId="stock-again">
-                  Again · practice
+                  Play again
                 </SortButton>
               ) : null}
             </div>

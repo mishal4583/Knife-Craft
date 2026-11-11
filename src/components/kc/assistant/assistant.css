@@ -1,25 +1,58 @@
 /* Paige, the assistant (components/kc/assistant). Transform and opacity only; Reduced Motion turns every animation off. */
 @keyframes paige-pop {
-  0% { opacity: 0; transform: translateY(14px) scale(0.94); }
-  100% { opacity: 1; transform: translateY(0) scale(1); }
+  0% {
+    opacity: 0;
+    transform: translateY(14px) scale(0.94);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 @keyframes paige-ring {
-  0%, 100% { opacity: 0.55; transform: scale(0.96); }
-  50% { opacity: 1; transform: scale(1.06); }
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.96);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
 }
 @keyframes paige-point {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(8px); }
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(8px);
+  }
 }
 @keyframes paige-sparkle {
-  0%, 100% { opacity: 0.3; transform: scale(0.7) rotate(0deg); }
-  50% { opacity: 1; transform: scale(1.1) rotate(12deg); }
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: scale(0.7) rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1) rotate(12deg);
+  }
 }
 
-.paige-in { animation: paige-pop 0.28s ease-out both; }
-.paige-ring { animation: paige-ring 1.4s ease-in-out infinite; }
-.paige-point { animation: paige-point 0.9s ease-in-out infinite; }
-.paige-sparkle { animation: paige-sparkle 1.6s ease-in-out infinite; }
+.paige-in {
+  animation: paige-pop 0.28s ease-out both;
+}
+.paige-ring {
+  animation: paige-ring 1.4s ease-in-out infinite;
+}
+.paige-point {
+  animation: paige-point 0.9s ease-in-out infinite;
+}
+.paige-sparkle {
+  animation: paige-sparkle 1.6s ease-in-out infinite;
+}
 
 .kc-reduced-motion .paige-in,
 .kc-reduced-motion .paige-ring,
@@ -37,15 +70,18 @@
   box-sizing: border-box;
 }
 .paige-bubble[data-tone="normal"] {
-  border-width: calc(44px * var(--s)) calc(44px * var(--s)) calc(62px * var(--s)) calc(92px * var(--s));
+  border-width: calc(44px * var(--s)) calc(44px * var(--s)) calc(62px * var(--s))
+    calc(92px * var(--s));
   border-image-slice: 44 44 62 92 fill;
 }
 .paige-bubble[data-tone="success"] {
-  border-width: calc(77px * var(--s)) calc(44px * var(--s)) calc(62px * var(--s)) calc(92px * var(--s));
+  border-width: calc(77px * var(--s)) calc(44px * var(--s)) calc(62px * var(--s))
+    calc(92px * var(--s));
   border-image-slice: 77 44 62 92 fill;
 }
 .paige-bubble[data-tone="warning"] {
-  border-width: calc(82px * var(--s)) calc(44px * var(--s)) calc(62px * var(--s)) calc(92px * var(--s));
+  border-width: calc(82px * var(--s)) calc(44px * var(--s)) calc(62px * var(--s))
+    calc(92px * var(--s));
   border-image-slice: 82 44 62 92 fill;
 }
 
@@ -54,4 +90,116 @@
    no longer sits in a narrow strip with a blank band beside it (developer 2026-11-07: "optimize the card, the texts and other things"). */
 .paige-body {
   margin: 0 calc(-12px * var(--s)) calc(-14px * var(--s)) calc(-52px * var(--s));
+}
+
+/* ── The cutout and the big speech bubble (developer 2026-11-11). Sizes follow the screen's own width (the game scales as one portrait box), so the
+   same layout holds from 320 to 768 px: Paige takes the left 42%, the bubble reaches to the right edge with its tail at her mouth. ── */
+.paige-stage {
+  height: clamp(210px, 44vh, 400px);
+  padding: 0 12px;
+  box-sizing: border-box;
+}
+.paige-cutout {
+  height: 100%;
+  width: auto;
+  max-width: 48%;
+  object-fit: contain;
+  object-position: left bottom;
+  margin-left: 6px;
+  filter: drop-shadow(0 6px 14px rgba(20, 10, 4, 0.5));
+  /* The first set of poses ends at the waist: fade that edge out. */
+  -webkit-mask-image: linear-gradient(to bottom, #000 86%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 86%, transparent 100%);
+}
+.paige-cutout[data-paige-art="new"] {
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+.paige-speech {
+  left: clamp(104px, 36%, 230px);
+  right: 12px;
+  top: 12%;
+  padding: 18px 14px 10px;
+  border: 3px solid #b8873f;
+  border-radius: 26px;
+  background: linear-gradient(170deg, #fffaf0 0%, #f8ecce 100%);
+  box-shadow:
+    0 10px 28px rgba(20, 10, 4, 0.45),
+    inset 0 0 0 2px rgba(255, 255, 255, 0.6);
+}
+.paige-speech[data-tone="success"] {
+  border-color: #6a8a3a;
+}
+.paige-speech[data-tone="warning"] {
+  border-color: #b4552f;
+}
+/* the tail, at her mouth */
+.paige-speech::before {
+  content: "";
+  position: absolute;
+  left: -13px;
+  top: 34px;
+  width: 22px;
+  height: 22px;
+  background: #fdf3da;
+  border-left: 3px solid #b8873f;
+  border-bottom: 3px solid #b8873f;
+  border-radius: 0 0 0 6px;
+  transform: rotate(45deg);
+}
+.paige-speech[data-tone="success"]::before {
+  border-color: #6a8a3a;
+}
+.paige-speech[data-tone="warning"]::before {
+  border-color: #b4552f;
+}
+.paige-scroll {
+  max-height: calc(clamp(210px, 44vh, 400px) * 0.78);
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.paige-words {
+  margin: 6px 0 0;
+  font-size: clamp(15px, 4.4vw, 21px);
+  line-height: 1.3;
+}
+.paige-nameplate {
+  position: absolute;
+  left: 50%;
+  top: -15px;
+  transform: translateX(-50%);
+  display: inline-grid;
+  place-items: center;
+  min-width: 92px;
+  height: 30px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 2px solid #7a4a17;
+  background: linear-gradient(180deg, #e2a93f, #b9791f);
+  box-shadow: 0 3px 6px rgba(20, 10, 4, 0.4);
+}
+.paige-nameplate[data-tone="success"] {
+  background: linear-gradient(180deg, #8fb04e, #5f8030);
+  border-color: #3e5a1d;
+}
+.paige-nameplate[data-tone="warning"] {
+  background: linear-gradient(180deg, #d9744a, #b4552f);
+  border-color: #7a2f15;
+}
+.paige-nameplate-art {
+  position: absolute;
+  inset: -6px -14px;
+  width: calc(100% + 28px);
+  height: calc(100% + 12px);
+  object-fit: fill;
+}
+.paige-nameplate-text {
+  position: relative;
+  font-family: var(--font-display, serif);
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  color: #fff8e4;
+  text-transform: uppercase;
+  text-shadow: 0 1px 0 rgba(60, 30, 5, 0.6);
 }

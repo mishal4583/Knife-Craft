@@ -1354,6 +1354,22 @@ function NewsCard({ news }: { news: RestaurantNews }) {
           <InfoTip label={`About ${s.title}`}>{s.intro}</InfoTip>
         </div>
       ))}
+      {news.minigame === "delivery-inspection" ? (
+        <div className="mt-1 flex items-center gap-1.5" data-news-minigame="delivery-inspection">
+          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-copper/10 text-[16px]">
+            🔎
+          </span>
+          <p className="min-w-0 flex-1 font-ui text-[13px] font-extrabold text-walnut-dark">
+            Delivery Inspection
+          </p>
+          <InfoTip label="About Delivery Inspection">
+            Every delivery is checked before it goes in the fridge. Tap the food that looks bad
+            (mold, rot, wilt). Drag a big one aside to look behind it. A wrong tap costs a few
+            seconds. Stars give Hype and pins. It comes before service, and your Prep Cook (or an
+            ad) can do it for you.
+          </InfoTip>
+        </div>
+      ) : null}
       {news.minigame === "fridge-sort" ? (
         <div className="mt-1 flex items-center gap-1.5" data-news-minigame="fridge-sort">
           <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-copper/10 text-[16px]">
@@ -1365,8 +1381,8 @@ function NewsCard({ news }: { news: RestaurantNews }) {
           <InfoTip label="About Fridge Sort">
             Your order arrives in a basket, all mixed up (1 lb of tomatoes is about 3 tomatoes). Put
             every piece on its shelf before the clock ends: stars keep the food fresh longer and
-            give Hype and fridge magnets. It is optional and costs nothing. Find it in the Market
-            and the Inventory once you buy food.
+            give Hype and fridge magnets. It comes before service and costs nothing. Your Prep Cook
+            (or an ad) can do it for you. Find it in the Market and the Inventory.
           </InfoTip>
         </div>
       ) : null}
@@ -1381,8 +1397,8 @@ function NewsCard({ news }: { news: RestaurantNews }) {
           <InfoTip label="About Stockroom Sort">
             Supplies you buy arrive as sets of 3 on the shelves, all mixed up. Move them between the
             cubbies until 3 alike stand together, and stock everything before the clock ends: stars
-            give Hype and shelf badges. It is optional and costs nothing. Find it in the Market and
-            the Inventory once you buy supplies.
+            give Hype and shelf badges. It comes before service and costs nothing. Your Prep Cook
+            (or an ad) can do it for you. Find it in the Market and the Inventory.
           </InfoTip>
         </div>
       ) : null}

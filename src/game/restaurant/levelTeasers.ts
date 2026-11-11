@@ -9,7 +9,7 @@
 const NEXT_UP: Readonly<Record<number, string>> = {
   1: "Next: carrots, and peeling potatoes",
   2: "Next: garlic bread and your first delivery",
-  3: "Next: caprese, and your first cleaning night",
+  3: "Next: fridge sorting and a cleaning night",
   4: "Next: mushrooms, and the menu opens!",
   5: "Next: your first chicken!",
   6: "Next: garden plates and the Sauce Station!",

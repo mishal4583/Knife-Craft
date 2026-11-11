@@ -21,6 +21,9 @@ export type AdBonusApi = {
   /** Rush Hour: the rewarded ×3-for-ten-minutes extra, or 0 when none is on offer. */
   rushFor: () => number;
   openRush: () => void;
+  /** The delivery routine's rewarded skip: how many are left today (0 = none on offer), and the skip itself (resolves "ok" once the step is done). */
+  skipStepsLeft: () => number;
+  skipStep: (stepId: string) => Promise<"ok" | "no">;
 };
 
 const NONE: AdBonusApi = {
@@ -33,6 +36,8 @@ const NONE: AdBonusApi = {
   openSkip: () => {},
   rushFor: () => 0,
   openRush: () => {},
+  skipStepsLeft: () => 0,
+  skipStep: async () => "no",
 };
 
 export const AdBonusContext = createContext<AdBonusApi>(NONE);

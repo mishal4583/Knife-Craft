@@ -913,7 +913,7 @@ function Round({
             </p>
             <p className="mt-1 font-ui text-[13.5px] font-bold text-walnut/80">
               Match the colour · {Math.round(tier.timeMs / 1000)} s · {bottles} bottles
-              {practice ? " · practice" : ""}
+              {practice ? " · extra round" : ""}
             </p>
             <div className="mt-3 grid gap-2">
               <SortButton onClick={start} testId="sauce-start">
@@ -1320,7 +1320,7 @@ function ResultPanel({
         </p>
         {practice ? (
           <p className="relative mt-1 font-ui text-[12.5px] font-bold text-walnut/65">
-            Practice: no reward
+            Extra round: no reward
           </p>
         ) : (
           <p
@@ -1367,7 +1367,7 @@ function ResultPanel({
             Done
           </SortButton>
           <SortButton quiet onClick={onAgain} testId="sauce-again">
-            Again · practice
+            Play again
           </SortButton>
         </div>
       </div>

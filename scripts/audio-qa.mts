@@ -272,6 +272,25 @@ console.log("W. Wiring");
   );
 }
 
+// iPhone Safari (developer 2026-11-11: "no sounds in Safari mobile except the videos"). A real device is the only full test; these guard the three causes.
+{
+  const am = read("src/game/AudioManager.ts");
+  assert(
+    /"touchstart", "touchend"/.test(am) && /e\?\.type/.test(am),
+    "X1: Safari: the unlock listens to touchstart AND touchend / click (iOS only starts audio from touchend / click) and knows which event it was",
+  );
+  assert(
+    /real && this\.ctx && this\.ctx\.state !== "running"\) this\.contextResumePending = null/.test(
+      am,
+    ) && /if \(this\.contextResumePending === ask\) this\.contextResumePending = null/.test(am),
+    "X2: Safari: a resume that never settles (asked from pointerdown) can no longer block the next real tap's resume: dropped on a real tap and after 1.2 s",
+  );
+  assert(
+    /primeOutput/.test(am) && /createBuffer\(1, 1, 22050\)/.test(am) && /statechange/.test(am),
+    "X3: Safari: a real tap plays one silent sample to open the output, and a state change to running wakes the music",
+  );
+}
+
 AudioManager.setMusicMood("off");
 console.log(failures ? `\nAUDIO QA: ${failures} FAILURE(S)` : "\nAUDIO QA: ALL PASS");
 process.exit(failures ? 1 : 0);

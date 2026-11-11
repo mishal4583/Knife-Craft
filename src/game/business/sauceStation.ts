@@ -33,6 +33,11 @@ export const SAUCE_FIRST_LEVEL = 7;
 export const FIRST_SAUCE_ID = "lemon-dressing";
 export const isSauceStationOpen = (level: number): boolean => level >= SAUCE_FIRST_LEVEL;
 /** Rounds a day (the "Sauces 1/3" tag); after them, free practice. */
+/**
+ * The Sauce Station is a daily duty from this level (developer 2026-11-11: "I played more than 10 levels and the Sauce Station is still not mandatory"):
+ * one round (or the Prep Cook, or the ad skip) before the day's first service. Level 7 to 9 are its free discovery.
+ */
+export const SAUCE_REQUIRED_FROM = 10;
 export const MAX_ROUNDS_PER_DAY = 3;
 /** The rewarded ad (developer 2026-11-10): three more rounds today, once a business day, only after the free ones are used. No money. */
 export const SAUCE_AD_ROUNDS = 3;
@@ -767,6 +772,8 @@ export type SauceStationState = {
   extraDay?: number;
   /** Bit 1: the how-to tour was seen. */
   howto?: number;
+  /** The business day the daily duty was met without a played round (the Prep Cook, or the ad skip). */
+  doneDay?: number;
 };
 
 const whole = (v: unknown, max = Number.MAX_SAFE_INTEGER) =>
@@ -787,6 +794,7 @@ export function sauceStationOf(save: SaveData): SauceStationState {
     extra: whole(raw?.extra, SAUCE_AD_ROUNDS),
     extraDay: whole(raw?.extraDay),
     howto: whole(raw?.howto, 1),
+    doneDay: whole(raw?.doneDay),
   };
 }
 function withState(save: SaveData, state: SauceStationState): SaveData {
@@ -940,8 +948,26 @@ export function finishRound(
   return { save: out, effects: { hype, pin, newBest, streak, mastered } };
 }
 
-/** The Prep Cook makes a batch on his own: it counts as nothing (no stars, Hype, pins, mastery or day count). */
-export const autoSauce = (save: SaveData): SaveData => save;
+/** Today's duty is met: a rewarded round was played, or the Prep Cook / the ad skip covered it. */
+export function sauceDutyDone(save: SaveData): boolean {
+  const st = sauceStationOf(save);
+  const day = save.business.calendar.businessDay;
+  return st.doneDay === day || (st.day === day && st.today! > 0);
+}
+/** The Sauce Station is a duty now: from SAUCE_REQUIRED_FROM, once a business day, until it is done. */
+export const sauceDue = (save: SaveData, level: number): boolean =>
+  level >= SAUCE_REQUIRED_FROM && isSauceStationOpen(level) && !sauceDutyDone(save);
+/** Marks today's duty met with no stars, Hype, pins, mastery or round count. No money, stock or ledger. */
+export function coverSauceToday(save: SaveData): SaveData {
+  if (sauceDutyDone(save)) return save;
+  return withState(save, {
+    ...(save.business.sauceStation ?? {}),
+    ...sauceStationOf(save),
+    doneDay: save.business.calendar.businessDay,
+  });
+}
+/** The Prep Cook makes a batch on his own: it meets today's duty and counts as nothing else (no stars, Hype, pins, mastery or day count). */
+export const autoSauce = (save: SaveData): SaveData => coverSauceToday(save);
 
 // ── What the screen asks of the app ──────────────────────────────────────────
 

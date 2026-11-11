@@ -12,6 +12,7 @@
  * The board is dealt at random and then PROVEN solvable by a small search (`solve`); that search also gives the number of moves the
  * timer is built from, and the Hint button's next move.
  */
+import { rampOf } from "./difficultyRamp";
 import type { SaveData } from "../SaveManager";
 import { STOCKROOM_FROM_LEVEL } from "../config/earlyLevels";
 import { addHype } from "../restaurant/secondFloor";
@@ -107,7 +108,8 @@ export const TIERS: readonly Tier[] = [
 export function tierAt(level: number): Tier {
   let t = TIERS[0]!;
   for (const x of TIERS) if (level >= x.from) t = x;
-  return t;
+  // The board grows smoothly toward the next tier's size (difficultyRamp.ts); on a tier's first level it is exactly the tier's own.
+  return { ...t, maxSets: rampOf(TIERS, level, (x) => x.maxSets) };
 }
 
 export const SLOTS = 3;

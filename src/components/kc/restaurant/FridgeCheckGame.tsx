@@ -41,7 +41,7 @@ import { clock, fsUrl } from "../inventory/sort/sortUtils";
  * FRIDGE CHECK — the screen of the closing-night inspection (rules: restaurant/fridgeCheck.ts, plan: docs/planning/FRIDGE-CHECK-MINIGAME-PLAN-2026-11-06.md).
  *
  * STAGE 1 "sort" (the chore "Throw out spoiled food"): a card for each ingredient really in the fridge. Swipe it right to KEEP, left to BIN or (from
- * the second tier) up for USE FIRST; the three buttons and the arrow keys do the same. After every card one line says why.
+ * the second tier) up for USE NEXT; the three buttons and the arrow keys do the same. After every card one line says why.
  * STAGE 2 "wrap" (the chore "Wrap and label"): the food that stays stands on a steel shelf; tap the one that goes off FIRST, it is wrapped and labelled.
  * The game never moves money or stock: a wrong answer costs points only, and Closing Time's sweep is the only thing that throws food out.
  * Reduced Motion: no card fly-out, no stamp fade, no shake: the card just changes.
@@ -58,7 +58,7 @@ const NO_EFFECTS: CheckEffects = { hype: 0, pin: false, newBest: false, streak: 
 
 type Note = { text: string; tone: "good" | "bad" | "info" };
 
-const LABELS: Record<Verdict, string> = { keep: "Keep", bin: "Bin", "use-first": "Use first" };
+const LABELS: Record<Verdict, string> = { keep: "Keep", bin: "Bin", "use-first": "Use next" };
 
 export function FridgeCheckGame(props: {
   save: SaveData;
@@ -77,12 +77,13 @@ export function FridgeCheckGame(props: {
   /** The how-to tour of this stage was closed for the first time: the app saves that it was seen. */
   onGuideSeen: (stage: CheckStage) => void;
 }) {
-  // "Again · practice" replays the same night with no reward: a new round with its own state.
+  // "Play again" replays the same night with no reward: a new round with its own state.
   const [attempt, setAttempt] = useState(0);
   const [practice, setPractice] = useState(props.initialPractice ?? false);
   return (
     <Round
       key={`${props.stage}-${attempt}`}
+      attempt={attempt}
       {...props}
       practice={practice}
       onGuideSeen={() => props.onGuideSeen(props.stage)}
@@ -95,6 +96,7 @@ export function FridgeCheckGame(props: {
 }
 
 function Round({
+  attempt,
   save,
   level,
   stage,
@@ -107,6 +109,8 @@ function Round({
   onAgain,
   onGuideSeen,
 }: {
+  /** 0 for the night's own deck; a later "Play again" deals a new one. */
+  attempt: number;
   save: SaveData;
   level: number;
   stage: CheckStage;
@@ -124,7 +128,7 @@ function Round({
   const isSort = stage === "sort";
   // The night's deck is dealt ONCE from the stock as the game opened (finishing changes the save, never the cards).
   const cards = useMemo<CheckCard[]>(
-    () => (isSort ? checkCards(save, level) : wrapItems(save, level)),
+    () => (isSort ? checkCards(save, level, attempt) : wrapItems(save, level, attempt)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
@@ -544,7 +548,7 @@ function Round({
             {note
               ? note.text
               : practice
-                ? "Practice · no reward"
+                ? "Extra round · no reward"
                 : isSort
                   ? `Card ${Math.min(idx + 1, total)} of ${total}: keep it or bin it?`
                   : "Tap the food that goes off first."}
@@ -616,7 +620,7 @@ function Round({
                     ["stamp-bin", "BIN", binOp, "text-[#a3271a]", "rotate-12 right-[6%] top-[22%]"],
                     [
                       "stamp-first",
-                      "USE FIRST",
+                      "USE NEXT",
                       firstOp,
                       "text-[#b8620f]",
                       "-rotate-6 left-[18%] top-[40%]",
@@ -725,7 +729,7 @@ function Round({
           {(
             [
               ["bin", "Bin", binned],
-              ["use-first", "Use first", first],
+              ["use-first", "Use next", first],
               ["keep", "Keep", kept],
             ] as const
           )
@@ -807,7 +811,7 @@ function Round({
                   onSkip();
                 }}
               >
-                {practice ? "Leave the check" : "Skip: do it with one tap"}
+                {practice ? "Leave the check" : "Leave for now"}
               </SortButton>
             </div>
           </div>
@@ -870,7 +874,7 @@ function Round({
             </p>
             {practice ? (
               <p className="relative mt-1 font-ui text-[12.5px] font-bold text-walnut/65">
-                Practice: no reward
+                Extra round: no reward
               </p>
             ) : (
               <p
@@ -923,7 +927,7 @@ function Round({
               </SortButton>
               {!practice ? (
                 <SortButton quiet onClick={onAgain} testId="fc-again">
-                  Again · practice
+                  Play again
                 </SortButton>
               ) : null}
             </div>

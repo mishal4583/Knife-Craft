@@ -11,6 +11,7 @@
  * The Vegetables shelf holds 25 of the 57 ingredients (9 of the 14 a player owns at Level 14), so a plain sort would be "drop everything
  * on Vegetables". The game splits it into four game-only BINS (decision D1 of the plan); the fridge screen and `fridgeZoneFor` do not change.
  */
+import { rampOf } from "./difficultyRamp";
 import type { SaveData } from "../SaveManager";
 import { INGREDIENTS, type IngredientId } from "../definitions";
 import { addHype } from "../restaurant/secondFloor";
@@ -23,7 +24,15 @@ import { itemCount } from "./measure";
  * The level the game opens (Level 3, developer 2026-11-05: it used to open at Level 14, which was too late). The Market opens at Level 1 and
  * the first service that uses bought food is Level 3 (firstRestock.ts), so the first baskets are small and the first levels teach the fridge.
  */
-export const FRIDGE_SORT_FIRST_LEVEL = 3;
+export const FRIDGE_SORT_FIRST_LEVEL = 4;
+/**
+ * Delivery Inspection opens at Level 3 and Fridge Sort one level later (developer 2026-11-11: "if the check is at Level 3, the sorting should be at
+ * Level 4"): never two new games in one level. The crate itself (the delivery waiting to be checked and unpacked) exists from Level 3, so the first
+ * check has real food to look over; the sorting game (`isFridgeSortOpen`, `roundFor`) opens at FRIDGE_SORT_FIRST_LEVEL.
+ */
+export const FRIDGE_SORT_CRATE_LEVEL = 3;
+export const isCrateOpen = (reachedLevel: number): boolean =>
+  FRIDGE_SORT_TEST_UNLOCK || reachedLevel >= FRIDGE_SORT_CRATE_LEVEL;
 
 /** Dev test: `?fridgeSort` in the address shows the game below its level (the same pattern as `?floor2`). */
 export const FRIDGE_SORT_TEST_UNLOCK: boolean =
@@ -151,7 +160,12 @@ export const DIFFICULTY: readonly Difficulty[] = [
 export function difficultyAt(level: number): Difficulty {
   let d = DIFFICULTY[0]!;
   for (const x of DIFFICULTY) if (level >= x.from) d = x;
-  return d;
+  // The basket grows smoothly toward the next tier's size (difficultyRamp.ts); on a tier's first level it is exactly the tier's own.
+  return {
+    ...d,
+    maxTokens: rampOf(DIFFICULTY, level, (t) => t.maxTokens),
+    minTargets: rampOf(DIFFICULTY, level, (t) => t.minTargets),
+  };
 }
 
 // ── State ────────────────────────────────────────────────────────────────────
@@ -264,7 +278,7 @@ export function addToCrate(
   reachedLevel: number,
   stock?: Readonly<Record<string, number>>,
 ): SaveData {
-  if (!isFridgeSortOpen(reachedLevel)) return save;
+  if (!isCrateOpen(reachedLevel)) return save;
   const state = fridgeSortOf(save);
   const crate = [...(state.crate ?? [])];
   const counts = { ...(state.counts ?? {}) };
@@ -360,7 +374,7 @@ function packBasket(
 
 /** How many baskets the waiting crate makes at this level (0 = nothing waits, or the game is not open). */
 export function basketsLeft(save: SaveData, reachedLevel: number): number {
-  if (!isFridgeSortOpen(reachedLevel)) return 0;
+  if (!isCrateOpen(reachedLevel)) return 0;
   const state = fridgeSortOf(save);
   const max = difficultyAt(reachedLevel).maxTokens;
   let rest = [...(state.crate ?? [])];

@@ -3,13 +3,13 @@ import { cn } from "@/lib/utils";
 import { AudioManager } from "@/game/AudioManager";
 import { ASSISTANT_NAME, type AssistantBeat } from "@/game/restaurant/assistant";
 import { KButton } from "../common/primitives";
-import { PaigePiece, PaigePoseImg, paigeUrl } from "./PaigeArt";
+import { PaigeCutout, PaigeNameplate, PaigePiece } from "./PaigeArt";
 import "./assistant.css";
 
 /**
- * PAIGE'S POPUP (developer 2026-11-07; the popup look and the dimmed, blurred background 2026-11-08; rules and beats:
- * game/restaurant/assistant.ts). A card like every instruction popup (her round portrait, her words, the buttons) over a dimmed and blurred
- * screen, with an optional glowing ring and arrow on a real button, which is left bright. It never shows over another card (`calm`), shows at most ONE beat per screen visit (`visit`), and the beat on screen is
+ * PAIGE'S POPUP (developer 2026-11-07; the dimmed, blurred background 2026-11-08; the cutout and the big speech bubble 2026-11-11; rules and
+ * beats: game/restaurant/assistant.ts). A standalone cutout of Paige on the left and one large speech bubble reaching to the right (her nameplate on
+ * it, a Next arrow or the buttons at its foot) over a dimmed and blurred screen, with an optional glowing ring and arrow on a real button, which is left bright. It never shows over another card (`calm`), shows at most ONE beat per screen visit (`visit`), and the beat on screen is
  * LATCHED: saving "seen" can never swap it for another mid-sentence. Presentation only: the hire, the seen mark and "Take me there" are the
  * app's (`onHire`, `onSeen`, `onGo`).
  */
@@ -239,50 +239,48 @@ export function AssistantHost({
         </>
       ) : null}
 
+      {/* Paige is a standalone cutout on the left; her words are one big speech bubble that reaches to the right, with her nameplate
+          (developer 2026-11-11). She stays where she is; only her pose, the text, the bubble's size and the Next arrow change. */}
       <div
         className={cn(
-          "pointer-events-none absolute inset-x-0 flex justify-center p-3",
+          "pointer-events-none absolute inset-x-0 flex justify-center",
           rect
             ? cardTop
-              ? "top-[max(56px,env(safe-area-inset-top))]"
-              : "bottom-[88px]"
+              ? "top-[max(48px,env(safe-area-inset-top))]"
+              : "bottom-[84px]"
             : "inset-y-0 items-center",
         )}
         role="status"
         aria-live="polite"
       >
         <div
-          className="paige-in pointer-events-auto relative w-full max-w-[360px] rounded-[22px] border-2 bg-ivory p-3 shadow-lift data-[tone=success]:border-olive/60 data-[tone=warning]:border-tomato/60 data-[tone=normal]:border-copper/50"
+          className="paige-stage paige-in pointer-events-none relative w-full max-w-[520px]"
           data-tone={tone}
-          data-testid="assistant-bubble"
+          data-testid="assistant-stage"
         >
-          <div className="flex items-center gap-3">
-            <span className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full border-2 border-copper/40 bg-walnut/10">
-              <PaigePoseImg
-                pose={current.pose}
-                className="h-full w-full object-cover object-[50%_12%]"
-              />
-              {current.pose === "cheer" || current.pose === "clap" ? (
-                <PaigePiece
-                  name="ui-sparkle"
-                  className={cn("paige-sparkle absolute -right-1 -top-1 h-7 w-7")}
-                />
-              ) : null}
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="font-ui text-[11px] font-extrabold uppercase tracking-[0.14em] text-copper">
-                {ASSISTANT_NAME} ·{" "}
-                {tone === "success" ? "Well done" : tone === "warning" ? "Heads up" : "Tip"}
-              </p>
+          <PaigeCutout pose={current.pose} className="paige-cutout absolute bottom-0 left-0" />
+          {current.pose === "cheer" || current.pose === "clap" ? (
+            <PaigePiece
+              name="ui-sparkle"
+              className="paige-sparkle absolute left-[34%] top-[6%] h-9 w-9"
+            />
+          ) : null}
+          <div
+            className="paige-speech pointer-events-auto absolute"
+            data-tone={tone}
+            data-testid="assistant-bubble"
+          >
+            <PaigeNameplate tone={tone} />
+            <div className="paige-scroll">
               <p
                 data-testid="assistant-text"
-                className="mt-0.5 font-display text-[16px] font-extrabold leading-snug text-walnut-dark"
+                className="paige-words font-display font-extrabold text-walnut-dark"
               >
                 {current.text}
               </p>
+              <div className="mt-2 flex items-center justify-end gap-2">{actions}</div>
             </div>
           </div>
-          <div className="mt-3 flex items-center justify-end gap-2">{actions}</div>
         </div>
       </div>
     </div>

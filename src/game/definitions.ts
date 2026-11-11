@@ -206,7 +206,7 @@ export const TECHNIQUES: Record<TechniqueId, TechniqueDefinition> = {
   peel: {
     id: "peel",
     name: "Peel",
-    description: "Follow the skin all the way around, nice and slow.",
+    description: "Follow the skin all the way around.",
     guideType: "none",
     axis: "h",
     requiredCuts: 1, // "1 unit of progress" — the scene tracks drag coverage, not a cut count
@@ -457,27 +457,14 @@ export const CHOP_KNIFE = {
  */
 export const PEEL = {
   /** Fraction of the ingredient's true silhouette area (by grid cell count) that must be marked peeled before completePeel() fires and cleans up any remaining skin islands. */
-  COMPLETION_THRESHOLD: 0.9,
+  COMPLETION_THRESHOLD: 0.8,
   /** Peel stroke half-width, as a fraction of the ingredient's own average half-extent ((rx+ry)/2 or (rx+rBig)/2) — expressed in the same normalized ingredient-local units the coverage grid and mask replay both use, so it scales with the ingredient/viewport automatically rather than being a fixed pixel width. Per-ingredient override: IngredientDefinition.peelConfig?.strokeWidthFrac. */
-  STROKE_WIDTH_FRAC: 0.22,
+  STROKE_WIDTH_FRAC: 0.34,
   /** Coarse coverage-grid resolution (ingredient-local normalized units, not screen pixels) — cheap and deterministic, used ONLY to decide how much of the silhouette is newly covered; the visual reveal is a smooth stroke replay (see redrawIngredientTexture's paintPeelableLayer), not this grid. */
   GRID_COLS: 22,
   GRID_ROWS: 16,
   REVEAL_MS: 260,
-  /**
-   * Slow and satisfying (developer 2026-11-07: "make the peeling slow and satisfying because players enjoy it"): the blade bites at a fixed
-   * pace. This is how far it travels per second, in ingredient half-extents (so every ingredient takes about the same time whatever its
-   * size): the skin comes off behind the finger, never faster, so scribbling cannot beat a steady stroke. With the narrower strip
-   * (STROKE_WIDTH_FRAC) and the higher completion (COMPLETION_THRESHOLD) a whole ingredient took about 8-12 seconds at 1.1.
-   * Developer 2026-11-11 ("you made the peeling very slow: make it a little slow, but more realistic"): 3.4 (measured: a whole potato about 6 s), so a steady peel is about
-   * 5-7 seconds, and the blade now follows the finger the way a real blade does (FOLLOW_RATE below) instead of crawling at a fixed pace.
-   */
-  MAX_SPEED: 3.4,
-  /**
-   * How quickly the blade closes the gap to the finger, per second (an exponential pursuit: the blade covers 1 - e^(-FOLLOW_RATE * dt) of the gap
-   * each frame, capped by MAX_SPEED). A slow, careful stroke is followed exactly with no visible lag; only a flick is held back.
-   */
-  FOLLOW_RATE: 16,
+  // The old peel is back (developer 2026-11-11: the slow, paced peel of 2026-11-07 was "very slow and irritating"): the blade is under the finger at once, the strip is wide again (0.34) and done is 80%.
   /** A curl of skin lifts off for every this many pixels of blade travel (the tactile trail while peeling). */
   RIBBON_EVERY_PX: 26,
   /** At most one soft scrape sound / light buzz per this many milliseconds. */
@@ -489,8 +476,6 @@ export const PEEL = {
 export type PeelConfig = {
   strokeWidthFrac?: number;
   completionThreshold?: number;
-  /** Multiplies PEEL.MAX_SPEED: a small clove or a knob of ginger peels quicker than a whole onion (1 = the shared pace). */
-  paceMult?: number;
 };
 
 /**
@@ -1050,8 +1035,6 @@ export const INGREDIENTS: Record<IngredientId, IngredientDefinition> = {
     // Chop with a "minced" resultingState; "Rocking Knife"/L56+ introduces
     // the genuinely new Rock Mince technique on top of it).
     techniques: ["peel", "smash", "chop", "rockMince"],
-    // A clove is small: its skin comes away quicker than an onion's (PEEL.MAX_SPEED x 1.5).
-    peelConfig: { paceMult: 1.5 },
     // A real clove is a teardrop, not an oval — same taper silhouette
     // carrot/cucumber already use (rounded base tapering to a real
     // point), not the ellipse factory. See GARLIC_GEOMETRY/garlicTexture.ts.
@@ -3269,8 +3252,6 @@ export const INGREDIENTS: Record<IngredientId, IngredientDefinition> = {
     // already does (CutGeometry.ts has no per-shape technique gating) —
     // no new texture/rendering, no new mechanic.
     techniques: ["peel", "slice", "chop", "rockMince", "julienne"],
-    // A knob of ginger is small: PEEL.MAX_SPEED x 1.5.
-    peelConfig: { paceMult: 1.5 },
     shape: "cluster",
     difficulty: 1,
     bandTopClear: 0.1,
@@ -3499,7 +3480,6 @@ export const INGREDIENTS: Record<IngredientId, IngredientDefinition> = {
     },
   },
 };
-
 
 // KnifeStats/DEFAULT_KNIFE (Phase 8) — removed. The authoritative knife
 // shape is now KnifeDefinition (src/game/knives/knifeTypes.ts), populated

@@ -157,7 +157,14 @@ import { newSauceRoundsRewardId } from "@/game/ads/sauceRoundsAd";
 import { levelTeaser } from "@/game/restaurant/levelTeasers";
 import { sectionPictures, warmPictures, whenIdle } from "@/game/preloadArt";
 import { SECOND_FLOOR_FROM_LEVEL } from "@/game/config/earlyLevels";
-import { serviceGate, unpackLocked, type ServiceGate } from "@/game/business/deliveryFlow";
+import {
+  serviceGate,
+  skipsLeft,
+  unpackLocked,
+  withSkipUsed,
+  type ServiceGate,
+} from "@/game/business/deliveryFlow";
+import { newStepSkipRewardId } from "@/game/ads/stepSkipAd";
 import { ServiceGateSheet } from "@/components/kc/business/DeliveryRoutine";
 import { featuresOpeningAt } from "@/game/config/featureUnlocks";
 import { chestAt, chestCelebration } from "@/game/restaurant/milestoneChests";
@@ -444,6 +451,7 @@ import {
 } from "@/game/business/deliveryInspection";
 import {
   autoSauce,
+  coverSauceToday,
   finishRound as finishSauceRound,
   withHowtoSeen as withSauceHowtoSeen,
   withAdRounds as withSauceAdRounds,
@@ -810,6 +818,7 @@ export function App() {
   /** A day-Cleaner ad is in flight (hireDayCleanerWithAd). */
   const dayCleanerAdBusyRef = useRef(false);
   const sauceAdBusyRef = useRef(false);
+  const stepSkipBusyRef = useRef(false);
   // Paige's notebook sheet and a tip she is asked to say again (components/kc/assistant).
   const [paigeNotebook, setPaigeNotebook] = useState(false);
   // A moment worth feeling (game/restaurant/celebrations.ts): the ranking climbed, popularity rose, a spotless run.
@@ -1797,7 +1806,49 @@ export function App() {
         rushAdAmount(current, restaurantLevelOf(current.levelProgress), Date.now()),
       );
     },
+    // The delivery routine's rewarded skip (developer 2026-11-11): offered only while ads are available and today's skips are not used up.
+    skipStepsLeft: () => {
+      const current = saveRef.current ?? save;
+      if (!current || !rewardedAdsAvailable()) return 0;
+      return skipsLeft(current);
+    },
+    skipStep: (stepId) => skipRoutineStep(stepId),
   };
+
+  /**
+   * Skips one step of the delivery routine for a rewarded ad. The step is done exactly as the Prep Cook would (no stars, Hype or pins), only on
+   * Bridge's `rewarded` state, against the LATEST save, at most SKIPS_PER_DAY a day. It moves no money, no stock and no ledger entry.
+   */
+  async function skipRoutineStep(stepId: string): Promise<"ok" | "no"> {
+    if (stepSkipBusyRef.current) return "no";
+    const first = saveRef.current;
+    if (!first || skipsLeft(first) === 0) return "no";
+    stepSkipBusyRef.current = true;
+    try {
+      const ad = await requestRewardedAd(newStepSkipRewardId(), AD_PLACEMENT.skipStep);
+      sendAnalyticsEvent("routine_step_skip_ad", { step: stepId, status: ad.status });
+      if (ad.status !== "rewarded") return "no";
+      const latest = saveRef.current;
+      if (!latest || skipsLeft(latest) === 0) return "no";
+      const level = restaurantLevelOf(latest.levelProgress);
+      let next: SaveData = latest;
+      if (stepId === "inspect") next = autoInspect(latest);
+      else if (stepId === "unpack") next = shiftInspected(latest, autoPutAway(latest), level);
+      else if (stepId === "shelves") next = autoStock(latest);
+      else if (stepId === "sauce") next = coverSauceToday(latest);
+      else if (stepId === "fridge-check") {
+        for (const kind of ["spoiled-out", "wrap-fridge"] as const) {
+          const r = cleanTask(next, kind);
+          if (r.ok) next = r.save;
+        }
+      }
+      if (next === latest) return "no";
+      persist(withSkipUsed(next));
+      return "ok";
+    } finally {
+      stepSkipBusyRef.current = false;
+    }
+  }
 
   /** Restaurant → Suppliers: switch a standing order on or off (deliveries.ts). No money moves. */
   function setStandingOrderOn(kind: DeliveryKind, on: boolean) {
@@ -3780,6 +3831,15 @@ export function App() {
     return undefined;
   }, [saveLoaded, showIntro]);
 
+  // The team's round is a promise, not a moment (developer 2026-11-11: "cleaner is hired but it still shows I have to clean"): whenever a Cleaner (or the
+  // Server / Prep Cook for their own chores) is on duty and a routine chore of theirs is open, they do it. It is idempotent: once nothing is left to clean
+  // `cleaned` is empty and nothing is saved, so this never loops.
+  useEffect(() => {
+    if (!save || !RESTAURANT_MODE) return;
+    const round = cleanerRound(save);
+    if (round.cleaned.length > 0) persist(round.save);
+  }, [save]);
+
   // A new player is interactive once the intro is on screen (SKIP, taps):
   // game_ready is sent then, not after the cutting engine boots (it is sent
   // once — Preparation's and the Kitchen's calls are no-ops afterwards).
@@ -4789,6 +4849,8 @@ export function App() {
         <ServiceGateSheet
           gate={serviceGate(save, restaurantLevelOf(save.levelProgress))}
           hasPrepCook={save.business.staff?.hiredRoles?.includes("prep-cook") ?? false}
+          skipsLeft={adBonusApi.skipStepsLeft()}
+          onSkip={adBonusApi.skipStep}
           go={(to) => {
             gateHoldRef.current = false;
             setServiceGateState(null);
