@@ -78,12 +78,38 @@ export function SauceIcon({
 
 // ── The two vessels ──────────────────────────────────────────────────────────
 
-/** The inside of each vessel's picture: the mask's top and bottom as a share of the picture's height (measured on the built masks). */
-const INSIDE = { bowl: [0.138, 0.593], pan: [0.218, 0.551] } as const;
+/**
+ * The OPENING of each vessel as an ellipse, a share of its 540 x 312 picture (measured on the built masks, which are ellipses): centre and radii.
+ * The liquid is this ellipse moved DOWN by how deep the surface is, seen through the opening (the mask): that is exactly what the eye sees in a round
+ * pot from the front and above: the surface is an ellipse, its back edge meets the back wall, and the front rim hides the rest (developer 2026-11-11: "the
+ * liquid inside the pot is not fitting correctly and it looks unrealistic": it was a flat horizontal slab cut by the mask).
+ */
+const OPENING = {
+  bowl: { cx: 0.5, cy: 0.3654, rx: 0.461, ry: 0.218 },
+  pan: { cx: 0.41, cy: 0.383, rx: 0.349, ry: 0.155 },
+} as const;
+/** How far the surface sits below the rim when full, and how far down the pot's floor is (in opening heights, 2 * ry). */
+const FULL_DROP = 0.08;
+const FLOOR_DROP = 0.78;
+/** The walls narrow toward the floor: the surface ellipse is this much narrower when nearly empty. */
+const TAPER = 0.1;
+
+/** Where the liquid's surface ellipse is for a fill `level` (0..1): its box, and the part of the opening it shows (for chunks), all as shares of the picture. */
+export function surfaceOf(kind: "bowl" | "pan", level: number) {
+  const o = OPENING[kind];
+  const l = Math.min(1, Math.max(0, level));
+  const drop = (FULL_DROP + (1 - l) * (FLOOR_DROP - FULL_DROP)) * 2 * o.ry;
+  const w = o.rx * (1 - TAPER * (1 - l));
+  const top = o.cy - o.ry + drop;
+  const visTop = Math.max(top, o.cy - o.ry);
+  const visBottom = o.cy + o.ry * 0.85;
+  return { left: o.cx - w, top, width: 2 * w, height: 2 * o.ry, visTop, visBottom };
+}
 
 /**
- * The mixing bowl or the pan with the liquid in it: the painted vessel, the liquid clipped by the painted mask, a sheen, a swirl when it is being
- * stirred, floating chunks, and (when a dressing split) an oil slick. `level` is how full it is (0..1). Without the art, an ellipse stands in.
+ * The mixing bowl or the pan with the liquid in it: the painted vessel, the liquid as a real surface (an ellipse seen through the opening, with a
+ * lighter meniscus, a darker edge where it meets the wall, a gloss, a ripple), a swirl when it is being stirred, floating chunks, and (when a dressing
+ * split) an oil slick. `level` is how full it is (0..1). Without the art, an ellipse stands in.
  */
 export function Vessel({
   kind,
@@ -105,10 +131,11 @@ export function Vessel({
 }) {
   const back = useSauceArt(`${kind}-back`);
   const mask = useSauceArt(`${kind}-mask`);
-  const [top, bottom] = INSIDE[kind];
-  const surface = bottom - Math.min(1, Math.max(0, level)) * (bottom - top) * 0.92;
+  const surf = surfaceOf(kind, level);
   const maskUrl = `url(${sauceUrl(`${kind}-mask`)})`;
   const art = back && mask;
+  const empty = level < 0.01;
+  const pct = (v: number) => `${(v * 100).toFixed(2)}%`;
   return (
     <div
       className={cn("relative", className)}
@@ -141,38 +168,68 @@ export function Vessel({
             : { clipPath: "ellipse(44% 36% at 50% 28%)" }
         }
       >
-        <div
-          className="absolute inset-x-0 bottom-0 transition-[top,background-color] duration-300"
-          data-testid="sauce-liquid"
-          style={{
-            top: `${(art ? surface : 0.03 + (1 - level) * 0.25) * 100}%`,
-            backgroundColor: color,
-            backgroundImage:
-              "linear-gradient(180deg, rgba(255,255,255,.28), rgba(255,255,255,0) 26%, rgba(0,0,0,.14))",
-          }}
-        >
-          <span
-            aria-hidden
-            className="absolute inset-x-[3%] -top-[5%] h-[10%] rounded-[50%] bg-white/20"
-          />
-          {swirl ? (
-            <span
-              aria-hidden
-              className="sauce-swirl absolute left-1/2 top-1/2 h-[170%] w-[110%] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-40"
+        {art ? (
+          empty ? null : (
+            <div
+              className="absolute transition-[top,left,width,background-color] duration-300"
+              data-testid="sauce-liquid"
               style={{
+                left: pct(surf.left),
+                top: pct(surf.top),
+                width: pct(surf.width),
+                height: pct(surf.height),
+                borderRadius: "50%",
+                backgroundColor: color,
+                // a light pool toward the back-left (where the window is), a darker edge where the sauce meets the wall, a bright thin meniscus ring
                 backgroundImage:
-                  "conic-gradient(from 0deg, rgba(255,255,255,.55), rgba(255,255,255,0) 18%, rgba(0,0,0,.18) 40%, rgba(255,255,255,0) 58%, rgba(255,255,255,.4) 80%, rgba(255,255,255,.55))",
+                  "radial-gradient(70% 60% at 38% 30%, rgba(255,255,255,.32), rgba(255,255,255,0) 70%), radial-gradient(closest-side, rgba(0,0,0,0) 70%, rgba(0,0,0,.30) 100%)",
+                boxShadow:
+                  "inset 0 0 0 2px rgba(255,255,255,.20), inset 0 4px 7px rgba(255,255,255,.30), inset 0 -7px 12px rgba(0,0,0,.20)",
               }}
-            />
-          ) : null}
-          {split ? (
-            <span
-              aria-hidden
-              data-testid="sauce-split"
-              className="absolute left-[18%] top-[16%] h-[34%] w-[64%] rounded-[50%] border-[3px] border-[rgba(255,240,170,.85)] bg-[rgba(255,230,120,.28)]"
-            />
-          ) : null}
-        </div>
+            >
+              <span
+                aria-hidden
+                className="absolute left-[18%] top-[14%] h-[16%] w-[34%] rotate-[-8deg] rounded-[50%] bg-white/30 blur-[2px]"
+              />
+              {swirl ? (
+                <span
+                  aria-hidden
+                  className="sauce-swirl absolute left-1/2 top-1/2 h-[150%] w-[100%] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-35"
+                  style={{
+                    backgroundImage:
+                      "conic-gradient(from 0deg, rgba(255,255,255,.55), rgba(255,255,255,0) 18%, rgba(0,0,0,.18) 40%, rgba(255,255,255,0) 58%, rgba(255,255,255,.4) 80%, rgba(255,255,255,.55))",
+                  }}
+                />
+              ) : null}
+              {split ? (
+                <span
+                  aria-hidden
+                  data-testid="sauce-split"
+                  className="absolute left-[18%] top-[22%] h-[40%] w-[64%] rounded-[50%] border-[3px] border-[rgba(255,240,170,.85)] bg-[rgba(255,230,120,.28)]"
+                />
+              ) : null}
+            </div>
+          )
+        ) : (
+          <div
+            className="absolute inset-x-0 bottom-0 transition-[top,background-color] duration-300"
+            data-testid="sauce-liquid"
+            style={{
+              top: `${(0.03 + (1 - level) * 0.25) * 100}%`,
+              backgroundColor: color,
+              backgroundImage:
+                "linear-gradient(180deg, rgba(255,255,255,.28), rgba(255,255,255,0) 26%, rgba(0,0,0,.14))",
+            }}
+          >
+            {split ? (
+              <span
+                aria-hidden
+                data-testid="sauce-split"
+                className="absolute left-[18%] top-[16%] h-[34%] w-[64%] rounded-[50%] border-[3px] border-[rgba(255,240,170,.85)] bg-[rgba(255,230,120,.28)]"
+              />
+            ) : null}
+          </div>
+        )}
         {level > 0.2 && chunks
           ? chunks.map((c, i) => (
               <Sprite
@@ -183,7 +240,7 @@ export function Vessel({
                 className="sauce-chunk absolute w-[9%]"
                 style={{
                   left: `${24 + ((i * 23) % 52)}%`,
-                  top: `${(surface + 0.035 + (i % 3) * 0.06) * 100}%`,
+                  top: pct(surf.visTop + (surf.visBottom - surf.visTop) * (0.3 + 0.18 * (i % 3))),
                   animationDelay: `${i * 0.5}s`,
                 }}
               />
@@ -851,7 +908,11 @@ export function SauceStyles() {
       @keyframes sauce-pop{0%{transform:scale(1.5);opacity:0}100%{transform:scale(1);opacity:1}}
       .sauce-pop{animation:sauce-pop .22s ease-out}
       @keyframes sauce-belt{to{background-position-x:-512px}}
-      @media (prefers-reduced-motion: reduce){.sauce-swirl,.sauce-chunk,.sauce-ripple{animation:none}}
+      @keyframes sauce-pour-idle{0%,100%{box-shadow:0 6px 0 #5a3410,0 10px 18px rgba(20,10,4,.45),0 0 0 0 rgba(255,214,140,.0),inset 0 2px 0 rgba(255,255,255,.45)}50%{box-shadow:0 6px 0 #5a3410,0 10px 18px rgba(20,10,4,.45),0 0 18px 4px rgba(255,214,140,.55),inset 0 2px 0 rgba(255,255,255,.45)}}
+      .sauce-pour-idle{animation:sauce-pour-idle 1.8s ease-in-out infinite}
+      @keyframes sauce-pour-go{0%,100%{scale:1}50%{scale:1.035}}
+      .sauce-pour-go{animation:sauce-pour-go .32s ease-in-out infinite}
+      @media (prefers-reduced-motion: reduce){.sauce-swirl,.sauce-chunk,.sauce-ripple,.sauce-pour-idle,.sauce-pour-go{animation:none}}
     `}</style>
   );
 }

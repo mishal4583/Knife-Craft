@@ -1,5 +1,11 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## Sauce Station polish (developer 2026-11-11, pushed)
+
+- **Liquid in the pot:** the sauce is now a real SURFACE: the vessel's opening ellipse (`OPENING` in `SauceParts.tsx`, measured on the masks) moved down by how deep the sauce is, seen through the opening (`surfaceOf`), with a meniscus, a darker edge at the wall, a gloss and the swirl / slick / chunks inside it. It was a flat slab cut by the mask. The pot sits LOW in its space (`items-end pb-4`).
+- **Play again** makes the SAME sauce (`sameSauceId`); "Next round" returns to the day's sauce.
+- **Pour button** (`PourButton` in `SauceStationGame.tsx`): brass rim, glossy top, the sauce's colour rising inside as the bottle fills, "LET GO NOW!" with a glow and a 14 ms buzz on the line, "Too much!" past it, breathes when idle; Reduced Motion turns the animation off. `sauce-station-qa` M1-M5.
+
 ## Paige audit: every line checked against the game, Second Floor reminders (developer 2026-11-11)
 
 Every Paige line (the 40 beats in `restaurant/assistant.ts`, the four chests, the Congratulations cards, the guide card in her voice) was read against the real rules (a script walked Levels 1-92 and listed what fires when). Found and fixed:

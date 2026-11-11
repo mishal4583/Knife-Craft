@@ -32,6 +32,7 @@ import {
   tierAt,
   tierNumberAt,
   unlockedSauces,
+  SAUCE_BY_ID,
   volumeOf,
   rng,
   type MixResult,
@@ -92,18 +93,23 @@ export function SauceStationGame(props: {
 }) {
   const [attempt, setAttempt] = useState(0);
   const [practice, setPractice] = useState(false);
+  // "Play again" makes the SAME sauce again (developer 2026-11-11: it dealt a different one); "Next round" deals the day's next sauce.
+  const [again, setAgain] = useState<string | null>(null);
   return (
     <Round
       key={attempt}
       {...props}
       attempt={attempt}
       forcePractice={practice}
-      onAgain={() => {
+      sameSauceId={again}
+      onAgain={(sauceId) => {
         setPractice(true);
+        setAgain(sauceId);
         setAttempt((n) => n + 1);
       }}
       onNext={() => {
         setPractice(false);
+        setAgain(null);
         setAttempt((n) => n + 1);
       }}
     />
@@ -121,6 +127,7 @@ function Round({
   onExit,
   attempt,
   forcePractice,
+  sameSauceId,
   onAgain,
   onNext,
 }: {
@@ -134,7 +141,9 @@ function Round({
   onExit: () => void;
   attempt: number;
   forcePractice: boolean;
-  onAgain: () => void;
+  /** "Play again": the sauce just made (null for a new round). */
+  sameSauceId: string | null;
+  onAgain: (sauceId: string) => void;
   onNext: () => void;
 }) {
   const tier = tierAt(level);
@@ -143,6 +152,8 @@ function Round({
   const [practice] = useState(() => forcePractice || roundsLeft(save, level) === 0);
   const sauce: SauceDef = useMemo(() => {
     if (!practice) return sauceOfTheDay(save, level);
+    const same = sameSauceId ? SAUCE_BY_ID[sameSauceId] : undefined;
+    if (same) return same;
     const open = unlockedSauces(level);
     return open[Math.floor(rng(roundSeed(save, level, attempt + 7))() * open.length)] ?? open[0]!;
     // Dealt ONCE as the round opens (finishing changes the save, never the sauce).
@@ -777,7 +788,8 @@ function Round({
       ) : (
         <>
           {/* the bowl and the tool */}
-          <div className="relative flex min-h-0 flex-1 items-center justify-center px-2">
+          {/* the pot sits LOW in its space (developer 2026-11-11: "let the pot be a little down"): on the counter, not floating */}
+          <div className="relative flex min-h-0 flex-1 items-end justify-center px-2 pb-4">
             <div
               ref={vesselRef}
               className="relative flex h-full max-w-full items-center justify-center"
@@ -990,7 +1002,7 @@ function Round({
           onNext={onNext}
           onShelf={onShelf}
           onExit={onExit}
-          onAgain={onAgain}
+          onAgain={() => onAgain(sauce.id)}
         />
       ) : null}
     </div>
@@ -1207,25 +1219,16 @@ function BottleStage({
         </div>
       </div>
       <div className="mx-3 mb-3 mt-2 grid gap-2">
-        <button
-          type="button"
-          data-testid="sauce-pour"
+        <PourButton
+          fill={fill}
+          color={color}
+          pouring={pouring}
           disabled={done || capped}
-          onPointerDown={(e) => {
-            e.preventDefault();
-            (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
-            onDown();
-          }}
-          onPointerUp={onUp}
-          onPointerCancel={onUp}
-          onContextMenu={(e) => e.preventDefault()}
-          className={cn(
-            "press wood flex h-16 w-full items-center justify-center rounded-2xl border border-walnut-dark/50 font-ui text-[17px] font-black text-ivory shadow-soft",
-            pouring && "brightness-110",
-          )}
-        >
-          {pouring ? "Let go at the line!" : "Hold to pour"}
-        </button>
+          window_={window_}
+          reducedMotion={reducedMotion}
+          onDown={onDown}
+          onUp={onUp}
+        />
         <p className="text-center font-ui text-[11.5px] font-bold text-ivory [text-shadow:0_1px_2px_rgba(0,0,0,.7)]">
           Stop on the dashed line (±{Math.round(window_ * 100)}%)
         </p>
@@ -1234,6 +1237,120 @@ function BottleStage({
         </SortButton>
       </div>
     </div>
+  );
+}
+
+/**
+ * THE POUR BUTTON (developer 2026-11-11: "make the pour button more beautiful and engaging"). A big brass-rimmed button with a glossy top: while you hold it
+ * the sauce's own colour rises inside it as the bottle fills; it glows and says "LET GO NOW!" (with a small buzz where the phone has one) when the level is
+ * on the line, and turns red with "Too much!" past it. Idle, it breathes softly. Transform / opacity / box-shadow animation only; Reduced Motion turns it off.
+ */
+export function PourButton({
+  fill,
+  color,
+  pouring,
+  disabled,
+  window_,
+  reducedMotion,
+  onDown,
+  onUp,
+}: {
+  fill: number;
+  color: string;
+  pouring: boolean;
+  disabled: boolean;
+  window_: number;
+  reducedMotion: boolean;
+  onDown: () => void;
+  onUp: () => void;
+}) {
+  const onLine = pouring && Math.abs(fill - FILL_LINE) <= window_;
+  const over = pouring && fill > FILL_LINE + window_;
+  const progress = Math.min(1, Math.max(0, fill / FILL_LINE));
+  const state = disabled ? "off" : over ? "over" : onLine ? "line" : pouring ? "pour" : "idle";
+  // A short buzz the moment the level reaches the line (where the phone can).
+  const wasOnLine = useRef(false);
+  useEffect(() => {
+    if (onLine && !wasOnLine.current && !reducedMotion) {
+      try {
+        navigator.vibrate?.(14);
+      } catch {
+        /* optional */
+      }
+    }
+    wasOnLine.current = onLine;
+  }, [onLine, reducedMotion]);
+  const rim =
+    state === "line"
+      ? "#e8b43a"
+      : state === "over"
+        ? "#a8321f"
+        : state === "off"
+          ? "#6b5a48"
+          : "#7a4a17";
+  return (
+    <button
+      type="button"
+      data-testid="sauce-pour"
+      data-state={state}
+      disabled={disabled}
+      onPointerDown={(e) => {
+        e.preventDefault();
+        (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+        onDown();
+      }}
+      onPointerUp={onUp}
+      onPointerCancel={onUp}
+      onContextMenu={(e) => e.preventDefault()}
+      className={cn(
+        "sauce-pour-btn press relative isolate flex h-[72px] w-full touch-none select-none items-center justify-center overflow-hidden rounded-[26px] font-display text-[21px] font-black tracking-wide text-[#fff8e4] disabled:opacity-60",
+        !reducedMotion && state === "idle" && "sauce-pour-idle",
+        !reducedMotion && state === "line" && "sauce-pour-go",
+      )}
+      style={{
+        border: `4px solid ${rim}`,
+        background:
+          state === "over"
+            ? "linear-gradient(180deg,#e0674b,#b4392a 55%,#8a2518)"
+            : state === "line"
+              ? "linear-gradient(180deg,#ffd978,#e0a02a 55%,#b9791b)"
+              : "linear-gradient(180deg,#f2b865,#cc7d28 55%,#9c5a17)",
+        boxShadow:
+          state === "line"
+            ? "0 0 0 3px rgba(255,226,140,.55), 0 0 26px rgba(255,200,80,.75), inset 0 2px 0 rgba(255,255,255,.55)"
+            : "0 6px 0 #5a3410, 0 10px 18px rgba(20,10,4,.45), inset 0 2px 0 rgba(255,255,255,.45)",
+        transform: pouring ? "translateY(5px)" : undefined,
+        transition: reducedMotion ? undefined : "transform .08s ease-out, box-shadow .15s",
+      }}
+    >
+      {/* the sauce rising inside the button as the bottle fills */}
+      <span
+        aria-hidden
+        className="absolute inset-y-0 left-0 -z-10 opacity-60"
+        style={{
+          width: `${(pouring ? progress : 0) * 100}%`,
+          background: `linear-gradient(180deg, rgba(255,255,255,.35), rgba(255,255,255,0) 40%), ${color}`,
+          transition: reducedMotion ? undefined : "width .08s linear",
+        }}
+      />
+      {/* the glossy top */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-x-3 top-1 h-[34%] rounded-full bg-[linear-gradient(180deg,rgba(255,255,255,.5),rgba(255,255,255,0))]"
+      />
+      <span className="relative flex items-center gap-2 [text-shadow:0_2px_0_rgba(70,34,6,.65)]">
+        <span aria-hidden className="text-[26px] leading-none">
+          {state === "over" ? "😬" : state === "line" ? "✋" : "💧"}
+        </span>
+        {state === "over"
+          ? "Too much!"
+          : state === "line"
+            ? "LET GO NOW!"
+            : state === "pour"
+              ? "Keep holding…"
+              : "Hold to pour"}
+      </span>
+    </button>
   );
 }
 

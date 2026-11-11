@@ -765,6 +765,56 @@ console.log("L. What you see: the guidance, the whisk, the pour (developer 2026-
   );
 }
 
+console.log("M. 2026-11-11: the pot's liquid, Play again, the Pour button");
+{
+  const parts = read("src/components/kc/sauce/SauceParts.tsx");
+  const gameSrc = read("src/components/kc/sauce/SauceStationGame.tsx");
+  const { surfaceOf } = await import("../src/components/kc/sauce/SauceParts.tsx");
+  const lv = [0.05, 0.2, 0.4, 0.6, 0.8, 1];
+  for (const kind of ["bowl", "pan"] as const) {
+    const tops = lv.map((l) => surfaceOf(kind, l).top);
+    const widths = lv.map((l) => surfaceOf(kind, l).width);
+    assert(
+      tops.every((t, i) => i === 0 || t < tops[i - 1]!) &&
+        widths.every((w, i) => i === 0 || w > widths[i - 1]!),
+      `M1 ${kind}: the surface rises and widens as the pot fills (a real ellipse, not a slab), never moving the wrong way`,
+      { tops, widths },
+    );
+    const full = surfaceOf(kind, 1);
+    assert(
+      full.left >= 0 &&
+        full.left + full.width <= 1 &&
+        full.top >= 0.1 &&
+        full.top + full.height <= 0.7,
+      `M2 ${kind}: a full pot's surface sits inside the picture, just below the rim`,
+      full,
+    );
+  }
+  assert(
+    /Math\.abs\(fill - FILL_LINE\) <= window_/.test(gameSrc) &&
+      /data-state=\{state\}/.test(gameSrc) &&
+      /data-testid="sauce-pour"/.test(gameSrc) &&
+      /LET GO NOW!/.test(gameSrc) &&
+      /Too much!/.test(gameSrc) &&
+      /navigator\.vibrate\?\.\(14\)/.test(gameSrc) &&
+      /sauce-pour-idle/.test(parts) &&
+      /\.sauce-pour-idle,\.sauce-pour-go\{animation:none\}/.test(parts),
+    "M3: the Pour button shows the sauce rising in it, 'LET GO NOW!' on the line (with a small buzz), 'Too much!' past it, breathes when idle, and Reduced Motion turns its animation off",
+  );
+  assert(
+    /sameSauceId/.test(gameSrc) &&
+      /onAgain=\{\(\) => onAgain\(sauce\.id\)\}/.test(gameSrc) &&
+      /setAgain\(sauceId\)/.test(gameSrc) &&
+      /setAgain\(null\)/.test(gameSrc) &&
+      /SAUCE_BY_ID\[sameSauceId\]/.test(gameSrc),
+    "M4: 'Play again' makes the SAME sauce again (it dealt a different one); 'Next round' goes back to the day's sauce",
+  );
+  assert(
+    /items-end justify-center px-2 pb-4/.test(gameSrc),
+    "M5: the pot sits low in its space, on the counter",
+  );
+}
+
 console.log(
   failures ? `\nSAUCE STATION QA: ${failures} FAILURE(S)` : "\nSAUCE STATION QA: ALL PASS",
 );
