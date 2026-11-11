@@ -25,6 +25,7 @@ import {
   pinsOf,
   progressOf,
   roundCrate,
+  pendingInspections,
   roundsLeft,
   scoreRound,
   starsFor,
@@ -124,6 +125,11 @@ function Round({
   // A round with no delivery waiting (or past today's five) is free play: it scores, but gives nothing.
   // Latched when the round starts: finishing it changes the save (that basket is counted), never this round.
   const [practice] = useState(() => forcePractice || roundsLeft(save, level) === 0);
+  // Checking the delivery is mandatory (developer 2026-11-11): past today's rewarded rounds a round still counts as the check of a basket
+  // (it just gives nothing), so the delivery can always be finished and unpacked.
+  const [counts] = useState(
+    () => roundsLeft(save, level) === 0 && pendingInspections(save, level) > 0,
+  );
   const crate = useMemo(
     () => roundCrate(save, level, practice ? attempt + 1 : 0)!,
     // The crate is dealt ONCE as the game opens (finishing changes the save, never the crate).
@@ -214,6 +220,11 @@ function Round({
           outcome: { stars, score, found: f, total },
         });
         if (out.ok) effects = out.effects;
+      } else if (counts) {
+        onAction({
+          kind: "finish",
+          outcome: { stars, score, found: f, total, practice: true, counts: true },
+        });
       }
       const missed = f < total;
       setResult({ stars, score, found: f, timedOut, effects });
@@ -226,7 +237,7 @@ function Round({
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [practice, crate, total],
+    [practice, counts, crate, total],
   );
 
   const start = () => {
@@ -887,17 +898,13 @@ function Round({
               </p>
             ) : null}
             <div className="relative mt-3 grid gap-2">
-              {!practice && roundsLeft(save, level) > 0 ? (
+              {pendingInspections(save, level) > 0 ? (
                 <SortButton onClick={onNext} testId="insp-next">
-                  Next inspection · {roundsLeft(save, level)}
+                  Next inspection · {pendingInspections(save, level)}
                 </SortButton>
               ) : null}
-              {piecesWaiting(save) > 0 ? (
-                <SortButton
-                  quiet={!practice && roundsLeft(save, level) > 0}
-                  onClick={onUnpack}
-                  testId="insp-unpack"
-                >
+              {piecesWaiting(save) > 0 && pendingInspections(save, level) === 0 ? (
+                <SortButton onClick={onUnpack} testId="insp-unpack">
                   Fridge Sort
                 </SortButton>
               ) : null}

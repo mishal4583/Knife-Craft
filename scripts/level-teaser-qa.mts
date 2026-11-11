@@ -122,8 +122,8 @@ console.log("D. The unlock funnel event");
   );
   const perLevel = Array.from({ length: 21 }, (_, i) => featuresOpeningAt(i).map((f) => f.id));
   assert(
-    perLevel.every((l) => l.length <= 1),
-    "D4: no level opens more than one thing (the plan's rhythm)",
+    perLevel.every((l, i) => l.length <= (i === 3 ? 2 : 1)),
+    "D4: no level opens more than one thing, except Level 3 whose two openings are the delivery routine (check, then unpack)",
     perLevel,
   );
   const app = read("src/App.tsx");

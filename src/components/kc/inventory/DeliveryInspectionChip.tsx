@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import type { SaveData } from "@/game/SaveManager";
-import { pinsOf, roundsLeft } from "@/game/business/deliveryInspection";
+import { pendingInspections, pinsOf } from "@/game/business/deliveryInspection";
 import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
 import type { ScreenId } from "../data";
 
@@ -19,7 +19,8 @@ export function DeliveryInspectionChip({
   className?: string;
 }) {
   const level = restaurantLevelOf(save.levelProgress);
-  const left = roundsLeft(save, level);
+  // The check is mandatory (developer 2026-11-11): the chip shows every basket still to check, past today's rewarded rounds too.
+  const left = pendingInspections(save, level);
   if (left <= 0) return null;
   const pins = pinsOf(save);
   return (
@@ -32,7 +33,7 @@ export function DeliveryInspectionChip({
         className,
       )}
     >
-      <span aria-hidden>🔎</span> Inspect delivery · {left}
+      <span aria-hidden>🔎</span> Check the delivery · {left}
       {pins > 0 ? <span className="text-[12px] font-bold text-walnut/70">· 🎖️ {pins}</span> : null}
     </button>
   );

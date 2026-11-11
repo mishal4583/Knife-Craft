@@ -55,7 +55,10 @@ import {
   SauceStyles,
   Sprite,
   Swatch,
+  PourScene,
   ThicknessGauge,
+  TOOL_BOWL,
+  ToolInBowl,
   Vessel,
 } from "./SauceParts";
 
@@ -170,7 +173,7 @@ function Round({
   const [taste, setTaste] = useState<{ match: number; hint: ReturnType<typeof colorHint> } | null>(
     null,
   );
-  const [toolAt, setToolAt] = useState<{ x: number; y: number } | null>(null);
+  const [toolAt, setToolAt] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
   // bottling
   const [bIndex, setBIndex] = useState(0);
   const [fill, setFill] = useState(0);
@@ -365,12 +368,12 @@ function Round({
     const el = vesselRef.current;
     if (!el) return;
     const r = el.getBoundingClientRect();
-    const cx = r.left + r.width / 2;
-    const cy = r.top + r.height * 0.34;
-    const dx = e.clientX - cx;
-    const dy = (e.clientY - cy) * 1.5;
-    setToolAt({ x: e.clientX - r.left, y: e.clientY - r.top });
-    if (Math.hypot(dx, dy) < 10) return;
+    // The angle is measured round the bowl's own middle, on the bowl's own ellipse (the same numbers the whisk is drawn with), so circling what
+    // you SEE is what counts (it used to be a different centre and a stretched axis).
+    const dx = ((e.clientX - r.left) / r.width - TOOL_BOWL.cx) / TOOL_BOWL.rx;
+    const dy = ((e.clientY - r.top) / r.height - TOOL_BOWL.cy) / TOOL_BOWL.ry;
+    setToolAt({ x: e.clientX - r.left, y: e.clientY - r.top, w: r.width, h: r.height });
+    if (Math.hypot(dx, dy) < 0.12) return;
     const ang = Math.atan2(dy, dx);
     const now = performance.now();
     if (lastAng.current !== null && now > lastMove.current) {
@@ -542,6 +545,45 @@ function Round({
   const sealIndex = (taste?.match ?? match) >= 90 ? 2 : (taste?.match ?? match) >= 70 ? 1 : 0;
   const icon = sauceIndex(sauce.id);
   const zoneNow = speedOf(sauce.tool, omega);
+  // What to pour and do next (developer 2026-11-11: "not even understanding what to pour and do"): the recipe items still to add (while the tier
+  // shows the recipe), then the whisk, then the bottles, in plain steps.
+  const showsRecipe = tier.help === "pips" || tier.help === "list";
+  const needs = showsRecipe
+    ? sauce.recipe.map(([id, n]) => ({
+        id,
+        name: PANTRY_BY_ID[id]!.name,
+        icon: PANTRY_BY_ID[id]!.icon,
+        want: n,
+        have: scoops[id] ?? 0,
+        left: Math.max(0, +(n - (scoops[id] ?? 0)).toFixed(2)),
+      }))
+    : [];
+  const needLeft: Record<string, number> = Object.fromEntries(needs.map((x) => [x.id, x.left]));
+  const toAdd = needs.filter((x) => x.left > 0);
+  const step: { n: 1 | 2 | 3; text: string } = splitFlag
+    ? { n: 2, text: `Split! Circle the ${toolName} slowly to smooth it` }
+    : blend >= 0.9 && volume > 0 && toAdd.length === 0
+      ? { n: 3, text: "Looks good! Tap Bottle it" }
+      : volume > 0 && toAdd.length === 0
+        ? {
+            n: 2,
+            text: sauce.chunks
+              ? `Stir the ${toolName} gently, keep the pieces`
+              : `Now circle the ${toolName} in the green zone`,
+          }
+        : showsRecipe && toAdd.length > 0
+          ? {
+              n: 1,
+              text: `Pour: ${toAdd
+                .slice(0, 3)
+                .map((x) => `${x.name} ${x.left < 1 ? "a pinch" : `×${x.left}`}`)
+                .join(" · ")}${toAdd.length > 3 ? " …" : ""}`,
+            }
+          : volume > 0 && blend >= 0.9
+            ? { n: 3, text: "Match the colour, then tap Bottle it" }
+            : volume > 0
+              ? { n: 1, text: `Match the colour, then circle the ${toolName}` }
+              : { n: 1, text: "Tap the ingredients to pour them in" };
   const showBackdrop = phase === "bottle" ? artBottle : art;
   const backdrop = phase === "bottle" ? "bottle-backdrop" : "mix-backdrop";
 
@@ -627,20 +669,30 @@ function Round({
         <div className="min-w-0 flex-1 font-ui">
           <div className="flex flex-wrap items-center gap-1" data-testid="sauce-help">
             {tier.help === "pips" || tier.help === "list" ? (
-              sauce.recipe.map(([id, n]) => {
-                const it = PANTRY_BY_ID[id]!;
-                return (
-                  <span
-                    key={id}
-                    className="flex items-center gap-0.5 rounded-full bg-white/70 px-1 py-0.5 text-[11px] font-extrabold text-walnut-dark"
-                  >
-                    <span aria-hidden>{it.icon}</span>
-                    {tier.help === "pips" ? (
-                      <span>{n < 1 ? "·" : "●".repeat(Math.min(5, Math.round(n)))}</span>
-                    ) : null}
-                  </span>
-                );
-              })
+              needs.map((x) => (
+                <span
+                  key={x.id}
+                  data-testid={`sauce-need-${x.id}`}
+                  data-left={x.left}
+                  className={cn(
+                    "flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[11px] font-extrabold",
+                    x.left === 0 ? "bg-[#d9eec4] text-[#2f6b1f]" : "bg-white/75 text-walnut-dark",
+                  )}
+                >
+                  <span aria-hidden>{x.icon}</span>
+                  {tier.help === "pips" ? (
+                    <span>
+                      {x.left === 0
+                        ? "✓"
+                        : x.want < 1
+                          ? "pinch"
+                          : `${Math.min(x.have, x.want)}/${x.want}`}
+                    </span>
+                  ) : (
+                    <span className="max-w-[64px] truncate">{x.name}</span>
+                  )}
+                </span>
+              ))
             ) : (
               <span className="text-[12.5px] font-bold text-walnut/75">
                 {tier.help === "color"
@@ -661,12 +713,8 @@ function Round({
                 ) : null}
               </span>
             ) : (
-              <span className="text-[11.5px] font-bold text-walnut/60">
-                {sauce.emulsify
-                  ? "Whisk the oil in slowly."
-                  : sauce.chunks
-                    ? "Chunky: leave the pieces."
-                    : "Stir it smooth."}
+              <span className="sr-only">
+                {sauce.emulsify ? "Oil in slowly, one scoop at a time." : "Stir it smooth."}
               </span>
             )}
             <InfoTip tone="copper" label="How to mix">
@@ -690,6 +738,20 @@ function Round({
           data-testid="sauce-note"
         >
           {note.text}
+        </p>
+      ) : phase === "mix" ? (
+        <p
+          data-testid="sauce-step"
+          data-step={step.n}
+          className="mx-3 mt-1 flex items-center gap-2 rounded-full bg-[#2f2118]/80 px-2 py-0.5 font-ui text-[12.5px] font-extrabold text-ivory"
+        >
+          <span
+            aria-hidden
+            className="grid h-[20px] w-[20px] shrink-0 place-items-center rounded-full bg-gold font-display text-[12px] font-black text-walnut-dark"
+          >
+            {step.n}
+          </span>
+          <span className="min-w-0 flex-1 truncate">{step.text}</span>
         </p>
       ) : (
         <div className="h-[22px]" />
@@ -735,25 +797,13 @@ function Round({
                 chunks={sauce.chunks ? chunkIndexes(sauce) : undefined}
                 className="max-h-full w-full"
               />
-              {/* the tool: in the hand while dragging, resting at the side otherwise */}
-              <img
-                src={sauceUrl(toolName)}
-                alt=""
-                draggable={false}
-                data-testid="sauce-tool"
-                onError={(e) => {
-                  e.currentTarget.style.display = "none";
-                }}
-                className="pointer-events-none absolute z-10 h-[78%] w-auto"
-                style={
-                  !toolAt
-                    ? { right: "-2%", bottom: "6%", transform: "rotate(14deg)", opacity: 0.95 }
-                    : {
-                        left: toolAt.x,
-                        top: toolAt.y,
-                        transform: "translate(-50%, -73%) rotate(6deg)",
-                      }
-                }
+              {/* the tool: in the hand while dragging (handle up, head in the bowl), standing in the bowl otherwise */}
+              <ToolInBowl
+                name={toolName}
+                at={toolAt}
+                stirring={omega > 0.3 || auto}
+                reducedMotion={reducedMotion}
+                hasLiquid={volume > 0}
               />
               {phase === "mix" && volume > 0 && omega < 0.1 && !auto ? (
                 <span className="pointer-events-none absolute inset-x-0 bottom-1 text-center font-ui text-[12px] font-extrabold text-white [text-shadow:0_1px_3px_rgba(0,0,0,.8)]">
@@ -816,6 +866,7 @@ function Round({
                 key={it.id}
                 item={it}
                 count={scoops[it.id] ?? 0}
+                need={showsRecipe ? (needLeft[it.id] ?? null) : null}
                 disabled={phase !== "mix"}
                 onDown={() => holdStart(it)}
                 onUp={holdStop}
@@ -972,12 +1023,15 @@ function Chip({ children }: { children: React.ReactNode }) {
 function PantryTile({
   item,
   count,
+  need,
   disabled,
   onDown,
   onUp,
 }: {
   item: PantryItem;
   count: number;
+  /** Scoops of this item the recipe still wants (null = not in the recipe, or the tier does not show the recipe). */
+  need: number | null;
   disabled: boolean;
   onDown: () => void;
   onUp: () => void;
@@ -988,6 +1042,7 @@ function PantryTile({
     <button
       type="button"
       data-testid={`sauce-pantry-${item.id}`}
+      data-need={need === null ? undefined : need}
       disabled={disabled}
       aria-label={`Add ${item.name}`}
       onPointerDown={(e) => {
@@ -1003,6 +1058,9 @@ function PantryTile({
         item.kind === "produce"
           ? "border-[#7aa05a] bg-[#e6f0d2]/92"
           : "border-[#c9a45a] bg-[#f7edd7]/92",
+        // The recipe's own items glow while they are still wanted; a finished one turns green.
+        need !== null && need > 0 && "border-[#e0a21c] ring-2 ring-[#ffd25a] ring-offset-0",
+        need === 0 && "border-[#5a9a3f] bg-[#e1f1cf]/95",
         disabled && "opacity-60",
       )}
     >
@@ -1018,6 +1076,22 @@ function PantryTile({
       <span className="mt-px w-full truncate text-center font-ui text-[10px] font-extrabold leading-none text-walnut-dark">
         {item.name}
       </span>
+      {need !== null && need > 0 ? (
+        <span
+          aria-hidden
+          data-testid={`sauce-want-${item.id}`}
+          className="absolute left-0.5 top-0.5 rounded-full bg-[#e0a21c] px-1 font-ui text-[9.5px] font-black leading-[14px] text-walnut-dark"
+        >
+          {need < 1 ? "pinch" : `+${need}`}
+        </span>
+      ) : need === 0 ? (
+        <span
+          aria-hidden
+          className="absolute left-0.5 top-0.5 grid h-[15px] w-[15px] place-items-center rounded-full bg-[#5a9a3f] font-ui text-[10px] font-black leading-none text-white"
+        >
+          ✓
+        </span>
+      ) : null}
       {count > 0 ? (
         <span
           className="absolute right-0.5 top-0.5 grid h-[17px] min-w-[17px] place-items-center rounded-full bg-[#d23b2a] px-1 font-ui text-[10px] font-black leading-none text-white"
@@ -1085,7 +1159,7 @@ function BottleStage({
           aria-hidden
         />
         {!done ? (
-          <div className="absolute left-1/2 top-[4%] h-[66%] w-[30%] -translate-x-1/2">
+          <div className="absolute inset-x-0 top-[9%] flex h-[61%] justify-center">
             <BottleView
               shape={sauce.bottle}
               fill={fill}
@@ -1094,35 +1168,20 @@ function BottleStage({
               label={capped ? sauce.label : undefined}
               emoji={icon}
               mark={capped ? undefined : FILL_LINE}
-              className="mx-auto h-full max-w-full"
-            />
-            {/* the jug above it, tilted while pouring, and the stream */}
-            <div
-              className="absolute left-[54%] -top-[4%] h-[44%] w-[70%] origin-[0%_30%]"
-              style={{
-                transform: `rotate(${pouring ? -32 : -6}deg)`,
-                transition: reducedMotion ? undefined : "transform .2s",
-              }}
-              aria-hidden
+              className="h-full"
             >
-              {jugOk ? (
-                <Sprite sheet="pour-tools" index={0} emoji="🫗" className="h-full w-auto" />
-              ) : (
-                <span className="block h-full w-[70%] rounded-b-3xl rounded-t-lg bg-[#c9833e]" />
-              )}
-            </div>
-            {pouring ? (
-              <span
-                aria-hidden
-                data-testid="sauce-stream"
-                className="absolute left-1/2 w-[6px] -translate-x-1/2 rounded-full"
-                style={{
-                  top: "14%",
-                  bottom: `${(1 - bottleSurface(sauce.bottle, fill)) * 100}%`,
-                  backgroundColor: color,
-                }}
-              />
-            ) : null}
+              {/* The pitcher and the stream, placed from the bottle's own mouth: the spout tip IS the pivot, so the pitcher tilts over the mouth, and the
+                  stream falls from the tip straight to the sauce's surface. */}
+              {!capped ? (
+                <PourScene
+                  shape={sauce.bottle}
+                  fill={fill}
+                  color={color}
+                  pouring={pouring}
+                  reducedMotion={reducedMotion}
+                />
+              ) : null}
+            </BottleView>
           </div>
         ) : null}
         {/* the crate of finished bottles */}

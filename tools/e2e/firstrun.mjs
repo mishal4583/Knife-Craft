@@ -7,6 +7,7 @@
 //   H5 the Pre-Service Check (when it opens) has the hand on its start button; starting opens the cutting.
 //   H6 the plate is ready: the Server's card (a, b hire); the guest has eaten: the Cashier's card (c, d hire); the hand is gone once the service is done.
 //   H6e the last plate of Level 1 shows the "Next: ..." teaser for Level 2.
+//   H6f the first serve announces no city-ranking climb (developer 2026-11-11).
 //   H7 no console errors.
 import {
   hirePaige,
@@ -236,6 +237,17 @@ try {
   await clickButton(page, /^(Next Customer|Back to Kitchen)$/);
   await sleep(1800);
   const done = await readSave(page);
+  // Developer 2026-11-11: the first serve must not announce a city-ranking climb (no "#50 -> #49" card, no Level Complete ranking row).
+  await sleep(1200);
+  const rankNews = await page.evaluate(() => ({
+    card: !!document.querySelector('[data-testid="celebration"][data-celebration="rank"]'),
+    text: /City ranking|You climbed to/.test(document.body.innerText),
+  }));
+  check(
+    "H6f the first serve announces no city-ranking climb",
+    !rankNews.card && !rankNews.text,
+    rankNews,
+  );
   await page.evaluate(() => document.querySelector('[data-nav="kitchen"]')?.click());
   await sleep(1000);
   check(

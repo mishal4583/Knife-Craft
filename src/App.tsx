@@ -155,6 +155,10 @@ import { celebrationFor, type Celebration } from "@/game/restaurant/celebrations
 import { afterServeChips, nextCustomerHidden } from "@/game/restaurant/afterServe";
 import { newSauceRoundsRewardId } from "@/game/ads/sauceRoundsAd";
 import { levelTeaser } from "@/game/restaurant/levelTeasers";
+import { sectionPictures, warmPictures, whenIdle } from "@/game/preloadArt";
+import { SECOND_FLOOR_FROM_LEVEL } from "@/game/config/earlyLevels";
+import { serviceGate, unpackLocked, type ServiceGate } from "@/game/business/deliveryFlow";
+import { ServiceGateSheet } from "@/components/kc/business/DeliveryRoutine";
 import { featuresOpeningAt } from "@/game/config/featureUnlocks";
 import { chestAt, chestCelebration } from "@/game/restaurant/milestoneChests";
 import { CelebrationCard } from "@/components/kc/common/CelebrationCard";
@@ -432,6 +436,7 @@ import {
 } from "@/game/business/fridgeSort";
 import {
   autoInspect,
+  shiftInspected,
   finishRound as finishInspectionRound,
   withHowtoSeen as withInspectionHowtoSeen,
   type DeliveryInspectionAction,
@@ -620,6 +625,9 @@ export function App() {
   const serviceCheckRef = useRef<string | null>(null);
   /** Closing time is due: the level just selected waits (its go("gameplay") is ignored). */
   const closingHoldRef = useRef(false);
+  /** The delivery routine is not done (game/business/deliveryFlow.ts): the service the player tried to open waits, and the sheet says what is left. */
+  const [serviceGateState, setServiceGateState] = useState<ServiceGate | null>(null);
+  const gateHoldRef = useRef(false);
   const setServiceCheckLevelId = (id: string | null) => {
     serviceCheckRef.current = id;
     setServiceCheckLevelIdState(id);
@@ -722,6 +730,20 @@ export function App() {
   // the six kitchen backgrounds are the kitchen progression now.)
   /** First levels: a link tried to open a section before its level ("🔒 … opens at Level N"). */
   const [lockNotice, setLockNotice] = useState<string | null>(null);
+  // Warm the next screens' big pictures once the app is idle (game/preloadArt.ts), so a screen never opens before its pictures.
+  const warmKitchenId = save?.equippedKitchenUpgradeId ?? null;
+  const warmFloorOpen = save
+    ? restaurantLevelOf(save.levelProgress) >= SECOND_FLOOR_FROM_LEVEL
+    : false;
+  const warmReady = !!save;
+  useEffect(() => {
+    if (!warmReady) return;
+    return whenIdle(() =>
+      warmPictures(
+        sectionPictures({ kitchenUpgradeId: warmKitchenId, secondFloorOpen: warmFloorOpen }),
+      ),
+    );
+  }, [warmReady, warmKitchenId, warmFloorOpen]);
   useEffect(() => {
     if (!lockNotice) return;
     const t = window.setTimeout(() => setLockNotice(null), 2400);
@@ -981,7 +1003,22 @@ export function App() {
   // the Order Board / Kitchen buttons call go("gameplay") right after
   // selecting a level, and that must not skip the check.
   const go = (s: ScreenId) => {
-    if (s === "gameplay" && (serviceCheckRef.current || closingHoldRef.current)) return;
+    if (
+      s === "gameplay" &&
+      (serviceCheckRef.current || closingHoldRef.current || gateHoldRef.current)
+    )
+      return;
+    // The delivery routine's order (developer 2026-11-11): the food is checked BEFORE it is unpacked, so Unpack the delivery sends the player
+    // to the check while baskets still wait for it.
+    if (
+      s === "fridge-sort" &&
+      RESTAURANT_MODE &&
+      saveRef.current &&
+      unpackLocked(saveRef.current, restaurantLevelOf(saveRef.current.levelProgress))
+    ) {
+      setLockNotice("Check the delivery first");
+      s = "delivery-inspection";
+    }
     // Unified Restaurant: no separate Business Day before Level 250 (the Endless Restaurant opens after it).
     if (
       s === "business-service" &&
@@ -1149,12 +1186,13 @@ export function App() {
       return { ok: true, effects: none };
     }
     if (action.kind === "auto") {
-      persist(autoPutAway(current));
+      persist(shiftInspected(current, autoPutAway(current), level));
       sendAnalyticsEvent("fridge_sort_auto", { level });
       return { ok: true, effects: none };
     }
     const out = finishRound(current, action.outcome);
-    persist(out.save);
+    // The baskets that left the crate are no longer "checked" (the next basket has to be checked itself).
+    persist(shiftInspected(current, out.save, level));
     sendAnalyticsEvent("fridge_sort_finished", {
       level,
       stars: action.outcome.stars,
@@ -2341,6 +2379,7 @@ export function App() {
   function onSelectLevel(levelId: string) {
     if (!save) return;
     closingHoldRef.current = false;
+    gateHoldRef.current = false;
     // Unified Restaurant: a service whose stock needs attention opens the
     // Pre-Service Check first (nothing starts until the player does).
     if (RESTAURANT_MODE) {
@@ -2358,6 +2397,20 @@ export function App() {
         return;
       }
       const pending = level ? servicePlanFor(base, level) : null;
+      // The delivery routine is mandatory (developer 2026-11-11): while a delivery waits to be checked or unpacked, supplies wait for the shelves or
+      // the fridge needs its check, the next service does not open; the sheet lists the steps in order. A level already done (a replay) is not gated.
+      if (firstPlay) {
+        const gate = serviceGate(save, restaurantLevelOf(save.levelProgress));
+        if (!gate.open) {
+          gateHoldRef.current = true;
+          setServiceGateState(gate);
+          sendAnalyticsEvent("service_gate_shown", {
+            level: restaurantLevelOf(save.levelProgress),
+            steps: gate.steps.map((s) => s.id).join(","),
+          });
+          return;
+        }
+      }
       if (pending && servicePlanNeedsSheet(pending)) {
         if (pending.progress !== base.levelProgress || base !== save)
           persist({ ...base, levelProgress: pending.progress });
@@ -4731,6 +4784,21 @@ export function App() {
             }
           />
         </Suspense>
+      ) : null}
+      {serviceGateState && save ? (
+        <ServiceGateSheet
+          gate={serviceGate(save, restaurantLevelOf(save.levelProgress))}
+          hasPrepCook={save.business.staff?.hiredRoles?.includes("prep-cook") ?? false}
+          go={(to) => {
+            gateHoldRef.current = false;
+            setServiceGateState(null);
+            go(to as ScreenId);
+          }}
+          onClose={() => {
+            gateHoldRef.current = false;
+            setServiceGateState(null);
+          }}
+        />
       ) : null}
       {lockNotice ? (
         <p

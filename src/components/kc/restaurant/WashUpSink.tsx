@@ -925,7 +925,9 @@ export function WashUpSink({
             ) : null}
             {!complete && !noSoap ? (
               <div
-                key={activeItemIndex}
+                // Prefixed: the combo chip beside it is keyed by the streak (also a number), and two siblings with the same key (index 2 and a
+                // streak of 2) made React DUPLICATE the whole piece, so old pieces stayed on the sink under the new one (developer 2026-11-11).
+                key={`piece-${activeItemIndex}`}
                 className={`absolute inset-0 ${pieceMotion}`}
                 data-piece-phase={phase}
                 data-piece-id={activeItem.id}
@@ -1765,8 +1767,8 @@ export function WashUpSink({
             ) : null}
             {streak >= 2 && phase === "scrub" && !complete ? (
               <span
-                key={streak}
-                className="anim-pop absolute left-2 top-2 z-20 rounded-full bg-gold px-2.5 py-1 font-ui text-[12.5px] font-black text-walnut-dark shadow-soft"
+                key={`combo-${streak}`}
+                className="anim-pop absolute right-2 top-2 z-20 rounded-full bg-gold px-2.5 py-1 font-ui text-[12.5px] font-black text-walnut-dark shadow-soft"
                 data-testid="wash-up-combo"
                 data-combo={streak}
               >

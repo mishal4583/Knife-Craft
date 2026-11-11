@@ -63,6 +63,8 @@ const saveAt = (n, extra = {}, business = {}) =>
       ...MOVED_IN_BUSINESS,
       inventory: STOCK,
       fridgeSort: { crate: CRATE, counts: COUNTS, seed: 1 },
+      // The delivery is CHECKED before it is unpacked (developer 2026-11-11): this suite plays the unpacking, so the crate counts as checked.
+      deliveryInspection: { seed: 1, inspected: 99, howto: 1 },
       ...business,
     },
     levelProgress: {
@@ -141,6 +143,8 @@ const strip = (s) => {
   const c = structuredClone(s);
   delete c.business.fridgeSort;
   delete c.business.secondFloor;
+  // Unpacking a basket lowers the delivery's checked count (2026-11-11): game state, not money (credits, ledger and quantities are still compared).
+  delete c.business.deliveryInspection;
   delete c.business.inventory;
   return JSON.stringify(c);
 };

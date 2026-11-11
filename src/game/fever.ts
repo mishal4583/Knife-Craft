@@ -24,8 +24,8 @@ import { COMBO } from "./definitions";
  * every payout are exactly as without it.
  */
 export const FEVER = {
-  // Developer 2026-11-08: a slice, a chop and a julienne are 8 cuts now (were 12 / 12 / 10), so a run of ten can no longer happen in one step;
-  // Fever lights at the x5 milestone: five clean cuts in a row (the combo resets between steps, as before).
+  // Fever lights at the x5 milestone: five clean cuts in a row (the combo resets between steps, as before). Developer 2026-11-08 set x5 when the
+  // cuts were cut to 8; on 2026-11-11 the cut counts went back to 12 / 12 / 10 and x5 stays (nobody asked to change Fever).
   AT_COMBO: 5,
   MS: 6000,
   /** Board give along the blade while it lasts (× CUT_DRAG). */

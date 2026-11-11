@@ -8,13 +8,13 @@
 /** Index = the level just finished (1-based); the line says what the next level brings. */
 const NEXT_UP: Readonly<Record<number, string>> = {
   1: "Next: carrots, and peeling potatoes",
-  2: "Next: garlic bread and a daily gift",
+  2: "Next: garlic bread and your first delivery",
   3: "Next: caprese, and your first cleaning night",
   4: "Next: mushrooms, and the menu opens!",
   5: "Next: your first chicken!",
   6: "Next: garden plates and the Sauce Station!",
   7: "Next: onion rings and the frying pans",
-  8: "Next: eggplant, and delivery checks",
+  8: "Next: eggplant bruschetta",
   9: "Next: minestrone and the fridge check",
   10: "Next: beetroot, orange and the Second Floor!",
   11: "Next: peppers, corn and dishwashing",

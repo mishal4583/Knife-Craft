@@ -115,7 +115,7 @@ def write_sheet_table() -> None:
 
 def tidy_bottles(im: Image.Image) -> Image.Image:
     """B03: the liquid mask row is pulled in 3 px from the glass (its silhouette is a little wider than the glass base, so liquid showed outside the
-    bottle), and the left/right pixel column of every cell is cleared (the neighbouring cell's edge peeked in at the cell border)."""
+    bottle), and the three left/right pixel columns of every cell are cleared (the neighbouring cell's edge peeked in at the cell border)."""
     from PIL import ImageFilter
 
     cw, ch = im.width // 6, im.height // 3
@@ -130,7 +130,8 @@ def tidy_bottles(im: Image.Image) -> Image.Image:
     for r in range(3):
         for c in range(6):
             for y in range(r * ch, (r + 1) * ch):
-                for x in (c * cw, (c + 1) * cw - 1):
+                # 3 px each side (developer 2026-11-11: a thin line from the neighbouring bottle's clasp showed beside the bottle)
+                for x in (c * cw, c * cw + 1, c * cw + 2, (c + 1) * cw - 3, (c + 1) * cw - 2, (c + 1) * cw - 1):
                     r_, g_, b_, _ = px[x, y]
                     px[x, y] = (r_, g_, b_, 0)
     return out

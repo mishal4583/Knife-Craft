@@ -4,6 +4,8 @@ import { kitchenMapArtStage } from "@/game/kitchen/kitchenMapArt";
 import { inventoryMenuOf, menuOpensAt, restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
 import { todayPlanNeed } from "@/game/restaurant/marketPlan";
 import { RestaurantAttentionPanel } from "./RestaurantAttentionPanel";
+import { DeliveryRoutineCard } from "@/components/kc/business/DeliveryRoutine";
+import { flowSteps } from "@/game/business/deliveryFlow";
 import { useMemo, useRef, useState, type ReactNode } from "react";
 import type { ScreenId } from "../data";
 import type { SaveData } from "@/game/SaveManager";
@@ -709,6 +711,13 @@ export function InventoryScreen({
               </p>
             </div>
           </section>
+          {/* The delivery routine (developer 2026-11-11): check, unpack, shelves, Fridge Check: at the TOP, in order, never below the fold. */}
+          {RESTAURANT_MODE ? (
+            <DeliveryRoutineCard
+              steps={flowSteps(save, restaurantLevelOf(save.levelProgress))}
+              go={(to) => go(to as ScreenId)}
+            />
+          ) : null}
           {/* Unified Restaurant: one urgent list for the whole restaurant (read-only, navigation only). */}
           {RESTAURANT_MODE ? <RestaurantAttentionPanel save={save} go={go} /> : null}
           {/* What kind of stock: food (the fridge) or supplies (smallwares, tableware, takeaway) */}

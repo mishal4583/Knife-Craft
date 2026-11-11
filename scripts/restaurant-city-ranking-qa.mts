@@ -33,6 +33,7 @@ import {
   rankChange,
   reputationFor,
 } from "../src/game/restaurant/cityRanking.ts";
+import { RANKING_NEWS_FROM_LEVEL } from "../src/game/config/earlyLevels.ts";
 
 let failures = 0;
 function assert(cond: unknown, msg: string) {
@@ -145,6 +146,33 @@ console.log("C5. Rank changes");
       rankChange(after, after) === null &&
       rankChange(saveAt(quiet.passedAtLevel - 2), saveAt(quiet.passedAtLevel - 1)) === null,
     `C5: completing Level ${pass.passedAtLevel} passes ${pass.name} (#${moved?.from} → #${moved?.to}); a replay or a quiet level moves nothing`,
+  );
+}
+
+console.log("C6. Ranking news starts at Level 8 (developer 2026-11-11)");
+{
+  // The ranking itself still moves from the first level (#50 -> #48 at the first serve), but it is not announced yet.
+  const climbsAtOne = cityRankingAt(1).rank < cityRankingAt(0).rank;
+  let early = 0;
+  for (let n = 1; n < RANKING_NEWS_FROM_LEVEL; n++)
+    if (rankChange(saveAt(n - 1), saveAt(n)) !== null) early++;
+  assert(
+    climbsAtOne && early === 0,
+    `C6a: the rank really climbs at the first serve (#${cityRankingAt(0).rank} -> #${cityRankingAt(1).rank}) but Levels 1-${RANKING_NEWS_FROM_LEVEL - 1} announce nothing`,
+  );
+  let later = 0;
+  for (let n = RANKING_NEWS_FROM_LEVEL; n <= 40; n++)
+    if (
+      cityRankingAt(n).rank < cityRankingAt(n - 1).rank &&
+      rankChange(saveAt(n - 1), saveAt(n)) !== null
+    )
+      later++;
+  assert(later > 0, "C6b: from Level 8 a climb is announced again");
+  const app = read("src/App.tsx");
+  assert(
+    /const rise = rankChange\(save, finalSave\)/.test(app) &&
+      /RANKING_NEWS_FROM_LEVEL = 8/.test(read("src/game/config/earlyLevels.ts")),
+    "C6c: the Congratulations card and the Level Complete row both read rankChange, which is silent before Level 8",
   );
 }
 

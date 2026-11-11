@@ -17,15 +17,22 @@ import type { IngredientId } from "../definitions";
 import { INGREDIENTS } from "../definitions";
 import type { SaveData } from "../SaveManager";
 import { addHype } from "../restaurant/secondFloor";
-import { DIFFICULTY, HYPE_BY_STARS, basketsLeft, fridgeSortOf } from "./fridgeSort";
+import {
+  DIFFICULTY,
+  FRIDGE_SORT_FIRST_LEVEL,
+  HYPE_BY_STARS,
+  basketsLeft,
+  fridgeSortOf,
+} from "./fridgeSort";
 
 // ── When it opens ────────────────────────────────────────────────────────────
 
 /**
- * The first level (developer 2026-11-10, plan FIRST-20-LEVELS-ENGAGEMENT-PLAN-2026-11-10.md): Level 9, the eggplant level with no system of its own.
- * It used to be Fridge Sort's level 3, so two games landed together; the difficulty tiers still follow Fridge Sort's levels.
+ * The first level: the same as Fridge Sort's, because a delivery is checked BEFORE it is unpacked (developer 2026-11-11: "receive the delivery,
+ * check for damaged product, unpack, sort to the fridge, then the Fridge Check, like the real world"). Level 3. (2026-11-10 had it at Level 9, which
+ * let Unpack the delivery be played before the check existed; business/deliveryFlow.ts now puts the steps in order.)
  */
-export const INSPECTION_FIRST_LEVEL = 9;
+export const INSPECTION_FIRST_LEVEL = FRIDGE_SORT_FIRST_LEVEL;
 export const isInspectionOpen = (level: number): boolean => level >= INSPECTION_FIRST_LEVEL;
 /** The reference's "Deliveries 2/5": at most this many rounds a day. */
 export const MAX_ROUNDS_PER_DAY = 5;
@@ -292,6 +299,34 @@ export function roundsLeft(save: SaveData, level: number): number {
   const baskets = basketsLeft(save, level);
   const seen = st.seed === fridgeSortOf(save).seed ? st.inspected! : 0;
   return Math.max(0, Math.min(MAX_ROUNDS_PER_DAY - doneToday, baskets - seen));
+}
+
+/**
+ * The baskets of the waiting delivery that still have to be checked (developer 2026-11-11: checking is mandatory before the delivery is
+ * unpacked). It ignores today's reward limit: past the five rewarded rounds a check still counts, it just gives nothing.
+ */
+export function pendingInspections(save: SaveData, level: number): number {
+  if (!isInspectionOpen(level)) return 0;
+  const st = deliveryInspectionOf(save);
+  const seen = st.seed === fridgeSortOf(save).seed ? st.inspected! : 0;
+  return Math.max(0, basketsLeft(save, level) - seen);
+}
+
+/**
+ * After a basket was unpacked (Fridge Sort took it out of the crate), the checked count drops by the baskets that left, so the NEXT basket
+ * is not counted as checked just because an earlier one was. `before` / `after` are the saves around the unpack.
+ */
+export function shiftInspected(before: SaveData, after: SaveData, level: number): SaveData {
+  if (!isInspectionOpen(level)) return after;
+  const st = deliveryInspectionOf(after);
+  if (st.seed !== (fridgeSortOf(after).seed ?? 0) || st.inspected! === 0) return after;
+  const left = basketsLeft(before, level) - basketsLeft(after, level);
+  if (left <= 0) return after;
+  return withState(after, {
+    ...(after.business.deliveryInspection ?? {}),
+    ...st,
+    inspected: Math.max(0, st.inspected! - left),
+  });
 }
 
 /** Rounds done today and the most there can be (the "Deliveries 2/5" tag). */
@@ -755,6 +790,8 @@ export type RoundOutcome = {
   total: number;
   /** "Again" rounds score and show stars but give nothing and keep nothing. */
   practice?: boolean;
+  /** A free round that still counts as the mandatory check of a basket (past today's rewarded rounds): it gives nothing but the basket is checked. */
+  counts?: boolean;
 };
 export type RoundEffects = { hype: number; pin: boolean; newBest: boolean; streak: number };
 export const NO_EFFECTS: RoundEffects = { hype: 0, pin: false, newBest: false, streak: 0 };
@@ -767,7 +804,7 @@ export function finishRound(
   save: SaveData,
   o: RoundOutcome,
 ): { save: SaveData; effects: RoundEffects } {
-  if (o.practice) return { save, effects: NO_EFFECTS };
+  if (o.practice) return { save: o.counts ? autoInspect(save) : save, effects: NO_EFFECTS };
   const st = deliveryInspectionOf(save);
   const day = save.business.calendar.businessDay;
   const seed = fridgeSortOf(save).seed ?? 0;

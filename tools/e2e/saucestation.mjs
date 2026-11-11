@@ -281,7 +281,10 @@ const circled = await page.evaluate(async () => {
   const stage = document.querySelector('[data-testid="sauce-stage"]');
   const r = stage.getBoundingClientRect();
   const cx = r.left + r.width / 2;
-  const cy = r.top + r.height * 0.34;
+  // The bowl's own middle and ellipse (SauceParts TOOL_BOWL: centre 0.5 / 0.5, radii 0.3 w / 0.15 h): circle what you see (2026-11-11).
+  const cy = r.top + r.height * 0.5;
+  const RX = r.width * 0.3 * 0.6;
+  const RY = r.height * 0.15 * 0.6;
   const fire = (type, x, y) =>
     stage.dispatchEvent(
       new PointerEvent(type, {
@@ -293,13 +296,13 @@ const circled = await page.evaluate(async () => {
         isPrimary: true,
       }),
     );
-  fire("pointerdown", cx + 60, cy);
+  fire("pointerdown", cx + RX, cy);
   let ang = 0;
   let max = 0;
   const t0 = performance.now();
   while (performance.now() - t0 < 3000) {
     ang += (2 * Math.PI * 1.9 * 16) / 1000; // 1.9 turns a second
-    fire("pointermove", cx + 60 * Math.cos(ang), cy + (60 * Math.sin(ang)) / 1.5);
+    fire("pointermove", cx + RX * Math.cos(ang), cy + RY * Math.sin(ang));
     max = Math.max(
       max,
       Number(document.querySelector('[data-testid="sauce-dial"]')?.dataset.omega ?? 0),

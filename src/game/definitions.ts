@@ -160,7 +160,7 @@ export const TECHNIQUES: Record<TechniqueId, TechniqueDefinition> = {
     description: "Fine, parallel strokes — every cut follows the first.",
     guideType: "parallel-free",
     axis: "v",
-    requiredCuts: 8, // was 10 ("carrot-julienne-10"); developer 2026-11-08: fewer taps, the cutting must not feel hectic
+    requiredCuts: 10, // knifecraft.html recipe "carrot-julienne-10" (back to 10: developer 2026-11-11 undid the 2026-11-08 cut reduction; the faster cutting SPEED stays)
     counts: null,
     perpSnap: false,
     parallelSnap: true,
@@ -358,8 +358,8 @@ export const TAP_KNIFE = {
   // why stacking a second 13%-of-band margin here used to exclude a huge
   // swath of visibly-cuttable ingredient near every edge).
   MIN_EDGE_FRAC: 0.03,
-  // 0.10 (was 0.07): a slice holds 8 cuts, not 12 - fewer taps to finish an ingredient (developer 2026-11-08).
-  MIN_GAP_FRAC: 0.1,
+  // 0.07: a slice holds 12 cuts again (developer 2026-11-11 undid the 2026-11-08 change to 0.10 / 8 cuts; the faster cutting SPEED stays).
+  MIN_GAP_FRAC: 0.07,
 } as const;
 
 /**
@@ -468,9 +468,16 @@ export const PEEL = {
    * Slow and satisfying (developer 2026-11-07: "make the peeling slow and satisfying because players enjoy it"): the blade bites at a fixed
    * pace. This is how far it travels per second, in ingredient half-extents (so every ingredient takes about the same time whatever its
    * size): the skin comes off behind the finger, never faster, so scribbling cannot beat a steady stroke. With the narrower strip
-   * (STROKE_WIDTH_FRAC) and the higher completion (COMPLETION_THRESHOLD) a whole ingredient takes about 8-12 seconds.
+   * (STROKE_WIDTH_FRAC) and the higher completion (COMPLETION_THRESHOLD) a whole ingredient took about 8-12 seconds at 1.1.
+   * Developer 2026-11-11 ("you made the peeling very slow: make it a little slow, but more realistic"): 3.4 (measured: a whole potato about 6 s), so a steady peel is about
+   * 5-7 seconds, and the blade now follows the finger the way a real blade does (FOLLOW_RATE below) instead of crawling at a fixed pace.
    */
-  MAX_SPEED: 1.1,
+  MAX_SPEED: 3.4,
+  /**
+   * How quickly the blade closes the gap to the finger, per second (an exponential pursuit: the blade covers 1 - e^(-FOLLOW_RATE * dt) of the gap
+   * each frame, capped by MAX_SPEED). A slow, careful stroke is followed exactly with no visible lag; only a flick is held back.
+   */
+  FOLLOW_RATE: 16,
   /** A curl of skin lifts off for every this many pixels of blade travel (the tactile trail while peeling). */
   RIBBON_EVERY_PX: 26,
   /** At most one soft scrape sound / light buzz per this many milliseconds. */

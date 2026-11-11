@@ -1,5 +1,7 @@
 # The first 20 levels, round 2: keep them playing (developer 2026-11-10)
 
+**Update 2026-11-11 (bug list):** Delivery Inspection is back at **Level 3** (it must come BEFORE Fridge Sort: check the delivery, then unpack it) and the games are a mandatory routine (see HANDOFF "Bugs and Issues, 10 items"). Everything below that says Level 9 for Delivery Inspection is superseded.
+
 **Status 2026-11-10 ("do the best plan"): items 1-5 of section 5 are BUILT** (teaser lines, funnel analytics, Delivery Inspection at Level 9, the guided first Sauce round, Hype chests at L5/10/15/20). Not built: item 6 (Dinner Rush, regular guest, top-40 card, the Golden Guest moment) and item 7 (daily streak), and the chest ad. **The Sauce Station "3 more rounds today" ad is BUILT** (developer yes 2026-11-10). See HANDOFF.
 
 Request: "introduce the Sauce Station before Level 20; plan the first 20 levels so each one has something new, a mini-game or a reward that makes the player want the next level. This game is my only chance to make money."

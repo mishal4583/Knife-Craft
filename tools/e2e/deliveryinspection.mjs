@@ -1,5 +1,5 @@
 // Delivery Inspection (developer 2026-11-08), restaurant build, in a real browser: the "Spot the bad ones" mini-game (business/deliveryInspection.ts).
-//   I1 below Level 9 there is no chip; from Level 9 a delivery that waits shows "Inspect delivery · N" above the Inventory fridge
+//   I1 below Level 3 there is no chip; from Level 3 a delivery that waits shows "Check the delivery · N" above the Inventory fridge
 //   I2 the chip opens the game: the how-to guide shows the first time (and is saved as seen), Start is needed before the clock runs
 //   I3 the crate is on screen: mixed ingredients, the goal line says how many are NOT FRESH, the slots match
 //   I4 a RIGHT tap flags a defect (stamp, slot filled, score); a WRONG tap costs time and shows the green tick, never twice on the same one
@@ -185,21 +185,21 @@ const snapshot = (page) =>
 const { browser, page, logs } = await launch();
 
 // I1: the chip
-await boot(page, saveAt(8));
+await boot(page, saveAt(2));
 await openInventory(page);
 const chip2 = await page.evaluate(
   () => !!document.querySelector('[data-testid="delivery-inspection-chip"]'),
 );
-check("I1 below Level 9 there is no Inspect chip", chip2 === false);
-await boot(page, saveAt(9));
+check("I1 below Level 3 there is no Inspect chip", chip2 === false);
+await boot(page, saveAt(3));
 await openInventory(page);
 const chip3 = await page.evaluate(
   () =>
     document.querySelector('[data-testid="delivery-inspection-chip"]')?.textContent?.trim() ?? null,
 );
 check(
-  "I1b from Level 9 a waiting delivery shows 'Inspect delivery · N'",
-  !!chip3 && /Inspect delivery · \d/.test(chip3),
+  "I1b from Level 3 a waiting delivery shows 'Check the delivery · N'",
+  !!chip3 && /Check the delivery · \d/.test(chip3),
   chip3,
 );
 await shot(page, "insp-1-chip");
@@ -301,12 +301,12 @@ const back = await page.evaluate(() => ({
 }));
 check(
   "I8 Done returns to the Inventory; the finished basket is not offered again",
-  back.game === false && (back.chip === null || /Inspect delivery/.test(back.chip)),
+  back.game === false && (back.chip === null || /Check the delivery/.test(back.chip)),
   back,
 );
 
 // I9: Prep Cook
-await boot(page, saveAt(9, { staff: { hiredRoles: ["prep-cook"] } }));
+await boot(page, saveAt(3, { staff: { hiredRoles: ["prep-cook"] } }));
 await openInventory(page);
 const chipPrep = await page.evaluate(
   () => !!document.querySelector('[data-testid="delivery-inspection-chip"]'),
@@ -327,7 +327,7 @@ check(
 );
 
 // I9c: before Start the top-left button is a Back arrow (the pause button used to do nothing there)
-await boot(page, saveAt(9));
+await boot(page, saveAt(3));
 await openInventory(page);
 await openGame(page);
 const backLabel = await page.evaluate(() =>
@@ -345,7 +345,7 @@ check(
 );
 
 // I9b: Skip leaves it waiting
-await boot(page, saveAt(9));
+await boot(page, saveAt(3));
 await openInventory(page);
 await openGame(page);
 await start(page);

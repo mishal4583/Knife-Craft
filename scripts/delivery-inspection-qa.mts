@@ -95,8 +95,8 @@ function saveWith(
 console.log("A. When it opens");
 {
   assert(
-    !isInspectionOpen(8) && isInspectionOpen(9),
-    "A1: it opens at Level 9 (was 3 until 2026-11-10: not on Fridge Sort's level)",
+    !isInspectionOpen(2) && isInspectionOpen(3),
+    "A1: it opens at Level 3, Fridge Sort's level: the delivery is checked BEFORE it is unpacked (Level 9 from 2026-11-10 to 2026-11-11)",
   );
   const lvl = (n: number) => 0 + n;
   assert(
@@ -108,23 +108,23 @@ console.log("A. When it opens");
     tierNumberAt(lvl(3)) === 1 && tierNumberAt(30) === 3 && tierNumberAt(90) === 5,
     "A3: tierAt follows the level",
   );
-  const s = saveWith(9);
+  const s = saveWith(3);
   assert(
-    roundsLeft(s, 9) >= 1 && roundsLeft(s, 9) <= MAX_ROUNDS_PER_DAY,
+    roundsLeft(s, 3) >= 1 && roundsLeft(s, 3) <= MAX_ROUNDS_PER_DAY,
     "A4: a delivery that waits has inspections to do",
-    roundsLeft(s, 9),
+    roundsLeft(s, 3),
   );
-  assert(roundsLeft(saveWith(8), 8) === 0, "A5: below Level 9 there are none");
-  const empty = saveWith(9, { fridgeSort: undefined });
-  assert(roundsLeft(empty, 9) === 0, "A6: no delivery waiting = nothing to inspect");
-  const prep = saveWith(9, {
+  assert(roundsLeft(saveWith(2), 2) === 0, "A5: below Level 3 there are none");
+  const empty = saveWith(3, { fridgeSort: undefined });
+  assert(roundsLeft(empty, 3) === 0, "A6: no delivery waiting = nothing to inspect");
+  const prep = saveWith(3, {
     staff: { ...DEFAULT_SAVE.business.staff, hiredRoles: ["prep-cook"] } as never,
   });
-  const before7 = roundsLeft(prep, 9);
+  const before7 = roundsLeft(prep, 3);
   const auto = autoInspect(prep);
   assert(
     before7 >= 1 &&
-      roundsLeft(auto, 9) === before7 - 1 &&
+      roundsLeft(auto, 3) === before7 - 1 &&
       deliveryInspectionOf(auto).rounds === 0 &&
       deliveryInspectionOf(auto).today === 0 &&
       auto.credits === prep.credits,
@@ -132,11 +132,11 @@ console.log("A. When it opens");
     { before7 },
   );
   // The daily limit and the basket count.
-  const big = saveWith(9, {}, Object.keys(INGREDIENTS).slice(0, 24));
-  const rounds0 = roundsLeft(big, 9);
+  const big = saveWith(3, {}, Object.keys(INGREDIENTS).slice(0, 24));
+  const rounds0 = roundsLeft(big, 3);
   let cur: SaveData = big;
   let done = 0;
-  while (roundsLeft(cur, 9) > 0 && done < 12) {
+  while (roundsLeft(cur, 3) > 0 && done < 12) {
     cur = finishRound(cur, { stars: 2, score: 500, found: 2, total: 2 }).save;
     done++;
   }
@@ -190,7 +190,7 @@ console.log("A. When it opens");
 
 console.log("B. The crate");
 {
-  const s = saveWith(9, {}, ["tomato", "carrot", "salmon", "chicken", "lettuce"]);
+  const s = saveWith(3, {}, ["tomato", "carrot", "salmon", "chicken", "lettuce"]);
   const ing = crateIngredients(s, 1, 10);
   assert(
     ing.slice(0, 3).join() === "tomato,carrot,lettuce",
@@ -203,20 +203,20 @@ console.log("B. The crate");
     ),
     "B2: tiers 1-2 hold only produce, herbs and aromatics",
   );
-  const t3 = crateIngredients(saveWith(90, {}, ["bread", "cheddar", "tomato"]), 3, 6);
+  const t3 = crateIngredients(saveWith(30, {}, ["bread", "cheddar", "tomato"]), 3, 6);
   assert(
     t3.includes("bread" as never) && t3.includes("cheddar" as never),
     "B3: from tier 3 bread and cheese (mold) can be in the crate",
   );
-  const a = roundCrate(saveWith(90), 30, 0)!;
-  const b = roundCrate(saveWith(90), 30, 0)!;
-  const c = roundCrate(saveWith(90), 30, 1)!;
+  const a = roundCrate(saveWith(30), 30, 0)!;
+  const b = roundCrate(saveWith(30), 30, 0)!;
+  const c = roundCrate(saveWith(30), 30, 1)!;
   assert(
     JSON.stringify(a) === JSON.stringify(b) && JSON.stringify(a) !== JSON.stringify(c),
     "B4: the same round is the same crate; another salt another crate",
   );
   for (const t of INSPECTION_TIERS) {
-    const level = Math.max(t.from, INSPECTION_FIRST_LEVEL); // tier 1 starts at 3 but the game opens at 9
+    const level = Math.max(t.from, INSPECTION_FIRST_LEVEL);
     const crate = roundCrate(saveWith(level), level, 0)!;
     const defects = crate.items.filter(isDefective).length;
     const decoys = crate.items.filter((i) => i.mark?.type === "decoy").length;
@@ -342,7 +342,7 @@ console.log("D. Scoring and effects");
   );
   assert(WRONG_PENALTY_MS === 4000, "D9: a wrong flag costs 4 seconds");
   // Finishing: Hype, pins, never money or stock.
-  const base = saveWith(9);
+  const base = saveWith(3);
   base.credits = 12345;
   base.business.inventory = {
     tomato: { ingredientId: "tomato", quantity: 3, unitCost: 100, purchaseDay: 1 },

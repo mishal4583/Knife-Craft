@@ -15,6 +15,7 @@
  */
 import type { SaveData } from "../SaveManager";
 import { LAST_CAMPAIGN_LEVEL } from "./restaurantProgression";
+import { RANKING_NEWS_FROM_LEVEL } from "../config/earlyLevels";
 
 export const REPUTATION_PER_LEVEL = 40;
 /** Endless stars add a little reputation after the campaign (you are #1 by then). */
@@ -421,6 +422,8 @@ export function rankChange(
   const a = completedCampaignLevels(before);
   const b = completedCampaignLevels(after);
   if (b <= a) return null;
+  // Not news in the first levels (developer 2026-11-11): the first serve must not announce a climb from #50.
+  if (b < RANKING_NEWS_FROM_LEVEL) return null;
   const from = cityRankingAt(a).rank;
   const to = cityRankingAt(b).rank;
   if (to >= from) return null;

@@ -33,6 +33,7 @@ import {
   FLOOR_STAFF,
   FRANCHISE_MIN_TABLES,
   MAX_POLISH,
+  hourlyWith,
   SELF_SERVE_MACHINES,
   TIER3_MIN_LEVEL,
   MAX_BRANCH,
@@ -63,6 +64,13 @@ import {
   type StationId,
 } from "@/game/restaurant/secondFloor";
 import { SHORT, nextFloorGoal } from "@/game/restaurant/floorGoal";
+import {
+  PURCHASE_HELP,
+  PURCHASE_INFO,
+  boughtText,
+  gainText,
+  goalTitle,
+} from "@/game/restaurant/floorPurchaseText";
 import { firstMachineGuide, firstMachineNeeded } from "@/game/restaurant/floorGuide";
 import { PointerHand } from "../common/PointerHand";
 import { goldenAmounts, goldenAt, goldenAvailable } from "@/game/restaurant/goldenGuest";
@@ -290,22 +298,25 @@ export function SecondFloorView({
     if (r.ok) {
       const m = milestoneOf(action, r.save);
       if (m) celebrate(m.title, m.line);
+      // Every purchase says WHAT was bought and what it added (developer 2026-11-11), with the real numbers.
+      const bought = (kind: "machine" | "table" | "polish" | "tier", id: StationId) =>
+        boughtText(kind, id, save, r.save, formatUsd);
       setNote(
         action.kind === "collect"
           ? `Collected ${formatUsd(r.amount)}`
           : action.kind === "buy"
-            ? isStaffed(secondFloorOf(r.save), action.id)
-              ? "✓ Station bought · working now"
-              : "✓ Station bought · hire a Floor Server"
+            ? `${bought("machine", action.id)}${isStaffed(secondFloorOf(r.save), action.id) ? " · working now" : ""}`
             : action.kind === "hire"
               ? `✓ ${FLOOR_STAFF[action.role].name} hired`
               : action.kind === "table"
-                ? "🪑 New table · more guests"
+                ? bought("table", action.id)
                 : action.kind === "polish"
-                  ? "✨ Polished · earns more"
+                  ? bought("polish", action.id)
                   : action.kind === "branch"
                     ? "🏬 New branch open · everything ×10"
-                    : "⬆ Upgraded · earns more",
+                    : action.kind === "upgrade"
+                      ? bought("tier", action.id)
+                      : "⚡ Rush Hour started",
       );
     } else if (r.reason === "insufficientFunds") {
       setNote("Not enough money yet");
@@ -599,9 +610,17 @@ export function SecondFloorView({
       <>
         <p className="font-ui text-[13px] leading-snug text-walnut/75">{d.blurb}</p>
         <p className="mt-2 font-ui text-[12.5px] text-walnut-dark" data-testid="station-stats">
-          Tier {owned.level} · {tables} {tables === 1 ? "table" : "tables"} · polish {polish}/
-          {MAX_POLISH} · {formatUsd(stationPerHour(floor, d.id))} an hour · holds{" "}
-          {hoursText(d.capHours[i]!)}
+          Tier {owned.level} · {tables} {tables === 1 ? "table" : "tables"} · Polish {polish}/
+          {MAX_POLISH}
+          {polish > 0 ? ` (+${polish * 6}%)` : ""} · {formatUsd(stationPerHour(floor, d.id))} an
+          hour · holds {hoursText(d.capHours[i]!)}
+          <InfoTip label="What do tables, polish and upgrades do?" className="ml-1 align-middle">
+            <span className="grid gap-1.5" data-testid="purchase-help">
+              {PURCHASE_HELP.map((l) => (
+                <span key={l}>{l}</span>
+              ))}
+            </span>
+          </InfoTip>
         </p>
         {staffed ? (
           <>
@@ -621,33 +640,78 @@ export function SecondFloorView({
         <div className="mt-3 grid gap-2">
           <KButton
             full
+            className="h-auto min-h-14 py-1.5"
             disabled={roomFull || funds < tPrice}
             onClick={() => act({ kind: "table", id: d.id })}
+            data-testid="buy-table"
           >
-            {roomFull
-              ? `🪑 Room full (${maxTablesAt(owned.level)} tables) · upgrade the tier`
-              : `🪑 Table #${tables + 1} · ${formatUsd(tPrice)}`}
+            <PurchaseLabel
+              icon={PURCHASE_INFO.table.icon}
+              title={
+                roomFull
+                  ? `Room full (${maxTablesAt(owned.level)} tables) · upgrade the tier`
+                  : `Add table #${tables + 1} · ${formatUsd(tPrice)}`
+              }
+              sub={
+                roomFull
+                  ? null
+                  : gainText(
+                      hourlyWith(floor, d.id, { tables: tables + 1 }) - hourlyWith(floor, d.id),
+                      formatUsd,
+                    )
+              }
+            />
           </KButton>
           <KButton
             full
             variant="cream"
+            className="h-auto min-h-14 py-1.5"
             disabled={polish >= MAX_POLISH || funds < pPrice}
             onClick={() => act({ kind: "polish", id: d.id })}
+            data-testid="buy-polish"
           >
-            {polish >= MAX_POLISH
-              ? "✨ Fully polished"
-              : `✨ Polish ${polish + 1}/${MAX_POLISH} · ${formatUsd(pPrice)} · +6%`}
+            <PurchaseLabel
+              icon={PURCHASE_INFO.polish.icon}
+              title={
+                polish >= MAX_POLISH
+                  ? "Fully polished (+60%)"
+                  : `Polish step ${polish + 1} of ${MAX_POLISH} · ${formatUsd(pPrice)}`
+              }
+              sub={
+                polish >= MAX_POLISH
+                  ? null
+                  : `Earns 6% more · ${gainText(
+                      hourlyWith(floor, d.id, { polish: polish + 1 }) - hourlyWith(floor, d.id),
+                      formatUsd,
+                    )}`
+              }
+            />
           </KButton>
           {nextPrice !== null ? (
             <KButton
               full
               variant="cream"
+              className="h-auto min-h-14 py-1.5"
               disabled={tierLocked || funds < nextPrice}
               onClick={() => act({ kind: "upgrade", id: d.id })}
+              data-testid="buy-tier"
             >
-              {tierLocked
-                ? `🔒 Tier 3 opens ${u.when(TIER3_MIN_LEVEL)}`
-                : `⬆ Tier ${to} · ${formatUsd(nextPrice)} · faster, pays more`}
+              <PurchaseLabel
+                icon={tierLocked ? "🔒" : PURCHASE_INFO.tier.icon}
+                title={
+                  tierLocked
+                    ? `Tier 3 opens ${u.when(TIER3_MIN_LEVEL)}`
+                    : `Upgrade to Tier ${to} · ${formatUsd(nextPrice)}`
+                }
+                sub={
+                  tierLocked
+                    ? null
+                    : `Faster, pays more · ${gainText(
+                        hourlyWith(floor, d.id, { level: to as 2 | 3 }) - hourlyWith(floor, d.id),
+                        formatUsd,
+                      )}`
+                }
+              />
             </KButton>
           ) : (
             <p className="text-center font-ui text-[12.5px] font-extrabold text-sage">Top tier</p>
@@ -911,12 +975,26 @@ export function SecondFloorView({
           data-testid="floor-goal"
         >
           <div className="min-w-0 flex-1 font-ui text-[12.5px] leading-tight text-walnut-dark">
-            <div className="truncate font-extrabold">Next: {goal.label}</div>
+            <div className="truncate font-extrabold" data-testid="floor-goal-title">
+              {PURCHASE_INFO[goal.kind].icon} {goalTitle(goal, floor.stations[goal.id])}
+            </div>
+            <div className="font-bold text-sage" data-testid="floor-goal-gain">
+              {gainText(goal.gain, formatUsd)}
+            </div>
             <div className="text-walnut/70">
               {formatUsd(goal.price)}
               {goalShort > 0 ? ` · ${formatUsd(goalShort)} to go` : " · ready"}
             </div>
           </div>
+          <InfoTip label={`What is this? ${PURCHASE_INFO[goal.kind].noun}`} className="shrink-0">
+            <span className="grid gap-1.5" data-testid="floor-goal-help">
+              <span className="font-extrabold">
+                {PURCHASE_INFO[goal.kind].icon} {goalTitle(goal, floor.stations[goal.id])}
+              </span>
+              <span>{PURCHASE_INFO[goal.kind].does}</span>
+              <span>{gainText(goal.gain, formatUsd)}</span>
+            </span>
+          </InfoTip>
           <KButton
             className="h-12 shrink-0 px-4 text-[13px]"
             disabled={goalShort > 0}
@@ -958,6 +1036,18 @@ export function SecondFloorView({
         </aside>
       ) : null}
     </div>
+  );
+}
+
+/** A purchase button's two lines: what it is and its price, then what it adds (developer 2026-11-11). */
+function PurchaseLabel({ icon, title, sub }: { icon: string; title: string; sub: string | null }) {
+  return (
+    <span className="flex min-w-0 flex-col items-center leading-tight">
+      <span>
+        <span aria-hidden>{icon}</span> {title}
+      </span>
+      {sub ? <span className="text-[11.5px] font-bold opacity-80">{sub}</span> : null}
+    </span>
   );
 }
 

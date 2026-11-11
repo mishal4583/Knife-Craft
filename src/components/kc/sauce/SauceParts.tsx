@@ -1,7 +1,8 @@
-import type { CSSProperties, ReactNode } from "react";
+import { useEffect, useRef, type CSSProperties, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { WHISK_ZONE, type Tool } from "@/game/business/sauceStation";
 import { boxStyle, cellAspect, cellStyle, rectStyle, sauceUrl, useSauceArt } from "./sauceArt";
+import { SHEETS } from "./sauceSheets";
 
 /**
  * The small painted pieces of the Sauce Station screens: a cropped sprite, the sauce bottle icon, the two vessels with their liquid, the layered
@@ -223,6 +224,7 @@ export function BottleView({
   emoji,
   mark,
   className,
+  children,
 }: {
   shape: number;
   fill: number;
@@ -233,6 +235,8 @@ export function BottleView({
   /** Draw the fill line across the bottle. */
   mark?: number | undefined;
   className?: string;
+  /** Drawn over the bottle in ITS coordinates (the pitcher and the stream: see BottleStage). */
+  children?: ReactNode;
 }) {
   const ok = useSauceArt("bottles");
   const [top, bottom] = BOTTLE_INSIDE[shape] ?? BOTTLE_INSIDE[0]!;
@@ -253,33 +257,8 @@ export function BottleView({
       {ok ? (
         <>
           <span aria-hidden className="absolute inset-0" style={row(0)} />
-          {/* the mask row, used as a mask: the liquid shows only inside the glass */}
-          <span
-            aria-hidden
-            className="absolute inset-0"
-            style={{
-              WebkitMaskImage: maskUrl,
-              maskImage: maskUrl,
-              WebkitMaskRepeat: "no-repeat",
-              maskRepeat: "no-repeat",
-              WebkitMaskSize: "600% 300%",
-              maskSize: "600% 300%",
-              WebkitMaskPosition: `${(shape / 5) * 100}% 100%`,
-              maskPosition: `${(shape / 5) * 100}% 100%`,
-            }}
-          >
-            <span
-              className="absolute inset-x-0 transition-[top] duration-100"
-              style={{
-                top: `${liquidTop * 100}%`,
-                bottom: `${(1 - bottom) * 100}%`,
-                backgroundColor: color,
-                backgroundImage:
-                  "linear-gradient(90deg, rgba(255,255,255,.3), rgba(255,255,255,0) 30%, rgba(0,0,0,.16))",
-                filter: "saturate(1.25)",
-              }}
-            />
-          </span>
+          {/* the liquid, clipped to the glass by drawing it through the silhouette row (a canvas: the same on every browser, an iPhone's included) */}
+          <BottleLiquid shape={shape} top={liquidTop} bottom={bottom} color={color} />
           <span aria-hidden className="absolute inset-0" style={row(1)} />
         </>
       ) : (
@@ -319,9 +298,187 @@ export function BottleView({
         </span>
       ) : null}
       {capped ? <Cap shape={shape} /> : null}
+      {children}
     </div>
   );
 }
+
+// ── The liquid in a bottle, drawn on a canvas ───────────────────────────────
+
+const pictures = new Map<string, Promise<HTMLImageElement>>();
+/** Loads a picture once (remembered), for drawing it on a canvas. */
+function loadPicture(url: string): Promise<HTMLImageElement> {
+  let p = pictures.get(url);
+  if (!p) {
+    p = new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error("picture"));
+      img.src = url;
+    });
+    pictures.set(url, p);
+  }
+  return p;
+}
+
+/**
+ * The sauce inside a bottle (developer 2026-11-11: "the sauce inside the bottle is not accurate"; on the developer's iPhone the liquid slid out
+ * under the glass). It used to be a CSS mask over a sprite sheet, which different browsers place differently. Now the glass silhouette (the sheet's
+ * third row) is drawn on a canvas and the liquid is painted through it (`source-in`), so the sauce is exactly where the glass is on every browser
+ * and never outside it. `top` / `bottom` are shares of the bottle's height; the colour is the sauce's own, shaded like the glass.
+ */
+function BottleLiquid({
+  shape,
+  top,
+  bottom,
+  color,
+}: {
+  shape: number;
+  top: number;
+  bottom: number;
+  color: string;
+}) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    let alive = true;
+    const cv = ref.current;
+    const sheet = SHEETS["bottles"];
+    if (!cv || !sheet) return;
+    void loadPicture(sauceUrl("bottles")).then((img) => {
+      if (!alive) return;
+      const cw = sheet.w / sheet.cols;
+      const ch = sheet.h / sheet.rows;
+      const W = Math.round(cw * 2);
+      const H = Math.round(ch * 2);
+      if (cv.width !== W) cv.width = W;
+      if (cv.height !== H) cv.height = H;
+      const ctx = cv.getContext("2d");
+      if (!ctx) return;
+      ctx.clearRect(0, 0, W, H);
+      ctx.globalCompositeOperation = "source-over";
+      ctx.drawImage(img, shape * cw, 2 * ch, cw, ch, 0, 0, W, H);
+      const y0 = Math.max(0, Math.min(1, top)) * H;
+      const y1 = Math.max(y0, Math.min(1, bottom) * H);
+      ctx.globalCompositeOperation = "source-in";
+      ctx.fillStyle = color;
+      ctx.fillRect(0, y0, W, y1 - y0 + 1);
+      ctx.globalCompositeOperation = "source-atop";
+      const g = ctx.createLinearGradient(0, 0, W, 0);
+      g.addColorStop(0, "rgba(255,255,255,.3)");
+      g.addColorStop(0.3, "rgba(255,255,255,0)");
+      g.addColorStop(1, "rgba(0,0,0,.16)");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, y0, W, y1 - y0 + 1);
+      // the surface: a thin light line where the liquid meets the air
+      ctx.fillStyle = "rgba(255,255,255,.35)";
+      ctx.fillRect(0, y0, W, 2);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [shape, top, bottom, color]);
+  return (
+    <canvas
+      ref={ref}
+      aria-hidden
+      data-testid="sauce-bottle-liquid"
+      className="pointer-events-none absolute inset-0 h-full w-full"
+      style={{ filter: "saturate(1.25)" }}
+    />
+  );
+}
+
+/** Where a bottle's mouth is: the neck's centre (share of the bottle's width) and its rim (share of the bottle's height). */
+export const bottleMouth = (shape: number): { x: number; y: number; neck: number } => {
+  const [rim, centre, width] = NECK[shape] ?? NECK[0]!;
+  return { x: centre, y: rim / 256, neck: width };
+};
+
+/**
+ * The pitcher over a bottle and the stream into it, in the bottle's coordinates (shares of its width and height). The spout tip sits just above the
+ * mouth; the pitcher turns about that tip (so it tips over the mouth instead of swinging away), and the stream is a thin ribbon of the sauce's own
+ * colour from the tip down to the surface, with a ripple where it lands. Idle, the pitcher rests tilted a little and raised.
+ */
+export function PourScene({
+  shape,
+  fill,
+  color,
+  pouring,
+  reducedMotion,
+}: {
+  shape: number;
+  fill: number;
+  color: string;
+  pouring: boolean;
+  reducedMotion: boolean;
+}) {
+  const mouth = bottleMouth(shape);
+  const jug = boxStyle("pour-tools", 0);
+  const aspect = jug?.aspect ?? 1.26;
+  // bottle width : height is 1 : 2 (a cell of the sheet is 128 x 256), so a jug 1.4 bottle-widths wide is 1.4 / aspect bottle-widths tall.
+  const jugW = 1.4;
+  const jugH = (jugW / aspect) * 0.5;
+  const tipY = mouth.y - 0.035;
+  const surface = bottleSurface(shape, fill);
+  const streamTop = tipY + 0.005;
+  const hasStream = pouring && surface > streamTop;
+  const move = reducedMotion ? undefined : "transform .22s ease-out";
+  return (
+    <>
+      {hasStream ? (
+        <>
+          <span
+            aria-hidden
+            data-testid="sauce-stream"
+            className="pointer-events-none absolute z-[5] rounded-full"
+            style={{
+              left: `${mouth.x * 100}%`,
+              top: `${streamTop * 100}%`,
+              height: `${(surface - streamTop) * 100}%`,
+              width: `${Math.max(3, mouth.neck * 100 * 0.3)}%`,
+              transform: "translateX(-50%)",
+              backgroundColor: color,
+              backgroundImage:
+                "linear-gradient(90deg, rgba(255,255,255,.35), rgba(255,255,255,0) 40%, rgba(0,0,0,.14))",
+              filter: "saturate(1.25)",
+            }}
+          />
+          <span
+            aria-hidden
+            className={cn(
+              "pointer-events-none absolute z-[5] h-[3%] w-[26%] rounded-[50%] border-2 border-white/70",
+              !reducedMotion && "sauce-ripple",
+            )}
+            style={{
+              left: `${mouth.x * 100}%`,
+              top: `${surface * 100}%`,
+              transform: "translate(-50%, -50%)",
+            }}
+          />
+        </>
+      ) : null}
+      <span
+        aria-hidden
+        data-testid="sauce-jug"
+        data-pouring={pouring ? "1" : "0"}
+        className="pointer-events-none absolute z-[6]"
+        style={{
+          left: `${mouth.x * 100}%`,
+          top: `${(tipY - JUG_TIP.y * jugH) * 100}%`,
+          width: `${jugW * 100}%`,
+          transformOrigin: `${JUG_TIP.x * 100}% ${JUG_TIP.y * 100}%`,
+          transform: pouring ? "rotate(-34deg) translateY(0)" : "rotate(-8deg) translateY(-6%)",
+          transition: move,
+        }}
+      >
+        <Sprite sheet="pour-tools" index={0} emoji="🫗" className="h-auto w-full" />
+      </span>
+    </>
+  );
+}
+
+/** The pitcher's spout tip inside its own picture (shares of the tight box), measured on the sheet: the tip is on the left edge, a little below the top. */
+export const JUG_TIP = { x: 0, y: 0.13 } as const;
 
 /**
  * The painted closure for a bottle shape. Each picture of the caps sheet also carries a neck full of sauce, so only the hand-picked box of the cap itself
@@ -578,6 +735,110 @@ export function Swatch({
 }
 
 /** The shared keyframes of the screens (swirl, chunk drift, pour wobble); one tag, unique class names. */
+/**
+ * Where the whisk / spoon is and how it leans (developer 2026-11-11: "the whisk is upside down and whisking is not realistic"). The art is drawn
+ * head up, handle down; in use it is turned over: the HANDLE is up in the hand, the wire head (or the spoon's bowl) dips into the sauce. The head
+ * tip sits on the fingertip, held inside the bowl's rim (a finger outside the bowl cannot drag the whisk out of it), and the handle leans toward
+ * the middle of the bowl like a hand stirring from above: the further the head is from the middle, the more it leans. Pure.
+ */
+export const TOOL_BOWL = { cx: 0.5, cy: 0.5, rx: 0.3, ry: 0.15, hand: 0.95 } as const;
+export function toolPose(at: { x: number; y: number; w: number; h: number }): {
+  x: number;
+  y: number;
+  tilt: number;
+} {
+  const { cx, cy, rx, ry, hand } = TOOL_BOWL;
+  let ex = (at.x / at.w - cx) / rx;
+  let ey = (at.y / at.h - cy) / ry;
+  const d = Math.hypot(ex, ey);
+  if (d > 1) {
+    ex /= d;
+    ey /= d;
+  }
+  const x = (cx + ex * rx) * at.w;
+  const y = (cy + ey * ry) * at.h;
+  const tilt = (Math.atan2(x - cx * at.w, hand * at.w) * 180) / Math.PI;
+  return { x, y, tilt: Math.max(-24, Math.min(24, tilt)) };
+}
+
+/** The whisk or spoon over the bowl: in the hand while dragging, standing in the bowl against its right wall otherwise. */
+export function ToolInBowl({
+  name,
+  at,
+  stirring,
+  reducedMotion,
+  hasLiquid,
+}: {
+  name: "whisk" | "spoon";
+  at: { x: number; y: number; w: number; h: number } | null;
+  stirring: boolean;
+  reducedMotion: boolean;
+  hasLiquid: boolean;
+}) {
+  const art = useSauceArt(name);
+  const pose = at ? toolPose(at) : null;
+  // The head tip is the top-centre of the picture; turned over, the picture hangs UP from the tip.
+  const origin = "50% 4%";
+  const style: CSSProperties = pose
+    ? {
+        left: pose.x,
+        top: pose.y,
+        transform: `translate(-50%, -4%) rotate(${(180 - pose.tilt).toFixed(1)}deg)`,
+        transformOrigin: origin,
+        transition: reducedMotion
+          ? "none"
+          : "transform 60ms linear, left 45ms linear, top 45ms linear",
+      }
+    : {
+        left: `${(TOOL_BOWL.cx + TOOL_BOWL.rx * 0.78) * 100}%`,
+        top: `${(TOOL_BOWL.cy + 0.02) * 100}%`,
+        transform: "translate(-50%, -4%) rotate(206deg)",
+        transformOrigin: origin,
+        opacity: 0.97,
+      };
+  return (
+    <>
+      {pose && hasLiquid ? (
+        <span
+          aria-hidden
+          data-testid="sauce-ripple"
+          className={cn(
+            "pointer-events-none absolute z-[9] h-[7%] w-[16%] rounded-[50%] border-2 border-white/55",
+            stirring && !reducedMotion && "sauce-ripple",
+          )}
+          style={{ left: pose.x, top: pose.y + 2, transform: "translate(-50%, -50%)" }}
+        />
+      ) : null}
+      {art ? (
+        <img
+          src={sauceUrl(name)}
+          alt=""
+          draggable={false}
+          data-testid="sauce-tool"
+          data-held={pose ? "1" : "0"}
+          data-tilt={pose ? pose.tilt.toFixed(1) : "0"}
+          className="pointer-events-none absolute z-10 w-auto select-none"
+          style={{ height: "74%", ...style }}
+        />
+      ) : (
+        <span
+          aria-hidden
+          data-testid="sauce-tool"
+          data-held={pose ? "1" : "0"}
+          className="pointer-events-none absolute z-10 grid place-items-center text-[44px]"
+          style={{
+            left: pose ? pose.x : "70%",
+            top: pose ? pose.y : "50%",
+            transform: "translate(-50%, -100%)",
+          }}
+        >
+          {name === "whisk" ? "🥄" : "🥄"}
+        </span>
+      )}
+    </>
+  );
+}
+
 export function SauceStyles() {
   return (
     <style>{`
@@ -585,10 +846,12 @@ export function SauceStyles() {
       .sauce-swirl{animation:sauce-swirl 1.4s linear infinite}
       @keyframes sauce-chunk{0%,100%{translate:0 0}50%{translate:4px -3px}}
       .sauce-chunk{animation:sauce-chunk 3s ease-in-out infinite}
+      @keyframes sauce-ripple{0%{opacity:.8;scale:.6}100%{opacity:0;scale:1.5}}
+      .sauce-ripple{animation:sauce-ripple .7s ease-out infinite}
       @keyframes sauce-pop{0%{transform:scale(1.5);opacity:0}100%{transform:scale(1);opacity:1}}
       .sauce-pop{animation:sauce-pop .22s ease-out}
       @keyframes sauce-belt{to{background-position-x:-512px}}
-      @media (prefers-reduced-motion: reduce){.sauce-swirl,.sauce-chunk{animation:none}}
+      @media (prefers-reduced-motion: reduce){.sauce-swirl,.sauce-chunk,.sauce-ripple{animation:none}}
     `}</style>
   );
 }

@@ -234,8 +234,12 @@ export const ASSISTANT_BEATS: readonly AssistantBeat[] = [
     id: "fridge-sort",
     lines: [
       {
-        text: "Your order arrived! Play Fridge Sort for bonus Hype.",
+        text: "Your order arrived! Check it, then play Fridge Sort.",
         pose: "tip",
+      },
+      {
+        text: "Check for damaged food, then put it in the fridge. Both come before service.",
+        pose: "explain",
       },
     ],
     go: "inventory",
@@ -281,7 +285,12 @@ export const ASSISTANT_BEATS: readonly AssistantBeat[] = [
   },
   {
     id: "stockroom-sort",
-    lines: [{ text: "Stock the shelves fast for stars. It's a little game!", pose: "tip" }],
+    lines: [
+      {
+        text: "Put the new supplies on the shelves before service. It's a quick game!",
+        pose: "tip",
+      },
+    ],
     go: "inventory-supplies",
     priority: 53,
     when: (_save, level) => within(level, STOCKROOM_FIRST_LEVEL),

@@ -12,6 +12,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { DEFAULT_SAVE, type SaveData } from "../src/game/SaveManager.ts";
+import { TOOL_BOWL, bottleMouth, toolPose } from "../src/components/kc/sauce/SauceParts.tsx";
 import {
   BLENDED,
   MAX_PINS,
@@ -686,6 +687,72 @@ console.log("K. The rewarded ad: 3 more rounds today (developer 2026-11-10)");
   assert(
     /testId="sauce-ad"/.test(game) && /more rounds today/.test(game),
     "K12: the button says what it gives before the ad",
+  );
+}
+
+console.log("L. What you see: the guidance, the whisk, the pour (developer 2026-11-11)");
+{
+  const parts = read("src/components/kc/sauce/SauceParts.tsx");
+  const game = read("src/components/kc/sauce/SauceStationGame.tsx");
+  // The whisk is held handle up and stays in the bowl.
+  assert(
+    toolPose({ x: 0, y: 0, w: 400, h: 300 }).x >= 400 * (TOOL_BOWL.cx - TOOL_BOWL.rx) - 0.01 &&
+      toolPose({ x: 9999, y: 9999, w: 400, h: 300 }).x <=
+        400 * (TOOL_BOWL.cx + TOOL_BOWL.rx) + 0.01 &&
+      toolPose({ x: 9999, y: 9999, w: 400, h: 300 }).y <=
+        300 * (TOOL_BOWL.cy + TOOL_BOWL.ry) + 0.01,
+    "L1: a finger far outside the bowl cannot take the whisk out of it (its head is held inside the rim)",
+  );
+  const right = toolPose({ x: 300, y: 150, w: 400, h: 300 });
+  const left = toolPose({ x: 100, y: 150, w: 400, h: 300 });
+  assert(
+    right.tilt < 0 === left.tilt > 0 &&
+      Math.abs(right.tilt) <= 24 &&
+      Math.abs(left.tilt) <= 24 &&
+      toolPose({ x: 200, y: 150, w: 400, h: 300 }).tilt === 0,
+    "L2: the handle leans toward the middle of the bowl, never more than 24 degrees, and stands straight over the middle",
+    [right.tilt, left.tilt],
+  );
+  assert(
+    /rotate\(\$\{\(180 - pose\.tilt\)/.test(parts),
+    "L3: held, the picture is turned over (handle up, head down in the sauce)",
+  );
+  // The pour is built from the bottle's own mouth.
+  assert(
+    [0, 1, 2, 3, 4, 5].every((n) => {
+      const m = bottleMouth(n);
+      return m.x > 0.3 && m.x < 0.7 && m.y >= 0 && m.y < 0.5 && m.neck > 0.1;
+    }),
+    "L4: every bottle shape has a mouth to pour into",
+  );
+  assert(
+    /transformOrigin: `\$\{JUG_TIP\.x \* 100\}% \$\{JUG_TIP\.y \* 100\}%`/.test(parts) &&
+      /left: `\$\{mouth\.x \* 100\}%`/.test(parts),
+    "L5: the pitcher turns about its spout tip, which sits over the bottle's mouth, and the stream falls from that tip",
+  );
+  assert(
+    /globalCompositeOperation = "source-in"/.test(parts) &&
+      !/maskImage: maskUrl,\s*WebkitMaskRepeat/.test(
+        parts.slice(
+          parts.indexOf("export function BottleView"),
+          parts.indexOf("function BottleLiquid"),
+        ),
+      ),
+    "L6: the sauce in a bottle is painted through the glass silhouette on a canvas (not a CSS mask), so it can never be outside the glass on any browser",
+  );
+  // The guidance.
+  assert(
+    /data-testid="sauce-step"/.test(game) &&
+      /Tap the ingredients to pour them in/.test(game) &&
+      /Now circle the \$\{toolName\} in the green zone/.test(game) &&
+      /Tap Bottle it/.test(game),
+    "L7: the mix screen always says the next step: pour, circle, bottle",
+  );
+  assert(
+    /data-need=\{need === null \? undefined : need\}/.test(game) &&
+      /data-testid=\{`sauce-want-\$\{item\.id\}`\}/.test(game) &&
+      /data-testid=\{`sauce-need-\$\{x\.id\}`\}/.test(game),
+    "L8: the recipe's tiles glow with how many scoops are still wanted, and the recipe chips count 0/3 up to a tick",
   );
 }
 

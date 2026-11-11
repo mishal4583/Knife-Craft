@@ -2,7 +2,7 @@
  * THE FIRST 20 LEVELS' SCHEDULE (developer 2026-11-08, docs/planning/FIRST-20-LEVELS-PLAN-2026-11-08.md): where the early systems and
  * mini-games open, in one leaf module (cleanliness.ts, serviceSupplies.ts, restaurantProgression.ts, secondFloor.ts and the Paige beats all read it).
  *
- *  L3  Unpack the delivery (Fridge Sort), the daily gift and the ad bonuses
+ *  L3  the delivery routine: check the delivery (Delivery Inspection), then Fridge Sort (business/deliveryFlow.ts), the daily gift and the ad bonuses
  *  L4  cleaning (CLEANING_FROM_LEVEL): one closing chore, more as their cause arrives
  *  L6  the first shopping list and Stock the shelves
  *  L8  the frying pan list; degreasing; the sweep
@@ -23,3 +23,9 @@ export const RESTROOM_FROM_LEVEL = 16;
 export const SECOND_FLOOR_RESERVE_CENTS = 30_000;
 /** The served card has no "Next Customer" through this level (developer 2026-11-08): the player walks back to the Kitchen and does something else on the way. */
 export const NEXT_CUSTOMER_HIDDEN_THROUGH_LEVEL = 20;
+/**
+ * The city ranking is NEWS (the "#50 → #48" row on Level Complete and the Congratulations card from Paige) only once this many services are done
+ * (developer 2026-11-11: "at the first serve itself Paige is showing 50 → 48 ranking progress"). The ranking is still counted from Level 1 and the
+ * Kitchen badge still shows it; the guide's ranking beat (restaurantGuide.ts) opens at the same level.
+ */
+export const RANKING_NEWS_FROM_LEVEL = 8;

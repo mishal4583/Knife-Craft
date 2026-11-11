@@ -63,12 +63,12 @@ console.log("A. Speed");
 console.log("B. Fewer cuts");
 {
   assert(
-    TAP_KNIFE.MIN_GAP_FRAC === 0.1,
-    "B1: the closest two cuts may be is 10% of the band (was 7%)",
+    TAP_KNIFE.MIN_GAP_FRAC === 0.07,
+    "B1: the closest two cuts may be is 7% of the band (back to 7% on 2026-11-11: the 10% of 2026-11-08 cut the slice count, the developer undid it)",
   );
   assert(
-    requiredCutsFor(TECHNIQUES.slice) === 8 && requiredCutsFor(TECHNIQUES.chop) === 8,
-    "B2: a slice and a chop are 8 cuts (was 12)",
+    requiredCutsFor(TECHNIQUES.slice) === 12 && requiredCutsFor(TECHNIQUES.chop) === 12,
+    "B2: a slice and a chop are 12 cuts again (8 from 2026-11-08 to 2026-11-10)",
     [requiredCutsFor(TECHNIQUES.slice), requiredCutsFor(TECHNIQUES.chop)],
   );
 }

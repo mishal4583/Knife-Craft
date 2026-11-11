@@ -41,6 +41,7 @@ import { getSupplyItem, type SupplyId } from "../business/businessSupplies";
 import { isSystemLive } from "./restaurantProgression";
 import { formatUsd } from "../money";
 import { KNIFE_CATALOG } from "../knives/knifeDefinitions";
+import { RANKING_NEWS_FROM_LEVEL } from "../config/earlyLevels";
 import { BOARD_CATALOG } from "../boards/boardDefinitions";
 import { getKnifeUpgrades, upgradeCost, BLACKSMITH_STATS } from "../knives/blacksmith";
 
@@ -318,7 +319,7 @@ const RULES: readonly Rule[] = [
       : null,
   // Why keep going: the city's ranking.
   (save, level) => {
-    if (level < 8) return null;
+    if (level < RANKING_NEWS_FROM_LEVEL) return null;
     const r = cityRanking(save);
     const tier = r.rank === 1 ? "no1" : r.rank <= 3 ? "top3" : r.rank <= 10 ? "top10" : "climb";
     const ahead = r.next

@@ -4,13 +4,14 @@
  * `NEXT_CUSTOMER_HIDDEN_THROUGH_LEVEL` levels the served card has no "Next Customer": the player goes back to the Kitchen (the next
  * customer waits there, "Open for service") and the card offers up to three real things to do on the way, chosen from the live state:
  *
- *   unpack the delivery · stock the shelves · restock the Market · clean · collect upstairs · open the menu
+ *   check the delivery · unpack it · stock the shelves · restock the Market · clean · collect upstairs · open the menu
  *
  * Pure: it reads the save and moves nothing. Each chip is a screen id the app opens (the same ids Paige and the guide use).
  */
 import type { SaveData } from "../SaveManager";
 import { NEXT_CUSTOMER_HIDDEN_THROUGH_LEVEL } from "../config/earlyLevels";
 import { roundFor as fridgeRound, piecesWaiting } from "../business/fridgeSort";
+import { pendingInspections } from "../business/deliveryInspection";
 import { roundFor as stockroomRound } from "../business/stockroomSort";
 import { marketPlanFor } from "./marketPlan";
 import { cleanlinessOf, isCleanlinessLive, TASK_RULES } from "./cleanliness";
@@ -19,7 +20,7 @@ import { firstMachineGuide } from "./floorGuide";
 import { restaurantLevelOf } from "./restaurantMenu";
 
 export type AfterServeChip = {
-  id: "unpack" | "stock" | "restock" | "clean" | "floor";
+  id: "check" | "unpack" | "stock" | "restock" | "clean" | "floor";
   icon: string;
   label: string;
   /** The screen id the app opens (`go`). */
@@ -36,7 +37,16 @@ export function afterServeChips(save: SaveData, now: number = Date.now()): After
   const level = restaurantLevelOf(save.levelProgress);
   const out: AfterServeChip[] = [];
   const waiting = piecesWaiting(save);
-  if (waiting > 0 && fridgeRound(save, level))
+  // The delivery is checked before it is unpacked (developer 2026-11-11).
+  const toCheck = pendingInspections(save, level);
+  if (toCheck > 0)
+    out.push({
+      id: "check",
+      icon: "🔎",
+      label: `Check the delivery · ${toCheck}`,
+      to: "delivery-inspection",
+    });
+  else if (waiting > 0 && fridgeRound(save, level))
     out.push({
       id: "unpack",
       icon: "🧊",

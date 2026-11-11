@@ -204,6 +204,25 @@ console.log("D. The rules are untouched");
   );
 }
 
+console.log("E. Keys (developer 2026-11-11: pieces piled up on the sink)");
+{
+  const sink = read("src/components/kc/restaurant/WashUpSink.tsx");
+  assert(
+    !/key=\{(activeItemIndex|streak)\}/.test(sink),
+    "E1: no sibling in the scene is keyed by a bare number (the piece by its index and the Combo chip by the streak collided at 2, and React duplicated the piece)",
+  );
+  assert(
+    /key=\{`piece-\$\{activeItemIndex\}`\}/.test(sink) && /key=\{`combo-\$\{streak\}`\}/.test(sink),
+    "E2: the piece and the Combo chip have their own key prefixes",
+  );
+  assert(
+    /right-2 top-2 z-20/.test(
+      sink.slice(sink.indexOf("wash-up-combo") - 400, sink.indexOf("wash-up-combo")),
+    ),
+    "E3: the Combo chip is on the right, clear of the soap bottle",
+  );
+}
+
 console.log(
   failures ? `\nDISHWASH LAYOUT QA: ${failures} FAILURE(S)` : "\nDISHWASH LAYOUT QA: ALL PASS",
 );

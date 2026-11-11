@@ -4538,7 +4538,7 @@ export class PreparationScene extends Phaser.Scene {
   }
 
   /**
-   * Slow and satisfying peel (developer 2026-11-07): each frame the blade moves toward the finger by at most PEEL.MAX_SPEED (x the
+   * Slow and satisfying peel (developer 2026-11-07, eased 2026-11-11: a realistic follow and 3.4 half-extents a second, was 1.1): each frame the blade moves toward the finger by at most PEEL.MAX_SPEED (x the
    * ingredient's paceMult) half-extents per second and takes off the strip it crosses. The knife is drawn where the blade IS, so it
    * visibly drags behind a fast finger, like pushing through skin; scribbling or a faster drag changes nothing, and holding the finger
    * still lets the blade finish catching up. Coverage, the visual erase and completion are exactly as before, per credited segment.
@@ -4556,7 +4556,10 @@ export class PreparationScene extends Phaser.Scene {
     const { hw, hh } = this.peelHalfExtents();
     const pace = this.ingredient.peelConfig?.paceMult ?? 1;
     const rate = PEEL.MAX_SPEED * pace * ((hw + hh) / 2); // px per second
-    const step = Math.min(d, (rate * Math.min(deltaMs, 50)) / 1000);
+    const dt = Math.min(deltaMs, 50) / 1000;
+    // A real blade follows the hand smoothly (it closes a share of the gap each frame) and is only held back by the speed limit on a flick.
+    const follow = d * (1 - Math.exp(-PEEL.FOLLOW_RATE * dt));
+    const step = Math.min(d, rate * dt, Math.max(follow, Math.min(d, 0.5)));
     if (step < 0.4) return;
     const k = step / d;
     const p = { x: q.x + (t.x - q.x) * k, y: q.y + (t.y - q.y) * k };
